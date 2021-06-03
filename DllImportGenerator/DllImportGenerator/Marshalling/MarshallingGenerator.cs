@@ -513,10 +513,10 @@ namespace Microsoft.Interop
             AnalyzerConfigOptions options,
             ICustomNativeTypeMarshallingStrategy marshallingStrategy)
         {
-            var elementInfo = TypePositionInfo.CreateForType(collectionInfo.ElementType, collectionInfo.ElementMarshallingInfo);
+            var elementInfo = TypePositionInfo.CreateForType(collectionInfo.ElementType, collectionInfo.ElementMarshallingInfo) with { ManagedIndex = info.ManagedIndex };
             var elementMarshaller = Create(
                 elementInfo,
-                new ContiguousCollectionElementMarshallingCodeContext(StubCodeContext.Stage.Setup, string.Empty, string.Empty, context),
+                new ContiguousCollectionElementMarshallingCodeContext(StubCodeContext.Stage.Setup, string.Empty, context),
                 options);
             var elementType = elementMarshaller.AsNativeType(elementInfo);
 

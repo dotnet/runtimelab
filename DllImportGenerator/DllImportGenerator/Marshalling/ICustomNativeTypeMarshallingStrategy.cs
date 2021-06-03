@@ -859,8 +859,6 @@ namespace Microsoft.Interop
     /// </summary>
     internal sealed class ContiguousNonBlittableElementCollectionMarshalling : ICustomNativeTypeMarshallingStrategy
     {
-        private const string IndexerIdentifier = "__i";
-
         private readonly ICustomNativeTypeMarshallingStrategy innerMarshaller;
         private readonly IMarshallingGenerator elementMarshaller;
         private readonly TypePositionInfo elementInfo;
@@ -874,15 +872,10 @@ namespace Microsoft.Interop
             this.elementInfo = elementInfo;
         }
 
-        private string GetNativeSpanIdentifier(TypePositionInfo info, StubCodeContext context)
-        {
-            return context.GetAdditionalIdentifier(info, "nativeSpan");
-        }
-
         private LocalDeclarationStatementSyntax GenerateNativeSpanDeclaration(TypePositionInfo info, StubCodeContext context)
         {
             string nativeIdentifier = context.GetIdentifiers(info).native;
-            string nativeSpanIdentifier = GetNativeSpanIdentifier(info, context);
+            string nativeSpanIdentifier = MarshallerHelpers.GetNativeSpanIdentifier(info, context);
             return LocalDeclarationStatement(VariableDeclaration(
                 GenericName(
                     Identifier(TypeNames.System_Span),
@@ -915,15 +908,13 @@ namespace Microsoft.Interop
         private StatementSyntax GenerateContentsMarshallingStatement(TypePositionInfo info, StubCodeContext context, bool useManagedSpanForLength)
         {
             string nativeIdentifier = context.GetIdentifiers(info).native;
-            string nativeSpanIdentifier = GetNativeSpanIdentifier(info, context);
+            string nativeSpanIdentifier = MarshallerHelpers.GetNativeSpanIdentifier(info, context);
             var elementSetupSubContext = new ContiguousCollectionElementMarshallingCodeContext(
                 StubCodeContext.Stage.Setup,
-                IndexerIdentifier,
                 nativeSpanIdentifier,
                 context);
             var elementSubContext = new ContiguousCollectionElementMarshallingCodeContext(
                 context.CurrentStage,
-                IndexerIdentifier,
                 nativeSpanIdentifier,
                 context);
 
@@ -956,7 +947,7 @@ namespace Microsoft.Interop
                 // Iterate through the elements of the native collection to unmarshal them
                 return Block(
                     GenerateNativeSpanDeclaration(info, context),
-                    MarshallerHelpers.GetForLoop(collectionIdentifierForLength, IndexerIdentifier)
+                    MarshallerHelpers.GetForLoop(collectionIdentifierForLength, elementSubContext.IndexerIdentifier)
                                     .WithStatement(marshallingStatement));
             }
             return EmptyStatement();

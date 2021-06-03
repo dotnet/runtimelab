@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-
+using System.Text;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -12,13 +12,14 @@ namespace Microsoft.Interop
 {
     internal sealed class ContiguousCollectionElementMarshallingCodeContext : StubCodeContext
     {
-        private readonly string indexerIdentifier;
         private readonly string nativeSpanIdentifier;
         private readonly StubCodeContext parentContext;
 
         public override bool SingleFrameSpansNativeContext => false;
 
         public override bool AdditionalTemporaryStateLivesAcrossStages => false;
+
+        public string IndexerIdentifier { get; }
 
         /// <summary>
         /// Create a <see cref="StubCodeContext"/> for marshalling elements of an collection.
@@ -29,12 +30,11 @@ namespace Microsoft.Interop
         /// <param name="parentContext">The parent context.</param>
         public ContiguousCollectionElementMarshallingCodeContext(
             Stage currentStage,
-            string indexerIdentifier,
             string nativeSpanIdentifier,
             StubCodeContext parentContext)
         {
             CurrentStage = currentStage;
-            this.indexerIdentifier = indexerIdentifier;
+            IndexerIdentifier = CalculateIndexerIdentifierBasedOnParentContext(parentContext);
             this.nativeSpanIdentifier = nativeSpanIdentifier;
             this.parentContext = parentContext;
         }
@@ -48,20 +48,36 @@ namespace Microsoft.Interop
         {
             var (_, native) = parentContext.GetIdentifiers(info);
             return (
-                $"{native}.ManagedValues[{indexerIdentifier}]",
-                $"{nativeSpanIdentifier}[{indexerIdentifier}]"
+                $"{native}.ManagedValues[{IndexerIdentifier}]",
+                $"{nativeSpanIdentifier}[{IndexerIdentifier}]"
             );
         }
 
         public override string GetAdditionalIdentifier(TypePositionInfo info, string name)
         {
-            return $"{nativeSpanIdentifier}__{indexerIdentifier}__{name}";
+            return $"{nativeSpanIdentifier}__{IndexerIdentifier}__{name}";
         }
 
         public override TypePositionInfo? GetTypePositionInfoForManagedIndex(int index)
         {
             // We don't have parameters to look at when we're in the middle of marshalling an array.
             return null;
+        }
+
+        private static string CalculateIndexerIdentifierBasedOnParentContext(StubCodeContext parentContext)
+        {
+            int i = 0;
+            while (parentContext is ContiguousCollectionElementMarshallingCodeContext collectionContext)
+            {
+                i++;
+                parentContext = collectionContext.parentContext;
+            }
+
+            // Follow a progression of indexers of the following form:
+            // __i, __j, __k, __ii, __jj, __kk, etc.
+            StringBuilder indexerIdentifier = new StringBuilder("__");
+            indexerIdentifier.Append((char)('i' + (i % 3)), 1 + (i / 3));
+            return indexerIdentifier.ToString();
         }
     }
 }
