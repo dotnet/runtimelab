@@ -46,7 +46,7 @@ namespace Internal.IntrinsicSupport
             return false;
         }
 
-        private static bool IsEnum(RuntimeTypeHandle t)
+        internal static bool IsEnum(RuntimeTypeHandle t)
         {
             return t.ToEETypePtr().IsEnum;
         }

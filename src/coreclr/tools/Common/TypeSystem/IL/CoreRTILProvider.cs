@@ -154,6 +154,40 @@ namespace Internal.IL
                             return ComparerIntrinsics.EmitEqualityComparerCreate(method);
                     }
                     break;
+                case "ComparerHelpers":
+                    {
+                        if (owningType.Namespace != "Internal.IntrinsicSupport")
+                            return null;
+
+                        if (methodName == "EnumOnlyCompare")
+                        {
+                            //calls CompareTo for underlyingType to avoid boxing
+
+                            TypeDesc elementType = method.Instantiation[0];
+                            if (!elementType.IsEnum)
+                                return null;
+
+                            TypeDesc underlyingType = elementType.UnderlyingType;
+                            TypeDesc returnType = method.Context.GetWellKnownType(WellKnownType.Int32);
+                            MethodDesc underlyingCompareToMethod = underlyingType.GetKnownMethod("CompareTo",
+                                new MethodSignature(
+                                    MethodSignatureFlags.None,
+                                    genericParameterCount: 0,
+                                    returnType: returnType,
+                                    parameters: new TypeDesc[] {underlyingType}));
+
+                            ILEmitter emitter = new ILEmitter();
+                            var codeStream = emitter.NewCodeStream();
+
+                            codeStream.EmitLdArga(0);
+                            codeStream.EmitLdArg(1);
+                            codeStream.Emit(ILOpcode.call, emitter.NewToken(underlyingCompareToMethod));
+                            codeStream.Emit(ILOpcode.ret);
+
+                            return emitter.Link(method);
+                        }
+                    }
+                    break;
                 case "EqualityComparerHelpers":
                     {
                         if (owningType.Namespace != "Internal.IntrinsicSupport")
