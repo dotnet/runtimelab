@@ -136,7 +136,7 @@ namespace Microsoft.Interop
                 foreach (var dependentElementIndex in getDependentIndicesFn(element))
                 {
                     // Add an edge from an element to one that depends on it.
-                    edgeMap[dependentElementIndex][elementIndex] = true;
+                    edgeMap[elementIndex][dependentElementIndex] = true;
                 }
             }
 
@@ -155,11 +155,7 @@ namespace Microsoft.Interop
                 {
                     continue;
                 }
-                bool anyIncomingEdges = false;
-                for (int j = 0; j < edgeMap.Length; j++)
-                {
-                    anyIncomingEdges |= edgeMap[j][elementIndex];
-                }
+                bool anyIncomingEdges = Array.IndexOf(edgeMap[elementIndex], true) != -1;
                 if (!anyIncomingEdges)
                 {
                     S.Add(elementByElementIndex[elementIndex]);
@@ -177,18 +173,14 @@ namespace Microsoft.Interop
                 for (int i = 0; i < edgeMap.Length; i++)
                 {
                     int elementIndex = indexFn(element);
-                    if (!edgeMap[elementIndex][i])
+                    if (!edgeMap[i][elementIndex])
                     {
                         continue;
                     }
                     // Remove the edge from element to m
-                    edgeMap[elementIndex][i] = false;
+                    edgeMap[i][elementIndex] = false;
                     // If m does not have any incoming edges, add to S
-                    bool anyIncomingEdges = false;
-                    for (int j = 0; j < edgeMap.Length; j++)
-                    {
-                        anyIncomingEdges |= edgeMap[j][i];
-                    }
+                    bool anyIncomingEdges = Array.IndexOf(edgeMap[i], true) != -1;
                     if (!anyIncomingEdges)
                     {
                         S.Add(elementByElementIndex[i]);
