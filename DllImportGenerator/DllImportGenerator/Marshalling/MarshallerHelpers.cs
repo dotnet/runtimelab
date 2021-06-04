@@ -174,10 +174,10 @@ namespace Microsoft.Interop
                 S.RemoveAt(S.Count - 1);
                 // Add element to L
                 L.Add(element);
+                int elementIndex = indexFn(element);
                 // For each node m that element points to
                 for (int i = 0; i < edgeMap.Length; i++)
                 {
-                    int elementIndex = indexFn(element);
                     if (!edgeMap[i][elementIndex])
                     {
                         continue;
