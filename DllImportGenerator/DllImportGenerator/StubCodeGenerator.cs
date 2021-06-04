@@ -77,11 +77,9 @@ namespace Microsoft.Interop
             // Get marshaller for return
             this.retMarshaller = CreateGenerator(retTypeInfo);
 
-            List<(TypePositionInfo TypeInfo, IMarshallingGenerator Generator)> allMarshallers = new(this.paramMarshallers.Where(m => m.TypeInfo.ManagedIndex != TypePositionInfo.UnsetIndex));
-            if (retMarshaller.TypeInfo.ManagedIndex != TypePositionInfo.UnsetIndex)
-            {
-                allMarshallers.Add(retMarshaller);
-            }
+
+            List<(TypePositionInfo TypeInfo, IMarshallingGenerator Generator)> allMarshallers = new(this.paramMarshallers);
+            allMarshallers.Add(retMarshaller);
 
             this.sortedMarshallers = MarshallerHelpers.GetTopologicallySortedElements(
                 allMarshallers,

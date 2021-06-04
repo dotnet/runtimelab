@@ -103,37 +103,34 @@ namespace Microsoft.Interop
         /// </summary>
         /// <typeparam name="T">The type of element.</typeparam>
         /// <param name="elements">The initial collection of elements.</param>
-        /// <param name="indexFn">A function to create an element index value. This value must be non-negative and the maximum value is recommended to be close to <c><paramref name="elements"/>.Count</c> for best performance.</param>
-        /// <param name="getDependentIndicesFn">A function to resolve the dependencies of a given item in the <paramref name="elements"/> collection as index values that would be returned by <paramref name="indexFn"/>.</param>
+        /// <param name="keyFn">A function to create a key for the element.</param>
+        /// <param name="getDependentIndicesFn">A function to resolve the dependencies of a given item in the <paramref name="elements"/> collection as index values that would be returned by <paramref name="keyFn"/>.</param>
         /// <returns>A topologically sorted collection of the elemens of the <paramref name="elements"/> collection.</returns>
         /// <exception cref="InvalidOperationException">The graph of <paramref name="elements"/> nodes and the edges produced by <paramref name="getDependentIndicesFn"/> has cycles.</exception>
-        public static IEnumerable<T> GetTopologicallySortedElements<T>(
+        public static IEnumerable<T> GetTopologicallySortedElements<T, U>(
             ICollection<T> elements,
-            Func<T, int> indexFn,
-            Func<T, IEnumerable<int>> getDependentIndicesFn)
-            where T : IEquatable<T?>
+            Func<T, U> keyFn,
+            Func<T, IEnumerable<U>> getDependentIndicesFn)
         {
-            int highestManagedIndex = -1;
+            Dictionary<U, int> elementIndexToEdgeMapNodeId = new(elements.Count);
+            List<T> nodeIdToElement = new(elements.Count);
+            EdgeMap edgeMap = new EdgeMap(elements.Count);
+
+            int nextEdgeMapIndex = 0;
             foreach (var element in elements)
             {
-                highestManagedIndex = Math.Max(indexFn(element), highestManagedIndex);
+                elementIndexToEdgeMapNodeId.Add(keyFn(element), nextEdgeMapIndex++);
+                nodeIdToElement.Add(element);
             }
 
-            T[] elementByElementIndex = new T[highestManagedIndex + 1];
             foreach (var element in elements)
             {
-                elementByElementIndex[indexFn(element)] = element;
-            }
-
-            EdgeMap edgeMap = new EdgeMap(highestManagedIndex + 1);
-            foreach (var element in elements)
-            {
-                int elementIndex = indexFn(element);
+                U elementIndex = keyFn(element);
                 foreach (var dependentElementIndex in getDependentIndicesFn(element))
                 {
-                    // Add an edge from dependentElementIndex->elementIndex
+                    // Add an edge from the node for dependentElementIndex-> the node for elementIndex
                     // This way, elements that have no dependencies have no edges pointing to them.
-                    edgeMap[elementIndex, dependentElementIndex] = true;
+                    edgeMap[elementIndexToEdgeMapNodeId[elementIndex], elementIndexToEdgeMapNodeId[dependentElementIndex]] = true;
                 }
             }
 
@@ -147,15 +144,11 @@ namespace Microsoft.Interop
             List<T> S = new List<T>(elements.Count);
 
             // Initialize S
-            for (int elementIndex = 0; elementIndex <= highestManagedIndex; elementIndex++)
+            for (int node = 0; node < nodeIdToElement.Count; node++)
             {
-                if (elementByElementIndex[elementIndex].Equals(default))
+                if (!edgeMap.AnyIncomingEdge(node))
                 {
-                    continue;
-                }
-                if (!edgeMap.AnyIncomingEdge(elementIndex))
-                {
-                    S.Add(elementByElementIndex[elementIndex]);
+                    S.Add(nodeIdToElement[node]);
                 }
             }
 
@@ -166,20 +159,20 @@ namespace Microsoft.Interop
                 S.RemoveAt(S.Count - 1);
                 // Add element to L
                 L.Add(element);
-                int elementIndex = indexFn(element);
-                // For each node m that element points to
+                int n = elementIndexToEdgeMapNodeId[keyFn(element)];
+                // For each node m that n points to
                 for (int m = 0; m < edgeMap.NodeCount; m++)
                 {
-                    if (!edgeMap[m, elementIndex])
+                    if (!edgeMap[m, n])
                     {
                         continue;
                     }
-                    // Remove the edge from element to m
-                    edgeMap[m, elementIndex] = false;
+                    // Remove the edge from n to m
+                    edgeMap[m, n] = false;
                     // If m does not have any incoming edges, add to S
                     if (!edgeMap.AnyIncomingEdge(m))
                     {
-                        S.Add(elementByElementIndex[m]);
+                        S.Add(nodeIdToElement[m]);
                     }
                 }
             }
