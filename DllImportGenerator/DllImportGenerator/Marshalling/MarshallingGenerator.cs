@@ -392,22 +392,47 @@ namespace Microsoft.Interop
                         NotSupportedDetails = Resources.ArraySizeParamIndexOutOfRange
                     };
                 }
-                //else if (!paramInfo.ManagedType.IsIntegralType())
-                //{
-                //    throw new MarshallingNotSupportedException(info, context)
-                //    {
-                //        NotSupportedDetails = Resources.ArraySizeParamTypeMustBeIntegral
-                //    };
-                //}
                 else
                 {
+                    ExpressionSyntax numElementsExpression = GetIndexedNumElementsExpression(
+                        context,
+                        paramInfo,
+                        out int numIndirectionLevels);
+
+                    ITypeSymbol type = paramInfo.ManagedType;
+                    MarshallingInfo marshallingInfo = paramInfo.MarshallingAttributeInfo;
+
+                    for (int i = 0; i < numIndirectionLevels; i++)
+                    {
+                        if (marshallingInfo is NativeContiguousCollectionMarshallingInfo collectionInfo)
+                        {
+                            type = collectionInfo.ElementType;
+                            marshallingInfo = collectionInfo.ElementMarshallingInfo;
+                        }
+                        else
+                        {
+                            throw new MarshallingNotSupportedException(info, context)
+                            {
+                                NotSupportedDetails = Resources.CollectionSizeParamTypeMustBeIntegral
+                            };
+                        }
+                    }
+
+                    if (!type.IsIntegralType())
+                    {
+                        throw new MarshallingNotSupportedException(info, context)
+                        {
+                            NotSupportedDetails = Resources.CollectionSizeParamTypeMustBeIntegral
+                        };
+                    }
+
                     return CastExpression(
                             PredefinedType(Token(SyntaxKind.IntKeyword)),
-                            ParenthesizedExpression(GetIndexedNumElementsExpression(context, paramInfo.InstanceIdentifier)));
+                            ParenthesizedExpression(numElementsExpression));
                 }
             }
 
-            static ExpressionSyntax GetIndexedNumElementsExpression(StubCodeContext context, string identifier)
+            static ExpressionSyntax GetIndexedNumElementsExpression(StubCodeContext context, TypePositionInfo numElementsInfo, out int numIndirectionLevels)
             {
                 Stack<string> indexerStack = new();
                 while (context is ContiguousCollectionElementMarshallingCodeContext collectionContext)
@@ -416,7 +441,9 @@ namespace Microsoft.Interop
                     context = collectionContext.ParentContext;
                 }
 
-                ExpressionSyntax indexedNumElements = IdentifierName(identifier);
+                numIndirectionLevels = indexerStack.Count;
+
+                ExpressionSyntax indexedNumElements = IdentifierName(context.GetIdentifiers(numElementsInfo).managed);
                 while (indexerStack.Count > 0)
                 {
                     indexedNumElements = ElementAccessExpression(indexedNumElements).AddArgumentListArguments(Argument(IdentifierName(indexerStack.Pop())));
