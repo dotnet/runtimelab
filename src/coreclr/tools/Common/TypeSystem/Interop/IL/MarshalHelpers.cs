@@ -165,8 +165,10 @@ namespace Internal.TypeSystem.Interop
                 case MarshallerKind.ComInterface:
                     return context.GetWellKnownType(WellKnownType.IntPtr);
 
+#if !READYTORUN
                 case MarshallerKind.Variant:
                     return InteropTypes.GetVariant(context);
+#endif
 
                 case MarshallerKind.OleCurrency:
                     return context.GetWellKnownType(WellKnownType.Int64);

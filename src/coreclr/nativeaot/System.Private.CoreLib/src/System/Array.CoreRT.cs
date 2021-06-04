@@ -223,12 +223,6 @@ namespace System
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal ref byte GetRawArrayData()
-        {
-            return ref Unsafe.Add(ref Unsafe.As<RawArrayData>(this).Data, (int)(EETypePtr.BaseSize - SZARRAY_BASE_SIZE));
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private ref int GetRawMultiDimArrayBounds()
         {
             Debug.Assert(!IsSzArray);
@@ -449,8 +443,8 @@ namespace System
             }
 
             bool reverseCopy = ((object)sourceArray == (object)destinationArray) && (sourceIndex < destinationIndex);
-            ref object refDestinationArray = ref Unsafe.As<byte, object>(ref destinationArray.GetRawArrayData());
-            ref object refSourceArray = ref Unsafe.As<byte, object>(ref sourceArray.GetRawArrayData());
+            ref object refDestinationArray = ref Unsafe.As<byte, object>(ref MemoryMarshal.GetArrayDataReference(destinationArray));
+            ref object refSourceArray = ref Unsafe.As<byte, object>(ref MemoryMarshal.GetArrayDataReference(sourceArray));
             if (reverseCopy)
             {
                 sourceIndex += length - 1;
@@ -492,10 +486,10 @@ namespace System
             EETypePtr sourceElementEEType = sourceArray.ElementEEType;
             nuint sourceElementSize = sourceArray.ElementSize;
 
-            fixed (byte* pSourceArray = &sourceArray.GetRawArrayData())
+            fixed (byte* pSourceArray = &MemoryMarshal.GetArrayDataReference(sourceArray))
             {
                 byte* pElement = pSourceArray + (nuint)sourceIndex * sourceElementSize;
-                ref object refDestinationArray = ref Unsafe.As<byte, object>(ref destinationArray.GetRawArrayData());
+                ref object refDestinationArray = ref Unsafe.As<byte, object>(ref MemoryMarshal.GetArrayDataReference(destinationArray));
                 for (int i = 0; i < length; i++)
                 {
                     object boxedValue = RuntimeImports.RhBox(sourceElementEEType, ref *pElement);
@@ -520,9 +514,9 @@ namespace System
             nuint destinationElementSize = destinationArray.ElementSize;
             bool isNullable = destinationElementEEType.IsNullable;
 
-            fixed (byte* pDestinationArray = &destinationArray.GetRawArrayData())
+            fixed (byte* pDestinationArray = &MemoryMarshal.GetArrayDataReference(destinationArray))
             {
-                ref object refSourceArray = ref Unsafe.As<byte, object>(ref sourceArray.GetRawArrayData());
+                ref object refSourceArray = ref Unsafe.As<byte, object>(ref MemoryMarshal.GetArrayDataReference(sourceArray));
                 byte* pElement = pDestinationArray + (nuint)destinationIndex * destinationElementSize;
 
                 for (int i = 0; i < length; i++)
@@ -566,7 +560,7 @@ namespace System
                 reverseCopy = false;
             }
 
-            fixed (byte* pDstArray = &destinationArray.GetRawArrayData(), pSrcArray = &sourceArray.GetRawArrayData())
+            fixed (byte* pDstArray = &MemoryMarshal.GetArrayDataReference(destinationArray), pSrcArray = &MemoryMarshal.GetArrayDataReference(sourceArray))
             {
                 nuint cbElementSize = sourceArray.ElementSize;
                 byte* pSourceElement = pSrcArray + (nuint)sourceIndex * cbElementSize;
@@ -601,7 +595,7 @@ namespace System
 
             if (reliable)
             {
-                fixed (byte* pDstArray = &destinationArray.GetRawArrayData())
+                fixed (byte* pDstArray = &MemoryMarshal.GetArrayDataReference(destinationArray))
                 {
                     nuint cbElementSize = sourceArray.ElementSize;
                     byte* pDestinationElement = pDstArray + (nuint)destinationIndex * cbElementSize;
@@ -628,8 +622,8 @@ namespace System
             nuint elementSize = sourceArray.ElementSize;
 
             Buffer.Memmove(
-                ref Unsafe.AddByteOffset(ref destinationArray.GetRawArrayData(), (nuint)destinationIndex * elementSize),
-                ref Unsafe.AddByteOffset(ref sourceArray.GetRawArrayData(), (nuint)sourceIndex * elementSize),
+                ref Unsafe.AddByteOffset(ref MemoryMarshal.GetArrayDataReference(destinationArray), (nuint)destinationIndex * elementSize),
+                ref Unsafe.AddByteOffset(ref MemoryMarshal.GetArrayDataReference(sourceArray), (nuint)sourceIndex * elementSize),
                 elementSize * (nuint)length);
         }
 
@@ -659,7 +653,7 @@ namespace System
                     throw new ArrayTypeMismatchException(SR.ArrayTypeMismatch_ConstrainedCopy);
             }
 
-            fixed (byte* pSrcArray = &sourceArray.GetRawArrayData(), pDstArray = &destinationArray.GetRawArrayData())
+            fixed (byte* pSrcArray = &MemoryMarshal.GetArrayDataReference(sourceArray), pDstArray = &MemoryMarshal.GetArrayDataReference(destinationArray))
             {
                 byte* srcData = pSrcArray + (nuint)sourceIndex * srcElementSize;
                 byte* data = pDstArray + (nuint)destinationIndex * destElementSize;
@@ -918,7 +912,7 @@ namespace System
 
             EETypePtr eeType = array.EETypePtr;
             nuint totalByteLength = eeType.ComponentSize * array.NativeLength;
-            ref byte pStart = ref array.GetRawArrayData();
+            ref byte pStart = ref MemoryMarshal.GetArrayDataReference(array);
 
             if (!eeType.HasPointers)
             {
@@ -1101,7 +1095,7 @@ namespace System
             if (ElementEEType.IsPointer)
                 throw new NotSupportedException(SR.NotSupported_Type);
 
-            ref byte element = ref Unsafe.AddByteOffset(ref GetRawArrayData(), (nuint)flattenedIndex * ElementSize);
+            ref byte element = ref Unsafe.AddByteOffset(ref MemoryMarshal.GetArrayDataReference(this), (nuint)flattenedIndex * ElementSize);
 
             EETypePtr pElementEEType = ElementEEType;
             if (pElementEEType.IsValueType)
@@ -1122,7 +1116,7 @@ namespace System
             if (ElementEEType.IsPointer)
                 throw new NotSupportedException(SR.NotSupported_Type);
 
-            ref byte element = ref Unsafe.AddByteOffset(ref GetRawArrayData(), (nuint)flattenedIndex * ElementSize);
+            ref byte element = ref Unsafe.AddByteOffset(ref MemoryMarshal.GetArrayDataReference(this), (nuint)flattenedIndex * ElementSize);
 
             EETypePtr pElementEEType = ElementEEType;
             if (pElementEEType.IsValueType)
