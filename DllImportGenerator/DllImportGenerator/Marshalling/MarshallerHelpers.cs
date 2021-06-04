@@ -106,6 +106,7 @@ namespace Microsoft.Interop
         /// <param name="indexFn">A function to create an element index value. This value must be non-negative and the maximum value is recommended to be close to <c><paramref name="elements"/>.Count</c> for best performance.</param>
         /// <param name="getDependentIndicesFn">A function to resolve the dependencies of a given item in the <paramref name="elements"/> collection as index values that would be returned by <paramref name="indexFn"/>.</param>
         /// <returns>A topologically sorted collection of the elemens of the <paramref name="elements"/> collection.</returns>
+        /// <exception cref="InvalidOperationException">The graph of <paramref name="elements"/> nodes and the edges produced by <paramref name="getDependentIndicesFn"/> has cycles.</exception>
         public static IEnumerable<T> GetTopologicallySortedElements<T>(
             ICollection<T> elements,
             Func<T, int> indexFn,
@@ -124,6 +125,8 @@ namespace Microsoft.Interop
                 elementByElementIndex[indexFn(element)] = element;
             }
 
+            // edgeMap contains a map of boolean values denoting if an edge exists
+            // If edgeMap[X][Y] is true, that means that there exists an edge Y -> X
             bool[][] edgeMap = new bool[highestManagedIndex + 1][];
             for (int i = 0; i < edgeMap.Length; i++)
             {
@@ -135,7 +138,8 @@ namespace Microsoft.Interop
                 int elementIndex = indexFn(element);
                 foreach (var dependentElementIndex in getDependentIndicesFn(element))
                 {
-                    // Add an edge from an element to one that depends on it.
+                    // Add an edge from dependentElementIndex->elementIndex
+                    // This way, elements that have no dependencies have no edges pointing to them.
                     edgeMap[elementIndex][dependentElementIndex] = true;
                 }
             }
@@ -144,9 +148,9 @@ namespace Microsoft.Interop
             // we'll use Khan's algorithm to calculate a topological sort of the elements.
 
             // L is the sorted list
-            List<T> L = new List<T>(edgeMap.Length);
+            List<T> L = new List<T>(elements.Count);
             // S is the set of elements with no incoming edges (no dependencies on it)
-            List<T> S = new List<T>(edgeMap.Length);
+            List<T> S = new List<T>(elements.Count);
 
             // Initialize S
             for (int elementIndex = 0; elementIndex <= highestManagedIndex; elementIndex++)
