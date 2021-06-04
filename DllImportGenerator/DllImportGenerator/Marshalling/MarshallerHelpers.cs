@@ -125,14 +125,7 @@ namespace Microsoft.Interop
                 elementByElementIndex[indexFn(element)] = element;
             }
 
-            // edgeMap contains a map of boolean values denoting if an edge exists
-            // If edgeMap[X][Y] is true, that means that there exists an edge Y -> X
-            bool[][] edgeMap = new bool[highestManagedIndex + 1][];
-            for (int i = 0; i < edgeMap.Length; i++)
-            {
-                edgeMap[i] = new bool[highestManagedIndex + 1];
-            }
-
+            EdgeMap edgeMap = new EdgeMap(highestManagedIndex + 1);
             foreach (var element in elements)
             {
                 int elementIndex = indexFn(element);
@@ -140,7 +133,7 @@ namespace Microsoft.Interop
                 {
                     // Add an edge from dependentElementIndex->elementIndex
                     // This way, elements that have no dependencies have no edges pointing to them.
-                    edgeMap[elementIndex][dependentElementIndex] = true;
+                    edgeMap[elementIndex, dependentElementIndex] = true;
                 }
             }
 
@@ -160,8 +153,7 @@ namespace Microsoft.Interop
                 {
                     continue;
                 }
-                bool anyIncomingEdges = Array.IndexOf(edgeMap[elementIndex], true) != -1;
-                if (!anyIncomingEdges)
+                if (!edgeMap.AnyIncomingEdge(elementIndex))
                 {
                     S.Add(elementByElementIndex[elementIndex]);
                 }
@@ -176,37 +168,63 @@ namespace Microsoft.Interop
                 L.Add(element);
                 int elementIndex = indexFn(element);
                 // For each node m that element points to
-                for (int i = 0; i < edgeMap.Length; i++)
+                for (int m = 0; m < edgeMap.NodeCount; m++)
                 {
-                    if (!edgeMap[i][elementIndex])
+                    if (!edgeMap[m, elementIndex])
                     {
                         continue;
                     }
                     // Remove the edge from element to m
-                    edgeMap[i][elementIndex] = false;
+                    edgeMap[m, elementIndex] = false;
                     // If m does not have any incoming edges, add to S
-                    bool anyIncomingEdges = Array.IndexOf(edgeMap[i], true) != -1;
-                    if (!anyIncomingEdges)
+                    if (!edgeMap.AnyIncomingEdge(m))
                     {
-                        S.Add(elementByElementIndex[i]);
+                        S.Add(elementByElementIndex[m]);
                     }
                 }
             }
 
             // If we have edges left, then we have a cycle.
-            for (int i = 0; i < edgeMap.Length; i++)
+            if (edgeMap.AnyEdges)
             {
-                for (int j = 0; j < edgeMap.Length; j++)
-                {
-                    if (edgeMap[i][j])
-                    {
-                        throw new InvalidOperationException();
-                    }
-                }
+                throw new InvalidOperationException();
             }
 
             // If we make it here, we have a topologically sorted list.
             return L;
+        }
+
+        private struct EdgeMap
+        {
+            private readonly bool[] edgeMap;
+
+            public EdgeMap(int numNodes)
+            {
+                NodeCount = numNodes;
+                edgeMap = new bool[NodeCount * NodeCount];
+            }
+
+            /// <summary>
+            /// EdgeMap contains a map of boolean values denoting if an edge exists
+            /// If edgeMap[X][Y] is true, that means that there exists an edge Y -> X
+            /// </summary>
+            /// <param name="to">The node the edge points to.</param>
+            /// <param name="from">The node the edge start at.</param>
+            /// <returns>If there exists an edge that starts at <paramref name="from"/> and ends at <paramref name="to"/></returns>
+            public bool this[int to, int from]
+            {
+                get => edgeMap[to * NodeCount + from];
+                set => edgeMap[to * NodeCount + from] = value;
+            }
+
+            public bool AnyEdges => Array.IndexOf(edgeMap, true) != -1;
+
+            public int NodeCount { get; }
+
+            public bool AnyIncomingEdge(int to)
+            {
+                return Array.IndexOf(edgeMap, true, to * NodeCount, NodeCount) != -1;
+            }
         }
 
         public static IEnumerable<TypePositionInfo> GetDependentElementsOfMarshallingInfo(
