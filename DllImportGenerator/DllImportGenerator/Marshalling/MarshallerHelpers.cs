@@ -103,13 +103,14 @@ namespace Microsoft.Interop
         /// </summary>
         /// <typeparam name="T">The type of element.</typeparam>
         /// <param name="elements">The initial collection of elements.</param>
-        /// <param name="indexFn">A function to create an element index value. This value must be non-negative and the maximum value is recommended to be close to <c><paramref name="elements"/>.Length</c> for best performance.</param>
+        /// <param name="indexFn">A function to create an element index value. This value must be non-negative and the maximum value is recommended to be close to <c><paramref name="elements"/>.Count</c> for best performance.</param>
         /// <param name="getDependentIndicesFn">A function to resolve the dependencies of a given item in the <paramref name="elements"/> collection as index values that would be returned by <paramref name="indexFn"/>.</param>
         /// <returns>A topologically sorted collection of the elemens of the <paramref name="elements"/> collection.</returns>
         public static IEnumerable<T> GetTopologicallySortedElements<T>(
             ICollection<T> elements,
             Func<T, int> indexFn,
             Func<T, IEnumerable<int>> getDependentIndicesFn)
+            where T : IEquatable<T?>
         {
             int highestManagedIndex = -1;
             foreach (var element in elements)
@@ -150,7 +151,7 @@ namespace Microsoft.Interop
             // Initialize S
             for (int elementIndex = 0; elementIndex <= highestManagedIndex; elementIndex++)
             {
-                if (elementByElementIndex[elementIndex] is null)
+                if (elementByElementIndex[elementIndex].Equals(default))
                 {
                     continue;
                 }
