@@ -319,7 +319,7 @@ Value* buildCnsInt(llvm::IRBuilder<>& builder, GenTree* node)
 
 Type* getLLVMTypeForVarType(var_types type)
 {
-    // TODO: ill out with missing type mappings and when all code done via clrjit, default should fail with useful message
+    // TODO: Fill out with missing type mappings and when all code done via clrjit, default should fail with useful message
     switch (type)
     {
         case var_types::TYP_BOOL:
