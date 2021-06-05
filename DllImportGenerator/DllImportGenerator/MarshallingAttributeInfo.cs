@@ -141,7 +141,7 @@ namespace Microsoft.Interop
             UseDefaultMarshalling
         );
 
-    class MarshallingAttributeInfoParser
+    internal class MarshallingAttributeInfoParser
     {
         private readonly Compilation compilation;
         private readonly GeneratorDiagnostics diagnostics;
@@ -164,24 +164,10 @@ namespace Microsoft.Interop
             marshalUsingAttribute = compilation.GetTypeByMetadataName(TypeNames.MarshalUsingAttribute)!;
         }
 
-        internal MarshallingInfo ParseMarshallingInfo(
+        public MarshallingInfo ParseMarshallingInfo(
             ITypeSymbol managedType,
             IEnumerable<AttributeData> useSiteAttributes)
         {
-            Dictionary<int, AttributeData> marshallingAttributesByIndirectionLevel = new();
-            foreach (AttributeData attribute in useSiteAttributes)
-            {
-                if (TryGetAttributeIndirectionLevel(attribute, out int indirectionLevel))
-                {
-                    if (marshallingAttributesByIndirectionLevel.ContainsKey(indirectionLevel))
-                    {
-                        diagnostics.ReportConfigurationNotSupported(attribute, "Marshalling Data for Indirection Level", indirectionLevel.ToString());
-                        return NoMarshallingInfo.Instance;
-                    }
-                    marshallingAttributesByIndirectionLevel.Add(indirectionLevel, attribute);
-                }
-            }
-
             return ParseMarshallingInfo(managedType, useSiteAttributes, ImmutableHashSet<string>.Empty);
         }
 
@@ -215,7 +201,7 @@ namespace Microsoft.Interop
                 ref maxIndirectionLevelUsed);
             if (maxIndirectionLevelUsed < maxIndirectionLevelDataProvided)
             {
-                diagnostics.ReportConfigurationNotSupported(marshallingAttributesByIndirectionLevel[maxIndirectionLevelDataProvided], "ElementIndirectionLevel", maxIndirectionLevelDataProvided.ToString());
+                diagnostics.ReportConfigurationNotSupported(marshallingAttributesByIndirectionLevel[maxIndirectionLevelDataProvided], ManualTypeMarshallingHelper.MarshalUsingProperties.ElementIndirectionLevel, maxIndirectionLevelDataProvided.ToString());
             }
             return info;
         }
@@ -328,15 +314,15 @@ namespace Microsoft.Interop
             string? elementName = null;
             foreach (var arg in marshalUsingData.NamedArguments)
             {
-                if (arg.Key == "ConstantElementCount")
+                if (arg.Key == ManualTypeMarshallingHelper.MarshalUsingProperties.ConstantElementCount)
                 {
                     constSize = (int)arg.Value.Value!;
                 }
-                else if (arg.Key == "CountElementName")
+                else if (arg.Key == ManualTypeMarshallingHelper.MarshalUsingProperties.CountElementName)
                 {
                     if (arg.Value.Value is null)
                     {
-                        diagnostics.ReportConfigurationNotSupported(marshalUsingData, "CountElementName", "null");
+                        diagnostics.ReportConfigurationNotSupported(marshalUsingData, ManualTypeMarshallingHelper.MarshalUsingProperties.CountElementName, "null");
                         return NoCountInfo.Instance;
                     }
                     elementName = (string)arg.Value.Value!;
@@ -345,7 +331,7 @@ namespace Microsoft.Interop
 
             if (constSize is not null && elementName is not null)
             {
-                diagnostics.ReportConfigurationNotSupported(marshalUsingData, "ConstantElementCount and CountElementName combined");
+                diagnostics.ReportConfigurationNotSupported(marshalUsingData, $"{ManualTypeMarshallingHelper.MarshalUsingProperties.ConstantElementCount} and {ManualTypeMarshallingHelper.MarshalUsingProperties.CountElementName} combined");
             }
             else if (constSize is not null)
             {
@@ -355,14 +341,14 @@ namespace Microsoft.Interop
             {
                 if (inspectedElements.Contains(elementName))
                 {
-                    diagnostics.ReportConfigurationNotSupported(marshalUsingData, "Cyclical CountElementName");
+                    diagnostics.ReportConfigurationNotSupported(marshalUsingData, $"Cyclical {ManualTypeMarshallingHelper.MarshalUsingProperties.CountElementName}");
                     return NoCountInfo.Instance;
                 }
 
                 TypePositionInfo? elementInfo = CreateForElementName(elementName, inspectedElements.Add(elementName));
                 if (elementInfo is null)
                 {
-                    diagnostics.ReportConfigurationNotSupported(marshalUsingData, "CountElementName", elementName);
+                    diagnostics.ReportConfigurationNotSupported(marshalUsingData, ManualTypeMarshallingHelper.MarshalUsingProperties.CountElementName, elementName);
                     return NoCountInfo.Instance;
                 }
                 return new CountElementCountInfo(elementInfo);
@@ -724,7 +710,7 @@ namespace Microsoft.Interop
 
             foreach (var arg in attrData.NamedArguments)
             {
-                if (arg.Key == "ElementIndirectionLevel")
+                if (arg.Key == ManualTypeMarshallingHelper.MarshalUsingProperties.ElementIndirectionLevel)
                 {
                     indirectionLevel = (int)arg.Value.Value!;
                     return true;

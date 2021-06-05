@@ -16,6 +16,13 @@ namespace Microsoft.Interop
         public const string NativeValueStoragePropertyName = "NativeValueStorage";
         public const string SetUnmarshalledCollectionLengthMethodName = "SetUnmarshalledCollectionLength";
 
+        public static class MarshalUsingProperties
+        {
+            public const string ElementIndirectionLevel = "ElementIndirectionLevel";
+            public const string CountElementName = "CountElementName";
+            public const string ConstantElementCount = "ConstantElementCount";
+        }
+
         public static bool HasToManagedMethod(ITypeSymbol nativeType, ITypeSymbol managedType)
         {
             return nativeType.GetMembers(ToManagedMethodName)
