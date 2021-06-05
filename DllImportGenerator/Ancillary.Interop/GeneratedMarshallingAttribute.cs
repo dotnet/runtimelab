@@ -2,17 +2,17 @@
 namespace System.Runtime.InteropServices
 {
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct)]
-    class GeneratedMarshallingAttribute : Attribute
+    sealed class GeneratedMarshallingAttribute : Attribute
     {
     }
 
     [AttributeUsage(AttributeTargets.Struct)]
-    public class BlittableTypeAttribute : Attribute
+    public sealed class BlittableTypeAttribute : Attribute
     {
     }
 
     [AttributeUsage(AttributeTargets.Struct | AttributeTargets.Class)]
-    public class NativeMarshallingAttribute : Attribute
+    public sealed class NativeMarshallingAttribute : Attribute
     {
         public NativeMarshallingAttribute(Type nativeType)
         {
@@ -23,7 +23,7 @@ namespace System.Runtime.InteropServices
     }
 
     [AttributeUsage(AttributeTargets.Parameter | AttributeTargets.ReturnValue | AttributeTargets.Field, AllowMultiple = true)]
-    public class MarshalUsingAttribute : Attribute
+    public sealed class MarshalUsingAttribute : Attribute
     {
         public MarshalUsingAttribute()
         {
