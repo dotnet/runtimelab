@@ -71,11 +71,22 @@ namespace Internal.JitInterface
             return (byte*)_this.GetPin(sb.UnderlyingArray);
         }
 
+        [UnmanagedCallersOnly]
+        public static bool isRuntimeImport(IntPtr thisHandle, CORINFO_METHOD_STRUCT_* ftn)
+        {
+            var _this = GetThis(thisHandle);
+
+            MethodDesc method = _this.HandleToObject(ftn);
+
+            return method.HasCustomAttribute("System.Runtime", "RuntimeImportAttribute");
+        }
+
         [DllImport(JitLibrary)]
         private extern static void registerLlvmCallbacks(IntPtr thisHandle, byte* outputFileName, byte* triple, byte* dataLayout,
             delegate* unmanaged<IntPtr, CORINFO_METHOD_STRUCT_*, byte*> getMangedMethodNamePtr,
             delegate* unmanaged<IntPtr, void*, byte*> getSymbolMangledName,
-            delegate* unmanaged<IntPtr, void*, void> addCodeReloc
+            delegate* unmanaged<IntPtr, void*, void> addCodeReloc,
+            delegate* unmanaged<IntPtr, CORINFO_METHOD_STRUCT_*, bool> isRuntimeImport
         );
 
         public void RegisterLlvmCallbacks(IntPtr corInfoPtr, string outputFileName, string triple, string dataLayout)
@@ -85,7 +96,8 @@ namespace Internal.JitInterface
                 (byte*)GetPin(StringToUTF8(dataLayout)),
                 &getMangledMethodName,
                 &getSymbolMangledName,
-                &addCodeReloc
+                &addCodeReloc,
+                &isRuntimeImport
                 );
         }
 
