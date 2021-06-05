@@ -231,8 +231,12 @@ namespace Internal.IL.Stubs
 
         private void EmitPInvokeCall(PInvokeILCodeStreams ilCodeStreams)
         {
-            if (!_flags.PreserveSig && _targetMethod.Signature.ReturnType != _targetMethod.Context.GetWellKnownType(WellKnownType.Void))
-                throw new NotSupportedException();
+            if (!_flags.PreserveSig)
+            {
+                TypeDesc returnType = _targetMethod.Signature.ReturnType;
+                if (!returnType.IsEnum && returnType != _targetMethod.Context.GetWellKnownType(WellKnownType.Void) && returnType != _targetMethod.Context.GetWellKnownType(WellKnownType.Int32))
+                    throw new NotSupportedException();
+            }
 
             ILEmitter emitter = ilCodeStreams.Emitter;
             ILCodeStream fnptrLoadStream = ilCodeStreams.FunctionPointerLoadStream;
@@ -306,9 +310,21 @@ namespace Internal.IL.Stubs
 
             if (!_flags.PreserveSig)
             {
+                ILLocalVariable tempResult = emitter.NewLocal(context
+                   .GetWellKnownType(WellKnownType.Int32));
+                if (_targetMethod.Signature.ReturnType != _targetMethod.Context.GetWellKnownType(WellKnownType.Void))
+                {
+                    callsiteSetupCodeStream.EmitStLoc(tempResult);
+                    callsiteSetupCodeStream.EmitLdLoc(tempResult);
+                }
+
                 callsiteSetupCodeStream.Emit(ILOpcode.call, emitter.NewToken(
                     InteropTypes.GetMarshal(context)
                     .GetKnownMethod("ThrowExceptionForHR", null)));
+                if (_targetMethod.Signature.ReturnType != _targetMethod.Context.GetWellKnownType(WellKnownType.Void))
+                {
+                    callsiteSetupCodeStream.EmitLdLoc(tempResult);
+                }
             }
 
             // if the SetLastError flag is set in DllImport, call the PInvokeMarshal.SaveLastError
