@@ -47,7 +47,7 @@ namespace System.Runtime.InteropServices.GeneratedMarshalling
             managedArray = managed;
             // Always allocate at least one byte when the array is zero-length.
             int spaceToAllocate = Math.Max(managed.Length * sizeOfNativeElement, 1);
-            if (spaceToAllocate < stackSpace.Length)
+            if (spaceToAllocate <= stackSpace.Length)
             {
                 NativeValueStorage = stackSpace[0..spaceToAllocate];
             }
@@ -152,7 +152,7 @@ namespace System.Runtime.InteropServices.GeneratedMarshalling
             managedArray = managed;
             // Always allocate at least one byte when the array is zero-length.
             int spaceToAllocate = Math.Max(managed.Length * sizeOfNativeElement, 1);
-            if (spaceToAllocate < stackSpace.Length)
+            if (spaceToAllocate <= stackSpace.Length)
             {
                 NativeValueStorage = stackSpace[0..spaceToAllocate];
             }
