@@ -72,13 +72,13 @@ namespace Internal.JitInterface
         }
 
         [UnmanagedCallersOnly]
-        public static bool isRuntimeImport(IntPtr thisHandle, CORINFO_METHOD_STRUCT_* ftn)
+        public static uint isRuntimeImport(IntPtr thisHandle, CORINFO_METHOD_STRUCT_* ftn)
         {
             var _this = GetThis(thisHandle);
 
             MethodDesc method = _this.HandleToObject(ftn);
 
-            return method.HasCustomAttribute("System.Runtime", "RuntimeImportAttribute");
+            return method.HasCustomAttribute("System.Runtime", "RuntimeImportAttribute") ? 1u : 0u; // bool is not blittable in .net5 so use uint, TODO: revert to bool for .net 6 (https://github.com/dotnet/runtime/issues/51170)
         }
 
         [DllImport(JitLibrary)]
@@ -86,7 +86,7 @@ namespace Internal.JitInterface
             delegate* unmanaged<IntPtr, CORINFO_METHOD_STRUCT_*, byte*> getMangedMethodNamePtr,
             delegate* unmanaged<IntPtr, void*, byte*> getSymbolMangledName,
             delegate* unmanaged<IntPtr, void*, void> addCodeReloc,
-            delegate* unmanaged<IntPtr, CORINFO_METHOD_STRUCT_*, bool> isRuntimeImport
+            delegate* unmanaged<IntPtr, CORINFO_METHOD_STRUCT_*, uint> isRuntimeImport
         );
 
         public void RegisterLlvmCallbacks(IntPtr corInfoPtr, string outputFileName, string triple, string dataLayout)

@@ -32,7 +32,7 @@ static void* _thisPtr; // TODO: workaround for not changing the JIT/EE interface
 static const char* (*_getMangledMethodName)(void*, CORINFO_METHOD_STRUCT_*);
 static const char* (*_getMangledSymbolName)(void*, void*);
 static const char* (*_addCodeReloc)(void*, void*);
-static const bool (*_isRuntimeImport)(void*, CORINFO_METHOD_STRUCT_*);
+static const uint32_t (*_isRuntimeImport)(void*, CORINFO_METHOD_STRUCT_*);
 static char*     _outputFileName;
 static Function* _doNothingFunction;
 
@@ -51,7 +51,7 @@ extern "C" DLLEXPORT void registerLlvmCallbacks(void*       thisPtr,
                                                 const char* (*getMangledMethodNamePtr)(void*, CORINFO_METHOD_STRUCT_*),
                                                 const char* (*getMangledSymbolNamePtr)(void*, void*),
                                                 const char* (*addCodeRelocPtr)(void*, void*),
-                                                const bool (*isRuntimeImport)(void*, CORINFO_METHOD_STRUCT_*)
+                                                const uint32_t (*isRuntimeImport)(void*, CORINFO_METHOD_STRUCT_*)
     )
 {
     _thisPtr = thisPtr;
@@ -259,9 +259,15 @@ llvm::Value* buildUserFuncCall(GenTreeCall* gtCall, llvm::IRBuilder<>& builder)
     argVec.push_back(_function->getArg(0));
 
     int argIx = 1;
-    for (GenTreeCall::Use& arg : gtCall->Args())
+    for (GenTree* operand : gtCall->Operands())
     {
-        argVec.push_back(genTreeAsLlvmType(arg.GetNode(), llvmFunc->getArg(argIx)->getType()));
+        // copied this logic from gtDispLIRNode
+        if (operand->IsArgPlaceHolderNode() || !operand->IsValue())
+        {
+            // Either of these situations may happen with calls.
+            continue;
+        }
+        argVec.push_back(genTreeAsLlvmType(operand, llvmFunc->getArg(argIx)->getType()));
         argIx++;
     }
     return mapTreeIdValue(gtCall->gtTreeID, builder.CreateCall(llvmFunc, ArrayRef<Value*>(argVec)));
