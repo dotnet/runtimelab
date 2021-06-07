@@ -97,7 +97,7 @@ namespace Internal.IL.Stubs
                 TypeDesc parameterType = (i == 0)
                     ? methodSig.ReturnType //first item is the return type
                     : methodSig[i - 1];
-                marshallers[i] = Marshaller.CreateMarshaller(parameterType,
+                marshallers[i] = Marshaller.CreateMarshaller((i == 0 && !flags.PreserveSig && !parameterType.IsVoid) ? methodSig.Context.GetByRefType(parameterType): parameterType,
                                                     parameterIndex,
                                                     methodSig.GetEmbeddedSignatureData(),
                                                     MarshallerType.Argument,
@@ -108,8 +108,8 @@ namespace Internal.IL.Stubs
                                                     indexOffset + parameterMetadata.Index,
                                                     flags,
                                                     parameterMetadata.In,
-                                                    parameterMetadata.Out,
-                                                    parameterMetadata.Return
+                                                    (i == 0 && !flags.PreserveSig && !parameterType.IsVoid) ? true : parameterMetadata.Out,
+                                                    (i == 0 && !flags.PreserveSig && !parameterType.IsVoid) ? false : parameterMetadata.Return
                                                     );
             }
 
@@ -231,16 +231,22 @@ namespace Internal.IL.Stubs
 
         private void EmitPInvokeCall(PInvokeILCodeStreams ilCodeStreams)
         {
-            if (!_flags.PreserveSig && _targetMethod.Signature.ReturnType != _targetMethod.Context.GetWellKnownType(WellKnownType.Void))
-                throw new NotSupportedException();
+            if (!_flags.PreserveSig)
+            {
+                TypeDesc managedReturnType = _targetMethod.Signature.ReturnType;
+                bool supportedType = managedReturnType.IsPrimitive || managedReturnType.IsInterface || managedReturnType.IsObject;
+                if (!supportedType)
+                    throw new NotSupportedException();
+            }
 
             ILEmitter emitter = ilCodeStreams.Emitter;
             ILCodeStream fnptrLoadStream = ilCodeStreams.FunctionPointerLoadStream;
             ILCodeStream callsiteSetupCodeStream = ilCodeStreams.CallsiteSetupCodeStream;
             TypeSystemContext context = _targetMethod.Context;
 
+            bool isHRSwapping = !_flags.PreserveSig && _targetMethod.Signature.ReturnType != _targetMethod.Context.GetWellKnownType(WellKnownType.Void);
             TypeDesc nativeReturnType = _flags.PreserveSig ? _marshallers[0].NativeParameterType : context.GetWellKnownType(WellKnownType.Int32);
-            TypeDesc[] nativeParameterTypes = new TypeDesc[_marshallers.Length - 1];
+            TypeDesc[] nativeParameterTypes = new TypeDesc[isHRSwapping ? _marshallers.Length : _marshallers.Length - 1];
 
             // if the SetLastError flag is set in DllImport, clear the error code before doing P/Invoke 
             if (_flags.SetLastError)
@@ -252,6 +258,11 @@ namespace Internal.IL.Stubs
             for (int i = 1; i < _marshallers.Length; i++)
             {
                 nativeParameterTypes[i - 1] = _marshallers[i].NativeParameterType;
+            }
+
+            if (isHRSwapping)
+            {
+                nativeParameterTypes[_marshallers.Length - 1] = _marshallers[0].NativeParameterType;
             }
 
             if (!_pInvokeILEmitterConfiguration.GenerateDirectCall(_targetMethod, out _))
@@ -357,9 +368,15 @@ namespace Internal.IL.Stubs
             cleanupCodestream.BeginHandler(tryFinally);
 
             // Marshal the arguments
-            for (int i = 0; i < _marshallers.Length; i++)
+            bool isHRSwapping = !_flags.PreserveSig && _targetMethod.Signature.ReturnType != _targetMethod.Context.GetWellKnownType(WellKnownType.Void);
+            for (int i = isHRSwapping ? 1 : 0; i < _marshallers.Length; i++)
             {
                 _marshallers[i].EmitMarshallingIL(pInvokeILCodeStreams);
+            }
+
+            if (isHRSwapping)
+            {
+                _marshallers[0].EmitMarshallingIL(pInvokeILCodeStreams);
             }
 
             // make the call

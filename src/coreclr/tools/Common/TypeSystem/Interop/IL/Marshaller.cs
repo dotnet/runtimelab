@@ -512,7 +512,7 @@ namespace Internal.TypeSystem.Interop
 
         public virtual void LoadReturnValue(ILCodeStream codeStream)
         {
-            Debug.Assert(Return);
+            Debug.Assert(Index == 0);
 
             switch (MarshalDirection)
             {
@@ -653,9 +653,18 @@ namespace Internal.TypeSystem.Interop
         /// </summary>
         protected void PropagateToByRefArg(ILCodeStream stream, Home home)
         {
-            stream.EmitLdArg(Index - 1);
-            home.LoadValue(stream);
-            stream.EmitStInd(ManagedType);
+            // If by-ref arg has index == 0 then that argument is used for HR swapping and we just return that value.
+            if (Index == 0)
+            {
+                // Returning result would be handled by LoadReturnValue
+                return;
+            }
+            else
+            {
+                stream.EmitLdArg(Index - 1);
+                home.LoadValue(stream);
+                stream.EmitStInd(ManagedType);
+            }
         }
 
         protected virtual void EmitMarshalArgumentManagedToNative()
