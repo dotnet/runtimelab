@@ -97,7 +97,9 @@ namespace Internal.IL.Stubs
                 TypeDesc parameterType = (i == 0)
                     ? methodSig.ReturnType //first item is the return type
                     : methodSig[i - 1];
-                marshallers[i] = Marshaller.CreateMarshaller((i == 0 && !flags.PreserveSig && !parameterType.IsVoid) ? methodSig.Context.GetByRefType(parameterType): parameterType,
+                bool isHRSwapping = !flags.PreserveSig && !parameterType.IsVoid
+                    && targetMethod is not DelegateMarshallingMethodThunk;
+                marshallers[i] = Marshaller.CreateMarshaller((i == 0 && isHRSwapping) ? methodSig.Context.GetByRefType(parameterType): parameterType,
                                                     parameterIndex,
                                                     methodSig.GetEmbeddedSignatureData(),
                                                     MarshallerType.Argument,
@@ -108,8 +110,8 @@ namespace Internal.IL.Stubs
                                                     indexOffset + parameterMetadata.Index,
                                                     flags,
                                                     parameterMetadata.In,
-                                                    (i == 0 && !flags.PreserveSig && !parameterType.IsVoid) ? true : parameterMetadata.Out,
-                                                    (i == 0 && !flags.PreserveSig && !parameterType.IsVoid) ? false : parameterMetadata.Return
+                                                    (i == 0 && isHRSwapping) ? true : parameterMetadata.Out,
+                                                    (i == 0 && isHRSwapping) ? false : parameterMetadata.Return
                                                     );
             }
 
@@ -244,7 +246,8 @@ namespace Internal.IL.Stubs
             ILCodeStream callsiteSetupCodeStream = ilCodeStreams.CallsiteSetupCodeStream;
             TypeSystemContext context = _targetMethod.Context;
 
-            bool isHRSwapping = !_flags.PreserveSig && _targetMethod.Signature.ReturnType != _targetMethod.Context.GetWellKnownType(WellKnownType.Void);
+            bool isHRSwapping = !_flags.PreserveSig && _targetMethod.Signature.ReturnType != _targetMethod.Context.GetWellKnownType(WellKnownType.Void)
+                && _targetMethod is not DelegateMarshallingMethodThunk;
             TypeDesc nativeReturnType = _flags.PreserveSig ? _marshallers[0].NativeParameterType : context.GetWellKnownType(WellKnownType.Int32);
             TypeDesc[] nativeParameterTypes = new TypeDesc[isHRSwapping ? _marshallers.Length : _marshallers.Length - 1];
 
@@ -368,7 +371,8 @@ namespace Internal.IL.Stubs
             cleanupCodestream.BeginHandler(tryFinally);
 
             // Marshal the arguments
-            bool isHRSwapping = !_flags.PreserveSig && _targetMethod.Signature.ReturnType != _targetMethod.Context.GetWellKnownType(WellKnownType.Void);
+            bool isHRSwapping = !_flags.PreserveSig && _targetMethod.Signature.ReturnType != _targetMethod.Context.GetWellKnownType(WellKnownType.Void)
+                && _targetMethod is not DelegateMarshallingMethodThunk;
             for (int i = isHRSwapping ? 1 : 0; i < _marshallers.Length; i++)
             {
                 _marshallers[i].EmitMarshallingIL(pInvokeILCodeStreams);

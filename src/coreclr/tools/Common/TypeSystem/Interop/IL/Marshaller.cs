@@ -512,7 +512,7 @@ namespace Internal.TypeSystem.Interop
 
         public virtual void LoadReturnValue(ILCodeStream codeStream)
         {
-            Debug.Assert(Index == 0);
+            Debug.Assert(Return || Index == 0);
 
             switch (MarshalDirection)
             {
