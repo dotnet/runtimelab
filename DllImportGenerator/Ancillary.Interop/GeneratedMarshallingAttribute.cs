@@ -27,7 +27,7 @@ namespace System.Runtime.InteropServices
     {
         public MarshalUsingAttribute()
         {
-            CountElementName = null!;
+            CountElementName = string.Empty;
         }
 
         public MarshalUsingAttribute(Type nativeType)
