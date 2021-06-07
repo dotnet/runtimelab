@@ -912,7 +912,7 @@ namespace Internal.TypeSystem.Interop
     {
         protected override void EmitMarshalArgumentManagedToNative()
         {
-            if (IsNativeByRef && MarshalDirection == MarshalDirection.Forward)
+            if (IsNativeByRef && MarshalDirection == MarshalDirection.Forward && Index > 0)
             {
                 ILCodeStream marshallingCodeStream = _ilCodeStreams.MarshallingCodeStream;
                 ILEmitter emitter = _ilCodeStreams.Emitter;
@@ -926,9 +926,13 @@ namespace Internal.TypeSystem.Interop
                 marshallingCodeStream.EmitStLoc(native);
                 _ilCodeStreams.CallsiteSetupCodeStream.EmitLdLoc(native);
             }
-            else
+            else if (Index > 0)
             {
                 _ilCodeStreams.CallsiteSetupCodeStream.EmitLdArg(Index - 1);
+            }
+            else
+            {
+                base.EmitMarshalArgumentManagedToNative();
             }
         }
 
