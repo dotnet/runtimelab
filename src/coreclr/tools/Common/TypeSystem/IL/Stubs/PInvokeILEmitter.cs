@@ -233,14 +233,6 @@ namespace Internal.IL.Stubs
 
         private void EmitPInvokeCall(PInvokeILCodeStreams ilCodeStreams)
         {
-            if (!_flags.PreserveSig)
-            {
-                TypeDesc managedReturnType = _targetMethod.Signature.ReturnType;
-                bool supportedType = managedReturnType.IsPrimitive || managedReturnType.IsInterface || managedReturnType.IsObject;
-                if (!supportedType)
-                    throw new NotSupportedException();
-            }
-
             ILEmitter emitter = ilCodeStreams.Emitter;
             ILCodeStream fnptrLoadStream = ilCodeStreams.FunctionPointerLoadStream;
             ILCodeStream callsiteSetupCodeStream = ilCodeStreams.CallsiteSetupCodeStream;
