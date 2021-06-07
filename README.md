@@ -16,6 +16,7 @@ Currently, this repo contains the following experimental projects:
 - [NativeAOT-LLVM](https://github.com/dotnet/runtimelab/tree/feature/NativeAOT-LLVM) - LLVM generation for Native AOT compilation (including Web Assembly)
 - [ManagedQuic](https://github.com/dotnet/runtimelab/tree/feature/ManagedQuic) - Fully managed implementation of QUIC protocol
 - [LLHTTP](https://github.com/dotnet/runtimelab/tree/feature/LLHTTP2) - a  set of flexible, lower-level HTTP APIs.
+- [RegexSourceGenerator](https://github.com/dotnet/runtimelab/tree/feature/RegexSourceGenerator) - Code generator for compiled regular expressions.
 
 You can create your own experiment, learn more [here](CreateAnExperiment.md)!
 
