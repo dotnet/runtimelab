@@ -11,7 +11,6 @@ namespace Microsoft.Interop
     /// <summary>
     /// The base interface for implementing various different aspects of the custom native type and collection marshalling specs.
     /// </summary>
-
     interface ICustomNativeTypeMarshallingStrategy
     {
         TypeSyntax AsNativeType(TypePositionInfo info);

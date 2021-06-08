@@ -123,7 +123,7 @@ namespace Microsoft.Interop
     internal sealed record SafeHandleMarshallingInfo(bool AccessibleDefaultConstructor) : MarshallingInfo;
 
     /// <summary>
-    /// User-applied System.Runtime.InteropServices.NativeMarshalllingAttribute
+    /// User-applied System.Runtime.InteropServices.NativeMarshallingAttribute
     /// with a contiguous collection marshaller
     internal sealed record NativeContiguousCollectionMarshallingInfo(
         ITypeSymbol NativeMarshallingType,
@@ -610,7 +610,7 @@ namespace Microsoft.Interop
                     UseDefaultMarshalling: !isMarshalUsingAttribute,
                     parsedCountInfo,
                     elementType,
-                    GetMarshallingInfo(elementType, useSiteAttributes, maxIndirectionLevelUsed = indirectionLevel + 1, inspectedElements, ref maxIndirectionLevelUsed));
+                    GetMarshallingInfo(elementType, useSiteAttributes, indirectionLevel + 1, inspectedElements, ref maxIndirectionLevelUsed));
             }
 
             return new NativeMarshallingAttributeInfo(
@@ -680,7 +680,7 @@ namespace Microsoft.Interop
                     UseDefaultMarshalling: true,
                     ElementCountInfo: parsedCountInfo,
                     ElementType: elementType,
-                    ElementMarshallingInfo: GetMarshallingInfo(elementType, useSiteAttributes, maxIndirectionLevelUsed = indirectionLevel + 1, inspectedElements, ref maxIndirectionLevelUsed));
+                    ElementMarshallingInfo: GetMarshallingInfo(elementType, useSiteAttributes, indirectionLevel + 1, inspectedElements, ref maxIndirectionLevelUsed));
                 return true;
             }
 

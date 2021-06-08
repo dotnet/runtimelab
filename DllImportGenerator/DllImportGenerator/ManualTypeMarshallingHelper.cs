@@ -18,9 +18,9 @@ namespace Microsoft.Interop
 
         public static class MarshalUsingProperties
         {
-            public const string ElementIndirectionLevel = "ElementIndirectionLevel";
-            public const string CountElementName = "CountElementName";
-            public const string ConstantElementCount = "ConstantElementCount";
+            public const string ElementIndirectionLevel = nameof(ElementIndirectionLevel);
+            public const string CountElementName = nameof(CountElementName);
+            public const string ConstantElementCount = nameof(ConstantElementCount);
         }
 
         public enum NativeTypeMarshallingVariant
@@ -99,19 +99,18 @@ namespace Microsoft.Interop
                 .Any(m => m is { IsStatic: false, Parameters: { Length: 0 }, ReturnType: { SpecialType: SpecialType.System_Void } });
         }
 
-        public static IPropertySymbol? FindManagedValuesProperty(ITypeSymbol type)
+        public static bool TryGetManagedValuesProperty(ITypeSymbol type, out IPropertySymbol managedValuesProperty)
         {
-            return type
+            managedValuesProperty = type
                 .GetMembers(ManagedValuesPropertyName)
                 .OfType<IPropertySymbol>()
                 .FirstOrDefault(p => p is { IsStatic: false, GetMethod: not null, ReturnsByRef: false, ReturnsByRefReadonly: false });
+            return managedValuesProperty is not null;
         }
 
         public static bool TryGetElementTypeFromContiguousCollectionMarshaller(ITypeSymbol type, out ITypeSymbol elementType)
         {
-            IPropertySymbol? managedValuesProperty = FindManagedValuesProperty(type);
-
-            if (managedValuesProperty is null)
+            if (!TryGetManagedValuesProperty(type, out IPropertySymbol managedValuesProperty))
             {
                 elementType = null!;
                 return false;
