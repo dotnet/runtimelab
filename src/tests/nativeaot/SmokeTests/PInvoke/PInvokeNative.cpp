@@ -678,6 +678,12 @@ DLL_EXPORT int __stdcall ValidateSuccessCall(int errorCode)
     return errorCode;
 }
 
+DLL_EXPORT int __stdcall ValidateIntResult(int errorCode, int* result)
+{
+    *result = 42;
+    return errorCode;
+}
+
 #ifndef DECIMAL_NEG // defined in wtypes.h
 typedef struct tagDEC {
     uint16_t wReserved;

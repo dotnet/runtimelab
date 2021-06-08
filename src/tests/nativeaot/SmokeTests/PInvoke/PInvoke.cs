@@ -275,8 +275,19 @@ namespace PInvokeTests
         [DllImport("PInvokeNative", CallingConvention = CallingConvention.StdCall, PreserveSig = false)]
         static extern void ValidateSuccessCall(int errorCode);
 
+        [DllImport("PInvokeNative", CallingConvention = CallingConvention.StdCall, PreserveSig = false)]
+        static extern int ValidateIntResult(int errorCode);
+
+        [DllImport("PInvokeNative", EntryPoint = "ValidateIntResult", CallingConvention = CallingConvention.StdCall, PreserveSig = false)]
+        static extern MagicEnum ValidateEnumResult(int errorCode);
+
         [DllImport("PInvokeNative", CallingConvention = CallingConvention.StdCall)]
         internal static extern decimal DecimalTest(decimal value);
+
+        internal enum MagicEnum
+        {
+            MagicResult = 42,
+        }
 
         public static int Main(string[] args)
         {
@@ -1035,6 +1046,22 @@ namespace PInvokeTests
             catch (NotImplementedException)
             {
             }
+
+            var intResult = ValidateIntResult(0);
+            ThrowIfNotEquals(intResult, 42, "Int32 marshalling failed.");
+
+            try
+            {
+                const int E_NOTIMPL = -2147467263;
+                intResult = ValidateIntResult(E_NOTIMPL);
+                throw new Exception("Exception should be thrown for E_NOTIMPL error code");
+            }
+            catch (NotImplementedException)
+            {
+            }
+
+            var enumResult = ValidateEnumResult(0);
+            ThrowIfNotEquals(enumResult, MagicEnum.MagicResult, "Enum marshalling failed.");
         }
 
         public static unsafe void TestForwardDelegateWithUnmanagedCallersOnly()
