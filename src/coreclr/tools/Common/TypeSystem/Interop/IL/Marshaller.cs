@@ -659,12 +659,10 @@ namespace Internal.TypeSystem.Interop
                 // Returning result would be handled by LoadReturnValue
                 return;
             }
-            else
-            {
-                stream.EmitLdArg(Index - 1);
-                home.LoadValue(stream);
-                stream.EmitStInd(ManagedType);
-            }
+
+            stream.EmitLdArg(Index - 1);
+            home.LoadValue(stream);
+            stream.EmitStInd(ManagedType);
         }
 
         protected virtual void EmitMarshalArgumentManagedToNative()
