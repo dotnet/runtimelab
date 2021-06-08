@@ -149,6 +149,8 @@ namespace Internal.TypeSystem.Interop
             }
         }
 
+        internal bool IsHRSwappedRetVal => Index == 0 && !Return;
+
         public bool In;
         public bool Out;
         public bool Return;
@@ -512,7 +514,7 @@ namespace Internal.TypeSystem.Interop
 
         public virtual void LoadReturnValue(ILCodeStream codeStream)
         {
-            Debug.Assert(Return || Index == 0);
+            Debug.Assert(Return || IsHRSwappedRetVal);
 
             switch (MarshalDirection)
             {
@@ -654,7 +656,7 @@ namespace Internal.TypeSystem.Interop
         protected void PropagateToByRefArg(ILCodeStream stream, Home home)
         {
             // If by-ref arg has index == 0 then that argument is used for HR swapping and we just return that value.
-            if (Index == 0)
+            if (IsHRSwappedRetVal)
             {
                 // Returning result would be handled by LoadReturnValue
                 return;
@@ -910,7 +912,13 @@ namespace Internal.TypeSystem.Interop
     {
         protected override void EmitMarshalArgumentManagedToNative()
         {
-            if (IsNativeByRef && MarshalDirection == MarshalDirection.Forward && Index > 0)
+            if (IsHRSwappedRetVal)
+            {
+                base.EmitMarshalArgumentManagedToNative();
+                return;
+            }
+
+            if (IsNativeByRef && MarshalDirection == MarshalDirection.Forward)
             {
                 ILCodeStream marshallingCodeStream = _ilCodeStreams.MarshallingCodeStream;
                 ILEmitter emitter = _ilCodeStreams.Emitter;
@@ -924,13 +932,9 @@ namespace Internal.TypeSystem.Interop
                 marshallingCodeStream.EmitStLoc(native);
                 _ilCodeStreams.CallsiteSetupCodeStream.EmitLdLoc(native);
             }
-            else if (Index > 0)
-            {
-                _ilCodeStreams.CallsiteSetupCodeStream.EmitLdArg(Index - 1);
-            }
             else
             {
-                base.EmitMarshalArgumentManagedToNative();
+                _ilCodeStreams.CallsiteSetupCodeStream.EmitLdArg(Index - 1);
             }
         }
 
