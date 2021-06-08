@@ -64,6 +64,9 @@ namespace ComWrappersTests
         [DllImport("ComWrappersNative", CallingConvention = CallingConvention.StdCall)]
         static extern int BuildComPointer(out IComInterface foo);
 
+        [DllImport("ComWrappersNative", CallingConvention = CallingConvention.StdCall, PreserveSig = false, EntryPoint="BuildComPointer")]
+        static extern IComInterface BuildComPointerNoPreserveSig();
+
         public static void TestComInteropNullPointers()
         {
             Console.WriteLine("Testing Marshal APIs for COM interfaces");
@@ -160,6 +163,9 @@ namespace ComWrappersTests
             int result = BuildComPointer(out var comPointer);
             ThrowIfNotEquals(0, result, "Seems to be COM marshalling behave strange.");
             comPointer.DoWork(11);
+
+            comPointer = BuildComPointerNoPreserveSig();
+            comPointer.DoWork(22);
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]
