@@ -1,167 +1,141 @@
-using System;
-using System.Collections.Generic;
-
-using Microsoft.CodeAnalysis;
+﻿using System.Collections.Generic;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
 namespace Microsoft.Interop
 {
-    internal class ArrayMarshaller : CustomNativeTypeMarshaller
+    internal class ArrayMarshaller : IMarshallingGenerator
     {
-        private readonly CustomNativeTypeMarshaller innerCollectionMarshaller;
-        private readonly bool blittable;
+        private readonly IMarshallingGenerator manualMarshallingGenerator;
+        private readonly TypeSyntax elementType;
+        private readonly bool enablePinning;
 
-        public ArrayMarshaller(
-            ContiguousCollectionBlittableElementsMarshallingGenerator innerCollectionMarshaller,
-            NativeContiguousCollectionMarshallingInfo marshallingInfo)
-            : base(marshallingInfo)
+        public ArrayMarshaller(IMarshallingGenerator manualMarshallingGenerator, TypeSyntax elementType, bool enablePinning)
         {
-            this.innerCollectionMarshaller = innerCollectionMarshaller;
-            blittable = true;
+            this.manualMarshallingGenerator = manualMarshallingGenerator;
+            this.elementType = elementType;
+            this.enablePinning = enablePinning;
         }
 
-        public ArrayMarshaller(
-            ContiguousCollectionNonBlittableElementsMarshallingGenerator innerCollectionMarshaller,
-            NativeContiguousCollectionMarshallingInfo marshallingInfo)
-            : base(marshallingInfo)
+        public ArgumentSyntax AsArgument(TypePositionInfo info, StubCodeContext context)
         {
-            this.innerCollectionMarshaller = innerCollectionMarshaller;
-            blittable = false;
-        }
-
-        private bool UseCustomPinningPath(TypePositionInfo info, StubCodeContext context)
-        {
-            return blittable && !info.IsByRef && !info.IsManagedReturnPosition && context.PinningSupported;
-        }
-
-        public override IEnumerable<StatementSyntax> Generate(TypePositionInfo info, StubCodeContext context)
-        {
-            if (UseCustomPinningPath(info, context))
+            if (IsPinningPathSupported(info, context))
             {
-                return GenerateCustomPinning();
+                string identifier = context.GetIdentifiers(info).native;
+                return Argument(CastExpression(AsNativeType(info), IdentifierName(identifier)));
             }
+            return manualMarshallingGenerator.AsArgument(info, context);
+        }
 
-            if (context.CurrentStage == StubCodeContext.Stage.Unmarshal
-                && info.ByValueContentsMarshalKind.HasFlag(ByValueContentsMarshalKind.Out))
+        public TypeSyntax AsNativeType(TypePositionInfo info)
+        {
+            return manualMarshallingGenerator.AsNativeType(info);
+        }
+
+        public ParameterSyntax AsParameter(TypePositionInfo info)
+        {
+            return manualMarshallingGenerator.AsParameter(info);
+        }
+
+        public IEnumerable<StatementSyntax> Generate(TypePositionInfo info, StubCodeContext context)
+        {
+            if (IsPinningPathSupported(info, context))
             {
-                // For [Out] by value unmarshalling, we emit custom code that only copies the elements.
-                // We do not call SetUnmarshalledCollectionLength since that creates a new
-                // array, and we want to fill the original one.
-                return innerCollectionMarshaller.GenerateIntermediateUnmarshallingStatements(info, context);
+                return GeneratePinningPath(info, context);
             }
+            return manualMarshallingGenerator.Generate(info, context);
+        }
 
-            return innerCollectionMarshaller.Generate(info, context);
-
-            IEnumerable<StatementSyntax> GenerateCustomPinning()
+        public bool SupportsByValueMarshalKind(ByValueContentsMarshalKind marshalKind, StubCodeContext context)
+        {
+            if (!(context.PinningSupported && enablePinning))
             {
-                var (managedIdentifer, nativeIdentifier) = context.GetIdentifiers(info);
-                string byRefIdentifier = $"__byref_{managedIdentifer}";
-                TypeSyntax arrayElementType = ((IArrayTypeSymbol)info.ManagedType).ElementType.AsTypeSyntax();
-                if (context.CurrentStage == StubCodeContext.Stage.Marshal)
-                {
-                    // [COMPAT] We use explicit byref calculations here instead of just using a fixed statement 
-                    // since a fixed statement converts a zero-length array to a null pointer.
-                    // Many native APIs, such as GDI+, ICU, etc. validate that an array parameter is non-null
-                    // even when the passed in array length is zero. To avoid breaking customers that want to move
-                    // to source-generated interop in subtle ways, we explicitly pass a reference to the 0-th element
-                    // of an array as long as it is non-null, matching the behavior of the built-in interop system
-                    // for single-dimensional zero-based arrays.
+                return marshalKind.HasFlag(ByValueContentsMarshalKind.Out);
+            }
+            return manualMarshallingGenerator.SupportsByValueMarshalKind(marshalKind, context);
+        }
 
-                    // ref <elementType> <byRefIdentifier> = <managedIdentifer> == null ? ref *(<elementType*)0 : ref MemoryMarshal.GetArrayDataReference(<managedIdentifer>);
-                    var nullRef =
-                        PrefixUnaryExpression(SyntaxKind.PointerIndirectionExpression,
-                            CastExpression(
-                                PointerType(arrayElementType),
-                                LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(0))));
+        public bool UsesNativeIdentifier(TypePositionInfo info, StubCodeContext context)
+        {
+            if (IsPinningPathSupported(info, context))
+            {
+                return false;
+            }
+            return manualMarshallingGenerator.UsesNativeIdentifier(info, context);
+        }
 
-                    var getArrayDataReference =
-                        InvocationExpression(
-                            MemberAccessExpression(
-                                SyntaxKind.SimpleMemberAccessExpression,
-                                ParseTypeName(TypeNames.System_Runtime_InteropServices_MemoryMarshal),
-                                IdentifierName("GetArrayDataReference")),
-                            ArgumentList(SingletonSeparatedList(
-                                Argument(IdentifierName(managedIdentifer)))));
+        private bool IsPinningPathSupported(TypePositionInfo info, StubCodeContext context)
+        {
+            return context.PinningSupported && enablePinning && !info.IsByRef && !info.IsManagedReturnPosition;
+        }
 
-                    yield return LocalDeclarationStatement(
-                        VariableDeclaration(
-                            RefType(arrayElementType))
-                        .WithVariables(SingletonSeparatedList(
-                            VariableDeclarator(Identifier(byRefIdentifier))
+        private IEnumerable<StatementSyntax> GeneratePinningPath(TypePositionInfo info, StubCodeContext context)
+        {
+            var (managedIdentifer, nativeIdentifier) = context.GetIdentifiers(info);
+            string byRefIdentifier = $"__byref_{managedIdentifer}";
+            TypeSyntax arrayElementType = elementType;
+            if (context.CurrentStage == StubCodeContext.Stage.Marshal)
+            {
+                // [COMPAT] We use explicit byref calculations here instead of just using a fixed statement 
+                // since a fixed statement converts a zero-length array to a null pointer.
+                // Many native APIs, such as GDI+, ICU, etc. validate that an array parameter is non-null
+                // even when the passed in array length is zero. To avoid breaking customers that want to move
+                // to source-generated interop in subtle ways, we explicitly pass a reference to the 0-th element
+                // of an array as long as it is non-null, matching the behavior of the built-in interop system
+                // for single-dimensional zero-based arrays.
+
+                // ref <elementType> <byRefIdentifier> = <managedIdentifer> == null ? ref *(<elementType*)0 : ref MemoryMarshal.GetArrayDataReference(<managedIdentifer>);
+                var nullRef =
+                    PrefixUnaryExpression(SyntaxKind.PointerIndirectionExpression,
+                        CastExpression(
+                            PointerType(arrayElementType),
+                            LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(0))));
+
+                var getArrayDataReference =
+                    InvocationExpression(
+                        MemberAccessExpression(
+                            SyntaxKind.SimpleMemberAccessExpression,
+                            ParseTypeName(TypeNames.System_Runtime_InteropServices_MemoryMarshal),
+                            IdentifierName("GetArrayDataReference")),
+                        ArgumentList(SingletonSeparatedList(
+                            Argument(IdentifierName(managedIdentifer)))));
+
+                yield return LocalDeclarationStatement(
+                    VariableDeclaration(
+                        RefType(arrayElementType))
+                    .WithVariables(SingletonSeparatedList(
+                        VariableDeclarator(Identifier(byRefIdentifier))
+                        .WithInitializer(EqualsValueClause(
+                            RefExpression(ParenthesizedExpression(
+                                ConditionalExpression(
+                                    BinaryExpression(
+                                        SyntaxKind.EqualsExpression,
+                                        IdentifierName(managedIdentifer),
+                                        LiteralExpression(
+                                            SyntaxKind.NullLiteralExpression)),
+                                    RefExpression(nullRef),
+                                    RefExpression(getArrayDataReference)))))))));
+            }
+            if (context.CurrentStage == StubCodeContext.Stage.Pin)
+            {
+                // fixed (<nativeType> <nativeIdentifier> = &Unsafe.As<elementType, byte>(ref <byrefIdentifier>))
+                yield return FixedStatement(
+                    VariableDeclaration(AsNativeType(info), SingletonSeparatedList(
+                        VariableDeclarator(nativeIdentifier)
                             .WithInitializer(EqualsValueClause(
-                                RefExpression(ParenthesizedExpression(
-                                    ConditionalExpression(
-                                        BinaryExpression(
-                                            SyntaxKind.EqualsExpression,
-                                            IdentifierName(managedIdentifer),
-                                            LiteralExpression(
-                                                SyntaxKind.NullLiteralExpression)),
-                                        RefExpression(nullRef),
-                                        RefExpression(getArrayDataReference)))))))));
-                }
-                if (context.CurrentStage == StubCodeContext.Stage.Pin)
-                {
-                    // fixed (<nativeType> <nativeIdentifier> = &<byrefIdentifier>)
-                    yield return FixedStatement(
-                        VariableDeclaration(AsNativeType(info), SingletonSeparatedList(
-                            VariableDeclarator(nativeIdentifier)
-                                .WithInitializer(EqualsValueClause(
-                                    PrefixUnaryExpression(SyntaxKind.AddressOfExpression,
-                                    InvocationExpression(
-                                        MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                                            ParseTypeName(TypeNames.System_Runtime_CompilerServices_Unsafe),
-                                            GenericName("As").AddTypeArgumentListArguments(
-                                                arrayElementType,
-                                                PredefinedType(Token(SyntaxKind.ByteKeyword)))))
-                                    .AddArgumentListArguments(
-                                        Argument(IdentifierName(byRefIdentifier))
-                                            .WithRefKindKeyword(Token(SyntaxKind.RefKeyword)))))))),
-                        EmptyStatement());
-                }
-                yield break;
+                                PrefixUnaryExpression(SyntaxKind.AddressOfExpression,
+                                InvocationExpression(
+                                    MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                                        ParseTypeName(TypeNames.System_Runtime_CompilerServices_Unsafe),
+                                        GenericName("As").AddTypeArgumentListArguments(
+                                            arrayElementType,
+                                            PredefinedType(Token(SyntaxKind.ByteKeyword)))))
+                                .AddArgumentListArguments(
+                                    Argument(IdentifierName(byRefIdentifier))
+                                        .WithRefKindKeyword(Token(SyntaxKind.RefKeyword)))))))),
+                    EmptyStatement());
             }
-        }
-
-        public override IEnumerable<ArgumentSyntax> GenerateAdditionalNativeTypeConstructorArguments(TypePositionInfo info, StubCodeContext context)
-        {
-            return innerCollectionMarshaller.GenerateAdditionalNativeTypeConstructorArguments(info, context);
-        }
-
-        public override IEnumerable<StatementSyntax> GenerateIntermediateMarshallingStatements(TypePositionInfo info, StubCodeContext context)
-        {
-            if (info.ByValueContentsMarshalKind == ByValueContentsMarshalKind.Out)
-            {
-                // Don't marshal contents of an array when it is marshalled by value [Out].
-                return Array.Empty<StatementSyntax>();
-            }
-            return innerCollectionMarshaller.GenerateIntermediateMarshallingStatements(info, context);
-        }
-
-        public override IEnumerable<StatementSyntax> GeneratePreUnmarshallingStatements(TypePositionInfo info, StubCodeContext context)
-        {
-            return innerCollectionMarshaller.GeneratePreUnmarshallingStatements(info, context);
-        }
-
-        public override IEnumerable<StatementSyntax> GenerateIntermediateUnmarshallingStatements(TypePositionInfo info, StubCodeContext context)
-        {
-            return innerCollectionMarshaller.GenerateIntermediateUnmarshallingStatements(info, context);
-        }
-
-        public override IEnumerable<StatementSyntax> GenerateIntermediateCleanupStatements(TypePositionInfo info, StubCodeContext context)
-        {
-            return innerCollectionMarshaller.GenerateIntermediateCleanupStatements(info, context);
-        }
-
-        public override bool SupportsByValueMarshalKind(ByValueContentsMarshalKind marshalKind, StubCodeContext context)
-        {
-            return !(blittable && context.PinningSupported) && marshalKind.HasFlag(ByValueContentsMarshalKind.Out);
-        }
-
-        public override bool UsesNativeIdentifier(TypePositionInfo info, StubCodeContext context)
-        {
-            return !UseCustomPinningPath(info, context) && innerCollectionMarshaller.UsesNativeIdentifier(info, context);
         }
     }
 }
