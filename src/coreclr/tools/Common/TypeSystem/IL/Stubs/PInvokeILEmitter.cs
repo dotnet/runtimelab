@@ -253,7 +253,7 @@ namespace Internal.IL.Stubs
             ILCodeStream callsiteSetupCodeStream = ilCodeStreams.CallsiteSetupCodeStream;
             TypeSystemContext context = _targetMethod.Context;
 
-            bool isHRSwappedRetVal = !_flags.PreserveSig && _targetMethod.Signature.ReturnType.IsVoid;
+            bool isHRSwappedRetVal = !_flags.PreserveSig && !_targetMethod.Signature.ReturnType.IsVoid;
             TypeDesc nativeReturnType = _flags.PreserveSig ? _marshallers[0].NativeParameterType : context.GetWellKnownType(WellKnownType.Int32);
             TypeDesc[] nativeParameterTypes = new TypeDesc[isHRSwappedRetVal ? _marshallers.Length : _marshallers.Length - 1];
 
@@ -377,7 +377,7 @@ namespace Internal.IL.Stubs
             cleanupCodestream.BeginHandler(tryFinally);
 
             // Marshal the arguments
-            bool isHRSwappedRetVal = !_flags.PreserveSig && _targetMethod.Signature.ReturnType.IsVoid;
+            bool isHRSwappedRetVal = !_flags.PreserveSig && !_targetMethod.Signature.ReturnType.IsVoid;
             for (int i = isHRSwappedRetVal ? 1 : 0; i < _marshallers.Length; i++)
             {
                 _marshallers[i].EmitMarshallingIL(pInvokeILCodeStreams);
