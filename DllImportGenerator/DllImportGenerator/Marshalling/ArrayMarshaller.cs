@@ -5,7 +5,7 @@ using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
 namespace Microsoft.Interop
 {
-    internal class ArrayMarshaller : IMarshallingGenerator
+    internal sealed class ArrayMarshaller : IMarshallingGenerator
     {
         private readonly IMarshallingGenerator manualMarshallingGenerator;
         private readonly TypeSyntax elementType;
