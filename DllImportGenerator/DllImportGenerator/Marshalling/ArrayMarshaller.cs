@@ -49,11 +49,11 @@ namespace Microsoft.Interop
 
         public bool SupportsByValueMarshalKind(ByValueContentsMarshalKind marshalKind, StubCodeContext context)
         {
-            if (!(context.PinningSupported && enablePinning))
+            if (context.PinningSupported && enablePinning)
             {
-                return marshalKind.HasFlag(ByValueContentsMarshalKind.Out);
+                return false;
             }
-            return manualMarshallingGenerator.SupportsByValueMarshalKind(marshalKind, context);
+            return marshalKind.HasFlag(ByValueContentsMarshalKind.Out);
         }
 
         public bool UsesNativeIdentifier(TypePositionInfo info, StubCodeContext context)

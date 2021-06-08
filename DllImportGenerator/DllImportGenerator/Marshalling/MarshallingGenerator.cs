@@ -437,7 +437,7 @@ namespace Microsoft.Interop
                 marshallingStrategy = DecorateWithValuePropertyStrategy(marshalInfo, marshallingStrategy);
             }
 
-            IMarshallingGenerator marshallingGenerator = new CustomNativeTypeMarshallingGenerator(marshallingStrategy);
+            IMarshallingGenerator marshallingGenerator = new CustomNativeTypeMarshallingGenerator(marshallingStrategy, enableByValueContentsMarshalling: false);
 
             if ((marshalInfo.MarshallingMethods & SupportedMarshallingMethods.Pinning) != 0)
             {
@@ -510,7 +510,7 @@ namespace Microsoft.Interop
         private static ICustomNativeTypeMarshallingStrategy DecorateWithValuePropertyStrategy(NativeMarshallingAttributeInfo marshalInfo, ICustomNativeTypeMarshallingStrategy nativeTypeMarshaller)
         {
             TypeSyntax valuePropertyTypeSyntax = marshalInfo.ValuePropertyType!.AsTypeSyntax();
-            if (ManualTypeMarshallingHelper.FindGetPinnableReference(marshalInfo.ValuePropertyType!) is not null)
+            if (ManualTypeMarshallingHelper.FindGetPinnableReference(marshalInfo.NativeMarshallingType) is not null)
             {
                 return new PinnableMarshallerTypeMarshalling(nativeTypeMarshaller, valuePropertyTypeSyntax);
             }
@@ -564,12 +564,12 @@ namespace Microsoft.Interop
             if (collectionInfo.UseDefaultMarshalling && info.ManagedType is IArrayTypeSymbol { IsSZArray: true })
             {
                 return new ArrayMarshaller(
-                    new CustomNativeTypeMarshallingGenerator(marshallingStrategy),
+                    new CustomNativeTypeMarshallingGenerator(marshallingStrategy, enableByValueContentsMarshalling: true),
                     elementType,
                     isBlittable);
             }
 
-            IMarshallingGenerator marshallingGenerator = new CustomNativeTypeMarshallingGenerator(marshallingStrategy);
+            IMarshallingGenerator marshallingGenerator = new CustomNativeTypeMarshallingGenerator(marshallingStrategy, enableByValueContentsMarshalling: false);
 
             if ((collectionInfo.MarshallingMethods & SupportedMarshallingMethods.Pinning) != 0)
             {

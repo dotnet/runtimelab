@@ -131,6 +131,7 @@ namespace Microsoft.Interop
         public CustomNativeTypeWithValuePropertyStubContext(StubCodeContext parentContext)
         {
             this.parentContext = parentContext;
+            CurrentStage = parentContext.CurrentStage;
         }
 
         public override bool PinningSupported => parentContext.PinningSupported;
@@ -453,7 +454,7 @@ namespace Microsoft.Interop
 
         private bool CanPinMarshaller(TypePositionInfo info, StubCodeContext context)
         {
-            return !info.IsByRef || info.RefKind == RefKind.In;
+            return context.PinningSupported && !info.IsManagedReturnPosition && !info.IsByRef || info.RefKind == RefKind.In;
         }
 
         public ArgumentSyntax AsArgument(TypePositionInfo info, StubCodeContext context)
@@ -499,7 +500,7 @@ namespace Microsoft.Interop
             var subContext = new CustomNativeTypeWithValuePropertyStubContext(context);
             yield return FixedStatement(
                 VariableDeclaration(
-                innerMarshaller.AsNativeType(info),
+                valuePropertyType,
                 SingletonSeparatedList(
                     VariableDeclarator(context.GetIdentifiers(info).native)
                         .WithInitializer(EqualsValueClause(
@@ -532,14 +533,17 @@ namespace Microsoft.Interop
         {
             var subContext = new CustomNativeTypeWithValuePropertyStubContext(context);
 
-            // <marshalerIdentifier>.Value = <nativeIdentifier>;
-            yield return ExpressionStatement(
-                AssignmentExpression(
-                    SyntaxKind.SimpleAssignmentExpression,
-                    MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                        IdentifierName(subContext.GetIdentifiers(info).native),
-                        IdentifierName(ManualTypeMarshallingHelper.ValuePropertyName)),
-                    IdentifierName(context.GetIdentifiers(info).native)));
+            if (!CanPinMarshaller(info, context))
+            {
+                // <marshalerIdentifier>.Value = <nativeIdentifier>;
+                yield return ExpressionStatement(
+                    AssignmentExpression(
+                        SyntaxKind.SimpleAssignmentExpression,
+                        MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                            IdentifierName(subContext.GetIdentifiers(info).native),
+                            IdentifierName(ManualTypeMarshallingHelper.ValuePropertyName)),
+                        IdentifierName(context.GetIdentifiers(info).native)));
+            }
 
             foreach (var statement in innerMarshaller.GenerateUnmarshalStatements(info, subContext))
             {
@@ -554,7 +558,7 @@ namespace Microsoft.Interop
 
         public bool UsesNativeIdentifier(TypePositionInfo info, StubCodeContext context)
         {
-            if (context.PinningSupported)
+            if (CanPinMarshaller(info, context))
             {
                 return false;
             }
@@ -685,6 +689,12 @@ namespace Microsoft.Interop
             foreach (var statement in innerMarshaller.GenerateMarshalStatements(info, context, nativeTypeConstructorArguments))
             {
                 yield return statement;
+            }
+
+            if (!info.IsByRef && info.ByValueContentsMarshalKind == ByValueContentsMarshalKind.Out)
+            {
+                // If the parameter is marshalled by-value [Out], then we don't marshal the contents of the collection.
+                yield break;
             }
 
             // <nativeIdentifier>.ManagedValues.CopyTo(MemoryMarshal.Cast<byte, <elementType>>(<nativeIdentifier>.NativeValueStorage));
@@ -903,11 +913,18 @@ namespace Microsoft.Interop
 
         public IEnumerable<StatementSyntax> GenerateMarshalStatements(TypePositionInfo info, StubCodeContext context, IEnumerable<ArgumentSyntax> nativeTypeConstructorArguments)
         {
-            yield return GenerateContentsMarshallingStatement(info, context, useManagedSpanForLength: true);
             foreach (var statement in innerMarshaller.GenerateMarshalStatements(info, context, nativeTypeConstructorArguments))
             {
                 yield return statement;
             }
+            
+            if (!info.IsByRef && info.ByValueContentsMarshalKind == ByValueContentsMarshalKind.Out)
+            {
+                // If the parameter is marshalled by-value [Out], then we don't marshal the contents of the collection.
+                yield break;
+            }
+
+            yield return GenerateContentsMarshallingStatement(info, context, useManagedSpanForLength: true);
         }
 
         public IEnumerable<StatementSyntax> GeneratePinStatements(TypePositionInfo info, StubCodeContext context)

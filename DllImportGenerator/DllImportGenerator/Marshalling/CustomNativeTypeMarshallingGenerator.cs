@@ -12,10 +12,12 @@ namespace Microsoft.Interop
     internal sealed class CustomNativeTypeMarshallingGenerator : IMarshallingGenerator
     {
         private readonly ICustomNativeTypeMarshallingStrategy nativeTypeMarshaller;
+        private readonly bool enableByValueContentsMarshalling;
 
-        public CustomNativeTypeMarshallingGenerator(ICustomNativeTypeMarshallingStrategy nativeTypeMarshaller)
+        public CustomNativeTypeMarshallingGenerator(ICustomNativeTypeMarshallingStrategy nativeTypeMarshaller, bool enableByValueContentsMarshalling)
         {
             this.nativeTypeMarshaller = nativeTypeMarshaller;
+            this.enableByValueContentsMarshalling = enableByValueContentsMarshalling;
         }
 
         public ArgumentSyntax AsArgument(TypePositionInfo info, StubCodeContext context)
@@ -39,6 +41,8 @@ namespace Microsoft.Interop
 
         public IEnumerable<StatementSyntax> Generate(TypePositionInfo info, StubCodeContext context)
         {
+            // Although custom native type marshalling doesn't support [In] or [Out] by value marshalling,
+            // other marshallers that wrap this one might, so we handle the correct cases here.
             switch (context.CurrentStage)
             {
                 case StubCodeContext.Stage.Setup:
@@ -56,7 +60,8 @@ namespace Microsoft.Interop
                     }
                     break;
                 case StubCodeContext.Stage.Unmarshal:
-                    if (info.IsManagedReturnPosition || (info.IsByRef && info.RefKind != RefKind.In))
+                    if (info.IsManagedReturnPosition || (info.IsByRef && info.RefKind != RefKind.In)
+                        || (enableByValueContentsMarshalling && !info.IsByRef && info.ByValueContentsMarshalKind.HasFlag(ByValueContentsMarshalKind.Out)))
                     {
                         return nativeTypeMarshaller.GenerateUnmarshalStatements(info, context);
                     }
@@ -72,7 +77,7 @@ namespace Microsoft.Interop
 
         public bool SupportsByValueMarshalKind(ByValueContentsMarshalKind marshalKind, StubCodeContext context)
         {
-            return false;
+            return enableByValueContentsMarshalling;
         }
 
         public bool UsesNativeIdentifier(TypePositionInfo info, StubCodeContext context)
