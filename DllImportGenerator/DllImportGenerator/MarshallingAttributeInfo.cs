@@ -550,15 +550,18 @@ namespace Microsoft.Interop
             bool isContiguousCollectionMarshaller = nativeType.GetAttributes().Any(attr => SymbolEqualityComparer.Default.Equals(attr.AttributeClass, contiguousCollectionMarshalerAttribute));
             IPropertySymbol? valueProperty = ManualTypeMarshallingHelper.FindValueProperty(nativeType);
 
+            var marshallingVariant = isContiguousCollectionMarshaller
+                ? ManualTypeMarshallingHelper.NativeTypeMarshallingVariant.ContiguousCollection
+                : ManualTypeMarshallingHelper.NativeTypeMarshallingVariant.Standard;
+
             bool hasInt32Constructor = false;
             foreach (var ctor in nativeType.Constructors)
             {
-                if (ManualTypeMarshallingHelper.IsManagedToNativeConstructor(ctor, type, isCollectionMarshaller: isContiguousCollectionMarshaller)
-                    && (valueProperty is null or { GetMethod: not null }))
+                if (ManualTypeMarshallingHelper.IsManagedToNativeConstructor(ctor, type, marshallingVariant) && (valueProperty is null or { GetMethod: not null }))
                 {
                     methods |= SupportedMarshallingMethods.ManagedToNative;
                 }
-                else if (ManualTypeMarshallingHelper.IsStackallocConstructor(ctor, type, spanOfByte, isCollectionMarshaller: isContiguousCollectionMarshaller)
+                else if (ManualTypeMarshallingHelper.IsStackallocConstructor(ctor, type, spanOfByte, marshallingVariant)
                     && (valueProperty is null or { GetMethod: not null }))
                 {
                     methods |= SupportedMarshallingMethods.ManagedToNativeStackalloc;

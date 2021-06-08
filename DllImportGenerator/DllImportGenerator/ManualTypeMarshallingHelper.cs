@@ -23,6 +23,12 @@ namespace Microsoft.Interop
             public const string ConstantElementCount = "ConstantElementCount";
         }
 
+        public enum NativeTypeMarshallingVariant
+        {
+            Standard,
+            ContiguousCollection
+        }
+
         public static bool HasToManagedMethod(ITypeSymbol nativeType, ITypeSymbol managedType)
         {
             return nativeType.GetMembers(ToManagedMethodName)
@@ -37,9 +43,9 @@ namespace Microsoft.Interop
         public static bool IsManagedToNativeConstructor(
             IMethodSymbol ctor,
             ITypeSymbol managedType,
-            bool isCollectionMarshaller)
+            NativeTypeMarshallingVariant variant)
         {
-            if (isCollectionMarshaller)
+            if (variant == NativeTypeMarshallingVariant.ContiguousCollection)
             {
                 return ctor.Parameters.Length == 2
                 && SymbolEqualityComparer.Default.Equals(managedType, ctor.Parameters[0].Type)
@@ -53,9 +59,9 @@ namespace Microsoft.Interop
             IMethodSymbol ctor,
             ITypeSymbol managedType,
             ITypeSymbol spanOfByte,
-            bool isCollectionMarshaller)
+            NativeTypeMarshallingVariant variant)
         {
-            if (isCollectionMarshaller)
+            if (variant == NativeTypeMarshallingVariant.ContiguousCollection)
             {
                 return ctor.Parameters.Length == 3
                 && SymbolEqualityComparer.Default.Equals(managedType, ctor.Parameters[0].Type)
