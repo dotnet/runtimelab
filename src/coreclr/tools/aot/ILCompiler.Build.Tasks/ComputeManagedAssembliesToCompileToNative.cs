@@ -124,10 +124,23 @@ namespace Build.Tasks
 
                 // Remove any assemblies whose implementation we want to come from CoreRT's package.
                 // Currently that's System.Private.* SDK assemblies and a bunch of framework assemblies.
-                if (coreRTFrameworkAssembliesToUse.Contains(Path.GetFileName(itemSpec)))
+                var assemblyName = Path.GetFileName(itemSpec);
+                if (coreRTFrameworkAssembliesToUse.Contains(assemblyName) && assemblyName != "WindowsBase.dll")
                 {
                     assembliesToSkipPublish.Add(taskItem);
                     continue;
+                }
+
+                if (assemblyName == "WindowsBase.dll")
+                {
+                    foreach (ITaskItem taskItemToSkip in FrameworkAssemblies)
+                    {
+                        if (Path.GetFileName(taskItemToSkip.ItemSpec) == "WindowsBase.dll")
+                        {
+                            assembliesToSkipPublish.Add(taskItemToSkip);
+                            break;
+                        }
+                    }
                 }
 
                 try
