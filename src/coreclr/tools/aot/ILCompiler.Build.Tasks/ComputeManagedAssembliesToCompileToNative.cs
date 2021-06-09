@@ -126,7 +126,7 @@ namespace Build.Tasks
 
                 if (assemblyFileName == "WindowsBase.dll")
                 {
-                    // There two instances of WindowsBase.dll, one small one, in the NativeAOT framework
+                    // There are two instances of WindowsBase.dll, one small one, in the NativeAOT framework
                     // and real one in WindowsDesktop SDK. We want to make sure that if both are present,
                     // we will use the one from WindowsDesktop SDK, and not from NativeAOT framework.
                     foreach (ITaskItem taskItemToSkip in FrameworkAssemblies)
