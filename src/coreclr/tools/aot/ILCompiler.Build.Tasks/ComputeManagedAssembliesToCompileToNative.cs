@@ -123,11 +123,12 @@ namespace Build.Tasks
                 }
 
                 var assemblyFileName = Path.GetFileName(itemSpec);
+
                 if (assemblyFileName == "WindowsBase.dll")
                 {
                     // There two instances of WindowsBase.dll, one small one, in the NativeAOT framework
                     // and real one in WindowsDesktop SDK. We want to make sure that if both are present,
-                    // we will use ne from WindowsDesktop SDK, and not from NativeAOT framework.
+                    // we will use the one from WindowsDesktop SDK, and not from NativeAOT framework.
                     foreach (ITaskItem taskItemToSkip in FrameworkAssemblies)
                     {
                         if (Path.GetFileName(taskItemToSkip.ItemSpec) == assemblyFileName)
@@ -139,15 +140,13 @@ namespace Build.Tasks
 
                     continue;
                 }
-                else
+
+                // Remove any assemblies whose implementation we want to come from CoreRT's package.
+                // Currently that's System.Private.* SDK assemblies and a bunch of framework assemblies.
+                if (coreRTFrameworkAssembliesToUse.Contains(assemblyFileName))
                 {
-                    // Remove any assemblies whose implementation we want to come from CoreRT's package.
-                    // Currently that's System.Private.* SDK assemblies and a bunch of framework assemblies.
-                    if (coreRTFrameworkAssembliesToUse.Contains(assemblyFileName))
-                    {
-                        assembliesToSkipPublish.Add(taskItem);
-                        continue;
-                    }
+                    assembliesToSkipPublish.Add(taskItem);
+                    continue;
                 }
 
                 try
