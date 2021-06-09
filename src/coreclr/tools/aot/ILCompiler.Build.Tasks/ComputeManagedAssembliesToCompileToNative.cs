@@ -135,7 +135,7 @@ namespace Build.Tasks
                 {
                     foreach (ITaskItem taskItemToSkip in FrameworkAssemblies)
                     {
-                        if (Path.GetFileName(taskItemToSkip.ItemSpec) == "WindowsBase.dll")
+                        if (Path.GetFileName(taskItemToSkip.ItemSpec) == assemblyFileName)
                         {
                             assembliesToSkipPublish.Add(taskItemToSkip);
                             break;
