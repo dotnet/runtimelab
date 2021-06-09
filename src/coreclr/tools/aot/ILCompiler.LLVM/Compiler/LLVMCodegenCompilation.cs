@@ -122,7 +122,9 @@ namespace ILCompiler
             try
             {
                 var sig = method.Signature;
-                if (sig.Length == 0 && sig.ReturnType == TypeSystemContext.GetWellKnownType(WellKnownType.Void) &&
+                if (sig.Length == 0 &&
+                    sig.ReturnType.IsVoid &&
+                    !method.RequiresInstArg() &&
                     sig.IsStatic) // speed up
                 {
                     corInfo.RegisterLlvmCallbacks((IntPtr)Unsafe.AsPointer(ref corInfo), _outputFile, Module.Target, Module.DataLayout);
