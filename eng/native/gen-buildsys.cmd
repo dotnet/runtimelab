@@ -2,7 +2,7 @@
 rem
 rem This file invokes cmake and generates the build system for windows.
 
-setlocal
+setlocal enabledelayedexpansion
 
 set argC=0
 for %%x in (%*) do Set /A argC+=1
@@ -10,9 +10,12 @@ for %%x in (%*) do Set /A argC+=1
 if %argC% lss 4 GOTO :USAGE
 if %1=="/?" GOTO :USAGE
 
-setlocal enabledelayedexpansion
+setlocal
 set basePath=%~dp0
 set __repoRoot=%~dp0..\..\
+REM a parameter ending with \" seems to be causing a problem for python or emscripten so convert to forward slashes.
+set "__repoRoot=!__repoRoot:\=/!"
+
 :: remove quotes
 set "basePath=%basePath:"=%"
 :: remove trailing slash
@@ -39,7 +42,7 @@ if /i "%__Ninja%" == "1" (
         set __CmakeGenerator=NMake Makefiles
     )
 )
-echo gen-buildsys %__Arch%
+echo gen-buildsys %__Arch% !__repoRoot!
 if /i "%__Arch%" == "wasm" (
     if "%EMSDK%" == "" (
        echo Error: Should set EMSDK environment variable pointing to emsdk root.
@@ -49,7 +52,7 @@ if /i "%__Arch%" == "wasm" (
     if /i "%CMAKE_BUILD_TYPE%" == "debug" (
         set __ExtraCmakeParams=%__ExtraCmakeParams% -g -O0
     )
-    set __ExtraCmakeParams=%__ExtraCmakeParams% "-DCMAKE_BUILD_TYPE=%CMAKE_BUILD_TYPE%" "-DCMAKE_TOOLCHAIN_FILE=%EMSDK%/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake" -DCLR_CMAKE_TARGET_ARCH=wasm -DCLR_CMAKE_TARGET_ARCH_WASM=1 -DCLR_CMAKE_HOST_ARCH=Windows_NT -DCLR_CMAKE_HOST_OS=Emscripten -DRUNTIME_FLAVOR=CoreClr -DCLR_CMAKE_HOST_UNIX_WASM=1 "-DCLR_ENG_NATIVE_DIR=%__repoRoot%\eng\native" "-DCMAKE_REPO_ROOT=%__repoRoot%" -DCLR_CMAKE_KEEP_NATIVE_SYMBOLS=1
+    set __ExtraCmakeParams=%__ExtraCmakeParams% "-DCMAKE_BUILD_TYPE=%CMAKE_BUILD_TYPE%" "-DCMAKE_TOOLCHAIN_FILE=%EMSDK%/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake" -DCLR_CMAKE_TARGET_ARCH=wasm -DCLR_CMAKE_TARGET_ARCH_WASM=1 -DCLR_CMAKE_HOST_ARCH=Windows_NT -DCLR_CMAKE_HOST_OS=Emscripten -DRUNTIME_FLAVOR=CoreClr -DCLR_CMAKE_HOST_UNIX_WASM=1 "-DCLR_ENG_NATIVE_DIR=%__repoRoot%\eng\native" "-DCMAKE_REPO_ROOT=%__repoRoot%" -DCLR_CMAKE_KEEP_NATIVE_SYMBOLS=1 -DFEATURE_STANDALONE_GC=0
     set __UseEmcmake=1
 ) else (
     set __ExtraCmakeParams=%__ExtraCmakeParams%  "-DCMAKE_SYSTEM_VERSION=10.0"
@@ -87,7 +90,9 @@ if not "%__ConfigureOnly%" == "1" (
 )
 
 if /i "%__UseEmcmake%" == "1" (
-    emcmake "%CMakePath%" %__ExtraCmakeParams% --no-warn-unused-cli -G "%__CmakeGenerator%" -B %__IntermediatesDir% -S %__SourceDir% 
+    REM add call in front of emcmake as for some not understood reason, perhaps to do with scopes, by calling emcmake (or any batch script), delayed expansion is getting turned off.  TODO: remove this and see if CI is ok and hence its just my machine.
+    call emcmake "%CMakePath%" %__ExtraCmakeParams% --no-warn-unused-cli -G "%__CmakeGenerator%" -B %__IntermediatesDir% -S %__SourceDir% 
+setlocal EnableDelayedExpansion EnableExtensions
 ) else (
     "%CMakePath%" %__ExtraCmakeParams% --no-warn-unused-cli -G "%__CmakeGenerator%" -B %__IntermediatesDir% -S %__SourceDir%
 )

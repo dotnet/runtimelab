@@ -3986,7 +3986,7 @@ unsigned Compiler::gtSetEvalOrder(GenTree* tree)
             case GT_CNS_DBL:
             {
                 level = 0;
-#if defined(TARGET_XARCH)
+#if defined(TARGET_XARCH) || defined(TARGET_WASM)
                 /* We use fldz and fld1 to load 0.0 and 1.0, but all other  */
                 /* floating point constants are loaded using an indirection */
                 if ((*((__int64*)&(tree->AsDblCon()->gtDconVal)) == 0) ||

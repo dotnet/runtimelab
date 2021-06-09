@@ -39,6 +39,8 @@
       <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\Preinitialization\Preinitialization.csproj" />
       <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\Threading\Threading.csproj" />
       <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\Reflection\Reflection.csproj" />
+      <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\Reflection\Reflection_ReflectedOnly.csproj" />
+      <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\ComWrappers\ComWrappers.csproj" />
     </ItemGroup>
 
     <!-- Temporarily don't build because we don't restore Microsoft.CodeAnalysis in external.csproj - DO NOT BRING THIS HACK OVER to dotnet/runtime -->

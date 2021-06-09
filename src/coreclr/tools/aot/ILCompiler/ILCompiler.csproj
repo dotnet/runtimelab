@@ -19,11 +19,11 @@
   </PropertyGroup>
 
   <PropertyGroup>
+    <RuntimeIdentifier>$(__DistroRid)</RuntimeIdentifier>
     <!-- TODO: get the right platform if building wasm on Linux/OSX is required -->
-    <ILCompilerRuntimeIdentifier Condition="'$(TargetsBrowser)' == 'true'">win-x64</ILCompilerRuntimeIdentifier>
+    <RuntimeIdentifier Condition="'$(TargetsBrowser)' == 'true'">win-x64</RuntimeIdentifier>
     <SelfContained>true</SelfContained>
     <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
-    <RuntimeIdentifier>$(__DistroRid)</RuntimeIdentifier>
 
     <!-- DistroRid is injected through environment variables in build scripts. Provide reasonable default
          when the build is invoked directly, e.g. building inside Visual Studio -->

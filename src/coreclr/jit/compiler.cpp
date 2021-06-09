@@ -972,6 +972,11 @@ unsigned Compiler::GetHfaCount(CORINFO_CLASS_HANDLE hClass)
     return 1;
 }
 
+unsigned Compiler::GetHfaCount(GenTree* tree)
+{
+    return GetHfaCount(gtGetStructHandle(tree));
+}
+
 IL_OFFSET jitGetILoffs(IL_OFFSETX offsx)
 {
     assert(offsx != BAD_IL_OFFSET);

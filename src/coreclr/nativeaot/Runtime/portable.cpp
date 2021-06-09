@@ -72,7 +72,7 @@ COOP_PINVOKE_HELPER(Object *, RhpNewFast, (EEType* pEEType))
         return pObject;
     }
 
-    pObject = (Object *)RhpGcAlloc(pEEType, 0, size, NULL);
+    pObject = (Object *)RhpGcAlloc(pEEType, 0, 0, NULL);
     if (pObject == nullptr)
     {
         ASSERT_UNCONDITIONALLY("NYI");  // TODO: Throw OOM
@@ -89,9 +89,7 @@ COOP_PINVOKE_HELPER(Object *, RhpNewFinalizable, (EEType* pEEType))
 {
     ASSERT(pEEType->HasFinalizer());
 
-    size_t size = pEEType->get_BaseSize();
-
-    Object * pObject = (Object *)RhpGcAlloc(pEEType, GC_ALLOC_FINALIZE, size, NULL);
+    Object * pObject = (Object *)RhpGcAlloc(pEEType, GC_ALLOC_FINALIZE, 0, NULL);
     if (pObject == nullptr)
     {
         ASSERT_UNCONDITIONALLY("NYI");  // TODO: Throw OOM
@@ -145,7 +143,7 @@ COOP_PINVOKE_HELPER(Array *, RhpNewArray, (EEType * pArrayEEType, int numElement
         return pObject;
     }
 
-    pObject = (Array *)RhpGcAlloc(pArrayEEType, 0, size, NULL);
+    pObject = (Array *)RhpGcAlloc(pArrayEEType, 0, numElements, NULL);
     if (pObject == nullptr)
     {
         ASSERT_UNCONDITIONALLY("NYI");  // TODO: Throw OOM
@@ -215,7 +213,7 @@ COOP_PINVOKE_HELPER(Object *, RhpNewFastAlign8, (EEType* pEEType))
         return pObject;
     }
 
-    pObject = (Object*)RhpGcAlloc(pEEType, GC_ALLOC_ALIGN8, size, NULL);
+    pObject = (Object*)RhpGcAlloc(pEEType, GC_ALLOC_ALIGN8, 0, NULL);
     if (pObject == nullptr)
     {
         ASSERT_UNCONDITIONALLY("NYI");  // TODO: Throw OOM
@@ -259,7 +257,7 @@ COOP_PINVOKE_HELPER(Object*, RhpNewFastMisalign, (EEType* pEEType))
         return pObject;
     }
 
-    pObject = (Object*)RhpGcAlloc(pEEType, GC_ALLOC_ALIGN8 | GC_ALLOC_ALIGN8_BIAS, size, NULL);
+    pObject = (Object*)RhpGcAlloc(pEEType, GC_ALLOC_ALIGN8 | GC_ALLOC_ALIGN8_BIAS, 0, NULL);
     if (pObject == nullptr)
     {
         ASSERT_UNCONDITIONALLY("NYI");  // TODO: Throw OOM
@@ -329,7 +327,7 @@ COOP_PINVOKE_HELPER(Array *, RhpNewArrayAlign8, (EEType * pArrayEEType, int numE
         return pObject;
     }
 
-    pObject = (Array*)RhpGcAlloc(pArrayEEType, GC_ALLOC_ALIGN8, size, NULL);
+    pObject = (Array*)RhpGcAlloc(pArrayEEType, GC_ALLOC_ALIGN8, numElements, NULL);
     if (pObject == nullptr)
     {
         ASSERT_UNCONDITIONALLY("NYI");  // TODO: Throw OOM

@@ -984,9 +984,9 @@ namespace ILCompiler.DependencyAnalysis
                     {
                         MetadataType target = (MetadataType)node.Target;
 
-                        var ptrPtrPtr = builder.BuildBitCast(resVar, LLVMTypeRef.CreatePointer(LLVMTypeRef.CreatePointer(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), 0), 0), "ptrPtrPtr");
+                        var ptrPtr = builder.BuildBitCast(resVar, LLVMTypeRef.CreatePointer(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), 0), "ptrPtr");
 
-                        resVar = builder.BuildLoad(builder.BuildLoad(ptrPtrPtr, "ind1"), "ind2");
+                        resVar = builder.BuildLoad(ptrPtr, "ind");
             
                         if (compilation.HasLazyStaticConstructor(target))
                         {
@@ -1078,8 +1078,8 @@ namespace ILCompiler.DependencyAnalysis
                         
                         var symbolNode = factory.TypeGCStaticsSymbol(target);
                         LLVMValueRef addressOfAddress = GetSymbolValuePointer(Module, symbolNode, factory.NameMangler, false);
-                        LLVMValueRef basePtrPtr = builder.BuildLoad(addressOfAddress, "LoadAddressOfSymbolNode");
-                        LLVMValueRef ptr = builder.BuildLoad(builder.BuildLoad(builder.BuildPointerCast(basePtrPtr, LLVMTypeRef.CreatePointer(LLVMTypeRef.CreatePointer(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), 0), 0), "castBasePtrPtr"), "basePtr"), "base");
+                        LLVMValueRef basePtr = builder.BuildLoad(addressOfAddress, "LoadAddressOfSymbolNode");
+                        LLVMValueRef ptr = builder.BuildLoad(builder.BuildPointerCast(basePtr, LLVMTypeRef.CreatePointer(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), 0), "castBasePtr"), "base");
                         
                         if (compilation.HasLazyStaticConstructor(target))
                         {

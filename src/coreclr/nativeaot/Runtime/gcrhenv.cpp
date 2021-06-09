@@ -226,7 +226,7 @@ Object* GcAllocInternal(EEType *pEEType, uint32_t uFlags, uintptr_t numElements,
         if (numElements > 0x10000)
         {
             // Perform the size computation using 64-bit integeres to detect overflow
-            uint64_t size64 = (uint64_t)cbSize + ((uint64_t)numElements * (uint64_t)pArrayEEType->get_ComponentSize());
+            uint64_t size64 = (uint64_t)cbSize + ((uint64_t)numElements * (uint64_t)pEEType->get_ComponentSize());
             size64 = (size64 + (sizeof(uintptr_t) - 1)) & ~(sizeof(uintptr_t) - 1);
 
             cbSize = (size_t)size64;

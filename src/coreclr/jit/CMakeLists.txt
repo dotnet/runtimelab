@@ -565,9 +565,9 @@ if (NOT CLR_CMAKE_HOST_UNIX AND BUILD_WASM_JIT)
     list(FILTER JIT_CORE_SOURCES EXCLUDE REGEX lsrabuild\.cpp)
     list(FILTER JIT_CORE_SOURCES EXCLUDE REGEX regalloc\.cpp)
 
-    create_standalone_jit(TARGET clrjit_browser_wasm32_${ARCH_HOST_NAME} OS browser ARCH wasm32)
+    create_standalone_jit(TARGET clrjit_browser_wasm32_${ARCH_HOST_NAME} OS browser ARCH wasm32 DESTINATIONS .)
     # uncomment to enable 8 byte pointer size version of the wasm clrjit.dll
-    #create_standalone_jit(TARGET clrjit_browser_wasm64_${ARCH_HOST_NAME} OS browser ARCH wasm64)
+    #create_standalone_jit(TARGET clrjit_browser_wasm64_${ARCH_HOST_NAME} OS browser ARCH wasm64 DESTINATIONS .)
 endif (NOT CLR_CMAKE_HOST_UNIX AND BUILD_WASM_JIT)
 
 if (CLR_CMAKE_TARGET_UNIX)

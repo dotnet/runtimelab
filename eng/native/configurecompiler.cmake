@@ -525,6 +525,7 @@ if (MSVC)
   add_compile_options($<$<COMPILE_LANGUAGE:C,CXX>:/wd4310>)
   add_compile_options($<$<COMPILE_LANGUAGE:C,CXX>:/wd4624>) # destructor was implicitly defined as deleted
   add_compile_options($<$<COMPILE_LANGUAGE:C,CXX>:/wd4324>) # structure was padded due to alignment specifier
+  add_compile_options($<$<COMPILE_LANGUAGE:C,CXX>:/wd4146>) # unary minus operator applied to unsigned type, result still unsigned.  llvm does this in some headers, e.g. -(UINT64_C(1)<<(N-1))
 
   # Treat Warnings as Errors:
   add_compile_options($<$<COMPILE_LANGUAGE:C,CXX>:/we4007>) # 'main' : must be __cdecl.

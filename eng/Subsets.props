@@ -267,7 +267,7 @@
   </ItemGroup>
 
   <!-- Mono sets -->
-  <ItemGroup Condition="$(_subset.Contains('+mono.llvm+')) or $(_subset.Contains('+mono.aotcross+')) or '$(TargetOS)' == 'iOS' or '$(TargetOS)' == 'iOSSimulator' or  or '$(TargetOS)' == 'tvOS' or '$(TargetOS)' == 'tvOSSimulator'  or '$(TargetOS)' == 'Android' or ('$(TargetOS)' == 'Browser' and '$(RuntimeFlavor)' != 'CoreCLR')">
+  <ItemGroup Condition="$(_subset.Contains('+mono.llvm+')) or $(_subset.Contains('+mono.aotcross+')) or '$(TargetOS)' == 'iOS' or '$(TargetOS)' == 'iOSSimulator' or '$(TargetOS)' == 'tvOS' or '$(TargetOS)' == 'tvOSSimulator'  or '$(TargetOS)' == 'Android' or ('$(TargetOS)' == 'Browser' and '$(RuntimeFlavor)' != 'CoreCLR')">
     <ProjectToBuild Include="$(MonoProjectRoot)llvm\llvm-init.proj" Category="mono" />
   </ItemGroup>
 
