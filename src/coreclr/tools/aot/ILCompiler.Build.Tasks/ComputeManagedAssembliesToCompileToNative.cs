@@ -44,7 +44,7 @@ namespace Build.Tasks
         }
 
         /// <summary>
-        /// The native apphost (whose name ends up colliding with the CoreRT output binary) 
+        /// The native apphost (whose name ends up colliding with the CoreRT output binary)
         /// </summary>
         [Required]
         public string DotNetAppHostExecutableName
@@ -133,9 +133,11 @@ namespace Build.Tasks
                         if (Path.GetFileName(taskItemToSkip.ItemSpec) == assemblyFileName)
                         {
                             assembliesToSkipPublish.Add(taskItemToSkip);
-                            continue;
+                            break;
                         }
                     }
+
+                    continue;
                 }
                 else
                 {
