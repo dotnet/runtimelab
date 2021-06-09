@@ -122,24 +122,29 @@ namespace Build.Tasks
                     continue;
                 }
 
-                // Remove any assemblies whose implementation we want to come from CoreRT's package.
-                // Currently that's System.Private.* SDK assemblies and a bunch of framework assemblies.
                 var assemblyFileName = Path.GetFileName(itemSpec);
-                if (coreRTFrameworkAssembliesToUse.Contains(assemblyName) && assemblyName != "WindowsBase.dll")
+                if (assemblyFileName == "WindowsBase.dll")
                 {
-                    assembliesToSkipPublish.Add(taskItem);
-                    continue;
-                }
-
-                if (assemblyName == "WindowsBase.dll")
-                {
+                    // There two instances of WindowsBase.dll, one small one, in the NativeAOT framework
+                    // and real one in WindowsDesktop SDK. We want to make sure that if both are present,
+                    // we will use ne from WindowsDesktop SDK, and not from NativeAOT framework.
                     foreach (ITaskItem taskItemToSkip in FrameworkAssemblies)
                     {
                         if (Path.GetFileName(taskItemToSkip.ItemSpec) == assemblyFileName)
                         {
                             assembliesToSkipPublish.Add(taskItemToSkip);
-                            break;
+                            continue;
                         }
+                    }
+                }
+                else
+                {
+                    // Remove any assemblies whose implementation we want to come from CoreRT's package.
+                    // Currently that's System.Private.* SDK assemblies and a bunch of framework assemblies.
+                    if (coreRTFrameworkAssembliesToUse.Contains(assemblyFileName))
+                    {
+                        assembliesToSkipPublish.Add(taskItem);
+                        continue;
                     }
                 }
 
