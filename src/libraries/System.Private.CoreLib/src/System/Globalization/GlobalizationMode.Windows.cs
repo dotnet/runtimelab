@@ -5,10 +5,6 @@ namespace System.Globalization
 {
     internal static partial class GlobalizationMode
     {
-        // Order of these properties in Windows matter because GetUseIcuMode is dependent on Invariant.
-        // So we need Invariant to be initialized first.
-        internal static bool Invariant { get; } = GetInvariantSwitchValue();
-
 #if CORERT
         // CORERT-TODO: Enable Icu on Windows
         internal static bool UseNls { get; } = !Invariant;
