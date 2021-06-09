@@ -582,7 +582,8 @@ namespace Microsoft.Interop
 
         public IEnumerable<ArgumentSyntax> GetNativeTypeConstructorArguments(TypePositionInfo info, StubCodeContext context)
         {
-            return innerMarshaller.GetNativeTypeConstructorArguments(info, context);
+            var subContext = new CustomNativeTypeWithValuePropertyStubContext(context);
+            return innerMarshaller.GetNativeTypeConstructorArguments(info, subContext);
         }
 
         public bool UsesNativeIdentifier(TypePositionInfo info, StubCodeContext context)
@@ -631,7 +632,7 @@ namespace Microsoft.Interop
                 }
             }
 
-            foreach (var statement in innerMarshaller.GenerateUnmarshalStatements(info, context))
+            foreach (var statement in innerMarshaller.GenerateCleanupStatements(info, context))
             {
                 yield return statement;
             }
