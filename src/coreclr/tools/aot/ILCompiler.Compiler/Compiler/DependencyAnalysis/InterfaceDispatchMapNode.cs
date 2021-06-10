@@ -127,7 +127,8 @@ namespace ILCompiler.DependencyAnalysis
 
         void EmitDispatchMap(ref ObjectDataBuilder builder, NodeFactory factory)
         {
-            var entryCountReservation = builder.ReserveInt();
+            var entryCountReservation = builder.ReserveShort();
+            var defaultEntryCountReservation = builder.ReserveShort();
             int entryCount = 0;
 
             TypeDesc declType = _type.GetClosestDefType();
@@ -138,6 +139,9 @@ namespace ILCompiler.DependencyAnalysis
             // Catch any runtime interface collapsing. We shouldn't have any
             Debug.Assert(declTypeRuntimeInterfaces.Length == declTypeDefinitionRuntimeInterfaces.Length);
 
+            var defaultImplementations = new List<(int InterfaceIndex, int InterfaceMethodSlot, int ImplMethodSlot)>();
+
+            // Resolve all the interfaces, but only emit non-default implementations
             for (int interfaceIndex = 0; interfaceIndex < declTypeRuntimeInterfaces.Length; interfaceIndex++)
             {
                 var interfaceType = declTypeRuntimeInterfaces[interfaceIndex];
@@ -175,10 +179,6 @@ namespace ILCompiler.DependencyAnalysis
                     {
                         // Is there a default implementation?
 
-                        // TODO: will need to separate these out somewhere so that they don't interfere with variant interface method
-                        // resolution (we don't want exact default implementations to override variant matches using the "old rules";
-                        // we need the "old rules" resolution to finish with no match found before default implementations are looked at).
-
                         int? implSlot = null;
 
                         DefaultInterfaceMethodResolution result = declTypeDefinition.ResolveInterfaceMethodToDefaultImplementationOnType(declMethod, out implMethod);
@@ -201,16 +201,26 @@ namespace ILCompiler.DependencyAnalysis
 
                         if (implSlot.HasValue)
                         {
-                            builder.EmitShort((short)checked((ushort)interfaceIndex));
-                            builder.EmitShort((short)checked((ushort)(interfaceMethodSlot + (interfaceType.HasGenericDictionarySlot() ? 1 : 0))));
-                            builder.EmitShort((short)checked((ushort)implSlot.Value));
-                            entryCount++;
+                            defaultImplementations.Add((
+                                interfaceIndex, 
+                                interfaceMethodSlot + (interfaceType.HasGenericDictionarySlot() ? 1 : 0),
+                                implSlot.Value));
                         }
                     }
                 }
             }
 
-            builder.EmitInt(entryCountReservation, entryCount);
+            // Now emit the default implementations
+            foreach (var defaultImplementation in defaultImplementations)
+            {
+                builder.EmitShort((short)checked((ushort)defaultImplementation.InterfaceIndex));
+                builder.EmitShort((short)checked((ushort)defaultImplementation.InterfaceMethodSlot));
+                builder.EmitShort((short)checked((ushort)defaultImplementation.ImplMethodSlot));
+            }
+
+            // Update the header
+            builder.EmitShort(entryCountReservation, (short)checked((ushort)entryCount));
+            builder.EmitShort(defaultEntryCountReservation, (short)checked((ushort)defaultImplementations.Count));
         }
 
         public override ObjectData GetData(NodeFactory factory, bool relocsOnly = false)
