@@ -435,15 +435,23 @@ namespace Microsoft.Interop
             static ExpressionSyntax GetIndexedNumElementsExpression(StubCodeContext context, TypePositionInfo numElementsInfo, out int numIndirectionLevels)
             {
                 Stack<string> indexerStack = new();
-                while (context is ContiguousCollectionElementMarshallingCodeContext collectionContext)
+
+                StubCodeContext? currentContext = context;
+                StubCodeContext lastContext = null!;
+
+                while (currentContext is not null)
                 {
-                    indexerStack.Push(collectionContext.IndexerIdentifier);
-                    context = collectionContext.ParentContext;
+                    if (currentContext is ContiguousCollectionElementMarshallingCodeContext collectionContext)
+                    {
+                        indexerStack.Push(collectionContext.IndexerIdentifier);
+                    }
+                    lastContext = currentContext;
+                    currentContext = currentContext.ParentContext;
                 }
 
                 numIndirectionLevels = indexerStack.Count;
 
-                ExpressionSyntax indexedNumElements = IdentifierName(context.GetIdentifiers(numElementsInfo).managed);
+                ExpressionSyntax indexedNumElements = IdentifierName(lastContext!.GetIdentifiers(numElementsInfo).managed);
                 while (indexerStack.Count > 0)
                 {
                     indexedNumElements = ElementAccessExpression(indexedNumElements).AddArgumentListArguments(Argument(IdentifierName(indexerStack.Pop())));
