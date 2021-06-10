@@ -26,7 +26,7 @@ namespace ILCompiler.DependencyAnalysis
     {
         private string GetBaseSymbolName(ISymbolNode symbol, NameMangler nameMangler, bool objectWriterUse = false)
         {
-            if (symbol is LLVMMethodCodeNode || symbol is LLVMBlockRefNode)
+            if (symbol is LLVMMethodCodeNode || symbol is LLVMBlockRefNode || symbol is ExternSymbolNode)
             {
                 return symbol.GetMangledName(nameMangler);
             }
@@ -102,7 +102,7 @@ namespace ILCompiler.DependencyAnalysis
 
         private static int GetNumericOffsetFromBaseSymbolValue(ISymbolNode symbol)
         {
-            if (symbol is LLVMMethodCodeNode || symbol is LLVMBlockRefNode)
+            if (symbol is LLVMMethodCodeNode || symbol is LLVMBlockRefNode || symbol is ExternSymbolNode)
             {
                 return 0;
             }
@@ -1029,6 +1029,7 @@ namespace ILCompiler.DependencyAnalysis
                 case ReadyToRunHelperId.MethodEntry:
                 case ReadyToRunHelperId.VirtualDispatchCell:
                 case ReadyToRunHelperId.DefaultConstructor:
+                case ReadyToRunHelperId.ObjectAllocator:
                     break;
                 default:
                     throw new NotImplementedException();

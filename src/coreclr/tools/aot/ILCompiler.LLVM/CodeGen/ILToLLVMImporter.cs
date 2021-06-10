@@ -2520,19 +2520,21 @@ namespace Internal.IL
                         return true;
                     }
                     break;
-                case "AllocatorOf":
+                case "AllocatorOf": // TODO: doesn't work due to calling convetion (RhpNewFast is in portable.cpp)
                     if (metadataType.Namespace == "System" && metadataType.Name == "Activator" && method.Instantiation.Length == 1)
                     {
                         if (runtimeDeterminedMethod.IsRuntimeDeterminedExactMethod)
                         {
-                            MetadataType helperType = _compilation.TypeSystemContext.SystemModule.GetKnownType("System.Runtime", RuntimeExport);
-                            MethodDesc helperMethod = helperType.GetKnownMethod("RhNewObject", null);
-                            PushExpression(StackValueKind.Int32, "RhNewObjectPtr", LLVMFunctionForMethod(helperMethod, helperMethod, null, false, null, helperMethod, out bool _, out LLVMValueRef _, out LLVMValueRef _), GetWellKnownType(WellKnownType.IntPtr));
+                            var ctorRef = CallGenericHelper(ReadyToRunHelperId.ObjectAllocator, runtimeDeterminedMethod.Instantiation[0]);
+                            PushExpression(StackValueKind.Int32, "object allocator", ctorRef, GetWellKnownType(WellKnownType.IntPtr));
                         }
                         else
                         {
-                            // a value type <T> ?  TODO: write a test
-                            throw new NotImplementedException();
+                            IMethodNode methodNode = (IMethodNode)_compilation.ComputeConstantLookup(ReadyToRunHelperId.ObjectAllocator, method.Instantiation[0]);
+                            _dependencies.Add(methodNode, "LLVM AllocatorOf");
+
+                            MethodDesc allocator = methodNode.Method;
+                            PushExpression(StackValueKind.Int32, "object allocator", LLVMFunctionForMethod(allocator, allocator, null, false, null, allocator, out bool _, out LLVMValueRef _, out LLVMValueRef _), GetWellKnownType(WellKnownType.IntPtr));
                         }
 
                         return true;

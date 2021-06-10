@@ -22,20 +22,23 @@ namespace System.Globalization
                 }
                 else
                 {
+#if TARGET_WASM // Wasm for NativeAOT is not including ICU (emscripten flag -s USE_ICU is not set) and even if it did, attempting to dlopen any ICU libraries is going to fail.
                     return true;
-                    // int loaded = LoadICU();
-                    // if (loaded == 0 && !OperatingSystem.IsBrowser())
-                    // {
-                    //     // This can't go into resources, because a resource lookup requires globalization, which requires ICU
-                    //     string message = "Couldn't find a valid ICU package installed on the system. " +
-                    //                      "Please install libicu using your package manager and try again. " +
-                    //                      "Alternatively you can set the configuration flag System.Globalization.Invariant to true if you want to run with no globalization support. " +
-                    //                      "Please see https://aka.ms/dotnet-missing-libicu for more information.";
-                    //     Environment.FailFast(message);
-                    // }
-                    //
-                    // // fallback to Invariant mode if LoadICU failed (Browser).
-                    // return loaded == 0;
+#else
+                    int loaded = LoadICU();
+                    if (loaded == 0 && !OperatingSystem.IsBrowser())
+                    {
+                        // This can't go into resources, because a resource lookup requires globalization, which requires ICU
+                        string message = "Couldn't find a valid ICU package installed on the system. " +
+                                         "Please install libicu using your package manager and try again. " +
+                                         "Alternatively you can set the configuration flag System.Globalization.Invariant to true if you want to run with no globalization support. " +
+                                         "Please see https://aka.ms/dotnet-missing-libicu for more information.";
+                        Environment.FailFast(message);
+                    }
+                    
+                    // fallback to Invariant mode if LoadICU failed (Browser).
+                    return loaded == 0;
+#endif
                 }
             }
             return invariantEnabled;
