@@ -583,9 +583,10 @@ namespace Internal.Runtime.TypeLoader
                     *((IntPtr*)((byte*)pEEType + cbDynamicDispatchMapOffset)) = dynamicDispatchMapPtr;
 
                     DispatchMap* pDynamicDispatchMap = (DispatchMap*)dynamicDispatchMapPtr;
-                    pDynamicDispatchMap->NumEntries = pTemplateDispatchMap->NumEntries;
+                    pDynamicDispatchMap->NumStandardEntries = pTemplateDispatchMap->NumStandardEntries;
+                    pDynamicDispatchMap->NumDefaultEntries = pTemplateDispatchMap->NumDefaultEntries;
 
-                    for (int i = 0; i < pTemplateDispatchMap->NumEntries; i++)
+                    for (int i = 0; i < pTemplateDispatchMap->NumStandardEntries + pTemplateDispatchMap->NumDefaultEntries; i++)
                     {
                         DispatchMap.DispatchMapEntry* pTemplateEntry = (*pTemplateDispatchMap)[i];
                         DispatchMap.DispatchMapEntry* pDynamicEntry = (*pDynamicDispatchMap)[i];

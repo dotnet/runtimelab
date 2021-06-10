@@ -35,6 +35,7 @@ public class BringUpTest
             return Fail;
 
         TestDefaultInterfaceMethods.Run();
+        TestDefaultInterfaceVariance.Run();
         TestVariantInterfaceOptimizations.Run();
         TestSharedIntefaceMethods.Run();
         TestCovariantReturns.Run();
@@ -507,6 +508,31 @@ public class BringUpTest
                 throw new Exception();
 
             if (((IFoo<int>)new Foo<int>()).GetInterfaceType() != typeof(IFoo<int>))
+                throw new Exception();
+        }
+    }
+
+    class TestDefaultInterfaceVariance
+    {
+        class Foo : IVariant<string>, IVariant<object>
+        {
+            string IVariant<object>.Frob() => "Hello class";
+        }
+
+        interface IVariant<in T>
+        {
+            string Frob() => "Hello default";
+        }
+
+        public static void Run()
+        {
+            Console.WriteLine("Testing default interface variant ordering...");
+
+            if (((IVariant<object>)new Foo()).Frob() != "Hello class")
+                throw new Exception();
+            if (((IVariant<string>)new Foo()).Frob() != "Hello class")
+                throw new Exception();
+            if (((IVariant<ValueType>)new Foo()).Frob() != "Hello class")
                 throw new Exception();
         }
     }

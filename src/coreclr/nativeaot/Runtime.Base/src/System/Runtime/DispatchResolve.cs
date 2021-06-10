@@ -87,21 +87,34 @@ namespace System.Runtime
 
             if (pTgtType->HasDispatchMap)
             {
+                // We first look at non-default implementation. Default implementations are only considered
+                // if the "old algorithm" didn't come up with an answer.
+
+                bool fDoDefaultImplementationLookup = false;
+
                 // For variant interface dispatch, the algorithm is to walk the parent hierarchy, and at each level
                 // attempt to dispatch exactly first, and then if that fails attempt to dispatch variantly. This can
                 // result in interesting behavior such as a derived type only overriding one particular instantiation
                 // and funneling all the dispatches to it, but its the algorithm.
 
+            again:
                 bool fDoVariantLookup = false; // do not check variance for first scan of dispatch map
 
                 fRes = FindImplSlotInSimpleMap(
-                    pTgtType, pItfType, itfSlotNumber, pImplSlotNumber, fDoVariantLookup);
+                    pTgtType, pItfType, itfSlotNumber, pImplSlotNumber, fDoVariantLookup, fDoDefaultImplementationLookup);
 
                 if (!fRes)
                 {
                     fDoVariantLookup = true; // check variance for second scan of dispatch map
                     fRes = FindImplSlotInSimpleMap(
-                     pTgtType, pItfType, itfSlotNumber, pImplSlotNumber, fDoVariantLookup);
+                     pTgtType, pItfType, itfSlotNumber, pImplSlotNumber, fDoVariantLookup, fDoDefaultImplementationLookup);
+                }
+
+                // If we haven't found anything and haven't looked at the default implementations yet, look now
+                if (!fRes && !fDoDefaultImplementationLookup)
+                {
+                    fDoDefaultImplementationLookup = true;
+                    goto again;
                 }
             }
 
@@ -112,7 +125,8 @@ namespace System.Runtime
                                      EEType* pItfType,
                                      uint itfSlotNumber,
                                      ushort* pImplSlotNumber,
-                                     bool actuallyCheckVariance)
+                                     bool actuallyCheckVariance,
+                                     bool checkDefaultImplementations)
         {
             Debug.Assert(pTgtType->HasDispatchMap, "Missing dispatch map");
 
@@ -161,8 +175,8 @@ namespace System.Runtime
             }
 
             DispatchMap* pMap = pTgtType->DispatchMap;
-            DispatchMap.DispatchMapEntry* i = (*pMap)[0];
-            DispatchMap.DispatchMapEntry* iEnd = (*pMap)[(int)pMap->NumEntries];
+            DispatchMap.DispatchMapEntry* i = (*pMap)[checkDefaultImplementations ? (int)pMap->NumStandardEntries : 0];
+            DispatchMap.DispatchMapEntry* iEnd = (*pMap)[checkDefaultImplementations ? (int)(pMap->NumStandardEntries + pMap->NumDefaultEntries) : (int)pMap->NumStandardEntries];
             for (; i != iEnd; ++i)
             {
                 if (i->_usInterfaceMethodSlot == itfSlotNumber)

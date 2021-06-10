@@ -70,27 +70,34 @@ namespace Internal.Runtime
             internal ushort _usImplMethodSlot;
         }
 
-        private uint _entryCount;
+        private ushort _standardEntryCount; // Implementations on the class
+        private ushort _defaultEntryCount; // Default implementations
         private DispatchMapEntry _dispatchMap; // at least one entry if any interfaces defined
 
-        public bool IsEmpty
+        public uint NumStandardEntries
         {
             get
             {
-                return _entryCount == 0;
-            }
-        }
-
-        public uint NumEntries
-        {
-            get
-            {
-                return _entryCount;
+                return _standardEntryCount;
             }
 #if TYPE_LOADER_IMPLEMENTATION
             set
             {
-                _entryCount = value;
+                _standardEntryCount = checked((ushort)value);
+            }
+#endif
+        }
+
+        public uint NumDefaultEntries
+        {
+            get
+            {
+                return _defaultEntryCount;
+            }
+#if TYPE_LOADER_IMPLEMENTATION
+            set
+            {
+                _defaultEntryCount = checked((ushort)value);
             }
 #endif
         }
@@ -99,7 +106,7 @@ namespace Internal.Runtime
         {
             get
             {
-                return sizeof(uint) + sizeof(DispatchMapEntry) * (int)_entryCount;
+                return sizeof(ushort) + sizeof(ushort) + sizeof(DispatchMapEntry) * ((int)_standardEntryCount + (int)_defaultEntryCount);
             }
         }
 
@@ -107,8 +114,7 @@ namespace Internal.Runtime
         {
             get
             {
-                fixed (DispatchMap* pThis = &this)
-                    return (DispatchMapEntry*)((byte*)pThis + sizeof(uint) + (sizeof(DispatchMapEntry) * index));
+                return (DispatchMapEntry*)Unsafe.AsPointer(ref Unsafe.Add(ref _dispatchMap, index));
             }
         }
     }
