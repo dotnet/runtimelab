@@ -138,6 +138,7 @@ namespace Build.Tasks
                         }
                     }
 
+                    list.Add(taskItem);
                     continue;
                 }
 
