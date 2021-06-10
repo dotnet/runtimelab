@@ -285,16 +285,17 @@ namespace DllImportGenerator.IntegrationTests
             int numRows = random.Next(1, 5);
             int numColumns = random.Next(1, 5);
             int[][] matrix = new int[numRows][];
-            int[] numRowsArray = new int[numColumns];
             for (int i = 0; i < numRows; i++)
             {
                 matrix[i] = new int[numColumns];
                 for (int j = 0; j < numColumns; j++)
                 {
                     matrix[i][j] = random.Next();
-                    numRowsArray[j] = numRows;
                 }
             }
+
+            int[] numRowsArray = new int[numColumns];
+            numRowsArray.AsSpan().Fill(numRows);
 
             int[][] transposed = NativeExportsNE.Arrays.TransposeMatrix(matrix, numRowsArray, numColumns);
             
