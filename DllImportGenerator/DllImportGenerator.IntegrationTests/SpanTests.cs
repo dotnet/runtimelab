@@ -156,15 +156,5 @@ namespace DllImportGenerator.IntegrationTests
 
             Assert.Equal(result, NativeExportsNE.Span.AndAllMembers(boolValues, boolValues.Length));
         }
-
-        private static string ReverseChars(string value)
-        {
-            if (value == null)
-                return null;
-
-            var chars = value.ToCharArray();
-            Array.Reverse(chars);
-            return new string(chars);
-        }
     }
 }
