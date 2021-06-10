@@ -4,6 +4,7 @@ using System.Runtime.CompilerServices;
 
 namespace System.Runtime.InteropServices.GeneratedMarshalling
 {
+    [GenericContiguousCollectionMarshaller]
     public unsafe ref struct ReadOnlySpanMarshaller<T>
     {
         private ReadOnlySpan<T> managedSpan;
@@ -107,6 +108,7 @@ namespace System.Runtime.InteropServices.GeneratedMarshalling
         }
     }
 
+    [GenericContiguousCollectionMarshaller]
     public unsafe ref struct SpanMarshaller<T>
     {
         private ReadOnlySpanMarshaller<T> inner;
@@ -166,6 +168,7 @@ namespace System.Runtime.InteropServices.GeneratedMarshalling
         }
     }
 
+    [GenericContiguousCollectionMarshaller]
     public unsafe ref struct NeverNullSpanMarshaller<T>
     {
         private SpanMarshaller<T> inner;
@@ -236,6 +239,7 @@ namespace System.Runtime.InteropServices.GeneratedMarshalling
         }
     }
 
+    [GenericContiguousCollectionMarshaller]
     public unsafe ref struct NeverNullReadOnlySpanMarshaller<T>
     {
         private ReadOnlySpanMarshaller<T> inner;
@@ -246,12 +250,12 @@ namespace System.Runtime.InteropServices.GeneratedMarshalling
             inner = new ReadOnlySpanMarshaller<T>(sizeOfNativeElement);
         }
 
-        public NeverNullReadOnlySpanMarshaller(Span<T> managed, int sizeOfNativeElement)
+        public NeverNullReadOnlySpanMarshaller(ReadOnlySpan<T> managed, int sizeOfNativeElement)
         {
             inner = new ReadOnlySpanMarshaller<T>(managed, sizeOfNativeElement);
         }
 
-        public NeverNullReadOnlySpanMarshaller(Span<T> managed, Span<byte> stackSpace, int sizeOfNativeElement)
+        public NeverNullReadOnlySpanMarshaller(ReadOnlySpan<T> managed, Span<byte> stackSpace, int sizeOfNativeElement)
         {
             inner = new ReadOnlySpanMarshaller<T>(managed, stackSpace, sizeOfNativeElement);
         }
@@ -306,6 +310,7 @@ namespace System.Runtime.InteropServices.GeneratedMarshalling
         }
     }
 
+    [GenericContiguousCollectionMarshaller]
     public unsafe ref struct DirectSpanMarshaller<T>
         where T : unmanaged
     {
@@ -316,6 +321,7 @@ namespace System.Runtime.InteropServices.GeneratedMarshalling
         public DirectSpanMarshaller(int sizeOfNativeElement)
             :this()
         {
+            // This check is not exhaustive, but it will catch the majority of cases.
             if (typeof(T) == typeof(bool) || typeof(T) == typeof(char) || Unsafe.SizeOf<T>() != sizeOfNativeElement)
             {
                 throw new ArgumentException("This marshaller only supports blittable element types. The provided type parameter must be blittable", nameof(T));
@@ -330,9 +336,9 @@ namespace System.Runtime.InteropServices.GeneratedMarshalling
                 return;
             }
 
-            int spaceToAllocate = managed.Length * sizeof(T);
-            allocatedMemory = (T*)Marshal.AllocCoTaskMem(managed.Length);
-            data = new Span<T>(allocatedMemory, spaceToAllocate);
+            int spaceToAllocate = managed.Length * Unsafe.SizeOf<T>();
+            allocatedMemory = (T*)Marshal.AllocCoTaskMem(spaceToAllocate);
+            data = managed;
         }
 
         public DirectSpanMarshaller(Span<T> managed, Span<byte> stackSpace, int sizeOfNativeElement)
@@ -348,7 +354,9 @@ namespace System.Runtime.InteropServices.GeneratedMarshalling
 
         public Span<T> ManagedValues => data;
 
-        public Span<byte> NativeValueStorage => MemoryMarshal.Cast<T, byte>(data);
+        public Span<byte> NativeValueStorage => allocatedMemory != null
+            ? new Span<byte>(allocatedMemory, data.Length * Unsafe.SizeOf<T>())
+            : MemoryMarshal.Cast<T, byte>(data);
 
         public ref T GetPinnableReference() => ref data.GetPinnableReference();
 
@@ -361,7 +369,7 @@ namespace System.Runtime.InteropServices.GeneratedMarshalling
         {
             get
             {
-                Debug.Assert(data.Length == 0 || allocatedMemory != null);
+                Debug.Assert(data.IsEmpty || allocatedMemory != null);
                 return allocatedMemory;
             }
             set
@@ -370,7 +378,7 @@ namespace System.Runtime.InteropServices.GeneratedMarshalling
                 // since this marshaller passes back the actual memory span from native code
                 // back to managed code.
                 allocatedMemory = null;
-                data = new Span<T>(Value, unmarshalledLength);
+                data = new Span<T>(value, unmarshalledLength);
             }
         }
 
