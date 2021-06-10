@@ -373,10 +373,6 @@ namespace ILCompiler
                             // We collect this information:
                             //
                             // 1. What types got allocated
-                            //    This is needed for optimizing codegens that might attempt to devirtualize
-                            //    calls to sealed types. The devirtualization is not allowed to succeed
-                            //    for types that never got allocated because the scanner likely didn't scan
-                            //    the target of the virtual call.
                             // 2. What types are the base types of other types
                             //    This is needed for optimizations. We use this information to effectively
                             //    seal types that are not base types for any other type.
@@ -428,15 +424,6 @@ namespace ILCompiler
 
                 // Everything else can be considered sealed.
                 return true;
-            }
-
-            public override bool IsEffectivelySealed(MethodDesc method)
-            {
-                // For the same reason as above, don't report methods on unallocated types as sealed.
-                if (!_constructedTypes.Contains(method.OwningType.ConvertToCanonForm(CanonicalFormKind.Specific)))
-                    return false;
-
-                return base.IsEffectivelySealed(method);
             }
 
             public override bool CanConstructType(TypeDesc type) => _constructedTypes.Contains(type);
