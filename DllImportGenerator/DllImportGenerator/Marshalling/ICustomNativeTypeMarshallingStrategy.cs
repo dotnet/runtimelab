@@ -192,6 +192,9 @@ namespace Microsoft.Interop
         {
             var subContext = new CustomNativeTypeWithValuePropertyStubContext(context);
 
+            // When temporary state does not live across stages, the marshaller state is uninitialized
+            // in any stage other than Marshal and Unmarshal. So, we need to reinitialize it here in Cleanup
+            // from the native value so we can safely run any cleanup functionality in the marshaller.
             if (!context.AdditionalTemporaryStateLivesAcrossStages)
             {
                 yield return GenerateValuePropertyAssignment(info, context, subContext);
@@ -624,6 +627,9 @@ namespace Microsoft.Interop
 
         public IEnumerable<StatementSyntax> GenerateCleanupStatements(TypePositionInfo info, StubCodeContext context)
         {
+            // When temporary state does not live across stages, the marshaller state is uninitialized
+            // in any stage other than Marshal and Unmarshal. So, we need to reinitialize it here in Cleanup
+            // from the native data so we can safely run any cleanup functionality in the marshaller.
             if (!context.AdditionalTemporaryStateLivesAcrossStages)
             {
                 foreach (var statement in GenerateUnmarshallerCollectionInitialization(info, context))
@@ -677,6 +683,11 @@ namespace Microsoft.Interop
 
         public IEnumerable<StatementSyntax> GenerateUnmarshalStatements(TypePositionInfo info, StubCodeContext context)
         {
+            // To fulfill the generic contiguous collection marshaller design,
+            // we need to emit code to initialize the collection marshaller with the size of native elements
+            // and set the unmanaged collection length before we marshal back the native data.
+            // This ensures that the marshaller object has enough state to successfully set up the ManagedValues
+            // and NativeValueStorage spans when the actual collection value is unmarshalled from native to the marshaller.
             foreach (var statement in GenerateUnmarshallerCollectionInitialization(info, context))
             {
                 yield return statement;    
@@ -930,7 +941,7 @@ namespace Microsoft.Interop
 
             List<StatementSyntax> elementStatements = elementMarshaller.Generate(localElementInfo, elementSubContext).ToList();
 
-            if (elementStatements.Count != 0)
+            if (elementStatements.Any())
             {
                 StatementSyntax marshallingStatement = Block(
                     List(elementMarshaller.Generate(localElementInfo, elementSetupSubContext)
