@@ -341,17 +341,26 @@ namespace Microsoft.Interop
             {
                 if (inspectedElements.Contains(elementName))
                 {
+                    throw new CyclicalCountElementInfoException(inspectedElements, elementName);
+                }
+
+                try
+                {
+                    TypePositionInfo? elementInfo = CreateForElementName(elementName, inspectedElements.Add(elementName));
+                    if (elementInfo is null)
+                    {
+                        diagnostics.ReportConfigurationNotSupported(marshalUsingData, ManualTypeMarshallingHelper.MarshalUsingProperties.CountElementName, elementName);
+                        return NoCountInfo.Instance;
+                    }
+                    return new CountElementCountInfo(elementInfo);
+                }
+                // Specifically catch the exception when we're trying to inspect the element that started the cycle.
+                // This ensures that we've unwound the whole cycle so when we return NoCountInfo.Instance, there will be no cycles in the count info.
+                catch (CyclicalCountElementInfoException ex) when (ex.StartOfCycle == elementName)
+                {
                     diagnostics.ReportConfigurationNotSupported(marshalUsingData, $"Cyclical {ManualTypeMarshallingHelper.MarshalUsingProperties.CountElementName}");
                     return NoCountInfo.Instance;
                 }
-
-                TypePositionInfo? elementInfo = CreateForElementName(elementName, inspectedElements.Add(elementName));
-                if (elementInfo is null)
-                {
-                    diagnostics.ReportConfigurationNotSupported(marshalUsingData, ManualTypeMarshallingHelper.MarshalUsingProperties.CountElementName, elementName);
-                    return NoCountInfo.Instance;
-                }
-                return new CountElementCountInfo(elementInfo);
             }
 
             return NoCountInfo.Instance;
@@ -722,6 +731,19 @@ namespace Microsoft.Interop
             }
             indirectionLevel = 0;
             return true;
+        }
+
+        private class CyclicalCountElementInfoException : Exception
+        {
+            public CyclicalCountElementInfoException(ImmutableHashSet<string> elementsInCycle, string startOfCycle)
+            {
+                ElementsInCycle = elementsInCycle;
+                StartOfCycle = startOfCycle;
+            }
+
+            public ImmutableHashSet<string> ElementsInCycle { get; }
+
+            public string StartOfCycle { get; }
         }
     }
 }
