@@ -138,6 +138,7 @@ namespace Build.Tasks
                         }
                     }
 
+                    assembliesToSkipPublish.Add(taskItem);
                     list.Add(taskItem);
                     continue;
                 }
@@ -162,14 +163,11 @@ namespace Build.Tasks
                             {
                                 string culture = moduleMetadataReader.GetString(moduleMetadataReader.GetAssemblyDefinition().Culture);
 
+                                // CoreRT doesn't consume resource assemblies yet so skip them
+                                assembliesToSkipPublish.Add(taskItem);
                                 if (culture == "" || culture.Equals("neutral", StringComparison.OrdinalIgnoreCase))
                                 {
                                     list.Add(taskItem);
-                                }
-                                else
-                                {
-                                    // CoreRT doesn't consume resource assemblies yet so skip them
-                                    assembliesToSkipPublish.Add(taskItem);
                                 }
                             }
                         }
