@@ -30,7 +30,7 @@ namespace System.Runtime.InteropServices.GeneratedMarshalling
             _managedSpan = managed;
             _sizeOfNativeElement = sizeOfNativeElement;
             int spaceToAllocate = managed.Length * sizeOfNativeElement;
-            _allocatedMemory = Marshal.AllocCoTaskMem(managed.Length);
+            _allocatedMemory = Marshal.AllocCoTaskMem(spaceToAllocate);
             NativeValueStorage = new Span<byte>((void*)_allocatedMemory, spaceToAllocate);
         }
 
