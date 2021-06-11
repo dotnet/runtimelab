@@ -1849,9 +1849,17 @@ namespace Internal.TypeSystem.Interop
                         new MethodSignature(0, 0, Context.GetWellKnownType(WellKnownType.Void),
                             new TypeDesc[] { Context.GetWellKnownType(WellKnownType.IntPtr) }))));
 
-                cleanupCodeStream.EmitLdArg(Index - 1);
-                cleanupCodeStream.EmitLdLoc(vSafeHandle);
-                cleanupCodeStream.EmitStInd(ManagedType);
+                if (IsHRSwappedRetVal)
+                {
+                    cleanupCodeStream.EmitLdLoc(vSafeHandle);
+                    StoreManagedValue(cleanupCodeStream);
+                }
+                else
+                {
+                    cleanupCodeStream.EmitLdArg(Index - 1);
+                    cleanupCodeStream.EmitLdLoc(vSafeHandle);
+                    cleanupCodeStream.EmitStInd(ManagedType);
+                }
 
                 cleanupCodeStream.EmitLabel(lSkipPropagation);
             }
