@@ -60,7 +60,7 @@ To enable this mode, add following item to an `ItemGroup` in your project file:
 
 ```xml
   <ItemGroup>
-    <AppContextSwitchOverrides Include="Switch.System.Reflection.Disabled.DoNotThrowForNames" />
+    <RuntimeHostConfigurationOption Include="Switch.System.Reflection.Disabled.DoNotThrowForNames" Value="true" />
   </ItemGroup>
 ```
 
@@ -68,7 +68,7 @@ To achieve similar result for when querying for ``Assembly`` (will instead give 
 
 ```xml
   <ItemGroup>
-    <AppContextSwitchOverrides Include="Switch.System.Reflection.Disabled.DoNotThrowForAssembly" />
+    <RuntimeHostConfigurationOption Include="Switch.System.Reflection.Disabled.DoNotThrowForAssembly" Value="true" />
   </ItemGroup>
 ```
 
@@ -77,7 +77,7 @@ And here for CustomAttributes (will return an empty array):
 
 ```xml
   <ItemGroup>
-    <AppContextSwitchOverrides Include="Switch.System.Reflection.Disabled.DoNotThrowForAttributes" />
+    <RuntimeHostConfigurationOption Include="Switch.System.Reflection.Disabled.DoNotThrowForAttributes" Value="true" />
   </ItemGroup>
 ```
 
@@ -87,8 +87,8 @@ To make ``NativeLibrary`` API, and on the same occasion``Socket``, to work, you'
 
 ```xml
   <ItemGroup>
-    <AppContextSwitchOverrides Include="Switch.System.Reflection.Disabled.DoNotThrowForAssembly" />
-    <AppContextSwitchOverrides Include="Switch.System.Reflection.Disabled.DoNotThrowForAttributes" />
+    <RuntimeHostConfigurationOption Include="Switch.System.Reflection.Disabled.DoNotThrowForAssembly" Value="true" />
+    <RuntimeHostConfigurationOption Include="Switch.System.Reflection.Disabled.DoNotThrowForAttributes" Value="true" />
   </ItemGroup>
 ```
 
