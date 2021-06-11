@@ -46,7 +46,7 @@ namespace System.Runtime.InteropServices.GeneratedMarshalling
             }
             managedSpan = managed;
             int spaceToAllocate = managed.Length * sizeOfNativeElement;
-            if (spaceToAllocate < stackSpace.Length)
+            if (spaceToAllocate <= stackSpace.Length)
             {
                 NativeValueStorage = stackSpace[0..spaceToAllocate];
             }
@@ -101,10 +101,7 @@ namespace System.Runtime.InteropServices.GeneratedMarshalling
 
         public void FreeNative()
         {
-            if (allocatedMemory != IntPtr.Zero)
-            {
-                Marshal.FreeCoTaskMem(allocatedMemory);
-            }
+            Marshal.FreeCoTaskMem(allocatedMemory);
         }
     }
 
@@ -207,7 +204,7 @@ namespace System.Runtime.InteropServices.GeneratedMarshalling
         {
             if (inner.ManagedValues.Length == 0)
             {
-                return ref *(byte*)0x1;
+                return ref *(byte*)0xa5a5a5a5;
             }
             return ref inner.GetPinnableReference();
         }
@@ -278,7 +275,7 @@ namespace System.Runtime.InteropServices.GeneratedMarshalling
         {
             if (inner.ManagedValues.Length == 0)
             {
-                return ref *(byte*)0x1;
+                return ref *(byte*)0xa5a5a5a5;
             }
             return ref inner.GetPinnableReference();
         }
@@ -344,6 +341,7 @@ namespace System.Runtime.InteropServices.GeneratedMarshalling
         public DirectSpanMarshaller(Span<T> managed, Span<byte> stackSpace, int sizeOfNativeElement)
             :this(sizeOfNativeElement)
         {
+            Debug.Assert(stackSpace.IsEmpty);
             data = managed;
         }
 
@@ -389,10 +387,7 @@ namespace System.Runtime.InteropServices.GeneratedMarshalling
 
         public void FreeNative()
         {
-            if (allocatedMemory != null)
-            {
-                Marshal.FreeCoTaskMem((IntPtr)allocatedMemory);
-            }
+            Marshal.FreeCoTaskMem((IntPtr)allocatedMemory);
         }
     }
 }
