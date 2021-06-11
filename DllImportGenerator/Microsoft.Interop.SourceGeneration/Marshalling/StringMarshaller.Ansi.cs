@@ -85,7 +85,7 @@ namespace Microsoft.Interop
                                 ExpressionStatement(
                                     AssignmentExpression(
                                         SyntaxKind.SimpleAssignmentExpression,
-                                        IdentifierName(GetAllocationMarkerIdentifier(managedIdentifier)),
+                                        IdentifierName(GetAllocationMarkerIdentifier(info, context)),
                                         LiteralExpression(SyntaxKind.TrueLiteralExpression))));
                         }
 
@@ -126,7 +126,7 @@ namespace Microsoft.Interop
                                             BinaryExpression(
                                                 SyntaxKind.EqualsExpression,
                                                 IdentifierName(nativeIdentifier),
-                                                LiteralExpression(SyntaxKind.NullLiteralExpression)),
+                                                LiteralExpression(SyntaxKind.DefaultLiteralExpression)),
                                             LiteralExpression(SyntaxKind.NullLiteralExpression),
                                             ObjectCreationExpression(
                                                 PredefinedType(Token(SyntaxKind.StringKeyword)),

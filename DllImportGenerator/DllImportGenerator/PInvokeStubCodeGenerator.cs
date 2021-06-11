@@ -26,11 +26,9 @@ namespace Microsoft.Interop
     /// </remarks>
     internal sealed class PInvokeStubCodeGenerator : StubCodeContext
     {
-        public override bool PinningSupported => true;
+        public override bool SingleFrameSpansNativeContext => true;
 
-        public override bool StackSpaceUsable => true;
-
-        public override bool CanUseAdditionalTemporaryState => true;
+        public override bool AdditionalTemporaryStateLivesAcrossStages => true;
 
         /// <summary>
         /// Identifier for managed return value
@@ -105,17 +103,24 @@ namespace Microsoft.Interop
 
         public override (string managed, string native) GetIdentifiers(TypePositionInfo info)
         {
-            if (info.IsManagedReturnPosition && !info.IsNativeReturnPosition)
+            // If the info is in the managed return position, then we need to generate a name to use
+            // for both the managed and native values since there is no name in the signature for the return value.
+            if (info.IsManagedReturnPosition)
             {
                 return (ReturnIdentifier, ReturnNativeIdentifier);
             }
-            else if (!info.IsManagedReturnPosition && info.IsNativeReturnPosition)
+            // If the info is in the native return position but is not in the managed return position,
+            // then that means that the stub is introducing an additional info for the return position.
+            // This means that there is no name in source for this info, so we must provide one here.
+            // We can't use ReturnIdentifier or ReturnNativeIdentifier since that will be used by the managed return value.
+            // Additionally, since all use cases today of a TypePositionInfo in the native position but not the managed
+            // are for infos that aren't in the managed signature at all (PreserveSig scenario), we don't have a name
+            // that we can use from source. As a result, we generate another name for the native return value
+            // and use the same name for native and managed.
+            else if (info.IsNativeReturnPosition)
             {
+                Debug.Assert(info.ManagedIndex == TypePositionInfo.UnsetIndex);
                 return (InvokeReturnIdentifier, InvokeReturnIdentifier);
-            }
-            else if (info.IsManagedReturnPosition && info.IsNativeReturnPosition)
-            {
-                return (ReturnIdentifier, ReturnNativeIdentifier);
             }
             else
             {
@@ -204,7 +209,7 @@ namespace Microsoft.Interop
                 int initialCount = statements.Count;
                 this.CurrentStage = stage;
 
-                if (!invokeReturnsVoid && (stage == Stage.Setup || stage == Stage.Unmarshal || stage == Stage.GuaranteedUnmarshal))
+                if (!invokeReturnsVoid && (stage is Stage.Setup or Stage.Unmarshal or Stage.GuaranteedUnmarshal or Stage.Cleanup))
                 {
                     // Handle setup and unmarshalling for return
                     var retStatements = retMarshaller.Generator.Generate(retMarshaller.TypeInfo, this);

@@ -172,6 +172,15 @@
   <data name="CustomTypeMarshallingNativeToManagedUnsupported" xml:space="preserve">
     <value>The specified parameter needs to be marshalled from native to managed, but the native type '{0}' does not support it.</value>
   </data>
+  <data name="GeneratedDllImportContainingTypeMissingModifiersDescription" xml:space="preserve">
+    <value>Types that contain methods marked with 'GeneratedDllImportAttribute' must be 'partial'. P/Invoke source generation will ignore methods contained within non-partial types.</value>
+  </data>
+  <data name="GeneratedDllImportContainingTypeMissingModifiersMessage" xml:space="preserve">
+    <value>Type '{0}' contains methods marked with 'GeneratedDllImportAttribute' and should be 'partial'. P/Invoke source generation will ignore methods contained within non-partial types.</value>
+  </data>
+  <data name="GeneratedDllImportContainingTypeMissingModifiersTitle" xml:space="preserve">
+    <value>Types that contain methods marked with 'GeneratedDllImportAttribute' must be 'partial'.</value>
+  </data>
   <data name="GeneratedDllImportMissingModifiersDescription" xml:space="preserve">
     <value>Methods marked with 'GeneratedDllImportAttribute' should be 'static' and 'partial'. P/Invoke source generation will ignore methods that are not 'static' and 'partial'.</value>
   </data>
@@ -276,9 +285,6 @@
   </data>
   <data name="TypeNotSupportedTitle" xml:space="preserve">
     <value>Specified type is not supported by source-generated P/Invokes</value>
-  </data>
-  <data name="ValuePropertyMarshallingRequiresAdditionalState" xml:space="preserve">
-    <value>Marshalling a value between managed and native with a native type with a 'Value' property requires extra state, which is not supported in this context.</value>
   </data>
   <data name="ValuePropertyMustHaveGetterDescription" xml:space="preserve">
     <value>The native type's 'Value' property must have a getter to support marshalling from managed to native.</value>

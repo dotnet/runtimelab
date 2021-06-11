@@ -4,5 +4,5 @@ using System.Text;
 
 namespace Microsoft.Interop
 {
-    public record InteropGenerationOptions(bool UseMarshalType);
+    public record InteropGenerationOptions(bool UseMarshalType, bool UseInternalUnsafeType);
 }
