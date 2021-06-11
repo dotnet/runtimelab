@@ -81,6 +81,28 @@ namespace Microsoft.Interop
             List<(TypePositionInfo TypeInfo, IMarshallingGenerator Generator)> allMarshallers = new(this.paramMarshallers);
             allMarshallers.Add(retMarshaller);
 
+            // We are doing a topological sort of our marshallers to ensure that each parameter/return value's
+            // dependencies are unmarshalled before their dependents. This comes up in the case of contiguous
+            // collections, where the number of elements in a collection are provided via another parameter/return value.
+            // When using nested collections, the parameter that represents the number of elements of each element of the
+            // outer collection is another collection. As a result, there are two options on how to retrieve the size.
+            // Either we partially unmarshal the collection of counts while unmarshalling the collection of elements,
+            // or we unmarshal our parameters and return value in an order such that we can use the managed identifiers
+            // for our lengths.
+            // Here's an example signature where the dependency shows up:
+            //
+            // [GeneratedDllImport(NativeExportsNE_Binary, EntryPoint = "transpose_matrix")]
+            // [return: MarshalUsing(CountElementName = "numColumns")]
+            // [return: MarshalUsing(CountElementName = "numRows", ElementIndirectionLevel = 1)]
+            // public static partial int[][] TransposeMatrix(
+            //  int[][] matrix,
+            //  [MarshalUsing(CountElementName="numColumns")] ref int[] numRows,
+            //  int numColumns);
+            //
+            // In this scenario, we'd traditionally unmarshal the return value and then each parameter. However, since
+            // the return value has dependencies on numRows and numColumns and numRows has a dependency on numColumns,
+            // we want to unmarshal numColumns, then numRows, then the return value.
+            // A topological sort ensures we get this order correct.
             this.sortedMarshallers = MarshallerHelpers.GetTopologicallySortedElements(
                 allMarshallers,
                 static m => GetInfoIndex(m.TypeInfo),
@@ -284,7 +306,6 @@ namespace Microsoft.Interop
                         }
                     }
                 }
-
 
                 if (stage == Stage.Invoke)
                 {

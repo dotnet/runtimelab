@@ -211,6 +211,9 @@
   <data name="GetPinnableReferenceShouldSupportAllocatingMarshallingFallbackMessage" xml:space="preserve">
     <value>Type '{0}' has a 'GetPinnableReference' method but its native type does not support marshalling in scenarios where pinning is impossible</value>
   </data>
+  <data name="GraphHasCycles" xml:space="preserve">
+    <value>The provided graph has cycles and cannot be topologically sorted.</value>
+  </data>
   <data name="InAttributeNotSupportedWithoutOut" xml:space="preserve">
     <value>The '[In]' attribute is not supported unless the '[Out]' attribute is also used. The behavior of the '[In]' attribute without the '[Out]' attribute is the same as the default behavior.</value>
   </data>

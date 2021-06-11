@@ -451,10 +451,12 @@ namespace Microsoft.Interop
 
                 numIndirectionLevels = indexerStack.Count;
 
-                ExpressionSyntax indexedNumElements = IdentifierName(lastContext!.GetIdentifiers(numElementsInfo).managed);
+                ExpressionSyntax indexedNumElements = IdentifierName(lastContext.GetIdentifiers(numElementsInfo).managed);
                 while (indexerStack.Count > 0)
                 {
-                    indexedNumElements = ElementAccessExpression(indexedNumElements).AddArgumentListArguments(Argument(IdentifierName(indexerStack.Pop())));
+                    NameSyntax indexer = IdentifierName(indexerStack.Pop());
+                    indexedNumElements = ElementAccessExpression(indexedNumElements)
+                        .AddArgumentListArguments(Argument(indexer));
                 }
 
                 return indexedNumElements;

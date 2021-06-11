@@ -340,6 +340,15 @@ namespace Microsoft.Interop {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to The provided graph has cycles and cannot be topologically sorted..
+        /// </summary>
+        internal static string GraphHasCycles {
+            get {
+                return ResourceManager.GetString("GraphHasCycles", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to The &apos;[In]&apos; attribute is not supported unless the &apos;[Out]&apos; attribute is also used. The behavior of the &apos;[In]&apos; attribute without the &apos;[Out]&apos; attribute is the same as the default behavior..
         /// </summary>
         internal static string InAttributeNotSupportedWithoutOut {

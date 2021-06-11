@@ -76,10 +76,8 @@ namespace Microsoft.Interop
             }
 
             // Follow a progression of indexers of the following form:
-            // __i, __j, __k, __ii, __jj, __kk, etc.
-            StringBuilder indexerIdentifier = new StringBuilder("__");
-            indexerIdentifier.Append((char)('i' + (i % 3)), 1 + (i / 3));
-            return indexerIdentifier.ToString();
+            // __i0, __i1, __i2, __i3, etc/
+            return $"__i{i}";
         }
     }
 }

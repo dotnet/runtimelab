@@ -114,7 +114,7 @@ namespace Microsoft.Interop
         {
             Dictionary<U, int> elementIndexToEdgeMapNodeId = new(elements.Count);
             List<T> nodeIdToElement = new(elements.Count);
-            EdgeMap edgeMap = new EdgeMap(elements.Count);
+            EdgeMap edgeMap = new(elements.Count);
 
             int nextEdgeMapIndex = 0;
             foreach (var element in elements)
@@ -139,9 +139,9 @@ namespace Microsoft.Interop
             // Algorithm adapted from A. B. Kahn. 1962. Topological sorting of large networks. Commun. ACM 5, 11 (Nov. 1962), 558–562. DOI:https://doi.org/10.1145/368996.369025
 
             // L is the sorted list
-            List<T> L = new List<T>(elements.Count);
+            List<T> L = new(elements.Count);
             // S is the set of elements with no incoming edges (no dependencies on it)
-            List<T> S = new List<T>(elements.Count);
+            List<T> S = new(elements.Count);
 
             // Initialize S
             for (int node = 0; node < nodeIdToElement.Count; node++)
@@ -180,7 +180,7 @@ namespace Microsoft.Interop
             // If we have edges left, then we have a cycle.
             if (edgeMap.AnyEdges)
             {
-                throw new InvalidOperationException();
+                throw new InvalidOperationException(Resources.GraphHasCycles);
             }
 
             // If we make it here, we have a topologically sorted list.
