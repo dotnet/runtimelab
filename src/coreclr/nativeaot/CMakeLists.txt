@@ -4,7 +4,7 @@ endif (WIN32)
 
 if(MSVC)
   add_compile_options($<$<COMPILE_LANGUAGE:CXX>:/EHa->)   # Native AOT runtime does not use C++ exception handling
-  add_compile_options($<$<COMPILE_LANGUAGE:CXX>:/EHs>)
+  add_compile_options($<$<COMPILE_LANGUAGE:CXX>:/EHs->)
 
   # CFG runtime checks in C++ code are unnecessary overhead unless Native AOT compiler produces CFG compliant code as well
   # and CFG is enabled in the linker
