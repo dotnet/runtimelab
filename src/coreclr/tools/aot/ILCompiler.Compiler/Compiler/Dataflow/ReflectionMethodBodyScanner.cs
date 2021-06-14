@@ -210,6 +210,7 @@ namespace ILCompiler.Dataflow
             ReflectionPatternContext reflectionPatternContext = new ReflectionPatternContext(logger, reportingEnabled: true, type, new TypeOrigin(type));
             reflectionPatternContext.AnalyzingPattern();
             scanner.MarkTypeForDynamicallyAccessedMembers(ref reflectionPatternContext, type, annotation);
+            reflectionPatternContext.RecordHandledPattern();
             reflectionPatternContext.Dispose();
             return scanner._dependencies;
         }
