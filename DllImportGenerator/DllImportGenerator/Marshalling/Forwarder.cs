@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-
+using System.Runtime.InteropServices;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
@@ -15,9 +17,74 @@ namespace Microsoft.Interop
 
         public ParameterSyntax AsParameter(TypePositionInfo info)
         {
-            return Parameter(Identifier(info.InstanceIdentifier))
+            ParameterSyntax param = Parameter(Identifier(info.InstanceIdentifier))
                 .WithModifiers(TokenList(Token(info.RefKindSyntax)))
                 .WithType(info.ManagedType.AsTypeSyntax());
+
+            if (info.MarshallingAttributeInfo is MarshalAsInfo marshalAs)
+            {
+                // If the parameter has [MarshalAs] marshalling, we resurface that
+                // in the forwarding target since the built-in system understands it.
+                param = param.AddAttributeLists(
+                    AttributeList(SingletonSeparatedList(
+                        Attribute(ParseName(TypeNames.System_Runtime_InteropServices_MarshalAsAttribute))
+                        .WithArgumentList(AttributeArgumentList(SingletonSeparatedList(AttributeArgument(
+                        CastExpression(ParseTypeName(TypeNames.System_Runtime_InteropServices_UnmanagedType),
+                        LiteralExpression(SyntaxKind.NumericLiteralExpression,
+                            Literal((int)marshalAs.UnmanagedType)))))))
+                    )));
+            }
+            else if (info.MarshallingAttributeInfo is NativeContiguousCollectionMarshallingInfo collectionMarshalling
+                && collectionMarshalling.UseDefaultMarshalling
+                && collectionMarshalling.ElementCountInfo is NoCountInfo or SizeAndParamIndexInfo
+                && collectionMarshalling.ElementMarshallingInfo is NoMarshallingInfo or MarshalAsInfo
+                && info.ManagedType is IArrayTypeSymbol)
+            {
+                List<AttributeArgumentSyntax> marshalAsArguments = new List<AttributeArgumentSyntax>();
+                marshalAsArguments.Add(
+                    AttributeArgument(
+                        CastExpression(ParseTypeName(TypeNames.System_Runtime_InteropServices_UnmanagedType),
+                        LiteralExpression(SyntaxKind.NumericLiteralExpression,
+                            Literal((int)UnmanagedType.LPArray))))
+                    );
+                
+                if (collectionMarshalling.ElementCountInfo is SizeAndParamIndexInfo countInfo)
+                {
+                    if (countInfo.ConstSize != SizeAndParamIndexInfo.UnspecifiedData)
+                    {
+                        marshalAsArguments.Add(
+                            AttributeArgument(NameEquals("SizeConst"), null,
+                                LiteralExpression(SyntaxKind.NumericLiteralExpression,
+                                    Literal(countInfo.ConstSize)))
+                        );
+                    }
+                    if (countInfo.ParamIndex != SizeAndParamIndexInfo.UnspecifiedData)
+                    {
+                        marshalAsArguments.Add(
+                            AttributeArgument(NameEquals("SizeParamIndex"), null,
+                                LiteralExpression(SyntaxKind.NumericLiteralExpression,
+                                    Literal(countInfo.ParamIndex)))
+                        );
+                    }
+                }
+
+                if (collectionMarshalling.ElementMarshallingInfo is MarshalAsInfo elementMarshalAs)
+                {
+                    marshalAsArguments.Add(
+                        AttributeArgument(NameEquals("ArraySubType"), null,
+                            CastExpression(ParseTypeName(TypeNames.System_Runtime_InteropServices_UnmanagedType),
+                            LiteralExpression(SyntaxKind.NumericLiteralExpression,
+                                Literal((int)elementMarshalAs.UnmanagedType))))
+                        );
+                }
+                param = param.AddAttributeLists(
+                    AttributeList(SingletonSeparatedList(
+                        Attribute(ParseName(TypeNames.System_Runtime_InteropServices_MarshalAsAttribute))
+                        .WithArgumentList(AttributeArgumentList(SeparatedList(marshalAsArguments)))
+                    )));
+            }
+
+            return param;
         }
 
         public ArgumentSyntax AsArgument(TypePositionInfo info, StubCodeContext context)
