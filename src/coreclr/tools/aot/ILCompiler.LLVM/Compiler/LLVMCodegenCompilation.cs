@@ -14,6 +14,7 @@ using LLVMSharp.Interop;
 using ILCompiler.LLVM;
 using Internal.JitInterface;
 using Internal.IL.Stubs;
+using Internal.TypeSystem.Ecma;
 
 namespace ILCompiler
 {
@@ -23,7 +24,8 @@ namespace ILCompiler
         private string _outputFile;
 
         internal LLVMCodegenConfigProvider Options { get; }
-        internal LLVMModuleRef Module { get; }
+        // the LLVM Module generated from IL, can only be one.
+        internal static LLVMModuleRef Module { get; private set; }
         internal LLVMTargetDataRef TargetData { get; }
         public new LLVMCodegenNodeFactory NodeFactory { get; }
         internal LLVMDIBuilderRef DIBuilder { get; }
@@ -122,8 +124,7 @@ namespace ILCompiler
             try
             {
                 var sig = method.Signature;
-                if (sig.Length == 0 &&
-                    sig.ReturnType.IsVoid &&
+                if (sig.ReturnType.IsVoid &&
                     !method.RequiresInstArg() &&
                     sig.IsStatic) // speed up
                 {
@@ -133,6 +134,9 @@ namespace ILCompiler
                     // TODO: delete this external function when old module is gone
                     LLVMValueRef externFunc = Module.AddFunction(NodeFactory.NameMangler.GetMangledMethodName(method).ToString(), GetLLVMSignatureForMethod(sig, method.RequiresInstArg()));
                     externFunc.Linkage = LLVMLinkage.LLVMExternalLinkage;
+
+                    ILImporter.GenerateRuntimeExportThunk(this, method, externFunc);
+
                     ryuJitMethodCount++;
                 }
                 else ILImporter.CompileMethod(this, methodCodeNodeNeedingCode);

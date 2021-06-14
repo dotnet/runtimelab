@@ -96,7 +96,10 @@ void Llvm::llvmShutdown()
 
 [[noreturn]] void failFunctionCompilation()
 {
-    _function->deleteBody();
+    if (_function != nullptr)
+    {
+        _function->deleteBody();
+    }
     fatal(CORJIT_SKIPPED);
 }
 
@@ -369,7 +372,26 @@ void importStoreInd(llvm::IRBuilder<>& builder, GenTreeStoreInd* storeIndOp)
 
 Value* localVar(llvm::IRBuilder<>& builder, GenTreeLclVar* lclVar)
 {
-    Value* llvmRef = _localsMap->at(lclVar->GetLclNum());
+    Value* llvmRef;
+
+    unsigned int lclNum = lclVar->GetLclNum();
+    if (_localsMap->find(lclNum) == _localsMap->end())
+    {
+        if (_compiler->lvaIsParameter(lclNum))
+        {
+            llvmRef = _function->getArg(lclNum + 1);
+            _localsMap->insert({lclNum, llvmRef});
+        }
+        else
+        {
+            // unhandled scenario, local is not defined already, and is not a parameter
+            failFunctionCompilation();
+        }
+    }
+    else
+    {
+        llvmRef = _localsMap->at(lclNum);
+    }
 
     mapTreeIdValue(lclVar->gtTreeID, llvmRef);
     return llvmRef;
