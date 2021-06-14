@@ -21,10 +21,12 @@ namespace Microsoft.Interop
                 .WithModifiers(TokenList(Token(info.RefKindSyntax)))
                 .WithType(info.ManagedType.AsTypeSyntax());
 
-            if (info.MarshallingAttributeInfo is MarshalAsInfo marshalAs)
+            // If the parameter has [MarshalAs] marshalling, we resurface that
+            // in the forwarding target since the built-in system understands it.
+            // ICustomMarshaller marshalling requires additional information that we throw away earlier since it's unsupported,
+            // so explicitly do not resurface a [MarshalAs(UnmanagdType.CustomMarshaller)] attribute.
+            if (info.MarshallingAttributeInfo is MarshalAsInfo { UnmanagedType: not UnmanagedType.CustomMarshaler } marshalAs)
             {
-                // If the parameter has [MarshalAs] marshalling, we resurface that
-                // in the forwarding target since the built-in system understands it.
                 param = param.AddAttributeLists(
                     AttributeList(SingletonSeparatedList(
                         Attribute(ParseName(TypeNames.System_Runtime_InteropServices_MarshalAsAttribute))
@@ -37,7 +39,7 @@ namespace Microsoft.Interop
             else if (info.MarshallingAttributeInfo is NativeContiguousCollectionMarshallingInfo collectionMarshalling
                 && collectionMarshalling.UseDefaultMarshalling
                 && collectionMarshalling.ElementCountInfo is NoCountInfo or SizeAndParamIndexInfo
-                && collectionMarshalling.ElementMarshallingInfo is NoMarshallingInfo or MarshalAsInfo
+                && collectionMarshalling.ElementMarshallingInfo is NoMarshallingInfo or MarshalAsInfo { UnmanagedType: not UnmanagedType.CustomMarshaler }
                 && info.ManagedType is IArrayTypeSymbol)
             {
                 List<AttributeArgumentSyntax> marshalAsArguments = new List<AttributeArgumentSyntax>();
