@@ -8,35 +8,31 @@ using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
 namespace Microsoft.Interop
 {
-    internal class Forwarder : IMarshallingGenerator
+    internal class Forwarder : IMarshallingGenerator, IAttributedReturnTypeMarshallingGenerator
     {
         public TypeSyntax AsNativeType(TypePositionInfo info)
         {
             return info.ManagedType.AsTypeSyntax();
         }
 
-        public ParameterSyntax AsParameter(TypePositionInfo info)
+        private bool TryRehydrateMarshalAsAttribute(TypePositionInfo info, out AttributeSyntax marshalAsAttribute)
         {
-            ParameterSyntax param = Parameter(Identifier(info.InstanceIdentifier))
-                .WithModifiers(TokenList(Token(info.RefKindSyntax)))
-                .WithType(info.ManagedType.AsTypeSyntax());
-
+            marshalAsAttribute = null!;
             // If the parameter has [MarshalAs] marshalling, we resurface that
             // in the forwarding target since the built-in system understands it.
             // ICustomMarshaller marshalling requires additional information that we throw away earlier since it's unsupported,
             // so explicitly do not resurface a [MarshalAs(UnmanagdType.CustomMarshaller)] attribute.
             if (info.MarshallingAttributeInfo is MarshalAsInfo { UnmanagedType: not UnmanagedType.CustomMarshaler } marshalAs)
             {
-                param = param.AddAttributeLists(
-                    AttributeList(SingletonSeparatedList(
-                        Attribute(ParseName(TypeNames.System_Runtime_InteropServices_MarshalAsAttribute))
+                marshalAsAttribute = Attribute(ParseName(TypeNames.System_Runtime_InteropServices_MarshalAsAttribute))
                         .WithArgumentList(AttributeArgumentList(SingletonSeparatedList(AttributeArgument(
                         CastExpression(ParseTypeName(TypeNames.System_Runtime_InteropServices_UnmanagedType),
                         LiteralExpression(SyntaxKind.NumericLiteralExpression,
-                            Literal((int)marshalAs.UnmanagedType)))))))
-                    )));
+                            Literal((int)marshalAs.UnmanagedType)))))));
+                return true;
             }
-            else if (info.MarshallingAttributeInfo is NativeContiguousCollectionMarshallingInfo collectionMarshalling
+            
+            if (info.MarshallingAttributeInfo is NativeContiguousCollectionMarshallingInfo collectionMarshalling
                 && collectionMarshalling.UseDefaultMarshalling
                 && collectionMarshalling.ElementCountInfo is NoCountInfo or SizeAndParamIndexInfo
                 && collectionMarshalling.ElementMarshallingInfo is NoMarshallingInfo or MarshalAsInfo { UnmanagedType: not UnmanagedType.CustomMarshaler }
@@ -49,7 +45,7 @@ namespace Microsoft.Interop
                         LiteralExpression(SyntaxKind.NumericLiteralExpression,
                             Literal((int)UnmanagedType.LPArray))))
                     );
-                
+
                 if (collectionMarshalling.ElementCountInfo is SizeAndParamIndexInfo countInfo)
                 {
                     if (countInfo.ConstSize != SizeAndParamIndexInfo.UnspecifiedData)
@@ -79,11 +75,27 @@ namespace Microsoft.Interop
                                 Literal((int)elementMarshalAs.UnmanagedType))))
                         );
                 }
-                param = param.AddAttributeLists(
-                    AttributeList(SingletonSeparatedList(
-                        Attribute(ParseName(TypeNames.System_Runtime_InteropServices_MarshalAsAttribute))
-                        .WithArgumentList(AttributeArgumentList(SeparatedList(marshalAsArguments)))
-                    )));
+                marshalAsAttribute = Attribute(ParseName(TypeNames.System_Runtime_InteropServices_MarshalAsAttribute))
+                        .WithArgumentList(AttributeArgumentList(SeparatedList(marshalAsArguments)));
+                return true;
+            }
+
+            return false;
+        }
+
+        public ParameterSyntax AsParameter(TypePositionInfo info)
+        {
+            ParameterSyntax param = Parameter(Identifier(info.InstanceIdentifier))
+                .WithModifiers(TokenList(Token(info.RefKindSyntax)))
+                .WithType(info.ManagedType.AsTypeSyntax());
+
+            // If the parameter has [MarshalAs] marshalling, we resurface that
+            // in the forwarding target since the built-in system understands it.
+            // ICustomMarshaller marshalling requires additional information that we throw away earlier since it's unsupported,
+            // so explicitly do not resurface a [MarshalAs(UnmanagdType.CustomMarshaller)] attribute.
+            if (TryRehydrateMarshalAsAttribute(info, out AttributeSyntax marshalAsAttribute))
+            {
+                param = param.AddAttributeLists(AttributeList(SingletonSeparatedList(marshalAsAttribute)));
             }
 
             return param;
@@ -103,5 +115,14 @@ namespace Microsoft.Interop
         public bool UsesNativeIdentifier(TypePositionInfo info, StubCodeContext context) => false;
         
         public bool SupportsByValueMarshalKind(ByValueContentsMarshalKind marshalKind, StubCodeContext context) => true;
+
+        public AttributeListSyntax? GenerateAttributesForReturnType(TypePositionInfo info)
+        {
+            if (!TryRehydrateMarshalAsAttribute(info, out AttributeSyntax marshalAsAttribute))
+            {
+                return null;
+            }
+            return AttributeList(SingletonSeparatedList(marshalAsAttribute));
+        }
     }
 }

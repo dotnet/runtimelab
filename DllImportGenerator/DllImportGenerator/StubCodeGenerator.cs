@@ -354,6 +354,16 @@ namespace Microsoft.Interop
                 .WithAttributeLists(
                     SingletonList(AttributeList(
                         SingletonSeparatedList(CreateDllImportAttributeForTarget(GetTargetDllImportDataFromStubData())))));
+
+            if (retMarshaller.Generator is IAttributedReturnTypeMarshallingGenerator retGenerator)
+            {
+                AttributeListSyntax? returnAttribute = retGenerator.GenerateAttributesForReturnType(retMarshaller.TypeInfo);
+                if (returnAttribute is not null)
+                {
+                    dllImport = dllImport.AddAttributeLists(returnAttribute.WithTarget(AttributeTargetSpecifier(Identifier("return"))));
+                }
+            }
+
             foreach (var marshaller in paramMarshallers)
             {
                 ParameterSyntax paramSyntax = marshaller.Generator.AsParameter(marshaller.TypeInfo);
