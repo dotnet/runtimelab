@@ -381,7 +381,6 @@ llvm::Value* buildUserFuncCall(GenTreeCall* gtCall, llvm::IRBuilder<>& builder)
             continue;
         }
 
-        fgArgTabEntry* curArgTabEntry = _compiler->gtArgEntryByNode(gtCall, operand);
         // if it is an instance method call then the first parameter is this and that is always passed as an i8* on the
         // shadow stack
         if (isThisArg(gtCall, operand))
