@@ -636,7 +636,7 @@ namespace ILCompiler.DependencyAnalysis
         {
             _nodeFactory = factory;
             _objectFilePath = objectFilePath;
-            Module = compilation.Module;
+            Module = LLVMCodegenCompilation.Module;
             DIBuilder = compilation.DIBuilder;
         }
 
@@ -719,7 +719,7 @@ namespace ILCompiler.DependencyAnalysis
 
             try
             {
-                objectWriter.EmitReadyToRunHeaderCallback(compilation.Module.Context);
+                objectWriter.EmitReadyToRunHeaderCallback(LLVMCodegenCompilation.Module.Context);
                 //ObjectNodeSection managedCodeSection = null;
 
                 var listOfOffsets = new List<int>();
@@ -910,7 +910,7 @@ namespace ILCompiler.DependencyAnalysis
 
         private void GetCodeForReadyToRunGenericHelper(LLVMCodegenCompilation compilation, ReadyToRunGenericHelperNode node, NodeFactory factory)
         {
-            LLVMBuilderRef builder = compilation.Module.Context.CreateBuilder();
+            LLVMBuilderRef builder = LLVMCodegenCompilation.Module.Context.CreateBuilder();
             var args = new List<LLVMTypeRef>();
             MethodDesc delegateCtor = null;
             if (node.Id == ReadyToRunHelperId.DelegateCtor)
@@ -1047,7 +1047,7 @@ namespace ILCompiler.DependencyAnalysis
 
         private void GetCodeForReadyToRunHelper(LLVMCodegenCompilation compilation, ReadyToRunHelperNode node, NodeFactory factory)
         {
-            LLVMBuilderRef builder = compilation.Module.Context.CreateBuilder();
+            LLVMBuilderRef builder = LLVMCodegenCompilation.Module.Context.CreateBuilder();
 
             LLVMValueRef helperFunc = Module.AddFunction(node.GetMangledName(factory.NameMangler), LLVMTypeRef.CreateFunction(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), new LLVMTypeRef[] { LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0) /* shadow stack */}));
 
@@ -1129,7 +1129,7 @@ namespace ILCompiler.DependencyAnalysis
 
         private void GetCodeForTentativeMethod(LLVMCodegenCompilation compilation, TentativeMethodNode node, NodeFactory factory)
         {
-            LLVMBuilderRef builder = compilation.Module.Context.CreateBuilder();
+            LLVMBuilderRef builder = LLVMCodegenCompilation.Module.Context.CreateBuilder();
             MethodDesc method = node.Method;
             string mangledName = node.GetMangledName(factory.NameMangler);
             LLVMValueRef tentativeStub = ILImporter.GetOrCreateLLVMFunction(Module, mangledName, method.Signature, method.RequiresInstArg());
