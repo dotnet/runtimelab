@@ -23,6 +23,7 @@
     <!-- These rely on implementation details of CoreCLR CoreLib -->
     <ItemGroup Condition="'$(TestBuildMode)' == 'nativeaot'">
       <DisabledProjects Include="$(TestRoot)Interop\COM\Activator\Activator.csproj" />
+      <DisabledProjects Include="$(TestRoot)Interop\COM\Activator\ActivatorBuiltInComDisabled.csproj" />
       <DisabledProjects Include="$(TestRoot)Interop\ICastable\Castable.csproj" />
       <DisabledProjects Include="$(TestRoot)Interop\IJW\LoadIjwFromModuleHandle\LoadIjwFromModuleHandle.csproj" />
     </ItemGroup>
