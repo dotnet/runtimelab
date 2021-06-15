@@ -5,7 +5,6 @@ set(COMMON_RUNTIME_SOURCES
     rhassert.cpp
     CachedInterfaceDispatch.cpp
     Crst.cpp
-    DebugEventSource.cpp
     DebugHeader.cpp
     eetype.cpp
     EHHelpers.cpp

@@ -228,17 +228,6 @@ namespace System.Runtime
         internal static extern unsafe bool RhpSfiNext(ref StackFrameIterator pThis, uint* uExCollideClauseIdx, bool* fUnwoundReversePInvoke);
 
         //
-        // DebugEventSource
-        //
-
-        [RuntimeImport(Redhawk.BaseName, "RhpGetRequestedExceptionEvents")]
-        [MethodImpl(MethodImplOptions.InternalCall)]
-        internal static extern ExceptionEventKind RhpGetRequestedExceptionEvents();
-
-        [DllImport(Redhawk.BaseName)]
-        internal static extern unsafe void RhpSendExceptionEventToDebugger(ExceptionEventKind eventKind, byte* ip, UIntPtr sp);
-
-        //
         // Miscellaneous helpers.
         //
 
