@@ -644,7 +644,11 @@ namespace Internal.TypeSystem.Interop
         protected void PropagateFromByRefArg(ILCodeStream stream, Home home)
         {
             stream.EmitLdArg(Index - 1);
-            stream.EmitLdInd(ManagedType);
+            switch (MarshalDirection)
+            {
+                case MarshalDirection.Forward: stream.EmitLdInd(ManagedType); break;
+                case MarshalDirection.Reverse: stream.EmitLdInd(NativeType); break;
+            }
             home.StoreValue(stream);
         }
 
@@ -664,7 +668,11 @@ namespace Internal.TypeSystem.Interop
 
             stream.EmitLdArg(Index - 1);
             home.LoadValue(stream);
-            stream.EmitStInd(ManagedType);
+            switch (MarshalDirection)
+            {
+                case MarshalDirection.Forward: stream.EmitStInd(ManagedType); break;
+                case MarshalDirection.Reverse: stream.EmitStInd(NativeType); break;
+            }
         }
 
         protected virtual void EmitMarshalArgumentManagedToNative()
@@ -1741,11 +1749,15 @@ namespace Internal.TypeSystem.Interop
         private void AllocSafeHandle(ILCodeStream codeStream)
         {
             var ctor = ManagedType.GetParameterlessConstructor();
-            if (ctor == null || ((MetadataType)ManagedType).IsAbstract)
+            if (ctor == null)
             {
                 ThrowHelper.ThrowMissingMethodException(ManagedType, ".ctor",
                     new MethodSignature(MethodSignatureFlags.None, genericParameterCount: 0,
                     ManagedType.Context.GetWellKnownType(WellKnownType.Void), TypeDesc.EmptyTypes));
+            }
+            if (((MetadataType)ManagedType).IsAbstract)
+            {
+                ThrowHelper.ThrowMarshalDirectiveException();
             }
 
             codeStream.Emit(ILOpcode.newobj, _ilCodeStreams.Emitter.NewToken(ctor));
