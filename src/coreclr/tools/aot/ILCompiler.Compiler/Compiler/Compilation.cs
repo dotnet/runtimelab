@@ -406,7 +406,7 @@ namespace ILCompiler
                 return reflectionCoreModule.GetKnownType("System.Reflection.Runtime.TypeInfos", "RuntimeTypeInfo");
             }
 
-            return null;
+            return TypeSystemContext.SystemModule.GetKnownType("System", "Type");
         }
 
         public bool IsFatPointerCandidate(MethodDesc containingMethod, MethodSignature signature)
