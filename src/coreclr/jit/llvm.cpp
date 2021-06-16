@@ -138,10 +138,12 @@ llvm::Type* getLlvmTypeForCorInfoType(CorInfoType corInfoType) {
         case CorInfoType::CORINFO_TYPE_ULONG:
             return Type::getInt64Ty(_llvmContext);
 
-            // these need to go on the shadow stack.  TODO when Ilc module is gone, as a performance improvement can we pass byrefs to non struct value types on the llvm stack?
+        // needs to go on the shadow stack.  TODO when Ilc module is gone, as a performance improvement can we pass byrefs to non struct value types on the llvm stack?
         case CorInfoType::CORINFO_TYPE_BYREF:
-        case CorInfoType::CORINFO_TYPE_CLASS:
             failFunctionCompilation();
+
+        case CorInfoType::CORINFO_TYPE_CLASS:
+            return Type::getInt8PtrTy(_llvmContext);
 
         default:
             failFunctionCompilation();
@@ -278,6 +280,10 @@ Value* genTreeAsLlvmType(GenTree* tree, Type* type)
 
     if (tree->IsIntegralConst() && tree->TypeIs(TYP_INT))
     {
+        if (type->isPointerTy())
+        {
+            return _builder->CreateIntToPtr(v, type);
+        }
         return _builder->getInt({(unsigned int)type->getPrimitiveSizeInBits().getFixedSize(), (uint64_t)tree->AsIntCon()->IconValue(), true});
     }
     failFunctionCompilation();
@@ -457,7 +463,27 @@ Value* buildInd(llvm::IRBuilder<>& builder, GenTree* node, Value* ptr)
 
 Value* buildNe(llvm::IRBuilder<>& builder, GenTree* node, Value* op1, Value* op2)
 {
-    return mapTreeIdValue(node->gtTreeID, builder.CreateICmpNE(op1, op2));
+    // TODO: when the next integer binary operator is implemented, factor out the widening
+    Type* op1Type = op1->getType();
+    Type* op2Type = op2->getType();
+    if (op1Type == op2Type)
+    {
+        // no widening required
+        return mapTreeIdValue(node->gtTreeID, builder.CreateICmpNE(op1, op2));
+    }
+    else
+    {
+        if (op1Type->isIntegerTy() && op2Type->isIntegerTy())
+        {
+            Type* type = ((llvm::IntegerType*)op1Type)->getBitWidth() >= ((llvm::IntegerType*)op2Type)->getBitWidth()
+                       ? op1Type
+                       : op2Type;
+            return mapTreeIdValue(node->gtTreeID, builder.CreateICmpNE(castIfNecessary(builder, op1, type),
+                                                                       castIfNecessary(builder, op2, type)));
+        }
+    }
+    // unsupported comparison 
+    failFunctionCompilation();
 }
 
 void importStoreInd(llvm::IRBuilder<>& builder, GenTreeStoreInd* storeIndOp)
