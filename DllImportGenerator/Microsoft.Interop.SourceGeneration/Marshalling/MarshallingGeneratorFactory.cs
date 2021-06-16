@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -9,117 +8,41 @@ using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
 namespace Microsoft.Interop
 {
-    /// <summary>
-    /// Interface for generation of marshalling code for P/Invoke stubs
-    /// </summary>
-    internal interface IMarshallingGenerator
+    public interface IMarshallingGeneratorFactory
     {
         /// <summary>
-        /// Get the native type syntax for <paramref name="info"/>
+        /// Create an <see cref="IMarshallingGenerator"/> instance for marshalling the supplied type in the given position.
         /// </summary>
-        /// <param name="info">Object to marshal</param>
-        /// <returns>Type syntax for the native type representing <paramref name="info"/></returns>
-        TypeSyntax AsNativeType(TypePositionInfo info);
-
-        /// <summary>
-        /// Get the <paramref name="info"/> as a parameter of the P/Invoke declaration
-        /// </summary>
-        /// <param name="info">Object to marshal</param>
-        /// <returns>Parameter syntax for <paramref name="info"/></returns>
-        ParameterSyntax AsParameter(TypePositionInfo info);
-
-        /// <summary>
-        /// Get the <paramref name="info"/> as an argument to be passed to the P/Invoke
-        /// </summary>
-        /// <param name="info">Object to marshal</param>
-        /// <param name="context">Code generation context</param>
-        /// <returns>Argument syntax for <paramref name="info"/></returns>
-        ArgumentSyntax AsArgument(TypePositionInfo info, StubCodeContext context);
-
-        /// <summary>
-        /// Generate code for marshalling
-        /// </summary>
-        /// <param name="info">Object to marshal</param>
-        /// <param name="context">Code generation context</param>
-        /// <returns>List of statements to be added to the P/Invoke stub</returns>
-        /// <remarks>
-        /// The generator should return the appropriate statements based on the
-        /// <see cref="StubCodeContext.CurrentStage" /> of <paramref name="context"/>.
-        /// For <see cref="StubCodeContext.Stage.Pin"/>, any statements not of type
-        /// <see cref="FixedStatementSyntax"/> will be ignored.
-        /// </remarks>
-        IEnumerable<StatementSyntax> Generate(TypePositionInfo info, StubCodeContext context);
-
-        /// <summary>
-        /// Returns whether or not this marshaller uses an identifier for the native value in addition
-        /// to an identifer for the managed value.
-        /// </summary>
-        /// <param name="info">Object to marshal</param>
-        /// <param name="context">Code generation context</param>
-        /// <returns>If the marshaller uses an identifier for the native value, true; otherwise, false.</returns>
-        /// <remarks>
-        /// <see cref="StubCodeContext.CurrentStage" /> of <paramref name="context"/> may not be valid.
-        /// </remarks>
-        bool UsesNativeIdentifier(TypePositionInfo info, StubCodeContext context);
-
-        /// <summary>
-        /// Returns if the given ByValueContentsMarshalKind is supported in the current marshalling context.
-        /// A supported marshal kind has a different behavior than the default behavior.
-        /// </summary>
-        /// <param name="marshalKind">The marshal kind.</param>
-        /// <param name="context">The marshalling context.</param>
-        /// <returns></returns>
-        bool SupportsByValueMarshalKind(ByValueContentsMarshalKind marshalKind, StubCodeContext context);
+        /// <param name="info">Type details</param>
+        /// <param name="context">Metadata about the stub the type is associated with</param>
+        /// <returns>A <see cref="IMarshallingGenerator"/> instance.</returns>
+        public IMarshallingGenerator Create(
+            TypePositionInfo info,
+            StubCodeContext context);
     }
 
-    /// <summary>
-    /// Exception used to indicate marshalling isn't supported.
-    /// </summary>
-    internal class MarshallingNotSupportedException : Exception
+    public sealed class DefaultMarshallingGeneratorFactory : IMarshallingGeneratorFactory
     {
-        /// <summary>
-        /// Construct a new <see cref="MarshallingNotSupportedException"/> instance.
-        /// </summary>
-        /// <param name="info"><see cref="Microsoft.Interop.TypePositionInfo"/> instance</param>
-        /// <param name="context"><see cref="Microsoft.Interop.StubCodeContext"/> instance</param>
-        public MarshallingNotSupportedException(TypePositionInfo info, StubCodeContext context)
+        private static readonly ByteBoolMarshaller ByteBool = new();
+        private static readonly WinBoolMarshaller WinBool = new();
+        private static readonly VariantBoolMarshaller VariantBool = new();
+
+        private static readonly Utf16CharMarshaller Utf16Char = new();
+        private static readonly Utf16StringMarshaller Utf16String = new();
+        private static readonly Utf8StringMarshaller Utf8String = new();
+        private static readonly AnsiStringMarshaller AnsiString = new AnsiStringMarshaller(Utf8String);
+        private static readonly PlatformDefinedStringMarshaller PlatformDefinedString = new PlatformDefinedStringMarshaller(Utf16String, Utf8String);
+
+        private static readonly Forwarder Forwarder = new();
+        private static readonly BlittableMarshaller Blittable = new();
+        private static readonly DelegateMarshaller Delegate = new();
+        private static readonly SafeHandleMarshaller SafeHandle = new();
+        private InteropGenerationOptions Options { get; }
+
+        public DefaultMarshallingGeneratorFactory(InteropGenerationOptions options)
         {
-            this.TypePositionInfo = info;
-            this.StubCodeContext = context;
+            this.Options = options;
         }
-
-        /// <summary>
-        /// Type that is being marshalled.
-        /// </summary>
-        public TypePositionInfo TypePositionInfo { get; private init; }
-
-        /// <summary>
-        /// Context in which the marshalling is taking place.
-        /// </summary>
-        public StubCodeContext StubCodeContext { get; private init; }
-
-        /// <summary>
-        /// [Optional] Specific reason marshalling of the supplied type isn't supported.
-        /// </summary>
-        public string? NotSupportedDetails { get; init; }
-    }
-
-    internal class MarshallingGenerators
-    {
-        public static readonly ByteBoolMarshaller ByteBool = new ByteBoolMarshaller();
-        public static readonly WinBoolMarshaller WinBool = new WinBoolMarshaller();
-        public static readonly VariantBoolMarshaller VariantBool = new VariantBoolMarshaller();
-
-        public static readonly Utf16CharMarshaller Utf16Char = new Utf16CharMarshaller();
-        public static readonly Utf16StringMarshaller Utf16String = new Utf16StringMarshaller();
-        public static readonly Utf8StringMarshaller Utf8String = new Utf8StringMarshaller();
-        public static readonly AnsiStringMarshaller AnsiString = new AnsiStringMarshaller(Utf8String);
-        public static readonly PlatformDefinedStringMarshaller PlatformDefinedString = new PlatformDefinedStringMarshaller(Utf16String, Utf8String);
-
-        public static readonly Forwarder Forwarder = new Forwarder();
-        public static readonly BlittableMarshaller Blittable = new BlittableMarshaller();
-        public static readonly DelegateMarshaller Delegate = new DelegateMarshaller();
-        public static readonly HResultExceptionMarshaller HResultException = new HResultExceptionMarshaller();
 
         /// <summary>
         /// Create an <see cref="IMarshallingGenerator"/> instance for marshalling the supplied type in the given position.
@@ -127,15 +50,14 @@ namespace Microsoft.Interop
         /// <param name="info">Type details</param>
         /// <param name="context">Metadata about the stub the type is associated with</param>
         /// <returns>A <see cref="IMarshallingGenerator"/> instance.</returns>
-        public static IMarshallingGenerator Create(
+        public IMarshallingGenerator Create(
             TypePositionInfo info,
-            StubCodeContext context,
-            AnalyzerConfigOptions options)
+            StubCodeContext context)
         {
-            return ValidateByValueMarshalKind(context, info, CreateCore(info, context, options));
+            return ValidateByValueMarshalKind(context, info, CreateCore(info, context));
         }
 
-        private static IMarshallingGenerator ValidateByValueMarshalKind(StubCodeContext context, TypePositionInfo info, IMarshallingGenerator generator)
+        private IMarshallingGenerator ValidateByValueMarshalKind(StubCodeContext context, TypePositionInfo info, IMarshallingGenerator generator)
         {
             if (info.IsByRef && info.ByValueContentsMarshalKind != ByValueContentsMarshalKind.Default)
             {
@@ -168,23 +90,10 @@ namespace Microsoft.Interop
         /// <param name="info">Type details</param>
         /// <param name="context">Metadata about the stub the type is associated with</param>
         /// <returns>A <see cref="IMarshallingGenerator"/> instance.</returns>
-        private static IMarshallingGenerator CreateCore(
+        private IMarshallingGenerator CreateCore(
             TypePositionInfo info,
-            StubCodeContext context,
-            AnalyzerConfigOptions options)
+            StubCodeContext context)
         {
-            if (options.GenerateForwarders())
-            {
-                return MarshallingGenerators.Forwarder;
-            }
-
-            if (info.IsNativeReturnPosition && !info.IsManagedReturnPosition)
-            {
-                // Use marshaller for native HRESULT return / exception throwing
-                System.Diagnostics.Debug.Assert(info.ManagedType.SpecialType == SpecialType.System_Int32);
-                return HResultException;
-            }
-
             switch (info)
             {
                 // Blittable primitives with no marshalling info or with a compatible [MarshalAs] attribute.
@@ -244,13 +153,13 @@ namespace Microsoft.Interop
                             NotSupportedDetails = Resources.SafeHandleByRefMustBeConcrete
                         };
                     }
-                    return new SafeHandleMarshaller(options);
+                    return SafeHandle;
 
                 // Marshalling in new model.
                 // Must go before the cases that do not explicitly check for marshalling info to support
                 // the user overridding the default marshalling rules with a MarshalUsing attribute.
                 case { MarshallingAttributeInfo: NativeMarshallingAttributeInfo marshalInfo }:
-                    return CreateCustomNativeTypeMarshaller(info, context, marshalInfo, options);
+                    return CreateCustomNativeTypeMarshaller(info, context, marshalInfo);
 
                 case { MarshallingAttributeInfo: BlittableTypeAttributeInfo }:
                     return Blittable;
@@ -275,7 +184,7 @@ namespace Microsoft.Interop
             }
         }
 
-        private static IMarshallingGenerator CreateCharMarshaller(TypePositionInfo info, StubCodeContext context)
+        private IMarshallingGenerator CreateCharMarshaller(TypePositionInfo info, StubCodeContext context)
         {
             MarshallingInfo marshalInfo = info.MarshallingAttributeInfo;
             if (marshalInfo is NoMarshallingInfo)
@@ -319,7 +228,7 @@ namespace Microsoft.Interop
             throw new MarshallingNotSupportedException(info, context);
         }
 
-        private static IMarshallingGenerator CreateStringMarshaller(TypePositionInfo info, StubCodeContext context)
+        private IMarshallingGenerator CreateStringMarshaller(TypePositionInfo info, StubCodeContext context)
         {
             MarshallingInfo marshalInfo = info.MarshallingAttributeInfo;
             if (marshalInfo is NoMarshallingInfo)
@@ -363,7 +272,7 @@ namespace Microsoft.Interop
             throw new MarshallingNotSupportedException(info, context);
         }
         
-        private static ExpressionSyntax GetNumElementsExpressionFromMarshallingInfo(TypePositionInfo info, CountInfo count, StubCodeContext context, AnalyzerConfigOptions options)
+        private ExpressionSyntax GetNumElementsExpressionFromMarshallingInfo(TypePositionInfo info, CountInfo count, StubCodeContext context)
         {
             return count switch
             {
@@ -463,7 +372,7 @@ namespace Microsoft.Interop
             }
         }
 
-        private static IMarshallingGenerator CreateCustomNativeTypeMarshaller(TypePositionInfo info, StubCodeContext context, NativeMarshallingAttributeInfo marshalInfo, AnalyzerConfigOptions options)
+        private IMarshallingGenerator CreateCustomNativeTypeMarshaller(TypePositionInfo info, StubCodeContext context, NativeMarshallingAttributeInfo marshalInfo)
         {
             ValidateCustomNativeTypeMarshallingSupported(info, context, marshalInfo);
 
@@ -482,7 +391,7 @@ namespace Microsoft.Interop
             // Collections have extra configuration, so handle them here.
             if (marshalInfo is NativeContiguousCollectionMarshallingInfo collectionMarshallingInfo)
             {
-                return CreateNativeCollectionMarshaller(info, context, collectionMarshallingInfo, options, marshallingStrategy);
+                return CreateNativeCollectionMarshaller(info, context, collectionMarshallingInfo, marshallingStrategy);
             }
 
             if (marshalInfo.ValuePropertyType is not null)
@@ -559,18 +468,16 @@ namespace Microsoft.Interop
             return new CustomNativeTypeWithValuePropertyMarshalling(nativeTypeMarshaller, valuePropertyTypeSyntax);
         }
 
-        private static IMarshallingGenerator CreateNativeCollectionMarshaller(
+        private IMarshallingGenerator CreateNativeCollectionMarshaller(
             TypePositionInfo info,
             StubCodeContext context,
             NativeContiguousCollectionMarshallingInfo collectionInfo,
-            AnalyzerConfigOptions options,
             ICustomNativeTypeMarshallingStrategy marshallingStrategy)
         {
             var elementInfo = TypePositionInfo.CreateForType(collectionInfo.ElementType, collectionInfo.ElementMarshallingInfo) with { ManagedIndex = info.ManagedIndex };
             var elementMarshaller = Create(
                 elementInfo,
-                new ContiguousCollectionElementMarshallingCodeContext(StubCodeContext.Stage.Setup, string.Empty, context),
-                options);
+                new ContiguousCollectionElementMarshallingCodeContext(StubCodeContext.Stage.Setup, string.Empty, context));
             var elementType = elementMarshaller.AsNativeType(elementInfo);
 
             bool isBlittable = elementMarshaller == Blittable;
@@ -594,7 +501,7 @@ namespace Microsoft.Interop
             if (info.IsManagedReturnPosition || (info.IsByRef && info.RefKind != RefKind.In))
             {
                 // In this case, we need a numElementsExpression supplied from metadata, so we'll calculate it here.
-                numElementsExpression = GetNumElementsExpressionFromMarshallingInfo(info, collectionInfo.ElementCountInfo, context, options);
+                numElementsExpression = GetNumElementsExpressionFromMarshallingInfo(info, collectionInfo.ElementCountInfo, context);
             }
 
             marshallingStrategy = new NumElementsExpressionMarshalling(
@@ -608,7 +515,7 @@ namespace Microsoft.Interop
                     new CustomNativeTypeMarshallingGenerator(marshallingStrategy, enableByValueContentsMarshalling: true),
                     elementType,
                     isBlittable,
-                    options);
+                    Options);
             }
 
             IMarshallingGenerator marshallingGenerator = new CustomNativeTypeMarshallingGenerator(marshallingStrategy, enableByValueContentsMarshalling: false);
