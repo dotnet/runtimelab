@@ -61,7 +61,7 @@ namespace Microsoft.Interop {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Marshalling an array from unmanaged to managed requires either the &apos;SizeParamIndex&apos; or &apos;SizeConst&apos; fields to be set on a &apos;MarshalAsAttribute&apos;..
+        ///   Looks up a localized string similar to Marshalling an array from unmanaged to managed requires either the &apos;SizeParamIndex&apos; or &apos;SizeConst&apos; fields to be set on a &apos;MarshalAsAttribute&apos; or the &apos;ConstantElementCount&apos; or &apos;CountElementName&apos; properties to be set on a &apos;MarshalUsingAttribute&apos;..
         /// </summary>
         internal static string ArraySizeMustBeSpecified {
             get {
@@ -75,15 +75,6 @@ namespace Microsoft.Interop {
         internal static string ArraySizeParamIndexOutOfRange {
             get {
                 return ResourceManager.GetString("ArraySizeParamIndexOutOfRange", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to The specified array size parameter for an array must be an integer type..
-        /// </summary>
-        internal static string ArraySizeParamTypeMustBeIntegral {
-            get {
-                return ResourceManager.GetString("ArraySizeParamTypeMustBeIntegral", resourceCulture);
             }
         }
         
@@ -106,6 +97,15 @@ namespace Microsoft.Interop {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to The specified collection size parameter for an collection must be an integer type. If the size information is applied to a nested collection, the size parameter must be a collection of one less level of nesting with an integral element..
+        /// </summary>
+        internal static string CollectionSizeParamTypeMustBeIntegral {
+            get {
+                return ResourceManager.GetString("CollectionSizeParamTypeMustBeIntegral", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to The specified parameter needs to be marshalled from managed to native, but the native type &apos;{0}&apos; does not support it..
         /// </summary>
         internal static string CustomTypeMarshallingManagedToNativeUnsupported {
@@ -120,6 +120,15 @@ namespace Microsoft.Interop {
         internal static string CustomTypeMarshallingNativeToManagedUnsupported {
             get {
                 return ResourceManager.GetString("CustomTypeMarshallingNativeToManagedUnsupported", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The provided graph has cycles and cannot be topologically sorted..
+        /// </summary>
+        internal static string GraphHasCycles {
+            get {
+                return ResourceManager.GetString("GraphHasCycles", resourceCulture);
             }
         }
         
