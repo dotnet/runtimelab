@@ -35,7 +35,6 @@ static const char* (*_addCodeReloc)(void*, void*);
 static const uint32_t (*_isRuntimeImport)(void*, CORINFO_METHOD_STRUCT_*);
 static char*     _outputFileName;
 static Function* _doNothingFunction;
-static unsigned int                       _pointerSize;
 Compiler::Info                            _info;
 Compiler*                                 _compiler;
 Function*                                 _function;
@@ -65,8 +64,6 @@ extern "C" DLLEXPORT void registerLlvmCallbacks(void*       thisPtr,
         _module = new Module(llvm::StringRef("netscripten-clrjit"), _llvmContext);
         _module->setTargetTriple(triple);
         _module->setDataLayout(dataLayout);
-        // TODO: better to get this from compiler, but where is it?
-        _pointerSize = _module->getDataLayout().getPointerSize();
         _outputFileName = (char*)malloc(strlen(outputFileName) + 7);
         strcpy(_outputFileName, "1.txt"); // ??? without this _outputFileName is corrupted
         strcpy(_outputFileName, outputFileName);
@@ -283,7 +280,7 @@ Value* genTreeAsLlvmType(GenTree* tree, Type* type)
     failFunctionCompilation();
 }
 
-int getTotalParameterOffset(CORINFO_SIG_INFO &sigInfo)
+int getTotalParameterOffset(CORINFO_SIG_INFO& sigInfo)
 {
     unsigned int offset = 0;
     // TODO: we are not accepting any of these arg types in the clrjit compilation at present.  The only thing on the shadow stack can be the method's "this"
@@ -307,10 +304,10 @@ int getTotalParameterOffset(CORINFO_SIG_INFO &sigInfo)
         //}
         // TODO: not as correct as the above, but don't know how to get all the field alignment values needed to implement the
         // equivalent here.  How to get InstanceFieldSize, InstanceFieldAlignment, ComputePackingSize
-        offset = _pointerSize;
+        offset = TARGET_POINTER_SIZE;
     }
 
-    return AlignUp(offset, _pointerSize);
+    return AlignUp(offset, TARGET_POINTER_SIZE);
 }
 
 int getTotalLocalOffset(CORINFO_SIG_INFO& sigInfo)
@@ -325,33 +322,31 @@ llvm::Value* getShadowStackOffest(Value* shadowStack, unsigned int offset)
     if (offset == 0)
         return shadowStack;
 
-    return _builder->CreateGEP(shadowStack, _builder->getInt32(_pointerSize));
+    return _builder->CreateGEP(shadowStack, _builder->getInt32(TARGET_POINTER_SIZE));
 }
 
-bool isThisArg(GenTreeCall* gtCall, GenTree* operand)
+bool isThisArg(GenTreeCall* call, GenTree* operand)
 {
-    // TODO: is the this arg always a late arg?
-    fgArgTabEntry* curArgTabEntry = _compiler->gtArgEntryByNode(gtCall, operand);
-    if (!curArgTabEntry->isLateArg())
+    if (call->gtCallThisArg == nullptr)
+    {
         return false;
+    }
 
-    unsigned int   lateArgIndex   = curArgTabEntry->GetLateArgInx();
-    curArgTabEntry = _compiler->gtArgEntryByLateArgIndex(gtCall, lateArgIndex);
-    return curArgTabEntry->use == gtCall->gtCallThisArg;
+    return _compiler->gtGetThisArg(call) == operand;
 }
 
-llvm::Value* buildUserFuncCall(GenTreeCall* gtCall, llvm::IRBuilder<>& builder)
-    {
-    const char* symbolName = (*_getMangledSymbolName)(_thisPtr, gtCall->gtEntryPoint.handle);
-    if (_isRuntimeImport(_thisPtr, gtCall->gtCallMethHnd))
+llvm::Value* buildUserFuncCall(GenTreeCall* call, llvm::IRBuilder<>& builder)
+{
+    const char* symbolName = (*_getMangledSymbolName)(_thisPtr, call->gtEntryPoint.handle);
+    if (_isRuntimeImport(_thisPtr, call->gtCallMethHnd))
     {
         failFunctionCompilation();
     }
 
-    (*_addCodeReloc)(_thisPtr, gtCall->gtEntryPoint.handle);
+    (*_addCodeReloc)(_thisPtr, call->gtEntryPoint.handle);
     Function* llvmFunc = _module->getFunction(symbolName);
     CORINFO_SIG_INFO sigInfo;
-    _compiler->eeGetMethodSig(gtCall->gtCallMethHnd, &sigInfo);
+    _compiler->eeGetMethodSig(call->gtCallMethHnd, &sigInfo);
     if (llvmFunc == nullptr)
     {
         CORINFO_ARG_LIST_HANDLE sigArgs = sigInfo.args;
@@ -372,7 +367,7 @@ llvm::Value* buildUserFuncCall(GenTreeCall* gtCall, llvm::IRBuilder<>& builder)
 
     unsigned int shadowStackUseOffest = 0;
     int argIx = 1;
-    for (GenTree* operand : gtCall->Operands())
+    for (GenTree* operand : call->Operands())
     {
         // copied this logic from gtDispLIRNode
         if (operand->IsArgPlaceHolderNode() || !operand->IsValue())
@@ -383,13 +378,13 @@ llvm::Value* buildUserFuncCall(GenTreeCall* gtCall, llvm::IRBuilder<>& builder)
 
         // if it is an instance method call then the first parameter is this and that is always passed as an i8* on the
         // shadow stack
-        if (isThisArg(gtCall, operand))
+        if (isThisArg(call, operand))
         {
             // TODO: add throw if this is null
             castingStore(*_builder, genTreeAsLlvmType(operand, Type::getInt8PtrTy(_llvmContext)),
                          getShadowStackOffest(shadowStackForCallee, shadowStackUseOffest),
                          Type::getInt8PtrTy(_llvmContext));
-            shadowStackUseOffest += _pointerSize;
+            shadowStackUseOffest += TARGET_POINTER_SIZE;
         }
         else
         {
@@ -397,30 +392,30 @@ llvm::Value* buildUserFuncCall(GenTreeCall* gtCall, llvm::IRBuilder<>& builder)
             argIx++;
         }
     }
-    return mapTreeIdValue(gtCall->gtTreeID, builder.CreateCall(llvmFunc, ArrayRef<Value*>(argVec)));
+    return mapTreeIdValue(call->gtTreeID, builder.CreateCall(llvmFunc, ArrayRef<Value*>(argVec)));
 }
 
 Value* buildCall(llvm::IRBuilder<>& builder, GenTree* node)
 {
-    GenTreeCall* gtCall = node->AsCall();
-    if (gtCall->gtCallType == CT_HELPER)
+    GenTreeCall* call = node->AsCall();
+    if (call->gtCallType == CT_HELPER)
     {
-        if (gtCall->gtCallMethHnd == _compiler->eeFindHelper(CORINFO_HELP_READYTORUN_STATIC_BASE))
+        if (call->gtCallMethHnd == _compiler->eeFindHelper(CORINFO_HELP_READYTORUN_STATIC_BASE))
         {
-            const char* symbolName = (*_getMangledSymbolName)(_thisPtr, gtCall->gtEntryPoint.handle);
+            const char* symbolName = (*_getMangledSymbolName)(_thisPtr, call->gtEntryPoint.handle);
             Function* llvmFunc = _module->getFunction(symbolName);
             if (llvmFunc == nullptr)
             {
                 llvmFunc = Function::Create(FunctionType::get(Type::getInt8PtrTy(_llvmContext), ArrayRef<Type*>(Type::getInt8PtrTy(_llvmContext)), false), Function::ExternalLinkage, 0U, symbolName, _module); // TODO: ExternalLinkage forced as defined in ILC module
             }
             // replacement for _info.compCompHnd->recordRelocation(nullptr, gtCall->gtEntryPoint.handle, IMAGE_REL_BASED_REL32);
-            (*_addCodeReloc)(_thisPtr, gtCall->gtEntryPoint.handle);
+            (*_addCodeReloc)(_thisPtr, call->gtEntryPoint.handle);
             return mapTreeIdValue(node->gtTreeID, builder.CreateCall(llvmFunc, _function->getArg(0)));
         }
     }
-    else if (gtCall->gtCallType == CT_USER_FUNC)
+    else if (call->gtCallType == CT_USER_FUNC)
     {
-        return buildUserFuncCall(gtCall, builder);
+        return buildUserFuncCall(call, builder);
     }
     failFunctionCompilation();
 }
