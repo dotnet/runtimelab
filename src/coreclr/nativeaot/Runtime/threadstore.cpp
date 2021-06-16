@@ -27,8 +27,6 @@
 #include "slist.inl"
 #include "GCMemoryHelpers.h"
 
-#include "DebugEventSource.h"
-
 EXTERN_C volatile uint32_t RhpTrapThreads = (uint32_t)TrapThreadsFlags::None;
 
 GVAL_IMPL_INIT(PTR_Thread, RhpSuspendingThread, 0);
