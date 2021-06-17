@@ -189,7 +189,10 @@ namespace Microsoft.Interop
             }
             else
             {
-                generatorFactory = new DefaultMarshallingGeneratorFactory(new InteropGenerationOptions(env.Options.UseMarshalType, env.Options.UseInternalUnsafeType));
+                InteropGenerationOptions options = new(env.Options.UseMarshalType, env.Options.UseInternalUnsafeType);
+                var attributedMarshallingFactory = new AttributedMarshallingModelGeneratorFactory(
+                    new DefaultMarshallingGeneratorFactory(options), options);
+                generatorFactory = attributedMarshallingFactory;
 
                 // Do not manually handle PreserveSig when generating forwarders.
                 // We want the runtime to handle everything.
@@ -220,6 +223,9 @@ namespace Microsoft.Interop
                         paramsTypeInfo.Add(nativeOutInfo);
                     }
                 }
+
+                generatorFactory = new ByValueContentsMarshalKindValidator(generatorFactory);
+                attributedMarshallingFactory.ElementMarshallingGeneratorFactory = generatorFactory;
             }
 
             // Generate stub code
