@@ -15,7 +15,7 @@
     <UsingToolXliff>false</UsingToolXliff>
     <!-- Libs -->
     <MicrosoftNETTestSdkVersion>16.7.1</MicrosoftNETTestSdkVersion>
-    <VSRedistCommonNetCoreSharedFrameworkx6460Version>6.0.0-preview.5.21226.5</VSRedistCommonNetCoreSharedFrameworkx6460Version>
+    <VSRedistCommonNetCoreSharedFrameworkx6460Version>6.0.0-preview.6.21317.4</VSRedistCommonNetCoreSharedFrameworkx6460Version>
     <XUnitVersion>2.4.1</XUnitVersion>
     <XUnitRunnerVisualStudioVersion>2.4.3</XUnitRunnerVisualStudioVersion>
     <!-- Roslyn dependencies -->
