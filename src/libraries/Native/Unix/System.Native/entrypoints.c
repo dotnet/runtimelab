@@ -244,6 +244,10 @@ static const Entry s_sysNative[] =
     DllImportEntry(SystemNative_iOSSupportVersion)
     DllImportEntry(SystemNative_GetErrNo)
     DllImportEntry(SystemNative_SetErrNo)
+    DllImportEntry(SystemNative_PRead)
+    DllImportEntry(SystemNative_PWrite)
+    DllImportEntry(SystemNative_PReadV)
+    DllImportEntry(SystemNative_PWriteV)<<<<<<< HEAD
     DllImportEntry(SystemNative_LoadLibrary)
     DllImportEntry(SystemNative_GetProcAddress)
     DllImportEntry(SystemNative_FreeLibrary)
