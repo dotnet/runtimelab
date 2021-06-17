@@ -130,6 +130,7 @@ namespace Microsoft.Interop
                     generatorDiagnostics.ReportConfigurationNotSupported(lcidConversionAttr, nameof(TypeNames.LCIDConversionAttribute));
                 }
 
+                // TODO: These need to be propagaged to the P/Invoke target, which is this does not do correctly.
                 List<AttributeSyntax> additionalAttributes = GenerateSyntaxForForwardedAttributes(suppressGCTransitionAttribute, unmanagedCallConvAttribute);
 
                 // Create the stub.
