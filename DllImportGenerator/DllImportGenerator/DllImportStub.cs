@@ -110,7 +110,7 @@ namespace Microsoft.Interop
             GeneratedDllImportData dllImportData,
             StubEnvironment env,
             GeneratorDiagnostics diagnostics,
-            List<AttributeSyntax> additionalAttributes,
+            List<AttributeSyntax> forwardedAttributes,
             CancellationToken token = default)
         {
             // Cancel early if requested
@@ -212,12 +212,9 @@ namespace Microsoft.Interop
 
             // Generate stub code
             var stubGenerator = new StubCodeGenerator(method, dllImportData, paramsTypeInfo, retTypeInfo, diagnostics, env.Options);
-            var code = stubGenerator.GenerateSyntax();
+            var code = stubGenerator.GenerateSyntax(forwardedAttributes: AttributeList(SeparatedList(forwardedAttributes)));
 
-            var additionalAttrs = new List<AttributeListSyntax>
-            {
-                AttributeList(SeparatedList(additionalAttributes))
-            };
+            var additionalAttrs = new List<AttributeListSyntax>();
 
             // Define additional attributes for the stub definition.
             if (env.TargetFrameworkVersion >= new Version(5, 0))

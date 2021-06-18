@@ -150,6 +150,7 @@ namespace Microsoft.Interop
 
         private List<AttributeSyntax> GenerateSyntaxForForwardedAttributes(AttributeData? suppressGCTransitionAttribute, AttributeData? unmanagedCallConvAttribute)
         {
+            const string CallConvsField = "CallConvs";
             // Manually rehydrate the forwarded attributes with fully qualified types so we don't have to worry about any using directives.
             List<AttributeSyntax> attributes = new List<AttributeSyntax>();
 
@@ -162,7 +163,7 @@ namespace Microsoft.Interop
                 AttributeSyntax unmanagedCallConvSyntax = Attribute(ParseName(TypeNames.UnmanagedCallConvAttribute));
                 foreach (var arg in unmanagedCallConvAttribute.NamedArguments)
                 {
-                    if (arg.Key == "CallConvs")
+                    if (arg.Key == CallConvsField)
                     {
                         InitializerExpressionSyntax callConvs = InitializerExpression(SyntaxKind.ArrayInitializerExpression);
                         foreach (var callConv in arg.Value.Values)
@@ -170,7 +171,14 @@ namespace Microsoft.Interop
                             callConvs = callConvs.AddExpressions(
                                 TypeOfExpression(((ITypeSymbol)callConv.Value!).AsTypeSyntax()));
                         }
-                        unmanagedCallConvSyntax = unmanagedCallConvSyntax.AddArgumentListArguments(AttributeArgument(ImplicitArrayCreationExpression(callConvs)).WithNameEquals(NameEquals(IdentifierName("CallConv"))));
+
+                        ArrayTypeSyntax arrayOfSystemType = ArrayType(ParseTypeName(TypeNames.System_Type), SingletonList(ArrayRankSpecifier()));
+
+                        unmanagedCallConvSyntax = unmanagedCallConvSyntax.AddArgumentListArguments(
+                            AttributeArgument(
+                                ArrayCreationExpression(arrayOfSystemType)
+                                .WithInitializer(callConvs))
+                            .WithNameEquals(NameEquals(IdentifierName(CallConvsField))));
                     }
                 }
                 attributes.Add(unmanagedCallConvSyntax);
