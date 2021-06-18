@@ -46,6 +46,15 @@ namespace Internal.JitInterface
             }
         }
 
+        // so the char* in cpp is terminated
+        private static byte[] AppendNullByte(byte[] inputArray)
+        {
+            byte[] nullTerminated = new byte[inputArray.Length + 1];
+            inputArray.CopyTo(nullTerminated, 0);
+            nullTerminated[inputArray.Length] = 0;
+            return nullTerminated;
+        }
+
         [UnmanagedCallersOnly]
         public static byte* getMangledMethodName(IntPtr thisHandle, CORINFO_METHOD_STRUCT_* ftn)
         {
@@ -53,7 +62,7 @@ namespace Internal.JitInterface
 
             MethodDesc method = _this.HandleToObject(ftn);
 
-            return (byte*)_this.GetPin(_this._compilation.NameMangler.GetMangledMethodName(method).UnderlyingArray);
+            return (byte*)_this.GetPin(AppendNullByte(_this._compilation.NameMangler.GetMangledMethodName(method).UnderlyingArray));
         }
 
         [UnmanagedCallersOnly]
@@ -68,7 +77,7 @@ namespace Internal.JitInterface
             {
                 sb.Append("___SYMBOL");
             }
-            return (byte*)_this.GetPin(sb.UnderlyingArray);
+            return (byte*)_this.GetPin(AppendNullByte(sb.UnderlyingArray));
         }
 
         [UnmanagedCallersOnly]
