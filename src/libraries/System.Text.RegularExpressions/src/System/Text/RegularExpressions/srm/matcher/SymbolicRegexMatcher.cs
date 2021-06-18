@@ -226,46 +226,49 @@ namespace System.Text.RegularExpressions.SRM
         /// </summary>
         public void Serialize(StringBuilder sb)
         {
-            //------------ fragment 0 -----------
+            //-----------------------------------0
+            sb.Append(_culture.Name);
+            sb.Append(Regex.s_top_level_separator);
+            //-----------------------------------1
             this.builder.solver.Serialize(sb);
             sb.Append(Regex.s_top_level_separator);
-            //------------ fragment 1 -----------
+            //-----------------------------------2
             A.Serialize(sb);
             sb.Append(Regex.s_top_level_separator);
-            //------------ fragment 2 -----------
+            //-----------------------------------3
             sb.Append(Base64.Encode((int)Options));
             sb.Append(Regex.s_top_level_separator);
-            //------------ fragment 3 -----------
+            //-----------------------------------4
             sb.Append(builder.solver.SerializePredicate(builder.wordLetterPredicate));
             sb.Append(Regex.s_top_level_separator);
-            //------------ fragment 4 -----------
+            //-----------------------------------5
             sb.Append(builder.solver.SerializePredicate(builder.newLinePredicate));
             sb.Append(Regex.s_top_level_separator);
-            //------------ fragment 5 -----------
+            //-----------------------------------6
             sb.Append(builder.solver.SerializePredicate(A_startset));
             sb.Append(Regex.s_top_level_separator);
-            //------------ fragment 6 -----------
+            //-----------------------------------7
             A_StartSet.Serialize(sb);
             sb.Append(Regex.s_top_level_separator);
-            //------------ fragment 7 -----------
+            //-----------------------------------8
             sb.Append(Base64.Encode(A_StartSet_Size));
             sb.Append(Regex.s_top_level_separator);
-            //------------ fragment 8 -----------
+            //-----------------------------------9
             Base64.Encode(A_startset_array, sb);
             sb.Append(Regex.s_top_level_separator);
-            //------------ fragment 9 -----------
+            //-----------------------------------10
             Base64.Encode(A_prefix, sb);
             sb.Append(Regex.s_top_level_separator);
-            //------------ fragment 10 -----------
+            //-----------------------------------11
             sb.Append(A_fixedPrefix_ignoreCase);
             sb.Append(Regex.s_top_level_separator);
-            //------------ fragment 11 -----------
+            //-----------------------------------12
             Base64.Encode(Ar_prefix, sb);
             sb.Append(Regex.s_top_level_separator);
-            //------------ fragment 12 -----------
+            //-----------------------------------13
             dt.Serialize(sb);
             sb.Append(Regex.s_top_level_separator);
-            //------------ fragemnt 13 -----------
+            //-----------------------------------14
             if (_checkTimeout)
                 sb.Append(_matchTimeout.ToString());
         }
@@ -276,23 +279,25 @@ namespace System.Text.RegularExpressions.SRM
         internal SymbolicRegexMatcher(ICharAlgebra<S> solver, string[] fragments)
         {
             //deserialize the components in the same order they were serialized
-            //Note: fragments[0] contains info that was used to construct the solver
+            //fragments[1] contains info that was used to construct the solver
+            _culture = (fragments[0] == string.Empty ? CultureInfo.InvariantCulture :
+                (fragments[0] == CultureInfo.CurrentCulture.Name ? CultureInfo.CurrentCulture : new CultureInfo(fragments[0])));
             builder = new SymbolicRegexBuilder<S>(solver);
             atoms = solver.GetPartition();
-            A = builder.Deserialize(fragments[1]);
-            Options = (RegexOptions)Base64.DecodeInt(fragments[2]);
+            A = builder.Deserialize(fragments[2]);
+            Options = (RegexOptions)Base64.DecodeInt(fragments[3]);
             //these predicates are relevant only when anchors are used
-            builder.wordLetterPredicate = builder.solver.DeserializePredicate(fragments[3]);
-            builder.newLinePredicate = builder.solver.DeserializePredicate(fragments[4]);
-            A_startset = builder.solver.DeserializePredicate(fragments[5]);
-            A_StartSet = BooleanClassifier.Deserialize(fragments[6]);
-            A_StartSet_Size = Base64.DecodeInt(fragments[7]);
-            A_startset_array = Base64.DecodeCharArray(fragments[8]);
-            A_prefix = Base64.DecodeString(fragments[9]);
-            A_fixedPrefix_ignoreCase = bool.Parse(fragments[10]);
-            Ar_prefix = Base64.DecodeString(fragments[11]);
-            dt = Classifier.Deserialize(fragments[12]);
-            string potentialTimeout = fragments[13].TrimEnd();
+            builder.wordLetterPredicate = builder.solver.DeserializePredicate(fragments[4]);
+            builder.newLinePredicate = builder.solver.DeserializePredicate(fragments[5]);
+            A_startset = builder.solver.DeserializePredicate(fragments[6]);
+            A_StartSet = BooleanClassifier.Deserialize(fragments[7]);
+            A_StartSet_Size = Base64.DecodeInt(fragments[8]);
+            A_startset_array = Base64.DecodeCharArray(fragments[9]);
+            A_prefix = Base64.DecodeString(fragments[10]);
+            A_fixedPrefix_ignoreCase = bool.Parse(fragments[11]);
+            Ar_prefix = Base64.DecodeString(fragments[12]);
+            dt = Classifier.Deserialize(fragments[13]);
+            string potentialTimeout = fragments[14].TrimEnd();
             if (potentialTimeout == string.Empty)
             {
                 _matchTimeout = System.Text.RegularExpressions.Regex.InfiniteMatchTimeout;
@@ -327,11 +332,14 @@ namespace System.Text.RegularExpressions.SRM
         }
         #endregion
 
+        internal CultureInfo _culture;
+
         /// <summary>
         /// Constructs matcher for given symbolic regex
         /// </summary>
-        internal SymbolicRegexMatcher(SymbolicRegexNode<S> sr, CharSetSolver css, BDD[] minterms, RegexOptions options, TimeSpan matchTimeout)
+        internal SymbolicRegexMatcher(SymbolicRegexNode<S> sr, CharSetSolver css, BDD[] minterms, RegexOptions options, TimeSpan matchTimeout, CultureInfo culture)
         {
+            _culture = culture;
             if (sr.IsNullable)
                 throw new NotSupportedException(SRM.Regex._DFA_incompatible_with + "nullable regex (accepting the empty string)");
 
@@ -404,8 +412,9 @@ namespace System.Text.RegularExpressions.SRM
                 string prefix = this.A_prefix;
                 // RegexBoyerMoore expects the prefix to be lower case when case is ignored
                 if (this.A_fixedPrefix_ignoreCase)
-                    prefix = CultureInfo.InvariantCulture.TextInfo.ToLower(this.A_prefix);
-                this.A_prefixBM = new RegexBoyerMoore(prefix, this.A_fixedPrefix_ignoreCase, false, CultureInfo.InvariantCulture);
+                    //use the culture of the matcher
+                    prefix = this.A_prefix.ToLower(_culture);
+                this.A_prefixBM = new RegexBoyerMoore(prefix, this.A_fixedPrefix_ignoreCase, false, _culture);
             }
         }
 

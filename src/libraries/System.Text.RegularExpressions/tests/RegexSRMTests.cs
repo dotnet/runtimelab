@@ -8,6 +8,7 @@ using Xunit.Abstractions;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.Serialization;
+using System.Globalization;
 
 namespace System.Text.RegularExpressions.Tests
 {
@@ -23,7 +24,61 @@ namespace System.Text.RegularExpressions.Tests
 
         internal static RegexOptions DFA = (RegexOptions)0x400;
 
-        [Fact]
+        private const char Turkish_I_withDot = '\u0130';
+        private const char Turkish_i_withoutDot = '\u0131';
+
+        [Theory]
+        [InlineData("(?i:I)", "xy\u0131ab", "", "", "\u0131")]
+        [InlineData("(?i:iI+)", "abcIIIxyz", "III", "III", "")]
+        [InlineData("(?i:iI+)", "abcIi\u0130xyz", "Ii\u0130", "Ii", "")]
+        [InlineData("(?i:iI+)", "abcI\u0130ixyz", "I\u0130i", "", "")]
+        [InlineData("(?i:iI+)", "abc\u0130IIxyz", "\u0130II", "II", "\u0130II")]
+        [InlineData("(?i:iI+)", "abc\u0130\u0131Ixyz", "", "", "\u0130\u0131I")]
+        [InlineData("(?i:iI+)", "abc\u0130Iixyz", "\u0130Ii", "Ii", "\u0130I")]
+        [InlineData("(?i:[^IJKLM]I)", "ii\u0130i\u0131ab", "", "\u0130i", "i\u0131")]
+        public void TestOfCulturesInSRM(string pattern, string input, string match_en_expected, string match_in_expected, string match_tr_expected)
+        {
+            CultureInfo tr_culture = new CultureInfo("tr");
+            CultureInfo savedCulture = CultureInfo.CurrentCulture;
+            CultureInfo.CurrentCulture = tr_culture;
+            //this will treat i=\u0130 and I=\u0131 but i!=I
+            Regex r_tr = new Regex(pattern, DFA);
+            Regex r_tr_ = new Regex(pattern, RegexOptions.None);
+            var s = r_tr.Match(input).Value;
+            var s_ = r_tr_.Match(input).Value;
+            CultureInfo.CurrentCulture = savedCulture;
+            Assert.Equal(s, s_);
+            //this will treat i=I and i!=\u0130 and I!=\u131
+            Regex r_in = new Regex(pattern, DFA | RegexOptions.CultureInvariant);
+            //this is the default for e-US culture where
+            //i=I=\u130 but I!=\u0131 
+            Regex r_en = new Regex(pattern, DFA);
+
+            TestOfCulturesInSRM_(r_en, r_in, r_tr, input, match_en_expected, match_in_expected, match_tr_expected);
+
+            //validate that the correct results are maintained through serialization
+            TestOfCulturesInSRM_(SerDeser(r_en), SerDeser(r_in), SerDeser(r_tr), input, match_en_expected, match_in_expected, match_tr_expected);
+        }
+
+        private static Regex SerDeser(Regex r) => Deserialize(Serialize(r));
+
+        private void TestOfCulturesInSRM_(Regex r_en, Regex r_in, Regex r_tr, string input,
+            string match_en_expected, string match_in_expected, string match_tr_expected)
+        {
+            var match_en = r_en.Match(input);
+            var match_in = r_in.Match(input);
+            var match_tr = r_tr.Match(input);
+
+            Assert.Equal(match_en_expected != string.Empty, match_en.Success);
+            Assert.Equal(match_in_expected != string.Empty, match_in.Success);
+            Assert.Equal(match_tr_expected != string.Empty, match_tr.Success);
+
+            Assert.Equal(match_en_expected, match_en.Value);
+            Assert.Equal(match_in_expected, match_in.Value);
+            Assert.Equal(match_tr_expected, match_tr.Value);
+        }
+
+            [Fact]
         public void TestAltOrderIndependence()
         {
             string rawregex = @"(the)\s*(0?[1-9]|[12][0-9]|3[01])";

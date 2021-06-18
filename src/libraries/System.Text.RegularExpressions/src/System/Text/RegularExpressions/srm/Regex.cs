@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Formatters.Binary;
+using System.Globalization;
 
 namespace System.Text.RegularExpressions.SRM
 {
@@ -20,9 +21,13 @@ namespace System.Text.RegularExpressions.SRM
 
         internal IMatcher _matcher;
 
-        private Regex(RegexNode rootNode, System.Text.RegularExpressions.RegexOptions options, TimeSpan matchTimeout)
+        private Regex(RegexNode rootNode, System.Text.RegularExpressions.RegexOptions options, TimeSpan matchTimeout, CultureInfo? culture)
         {
-            RegexToAutomatonConverter<BDD> converter = new RegexToAutomatonConverter<BDD>(s_unicode);
+            //fix the culture to be the given one unless it is null
+            //in which case use the InvariantCulture if the option specifies CultureInvariant
+            //otherwise use the current culture
+            var theculture = culture ?? ((options & RegexOptions.CultureInvariant) != 0 ? CultureInfo.InvariantCulture : CultureInfo.CurrentCulture);
+            RegexToAutomatonConverter<BDD> converter = new RegexToAutomatonConverter<BDD>(s_unicode, theculture);
             CharSetSolver solver = (CharSetSolver)s_unicode.solver;
             var root = converter.ConvertNodeToSymbolicRegex(rootNode, true);
             if (!root.info.ContainsSomeCharacter)
@@ -42,7 +47,7 @@ namespace System.Text.RegularExpressions.SRM
                 builderBV.newLinePredicate = algBV.ConvertFromCharSet(solver, converter.srBuilder.newLinePredicate);
                 //convert the BDD based AST to BV based AST
                 SymbolicRegexNode<BV> rootBV = converter.srBuilder.Transform(root, builderBV, bdd => builderBV.solver.ConvertFromCharSet(solver, bdd));
-                SymbolicRegexMatcher<BV> matcherBV = new(rootBV, solver, partition, options, matchTimeout);
+                SymbolicRegexMatcher<BV> matcherBV = new(rootBV, solver, partition, options, matchTimeout, theculture);
                 _matcher = matcherBV;
             }
             else
@@ -56,14 +61,14 @@ namespace System.Text.RegularExpressions.SRM
                 builder64.newLinePredicate = alg64.ConvertFromCharSet(solver, converter.srBuilder.newLinePredicate);
                 //convert the BDD based AST to ulong based AST
                 SymbolicRegexNode<ulong> root64 = converter.srBuilder.Transform(root, builder64, bdd => builder64.solver.ConvertFromCharSet(solver, bdd));
-                SymbolicRegexMatcher<ulong> matcher64 = new(root64, solver, partition, options, matchTimeout);
+                SymbolicRegexMatcher<ulong> matcher64 = new(root64, solver, partition, options, matchTimeout, theculture);
                 _matcher = matcher64;
             }
         }
 
-        public static Regex Create(RegexNode rootNode, System.Text.RegularExpressions.RegexOptions options, TimeSpan matchTimeout)
+        public static Regex Create(RegexNode rootNode, System.Text.RegularExpressions.RegexOptions options, TimeSpan matchTimeout, CultureInfo? culture)
         {
-            var regex = new Regex(rootNode, options, matchTimeout);
+            var regex = new Regex(rootNode, options, matchTimeout, culture);
 //#if DEBUG
 //            //test the serialization roundtrip
 //            //effectively, here all tests in DEBUG mode are run with deserialized matchers, not the original ones
@@ -96,12 +101,12 @@ namespace System.Text.RegularExpressions.SRM
         {
             input.Split(s_top_level_separator);
             string[] fragments = input.Split(s_top_level_separator);
-            if (fragments.Length != 14)
+            if (fragments.Length != 15)
                 throw new ArgumentException($"{nameof(Regex.Deserialize)} error", nameof(input));
 
             try
             {
-                BVAlgebraBase alg = BVAlgebraBase.Deserialize(fragments[0]);
+                BVAlgebraBase alg = BVAlgebraBase.Deserialize(fragments[1]);
                 IMatcher matcher = alg is BV64Algebra ?
                     new SymbolicRegexMatcher<ulong>(alg as BV64Algebra, fragments) :
                     new SymbolicRegexMatcher<BV>(alg as BVAlgebra, fragments);

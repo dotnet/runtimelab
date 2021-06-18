@@ -106,10 +106,10 @@ namespace System.Text.RegularExpressions.SRM
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ulong MkSymmetricDifference(ulong p1, ulong p2) => p1 ^ p2;
 
-        public ulong MkRangeConstraint(char lower, char upper, bool caseInsensitive = false) => throw new NotSupportedException();
+        public ulong MkRangeConstraint(char lower, char upper, bool caseInsensitive = false, string culture = null) => throw new NotSupportedException();
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public ulong MkCharConstraint(char c, bool caseInsensitive = false)
+        public ulong MkCharConstraint(char c, bool caseInsensitive = false, string culture = null)
         {
             if (caseInsensitive)
                 throw new NotImplementedException(nameof(MkCharConstraint));

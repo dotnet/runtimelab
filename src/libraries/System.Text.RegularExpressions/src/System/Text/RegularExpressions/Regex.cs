@@ -123,7 +123,7 @@ namespace System.Text.RegularExpressions
             _useSRM = (options & RegexOptions.DFA) != 0;
             if (_useSRM)
                 // remove the DFA flag because it is undefined in SRM
-                _srm = InitializeSRM(tree.Root, options & ~RegexOptions.DFA, matchTimeout);
+                _srm = InitializeSRM(tree.Root, options & ~RegexOptions.DFA, matchTimeout, culture);
 
             InitializeReferences();
         }
@@ -132,18 +132,21 @@ namespace System.Text.RegularExpressions
         /// Checks that the options are supported and creates a DFA matcher.
         /// The method throws NotSuppportedException if the regex uses constructs not compatible with the DFA option.
         /// </summary>
-        private static SRM.Regex InitializeSRM(RegexNode rootNode, RegexOptions options, TimeSpan matchTimeout)
+        private static SRM.Regex InitializeSRM(RegexNode rootNode, RegexOptions options, TimeSpan matchTimeout, CultureInfo? culture)
         {
             // TBD: this could potentially be supported quite easily but is not of priority
             // it essentially affects how the iput string is being processed  -- characters are read backwards --
-            // and what the right semantics of anchors is in this case (perhaps still unchanged)
+            // and what the right semantics of anchors is in this case (perhaps reversed)
             if ((options & RegexOptions.RightToLeft) != 0)
                 throw new NotSupportedException(SRM.Regex._DFA_incompatible_with + RegexOptions.RightToLeft);
-            // TBD: this could also be supported easily, but is not of priority
+            // TBD: this could also be supported easily, but is not of priority right now
             if ((options & RegexOptions.ECMAScript) != 0)
                 throw new NotSupportedException(SRM.Regex._DFA_incompatible_with + RegexOptions.ECMAScript);
+            // TBD: this will eventually be supported
+            if ((options & RegexOptions.Compiled) != 0)
+                throw new NotSupportedException(SRM.Regex._DFA_incompatible_with + RegexOptions.Compiled);
 
-            return SRM.Regex.Create(rootNode, options, matchTimeout);
+            return SRM.Regex.Create(rootNode, options, matchTimeout, culture);
         }
 
         internal static void ValidatePattern(string pattern)

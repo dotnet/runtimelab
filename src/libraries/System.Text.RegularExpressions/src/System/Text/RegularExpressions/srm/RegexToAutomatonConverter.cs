@@ -19,6 +19,8 @@ namespace System.Text.RegularExpressions.SRM
 
         internal SymbolicRegexBuilder<S> srBuilder;
 
+        private CultureInfo _culture;
+
         /// <summary>
         /// The character solver associated with the regex converter
         /// </summary>
@@ -33,9 +35,9 @@ namespace System.Text.RegularExpressions.SRM
         /// <summary>
         /// Constructs a regex to symbolic finite automata converter
         /// </summary>
-        /// <param name="categorizer">maps unicode categories to corresponding character conditions</param>
-        public RegexToAutomatonConverter(Unicode.UnicodeCategoryTheory<S> categorizer)
+        public RegexToAutomatonConverter(Unicode.UnicodeCategoryTheory<S> categorizer, CultureInfo culture)
         {
+            _culture = culture;
             this.solver = categorizer.solver;
             this.categorizer = categorizer;
             this.srBuilder = new SymbolicRegexBuilder<S>(solver);
@@ -65,7 +67,7 @@ namespace System.Text.RegularExpressions.SRM
 
             foreach (var range in ranges)
             {
-                S cond = solver.MkRangeConstraint(range.Item1, range.Item2, ignoreCase);
+                S cond = solver.MkRangeConstraint(range.Item1, range.Item2, ignoreCase, _culture.Name);
                 conditions.Add(negate ? solver.MkNot(cond) : cond);
             }
             #endregion
@@ -391,7 +393,7 @@ namespace System.Text.RegularExpressions.SRM
             string sequence = node.Str;
             bool ignoreCase = ((node.Options & System.Text.RegularExpressions.RegexOptions.IgnoreCase) != 0);
 
-            S[] conds = Array.ConvertAll(sequence.ToCharArray(), c => solver.MkCharConstraint(c, ignoreCase));
+            S[] conds = Array.ConvertAll(sequence.ToCharArray(), c => solver.MkCharConstraint(c, ignoreCase, _culture.Name));
             var seq = this.srBuilder.MkSequence(conds, topLevel);
             return seq;
         }
@@ -403,7 +405,7 @@ namespace System.Text.RegularExpressions.SRM
         {
             bool ignoreCase = ((node.Options & System.Text.RegularExpressions.RegexOptions.IgnoreCase) != 0);
 
-            S cond = solver.MkNot(solver.MkCharConstraint(node.Ch, ignoreCase));
+            S cond = solver.MkNot(solver.MkCharConstraint(node.Ch, ignoreCase, _culture.Name));
 
             return this.srBuilder.MkSingleton(cond);
         }
@@ -415,7 +417,7 @@ namespace System.Text.RegularExpressions.SRM
         {
             bool ignoreCase = ((node.Options & System.Text.RegularExpressions.RegexOptions.IgnoreCase) != 0);
 
-            S cond = solver.MkCharConstraint(node.Ch, ignoreCase);
+            S cond = solver.MkCharConstraint(node.Ch, ignoreCase, _culture.Name);
 
             return this.srBuilder.MkSingleton(cond);
         }
@@ -436,7 +438,7 @@ namespace System.Text.RegularExpressions.SRM
         private SymbolicRegexNode<S> ConvertNodeNotoneloopToSymbolicRegex(RegexNode node, bool isLazy)
         {
             bool ignoreCase = ((node.Options & System.Text.RegularExpressions.RegexOptions.IgnoreCase) != 0);
-            S cond = solver.MkNot(solver.MkCharConstraint(node.Ch, ignoreCase));
+            S cond = solver.MkNot(solver.MkCharConstraint(node.Ch, ignoreCase, _culture.Name));
 
             SymbolicRegexNode<S> body = this.srBuilder.MkSingleton(cond);
             SymbolicRegexNode<S> loop = this.srBuilder.MkLoop(body, isLazy, node.M, node.N);
@@ -446,7 +448,7 @@ namespace System.Text.RegularExpressions.SRM
         private SymbolicRegexNode<S> ConvertNodeOneloopToSymbolicRegex(RegexNode node, bool isLazy)
         {
             bool ignoreCase = ((node.Options & System.Text.RegularExpressions.RegexOptions.IgnoreCase) != 0);
-            S cond = solver.MkCharConstraint(node.Ch, ignoreCase);
+            S cond = solver.MkCharConstraint(node.Ch, ignoreCase, _culture.Name);
 
             SymbolicRegexNode<S> body = this.srBuilder.MkSingleton(cond);
             SymbolicRegexNode<S> loop = this.srBuilder.MkLoop(body, isLazy, node.M, node.N);
