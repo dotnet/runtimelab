@@ -176,26 +176,26 @@ namespace Microsoft.Interop
             context.RegisterExecutionPipeline(
                 context => 
                 {
-                    var methodsToGenerate = context.Sources.Syntax
-                        .Transform(
-                            static node => ShouldVisitNode(node),
-                            static context => 
+                    var methodsToGenerate = context.SyntaxProvider
+                        .CreateSyntaxProvider(
+                            static (node, ct) => ShouldVisitNode(node),
+                            static (context, ct) => 
                                 new SyntaxSymbolPair(
                                     (MethodDeclarationSyntax)context.Node,
-                                    (IMethodSymbol)context.SemanticModel.GetDeclaredSymbol(context.Node)!))
-                        .Filter(
+                                    (IMethodSymbol)context.SemanticModel.GetDeclaredSymbol(context.Node, ct)!))
+                        .Where(
                             static modelData => modelData.Symbol.IsStatic && modelData.Symbol.GetAttributes().Any(
                                 static attribute => attribute.AttributeClass?.ToDisplayString() == TypeNames.GeneratedDllImportAttribute)
                         );
 
-                    var compilationAndTargetFramework = context.Sources.Compilation
-                        .Transform(compilation =>
+                    var compilationAndTargetFramework = context.CompilationProvider
+                        .Select((compilation, ct) =>
                         {
                             bool isSupported = IsSupportedTargetFramework(compilation, out Version targetFrameworkVersion);
                             return (compilation, isSupported, targetFrameworkVersion);
                         });
 
-                    compilationAndTargetFramework.GenerateSource(
+                    context.RegisterSourceOutput(compilationAndTargetFramework,
                         static (context, data) =>
                         {
                             if (!data.isSupported)
@@ -212,29 +212,30 @@ namespace Microsoft.Interop
                         });
 
                     var stubEnvironment = compilationAndTargetFramework
-                        .Join(context.Sources.AnalyzerConfigOptions)
-                        .Transform(
-                            data =>
+                        .Combine(context.AnalyzerConfigOptionsProvider)
+                        .Select(
+                            (data, ct) =>
                                 new StubEnvironment(
-                                    data.Item1.compilation,
-                                    data.Item1.isSupported,
-                                    data.Item1.targetFrameworkVersion,
-                                    data.Item2.Single().GlobalOptions)
+                                    data.Left.compilation,
+                                    data.Left.isSupported,
+                                    data.Left.targetFrameworkVersion,
+                                    data.Right.GlobalOptions)
                         );
 
-                    methodsToGenerate
-                        .Join(stubEnvironment)
-                        .Transform(data => new
+                    var methodSourceAndDiagnostics = methodsToGenerate
+                        .Combine(stubEnvironment)
+                        .Select((data, ct) => new
                         {
-                            Syntax = data.Item1.Syntax,
-                            Symbol = data.Item1.Symbol,
-                            Environment = data.Item2.Single()
+                            data.Left.Syntax,
+                            data.Left.Symbol,
+                            Environment = data.Right
                         })
-                        .Transform(
-                            data => GenerateSource(data.Syntax, data.Symbol, data.Environment)
+                        .Select(
+                            (data, ct) => GenerateSource(data.Syntax, data.Symbol, data.Environment)
                         )
                         .WithComparer(new GeneratedSourceComparer())
-                        .BatchTransform(static generatedSources =>
+                        .Collect()
+                        .Select(static (generatedSources, ct) =>
                         {
                             StringBuilder source = new StringBuilder();
                             // Mark in source that the file is auto-generated.
@@ -246,18 +247,18 @@ namespace Microsoft.Interop
                                 diagnostics.AddRange(generated.Item2);
                             }
                             return (source: source.ToString(), diagnostics: diagnostics.ToImmutable());
-                        })
-                        .GenerateSource(
-                            static (context, data) =>
-                            {
-                                foreach (var diagnostic in data.diagnostics)
-                                {
-                                    context.ReportDiagnostic(diagnostic);
-                                }
+                        });
 
-                                context.AddSource("GeneratedDllImports.g.cs", data.source);
+                    context.RegisterSourceOutput(methodSourceAndDiagnostics,
+                        static (context, data) =>
+                        {
+                            foreach (var diagnostic in data.diagnostics)
+                            {
+                                context.ReportDiagnostic(diagnostic);
                             }
-                        );
+
+                            context.AddSource("GeneratedDllImports.g.cs", data.source);
+                        });
                 }
             );
         }
