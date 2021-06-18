@@ -10,7 +10,6 @@ namespace Microsoft.Interop
 {
     internal class SafeHandleMarshaller : IMarshallingGenerator
     {
-        private static readonly TypeSyntax NativeType = ParseTypeName("global::System.IntPtr");
         private readonly AnalyzerConfigOptions options;
 
         public SafeHandleMarshaller(AnalyzerConfigOptions options)
@@ -20,7 +19,7 @@ namespace Microsoft.Interop
 
         public TypeSyntax AsNativeType(TypePositionInfo info)
         {
-            return NativeType;
+            return MarshallerHelpers.SystemIntPtrType;
         }
 
         public ParameterSyntax AsParameter(TypePositionInfo info)
@@ -228,7 +227,7 @@ namespace Microsoft.Interop
                     }
                     break;
                 case StubCodeContext.Stage.Cleanup:
-                    if (!info.IsByRef || info.RefKind == RefKind.In)
+                    if (!info.IsManagedReturnPosition && (!info.IsByRef || info.RefKind == RefKind.In))
                     {
                         yield return IfStatement(
                             IdentifierName(addRefdIdentifier),
