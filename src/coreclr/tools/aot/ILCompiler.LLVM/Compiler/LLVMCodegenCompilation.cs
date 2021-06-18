@@ -125,8 +125,7 @@ namespace ILCompiler
             {
                 var sig = method.Signature;
                 if (sig.ReturnType.IsVoid &&
-                    !method.RequiresInstArg() &&
-                    sig.IsStatic) // speed up
+                    !method.RequiresInstArg()) // speed up
                 {
                     corInfo.RegisterLlvmCallbacks((IntPtr)Unsafe.AsPointer(ref corInfo), _outputFile, Module.Target, Module.DataLayout);
                     corInfo.CompileMethod(methodCodeNodeNeedingCode);

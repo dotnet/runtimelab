@@ -635,7 +635,7 @@ Value* buildCnsInt(llvm::IRBuilder<>& builder, GenTree* node)
 
 Value* buildInd(llvm::IRBuilder<>& builder, GenTree* node, Value* ptr)
 {
-    return mapTreeIdValue(node->gtTreeID, castIfNecessary(builder, builder.CreateLoad(ptr), getLLVMTypeForVarType(node->TypeGet())));
+    return mapTreeIdValue(node->gtTreeID, builder.CreateLoad(castIfNecessary(builder, ptr, getLLVMTypeForVarType(node->TypeGet())->getPointerTo())));
 }
 
 Value* buildNe(llvm::IRBuilder<>& builder, GenTree* node, Value* op1, Value* op2)
@@ -683,21 +683,31 @@ Value* localVar(llvm::IRBuilder<>& builder, GenTreeLclVar* lclVar)
     Value*       llvmRef;
     unsigned int lclNum = lclVar->GetLclNum();
 
+    // cache hit
     if (_localsMap->find(lclNum) == _localsMap->end())
     {
         if (_compiler->lvaIsParameter(lclNum))
         {
-            struct LlvmArgInfo llvmArgInfo = getLlvmArgInfoForArgIx(_sigInfo, lclNum);
-            if (llvmArgInfo.m_argIx >= 0)
+            if (!_info.compIsStatic && _info.compThisArg == lclNum)
             {
-                llvmRef = _function->getArg(llvmArgInfo.m_argIx);
+                // this is always the first pointer on the shadowstack (LLVM arg 0).  Dont need the gep in this case
+                llvmRef = builder.CreateLoad(builder.CreateBitCast(_function->getArg(0), (Type::getInt8PtrTy(_llvmContext)->getPointerTo())));
             }
             else
             {
-                // TODO: store argAddress in a map in case multiple IR locals are to the same argument - we only want one gep in the prolog
-                Value* argAddress = _prologBuilder->CreateGEP(_function->getArg(0), builder.getInt32(llvmArgInfo.m_shadowStackOffset), "Argument");
-                llvmRef = builder.CreateLoad(builder.CreateBitCast(argAddress, (Type::getInt8PtrTy(_llvmContext)->getPointerTo())));
+                struct LlvmArgInfo llvmArgInfo = getLlvmArgInfoForArgIx(_sigInfo, lclNum);
+                if (llvmArgInfo.m_argIx >= 0)
+                {
+                    llvmRef = _function->getArg(llvmArgInfo.m_argIx);
+                }
+                else
+                {
+                    // TODO: store argAddress in a map in case multiple IR locals are to the same argument - we only want one gep in the prolog
+                    Value* argAddress = _prologBuilder->CreateGEP(_function->getArg(0), builder.getInt32(llvmArgInfo.m_shadowStackOffset), "Argument");
+                    llvmRef = builder.CreateLoad(builder.CreateBitCast(argAddress, (Type::getInt8PtrTy(_llvmContext)->getPointerTo())));
+                }
             }
+
             _localsMap->insert({lclNum, llvmRef});
         }
         else
@@ -811,7 +821,7 @@ void Llvm::Compile(Compiler* pCompiler)
     std::unordered_map<unsigned int, Value*> sdsuMap;
     _sdsuMap = &sdsuMap;
     _localsMap = new std::unordered_map<unsigned int, Value*>();
-    const char *mangledName = (*_getMangledMethodName)(_thisPtr, _info.compMethodHnd);
+    const char* mangledName = (*_getMangledMethodName)(_thisPtr, _info.compMethodHnd);
     _function    = _module->getFunction(mangledName);
     _compiler->eeGetMethodSig(_info.compMethodHnd, &_sigInfo);
     if (_function == nullptr)
