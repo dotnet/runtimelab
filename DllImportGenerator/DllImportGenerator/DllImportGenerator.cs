@@ -195,10 +195,12 @@ namespace Microsoft.Interop
                             return (compilation, isSupported, targetFrameworkVersion);
                         });
 
-                    context.RegisterSourceOutput(compilationAndTargetFramework,
+                    context.RegisterSourceOutput(
+                        compilationAndTargetFramework
+                            .Combine(methodsToGenerate.Collect()),
                         static (context, data) =>
                         {
-                            if (!data.isSupported)
+                            if (!data.Left.isSupported && data.Right.Any())
                             {
                                 // We don't block source generation when the TFM is unsupported.
                                 // This allows a user to copy generated source and use it as a starting point
@@ -207,7 +209,7 @@ namespace Microsoft.Interop
                                     Diagnostic.Create(
                                         GeneratorDiagnostics.TargetFrameworkNotSupported,
                                         Location.None,
-                                        data.targetFrameworkVersion.ToString(2)));
+                                        MinimumSupportedFrameworkVersion.ToString(2)));
                             }
                         });
 
