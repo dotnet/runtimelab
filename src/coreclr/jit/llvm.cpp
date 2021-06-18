@@ -447,7 +447,7 @@ Value* buildCnsInt(llvm::IRBuilder<>& builder, GenTree* node)
 
 Value* buildInd(llvm::IRBuilder<>& builder, GenTree* node, Value* ptr)
 {
-    return mapTreeIdValue(node->gtTreeID, castIfNecessary(builder, builder.CreateLoad(ptr), getLLVMTypeForVarType(node->TypeGet())));
+    return mapTreeIdValue(node->gtTreeID, builder.CreateLoad(castIfNecessary(builder, ptr, getLLVMTypeForVarType(node->TypeGet())->getPointerTo())));
 }
 
 Value* buildNe(llvm::IRBuilder<>& builder, GenTree* node, Value* op1, Value* op2)
