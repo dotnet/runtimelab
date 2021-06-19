@@ -139,9 +139,9 @@ namespace System.Text.RegularExpressions.SRM
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public BV MkOr(BV predicate1, BV predicate2) => predicate1 | predicate2;
 
-        public BV MkRangeConstraint(char lower, char upper, bool caseInsensitive = false) => throw new NotSupportedException(nameof(MkRangeConstraint));
+        public BV MkRangeConstraint(char lower, char upper, bool caseInsensitive = false, string culture = null) => throw new NotSupportedException(nameof(MkRangeConstraint));
 
-        public BV MkCharConstraint(char c, bool caseInsensitive = false)
+        public BV MkCharConstraint(char c, bool caseInsensitive = false, string culture = null)
         {
 #if DEBUG
             if (caseInsensitive == true)

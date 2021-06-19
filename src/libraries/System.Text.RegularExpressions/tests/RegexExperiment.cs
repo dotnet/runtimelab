@@ -17,13 +17,14 @@ namespace System.Text.RegularExpressions.Tests
     /// </summary>
     public class RegexExperiment
     {
-        //[Fact]
-        //public void TestRun()
-        //{
-        //    //call the actual code from here
-        //    //TestRunSampleRegex();
-        //    TestRunPerformance();
-        //}
+        [Fact]
+        public void TestRun()
+        {
+            //call the actual code from here
+            //ViewSampleRegexInDGML();
+            //TestRunPerformance();
+            //RegenerateUnicodeTables();
+        }
 
 
         private const string experimentDirectory = @"\\maku1\experiments\";
@@ -159,11 +160,29 @@ namespace System.Text.RegularExpressions.Tests
             }
         }
 
-        private void TestRunSampleRegex()
+        static string And(params string[] regexes)
         {
-            string rawregex = @"^[a-z]+\-[a-z]+$";
-            string input = File.ReadAllText(inputfile);
-            TestRunRegex("sample", rawregex, input, true, true);
+            string conj = "(" + regexes[regexes.Length - 1] + ")";
+            for (int i = regexes.Length - 2; i >= 0; i--)
+            {
+                conj = $"(?({regexes[i]}){conj}|[0-[0]])";
+            }
+            return conj;
+        }
+
+        static string Not(string regex)
+        {
+            return $"(?({regex})[0-[0]]|.*)";
+        }
+
+        private void ViewSampleRegexInDGML()
+        {
+            string rawregex = @"\bis\w*\b";
+            //string rawregex = And(".*[0-9].*", ".*[A-Z].*");
+            Regex re = new Regex(rawregex, DFA | RegexOptions.Singleline);
+            ViewDGML(re);
+            ViewDGML(re, inReverse: true);
+            ViewDGML(re, addDotStar: true);
         }
 
         private void TestRunRegex(string name, string rawregex, string input, bool viewDGML = false, bool dotStar = false)

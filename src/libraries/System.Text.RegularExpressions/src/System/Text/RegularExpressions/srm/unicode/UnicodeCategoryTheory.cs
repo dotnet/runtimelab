@@ -93,14 +93,6 @@ namespace System.Text.RegularExpressions.SRM.Unicode
             this.solver = solver;
         }
 
-        private PRED MkRangesConstraint(IEnumerable<int[]> ranges)
-        {
-            PRED res = solver.False;
-            foreach (var range in ranges)
-                res = solver.MkOr(res, solver.MkRangeConstraint((char)range[0], (char)range[1]));
-            return res;
-        }
-
         #region IUnicodeCategoryTheory<Expr> Members
 
         public PRED CategoryCondition(int i)

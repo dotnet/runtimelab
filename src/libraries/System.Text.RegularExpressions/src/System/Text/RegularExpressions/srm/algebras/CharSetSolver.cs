@@ -17,77 +17,38 @@ namespace System.Text.RegularExpressions.SRM
     internal class CharSetSolver : BDDAlgebra, ICharAlgebra<BDD>
     {
         /// <summary>
-        /// bit-width is now fixed to 16 --- essentially characters are 16-bit unsigned numbers
+        /// BDDs for all characters for fast lookup.
         /// </summary>
-        private const int _bw = 16;
-
-        /// <summary>
-        /// Bound on precomputed character BDD, bound must be such that ToUpper and ToLower are in this range.
-        /// </summary>
-        private const int charPredTable_Length = 128;
-        /// <summary>
-        /// BDDs for all ASCII characters for fast lookup.
-        /// </summary>
-        private BDD[] charPredTable = new BDD[charPredTable_Length];
-        /// <summary>
-        /// BDDs for all ASCII characters in Case Insensitive mode for fast lookup.
-        /// </summary>
-        private BDD[] charPredTableIgnoreCase = new BDD[charPredTable_Length];
-
-        internal const char Turkish_dotless_i = '\u0130';
-        internal const char Kelvin_sign = '\u212A';
+        private BDD[] charPredTable = new BDD[0x10000];
 
         internal BDD nonascii;
 
         /// <summary>
-        /// Construct the solver for BitWidth.BV16
+        /// Construct the solver.
         /// </summary>
         public CharSetSolver()
         {
-            //prefill the arrays: charPredTable and charPredTableIgnoreCase for ASCII
-            for (char c = '\x00'; c < charPredTable_Length; c++)
-                charPredTable[c] = MkSetFrom(c, _bw - 1);
-            for (char c = '\x00'; c < charPredTable_Length; c++)
-            {
-                if (c == 'I')
-                    charPredTableIgnoreCase[c] = MkOr(MkOr(charPredTable['I'], charPredTable['i']), MkSetFrom(Turkish_dotless_i, _bw - 1));
-                else if (c == 'K')
-                    charPredTableIgnoreCase[c] = MkOr(MkOr(charPredTable['K'], charPredTable['k']), MkSetFrom(Kelvin_sign, _bw - 1));
-                else if (char.IsLetter(c))
-                    charPredTableIgnoreCase[c] = MkOr(charPredTable[char.ToUpper(c)], charPredTable[char.ToLower(c)]);
-                else
-                    charPredTableIgnoreCase[c] = charPredTable[c];
-            }
             nonascii = MkCharSetFromRange('\x80', '\uFFFF');
+            _IgnoreCase = new Unicode.IgnoreCaseTransformer(this);
         }
 
         private Unicode.IgnoreCaseTransformer _IgnoreCase;
-        private Unicode.IgnoreCaseTransformer IgnoreCase
-        {
-            get
-            {
-                if (_IgnoreCase == null)
-                    _IgnoreCase = new Unicode.IgnoreCaseTransformer(this);
-                return _IgnoreCase;
-            }
-        }
 
         /// <summary>
         /// Make a character predicate for the given character c.
-        /// If c is a lower case or upper case character and ignoreCase is true
-        /// then add both the upper case and the lower case characters into the predicate.
         /// </summary>
-        public BDD MkCharConstraint(char c, bool ignoreCase = false)
+        public BDD MkCharConstraint(char c, bool ignoreCase = false, string culture = null)
         {
-            if (c < charPredTable_Length)
-                return ignoreCase ? charPredTableIgnoreCase[c] : charPredTable[c];
+            if (ignoreCase)
+            {
+                return _IgnoreCase.Apply(c, culture);
+            }
             else
             {
-                var bdd = MkSetFrom(c, _bw - 1);
-                if (ignoreCase)
-                    return IgnoreCase.Apply(bdd);
-                else
-                    return bdd;
+                //individual character BDDs are always fixed
+                if (charPredTable[c] == null)
+                    charPredTable[c] = MkSetFrom(c, 15);
+                return charPredTable[c];
             }
         }
 
@@ -97,7 +58,9 @@ namespace System.Text.RegularExpressions.SRM
         /// </summary>
         public BDD MkCharSetFromRange(char m, char n)
         {
-            return MkSetFromRange((uint)m, (uint)n, _bw-1);
+            if (m == n)
+                return MkCharConstraint(m);
+            return MkSetFromRange((uint)m, (uint)n, 15);
         }
 
         /// <summary>
@@ -107,7 +70,7 @@ namespace System.Text.RegularExpressions.SRM
         {
             BDD res = False;
             foreach (var range in ranges)
-                res = MkOr(res, MkSetFromRange(range.Item1, range.Item2, _bw -1));
+                res = MkOr(res, MkSetFromRange(range.Item1, range.Item2, 15));
             return res;
         }
 
@@ -115,11 +78,14 @@ namespace System.Text.RegularExpressions.SRM
         /// Make a character set of all the characters in the interval from c to d.
         /// If ignoreCase is true ignore cases for upper and lower case characters by including both versions.
         /// </summary>
-        public BDD MkRangeConstraint(char c, char d, bool ignoreCase = false)
+        public BDD MkRangeConstraint(char c, char d, bool ignoreCase = false, string culture = null)
         {
-            var res = MkSetFromRange((uint)c, (uint)d, _bw - 1);
+            if (c == d)
+                return MkCharConstraint(c, ignoreCase, culture);
+
+            var res = MkSetFromRange((uint)c, (uint)d, 15);
             if (ignoreCase)
-                res = IgnoreCase.Apply(res);
+                res = _IgnoreCase.Apply(res, culture);
             return res;
         }
 
@@ -130,7 +96,7 @@ namespace System.Text.RegularExpressions.SRM
         {
             BDD bdd = False;
             foreach (var range in ranges)
-                bdd = MkOr(bdd, MkSetFromRange((uint)range[0], (uint)range[1], _bw - 1));
+                bdd = MkOr(bdd, MkSetFromRange((uint)range[0], (uint)range[1], 15));
             return bdd;
         }
 
@@ -169,7 +135,7 @@ namespace System.Text.RegularExpressions.SRM
         /// <returns>the cardinality of the set</returns>
         public ulong ComputeDomainSize(BDD set)
         {
-            var card = ComputeDomainSize(set, _bw - 1);
+            var card = ComputeDomainSize(set, 15);
             return card;
         }
 
@@ -180,7 +146,7 @@ namespace System.Text.RegularExpressions.SRM
         /// <returns>true iff the set is a singleton</returns>
         public bool IsSingleton(BDD set)
         {
-            var card = ComputeDomainSize(set, _bw - 1);
+            var card = ComputeDomainSize(set, 15);
             return card == (long)1;
         }
 
@@ -190,7 +156,7 @@ namespace System.Text.RegularExpressions.SRM
         /// </summary>
         public Tuple<uint, uint>[] ToRanges(BDD set, int limit = 0)
         {
-            return ToRanges(set, _bw - 1, limit);
+            return ToRanges(set, 15, limit);
         }
 
         private IEnumerable<uint> GenerateAllCharactersInOrder(BDD set)
