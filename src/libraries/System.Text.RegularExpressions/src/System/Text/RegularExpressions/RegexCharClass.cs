@@ -1209,16 +1209,16 @@ namespace System.Text.RegularExpressions
         /// <summary>
         /// Constructs the string representation of the class.
         /// </summary>
-        public string ToStringClass()
+        public string ToStringClass(bool isDFA = false)
         {
             var vsb = new ValueStringBuilder(stackalloc char[256]);
-            ToStringClass(ref vsb);
+            ToStringClass(isDFA, ref vsb);
             return vsb.ToString();
         }
 
-        private void ToStringClass(ref ValueStringBuilder vsb)
+        private void ToStringClass(bool isDFA, ref ValueStringBuilder vsb)
         {
-            Canonicalize();
+            Canonicalize(isDFA);
 
             int initialLength = vsb.Length;
             int categoriesLength = _categories?.Length ?? 0;
@@ -1256,13 +1256,13 @@ namespace System.Text.RegularExpressions
             }
 
             // Append a subtractor if there is one.
-            _subtractor?.ToStringClass(ref vsb);
+            _subtractor?.ToStringClass(isDFA, ref vsb);
         }
 
         /// <summary>
         /// Logic to reduce a character class to a unique, sorted form.
         /// </summary>
-        private void Canonicalize()
+        private void Canonicalize(bool isDFA)
         {
             List<SingleRange>? rangelist = _rangelist;
             if (rangelist != null)
@@ -1315,6 +1315,9 @@ namespace System.Text.RegularExpressions
 
                     rangelist.RemoveRange(j, rangelist.Count - j);
                 }
+                // Do not produce the IsSigletonInverse transformation in DFA mode
+                if (isDFA)
+                    return;
 
                 // If the class now represents a single negated character, but does so by including every
                 // other character, invert it to produce a normalized form recognized by IsSingletonInverse.

@@ -97,8 +97,8 @@ namespace System.Text.RegularExpressions
             ValidateMatchTimeout(matchTimeout);
 
             this.pattern = pattern;
-            roptions = options;
             internalMatchTimeout = matchTimeout;
+            roptions = options;
 
 #if DEBUG
             if (IsDebug)
@@ -110,22 +110,25 @@ namespace System.Text.RegularExpressions
             // Parse the input
             RegexTree tree = RegexParser.Parse(pattern, roptions, culture ?? ((options & RegexOptions.CultureInvariant) != 0 ? CultureInfo.InvariantCulture : CultureInfo.CurrentCulture));
 
-            // Extract the relevant information
-            capnames = tree.CapNames;
-            capslist = tree.CapsList;
-            _code = RegexWriter.Write(tree);
-            caps = _code.Caps;
-            capsize = _code.CapSize;
-
             // if SRM is used then construct the SMR.Regex matcher
             // this construction fails and throws a NotSupportedException
-            // for some unsupported constructs used in the original regex
+            // if unsupported constructs are being used in the original regex
             _useSRM = (options & RegexOptions.DFA) != 0;
             if (_useSRM)
-                // remove the DFA flag because it is undefined in SRM
-                _srm = InitializeSRM(tree.Root, options & ~RegexOptions.DFA, matchTimeout, culture);
+            {
+                _srm = InitializeSRM(tree.Root, roptions & ~RegexOptions.DFA, matchTimeout, culture);
+            }
+            else
+            {
+                // Extract the relevant information
+                capnames = tree.CapNames;
+                capslist = tree.CapsList;
+                _code = RegexWriter.Write(tree);
+                caps = _code.Caps;
+                capsize = _code.CapSize;
 
-            InitializeReferences();
+                InitializeReferences();
+            }
         }
 
         /// <summary>
