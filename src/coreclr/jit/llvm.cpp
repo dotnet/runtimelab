@@ -30,9 +30,10 @@ struct LlvmArgInfo
     unsigned int m_shadowStackOffset;
 };
 
+// TODO: might need the LLVM Value* in here for exception funclets.
 struct SpilledExpressionEntry
 {
-    CorInfoType m_Type;
+    CorInfoType m_CorInfoType;
 };
 
 typedef JitHashTable<BasicBlock*, JitPtrKeyFuncs<BasicBlock>, llvm::BasicBlock*> BlkToLlvmBlkVectorMap;
@@ -491,15 +492,30 @@ unsigned int getTotalLocalOffset()
     return 0;
 }
 
+unsigned int getTotalRealLocalOffset()
+{
+    unsigned int offset = 0;
+    // TODO: might need this IL->LLVM function for exception funclets
+    //for (int i = 0; i < _locals.Length; i++)
+    //{
+    //    TypeDesc localType = _locals[i].Type;
+    //    if (!CanStoreVariableOnStack(localType))
+    //    {
+    //        offset = padNextOffset(localType, offset);
+    //    }
+    //}
+    return AlignUp(offset, TARGET_POINTER_SIZE);
+}
+
 unsigned int getSpillOffsetAtIndex(unsigned int index, unsigned int offset)
 {
     struct SpilledExpressionEntry spill = _spilledExpressions[index];
 
-    for (int i = 0; i < index; i++)
+    for (unsigned int i = 0; i < index; i++)
     {
-        offset = padNextOffset(_spilledExpressions[i].m_Type, offset);
+        offset = padNextOffset(_spilledExpressions[i].m_CorInfoType, offset);
     }
-    offset = padOffset(spill.m_Type, offset);
+    offset = padOffset(spill.m_CorInfoType, offset);
     return offset;
 }
 
@@ -561,13 +577,11 @@ llvm::Value* buildUserFuncCall(GenTreeCall* call, llvm::IRBuilder<>& builder)
     if (needsReturnStackSlot(sigInfo.retType))
     {
         unsigned int returnIndex = _spilledExpressions.size();
-        unsigned int varOffset   = getSpillOffsetAtIndex(returnIndex, getTotalRealLocalOffset()) + getTotalParameterOffset(_sigInfo);
-        returnAddress     = _prologBuilder->CreateGEP(_function->getArg(0), builder.getInt32(varOffset), "temp_");
 
-        //castReturnAddress = builder.CreatePointerCast(returnAddress, Type::getInt8PtrTy(_llvmContext), "_castreturn");
+        _spilledExpressions.push_back({sigInfo.retType});
+        unsigned int varOffset = getSpillOffsetAtIndex(returnIndex, getTotalRealLocalOffset()) + getTotalParameterOffset(_sigInfo);
+        returnAddress = _prologBuilder->CreateGEP(_function->getArg(0), builder.getInt32(varOffset), "temp_");
 
-        _spilledExpressions.push_back(returnAddress);
-        // TODO: getTotalLocalOffset should include spills?
         argVec.push_back(returnAddress);
     }
 
@@ -609,7 +623,7 @@ llvm::Value* buildUserFuncCall(GenTreeCall* call, llvm::IRBuilder<>& builder)
     }
     Value* llvmCall = builder.CreateCall(llvmFunc, ArrayRef<Value*>(argVec));
     // TODO: creating the load for the return slot here is perhaps not the most efficient and should be done lazily
-    return mapTreeIdValue(call->gtTreeID, needsReturnStackSlot ? builder.CreateLoad(returnAddress) : llvmCall);
+    return mapTreeIdValue(call->gtTreeID, returnAddress != nullptr ? builder.CreateLoad(returnAddress) : llvmCall);
     }
 
 Value* buildCall(llvm::IRBuilder<>& builder, GenTree* node)
