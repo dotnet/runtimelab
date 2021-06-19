@@ -1606,11 +1606,17 @@ ncrypt!SslOpenPrivateKey
 ncrypt!SslOpenProvider
 ncrypt!SslSignHash
 ncrypt!SslVerifySignature
+ntdll!NtCreateFile
+ntdll!NtQueryDirectoryFile
+ntdll!NtQueryInformationFile
+ntdll!NtQueryInformationProcess
+ntdll!NtQuerySystemInformation
 ntdll!RtlCopyContext
 ntdll!RtlCopyExtendedContext
 ntdll!RtlGetEnabledExtendedFeatures
 ntdll!RtlGetExtendedContextLength
 ntdll!RtlGetExtendedFeaturesMask
+ntdll!RtlGetVersion
 ntdll!RtlInitializeExtendedContext
 ntdll!RtlLocateExtendedFeature
 ntdll!RtlLocateLegacyContext
