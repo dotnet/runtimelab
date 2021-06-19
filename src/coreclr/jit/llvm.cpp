@@ -30,6 +30,11 @@ struct LlvmArgInfo
     unsigned int m_shadowStackOffset;
 };
 
+struct SpilledExpressionEntry
+{
+    CorInfoType m_Type;
+};
+
 typedef JitHashTable<BasicBlock*, JitPtrKeyFuncs<BasicBlock>, llvm::BasicBlock*> BlkToLlvmBlkVectorMap;
 
 static Module* _module = nullptr;
@@ -50,6 +55,7 @@ std::unordered_map<unsigned int, Value*>* _sdsuMap;
 std::unordered_map<unsigned int, Value*>* _localsMap;
 CORINFO_SIG_INFO                          _sigInfo; // sigInfo of function being compiled
 llvm::IRBuilder<>*                        _prologBuilder;
+std::vector<SpilledExpressionEntry>       _spilledExpressions;
 
 extern "C" DLLEXPORT void registerLlvmCallbacks(void*       thisPtr,
                                                 const char* outputFileName,
@@ -243,7 +249,7 @@ FunctionType* getFunctionTypeForSigInfo(CORINFO_SIG_INFO& sigInfo)
         failFunctionCompilation();
 
     // start vector with shadow stack arg
-    std::vector<llvm::Type*> argVec{Type::getInt8PtrTy(_llvmContext)};
+    std::vector<llvm::Type*> argVec{Type::getInt8PtrTy(_llvmContext)->getPointerTo()};
     llvm::Type*              retLlvmType;
 
     if (needsReturnStackSlot(sigInfo.retType))
@@ -478,11 +484,23 @@ int getTotalParameterOffset(CORINFO_SIG_INFO& sigInfo)
     return AlignUp(offset, TARGET_POINTER_SIZE);
 }
 
-int getTotalLocalOffset(CORINFO_SIG_INFO& sigInfo)
+unsigned int getTotalLocalOffset()
 {
     // TODO: need to store some locals on ths shadow stack, either when there are exception blocks, or they are, or have, GC pointers (so the conservative GC knows they are live)
     // For now we don't have any so simply:
     return 0;
+}
+
+unsigned int getSpillOffsetAtIndex(unsigned int index, unsigned int offset)
+{
+    struct SpilledExpressionEntry spill = _spilledExpressions[index];
+
+    for (int i = 0; i < index; i++)
+    {
+        offset = padNextOffset(_spilledExpressions[i].m_Type, offset);
+    }
+    offset = padOffset(spill.m_Type, offset);
+    return offset;
 }
 
 llvm::Value* getShadowStackOffest(Value* shadowStack, unsigned int offset)
@@ -521,11 +539,6 @@ llvm::Value* buildUserFuncCall(GenTreeCall* call, llvm::IRBuilder<>& builder)
     Function* llvmFunc = _module->getFunction(symbolName);
     CORINFO_SIG_INFO sigInfo;
     _compiler->eeGetMethodSig(call->gtCallMethHnd, &sigInfo);
-    if (needsReturnStackSlot(sigInfo.retType))
-    {
-        // TODO: enough already in this PR, leave calling functions that need a spilled slot for later.
-        failFunctionCompilation();
-    }
 
     if (llvmFunc == nullptr)
     {
@@ -538,11 +551,25 @@ llvm::Value* buildUserFuncCall(GenTreeCall* call, llvm::IRBuilder<>& builder)
     }
     std::vector<llvm::Value*> argVec;
 
-    unsigned int offset = getTotalParameterOffset(_sigInfo) + getTotalLocalOffset(sigInfo);
+    unsigned int offset = getTotalParameterOffset(_sigInfo) + getTotalLocalOffset();
 
     // shadowstack arg first
     Value* shadowStackForCallee = offset == 0 ? _function->getArg(0) : builder.CreateGEP(_function->getArg(0), builder.getInt32(offset));
     argVec.push_back(shadowStackForCallee);
+
+    Value* returnAddress = nullptr;
+    if (needsReturnStackSlot(sigInfo.retType))
+    {
+        unsigned int returnIndex = _spilledExpressions.size();
+        unsigned int varOffset   = getSpillOffsetAtIndex(returnIndex, getTotalRealLocalOffset()) + getTotalParameterOffset(_sigInfo);
+        returnAddress     = _prologBuilder->CreateGEP(_function->getArg(0), builder.getInt32(varOffset), "temp_");
+
+        //castReturnAddress = builder.CreatePointerCast(returnAddress, Type::getInt8PtrTy(_llvmContext), "_castreturn");
+
+        _spilledExpressions.push_back(returnAddress);
+        // TODO: getTotalLocalOffset should include spills?
+        argVec.push_back(returnAddress);
+    }
 
     unsigned int shadowStackUseOffest = 0;
     int          argIx                = 0;
@@ -580,8 +607,10 @@ llvm::Value* buildUserFuncCall(GenTreeCall* call, llvm::IRBuilder<>& builder)
             argIx++;
         }
     }
-    return mapTreeIdValue(call->gtTreeID, builder.CreateCall(llvmFunc, ArrayRef<Value*>(argVec)));
-}
+    Value* llvmCall = builder.CreateCall(llvmFunc, ArrayRef<Value*>(argVec));
+    // TODO: creating the load for the return slot here is perhaps not the most efficient and should be done lazily
+    return mapTreeIdValue(call->gtTreeID, needsReturnStackSlot ? builder.CreateLoad(returnAddress) : llvmCall);
+    }
 
 Value* buildCall(llvm::IRBuilder<>& builder, GenTree* node)
 {
