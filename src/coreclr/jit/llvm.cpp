@@ -169,7 +169,7 @@ unsigned int padOffset(CorInfoType corInfoType, unsigned int atOffset)
         //var padding        = (atOffset + (alignment - 1)) & ~(alignment - 1);
         failFunctionCompilation();
     }
-    return (atOffset + (alignment - 1)) & ~(alignment - 1);
+    return roundUp(atOffset, alignment);
 }
 
 unsigned int padNextOffset(CorInfoType corInfoType, unsigned int atOffset)
@@ -195,7 +195,7 @@ unsigned int padNextOffset(CorInfoType corInfoType, unsigned int atOffset)
 /// </summary>
 bool canStoreTypeOnLlvmStack(CorInfoType corInfoType)
 {
-    // TODO: CORINFO_TYPE_VALUECLASS maps to a c# struct?
+    // structs with no GC pointers can go on LLVM stack.
     if (corInfoType == CorInfoType::CORINFO_TYPE_VALUECLASS)
     {
         // TODO: the equivalent of this c# goes here
@@ -209,14 +209,14 @@ bool canStoreTypeOnLlvmStack(CorInfoType corInfoType)
         failFunctionCompilation();
     }
 
-    if (corInfoType == CorInfoType::CORINFO_TYPE_BYREF || corInfoType == CorInfoType::CORINFO_TYPE_CLASS)
+    if (corInfoType == CorInfoType::CORINFO_TYPE_REFANY)
     {
         return false;
     }
-    if (corInfoType == CorInfoType::CORINFO_TYPE_REFANY || corInfoType == CorInfoType::CORINFO_TYPE_VAR)
+    if (corInfoType == CorInfoType::CORINFO_TYPE_BYREF || corInfoType == CorInfoType::CORINFO_TYPE_CLASS ||
+        corInfoType == CorInfoType::CORINFO_TYPE_REFANY)
     {
-        //TODO: what scenarios have these
-        failFunctionCompilation();
+        return false;
     }
     return true;
 }
@@ -258,11 +258,12 @@ FunctionType* getFunctionTypeForSigInfo(CORINFO_SIG_INFO& sigInfo)
 
     CORINFO_ARG_LIST_HANDLE  sigArgs = sigInfo.args;
 
-    //TODO: not attempting to compile generic signatures with context arg via clrjit yet, is it the same as sigInfo.hasTypeArg()?
-    //if (hasHiddenParam)
-    //{
-    //    signatureTypes.Add(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0)); // *EEType
-    //}
+    //TODO: not attempting to compile generic signatures with context arg via clrjit yet
+    if (sigInfo.hasTypeArg())
+    {
+        failFunctionCompilation();
+        //signatureTypes.Add(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0)); // *EEType
+    }
 
     for (unsigned int i = 0; i < sigInfo.numArgs; i++, sigArgs = _info.compCompHnd->getArgNext(sigArgs))
     {
@@ -296,7 +297,7 @@ Function* getOrCreateRhpAssignRef()
     return llvmFunc;
 }
 
-Type* getLLVMTypeForVarType(var_types type)
+Type* getLLVMTypeForVarType(var_types type, bool widenSmallInts)
 {
     // TODO: Fill out with missing type mappings and when all code done via clrjit, default should fail with useful
     // message
@@ -305,10 +306,10 @@ Type* getLLVMTypeForVarType(var_types type)
         case var_types::TYP_BOOL:
         case var_types::TYP_BYTE:
         case var_types::TYP_UBYTE:
-            return Type::getInt8Ty(_llvmContext);
+            return widenSmallInts ? Type::getInt32Ty(_llvmContext) : Type::getInt8Ty(_llvmContext);
         case var_types::TYP_SHORT:
         case var_types::TYP_USHORT:
-            return Type::getInt16Ty(_llvmContext);
+            return widenSmallInts ? Type::getInt32Ty(_llvmContext) : Type::getInt16Ty(_llvmContext);
         case var_types::TYP_INT:
             return Type::getInt32Ty(_llvmContext);
         case var_types::TYP_REF:
@@ -356,7 +357,7 @@ void castingStore(llvm::IRBuilder<>& builder, Value* toStore, Value* address, ll
 
 void castingStore(llvm::IRBuilder<>& builder, Value* toStore, Value* address, var_types type)
 {
-    castingStore(builder, toStore, address, getLLVMTypeForVarType(type));
+    castingStore(builder, toStore, address, getLLVMTypeForVarType(type, false));
 }
 
 /// <summary>
@@ -382,7 +383,8 @@ struct LlvmArgInfo getLlvmArgInfoForArgIx(CORINFO_SIG_INFO& sigInfo, unsigned in
     };
     unsigned int shadowStackOffset = llvmArgInfo.m_shadowStackOffset;
 
-    for (unsigned int i = 0; i < sigInfo.numArgs; i++, sigArgs = _info.compCompHnd->getArgNext(sigArgs))
+    unsigned int i = 0;
+    for (; i < sigInfo.numArgs; i++, sigArgs = _info.compCompHnd->getArgNext(sigArgs))
     {
         CorInfoType corInfoType = getCorInfoTypeForArg(sigInfo, sigArgs);
         if (canStoreTypeOnLlvmStack(corInfoType))
@@ -390,7 +392,7 @@ struct LlvmArgInfo getLlvmArgInfoForArgIx(CORINFO_SIG_INFO& sigInfo, unsigned in
             if (lclNum == i)
             {
                 llvmArgInfo.m_argIx = llvmArgNum;
-                return llvmArgInfo;
+                break;
             }
 
             llvmArgNum++;
@@ -400,13 +402,14 @@ struct LlvmArgInfo getLlvmArgInfoForArgIx(CORINFO_SIG_INFO& sigInfo, unsigned in
             if (lclNum == i)
             {
                 llvmArgInfo.m_shadowStackOffset = shadowStackOffset;
-                return llvmArgInfo;
+                break;
             }
 
             shadowStackOffset += TARGET_POINTER_SIZE; // TODO size of arg, for now only handles byrefs and class types
         }
     }
-    failFunctionCompilation(); // lclNum not an argument, TODO: how to indicate a failure in compilation
+    assert(lclNum == i); // lclNum not an argument
+    return llvmArgInfo;
 }
 
 void emitDoNothingCall(llvm::IRBuilder<>& builder)
@@ -635,32 +638,13 @@ Value* buildCnsInt(llvm::IRBuilder<>& builder, GenTree* node)
 
 Value* buildInd(llvm::IRBuilder<>& builder, GenTree* node, Value* ptr)
 {
-    return mapTreeIdValue(node->gtTreeID, builder.CreateLoad(castIfNecessary(builder, ptr, getLLVMTypeForVarType(node->TypeGet())->getPointerTo())));
+    // pass true to widen small ints to i32, TODO: will need to do the same for CLS_VAR, LCL_FLD
+    return mapTreeIdValue(node->gtTreeID, builder.CreateLoad(castIfNecessary(builder, ptr, getLLVMTypeForVarType(node->TypeGet(), true)->getPointerTo())));
 }
 
 Value* buildNe(llvm::IRBuilder<>& builder, GenTree* node, Value* op1, Value* op2)
 {
-    // TODO: when the next integer binary operator is implemented, factor out the widening
-    Type* op1Type = op1->getType();
-    Type* op2Type = op2->getType();
-    if (op1Type == op2Type)
-    {
-        // no widening required
-        return mapTreeIdValue(node->gtTreeID, builder.CreateICmpNE(op1, op2));
-    }
-    else
-    {
-        if (op1Type->isIntegerTy() && op2Type->isIntegerTy())
-        {
-            Type* type = ((llvm::IntegerType*)op1Type)->getBitWidth() >= ((llvm::IntegerType*)op2Type)->getBitWidth()
-                       ? op1Type
-                       : op2Type;
-            return mapTreeIdValue(node->gtTreeID, builder.CreateICmpNE(castIfNecessary(builder, op1, type),
-                                                                       castIfNecessary(builder, op2, type)));
-        }
-    }
-    // unsupported comparison 
-    failFunctionCompilation();
+    return mapTreeIdValue(node->gtTreeID, builder.CreateICmpNE(op1, op2));
 }
 
 void importStoreInd(llvm::IRBuilder<>& builder, GenTreeStoreInd* storeIndOp)
