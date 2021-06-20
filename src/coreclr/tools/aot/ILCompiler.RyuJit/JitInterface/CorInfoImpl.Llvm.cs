@@ -75,7 +75,7 @@ namespace Internal.JitInterface
             node.AppendMangledName(_this._compilation.NameMangler, sb);
             if (node is FrozenStringNode)
             {
-                sb.Append("___SYMBOL\0");
+                sb.Append("___SYMBOL");
             }
             
             sb.Append("\0");
