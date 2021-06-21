@@ -127,6 +127,10 @@ namespace ILCompiler
                 if (sig.ReturnType.IsVoid &&
                     !method.RequiresInstArg()) // speed up
                 {
+                    // if (method.Name == "SetOwnerThreadToCurrent")
+                    // {
+                    //
+                    // }
                     corInfo.RegisterLlvmCallbacks((IntPtr)Unsafe.AsPointer(ref corInfo), _outputFile, Module.Target, Module.DataLayout);
                     corInfo.CompileMethod(methodCodeNodeNeedingCode);
                     methodCodeNodeNeedingCode.CompilationCompleted = true;

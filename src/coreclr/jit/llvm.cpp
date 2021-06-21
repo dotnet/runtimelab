@@ -249,8 +249,8 @@ FunctionType* getFunctionTypeForSigInfo(CORINFO_SIG_INFO& sigInfo)
     if (sigInfo.hasExplicitThis() || sigInfo.hasTypeArg())
         failFunctionCompilation();
 
-    // start vector with shadow stack arg
-    std::vector<llvm::Type*> argVec{Type::getInt8PtrTy(_llvmContext)->getPointerTo()};
+    // start vector with shadow stack arg, this might reduce the number of bitcasts as a i8**, TODO: try it and check LLVM bitcode size
+    std::vector<llvm::Type*> argVec{Type::getInt8PtrTy(_llvmContext)};
     llvm::Type*              retLlvmType;
 
     if (needsReturnStackSlot(sigInfo.retType))
@@ -582,6 +582,7 @@ llvm::Value* buildUserFuncCall(GenTreeCall* call, llvm::IRBuilder<>& builder)
         unsigned int varOffset = getSpillOffsetAtIndex(returnIndex, getTotalRealLocalOffset()) + getTotalParameterOffset(_sigInfo);
         returnAddress = _prologBuilder->CreateGEP(_function->getArg(0), builder.getInt32(varOffset), "temp_");
 
+        // TOOD: as per the shadow stack, i8** might be a better type for any spilled return args, as a load normally will follow the call, and then the bitcast can be removed
         argVec.push_back(returnAddress);
     }
 
@@ -623,7 +624,7 @@ llvm::Value* buildUserFuncCall(GenTreeCall* call, llvm::IRBuilder<>& builder)
     }
     Value* llvmCall = builder.CreateCall(llvmFunc, ArrayRef<Value*>(argVec));
     // TODO: creating the load for the return slot here is perhaps not the most efficient and should be done lazily
-    return mapTreeIdValue(call->gtTreeID, returnAddress != nullptr ? builder.CreateLoad(returnAddress) : llvmCall);
+    return mapTreeIdValue(call->gtTreeID, returnAddress != nullptr ? builder.CreateLoad(builder.CreateBitCast(returnAddress, Type::getInt8PtrTy(_llvmContext)->getPointerTo())) : llvmCall);
     }
 
 Value* buildCall(llvm::IRBuilder<>& builder, GenTree* node)
@@ -864,9 +865,11 @@ void Llvm::Compile(Compiler* pCompiler)
     std::unordered_map<unsigned int, Value*> sdsuMap;
     _sdsuMap = &sdsuMap;
     _localsMap = new std::unordered_map<unsigned int, Value*>();
+    _spilledExpressions.clear();
     const char* mangledName = (*_getMangledMethodName)(_thisPtr, _info.compMethodHnd);
     _function    = _module->getFunction(mangledName);
     _compiler->eeGetMethodSig(_info.compMethodHnd, &_sigInfo);
+
     if (_function == nullptr)
     {
         _function = Function::Create(getFunctionTypeForSigInfo(_sigInfo), Function::ExternalLinkage, 0U, mangledName,
