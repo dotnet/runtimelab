@@ -27,6 +27,7 @@ partial class C
 ";
             Compilation origComp = await TestUtils.CreateCompilation(source);
             Compilation newComp = TestUtils.RunGenerators(origComp, out _, new Microsoft.Interop.DllImportGenerator());
+            Assert.Empty(newComp.GetDiagnostics());
 
             ITypeSymbol attributeType = newComp.GetTypeByMetadataName(attributeMetadataName)!;
 
@@ -55,6 +56,7 @@ partial class C
 ";
             Compilation origComp = await TestUtils.CreateCompilation(source);
             Compilation newComp = TestUtils.RunGenerators(origComp, out _, new Microsoft.Interop.DllImportGenerator());
+            Assert.Empty(newComp.GetDiagnostics());
 
             ITypeSymbol attributeType = newComp.GetTypeByMetadataName("System.Runtime.InteropServices.UnmanagedCallConvAttribute")!;
 
@@ -87,6 +89,7 @@ partial class C
 ";
             Compilation origComp = await TestUtils.CreateCompilation(source);
             Compilation newComp = TestUtils.RunGenerators(origComp, out _, new Microsoft.Interop.DllImportGenerator());
+            Assert.Empty(newComp.GetDiagnostics());
 
             ITypeSymbol attributeType = newComp.GetTypeByMetadataName("System.Runtime.InteropServices.UnmanagedCallConvAttribute")!;
             ITypeSymbol callConvType = newComp.GetTypeByMetadataName("System.Runtime.CompilerServices.CallConvStdcall")!;
@@ -123,6 +126,7 @@ partial class C
 ";
             Compilation origComp = await TestUtils.CreateCompilation(source);
             Compilation newComp = TestUtils.RunGenerators(origComp, out _, new Microsoft.Interop.DllImportGenerator());
+            Assert.Empty(newComp.GetDiagnostics());
 
             ITypeSymbol attributeType = newComp.GetTypeByMetadataName("System.Runtime.InteropServices.UnmanagedCallConvAttribute")!;
             ITypeSymbol callConvType = newComp.GetTypeByMetadataName("System.Runtime.CompilerServices.CallConvStdcall")!;
@@ -165,6 +169,8 @@ partial class C
 ";
             Compilation origComp = await TestUtils.CreateCompilation(source);
             Compilation newComp = TestUtils.RunGenerators(origComp, out _, new Microsoft.Interop.DllImportGenerator());
+
+            Assert.Empty(newComp.GetDiagnostics());
 
             ITypeSymbol attributeType = newComp.GetTypeByMetadataName("OtherAttribute")!;
 

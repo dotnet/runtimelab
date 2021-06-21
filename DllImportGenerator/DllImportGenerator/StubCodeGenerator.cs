@@ -120,7 +120,7 @@ namespace Microsoft.Interop
             }
         }
 
-        public BlockSyntax GenerateSyntax(AttributeListSyntax forwardedAttributes)
+        public BlockSyntax GenerateSyntax(AttributeListSyntax? forwardedAttributes)
         {
             string dllImportName = stubMethod.Name + "__PInvoke__";
             var setupStatements = new List<StatementSyntax>();
@@ -352,14 +352,15 @@ namespace Microsoft.Interop
                     Token(SyntaxKind.UnsafeKeyword))
                 .WithSemicolonToken(Token(SyntaxKind.SemicolonToken))
                 .WithAttributeLists(
-                    List(
-                        new[]
-                        {
-                            AttributeList(
+                    SingletonList(AttributeList(
                                 SingletonSeparatedList(
-                                    CreateDllImportAttributeForTarget(GetTargetDllImportDataFromStubData()))),
-                            forwardedAttributes
-                        }));
+                                    CreateDllImportAttributeForTarget(GetTargetDllImportDataFromStubData())))));
+            
+            if (forwardedAttributes is not null)
+            {
+                dllImport = dllImport.AddAttributeLists(forwardedAttributes);
+            }
+
             foreach (var marshaller in paramMarshallers)
             {
                 ParameterSyntax paramSyntax = marshaller.Generator.AsParameter(marshaller.TypeInfo);

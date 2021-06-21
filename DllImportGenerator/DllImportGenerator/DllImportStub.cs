@@ -212,7 +212,7 @@ namespace Microsoft.Interop
 
             // Generate stub code
             var stubGenerator = new StubCodeGenerator(method, dllImportData, paramsTypeInfo, retTypeInfo, diagnostics, env.Options);
-            var code = stubGenerator.GenerateSyntax(forwardedAttributes: AttributeList(SeparatedList(forwardedAttributes)));
+            var code = stubGenerator.GenerateSyntax(forwardedAttributes: forwardedAttributes.Count != 0 ? AttributeList(SeparatedList(forwardedAttributes)) : null);
 
             var additionalAttrs = new List<AttributeListSyntax>();
 
