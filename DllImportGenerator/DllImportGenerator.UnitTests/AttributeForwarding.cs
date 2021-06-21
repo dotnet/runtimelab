@@ -77,7 +77,6 @@ partial class C
         public async Task UnmanagedCallConvAttribute_SingleCallConvType()
         {
             string source = @"
-using System;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 partial class C
@@ -114,7 +113,6 @@ partial class C
         public async Task UnmanagedCallConvAttribute_MultipleCallConvTypes()
         {
             string source = @"
-using System;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 partial class C
