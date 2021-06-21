@@ -13,10 +13,10 @@ namespace DllImportGenerator.IntegrationTests
     {
         internal partial class CallingConventions
         {
-            [GeneratedDllImport(NativeExportsNE_Binary)]
+            [GeneratedDllImport(NativeExportsNE_Binary, EntryPoint = "add_integers_cdecl")]
             [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
             public static partial long AddLongsCdecl(long i, long j, long k, long l, long m, long n, long o, long p, long q);
-            [GeneratedDllImport(NativeExportsNE_Binary)]
+            [GeneratedDllImport(NativeExportsNE_Binary, EntryPoint = "add_integers_stdcall")]
             [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvStdcall) })]
             public static partial long AddLongsStdcall(long i, long j, long k, long l, long m, long n, long o, long p, long q);
         }
