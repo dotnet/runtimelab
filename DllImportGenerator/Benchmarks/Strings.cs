@@ -1,5 +1,6 @@
 using BenchmarkDotNet.Attributes;
 using Microsoft.Win32.SafeHandles;
+using SharedTypes;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -143,10 +144,40 @@ namespace Benchmarks
                 public static partial void Reverse_Replace_Ref(ref string s);
             }
         }
+
+        public partial class CustomUtf16StringMarshaller
+        {
+            [GeneratedDllImport(NativeExportsNE_Binary, EntryPoint = EntryPoints.UShort.ReturnLength, CharSet = CharSet.Auto)]
+            public static partial int ReturnLength([MarshalUsing(typeof(Utf16StringMarshaler))] string s);
+
+            [GeneratedDllImport(NativeExportsNE_Binary, EntryPoint = EntryPoints.UShort.ReverseReturn, CharSet = CharSet.Auto)]
+            [return: MarshalUsing(typeof(Utf16StringMarshaler))]
+            public static partial string Reverse_Return([MarshalUsing(typeof(Utf16StringMarshaler))] string s);
+
+            [GeneratedDllImport(NativeExportsNE_Binary, EntryPoint = EntryPoints.UShort.ReverseOut, CharSet = CharSet.Auto)]
+            public static partial void Reverse_Out([MarshalUsing(typeof(Utf16StringMarshaler))] string s, [MarshalUsing(typeof(Utf16StringMarshaler))] out string ret);
+
+            [GeneratedDllImport(NativeExportsNE_Binary, EntryPoint = EntryPoints.UShort.ReverseInplace, CharSet = CharSet.Auto)]
+            public static partial void Reverse_Ref([MarshalUsing(typeof(Utf16StringMarshaler))] ref string s);
+
+            [GeneratedDllImport(NativeExportsNE_Binary, EntryPoint = EntryPoints.UShort.ReverseInplace, CharSet = CharSet.Auto)]
+            public static partial void Reverse_In([MarshalUsing(typeof(Utf16StringMarshaler))] in string s);
+
+            [GeneratedDllImport(NativeExportsNE_Binary, EntryPoint = EntryPoints.UShort.ReverseInplace, CharSet = CharSet.Auto)]
+            public static partial void Reverse_Replace_Ref([MarshalUsing(typeof(Utf16StringMarshaler))] ref string s);
+        }
     }
 
     public class Strings
     {
+        public class EncodingCategoryNames
+        {
+            public const string Utf16 = nameof(Utf16);
+            public const string Ansi = nameof(Ansi);
+            public const string Utf8 = nameof(Utf8);
+            public const string PlatformDependent = nameof(PlatformDependent);
+        }
+
         public static IEnumerable<object> UnicodeStrings{ get; } = new []
         {
             "ABCdef 123$%^",
@@ -159,6 +190,7 @@ namespace Benchmarks
 
         [Benchmark]
         [ArgumentsSource(nameof(UnicodeStrings))]
+        [BenchmarkCategory(EncodingCategoryNames.Utf16)]
         public int StringByValue_CharSetUnicode(string str)
         {
             return NativeExportsNE.Unicode.ReturnLength(str);
@@ -166,6 +198,7 @@ namespace Benchmarks
 
         [Benchmark]
         [ArgumentsSource(nameof(UnicodeStrings))]
+        [BenchmarkCategory(EncodingCategoryNames.Utf16)]
         public int StringByValue_LPWStr(string str)
         {
             return NativeExportsNE.LPWStr.ReturnLength(str);
@@ -173,6 +206,7 @@ namespace Benchmarks
 
         [Benchmark]
         [ArgumentsSource(nameof(UnicodeStrings))]
+        [BenchmarkCategory(EncodingCategoryNames.Utf16)]
         public int StringByValue_LPTStr(string str)
         {
             return NativeExportsNE.LPTStr.ReturnLength(str);
@@ -180,6 +214,7 @@ namespace Benchmarks
 
         [Benchmark]
         [ArgumentsSource(nameof(UnicodeStrings))]
+        [BenchmarkCategory(EncodingCategoryNames.Utf8)]
         public int StringByValue_LPUTF8Str(string str)
         {
             return NativeExportsNE.LPUTF8Str.ReturnLength(str);
@@ -187,6 +222,7 @@ namespace Benchmarks
 
         [Benchmark]
         [ArgumentsSource(nameof(UnicodeStrings))]
+        [BenchmarkCategory(EncodingCategoryNames.Ansi)]
         public int StringByValue_LPStr(string str)
         {
             return NativeExportsNE.LPStr.ReturnLength(str);
@@ -194,6 +230,7 @@ namespace Benchmarks
 
         [Benchmark]
         [ArgumentsSource(nameof(UnicodeStrings))]
+        [BenchmarkCategory(EncodingCategoryNames.Ansi)]
         public int StringByValue_CharSetAnsi(string str)
         {
             return NativeExportsNE.Ansi.ReturnLength(str);
@@ -201,6 +238,7 @@ namespace Benchmarks
 
         [Benchmark]
         [ArgumentsSource(nameof(UnicodeStrings))]
+        [BenchmarkCategory(EncodingCategoryNames.PlatformDependent)]
         public int StringByValue_Auto(string str)
         {
             if (OperatingSystem.IsWindows())
@@ -215,6 +253,15 @@ namespace Benchmarks
 
         [Benchmark]
         [ArgumentsSource(nameof(UnicodeStrings))]
+        [BenchmarkCategory(EncodingCategoryNames.Utf16, CategoryNames.DllImportGeneratorOnly)]
+        public int StringByValue_MarshalUsing(string str)
+        {
+            return NativeExportsNE.CustomUtf16StringMarshaller.ReturnLength(str);
+        }
+
+        [Benchmark]
+        [ArgumentsSource(nameof(UnicodeStrings))]
+        [BenchmarkCategory(EncodingCategoryNames.Utf16)]
         public string StringReturn_CharSetUnicode(string str)
         {
             return NativeExportsNE.Unicode.Reverse_Return(str);
@@ -222,6 +269,7 @@ namespace Benchmarks
 
         [Benchmark]
         [ArgumentsSource(nameof(UnicodeStrings))]
+        [BenchmarkCategory(EncodingCategoryNames.Utf16)]
         public string StringReturn_LPWStr(string str)
         {
             return NativeExportsNE.LPWStr.Reverse_Return(str);
@@ -229,6 +277,7 @@ namespace Benchmarks
 
         [Benchmark]
         [ArgumentsSource(nameof(UnicodeStrings))]
+        [BenchmarkCategory(EncodingCategoryNames.Utf16)]
         public string StringReturn_LPTStr(string str)
         {
             return NativeExportsNE.LPTStr.Reverse_Return(str);
@@ -236,6 +285,7 @@ namespace Benchmarks
 
         [Benchmark]
         [ArgumentsSource(nameof(UnicodeStrings))]
+        [BenchmarkCategory(EncodingCategoryNames.Utf8)]
         public string StringReturn_LPUTF8Str(string str)
         {
             return NativeExportsNE.LPUTF8Str.Reverse_Return(str);
@@ -243,6 +293,7 @@ namespace Benchmarks
 
         [Benchmark]
         [ArgumentsSource(nameof(UnicodeStrings))]
+        [BenchmarkCategory(EncodingCategoryNames.Ansi)]
         public string StringReturn_LPStr(string str)
         {
             return NativeExportsNE.LPStr.Reverse_Return(str);
@@ -250,6 +301,7 @@ namespace Benchmarks
 
         [Benchmark]
         [ArgumentsSource(nameof(UnicodeStrings))]
+        [BenchmarkCategory(EncodingCategoryNames.Ansi)]
         public string StringReturn_CharSetAnsi(string str)
         {
             return NativeExportsNE.Ansi.Reverse_Return(str);
@@ -257,6 +309,7 @@ namespace Benchmarks
 
         [Benchmark]
         [ArgumentsSource(nameof(UnicodeStrings))]
+        [BenchmarkCategory(EncodingCategoryNames.PlatformDependent)]
         public string StringReturn_Auto(string str)
         {
             if (OperatingSystem.IsWindows())
@@ -271,6 +324,15 @@ namespace Benchmarks
 
         [Benchmark]
         [ArgumentsSource(nameof(UnicodeStrings))]
+        [BenchmarkCategory(EncodingCategoryNames.Utf16, CategoryNames.DllImportGeneratorOnly)]
+        public string StringReturn_MarshalUsing(string str)
+        {
+            return NativeExportsNE.CustomUtf16StringMarshaller.Reverse_Return(str);
+        }
+
+        [Benchmark]
+        [ArgumentsSource(nameof(UnicodeStrings))]
+        [BenchmarkCategory(EncodingCategoryNames.Utf16)]
         public string StringByRef_CharSetUnicode(string str)
         {
             NativeExportsNE.Unicode.Reverse_Replace_Ref(ref str);
@@ -279,6 +341,7 @@ namespace Benchmarks
 
         [Benchmark]
         [ArgumentsSource(nameof(UnicodeStrings))]
+        [BenchmarkCategory(EncodingCategoryNames.Utf16)]
         public string StringByRef_LPWStr(string str)
         {
             NativeExportsNE.LPWStr.Reverse_Replace_Ref(ref str);
@@ -287,6 +350,7 @@ namespace Benchmarks
 
         [Benchmark]
         [ArgumentsSource(nameof(UnicodeStrings))]
+        [BenchmarkCategory(EncodingCategoryNames.Utf16)]
         public string StringByRef_LPTStr(string str)
         {
             NativeExportsNE.LPTStr.Reverse_Replace_Ref(ref str);
@@ -295,6 +359,7 @@ namespace Benchmarks
 
         [Benchmark]
         [ArgumentsSource(nameof(UnicodeStrings))]
+        [BenchmarkCategory(EncodingCategoryNames.Utf8)]
         public string StringByRef_LPUTF8Str(string str)
         {
             NativeExportsNE.LPUTF8Str.Reverse_Replace_Ref(ref str);
@@ -303,6 +368,7 @@ namespace Benchmarks
 
         [Benchmark]
         [ArgumentsSource(nameof(UnicodeStrings))]
+        [BenchmarkCategory(EncodingCategoryNames.Ansi)]
         public string StringByRef_LPStr(string str)
         {
             NativeExportsNE.LPStr.Reverse_Replace_Ref(ref str);
@@ -311,6 +377,7 @@ namespace Benchmarks
 
         [Benchmark]
         [ArgumentsSource(nameof(UnicodeStrings))]
+        [BenchmarkCategory(EncodingCategoryNames.Ansi)]
         public string StringByRef_CharSetAnsi(string str)
         {
             NativeExportsNE.Ansi.Reverse_Replace_Ref(ref str);
@@ -319,6 +386,7 @@ namespace Benchmarks
 
         [Benchmark]
         [ArgumentsSource(nameof(UnicodeStrings))]
+        [BenchmarkCategory(EncodingCategoryNames.PlatformDependent)]
         public string StringByRef_Auto(string str)
         {
             if (OperatingSystem.IsWindows())
@@ -329,6 +397,15 @@ namespace Benchmarks
             {
                 NativeExportsNE.Auto.Unix.Reverse_Replace_Ref(ref str);
             }
+            return str;
+        }
+
+        [Benchmark]
+        [ArgumentsSource(nameof(UnicodeStrings))]
+        [BenchmarkCategory(EncodingCategoryNames.Utf16, CategoryNames.DllImportGeneratorOnly)]
+        public string StringByRef_MarshalUsing(string str)
+        {
+            NativeExportsNE.CustomUtf16StringMarshaller.Reverse_Replace_Ref(ref str);
             return str;
         }
     }
