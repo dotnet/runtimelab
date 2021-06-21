@@ -17,8 +17,6 @@ function print_usage {
     echo '  --testRootDir=<path>             : Root directory of the test build (e.g. runtime/artifacts/tests/windows.x64.Debug).'
     echo '  --disableEventLogging            : Disable the events logged by both VM and Managed Code'
     echo '  --sequential                     : Run tests sequentially (default is to run in parallel).'
-    echo '  --crossgen                       : Precompiles the framework managed assemblies'
-    echo '  --runcrossgentests               : Runs the ReadyToRun tests' 
     echo '  --runcrossgen2tests              : Runs the ReadyToRun tests compiled with Crossgen2' 
     echo '  --runnativeaottests              : Runs the ready to run tests compiled with Native AOT' 
     echo '  --jitstress=<n>                  : Runs the tests with COMPlus_JitStress=n'
@@ -95,7 +93,6 @@ limitedCoreDumps=
 
 # Handle arguments
 verbose=0
-doCrossgen=0
 ilasmroundtrip=
 printLastResultsOnly=
 runSequential=0
@@ -141,9 +138,6 @@ do
         --printLastResultsOnly)
             printLastResultsOnly=1
             ;;
-        --crossgen)
-            doCrossgen=1
-            ;;
         --jitstress=*)
             export COMPlus_JitStress=${i#*=}
             ;;
@@ -168,9 +162,6 @@ do
             ;;
         --disableEventLogging)
             ((disableEventLogging = 1))
-            ;;
-        --runcrossgentests)
-            export RunCrossGen=1
             ;;
         --runcrossgen2tests)
             export RunCrossGen2=1
@@ -218,10 +209,9 @@ done
 # (These should be run.py arguments.)
 ################################################################################
 
-# Workaround for https://github.com/dotnet/runtime/issues/48407, remove once the SDK is updated to .NET 6 Preview3+
-# if ((disableEventLogging == 0)); then
-#     export COMPlus_EnableEventLog=1
-# fi
+if ((disableEventLogging == 0)); then
+    export COMPlus_EnableEventLog=1
+fi
 
 if ((serverGC != 0)); then
     export COMPlus_gcServer="$serverGC"
@@ -286,20 +276,12 @@ if [ ! -z "$printLastResultsOnly" ]; then
     runtestPyArguments+=("--analyze_results_only")
 fi
 
-if [ ! -z "$RunCrossGen" ]; then
-    runtestPyArguments+=("--run_crossgen_tests")
-fi
-
 if [ ! -z "$RunCrossGen2" ]; then
     runtestPyArguments+=("--run_crossgen2_tests")
 fi
 
 if [ ! -z "$RunNativeAot" ]; then
     runtestPyArguments+=("--run_nativeaot_tests")
-fi
-
-if (($doCrossgen!=0)); then
-    runtestPyArguments+=("--precompile_core_root")
 fi
 
 if [ "$limitedCoreDumps" == "ON" ]; then
