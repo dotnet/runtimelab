@@ -49,15 +49,6 @@ namespace Benchmarks
             [GeneratedDllImport(NativeExportsNE_Binary, EntryPoint = EntryPoints.UShort.ReverseReturn, CharSet = CharSet.Unicode)]
             public static partial string Reverse_Return(string s);
 
-            [GeneratedDllImport(NativeExportsNE_Binary, EntryPoint = EntryPoints.UShort.ReverseOut, CharSet = CharSet.Unicode)]
-            public static partial void Reverse_Out(string s, out string ret);
-
-            [GeneratedDllImport(NativeExportsNE_Binary, EntryPoint = EntryPoints.UShort.ReverseInplace, CharSet = CharSet.Unicode)]
-            public static partial void Reverse_Ref(ref string s);
-
-            [GeneratedDllImport(NativeExportsNE_Binary, EntryPoint = EntryPoints.UShort.ReverseInplace, CharSet = CharSet.Unicode)]
-            public static partial void Reverse_In(in string s);
-
             [GeneratedDllImport(NativeExportsNE_Binary, EntryPoint = EntryPoints.UShort.ReverseReplace, CharSet = CharSet.Unicode)]
             public static partial void Reverse_Replace_Ref(ref string s);
         }
@@ -67,23 +58,11 @@ namespace Benchmarks
             [GeneratedDllImport(NativeExportsNE_Binary, EntryPoint = EntryPoints.UShort.ReturnLength)]
             public static partial int ReturnLength([MarshalAs(UnmanagedType.LPTStr)] string s);
 
-            [GeneratedDllImport(NativeExportsNE_Binary, EntryPoint = EntryPoints.UShort.ReturnLength, CharSet = CharSet.None)]
-            public static partial int ReturnLength_IgnoreCharSet([MarshalAs(UnmanagedType.LPTStr)] string s);
-
             [GeneratedDllImport(NativeExportsNE_Binary, EntryPoint = EntryPoints.UShort.ReverseReturn)]
             [return: MarshalAs(UnmanagedType.LPTStr)]
             public static partial string Reverse_Return([MarshalAs(UnmanagedType.LPTStr)] string s);
 
-            [GeneratedDllImport(NativeExportsNE_Binary, EntryPoint = EntryPoints.UShort.ReverseOut)]
-            public static partial void Reverse_Out([MarshalAs(UnmanagedType.LPTStr)] string s, [MarshalAs(UnmanagedType.LPTStr)] out string ret);
-
-            [GeneratedDllImport(NativeExportsNE_Binary, EntryPoint = EntryPoints.UShort.ReverseInplace)]
-            public static partial void Reverse_Ref([MarshalAs(UnmanagedType.LPTStr)] ref string s);
-
-            [GeneratedDllImport(NativeExportsNE_Binary, EntryPoint = EntryPoints.UShort.ReverseInplace)]
-            public static partial void Reverse_In([MarshalAs(UnmanagedType.LPTStr)] in string s);
-
-            [GeneratedDllImport(NativeExportsNE_Binary, EntryPoint = EntryPoints.UShort.ReverseInplace)]
+            [GeneratedDllImport(NativeExportsNE_Binary, EntryPoint = EntryPoints.UShort.ReverseReplace)]
             public static partial void Reverse_Replace_Ref([MarshalAs(UnmanagedType.LPTStr)] ref string s);
         }
 
@@ -92,23 +71,11 @@ namespace Benchmarks
             [GeneratedDllImport(NativeExportsNE_Binary, EntryPoint = EntryPoints.UShort.ReturnLength)]
             public static partial int ReturnLength([MarshalAs(UnmanagedType.LPWStr)] string s);
 
-            [GeneratedDllImport(NativeExportsNE_Binary, EntryPoint = EntryPoints.UShort.ReturnLength, CharSet = CharSet.None)]
-            public static partial int ReturnLength_IgnoreCharSet([MarshalAs(UnmanagedType.LPWStr)] string s);
-
             [GeneratedDllImport(NativeExportsNE_Binary, EntryPoint = EntryPoints.UShort.ReverseReturn)]
             [return: MarshalAs(UnmanagedType.LPWStr)]
             public static partial string Reverse_Return([MarshalAs(UnmanagedType.LPWStr)] string s);
 
-            [GeneratedDllImport(NativeExportsNE_Binary, EntryPoint = EntryPoints.UShort.ReverseOut)]
-            public static partial void Reverse_Out([MarshalAs(UnmanagedType.LPWStr)] string s, [MarshalAs(UnmanagedType.LPWStr)] out string ret);
-
-            [GeneratedDllImport(NativeExportsNE_Binary, EntryPoint = EntryPoints.UShort.ReverseInplace)]
-            public static partial void Reverse_Ref([MarshalAs(UnmanagedType.LPWStr)] ref string s);
-
-            [GeneratedDllImport(NativeExportsNE_Binary, EntryPoint = EntryPoints.UShort.ReverseInplace)]
-            public static partial void Reverse_In([MarshalAs(UnmanagedType.LPWStr)] in string s);
-
-            [GeneratedDllImport(NativeExportsNE_Binary, EntryPoint = EntryPoints.UShort.ReverseInplace)]
+            [GeneratedDllImport(NativeExportsNE_Binary, EntryPoint = EntryPoints.UShort.ReverseReplace)]
             public static partial void Reverse_Replace_Ref([MarshalAs(UnmanagedType.LPWStr)] ref string s);
         }
 
@@ -117,23 +84,11 @@ namespace Benchmarks
             [GeneratedDllImport(NativeExportsNE_Binary, EntryPoint = EntryPoints.Byte.ReturnLength)]
             public static partial int ReturnLength([MarshalAs(UnmanagedType.LPUTF8Str)] string s);
 
-            [GeneratedDllImport(NativeExportsNE_Binary, EntryPoint = EntryPoints.Byte.ReturnLength, CharSet = CharSet.None)]
-            public static partial int ReturnLength_IgnoreCharSet([MarshalAs(UnmanagedType.LPUTF8Str)] string s);
-
             [GeneratedDllImport(NativeExportsNE_Binary, EntryPoint = EntryPoints.Byte.ReverseReturn)]
             [return: MarshalAs(UnmanagedType.LPUTF8Str)]
             public static partial string Reverse_Return([MarshalAs(UnmanagedType.LPUTF8Str)] string s);
 
-            [GeneratedDllImport(NativeExportsNE_Binary, EntryPoint = EntryPoints.Byte.ReverseOut)]
-            public static partial void Reverse_Out([MarshalAs(UnmanagedType.LPUTF8Str)] string s, [MarshalAs(UnmanagedType.LPUTF8Str)] out string ret);
-
-            [GeneratedDllImport(NativeExportsNE_Binary, EntryPoint = EntryPoints.Byte.ReverseInplace)]
-            public static partial void Reverse_In([MarshalAs(UnmanagedType.LPUTF8Str)] in string s);
-
-            [GeneratedDllImport(NativeExportsNE_Binary, EntryPoint = EntryPoints.Byte.ReverseInplace)]
-            public static partial void Reverse_Ref([MarshalAs(UnmanagedType.LPUTF8Str)] ref string s);
-
-            [GeneratedDllImport(NativeExportsNE_Binary, EntryPoint = EntryPoints.Byte.ReverseInplace)]
+            [GeneratedDllImport(NativeExportsNE_Binary, EntryPoint = EntryPoints.Byte.ReverseReplace)]
             public static partial void Reverse_Replace_Ref([MarshalAs(UnmanagedType.LPUTF8Str)] ref string s);
         }
 
@@ -145,16 +100,7 @@ namespace Benchmarks
             [GeneratedDllImport(NativeExportsNE_Binary, EntryPoint = EntryPoints.Byte.ReverseReturn, CharSet = CharSet.Ansi)]
             public static partial string Reverse_Return(string s);
 
-            [GeneratedDllImport(NativeExportsNE_Binary, EntryPoint = EntryPoints.Byte.ReverseOut, CharSet = CharSet.Ansi)]
-            public static partial void Reverse_Out(string s, out string ret);
-
-            [GeneratedDllImport(NativeExportsNE_Binary, EntryPoint = EntryPoints.Byte.ReverseInplace, CharSet = CharSet.Ansi)]
-            public static partial void Reverse_Ref(ref string s);
-
-            [GeneratedDllImport(NativeExportsNE_Binary, EntryPoint = EntryPoints.Byte.ReverseInplace, CharSet = CharSet.Ansi)]
-            public static partial void Reverse_In(in string s);
-
-            [GeneratedDllImport(NativeExportsNE_Binary, EntryPoint = EntryPoints.Byte.ReverseInplace, CharSet = CharSet.Ansi)]
+            [GeneratedDllImport(NativeExportsNE_Binary, EntryPoint = EntryPoints.Byte.ReverseReplace, CharSet = CharSet.Ansi)]
             public static partial void Reverse_Replace_Ref(ref string s);
         }
 
@@ -163,23 +109,11 @@ namespace Benchmarks
             [GeneratedDllImport(NativeExportsNE_Binary, EntryPoint = EntryPoints.Byte.ReturnLength)]
             public static partial int ReturnLength([MarshalAs(UnmanagedType.LPStr)] string s);
 
-            [GeneratedDllImport(NativeExportsNE_Binary, EntryPoint = EntryPoints.Byte.ReturnLength, CharSet = CharSet.None)]
-            public static partial int ReturnLength_IgnoreCharSet([MarshalAs(UnmanagedType.LPStr)] string s);
-
             [GeneratedDllImport(NativeExportsNE_Binary, EntryPoint = EntryPoints.Byte.ReverseReturn)]
             [return: MarshalAs(UnmanagedType.LPStr)]
             public static partial string Reverse_Return([MarshalAs(UnmanagedType.LPStr)] string s);
 
-            [GeneratedDllImport(NativeExportsNE_Binary, EntryPoint = EntryPoints.Byte.ReverseOut)]
-            public static partial void Reverse_Out([MarshalAs(UnmanagedType.LPStr)] string s, [MarshalAs(UnmanagedType.LPStr)] out string ret);
-
-            [GeneratedDllImport(NativeExportsNE_Binary, EntryPoint = EntryPoints.Byte.ReverseInplace)]
-            public static partial void Reverse_Ref([MarshalAs(UnmanagedType.LPStr)] ref string s);
-
-            [GeneratedDllImport(NativeExportsNE_Binary, EntryPoint = EntryPoints.Byte.ReverseInplace)]
-            public static partial void Reverse_In([MarshalAs(UnmanagedType.LPStr)] in string s);
-
-            [GeneratedDllImport(NativeExportsNE_Binary, EntryPoint = EntryPoints.Byte.ReverseInplace)]
+            [GeneratedDllImport(NativeExportsNE_Binary, EntryPoint = EntryPoints.Byte.ReverseReplace)]
             public static partial void Reverse_Replace_Ref([MarshalAs(UnmanagedType.LPStr)] ref string s);
         }
 
@@ -193,16 +127,7 @@ namespace Benchmarks
                 [GeneratedDllImport(NativeExportsNE_Binary, EntryPoint = EntryPoints.Byte.ReverseReturn, CharSet = CharSet.Auto)]
                 public static partial string Reverse_Return(string s);
 
-                [GeneratedDllImport(NativeExportsNE_Binary, EntryPoint = EntryPoints.Byte.ReverseOut, CharSet = CharSet.Auto)]
-                public static partial void Reverse_Out(string s, out string ret);
-
-                [GeneratedDllImport(NativeExportsNE_Binary, EntryPoint = EntryPoints.Byte.ReverseInplace, CharSet = CharSet.Auto)]
-                public static partial void Reverse_Ref(ref string s);
-
-                [GeneratedDllImport(NativeExportsNE_Binary, EntryPoint = EntryPoints.Byte.ReverseInplace, CharSet = CharSet.Auto)]
-                public static partial void Reverse_In(in string s);
-
-                [GeneratedDllImport(NativeExportsNE_Binary, EntryPoint = EntryPoints.Byte.ReverseInplace, CharSet = CharSet.Auto)]
+                [GeneratedDllImport(NativeExportsNE_Binary, EntryPoint = EntryPoints.Byte.ReverseReplace, CharSet = CharSet.Auto)]
                 public static partial void Reverse_Replace_Ref(ref string s);
             }
 
@@ -214,16 +139,7 @@ namespace Benchmarks
                 [GeneratedDllImport(NativeExportsNE_Binary, EntryPoint = EntryPoints.UShort.ReverseReturn, CharSet = CharSet.Auto)]
                 public static partial string Reverse_Return(string s);
 
-                [GeneratedDllImport(NativeExportsNE_Binary, EntryPoint = EntryPoints.UShort.ReverseOut, CharSet = CharSet.Auto)]
-                public static partial void Reverse_Out(string s, out string ret);
-
-                [GeneratedDllImport(NativeExportsNE_Binary, EntryPoint = EntryPoints.UShort.ReverseInplace, CharSet = CharSet.Auto)]
-                public static partial void Reverse_Ref(ref string s);
-
-                [GeneratedDllImport(NativeExportsNE_Binary, EntryPoint = EntryPoints.UShort.ReverseInplace, CharSet = CharSet.Auto)]
-                public static partial void Reverse_In(in string s);
-
-                [GeneratedDllImport(NativeExportsNE_Binary, EntryPoint = EntryPoints.UShort.ReverseInplace, CharSet = CharSet.Auto)]
+                [GeneratedDllImport(NativeExportsNE_Binary, EntryPoint = EntryPoints.UShort.ReverseReplace, CharSet = CharSet.Auto)]
                 public static partial void Reverse_Replace_Ref(ref string s);
             }
         }
@@ -411,7 +327,7 @@ namespace Benchmarks
             }
             else
             {
-                NativeExportsNE.Auto.Windows.Reverse_Replace_Ref(ref str);
+                NativeExportsNE.Auto.Unix.Reverse_Replace_Ref(ref str);
             }
             return str;
         }

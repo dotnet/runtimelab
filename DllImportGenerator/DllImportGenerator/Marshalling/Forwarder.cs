@@ -21,7 +21,7 @@ namespace Microsoft.Interop
             // If the parameter has [MarshalAs] marshalling, we resurface that
             // in the forwarding target since the built-in system understands it.
             // ICustomMarshaller marshalling requires additional information that we throw away earlier since it's unsupported,
-            // so explicitly do not resurface a [MarshalAs(UnmanagdType.CustomMarshaller)] attribute.
+            // so explicitly do not resurface a [MarshalAs(UnmanagdType.CustomMarshaler)] attribute.
             if (info.MarshallingAttributeInfo is MarshalAsInfo { UnmanagedType: not UnmanagedType.CustomMarshaler } marshalAs)
             {
                 marshalAsAttribute = Attribute(ParseName(TypeNames.System_Runtime_InteropServices_MarshalAsAttribute))
@@ -89,10 +89,6 @@ namespace Microsoft.Interop
                 .WithModifiers(TokenList(Token(info.RefKindSyntax)))
                 .WithType(info.ManagedType.AsTypeSyntax());
 
-            // If the parameter has [MarshalAs] marshalling, we resurface that
-            // in the forwarding target since the built-in system understands it.
-            // ICustomMarshaller marshalling requires additional information that we throw away earlier since it's unsupported,
-            // so explicitly do not resurface a [MarshalAs(UnmanagdType.CustomMarshaller)] attribute.
             if (TryRehydrateMarshalAsAttribute(info, out AttributeSyntax marshalAsAttribute))
             {
                 param = param.AddAttributeLists(AttributeList(SingletonSeparatedList(marshalAsAttribute)));
