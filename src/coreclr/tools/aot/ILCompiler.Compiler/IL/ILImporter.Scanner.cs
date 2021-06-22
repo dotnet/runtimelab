@@ -792,20 +792,9 @@ namespace Internal.IL
 
             if (obj is TypeDesc)
             {
-                var type = (TypeDesc)obj;
-
-                ISymbolNode reference;
-                if (type.IsRuntimeDeterminedSubtype)
-                {
-                    reference = GetGenericLookupHelper(ReadyToRunHelperId.TypeHandle, type);
-                }
-                else
-                {
-                    reference = _compilation.ComputeConstantLookup(_compilation.GetLdTokenHelperForType(type), type);
-                }
-                _dependencies.Add(reference, "ldtoken");
-
                 // If this is a ldtoken Type / Type.GetTypeFromHandle sequence, we need one more helper.
+                // We might also be able to optimize this a little if this is a ldtoken/GetTypeFromHandle/Equals sequence.
+                bool isTypeEquals = false;
                 BasicBlock nextBasicBlock = _basicBlocks[_currentOffset];
                 if (nextBasicBlock == null)
                 {
@@ -817,11 +806,37 @@ namespace Internal.IL
                         {
                             // Codegen will swap this one for GetRuntimeTypeHandle when optimizing
                             _dependencies.Add(GetHelperEntrypoint(ReadyToRunHelper.GetRuntimeType), "ldtoken");
+
+                            // Is the next instruction a call to Type::Equals?
+                            nextBasicBlock = _basicBlocks[_currentOffset + 5];
+                            if (nextBasicBlock == null)
+                            {
+                                if ((ILOpcode)_ilBytes[_currentOffset + 5] == ILOpcode.call)
+                                {
+                                    methodToken = ReadILTokenAt(_currentOffset + 6);
+                                    method = (MethodDesc)_methodIL.GetObject(methodToken);
+                                    isTypeEquals = IsTypeEquals(method);
+                                }
+                            }
                         }
                     }
                 }
 
                 _dependencies.Add(GetHelperEntrypoint(ReadyToRunHelper.GetRuntimeTypeHandle), "ldtoken");
+
+                var type = (TypeDesc)obj;
+
+                ISymbolNode reference;
+                if (type.IsRuntimeDeterminedSubtype)
+                {
+                    reference = GetGenericLookupHelper(ReadyToRunHelperId.TypeHandle, type);
+                }
+                else
+                {
+                    reference = _compilation.ComputeConstantLookup(
+                        isTypeEquals ? ReadyToRunHelperId.NecessaryTypeHandle : _compilation.GetLdTokenHelperForType(type), type);
+                }
+                _dependencies.Add(reference, "ldtoken");
             }
             else if (obj is MethodDesc)
             {
@@ -1121,6 +1136,20 @@ namespace Internal.IL
         private bool IsTypeGetTypeFromHandle(MethodDesc method)
         {
             if (method.IsIntrinsic && method.Name == "GetTypeFromHandle")
+            {
+                MetadataType owningType = method.OwningType as MetadataType;
+                if (owningType != null)
+                {
+                    return owningType.Name == "Type" && owningType.Namespace == "System";
+                }
+            }
+
+            return false;
+        }
+
+        private bool IsTypeEquals(MethodDesc method)
+        {
+            if (method.IsIntrinsic && method.Name == "op_Equality")
             {
                 MetadataType owningType = method.OwningType as MetadataType;
                 if (owningType != null)

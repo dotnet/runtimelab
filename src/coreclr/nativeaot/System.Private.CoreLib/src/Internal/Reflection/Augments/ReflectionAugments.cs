@@ -91,7 +91,7 @@ namespace Internal.Reflection.Augments
             if (type == typeof(decimal))
                 return TypeCode.Decimal;
 
-            if (eeType == DBNull.Value.EETypePtr)
+            if (type == typeof(DBNull))
                 return TypeCode.DBNull;
 
             return TypeCode.Object;
