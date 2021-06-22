@@ -245,7 +245,8 @@ namespace ILCompiler
 
         public ReadyToRunHelperId GetLdTokenHelperForType(TypeDesc type)
         {
-            return _nodeFactory.MetadataManager.ShouldConsiderLdTokenReferenceAConstruction(type)
+            bool canConstructPerWholeProgramAnalysis = _devirtualizationManager == null ? true : _devirtualizationManager.CanConstructType(type);
+            return canConstructPerWholeProgramAnalysis & DependencyAnalysis.ConstructedEETypeNode.CreationAllowed(type)
                 ? ReadyToRunHelperId.TypeHandle
                 : ReadyToRunHelperId.NecessaryTypeHandle;
         }
