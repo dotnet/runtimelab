@@ -3,9 +3,9 @@
   <ProductDependencies>
     <!-- This VS redist package is used as a way to get a non-shipping version number
          when using a custom runtime version.  -->
-    <Dependency Name="VS.Redist.Common.NetCore.SharedFramework.x64.6.0" Version="6.0.0-preview.5.21226.5">
+    <Dependency Name="VS.Redist.Common.NetCore.SharedFramework.x64.6.0" Version="6.0.0-preview.6.21317.4">
       <Uri>https://github.com/dotnet/runtime</Uri>
-      <Sha>ac82799250fe42c8ba2941aef487aca94ecf04cc</Sha>
+      <Sha>01188c75f06412dc86508e7b653deaeace9623ba</Sha>
     </Dependency>
   </ProductDependencies>
   <ToolsetDependencies>
