@@ -699,7 +699,7 @@ namespace System.Text.RegularExpressions.SRM
         internal static SymbolicRegexNode<S> MkDotStar(SymbolicRegexBuilder<S> builder, SymbolicRegexNode<S> body)
         {
             var node = new SymbolicRegexNode<S>(builder, SymbolicRegexKind.Loop, body, null, 0, int.MaxValue, default(S), null, null);
-            node.info = SymbolicRegexInfo.Loop(body.info, 0, true);
+            node.info = SymbolicRegexInfo.Loop(body.info, 0, false);
             return node;
         }
 

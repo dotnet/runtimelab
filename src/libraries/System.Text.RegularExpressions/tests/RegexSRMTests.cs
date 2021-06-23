@@ -14,6 +14,7 @@ namespace System.Text.RegularExpressions.Tests
 {
     public class RegexSRMTests
     {
+
         static void WriteLine(string s)
         {
 #if DEBUG
@@ -26,6 +27,32 @@ namespace System.Text.RegularExpressions.Tests
 
         private const char Turkish_I_withDot = '\u0130';
         private const char Turkish_i_withoutDot = '\u0131';
+        private const char Kelvin_sign = '\u212A';
+
+
+        [Theory]
+        [InlineData("(?i:[a-dÕ]+k*)", "xyxaBõc\u212AKAyy", true, "aBõc\u212AK")]
+        [InlineData("(?i:[a-d]+)", "xyxaBcyy", true, "aBc")]
+        [InlineData("(?i:[^a])", "aAaA", false, "")]                             // this correponds to not{a,A}
+        [InlineData("(?i:[\0-\uFFFF-[A]])", "aAaA", false, "")]                  // this correponds to not{a,A}
+        [InlineData("(?i:[\0-@B-\uFFFF]+)", "xaAaAy", true, "xaAaAy")]           // this correponds to .+
+        [InlineData("(?i:[\0-ac-\uFFFF])", "b", true, "b")]
+        [InlineData("(?i:[^b])", "b", false, "")]
+        [InlineData("(?i:[\0-PR-\uFFFF])", "Q", true, "Q")]
+        [InlineData("(?i:[^Q])", "q", false, "")]
+        [InlineData("(?i:[\0-pr-\uFFFF])", "q", true, "q")]
+        public void TestOfCaseInsensitiveCornerCasesInSRM(string pattern, string input, bool success, string match_expected)
+        {
+            Regex r_ = new Regex(pattern);
+            Regex r = new Regex(pattern, DFA);
+            //RegexExperiment.ViewDGML(r);
+            var m = r.Match(input);
+            var m_ = r_.Match(input);
+            Assert.Equal(success, m_.Success);
+            Assert.Equal(match_expected, m_.Value);
+            Assert.Equal(success, m.Success);
+            Assert.Equal(match_expected, m.Value);
+        }
 
         [Theory]
         [InlineData("(?i:I)", "xy\u0131ab", "", "", "\u0131")]

@@ -861,7 +861,7 @@ namespace System.Text.RegularExpressions
                             }
 
                             prev.Type = Set;
-                            prev.Str = prevCharClass.ToStringClass();
+                            prev.Str = prevCharClass.ToStringClass((Options & RegexOptions.DFA) != 0);
                         }
                         else if (at.Type == Nothing)
                         {

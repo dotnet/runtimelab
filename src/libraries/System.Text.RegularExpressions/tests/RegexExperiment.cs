@@ -85,7 +85,7 @@ namespace System.Text.RegularExpressions.Tests
         /// View the regex as a DFA in DGML format in VS.
         /// </summary>
         /// <param name="r"></param>
-        private static void ViewDGML(Regex regex, int bound = -1, bool hideStateInfo = true, bool addDotStar = false, bool inReverse = false, bool onlyDFAinfo = false, string name = "DFA", int maxLabelLength = 20)
+        internal static void ViewDGML(Regex regex, int bound = -1, bool hideStateInfo = true, bool addDotStar = false, bool inReverse = false, bool onlyDFAinfo = false, string name = "DFA", int maxLabelLength = 20)
         {
             StringWriter sw = new StringWriter();
             SaveDGML(regex, sw, bound, hideStateInfo, addDotStar, inReverse, onlyDFAinfo, maxLabelLength);
