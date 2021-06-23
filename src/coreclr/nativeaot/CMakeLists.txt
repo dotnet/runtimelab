@@ -23,6 +23,9 @@ if(MSVC)
 endif (MSVC)
 
 if(CLR_CMAKE_HOST_UNIX)
+  add_compile_options(-fno-rtti)          # Native AOT runtime doesn't use RTTI
+  add_compile_options(-fno-exceptions)    # Native AOT runtime doesn't use C++ exception handling
+
   if(CLR_CMAKE_TARGET_OSX)
     add_definitions(-D_XOPEN_SOURCE)
   endif(CLR_CMAKE_TARGET_OSX)
