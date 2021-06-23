@@ -485,18 +485,12 @@ int getTotalParameterOffset(CORINFO_SIG_INFO& sigInfo)
     return AlignUp(offset, TARGET_POINTER_SIZE);
 }
 
-unsigned int getTotalLocalOffset()
-{
-    // TODO: need to store some locals on ths shadow stack, either when there are exception blocks, or they are, or have, GC pointers (so the conservative GC knows they are live)
-    // For now we don't have any so simply:
-    return 0;
-}
 
 unsigned int getTotalRealLocalOffset()
 {
     unsigned int offset = 0;
-    // TODO: might need this IL->LLVM function for exception funclets
-    //for (int i = 0; i < _locals.Length; i++)
+    // TODO: might need this IL->LLVM function for locals and exception funclets
+    // for (int i = 0; i < _locals.Length; i++)
     //{
     //    TypeDesc localType = _locals[i].Type;
     //    if (!CanStoreVariableOnStack(localType))
@@ -504,6 +498,16 @@ unsigned int getTotalRealLocalOffset()
     //        offset = padNextOffset(localType, offset);
     //    }
     //}
+    return AlignUp(offset, TARGET_POINTER_SIZE);
+}
+
+unsigned int getTotalLocalOffset()
+{
+    unsigned int offset = getTotalRealLocalOffset();
+    for (unsigned int i = 0; i < _spilledExpressions.size(); i++)
+    {
+        offset = padNextOffset(_spilledExpressions[i].m_CorInfoType, offset);
+    }
     return AlignUp(offset, TARGET_POINTER_SIZE);
 }
 
