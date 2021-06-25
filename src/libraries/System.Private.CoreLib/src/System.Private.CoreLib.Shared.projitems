@@ -1227,13 +1227,13 @@
       <Link>Common\System\Threading\Tasks\TaskToApm.cs</Link>
     </Compile>
   </ItemGroup>
-  <ItemGroup Condition="'$(IsMobileLike)' != 'true'">
+  <ItemGroup Condition="'$(IsMobileLike)' != 'true' and '$(TargetsCoreRT)' != 'true'">
     <Compile Include="$(CommonPath)Interop\Interop.HostPolicy.cs">
       <Link>Common\Interop\Interop.HostPolicy.cs</Link>
     </Compile>
     <Compile Include="$(MSBuildThisFileDirectory)System\Runtime\Loader\AssemblyDependencyResolver.cs" />
   </ItemGroup>
-  <ItemGroup Condition="'$(IsMobileLike)' == 'true'">
+  <ItemGroup Condition="'$(IsMobileLike)' == 'true' or '$(TargetsCoreRT)' == 'true'">
     <Compile Include="$(MSBuildThisFileDirectory)System\Runtime\Loader\AssemblyDependencyResolver.PlatformNotSupported.cs" />
   </ItemGroup>
   <ItemGroup>
