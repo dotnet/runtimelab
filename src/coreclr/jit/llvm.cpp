@@ -297,7 +297,7 @@ Function* getOrCreateRhpAssignRef()
     return llvmFunc;
 }
 
-Type* getLLVMTypeForVarType(var_types type, bool widenSmallInts)
+Type* getLLVMTypeForVarType(var_types type)
 {
     // TODO: Fill out with missing type mappings and when all code done via clrjit, default should fail with useful
     // message
@@ -306,10 +306,10 @@ Type* getLLVMTypeForVarType(var_types type, bool widenSmallInts)
         case var_types::TYP_BOOL:
         case var_types::TYP_BYTE:
         case var_types::TYP_UBYTE:
-            return widenSmallInts ? Type::getInt32Ty(_llvmContext) : Type::getInt8Ty(_llvmContext);
+            return Type::getInt8Ty(_llvmContext);
         case var_types::TYP_SHORT:
         case var_types::TYP_USHORT:
-            return widenSmallInts ? Type::getInt32Ty(_llvmContext) : Type::getInt16Ty(_llvmContext);
+            return Type::getInt16Ty(_llvmContext);
         case var_types::TYP_INT:
             return Type::getInt32Ty(_llvmContext);
         case var_types::TYP_REF:
@@ -357,7 +357,7 @@ void castingStore(llvm::IRBuilder<>& builder, Value* toStore, Value* address, ll
 
 void castingStore(llvm::IRBuilder<>& builder, Value* toStore, Value* address, var_types type)
 {
-    castingStore(builder, toStore, address, getLLVMTypeForVarType(type, false));
+    castingStore(builder, toStore, address, getLLVMTypeForVarType(type));
 }
 
 /// <summary>
@@ -638,8 +638,8 @@ Value* buildCnsInt(llvm::IRBuilder<>& builder, GenTree* node)
 
 Value* buildInd(llvm::IRBuilder<>& builder, GenTree* node, Value* ptr)
 {
-    // pass true to widen small ints to i32, TODO: will need to do the same for CLS_VAR, LCL_FLD
-    return mapGenTreeToValue(node, builder.CreateLoad(castIfNecessary(builder, ptr, getLLVMTypeForVarType(node->TypeGet(), true)->getPointerTo())));
+    // TODO: Simplify genActualType(node->TypeGet()) to just genActualType(node) when main is merged
+    return mapGenTreeToValue(node, builder.CreateLoad(castIfNecessary(builder, ptr, getLLVMTypeForVarType(genActualType(node->TypeGet()))->getPointerTo())));
 }
 
 Value* buildNe(llvm::IRBuilder<>& builder, GenTree* node, Value* op1, Value* op2)
