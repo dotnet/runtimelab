@@ -1,6 +1,6 @@
-# Building a Hello World console app with CoreRT
+# Building a Hello World console app with NativeAOT
 
-CoreRT is an AOT-optimized .NET Core runtime. This document will guide you through compiling a .NET Core Console application with CoreRT.
+NativeAOT is an AOT-optimized .NET Core runtime. This document will guide you through compiling a .NET Core Console application with NativeAOT.
 
 _Please ensure that [pre-requisites](../../docs/using-nativeaot/prerequisites.md) are installed._
 
@@ -13,14 +13,14 @@ Open a new shell/command prompt window and run the following commands.
 
 This will create a simple Hello World console app in `Program.cs` and associated project files.
 
-## Add CoreRT to your project
-To use CoreRT with your project, you need to add a reference to the ILCompiler NuGet package that contains the CoreRT ahead of time compiler and runtime.
+## Add NativeAOT to your project
+To use NativeAOT with your project, you need to add a reference to the ILCompiler NuGet package that contains the NativeAOT ahead of time compiler and runtime.
 For the compiler to work, it first needs to be added to your project.
 
 In your shell/command prompt navigate to the root directory of your project and run the command:
 
 ```bash
-> dotnet new nuget 
+> dotnet new nuget
 ```
 
 This will add a nuget.config file to your application. Open the file and in the ``<packageSources> `` element under ``<clear/>`` add the following:
@@ -46,10 +46,10 @@ Once the package has been successfully added it's time to compile and publish yo
 
 where `<Configuration>` is your project configuration (such as Debug or Release) and `<RID>` is the runtime identifier (one of win-x64, linux-x64, osx-x64). For example, if you want to publish a release configuration of your app for a 64-bit version of Windows the command would look like:
 
-```bash 
+```bash
 > dotnet publish -r win-x64 -c release
 ```
 
 Once completed, you can find the native executable in the root folder of your project under `/bin/<Configuration>/net5.0/<RID>/publish/`. Navigate to `/bin/<Configuration>/net5.0/<RID>/publish/` in your project folder and run the produced native executable.
 
-Feel free to modify the sample application and experiment. However, keep in mind some functionality might not yet be supported in CoreRT. Let us know on the [Issues page](https://github.com/dotnet/runtimelab/issues).
+Feel free to modify the sample application and experiment. However, keep in mind some functionality might not yet be supported in NativeAOT. Let us know on the [Issues page](https://github.com/dotnet/runtimelab/issues).

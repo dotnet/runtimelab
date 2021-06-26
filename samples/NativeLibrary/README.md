@@ -1,10 +1,10 @@
-# Building Native Libraries with CoreRT
+# Building Native Libraries with NativeAOT
 
-This document will guide you through building native libraries that can be consumed by other programming languages with CoreRT. CoreRT can build static libraries that can be linked at compile time or shared libraries that are required at runtime.
+This document will guide you through building native libraries that can be consumed by other programming languages with NativeAOT. NativeAOT can build static libraries that can be linked at compile time or shared libraries that are required at runtime.
 
-## Create .NET Core Class Library project with CoreRT support
+## Create .NET Core Class Library project with NativeAOT support
 
-Create a .NET Core class library project using `dotnet new classlib -o NativeLibrary` and follow the [Hello world](../HelloWorld/README.md) sample instruction to add CoreRT support to it.
+Create a .NET Core class library project using `dotnet new classlib -o NativeLibrary` and follow the [Hello world](../HelloWorld/README.md) sample instruction to add NativeAOT support to it.
 
 ## Building static libraries
 
@@ -99,4 +99,4 @@ The sample [source code](Class1.cs) demonstrates common techniques used to stay 
 
 ## References
 
-Real-world example of using CoreRT and Rust: https://medium.com/@chyyran/calling-c-natively-from-rust-1f92c506289d
+Real-world example of using CoreRT(previous incarnation of NativeAOT) and Rust: https://medium.com/@chyyran/calling-c-natively-from-rust-1f92c506289d
