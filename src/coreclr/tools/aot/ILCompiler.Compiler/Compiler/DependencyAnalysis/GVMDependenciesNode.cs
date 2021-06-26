@@ -21,6 +21,7 @@ namespace ILCompiler.DependencyAnalysis
     {
         private const int UniversalCanonGVMDepthHeuristic_NonCanonDepth = 2;
         private const int UniversalCanonGVMDepthHeuristic_CanonDepth = 2;
+        private const int SpecificCanonGVMDepthHeuristic_NonCanonDepth = 2;
         private readonly MethodDesc _method;
 
         public MethodDesc Method => _method;
@@ -79,6 +80,12 @@ namespace ILCompiler.DependencyAnalysis
                         if (context.TypeSystemContext.SupportsUniversalCanon && instantiatedMethod.IsGenericDepthGreaterThan(UniversalCanonGVMDepthHeuristic_NonCanonDepth))
                         {
                             // fall back to using the universal generic variant of the generic method
+                            return dependencies;
+                        }
+
+                        if (!context.TypeSystemContext.SupportsUniversalCanon && instantiatedMethod.IsGenericDepthGreaterThan(SpecificCanonGVMDepthHeuristic_NonCanonDepth))
+                        {
+                            // Do not support too deep instantiation.
                             return dependencies;
                         }
 
