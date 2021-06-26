@@ -117,7 +117,6 @@
     <Compile Include="Internal\Reflection\Extensions\NonPortable\CustomAttributeSearcher.cs" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="System\Runtime\CompilerServices\FeatureRemovedException.cs" />
     <Compile Include="System\Reflection\AssemblyNameHelpers.StrongName.cs" />
     <Compile Include="System\Reflection\AssemblyNameHelpers.cs" />
     <Compile Include="System\Reflection\AssemblyNameLexer.cs" />
@@ -152,6 +151,7 @@
     <Compile Include="System\Reflection\LegacyCustomAttributeApis.cs" />
     <Compile Include="System\Reflection\MethodBase.CoreRT.cs" />
     <Compile Include="System\Reflection\Metadata\AssemblyExtensions.cs" />
+    <Compile Include="System\Reflection\Metadata\MetadataUpdater.cs" />
     <Compile Include="System\Runtime\InteropServices\CriticalHandle.CoreRT.cs" />
     <Compile Include="System\Activator.CoreRT.cs" />
     <Compile Include="System\AppContext.CoreRT.cs" />

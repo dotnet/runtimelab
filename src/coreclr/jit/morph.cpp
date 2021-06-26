@@ -5509,8 +5509,16 @@ GenTree* Compiler::fgMorphArrayIndex(GenTree* tree)
             fgSetRngChkTarget(indexAddr);
         }
 
-        // Change `tree` into an indirection and return.
-        tree->ChangeOper(GT_IND);
+        if (!tree->TypeIs(TYP_STRUCT))
+        {
+            tree->ChangeOper(GT_IND);
+        }
+        else
+        {
+            DEBUG_DESTROY_NODE(tree);
+            tree = gtNewObjNode(elemStructType, indexAddr);
+            INDEBUG(tree->gtDebugFlags |= GTF_DEBUG_NODE_MORPHED);
+        }
         GenTreeIndir* const indir = tree->AsIndir();
         indir->Addr()             = indexAddr;
         bool canCSE               = indir->CanCSE();
@@ -5520,9 +5528,7 @@ GenTree* Compiler::fgMorphArrayIndex(GenTree* tree)
             indir->SetDoNotCSE();
         }
 
-#ifdef DEBUG
-        indexAddr->gtDebugFlags |= GTF_DEBUG_NODE_MORPHED;
-#endif // DEBUG
+        INDEBUG(indexAddr->gtDebugFlags |= GTF_DEBUG_NODE_MORPHED);
 
         return indir;
     }
@@ -6040,6 +6046,10 @@ GenTree* Compiler::fgMorphField(GenTree* tree, MorphAddrContext* mac)
     }
 #endif
 
+    // Create a default MorphAddrContext early so it doesn't go out of scope
+    // before it is used.
+    MorphAddrContext defMAC(MACK_Ind);
+
     /* Is this an instance data member? */
 
     if (objRef)
@@ -6130,7 +6140,6 @@ GenTree* Compiler::fgMorphField(GenTree* tree, MorphAddrContext* mac)
 
         // NULL mac means we encounter the GT_FIELD first.  This denotes a dereference of the field,
         // and thus is equivalent to a MACK_Ind with zero offset.
-        MorphAddrContext defMAC(MACK_Ind);
         if (mac == nullptr)
         {
             mac = &defMAC;

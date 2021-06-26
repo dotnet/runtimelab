@@ -784,10 +784,9 @@ namespace Internal.TypeSystem
             if (!type.IsValueType && type.HasBaseType)
             {
                 cumulativeInstanceFieldPos = type.BaseType.InstanceByteCountUnaligned;
-                if (!type.BaseType.InstanceByteCountUnaligned.IsIndeterminate)
+                if (!cumulativeInstanceFieldPos.IsIndeterminate)
                 {
-                    cumulativeInstanceFieldPos = type.BaseType.InstanceByteCountUnaligned;
-                    if (type.BaseType.IsZeroSizedReferenceType && ((MetadataType)type.BaseType).HasLayout())
+                    if (requiresAlignedBase && type.BaseType.IsZeroSizedReferenceType && ((MetadataType)type.BaseType).HasLayout())
                     {
                         cumulativeInstanceFieldPos += LayoutInt.One;
                     }
