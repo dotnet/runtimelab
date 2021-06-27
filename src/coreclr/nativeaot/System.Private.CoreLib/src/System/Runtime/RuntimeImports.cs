@@ -265,7 +265,7 @@ namespace System.Runtime
             // The runtime performs additional checks in debug builds
             return _RhHandleGet(handle);
 #else
-            return Unsafe.As<IntPtr, object>(ref *(IntPtr*)handle);
+            return Unsafe.As<IntPtr, object>(ref *(IntPtr*)(nint)handle);
 #endif
         }
 
