@@ -10,14 +10,14 @@ namespace Microsoft.Interop
     {
         public TypeSyntax AsNativeType(TypePositionInfo info)
         {
-            return info.ManagedType.AsTypeSyntax();
+            return info.ManagedType.Syntax;
         }
 
         public ParameterSyntax AsParameter(TypePositionInfo info)
         {
             return Parameter(Identifier(info.InstanceIdentifier))
                 .WithModifiers(TokenList(Token(info.RefKindSyntax)))
-                .WithType(info.ManagedType.AsTypeSyntax());
+                .WithType(info.ManagedType.Syntax);
         }
 
         public ArgumentSyntax AsArgument(TypePositionInfo info, StubCodeContext context)

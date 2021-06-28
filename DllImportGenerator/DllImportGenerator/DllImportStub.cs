@@ -35,7 +35,7 @@ namespace Microsoft.Interop
 
         public IEnumerable<TypeDeclarationSyntax> StubContainingTypes { get; init; }
 
-        public TypeSyntax StubReturnType { get => this.returnTypeInfo.ManagedType.AsTypeSyntax(); }
+        public TypeSyntax StubReturnType { get => this.returnTypeInfo.ManagedType.Syntax; }
 
         public IEnumerable<ParameterSyntax> StubParameters
         {
@@ -47,7 +47,7 @@ namespace Microsoft.Interop
                         && typeinfo.ManagedIndex != TypePositionInfo.ReturnIndex)
                     {
                         yield return Parameter(Identifier(typeinfo.InstanceIdentifier))
-                            .WithType(typeinfo.ManagedType.AsTypeSyntax())
+                            .WithType(typeinfo.ManagedType.Syntax)
                             .WithModifiers(TokenList(Token(typeinfo.RefKindSyntax)));
                     }
                 }

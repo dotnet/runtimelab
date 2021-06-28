@@ -236,6 +236,9 @@ namespace Microsoft.Interop
                             (data, ct) => GenerateSource(data.Syntax, data.Symbol, data.Environment)
                         )
                         .WithComparer(new GeneratedSourceComparer())
+                        // Handle NormalizeWhitespace as a separate stage for incremental runs since it is an expensive operation.
+                        .Select(
+                            (data, ct) => (data.Item1.NormalizeWhitespace().ToFullString(), data.Item2))
                         .Collect()
                         .Select(static (generatedSources, ct) =>
                         {
@@ -245,7 +248,7 @@ namespace Microsoft.Interop
                             ImmutableArray<Diagnostic>.Builder diagnostics = ImmutableArray.CreateBuilder<Diagnostic>();
                             foreach (var generated in generatedSources)
                             {
-                                source.AppendLine(generated.Item1.NormalizeWhitespace().ToFullString());
+                                source.AppendLine(generated.Item1);
                                 diagnostics.AddRange(generated.Item2);
                             }
                             return (source: source.ToString(), diagnostics: diagnostics.ToImmutable());

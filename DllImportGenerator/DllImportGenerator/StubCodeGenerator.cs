@@ -153,7 +153,7 @@ namespace Microsoft.Interop
                 AppendVariableDeclations(setupStatements, info, marshaller.Generator);
             }
 
-            bool invokeReturnsVoid = retMarshaller.TypeInfo.ManagedType.SpecialType == SpecialType.System_Void;
+            bool invokeReturnsVoid = retMarshaller.TypeInfo.ManagedType is SpecialTypeInfo(_, SpecialType.System_Void);
             bool stubReturnsVoid = stubMethod.ReturnsVoid;
 
             // Stub return is not the same as invoke return
@@ -394,7 +394,7 @@ namespace Microsoft.Interop
             if (info.IsManagedReturnPosition || info.IsNativeReturnPosition)
             {
                 statementsToUpdate.Add(MarshallerHelpers.DeclareWithDefault(
-                    info.ManagedType.AsTypeSyntax(),
+                    info.ManagedType.Syntax,
                     managed));
             }
 

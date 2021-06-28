@@ -57,7 +57,7 @@ namespace Microsoft.Interop
 #pragma warning restore
 
         public string InstanceIdentifier { get; init; }
-        public ITypeSymbol ManagedType { get; init; }
+        public ManagedTypeInfo ManagedType { get; init; }
 
         public RefKind RefKind { get; init; }
         public SyntaxKind RefKindSyntax { get; init; }
@@ -78,7 +78,7 @@ namespace Microsoft.Interop
         {
             var typeInfo = new TypePositionInfo()
             {
-                ManagedType = paramSymbol.Type,
+                ManagedType = ManagedTypeInfo.CreateTypeInfoForTypeSymbol(paramSymbol.Type),
                 InstanceIdentifier = ParseToken(paramSymbol.Name).IsReservedKeyword() ? $"@{paramSymbol.Name}" : paramSymbol.Name,
                 RefKind = paramSymbol.RefKind,
                 RefKindSyntax = RefKindToSyntax(paramSymbol.RefKind),
@@ -90,6 +90,20 @@ namespace Microsoft.Interop
         }
 
         public static TypePositionInfo CreateForType(ITypeSymbol type, MarshallingInfo marshallingInfo, string identifier = "")
+        {
+            var typeInfo = new TypePositionInfo()
+            {
+                ManagedType = ManagedTypeInfo.CreateTypeInfoForTypeSymbol(type),
+                InstanceIdentifier = identifier,
+                RefKind = RefKind.None,
+                RefKindSyntax = SyntaxKind.None,
+                MarshallingAttributeInfo = marshallingInfo
+            };
+
+            return typeInfo;
+        }
+
+        public static TypePositionInfo CreateForType(ManagedTypeInfo type, MarshallingInfo marshallingInfo, string identifier = "")
         {
             var typeInfo = new TypePositionInfo()
             {
