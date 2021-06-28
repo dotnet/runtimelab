@@ -514,7 +514,7 @@ namespace Microsoft.Interop
             AnalyzerConfigOptions options,
             ICustomNativeTypeMarshallingStrategy marshallingStrategy)
         {
-            var elementInfo = TypePositionInfo.CreateForType(collectionInfo.ElementType, collectionInfo.ElementMarshallingInfo);
+            var elementInfo = new TypePositionInfo(collectionInfo.ElementType, collectionInfo.ElementMarshallingInfo);
             var elementMarshaller = Create(
                 elementInfo,
                 new ContiguousCollectionElementMarshallingCodeContext(StubCodeContext.Stage.Setup, string.Empty, string.Empty, context),

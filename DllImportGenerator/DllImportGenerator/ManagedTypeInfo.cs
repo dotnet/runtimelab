@@ -45,7 +45,20 @@ namespace Microsoft.Interop
         }
     }
 
-    internal sealed record SpecialTypeInfo(string FullTypeName, SpecialType SpecialType) : ManagedTypeInfo(FullTypeName);
+    internal sealed record SpecialTypeInfo(string FullTypeName, SpecialType SpecialType) : ManagedTypeInfo(FullTypeName)
+    {
+        public static readonly SpecialTypeInfo Int32 = new("int", SpecialType.System_Int32);
+
+        public bool Equals(SpecialTypeInfo? other)
+        {
+            return other is not null && SpecialType == other.SpecialType;
+        }
+
+        public override int GetHashCode()
+        {
+            return (int)SpecialType;
+        }
+    }
 
     internal sealed record EnumTypeInfo(string FullTypeName, SpecialType UnderlyingType) : ManagedTypeInfo(FullTypeName);
 

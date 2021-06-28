@@ -361,8 +361,8 @@ namespace Microsoft.Interop
             {
                 if (elementName == CountElementCountInfo.ReturnValueElementName)
                 {
-                    return TypePositionInfo.CreateForType(
-                        method.ReturnType,
+                    return new TypePositionInfo(
+                        ManagedTypeInfo.CreateTypeInfoForTypeSymbol(method.ReturnType),
                         ParseMarshallingInfo(method.ReturnType, method.GetReturnTypeAttributes(), inspectedElements)) with
                     {
                         ManagedIndex = TypePositionInfo.ReturnIndex
