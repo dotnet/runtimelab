@@ -6,7 +6,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
-
+using System.Threading;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -22,6 +22,44 @@ namespace Microsoft.Interop
         private const string GeneratedDllImportAttribute = nameof(GeneratedDllImportAttribute);
 
         private static readonly Version MinimumSupportedFrameworkVersion = new Version(5, 0);
+
+        private List<AttributeSyntax> GenerateSyntaxForForwardedAttributes(AttributeData? suppressGCTransitionAttribute, AttributeData? unmanagedCallConvAttribute)
+        {
+            const string CallConvsField = "CallConvs";
+            // Manually rehydrate the forwarded attributes with fully qualified types so we don't have to worry about any using directives.
+            List<AttributeSyntax> attributes = new();
+
+            if (suppressGCTransitionAttribute is not null)
+            {
+                attributes.Add(Attribute(ParseName(TypeNames.SuppressGCTransitionAttribute)));
+            }
+            if (unmanagedCallConvAttribute is not null)
+            {
+                AttributeSyntax unmanagedCallConvSyntax = Attribute(ParseName(TypeNames.UnmanagedCallConvAttribute));
+                foreach (var arg in unmanagedCallConvAttribute.NamedArguments)
+                {
+                    if (arg.Key == CallConvsField)
+                    {
+                        InitializerExpressionSyntax callConvs = InitializerExpression(SyntaxKind.ArrayInitializerExpression);
+                        foreach (var callConv in arg.Value.Values)
+                        {
+                            callConvs = callConvs.AddExpressions(
+                                TypeOfExpression(((ITypeSymbol)callConv.Value!).AsTypeSyntax()));
+                        }
+
+                        ArrayTypeSyntax arrayOfSystemType = ArrayType(ParseTypeName(TypeNames.System_Type), SingletonList(ArrayRankSpecifier()));
+
+                        unmanagedCallConvSyntax = unmanagedCallConvSyntax.AddArgumentListArguments(
+                            AttributeArgument(
+                                ArrayCreationExpression(arrayOfSystemType)
+                                .WithInitializer(callConvs))
+                            .WithNameEquals(NameEquals(IdentifierName(CallConvsField))));
+                    }
+                }
+                attributes.Add(unmanagedCallConvSyntax);
+            }
+            return attributes;
+        }
 
         private SyntaxTokenList StripTriviaFromModifiers(SyntaxTokenList tokenList)
         {
@@ -256,7 +294,7 @@ namespace Microsoft.Interop
                             (data, ct) =>
                             {
                                 IncrementalTracker?.RecordExecutedStep(new IncrementalityTracker.ExecutedStepInfo(data, IncrementalityTracker.StepName.GenerateSingleStub));
-                                return GenerateSource(data.Syntax, data.Symbol, data.Environment);
+                                return GenerateSource(data.Syntax, data.Symbol, data.Environment, ct);
                             }
                         )
                         .WithComparer(new GeneratedSyntaxComparer())
@@ -352,12 +390,16 @@ namespace Microsoft.Interop
             }
         }
 
-            private (MemberDeclarationSyntax, ImmutableArray<Diagnostic>) GenerateSource(MethodDeclarationSyntax syntax, IMethodSymbol symbol, StubEnvironment environment)
+        private (MemberDeclarationSyntax, ImmutableArray<Diagnostic>) GenerateSource(MethodDeclarationSyntax syntax, IMethodSymbol symbol, StubEnvironment environment, CancellationToken ct)
         {
             INamedTypeSymbol? lcidConversionAttrType = environment.Compilation.GetTypeByMetadataName(TypeNames.LCIDConversionAttribute);
+            INamedTypeSymbol? suppressGCTransitionAttrType = environment.Compilation.GetTypeByMetadataName(TypeNames.SuppressGCTransitionAttribute);
+            INamedTypeSymbol? unmanagedCallConvAttrType = environment.Compilation.GetTypeByMetadataName(TypeNames.UnmanagedCallConvAttribute);
             // Get any attributes of interest on the method
             AttributeData? generatedDllImportAttr = null;
             AttributeData? lcidConversionAttr = null;
+            AttributeData? suppressGCTransitionAttribute = null;
+            AttributeData? unmanagedCallConvAttribute = null;
             foreach (var attr in symbol.GetAttributes())
             {
                 if (attr.AttributeClass is not null
@@ -368,6 +410,14 @@ namespace Microsoft.Interop
                 else if (lcidConversionAttrType != null && SymbolEqualityComparer.Default.Equals(attr.AttributeClass, lcidConversionAttrType))
                 {
                     lcidConversionAttr = attr;
+                }
+                else if (suppressGCTransitionAttrType != null && SymbolEqualityComparer.Default.Equals(attr.AttributeClass, suppressGCTransitionAttrType))
+                {
+                    suppressGCTransitionAttribute = attr;
+                }
+                else if (unmanagedCallConvAttrType != null && SymbolEqualityComparer.Default.Equals(attr.AttributeClass, unmanagedCallConvAttrType))
+                {
+                    unmanagedCallConvAttribute = attr;
                 }
             }
 
@@ -394,9 +444,10 @@ namespace Microsoft.Interop
                 // Using LCIDConversion with GeneratedDllImport is not supported
                 generatorDiagnostics.ReportConfigurationNotSupported(lcidConversionAttr, nameof(TypeNames.LCIDConversionAttribute));
             }
+            List<AttributeSyntax> additionalAttributes = GenerateSyntaxForForwardedAttributes(suppressGCTransitionAttribute, unmanagedCallConvAttribute);
 
             // Create the stub.
-            var dllImportStub = DllImportStub.Create(symbol, stubDllImportData!, environment, generatorDiagnostics);
+            var dllImportStub = DllImportStub.Create(symbol, stubDllImportData!, environment, generatorDiagnostics, additionalAttributes, ct);
 
             return (PrintGeneratedSource(syntax, dllImportStub), generatorDiagnostics.Diagnostics.ToImmutableArray());
         }

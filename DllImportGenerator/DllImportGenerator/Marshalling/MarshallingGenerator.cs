@@ -73,6 +73,19 @@ namespace Microsoft.Interop
     }
 
     /// <summary>
+    /// Interface for generating attributes for native return types.
+    /// </summary>
+    internal interface IAttributedReturnTypeMarshallingGenerator : IMarshallingGenerator
+    {
+        /// <summary>
+        /// Gets any attributes that should be applied to the return type for this <paramref name="info"/>.
+        /// </summary>
+        /// <param name="info">Object to marshal</param>
+        /// <returns>Attributes for the return type for this <paramref name="info"/>, or <c>null</c> if no attributes should be added.</returns>
+        AttributeListSyntax? GenerateAttributesForReturnType(TypePositionInfo info);
+    }
+
+    /// <summary>
     /// Exception used to indicate marshalling isn't supported.
     /// </summary>
     internal class MarshallingNotSupportedException : Exception
@@ -392,21 +405,74 @@ namespace Microsoft.Interop
                         NotSupportedDetails = Resources.ArraySizeParamIndexOutOfRange
                     };
                 }
-                else if (paramInfo.ManagedType is not SpecialTypeInfo specialTypeInfo || !specialTypeInfo.SpecialType.IsIntegralType())
-                {
-                    throw new MarshallingNotSupportedException(info, context)
-                    {
-                        NotSupportedDetails = Resources.ArraySizeParamTypeMustBeIntegral
-                    };
-                }
                 else
                 {
-                    var (managed, native) = context.GetIdentifiers(paramInfo);
-                    string identifier = Create(paramInfo, context, options).UsesNativeIdentifier(paramInfo, context) ? native : managed;
+                    ExpressionSyntax numElementsExpression = GetIndexedNumElementsExpression(
+                        context,
+                        paramInfo,
+                        out int numIndirectionLevels);
+
+                    ManagedTypeInfo type = paramInfo.ManagedType;
+                    MarshallingInfo marshallingInfo = paramInfo.MarshallingAttributeInfo;
+
+                    for (int i = 0; i < numIndirectionLevels; i++)
+                    {
+                        if (marshallingInfo is NativeContiguousCollectionMarshallingInfo collectionInfo)
+                        {
+                            type = collectionInfo.ElementType;
+                            marshallingInfo = collectionInfo.ElementMarshallingInfo;
+                        }
+                        else
+                        {
+                            throw new MarshallingNotSupportedException(info, context)
+                            {
+                                NotSupportedDetails = Resources.CollectionSizeParamTypeMustBeIntegral
+                            };
+                        }
+                    }
+
+                    if (type is not SpecialTypeInfo specialType || !specialType.SpecialType.IsIntegralType())
+                    {
+                        throw new MarshallingNotSupportedException(info, context)
+                        {
+                            NotSupportedDetails = Resources.CollectionSizeParamTypeMustBeIntegral
+                        };
+                    }
+
                     return CastExpression(
                             PredefinedType(Token(SyntaxKind.IntKeyword)),
-                            IdentifierName(identifier));
+                            ParenthesizedExpression(numElementsExpression));
                 }
+            }
+
+            static ExpressionSyntax GetIndexedNumElementsExpression(StubCodeContext context, TypePositionInfo numElementsInfo, out int numIndirectionLevels)
+            {
+                Stack<string> indexerStack = new();
+
+                StubCodeContext? currentContext = context;
+                StubCodeContext lastContext = null!;
+
+                while (currentContext is not null)
+                {
+                    if (currentContext is ContiguousCollectionElementMarshallingCodeContext collectionContext)
+                    {
+                        indexerStack.Push(collectionContext.IndexerIdentifier);
+                    }
+                    lastContext = currentContext;
+                    currentContext = currentContext.ParentContext;
+                }
+
+                numIndirectionLevels = indexerStack.Count;
+
+                ExpressionSyntax indexedNumElements = IdentifierName(lastContext.GetIdentifiers(numElementsInfo).managed);
+                while (indexerStack.Count > 0)
+                {
+                    NameSyntax indexer = IdentifierName(indexerStack.Pop());
+                    indexedNumElements = ElementAccessExpression(indexedNumElements)
+                        .AddArgumentListArguments(Argument(indexer));
+                }
+
+                return indexedNumElements;
             }
         }
 
@@ -514,10 +580,10 @@ namespace Microsoft.Interop
             AnalyzerConfigOptions options,
             ICustomNativeTypeMarshallingStrategy marshallingStrategy)
         {
-            var elementInfo = new TypePositionInfo(collectionInfo.ElementType, collectionInfo.ElementMarshallingInfo);
+            var elementInfo = new TypePositionInfo(collectionInfo.ElementType, collectionInfo.ElementMarshallingInfo) { ManagedIndex = info.ManagedIndex };
             var elementMarshaller = Create(
                 elementInfo,
-                new ContiguousCollectionElementMarshallingCodeContext(StubCodeContext.Stage.Setup, string.Empty, string.Empty, context),
+                new ContiguousCollectionElementMarshallingCodeContext(StubCodeContext.Stage.Setup, string.Empty, context),
                 options);
             var elementType = elementMarshaller.AsNativeType(elementInfo);
 

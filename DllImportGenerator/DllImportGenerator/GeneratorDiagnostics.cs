@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Linq;
 
@@ -14,15 +15,7 @@ namespace Microsoft.Interop
             DiagnosticDescriptor descriptor,
             params object[] args)
         {
-            IEnumerable<Location> locationsInSource = symbol.Locations.Where(l => l.IsInSource);
-            if (!locationsInSource.Any())
-                return Diagnostic.Create(descriptor, Location.None, args);
-
-            return Diagnostic.Create(
-                descriptor,
-                location: locationsInSource.First(),
-                additionalLocations: locationsInSource.Skip(1),
-                messageArgs: args);
+            return symbol.Locations.CreateDiagnostic(descriptor, args);
         }
 
         public static Diagnostic CreateDiagnostic(
@@ -35,6 +28,30 @@ namespace Microsoft.Interop
                 ? syntaxReference.GetSyntax().GetLocation()
                 : Location.None;
 
+            return location.CreateDiagnostic(descriptor, args);
+        }
+
+        public static Diagnostic CreateDiagnostic(
+            this ImmutableArray<Location> locations,
+            DiagnosticDescriptor descriptor,
+            params object[] args)
+        {
+            IEnumerable<Location> locationsInSource = locations.Where(l => l.IsInSource);
+            if (!locationsInSource.Any())
+                return Diagnostic.Create(descriptor, Location.None, args);
+
+            return Diagnostic.Create(
+                descriptor,
+                location: locationsInSource.First(),
+                additionalLocations: locationsInSource.Skip(1),
+                messageArgs: args);
+        }
+
+        public static Diagnostic CreateDiagnostic(
+            this Location location,
+            DiagnosticDescriptor descriptor,
+            params object[] args)
+        {
             return Diagnostic.Create(
                 descriptor,
                 location: location.IsInSource ? location : Location.None,

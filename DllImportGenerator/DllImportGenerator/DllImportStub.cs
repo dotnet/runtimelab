@@ -110,7 +110,8 @@ namespace Microsoft.Interop
             GeneratedDllImportData dllImportData,
             StubEnvironment env,
             GeneratorDiagnostics diagnostics,
-            CancellationToken token = default)
+            List<AttributeSyntax> forwardedAttributes,
+            CancellationToken token)
         {
             // Cancel early if requested
             token.ThrowIfCancellationRequested();
@@ -211,7 +212,7 @@ namespace Microsoft.Interop
 
             // Generate stub code
             var stubGenerator = new StubCodeGenerator(method, dllImportData, paramsTypeInfo, retTypeInfo, diagnostics, env.Options);
-            var code = stubGenerator.GenerateSyntax();
+            var code = stubGenerator.GenerateSyntax(forwardedAttributes: forwardedAttributes.Count != 0 ? AttributeList(SeparatedList(forwardedAttributes)) : null);
 
             var additionalAttrs = new List<AttributeListSyntax>();
 
