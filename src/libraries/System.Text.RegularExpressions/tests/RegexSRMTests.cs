@@ -29,6 +29,30 @@ namespace System.Text.RegularExpressions.Tests
         private const char Turkish_i_withoutDot = '\u0131';
         private const char Kelvin_sign = '\u212A';
 
+        [Theory]
+        [InlineData("[abc]{0,10}", "a[abc]{0,3}", "xxxabbbbbbbyyy", true, "abbb")]
+        [InlineData("[abc]{0,10}?", "a[abc]{0,3}?", "xxxabbbbbbbyyy", true, "a")]
+        public void TestConjunctionOverCounting(string conjunct1, string conjunct2, string input, bool success, string match)
+        {
+            string pattern = And(conjunct1, conjunct2);
+            Regex re = new Regex(pattern, DFA);
+            Match m = re.Match(input);
+            Assert.Equal(success, m.Success);
+            Assert.Equal(match, m.Value);
+        }
+
+        [Theory]
+        [InlineData("a[abc]{0,10}", "a[abc]{0,3}", "xxxabbbbbbbyyy", true, "abbbbbbb")]
+        [InlineData("a[abc]{0,10}?", "a[abc]{0,3}?", "xxxabbbbbbbyyy", true, "a")]
+        public void TestDisjunctionOverCounting(string disjunct1, string disjunct2, string input, bool success, string match)
+        {
+            string pattern = disjunct1 + "|" + disjunct2;
+            Regex re = new Regex(pattern, DFA);
+            Match m = re.Match(input);
+            Assert.Equal(success, m.Success);
+            Assert.Equal(match, m.Value);
+        }
+
 
         [Theory]
         [InlineData("(?i:[a-dÕ]+k*)", "xyxaBõc\u212AKAyy", true, "aBõc\u212AK")]
