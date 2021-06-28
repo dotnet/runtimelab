@@ -46,7 +46,7 @@ Compiler*                                 _compiler;
 Function*                                 _function;
 BlkToLlvmBlkVectorMap*                    _blkToLlvmBlkVectorMap;
 llvm::IRBuilder<>*                        _builder;
-std::unordered_map<unsigned int, Value*>* _sdsuMap;
+std::unordered_map<GenTree*, Value*>*     _sdsuMap;
 std::unordered_map<unsigned int, Value*>* _localsMap;
 CORINFO_SIG_INFO                          _sigInfo; // sigInfo of function being compiled
 llvm::IRBuilder<>*                        _prologBuilder;
@@ -110,19 +110,19 @@ void Llvm::llvmShutdown()
     fatal(CORJIT_SKIPPED);
 }
 
-Value* mapTreeIdValue(unsigned int treeId, Value* valueRef)
+Value* mapGenTreeToValue(GenTree* genTree, Value* valueRef)
 {
-    if (_sdsuMap->find(treeId) != _sdsuMap->end())
+    if (_sdsuMap->find(genTree) != _sdsuMap->end())
     {
         fatal(CorJitResult::CORJIT_INTERNALERROR);
     }
-    _sdsuMap->insert({ treeId, valueRef });
+    _sdsuMap->insert({genTree, valueRef});
     return valueRef;
 }
 
-Value* getTreeIdValue(GenTree* op)
+Value* getGenTreeValue(GenTree* op)
 {
-    return _sdsuMap->at(op->gtTreeID);
+    return _sdsuMap->at(op);
 }
 
 // Copy of logic from ILImporter.GetLLVMTypeForTypeDesc
@@ -428,12 +428,12 @@ Value* buildAdd(llvm::IRBuilder<>& builder, GenTree* node, Value* op1, Value* op
         //only support gep
         failFunctionCompilation();
     }
-    return mapTreeIdValue(node->gtTreeID, builder.CreateGEP(op1, op2));
+    return mapGenTreeToValue(node, builder.CreateGEP(op1, op2));
 }
 
 Value* genTreeAsLlvmType(GenTree* tree, Type* type)
 {
-    Value* v = getTreeIdValue(tree);
+    Value* v = getGenTreeValue(tree);
     if (v->getType() == type)
         return v;
 
@@ -583,7 +583,7 @@ llvm::Value* buildUserFuncCall(GenTreeCall* call, llvm::IRBuilder<>& builder)
             argIx++;
         }
     }
-    return mapTreeIdValue(call->gtTreeID, builder.CreateCall(llvmFunc, ArrayRef<Value*>(argVec)));
+    return mapGenTreeToValue(call, builder.CreateCall(llvmFunc, ArrayRef<Value*>(argVec)));
 }
 
 Value* buildCall(llvm::IRBuilder<>& builder, GenTree* node)
@@ -601,7 +601,7 @@ Value* buildCall(llvm::IRBuilder<>& builder, GenTree* node)
             }
             // replacement for _info.compCompHnd->recordRelocation(nullptr, gtCall->gtEntryPoint.handle, IMAGE_REL_BASED_REL32);
             (*_addCodeReloc)(_thisPtr, call->gtEntryPoint.handle);
-            return mapTreeIdValue(node->gtTreeID, builder.CreateCall(llvmFunc, _function->getArg(0)));
+            return mapGenTreeToValue(node, builder.CreateCall(llvmFunc, _function->getArg(0)));
         }
     }
     else if (call->gtCallType == CT_USER_FUNC)
@@ -615,7 +615,7 @@ Value* buildCnsInt(llvm::IRBuilder<>& builder, GenTree* node)
 {
     if (node->gtType == var_types::TYP_INT)
     {
-        return mapTreeIdValue(node->gtTreeID, builder.getInt32(node->AsIntCon()->gtIconVal));
+        return mapGenTreeToValue(node, builder.getInt32(node->AsIntCon()->gtIconVal));
     }
     if (node->gtType == var_types::TYP_REF)
     {
@@ -623,7 +623,7 @@ Value* buildCnsInt(llvm::IRBuilder<>& builder, GenTree* node)
         if (node->IsIconHandle(GTF_ICON_STR_HDL))
         {
             const char* symbolName = (*_getMangledSymbolName)(_thisPtr, (void *)(node->AsIntCon()->IconValue()));
-            return mapTreeIdValue(node->gtTreeID, builder.CreateLoad(getOrCreateExternalSymbol(symbolName)));
+            return mapGenTreeToValue(node, builder.CreateLoad(getOrCreateExternalSymbol(symbolName)));
         }
         // TODO: delete this check, just handling string constants and null ptr stores for now, other TYP_REFs not implemented yet
         if (intCon != 0)
@@ -631,7 +631,7 @@ Value* buildCnsInt(llvm::IRBuilder<>& builder, GenTree* node)
             failFunctionCompilation();
         }
 
-        return mapTreeIdValue(node->gtTreeID, builder.CreateIntToPtr(builder.getInt32(intCon), Type::getInt8PtrTy(_llvmContext))); // TODO: wasm64
+        return mapGenTreeToValue(node, builder.CreateIntToPtr(builder.getInt32(intCon), Type::getInt8PtrTy(_llvmContext))); // TODO: wasm64
     }
     failFunctionCompilation();
 }
@@ -639,18 +639,18 @@ Value* buildCnsInt(llvm::IRBuilder<>& builder, GenTree* node)
 Value* buildInd(llvm::IRBuilder<>& builder, GenTree* node, Value* ptr)
 {
     // TODO: Simplify genActualType(node->TypeGet()) to just genActualType(node) when main is merged
-    return mapTreeIdValue(node->gtTreeID, builder.CreateLoad(castIfNecessary(builder, ptr, getLLVMTypeForVarType(genActualType(node->TypeGet()))->getPointerTo())));
+    return mapGenTreeToValue(node, builder.CreateLoad(castIfNecessary(builder, ptr, getLLVMTypeForVarType(genActualType(node->TypeGet()))->getPointerTo())));
 }
 
 Value* buildNe(llvm::IRBuilder<>& builder, GenTree* node, Value* op1, Value* op2)
 {
-    return mapTreeIdValue(node->gtTreeID, builder.CreateICmpNE(op1, op2));
+    return mapGenTreeToValue(node, builder.CreateICmpNE(op1, op2));
 }
 
 void importStoreInd(llvm::IRBuilder<>& builder, GenTreeStoreInd* storeIndOp)
 {
-    Value* address = getTreeIdValue(storeIndOp->Addr());
-    Value* toStore = getTreeIdValue(storeIndOp->Data());
+    Value* address = getGenTreeValue(storeIndOp->Addr());
+    Value* toStore = getGenTreeValue(storeIndOp->Data());
     if (toStore->getType()->isPointerTy())
     {
         // RhpAssignRef will never reverse PInvoke, so do not need to store the shadow stack here
@@ -695,7 +695,7 @@ Value* localVar(llvm::IRBuilder<>& builder, GenTreeLclVar* lclVar)
         llvmRef = _localsMap->at(lclNum);
     }
 
-    mapTreeIdValue(lclVar->gtTreeID, llvmRef);
+    mapGenTreeToValue(lclVar, llvmRef);
     return llvmRef;
 }
 
@@ -703,7 +703,7 @@ Value* storeLocalVar(llvm::IRBuilder<>& builder, GenTreeLclVar* lclVar)
 {
     if (lclVar->gtFlags & GTF_VAR_DEF)
     {
-        Value* valueRef = getTreeIdValue(lclVar->gtGetOp1());
+        Value* valueRef = getGenTreeValue(lclVar->gtGetOp1());
         assert(valueRef != nullptr);
         LclVarDsc* varDsc = _compiler->lvaGetDesc(lclVar);
 
@@ -721,7 +721,7 @@ Value* visitNode(llvm::IRBuilder<>& builder, GenTree* node)
     switch (node->OperGet())
     {
         case GT_ADD:
-            return buildAdd(builder, node, getTreeIdValue(node->AsOp()->gtOp1), getTreeIdValue(node->AsOp()->gtOp2));
+            return buildAdd(builder, node, getGenTreeValue(node->AsOp()->gtOp1), getGenTreeValue(node->AsOp()->gtOp2));
         case GT_CALL:
             return buildCall(builder, node);
         case GT_CNS_INT:
@@ -729,11 +729,11 @@ Value* visitNode(llvm::IRBuilder<>& builder, GenTree* node)
         case GT_IL_OFFSET:
             break;
         case GT_IND:
-            return buildInd(builder, node, getTreeIdValue(node->AsOp()->gtOp1));
+            return buildInd(builder, node, getGenTreeValue(node->AsOp()->gtOp1));
         case GT_LCL_VAR:
             return localVar(builder, node->AsLclVar());
         case GT_NE:
-            return buildNe(builder, node, getTreeIdValue(node->AsOp()->gtOp1), getTreeIdValue(node->AsOp()->gtOp2));
+            return buildNe(builder, node, getGenTreeValue(node->AsOp()->gtOp1), getGenTreeValue(node->AsOp()->gtOp2));
         case GT_NO_OP:
             emitDoNothingCall(builder);
             break;
@@ -792,7 +792,7 @@ void Llvm::Compile(Compiler* pCompiler)
     CompAllocator allocator = pCompiler->getAllocator();
     BlkToLlvmBlkVectorMap blkToLlvmBlkVectorMap(allocator);
     _blkToLlvmBlkVectorMap = &blkToLlvmBlkVectorMap;
-    std::unordered_map<unsigned int, Value*> sdsuMap;
+    std::unordered_map<GenTree*, Value*> sdsuMap;
     _sdsuMap = &sdsuMap;
     _localsMap = new std::unordered_map<unsigned int, Value*>();
     const char *mangledName = (*_getMangledMethodName)(_thisPtr, _info.compMethodHnd);
