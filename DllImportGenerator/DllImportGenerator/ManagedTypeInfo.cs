@@ -48,6 +48,7 @@ namespace Microsoft.Interop
     internal sealed record SpecialTypeInfo(string FullTypeName, SpecialType SpecialType) : ManagedTypeInfo(FullTypeName)
     {
         public static readonly SpecialTypeInfo Int32 = new("int", SpecialType.System_Int32);
+        public static readonly SpecialTypeInfo Void = new("void", SpecialType.System_Void);
 
         public bool Equals(SpecialTypeInfo? other)
         {

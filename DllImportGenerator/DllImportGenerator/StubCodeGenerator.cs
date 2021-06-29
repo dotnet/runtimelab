@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -8,15 +9,12 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
+using static Microsoft.Interop.StubCodeContext;
 
 namespace Microsoft.Interop
 {
-    internal sealed class StubCodeGenerator : StubCodeContext
+    internal sealed class StubCodeGenerator
     {
-        public override bool SingleFrameSpansNativeContext => true;
-
-        public override bool AdditionalTemporaryStateLivesAcrossStages => true;
-
         /// <summary>
         /// Identifier for managed return value
         /// </summary>
@@ -46,40 +44,54 @@ namespace Microsoft.Interop
             Stage.Cleanup
         };
 
-        private readonly GeneratorDiagnostics diagnostics;
         private readonly AnalyzerConfigOptions options;
-        private readonly IMethodSymbol stubMethod;
-        private readonly DllImportStub.GeneratedDllImportData dllImportData;
-        private readonly IEnumerable<TypePositionInfo> paramsTypeInfo;
-        private readonly List<(TypePositionInfo TypeInfo, IMarshallingGenerator Generator)> paramMarshallers;
-        private readonly (TypePositionInfo TypeInfo, IMarshallingGenerator Generator) retMarshaller;
-        private readonly List<(TypePositionInfo TypeInfo, IMarshallingGenerator Generator)> sortedMarshallers;
+        private readonly GeneratedDllImportData dllImportData;
+        private readonly StubCodeContext context;
+        private readonly List<BoundGenerator> paramMarshallers;
+        private readonly BoundGenerator retMarshaller;
+        private readonly List<BoundGenerator> sortedMarshallers;
+        private readonly bool stubReturnsVoid;
 
         public StubCodeGenerator(
-            IMethodSymbol stubMethod,
-            DllImportStub.GeneratedDllImportData dllImportData,
-            IEnumerable<TypePositionInfo> paramsTypeInfo,
-            TypePositionInfo retTypeInfo,
-            GeneratorDiagnostics generatorDiagnostics,
+            GeneratedDllImportData dllImportData,
+            IEnumerable<BoundGenerator> elements,
+            ManagedToNativeCodeContext context,
             AnalyzerConfigOptions options)
         {
-            Debug.Assert(retTypeInfo.IsNativeReturnPosition);
-
-            this.stubMethod = stubMethod;
             this.dllImportData = dllImportData;
-            this.paramsTypeInfo = paramsTypeInfo.ToList();
-            this.diagnostics = generatorDiagnostics;
+            this.context = context;
             this.options = options;
 
-            // Get marshallers for parameters
-            this.paramMarshallers = paramsTypeInfo.Select(p => CreateGenerator(p)).ToList();
+            List<BoundGenerator> allMarshallers = new();
+            List<BoundGenerator> paramMarshallers = new();
+            bool foundNativeRetMarshaller = false, foundManagedRetMarshaller = false;
+            BoundGenerator nativeRetMarshaller = new(new TypePositionInfo(SpecialTypeInfo.Void, NoMarshallingInfo.Instance), new Forwarder());
+            BoundGenerator managedRetMarshaller = new(new TypePositionInfo(SpecialTypeInfo.Void, NoMarshallingInfo.Instance), new Forwarder());
 
-            // Get marshaller for return
-            this.retMarshaller = CreateGenerator(retTypeInfo);
+            foreach (var element in elements)
+            {
+                allMarshallers.Add(element);
+                if (element.TypeInfo.IsManagedReturnPosition)
+                {
+                    Debug.Assert(!foundManagedRetMarshaller);
+                    managedRetMarshaller = element;
+                    foundManagedRetMarshaller = true;
+                }
+                if (element.TypeInfo.IsNativeReturnPosition)
+                {
+                    Debug.Assert(!foundNativeRetMarshaller);
+                    nativeRetMarshaller = element;
+                    foundNativeRetMarshaller = true;
+                }
+                if (!element.TypeInfo.IsManagedReturnPosition && !element.TypeInfo.IsNativeReturnPosition)
+                {
+                    paramMarshallers.Add(element);
+                }
+            }
 
-
-            List<(TypePositionInfo TypeInfo, IMarshallingGenerator Generator)> allMarshallers = new(this.paramMarshallers);
-            allMarshallers.Add(retMarshaller);
+            this.retMarshaller = nativeRetMarshaller;
+            this.paramMarshallers = paramMarshallers;
+            this.stubReturnsVoid = managedRetMarshaller.TypeInfo.ManagedType == SpecialTypeInfo.Void;
 
             // We are doing a topological sort of our marshallers to ensure that each parameter/return value's
             // dependencies are unmarshalled before their dependents. This comes up in the case of contiguous
@@ -109,17 +121,10 @@ namespace Microsoft.Interop
                 static m => GetInfoDependencies(m.TypeInfo))
                 .ToList();
 
-            (TypePositionInfo info, IMarshallingGenerator gen) CreateGenerator(TypePositionInfo p)
+            if (managedRetMarshaller.Generator.UsesNativeIdentifier(managedRetMarshaller.TypeInfo, context))
             {
-                try
-                {
-                    return (p, MarshallingGenerators.Create(p, this, options));
-                }
-                catch (MarshallingNotSupportedException e)
-                {
-                    this.diagnostics.ReportMarshallingNotSupported(this.stubMethod, p, e.NotSupportedDetails);
-                    return (p, MarshallingGenerators.Forwarder);
-                }
+                // Update the native identifier for the return value
+                context.ReturnNativeIdentifier = $"{ReturnIdentifier}{GeneratedNativeIdentifierSuffix}";
             }
 
             static IEnumerable<int> GetInfoDependencies(TypePositionInfo info)
@@ -145,46 +150,10 @@ namespace Microsoft.Interop
             }
         }
 
-        public override (string managed, string native) GetIdentifiers(TypePositionInfo info)
+        public BlockSyntax GenerateSyntax(string methodName, AttributeListSyntax? forwardedAttributes)
         {
-            // If the info is in the managed return position, then we need to generate a name to use
-            // for both the managed and native values since there is no name in the signature for the return value.
-            if (info.IsManagedReturnPosition)
-            {
-                return (ReturnIdentifier, ReturnNativeIdentifier);
-            }
-            // If the info is in the native return position but is not in the managed return position,
-            // then that means that the stub is introducing an additional info for the return position.
-            // This means that there is no name in source for this info, so we must provide one here.
-            // We can't use ReturnIdentifier or ReturnNativeIdentifier since that will be used by the managed return value.
-            // Additionally, since all use cases today of a TypePositionInfo in the native position but not the managed
-            // are for infos that aren't in the managed signature at all (PreserveSig scenario), we don't have a name
-            // that we can use from source. As a result, we generate another name for the native return value
-            // and use the same name for native and managed.
-            else if (info.IsNativeReturnPosition)
-            {
-                Debug.Assert(info.ManagedIndex == TypePositionInfo.UnsetIndex);
-                return (InvokeReturnIdentifier, InvokeReturnIdentifier);
-            }
-            else
-            {
-                // If the info isn't in either the managed or native return position,
-                // then we can use the base implementation since we have an identifier name provided
-                // in the original metadata.
-                return base.GetIdentifiers(info);
-            }
-        }
-
-        public BlockSyntax GenerateSyntax(AttributeListSyntax? forwardedAttributes)
-        {
-            string dllImportName = stubMethod.Name + "__PInvoke__";
+            string dllImportName = methodName + "__PInvoke__";
             var setupStatements = new List<StatementSyntax>();
-
-            if (retMarshaller.Generator.UsesNativeIdentifier(retMarshaller.TypeInfo, this))
-            {
-                // Update the native identifier for the return value
-                ReturnNativeIdentifier = $"{ReturnIdentifier}{GeneratedNativeIdentifierSuffix}";
-            }
 
             foreach (var marshaller in paramMarshallers)
             {
@@ -208,8 +177,7 @@ namespace Microsoft.Interop
                 AppendVariableDeclations(setupStatements, info, marshaller.Generator);
             }
 
-            bool invokeReturnsVoid = retMarshaller.TypeInfo.ManagedType is SpecialTypeInfo(_, SpecialType.System_Void);
-            bool stubReturnsVoid = stubMethod.ReturnsVoid;
+            bool invokeReturnsVoid = retMarshaller.TypeInfo.ManagedType == SpecialTypeInfo.Void;
 
             // Stub return is not the same as invoke return
             if (!stubReturnsVoid && !retMarshaller.TypeInfo.IsManagedReturnPosition)
@@ -221,11 +189,6 @@ namespace Microsoft.Interop
                 Debug.Assert(paramMarshallers.Any() && paramMarshallers.Last().TypeInfo.IsManagedReturnPosition, "Expected stub return to be the last parameter for the invoke");
 
                 (TypePositionInfo stubRetTypeInfo, IMarshallingGenerator stubRetGenerator) = paramMarshallers.Last();
-                if (stubRetGenerator.UsesNativeIdentifier(stubRetTypeInfo, this))
-                {
-                    // Update the native identifier for the return value
-                    ReturnNativeIdentifier = $"{ReturnIdentifier}{GeneratedNativeIdentifierSuffix}";
-                }
 
                 // Declare variables for stub return value
                 AppendVariableDeclations(setupStatements, stubRetTypeInfo, stubRetGenerator);
@@ -255,12 +218,12 @@ namespace Microsoft.Interop
             {
                 var statements = GetStatements(stage);
                 int initialCount = statements.Count;
-                this.CurrentStage = stage;
+                context.CurrentStage = stage;
 
                 if (!invokeReturnsVoid && (stage is Stage.Setup or Stage.Cleanup))
                 {
                     // Handle setup and unmarshalling for return
-                    var retStatements = retMarshaller.Generator.Generate(retMarshaller.TypeInfo, this);
+                    var retStatements = retMarshaller.Generator.Generate(retMarshaller.TypeInfo, context);
                     statements.AddRange(retStatements);
                 }
 
@@ -271,7 +234,7 @@ namespace Microsoft.Interop
 
                     foreach (var marshaller in sortedMarshallers)
                     {
-                        statements.AddRange(marshaller.Generator.Generate(marshaller.TypeInfo, this));
+                        statements.AddRange(marshaller.Generator.Generate(marshaller.TypeInfo, context));
                     }
                 }
                 else
@@ -282,12 +245,12 @@ namespace Microsoft.Interop
                         if (stage == Stage.Invoke)
                         {
                             // Get arguments for invocation
-                            ArgumentSyntax argSyntax = marshaller.Generator.AsArgument(marshaller.TypeInfo, this);
+                            ArgumentSyntax argSyntax = marshaller.Generator.AsArgument(marshaller.TypeInfo, context);
                             invoke = invoke.AddArgumentListArguments(argSyntax);
                         }
                         else
                         {
-                            var generatedStatements = marshaller.Generator.Generate(marshaller.TypeInfo, this);
+                            var generatedStatements = marshaller.Generator.Generate(marshaller.TypeInfo, context);
                             if (stage == Stage.Pin)
                             {
                                 // Collect all the fixed statements. These will be used in the Invoke stage.
@@ -321,7 +284,7 @@ namespace Microsoft.Interop
                         invokeStatement = ExpressionStatement(
                             AssignmentExpression(
                                 SyntaxKind.SimpleAssignmentExpression,
-                                IdentifierName(this.GetIdentifiers(retMarshaller.TypeInfo).native),
+                                IdentifierName(context.GetIdentifiers(retMarshaller.TypeInfo).native),
                                 invoke));
                     }
 
@@ -421,7 +384,7 @@ namespace Microsoft.Interop
                 .WithSemicolonToken(Token(SyntaxKind.SemicolonToken))
                 .WithAttributeLists(
                     SingletonList(AttributeList(
-                        SingletonSeparatedList(CreateDllImportAttributeForTarget(GetTargetDllImportDataFromStubData())))));
+                        SingletonSeparatedList(CreateDllImportAttributeForTarget(GetTargetDllImportDataFromStubData(methodName))))));
 
             if (retMarshaller.Generator is IAttributedReturnTypeMarshallingGenerator retGenerator)
             {
@@ -457,21 +420,9 @@ namespace Microsoft.Interop
             }
         }
 
-        public override TypePositionInfo? GetTypePositionInfoForManagedIndex(int index)
-        {
-            foreach (var info in paramsTypeInfo)
-            {
-                if (info.ManagedIndex == index)
-                {
-                    return info;
-                }
-            }
-            return null;
-        }
-
         private void AppendVariableDeclations(List<StatementSyntax> statementsToUpdate, TypePositionInfo info, IMarshallingGenerator generator)
         {
-            var (managed, native) = GetIdentifiers(info);
+            var (managed, native) = context.GetIdentifiers(info);
 
             // Declare variable for return value
             if (info.IsManagedReturnPosition || info.IsNativeReturnPosition)
@@ -482,7 +433,7 @@ namespace Microsoft.Interop
             }
 
             // Declare variable with native type for parameter or return value
-            if (generator.UsesNativeIdentifier(info, this))
+            if (generator.UsesNativeIdentifier(info, context))
             {
                 statementsToUpdate.Add(MarshallerHelpers.DeclareWithDefault(
                     generator.AsNativeType(info),
@@ -490,7 +441,7 @@ namespace Microsoft.Interop
             }
         }
 
-        private static AttributeSyntax CreateDllImportAttributeForTarget(DllImportStub.GeneratedDllImportData targetDllImportData)
+        private static AttributeSyntax CreateDllImportAttributeForTarget(GeneratedDllImportData targetDllImportData)
         {
             var newAttributeArgs = new List<AttributeArgumentSyntax>
             {
@@ -503,43 +454,43 @@ namespace Microsoft.Interop
                     CreateStringExpressionSyntax(targetDllImportData.EntryPoint))
             };
 
-            if (targetDllImportData.IsUserDefined.HasFlag(DllImportStub.DllImportMember.BestFitMapping))
+            if (targetDllImportData.IsUserDefined.HasFlag(DllImportMember.BestFitMapping))
             {
                 var name = NameEquals(nameof(DllImportAttribute.BestFitMapping));
                 var value = CreateBoolExpressionSyntax(targetDllImportData.BestFitMapping);
                 newAttributeArgs.Add(AttributeArgument(name, null, value));
             }
-            if (targetDllImportData.IsUserDefined.HasFlag(DllImportStub.DllImportMember.CallingConvention))
+            if (targetDllImportData.IsUserDefined.HasFlag(DllImportMember.CallingConvention))
             {
                 var name = NameEquals(nameof(DllImportAttribute.CallingConvention));
                 var value = CreateEnumExpressionSyntax(targetDllImportData.CallingConvention);
                 newAttributeArgs.Add(AttributeArgument(name, null, value));
             }
-            if (targetDllImportData.IsUserDefined.HasFlag(DllImportStub.DllImportMember.CharSet))
+            if (targetDllImportData.IsUserDefined.HasFlag(DllImportMember.CharSet))
             {
                 var name = NameEquals(nameof(DllImportAttribute.CharSet));
                 var value = CreateEnumExpressionSyntax(targetDllImportData.CharSet);
                 newAttributeArgs.Add(AttributeArgument(name, null, value));
             }
-            if (targetDllImportData.IsUserDefined.HasFlag(DllImportStub.DllImportMember.ExactSpelling))
+            if (targetDllImportData.IsUserDefined.HasFlag(DllImportMember.ExactSpelling))
             {
                 var name = NameEquals(nameof(DllImportAttribute.ExactSpelling));
                 var value = CreateBoolExpressionSyntax(targetDllImportData.ExactSpelling);
                 newAttributeArgs.Add(AttributeArgument(name, null, value));
             }
-            if (targetDllImportData.IsUserDefined.HasFlag(DllImportStub.DllImportMember.PreserveSig))
+            if (targetDllImportData.IsUserDefined.HasFlag(DllImportMember.PreserveSig))
             {
                 var name = NameEquals(nameof(DllImportAttribute.PreserveSig));
                 var value = CreateBoolExpressionSyntax(targetDllImportData.PreserveSig);
                 newAttributeArgs.Add(AttributeArgument(name, null, value));
             }
-            if (targetDllImportData.IsUserDefined.HasFlag(DllImportStub.DllImportMember.SetLastError))
+            if (targetDllImportData.IsUserDefined.HasFlag(DllImportMember.SetLastError))
             {
                 var name = NameEquals(nameof(DllImportAttribute.SetLastError));
                 var value = CreateBoolExpressionSyntax(targetDllImportData.SetLastError);
                 newAttributeArgs.Add(AttributeArgument(name, null, value));
             }
-            if (targetDllImportData.IsUserDefined.HasFlag(DllImportStub.DllImportMember.ThrowOnUnmappableChar))
+            if (targetDllImportData.IsUserDefined.HasFlag(DllImportMember.ThrowOnUnmappableChar))
             {
                 var name = NameEquals(nameof(DllImportAttribute.ThrowOnUnmappableChar));
                 var value = CreateBoolExpressionSyntax(targetDllImportData.ThrowOnUnmappableChar);
@@ -575,21 +526,21 @@ namespace Microsoft.Interop
             }
         }
 
-        DllImportStub.GeneratedDllImportData GetTargetDllImportDataFromStubData()
+        GeneratedDllImportData GetTargetDllImportDataFromStubData(string methodName)
         {
-            DllImportStub.DllImportMember membersToForward = DllImportStub.DllImportMember.All
+            DllImportMember membersToForward = DllImportMember.All
                                // https://docs.microsoft.com/dotnet/api/system.runtime.interopservices.dllimportattribute.preservesig
                                // If PreserveSig=false (default is true), the P/Invoke stub checks/converts a returned HRESULT to an exception.
-                               & ~DllImportStub.DllImportMember.PreserveSig
+                               & ~DllImportMember.PreserveSig
                                // https://docs.microsoft.com/dotnet/api/system.runtime.interopservices.dllimportattribute.setlasterror
                                // If SetLastError=true (default is false), the P/Invoke stub gets/caches the last error after invoking the native function.
-                               & ~DllImportStub.DllImportMember.SetLastError;
+                               & ~DllImportMember.SetLastError;
             if (options.GenerateForwarders())
             {
-                membersToForward = DllImportStub.DllImportMember.All;
+                membersToForward = DllImportMember.All;
             }
 
-            var targetDllImportData = new DllImportStub.GeneratedDllImportData
+            var targetDllImportData = new GeneratedDllImportData
             {
                 CharSet = dllImportData.CharSet,
                 BestFitMapping = dllImportData.BestFitMapping,
@@ -608,9 +559,9 @@ namespace Microsoft.Interop
             //
             // N.B. The export discovery logic is identical regardless of where
             // the name is defined (i.e. method name vs EntryPoint property).
-            if (!targetDllImportData.IsUserDefined.HasFlag(DllImportStub.DllImportMember.EntryPoint))
+            if (!targetDllImportData.IsUserDefined.HasFlag(DllImportMember.EntryPoint))
             {
-                targetDllImportData.EntryPoint = stubMethod.Name;
+                targetDllImportData = targetDllImportData with { EntryPoint = methodName };
             }
 
             return targetDllImportData;

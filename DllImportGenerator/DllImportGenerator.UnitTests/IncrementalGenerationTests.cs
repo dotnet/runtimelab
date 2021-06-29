@@ -29,10 +29,11 @@ namespace DllImportGenerator.UnitTests
             Compilation comp2 = comp1.AddSyntaxTrees(CSharpSyntaxTree.ParseText("struct Foo {}", new CSharpParseOptions(LanguageVersion.Preview)));
             driver.RunGenerators(comp2);
 
-            Assert.All(generator.IncrementalTracker.ExecutedSteps, step =>
-            {
-                Assert.Equal(IncrementalityTracker.StepName.GenerateSingleStub, step.Step);
-            });
+            Assert.Collection(generator.IncrementalTracker.ExecutedSteps,
+                step =>
+                {
+                    Assert.Equal(IncrementalityTracker.StepName.CalculateStubInformation, step.Step);
+                });
         }
     }
 }

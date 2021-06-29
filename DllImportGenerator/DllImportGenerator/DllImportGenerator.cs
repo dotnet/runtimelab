@@ -82,14 +82,15 @@ namespace Microsoft.Interop
 
         private MemberDeclarationSyntax PrintGeneratedSource(
             MethodDeclarationSyntax userDeclaredMethod,
-            DllImportStub stub)
+            DllImportStubContext stub,
+            BlockSyntax stubCode)
         {
             // Create stub function
             var stubMethod = MethodDeclaration(stub.StubReturnType, userDeclaredMethod.Identifier)
                 .AddAttributeLists(stub.AdditionalAttributes)
                 .WithModifiers(StripTriviaFromModifiers(userDeclaredMethod.Modifiers))
                 .WithParameterList(ParameterList(SeparatedList(stub.StubParameters)))
-                .WithBody(stub.StubCode);
+                .WithBody(stubCode);
 
             // Stub should have at least one containing type
             Debug.Assert(stub.StubContainingTypes.Any());
@@ -134,9 +135,9 @@ namespace Microsoft.Interop
             };
         }
 
-        private DllImportStub.GeneratedDllImportData ProcessGeneratedDllImportAttribute(AttributeData attrData)
+        private GeneratedDllImportData ProcessGeneratedDllImportAttribute(AttributeData attrData)
         {
-            var stubDllImportData = new DllImportStub.GeneratedDllImportData();
+            var stubDllImportData = new GeneratedDllImportData();
 
             // Found the GeneratedDllImport, but it has an error so report the error.
             // This is most likely an issue with targeting an incorrect TFM.
@@ -157,37 +158,61 @@ namespace Microsoft.Interop
                     default:
                         Debug.Fail($"An unknown member was found on {GeneratedDllImport}");
                         continue;
-                    case nameof(DllImportStub.GeneratedDllImportData.BestFitMapping):
-                        stubDllImportData.BestFitMapping = (bool)namedArg.Value.Value!;
-                        stubDllImportData.IsUserDefined |= DllImportStub.DllImportMember.BestFitMapping;
+                    case nameof(GeneratedDllImportData.BestFitMapping):
+                        stubDllImportData = stubDllImportData with
+                        {
+                            BestFitMapping = (bool)namedArg.Value.Value!,
+                            IsUserDefined = stubDllImportData.IsUserDefined | DllImportMember.BestFitMapping,
+                        };
                         break;
-                    case nameof(DllImportStub.GeneratedDllImportData.CallingConvention):
-                        stubDllImportData.CallingConvention = (CallingConvention)namedArg.Value.Value!;
-                        stubDllImportData.IsUserDefined |= DllImportStub.DllImportMember.CallingConvention;
+                    case nameof(GeneratedDllImportData.CallingConvention):
+                        stubDllImportData = stubDllImportData with
+                        {
+                            CallingConvention = (CallingConvention)namedArg.Value.Value!,
+                            IsUserDefined = stubDllImportData.IsUserDefined | DllImportMember.CallingConvention,
+                        };
                         break;
-                    case nameof(DllImportStub.GeneratedDllImportData.CharSet):
-                        stubDllImportData.CharSet = (CharSet)namedArg.Value.Value!;
-                        stubDllImportData.IsUserDefined |= DllImportStub.DllImportMember.CharSet;
+                    case nameof(GeneratedDllImportData.CharSet):
+                        stubDllImportData = stubDllImportData with
+                        {
+                            CharSet = (CharSet)namedArg.Value.Value!,
+                            IsUserDefined = stubDllImportData.IsUserDefined | DllImportMember.CharSet,
+                        };
                         break;
-                    case nameof(DllImportStub.GeneratedDllImportData.EntryPoint):
-                        stubDllImportData.EntryPoint = (string)namedArg.Value.Value!;
-                        stubDllImportData.IsUserDefined |= DllImportStub.DllImportMember.EntryPoint;
+                    case nameof(GeneratedDllImportData.EntryPoint):
+                        stubDllImportData = stubDllImportData with
+                        {
+                            EntryPoint = (string)namedArg.Value.Value!,
+                            IsUserDefined = stubDllImportData.IsUserDefined | DllImportMember.EntryPoint,
+                        };
                         break;
-                    case nameof(DllImportStub.GeneratedDllImportData.ExactSpelling):
-                        stubDllImportData.ExactSpelling = (bool)namedArg.Value.Value!;
-                        stubDllImportData.IsUserDefined |= DllImportStub.DllImportMember.ExactSpelling;
+                    case nameof(GeneratedDllImportData.ExactSpelling):
+                        stubDllImportData = stubDllImportData with
+                        {
+                            ExactSpelling = (bool)namedArg.Value.Value!,
+                            IsUserDefined = stubDllImportData.IsUserDefined | DllImportMember.ExactSpelling,
+                        };
                         break;
-                    case nameof(DllImportStub.GeneratedDllImportData.PreserveSig):
-                        stubDllImportData.PreserveSig = (bool)namedArg.Value.Value!;
-                        stubDllImportData.IsUserDefined |= DllImportStub.DllImportMember.PreserveSig;
+                    case nameof(GeneratedDllImportData.PreserveSig):
+                        stubDllImportData = stubDllImportData with
+                        {
+                            PreserveSig = (bool)namedArg.Value.Value!,
+                            IsUserDefined = stubDllImportData.IsUserDefined | DllImportMember.PreserveSig,
+                        };
                         break;
-                    case nameof(DllImportStub.GeneratedDllImportData.SetLastError):
-                        stubDllImportData.SetLastError = (bool)namedArg.Value.Value!;
-                        stubDllImportData.IsUserDefined |= DllImportStub.DllImportMember.SetLastError;
+                    case nameof(GeneratedDllImportData.SetLastError):
+                        stubDllImportData = stubDllImportData with
+                        {
+                            SetLastError = (bool)namedArg.Value.Value!,
+                            IsUserDefined = stubDllImportData.IsUserDefined | DllImportMember.SetLastError,
+                        };
                         break;
-                    case nameof(DllImportStub.GeneratedDllImportData.ThrowOnUnmappableChar):
-                        stubDllImportData.ThrowOnUnmappableChar = (bool)namedArg.Value.Value!;
-                        stubDllImportData.IsUserDefined |= DllImportStub.DllImportMember.ThrowOnUnmappableChar;
+                    case nameof(GeneratedDllImportData.ThrowOnUnmappableChar):
+                        stubDllImportData = stubDllImportData with
+                        {
+                            ThrowOnUnmappableChar = (bool)namedArg.Value.Value!,
+                            IsUserDefined = stubDllImportData.IsUserDefined | DllImportMember.ThrowOnUnmappableChar,
+                        };
                         break;
                 }
             }
@@ -213,6 +238,7 @@ namespace Microsoft.Interop
         {
             public enum StepName
             {
+                CalculateStubInformation,
                 GenerateSingleStub,
                 NormalizeWhitespace,
                 ConcatenateStubs,
@@ -293,10 +319,17 @@ namespace Microsoft.Interop
                         .Select(
                             (data, ct) =>
                             {
-                                IncrementalTracker?.RecordExecutedStep(new IncrementalityTracker.ExecutedStepInfo(data, IncrementalityTracker.StepName.GenerateSingleStub));
-                                return GenerateSource(data.Syntax, data.Symbol, data.Environment, ct);
+                                IncrementalTracker?.RecordExecutedStep(new IncrementalityTracker.ExecutedStepInfo(data, IncrementalityTracker.StepName.CalculateStubInformation));
+                                return (data.Syntax, Context: ComputeStubContext(data.Syntax, data.Symbol, data.Environment, ct));
                             }
                         )
+                        .Combine(context.AnalyzerConfigOptionsProvider)
+                        .Select(
+                            (data, ct) =>
+                            {
+                                IncrementalTracker?.RecordExecutedStep(new IncrementalityTracker.ExecutedStepInfo(data, IncrementalityTracker.StepName.GenerateSingleStub));
+                                return (GenerateSource(data.Left.Context.StubContext, data.Left.Context.DllImportData, data.Left.Syntax, data.Left.Context.ForwardedAttributes, data.Right.GlobalOptions), data.Left.Context.Diagnostics);
+                            })
                         .WithComparer(new GeneratedSyntaxComparer())
                         // Handle NormalizeWhitespace as a separate stage for incremental runs since it is an expensive operation.
                         .Select(
@@ -338,59 +371,24 @@ namespace Microsoft.Interop
             );
         }
 
-        private class ImmutableArraySequenceEqualComparer<T> : IEqualityComparer<ImmutableArray<T>>
+        internal sealed record IncrementalStubGenerationContext(DllImportStubContext StubContext, ImmutableArray<AttributeSyntax> ForwardedAttributes, GeneratedDllImportData DllImportData, ImmutableArray<Diagnostic> Diagnostics)
         {
-            private readonly IEqualityComparer<T> elementComparer;
-
-            public ImmutableArraySequenceEqualComparer(IEqualityComparer<T> elementComparer)
+            public bool Equals(IncrementalStubGenerationContext? other)
             {
-                this.elementComparer = elementComparer;
+                return other is not null
+                    && StubContext.Equals(other.StubContext)
+                    && DllImportData.Equals(other.DllImportData)
+                    && ForwardedAttributes.SequenceEqual(other.ForwardedAttributes, (IEqualityComparer<AttributeSyntax>)new SyntaxEquivalentComparer())
+                    && Diagnostics.SequenceEqual(other.Diagnostics);
             }
 
-            public bool Equals(ImmutableArray<T> x, ImmutableArray<T> y)
+            public override int GetHashCode()
             {
-                return x.SequenceEqual(y, elementComparer);
-            }
-
-            public int GetHashCode(ImmutableArray<T> obj)
-            {
-                return obj.Aggregate(0, (hash, elem) => (hash, elementComparer.GetHashCode(elem)).GetHashCode());
+                return (StubContext, DllImportData, ForwardedAttributes.Length, Diagnostics.Length).GetHashCode();
             }
         }
 
-        private class GeneratedSyntaxComparer : IEqualityComparer<(MemberDeclarationSyntax, ImmutableArray<Diagnostic>)>
-        {
-            private static readonly IEqualityComparer<ImmutableArray<Diagnostic>> diagnosticComparer = new ImmutableArraySequenceEqualComparer<Diagnostic>(EqualityComparer<Diagnostic>.Default);
-            public bool Equals((MemberDeclarationSyntax, ImmutableArray<Diagnostic>) x, (MemberDeclarationSyntax, ImmutableArray<Diagnostic>) y)
-            {
-                return x.Item1.IsEquivalentTo(y.Item1)
-                && diagnosticComparer.Equals(x.Item2, y.Item2);
-            }
-
-            public int GetHashCode((MemberDeclarationSyntax, ImmutableArray<Diagnostic>) obj)
-            {
-                return (obj.Item1.ToFullString(), diagnosticComparer.GetHashCode(obj.Item2)).GetHashCode();
-            }
-        }
-
-
-        private class GeneratedSourceComparer : IEqualityComparer<(string, ImmutableArray<Diagnostic>)>
-        {
-            private static readonly IEqualityComparer<ImmutableArray<Diagnostic>> diagnosticComparer = new ImmutableArraySequenceEqualComparer<Diagnostic>(EqualityComparer<Diagnostic>.Default);
-
-            public bool Equals((string, ImmutableArray<Diagnostic>) x, (string, ImmutableArray<Diagnostic>) y)
-            {
-                return x.Item1 == y.Item1
-                && diagnosticComparer.Equals(x.Item2, y.Item2);
-            }
-
-            public int GetHashCode((string, ImmutableArray<Diagnostic>) obj)
-            {
-                return (obj.Item1, diagnosticComparer.GetHashCode(obj.Item2)).GetHashCode();
-            }
-        }
-
-        private (MemberDeclarationSyntax, ImmutableArray<Diagnostic>) GenerateSource(MethodDeclarationSyntax syntax, IMethodSymbol symbol, StubEnvironment environment, CancellationToken ct)
+        private IncrementalStubGenerationContext ComputeStubContext(MethodDeclarationSyntax syntax, IMethodSymbol symbol, StubEnvironment environment, CancellationToken ct)
         {
             INamedTypeSymbol? lcidConversionAttrType = environment.Compilation.GetTypeByMetadataName(TypeNames.LCIDConversionAttribute);
             INamedTypeSymbol? suppressGCTransitionAttrType = environment.Compilation.GetTypeByMetadataName(TypeNames.SuppressGCTransitionAttribute);
@@ -426,17 +424,17 @@ namespace Microsoft.Interop
             var generatorDiagnostics = new GeneratorDiagnostics();
 
             // Process the GeneratedDllImport attribute
-            DllImportStub.GeneratedDllImportData stubDllImportData = this.ProcessGeneratedDllImportAttribute(generatedDllImportAttr!);
+            GeneratedDllImportData stubDllImportData = this.ProcessGeneratedDllImportAttribute(generatedDllImportAttr!);
             Debug.Assert(stubDllImportData is not null);
 
-            if (stubDllImportData!.IsUserDefined.HasFlag(DllImportStub.DllImportMember.BestFitMapping))
+            if (stubDllImportData!.IsUserDefined.HasFlag(DllImportMember.BestFitMapping))
             {
-                generatorDiagnostics.ReportConfigurationNotSupported(generatedDllImportAttr!, nameof(DllImportStub.GeneratedDllImportData.BestFitMapping));
+                generatorDiagnostics.ReportConfigurationNotSupported(generatedDllImportAttr!, nameof(GeneratedDllImportData.BestFitMapping));
             }
 
-            if (stubDllImportData!.IsUserDefined.HasFlag(DllImportStub.DllImportMember.ThrowOnUnmappableChar))
+            if (stubDllImportData!.IsUserDefined.HasFlag(DllImportMember.ThrowOnUnmappableChar))
             {
-                generatorDiagnostics.ReportConfigurationNotSupported(generatedDllImportAttr!, nameof(DllImportStub.GeneratedDllImportData.ThrowOnUnmappableChar));
+                generatorDiagnostics.ReportConfigurationNotSupported(generatedDllImportAttr!, nameof(GeneratedDllImportData.ThrowOnUnmappableChar));
             }
 
             if (lcidConversionAttr != null)
@@ -447,9 +445,23 @@ namespace Microsoft.Interop
             List<AttributeSyntax> additionalAttributes = GenerateSyntaxForForwardedAttributes(suppressGCTransitionAttribute, unmanagedCallConvAttribute);
 
             // Create the stub.
-            var dllImportStub = DllImportStub.Create(symbol, stubDllImportData!, environment, generatorDiagnostics, additionalAttributes, ct);
+            var dllImportStub = DllImportStubContext.Create(symbol, stubDllImportData!, environment, generatorDiagnostics, ct);
 
-            return (PrintGeneratedSource(syntax, dllImportStub), generatorDiagnostics.Diagnostics.ToImmutableArray());
+            return new IncrementalStubGenerationContext(dllImportStub, additionalAttributes.ToImmutableArray(), stubDllImportData, generatorDiagnostics.Diagnostics.ToImmutableArray());
+        }
+
+        private MemberDeclarationSyntax GenerateSource(
+            DllImportStubContext dllImportStub,
+            GeneratedDllImportData dllImportData,
+            MethodDeclarationSyntax originalSyntax,
+            ImmutableArray<AttributeSyntax> forwardedAttributes,
+            AnalyzerConfigOptions options)
+        {
+            // Generate stub code
+            var stubGenerator = new StubCodeGenerator(dllImportData, dllImportStub.BoundGenerators, dllImportStub.CodeContext, options);
+            var code = stubGenerator.GenerateSyntax(originalSyntax.Identifier.Text, forwardedAttributes: forwardedAttributes.Length != 0 ? AttributeList(SeparatedList(forwardedAttributes)) : null);
+
+            return PrintGeneratedSource(originalSyntax, dllImportStub, code);
         }
 
         private static bool ShouldVisitNode(SyntaxNode syntaxNode)
