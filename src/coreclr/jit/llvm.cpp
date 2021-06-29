@@ -24,6 +24,12 @@ using llvm::ArrayRef;
 using llvm::Module;
 using llvm::Value;
 
+struct OperandArgNum
+{
+    unsigned int argNum;
+    GenTree*     operand;
+};
+
 struct LlvmArgInfo
 {
     int m_argIx; // -1 indicates not in the LLVM arg list, but on the shadow stack
@@ -549,39 +555,55 @@ llvm::Value* buildUserFuncCall(GenTreeCall* call, llvm::IRBuilder<>& builder)
 
     unsigned int shadowStackUseOffest = 0;
     int          argIx                = 0;
+    std::vector<struct OperandArgNum> sortedOperands;
+    GenTree*                          thisArg = nullptr;
+
+    // "this" goes first
+    if (call->gtCallThisArg != nullptr)
+    {
+        thisArg = _compiler->gtGetThisArg(call);
+
+        // TODO: add throw if this is null
+        storeOnShadowStack(*_builder, thisArg, shadowStackForCallee, shadowStackUseOffest);
+        shadowStackUseOffest += TARGET_POINTER_SIZE;
+        argIx++;
+    }
+
     for (GenTree* operand : call->Operands())
     {
         // copied this logic from gtDispLIRNode
-        if (operand->IsArgPlaceHolderNode() || !operand->IsValue())
+        if (operand->IsArgPlaceHolderNode() || !operand->IsValue() || operand == thisArg)
         {
-            // Either of these situations may happen with calls.
             continue;
         }
-
-        // if it is an instance method call then the first parameter is this and that is always passed as an i8* on the
-        // shadow stack
-        if (isThisArg(call, operand))
+        fgArgTabEntry* curArgTabEntry = _compiler->gtArgEntryByNode(call, operand);
+        //unsigned int   lateArgIndex   = curArgTabEntry->GetLateArgInx();
+        //fgArgTabEntry* curArgTabEntry = _compiler->gtArgEntryByLateArgIndex(call, lateArgIndex);
+        unsigned int   argNum         = curArgTabEntry->argNum;
+        unsigned int   i              = 0;
+        while (i < sortedOperands.size() && argNum > sortedOperands[i].argNum)
         {
-            // TODO: add throw if this is null
-            storeOnShadowStack(*_builder, operand, shadowStackForCallee, shadowStackUseOffest);
-            shadowStackUseOffest += TARGET_POINTER_SIZE;
+            i++;
+        }
+        struct OperandArgNum opAndArg = {argNum, operand};
+        sortedOperands.emplace(sortedOperands.begin() + i, opAndArg);
+    }
+
+    for (struct OperandArgNum opAndArg : sortedOperands)
+    {
+        struct LlvmArgInfo llvmArgInfo = getLlvmArgInfoForArgIx(sigInfo, argIx);
+        if (llvmArgInfo.m_argIx >= 0)
+        {
+            // pass the parameter on the LLVM stack
+            argVec.push_back(genTreeAsLlvmType(opAndArg.operand, llvmFunc->getArg(llvmArgInfo.m_argIx)->getType()));
         }
         else
         {
-            struct LlvmArgInfo llvmArgInfo = getLlvmArgInfoForArgIx(sigInfo, argIx);
-            if (llvmArgInfo.m_argIx >= 0)
-            {
-                // pass the parameter on the LLVM stack
-                argVec.push_back(genTreeAsLlvmType(operand, llvmFunc->getArg(llvmArgInfo.m_argIx)->getType()));
-            }
-            else
-            {
-                // pass on shadow stack
-                storeOnShadowStack(*_builder, operand, shadowStackForCallee, shadowStackUseOffest);
-                shadowStackUseOffest += TARGET_POINTER_SIZE;
-            }
-            argIx++;
+            // pass on shadow stack
+            storeOnShadowStack(*_builder, opAndArg.operand, shadowStackForCallee, shadowStackUseOffest);
+            shadowStackUseOffest += TARGET_POINTER_SIZE;
         }
+        argIx++;
     }
     return mapGenTreeToValue(call, builder.CreateCall(llvmFunc, ArrayRef<Value*>(argVec)));
 }
