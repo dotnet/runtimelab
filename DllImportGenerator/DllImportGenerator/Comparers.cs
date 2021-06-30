@@ -4,10 +4,17 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
-using System.Text;
 
 namespace Microsoft.Interop
 {
+    internal static class Comparers
+    {
+        public static IEqualityComparer<ImmutableArray<(string, ImmutableArray<Diagnostic>)>> GeneratedSourceSet = new ImmutableArraySequenceEqualComparer<(string, ImmutableArray<Diagnostic>)>(new CustomValueTupleElementComparer<string, ImmutableArray<Diagnostic>>(EqualityComparer<string>.Default, new ImmutableArraySequenceEqualComparer<Diagnostic>(EqualityComparer<Diagnostic>.Default)));
+        public static IEqualityComparer<(string, ImmutableArray<Diagnostic>)> GeneratedSource = new CustomValueTupleElementComparer<string, ImmutableArray<Diagnostic>>(EqualityComparer<string>.Default, new ImmutableArraySequenceEqualComparer<Diagnostic>(EqualityComparer<Diagnostic>.Default));
+        public static IEqualityComparer<(MemberDeclarationSyntax, ImmutableArray<Diagnostic>)> GeneratedSyntax = new CustomValueTupleElementComparer<MemberDeclarationSyntax, ImmutableArray<Diagnostic>>(new SyntaxEquivalentComparer(), new ImmutableArraySequenceEqualComparer<Diagnostic>(EqualityComparer<Diagnostic>.Default));
+
+        public static IEqualityComparer<(MethodDeclarationSyntax, DllImportGenerator.IncrementalStubGenerationContext)> CalculatedContextWithSyntax = new CustomValueTupleElementComparer<MethodDeclarationSyntax, DllImportGenerator.IncrementalStubGenerationContext>(new SyntaxEquivalentComparer(), EqualityComparer<DllImportGenerator.IncrementalStubGenerationContext>.Default);
+    }
 
     internal class ImmutableArraySequenceEqualComparer<T> : IEqualityComparer<ImmutableArray<T>>
     {
@@ -29,24 +36,8 @@ namespace Microsoft.Interop
         }
     }
 
-    internal class GeneratedSyntaxComparer : IEqualityComparer<(MemberDeclarationSyntax, ImmutableArray<Diagnostic>)>
-    {
-        private static readonly IEqualityComparer<ImmutableArray<Diagnostic>> diagnosticComparer = new ImmutableArraySequenceEqualComparer<Diagnostic>(EqualityComparer<Diagnostic>.Default);
-        public bool Equals((MemberDeclarationSyntax, ImmutableArray<Diagnostic>) x, (MemberDeclarationSyntax, ImmutableArray<Diagnostic>) y)
-        {
-            return x.Item1.IsEquivalentTo(y.Item1)
-            && diagnosticComparer.Equals(x.Item2, y.Item2);
-        }
-
-        public int GetHashCode((MemberDeclarationSyntax, ImmutableArray<Diagnostic>) obj)
-        {
-            return (obj.Item1.ToFullString(), diagnosticComparer.GetHashCode(obj.Item2)).GetHashCode();
-        }
-    }
-
     internal class SyntaxEquivalentComparer : IEqualityComparer<SyntaxNode>
     {
-        private static readonly IEqualityComparer<ImmutableArray<Diagnostic>> diagnosticComparer = new ImmutableArraySequenceEqualComparer<Diagnostic>(EqualityComparer<Diagnostic>.Default);
         public bool Equals(SyntaxNode x, SyntaxNode y)
         {
             return x.IsEquivalentTo(y);
@@ -58,20 +49,25 @@ namespace Microsoft.Interop
         }
     }
 
-
-    internal class GeneratedSourceComparer : IEqualityComparer<(string, ImmutableArray<Diagnostic>)>
+    internal class CustomValueTupleElementComparer<T, U> : IEqualityComparer<(T, U)>
     {
-        private static readonly IEqualityComparer<ImmutableArray<Diagnostic>> diagnosticComparer = new ImmutableArraySequenceEqualComparer<Diagnostic>(EqualityComparer<Diagnostic>.Default);
+        private readonly IEqualityComparer<T> item1Comparer;
+        private readonly IEqualityComparer<U> item2Comparer;
 
-        public bool Equals((string, ImmutableArray<Diagnostic>) x, (string, ImmutableArray<Diagnostic>) y)
+        public CustomValueTupleElementComparer(IEqualityComparer<T> item1Comparer, IEqualityComparer<U> item2Comparer)
         {
-            return x.Item1 == y.Item1
-            && diagnosticComparer.Equals(x.Item2, y.Item2);
+            this.item1Comparer = item1Comparer;
+            this.item2Comparer = item2Comparer;
         }
 
-        public int GetHashCode((string, ImmutableArray<Diagnostic>) obj)
+        public bool Equals((T, U) x, (T, U) y)
         {
-            return (obj.Item1, diagnosticComparer.GetHashCode(obj.Item2)).GetHashCode();
+            return item1Comparer.Equals(x.Item1, y.Item1) && item2Comparer.Equals(x.Item2, y.Item2);
+        }
+
+        public int GetHashCode((T, U) obj)
+        {
+            return (item1Comparer.GetHashCode(obj.Item1), item2Comparer.GetHashCode(obj.Item2)).GetHashCode();
         }
     }
 }

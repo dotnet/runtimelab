@@ -245,7 +245,7 @@ namespace Microsoft.Interop
                 OutputSourceFile
             }
 
-            public record ExecutedStepInfo(object Input, StepName Step);
+            public record ExecutedStepInfo(StepName Step, object Input);
 
             private List<ExecutedStepInfo> executedSteps = new();
             public IEnumerable<ExecutedStepInfo> ExecutedSteps => executedSteps;
@@ -257,118 +257,114 @@ namespace Microsoft.Interop
 
         public void Initialize(IncrementalGeneratorInitializationContext context)
         {
-            context.RegisterExecutionPipeline(
-                context => 
+            var methodsToGenerate = context.SyntaxProvider
+                .CreateSyntaxProvider(
+                    static (node, ct) => ShouldVisitNode(node),
+                    static (context, ct) =>
+                        new SyntaxSymbolPair(
+                            (MethodDeclarationSyntax)context.Node,
+                            (IMethodSymbol)context.SemanticModel.GetDeclaredSymbol(context.Node, ct)!))
+                .Where(
+                    static modelData => modelData.Symbol.IsStatic && modelData.Symbol.GetAttributes().Any(
+                        static attribute => attribute.AttributeClass?.ToDisplayString() == TypeNames.GeneratedDllImportAttribute)
+                );
+
+            var compilationAndTargetFramework = context.CompilationProvider
+                .Select((compilation, ct) =>
                 {
-                    var methodsToGenerate = context.SyntaxProvider
-                        .CreateSyntaxProvider(
-                            static (node, ct) => ShouldVisitNode(node),
-                            static (context, ct) => 
-                                new SyntaxSymbolPair(
-                                    (MethodDeclarationSyntax)context.Node,
-                                    (IMethodSymbol)context.SemanticModel.GetDeclaredSymbol(context.Node, ct)!))
-                        .Where(
-                            static modelData => modelData.Symbol.IsStatic && modelData.Symbol.GetAttributes().Any(
-                                static attribute => attribute.AttributeClass?.ToDisplayString() == TypeNames.GeneratedDllImportAttribute)
-                        );
+                    bool isSupported = IsSupportedTargetFramework(compilation, out Version targetFrameworkVersion);
+                    return (compilation, isSupported, targetFrameworkVersion);
+                });
 
-                    var compilationAndTargetFramework = context.CompilationProvider
-                        .Select((compilation, ct) =>
-                        {
-                            bool isSupported = IsSupportedTargetFramework(compilation, out Version targetFrameworkVersion);
-                            return (compilation, isSupported, targetFrameworkVersion);
-                        });
+            context.RegisterSourceOutput(
+                compilationAndTargetFramework
+                    .Combine(methodsToGenerate.Collect()),
+                static (context, data) =>
+                {
+                    if (!data.Left.isSupported && data.Right.Any())
+                    {
+                        // We don't block source generation when the TFM is unsupported.
+                        // This allows a user to copy generated source and use it as a starting point
+                        // for manual marshalling if desired.
+                        context.ReportDiagnostic(
+                            Diagnostic.Create(
+                                GeneratorDiagnostics.TargetFrameworkNotSupported,
+                                Location.None,
+                                MinimumSupportedFrameworkVersion.ToString(2)));
+                    }
+                });
 
-                    context.RegisterSourceOutput(
-                        compilationAndTargetFramework
-                            .Combine(methodsToGenerate.Collect()),
-                        static (context, data) =>
-                        {
-                            if (!data.Left.isSupported && data.Right.Any())
-                            {
-                                // We don't block source generation when the TFM is unsupported.
-                                // This allows a user to copy generated source and use it as a starting point
-                                // for manual marshalling if desired.
-                                context.ReportDiagnostic(
-                                    Diagnostic.Create(
-                                        GeneratorDiagnostics.TargetFrameworkNotSupported,
-                                        Location.None,
-                                        MinimumSupportedFrameworkVersion.ToString(2)));
-                            }
-                        });
+            var stubEnvironment = compilationAndTargetFramework
+                .Combine(context.AnalyzerConfigOptionsProvider)
+                .Select(
+                    (data, ct) =>
+                        new StubEnvironment(
+                            data.Left.compilation,
+                            data.Left.isSupported,
+                            data.Left.targetFrameworkVersion,
+                            data.Right.GlobalOptions)
+                );
 
-                    var stubEnvironment = compilationAndTargetFramework
-                        .Combine(context.AnalyzerConfigOptionsProvider)
-                        .Select(
-                            (data, ct) =>
-                                new StubEnvironment(
-                                    data.Left.compilation,
-                                    data.Left.isSupported,
-                                    data.Left.targetFrameworkVersion,
-                                    data.Right.GlobalOptions)
-                        );
+            var methodSourceAndDiagnostics = methodsToGenerate
+                .Combine(stubEnvironment)
+                .Select((data, ct) => new
+                {
+                    data.Left.Syntax,
+                    data.Left.Symbol,
+                    Environment = data.Right
+                })
+                .Select(
+                    (data, ct) =>
+                    {
+                        IncrementalTracker?.RecordExecutedStep(new IncrementalityTracker.ExecutedStepInfo(IncrementalityTracker.StepName.CalculateStubInformation, data));
+                        return (data.Syntax, ComputeStubContext(data.Syntax, data.Symbol, data.Environment, ct));
+                    }
+                )
+                .WithComparer(Comparers.CalculatedContextWithSyntax)
+                .Combine(context.AnalyzerConfigOptionsProvider)
+                .Select(
+                    (data, ct) =>
+                    {
+                        IncrementalTracker?.RecordExecutedStep(new IncrementalityTracker.ExecutedStepInfo(IncrementalityTracker.StepName.GenerateSingleStub, data));
+                        return (GenerateSource(data.Left.Item2.StubContext, data.Left.Item2.DllImportData, data.Left.Item1, data.Left.Item2.ForwardedAttributes, data.Right.GlobalOptions), data.Left.Item2.Diagnostics);
+                    })
+                .WithComparer(Comparers.GeneratedSyntax)
+                // Handle NormalizeWhitespace as a separate stage for incremental runs since it is an expensive operation.
+                .Select(
+                    (data, ct) =>
+                    {
+                        IncrementalTracker?.RecordExecutedStep(new IncrementalityTracker.ExecutedStepInfo(IncrementalityTracker.StepName.NormalizeWhitespace, data));
+                        return (data.Item1.NormalizeWhitespace().ToFullString(), data.Item2);
+                    })
+                .Collect()
+                .WithComparer(Comparers.GeneratedSourceSet)
+                .Select((generatedSources, ct) =>
+                {
+                    IncrementalTracker?.RecordExecutedStep(new IncrementalityTracker.ExecutedStepInfo(IncrementalityTracker.StepName.ConcatenateStubs, generatedSources));
+                    StringBuilder source = new StringBuilder();
+                    // Mark in source that the file is auto-generated.
+                    source.AppendLine("// <auto-generated/>");
+                    ImmutableArray<Diagnostic>.Builder diagnostics = ImmutableArray.CreateBuilder<Diagnostic>();
+                    foreach (var generated in generatedSources)
+                    {
+                        source.AppendLine(generated.Item1);
+                        diagnostics.AddRange(generated.Item2);
+                    }
+                    return (source: source.ToString(), diagnostics: diagnostics.ToImmutable());
+                })
+                .WithComparer(Comparers.GeneratedSource);
 
-                    var methodSourceAndDiagnostics = methodsToGenerate
-                        .Combine(stubEnvironment)
-                        .Select((data, ct) => new
-                        {
-                            data.Left.Syntax,
-                            data.Left.Symbol,
-                            Environment = data.Right
-                        })
-                        .Select(
-                            (data, ct) =>
-                            {
-                                IncrementalTracker?.RecordExecutedStep(new IncrementalityTracker.ExecutedStepInfo(data, IncrementalityTracker.StepName.CalculateStubInformation));
-                                return (data.Syntax, Context: ComputeStubContext(data.Syntax, data.Symbol, data.Environment, ct));
-                            }
-                        )
-                        .Combine(context.AnalyzerConfigOptionsProvider)
-                        .Select(
-                            (data, ct) =>
-                            {
-                                IncrementalTracker?.RecordExecutedStep(new IncrementalityTracker.ExecutedStepInfo(data, IncrementalityTracker.StepName.GenerateSingleStub));
-                                return (GenerateSource(data.Left.Context.StubContext, data.Left.Context.DllImportData, data.Left.Syntax, data.Left.Context.ForwardedAttributes, data.Right.GlobalOptions), data.Left.Context.Diagnostics);
-                            })
-                        .WithComparer(new GeneratedSyntaxComparer())
-                        // Handle NormalizeWhitespace as a separate stage for incremental runs since it is an expensive operation.
-                        .Select(
-                            (data, ct) =>
-                            {
-                                IncrementalTracker?.RecordExecutedStep(new IncrementalityTracker.ExecutedStepInfo(data, IncrementalityTracker.StepName.NormalizeWhitespace));
-                                return (data.Item1.NormalizeWhitespace().ToFullString(), data.Item2);
-                            })
-                        .Collect()
-                        .WithComparer(new ImmutableArraySequenceEqualComparer<(string, ImmutableArray<Diagnostic>)>(new GeneratedSourceComparer()))
-                        .Select((generatedSources, ct) =>
-                        {
-                            IncrementalTracker?.RecordExecutedStep(new IncrementalityTracker.ExecutedStepInfo(generatedSources, IncrementalityTracker.StepName.ConcatenateStubs));
-                            StringBuilder source = new StringBuilder();
-                            // Mark in source that the file is auto-generated.
-                            source.AppendLine("// <auto-generated/>");
-                            ImmutableArray<Diagnostic>.Builder diagnostics = ImmutableArray.CreateBuilder<Diagnostic>();
-                            foreach (var generated in generatedSources)
-                            {
-                                source.AppendLine(generated.Item1);
-                                diagnostics.AddRange(generated.Item2);
-                            }
-                            return (source: source.ToString(), diagnostics: diagnostics.ToImmutable());
-                        })
-                        .WithComparer(new GeneratedSourceComparer());
+            context.RegisterSourceOutput(methodSourceAndDiagnostics,
+                (context, data) =>
+                {
+                    IncrementalTracker?.RecordExecutedStep(new IncrementalityTracker.ExecutedStepInfo(IncrementalityTracker.StepName.OutputSourceFile, data));
+                    foreach (var diagnostic in data.Item2)
+                    {
+                        context.ReportDiagnostic(diagnostic);
+                    }
 
-                    context.RegisterSourceOutput(methodSourceAndDiagnostics,
-                        (context, data) =>
-                        {
-                            IncrementalTracker?.RecordExecutedStep(new IncrementalityTracker.ExecutedStepInfo(data, IncrementalityTracker.StepName.OutputSourceFile));
-                            foreach (var diagnostic in data.Item2)
-                            {
-                                context.ReportDiagnostic(diagnostic);
-                            }
-
-                            context.AddSource("GeneratedDllImports.g.cs", data.Item1);
-                        });
-                }
-            );
+                    context.AddSource("GeneratedDllImports.g.cs", data.Item1);
+                });
         }
 
         internal sealed record IncrementalStubGenerationContext(DllImportStubContext StubContext, ImmutableArray<AttributeSyntax> ForwardedAttributes, GeneratedDllImportData DllImportData, ImmutableArray<Diagnostic> Diagnostics)
