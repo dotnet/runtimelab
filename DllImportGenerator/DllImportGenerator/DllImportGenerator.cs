@@ -124,6 +124,11 @@ namespace Microsoft.Interop
                     generatorDiagnostics.ReportConfigurationNotSupported(generatedDllImportAttr, nameof(DllImportStub.GeneratedDllImportData.ThrowOnUnmappableChar));
                 }
 
+                if (stubDllImportData!.IsUserDefined.HasFlag(DllImportStub.DllImportMember.CallingConvention))
+                {
+                    generatorDiagnostics.ReportConfigurationNotSupported(generatedDllImportAttr, nameof(DllImportStub.GeneratedDllImportData.CallingConvention));
+                }
+
                 if (lcidConversionAttr != null)
                 {
                     // Using LCIDConversion with GeneratedDllImport is not supported
