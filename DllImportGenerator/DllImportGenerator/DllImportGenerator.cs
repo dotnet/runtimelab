@@ -130,10 +130,10 @@ namespace Microsoft.Interop
                     generatorDiagnostics.ReportConfigurationNotSupported(lcidConversionAttr, nameof(TypeNames.LCIDConversionAttribute));
                 }
 
-                List<AttributeSyntax> additionalAttributes = GenerateSyntaxForForwardedAttributes(suppressGCTransitionAttribute, unmanagedCallConvAttribute);
+                List<AttributeSyntax> forwardedAttributes = GenerateSyntaxForForwardedAttributes(suppressGCTransitionAttribute, unmanagedCallConvAttribute);
 
                 // Create the stub.
-                var dllImportStub = DllImportStub.Create(methodSymbolInfo, stubDllImportData!, env, generatorDiagnostics, additionalAttributes, context.CancellationToken);
+                var dllImportStub = DllImportStub.Create(methodSymbolInfo, stubDllImportData!, env, generatorDiagnostics, forwardedAttributes, context.CancellationToken);
 
                 PrintGeneratedSource(generatedDllImports, methodSyntax, dllImportStub);
             }

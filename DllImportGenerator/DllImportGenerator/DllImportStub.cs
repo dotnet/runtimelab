@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading;
 
@@ -217,7 +218,7 @@ namespace Microsoft.Interop
             var additionalAttrs = new List<AttributeListSyntax>();
 
             // Define additional attributes for the stub definition.
-            if (env.TargetFrameworkVersion >= new Version(5, 0))
+            if (env.TargetFrameworkVersion >= new Version(5, 0) && !IsSkipLocalsInit(method))
             {
                 additionalAttrs.Add(
                     AttributeList(
@@ -239,6 +240,32 @@ namespace Microsoft.Interop
                 StubCode = code,
                 AdditionalAttributes = additionalAttrs.ToArray(),
             };
+        }
+
+        private static bool IsSkipLocalsInit(IMethodSymbol method)
+        {
+            if (method.GetAttributes().Any(a => IsSkipLocalsInitAttribute(a)))
+            {
+                return true;
+            }
+
+            for (INamedTypeSymbol type = method.ContainingType; type is not null; type = type.ContainingType)
+            {
+                if (type.GetAttributes().Any(a => IsSkipLocalsInitAttribute(a)))
+                {
+                    return true;
+                }
+            }
+
+            if (method.ContainingModule.GetAttributes().Any(a => IsSkipLocalsInitAttribute(a)))
+            {
+                return true;
+            }
+
+            return false;
+
+            static bool IsSkipLocalsInitAttribute(AttributeData a)
+                => a.AttributeClass?.ToDisplayString() == TypeNames.System_Runtime_CompilerServices_SkipLocalsInitAttribute;
         }
     }
 }
