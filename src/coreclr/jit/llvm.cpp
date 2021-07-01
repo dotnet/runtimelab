@@ -555,8 +555,8 @@ llvm::Value* buildUserFuncCall(GenTreeCall* call, llvm::IRBuilder<>& builder)
 
     unsigned int shadowStackUseOffest = 0;
     int          argIx                = 0;
+    GenTree*     thisArg              = nullptr;
     std::vector<struct OperandArgNum> sortedOperands;
-    GenTree*                          thisArg = nullptr;
 
     // "this" goes first
     if (call->gtCallThisArg != nullptr)
@@ -577,10 +577,9 @@ llvm::Value* buildUserFuncCall(GenTreeCall* call, llvm::IRBuilder<>& builder)
             continue;
         }
         fgArgTabEntry* curArgTabEntry = _compiler->gtArgEntryByNode(call, operand);
-        //unsigned int   lateArgIndex   = curArgTabEntry->GetLateArgInx();
-        //fgArgTabEntry* curArgTabEntry = _compiler->gtArgEntryByLateArgIndex(call, lateArgIndex);
         unsigned int   argNum         = curArgTabEntry->argNum;
         unsigned int   i              = 0;
+
         while (i < sortedOperands.size() && argNum > sortedOperands[i].argNum)
         {
             i++;
