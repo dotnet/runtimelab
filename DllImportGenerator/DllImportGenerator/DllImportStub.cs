@@ -16,7 +16,8 @@ namespace Microsoft.Interop
         Compilation Compilation,
         bool SupportedTargetFramework,
         Version TargetFrameworkVersion,
-        AnalyzerConfigOptions Options);
+        AnalyzerConfigOptions Options,
+        bool ModuleSkipLocalsInit);
 
     internal class DllImportStub
     {
@@ -218,7 +219,7 @@ namespace Microsoft.Interop
             var additionalAttrs = new List<AttributeListSyntax>();
 
             // Define additional attributes for the stub definition.
-            if (env.TargetFrameworkVersion >= new Version(5, 0) && !IsSkipLocalsInit(method))
+            if (env.TargetFrameworkVersion >= new Version(5, 0) && !MethodIsSkipLocalsInit(env, method))
             {
                 additionalAttrs.Add(
                     AttributeList(
@@ -242,8 +243,13 @@ namespace Microsoft.Interop
             };
         }
 
-        private static bool IsSkipLocalsInit(IMethodSymbol method)
+        private static bool MethodIsSkipLocalsInit(StubEnvironment env, IMethodSymbol method)
         {
+            if (env.ModuleSkipLocalsInit)
+            {
+                return true;
+            }
+
             if (method.GetAttributes().Any(a => IsSkipLocalsInitAttribute(a)))
             {
                 return true;
@@ -256,11 +262,8 @@ namespace Microsoft.Interop
                     return true;
                 }
             }
-
-            if (method.ContainingModule.GetAttributes().Any(a => IsSkipLocalsInitAttribute(a)))
-            {
-                return true;
-            }
+            
+            // We check the module case earlier, so we don't need to do it here.
 
             return false;
 
