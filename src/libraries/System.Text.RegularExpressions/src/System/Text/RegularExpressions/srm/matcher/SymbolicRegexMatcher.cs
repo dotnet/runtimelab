@@ -119,21 +119,20 @@ namespace System.Text.RegularExpressions.SRM
         /// <summary>
         /// Cached skip states from the initial state of A1 for the 6 possible previous character kinds.
         /// </summary>
-        private State<S>[] _A1_skipState = new State<S>[6];
+        private State<S>[] _A1_skipState = new State<S>[5];
 
-        private State<S> GetA1_skipState(CharKindId prevCharKindId)
+        private State<S> GetA1_skipState(uint prevCharKind)
         {
-            int id = (int)prevCharKindId;
-            if (_A1_skipState[id] == null)
+            if (_A1_skipState[prevCharKind] == null)
             {
-                var state = DeltaPlus(A_prefix, _A1q0[id]);
+                var state = DeltaPlus(A_prefix, _A1q0[prevCharKind]);
                 lock (this)
                 {
-                    if (_A1_skipState[id] == null)
-                        _A1_skipState[id] = state;
+                    if (_A1_skipState[prevCharKind] == null)
+                        _A1_skipState[prevCharKind] = state;
                 }
             }
-            return _A1_skipState[id];
+            return _A1_skipState[prevCharKind];
         }
 
         /// <summary>
@@ -153,19 +152,18 @@ namespace System.Text.RegularExpressions.SRM
         /// </summary>
         private State<S>[] _Ar_skipState = new State<S>[6];
 
-        private State<S> GetAr_skipState(CharKindId prevCharKindId)
+        private State<S> GetAr_skipState(uint prevCharKind)
         {
-            int id = (int)prevCharKindId;
-            if (_Ar_skipState[id] == null)
+            if (_Ar_skipState[prevCharKind] == null)
             {
-                var state = DeltaPlus(Ar_prefix, _Arq0[id]);
+                var state = DeltaPlus(Ar_prefix, _Arq0[prevCharKind]);
                 lock (this)
                 {
-                    if (_Ar_skipState[id] == null)
-                        _Ar_skipState[id] = state;
+                    if (_Ar_skipState[prevCharKind] == null)
+                        _Ar_skipState[prevCharKind] = state;
                 }
             }
-            return _Ar_skipState[id];
+            return _Ar_skipState[prevCharKind];
         }
 
         /// <summary>
@@ -173,13 +171,13 @@ namespace System.Text.RegularExpressions.SRM
         /// </summary>
         internal SymbolicRegexNode<S> A1;
 
-        private State<S>[] _Aq0 = new State<S>[6];
+        private State<S>[] _Aq0 = new State<S>[5];
 
-        private State<S>[] _A1q0 = new State<S>[6];
+        private State<S>[] _A1q0 = new State<S>[5];
 
-        private State<S>[] _Arq0 = new State<S>[6];
+        private State<S>[] _Arq0 = new State<S>[5];
 
-        private CharKindId[] _asciiCharKindId = new CharKindId[128];
+        private uint[] _asciiCharKind = new uint[128];
 
         /// <summary>
         /// Initialized to the next power of 2 that is at least the number of atoms
@@ -314,17 +312,17 @@ namespace System.Text.RegularExpressions.SRM
             {
                 //line anchors are being used when builder.newLinePredicate is different from False
                 if (!builder.newLinePredicate.Equals(builder.solver.False))
-                    _asciiCharKindId[10] = CharKindId.Newline;
+                    _asciiCharKind[10] = CharKind.Newline;
                 //word boundary is being used when builder.wordLetterPredicate is different from False
                 if (!builder.wordLetterPredicate.Equals(builder.solver.False))
                 {
-                    _asciiCharKindId['_'] = CharKindId.WordLetter;
+                    _asciiCharKind['_'] = CharKind.WordLetter;
                     for (char i = '0'; i <= '9'; i++)
-                        _asciiCharKindId[i] = CharKindId.WordLetter;
+                        _asciiCharKind[i] = CharKind.WordLetter;
                     for (char i = 'A'; i <= 'Z'; i++)
-                        _asciiCharKindId[i] = CharKindId.WordLetter;
+                        _asciiCharKind[i] = CharKind.WordLetter;
                     for (char i = 'a'; i <= 'z'; i++)
-                        _asciiCharKindId[i] = CharKindId.WordLetter;
+                        _asciiCharKind[i] = CharKind.WordLetter;
                 }
             }
             InitializeRegexes();
@@ -400,9 +398,9 @@ namespace System.Text.RegularExpressions.SRM
 
             if (A.info.ContainsSomeAnchor)
                 for (int i = 0; i < 128; i++)
-                    _asciiCharKindId[i] =
-                        i == 10 ? (builder.solver.MkAnd(GetAtom(i), builder.newLinePredicate).Equals(builder.solver.False) ? CharKindId.None : CharKindId.Newline)
-                                : (builder.solver.MkAnd(GetAtom(i), builder.wordLetterPredicate).Equals(builder.solver.False) ? CharKindId.None : CharKindId.WordLetter);
+                    _asciiCharKind[i] =
+                        i == 10 ? (builder.solver.MkAnd(GetAtom(i), builder.newLinePredicate).Equals(builder.solver.False) ? 0 : CharKind.Newline)
+                                : (builder.solver.MkAnd(GetAtom(i), builder.wordLetterPredicate).Equals(builder.solver.False) ? 0 : CharKind.WordLetter);
         }
 
         private void InitializePrefixBoyerMoore()
@@ -433,37 +431,25 @@ namespace System.Text.RegularExpressions.SRM
             // create initial states for A, A1 and Ar
             if (!A.info.ContainsSomeAnchor)
             {
-                // only the default previous character kind None(0) is ever going to be used for all initial states
-                _Aq0[(int)CharKindId.None] = State<S>.MkState(A, CharKindId.None, false);
-                _A1q0[(int)CharKindId.None] = State<S>.MkState(A1, CharKindId.None, false);
+                // only the default previous character kind 0 is ever going to be used for all initial states
+                _Aq0[0] = State<S>.MkState(A, 0);
+                _A1q0[0] = State<S>.MkState(A1, 0);
                 // _A1q0[0] is recognized as special initial state,
                 // this information is used for search optimization based on start set and prefix of A
-                _A1q0[(int)CharKindId.None].isInitialState = true;
-                // do not mark states of Ar as reverse because this info is irrelevant when no anchors are used
-                _Arq0[(int)CharKindId.None] = State<S>.MkState(Ar, CharKindId.None, false);
+                _A1q0[0].isInitialState = true;
+                _Arq0[0] = State<S>.MkState(Ar, 0);
             }
             else
             {
-                for (int i = 0; i < 6; i++)
+                for (uint i = 0; i < 5; i++)
                 {
-                    var kind = (CharKindId)i;
-                    if (kind == CharKindId.Start)
-                    {
-                        _Aq0[i] = State<S>.MkState(A, kind, false);
-                        _A1q0[i] = State<S>.MkState(A1, kind, false);
-                    }
-                    else
-                    {
-                        _Aq0[i] = State<S>.MkState(A.ReplaceStartAnchorByBottom(), kind, false);
-                        _A1q0[i] = State<S>.MkState(A1.ReplaceStartAnchorByBottom(), kind, false);
-                    }
-                    //don't create reverse-mode states unless some line-anchor is used somewhere
-                    //boundary anchors \b and \B are commutative and thus preserved in reverse
-                    _Arq0[i] = State<S>.MkState(Ar, kind, A.info.ContainsLineAnchor ? true : false);
+                    _Aq0[i] = State<S>.MkState(A, i);
+                    _A1q0[i] = State<S>.MkState(A1, i);
+                    _Arq0[i] = State<S>.MkState(Ar, i);
                     //used to detect if initial state was reentered, then startset can be triggered
                     //but observe that the behavior from the state may ultimately depend on the previous
                     //input char e.g. possibly causing nullability of \b or \B or of a start-of-line anchor,
-                    //in that sense there can be several "versions" (not more than 6) of the initial state
+                    //in that sense there can be several "versions" (not more than 5) of the initial state
                     _A1q0[i].isInitialState = true;
                 }
             }
@@ -692,9 +678,9 @@ namespace System.Text.RegularExpressions.SRM
         private int FindEndPosition(string input, int k, int i)
         {
             int i_end = k;
-            CharKindId prevCharKindId = GetCharKindId(input, i - 1);
+            uint prevCharKind = GetCharKind(input, i - 1);
             // pick the correct start state based on previous character kind
-            State<S> q = _Aq0[(int)prevCharKindId];
+            State<S> q = _Aq0[prevCharKind];
             while (i < k)
             {
                 //TBD: prefix optimization for A, i.e., to skip ahead
@@ -738,8 +724,8 @@ namespace System.Text.RegularExpressions.SRM
             // fetch the correct start state for Ar
             // this depends on previous character ---
             // which, because going backwards, is character number i+1
-            CharKindId prevKind = GetCharKindId(input, i + 1);
-            State<S> q = _Arq0[(int)prevKind];
+            uint prevKind = GetCharKind(input, i + 1);
+            State<S> q = _Arq0[prevKind];
             //Ar may have a fixed prefix sequence
             if (Ar_prefix.Length > 0)
             {
@@ -804,8 +790,8 @@ namespace System.Text.RegularExpressions.SRM
         {
             // get the correct start state of A1,
             // which in general depends on the previous character kind in the input
-            CharKindId prevCharKindId = GetCharKindId(input, i - 1);
-            State<S> q = _A1q0[(int)prevCharKindId];
+            uint prevCharKindId = GetCharKind(input, i - 1);
+            State<S> q = _A1q0[prevCharKindId];
 
             if (q.IsNothing)
             {
@@ -856,7 +842,7 @@ namespace System.Text.RegularExpressions.SRM
                             //for (int j = 0; j < prefix.Length; j++)
                             //    q = Delta(prefix[j], q, out regex);
                             // ---
-                            q = GetA1_skipState(q.PrevCharKindId);
+                            q = GetA1_skipState(q.PrevCharKind);
 
                             // skip the prefix
                             i = i + this.A_prefix.Length;
@@ -894,7 +880,7 @@ namespace System.Text.RegularExpressions.SRM
                         // the start state must be updated
                         // to reflect the kind of the previous character
                         // when anchors are not used, q will remain the same state
-                        q = _A1q0[(int)GetCharKindId(input, i - 1)];
+                        q = _A1q0[GetCharKind(input, i - 1)];
                         if (q.IsNothing)
                         {
                             i_q0 = i_q0_A1;
@@ -930,42 +916,40 @@ namespace System.Text.RegularExpressions.SRM
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private uint GetCharKind(string input, int i) => CharKind.From(GetCharKindId(input, i));
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private CharKindId GetCharKindId(string input, int i)
+        private uint GetCharKind(string input, int i)
         {
             if (A.info.ContainsSomeAnchor)
             {
-                if (i == -1)
-                    return CharKindId.Start;
-
-                if (i == input.Length)
-                    return CharKindId.End;
+                if (i == -1 || i == input.Length)
+                    return CharKind.StartStop;
 
                 char nextChar = input[i];
                 if (nextChar == '\n')
                 {
                     if (builder.newLinePredicate.Equals(builder.solver.False))
+                        //ignore \n
                         return 0;
                     else
                     {
-                        if (i == input.Length - 1)
-                            return CharKindId.NewLineZ;
+                        if (i == 0 || i == input.Length - 1)
+                            //very first of very last \n
+                            //detection of very first \n is needed for rev(\Z)
+                            return CharKind.NewLineS;
                         else
-                            return CharKindId.Newline;
+                            return CharKind.Newline;
                     }
                 }
 
                 if (nextChar < 128)
-                    return _asciiCharKindId[nextChar];
+                    return _asciiCharKind[nextChar];
                 else
-                    return builder.solver.MkAnd(GetAtom(nextChar), builder.wordLetterPredicate).Equals(builder.solver.False) ? CharKindId.None : CharKindId.WordLetter;
+                    //apply the wordletter predicate to compute the kind of the next character
+                    return builder.solver.MkAnd(GetAtom(nextChar), builder.wordLetterPredicate).Equals(builder.solver.False) ? 0 : CharKind.WordLetter;
             }
             else
             {
                 // the previous character kind is irrelevant when anchors are not used
-                return CharKindId.None;
+                return 0;
             }
         }
 

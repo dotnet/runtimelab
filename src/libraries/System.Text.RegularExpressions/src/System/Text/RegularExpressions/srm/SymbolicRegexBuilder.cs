@@ -21,6 +21,7 @@ namespace System.Text.RegularExpressions.SRM
         internal SymbolicRegexNode<S> startAnchor;
         internal SymbolicRegexNode<S> endAnchor;
         internal SymbolicRegexNode<S> endAnchorZ;
+        internal SymbolicRegexNode<S> endAnchorZRev;
         internal SymbolicRegexNode<S> bolAnchor;
         internal SymbolicRegexNode<S> eolAnchor;
         internal SymbolicRegexNode<S> dot;
@@ -51,6 +52,7 @@ namespace System.Text.RegularExpressions.SRM
             this.startAnchor = SymbolicRegexNode<S>.MkStartAnchor(this);
             this.endAnchor = SymbolicRegexNode<S>.MkEndAnchor(this);
             this.endAnchorZ = SymbolicRegexNode<S>.MkEndAnchorZ(this);
+            this.endAnchorZRev = SymbolicRegexNode<S>.MkEndAnchorZRev(this);
             this.eolAnchor = SymbolicRegexNode<S>.MkEolAnchor(this);
             this.bolAnchor = SymbolicRegexNode<S>.MkBolAnchor(this);
             this.wbAnchor = SymbolicRegexNode<S>.MkWBAnchor(this);
@@ -484,6 +486,7 @@ namespace System.Text.RegularExpressions.SRM
                 case SymbolicRegexKind.Singleton:
                 case SymbolicRegexKind.WatchDog:
                 case SymbolicRegexKind.EndAnchorZ:
+                case SymbolicRegexKind.EndAnchorZRev:
                 case SymbolicRegexKind.WBAnchor:
                 case SymbolicRegexKind.NWBAnchor:
                     return sr;
@@ -532,6 +535,7 @@ namespace System.Text.RegularExpressions.SRM
         }
 
         private Dictionary<SymbolicRegexNode<S>, int> counterIdMap = new Dictionary<SymbolicRegexNode<S>, int>();
+
         internal int GetCounterId(SymbolicRegexNode<S> node)
         {
             if (node.kind == SymbolicRegexKind.Loop)
@@ -688,6 +692,8 @@ namespace System.Text.RegularExpressions.SRM
                     return builderT.endAnchor;
                 case SymbolicRegexKind.EndAnchorZ:
                     return builderT.endAnchorZ;
+                case SymbolicRegexKind.EndAnchorZRev:
+                    return builderT.endAnchorZRev;
                 case SymbolicRegexKind.BOLAnchor:
                     return builderT.bolAnchor;
                 case SymbolicRegexKind.EOLAnchor:
@@ -856,6 +862,13 @@ namespace System.Text.RegularExpressions.SRM
                         return this.startAnchor;
                         #endregion
                     }
+                case 'a':
+                    {
+                        #region start anchor a (the reverse of EndAnchorZ)
+                        i_next = i + 1;
+                        return this.endAnchorZRev;
+                        #endregion
+                    }
                 case 'z':
                     {
                         #region end anchor
@@ -909,25 +922,6 @@ namespace System.Text.RegularExpressions.SRM
                     }
                 default:
                     throw new ArgumentException($"{nameof(Parse)}:{s[i]}");
-            }
-        }
-
-        internal State<S> DeserializeState(string s)
-        {
-            if (s[0] == 'r')
-            {
-                // reverse state
-                if (s[1] == ',')
-                    return State<S>.MkState(Parse(s, 2, out _), CharKindId.None, true);
-                else
-                    return State<S>.MkState(Parse(s, 3, out _), State<S>.GetCharKindIdFromEncoding(s[1]), true);
-            }
-            else
-            {
-                if (s[0] == ',')
-                    return State<S>.MkState(Parse(s, 1, out _), CharKindId.None, false);
-                else
-                    return State<S>.MkState(Parse(s, 2, out _), State<S>.GetCharKindIdFromEncoding(s[0]), false);
             }
         }
 

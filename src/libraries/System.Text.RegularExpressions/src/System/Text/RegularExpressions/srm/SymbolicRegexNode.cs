@@ -28,9 +28,12 @@ namespace System.Text.RegularExpressions.SRM
         WatchDog = 0x200,
         BOLAnchor = 0x400,
         EOLAnchor = 0x800,
-        EndAnchorZ = 0x1000,
-        WBAnchor = 0x2000,
-        NWBAnchor = 0x4000,
+        WBAnchor = 0x1000,
+        NWBAnchor = 0x2000,
+        EndAnchorZ = 0x4000,
+        //anchor for very first line or start-line after very first \n
+        //arises as the reverse of EndAnchorZ
+        EndAnchorZRev = 0x8000,
     }
 
     /// <summary>
@@ -55,7 +58,7 @@ namespace System.Text.RegularExpressions.SRM
         /// </summary>
         internal bool IsLazy { get { return info.IsLazy; } }
         /// <summary>
-        /// True if this node accepts the empty string uncoditionally.
+        /// True if this node accepts the empty string unconditionally.
         /// </summary>
         internal bool IsNullable { get { return info.IsNullable; } }
         /// <summary>
@@ -81,7 +84,7 @@ namespace System.Text.RegularExpressions.SRM
 
         private static SymbolicRegexKind s_someanchor = SymbolicRegexKind.BOLAnchor |
             SymbolicRegexKind.EOLAnchor | SymbolicRegexKind.StartAnchor |
-            SymbolicRegexKind.EndAnchor | SymbolicRegexKind.EndAnchorZ |
+            SymbolicRegexKind.EndAnchor | SymbolicRegexKind.EndAnchorZ | SymbolicRegexKind.EndAnchorZRev |
             SymbolicRegexKind.WBAnchor | SymbolicRegexKind.NWBAnchor;
 
         #region serialization
@@ -179,6 +182,11 @@ namespace System.Text.RegularExpressions.SRM
                             sb.Append('Z');
                             return;
                         }
+                    case SymbolicRegexKind.EndAnchorZRev:
+                        {
+                            sb.Append('a');
+                            return;
+                        }
                     case SymbolicRegexKind.StartAnchor:
                         {
                             sb.Append('A');
@@ -265,8 +273,7 @@ namespace System.Text.RegularExpressions.SRM
         /// Relative nullability that takes into account the immediate character context
         /// in order to resolve nullability of anchors
         /// </summary>
-        /// <param name="context">kind info for previous and next character, previous char kind is in lower 4 bits, and
-        /// next char kind has been shifted 4 bits left into bits 4..7 in the context</param>
+        /// <param name="context">kind info for previous and next characters</param>
         internal bool IsNullableFor(uint context)
         {
             if (!info.StartsWithSomeAnchor)
@@ -297,65 +304,43 @@ namespace System.Text.RegularExpressions.SRM
                         is_nullable = (iteCond.IsNullableFor(context) ? left.IsNullableFor(context) : right.IsNullableFor(context));
                         break;
                     case SymbolicRegexKind.StartAnchor:
-                        {
-                            if ((context & CharKind.Reverse) == 0)
-                                is_nullable = (context & CharKind.Start) != 0;
-                            else
-                                // the roles of previous and next character info are switched
-                                is_nullable = ((context >> 4) & CharKind.Start) != 0;
-                            break;
-                        }
+                        is_nullable = (CharKind.Prev(context) == CharKind.StartStop);
+                        break;
+                    case SymbolicRegexKind.EndAnchor:
+                        is_nullable = (CharKind.Next(context) == CharKind.StartStop);
+                        break;
                     case SymbolicRegexKind.BOLAnchor:
-                        {
-                            if ((context & CharKind.Reverse) == 0)
-                                is_nullable = (context & (CharKind.Start | CharKind.Newline)) != 0;
-                            else
-                                // the roles of previous and next character info are switched
-                                is_nullable = ((context >> 4) & (CharKind.Start | CharKind.Newline)) != 0;
-                            break;
-                        }
+                        // Beg-Of-Line anchor is nullable when the previous character is Newline or Start
+                        // note: at least one of the bits must be 1, but both could also be 1 in case of very first newline
+                        is_nullable = (CharKind.Prev(context) & CharKind.NewLineS) != 0;
+                        break;
+                    case SymbolicRegexKind.EOLAnchor:
+                        // End-Of-Line anchor is nullable when the next character is Newline or Stop
+                        // note: at least one of the bits must be 1, but both could also be 1 in case of \Z
+                        is_nullable = (CharKind.Next(context) & CharKind.NewLineS) != 0;
+                        break;
                     case SymbolicRegexKind.WBAnchor:
                         // test that prev char is word letter iff next is not not word letter
-                        is_nullable = ((context & CharKind.WordLetter) ^ ((context >> 4) & CharKind.WordLetter)) != 0;
+                        is_nullable = ((CharKind.Prev(context) & CharKind.WordLetter) ^ (CharKind.Next(context) & CharKind.WordLetter)) != 0;
                         break;
                     case SymbolicRegexKind.NWBAnchor:
                         // test that prev char is word letter iff next is word letter
-                        is_nullable = ((context & CharKind.WordLetter) ^ ((context >> 4) & CharKind.WordLetter)) == 0;
+                        is_nullable = ((CharKind.Prev(context) & CharKind.WordLetter) ^ (CharKind.Next(context) & CharKind.WordLetter)) == 0;
                         break;
-                    case SymbolicRegexKind.EOLAnchor:
-                        {
-                            // End-Of-Line anchor is nullable when the next character is Newline or End
-                            // note: at least one of the bits must be 1, but both could also be 1 in case of \Z
-                            if ((context & CharKind.Reverse) == 0)
-                                is_nullable = ((context >> 4) & (CharKind.Newline | CharKind.End)) != 0;
-                            else
-                                // the roles of previous and next character info are switched in reverse mode
-                                is_nullable = (context & (CharKind.Newline | CharKind.End)) != 0;
-                            break;
-                        }
                     case SymbolicRegexKind.EndAnchorZ:
-                        {
-                            // \Z anchor is nullable when the next character is either the last Newline or End
-                            // note: CharKind.NewLineZ == CharKind.Newline|CharKind.End
-                            if ((context & CharKind.Reverse) == 0)
-                                is_nullable = ((context >> 4) & CharKind.End) != 0;
-                            else
-                                // the roles of previous and next character info are switched in reverse mode
-                                is_nullable = (context & CharKind.End) != 0;
-                            break;
-                        }
-                    default:
+                        // \Z anchor is nullable when the next character is either the last Newline or Stop
+                        // note: CharKind.NewLineS == CharKind.Newline|CharKind.StartStop
+                        is_nullable = (CharKind.Next(context) & CharKind.StartStop) != 0;
+                        break;
+                    default: //SymbolicRegexKind.EndAnchorZRev:
                         {
 #if DEBUG
-                            if (kind != SymbolicRegexKind.EndAnchor)
+                            if (kind != SymbolicRegexKind.EndAnchorZRev)
                                 throw new Exception($"Unexpected {nameof(SymbolicRegexKind)}.{kind}");
 #endif
-                            // \z anchor is nullable when the next character is End
-                            if ((context & CharKind.Reverse) == 0)
-                                is_nullable = (context >> 4) == CharKind.End;
-                            else
-                                // the roles of previous and next character info are switched in reverse mode
-                                is_nullable = (context & 0xF) == CharKind.End;
+                            // EndAnchorZRev (rev(\Z)) anchor is nullable when the prev character is either the first Newline or Start
+                            // note: CharKind.NewLineS == CharKind.Newline|CharKind.StartStop
+                            is_nullable = (CharKind.Prev(context) & CharKind.StartStop) != 0;
                             break;
                         }
                 }
@@ -454,34 +439,11 @@ namespace System.Text.RegularExpressions.SRM
         #endregion
 
         /// <summary>
-        /// Alternatives of an OR
-        /// </summary>
-        public IEnumerable<SymbolicRegexNode<S>> Alts
-        {
-            get { return alts; }
-        }
-
-        /// <summary>
         /// Gets the kind of the regex
         /// </summary>
         internal SymbolicRegexKind Kind
         {
             get { return kind; }
-        }
-
-        /// <summary>
-        /// Number of alternative branches if this is an or-node.
-        /// If this is not an or-node then the value is 1.
-        /// </summary>
-        public int OrCount
-        {
-            get
-            {
-                if (kind == SymbolicRegexKind.Or)
-                    return alts.Count;
-                else
-                    return 1;
-            }
         }
 
         /// <summary>
@@ -664,6 +626,13 @@ namespace System.Text.RegularExpressions.SRM
         internal static SymbolicRegexNode<S> MkEndAnchorZ(SymbolicRegexBuilder<S> builder)
         {
             var node = new SymbolicRegexNode<S>(builder, SymbolicRegexKind.EndAnchorZ, null, null, -1, -1, default(S), null, null);
+            node.info = SymbolicRegexInfo.Mk(startsWithLineAnchor: true, canBeNullable: true);
+            return node;
+        }
+
+        internal static SymbolicRegexNode<S> MkEndAnchorZRev(SymbolicRegexBuilder<S> builder)
+        {
+            var node = new SymbolicRegexNode<S>(builder, SymbolicRegexKind.EndAnchorZRev, null, null, -1, -1, default(S), null, null);
             node.info = SymbolicRegexInfo.Mk(startsWithLineAnchor: true, canBeNullable: true);
             return node;
         }
@@ -901,6 +870,7 @@ namespace System.Text.RegularExpressions.SRM
                 case SymbolicRegexKind.WBAnchor:
                 case SymbolicRegexKind.NWBAnchor:
                 case SymbolicRegexKind.EndAnchorZ:
+                case SymbolicRegexKind.EndAnchorZRev:
                     return this;
                 case SymbolicRegexKind.Singleton:
                     {
@@ -968,6 +938,7 @@ namespace System.Text.RegularExpressions.SRM
                 case SymbolicRegexKind.EndAnchor:
                 case SymbolicRegexKind.StartAnchor:
                 case SymbolicRegexKind.EndAnchorZ:
+                case SymbolicRegexKind.EndAnchorZRev:
                 case SymbolicRegexKind.WBAnchor:
                 case SymbolicRegexKind.NWBAnchor:
                     return 0;
@@ -1196,6 +1167,7 @@ namespace System.Text.RegularExpressions.SRM
                     case SymbolicRegexKind.WBAnchor:
                     case SymbolicRegexKind.NWBAnchor:
                     case SymbolicRegexKind.EndAnchorZ:
+                    case SymbolicRegexKind.EndAnchorZRev:
                         hashcode = (kind, info).GetHashCode();
                         break;
                     case SymbolicRegexKind.WatchDog:
@@ -1304,6 +1276,8 @@ namespace System.Text.RegularExpressions.SRM
                     return "\\B";
                 case SymbolicRegexKind.EndAnchorZ:
                     return "\\Z";
+                case SymbolicRegexKind.EndAnchorZRev:
+                    return "\\a";
                 case SymbolicRegexKind.Loop:
                     {
                         if (IsDotStar)
@@ -1362,6 +1336,7 @@ namespace System.Text.RegularExpressions.SRM
                 case SymbolicRegexKind.BOLAnchor:
                 case SymbolicRegexKind.EOLAnchor:
                 case SymbolicRegexKind.EndAnchorZ:
+                case SymbolicRegexKind.EndAnchorZRev:
                     {
                         predicates.Add(builder.newLinePredicate);
                         return;
@@ -1447,8 +1422,6 @@ namespace System.Text.RegularExpressions.SRM
         {
             switch (kind)
             {
-                case SymbolicRegexKind.WatchDog:
-                    return builder.epsilon;
                 case SymbolicRegexKind.Loop:
                     return builder.MkLoop(this.left.Reverse(), this.IsLazy, this.lower, this.upper);
                 case SymbolicRegexKind.Concat:
@@ -1479,7 +1452,34 @@ namespace System.Text.RegularExpressions.SRM
                     {
                         return builder.MkIfThenElse(iteCond.Reverse(), left.Reverse(), right.Reverse());
                     }
+                case SymbolicRegexKind.WatchDog:
+                    //watchdogs are omitted in reverse
+                    return builder.epsilon;
+                case SymbolicRegexKind.StartAnchor:
+                    // the reverse of StartAnchor is EndAnchor
+                    return builder.endAnchor;
+                case SymbolicRegexKind.EndAnchor:
+                    return builder.startAnchor;
+                case SymbolicRegexKind.BOLAnchor:
+                    // the reverse of BOLanchor is EOLanchor
+                    return builder.eolAnchor;
+                case SymbolicRegexKind.EOLAnchor:
+                    return builder.bolAnchor;
+                case SymbolicRegexKind.EndAnchorZ:
+                    // the reversal of the \Z anchor
+                    return builder.endAnchorZRev;
+                case SymbolicRegexKind.EndAnchorZRev:
+                    //this can potentially only happen if a reversed regex is reversed again
+                    //thus, this case is unreachable here, but included for completeness
+                    return builder.endAnchorZ;
+                //remaining cases map to themselves
                 default:
+                    /*
+                     * SymbolicRegexKind.Epsilon
+                     * SymbolicRegexKind.Singleton
+                     * SymbolicRegexKind.WBAnchor
+                     * SymbolicRegexKind.NWBAnchor
+                     */
                     return this;
             }
         }
@@ -1772,17 +1772,18 @@ namespace System.Text.RegularExpressions.SRM
         {
             switch (kind)
             {
+                //anchors and () do not contribute to the startset
                 case SymbolicRegexKind.Epsilon:
                 case SymbolicRegexKind.WatchDog:
                 case SymbolicRegexKind.EndAnchor:
                 case SymbolicRegexKind.StartAnchor:
                 case SymbolicRegexKind.WBAnchor:
                 case SymbolicRegexKind.NWBAnchor:
-                    return builder.solver.False;
                 case SymbolicRegexKind.EOLAnchor:
                 case SymbolicRegexKind.EndAnchorZ:
+                case SymbolicRegexKind.EndAnchorZRev:
                 case SymbolicRegexKind.BOLAnchor:
-                    return builder.newLinePredicate;
+                    return builder.solver.False;
                 case SymbolicRegexKind.Singleton:
                     return this.set;
                 case SymbolicRegexKind.Loop:
@@ -1872,47 +1873,67 @@ namespace System.Text.RegularExpressions.SRM
             return existsLoop;
         }
 
-        internal SymbolicRegexNode<S> ReplaceStartAnchorByBottom()
+        /// <summary>
+        /// Replace anchors that are infeasible by [] wrt the given previous character kind and what continuation is possible.
+        /// </summary>
+        /// <param name="prevKind">previous character kind</param>
+        /// <param name="contWithWL">if true the continuation can start with wordletter or stop</param>
+        /// <param name="contWithNWL">if true the continuation can start with nonwordletter or stop</param>
+        internal SymbolicRegexNode<S> PruneAnchors(uint prevKind, bool contWithWL, bool contWithNWL)
         {
-            if (!info.ContainsLineAnchor)
+            if (!info.StartsWithSomeAnchor)
                 return this;
 
             switch (kind)
             {
                 case SymbolicRegexKind.StartAnchor:
-                    return this.builder.nothing;
-
-                case SymbolicRegexKind.Epsilon:
-                case SymbolicRegexKind.WatchDog:
-                case SymbolicRegexKind.EndAnchor:
+                    if (prevKind == CharKind.StartStop)
+                        return this;
+                    else
+                        //start anchor is only nullable if the previous character is Start
+                        return this.builder.nothing;
+                case SymbolicRegexKind.EndAnchorZRev:
+                    if ((prevKind & CharKind.StartStop) != 0)
+                        return this;
+                    else
+                        //rev(\Z) is only nullable if the previous characters is Start or the very first \n
+                        return this.builder.nothing;
                 case SymbolicRegexKind.WBAnchor:
+                    if (prevKind == CharKind.WordLetter ? contWithNWL : contWithWL)
+                        return this;
+                    else
+                        //\b is impossible when the previous character is \w but no continuation matches \W
+                        //or the previous character is \W but no continuation matches \w
+                        return this.builder.nothing;
                 case SymbolicRegexKind.NWBAnchor:
-                case SymbolicRegexKind.EOLAnchor:
-                case SymbolicRegexKind.EndAnchorZ:
-                case SymbolicRegexKind.BOLAnchor:
-                case SymbolicRegexKind.Singleton:
-                    return this;
+                    if (prevKind == CharKind.WordLetter ? contWithWL : contWithNWL)
+                        return this;
+                    else
+                        //\B is impossible when the previous character is \w but no continuation matches \w
+                        //or the previous character is \W but no continuation matches \W
+                        return this.builder.nothing;
                 case SymbolicRegexKind.Loop:
-                    return MkLoop(builder, left.ReplaceStartAnchorByBottom(), lower, upper, IsLazy);
-
+                    var body = left.PruneAnchors(prevKind, contWithWL, contWithNWL);
+                    if (body == left)
+                        return this;
+                    else
+                        return MkLoop(builder, body, lower, upper, IsLazy);
                 case SymbolicRegexKind.Concat:
-                    return MkConcat(builder, left.ReplaceStartAnchorByBottom(), right.ReplaceStartAnchorByBottom());
+                    var left1 = left.PruneAnchors(prevKind, contWithWL, contWithNWL);
+                    var right1 = left.IsNullable ? right.PruneAnchors(prevKind, contWithWL, contWithNWL) : right;
+                    if (left1 == left && right1 == right)
+                        return this;
+                    else
+                        return MkConcat(builder, left1, right1);
                 case SymbolicRegexKind.Or:
                     {
                         List<SymbolicRegexNode<S>> elems = new();
                         foreach (var alt in alts)
-                            elems.Add(alt.ReplaceStartAnchorByBottom());
+                            elems.Add(alt.PruneAnchors(prevKind, contWithWL, contWithNWL));
                         return MkOr(builder, elems.ToArray());
                     }
-                case SymbolicRegexKind.And:
-                    {
-                        List<SymbolicRegexNode<S>> elems = new();
-                        foreach (var alt in alts)
-                            elems.Add(alt.ReplaceStartAnchorByBottom());
-                        return MkAnd(builder, elems.ToArray());
-                    }
-                default: //if-then-else
-                        return MkIfThenElse(builder, iteCond.ReplaceStartAnchorByBottom(), left.ReplaceStartAnchorByBottom(), right.ReplaceStartAnchorByBottom());
+                default:
+                    return this;
             }
         }
     }

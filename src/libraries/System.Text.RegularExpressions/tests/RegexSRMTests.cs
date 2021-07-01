@@ -29,6 +29,27 @@ namespace System.Text.RegularExpressions.Tests
         private const char Turkish_i_withoutDot = '\u0131';
         private const char Kelvin_sign = '\u212A';
 
+        [Theory]    
+        [InlineData("^abc", RegexOptions.None, "abcccc",  true, "abc", 0)]
+        [InlineData("^abc", RegexOptions.None, "aabcccc", false, "", 0)]
+        [InlineData("abc$", RegexOptions.None, "aabcccc", false, "", 0)]
+        [InlineData("abc\\z", RegexOptions.None, "aabc\n", false, "", 0)]
+        [InlineData("abc\\Z", RegexOptions.None, "aabc\n", true, "abc", 1)]
+        [InlineData("abc$", RegexOptions.None, "aabc\nabc", true, "abc", 5)]
+        [InlineData("abc$", RegexOptions.Multiline, "aabc\nabc", true, "abc", 1)]
+        [InlineData("a\\bb", RegexOptions.None, "ab", false, "", 0)]
+        [InlineData("a\\Bb", RegexOptions.None, "ab", true, "ab", 0)]
+        [InlineData("(a\\Bb|a\\bb)", RegexOptions.None, "ab", true, "ab", 0)]
+        public void TestAnchorPruning(string pattern, RegexOptions options, string input, bool success, string match, int index)
+        {
+            Regex re = new Regex(pattern, options | DFA);
+            Match m = re.Match(input);
+            Assert.Equal(success, m.Success);
+            Assert.Equal(match, m.Value);
+            if (success)
+                Assert.Equal(index, m.Index);
+        }
+
         [Theory]
         [InlineData("[abc]{0,10}", "a[abc]{0,3}", "xxxabbbbbbbyyy", true, "abbb")]
         [InlineData("[abc]{0,10}?", "a[abc]{0,3}?", "xxxabbbbbbbyyy", true, "a")]
@@ -305,7 +326,7 @@ namespace System.Text.RegularExpressions.Tests
         }
 
         [Fact]
-        public void BasicSRMTestBorderAnchors()
+        public void BasicSRMTestBorderAnchors1()
         {
             var re1 = new Regex(@"\B x", DFA);
             var match1 = re1.Match(" xx");
@@ -318,7 +339,11 @@ namespace System.Text.RegularExpressions.Tests
             Assert.True(match2.Success);
             Assert.Equal(5, match2.Index);
             Assert.Equal(2, match2.Length);
-            //---
+        }
+
+        [Fact]
+        public void BasicSRMTestBorderAnchors2()
+        {
             var re3 = new Regex(@"^abc*\B", RegexOptions.Multiline | DFA);
             var match3 = re3.Match("\nabcc \nabcccd\n");
             Assert.True(match3.Success);
@@ -328,6 +353,16 @@ namespace System.Text.RegularExpressions.Tests
             Assert.True(match3b.Success);
             Assert.Equal(7, match3b.Index);
             Assert.Equal(5, match3b.Length);
+        }
+
+        [Fact]
+        public void BasicSRMTestBorderAnchors3()
+        {
+            var re = new Regex(@"a$", RegexOptions.Multiline | DFA);
+            var match = re.Match("b\na");
+            Assert.True(match.Success);
+            Assert.Equal(2, match.Index);
+            Assert.Equal(1, match.Length);
         }
 
         [Fact]
