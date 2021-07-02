@@ -213,20 +213,14 @@ namespace Internal.TypeSystem
         /// <returns>The value that replaced the sentinel, or null</returns>
         IntPtr WaitForSentinelInHashtableToDisappear(IntPtr[] hashtable, int tableIndex)
         {
-            IntPtr value = Volatile.Read(ref hashtable[tableIndex]);
+            var sw = new SpinWait();
             while (true)
             {
-                for (int i = 0; (i < 10000) && value == new IntPtr(1); i++)
-                {
-                    value = Volatile.Read(ref hashtable[tableIndex]);
-                }
+                IntPtr value = Volatile.Read(ref hashtable[tableIndex]);
                 if (value != new IntPtr(1))
-                    break;
-
-                Task.Delay(1).Wait();
+                    return value;
+                sw.SpinOnce();
             }
-
-            return value;
         }
 
         /// <summary>
