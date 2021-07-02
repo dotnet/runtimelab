@@ -259,6 +259,12 @@
   <data name="NativeTypeMustHaveRequiredShapeMessage" xml:space="preserve">
     <value>The native type '{0}' must be a value type and have a constructor that takes one parameter of type '{1}' or a parameterless instance method named 'ToManaged' that returns '{1}'</value>
   </data>
+  <data name="CollectionNativeTypeMustHaveRequiredShapeDescription" xml:space="preserve">
+    <value>A native type with the 'GenericContiguousCollectionMarshallerAttribute' must have at least one of the two marshalling methods as well as a 'ManagedValues' property of type 'Span&lt;T&gt;' for some 'T' and a 'NativeValueStorage' property of type 'Span&lt;byte&gt;' to enable marshalling the managed type.</value>
+  </data>
+  <data name="CollectionNativeTypeMustHaveRequiredShapeMessage" xml:space="preserve">
+    <value>The native type '{0}' must be a value type and have a constructor that takes two parameters, one of type '{1}' and an 'int', or have a parameterless instance method named 'ToManaged' that returns '{1}' as well as a 'ManagedValues' property of type 'Span&lt;T&gt;' for some 'T' and a 'NativeValueStorage' property of type 'Span&lt;byte&gt;'</value>
+  </data>
   <data name="OutByValueNotSupportedDescription" xml:space="preserve">
     <value>The '[Out]' attribute is only supported on array parameters.</value>
   </data>

@@ -84,6 +84,16 @@ namespace Microsoft.Interop.Analyzers
                 isEnabledByDefault: true,
                 description: GetResourceString(nameof(Resources.NativeTypeMustHaveRequiredShapeDescription)));
 
+        public readonly static DiagnosticDescriptor CollectionNativeTypeMustHaveRequiredShapeRule =
+            new DiagnosticDescriptor(
+                Ids.NativeTypeMustHaveRequiredShape,
+                "NativeTypeMustHaveRequiredShape",
+                GetResourceString(nameof(Resources.CollectionNativeTypeMustHaveRequiredShapeMessage)),
+                Category,
+                DiagnosticSeverity.Error,
+                isEnabledByDefault: true,
+                description: GetResourceString(nameof(Resources.CollectionNativeTypeMustHaveRequiredShapeDescription)));
+
         public readonly static DiagnosticDescriptor ValuePropertyMustHaveSetterRule =
             new DiagnosticDescriptor(
                 Ids.ValuePropertyMustHaveSetter,
@@ -163,6 +173,7 @@ namespace Microsoft.Interop.Analyzers
                 GetPinnableReferenceReturnTypeBlittableRule,
                 NativeTypeMustBePointerSizedRule,
                 NativeTypeMustHaveRequiredShapeRule,
+                CollectionNativeTypeMustHaveRequiredShapeRule,
                 ValuePropertyMustHaveSetterRule,
                 ValuePropertyMustHaveGetterRule,
                 GetPinnableReferenceShouldSupportAllocatingMarshallingFallbackRule,
@@ -337,21 +348,40 @@ namespace Microsoft.Interop.Analyzers
                 ITypeSymbol nativeType = (ITypeSymbol)nativeMarshalerAttributeData.ConstructorArguments[0].Value!;
                 ISymbol nativeTypeDiagnosticsTargetSymbol = nativeType;
 
-                if (!nativeType.IsValueType)
+                if (nativeType is not INamedTypeSymbol marshalerType)
                 {
                     context.ReportDiagnostic(
-                        nativeType.CreateDiagnostic(
+                        nativeMarshalerAttributeData.CreateDiagnostic(
                             NativeTypeMustHaveRequiredShapeRule,
                             nativeType.ToDisplayString(),
                             type.ToDisplayString()));
                     return;
                 }
 
-                if (nativeType is not INamedTypeSymbol marshalerType)
+                DiagnosticDescriptor requiredShapeRule = NativeTypeMustHaveRequiredShapeRule;
+
+                ManualTypeMarshallingHelper.NativeTypeMarshallingVariant variant = ManualTypeMarshallingHelper.NativeTypeMarshallingVariant.Standard;
+                if (marshalerType.GetAttributes().Any(a => SymbolEqualityComparer.Default.Equals(GenericContiguousCollectionMarshallerAttribute, a.AttributeClass)))
+                {
+                    variant = ManualTypeMarshallingHelper.NativeTypeMarshallingVariant.ContiguousCollection;
+                    requiredShapeRule = CollectionNativeTypeMustHaveRequiredShapeRule;
+                    if (!ManualTypeMarshallingHelper.TryGetManagedValuesProperty(marshalerType, out _)
+                        || !ManualTypeMarshallingHelper.HasNativeValueStorageProperty(marshalerType, SpanOfByte))
+                    {
+                        context.ReportDiagnostic(
+                            marshalerType.CreateDiagnostic(
+                                requiredShapeRule,
+                                nativeType.ToDisplayString(),
+                                type.ToDisplayString()));
+                        return;
+                    }
+                }
+
+                if (!nativeType.IsValueType)
                 {
                     context.ReportDiagnostic(
-                        nativeMarshalerAttributeData.CreateDiagnostic(
-                            NativeTypeMustHaveRequiredShapeRule,
+                        nativeType.CreateDiagnostic(
+                            requiredShapeRule,
                             nativeType.ToDisplayString(),
                             type.ToDisplayString()));
                     return;
@@ -393,9 +423,9 @@ namespace Microsoft.Interop.Analyzers
                         continue;
                     }
 
-                    hasConstructor = hasConstructor || ManualTypeMarshallingHelper.IsManagedToNativeConstructor(ctor, type, ManualTypeMarshallingHelper.NativeTypeMarshallingVariant.Standard);
+                    hasConstructor = hasConstructor || ManualTypeMarshallingHelper.IsManagedToNativeConstructor(ctor, type, variant);
 
-                    if (!hasStackallocConstructor && ManualTypeMarshallingHelper.IsStackallocConstructor(ctor, type, SpanOfByte, ManualTypeMarshallingHelper.NativeTypeMarshallingVariant.Standard))
+                    if (!hasStackallocConstructor && ManualTypeMarshallingHelper.IsStackallocConstructor(ctor, type, SpanOfByte, variant))
                     {
                         hasStackallocConstructor = true;
                         IFieldSymbol stackAllocSizeField = nativeType.GetMembers("StackBufferSize").OfType<IFieldSymbol>().FirstOrDefault();
@@ -416,7 +446,7 @@ namespace Microsoft.Interop.Analyzers
                 {
                     context.ReportDiagnostic(
                         marshalerType.CreateDiagnostic(
-                            NativeTypeMustHaveRequiredShapeRule,
+                            requiredShapeRule,
                             marshalerType.ToDisplayString(),
                             type.ToDisplayString()));
                 }

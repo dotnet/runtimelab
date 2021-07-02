@@ -614,6 +614,197 @@ struct {|#0:Native|}
         }
 
         [Fact]
+        public async Task CollectionNativeTypeWithNoMarshallingMethods_ReportsDiagnostic()
+        {
+            string source = @"
+using System;
+using System.Runtime.InteropServices;
+
+[NativeMarshalling(typeof(Native))]
+class S
+{
+    public byte c;
+}
+
+[GenericContiguousCollectionMarshaller]
+struct {|#0:Native|}
+{
+}";
+
+            await VerifyCS.VerifyAnalyzerAsync(source,
+                VerifyCS.Diagnostic(CollectionNativeTypeMustHaveRequiredShapeRule).WithLocation(0).WithArguments("Native", "S"));
+        }
+
+        [Fact]
+        public async Task CollectionNativeTypeWithWrongConstructor_ReportsDiagnostic()
+        {
+            string source = @"
+using System;
+using System.Runtime.InteropServices;
+
+[NativeMarshalling(typeof(Native))]
+class S
+{
+    public byte c;
+}
+
+[GenericContiguousCollectionMarshaller]
+ref struct {|#0:Native|}
+{
+    public Native(S s) : this() {}
+
+    public Span<int> ManagedValues { get; set; }
+    public Span<byte> NativeValueStorage { get; set; }
+
+    public IntPtr Value { get; }
+}";
+
+            await VerifyCS.VerifyAnalyzerAsync(source,
+                VerifyCS.Diagnostic(CollectionNativeTypeMustHaveRequiredShapeRule).WithLocation(0).WithArguments("Native", "S"));
+        }
+
+        [Fact]
+        public async Task CollectionNativeTypeWithCorrectConstructor_DoesNotReportDiagnostic()
+        {
+            string source = @"
+using System;
+using System.Runtime.InteropServices;
+
+[NativeMarshalling(typeof(Native))]
+class S
+{
+    public byte c;
+}
+
+[GenericContiguousCollectionMarshaller]
+ref struct Native
+{
+    public Native(S s, int nativeElementSize) : this() {}
+
+    public Span<int> ManagedValues { get; set; }
+    public Span<byte> NativeValueStorage { get; set; }
+
+    public IntPtr Value { get; }
+}";
+
+            await VerifyCS.VerifyAnalyzerAsync(source);
+        }
+
+        [Fact]
+        public async Task CollectionNativeTypeWithIncorrectStackallocConstructor_ReportsDiagnostic()
+        {
+            string source = @"
+using System;
+using System.Runtime.InteropServices;
+
+[NativeMarshalling(typeof(Native))]
+class S
+{
+    public byte c;
+}
+
+[GenericContiguousCollectionMarshaller]
+ref struct {|#0:Native|}
+{
+    public Native(S s, Span<byte> stackSpace) : this() {}
+
+    public const int StackBufferSize = 1;
+
+    public Span<int> ManagedValues { get; set; }
+    public Span<byte> NativeValueStorage { get; set; }
+
+    public IntPtr Value { get; }
+}";
+
+            await VerifyCS.VerifyAnalyzerAsync(source,
+                VerifyCS.Diagnostic(CollectionNativeTypeMustHaveRequiredShapeRule).WithLocation(0).WithArguments("Native", "S"));
+        }
+
+        [Fact]
+        public async Task CollectionNativeTypeWithOnlyStackallocConstructor_ReportsDiagnostic()
+        {
+            string source = @"
+using System;
+using System.Runtime.InteropServices;
+
+[NativeMarshalling(typeof(Native))]
+class S
+{
+    public byte c;
+}
+
+[GenericContiguousCollectionMarshaller]
+ref struct {|#0:Native|}
+{
+    public Native(S s, Span<byte> stackSpace, int nativeElementSize) : this() {}
+
+    public const int StackBufferSize = 1;
+
+    public Span<int> ManagedValues { get; set; }
+    public Span<byte> NativeValueStorage { get; set; }
+
+    public IntPtr Value { get; }
+}";
+
+            await VerifyCS.VerifyAnalyzerAsync(source,
+                VerifyCS.Diagnostic(StackallocMarshallingShouldSupportAllocatingMarshallingFallbackRule).WithLocation(0).WithArguments("Native", "S"));
+        }
+
+        [Fact]
+        public async Task CollectionNativeTypeWithMissingManagedValuesProperty_ReportsDiagnostic()
+        {
+            string source = @"
+using System;
+using System.Runtime.InteropServices;
+
+[NativeMarshalling(typeof(Native))]
+class S
+{
+    public byte c;
+}
+
+[GenericContiguousCollectionMarshaller]
+ref struct {|#0:Native|}
+{
+    public Native(S s, int nativeElementSize) : this() {}
+
+    public Span<byte> NativeValueStorage { get; set; }
+
+    public IntPtr Value { get; }
+}";
+
+            await VerifyCS.VerifyAnalyzerAsync(source,
+                VerifyCS.Diagnostic(CollectionNativeTypeMustHaveRequiredShapeRule).WithLocation(0).WithArguments("Native", "S"));
+        }
+
+        [Fact]
+        public async Task CollectionNativeTypeWithMissingNativeValueStorageProperty_ReportsDiagnostic()
+        {
+            string source = @"
+using System;
+using System.Runtime.InteropServices;
+
+[NativeMarshalling(typeof(Native))]
+class S
+{
+    public byte c;
+}
+
+[GenericContiguousCollectionMarshaller]
+ref struct {|#0:Native|}
+{
+    public Native(S s, int nativeElementSize) : this() {}
+
+    public Span<int> ManagedValues { get; set; }
+
+    public IntPtr Value { get; }
+}";
+
+            await VerifyCS.VerifyAnalyzerAsync(source,
+                VerifyCS.Diagnostic(CollectionNativeTypeMustHaveRequiredShapeRule).WithLocation(0).WithArguments("Native", "S"));
+        }
+
+        [Fact]
         public async Task NativeTypeWithOnlyConstructor_DoesNotReportDiagnostic()
         {
             string source = @"
