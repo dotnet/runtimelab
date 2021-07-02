@@ -300,7 +300,6 @@ partial class Test
 {{
 #if DLLIMPORTGENERATOR_ENABLED
     [GeneratedDllImport(""DoesNotExist"", EntryPoint = ""Entry"")]
-    [UnmanagedCallConv]
     public static partial int {{|CS8795:Method1|}}(out int ret);
 #else
     [DllImport(""DoesNotExist"", CallingConvention = CallingConvention.Winapi, EntryPoint = ""Entry"")]
@@ -311,7 +310,6 @@ using System.Runtime.InteropServices;
 partial class Test
 {{
     [GeneratedDllImport(""DoesNotExist"", EntryPoint = ""Entry"")]
-    [UnmanagedCallConv]
     public static partial int {{|CS8795:Method1|}}(out int ret);
 }}";
             await VerifyCS.VerifyCodeFixAsync(

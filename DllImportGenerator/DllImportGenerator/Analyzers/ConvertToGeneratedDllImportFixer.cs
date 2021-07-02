@@ -213,7 +213,7 @@ namespace Microsoft.Interop.Analyzers
                 }
                 else if (IsMatchingNamedArg(attrArg, nameof(DllImportAttribute.CallingConvention)))
                 {
-                    if (TryCreateUnmanagedCallConvAttribute(
+                    if (TryCreateUnmanagedCallConvAttributeToEmit(
                         editor,
                         generator,
                         dllImportData.CallingConvention,
@@ -227,22 +227,23 @@ namespace Microsoft.Interop.Analyzers
             return generator.RemoveNodes(generatedDllImportSyntax, argumentsToRemove);
         }
 
-        private bool TryCreateUnmanagedCallConvAttribute(
+        private bool TryCreateUnmanagedCallConvAttributeToEmit(
             DocumentEditor editor,
             SyntaxGenerator generator,
             CallingConvention callingConvention,
             out SyntaxNode? unmanagedCallConvAttribute)
         {
-            unmanagedCallConvAttribute = null;
             if (editor.SemanticModel.Compilation.GetTypeByMetadataName(TypeNames.UnmanagedCallConvAttribute) is null)
             {
+                unmanagedCallConvAttribute = null;
                 return false;
             }
 
-            SyntaxNode attribute = generator.Attribute(TypeNames.UnmanagedCallConvAttribute);
             if (callingConvention == CallingConvention.Winapi)
             {
-                unmanagedCallConvAttribute = attribute;
+                // Winapi is the default, so we return true that we've created the attribute to emit,
+                // but set the attribute-to-emit to null since we don't need to emit an attribute.
+                unmanagedCallConvAttribute = null;
                 return true;
             }
 
@@ -264,17 +265,15 @@ namespace Microsoft.Interop.Analyzers
             // Leave the value as-is for now and let the user handle this however they see fit.
             if (callingConventionType is null)
             {
+                unmanagedCallConvAttribute = null;
                 return false;
             }
 
-            unmanagedCallConvAttribute = generator.AddAttributeArguments(attribute,
-                new[]
-                {
-                    generator.AttributeArgument("CallConvs",
-                        generator.ArrayCreationExpression(
-                            generator.TypeExpression(editor.SemanticModel.Compilation.GetTypeByMetadataName(TypeNames.System_Type)),
-                            new [] { generator.TypeOfExpression(generator.TypeExpression(callingConventionType)) }))
-                });
+            unmanagedCallConvAttribute = generator.Attribute(TypeNames.UnmanagedCallConvAttribute,
+                generator.AttributeArgument("CallConvs",
+                    generator.ArrayCreationExpression(
+                        generator.TypeExpression(editor.SemanticModel.Compilation.GetTypeByMetadataName(TypeNames.System_Type)),
+                        new [] { generator.TypeOfExpression(generator.TypeExpression(callingConventionType)) })));
 
             return true;
         }
