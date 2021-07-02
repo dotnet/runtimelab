@@ -16,7 +16,8 @@ namespace Microsoft.Interop
         Compilation Compilation,
         bool SupportedTargetFramework,
         Version TargetFrameworkVersion,
-        AnalyzerConfigOptions Options);
+        AnalyzerConfigOptions Options,
+        bool ModuleSkipLocalsInit);
 
     internal sealed class DllImportStubContext : IEquatable<DllImportStubContext>
     {
@@ -101,7 +102,7 @@ namespace Microsoft.Interop
             var additionalAttrs = new List<AttributeListSyntax>();
 
             // Define additional attributes for the stub definition.
-            if (env.TargetFrameworkVersion >= new Version(5, 0))
+            if (env.TargetFrameworkVersion >= new Version(5, 0) && !MethodIsSkipLocalsInit(env, method))
             {
                 additionalAttrs.Add(
                     AttributeList(
@@ -230,12 +231,41 @@ namespace Microsoft.Interop
                 && StubTypeNamespace == other.StubTypeNamespace
                 && BoundGenerators.SequenceEqual(other.BoundGenerators)
                 && StubContainingTypes.SequenceEqual(other.StubContainingTypes, new SyntaxEquivalentComparer())
-                && StubReturnType.IsEquivalentTo(other.StubReturnType);
+                && StubReturnType.IsEquivalentTo(other.StubReturnType)
+                && AdditionalAttributes.SequenceEqual(other.AdditionalAttributes, new SyntaxEquivalentComparer());
         }
 
         public override int GetHashCode()
         {
             return StubTypeNamespace?.GetHashCode() ?? 0;
+        }
+
+        private static bool MethodIsSkipLocalsInit(StubEnvironment env, IMethodSymbol method)
+        {
+            if (env.ModuleSkipLocalsInit)
+            {
+                return true;
+            }
+
+            if (method.GetAttributes().Any(a => IsSkipLocalsInitAttribute(a)))
+            {
+                return true;
+            }
+
+            for (INamedTypeSymbol type = method.ContainingType; type is not null; type = type.ContainingType)
+            {
+                if (type.GetAttributes().Any(a => IsSkipLocalsInitAttribute(a)))
+                {
+                    return true;
+                }
+            }
+            
+            // We check the module case earlier, so we don't need to do it here.
+
+            return false;
+
+            static bool IsSkipLocalsInitAttribute(AttributeData a)
+                => a.AttributeClass?.ToDisplayString() == TypeNames.System_Runtime_CompilerServices_SkipLocalsInitAttribute;
         }
     }
 }

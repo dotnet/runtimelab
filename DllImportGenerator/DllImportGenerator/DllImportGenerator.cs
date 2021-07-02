@@ -302,7 +302,8 @@ namespace Microsoft.Interop
                             data.Left.compilation,
                             data.Left.isSupported,
                             data.Left.targetFrameworkVersion,
-                            data.Right.GlobalOptions)
+                            data.Right.GlobalOptions,
+                            data.Left.compilation.SourceModule.GetAttributes().Any(attr => attr.AttributeClass?.ToDisplayString() == TypeNames.System_Runtime_CompilerServices_SkipLocalsInitAttribute))
                 );
 
             var methodSourceAndDiagnostics = methodsToGenerate
