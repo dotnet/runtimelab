@@ -519,7 +519,7 @@ void storeOnShadowStack(llvm::IRBuilder<>& builder, GenTree* operand, Value* sha
 }
 
 llvm::Value* buildUserFuncCall(GenTreeCall* call, llvm::IRBuilder<>& builder)
-    {
+{
     const char* symbolName = (*_getMangledSymbolName)(_thisPtr, call->gtEntryPoint.handle);
     if (_isRuntimeImport(_thisPtr, call->gtCallMethHnd))
     {
@@ -553,10 +553,14 @@ llvm::Value* buildUserFuncCall(GenTreeCall* call, llvm::IRBuilder<>& builder)
     Value* shadowStackForCallee = offset == 0 ? _function->getArg(0) : builder.CreateGEP(_function->getArg(0), builder.getInt32(offset));
     argVec.push_back(shadowStackForCallee);
 
-    unsigned int shadowStackUseOffest = 0;
-    int          argIx                = 0;
-    GenTree*     thisArg              = nullptr;
-    std::vector<struct OperandArgNum> sortedOperands;
+    unsigned int                      shadowStackUseOffest = 0;
+    int                               argIx                = 0;
+    GenTree*                          thisArg              = nullptr;
+    fgArgInfo*                        argInfo              = call->fgArgInfo;
+    unsigned int                      argCount             = argInfo->ArgCount();
+    fgArgTabEntry**                   argTable             = argInfo->ArgTable();
+    std::vector<struct OperandArgNum> sortedArgs           = std::vector<struct OperandArgNum>(argCount);
+    struct OperandArgNum*             sortedData           = sortedArgs.data();
 
     // "this" goes first
     if (call->gtCallThisArg != nullptr)
@@ -566,29 +570,17 @@ llvm::Value* buildUserFuncCall(GenTreeCall* call, llvm::IRBuilder<>& builder)
         // TODO: add throw if this is null
         storeOnShadowStack(*_builder, thisArg, shadowStackForCallee, shadowStackUseOffest);
         shadowStackUseOffest += TARGET_POINTER_SIZE;
-        argIx++;
     }
 
-    for (GenTree* operand : call->Operands())
+    for (unsigned i = 0; i < argCount; i++)
     {
-        // copied this logic from gtDispLIRNode
-        if (operand->IsArgPlaceHolderNode() || !operand->IsValue() || operand == thisArg)
-        {
-            continue;
-        }
-        fgArgTabEntry* curArgTabEntry = _compiler->gtArgEntryByNode(call, operand);
+        fgArgTabEntry* curArgTabEntry = argTable[i];
         unsigned int   argNum         = curArgTabEntry->argNum;
-        unsigned int   i              = 0;
-
-        while (i < sortedOperands.size() && argNum > sortedOperands[i].argNum)
-        {
-            i++;
-        }
-        struct OperandArgNum opAndArg = {argNum, operand};
-        sortedOperands.emplace(sortedOperands.begin() + i, opAndArg);
+        struct OperandArgNum opAndArg = {argNum, curArgTabEntry->GetNode()};
+        sortedData[argNum]            = opAndArg;
     }
 
-    for (struct OperandArgNum opAndArg : sortedOperands)
+    for (struct OperandArgNum opAndArg : sortedArgs)
     {
         struct LlvmArgInfo llvmArgInfo = getLlvmArgInfoForArgIx(sigInfo, argIx);
         if (llvmArgInfo.m_argIx >= 0)
