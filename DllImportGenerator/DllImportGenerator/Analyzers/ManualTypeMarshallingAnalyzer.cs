@@ -144,15 +144,15 @@ namespace Microsoft.Interop.Analyzers
                 isEnabledByDefault: true,
                 description: GetResourceString(nameof(Resources.RefValuePropertyUnsupportedDescription)));
 
-        public readonly static DiagnosticDescriptor NativeGenericTypeMustBeClosedRule =
+        public readonly static DiagnosticDescriptor NativeGenericTypeMustBeClosedOrMatchArityRule =
             new DiagnosticDescriptor(
-                Ids.NativeGenericTypeMustBeClosed,
-                "GenericTypeMustBeClosed",
-                GetResourceString(nameof(Resources.NativeGenericTypeMustBeClosedMessage)),
+                Ids.NativeGenericTypeMustBeClosedOrMatchArity,
+                "NativeGenericTypeMustBeClosedOrMatchArity",
+                GetResourceString(nameof(Resources.NativeGenericTypeMustBeClosedOrMatchArityMessage)),
                 Category,
                 DiagnosticSeverity.Error,
                 isEnabledByDefault: true,
-                description: GetResourceString(nameof(Resources.NativeGenericTypeMustBeClosedDescription)));
+                description: GetResourceString(nameof(Resources.NativeGenericTypeMustBeClosedOrMatchArityDescription)));
 
         public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => 
             ImmutableArray.Create(
@@ -169,7 +169,7 @@ namespace Microsoft.Interop.Analyzers
                 StackallocMarshallingShouldSupportAllocatingMarshallingFallbackRule,
                 StackallocConstructorMustHaveStackBufferSizeConstantRule,
                 RefValuePropertyUnsupportedRule,
-                NativeGenericTypeMustBeClosedRule);
+                NativeGenericTypeMustBeClosedOrMatchArityRule);
 
         public override void Initialize(AnalysisContext context)
         {
@@ -185,12 +185,14 @@ namespace Microsoft.Interop.Analyzers
             var blittableTypeAttribute = context.Compilation.GetTypeByMetadataName(TypeNames.BlittableTypeAttribute);
             var nativeMarshallingAttribute = context.Compilation.GetTypeByMetadataName(TypeNames.NativeMarshallingAttribute);
             var marshalUsingAttribute = context.Compilation.GetTypeByMetadataName(TypeNames.MarshalUsingAttribute);
+            var genericContiguousCollectionMarshallerAttribute = context.Compilation.GetTypeByMetadataName(TypeNames.GenericContiguousCollectionMarshallerAttribute);
             var spanOfByte = context.Compilation.GetTypeByMetadataName(TypeNames.System_Span_Metadata)!.Construct(context.Compilation.GetSpecialType(SpecialType.System_Byte));
 
             if (generatedMarshallingAttribute is not null
                 && blittableTypeAttribute is not null
                 && nativeMarshallingAttribute is not null
                 && marshalUsingAttribute is not null
+                && genericContiguousCollectionMarshallerAttribute is not null
                 && spanOfByte is not null)
             {
                 var perCompilationAnalyzer = new PerCompilationAnalyzer(
@@ -198,6 +200,7 @@ namespace Microsoft.Interop.Analyzers
                     blittableTypeAttribute,
                     nativeMarshallingAttribute,
                     marshalUsingAttribute,
+                    genericContiguousCollectionMarshallerAttribute,
                     spanOfByte,
                     context.Compilation.GetTypeByMetadataName(TypeNames.System_Runtime_InteropServices_StructLayoutAttribute)!);
                 context.RegisterSymbolAction(context => perCompilationAnalyzer.AnalyzeTypeDefinition(context), SymbolKind.NamedType);
@@ -212,6 +215,7 @@ namespace Microsoft.Interop.Analyzers
             private readonly INamedTypeSymbol BlittableTypeAttribute;
             private readonly INamedTypeSymbol NativeMarshallingAttribute;
             private readonly INamedTypeSymbol MarshalUsingAttribute;
+            private readonly INamedTypeSymbol GenericContiguousCollectionMarshallerAttribute;
             private readonly INamedTypeSymbol SpanOfByte;
             private readonly INamedTypeSymbol StructLayoutAttribute;
 
@@ -219,6 +223,7 @@ namespace Microsoft.Interop.Analyzers
                                           INamedTypeSymbol blittableTypeAttribute,
                                           INamedTypeSymbol nativeMarshallingAttribute,
                                           INamedTypeSymbol marshalUsingAttribute,
+                                          INamedTypeSymbol genericContiguousCollectionMarshallerAttribute,
                                           INamedTypeSymbol spanOfByte,
                                           INamedTypeSymbol structLayoutAttribute)
             {
@@ -226,6 +231,7 @@ namespace Microsoft.Interop.Analyzers
                 BlittableTypeAttribute = blittableTypeAttribute;
                 NativeMarshallingAttribute = nativeMarshallingAttribute;
                 MarshalUsingAttribute = marshalUsingAttribute;
+                GenericContiguousCollectionMarshallerAttribute = genericContiguousCollectionMarshallerAttribute;
                 SpanOfByte = spanOfByte;
                 StructLayoutAttribute = structLayoutAttribute;
             }
@@ -270,7 +276,7 @@ namespace Microsoft.Interop.Analyzers
                 }
                 else if (nativeMarshallingAttributeData is not null)
                 {
-                    AnalyzeNativeMarshalerType(context, type, nativeMarshallingAttributeData, validateManagedGetPinnableReference: true, validateAllScenarioSupport: true);
+                    AnalyzeNativeMarshalerType(context, type, nativeMarshallingAttributeData, defaultMarshaller:true);
                 }
             }
 
@@ -292,11 +298,11 @@ namespace Microsoft.Interop.Analyzers
                 {
                     if (context.Symbol is IParameterSymbol param)
                     {
-                        AnalyzeNativeMarshalerType(context, param.Type, attrData, false, false);
+                        AnalyzeNativeMarshalerType(context, param.Type, attrData, defaultMarshaller: false);
                     }
                     else if (context.Symbol is IFieldSymbol field)
                     {
-                        AnalyzeNativeMarshalerType(context, field.Type, attrData, false, false);
+                        AnalyzeNativeMarshalerType(context, field.Type, attrData, defaultMarshaller: false);
                     }
                 }
             }
@@ -307,11 +313,11 @@ namespace Microsoft.Interop.Analyzers
                 AttributeData? attrData = method.GetReturnTypeAttributes().FirstOrDefault(attr => SymbolEqualityComparer.Default.Equals(MarshalUsingAttribute, attr.AttributeClass));
                 if (attrData is not null)
                 {
-                    AnalyzeNativeMarshalerType(context, method.ReturnType, attrData, false, false);
+                    AnalyzeNativeMarshalerType(context, method.ReturnType, attrData, defaultMarshaller: false);
                 }
             }
 
-            private void AnalyzeNativeMarshalerType(SymbolAnalysisContext context, ITypeSymbol type, AttributeData nativeMarshalerAttributeData, bool validateManagedGetPinnableReference, bool validateAllScenarioSupport)
+            private void AnalyzeNativeMarshalerType(SymbolAnalysisContext context, ITypeSymbol type, AttributeData nativeMarshalerAttributeData, bool defaultMarshaller)
             {
                 if (nativeMarshalerAttributeData.ConstructorArguments.Length == 0)
                 {
@@ -353,12 +359,29 @@ namespace Microsoft.Interop.Analyzers
 
                 if (marshalerType.IsUnboundGenericType)
                 {
-                    context.ReportDiagnostic(
-                        nativeMarshalerAttributeData.CreateDiagnostic(
-                            NativeGenericTypeMustBeClosedRule,
-                            nativeType.ToDisplayString(),
-                            type.ToDisplayString()));
-                    return;
+                    if (!defaultMarshaller)
+                    {
+                        context.ReportDiagnostic(
+                            nativeMarshalerAttributeData.CreateDiagnostic(
+                                NativeGenericTypeMustBeClosedOrMatchArityRule,
+                                nativeType.ToDisplayString(),
+                                type.ToDisplayString()));
+                        return;
+                    }
+                    else if (type is not INamedTypeSymbol namedType || marshalerType.TypeArguments.Length != namedType.TypeArguments.Length)
+                    {
+                        context.ReportDiagnostic(
+                            nativeMarshalerAttributeData.CreateDiagnostic(
+                                NativeGenericTypeMustBeClosedOrMatchArityRule,
+                                nativeType.ToDisplayString(),
+                                type.ToDisplayString()));
+                        return;
+                    }
+                    else
+                    {
+                        // Construct the marshaler type around the same type arguments as the managed type.
+                        nativeType = marshalerType = marshalerType.ConstructedFrom.Construct(namedType.TypeArguments, namedType.TypeArgumentNullableAnnotations);
+                    }
                 }
 
                 bool hasConstructor = false;
@@ -399,7 +422,7 @@ namespace Microsoft.Interop.Analyzers
                 }
 
                 // Validate that this type can support marshalling when stackalloc is not usable.
-                if (validateAllScenarioSupport && hasStackallocConstructor && !hasConstructor)
+                if (defaultMarshaller && hasStackallocConstructor && !hasConstructor)
                 {
                     context.ReportDiagnostic(
                         marshalerType.CreateDiagnostic(
@@ -455,7 +478,7 @@ namespace Microsoft.Interop.Analyzers
                 // Use a tuple here instead of an anonymous type so we can do the reassignment and pattern matching below.
                 var getPinnableReferenceMethods = new
                 {
-                    Managed = validateManagedGetPinnableReference? ManualTypeMarshallingHelper.FindGetPinnableReference(type) : null,
+                    Managed = defaultMarshaller ? ManualTypeMarshallingHelper.FindGetPinnableReference(type) : null,
                     Marshaler = ManualTypeMarshallingHelper.FindGetPinnableReference(marshalerType)
                 };
 
@@ -466,7 +489,7 @@ namespace Microsoft.Interop.Analyzers
                         context.ReportDiagnostic(getPinnableReferenceMethods.Managed.CreateDiagnostic(GetPinnableReferenceReturnTypeBlittableRule));
                     }
                     // Validate that our marshaler supports scenarios where GetPinnableReference cannot be used.
-                    if (validateAllScenarioSupport && (!hasConstructor || valueProperty is { GetMethod: null }))
+                    if (defaultMarshaller && (!hasConstructor || valueProperty is { GetMethod: null }))
                     {
                         context.ReportDiagnostic(
                             nativeMarshalerAttributeData.CreateDiagnostic(

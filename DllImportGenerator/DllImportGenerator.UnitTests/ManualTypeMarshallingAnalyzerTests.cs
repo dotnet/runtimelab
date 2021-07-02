@@ -952,7 +952,7 @@ struct Native<T>
         }
 
         [Fact]
-        public async Task UninstantiatedGenericNativeType_ReportsDiagnostic()
+        public async Task UninstantiatedGenericNativeTypeOnNonGeneric_ReportsDiagnostic()
         {
 
             string source = @"
@@ -976,7 +976,61 @@ struct Native<T>
 
     public T Value { get; set; }
 }";
-            await VerifyCS.VerifyAnalyzerAsync(source, VerifyCS.Diagnostic(NativeGenericTypeMustBeClosedRule).WithLocation(0).WithArguments("Native<>", "S"));
+            await VerifyCS.VerifyAnalyzerAsync(source, VerifyCS.Diagnostic(NativeGenericTypeMustBeClosedOrMatchArityRule).WithLocation(0).WithArguments("Native<>", "S"));
+        }
+
+        [Fact]
+        public async Task UninstantiatedGenericNativeTypeOnGenericWithArityMismatch_ReportsDiagnostic()
+        {
+            string source = @"
+using System.Runtime.InteropServices;
+
+[{|#0:NativeMarshalling(typeof(Native<,>))|}]
+struct S<T>
+{
+    public string s;
+}
+
+struct Native<T, U>
+    where T : new()
+{
+    public Native(S<T> s)
+    {
+        Value = 0;
+    }
+
+    public S<T> ToManaged() => new S<T>();
+
+    public int Value { get; set; }
+}";
+            await VerifyCS.VerifyAnalyzerAsync(source, VerifyCS.Diagnostic(NativeGenericTypeMustBeClosedOrMatchArityRule).WithLocation(0).WithArguments("Native<,>", "S<T>"));
+        }
+
+        [Fact]
+        public async Task UninstantiatedGenericNativeTypeOnGenericWithArityMatch_DoesNotReportDiagnostic()
+        {
+            string source = @"
+using System.Runtime.InteropServices;
+
+[NativeMarshalling(typeof(Native<>))]
+struct S<T>
+{
+    public T t;
+}
+
+struct Native<T>
+    where T : new()
+{
+    public Native(S<T> s)
+    {
+        Value = 0;
+    }
+
+    public S<T> ToManaged() => new S<T>();
+
+    public int Value { get; set; }
+}";
+            await VerifyCS.VerifyAnalyzerAsync(source);
         }
 
         [Fact]

@@ -394,20 +394,20 @@ namespace Microsoft.Interop {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to The native type &apos;{0}&apos; must be a closed generic so the emitted code can use a specific instantiation..
+        ///   Looks up a localized string similar to The native type &apos;{0}&apos; must be a closed generic or have the same number of generic parameters as the managed type so the emitted code can use a specific instantiation..
         /// </summary>
-        internal static string NativeGenericTypeMustBeClosedDescription {
+        internal static string NativeGenericTypeMustBeClosedOrMatchArityDescription {
             get {
-                return ResourceManager.GetString("NativeGenericTypeMustBeClosedDescription", resourceCulture);
+                return ResourceManager.GetString("NativeGenericTypeMustBeClosedOrMatchArityDescription", resourceCulture);
             }
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to The native type &apos;{0}&apos; for managed type &apos;{1}&apos; must be a closed generic type..
+        ///   Looks up a localized string similar to The native type &apos;{0}&apos; for managed type &apos;{1}&apos; must be a closed generic type or have the same arity as the managed type..
         /// </summary>
-        internal static string NativeGenericTypeMustBeClosedMessage {
+        internal static string NativeGenericTypeMustBeClosedOrMatchArityMessage {
             get {
-                return ResourceManager.GetString("NativeGenericTypeMustBeClosedMessage", resourceCulture);
+                return ResourceManager.GetString("NativeGenericTypeMustBeClosedOrMatchArityMessage", resourceCulture);
             }
         }
         
