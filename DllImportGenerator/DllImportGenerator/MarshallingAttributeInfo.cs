@@ -95,9 +95,11 @@ namespace Microsoft.Interop
 
     internal sealed record SizeAndParamIndexInfo(int ConstSize, TypePositionInfo? ParamAtIndex) : CountInfo
     {
-        public const int UnspecifiedData = -1;
+        public const int UnspecifiedConstSize = -1;
 
-        public static readonly SizeAndParamIndexInfo Unspecified = new(UnspecifiedData, null);
+        public const TypePositionInfo UnspecifiedParam = null;
+
+        public static readonly SizeAndParamIndexInfo Unspecified = new(UnspecifiedConstSize, UnspecifiedParam);
     }
 
     /// <summary>
@@ -429,7 +431,7 @@ namespace Microsoft.Interop
                 diagnostics.ReportConfigurationNotSupported(attrData, nameof(UnmanagedType), unmanagedType.ToString());
             }
             bool isArrayType = unmanagedType == UnmanagedType.LPArray || unmanagedType == UnmanagedType.ByValArray;
-            UnmanagedType elementUnmanagedType = (UnmanagedType)SizeAndParamIndexInfo.UnspecifiedData;
+            UnmanagedType elementUnmanagedType = (UnmanagedType)SizeAndParamIndexInfo.UnspecifiedConstSize;
             SizeAndParamIndexInfo arraySizeInfo = SizeAndParamIndexInfo.Unspecified;
 
             // All other data on attribute is defined as NamedArguments.
@@ -467,7 +469,12 @@ namespace Microsoft.Interop
                         {
                             diagnostics.ReportConfigurationNotSupported(attrData, $"{attrData.AttributeClass!.Name}{Type.Delimiter}{namedArg.Key}");
                         }
-                        arraySizeInfo = arraySizeInfo with { ParamAtIndex = CreateForParamIndex((short)namedArg.Value.Value!, inspectedElements) };
+                        TypePositionInfo? paramIndexInfo = CreateForParamIndex((short)namedArg.Value.Value!, inspectedElements);
+                        if (paramIndexInfo is null)
+                        {
+                            diagnostics.ReportConfigurationNotSupported(attrData, nameof(MarshalAsAttribute.SizeParamIndex), namedArg.Value.Value.ToString());
+                        }
+                        arraySizeInfo = arraySizeInfo with { ParamAtIndex = paramIndexInfo };
                         break;
                 }
             }
@@ -484,7 +491,7 @@ namespace Microsoft.Interop
             }
 
             MarshallingInfo elementMarshallingInfo = NoMarshallingInfo.Instance;
-            if (elementUnmanagedType != (UnmanagedType)SizeAndParamIndexInfo.UnspecifiedData)
+            if (elementUnmanagedType != (UnmanagedType)SizeAndParamIndexInfo.UnspecifiedConstSize)
             {
                 elementMarshallingInfo = new MarshalAsInfo(elementUnmanagedType, defaultInfo.CharEncoding);
             }
