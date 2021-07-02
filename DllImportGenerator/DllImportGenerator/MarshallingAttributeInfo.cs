@@ -368,17 +368,27 @@ namespace Microsoft.Interop
             return NoCountInfo.Instance;
         }
 
-        private TypePositionInfo? CreateForParamIndex(int paramIndex, ImmutableHashSet<string> inspectedElements)
+        private TypePositionInfo? CreateForParamIndex(AttributeData attrData, int paramIndex, ImmutableHashSet<string> inspectedElements)
         {
             if (!(contextSymbol is IMethodSymbol method && 0 <= paramIndex && paramIndex < method.Parameters.Length))
             {
                 return null;
             }
             IParameterSymbol param = method.Parameters[paramIndex];
-            return TypePositionInfo.CreateForParameter(
-                param,
-                ParseMarshallingInfo(param.Type, param.GetAttributes(), inspectedElements.Add(param.Name)), compilation) with
-            { ManagedIndex = paramIndex };
+            try
+            {
+                return TypePositionInfo.CreateForParameter(
+                    param,
+                    ParseMarshallingInfo(param.Type, param.GetAttributes(), inspectedElements.Add(param.Name)), compilation) with
+                { ManagedIndex = paramIndex };
+            }
+            // Specifically catch the exception when we're trying to inspect the element that started the cycle.
+            // This ensures that we've unwound the whole cycle so when we return, there will be no cycles in the count info.
+            catch (CyclicalCountElementInfoException ex) when (ex.StartOfCycle == param.Name)
+            {
+                diagnostics.ReportConfigurationNotSupported(attrData, $"Cyclical {ManualTypeMarshallingHelper.MarshalUsingProperties.CountElementName}");
+                return SizeAndParamIndexInfo.UnspecifiedParam;
+            }
         }
 
         private TypePositionInfo? CreateForElementName(string elementName, ImmutableHashSet<string> inspectedElements)
@@ -469,7 +479,8 @@ namespace Microsoft.Interop
                         {
                             diagnostics.ReportConfigurationNotSupported(attrData, $"{attrData.AttributeClass!.Name}{Type.Delimiter}{namedArg.Key}");
                         }
-                        TypePositionInfo? paramIndexInfo = CreateForParamIndex((short)namedArg.Value.Value!, inspectedElements);
+                        TypePositionInfo? paramIndexInfo = CreateForParamIndex(attrData, (short)namedArg.Value.Value!, inspectedElements);
+
                         if (paramIndexInfo is null)
                         {
                             diagnostics.ReportConfigurationNotSupported(attrData, nameof(MarshalAsAttribute.SizeParamIndex), namedArg.Value.Value.ToString());
