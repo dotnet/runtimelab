@@ -56,12 +56,12 @@ namespace Microsoft.Interop
                                     Literal(countInfo.ConstSize)))
                         );
                     }
-                    if (countInfo.ParamIndex != SizeAndParamIndexInfo.UnspecifiedData)
+                    if (countInfo.ParamAtIndex is { ManagedIndex: int paramIndex })
                     {
                         marshalAsArguments.Add(
                             AttributeArgument(NameEquals("SizeParamIndex"), null,
                                 LiteralExpression(SyntaxKind.NumericLiteralExpression,
-                                    Literal(countInfo.ParamIndex)))
+                                    Literal(paramIndex)))
                         );
                     }
                 }

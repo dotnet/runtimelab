@@ -93,11 +93,11 @@ namespace Microsoft.Interop
         public const string ReturnValueElementName = "return-value";
     }
 
-    internal sealed record SizeAndParamIndexInfo(int ConstSize, int ParamIndex) : CountInfo
+    internal sealed record SizeAndParamIndexInfo(int ConstSize, TypePositionInfo? ParamAtIndex) : CountInfo
     {
         public const int UnspecifiedData = -1;
 
-        public static readonly SizeAndParamIndexInfo Unspecified = new(UnspecifiedData, UnspecifiedData);
+        public static readonly SizeAndParamIndexInfo Unspecified = new(UnspecifiedData, null);
     }
 
     /// <summary>
@@ -224,7 +224,7 @@ namespace Microsoft.Interop
                     && SymbolEqualityComparer.Default.Equals(compilation.GetTypeByMetadataName(TypeNames.System_Runtime_InteropServices_MarshalAsAttribute), attributeClass))
                 {
                     // https://docs.microsoft.com/dotnet/api/system.runtime.interopservices.marshalasattribute
-                    return CreateInfoFromMarshalAs(type, useSiteAttribute, ref maxIndirectionLevelUsed);
+                    return CreateInfoFromMarshalAs(type, useSiteAttribute, inspectedElements, ref maxIndirectionLevelUsed);
                 }
                 else if (SymbolEqualityComparer.Default.Equals(compilation.GetTypeByMetadataName(TypeNames.MarshalUsingAttribute), attributeClass))
                 {
@@ -366,6 +366,19 @@ namespace Microsoft.Interop
             return NoCountInfo.Instance;
         }
 
+        private TypePositionInfo? CreateForParamIndex(int paramIndex, ImmutableHashSet<string> inspectedElements)
+        {
+            if (!(contextSymbol is IMethodSymbol method && 0 <= paramIndex && paramIndex < method.Parameters.Length))
+            {
+                return null;
+            }
+            IParameterSymbol param = method.Parameters[paramIndex];
+            return TypePositionInfo.CreateForParameter(
+                param,
+                ParseMarshallingInfo(param.Type, param.GetAttributes(), inspectedElements.Add(param.Name)), compilation) with
+            { ManagedIndex = paramIndex };
+        }
+
         private TypePositionInfo? CreateForElementName(string elementName, ImmutableHashSet<string> inspectedElements)
         {
             if (contextSymbol is IMethodSymbol method)
@@ -402,6 +415,7 @@ namespace Microsoft.Interop
         MarshallingInfo CreateInfoFromMarshalAs(
             ITypeSymbol type,
             AttributeData attrData,
+            ImmutableHashSet<string> inspectedElements,
             ref int maxIndirectionLevelUsed)
         {
             object unmanagedTypeObj = attrData.ConstructorArguments[0].Value!;
@@ -453,7 +467,7 @@ namespace Microsoft.Interop
                         {
                             diagnostics.ReportConfigurationNotSupported(attrData, $"{attrData.AttributeClass!.Name}{Type.Delimiter}{namedArg.Key}");
                         }
-                        arraySizeInfo = arraySizeInfo with { ParamIndex = (short)namedArg.Value.Value! };
+                        arraySizeInfo = arraySizeInfo with { ParamAtIndex = CreateForParamIndex((short)namedArg.Value.Value!, inspectedElements) };
                         break;
                 }
             }
