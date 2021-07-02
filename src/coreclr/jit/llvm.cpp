@@ -612,7 +612,6 @@ llvm::Value* buildUserFuncCall(GenTreeCall* call, llvm::IRBuilder<>& builder)
         // TODO: add throw if this is null
         storeOnShadowStack(*_builder, thisArg, shadowStackForCallee, shadowStackUseOffest);
         shadowStackUseOffest += TARGET_POINTER_SIZE;
-        argIx++;
     }
 
     for (GenTree* operand : call->Operands())
