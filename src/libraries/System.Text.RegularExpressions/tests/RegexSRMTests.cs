@@ -2245,11 +2245,11 @@ namespace System.Text.RegularExpressions.Tests
         [InlineData("(a)*?", "aaa", "(0,0)")]
         [InlineData("(a*?)*?", "aaa", "(0,0)")]
         [InlineData("(a*)*(x)", "x", "(0,1)(0,0)(0,1)")]
-        [InlineData("(a*)*(x)(\\1)", "x", "(0,1)(0,0)(0,1)(1,1)")]
-        [InlineData("(a*)*(x)(\\1)", "ax", "(0,2)(1,1)(1,2)(2,2)")]
-        [InlineData("(a*)*(x)(\\1)", "axa", "(0,2)(1,1)(1,2)(2,2)")] // was "(0,3)(0,1)(1,2)(2,3)"
-        [InlineData("(a*)*(x)(\\1)(x)", "axax", "(0,4)(0,1)(1,2)(2,3)(3,4)")]
-        [InlineData("(a*)*(x)(\\1)(x)", "axxa", "(0,3)(1,1)(1,2)(2,2)(2,3)")]
+        [InlineData("(a*)*(x)(\\1)", "x", "(0,1)(0,0)(0,1)(1,1)", "DFAINCOMPATIBLE")]
+        [InlineData("(a*)*(x)(\\1)", "ax", "(0,2)(1,1)(1,2)(2,2)", "DFAINCOMPATIBLE")]
+        [InlineData("(a*)*(x)(\\1)", "axa", "(0,2)(1,1)(1,2)(2,2)", "DFAINCOMPATIBLE")] // was "(0,3)(0,1)(1,2)(2,3)"
+        [InlineData("(a*)*(x)(\\1)(x)", "axax", "(0,4)(0,1)(1,2)(2,3)(3,4)", "DFAINCOMPATIBLE")]
+        [InlineData("(a*)*(x)(\\1)(x)", "axxa", "(0,3)(1,1)(1,2)(2,2)(2,3)", "DFAINCOMPATIBLE")]
         [InlineData("(a*)*(x)", "ax", "(0,2)(1,1)(1,2)")]
         [InlineData("(a*)*(x)", "axa", "(0,2)(1,1)(1,2)")] // was "(0,2)(0,1)(1,2)"
         [InlineData("(a*)+(x)", "x", "(0,1)(0,0)(0,1)")]
@@ -2258,52 +2258,39 @@ namespace System.Text.RegularExpressions.Tests
         [InlineData("(a*){2}(x)", "x", "(0,1)(0,0)(0,1)")]
         [InlineData("(a*){2}(x)", "ax", "(0,2)(1,1)(1,2)")]
         [InlineData("(a*){2}(x)", "axa", "(0,2)(1,1)(1,2)")]
-        public void Test(string pattern, string input, string captures, string dfa_match = null)
+        public void Test(string pattern, string input, string nondfa_captures, string dfa_match = null)
         {
             if (input == "NULL")
             {
                 input = "";
             }
 
-            foreach (RegexOptions options in new[] { DFA })
+            foreach (RegexOptions options in new[] { DFA, DFA | RegexOptions.Multiline, RegexOptions.None, RegexOptions.Compiled })
             {
-                if ((options & DFA) != 0 && dfa_match != null)
-                {
+                string captures = nondfa_captures;
+                bool dfa_mode = ((options & DFA) != 0);
+                if (dfa_mode && dfa_match != null)
                     //dfa_match value overrides the expected result in DFA mode
                     captures = dfa_match;
-                }
 
                 if (captures == "BADBR")
                 {
-                    // should be RegexParseException that is not an ArgumentException
-                    //Assert.ThrowsAny<ArgumentExceptionException>(() => Regex.IsMatch(input, pattern, options));
-                    try
-                    {
-                        Regex.IsMatch(input, pattern, options);
-                    }
-                    catch (Exception)
-                    {
-                        continue;
-                    }
-                    Assert.True(false, "should be unreachble");
+                    Assert.ThrowsAny<ArgumentException>(() => Regex.IsMatch(input, pattern, options));
                 }
                 else if (captures == "NOMATCH")
                 {
                     Assert.False(Regex.IsMatch(input, pattern, options));
                 }
+                else if (dfa_mode && dfa_match == "DFAINCOMPATIBLE")
+                {
+                    //In particular: backreferences are not supported in DFA mode
+                    Assert.ThrowsAny<NotSupportedException>(() => Regex.IsMatch(input, pattern, options));
+                }
                 else
                 {
-                    Match match = Match.Empty;
-                    try
-                    {
-                        match = Regex.Match(input, pattern, options);
-                        Assert.True(match.Success);
-                    }
-                    catch (NotSupportedException e)
-                    {
-                        WriteLine(e.Message);
-                        continue;
-                    }
+                    Match match = Regex.Match(input, pattern, options);
+                    Assert.True(match.Success);
+
                     var expected = new HashSet<(int start, int end)>(
                         captures
                         .Split(new[] { '(', ')' }, StringSplitOptions.RemoveEmptyEntries)
@@ -2321,12 +2308,9 @@ namespace System.Text.RegularExpressions.Tests
                         .OrderBy(g => g.start)
                         .ThenBy(g => g.end));
 
-                    // SRM only provides the top-level match
-                    // so actual is always a singleton that must be a subset of expected
-                    // oberserve that WITHOUT the DFA option
-                    // the test is the opposite: expected.IsSubsetOf(actual)
-                    // see also AttRegexTests.Test
-                    if (!actual.IsSubsetOf(expected))
+                    // DFA mode only provides the top-level match.
+                    // Else, the .NET implementation sometimes has extra captures beyond what the original data specifies, so we assert a subset.
+                    if (dfa_mode ? !actual.IsSubsetOf(expected) : !expected.IsSubsetOf(actual))
                     {
                         throw new Xunit.Sdk.XunitException($"Actual: {string.Join(", ", actual)}{Environment.NewLine}Expected: {string.Join(", ", expected)}");
                     }
