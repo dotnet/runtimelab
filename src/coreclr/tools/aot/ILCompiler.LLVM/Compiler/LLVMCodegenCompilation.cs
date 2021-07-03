@@ -66,9 +66,10 @@ namespace ILCompiler
 
             var nodes = _dependencyGraph.MarkedNodeList;
 
+            CorInfoImpl.Shutdown(); // writes the LLVM bitcode
+
             LLVMObjectWriter.EmitObject(outputFile, nodes, NodeFactory, this, dumper);
 
-            CorInfoImpl.Shutdown(); // writes the LLVM bitcode
 
             Console.WriteLine($"RyuJIT compilation results, total methods {totalMethodCount} RyuJit Methods {ryuJitMethodCount} {((decimal)ryuJitMethodCount * 100 / totalMethodCount):n4}%");
         }
@@ -127,6 +128,14 @@ namespace ILCompiler
                 if (sig.ReturnType.IsVoid &&
                     !method.RequiresInstArg()) // speed up
                 {
+                    if (method.ToString().Contains("TestClass..ctor"))
+                    {
+
+                    }
+                    if (method.ToString().Contains("BinaryReader") && method.ToString().Contains("ctor"))
+                    {
+
+                    }
                     corInfo.RegisterLlvmCallbacks((IntPtr)Unsafe.AsPointer(ref corInfo), _outputFile, Module.Target, Module.DataLayout);
                     corInfo.CompileMethod(methodCodeNodeNeedingCode);
                     methodCodeNodeNeedingCode.CompilationCompleted = true;
