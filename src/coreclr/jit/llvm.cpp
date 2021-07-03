@@ -680,7 +680,6 @@ Value* localVar(llvm::IRBuilder<>& builder, GenTreeLclVar* lclVar)
     Value*       llvmRef;
     unsigned int lclNum = lclVar->GetLclNum();
 
-    // cache hit
     if (_localsMap->find(lclNum) == _localsMap->end())
     {
         if (_compiler->lvaIsParameter(lclNum))

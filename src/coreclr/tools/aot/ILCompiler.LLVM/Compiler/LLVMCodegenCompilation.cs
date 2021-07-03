@@ -128,14 +128,6 @@ namespace ILCompiler
                 if (sig.ReturnType.IsVoid &&
                     !method.RequiresInstArg()) // speed up
                 {
-                    if (method.ToString().Contains("TestClass..ctor"))
-                    {
-
-                    }
-                    if (method.ToString().Contains("BinaryReader") && method.ToString().Contains("ctor"))
-                    {
-
-                    }
                     corInfo.RegisterLlvmCallbacks((IntPtr)Unsafe.AsPointer(ref corInfo), _outputFile, Module.Target, Module.DataLayout);
                     corInfo.CompileMethod(methodCodeNodeNeedingCode);
                     methodCodeNodeNeedingCode.CompilationCompleted = true;

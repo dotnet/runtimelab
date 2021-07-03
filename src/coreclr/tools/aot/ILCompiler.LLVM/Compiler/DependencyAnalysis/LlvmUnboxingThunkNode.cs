@@ -11,10 +11,6 @@ namespace ILCompiler.DependencyAnalysis
         public LlvmUnboxingThunkNode(MethodDesc method)
             : base(method)
         {
-            if (method.ToString().Contains("System.Collections.Generic.Boxed_KeyValuePair"))
-            {
-
-            }
         }
 
         protected override string GetName(NodeFactory factory) => this.GetMangledName(factory.NameMangler);
