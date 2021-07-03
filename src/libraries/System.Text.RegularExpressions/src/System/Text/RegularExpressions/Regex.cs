@@ -431,7 +431,7 @@ namespace System.Text.RegularExpressions
 
             // DFA option
             if (_useSRM)
-                return RunSRM(quick, input, beginning, startat, length);
+                return RunSRM(quick, input, beginning, startat, length, prevlen);
 
             RegexRunner runner = RentRunner();
             try

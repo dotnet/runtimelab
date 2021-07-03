@@ -1765,10 +1765,26 @@ namespace System.Text.RegularExpressions.SRM
             }
         }
 
+        //caching the computation of startset
+        private bool _startSetIsComputed;
+        private S _startSet;
         /// <summary>
-        /// Gets the predicate that covers all elements that make some progress.
+        /// Get the predicate that covers all elements that make some progress.
         /// </summary>
         internal S GetStartSet()
+        {
+            if (_startSetIsComputed)
+                return _startSet;
+
+            _startSet = GetStartSet_();
+            _startSetIsComputed = true;
+            return _startSet;
+        }
+
+        /// <summary>
+        /// Compute the startset
+        /// </summary>
+        private S GetStartSet_()
         {
             switch (kind)
             {
@@ -1814,7 +1830,9 @@ namespace System.Text.RegularExpressions.SRM
                     }
                 default: //if-then-else
                     {
-                        S startSet = builder.solver.MkOr(iteCond.GetStartSet(), builder.solver.MkOr(left.GetStartSet(), right.GetStartSet()));
+                        S startSet = builder.solver.MkOr(
+                            builder.solver.MkAnd(iteCond.GetStartSet(), left.GetStartSet()),
+                            builder.solver.MkAnd(builder.solver.MkNot(iteCond.GetStartSet()), right.GetStartSet()));
                         return startSet;
                     }
             }

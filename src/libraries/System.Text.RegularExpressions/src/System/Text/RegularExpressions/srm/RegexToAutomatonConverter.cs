@@ -509,18 +509,6 @@ namespace System.Text.RegularExpressions.SRM
             return this.srBuilder.MkLoop(regex, isLazy, lower, upper);
         }
 
-        public SymbolicRegexNode<S> MkStartAnchor()
-        {
-            return this.srBuilder.MkStartAnchor();
-        }
-
-        public SymbolicRegexNode<S> MkEndAnchor()
-        {
-            return this.srBuilder.MkEndAnchor();
-        }
-
-
-
         #endregion
     }
 }

@@ -272,31 +272,6 @@ namespace System.Text.RegularExpressions.SRM
             }
         }
 
-        internal SymbolicRegexNode<S> MkStartAnchor()
-        {
-            return this.startAnchor;
-        }
-
-        internal SymbolicRegexNode<S> MkEndAnchor()
-        {
-            return this.endAnchor;
-        }
-
-        internal SymbolicRegexNode<S> MkEndAnchorZ()
-        {
-            return this.endAnchorZ;
-        }
-
-        internal SymbolicRegexNode<S> MkBOLAnchor()
-        {
-            return this.bolAnchor;
-        }
-
-        internal SymbolicRegexNode<S> MkEOLAnchor()
-        {
-            return this.eolAnchor;
-        }
-
         /// <summary>
         /// Make a singleton sequence regex
         /// </summary>

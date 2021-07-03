@@ -29,6 +29,64 @@ namespace System.Text.RegularExpressions.Tests
         private const char Turkish_i_withoutDot = '\u0131';
         private const char Kelvin_sign = '\u212A';
 
+        [Theory]
+        [InlineData("(a|ab|c|bcd){0,}d*", "ababcd", "0,6", "0,1")]    //different results
+        [InlineData("(ab|a|bcd|c){0,}d*", "ababcd", "0,6", "0,6")]    //same result with different order of choices
+        [InlineData("(a|ab|c|bcd){0,10}d*", "ababcd", "0,6", "0,1")]  //different results
+        [InlineData("(ab|a|bcd|c){0,10}d*", "ababcd", "0,6", "0,6")]  //same result with different order of choices
+        [InlineData("(a|ab|c|bcd)*d*", "ababcd", "0,6", "0,1")]       //different results
+        [InlineData("(ab|a|bcd|c)*d*", "ababcd", "0,6", "0,6")]       //same result with different order of choices
+        public void TestAlternationOrderIndependenceInEagerLoop(string pattern, string input, string dfamatch, string nondfamatch)
+        {
+            Regex r1 = new Regex(pattern, DFA);
+            Regex r1_ = new Regex(pattern);
+            var m1 = r1.Match(input);
+            var m1_ = r1_.Match(input);
+            int[] m1exp = Array.ConvertAll(dfamatch.Split(','), int.Parse);
+            int[] m1_exp = Array.ConvertAll(nondfamatch.Split(','), int.Parse);
+            Assert.Equal(m1exp[0], m1.Index);
+            Assert.Equal(m1exp[1], m1.Length);
+            Assert.Equal(m1_exp[0], m1_.Index);
+            Assert.Equal(m1_exp[1], m1_.Length);
+        }
+
+        [Theory]
+        [InlineData("^", RegexOptions.None, "", "0")]
+        [InlineData("$", RegexOptions.None, "", "0")]
+        [InlineData("^$", RegexOptions.None, "", "0")]
+        [InlineData("$^", RegexOptions.None, "", "0")]
+        [InlineData("a*", RegexOptions.None, "bbb", "0,1,2,3")]
+        [InlineData("a*", RegexOptions.None, "baaabb", "0,1,4,5,6")]
+        [InlineData("\\b", RegexOptions.None, "hello--world", "0,5,7,12")]
+        [InlineData("\\B", RegexOptions.None, "hello--world", "1,2,3,4,6,8,9,10,11")]
+        public void TestEmptyMatches(string pattern, RegexOptions options, string input, string indices)
+        {
+            //testing both DFA and nonDFA to make sure they agree
+            int[] positions = Array.ConvertAll(indices.Split(','), int.Parse);
+            Regex re_ = new Regex(pattern, options);
+            Match m_ = re_.Match(input);
+            Assert.True(m_.Success);
+            Assert.Equal(positions[0], m_.Index);
+            Regex re = new Regex(pattern, options | DFA);
+            Match m = re.Match(input);
+            Assert.True(m.Success);
+            Assert.Equal(positions[0], m.Index);
+            for (int i = 1; i < positions.Length; i++)
+            {
+                m_ = m_.NextMatch();
+                Assert.True(m_.Success);
+                Assert.Equal(positions[i], m_.Index);
+                m = m.NextMatch();
+                Assert.True(m.Success);
+                Assert.Equal(positions[i], m.Index);
+            }
+            //there should be no more matches remaining
+            var m_fail = m_.NextMatch();
+            Assert.False(m_fail.Success);
+            var mfail = m.NextMatch();
+            Assert.False(mfail.Success);
+        }
+
         [Theory]    
         [InlineData("^abc", RegexOptions.None, "abcccc",  true, "abc", 0)]
         [InlineData("^abc", RegexOptions.None, "aabcccc", false, "", 0)]
@@ -763,7 +821,7 @@ namespace System.Text.RegularExpressions.Tests
 
                 string[] possible_errors = new string[]
                 {"RightToLeft", "conditional", "lookahead", "lookbehind", "backreference",
-                    "atomic", "contiguous", "characterless", "0-length match", "ECMAScript"};
+                    "atomic", "contiguous", "ECMAScript"};
 
                 Assert.True(Array.Exists(possible_errors, nse.Message.Contains));
 
@@ -774,13 +832,6 @@ namespace System.Text.RegularExpressions.Tests
                 if (nse.Message.Contains("atomic"))
                 {
                     Assert.Contains("?>", pattern);
-                }
-
-                // make sure that the test reex is just an anchor here
-                if (nse.Message.Contains("characterless"))
-                {
-                    Assert.True(pattern == "^" || pattern == "$" || pattern == "\\z" || pattern == "\\Z"
-                        || pattern == "\\A" || pattern == "^(){3,5}" || pattern == "(?i)");
                 }
 
                 return;
@@ -820,7 +871,7 @@ namespace System.Text.RegularExpressions.Tests
         /// </summary>
         public static IEnumerable<object[]> ValidateSRMRegex_NotSupportedCases_Data()
         {
-            yield return new object[] { @"\A(abc)*\Z", RegexOptions.None, "0-length match" };
+            //yield return new object[] { @"\A(abc)*\Z", RegexOptions.None, "0-length match" };
             yield return new object[] { @"abc", RegexOptions.RightToLeft, "RightToLeft" };
             yield return new object[] { @"abc", RegexOptions.ECMAScript, "ECMAScript" };
             yield return new object[] { @"^(a)?(?(1)a|b)+$", RegexOptions.None, "captured group conditional" };
@@ -832,14 +883,14 @@ namespace System.Text.RegularExpressions.Tests
             yield return new object[] { @"(?>(abc)*).", RegexOptions.None, "atomic" };
             yield return new object[] { @"\G(\w+\s?\w*),?", RegexOptions.None, "contiguous matches" };
             yield return new object[] { @"(?>a*).", RegexOptions.None, "atomic" };
-            yield return new object[] { @"^(){3,5}", RegexOptions.None, "characterless" };
-            yield return new object[] { @"^", RegexOptions.None, "characterless" };
-            yield return new object[] { @"\Z", RegexOptions.None, "characterless" };
-            yield return new object[] { @"$", RegexOptions.None, "characterless" };
-            yield return new object[] { @"\z", RegexOptions.None, "characterless" };
-            yield return new object[] { @"\b", RegexOptions.None, "characterless" };
-            yield return new object[] { @"\B", RegexOptions.None, "characterless" };
-            yield return new object[] { @"\A\Z", RegexOptions.None, "characterless" }; 
+            //yield return new object[] { @"^(){3,5}", RegexOptions.None, "characterless" };
+            //yield return new object[] { @"^", RegexOptions.None, "characterless" };
+            //yield return new object[] { @"\Z", RegexOptions.None, "characterless" };
+            //yield return new object[] { @"$", RegexOptions.None, "characterless" };
+            //yield return new object[] { @"\z", RegexOptions.None, "characterless" };
+            //yield return new object[] { @"\b", RegexOptions.None, "characterless" };
+            //yield return new object[] { @"\B", RegexOptions.None, "characterless" };
+            //yield return new object[] { @"\A\Z", RegexOptions.None, "characterless" }; 
         }
 
         /// <summary>
@@ -1958,8 +2009,8 @@ namespace System.Text.RegularExpressions.Tests
         [InlineData("aba|bab", "baaabbbaba", "(6,9)")]
         [InlineData("(aa|aaa)*|(a|aaaaa)", "aa", "(0,2)(0,2)")]
         [InlineData("(a.|.a.)*|(a|.a...)", "aa", "(0,2)(0,2)")]
-        [InlineData("ab|a", "xabc", "(1,2)")] // is (1,3) in non-DFA mode in AttRegexTests.Test
-        [InlineData("ab|a", "xxabc", "(2,3)")] // is (2,4) in non-DFA mode in AttRegexTests.Test
+        [InlineData("ab|a", "xabc", "(1,3)", "(1,2)")]
+        [InlineData("ab|a", "xxabc", "(2,4)", "(2,3)")]
         [InlineData("(?i)(Ab|cD)*", "aBcD", "(0,4)(2,4)")]
         [InlineData("[^-]", "--a", "(2,3)")]
         [InlineData("[a-]*", "--a", "(0,3)")]
@@ -2125,18 +2176,18 @@ namespace System.Text.RegularExpressions.Tests
         [InlineData("X(.?){6,8}Y", "X1234567Y", "(0,9)(8,8)")] // was "(0,9)(7,8)"
         [InlineData("X(.?){7,8}Y", "X1234567Y", "(0,9)(8,8)")] // was "(0,9)(7,8)"
         [InlineData("X(.?){8,8}Y", "X1234567Y", "(0,9)(8,8)")]
-        [InlineData("(a|ab|c|bcd){0,}(d*)", "ababcd", "(0,1)(1,1)")] // was "(0,6)(3,6)(6,6)"
-        [InlineData("(a|ab|c|bcd){1,}(d*)", "ababcd", "(0,6)")] // is "(0,1)(1,1)" in non DFA mode and was "(0,6)(3,6)(6,6)"
+        [InlineData("(a|ab|c|bcd){0,}(d*)", "ababcd", "(0,1)(1,1)", "(0,6)")] // was "(0,6)(3,6)(6,6)"
+        [InlineData("(a|ab|c|bcd){1,}(d*)", "ababcd", "(0,1)(1,1)", "(0,6)")] // was "(0,6)(3,6)(6,6)"
         [InlineData("(a|ab|c|bcd){2,}(d*)", "ababcd", "(0,6)(3,6)(6,6)")]
         [InlineData("(a|ab|c|bcd){3,}(d*)", "ababcd", "(0,6)(3,6)(6,6)")]
         [InlineData("(a|ab|c|bcd){4,}(d*)", "ababcd", "NOMATCH")]
-        [InlineData("(a|ab|c|bcd){0,10}(d*)", "ababcd", "(0,1)(1,1)")] // was "(0,6)(3,6)(6,6)"
-        [InlineData("(a|ab|c|bcd){1,10}(d*)", "ababcd", "(0,6)")] // is "(0,1)(1,1)" in non DFA mode and was "(0,6)(3,6)(6,6)"
+        [InlineData("(a|ab|c|bcd){0,10}(d*)", "ababcd", "(0,1)(1,1)", "(0,6)")] // was "(0,6)(3,6)(6,6)"
+        [InlineData("(a|ab|c|bcd){1,10}(d*)", "ababcd", "(0,1)(1,1)", "(0,6)")] // was "(0,6)(3,6)(6,6)"
         [InlineData("(a|ab|c|bcd){2,10}(d*)", "ababcd", "(0,6)(3,6)(6,6)")]
         [InlineData("(a|ab|c|bcd){3,10}(d*)", "ababcd", "(0,6)(3,6)(6,6)")]
         [InlineData("(a|ab|c|bcd){4,10}(d*)", "ababcd", "NOMATCH")]
-        [InlineData("(a|ab|c|bcd)*(d*)", "ababcd", "(0,1)(1,1)")] // was "(0,6)(3,6)(6,6)"
-        [InlineData("(a|ab|c|bcd)+(d*)", "ababcd", "(0,6)")] // is "(0,1)(1,1)" in non DFA mode was "(0,6)(3,6)(6,6)"
+        [InlineData("(a|ab|c|bcd)*(d*)", "ababcd", "(0,1)(1,1)", "(0,6)")] // was "(0,6)(3,6)(6,6)"
+        [InlineData("(a|ab|c|bcd)+(d*)", "ababcd", "(0,1)(1,1)", "(0,6)")] // was "(0,6)(3,6)(6,6)"
         [InlineData("(ab|a|c|bcd){0,}(d*)", "ababcd", "(0,6)(4,5)(5,6)")] // was "(0,6)(3,6)(6,6)"
         [InlineData("(ab|a|c|bcd){1,}(d*)", "ababcd", "(0,6)(4,5)(5,6)")] // was "(0,6)(3,6)(6,6)"
         [InlineData("(ab|a|c|bcd){2,}(d*)", "ababcd", "(0,6)(4,5)(5,6)")] // was "(0,6)(3,6)(6,6)"
@@ -2207,7 +2258,7 @@ namespace System.Text.RegularExpressions.Tests
         [InlineData("(a*){2}(x)", "x", "(0,1)(0,0)(0,1)")]
         [InlineData("(a*){2}(x)", "ax", "(0,2)(1,1)(1,2)")]
         [InlineData("(a*){2}(x)", "axa", "(0,2)(1,1)(1,2)")]
-        public void Test(string pattern, string input, string captures)
+        public void Test(string pattern, string input, string captures, string dfa_match = null)
         {
             if (input == "NULL")
             {
@@ -2216,6 +2267,12 @@ namespace System.Text.RegularExpressions.Tests
 
             foreach (RegexOptions options in new[] { DFA })
             {
+                if ((options & DFA) != 0 && dfa_match != null)
+                {
+                    //dfa_match value overrides the expected result in DFA mode
+                    captures = dfa_match;
+                }
+
                 if (captures == "BADBR")
                 {
                     // should be RegexParseException that is not an ArgumentException

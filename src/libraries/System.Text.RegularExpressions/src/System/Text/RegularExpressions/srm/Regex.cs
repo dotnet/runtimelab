@@ -30,10 +30,6 @@ namespace System.Text.RegularExpressions.SRM
             RegexToAutomatonConverter<BDD> converter = new RegexToAutomatonConverter<BDD>(s_unicode, theculture);
             CharSetSolver solver = (CharSetSolver)s_unicode.solver;
             var root = converter.ConvertNodeToSymbolicRegex(rootNode, true);
-            if (!root.info.ContainsSomeCharacter)
-                throw new NotSupportedException(_DFA_incompatible_with + "characterless pattern");
-            if (root.info.CanBeNullable)
-                throw new NotSupportedException(_DFA_incompatible_with + "pattern allowing 0-length match");
 
             var partition = root.ComputeMinterms();
             if (partition.Length > 64)
