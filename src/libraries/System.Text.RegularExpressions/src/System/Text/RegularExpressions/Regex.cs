@@ -318,6 +318,10 @@ namespace System.Text.RegularExpressions
         /// </summary>
         public string[] GetGroupNames()
         {
+            //in DFA mode there is a single top level groupname "0"
+            if (_useSRM)
+                return new string[] { "0" };
+
             string[] result;
 
             if (capslist is null)
@@ -341,6 +345,10 @@ namespace System.Text.RegularExpressions
         /// </summary>
         public int[] GetGroupNumbers()
         {
+            //in DFA mode there is a single top level group 0
+            if (_useSRM)
+                return new int[] { 0 };
+
             int[] result;
 
             if (caps is null)

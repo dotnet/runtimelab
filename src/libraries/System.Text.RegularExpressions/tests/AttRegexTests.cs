@@ -72,6 +72,9 @@ namespace System.Text.RegularExpressions.Tests
 {
     public class AttRegexTests
     {
+
+        private static RegexOptions DFA = (RegexOptions)0x400;
+
         [Theory]
 
         // basic.dat
@@ -117,8 +120,8 @@ namespace System.Text.RegularExpressions.Tests
         [InlineData("aba|bab", "baaabbbaba", "(6,9)")]
         [InlineData("(aa|aaa)*|(a|aaaaa)", "aa", "(0,2)(0,2)")]
         [InlineData("(a.|.a.)*|(a|.a...)", "aa", "(0,2)(0,2)")]
-        [InlineData("ab|a", "xabc", "(1,3)")]
-        [InlineData("ab|a", "xxabc", "(2,4)")]
+        [InlineData("ab|a", "xabc", "(1,3)", "(1,2)")]
+        [InlineData("ab|a", "xxabc", "(2,4)", "(2,3)")]
         [InlineData("(?i)(Ab|cD)*", "aBcD", "(0,4)(2,4)")]
         [InlineData("[^-]", "--a", "(2,3)")]
         [InlineData("[a-]*", "--a", "(0,3)")]
@@ -284,18 +287,18 @@ namespace System.Text.RegularExpressions.Tests
         [InlineData("X(.?){6,8}Y", "X1234567Y", "(0,9)(8,8)")] // was "(0,9)(7,8)"
         [InlineData("X(.?){7,8}Y", "X1234567Y", "(0,9)(8,8)")] // was "(0,9)(7,8)"
         [InlineData("X(.?){8,8}Y", "X1234567Y", "(0,9)(8,8)")]
-        [InlineData("(a|ab|c|bcd){0,}(d*)", "ababcd", "(0,1)(1,1)")] // was "(0,6)(3,6)(6,6)"
-        [InlineData("(a|ab|c|bcd){1,}(d*)", "ababcd", "(0,1)(1,1)")] // was "(0,6)(3,6)(6,6)"
+        [InlineData("(a|ab|c|bcd){0,}(d*)", "ababcd", "(0,1)(1,1)", "(0,6)")] // was "(0,6)(3,6)(6,6)"
+        [InlineData("(a|ab|c|bcd){1,}(d*)", "ababcd", "(0,1)(1,1)", "(0,6)")] // was "(0,6)(3,6)(6,6)"
         [InlineData("(a|ab|c|bcd){2,}(d*)", "ababcd", "(0,6)(3,6)(6,6)")]
         [InlineData("(a|ab|c|bcd){3,}(d*)", "ababcd", "(0,6)(3,6)(6,6)")]
         [InlineData("(a|ab|c|bcd){4,}(d*)", "ababcd", "NOMATCH")]
-        [InlineData("(a|ab|c|bcd){0,10}(d*)", "ababcd", "(0,1)(1,1)")] // was "(0,6)(3,6)(6,6)"
-        [InlineData("(a|ab|c|bcd){1,10}(d*)", "ababcd", "(0,1)(1,1)")] // was "(0,6)(3,6)(6,6)"
+        [InlineData("(a|ab|c|bcd){0,10}(d*)", "ababcd", "(0,1)(1,1)", "(0,6)")] // was "(0,6)(3,6)(6,6)"
+        [InlineData("(a|ab|c|bcd){1,10}(d*)", "ababcd", "(0,1)(1,1)", "(0,6)")] // was "(0,6)(3,6)(6,6)"
         [InlineData("(a|ab|c|bcd){2,10}(d*)", "ababcd", "(0,6)(3,6)(6,6)")]
         [InlineData("(a|ab|c|bcd){3,10}(d*)", "ababcd", "(0,6)(3,6)(6,6)")]
         [InlineData("(a|ab|c|bcd){4,10}(d*)", "ababcd", "NOMATCH")]
-        [InlineData("(a|ab|c|bcd)*(d*)", "ababcd", "(0,1)(1,1)")] // was "(0,6)(3,6)(6,6)"
-        [InlineData("(a|ab|c|bcd)+(d*)", "ababcd", "(0,1)(1,1)")] // was "(0,6)(3,6)(6,6)"
+        [InlineData("(a|ab|c|bcd)*(d*)", "ababcd", "(0,1)(1,1)", "(0,6)")] // was "(0,6)(3,6)(6,6)"
+        [InlineData("(a|ab|c|bcd)+(d*)", "ababcd", "(0,1)(1,1)", "(0,6)")] // was "(0,6)(3,6)(6,6)"
         [InlineData("(ab|a|c|bcd){0,}(d*)", "ababcd", "(0,6)(4,5)(5,6)")] // was "(0,6)(3,6)(6,6)"
         [InlineData("(ab|a|c|bcd){1,}(d*)", "ababcd", "(0,6)(4,5)(5,6)")] // was "(0,6)(3,6)(6,6)"
         [InlineData("(ab|a|c|bcd){2,}(d*)", "ababcd", "(0,6)(4,5)(5,6)")] // was "(0,6)(3,6)(6,6)"
@@ -353,11 +356,11 @@ namespace System.Text.RegularExpressions.Tests
         [InlineData("(a)*?", "aaa", "(0,0)")]
         [InlineData("(a*?)*?", "aaa", "(0,0)")]
         [InlineData("(a*)*(x)", "x", "(0,1)(0,0)(0,1)")]
-        [InlineData("(a*)*(x)(\\1)", "x", "(0,1)(0,0)(0,1)(1,1)")]
-        [InlineData("(a*)*(x)(\\1)", "ax", "(0,2)(1,1)(1,2)(2,2)")]
-        [InlineData("(a*)*(x)(\\1)", "axa", "(0,2)(1,1)(1,2)(2,2)")] // was "(0,3)(0,1)(1,2)(2,3)"
-        [InlineData("(a*)*(x)(\\1)(x)", "axax", "(0,4)(0,1)(1,2)(2,3)(3,4)")]
-        [InlineData("(a*)*(x)(\\1)(x)", "axxa", "(0,3)(1,1)(1,2)(2,2)(2,3)")]
+        [InlineData("(a*)*(x)(\\1)", "x", "(0,1)(0,0)(0,1)(1,1)", "DFAINCOMPATIBLE")]
+        [InlineData("(a*)*(x)(\\1)", "ax", "(0,2)(1,1)(1,2)(2,2)", "DFAINCOMPATIBLE")]
+        [InlineData("(a*)*(x)(\\1)", "axa", "(0,2)(1,1)(1,2)(2,2)", "DFAINCOMPATIBLE")] // was "(0,3)(0,1)(1,2)(2,3)"
+        [InlineData("(a*)*(x)(\\1)(x)", "axax", "(0,4)(0,1)(1,2)(2,3)(3,4)", "DFAINCOMPATIBLE")]
+        [InlineData("(a*)*(x)(\\1)(x)", "axxa", "(0,3)(1,1)(1,2)(2,2)(2,3)", "DFAINCOMPATIBLE")]
         [InlineData("(a*)*(x)", "ax", "(0,2)(1,1)(1,2)")]
         [InlineData("(a*)*(x)", "axa", "(0,2)(1,1)(1,2)")] // was "(0,2)(0,1)(1,2)"
         [InlineData("(a*)+(x)", "x", "(0,1)(0,0)(0,1)")]
@@ -366,15 +369,21 @@ namespace System.Text.RegularExpressions.Tests
         [InlineData("(a*){2}(x)", "x", "(0,1)(0,0)(0,1)")]
         [InlineData("(a*){2}(x)", "ax", "(0,2)(1,1)(1,2)")]
         [InlineData("(a*){2}(x)", "axa", "(0,2)(1,1)(1,2)")]
-        public void Test(string pattern, string input, string captures)
+        public void Test(string pattern, string input, string nondfa_captures, string dfa_match = null)
         {
             if (input == "NULL")
             {
                 input = "";
             }
 
-            foreach (RegexOptions options in new[] { RegexOptions.None, RegexOptions.Compiled })
+            foreach (RegexOptions options in new[] { DFA, DFA | RegexOptions.Multiline, RegexOptions.None, RegexOptions.Compiled })
             {
+                string captures = nondfa_captures;
+                bool dfa_mode = ((options & DFA) != 0);
+                if (dfa_mode && dfa_match != null)
+                    //dfa_match value overrides the expected result in DFA mode
+                    captures = dfa_match;
+
                 if (captures == "BADBR")
                 {
                     Assert.ThrowsAny<ArgumentException>(() => Regex.IsMatch(input, pattern, options));
@@ -382,6 +391,11 @@ namespace System.Text.RegularExpressions.Tests
                 else if (captures == "NOMATCH")
                 {
                     Assert.False(Regex.IsMatch(input, pattern, options));
+                }
+                else if (dfa_mode && dfa_match == "DFAINCOMPATIBLE")
+                {
+                    //In particular: backreferences are not supported in DFA mode
+                    Assert.ThrowsAny<NotSupportedException>(() => Regex.IsMatch(input, pattern, options));
                 }
                 else
                 {
@@ -405,8 +419,9 @@ namespace System.Text.RegularExpressions.Tests
                         .OrderBy(g => g.start)
                         .ThenBy(g => g.end));
 
-                    // The .NET implementation sometimes has extra captures beyond what the original data specifies, so we assert a subset.
-                    if (!expected.IsSubsetOf(actual))
+                    // DFA mode only provides the top-level match.
+                    // Else, the .NET implementation sometimes has extra captures beyond what the original data specifies, so we assert a subset.
+                    if (dfa_mode ? !actual.IsSubsetOf(expected) : !expected.IsSubsetOf(actual))
                     {
                         throw new Xunit.Sdk.XunitException($"Actual: {string.Join(", ", actual)}{Environment.NewLine}Expected: {string.Join(", ", expected)}");
                     }
