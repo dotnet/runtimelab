@@ -14,11 +14,11 @@
     <DefineConstants>SYSTEM_PRIVATE_CORELIB;FEATURE_MANAGED_ETW_CHANNELS;FEATURE_MANAGED_ETW;$(DefineConstants)</DefineConstants>
     <SkipCommonResourcesIncludes>true</SkipCommonResourcesIncludes>
     <TargetsCoreRT>true</TargetsCoreRT>
-    <UseSyncTable>true</UseSyncTable>
     <RuntimeBasePath>..\..\Runtime.Base\src\</RuntimeBasePath>
   </PropertyGroup>
 
   <PropertyGroup>
+    <UseSyncTable>true</UseSyncTable>
     <DefineConstants Condition="'$(UseSyncTable)' == 'true'">FEATURE_SYNCTABLE;$(DefineConstants)</DefineConstants>
   </PropertyGroup>
   <PropertyGroup>
@@ -32,6 +32,10 @@
   <PropertyGroup>
     <FeatureHardwareIntrinsics>true</FeatureHardwareIntrinsics>
     <FeatureSharedLowLevelLock>true</FeatureSharedLowLevelLock>
+  </PropertyGroup>
+  <PropertyGroup>
+    <FeatureGenericMath>true</FeatureGenericMath>
+    <DefineConstants Condition="'$(FeatureGenericMath)' == 'true'">$(DefineConstants);FEATURE_GENERIC_MATH</DefineConstants>
   </PropertyGroup>
 
   <!-- Sources -->
