@@ -8,17 +8,24 @@ namespace System.Text.RegularExpressions
     public partial class Regex
     {
         /// <summary>
-        /// This method is called and the SRM related classes should be loaded only if _useSRM is true
+        /// This method is called and the SRM is used only if _useSRM is true
         /// </summary>
         [MethodImpl(MethodImplOptions.NoInlining)]
-        internal Match? RunSRM(bool quick, string input, int beg, int startat, int length)
+        internal Match? RunSRM(bool quick, string input, int beg, int startat, int length, int prevlen)
         {
-            int endat = Math.Min(beg + length, input.Length) - 1;
+            int k = beg + length;
 
-            if (startat > endat)
-                return System.Text.RegularExpressions.Match.Empty;
+            // If the previous match was empty, advance by one before matching
+            // or terminate the matching if there is no remaining input to search in
+            if (prevlen == 0)
+            {
+                if (startat == k)
+                    return RegularExpressions.Match.Empty;
 
-            var match = _srm._matcher.FindMatch(quick, input, startat, endat);
+                startat += 1;
+            }
+
+            var match = _srm._matcher.FindMatch(quick, input, startat, k);
             if (quick)
             {
                 if (match is null)

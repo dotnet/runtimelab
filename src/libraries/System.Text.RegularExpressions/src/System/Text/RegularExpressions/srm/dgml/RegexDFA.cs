@@ -20,10 +20,10 @@ namespace System.Text.RegularExpressions.SRM.DGML
         internal RegexDFA(SymbolicRegexMatcher<S> srm, int bound,  bool addDotStar, bool inReverse)
         {
             _builder = srm.builder;
-            CharKindId startId = (inReverse ? (srm.Ar.info.StartsWithLineAnchor ? CharKindId.End : CharKindId.None)
-                                            : (srm.A.info.StartsWithLineAnchor ? CharKindId.Start : CharKindId.None));
+            uint startId = (inReverse ? (srm.Ar.info.StartsWithLineAnchor ? CharKind.StartStop : 0)
+                                            : (srm.A.info.StartsWithLineAnchor ? CharKind.StartStop : 0));
             //inReverse only matters if Ar contains some line anchor
-            _q0 = State<S>.MkState(inReverse ? srm.Ar : (addDotStar ? srm.A1 : srm.A), startId, srm.A.info.ContainsLineAnchor ? inReverse : false);
+            _q0 = State<S>.MkState(inReverse ? srm.Ar : (addDotStar ? srm.A1 : srm.A), startId);
             var stack = new Stack<State<S>>();
             stack.Push(_q0);
             _states.Add(_q0.Id);
@@ -73,24 +73,21 @@ namespace System.Text.RegularExpressions.SRM.DGML
 
         public IEnumerable<int> GetStates() => _states;
 
-        public bool IsFinalState(int state) => _builder.statearray[state].IsNullable(_builder.statearray[state].IsReverse ? CharKind.Start : CharKind.End);
+        public bool IsFinalState(int state) => _builder.statearray[state].IsNullable(CharKind.StartStop);
 
         public IEnumerable<Move<S>> GetMoves() => _moves;
 
         private static string HTMLEncodeChars(string s) => s.Replace("&", "&amp;").Replace("\"", "&quot;").Replace("<", "&lt;").Replace(">", "&gt;");
 
-        private const string REVERSE_SYMBOL = "&#x1F501;";
-
         private string ViewState(State<S> state)
         {
             string deriv = HTMLEncodeChars(state.Node.ToString());
-            string info = CharKind.PrettyPrint(state.PrevCharKindId);
-            string rev = state.IsReverse ? REVERSE_SYMBOL + "&#13;" : "";
+            string info = CharKind.PrettyPrint(state.PrevCharKind);
             if (info != string.Empty)
                 info = string.Format("Previous: {0}&#13;", info);
             if (deriv == string.Empty)
                 deriv = "()";
-            return string.Format("{0}{1}{2}", rev, info, deriv);
+            return string.Format("{0}{1}", info, deriv);
         }
     }
 }
