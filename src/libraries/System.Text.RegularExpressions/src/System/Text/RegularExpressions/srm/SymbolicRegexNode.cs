@@ -1647,73 +1647,43 @@ namespace System.Text.RegularExpressions.SRM
 
         /// <summary>
         /// Gets the string prefix that the regex must match or the empty string if such a prefix does not exist.
+        /// Sets ignoreCase = true when the prefix works under case-insensitivity.
+        /// For example if the input prefix is "---" it sets ignoreCase=false,
+        /// if the prefix is "---[aA][bB]" it returns "---AB" and sets ignoreCase=true
         /// </summary>
-        internal string GetFixedPrefix(CharSetSolver css, out bool ignoreCase)
+        internal string GetFixedPrefix(CharSetSolver css, string culture, out bool ignoreCase)
         {
-            #region compute fixedPrefix
             S[] prefix = GetPrefix();
-            if (prefix.Length == 0)
+            BDD[] bdds = Array.ConvertAll(prefix, p => builder.solver.ConvertToCharSet(css, p));
+            //singletons prefix
+            string sing_pref = string.Empty;
+            //ignore-case prefix
+            string ic_pref = string.Empty;
+            for (int i = 0; i < bdds.Length; i++)
+            {
+                if (!css.IsSingleton(bdds[i]))
+                    break;
+
+                sing_pref = sing_pref + ((char)bdds[i].GetMin()).ToString();
+            }
+            for (int i = 0; i < bdds.Length; i++)
+            {
+                if (!css.ApplyIgnoreCase(css.MkCharConstraint((char)bdds[i].GetMin()), culture).Equals(bdds[i]))
+                    break;
+
+                ic_pref = ic_pref + ((char)bdds[i].GetMin()).ToString();
+            }
+            //return the longer of the two prefixes, prefer the case-sensitive setting
+            if (sing_pref.Length >= ic_pref.Length)
             {
                 ignoreCase = false;
-                return string.Empty;
+                return sing_pref;
             }
             else
             {
-                BDD[] bdds = Array.ConvertAll(prefix, p => builder.solver.ConvertToCharSet(css, p));
-                if (Array.TrueForAll(bdds, x => css.IsSingleton(x)))
-                {
-                    //all elements are singletons
-                    char[] chars = Array.ConvertAll(bdds, x => (char)x.GetMin());
-                    ignoreCase = false;
-                    return new string(chars);
-                }
-                else
-                {
-                    //maps x to itself if x is invariant under ignoring case
-                    //maps x to False otherwise
-                    Func<BDD, BDD> F = x =>
-                    {
-                        char c = (char)x.GetMin();
-                        var y = css.MkCharConstraint(c, true);
-                        if (x == y)
-                            return x;
-                        else
-                            return css.False;
-                    };
-                    BDD[] bdds1 = Array.ConvertAll(bdds, x => F(x));
-                    if (Array.TrueForAll(bdds1, x => !x.IsEmpty))
-                    {
-                        //all elements are singletons up-to-ignoring-case
-                        //choose representatives
-                        char[] chars = Array.ConvertAll(bdds, x => (char)x.GetMin());
-                        ignoreCase = true;
-                        return new string(chars);
-                    }
-                    else
-                    {
-                        List<char> elemsI = new List<char>();
-                        //extract prefix up-to-ignoring-case
-                        for (int i = 0; i < bdds1.Length; i++)
-                        {
-                            if (bdds1[i].IsEmpty)
-                                break;
-                            else
-                                elemsI.Add((char)bdds1[i].GetMin());
-                        }
-                        if (elemsI.Count > 0)
-                        {
-                            ignoreCase = true;
-                            return new string(elemsI.ToArray());
-                        }
-                        else
-                        {
-                            ignoreCase = false;
-                            return string.Empty;
-                        }
-                    }
-                }
+                ignoreCase = true;
+                return ic_pref;
             }
-            #endregion
         }
 
         internal const int maxPrefixLength = RegexBoyerMoore.MaxLimit;

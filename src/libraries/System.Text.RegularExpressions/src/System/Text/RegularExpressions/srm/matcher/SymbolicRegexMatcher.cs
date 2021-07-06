@@ -364,8 +364,8 @@ namespace System.Text.RegularExpressions.SRM
             else
                 this.A_startset_array = Array.Empty<char>();
 
-            this.A_prefix = A.GetFixedPrefix(css, out this.A_fixedPrefix_ignoreCase);
-            this.Ar_prefix = Ar.GetFixedPrefix(css, out _);
+            this.A_prefix = A.GetFixedPrefix(css, culture.Name, out this.A_fixedPrefix_ignoreCase);
+            this.Ar_prefix = Ar.GetFixedPrefix(css, culture.Name, out _);
 
             InitializePrefixBoyerMoore();
 

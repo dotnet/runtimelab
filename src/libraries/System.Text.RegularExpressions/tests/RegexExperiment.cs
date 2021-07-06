@@ -189,7 +189,7 @@ namespace System.Text.RegularExpressions.Tests
         {
             Regex reC = new Regex(rawregex, RegexOptions.Compiled, new TimeSpan(0, 0, 10));
             Regex reN = new Regex(rawregex, RegexOptions.None, new TimeSpan(0, 0, 10));
-            Regex reD = new Regex(rawregex, DFA, new TimeSpan(0, 0, 10));
+            Regex reD = new Regex(rawregex, DFA);
             Match mC;
             Match mN;
             Match mD;
