@@ -71,6 +71,7 @@ namespace System.Reflection.Runtime.Assemblies
             }
         }
 
+        [RequiresAssemblyFiles(Message = "The code will throw for assemblies embedded in a single-file app")]
         public sealed override string CodeBase
         {
             get
