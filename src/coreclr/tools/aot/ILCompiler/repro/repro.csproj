@@ -19,7 +19,7 @@
       <ReproResponseLines Include="$(OutputPath)$(AssemblyName)$(TargetExt)" />
       <ReproResponseLines Include="-o:$(OutputPath)$(AssemblyName).obj" />
       <ReproResponseLines Include="-r:$(RuntimeBinDir)aotsdk\*.dll" />
-      <ReproResponseLines Include="-r:$(ArtifactsDir)bin\pkg\$(BuildTargetFramework)\runtime\windows-$(LibrariesConfiguration)-$(TargetArchitecture)\*.dll" />
+      <ReproResponseLines Include="-r:$(MicrosoftNetCoreAppRuntimePackRidLibTfmDir)*.dll" />
       <ReproResponseLines Include="-g" />
       <ReproResponseLines Include="-O" Condition="'$(Optimize)' == 'true'" />
       <ReproResponseLines Include="--initassembly:System.Private.CoreLib" />
