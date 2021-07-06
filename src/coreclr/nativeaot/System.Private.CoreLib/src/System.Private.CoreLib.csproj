@@ -34,7 +34,8 @@
     <FeatureSharedLowLevelLock>true</FeatureSharedLowLevelLock>
   </PropertyGroup>
   <PropertyGroup>
-    <FeatureGenericMath>true</FeatureGenericMath>
+    <!-- Workaround for https://github.com/dotnet/runtimelab/issues/1301 -->
+    <!-- <FeatureGenericMath>true</FeatureGenericMath> -->
     <DefineConstants Condition="'$(FeatureGenericMath)' == 'true'">$(DefineConstants);FEATURE_GENERIC_MATH</DefineConstants>
   </PropertyGroup>
 
