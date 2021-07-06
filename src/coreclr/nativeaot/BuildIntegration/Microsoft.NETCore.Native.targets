@@ -105,8 +105,8 @@ The .NET Foundation licenses this file to you under the MIT license.
     <_ExcludedPrivateSdkAssemblies Include="$(IlcPath)\sdk\System.Private.Reflection.Core.dll" Condition="$(IlcDisableReflection) == 'true'" />
     <PrivateSdkAssemblies Include="$(IlcPath)\sdk\*.dll" Exclude="@(_ExcludedPrivateSdkAssemblies)"/>
 
-    <!-- Exclude System.IO.Compression.Native.dll -->
-    <FrameworkAssemblies Include="$(IlcPath)\framework\*.dll" Exclude="$(IlcPath)\framework\*.Native.dll" />
+    <!-- Exclude unmanaged dlls -->
+    <FrameworkAssemblies Include="$(IlcPath)\framework\*.dll" Exclude="$(IlcPath)\framework\*.Native.dll;$(IlcPath)\framework\msquic.dll" />
 
     <MibcFile Include="$(IlcPath)\mibc\*.mibc" Condition="'$(IlcPgoOptimize)' == 'true'" />
 
@@ -140,8 +140,8 @@ The .NET Foundation licenses this file to you under the MIT license.
       <_ExcludedPrivateSdkAssemblies Include="$(IlcPath)\sdk\System.Private.Reflection.Core.dll" Condition="$(IlcDisableReflection) == 'true'" />
       <PrivateSdkAssemblies Include="$(IlcPath)\sdk\*.dll" Exclude="@(_ExcludedPrivateSdkAssemblies)"/>
 
-      <!-- Exclude System.IO.Compression.Native.dll -->
-      <FrameworkAssemblies Include="$(IlcPath)\framework\*.dll" Exclude="$(IlcPath)\framework\*.Native.dll" />
+      <!-- Exclude unmanaged dlls -->
+      <FrameworkAssemblies Include="$(IlcPath)\framework\*.dll" Exclude="$(IlcPath)\framework\*.Native.dll;$(IlcPath)\framework\msquic.dll" />
 
       <MibcFile Include="$(IlcPath)\mibc\*.mibc" Condition="'$(IlcPgoOptimize)' == 'true'" />
 
