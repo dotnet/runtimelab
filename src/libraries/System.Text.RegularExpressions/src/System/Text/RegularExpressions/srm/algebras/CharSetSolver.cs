@@ -34,6 +34,11 @@ namespace System.Text.RegularExpressions.SRM
 
         private Unicode.IgnoreCaseTransformer _IgnoreCase;
 
+        public BDD ApplyIgnoreCase(BDD set, string culture = null)
+        {
+            return _IgnoreCase.Apply(set, culture);
+        }
+
         /// <summary>
         /// Make a character predicate for the given character c.
         /// </summary>
