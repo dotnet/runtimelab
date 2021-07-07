@@ -351,7 +351,7 @@ namespace Microsoft.Interop.Analyzers
                 if (nativeType is not INamedTypeSymbol marshalerType)
                 {
                     context.ReportDiagnostic(
-                        nativeMarshalerAttributeData.CreateDiagnostic(
+                        GetDiagnosticLocations(context, nativeType, nativeMarshalerAttributeData).CreateDiagnostic(
                             NativeTypeMustHaveRequiredShapeRule,
                             nativeType.ToDisplayString(),
                             type.ToDisplayString()));
@@ -369,7 +369,7 @@ namespace Microsoft.Interop.Analyzers
                         || !ManualTypeMarshallingHelper.HasNativeValueStorageProperty(marshalerType, SpanOfByte))
                     {
                         context.ReportDiagnostic(
-                            marshalerType.CreateDiagnostic(
+                            GetDiagnosticLocations(context, marshalerType, nativeMarshalerAttributeData).CreateDiagnostic(
                                 requiredShapeRule,
                                 nativeType.ToDisplayString(),
                                 type.ToDisplayString()));
@@ -432,7 +432,7 @@ namespace Microsoft.Interop.Analyzers
                         if (stackAllocSizeField is null or { DeclaredAccessibility: not Accessibility.Public } or { IsConst: false } or { Type: not { SpecialType: SpecialType.System_Int32 } })
                         {
                             context.ReportDiagnostic(
-                                ctor.CreateDiagnostic(
+                                GetDiagnosticLocations(context, ctor, nativeMarshalerAttributeData).CreateDiagnostic(
                                     StackallocConstructorMustHaveStackBufferSizeConstantRule,
                                     nativeType.ToDisplayString()));
                         }
@@ -445,7 +445,7 @@ namespace Microsoft.Interop.Analyzers
                 if (!hasConstructor && !hasStackallocConstructor && !hasToManaged)
                 {
                     context.ReportDiagnostic(
-                        marshalerType.CreateDiagnostic(
+                        GetDiagnosticLocations(context, marshalerType, nativeMarshalerAttributeData).CreateDiagnostic(
                             requiredShapeRule,
                             marshalerType.ToDisplayString(),
                             type.ToDisplayString()));
@@ -455,7 +455,7 @@ namespace Microsoft.Interop.Analyzers
                 if (defaultMarshaller && hasStackallocConstructor && !hasConstructor)
                 {
                     context.ReportDiagnostic(
-                        marshalerType.CreateDiagnostic(
+                        GetDiagnosticLocations(context, marshalerType, nativeMarshalerAttributeData).CreateDiagnostic(
                             StackallocMarshallingShouldSupportAllocatingMarshallingFallbackRule,
                             marshalerType.ToDisplayString()));
                 }
@@ -468,7 +468,7 @@ namespace Microsoft.Interop.Analyzers
                     if (valuePropertyIsRefReturn)
                     {
                         context.ReportDiagnostic(
-                            valueProperty.CreateDiagnostic(
+                            GetDiagnosticLocations(context, valueProperty, nativeMarshalerAttributeData).CreateDiagnostic(
                                 RefValuePropertyUnsupportedRule,
                                 marshalerType.ToDisplayString()));
                     }
@@ -483,14 +483,14 @@ namespace Microsoft.Interop.Analyzers
                     if ((hasConstructor || hasStackallocConstructor) && valueProperty.GetMethod is null)
                     {
                         context.ReportDiagnostic(
-                            valueProperty.CreateDiagnostic(
+                            GetDiagnosticLocations(context, valueProperty, nativeMarshalerAttributeData).CreateDiagnostic(
                                 ValuePropertyMustHaveGetterRule,
                                 marshalerType.ToDisplayString()));
                     }
                     if (hasToManaged && valueProperty.SetMethod is null)
                     {
                         context.ReportDiagnostic(
-                            valueProperty.CreateDiagnostic(
+                            GetDiagnosticLocations(context, valueProperty, nativeMarshalerAttributeData).CreateDiagnostic(
                                 ValuePropertyMustHaveSetterRule,
                                 marshalerType.ToDisplayString()));
                     }
@@ -499,7 +499,7 @@ namespace Microsoft.Interop.Analyzers
                 if (!nativeType.IsConsideredBlittable())
                 {
                     context.ReportDiagnostic(
-                        nativeTypeDiagnosticsTargetSymbol.CreateDiagnostic(
+                        GetDiagnosticLocations(context, nativeTypeDiagnosticsTargetSymbol, nativeMarshalerAttributeData).CreateDiagnostic(
                             NativeTypeMustBeBlittableRule,
                             nativeType.ToDisplayString(),
                             type.ToDisplayString()));
@@ -539,11 +539,23 @@ namespace Microsoft.Interop.Analyzers
                     IMethodSymbol getPinnableReferenceMethodToMention = getPinnableReferenceMethods.Managed ?? getPinnableReferenceMethods.Marshaler!;
 
                     context.ReportDiagnostic(
-                        nativeTypeDiagnosticsTargetSymbol.CreateDiagnostic(
+                        GetDiagnosticLocations(context, nativeTypeDiagnosticsTargetSymbol, nativeMarshalerAttributeData).CreateDiagnostic(
                             NativeTypeMustBePointerSizedRule,
                             nativeType.ToDisplayString(),
                             getPinnableReferenceMethodToMention.ContainingType.ToDisplayString()));
                 }
+            }
+
+            private ImmutableArray<Location> GetDiagnosticLocations(SymbolAnalysisContext context, ISymbol targetSymbol, AttributeData marshallingAttribute)
+            {
+                // If we're using a compilation that references another compilation, the symbol locations can be in source in the wrong compilation,
+                // which can cause exceptions when reporting diagnostics. Make sure the symbol is defined in the current Compilation's source module before using its locations.
+                // If the symbol is not defined in the current Compilation's source module, report the diagnostic at the marshalling attribute's location.
+                if (SymbolEqualityComparer.Default.Equals(context.Compilation.SourceModule, targetSymbol.ContainingModule))
+                {
+                    return targetSymbol.Locations;
+                }
+                return ImmutableArray.Create(marshallingAttribute.ApplicationSyntaxReference?.GetSyntax().GetLocation() ?? Location.None);
             }
         }
     }
