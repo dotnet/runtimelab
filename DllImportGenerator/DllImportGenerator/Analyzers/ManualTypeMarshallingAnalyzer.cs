@@ -497,6 +497,7 @@ namespace Microsoft.Interop.Analyzers
             {
                 // If we're using a compilation that references another compilation, the symbol locations can be in source in the wrong compilation,
                 // which can cause exceptions when reporting diagnostics. Make sure the symbol is defined in the current Compilation's source module before using its locations.
+                // If the symbol is not defined in the current Compilation's source module, report the diagnostic at the marshalling attribute's location.
                 if (SymbolEqualityComparer.Default.Equals(context.Compilation.SourceModule, targetSymbol.ContainingModule))
                 {
                     return targetSymbol.Locations;
