@@ -375,6 +375,12 @@ namespace Microsoft.Interop
                 return null;
             }
             IParameterSymbol param = method.Parameters[paramIndex];
+
+            if (inspectedElements.Contains(param.Name))
+            {
+                throw new CyclicalCountElementInfoException(inspectedElements, param.Name);
+            }
+
             try
             {
                 return TypePositionInfo.CreateForParameter(
