@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <NoWarn>$(NoWarn),1718,SYSLIB0013</NoWarn>
@@ -84,6 +84,8 @@
     <Compile Include="System\FormattableStringTests.cs" />
     <Compile Include="System\FormatExceptionTests.cs" />
     <Compile Include="System\GCTests.cs" />
+    <!-- Workaround for https://github.com/dotnet/runtimelab/issues/1301 -->
+    <!-- <Compile Include="System\GenericMathTests.cs" /> -->
     <Compile Include="System\GuidTests.cs" />
     <Compile Include="System\HalfTests.cs" />
     <Compile Include="System\HandleTests.cs" />
@@ -91,6 +93,8 @@
     <Compile Include="System\IndexOutOfRangeExceptionTests.cs" />
     <Compile Include="System\IndexTests.cs" />
     <Compile Include="System\Int16Tests.cs" />
+    <!-- Workaround for https://github.com/dotnet/runtimelab/issues/1301 -->
+    <!-- <Compile Include="System\Int32GenericMathTests.cs" /> -->
     <Compile Include="System\Int32Tests.cs" />
     <Compile Include="System\Int64Tests.cs" />
     <Compile Include="System\IntPtrTests.cs" />
