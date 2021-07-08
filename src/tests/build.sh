@@ -578,6 +578,10 @@ if [[ "${__BuildArch}" != "${__HostArch}" ]]; then
     __CrossBuild=1
 fi
 
+if [[ "$__CrossBuild" == 1 ]]; then
+    __UnprocessedBuildArgs+=("/p:CrossBuild=true")
+fi
+
 # Set dependent variables
 __LogsDir="$__RootBinDir/log"
 __MsbuildDebugLogsDir="$__LogsDir/MsbuildDebugLogs"
