@@ -30,6 +30,25 @@
 #define __PN__MACHINECALL_CDECL_OR_DEFAULT __cdecl
 #endif
 
+#ifndef _MSC_VER
+
+// Note:  Win32-hosted GCC predefines __stdcall and __cdecl, but Unix-
+// hosted GCC does not.
+
+#ifdef __i386__
+
+#if !defined(__cdecl)
+#define __cdecl        __attribute__((cdecl))
+#endif
+
+#else   // !defined(__i386__)
+
+#define __cdecl
+
+#endif  // !defined(__i386__)
+
+#endif // !_MSC_VER
+
 #ifndef _INC_WINDOWS
 //#ifndef DACCESS_COMPILE
 
