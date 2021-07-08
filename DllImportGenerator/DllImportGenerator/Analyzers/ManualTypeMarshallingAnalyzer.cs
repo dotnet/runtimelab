@@ -287,7 +287,7 @@ namespace Microsoft.Interop.Analyzers
                 }
                 else if (nativeMarshallingAttributeData is not null)
                 {
-                    AnalyzeNativeMarshalerType(context, type, nativeMarshallingAttributeData, defaultMarshaller:true);
+                    AnalyzeNativeMarshalerType(context, type, nativeMarshallingAttributeData, isNativeMarshallingAttribute:true);
                 }
             }
 
@@ -309,11 +309,11 @@ namespace Microsoft.Interop.Analyzers
                 {
                     if (context.Symbol is IParameterSymbol param)
                     {
-                        AnalyzeNativeMarshalerType(context, param.Type, attrData, defaultMarshaller: false);
+                        AnalyzeNativeMarshalerType(context, param.Type, attrData, isNativeMarshallingAttribute: false);
                     }
                     else if (context.Symbol is IFieldSymbol field)
                     {
-                        AnalyzeNativeMarshalerType(context, field.Type, attrData, defaultMarshaller: false);
+                        AnalyzeNativeMarshalerType(context, field.Type, attrData, isNativeMarshallingAttribute: false);
                     }
                 }
             }
@@ -324,11 +324,11 @@ namespace Microsoft.Interop.Analyzers
                 AttributeData? attrData = method.GetReturnTypeAttributes().FirstOrDefault(attr => SymbolEqualityComparer.Default.Equals(MarshalUsingAttribute, attr.AttributeClass));
                 if (attrData is not null)
                 {
-                    AnalyzeNativeMarshalerType(context, method.ReturnType, attrData, defaultMarshaller: false);
+                    AnalyzeNativeMarshalerType(context, method.ReturnType, attrData, isNativeMarshallingAttribute: false);
                 }
             }
 
-            private void AnalyzeNativeMarshalerType(SymbolAnalysisContext context, ITypeSymbol type, AttributeData nativeMarshalerAttributeData, bool defaultMarshaller)
+            private void AnalyzeNativeMarshalerType(SymbolAnalysisContext context, ITypeSymbol type, AttributeData nativeMarshalerAttributeData, bool isNativeMarshallingAttribute)
             {
                 if (nativeMarshalerAttributeData.ConstructorArguments.Length == 0)
                 {
@@ -380,7 +380,7 @@ namespace Microsoft.Interop.Analyzers
                 if (!nativeType.IsValueType)
                 {
                     context.ReportDiagnostic(
-                        nativeType.CreateDiagnostic(
+                        GetDiagnosticLocations(context, nativeType, nativeMarshalerAttributeData).CreateDiagnostic(
                             requiredShapeRule,
                             nativeType.ToDisplayString(),
                             type.ToDisplayString()));
@@ -389,7 +389,7 @@ namespace Microsoft.Interop.Analyzers
 
                 if (marshalerType.IsUnboundGenericType)
                 {
-                    if (!defaultMarshaller)
+                    if (!isNativeMarshallingAttribute)
                     {
                         context.ReportDiagnostic(
                             nativeMarshalerAttributeData.CreateDiagnostic(
@@ -398,7 +398,7 @@ namespace Microsoft.Interop.Analyzers
                                 type.ToDisplayString()));
                         return;
                     }
-                    else if (type is not INamedTypeSymbol namedType || marshalerType.TypeArguments.Length != namedType.TypeArguments.Length)
+                    if (type is not INamedTypeSymbol namedType || marshalerType.TypeArguments.Length != namedType.TypeArguments.Length)
                     {
                         context.ReportDiagnostic(
                             nativeMarshalerAttributeData.CreateDiagnostic(
@@ -407,11 +407,8 @@ namespace Microsoft.Interop.Analyzers
                                 type.ToDisplayString()));
                         return;
                     }
-                    else
-                    {
-                        // Construct the marshaler type around the same type arguments as the managed type.
-                        nativeType = marshalerType = marshalerType.ConstructedFrom.Construct(namedType.TypeArguments, namedType.TypeArgumentNullableAnnotations);
-                    }
+                    // Construct the marshaler type around the same type arguments as the managed type.
+                    nativeType = marshalerType = marshalerType.ConstructedFrom.Construct(namedType.TypeArguments, namedType.TypeArgumentNullableAnnotations);
                 }
 
                 bool hasConstructor = false;
@@ -452,7 +449,7 @@ namespace Microsoft.Interop.Analyzers
                 }
 
                 // Validate that this type can support marshalling when stackalloc is not usable.
-                if (defaultMarshaller && hasStackallocConstructor && !hasConstructor)
+                if (isNativeMarshallingAttribute && hasStackallocConstructor && !hasConstructor)
                 {
                     context.ReportDiagnostic(
                         GetDiagnosticLocations(context, marshalerType, nativeMarshalerAttributeData).CreateDiagnostic(
@@ -508,7 +505,7 @@ namespace Microsoft.Interop.Analyzers
                 // Use a tuple here instead of an anonymous type so we can do the reassignment and pattern matching below.
                 var getPinnableReferenceMethods = new
                 {
-                    Managed = defaultMarshaller ? ManualTypeMarshallingHelper.FindGetPinnableReference(type) : null,
+                    Managed = isNativeMarshallingAttribute ? ManualTypeMarshallingHelper.FindGetPinnableReference(type) : null,
                     Marshaler = ManualTypeMarshallingHelper.FindGetPinnableReference(marshalerType)
                 };
 
@@ -519,7 +516,7 @@ namespace Microsoft.Interop.Analyzers
                         context.ReportDiagnostic(getPinnableReferenceMethods.Managed.CreateDiagnostic(GetPinnableReferenceReturnTypeBlittableRule));
                     }
                     // Validate that our marshaler supports scenarios where GetPinnableReference cannot be used.
-                    if (defaultMarshaller && (!hasConstructor || valueProperty is { GetMethod: null }))
+                    if (isNativeMarshallingAttribute && (!hasConstructor || valueProperty is { GetMethod: null }))
                     {
                         context.ReportDiagnostic(
                             nativeMarshalerAttributeData.CreateDiagnostic(
