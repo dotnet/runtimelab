@@ -575,14 +575,14 @@ namespace Microsoft.Interop
             {
                 if (isMarshalUsingAttribute)
                 {
-                    _diagnostics.ReportConfigurationNotSupported(attrData, "Native Type", nativeType.ToDisplayString());
+                    _diagnostics.ReportInvalidMarshallingAttributeInfo(attrData, nameof(Resources.NativeGenericTypeMustBeClosedOrMatchArityMessage), nativeType.ToDisplayString());
                     return NoMarshallingInfo.Instance;
                 }
                 else if (type is INamedTypeSymbol namedType)
                 {
                     if (namedType.Arity != nativeType.Arity)
                     {
-                        _diagnostics.ReportConfigurationNotSupported(attrData, "Native Type", nativeType.ToDisplayString());
+                        _diagnostics.ReportInvalidMarshallingAttributeInfo(attrData, nameof(Resources.NativeGenericTypeMustBeClosedOrMatchArityMessage), nativeType.ToDisplayString());
                         return NoMarshallingInfo.Instance;
                     }
                     else
@@ -592,7 +592,7 @@ namespace Microsoft.Interop
                 }
                 else
                 {
-                    _diagnostics.ReportConfigurationNotSupported(attrData, "Native Type", nativeType.ToDisplayString());
+                    _diagnostics.ReportInvalidMarshallingAttributeInfo(attrData, nameof(Resources.NativeGenericTypeMustBeClosedOrMatchArityMessage), nativeType.ToDisplayString());
                     return NoMarshallingInfo.Instance;
                 }
             }
@@ -636,7 +636,12 @@ namespace Microsoft.Interop
 
             if (methods == SupportedMarshallingMethods.None)
             {
-                _diagnostics.ReportConfigurationNotSupported(attrData, "Native Type", nativeType.ToDisplayString());
+                _diagnostics.ReportInvalidMarshallingAttributeInfo(
+                    attrData,
+                    isContiguousCollectionMarshaller ?
+                        nameof(Resources.CollectionNativeTypeMustHaveRequiredShapeMessage)
+                        : nameof(Resources.NativeTypeMustHaveRequiredShapeMessage),
+                    nativeType.ToDisplayString());
                 return NoMarshallingInfo.Instance;
             }
 
@@ -644,13 +649,13 @@ namespace Microsoft.Interop
             {
                 if (!ManualTypeMarshallingHelper.HasNativeValueStorageProperty(nativeType, spanOfByte))
                 {
-                    _diagnostics.ReportConfigurationNotSupported(attrData, "Native Type", nativeType.ToDisplayString());
+                    _diagnostics.ReportInvalidMarshallingAttributeInfo(attrData, nameof(Resources.CollectionNativeTypeMustHaveRequiredShapeMessage), nativeType.ToDisplayString());
                     return NoMarshallingInfo.Instance;
                 }
 
                 if (!ManualTypeMarshallingHelper.TryGetElementTypeFromContiguousCollectionMarshaller(nativeType, out ITypeSymbol elementType))
                 {
-                    _diagnostics.ReportConfigurationNotSupported(attrData, "Native Type", nativeType.ToDisplayString());
+                    _diagnostics.ReportInvalidMarshallingAttributeInfo(attrData, nameof(Resources.CollectionNativeTypeMustHaveRequiredShapeMessage), nativeType.ToDisplayString());
                     return NoMarshallingInfo.Instance;
                 }
 
