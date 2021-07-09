@@ -111,10 +111,9 @@ typedef _Unwind_Reason_Code (*_Unwind_Stop_Fn)
        _Unwind_Exception* exceptionObject,
        struct _Unwind_Context* context);
 
-typedef _Unwind_Reason_Code (*__personality_routine)
-      (_Unwind_State state,
-       _Unwind_Exception* exceptionObject,
-       struct _Unwind_Context* context);
+typedef _Unwind_Reason_Code (*_Unwind_Personality_Fn)(
+    _Unwind_State state, _Unwind_Exception *exceptionObject,
+    struct _Unwind_Context *context);
 #else
 struct _Unwind_Context;   // opaque
 struct _Unwind_Exception; // forward declaration
@@ -150,12 +149,9 @@ typedef _Unwind_Reason_Code (*_Unwind_Stop_Fn)
      struct _Unwind_Context* context,
      void* stop_parameter );
 
-typedef _Unwind_Reason_Code (*__personality_routine)
-      (int version,
-       _Unwind_Action actions,
-       uint64_t exceptionClass,
-       _Unwind_Exception* exceptionObject,
-       struct _Unwind_Context* context);
+typedef _Unwind_Reason_Code (*_Unwind_Personality_Fn)(
+    int version, _Unwind_Action actions, uint64_t exceptionClass,
+    _Unwind_Exception *exceptionObject, struct _Unwind_Context *context);
 #endif
 
 #ifdef __cplusplus
@@ -208,7 +204,7 @@ _Unwind_VRS_Get(_Unwind_Context *context, _Unwind_VRS_RegClass regclass,
 extern _Unwind_VRS_Result
 _Unwind_VRS_Set(_Unwind_Context *context, _Unwind_VRS_RegClass regclass,
                 uint32_t regno, _Unwind_VRS_DataRepresentation representation,
-                void *valuep, uint32_t *pos);
+                void *valuep);
 
 extern _Unwind_VRS_Result
 _Unwind_VRS_Pop(_Unwind_Context *context, _Unwind_VRS_RegClass regclass,
@@ -220,7 +216,7 @@ _Unwind_VRS_Pop(_Unwind_Context *context, _Unwind_VRS_RegClass regclass,
 
 extern uintptr_t _Unwind_GetGR(struct _Unwind_Context *context, int index);
 extern void _Unwind_SetGR(struct _Unwind_Context *context, int index,
-                          uintptr_t new_value, uintptr_t *pos);
+                          uintptr_t new_value);
 extern uintptr_t _Unwind_GetIP(struct _Unwind_Context *context);
 extern void _Unwind_SetIP(struct _Unwind_Context *, uintptr_t new_value);
 
@@ -248,8 +244,8 @@ uintptr_t _Unwind_GetGR(struct _Unwind_Context *context, int index) {
 
 _LIBUNWIND_EXPORT_UNWIND_LEVEL1
 void _Unwind_SetGR(struct _Unwind_Context *context, int index,
-                   uintptr_t value,uintptr_t *pos) {
-  _Unwind_VRS_Set(context, _UVRSC_CORE, (uint32_t)index, _UVRSD_UINT32, &value, pos);
+                   uintptr_t value) {
+  _Unwind_VRS_Set(context, _UVRSC_CORE, (uint32_t)index, _UVRSD_UINT32, &value);
 }
 
 _LIBUNWIND_EXPORT_UNWIND_LEVEL1
@@ -261,7 +257,7 @@ uintptr_t _Unwind_GetIP(struct _Unwind_Context *context) {
 _LIBUNWIND_EXPORT_UNWIND_LEVEL1
 void _Unwind_SetIP(struct _Unwind_Context *context, uintptr_t value) {
   uintptr_t thumb_bit = _Unwind_GetGR(context, 15) & ((uintptr_t)0x1);
-  _Unwind_SetGR(context, 15, value | thumb_bit, NULL);
+  _Unwind_SetGR(context, 15, value | thumb_bit);
 }
 #endif  // defined(_LIBUNWIND_ARM_EHABI)
 
@@ -387,10 +383,9 @@ typedef struct _DISPATCHER_CONTEXT DISPATCHER_CONTEXT;
 #endif
 // This is the common wrapper for GCC-style personality functions with SEH.
 extern EXCEPTION_DISPOSITION _GCC_specific_handler(EXCEPTION_RECORD *exc,
-                                                   void *frame,
-                                                   CONTEXT *ctx,
+                                                   void *frame, CONTEXT *ctx,
                                                    DISPATCHER_CONTEXT *disp,
-                                                   __personality_routine pers);
+                                                   _Unwind_Personality_Fn pers);
 #endif
 
 #ifdef __cplusplus

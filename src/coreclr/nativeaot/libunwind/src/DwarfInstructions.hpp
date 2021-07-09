@@ -34,7 +34,7 @@ public:
   typedef typename A::sint_t sint_t;
 
   static int stepWithDwarf(A &addressSpace, pint_t pc, pint_t fdeStart,
-                           R &registers);
+                           R &registers, bool &isSignalFrame);
 
 private:
 
@@ -55,8 +55,7 @@ private:
                                    const R &registers,
                                    pint_t initialStackValue);
   static pint_t getSavedRegister(A &addressSpace, const R &registers,
-                                 pint_t cfa, const RegisterLocation &savedReg,
-                                 pint_t& location);
+                                 pint_t cfa, const RegisterLocation &savedReg);
   static double getSavedFloatRegister(A &addressSpace, const R &registers,
                                   pint_t cfa, const RegisterLocation &savedReg);
   static v128 getSavedVectorRegister(A &addressSpace, const R &registers,
@@ -79,26 +78,23 @@ private:
 template <typename A, typename R>
 typename A::pint_t DwarfInstructions<A, R>::getSavedRegister(
     A &addressSpace, const R &registers, pint_t cfa,
-    const RegisterLocation &savedReg,
-    typename A::pint_t& location) {
+    const RegisterLocation &savedReg) {
   switch (savedReg.location) {
   case CFI_Parser<A>::kRegisterInCFA:
-    location = cfa + (pint_t)savedReg.value;
-    return (pint_t)addressSpace.getP(location);
+    return (pint_t)addressSpace.getRegister(cfa + (pint_t)savedReg.value);
 
   case CFI_Parser<A>::kRegisterAtExpression:
-    location = evaluateExpression((pint_t)savedReg.value, addressSpace,
-                                  registers, cfa);
-    return (pint_t)addressSpace.getP(location);
+    return (pint_t)addressSpace.getRegister(evaluateExpression(
+        (pint_t)savedReg.value, addressSpace, registers, cfa));
 
   case CFI_Parser<A>::kRegisterIsExpression:
-    location = 0;
     return evaluateExpression((pint_t)savedReg.value, addressSpace,
                               registers, cfa);
-  case CFI_Parser<A>::kRegisterInRegister:
-    location = 0;
-    return registers.getRegister((int)savedReg.value);
 
+  case CFI_Parser<A>::kRegisterInRegister:
+    return registers.getRegister((int)savedReg.value);
+  case CFI_Parser<A>::kRegisterUndefined:
+    return 0;
   case CFI_Parser<A>::kRegisterUnused:
   case CFI_Parser<A>::kRegisterOffsetFromCFA:
     // FIX ME
@@ -122,6 +118,7 @@ double DwarfInstructions<A, R>::getSavedFloatRegister(
 
   case CFI_Parser<A>::kRegisterIsExpression:
   case CFI_Parser<A>::kRegisterUnused:
+  case CFI_Parser<A>::kRegisterUndefined:
   case CFI_Parser<A>::kRegisterOffsetFromCFA:
   case CFI_Parser<A>::kRegisterInRegister:
     // FIX ME
@@ -145,6 +142,7 @@ v128 DwarfInstructions<A, R>::getSavedVectorRegister(
 
   case CFI_Parser<A>::kRegisterIsExpression:
   case CFI_Parser<A>::kRegisterUnused:
+  case CFI_Parser<A>::kRegisterUndefined:
   case CFI_Parser<A>::kRegisterOffsetFromCFA:
   case CFI_Parser<A>::kRegisterInRegister:
     // FIX ME
@@ -155,7 +153,8 @@ v128 DwarfInstructions<A, R>::getSavedVectorRegister(
 
 template <typename A, typename R>
 int DwarfInstructions<A, R>::stepWithDwarf(A &addressSpace, pint_t pc,
-                                           pint_t fdeStart, R &registers) {
+                                           pint_t fdeStart, R &registers,
+                                           bool &isSignalFrame) {
   FDE_Info fdeInfo;
   CIE_Info cieInfo;
   if (CFI_Parser<A>::decodeFDE(addressSpace, fdeStart, &fdeInfo,
@@ -169,7 +168,6 @@ int DwarfInstructions<A, R>::stepWithDwarf(A &addressSpace, pint_t pc,
        // restore registers that DWARF says were saved
       R newRegisters = registers;
       pint_t returnAddress = 0;
-      pint_t returnAddressLocation = 0;
       const int lastReg = R::lastDwarfRegNum();
       assert(static_cast<int>(CFI_Parser<A>::kMaxRegisterNumber) >= lastReg &&
              "register range too large");
@@ -186,31 +184,27 @@ int DwarfInstructions<A, R>::stepWithDwarf(A &addressSpace, pint_t pc,
             newRegisters.setVectorRegister(
                 i, getSavedVectorRegister(addressSpace, registers, cfa,
                                           prolog.savedRegisters[i]));
-          else if (i == (int)cieInfo.returnAddressRegister) {
+          else if (i == (int)cieInfo.returnAddressRegister)
             returnAddress = getSavedRegister(addressSpace, registers, cfa,
-                                             prolog.savedRegisters[i],
-                                             returnAddressLocation);
-            if (registers.validRegister(i)) {
-              newRegisters.setRegister(i, returnAddress, returnAddressLocation);
-            }
-          }
-          else if (registers.validRegister(i)) {
-            pint_t value;
-            pint_t location;
-            value = getSavedRegister(addressSpace, registers, cfa,
-                                     prolog.savedRegisters[i],
-                                     location);
-            
-            newRegisters.setRegister(i, value, location);
-          }
+                                             prolog.savedRegisters[i]);
+          else if (registers.validRegister(i))
+            newRegisters.setRegister(
+                i, getSavedRegister(addressSpace, registers, cfa,
+                                    prolog.savedRegisters[i]));
           else
             return UNW_EBADREG;
+        } else if (i == (int)cieInfo.returnAddressRegister) {
+            // Leaf function keeps the return address in register and there is no
+            // explicit intructions how to restore it.
+            returnAddress = registers.getRegister(cieInfo.returnAddressRegister);
         }
       }
 
       // By definition, the CFA is the stack pointer at the call site, so
       // restoring SP means setting it to CFA.
-      newRegisters.setSP(cfa, 0);
+      newRegisters.setSP(cfa);
+
+      isSignalFrame = cieInfo.isSignalFrame;
 
 #if defined(_LIBUNWIND_TARGET_AARCH64)
       // If the target is aarch64 then the return address may have been signed
@@ -219,7 +213,8 @@ int DwarfInstructions<A, R>::stepWithDwarf(A &addressSpace, pint_t pc,
       // restored. autia1716 is used instead of autia as autia1716 assembles
       // to a NOP on pre-v8.3a architectures.
       if ((R::getArch() == REGISTERS_ARM64) &&
-          prolog.savedRegisters[UNW_ARM64_RA_SIGN_STATE].value) {
+          prolog.savedRegisters[UNW_ARM64_RA_SIGN_STATE].value &&
+          returnAddress != 0) {
 #if !defined(_LIBUNWIND_IS_NATIVE_ONLY)
         return UNW_ECROSSRASIGNING;
 #else
@@ -275,7 +270,7 @@ int DwarfInstructions<A, R>::stepWithDwarf(A &addressSpace, pint_t pc,
 
       // Return address is address after call site instruction, so setting IP to
       // that does simualates a return.
-      newRegisters.setIP(returnAddress, returnAddressLocation);
+      newRegisters.setIP(returnAddress);
 
       // Simulate the step by replacing the register set with the new ones.
       registers = newRegisters;
@@ -446,7 +441,7 @@ DwarfInstructions<A, R>::evaluateExpression(pint_t expression, A &addressSpace,
       // pick from
       reg = addressSpace.get8(p);
       p += 1;
-      value = sp[-reg];
+      value = sp[-(int)reg];
       *(++sp) = value;
       if (log)
         fprintf(stderr, "duplicate %d in stack\n", reg);

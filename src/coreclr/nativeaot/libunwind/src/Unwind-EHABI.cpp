@@ -31,7 +31,13 @@ namespace {
 // signinficant byte.
 uint8_t getByte(const uint32_t* data, size_t offset) {
   const uint8_t* byteData = reinterpret_cast<const uint8_t*>(data);
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
   return byteData[(offset & ~(size_t)0x03) + (3 - (offset & (size_t)0x03))];
+#elif __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+  return byteData[offset];
+#else
+#error "Unable to determine endianess"
+#endif
 }
 
 const char* getNextWord(const char* data, uint32_t* out) {
@@ -215,7 +221,7 @@ decode_eht_entry(const uint32_t* data, size_t* off, size_t* len) {
     // only by the personality routine. Fortunately, all existing assembler
     // implementations, including GNU assembler, LLVM integrated assembler,
     // and ARM assembler, assume that the unwind opcodes come after the
-    // personality routine address.
+    // personality rountine address.
     *off = 1; // First byte is size data.
     *len = (((data[1] >> 24) & 0xff) + 1) * 4;
     data++; // Skip the first word, which is the prel31 offset.
@@ -257,7 +263,7 @@ _Unwind_VRS_Interpret(_Unwind_Context *context, const uint32_t *data,
         sp -= (((uint32_t)byte & 0x3f) << 2) + 4;
       else
         sp += ((uint32_t)byte << 2) + 4;
-      _Unwind_VRS_Set(context, _UVRSC_CORE, UNW_ARM_SP, _UVRSD_UINT32, &sp, NULL);
+      _Unwind_VRS_Set(context, _UVRSC_CORE, UNW_ARM_SP, _UVRSD_UINT32, &sp);
     } else {
       switch (byte & 0xf0) {
         case 0x80: {
@@ -281,7 +287,7 @@ _Unwind_VRS_Interpret(_Unwind_Context *context, const uint32_t *data,
           _Unwind_VRS_Get(context, _UVRSC_CORE, UNW_ARM_R0 + reg,
                           _UVRSD_UINT32, &sp);
           _Unwind_VRS_Set(context, _UVRSC_CORE, UNW_ARM_SP, _UVRSD_UINT32,
-                          &sp, NULL);
+                          &sp);
           break;
         }
         case 0xa0: {
@@ -323,7 +329,7 @@ _Unwind_VRS_Interpret(_Unwind_Context *context, const uint32_t *data,
                               &sp);
               sp += 0x204 + (addend << 2);
               _Unwind_VRS_Set(context, _UVRSC_CORE, UNW_ARM_SP, _UVRSD_UINT32,
-                              &sp, NULL);
+                              &sp);
               break;
             }
             case 0xb3: {
@@ -409,7 +415,7 @@ _Unwind_VRS_Interpret(_Unwind_Context *context, const uint32_t *data,
   if (!wrotePC) {
     uint32_t lr;
     _Unwind_VRS_Get(context, _UVRSC_CORE, UNW_ARM_LR, _UVRSD_UINT32, &lr);
-    _Unwind_VRS_Set(context, _UVRSC_CORE, UNW_ARM_IP, _UVRSD_UINT32, &lr, NULL);
+    _Unwind_VRS_Set(context, _UVRSC_CORE, UNW_ARM_IP, _UVRSD_UINT32, &lr);
   }
   return _URC_CONTINUE_UNWIND;
 }
@@ -477,8 +483,8 @@ unwind_phase1(unw_context_t *uc, unw_cursor_t *cursor, _Unwind_Exception *except
     // If there is a personality routine, ask it if it will want to stop at
     // this frame.
     if (frameInfo.handler != 0) {
-      __personality_routine p =
-          (__personality_routine)(long)(frameInfo.handler);
+      _Unwind_Personality_Fn p =
+          (_Unwind_Personality_Fn)(long)(frameInfo.handler);
       _LIBUNWIND_TRACE_UNWINDING(
           "unwind_phase1(ex_ojb=%p): calling personality function %p",
           static_cast<void *>(exception_object),
@@ -558,7 +564,7 @@ static _Unwind_Reason_Code unwind_phase2(unw_context_t *uc, unw_cursor_t *cursor
       //
       // See #7.4.6 for details.
       __unw_set_reg(cursor, UNW_REG_IP,
-                    exception_object->unwinder_cache.reserved2, NULL);
+                    exception_object->unwinder_cache.reserved2);
       resume = false;
     }
 
@@ -593,8 +599,8 @@ static _Unwind_Reason_Code unwind_phase2(unw_context_t *uc, unw_cursor_t *cursor
 
     // If there is a personality routine, tell it we are unwinding.
     if (frameInfo.handler != 0) {
-      __personality_routine p =
-          (__personality_routine)(long)(frameInfo.handler);
+      _Unwind_Personality_Fn p =
+          (_Unwind_Personality_Fn)(long)(frameInfo.handler);
       struct _Unwind_Context *context = (struct _Unwind_Context *)(cursor);
       // EHABI #7.2
       exception_object->pr_cache.fnstart = frameInfo.start_ip;
@@ -695,7 +701,7 @@ _LIBUNWIND_EXPORT void _Unwind_Complete(_Unwind_Exception* exception_object) {
 /// may force a jump to a landing pad in that function, the landing
 /// pad code may then call _Unwind_Resume() to continue with the
 /// unwinding.  Note: the call to _Unwind_Resume() is from compiler
-/// generated user code.  All other _Unwind_* routines are called
+/// geneated user code.  All other _Unwind_* routines are called
 /// by the C++ runtime __cxa_* routines.
 ///
 /// Note: re-throwing an exception (as opposed to continuing the unwind)
@@ -753,7 +759,7 @@ static uint64_t ValueAsBitPattern(_Unwind_VRS_DataRepresentation representation,
 _LIBUNWIND_EXPORT _Unwind_VRS_Result
 _Unwind_VRS_Set(_Unwind_Context *context, _Unwind_VRS_RegClass regclass,
                 uint32_t regno, _Unwind_VRS_DataRepresentation representation,
-                void *valuep, unw_word_t *pos) {
+                void *valuep) {
   _LIBUNWIND_TRACE_API("_Unwind_VRS_Set(context=%p, regclass=%d, reg=%d, "
                        "rep=%d, value=0x%llX)",
                        static_cast<void *>(context), regclass, regno,
@@ -765,7 +771,7 @@ _Unwind_VRS_Set(_Unwind_Context *context, _Unwind_VRS_RegClass regclass,
       if (representation != _UVRSD_UINT32 || regno > 15)
         return _UVRSR_FAILED;
       return __unw_set_reg(cursor, (unw_regnum_t)(UNW_ARM_R0 + regno),
-                           *(unw_word_t *)valuep,(unw_word_t *)pos) == UNW_ESUCCESS
+                           *(unw_word_t *)valuep) == UNW_ESUCCESS
                  ? _UVRSR_OK
                  : _UVRSR_FAILED;
     case _UVRSC_VFP:
@@ -897,7 +903,6 @@ _Unwind_VRS_Pop(_Unwind_Context *context, _Unwind_VRS_RegClass regclass,
       // computed new stack location. See EHABI #7.5.4 table 3.
       bool poppedSP = false;
       uint32_t* sp;
-      uint32_t* pos;
       if (_Unwind_VRS_Get(context, _UVRSC_CORE, UNW_ARM_SP,
                           _UVRSD_UINT32, &sp) != _UVRSR_OK) {
         return _UVRSR_FAILED;
@@ -905,18 +910,17 @@ _Unwind_VRS_Pop(_Unwind_Context *context, _Unwind_VRS_RegClass regclass,
       for (uint32_t i = 0; i < 16; ++i) {
         if (!(discriminator & static_cast<uint32_t>(1 << i)))
           continue;
-        pos = sp;
         uint32_t value = *sp++;
         if (regclass == _UVRSC_CORE && i == 13)
           poppedSP = true;
         if (_Unwind_VRS_Set(context, regclass, i,
-                            _UVRSD_UINT32, &value, pos) != _UVRSR_OK) {
+                            _UVRSD_UINT32, &value) != _UVRSR_OK) {
           return _UVRSR_FAILED;
         }
       }
       if (!poppedSP) {
         return _Unwind_VRS_Set(context, _UVRSC_CORE, UNW_ARM_SP,
-                               _UVRSD_UINT32, &sp, NULL);
+                               _UVRSD_UINT32, &sp);
       }
       return _UVRSR_OK;
     }
@@ -939,16 +943,23 @@ _Unwind_VRS_Pop(_Unwind_Context *context, _Unwind_VRS_RegClass regclass,
       // format 1", which is equivalent to FSTMD + a padding word.
       for (uint32_t i = first; i < end; ++i) {
         // SP is only 32-bit aligned so don't copy 64-bit at a time.
-        uint64_t value = *sp++;
-        value |= ((uint64_t)(*sp++)) << 32;
-        if (_Unwind_VRS_Set(context, regclass, i, representation, &value, NULL) !=
+        uint64_t w0 = *sp++;
+        uint64_t w1 = *sp++;
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+        uint64_t value = (w1 << 32) | w0;
+#elif __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+        uint64_t value = (w0 << 32) | w1;
+#else
+#error "Unable to determine endianess"
+#endif
+        if (_Unwind_VRS_Set(context, regclass, i, representation, &value) !=
             _UVRSR_OK)
           return _UVRSR_FAILED;
       }
       if (representation == _UVRSD_VFPX)
         ++sp;
       return _Unwind_VRS_Set(context, _UVRSC_CORE, UNW_ARM_SP, _UVRSD_UINT32,
-                             &sp, NULL);
+                             &sp);
     }
   }
   _LIBUNWIND_ABORT("unsupported register class");
