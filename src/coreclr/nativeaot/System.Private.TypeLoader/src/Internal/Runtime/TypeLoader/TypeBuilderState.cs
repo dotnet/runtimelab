@@ -1071,7 +1071,7 @@ namespace Internal.Runtime.TypeLoader
 #if TARGET_ARM
                 if (TypeBeingBuilt is DefType)
                 {
-                    return ((DefType)TypeBeingBuilt).IsHfa;
+                    return ((DefType)TypeBeingBuilt).IsHomogeneousAggregate;
                 }
                 else
                 {

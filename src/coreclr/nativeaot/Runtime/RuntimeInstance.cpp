@@ -447,7 +447,7 @@ COOP_PINVOKE_HELPER(PTR_VOID, RhGetRuntimeHelperForType, (EEType * pEEType, int 
     {
     case RuntimeHelperKind::AllocateObject:
 #ifdef HOST_ARM
-        if ((pEEType->get_RareFlags() & EEType::RareFlags::RequiresAlign8Flag) == EEType::RareFlags::RequiresAlign8Flag)
+        if ((pEEType->RequiresAlign8())
         {
             if (pEEType->HasFinalizer())
                 return INDIRECTION(RhpNewFinalizableAlign8);
