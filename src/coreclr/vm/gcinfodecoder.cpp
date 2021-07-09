@@ -1486,26 +1486,31 @@ OBJECTREF* GcInfoDecoder::GetRegisterSlot(
     _ASSERTE(regNum >= 0 && regNum <= 14);
     _ASSERTE(regNum != 13);  // sp
 
-    uint32_t **ppReg;
+#ifdef FEATURE_REDHAWK
+    PTR_UIntNative* ppReg = &pRD->pR0;
+
+    return (OBJECTREF*)*(ppReg + regNum);
+#else
+    DWORD **ppReg;
 
     if(regNum <= 3)
     {
-        ppReg = &pRD->pR0;
+        ppReg = &pRD->volatileCurrContextPointers.R0;
         return (OBJECTREF*)*(ppReg + regNum);
     }
     else if(regNum == 12)
     {
-        return (OBJECTREF*) pRD->pR12;
+        return (OBJECTREF*) pRD->volatileCurrContextPointers.R12;
     }
     else if(regNum == 14)
     {
-        return (OBJECTREF*) pRD->pLr;
+        return (OBJECTREF*) pRD->pCurrentContextPointers->Lr;
     }
 
-    ppReg = &pRD->pR4;
+    ppReg = &pRD->pCurrentContextPointers->R4;
 
     return (OBJECTREF*)*(ppReg + regNum-4);
-
+#endif
 }
 
 #if defined(TARGET_UNIX) && !defined(FEATURE_REDHAWK)
