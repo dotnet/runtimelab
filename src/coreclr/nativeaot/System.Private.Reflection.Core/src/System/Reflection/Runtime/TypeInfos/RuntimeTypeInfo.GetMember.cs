@@ -118,6 +118,39 @@ namespace System.Reflection.Runtime.TypeInfos
             return null;
         }
 
+        public sealed override MemberInfo GetMemberWithSameMetadataDefinitionAs(MemberInfo member)
+        {
+            if (member is null)
+                throw new ArgumentNullException(nameof(member));
+
+            MemberInfo result = member.MemberType switch
+            {
+                MemberTypes.Method => QueryMemberWithSameMetadataDefinitionAs<MethodInfo>(member),
+                MemberTypes.Constructor => QueryMemberWithSameMetadataDefinitionAs<ConstructorInfo>(member),
+                MemberTypes.Property => QueryMemberWithSameMetadataDefinitionAs<PropertyInfo>(member),
+                MemberTypes.Field => QueryMemberWithSameMetadataDefinitionAs<FieldInfo>(member),
+                MemberTypes.Event => QueryMemberWithSameMetadataDefinitionAs<EventInfo>(member),
+                MemberTypes.NestedType => QueryMemberWithSameMetadataDefinitionAs<Type>(member),
+                _ => null,
+            };
+
+            if (result is null)
+                throw new ArgumentException(SR.Format(SR.Arg_MemberInfoNotFound, member.Name), nameof(member));
+
+            return result;
+        }
+
+        private M QueryMemberWithSameMetadataDefinitionAs<M>(MemberInfo member) where M : MemberInfo
+        {
+            QueryResult<M> members = Query<M>(member.Name, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static);
+            foreach (M candidate in members)
+            {
+                if (candidate.HasSameMetadataDefinitionAs(member))
+                    return candidate;
+            }
+            return null;
+        }
+
         // DynamicallyAccessedMemberTypes.All keeps more data than what a member can use:
         // - Keeps info about interfaces
         // - Complete Nested types (nested type body and all its members including other nested types)
