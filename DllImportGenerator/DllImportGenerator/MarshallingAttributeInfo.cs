@@ -638,8 +638,8 @@ namespace Microsoft.Interop
             {
                 _diagnostics.ReportInvalidMarshallingAttributeInfo(
                     attrData,
-                    isContiguousCollectionMarshaller ?
-                        nameof(Resources.CollectionNativeTypeMustHaveRequiredShapeMessage)
+                    isContiguousCollectionMarshaller
+                        ? nameof(Resources.CollectionNativeTypeMustHaveRequiredShapeMessage)
                         : nameof(Resources.NativeTypeMustHaveRequiredShapeMessage),
                     nativeType.ToDisplayString());
                 return NoMarshallingInfo.Instance;
