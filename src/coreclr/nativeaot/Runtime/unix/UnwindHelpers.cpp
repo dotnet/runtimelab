@@ -190,7 +190,7 @@ struct Registers_REGDISPLAY : REGDISPLAY
     inline   void setVectorRegister(int, ...) { abort(); }
 
     uint64_t  getSP() const { return SP; }
-    void      setSP(uint64_t value, uint64_t location) { SP = value; }
+    void      setSP(uint64_t value) { SP = value; }
 
     uint64_t  getIP() const { return IP; }
 
@@ -316,7 +316,7 @@ struct Registers_REGDISPLAY : REGDISPLAY
     inline double getVectorRegister(int) const { abort(); }
     inline   void setVectorRegister(int, ...) { abort(); }
 
-    void      setSP(uint64_t value, uint64_t location) { SP = value; }
+    void      setSP(uint64_t value) { SP = value; }
 
     uint64_t  getIP() const { return IP; }
 
@@ -349,7 +349,7 @@ public:
     void        setVectorRegister(int num, uint32_t value) {abort();};
     void        jumpto() { abort();};
     uint32_t    getSP() const         { return regs->SP;}
-    void        setSP(uint32_t value, uint32_t location) { regs->SP = value;}
+    void        setSP(uint32_t value) { regs->SP = value;}
     uint32_t    getIP() const         { return regs->IP;}
     void        setIP(uint32_t value, uint32_t location)
     { regs->IP = value; regs->pIP = (PTR_UIntNative)location; }
