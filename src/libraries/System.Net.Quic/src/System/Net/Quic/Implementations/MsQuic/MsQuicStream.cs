@@ -20,6 +20,9 @@ namespace System.Net.Quic.Implementations.MsQuic
 
         private readonly State _state = new State();
 
+        private readonly bool _canRead;
+        private readonly bool _canWrite;
+
         // Backing for StreamId
         private long _streamId = -1;
 
@@ -80,8 +83,10 @@ namespace System.Net.Quic.Implementations.MsQuic
         internal MsQuicStream(MsQuicConnection.State connectionState, SafeMsQuicStreamHandle streamHandle, QUIC_STREAM_OPEN_FLAGS flags)
         {
             _state.Handle = streamHandle;
+            _canRead = true;
+            _canWrite = !flags.HasFlag(QUIC_STREAM_OPEN_FLAGS.UNIDIRECTIONAL);
             _started = true;
-            if (flags.HasFlag(QUIC_STREAM_OPEN_FLAGS.UNIDIRECTIONAL))
+            if (!_canWrite)
             {
                 _state.SendState = SendState.Closed;
             }
@@ -122,8 +127,11 @@ namespace System.Net.Quic.Implementations.MsQuic
         {
             Debug.Assert(connectionState.Handle != null);
 
+            _canRead = !flags.HasFlag(QUIC_STREAM_OPEN_FLAGS.UNIDIRECTIONAL);
+            _canWrite = true;
+
             _state.StateGCHandle = GCHandle.Alloc(_state);
-            if (flags.HasFlag(QUIC_STREAM_OPEN_FLAGS.UNIDIRECTIONAL))
+            if (!_canRead)
             {
                 _state.ReadState = ReadState.Closed;
             }
@@ -167,9 +175,9 @@ namespace System.Net.Quic.Implementations.MsQuic
             }
         }
 
-        internal override bool CanRead => _disposed == 0 && _state.ReadState < ReadState.Aborted;
+        internal override bool CanRead => _disposed == 0 && _canRead;
 
-        internal override bool CanWrite => _disposed == 0 && _state.SendState < SendState.Aborted;
+        internal override bool CanWrite => _disposed == 0 && _canWrite;
 
         internal override long StreamId
         {
@@ -242,6 +250,11 @@ namespace System.Net.Quic.Implementations.MsQuic
             }
             else if ( _state.SendState == SendState.Aborted)
             {
+                if (_state.SendErrorCode != -1)
+                {
+                    throw new QuicStreamAbortedException(_state.SendErrorCode);
+                }
+
                 throw new OperationCanceledException(cancellationToken);
             }
 
@@ -292,6 +305,12 @@ namespace System.Net.Quic.Implementations.MsQuic
                 if (_state.SendState == SendState.Aborted)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
+
+                    if (_state.SendErrorCode != -1)
+                    {
+                        throw new QuicStreamAbortedException(_state.SendErrorCode);
+                    }
+
                     throw new OperationCanceledException(SR.net_quic_sending_aborted);
                 }
                 else if (_state.SendState == SendState.ConnectionClosed)
@@ -695,7 +714,11 @@ namespace System.Net.Quic.Implementations.MsQuic
             IntPtr context,
             ref StreamEvent streamEvent)
         {
-            var state = (State)GCHandle.FromIntPtr(context).Target!;
+            GCHandle gcHandle = GCHandle.FromIntPtr(context);
+            Debug.Assert(gcHandle.IsAllocated);
+            Debug.Assert(gcHandle.Target is not null);
+            var state = (State)gcHandle.Target;
+
             return HandleEvent(state, ref streamEvent);
         }
 
@@ -746,8 +769,12 @@ namespace System.Net.Quic.Implementations.MsQuic
             {
                 if (NetEventSource.Log.IsEnabled())
                 {
-                    NetEventSource.Error(state, $"[Stream#{state.GetHashCode()}] Exception occurred during handling {(QUIC_STREAM_EVENT_TYPE)evt.Type} event: {ex.Message}");
+                    NetEventSource.Error(state, $"[Stream#{state.GetHashCode()}] Exception occurred during handling {(QUIC_STREAM_EVENT_TYPE)evt.Type} event: {ex}");
                 }
+
+                // This is getting hit currently
+                // See https://github.com/dotnet/runtime/issues/55302
+                //Debug.Fail($"[Stream#{state.GetHashCode()}] Exception occurred during handling {(QUIC_STREAM_EVENT_TYPE)evt.Type} event: {ex}");
 
                 return MsQuicStatusCodes.InternalError;
             }
@@ -867,7 +894,7 @@ namespace System.Net.Quic.Implementations.MsQuic
                     shouldReadComplete = true;
                 }
 
-                if (state.ReadState != ReadState.ConnectionClosed)
+                if (state.ReadState != ReadState.ConnectionClosed && state.ReadState != ReadState.Aborted)
                 {
                     state.ReadState = ReadState.ReadsCompleted;
                 }
