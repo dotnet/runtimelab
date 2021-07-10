@@ -237,9 +237,6 @@ namespace System.Threading
 
         internal const bool SupportsTimeSensitiveWorkItems = false; // the timer currently doesn't queue time-sensitive work
 
-        // Time in ms for which ThreadPoolWorkQueue.Dispatch keeps executing work items before returning to the OS
-        private const uint DispatchQuantum = 30;
-
         /// <summary>
         /// The maximum number of threads in the default thread pool on Windows 10 as computed by
         /// TppComputeDefaultMaxThreads(TppMaxGlobalPool).
