@@ -231,11 +231,11 @@ int unw_get_save_loc(unw_cursor_t*, int, unw_save_loc_t*)
 static void RegDisplayToUnwindCursor(REGDISPLAY* regDisplay, unw_cursor_t *cursor)
 {
 #define ASSIGN_REG(regName1, regName2) \
-    unw_set_reg(cursor, regName1, regDisplay->regName2, 0);
+    unw_set_reg(cursor, regName1, regDisplay->regName2);
 
 #define ASSIGN_REG_PTR(regName1, regName2) \
     if (regDisplay->p##regName2 != NULL) \
-        unw_set_reg(cursor, regName1, *(regDisplay->p##regName2), 0);
+        unw_set_reg(cursor, regName1, *(regDisplay->p##regName2));
 
 #if defined(HOST_AMD64)
     ASSIGN_REG(UNW_REG_SP, SP)
@@ -365,69 +365,9 @@ bool InitializeUnwindContextAndCursor(REGDISPLAY* regDisplay, unw_cursor_t* curs
     return true;
 }
 
-// Update context pointer for a register from the unw_cursor_t.
-static void GetContextPointer(unw_cursor_t *cursor, unw_context_t *unwContext, int reg, PTR_UIntNative *contextPointer)
-{
-    unw_save_loc_t saveLoc;
-    unw_get_save_loc(cursor, reg, &saveLoc);
-    if (saveLoc.type == UNW_SLT_MEMORY)
-    {
-        PTR_UIntNative pLoc = (PTR_UIntNative)saveLoc.u.addr;
-        // Filter out fake save locations that point to unwContext
-        if (unwContext == NULL || (pLoc < (PTR_UIntNative)unwContext) || ((PTR_UIntNative)(unwContext + 1) <= pLoc))
-            *contextPointer = (PTR_UIntNative)saveLoc.u.addr;
-    }
-}
-
-#if defined(HOST_AMD64)
-#define GET_CONTEXT_POINTERS                    \
-    GET_CONTEXT_POINTER(UNW_X86_64_RBP, Rbp)	\
-    GET_CONTEXT_POINTER(UNW_X86_64_RBX, Rbx)    \
-    GET_CONTEXT_POINTER(UNW_X86_64_R12, R12)    \
-    GET_CONTEXT_POINTER(UNW_X86_64_R13, R13)    \
-    GET_CONTEXT_POINTER(UNW_X86_64_R14, R14)    \
-    GET_CONTEXT_POINTER(UNW_X86_64_R15, R15)
-#elif defined(HOST_ARM)
-#define GET_CONTEXT_POINTERS                    \
-    GET_CONTEXT_POINTER(UNW_ARM_R4, R4)	        \
-    GET_CONTEXT_POINTER(UNW_ARM_R5, R5)	        \
-    GET_CONTEXT_POINTER(UNW_ARM_R6, R6)	        \
-    GET_CONTEXT_POINTER(UNW_ARM_R7, R7)	        \
-    GET_CONTEXT_POINTER(UNW_ARM_R8, R8)	        \
-    GET_CONTEXT_POINTER(UNW_ARM_R9, R9)	        \
-    GET_CONTEXT_POINTER(UNW_ARM_R10, R10)       \
-    GET_CONTEXT_POINTER(UNW_ARM_R11, R11)
-#elif defined(HOST_ARM64)
-#define GET_CONTEXT_POINTERS                    \
-    GET_CONTEXT_POINTER(UNW_ARM64_X19, X19)	\
-    GET_CONTEXT_POINTER(UNW_ARM64_X20, X20)	\
-    GET_CONTEXT_POINTER(UNW_ARM64_X21, X21)	\
-    GET_CONTEXT_POINTER(UNW_ARM64_X22, X22)	\
-    GET_CONTEXT_POINTER(UNW_ARM64_X23, X23)	\
-    GET_CONTEXT_POINTER(UNW_ARM64_X24, X24)	\
-    GET_CONTEXT_POINTER(UNW_ARM64_X25, X25)	\
-    GET_CONTEXT_POINTER(UNW_ARM64_X26, X26)	\
-    GET_CONTEXT_POINTER(UNW_ARM64_X27, X27)	\
-    GET_CONTEXT_POINTER(UNW_ARM64_X28, X28)	\
-    GET_CONTEXT_POINTER(UNW_ARM64_FP, FP)
-#elif defined(HOST_X86)
-#define GET_CONTEXT_POINTERS                    \
-    GET_CONTEXT_POINTER(UNW_X86_EBP, Rbp)       \
-    GET_CONTEXT_POINTER(UNW_X86_EBX, Rbx)
-#elif defined (HOST_WASM)
-// No registers
-#define GET_CONTEXT_POINTERS
-#else
-#error unsupported architecture
-#endif
-
 // Update REGDISPLAY from the unw_cursor_t and unw_context_t
 void UnwindCursorToRegDisplay(unw_cursor_t *cursor, unw_context_t *unwContext, REGDISPLAY *regDisplay)
 {
-#define GET_CONTEXT_POINTER(unwReg, rdReg) GetContextPointer(cursor, unwContext, unwReg, &regDisplay->p##rdReg);
-    GET_CONTEXT_POINTERS
-#undef GET_CONTEXT_POINTER
-
     unw_get_reg(cursor, UNW_REG_IP, (unw_word_t *) &regDisplay->IP);
     unw_get_reg(cursor, UNW_REG_SP, (unw_word_t *) &regDisplay->SP);
 

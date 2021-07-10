@@ -495,7 +495,7 @@ struct Registers_REGDISPLAY : REGDISPLAY
     void        setVectorRegister(int num, libunwind::v128 value);
 
     uint64_t    getSP() const         { return SP;}
-    void        setSP(uint64_t value, uint64_t location) { SP = value;}
+    void        setSP(uint64_t value) { SP = value;}
     uint64_t    getIP() const         { return IP;}
     void        setIP(uint64_t value, uint64_t location)
     { IP = value; pIP = (PTR_UIntNative)location; }
