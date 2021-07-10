@@ -3,6 +3,7 @@
 
 using System.Diagnostics;
 using System.IO;
+using System.Linq.Expressions;
 using System.Security;
 using System.Security.Authentication;
 using System.Reflection;
@@ -66,6 +67,22 @@ namespace System
 
         public static bool IsUsingLimitedCultures => !IsNotMobile;
         public static bool IsNotUsingLimitedCultures => IsNotMobile;
+
+        public static bool IsLinqExpressionsBuiltWithIsInterpretingOnly => s_LinqExpressionsBuiltWithIsInterpretingOnly.Value;
+        public static bool IsNotLinqExpressionsBuiltWithIsInterpretingOnly => !IsLinqExpressionsBuiltWithIsInterpretingOnly;
+        private static readonly Lazy<bool> s_LinqExpressionsBuiltWithIsInterpretingOnly = new Lazy<bool>(GetLinqExpressionsBuiltWithIsInterpretingOnly);
+        private static bool GetLinqExpressionsBuiltWithIsInterpretingOnly() 
+        {            
+            Type type = typeof(LambdaExpression);
+            if (type != null)
+            {
+                // The "Accept" method is under FEATURE_COMPILE conditional so it should not exist
+                MethodInfo methodInfo = type.GetMethod("Accept", BindingFlags.NonPublic | BindingFlags.Static);
+                return methodInfo == null;
+            }
+
+            return false;
+        }
 
         // Please make sure that you have the libgdiplus dependency installed.
         // For details, see https://docs.microsoft.com/dotnet/core/install/dependencies?pivots=os-macos&tabs=netcore31#libgdiplus
@@ -254,14 +271,9 @@ namespace System
 
         private static bool GetStaticNonPublicBooleanPropertyValue(string typeName, string propertyName)
         {
-            Type globalizationMode = Type.GetType(typeName);
-            if (globalizationMode != null)
+            if (Type.GetType(typeName)?.GetProperty(propertyName, BindingFlags.NonPublic | BindingFlags.Static)?.GetMethod is MethodInfo mi)
             {
-                MethodInfo methodInfo = globalizationMode.GetProperty(propertyName, BindingFlags.NonPublic | BindingFlags.Static)?.GetMethod;
-                if (methodInfo != null)
-                {
-                    return (bool)methodInfo.Invoke(null, null);
-                }
+                return (bool)mi.Invoke(null, null);
             }
 
             return false;
