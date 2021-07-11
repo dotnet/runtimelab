@@ -95,10 +95,11 @@ set "ExtraCMakeArgs=%~3"
     -DLLVM_TARGETS_TO_BUILD="AArch64;ARM;X86" ^
     -DLLVM_EXTERNAL_OBJWRITER_SOURCE_DIR="%ScriptDir%\" ^
     -DCORECLR_INCLUDE_DIR="%RepoRoot%src\coreclr\inc" ^
+    -G Ninja ^
     || goto Error
 
-echo Executing "%CMakePath%" --build "build\%Arch%" --config %BuildType% --target %Target% -- -m
-"%CMakePath%" --build "build\%Arch%" --config %BuildType% --target %Target% -- -m || goto Error
+echo Executing "%CMakePath%" --build "build\%Arch%" --config %BuildType% --target %Target%
+"%CMakePath%" --build "build\%Arch%" --config %BuildType% --target %Target% || goto Error
 exit /b 0
 
 :Error
