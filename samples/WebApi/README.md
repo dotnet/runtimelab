@@ -1,0 +1,63 @@
+# Building a WebAPI app with NativeAOT
+
+NativeAOT is an AOT-optimized .NET Core runtime. This document will guide you through compiling a .NET Core Web API application with NativeAOT.
+
+## Create your app
+Open a new shell/command prompt window and run the following commands.
+```bash
+> dotnet new webapi -o myApp
+> cd myApp
+```
+
+## Add NativeAOT to your project
+To use NativeAOT with your project, you need to add a reference to the ILCompiler NuGet package that contains the NativeAOT ahead of time compiler and runtime.
+For the compiler to work, it first needs to be added to your project.
+
+In your shell/command prompt navigate to the root directory of your project and run the command:
+
+```bash
+> dotnet new nuget
+```
+
+This will add a nuget.config file to your application. Open the file and in the ``<packageSources> `` element under ``<clear/>`` add the following:
+
+```xml
+<add key="dotnet-experimental" value="https://pkgs.dev.azure.com/dnceng/public/_packaging/dotnet-experimental/nuget/v3/index.json" />
+<add key="nuget.org" value="https://api.nuget.org/v3/index.json" protocolVersion="3" />
+```
+
+Once you've added the package source, add a reference to the compiler by running the following command:
+
+```bash
+> dotnet add package Microsoft.DotNet.ILCompiler -v 6.0.0-*
+```
+
+## Restore and Publish your app
+
+Once the package has been successfully added it's time to compile and publish your app! In the shell/command prompt window, run the following command:
+
+```bash
+> dotnet publish -r <RID> -c <Configuration>
+```
+
+where `<Configuration>` is your project configuration (such as Debug or Release) and `<RID>` is the runtime identifier (one of win-x64, linux-x64, osx-x64). For example, if you want to publish a release configuration of your app for a 64-bit version of Windows the command would look like:
+
+```bash
+> dotnet publish -r win-x64 -c release
+```
+
+Once completed, you can find the native executable in the root folder of your project under `/bin/x64/<Configuration>/net5.0/publish/`
+
+Once you run application, it would be available at default https://localhost:5001/weatherforecast address. Check it out!
+
+## Using reflection
+
+More advanced use cases might hit issues due to reflection. For information about the topic see [MonoGame sample](../MonoGame/README.md) or [Reflection in AOT mode](../../docs/using-nativeaot/reflection-in-aot-mode.md).
+
+## Try it out!
+
+If you are running macOS, make sure you have [libuv](https://github.com/libuv/libuv) installed, as ASP.NET is built on top of libuv. You can use [homebrew](https://brew.sh/) to get it (`brew install libuv`).
+
+Navigate to `/bin/<Configuration>/net5.0/win-x64/publish/` in your project folder and run the produced executable. It should display "Now listening on: http://localhost:XXXX" with XXXX being a port on your machine. Open your browser and navigate to that URL. You should see "Hello World!" displayed in your browser.
+
+Feel free to modify the sample application and experiment. However, keep in mind some functionality might not yet be supported in CoreRT. Let us know on the [Issues page](https://github.com/dotnet/corert/issues/).
