@@ -24,6 +24,7 @@ namespace ILCompiler
         public abstract string GCStatics(TypeDesc type);
         public abstract string NonGCStatics(TypeDesc type);
         public abstract string ThreadStatics(TypeDesc type);
+        public abstract string ThreadStaticsIndex(TypeDesc type);
         public abstract string TypeGenericDictionary(TypeDesc type);
         public abstract string MethodGenericDictionary(MethodDesc method);
     }

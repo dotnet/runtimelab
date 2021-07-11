@@ -15,6 +15,7 @@ namespace ILCompiler
         public const string NonGCStaticMemberName = "__NONGCSTATICS";
         public const string GCStaticMemberName = "__GCSTATICS";
         public const string ThreadStaticMemberName = "__THREADSTATICS";
+        public const string ThreadStaticIndexName = "__THREADSTATICINDEX";
 
         // Mangled name of boxed version of a type
         public sealed override string MangledBoxedTypeName(TypeDesc type)
@@ -38,19 +39,29 @@ namespace ILCompiler
             return "??_7" + mangledJustTypeName + "@@6B@";
         }
 
+        private string CreateStaticFieldName(TypeDesc type, string fieldName)
+        {
+            return @$"?{fieldName}@{NameMangler.GetMangledTypeName(type)}@@";
+        }
+
         public sealed override string GCStatics(TypeDesc type)
         {
-            return NameMangler.GetMangledTypeName(type) + "::" + GCStaticMemberName;
+            return CreateStaticFieldName(type, GCStaticMemberName);
         }
 
         public sealed override string NonGCStatics(TypeDesc type)
         {
-            return NameMangler.GetMangledTypeName(type) + "::" + NonGCStaticMemberName;
+            return CreateStaticFieldName(type, NonGCStaticMemberName);
         }
 
         public sealed override string ThreadStatics(TypeDesc type)
         {
-            return NameMangler.CompilationUnitPrefix + NameMangler.GetMangledTypeName(type) + "::" + ThreadStaticMemberName;
+            return CreateStaticFieldName(type, ThreadStaticMemberName);
+        }
+
+        public sealed override string ThreadStaticsIndex(TypeDesc type)
+        {
+            return CreateStaticFieldName(type, ThreadStaticIndexName);
         }
 
         public sealed override string TypeGenericDictionary(TypeDesc type)
