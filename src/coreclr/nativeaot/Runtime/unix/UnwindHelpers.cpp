@@ -758,7 +758,7 @@ void Registers_REGDISPLAY::setVectorRegister(int num, libunwind::v128 value)
 bool DoTheStep(uintptr_t pc, UnwindInfoSections uwInfoSections, REGDISPLAY *regs)
 {
 #if defined(TARGET_AMD64)
-    libunwind::UnwindCursor<LocalAddressSpace, Registers_x86_64> uc(_addressSpace);
+    libunwind::UnwindCursor<LocalAddressSpace, Registers_x86_64> uc(_addressSpace, regs);
 #elif defined(TARGET_ARM)
     libunwind::UnwindCursor<LocalAddressSpace, Registers_arm_rt> uc(_addressSpace, regs);
 #elif defined(TARGET_ARM64)
