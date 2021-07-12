@@ -56,7 +56,7 @@ namespace ILCompiler
 
         public sealed override string ThreadStatics(TypeDesc type)
         {
-            return CreateStaticFieldName(type, ThreadStaticMemberName);
+            return CreateStaticFieldName(type, NameMangler.CompilationUnitPrefix + ThreadStaticMemberName);
         }
 
         public sealed override string ThreadStaticsIndex(TypeDesc type)
