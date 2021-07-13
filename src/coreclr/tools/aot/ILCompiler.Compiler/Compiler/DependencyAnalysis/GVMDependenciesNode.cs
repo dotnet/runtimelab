@@ -89,7 +89,10 @@ namespace ILCompiler.DependencyAnalysis
                             return dependencies;
                         }
 
-                        dependencies.Add(context.MethodGenericDictionary(instantiatedMethod), "GVM Dependency - Dictionary");
+                        if (!instantiatedMethod.IsGenericDepthGreaterThan(CanonGVMDepthHeuristic_NonCanonDepth))
+                        {
+                            dependencies.Add(context.MethodGenericDictionary(instantiatedMethod), "GVM Dependency - Dictionary");
+                        }
                         dependencies.Add(context.NativeLayout.TemplateMethodEntry(canonMethodTarget), "GVM Dependency - Template entry");
                         dependencies.Add(context.NativeLayout.TemplateMethodLayout(canonMethodTarget), "GVM Dependency - Template");
                     }
