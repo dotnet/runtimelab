@@ -21,7 +21,7 @@ namespace ILCompiler.DependencyAnalysis
     {
         private const int UniversalCanonGVMDepthHeuristic_NonCanonDepth = 2;
         private const int UniversalCanonGVMDepthHeuristic_CanonDepth = 2;
-        private const int SpecificCanonGVMDepthHeuristic_NonCanonDepth = 2;
+        private const int SpecificCanonGVMDepthHeuristic_NonCanonDepth = 256;
         private readonly MethodDesc _method;
 
         public MethodDesc Method => _method;
