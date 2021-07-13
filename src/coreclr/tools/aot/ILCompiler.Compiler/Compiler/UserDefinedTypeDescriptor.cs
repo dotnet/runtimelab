@@ -789,7 +789,6 @@ namespace ILCompiler
                         }
                     };
 
-                    _objectWriter.GetClassTypeIndex(classTypeDescriptor);
                     staticFieldRegionTypeIndex = _objectWriter.GetCompleteClassTypeIndex(helperClassTypeDescriptor, helperFieldsDescriptor, helperFields, null);
                     staticFieldRegionSymbolTypeIndex = staticFieldRegionTypeIndex;
                     staticFieldForm = WindowsNodeMangler.ThreadStaticIndexName;
