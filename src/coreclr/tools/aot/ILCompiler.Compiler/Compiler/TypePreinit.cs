@@ -2274,7 +2274,15 @@ namespace ILCompiler
                 if (fieldOffset + fieldSize > _instanceBytes.Length - _offset)
                     ThrowHelper.ThrowInvalidProgramException();
 
-                Array.Copy(((ValueTypeValue)value).InstanceBytes, 0, _instanceBytes, _offset + fieldOffset, fieldSize);
+                if (value is not ValueTypeValue vtValue)
+                {
+                    // This is either invalid IL, or value is one of our modeling-only values
+                    // that don't have a bit representation (e.g. function pointer).
+                    ThrowHelper.ThrowInvalidProgramException();
+                    return; // unreached
+                }
+
+                Array.Copy(vtValue.InstanceBytes, 0, _instanceBytes, _offset + fieldOffset, fieldSize);
             }
 
             public ByRefValue GetFieldAddress(FieldDesc field)
