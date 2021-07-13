@@ -60,4 +60,21 @@
             </ArrayItems>
         </Expand>
     </Type>
+    <Type Name="__ThreadStaticHelper&lt;*&gt;">
+        <Intrinsic Name="HasModuleStorage" Expression="TypeManagerSlot-&gt;ModuleIndex &lt; tls_CurrentThread.m_numThreadLocalModuleStatics"/>
+        <Intrinsic Name="GetStorage" Expression="*(__Array&lt;Object&gt;**)tls_CurrentThread.m_pThreadLocalModuleStatics[TypeManagerSlot-&gt;ModuleIndex]"/>
+        <Intrinsic Name="Get" Expression="*($T1**)(&amp;(*GetStorage()).values)[ClassIndex]"/>
+        <Intrinsic Name="IsInit" Expression="HasModuleStorage() &amp;&amp; GetStorage() != nullptr &amp;&amp; ClassIndex &lt; GetStorage()-&gt;count &amp;&amp; Get() != nullptr"/>
+
+        <DisplayString  Condition="!IsInit()">Null</DisplayString>
+        <DisplayString  Condition="IsInit()">{*Get()}</DisplayString>
+        <Expand>
+            <ExpandedItem Condition="IsInit()">Get()</ExpandedItem>
+        </Expand>
+    </Type>
+    <Type Name="Object" Inheritable="false">
+        <Expand>
+            <!--Empty to hide Object fields outside of raw view-->
+        </Expand>
+    </Type>
 </AutoVisualizer>

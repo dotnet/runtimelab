@@ -659,7 +659,7 @@ namespace ILCompiler.DependencyAnalysis
             }
             else
             {
-                return ExternSymbol("__TypeThreadStaticIndex_" + NameMangler.GetMangledTypeName(type));
+                return ExternSymbol(NameMangler.NodeMangler.ThreadStaticsIndex(type));
             }
         }
 
