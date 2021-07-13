@@ -8,6 +8,7 @@ using System.Text;
 using System.Xml;
 
 using Internal.TypeSystem;
+using Internal.TypeSystem.Ecma;
 
 namespace ILCompiler
 {
@@ -16,9 +17,9 @@ namespace ILCompiler
     /// </summary>
     internal abstract class ProcessLinkerXmlBase
     {
-        private readonly XmlReader _reader;
         private readonly ModuleDesc _owningModule;
         private readonly IReadOnlyDictionary<string, bool> _featureSwitchValues;
+        protected readonly XmlReader _reader;
         protected readonly TypeSystemContext _context;
 
         public ProcessLinkerXmlBase(TypeSystemContext context, XmlReader reader, ModuleDesc owningModule, IReadOnlyDictionary<string, bool> featureSwitchValues)
@@ -106,26 +107,31 @@ namespace ILCompiler
             return _context.ResolveAssembly(name);
         }
 
-        private void ProcessAssembly(ModuleDesc assembly)
+        protected virtual (bool hasContent, string preserveAttribute) ProcessAssembly(ModuleDesc assembly)
         {
+            var preserveAttribute = _reader.GetAttribute("preserve");
+            bool hasContent = false;
             while (_reader.IsStartElement())
             {
                 if (_reader.Name == "type")
                 {
                     ProcessType(assembly);
+                    hasContent = true;
                 }
                 else if (_reader.Name == "resource")
                 {
                     ProcessResource(assembly);
+                    hasContent = true;
                 }
 
                 _reader.Skip();
             }
 
             _reader.ReadEndElement();
+            return (hasContent, preserveAttribute);
         }
 
-        private void ProcessType(ModuleDesc assembly)
+        protected void ProcessType(ModuleDesc assembly)
         {
             if (ShouldProcessElement())
             {
@@ -144,26 +150,32 @@ namespace ILCompiler
 
                 _reader.Read();
 
-                while (_reader.IsStartElement())
-                {
-                    if (_reader.Name == "method")
-                    {
-                        ProcessMethod(type);
-                    }
-                    else if (_reader.Name == "field")
-                    {
-                        ProcessField(type);
-                    }
-                    else if (_reader.Name == "attribute")
-                    {
-                        ProcessAttribute(type);
-                    }
-
-                    _reader.Skip();
-                }
+                var preserveAttribute = _reader.GetAttribute("preserve");
+                ProcessType(type, preserveAttribute);
             }
 
             _reader.Skip();
+        }
+
+        protected virtual void ProcessType(TypeDesc type, string preserveAttribute)
+        {
+            while (_reader.IsStartElement())
+            {
+                if (_reader.Name == "method")
+                {
+                    ProcessMethod(type);
+                }
+                else if (_reader.Name == "field")
+                {
+                    ProcessField(type);
+                }
+                else if (_reader.Name == "attribute")
+                {
+                    ProcessAttribute(type);
+                }
+
+                _reader.Skip();
+            }
         }
 
         private void ProcessMethod(TypeDesc type)

@@ -68,6 +68,8 @@ namespace ILCompiler
 
         private IReadOnlyList<string> _rdXmlFilePaths = Array.Empty<string>();
 
+        private IReadOnlyList<string> _illinkDescriptorsFilePaths = Array.Empty<string>();
+
         private IReadOnlyList<string> _initAssemblies = Array.Empty<string>();
 
         private IReadOnlyList<string> _appContextSwitches = Array.Empty<string>();
@@ -184,6 +186,7 @@ namespace ILCompiler
                 syntax.DefineOption("waitfordebugger", ref waitForDebugger, "Pause to give opportunity to attach debugger");
                 syntax.DefineOptionList("codegenopt", ref _codegenOptions, "Define a codegen option");
                 syntax.DefineOptionList("rdxml", ref _rdXmlFilePaths, "RD.XML file(s) for compilation");
+                syntax.DefineOptionList("linkdescriptor", ref _illinkDescriptorsFilePaths, "ILLink descriptor file(s) for compilation");
                 syntax.DefineOption("map", ref _mapFileName, "Generate a map file");
                 syntax.DefineOption("metadatalog", ref _metadataLogFileName, "Generate a metadata log file");
                 syntax.DefineOption("nometadatablocking", ref _noMetadataBlocking, "Ignore metadata blocking for internal implementation details");
@@ -483,6 +486,16 @@ namespace ILCompiler
             // Single method mode?
             MethodDesc singleMethod = CheckAndParseSingleMethodModeArguments(typeSystemContext);
 
+            List<KeyValuePair<string, bool>> featureSwitches = new List<KeyValuePair<string, bool>>();
+            foreach (var switchPair in _featureSwitches)
+            {
+                string[] switchAndValue = switchPair.Split('=');
+                if (switchAndValue.Length != 2
+                    || !bool.TryParse(switchAndValue[1], out bool switchValue))
+                    throw new CommandLineException($"Unexpected feature switch pair '{switchPair}'");
+                featureSwitches.Add(new KeyValuePair<string, bool>(switchAndValue[0], switchValue));
+            }
+
             CompilationModuleGroup compilationGroup;
             List<ICompilationRootProvider> compilationRoots = new List<ICompilationRootProvider>();
             if (singleMethod != null)
@@ -561,6 +574,11 @@ namespace ILCompiler
                 {
                     compilationRoots.Add(new RdXmlRootProvider(typeSystemContext, rdXmlFilePath));
                 }
+
+                foreach (var illinkDescriptorFilePath in _illinkDescriptorsFilePaths)
+                {
+                    compilationRoots.Add(new ILLinkDescriptorRootProvider(typeSystemContext, illinkDescriptorFilePath, new Dictionary<string, bool>(featureSwitches)));
+                }
             }
 
             _rootedAssemblies = new List<string>(_rootedAssemblies.Select(a => ILLinkify(a)));
@@ -604,15 +622,6 @@ namespace ILCompiler
 
             ILProvider ilProvider = new CoreRTILProvider();
 
-            List<KeyValuePair<string, bool>> featureSwitches = new List<KeyValuePair<string, bool>>();
-            foreach (var switchPair in _featureSwitches)
-            {
-                string[] switchAndValue = switchPair.Split('=');
-                if (switchAndValue.Length != 2
-                    || !bool.TryParse(switchAndValue[1], out bool switchValue))
-                    throw new CommandLineException($"Unexpected feature switch pair '{switchPair}'");
-                featureSwitches.Add(new KeyValuePair<string, bool>(switchAndValue[0], switchValue));
-            }
             ilProvider = new FeatureSwitchManager(ilProvider, featureSwitches);
 
             var logger = new Logger(Console.Out, _isVerbose, ProcessWarningCodes(_suppressedWarnings), _singleWarn, _singleWarnEnabledAssemblies, _singleWarnDisabledAssemblies);
