@@ -43,7 +43,7 @@ namespace ILCompiler.DependencyAnalysis
             DependencyList dependencies = null;
 
             context.MetadataManager.GetDependenciesDueToVirtualMethodReflectability(ref dependencies, context, _method);
-            
+
             if (!_method.IsAbstract)
             {
                 MethodDesc instantiatedMethod = _method;
@@ -89,10 +89,11 @@ namespace ILCompiler.DependencyAnalysis
                             return dependencies;
                         }
 
-                        if (!instantiatedMethod.IsGenericDepthGreaterThan(CanonGVMDepthHeuristic_NonCanonDepth))
+                        if (!instantiatedMethod.IsGenericDepthGreaterThan(SpecificCanonGVMDepthHeuristic_NonCanonDepth))
                         {
                             dependencies.Add(context.MethodGenericDictionary(instantiatedMethod), "GVM Dependency - Dictionary");
                         }
+
                         dependencies.Add(context.NativeLayout.TemplateMethodEntry(canonMethodTarget), "GVM Dependency - Template entry");
                         dependencies.Add(context.NativeLayout.TemplateMethodLayout(canonMethodTarget), "GVM Dependency - Template");
                     }
