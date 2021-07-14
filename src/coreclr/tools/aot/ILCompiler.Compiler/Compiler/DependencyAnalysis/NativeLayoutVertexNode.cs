@@ -235,6 +235,28 @@ namespace ILCompiler.DependencyAnalysis
         {
         }
 
+        public override IEnumerable<DependencyListEntry> GetStaticDependencies(NodeFactory context)
+        {
+            if (_method.IsVirtual && _method.HasInstantiation)
+            {
+                return GetGenericVirtualMethodDependencies(context);
+            }
+            else
+            {
+                return base.GetStaticDependencies(context);
+            }
+        }
+
+        private IEnumerable<DependencyListEntry> GetGenericVirtualMethodDependencies(NodeFactory factory)
+        {
+            foreach (var dep in base.GetStaticDependencies(factory))
+            {
+                yield return dep;
+            }
+
+            yield return new DependencyListEntry(factory.GVMDependencies(_method.GetCanonMethodTarget(CanonicalFormKind.Specific)), "Potential generic virtual method call");
+        }
+
         public override Vertex WriteVertex(NodeFactory factory)
         {
             Debug.Assert(Marked, "WriteVertex should only happen for marked vertices");
