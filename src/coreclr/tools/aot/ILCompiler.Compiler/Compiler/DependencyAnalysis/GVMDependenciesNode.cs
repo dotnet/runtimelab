@@ -21,6 +21,7 @@ namespace ILCompiler.DependencyAnalysis
     {
         private const int UniversalCanonGVMDepthHeuristic_NonCanonDepth = 2;
         private const int UniversalCanonGVMDepthHeuristic_CanonDepth = 2;
+        private const int SpecificCanonGVMDepthHeuristic_NonCanonDepth = 256;
         private readonly MethodDesc _method;
 
         public MethodDesc Method => _method;
@@ -42,7 +43,7 @@ namespace ILCompiler.DependencyAnalysis
             DependencyList dependencies = null;
 
             context.MetadataManager.GetDependenciesDueToVirtualMethodReflectability(ref dependencies, context, _method);
-            
+
             if (!_method.IsAbstract)
             {
                 MethodDesc instantiatedMethod = _method;
@@ -82,7 +83,11 @@ namespace ILCompiler.DependencyAnalysis
                             return dependencies;
                         }
 
-                        dependencies.Add(context.MethodGenericDictionary(instantiatedMethod), "GVM Dependency - Dictionary");
+                        if (!instantiatedMethod.IsGenericDepthGreaterThan(SpecificCanonGVMDepthHeuristic_NonCanonDepth))
+                        {
+                            dependencies.Add(context.MethodGenericDictionary(instantiatedMethod), "GVM Dependency - Dictionary");
+                        }
+
                         dependencies.Add(context.NativeLayout.TemplateMethodEntry(canonMethodTarget), "GVM Dependency - Template entry");
                         dependencies.Add(context.NativeLayout.TemplateMethodLayout(canonMethodTarget), "GVM Dependency - Template");
                     }
