@@ -125,21 +125,23 @@ namespace ILCompiler
             try
             {
                 var sig = method.Signature;
-                if (sig.ReturnType.IsVoid &&
-                    !method.RequiresInstArg()) // speed up
+                if (sig.ReturnType.IsVoid)
                 {
-                    corInfo.RegisterLlvmCallbacks((IntPtr)Unsafe.AsPointer(ref corInfo), _outputFile, Module.Target, Module.DataLayout);
+                    corInfo.RegisterLlvmCallbacks((IntPtr)Unsafe.AsPointer(ref corInfo), _outputFile, Module.Target,
+                        Module.DataLayout);
                     corInfo.CompileMethod(methodCodeNodeNeedingCode);
                     methodCodeNodeNeedingCode.CompilationCompleted = true;
                     // TODO: delete this external function when old module is gone
-                    LLVMValueRef externFunc = Module.AddFunction(NodeFactory.NameMangler.GetMangledMethodName(method).ToString(), GetLLVMSignatureForMethod(sig, method.RequiresInstArg()));
+                    LLVMValueRef externFunc = Module.AddFunction(
+                        NodeFactory.NameMangler.GetMangledMethodName(method).ToString(),
+                        GetLLVMSignatureForMethod(sig, method.RequiresInstArg()));
                     externFunc.Linkage = LLVMLinkage.LLVMExternalLinkage;
 
                     ILImporter.GenerateRuntimeExportThunk(this, method, externFunc);
 
                     ryuJitMethodCount++;
                 }
-                else ILImporter.CompileMethod(this, methodCodeNodeNeedingCode);
+                else  ILImporter.CompileMethod(this, methodCodeNodeNeedingCode);
             }
             catch (CodeGenerationFailedException)
             {

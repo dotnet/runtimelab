@@ -499,7 +499,7 @@ llvm::Value* getShadowStackOffest(Value* shadowStack, unsigned int offset)
     if (offset == 0)
         return shadowStack;
 
-    return _builder->CreateGEP(shadowStack, _builder->getInt32(TARGET_POINTER_SIZE));
+    return _builder->CreateGEP(shadowStack, _builder->getInt32(offset));
 }
 
 bool isThisArg(GenTreeCall* call, GenTree* operand)
@@ -516,6 +516,14 @@ void storeOnShadowStack(llvm::IRBuilder<>& builder, GenTree* operand, Value* sha
 {
     castingStore(*_builder, genTreeAsLlvmType(operand, Type::getInt8PtrTy(_llvmContext)),
                  getShadowStackOffest(shadowStackForCallee, offset), Type::getInt8PtrTy(_llvmContext));
+}
+
+// shadow stack moved up to avoid overwriting anything on the stack in the compiling method
+llvm::Value* getShadowStackForCallee(llvm::IRBuilder<>& builder)
+{
+    unsigned int offset = getTotalParameterOffset(_sigInfo) + getTotalLocalOffset(_sigInfo);
+
+    return offset == 0 ? _function->getArg(0) : builder.CreateGEP(_function->getArg(0), builder.getInt32(offset));
 }
 
 llvm::Value* buildUserFuncCall(GenTreeCall* call, llvm::IRBuilder<>& builder)
@@ -547,10 +555,8 @@ llvm::Value* buildUserFuncCall(GenTreeCall* call, llvm::IRBuilder<>& builder)
     }
     std::vector<llvm::Value*> argVec;
 
-    unsigned int offset = getTotalParameterOffset(_sigInfo) + getTotalLocalOffset(sigInfo);
-
     // shadowstack arg first
-    Value* shadowStackForCallee = offset == 0 ? _function->getArg(0) : builder.CreateGEP(_function->getArg(0), builder.getInt32(offset));
+    Value* shadowStackForCallee = getShadowStackForCallee(builder);
     argVec.push_back(shadowStackForCallee);
 
     unsigned int                      shadowStackUseOffest = 0;
@@ -562,14 +568,11 @@ llvm::Value* buildUserFuncCall(GenTreeCall* call, llvm::IRBuilder<>& builder)
     std::vector<struct OperandArgNum> sortedArgs           = std::vector<struct OperandArgNum>(argCount);
     struct OperandArgNum*             sortedData           = sortedArgs.data();
 
-    // "this" goes first
-    if (call->gtCallThisArg != nullptr)
-    {
-        thisArg = _compiler->gtGetThisArg(call);
 
-        // TODO: add throw if this is null
-        storeOnShadowStack(*_builder, thisArg, shadowStackForCallee, shadowStackUseOffest);
-        shadowStackUseOffest += TARGET_POINTER_SIZE;
+    if (call->gtCallThisArg != nullptr && argCount > 1)
+    {
+        shadowStackUseOffest = 1;
+        shadowStackUseOffest = 0;
     }
 
     for (unsigned i = 0; i < argCount; i++)
@@ -612,12 +615,14 @@ Value* buildCall(llvm::IRBuilder<>& builder, GenTree* node)
             {
                 llvmFunc = Function::Create(FunctionType::get(Type::getInt8PtrTy(_llvmContext), ArrayRef<Type*>(Type::getInt8PtrTy(_llvmContext)), false), Function::ExternalLinkage, 0U, symbolName, _module); // TODO: ExternalLinkage forced as defined in ILC module
             }
+
             // replacement for _info.compCompHnd->recordRelocation(nullptr, gtCall->gtEntryPoint.handle, IMAGE_REL_BASED_REL32);
             (*_addCodeReloc)(_thisPtr, call->gtEntryPoint.handle);
-            return mapGenTreeToValue(node, builder.CreateCall(llvmFunc, _function->getArg(0)));
+
+            return mapGenTreeToValue(node, builder.CreateCall(llvmFunc, getShadowStackForCallee(builder)));
         }
     }
-    else if (call->gtCallType == CT_USER_FUNC)
+    else if (call->gtCallType == CT_USER_FUNC && !call->IsVirtualStub() /* TODO: Virtual stub not implemented */)
     {
         return buildUserFuncCall(call, builder);
     }
