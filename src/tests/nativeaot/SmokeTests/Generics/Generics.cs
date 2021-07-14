@@ -2602,9 +2602,7 @@ class Program
         {
             // Regression test for https://github.com/dotnet/runtimelab/issues/537
             IFoo f = new Bar();
-            Console.WriteLine(f.FrobToo<object>());
-
-            if (f.FrobToo<object>() != "")
+            if (f.FrobToo<object>() != "Bar.Frob<System.Object>()")
                 throw new Exception();
         }
     }
