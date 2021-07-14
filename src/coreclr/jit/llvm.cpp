@@ -568,13 +568,6 @@ llvm::Value* buildUserFuncCall(GenTreeCall* call, llvm::IRBuilder<>& builder)
     std::vector<struct OperandArgNum> sortedArgs           = std::vector<struct OperandArgNum>(argCount);
     struct OperandArgNum*             sortedData           = sortedArgs.data();
 
-
-    if (call->gtCallThisArg != nullptr && argCount > 1)
-    {
-        shadowStackUseOffest = 1;
-        shadowStackUseOffest = 0;
-    }
-
     for (unsigned i = 0; i < argCount; i++)
     {
         fgArgTabEntry* curArgTabEntry = argTable[i];
