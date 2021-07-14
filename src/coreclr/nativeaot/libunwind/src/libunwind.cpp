@@ -93,7 +93,7 @@ _LIBUNWIND_HIDDEN int __unw_set_reg(unw_cursor_t *cursor, unw_regnum_t regNum,
                                     unw_word_t value, unw_word_t *pos) {
   _LIBUNWIND_TRACE_API("__unw_set_reg(cursor=%p, regNum=%d, value=0x%" PRIxPTR
                        ")",
-                       static_cast<void *>(cursor), regNum, (unsigned long)value);
+                       static_cast<void *>(cursor), regNum, value);
   typedef LocalAddressSpace::pint_t pint_t;
   AbstractUnwindCursor *co = (AbstractUnwindCursor *)cursor;
   if (co->validReg(regNum)) {
@@ -155,7 +155,7 @@ _LIBUNWIND_HIDDEN int __unw_set_fpreg(unw_cursor_t *cursor, unw_regnum_t regNum,
 _LIBUNWIND_WEAK_ALIAS(__unw_set_fpreg, unw_set_fpreg)
 
 /// Get location of specified register at cursor position in stack frame.
-_LIBUNWIND_HIDDEN int __unw_get_save_loc(unw_cursor_t *cursor, int regNum, 
+_LIBUNWIND_HIDDEN int __unw_get_save_loc(unw_cursor_t *cursor, int regNum,
                                        unw_save_loc_t* location)
 {
   AbstractUnwindCursor *co = (AbstractUnwindCursor *)cursor;
