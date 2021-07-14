@@ -215,7 +215,6 @@ namespace ILCompiler
 
                 // Call an instance method on the target interface that has a fake instantiation parameter
                 // in it's signature. This will be swapped by the actual instance method after codegen is done.
-                codeStream.Emit(ILOpcode.tail);
                 codeStream.Emit(ILOpcode.call, emit.NewToken(_nakedTargetMethod));
                 codeStream.Emit(ILOpcode.ret);
 
