@@ -10,6 +10,7 @@ using Xunit;
 
 namespace System.Reflection.Tests
 {
+    [ActiveIssue("https://github.com/dotnet/runtimelab/issues/1323" /* NativeAot */)]
     public class NullabilityInfoContextTests
     {
         private static readonly NullabilityInfoContext nullabilityContext = new NullabilityInfoContext();
