@@ -87,7 +87,10 @@ namespace ILCompiler.DependencyAnalysis
                         {
                             dependencies.Add(context.MethodGenericDictionary(instantiatedMethod), "GVM Dependency - Dictionary");
                         }
+                    }
 
+                    if (canonMethodTarget.IsSharedByGenericInstantiations)
+                    {
                         dependencies.Add(context.NativeLayout.TemplateMethodEntry(canonMethodTarget), "GVM Dependency - Template entry");
                         dependencies.Add(context.NativeLayout.TemplateMethodLayout(canonMethodTarget), "GVM Dependency - Template");
                     }
@@ -106,9 +109,6 @@ namespace ILCompiler.DependencyAnalysis
         {
             get
             {
-                if (_method.IsCanonicalMethod(CanonicalFormKind.Specific))
-                    return false;
-
                 TypeDesc methodOwningType = _method.OwningType;
 
                 if (methodOwningType.IsCanonicalSubtype(CanonicalFormKind.Universal) &&
@@ -140,6 +140,12 @@ namespace ILCompiler.DependencyAnalysis
 
                 TypeDesc potentialOverrideType = entryAsEETypeNode.Type;
                 if (!potentialOverrideType.IsDefType)
+                    continue;
+
+                // If method is canonical, don't allow using it with non-canonical types - we can wait until
+                // we see the __Canon instantiation. If there isn't one, the canonical method wouldn't be useful anyway.
+                if (_method.IsSharedByGenericInstantiations &&
+                    potentialOverrideType.ConvertToCanonForm(CanonicalFormKind.Specific) != potentialOverrideType)
                     continue;
 
                 if (potentialOverrideType.IsInterface)

@@ -34,7 +34,8 @@ class Program
         TestDevirtualization.Run();
         TestGenericInlining.Run();
         TestGenericInliningDoesntHappen.Run();
-#if !CODEGEN_CPP 
+        TestGvmDependenciesFromLazy.Run();
+#if !CODEGEN_CPP
         TestNullableCasting.Run();
         TestVariantCasting.Run();
         TestMDArrayAddressMethod.Run();
@@ -2576,6 +2577,33 @@ class Program
         {
             // Regression test for https://github.com/dotnet/runtimelab/issues/485
             GenericType<object>.GenericMethod<int>();
+        }
+    }
+
+    class TestGvmDependenciesFromLazy
+    {
+        interface IFoo
+        {
+            string FrobToo<T>();
+        }
+
+        class Foo : IFoo
+        {
+            public virtual string Frob<T>() => $"Foo.Frob<{typeof(T)}>()";
+            public virtual string FrobToo<T>() => Frob<T>();
+        }
+
+        class Bar : Foo
+        {
+            public override string Frob<T>() => $"Bar.Frob<{typeof(T)}>()";
+        }
+
+        public static void Run()
+        {
+            // Regression test for https://github.com/dotnet/runtimelab/issues/537
+            IFoo f = new Bar();
+            if (f.FrobToo<object>() != "Bar.Frob<System.Object>()")
+                throw new Exception();
         }
     }
 }
