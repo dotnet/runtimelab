@@ -83,12 +83,6 @@ namespace ILCompiler.DependencyAnalysis
                             return dependencies;
                         }
 
-                        if (!context.TypeSystemContext.SupportsUniversalCanon && instantiatedMethod.IsGenericDepthGreaterThan(SpecificCanonGVMDepthHeuristic_NonCanonDepth))
-                        {
-                            // Do not support too deep instantiation.
-                            return dependencies;
-                        }
-
                         if (!instantiatedMethod.IsGenericDepthGreaterThan(SpecificCanonGVMDepthHeuristic_NonCanonDepth))
                         {
                             dependencies.Add(context.MethodGenericDictionary(instantiatedMethod), "GVM Dependency - Dictionary");
