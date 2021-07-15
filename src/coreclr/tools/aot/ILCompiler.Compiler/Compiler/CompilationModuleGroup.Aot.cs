@@ -5,13 +5,6 @@ using Internal.TypeSystem;
 
 namespace ILCompiler
 {
-    public enum ExportForm
-    {
-        None = 0,
-        ByName = 1,
-        ByOrdinal = 2,
-    }
-
     partial class CompilationModuleGroup : IInliningPolicy
     {
         /// <summary>
@@ -30,19 +23,6 @@ namespace ILCompiler
         /// <summary>
         /// If true, "type" is exported by the set of input assemblies being compiled
         /// </summary>
-        public abstract ExportForm GetExportTypeForm(TypeDesc type);
-        /// <summary>
-        /// If true, generic dictionary of "type" is exported by the set of input assemblies being compiled
-        /// </summary>
-        public abstract ExportForm GetExportTypeFormDictionary(TypeDesc type);
-        /// <summary>
-        /// If true, "method" is exported by the set of input assemblies being compiled
-        /// </summary>
-        public abstract ExportForm GetExportMethodForm(MethodDesc method, bool unboxingStub);
-        /// <summary>
-        /// If true, the generic dictionary of "method" is exported by the set of input assemblies being compiled
-        /// </summary>
-        public abstract ExportForm GetExportMethodDictionaryForm(MethodDesc method);
         /// <summary>
         /// If true, all code is compiled into a single module
         /// </summary>

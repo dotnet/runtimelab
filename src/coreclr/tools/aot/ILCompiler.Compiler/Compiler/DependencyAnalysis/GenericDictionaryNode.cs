@@ -15,7 +15,7 @@ namespace ILCompiler.DependencyAnalysis
     /// at runtime to look up runtime artifacts that depend on the concrete
     /// context the generic type or method was instantiated with.
     /// </summary>
-    public abstract class GenericDictionaryNode : ObjectNode, IExportableSymbolNode, ISortableSymbolNode
+    public abstract class GenericDictionaryNode : ObjectNode, ISymbolDefinitionNode, ISortableSymbolNode
     {
         private readonly NodeFactory _factory;
 
@@ -34,8 +34,6 @@ namespace ILCompiler.DependencyAnalysis
         public sealed override bool IsShareable => true;
 
         int ISymbolNode.Offset => 0;
-
-        public abstract ExportForm GetExportForm(NodeFactory factory);
 
         public abstract void AppendMangledName(NameMangler nameMangler, Utf8StringBuilder sb);
 
@@ -107,7 +105,6 @@ namespace ILCompiler.DependencyAnalysis
         public override Instantiation MethodInstantiation => new Instantiation();
         protected override TypeSystemContext Context => _owningType.Context;
         public override TypeSystemEntity OwningEntity => _owningType;
-        public override ExportForm GetExportForm(NodeFactory factory) => factory.CompilationModuleGroup.GetExportTypeFormDictionary(OwningType);
         public TypeDesc OwningType => _owningType;
 
         public override DictionaryLayoutNode GetDictionaryLayout(NodeFactory factory)
@@ -198,7 +195,6 @@ namespace ILCompiler.DependencyAnalysis
         public override Instantiation MethodInstantiation => _owningMethod.Instantiation;
         protected override TypeSystemContext Context => _owningMethod.Context;
         public override TypeSystemEntity OwningEntity => _owningMethod;
-        public override ExportForm GetExportForm(NodeFactory factory) => factory.CompilationModuleGroup.GetExportMethodDictionaryForm(OwningMethod);
         public MethodDesc OwningMethod => _owningMethod;
 
         protected override DependencyList ComputeNonRelocationBasedDependencies(NodeFactory factory)

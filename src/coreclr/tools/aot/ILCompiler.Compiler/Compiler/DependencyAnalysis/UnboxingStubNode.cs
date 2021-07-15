@@ -15,7 +15,7 @@ namespace ILCompiler.DependencyAnalysis
     /// <summary>
     /// Represents an unboxing stub that supports calling instance methods on boxed valuetypes.
     /// </summary>
-    public partial class UnboxingStubNode : AssemblyStubNode, IMethodNode, IExportableSymbolNode
+    public partial class UnboxingStubNode : AssemblyStubNode, IMethodNode, ISymbolDefinitionNode
     {
         // Section name on Windows has to be alphabetically less than the ending WindowsUnboxingStubsRegionNode node, and larger than
         // the begining WindowsUnboxingStubsRegionNode node, in order to have proper delimiters to the begining/ending of the
@@ -36,8 +36,6 @@ namespace ILCompiler.DependencyAnalysis
             }
         }
         public override bool IsShareable => true;
-
-        public ExportForm GetExportForm(NodeFactory factory) => factory.CompilationModuleGroup.GetExportMethodForm(Method, true);
 
         public UnboxingStubNode(MethodDesc target, TargetDetails targetDetails)
         {

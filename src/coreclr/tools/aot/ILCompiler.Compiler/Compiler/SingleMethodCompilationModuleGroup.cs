@@ -54,26 +54,6 @@ namespace ILCompiler
             return false;
         }
 
-        public override ExportForm GetExportTypeForm(TypeDesc type)
-        {
-            return ExportForm.None;
-        }
-
-        public override ExportForm GetExportTypeFormDictionary(TypeDesc type)
-        {
-            return ExportForm.None;
-        }
-
-        public override ExportForm GetExportMethodForm(MethodDesc method, bool unboxingStub)
-        {
-            return ExportForm.None;
-        }
-
-        public override ExportForm GetExportMethodDictionaryForm(MethodDesc method)
-        {
-            return ExportForm.None;
-        }
-
         public override bool ShouldProduceFullVTable(TypeDesc type)
         {
             return false;
