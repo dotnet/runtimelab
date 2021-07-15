@@ -66,9 +66,10 @@ namespace ILCompiler
 
             var nodes = _dependencyGraph.MarkedNodeList;
 
+            CorInfoImpl.Shutdown(); // writes the LLVM bitcode
+
             LLVMObjectWriter.EmitObject(outputFile, nodes, NodeFactory, this, dumper);
 
-            CorInfoImpl.Shutdown(); // writes the LLVM bitcode
 
             Console.WriteLine($"RyuJIT compilation results, total methods {totalMethodCount} RyuJit Methods {ryuJitMethodCount} {((decimal)ryuJitMethodCount * 100 / totalMethodCount):n4}%");
         }
@@ -124,13 +125,8 @@ namespace ILCompiler
             try
             {
                 var sig = method.Signature;
-                if (sig.ReturnType.IsVoid &&
-                    !method.RequiresInstArg()) // speed up
+                if (sig.ReturnType.IsVoid)
                 {
-                    // if (method.Name == "SetOwnerThreadToCurrent")
-                    // {
-                    //
-                    // }
                     corInfo.RegisterLlvmCallbacks((IntPtr)Unsafe.AsPointer(ref corInfo), _outputFile, Module.Target, Module.DataLayout);
                     corInfo.CompileMethod(methodCodeNodeNeedingCode);
                     methodCodeNodeNeedingCode.CompilationCompleted = true;
