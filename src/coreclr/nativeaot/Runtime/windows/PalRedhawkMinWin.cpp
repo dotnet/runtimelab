@@ -419,7 +419,7 @@ REDHAWK_PALEXPORT uint32_t REDHAWK_PALAPI PalHijack(HANDLE hThread, _In_ PalHija
     return result;
 }
 
-REDHAWK_PALEXPORT HANDLE REDHAWK_PALAPI PalStartBackgroundWork(_In_ BackgroundCallback callback, _In_opt_ void* pCallbackContext, BOOL highPriority)
+REDHAWK_PALEXPORT bool REDHAWK_PALAPI PalStartBackgroundWork(_In_ BackgroundCallback callback, _In_opt_ void* pCallbackContext, BOOL highPriority)
 {
     HANDLE hThread = CreateThread(
         NULL,
@@ -430,7 +430,7 @@ REDHAWK_PALEXPORT HANDLE REDHAWK_PALAPI PalStartBackgroundWork(_In_ BackgroundCa
         NULL);
 
     if (hThread == NULL)
-        return NULL;
+        return false;
 
     if (highPriority)
     {
@@ -438,17 +438,18 @@ REDHAWK_PALEXPORT HANDLE REDHAWK_PALAPI PalStartBackgroundWork(_In_ BackgroundCa
         ResumeThread(hThread);
     }
 
-    return hThread;
+    CloseHandle(hThread);
+    return true;
 }
 
 REDHAWK_PALEXPORT bool REDHAWK_PALAPI PalStartBackgroundGCThread(_In_ BackgroundCallback callback, _In_opt_ void* pCallbackContext)
 {
-    return PalStartBackgroundWork(callback, pCallbackContext, FALSE) != NULL;
+    return PalStartBackgroundWork(callback, pCallbackContext, FALSE);
 }
 
 REDHAWK_PALEXPORT bool REDHAWK_PALAPI PalStartFinalizerThread(_In_ BackgroundCallback callback, _In_opt_ void* pCallbackContext)
 {
-    return PalStartBackgroundWork(callback, pCallbackContext, TRUE) != NULL;
+    return PalStartBackgroundWork(callback, pCallbackContext, TRUE);
 }
 
 REDHAWK_PALEXPORT bool REDHAWK_PALAPI PalEventEnabled(REGHANDLE regHandle, _In_ const EVENT_DESCRIPTOR* eventDescriptor)
