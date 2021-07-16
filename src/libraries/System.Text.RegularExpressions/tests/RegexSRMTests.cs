@@ -48,7 +48,7 @@ namespace System.Text.RegularExpressions.Tests
                 if (treatedAsCaseInsensitive.Contains(c) ||
                     (c == Turkish_i_withoutDot && culture.TwoLetterISOLanguageName != "tr" && culture.TwoLetterISOLanguageName != "az"))
                     continue;
-                if (c != cU || c != cL || cU != cL)
+                if (cU != cL)
                 {
                     var set = (ignoreCase[c] == null ? (ignoreCase[cU] == null ? (ignoreCase[cL] == null ? new HashSet<char>()
                                                      : ignoreCase[cL]) : ignoreCase[cU]) : ignoreCase[c]);
@@ -93,7 +93,7 @@ namespace System.Text.RegularExpressions.Tests
         /// This test is to make sure that the generated IgnoreCaseRelation table for DFA does not need to be updated.
         /// It would need to be updated/regenerated if this test fails.
         /// </summary>
-        [OuterLoop("May take several seconds due to large number of cultures tested")]
+        //[OuterLoop("May take several seconds due to large number of cultures tested")]
         [Fact]
         public void TestIgnoreCaseRelation()
         {
@@ -135,6 +135,40 @@ namespace System.Text.RegularExpressions.Tests
                     //all other alphabets are treated the same as en-US
                     Assert.Equal(default_diff, diff);
             }
+        }
+
+        //[OuterLoop("May take tens of seconds")]
+        [Fact]
+        public void TestIgnoreCaseRelationBorderCasesInDFAmode()
+        {
+            //these 22 characters are considered case-insensitive by regex, while they are case-sensitive outside regex
+            //but they are only case-sensitive in an asymmmetrical way: tolower(c)=c, tolower(toupper(c)) != c
+            HashSet<char> treatedAsCaseInsensitive =
+                 new("\u00B5\u017F\u0345\u03C2\u03D0\u03D1\u03D5\u03D6\u03F0\u03F1\u03F5\u1C80\u1C81\u1C82\u1C83\u1C84\u1C85\u1C86\u1C87\u1C88\u1E9B\u1FBE");
+            foreach (char c in treatedAsCaseInsensitive)
+            {
+                char cU = char.ToUpper(c);
+                Assert.NotEqual(c, cU);
+                Assert.False(Regex.IsMatch(c.ToString(), cU.ToString(), RegexOptions.IgnoreCase | DFA));
+            }
+
+            Assert.False(Regex.IsMatch(Turkish_i_withoutDot.ToString(), "i", RegexOptions.IgnoreCase | DFA));
+            Assert.True(Regex.IsMatch(Turkish_I_withDot.ToString(), "i", RegexOptions.IgnoreCase | DFA));
+            Assert.True(Regex.IsMatch(Turkish_I_withDot.ToString(), "i", RegexOptions.IgnoreCase | DFA));
+            Assert.False(Regex.IsMatch(Turkish_I_withDot.ToString(), "i", RegexOptions.IgnoreCase | DFA | RegexOptions.CultureInvariant));
+
+            //Turkish i without dot is not considered case-sensitive in the default en-US culture
+            treatedAsCaseInsensitive.Add(Turkish_i_withoutDot);
+
+            List<char> caseSensitiveChars = new();
+            for (char c = '\0'; c < '\uFFFF'; c++)
+                if (!treatedAsCaseInsensitive.Contains(c) && char.ToUpper(c) != char.ToLower(c))
+                    caseSensitiveChars.Add(c);
+
+            //test all case-sensitive characters exhaustively in DFA mode
+            foreach (char c in caseSensitiveChars)
+                Assert.True(Regex.IsMatch(char.ToUpper(c).ToString() + char.ToLower(c).ToString(),
+                    c.ToString() + c.ToString(), RegexOptions.IgnoreCase | DFA));
         }
 
         [Theory]
