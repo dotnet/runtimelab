@@ -51,21 +51,15 @@ namespace ILCompiler.DependencyAnalysis
             nativeSection.Place(hashtable);
 
 
-            foreach (MethodDesc method in factory.MetadataManager.GetCompiledMethods())
+            foreach (var methodEntryNode in factory.MetadataManager.GetTemplateMethodEntries())
             {
-                if (!IsEligibleToBeATemplate(method))
-                    continue;
-
-                var methodEntryNode = factory.NativeLayout.TemplateMethodEntry(method);
-
-                if (!methodEntryNode.Marked)
-                    continue;
-
                 // Method entry
                 Vertex methodEntry = methodEntryNode.SavedVertex;
 
                 // Method's native layout info
-                Vertex nativeLayout = factory.NativeLayout.TemplateMethodLayout(method).SavedVertex;
+                var layoutNode = factory.NativeLayout.TemplateMethodLayout(methodEntryNode.Method);
+                Debug.Assert(layoutNode.Marked);
+                Vertex nativeLayout = layoutNode.SavedVertex;
 
                 // Hashtable Entry
                 Vertex entry = nativeWriter.GetTuple(
@@ -73,7 +67,7 @@ namespace ILCompiler.DependencyAnalysis
                     nativeWriter.GetUnsignedConstant((uint)nativeLayout.VertexOffset));
 
                 // Add to the hash table, hashed by the containing type's hashcode
-                uint hashCode = (uint)method.GetHashCode();
+                uint hashCode = (uint)methodEntryNode.Method.GetHashCode();
                 hashtable.Append(hashCode, nativeSection.Place(entry));
             }
 

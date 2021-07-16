@@ -2585,12 +2585,25 @@ class Program
         interface IFoo
         {
             string FrobToo<T>();
+            void Blah<T>();
         }
 
         class Foo : IFoo
         {
             public virtual string Frob<T>() => $"Foo.Frob<{typeof(T)}>()";
             public virtual string FrobToo<T>() => Frob<T>();
+
+            // RyuJIT doesn't inline, but futureproofing
+            [MethodImpl(MethodImplOptions.NoInlining)]
+            void IFoo.Blah<T>() => Bork<T>();
+
+            // In optimized builds, Bork method body will not be generated and its generic dictionary is
+            // useless in practice (it gets inlined), but the native layout for Blah still needs info on
+            // how to build the empty dictionary because the generic dictionary of Blah
+            // refers to this method's dictionary.
+            //
+            // The dictionary layouts are computed without any assumptions about inlining.
+            private static void Bork<T>() { }
         }
 
         class Bar : Foo
@@ -2598,12 +2611,16 @@ class Program
             public override string Frob<T>() => $"Bar.Frob<{typeof(T)}>()";
         }
 
+        // Make it unlikely things will devirtualize
+        static IFoo s_f = new Bar();
+
         public static void Run()
         {
             // Regression test for https://github.com/dotnet/runtimelab/issues/537
-            IFoo f = new Bar();
-            if (f.FrobToo<object>() != "Bar.Frob<System.Object>()")
+            if (s_f.FrobToo<object>() != "Bar.Frob<System.Object>()")
                 throw new Exception();
+
+            s_f.Blah<object>();
         }
     }
 }
