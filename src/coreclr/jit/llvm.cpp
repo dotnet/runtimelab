@@ -499,7 +499,7 @@ llvm::Value* getShadowStackOffest(Value* shadowStack, unsigned int offset)
     if (offset == 0)
         return shadowStack;
 
-    return _builder->CreateGEP(shadowStack, _builder->getInt32(TARGET_POINTER_SIZE));
+    return _builder->CreateGEP(shadowStack, _builder->getInt32(offset));
 }
 
 bool isThisArg(GenTreeCall* call, GenTree* operand)
@@ -516,6 +516,14 @@ void storeOnShadowStack(llvm::IRBuilder<>& builder, GenTree* operand, Value* sha
 {
     castingStore(*_builder, genTreeAsLlvmType(operand, Type::getInt8PtrTy(_llvmContext)),
                  getShadowStackOffest(shadowStackForCallee, offset), Type::getInt8PtrTy(_llvmContext));
+}
+
+// shadow stack moved up to avoid overwriting anything on the stack in the compiling method
+llvm::Value* getShadowStackForCallee(llvm::IRBuilder<>& builder)
+{
+    unsigned int offset = getTotalParameterOffset(_sigInfo) + getTotalLocalOffset(_sigInfo);
+
+    return offset == 0 ? _function->getArg(0) : builder.CreateGEP(_function->getArg(0), builder.getInt32(offset));
 }
 
 llvm::Value* buildUserFuncCall(GenTreeCall* call, llvm::IRBuilder<>& builder)
@@ -547,10 +555,8 @@ llvm::Value* buildUserFuncCall(GenTreeCall* call, llvm::IRBuilder<>& builder)
     }
     std::vector<llvm::Value*> argVec;
 
-    unsigned int offset = getTotalParameterOffset(_sigInfo) + getTotalLocalOffset(sigInfo);
-
     // shadowstack arg first
-    Value* shadowStackForCallee = offset == 0 ? _function->getArg(0) : builder.CreateGEP(_function->getArg(0), builder.getInt32(offset));
+    Value* shadowStackForCallee = getShadowStackForCallee(builder);
     argVec.push_back(shadowStackForCallee);
 
     unsigned int                      shadowStackUseOffest = 0;
@@ -561,16 +567,6 @@ llvm::Value* buildUserFuncCall(GenTreeCall* call, llvm::IRBuilder<>& builder)
     fgArgTabEntry**                   argTable             = argInfo->ArgTable();
     std::vector<struct OperandArgNum> sortedArgs           = std::vector<struct OperandArgNum>(argCount);
     struct OperandArgNum*             sortedData           = sortedArgs.data();
-
-    // "this" goes first
-    if (call->gtCallThisArg != nullptr)
-    {
-        thisArg = _compiler->gtGetThisArg(call);
-
-        // TODO: add throw if this is null
-        storeOnShadowStack(*_builder, thisArg, shadowStackForCallee, shadowStackUseOffest);
-        shadowStackUseOffest += TARGET_POINTER_SIZE;
-    }
 
     for (unsigned i = 0; i < argCount; i++)
     {
@@ -612,12 +608,14 @@ Value* buildCall(llvm::IRBuilder<>& builder, GenTree* node)
             {
                 llvmFunc = Function::Create(FunctionType::get(Type::getInt8PtrTy(_llvmContext), ArrayRef<Type*>(Type::getInt8PtrTy(_llvmContext)), false), Function::ExternalLinkage, 0U, symbolName, _module); // TODO: ExternalLinkage forced as defined in ILC module
             }
+
             // replacement for _info.compCompHnd->recordRelocation(nullptr, gtCall->gtEntryPoint.handle, IMAGE_REL_BASED_REL32);
             (*_addCodeReloc)(_thisPtr, call->gtEntryPoint.handle);
-            return mapGenTreeToValue(node, builder.CreateCall(llvmFunc, _function->getArg(0)));
+
+            return mapGenTreeToValue(node, builder.CreateCall(llvmFunc, getShadowStackForCallee(builder)));
         }
     }
-    else if (call->gtCallType == CT_USER_FUNC)
+    else if (call->gtCallType == CT_USER_FUNC && !call->IsVirtualStub() /* TODO: Virtual stub not implemented */)
     {
         return buildUserFuncCall(call, builder);
     }
@@ -684,17 +682,27 @@ Value* localVar(llvm::IRBuilder<>& builder, GenTreeLclVar* lclVar)
     {
         if (_compiler->lvaIsParameter(lclNum))
         {
-            struct LlvmArgInfo llvmArgInfo = getLlvmArgInfoForArgIx(_sigInfo, lclNum);
-            if (llvmArgInfo.m_argIx >= 0)
+            if (!_info.compIsStatic && _info.compThisArg == lclNum)
             {
-                llvmRef = _function->getArg(llvmArgInfo.m_argIx);
+                // this is always the first pointer on the shadowstack (LLVM arg 0).  Dont need the gep in this case
+                llvmRef = builder.CreateLoad(builder.CreateBitCast(_function->getArg(0), (Type::getInt8PtrTy(_llvmContext)->getPointerTo())));
             }
             else
             {
-                // TODO: store argAddress in a map in case multiple IR locals are to the same argument - we only want one gep in the prolog
-                Value* argAddress = _prologBuilder->CreateGEP(_function->getArg(0), builder.getInt32(llvmArgInfo.m_shadowStackOffset), "Argument");
-                llvmRef = builder.CreateLoad(builder.CreateBitCast(argAddress, (Type::getInt8PtrTy(_llvmContext)->getPointerTo())));
+                unsigned int       argIx       = _info.compIsStatic ? lclNum : lclNum - 1;
+                struct LlvmArgInfo llvmArgInfo = getLlvmArgInfoForArgIx(_sigInfo, argIx);
+                if (llvmArgInfo.m_argIx >= 0)
+                {
+                    llvmRef = _function->getArg(llvmArgInfo.m_argIx);
+                }
+                else
+                {
+                    // TODO: store argAddress in a map in case multiple IR locals are to the same argument - we only want one gep in the prolog
+                    Value* argAddress = _prologBuilder->CreateGEP(_function->getArg(0), builder.getInt32(llvmArgInfo.m_shadowStackOffset), "Argument");
+                    llvmRef = builder.CreateLoad(builder.CreateBitCast(argAddress, (Type::getInt8PtrTy(_llvmContext)->getPointerTo())));
+                }
             }
+
             _localsMap->insert({lclNum, llvmRef});
         }
         else
@@ -808,7 +816,7 @@ void Llvm::Compile(Compiler* pCompiler)
     std::unordered_map<GenTree*, Value*> sdsuMap;
     _sdsuMap = &sdsuMap;
     _localsMap = new std::unordered_map<unsigned int, Value*>();
-    const char *mangledName = (*_getMangledMethodName)(_thisPtr, _info.compMethodHnd);
+    const char* mangledName = (*_getMangledMethodName)(_thisPtr, _info.compMethodHnd);
     _function    = _module->getFunction(mangledName);
     _compiler->eeGetMethodSig(_info.compMethodHnd, &_sigInfo);
     if (_function == nullptr)
