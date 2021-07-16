@@ -93,7 +93,7 @@ namespace System.Text.RegularExpressions.Tests
         /// This test is to make sure that the generated IgnoreCaseRelation table for DFA does not need to be updated.
         /// It would need to be updated/regenerated if this test fails.
         /// </summary>
-        //[OuterLoop("May take several seconds due to large number of cultures tested")]
+        [OuterLoop("May take several seconds due to large number of cultures tested")]
         [Fact]
         public void TestIgnoreCaseRelation()
         {
@@ -137,7 +137,7 @@ namespace System.Text.RegularExpressions.Tests
             }
         }
 
-        //[OuterLoop("May take tens of seconds")]
+        [OuterLoop("May take tens of seconds")]
         [Fact]
         public void TestIgnoreCaseRelationBorderCasesInDFAmode()
         {
