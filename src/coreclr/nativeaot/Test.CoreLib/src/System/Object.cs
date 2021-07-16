@@ -10,14 +10,14 @@ namespace System
 {
     // CONTRACT with Runtime
     // The Object type is one of the primitives understood by the compilers and runtime
-    // Data Contract: Single field of type EEType*
+    // Data Contract: Single field of type MethodTable*
     // VTable Contract: The first vtable slot should be the finalizer for object => The first virtual method in the object class should be the Finalizer
 
     public unsafe class Object
     {
         // CS0649: Field '{blah}' is never assigned to, and will always have its default value
 #pragma warning disable 649
-        private EEType* m_pEEType;
+        private MethodTable* m_pEEType;
 #pragma warning restore
 
         // Creates a new instance of an Object.
@@ -45,7 +45,7 @@ namespace System
             return 0;
         }
 
-        internal EEType* EEType
+        internal MethodTable* MethodTable
         {
             get
             {
@@ -68,12 +68,12 @@ namespace System
         }
 
         /// <summary>
-        /// Return size of all data (excluding ObjHeader and EEType*).
+        /// Return size of all data (excluding ObjHeader and MethodTable*).
         /// Note that for strings/arrays this would include the Length as well.
         /// </summary>
         internal uint GetRawDataSize()
         {
-            return EEType->BaseSize - (uint)sizeof(ObjHeader) - (uint)sizeof(EEType*);
+            return MethodTable->BaseSize - (uint)sizeof(ObjHeader) - (uint)sizeof(MethodTable*);
         }
     }
 }

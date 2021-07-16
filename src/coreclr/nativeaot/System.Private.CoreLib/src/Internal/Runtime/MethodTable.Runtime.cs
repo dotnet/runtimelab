@@ -8,11 +8,11 @@ using System.Runtime.InteropServices;
 
 namespace Internal.Runtime
 {
-    // Extensions to EEType that are specific to the use in the CoreLib.
-    internal unsafe partial struct EEType
+    // Extensions to MethodTable that are specific to the use in the CoreLib.
+    internal unsafe partial struct MethodTable
     {
 #if !INPLACE_RUNTIME
-        internal EEType* GetArrayEEType()
+        internal MethodTable* GetArrayEEType()
         {
 
             return EETypePtr.EETypePtrOf<Array>().ToPointer();

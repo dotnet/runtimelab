@@ -478,7 +478,7 @@ namespace System.Reflection.Runtime.TypeInfos
 
             // We intentionally don't validate the number of arguments or their suitability to the generic type's constraints.
             // In a pay-for-play world, this can cause needless MissingMetadataExceptions. There is no harm in creating
-            // the Type object for an inconsistent generic type - no EEType will ever match it so any attempt to "invoke" it
+            // the Type object for an inconsistent generic type - no MethodTable will ever match it so any attempt to "invoke" it
             // will throw an exception.
             bool foundSignatureType = false;
             RuntimeTypeInfo[] runtimeTypeArguments = new RuntimeTypeInfo[typeArguments.Length];
@@ -576,16 +576,16 @@ namespace System.Reflection.Runtime.TypeInfos
                 if (!typeHandle.IsNull())
                     return typeHandle;
 
-                // If a type doesn't have a type handle, it's either because we optimized away the EEType
+                // If a type doesn't have a type handle, it's either because we optimized away the MethodTable
                 // but the reflection metadata had to be kept around, or because we have an open type somewhere
                 // (open types never get EETypes). Open types are PlatformNotSupported and there's nothing
-                // that can be done about that. Missing EEType can be fixed by helping the AOT compiler
+                // that can be done about that. Missing MethodTable can be fixed by helping the AOT compiler
                 // with some hints.
                 if (!IsGenericTypeDefinition && ContainsGenericParameters)
                     throw new PlatformNotSupportedException(SR.PlatformNotSupported_NoTypeHandleForOpenTypes);
 
                 // If got here, this is a "plain old type" that has metadata but no type handle. We can get here if the only
-                // representation of the type is in the native metadata and there's no EEType at the runtime side.
+                // representation of the type is in the native metadata and there's no MethodTable at the runtime side.
                 // If you squint hard, this is a missing metadata situation - the metadata is missing on the runtime side - and
                 // the action for the user to take is the same: go mess with RD.XML.
                 throw ReflectionCoreExecution.ExecutionDomain.CreateMissingMetadataException(this);

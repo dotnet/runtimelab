@@ -33,7 +33,7 @@ using Debug = System.Diagnostics.Debug;
 // determine context from just `this`) - by adding an extra instantiation
 // argument. The actual code for IFoo<__Canon>.GetTheType looks something like this:
 //
-// Type IFoo__Canon__GetTheType(IFoo<__Canon> instance, EEType* context)
+// Type IFoo__Canon__GetTheType(IFoo<__Canon> instance, MethodTable* context)
 // {
 //     return Type.GetTypeFromHandle(GetTypeHandleOfTInIFooCanon(context));
 // }
@@ -52,7 +52,7 @@ using Debug = System.Diagnostics.Debug;
 //
 // Notice the thunk now has the expected signature, and some code to compute the context.
 //
-// The GetOrdinalInterface method retrieves the specified interface EEType off the EEType's interface list.
+// The GetOrdinalInterface method retrieves the specified interface MethodTable off the MethodTable's interface list.
 // The thunks are per-type (since the position in the inteface list is different).
 //
 // We hardcode the position in the interface list instead of just hardcoding the interface type

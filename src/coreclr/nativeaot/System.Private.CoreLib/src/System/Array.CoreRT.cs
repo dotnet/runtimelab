@@ -16,7 +16,7 @@ using Internal.Runtime.Augments;
 using Internal.Runtime.CompilerServices;
 using Internal.Reflection.Core.NonPortable;
 using Internal.IntrinsicSupport;
-using EEType = Internal.Runtime.EEType;
+using MethodTable = Internal.Runtime.MethodTable;
 using EETypeElementType = Internal.Runtime.EETypeElementType;
 
 namespace System
@@ -55,10 +55,10 @@ namespace System
             }
         }
 
-        // This is the classlib-provided "get array eetype" function that will be invoked whenever the runtime
+        // This is the classlib-provided "get array MethodTable" function that will be invoked whenever the runtime
         // needs to know the base type of an array.
         [RuntimeExport("GetSystemArrayEEType")]
-        private static unsafe EEType* GetSystemArrayEEType()
+        private static unsafe MethodTable* GetSystemArrayEEType()
         {
             return EETypePtr.EETypePtrOf<Array>().ToPointer();
         }
@@ -433,7 +433,7 @@ namespace System
                 attemptCopy = attemptCopy || RuntimeImports.AreTypesAssignable(destinationElementEEType, sourceElementEEType);
 
                 // If either array is an interface array, we allow the attempt to copy even if the other element type does not statically implement the interface.
-                // We don't have an "IsInterface" property in EETypePtr so we instead check for a null BaseType. The only the other EEType with a null BaseType is
+                // We don't have an "IsInterface" property in EETypePtr so we instead check for a null BaseType. The only the other MethodTable with a null BaseType is
                 // System.Object but if that were the case, we would already have passed one of the AreTypesAssignable checks above.
                 attemptCopy = attemptCopy || sourceElementEEType.BaseType.IsNull;
                 attemptCopy = attemptCopy || destinationElementEEType.BaseType.IsNull;

@@ -329,9 +329,9 @@ EXTERN_C REDHAWK_API int64_t __cdecl RhGetTotalAllocatedBytesPrecise()
     return allocated;
 }
 
-extern Object* GcAllocInternal(EEType* pEEType, uint32_t uFlags, uintptr_t cbSize, Thread* pThread);
+extern Object* GcAllocInternal(MethodTable* pEEType, uint32_t uFlags, uintptr_t cbSize, Thread* pThread);
 
-EXTERN_C REDHAWK_API void RhAllocateNewArray(EEType* pArrayEEType, uint32_t numElements, uint32_t flags, Array** pResult)
+EXTERN_C REDHAWK_API void RhAllocateNewArray(MethodTable* pArrayEEType, uint32_t numElements, uint32_t flags, Array** pResult)
 {
     Thread* pThread = ThreadStore::GetCurrentThread();
 
@@ -345,7 +345,7 @@ EXTERN_C REDHAWK_API void RhAllocateNewArray(EEType* pArrayEEType, uint32_t numE
     pThread->EnablePreemptiveMode();
 }
 
-EXTERN_C REDHAWK_API void RhAllocateNewObject(EEType* pEEType, uint32_t flags, Object** pResult)
+EXTERN_C REDHAWK_API void RhAllocateNewObject(MethodTable* pEEType, uint32_t flags, Object** pResult)
 {
     Thread* pThread = ThreadStore::GetCurrentThread();
 

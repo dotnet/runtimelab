@@ -130,10 +130,10 @@ public:
     ULONG cTypeParameters;
 
 #ifdef FEATURE_REDHAWK
-    // If > 1 type parameter, this is an array of their EEType*'s
+    // If > 1 type parameter, this is an array of their MethodTable*'s
     NewArrayHolder<ULONGLONG> rgTypeParameters;
 
-    // If exactly one type parameter, this is its EEType*.  (If != 1 type parameter,
+    // If exactly one type parameter, this is its MethodTable*.  (If != 1 type parameter,
     // this is 0.)
     ULONGLONG ullSingleTypeParameter;
 #else   // FEATURE_REDHAWK
@@ -192,7 +192,7 @@ private:
     BulkTypeValue m_rgBulkTypeValues[kMaxCountTypeValues];
 
 #ifdef FEATURE_REDHAWK
-    int LogSingleType(EEType * pEEType);
+    int LogSingleType(MethodTable * pEEType);
 #else
     int LogSingleType(TypeHandle th);
 #endif

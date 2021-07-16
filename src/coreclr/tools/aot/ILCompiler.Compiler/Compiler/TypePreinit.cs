@@ -1995,7 +1995,7 @@ namespace ILCompiler
 
                 Debug.Assert(!creationInfo.TargetNeedsVTableLookup);
 
-                // EEType
+                // MethodTable
                 var node = factory.ConstructedTypeSymbol(Type);
                 Debug.Assert(!node.RepresentsIndirectionCell);  // Shouldn't have allowed this
                 builder.EmitPointerReloc(node);
@@ -2106,7 +2106,7 @@ namespace ILCompiler
 
             public virtual void WriteContent(ref ObjectDataBuilder builder, ISymbolNode thisNode, NodeFactory factory)
             {
-                // EEType
+                // MethodTable
                 var node = factory.ConstructedTypeSymbol(Type);
                 Debug.Assert(!node.RepresentsIndirectionCell);  // Arrays are always local
                 builder.EmitPointerReloc(node);
@@ -2224,12 +2224,12 @@ namespace ILCompiler
 
             public virtual void WriteContent(ref ObjectDataBuilder builder, ISymbolNode thisNode, NodeFactory factory)
             {
-                // EEType
+                // MethodTable
                 var node = factory.ConstructedTypeSymbol(Type);
                 Debug.Assert(!node.RepresentsIndirectionCell);  // Shouldn't have allowed preinitializing this
                 builder.EmitPointerReloc(node);
 
-                // We skip the first pointer because that's the EEType pointer
+                // We skip the first pointer because that's the MethodTable pointer
                 // we just initialized above.
                 int pointerSize = factory.Target.PointerSize;
                 builder.EmitBytes(_data, pointerSize, _data.Length - pointerSize);

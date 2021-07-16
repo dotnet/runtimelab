@@ -674,7 +674,7 @@ namespace Internal.Runtime.TypeLoader
                 // Given that we use universal template types to build the dynamic EETypes, these dynamic types will end up with NULL dictionary
                 // entries, causing the normal-canonical code sharing to fail.
                 // To fix this problem, we will load the generic dictionary from the non-universal template type, and build a generic dictionary out of
-                // it for the dynamic type, and store that dictionary pointer in the dynamic EEType's structure.
+                // it for the dynamic type, and store that dictionary pointer in the dynamic MethodTable's structure.
                 TypeBuilderState tempState = new TypeBuilderState();
                 tempState.NativeLayoutInfo = new NativeLayoutInfo();
                 state.NonUniversalTemplateType = tempState.TemplateType = type.Context.TemplateLookup.TryGetNonUniversalTypeTemplate(type, ref tempState.NativeLayoutInfo);
@@ -783,7 +783,7 @@ namespace Internal.Runtime.TypeLoader
                     //      3) Derived<__Universal> : BaseClass<object>
                     Debug.Assert(currentTemplateType != null && !currentTemplateType.RuntimeTypeHandle.IsNull());
 
-                    IntPtr* pTemplateVtable = (IntPtr*)((byte*)(currentTemplateType.RuntimeTypeHandle.ToEETypePtr()) + sizeof(EEType));
+                    IntPtr* pTemplateVtable = (IntPtr*)((byte*)(currentTemplateType.RuntimeTypeHandle.ToEETypePtr()) + sizeof(MethodTable));
                     dictionarySlotInVtable = pTemplateVtable[currentVtableIndex];
                 }
             }
@@ -857,13 +857,13 @@ namespace Internal.Runtime.TypeLoader
 
             public GCLayout(RuntimeTypeHandle rtth)
             {
-                EEType* eeType = rtth.ToEETypePtr();
-                Debug.Assert(eeType != null);
+                MethodTable* MethodTable = rtth.ToEETypePtr();
+                Debug.Assert(MethodTable != null);
 
                 _bitfield = null;
                 _isReferenceTypeGCLayout = false; // This field is only used for the LowLevelList<bool> path
-                _gcdesc = eeType->HasGCPointers ? (void**)eeType - 1 : null;
-                _size = (int)eeType->BaseSize;
+                _gcdesc = MethodTable->HasGCPointers ? (void**)MethodTable - 1 : null;
+                _size = (int)MethodTable->BaseSize;
             }
 
             /// <summary>
@@ -921,7 +921,7 @@ namespace Internal.Runtime.TypeLoader
             {
                 int startIndex = offset / IntPtr.Size;
 
-                // These routines represent the GC layout after the EEType pointer
+                // These routines represent the GC layout after the MethodTable pointer
                 // in an object, but the LowLevelList<bool> bitfield logically contains
                 // the EETypepointer if it is describing a reference type. So, skip the
                 // first value.
@@ -983,7 +983,7 @@ namespace Internal.Runtime.TypeLoader
             if (state.ThreadDataSize != 0)
                 TypeLoaderEnvironment.Instance.RegisterDynamicThreadStaticsInfo(state.HalfBakedRuntimeTypeHandle, state.ThreadStaticOffset, state.ThreadDataSize);
 
-            TypeLoaderLogger.WriteLine("Allocated new type " + type.ToString() + " with hashcode value = 0x" + type.GetHashCode().LowLevelToString() + " with eetype = " + rtt.ToIntPtr().LowLevelToString() + " of size " + rtt.ToEETypePtr()->BaseSize.LowLevelToString());
+            TypeLoaderLogger.WriteLine("Allocated new type " + type.ToString() + " with hashcode value = 0x" + type.GetHashCode().LowLevelToString() + " with MethodTable = " + rtt.ToIntPtr().LowLevelToString() + " of size " + rtt.ToEETypePtr()->BaseSize.LowLevelToString());
         }
 
         private void AllocateRuntimeMethodDictionary(InstantiatedMethod method)
@@ -1019,7 +1019,7 @@ namespace Internal.Runtime.TypeLoader
                 return;
 
             int numVtableSlots = GetRuntimeTypeHandle(type).GetNumVtableSlots();
-            IntPtr* vtableCells = (IntPtr*)((byte*)GetRuntimeTypeHandle(type).ToIntPtr() + sizeof(EEType));
+            IntPtr* vtableCells = (IntPtr*)((byte*)GetRuntimeTypeHandle(type).ToIntPtr() + sizeof(MethodTable));
             Debug.Assert((state.VTableMethodSignatures.Length - state.NumSealedVTableMethodSignatures) <= numVtableSlots);
 
             TypeDesc baseType = type.BaseType;

@@ -25,7 +25,7 @@ namespace ILCompiler.DependencyAnalysis
     public enum LookupResultType
     {
         Invalid,
-        EEType,             // a type
+        MethodTable,             // a type
         UnwrapNullable,     // a type (The type T described by a type spec that is generic over Nullable<T>)
         NonGcStatic,        // the non-gc statics of a type
         GcStatic,           // the gc statics of a type
@@ -210,7 +210,7 @@ namespace ILCompiler.DependencyAnalysis
     }
 
     /// <summary>
-    /// Generic lookup result that points to an EEType.
+    /// Generic lookup result that points to an MethodTable.
     /// </summary>
     public sealed class TypeHandleGenericLookupResult : GenericLookupResult
     {
@@ -259,7 +259,7 @@ namespace ILCompiler.DependencyAnalysis
 
         public override void WriteDictionaryTocData(NodeFactory factory, IGenericLookupResultTocWriter writer)
         {
-            writer.WriteData(LookupResultReferenceType(factory), LookupResultType.EEType, _type);
+            writer.WriteData(LookupResultReferenceType(factory), LookupResultType.MethodTable, _type);
         }
 
         protected override int CompareToImpl(GenericLookupResult other, TypeSystemComparer comparer)
@@ -280,7 +280,7 @@ namespace ILCompiler.DependencyAnalysis
 
 
     /// <summary>
-    /// Generic lookup result that points to an EEType where if the type is Nullable&lt;X&gt; the EEType is X
+    /// Generic lookup result that points to an MethodTable where if the type is Nullable&lt;X&gt; the MethodTable is X
     /// </summary>
     public sealed class UnwrapNullableTypeHandleGenericLookupResult : GenericLookupResult
     {

@@ -17,7 +17,7 @@ void ReclaimUnusedInterfaceDispatchCaches();
 // of a pointer due to the synchonization mechanism used to update them at runtime.
 struct InterfaceDispatchCacheEntry
 {
-    EEType *    m_pInstanceType;    // Potential type of the object instance being dispatched on
+    MethodTable *    m_pInstanceType;    // Potential type of the object instance being dispatched on
     void *      m_pTargetCode;      // Method to dispatch to if the actual instance type matches the above
 };
 

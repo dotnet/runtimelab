@@ -963,7 +963,7 @@ namespace ILCompiler.DependencyAnalysis
         {
             ISymbolNode typeNode = context.MaximallyConstructableType(_type.ConvertToCanonForm(CanonicalFormKind.Specific));
 
-            yield return new DependencyListEntry(typeNode, "Template EEType");
+            yield return new DependencyListEntry(typeNode, "Template MethodTable");
 
             foreach (var dependency in context.NativeLayout.TemplateConstructableTypes(_type))
             {
@@ -1469,7 +1469,7 @@ namespace ILCompiler.DependencyAnalysis
             }
             else
             {
-                // If allocating an object of the EEType isn't permitted, don't process any vtable entries.
+                // If allocating an object of the MethodTable isn't permitted, don't process any vtable entries.
                 vtableEntriesToProcess = Array.Empty<MethodDesc>();
             }
 

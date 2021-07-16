@@ -481,9 +481,9 @@ namespace Internal.Runtime.TypeLoader
 
             internal override unsafe IntPtr Create(TypeBuilder builder)
             {
-                // Debug sanity check for the size of the EEType structure
+                // Debug sanity check for the size of the MethodTable structure
                 // just to ensure nothing of it gets reduced
-                Debug.Assert(sizeof(EEType) == (IntPtr.Size == 8 ? 24 : 20));
+                Debug.Assert(sizeof(MethodTable) == (IntPtr.Size == 8 ? 24 : 20));
 
                 int result = (int)VTableSlot;
 
@@ -493,7 +493,7 @@ namespace Internal.Runtime.TypeLoader
                 AdjustVtableSlot(ContainingType, ContainingTypeTemplate, ref result);
                 Debug.Assert(result >= 0);
 
-                return (IntPtr)(sizeof(EEType) + result * IntPtr.Size);
+                return (IntPtr)(sizeof(MethodTable) + result * IntPtr.Size);
             }
         }
 #endif

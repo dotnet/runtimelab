@@ -22,8 +22,8 @@ namespace Internal.Runtime
     {
         /// <summary>
         /// Flag set if the corresponding GCStatic entry has not yet been initialized and
-        /// the corresponding EEType pointer has been changed into a instance pointer of
-        /// that EEType.
+        /// the corresponding MethodTable pointer has been changed into a instance pointer of
+        /// that MethodTable.
         /// </summary>
         public const int Uninitialized = 0x1;
 

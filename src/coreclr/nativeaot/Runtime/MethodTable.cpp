@@ -6,25 +6,25 @@
 #include "daccess.h"
 #include "rhassert.h"
 #include "rhbinder.h"
-#include "eetype.h"
+#include "MethodTable.h"
 #include "PalRedhawkCommon.h"
 #include "PalRedhawk.h"
 
 #include "CommonMacros.inl"
-#include "eetype.inl"
+#include "MethodTable.inl"
 
 #pragma warning(disable:4127) // C4127: conditional expression is constant
 
-// Validate an EEType extracted from an object.
-bool EEType::Validate(bool assertOnFail /* default: true */)
+// Validate an MethodTable extracted from an object.
+bool MethodTable::Validate(bool assertOnFail /* default: true */)
 {
-#define REPORT_FAILURE() do { if (assertOnFail) { ASSERT_UNCONDITIONALLY("EEType::Validate check failed"); } return false; } while (false)
+#define REPORT_FAILURE() do { if (assertOnFail) { ASSERT_UNCONDITIONALLY("MethodTable::Validate check failed"); } return false; } while (false)
 
     // Deal with the most common case of a bad pointer without an exception.
     if (this == NULL)
         REPORT_FAILURE();
 
-    // EEType structures should be at least pointer aligned.
+    // MethodTable structures should be at least pointer aligned.
     if (dac_cast<TADDR>(this) & (sizeof(TADDR)-1))
         REPORT_FAILURE();
 
@@ -139,13 +139,13 @@ bool EEType::Validate(bool assertOnFail /* default: true */)
 }
 
 //-----------------------------------------------------------------------------------------------------------
-EEType::Kinds EEType::get_Kind()
+MethodTable::Kinds MethodTable::get_Kind()
 {
 	return (Kinds)(m_usFlags & (uint16_t)EETypeKindMask);
 }
 
 //-----------------------------------------------------------------------------------------------------------
-EEType * EEType::get_CanonicalEEType()
+MethodTable * MethodTable::get_CanonicalEEType()
 {
 	// cloned EETypes must always refer to types in other modules
 	ASSERT(IsCloned());
@@ -156,7 +156,7 @@ EEType * EEType::get_CanonicalEEType()
 }
 
 //-----------------------------------------------------------------------------------------------------------
-EEType * EEType::get_RelatedParameterType()
+MethodTable * MethodTable::get_RelatedParameterType()
 {
 	ASSERT(IsParameterizedType());
 

@@ -8,18 +8,18 @@ using System.Runtime.InteropServices;
 
 namespace Internal.Runtime
 {
-    // Extensions to EEType that are specific to the use in Runtime.Base.
-    internal unsafe partial struct EEType
+    // Extensions to MethodTable that are specific to the use in Runtime.Base.
+    internal unsafe partial struct MethodTable
     {
-        internal EEType* GetArrayEEType()
+        internal MethodTable* GetArrayEEType()
         {
 #if INPLACE_RUNTIME
             return EETypePtr.EETypePtrOf<Array>().ToPointer();
 #else
-            fixed (EEType* pThis = &this)
+            fixed (MethodTable* pThis = &this)
             {
                 void* pGetArrayEEType = InternalCalls.RhpGetClasslibFunctionFromEEType(new IntPtr(pThis), ClassLibFunctionId.GetSystemArrayEEType);
-                return ((delegate* <EEType*>)pGetArrayEEType)();
+                return ((delegate* <MethodTable*>)pGetArrayEEType)();
             }
 #endif
         }
@@ -47,21 +47,21 @@ namespace Internal.Runtime
 #endif
         }
 
-        internal void SetToCloneOf(EEType* pOrigType)
+        internal void SetToCloneOf(MethodTable* pOrigType)
         {
             Debug.Assert((_usFlags & (ushort)EETypeFlags.EETypeKindMask) == 0, "should be a canonical type");
             _usFlags |= (ushort)EETypeKind.ClonedEEType;
             _relatedType._pCanonicalType = pOrigType;
         }
 
-        // Returns an address in the module most closely associated with this EEType that can be handed to
+        // Returns an address in the module most closely associated with this MethodTable that can be handed to
         // EH.GetClasslibException and use to locate the compute the correct exception type. In most cases
-        // this is just the EEType pointer itself, but when this type represents a generic that has been
-        // unified at runtime (and thus the EEType pointer resides in the process heap rather than a specific
+        // this is just the MethodTable pointer itself, but when this type represents a generic that has been
+        // unified at runtime (and thus the MethodTable pointer resides in the process heap rather than a specific
         // module) we need to do some work.
         internal unsafe IntPtr GetAssociatedModuleAddress()
         {
-            fixed (EEType* pThis = &this)
+            fixed (MethodTable* pThis = &this)
             {
                 if (!IsDynamicType)
                     return (IntPtr)pThis;
@@ -83,7 +83,7 @@ namespace Internal.Runtime
                 // instantiation information and use the generic type definition, which will always be module
                 // local. We know this lookup will succeed since we're dealing with a unified generic type
                 // and the unification process requires this metadata.
-                EEType* pGenericType = pThis->GenericDefinition;
+                MethodTable* pGenericType = pThis->GenericDefinition;
 
                 Debug.Assert(pGenericType != null, "Generic type expected");
 
@@ -102,19 +102,19 @@ namespace Internal.Runtime
         /// <summary>
         /// Return true if both types are good for simple casting: canonical, no related type via IAT, no generic variance
         /// </summary>
-        internal static bool BothSimpleCasting(EEType* pThis, EEType* pOther)
+        internal static bool BothSimpleCasting(MethodTable* pThis, MethodTable* pOther)
         {
             return ((pThis->_usFlags | pOther->_usFlags) & (ushort)EETypeFlags.ComplexCastingMask) == (ushort)EETypeKind.CanonicalEEType;
         }
 
-        internal bool IsEquivalentTo(EEType* pOtherEEType)
+        internal bool IsEquivalentTo(MethodTable* pOtherEEType)
         {
-            fixed (EEType* pThis = &this)
+            fixed (MethodTable* pThis = &this)
             {
                 if (pThis == pOtherEEType)
                     return true;
 
-                EEType* pThisEEType = pThis;
+                MethodTable* pThisEEType = pThis;
 
                 if (pThisEEType->IsCloned)
                     pThisEEType = pThisEEType->CanonicalEEType;
@@ -138,18 +138,18 @@ namespace Internal.Runtime
 
     internal static class WellKnownEETypes
     {
-        // Returns true if the passed in EEType is the EEType for System.Object
+        // Returns true if the passed in MethodTable is the MethodTable for System.Object
         // This is recognized by the fact that System.Object and interfaces are the only ones without a base type
-        internal static unsafe bool IsSystemObject(EEType* pEEType)
+        internal static unsafe bool IsSystemObject(MethodTable* pEEType)
         {
             if (pEEType->IsArray)
                 return false;
             return (pEEType->NonArrayBaseType == null) && !pEEType->IsInterface;
         }
 
-        // Returns true if the passed in EEType is the EEType for System.Array.
+        // Returns true if the passed in MethodTable is the MethodTable for System.Array.
         // The binder sets a special CorElementType for this well known type
-        internal static unsafe bool IsSystemArray(EEType* pEEType)
+        internal static unsafe bool IsSystemArray(MethodTable* pEEType)
         {
             return (pEEType->ElementType == EETypeElementType.SystemArray);
         }

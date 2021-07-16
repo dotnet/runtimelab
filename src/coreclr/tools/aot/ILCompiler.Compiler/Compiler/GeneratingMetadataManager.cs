@@ -122,7 +122,7 @@ namespace ILCompiler
                 MetadataRecord record = transformed.GetTransformedTypeDefinition(definition);
 
                 // Reflection requires that we maintain type identity. Even if we only generated a TypeReference record,
-                // if there is an EEType for it, we also need a mapping table entry for it.
+                // if there is an MethodTable for it, we also need a mapping table entry for it.
                 if (record == null)
                     record = transformed.GetTransformedTypeReference(definition);
 

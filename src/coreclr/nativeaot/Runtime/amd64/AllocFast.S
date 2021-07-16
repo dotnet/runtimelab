@@ -7,7 +7,7 @@
 
 // Allocate non-array, non-finalizable object. If the allocation doesn't fit into the current thread's
 // allocation context then automatically fallback to the slow allocation path.
-//  RDI == EEType
+//  RDI == MethodTable
 NESTED_ENTRY RhpNewFast, _TEXT, NoHandler
         push_nonvol_reg rbx
         mov         rbx, rdi
@@ -16,13 +16,13 @@ NESTED_ENTRY RhpNewFast, _TEXT, NoHandler
         INLINE_GETTHREAD
 
         //
-        // rbx contains EEType pointer
+        // rbx contains MethodTable pointer
         //
-        mov         edx, [rbx + OFFSETOF__EEType__m_uBaseSize]
+        mov         edx, [rbx + OFFSETOF__MethodTable__m_uBaseSize]
 
         //
         // rax: Thread pointer
-        // rbx: EEType pointer
+        // rbx: MethodTable pointer
         // rdx: base size
         //
 
@@ -36,7 +36,7 @@ NESTED_ENTRY RhpNewFast, _TEXT, NoHandler
 
         mov         rax, rsi
 
-        // set the new object's EEType pointer
+        // set the new object's MethodTable pointer
         mov         [rsi], rbx
 
         .cfi_remember_state
@@ -46,7 +46,7 @@ NESTED_ENTRY RhpNewFast, _TEXT, NoHandler
         .cfi_restore_state
         .cfi_def_cfa_offset 16          // workaround cfi_restore_state bug
 LOCAL_LABEL(RhpNewFast_RarePath):
-        mov         rdi, rbx            // restore EEType
+        mov         rdi, rbx            // restore MethodTable
         xor         esi, esi
         pop_nonvol_reg rbx
         jmp         C_FUNC(RhpNewObject)
@@ -56,7 +56,7 @@ NESTED_END RhpNewFast, _TEXT
 
 
 // Allocate non-array object with finalizer
-//  RDI == EEType
+//  RDI == MethodTable
 LEAF_ENTRY RhpNewFinalizable, _TEXT
         mov         esi, GC_ALLOC_FINALIZE
         jmp         C_FUNC(RhpNewObject)
@@ -65,7 +65,7 @@ LEAF_END RhpNewFinalizable, _TEXT
 
 
 // Allocate non-array object
-//  RDI == EEType
+//  RDI == MethodTable
 //  ESI == alloc flags
 NESTED_ENTRY RhpNewObject, _TEXT, NoHandler
 
@@ -74,13 +74,13 @@ NESTED_ENTRY RhpNewObject, _TEXT, NoHandler
 
         // RCX: transition frame
 
-        // Preserve the EEType in RBX
+        // Preserve the MethodTable in RBX
         mov         rbx, rdi
 
         xor         edx, edx    // numElements
 
         // Call the rest of the allocation helper.
-        // void* RhpGcAlloc(EEType *pEEType, uint32_t uFlags, uintptr_t numElements, void * pTransitionFrame)
+        // void* RhpGcAlloc(MethodTable *pEEType, uint32_t uFlags, uintptr_t numElements, void * pTransitionFrame)
         call        C_FUNC(RhpGcAlloc)
 
         test        rax, rax
@@ -96,7 +96,7 @@ LOCAL_LABEL(NewOutOfMemory):
         // This is the OOM failure path. We're going to tail-call to a managed helper that will throw
         // an out of memory exception that the caller of this allocator understands.
 
-        mov         rdi, rbx            // EEType pointer
+        mov         rdi, rbx            // MethodTable pointer
         xor         esi, esi            // Indicate that we should throw OOM.
 
         POP_COOP_PINVOKE_FRAME
@@ -106,7 +106,7 @@ NESTED_END RhpNewObject, _TEXT
 
 
 // Allocate a string.
-//  RDI == EEType
+//  RDI == MethodTable
 //  ESI == character/element count
 NESTED_ENTRY RhNewString, _TEXT, NoHandler
         // we want to limit the element count to the non-negative 32-bit int range
@@ -117,7 +117,7 @@ NESTED_ENTRY RhNewString, _TEXT, NoHandler
         push_nonvol_reg r12
         push_register rcx       // padding
 
-        mov         rbx, rdi    // save EEType
+        mov         rbx, rdi    // save MethodTable
         mov         r12, rsi    // save element count
 
         // rax = GetThread()
@@ -130,7 +130,7 @@ NESTED_ENTRY RhNewString, _TEXT, NoHandler
         and         rax, -8
 
         // rax == string size
-        // rbx == EEType
+        // rbx == MethodTable
         // rcx == Thread*
         // r12 == element count
 
@@ -139,7 +139,7 @@ NESTED_ENTRY RhNewString, _TEXT, NoHandler
         jc          LOCAL_LABEL(RhNewString_RarePath)
 
         // rax == new alloc ptr
-        // rbx == EEType
+        // rbx == MethodTable
         // rcx == Thread*
         // rdx == string size
         // r12 == element count
@@ -163,7 +163,7 @@ NESTED_ENTRY RhNewString, _TEXT, NoHandler
         .cfi_restore_state
         .cfi_def_cfa_offset 32  // workaround cfi_restore_state bug
 LOCAL_LABEL(RhNewString_RarePath):
-        mov         rdi, rbx    // restore EEType
+        mov         rdi, rbx    // restore MethodTable
         mov         rsi, r12    // restore element count
         // passing string size in rdx
 
@@ -177,7 +177,7 @@ LOCAL_LABEL(StringSizeOverflow):
         // 32-bit value. We're going to tail-call to a managed helper that will throw
         // an OOM exception that the caller of this allocator understands.
 
-        // rdi holds EEType pointer already
+        // rdi holds MethodTable pointer already
         xor         esi, esi            // Indicate that we should throw OOM.
         jmp         EXTERNAL_C_FUNC(RhExceptionHandling_FailedAllocation)
 
@@ -185,7 +185,7 @@ NESTED_END RhNewString, _TEXT
 
 
 // Allocate one dimensional, zero based array (SZARRAY).
-//  RDI == EEType
+//  RDI == MethodTable
 //  ESI == element count
 NESTED_ENTRY RhpNewArray, _TEXT, NoHandler
         // we want to limit the element count to the non-negative 32-bit int range
@@ -196,7 +196,7 @@ NESTED_ENTRY RhpNewArray, _TEXT, NoHandler
         push_nonvol_reg r12
         push_register rcx       // padding
 
-        mov         rbx, rdi    // save EEType
+        mov         rbx, rdi    // save MethodTable
         mov         r12, rsi    // save element count
 
         // rax = GetThread()
@@ -205,15 +205,15 @@ NESTED_ENTRY RhpNewArray, _TEXT, NoHandler
         mov         rcx, rax    // rcx = Thread*
 
         // Compute overall allocation size (align(base size + (element size * elements), 8)).
-        movzx       eax, word ptr [rbx + OFFSETOF__EEType__m_usComponentSize]
+        movzx       eax, word ptr [rbx + OFFSETOF__MethodTable__m_usComponentSize]
         mul         r12
-        mov         edx, [rbx + OFFSETOF__EEType__m_uBaseSize]
+        mov         edx, [rbx + OFFSETOF__MethodTable__m_uBaseSize]
         add         rax, rdx
         add         rax, 7
         and         rax, -8
 
         // rax == array size
-        // rbx == EEType
+        // rbx == MethodTable
         // rcx == Thread*
         // r12 == element count
 
@@ -222,7 +222,7 @@ NESTED_ENTRY RhpNewArray, _TEXT, NoHandler
         jc          LOCAL_LABEL(RhpNewArray_RarePath)
 
         // rax == new alloc ptr
-        // rbx == EEType
+        // rbx == MethodTable
         // rcx == Thread*
         // rdx == array size
         // r12 == element count
@@ -246,7 +246,7 @@ NESTED_ENTRY RhpNewArray, _TEXT, NoHandler
         .cfi_restore_state
         .cfi_def_cfa_offset 32  // workaround cfi_restore_state bug
 LOCAL_LABEL(RhpNewArray_RarePath):
-        mov         rdi, rbx    // restore EEType
+        mov         rdi, rbx    // restore MethodTable
         mov         rsi, r12    // restore element count
         // passing array size in rdx
 
@@ -260,7 +260,7 @@ LOCAL_LABEL(ArraySizeOverflow):
         // 32-bit value. We're going to tail-call to a managed helper that will throw
         // an overflow exception that the caller of this allocator understands.
 
-        // rdi holds EEType pointer already
+        // rdi holds MethodTable pointer already
         mov         esi, 1              // Indicate that we should throw OverflowException
         jmp         EXTERNAL_C_FUNC(RhExceptionHandling_FailedAllocation)
 
@@ -268,7 +268,7 @@ NESTED_END RhpNewArray, _TEXT
 
 NESTED_ENTRY RhpNewArrayRare, _TEXT, NoHandler
 
-        // rdi == EEType
+        // rdi == MethodTable
         // rsi == element count
 
         PUSH_COOP_PINVOKE_FRAME rcx
@@ -276,17 +276,17 @@ NESTED_ENTRY RhpNewArrayRare, _TEXT, NoHandler
 
         // rcx: transition frame
 
-        // Preserve the EEType in RBX
+        // Preserve the MethodTable in RBX
         mov         rbx, rdi
 
         mov         rdx, rsi        // numElements
 
-        // passing EEType in rdi
+        // passing MethodTable in rdi
         xor         rsi, rsi        // uFlags
         // pasing pTransitionFrame in rcx
 
         // Call the rest of the allocation helper.
-        // void* RhpGcAlloc(EEType *pEEType, uint32_t uFlags, uintptr_t numElements, void * pTransitionFrame)
+        // void* RhpGcAlloc(MethodTable *pEEType, uint32_t uFlags, uintptr_t numElements, void * pTransitionFrame)
         call        C_FUNC(RhpGcAlloc)
 
         test        rax, rax
@@ -302,7 +302,7 @@ LOCAL_LABEL(ArrayOutOfMemory):
         // This is the OOM failure path. We're going to tail-call to a managed helper that will throw
         // an out of memory exception that the caller of this allocator understands.
 
-        mov         rdi, rbx            // EEType pointer
+        mov         rdi, rbx            // MethodTable pointer
         xor         esi, esi            // Indicate that we should throw OOM.
 
         POP_COOP_PINVOKE_FRAME

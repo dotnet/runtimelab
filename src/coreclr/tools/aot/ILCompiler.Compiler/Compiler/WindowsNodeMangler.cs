@@ -24,7 +24,7 @@ namespace ILCompiler
             return "Boxed_" + NameMangler.GetMangledTypeName(type);
         }
 
-        public sealed override string EEType(TypeDesc type)
+        public sealed override string MethodTable(TypeDesc type)
         {
             string mangledJustTypeName;
 

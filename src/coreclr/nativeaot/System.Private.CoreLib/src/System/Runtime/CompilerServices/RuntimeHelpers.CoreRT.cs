@@ -235,9 +235,9 @@ namespace System.Runtime.CompilerServices
         }
 
         [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2059:UnrecognizedReflectionPattern",
-            Justification = "We keep class constructors of all types with an EEType")]
+            Justification = "We keep class constructors of all types with an MethodTable")]
         [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2072:UnrecognizedReflectionPattern",
-            Justification = "Constructed EEType of a Nullable forces a constructed EEType of the element type")]
+            Justification = "Constructed MethodTable of a Nullable forces a constructed MethodTable of the element type")]
         public static object GetUninitializedObject(
             // This API doesn't call any constructors, but the type needs to be seen as constructed.
             // A type is seen as constructed if a constructor is kept.
@@ -307,7 +307,7 @@ namespace System.Runtime.CompilerServices
 
             // Triggering the .cctor here is slightly different than desktop/CoreCLR, which
             // decide based on BeforeFieldInit, but we don't want to include BeforeFieldInit
-            // in EEType just for this API to behave slightly differently.
+            // in MethodTable just for this API to behave slightly differently.
             RunClassConstructor(type.TypeHandle);
 
             return RuntimeImports.RhNewObject(eeTypePtr);

@@ -33,7 +33,7 @@ namespace Internal.Runtime.TypeLoader
         public TypeManagerHandle Handle { get; private set; }
 
         /// <summary>
-        /// A reference to the dynamic module is part of the EEType for dynamically allocated types.
+        /// A reference to the dynamic module is part of the MethodTable for dynamically allocated types.
         /// </summary>
         internal DynamicModule* DynamicModulePtr { get; private set; }
 
@@ -75,7 +75,7 @@ namespace Internal.Runtime.TypeLoader
             DynamicModulePtr = dynamicModulePtr;
         }
 
-        internal static unsafe IntPtr ResolveTypeSlotDispatch(EEType* targetType, EEType* interfaceType, ushort slot)
+        internal static unsafe IntPtr ResolveTypeSlotDispatch(MethodTable* targetType, MethodTable* interfaceType, ushort slot)
         {
             IntPtr methodAddress;
             if (!TypeLoaderEnvironment.Instance.TryResolveTypeSlotDispatch(targetType, interfaceType, slot, out methodAddress))

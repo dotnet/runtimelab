@@ -27,23 +27,23 @@ namespace Internal.Runtime
         private unsafe struct InterfaceTypeUnion
         {
             [FieldOffset(0)]
-            public EEType* _pInterfaceEEType;
+            public MethodTable* _pInterfaceEEType;
             [FieldOffset(0)]
-            public EEType** _ppInterfaceEETypeViaIAT;
+            public MethodTable** _ppInterfaceEETypeViaIAT;
         }
 
         private InterfaceTypeUnion _interfaceType;
 
-        internal EEType* InterfaceType
+        internal MethodTable* InterfaceType
         {
             get
             {
                 if ((unchecked((uint)_interfaceType._pInterfaceEEType) & IndirectionConstants.IndirectionCellPointer) != 0)
                 {
 #if TARGET_64BIT
-                    EEType** ppInterfaceEETypeViaIAT = (EEType**)(((ulong)_interfaceType._ppInterfaceEETypeViaIAT) - IndirectionConstants.IndirectionCellPointer);
+                    MethodTable** ppInterfaceEETypeViaIAT = (MethodTable**)(((ulong)_interfaceType._ppInterfaceEETypeViaIAT) - IndirectionConstants.IndirectionCellPointer);
 #else
-                    EEType** ppInterfaceEETypeViaIAT = (EEType**)(((uint)_interfaceType._ppInterfaceEETypeViaIAT) - IndirectionConstants.IndirectionCellPointer);
+                    MethodTable** ppInterfaceEETypeViaIAT = (MethodTable**)(((uint)_interfaceType._ppInterfaceEETypeViaIAT) - IndirectionConstants.IndirectionCellPointer);
 #endif
                     return *ppInterfaceEETypeViaIAT;
                 }
@@ -120,7 +120,7 @@ namespace Internal.Runtime
     }
 
     [StructLayout(LayoutKind.Sequential)]
-    internal unsafe partial struct EEType
+    internal unsafe partial struct MethodTable
     {
 #if TARGET_64BIT
         private const int POINTER_SIZE = 8;
@@ -136,21 +136,21 @@ namespace Internal.Runtime
         {
             // Kinds.CanonicalEEType
             [FieldOffset(0)]
-            public EEType* _pBaseType;
+            public MethodTable* _pBaseType;
             [FieldOffset(0)]
-            public EEType** _ppBaseTypeViaIAT;
+            public MethodTable** _ppBaseTypeViaIAT;
 
             // Kinds.ClonedEEType
             [FieldOffset(0)]
-            public EEType* _pCanonicalType;
+            public MethodTable* _pCanonicalType;
             [FieldOffset(0)]
-            public EEType** _ppCanonicalTypeViaIAT;
+            public MethodTable** _ppCanonicalTypeViaIAT;
 
             // Kinds.ArrayEEType
             [FieldOffset(0)]
-            public EEType* _pRelatedParameterType;
+            public MethodTable* _pRelatedParameterType;
             [FieldOffset(0)]
-            public EEType** _ppRelatedParameterTypeViaIAT;
+            public MethodTable** _ppRelatedParameterTypeViaIAT;
         }
 
         private static unsafe class OptionalFieldsReader
@@ -441,24 +441,24 @@ namespace Internal.Runtime
             }
         }
 
-        internal EEType* GenericDefinition
+        internal MethodTable* GenericDefinition
         {
             get
             {
                 Debug.Assert(IsGeneric);
                 if (IsDynamicType || !SupportsRelativePointers)
-                    return GetField<IatAwarePointer<EEType>>(EETypeField.ETF_GenericDefinition).Value;
+                    return GetField<IatAwarePointer<MethodTable>>(EETypeField.ETF_GenericDefinition).Value;
 
-                return GetField<IatAwareRelativePointer<EEType>>(EETypeField.ETF_GenericDefinition).Value;
+                return GetField<IatAwareRelativePointer<MethodTable>>(EETypeField.ETF_GenericDefinition).Value;
             }
 #if TYPE_LOADER_IMPLEMENTATION
             set
             {
                 Debug.Assert(IsGeneric && IsDynamicType);
                 uint cbOffset = GetFieldOffset(EETypeField.ETF_GenericDefinition);
-                fixed (EEType* pThis = &this)
+                fixed (MethodTable* pThis = &this)
                 {
-                    *((EEType**)((byte*)pThis + cbOffset)) = value;
+                    *((MethodTable**)((byte*)pThis + cbOffset)) = value;
                 }
             }
 #endif
@@ -500,7 +500,7 @@ namespace Internal.Runtime
         {
             Debug.Assert(IsGeneric && IsDynamicType);
             uint cbOffset = GetFieldOffset(EETypeField.ETF_GenericComposition);
-            fixed (EEType* pThis = &this)
+            fixed (MethodTable* pThis = &this)
             {
                 *((IntPtr*)((byte*)pThis + cbOffset)) = data;
             }
@@ -726,10 +726,10 @@ namespace Internal.Runtime
             get
             {
                 Debug.Assert(IsValueType);
-                // get_BaseSize returns the GC size including space for the sync block index field, the EEType* and
+                // get_BaseSize returns the GC size including space for the sync block index field, the MethodTable* and
                 // padding for GC heap alignment. Must subtract all of these to get the size used for locals, array
                 // elements or fields of another type.
-                return BaseSize - ((uint)sizeof(ObjHeader) + (uint)sizeof(EEType*) + ValueTypeFieldPadding);
+                return BaseSize - ((uint)sizeof(ObjHeader) + (uint)sizeof(MethodTable*) + ValueTypeFieldPadding);
             }
         }
 
@@ -742,9 +742,9 @@ namespace Internal.Runtime
                 // (For sealed classes, this should always return BaseSize-((uint)sizeof(ObjHeader));
                 Debug.Assert(!IsInterface && !IsParameterizedType);
 
-                // get_BaseSize returns the GC size including space for the sync block index field, the EEType* and
+                // get_BaseSize returns the GC size including space for the sync block index field, the MethodTable* and
                 // padding for GC heap alignment. Must subtract all of these to get the size used for the fields of
-                // the type (where the fields of the type includes the EEType*)
+                // the type (where the fields of the type includes the MethodTable*)
                 return BaseSize - ((uint)sizeof(ObjHeader) + ValueTypeFieldPadding);
             }
         }
@@ -753,10 +753,10 @@ namespace Internal.Runtime
         {
             get
             {
-                fixed (EEType* start = &this)
+                fixed (MethodTable* start = &this)
                 {
                     // interface info table starts after the vtable and has _usNumInterfaces entries
-                    return (EEInterfaceInfo*)((byte*)start + sizeof(EEType) + sizeof(void*) * _usNumVtableSlots);
+                    return (EEInterfaceInfo*)((byte*)start + sizeof(MethodTable) + sizeof(void*) * _usNumVtableSlots);
                 }
             }
         }
@@ -797,7 +797,7 @@ namespace Internal.Runtime
                 {
                     if (HasDynamicallyAllocatedDispatchMap)
                     {
-                        fixed (EEType* pThis = &this)
+                        fixed (MethodTable* pThis = &this)
                             return *(DispatchMap**)((byte*)pThis + GetFieldOffset(EETypeField.ETF_DynamicDispatchMap));
                     }
                     else
@@ -825,13 +825,13 @@ namespace Internal.Runtime
             {
                 Debug.Assert(IsDynamicType && IsFinalizable);
 
-                fixed (EEType* pThis = &this)
+                fixed (MethodTable* pThis = &this)
                     *(IntPtr*)((byte*)pThis + GetFieldOffset(EETypeField.ETF_Finalizer)) = value;
             }
 #endif
         }
 
-        internal EEType* BaseType
+        internal MethodTable* BaseType
         {
             get
             {
@@ -868,7 +868,7 @@ namespace Internal.Runtime
 #endif
         }
 
-        internal EEType* NonArrayBaseType
+        internal MethodTable* NonArrayBaseType
         {
             get
             {
@@ -891,7 +891,7 @@ namespace Internal.Runtime
             }
         }
 
-        internal EEType* NonClonedNonArrayBaseType
+        internal MethodTable* NonClonedNonArrayBaseType
         {
             get
             {
@@ -908,7 +908,7 @@ namespace Internal.Runtime
             }
         }
 
-        internal EEType* RawBaseType
+        internal MethodTable* RawBaseType
         {
             get
             {
@@ -921,7 +921,7 @@ namespace Internal.Runtime
             }
         }
 
-        internal EEType* CanonicalEEType
+        internal MethodTable* CanonicalEEType
         {
             get
             {
@@ -934,7 +934,7 @@ namespace Internal.Runtime
             }
         }
 
-        internal EEType* NullableType
+        internal MethodTable* NullableType
         {
             get
             {
@@ -966,7 +966,7 @@ namespace Internal.Runtime
             }
         }
 
-        internal EEType* RelatedParameterType
+        internal MethodTable* RelatedParameterType
         {
             get
             {
@@ -992,10 +992,10 @@ namespace Internal.Runtime
             byte* pResult;
 
             // EETypes are always in unmanaged memory, so 'leaking' the 'fixed pointer' is safe.
-            fixed (EEType* pThis = &this)
+            fixed (MethodTable* pThis = &this)
                 pResult = (byte*)pThis;
 
-            pResult += sizeof(EEType);
+            pResult += sizeof(MethodTable);
             return (IntPtr*)pResult;
         }
 
@@ -1010,7 +1010,7 @@ namespace Internal.Runtime
         {
             Debug.Assert((RareFlags & EETypeRareFlags.HasSealedVTableEntriesFlag) != 0);
 
-            fixed (EEType* pThis = &this)
+            fixed (MethodTable* pThis = &this)
             {
                 if (IsDynamicType || !SupportsRelativePointers)
                 {
@@ -1033,7 +1033,7 @@ namespace Internal.Runtime
         {
             Debug.Assert(IsDynamicType);
 
-            fixed (EEType* pThis = &this)
+            fixed (MethodTable* pThis = &this)
             {
                 uint cbSealedVirtualSlotsTypeOffset = GetFieldOffset(EETypeField.ETF_SealedVirtualSlots);
                 IntPtr* pSealedVirtualsSlotTable = *(IntPtr**)((byte*)pThis + cbSealedVirtualSlotsTypeOffset);
@@ -1062,7 +1062,7 @@ namespace Internal.Runtime
                 _usFlags |= (ushort)EETypeFlags.OptionalFieldsFlag;
 
                 uint cbOptionalFieldsOffset = GetFieldOffset(EETypeField.ETF_OptionalFieldsPtr);
-                fixed (EEType* pThis = &this)
+                fixed (MethodTable* pThis = &this)
                 {
                     *(byte**)((byte*)pThis + cbOptionalFieldsOffset) = value;
                 }
@@ -1070,15 +1070,15 @@ namespace Internal.Runtime
 #endif
         }
 
-        internal EEType* DynamicTemplateType
+        internal MethodTable* DynamicTemplateType
         {
             get
             {
                 Debug.Assert(IsDynamicType);
                 uint cbOffset = GetFieldOffset(EETypeField.ETF_DynamicTemplateType);
-                fixed (EEType* pThis = &this)
+                fixed (MethodTable* pThis = &this)
                 {
-                    return *(EEType**)((byte*)pThis + cbOffset);
+                    return *(MethodTable**)((byte*)pThis + cbOffset);
                 }
             }
 #if TYPE_LOADER_IMPLEMENTATION
@@ -1086,9 +1086,9 @@ namespace Internal.Runtime
             {
                 Debug.Assert(IsDynamicType);
                 uint cbOffset = GetFieldOffset(EETypeField.ETF_DynamicTemplateType);
-                fixed (EEType* pThis = &this)
+                fixed (MethodTable* pThis = &this)
                 {
-                    *(EEType**)((byte*)pThis + cbOffset) = value;
+                    *(MethodTable**)((byte*)pThis + cbOffset) = value;
                 }
             }
 #endif
@@ -1100,7 +1100,7 @@ namespace Internal.Runtime
             {
                 Debug.Assert((RareFlags & EETypeRareFlags.IsDynamicTypeWithGcStatics) != 0);
                 uint cbOffset = GetFieldOffset(EETypeField.ETF_DynamicGcStatics);
-                fixed (EEType* pThis = &this)
+                fixed (MethodTable* pThis = &this)
                 {
                     return (IntPtr)((byte*)pThis + cbOffset);
                 }
@@ -1110,7 +1110,7 @@ namespace Internal.Runtime
             {
                 Debug.Assert((RareFlags & EETypeRareFlags.IsDynamicTypeWithGcStatics) != 0);
                 uint cbOffset = GetFieldOffset(EETypeField.ETF_DynamicGcStatics);
-                fixed (EEType* pThis = &this)
+                fixed (MethodTable* pThis = &this)
                 {
                     *(IntPtr*)((byte*)pThis + cbOffset) = value;
                 }
@@ -1124,7 +1124,7 @@ namespace Internal.Runtime
             {
                 Debug.Assert((RareFlags & EETypeRareFlags.IsDynamicTypeWithNonGcStatics) != 0);
                 uint cbOffset = GetFieldOffset(EETypeField.ETF_DynamicNonGcStatics);
-                fixed (EEType* pThis = &this)
+                fixed (MethodTable* pThis = &this)
                 {
                     return (IntPtr)((byte*)pThis + cbOffset);
                 }
@@ -1134,7 +1134,7 @@ namespace Internal.Runtime
             {
                 Debug.Assert((RareFlags & EETypeRareFlags.IsDynamicTypeWithNonGcStatics) != 0);
                 uint cbOffset = GetFieldOffset(EETypeField.ETF_DynamicNonGcStatics);
-                fixed (EEType* pThis = &this)
+                fixed (MethodTable* pThis = &this)
                 {
                     *(IntPtr*)((byte*)pThis + cbOffset) = value;
                 }
@@ -1149,7 +1149,7 @@ namespace Internal.Runtime
                 if ((RareFlags & EETypeRareFlags.HasDynamicModuleFlag) != 0)
                 {
                     uint cbOffset = GetFieldOffset(EETypeField.ETF_DynamicModule);
-                    fixed (EEType* pThis = &this)
+                    fixed (MethodTable* pThis = &this)
                     {
                         return *(DynamicModule**)((byte*)pThis + cbOffset);
                     }
@@ -1164,7 +1164,7 @@ namespace Internal.Runtime
             {
                 Debug.Assert(RareFlags.HasFlag(EETypeRareFlags.HasDynamicModuleFlag));
                 uint cbOffset = GetFieldOffset(EETypeField.ETF_DynamicModule);
-                fixed (EEType* pThis = &this)
+                fixed (MethodTable* pThis = &this)
                 {
                     *(DynamicModule**)((byte*)pThis + cbOffset) = value;
                 }
@@ -1204,7 +1204,7 @@ namespace Internal.Runtime
 #endif
 
         /// <summary>
-        /// Gets a pointer to a segment of writable memory associated with this EEType.
+        /// Gets a pointer to a segment of writable memory associated with this MethodTable.
         /// The purpose of the segment is controlled by the class library. The runtime doesn't
         /// use this memory for any purpose.
         /// </summary>
@@ -1283,8 +1283,8 @@ namespace Internal.Runtime
 
         public uint GetFieldOffset(EETypeField eField)
         {
-            // First part of EEType consists of the fixed portion followed by the vtable.
-            uint cbOffset = (uint)(sizeof(EEType) + (IntPtr.Size * _usNumVtableSlots));
+            // First part of MethodTable consists of the fixed portion followed by the vtable.
+            uint cbOffset = (uint)(sizeof(MethodTable) + (IntPtr.Size * _usNumVtableSlots));
 
             // Then we have the interface map.
             if (eField == EETypeField.ETF_InterfaceMap)
@@ -1409,7 +1409,7 @@ namespace Internal.Runtime
             if ((rareFlags & EETypeRareFlags.IsDynamicTypeWithThreadStatics) != 0)
                 cbOffset += 4;
 
-            Debug.Assert(false, "Unknown EEType field type");
+            Debug.Assert(false, "Unknown MethodTable field type");
             return 0;
         }
 
@@ -1435,7 +1435,7 @@ namespace Internal.Runtime
             bool fHasGcStatics,
             bool fHasThreadStatics)
         {
-            return (uint)(sizeof(EEType) +
+            return (uint)(sizeof(MethodTable) +
                 (IntPtr.Size * cVirtuals) +
                 (sizeof(EEInterfaceInfo) * cInterfaces) +
                 sizeof(IntPtr) + // TypeManager
@@ -1451,19 +1451,19 @@ namespace Internal.Runtime
 #endif
     }
 
-    // Wrapper around EEType pointers that may be indirected through the IAT if their low bit is set.
+    // Wrapper around MethodTable pointers that may be indirected through the IAT if their low bit is set.
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe struct EETypeRef
     {
         private byte* _value;
 
-        public EEType* Value
+        public MethodTable* Value
         {
             get
             {
                 if (((int)_value & IndirectionConstants.IndirectionCellPointer) == 0)
-                    return (EEType*)_value;
-                return *(EEType**)(_value - IndirectionConstants.IndirectionCellPointer);
+                    return (MethodTable*)_value;
+                return *(MethodTable**)(_value - IndirectionConstants.IndirectionCellPointer);
             }
 #if TYPE_LOADER_IMPLEMENTATION
             set
@@ -1581,8 +1581,8 @@ namespace Internal.Runtime
         private int _cbSize;
 
         // Pointer to interface dispatch resolver that works off of a type/slot pair
-        // This is a function pointer with the following signature IntPtr()(EEType* targetType, EEType* interfaceType, ushort slot)
-        private delegate*<EEType*, EEType*, ushort, IntPtr> _dynamicTypeSlotDispatchResolve;
+        // This is a function pointer with the following signature IntPtr()(MethodTable* targetType, MethodTable* interfaceType, ushort slot)
+        private delegate*<MethodTable*, MethodTable*, ushort, IntPtr> _dynamicTypeSlotDispatchResolve;
 
         // Starting address for the the binary module corresponding to this dynamic module.
         private delegate*<ExceptionIDs, Exception> _getRuntimeException;
@@ -1601,7 +1601,7 @@ namespace Internal.Runtime
         }
 #endif
 
-        public delegate*<EEType*, EEType*, ushort, IntPtr> DynamicTypeSlotDispatchResolve
+        public delegate*<MethodTable*, MethodTable*, ushort, IntPtr> DynamicTypeSlotDispatchResolve
         {
             get
             {

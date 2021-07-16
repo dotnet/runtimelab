@@ -303,7 +303,7 @@ namespace ILCompiler
         /// </summary>
         public bool ShouldMethodBeInInvokeMap(MethodDesc method)
         {
-            // The current format requires us to have an EEType for the owning type. We might want to lift this.
+            // The current format requires us to have an MethodTable for the owning type. We might want to lift this.
             if (!TypeGeneratesEEType(method.OwningType))
                 return false;
 
@@ -366,7 +366,7 @@ namespace ILCompiler
             {
                 // We're going to generate a mapping table entry for this. Collect dependencies.
 
-                // Nothing special is needed for the mapping table (we only emit the EEType and we already
+                // Nothing special is needed for the mapping table (we only emit the MethodTable and we already
                 // have one, since we got this callback). But check if a child wants to do something extra.
                 GetRuntimeMappingDependenciesDueToReflectability(ref dependencies, factory, type);
             }
@@ -389,13 +389,13 @@ namespace ILCompiler
 
         protected virtual void GetDependenciesDueToEETypePresence(ref DependencyList dependencies, NodeFactory factory, TypeDesc type)
         {
-            // MetadataManagers can override this to provide additional dependencies caused by the emission of an EEType.
+            // MetadataManagers can override this to provide additional dependencies caused by the emission of an MethodTable.
         }
 
         public virtual void GetConditionalDependenciesDueToEETypePresence(ref CombinedDependencyList dependencies, NodeFactory factory, TypeDesc type)
         {
             // MetadataManagers can override this to provide additional dependencies caused by the presence of
-            // an EEType.
+            // an MethodTable.
         }
 
         public virtual bool HasConditionalDependenciesDueToEETypePresence(TypeDesc type)
@@ -820,7 +820,7 @@ namespace ILCompiler
 
         /// <summary>
         /// Gets the metadata category for a generated type in the current compilation.
-        /// The method can assume it will only get called with '<paramref name="type"/>' that has an EEType generated
+        /// The method can assume it will only get called with '<paramref name="type"/>' that has an MethodTable generated
         /// in the current compilation.
         /// Note that if this method doesn't return <see cref="MetadataCategory.Description"/>, it doesn't mean
         /// that the method never has metadata. The metadata might just be generated in a different compilation.

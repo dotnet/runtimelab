@@ -248,7 +248,7 @@ namespace System
                 {
                     SERIALIZED_EXCEPTION_HEADER* pHeader = (SERIALIZED_EXCEPTION_HEADER*)pBuffer;
                     pHeader->HResult = _HResult;
-                    pHeader->ExceptionEEType = (IntPtr)EEType;
+                    pHeader->ExceptionEEType = (IntPtr)MethodTable;
                     pHeader->StackTraceElementCount = nStackTraceElements;
                     IntPtr* pStackTraceElements = (IntPtr*)(pBuffer + sizeof(SERIALIZED_EXCEPTION_HEADER));
                     for (int i = 0; i < nStackTraceElements; i++)

@@ -25,8 +25,8 @@
 #include "threadstore.inl"
 #include "stressLog.h"
 #include "rhbinder.h"
-#include "eetype.h"
-#include "eetype.inl"
+#include "MethodTable.h"
+#include "MethodTable.inl"
 
 COOP_PINVOKE_HELPER(Boolean, RhpEHEnumInitFromStackFrameIterator, (
     StackFrameIterator* pFrameIter, void ** pMethodStartAddressOut, EHEnum* pEHEnum))
@@ -53,7 +53,7 @@ COOP_PINVOKE_HELPER(void *, RhpGetClasslibFunctionFromCodeAddress, (void * addre
 // Unmanaged helper to locate one of two classlib-provided functions that the runtime needs to
 // implement throwing of exceptions out of Rtm, and fail-fast. This may return NULL if the classlib
 // found via the provided address does not have the necessary exports.
-COOP_PINVOKE_HELPER(void *, RhpGetClasslibFunctionFromEEType, (EEType * pEEType, ClasslibFunctionId functionId))
+COOP_PINVOKE_HELPER(void *, RhpGetClasslibFunctionFromEEType, (MethodTable * pEEType, ClasslibFunctionId functionId))
 {
     return pEEType->GetTypeManagerPtr()->AsTypeManager()->GetClasslibFunction(functionId);
 }

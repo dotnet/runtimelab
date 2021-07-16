@@ -55,8 +55,8 @@ namespace ILCompiler.DependencyAnalysis
 
             if (_type.IsEnum)
             {
-                // A lot of the enum reflection actually happens on top of the respective EEType (e.g. getting the underlying type),
-                // so for enums also include their EEType.
+                // A lot of the enum reflection actually happens on top of the respective MethodTable (e.g. getting the underlying type),
+                // so for enums also include their MethodTable.
                 dependencies.Add(factory.MaximallyConstructableType(_type), "Reflectable enum");
             }
 

@@ -343,7 +343,7 @@ namespace ILCompiler
                         factory.ObjectGetTypeFlowDependencies((MetadataType)baseType),
                         "GetType called on the base type"));
 
-                    // We don't have to follow all the bases since the base EEType will bubble this up
+                    // We don't have to follow all the bases since the base MethodTable will bubble this up
                 }
 
                 foreach (DefType interfaceType in type.RuntimeInterfaces)

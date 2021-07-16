@@ -113,14 +113,14 @@ namespace Internal.Runtime.TypeLoader
         }
 
         /// <summary>
-        /// Convert a virtual slot index to a vtable offset from the start of an eetype
+        /// Convert a virtual slot index to a vtable offset from the start of an MethodTable
         /// </summary>
         public static unsafe int SlotIndexToEETypeVTableOffset(int slotIndex)
         {
             if (slotIndex < 0)
                 throw new BadImageFormatException();
 
-            return sizeof(EEType) + (slotIndex * IntPtr.Size);
+            return sizeof(MethodTable) + (slotIndex * IntPtr.Size);
         }
 
         /// <summary>
@@ -136,7 +136,7 @@ namespace Internal.Runtime.TypeLoader
 
         private static unsafe int EETypeVTableOffsetToSlotIndex(int eeTypeVTableOffset)
         {
-            return (eeTypeVTableOffset - sizeof(EEType)) / IntPtr.Size;
+            return (eeTypeVTableOffset - sizeof(MethodTable)) / IntPtr.Size;
         }
 
         /// <summary>
@@ -144,7 +144,7 @@ namespace Internal.Runtime.TypeLoader
         /// the correct resolution of a virtual dispatch.
         /// </summary>
         /// <param name="callerTransitionBlockParam">pointer to the arguments of the called function</param>
-        /// <param name="eeTypePointerOffsetAsIntPtr">eeTypePointerOffsetAsIntPtr is the offset from the start of the EEType to the vtable slot</param>
+        /// <param name="eeTypePointerOffsetAsIntPtr">eeTypePointerOffsetAsIntPtr is the offset from the start of the MethodTable to the vtable slot</param>
         /// <returns>function pointer of correct override of virtual function</returns>
         private static unsafe IntPtr VTableResolveThunk(IntPtr callerTransitionBlockParam, IntPtr eeTypePointerOffsetAsIntPtr)
         {
@@ -152,16 +152,16 @@ namespace Internal.Runtime.TypeLoader
             int vtableSlotIndex = EETypeVTableOffsetToSlotIndex(eeTypePointerOffset);
             Debug.Assert(eeTypePointerOffset == SlotIndexToEETypeVTableOffset(vtableSlotIndex)); // Assert that the round trip through the slot calculations is good
 
-            EEType** thisPointer = *((EEType***)(((byte*)callerTransitionBlockParam) + ArgIterator.GetThisOffset()));
-            EEType* eeType = *thisPointer;
+            MethodTable** thisPointer = *((MethodTable***)(((byte*)callerTransitionBlockParam) + ArgIterator.GetThisOffset()));
+            MethodTable* MethodTable = *thisPointer;
 
-            RuntimeTypeHandle rth = eeType->ToRuntimeTypeHandle();
+            RuntimeTypeHandle rth = MethodTable->ToRuntimeTypeHandle();
 
             TypeSystemContext context = TypeSystemContextFactory.Create();
             TypeDesc type = context.ResolveRuntimeTypeHandle(rth);
 
             IntPtr functionPointer = ResolveVirtualVTableFunction(type, vtableSlotIndex);
-            eeType->GetVTableStartAddress()[vtableSlotIndex] = functionPointer;
+            MethodTable->GetVTableStartAddress()[vtableSlotIndex] = functionPointer;
 
             TypeSystemContextFactory.Recycle(context);
 
@@ -323,7 +323,7 @@ namespace Internal.Runtime.TypeLoader
             Debug.Assert(type.RuntimeTypeHandle.ToEETypePtr()->NumVtableSlots > vtableSlotIndex);
             DefType definingTypeScan = type;
             DefType previousDefiningType = null;
-            EEType* typePtr = null;
+            MethodTable* typePtr = null;
             DefType definingType = null;
             functionPointer = IntPtr.Zero;
 
@@ -414,8 +414,8 @@ namespace Internal.Runtime.TypeLoader
             {
                 TypeDesc mostDerivedPregeneratedType = GetMostDerivedPregeneratedOrTemplateLoadedType(type);
 
-                EEType* mostDerivedTypeEEType = mostDerivedPregeneratedType.GetRuntimeTypeHandle().ToEETypePtr();
-                IntPtr* vtableStart = (IntPtr*)(((byte*)mostDerivedTypeEEType) + sizeof(EEType));
+                MethodTable* mostDerivedTypeEEType = mostDerivedPregeneratedType.GetRuntimeTypeHandle().ToEETypePtr();
+                IntPtr* vtableStart = (IntPtr*)(((byte*)mostDerivedTypeEEType) + sizeof(MethodTable));
 
                 IntPtr possibleFunctionPointerReturn = vtableStart[vtableSlotIndex];
                 int functionPointerMatches = 0;
@@ -725,8 +725,8 @@ namespace Internal.Runtime.TypeLoader
                     unsafe
                     {
                         int vtableSlotIndex = LazyVTableResolver.VirtualMethodToSlotIndex(targetMethod);
-                        EEType* eeType = instanceType.GetRuntimeTypeHandle().ToEETypePtr();
-                        IntPtr* vtableStart = (IntPtr*)(((byte*)eeType) + sizeof(EEType));
+                        MethodTable* MethodTable = instanceType.GetRuntimeTypeHandle().ToEETypePtr();
+                        IntPtr* vtableStart = (IntPtr*)(((byte*)MethodTable) + sizeof(MethodTable));
 
                         methodAddress = vtableStart[vtableSlotIndex];
                         return true;
