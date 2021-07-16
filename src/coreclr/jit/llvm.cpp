@@ -707,6 +707,21 @@ Value* buildNe(llvm::IRBuilder<>& builder, GenTree* node, Value* op1, Value* op2
     return mapGenTreeToValue(node, builder.CreateICmpNE(op1, op2));
 }
 
+void buildReturn(llvm::IRBuilder<>& builder, GenTree* node)
+{
+    switch (node->gtType)
+    {
+        case var_types::TYP_INT:
+            builder.CreateRet(getGenTreeValue(node->gtGetOp1()));
+            return;
+        case var_types::TYP_VOID: 
+            builder.CreateRetVoid();
+            return;
+        default:
+            failFunctionCompilation();
+    }
+}
+
 void importStoreInd(llvm::IRBuilder<>& builder, GenTreeStoreInd* storeIndOp)
 {
     Value* address = getGenTreeValue(storeIndOp->Addr());
@@ -769,12 +784,35 @@ Value* localVar(llvm::IRBuilder<>& builder, GenTreeLclVar* lclVar)
     return llvmRef;
 }
 
+// LLVM operations like ICmpNE return an i1, but in the IR it is expected to be an Int (i32).
+/* E.g.
+*                                                 /--*  t10    int
+                                                  +--*  t11    int
+N009 ( 30, 14) [000012] ---XG-------        t12 = *  NE        int
+                                                  /--*  t12    int
+N011 ( 34, 17) [000016] DA-XG-------              *  STORE_LCL_VAR int    V03 loc1
+*/
+Value* widenIntIfNecessary(llvm::IRBuilder<>& builder, Value* intValue)
+{
+    if (intValue->getType()->getPrimitiveSizeInBits() < TARGET_POINTER_SIZE * 8)
+    {
+        return builder.CreateIntCast(intValue, Type::getInt32Ty(_llvmContext), true);
+    }
+    return intValue;
+}
+
 Value* storeLocalVar(llvm::IRBuilder<>& builder, GenTreeLclVar* lclVar)
 {
     if (lclVar->gtFlags & GTF_VAR_DEF)
     {
         Value* valueRef = getGenTreeValue(lclVar->gtGetOp1());
         assert(valueRef != nullptr);
+        // This could be done in the NE operator, but sometimes that would be needless, e.g. when followed by JTRUE
+        if (valueRef->getType()->isIntegerTy())
+        {
+            valueRef = widenIntIfNecessary(builder, valueRef);
+        }
+
         LclVarDsc* varDsc = _compiler->lvaGetDesc(lclVar);
 
         _localsMap->insert({lclVar->GetLclNum(), valueRef});
@@ -808,7 +846,7 @@ Value* visitNode(llvm::IRBuilder<>& builder, GenTree* node)
             emitDoNothingCall(builder);
             break;
         case GT_RETURN:
-            builder.CreateRetVoid();
+            buildReturn(builder, node);
             break;
         case GT_STORE_LCL_VAR:
             return storeLocalVar(builder, node->AsLclVar());
