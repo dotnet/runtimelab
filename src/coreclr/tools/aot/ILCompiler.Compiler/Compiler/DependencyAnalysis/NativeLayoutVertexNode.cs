@@ -105,6 +105,8 @@ namespace ILCompiler.DependencyAnalysis
         private NativeLayoutMethodSignatureVertexNode _methodSig;
         private NativeLayoutTypeSignatureVertexNode[] _instantiationArgsSig;
 
+        public MethodDesc Method => _method;
+
         public NativeLayoutMethodEntryVertexNode(NodeFactory factory, MethodDesc method, MethodEntryFlags flags)
         {
             _method = method;
@@ -536,7 +538,11 @@ namespace ILCompiler.DependencyAnalysis
             {
                 return new DependencyListEntry[]
                 {
-                    new DependencyListEntry(context.NecessaryTypeSymbol(_type), "NativeLayoutEETypeVertexNode containing type signature")
+                    // TODO-SIZE: this might be overly generous because we don't track what this type is used for.
+                    //            A necessary EEType might be enough for some cases.
+                    //            But we definitely need constructed if this is e.g. layout for a typehandle.
+                    //            Measurements show this doesn't amount to much (0.004% - 0.3% size cost vs Necessary).
+                    new DependencyListEntry(context.MaximallyConstructableType(_type), "NativeLayoutEETypeVertexNode containing type signature")
                 };
             }
             public override Vertex WriteVertex(NodeFactory factory)
@@ -1774,6 +1780,10 @@ namespace ILCompiler.DependencyAnalysis
                 foreach (var dependency in factory.NativeLayout.TemplateConstructableTypes(type))
                     yield return new DependencyListEntry(dependency, "template construction dependency for method Instantiation types");
             }
+
+            MethodDesc canonMethod = _method.GetCanonMethodTarget(CanonicalFormKind.Specific);
+            yield return new DependencyListEntry(factory.NativeLayout.TemplateMethodEntry(canonMethod), "Layout to build the dictionary");
+            yield return new DependencyListEntry(factory.NativeLayout.TemplateMethodLayout(canonMethod), "Layout to build the dictionary");
 
             yield return new DependencyListEntry(_wrappedNode, "wrappednode");
         }

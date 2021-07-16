@@ -58,6 +58,7 @@ namespace ILCompiler
         private HashSet<DefType> _typesWithDelegateMarshalling = new HashSet<DefType>();
         private HashSet<DefType> _typesWithStructMarshalling = new HashSet<DefType>();
         private HashSet<MethodDesc> _dynamicInvokeTemplates = new HashSet<MethodDesc>();
+        private HashSet<NativeLayoutTemplateMethodSignatureVertexNode> _templateMethodEntries = new HashSet<NativeLayoutTemplateMethodSignatureVertexNode>();
 
         internal NativeLayoutInfoNode NativeLayoutInfo { get; private set; }
         internal DynamicInvokeTemplateDataNode DynamicInvokeTemplateData { get; private set; }
@@ -232,6 +233,11 @@ namespace ILCompiler
             if (obj is DynamicInvokeTemplateNode dynamicInvokeTemplate)
             {
                 _dynamicInvokeTemplates.Add(dynamicInvokeTemplate.Method);
+            }
+
+            if (obj is NativeLayoutTemplateMethodSignatureVertexNode templateMethodEntry)
+            {
+                _templateMethodEntries.Add(templateMethodEntry);
             }
         }
 
@@ -698,6 +704,11 @@ namespace ILCompiler
         internal IEnumerable<MethodDesc> GetDynamicInvokeTemplateMethods()
         {
             return _dynamicInvokeTemplates;
+        }
+
+        internal IEnumerable<NativeLayoutTemplateMethodSignatureVertexNode> GetTemplateMethodEntries()
+        {
+            return _templateMethodEntries;
         }
 
         public bool IsReflectionBlocked(TypeDesc type)
