@@ -44,7 +44,7 @@ namespace System.Text.RegularExpressions.Tests
                 char c = (char)i;
                 char cU = char.ToUpper(c);
                 char cL = char.ToLower(c);
-                //Turkish i without dot is only considered case-sensitive in tr and az languages
+                // Turkish i without dot is only considered case-sensitive in tr and az languages
                 if (treatedAsCaseInsensitive.Contains(c) ||
                     (c == Turkish_i_withoutDot && culture.TwoLetterISOLanguageName != "tr" && culture.TwoLetterISOLanguageName != "az"))
                     continue;
@@ -97,8 +97,8 @@ namespace System.Text.RegularExpressions.Tests
         [Fact]
         public void TestIgnoreCaseRelation()
         {
-            //these 22 characters are considered case-insensitive by regex, while they are case-sensitive outside regex
-            //but they are only case-sensitive in an asymmmetrical way: tolower(c)=c, tolower(toupper(c)) != c
+            // these 22 characters are considered case-insensitive by regex, while they are case-sensitive outside regex
+            // but they are only case-sensitive in an asymmmetrical way: tolower(c)=c, tolower(toupper(c)) != c
             HashSet<char> treatedAsCaseInsensitive =
                  new("\u00B5\u017F\u0345\u03C2\u03D0\u03D1\u03D5\u03D6\u03F0\u03F1\u03F5\u1C80\u1C81\u1C82\u1C83\u1C84\u1C85\u1C86\u1C87\u1C88\u1E9B\u1FBE");
             foreach (char c in treatedAsCaseInsensitive)
@@ -110,15 +110,15 @@ namespace System.Text.RegularExpressions.Tests
 
             Assert.False(Regex.IsMatch(Turkish_i_withoutDot.ToString(), "i", RegexOptions.IgnoreCase));
 
-            //as baseline it is assumed the the invariant culture does not change
+            // as baseline it is assumed the the invariant culture does not change
             var inv_table = ComputeIgnoreCaseTable(CultureInfo.InvariantCulture, treatedAsCaseInsensitive);
             var cultures = System.Globalization.CultureInfo.GetCultures(System.Globalization.CultureTypes.AllCultures);
-            //expected difference between invariant and tr or az culture
+            // expected difference between invariant and tr or az culture
             string tr_diff = string.Format("I:Ii/I{0},i:Ii/i{1},{1}:{1}/i{1},{0}:{0}/I{0}", Turkish_i_withoutDot, Turkish_I_withDot);
-            //expected differnce between invariant and other cultures including the default en-US
+            // expected differnce between invariant and other cultures including the default en-US
             string default_diff = string.Format("I:Ii/Ii{0},i:Ii/Ii{0},{0}:{0}/Ii{0}", Turkish_I_withDot);
-            //the expected difference between invariant culture and all other cultures is only for i,I,Turkish_I_withDot,Turkish_i_withoutDot
-            //differentiate based on the TwoLetterISOLanguageName only (232 cases instead of 812)
+            // the expected difference between invariant culture and all other cultures is only for i,I,Turkish_I_withDot,Turkish_i_withoutDot
+            // differentiate based on the TwoLetterISOLanguageName only (232 cases instead of 812)
             List<CultureInfo> testcultures = new();
             HashSet<string> done = new();
             for (int i = 0; i < cultures.Length; i++)
@@ -129,10 +129,10 @@ namespace System.Text.RegularExpressions.Tests
                 var table = ComputeIgnoreCaseTable(culture, treatedAsCaseInsensitive);
                 string diff = GetDiff(inv_table, table);
                 if (culture.TwoLetterISOLanguageName == "tr" || culture.TwoLetterISOLanguageName == "az")
-                    //tr or az alphabet
+                    // tr or az alphabet
                     Assert.Equal(tr_diff, diff);
                 else
-                    //all other alphabets are treated the same as en-US
+                    // all other alphabets are treated the same as en-US
                     Assert.Equal(default_diff, diff);
             }
         }
@@ -141,8 +141,8 @@ namespace System.Text.RegularExpressions.Tests
         [Fact]
         public void TestIgnoreCaseRelationBorderCasesInDFAmode()
         {
-            //these 22 characters are considered case-insensitive by regex, while they are case-sensitive outside regex
-            //but they are only case-sensitive in an asymmmetrical way: tolower(c)=c, tolower(toupper(c)) != c
+            // these 22 characters are considered case-insensitive by regex, while they are case-sensitive outside regex
+            // but they are only case-sensitive in an asymmmetrical way: tolower(c)=c, tolower(toupper(c)) != c
             HashSet<char> treatedAsCaseInsensitive =
                  new("\u00B5\u017F\u0345\u03C2\u03D0\u03D1\u03D5\u03D6\u03F0\u03F1\u03F5\u1C80\u1C81\u1C82\u1C83\u1C84\u1C85\u1C86\u1C87\u1C88\u1E9B\u1FBE");
             foreach (char c in treatedAsCaseInsensitive)
@@ -157,7 +157,7 @@ namespace System.Text.RegularExpressions.Tests
             Assert.True(Regex.IsMatch(Turkish_I_withDot.ToString(), "i", RegexOptions.IgnoreCase | DFA));
             Assert.False(Regex.IsMatch(Turkish_I_withDot.ToString(), "i", RegexOptions.IgnoreCase | DFA | RegexOptions.CultureInvariant));
 
-            //Turkish i without dot is not considered case-sensitive in the default en-US culture
+            // Turkish i without dot is not considered case-sensitive in the default en-US culture
             treatedAsCaseInsensitive.Add(Turkish_i_withoutDot);
 
             List<char> caseSensitiveChars = new();
@@ -165,7 +165,7 @@ namespace System.Text.RegularExpressions.Tests
                 if (!treatedAsCaseInsensitive.Contains(c) && char.ToUpper(c) != char.ToLower(c))
                     caseSensitiveChars.Add(c);
 
-            //test all case-sensitive characters exhaustively in DFA mode
+            // test all case-sensitive characters exhaustively in DFA mode
             foreach (char c in caseSensitiveChars)
                 Assert.True(Regex.IsMatch(char.ToUpper(c).ToString() + char.ToLower(c).ToString(),
                     c.ToString() + c.ToString(), RegexOptions.IgnoreCase | DFA));
