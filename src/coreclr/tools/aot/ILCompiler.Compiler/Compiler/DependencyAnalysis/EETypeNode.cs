@@ -55,7 +55,7 @@ namespace ILCompiler.DependencyAnalysis
     ///                 |
     /// [Relative ptr]  | Pointer to the generic argument and variance info (optional)
     /// </summary>
-    public partial class EETypeNode : ObjectNode, IExportableSymbolNode, IEETypeNode, ISymbolDefinitionNode, ISymbolNodeWithLinkage
+    public partial class EETypeNode : ObjectNode, IEETypeNode, ISymbolDefinitionNode, ISymbolNodeWithLinkage
     {
         protected readonly TypeDesc _type;
         internal readonly EETypeOptionalFieldsBuilder _optionalFieldsBuilder = new EETypeOptionalFieldsBuilder();
@@ -103,8 +103,6 @@ namespace ILCompiler.DependencyAnalysis
         {
             return factory.NecessaryTypeSymbol(_type);
         }
-
-        public ExportForm GetExportForm(NodeFactory factory) => factory.CompilationModuleGroup.GetExportTypeForm(Type);
 
         public TypeDesc Type => _type;
 
