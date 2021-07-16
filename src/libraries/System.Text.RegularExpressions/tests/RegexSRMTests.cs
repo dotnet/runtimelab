@@ -30,7 +30,7 @@ namespace System.Text.RegularExpressions.Tests
         private const char Kelvin_sign = '\u212A';
 
         /// <summary>
-        /// Maps each character c to the set of all of its equivalent characters if case is ingored or null if c in case-insensitive
+        /// Maps each character c to the set of all of its equivalent characters if case is ignored or null if c in case-insensitive
         /// </summary>
         /// <param name="culture">ignoring case wrt this culture</param>
         /// <param name="treatedAsCaseInsensitive">characters that are otherwise case-sensitive but not in a regex</param>
