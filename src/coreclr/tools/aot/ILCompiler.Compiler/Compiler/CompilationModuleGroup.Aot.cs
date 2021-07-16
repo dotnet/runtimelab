@@ -21,9 +21,6 @@ namespace ILCompiler
         /// </summary>
         public abstract bool ImportsMethod(MethodDesc method, bool unboxingStub);
         /// <summary>
-        /// If true, "type" is exported by the set of input assemblies being compiled
-        /// </summary>
-        /// <summary>
         /// If true, all code is compiled into a single module
         /// </summary>
         public abstract bool IsSingleFileCompilation { get; }
