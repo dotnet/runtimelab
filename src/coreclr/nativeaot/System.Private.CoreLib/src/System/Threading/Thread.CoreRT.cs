@@ -73,19 +73,16 @@ namespace System.Threading
             }
         }
 
+        // Slow path executed once per thread
         [MethodImpl(MethodImplOptions.NoInlining)]
         private static Thread InitializeCurrentThread()
-            => InitializeExistingThread(false);
-
-        // Slow path executed once per thread
-        private static Thread InitializeExistingThread(bool threadPoolThread)
         {
             Debug.Assert(t_currentThread == null);
 
             var currentThread = new Thread();
             Debug.Assert(currentThread._threadState == (int)ThreadState.Unstarted);
 
-            ThreadState state = threadPoolThread ? ThreadPoolThread : 0;
+            ThreadState state = 0;
 
             // The main thread is foreground, other ones are background
             if (currentThread._managedThreadId.Id != System.Threading.ManagedThreadId.IdMainThread)
@@ -102,18 +99,7 @@ namespace System.Threading
             currentThread._priority = currentThread.GetPriorityLive();
             t_currentThread = currentThread;
 
-            if (threadPoolThread)
-            {
-                InitializeExistingThreadPoolThread();
-            }
-
             return currentThread;
-        }
-
-        // Use ThreadPoolCallbackWrapper instead of calling this function directly
-        internal static Thread InitializeThreadPoolThread()
-        {
-            return t_currentThread ?? InitializeExistingThread(true);
         }
 
         /// <summary>

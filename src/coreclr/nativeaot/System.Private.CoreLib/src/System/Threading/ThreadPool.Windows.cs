@@ -248,17 +248,35 @@ namespace System.Threading
 
         private static IntPtr s_work;
 
-        private static readonly ThreadBooleanCounter s_threadCounter = new ThreadBooleanCounter();
+        private class ThreadCountHolder
+        {
+            internal ThreadCountHolder() => Interlocked.Increment(ref s_threadCount);
+            ~ThreadCountHolder() => Interlocked.Decrement(ref s_threadCount);
+        }
+
+        [ThreadStatic]
+        private static ThreadCountHolder t_threadCountHolder;
+        private static int s_threadCount;
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct WorkingThreadCounter
+        {
+            private readonly Internal.PaddingFor32 pad1;
+
+            public volatile int Count;
+
+            private readonly Internal.PaddingFor32 pad2;
+        }
 
         // The number of threads executing work items in the Dispatch method
-        private static readonly ThreadBooleanCounter s_workingThreadCounter = new ThreadBooleanCounter();
+        private static WorkingThreadCounter s_workingThreadCounter;
 
         private static readonly ThreadInt64PersistentCounter s_completedWorkItemCounter = new ThreadInt64PersistentCounter();
 
         [ThreadStatic]
         private static object? t_completionCountObject;
 
-        internal static void InitializeForThreadPoolThread() => s_threadCounter.Set();
+        internal static void InitializeForThreadPoolThread() => t_threadCountHolder = new ThreadCountHolder();
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static void IncrementCompletedWorkItemCount() => ThreadInt64PersistentCounter.Increment(GetOrCreateThreadLocalCompletionCountObject());
@@ -317,7 +335,7 @@ namespace System.Threading
         /// <remarks>
         /// For a thread pool implementation that may have different types of threads, the count includes all types.
         /// </remarks>
-        public static int ThreadCount => s_threadCounter.Count;
+        public static int ThreadCount => s_threadCount;
 
         /// <summary>
         /// Gets the number of work items that have been processed so far.
@@ -345,10 +363,9 @@ namespace System.Threading
         {
             var wrapper = ThreadPoolCallbackWrapper.Enter();
             Debug.Assert(s_work == work);
-            ThreadBooleanCounter workingThreadCounter = s_workingThreadCounter;
-            workingThreadCounter.Set();
+            Interlocked.Increment(ref s_workingThreadCounter.Count);
             ThreadPoolWorkQueue.Dispatch();
-            workingThreadCounter.Clear();
+            Interlocked.Decrement(ref s_workingThreadCounter.Count);
             // We reset the thread after executing each callback
             wrapper.Exit(resetThread: false);
         }
