@@ -41,11 +41,6 @@ namespace Internal.Reflection.Augments
             s_reflectionCoreCallbacks = reflectionCoreCallbacks;
         }
 
-        public static CustomAttributeNamedArgument CreateCustomAttributeNamedArgument(Type attributeType, string memberName, bool isField, CustomAttributeTypedArgument typedValue)
-        {
-            return new CustomAttributeNamedArgument(attributeType, memberName, isField, typedValue);
-        }
-
         public static TypeCode GetRuntimeTypeCode(Type type)
         {
             Debug.Assert(type != null);

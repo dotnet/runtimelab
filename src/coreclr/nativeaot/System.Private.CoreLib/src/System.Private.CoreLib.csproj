@@ -131,8 +131,6 @@
     <Compile Include="System\Reflection\AssemblyName.CoreRT.cs" />
     <Compile Include="System\Reflection\BinderBundle.cs" />
     <Compile Include="System\Reflection\CustomAttributeExtensions.cs" />
-    <Compile Include="System\Reflection\CustomAttributeNamedArgument.cs" />
-    <Compile Include="System\Reflection\CustomAttributeTypedArgument.cs" />
     <Compile Include="System\Reflection\Emit\AssemblyBuilder.cs" />
     <Compile Include="System\Reflection\Emit\ConstructorBuilder.cs" />
     <Compile Include="System\Reflection\Emit\CustomAttributeBuilder.cs" />
