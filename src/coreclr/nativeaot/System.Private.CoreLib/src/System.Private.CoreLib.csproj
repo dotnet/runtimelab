@@ -130,7 +130,7 @@
     <Compile Include="System\Reflection\Assembly.CoreRT.cs" />
     <Compile Include="System\Reflection\AssemblyName.CoreRT.cs" />
     <Compile Include="System\Reflection\BinderBundle.cs" />
-    <Compile Include="System\Reflection\CustomAttributeData.cs" />
+    <Compile Include="System\Reflection\CustomAttributeData.CoreRT.cs" />
     <Compile Include="System\Reflection\CustomAttributeExtensions.cs" />
     <Compile Include="System\Reflection\CustomAttributeNamedArgument.cs" />
     <Compile Include="System\Reflection\CustomAttributeTypedArgument.cs" />
@@ -213,6 +213,7 @@
     <Compile Include="System\Runtime\InteropServices\SafeHandle.CoreRT.cs" />
     <Compile Include="System\Runtime\InteropServices\UnsafeGCHandle.cs" />
     <Compile Include="System\Runtime\Intrinsics\X86\X86Base.CoreRT.cs" Condition="'$(SupportsX86Intrinsics)' == 'true'" />
+    <Compile Include="System\Runtime\JitInfo.CoreRT.cs" />
     <Compile Include="System\Runtime\Loader\AssemblyLoadContext.CoreRT.cs" />
     <Compile Include="System\String.CoreRT.cs" />
     <Compile Include="System\String.Intern.cs" />
