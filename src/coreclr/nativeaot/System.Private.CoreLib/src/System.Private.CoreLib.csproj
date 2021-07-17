@@ -130,7 +130,6 @@
     <Compile Include="System\Reflection\Assembly.CoreRT.cs" />
     <Compile Include="System\Reflection\AssemblyName.CoreRT.cs" />
     <Compile Include="System\Reflection\BinderBundle.cs" />
-    <Compile Include="System\Reflection\CustomAttributeData.CoreRT.cs" />
     <Compile Include="System\Reflection\CustomAttributeExtensions.cs" />
     <Compile Include="System\Reflection\CustomAttributeNamedArgument.cs" />
     <Compile Include="System\Reflection\CustomAttributeTypedArgument.cs" />
