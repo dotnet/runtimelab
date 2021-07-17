@@ -40,9 +40,9 @@ namespace System.Reflection.Runtime.Assemblies
         public sealed override Type GetType(string name, bool throwOnError) => base.GetType(name, throwOnError);
         public sealed override bool IsDynamic => base.IsDynamic;
         public sealed override string ToString() => base.ToString();
-        [RequiresAssemblyFilesAttribute(Message="The code will return an empty string for assemblies embedded in a single-file app")]
+        [RequiresAssemblyFilesAttribute("The code will return an empty string for assemblies embedded in a single-file app")]
         public sealed override string EscapedCodeBase => base.EscapedCodeBase;
-        [RequiresAssemblyFiles(Message = "The code will throw for assemblies embedded in a single-file app")]
+        [RequiresAssemblyFiles("The code will throw for assemblies embedded in a single-file app")]
         public sealed override FileStream[] GetFiles() => base.GetFiles();
 #endif //DEBUG
     }

@@ -51,22 +51,20 @@ namespace System.Reflection
             vsb.Append(Constructor.DeclaringType!.FullName);
             vsb.Append('(');
 
-            bool first = true;
-
-            int count = ConstructorArguments.Count;
+            IList<CustomAttributeTypedArgument> constructorArguments = ConstructorArguments;
+            int count = constructorArguments.Count;
             for (int i = 0; i < count; i++)
             {
-                if (!first) vsb.Append(", ");
-                vsb.Append(ConstructorArguments[i].ToString());
-                first = false;
+                if (i > 0) vsb.Append(", ");
+                vsb.Append(constructorArguments[i].ToString());
             }
 
-            count = NamedArguments.Count;
+            IList<CustomAttributeNamedArgument> namedArguments = NamedArguments;
+            count = namedArguments.Count;
             for (int i = 0; i < count; i++)
             {
-                if (!first) vsb.Append(", ");
-                vsb.Append(NamedArguments[i].ToString());
-                first = false;
+                if (i > 0) vsb.Append(", ");
+                vsb.Append(namedArguments[i].ToString());
             }
 
             vsb.Append(")]");
