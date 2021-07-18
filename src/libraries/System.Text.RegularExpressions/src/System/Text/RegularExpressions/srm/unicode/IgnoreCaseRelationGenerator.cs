@@ -55,7 +55,7 @@ internal static class " + classname + @"
         private static void WriteIgnoreCaseBDD(StreamWriter sw)
         {
             sw.WriteLine("/// <summary>");
-            sw.WriteLine("/// Serialized BDDs for mapping characters to their case-ignoring equivalence classes.");
+            sw.WriteLine("/// Serialized BDD for mapping characters to their case-ignoring equivalence classes in the default (en-US) culture");
             sw.WriteLine("/// </summary>");
             CharSetSolver solver = new CharSetSolver();
 
@@ -68,38 +68,6 @@ internal static class " + classname + @"
                 ignorecase = solver.MkOr(ignorecase, solver.MkAnd(solver.ShiftLeft(a, 16), b));
             }
             var ignorecase_repr = ignorecase.SerializeToString();
-
-            Dictionary<char, BDD> ignoreCase_inv = ComputeIgnoreCaseDictionary(solver, CultureInfo.InvariantCulture);
-            BDD ignorecase_inv = solver.False;
-            foreach (var kv in ignoreCase_inv)
-            {
-                var a = solver.MkCharSetFromRange(kv.Key, kv.Key);
-                var b = kv.Value;
-                ignorecase_inv = solver.MkOr(ignorecase_inv, solver.MkAnd(solver.ShiftLeft(a, 16), b));
-            }
-            var ignorecase_inv_repr = ignorecase_inv.SerializeToString();
-
-            Dictionary<char, BDD> ignoreCase_tr = ComputeIgnoreCaseDictionary(solver, new CultureInfo("tr-TR"));
-            BDD ignorecase_tr = solver.False;
-            foreach (var kv in ignoreCase_tr)
-            {
-                var a = solver.MkCharSetFromRange(kv.Key, kv.Key);
-                var b = kv.Value;
-                ignorecase_tr = solver.MkOr(ignorecase_tr, solver.MkAnd(solver.ShiftLeft(a, 16), b));
-            }
-            var ignorecase_tr_repr = ignorecase_tr.SerializeToString();
-
-            sw.WriteLine("//for InvariantCulture");
-            sw.WriteLine("public const string s_IgnoreCaseBDD_inv_repr =");
-            sw.Write('"');
-            sw.Write(ignorecase_inv_repr);
-            sw.WriteLine("\";");
-            sw.WriteLine("//for cultures az az-Cyrl az-Cyrl-AZ az-Latn az-Latn-AZ tr tr-CY tr-TR");
-            sw.WriteLine("public const string s_IgnoreCaseBDD_tr_repr =");
-            sw.Write('"');
-            sw.Write(ignorecase_tr_repr);
-            sw.WriteLine("\";");
-            sw.WriteLine("//for all other cultures including en-US");
             sw.WriteLine("public const string s_IgnoreCaseBDD_repr =");
             sw.Write('"');
             sw.Write(ignorecase_repr);
