@@ -46,6 +46,6 @@ This was tested on Fedora 31, but will most likely work on lower versions too.
 sudo apt-get install clang zlib1g-dev libkrb5-dev
 ```
 
-# macOS (10.12+)
+# macOS (10.13+)
 
-* Install [Command Line Tools for XCode 8](https://developer.apple.com/xcode/download/) or higher.
+* Install latest [Command Line Tools for XCode](https://developer.apple.com/xcode/download/).
