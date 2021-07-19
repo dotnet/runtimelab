@@ -127,12 +127,10 @@
     <Compile Include="System\Reflection\AssemblyNameLexer.cs" />
     <Compile Include="System\Reflection\AssemblyNameParser.cs" />
     <Compile Include="System\Reflection\RuntimeAssemblyName.cs" />
+    <Compile Include="System\Reflection\Attribute.CoreRT.cs" />
     <Compile Include="System\Reflection\Assembly.CoreRT.cs" />
     <Compile Include="System\Reflection\AssemblyName.CoreRT.cs" />
     <Compile Include="System\Reflection\BinderBundle.cs" />
-    <Compile Include="System\Reflection\CustomAttributeExtensions.cs" />
-    <Compile Include="System\Reflection\CustomAttributeNamedArgument.cs" />
-    <Compile Include="System\Reflection\CustomAttributeTypedArgument.cs" />
     <Compile Include="System\Reflection\Emit\AssemblyBuilder.cs" />
     <Compile Include="System\Reflection\Emit\ConstructorBuilder.cs" />
     <Compile Include="System\Reflection\Emit\CustomAttributeBuilder.cs" />
@@ -152,7 +150,6 @@
     <Compile Include="System\Reflection\Emit\SignatureHelper.cs" />
     <Compile Include="System\Reflection\Emit\TypeBuilder.cs" />
     <Compile Include="System\Reflection\FieldInfo.CoreRT.cs" />
-    <Compile Include="System\Reflection\LegacyCustomAttributeApis.cs" />
     <Compile Include="System\Reflection\MethodBase.CoreRT.cs" />
     <Compile Include="System\Reflection\Metadata\AssemblyExtensions.cs" />
     <Compile Include="System\Reflection\Metadata\MetadataUpdater.cs" />
