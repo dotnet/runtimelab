@@ -142,11 +142,6 @@ namespace System.Threading
 
         public void DisableComObjectEagerCleanup() { }
 
-        private static void InitializeExistingThreadPoolThread()
-        {
-            ThreadPool.InitializeForThreadPoolThread();
-        }
-
         public void Interrupt() => WaitSubsystem.Interrupt(this);
 
         internal const bool ReentrantWaitsEnabled = false;

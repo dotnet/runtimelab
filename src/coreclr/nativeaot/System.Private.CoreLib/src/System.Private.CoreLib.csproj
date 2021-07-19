@@ -233,9 +233,7 @@
     <Compile Include="System\Threading\Overlapped.cs" />
     <Compile Include="System\Threading\SyncTable.cs" Condition="'$(UseSyncTable)' == 'true'" />
     <Compile Include="System\Threading\Thread.CoreRT.cs" />
-    <Compile Include="System\Threading\ThreadBooleanCounter.cs" />
     <Compile Include="System\Threading\ThreadPool.CoreRT.cs" />
-    <Compile Include="System\Threading\ThreadPoolCallbackWrapper.cs" />
     <Compile Include="System\Type.CoreRT.cs" />
     <Compile Include="System\Type.Internal.cs" />
     <Compile Include="System\TypedReference.cs" />
@@ -301,6 +299,7 @@
     </Compile>
     <Compile Include="System\Threading\Thread.CoreRT.Windows.cs" />
     <Compile Include="System\Threading\ThreadPool.Windows.cs" Condition="'$(FeaturePortableThreadPool)' != 'true'" />
+    <Compile Include="System\Threading\ThreadPoolCallbackWrapper.cs" />
     <Compile Include="System\Threading\Win32ThreadPoolBoundHandle.cs" Condition="'$(FeaturePortableThreadPool)' != 'true'" />
     <Compile Include="System\Threading\Win32ThreadPoolNativeOverlapped.cs" />
     <Compile Include="System\Threading\Win32ThreadPoolNativeOverlapped.ExecutionContextCallbackArgs.cs" />
