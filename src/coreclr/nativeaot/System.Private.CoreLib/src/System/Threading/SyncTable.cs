@@ -292,6 +292,13 @@ namespace System.Threading
                 {
                     ref Entry entry = ref s_entries[_index];
 
+                    if (entry.Owner.Target != null)
+                    {
+                        // Retry later if the owner is not collected yet.
+                        GC.ReRegisterForFinalize(this);
+                        return;
+                    }
+
                     dependentHadleToDispose = entry.Owner;
                     entry.Owner = default;
 
