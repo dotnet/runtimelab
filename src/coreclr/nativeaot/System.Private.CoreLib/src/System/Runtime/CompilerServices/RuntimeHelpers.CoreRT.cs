@@ -81,11 +81,6 @@ namespace System.Runtime.CompilerServices
             return RuntimeImports.RhCompareObjectContentsAndPadding(o1, o2);
         }
 
-#if !FEATURE_SYNCTABLE
-        private const int HASHCODE_BITS = 26;
-        private const int MASK_HASHCODE = (1 << HASHCODE_BITS) - 1;
-#endif
-
         [ThreadStatic]
         private static int t_hashSeed;
 
@@ -101,56 +96,8 @@ namespace System.Runtime.CompilerServices
 
         public static unsafe int GetHashCode(object o)
         {
-#if FEATURE_SYNCTABLE
             return ObjectHeader.GetHashCode(o);
-#else
-            if (o == null)
-                return 0;
-
-            fixed (IntPtr* pEEType = &o.m_pEEType)
-            {
-                int* pSyncBlockIndex = (int*)((byte*)pEEType - 4); // skipping exactly 4 bytes for the SyncTableEntry (exactly 4 bytes not a pointer size).
-                int hash = *pSyncBlockIndex & MASK_HASHCODE;
-
-                if (hash == 0)
-                    return MakeHashCode(o, pSyncBlockIndex);
-                else
-                    return hash;
-            }
-#endif
         }
-
-#if !FEATURE_SYNCTABLE
-        private static unsafe int MakeHashCode(Object o, int* pSyncBlockIndex)
-        {
-            int hash = GetNewHashCode() & MASK_HASHCODE;
-
-            if (hash == 0)
-                hash = 1;
-
-            while (true)
-            {
-                int oldIndex = Volatile.Read(ref *pSyncBlockIndex);
-
-                int currentHash = oldIndex & MASK_HASHCODE;
-                if (currentHash != 0)
-                {
-                    // Someone else set the hash code.
-                    hash = currentHash;
-                    break;
-                }
-
-                int newIndex = oldIndex | hash;
-
-                if (Interlocked.CompareExchange(ref *pSyncBlockIndex, newIndex, oldIndex) == oldIndex)
-                    break;
-                // If we get here someone else modified the header.  They may have set the hash code, or maybe some
-                // other bits.  Let's try again.
-            }
-
-            return hash;
-        }
-#endif
 
         public static int OffsetToStringData
         {

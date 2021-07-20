@@ -18,10 +18,6 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <UseSyncTable>true</UseSyncTable>
-    <DefineConstants Condition="'$(UseSyncTable)' == 'true'">FEATURE_SYNCTABLE;$(DefineConstants)</DefineConstants>
-  </PropertyGroup>
-  <PropertyGroup>
     <FeaturePortableThreadPool Condition="'$(FeaturePortableThreadPool)' == ''">false</FeaturePortableThreadPool>
     <FeaturePortableThreadPool Condition="'$(TargetsUnix)' == 'true'">true</FeaturePortableThreadPool>
   </PropertyGroup>
@@ -229,9 +225,9 @@
     <Compile Include="System\Threading\Interlocked.cs" />
     <Compile Include="System\Threading\LockHolder.cs" />
     <Compile Include="System\Threading\Monitor.CoreRT.cs" />
-    <Compile Include="System\Threading\ObjectHeader.cs" Condition="'$(UseSyncTable)' == 'true'" />
+    <Compile Include="System\Threading\ObjectHeader.cs" />
     <Compile Include="System\Threading\Overlapped.cs" />
-    <Compile Include="System\Threading\SyncTable.cs" Condition="'$(UseSyncTable)' == 'true'" />
+    <Compile Include="System\Threading\SyncTable.cs" />
     <Compile Include="System\Threading\Thread.CoreRT.cs" />
     <Compile Include="System\Threading\ThreadPool.CoreRT.cs" />
     <Compile Include="System\Type.CoreRT.cs" />
