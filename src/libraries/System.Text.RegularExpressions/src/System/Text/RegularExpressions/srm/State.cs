@@ -105,25 +105,37 @@ namespace System.Text.RegularExpressions.SRM
     /// </summary>
     internal class State<S>
     {
+        internal int Id { get; set; }
+        internal bool IsInitialState { get; set; }
         internal uint PrevCharKind { get; private set; }
         internal SymbolicRegexNode<S> Node { get; private set; }
 
         /// <summary>
-        /// State id is unique up to Equals.
+        /// State is lazy
         /// </summary>
-        internal int Id { get; private set; }
+        internal bool IsLazy => Node.info.IsLazy;
+
+        /// <summary>
+        /// This is a deadend state
+        /// </summary>
+        internal bool IsDeadend => Node.IsNothing;
+
+        /// <summary>
+        /// The node must be nullable here
+        /// </summary>
+        internal int WatchDog => (Node.kind == SymbolicRegexKind.WatchDog ? Node.lower : (Node.kind == SymbolicRegexKind.Or ? Node.alts.watchdog : -1));
 
         /// <summary>
         /// If true then the state is a dead-end, rejects all inputs.
         /// </summary>
-        public bool IsNothing { get { return Node.IsNothing; } }
+        internal bool IsNothing { get { return Node.IsNothing; } }
 
         /// <summary>
-        /// used to track if this state is a variant of A1
+        /// If true then state starts with a ^ or $ or \A or \z or \Z
         /// </summary>
-        internal bool isInitialState;
+        internal bool StartsWithLineAnchor => Node.info.StartsWithLineAnchor;
 
-        private State(SymbolicRegexNode<S> node, uint prevCharKind)
+        internal State(SymbolicRegexNode<S> node, uint prevCharKind) : base()
         {
             Node = node;
             PrevCharKind = prevCharKind;
@@ -134,7 +146,7 @@ namespace System.Text.RegularExpressions.SRM
         /// If atom is False this means that this is \n and it is the last character of the input.
         /// </summary>
         /// <param name="atom">minterm corresponding to some input character or False corresponding to last \n</param>
-        public State<S> Next(S atom)
+        internal State<S> Next(S atom)
         {
             var alg = Node.builder.solver;
             S WLpred = Node.builder.wordLetterPredicate;
@@ -167,45 +179,11 @@ namespace System.Text.RegularExpressions.SRM
             // nextCharKind will be the PrevCharKind of the target state
             // use an existing state instead if one exists already
             // otherwise create a new new id for it
-            return MkState(derivative, nextCharKind);
-        }
-
-        /// <summary>
-        /// Make a new state with given node and previous character context
-        /// </summary>
-        public static State<S> MkState(SymbolicRegexNode<S> node, uint prevCharKind)
-        {
-            //first prune the anchors in the node
-            var bld = node.builder;
-            var alg = bld.solver;
-            S WLpred = bld.wordLetterPredicate;
-            S startSet = node.GetStartSet();
-            //true if the startset of the node overlaps with some wordletter or the node can be nullable
-            bool contWithWL = (node.CanBeNullable || alg.IsSatisfiable(alg.MkAnd(WLpred, startSet)));
-            //true if the startset of the node overlaps with some nonwordletter or the node can be nullable
-            bool contWithNWL = (node.CanBeNullable || alg.IsSatisfiable(alg.MkAnd(alg.MkNot(WLpred), startSet)));
-            var pruned_node = node.PruneAnchors(prevCharKind, contWithWL, contWithNWL);
-            State<S> s = new State<S>(pruned_node, prevCharKind);
-            State<S> state;
-            if (!bld.stateCache.TryGetValue(s, out state))
-            {
-                state = s;
-                state.Id = bld.stateCache.Count;
-                bld.stateCache.Add(state);
-#if DEBUG
-                if (state.Id > bld.statearray.Length)
-                    throw new AutomataException(AutomataExceptionKind.InternalError_SymbolicRegex);
-#endif
-                if (state.Id == bld.statearray.Length)
-                    // extend the state lookup array with 1k new entries
-                    Array.Resize(ref bld.statearray, bld.statearray.Length + 1024);
-                bld.statearray[state.Id] = state;
-            }
-            return state;
+            return Node.builder.MkState(derivative, nextCharKind);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool IsNullable(uint nextCharKind)
+        internal bool IsNullable(uint nextCharKind)
         {
 #if DEBUG
             ValidateCharKind(nextCharKind);
@@ -230,5 +208,21 @@ namespace System.Text.RegularExpressions.SRM
              string.Format("({0},{1})", CharKind.DescribePrev(PrevCharKind), Node.ToString());
 
         internal string Description => ToString();
+
+        internal string DgmlView
+        {
+            get
+            {
+                string deriv = HTMLEncodeChars(Node.ToString());
+                string info = CharKind.PrettyPrint(PrevCharKind);
+                if (info != string.Empty)
+                    info = string.Format("Previous: {0}&#13;", info);
+                if (deriv == string.Empty)
+                    deriv = "()";
+                return string.Format("{0}{1}", info, deriv);
+            }
+        }
+
+        private static string HTMLEncodeChars(string s) => s.Replace("&", "&amp;").Replace("\"", "&quot;").Replace("<", "&lt;").Replace(">", "&gt;");
     }
 }

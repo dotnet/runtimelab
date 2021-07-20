@@ -21,12 +21,6 @@ namespace System.Text.RegularExpressions.SRM
         internal SymbolicRegexBuilder<S> builder;
 
         /// <summary>
-        /// Partition of the input space of predicates.
-        /// Length of atoms is K.
-        /// </summary>
-        private S[] atoms;
-
-        /// <summary>
         /// Maps each character into a partition id in the range 0..K-1.
         /// </summary>
         private Classifier dt;
@@ -116,11 +110,6 @@ namespace System.Text.RegularExpressions.SRM
         /// </summary>
         internal SymbolicRegexNode<S> Ar;
 
-        ///// <summary>
-        ///// if nonempty then Ar has that fixed prefix of predicates
-        ///// </summary>
-        //private S[] Ar_prefix_array;
-
         private string Ar_prefix;
 
         /// <summary>
@@ -155,11 +144,6 @@ namespace System.Text.RegularExpressions.SRM
 
         private uint[] _asciiCharKind = new uint[128];
 
-        /// <summary>
-        /// Initialized to the next power of 2 that is at least the number of atoms
-        /// </summary>
-        private int K;
-
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal State<S> GetState(int stateId)
         {
@@ -173,25 +157,15 @@ namespace System.Text.RegularExpressions.SRM
         /// </summary>
         /// <param name="c">character code</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private S GetAtom(int c) => atoms[dt.Find(c)];
+        private S GetAtom(int c) => builder.atoms[dt.Find(c)];
+
+        private const int s_STATEMAXBOUND = 10000;
 
         /// <summary>
-        /// Initial bound (1024) on the nr of states stored in delta.
-        /// This value may become larger dynamically if more that 1024 states are generated.
+        /// If true then builder.delta is used in nfa mode where
+        /// each target state represents a set of states.
         /// </summary>
-        internal int StateLimit = 1024;
-
-        /// <summary>
-        /// Bound on the maximum nr of chars that trigger vectorized IndexOf.
-        /// </summary>
-        internal readonly int StartSetSizeLimit = 1;
-
-        /// <summary>
-        /// Holds all transitions for states 0..MaxNrOfStates-1.
-        /// each transition q ---atoms[i]---> p is represented by entry p = delta[(q * K) + i].
-        /// Length of delta is K*StateLimit. Entry delta[i]=null means that the state is still undefined.
-        /// </summary>
-        private State<S>[] delta;
+        private bool nfamode;
 
         #region custom serialization/deserialization
         /// <summary>
@@ -257,7 +231,6 @@ namespace System.Text.RegularExpressions.SRM
             _culture = (fragments[0] == string.Empty ? CultureInfo.InvariantCulture :
                 (fragments[0] == CultureInfo.CurrentCulture.Name ? CultureInfo.CurrentCulture : new CultureInfo(fragments[0])));
             builder = new SymbolicRegexBuilder<S>(solver);
-            atoms = solver.GetPartition();
             A = builder.Deserialize(fragments[2]);
             Options = (RegexOptions)Base64.DecodeInt(fragments[3]);
             //these predicates are relevant only when anchors are used
@@ -320,23 +293,19 @@ namespace System.Text.RegularExpressions.SRM
             _timeoutChecksToSkip = TimeoutCheckFrequency;
 
             this.Options = options;
-            this.StartSetSizeLimit = 1;
             this.builder = sr.builder;
             if (builder.solver is BV64Algebra)
             {
                 BV64Algebra bva = builder.solver as BV64Algebra;
-                atoms = bva.GetPartition() as S[];
                 dt = bva._classifier;
             }
             else if (builder.solver is BVAlgebra)
             {
                 BVAlgebra bva = builder.solver as BVAlgebra;
-                atoms = bva.atoms as S[];
                 dt = bva._classifier;
             }
             else if (builder.solver is CharSetSolver)
             {
-                atoms = minterms as S[];
                 dt = Classifier.Create(builder.solver as CharSetSolver, minterms);
             }
             else
@@ -393,37 +362,29 @@ namespace System.Text.RegularExpressions.SRM
         {
             A1 = builder.MkConcat(builder.dotStar, A);
             Ar = A.Reverse();
-            // let K be the smallest k s.t. 2^k >= atoms.Length + 1
-            // the extra slot with id atoms.Length is reserved for \Z (last occurrence of \n)
-            int k = 1;
-            while (atoms.Length >= (1 << k)) k += 1;
-            K = k;
-            // initialize state lookup table
-            StateLimit = this.builder.statearray.Length;
-            delta = new State<S>[StateLimit << K];
             // create initial states for A, A1 and Ar
             if (!A.info.ContainsSomeAnchor)
             {
                 // only the default previous character kind 0 is ever going to be used for all initial states
-                _Aq0[0] = State<S>.MkState(A, 0);
-                _A1q0[0] = State<S>.MkState(A1, 0);
+                _Aq0[0] = builder.MkState(A, 0);
+                _A1q0[0] = builder.MkState(A1, 0);
                 // _A1q0[0] is recognized as special initial state,
                 // this information is used for search optimization based on start set and prefix of A
-                _A1q0[0].isInitialState = true;
-                _Arq0[0] = State<S>.MkState(Ar, 0);
+                _A1q0[0].IsInitialState = true;
+                _Arq0[0] = builder.MkState(Ar, 0);
             }
             else
             {
                 for (uint i = 0; i < 5; i++)
                 {
-                    _Aq0[i] = State<S>.MkState(A, i);
-                    _A1q0[i] = State<S>.MkState(A1, i);
-                    _Arq0[i] = State<S>.MkState(Ar, i);
+                    _Aq0[i] = builder.MkState(A, i);
+                    _A1q0[i] = builder.MkState(A1, i);
+                    _Arq0[i] = builder.MkState(Ar, i);
                     //used to detect if initial state was reentered, then startset can be triggered
                     //but observe that the behavior from the state may ultimately depend on the previous
                     //input char e.g. possibly causing nullability of \b or \B or of a start-of-line anchor,
                     //in that sense there can be several "versions" (not more than 5) of the initial state
-                    _A1q0[i].isInitialState = true;
+                    _A1q0[i].IsInitialState = true;
                 }
             }
         }
@@ -451,14 +412,38 @@ namespace System.Text.RegularExpressions.SRM
         {
             int c = input[i];
             // atom_id = atoms.Length represents \Z (last \n)
-            int atom_id = (c == 10 && i == input.Length - 1 && q.Node.info.StartsWithLineAnchor ? atoms.Length : dt.Find(c));
-            int offset = (q.Id << K) | atom_id;
-            var p = delta[offset];
-            if (p == null)
-                //transition atom False means that this is \Z
-                return CreateNewTransition(q, atom_id == atoms.Length ? builder.solver.False : atoms[atom_id], offset);
+            int atom_id = (c == 10 && i == input.Length - 1 && q.StartsWithLineAnchor ? builder.atoms.Length : dt.Find(c));
+            // atom=False represents \Z
+            S atom = atom_id == builder.atoms.Length ? builder.solver.False : builder.atoms[atom_id];
+            if (nfamode && q.Node.Kind == SymbolicRegexKind.Or)
+            {
+                SymbolicRegexNode<S> union = builder.nothing;
+                uint kind = 0;
+                // consider transitions from the members one at a time
+                foreach (var r in q.Node.alts)
+                {
+                    var s = builder.MkState(r, q.PrevCharKind);
+                    int offset = (s.Id << builder.K) | atom_id;
+                    var p = builder.delta[offset];
+                    if (p == null)
+                        p = CreateNewTransition(s, atom, offset);
+                    // observe that if p.Node is an Or it will be flattened
+                    union = builder.MkOr2(union, p.Node);
+                    // kind is just the kind of the atom
+                    kind = p.PrevCharKind;
+                }
+                var powerstate = builder.MkState(union, kind, true);
+                return powerstate;
+            }
             else
-                return p;
+            {
+                int offset = (q.Id << builder.K) | atom_id;
+                var p = builder.delta[offset];
+                if (p == null)
+                    return CreateNewTransition(q, atom, offset);
+                else
+                    return p;
+            }
         }
 
         /// <summary>
@@ -469,24 +454,17 @@ namespace System.Text.RegularExpressions.SRM
             lock (this)
             {
                 // check if meanwhile delta[offset] has become defined possibly by another thread
-                State<S> p = delta[offset];
+                State<S> p = builder.delta[offset];
                 if (p != null)
                     return p;
                 else
                 {
-                    // this is the only place in code where the Next method is called
+                    // this is the only place in code where the Next method is called in the matcher
                     p = q.Next(atom);
-                    // if the statearray was extended then delta must be extended accordingly
-#if DEBUG
-                    if (StateLimit > builder.statearray.Length)
-                        throw new AutomataException(AutomataExceptionKind.InternalError_SymbolicRegex);
-#endif
-                    if (StateLimit < builder.statearray.Length)
-                    {
-                        StateLimit = builder.statearray.Length;
-                        Array.Resize(ref delta, StateLimit << K);
-                    }
-                    delta[offset] = p;
+                    builder.delta[offset] = p;
+                    //switch to nfa mode if the maximum bound has been reached
+                    if (p.Id == s_STATEMAXBOUND)
+                        nfamode = true;
                     return p;
                 }
             }
@@ -605,27 +583,6 @@ namespace System.Text.RegularExpressions.SRM
         }
 
         /// <summary>
-        /// It is known here that regex is nullable
-        /// </summary>
-        /// <param name="regex"></param>
-        /// <returns></returns>
-        private int GetWatchdog(SymbolicRegexNode<S> regex)
-        {
-            if (regex.kind == SymbolicRegexKind.WatchDog)
-            {
-                return regex.lower;
-            }
-            else if (regex.kind == SymbolicRegexKind.Or)
-            {
-                return regex.alts.watchdog;
-            }
-            else
-            {
-                return -1;
-            }
-        }
-
-        /// <summary>
         /// Find match end position using A, end position is known to exist.
         /// </summary>
         /// <param name="input">input array</param>
@@ -643,7 +600,7 @@ namespace System.Text.RegularExpressions.SRM
                 //empty match exists because the initial state is accepting
                 i_end = i - 1;
                 // stop here if q is lazy
-                if (q.Node.info.IsLazy)
+                if (q.IsLazy)
                     return i_end;
             }
             while (i < k)
@@ -653,13 +610,13 @@ namespace System.Text.RegularExpressions.SRM
                 if (q.IsNullable(GetCharKind(input, i+1)))
                 {
                     // stop here if q is lazy
-                    if (q.Node.info.IsLazy)
+                    if (q.IsLazy)
                         return i;
                     //accepting state has been reached
                     //record the position
                     i_end = i;
                 }
-                else if (q.Node == builder.nothing)
+                else if (q.IsDeadend)
                 {
                     //nonaccepting sink state (deadend) has been reached in A
                     //so the match ended when the last i_end was updated
@@ -781,7 +738,7 @@ namespace System.Text.RegularExpressions.SRM
             // search for a match end position within input[i..k-1]
             while (i < k)
             {
-                if (q.isInitialState)
+                if (q.IsInitialState)
                 {
                     //i_q0_A1 is the most recent position in the input when A1 is in the initial state
                     i_q0_A1 = i;
@@ -818,7 +775,7 @@ namespace System.Text.RegularExpressions.SRM
                             if (q.IsNullable(GetCharKind(input, i)))
                             {
                                 i_q0 = i_q0_A1;
-                                watchdog = GetWatchdog(q.Node);
+                                watchdog = q.WatchDog;
                                 //return the last position of the match
                                 return i - 1;
                             }
@@ -863,7 +820,7 @@ namespace System.Text.RegularExpressions.SRM
                 if (q.IsNullable(GetCharKind(input, i + 1)))
                 {
                     i_q0 = i_q0_A1;
-                    watchdog = GetWatchdog(q.Node);
+                    watchdog = q.WatchDog;
                     return i;
                 }
                 else if (q.IsNothing)

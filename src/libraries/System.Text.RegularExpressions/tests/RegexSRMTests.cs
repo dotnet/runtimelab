@@ -29,6 +29,22 @@ namespace System.Text.RegularExpressions.Tests
         private const char Turkish_i_withoutDot = '\u0131';
         private const char Kelvin_sign = '\u212A';
 
+        [Fact]
+        public void TestNFAmode()
+        {
+            string rawregex = "a.{20}$";
+            Random random = new Random(0);
+            byte[] buffer = new byte[50000];
+            random.NextBytes(buffer);
+            var input = new string(Array.ConvertAll(buffer, b => (b <= 0x7F ? 'a' : 'b')));
+            input += "a01234567890123456789";
+            Regex re = new Regex(rawregex, DFA | RegexOptions.Singleline);
+            Match m = re.Match(input);
+            Assert.True(m.Success);
+            Assert.Equal(buffer.Length, m.Index);
+            Assert.Equal(21, m.Length);
+        }
+
         /// <summary>
         /// Maps each character c to the set of all of its equivalent characters if case is ignored or null if c in case-insensitive
         /// </summary>

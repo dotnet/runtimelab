@@ -23,7 +23,7 @@ namespace System.Text.RegularExpressions.SRM.DGML
             uint startId = (inReverse ? (srm.Ar.info.StartsWithLineAnchor ? CharKind.StartStop : 0)
                                             : (srm.A.info.StartsWithLineAnchor ? CharKind.StartStop : 0));
             //inReverse only matters if Ar contains some line anchor
-            _q0 = State<S>.MkState(inReverse ? srm.Ar : (addDotStar ? srm.A1 : srm.A), startId);
+            _q0 = _builder.MkState(inReverse ? srm.Ar : (addDotStar ? srm.A1 : srm.A), startId);
             var stack = new Stack<State<S>>();
             stack.Push(_q0);
             _states.Add(_q0.Id);
@@ -69,7 +69,7 @@ namespace System.Text.RegularExpressions.SRM.DGML
 
         public string DescribeStartLabel() => "";
 
-        public string DescribeState(int state) => ViewState(_builder.statearray[state]);
+        public string DescribeState(int state) => _builder.statearray[state].DgmlView;
 
         public IEnumerable<int> GetStates() => _states;
 
@@ -78,16 +78,5 @@ namespace System.Text.RegularExpressions.SRM.DGML
         public IEnumerable<Move<S>> GetMoves() => _moves;
 
         private static string HTMLEncodeChars(string s) => s.Replace("&", "&amp;").Replace("\"", "&quot;").Replace("<", "&lt;").Replace(">", "&gt;");
-
-        private string ViewState(State<S> state)
-        {
-            string deriv = HTMLEncodeChars(state.Node.ToString());
-            string info = CharKind.PrettyPrint(state.PrevCharKind);
-            if (info != string.Empty)
-                info = string.Format("Previous: {0}&#13;", info);
-            if (deriv == string.Empty)
-                deriv = "()";
-            return string.Format("{0}{1}", info, deriv);
-        }
     }
 }

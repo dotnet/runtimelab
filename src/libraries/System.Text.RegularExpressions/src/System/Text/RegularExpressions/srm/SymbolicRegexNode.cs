@@ -236,6 +236,8 @@ namespace System.Text.RegularExpressions.SRM
             }
         }
 
+        internal SymbolicRegexNode<S> ToANF() => throw new NotImplementedException();
+
         /// <summary>
         /// Converts a concatenation into an array,
         /// returns a non-concatenation in a singleton array.
