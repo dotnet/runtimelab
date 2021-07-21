@@ -45,10 +45,10 @@ namespace System.Reflection.Runtime.TypeInfos
 
                 TypeAttributes attributes = Attributes;
                 if (0 != (attributes & TypeAttributes.Import))
-                    yield return new RuntimePseudoCustomAttributeData(typeof(ComImportAttribute), null, null);
+                    yield return new RuntimePseudoCustomAttributeData(typeof(ComImportAttribute), null);
 
                 if (0 != (attributes & TypeAttributes.Serializable))
-                    yield return new RuntimePseudoCustomAttributeData(typeof(SerializableAttribute), null, null);
+                    yield return new RuntimePseudoCustomAttributeData(typeof(SerializableAttribute), null);
             }
         }
 
