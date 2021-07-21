@@ -162,10 +162,10 @@ namespace System.Text.RegularExpressions.SRM
         private const int s_STATEMAXBOUND = 10000;
 
         /// <summary>
-        /// If true then builder.delta is used in nfa mode where
+        /// If true then builder.delta is used in a mode where
         /// each target state represents a set of states.
         /// </summary>
-        private bool nfamode;
+        private bool antimirov;
 
         #region custom serialization/deserialization
         /// <summary>
@@ -415,7 +415,7 @@ namespace System.Text.RegularExpressions.SRM
             int atom_id = (c == 10 && i == input.Length - 1 && q.StartsWithLineAnchor ? builder.atoms.Length : dt.Find(c));
             // atom=False represents \Z
             S atom = atom_id == builder.atoms.Length ? builder.solver.False : builder.atoms[atom_id];
-            if (nfamode && q.Node.Kind == SymbolicRegexKind.Or)
+            if (antimirov && q.Node.Kind == SymbolicRegexKind.Or)
             {
                 SymbolicRegexNode<S> union = builder.nothing;
                 uint kind = 0;
@@ -460,11 +460,11 @@ namespace System.Text.RegularExpressions.SRM
                 else
                 {
                     // this is the only place in code where the Next method is called in the matcher
-                    p = q.Next(atom, nfamode);
+                    p = q.Next(atom, antimirov);
                     builder.delta[offset] = p;
-                    //switch to nfa mode if the maximum bound has been reached
+                    //switch to antimirov mode if the maximum bound has been reached
                     if (p.Id == s_STATEMAXBOUND)
-                        nfamode = true;
+                        antimirov = true;
                     return p;
                 }
             }

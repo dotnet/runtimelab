@@ -959,7 +959,7 @@ namespace System.Text.RegularExpressions.SRM
         /// <summary>
         /// Make a state with given node and previous character context
         /// </summary>
-        public State<S> MkState(SymbolicRegexNode<S> node, uint prevCharKind, bool nfamode = false)
+        public State<S> MkState(SymbolicRegexNode<S> node, uint prevCharKind, bool antimirov = false)
         {
             //first prune the anchors in the node
             S WLpred = wordLetterPredicate;
@@ -973,8 +973,8 @@ namespace System.Text.RegularExpressions.SRM
             State<S> state;
             if (!stateCache.TryGetValue(s, out state))
             {
-                // do not cache powersets of states as states in nfa mode
-                if (nfamode && pruned_node.Kind == SymbolicRegexKind.Or)
+                // do not cache set of states as states in antimirov mode
+                if (antimirov && pruned_node.Kind == SymbolicRegexKind.Or)
                 {
                     s.Id = -1; // mark the Id as invalid
                     state = s;
