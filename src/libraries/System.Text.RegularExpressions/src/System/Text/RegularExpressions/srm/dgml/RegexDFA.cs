@@ -36,7 +36,7 @@ namespace System.Text.RegularExpressions.SRM.DGML
                 var q = stack.Pop();
                 foreach (var c in partition)
                 {
-                    var p = q.Next(c);
+                    var p = q.Next(c, false);
                     //check that p is not a dead-end
                     if (!p.IsNothing)
                     {

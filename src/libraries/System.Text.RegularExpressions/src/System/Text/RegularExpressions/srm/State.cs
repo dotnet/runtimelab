@@ -146,7 +146,8 @@ namespace System.Text.RegularExpressions.SRM
         /// If atom is False this means that this is \n and it is the last character of the input.
         /// </summary>
         /// <param name="atom">minterm corresponding to some input character or False corresponding to last \n</param>
-        internal State<S> Next(S atom)
+        /// <param name="antimirov">if true uses antimirov derivatives</param>
+        internal State<S> Next(S atom, bool antimirov)
         {
             var alg = Node.builder.solver;
             S WLpred = Node.builder.wordLetterPredicate;
@@ -175,7 +176,7 @@ namespace System.Text.RegularExpressions.SRM
             // combined character context
             uint context = CharKind.Context(PrevCharKind, nextCharKind);
             // compute the derivative of the node for the given context
-            SymbolicRegexNode<S> derivative = Node.MkDerivative(atom, context);
+            SymbolicRegexNode<S> derivative = Node.MkDerivative(atom, context, antimirov);
             // nextCharKind will be the PrevCharKind of the target state
             // use an existing state instead if one exists already
             // otherwise create a new new id for it

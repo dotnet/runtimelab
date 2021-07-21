@@ -460,7 +460,7 @@ namespace System.Text.RegularExpressions.SRM
                 else
                 {
                     // this is the only place in code where the Next method is called in the matcher
-                    p = q.Next(atom);
+                    p = q.Next(atom, nfamode);
                     builder.delta[offset] = p;
                     //switch to nfa mode if the maximum bound has been reached
                     if (p.Id == s_STATEMAXBOUND)
