@@ -21,7 +21,6 @@ namespace ILCompiler.DependencyAnalysis
     {
         private const int UniversalCanonGVMDepthHeuristic_NonCanonDepth = 2;
         private const int UniversalCanonGVMDepthHeuristic_CanonDepth = 2;
-        private const int SpecificCanonGVMDepthHeuristic_NonCanonDepth = 256;
         private readonly MethodDesc _method;
 
         public MethodDesc Method => _method;
@@ -74,18 +73,12 @@ namespace ILCompiler.DependencyAnalysis
 
                     if (canonMethodTarget != instantiatedMethod)
                     {
-                        // Dependency includes the generic method dictionary of the instantiation, and all its dependencies.
                         Debug.Assert(!instantiatedMethod.IsCanonicalMethod(CanonicalFormKind.Any));
 
                         if (context.TypeSystemContext.SupportsUniversalCanon && instantiatedMethod.IsGenericDepthGreaterThan(UniversalCanonGVMDepthHeuristic_NonCanonDepth))
                         {
                             // fall back to using the universal generic variant of the generic method
                             return dependencies;
-                        }
-
-                        if (!instantiatedMethod.IsGenericDepthGreaterThan(SpecificCanonGVMDepthHeuristic_NonCanonDepth))
-                        {
-                            dependencies.Add(context.MethodGenericDictionary(instantiatedMethod), "GVM Dependency - Dictionary");
                         }
                     }
 
