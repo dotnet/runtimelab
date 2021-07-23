@@ -985,9 +985,8 @@ namespace System.Text.RegularExpressions.SRM
         /// </summary>
         /// <param name="elem">given element wrt which the derivative is taken</param>
         /// <param name="context">immediately surrounding character context that affects nullability of anchors</param>
-        /// <param name="antimirov">if true uses Antimirov derivatives</param>
         /// <returns></returns>
-        internal SymbolicRegexNode<S> MkDerivative(S elem, uint context, bool antimirov)
+        internal SymbolicRegexNode<S> MkDerivative(S elem, uint context)
         {
             if (this == builder.dotStar || this == builder.nothing)
                 return this;
@@ -1004,7 +1003,7 @@ namespace System.Text.RegularExpressions.SRM
                     case SymbolicRegexKind.Loop:
                         {
                             #region d(a, R*) = d(a,R)R*
-                            var step = left.MkDerivative(elem, context, antimirov);
+                            var step = left.MkDerivative(elem, context);
                             if (step == builder.nothing || upper == 0)
                             {
                                 return builder.nothing;
@@ -1037,9 +1036,9 @@ namespace System.Text.RegularExpressions.SRM
                     case SymbolicRegexKind.Concat:
                         {
                             #region d(a, AB) = d(a,A)B | (if A nullable then d(a,B))
-                            var leftd = left.MkDerivative(elem, context, antimirov);
+                            var leftd = left.MkDerivative(elem, context);
                             var first = builder.nothing;
-                            if (antimirov && leftd.kind == SymbolicRegexKind.Or)
+                            if (builder.antimirov && leftd.kind == SymbolicRegexKind.Or)
                                 // push concatenations into the union
                                 foreach (var d in leftd.alts)
                                     first = builder.MkOr(first, builder.MkConcat(d, right));
@@ -1047,7 +1046,7 @@ namespace System.Text.RegularExpressions.SRM
                                 first = builder.MkConcat(leftd, right);
                             if (left.IsNullableFor(context))
                             {
-                                var second = right.MkDerivative(elem, context, antimirov);
+                                var second = right.MkDerivative(elem, context);
                                 var deriv = builder.MkOr2(first, second);
                                 return deriv;
                             }
@@ -1060,35 +1059,35 @@ namespace System.Text.RegularExpressions.SRM
                     case SymbolicRegexKind.Or:
                         {
                             #region d(a,A|B) = d(a,A)|d(a,B)
-                            var alts_deriv = alts.MkDerivative(elem, context, antimirov);
+                            var alts_deriv = alts.MkDerivative(elem, context);
                             return builder.MkOr(alts_deriv);
                             #endregion
                         }
                     case SymbolicRegexKind.And:
                         {
                             #region d(a,A & B) = d(a,A) & d(a,B)
-                            var derivs = alts.MkDerivative(elem, context, antimirov);
+                            var derivs = alts.MkDerivative(elem, context);
                             return builder.MkAnd(derivs);
                             #endregion
                         }
                     case SymbolicRegexKind.IfThenElse:
                         {
                             #region d(a,Ite(A,B,C)) = Ite(d(a,A),d(a,B),d(a,C))
-                            var condD = iteCond.MkDerivative(elem, context, antimirov);
+                            var condD = iteCond.MkDerivative(elem, context);
                             if (condD == builder.nothing)
                             {
-                                var rightD = right.MkDerivative(elem, context, antimirov);
+                                var rightD = right.MkDerivative(elem, context);
                                 return rightD;
                             }
                             else if (condD == builder.dotStar)
                             {
-                                var leftD = left.MkDerivative(elem, context, antimirov);
+                                var leftD = left.MkDerivative(elem, context);
                                 return leftD;
                             }
                             else
                             {
-                                var leftD = left.MkDerivative(elem, context, antimirov);
-                                var rightD = right.MkDerivative(elem, context, antimirov);
+                                var leftD = left.MkDerivative(elem, context);
+                                var rightD = right.MkDerivative(elem, context);
                                 var ite = builder.MkIfThenElse(condD, leftD, rightD);
                                 return ite;
                             }
@@ -2410,13 +2409,13 @@ namespace System.Text.RegularExpressions.SRM
             return elems;
         }
 
-        internal SymbolicRegexSet<S> MkDerivative(S elem, uint context, bool antimirov)
-             => CreateMultiset(builder, MkDerivativesOfElems(elem, context, antimirov), kind);
+        internal SymbolicRegexSet<S> MkDerivative(S elem, uint context)
+             => CreateMultiset(builder, MkDerivativesOfElems(elem, context), kind);
 
-        private IEnumerable<SymbolicRegexNode<S>> MkDerivativesOfElems(S elem, uint context, bool antimirov)
+        private IEnumerable<SymbolicRegexNode<S>> MkDerivativesOfElems(S elem, uint context)
         {
             foreach (var s in this)
-                yield return s.MkDerivative(elem, context, antimirov);
+                yield return s.MkDerivative(elem, context);
         }
 
         private IEnumerable<SymbolicRegexNode<T>> TransformElems<T>(SymbolicRegexBuilder<T> builderT, Func<S, T> predicateTransformer)

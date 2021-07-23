@@ -161,12 +161,6 @@ namespace System.Text.RegularExpressions.SRM
 
         private const int s_STATEMAXBOUND = 10000;
 
-        /// <summary>
-        /// If true then builder.delta is used in a mode where
-        /// each target state represents a set of states.
-        /// </summary>
-        private bool antimirov;
-
         #region custom serialization/deserialization
         /// <summary>
         /// Append the custom format of this matcher into sb. All characters are in visible ASCII.
@@ -415,7 +409,7 @@ namespace System.Text.RegularExpressions.SRM
             int atom_id = (c == 10 && i == input.Length - 1 && q.StartsWithLineAnchor ? builder.atoms.Length : dt.Find(c));
             // atom=False represents \Z
             S atom = atom_id == builder.atoms.Length ? builder.solver.False : builder.atoms[atom_id];
-            if (antimirov && q.Node.Kind == SymbolicRegexKind.Or)
+            if (builder.antimirov && q.Node.Kind == SymbolicRegexKind.Or)
             {
                 SymbolicRegexNode<S> union = builder.nothing;
                 uint kind = 0;
@@ -460,11 +454,11 @@ namespace System.Text.RegularExpressions.SRM
                 else
                 {
                     // this is the only place in code where the Next method is called in the matcher
-                    p = q.Next(atom, antimirov);
+                    p = q.Next(atom);
                     builder.delta[offset] = p;
                     //switch to antimirov mode if the maximum bound has been reached
                     if (p.Id == s_STATEMAXBOUND)
-                        antimirov = true;
+                        builder.antimirov = true;
                     return p;
                 }
             }

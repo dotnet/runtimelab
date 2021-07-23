@@ -58,6 +58,12 @@ namespace System.Text.RegularExpressions.SRM
         /// </summary>
         internal int K;
 
+        /// <summary>
+        /// If true then delta is used in a mode where
+        /// each target state represents a set of states.
+        /// </summary>
+        internal bool antimirov;
+
         private SymbolicRegexBuilder()
         {
             this.epsilon = SymbolicRegexNode<S>.MkEpsilon(this);
