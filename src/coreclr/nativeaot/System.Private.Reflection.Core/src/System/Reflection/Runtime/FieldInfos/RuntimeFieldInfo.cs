@@ -66,13 +66,13 @@ namespace System.Reflection.Runtime.FieldInfos
                 {
                     int offset = ExplicitLayoutFieldOffsetData;
                     CustomAttributeTypedArgument offsetArgument = new CustomAttributeTypedArgument(typeof(int), offset);
-                    yield return new RuntimePseudoCustomAttributeData(typeof(FieldOffsetAttribute), new CustomAttributeTypedArgument[] { offsetArgument }, null);
+                    yield return new RuntimePseudoCustomAttributeData(typeof(FieldOffsetAttribute), new CustomAttributeTypedArgument[] { offsetArgument });
                 }
 
                 FieldAttributes attributes = Attributes;
                 if (0 != (attributes & FieldAttributes.NotSerialized))
                 {
-                    yield return new RuntimePseudoCustomAttributeData(typeof(NonSerializedAttribute), null, null);
+                    yield return new RuntimePseudoCustomAttributeData(typeof(NonSerializedAttribute), null);
                 }
             }
         }

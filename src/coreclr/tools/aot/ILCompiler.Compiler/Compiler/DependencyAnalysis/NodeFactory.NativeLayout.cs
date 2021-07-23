@@ -212,6 +212,18 @@ namespace ILCompiler.DependencyAnalysis
             // of just necessary. (Which is what the actual templates signatures will ensure)
             public IEnumerable<IDependencyNode> TemplateConstructableTypes(TypeDesc type)
             {
+                // Array types are the only parameterized types that have templates
+                if (type.IsSzArray && !type.IsArrayTypeWithoutGenericInterfaces())
+                {
+                    TypeDesc arrayCanonicalType = type.ConvertToCanonForm(CanonicalFormKind.Specific);
+
+                    // Add a dependency on the template for this type, if the canonical type should be generated into this binary.
+                    if (arrayCanonicalType.IsCanonicalSubtype(CanonicalFormKind.Any) && !_factory.NecessaryTypeSymbol(arrayCanonicalType).RepresentsIndirectionCell)
+                    {
+                        yield return _factory.NativeLayout.TemplateTypeLayout(arrayCanonicalType);
+                    }
+                }
+
                 while (type.IsParameterizedType)
                 {
                     type = ((ParameterizedType)type).ParameterType;

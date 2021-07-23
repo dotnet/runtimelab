@@ -89,7 +89,7 @@ namespace System.Reflection.Runtime.MethodInfos
 
                 MethodImplAttributes implAttributes = _common.MethodImplementationFlags;
                 if (0 != (implAttributes & MethodImplAttributes.PreserveSig))
-                    yield return new RuntimePseudoCustomAttributeData(typeof(PreserveSigAttribute), null, null);
+                    yield return new RuntimePseudoCustomAttributeData(typeof(PreserveSigAttribute), null);
             }
         }
 

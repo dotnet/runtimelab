@@ -48,6 +48,8 @@ namespace System.Reflection.Runtime.CustomAttributes.NativeFormat
 
         public sealed override ConstructorInfo Constructor
         {
+            [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2072:UnrecognizedReflectionPattern",
+                Justification = "Metadata generation ensures custom attribute constructors are resolvable.")]
             get
             {
                 MetadataReader reader = _reader;
@@ -196,7 +198,7 @@ namespace System.Reflection.Runtime.CustomAttributes.NativeFormat
             return customAttributeNamedArguments;
         }
 
-        [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2080:UnrecognizedReflectionPattern",
+        [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2070:UnrecognizedReflectionPattern",
             Justification = "Metadata generation ensures fields/properties referenced from attributes are preserved.")]
         private static CustomAttributeNamedArgument CreateCustomAttributeNamedArgument(Type attributeType, string memberName, bool isField, CustomAttributeTypedArgument typedValue)
         {

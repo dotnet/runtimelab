@@ -8,7 +8,7 @@ using System.Runtime.CompilerServices;
 namespace System.Threading
 {
     [ReflectionBlocked]
-    public sealed class Lock
+    public sealed class Lock : IDisposable
     {
         // The following constants define characteristics of spinning logic in the Lock class
         private const int SpinningNotInitialized = 0;
@@ -42,7 +42,7 @@ namespace System.Threading
 
         private uint _recursionCount;
         private IntPtr _owningThreadId;
-        private volatile AutoResetEvent _lazyEvent;
+        private volatile AutoResetEvent? _lazyEvent;
 
         private AutoResetEvent Event
         {
@@ -57,6 +57,11 @@ namespace System.Threading
 
                 return _lazyEvent;
             }
+        }
+
+        public void Dispose()
+        {
+            _lazyEvent?.Dispose();
         }
 
         private static IntPtr CurrentNativeThreadId => (IntPtr)RuntimeImports.RhCurrentNativeThreadId();

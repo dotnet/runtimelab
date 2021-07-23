@@ -384,7 +384,9 @@ namespace ILCompiler
         public override void GetDependenciesDueToLdToken(ref DependencyList dependencies, NodeFactory factory, MethodDesc method)
         {
             dependencies = dependencies ?? new DependencyList();
-            dependencies.Add(factory.ReflectableMethod(method), "LDTOKEN method");
+
+            if (!IsReflectionBlocked(method))
+                dependencies.Add(factory.ReflectableMethod(method), "LDTOKEN method");
         }
 
         protected override void GetDependenciesDueToMethodCodePresenceInternal(ref DependencyList dependencies, NodeFactory factory, MethodDesc method, MethodIL methodIL)

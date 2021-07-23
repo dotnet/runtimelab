@@ -132,6 +132,11 @@ namespace ILCompiler
                 method = method.MakeInstantiatedMethod(inst);
             }
 
+            if (factory.MetadataManager.IsReflectionBlocked(method))
+            {
+                return false;
+            }
+
             dependencies ??= new DependencyList();
 
             try
@@ -167,6 +172,11 @@ namespace ILCompiler
                 field = field.Context.GetFieldForInstantiatedType(
                     field.GetTypicalFieldDefinition(),
                     ((MetadataType)owningType).MakeInstantiatedType(inst));
+            }
+
+            if (factory.MetadataManager.IsReflectionBlocked(field))
+            {
+                return false;
             }
 
             if (!TryGetDependenciesForReflectedType(ref dependencies, factory, field.OwningType, reason))
@@ -236,7 +246,12 @@ namespace ILCompiler
                 {
                     type = type.GetTypeDefinition();
                 }
-                
+
+                if (factory.MetadataManager.IsReflectionBlocked(type))
+                {
+                    return false;
+                }
+
                 dependencies ??= new DependencyList();
 
                 dependencies.Add(factory.MaximallyConstructableType(type), reason);
