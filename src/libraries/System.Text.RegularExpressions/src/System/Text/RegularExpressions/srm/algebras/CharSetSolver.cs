@@ -208,7 +208,7 @@ namespace System.Text.RegularExpressions.SRM
 
         public BDD[] GetPartition()
         {
-            throw new NotSupportedException();
+            return null;
         }
 
         public string PrettyPrint(BDD pred)

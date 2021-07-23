@@ -1036,7 +1036,14 @@ namespace System.Text.RegularExpressions.SRM
                     case SymbolicRegexKind.Concat:
                         {
                             #region d(a, AB) = d(a,A)B | (if A nullable then d(a,B))
-                            var first = builder.MkConcat(left.MkDerivative(elem, context), right);
+                            var leftd = left.MkDerivative(elem, context);
+                            var first = builder.nothing;
+                            if (builder.antimirov && leftd.kind == SymbolicRegexKind.Or)
+                                // push concatenations into the union
+                                foreach (var d in leftd.alts)
+                                    first = builder.MkOr(first, builder.MkConcat(d, right));
+                            else
+                                first = builder.MkConcat(leftd, right);
                             if (left.IsNullableFor(context))
                             {
                                 var second = right.MkDerivative(elem, context);

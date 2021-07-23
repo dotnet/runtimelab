@@ -37,6 +37,11 @@ namespace System.Text.RegularExpressions.SRM
         internal S wordLetterPredicate;
         internal S newLinePredicate;
 
+        /// <summary>
+        /// Partition of the input space of predicates.
+        /// </summary>
+        internal S[] atoms;
+
         private Dictionary<S, SymbolicRegexNode<S>> singletonCache = new Dictionary<S, SymbolicRegexNode<S>>();
         // states that have been created
         internal HashSet<State<S>> stateCache = new HashSet<State<S>>();
@@ -44,7 +49,20 @@ namespace System.Text.RegularExpressions.SRM
         /// Maps state ids to states, initial capacity is 1024 states.
         /// Each time more states are needed the length is increased by 1024.
         /// </summary>
-        internal State<S>[] statearray = new State<S>[1024];
+        internal State<S>[] statearray;
+        internal State<S>[] delta;
+        private const int s_INITIALSTATELIMIT = 1024;
+
+        /// <summary>
+        /// K is the smallest k s.t. 2^k >= atoms.Length + 1
+        /// </summary>
+        internal int K;
+
+        /// <summary>
+        /// If true then delta is used in a mode where
+        /// each target state represents a set of states.
+        /// </summary>
+        internal bool antimirov;
 
         private SymbolicRegexBuilder()
         {
@@ -67,6 +85,19 @@ namespace System.Text.RegularExpressions.SRM
         /// </summary>
         internal SymbolicRegexBuilder(ICharAlgebra<S> solver) : this()
         {
+            // atoms = null if partition of the solver is undefined and returned as null
+            atoms = solver.GetPartition();
+            if (atoms == null)
+                K = -1;
+            else
+            {
+                statearray = new State<S>[s_INITIALSTATELIMIT];
+                // the extra slot with id atoms.Length is reserved for \Z (last occurrence of \n)
+                int k = 1;
+                while (atoms.Length >= (1 << k)) k += 1;
+                K = k;
+                delta = new State<S>[s_INITIALSTATELIMIT << K];
+            }
             InitilizeFields(solver);
         }
 
@@ -928,6 +959,52 @@ namespace System.Text.RegularExpressions.SRM
                 }
                 n = j + 1;
                 return nodes.ToArray();
+            }
+        }
+
+        /// <summary>
+        /// Make a state with given node and previous character context
+        /// </summary>
+        public State<S> MkState(SymbolicRegexNode<S> node, uint prevCharKind, bool antimirov = false)
+        {
+            //first prune the anchors in the node
+            S WLpred = wordLetterPredicate;
+            S startSet = node.GetStartSet();
+            //true if the startset of the node overlaps with some wordletter or the node can be nullable
+            bool contWithWL = (node.CanBeNullable || solver.IsSatisfiable(solver.MkAnd(WLpred, startSet)));
+            //true if the startset of the node overlaps with some nonwordletter or the node can be nullable
+            bool contWithNWL = (node.CanBeNullable || solver.IsSatisfiable(solver.MkAnd(solver.MkNot(WLpred), startSet)));
+            var pruned_node = node.PruneAnchors(prevCharKind, contWithWL, contWithNWL);
+            State<S> s = new State<S>(pruned_node, prevCharKind);
+            State<S> state;
+            if (!stateCache.TryGetValue(s, out state))
+            {
+                // do not cache set of states as states in antimirov mode
+                if (antimirov && pruned_node.Kind == SymbolicRegexKind.Or)
+                {
+                    s.Id = -1; // mark the Id as invalid
+                    state = s;
+                }
+                else
+                    state = MakeNewState(s);
+            }
+            return state;
+        }
+
+        private State<S> MakeNewState(State<S> state)
+        {
+            lock (this)
+            {
+                state.Id = stateCache.Count;
+                stateCache.Add(state);
+                if (state.Id == statearray.Length)
+                {
+                    int newsize = statearray.Length + 1024;
+                    Array.Resize(ref statearray, newsize);
+                    Array.Resize(ref delta, newsize << K);
+                }
+                statearray[state.Id] = state;
+                return state;
             }
         }
     }
