@@ -23,7 +23,7 @@ namespace System.Diagnostics.Tracing
     /// </summary>
 #if CORERT
     [CLSCompliant(false)]
-    public
+    public // On CoreRT, this must be public to prevent it from getting reflection blocked.
 #else
     internal
 #endif
@@ -213,7 +213,7 @@ namespace System.Diagnostics.Tracing
         }
 
 #if CORERT
-        public
+        public // On CoreRT, this must be public to prevent it from getting reflection blocked.
 #else
         private
 #endif
@@ -232,7 +232,7 @@ namespace System.Diagnostics.Tracing
         }
 
 #if CORERT
-        public
+        public // On CoreRT, this must be public to prevent it from getting reflection blocked.
 #else
         private
 #endif
