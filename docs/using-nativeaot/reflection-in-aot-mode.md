@@ -69,10 +69,23 @@ In CoreRT, reflection metadata (names of types, list of their methods, fields, s
 
 If compiler cannot detect types used by the aplication, an rd.xml file can be supplemented to help ILCompiler find types that should be analyzed.
 For that, file `rd.xml` should be created and following lines added to project file
-```
+```xml
 <ItemGroup>
   <RdXmlFile Include="rd.xml" />
 </ItemGroup>
 ```
 
 Format of the file described [here](rd-xml-format.md)
+
+## Simulated calling assembly
+`Assembly.GetCallingAssembly` is not supported in Native AOT by default, and any usage to it will lead to `PlatformNotSupportedException`.
+
+If `Assembly.GetCallingAssembly` cannot be avoided, it can work with simulated calling assembly, which will return the entry assembly, i.e. the same with `Assembly.GetEntryAssembly`.
+
+To enable simulated calling assembly, you will need:
+
+```xml
+  <ItemGroup>
+    <RuntimeHostConfigurationOption Include="Switch.System.Reflection.Assembly.SimulatedCallingAssembly" Value="true" />
+  </ItemGroup>
+```
