@@ -99,64 +99,63 @@ struct Registers_REGDISPLAY : REGDISPLAY
         abort();
     }
 
-    inline void setRegister(int regNum, uint64_t value, uint64_t location)
+    inline void setRegister(int regNum, uint64_t value)
     {
         switch (regNum)
         {
         case UNW_REG_IP:
             IP = value;
-            pIP = (PTR_PCODE)location;
             return;
         case UNW_REG_SP:
             SP = value;
             return;
         case UNW_X86_64_RAX:
-            pRax = (PTR_UIntNative)location;
+            pRax = (PTR_UIntNative)value;
             return;
         case UNW_X86_64_RDX:
-            pRdx = (PTR_UIntNative)location;
+            pRdx = (PTR_UIntNative)value;
             return;
         case UNW_X86_64_RCX:
-            pRcx = (PTR_UIntNative)location;
+            pRcx = (PTR_UIntNative)value;
             return;
         case UNW_X86_64_RBX:
-            pRbx = (PTR_UIntNative)location;
+            pRbx = (PTR_UIntNative)value;
             return;
         case UNW_X86_64_RSI:
-            pRsi = (PTR_UIntNative)location;
+            pRsi = (PTR_UIntNative)value;
             return;
         case UNW_X86_64_RDI:
-            pRdi = (PTR_UIntNative)location;
+            pRdi = (PTR_UIntNative)value;
             return;
         case UNW_X86_64_RBP:
-            pRbp = (PTR_UIntNative)location;
+            pRbp = (PTR_UIntNative)value;
             return;
         case UNW_X86_64_RSP:
             SP = value;
             return;
         case UNW_X86_64_R8:
-            pR8 = (PTR_UIntNative)location;
+            pR8 = (PTR_UIntNative)value;
             return;
         case UNW_X86_64_R9:
-            pR9 = (PTR_UIntNative)location;
+            pR9 = (PTR_UIntNative)value;
             return;
         case UNW_X86_64_R10:
-            pR10 = (PTR_UIntNative)location;
+            pR10 = (PTR_UIntNative)value;
             return;
         case UNW_X86_64_R11:
-            pR11 = (PTR_UIntNative)location;
+            pR11 = (PTR_UIntNative)value;
             return;
         case UNW_X86_64_R12:
-            pR12 = (PTR_UIntNative)location;
+            pR12 = (PTR_UIntNative)value;
             return;
         case UNW_X86_64_R13:
-            pR13 = (PTR_UIntNative)location;
+            pR13 = (PTR_UIntNative)value;
             return;
         case UNW_X86_64_R14:
-            pR14 = (PTR_UIntNative)location;
+            pR14 = (PTR_UIntNative)value;
             return;
         case UNW_X86_64_R15:
-            pR15 = (PTR_UIntNative)location;
+            pR15 = (PTR_UIntNative)value;
             return;
         }
 
@@ -194,10 +193,9 @@ struct Registers_REGDISPLAY : REGDISPLAY
 
     uint64_t  getIP() const { return IP; }
 
-    void      setIP(uint64_t value, uint64_t location)
+    void      setIP(uint64_t value)
     {
         IP = value;
-        pIP = (PTR_PCODE)location;
     }
 
     uint64_t  getRBP() const { return *pRbp; }
@@ -250,40 +248,39 @@ struct Registers_REGDISPLAY : REGDISPLAY
         abort();
     }
 
-    inline void setRegister(int regNum, uint64_t value, uint64_t location)
+    inline void setRegister(int regNum, uint64_t value)
     {
         switch (regNum)
         {
         case UNW_REG_IP:
             IP = value;
-            pIP = (PTR_PCODE)location;
             return;
         case UNW_REG_SP:
             SP = value;
             return;
         case UNW_X86_EAX:
-            pRax = (PTR_UIntNative)location;
+            pRax = (PTR_UIntNative)value;
             return;
         case UNW_X86_EDX:
-            pRdx = (PTR_UIntNative)location;
+            pRdx = (PTR_UIntNative)value;
             return;
         case UNW_X86_ECX:
-            pRcx = (PTR_UIntNative)location;
+            pRcx = (PTR_UIntNative)value;
             return;
         case UNW_X86_EBX:
-            pRbx = (PTR_UIntNative)location;
+            pRbx = (PTR_UIntNative)value;
             return;
         case UNW_X86_ESI:
-            pRsi = (PTR_UIntNative)location;
+            pRsi = (PTR_UIntNative)value;
             return;
         case UNW_X86_EDI:
-            pRdi = (PTR_UIntNative)location;
+            pRdi = (PTR_UIntNative)value;
             return;
         case UNW_X86_EBP:
-            pRbp = (PTR_UIntNative)location;
+            pRbp = (PTR_UIntNative)value;
             return;
         case UNW_X86_ESP:
-            SP = value;
+            SP = (PTR_UIntNative)value;
             return;
         }
 
@@ -320,10 +317,9 @@ struct Registers_REGDISPLAY : REGDISPLAY
 
     uint64_t  getIP() const { return IP; }
 
-    void      setIP(uint64_t value, uint64_t location)
+    void      setIP(uint64_t value)
     {
         IP = value;
-        pIP = (PTR_PCODE)location;
     }
 
     uint64_t  getEBP() const { return *pRbp; }
@@ -340,7 +336,7 @@ public:
     Registers_arm_rt() { abort(); };
     Registers_arm_rt(void *registers) { regs = (REGDISPLAY *)registers; };
     uint32_t    getRegister(int num);
-    void        setRegister(int num, uint32_t value, uint32_t location);
+    void        setRegister(int num, uint32_t value);
     uint32_t    getRegisterLocation(int regNum) const { abort();}
     unw_fpreg_t getFloatRegister(int num) { abort();}
     void        setFloatRegister(int num, unw_fpreg_t value) {abort();}
@@ -351,8 +347,8 @@ public:
     uint32_t    getSP() const         { return regs->SP;}
     void        setSP(uint32_t value) { regs->SP = value;}
     uint32_t    getIP() const         { return regs->IP;}
-    void        setIP(uint32_t value, uint32_t location)
-    { regs->IP = value; regs->pIP = (PTR_UIntNative)location; }
+    void        setIP(uint32_t value)
+    { regs->IP = value; }
     void saveVFPAsX() {abort();};
 private:
     REGDISPLAY *regs;
@@ -401,7 +397,7 @@ inline uint32_t Registers_arm_rt::getRegister(int regNum) {
     PORTABILITY_ASSERT("unsupported arm register");
 }
 
-void Registers_arm_rt::setRegister(int num, uint32_t value, uint32_t location)
+void Registers_arm_rt::setRegister(int num, uint32_t value)
 {
 
     if (num == UNW_REG_SP || num == UNW_ARM_SP) {
@@ -410,7 +406,7 @@ void Registers_arm_rt::setRegister(int num, uint32_t value, uint32_t location)
     }
 
     if (num == UNW_ARM_LR) {
-        regs->pLR = (PTR_UIntNative)location;
+        regs->pLR = (PTR_UIntNative)value;
         return;
     }
 
@@ -421,50 +417,50 @@ void Registers_arm_rt::setRegister(int num, uint32_t value, uint32_t location)
         if ((!location) && (regs->pLR) && (*regs->pLR == value))
             regs->pIP = regs->pLR;
         else
-            regs->pIP = (PTR_UIntNative)location;
+            regs->pIP = (PTR_UIntNative)value;
         return;
     }
 
     switch (num)
     {
     case (UNW_ARM_R0):
-        regs->pR0 = (PTR_UIntNative)location;
+        regs->pR0 = (PTR_UIntNative)value;
         break;
     case (UNW_ARM_R1):
-        regs->pR1 = (PTR_UIntNative)location;
+        regs->pR1 = (PTR_UIntNative)value;
         break;
     case (UNW_ARM_R2):
-        regs->pR2 = (PTR_UIntNative)location;
+        regs->pR2 = (PTR_UIntNative)value;
         break;
     case (UNW_ARM_R3):
-        regs->pR3 = (PTR_UIntNative)location;
+        regs->pR3 = (PTR_UIntNative)value;
         break;
     case (UNW_ARM_R4):
-        regs->pR4 = (PTR_UIntNative)location;
+        regs->pR4 = (PTR_UIntNative)value;
         break;
     case (UNW_ARM_R5):
-        regs->pR5 = (PTR_UIntNative)location;
+        regs->pR5 = (PTR_UIntNative)value;
         break;
     case (UNW_ARM_R6):
-        regs->pR6 = (PTR_UIntNative)location;
+        regs->pR6 = (PTR_UIntNative)value;
         break;
     case (UNW_ARM_R7):
-        regs->pR7 = (PTR_UIntNative)location;
+        regs->pR7 = (PTR_UIntNative)value;
         break;
     case (UNW_ARM_R8):
-        regs->pR8 = (PTR_UIntNative)location;
+        regs->pR8 = (PTR_UIntNative)value;
         break;
     case (UNW_ARM_R9):
-        regs->pR9 = (PTR_UIntNative)location;
+        regs->pR9 = (PTR_UIntNative)value;
         break;
     case (UNW_ARM_R10):
-        regs->pR10 = (PTR_UIntNative)location;
+        regs->pR10 = (PTR_UIntNative)value;
         break;
     case (UNW_ARM_R11):
-        regs->pR11 = (PTR_UIntNative)location;
+        regs->pR11 = (PTR_UIntNative)value;
         break;
     case (UNW_ARM_R12):
-        regs->pR12 = (PTR_UIntNative)location;
+        regs->pR12 = (PTR_UIntNative)value;
         break;
     default:
         PORTABILITY_ASSERT("unsupported arm register");
@@ -486,7 +482,7 @@ struct Registers_REGDISPLAY : REGDISPLAY
     bool        validVectorRegister(int num) const;
 
     uint64_t    getRegister(int num) const;
-    void        setRegister(int num, uint64_t value, uint64_t location);
+    void        setRegister(int num, uint64_t value);
 
     double      getFloatRegister(int num) {abort();}
     void        setFloatRegister(int num, double value) {abort();}
@@ -497,8 +493,8 @@ struct Registers_REGDISPLAY : REGDISPLAY
     uint64_t    getSP() const         { return SP;}
     void        setSP(uint64_t value) { SP = value;}
     uint64_t    getIP() const         { return IP;}
-    void        setIP(uint64_t value, uint64_t location)
-    { IP = value; pIP = (PTR_UIntNative)location; }
+    void        setIP(uint64_t value)
+    { IP = value; }
 };
 
 inline bool Registers_REGDISPLAY::validRegister(int num) const {
@@ -606,7 +602,7 @@ inline uint64_t Registers_REGDISPLAY::getRegister(int regNum) const {
     PORTABILITY_ASSERT("unsupported arm64 register");
 }
 
-void Registers_REGDISPLAY::setRegister(int num, uint64_t value, uint64_t location)
+void Registers_REGDISPLAY::setRegister(int num, uint64_t value)
 {
     if (num == UNW_REG_SP || num == UNW_ARM64_SP) {
         SP = (uintptr_t )value;
@@ -614,12 +610,12 @@ void Registers_REGDISPLAY::setRegister(int num, uint64_t value, uint64_t locatio
     }
 
     if (num == UNW_ARM64_FP) {
-        pFP = (PTR_UIntNative)location;
+        pFP = (PTR_UIntNative)value;
         return;
     }
 
     if (num == UNW_ARM64_LR) {
-        pLR = (PTR_UIntNative)location;
+        pLR = (PTR_UIntNative)value;
         return;
     }
 
@@ -631,91 +627,91 @@ void Registers_REGDISPLAY::setRegister(int num, uint64_t value, uint64_t locatio
     switch (num)
     {
     case (UNW_ARM64_X0):
-        pX0 = (PTR_UIntNative)location;
+        pX0 = (PTR_UIntNative)value;
         break;
     case (UNW_ARM64_X1):
-        pX1 = (PTR_UIntNative)location;
+        pX1 = (PTR_UIntNative)value;
         break;
     case (UNW_ARM64_X2):
-        pX2 = (PTR_UIntNative)location;
+        pX2 = (PTR_UIntNative)value;
         break;
     case (UNW_ARM64_X3):
-        pX3 = (PTR_UIntNative)location;
+        pX3 = (PTR_UIntNative)value;
         break;
     case (UNW_ARM64_X4):
-        pX4 = (PTR_UIntNative)location;
+        pX4 = (PTR_UIntNative)value;
         break;
     case (UNW_ARM64_X5):
-        pX5 = (PTR_UIntNative)location;
+        pX5 = (PTR_UIntNative)value;
         break;
     case (UNW_ARM64_X6):
-        pX6 = (PTR_UIntNative)location;
+        pX6 = (PTR_UIntNative)value;
         break;
     case (UNW_ARM64_X7):
-        pX7 = (PTR_UIntNative)location;
+        pX7 = (PTR_UIntNative)value;
         break;
     case (UNW_ARM64_X8):
-        pX8 = (PTR_UIntNative)location;
+        pX8 = (PTR_UIntNative)value;
         break;
     case (UNW_ARM64_X9):
-        pX9 = (PTR_UIntNative)location;
+        pX9 = (PTR_UIntNative)value;
         break;
     case (UNW_ARM64_X10):
-        pX10 = (PTR_UIntNative)location;
+        pX10 = (PTR_UIntNative)value;
         break;
     case (UNW_ARM64_X11):
-        pX11 = (PTR_UIntNative)location;
+        pX11 = (PTR_UIntNative)value;
         break;
     case (UNW_ARM64_X12):
-        pX12 = (PTR_UIntNative)location;
+        pX12 = (PTR_UIntNative)value;
         break;
     case (UNW_ARM64_X13):
-        pX13 = (PTR_UIntNative)location;
+        pX13 = (PTR_UIntNative)value;
         break;
     case (UNW_ARM64_X14):
-        pX14 = (PTR_UIntNative)location;
+        pX14 = (PTR_UIntNative)value;
         break;
     case (UNW_ARM64_X15):
-        pX15 = (PTR_UIntNative)location;
+        pX15 = (PTR_UIntNative)value;
         break;
     case (UNW_ARM64_X16):
-        pX16 = (PTR_UIntNative)location;
+        pX16 = (PTR_UIntNative)value;
         break;
     case (UNW_ARM64_X17):
-        pX17 = (PTR_UIntNative)location;
+        pX17 = (PTR_UIntNative)value;
         break;
     case (UNW_ARM64_X18):
-        pX18 = (PTR_UIntNative)location;
+        pX18 = (PTR_UIntNative)value;
         break;
     case (UNW_ARM64_X19):
-        pX19 = (PTR_UIntNative)location;
+        pX19 = (PTR_UIntNative)value;
         break;
     case (UNW_ARM64_X20):
-        pX20 = (PTR_UIntNative)location;
+        pX20 = (PTR_UIntNative)value;
         break;
     case (UNW_ARM64_X21):
-        pX21 = (PTR_UIntNative)location;
+        pX21 = (PTR_UIntNative)value;
         break;
     case (UNW_ARM64_X22):
-        pX22 = (PTR_UIntNative)location;
+        pX22 = (PTR_UIntNative)value;
         break;
     case (UNW_ARM64_X23):
-        pX23 = (PTR_UIntNative)location;
+        pX23 = (PTR_UIntNative)value;
         break;
     case (UNW_ARM64_X24):
-        pX24 = (PTR_UIntNative)location;
+        pX24 = (PTR_UIntNative)value;
         break;
     case (UNW_ARM64_X25):
-        pX25 = (PTR_UIntNative)location;
+        pX25 = (PTR_UIntNative)value;
         break;
     case (UNW_ARM64_X26):
-        pX26 = (PTR_UIntNative)location;
+        pX26 = (PTR_UIntNative)value;
         break;
     case (UNW_ARM64_X27):
-        pX27 = (PTR_UIntNative)location;
+        pX27 = (PTR_UIntNative)value;
         break;
     case (UNW_ARM64_X28):
-        pX28 = (PTR_UIntNative)location;
+        pX28 = (PTR_UIntNative)value;
         break;
     default:
         PORTABILITY_ASSERT("unsupported arm64 register");
