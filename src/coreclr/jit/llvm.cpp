@@ -317,6 +317,7 @@ Type* getLLVMTypeForVarType(var_types type)
     switch (type)
     {
         case var_types::TYP_BOOL:
+            return Type::getInt1Ty(_llvmContext);
         case var_types::TYP_BYTE:
         case var_types::TYP_UBYTE:
             return Type::getInt8Ty(_llvmContext);
@@ -332,23 +333,37 @@ Type* getLLVMTypeForVarType(var_types type)
     }
 }
 
-Value* castIfNecessary(llvm::IRBuilder<>& builder, Value* source, Type* valueType)
+Value* castIfNecessary(llvm::IRBuilder<>& builder, Value* source, Type* targetType)
 {
     Type* sourceType = source->getType();
-    if (sourceType == valueType)
+    if (sourceType == targetType)
         return source;
 
     Type::TypeID sourceTypeID = sourceType->getTypeID();
-    Type::TypeID valueTypeKind = valueType->getTypeID();
+    Type::TypeID targetTypeId = targetType->getTypeID();
 
-    if (valueTypeKind == Type::TypeID::PointerTyID)
+    if (targetTypeId == Type::TypeID::PointerTyID)
     {
         switch (sourceTypeID)
         {
             case Type::TypeID::PointerTyID:
-                return builder.CreatePointerCast(source, valueType, "CastPtrToPtr");
+                return builder.CreatePointerCast(source, targetType, "CastPtrToPtr");
             case Type::TypeID::IntegerTyID:
-                return builder.CreateIntToPtr(source, valueType, "CastPtrToInt");
+                return builder.CreateIntToPtr(source, targetType, "CastPtrToInt");
+            default:
+                failFunctionCompilation();
+        }
+    }
+    if(targetTypeId == Type::TypeID::IntegerTyID)
+    {
+        switch (sourceTypeID)
+        {
+            case Type::TypeID::IntegerTyID:
+                if (sourceType->getPrimitiveSizeInBits() > targetType->getPrimitiveSizeInBits())
+                {
+                    // assumes bools in int8/16/32s have the least significant bit set i.e. not just != 0
+                    return builder.CreateTrunc(source, targetType, "truncInt");
+                }
             default:
                 failFunctionCompilation();
         }
@@ -699,7 +714,11 @@ Value* buildCnsInt(llvm::IRBuilder<>& builder, GenTree* node)
 Value* buildInd(llvm::IRBuilder<>& builder, GenTree* node, Value* ptr)
 {
     // TODO: Simplify genActualType(node->TypeGet()) to just genActualType(node) when main is merged
-    return mapGenTreeToValue(node, builder.CreateLoad(castIfNecessary(builder, ptr, getLLVMTypeForVarType(genActualType(node->TypeGet()))->getPointerTo())));
+    // first cast the pointer to create the correct load instructions, then cast the result incase we are loading a small int into an int32
+    return mapGenTreeToValue(node,
+                             castIfNecessary(builder, builder.CreateLoad(
+                                 castIfNecessary(builder, ptr,
+                                                 getLLVMTypeForVarType(node->TypeGet())->getPointerTo())), getLLVMTypeForVarType(genActualType(node->TypeGet()))));
 }
 
 Value* buildNe(llvm::IRBuilder<>& builder, GenTree* node, Value* op1, Value* op2)
@@ -712,7 +731,7 @@ void buildReturn(llvm::IRBuilder<>& builder, GenTree* node)
     switch (node->gtType)
     {
         case var_types::TYP_INT:
-            builder.CreateRet(getGenTreeValue(node->gtGetOp1()));
+            builder.CreateRet(castIfNecessary(builder, getGenTreeValue(node->gtGetOp1()), getLlvmTypeForCorInfoType(_sigInfo.retType)));
             return;
         case var_types::TYP_VOID: 
             builder.CreateRetVoid();
