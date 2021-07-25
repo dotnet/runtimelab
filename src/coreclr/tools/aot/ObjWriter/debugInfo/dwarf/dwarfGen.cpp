@@ -400,7 +400,7 @@ static void EmitVarLocation(MCObjectStreamer *Streamer,
       StringRef OffsetRepr = OSE.str();
 
       Len = (1 /* DW_OP_reg */ + 1 /* DW_OP_piece */ + 1 /* Reg size */) +
-          (1 /*DW_OP_breg */ + OffsetRepr.size() + 1 /* DW_OP_piece */ + 1 /* Reg size */) + 1;
+          (1 /*DW_OP_breg */ + OffsetRepr.size() + 1 /* DW_OP_piece */ + 1 /* Reg size */);
 
       if (IsLocList) {
         Streamer->EmitIntValue(Len, 2);
