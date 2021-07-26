@@ -52,6 +52,47 @@ namespace ILCompiler.DependencyAnalysis
             return method.IsSharedByGenericInstantiations && (method.HasInstantiation || method.Signature.IsStatic || (method.ImplementationType.IsValueType && !isUnboxingStub));
         }
 
+        public static void AddDependenciesDueToReflectability(ref DependencyList dependencies, NodeFactory factory, MethodDesc method)
+        {
+            if (factory.MetadataManager.IsReflectionInvokable(method))
+            {
+                if (dependencies == null)
+                    dependencies = new DependencyList();
+
+                dependencies.Add(factory.MaximallyConstructableType(method.OwningType), "Reflection invoke");
+
+                if (factory.MetadataManager.HasReflectionInvokeStubForInvokableMethod(method))
+                {
+                    MethodDesc canonInvokeStub = factory.MetadataManager.GetCanonicalReflectionInvokeStub(method);
+                    if (canonInvokeStub.IsSharedByGenericInstantiations)
+                    {
+                        dependencies.Add(new DependencyListEntry(factory.DynamicInvokeTemplate(canonInvokeStub), "Reflection invoke"));
+                    }
+                    else
+                        dependencies.Add(new DependencyListEntry(factory.MethodEntrypoint(canonInvokeStub), "Reflection invoke"));
+                }
+
+                if (method.OwningType.IsValueType && !method.Signature.IsStatic)
+                    dependencies.Add(new DependencyListEntry(factory.ExactCallableAddress(method, isUnboxingStub: true), "Reflection unboxing stub"));
+
+                // If the method is defined in a different module than this one, a metadata token isn't known for performing the reference
+                // Use a name/sig reference instead.
+                if (!factory.MetadataManager.WillUseMetadataTokenToReferenceMethod(method))
+                {
+                    dependencies.Add(new DependencyListEntry(factory.NativeLayout.PlacedSignatureVertex(factory.NativeLayout.MethodNameAndSignatureVertex(method.GetTypicalMethodDefinition())),
+                        "Non metadata-local method reference"));
+                }
+
+                if (method.HasInstantiation && method.IsCanonicalMethod(CanonicalFormKind.Universal))
+                {
+                    dependencies.Add(new DependencyListEntry(factory.NativeLayout.PlacedSignatureVertex(factory.NativeLayout.MethodNameAndSignatureVertex(method)),
+                        "UniversalCanon signature of method"));
+                }
+
+                ReflectionVirtualInvokeMapNode.GetVirtualInvokeMapDependencies(ref dependencies, factory, method);
+            }
+        }
+
         public override ObjectData GetData(NodeFactory factory, bool relocsOnly = false)
         {
             // This node does not trigger generation of other nodes.

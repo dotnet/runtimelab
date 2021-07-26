@@ -331,7 +331,7 @@ namespace ILCompiler
                 if (IsReflectionInvokable(method))
                 {
                     // We're going to generate a mapping table entry for this. Collect dependencies.
-                    CodeBasedDependencyAlgorithm.AddDependenciesDueToReflectability(ref dependencies, factory, method);
+                    ReflectionInvokeMapNode.AddDependenciesDueToReflectability(ref dependencies, factory, method);
                 }
             }
         }
