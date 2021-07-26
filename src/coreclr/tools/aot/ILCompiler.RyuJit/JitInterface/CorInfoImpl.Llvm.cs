@@ -78,7 +78,7 @@ namespace Internal.JitInterface
             {
                 sb.Append("___SYMBOL");
             }
-            
+
             sb.Append("\0");
             return (byte*)_this.GetPin(sb.UnderlyingArray);
         }

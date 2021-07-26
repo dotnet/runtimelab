@@ -36,6 +36,12 @@ struct LlvmArgInfo
     unsigned int m_shadowStackOffset;
 };
 
+// TODO: might need the LLVM Value* in here for exception funclets.
+struct SpilledExpressionEntry
+{
+    CorInfoType m_CorInfoType;
+};
+
 typedef JitHashTable<BasicBlock*, JitPtrKeyFuncs<BasicBlock>, llvm::BasicBlock*> BlkToLlvmBlkVectorMap;
 
 static Module* _module = nullptr;
@@ -56,6 +62,7 @@ std::unordered_map<GenTree*, Value*>*     _sdsuMap;
 std::unordered_map<unsigned int, Value*>* _localsMap;
 CORINFO_SIG_INFO                          _sigInfo; // sigInfo of function being compiled
 llvm::IRBuilder<>*                        _prologBuilder;
+std::vector<SpilledExpressionEntry>       _spilledExpressions;
 
 extern "C" DLLEXPORT void registerLlvmCallbacks(void*       thisPtr,
                                                 const char* outputFileName,
@@ -248,7 +255,7 @@ FunctionType* getFunctionTypeForSigInfo(CORINFO_SIG_INFO& sigInfo)
     if (sigInfo.hasExplicitThis() || sigInfo.hasTypeArg())
         failFunctionCompilation();
 
-    // start vector with shadow stack arg
+    // start vector with shadow stack arg, this might reduce the number of bitcasts as a i8**, TODO: try it and check LLVM bitcode size
     std::vector<llvm::Type*> argVec{Type::getInt8PtrTy(_llvmContext)};
     llvm::Type*              retLlvmType;
 
@@ -487,11 +494,42 @@ int getTotalParameterOffset(CORINFO_SIG_INFO& sigInfo)
     return AlignUp(offset, TARGET_POINTER_SIZE);
 }
 
-int getTotalLocalOffset(CORINFO_SIG_INFO& sigInfo)
+
+unsigned int getTotalRealLocalOffset()
 {
-    // TODO: need to store some locals on ths shadow stack, either when there are exception blocks, or they are, or have, GC pointers (so the conservative GC knows they are live)
-    // For now we don't have any so simply:
-    return 0;
+    unsigned int offset = 0;
+    // TODO: might need this IL->LLVM function for locals and exception funclets
+    // for (int i = 0; i < _locals.Length; i++)
+    //{
+    //    TypeDesc localType = _locals[i].Type;
+    //    if (!CanStoreVariableOnStack(localType))
+    //    {
+    //        offset = padNextOffset(localType, offset);
+    //    }
+    //}
+    return AlignUp(offset, TARGET_POINTER_SIZE);
+}
+
+unsigned int getTotalLocalOffset()
+{
+    unsigned int offset = getTotalRealLocalOffset();
+    for (unsigned int i = 0; i < _spilledExpressions.size(); i++)
+    {
+        offset = padNextOffset(_spilledExpressions[i].m_CorInfoType, offset);
+    }
+    return AlignUp(offset, TARGET_POINTER_SIZE);
+}
+
+unsigned int getSpillOffsetAtIndex(unsigned int index, unsigned int offset)
+{
+    struct SpilledExpressionEntry spill = _spilledExpressions[index];
+
+    for (unsigned int i = 0; i < index; i++)
+    {
+        offset = padNextOffset(_spilledExpressions[i].m_CorInfoType, offset);
+    }
+    offset = padOffset(spill.m_CorInfoType, offset);
+    return offset;
 }
 
 llvm::Value* getShadowStackOffest(Value* shadowStack, unsigned int offset)
@@ -521,7 +559,7 @@ void storeOnShadowStack(llvm::IRBuilder<>& builder, GenTree* operand, Value* sha
 // shadow stack moved up to avoid overwriting anything on the stack in the compiling method
 llvm::Value* getShadowStackForCallee(llvm::IRBuilder<>& builder)
 {
-    unsigned int offset = getTotalParameterOffset(_sigInfo) + getTotalLocalOffset(_sigInfo);
+    unsigned int offset = getTotalParameterOffset(_sigInfo) + getTotalLocalOffset();
 
     return offset == 0 ? _function->getArg(0) : builder.CreateGEP(_function->getArg(0), builder.getInt32(offset));
 }
@@ -538,11 +576,6 @@ llvm::Value* buildUserFuncCall(GenTreeCall* call, llvm::IRBuilder<>& builder)
     Function* llvmFunc = _module->getFunction(symbolName);
     CORINFO_SIG_INFO sigInfo;
     _compiler->eeGetMethodSig(call->gtCallMethHnd, &sigInfo);
-    if (needsReturnStackSlot(sigInfo.retType))
-    {
-        // TODO: enough already in this PR, leave calling functions that need a spilled slot for later.
-        failFunctionCompilation();
-    }
 
     if (llvmFunc == nullptr)
     {
@@ -555,9 +588,23 @@ llvm::Value* buildUserFuncCall(GenTreeCall* call, llvm::IRBuilder<>& builder)
     }
     std::vector<llvm::Value*> argVec;
 
+    unsigned int offset = getTotalParameterOffset(_sigInfo) + getTotalLocalOffset();
     // shadowstack arg first
     Value* shadowStackForCallee = getShadowStackForCallee(builder);
     argVec.push_back(shadowStackForCallee);
+
+    Value* returnAddress = nullptr;
+    if (needsReturnStackSlot(sigInfo.retType))
+    {
+        unsigned int returnIndex = _spilledExpressions.size();
+
+        _spilledExpressions.push_back({sigInfo.retType});
+        unsigned int varOffset = getSpillOffsetAtIndex(returnIndex, getTotalRealLocalOffset()) + getTotalParameterOffset(_sigInfo);
+        returnAddress = _prologBuilder->CreateGEP(_function->getArg(0), builder.getInt32(varOffset), "temp_");
+
+        // TOOD: as per the shadow stack, i8** might be a better type for any spilled return args, as a load normally will follow the call, and then the bitcast can be removed
+        argVec.push_back(returnAddress);
+    }
 
     unsigned int                      shadowStackUseOffest = 0;
     int                               argIx                = 0;
@@ -592,7 +639,9 @@ llvm::Value* buildUserFuncCall(GenTreeCall* call, llvm::IRBuilder<>& builder)
         }
         argIx++;
     }
-    return mapGenTreeToValue(call, builder.CreateCall(llvmFunc, ArrayRef<Value*>(argVec)));
+    Value* llvmCall = builder.CreateCall(llvmFunc, ArrayRef<Value*>(argVec));
+    // TODO: creating the load for the return slot here is perhaps not the most efficient and should be done lazily
+    return mapGenTreeToValue(call, returnAddress != nullptr ? builder.CreateLoad(builder.CreateBitCast(returnAddress, Type::getInt8PtrTy(_llvmContext)->getPointerTo())) : llvmCall);
 }
 
 Value* buildCall(llvm::IRBuilder<>& builder, GenTree* node)
@@ -816,9 +865,11 @@ void Llvm::Compile(Compiler* pCompiler)
     std::unordered_map<GenTree*, Value*> sdsuMap;
     _sdsuMap = &sdsuMap;
     _localsMap = new std::unordered_map<unsigned int, Value*>();
+    _spilledExpressions.clear();
     const char* mangledName = (*_getMangledMethodName)(_thisPtr, _info.compMethodHnd);
     _function    = _module->getFunction(mangledName);
     _compiler->eeGetMethodSig(_info.compMethodHnd, &_sigInfo);
+
     if (_function == nullptr)
     {
         _function = Function::Create(getFunctionTypeForSigInfo(_sigInfo), Function::ExternalLinkage, 0U, mangledName,
