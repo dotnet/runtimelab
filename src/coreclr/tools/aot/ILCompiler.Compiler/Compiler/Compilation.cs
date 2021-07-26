@@ -432,15 +432,20 @@ namespace ILCompiler
             // Needs to be either a concrete method, or a runtime determined form.
             Debug.Assert(!calledMethod.IsCanonicalMethod(CanonicalFormKind.Specific));
 
-            // If the method defines the slot, we can use that.
-            if (calledMethod.IsNewSlot)
-                return calledMethod;
-
             MethodDesc targetMethod = calledMethod.GetCanonMethodTarget(CanonicalFormKind.Specific);
+            MethodDesc targetMethodDefinition = targetMethod.GetMethodDefinition();
+
+            MethodDesc slotNormalizedMethodDefinition = MetadataVirtualMethodAlgorithm.FindSlotDefiningMethodForVirtualMethod(targetMethodDefinition);
+
+            // If the method defines the slot, we can use that.
+            if (slotNormalizedMethodDefinition == targetMethodDefinition)
+            {
+                return calledMethod;
+            }
 
             // Normalize to the slot defining method
             MethodDesc slotNormalizedMethod = TypeSystemContext.GetInstantiatedMethod(
-                MetadataVirtualMethodAlgorithm.FindSlotDefiningMethodForVirtualMethod(targetMethod.GetMethodDefinition()),
+                slotNormalizedMethodDefinition,
                 targetMethod.Instantiation);
 
             // Since the slot normalization logic modified what method we're looking at, we need to compute the new target of lookup.
