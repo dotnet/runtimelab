@@ -844,7 +844,7 @@ Value* storeLocalVar(llvm::IRBuilder<>& builder, GenTreeLclVar* lclVar)
 }
 
 Value* visitNode(llvm::IRBuilder<>& builder, GenTree* node)
-    {
+{
     switch (node->OperGet())
     {
         case GT_ADD:
@@ -909,6 +909,25 @@ void generateProlog()
     _builder->SetInsertPoint(block0);
 }
 
+void startImportingNode()
+{
+    if (_debugInformation != null)
+    {
+        ILSequencePoint curSequencePoint = GetSequencePoint(_currentOffset);
+
+        // LLVM can't process empty string file names
+        if (string.IsNullOrWhiteSpace(curSequencePoint.Document))
+        {
+            return;
+        }
+
+        DebugMetadata debugMetadata = GetOrCreateDebugMetadata(curSequencePoint);
+
+        LLVMMetadataRef currentLine   = CreateDebugFunctionAndDiLocation(debugMetadata, curSequencePoint);
+        _builder.CurrentDebugLocation = Context.MetadataAsValue(currentLine);
+    }
+}
+
 //------------------------------------------------------------------------
 // Compile: Compile IR to LLVM, adding to the LLVM Module
 //
@@ -949,6 +968,7 @@ void Llvm::Compile(Compiler* pCompiler)
         builder.SetInsertPoint(entry);
         for (GenTree* node = block->GetFirstLIRNode(); node; node = node->gtNext)
         {
+            startImportingNode();
             visitNode(builder, node);
         }
         endImportingBasicBlock(block);
