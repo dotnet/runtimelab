@@ -766,23 +766,7 @@ bool DoTheStep(uintptr_t pc, UnwindInfoSections uwInfoSections, REGDISPLAY *regs
 #endif
 
 #if _LIBUNWIND_SUPPORT_DWARF_UNWIND
-    bool retVal = uc.getInfoFromDwarfSection(pc, uwInfoSections, 0 /* fdeSectionOffsetHint */);
-    if (!retVal)
-    {
-        return false;
-    }
-
-    unw_proc_info_t procInfo;
-    uc.getInfo(&procInfo);
-
-#if defined(TARGET_ARM)
-    DwarfInstructions<LocalAddressSpace, Registers_arm_rt> dwarfInst;
-    int stepRet = dwarfInst.stepWithDwarf(_addressSpace, pc, procInfo.unwind_info, *(Registers_arm_rt*)regs);
-#else
-    DwarfInstructions<LocalAddressSpace, Registers_REGDISPLAY> dwarfInst;
-    int stepRet = dwarfInst.stepWithDwarf(_addressSpace, pc, procInfo.unwind_info, *(Registers_REGDISPLAY*)regs);
-#endif
-
+    int stepRet = uc.step();
     if (stepRet != UNW_STEP_SUCCESS)
     {
         return false;
