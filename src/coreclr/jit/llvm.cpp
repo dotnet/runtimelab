@@ -146,7 +146,9 @@ llvm::Type* getLlvmTypeForCorInfoType(CorInfoType corInfoType) {
             return Type::getVoidTy(_llvmContext);
 
         case CorInfoType::CORINFO_TYPE_BOOL:
-            return Type::getInt1Ty(_llvmContext);
+        case CorInfoType::CORINFO_TYPE_UBYTE:
+        case CorInfoType::CORINFO_TYPE_BYTE:
+            return Type::getInt8Ty(_llvmContext);
 
         case CorInfoType::CORINFO_TYPE_INT:
         case CorInfoType::CORINFO_TYPE_NATIVEINT:  // TODO: Wasm64 - what does NativeInt mean for Wasm64
@@ -317,7 +319,6 @@ Type* getLLVMTypeForVarType(var_types type)
     switch (type)
     {
         case var_types::TYP_BOOL:
-            return Type::getInt1Ty(_llvmContext);
         case var_types::TYP_BYTE:
         case var_types::TYP_UBYTE:
             return Type::getInt8Ty(_llvmContext);
@@ -361,7 +362,6 @@ Value* castIfNecessary(llvm::IRBuilder<>& builder, Value* source, Type* targetTy
             case Type::TypeID::IntegerTyID:
                 if (sourceType->getPrimitiveSizeInBits() > targetType->getPrimitiveSizeInBits())
                 {
-                    // assumes bools in int8/16/32s have the least significant bit set i.e. not just != 0
                     return builder.CreateTrunc(source, targetType, "truncInt");
                 }
             default:
