@@ -7,6 +7,7 @@ using Internal.Text;
 using Internal.TypeSystem;
 using Internal.NativeFormat;
 
+using Debug = System.Diagnostics.Debug;
 using InvokeTableFlags = Internal.Runtime.InvokeTableFlags;
 
 namespace ILCompiler.DependencyAnalysis
@@ -46,10 +47,62 @@ namespace ILCompiler.DependencyAnalysis
 
         protected override string GetName(NodeFactory factory) => this.GetMangledName(factory.NameMangler);
 
-        private bool MethodRequiresInstArg(MethodDesc method, bool isUnboxingStub)
+        private static bool MethodRequiresInstArg(MethodDesc method, bool isUnboxingStub)
         {
             // Similar to RequiresInstArg, but will do the right thing for instantiating unboxing stubs (canonical non-generic instance methods on valuetypes)
             return method.IsSharedByGenericInstantiations && (method.HasInstantiation || method.Signature.IsStatic || (method.ImplementationType.IsValueType && !isUnboxingStub));
+        }
+
+        public static void AddDependenciesDueToReflectability(ref DependencyList dependencies, NodeFactory factory, MethodDesc method)
+        {
+            Debug.Assert(factory.MetadataManager.IsReflectionInvokable(method));
+
+            if (dependencies == null)
+                dependencies = new DependencyList();
+
+            dependencies.Add(factory.MaximallyConstructableType(method.OwningType), "Reflection invoke");
+
+            if (factory.MetadataManager.HasReflectionInvokeStubForInvokableMethod(method))
+            {
+                MethodDesc canonInvokeStub = factory.MetadataManager.GetCanonicalReflectionInvokeStub(method);
+                if (canonInvokeStub.IsSharedByGenericInstantiations)
+                {
+                    dependencies.Add(new DependencyListEntry(factory.DynamicInvokeTemplate(canonInvokeStub), "Reflection invoke"));
+                }
+                else
+                    dependencies.Add(new DependencyListEntry(factory.MethodEntrypoint(canonInvokeStub), "Reflection invoke"));
+            }
+
+            if (method.OwningType.IsValueType && !method.Signature.IsStatic)
+                dependencies.Add(new DependencyListEntry(factory.ExactCallableAddress(method, isUnboxingStub: true), "Reflection unboxing stub"));
+
+            // If the method is defined in a different module than this one, a metadata token isn't known for performing the reference
+            // Use a name/sig reference instead.
+            if (!factory.MetadataManager.WillUseMetadataTokenToReferenceMethod(method))
+            {
+                dependencies.Add(new DependencyListEntry(factory.NativeLayout.PlacedSignatureVertex(factory.NativeLayout.MethodNameAndSignatureVertex(method.GetTypicalMethodDefinition())),
+                    "Non metadata-local method reference"));
+            }
+
+            if (method.HasInstantiation)
+            {
+                bool useUnboxingStub = method.OwningType.IsValueType && !method.Signature.IsStatic;
+
+                if (method.IsCanonicalMethod(CanonicalFormKind.Universal))
+                {
+                    dependencies.Add(new DependencyListEntry(factory.NativeLayout.PlacedSignatureVertex(factory.NativeLayout.MethodNameAndSignatureVertex(method)),
+                        "UniversalCanon signature of method"));
+                }
+                else if (!MethodRequiresInstArg(method.GetCanonMethodTarget(CanonicalFormKind.Specific), useUnboxingStub) || method.IsAbstract)
+                {
+                    foreach (var instArg in method.Instantiation)
+                    {
+                        dependencies.Add(factory.NecessaryTypeSymbol(instArg), "Reflectable generic method inst arg");
+                    }
+                }
+            }
+
+            ReflectionVirtualInvokeMapNode.GetVirtualInvokeMapDependencies(ref dependencies, factory, method);
         }
 
         public override ObjectData GetData(NodeFactory factory, bool relocsOnly = false)
