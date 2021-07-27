@@ -24,8 +24,24 @@ namespace System.Text.RegularExpressions.Tests
             //ViewSampleRegexInDGML();
             //TestRunPerformance();
             //RegenerateUnicodeTables();
+            //string b = @"((?<=\w)(?!\w)|(?<!\w)(?=\w))"; //word-border anchor
+            //string b1 = @"((?<=\w)(?=\W)|(?<=\W)(?=\w))";
+            //TestLookaround(string.Format(@"{0}\w+{0}",b), "one two three", 3);
+            //TestLookaround(string.Format(@"{0}\w+{0}", b1), "one two three", 1);
         }
 
+        private void TestLookaround(string pattern, string input, int matchcount)
+        {
+            var regex = new Regex(pattern);
+            List<Match> matches = new List<Match>();
+            var match = regex.Match(input);
+            while (match.Success)
+            {
+                matches.Add(match);
+                match = match.NextMatch();
+            }
+            Assert.Equal(matchcount, matches.Count);
+        }
 
         private const string experimentDirectory = @"\\maku1\experiments\";
 
