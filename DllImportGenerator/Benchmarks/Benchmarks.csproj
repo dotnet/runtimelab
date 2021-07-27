@@ -1,11 +1,12 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-  <Import Project="..\DllImportGenerator\Microsoft.Interop.DllImportGenerator.props" />
+  <Import Project="$(RepoRoot)DllImportGenerator\DllImportGenerator\Microsoft.Interop.DllImportGenerator.props" />
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net6.0</TargetFramework>
     <IsPackable>false</IsPackable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <LangVersion>Preview</LangVersion>
     <Configurations>Debug;Release;Release_Forwarders</Configurations>
     <DllImportGenerator_GenerateForwarders Condition="'$(Configuration)' == 'Release_Forwarders'">true</DllImportGenerator_GenerateForwarders>
   </PropertyGroup>
@@ -16,7 +17,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Ancillary.Interop\Ancillary.Interop.csproj" />
-    <ProjectReference Include="..\DllImportGenerator\DllImportGenerator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+	<ProjectReference Include="..\DllImportGenerator\DllImportGenerator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
     <ProjectReference Include="..\TestAssets\NativeExports\NativeExports.csproj" />
     <ProjectReference Include="..\TestAssets\SharedTypes\SharedTypes.csproj" />
   </ItemGroup>

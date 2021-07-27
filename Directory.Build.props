@@ -7,7 +7,7 @@
     <TreatWarningsAsErrors>True</TreatWarningsAsErrors>
     <DebugType>embedded</DebugType>
     <DebugSymbols>true</DebugSymbols>
-    <LangVersion>9</LangVersion>
+    <LangVersion>10</LangVersion>
     <IsPackable>true</IsPackable>
 
     <!-- Set this property to false if you don't want to use the runtime
