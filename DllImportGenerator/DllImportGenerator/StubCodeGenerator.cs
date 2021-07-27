@@ -78,9 +78,17 @@ namespace Microsoft.Interop
                 }
             }
 
+            this.stubReturnsVoid = managedRetMarshaller.TypeInfo.ManagedType == SpecialTypeInfo.Void;
+
+            if (!managedRetMarshaller.TypeInfo.IsNativeReturnPosition && !this.stubReturnsVoid)
+            {
+                // If the managed ret marshaller isn't the native ret marshaller, then the managed ret marshaller
+                // is a parameter.
+                paramMarshallers.Add(managedRetMarshaller);
+            }
+
             this.retMarshaller = nativeRetMarshaller;
             this.paramMarshallers = paramMarshallers;
-            this.stubReturnsVoid = managedRetMarshaller.TypeInfo.ManagedType == SpecialTypeInfo.Void;
 
             // We are doing a topological sort of our marshallers to ensure that each parameter/return value's
             // dependencies are unmarshalled before their dependents. This comes up in the case of contiguous
