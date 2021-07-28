@@ -7,18 +7,11 @@
     .global RhpGcPoll2
 
     LEAF_ENTRY RhpGcPoll
-        // @todo: I'm assuming it's not OK to trash any register here. If that's not true we can optimize the
-        // push/pops out of this fast path.
-        push        {r0}
         ldr         r0, =RhpTrapThreads
         ldr         r0, [r0]
-        tst         r0, #TrapThreadsFlags_TrapThreads
-        bne         LOCAL_LABEL(RhpGcPollRareCall)
-        pop         {r0}
+        cmp         r0, #TrapThreadsFlags_None
+        bne         RhpGcPollRare
         bx          lr
-LOCAL_LABEL(RhpGcPollRareCall):
-        pop         {r0}
-        b           RhpGcPollRare
     LEAF_END RhpGcPoll
 
     NESTED_ENTRY RhpGcPollRare, _TEXT, NoHandler
