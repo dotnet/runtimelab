@@ -1506,151 +1506,6 @@ namespace System.Text.RegularExpressions.SRM
             }
         }
 
-        private int enabledBoundedLoopCount = -1;
-
-        internal int EnabledBoundedLoopCount
-        {
-            get
-            {
-                if (enabledBoundedLoopCount == -1)
-                {
-                    switch (kind)
-                    {
-                        case SymbolicRegexKind.EndAnchor:
-                        case SymbolicRegexKind.StartAnchor:
-                        case SymbolicRegexKind.EOLAnchor:
-                        case SymbolicRegexKind.BOLAnchor:
-                        case SymbolicRegexKind.Singleton:
-                        case SymbolicRegexKind.WatchDog:
-                        case SymbolicRegexKind.Epsilon:
-                            {
-                                enabledBoundedLoopCount = 0;
-                                break;
-                            }
-                        case SymbolicRegexKind.Loop:
-                            {
-                                //nr of loops in the body
-                                int n = this.left.EnabledBoundedLoopCount;
-                                if ((this.upper < int.MaxValue) && (this.upper > 0))
-                                    n += 1;
-                                enabledBoundedLoopCount = n;
-                                break;
-                            }
-                        case SymbolicRegexKind.Concat:
-                            {
-                                int n = this.left.EnabledBoundedLoopCount;
-                                //if (this.left.IsNullable())
-                                //    n += this.right.EnabledBoundedLoopCount;
-                                enabledBoundedLoopCount = n;
-                                break;
-                            }
-                        case SymbolicRegexKind.Or:
-                            {
-                                enabledBoundedLoopCount = alts.EnabledBoundedLoopCount;
-                                break;
-                            }
-                        default:
-                            throw new NotImplementedException(kind.ToString());
-                    }
-                }
-                return enabledBoundedLoopCount;
-            }
-        }
-
-        internal int EnabledBoundedLoopValue()
-        {
-
-            switch (kind)
-            {
-                case SymbolicRegexKind.EndAnchor:
-                case SymbolicRegexKind.StartAnchor:
-                case SymbolicRegexKind.EOLAnchor:
-                case SymbolicRegexKind.BOLAnchor:
-                case SymbolicRegexKind.Singleton:
-                case SymbolicRegexKind.WatchDog:
-                case SymbolicRegexKind.Epsilon:
-                    {
-                        return 0;
-                    }
-                case SymbolicRegexKind.Loop:
-                    {
-                        if (this.upper < int.MaxValue)
-                            return this.upper;
-                        else
-                            return 0;
-                    }
-                case SymbolicRegexKind.Concat:
-                    {
-                        return this.left.EnabledBoundedLoopValue();
-                    }
-                case SymbolicRegexKind.Or:
-                    {
-                        foreach (var alt in this.alts)
-                        {
-                            var k = alt.EnabledBoundedLoopValue();
-                            if (k > 0)
-                                return k;
-                        }
-                        return 0;
-                    }
-                default:
-                    throw new NotImplementedException(kind.ToString());
-            }
-        }
-
-        /// <summary>
-        /// Only valid to call if there is a single bounded loop
-        /// </summary>
-        internal SymbolicRegexNode<S> DecrementBoundedLoopCount(bool makeZero = false)
-        {
-            if (EnabledBoundedLoopCount != 1)
-                return this;
-            else
-            {
-                switch (kind)
-                {
-                    case SymbolicRegexKind.EndAnchor:
-                    case SymbolicRegexKind.StartAnchor:
-                    case SymbolicRegexKind.EOLAnchor:
-                    case SymbolicRegexKind.BOLAnchor:
-                    case SymbolicRegexKind.Singleton:
-                    case SymbolicRegexKind.WatchDog:
-                    case SymbolicRegexKind.Epsilon:
-                        {
-                            return this;
-                        }
-                    case SymbolicRegexKind.Loop:
-                        {
-                            if ((lower == 0) && (upper > 0) && (upper < int.MaxValue))
-                            {
-                                //must be this loop
-                                if (makeZero)
-                                    return builder.epsilon;
-                                else
-                                {
-                                    int upper1 = upper - 1;
-                                    return builder.MkLoop(this.left, this.IsLazy, 0, upper1);
-                                }
-                            }
-                            else
-                            {
-                                return this;
-                            }
-                        }
-                    case SymbolicRegexKind.Concat:
-                        {
-                            return builder.MkConcat(left.DecrementBoundedLoopCount(makeZero), right);
-                        }
-                    case SymbolicRegexKind.Or:
-                        {
-                            return builder.MkOr(alts.DecrementBoundedLoopCount(makeZero));
-                        }
-                    default:
-                        throw new NotImplementedException(kind.ToString());
-                }
-            }
-        }
-
         /// <summary>
         /// Gets the string prefix that the regex must match or the empty string if such a prefix does not exist.
         /// Sets ignoreCase = true when the prefix works under case-insensitivity.
@@ -1931,11 +1786,6 @@ namespace System.Text.RegularExpressions.SRM
             }
         }
     }
-
-    /// <summary>
-    /// The kind of a symbolic regex set
-    /// </summary>
-    internal enum SymbolicRegexSetKind { Conjunction, Disjunction };
 
     /// <summary>
     /// Represents a set of symbolic regexes that is either a disjunction or a conjunction
@@ -2365,35 +2215,6 @@ namespace System.Text.RegularExpressions.SRM
             }
             e.Dispose();
             return res;
-        }
-
-        internal SymbolicRegexSet<S> DecrementBoundedLoopCount(bool makeZero = false) =>
-            CreateMultiset(builder, DecrementBoundedLoopCountElems(makeZero), kind);
-
-        private IEnumerable<SymbolicRegexNode<S>> DecrementBoundedLoopCountElems(bool makeZero = false)
-        {
-            foreach (var elem in this)
-                yield return elem.DecrementBoundedLoopCount(makeZero);
-        }
-
-        private int enabledBoundedLoopCount = -1;
-        internal int EnabledBoundedLoopCount
-        {
-            get
-            {
-                if (enabledBoundedLoopCount == -1)
-                {
-                    int res = 0;
-                    var en = this.GetEnumerator();
-                    while (en.MoveNext())
-                    {
-                        res += en.Current.EnabledBoundedLoopCount;
-                    }
-                    en.Dispose();
-                    enabledBoundedLoopCount = res;
-                }
-                return enabledBoundedLoopCount;
-            }
         }
 
         public IEnumerator<SymbolicRegexNode<S>> GetEnumerator()
