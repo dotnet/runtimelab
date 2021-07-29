@@ -47,6 +47,18 @@ namespace System.Text.RegularExpressions.Tests
         }
 
         [Fact]
+        public void TestMixedLazyEagerCounting()
+        {
+            string pattern = "z(a{0,5}|a{0,10}?)";
+            var input = "xyzaaaaaaaaaxyz";
+            Regex re = new Regex(pattern, DFA);
+            Match m = re.Match(input);
+            Assert.True(m.Success);
+            Assert.Equal(2, m.Index);
+            Assert.Equal(6, m.Length);
+        }
+
+        [Fact]
         public void TestNFAmode()
         {
             string rawregex = "a.{20}$";
