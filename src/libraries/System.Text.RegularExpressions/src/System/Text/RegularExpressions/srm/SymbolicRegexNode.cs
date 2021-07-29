@@ -1946,11 +1946,11 @@ namespace System.Text.RegularExpressions.SRM
         internal SymbolicRegexBuilder<S> builder;
 
         private HashSet<SymbolicRegexNode<S>> set;
-        //symbolic regex A{0,k}?B is stored as (A,B) -> (k,true)  -- lazy
-        //symbolic regex A{0,k}? is stored as (A,()) -> (k,true)  -- lazy
-        //symbolic regex A{0,k}B is stored as (A,B) -> (k,false)  -- eager
-        //symbolic regex A{0,k} is stored as (A,()) -> (k,false)  -- eager
-        private Dictionary<Tuple<SymbolicRegexNode<S>, SymbolicRegexNode<S>>, Tuple<int, bool>> loops;
+        //symbolic regex A{0,k}?B is stored as (A,B,true) -> k  -- lazy
+        //symbolic regex A{0,k}? is stored as (A,(),true) -> k  -- lazy
+        //symbolic regex A{0,k}B is stored as (A,B,false) -> k  -- eager
+        //symbolic regex A{0,k} is stored as (A,(),false) -> k  -- eager
+        private Dictionary<Tuple<SymbolicRegexNode<S>, SymbolicRegexNode<S>, bool>, int> loops;
 
         internal SymbolicRegexSetKind kind;
 
@@ -1987,10 +1987,10 @@ namespace System.Text.RegularExpressions.SRM
             this.builder = builder;
             this.kind = kind;
             this.set = new HashSet<SymbolicRegexNode<S>>();
-            this.loops = new Dictionary<Tuple<SymbolicRegexNode<S>, SymbolicRegexNode<S>>, Tuple<int, bool>>();
+            this.loops = new Dictionary<Tuple<SymbolicRegexNode<S>, SymbolicRegexNode<S>, bool>, int>();
         }
 
-        private SymbolicRegexSet(SymbolicRegexBuilder<S> builder, SymbolicRegexSetKind kind, HashSet<SymbolicRegexNode<S>> set, Dictionary<Tuple<SymbolicRegexNode<S>, SymbolicRegexNode<S>>, Tuple<int, bool>> loops)
+        private SymbolicRegexSet(SymbolicRegexBuilder<S> builder, SymbolicRegexSetKind kind, HashSet<SymbolicRegexNode<S>> set, Dictionary<Tuple<SymbolicRegexNode<S>, SymbolicRegexNode<S>, bool>, int> loops)
         {
             this.builder = builder;
             this.kind = kind;
@@ -2018,7 +2018,7 @@ namespace System.Text.RegularExpressions.SRM
         {
             //loops contains the actual multi-set part of the collection
 
-            var loops = new Dictionary<Tuple<SymbolicRegexNode<S>, SymbolicRegexNode<S>>, Tuple<int, bool>>();
+            var loops = new Dictionary<Tuple<SymbolicRegexNode<S>, SymbolicRegexNode<S>, bool>, int>();
             //other represents a normal set
             var other = new HashSet<SymbolicRegexNode<S>>();
             int watchdog = -1;
@@ -2059,33 +2059,33 @@ namespace System.Text.RegularExpressions.SRM
                                     {
                                         if (alt.kind == SymbolicRegexKind.Loop && alt.lower == 0)
                                         {
-                                            var pair = new Tuple<SymbolicRegexNode<S>, SymbolicRegexNode<S>>(alt.left, builder.epsilon);
+                                            var pair = new Tuple<SymbolicRegexNode<S>, SymbolicRegexNode<S>, bool>(alt.left, builder.epsilon, alt.IsLazy);
                                             //map to the maximal of the upper bounds
-                                            Tuple<int, bool> cnt;
+                                            int cnt;
                                             if (loops.TryGetValue(pair, out cnt))
                                             {
-                                                if (cnt.Item1 < alt.upper)
+                                                if (cnt < alt.upper)
                                                     //both loops have to be lazy for the combined loop to be lazy
-                                                    loops[pair] = new(alt.upper, alt.IsLazy && cnt.Item2);
+                                                    loops[pair] = alt.upper;
                                             }
                                             else
                                             {
-                                                loops[pair] = new(alt.upper, alt.IsLazy);
+                                                loops[pair] = alt.upper;
                                             }
                                         }
                                         else if (alt.kind == SymbolicRegexKind.Concat && alt.left.kind == SymbolicRegexKind.Loop && alt.left.lower == 0)
                                         {
-                                            var pair = new Tuple<SymbolicRegexNode<S>, SymbolicRegexNode<S>>(alt.left.left, alt.right);
+                                            var pair = new Tuple<SymbolicRegexNode<S>, SymbolicRegexNode<S>, bool>(alt.left.left, alt.right, alt.left.IsLazy);
                                             //map to the maximal of the upper bounds
-                                            Tuple<int, bool> cnt;
+                                            int cnt;
                                             if (loops.TryGetValue(pair, out cnt))
                                             {
-                                                if (cnt.Item1 < alt.left.upper)
-                                                    loops[pair] = new(alt.left.upper, alt.left.IsLazy && cnt.Item2);
+                                                if (cnt < alt.left.upper)
+                                                    loops[pair] = alt.left.upper;
                                             }
                                             else
                                             {
-                                                loops[pair] = new(alt.left.upper, alt.left.IsLazy);
+                                                loops[pair] = alt.left.upper;
                                             }
                                         }
                                         else
@@ -2105,32 +2105,32 @@ namespace System.Text.RegularExpressions.SRM
                                     {
                                         if (alt.kind == SymbolicRegexKind.Loop && alt.lower == 0)
                                         {
-                                            var pair = new Tuple<SymbolicRegexNode<S>, SymbolicRegexNode<S>>(alt.left, builder.epsilon);
+                                            var pair = new Tuple<SymbolicRegexNode<S>, SymbolicRegexNode<S>, bool>(alt.left, builder.epsilon, alt.IsLazy);
                                             //map to the minimum of the upper bounds
-                                            Tuple<int, bool> cnt;
+                                            int cnt;
                                             if (loops.TryGetValue(pair, out cnt))
                                             {
-                                                if (cnt.Item1 > alt.upper)
-                                                    loops[pair] = new(alt.upper, alt.IsLazy && cnt.Item2);
+                                                if (cnt > alt.upper)
+                                                    loops[pair] = alt.upper;
                                             }
                                             else
                                             {
-                                                loops[pair] =  new(alt.left.upper, alt.left.IsLazy);
+                                                loops[pair] =  alt.left.upper;
                                             }
                                         }
                                         else if (alt.kind == SymbolicRegexKind.Concat && alt.left.kind == SymbolicRegexKind.Loop && alt.left.lower == 0)
                                         {
-                                            var pair = new Tuple<SymbolicRegexNode<S>, SymbolicRegexNode<S>>(alt.left.left, alt.right);
+                                            var pair = new Tuple<SymbolicRegexNode<S>, SymbolicRegexNode<S>, bool>(alt.left.left, alt.right, alt.left.IsLazy);
                                             //map to the minimum of the upper bounds
-                                            Tuple<int, bool> cnt;
+                                            int cnt;
                                             if (loops.TryGetValue(pair, out cnt))
                                             {
-                                                if (cnt.Item1 > alt.left.upper)
-                                                    loops[pair] = new(alt.left.upper, alt.left.IsLazy && cnt.Item2);
+                                                if (cnt > alt.left.upper)
+                                                    loops[pair] = alt.left.upper;
                                             }
                                             else
                                             {
-                                                loops[pair] = new(alt.left.upper, alt.left.IsLazy);
+                                                loops[pair] = alt.left.upper;
                                             }
                                         }
                                         else
@@ -2146,17 +2146,17 @@ namespace System.Text.RegularExpressions.SRM
                             {
                                 if (elem.kind == SymbolicRegexKind.Loop && elem.lower == 0)
                                 {
-                                    var pair = new Tuple<SymbolicRegexNode<S>, SymbolicRegexNode<S>>(elem.left, builder.epsilon) ;
-                                    Tuple<int, bool> cnt;
+                                    var pair = new Tuple<SymbolicRegexNode<S>, SymbolicRegexNode<S>, bool>(elem.left, builder.epsilon, elem.IsLazy);
+                                    int cnt;
                                     if (loops.TryGetValue(pair, out cnt))
                                     {
                                         //map the body of the loop (elem.left) to the maximum/minimum in case of disjunction/conjunction
-                                        if (kind == SymbolicRegexSetKind.Disjunction ? cnt.Item1 < elem.upper : cnt.Item1 > elem.upper)
-                                            loops[pair] = new(elem.upper, cnt.Item2 && elem.IsLazy);
+                                        if (kind == SymbolicRegexSetKind.Disjunction ? cnt < elem.upper : cnt > elem.upper)
+                                            loops[pair] = elem.upper;
                                     }
                                     else
                                     {
-                                        loops[pair] = new(elem.upper, elem.IsLazy);
+                                        loops[pair] = elem.upper;
                                     }
                                 }
                                 else
@@ -2169,17 +2169,17 @@ namespace System.Text.RegularExpressions.SRM
                             {
                                 if (elem.kind == SymbolicRegexKind.Concat && elem.left.kind == SymbolicRegexKind.Loop && elem.left.lower == 0)
                                 {
-                                    var pair = new Tuple<SymbolicRegexNode<S>, SymbolicRegexNode<S>>(elem.left.left, elem.right);
-                                    Tuple<int, bool> cnt;
+                                    var pair = new Tuple<SymbolicRegexNode<S>, SymbolicRegexNode<S>, bool>(elem.left.left, elem.right, elem.left.IsLazy);
+                                    int cnt;
                                     if (loops.TryGetValue(pair, out cnt))
                                     {
                                         //map the body of the loop (elem.left) to the maximum/minimum in case of disjunction/conjunction
-                                        if (kind == SymbolicRegexSetKind.Disjunction ? cnt.Item1 < elem.left.upper : cnt.Item1 > elem.left.upper)
-                                            loops[pair] = new(elem.left.upper, elem.left.IsLazy && cnt.Item2);
+                                        if (kind == SymbolicRegexSetKind.Disjunction ? cnt < elem.left.upper : cnt > elem.left.upper)
+                                            loops[pair] = elem.left.upper;
                                     }
                                     else
                                     {
-                                        loops[pair] = new(elem.left.upper, elem.left.IsLazy);
+                                        loops[pair] =elem.left.upper;
                                     }
                                 }
                                 else
@@ -2207,7 +2207,7 @@ namespace System.Text.RegularExpressions.SRM
                 {
                     //if there is an element A{0,m} then A is not needed because
                     //it is included by the loop due to the upper bound m > 0
-                    var key = new Tuple<SymbolicRegexNode<S>, SymbolicRegexNode<S>>(sr, builder.epsilon);
+                    var key = new Tuple<SymbolicRegexNode<S>, SymbolicRegexNode<S>, bool>(sr, builder.epsilon, false);
                     if (loops.ContainsKey(key))
                         others1.Add(sr);
                 }
@@ -2356,7 +2356,7 @@ namespace System.Text.RegularExpressions.SRM
             var e1 = this.loops.GetEnumerator();
             while (e1.MoveNext())
             {
-                Tuple<int, bool> cnt;
+                int cnt;
                 if (!that.loops.TryGetValue(e1.Current.Key, out cnt))
                     return false;
                 if (!cnt.Equals(e1.Current.Value))
@@ -2549,7 +2549,7 @@ namespace System.Text.RegularExpressions.SRM
             private bool set_next;
             private HashSet<SymbolicRegexNode<S>>.Enumerator set_en;
             private bool loops_next;
-            private Dictionary<Tuple<SymbolicRegexNode<S>, SymbolicRegexNode<S>>, Tuple<int, bool>>.Enumerator loops_en;
+            private Dictionary<Tuple<SymbolicRegexNode<S>, SymbolicRegexNode<S>, bool>, int>.Enumerator loops_en;
             private SymbolicRegexNode<S> current;
 
             internal Enumerator(SymbolicRegexSet<S> symbolicRegexSet)
@@ -2601,9 +2601,10 @@ namespace System.Text.RegularExpressions.SRM
                         {
                             var body = loops_en.Current.Key.Item1;
                             var rest = loops_en.Current.Key.Item2;
+                            var isLazy = loops_en.Current.Key.Item3;
                             var upper = loops_en.Current.Value;
                             //recreate the symbolic regex from (body,rest)->k to body{0,k}rest
-                            current = set.builder.MkConcat(set.builder.MkLoop(body, upper.Item2, 0, upper.Item1), rest);
+                            current = set.builder.MkConcat(set.builder.MkLoop(body, isLazy, 0, upper), rest);
                             return true;
                         }
                         else
@@ -2620,9 +2621,10 @@ namespace System.Text.RegularExpressions.SRM
                     {
                         var body = loops_en.Current.Key.Item1;
                         var rest = loops_en.Current.Key.Item2;
+                        var isLazy = loops_en.Current.Key.Item3;
                         var upper = loops_en.Current.Value;
                         //recreate the symbolic regex from (body,rest)->k to body{0,k}rest
-                        current = set.builder.MkConcat(set.builder.MkLoop(body, upper.Item2, 0, upper.Item1), rest);
+                        current = set.builder.MkConcat(set.builder.MkLoop(body, isLazy, 0, upper), rest);
                         return true;
                     }
                     else
