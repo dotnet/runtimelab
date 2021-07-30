@@ -1242,8 +1242,6 @@ namespace Internal.IL
             switch (type.Category)
             {
                 case TypeFlags.Boolean:
-                    return LLVMTypeRef.Int1;
-
                 case TypeFlags.SByte:
                 case TypeFlags.Byte:
                     return LLVMTypeRef.Int8;
