@@ -88,3 +88,8 @@ Native AOT libraries have configuration settings (shims) that enable replacing s
 `Assembly.GetCallingAssembly` can be in certain situations simulated by `Assembly.GetEntryAssembly`. 
 
 To enable simulated `Assembly.GetEntryAssembly`, you will need:
+
+```xml
+  <ItemGroup>
+    <RuntimeHostConfigurationOption Include="Switch.System.Reflection.Assembly.SimulatedCallingAssembly" Value="true" />
+  </ItemGroup>
