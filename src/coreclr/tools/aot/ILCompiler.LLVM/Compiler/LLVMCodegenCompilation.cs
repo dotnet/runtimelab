@@ -125,13 +125,15 @@ namespace ILCompiler
             try
             {
                 var sig = method.Signature;
-                corInfo.RegisterLlvmCallbacks((IntPtr)Unsafe.AsPointer(ref corInfo), _outputFile, Module.Target, Module.DataLayout);
-                corInfo.InitialiseDebugInfo(method, GetMethodIL(method));
-                corInfo.CompileMethod(methodCodeNodeNeedingCode);
-                methodCodeNodeNeedingCode.CompilationCompleted = true;
-                // TODO: delete this external function when old module is gone
-                LLVMValueRef externFunc = Module.AddFunction(NodeFactory.NameMangler.GetMangledMethodName(method).ToString(), GetLLVMSignatureForMethod(sig, method.RequiresInstArg()));
-                externFunc.Linkage = LLVMLinkage.LLVMExternalLinkage;
+                if (sig.ReturnType.IsVoid)
+                {
+                    corInfo.RegisterLlvmCallbacks((IntPtr)Unsafe.AsPointer(ref corInfo), _outputFile, Module.Target, Module.DataLayout);
+                    corInfo.InitialiseDebugInfo(method, GetMethodIL(method));
+                    corInfo.CompileMethod(methodCodeNodeNeedingCode);
+                    methodCodeNodeNeedingCode.CompilationCompleted = true;
+                    // TODO: delete this external function when old module is gone
+                    LLVMValueRef externFunc = Module.AddFunction(NodeFactory.NameMangler.GetMangledMethodName(method).ToString(), GetLLVMSignatureForMethod(sig, method.RequiresInstArg()));
+                    externFunc.Linkage = LLVMLinkage.LLVMExternalLinkage;
 
                 ILImporter.GenerateRuntimeExportThunk(this, method, externFunc);
 
