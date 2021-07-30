@@ -70,6 +70,7 @@ namespace ILCompiler
             {
                 case OptimizationMode.None:
                     jitFlagBuilder.Add(CorJitFlag.CORJIT_FLAG_DEBUG_CODE);
+                    jitFlagBuilder.Add(CorJitFlag.CORJIT_FLAG_DEBUG_INFO);
                     break;
 
                 case OptimizationMode.PreferSize:

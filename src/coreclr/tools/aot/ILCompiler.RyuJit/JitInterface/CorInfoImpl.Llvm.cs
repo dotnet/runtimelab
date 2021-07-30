@@ -1,7 +1,9 @@
 ﻿using System;
+using System.Linq;
 using System.Runtime.InteropServices;
 using ILCompiler;
 using ILCompiler.DependencyAnalysis;
+using Internal.IL;
 using Internal.Text;
 using Internal.TypeSystem;
 
@@ -9,6 +11,9 @@ namespace Internal.JitInterface
 {
     public unsafe sealed partial class CorInfoImpl
     {
+        private MethodIL _methodIL;
+        private MethodDebugInformation _debugInformation;
+
         [UnmanagedCallersOnly]
         public static void addCodeReloc(IntPtr thisHandle, void* handle)
         {
@@ -94,12 +99,61 @@ namespace Internal.JitInterface
             return method.HasCustomAttribute("System.Runtime", "RuntimeImportAttribute") ? 1u : 0u; // bool is not blittable in .net5 so use uint, TODO: revert to bool for .net 6 (https://github.com/dotnet/runtime/issues/51170)
         }
 
+        ILSequencePoint GetSequencePoint(uint offset)
+        {
+            ILSequencePoint curSequencePoint = default;
+            foreach (var sequencePoint in _debugInformation.GetSequencePoints() ?? Enumerable.Empty<ILSequencePoint>())
+            {
+                if (offset <= sequencePoint.Offset) // take the first sequence point in case we need to make a call to RhNewObject before the first matching sequence point
+                {
+                    curSequencePoint = sequencePoint;
+                    break;
+                }
+                if (sequencePoint.Offset < offset)
+                {
+                    curSequencePoint = sequencePoint;
+                }
+            }
+            return curSequencePoint;
+        }
+
+        [UnmanagedCallersOnly]
+        public static byte* getDocumentFileName(IntPtr thisHandle)
+        {
+            var _this = GetThis(thisHandle);
+            var curSequencePoint = _this.GetSequencePoint(0);
+            string fullPath = curSequencePoint.Document;
+
+            if (fullPath == null) return null;
+
+            return (byte*)_this.GetPin(StringToUTF8(fullPath));
+        }
+
+        [UnmanagedCallersOnly]
+        public static uint firstSequencePointLineNumber(IntPtr thisHandle)
+        {
+            var _this = GetThis(thisHandle);
+
+            return (uint)_this.GetSequencePoint(0).LineNumber;
+        }
+
+        [UnmanagedCallersOnly]
+        public static uint getOffsetLineNumber(IntPtr thisHandle, uint ilOffset)
+        {
+            var _this = GetThis(thisHandle);
+
+            return (uint)_this.GetSequencePoint(ilOffset).LineNumber;
+        }
+
         [DllImport(JitLibrary)]
         private extern static void registerLlvmCallbacks(IntPtr thisHandle, byte* outputFileName, byte* triple, byte* dataLayout,
             delegate* unmanaged<IntPtr, CORINFO_METHOD_STRUCT_*, byte*> getMangedMethodNamePtr,
             delegate* unmanaged<IntPtr, void*, byte*> getSymbolMangledName,
             delegate* unmanaged<IntPtr, void*, void> addCodeReloc,
-            delegate* unmanaged<IntPtr, CORINFO_METHOD_STRUCT_*, uint> isRuntimeImport
+            delegate* unmanaged<IntPtr, CORINFO_METHOD_STRUCT_*, uint> isRuntimeImport,
+            delegate* unmanaged<IntPtr, byte*> getDocumentFileName,
+            delegate* unmanaged<IntPtr, uint> firstSequencePointLineNumber,
+            delegate* unmanaged<IntPtr, uint, uint> getOffsetLineNumber
         );
 
         public void RegisterLlvmCallbacks(IntPtr corInfoPtr, string outputFileName, string triple, string dataLayout)
@@ -110,8 +164,26 @@ namespace Internal.JitInterface
                 &getMangledMethodName,
                 &getSymbolMangledName,
                 &addCodeReloc,
-                &isRuntimeImport
-                );
+                &isRuntimeImport,
+                &getDocumentFileName,
+                &firstSequencePointLineNumber,
+                &getOffsetLineNumber
+            );
+        }
+
+        public void InitialiseDebugInfo(MethodDesc method, MethodIL methodIL)
+        {
+            MethodIL uninstantiatiedMethodIL = methodIL.GetMethodILDefinition();
+            if (methodIL != uninstantiatiedMethodIL)
+            {
+                MethodDesc sharedMethod = method.GetSharedRuntimeFormMethodTarget();
+                _methodIL = new InstantiatedMethodIL(sharedMethod, uninstantiatiedMethodIL);
+            }
+            else
+            {
+                _methodIL = methodIL;
+            }
+            _debugInformation = _compilation.GetDebugInfo(_methodIL);
         }
 
         void AddOrReturnGlobalSymbol(ISortableSymbolNode gcStaticSymbol, NameMangler nameMangler)
