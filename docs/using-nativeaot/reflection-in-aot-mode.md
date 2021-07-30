@@ -77,15 +77,14 @@ For that, file `rd.xml` should be created and following lines added to project f
 
 Format of the file described [here](rd-xml-format.md)
 
-## Simulated calling assembly
-`Assembly.GetCallingAssembly` is not supported in Native AOT by default, and any usage to it will lead to `PlatformNotSupportedException`.
+## Shimming
 
-If `Assembly.GetCallingAssembly` cannot be avoided, it can work with simulated calling assembly, which will return the entry assembly, i.e. the same with `Assembly.GetEntryAssembly`.
+Native AOT libraries have configuration settings (shims) that enable replacing some of frequently used reflection patterns that are incompatible with Native AOT with compatible equivalents that approximate their functionality, without changing the source code. The shim settings documented in this section are meant to be used as temporary unreliable workarounds until the permanent source code fix can be made. They are not guaranteed to make the application work correctly.
 
-To enable simulated calling assembly, you will need:
+### Simulated calling assembly
 
-```xml
-  <ItemGroup>
-    <RuntimeHostConfigurationOption Include="Switch.System.Reflection.Assembly.SimulatedCallingAssembly" Value="true" />
-  </ItemGroup>
-```
+`Assembly.GetCallingAssembly` is not supported in Native AOT and throws `PlatformNotSupportedException` by default. 
+
+`Assembly.GetCallingAssembly` can be in certain situations simulated by `Assembly.GetEntryAssembly`. 
+
+To enable simulated `Assembly.GetEntryAssembly`, you will need:
