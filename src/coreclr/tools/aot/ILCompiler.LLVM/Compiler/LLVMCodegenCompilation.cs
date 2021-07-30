@@ -135,9 +135,11 @@ namespace ILCompiler
                     LLVMValueRef externFunc = Module.AddFunction(NodeFactory.NameMangler.GetMangledMethodName(method).ToString(), GetLLVMSignatureForMethod(sig, method.RequiresInstArg()));
                     externFunc.Linkage = LLVMLinkage.LLVMExternalLinkage;
 
-                ILImporter.GenerateRuntimeExportThunk(this, method, externFunc);
+                    ILImporter.GenerateRuntimeExportThunk(this, method, externFunc);
 
-                ryuJitMethodCount++;
+                    ryuJitMethodCount++;
+                }
+                else ILImporter.CompileMethod(this, methodCodeNodeNeedingCode);
             }
             catch (CodeGenerationFailedException)
             {

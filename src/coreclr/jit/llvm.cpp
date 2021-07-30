@@ -370,37 +370,23 @@ Type* getLLVMTypeForVarType(var_types type)
     }
 }
 
-Value* castIfNecessary(llvm::IRBuilder<>& builder, Value* source, Type* targetType)
+Value* castIfNecessary(llvm::IRBuilder<>& builder, Value* source, Type* valueType)
 {
     Type* sourceType = source->getType();
-    if (sourceType == targetType)
+    if (sourceType == valueType)
         return source;
 
     Type::TypeID sourceTypeID = sourceType->getTypeID();
-    Type::TypeID targetTypeId = targetType->getTypeID();
+    Type::TypeID valueTypeKind = valueType->getTypeID();
 
-    if (targetTypeId == Type::TypeID::PointerTyID)
+    if (valueTypeKind == Type::TypeID::PointerTyID)
     {
         switch (sourceTypeID)
         {
             case Type::TypeID::PointerTyID:
-                return builder.CreatePointerCast(source, targetType, "CastPtrToPtr");
+                return builder.CreatePointerCast(source, valueType, "CastPtrToPtr");
             case Type::TypeID::IntegerTyID:
-                return builder.CreateIntToPtr(source, targetType, "CastPtrToInt");
-            default:
-                failFunctionCompilation();
-        }
-    }
-    if(targetTypeId == Type::TypeID::IntegerTyID)
-    {
-        switch (sourceTypeID)
-        {
-            case Type::TypeID::IntegerTyID:
-                if (sourceType->getPrimitiveSizeInBits() > targetType->getPrimitiveSizeInBits())
-                {
-                    // assumes bools in int8/16/32s have the least significant bit set i.e. not just != 0
-                    return builder.CreateTrunc(source, targetType, "truncInt");
-                }
+                return builder.CreateIntToPtr(source, valueType, "CastPtrToInt");
             default:
                 failFunctionCompilation();
         }
@@ -751,31 +737,12 @@ Value* buildCnsInt(llvm::IRBuilder<>& builder, GenTree* node)
 Value* buildInd(llvm::IRBuilder<>& builder, GenTree* node, Value* ptr)
 {
     // TODO: Simplify genActualType(node->TypeGet()) to just genActualType(node) when main is merged
-    // first cast the pointer to create the correct load instructions, then cast the result incase we are loading a small int into an int32
-    return mapGenTreeToValue(node,
-                             castIfNecessary(builder, builder.CreateLoad(
-                                 castIfNecessary(builder, ptr,
-                                                 getLLVMTypeForVarType(node->TypeGet())->getPointerTo())), getLLVMTypeForVarType(genActualType(node->TypeGet()))));
+    return mapGenTreeToValue(node, builder.CreateLoad(castIfNecessary(builder, ptr, getLLVMTypeForVarType(genActualType(node->TypeGet()))->getPointerTo())));
 }
 
 Value* buildNe(llvm::IRBuilder<>& builder, GenTree* node, Value* op1, Value* op2)
 {
     return mapGenTreeToValue(node, builder.CreateICmpNE(op1, op2));
-}
-
-void buildReturn(llvm::IRBuilder<>& builder, GenTree* node)
-{
-    switch (node->gtType)
-    {
-        case var_types::TYP_INT:
-            builder.CreateRet(castIfNecessary(builder, getGenTreeValue(node->gtGetOp1()), getLlvmTypeForCorInfoType(_sigInfo.retType)));
-            return;
-        case var_types::TYP_VOID: 
-            builder.CreateRetVoid();
-            return;
-        default:
-            failFunctionCompilation();
-    }
 }
 
 void importStoreInd(llvm::IRBuilder<>& builder, GenTreeStoreInd* storeIndOp)
@@ -840,35 +807,12 @@ Value* localVar(llvm::IRBuilder<>& builder, GenTreeLclVar* lclVar)
     return llvmRef;
 }
 
-// LLVM operations like ICmpNE return an i1, but in the IR it is expected to be an Int (i32).
-/* E.g.
-*                                                 /--*  t10    int
-                                                  +--*  t11    int
-N009 ( 30, 14) [000012] ---XG-------        t12 = *  NE        int
-                                                  /--*  t12    int
-N011 ( 34, 17) [000016] DA-XG-------              *  STORE_LCL_VAR int    V03 loc1
-*/
-Value* widenIntIfNecessary(llvm::IRBuilder<>& builder, Value* intValue)
-{
-    if (intValue->getType()->getPrimitiveSizeInBits() < TARGET_POINTER_SIZE * 8)
-    {
-        return builder.CreateIntCast(intValue, Type::getInt32Ty(_llvmContext), true);
-    }
-    return intValue;
-}
-
 Value* storeLocalVar(llvm::IRBuilder<>& builder, GenTreeLclVar* lclVar)
 {
     if (lclVar->gtFlags & GTF_VAR_DEF)
     {
         Value* valueRef = getGenTreeValue(lclVar->gtGetOp1());
         assert(valueRef != nullptr);
-        // This could be done in the NE operator, but sometimes that would be needless, e.g. when followed by JTRUE
-        if (valueRef->getType()->isIntegerTy())
-        {
-            valueRef = widenIntIfNecessary(builder, valueRef);
-        }
-
         LclVarDsc* varDsc = _compiler->lvaGetDesc(lclVar);
 
         _localsMap->insert({lclVar->GetLclNum(), valueRef});
@@ -903,7 +847,7 @@ Value* visitNode(llvm::IRBuilder<>& builder, GenTree* node)
             emitDoNothingCall(builder);
             break;
         case GT_RETURN:
-            buildReturn(builder, node);
+            builder.CreateRetVoid();
             break;
         case GT_STORE_LCL_VAR:
             return storeLocalVar(builder, node->AsLclVar());
