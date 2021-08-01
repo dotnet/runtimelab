@@ -42,6 +42,28 @@ struct SpilledExpressionEntry
     CorInfoType m_CorInfoType;
 };
 
+// local vars that don't need to be on the shadow stack
+struct LocalVar
+{
+    Value* llvmValue;
+
+    LocalVar(Value* llvmValue) : llvmValue(llvmValue) {}
+    virtual Value* getValue(llvm::IRBuilder<>& builder)
+    {
+        return llvmValue;
+    }
+};
+
+// local vars that need to be on the shadow stack
+struct ShadowStackLocalVar : LocalVar
+{
+    ShadowStackLocalVar(Value* llvmAddress) : LocalVar(llvmAddress) {}
+    Value* getValue(llvm::IRBuilder<>& builder) override
+    {
+        return builder.CreateLoad(llvmValue);
+    }
+};
+
 typedef JitHashTable<BasicBlock*, JitPtrKeyFuncs<BasicBlock>, llvm::BasicBlock*> BlkToLlvmBlkVectorMap;
 
 static Module* _module = nullptr;
@@ -53,16 +75,17 @@ static const char* (*_addCodeReloc)(void*, void*);
 static const uint32_t (*_isRuntimeImport)(void*, CORINFO_METHOD_STRUCT_*);
 static char*     _outputFileName;
 static Function* _doNothingFunction;
-Compiler::Info                            _info;
-Compiler*                                 _compiler;
-Function*                                 _function;
-BlkToLlvmBlkVectorMap*                    _blkToLlvmBlkVectorMap;
-llvm::IRBuilder<>*                        _builder;
-std::unordered_map<GenTree*, Value*>*     _sdsuMap;
-std::unordered_map<unsigned int, Value*>* _localsMap;
-CORINFO_SIG_INFO                          _sigInfo; // sigInfo of function being compiled
-llvm::IRBuilder<>*                        _prologBuilder;
-std::vector<SpilledExpressionEntry>       _spilledExpressions;
+
+Compiler::Info                                      _info;
+Compiler*                                           _compiler;
+Function*                                           _function;
+BlkToLlvmBlkVectorMap*                              _blkToLlvmBlkVectorMap;
+llvm::IRBuilder<>*                                  _builder;
+std::unordered_map<GenTree*, Value*>*               _sdsuMap;
+std::unordered_map<unsigned int, struct LocalVar*>* _localsMap;
+CORINFO_SIG_INFO                                    _sigInfo; // sigInfo of function being compiled
+llvm::IRBuilder<>*                                  _prologBuilder;
+std::vector<SpilledExpressionEntry>                 _spilledExpressions;
 
 extern "C" DLLEXPORT void registerLlvmCallbacks(void*       thisPtr,
                                                 const char* outputFileName,
@@ -114,12 +137,25 @@ void Llvm::llvmShutdown()
 //    Module.Verify(LLVMVerifierFailureAction.LLVMAbortProcessAction);
 }
 
+void cleanUp()
+{
+    if (_localsMap != nullptr)
+    {
+        // These structs are new'ed to they need to be delete'd
+        for (std::pair<unsigned int, struct LocalVar*> element : *_localsMap)
+        {
+            delete element.second;
+        }
+    }
+}
+
 [[noreturn]] void failFunctionCompilation()
 {
     if (_function != nullptr)
     {
         _function->deleteBody();
     }
+    cleanUp();
     fatal(CORJIT_SKIPPED);
 }
 
@@ -166,11 +202,32 @@ llvm::Type* getLlvmTypeForCorInfoType(CorInfoType corInfoType) {
     }
 }
 
+// TODO: Seems like this is not a great idea, but when looking at a sigInfo from eeGetMethodSig we have CorInfoType(s) but when looking at lclVars we have LclVarDsc or var_type(s), it would be better if a common
+// denomiator was used, but I couldn't find one so introduced this method to workaround.
+CorInfoType toCorInfoType(var_types varType)
+{
+    switch (varType)
+    {
+        case var_types::TYP_BYREF:
+            return CorInfoType::CORINFO_TYPE_BYREF;
+        case var_types::TYP_LCLBLK: // TODO: what is this in the lvaTable?   Dont think it needs to be on the shadow stack, so map to int.
+        case var_types::TYP_INT:
+            return CorInfoType::CORINFO_TYPE_INT;
+        case var_types::TYP_REF:
+            return CorInfoType::CORINFO_TYPE_REFANY;
+        case var_types::TYP_UNDEF:
+            return CorInfoType::CORINFO_TYPE_UNDEF;
+        default:
+            failFunctionCompilation();
+    }
+}
+
 
 unsigned int padOffset(CorInfoType corInfoType, unsigned int atOffset)
 {
     unsigned int alignment;
-    if (corInfoType == CorInfoType::CORINFO_TYPE_BYREF || corInfoType == CorInfoType::CORINFO_TYPE_CLASS)
+    if (corInfoType == CorInfoType::CORINFO_TYPE_BYREF || corInfoType == CorInfoType::CORINFO_TYPE_CLASS ||
+        corInfoType == CorInfoType::CORINFO_TYPE_REFANY)
     {
         // simplified for just pointers
         alignment = TARGET_POINTER_SIZE; // TODO Wasm64 aligns pointers at 4 or 8?
@@ -190,7 +247,8 @@ unsigned int padOffset(CorInfoType corInfoType, unsigned int atOffset)
 unsigned int padNextOffset(CorInfoType corInfoType, unsigned int atOffset)
 {
     unsigned int size;
-    if (corInfoType == CorInfoType::CORINFO_TYPE_BYREF || corInfoType == CorInfoType::CORINFO_TYPE_CLASS)
+    if (corInfoType == CorInfoType::CORINFO_TYPE_BYREF || corInfoType == CorInfoType::CORINFO_TYPE_CLASS ||
+        corInfoType == CorInfoType::CORINFO_TYPE_REFANY)
     {
         size = TARGET_POINTER_SIZE;
     }
@@ -224,10 +282,6 @@ bool canStoreTypeOnLlvmStack(CorInfoType corInfoType)
         failFunctionCompilation();
     }
 
-    if (corInfoType == CorInfoType::CORINFO_TYPE_REFANY)
-    {
-        return false;
-    }
     if (corInfoType == CorInfoType::CORINFO_TYPE_BYREF || corInfoType == CorInfoType::CORINFO_TYPE_CLASS ||
         corInfoType == CorInfoType::CORINFO_TYPE_REFANY)
     {
@@ -513,15 +567,20 @@ int getTotalParameterOffset(CORINFO_SIG_INFO& sigInfo)
 unsigned int getTotalRealLocalOffset()
 {
     unsigned int offset = 0;
-    // TODO: might need this IL->LLVM function for locals and exception funclets
-    // for (int i = 0; i < _locals.Length; i++)
-    //{
-    //    TypeDesc localType = _locals[i].Type;
-    //    if (!CanStoreVariableOnStack(localType))
-    //    {
-    //        offset = padNextOffset(localType, offset);
-    //    }
-    //}
+
+    for (unsigned int i = 0; i < _compiler->lvaTableCnt; i++)
+    {
+        LclVarDsc tableVar = _compiler->lvaTable[i];
+        if (!tableVar.lvIsParam)
+        {
+            CorInfoType corInfoType = toCorInfoType(tableVar.TypeGet());
+            if (!canStoreTypeOnLlvmStack(corInfoType))
+            {
+                offset = padNextOffset(corInfoType, offset);
+            }
+        }
+    }
+
     return AlignUp(offset, TARGET_POINTER_SIZE);
 }
 
@@ -603,7 +662,6 @@ llvm::Value* buildUserFuncCall(GenTreeCall* call, llvm::IRBuilder<>& builder)
     }
     std::vector<llvm::Value*> argVec;
 
-    unsigned int offset = getTotalParameterOffset(_sigInfo) + getTotalLocalOffset();
     // shadowstack arg first
     Value* shadowStackForCallee = getShadowStackForCallee(builder);
     argVec.push_back(shadowStackForCallee);
@@ -786,7 +844,7 @@ Value* localVar(llvm::IRBuilder<>& builder, GenTreeLclVar* lclVar)
                 }
             }
 
-            _localsMap->insert({lclNum, llvmRef});
+            _localsMap->insert({lclNum, new struct LocalVar(llvmRef)});
         }
         else
         {
@@ -796,7 +854,7 @@ Value* localVar(llvm::IRBuilder<>& builder, GenTreeLclVar* lclVar)
     }
     else
     {
-        llvmRef = _localsMap->at(lclNum);
+        llvmRef = _localsMap->at(lclNum)->getValue(builder);
     }
 
     mapGenTreeToValue(lclVar, llvmRef);
@@ -820,7 +878,50 @@ Value* widenIntIfNecessary(llvm::IRBuilder<>& builder, Value* intValue)
     return intValue;
 }
 
-Value* storeLocalVar(llvm::IRBuilder<>& builder, GenTreeLclVar* lclVar)
+int getLocalOffsetAtIndex(GenTreeLclVar* lclVar)
+{
+    LclVarDsc* local = _compiler->lvaGetDesc(lclVar);
+    int        offset;
+
+    CorInfoType localCorInfoType = toCorInfoType(lclVar->TypeGet());
+    if (canStoreTypeOnLlvmStack(localCorInfoType))
+    {
+        offset = -1;
+    }
+    else
+    {
+        offset = 0;
+        for (unsigned int i = 0; i < lclVar->GetLclNum(); i++)
+        {
+            LclVarDsc tableVar = _compiler->lvaTable[i];
+            if (!tableVar.lvIsParam)
+            {
+                CorInfoType corInfoType = toCorInfoType(tableVar.TypeGet());
+                if (!canStoreTypeOnLlvmStack(corInfoType))
+                {
+                    offset = padNextOffset(corInfoType, offset);
+                }
+            }
+        }
+        offset = padOffset(localCorInfoType, offset);
+    }
+    return offset;
+}
+
+Value* getLocalVarAddress(llvm::IRBuilder<>& builder, GenTreeLclVar* lclVar) {
+    //// TODO: 1 - need the address context logic from ILToLLVMImporter when exception blocks are implemented
+    ////       2 - ILToLLVMImporter caches the gep in the prolog, this creates the gep each time which is wasteful - look to copy more of the logic from ILToLLVMImporter.LoadVarAddress
+    unsigned int varOffset = getLocalOffsetAtIndex(lclVar);
+    if (varOffset == -1)
+    {
+        // if these are used in exception handlers, then they need to be stored, for now just fail
+        failFunctionCompilation();
+    }
+    varOffset = varOffset + getTotalParameterOffset(_sigInfo);
+    return builder.CreateGEP(_function->getArg(0), builder.getInt32(varOffset), "lclVar");
+}
+
+void storeLocalVar(llvm::IRBuilder<>& builder, GenTreeLclVar* lclVar)
 {
     if (lclVar->gtFlags & GTF_VAR_DEF)
     {
@@ -832,10 +933,17 @@ Value* storeLocalVar(llvm::IRBuilder<>& builder, GenTreeLclVar* lclVar)
             valueRef = widenIntIfNecessary(builder, valueRef);
         }
 
-        LclVarDsc* varDsc = _compiler->lvaGetDesc(lclVar);
+        if (canStoreTypeOnLlvmStack(toCorInfoType(lclVar->TypeGet())))
+        {
+            _localsMap->insert({lclVar->GetLclNum(), new struct LocalVar(valueRef)});
+        }
+        else
+        {
+            Value* localAddress = castIfNecessary(builder, getLocalVarAddress(builder, lclVar), valueRef->getType()->getPointerTo());
+            builder.CreateStore(valueRef, localAddress);
 
-        _localsMap->insert({lclVar->GetLclNum(), valueRef});
-        return valueRef;
+            _localsMap->insert({lclVar->GetLclNum(), new struct ShadowStackLocalVar(localAddress)});
+        }
     }
     else
     {
@@ -868,7 +976,7 @@ Value* visitNode(llvm::IRBuilder<>& builder, GenTree* node)
             buildReturn(builder, node);
             break;
         case GT_STORE_LCL_VAR:
-            return storeLocalVar(builder, node->AsLclVar());
+            storeLocalVar(builder, node->AsLclVar());
             break;
         case GT_STOREIND:
             importStoreInd(builder, (GenTreeStoreInd*)node);
@@ -921,7 +1029,7 @@ void Llvm::Compile(Compiler* pCompiler)
     _blkToLlvmBlkVectorMap = &blkToLlvmBlkVectorMap;
     std::unordered_map<GenTree*, Value*> sdsuMap;
     _sdsuMap = &sdsuMap;
-    _localsMap = new std::unordered_map<unsigned int, Value*>();
+    _localsMap = new std::unordered_map<unsigned int, struct LocalVar*>();
     _spilledExpressions.clear();
     const char* mangledName = (*_getMangledMethodName)(_thisPtr, _info.compMethodHnd);
     _function    = _module->getFunction(mangledName);
@@ -953,5 +1061,7 @@ void Llvm::Compile(Compiler* pCompiler)
         }
         endImportingBasicBlock(block);
     }
+
+    cleanUp();
 }
 #endif
