@@ -356,7 +356,6 @@ Type* getLLVMTypeForVarType(var_types type)
     switch (type)
     {
         case var_types::TYP_BOOL:
-            return Type::getInt1Ty(_llvmContext);
         case var_types::TYP_BYTE:
         case var_types::TYP_UBYTE:
             return Type::getInt8Ty(_llvmContext);
