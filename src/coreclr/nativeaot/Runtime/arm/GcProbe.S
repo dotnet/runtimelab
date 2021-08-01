@@ -7,14 +7,16 @@
     .global RhpGcPoll2
 
     LEAF_ENTRY RhpGcPoll
-        PREPARE_EXTERNAL_VAR_INDIRECT_W RhpTrapThreads, 0
-        cbnz    w0, RhpGcPollRare // TrapThreadsFlags_None = 0
-        ret
+        ldr         r0, =RhpTrapThreads
+        ldr         r0, [r0]
+        cmp         r0, #TrapThreadsFlags_None
+        bne         RhpGcPollRare
+        bx          lr
     LEAF_END RhpGcPoll
 
     NESTED_ENTRY RhpGcPollRare, _TEXT, NoHandler
-        PUSH_COOP_PINVOKE_FRAME x0
+        PUSH_COOP_PINVOKE_FRAME r0
         bl RhpGcPoll2
         POP_COOP_PINVOKE_FRAME
-        ret
+        bx           lr
     NESTED_END RhpGcPollRare
