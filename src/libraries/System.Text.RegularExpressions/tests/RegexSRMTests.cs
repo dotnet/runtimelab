@@ -29,6 +29,35 @@ namespace System.Text.RegularExpressions.Tests
         private const char Turkish_i_withoutDot = '\u0131';
         private const char Kelvin_sign = '\u212A';
 
+        [Theory]
+        [InlineData("((?:0*)+?(?:.*)+?)?", "0a", 2)]
+        [InlineData("(?:(?:0?)+?(?:a?)+?)?", "0a", 2)]
+        [InlineData(@"(?i:(\()((?<a>\w+(\.\w+)*)(,(?<a>\w+(\.\w+)*)*)?)(\)))", "some.text(this.is,the.match)", 1)]
+        private void TestDifficultCasesForBacktracking(string pattern, string input, int matchcount)
+        {
+            var regex = new Regex(pattern, DFA);
+            List<Match> matches = new List<Match>();
+            var match = regex.Match(input);
+            while (match.Success)
+            {
+                matches.Add(match);
+                match = match.NextMatch();
+            }
+            Assert.Equal(matchcount, matches.Count);
+        }
+
+        [Fact]
+        public void TestMixedLazyEagerCounting()
+        {
+            string pattern = "z(a{0,5}|a{0,10}?)";
+            var input = "xyzaaaaaaaaaxyz";
+            Regex re = new Regex(pattern, DFA);
+            Match m = re.Match(input);
+            Assert.True(m.Success);
+            Assert.Equal(2, m.Index);
+            Assert.Equal(6, m.Length);
+        }
+
         [Fact]
         public void TestNFAmode()
         {
