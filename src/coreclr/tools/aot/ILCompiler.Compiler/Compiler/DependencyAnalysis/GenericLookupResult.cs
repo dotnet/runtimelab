@@ -852,7 +852,7 @@ namespace ILCompiler.DependencyAnalysis
 
         public override GenericLookupResultReferenceType LookupResultReferenceType(NodeFactory factory)
         {
-            return GenericLookupResultReferenceType.Indirect;
+            return GenericLookupResultReferenceType.Direct;
         }
 
         public override void WriteDictionaryTocData(NodeFactory factory, IGenericLookupResultTocWriter writer)
@@ -971,7 +971,7 @@ namespace ILCompiler.DependencyAnalysis
 
         public override GenericLookupResultReferenceType LookupResultReferenceType(NodeFactory factory)
         {
-            return GenericLookupResultReferenceType.Indirect;
+            return GenericLookupResultReferenceType.Direct;
         }
 
         public override void WriteDictionaryTocData(NodeFactory factory, IGenericLookupResultTocWriter writer)
