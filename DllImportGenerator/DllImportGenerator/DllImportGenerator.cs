@@ -446,7 +446,6 @@ namespace Microsoft.Interop
             MethodDeclarationSyntax originalSyntax,
             AnalyzerConfigOptions options)
         {
-            List<BoundGenerator> generators = new();
             var diagnostics = new GeneratorDiagnostics();
 
             // Generate stub code

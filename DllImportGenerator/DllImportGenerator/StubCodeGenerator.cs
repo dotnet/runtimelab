@@ -15,6 +15,8 @@ namespace Microsoft.Interop
 {
     internal sealed class StubCodeGenerator : StubCodeContext
     {
+        record struct BoundGenerator(TypePositionInfo TypeInfo, IMarshallingGenerator Generator);
+
         public override bool SingleFrameSpansNativeContext => true;
 
         public override bool AdditionalTemporaryStateLivesAcrossStages => true;
