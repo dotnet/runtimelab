@@ -11,9 +11,9 @@ namespace Microsoft.Interop
     {
         public static IEqualityComparer<ImmutableArray<(string, ImmutableArray<Diagnostic>)>> GeneratedSourceSet = new ImmutableArraySequenceEqualComparer<(string, ImmutableArray<Diagnostic>)>(new CustomValueTupleElementComparer<string, ImmutableArray<Diagnostic>>(EqualityComparer<string>.Default, new ImmutableArraySequenceEqualComparer<Diagnostic>(EqualityComparer<Diagnostic>.Default)));
         public static IEqualityComparer<(string, ImmutableArray<Diagnostic>)> GeneratedSource = new CustomValueTupleElementComparer<string, ImmutableArray<Diagnostic>>(EqualityComparer<string>.Default, new ImmutableArraySequenceEqualComparer<Diagnostic>(EqualityComparer<Diagnostic>.Default));
-        public static IEqualityComparer<(MemberDeclarationSyntax, ImmutableArray<Diagnostic>)> GeneratedSyntax = new CustomValueTupleElementComparer<MemberDeclarationSyntax, ImmutableArray<Diagnostic>>(new SyntaxEquivalentComparer(), new ImmutableArraySequenceEqualComparer<Diagnostic>(EqualityComparer<Diagnostic>.Default));
+        public static IEqualityComparer<(MemberDeclarationSyntax Syntax, ImmutableArray<Diagnostic> Diagnostics)> GeneratedSyntax = new CustomValueTupleElementComparer<MemberDeclarationSyntax, ImmutableArray<Diagnostic>>(new SyntaxEquivalentComparer(), new ImmutableArraySequenceEqualComparer<Diagnostic>(EqualityComparer<Diagnostic>.Default));
 
-        public static IEqualityComparer<(MethodDeclarationSyntax, DllImportGenerator.IncrementalStubGenerationContext)> CalculatedContextWithSyntax = new CustomValueTupleElementComparer<MethodDeclarationSyntax, DllImportGenerator.IncrementalStubGenerationContext>(new SyntaxEquivalentComparer(), EqualityComparer<DllImportGenerator.IncrementalStubGenerationContext>.Default);
+        public static IEqualityComparer<(MethodDeclarationSyntax Syntax, DllImportGenerator.IncrementalStubGenerationContext StubContext)> CalculatedContextWithSyntax = new CustomValueTupleElementComparer<MethodDeclarationSyntax, DllImportGenerator.IncrementalStubGenerationContext>(new SyntaxEquivalentComparer(), EqualityComparer<DllImportGenerator.IncrementalStubGenerationContext>.Default);
     }
 
     internal class ImmutableArraySequenceEqualComparer<T> : IEqualityComparer<ImmutableArray<T>>

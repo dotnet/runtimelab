@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.Linq;
 
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace Microsoft.Interop
 {
@@ -154,6 +155,16 @@ namespace Microsoft.Interop
                 isEnabledByDefault: true,
                 description: GetResourceString(nameof(Resources.ConfigurationNotSupportedDescription)));
 
+        public readonly static DiagnosticDescriptor MarshallingAttributeConfigurationNotSupported =
+            new DiagnosticDescriptor(
+                Ids.ConfigurationNotSupported,
+                GetResourceString(nameof(Resources.ConfigurationNotSupportedTitle)),
+                GetResourceString(nameof(Resources.ConfigurationNotSupportedMessageMarshallingInfo)),
+                Category,
+                DiagnosticSeverity.Error,
+                isEnabledByDefault: true,
+                description: GetResourceString(nameof(Resources.ConfigurationNotSupportedDescription)));
+
         public readonly static DiagnosticDescriptor TargetFrameworkNotSupported =
             new DiagnosticDescriptor(
                 Ids.TargetFrameworkNotSupported,
@@ -203,30 +214,44 @@ namespace Microsoft.Interop
         /// <param name="info">Type info for the parameter/return</param>
         /// <param name="notSupportedDetails">[Optional] Specific reason for lack of support</param>
         internal void ReportMarshallingNotSupported(
-            IMethodSymbol method,
+            MethodDeclarationSyntax method,
             TypePositionInfo info,
             string? notSupportedDetails)
         {
+            Location diagnosticLocation = Location.None;
+            string elementName = string.Empty;
+
+            if (info.IsManagedReturnPosition)
+            {
+                diagnosticLocation = Location.Create(method.SyntaxTree, method.Identifier.Span);
+                elementName = method.Identifier.ValueText;
+            }
+            else
+            {
+                Debug.Assert(info.ManagedIndex <= method.ParameterList.Parameters.Count);
+                ParameterSyntax param = method.ParameterList.Parameters[info.ManagedIndex];
+                diagnosticLocation = Location.Create(param.SyntaxTree, param.Identifier.Span);
+                elementName = param.Identifier.ValueText;
+            }
+
             if (!string.IsNullOrEmpty(notSupportedDetails))
             {
                 // Report the specific not-supported reason.
                 if (info.IsManagedReturnPosition)
                 {
                     diagnostics.Add(
-                        method.CreateDiagnostic(
+                        diagnosticLocation.CreateDiagnostic(
                             GeneratorDiagnostics.ReturnTypeNotSupportedWithDetails,
                             notSupportedDetails!,
-                            method.Name));
+                            elementName));
                 }
                 else
                 {
-                    Debug.Assert(info.ManagedIndex <= method.Parameters.Length);
-                    IParameterSymbol paramSymbol = method.Parameters[info.ManagedIndex];
                     diagnostics.Add(
-                        paramSymbol.CreateDiagnostic(
+                        diagnosticLocation.CreateDiagnostic(
                             GeneratorDiagnostics.ParameterTypeNotSupportedWithDetails,
                             notSupportedDetails!,
-                            paramSymbol.Name));
+                            elementName));
                 }
             }
             else if (info.MarshallingAttributeInfo is MarshalAsInfo)
@@ -237,20 +262,18 @@ namespace Microsoft.Interop
                 if (info.IsManagedReturnPosition)
                 {
                     diagnostics.Add(
-                        method.CreateDiagnostic(
+                        diagnosticLocation.CreateDiagnostic(
                             GeneratorDiagnostics.ReturnConfigurationNotSupported,
                             nameof(System.Runtime.InteropServices.MarshalAsAttribute),
-                            method.Name));
+                            elementName));
                 }
                 else
                 {
-                    Debug.Assert(info.ManagedIndex <= method.Parameters.Length);
-                    IParameterSymbol paramSymbol = method.Parameters[info.ManagedIndex];
                     diagnostics.Add(
-                        paramSymbol.CreateDiagnostic(
+                        diagnosticLocation.CreateDiagnostic(
                             GeneratorDiagnostics.ParameterConfigurationNotSupported,
                             nameof(System.Runtime.InteropServices.MarshalAsAttribute),
-                            paramSymbol.Name));
+                            elementName));
                 }
             }
             else
@@ -259,22 +282,31 @@ namespace Microsoft.Interop
                 if (info.IsManagedReturnPosition)
                 {
                     diagnostics.Add(
-                        method.CreateDiagnostic(
+                        diagnosticLocation.CreateDiagnostic(
                             GeneratorDiagnostics.ReturnTypeNotSupported,
-                            method.ReturnType.ToDisplayString(),
-                            method.Name));
+                            info.ManagedType.DiagnosticFormattedName,
+                            elementName));
                 }
                 else
                 {
-                    Debug.Assert(info.ManagedIndex <= method.Parameters.Length);
-                    IParameterSymbol paramSymbol = method.Parameters[info.ManagedIndex];
                     diagnostics.Add(
-                        paramSymbol.CreateDiagnostic(
+                        diagnosticLocation.CreateDiagnostic(
                             GeneratorDiagnostics.ParameterTypeNotSupported,
-                            paramSymbol.Type.ToDisplayString(),
-                            paramSymbol.Name));
+                            info.ManagedType.DiagnosticFormattedName,
+                            elementName));
                 }
             }
+        }
+
+        internal void ReportInvalidMarshallingAttributeInfo(
+            AttributeData attributeData,
+            string reasonResourceName,
+            params string[] reasonArgs)
+        {
+            diagnostics.Add(
+                attributeData.CreateDiagnostic(
+                    GeneratorDiagnostics.MarshallingAttributeConfigurationNotSupported,
+                    new LocalizableResourceString(reasonResourceName, Resources.ResourceManager, typeof(Resources), reasonArgs)));
         }
 
         /// <summary>

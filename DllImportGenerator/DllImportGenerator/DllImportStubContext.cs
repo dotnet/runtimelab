@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading;
@@ -30,23 +31,20 @@ namespace Microsoft.Interop
         }
 #pragma warning restore
 
-        public IEnumerable<BoundGenerator> BoundGenerators { get; init; }
+        public ImmutableArray<TypePositionInfo> ElementTypeInformation { get; init; }
 
         public string? StubTypeNamespace { get; init; }
 
-        public IEnumerable<TypeDeclarationSyntax> StubContainingTypes { get; init; }
+        public ImmutableArray<TypeDeclarationSyntax> StubContainingTypes { get; init; }
 
         public TypeSyntax StubReturnType { get; init; }
-
-        public ManagedToNativeCodeContext CodeContext { get; init; }
 
         public IEnumerable<ParameterSyntax> StubParameters
         {
             get
             {
-                foreach (var generator in BoundGenerators)
+                foreach (var typeInfo in ElementTypeInformation)
                 {
-                    TypePositionInfo typeInfo = generator.TypeInfo;
                     if (typeInfo.ManagedIndex != TypePositionInfo.UnsetIndex
                         && typeInfo.ManagedIndex != TypePositionInfo.ReturnIndex)
                     {
@@ -58,7 +56,7 @@ namespace Microsoft.Interop
             }
         }
 
-        public AttributeListSyntax[] AdditionalAttributes { get; init; }
+        public ImmutableArray<AttributeListSyntax> AdditionalAttributes { get; init; }
 
         public static DllImportStubContext Create(
             IMethodSymbol method,
@@ -79,7 +77,7 @@ namespace Microsoft.Interop
             }
 
             // Determine containing type(s)
-            var containingTypes = new List<TypeDeclarationSyntax>();
+            var containingTypes = ImmutableArray.CreateBuilder<TypeDeclarationSyntax>();
             INamedTypeSymbol currType = method.ContainingType;
             while (!(currType is null))
             {
@@ -97,9 +95,9 @@ namespace Microsoft.Interop
                 currType = currType.ContainingType;
             }
 
-            var (context, boundGenerators) = GenerateTypeInformation(method, dllImportData, diagnostics, env);
+            var typeInfos = GenerateTypeInformation(method, dllImportData, diagnostics, env);
 
-            var additionalAttrs = new List<AttributeListSyntax>();
+            var additionalAttrs = ImmutableArray.CreateBuilder<AttributeListSyntax>();
 
             // Define additional attributes for the stub definition.
             if (env.TargetFrameworkVersion >= new Version(5, 0) && !MethodIsSkipLocalsInit(env, method))
@@ -118,15 +116,14 @@ namespace Microsoft.Interop
             return new DllImportStubContext()
             {
                 StubReturnType = method.ReturnType.AsTypeSyntax(),
-                BoundGenerators = boundGenerators,
-                CodeContext = context,
+                ElementTypeInformation = typeInfos,
                 StubTypeNamespace = stubTypeNamespace,
-                StubContainingTypes = containingTypes,
-                AdditionalAttributes = additionalAttrs.ToArray(),
+                StubContainingTypes = containingTypes.ToImmutable(),
+                AdditionalAttributes = additionalAttrs.ToImmutable(),
             };
         }
 
-        private static (ManagedToNativeCodeContext, IEnumerable<BoundGenerator>) GenerateTypeInformation(IMethodSymbol method, GeneratedDllImportData dllImportData, GeneratorDiagnostics diagnostics, StubEnvironment env)
+        private static ImmutableArray<TypePositionInfo> GenerateTypeInformation(IMethodSymbol method, GeneratedDllImportData dllImportData, GeneratorDiagnostics diagnostics, StubEnvironment env)
         {
             // Compute the current default string encoding value.
             var defaultEncoding = CharEncoding.Undefined;
@@ -146,7 +143,7 @@ namespace Microsoft.Interop
             var marshallingAttributeParser = new MarshallingAttributeInfoParser(env.Compilation, diagnostics, defaultInfo, method);
 
             // Determine parameter and return types
-            var typeInfos = new List<TypePositionInfo>();
+            var typeInfos = ImmutableArray.CreateBuilder<TypePositionInfo>();
             for (int i = 0; i < method.Parameters.Length; i++)
             {
                 var param = method.Parameters[i];
@@ -197,27 +194,7 @@ namespace Microsoft.Interop
             }
             typeInfos.Add(retTypeInfo);
 
-            var context = new ManagedToNativeCodeContext(typeInfos);
-            var boundGenerators = new List<BoundGenerator>();
-            foreach (var typeInfo in typeInfos)
-            {
-                boundGenerators.Add(CreateGenerator(typeInfo));
-            }
-
-            return (context, boundGenerators);
-
-            BoundGenerator CreateGenerator(TypePositionInfo p)
-            {
-                try
-                {
-                    return new BoundGenerator(p, MarshallingGenerators.Create(p, context, env.Options));
-                }
-                catch (MarshallingNotSupportedException e)
-                {
-                    diagnostics.ReportMarshallingNotSupported(method, p, e.NotSupportedDetails);
-                    return new BoundGenerator(p, MarshallingGenerators.Forwarder);
-                }
-            }
+            return typeInfos.ToImmutable();
         }
 
         public override bool Equals(object obj)
@@ -229,10 +206,10 @@ namespace Microsoft.Interop
         {
             return other is not null
                 && StubTypeNamespace == other.StubTypeNamespace
-                && BoundGenerators.SequenceEqual(other.BoundGenerators)
-                && StubContainingTypes.SequenceEqual(other.StubContainingTypes, new SyntaxEquivalentComparer())
+                && ElementTypeInformation.SequenceEqual(other.ElementTypeInformation)
+                && StubContainingTypes.SequenceEqual(other.StubContainingTypes, (IEqualityComparer<TypeDeclarationSyntax>)new SyntaxEquivalentComparer())
                 && StubReturnType.IsEquivalentTo(other.StubReturnType)
-                && AdditionalAttributes.SequenceEqual(other.AdditionalAttributes, new SyntaxEquivalentComparer());
+                && AdditionalAttributes.SequenceEqual(other.AdditionalAttributes, (IEqualityComparer<AttributeListSyntax>)new SyntaxEquivalentComparer());
         }
 
         public override int GetHashCode()

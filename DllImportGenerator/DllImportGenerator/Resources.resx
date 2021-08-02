@@ -120,9 +120,6 @@
   <data name="ArraySizeMustBeSpecified" xml:space="preserve">
     <value>Marshalling an array from unmanaged to managed requires either the 'SizeParamIndex' or 'SizeConst' fields to be set on a 'MarshalAsAttribute' or the 'ConstantElementCount' or 'CountElementName' properties to be set on a 'MarshalUsingAttribute'.</value>
   </data>
-  <data name="ArraySizeParamIndexOutOfRange" xml:space="preserve">
-    <value>The 'SizeParamIndex' value in the 'MarshalAsAttribute' is out of range.</value>
-  </data>
   <data name="BlittableTypeMustBeBlittableDescription" xml:space="preserve">
     <value>A type marked with 'BlittableTypeAttribute' must be blittable.</value>
   </data>
@@ -144,6 +141,9 @@
   <data name="ConfigurationNotSupportedMessage" xml:space="preserve">
     <value>The '{0}' configuration is not supported by source-generated P/Invokes. If the specified configuration is required, use a regular `DllImport` instead.</value>
   </data>
+  <data name="ConfigurationNotSupportedMessageMarshallingInfo" xml:space="preserve">
+    <value>The specified marshalling configuration is not supported by source-generated P/Invokes. {0}.</value>
+  </data>
   <data name="ConfigurationNotSupportedMessageParameter" xml:space="preserve">
     <value>The specified '{0}' configuration for parameter '{1}' is not supported by source-generated P/Invokes. If the specified configuration is required, use a regular `DllImport` instead.</value>
   </data>
@@ -155,6 +155,9 @@
   </data>
   <data name="ConfigurationNotSupportedTitle" xml:space="preserve">
     <value>Specified configuration is not supported by source-generated P/Invokes.</value>
+  </data>
+  <data name="ConstantAndElementCountInfoDisallowed" xml:space="preserve">
+    <value>Only one of 'ConstantElementCount' or 'ElementCountInfo' may be used in a 'MarshalUsingAttribute' for a given 'ElementIndirectionLevel'</value>
   </data>
   <data name="ConvertToGeneratedDllImportDescription" xml:space="preserve">
     <value>Use 'GeneratedDllImportAttribute' instead of 'DllImportAttribute' to generate P/Invoke marshalling code at compile time</value>
@@ -180,6 +183,18 @@
   </data>
   <data name="CustomTypeMarshallingNativeToManagedUnsupported" xml:space="preserve">
     <value>The specified parameter needs to be marshalled from native to managed, but the native type '{0}' does not support it.</value>
+  </data>
+  <data name="CyclicalCountInfo" xml:space="preserve">
+    <value>This element cannot depend on '{0}' for collection size information without creating a dependency cycle</value>
+  </data>
+  <data name="DuplicateCountInfo" xml:space="preserve">
+    <value>Count information for a given element at a given indirection level can only be specified once</value>
+  </data>
+  <data name="DuplicateMarshallingInfo" xml:space="preserve">
+    <value>Multiple marshalling attributes per element per indirection level is unsupported, but duplicate information was provided for indirection level {0}</value>
+  </data>
+  <data name="ExtraneousMarshallingInfo" xml:space="preserve">
+    <value>Marshalling info was specified for 'ElementIndirectionLevel' {0}, but marshalling info was only needed for {1} level(s) of indirection</value>
   </data>
   <data name="GeneratedDllImportContainingTypeMissingModifiersDescription" xml:space="preserve">
     <value>Types that contain methods marked with 'GeneratedDllImportAttribute' must be 'partial'. P/Invoke source generation will ignore methods contained within non-partial types.</value>
@@ -229,11 +244,11 @@
   <data name="MarshallingStringOrCharAsUndefinedNotSupported" xml:space="preserve">
     <value>Marshalling string or char without explicit marshalling information is not supported. Specify either 'GeneratedDllImportAttribute.CharSet' or 'MarshalAsAttribute'.</value>
   </data>
-  <data name="NativeGenericTypeMustBeClosedDescription" xml:space="preserve">
-    <value>The native type '{0}' must be a closed generic so the emitted code can use a specific instantiation.</value>
+  <data name="NativeGenericTypeMustBeClosedOrMatchArityDescription" xml:space="preserve">
+    <value>The native type '{0}' must be a closed generic or have the same number of generic parameters as the managed type so the emitted code can use a specific instantiation.</value>
   </data>
-  <data name="NativeGenericTypeMustBeClosedMessage" xml:space="preserve">
-    <value>The native type '{0}' for managed type '{1}' must be a closed generic type.</value>
+  <data name="NativeGenericTypeMustBeClosedOrMatchArityMessage" xml:space="preserve">
+    <value>The native type '{0}' for managed type '{1}' must be a closed generic type or have the same arity as the managed type.</value>
   </data>
   <data name="NativeTypeMustBeBlittableDescription" xml:space="preserve">
     <value>A native type for a given type must be blittable.</value>
@@ -258,6 +273,12 @@
   </data>
   <data name="NativeTypeMustHaveRequiredShapeMessage" xml:space="preserve">
     <value>The native type '{0}' must be a value type and have a constructor that takes one parameter of type '{1}' or a parameterless instance method named 'ToManaged' that returns '{1}'</value>
+  </data>
+  <data name="CollectionNativeTypeMustHaveRequiredShapeDescription" xml:space="preserve">
+    <value>A native type with the 'GenericContiguousCollectionMarshallerAttribute' must have at least one of the two marshalling methods as well as a 'ManagedValues' property of type 'Span&lt;T&gt;' for some 'T' and a 'NativeValueStorage' property of type 'Span&lt;byte&gt;' to enable marshalling the managed type.</value>
+  </data>
+  <data name="CollectionNativeTypeMustHaveRequiredShapeMessage" xml:space="preserve">
+    <value>The native type '{0}' must be a value type and have a constructor that takes two parameters, one of type '{1}' and an 'int', or have a parameterless instance method named 'ToManaged' that returns '{1}' as well as a 'ManagedValues' property of type 'Span&lt;T&gt;' for some 'T' and a 'NativeValueStorage' property of type 'Span&lt;byte&gt;'</value>
   </data>
   <data name="OutByValueNotSupportedDescription" xml:space="preserve">
     <value>The '[Out]' attribute is only supported on array parameters.</value>

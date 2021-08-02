@@ -33,7 +33,7 @@ namespace Microsoft.Interop
 
         public TypeSyntax AsNativeType(TypePositionInfo info)
         {
-            Debug.Assert(info.ManagedType is SpecialTypeInfo(_, SpecialType.System_Char));
+            Debug.Assert(info.ManagedType is SpecialTypeInfo(_, _, SpecialType.System_Char));
             return NativeType;
         }
 

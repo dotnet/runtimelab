@@ -13,8 +13,12 @@ using static Microsoft.Interop.StubCodeContext;
 
 namespace Microsoft.Interop
 {
-    internal sealed class StubCodeGenerator
+    internal sealed class StubCodeGenerator : StubCodeContext
     {
+        public override bool SingleFrameSpansNativeContext => true;
+
+        public override bool AdditionalTemporaryStateLivesAcrossStages => true;
+
         /// <summary>
         /// Identifier for managed return value
         /// </summary>
@@ -24,7 +28,7 @@ namespace Microsoft.Interop
         /// Identifier for native return value
         /// </summary>
         /// <remarks>Same as the managed identifier by default</remarks>
-        public string ReturnNativeIdentifier { get; private set; } = ReturnIdentifier;
+        public string ReturnNativeIdentifier { get; set; } = ReturnIdentifier;
 
         private const string InvokeReturnIdentifier = "__invokeRetVal";
         private const string LastErrorIdentifier = "__lastError";
@@ -35,7 +39,6 @@ namespace Microsoft.Interop
 
         private readonly AnalyzerConfigOptions options;
         private readonly GeneratedDllImportData dllImportData;
-        private readonly StubCodeContext context;
         private readonly List<BoundGenerator> paramMarshallers;
         private readonly BoundGenerator retMarshaller;
         private readonly List<BoundGenerator> sortedMarshallers;
@@ -43,12 +46,11 @@ namespace Microsoft.Interop
 
         public StubCodeGenerator(
             GeneratedDllImportData dllImportData,
-            IEnumerable<BoundGenerator> elements,
-            ManagedToNativeCodeContext context,
-            AnalyzerConfigOptions options)
+            IEnumerable<TypePositionInfo> elements,
+            AnalyzerConfigOptions options,
+            Action<TypePositionInfo, MarshallingNotSupportedException> marshallingNotSupportedCallback)
         {
             this.dllImportData = dllImportData;
-            this.context = context;
             this.options = options;
 
             List<BoundGenerator> allMarshallers = new();
@@ -59,22 +61,23 @@ namespace Microsoft.Interop
 
             foreach (var element in elements)
             {
-                allMarshallers.Add(element);
-                if (element.TypeInfo.IsManagedReturnPosition)
+                BoundGenerator generator = CreateGenerator(element);
+                allMarshallers.Add(generator);
+                if (element.IsManagedReturnPosition)
                 {
                     Debug.Assert(!foundManagedRetMarshaller);
-                    managedRetMarshaller = element;
+                    managedRetMarshaller = generator;
                     foundManagedRetMarshaller = true;
                 }
-                if (element.TypeInfo.IsNativeReturnPosition)
+                if (element.IsNativeReturnPosition)
                 {
                     Debug.Assert(!foundNativeRetMarshaller);
-                    nativeRetMarshaller = element;
+                    nativeRetMarshaller = generator;
                     foundNativeRetMarshaller = true;
                 }
-                if (!element.TypeInfo.IsManagedReturnPosition && !element.TypeInfo.IsNativeReturnPosition)
+                if (!element.IsManagedReturnPosition && !element.IsNativeReturnPosition)
                 {
-                    paramMarshallers.Add(element);
+                    paramMarshallers.Add(generator);
                 }
             }
 
@@ -118,10 +121,10 @@ namespace Microsoft.Interop
                 static m => GetInfoDependencies(m.TypeInfo))
                 .ToList();
 
-            if (managedRetMarshaller.Generator.UsesNativeIdentifier(managedRetMarshaller.TypeInfo, context))
+            if (managedRetMarshaller.Generator.UsesNativeIdentifier(managedRetMarshaller.TypeInfo, this))
             {
                 // Update the native identifier for the return value
-                context.ReturnNativeIdentifier = $"{ReturnIdentifier}{GeneratedNativeIdentifierSuffix}";
+                this.ReturnNativeIdentifier = $"{ReturnIdentifier}{GeneratedNativeIdentifierSuffix}";
             }
 
             static IEnumerable<int> GetInfoDependencies(TypePositionInfo info)
@@ -145,9 +148,52 @@ namespace Microsoft.Interop
                 }
                 return info.ManagedIndex;
             }
+            
+            BoundGenerator CreateGenerator(TypePositionInfo p)
+            {
+                try
+                {
+                    return new BoundGenerator(p, MarshallingGenerators.Create(p, this, options));
+                }
+                catch (MarshallingNotSupportedException e)
+                {
+                    marshallingNotSupportedCallback(p, e);
+                    return new BoundGenerator(p, MarshallingGenerators.Forwarder);
+                }
+            }
         }
 
-        public BlockSyntax GenerateSyntax(string methodName, AttributeListSyntax? forwardedAttributes)
+        public override (string managed, string native) GetIdentifiers(TypePositionInfo info)
+        {
+            // If the info is in the managed return position, then we need to generate a name to use
+            // for both the managed and native values since there is no name in the signature for the return value.
+            if (info.IsManagedReturnPosition)
+            {
+                return (ReturnIdentifier, ReturnNativeIdentifier);
+            }
+            // If the info is in the native return position but is not in the managed return position,
+            // then that means that the stub is introducing an additional info for the return position.
+            // This means that there is no name in source for this info, so we must provide one here.
+            // We can't use ReturnIdentifier or ReturnNativeIdentifier since that will be used by the managed return value.
+            // Additionally, since all use cases today of a TypePositionInfo in the native position but not the managed
+            // are for infos that aren't in the managed signature at all (PreserveSig scenario), we don't have a name
+            // that we can use from source. As a result, we generate another name for the native return value
+            // and use the same name for native and managed.
+            else if (info.IsNativeReturnPosition)
+            {
+                Debug.Assert(info.ManagedIndex == TypePositionInfo.UnsetIndex);
+                return (InvokeReturnIdentifier, InvokeReturnIdentifier);
+            }
+            else
+            {
+                // If the info isn't in either the managed or native return position,
+                // then we can use the base implementation since we have an identifier name provided
+                // in the original metadata.
+                return base.GetIdentifiers(info);
+            }
+        }
+
+        public BlockSyntax GenerateBody(string methodName, AttributeListSyntax? forwardedAttributes)
         {
             string dllImportName = methodName + "__PInvoke__";
             var setupStatements = new List<StatementSyntax>();
@@ -301,11 +347,11 @@ namespace Microsoft.Interop
             void GenerateStatementsForStage(Stage stage, List<StatementSyntax> statementsToUpdate)
             {
                 int initialCount = statementsToUpdate.Count;
-                context.CurrentStage = stage;
+                this.CurrentStage = stage;
 
                 if (!invokeReturnsVoid && (stage is Stage.Setup or Stage.Cleanup))
                 {
-                    var retStatements = retMarshaller.Generator.Generate(retMarshaller.TypeInfo, context);
+                    var retStatements = retMarshaller.Generator.Generate(retMarshaller.TypeInfo, this);
                     statementsToUpdate.AddRange(retStatements);
                 }
 
@@ -316,7 +362,7 @@ namespace Microsoft.Interop
 
                     foreach (var marshaller in sortedMarshallers)
                     {
-                        statementsToUpdate.AddRange(marshaller.Generator.Generate(marshaller.TypeInfo, context));
+                        statementsToUpdate.AddRange(marshaller.Generator.Generate(marshaller.TypeInfo, this));
                     }
                 }
                 else
@@ -324,7 +370,7 @@ namespace Microsoft.Interop
                     // Generate code for each parameter for the current stage in declaration order.
                     foreach (var marshaller in paramMarshallers)
                     {
-                        var generatedStatements = marshaller.Generator.Generate(marshaller.TypeInfo, context);
+                        var generatedStatements = marshaller.Generator.Generate(marshaller.TypeInfo, this);
                         statementsToUpdate.AddRange(generatedStatements);
                     }
                 }
@@ -345,11 +391,11 @@ namespace Microsoft.Interop
             void GenerateStatementsForInvoke(List<StatementSyntax> statementsToUpdate, InvocationExpressionSyntax invoke)
             {
                 var fixedStatements = new List<FixedStatementSyntax>();
-                context.CurrentStage = Stage.Pin;
+                this.CurrentStage = Stage.Pin;
                 // Generate code for each parameter for the current stage
                 foreach (var marshaller in paramMarshallers)
                 {
-                    var generatedStatements = marshaller.Generator.Generate(marshaller.TypeInfo, context);
+                    var generatedStatements = marshaller.Generator.Generate(marshaller.TypeInfo, this);
                     // Collect all the fixed statements. These will be used in the Invoke stage.
                     foreach (var statement in generatedStatements)
                     {
@@ -360,12 +406,12 @@ namespace Microsoft.Interop
                     }
                 }
 
-                context.CurrentStage = Stage.Invoke;
+                this.CurrentStage = Stage.Invoke;
                 // Generate code for each parameter for the current stage
                 foreach (var marshaller in paramMarshallers)
                 {
                     // Get arguments for invocation
-                    ArgumentSyntax argSyntax = marshaller.Generator.AsArgument(marshaller.TypeInfo, context);
+                    ArgumentSyntax argSyntax = marshaller.Generator.AsArgument(marshaller.TypeInfo, this);
                     invoke = invoke.AddArgumentListArguments(argSyntax);
                 }
 
@@ -380,7 +426,7 @@ namespace Microsoft.Interop
                     invokeStatement = ExpressionStatement(
                         AssignmentExpression(
                             SyntaxKind.SimpleAssignmentExpression,
-                            IdentifierName(context.GetIdentifiers(retMarshaller.TypeInfo).native),
+                            IdentifierName(this.GetIdentifiers(retMarshaller.TypeInfo).native),
                             invoke));
                 }
 
@@ -435,7 +481,7 @@ namespace Microsoft.Interop
 
         private void AppendVariableDeclations(List<StatementSyntax> statementsToUpdate, TypePositionInfo info, IMarshallingGenerator generator)
         {
-            var (managed, native) = context.GetIdentifiers(info);
+            var (managed, native) = this.GetIdentifiers(info);
 
             // Declare variable for return value
             if (info.IsManagedReturnPosition || info.IsNativeReturnPosition)
@@ -446,7 +492,7 @@ namespace Microsoft.Interop
             }
 
             // Declare variable with native type for parameter or return value
-            if (generator.UsesNativeIdentifier(info, context))
+            if (generator.UsesNativeIdentifier(info, this))
             {
                 statementsToUpdate.Add(MarshallerHelpers.DeclareWithDefault(
                     generator.AsNativeType(info),

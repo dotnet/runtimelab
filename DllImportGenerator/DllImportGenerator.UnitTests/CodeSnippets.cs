@@ -178,7 +178,6 @@ using System.Runtime.InteropServices;
 partial class Test
 {
     [GeneratedDllImport(""DoesNotExist"",
-        CallingConvention = CallingConvention.Cdecl,
         CharSet = CharSet.Unicode,
         EntryPoint = ""UserDefinedEntryPoint"",
         ExactSpelling = true,
@@ -202,7 +201,6 @@ partial class Test
     private const int Two = 2;
 
     [GeneratedDllImport(nameof(Test),
-        CallingConvention = (CallingConvention)1,
         CharSet = (CharSet)2,
         EntryPoint = EntryPointName,
         ExactSpelling = 0 != 1,
@@ -211,7 +209,6 @@ partial class Test
     public static partial void Method1();
 
     [GeneratedDllImport(nameof(Test),
-        CallingConvention = (CallingConvention)One,
         CharSet = (CharSet)Two,
         EntryPoint = EntryPointName,
         ExactSpelling = One != Two,
@@ -1328,6 +1325,17 @@ partial class Test
     public static partial void Method(
         [MarshalUsing(CountElementName=""arr2"")] ref int[] arr,
         [MarshalUsing(CountElementName=""arr"")] ref int[] arr2
+    );
+}
+";
+        public static string MutuallyRecursiveSizeParamIndexOnParameter => @"
+using System.Runtime.InteropServices;
+partial class Test
+{
+    [GeneratedDllImport(""DoesNotExist"")]
+    public static partial void Method(
+        [MarshalAs(UnmanagedType.LPArray, SizeParamIndex=1)] ref int[] arr,
+        [MarshalAs(UnmanagedType.LPArray, SizeParamIndex=0)] ref int[] arr2
     );
 }
 ";

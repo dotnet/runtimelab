@@ -10,28 +10,29 @@ namespace Microsoft.Interop
     /// <summary>
     /// A discriminated union that contains enough info about a managed type to determine a marshalling generator and generate code.
     /// </summary>
-    internal abstract record ManagedTypeInfo(string FullTypeName)
+    internal abstract record ManagedTypeInfo(string FullTypeName, string DiagnosticFormattedName)
     {
         public TypeSyntax Syntax { get; } = SyntaxFactory.ParseTypeName(FullTypeName);
 
         public static ManagedTypeInfo CreateTypeInfoForTypeSymbol(ITypeSymbol type)
         {
             string typeName = type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+            string diagonsticFormattedName = type.ToDisplayString();
             if (type.SpecialType != SpecialType.None)
             {
-                return new SpecialTypeInfo(typeName, type.SpecialType);
+                return new SpecialTypeInfo(typeName, diagonsticFormattedName, type.SpecialType);
             }
             if (type.TypeKind == TypeKind.Enum)
             {
-                return new EnumTypeInfo(typeName, ((INamedTypeSymbol)type).EnumUnderlyingType!.SpecialType);
+                return new EnumTypeInfo(typeName, diagonsticFormattedName, ((INamedTypeSymbol)type).EnumUnderlyingType!.SpecialType);
             }
             if (type.TypeKind == TypeKind.Pointer)
             {
-                return new PointerTypeInfo(typeName, IsFunctionPointer: false);
+                return new PointerTypeInfo(typeName, diagonsticFormattedName, IsFunctionPointer: false);
             }
             if (type.TypeKind == TypeKind.FunctionPointer)
             {
-                return new PointerTypeInfo(typeName, IsFunctionPointer: true);
+                return new PointerTypeInfo(typeName, diagonsticFormattedName, IsFunctionPointer: true);
             }
             if (type.TypeKind == TypeKind.Array && type is IArrayTypeSymbol { IsSZArray: true } arraySymbol)
             {
@@ -39,16 +40,16 @@ namespace Microsoft.Interop
             }
             if (type.TypeKind == TypeKind.Delegate)
             {
-                return new DelegateTypeInfo(typeName);
+                return new DelegateTypeInfo(typeName, diagonsticFormattedName);
             }
-            return new SimpleManagedTypeInfo(typeName);
+            return new SimpleManagedTypeInfo(typeName, diagonsticFormattedName);
         }
     }
 
-    internal sealed record SpecialTypeInfo(string FullTypeName, SpecialType SpecialType) : ManagedTypeInfo(FullTypeName)
+    internal sealed record SpecialTypeInfo(string FullTypeName, string DiagnosticFormattedName, SpecialType SpecialType) : ManagedTypeInfo(FullTypeName, DiagnosticFormattedName)
     {
-        public static readonly SpecialTypeInfo Int32 = new("int", SpecialType.System_Int32);
-        public static readonly SpecialTypeInfo Void = new("void", SpecialType.System_Void);
+        public static readonly SpecialTypeInfo Int32 = new("int", "int", SpecialType.System_Int32);
+        public static readonly SpecialTypeInfo Void = new("void", "void", SpecialType.System_Void);
 
         public bool Equals(SpecialTypeInfo? other)
         {
@@ -61,13 +62,13 @@ namespace Microsoft.Interop
         }
     }
 
-    internal sealed record EnumTypeInfo(string FullTypeName, SpecialType UnderlyingType) : ManagedTypeInfo(FullTypeName);
+    internal sealed record EnumTypeInfo(string FullTypeName, string DiagnosticFormattedName, SpecialType UnderlyingType) : ManagedTypeInfo(FullTypeName, DiagnosticFormattedName);
 
-    internal sealed record PointerTypeInfo(string FullTypeName, bool IsFunctionPointer) : ManagedTypeInfo(FullTypeName);
+    internal sealed record PointerTypeInfo(string FullTypeName, string DiagnosticFormattedName, bool IsFunctionPointer) : ManagedTypeInfo(FullTypeName, DiagnosticFormattedName);
 
-    internal sealed record SzArrayType(ManagedTypeInfo ElementTypeInfo) : ManagedTypeInfo($"{ElementTypeInfo.FullTypeName}[]");
+    internal sealed record SzArrayType(ManagedTypeInfo ElementTypeInfo) : ManagedTypeInfo($"{ElementTypeInfo.FullTypeName}[]", $"{ElementTypeInfo.DiagnosticFormattedName}[]");
 
-    internal sealed record DelegateTypeInfo(string FullTypeName) : ManagedTypeInfo(FullTypeName);
+    internal sealed record DelegateTypeInfo(string FullTypeName, string DiagnosticFormattedName) : ManagedTypeInfo(FullTypeName, DiagnosticFormattedName);
 
-    internal sealed record SimpleManagedTypeInfo(string FullTypeName) : ManagedTypeInfo(FullTypeName);
+    internal sealed record SimpleManagedTypeInfo(string FullTypeName, string DiagnosticFormattedName) : ManagedTypeInfo(FullTypeName, DiagnosticFormattedName);
 }

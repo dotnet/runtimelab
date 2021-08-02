@@ -70,15 +70,6 @@ namespace Microsoft.Interop {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to The &apos;SizeParamIndex&apos; value in the &apos;MarshalAsAttribute&apos; is out of range..
-        /// </summary>
-        internal static string ArraySizeParamIndexOutOfRange {
-            get {
-                return ResourceManager.GetString("ArraySizeParamIndexOutOfRange", resourceCulture);
-            }
-        }
-        
-        /// <summary>
         ///   Looks up a localized string similar to A type marked with &apos;BlittableTypeAttribute&apos; must be blittable..
         /// </summary>
         internal static string BlittableTypeMustBeBlittableDescription {
@@ -115,6 +106,24 @@ namespace Microsoft.Interop {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to A native type with the &apos;GenericContiguousCollectionMarshallerAttribute&apos; must have at least one of the two marshalling methods as well as a &apos;ManagedValues&apos; property of type &apos;Span&lt;T&gt;&apos; for some &apos;T&apos; and a &apos;NativeValueStorage&apos; property of type &apos;Span&lt;byte&gt;&apos; to enable marshalling the managed type..
+        /// </summary>
+        internal static string CollectionNativeTypeMustHaveRequiredShapeDescription {
+            get {
+                return ResourceManager.GetString("CollectionNativeTypeMustHaveRequiredShapeDescription", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The native type &apos;{0}&apos; must be a value type and have a constructor that takes two parameters, one of type &apos;{1}&apos; and an &apos;int&apos;, or have a parameterless instance method named &apos;ToManaged&apos; that returns &apos;{1}&apos; as well as a &apos;ManagedValues&apos; property of type &apos;Span&lt;T&gt;&apos; for some &apos;T&apos; and a &apos;NativeValueStorage&apos; property of type &apos;Span&lt;byte&gt;&apos;.
+        /// </summary>
+        internal static string CollectionNativeTypeMustHaveRequiredShapeMessage {
+            get {
+                return ResourceManager.GetString("CollectionNativeTypeMustHaveRequiredShapeMessage", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to The specified collection size parameter for an collection must be an integer type. If the size information is applied to a nested collection, the size parameter must be a collection of one less level of nesting with an integral element..
         /// </summary>
         internal static string CollectionSizeParamTypeMustBeIntegral {
@@ -138,6 +147,15 @@ namespace Microsoft.Interop {
         internal static string ConfigurationNotSupportedMessage {
             get {
                 return ResourceManager.GetString("ConfigurationNotSupportedMessage", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The specified marshalling configuration is not supported by source-generated P/Invokes. {0}.
+        /// </summary>
+        internal static string ConfigurationNotSupportedMessageMarshallingInfo {
+            get {
+                return ResourceManager.GetString("ConfigurationNotSupportedMessageMarshallingInfo", resourceCulture);
             }
         }
         
@@ -174,6 +192,15 @@ namespace Microsoft.Interop {
         internal static string ConfigurationNotSupportedTitle {
             get {
                 return ResourceManager.GetString("ConfigurationNotSupportedTitle", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Only one of &apos;ConstantElementCount&apos; or &apos;ElementCountInfo&apos; may be used in a &apos;MarshalUsingAttribute&apos; for a given &apos;ElementIndirectionLevel&apos;.
+        /// </summary>
+        internal static string ConstantAndElementCountInfoDisallowed {
+            get {
+                return ResourceManager.GetString("ConstantAndElementCountInfoDisallowed", resourceCulture);
             }
         }
         
@@ -246,6 +273,42 @@ namespace Microsoft.Interop {
         internal static string CustomTypeMarshallingNativeToManagedUnsupported {
             get {
                 return ResourceManager.GetString("CustomTypeMarshallingNativeToManagedUnsupported", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to This element cannot depend on &apos;{0}&apos; for collection size information without creating a dependency cycle.
+        /// </summary>
+        internal static string CyclicalCountInfo {
+            get {
+                return ResourceManager.GetString("CyclicalCountInfo", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Count information for a given element at a given indirection level can only be specified once.
+        /// </summary>
+        internal static string DuplicateCountInfo {
+            get {
+                return ResourceManager.GetString("DuplicateCountInfo", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Multiple marshalling attributes per element per indirection level is unsupported, but duplicate information was provided for indirection level {0}.
+        /// </summary>
+        internal static string DuplicateMarshallingInfo {
+            get {
+                return ResourceManager.GetString("DuplicateMarshallingInfo", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Marshalling info was specified for &apos;ElementIndirectionLevel&apos; {0}, but marshalling info was only needed for {1} levels of indirection.
+        /// </summary>
+        internal static string ExtraneousMarshallingInfo {
+            get {
+                return ResourceManager.GetString("ExtraneousMarshallingInfo", resourceCulture);
             }
         }
         
@@ -394,20 +457,20 @@ namespace Microsoft.Interop {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to The native type &apos;{0}&apos; must be a closed generic so the emitted code can use a specific instantiation..
+        ///   Looks up a localized string similar to The native type &apos;{0}&apos; must be a closed generic or have the same number of generic parameters as the managed type so the emitted code can use a specific instantiation..
         /// </summary>
-        internal static string NativeGenericTypeMustBeClosedDescription {
+        internal static string NativeGenericTypeMustBeClosedOrMatchArityDescription {
             get {
-                return ResourceManager.GetString("NativeGenericTypeMustBeClosedDescription", resourceCulture);
+                return ResourceManager.GetString("NativeGenericTypeMustBeClosedOrMatchArityDescription", resourceCulture);
             }
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to The native type &apos;{0}&apos; for managed type &apos;{1}&apos; must be a closed generic type..
+        ///   Looks up a localized string similar to The native type &apos;{0}&apos; for managed type &apos;{1}&apos; must be a closed generic type or have the same arity as the managed type..
         /// </summary>
-        internal static string NativeGenericTypeMustBeClosedMessage {
+        internal static string NativeGenericTypeMustBeClosedOrMatchArityMessage {
             get {
-                return ResourceManager.GetString("NativeGenericTypeMustBeClosedMessage", resourceCulture);
+                return ResourceManager.GetString("NativeGenericTypeMustBeClosedOrMatchArityMessage", resourceCulture);
             }
         }
         
