@@ -55,7 +55,7 @@ struct LocalVar
     LocalVarLocation location;
 
     LocalVar(LocalVarLocation location, Value* llvmValue) : llvmValue(llvmValue), location(location) {}
-    virtual Value* getValue(llvm::IRBuilder<>& builder)
+    Value* getValue(llvm::IRBuilder<>& builder)
     {
         return location == LocalVarLocation::LlvmStack ? llvmValue : builder.CreateLoad(llvmValue);
     }
