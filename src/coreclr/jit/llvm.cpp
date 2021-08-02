@@ -42,7 +42,7 @@ struct SpilledExpressionEntry
     CorInfoType m_CorInfoType;
 };
 
-enum LocalVarLocation
+enum class LocalVarLocation
 {
     LlvmStack,
     ShadowStack
