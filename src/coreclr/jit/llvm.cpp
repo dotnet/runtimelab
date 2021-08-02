@@ -48,7 +48,7 @@ enum class LocalVarLocation
     ShadowStack
 };
 
-// local vars that don't need to be on the shadow stack
+// Helper for unifying vars that do and don't need to be on the shadow stack.
 struct LocalVar
 {
     Value* llvmValue;
