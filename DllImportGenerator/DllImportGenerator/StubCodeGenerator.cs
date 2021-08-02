@@ -28,7 +28,7 @@ namespace Microsoft.Interop
         /// Identifier for native return value
         /// </summary>
         /// <remarks>Same as the managed identifier by default</remarks>
-        public string ReturnNativeIdentifier { get; set; } = ReturnIdentifier;
+        public string ReturnNativeIdentifier { get; } = ReturnIdentifier;
 
         private const string InvokeReturnIdentifier = "__invokeRetVal";
         private const string LastErrorIdentifier = "__lastError";
