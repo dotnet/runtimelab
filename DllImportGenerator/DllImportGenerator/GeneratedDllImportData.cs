@@ -5,7 +5,6 @@ using System.Text;
 
 namespace Microsoft.Interop
 {
-
     /// <summary>
     /// Flags used to indicate members on GeneratedDllImport attribute.
     /// </summary>
