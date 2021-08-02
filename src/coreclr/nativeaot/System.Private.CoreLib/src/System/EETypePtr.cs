@@ -277,6 +277,30 @@ namespace System
             }
         }
 
+        internal bool IsFinalizable
+        {
+            get
+            {
+                return _value->IsFinalizable;
+            }
+        }
+
+        internal bool IsParameterizedType
+        {
+            get
+            {
+                return _value->IsParameterizedType;
+            }
+        }
+
+        internal bool RequiresAlign8
+        {
+            get
+            {
+                return _value->RequiresAlign8;
+            }
+        }
+
         internal EETypePtr NullableType
         {
             get
