@@ -11,7 +11,6 @@ namespace Internal.JitInterface
 {
     public unsafe sealed partial class CorInfoImpl
     {
-        private MethodIL _methodIL;
         private MethodDebugInformation _debugInformation;
 
         [UnmanagedCallersOnly]
@@ -173,17 +172,7 @@ namespace Internal.JitInterface
 
         public void InitialiseDebugInfo(MethodDesc method, MethodIL methodIL)
         {
-            MethodIL uninstantiatiedMethodIL = methodIL.GetMethodILDefinition();
-            if (methodIL != uninstantiatiedMethodIL)
-            {
-                MethodDesc sharedMethod = method.GetSharedRuntimeFormMethodTarget();
-                _methodIL = new InstantiatedMethodIL(sharedMethod, uninstantiatiedMethodIL);
-            }
-            else
-            {
-                _methodIL = methodIL;
-            }
-            _debugInformation = _compilation.GetDebugInfo(_methodIL);
+            _debugInformation = _compilation.GetDebugInfo(methodIL);
         }
 
         void AddOrReturnGlobalSymbol(ISortableSymbolNode gcStaticSymbol, NameMangler nameMangler)
