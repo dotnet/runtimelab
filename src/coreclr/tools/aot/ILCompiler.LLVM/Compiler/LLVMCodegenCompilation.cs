@@ -126,7 +126,7 @@ namespace ILCompiler
             {
                 var sig = method.Signature;
                 corInfo.RegisterLlvmCallbacks((IntPtr)Unsafe.AsPointer(ref corInfo), _outputFile, Module.Target, Module.DataLayout);
-                    corInfo.InitialiseDebugInfo(method, GetMethodIL(method));
+                corInfo.InitialiseDebugInfo(method, GetMethodIL(method));
                 corInfo.CompileMethod(methodCodeNodeNeedingCode);
                 methodCodeNodeNeedingCode.CompilationCompleted = true;
                 // TODO: delete this external function when old module is gone
