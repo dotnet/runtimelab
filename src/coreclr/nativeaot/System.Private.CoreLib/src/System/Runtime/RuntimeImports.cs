@@ -477,73 +477,9 @@ namespace System.Runtime
         [RuntimeImport(RuntimeLibrary, "RhResolveDispatchOnType")]
         internal static extern IntPtr RhResolveDispatchOnType(EETypePtr instanceType, EETypePtr interfaceType, ushort slot);
 
-        // Keep in sync with RH\src\rtu\runtimeinstance.cpp
-        internal enum RuntimeHelperKind
-        {
-            AllocateObject,
-            IsInst,
-            CastClass,
-            AllocateArray,
-            CheckArrayElementType,
-        }
-
-        internal static unsafe IntPtr RhGetRuntimeHelperForType(EETypePtr pEEType, RuntimeHelperKind kind)
-        {
-            switch (kind)
-            {
-            case RuntimeHelperKind.AllocateObject:
-#if FEATURE_64BIT_ALIGNMENT
-                if (pEEType.RequiresAlign8)
-                {
-                    if (pEEType.IsFinalizable)
-                        return (IntPtr)(delegate*<EEType*, object>)&InternalCalls.RhpNewFinalizableAlign8;
-                    else if (pEEType.IsValueType)            // returns true for enum types as well
-                        return (IntPtr)(delegate*<EEType*, object>)&InternalCalls.RhpNewFastMisalign;
-                    else
-                        return (IntPtr)(delegate*<EEType*, object>)&InternalCalls.RhpNewFastAlign8;
-                }
-#endif // FEATURE_64BIT_ALIGNMENT
-
-                if (pEEType.IsFinalizable)
-                    return (IntPtr)(delegate*<EEType*, object>)&InternalCalls.RhpNewFinalizable;
-                else
-                    return (IntPtr)(delegate*<EEType*, object>)&InternalCalls.RhpNewFast;
-
-            case RuntimeHelperKind.IsInst:
-                if (pEEType.IsArray)
-                    return (IntPtr)(delegate*<EEType*, object, object>)&TypeCast.IsInstanceOfArray;
-                else if (pEEType.IsInterface)
-                    return (IntPtr)(delegate*<EEType*, object, object>)&TypeCast.IsInstanceOfInterface;
-                else if (pEEType.IsParameterizedType)
-                    return (IntPtr)(delegate*<EEType*, object, object>)&TypeCast.IsInstanceOf; // Array handled above; pointers and byrefs handled here
-                else
-                    return (IntPtr)(delegate*<EEType*, object, object>)&TypeCast.IsInstanceOfClass;
-
-            case RuntimeHelperKind.CastClass:
-                if (pEEType.IsArray)
-                    return (IntPtr)(delegate*<EEType*, object, object>)&TypeCast.CheckCastArray;
-                else if (pEEType.IsInterface)
-                    return (IntPtr)(delegate*<EEType*, object, object>)&TypeCast.CheckCastInterface;
-                else if (pEEType.IsParameterizedType)
-                    return (IntPtr)(delegate*<EEType*, object, object>)&TypeCast.CheckCast; // Array handled above; pointers and byrefs handled here
-                else
-                    return (IntPtr)(delegate*<EEType*, object, object>)&TypeCast.CheckCastClass;
-
-            case RuntimeHelperKind.AllocateArray:
-#if FEATURE_64BIT_ALIGNMENT
-                if (pEEType.RequiresAlign8)
-                    return (IntPtr)(delegate*<EEType*, int, object>)&InternalCalls.RhpNewArrayAlign8;
-#endif // FEATURE_64BIT_ALIGNMENT
-
-                return (IntPtr)(delegate*<EEType*, int, object>)&InternalCalls.RhpNewArray;
-
-            case RuntimeHelperKind.CheckArrayElementType:
-                return (IntPtr)(delegate*<EEType*, object, void>)&TypeCast.CheckVectorElemAddr;
-
-            default:
-                throw new NotImplementedException();
-            }
-        }
+        [MethodImplAttribute(MethodImplOptions.InternalCall)]
+        [RuntimeImport(RuntimeLibrary, "RhGetRuntimeHelperForType")]
+        internal static extern unsafe IntPtr RhGetRuntimeHelperForType(EETypePtr pEEType, RuntimeHelperKind kind);
 
         //
         // Support for GC and HandleTable callouts.
