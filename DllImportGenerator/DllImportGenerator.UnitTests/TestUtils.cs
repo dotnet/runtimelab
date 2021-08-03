@@ -119,7 +119,7 @@ namespace DllImportGenerator.UnitTests
                     "net6.0",
                     new PackageIdentity(
                         "Microsoft.NETCore.App.Ref",
-                        "6.0.0-preview.6.21317.4"),
+                        "6.0.0-preview.7.21376.23"),
                     Path.Combine("ref", "net6.0"));
 
             // Include the assembly containing the new attribute and all of its references.
