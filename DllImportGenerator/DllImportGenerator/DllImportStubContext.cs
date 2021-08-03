@@ -214,7 +214,7 @@ namespace Microsoft.Interop
 
         public override int GetHashCode()
         {
-            return StubTypeNamespace?.GetHashCode() ?? 0;
+            throw new UnreachableException();
         }
 
         private static bool MethodIsSkipLocalsInit(StubEnvironment env, IMethodSymbol method)

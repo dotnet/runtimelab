@@ -30,10 +30,8 @@ namespace Microsoft.Interop
     /// The names of these members map directly to those on the
     /// DllImportAttribute and should not be changed.
     /// </remarks>
-    public sealed record GeneratedDllImportData
+    public record struct GeneratedDllImportData(string ModuleName)
     {
-        public string ModuleName { get; set; } = null!;
-
         /// <summary>
         /// Value set by the user on the original declaration.
         /// </summary>

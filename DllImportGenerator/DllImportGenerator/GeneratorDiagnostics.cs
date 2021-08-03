@@ -177,7 +177,7 @@ namespace Microsoft.Interop
 
         private readonly List<Diagnostic> diagnostics = new List<Diagnostic>();
 
-        public IReadOnlyList<Diagnostic> Diagnostics => diagnostics;
+        public IEnumerable<Diagnostic> Diagnostics => diagnostics;
 
         /// <summary>
         /// Report diagnostic for configuration that is not supported by the DLL import source generator

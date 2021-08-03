@@ -15,7 +15,7 @@ namespace Microsoft.Interop
 {
     internal sealed class StubCodeGenerator : StubCodeContext
     {
-        record struct BoundGenerator(TypePositionInfo TypeInfo, IMarshallingGenerator Generator);
+        private record struct BoundGenerator(TypePositionInfo TypeInfo, IMarshallingGenerator Generator);
 
         public override bool SingleFrameSpansNativeContext => true;
 
@@ -48,7 +48,7 @@ namespace Microsoft.Interop
 
         public StubCodeGenerator(
             GeneratedDllImportData dllImportData,
-            IEnumerable<TypePositionInfo> elements,
+            IEnumerable<TypePositionInfo> argTypes,
             AnalyzerConfigOptions options,
             Action<TypePositionInfo, MarshallingNotSupportedException> marshallingNotSupportedCallback)
         {
@@ -57,27 +57,28 @@ namespace Microsoft.Interop
 
             List<BoundGenerator> allMarshallers = new();
             List<BoundGenerator> paramMarshallers = new();
-            bool foundNativeRetMarshaller = false, foundManagedRetMarshaller = false;
+            bool foundNativeRetMarshaller = false;
+            bool foundManagedRetMarshaller = false;
             BoundGenerator nativeRetMarshaller = new(new TypePositionInfo(SpecialTypeInfo.Void, NoMarshallingInfo.Instance), new Forwarder());
             BoundGenerator managedRetMarshaller = new(new TypePositionInfo(SpecialTypeInfo.Void, NoMarshallingInfo.Instance), new Forwarder());
 
-            foreach (var element in elements)
+            foreach (var argType in argTypes)
             {
-                BoundGenerator generator = CreateGenerator(element);
+                BoundGenerator generator = CreateGenerator(argType);
                 allMarshallers.Add(generator);
-                if (element.IsManagedReturnPosition)
+                if (argType.IsManagedReturnPosition)
                 {
                     Debug.Assert(!foundManagedRetMarshaller);
                     managedRetMarshaller = generator;
                     foundManagedRetMarshaller = true;
                 }
-                if (element.IsNativeReturnPosition)
+                if (argType.IsNativeReturnPosition)
                 {
                     Debug.Assert(!foundNativeRetMarshaller);
                     nativeRetMarshaller = generator;
                     foundNativeRetMarshaller = true;
                 }
-                if (!element.IsManagedReturnPosition && !element.IsNativeReturnPosition)
+                if (!argType.IsManagedReturnPosition && !argType.IsNativeReturnPosition)
                 {
                     paramMarshallers.Add(generator);
                 }

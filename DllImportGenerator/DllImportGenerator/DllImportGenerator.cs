@@ -36,7 +36,7 @@ namespace Microsoft.Interop
 
             public override int GetHashCode()
             {
-                return (StubContext, DllImportData, ForwardedAttributes.Length, Diagnostics.Length).GetHashCode();
+                throw new UnreachableException();
             }
         }
 
@@ -59,6 +59,10 @@ namespace Microsoft.Interop
             internal void RecordExecutedStep(ExecutedStepInfo step) => executedSteps.Add(step);
         }
 
+        /// <summary>
+        /// This property provides a test-only hook to enable testing the incrementality of the source generator.
+        /// This will be removed when https://github.com/dotnet/roslyn/issues/54832 is implemented and can be consumed.
+        /// </summary>
         public IncrementalityTracker? IncrementalTracker { get; set; }
 
         public void Initialize(IncrementalGeneratorInitializationContext context)
@@ -291,8 +295,6 @@ namespace Microsoft.Interop
 
         private static GeneratedDllImportData ProcessGeneratedDllImportAttribute(AttributeData attrData)
         {
-            var stubDllImportData = new GeneratedDllImportData();
-
             // Found the GeneratedDllImport, but it has an error so report the error.
             // This is most likely an issue with targeting an incorrect TFM.
             if (attrData.AttributeClass?.TypeKind is null or TypeKind.Error)
@@ -301,8 +303,7 @@ namespace Microsoft.Interop
                 throw new InvalidProgramException();
             }
 
-            // Populate the DllImport data from the GeneratedDllImportAttribute attribute.
-            stubDllImportData.ModuleName = attrData.ConstructorArguments[0].Value!.ToString();
+            var stubDllImportData = new GeneratedDllImportData(attrData.ConstructorArguments[0].Value!.ToString());
 
             // All other data on attribute is defined as NamedArguments.
             foreach (var namedArg in attrData.NamedArguments)
@@ -411,19 +412,18 @@ namespace Microsoft.Interop
 
             // Process the GeneratedDllImport attribute
             GeneratedDllImportData stubDllImportData = ProcessGeneratedDllImportAttribute(generatedDllImportAttr!);
-            Debug.Assert(stubDllImportData is not null);
 
-            if (stubDllImportData!.IsUserDefined.HasFlag(DllImportMember.BestFitMapping))
+            if (stubDllImportData.IsUserDefined.HasFlag(DllImportMember.BestFitMapping))
             {
                 generatorDiagnostics.ReportConfigurationNotSupported(generatedDllImportAttr!, nameof(GeneratedDllImportData.BestFitMapping));
             }
 
-            if (stubDllImportData!.IsUserDefined.HasFlag(DllImportMember.ThrowOnUnmappableChar))
+            if (stubDllImportData.IsUserDefined.HasFlag(DllImportMember.ThrowOnUnmappableChar))
             {
                 generatorDiagnostics.ReportConfigurationNotSupported(generatedDllImportAttr!, nameof(GeneratedDllImportData.ThrowOnUnmappableChar));
             }
             
-            if (stubDllImportData!.IsUserDefined.HasFlag(DllImportMember.CallingConvention))
+            if (stubDllImportData.IsUserDefined.HasFlag(DllImportMember.CallingConvention))
             {
                 generatorDiagnostics.ReportConfigurationNotSupported(generatedDllImportAttr!, nameof(GeneratedDllImportData.CallingConvention));
             }
@@ -436,7 +436,7 @@ namespace Microsoft.Interop
             List<AttributeSyntax> additionalAttributes = GenerateSyntaxForForwardedAttributes(suppressGCTransitionAttribute, unmanagedCallConvAttribute);
 
             // Create the stub.
-            var dllImportStub = DllImportStubContext.Create(symbol, stubDllImportData!, environment, generatorDiagnostics, ct);
+            var dllImportStub = DllImportStubContext.Create(symbol, stubDllImportData, environment, generatorDiagnostics, ct);
 
             return new IncrementalStubGenerationContext(dllImportStub, additionalAttributes.ToImmutableArray(), stubDllImportData, generatorDiagnostics.Diagnostics.ToImmutableArray());
         }
@@ -475,8 +475,8 @@ namespace Microsoft.Interop
 
             // Verify the method has no generic types or defined implementation
             // and is marked static and partial.
-            if (!(methodSyntax.TypeParameterList is null)
-                || !(methodSyntax.Body is null)
+            if (methodSyntax.TypeParameterList is not null
+                || methodSyntax.Body is not null
                 || !methodSyntax.Modifiers.Any(SyntaxKind.StaticKeyword)
                 || !methodSyntax.Modifiers.Any(SyntaxKind.PartialKeyword))
             {
