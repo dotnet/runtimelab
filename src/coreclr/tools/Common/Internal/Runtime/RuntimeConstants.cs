@@ -58,7 +58,6 @@ namespace Internal.Runtime
         public const ushort Reabstraction = 0xFFFF;
     }
 
-    // Keep in sync with RH\src\rtu\runtimeinstance.cpp
     internal enum RuntimeHelperKind
     {
         AllocateObject,

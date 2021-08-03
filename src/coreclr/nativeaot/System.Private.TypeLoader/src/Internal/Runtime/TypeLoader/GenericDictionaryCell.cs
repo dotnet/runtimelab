@@ -294,7 +294,7 @@ namespace Internal.Runtime.TypeLoader
             internal override unsafe IntPtr CreateLazyLookupCell(TypeBuilder builder, out IntPtr auxResult)
             {
                 auxResult = IntPtr.Zero;
-                return Create(builder);
+                return *(IntPtr*)Create(builder);
             }
         }
 
