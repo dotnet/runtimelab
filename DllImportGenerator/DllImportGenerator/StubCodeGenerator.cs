@@ -505,6 +505,7 @@ namespace Microsoft.Interop
 
         private static AttributeSyntax CreateDllImportAttributeForTarget(GeneratedDllImportData targetDllImportData)
         {
+            Debug.Assert(targetDllImportData.EntryPoint is not null);
             var newAttributeArgs = new List<AttributeArgumentSyntax>
             {
                 AttributeArgument(LiteralExpression(
@@ -513,7 +514,7 @@ namespace Microsoft.Interop
                 AttributeArgument(
                     NameEquals(nameof(DllImportAttribute.EntryPoint)),
                     null,
-                    CreateStringExpressionSyntax(targetDllImportData.EntryPoint))
+                    CreateStringExpressionSyntax(targetDllImportData.EntryPoint!))
             };
 
             if (targetDllImportData.IsUserDefined.HasFlag(DllImportMember.BestFitMapping))
@@ -602,17 +603,8 @@ namespace Microsoft.Interop
                 membersToForward = DllImportMember.All;
             }
 
-            var targetDllImportData = new GeneratedDllImportData
+            var targetDllImportData = dllImportData with
             {
-                CharSet = dllImportData.CharSet,
-                BestFitMapping = dllImportData.BestFitMapping,
-                CallingConvention = dllImportData.CallingConvention,
-                EntryPoint = dllImportData.EntryPoint,
-                ModuleName = dllImportData.ModuleName,
-                ExactSpelling = dllImportData.ExactSpelling,
-                SetLastError = dllImportData.SetLastError,
-                PreserveSig = dllImportData.PreserveSig,
-                ThrowOnUnmappableChar = dllImportData.ThrowOnUnmappableChar,
                 IsUserDefined = dllImportData.IsUserDefined & membersToForward
             };
 

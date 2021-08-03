@@ -30,23 +30,19 @@ namespace Microsoft.Interop
     /// The names of these members map directly to those on the
     /// DllImportAttribute and should not be changed.
     /// </remarks>
-    public record struct GeneratedDllImportData(string ModuleName)
+    public sealed record GeneratedDllImportData(string ModuleName)
     {
         /// <summary>
         /// Value set by the user on the original declaration.
         /// </summary>
-        public DllImportMember IsUserDefined { get; init; } = DllImportMember.None;
-
-        // Default values for the below fields are based on the
-        // documented semanatics of DllImportAttribute:
-        //   - https://docs.microsoft.com/dotnet/api/system.runtime.interopservices.dllimportattribute
-        public bool BestFitMapping { get; init; } = true;
-        public CallingConvention CallingConvention { get; init; } = CallingConvention.Winapi;
-        public CharSet CharSet { get; init; } = CharSet.Ansi;
-        public string EntryPoint { get; init; } = null!;
-        public bool ExactSpelling { get; init; } = false; // VB has different and unusual default behavior here.
-        public bool PreserveSig { get; init; } = true;
-        public bool SetLastError { get; init; } = false;
-        public bool ThrowOnUnmappableChar { get; init; } = false;
+        public DllImportMember IsUserDefined { get; init; }
+        public bool BestFitMapping { get; init; }
+        public CallingConvention CallingConvention { get; init; }
+        public CharSet CharSet { get; init; }
+        public string? EntryPoint { get; init; }
+        public bool ExactSpelling { get; init; }
+        public bool PreserveSig { get; init; }
+        public bool SetLastError { get; init; }
+        public bool ThrowOnUnmappableChar { get; init; }
     }
 }

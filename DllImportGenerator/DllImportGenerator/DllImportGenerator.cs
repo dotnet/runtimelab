@@ -1,5 +1,8 @@
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.Diagnostics;
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
@@ -7,10 +10,6 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.CodeAnalysis.Diagnostics;
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
 namespace Microsoft.Interop
@@ -303,6 +302,20 @@ namespace Microsoft.Interop
                 throw new InvalidProgramException();
             }
 
+
+            // Default values for these properties are based on the
+            // documented semanatics of DllImportAttribute:
+            //   - https://docs.microsoft.com/dotnet/api/system.runtime.interopservices.dllimportattribute
+            DllImportMember userDefinedValues = DllImportMember.None;
+            bool bestFitMapping = false;
+            CallingConvention callingConvention = CallingConvention.Winapi;
+            CharSet charSet = CharSet.Ansi;
+            string? entryPoint = null;
+            bool exactSpelling = false; // VB has different and unusual default behavior here.
+            bool preserveSig = true;
+            bool setLastError = false;
+            bool throwOnUnmappableChar = false;
+
             var stubDllImportData = new GeneratedDllImportData(attrData.ConstructorArguments[0].Value!.ToString());
 
             // All other data on attribute is defined as NamedArguments.
@@ -314,65 +327,52 @@ namespace Microsoft.Interop
                         Debug.Fail($"An unknown member was found on {GeneratedDllImport}");
                         continue;
                     case nameof(GeneratedDllImportData.BestFitMapping):
-                        stubDllImportData = stubDllImportData with
-                        {
-                            BestFitMapping = (bool)namedArg.Value.Value!,
-                            IsUserDefined = stubDllImportData.IsUserDefined | DllImportMember.BestFitMapping,
-                        };
+                        userDefinedValues |= DllImportMember.BestFitMapping;
+                        bestFitMapping = (bool)namedArg.Value.Value!;
                         break;
                     case nameof(GeneratedDllImportData.CallingConvention):
-                        stubDllImportData = stubDllImportData with
-                        {
-                            CallingConvention = (CallingConvention)namedArg.Value.Value!,
-                            IsUserDefined = stubDllImportData.IsUserDefined | DllImportMember.CallingConvention,
-                        };
+                        userDefinedValues |= DllImportMember.CallingConvention;
+                        callingConvention = (CallingConvention)namedArg.Value.Value!;
                         break;
                     case nameof(GeneratedDllImportData.CharSet):
-                        stubDllImportData = stubDllImportData with
-                        {
-                            CharSet = (CharSet)namedArg.Value.Value!,
-                            IsUserDefined = stubDllImportData.IsUserDefined | DllImportMember.CharSet,
-                        };
+                        userDefinedValues |= DllImportMember.CharSet;
+                        charSet = (CharSet)namedArg.Value.Value!;
                         break;
                     case nameof(GeneratedDllImportData.EntryPoint):
-                        stubDllImportData = stubDllImportData with
-                        {
-                            EntryPoint = (string)namedArg.Value.Value!,
-                            IsUserDefined = stubDllImportData.IsUserDefined | DllImportMember.EntryPoint,
-                        };
+                        userDefinedValues |= DllImportMember.EntryPoint;
+                        entryPoint = (string)namedArg.Value.Value!;
                         break;
                     case nameof(GeneratedDllImportData.ExactSpelling):
-                        stubDllImportData = stubDllImportData with
-                        {
-                            ExactSpelling = (bool)namedArg.Value.Value!,
-                            IsUserDefined = stubDllImportData.IsUserDefined | DllImportMember.ExactSpelling,
-                        };
+                        userDefinedValues |= DllImportMember.ExactSpelling;
+                        exactSpelling = (bool)namedArg.Value.Value!;
                         break;
                     case nameof(GeneratedDllImportData.PreserveSig):
-                        stubDllImportData = stubDllImportData with
-                        {
-                            PreserveSig = (bool)namedArg.Value.Value!,
-                            IsUserDefined = stubDllImportData.IsUserDefined | DllImportMember.PreserveSig,
-                        };
+                        userDefinedValues |= DllImportMember.PreserveSig;
+                        preserveSig = (bool)namedArg.Value.Value!;
                         break;
                     case nameof(GeneratedDllImportData.SetLastError):
-                        stubDllImportData = stubDllImportData with
-                        {
-                            SetLastError = (bool)namedArg.Value.Value!,
-                            IsUserDefined = stubDllImportData.IsUserDefined | DllImportMember.SetLastError,
-                        };
+                        userDefinedValues |= DllImportMember.SetLastError;
+                        setLastError = (bool)namedArg.Value.Value!;
                         break;
                     case nameof(GeneratedDllImportData.ThrowOnUnmappableChar):
-                        stubDllImportData = stubDllImportData with
-                        {
-                            ThrowOnUnmappableChar = (bool)namedArg.Value.Value!,
-                            IsUserDefined = stubDllImportData.IsUserDefined | DllImportMember.ThrowOnUnmappableChar,
-                        };
+                        userDefinedValues |= DllImportMember.ThrowOnUnmappableChar;
+                        throwOnUnmappableChar = (bool)namedArg.Value.Value!;
                         break;
                 }
             }
 
-            return stubDllImportData;
+            return new GeneratedDllImportData(attrData.ConstructorArguments[0].Value!.ToString())
+            {
+                IsUserDefined = userDefinedValues,
+                BestFitMapping = bestFitMapping,
+                CallingConvention = callingConvention,
+                CharSet = charSet,
+                EntryPoint = entryPoint,
+                ExactSpelling = exactSpelling,
+                PreserveSig = preserveSig,
+                SetLastError = setLastError,
+                ThrowOnUnmappableChar = throwOnUnmappableChar
+            };
         }
 
         private static IncrementalStubGenerationContext CalculateStubInformation(MethodDeclarationSyntax syntax, IMethodSymbol symbol, StubEnvironment environment, CancellationToken ct)
