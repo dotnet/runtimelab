@@ -506,7 +506,7 @@ namespace System.Runtime
                     return (IntPtr)(delegate*<EEType*, object, void>)&TypeCast.CheckVectorElemAddr;
 
                 default:
-                    Debug.Assert(false, $"Unknown RuntimeHelperKind: {kind}");
+                    Debug.Assert(false, "Unknown RuntimeHelperKind");
                     return IntPtr.Zero;
             }
         }
