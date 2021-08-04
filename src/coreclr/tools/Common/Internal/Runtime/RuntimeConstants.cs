@@ -57,4 +57,13 @@ namespace Internal.Runtime
         public const ushort Diamond = 0xFFFE;
         public const ushort Reabstraction = 0xFFFF;
     }
+
+    internal enum RuntimeHelperKind
+    {
+        AllocateObject,
+        IsInst,
+        CastClass,
+        AllocateArray,
+        CheckArrayElementType,
+    }
 }

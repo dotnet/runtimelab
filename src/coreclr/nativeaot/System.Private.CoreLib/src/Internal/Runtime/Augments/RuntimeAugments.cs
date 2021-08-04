@@ -183,23 +183,23 @@ namespace Internal.Runtime.Augments
 
         public static IntPtr GetAllocateObjectHelperForType(RuntimeTypeHandle type)
         {
-            return RuntimeImports.RhGetRuntimeHelperForType(CreateEETypePtr(type), RuntimeImports.RuntimeHelperKind.AllocateObject);
+            return RuntimeImports.RhGetRuntimeHelperForType(CreateEETypePtr(type), RuntimeHelperKind.AllocateObject);
         }
 
         public static IntPtr GetAllocateArrayHelperForType(RuntimeTypeHandle type)
         {
-            return RuntimeImports.RhGetRuntimeHelperForType(CreateEETypePtr(type), RuntimeImports.RuntimeHelperKind.AllocateArray);
+            return RuntimeImports.RhGetRuntimeHelperForType(CreateEETypePtr(type), RuntimeHelperKind.AllocateArray);
         }
 
         public static IntPtr GetCastingHelperForType(RuntimeTypeHandle type, bool throwing)
         {
             return RuntimeImports.RhGetRuntimeHelperForType(CreateEETypePtr(type),
-                throwing ? RuntimeImports.RuntimeHelperKind.CastClass : RuntimeImports.RuntimeHelperKind.IsInst);
+                throwing ? RuntimeHelperKind.CastClass : RuntimeHelperKind.IsInst);
         }
 
         public static IntPtr GetCheckArrayElementTypeHelperForType(RuntimeTypeHandle type)
         {
-            return RuntimeImports.RhGetRuntimeHelperForType(CreateEETypePtr(type), RuntimeImports.RuntimeHelperKind.CheckArrayElementType);
+            return RuntimeImports.RhGetRuntimeHelperForType(CreateEETypePtr(type), RuntimeHelperKind.CheckArrayElementType);
         }
 
         public static IntPtr GetDispatchMapForType(RuntimeTypeHandle typeHandle)

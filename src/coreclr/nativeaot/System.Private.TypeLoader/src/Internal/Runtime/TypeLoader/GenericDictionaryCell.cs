@@ -520,7 +520,7 @@ namespace Internal.Runtime.TypeLoader
             {
                 RuntimeTypeHandle th = GetRuntimeTypeHandleWithNullableTransform(builder, Type);
                 auxResult = th.ToIntPtr();
-                return *(IntPtr*)RuntimeAugments.GetAllocateObjectHelperForType(th);
+                return RuntimeAugments.GetAllocateObjectHelperForType(th);
             }
         }
 
@@ -921,7 +921,7 @@ namespace Internal.Runtime.TypeLoader
             {
                 RuntimeTypeHandle th = GetRuntimeTypeHandleWithNullableTransform(builder, Type);
                 auxResult = th.ToIntPtr();
-                return *(IntPtr*)RuntimeAugments.GetCastingHelperForType(th, Throwing);
+                return RuntimeAugments.GetCastingHelperForType(th, Throwing);
             }
         }
 
@@ -945,7 +945,7 @@ namespace Internal.Runtime.TypeLoader
             internal override unsafe IntPtr CreateLazyLookupCell(TypeBuilder builder, out IntPtr auxResult)
             {
                 auxResult = builder.GetRuntimeTypeHandle(Type).ToIntPtr();
-                return *(IntPtr*)Create(builder);
+                return Create(builder);
             }
         }
 
@@ -969,7 +969,7 @@ namespace Internal.Runtime.TypeLoader
             internal override unsafe IntPtr CreateLazyLookupCell(TypeBuilder builder, out IntPtr auxResult)
             {
                 auxResult = builder.GetRuntimeTypeHandle(Type).ToIntPtr();
-                return *(IntPtr*)Create(builder);
+                return Create(builder);
             }
         }
 

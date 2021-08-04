@@ -477,16 +477,6 @@ namespace System.Runtime
         [RuntimeImport(RuntimeLibrary, "RhResolveDispatchOnType")]
         internal static extern IntPtr RhResolveDispatchOnType(EETypePtr instanceType, EETypePtr interfaceType, ushort slot);
 
-        // Keep in sync with RH\src\rtu\runtimeinstance.cpp
-        internal enum RuntimeHelperKind
-        {
-            AllocateObject,
-            IsInst,
-            CastClass,
-            AllocateArray,
-            CheckArrayElementType,
-        }
-
         [MethodImplAttribute(MethodImplOptions.InternalCall)]
         [RuntimeImport(RuntimeLibrary, "RhGetRuntimeHelperForType")]
         internal static extern unsafe IntPtr RhGetRuntimeHelperForType(EETypePtr pEEType, RuntimeHelperKind kind);
