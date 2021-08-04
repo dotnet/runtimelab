@@ -95,7 +95,7 @@ namespace System.Text.RegularExpressions.SRM
         {
             if (_A1_skipState[prevCharKind] == null)
             {
-                var state = DeltaPlus(A_prefix, _A1q0[prevCharKind]);
+                var state = DeltaPlus<BrzozowskiTransition>(A_prefix, _A1q0[prevCharKind]);
                 lock (this)
                 {
                     if (_A1_skipState[prevCharKind] == null)
@@ -121,7 +121,7 @@ namespace System.Text.RegularExpressions.SRM
         {
             if (_Ar_skipState[prevCharKind] == null)
             {
-                var state = DeltaPlus(Ar_prefix, _Arq0[prevCharKind]);
+                var state = DeltaPlus<BrzozowskiTransition>(Ar_prefix, _Arq0[prevCharKind]);
                 lock (this)
                 {
                     if (_Ar_skipState[prevCharKind] == null)
@@ -160,6 +160,7 @@ namespace System.Text.RegularExpressions.SRM
         private S GetAtom(int c) => builder.atoms[dt.Find(c)];
 
         private const int s_STATEMAXBOUND = 10000;
+        // private const int s_STATEBOUNDLEEWAY = 1000;
 
         #region custom serialization/deserialization
         /// <summary>
@@ -386,11 +387,27 @@ namespace System.Text.RegularExpressions.SRM
         /// <summary>
         /// Return the state after the given input string from the given state q.
         /// </summary>
-        private State<S> DeltaPlus(string input, State<S> q)
+        private State<S> DeltaPlus<Transition>(string input, State<S> q) where Transition : struct, ITransition
         {
             for (int i = 0; i < input.Length; i++)
-                q = Delta(input, i, q);
+                q = Delta<Transition>(input, i, q);
             return q;
+        }
+
+        /// <summary>
+        /// Interface for transitions used by the Delta method.
+        /// </summary>
+        private interface ITransition
+        {
+            /// <summary>
+            /// Find the next state given the current state and next character.
+            /// </summary>
+            /// <param name="matcher">the current matcher object</param>
+            /// <param name="q">the current state</param>
+            /// <param name="atom_id">the partition id of the next character</param>
+            /// <param name="atom">the partition of the next character</param>
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            State<S> TakeTransition(SymbolicRegexMatcher<S> matcher, State<S> q, int atom_id, S atom);
         }
 
         /// <summary>
@@ -402,41 +419,65 @@ namespace System.Text.RegularExpressions.SRM
         /// <param name="i">refers to i'th character in the input</param>
         /// <param name="q">source state</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private State<S> Delta(string input, int i, State<S> q)
+        private State<S> Delta<Transition>(string input, int i, State<S> q) where Transition : struct, ITransition
         {
             int c = input[i];
             // atom_id = atoms.Length represents \Z (last \n)
             int atom_id = (c == 10 && i == input.Length - 1 && q.StartsWithLineAnchor ? builder.atoms.Length : dt.Find(c));
             // atom=False represents \Z
             S atom = atom_id == builder.atoms.Length ? builder.solver.False : builder.atoms[atom_id];
-            if (builder.antimirov && q.Node.Kind == SymbolicRegexKind.Or)
+            return default(Transition).TakeTransition(this, q, atom_id, atom);
+        }
+
+        /// <summary>
+        /// TODO
+        /// </summary>
+        private struct BrzozowskiTransition : ITransition
             {
-                SymbolicRegexNode<S> union = builder.nothing;
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public State<S> TakeTransition(SymbolicRegexMatcher<S> matcher, State<S> q, int atom_id, S atom)
+            {
+                int offset = (q.Id << matcher.builder.K) | atom_id;
+                var p = matcher.builder.delta[offset];
+                if (p == null)
+                    return matcher.CreateNewTransition(q, atom, offset);
+                else
+                    return p;
+            }
+        }
+
+        /// <summary>
+        /// TODO
+        /// </summary>
+        private struct AntimirovTransition : ITransition
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public State<S> TakeTransition(SymbolicRegexMatcher<S> matcher, State<S> q, int atom_id, S atom)
+            {
+                if (q.Node.Kind == SymbolicRegexKind.Or)
+                {
+                    SymbolicRegexNode<S> union = matcher.builder.nothing;
                 uint kind = 0;
                 // consider transitions from the members one at a time
                 foreach (var r in q.Node.alts)
                 {
-                    var s = builder.MkState(r, q.PrevCharKind);
-                    int offset = (s.Id << builder.K) | atom_id;
-                    var p = builder.delta[offset];
+                        var s = matcher.builder.MkState(r, q.PrevCharKind);
+                        int offset = (s.Id << matcher.builder.K) | atom_id;
+                        var p = matcher.builder.delta[offset];
                     if (p == null)
-                        p = CreateNewTransition(s, atom, offset);
+                            p = matcher.CreateNewTransition(s, atom, offset);
                     // observe that if p.Node is an Or it will be flattened
-                    union = builder.MkOr2(union, p.Node);
+                        union = matcher.builder.MkOr2(union, p.Node);
                     // kind is just the kind of the atom
                     kind = p.PrevCharKind;
                 }
-                var powerstate = builder.MkState(union, kind, true);
+                    var powerstate = matcher.builder.MkState(union, kind, true);
                 return powerstate;
             }
             else
             {
-                int offset = (q.Id << builder.K) | atom_id;
-                var p = builder.delta[offset];
-                if (p == null)
-                    return CreateNewTransition(q, atom, offset);
-                else
-                    return p;
+                    return default(BrzozowskiTransition).TakeTransition(matcher, q, atom_id, atom);
+                }
             }
         }
 
@@ -599,7 +640,7 @@ namespace System.Text.RegularExpressions.SRM
             }
             while (i < k)
             {
-                q = Delta(input, i, q);
+                q = Delta<BrzozowskiTransition>(input, i, q);
 
                 if (q.IsNullable(GetCharKind(input, i+1)))
                 {
@@ -668,7 +709,7 @@ namespace System.Text.RegularExpressions.SRM
             //walk back to the accepting state of Ar
             while (i >= match_start_boundary)
             {
-                q = Delta(input, i, q);
+                q = Delta<BrzozowskiTransition>(input, i, q);
 
                 //reached a deadend state,
                 //thus the earliest match start point must have occurred already
@@ -809,7 +850,7 @@ namespace System.Text.RegularExpressions.SRM
                 }
 
                 // make the transition based on input[i]
-                q = Delta(input, i, q);
+                q = Delta<BrzozowskiTransition>(input, i, q);
 
                 if (q.IsNullable(GetCharKind(input, i + 1)))
                 {
