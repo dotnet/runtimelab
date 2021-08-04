@@ -81,6 +81,13 @@ In the source generated marshalling, the `[In]` and `[Out]` attributes will only
 
 Support for struct marshalling in the source-generated marshalling is described in [StructMarshalling.md](StructMarshalling.md).
 
+### Unsupported types
+
+Unlike the built-in system, the source generator does not support marshalling for the following types:
+- [`CriticalHandle`](https://docs.microsoft.com/dotnet/api/system.runtime.interopservices.criticalhandle)
+- [`HandleRef`](https://docs.microsoft.com/dotnet/api/system.runtime.interopservices.handleref)
+- [`StringBuilder`](https://docs.microsoft.com/dotnet/api/system.text.stringbuilder)
+
 ## Verison 0
 
 This version is the built-in IL Stub generation system that is triggered whenever a method marked with `DllImport` is invoked.
