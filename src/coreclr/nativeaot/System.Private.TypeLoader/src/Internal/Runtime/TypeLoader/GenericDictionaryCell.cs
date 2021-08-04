@@ -949,30 +949,6 @@ namespace Internal.Runtime.TypeLoader
             }
         }
 
-        private class CheckArrayElementTypeCell : GenericDictionaryCell
-        {
-            internal TypeDesc Type;
-
-            internal override void Prepare(TypeBuilder builder)
-            {
-                if (Type.IsCanonicalSubtype(CanonicalFormKind.Any))
-                    Environment.FailFast("Canonical types do not have EETypes");
-
-                builder.RegisterForPreparation(Type);
-            }
-
-            internal override IntPtr Create(TypeBuilder builder)
-            {
-                return RuntimeAugments.GetCheckArrayElementTypeHelperForType(builder.GetRuntimeTypeHandle(Type));
-            }
-
-            internal override unsafe IntPtr CreateLazyLookupCell(TypeBuilder builder, out IntPtr auxResult)
-            {
-                auxResult = builder.GetRuntimeTypeHandle(Type).ToIntPtr();
-                return Create(builder);
-            }
-        }
-
 #if FEATURE_UNIVERSAL_GENERICS
         private class CallingConventionConverterCell : GenericDictionaryCell
         {
@@ -1812,16 +1788,6 @@ namespace Internal.Runtime.TypeLoader
                         TypeLoaderLogger.WriteLine("AllocateArray on: " + type.ToString());
 
                         cell = new AllocateArrayCell { Type = type };
-                    }
-                    break;
-
-                case FixupSignatureKind.CheckArrayElementType:
-                    {
-                        var type = nativeLayoutInfoLoadContext.GetType(ref parser);
-
-                        TypeLoaderLogger.WriteLine("CheckArrayElementType on: " + type.ToString());
-
-                        cell = new CheckArrayElementTypeCell { Type = type };
                     }
                     break;
 

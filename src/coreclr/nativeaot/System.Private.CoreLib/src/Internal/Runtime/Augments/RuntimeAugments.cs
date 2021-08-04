@@ -197,11 +197,6 @@ namespace Internal.Runtime.Augments
                 throwing ? RuntimeHelperKind.CastClass : RuntimeHelperKind.IsInst);
         }
 
-        public static IntPtr GetCheckArrayElementTypeHelperForType(RuntimeTypeHandle type)
-        {
-            return RuntimeImports.RhGetRuntimeHelperForType(CreateEETypePtr(type), RuntimeHelperKind.CheckArrayElementType);
-        }
-
         public static IntPtr GetDispatchMapForType(RuntimeTypeHandle typeHandle)
         {
             return CreateEETypePtr(typeHandle).DispatchMap;
