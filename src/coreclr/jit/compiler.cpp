@@ -5773,6 +5773,11 @@ int Compiler::compCompile(CORINFO_MODULE_HANDLE classPtr,
     param.compileFlags   = compileFlags;
     param.result         = CORJIT_INTERNALERROR;
 
+#ifdef TARGET_WASM
+    // normally done in codegencommon.cpp, but that file is not included
+    genCallSite2ILOffsetMap = nullptr;
+#endif // TARGET_WASM
+
     setErrorTrap(info.compCompHnd, Param*, pParam, &param) // ERROR TRAP: Start normal block
     {
         pParam->result =
