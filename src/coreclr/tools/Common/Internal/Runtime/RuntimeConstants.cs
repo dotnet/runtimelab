@@ -64,6 +64,5 @@ namespace Internal.Runtime
         IsInst,
         CastClass,
         AllocateArray,
-        CheckArrayElementType,
     }
 }

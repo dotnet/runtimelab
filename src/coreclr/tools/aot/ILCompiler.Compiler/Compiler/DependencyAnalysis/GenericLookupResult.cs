@@ -44,7 +44,6 @@ namespace ILCompiler.DependencyAnalysis
         IsInst,             // isinst helper
         CastClass,          // castclass helper
         AllocArray,         // the array allocator of a type
-        CheckArrayElementType, // check the array element type
         TypeSize,           // size of the type
         FieldOffset,        // field offset
         CallingConvention_NoInstParam,      // CallingConventionConverterThunk NO_INSTANTIATING_PARAM
