@@ -51,20 +51,20 @@ struct SpilledExpressionEntry
     CorInfoType m_CorInfoType;
 };
 
-enum LocalVarLocation
+enum class LocalVarLocation
 {
     LlvmStack,
     ShadowStack
 };
 
-// local vars that don't need to be on the shadow stack
+// Helper for unifying vars that do and don't need to be on the shadow stack.
 struct LocalVar
 {
     Value* llvmValue;
     LocalVarLocation location;
 
     LocalVar(LocalVarLocation location, Value* llvmValue) : llvmValue(llvmValue), location(location) {}
-    virtual Value* getValue(llvm::IRBuilder<>& builder)
+    Value* getValue(llvm::IRBuilder<>& builder)
     {
         return location == LocalVarLocation::LlvmStack ? llvmValue : builder.CreateLoad(llvmValue);
     }
