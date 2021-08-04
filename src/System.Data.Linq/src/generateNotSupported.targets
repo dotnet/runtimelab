@@ -1,0 +1,55 @@
+<Project>
+
+  <PropertyGroup>
+    <NotSupportedSourceFile>$(IntermediateOutputPath)$(TargetName).notsupported.cs</NotSupportedSourceFile>
+    <CoreCompileDependsOn>GenerateNotSupportedSource;$(CoreCompileDependsOn)</CoreCompileDependsOn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <AssemblyMetadata Include="NotSupported">
+      <Value>True</Value>
+    </AssemblyMetadata>
+  </ItemGroup>
+
+  <!-- GenerateNotSupportedSource
+       Inputs:
+         * A contract assembly
+         * Reference assemblies
+       Generates source for the contract that throws PlatformNotSupportedException
+  -->
+  <Target Name="GenerateNotSupportedSource" 
+          DependsOnTargets="ResolveMatchingContract"
+          Inputs="@(ReferencePath);@(ResolvedMatchingContract)"
+          Outputs="$(NotSupportedSourceFile)">
+
+    <ItemGroup>
+      <!-- build out a list of directories where dependencies are located -->
+      <_referencePathDirectoriesWithDuplicates Include="@(ReferencePath->'%(RootDir)%(Directory)'->TrimEnd('\'))" />
+      <!-- strip metadata, removing duplicates -->
+      <_referencePathDirectories Include="%(_referencePathDirectoriesWithDuplicates.Identity)" />
+    </ItemGroup>
+
+    <Error Text="No single matching contract found." Condition="'@(ResolvedMatchingContract -> Count())' != '1'" />
+
+    <PropertyGroup>
+      <GenAPIArgs>"%(ResolvedMatchingContract.Identity)"</GenAPIArgs>
+      <GenAPIArgs>$(GenAPIArgs) --lib-path "@(_referencePathDirectories)"</GenAPIArgs>
+      <GenAPIArgs>$(GenAPIArgs) --out "$(NotSupportedSourceFile)"</GenAPIArgs>
+      <GenAPIArgs Condition="'$(LangVersion)' != ''">$(GenAPIArgs) --lang-version "$(LangVersion)"</GenAPIArgs>
+      <GenAPIArgs Condition="'$(GeneratePlatformNotSupportedAssembly)' == 'true' or '$(GeneratePlatformNotSupportedAssemblyMessage)' != ''">$(GenAPIArgs) --throw "$(GeneratePlatformNotSupportedAssemblyMessage)"</GenAPIArgs>
+      <GenAPIArgs Condition="'$(GeneratePlatformNotSupportedAssemblyWithGlobalPrefix)' == 'true'">$(GenAPIArgs) --global</GenAPIArgs>
+      <GenAPIArgs Condition="'$(GeneratePlatformNotSupportedAssemblyHeaderFile)' != ''">$(GenAPIArgs) --header-file "$(GeneratePlatformNotSupportedAssemblyHeaderFile)"</GenAPIArgs>
+      <GenAPIArgs Condition="'$(GeneratePlatformNotSupportedAdditionalParameters)' != ''">$(GenAPIArgs) $(GeneratePlatformNotSupportedAdditionalParameters)</GenAPIArgs>
+    </PropertyGroup>
+
+    <Exec Command="$(_GenAPICommand) $(GenAPIArgs)" 
+          WorkingDirectory="$(ToolRuntimePath)" />
+
+    <ItemGroup>
+      <FileWrites Include="$(NotSupportedSourceFile)" />
+      <Compile Include="$(NotSupportedSourceFile)" />
+    </ItemGroup>
+
+  </Target>
+</Project>
+ 

@@ -1,0 +1,71 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <PackageId>$(MSBuildProjectName)</PackageId>
+    <AssemblyName>System.Data.Linq</AssemblyName>
+    <RootNamespace>System</RootNamespace>
+    <VersionPrefix>0.0.1</VersionPrefix>
+
+    <!-- set version higher than that provided by framework -->
+    <AssemblyVersion>4.1.0.0</AssemblyVersion>
+    <TargetFramework>netcoreapp2.1</TargetFramework>
+
+    <!-- sign the assembly with the same key as System.Data.Linq -->
+    <StrongNameKeyId>ECMA</StrongNameKeyId>
+
+    <!-- fill in all System.Data.Linq APIs with throw new PlatformNotSupportedException(..) -->
+    <GeneratePlatformNotSupportedAssemblyMessage>SR.PlatformNotSupportedSystemDataLinq</GeneratePlatformNotSupportedAssemblyMessage>
+    <!-- omit these APIs from the generated code, we'll define them explicitly -->
+    <GeneratePlatformNotSupportedAdditionalParameters>--exclude-api-list NotSupported.Exclude.txt</GeneratePlatformNotSupportedAdditionalParameters>
+
+    <!-- Build against .NETFramework assemblies to avoid having to deal with all the dependencies of System.Web that don't exist in .NETCore -->
+    <Net48Ref>$(PkgMicrosoft_NETFramework_ReferenceAssemblies_net48)\build\.NETFramework\v4.8\</Net48Ref>
+    <AssemblySearchPaths>$(Net48Ref);$(AssemblySearchPaths)</AssemblySearchPaths>
+
+    <NoWarn>$(NoWarn);CS0618;CS3021;NU5131</NoWarn>
+  </PropertyGroup>
+
+  <ItemDefinitionGroup>
+    <!-- don't attempt to copy any of the referenced assemblies -->
+    <Reference Private="false" />
+  </ItemDefinitionGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.DotNet.GenAPI" PrivateAssets="All" Version="$(MicrosoftDotNetGenAPIVersion)" />
+    <PackageReference Include="Microsoft.DotNet.ApiCompat" PrivateAssets="All" Version="$(MicrosoftDotNetApiCompatVersion)" />
+
+    <!-- we'll use the .NETFramework reference assemblies to build from so we
+         don't need to worry about System.Web's dependent types that are not 
+         present on .NETCore -->
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies.net48" PrivateAssets="All" Version="1.0.0" GeneratePathProperty="true" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Update="SR.Designer.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>SR.resx</DependentUpon>
+    </Compile>
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Update="SR.resx">
+      <LogicalName>System.SR.resources</LogicalName>
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>SR.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="_._" Pack="true" PackagePath="ref/$(TargetFramework)" />
+  </ItemGroup>
+
+  <Target Name="ResolveMatchingContract">
+    <ItemGroup>
+      <ResolvedMatchingContract Include="$(Net48Ref)$(TargetFileName)" />
+    </ItemGroup>
+  </Target>
+
+  <Import Project="generateNotSupported.targets" />
+</Project>
+ 
