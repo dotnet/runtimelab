@@ -23,7 +23,7 @@ The following framework references are required:
 - `System.Runtime`
 - `System.Runtime.InteropServices`
 
-These are all part of `NETCoreApp` and will be referenced by default unless [implicit framework references are disabled](https://docs.microsoft.com/dotnet/core/project-sdk/msbuild-props#disableimplicitframeworkreferences).
+These are all part of `NetCoreApp` and will be referenced by default unless [implicit framework references are disabled](https://docs.microsoft.com/dotnet/core/project-sdk/msbuild-props#disableimplicitframeworkreferences).
 
 ### `char` marshalling
 
