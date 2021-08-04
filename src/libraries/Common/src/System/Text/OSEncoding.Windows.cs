@@ -9,11 +9,7 @@ namespace System.Text
 {
     internal sealed class OSEncoding : Encoding
     {
-        private
-#if SYSTEM_PRIVATE_CORELIB
-        new
-#endif
-        readonly int _codePage;
+        private readonly int _codePage;
 
         private string? _encodingName;
 
