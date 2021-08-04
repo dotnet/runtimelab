@@ -4830,11 +4830,6 @@
         "4.1.2.0": "4.3.0"
       }
     },
-    "System.Private.DeveloperExperience.Console": {
-      "InboxOn": {
-        "net5.0": "5.0.0.0"
-      }
-    },
     "System.Private.Runtime.InteropServices.JavaScript": {
       "InboxOn": {
         "net5.0": "5.0.0.0",

@@ -77,7 +77,6 @@
       System.Numerics.Vectors;
       System.ObjectModel;
       System.Private.DataContractSerialization;
-      System.Private.DeveloperExperience.Console;
       System.Private.Runtime.InteropServices.JavaScript;
       System.Private.Uri;
       System.Private.Xml;
