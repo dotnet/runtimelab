@@ -727,10 +727,6 @@ namespace Internal.IL
             {
                 LLVMMetadataRef functionMetaType = _compilation.DIBuilder.CreateSubroutineType(debugMetadata.File,
                     ReadOnlySpan<LLVMMetadataRef>.Empty /* TODO */, LLVMDIFlags.LLVMDIFlagZero);
-                if (_method.Name == "Resize")
-                {
-
-                }
                 uint lineNumber = (uint) _debugInformation.GetSequencePoints().FirstOrDefault().LineNumber;
                 _debugFunction = _compilation.DIBuilder.CreateFunction(debugMetadata.File, _method.Name, _method.Name,
                     debugMetadata.File,

@@ -27,7 +27,10 @@ extern "C" void registerLlvmCallbacks(void*       thisPtr,
                                       const char* (*getMangledMethodNamePtr)(void*, CORINFO_METHOD_STRUCT_*),
                                       const char* (*_getMangledSymbolNamePtr)(void*, void*),
                                       const char* (*addCodeReloc)(void*, void*),
-                                      const uint32_t (*isRuntimeImport)(void*, CORINFO_METHOD_STRUCT_*));
+                                      const uint32_t (*isRuntimeImport)(void*, CORINFO_METHOD_STRUCT_*),
+                                      const char* (*getDocumentFileName)(void*),
+                                      const uint32_t (*firstSequencePointLineNumber)(void*),
+                                      const uint32_t (*getOffsetLineNumber)(void*, unsigned int));
 
 class Llvm
 {

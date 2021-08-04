@@ -14,6 +14,9 @@
 #include "llvm/IR/Function.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/Bitcode/BitcodeWriter.h"
+#include "llvm/IR/DIBuilder.h"
+#include "llvm/BinaryFormat/Dwarf.h"
+
 #include <unordered_map>
 
 using llvm::Function;
@@ -36,6 +39,12 @@ struct LlvmArgInfo
     unsigned int m_shadowStackOffset;
 };
 
+struct DebugMetadata
+{
+    llvm::DIFile*        fileMetadata; 
+    llvm::DICompileUnit* diCompileUnit;
+};
+
 // TODO: might need the LLVM Value* in here for exception funclets.
 struct SpilledExpressionEntry
 {
@@ -44,22 +53,33 @@ struct SpilledExpressionEntry
 
 typedef JitHashTable<BasicBlock*, JitPtrKeyFuncs<BasicBlock>, llvm::BasicBlock*> BlkToLlvmBlkVectorMap;
 
-static Module* _module = nullptr;
+static Module*          _module    = nullptr;
+static llvm::DIBuilder* _diBuilder = nullptr;
 static LLVMContext _llvmContext;
 static void* _thisPtr; // TODO: workaround for not changing the JIT/EE interface.  As this is static, it will probably fail if multithreaded compilation is attempted
 static const char* (*_getMangledMethodName)(void*, CORINFO_METHOD_STRUCT_*);
 static const char* (*_getMangledSymbolName)(void*, void*);
 static const char* (*_addCodeReloc)(void*, void*);
 static const uint32_t (*_isRuntimeImport)(void*, CORINFO_METHOD_STRUCT_*);
-static char*     _outputFileName;
-static Function* _doNothingFunction;
+static const char* (*_getDocumentFileName)(void*);
+static const uint32_t (*_firstSequencePointLineNumber)(void*);
+static const uint32_t (*_getOffsetLineNumber)(void*, unsigned int ilOffset);
+
+static char*                              _outputFileName;
+static Function*                          _doNothingFunction;
 Compiler::Info                            _info;
 Compiler*                                 _compiler;
 Function*                                 _function;
+llvm::DISubprogram*                       _debugFunction;
+IL_OFFSETX                                _currentOffset;
 BlkToLlvmBlkVectorMap*                    _blkToLlvmBlkVectorMap;
 llvm::IRBuilder<>*                        _builder;
 std::unordered_map<GenTree*, Value*>*     _sdsuMap;
 std::unordered_map<unsigned int, Value*>* _localsMap;
+
+// DWARF
+std::unordered_map<std::string, struct DebugMetadata> _debugMetadataMap;
+
 CORINFO_SIG_INFO                          _sigInfo; // sigInfo of function being compiled
 llvm::IRBuilder<>*                        _prologBuilder;
 std::vector<SpilledExpressionEntry>       _spilledExpressions;
@@ -71,14 +91,20 @@ extern "C" DLLEXPORT void registerLlvmCallbacks(void*       thisPtr,
                                                 const char* (*getMangledMethodNamePtr)(void*, CORINFO_METHOD_STRUCT_*),
                                                 const char* (*getMangledSymbolNamePtr)(void*, void*),
                                                 const char* (*addCodeRelocPtr)(void*, void*),
-                                                const uint32_t (*isRuntimeImport)(void*, CORINFO_METHOD_STRUCT_*)
-    )
+                                                const uint32_t (*isRuntimeImport)(void*, CORINFO_METHOD_STRUCT_*),
+                                                const char* (*getDocumentFileName)(void*),
+                                                const uint32_t (*firstSequencePointLineNumber)(void*),
+                                                const uint32_t (*getOffsetLineNumber)(void*, unsigned int))
 {
     _thisPtr = thisPtr;
     _getMangledMethodName = getMangledMethodNamePtr;
     _getMangledSymbolName = getMangledSymbolNamePtr;
     _addCodeReloc         = addCodeRelocPtr;
     _isRuntimeImport      = isRuntimeImport;
+    _getDocumentFileName  = getDocumentFileName;
+    _firstSequencePointLineNumber = firstSequencePointLineNumber;
+    _getOffsetLineNumber          = getOffsetLineNumber;
+
     if (_module == nullptr) // registerLlvmCallbacks is called for each method to compile, but must only created the module once.  Better perhaps to split this into 2 calls.
     {
         _module = new Module(llvm::StringRef("netscripten-clrjit"), _llvmContext);
@@ -96,8 +122,19 @@ void Llvm::Init()
 {
 }
 
+void emitDebugMetadata(LLVMContext& context)
+{
+    _module->addModuleFlag(llvm::Module::Warning, "Dwarf Version", 4);
+    _module->addModuleFlag(llvm::Module::Warning, "Debug Info Version", 3);
+    _diBuilder->finalize();
+}
+
 void Llvm::llvmShutdown()
 {
+    if (_diBuilder != nullptr)
+    {
+        emitDebugMetadata(_llvmContext);
+    }
 #if DEBUG
     if (_outputFileName == nullptr) return; // nothing generated
     std::error_code ec;
@@ -844,7 +881,7 @@ Value* storeLocalVar(llvm::IRBuilder<>& builder, GenTreeLclVar* lclVar)
 }
 
 Value* visitNode(llvm::IRBuilder<>& builder, GenTree* node)
-    {
+{
     switch (node->OperGet())
     {
         case GT_ADD:
@@ -854,6 +891,7 @@ Value* visitNode(llvm::IRBuilder<>& builder, GenTree* node)
         case GT_CNS_INT:
             return buildCnsInt(builder, node);
         case GT_IL_OFFSET:
+            _currentOffset = node->AsILOffset()->gtStmtILoffsx;
             break;
         case GT_IND:
             return buildInd(builder, node, getGenTreeValue(node->AsOp()->gtOp1));
@@ -909,6 +947,85 @@ void generateProlog()
     _builder->SetInsertPoint(block0);
 }
 
+struct DebugMetadata getOrCreateDebugMetadata(const char* documentFileName)
+{
+    std::string fullPath = documentFileName;
+
+    struct DebugMetadata debugMetadata;
+    auto findResult = _debugMetadataMap.find(fullPath);
+    if (findResult == _debugMetadataMap.end())
+    {
+        // check Unix and Windows path styles
+        std::size_t botDirPos = fullPath.find_last_of("/");
+        if (botDirPos == std::string::npos)
+        {
+            botDirPos = fullPath.find_last_of("\\");
+        }
+        std::string directory = ""; // is it possible there is never a directory?
+        std::string fileName;
+        if (botDirPos != std::string::npos)
+        {
+            directory = fullPath.substr(0, botDirPos);
+            fileName = fullPath.substr(botDirPos + 1, fullPath.length());
+        }
+        else
+        {
+            fileName = fullPath;
+        }
+
+        _diBuilder                 = new llvm::DIBuilder(*_module);
+        llvm::DIFile* fileMetadata = _diBuilder->createFile(fileName, directory);
+
+        // TODO: get the right value for isOptimized
+        llvm::DICompileUnit* compileUnit =
+            _diBuilder->createCompileUnit(llvm::dwarf::DW_LANG_C /* no dotnet choices in the enum */, fileMetadata,
+                                          "ILC",
+                                       0 /* Optimized */, "", 1, "", llvm::DICompileUnit::DebugEmissionKind::FullDebug,
+                                       0, 0, 0, llvm::DICompileUnit::DebugNameTableKind::Default, false, "");
+
+        debugMetadata = {fileMetadata, compileUnit};
+        _debugMetadataMap.insert({fullPath, debugMetadata});
+    }
+    else debugMetadata = findResult->second;
+
+    return debugMetadata;
+}
+
+llvm::DILocation* createDebugFunctionAndDiLocation(struct DebugMetadata debugMetadata, unsigned int lineNo)
+{
+    if (_debugFunction == nullptr)
+    {
+        llvm::DISubroutineType* functionMetaType = _diBuilder->createSubroutineType({} /* TODO - function parameter types*/, llvm::DINode::DIFlags::FlagZero);
+        uint32_t lineNumber = _firstSequencePointLineNumber(_thisPtr);
+
+        _debugFunction = _diBuilder->createFunction(debugMetadata.fileMetadata, _info.compMethodName,
+                                                    _info.compMethodName, debugMetadata.fileMetadata, lineNumber,
+                                                    functionMetaType, lineNumber, llvm::DINode::DIFlags::FlagZero,
+                                                    llvm::DISubprogram::DISPFlags::SPFlagDefinition |
+                                                        llvm::DISubprogram::DISPFlags::SPFlagLocalToUnit);
+        _function->setSubprogram(_debugFunction);
+    }
+    return llvm::DILocation::get(_llvmContext, lineNo, 0, _debugFunction);
+}
+
+void startImportingNode(llvm::IRBuilder<>& builder)
+{
+    if (_compiler->opts.compDbgInfo)
+    {
+        const char* documentFileName = _getDocumentFileName(_thisPtr);
+
+        if (documentFileName && *documentFileName != '\0')
+        {
+            unsigned int lineNo = _getOffsetLineNumber(_thisPtr, _currentOffset);
+
+            struct DebugMetadata debugMetadata = getOrCreateDebugMetadata(documentFileName);
+
+            llvm::DILocation* diLocation = createDebugFunctionAndDiLocation(debugMetadata, lineNo);
+            builder.SetCurrentDebugLocation(diLocation);
+        }
+    }
+}
+
 //------------------------------------------------------------------------
 // Compile: Compile IR to LLVM, adding to the LLVM Module
 //
@@ -924,7 +1041,8 @@ void Llvm::Compile(Compiler* pCompiler)
     _localsMap = new std::unordered_map<unsigned int, Value*>();
     _spilledExpressions.clear();
     const char* mangledName = (*_getMangledMethodName)(_thisPtr, _info.compMethodHnd);
-    _function    = _module->getFunction(mangledName);
+    _function               = _module->getFunction(mangledName);
+    _debugFunction          = nullptr;
     _compiler->eeGetMethodSig(_info.compMethodHnd, &_sigInfo);
 
     if (_function == nullptr)
@@ -949,9 +1067,14 @@ void Llvm::Compile(Compiler* pCompiler)
         builder.SetInsertPoint(entry);
         for (GenTree* node = block->GetFirstLIRNode(); node; node = node->gtNext)
         {
+            startImportingNode(builder);
             visitNode(builder, node);
         }
         endImportingBasicBlock(block);
+    }
+    if (_debugFunction != nullptr)
+    {
+        _diBuilder->finalizeSubprogram(_debugFunction);
     }
 }
 #endif
