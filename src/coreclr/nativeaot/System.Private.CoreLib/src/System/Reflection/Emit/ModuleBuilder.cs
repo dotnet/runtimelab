@@ -21,6 +21,7 @@ namespace System.Reflection.Emit
             }
         }
 
+        [RequiresAssemblyFiles(UnknownStringMessageInRAF)]
         public override string FullyQualifiedName
         {
             get
@@ -29,6 +30,7 @@ namespace System.Reflection.Emit
             }
         }
 
+        [RequiresAssemblyFiles(UnknownStringMessageInRAF)]
         public override string Name
         {
             get
