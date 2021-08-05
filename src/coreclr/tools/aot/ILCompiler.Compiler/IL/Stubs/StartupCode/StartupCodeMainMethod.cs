@@ -228,11 +228,6 @@ namespace Internal.IL.Stubs.StartupCode
                 }
             }
 
-            public override bool HasCustomAttribute(string attributeNamespace, string attributeName)
-            {
-                return WrappedMethod.HasCustomAttribute(attributeNamespace, attributeName);
-            }
-
             public override MethodIL EmitIL()
             {
                 ILEmitter emit = new ILEmitter();
