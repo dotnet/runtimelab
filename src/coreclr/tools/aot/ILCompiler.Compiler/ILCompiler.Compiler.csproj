@@ -23,6 +23,9 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Include="..\..\Common\Compiler\Logging\CompilerGeneratedState.cs">
+      <Link>Compiler\Logging\CompilerGeneratedState.cs</Link>
+    </Compile>
     <Compile Include="..\..\Common\Compiler\Logging\MessageContainer.cs">
       <Link>Compiler\Logging\MessageContainer.cs</Link>
     </Compile>

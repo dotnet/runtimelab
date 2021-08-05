@@ -80,7 +80,9 @@ namespace ILCompiler
                 }
             }
 
-            MessageOrigin messageOrigin = new MessageOrigin(origin.OwningMethod, document, lineNumber, null);
+            MethodDesc warnedMethod = CompilerGeneratedState.GetUserDefinedMethodForCompilerGeneratedMember(origin.OwningMethod) ?? origin.OwningMethod;
+
+            MessageOrigin messageOrigin = new MessageOrigin(warnedMethod, document, lineNumber, null);
             LogWarning(text, code, messageOrigin, subcategory);
         }
 
@@ -102,6 +104,8 @@ namespace ILCompiler
 
             if (origin.MemberDefinition is MethodDesc method)
             {
+                method = CompilerGeneratedState.GetUserDefinedMethodForCompilerGeneratedMember(method) ?? method;
+
                 var ecmaMethod = method.GetTypicalMethodDefinition() as EcmaMethod;
                 suppressions = ecmaMethod?.GetDecodedCustomAttributes("System.Diagnostics.CodeAnalysis", "UnconditionalSuppressMessageAttribute");
             }

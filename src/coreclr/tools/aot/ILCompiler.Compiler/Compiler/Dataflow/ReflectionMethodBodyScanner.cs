@@ -17,6 +17,7 @@ using DependencyList = ILCompiler.DependencyAnalysisFramework.DependencyNodeCore
 using CustomAttributeValue = System.Reflection.Metadata.CustomAttributeValue<Internal.TypeSystem.TypeDesc>;
 using CustomAttributeTypedArgument = System.Reflection.Metadata.CustomAttributeTypedArgument<Internal.TypeSystem.TypeDesc>;
 using CustomAttributeNamedArgumentKind = System.Reflection.Metadata.CustomAttributeNamedArgumentKind;
+using InteropTypes = Internal.TypeSystem.Interop.InteropTypes;
 
 namespace ILCompiler.Dataflow
 {
@@ -33,7 +34,8 @@ namespace ILCompiler.Dataflow
                 GetIntrinsicIdForMethod(methodDefinition) > IntrinsicId.RequiresReflectionBodyScanner_Sentinel ||
                 flowAnnotations.RequiresDataflowAnalysis(methodDefinition) ||
                 methodDefinition.HasCustomAttribute("System.Diagnostics.CodeAnalysis", "RequiresUnreferencedCodeAttribute") ||
-                methodDefinition.HasCustomAttribute("System.Diagnostics.CodeAnalysis", "RequiresDynamicCodeAttribute");
+                methodDefinition.HasCustomAttribute("System.Diagnostics.CodeAnalysis", "RequiresDynamicCodeAttribute") ||
+                methodDefinition.IsPInvoke;
         }
 
         public static bool RequiresReflectionMethodBodyScannerForMethodBody(FlowAnnotations flowAnnotations, MethodDesc methodDefinition)
@@ -48,14 +50,27 @@ namespace ILCompiler.Dataflow
             return flowAnnotations.RequiresDataflowAnalysis(fieldDefinition);
         }
 
+        private bool ShouldEnablePatternReporting(MethodDesc method, string attributeName)
+        {
+            if (method.HasCustomAttribute("System.Diagnostics.CodeAnalysis", attributeName))
+                return false;
+
+            MethodDesc userMethod = ILCompiler.Logging.CompilerGeneratedState.GetUserDefinedMethodForCompilerGeneratedMember(method);
+            if (userMethod != null &&
+                userMethod.HasCustomAttribute("System.Diagnostics.CodeAnalysis", attributeName))
+                return false;
+
+            return true;
+        }
+
         bool ShouldEnableReflectionPatternReporting(MethodDesc method)
         {
-            return !method.HasCustomAttribute("System.Diagnostics.CodeAnalysis", "RequiresUnreferencedCodeAttribute");
+            return ShouldEnablePatternReporting(method, "RequiresUnreferencedCodeAttribute");
         }
 
         bool ShouldEnableAotPatternReporting(MethodDesc method)
         {
-            return !method.HasCustomAttribute("System.Diagnostics.CodeAnalysis", "RequiresDynamicCodeAttribute");
+            return ShouldEnablePatternReporting(method, "RequiresDynamicCodeAttribute");
         }
 
         private ReflectionMethodBodyScanner(NodeFactory factory, FlowAnnotations flowAnnotations, Logger logger)
@@ -2134,6 +2149,33 @@ namespace ILCompiler.Dataflow
                         break;
 
                     default:
+                        if (calledMethod.IsPInvoke)
+                        {
+                            // Is the PInvoke dangerous?
+                            ParameterMetadata[] paramMetadata = calledMethod.GetParameterMetadata();
+
+                            ParameterMetadata returnParamMetadata = Array.Find(paramMetadata, m => m.Index == 0);
+
+                            bool comDangerousMethod = IsComInterop(returnParamMetadata.MarshalAsDescriptor, calledMethod.Signature.ReturnType);
+                            for (int paramIndex = 0; paramIndex < calledMethod.Signature.Length; paramIndex++)
+                            {
+                                MarshalAsDescriptor marshalAsDescriptor = null;
+                                for (int metadataIndex = 0; metadataIndex < paramMetadata.Length; metadataIndex++)
+                                {
+                                    if (paramMetadata[metadataIndex].Index == paramIndex + 1)
+                                        marshalAsDescriptor = paramMetadata[metadataIndex].MarshalAsDescriptor;
+                                }
+
+                                comDangerousMethod |= IsComInterop(marshalAsDescriptor, calledMethod.Signature[paramIndex]);
+                            }
+
+                            if (comDangerousMethod)
+                            {
+                                reflectionContext.AnalyzingPattern();
+                                reflectionContext.RecordUnrecognizedPattern(2050, $"P/invoke method '{calledMethod.GetDisplayName()}' declares a parameter with COM marshalling. Correctness of COM interop cannot be guaranteed after trimming. Interfaces and interface members might be removed.");
+                            }
+                        }
+
                         if (requiresDataFlowAnalysis)
                         {
                             reflectionContext.AnalyzingPattern();
@@ -2155,7 +2197,7 @@ namespace ILCompiler.Dataflow
                         {
                             string attributeMessage = DiagnosticUtilities.GetRequiresUnreferencedCodeAttributeMessage(calledMethod);
 
-                            if (attributeMessage.Length > 0 && !attributeMessage.EndsWith('.'))
+                            if (attributeMessage != null && attributeMessage.Length > 0 && !attributeMessage.EndsWith('.'))
                                 attributeMessage += '.';
 
                             string message =
@@ -2181,7 +2223,7 @@ namespace ILCompiler.Dataflow
                         {
                             string attributeMessage = DiagnosticUtilities.GetRequiresDynamicCodeAttributeMessage(calledMethod);
 
-                            if (attributeMessage.Length > 0 && !attributeMessage.EndsWith('.'))
+                            if (attributeMessage != null && attributeMessage.Length > 0 && !attributeMessage.EndsWith('.'))
                                 attributeMessage += '.';
 
                             string message = $"{String.Format(Resources.Strings.IL9700, calledMethod.GetDisplayName())} {attributeMessage}";
@@ -2245,6 +2287,85 @@ namespace ILCompiler.Dataflow
             }
 
             return true;
+        }
+
+        bool IsComInterop(MarshalAsDescriptor marshalInfoProvider, TypeDesc parameterType)
+        {
+            // This is best effort. One can likely find ways how to get COM without triggering these alarms.
+            // AsAny marshalling of a struct with an object-typed field would be one, for example.
+
+            // This logic roughly corresponds to MarshalInfo::MarshalInfo in CoreCLR,
+            // not trying to handle invalid cases and distinctions that are not interesting wrt
+            // "is this COM?" question.
+
+            NativeTypeKind nativeType = NativeTypeKind.Default;
+            if (marshalInfoProvider != null)
+            {
+                nativeType = marshalInfoProvider.Type;
+            }
+
+            if (nativeType == NativeTypeKind.IUnknown || nativeType == NativeTypeKind.IDispatch || nativeType == NativeTypeKind.Intf)
+            {
+                // This is COM by definition
+                return true;
+            }
+
+            if (nativeType == NativeTypeKind.Default)
+            {
+                TypeSystemContext context = parameterType.Context;
+
+                if (parameterType.IsPointer)
+                    return false;
+
+                while (parameterType.IsParameterizedType)
+                    parameterType = ((ParameterizedType)parameterType).ParameterType;
+
+                if (parameterType.IsWellKnownType(WellKnownType.Array))
+                {
+                    // System.Array marshals as IUnknown by default
+                    return true;
+                }
+                else if (parameterType.IsWellKnownType(WellKnownType.String) ||
+                    InteropTypes.IsStringBuilder(context, parameterType))
+                {
+                    // String and StringBuilder are special cased by interop
+                    return false;
+                }
+
+                if (parameterType.IsValueType)
+                {
+                    // Value types don't marshal as COM
+                    return false;
+                }
+                else if (parameterType.IsInterface)
+                {
+                    // Interface types marshal as COM by default
+                    return true;
+                }
+                else if (parameterType.IsDelegate || parameterType.IsWellKnownType(WellKnownType.MulticastDelegate)
+                    || parameterType == context.GetWellKnownType(WellKnownType.MulticastDelegate).BaseType)
+                {
+                    // Delegates are special cased by interop
+                    return false;
+                }
+                else if (InteropTypes.IsCriticalHandle(context, parameterType))
+                {
+                    // Subclasses of CriticalHandle are special cased by interop
+                    return false;
+                }
+                else if (InteropTypes.IsSafeHandle(context, parameterType))
+                {
+                    // Subclasses of SafeHandle are special cased by interop
+                    return false;
+                }
+                else if (parameterType is MetadataType mdType && !mdType.IsSequentialLayout && !mdType.IsExplicitLayout)
+                {
+                    // Rest of classes that don't have layout marshal as COM
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private bool AnalyzeGenericInstatiationTypeArray(ValueNode arrayParam, ref ReflectionPatternContext reflectionContext, MethodDesc calledMethod, Instantiation genericParameters)
