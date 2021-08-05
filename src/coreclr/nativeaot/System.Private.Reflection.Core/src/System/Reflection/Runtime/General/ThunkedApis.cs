@@ -64,9 +64,6 @@ namespace System.Reflection.Runtime.Assemblies
         {
             get
             {
-                if (AppContext.TryGetSwitch("Switch.System.Reflection.Assembly.SimulatedLocationInBaseDirectory", out bool isSimulated) && isSimulated)
-                    return Path.Combine(AppContext.BaseDirectory, ManifestModule.Name);
-
                 return string.Empty;
             }
         }
@@ -76,17 +73,7 @@ namespace System.Reflection.Runtime.Assemblies
         {
             get
             {
-                var assemblyPath = Location;
-                if (string.IsNullOrEmpty(assemblyPath))
-                {
-                    assemblyPath = Path.Combine(AppContext.BaseDirectory, typeof(object).Assembly.ManifestModule.Name);
-                }
-                assemblyPath = assemblyPath.Replace('\\', '/');
-                if (assemblyPath.StartsWith('/'))
-                {
-                    return "file://" + assemblyPath;
-                }
-                return "file:///" + assemblyPath;
+                throw new NotSupportedException(SR.NotSupported_CodeBase);
             }
         }
 

@@ -366,4 +366,7 @@
   <data name="Argument_ArrayGetInterfaceMap" xml:space="preserve">
     <value>Interface maps for generic interfaces on arrays cannot be retrieved.</value>
   </data>
+  <data name="NotSupported_CodeBase" xml:space="preserve">
+    <value>CodeBase is not supported on assemblies loaded from a single-file bundle.</value>
+  </data>
 </root>
