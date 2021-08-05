@@ -10,7 +10,6 @@ namespace System.Text
     internal sealed class OSEncoding : Encoding
     {
         private readonly int _codePage;
-
         private string? _encodingName;
 
         internal OSEncoding(int codePage) : base(codePage)
