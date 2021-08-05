@@ -15,9 +15,9 @@ The following items must be considered to make this prototype production-ready.
 
 **Product impact tenets** &ndash; Size impact, security, and convention reviews. Patterns have been uncovered that could be improved upon in the source generation step. Collapsing some of these patterns would help with reducing size impact and addressing potential security issues. Code generation convention changes may result in API proposals for marshal helpers &ndash; see [struct marshalling](./StructMarshalling.md).
 
-**UX** &ndash; Source generators can run from a command line build as well as from the IDE. Running from within the IDE will impact the UX of the IDE and therefore performance investigations need to avoid degrading the developer inner-loop.
+**UX** &ndash; Source generators can run from a command line build as well as from the IDE. Running from within the IDE will impact the UX of the IDE and therefore performance investigations are needed to ensure the generator doesn't degrade the developer inner-loop.
 
-**Stakeholder feedback** &ndash; An exit criteria for the prototype was to reach out to stakeholders and get feedback on the experience and generated code. Feedback was provided and responses to all prior to product consumption is a requirement.
+**Stakeholder feedback** &ndash; An exit criteria for the prototype was to reach out to stakeholders and get feedback on the experience and generated code. Responses to all feedback prior to product consumption is expected.
 
 ## Consumption
 
@@ -28,7 +28,7 @@ The following items must be considered to make the prototype consumable in [dotn
 **Versioning/Shipping/Servicing** &ndash; Partially captured in the "In-box source generation" document, but stated item is being called out.
 
 **Merge in feature branch**  &ndash; Integration work for updates to `NetCoreApp` have started in [`feature/use-dllimport-generator`](https://github.com/dotnet/runtime/tree/feature/use-dllimport-generator).
-  - Question on the impact of source build for dotnet/runtime.
+  - Question on the impact of [source build](https://github.com/dotnet/source-build) for dotnet/runtime.
 
 ## Productization
 
