@@ -98,7 +98,6 @@ The .NET Foundation licenses this file to you under the MIT license.
     <AutoInitializedAssemblies Include="System.Private.Reflection.Execution" Condition="$(IlcDisableReflection) != 'true'" />
     <AutoInitializedAssemblies Include="System.Private.DisabledReflection" Condition="$(IlcDisableReflection) == 'true'" />
     <AutoInitializedAssemblies Include="System.Private.Interop" />
-    <AutoInitializedAssemblies Include="System.Private.DeveloperExperience.Console" Condition="$(IlcDisableUnhandledExceptionExperience) != 'true'"  />
   </ItemGroup>
 
   <ItemGroup>
