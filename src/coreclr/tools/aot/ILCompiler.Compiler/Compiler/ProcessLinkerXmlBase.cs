@@ -61,7 +61,11 @@ namespace ILCompiler
                     string assemblyName = _reader.GetAttribute("fullname");
 
                     if (assemblyName == "*")
-                        throw new NotSupportedException();
+                    {
+                        // https://github.com/dotnet/runtimelab/issues/1381
+                        _reader.Skip();
+                        continue;
+                    }
 
                     // Errors for invalid assembly names should show up even if this element will be
                     // skipped due to feature conditions.
