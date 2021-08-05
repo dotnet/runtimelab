@@ -62,13 +62,13 @@
       Text="Cross-OS native compilation is not supported. https://github.com/dotnet/corert/issues/5458" />
 
     <Error Condition="'$(DisableUnsupportedError)' != 'true' and !($(RuntimeIdentifier.EndsWith('x64')) or
-      ($(RuntimeIdentifier.EndsWith('arm64')) and !$(RuntimeIdentifier.StartsWith('osx'))))"
+      (($(RuntimeIdentifier.EndsWith('arm64')) or $(RuntimeIdentifier.EndsWith('arm'))) and !$(RuntimeIdentifier.StartsWith('osx'))))"
       Text="Native compilation does not support targeting $(RuntimeIdentifier) yet. https://github.com/dotnet/corert/issues/4589" />
 
-    <Error Condition="'$(DisableUnsupportedError)' != 'true' and !('$(IlcHostArch)' == 'x64' or '$(IlcHostArch)' == 'arm64')"
-      Text="Native compilation can run on x64 and arm64 hosts only." />
+    <Error Condition="'$(DisableUnsupportedError)' != 'true' and !('$(IlcHostArch)' == 'x64' or '$(IlcHostArch)' == 'arm64' or '$(IlcHostArch)' == 'arm')"
+      Text="Native compilation can run on x64, arm64 and arm hosts only." />
 
-    <Error Condition="'$(IlcHostPackagePath)' == '' and '$(RuntimePackagePath)' != '' and ('$(IlcHostArch)' == 'x64' or '$(IlcHostArch)' == 'arm64')"
+    <Error Condition="'$(IlcHostPackagePath)' == '' and '$(RuntimePackagePath)' != '' and ('$(IlcHostArch)' == 'x64' or '$(IlcHostArch)' == 'arm64' or '$(IlcHostArch)' == 'arm')"
       Text="Add a PackageReference for '$(IlcHostPackageName)' to allow cross-compilation for $(TargetArchitecture)" />
 
     <!-- CoreRT SDK and Framework Assemblies need to be defined to avoid CoreCLR implementations being set as compiler inputs -->
