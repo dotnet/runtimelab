@@ -160,7 +160,7 @@ namespace System.Text.RegularExpressions.SRM
         private S GetAtom(int c) => builder.atoms[dt.Find(c)];
 
         private const int s_STATEMAXBOUND = 10000;
-        // private const int s_STATEBOUNDLEEWAY = 1000;
+        private const int s_STATEBOUNDLEEWAY = 1000;
 
         #region custom serialization/deserialization
         /// <summary>
@@ -430,10 +430,10 @@ namespace System.Text.RegularExpressions.SRM
         }
 
         /// <summary>
-        /// TODO
+        /// Transition for Brzozowski style derivatives (i.e. a DFA).
         /// </summary>
         private struct BrzozowskiTransition : ITransition
-            {
+        {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public State<S> TakeTransition(SymbolicRegexMatcher<S> matcher, State<S> q, int atom_id, S atom)
             {
@@ -447,7 +447,7 @@ namespace System.Text.RegularExpressions.SRM
         }
 
         /// <summary>
-        /// TODO
+        /// Transition for Antimirov style derivatives (i.e. an NFA).
         /// </summary>
         private struct AntimirovTransition : ITransition
         {
@@ -457,25 +457,25 @@ namespace System.Text.RegularExpressions.SRM
                 if (q.Node.Kind == SymbolicRegexKind.Or)
                 {
                     SymbolicRegexNode<S> union = matcher.builder.nothing;
-                uint kind = 0;
-                // consider transitions from the members one at a time
-                foreach (var r in q.Node.alts)
-                {
+                    uint kind = 0;
+                    // consider transitions from the members one at a time
+                    foreach (var r in q.Node.alts)
+                    {
                         var s = matcher.builder.MkState(r, q.PrevCharKind);
                         int offset = (s.Id << matcher.builder.K) | atom_id;
                         var p = matcher.builder.delta[offset];
-                    if (p == null)
+                        if (p == null)
                             p = matcher.CreateNewTransition(s, atom, offset);
-                    // observe that if p.Node is an Or it will be flattened
+                        // observe that if p.Node is an Or it will be flattened
                         union = matcher.builder.MkOr2(union, p.Node);
-                    // kind is just the kind of the atom
-                    kind = p.PrevCharKind;
-                }
+                        // kind is just the kind of the atom
+                        kind = p.PrevCharKind;
+                    }
                     var powerstate = matcher.builder.MkState(union, kind, true);
-                return powerstate;
-            }
-            else
-            {
+                    return powerstate;
+                }
+                else
+                {
                     return default(BrzozowskiTransition).TakeTransition(matcher, q, atom_id, atom);
                 }
             }
@@ -640,13 +640,43 @@ namespace System.Text.RegularExpressions.SRM
             }
             while (i < k)
             {
-                q = Delta<BrzozowskiTransition>(input, i, q);
+                bool done;
+                int j = Math.Min(k, i + s_STATEBOUNDLEEWAY);
+                if (!builder.antimirov)
+                {
+                    done = FindEndPositionDeltas<BrzozowskiTransition>(input, ref i, j, ref q, ref i_end);
+                }
+                else
+                {
+                    done = FindEndPositionDeltas<AntimirovTransition>(input, ref i, j, ref q, ref i_end);
+                }
+                if (done)
+                    break;
+            }
 
-                if (q.IsNullable(GetCharKind(input, i+1)))
+#if DEBUG
+            if (i_end == k)
+                throw new AutomataException(AutomataExceptionKind.InternalError_SymbolicRegex);
+#endif
+            return i_end;
+        }
+
+        // Inner loop for FindEndPosition parameterized by an ITransition type.
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private bool FindEndPositionDeltas<Transition>(string input, ref int i, int j, ref State<S> q, ref int i_end) where Transition : struct, ITransition
+        {
+            do
+            {
+                q = Delta<Transition>(input, i, q);
+
+                if (q.IsNullable(GetCharKind(input, i + 1)))
                 {
                     // stop here if q is lazy
                     if (q.IsLazy)
-                        return i;
+                    {
+                        i_end = i;
+                        return true;
+                    }
                     //accepting state has been reached
                     //record the position
                     i_end = i;
@@ -655,16 +685,11 @@ namespace System.Text.RegularExpressions.SRM
                 {
                     //nonaccepting sink state (deadend) has been reached in A
                     //so the match ended when the last i_end was updated
-                    break;
+                    return true;
                 }
                 i += 1;
-            }
-
-#if DEBUG
-            if (i_end == k)
-                throw new AutomataException(AutomataExceptionKind.InternalError_SymbolicRegex);
-#endif
-            return i_end;
+            } while (i < j);
+            return false;
         }
 
         /// <summary>
@@ -709,14 +734,40 @@ namespace System.Text.RegularExpressions.SRM
             //walk back to the accepting state of Ar
             while (i >= match_start_boundary)
             {
-                q = Delta<BrzozowskiTransition>(input, i, q);
+                bool done;
+                int j = Math.Max(match_start_boundary, i - s_STATEBOUNDLEEWAY);
+                if (!builder.antimirov)
+                {
+                    done = FindStartPositionDeltas<BrzozowskiTransition>(input, ref i, j, ref q, ref last_start);
+                }
+                else
+                {
+                    done = FindStartPositionDeltas<AntimirovTransition>(input, ref i, j, ref q, ref last_start);
+                }
+                if (done)
+                    break;
+            }
+#if DEBUG
+            if (last_start == -1)
+                throw new AutomataException(AutomataExceptionKind.InternalError_SymbolicRegex);
+#endif
+            return last_start;
+        }
+
+        // Inner loop for FindStartPosition parameterized by an ITransition type.
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private bool FindStartPositionDeltas<Transition>(string input, ref int i, int j, ref State<S> q, ref int last_start) where Transition : struct, ITransition
+        {
+            do
+            {
+                q = Delta<Transition>(input, i, q);
 
                 //reached a deadend state,
                 //thus the earliest match start point must have occurred already
                 if (q.IsNothing)
-                    break;
+                    return true;
 
-                if (q.IsNullable(GetCharKind(input, i-1)))
+                if (q.IsNullable(GetCharKind(input, i - 1)))
                 {
                     //earliest start point so far
                     //this must happen at some point
@@ -725,12 +776,8 @@ namespace System.Text.RegularExpressions.SRM
                     last_start = i;
                 }
                 i -= 1;
-            }
-#if DEBUG
-            if (last_start == -1)
-                throw new AutomataException(AutomataExceptionKind.InternalError_SymbolicRegex);
-#endif
-            return last_start;
+            } while (i > j);
+            return false;
         }
 
         /// <summary>
@@ -747,12 +794,12 @@ namespace System.Text.RegularExpressions.SRM
             // which in general depends on the previous character kind in the input
             uint prevCharKindId = GetCharKind(input, i - 1);
             State<S> q = _A1q0[prevCharKindId];
+            i_q0 = i;
 
             if (q.IsNothing)
             {
                 //if q is nothing then it is a deadend from the beginning
                 //this happens for example when the original regex started with start anchor and prevCharKindId is not Start
-                i_q0 = i;
                 watchdog = -1;
                 return -2;
             }
@@ -760,7 +807,6 @@ namespace System.Text.RegularExpressions.SRM
             if (q.IsNullable(GetCharKind(input, i)))
             {
                 //the initial state is nullable in this context so at least an empty match exists
-                i_q0 = i;
                 watchdog = -1;
                 //the last position of the match is i-1 because the match is empty
                 //this value is -1 if i=0
@@ -849,24 +895,19 @@ namespace System.Text.RegularExpressions.SRM
                     }
                 }
 
-                // make the transition based on input[i]
-                q = Delta<BrzozowskiTransition>(input, i, q);
-
-                if (q.IsNullable(GetCharKind(input, i + 1)))
+                int result;
+                bool done;
+                int j = Math.Min(k, i + s_STATEBOUNDLEEWAY);
+                if (!builder.antimirov)
                 {
-                    i_q0 = i_q0_A1;
-                    watchdog = q.WatchDog;
-                    return i;
+                    done = FindFinalStatePositionDeltas<BrzozowskiTransition>(input, j, ref i, ref q, i_q0_A1, ref i_q0, ref watchdog, out result);
                 }
-                else if (q.IsNothing)
+                else
                 {
-                    //q is a deadend state so any further search is meaningless
-                    i_q0 = i_q0_A1;
-                    return -2;
+                    done = FindFinalStatePositionDeltas<AntimirovTransition>(input, j, ref i, ref q, i_q0_A1, ref i_q0, ref watchdog, out result);
                 }
-                // continue from the next character
-                i += 1;
-
+                if (done)
+                    return result;
                 if (_checkTimeout)
                     DoCheckTimeout();
             }
@@ -874,6 +915,36 @@ namespace System.Text.RegularExpressions.SRM
             //no match was found
             i_q0 = i_q0_A1;
             return -2;
+        }
+
+        // Inner loop for FindFinalStatePosition parameterized by an ITransition type.
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private bool FindFinalStatePositionDeltas<Transition>(string input, int j, ref int i, ref State<S> q, int i_q0_A1, ref int i_q0, ref int watchdog, out int result) where Transition : struct, ITransition
+        {
+            do
+            {
+                // make the transition based on input[i]
+                q = Delta<Transition>(input, i, q);
+
+                if (q.IsNullable(GetCharKind(input, i + 1)))
+                {
+                    i_q0 = i_q0_A1;
+                    watchdog = q.WatchDog;
+                    result = i;
+                    return true;
+                }
+                else if (q.IsNothing)
+                {
+                    //q is a deadend state so any further search is meaningless
+                    i_q0 = i_q0_A1;
+                    result = -2;
+                    return true;
+                }
+                // continue from the next character
+                i += 1;
+            } while (i < j && !q.IsInitialState);
+            result = -3; // This value does not get used
+            return false;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
