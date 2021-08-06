@@ -35,6 +35,7 @@ class Program
         TestGenericInlining.Run();
         TestGenericInliningDoesntHappen.Run();
         TestGvmDependenciesFromLazy.Run();
+        TestGvmDependencyFromGenericLazy.Run();
 #if !CODEGEN_CPP
         TestNullableCasting.Run();
         TestVariantCasting.Run();
@@ -2621,6 +2622,42 @@ class Program
                 throw new Exception();
 
             s_f.Blah<object>();
+        }
+    }
+
+    class TestGvmDependencyFromGenericLazy
+    {
+        abstract class GenericBase<T, U>
+        {
+            public abstract string Get<V>();
+        }
+
+        class GenericDerived<T> : GenericBase<T, object>
+        {
+            public override string Get<V>() => $"GenericDerived<{typeof(T)}>.Get<{typeof(V)}>";
+        }
+
+        abstract class LazyGenBase
+        {
+            public abstract string Gen<T, U>();
+        }
+
+        class LazyGenDerived : LazyGenBase
+        {
+            public override string Gen<T, U>()
+            {
+                GenericBase<T, object> b = new GenericDerived<T>();
+                return Roundtrip(b).Get<U>();
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        static T Roundtrip<T>(T x) => x;
+
+        public static void Run()
+        {
+            LazyGenBase b = new LazyGenDerived();
+            Console.WriteLine(Roundtrip(b).Gen<object, string>());
         }
     }
 }
