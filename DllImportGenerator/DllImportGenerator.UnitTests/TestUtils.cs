@@ -18,25 +18,6 @@ namespace DllImportGenerator.UnitTests
 {
     internal static class TestUtils
     {
-        private static string NuGetConfigPath { get; } = FindRepoNuGetConfig();
-
-        private static string FindRepoNuGetConfig()
-        {
-            ReadOnlySpan<char> assemblyLocation = typeof(TestUtils).Assembly.Location;
-            for (ReadOnlySpan<char> directory = Path.GetDirectoryName(assemblyLocation); !directory.IsEmpty; directory = Path.GetDirectoryName(directory))
-            {
-                string nugetConfigPath = Path.Join(directory, "NuGet.config");
-                if (File.Exists(nugetConfigPath))
-                {
-                    return nugetConfigPath;
-                }
-            }
-
-            Debug.Assert(false, "This repo should always contain a NuGet.config at the repo root.");
-
-            return string.Empty;
-        }
-
         /// <summary>
         /// Assert the pre-srouce generator compilation has only
         /// the expected failure diagnostics.
@@ -118,7 +99,7 @@ namespace DllImportGenerator.UnitTests
                         "Microsoft.NETCore.App.Ref",
                         "6.0.0-preview.6.21317.4"),
                     Path.Combine("ref", "net6.0"))
-                .WithNuGetConfigFilePath(NuGetConfigPath);
+                .WithNuGetConfigFilePath(Path.Combine(Path.GetDirectoryName(typeof(TestUtils).Assembly.Location)!, "NuGet.config"));
 
             // Include the assembly containing the new attribute and all of its references.
             // [TODO] Remove once the attribute has been added to the BCL
