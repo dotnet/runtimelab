@@ -2,6 +2,7 @@
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Testing;
+using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
@@ -120,7 +121,8 @@ namespace DllImportGenerator.UnitTests
                     new PackageIdentity(
                         "Microsoft.NETCore.App.Ref",
                         "6.0.0-preview.7.21376.23"),
-                    Path.Combine("ref", "net6.0"));
+                    Path.Combine("ref", "net6.0"))
+                .WithNuGetConfigFilePath(Path.Combine(Path.GetDirectoryName(typeof(TestUtils).Assembly.Location)!, "NuGet.config"));
 
             // Include the assembly containing the new attribute and all of its references.
             // [TODO] Remove once the attribute has been added to the BCL
