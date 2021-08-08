@@ -209,7 +209,7 @@ namespace System.Text.Json.Serialization.Tests
             objCopy = JsonSerializer.Deserialize<ClassWithUnicodeProperty>(json, optionsWithEncoder);
             Assert.Equal(1, objCopy.A\u0467);
 
-            // We want to go over StackallocThreshold=256 to force a pooled allocation, so this property is 400 chars and 401 bytes.
+            // We want to go over StackallocByteThreshold=256 to force a pooled allocation, so this property is 400 chars and 401 bytes.
             obj = new ClassWithUnicodeProperty
             {
                 A\u046734567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890 = 1
@@ -398,7 +398,7 @@ namespace System.Text.Json.Serialization.Tests
             objCopy = JsonSerializer.Deserialize<Dictionary<string, int>>(json, optionsWithEncoder);
             Assert.Equal(1, objCopy["A\u0467"]);
 
-            // We want to go over StackallocThreshold=256 to force a pooled allocation, so this property is 200 chars and 400 bytes.
+            // We want to go over StackallocByteThreshold=256 to force a pooled allocation, so this property is 200 chars and 400 bytes.
             const int charsInProperty = 200;
             string longPropertyName = new string('\u0467', charsInProperty);
             obj = new Dictionary<string, int> { { $"{longPropertyName}", 1 } };
@@ -568,7 +568,7 @@ namespace System.Text.Json.Serialization.Tests
             Assert.Same(john, jane.Spouse);
             Assert.Same(jane, john.Spouse);
 
-            Assert.Equal(json, JsonSerializer.Serialize(people, options));
+            Assert.Equal(json, JsonSerializer.Serialize(people, options), ignoreLineEndingDifferences: true);
         }
 
         [Fact]
@@ -619,7 +619,7 @@ namespace System.Text.Json.Serialization.Tests
             Assert.Same(firstListOfPeople[0].Spouse, secondListOfPeople[0].Spouse);
             Assert.Same(firstListOfPeople[1].Spouse, secondListOfPeople[1].Spouse);
 
-            Assert.Equal(json, JsonSerializer.Serialize(secondListOfPeople, options));
+            Assert.Equal(json, JsonSerializer.Serialize(secondListOfPeople, options), ignoreLineEndingDifferences: true);
         }
 
         internal class PresistentGuidReferenceHandler : ReferenceHandler

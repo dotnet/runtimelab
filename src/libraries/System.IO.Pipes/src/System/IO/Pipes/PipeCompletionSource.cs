@@ -147,7 +147,7 @@ namespace System.IO.Pipes
                 // This case should not have any consequences although
                 // it will be easier to debug if there exists any special case
                 // we are not aware of.
-                int errorCode = Marshal.GetLastWin32Error();
+                int errorCode = Marshal.GetLastPInvokeError();
                 Debug.WriteLine("CancelIoEx finished with error code {0}.", errorCode);
             }
         }
@@ -156,7 +156,7 @@ namespace System.IO.Pipes
 
         private void CompleteCallback(int resultState)
         {
-            Debug.Assert(resultState == ResultSuccess || resultState == ResultError, "Unexpected result state " + resultState);
+            Debug.Assert(resultState == ResultSuccess || resultState == ResultError, $"Unexpected result state {resultState}");
             CancellationToken cancellationToken = _cancellationRegistration.Token;
 
             ReleaseResources();

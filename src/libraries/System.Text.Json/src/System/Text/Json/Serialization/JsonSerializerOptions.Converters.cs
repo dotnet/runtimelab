@@ -4,7 +4,9 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
+using System.Text.Json.Reflection;
 using System.Text.Json.Serialization;
 using System.Text.Json.Serialization.Converters;
 using System.Text.Json.Serialization.Metadata;
@@ -25,7 +27,8 @@ namespace System.Text.Json
         // The cached converters (custom or built-in).
         private readonly ConcurrentDictionary<Type, JsonConverter?> _converters = new ConcurrentDictionary<Type, JsonConverter?>();
 
-        internal void RootBuiltInConvertersAndTypeInfoCreator()
+        [RequiresUnreferencedCode(JsonSerializer.SerializationUnreferencedCodeMessage)]
+        private void RootBuiltInConverters()
         {
             s_defaultSimpleConverters ??= GetDefaultSimpleConverters();
             s_defaultFactoryConverters ??= new JsonConverter[]
@@ -36,6 +39,7 @@ namespace System.Text.Json
                 new NullableConverterFactory(),
                 new EnumConverterFactory(),
                 new JsonNodeConverterFactory(),
+                new FSharpTypeConverterFactory(),
                 // IAsyncEnumerable takes precedence over IEnumerable.
                 new IAsyncEnumerableConverterFactory(),
                 // IEnumerable should always be second to last since they can convert any IEnumerable.
@@ -43,13 +47,11 @@ namespace System.Text.Json
                 // Object should always be last since it converts any type.
                 new ObjectConverterFactory()
             };
-
-            _typeInfoCreationFunc ??= static (type, options) => new JsonTypeInfo(type, options);
         }
 
         private static Dictionary<Type, JsonConverter> GetDefaultSimpleConverters()
         {
-            const int NumberOfSimpleConverters = 22;
+            const int NumberOfSimpleConverters = 24;
             var converters = new Dictionary<Type, JsonConverter>(NumberOfSimpleConverters);
 
             // Use a dictionary for simple converters.
@@ -68,9 +70,11 @@ namespace System.Text.Json
             Add(JsonMetadataServices.Int64Converter);
             Add(new JsonElementConverter());
             Add(new JsonDocumentConverter());
+            Add(JsonMetadataServices.ObjectConverter);
             Add(JsonMetadataServices.SByteConverter);
             Add(JsonMetadataServices.SingleConverter);
             Add(JsonMetadataServices.StringConverter);
+            Add(JsonMetadataServices.TimeSpanConverter);
             Add(JsonMetadataServices.UInt16Converter);
             Add(JsonMetadataServices.UInt32Converter);
             Add(JsonMetadataServices.UInt64Converter);
@@ -113,7 +117,7 @@ namespace System.Text.Json
 
             if (converter == null)
             {
-                converter = GetConverter(runtimePropertyType);
+                converter = GetConverterInternal(runtimePropertyType);
                 Debug.Assert(converter != null);
             }
 
@@ -154,8 +158,22 @@ namespace System.Text.Json
         /// There is no compatible <see cref="System.Text.Json.Serialization.JsonConverter"/>
         /// for <paramref name="typeToConvert"/> or its serializable members.
         /// </exception>
+        [RequiresUnreferencedCode("Getting a converter for a type may require reflection which depends on unreferenced code.")]
         public JsonConverter GetConverter(Type typeToConvert)
         {
+            if (typeToConvert == null)
+            {
+                throw new ArgumentNullException(nameof(typeToConvert));
+            }
+
+            RootBuiltInConverters();
+            return GetConverterInternal(typeToConvert);
+        }
+
+        internal JsonConverter GetConverterInternal(Type typeToConvert)
+        {
+            Debug.Assert(typeToConvert != null);
+
             if (_converters.TryGetValue(typeToConvert, out JsonConverter? converter))
             {
                 Debug.Assert(converter != null);

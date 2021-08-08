@@ -1,6 +1,7 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Collections.Generic;
 using System.Text.Json.Serialization.Converters;
 
 namespace System.Text.Json.Serialization.Metadata
@@ -80,10 +81,16 @@ namespace System.Text.Json.Serialization.Metadata
         private static JsonConverter<long>? s_int64Converter;
 
         /// <summary>
+        /// Returns a <see cref="JsonConverter{T}"/> instance that converts <see cref="JsonElement"/> values.
+        /// </summary>
+        public static JsonConverter<JsonElement> JsonElementConverter => s_jsonElementConverter ??= new JsonElementConverter();
+        private static JsonConverter<JsonElement>? s_jsonElementConverter;
+
+        /// <summary>
         /// Returns a <see cref="JsonConverter{T}"/> instance that converts <see cref="object"/> values.
         /// </summary>
-        public static JsonConverter<object> ObjectConverter => s_objectConverter ??= new ObjectConverter();
-        private static JsonConverter<object>? s_objectConverter;
+        public static JsonConverter<object?> ObjectConverter => s_objectConverter ??= new ObjectConverter();
+        private static JsonConverter<object?>? s_objectConverter;
 
         /// <summary>
         /// Returns a <see cref="JsonConverter{T}"/> instance that converts <see cref="float"/> values.
@@ -103,6 +110,12 @@ namespace System.Text.Json.Serialization.Metadata
         /// </summary>
         public static JsonConverter<string> StringConverter => s_stringConverter ??= new StringConverter();
         private static JsonConverter<string>? s_stringConverter;
+
+        /// <summary>
+        /// Returns a <see cref="JsonConverter{T}"/> instance that converts <see cref="TimeSpan"/> values.
+        /// </summary>
+        public static JsonConverter<TimeSpan> TimeSpanConverter => s_timeSpanConverter ??= new TimeSpanConverter();
+        private static JsonConverter<TimeSpan>? s_timeSpanConverter;
 
         /// <summary>
         /// Returns a <see cref="JsonConverter{T}"/> instance that converts <see cref="ushort"/> values.
@@ -141,7 +154,7 @@ namespace System.Text.Json.Serialization.Metadata
         /// Creates a <see cref="JsonConverter{T}"/> instance that converts <typeparamref name="T"/> values.
         /// </summary>
         /// <typeparam name="T">The generic definition for the enum type.</typeparam>
-        /// <param name="options"></param>
+        /// <param name="options">The <see cref="JsonSerializerOptions"/> to use for serialization and deserialization.</param>
         /// <returns></returns>
         public static JsonConverter<T> GetEnumConverter<T>(JsonSerializerOptions options) where T : struct, Enum
             => new EnumConverter<T>(EnumConverterOptions.AllowNumbers, options ?? throw new ArgumentNullException(nameof(options)));
@@ -149,8 +162,8 @@ namespace System.Text.Json.Serialization.Metadata
         /// <summary>
         /// Creates a <see cref="JsonConverter{T}"/> instance that converts <typeparamref name="T?"/> values.
         /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <param name="underlyingTypeInfo"></param>
+        /// <typeparam name="T">The generic definition for the underlying nullable type.</typeparam>
+        /// <param name="underlyingTypeInfo">Serialization metadata for the underlying nullable type.</param>
         /// <returns></returns>
         public static JsonConverter<T?> GetNullableConverter<T>(JsonTypeInfo<T> underlyingTypeInfo) where T : struct
         {

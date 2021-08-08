@@ -76,6 +76,17 @@ NOHANDLES(ICALL(EVENTPIPE_10, "GetSessionInfo", ves_icall_System_Diagnostics_Tra
 NOHANDLES(ICALL(EVENTPIPE_11, "GetWaitHandle", ves_icall_System_Diagnostics_Tracing_EventPipeInternal_GetWaitHandle))
 NOHANDLES(ICALL(EVENTPIPE_12, "WriteEventData", ves_icall_System_Diagnostics_Tracing_EventPipeInternal_WriteEventData))
 
+ICALL_TYPE(NATIVE_RUNTIME_EVENT_SOURCE, "System.Diagnostics.Tracing.NativeRuntimeEventSource", NATIVE_RUNTIME_EVENT_SOURCE_1)
+NOHANDLES(ICALL(NATIVE_RUNTIME_EVENT_SOURCE_1, "LogThreadPoolIODequeue", ves_icall_System_Diagnostics_Tracing_NativeRuntimeEventSource_LogThreadPoolIODequeue))
+NOHANDLES(ICALL(NATIVE_RUNTIME_EVENT_SOURCE_2, "LogThreadPoolIOEnqueue", ves_icall_System_Diagnostics_Tracing_NativeRuntimeEventSource_LogThreadPoolIOEnqueue))
+NOHANDLES(ICALL(NATIVE_RUNTIME_EVENT_SOURCE_3, "LogThreadPoolWorkerThreadAdjustmentAdjustment", ves_icall_System_Diagnostics_Tracing_NativeRuntimeEventSource_LogThreadPoolWorkerThreadAdjustmentAdjustment))
+NOHANDLES(ICALL(NATIVE_RUNTIME_EVENT_SOURCE_4, "LogThreadPoolWorkerThreadAdjustmentSample", ves_icall_System_Diagnostics_Tracing_NativeRuntimeEventSource_LogThreadPoolWorkerThreadAdjustmentSample))
+NOHANDLES(ICALL(NATIVE_RUNTIME_EVENT_SOURCE_5, "LogThreadPoolWorkerThreadAdjustmentStats", ves_icall_System_Diagnostics_Tracing_NativeRuntimeEventSource_LogThreadPoolWorkerThreadAdjustmentStats))
+NOHANDLES(ICALL(NATIVE_RUNTIME_EVENT_SOURCE_6, "LogThreadPoolWorkerThreadStart", ves_icall_System_Diagnostics_Tracing_NativeRuntimeEventSource_LogThreadPoolWorkerThreadStart))
+NOHANDLES(ICALL(NATIVE_RUNTIME_EVENT_SOURCE_7, "LogThreadPoolWorkerThreadStop", ves_icall_System_Diagnostics_Tracing_NativeRuntimeEventSource_LogThreadPoolWorkerThreadStop))
+NOHANDLES(ICALL(NATIVE_RUNTIME_EVENT_SOURCE_8, "LogThreadPoolWorkerThreadWait", ves_icall_System_Diagnostics_Tracing_NativeRuntimeEventSource_LogThreadPoolWorkerThreadWait))
+NOHANDLES(ICALL(NATIVE_RUNTIME_EVENT_SOURCE_9, "LogThreadPoolWorkingThreadCount", ves_icall_System_Diagnostics_Tracing_NativeRuntimeEventSource_LogThreadPoolWorkingThreadCount))
+
 ICALL_TYPE(ENUM, "System.Enum", ENUM_1)
 HANDLES(ENUM_1, "GetEnumValuesAndNames", ves_icall_System_Enum_GetEnumValuesAndNames, MonoBoolean, 3, (MonoReflectionType, MonoArrayOut, MonoArrayOut))
 HANDLES(ENUM_2, "InternalBoxEnum", ves_icall_System_Enum_ToObject, MonoObject, 2, (MonoReflectionType, guint64))
@@ -196,9 +207,6 @@ HANDLES(MCATTR_1, "GetCustomAttributesDataInternal", ves_icall_MonoCustomAttrs_G
 HANDLES(MCATTR_2, "GetCustomAttributesInternal", ves_icall_MonoCustomAttrs_GetCustomAttributesInternal, MonoArray, 3, (MonoObject, MonoReflectionType, MonoBoolean))
 HANDLES(MCATTR_3, "IsDefinedInternal", ves_icall_MonoCustomAttrs_IsDefinedInternal, MonoBoolean, 2, (MonoObject, MonoReflectionType))
 
-ICALL_TYPE(CATTR_DATA, "System.Reflection.CustomAttributeData", CATTR_DATA_1)
-HANDLES(CATTR_DATA_1, "ResolveArgumentsInternal", ves_icall_System_Reflection_CustomAttributeData_ResolveArgumentsInternal, void, 6, (MonoReflectionMethod, MonoReflectionAssembly, gpointer, guint32, MonoArrayOut, MonoArrayOut))
-
 ICALL_TYPE(ASSEMB, "System.Reflection.Emit.AssemblyBuilder", ASSEMB_1)
 HANDLES(ASSEMB_1, "UpdateNativeCustomAttributes", ves_icall_AssemblyBuilder_UpdateNativeCustomAttributes, void, 1, (MonoReflectionAssemblyBuilder))
 HANDLES(ASSEMB_2, "basic_init", ves_icall_AssemblyBuilder_basic_init, void, 1, (MonoReflectionAssemblyBuilder))
@@ -232,13 +240,11 @@ HANDLES(TYPEB_1, "create_runtime_class", ves_icall_TypeBuilder_create_runtime_cl
 
 ICALL_TYPE(FIELDI, "System.Reflection.FieldInfo", FILEDI_1)
 HANDLES(FILEDI_1, "get_marshal_info", ves_icall_System_Reflection_FieldInfo_get_marshal_info, MonoReflectionMarshalAsAttribute, 1, (MonoReflectionField))
-
 HANDLES(FILEDI_2, "internal_from_handle_type", ves_icall_System_Reflection_FieldInfo_internal_from_handle_type, MonoReflectionField, 2, (MonoClassField_ref, MonoType_ref))
 
-#ifdef ENABLE_METADATA_UPDATE
-ICALL_TYPE(ASSMEXT, "System.Reflection.Metadata.AssemblyExtensions", ASSMEXT_1)
-NOHANDLES(ICALL(ASSMEXT_1, "ApplyUpdate_internal", ves_icall_AssemblyExtensions_ApplyUpdate))
-#endif
+ICALL_TYPE(MDUP, "System.Reflection.Metadata.MetadataUpdater", MDUP_1)
+NOHANDLES(ICALL(MDUP_1, "ApplyUpdateEnabled", ves_icall_AssemblyExtensions_ApplyUpdateEnabled))
+NOHANDLES(ICALL(MDUP_2, "ApplyUpdate_internal", ves_icall_AssemblyExtensions_ApplyUpdate))
 
 ICALL_TYPE(MBASE, "System.Reflection.MethodBase", MBASE_1)
 HANDLES(MBASE_1, "GetCurrentMethod", ves_icall_GetCurrentMethod, MonoReflectionMethod, 0, ())
@@ -261,7 +267,7 @@ HANDLES(RASSEM_6b, "GetTopLevelForwardedTypes", ves_icall_System_Reflection_Runt
 HANDLES(RASSEM_7, "InternalGetReferencedAssemblies", ves_icall_System_Reflection_Assembly_InternalGetReferencedAssemblies, GPtrArray_ptr, 1, (MonoReflectionAssembly))
 HANDLES(RASSEM_8, "InternalImageRuntimeVersion", ves_icall_System_Reflection_RuntimeAssembly_InternalImageRuntimeVersion, MonoString, 1, (MonoReflectionAssembly))
 HANDLES(RASSEM_9, "get_EntryPoint", ves_icall_System_Reflection_RuntimeAssembly_get_EntryPoint, MonoReflectionMethod, 1, (MonoReflectionAssembly))
-HANDLES(RASSEM_10, "get_code_base", ves_icall_System_Reflection_RuntimeAssembly_get_code_base, MonoString, 2, (MonoReflectionAssembly, MonoBoolean))
+HANDLES(RASSEM_10, "get_code_base", ves_icall_System_Reflection_RuntimeAssembly_get_code_base, MonoString, 1, (MonoReflectionAssembly))
 HANDLES(RASSEM_11, "get_fullname", ves_icall_System_Reflection_RuntimeAssembly_get_fullname, MonoString, 1, (MonoReflectionAssembly))
 HANDLES(RASSEM_12, "get_location", ves_icall_System_Reflection_RuntimeAssembly_get_location, MonoString, 1, (MonoReflectionAssembly))
 
@@ -269,6 +275,9 @@ ICALL_TYPE(MCMETH, "System.Reflection.RuntimeConstructorInfo", MCMETH_1)
 HANDLES(MCMETH_1, "GetGenericMethodDefinition_impl", ves_icall_RuntimeMethodInfo_GetGenericMethodDefinition, MonoReflectionMethod, 1, (MonoReflectionMethod))
 HANDLES(MCMETH_2, "InternalInvoke", ves_icall_InternalInvoke, MonoObject, 4, (MonoReflectionMethod, MonoObject, MonoArray, MonoExceptionOut))
 HANDLES_REUSE_WRAPPER(MCMETH_4, "get_metadata_token", ves_icall_reflection_get_token)
+
+ICALL_TYPE(CATTR_DATA, "System.Reflection.RuntimeCustomAttributeData", CATTR_DATA_1)
+HANDLES(CATTR_DATA_1, "ResolveArgumentsInternal", ves_icall_System_Reflection_RuntimeCustomAttributeData_ResolveArgumentsInternal, void, 6, (MonoReflectionMethod, MonoReflectionAssembly, gpointer, guint32, MonoArrayOut, MonoArrayOut))
 
 ICALL_TYPE(MEV, "System.Reflection.RuntimeEventInfo", MEV_1)
 HANDLES(MEV_1, "get_event_info", ves_icall_RuntimeEventInfo_get_event_info, void, 2, (MonoReflectionMonoEvent, MonoEventInfo_ref))
@@ -369,7 +378,7 @@ NOHANDLES(ICALL(X86BASE_1, "__cpuidex", ves_icall_System_Runtime_Intrinsics_X86_
 ICALL_TYPE(ALC, "System.Runtime.Loader.AssemblyLoadContext", ALC_5)
 HANDLES(ALC_5, "GetLoadContextForAssembly", ves_icall_System_Runtime_Loader_AssemblyLoadContext_GetLoadContextForAssembly, gpointer, 1, (MonoReflectionAssembly))
 HANDLES(ALC_4, "InternalGetLoadedAssemblies", ves_icall_System_Runtime_Loader_AssemblyLoadContext_InternalGetLoadedAssemblies, MonoArray, 0, ())
-HANDLES(ALC_2, "InternalInitializeNativeALC", ves_icall_System_Runtime_Loader_AssemblyLoadContext_InternalInitializeNativeALC, gpointer, 3, (gpointer, MonoBoolean, MonoBoolean))
+HANDLES(ALC_2, "InternalInitializeNativeALC", ves_icall_System_Runtime_Loader_AssemblyLoadContext_InternalInitializeNativeALC, gpointer, 4, (gpointer, const_char_ptr, MonoBoolean, MonoBoolean))
 HANDLES(ALC_1, "InternalLoadFile", ves_icall_System_Runtime_Loader_AssemblyLoadContext_InternalLoadFile, MonoReflectionAssembly, 3, (gpointer, MonoString, MonoStackCrawlMark_ptr))
 HANDLES(ALC_3, "InternalLoadFromStream", ves_icall_System_Runtime_Loader_AssemblyLoadContext_InternalLoadFromStream, MonoReflectionAssembly, 5, (gpointer, gpointer, gint32, gpointer, gint32))
 HANDLES(ALC_6, "PrepareForAssemblyLoadContextRelease", ves_icall_System_Runtime_Loader_AssemblyLoadContext_PrepareForAssemblyLoadContextRelease, void, 2, (gpointer, gpointer))
@@ -425,7 +434,7 @@ HANDLES(RTH_12, "IsComObject", ves_icall_RuntimeTypeHandle_IsComObject, MonoBool
 HANDLES(RTH_13, "IsGenericTypeDefinition", ves_icall_RuntimeTypeHandle_IsGenericTypeDefinition, MonoBoolean, 1, (MonoReflectionType))
 HANDLES(RTH_14, "IsGenericVariable", ves_icall_RuntimeTypeHandle_IsGenericVariable, MonoBoolean, 1, (MonoReflectionType))
 HANDLES(RTH_15, "IsInstanceOfType", ves_icall_RuntimeTypeHandle_IsInstanceOfType, guint32, 2, (MonoReflectionType, MonoObject))
-HANDLES(RTH_17a, "internal_from_name", ves_icall_System_RuntimeTypeHandle_internal_from_name, MonoReflectionType, 6, (MonoString, MonoStackCrawlMark_ptr, MonoReflectionAssembly, MonoBoolean, MonoBoolean, MonoBoolean))
+HANDLES(RTH_17a, "internal_from_name", ves_icall_System_RuntimeTypeHandle_internal_from_name, MonoReflectionType, 5, (MonoString, MonoStackCrawlMark_ptr, MonoReflectionAssembly, MonoBoolean, MonoBoolean))
 NOHANDLES(ICALL(RTH_17b, "is_subclass_of", ves_icall_RuntimeTypeHandle_is_subclass_of))
 HANDLES(RTH_18, "type_is_assignable_from", ves_icall_RuntimeTypeHandle_type_is_assignable_from, guint32, 2, (MonoReflectionType, MonoReflectionType))
 

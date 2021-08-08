@@ -34,6 +34,27 @@ namespace System.Text.Json.Serialization
 
         internal bool CanBePolymorphic { get; set; }
 
+        /// <summary>
+        /// Used to support JsonObject as an extension property in a loosely-typed, trimmable manner.
+        /// </summary>
+        internal virtual object CreateObject(JsonSerializerOptions options)
+        {
+            throw new InvalidOperationException(SR.NodeJsonObjectCustomConverterNotAllowedOnExtensionProperty);
+        }
+
+        /// <summary>
+        /// Used to support JsonObject as an extension property in a loosely-typed, trimmable manner.
+        /// </summary>
+        internal virtual void ReadElementAndSetProperty(
+            object obj,
+            string propertyName,
+            ref Utf8JsonReader reader,
+            JsonSerializerOptions options,
+            ref ReadStack state)
+        {
+            throw new InvalidOperationException(SR.NodeJsonObjectCustomConverterNotAllowedOnExtensionProperty);
+        }
+
         internal abstract JsonPropertyInfo CreateJsonPropertyInfo();
 
         internal abstract JsonParameterInfo CreateJsonParameterInfo();
@@ -93,7 +114,9 @@ namespace System.Text.Json.Serialization
 
         internal ConstructorInfo? ConstructorInfo { get; set; }
 
-        internal virtual void Initialize(JsonSerializerOptions options) { }
+        internal virtual bool RequiresDynamicMemberAccessors { get; }
+
+        internal virtual void Initialize(JsonSerializerOptions options, JsonTypeInfo? jsonTypeInfo = null) { }
 
         /// <summary>
         /// Creates the instance and assigns it to state.Current.ReturnValue.

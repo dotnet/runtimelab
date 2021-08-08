@@ -23,7 +23,8 @@ namespace System.Text.Json
         /// encoding since the implementation internally uses UTF-8. See also <see cref="SerializeToUtf8Bytes{TValue}(TValue, JsonSerializerOptions?)"/>
         /// and <see cref="SerializeAsync{TValue}(IO.Stream, TValue, JsonSerializerOptions?, Threading.CancellationToken)"/>.
         /// </remarks>
-        public static string Serialize<[DynamicallyAccessedMembers(MembersAccessedOnWrite)] TValue>(TValue value, JsonSerializerOptions? options = null)
+        [RequiresUnreferencedCode(SerializationUnreferencedCodeMessage)]
+        public static string Serialize<TValue>(TValue value, JsonSerializerOptions? options = null)
         {
             return Write(value, GetRuntimeType(value), options);
         }
@@ -42,13 +43,17 @@ namespace System.Text.Json
         /// There is no compatible <see cref="System.Text.Json.Serialization.JsonConverter"/>
         /// for <paramref name="inputType"/>  or its serializable members.
         /// </exception>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="inputType"/> is <see langword="null"/>.
+        /// </exception>
         /// <remarks>Using a <see cref="string"/> is not as efficient as using UTF-8
         /// encoding since the implementation internally uses UTF-8. See also <see cref="SerializeToUtf8Bytes(object?, Type, JsonSerializerOptions?)"/>
         /// and <see cref="SerializeAsync(IO.Stream, object?, Type, JsonSerializerOptions?, Threading.CancellationToken)"/>.
         /// </remarks>
+        [RequiresUnreferencedCode(SerializationUnreferencedCodeMessage)]
         public static string Serialize(
             object? value,
-            [DynamicallyAccessedMembers(MembersAccessedOnWrite)] Type inputType,
+            Type inputType,
             JsonSerializerOptions? options = null)
         {
             return Write(
@@ -94,6 +99,9 @@ namespace System.Text.Json
         /// The <see cref="JsonSerializerContext.GetTypeInfo(Type)"/> method of the provided
         /// <paramref name="context"/> returns <see langword="null"/> for the type to convert.
         /// </exception>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="inputType"/> or <paramref name="context"/> is <see langword="null"/>.
+        /// </exception>
         /// <remarks>Using a <see cref="string"/> is not as efficient as using UTF-8
         /// encoding since the implementation internally uses UTF-8. See also <see cref="SerializeToUtf8Bytes(object?, Type, JsonSerializerContext)"/>
         /// and <see cref="SerializeAsync(IO.Stream, object?, Type, JsonSerializerContext, Threading.CancellationToken)"/>.
@@ -109,6 +117,7 @@ namespace System.Text.Json
             return WriteUsingMetadata(value, GetTypeInfo(context, runtimeType));
         }
 
+        [RequiresUnreferencedCode(SerializationUnreferencedCodeMessage)]
         private static string Write<TValue>(in TValue value, Type runtimeType, JsonSerializerOptions? options)
         {
             JsonTypeInfo typeInfo = GetTypeInfo(runtimeType, options);
@@ -121,9 +130,6 @@ namespace System.Text.Json
             {
                 throw new ArgumentNullException(nameof(jsonTypeInfo));
             }
-
-            WriteStack state = default;
-            state.Initialize(jsonTypeInfo, supportContinuation: false);
 
             JsonSerializerOptions options = jsonTypeInfo.Options;
 
