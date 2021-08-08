@@ -141,6 +141,11 @@ namespace ILCompiler.DependencyAnalysis
                     potentialOverrideType.ConvertToCanonForm(CanonicalFormKind.Specific) != potentialOverrideType)
                     continue;
 
+                // Similarly, if the type is canonical but this method instantiation isn't, don't mix them.
+                if (!_method.IsSharedByGenericInstantiations &&
+                    potentialOverrideType.IsCanonicalSubtype(CanonicalFormKind.Any))
+                    continue;
+
                 if (potentialOverrideType.IsInterface)
                 {
                     if (methodOwningType.HasSameTypeDefinition(potentialOverrideType) && (potentialOverrideType != methodOwningType))
@@ -187,7 +192,7 @@ namespace ILCompiler.DependencyAnalysis
                             if (overrideTypeCur == methodOwningType)
                                 break;
 
-                            overrideTypeCur = overrideTypeCur.BaseType;
+                            overrideTypeCur = overrideTypeCur.BaseType?.NormalizeInstantiation();
                         }
                         while (overrideTypeCur != null);
 
