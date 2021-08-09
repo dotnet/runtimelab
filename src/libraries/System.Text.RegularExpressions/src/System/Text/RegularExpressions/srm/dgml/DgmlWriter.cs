@@ -138,8 +138,9 @@ namespace System.Text.RegularExpressions.SRM.DGML
             if (_maxDgmlTransitionLabelLength >= 0 && lab_length > _maxDgmlTransitionLabelLength)
             {
                 info += string.Format(" FullLabel = \"{0}\"", lab);
-                lab = lab.Substring(0, _maxDgmlTransitionLabelLength) + "..";
+                lab = string.Concat(lab.AsSpan(0, _maxDgmlTransitionLabelLength), "..");
             }
+
             return string.Format("<Link Source=\"{0}\" Target=\"{1}\" Label=\"{2}\" Category=\"NonepsilonTransition\" {3}/>", source, target, lab, info);
         }
 
