@@ -35,6 +35,13 @@ namespace ILCompiler.DependencyAnalysis
                 AddDependenciesDueToCustomAttributes(ref dependencies, factory, method.Module, parameter.GetCustomAttributes());
             }
 
+            // Handle custom attributes on generic method parameters
+            foreach (GenericParameterHandle genericParameterHandle in methodDef.GetGenericParameters())
+            {
+                GenericParameter parameter = reader.GetGenericParameter(genericParameterHandle);
+                AddDependenciesDueToCustomAttributes(ref dependencies, factory, method.Module, parameter.GetCustomAttributes());
+            }
+
             // We don't model properties and events as separate entities within the compiler, so ensuring
             // we can generate custom attributes for the associated events and properties from here
             // is as good as any other place.
@@ -68,8 +75,16 @@ namespace ILCompiler.DependencyAnalysis
 
         public static void AddDependenciesDueToCustomAttributes(ref DependencyList dependencies, NodeFactory factory, EcmaType type)
         {
-            TypeDefinition typeDef = type.MetadataReader.GetTypeDefinition(type.Handle);
+            MetadataReader reader = type.MetadataReader;
+            TypeDefinition typeDef = reader.GetTypeDefinition(type.Handle);
             AddDependenciesDueToCustomAttributes(ref dependencies, factory, type.EcmaModule, typeDef.GetCustomAttributes());
+
+            // Handle custom attributes on generic type parameters
+            foreach (GenericParameterHandle genericParameterHandle in typeDef.GetGenericParameters())
+            {
+                GenericParameter parameter = reader.GetGenericParameter(genericParameterHandle);
+                AddDependenciesDueToCustomAttributes(ref dependencies, factory, type.EcmaModule, parameter.GetCustomAttributes());
+            }
         }
 
         public static void AddDependenciesDueToCustomAttributes(ref DependencyList dependencies, NodeFactory factory, EcmaField field)
