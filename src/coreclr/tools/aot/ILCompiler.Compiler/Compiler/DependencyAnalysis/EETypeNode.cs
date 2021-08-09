@@ -129,7 +129,7 @@ namespace ILCompiler.DependencyAnalysis
                     return false;
 
                 if (_type.IsInterface)
-                    return _type.HasGenericVirtualMethods();
+                    return false;
 
                 if (_type.IsDefType)
                 {
