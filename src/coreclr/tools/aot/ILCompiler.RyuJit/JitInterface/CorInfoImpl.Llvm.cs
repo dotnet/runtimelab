@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Linq;
 using System.Runtime.InteropServices;
 using ILCompiler;
 using ILCompiler.DependencyAnalysis;
@@ -100,8 +99,12 @@ namespace Internal.JitInterface
 
         ILSequencePoint GetSequencePoint(uint offset)
         {
+            var sequencePointsEnumerable = _debugInformation.GetSequencePoints();
+            if (sequencePointsEnumerable == null) return default;
+
             ILSequencePoint curSequencePoint = default;
-            foreach (var sequencePoint in _debugInformation.GetSequencePoints() ?? Enumerable.Empty<ILSequencePoint>())
+
+            foreach (var sequencePoint in sequencePointsEnumerable)
             {
                 if (offset <= sequencePoint.Offset) // take the first sequence point in case we need to make a call to RhNewObject before the first matching sequence point
                 {
