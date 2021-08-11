@@ -101,6 +101,21 @@ namespace ILCompiler
 
         public static bool TryGetDependenciesForReflectedMethod(ref DependencyList dependencies, NodeFactory factory, MethodDesc method, string reason)
         {
+            MethodDesc typicalMethod = method.GetTypicalMethodDefinition();
+            if (factory.MetadataManager.IsReflectionBlocked(typicalMethod))
+            {
+                return false;
+            }
+
+            // If this is a generic method, make sure we at minimum have the metadata
+            // for it. This hedges against the risk that we fail to figure out a code body
+            // for it below.
+            if (typicalMethod.IsGenericMethodDefinition || typicalMethod.OwningType.IsGenericDefinition)
+            {
+                dependencies ??= new DependencyList();
+                dependencies.Add(factory.ReflectableMethod(method), reason);
+            }
+
             // If there's any genericness involved, try to create a fitting instantiation that would be usable at runtime.
             // This is not a complete solution to the problem.
             // If we ever decide that MakeGenericType/MakeGenericMethod should simply be considered unsafe, this code can be deleted
@@ -132,13 +147,6 @@ namespace ILCompiler
                 method = method.MakeInstantiatedMethod(inst);
             }
 
-            if (factory.MetadataManager.IsReflectionBlocked(method))
-            {
-                return false;
-            }
-
-            dependencies ??= new DependencyList();
-
             try
             {
                 // Make sure we're not putting something into the graph that will crash later.
@@ -149,6 +157,7 @@ namespace ILCompiler
                 return false;
             }
 
+            dependencies ??= new DependencyList();
             dependencies.Add(factory.ReflectableMethod(method), reason);
 
             return true;
