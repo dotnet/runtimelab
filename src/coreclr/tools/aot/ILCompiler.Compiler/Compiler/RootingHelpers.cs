@@ -113,7 +113,7 @@ namespace ILCompiler
             if (typicalMethod.IsGenericMethodDefinition || typicalMethod.OwningType.IsGenericDefinition)
             {
                 dependencies ??= new DependencyList();
-                dependencies.Add(factory.ReflectableMethod(method), reason);
+                dependencies.Add(factory.ReflectableMethod(typicalMethod), reason);
             }
 
             // If there's any genericness involved, try to create a fitting instantiation that would be usable at runtime.
