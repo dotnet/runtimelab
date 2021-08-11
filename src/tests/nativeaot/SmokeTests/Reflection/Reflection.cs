@@ -46,6 +46,7 @@ internal class ReflectionTest
         TestPropertyAndEventAttributes.Run();
         TestNecessaryEETypeReflection.Run();
         TestRuntimeLab929Regression.Run();
+        CodelessMethodMetadataTest.Run();
 #if !REFLECTION_FROM_USAGE
         TestNotReflectedIsNotReflectable.Run();
         TestGenericInstantiationsAreEquallyReflectable.Run();
@@ -1592,6 +1593,29 @@ internal class ReflectionTest
                 message3 = ex.Message;
             }
             if (!message3.Contains("ReflectionTest.TypeConstructionTest.Atom[]"))
+                throw new Exception();
+        }
+    }
+
+    class CodelessMethodMetadataTest
+    {
+        static class TypeWithCodelessMethods
+        {
+            // "where T: struct" prevents the compiler from coming up with a good T
+            public static void CodelessMethod<T>() where T : struct { }
+        }
+
+        static class CodelessType<T> where T : struct
+        {
+            public static void CodelessMethod() { }
+        }
+
+        public static void Run()
+        {
+            if (typeof(CodelessType<>).GetMethods(BindingFlags.Public | BindingFlags.Static).Length != 1)
+                throw new Exception();
+
+            if (typeof(TypeWithCodelessMethods).GetMethods(BindingFlags.Public | BindingFlags.Static).Length != 1)
                 throw new Exception();
         }
     }
