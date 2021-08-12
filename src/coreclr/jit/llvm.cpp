@@ -92,10 +92,12 @@ Compiler*                                           _compiler;
 Function*                                           _function;
 llvm::DISubprogram*                                 _debugFunction;
 IL_OFFSETX                                          _currentOffset;
+llvm::DILocation*                                   _currentOffsetDiLocation;
 BlkToLlvmBlkVectorMap*                              _blkToLlvmBlkVectorMap;
 llvm::IRBuilder<>*                                  _builder;
 std::unordered_map<GenTree*, Value*>*               _sdsuMap;
 std::unordered_map<unsigned int, LocalVar>*         _localsMap;
+DebugMetadata                                       _debugMetadata;
 
 // DWARF
 std::unordered_map<std::string, struct DebugMetadata> _debugMetadataMap;
@@ -985,6 +987,7 @@ Value* visitNode(llvm::IRBuilder<>& builder, GenTree* node)
             return buildCnsInt(builder, node);
         case GT_IL_OFFSET:
             _currentOffset = node->AsILOffset()->gtStmtILoffsx;
+            _currentOffsetDiLocation = nullptr;
             break;
         case GT_IND:
             return buildInd(builder, node, getGenTreeValue(node->AsOp()->gtOp1));
@@ -1103,19 +1106,12 @@ llvm::DILocation* createDebugFunctionAndDiLocation(struct DebugMetadata debugMet
 
 void startImportingNode(llvm::IRBuilder<>& builder)
 {
-    if (_compiler->opts.compDbgInfo)
+    if (_debugMetadata.diCompileUnit != nullptr && _currentOffsetDiLocation == nullptr)
     {
-        const char* documentFileName = _getDocumentFileName(_thisPtr);
+        unsigned int lineNo = _getOffsetLineNumber(_thisPtr, _currentOffset);
 
-        if (documentFileName && *documentFileName != '\0')
-        {
-            unsigned int lineNo = _getOffsetLineNumber(_thisPtr, _currentOffset);
-
-            struct DebugMetadata debugMetadata = getOrCreateDebugMetadata(documentFileName);
-
-            llvm::DILocation* diLocation = createDebugFunctionAndDiLocation(debugMetadata, lineNo);
-            builder.SetCurrentDebugLocation(diLocation);
-        }
+        _currentOffsetDiLocation = createDebugFunctionAndDiLocation(_debugMetadata, lineNo);
+        builder.SetCurrentDebugLocation(_currentOffsetDiLocation);
     }
 }
 
@@ -1136,6 +1132,7 @@ void Llvm::Compile(Compiler* pCompiler)
     const char* mangledName = (*_getMangledMethodName)(_thisPtr, _info.compMethodHnd);
     _function               = _module->getFunction(mangledName);
     _debugFunction          = nullptr;
+    _debugMetadata.diCompileUnit = nullptr;
     _compiler->eeGetMethodSig(_info.compMethodHnd, &_sigInfo);
 
     if (_function == nullptr)
@@ -1146,6 +1143,15 @@ void Llvm::Compile(Compiler* pCompiler)
 
     llvm::IRBuilder<> builder(_llvmContext);
     _builder = &builder;
+
+    if (_compiler->opts.compDbgInfo)
+    {
+        const char* documentFileName = _getDocumentFileName(_thisPtr);
+        if (documentFileName && *documentFileName != '\0')
+        {
+            _debugMetadata = getOrCreateDebugMetadata(documentFileName);
+        }
+    }
 
     generateProlog();
 
