@@ -1340,6 +1340,10 @@ namespace ILCompiler
                             {
                                 return Status.Fail(methodIL.OwningMethod, opcode, "Null array");
                             }
+                            else if (array.Value is ForeignTypeInstance)
+                            {
+                                return Status.Fail(methodIL.OwningMethod, opcode, "Foreign array");
+                            }
                             else
                             {
                                 ThrowHelper.ThrowInvalidProgramException();
