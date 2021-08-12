@@ -33,10 +33,8 @@
       <DisabledProjects Include="$(TestRoot)managed\Compilation\Compilation.csproj" />
     </ItemGroup>
 
-    <ItemGroup Condition="'$(SmokeTestsOnly)' == 'true' and '$(TestBuildMode)' == 'nativeaot'">
-      <AllProjects Include="$(TestRoot)nativeaot\**\*.csproj" Exclude="@(DisabledProjects)" />
-      <AllProjects Include="$(TestRoot)nativeaot\**\*.fsproj" Exclude="@(DisabledProjects)" />
-      <AllProjects Include="$(TestRoot)nativeaot\**\*.ilproj" Exclude="@(DisabledProjects)" />
+    <ItemGroup Condition="'$(SmokeTestsOnly)' == 'true'">
+      <BuildTestTrees Include="nativeaot" />
     </ItemGroup>
 
     <ItemGroup>
@@ -61,7 +59,7 @@
       <AllProjects Include="$([MSBuild]::NormalizeDirectory('$(TestRoot)', '%(BuildTestTrees.Identity)'))\**\*.ilproj" Exclude="@(DisabledProjects)" />
     </ItemGroup>
 
-    <ItemGroup Condition="'$(SmokeTestsOnly)' != 'true' and '@(BuildTestProjects)' == '' and '@(BuildTestDirs)' == '' and '@(BuildTestTrees)' == ''">
+    <ItemGroup Condition="'@(BuildTestProjects)' == '' and '@(BuildTestDirs)' == '' and '@(BuildTestTrees)' == ''">
       <AllProjects Include="$(TestRoot)**\*.csproj" Exclude="@(DisabledProjects)" />
       <AllProjects Include="$(TestRoot)**\*.fsproj" Exclude="@(DisabledProjects)" />
       <AllProjects Include="$(TestRoot)**\*.ilproj" Exclude="@(DisabledProjects)" />

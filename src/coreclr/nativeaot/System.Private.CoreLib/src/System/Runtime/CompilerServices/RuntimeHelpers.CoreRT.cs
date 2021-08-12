@@ -27,6 +27,7 @@ namespace System.Runtime.CompilerServices
             throw new PlatformNotSupportedException();
         }
 
+        [RequiresUnreferencedCode("Trimmer can't guarantee existence of class constructor")]
         public static void RunClassConstructor(RuntimeTypeHandle type)
         {
             if (type.IsNull)

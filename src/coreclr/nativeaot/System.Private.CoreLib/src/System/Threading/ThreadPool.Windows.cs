@@ -233,7 +233,7 @@ namespace System.Threading
 
     public static partial class ThreadPool
     {
-        internal const bool EnableWorkerTracking = false;
+        internal const bool IsWorkerTrackingEnabledInConfig = false;
 
         internal const bool SupportsTimeSensitiveWorkItems = false; // the timer currently doesn't queue time-sensitive work
 
