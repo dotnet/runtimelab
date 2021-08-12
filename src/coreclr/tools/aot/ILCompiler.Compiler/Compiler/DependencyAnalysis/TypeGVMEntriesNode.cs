@@ -24,17 +24,17 @@ namespace ILCompiler.DependencyAnalysis
                 ImplementationMethod = implementationMethod;
                 ImplementationType = implementationType;
             }
-            public MethodDesc CallingMethod { get; private set; }
-            public MethodDesc ImplementationMethod { get; private set; }
-            public TypeDesc ImplementationType { get; private set; }
+            public MethodDesc CallingMethod { get; }
+            public MethodDesc ImplementationMethod { get; }
+            public TypeDesc ImplementationType { get; }
         }
          
-        private TypeDesc _associatedType;
+        private readonly TypeDesc _associatedType;
         private DependencyList _staticDependencies;
 
         public TypeGVMEntriesNode(TypeDesc associatedType)
         {
-            Debug.Assert(!associatedType.IsRuntimeDeterminedSubtype);
+            Debug.Assert(associatedType.IsTypeDefinition);
             Debug.Assert(TypeNeedsGVMTableEntries(associatedType));
             _associatedType = associatedType;
         }
@@ -44,14 +44,8 @@ namespace ILCompiler.DependencyAnalysis
         public override bool InterestingForDynamicDependencyAnalysis => false;
         public override bool StaticDependenciesAreComputed => true;
         protected override string GetName(NodeFactory factory) => "__TypeGVMEntriesNode_" + factory.NameMangler.GetMangledTypeName(_associatedType);
-        public override IEnumerable<CombinedDependencyListEntry> GetConditionalStaticDependencies(NodeFactory context)
-        {
-            return Array.Empty<CombinedDependencyListEntry>();
-        }
-        public override IEnumerable<CombinedDependencyListEntry> SearchDynamicDependencies(List<DependencyNodeCore<NodeFactory>> markedNodes, int firstNode, NodeFactory context)
-        {
-            return Array.Empty<CombinedDependencyListEntry>();
-        }
+        public override IEnumerable<CombinedDependencyListEntry> GetConditionalStaticDependencies(NodeFactory context) => null;
+        public override IEnumerable<CombinedDependencyListEntry> SearchDynamicDependencies(List<DependencyNodeCore<NodeFactory>> markedNodes, int firstNode, NodeFactory context) => null;
 
         public override IEnumerable<DependencyListEntry> GetStaticDependencies(NodeFactory context)
         {
@@ -73,7 +67,7 @@ namespace ILCompiler.DependencyAnalysis
         {
             // Only non-interface deftypes can have entries for their GVMs in the GVM hashtables.
             // Interface GVM entries are computed for types that implemenent the interface (not for the interface on its own)
-            if(!type.IsDefType || type.IsInterface)
+            if (!type.IsDefType || type.IsInterface)
                 return false;
 
             // Type declares GVMs
@@ -138,7 +132,9 @@ namespace ILCompiler.DependencyAnalysis
 
                     MethodDesc slotDecl = _associatedType.ResolveInterfaceMethodTarget(method);
                     if (slotDecl != null)
+                    {
                         yield return new TypeGVMEntryInfo(method, slotDecl, _associatedType);
+                    }
                 }
             }
         }

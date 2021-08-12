@@ -36,6 +36,7 @@ class Program
         TestGenericInliningDoesntHappen.Run();
         TestGvmDependenciesFromLazy.Run();
         TestGvmDependencyFromGenericLazy.Run();
+        TestConstrainedGvmCalls.Run();
 #if !CODEGEN_CPP
         TestNullableCasting.Run();
         TestVariantCasting.Run();
@@ -2660,4 +2661,42 @@ class Program
             Console.WriteLine(Roundtrip(b).Gen<object, string>());
         }
     }
+
+    class TestConstrainedGvmCalls
+    {
+        interface IInterface<T>
+        {
+            string Method<X>();
+        }
+
+        class Base<T> : IInterface<T>
+        {
+            string IInterface<T>.Method<X>() => $"Base<{typeof(T)}>.Method<{typeof(X)}>()";
+        }
+
+        class Derived<T, U> : Base<T>, IInterface<U>
+        {
+            string IInterface<U>.Method<X>() => $"Derived<{typeof(T)},{typeof(U)}>.Method<{typeof(X)}>()";
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        static string ConstrainedCall<T, U, X>(ref T instance) where T : IInterface<U>
+        {
+            return instance.Method<X>();
+        }
+
+        class Atom1 { }
+        class Atom2 { }
+        class Atom3 { }
+
+        public static void Run()
+        {
+            var derived = new Derived<Atom1, Atom2>();
+            if (ConstrainedCall<Derived<Atom1, Atom2>, Atom2, Atom3>(ref derived) != "Derived<Program+TestConstrainedGvmCalls+Atom1,Program+TestConstrainedGvmCalls+Atom2>.Method<Program+TestConstrainedGvmCalls+Atom3>()")
+                throw new Exception();
+            if (ConstrainedCall<Derived<Atom1, Atom2>, Atom1, Atom3>(ref derived) != "Base<Program+TestConstrainedGvmCalls+Atom1>.Method<Program+TestConstrainedGvmCalls+Atom3>()")
+                throw new Exception();
+        }
+    }
+
 }

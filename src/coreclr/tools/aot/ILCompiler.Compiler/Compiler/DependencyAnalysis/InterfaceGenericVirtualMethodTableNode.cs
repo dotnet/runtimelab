@@ -64,9 +64,9 @@ namespace ILCompiler.DependencyAnalysis
 
             if (!openImplementationType.IsInterface)
             {
-                for(int index = 0; index < implementationType.RuntimeInterfaces.Length; index++)
+                for(int index = 0; index < openImplementationType.RuntimeInterfaces.Length; index++)
                 {
-                    if (implementationType.RuntimeInterfaces[index] == callingMethod.OwningType)
+                    if (openImplementationType.RuntimeInterfaces[index] == callingMethod.OwningType)
                     {
                         TypeDesc currentInterface = openImplementationType.RuntimeInterfaces[index];
                         var currentInterfaceSignature = factory.NativeLayout.TypeSignatureVertex(currentInterface);
@@ -102,9 +102,9 @@ namespace ILCompiler.DependencyAnalysis
                     _interfaceImpls[openImplementationMethod][openImplementationType] = new HashSet<int>();
                 
                 int numIfacesAdded = 0;
-                for (int index = 0; index < implementationType.RuntimeInterfaces.Length; index++)
+                for (int index = 0; index < openImplementationType.RuntimeInterfaces.Length; index++)
                 {
-                    if (implementationType.RuntimeInterfaces[index] == callingMethod.OwningType)
+                    if (openImplementationType.RuntimeInterfaces[index] == callingMethod.OwningType)
                     {
                         _interfaceImpls[openImplementationMethod][openImplementationType].Add(index);
                         numIfacesAdded++;
