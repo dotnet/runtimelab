@@ -259,7 +259,7 @@ namespace ILCompiler
                 MetadataType activatorType = type.Context.SystemModule.GetKnownType("System", "Activator");
                 if (type.IsValueType && type.GetParameterlessConstructor() == null)
                 {
-                    ctor = activatorType.GetKnownMethod("ValueTypeWithNoConstructorMethod", null);
+                    ctor = activatorType.GetKnownNestedType("StructWithNoConstructor").GetKnownMethod(".ctor", null);
                 }
                 else
                 {
