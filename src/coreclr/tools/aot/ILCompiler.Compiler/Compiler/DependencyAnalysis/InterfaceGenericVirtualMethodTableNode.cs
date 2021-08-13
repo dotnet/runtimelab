@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using Internal.Text;
 using Internal.TypeSystem;
 using Internal.NativeFormat;
+using Internal.Runtime;
 
 namespace ILCompiler.DependencyAnalysis
 {
@@ -18,15 +19,15 @@ namespace ILCompiler.DependencyAnalysis
     {
         private ObjectAndOffsetSymbolNode _endSymbol;
         private ExternalReferencesTableNode _externalReferences;
-        private Dictionary<MethodDesc, HashSet<MethodDesc>> _interfaceGvmSlots;
-        private Dictionary<MethodDesc, Dictionary<TypeDesc, HashSet<int>>> _interfaceImpls;
+        private Dictionary<MethodDesc, HashSet<object>> _interfaceGvmSlots;
+        private Dictionary<object, Dictionary<TypeDesc, HashSet<int>>> _interfaceImpls;
 
         public InterfaceGenericVirtualMethodTableNode(ExternalReferencesTableNode externalReferences)
         {
             _endSymbol = new ObjectAndOffsetSymbolNode(this, 0, "__interface_gvm_table_End", true);
             _externalReferences = externalReferences;
-            _interfaceGvmSlots = new Dictionary<MethodDesc, HashSet<MethodDesc>>();
-            _interfaceImpls = new Dictionary<MethodDesc, Dictionary<TypeDesc, HashSet<int>>>();
+            _interfaceGvmSlots = new Dictionary<MethodDesc, HashSet<object>>();
+            _interfaceImpls = new Dictionary<object, Dictionary<TypeDesc, HashSet<int>>>();
         }
 
         public void AppendMangledName(NameMangler nameMangler, Utf8StringBuilder sb)
@@ -53,14 +54,18 @@ namespace ILCompiler.DependencyAnalysis
 
             // Compute the open method signatures
             MethodDesc openCallingMethod = callingMethod.GetTypicalMethodDefinition();
-            MethodDesc openImplementationMethod = implementationMethod.GetTypicalMethodDefinition();
             TypeDesc openImplementationType = implementationType.GetTypeDefinition();
 
             var openCallingMethodNameAndSig = factory.NativeLayout.MethodNameAndSignatureVertex(openCallingMethod);
-            var openImplementationMethodNameAndSig = factory.NativeLayout.MethodNameAndSignatureVertex(openImplementationMethod);
-
             dependencies.Add(new DependencyListEntry(factory.NativeLayout.PlacedSignatureVertex(openCallingMethodNameAndSig), "interface gvm table calling method signature"));
-            dependencies.Add(new DependencyListEntry(factory.NativeLayout.PlacedSignatureVertex(openImplementationMethodNameAndSig), "interface gvm table implementation method signature"));
+            
+            // Implementation could be null if this is a default interface method reabstraction or diamond. We need to record those.
+            if (implementationMethod != null)
+            {
+                MethodDesc openImplementationMethod = implementationMethod.GetTypicalMethodDefinition();
+                var openImplementationMethodNameAndSig = factory.NativeLayout.MethodNameAndSignatureVertex(openImplementationMethod);
+                dependencies.Add(new DependencyListEntry(factory.NativeLayout.PlacedSignatureVertex(openImplementationMethodNameAndSig), "interface gvm table implementation method signature"));
+            }
 
             if (!openImplementationType.IsInterface)
             {
@@ -76,18 +81,18 @@ namespace ILCompiler.DependencyAnalysis
             }
         }
 
-        private void AddGenericVirtualMethodImplementation(NodeFactory factory, MethodDesc callingMethod, TypeDesc implementationType, MethodDesc implementationMethod)
+        private void AddGenericVirtualMethodImplementation(NodeFactory factory, MethodDesc callingMethod, TypeDesc implementationType, MethodDesc implementationMethod, DefaultInterfaceMethodResolution resolution)
         {
             Debug.Assert(callingMethod.OwningType.IsInterface);
 
             // Compute the open method signatures
             MethodDesc openCallingMethod = callingMethod.GetTypicalMethodDefinition();
-            MethodDesc openImplementationMethod = implementationMethod.GetTypicalMethodDefinition();
+            object openImplementationMethod = implementationMethod == null ? resolution : implementationMethod.GetTypicalMethodDefinition();
             TypeDesc openImplementationType = implementationType.GetTypeDefinition();
 
             // Add the entry to the interface GVM slots mapping table
             if (!_interfaceGvmSlots.ContainsKey(openCallingMethod))
-                _interfaceGvmSlots[openCallingMethod] = new HashSet<MethodDesc>();
+                _interfaceGvmSlots[openCallingMethod] = new HashSet<object>();
             _interfaceGvmSlots[openCallingMethod].Add(openImplementationMethod);
 
             // If the implementation method is implementing some interface method, compute which
@@ -126,7 +131,7 @@ namespace ILCompiler.DependencyAnalysis
             {
                 foreach (var typeGVMEntryInfo in interestingEntry.ScanForInterfaceGenericVirtualMethodEntries())
                 {
-                    AddGenericVirtualMethodImplementation(factory, typeGVMEntryInfo.CallingMethod, typeGVMEntryInfo.ImplementationType, typeGVMEntryInfo.ImplementationMethod);
+                    AddGenericVirtualMethodImplementation(factory, typeGVMEntryInfo.CallingMethod, typeGVMEntryInfo.ImplementationType, typeGVMEntryInfo.ImplementationMethod, typeGVMEntryInfo.DefaultResolution);
                 }
             }
 
@@ -155,20 +160,36 @@ namespace ILCompiler.DependencyAnalysis
 
                 // Emit the method name / sig and containing type of each GVM target method for the current interface method entry
                 vertex = nativeFormatWriter.GetTuple(vertex, nativeFormatWriter.GetUnsignedConstant((uint)gvmEntry.Value.Count));
-                foreach (MethodDesc implementationMethod in gvmEntry.Value)
+                foreach (object impl in gvmEntry.Value)
                 {
-                    nameAndSig = factory.NativeLayout.PlacedSignatureVertex(factory.NativeLayout.MethodNameAndSignatureVertex(implementationMethod));
-                    typeId = _externalReferences.GetIndex(factory.NecessaryTypeSymbol(implementationMethod.OwningType));
-                    vertex = nativeFormatWriter.GetTuple(
-                        vertex,
-                        nativeFormatWriter.GetUnsignedConstant((uint)nameAndSig.SavedVertex.VertexOffset),
-                        nativeFormatWriter.GetUnsignedConstant(typeId));
+                    if (impl is MethodDesc implementationMethod)
+                    {
+                        nameAndSig = factory.NativeLayout.PlacedSignatureVertex(factory.NativeLayout.MethodNameAndSignatureVertex(implementationMethod));
+                        typeId = _externalReferences.GetIndex(factory.NecessaryTypeSymbol(implementationMethod.OwningType));
+                        vertex = nativeFormatWriter.GetTuple(
+                            vertex,
+                            nativeFormatWriter.GetUnsignedConstant((uint)nameAndSig.SavedVertex.VertexOffset),
+                            nativeFormatWriter.GetUnsignedConstant(typeId));
+                    }
+                    else
+                    {
+                        Debug.Assert(impl is DefaultInterfaceMethodResolution);
+                        uint constant = (DefaultInterfaceMethodResolution)impl switch
+                        {
+                            DefaultInterfaceMethodResolution.Diamond => SpecialGVMInterfaceEntry.Diamond,
+                            DefaultInterfaceMethodResolution.Reabstraction => SpecialGVMInterfaceEntry.Reabstraction,
+                            _ => throw new NotImplementedException(),
+                        };
+                        vertex = nativeFormatWriter.GetTuple(
+                            vertex,
+                            nativeFormatWriter.GetUnsignedConstant(constant));
+                    }
 
                     // Emit the interface GVM slot details for each type that implements the interface methods
                     {
-                        Debug.Assert(_interfaceImpls.ContainsKey(implementationMethod));
+                        Debug.Assert(_interfaceImpls.ContainsKey(impl));
 
-                        var ifaceImpls = _interfaceImpls[implementationMethod];
+                        var ifaceImpls = _interfaceImpls[impl];
                     
                         // First, emit how many types have method implementations for this interface method entry
                         vertex = nativeFormatWriter.GetTuple(vertex, nativeFormatWriter.GetUnsignedConstant((uint)ifaceImpls.Count));

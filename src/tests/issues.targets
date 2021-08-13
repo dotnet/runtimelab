@@ -1361,6 +1361,12 @@
         <ExcludeList Include="$(XunitTestBinBase)/JIT/Regression/JitBlue/DevDiv_754566/DevDiv_754566/*">
             <Issue>https://github.com/dotnet/runtimelab/issues/155: Complext tail calls</Issue>
         </ExcludeList>
+        <ExcludeList Include="$(XunitTestBinBase)/reflection\DefaultInterfaceMethods\Emit\*">
+            <Issue>https://github.com/dotnet/runtimelab/issues/155: Reflection.Emit</Issue>
+        </ExcludeList>
+        <ExcludeList Include="$(XunitTestBinBase)/reflection\DefaultInterfaceMethods\GetInterfaceMapConsumer\*">
+            <Issue>https://github.com/dotnet/runtimelab/issues/861</Issue>
+        </ExcludeList>
 
 
         <!-- Catch(T) in shared code -->
@@ -1417,33 +1423,6 @@
         <ExcludeList Include="$(XunitTestBinBase)/JIT/Methodical\tailcall\_il_reldeep_array_nz\*" />
         <ExcludeList Include="$(XunitTestBinBase)/JIT/Methodical\VT\port\_il_dbghuge_gcref\*" />
         <ExcludeList Include="$(XunitTestBinBase)/JIT/Methodical\VT\port\_il_relhuge_gcref\*" />
-
-        <!-- Default interface methods -->
-        <!-- https://github.com/dotnet/runtimelab/issues/161 -->
-        <ExcludeList Include="$(XunitTestBinBase)/Loader/classloader\DefaultInterfaceMethods\constrainedcall\constrained2\*" />
-        <ExcludeList Include="$(XunitTestBinBase)/Loader/classloader\DefaultInterfaceMethods\constrainedcall\constrained2_gm\*" />
-        <ExcludeList Include="$(XunitTestBinBase)/Loader/classloader\DefaultInterfaceMethods\constrainedcall\constrained3\*" />
-        <ExcludeList Include="$(XunitTestBinBase)/Loader/classloader\DefaultInterfaceMethods\constrainedcall\constrained3_gm\*" />
-        <ExcludeList Include="$(XunitTestBinBase)/Loader/classloader\DefaultInterfaceMethods\constrainedcall\constrainedcall\*" />
-        <ExcludeList Include="$(XunitTestBinBase)/Loader/classloader\DefaultInterfaceMethods\diamondshape\diamondshape_d\*" />
-        <ExcludeList Include="$(XunitTestBinBase)/Loader/classloader\DefaultInterfaceMethods\diamondshape\diamondshape_r\*" />
-        <ExcludeList Include="$(XunitTestBinBase)/Loader/classloader\DefaultInterfaceMethods\genericmethods\genericmethods\*" />
-        <ExcludeList Include="$(XunitTestBinBase)/Loader/classloader\DefaultInterfaceMethods\sharedgenerics\non_virtual_calls_to_instance_methods\*" />
-        <ExcludeList Include="$(XunitTestBinBase)/Loader/classloader\DefaultInterfaceMethods\sharedgenerics\sharedgenerics_d\*" />
-        <ExcludeList Include="$(XunitTestBinBase)/Loader/classloader\DefaultInterfaceMethods\sharedgenerics\sharedgenerics_r\*" />
-        <ExcludeList Include="$(XunitTestBinBase)/reflection\DefaultInterfaceMethods\Emit\*" />
-        <ExcludeList Include="$(XunitTestBinBase)/reflection\DefaultInterfaceMethods\GetInterfaceMapConsumer\*" />
-        <ExcludeList Include="$(XunitTestBinBase)/reflection\DefaultInterfaceMethods\InvokeConsumer\*" />
-        <ExcludeList Include="$(XunitTestBinBase)/Regressions\coreclr\15241\genericcontext\*" />
-        <ExcludeList Include="$(XunitTestBinBase)/Regressions\coreclr\16123\ambiguousconstraint\*" />
-        <ExcludeList Include="$(XunitTestBinBase)/Regressions\coreclr\16354\notimplemented\*" />
-        <ExcludeList Include="$(XunitTestBinBase)/Regressions\coreclr\16355\boring\*" />
-        <ExcludeList Include="$(XunitTestBinBase)/Regressions\coreclr\16355\variance\*" />
-        <ExcludeList Include="$(XunitTestBinBase)/Regressions\coreclr\16775\sharedinterfacemethod\*" />
-        <ExcludeList Include="$(XunitTestBinBase)/Regressions\coreclr\20452\twopassvariance\*" />
-        <ExcludeList Include="$(XunitTestBinBase)/Regressions\coreclr\22021\consumer\*" />
-        <ExcludeList Include="$(XunitTestBinBase)/Regressions\coreclr\22386\debug3\*" />
-        <ExcludeList Include="$(XunitTestBinBase)/Regressions\coreclr\22407\abstractcalls\*" />
 
         <!-- Covariant returns -->
         <!-- https://github.com/dotnet/runtimelab/issues/205 -->

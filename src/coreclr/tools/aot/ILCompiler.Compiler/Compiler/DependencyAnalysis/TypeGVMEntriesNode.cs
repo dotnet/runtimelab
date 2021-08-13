@@ -18,15 +18,27 @@ namespace ILCompiler.DependencyAnalysis
     {
         internal class TypeGVMEntryInfo
         {
-            public TypeGVMEntryInfo(MethodDesc callingMethod, MethodDesc implementationMethod, TypeDesc implementationType)
+            public TypeGVMEntryInfo(MethodDesc callingMethod, MethodDesc implementationMethod)
             {
                 CallingMethod = callingMethod;
                 ImplementationMethod = implementationMethod;
-                ImplementationType = implementationType;
             }
             public MethodDesc CallingMethod { get; }
             public MethodDesc ImplementationMethod { get; }
+        }
+
+        internal class InterfaceGVMEntryInfo : TypeGVMEntryInfo
+        {
+            public InterfaceGVMEntryInfo(MethodDesc callingMethod, MethodDesc implementationMethod,
+                TypeDesc implementationType, DefaultInterfaceMethodResolution defaultResolution)
+                : base(callingMethod, implementationMethod)
+            {
+                ImplementationType = implementationType;
+                DefaultResolution = defaultResolution;
+            }
+
             public TypeDesc ImplementationType { get; }
+            public DefaultInterfaceMethodResolution DefaultResolution { get; }
         }
          
         private readonly TypeDesc _associatedType;
@@ -96,6 +108,13 @@ namespace ILCompiler.DependencyAnalysis
                         continue;
 
                     MethodDesc slotDecl = type.ResolveInterfaceMethodTarget(method);
+                    if (slotDecl == null)
+                    {
+                        var resolution = type.ResolveInterfaceMethodToDefaultImplementationOnType(method, out slotDecl);
+                        if (resolution == DefaultInterfaceMethodResolution.None)
+                            slotDecl = null;
+                    }
+
                     if (slotDecl != null)
                         return true;
                 }
@@ -115,11 +134,11 @@ namespace ILCompiler.DependencyAnalysis
                 MethodDesc impl = _associatedType.FindVirtualFunctionTargetMethodOnObjectType(decl);
 
                 if (impl.OwningType == _associatedType)
-                    yield return new TypeGVMEntryInfo(decl, impl, null);
+                    yield return new TypeGVMEntryInfo(decl, impl);
             }
         }
 
-        public IEnumerable<TypeGVMEntryInfo> ScanForInterfaceGenericVirtualMethodEntries()
+        public IEnumerable<InterfaceGVMEntryInfo> ScanForInterfaceGenericVirtualMethodEntries()
         {
             foreach (var iface in _associatedType.RuntimeInterfaces)
             {
@@ -130,10 +149,20 @@ namespace ILCompiler.DependencyAnalysis
                     if (!method.HasInstantiation)
                         continue;
 
+                    DefaultInterfaceMethodResolution resolution = DefaultInterfaceMethodResolution.None;
                     MethodDesc slotDecl = _associatedType.ResolveInterfaceMethodTarget(method);
-                    if (slotDecl != null)
+                    if (slotDecl == null)
                     {
-                        yield return new TypeGVMEntryInfo(method, slotDecl, _associatedType);
+                        resolution = _associatedType.ResolveInterfaceMethodToDefaultImplementationOnType(method, out slotDecl);
+                        if (resolution != DefaultInterfaceMethodResolution.DefaultImplementation)
+                            slotDecl = null;
+                    }
+
+                    if (slotDecl != null
+                        || resolution == DefaultInterfaceMethodResolution.Diamond
+                        || resolution == DefaultInterfaceMethodResolution.Reabstraction)
+                    {
+                        yield return new InterfaceGVMEntryInfo(method, slotDecl, _associatedType, resolution);
                     }
                 }
             }

@@ -149,6 +149,16 @@ namespace ILCompiler.DependencyAnalysis
                                     _method.GetTypicalMethodDefinition(), (InstantiatedType)potentialDefinitionInterfaces[interfaceIndex]);
 
                             MethodDesc slotDecl = potentialOverrideDefinition.InstantiateAsOpen().ResolveInterfaceMethodTarget(interfaceMethod);
+                            if (slotDecl == null)
+                            {
+                                // The method might be implemented through a default interface method
+                                var result = potentialOverrideDefinition.InstantiateAsOpen().ResolveInterfaceMethodToDefaultImplementationOnType(interfaceMethod, out slotDecl);
+                                if (result != DefaultInterfaceMethodResolution.DefaultImplementation)
+                                {
+                                    slotDecl = null;
+                                }
+                            }
+
                             if (slotDecl != null)
                             {
                                 TypeDesc[] openInstantiation = new TypeDesc[_method.Instantiation.Length];
