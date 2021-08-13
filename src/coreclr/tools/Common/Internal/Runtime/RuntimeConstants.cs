@@ -58,6 +58,12 @@ namespace Internal.Runtime
         public const ushort Reabstraction = 0xFFFF;
     }
 
+    internal static class SpecialGVMInterfaceEntry
+    {
+        public const uint Diamond = 0xFFFFFFFF;
+        public const uint Reabstraction = 0xFFFFFFFE;
+    }
+
     internal enum RuntimeHelperKind
     {
         AllocateObject,

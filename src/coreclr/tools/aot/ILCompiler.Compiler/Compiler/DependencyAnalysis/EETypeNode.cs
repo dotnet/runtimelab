@@ -176,6 +176,15 @@ namespace ILCompiler.DependencyAnalysis
                                         return true;
                                     }
                                 }
+                                else
+                                {
+                                    // The method could be implemented by a default interface method
+                                    var resolution = _type.ResolveInterfaceMethodToDefaultImplementationOnType(genericDefinition, out slotDecl);
+                                    if (resolution == DefaultInterfaceMethodResolution.DefaultImplementation)
+                                    {
+                                        return true;
+                                    }
+                                }
                             }
                         }
                     }

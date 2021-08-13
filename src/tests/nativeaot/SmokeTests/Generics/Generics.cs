@@ -37,6 +37,7 @@ class Program
         TestGvmDependenciesFromLazy.Run();
         TestGvmDependencyFromGenericLazy.Run();
         TestConstrainedGvmCalls.Run();
+        TestDefaultGenericVirtualInterfaceMethods.Run();
 #if !CODEGEN_CPP
         TestNullableCasting.Run();
         TestVariantCasting.Run();
@@ -2699,4 +2700,153 @@ class Program
         }
     }
 
+    class TestDefaultGenericVirtualInterfaceMethods
+    {
+        class Atom1 { }
+        class Atom2 { }
+        struct SAtom1 { }
+
+        interface IFoo
+        {
+            string Foo<T>() => $"Hello from IFoo.Foo<{typeof(T).Name}>";
+        }
+
+        interface IFoo<T>
+        {
+            string Foo<U>() => $"Hello from IFoo<{typeof(T).Name}>.Foo<{typeof(U).Name}>";
+        }
+
+        interface IBar<T> : IFoo, IFoo<T[]>, IFoo<T>
+        {
+            string IFoo.Foo<U>() => $"Hello from IBar<{typeof(T).Name}>.IFoo.Foo<{typeof(U).Name}>";
+            string IFoo<T[]>.Foo<U>() => $"Hello from IBar<{typeof(T).Name}>.IFoo<T[]>.Foo<{typeof(U).Name}>";
+            string IFoo<T>.Foo<U>() => $"Hello from IBar<{typeof(T).Name}>.IFoo<T>.Foo<{typeof(U).Name}>";
+        }
+
+        class Foo : IFoo, IFoo<Atom1>, IFoo<Atom2>, IFoo<SAtom1>
+        {
+            string IFoo<Atom2>.Foo<T>() => $"Hello from Foo.Foo<{typeof(T).Name}>";
+        }
+
+        class Bar : IBar<Atom1> { }
+
+        class Bar<T> : IBar<T> { }
+
+        class DerivedBar : Bar<Atom1> { }
+
+        class DerivedSBar : Bar<SAtom1> { }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        static string ConstrainedCall<T, U, X>(ref T instance) where T : IFoo<U>
+        {
+            return instance.Foo<X>();
+        }
+
+        public static void Run()
+        {
+            {
+                IFoo f = new Foo();
+                if (f.Foo<Atom2>() != "Hello from IFoo.Foo<Atom2>")
+                    throw new Exception();
+            }
+
+            {
+                IFoo<Atom1> f = new Foo();
+                if (f.Foo<Atom2>() != "Hello from IFoo<Atom1>.Foo<Atom2>")
+                    throw new Exception();
+            }
+
+            {
+                IFoo<Atom2> f = new Foo();
+                if (f.Foo<Atom1>() != "Hello from Foo.Foo<Atom1>")
+                    throw new Exception();
+            }
+
+            {
+                IFoo<SAtom1> f = new Foo();
+                if (f.Foo<SAtom1>() != "Hello from IFoo<SAtom1>.Foo<SAtom1>")
+                    throw new Exception();
+            }
+
+            {
+                IFoo f = new Bar();
+                if (f.Foo<Atom2>() != "Hello from IBar<Atom1>.IFoo.Foo<Atom2>")
+                    throw new Exception();
+            }
+
+            {
+                IFoo<Atom1> f = new Bar();
+                if (f.Foo<Atom2>() != "Hello from IBar<Atom1>.IFoo<T>.Foo<Atom2>")
+                    throw new Exception();
+            }
+
+            {
+                IFoo<Atom1[]> f = new Bar();
+                if (f.Foo<Atom2>() != "Hello from IBar<Atom1>.IFoo<T[]>.Foo<Atom2>")
+                    throw new Exception();
+            }
+
+            {
+                IFoo<Atom1[]> f = new Bar();
+                if (f.Foo<SAtom1>() != "Hello from IBar<Atom1>.IFoo<T[]>.Foo<SAtom1>")
+                    throw new Exception();
+            }
+
+            {
+                Foo f = new Foo();
+                if (ConstrainedCall<Foo, Atom1, Atom1>(ref f) != "Hello from IFoo<Atom1>.Foo<Atom1>")
+                    throw new Exception();
+                if (ConstrainedCall<Foo, Atom2, Atom1>(ref f) != "Hello from Foo.Foo<Atom1>")
+                    throw new Exception();
+            }
+
+            {
+                IFoo f = new DerivedBar();
+                if (f.Foo<Atom2>() != "Hello from IBar<Atom1>.IFoo.Foo<Atom2>")
+                    throw new Exception();
+            }
+
+            {
+                IFoo<Atom1> f = new DerivedBar();
+                if (f.Foo<Atom2>() != "Hello from IBar<Atom1>.IFoo<T>.Foo<Atom2>")
+                    throw new Exception();
+            }
+
+            {
+                IFoo<Atom1[]> f = new DerivedBar();
+                if (f.Foo<Atom2>() != "Hello from IBar<Atom1>.IFoo<T[]>.Foo<Atom2>")
+                    throw new Exception();
+            }
+
+            {
+                IFoo<Atom1[]> f = new DerivedBar();
+                if (f.Foo<SAtom1>() != "Hello from IBar<Atom1>.IFoo<T[]>.Foo<SAtom1>")
+                    throw new Exception();
+            }
+
+            {
+                IFoo f = new DerivedSBar();
+                if (f.Foo<Atom2>() != "Hello from IBar<SAtom1>.IFoo.Foo<Atom2>")
+                    throw new Exception();
+            }
+
+            {
+                IFoo<SAtom1> f = new DerivedSBar();
+                if (f.Foo<Atom2>() != "Hello from IBar<SAtom1>.IFoo<T>.Foo<Atom2>")
+                    throw new Exception();
+            }
+
+            {
+                IFoo<SAtom1[]> f = new DerivedSBar();
+                if (f.Foo<Atom2>() != "Hello from IBar<SAtom1>.IFoo<T[]>.Foo<Atom2>")
+                    throw new Exception();
+            }
+
+            {
+                IFoo<SAtom1[]> f = new DerivedSBar();
+                if (f.Foo<SAtom1>() != "Hello from IBar<SAtom1>.IFoo<T[]>.Foo<SAtom1>")
+                    throw new Exception();
+            }
+        }
+    }
 }

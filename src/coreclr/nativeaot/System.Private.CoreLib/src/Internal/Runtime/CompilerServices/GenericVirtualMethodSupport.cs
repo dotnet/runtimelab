@@ -14,19 +14,21 @@ namespace Internal.Runtime.CompilerServices
             bool slotChanged = false;
 
             IntPtr resolution = IntPtr.Zero;
-
-            // Otherwise, walk parent hierarchy attempting to resolve
-            EETypePtr eetype = type.ToEETypePtr();
-
             IntPtr functionPointer = IntPtr.Zero;
             IntPtr genericDictionary = IntPtr.Zero;
+
+            bool lookForDefaultImplementations = false;
+
+        again:
+            // Walk parent hierarchy attempting to resolve
+            EETypePtr eetype = type.ToEETypePtr();
 
             while (!eetype.IsNull)
             {
                 RuntimeTypeHandle handle = new RuntimeTypeHandle(eetype);
                 string methodName = methodNameAndSignature.Name;
                 RuntimeSignature methodSignature = methodNameAndSignature.Signature;
-                if (RuntimeAugments.TypeLoaderCallbacks.TryGetGenericVirtualTargetForTypeAndSlot(handle, ref declaringType, genericArguments, ref methodName, ref methodSignature, out functionPointer, out genericDictionary, out slotChanged))
+                if (RuntimeAugments.TypeLoaderCallbacks.TryGetGenericVirtualTargetForTypeAndSlot(handle, ref declaringType, genericArguments, ref methodName, ref methodSignature, lookForDefaultImplementations, out functionPointer, out genericDictionary, out slotChanged))
                 {
                     methodNameAndSignature = new MethodNameAndSignature(methodName, methodSignature);
 
@@ -43,6 +45,14 @@ namespace Internal.Runtime.CompilerServices
             if (slotChanged)
             {
                 return GVMLookupForSlotWorker(type, declaringType, genericArguments, methodNameAndSignature);
+            }
+
+            if (resolution == IntPtr.Zero
+                && !lookForDefaultImplementations
+                && declaringType.ToEETypePtr().IsInterface)
+            {
+                lookForDefaultImplementations = true;
+                goto again;
             }
 
             if (resolution == IntPtr.Zero)
