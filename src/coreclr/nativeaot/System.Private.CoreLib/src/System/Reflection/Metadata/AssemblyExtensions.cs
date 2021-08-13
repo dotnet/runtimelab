@@ -27,10 +27,5 @@ namespace System.Reflection.Metadata
             length = 0;
             return false;
         }
-
-        public static void ApplyUpdate(Assembly assembly, ReadOnlySpan<byte> metadataDelta, ReadOnlySpan<byte> ilDelta, ReadOnlySpan<byte> pdbDelta)
-        {
-            throw new PlatformNotSupportedException();
-        }
     }
 }

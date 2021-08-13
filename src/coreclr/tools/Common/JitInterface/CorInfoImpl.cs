@@ -1908,9 +1908,8 @@ namespace Internal.JitInterface
                 if (metadataType.IsExplicitLayout || (metadataType.IsSequentialLayout && metadataType.GetClassLayout().Size != 0) || metadataType.IsWellKnownType(WellKnownType.TypedReference))
                     result |= CorInfoFlag.CORINFO_FLG_CUSTOMLAYOUT;
 
-                // TODO
-                // if (type.IsUnsafeValueType)
-                //    result |= CorInfoFlag.CORINFO_FLG_UNSAFE_VALUECLASS;
+                if (metadataType.IsUnsafeValueType)
+                    result |= CorInfoFlag.CORINFO_FLG_UNSAFE_VALUECLASS;
             }
 
             if (type.IsCanonicalSubtype(CanonicalFormKind.Any))
@@ -3752,8 +3751,10 @@ namespace Internal.JitInterface
                     break;
             }
 
+#if READYTORUN
             if (targetArchitecture == TargetArchitecture.ARM && !_compilation.TypeSystemContext.Target.IsWindows)
                 flags.Set(CorJitFlag.CORJIT_FLAG_RELATIVE_CODE_RELOCS);
+#endif
 
             if (this.MethodBeingCompiled.IsUnmanagedCallersOnly)
             {

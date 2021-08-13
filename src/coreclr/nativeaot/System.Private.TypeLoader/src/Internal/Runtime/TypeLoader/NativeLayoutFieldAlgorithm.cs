@@ -515,5 +515,10 @@ namespace Internal.Runtime.TypeLoader
 
             return haResultType;
         }
+
+        public override bool ComputeIsUnsafeValueType(DefType type)
+        {
+            throw new NotSupportedException();
+        }
     }
 }

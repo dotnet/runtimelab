@@ -8,7 +8,7 @@ namespace Microsoft.Win32.SafeHandles
 {
     internal class SafeThreadPoolIOHandle : SafeHandle
     {
-        private SafeThreadPoolIOHandle()
+        public SafeThreadPoolIOHandle()
             : base(IntPtr.Zero, true)
         {
         }

@@ -111,6 +111,7 @@ namespace System.Reflection.Runtime.MethodInfos
         public sealed override int GenericParameterCount => 0;
 
         [RequiresDynamicCode("The native code for this instantiation might not be available at runtime.")]
+        [RequiresUnreferencedCode("If some of the generic arguments are annotated (either with DynamicallyAccessedMembersAttribute, or generic constraints), trimming can't validate that the requirements of those annotations are met.")]
         public sealed override MethodInfo MakeGenericMethod(params Type[] typeArguments)
         {
             throw new InvalidOperationException(SR.Format(SR.Arg_NotGenericMethodDefinition, this));
