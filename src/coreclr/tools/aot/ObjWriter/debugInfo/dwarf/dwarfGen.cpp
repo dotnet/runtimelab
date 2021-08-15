@@ -300,7 +300,7 @@ static int GetRegOpSize(int DwarfRegNum) {
   }
 }
 
-static void EmitBreg(MCObjectStreamer* Streamer, int DwarfRegNum) {
+static void EmitBreg(MCObjectStreamer* Streamer, int DwarfRegNum, StringRef bytes) {
   if (DwarfRegNum <= 31) {
     Streamer->EmitIntValue(DwarfRegNum + dwarf::DW_OP_breg0, 1);
   }
@@ -308,6 +308,18 @@ static void EmitBreg(MCObjectStreamer* Streamer, int DwarfRegNum) {
     Streamer->EmitIntValue(dwarf::DW_OP_bregx, 1);
     Streamer->EmitULEB128IntValue(DwarfRegNum);
   }
+  Streamer->EmitBytes(bytes);
+}
+
+static void EmitBreg(MCObjectStreamer* Streamer, int DwarfRegNum, int value) {
+  if (DwarfRegNum <= 31) {
+    Streamer->EmitIntValue(DwarfRegNum + dwarf::DW_OP_breg0, 1);
+  }
+  else {
+    Streamer->EmitIntValue(dwarf::DW_OP_bregx, 1);
+    Streamer->EmitULEB128IntValue(DwarfRegNum);
+  }
+  Streamer->EmitSLEB128IntValue(value);
 }
 
 static void EmitReg(MCObjectStreamer* Streamer, int DwarfRegNum) {
@@ -349,8 +361,7 @@ static void EmitVarLocation(MCObjectStreamer *Streamer,
         } else {
           Streamer->EmitULEB128IntValue(Len);
         }
-        EmitBreg(Streamer, DwarfRegNum);
-        Streamer->EmitSLEB128IntValue(0);
+        EmitBreg(Streamer, DwarfRegNum, 0);
       } else {
         Len = GetRegOpSize(DwarfRegNum);
         if (IsLocList) {
@@ -385,8 +396,7 @@ static void EmitVarLocation(MCObjectStreamer *Streamer,
         } else {
           Streamer->EmitULEB128IntValue(Len);
         }
-        EmitBreg(Streamer, DwarfBaseRegNum);
-        Streamer->EmitBytes(OffsetRepr);
+        EmitBreg(Streamer, DwarfBaseRegNum, OffsetRepr);
         Streamer->EmitIntValue(dwarf::DW_OP_deref, 1);
       } else {
         Len = OffsetRepr.size() + GetRegOpSize(DwarfBaseRegNum);
@@ -395,8 +405,7 @@ static void EmitVarLocation(MCObjectStreamer *Streamer,
         } else {
           Streamer->EmitULEB128IntValue(Len);
         }
-        EmitBreg(Streamer, DwarfBaseRegNum);
-        Streamer->EmitBytes(OffsetRepr);
+        EmitBreg(Streamer, DwarfBaseRegNum, OffsetRepr);
       }
 
       break;
@@ -451,13 +460,11 @@ static void EmitVarLocation(MCObjectStreamer *Streamer,
         Streamer->EmitIntValue(dwarf::DW_OP_piece, 1);
         Streamer->EmitULEB128IntValue(TargetPointerSize);
 
-        EmitBreg(Streamer, DwarfBaseRegNum);
-        Streamer->EmitBytes(OffsetRepr);
+        EmitBreg(Streamer, DwarfBaseRegNum, OffsetRepr);
         Streamer->EmitIntValue(dwarf::DW_OP_piece, 1);
         Streamer->EmitULEB128IntValue(TargetPointerSize);
       } else {
-        EmitBreg(Streamer, DwarfBaseRegNum);
-        Streamer->EmitBytes(OffsetRepr);
+        EmitBreg(Streamer, DwarfBaseRegNum, OffsetRepr);
         Streamer->EmitIntValue(dwarf::DW_OP_piece, 1);
         Streamer->EmitULEB128IntValue(TargetPointerSize);
 
