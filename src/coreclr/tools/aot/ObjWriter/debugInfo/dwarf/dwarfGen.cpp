@@ -193,7 +193,7 @@ static int GetDwarfRegNum(Triple::ArchType ArchType, int RegNum) {
         case RegNumArm::REGNUM_PC:  return 15;
         // fp registers
         default:
-          return RegNum - static_cast<int>(RegNumArm::REGNUM_COUNT) + 64;
+          return (RegNum - static_cast<int>(RegNumArm::REGNUM_COUNT)) / 2 + 256;
       }
     case Triple::aarch64: // fall through
     case Triple::aarch64_be:
@@ -284,6 +284,42 @@ static int GetDwarfFpRegNum(Triple::ArchType ArchType)
   }
 }
 
+static int GetRegOpSize(int DwarfRegNum) {
+  if (DwarfRegNum <= 31) {
+    return 1;
+  }
+  else if (DwarfRegNum < 128) {
+    return 2;
+  }
+  else if (DwarfRegNum < 16384) {
+    return 3;
+  }
+  else {
+    assert(false && "Too big register number");
+    return 0;
+  }
+}
+
+static void EmitBreg(MCObjectStreamer* Streamer, int DwarfRegNum) {
+  if (DwarfRegNum <= 31) {
+    Streamer->EmitIntValue(DwarfRegNum + dwarf::DW_OP_breg0, 1);
+  }
+  else {
+    Streamer->EmitIntValue(dwarf::DW_OP_bregx, 1);
+    Streamer->EmitULEB128IntValue(DwarfRegNum);
+  }
+}
+
+static void EmitReg(MCObjectStreamer* Streamer, int DwarfRegNum) {
+  if (DwarfRegNum <= 31) {
+    Streamer->EmitIntValue(DwarfRegNum + dwarf::DW_OP_reg0, 1);
+  }
+  else {
+    Streamer->EmitIntValue(dwarf::DW_OP_regx, 1);
+    Streamer->EmitULEB128IntValue(DwarfRegNum);
+  }
+}
+
 static void EmitVarLocation(MCObjectStreamer *Streamer,
                      const ICorDebugInfo::NativeVarInfo &VarInfo,
                      bool IsLocList = false) {
@@ -307,22 +343,22 @@ static void EmitVarLocation(MCObjectStreamer *Streamer,
     case ICorDebugInfo::VLT_REG: {
       DwarfRegNum = GetDwarfRegNum(ArchType, VarInfo.loc.vlReg.vlrReg);
       if (IsByRef) {
-        Len = 2;
+        Len = 1 + GetRegOpSize(DwarfRegNum);
         if (IsLocList) {
           Streamer->EmitIntValue(Len, 2);
         } else {
           Streamer->EmitULEB128IntValue(Len);
         }
-        Streamer->EmitIntValue(DwarfRegNum + dwarf::DW_OP_breg0, 1);
+        EmitBreg(Streamer, DwarfRegNum);
         Streamer->EmitSLEB128IntValue(0);
       } else {
-        Len = 1;
+        Len = GetRegOpSize(DwarfRegNum);
         if (IsLocList) {
           Streamer->EmitIntValue(Len, 2);
         } else {
           Streamer->EmitULEB128IntValue(Len);
         }
-        Streamer->EmitIntValue(DwarfRegNum + dwarf::DW_OP_reg0, 1);
+        EmitReg(Streamer, DwarfRegNum);
       }
 
       break;
@@ -331,6 +367,7 @@ static void EmitVarLocation(MCObjectStreamer *Streamer,
       IsByRef = true;
     case ICorDebugInfo::VLT_STK2:
       IsStk2 = true;
+    case ICorDebugInfo::VLT_FPSTK:
     case ICorDebugInfo::VLT_STK: {
       DwarfBaseRegNum = GetDwarfRegNum(ArchType, IsStk2 ? VarInfo.loc.vlStk2.vls2BaseReg :
           VarInfo.loc.vlStk.vlsBaseReg);
@@ -342,23 +379,23 @@ static void EmitVarLocation(MCObjectStreamer *Streamer,
       StringRef OffsetRepr = OSE.str();
 
       if (IsByRef) {
-        Len = OffsetRepr.size() + 2;
+        Len = OffsetRepr.size() + 1 + GetRegOpSize(DwarfBaseRegNum);
         if (IsLocList) {
           Streamer->EmitIntValue(Len, 2);
         } else {
           Streamer->EmitULEB128IntValue(Len);
         }
-        Streamer->EmitIntValue(DwarfBaseRegNum + dwarf::DW_OP_breg0, 1);
+        EmitBreg(Streamer, DwarfBaseRegNum);
         Streamer->EmitBytes(OffsetRepr);
         Streamer->EmitIntValue(dwarf::DW_OP_deref, 1);
       } else {
-        Len = OffsetRepr.size() + 1;
+        Len = OffsetRepr.size() + GetRegOpSize(DwarfBaseRegNum);
         if (IsLocList) {
           Streamer->EmitIntValue(Len, 2);
         } else {
           Streamer->EmitULEB128IntValue(Len);
         }
-        Streamer->EmitIntValue(DwarfBaseRegNum + dwarf::DW_OP_breg0, 1);
+        EmitBreg(Streamer, DwarfBaseRegNum);
         Streamer->EmitBytes(OffsetRepr);
       }
 
@@ -368,18 +405,19 @@ static void EmitVarLocation(MCObjectStreamer *Streamer,
       DwarfRegNum  = GetDwarfRegNum(ArchType, VarInfo.loc.vlRegReg.vlrrReg1);
       DwarfRegNum2 = GetDwarfRegNum(ArchType, VarInfo.loc.vlRegReg.vlrrReg2);
 
-      Len = (1 /* DW_OP_reg */ + 1 /* DW_OP_piece */ + 1 /* Reg size */) * 2;
+      Len = (GetRegOpSize(DwarfRegNum2) /* DW_OP_reg */ + 1 /* DW_OP_piece */ + 1 /* Reg size */)
+        + (GetRegOpSize(DwarfRegNum) /* DW_OP_reg */ + 1 /* DW_OP_piece */ + 1 /* Reg size */);
       if (IsLocList) {
         Streamer->EmitIntValue(Len, 2);
       } else {
         Streamer->EmitULEB128IntValue(Len + 1);
       }
 
-      Streamer->EmitIntValue(DwarfRegNum2 + dwarf::DW_OP_reg0, 1);
+      EmitReg(Streamer, DwarfRegNum2);
       Streamer->EmitIntValue(dwarf::DW_OP_piece, 1);
       Streamer->EmitULEB128IntValue(TargetPointerSize);
 
-      Streamer->EmitIntValue(DwarfRegNum + dwarf::DW_OP_reg0, 1);
+      EmitReg(Streamer, DwarfRegNum);
       Streamer->EmitIntValue(dwarf::DW_OP_piece, 1);
       Streamer->EmitULEB128IntValue(TargetPointerSize);
 
@@ -399,8 +437,8 @@ static void EmitVarLocation(MCObjectStreamer *Streamer,
           VarInfo.loc.vlStkReg.vlsrStk.vlsrsOffset, OSE);
       StringRef OffsetRepr = OSE.str();
 
-      Len = (1 /* DW_OP_reg */ + 1 /* DW_OP_piece */ + 1 /* Reg size */) +
-          (1 /*DW_OP_breg */ + OffsetRepr.size() + 1 /* DW_OP_piece */ + 1 /* Reg size */);
+      Len = (GetRegOpSize(DwarfRegNum) /* DW_OP_reg */ + 1 /* DW_OP_piece */ + 1 /* Reg size */) +
+          (GetRegOpSize(DwarfBaseRegNum) /*DW_OP_breg */ + OffsetRepr.size() + 1 /* DW_OP_piece */ + 1 /* Reg size */);
 
       if (IsLocList) {
         Streamer->EmitIntValue(Len, 2);
@@ -409,28 +447,27 @@ static void EmitVarLocation(MCObjectStreamer *Streamer,
       }
 
       if (IsRegStk) {
-        Streamer->EmitIntValue(DwarfRegNum + dwarf::DW_OP_reg0, 1);
+        EmitReg(Streamer, DwarfRegNum);
         Streamer->EmitIntValue(dwarf::DW_OP_piece, 1);
         Streamer->EmitULEB128IntValue(TargetPointerSize);
 
-        Streamer->EmitIntValue(DwarfBaseRegNum + dwarf::DW_OP_breg0, 1);
+        EmitBreg(Streamer, DwarfBaseRegNum);
         Streamer->EmitBytes(OffsetRepr);
         Streamer->EmitIntValue(dwarf::DW_OP_piece, 1);
         Streamer->EmitULEB128IntValue(TargetPointerSize);
       } else {
-        Streamer->EmitIntValue(DwarfBaseRegNum + dwarf::DW_OP_breg0, 1);
+        EmitBreg(Streamer, DwarfBaseRegNum);
         Streamer->EmitBytes(OffsetRepr);
         Streamer->EmitIntValue(dwarf::DW_OP_piece, 1);
         Streamer->EmitULEB128IntValue(TargetPointerSize);
 
-        Streamer->EmitIntValue(DwarfRegNum + dwarf::DW_OP_reg0, 1);
+        EmitReg(Streamer, DwarfRegNum);
         Streamer->EmitIntValue(dwarf::DW_OP_piece, 1);
         Streamer->EmitULEB128IntValue(TargetPointerSize);
       }
 
       break;
     }
-    case ICorDebugInfo::VLT_FPSTK:
     case ICorDebugInfo::VLT_FIXED_VA:
       assert(false && "Unsupported varloc type!");
     default:
