@@ -188,7 +188,7 @@ void Compiler::unwindPushPopMaskCFI(regMaskTP regMask, bool isFloat)
 
     for (regNumber regNum = isFloat ? REG_FP_FIRST : REG_FIRST; regNum < REG_COUNT;
 #if TARGET_ARM
-         regNum = isFloat ? ((regNumber)((unsigned)(regNum) + 2)) : REG_NEXT(regNum),
+         regNum = isFloat ? REG_NEXT(REG_NEXT(regNum)) : REG_NEXT(regNum),
 #else
          regNum = REG_NEXT(regNum),
 #endif
