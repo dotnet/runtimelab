@@ -148,14 +148,20 @@ namespace Internal.Runtime.TypeLoader
 
                 MethodNameAndSignature targetMethodNameAndSignature = null;
                 RuntimeTypeHandle targetTypeHandle = default;
+                bool isDefaultInterfaceMethodImplementation;
 
                 if (nameAndSigToken != SpecialGVMInterfaceEntry.Diamond && nameAndSigToken != SpecialGVMInterfaceEntry.Reabstraction)
                 {
                     targetMethodNameAndSignature = GetMethodNameAndSignatureFromNativeReader(nativeLayoutReader, module.Handle, nameAndSigToken);
                     targetTypeHandle = extRefs.GetRuntimeTypeHandleFromIndex(entryParser.GetUnsigned());
+                    isDefaultInterfaceMethodImplementation = RuntimeAugments.IsInterface(targetTypeHandle);
 #if GVM_RESOLUTION_TRACE
                     Debug.WriteLine("    Searching for GVM implementation on targe type = " + GetTypeNameDebug(targetTypeHandle));
 #endif
+                }
+                else
+                {
+                    isDefaultInterfaceMethodImplementation = true;
                 }
 
                 uint numIfaceImpls = entryParser.GetUnsigned();
@@ -171,7 +177,7 @@ namespace Internal.Runtime.TypeLoader
                     uint numIfaceSigs = entryParser.GetUnsigned();
 
                     if (!openTargetTypeHandle.Equals(implementingTypeHandle)
-                        || defaultMethods != RuntimeAugments.IsInterface(targetTypeHandle))
+                        || defaultMethods != isDefaultInterfaceMethodImplementation)
                     {
                         // Skip over signatures data
                         for (uint l = 0; l < numIfaceSigs; l++)
