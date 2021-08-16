@@ -986,8 +986,8 @@
         <ExcludeList Include="$(XunitTestBinBase)/baseservices/threading/paramthreadstart/ThreadStartBool/*">
             <Issue>https://github.com/dotnet/runtimelab/issues/220</Issue>
         </ExcludeList>
-        <ExcludeList Include="$(XunitTestBinBase)/baseservices/TieredCompilation/TieredVtableMethodTests/*">
-            <Issue>https://github.com/dotnet/runtimelab/issues/154</Issue>
+        <ExcludeList Include="$(XunitTestBinBase)/baseservices/TieredCompilation/**">
+            <Issue>No crossgen folder under Core_Root</Issue>
         </ExcludeList>
         <ExcludeList Include="$(XunitTestBinBase)/baseservices/typeequivalence/simple/Simple/*">
             <Issue>https://github.com/dotnet/runtimelab/issues/155: Type equivalence</Issue>
@@ -1094,7 +1094,7 @@
         <ExcludeList Include="$(XunitTestBinBase)/Interop/PInvoke/NativeCallManagedComVisible/**/*">
             <Issue>https://github.com/dotnet/runtimelab/issues/155: COM</Issue>
         </ExcludeList>
-        <ExcludeList Include="$(XunitTestBinBase)/Interop/PInvoke/SafeHandles/SafeHandleTests/SafeHandleTests/*">
+        <ExcludeList Include="$(XunitTestBinBase)/Interop/PInvoke/SafeHandles/SafeHandleTests/*">
             <Issue>https://github.com/dotnet/runtimelab/issues/168</Issue>
         </ExcludeList>
         <ExcludeList Include="$(XunitTestBinBase)/Interop/PInvoke/SizeParamIndex/ReversePInvoke/**/*">
