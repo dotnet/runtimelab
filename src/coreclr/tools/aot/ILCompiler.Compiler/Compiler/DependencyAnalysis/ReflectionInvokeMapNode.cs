@@ -47,12 +47,6 @@ namespace ILCompiler.DependencyAnalysis
 
         protected override string GetName(NodeFactory factory) => this.GetMangledName(factory.NameMangler);
 
-        private static bool MethodRequiresInstArg(MethodDesc method, bool isUnboxingStub)
-        {
-            // Similar to RequiresInstArg, but will do the right thing for instantiating unboxing stubs (canonical non-generic instance methods on valuetypes)
-            return method.IsSharedByGenericInstantiations && (method.HasInstantiation || method.Signature.IsStatic || (method.ImplementationType.IsValueType && !isUnboxingStub));
-        }
-
         public static void AddDependenciesDueToReflectability(ref DependencyList dependencies, NodeFactory factory, MethodDesc method)
         {
             Debug.Assert(factory.MetadataManager.IsReflectionInvokable(method));
@@ -93,7 +87,7 @@ namespace ILCompiler.DependencyAnalysis
                     dependencies.Add(new DependencyListEntry(factory.NativeLayout.PlacedSignatureVertex(factory.NativeLayout.MethodNameAndSignatureVertex(method)),
                         "UniversalCanon signature of method"));
                 }
-                else if (!MethodRequiresInstArg(method.GetCanonMethodTarget(CanonicalFormKind.Specific), useUnboxingStub) || method.IsAbstract)
+                else if (!method.GetCanonMethodTarget(CanonicalFormKind.Specific).RequiresInstArg() || method.IsAbstract)
                 {
                     foreach (var instArg in method.Instantiation)
                     {
@@ -135,8 +129,12 @@ namespace ILCompiler.DependencyAnalysis
                 if (method.HasInstantiation)
                     flags |= InvokeTableFlags.IsGenericMethod;
 
-                if (MethodRequiresInstArg(method.GetCanonMethodTarget(CanonicalFormKind.Specific), useUnboxingStub))
-                    flags |= InvokeTableFlags.RequiresInstArg;
+                if (method.GetCanonMethodTarget(CanonicalFormKind.Specific).RequiresInstArg())
+                {
+                    bool goesThroughInstantiatingUnboxingThunk = method.OwningType.IsValueType && !method.Signature.IsStatic && !method.HasInstantiation;
+                    if (!goesThroughInstantiatingUnboxingThunk)
+                        flags |= InvokeTableFlags.RequiresInstArg;
+                }
 
                 if (method.IsDefaultConstructor)
                     flags |= InvokeTableFlags.IsDefaultConstructor;

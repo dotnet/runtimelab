@@ -45,9 +45,6 @@ namespace ILCompiler.DependencyAnalysis
             if (!method.IsVirtual)
                 return false;
 
-            if (method.OwningType.IsInterface)
-                return true;
-
             if (method.IsFinal)
                 return false;
 
