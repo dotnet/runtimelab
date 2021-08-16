@@ -4784,7 +4784,11 @@ public:
 
     bool backendRequiresLocalVarLifetimes()
     {
+#if TARGET_WASM
+        return true;
+#else
         return !opts.MinOpts() || m_pLinearScan->willEnregisterLocalVars();
+#endif
     }
 
     void fgLocalVarLiveness();

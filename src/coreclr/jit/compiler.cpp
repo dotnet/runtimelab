@@ -5174,6 +5174,13 @@ void Compiler::compCompile(void** methodCodePtr, uint32_t* methodCodeSize, JitFl
     rat.Run();
 
 #if defined(TARGET_WASM)
+
+    if (!opts.IsMinOptsSet())
+    {
+        // TODO: If MinOpts is set we can't run fgRemoveDeadStoreLIR
+        DoPhase(this, PHASE_BUILD_SSA, &Compiler::fgSsaBuild);
+    }
+
     DoLlvmPhase(this);
 #else
 

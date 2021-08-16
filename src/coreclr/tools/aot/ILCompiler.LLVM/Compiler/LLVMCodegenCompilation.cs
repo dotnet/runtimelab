@@ -124,18 +124,26 @@ namespace ILCompiler
 
             try
             {
-                var sig = method.Signature;
-                corInfo.RegisterLlvmCallbacks((IntPtr)Unsafe.AsPointer(ref corInfo), _outputFile, Module.Target, Module.DataLayout);
-                corInfo.InitialiseDebugInfo(method, GetMethodIL(method));
-                corInfo.CompileMethod(methodCodeNodeNeedingCode);
-                methodCodeNodeNeedingCode.CompilationCompleted = true;
-                // TODO: delete this external function when old module is gone
-                LLVMValueRef externFunc = Module.AddFunction(NodeFactory.NameMangler.GetMangledMethodName(method).ToString(), GetLLVMSignatureForMethod(sig, method.RequiresInstArg()));
-                externFunc.Linkage = LLVMLinkage.LLVMExternalLinkage;
+                if (NodeFactory.NameMangler.GetMangledMethodName(method).ToString() ==
+                    "S_P_CoreLib_System_Globalization_DateTimeFormatInfo__get_FormatFlags")
+                {
+                    var sig = method.Signature;
+                    corInfo.RegisterLlvmCallbacks((IntPtr)Unsafe.AsPointer(ref corInfo), _outputFile, Module.Target,
+                        Module.DataLayout);
+                    corInfo.InitialiseDebugInfo(method, GetMethodIL(method));
+                    corInfo.CompileMethod(methodCodeNodeNeedingCode);
+                    methodCodeNodeNeedingCode.CompilationCompleted = true;
+                    // TODO: delete this external function when old module is gone
+                    LLVMValueRef externFunc = Module.AddFunction(
+                        NodeFactory.NameMangler.GetMangledMethodName(method).ToString(),
+                        GetLLVMSignatureForMethod(sig, method.RequiresInstArg()));
+                    externFunc.Linkage = LLVMLinkage.LLVMExternalLinkage;
 
-                ILImporter.GenerateRuntimeExportThunk(this, method, externFunc);
+                    ILImporter.GenerateRuntimeExportThunk(this, method, externFunc);
 
-                ryuJitMethodCount++;
+                    ryuJitMethodCount++;
+                }
+                else ILImporter.CompileMethod(this, methodCodeNodeNeedingCode);
             }
             catch (CodeGenerationFailedException)
             {
