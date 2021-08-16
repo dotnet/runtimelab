@@ -269,11 +269,13 @@ internal class ReflectionTest
         interface IFoo<T>
         {
             string Format(string s) => "IFoo<" + typeof(T) + ">::Format(" + s + ")";
+            sealed string InstanceMethod(string s) => "IFoo<" + typeof(T) + ">::InstanceMethod(" + s + ")";
         }
 
         interface IFoo
         {
             string Format(string s) => "IFoo::Format(" + s + ")";
+            sealed string InstanceMethod(string s) => "IFoo::InstanceMethod(" + s + ")";
         }
 
         interface IBar : IFoo
@@ -317,6 +319,18 @@ internal class ReflectionTest
             {
                 var result = (string)typeof(IFoo).GetMethod(nameof(IFoo.Format)).Invoke(new Foo(), new object[] { "abc" });
                 if (result != "IBar::Format(abc)")
+                    throw new Exception();
+            }
+
+            {
+                var result = (string)typeof(IFoo).GetMethod(nameof(IFoo.InstanceMethod)).Invoke(new Foo(), new object[] { "abc" });
+                if (result != "IFoo::InstanceMethod(abc)")
+                    throw new Exception();
+            }
+
+            {
+                var result = (string)typeof(IFoo<Enum>).GetMethod(nameof(IFoo<Enum>.InstanceMethod)).Invoke(new Foo(), new object[] { "abc" });
+                if (result != "IFoo<System.Enum>::InstanceMethod(abc)")
                     throw new Exception();
             }
         }
