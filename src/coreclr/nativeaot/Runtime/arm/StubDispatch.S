@@ -12,7 +12,7 @@
 // Macro that generates a stub consuming a cache with the given number of entries.
 .macro DEFINE_INTERFACE_DISPATCH_STUB entries
 
-NESTED_ENTRY RhpInterfaceDispatch\entries, _TEXT
+NESTED_ENTRY RhpInterfaceDispatch\entries, _TEXT, NoHandler
         // r12 currently contains the indirection cell address. But we need more scratch registers and
         // we may A/V on a null this. Both of these suggest we need a real prolog and epilog.
         PROLOG_PUSH {r1-r2}
@@ -58,7 +58,7 @@ LOCAL_LABEL(99_\entries):
         EPILOG_POP  {r2}
         EPILOG_BRANCH_REG r12
 
-NESTED_ENTRY RhpInterfaceDispatch\entries, _TEXT
+NESTED_END RhpInterfaceDispatch\entries, _TEXT
 
 .endm // DEFINE_INTERFACE_DISPATCH_STUB
 
