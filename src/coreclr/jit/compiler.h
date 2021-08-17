@@ -4372,7 +4372,7 @@ private:
     static LONG jitNestingLevel;
 #endif // DEBUG
 
-    static BOOL impIsAddressInLocal(GenTree* tree, GenTree** lclVarTreeOut);
+    static BOOL impIsAddressInLocal(const GenTree* tree, GenTree** lclVarTreeOut);
 
     void impMakeDiscretionaryInlineObservations(InlineInfo* pInlineInfo, InlineResult* inlineResult);
 
@@ -6806,6 +6806,14 @@ public:
     {
         optMethodFlags &= ~OMF_HAS_GUARDEDDEVIRT;
     }
+
+    void considerGuardedDevirtualization(GenTreeCall*            call,
+                                         IL_OFFSETX              iloffset,
+                                         bool                    isInterface,
+                                         CORINFO_METHOD_HANDLE   baseMethod,
+                                         CORINFO_CLASS_HANDLE    baseClass,
+                                         CORINFO_CONTEXT_HANDLE* pContextHandle DEBUGARG(CORINFO_CLASS_HANDLE objClass)
+                                             DEBUGARG(const char* objClassName));
 
     void addGuardedDevirtualizationCandidate(GenTreeCall*          call,
                                              CORINFO_METHOD_HANDLE methodHandle,
@@ -10436,7 +10444,6 @@ public:
     GenTree* fgMorphMultiregStructArg(GenTree* arg, fgArgTabEntry* fgEntryPtr);
 
     bool killGCRefs(GenTree* tree);
-
 }; // end of class Compiler
 
 //---------------------------------------------------------------------------------------------------------------------

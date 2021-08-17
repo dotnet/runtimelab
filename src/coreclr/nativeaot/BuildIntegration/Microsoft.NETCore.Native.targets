@@ -337,7 +337,7 @@ The .NET Foundation licenses this file to you under the MIT license.
       <CustomLinkerArg Include="-o &quot;$(NativeBinary)&quot;" Condition="'$(TargetOS)' != 'windows'" />
       <CustomLinkerArg Include="/OUT:&quot;$(NativeBinary)&quot;" Condition="'$(TargetOS)' == 'windows'" />
       <CustomLinkerArg Include="/DEF:&quot;$(ExportsFile)&quot;" Condition="'$(TargetOS)' == 'windows' and $(ExportsFile) != ''" />
-      <CustomLinkerArg Include="/EXPORT:DotNetRuntimeDebugHeader,DATA" Condition="'$(OS)' == 'Windows_NT'" />
+      <CustomLinkerArg Include="/EXPORT:DotNetRuntimeDebugHeader,DATA" Condition="'$(OS)' == 'Windows_NT' and '$(NativeDebugSymbols)' == 'true'" />
       <CustomLinkerArg Include="/LIBPATH:&quot;%(AdditionalNativeLibraryDirectories.Identity)&quot;" Condition="'$(TargetOS)' == 'windows' and '@(AdditionalNativeLibraryDirectories->Count())' &gt; 0" />
       <CustomLinkerArg Include="-exported_symbols_list &quot;$(ExportsFile)&quot;" Condition="'$(TargetOS)' == 'OSX' and $(ExportsFile) != ''" />
       <CustomLinkerArg Include="-Wl,--version-script=$(ExportsFile)" Condition="'$(TargetOS)' != 'windows' and '$(TargetOS)' != 'OSX' and $(ExportsFile) != ''"/>

@@ -4,7 +4,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using ILCompiler.DependencyAnalysisFramework;
-
+using Internal.IL;
 using Internal.Text;
 using Internal.TypeSystem;
 
@@ -12,8 +12,6 @@ namespace ILCompiler.DependencyAnalysis
 {
     internal abstract class LLVMMethodCodeNode : DependencyNodeCore<NodeFactory>, IMethodCodeNode
     {
-        private bool _isStateMachineMoveNextMethod;
-
         protected readonly MethodDesc _method;
         protected DependencyList _dependencies;
 
@@ -106,9 +104,12 @@ namespace ILCompiler.DependencyAnalysis
             }
         }
 
-        public void InitializeIsStateMachineMoveNextMethod(bool value)
+        public void InitializeDebugInfo(MethodDebugInformation debugInfo)
         {
-            _isStateMachineMoveNextMethod = value;
+        }
+
+        public void InitializeLocalTypes(TypeDesc[] localTypes)
+        {
         }
     }
 

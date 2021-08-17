@@ -33,26 +33,37 @@ namespace ILCompiler.DependencyAnalysis
             get;
         }
 
-        DebugVarInfo[] DebugVarInfos
-        {
-            get;
-        }
+        public IEnumerable<DebugVarInfoMetadata> GetDebugVars();
     }
-     
-    public struct DebugVarInfo
+
+    public readonly struct DebugVarInfoMetadata
     {
         public readonly string Name;
-        public readonly bool IsParam;
         public readonly TypeDesc Type;
-        public List<NativeVarInfo> Ranges;
+        public readonly bool IsParameter;
+        public readonly DebugVarInfo DebugVarInfo;
 
-        public DebugVarInfo(string name, bool isParam, TypeDesc type)
-        {
-            this.Name = name;
-            this.IsParam = isParam;
-            this.Type = type;
-            this.Ranges = new List<NativeVarInfo>();
-        }
+        public DebugVarInfoMetadata(string name, TypeDesc type, bool isParameter, DebugVarInfo info)
+            => (Name, Type, IsParameter, DebugVarInfo) = (name, type, isParameter, info);
+    }
+
+    public readonly struct DebugVarInfo
+    {
+        public readonly uint VarNumber;
+        public readonly DebugVarRangeInfo[] Ranges;
+
+        public DebugVarInfo(uint varNumber, DebugVarRangeInfo[] ranges)
+            => (VarNumber, Ranges) = (varNumber, ranges);
+    }
+
+    public readonly struct DebugVarRangeInfo
+    {
+        public readonly uint StartOffset;
+        public readonly uint EndOffset;
+        public readonly VarLoc VarLoc;
+
+        public DebugVarRangeInfo(uint startOffset, uint endOffset, VarLoc varLoc)
+            => (StartOffset, EndOffset, VarLoc) = (startOffset, endOffset, varLoc);
     }
 
     public static class WellKnownLineNumber
