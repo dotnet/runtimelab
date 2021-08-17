@@ -37,6 +37,7 @@ class Program
         TestGvmDependenciesFromLazy.Run();
         TestGvmDependencyFromGenericLazy.Run();
         TestConstrainedGvmCalls.Run();
+        TestConstrainedGvmValueTypeCalls.Run();
         TestDefaultGenericVirtualInterfaceMethods.Run();
 #if !CODEGEN_CPP
         TestNullableCasting.Run();
@@ -2697,6 +2698,101 @@ class Program
                 throw new Exception();
             if (ConstrainedCall<Derived<Atom1, Atom2>, Atom1, Atom3>(ref derived) != "Base<Program+TestConstrainedGvmCalls+Atom1>.Method<Program+TestConstrainedGvmCalls+Atom3>()")
                 throw new Exception();
+        }
+    }
+
+    class TestConstrainedGvmValueTypeCalls
+    {
+        class Atom1 { }
+        class Atom2 { }
+
+        interface IFoo<T>
+        {
+            bool Frob(object o);
+        }
+
+        struct Foo<T> : IFoo<T>
+        {
+            public int FrobbedValue;
+
+            public bool Frob(object o)
+            {
+                FrobbedValue = 12345;
+                return o is T[,,];
+            }
+        }
+
+        interface IBar<T>
+        {
+            bool Frob<U>(object o);
+        }
+
+        struct Bar<T> : IBar<T>
+        {
+            public int FrobbedValue;
+
+            public bool Frob<U>(object o)
+            {
+                FrobbedValue = 5678;
+                return o is T[,,,];
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        static bool DoFrob1<T, U>(ref T t, object o) where T : IFoo<U>
+        {
+            // Perform a constrained interface call from shared code.
+            // This should have been resolved to a direct call at compile time.
+            return t.Frob(o);
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        static bool DoFrob2<T, U>(ref T t, object o) where T : IBar<U>
+        {
+            // Perform a constrained interface call from shared code.
+            // This should have been resolved to a direct call at compile time.
+            return t.Frob<U>(o);
+        }
+
+        public static void Run()
+        {
+            {
+                var foo1 = new Foo<Atom1>();
+                bool result = DoFrob1<Foo<Atom1>, Atom1>(ref foo1, new Atom1[0, 0, 0]);
+
+                // If the FrobbedValue doesn't change when we frob, we must have done box+interface call.
+                if (foo1.FrobbedValue != 12345)
+                    throw new Exception();
+
+                // Also check we passed the right generic context to Foo.Frob
+                if (!result)
+                    throw new Exception();
+
+                // Also check dependency analysis:
+                // EEType for Atom2[,,] that we'll check for was never allocated.
+                var foo2 = new Foo<Atom2>();
+                if (DoFrob1<Foo<Atom2>, Atom2>(ref foo2, new object()))
+                    throw new Exception();
+            }
+
+            {
+                var bar1 = new Bar<Atom1>();
+                bool result = DoFrob2<Bar<Atom1>, Atom1>(ref bar1, new Atom1[0, 0, 0, 0]);
+
+                // If the FrobbedValue doesn't change when we frob, we must have done box+interface call.
+                if (bar1.FrobbedValue != 5678)
+                    throw new Exception();
+
+                // Also check we passed the right generic context to Foo.Frob
+                if (!result)
+                    throw new Exception();
+
+                // Also check dependency analysis:
+                // EEType for Atom2[,,,] that we'll check for was never allocated.
+                var bar2 = new Bar<Atom2>();
+                if (DoFrob2<Bar<Atom2>, Atom2>(ref bar2, new object()))
+                    throw new Exception();
+            }
         }
     }
 

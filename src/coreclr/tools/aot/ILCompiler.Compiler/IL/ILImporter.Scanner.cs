@@ -516,6 +516,23 @@ namespace Internal.IL
                     _dependencies.Add(_factory.FatFunctionPointer(runtimeDeterminedMethod), reason);
                 }
             }
+            else if (directCall && resolvedConstraint && exactContextNeedsRuntimeLookup)
+            {
+                // We want to do a direct call to a shared method on a valuetype. We need to provide
+                // a generic context, but the JitInterface doesn't provide a way for us to do it from here.
+                // So we do the next best thing and ask RyuJIT to look up a fat pointer.
+                //
+                // We have the canonical version of the method - find the runtime determined version.
+                // This is simplified because we know the method is on a valuetype.
+                Debug.Assert(targetMethod.OwningType.IsValueType);
+                MethodDesc targetOfLookup = _compilation.TypeSystemContext.GetMethodForRuntimeDeterminedType(targetMethod.GetTypicalMethodDefinition(), (RuntimeDeterminedType)_constrained);
+                if (targetOfLookup.HasInstantiation)
+                {
+                    targetOfLookup = targetOfLookup.MakeInstantiatedMethod(runtimeDeterminedMethod.Instantiation);
+                }
+                Debug.Assert(targetOfLookup.GetCanonMethodTarget(CanonicalFormKind.Specific) == targetMethod);
+                _dependencies.Add(GetGenericLookupHelper(ReadyToRunHelperId.MethodEntry, targetOfLookup), reason);
+            }
             else if (directCall)
             {
                 bool referencingArrayAddressMethod = false;
