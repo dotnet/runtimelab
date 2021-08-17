@@ -376,6 +376,10 @@ static uintptr_t UnwindSimpleHelperToCaller(
     pContext->SetSp(sp+sizeof(uintptr_t)); // pop the stack
 #elif defined(HOST_ARM) || defined(HOST_ARM64)
     uintptr_t adjustedFaultingIP = pContext->GetLr();
+#if defined(HOST_ARM)
+    if (InInterfaceDispatchHelper(faultingIP))
+        pContext->SetSp(pContext->GetSp()+2*sizeof(uintptr_t));
+#endif
 #else
     uintptr_t adjustedFaultingIP = 0; // initializing to make the compiler happy
     PORTABILITY_ASSERT("UnwindSimpleHelperToCaller");
