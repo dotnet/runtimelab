@@ -35,17 +35,17 @@ namespace Internal.IL
 
         public virtual IEnumerable<ILSequencePoint> GetSequencePoints()
         {
-            return null;
+            return Array.Empty<ILSequencePoint>();
         }
 
         public virtual IEnumerable<ILLocalVariable> GetLocalVariables()
         {
-            return null;
+            return Array.Empty<ILLocalVariable>();
         }
 
         public virtual IEnumerable<string> GetParameterNames()
         {
-            return null;
+            return Array.Empty<string>();
         }
     }
 
