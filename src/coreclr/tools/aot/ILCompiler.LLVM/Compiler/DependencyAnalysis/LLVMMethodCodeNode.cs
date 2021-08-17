@@ -4,7 +4,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using ILCompiler.DependencyAnalysisFramework;
-
+using Internal.IL;
 using Internal.Text;
 using Internal.TypeSystem;
 
@@ -95,6 +95,14 @@ namespace ILCompiler.DependencyAnalysis
         }
 
         public void InitializeNonRelocationDependencies(DependencyList additionalDependencies)
+        {
+        }
+
+        public void InitializeDebugInfo(MethodDebugInformation debugInfo)
+        {
+        }
+
+        public void InitializeLocalTypes(TypeDesc[] localTypes)
         {
         }
     }
