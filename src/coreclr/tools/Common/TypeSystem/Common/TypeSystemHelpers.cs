@@ -181,6 +181,7 @@ namespace Internal.TypeSystem
 
             // Interface method may or may not be fully canonicalized here.
             // It would be canonical on the CoreCLR side so canonicalize here to keep the algorithms similar.
+            Instantiation methodInstantiation = interfaceMethod.Instantiation;
             interfaceMethod = interfaceMethod.GetCanonMethodTarget(CanonicalFormKind.Specific);
 
             // 1. Find the (possibly generic) method that would implement the
@@ -305,9 +306,9 @@ namespace Internal.TypeSystem
 
             // We've resolved the method, ignoring its generic method arguments
             // If the method is a generic method then go and get the instantiated descriptor
-            if (interfaceMethod.HasInstantiation)
+            if (methodInstantiation.Length != 0)
             {
-                method = method.MakeInstantiatedMethod(interfaceMethod.Instantiation);
+                method = method.MakeInstantiatedMethod(methodInstantiation);
             }
 
             Debug.Assert(method != null);
