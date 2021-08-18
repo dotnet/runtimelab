@@ -306,14 +306,14 @@ namespace System.Runtime
 
         [MethodImpl(MethodImplOptions.InternalCall)]
         [RuntimeImport(RuntimeLibrary, "RhTypeCast_AreTypesEquivalent")]
-        private static unsafe extern bool AreTypesEquivalent(EEType* pType1, EEType* pType2);
+        private static unsafe extern bool AreTypesEquivalent(MethodTable* pType1, MethodTable* pType2);
 
         internal static unsafe bool AreTypesEquivalent(EETypePtr pType1, EETypePtr pType2)
             => AreTypesEquivalent(pType1.ToPointer(), pType2.ToPointer());
 
         [MethodImpl(MethodImplOptions.InternalCall)]
         [RuntimeImport(RuntimeLibrary, "RhTypeCast_AreTypesAssignable")]
-        private static unsafe extern bool AreTypesAssignable(EEType* pSourceType, EEType* pTargetType);
+        private static unsafe extern bool AreTypesAssignable(MethodTable* pSourceType, MethodTable* pTargetType);
 
         internal static unsafe bool AreTypesAssignable(EETypePtr pSourceType, EETypePtr pTargetType)
             => AreTypesAssignable(pSourceType.ToPointer(), pTargetType.ToPointer());
@@ -324,21 +324,21 @@ namespace System.Runtime
 
         [MethodImpl(MethodImplOptions.InternalCall)]
         [RuntimeImport(RuntimeLibrary, "RhTypeCast_IsInstanceOf")]
-        private static unsafe extern object IsInstanceOf(EEType* pTargetType, object obj);
+        private static unsafe extern object IsInstanceOf(MethodTable* pTargetType, object obj);
 
         internal static unsafe object IsInstanceOf(EETypePtr pTargetType, object obj)
             => IsInstanceOf(pTargetType.ToPointer(), obj);
 
         [MethodImpl(MethodImplOptions.InternalCall)]
         [RuntimeImport(RuntimeLibrary, "RhTypeCast_IsInstanceOfClass")]
-        private  static unsafe extern object IsInstanceOfClass(EEType* pTargetType, object obj);
+        private  static unsafe extern object IsInstanceOfClass(MethodTable* pTargetType, object obj);
 
         internal static unsafe object IsInstanceOfClass(EETypePtr pTargetType, object obj)
             => IsInstanceOfClass(pTargetType.ToPointer(), obj);
 
         [MethodImpl(MethodImplOptions.InternalCall)]
         [RuntimeImport(RuntimeLibrary, "RhTypeCast_IsInstanceOfInterface")]
-        internal static unsafe extern object IsInstanceOfInterface(EEType* pTargetType, object obj);
+        internal static unsafe extern object IsInstanceOfInterface(MethodTable* pTargetType, object obj);
 
         internal static unsafe object IsInstanceOfInterface(EETypePtr pTargetType, object obj)
             => IsInstanceOfInterface(pTargetType.ToPointer(), obj);
@@ -351,42 +351,42 @@ namespace System.Runtime
         //
         [MethodImpl(MethodImplOptions.InternalCall)]
         [RuntimeImport(RuntimeLibrary, "RhBoxAny")]
-        private static unsafe extern object RhBoxAny(ref byte pData, EEType* pEEType);
+        private static unsafe extern object RhBoxAny(ref byte pData, MethodTable* pEEType);
 
         internal static unsafe object RhBoxAny(ref byte pData, EETypePtr pEEType)
             => RhBoxAny(ref pData, pEEType.ToPointer());
 
         [MethodImpl(MethodImplOptions.InternalCall)]
         [RuntimeImport(RuntimeLibrary, "RhNewObject")]
-        private static unsafe extern object RhNewObject(EEType* pEEType);
+        private static unsafe extern object RhNewObject(MethodTable* pEEType);
 
         internal static unsafe object RhNewObject(EETypePtr pEEType)
             => RhNewObject(pEEType.ToPointer());
 
         [MethodImpl(MethodImplOptions.InternalCall)]
         [RuntimeImport(RuntimeLibrary, "RhNewArray")]
-        private static unsafe extern Array RhNewArray(EEType* pEEType, int length);
+        private static unsafe extern Array RhNewArray(MethodTable* pEEType, int length);
 
         internal static unsafe Array RhNewArray(EETypePtr pEEType, int length)
             => RhNewArray(pEEType.ToPointer(), length);
 
         [MethodImpl(MethodImplOptions.InternalCall)]
         [RuntimeImport(RuntimeLibrary, "RhNewString")]
-        internal static unsafe extern string RhNewString(EEType* pEEType, int length);
+        internal static unsafe extern string RhNewString(MethodTable* pEEType, int length);
 
         internal static unsafe string RhNewString(EETypePtr pEEType, int length)
             => RhNewString(pEEType.ToPointer(), length);
 
         [MethodImpl(MethodImplOptions.InternalCall)]
         [RuntimeImport(RuntimeLibrary, "RhBox")]
-        private static extern unsafe object RhBox(EEType* pEEType, ref byte data);
+        private static extern unsafe object RhBox(MethodTable* pEEType, ref byte data);
 
         internal static unsafe object RhBox(EETypePtr pEEType, ref byte data)
             => RhBox(pEEType.ToPointer(), ref data);
 
         [MethodImpl(MethodImplOptions.InternalCall)]
         [RuntimeImport(RuntimeLibrary, "RhUnbox")]
-        private static extern unsafe void RhUnbox(object obj, ref byte data, EEType* pUnboxToEEType);
+        private static extern unsafe void RhUnbox(object obj, ref byte data, MethodTable* pUnboxToEEType);
 
         internal static unsafe void RhUnbox(object obj, ref byte data, EETypePtr pUnboxToEEType)
             => RhUnbox(obj, ref data, pUnboxToEEType.ToPointer());
@@ -426,7 +426,7 @@ namespace System.Runtime
 #endif
 
         //
-        // EEType interrogation methods.
+        // MethodTable interrogation methods.
         //
 
         [MethodImplAttribute(MethodImplOptions.InternalCall)]

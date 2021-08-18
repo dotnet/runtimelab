@@ -55,13 +55,13 @@ namespace ILCompiler.DependencyAnalysis
 
                 Debug.Assert(factory.PreinitializationManager.HasLazyStaticConstructor(type));
 
-                // If this type doesn't generate an EEType in the current compilation, don't report it in the table.
-                // If nobody can get to the EEType, they can't ask to run the cctor. We don't need to force generate it.
+                // If this type doesn't generate an MethodTable in the current compilation, don't report it in the table.
+                // If nobody can get to the MethodTable, they can't ask to run the cctor. We don't need to force generate it.
                 if (!factory.MetadataManager.TypeGeneratesEEType(type))
                     continue;
 
                 // Hash table is hashed by the hashcode of the owning type.
-                // Each entry has: the EEType of the type, followed by the non-GC static base.
+                // Each entry has: the MethodTable of the type, followed by the non-GC static base.
                 // The non-GC static base is prefixed by the class constructor context.
                 Vertex vertex = writer.GetTuple(
                     writer.GetUnsignedConstant(_externalReferences.GetIndex(factory.NecessaryTypeSymbol(type))),

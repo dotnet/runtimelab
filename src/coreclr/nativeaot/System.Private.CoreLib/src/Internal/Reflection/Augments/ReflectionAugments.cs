@@ -48,7 +48,7 @@ namespace Internal.Reflection.Augments
             EETypePtr eeType;
             if (!type.TryGetEEType(out eeType))
             {
-                // Type exists in metadata only. Aside from the enums, there is no chance a type with a TypeCode would not have an EEType,
+                // Type exists in metadata only. Aside from the enums, there is no chance a type with a TypeCode would not have an MethodTable,
                 // so if it's not an enum, return the default.
                 if (!type.IsEnum)
                     return TypeCode.Object;

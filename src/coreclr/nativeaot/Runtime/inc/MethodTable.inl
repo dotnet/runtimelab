@@ -4,36 +4,36 @@
 #ifndef __eetype_inl__
 #define __eetype_inl__
 //-----------------------------------------------------------------------------------------------------------
-inline uint32_t EEType::GetHashCode()
+inline uint32_t MethodTable::GetHashCode()
 {
     return m_uHashCode;
 }
 
 //-----------------------------------------------------------------------------------------------------------
-inline PTR_Code EEType::get_Slot(uint16_t slotNumber)
+inline PTR_Code MethodTable::get_Slot(uint16_t slotNumber)
 {
     ASSERT(slotNumber < m_usNumVtableSlots);
     return *get_SlotPtr(slotNumber);
 }
 
 //-----------------------------------------------------------------------------------------------------------
-inline PTR_PTR_Code EEType::get_SlotPtr(uint16_t slotNumber)
+inline PTR_PTR_Code MethodTable::get_SlotPtr(uint16_t slotNumber)
 {
     ASSERT(slotNumber < m_usNumVtableSlots);
-    return dac_cast<PTR_PTR_Code>(dac_cast<TADDR>(this) + offsetof(EEType, m_VTable)) + slotNumber;
+    return dac_cast<PTR_PTR_Code>(dac_cast<TADDR>(this) + offsetof(MethodTable, m_VTable)) + slotNumber;
 }
 
 #ifdef DACCESS_COMPILE
-inline bool EEType::DacVerify()
+inline bool MethodTable::DacVerify()
 {
     // Use a separate static worker because the worker validates
     // the whole chain of EETypes and we don't want to accidentally
     // answer questions from 'this' that should have come from the
-    // 'current' EEType.
+    // 'current' MethodTable.
     return DacVerifyWorker(this);
 }
 // static
-inline bool EEType::DacVerifyWorker(EEType* pThis)
+inline bool MethodTable::DacVerifyWorker(MethodTable* pThis)
 {
     //*********************************************************************
     //**** ASSUMES MAX TYPE HIERARCHY DEPTH OF 1024 TYPES              ****
@@ -86,7 +86,7 @@ inline PTR_UInt8 FollowRelativePointer(const int32_t* pDist)
     return result;
 }
 
-inline TypeManagerHandle* EEType::GetTypeManagerPtr()
+inline TypeManagerHandle* MethodTable::GetTypeManagerPtr()
 {
     uint32_t cbOffset = GetFieldOffset(ETF_TypeManagerIndirection);
 
@@ -103,11 +103,11 @@ inline TypeManagerHandle* EEType::GetTypeManagerPtr()
 }
 #endif // !defined(DACCESS_COMPILE)
 
-// Calculate the offset of a field of the EEType that has a variable offset.
-__forceinline uint32_t EEType::GetFieldOffset(EETypeField eField)
+// Calculate the offset of a field of the MethodTable that has a variable offset.
+__forceinline uint32_t MethodTable::GetFieldOffset(EETypeField eField)
 {
-    // First part of EEType consists of the fixed portion followed by the vtable.
-    uint32_t cbOffset = offsetof(EEType, m_VTable) + (sizeof(UIntTarget) * m_usNumVtableSlots);
+    // First part of MethodTable consists of the fixed portion followed by the vtable.
+    uint32_t cbOffset = offsetof(MethodTable, m_VTable) + (sizeof(UIntTarget) * m_usNumVtableSlots);
 
     // Then we have the interface map.
     if (eField == ETF_InterfaceMap)

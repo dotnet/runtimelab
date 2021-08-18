@@ -15,7 +15,7 @@
     MACRO
         CHECK_CACHE_ENTRY $entry
         ;; Check a single entry in the cache.
-        ;;  R1 : Instance EEType*
+        ;;  R1 : Instance MethodTable*
         ;;  R2: Cache data structure
         ;;  R12 : Trashed. On succesful check, set to the target address to jump to.
 
@@ -44,7 +44,7 @@ StubName    SETS    "RhpInterfaceDispatch$entries"
         ;; r12 currently holds the indirection cell address. We need to get the cache structure instead.
         ldr     r2, [r12, #OFFSETOF__InterfaceDispatchCell__m_pCache]
 
-        ;; Load the EEType from the object instance in r0.
+        ;; Load the MethodTable from the object instance in r0.
         ldr     r1, [r0]
 
         GBLA CurrentEntry
@@ -107,10 +107,10 @@ CurrentEntry SETA CurrentEntry + 1
         ;; offset instead.
         ldr     r12, [r12, #OFFSETOF__InterfaceDispatchCell__m_pCache]
 
-        ;; Load the EEType from the object instance in r0.
+        ;; Load the MethodTable from the object instance in r0.
         ldr     r1, [r0]
 
-        ;; add the vtable offset to the EEType pointer
+        ;; add the vtable offset to the MethodTable pointer
         add     r12, r1, r12
 
         ;; Load the target address of the vtable into r12

@@ -30,7 +30,7 @@ struct REGDISPLAY;
 class Thread;
 enum GCRefKind : unsigned char;
 class ICodeManager;
-class EEType;
+class MethodTable;
 
 // -----------------------------------------------------------------------------------------------------------
 // RtuObjectRef
@@ -145,8 +145,8 @@ public:
     static uint32_t GetGCDescSize(void * pType);
 
     // These methods are used to get and set the type information for the last allocation on each thread.
-    static EEType * GetLastAllocEEType();
-    static void SetLastAllocEEType(EEType *pEEType);
+    static MethodTable * GetLastAllocEEType();
+    static void SetLastAllocEEType(MethodTable *pEEType);
 
     static uint64_t GetDeadThreadsNonAllocBytes();
 
@@ -155,10 +155,10 @@ public:
     static void DestroyTypedHandle(void* handle);
 
 private:
-    // The EEType for the last allocation.  This value is used inside of the GC allocator
+    // The MethodTable for the last allocation.  This value is used inside of the GC allocator
     // to emit allocation ETW events with type information.  We set this value unconditionally to avoid
     // race conditions where ETW is enabled after the value is set.
-    DECLSPEC_THREAD static EEType * tls_pLastAllocationEEType;
+    DECLSPEC_THREAD static MethodTable * tls_pLastAllocationEEType;
 
     // Tracks the amount of bytes that were reserved for threads in their gc_alloc_context and went unused when they died.
     // Used for GC.GetTotalAllocatedBytes

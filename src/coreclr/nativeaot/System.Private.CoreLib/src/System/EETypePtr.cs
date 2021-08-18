@@ -5,7 +5,7 @@
 **
 **
 **
-** Purpose: Pointer Type to a EEType in the runtime.
+** Purpose: Pointer Type to a MethodTable in the runtime.
 **
 **
 ===========================================================*/
@@ -17,7 +17,7 @@ using System.Runtime.CompilerServices;
 
 using Internal.Runtime.CompilerServices;
 
-using EEType = Internal.Runtime.EEType;
+using MethodTable = Internal.Runtime.MethodTable;
 using EETypeElementType = Internal.Runtime.EETypeElementType;
 using EETypeRef = Internal.Runtime.EETypeRef;
 using CorElementType = System.Reflection.CorElementType;
@@ -27,19 +27,19 @@ namespace System
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe struct EETypePtr : IEquatable<EETypePtr>
     {
-        private EEType* _value;
+        private MethodTable* _value;
 
         public EETypePtr(IntPtr value)
         {
-            _value = (EEType*)value;
+            _value = (MethodTable*)value;
         }
 
-        internal EETypePtr(EEType* value)
+        internal EETypePtr(MethodTable* value)
         {
             _value = value;
         }
 
-        internal EEType* ToPointer()
+        internal MethodTable* ToPointer()
         {
             return _value;
         }
@@ -167,7 +167,7 @@ namespace System
             }
         }
 
-        // WARNING: Never call unless the EEType came from an instanced object. Nested enums can be open generics (typeof(Outer<>).NestedEnum)
+        // WARNING: Never call unless the MethodTable came from an instanced object. Nested enums can be open generics (typeof(Outer<>).NestedEnum)
         // and this helper has undefined behavior when passed such as a enum.
         internal bool IsEnum
         {
@@ -432,9 +432,9 @@ namespace System
 
         public struct InterfaceCollection
         {
-            private EEType* _value;
+            private MethodTable* _value;
 
-            internal InterfaceCollection(EEType* value)
+            internal InterfaceCollection(MethodTable* value)
             {
                 _value = value;
             }

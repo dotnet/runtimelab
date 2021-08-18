@@ -15,9 +15,9 @@ using GenericVariance = Internal.Runtime.GenericVariance;
 namespace ILCompiler.DependencyAnalysis
 {
     /// <summary>
-    /// Given a type, EETypeNode writes an EEType data structure in the format expected by the runtime.
+    /// Given a type, EETypeNode writes an MethodTable data structure in the format expected by the runtime.
     /// 
-    /// Format of an EEType:
+    /// Format of an MethodTable:
     /// 
     /// Field Size      | Contents
     /// ----------------+-----------------------------------
@@ -51,7 +51,7 @@ namespace ILCompiler.DependencyAnalysis
     ///                 |
     /// [Relative ptr]  | Pointer to optional fields (optional)
     ///                 |
-    /// [Relative ptr]  | Pointer to the generic type definition EEType (optional)
+    /// [Relative ptr]  | Pointer to the generic type definition MethodTable (optional)
     ///                 |
     /// [Relative ptr]  | Pointer to the generic argument and variance info (optional)
     /// </summary>
@@ -207,12 +207,12 @@ namespace ILCompiler.DependencyAnalysis
         
         public static string GetMangledName(TypeDesc type, NameMangler nameMangler)
         {
-            return nameMangler.NodeMangler.EEType(type);
+            return nameMangler.NodeMangler.MethodTable(type);
         }
 
         public virtual void AppendMangledName(NameMangler nameMangler, Utf8StringBuilder sb)
         {
-            sb.Append(nameMangler.NodeMangler.EEType(_type));
+            sb.Append(nameMangler.NodeMangler.MethodTable(_type));
         }
 
         int ISymbolNode.Offset => 0;
@@ -247,7 +247,7 @@ namespace ILCompiler.DependencyAnalysis
         {
             get
             {
-                // If the type is can be converted to some interesting canon type, and this is the non-constructed variant of an EEType
+                // If the type is can be converted to some interesting canon type, and this is the non-constructed variant of an MethodTable
                 // we may need to trigger the fully constructed type to exist to make the behavior of the type consistent
                 // in reflection and generic template expansion scenarios
                 if (CanonFormTypeMayExist)
@@ -301,7 +301,7 @@ namespace ILCompiler.DependencyAnalysis
 
             if (maximallyConstructableType != this)
             {
-                // EEType upgrading from necessary to constructed if some template instantation exists that matches up
+                // MethodTable upgrading from necessary to constructed if some template instantation exists that matches up
                 // This ensures we don't end up having two EETypes in the system (one is this necessary type, and another one
                 // that was dynamically created at runtime).
                 if (CanonFormTypeMayExist)
@@ -476,7 +476,7 @@ namespace ILCompiler.DependencyAnalysis
             DependencyList dependencies = new DependencyList();
 
             // Include the optional fields by default. We don't know if optional fields will be needed until
-            // all of the interface usage has been stabilized. If we end up not needing it, the EEType node will not
+            // all of the interface usage has been stabilized. If we end up not needing it, the MethodTable node will not
             // generate any relocs to it, and the optional fields node will instruct the object writer to skip
             // emitting it.
             dependencies.Add(new DependencyListEntry(_optionalFieldsNode, "Optional fields"));
@@ -506,7 +506,7 @@ namespace ILCompiler.DependencyAnalysis
                     // If the compilation group wants this type to be fully promoted, ensure that all non-generic methods of the 
                     // type are generated.
                     // This may be done for several reasons:
-                    //   - The EEType may be going to be COMDAT folded with other EETypes generated in a different object file
+                    //   - The MethodTable may be going to be COMDAT folded with other EETypes generated in a different object file
                     //     This means their generic dictionaries need to have identical contents. The only way to achieve that is 
                     //     by generating the entries for all methods that contribute to the dictionary, and sorting the dictionaries.
                     //   - The generic type may be imported into another module, in which case the generic dictionary imported
@@ -527,7 +527,7 @@ namespace ILCompiler.DependencyAnalysis
 
             if (!ConstructedEETypeNode.CreationAllowed(_type))
             {
-                // If necessary EEType is the highest load level for this type, ask the metadata manager
+                // If necessary MethodTable is the highest load level for this type, ask the metadata manager
                 // if we have any dependencies due to reflectability.
                 factory.MetadataManager.GetDependenciesDueToReflectability(ref dependencies, factory, _type);
             }
@@ -595,7 +595,7 @@ namespace ILCompiler.DependencyAnalysis
         }
 
         /// <summary>
-        /// Returns the offset within an EEType of the beginning of VTable entries
+        /// Returns the offset within an MethodTable of the beginning of VTable entries
         /// </summary>
         /// <param name="pointerSize">The size of a pointer in bytes in the target architecture</param>
         public static int GetVTableOffset(int pointerSize)
@@ -692,7 +692,7 @@ namespace ILCompiler.DependencyAnalysis
                     if (instanceByteCount.IsIndeterminate)
                     {
                         // Some value must be put in, but the specific value doesn't matter as it
-                        // isn't used for specific instantiations, and the universal canon eetype
+                        // isn't used for specific instantiations, and the universal canon MethodTable
                         // is never associated with an allocated object.
                         objectSize = pointerSize;
                     }
@@ -855,7 +855,7 @@ namespace ILCompiler.DependencyAnalysis
                 MethodDesc declMethod = virtualSlots[i];
 
                 // Object.Finalize shouldn't get a virtual slot. Finalizer is stored in an optional field
-                // instead: most EEType don't have a finalizer, but all EETypes contain Object's vtable.
+                // instead: most MethodTable don't have a finalizer, but all EETypes contain Object's vtable.
                 // This lets us save a pointer (+reloc) on most EETypes.
                 Debug.Assert(!declType.IsObject || declMethod.Name != "Finalize");
 
@@ -1071,7 +1071,7 @@ namespace ILCompiler.DependencyAnalysis
         }
 
         /// <summary>
-        /// To support boxing / unboxing, the offset of the value field of a Nullable type is recorded on the EEType.
+        /// To support boxing / unboxing, the offset of the value field of a Nullable type is recorded on the MethodTable.
         /// This is variable according to the alignment requirements of the Nullable&lt;T&gt; type parameter.
         /// </summary>
         void ComputeNullableValueOffset()
@@ -1120,7 +1120,7 @@ namespace ILCompiler.DependencyAnalysis
                     // Value types should have at least 1 byte of size
                     Debug.Assert(numInstanceFieldBytes >= 1);
 
-                    // The size doesn't currently include the EEType pointer size.  We need to add this so that 
+                    // The size doesn't currently include the MethodTable pointer size.  We need to add this so that 
                     // the number of instance field bytes consistently represents the boxed size.
                     numInstanceFieldBytes += _type.Context.Target.PointerSize;
                 }
@@ -1147,7 +1147,7 @@ namespace ILCompiler.DependencyAnalysis
         {
             if (!context.IsCppCodegenTemporaryWorkaround)
             { 
-                Debug.Assert(_type.IsTypeDefinition || !_type.HasSameTypeDefinition(context.ArrayOfTClass), "Asking for Array<T> EEType");
+                Debug.Assert(_type.IsTypeDefinition || !_type.HasSameTypeDefinition(context.ArrayOfTClass), "Asking for Array<T> MethodTable");
             }
         }
 
@@ -1156,7 +1156,7 @@ namespace ILCompiler.DependencyAnalysis
             // To ensure that the behvior of FieldInfo.GetValue/SetValue remains correct,
             // if a type may be reflectable, and it is generic, if a canonical instantiation of reflection
             // can exist which can refer to the associated type of this static base, ensure that type
-            // has an EEType. (Which will allow the static field lookup logic to find the right type)
+            // has an MethodTable. (Which will allow the static field lookup logic to find the right type)
             if (type.HasInstantiation && !factory.MetadataManager.IsReflectionBlocked(type))
             {
                 // TODO-SIZE: This current implementation is slightly generous, as it does not attempt to restrict

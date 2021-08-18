@@ -9,17 +9,17 @@ using Internal.Runtime.TypeLoader;
 
 namespace Internal.Runtime
 {
-    // Supplies type loader specific extentions to EEType
-    internal partial struct EEType
+    // Supplies type loader specific extentions to MethodTable
+    internal partial struct MethodTable
     {
-        private static unsafe EEType* GetArrayEEType()
+        private static unsafe MethodTable* GetArrayEEType()
         {
             return typeof(Array).TypeHandle.ToEETypePtr();
         }
 
         internal unsafe RuntimeTypeHandle ToRuntimeTypeHandle()
         {
-            fixed (EEType* pThis = &this)
+            fixed (MethodTable* pThis = &this)
             {
                 IntPtr result = (IntPtr)pThis;
                 return *(RuntimeTypeHandle*)&result;

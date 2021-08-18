@@ -10,7 +10,7 @@ namespace Internal.Runtime.CompilerHelpers
     /// </summary>
     internal static class SharedCodeHelpers
     {
-        public static unsafe EEType* GetOrdinalInterface(EEType* pType, ushort interfaceIndex)
+        public static unsafe MethodTable* GetOrdinalInterface(MethodTable* pType, ushort interfaceIndex)
         {
             Debug.Assert(interfaceIndex <= pType->NumInterfaces);
             return pType->InterfaceMap[interfaceIndex].InterfaceType;

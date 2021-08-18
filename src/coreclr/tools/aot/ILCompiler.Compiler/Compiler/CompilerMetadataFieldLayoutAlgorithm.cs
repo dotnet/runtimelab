@@ -12,7 +12,7 @@ namespace ILCompiler
 {
     internal class CompilerMetadataFieldLayoutAlgorithm : MetadataFieldLayoutAlgorithm
     {
-        // GC statics start with a pointer to the "EEType" that signals the size and GCDesc to the GC
+        // GC statics start with a pointer to the "MethodTable" that signals the size and GCDesc to the GC
         public static LayoutInt GetGCStaticFieldOffset(TypeSystemContext context) => context.Target.LayoutPointerSize;
 
         protected override void PrepareRuntimeSpecificStaticFieldLayout(TypeSystemContext context, ref ComputedStaticFieldLayout layout)

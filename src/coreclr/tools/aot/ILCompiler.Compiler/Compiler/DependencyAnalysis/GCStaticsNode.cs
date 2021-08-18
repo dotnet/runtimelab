@@ -82,7 +82,7 @@ namespace ILCompiler.DependencyAnalysis
 
             int delta = GCStaticRegionConstants.Uninitialized;
 
-            // Set the flag that indicates next pointer following EEType is the preinit data
+            // Set the flag that indicates next pointer following MethodTable is the preinit data
             bool isPreinitialized = _preinitializationInfo != null && _preinitializationInfo.IsPreinitialized;
             if (isPreinitialized)
                 delta |= GCStaticRegionConstants.HasPreInitializedData;

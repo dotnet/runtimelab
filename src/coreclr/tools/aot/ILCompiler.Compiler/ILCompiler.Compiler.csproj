@@ -409,14 +409,14 @@
     <Compile Include="..\..\Common\Internal\Runtime\CanonTypeKind.cs">
       <Link>Common\CanonTypeKind.cs</Link>
     </Compile>
-    <Compile Include="..\..\Common\Internal\Runtime\EEType.Constants.cs">
-      <Link>Common\EEType.Constants.cs</Link>
+    <Compile Include="..\..\Common\Internal\Runtime\MethodTable.Constants.cs">
+      <Link>Common\MethodTable.Constants.cs</Link>
     </Compile>
     <Compile Include="..\..\Common\Internal\Runtime\EETypeOptionalFieldsBuilder.cs">
       <Link>Common\EETypeOptionalFieldsBuilder.cs</Link>
     </Compile>
     <Compile Include="..\..\Common\Internal\Runtime\EETypeBuilderHelpers.cs">
-      <Link>Common\EEType.cs</Link>
+      <Link>Common\MethodTable.cs</Link>
     </Compile>
     <Compile Include="..\..\Common\Internal\Runtime\InterfaceDispatchCellCachePointerFlags.cs">
       <Link>Common\InterfaceDispatchCellCachePointerFlags.cs</Link>

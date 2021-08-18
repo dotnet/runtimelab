@@ -42,7 +42,7 @@ namespace ILCompiler.DependencyAnalysis
 
             if (_type.IsArray)
             {
-                // Array EEType depends on System.Array's virtuals. Array EETypes don't point to
+                // Array MethodTable depends on System.Array's virtuals. Array EETypes don't point to
                 // their base type (i.e. there's no reloc based dependency making this "just work").
                 dependencyList.Add(factory.ConstructedTypeSymbol(_type.BaseType), "Array base type");
 
@@ -135,7 +135,7 @@ namespace ILCompiler.DependencyAnalysis
                     if (type.IsGenericDefinition)
                         return false;
 
-                    // Full EEType of System.Canon should never be used.
+                    // Full MethodTable of System.Canon should never be used.
                     if (type.IsCanonicalDefinitionType(CanonicalFormKind.Any))
                         return false;
 

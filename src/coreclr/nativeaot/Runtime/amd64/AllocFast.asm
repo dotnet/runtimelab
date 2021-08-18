@@ -6,20 +6,20 @@ include asmmacros.inc
 
 ;; Allocate non-array, non-finalizable object. If the allocation doesn't fit into the current thread's
 ;; allocation context then automatically fallback to the slow allocation path.
-;;  RCX == EEType
+;;  RCX == MethodTable
 LEAF_ENTRY RhpNewFast, _TEXT
 
         ;; rdx = GetThread(), TRASHES rax
         INLINE_GETTHREAD rdx, rax
 
         ;;
-        ;; rcx contains EEType pointer
+        ;; rcx contains MethodTable pointer
         ;;
-        mov         r8d, [rcx + OFFSETOF__EEType__m_uBaseSize]
+        mov         r8d, [rcx + OFFSETOF__MethodTable__m_uBaseSize]
 
         ;;
         ;; eax: base size
-        ;; rcx: EEType pointer
+        ;; rcx: MethodTable pointer
         ;; rdx: Thread pointer
         ;;
 
@@ -31,7 +31,7 @@ LEAF_ENTRY RhpNewFast, _TEXT
         ;; set the new alloc pointer
         mov         [rdx + OFFSETOF__Thread__m_alloc_context__alloc_ptr], r8
 
-        ;; set the new object's EEType pointer
+        ;; set the new object's MethodTable pointer
         mov         [rax], rcx
         ret
 
@@ -44,7 +44,7 @@ LEAF_END RhpNewFast, _TEXT
 
 
 ;; Allocate non-array object with finalizer
-;;  RCX == EEType
+;;  RCX == MethodTable
 LEAF_ENTRY RhpNewFinalizable, _TEXT
         mov         edx, GC_ALLOC_FINALIZE
         jmp         RhpNewObject
@@ -53,7 +53,7 @@ LEAF_END RhpNewFinalizable, _TEXT
 
 
 ;; Allocate non-array object
-;;  RCX == EEType
+;;  RCX == MethodTable
 ;;  EDX == alloc flags
 NESTED_ENTRY RhpNewObject, _TEXT
 
@@ -62,13 +62,13 @@ NESTED_ENTRY RhpNewObject, _TEXT
 
         ; R9: transition frame
 
-        ;; Preserve the EEType in RSI
+        ;; Preserve the MethodTable in RSI
         mov         rsi, rcx
 
         xor         r8d, r8d        ; numElements
 
         ;; Call the rest of the allocation helper.
-        ;; void* RhpGcAlloc(EEType *pEEType, uint32_t uFlags, uintptr_t numElements, void * pTransitionFrame)
+        ;; void* RhpGcAlloc(MethodTable *pEEType, uint32_t uFlags, uintptr_t numElements, void * pTransitionFrame)
         call        RhpGcAlloc
 
         test        rax, rax
@@ -81,7 +81,7 @@ NewOutOfMemory:
         ;; This is the OOM failure path. We're going to tail-call to a managed helper that will throw
         ;; an out of memory exception that the caller of this allocator understands.
 
-        mov         rcx, rsi            ; EEType pointer
+        mov         rcx, rsi            ; MethodTable pointer
         xor         edx, edx            ; Indicate that we should throw OOM.
 
         POP_COOP_PINVOKE_FRAME
@@ -91,7 +91,7 @@ NESTED_END RhpNewObject, _TEXT
 
 
 ;; Allocate a string.
-;;  RCX == EEType
+;;  RCX == MethodTable
 ;;  EDX == character/element count
 LEAF_ENTRY RhNewString, _TEXT
 
@@ -104,7 +104,7 @@ LEAF_ENTRY RhNewString, _TEXT
         and         rax, -8
 
         ; rax == string size
-        ; rcx == EEType
+        ; rcx == MethodTable
         ; rdx == element count
 
         INLINE_GETTHREAD r10, r8
@@ -114,7 +114,7 @@ LEAF_ENTRY RhNewString, _TEXT
         jc          RhpNewArrayRare
 
         ; rax == new alloc ptr
-        ; rcx == EEType
+        ; rcx == MethodTable
         ; rdx == element count
         ; r8 == array size
         ; r10 == thread
@@ -136,14 +136,14 @@ StringSizeOverflow:
         ; 32-bit value. We're going to tail-call to a managed helper that will throw
         ; an OOM exception that the caller of this allocator understands.
 
-        ; rcx holds EEType pointer already
+        ; rcx holds MethodTable pointer already
         xor         edx, edx            ; Indicate that we should throw OOM.
         jmp         RhExceptionHandling_FailedAllocation
 LEAF_END RhNewString, _TEXT
 
 
 ;; Allocate one dimensional, zero based array (SZARRAY).
-;;  RCX == EEType
+;;  RCX == MethodTable
 ;;  EDX == element count
 LEAF_ENTRY RhpNewArray, _TEXT
 
@@ -155,9 +155,9 @@ LEAF_ENTRY RhpNewArray, _TEXT
         mov         r8, rdx
 
         ; Compute overall allocation size (align(base size + (element size * elements), 8)).
-        movzx       eax, word ptr [rcx + OFFSETOF__EEType__m_usComponentSize]
+        movzx       eax, word ptr [rcx + OFFSETOF__MethodTable__m_usComponentSize]
         mul         rdx
-        mov         edx, [rcx + OFFSETOF__EEType__m_uBaseSize]
+        mov         edx, [rcx + OFFSETOF__MethodTable__m_uBaseSize]
         add         rax, rdx
         add         rax, 7
         and         rax, -8
@@ -165,7 +165,7 @@ LEAF_ENTRY RhpNewArray, _TEXT
         mov         rdx, r8
 
         ; rax == array size
-        ; rcx == EEType
+        ; rcx == MethodTable
         ; rdx == element count
 
         INLINE_GETTHREAD r10, r8
@@ -175,7 +175,7 @@ LEAF_ENTRY RhpNewArray, _TEXT
         jc          RhpNewArrayRare
 
         ; rax == new alloc ptr
-        ; rcx == EEType
+        ; rcx == MethodTable
         ; rdx == element count
         ; r8 == array size
         ; r10 == thread
@@ -197,14 +197,14 @@ ArraySizeOverflow:
         ; 32-bit value. We're going to tail-call to a managed helper that will throw
         ; an overflow exception that the caller of this allocator understands.
 
-        ; rcx holds EEType pointer already
+        ; rcx holds MethodTable pointer already
         mov         edx, 1              ; Indicate that we should throw OverflowException
         jmp         RhExceptionHandling_FailedAllocation
 LEAF_END RhpNewArray, _TEXT
 
 NESTED_ENTRY RhpNewArrayRare, _TEXT
 
-        ; rcx == EEType
+        ; rcx == MethodTable
         ; rdx == element count
 
         PUSH_COOP_PINVOKE_FRAME r9
@@ -212,16 +212,16 @@ NESTED_ENTRY RhpNewArrayRare, _TEXT
 
         ; r9: transition frame
 
-        ; Preserve the EEType in RSI
+        ; Preserve the MethodTable in RSI
         mov         rsi, rcx
 
-        ; passing EEType in rcx
+        ; passing MethodTable in rcx
         mov         r8, rdx         ; numElements
         xor         rdx, rdx        ; uFlags
         ; pasing pTransitionFrame in r9
 
         ; Call the rest of the allocation helper.
-        ; void* RhpGcAlloc(EEType *pEEType, uint32_t uFlags, uintptr_t numElements, void * pTransitionFrame)
+        ; void* RhpGcAlloc(MethodTable *pEEType, uint32_t uFlags, uintptr_t numElements, void * pTransitionFrame)
         call        RhpGcAlloc
 
         test        rax, rax
@@ -234,7 +234,7 @@ ArrayOutOfMemory:
         ;; This is the OOM failure path. We're going to tail-call to a managed helper that will throw
         ;; an out of memory exception that the caller of this allocator understands.
 
-        mov         rcx, rsi            ; EEType pointer
+        mov         rcx, rsi            ; MethodTable pointer
         xor         edx, edx            ; Indicate that we should throw OOM.
 
         POP_COOP_PINVOKE_FRAME

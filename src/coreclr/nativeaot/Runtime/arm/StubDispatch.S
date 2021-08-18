@@ -21,14 +21,14 @@ NESTED_ENTRY RhpInterfaceDispatch\entries, _TEXT, NoHandler
         // r12 currently holds the indirection cell address. We need to get the cache structure instead.
         ldr         r2, [r12, #OFFSETOF__InterfaceDispatchCell__m_pCache]
 
-        // Load the EEType from the object instance in r0.
+        // Load the MethodTable from the object instance in r0.
         ALTERNATE_ENTRY RhpInterfaceDispatchAVLocation\entries
         ldr         r1, [r0]
 
         CurrentOffset = OFFSETOF__InterfaceDispatchCache__m_rgEntries
-        // For each entry in the cache, see if its EEType type matches the EEType in r1.
+        // For each entry in the cache, see if its MethodTable type matches the MethodTable in r1.
         // If so, call the second cache entry.  If not, skip the InterfaceDispatchCacheEntry.
-        //  R1 : Instance EEType*
+        //  R1 : Instance MethodTable*
         //  R2: Cache data structure
         //  R12 : Trashed. On succesful check, set to the target address to jump to.
         .rept \entries
@@ -87,10 +87,10 @@ LEAF_ENTRY RhpVTableOffsetDispatch, _TEXT
         // offset instead.
         ldr         r12, [r12, #OFFSETOF__InterfaceDispatchCell__m_pCache]
 
-        // Load the EEType from the object instance in r0.
+        // Load the MethodTable from the object instance in r0.
         ldr         r1, [r0]
 
-        // add the vtable offset to the EEType pointer
+        // add the vtable offset to the MethodTable pointer
         add         r12, r1, r12
 
         // Load the target address of the vtable into r12

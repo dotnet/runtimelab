@@ -8,7 +8,7 @@
 //-------------------------------------------------------------------------------------------------
 // Forward declarations
 
-class EEType;
+class MethodTable;
 class TypeManager;
 struct TypeManagerHandle;
 class DynamicModule;
@@ -24,18 +24,18 @@ struct EETypeRef;
 class EEInterfaceInfo
 {
   public:
-    EEType * GetInterfaceEEType()
+    MethodTable * GetInterfaceEEType()
     {
         return ((UIntTarget)m_pInterfaceEEType & ((UIntTarget)1)) ?
-               *(EEType**)((UIntTarget)m_ppInterfaceEETypeViaIAT & ~((UIntTarget)1)) :
+               *(MethodTable**)((UIntTarget)m_ppInterfaceEETypeViaIAT & ~((UIntTarget)1)) :
                m_pInterfaceEEType;
     }
 
   private:
     union
     {
-        EEType *    m_pInterfaceEEType;         // m_uFlags == InterfaceFlagNormal
-        EEType **   m_ppInterfaceEETypeViaIAT;  // m_uFlags == InterfaceViaIATFlag
+        MethodTable *    m_pInterfaceEEType;         // m_uFlags == InterfaceFlagNormal
+        MethodTable **   m_ppInterfaceEETypeViaIAT;  // m_uFlags == InterfaceViaIATFlag
     };
 };
 
@@ -79,7 +79,7 @@ enum EETypeElementType : uint8_t
 };
 
 //-------------------------------------------------------------------------------------------------
-// Support for encapsulating the location of fields in the EEType that have variable offsets or may be
+// Support for encapsulating the location of fields in the MethodTable that have variable offsets or may be
 // optional.
 //
 // The following enumaration gives symbolic names for these fields and is used with the GetFieldPointer() and
@@ -104,12 +104,12 @@ enum EETypeField
 
 //-------------------------------------------------------------------------------------------------
 // Fundamental runtime type representation
-typedef DPTR(class EEType) PTR_EEType;
+typedef DPTR(class MethodTable) PTR_EEType;
 typedef DPTR(PTR_EEType) PTR_PTR_EEType;
 
 extern "C" void PopulateDebugHeaders();
 
-class EEType
+class MethodTable
 {
     friend class AsmOffsets;
     friend void PopulateDebugHeaders();
@@ -120,16 +120,16 @@ private:
         union
         {
             // Kinds.CanonicalEEType
-            EEType*     m_pBaseType;
-            EEType**    m_ppBaseTypeViaIAT;
+            MethodTable*     m_pBaseType;
+            MethodTable**    m_ppBaseTypeViaIAT;
 
             // Kinds.ClonedEEType
-            EEType** m_pCanonicalType;
-            EEType** m_ppCanonicalTypeViaIAT;
+            MethodTable** m_pCanonicalType;
+            MethodTable** m_ppCanonicalTypeViaIAT;
 
             // Kinds.ParameterizedEEType
-            EEType*  m_pRelatedParameterType;
-            EEType** m_ppRelatedParameterTypeViaIAT;
+            MethodTable*  m_pRelatedParameterType;
+            MethodTable** m_ppRelatedParameterTypeViaIAT;
         };
     };
 
@@ -150,20 +150,20 @@ private:
 
     enum Flags
     {
-        // There are four kinds of EETypes, the three of them regular types that use the full EEType encoding
+        // There are four kinds of EETypes, the three of them regular types that use the full MethodTable encoding
         // plus a fourth kind used as a grab bag of unusual edge cases which are encoded in a smaller,
-        // simplified version of EEType. See LimitedEEType definition below.
+        // simplified version of MethodTable. See LimitedEEType definition below.
         EETypeKindMask = 0x0003,
 
         // This flag is set when m_pRelatedType is in a different module.  In that case, m_pRelatedType
-        // actually points to a 'fake' EEType whose m_pRelatedType field lines up with an IAT slot in this
-        // module, which then points to the desired EEType.  In other words, there is an extra indirection
+        // actually points to a 'fake' MethodTable whose m_pRelatedType field lines up with an IAT slot in this
+        // module, which then points to the desired MethodTable.  In other words, there is an extra indirection
         // through m_pRelatedType to get to the related type in the other module.
         RelatedTypeViaIATFlag   = 0x0004,
 
         IsDynamicTypeFlag       = 0x0008,
 
-        // This EEType represents a type which requires finalization
+        // This MethodTable represents a type which requires finalization
         HasFinalizerFlag        = 0x0010,
 
         // This type contain gc pointers
@@ -235,9 +235,9 @@ public:
     bool IsInterface()
         { return GetElementType() == ElementType_Interface; }
 
-    EEType * get_CanonicalEEType();
+    MethodTable * get_CanonicalEEType();
 
-    EEType * get_RelatedParameterType();
+    MethodTable * get_RelatedParameterType();
 
     // A parameterized type shape less than SZARRAY_BASE_SIZE indicates that this is not
     // an array but some other parameterized type (see: ParameterizedTypeShapeConstants)
@@ -262,12 +262,12 @@ public:
         return (m_usFlags & OptionalFieldsFlag) != 0;
     }
 
-    bool IsEquivalentTo(EEType * pOtherEEType)
+    bool IsEquivalentTo(MethodTable * pOtherEEType)
     {
         if (this == pOtherEEType)
             return true;
 
-        EEType * pThisEEType = this;
+        MethodTable * pThisEEType = this;
 
         if (pThisEEType->IsCloned())
             pThisEEType = pThisEEType->get_CanonicalEEType();
@@ -306,7 +306,7 @@ public:
 
     TypeManagerHandle* GetTypeManagerPtr();
 
-    // Used only by GC initialization, this initializes the EEType used to mark free entries in the GC heap.
+    // Used only by GC initialization, this initializes the MethodTable used to mark free entries in the GC heap.
     // It should be an array type with a component size of one (so the GC can easily size it as appropriate)
     // and should be marked as not containing any references. The rest of the fields don't matter: the GC does
     // not query them and the rest of the runtime will never hold a reference to free object.
@@ -314,7 +314,7 @@ public:
 
 #ifdef DACCESS_COMPILE
     bool DacVerify();
-    static bool DacVerifyWorker(EEType* pThis);
+    static bool DacVerifyWorker(MethodTable* pThis);
 #endif // DACCESS_COMPILE
 
     // Mark or determine that a type is generic and one or more of it's type parameters is co- or
@@ -335,23 +335,35 @@ public:
 
     uint32_t GetHashCode();
 
-    // Helper methods that deal with EEType topology (size and field layout). These are useful since as we
-    // optimize for pay-for-play we increasingly want to customize exactly what goes into an EEType on a
+    // Helper methods that deal with MethodTable topology (size and field layout). These are useful since as we
+    // optimize for pay-for-play we increasingly want to customize exactly what goes into an MethodTable on a
     // per-type basis. The rules that govern this can be both complex and volatile and we risk sprinkling
     // various layout rules through the binder and runtime that obscure the basic meaning of the code and are
     // brittle: easy to overlook when one of the rules changes.
     //
     // The following methods can in some cases have fairly complex argument lists of their own and in that way
     // they expose more of the implementation details than we'd ideally like. But regardless they still serve
-    // an arguably more useful purpose: they identify all the places that rely on the EEType layout. As we
+    // an arguably more useful purpose: they identify all the places that rely on the MethodTable layout. As we
     // change layout rules we might have to change the arguments to the methods below but in doing so we will
     // instantly identify all the other parts of the binder and runtime that need to be updated.
 
-    // Calculate the offset of a field of the EEType that has a variable offset.
+    // Calculate the offset of a field of the MethodTable that has a variable offset.
     inline uint32_t GetFieldOffset(EETypeField eField);
 
-    // Validate an EEType extracted from an object.
+    // Validate an MethodTable extracted from an object.
     bool Validate(bool assertOnFail = true);
+
+public:
+    // Methods expected by the GC
+    uint32_t GetBaseSize() { return get_BaseSize(); }
+    uint16_t GetComponentSize() { return get_ComponentSize(); }
+    uint16_t RawGetComponentSize() { return get_ComponentSize(); }
+    uint32_t ContainsPointers() { return HasReferenceFields(); }
+    uint32_t ContainsPointersOrCollectible() { return HasReferenceFields(); }
+    bool  HasComponentSize() const { return true; }
+    bool HasCriticalFinalizer() { return false; }
+    bool IsValueType() { return get_IsValueType(); }
+    UInt32_BOOL SanityCheck() { return Validate(); }
 };
 
 #pragma warning(pop)

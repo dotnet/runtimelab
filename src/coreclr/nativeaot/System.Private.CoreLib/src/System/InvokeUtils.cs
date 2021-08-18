@@ -454,7 +454,7 @@ namespace System
 
         private static object DynamicInvokeBoxIntoNonNullable(object actualBoxedNullable)
         {
-            // grab the pointer to data, box using the EEType of the actualBoxedNullable, and then return the boxed object
+            // grab the pointer to data, box using the MethodTable of the actualBoxedNullable, and then return the boxed object
             return RuntimeImports.RhBox(actualBoxedNullable.EETypePtr, ref actualBoxedNullable.GetRawData());
         }
 

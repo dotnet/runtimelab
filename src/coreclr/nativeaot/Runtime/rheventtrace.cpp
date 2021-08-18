@@ -35,7 +35,7 @@
 // really just refers to the type of array elements if thAsAddr is an array.
 //
 // Arguments:
-//      * thAsAddr - EEType to log
+//      * thAsAddr - MethodTable to log
 //      * typeLogBehavior - Ignored in Redhawk builds
 //
 
@@ -49,7 +49,7 @@ void BulkTypeEventLogger::LogTypeAndParameters(uint64_t thAsAddr, ETW::TypeSyste
         return;
     }
 
-    EEType * pEEType = (EEType *) thAsAddr;
+    MethodTable * pEEType = (MethodTable *) thAsAddr;
 
     // Batch up this type.  This grabs useful info about the type, including any
     // type parameters it may have, and sticks it in m_rgBulkTypeValues
@@ -96,13 +96,13 @@ void BulkTypeEventLogger::LogTypeAndParameters(uint64_t thAsAddr, ETW::TypeSyste
 //         dynamically adjusts sampling rate of objects by type.
 // See code:LoggedTypesFromModuleTraits
 
-class LoggedTypesTraits : public  DefaultSHashTraits<EEType*>
+class LoggedTypesTraits : public  DefaultSHashTraits<MethodTable*>
 {
 public:
 
     // explicitly declare local typedefs for these traits types, otherwise
     // the compiler may get confused
-    typedef EEType* key_t;
+    typedef MethodTable* key_t;
 
     static key_t GetKey(const element_t &e)
     {
@@ -197,18 +197,18 @@ SHash<LoggedTypesTraits>* s_loggedTypesHash = NULL;
 
 //---------------------------------------------------------------------------------------
 //
-// Interrogates EEType for the info that's interesting to include in the BulkType ETW
+// Interrogates MethodTable for the info that's interesting to include in the BulkType ETW
 // event.  Does not recursively call self for type parameters.
 //
 // Arguments:
-//      * pEEType - EEType to log info about
+//      * pEEType - MethodTable to log info about
 //
 // Return Value:
 //      Index into internal array where the info got batched.  Or -1 if there was a
 //      failure.
 //
 
-int BulkTypeEventLogger::LogSingleType(EEType * pEEType)
+int BulkTypeEventLogger::LogSingleType(MethodTable * pEEType)
 {
 #ifdef MULTIPLE_HEAPS
     // We need to add a lock to protect the types hash for Server GC.
@@ -217,7 +217,7 @@ int BulkTypeEventLogger::LogSingleType(EEType * pEEType)
     //Avoid logging the same type twice, but using the hash of loggged types.
     if (s_loggedTypesHash == NULL)
         s_loggedTypesHash = new SHash<LoggedTypesTraits>();
-    EEType* preexistingType = s_loggedTypesHash->Lookup(pEEType);
+    MethodTable* preexistingType = s_loggedTypesHash->Lookup(pEEType);
     if (preexistingType != NULL)
     {
         return -1;
@@ -248,7 +248,7 @@ int BulkTypeEventLogger::LogSingleType(EEType * pEEType)
     ULONGLONG * rgTypeParamsForEvent = NULL;
     ULONGLONG typeParamForNonGenericType = 0;
 
-    // Determine this EEType's module.
+    // Determine this MethodTable's module.
     RuntimeInstance * pRuntimeInstance = GetRuntimeInstance();
 
     ULONGLONG osModuleHandle = (ULONGLONG) pEEType->GetTypeManagerPtr()->AsTypeManager()->GetOsModuleHandle();
@@ -266,7 +266,7 @@ int BulkTypeEventLogger::LogSingleType(EEType * pEEType)
     else
     {
         // Note: if pEEType->IsCloned(), then no special handling is necessary.  All the
-        // functionality we need from the EEType below work just as well from cloned types.
+        // functionality we need from the MethodTable below work just as well from cloned types.
 
         // Note: For generic types, we do not necessarily know the generic parameters.
         // So we leave it to the profiler at post-processing time to determine that via
@@ -339,7 +339,7 @@ void BulkTypeEventLogger::Cleanup()
 //      * pBulkTypeEventLogger - If our caller is keeping track of batched types, it
 //          passes this to us so we can use it to batch the current type (GC heap walk
 //          does this).  In Redhawk builds this should not be NULL.
-//      * thAsAddr - EEType to batch
+//      * thAsAddr - MethodTable to batch
 //      * typeLogBehavior - Unused in Redhawk builds
 //
 

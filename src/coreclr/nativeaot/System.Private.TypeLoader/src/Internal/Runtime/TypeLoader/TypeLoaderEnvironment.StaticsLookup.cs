@@ -38,7 +38,7 @@ namespace Internal.Runtime.TypeLoader
         {
             unsafe
             {
-                EEType* typeAsEEType = runtimeTypeHandle.ToEETypePtr();
+                MethodTable* typeAsEEType = runtimeTypeHandle.ToEETypePtr();
                 // Non-generic, non-dynamic types need special handling.
                 if (!typeAsEEType->IsDynamicType && !typeAsEEType->IsGeneric)
                 {
@@ -95,7 +95,7 @@ namespace Internal.Runtime.TypeLoader
             unsafe
             {
                 // Non-generic, non-dynamic static data is found via the FieldAccessMap
-                EEType* typeAsEEType = runtimeTypeHandle.ToEETypePtr();
+                MethodTable* typeAsEEType = runtimeTypeHandle.ToEETypePtr();
                 // Non-generic, non-dynamic types need special handling.
                 Debug.Assert(typeAsEEType->IsDynamicType || typeAsEEType->IsGeneric);
             }
@@ -114,7 +114,7 @@ namespace Internal.Runtime.TypeLoader
             Debug.Assert(runtimeTypeHandle.IsDynamicType());
             unsafe
             {
-                EEType* typeAsEEType = runtimeTypeHandle.ToEETypePtr();
+                MethodTable* typeAsEEType = runtimeTypeHandle.ToEETypePtr();
                 if ((typeAsEEType->RareFlags & EETypeRareFlags.IsDynamicTypeWithNonGcStatics) != 0)
                 {
                     return typeAsEEType->DynamicNonGcStaticsData;
@@ -134,7 +134,7 @@ namespace Internal.Runtime.TypeLoader
             unsafe
             {
                 // Non-generic, non-dynamic static data is found via the FieldAccessMap
-                EEType* typeAsEEType = runtimeTypeHandle.ToEETypePtr();
+                MethodTable* typeAsEEType = runtimeTypeHandle.ToEETypePtr();
                 // Non-generic, non-dynamic types need special handling.
                 if (!typeAsEEType->IsDynamicType && !typeAsEEType->IsGeneric)
                 {
@@ -183,7 +183,7 @@ namespace Internal.Runtime.TypeLoader
             unsafe
             {
                 // Non-generic, non-dynamic static data is found via the FieldAccessMap
-                EEType* typeAsEEType = runtimeTypeHandle.ToEETypePtr();
+                MethodTable* typeAsEEType = runtimeTypeHandle.ToEETypePtr();
                 // Non-generic, non-dynamic types need special handling.
                 Debug.Assert(typeAsEEType->IsDynamicType || typeAsEEType->IsGeneric);
             }
@@ -202,7 +202,7 @@ namespace Internal.Runtime.TypeLoader
             Debug.Assert(runtimeTypeHandle.IsDynamicType());
             unsafe
             {
-                EEType* typeAsEEType = runtimeTypeHandle.ToEETypePtr();
+                MethodTable* typeAsEEType = runtimeTypeHandle.ToEETypePtr();
                 if ((typeAsEEType->RareFlags & EETypeRareFlags.IsDynamicTypeWithGcStatics) != 0)
                 {
                     return typeAsEEType->DynamicGcStaticsData;
@@ -224,7 +224,7 @@ namespace Internal.Runtime.TypeLoader
             unsafe
             {
                 // Non-generic, non-dynamic static data is found via the FieldAccessMap
-                EEType* typeAsEEType = runtimeTypeHandle.ToEETypePtr();
+                MethodTable* typeAsEEType = runtimeTypeHandle.ToEETypePtr();
                 // Non-generic, non-dynamic types need special handling.
                 Debug.Assert(typeAsEEType->IsDynamicType || typeAsEEType->IsGeneric);
             }

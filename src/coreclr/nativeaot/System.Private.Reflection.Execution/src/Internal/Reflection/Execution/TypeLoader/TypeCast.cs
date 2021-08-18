@@ -27,7 +27,7 @@ namespace Internal.Reflection.Execution
         private static bool ImplementsInterface(Type pObjType, Type pTargetType)
         {
             Debug.Assert(!pTargetType.IsArray, "did not expect array type");
-            Debug.Assert(pTargetType.IsInterface, "IsInstanceOfInterface called with non-interface EEType");
+            Debug.Assert(pTargetType.IsInterface, "IsInstanceOfInterface called with non-interface MethodTable");
 
             foreach (var pInterfaceType in pObjType.GetInterfaces())
             {

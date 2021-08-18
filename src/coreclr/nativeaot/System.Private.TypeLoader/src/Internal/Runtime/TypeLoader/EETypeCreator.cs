@@ -20,9 +20,9 @@ namespace Internal.Runtime.TypeLoader
 {
     internal static class RuntimeTypeHandleEETypeExtensions
     {
-        public static unsafe EEType* ToEETypePtr(this RuntimeTypeHandle rtth)
+        public static unsafe MethodTable* ToEETypePtr(this RuntimeTypeHandle rtth)
         {
-            return (EEType*)(*(IntPtr*)&rtth);
+            return (MethodTable*)(*(IntPtr*)&rtth);
         }
 
         public static unsafe IntPtr ToIntPtr(this RuntimeTypeHandle rtth)
@@ -48,7 +48,7 @@ namespace Internal.Runtime.TypeLoader
         public static unsafe void SetDictionary(this RuntimeTypeHandle rtth, int dictionarySlot, IntPtr dictionary)
         {
             Debug.Assert(rtth.ToEETypePtr()->IsDynamicType && dictionarySlot < rtth.GetNumVtableSlots());
-            *(IntPtr*)((byte*)rtth.ToEETypePtr() + sizeof(EEType) + dictionarySlot * IntPtr.Size) = dictionary;
+            *(IntPtr*)((byte*)rtth.ToEETypePtr() + sizeof(MethodTable) + dictionarySlot * IntPtr.Size) = dictionary;
         }
 
         public static unsafe void SetInterface(this RuntimeTypeHandle rtth, int interfaceIndex, RuntimeTypeHandle interfaceType)
@@ -137,7 +137,7 @@ namespace Internal.Runtime.TypeLoader
     {
         private static IntPtr s_emptyGCDesc;
 
-        private static void CreateEETypeWorker(EEType* pTemplateEEType, uint hashCodeOfNewType,
+        private static void CreateEETypeWorker(MethodTable* pTemplateEEType, uint hashCodeOfNewType,
             int arity, bool requireVtableSlotMapping, TypeBuilderState state)
         {
             bool successful = false;
@@ -374,20 +374,20 @@ namespace Internal.Runtime.TypeLoader
                     Debug.Assert(cbOptionalFieldsSize > 0);
                 }
 
-                // Note: The number of vtable slots on the EEType to create is not necessary equal to the number of
+                // Note: The number of vtable slots on the MethodTable to create is not necessary equal to the number of
                 // vtable slots on the template type for universal generics (see ComputeVTableLayout)
                 ushort numVtableSlots = state.NumVTableSlots;
 
-                // Compute the EEType size and allocate it
-                EEType* pEEType;
+                // Compute the MethodTable size and allocate it
+                MethodTable* pEEType;
                 {
-                    // In order to get the size of the EEType to allocate we need the following information
+                    // In order to get the size of the MethodTable to allocate we need the following information
                     // 1) The number of VTable slots (from the TypeBuilderState)
                     // 2) The number of Interfaces (from the template)
                     // 3) Whether or not there is a finalizer (from the template)
                     // 4) Optional fields size
                     // 5) Whether or not the type has sealed virtuals (from the TypeBuilderState)
-                    int cbEEType = (int)EEType.GetSizeofEEType(
+                    int cbEEType = (int)MethodTable.GetSizeofEEType(
                         numVtableSlots,
                         runtimeInterfacesLength,
                         hasFinalizer,
@@ -410,14 +410,14 @@ namespace Internal.Runtime.TypeLoader
                     int cbGCDesc = GetInstanceGCDescSize(state, pTemplateEEType, isValueType, isArray);
                     int cbGCDescAligned = MemoryHelpers.AlignUp(cbGCDesc, IntPtr.Size);
 
-                    // Allocate enough space for the EEType + gcDescSize
+                    // Allocate enough space for the MethodTable + gcDescSize
                     eeTypePtrPlusGCDesc = MemoryHelpers.AllocateMemory(cbGCDescAligned + cbEEType + cbOptionalFieldsSize);
 
-                    // Get the EEType pointer, and the template EEType pointer
-                    pEEType = (EEType*)(eeTypePtrPlusGCDesc + cbGCDescAligned);
+                    // Get the MethodTable pointer, and the template MethodTable pointer
+                    pEEType = (MethodTable*)(eeTypePtrPlusGCDesc + cbGCDescAligned);
                     state.HalfBakedRuntimeTypeHandle = pEEType->ToRuntimeTypeHandle();
 
-                    // Set basic EEType fields
+                    // Set basic MethodTable fields
                     pEEType->ComponentSize = componentSize;
                     pEEType->Flags = flags;
                     pEEType->BaseSize = (uint)baseSize;
@@ -440,15 +440,15 @@ namespace Internal.Runtime.TypeLoader
 
                         // The TestGCDescsForEquality helper will compare 2 GCDescs for equality, 4 bytes at a time (GCDesc contents treated as integers), and will read the
                         // GCDesc data in *reverse* order for instance GCDescs (subtracts 4 from the pointer values at each iteration).
-                        //    - For the first GCDesc, we use (pEEType - 4) to point to the first 4-byte integer directly preceeding the EEType
-                        //    - For the second GCDesc, given that the state.NonUniversalInstanceGCDesc already points to the first byte preceeding the template EEType, we
-                        //      subtract 3 to point to the first 4-byte integer directly preceeding the template EEType
+                        //    - For the first GCDesc, we use (pEEType - 4) to point to the first 4-byte integer directly preceeding the MethodTable
+                        //    - For the second GCDesc, given that the state.NonUniversalInstanceGCDesc already points to the first byte preceeding the template MethodTable, we
+                        //      subtract 3 to point to the first 4-byte integer directly preceeding the template MethodTable
                         TestGCDescsForEquality(new IntPtr((byte*)pEEType - 4), state.NonUniversalInstanceGCDesc - 3, cbGCDesc, true);
                     }
 #endif
 
-                    // Copy the encoded optional fields buffer to the newly allocated memory, and update the OptionalFields field on the EEType
-                    // It is important to set the optional fields first on the newly created EEType, because all other 'setters'
+                    // Copy the encoded optional fields buffer to the newly allocated memory, and update the OptionalFields field on the MethodTable
+                    // It is important to set the optional fields first on the newly created MethodTable, because all other 'setters'
                     // will assert that the type is dynamic, just to make sure we are not making any changes to statically compiled types
                     pEEType->OptionalFieldsPtr = (byte*)pEEType + cbEEType;
                     optionalFields.WriteToEEType(pEEType, cbOptionalFieldsSize);
@@ -460,10 +460,10 @@ namespace Internal.Runtime.TypeLoader
 
                     // Copy VTable entries from template type
                     int numSlotsFilled = 0;
-                    IntPtr* pVtable = (IntPtr*)((byte*)pEEType + sizeof(EEType));
+                    IntPtr* pVtable = (IntPtr*)((byte*)pEEType + sizeof(MethodTable));
                     if (pTemplateEEType != null)
                     {
-                        IntPtr* pTemplateVtable = (IntPtr*)((byte*)pTemplateEEType + sizeof(EEType));
+                        IntPtr* pTemplateVtable = (IntPtr*)((byte*)pTemplateEEType + sizeof(MethodTable));
                         for (int i = 0; i < pTemplateEEType->NumVtableSlots; i++)
                         {
                             int vtableSlotInDynamicType = requireVtableSlotMapping ? state.VTableSlotsMapping.GetVTableSlotInTargetType(i) : i;
@@ -565,7 +565,7 @@ namespace Internal.Runtime.TypeLoader
                     }
                 }
 
-                if (EEType.SupportsWritableData)
+                if (MethodTable.SupportsWritableData)
                 {
                     writableDataPtr = MemoryHelpers.AllocateMemory(WritableData.GetSize(IntPtr.Size));
                     MemoryHelpers.Memset(writableDataPtr, WritableData.GetSize(IntPtr.Size), 0);
@@ -601,7 +601,7 @@ namespace Internal.Runtime.TypeLoader
                         else
                         {
                             // This is an entry in the sealed vtable. We need to adjust the slot number based on the number of vtable slots
-                            // in the dynamic EEType
+                            // in the dynamic MethodTable
                             pDynamicEntry->_usImplMethodSlot = (ushort)(pTemplateEntry->_usImplMethodSlot - pTemplateEEType->NumVtableSlots + numVtableSlots);
                             Debug.Assert(state.NumSealedVTableEntries > 0 &&
                                 pDynamicEntry->_usImplMethodSlot >= numVtableSlots &&
@@ -633,7 +633,7 @@ namespace Internal.Runtime.TypeLoader
                         if (state.GcStaticEEType != IntPtr.Zero)
                         {
                             // CoreRT Abi uses managed heap-allocated GC statics
-                            object obj = RuntimeAugments.NewObject(((EEType*)state.GcStaticEEType)->ToRuntimeTypeHandle());
+                            object obj = RuntimeAugments.NewObject(((MethodTable*)state.GcStaticEEType)->ToRuntimeTypeHandle());
                             gcStaticData = RuntimeAugments.RhHandleAlloc(obj, GCHandleType.Normal);
 
                             pEEType->DynamicGcStaticsData = gcStaticData;
@@ -663,7 +663,7 @@ namespace Internal.Runtime.TypeLoader
 
                 if (isGeneric)
                 {
-                    genericComposition = MemoryHelpers.AllocateMemory(EEType.GetGenericCompositionSize(arity, pEEType->HasGenericVariance));
+                    genericComposition = MemoryHelpers.AllocateMemory(MethodTable.GetGenericCompositionSize(arity, pEEType->HasGenericVariance));
                     pEEType->SetGenericComposition(genericComposition);
 
                     if (state.NonGcDataSize > 0)
@@ -750,7 +750,7 @@ namespace Internal.Runtime.TypeLoader
             return s_emptyGCDesc;
         }
 
-        private static void CreateInstanceGCDesc(TypeBuilderState state, EEType* pTemplateEEType, EEType* pEEType, int baseSize, int cbGCDesc, bool isValueType, bool isArray, bool isSzArray, int arrayRank)
+        private static void CreateInstanceGCDesc(TypeBuilderState state, MethodTable* pTemplateEEType, MethodTable* pEEType, int baseSize, int cbGCDesc, bool isValueType, bool isArray, bool isSzArray, int arrayRank)
         {
             var gcBitfield = state.InstanceGCLayout;
             if (isArray)
@@ -798,7 +798,7 @@ namespace Internal.Runtime.TypeLoader
             }
         }
 
-        private static unsafe int GetInstanceGCDescSize(TypeBuilderState state, EEType* pTemplateEEType, bool isValueType, bool isArray)
+        private static unsafe int GetInstanceGCDescSize(TypeBuilderState state, MethodTable* pTemplateEEType, bool isValueType, bool isArray)
         {
             var gcBitfield = state.InstanceGCLayout;
             if (isArray)
@@ -1011,7 +1011,7 @@ namespace Internal.Runtime.TypeLoader
             CreateEETypeWorker(typeof(void*).TypeHandle.ToEETypePtr(), hashCodeOfNewType, 0, false, state);
             Debug.Assert(!state.HalfBakedRuntimeTypeHandle.IsNull());
 
-            TypeLoaderLogger.WriteLine("Allocated new POINTER type " + pointerType.ToString() + " with hashcode value = 0x" + hashCodeOfNewType.LowLevelToString() + " with eetype = " + state.HalfBakedRuntimeTypeHandle.ToIntPtr().LowLevelToString());
+            TypeLoaderLogger.WriteLine("Allocated new POINTER type " + pointerType.ToString() + " with hashcode value = 0x" + hashCodeOfNewType.LowLevelToString() + " with MethodTable = " + state.HalfBakedRuntimeTypeHandle.ToIntPtr().LowLevelToString());
 
             state.HalfBakedRuntimeTypeHandle.ToEETypePtr()->RelatedParameterType = pointeeTypeHandle.ToEETypePtr();
 
@@ -1027,7 +1027,7 @@ namespace Internal.Runtime.TypeLoader
             CreateEETypeWorker(typeof(void*).TypeHandle.ToEETypePtr(), hashCodeOfNewType, 0, false, state);
             Debug.Assert(!state.HalfBakedRuntimeTypeHandle.IsNull());
 
-            TypeLoaderLogger.WriteLine("Allocated new BYREF type " + byRefType.ToString() + " with hashcode value = 0x" + hashCodeOfNewType.LowLevelToString() + " with eetype = " + state.HalfBakedRuntimeTypeHandle.ToIntPtr().LowLevelToString());
+            TypeLoaderLogger.WriteLine("Allocated new BYREF type " + byRefType.ToString() + " with hashcode value = 0x" + hashCodeOfNewType.LowLevelToString() + " with MethodTable = " + state.HalfBakedRuntimeTypeHandle.ToIntPtr().LowLevelToString());
 
             state.HalfBakedRuntimeTypeHandle.ToEETypePtr()->RelatedParameterType = pointeeTypeHandle.ToEETypePtr();
 
@@ -1045,7 +1045,7 @@ namespace Internal.Runtime.TypeLoader
         {
             Debug.Assert(type != null && state != null);
 
-            EEType* pTemplateEEType = null;
+            MethodTable* pTemplateEEType = null;
             bool requireVtableSlotMapping = false;
 
             if (type is PointerType || type is ByRefType)
@@ -1072,7 +1072,7 @@ namespace Internal.Runtime.TypeLoader
             {
                 // Multidimensional arrays and szarrays of pointers don't implement generic interfaces and
                 // we don't need to do much for them in terms of type building. We can pretty much just take
-                // the EEType for any of those, massage the bits that matter (GCDesc, element type,
+                // the MethodTable for any of those, massage the bits that matter (GCDesc, element type,
                 // component size,...) to be of the right shape and we're done.
                 pTemplateEEType = typeof(object[,]).TypeHandle.ToEETypePtr();
                 requireVtableSlotMapping = false;
@@ -1095,21 +1095,21 @@ namespace Internal.Runtime.TypeLoader
             return state.HalfBakedRuntimeTypeHandle;
         }
 
-        public static int GetDictionaryOffsetInEEtype(EEType* pEEType)
+        public static int GetDictionaryOffsetInEEtype(MethodTable* pEEType)
         {
             // Dictionary slot is the first vtable slot
 
-            EEType* pBaseType = pEEType->BaseType;
+            MethodTable* pBaseType = pEEType->BaseType;
             int dictionarySlot = (pBaseType == null ? 0 : pBaseType->NumVtableSlots);
-            return sizeof(EEType) + dictionarySlot * IntPtr.Size;
+            return sizeof(MethodTable) + dictionarySlot * IntPtr.Size;
         }
 
-        public static IntPtr GetDictionaryAtOffset(EEType* pEEType, int offset)
+        public static IntPtr GetDictionaryAtOffset(MethodTable* pEEType, int offset)
         {
             return *(IntPtr*)((byte*)pEEType + offset);
         }
 
-        public static IntPtr GetDictionary(EEType* pEEType)
+        public static IntPtr GetDictionary(MethodTable* pEEType)
         {
             return GetDictionaryAtOffset(pEEType, GetDictionaryOffsetInEEtype(pEEType));
         }
@@ -1141,11 +1141,11 @@ namespace Internal.Runtime.TypeLoader
             return -1;
         }
 
-        public static EEType* GetBaseEETypeForDictionaryPtr(EEType* pEEType, IntPtr dictionaryPtr)
+        public static MethodTable* GetBaseEETypeForDictionaryPtr(MethodTable* pEEType, IntPtr dictionaryPtr)
         {
             // Look for the exact base type that owns the dictionary
             IntPtr curDictPtr = GetDictionary(pEEType);
-            EEType* pBaseEEType = pEEType;
+            MethodTable* pBaseEEType = pEEType;
 
             while (curDictPtr != dictionaryPtr)
             {
@@ -1153,7 +1153,7 @@ namespace Internal.Runtime.TypeLoader
                 Debug.Assert(pBaseEEType != null);
                 // Since in multifile scenario, the base type's dictionary may end up having
                 // a copy in each module, therefore the lookup of the right base type should be
-                // based on the dictionary pointer in the current EEtype, instead of the base EEtype.
+                // based on the dictionary pointer in the current MethodTable, instead of the base MethodTable.
                 curDictPtr = GetDictionaryAtOffset(pEEType, EETypeCreator.GetDictionaryOffsetInEEtype(pBaseEEType));
             }
 

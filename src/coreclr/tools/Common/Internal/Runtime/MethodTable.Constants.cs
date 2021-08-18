@@ -6,7 +6,7 @@ using System;
 namespace Internal.Runtime
 {
     /// <summary>
-    /// Represents the flags stored in the <c>_usFlags</c> field of a <c>System.Runtime.EEType</c>.
+    /// Represents the flags stored in the <c>_usFlags</c> field of a <c>System.Runtime.MethodTable</c>.
     /// </summary>
     [Flags]
     internal enum EETypeFlags : ushort
@@ -18,7 +18,7 @@ namespace Internal.Runtime
 
         /// <summary>
         /// This flag is set when m_RelatedType is in a different module.  In that case, _pRelatedType
-        /// actually points to an IAT slot in this module, which then points to the desired EEType in the
+        /// actually points to an IAT slot in this module, which then points to the desired MethodTable in the
         /// other module.  In other words, there is an extra indirection through m_RelatedType to get to
         /// the related type in the other module.  When this flag is set, it is expected that you use the
         /// "_ppXxxxViaIAT" member of the RelatedTypeUnion for the particular related type you're
@@ -32,7 +32,7 @@ namespace Internal.Runtime
         IsDynamicTypeFlag = 0x0008,
 
         /// <summary>
-        /// This EEType represents a type which requires finalization.
+        /// This MethodTable represents a type which requires finalization.
         /// </summary>
         HasFinalizerFlag = 0x0010,
 
@@ -81,7 +81,7 @@ namespace Internal.Runtime
         CanonicalEEType = 0x0000,
 
         /// <summary>
-        /// Represents a type cloned from another EEType
+        /// Represents a type cloned from another MethodTable
         /// </summary>
         ClonedEEType = 0x0001,
 
@@ -98,7 +98,7 @@ namespace Internal.Runtime
 
     /// <summary>
     /// These are flag values that are rarely set for types. If any of them are set then an optional field will
-    /// be associated with the EEType to represent them.
+    /// be associated with the MethodTable to represent them.
     /// </summary>
     [Flags]
     internal enum EETypeRareFlags : int
@@ -117,25 +117,25 @@ namespace Internal.Runtime
         // UNUSED = 0x00000010,
 
         /// <summary>
-        /// This EEType has a Class Constructor
+        /// This MethodTable has a Class Constructor
         /// </summary>
         HasCctorFlag = 0x0000020,
 
         // UNUSED2 = 0x00000040,
 
         /// <summary>
-        /// This EEType was constructed from a universal canonical template, and has
+        /// This MethodTable was constructed from a universal canonical template, and has
         /// its own dynamically created DispatchMap (does not use the DispatchMap of its template type)
         /// </summary>
         HasDynamicallyAllocatedDispatchMapFlag = 0x00000080,
 
         /// <summary>
-        /// This EEType represents a structure that is an HFA
+        /// This MethodTable represents a structure that is an HFA
         /// </summary>
         IsHFAFlag = 0x00000100,
 
         /// <summary>
-        /// This EEType has sealed vtable entries
+        /// This MethodTable has sealed vtable entries
         /// </summary>
         HasSealedVTableEntriesFlag = 0x00000200,
 
@@ -155,17 +155,17 @@ namespace Internal.Runtime
         IsDynamicTypeWithThreadStatics = 0x00001000,
 
         /// <summary>
-        /// This EEType contains a pointer to dynamic module information
+        /// This MethodTable contains a pointer to dynamic module information
         /// </summary>
         HasDynamicModuleFlag = 0x00002000,
 
         /// <summary>
-        /// This EEType is an abstract class (but not an interface).
+        /// This MethodTable is an abstract class (but not an interface).
         /// </summary>
         IsAbstractClassFlag = 0x00004000,
 
         /// <summary>
-        /// This EEType is for a Byref-like class (TypedReference, Span&lt;T&gt;,...)
+        /// This MethodTable is for a Byref-like class (TypedReference, Span&lt;T&gt;,...)
         /// </summary>
         IsByRefLikeFlag = 0x00008000,
     }
@@ -230,7 +230,7 @@ namespace Internal.Runtime
     internal enum EETypeOptionalFieldTag : byte
     {
         /// <summary>
-        /// Extra <c>EEType</c> flags not commonly used such as HasClassConstructor
+        /// Extra <c>MethodTable</c> flags not commonly used such as HasClassConstructor
         /// </summary>
         RareFlags,
 
@@ -264,9 +264,9 @@ namespace Internal.Runtime
 
     internal static class ParameterizedTypeShapeConstants
     {
-        // NOTE: Parameterized type kind is stored in the BaseSize field of the EEType.
+        // NOTE: Parameterized type kind is stored in the BaseSize field of the MethodTable.
         // Array types use their actual base size. Pointer and ByRef types are never boxed,
-        // so we can reuse the EEType BaseSize field to indicate the kind.
+        // so we can reuse the MethodTable BaseSize field to indicate the kind.
         // It's important that these values always stay lower than any valid value of a base
         // size for an actual array.
         public const int Pointer = 0;

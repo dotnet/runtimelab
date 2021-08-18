@@ -14,11 +14,11 @@
 //  * No blocking (or expensive) operations that could starve the GC or potentially lead to deadlocks.
 //  * No use of runtime facilities that check whether a GC is in progress, these will deadlock. The big
 //    example we know about so far is making a p/invoke call.
-//  * For the AfterMarkPhase callout special attention must be paid to avoid any action that reads the EEType*
+//  * For the AfterMarkPhase callout special attention must be paid to avoid any action that reads the MethodTable*
 //    from an object header (e.g. casting). At this point the GC may have mark bits set in the the pointer.
 //
 
-class EEType;
+class MethodTable;
 
 // Enum for the various GC callouts available. The values and their meanings are a contract with the classlib
 // so be careful altering these.
@@ -49,11 +49,11 @@ public:
     // Register callback for the "is alive" property of ref counted handles with objects of the given type
     // (the type match must be exact). The most recently registered callbacks are called first. Returns true
     // on success, false if insufficient memory was available for the registration.
-    static bool RegisterRefCountedHandleCallback(void * pCalloutMethod, EEType * pTypeFilter);
+    static bool RegisterRefCountedHandleCallback(void * pCalloutMethod, MethodTable * pTypeFilter);
 
     // Unregister a previously registered callout. Removes the first registration that matches on both callout
     // address and filter type. Causes a fail fast if the registration doesn't exist.
-    static void UnregisterRefCountedHandleCallback(void * pCalloutMethod, EEType * pTypeFilter);
+    static void UnregisterRefCountedHandleCallback(void * pCalloutMethod, MethodTable * pTypeFilter);
 
     // Invoke all the registered GC callouts of the given kind. The condemned generation of the current
     // collection is passed along to the callouts.
@@ -85,7 +85,7 @@ private:
     {
         HandleTableRestrictedCallout *  m_pNext;            // Next callout to make or NULL
         void *                          m_pCalloutMethod;   // Address of code to call
-        EEType *                        m_pTypeFilter;      // Type of object for which callout will be made
+        MethodTable *                        m_pTypeFilter;      // Type of object for which callout will be made
     };
 
     // The head of the chain of HandleTable callouts.

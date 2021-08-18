@@ -21,7 +21,7 @@
 #include "rhbinder.h"
 #include "Crst.h"
 #include "RuntimeInstance.h"
-#include "eetype.h"
+#include "MethodTable.h"
 #include "ObjectLayout.h"
 #include "event.h"
 #include "varint.h"
@@ -31,7 +31,7 @@
 #include "threadstore.h"
 #include "threadstore.inl"
 #include "RestrictedCallouts.h"
-#include "eetype.inl"
+#include "MethodTable.inl"
 
 // The head of the chains of GC callouts, one per callout type.
 RestrictedCallouts::GcRestrictedCallout * RestrictedCallouts::s_rgGcRestrictedCallouts[GCRC_Count] = { 0 };
@@ -121,7 +121,7 @@ void RestrictedCallouts::UnregisterGcCallout(GcRestrictedCalloutKind eKind, void
 // Register callback for the "is alive" property of ref counted handles with objects of the given type (the
 // type match must be exact). The most recently registered callbacks are called first. Returns true on
 // success, false if insufficient memory was available for the registration.
-bool RestrictedCallouts::RegisterRefCountedHandleCallback(void * pCalloutMethod, EEType * pTypeFilter)
+bool RestrictedCallouts::RegisterRefCountedHandleCallback(void * pCalloutMethod, MethodTable * pTypeFilter)
 {
     HandleTableRestrictedCallout * pCallout = new (nothrow) HandleTableRestrictedCallout();
     if (pCallout == NULL)
@@ -141,7 +141,7 @@ bool RestrictedCallouts::RegisterRefCountedHandleCallback(void * pCalloutMethod,
 
 // Unregister a previously registered callout. Removes the first registration that matches on both callout
 // address and filter type. Causes a fail fast if the registration doesn't exist.
-void RestrictedCallouts::UnregisterRefCountedHandleCallback(void * pCalloutMethod, EEType * pTypeFilter)
+void RestrictedCallouts::UnregisterRefCountedHandleCallback(void * pCalloutMethod, MethodTable * pTypeFilter)
 {
     CrstHolder lh(&s_sLock);
 

@@ -65,7 +65,7 @@ namespace ILCompiler.DependencyAnalysis
             {
                 // Unboxing stubs to canonical instance methods need a special unboxing stub that unboxes
                 // 'this' and also provides an instantiation argument (we do a calling convention conversion).
-                // We don't do this for generic instance methods though because they don't use the EEType
+                // We don't do this for generic instance methods though because they don't use the MethodTable
                 // for the generic context anyway.
                 return new MethodCodeNode(TypeSystemContext.GetSpecialUnboxingThunk(method, TypeSystemContext.GeneratedAssembly));
             }

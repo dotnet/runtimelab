@@ -22,12 +22,12 @@
 #include "gcrhinterface.h"
 #include "shash.h"
 #include "TypeManager.h"
-#include "eetype.h"
+#include "MethodTable.h"
 #include "varint.h"
 
 #include "CommonMacros.inl"
 #include "slist.inl"
-#include "eetype.inl"
+#include "MethodTable.inl"
 
 #ifdef  FEATURE_GC_STRESS
 enum HijackType { htLoop, htCallsite };
@@ -86,7 +86,7 @@ ICodeManager * RuntimeInstance::FindCodeManagerByAddress(PTR_VOID pvAddress)
 
 // Find the code manager containing the given address, which might be a return address from a managed function. The
 // address may be to another managed function, or it may be to an unmanaged function. The address may also refer to
-// an EEType.
+// an MethodTable.
 ICodeManager * RuntimeInstance::FindCodeManagerForClasslibFunction(PTR_VOID address)
 {
     // Try looking up the code manager assuming the address is for code first. This is expected to be most common.
@@ -102,7 +102,7 @@ ICodeManager * RuntimeInstance::FindCodeManagerForClasslibFunction(PTR_VOID addr
 void * RuntimeInstance::GetClasslibFunctionFromCodeAddress(PTR_VOID address, ClasslibFunctionId functionId)
 {
     // Find the code manager for the given address, which is an address into some managed module. It could
-    // be code, or it could be an EEType. No matter what, it's an address into a managed module in some non-Rtm
+    // be code, or it could be an MethodTable. No matter what, it's an address into a managed module in some non-Rtm
     // type system.
     ICodeManager * pCodeManager = FindCodeManagerForClasslibFunction(address);
 
@@ -389,7 +389,7 @@ bool RuntimeInstance::ShouldHijackCallsiteForGcStress(uintptr_t CallsiteIP)
 #endif // FEATURE_GC_STRESS
 }
 
-COOP_PINVOKE_HELPER(uint32_t, RhGetGCDescSize, (EEType* pEEType))
+COOP_PINVOKE_HELPER(uint32_t, RhGetGCDescSize, (MethodTable* pEEType))
 {
     return RedhawkGCInterface::GetGCDescSize(pEEType);
 }
@@ -397,7 +397,7 @@ COOP_PINVOKE_HELPER(uint32_t, RhGetGCDescSize, (EEType* pEEType))
 #ifdef FEATURE_CACHED_INTERFACE_DISPATCH
 EXTERN_C void RhpInitialDynamicInterfaceDispatch();
 
-COOP_PINVOKE_HELPER(void *, RhNewInterfaceDispatchCell, (EEType * pInterface, int32_t slotNumber))
+COOP_PINVOKE_HELPER(void *, RhNewInterfaceDispatchCell, (MethodTable * pInterface, int32_t slotNumber))
 {
     InterfaceDispatchCell * pCell = new (nothrow) InterfaceDispatchCell[2];
     if (pCell == NULL)

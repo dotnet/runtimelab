@@ -122,32 +122,32 @@ namespace System.Runtime
         //
         [RuntimeImport(Redhawk.BaseName, "RhpNewFast")]
         [MethodImpl(MethodImplOptions.InternalCall)]
-        internal static extern unsafe object RhpNewFast(EEType* pEEType);  // BEWARE: not for finalizable objects!
+        internal static extern unsafe object RhpNewFast(MethodTable* pEEType);  // BEWARE: not for finalizable objects!
 
         [RuntimeImport(Redhawk.BaseName, "RhpNewFinalizable")]
         [MethodImpl(MethodImplOptions.InternalCall)]
-        internal static extern unsafe object RhpNewFinalizable(EEType* pEEType);
+        internal static extern unsafe object RhpNewFinalizable(MethodTable* pEEType);
 
         [RuntimeImport(Redhawk.BaseName, "RhpNewArray")]
         [MethodImpl(MethodImplOptions.InternalCall)]
-        internal static extern unsafe object RhpNewArray(EEType* pEEType, int length);
+        internal static extern unsafe object RhpNewArray(MethodTable* pEEType, int length);
 
 #if FEATURE_64BIT_ALIGNMENT
         [RuntimeImport(Redhawk.BaseName, "RhpNewFastAlign8")]
         [MethodImpl(MethodImplOptions.InternalCall)]
-        internal static extern unsafe object RhpNewFastAlign8(EEType * pEEType);  // BEWARE: not for finalizable objects!
+        internal static extern unsafe object RhpNewFastAlign8(MethodTable * pEEType);  // BEWARE: not for finalizable objects!
 
         [RuntimeImport(Redhawk.BaseName, "RhpNewFinalizableAlign8")]
         [MethodImpl(MethodImplOptions.InternalCall)]
-        internal static extern unsafe object RhpNewFinalizableAlign8(EEType* pEEType);
+        internal static extern unsafe object RhpNewFinalizableAlign8(MethodTable* pEEType);
 
         [RuntimeImport(Redhawk.BaseName, "RhpNewArrayAlign8")]
         [MethodImpl(MethodImplOptions.InternalCall)]
-        internal static extern unsafe object RhpNewArrayAlign8(EEType* pEEType, int length);
+        internal static extern unsafe object RhpNewArrayAlign8(MethodTable* pEEType, int length);
 
         [RuntimeImport(Redhawk.BaseName, "RhpNewFastMisalign")]
         [MethodImpl(MethodImplOptions.InternalCall)]
-        internal static extern unsafe object RhpNewFastMisalign(EEType * pEEType);
+        internal static extern unsafe object RhpNewFastMisalign(MethodTable * pEEType);
 #endif // FEATURE_64BIT_ALIGNMENT
 
         [RuntimeImport(Redhawk.BaseName, "RhpCopyObjectContents")]
@@ -193,7 +193,7 @@ namespace System.Runtime
 
         [RuntimeImport(Redhawk.BaseName, "RhpGetSealedVirtualSlot")]
         [MethodImpl(MethodImplOptions.InternalCall)]
-        internal static extern unsafe IntPtr RhpGetSealedVirtualSlot(EEType* pEEType, ushort slot);
+        internal static extern unsafe IntPtr RhpGetSealedVirtualSlot(MethodTable* pEEType, ushort slot);
 
         [RuntimeImport(Redhawk.BaseName, "RhpGetDispatchCellInfo")]
         [MethodImpl(MethodImplOptions.InternalCall)]
@@ -201,11 +201,11 @@ namespace System.Runtime
 
         [RuntimeImport(Redhawk.BaseName, "RhpSearchDispatchCellCache")]
         [MethodImpl(MethodImplOptions.InternalCall)]
-        internal static extern unsafe IntPtr RhpSearchDispatchCellCache(IntPtr pCell, EEType* pInstanceType);
+        internal static extern unsafe IntPtr RhpSearchDispatchCellCache(IntPtr pCell, MethodTable* pInstanceType);
 
         [RuntimeImport(Redhawk.BaseName, "RhpUpdateDispatchCellCache")]
         [MethodImpl(MethodImplOptions.InternalCall)]
-        internal static extern unsafe IntPtr RhpUpdateDispatchCellCache(IntPtr pCell, IntPtr pTargetCode, EEType* pInstanceType, ref DispatchCellInfo newCellInfo);
+        internal static extern unsafe IntPtr RhpUpdateDispatchCellCache(IntPtr pCell, IntPtr pTargetCode, MethodTable* pInstanceType, ref DispatchCellInfo newCellInfo);
 
         [RuntimeImport(Redhawk.BaseName, "RhpGetClasslibFunctionFromCodeAddress")]
         [MethodImpl(MethodImplOptions.InternalCall)]
@@ -231,20 +231,20 @@ namespace System.Runtime
         // Miscellaneous helpers.
         //
 
-        // Get the rarely used (optional) flags of an EEType. If they're not present 0 will be returned.
+        // Get the rarely used (optional) flags of an MethodTable. If they're not present 0 will be returned.
         [RuntimeImport(Redhawk.BaseName, "RhpGetEETypeRareFlags")]
         [MethodImpl(MethodImplOptions.InternalCall)]
-        internal static extern unsafe uint RhpGetEETypeRareFlags(EEType* pEEType);
+        internal static extern unsafe uint RhpGetEETypeRareFlags(MethodTable* pEEType);
 
         // Retrieve the offset of the value embedded in a Nullable<T>.
         [RuntimeImport(Redhawk.BaseName, "RhpGetNullableEETypeValueOffset")]
         [MethodImpl(MethodImplOptions.InternalCall)]
-        internal static extern unsafe byte RhpGetNullableEETypeValueOffset(EEType* pEEType);
+        internal static extern unsafe byte RhpGetNullableEETypeValueOffset(MethodTable* pEEType);
 
         // Retrieve the target type T in a Nullable<T>.
         [RuntimeImport(Redhawk.BaseName, "RhpGetNullableEEType")]
         [MethodImpl(MethodImplOptions.InternalCall)]
-        internal static extern unsafe EEType* RhpGetNullableEEType(EEType* pEEType);
+        internal static extern unsafe MethodTable* RhpGetNullableEEType(MethodTable* pEEType);
 
         [RuntimeImport(Redhawk.BaseName, "RhpCallCatchFunclet")]
         [MethodImpl(MethodImplOptions.InternalCall)]
