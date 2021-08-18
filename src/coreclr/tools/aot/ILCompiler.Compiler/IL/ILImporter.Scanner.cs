@@ -525,7 +525,11 @@ namespace Internal.IL
                 // We have the canonical version of the method - find the runtime determined version.
                 // This is simplified because we know the method is on a valuetype.
                 Debug.Assert(targetMethod.OwningType.IsValueType);
-                MethodDesc targetOfLookup = _compilation.TypeSystemContext.GetMethodForRuntimeDeterminedType(targetMethod.GetTypicalMethodDefinition(), (RuntimeDeterminedType)_constrained);
+                MethodDesc targetOfLookup;
+                if (_constrained.IsRuntimeDeterminedType)
+                    targetOfLookup = _compilation.TypeSystemContext.GetMethodForRuntimeDeterminedType(targetMethod.GetTypicalMethodDefinition(), (RuntimeDeterminedType)_constrained);
+                else
+                    targetOfLookup = _compilation.TypeSystemContext.GetMethodForInstantiatedType(targetMethod.GetTypicalMethodDefinition(), (InstantiatedType)_constrained);
                 if (targetOfLookup.HasInstantiation)
                 {
                     targetOfLookup = targetOfLookup.MakeInstantiatedMethod(runtimeDeterminedMethod.Instantiation);
