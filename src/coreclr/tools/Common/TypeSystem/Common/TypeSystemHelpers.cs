@@ -280,7 +280,8 @@ namespace Internal.TypeSystem
             }
             else if (genInterfaceMethod.IsVirtual)
             {
-                method = canonType.FindVirtualFunctionTargetMethodOnObjectType(genInterfaceMethod);
+                MethodDesc targetMethod = interfaceType.FindMethodOnTypeWithMatchingTypicalMethod(genInterfaceMethod);
+                method = constrainedType.FindVirtualFunctionTargetMethodOnObjectType(targetMethod);
             }
             else
             {
