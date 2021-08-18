@@ -977,6 +977,9 @@
         <ExcludeList Include="$(XunitTestBinBase)/reflection/RefEmit/EmittingIgnoresAccessChecksToAttributeIsRespected/*">
             <Issue>https://github.com/dotnet/runtimelab/issues/155: Reflection.Emit</Issue>
         </ExcludeList>
+        <ExcludeList Include="$(XunitTestBinBase)/JIT/Regression/JitBlue/GitHub_25468/GitHub_25468/*">
+            <Issue>https://github.com/dotnet/runtimelab/issues/155: BinaryFormatter</Issue>
+        </ExcludeList>
         <ExcludeList Include="$(XunitTestBinBase)/baseservices/exceptions/stackoverflow/stackoverflowtester/*">
             <Issue>Specific to CoreCLR</Issue>
         </ExcludeList>
