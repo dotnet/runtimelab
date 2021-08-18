@@ -770,17 +770,17 @@ namespace Internal.Runtime.TypeLoader
                 if (Method is NoMetadataMethodDesc)
                 {
                     // If the method does not have metadata, use the NameAndSignature property which should work in that case.
-                    if (!TypeLoaderEnvironment.Instance.IsStaticMethodSignature(Method.NameAndSignature.Signature))
-                        return false;
+                    if (TypeLoaderEnvironment.Instance.IsStaticMethodSignature(Method.NameAndSignature.Signature))
+                        return true;
                 }
                 else
                 {
                     // Otherwise, use the MethodSignature
-                    if (!Method.Signature.IsStatic)
-                        return false;
+                    if (Method.Signature.IsStatic)
+                        return true;
                 }
 
-                return true;
+                return Method.OwningType.IsValueType && !Method.UnboxingStub;
             }
 
             internal unsafe override IntPtr Create(TypeBuilder builder)
@@ -805,7 +805,9 @@ namespace Internal.Runtime.TypeLoader
 
                 if (Method.FunctionPointer != IntPtr.Zero)
                 {
-                    if (Method.Instantiation.Length > 0 || TypeLoaderEnvironment.Instance.IsStaticMethodSignature(MethodSignature))
+                    if (Method.Instantiation.Length > 0
+                        || TypeLoaderEnvironment.Instance.IsStaticMethodSignature(MethodSignature)
+                        || (Method.OwningType.IsValueType && !Method.UnboxingStub))
                     {
                         Debug.Assert(methodDictionary != IntPtr.Zero);
 #if SUPPORTS_NATIVE_METADATA_TYPE_LOADING
