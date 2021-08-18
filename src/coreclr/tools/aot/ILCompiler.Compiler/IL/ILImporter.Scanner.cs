@@ -1085,6 +1085,18 @@ namespace Internal.IL
                     break;
                 case ILOpcode.div:
                 case ILOpcode.div_un:
+                    if (_compilation.TypeSystemContext.Target.Architecture == TargetArchitecture.ARM)
+                    {
+                        _dependencies.Add(GetHelperEntrypoint(ReadyToRunHelper.ULDiv), "_uldiv");
+                        _dependencies.Add(GetHelperEntrypoint(ReadyToRunHelper.LDiv), "_ldiv");
+                        _dependencies.Add(GetHelperEntrypoint(ReadyToRunHelper.UDiv), "_udiv");
+                        _dependencies.Add(GetHelperEntrypoint(ReadyToRunHelper.Div), "_div");
+                    }
+                    else if (_compilation.TypeSystemContext.Target.Architecture == TargetArchitecture.ARM64)
+                    {
+                        _dependencies.Add(GetHelperEntrypoint(ReadyToRunHelper.ThrowDivZero), "_divbyzero");
+                    }
+                    break;                    
                 case ILOpcode.rem:
                 case ILOpcode.rem_un:
                     if (_compilation.TypeSystemContext.Target.Architecture == TargetArchitecture.ARM)
@@ -1093,18 +1105,11 @@ namespace Internal.IL
                         _dependencies.Add(GetHelperEntrypoint(ReadyToRunHelper.LMod), "_lmod");
                         _dependencies.Add(GetHelperEntrypoint(ReadyToRunHelper.UMod), "_umod");
                         _dependencies.Add(GetHelperEntrypoint(ReadyToRunHelper.Mod), "_mod");
-
-                        _dependencies.Add(GetHelperEntrypoint(ReadyToRunHelper.ULDiv), "_uldiv");
-                        _dependencies.Add(GetHelperEntrypoint(ReadyToRunHelper.LDiv), "_ldiv");
-                        _dependencies.Add(GetHelperEntrypoint(ReadyToRunHelper.UDiv), "_udiv");
-                        _dependencies.Add(GetHelperEntrypoint(ReadyToRunHelper.Div), "_div");
                     }
-
-                    if (_compilation.TypeSystemContext.Target.Architecture == TargetArchitecture.ARM64)
+                    else if (_compilation.TypeSystemContext.Target.Architecture == TargetArchitecture.ARM64)
                     {
                         _dependencies.Add(GetHelperEntrypoint(ReadyToRunHelper.ThrowDivZero), "_divbyzero");
                     }
-
                     break;
             }
         }
