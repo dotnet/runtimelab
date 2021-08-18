@@ -1139,6 +1139,7 @@ namespace Internal.JitInterface
                     // use the ConstrainedMethodUseLookupResult dictionary entry so that the exact
                     // dispatch can be computed with the help of the generic dictionary.
                     // We fail the compilation here to avoid bad codegen. This is not actually an invalid program.
+                    // https://github.com/dotnet/runtimelab/issues/1431
                     ThrowHelper.ThrowInvalidProgramException();
                 }
 
