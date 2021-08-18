@@ -1141,7 +1141,7 @@ namespace Internal.JitInterface
                     var methodToGetInstantiation = (MethodDesc)GetRuntimeDeterminedObjectForToken(ref pResolvedToken);
                     targetOfLookup = targetOfLookup.MakeInstantiatedMethod(methodToGetInstantiation.Instantiation);
                 }
-                Debug.Assert(targetOfLookup.GetCanonMethodTarget(CanonicalFormKind.Specific) == targetMethod);
+                Debug.Assert(targetOfLookup.GetCanonMethodTarget(CanonicalFormKind.Specific) == targetMethod.GetCanonMethodTarget(CanonicalFormKind.Specific));
 
                 ComputeLookup(ref pResolvedToken,
                     targetOfLookup,
