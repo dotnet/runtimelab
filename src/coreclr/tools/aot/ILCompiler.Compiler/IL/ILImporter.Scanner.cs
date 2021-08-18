@@ -1075,7 +1075,6 @@ namespace Internal.IL
                     break;
                 case ILOpcode.mul_ovf:
                 case ILOpcode.mul_ovf_un:
-                    // Required for ARM
                     if (_compilation.TypeSystemContext.Target.Architecture == TargetArchitecture.ARM)
                     {
                         _dependencies.Add(GetHelperEntrypoint(ReadyToRunHelper.LMulOfv), "_lmulovf");
@@ -1088,7 +1087,6 @@ namespace Internal.IL
                 case ILOpcode.div_un:
                 case ILOpcode.rem:
                 case ILOpcode.rem_un:
-                    // Required for ARM
                     if (_compilation.TypeSystemContext.Target.Architecture == TargetArchitecture.ARM)
                     {
                         _dependencies.Add(GetHelperEntrypoint(ReadyToRunHelper.ULMod), "_ulmod");
@@ -1102,8 +1100,11 @@ namespace Internal.IL
                         _dependencies.Add(GetHelperEntrypoint(ReadyToRunHelper.Div), "_div");
                     }
 
-                    // Required for ARM64
-                    _dependencies.Add(GetHelperEntrypoint(ReadyToRunHelper.ThrowDivZero), "_divbyzero");
+                    if (_compilation.TypeSystemContext.Target.Architecture == TargetArchitecture.ARM64)
+                    {
+                        _dependencies.Add(GetHelperEntrypoint(ReadyToRunHelper.ThrowDivZero), "_divbyzero");
+                    }
+
                     break;
             }
         }
