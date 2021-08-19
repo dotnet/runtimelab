@@ -35,6 +35,7 @@ namespace ILCompiler
 
         public sealed override bool ContainsMethodDictionary(MethodDesc method)
         {
+            Debug.Assert(method.GetCanonMethodTarget(CanonicalFormKind.Specific) != method);
             return true;
         }
 
