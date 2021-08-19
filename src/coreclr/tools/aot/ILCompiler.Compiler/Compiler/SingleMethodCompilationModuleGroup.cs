@@ -35,18 +35,17 @@ namespace ILCompiler
 
         public sealed override bool ContainsMethodDictionary(MethodDesc method)
         {
-            Debug.Assert(method.GetCanonMethodTarget(CanonicalFormKind.Specific) != method);
-            return ContainsMethodBody(method, false);
+            return true;
         }
 
         public override bool ContainsType(TypeDesc type)
         {
-            return false;
+            return true;
         }
 
         public override bool ContainsTypeDictionary(TypeDesc type)
         {
-            return false;
+            return true;
         }
 
         public override bool ImportsMethod(MethodDesc method, bool unboxingStub)
