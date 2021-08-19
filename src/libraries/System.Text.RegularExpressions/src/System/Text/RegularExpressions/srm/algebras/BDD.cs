@@ -130,7 +130,8 @@ namespace System.Text.RegularExpressions.SRM
                     set = set.One;
                 }
                 else
-                { // Otherwise, leaving the bit as 0 gives the smaller bitvector.
+                {
+                    // Otherwise, leaving the bit as 0 gives the smaller bitvector
                     set = set.Zero;
                 }
             }
