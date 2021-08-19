@@ -210,7 +210,7 @@ namespace System.Text.RegularExpressions.SRM
 
         #region Serialization
         /// <summary>
-        /// Serialize this BDD in a flat ulong array. The BDD may have at most 2^k ordinals and 2^n nodes, st. k+2n&lt;64.
+        /// Serialize this BDD in a flat ulong array. The BDD may have at most 2^k ordinals and 2^n nodes, such that k+2n &lt; 64
         /// BDD.False is represented by return value ulong[]{0}.
         /// BDD.True is represented by return value ulong[]{1}.
         /// Serializer uses more compacted representations when fewer bits are needed, which is reflected in the first
