@@ -123,7 +123,8 @@ namespace System.Text.RegularExpressions.SRM
             while (!set.IsLeaf)
             {
                 if (set.Zero.IsEmpty)
-                { // The bit must be set to 1 when the zero branch is False.
+                { 
+                    // The bit must be set to 1 when the zero branch is False
                     res = res | ((ulong)1 << set.Ordinal);
                     // If zero is empty then by the way BDDs are constructed one is not.
                     set = set.One;
