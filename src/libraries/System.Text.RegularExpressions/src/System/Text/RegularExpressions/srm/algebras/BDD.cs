@@ -15,6 +15,7 @@ namespace System.Text.RegularExpressions.SRM
         /// The ordinal for the True special value.
         /// </summary>
         private const int TrueOrdinal = -2;
+        
         /// <summary>
         /// The ordinal for the False special value.
         /// </summary>
