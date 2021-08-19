@@ -7,7 +7,7 @@ namespace System.Text.RegularExpressions.SRM
 {
     /// <summary>
     /// Represents a Binary Decision Diagram (BDD). Supports multi-terminal BDDs, i.e. ones where the leaves are
-    /// something else the True or False, which are used for representing classifiers.
+    /// something other than True or False, which are used for representing classifiers.
     /// </summary>
     internal sealed class BDD : IComparable
     {
