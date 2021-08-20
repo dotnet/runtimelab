@@ -142,7 +142,7 @@ namespace System.Runtime
         private static void OnFirstChanceExceptionViaClassLib(object exception)
         {
             IntPtr pOnFirstChanceFunction =
-                (IntPtr)InternalCalls.RhpGetClasslibFunctionFromEEType((IntPtr)exception.MethodTable, ClassLibFunctionId.OnFirstChance);
+                (IntPtr)InternalCalls.RhpGetClasslibFunctionFromEEType(exception.MethodTable, ClassLibFunctionId.OnFirstChance);
 
             if (pOnFirstChanceFunction == IntPtr.Zero)
             {
@@ -162,7 +162,7 @@ namespace System.Runtime
         private static void OnUnhandledExceptionViaClassLib(object exception)
         {
             IntPtr pOnUnhandledExceptionFunction =
-                (IntPtr)InternalCalls.RhpGetClasslibFunctionFromEEType((IntPtr)exception.MethodTable, ClassLibFunctionId.OnUnhandledException);
+                (IntPtr)InternalCalls.RhpGetClasslibFunctionFromEEType(exception.MethodTable, ClassLibFunctionId.OnUnhandledException);
 
             if (pOnUnhandledExceptionFunction == IntPtr.Zero)
             {
@@ -283,12 +283,12 @@ namespace System.Runtime
         // Given an ExceptionID and an MethodTable address, get an exception object of a type that the module containing
         // the given address will understand. This finds the classlib-defined GetRuntimeException function and asks
         // it for the exception object.
-        internal static Exception GetClasslibExceptionFromEEType(ExceptionIDs id, IntPtr pEEType)
+        internal static Exception GetClasslibExceptionFromEEType(ExceptionIDs id, MethodTable* pEEType)
         {
             // Find the classlib function that will give us the exception object we want to throw. This
             // is a RuntimeExport function from the classlib module, and is therefore managed-callable.
             IntPtr pGetRuntimeExceptionFunction = IntPtr.Zero;
-            if (pEEType != IntPtr.Zero)
+            if (pEEType != null)
             {
                 pGetRuntimeExceptionFunction = (IntPtr)InternalCalls.RhpGetClasslibFunctionFromEEType(pEEType, ClassLibFunctionId.GetRuntimeException);
             }
@@ -310,7 +310,7 @@ namespace System.Runtime
                 FailFastViaClasslib(
                     RhFailFastReason.ClassLibDidNotTranslateExceptionID,
                     null,
-                    pEEType);
+                    (IntPtr)pEEType);
             }
 
             return e;

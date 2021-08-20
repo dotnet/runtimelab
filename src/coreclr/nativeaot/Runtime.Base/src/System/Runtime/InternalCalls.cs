@@ -42,6 +42,8 @@ namespace System.Runtime
         GetSystemArrayEEType = 5,
         OnFirstChance = 6,
         OnUnhandledException = 7,
+        IDynamicCastableIsInterfaceImplemented = 8,
+        IDynamicCastableGetInterfaceImplementation = 9,
     }
 
     internal static class InternalCalls
@@ -213,7 +215,7 @@ namespace System.Runtime
 
         [RuntimeImport(Redhawk.BaseName, "RhpGetClasslibFunctionFromEEType")]
         [MethodImpl(MethodImplOptions.InternalCall)]
-        internal static extern unsafe void* RhpGetClasslibFunctionFromEEType(IntPtr pEEType, ClassLibFunctionId id);
+        internal static extern unsafe void* RhpGetClasslibFunctionFromEEType(MethodTable* pEEType, ClassLibFunctionId id);
 
         //
         // StackFrameIterator

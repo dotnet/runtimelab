@@ -92,6 +92,14 @@ namespace ILCompiler
 
         private static int GetNumberOfSlotsInCurrentType(NodeFactory factory, TypeDesc implType, bool countDictionarySlots)
         {
+            if (implType.IsInterface)
+            {
+                // We normally don't need to ask about vtable slots of interfaces. It's not wrong to ask
+                // that question, but we currently only ask it for IDynamicInterfaceCastable implementations.
+                Debug.Assert(((MetadataType)implType).IsDynamicInterfaceCastableImplementation());
+                return (implType.HasGenericDictionarySlot() && countDictionarySlots) ? 1 : 0;
+            }
+
             // Now compute the total number of vtable slots that would exist on the type
             int baseSlots = GetNumberOfBaseSlots(factory, implType, countDictionarySlots);
 

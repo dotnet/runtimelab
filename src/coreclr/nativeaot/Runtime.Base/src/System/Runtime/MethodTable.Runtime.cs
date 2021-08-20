@@ -4,7 +4,7 @@
 using System;
 using System.Diagnostics;
 using System.Runtime;
-using System.Runtime.InteropServices;
+using Internal.Runtime.CompilerServices;
 
 namespace Internal.Runtime
 {
@@ -47,6 +47,11 @@ namespace Internal.Runtime
 #endif
         }
 
+        internal IntPtr GetClasslibFunction(ClassLibFunctionId id)
+        {
+            return (IntPtr)InternalCalls.RhpGetClasslibFunctionFromEEType((MethodTable*)Unsafe.AsPointer(ref this), id);
+        }
+
         internal void SetToCloneOf(MethodTable* pOrigType)
         {
             Debug.Assert((_usFlags & (ushort)EETypeFlags.EETypeKindMask) == 0, "should be a canonical type");
@@ -59,12 +64,12 @@ namespace Internal.Runtime
         // this is just the MethodTable pointer itself, but when this type represents a generic that has been
         // unified at runtime (and thus the MethodTable pointer resides in the process heap rather than a specific
         // module) we need to do some work.
-        internal unsafe IntPtr GetAssociatedModuleAddress()
+        internal unsafe MethodTable* GetAssociatedModuleAddress()
         {
             fixed (MethodTable* pThis = &this)
             {
                 if (!IsDynamicType)
-                    return (IntPtr)pThis;
+                    return pThis;
 
                 // There are currently four types of runtime allocated EETypes, arrays, pointers, byrefs, and generic types.
                 // Arrays/Pointers/ByRefs can be handled by looking at their element type.
@@ -74,7 +79,7 @@ namespace Internal.Runtime
                 if (!IsGeneric)
                 {
                     // No way to resolve module information for a non-generic dynamic type.
-                    return IntPtr.Zero;
+                    return null;
                 }
 
                 // Generic types are trickier. Often we could look at the parent type (since eventually it
@@ -87,7 +92,7 @@ namespace Internal.Runtime
 
                 Debug.Assert(pGenericType != null, "Generic type expected");
 
-                return (IntPtr)pGenericType;
+                return pGenericType;
             }
         }
 

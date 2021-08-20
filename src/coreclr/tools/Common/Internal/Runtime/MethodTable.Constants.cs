@@ -41,7 +41,10 @@ namespace Internal.Runtime
         /// </summary>
         HasPointersFlag = 0x0020,
 
-        // Unused = 0x0040,
+        /// <summary>
+        /// This type implements IDynamicInterfaceCastable to allow dynamic resolution of interface casts.
+        /// </summary>
+        IDynamicInterfaceCastableFlag = 0x0040,
 
         /// <summary>
         /// This type is generic and one or more of its type parameters is co- or contra-variant. This
