@@ -10,5 +10,7 @@
 
   <Import Condition="'$(IsTestProject)' == 'true'" Project="$(RepositoryEngineeringDir)testing\runsettings.targets" />
 
+  <Import Condition="'$(GeneratePlatformNotSupportedAssemblyMessage)' != ''" Project="$(RepositoryEngineeringDir)generateNotSupported.targets" />
+
   <Import Project="Sdk.targets" Sdk="Microsoft.DotNet.Arcade.Sdk" />
 </Project>

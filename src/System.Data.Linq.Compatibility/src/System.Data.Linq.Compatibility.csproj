@@ -34,9 +34,7 @@
     <PackageReference Include="Microsoft.DotNet.GenAPI" PrivateAssets="All" Version="$(MicrosoftDotNetGenAPIVersion)" />
     <PackageReference Include="Microsoft.DotNet.ApiCompat" PrivateAssets="All" Version="$(MicrosoftDotNetApiCompatVersion)" />
 
-    <!-- we'll use the .NETFramework reference assemblies to build from so we
-         don't need to worry about System.Web's dependent types that are not 
-         present on .NETCore -->
+    <!-- Used only to get the contract assembly for producing not-supported source and running API compat -->
     <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies.net48" PrivateAssets="All" Version="1.0.0" GeneratePathProperty="true" />
   </ItemGroup>
 
@@ -65,7 +63,5 @@
       <ResolvedMatchingContract Include="$(Net48Ref)$(TargetFileName)" />
     </ItemGroup>
   </Target>
-
-  <Import Project="generateNotSupported.targets" />
 </Project>
  

@@ -85,7 +85,5 @@
       <ResolvedMatchingContract Include="$(Net48Ref)$(TargetFileName)" />
     </ItemGroup>
   </Target>
-
-  <Import Project="generateNotSupported.targets" />
 </Project>
  
