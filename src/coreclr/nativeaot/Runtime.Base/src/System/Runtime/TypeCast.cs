@@ -251,7 +251,19 @@ namespace System.Runtime
             if (CastCache.AreTypesAssignableInternal_SourceNotTarget_BoxedSource(pObjType, pTargetType, null))
                 return obj;
 
+            // If object type implements IDynamicInterfaceCastable then there's one more way to check whether it implements
+            // the interface.
+            if (pObjType->IsIDynamicInterfaceCastable && IsInstanceOfInterfaceViaIDynamicInterfaceCastable(pTargetType, obj, throwing: false))
+                return obj;
+
             return null;
+        }
+
+        private static unsafe bool IsInstanceOfInterfaceViaIDynamicInterfaceCastable(MethodTable* pTargetType, object obj, bool throwing)
+        {
+            var pfnIsInterfaceImplemented = (delegate*<object, MethodTable*, bool, bool>)
+                pTargetType->GetClasslibFunction(ClassLibFunctionId.IDynamicCastableIsInterfaceImplemented);
+            return pfnIsInterfaceImplemented(obj, pTargetType, throwing);
         }
 
         internal static unsafe bool ImplementsInterface(MethodTable* pObjType, MethodTable* pTargetType, EETypePairList* pVisited)
@@ -477,6 +489,7 @@ namespace System.Runtime
 
         //
         // Determines if a value of the source type can be assigned to a location of the target type.
+        // It does not handle IDynamicInterfaceCastable, and cannot since we do not have an actual object instance here.
         // This routine assumes that the source type is boxed, i.e. a value type source is presumed to be
         // compatible with Object and ValueType and an enum source is additionally compatible with Enum.
         //
@@ -655,15 +668,17 @@ namespace System.Runtime
             if (CastCache.AreTypesAssignableInternal_SourceNotTarget_BoxedSource(pObjType, pTargetType, null))
                 return obj;
 
-            Exception castError = null;
+            // If object type implements IDynamicInterfaceCastable then there's one more way to check whether it implements
+            // the interface.
+            if (pObjType->IsIDynamicInterfaceCastable
+                && IsInstanceOfInterfaceViaIDynamicInterfaceCastable(pTargetType, obj, throwing: true))
+            {
+                return obj;
+            }
 
             // Throw the invalid cast exception defined by the classlib, using the input MethodTable* to find the
             // correct classlib.
-
-            if (castError == null)
-                castError = pTargetType->GetClasslibException(ExceptionIDs.InvalidCast);
-
-            throw castError;
+            throw pTargetType->GetClasslibException(ExceptionIDs.InvalidCast);
         }
 
         [RuntimeExport("RhTypeCast_CheckArrayStore")]
@@ -678,6 +693,11 @@ namespace System.Runtime
 
             MethodTable* arrayElemType = array.MethodTable->RelatedParameterType;
             if (CastCache.AreTypesAssignableInternal(obj.MethodTable, arrayElemType, AssignmentVariation.BoxedSource, null))
+                return;
+
+            // If object type implements IDynamicInterfaceCastable then there's one more way to check whether it implements
+            // the interface.
+            if (obj.MethodTable->IsIDynamicInterfaceCastable && IsInstanceOfInterfaceViaIDynamicInterfaceCastable(arrayElemType, obj, throwing: false))
                 return;
 
             // Throw the array type mismatch exception defined by the classlib, using the input array's MethodTable*
@@ -736,10 +756,14 @@ namespace System.Runtime
 
                 if (!CastCache.AreTypesAssignableInternal(obj.MethodTable, arrayElemType, AssignmentVariation.BoxedSource, null))
                 {
-                    // Throw the array type mismatch exception defined by the classlib, using the input array's
-                    // MethodTable* to find the correct classlib.
-
-                    throw array.MethodTable->GetClasslibException(ExceptionIDs.ArrayTypeMismatch);
+                    // If object type implements IDynamicInterfaceCastable then there's one more way to check whether it implements
+                    // the interface.
+                    if (!obj.MethodTable->IsIDynamicInterfaceCastable || !IsInstanceOfInterfaceViaIDynamicInterfaceCastable(arrayElemType, obj, throwing: false))
+                    {
+                        // Throw the array type mismatch exception defined by the classlib, using the input array's
+                        // MethodTable* to find the correct classlib.
+                        throw array.MethodTable->GetClasslibException(ExceptionIDs.ArrayTypeMismatch);
+                    }
                 }
 
                 // Both bounds and type check are ok.
@@ -840,7 +864,7 @@ namespace System.Runtime
         [RuntimeExport("RhTypeCast_IsInstanceOf")]
         public static unsafe object IsInstanceOf(MethodTable* pTargetType, object obj)
         {
-            // @TODO: consider using the cache directly
+            // @TODO: consider using the cache directly, but beware of IDynamicInterfaceCastable in the interface case
             if (pTargetType->IsArray)
                 return IsInstanceOfArray(pTargetType, obj);
             else if (pTargetType->IsInterface)
@@ -854,7 +878,7 @@ namespace System.Runtime
         [RuntimeExport("RhTypeCast_CheckCast")]
         public static unsafe object CheckCast(MethodTable* pTargetType, object obj)
         {
-            // @TODO: consider using the cache directly
+            // @TODO: consider using the cache directly, but beware of IDynamicInterfaceCastable in the interface case
             if (pTargetType->IsArray)
                 return CheckCastArray(pTargetType, obj);
             else if (pTargetType->IsInterface)

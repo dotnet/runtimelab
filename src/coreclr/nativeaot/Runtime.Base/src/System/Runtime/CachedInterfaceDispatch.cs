@@ -29,7 +29,17 @@ namespace System.Runtime
             IntPtr pTargetCode = RhResolveDispatchWorker(pObject, (void*)pCell, ref cellInfo);
             if (pTargetCode != IntPtr.Zero)
             {
-                return InternalCalls.RhpUpdateDispatchCellCache(pCell, pTargetCode, pObject.MethodTable, ref cellInfo);
+                // We don't update the dispatch cell cache if this is IDynamicInterfaceCastable because this
+                // scenario is by-design dynamic. There is no guarantee that another instance with the same MethodTable
+                // as the one we just resolved would do the resolution the same way. We will need to ask again.
+                if (!pObject.MethodTable->IsIDynamicInterfaceCastable)
+                {
+                    return InternalCalls.RhpUpdateDispatchCellCache(pCell, pTargetCode, pObject.MethodTable, ref cellInfo);
+                }
+                else
+                {
+                    return pTargetCode;
+                }
             }
 
             // "Valid method implementation was not found."
@@ -93,12 +103,22 @@ namespace System.Runtime
 
             if (cellInfo.CellType == DispatchCellType.InterfaceAndSlot)
             {
-                // Type whose DispatchMap is used.
+                // Type whose DispatchMap is used. Usually the same as the above but for types which implement IDynamicInterfaceCastable
+                // we may repeat this process with an alternate type.
                 MethodTable* pResolvingInstanceType = pInstanceType;
 
                 IntPtr pTargetCode = DispatchResolve.FindInterfaceMethodImplementationTarget(pResolvingInstanceType,
                                                                               cellInfo.InterfaceType.ToPointer(),
                                                                               cellInfo.InterfaceSlot);
+                if (pTargetCode == IntPtr.Zero && pInstanceType->IsIDynamicInterfaceCastable)
+                {
+                    // Dispatch not resolved through normal dispatch map, try using the IDynamicInterfaceCastable
+                    // This will either give us the appropriate result, or throw.
+                    var pfnGetInterfaceImplementation = (delegate*<object, MethodTable*, ushort, IntPtr>)
+                        pInstanceType->GetClasslibFunction(ClassLibFunctionId.IDynamicCastableGetInterfaceImplementation);
+                    pTargetCode = pfnGetInterfaceImplementation(pObject, cellInfo.InterfaceType.ToPointer(), cellInfo.InterfaceSlot);
+                    Diagnostics.Debug.Assert(pTargetCode != IntPtr.Zero);
+                }
                 return pTargetCode;
             }
             else if (cellInfo.CellType == DispatchCellType.VTableOffset)

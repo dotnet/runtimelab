@@ -717,7 +717,7 @@ namespace Internal.Runtime.TypeLoader
                     methodAddress = RuntimeAugments.ResolveDispatchOnType(instanceType.GetRuntimeTypeHandle(),
                                                                           targetMethod.OwningType.GetRuntimeTypeHandle(),
                                                                           interfaceSlot);
-                    Debug.Assert(methodAddress != IntPtr.Zero);
+                    Debug.Assert(methodAddress != IntPtr.Zero); // TODO! This should happen for IDynamicInterfaceCastable dispatch...
                     return true;
                 }
                 else
@@ -758,7 +758,7 @@ namespace Internal.Runtime.TypeLoader
                                                                           targetMethod.OwningType.GetRuntimeTypeHandle(),
                                                                           interfaceSlot);
 
-                    Debug.Assert(methodAddress != IntPtr.Zero);
+                    Debug.Assert(methodAddress != IntPtr.Zero); // TODO! This should happen for IDynamicInterfaceCastable dispatch...
                     return true;
                 }
             }

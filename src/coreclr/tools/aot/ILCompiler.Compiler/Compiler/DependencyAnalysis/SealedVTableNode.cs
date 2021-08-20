@@ -109,8 +109,11 @@ namespace ILCompiler.DependencyAnalysis
 
             _sealedVTableEntries = new List<SealedVTableEntry>();
 
-            // If this is an interface, we're done. They don't have any slots.
-            if (_type.IsInterface)
+            // Interfaces don't have any virtual slots with the exception of interfaces that provide
+            // IDynamicInterfaceCastable implementation.
+            // Normal interface don't need one because the dispatch is done at the class level.
+            // For IDynamicInterfaceCastable, we don't have an implementing class.
+            if (_type.IsInterface && !((MetadataType)_type).IsDynamicInterfaceCastableImplementation())
                 return true;
 
             IReadOnlyList<MethodDesc> virtualSlots = factory.VTable(declType).Slots;

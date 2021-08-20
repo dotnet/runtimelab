@@ -89,6 +89,13 @@ namespace System
                 if (RuntimeImports.AreTypesAssignable(srcEEType, dstEEType))
                     return srcObject;
 
+                if (dstEEType.IsInterface)
+                {
+                    if (srcObject is Runtime.InteropServices.IDynamicInterfaceCastable castable
+                        && castable.IsInterfaceImplemented(new RuntimeTypeHandle(dstEEType), throwIfNotImplemented: false))
+                        return srcObject;
+                }
+
                 object dstObject;
                 Exception exception = ConvertOrWidenPrimitivesEnumsAndPointersIfPossible(srcObject, srcEEType, dstEEType, semantics, out dstObject);
                 if (exception == null)

@@ -370,6 +370,9 @@
     <Compile Include="$(CompilerCommonPath)\Internal\Runtime\CanonTypeKind.cs">
       <Link>Internal\Runtime\CanonTypeKind.cs</Link>
     </Compile>
+    <Compile Include="$(AotCommonPath)\Internal\Runtime\IDynamicInterfaceCastableSupport.cs">
+      <Link>Internal\Runtime\IDynamicInterfaceCastableSupport.cs</Link>
+    </Compile>
     <Compile Include="$(AotCommonPath)\Internal\Runtime\MethodTable.cs">
       <Link>Internal\Runtime\MethodTable.cs</Link>
     </Compile>

@@ -653,7 +653,12 @@ namespace ILCompiler.DependencyAnalysis
                 // to have the variant flag set (even if all the arguments are non-variant).
                 // This supports e.g. casting uint[] to ICollection<int>
                 flags |= (UInt16)EETypeFlags.GenericVarianceFlag;
-            }              
+            }
+
+            if (_type.IsIDynamicInterfaceCastable)
+            {
+                flags |= (UInt16)EETypeFlags.IDynamicInterfaceCastableFlag;
+            }
 
             ISymbolNode relatedTypeNode = GetRelatedTypeNode(factory);
 

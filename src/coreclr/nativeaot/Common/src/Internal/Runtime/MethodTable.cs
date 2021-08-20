@@ -655,6 +655,14 @@ namespace Internal.Runtime
             }
         }
 
+        internal bool IsIDynamicInterfaceCastable
+        {
+            get
+            {
+                return ((_usFlags & (ushort)EETypeFlags.IDynamicInterfaceCastableFlag) != 0);
+            }
+        }
+
         internal bool IsValueType
         {
             get

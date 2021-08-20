@@ -107,6 +107,8 @@ enum class ClasslibFunctionId
     GetSystemArrayEEType = 5,
     OnFirstChanceException = 6,
     OnUnhandledException = 7,
+    IDynamicCastableIsInterfaceImplemented = 8,
+    IDynamicCastableGetInterfaceImplementation = 9,
 };
 
 enum class AssociatedDataFlags : unsigned char

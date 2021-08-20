@@ -416,7 +416,7 @@
       <Link>Common\EETypeOptionalFieldsBuilder.cs</Link>
     </Compile>
     <Compile Include="..\..\Common\Internal\Runtime\EETypeBuilderHelpers.cs">
-      <Link>Common\MethodTable.cs</Link>
+      <Link>Common\EETypeBuilderHelpers.cs</Link>
     </Compile>
     <Compile Include="..\..\Common\Internal\Runtime\InterfaceDispatchCellCachePointerFlags.cs">
       <Link>Common\InterfaceDispatchCellCachePointerFlags.cs</Link>
