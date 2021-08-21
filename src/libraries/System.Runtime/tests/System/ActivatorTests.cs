@@ -618,12 +618,7 @@ namespace System.Tests
             Assert.Throws<MissingMethodException>(() => Activator.CreateInstance(type, nonPublic: false));
         }
 
-<<<<<<< HEAD
         [ConditionalTheory(typeof(PlatformDetection), nameof(PlatformDetection.IsAssemblyLoadingSupported))]
-        [ActiveIssue("https://github.com/dotnet/runtime/issues/34030", TestPlatforms.Linux | TestPlatforms.Browser, TargetFrameworkMonikers.Netcoreapp, TestRuntimes.Mono)]
-=======
-        [Theory]
->>>>>>> upstream/runtime-main
         [MemberData(nameof(TestingCreateInstanceFromObjectHandleData))]
         public static void TestingCreateInstanceFromObjectHandle(string assemblyFile, string type, string returnedFullNameType, Type exceptionType)
         {
@@ -719,12 +714,7 @@ namespace System.Tests
             { "mscorlib", "System.Nullable`1[[System.Int32, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089]]", "", null, true }
         };
 
-<<<<<<< HEAD
         [ConditionalTheory(typeof(PlatformDetection), nameof(PlatformDetection.IsAssemblyLoadingSupported))]
-        [ActiveIssue("https://github.com/dotnet/runtime/issues/34030", TestPlatforms.Linux | TestPlatforms.Browser, TargetFrameworkMonikers.Netcoreapp, TestRuntimes.Mono)]
-=======
-        [Theory]
->>>>>>> upstream/runtime-main
         [MemberData(nameof(TestingCreateInstanceFromObjectHandleFullSignatureData))]
         public static void TestingCreateInstanceFromObjectHandleFullSignature(string assemblyFile, string type, bool ignoreCase, BindingFlags bindingAttr, Binder binder, object[] args, CultureInfo culture, object[] activationAttributes, string returnedFullNameType)
         {
