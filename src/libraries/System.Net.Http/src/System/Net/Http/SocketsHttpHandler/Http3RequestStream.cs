@@ -84,6 +84,7 @@ namespace System.Net.Http
             if (!_disposed)
             {
                 _disposed = true;
+                AbortStream();
                 _stream.Dispose();
                 DisposeSyncHelper();
             }
@@ -94,6 +95,7 @@ namespace System.Net.Http
             if (!_disposed)
             {
                 _disposed = true;
+                AbortStream();
                 await _stream.DisposeAsync().ConfigureAwait(false);
                 DisposeSyncHelper();
             }
@@ -127,13 +129,6 @@ namespace System.Net.Http
 
             try
             {
-                // Works around linker issue where it tries to eliminate QuicStreamAbortedException
-                // https://github.com/dotnet/runtime/issues/57010
-                #if TARGET_MOBILE
-                if (string.Empty.Length > 0)
-                    throw new QuicStreamAbortedException("", 0);
-                #endif
-
                 BufferHeaders(_request);
 
                 // If using Expect 100 Continue, setup a TCS to wait to send content until we get a response.
@@ -147,13 +142,10 @@ namespace System.Net.Http
                     // Ideally, headers will be sent out in a gathered write inside of SendContentAsync().
                     // If we don't have content, or we are doing Expect 100 Continue, then we can't rely on
                     // this and must send our headers immediately.
-                    await FlushSendBufferAsync(requestCancellationSource.Token).ConfigureAwait(false);
 
-                    // End the stream writing if there's no content to send.
-                    if (_request.Content == null)
-                    {
-                        _stream.Shutdown();
-                    }
+                    // End the stream writing if there's no content to send, do it as part of the write so that the FIN flag isn't send in an empty QUIC frame.
+                    // Note that there's no need to call Shutdown separately since the FIN flag in the last write is the same thing.
+                    await FlushSendBufferAsync(endStream: _request.Content == null, requestCancellationSource.Token).ConfigureAwait(false);
                 }
 
                 // If using duplex content, the content will continue sending after this method completes.
@@ -368,14 +360,20 @@ namespace System.Net.Http
                 await content.CopyToAsync(writeStream, null, cancellationToken).ConfigureAwait(false);
             }
 
+            // Set to 0 to recognize that the whole request body has been sent and therefore there's no need to abort write side in case of a premature disposal.
+            _requestContentLengthRemaining = 0;
+
             if (_sendBuffer.ActiveLength != 0)
             {
-                // Our initial send buffer, which has our headers, are normally sent out on the first write to the Http3WriteStream.
+                // Our initial send buffer, which has our headers, is normally sent out on the first write to the Http3WriteStream.
                 // If we get here, it means the content didn't actually do any writing. Send out the headers now.
-                await FlushSendBufferAsync(cancellationToken).ConfigureAwait(false);
+                // Also send the FIN flag, since this is the last write. No need to call Shutdown separately.
+                await FlushSendBufferAsync(endStream: true, cancellationToken).ConfigureAwait(false);
             }
-
-            _stream.Shutdown();
+            else
+            {
+                _stream.Shutdown();
+            }
         }
 
         private async ValueTask WriteRequestContentAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
@@ -432,9 +430,9 @@ namespace System.Net.Http
             }
         }
 
-        private async ValueTask FlushSendBufferAsync(CancellationToken cancellationToken)
+        private async ValueTask FlushSendBufferAsync(bool endStream, CancellationToken cancellationToken)
         {
-            await _stream.WriteAsync(_sendBuffer.ActiveMemory, cancellationToken).ConfigureAwait(false);
+            await _stream.WriteAsync(_sendBuffer.ActiveMemory, endStream, cancellationToken).ConfigureAwait(false);
             _sendBuffer.Discard(_sendBuffer.ActiveLength);
 
             await _stream.FlushAsync(cancellationToken).ConfigureAwait(false);
@@ -1217,6 +1215,20 @@ namespace System.Net.Http
         public void Trace(string message, [CallerMemberName] string? memberName = null) =>
             _connection.Trace(StreamId, message, memberName);
 
+        private void AbortStream()
+        {
+            // If the request body isn't completed, cancel it now.
+            if (_requestContentLengthRemaining != 0) // 0 is used for the end of content writing, -1 is used for unknown Content-Length
+            {
+                _stream.AbortWrite((long)Http3ErrorCode.RequestCancelled);
+            }
+            // If the response body isn't completed, cancel it now.
+            if (_responseDataPayloadRemaining != -1) // -1 is used for EOF, 0 for consumed DATA frame payload before the next read
+            {
+                _stream.AbortRead((long)Http3ErrorCode.RequestCancelled);
+            }
+        }
+
         // TODO: it may be possible for Http3RequestStream to implement Stream directly and avoid this allocation.
         private sealed class Http3ReadStream : HttpBaseStream
         {
@@ -1240,35 +1252,41 @@ namespace System.Net.Http
 
             protected override void Dispose(bool disposing)
             {
-                if (_stream != null)
+                Http3RequestStream? stream = Interlocked.Exchange(ref _stream, null);
+                if (stream is null)
                 {
-                    if (disposing)
-                    {
-                        // This will remove the stream from the connection properly.
-                        _stream.Dispose();
-                    }
-                    else
-                    {
-                        // We shouldn't be using a managed instance here, but don't have much choice -- we
-                        // need to remove the stream from the connection's GOAWAY collection.
-                        _stream._connection.RemoveStream(_stream._stream);
-                        _stream._connection = null!;
-                    }
-
-                    _stream = null;
-                    _response = null;
+                    return;
                 }
+
+                if (disposing)
+                {
+                    // This will remove the stream from the connection properly.
+                    stream.Dispose();
+                }
+                else
+                {
+                    // We shouldn't be using a managed instance here, but don't have much choice -- we
+                    // need to remove the stream from the connection's GOAWAY collection.
+                    stream._connection.RemoveStream(stream._stream);
+                    stream._connection = null!;
+                }
+
+                _response = null;
 
                 base.Dispose(disposing);
             }
 
             public override async ValueTask DisposeAsync()
             {
-                if (_stream != null)
+                Http3RequestStream? stream = Interlocked.Exchange(ref _stream, null);
+                if (stream is null)
                 {
-                    await _stream.DisposeAsync().ConfigureAwait(false);
-                    _stream = null!;
+                    return;
                 }
+
+                await stream.DisposeAsync().ConfigureAwait(false);
+
+                _response = null;
 
                 await base.DisposeAsync().ConfigureAwait(false);
             }
@@ -1348,7 +1366,7 @@ namespace System.Net.Http
                     return Task.FromException(new ObjectDisposedException(nameof(Http3WriteStream)));
                 }
 
-                return _stream.FlushSendBufferAsync(cancellationToken).AsTask();
+                return _stream.FlushSendBufferAsync(endStream: false, cancellationToken).AsTask();
             }
         }
 
