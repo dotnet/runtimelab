@@ -2520,7 +2520,7 @@ namespace Internal.IL
                         return true;
                     }
                     break;
-                case "AllocatorOf": // TODO: doesn't work due to calling convetion (RhpNewFast is in portable.cpp)
+                case "AllocatorOf":
                     if (metadataType.Namespace == "System" && metadataType.Name == "Activator" && method.Instantiation.Length == 1)
                     {
                         if (runtimeDeterminedMethod.IsRuntimeDeterminedExactMethod)
