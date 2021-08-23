@@ -54,6 +54,10 @@ To run an individual test (after it was built), navigate to the `artifacts\tests
 
 `$repo_root` is the root of your clone of the repo.
 
+## Building ObjWriter
+
+In case you want work on ObjWriter, or work on unsupported platform run following command `build[.cmd|.sh] nativeaot.objwriter`
+
 ## Design Documentation
 
 - [ILC Compiler Architecture](../../../design/coreclr/botr/ilc-architecture.md)
