@@ -1069,7 +1069,7 @@ namespace Internal.Runtime.TypeLoader
             get
             {
 #if TARGET_ARM
-                if (TypeBeingBuilt is DefType)
+                if (TypeBeingBuilt.IsValueType && TypeBeingBuilt is DefType)
                 {
                     return ((DefType)TypeBeingBuilt).IsHomogeneousAggregate;
                 }
