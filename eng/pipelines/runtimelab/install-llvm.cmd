@@ -5,7 +5,7 @@ set RepoRoot=%2\
 
 set
 :: Set CMakePath by evaluating the output from set-cmake-path.ps1
-call "%RepoRoot%eng\native\init-vs-env.cmd" || exit /b 1
+call "%RepoRoot%eng\native\init-vs-env.cmd wasm" || exit /b 1
 echo Using CMake at "%CMakePath%"
 
 set
