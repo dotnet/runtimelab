@@ -96,6 +96,12 @@ namespace ILCompiler.DependencyAnalysis
 
         public void InitializeNonRelocationDependencies(DependencyList additionalDependencies)
         {
+            if (additionalDependencies == null) return;
+
+            for (int i = 0; i < additionalDependencies.Count; i++)
+            {
+                _dependencies.Add(additionalDependencies[i]);
+            }
         }
 
         public void InitializeDebugInfo(MethodDebugInformation debugInfo)
