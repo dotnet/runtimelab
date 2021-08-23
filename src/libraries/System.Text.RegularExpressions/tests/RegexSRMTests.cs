@@ -23,7 +23,7 @@ namespace System.Text.RegularExpressions.Tests
 #endif
         }
 
-        internal static RegexOptions DFA = (RegexOptions)0x400;
+        internal const RegexOptions DFA = (RegexOptions)0x400;
 
         private const char Turkish_I_withDot = '\u0130';
         private const char Turkish_i_withoutDot = '\u0131';
