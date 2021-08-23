@@ -132,11 +132,6 @@ COOP_PINVOKE_HELPER(void, RhUnregisterGcCallout, (GcRestrictedCalloutKind eKind,
     RestrictedCallouts::UnregisterGcCallout(eKind, pCallout);
 }
 
-COOP_PINVOKE_HELPER(Boolean, RhIsPromoted, (OBJECTREF obj))
-{
-    return GCHeapUtilities::GetGCHeap()->IsPromoted(obj) ? Boolean_true : Boolean_false;
-}
-
 COOP_PINVOKE_HELPER(int32_t, RhGetLohCompactionMode, ())
 {
     return GCHeapUtilities::GetGCHeap()->GetLOHCompactionMode();

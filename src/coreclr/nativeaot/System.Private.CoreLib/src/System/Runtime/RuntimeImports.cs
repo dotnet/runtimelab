@@ -236,19 +236,6 @@ namespace System.Runtime
             return h;
         }
 
-        // Allocate variable handle with its initial type.
-        [MethodImpl(MethodImplOptions.InternalCall)]
-        [RuntimeImport(RuntimeLibrary, "RhpHandleAllocVariable")]
-        private static extern IntPtr RhpHandleAllocVariable(object value, uint type);
-
-        internal static IntPtr RhHandleAllocVariable(object value, uint type)
-        {
-            IntPtr h = RhpHandleAllocVariable(value, type);
-            if (h == IntPtr.Zero)
-                throw new OutOfMemoryException();
-            return h;
-        }
-
         // Free handle.
         [MethodImpl(MethodImplOptions.InternalCall)]
         [RuntimeImport(RuntimeLibrary, "RhHandleFree")]
@@ -284,22 +271,6 @@ namespace System.Runtime
         [RuntimeImport(RuntimeLibrary, "RhHandleSetDependentSecondary")]
         internal static extern void RhHandleSetDependentSecondary(IntPtr handle, object secondary);
 
-        // Get the handle type associated with a variable handle.
-        [MethodImpl(MethodImplOptions.InternalCall)]
-        [RuntimeImport(RuntimeLibrary, "RhHandleGetVariableType")]
-        internal static extern uint RhHandleGetVariableType(IntPtr handle);
-
-        // Set the handle type associated with a variable handle.
-        [MethodImpl(MethodImplOptions.InternalCall)]
-        [RuntimeImport(RuntimeLibrary, "RhHandleSetVariableType")]
-        internal static extern void RhHandleSetVariableType(IntPtr handle, uint type);
-
-        // Conditionally and atomically set the handle type associated with a variable handle if the current
-        // type is the one specified. Returns the previous handle type.
-        [MethodImpl(MethodImplOptions.InternalCall)]
-        [RuntimeImport(RuntimeLibrary, "RhHandleCompareExchangeVariableType")]
-        internal static extern uint RhHandleCompareExchangeVariableType(IntPtr handle, uint oldType, uint newType);
-
         //
         // calls to runtime for type equality checks
         //
@@ -332,9 +303,6 @@ namespace System.Runtime
         [MethodImpl(MethodImplOptions.InternalCall)]
         [RuntimeImport(RuntimeLibrary, "RhTypeCast_IsInstanceOfClass")]
         private  static unsafe extern object IsInstanceOfClass(MethodTable* pTargetType, object obj);
-
-        internal static unsafe object IsInstanceOfClass(EETypePtr pTargetType, object obj)
-            => IsInstanceOfClass(pTargetType.ToPointer(), obj);
 
         [MethodImpl(MethodImplOptions.InternalCall)]
         [RuntimeImport(RuntimeLibrary, "RhTypeCast_IsInstanceOfInterface")]
@@ -508,10 +476,6 @@ namespace System.Runtime
         [MethodImplAttribute(MethodImplOptions.InternalCall)]
         [RuntimeImport(RuntimeLibrary, "RhUnregisterRefCountedHandleCallback")]
         internal static extern void RhUnregisterRefCountedHandleCallback(IntPtr pCalloutMethod, EETypePtr pTypeFilter);
-
-        [MethodImplAttribute(MethodImplOptions.InternalCall)]
-        [RuntimeImport(RuntimeLibrary, "RhIsPromoted")]
-        internal static extern bool RhIsPromoted(object obj);
 
         //
         // Blob support

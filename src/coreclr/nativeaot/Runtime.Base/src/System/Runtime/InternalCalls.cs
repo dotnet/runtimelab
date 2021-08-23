@@ -101,16 +101,6 @@ namespace System.Runtime
         [MethodImpl(MethodImplOptions.InternalCall)]
         internal static extern IntPtr RhpHandleAlloc(object value, GCHandleType type);
 
-        // Allocate dependent handle.
-        [RuntimeImport(Redhawk.BaseName, "RhpHandleAllocDependent")]
-        [MethodImpl(MethodImplOptions.InternalCall)]
-        internal static extern IntPtr RhpHandleAllocDependent(object primary, object secondary);
-
-        // Allocate variable handle.
-        [RuntimeImport(Redhawk.BaseName, "RhpHandleAllocVariable")]
-        [MethodImpl(MethodImplOptions.InternalCall)]
-        internal static extern IntPtr RhpHandleAllocVariable(object value, uint type);
-
         [RuntimeImport(Redhawk.BaseName, "RhHandleGet")]
         [MethodImpl(MethodImplOptions.InternalCall)]
         internal static extern object RhHandleGet(IntPtr handle);
@@ -156,10 +146,6 @@ namespace System.Runtime
         [MethodImpl(MethodImplOptions.InternalCall)]
         internal static extern unsafe void RhpCopyObjectContents(object objDest, object objSrc);
 
-        [RuntimeImport(Redhawk.BaseName, "RhpCompareObjectContents")]
-        [MethodImpl(MethodImplOptions.InternalCall)]
-        internal static extern bool RhpCompareObjectContentsAndPadding(object obj1, object obj2);
-
         [RuntimeImport(Redhawk.BaseName, "RhpAssignRef")]
         [MethodImpl(MethodImplOptions.InternalCall)]
         internal static extern unsafe void RhpAssignRef(ref object address, object obj);
@@ -192,10 +178,6 @@ namespace System.Runtime
         [RuntimeImport(Redhawk.BaseName, "RhpEHEnumNext")]
         [MethodImpl(MethodImplOptions.InternalCall)]
         internal static extern unsafe bool RhpEHEnumNext(void* pEHEnum, void* pEHClause);
-
-        [RuntimeImport(Redhawk.BaseName, "RhpGetSealedVirtualSlot")]
-        [MethodImpl(MethodImplOptions.InternalCall)]
-        internal static extern unsafe IntPtr RhpGetSealedVirtualSlot(MethodTable* pEEType, ushort slot);
 
         [RuntimeImport(Redhawk.BaseName, "RhpGetDispatchCellInfo")]
         [MethodImpl(MethodImplOptions.InternalCall)]
@@ -232,21 +214,6 @@ namespace System.Runtime
         //
         // Miscellaneous helpers.
         //
-
-        // Get the rarely used (optional) flags of an MethodTable. If they're not present 0 will be returned.
-        [RuntimeImport(Redhawk.BaseName, "RhpGetEETypeRareFlags")]
-        [MethodImpl(MethodImplOptions.InternalCall)]
-        internal static extern unsafe uint RhpGetEETypeRareFlags(MethodTable* pEEType);
-
-        // Retrieve the offset of the value embedded in a Nullable<T>.
-        [RuntimeImport(Redhawk.BaseName, "RhpGetNullableEETypeValueOffset")]
-        [MethodImpl(MethodImplOptions.InternalCall)]
-        internal static extern unsafe byte RhpGetNullableEETypeValueOffset(MethodTable* pEEType);
-
-        // Retrieve the target type T in a Nullable<T>.
-        [RuntimeImport(Redhawk.BaseName, "RhpGetNullableEEType")]
-        [MethodImpl(MethodImplOptions.InternalCall)]
-        internal static extern unsafe MethodTable* RhpGetNullableEEType(MethodTable* pEEType);
 
         [RuntimeImport(Redhawk.BaseName, "RhpCallCatchFunclet")]
         [MethodImpl(MethodImplOptions.InternalCall)]
