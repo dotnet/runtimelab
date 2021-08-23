@@ -64,6 +64,8 @@ namespace ILCompiler
     // Contains functionality related to instantiating thunks for default interface methods
     partial class CompilerTypeSystemContext
     {
+        private const int UseContextFromRuntime = -1;
+
         /// <summary>
         /// For a shared (canonical) default interface method, gets a method that can be used to call the
         /// method on a specific implementing class.
@@ -76,8 +78,17 @@ namespace ILCompiler
             Debug.Assert(interfaceOnDefinition.GetTypeDefinition() == targetMethod.OwningType.GetTypeDefinition());
             Debug.Assert(targetMethod.OwningType.IsInterface);
 
-            int interfaceIndex = Array.IndexOf(implementingClass.GetTypeDefinition().RuntimeInterfaces, interfaceOnDefinition);
-            Debug.Assert(interfaceIndex >= 0);
+            int interfaceIndex;
+            if (implementingClass.IsInterface)
+            {
+                Debug.Assert(((MetadataType)implementingClass).IsDynamicInterfaceCastableImplementation());
+                interfaceIndex = UseContextFromRuntime;
+            }
+            else
+            {
+                interfaceIndex = Array.IndexOf(implementingClass.GetTypeDefinition().RuntimeInterfaces, interfaceOnDefinition);
+                Debug.Assert(interfaceIndex >= 0);
+            }
 
             // Get a method that will inject the appropriate instantiation context to the
             // target default interface method.
@@ -197,15 +208,23 @@ namespace ILCompiler
 
                 FieldDesc eeTypeField = Context.GetWellKnownType(WellKnownType.Object).GetKnownField("m_pEEType");
                 MethodDesc getOrdinalInterfaceMethod = Context.GetHelperEntryPoint("SharedCodeHelpers", "GetOrdinalInterface");
+                MethodDesc getCurrentContext = Context.GetHelperEntryPoint("SharedCodeHelpers", "GetCurrentSharedThunkContext");
 
                 // Load "this"
                 codeStream.EmitLdArg(0);
 
                 // Load the instantiating argument.
-                codeStream.EmitLdArg(0);
-                codeStream.Emit(ILOpcode.ldfld, emit.NewToken(eeTypeField));
-                codeStream.EmitLdc(_interfaceIndex);
-                codeStream.Emit(ILOpcode.call, emit.NewToken(getOrdinalInterfaceMethod));
+                if (_interfaceIndex == UseContextFromRuntime)
+                {
+                    codeStream.Emit(ILOpcode.call, emit.NewToken(getCurrentContext));
+                }
+                else
+                {
+                    codeStream.EmitLdArg(0);
+                    codeStream.Emit(ILOpcode.ldfld, emit.NewToken(eeTypeField));
+                    codeStream.EmitLdc(_interfaceIndex);
+                    codeStream.Emit(ILOpcode.call, emit.NewToken(getOrdinalInterfaceMethod));
+                }
 
                 // Load rest of the arguments
                 for (int i = 0; i < _targetMethod.Signature.Length; i++)
