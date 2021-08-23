@@ -2450,7 +2450,9 @@ void CodeGen::genCallInstruction(GenTreeCall* call)
         assert(!call->IsTailCall());
 
         regNumber tmpReg = call->GetSingleTempReg();
-        GetEmitter()->emitIns_R_R(ins_Load(TYP_I_IMPL), emitActualTypeSize(TYP_I_IMPL), tmpReg, REG_R2R_INDIRECT_PARAM);
+        regNumber callAddrReg =
+            call->IsVirtualStubRelativeIndir() ? compiler->virtualStubParamInfo->GetReg() : REG_R2R_INDIRECT_PARAM;
+        GetEmitter()->emitIns_R_R(ins_Load(TYP_I_IMPL), emitActualTypeSize(TYP_I_IMPL), tmpReg, callAddrReg);
 
         // We have now generated code for gtControlExpr evaluating it into `tmpReg`.
         // We just need to emit "call tmpReg" in this case.
