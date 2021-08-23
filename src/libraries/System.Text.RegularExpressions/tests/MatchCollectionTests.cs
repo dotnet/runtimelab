@@ -10,6 +10,7 @@ namespace System.Text.RegularExpressions.Tests
     {
         [Theory]
         [InlineData(RegexOptions.None)]
+        [InlineData(RegexOptions.Compiled)]
         [InlineData(RegexSRMTests.DFA)]
         public static void GetEnumerator(RegexOptions options)
         {
@@ -32,6 +33,7 @@ namespace System.Text.RegularExpressions.Tests
 
         [Theory]
         [InlineData(RegexOptions.None)]
+        [InlineData(RegexOptions.Compiled)]
         [InlineData(RegexSRMTests.DFA)]
         public static void GetEnumerator_Invalid(RegexOptions options)
         {
@@ -60,6 +62,7 @@ namespace System.Text.RegularExpressions.Tests
 
         [Theory]
         [InlineData(RegexOptions.None)]
+        [InlineData(RegexOptions.Compiled)]
         [InlineData(RegexSRMTests.DFA)]
         public static void Item_Get_InvalidIndex_ThrowsArgumentOutOfRangeException(RegexOptions options)
         {
@@ -71,6 +74,7 @@ namespace System.Text.RegularExpressions.Tests
 
         [Theory]
         [InlineData(RegexOptions.None)]
+        [InlineData(RegexOptions.Compiled)]
         [InlineData(RegexSRMTests.DFA)]
         public static void ICollection_Properties(RegexOptions options)
         {
@@ -86,6 +90,8 @@ namespace System.Text.RegularExpressions.Tests
         [Theory]
         [InlineData(0, RegexOptions.None)]
         [InlineData(5, RegexOptions.None)]
+        [InlineData(0, RegexOptions.Compiled)]
+        [InlineData(5, RegexOptions.Compiled)]
         [InlineData(0, RegexSRMTests.DFA)]
         [InlineData(5, RegexSRMTests.DFA)]
         public static void ICollection_CopyTo(int index, RegexOptions options)
@@ -109,6 +115,7 @@ namespace System.Text.RegularExpressions.Tests
 
         [Theory]
         [InlineData(RegexOptions.None)]
+        [InlineData(RegexOptions.Compiled)]
         [InlineData(RegexSRMTests.DFA)]
         public static void ICollection_CopyTo_Invalid(RegexOptions options)
         {
