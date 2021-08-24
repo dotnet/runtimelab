@@ -752,7 +752,7 @@ namespace Internal.TypeSystem
                 // If we're asking about an interface, include the interface in the list.
                 consideredInterfaces = new DefType[currentType.RuntimeInterfaces.Length + 1];
                 Array.Copy(currentType.RuntimeInterfaces, consideredInterfaces, currentType.RuntimeInterfaces.Length);
-                consideredInterfaces[consideredInterfaces.Length - 1] = currentType;
+                consideredInterfaces[consideredInterfaces.Length - 1] = (DefType)currentType.InstantiateAsOpen();
             }
 
             foreach (MetadataType runtimeInterface in consideredInterfaces)

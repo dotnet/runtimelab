@@ -15,5 +15,12 @@ namespace Internal.Runtime.CompilerHelpers
             Debug.Assert(interfaceIndex <= pType->NumInterfaces);
             return pType->InterfaceMap[interfaceIndex].InterfaceType;
         }
+
+        public static unsafe MethodTable* GetCurrentSharedThunkContext()
+        {
+            // TODO: We should return the current context from the ThunkPool
+            // https://github.com/dotnet/runtimelab/issues/1442
+            return null;
+        }
     }
 }
