@@ -174,9 +174,7 @@ namespace ILCompiler.DependencyAnalysis
                         if (resolution == DefaultInterfaceMethodResolution.DefaultImplementation)
                         {
                             DefType providingInterfaceDefinitionType = (DefType)implMethod.OwningType;
-                            if (interfaceType != interfaceDefinitionType)
-                                implMethod = implMethod.InstantiateSignature(declType.Instantiation, Instantiation.Empty);
-
+                            implMethod = implMethod.InstantiateSignature(declType.Instantiation, Instantiation.Empty);
                             _sealedVTableEntries.Add(SealedVTableEntry.FromDefaultInterfaceMethod(implMethod, providingInterfaceDefinitionType));
                         }
                     }

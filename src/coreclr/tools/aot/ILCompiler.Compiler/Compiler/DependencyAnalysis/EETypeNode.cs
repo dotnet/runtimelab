@@ -422,8 +422,7 @@ namespace ILCompiler.DependencyAnalysis
                             if (resolution == DefaultInterfaceMethodResolution.DefaultImplementation)
                             {
                                 DefType providingInterfaceDefinitionType = (DefType)implMethod.OwningType;
-                                if (!interfaceType.IsTypeDefinition)
-                                    implMethod = implMethod.InstantiateSignature(defType.Instantiation, Instantiation.Empty);
+                                implMethod = implMethod.InstantiateSignature(defType.Instantiation, Instantiation.Empty);
 
                                 MethodDesc defaultIntfMethod = implMethod.GetCanonMethodTarget(CanonicalFormKind.Specific);
                                 if (defaultIntfMethod.IsCanonicalMethod(CanonicalFormKind.Any))

@@ -756,6 +756,12 @@ public class BringUpTest
             string IInterface.GetCookie() => "IInterfaceCastableImpl";
         }
 
+        [DynamicInterfaceCastableImplementation]
+        interface IInterfaceCastableImpl<T> : IInterface
+        {
+            string IInterface.GetCookie() => typeof(T).Name;
+        }
+
         interface IInterfaceImpl : IInterface
         {
             string IInterface.GetCookie() => "IInterfaceImpl";
@@ -792,6 +798,12 @@ public class BringUpTest
             {
                 IInterface o = (IInterface)new CastableClass<IInterface, IInterfaceIndirectCastableImpl>();
                 if (o.GetCookie() != "IInterfaceImpl")
+                    throw new Exception();
+            }
+
+            {
+                IInterface o = (IInterface)new CastableClass<IInterface, IInterfaceCastableImpl<int>>();
+                if (o.GetCookie() != "Int32")
                     throw new Exception();
             }
         }
