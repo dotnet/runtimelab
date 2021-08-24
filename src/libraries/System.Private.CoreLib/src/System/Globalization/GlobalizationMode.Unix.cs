@@ -35,7 +35,7 @@ namespace System.Globalization
                                          "Please see https://aka.ms/dotnet-missing-libicu for more information.";
                         Environment.FailFast(message);
                     }
-                    
+
                     // fallback to Invariant mode if LoadICU failed (Browser).
                     return loaded == 0;
 #endif
