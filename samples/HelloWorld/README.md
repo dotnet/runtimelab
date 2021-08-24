@@ -33,7 +33,7 @@ This will add a nuget.config file to your application. Open the file and in the 
 Once you've added the package source, add a reference to the compiler by running the following command:
 
 ```bash
-> dotnet add package Microsoft.DotNet.ILCompiler -v 6.0.0-*
+> dotnet add package Microsoft.DotNet.ILCompiler -v 7.0.0-*
 ```
 
 ## Restore and Publish your app
