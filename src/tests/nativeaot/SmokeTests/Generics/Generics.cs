@@ -1010,6 +1010,12 @@ class Program
             }
         }
 
+        struct MyDisposableStruct<T> : IDisposable
+        {
+            public static Type TypeSeenWhenDisposed { get; private set; }
+            void IDisposable.Dispose() => TypeSeenWhenDisposed = typeof(T);
+        }
+
         [MethodImpl(MethodImplOptions.NoInlining)]
         static bool DoFrob<T, U>(ref T t, object o) where T : IFoo<U>
         {
@@ -1035,6 +1041,14 @@ class Program
             // EEType for Atom2[,,] that we'll check for was never allocated.
             var foo2 = new Foo<Atom2>();
             if (DoFrob<Foo<Atom2>, Atom2>(ref foo2, new object()))
+                throw new Exception();
+
+            using (var myDisposable = new MyDisposableStruct<string>())
+            {
+                if (MyDisposableStruct<string>.TypeSeenWhenDisposed != null)
+                    throw new Exception();
+            }
+            if (MyDisposableStruct<string>.TypeSeenWhenDisposed != typeof(string))
                 throw new Exception();
         }
     }
