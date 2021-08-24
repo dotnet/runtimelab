@@ -76,6 +76,12 @@ namespace ILCompiler.DependencyAnalysis
             _hasConditionalDependenciesFromMetadataManager = factory.MetadataManager.HasConditionalDependenciesDueToEETypePresence(type);
 
             factory.TypeSystemContext.EnsureLoadableType(type);
+
+            // We don't have a representation for function pointers right now
+            if (WithoutParameterizeTypes(type).IsFunctionPointer)
+                ThrowHelper.ThrowTypeLoadException(ExceptionStringID.ClassLoadGeneral, type);
+
+            static TypeDesc WithoutParameterizeTypes(TypeDesc t) => t is ParameterizedType pt ? WithoutParameterizeTypes(pt.ParameterType) : t;
         }
         
         protected bool MightHaveInterfaceDispatchMap(NodeFactory factory)
