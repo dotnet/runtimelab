@@ -274,7 +274,7 @@ namespace Internal.TypeSystem
                         if (genInterfaceMethod.OwningType != interfaceType)
                             exactInterfaceMethod = context.GetMethodForInstantiatedType(
                                 genInterfaceMethod.GetTypicalMethodDefinition(), (InstantiatedType)interfaceType);
-                        method = canonType.ResolveVariantInterfaceMethodToVirtualMethodOnType(exactInterfaceMethod);
+                        method = constrainedType.ResolveVariantInterfaceMethodToVirtualMethodOnType(exactInterfaceMethod);
                     }
                 }
             }
