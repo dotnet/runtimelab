@@ -53,7 +53,7 @@ namespace System.Text.RegularExpressions
         /// <param name="hideStateInfo">if true then hide state info</param>
         /// <param name="addDotStar">if true then pretend that there is a .* at the beginning</param>
         /// <param name="inReverse">if true then unwind the regex backwards (addDotStar is then ignored)</param>
-        /// <param name="onlyDFAinfo">if true then compute and save only genral DFA info</param>
+        /// <param name="onlyDFAinfo">if true then compute and save only general DFA info</param>
         /// <param name="writer">dgml output is written here</param>
         /// <param name="maxLabelLength">maximum length of labels in nodes anything over that length is indicated with .. </param>
         internal void SaveDGML(TextWriter writer, int bound, bool hideStateInfo, bool addDotStar, bool inReverse, bool onlyDFAinfo, int maxLabelLength)

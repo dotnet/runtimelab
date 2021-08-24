@@ -110,9 +110,9 @@ namespace System.Text.RegularExpressions
             // Parse the input
             RegexTree tree = RegexParser.Parse(pattern, roptions, culture ?? ((options & RegexOptions.CultureInvariant) != 0 ? CultureInfo.InvariantCulture : CultureInfo.CurrentCulture));
 
-            // if SRM is used then construct the SMR.Regex matcher
-            // this construction fails and throws a NotSupportedException
-            // if unsupported constructs are being used in the original regex
+            // If SRM is used then construct the SMR.Regex matcher.
+            // This construction fails and throws a NotSupportedException
+            // if constructs that are not compatible with DFA are being used in the original regex.
             _useSRM = (options & RegexOptions.DFA) != 0;
             if (_useSRM)
             {
@@ -126,9 +126,9 @@ namespace System.Text.RegularExpressions
                 _code = RegexWriter.Write(tree);
                 caps = _code.Caps;
                 capsize = _code.CapSize;
-
-                InitializeReferences();
             }
+
+            InitializeReferences();
         }
 
         /// <summary>

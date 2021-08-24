@@ -213,7 +213,33 @@ namespace System.Text.RegularExpressions
 
             var state = (replacement: this, segments: SegmentStringBuilder.Create(), inputMemory: input.AsMemory(), prevat: 0, count);
 
-            if (!regex.RightToLeft)
+            if (regex._useSRM)
+            {
+                var replacewith = Pattern.AsMemory();
+                Match match = regex.RunSRM(false, input, startat, startat, input.Length, 0);
+                if (!match.Success)
+                    // If there is no match then return the input unchanged.
+                    return input;
+
+                // Replace up to count occurrences if originally count > 0.
+                count = count - 1;
+                int k = startat;
+                while (match.Success && count != 0)
+                {
+                    // Add the segment from the prior start position up to the matched index
+                    state.segments.Add(state.inputMemory.Slice(k, match.Index - k));
+                    // The matched segment gets replaced.
+                    state.segments.Add(replacewith);
+                    k = match.Index + match.Length;
+                    // Start over from the position immediately after the matched segment.
+                    match = match.NextMatch();
+                    count = count - 1;
+                }
+
+                // Add the final segment after the last match
+                state.segments.Add(state.inputMemory.Slice(k, input.Length - k));
+            }
+            else if (!regex.RightToLeft)
             {
                 regex.Run(input, startat, ref state, (ref (RegexReplacement thisRef, SegmentStringBuilder segments, ReadOnlyMemory<char> inputMemory, int prevat, int count) state, Match match) =>
                 {

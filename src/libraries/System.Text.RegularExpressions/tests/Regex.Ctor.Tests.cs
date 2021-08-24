@@ -19,6 +19,8 @@ namespace System.Text.RegularExpressions.Tests
     {
         public static IEnumerable<object[]> Ctor_TestData()
         {
+            yield return new object[] { "foo", RegexSRMTests.DFA, Regex.InfiniteMatchTimeout };
+            yield return new object[] { "foo", RegexSRMTests.DFA, new TimeSpan(1) };
             yield return new object[] { "foo", RegexOptions.None, Regex.InfiniteMatchTimeout };
             yield return new object[] { "foo", RegexOptions.RightToLeft, Regex.InfiniteMatchTimeout };
             yield return new object[] { "foo", RegexOptions.Compiled, Regex.InfiniteMatchTimeout };
@@ -56,6 +58,7 @@ namespace System.Text.RegularExpressions.Tests
         }
 
         [Theory]
+        [InlineData(RegexSRMTests.DFA)]
         [InlineData(RegexOptions.None)]
         [InlineData(RegexOptions.Compiled)]
         public void CtorDebugInvoke(RegexOptions options)
@@ -65,7 +68,8 @@ namespace System.Text.RegularExpressions.Tests
             r = new Regex("[abc]def(ghi|jkl)", options | (RegexOptions)0x80 /*RegexOptions.Debug*/);
             Assert.False(r.Match("a").Success);
             Assert.True(r.Match("adefghi").Success);
-            Assert.Equal("123456789", r.Replace("123adefghi789", "456"));
+            string repl = r.Replace("123adefghi78bdefjkl9", "###");
+            Assert.Equal("123###78###9", repl);
 
             r = new Regex("(ghi|jkl)*ghi", options | (RegexOptions)0x80 /*RegexOptions.Debug*/);
             Assert.False(r.Match("jkl").Success);
