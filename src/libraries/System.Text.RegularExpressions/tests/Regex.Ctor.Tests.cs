@@ -85,6 +85,19 @@ namespace System.Text.RegularExpressions.Tests
         [Fact]
         public static void Ctor_Invalid()
         {
+            // DFA option is not supported together with these other options
+            Assert.Throws<NotSupportedException>(() => new Regex("abc", RegexOptions.ECMAScript | RegexSRMTests.DFA));
+            Assert.Throws<NotSupportedException>(() => new Regex("abc", RegexOptions.RightToLeft | RegexSRMTests.DFA));
+            Assert.Throws<NotSupportedException>(() => new Regex("abc", RegexOptions.Compiled | RegexSRMTests.DFA));
+
+            // DFA option is not supported for these constructs
+            Assert.Throws<NotSupportedException>(() => new Regex("(?=a)", RegexSRMTests.DFA));
+            Assert.Throws<NotSupportedException>(() => new Regex("(?!a)", RegexSRMTests.DFA));
+            Assert.Throws<NotSupportedException>(() => new Regex("(?<=a)", RegexSRMTests.DFA));
+            Assert.Throws<NotSupportedException>(() => new Regex("(?<!a)", RegexSRMTests.DFA));
+            Assert.Throws<NotSupportedException>(() => new Regex(@"(?(0)ab)", RegexSRMTests.DFA));
+            Assert.Throws<NotSupportedException>(() => new Regex(@"([ab])\1", RegexSRMTests.DFA));
+
             // Pattern is null
             AssertExtensions.Throws<ArgumentNullException>("pattern", () => new Regex(null));
             AssertExtensions.Throws<ArgumentNullException>("pattern", () => new Regex(null, RegexOptions.None));

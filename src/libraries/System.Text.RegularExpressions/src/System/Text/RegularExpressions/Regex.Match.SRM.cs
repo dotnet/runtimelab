@@ -92,6 +92,7 @@ namespace System.Text.RegularExpressions
         /// Generates two files IgnoreCaseRelation.cs and UnicodeCategoryRanges.cs for the namespace System.Text.RegularExpressions.SRM.Unicode
         /// in the given directory path. Only avaliable in DEBUG mode.
         /// </summary>
+        [Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage(Justification = "Debug only")]
         internal static void GenerateUnicodeTables(string path)
         {
             SRM.Unicode.IgnoreCaseRelationGenerator.Generate("System.Text.RegularExpressions.SRM.Unicode", "IgnoreCaseRelation", path);
