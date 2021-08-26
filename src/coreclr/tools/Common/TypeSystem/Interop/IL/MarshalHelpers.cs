@@ -266,7 +266,7 @@ namespace Internal.TypeSystem.Interop
                                 return MarshallerKind.CBool;
 
                             case NativeTypeKind.VariantBool:
-                                if (type.Context.Target.IsWindows)
+                                if (context.Target.IsWindows)
                                     return MarshallerKind.VariantBool;
                                 else
                                     return MarshallerKind.Invalid;
@@ -584,7 +584,7 @@ namespace Internal.TypeSystem.Interop
                 if (nativeType == NativeTypeKind.AsAny)
                     return isAnsi ? MarshallerKind.AsAnyA : MarshallerKind.AsAnyW;
                 else
-                if (type.Context.Target.IsWindows)
+                if (context.Target.IsWindows)
                 {
                     if ((isField && nativeType == NativeTypeKind.Default)
                         || nativeType == NativeTypeKind.Intf
@@ -650,7 +650,7 @@ namespace Internal.TypeSystem.Interop
             }
             else if (type.IsInterface)
             {
-                if (type.Context.Target.IsWindows)
+                if (context.Target.IsWindows)
                     return MarshallerKind.ComInterface;
                 else
                     return MarshallerKind.Invalid;
