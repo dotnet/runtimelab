@@ -22,6 +22,7 @@
 #include "llvm/MC/MCAsmBackend.h"
 #include "llvm/MC/MCAsmInfo.h"
 #include "llvm/MC/MCContext.h"
+#include "llvm/MC/MCCodeEmitter.h"
 #include "llvm/MC/MCDwarf.h"
 #include "llvm/MC/MCInstPrinter.h"
 #include "llvm/MC/MCInstrInfo.h"
@@ -32,6 +33,7 @@
 #include "llvm/MC/MCSectionELF.h"
 #include "llvm/MC/MCSectionMachO.h"
 #include "llvm/MC/MCObjectStreamer.h"
+#include "llvm/MC/MCObjectWriter.h"
 #include "llvm/MC/MCSubtargetInfo.h"
 #include "llvm/MC/MCTargetOptionsCommandFlags.h"
 #include "llvm/MC/MCELFStreamer.h"
@@ -82,11 +84,8 @@ bool ObjectWriter::Init(llvm::StringRef ObjectFilePath, const char* tripleName) 
   llvm_shutdown_obj Y; // Call llvm_shutdown() on exit.
 
   // Initialize targets
-  InitializeAllTargets();
+  InitializeAllTargetInfos();
   InitializeAllTargetMCs();
-  InitializeAllAsmPrinters();
-  
-  TargetMOptions = InitMCTargetOptionsFromFlags();
 
   InitTripleName(tripleName);
   Triple TheTriple = GetTriple();
@@ -110,14 +109,14 @@ bool ObjectWriter::Init(llvm::StringRef ObjectFilePath, const char* tripleName) 
   if (!RegisterInfo)
     return error("Unable to create target register info!");
 
-  AsmInfo.reset(TheTarget->createMCAsmInfo(*RegisterInfo, TripleName));
+  AsmInfo.reset(TheTarget->createMCAsmInfo(*RegisterInfo, TripleName, TargetMOptions));
   if (!AsmInfo)
     return error("Unable to create target asm info!");
 
   ObjFileInfo.reset(new MCObjectFileInfo);
   OutContext.reset(
       new MCContext(AsmInfo.get(), RegisterInfo.get(), ObjFileInfo.get()));
-  ObjFileInfo->InitMCObjectFileInfo(TheTriple, false, CodeModel::Default,
+  ObjFileInfo->InitMCObjectFileInfo(TheTriple, false,
                                     *OutContext);
 
   InstrInfo.reset(TheTarget->createMCInstrInfo());
@@ -136,29 +135,19 @@ bool ObjectWriter::Init(llvm::StringRef ObjectFilePath, const char* tripleName) 
   if (!CodeEmitter)
     return error("no code emitter for target " + TripleName);
 
-  AsmBackend = TheTarget->createMCAsmBackend(*RegisterInfo, TripleName, MCPU,
-                                             TargetMOptions);
+  AsmBackend = TheTarget->createMCAsmBackend(*SubtargetInfo, *RegisterInfo, TargetMOptions);
   if (!AsmBackend)
     return error("no asm backend for target " + TripleName);
 
   Streamer = (MCObjectStreamer *)TheTarget->createMCObjectStreamer(
-      TheTriple, *OutContext, *AsmBackend, *OS, CodeEmitter, *SubtargetInfo,
-      RelaxAll,
+      TheTriple, *OutContext, std::unique_ptr<MCAsmBackend>(AsmBackend), AsmBackend->createObjectWriter(*OS),
+      std::unique_ptr<MCCodeEmitter>(CodeEmitter), *SubtargetInfo,
+      /*RelaxAll*/ true,
       /*IncrementalLinkerCompatible*/ false,
       /*DWARFMustBeAtTheEnd*/ false);
   if (!Streamer)
     return error("no object streamer for target " + TripleName);
   Assembler = &Streamer->getAssembler();
-
-  TMachine.reset(TheTarget->createTargetMachine(TripleName, MCPU, FeaturesStr,
-                                                TargetOptions(), None));
-  if (!TMachine)
-    return error("no target machine for target " + TripleName);
-
-  AssemblerPrinter.reset(TheTarget->createAsmPrinter(
-      *TMachine, std::unique_ptr<MCStreamer>(Streamer)));
-  if (!AssemblerPrinter)
-    return error("no asm printer for target " + TripleName);
 
   FrameOpened = false;
   FuncId = 1;
@@ -172,7 +161,7 @@ bool ObjectWriter::Init(llvm::StringRef ObjectFilePath, const char* tripleName) 
   }
 
   TypeBuilder->SetStreamer(Streamer);
-  unsigned TargetPointerSize = AssemblerPrinter->getPointerSize();
+  unsigned TargetPointerSize = Streamer->getContext().getAsmInfo()->getCodePointerSize();
   TypeBuilder->SetTargetPointerSize(TargetPointerSize);
 
   if (ObjFileInfo->getObjectFileType() == ObjFileInfo->IsELF) {
@@ -199,7 +188,7 @@ void ObjectWriter::SwitchSection(const char *SectionName,
       // Output a DWARF linker-local symbol.
       // This symbol is used as a base for other symbols in a section.
       MCSymbol *SectionStartSym = OutContext->createTempSymbol();
-      Streamer->EmitLabel(SectionStartSym);
+      Streamer->emitLabel(SectionStartSym);
       Section->setBeginSymbol(SectionStartSym);
     }
   }
@@ -314,33 +303,33 @@ void ObjectWriter::EmitAlignment(int ByteAlignment) {
   int64_t fillValue = 0;
 
   if (Streamer->getCurrentSectionOnly()->getKind().isText()) {
-    if (TMachine->getTargetTriple().getArch() == llvm::Triple::ArchType::x86 ||
-        TMachine->getTargetTriple().getArch() == llvm::Triple::ArchType::x86_64) {
+    if (ObjFileInfo->getTargetTriple().getArch() == llvm::Triple::ArchType::x86 ||
+        ObjFileInfo->getTargetTriple().getArch() == llvm::Triple::ArchType::x86_64) {
       fillValue = 0x90; // x86 nop
     }
   }
 
-  Streamer->EmitValueToAlignment(ByteAlignment, fillValue);
+  Streamer->emitValueToAlignment(ByteAlignment, fillValue);
 }
 
 void ObjectWriter::EmitBlob(int BlobSize, const char *Blob) {
   if (Streamer->getCurrentSectionOnly()->getKind().isText()) {
-    Streamer->EmitInstructionBytes(StringRef(Blob, BlobSize));
+    Streamer->emitInstructionBytes(StringRef(Blob, BlobSize));
   } else {
-    Streamer->EmitBytes(StringRef(Blob, BlobSize));
+    Streamer->emitBytes(StringRef(Blob, BlobSize));
   }
 }
 
 void ObjectWriter::EmitIntValue(uint64_t Value, unsigned Size) {
-  Streamer->EmitIntValue(Value, Size);
+  Streamer->emitIntValue(Value, Size);
 }
 
 void ObjectWriter::EmitSymbolDef(const char *SymbolName, bool global) {
   MCSymbol *Sym = OutContext->getOrCreateSymbol(Twine(SymbolName));
 
-  Streamer->EmitSymbolAttribute(Sym, MCSA_Global);
+  Streamer->emitSymbolAttribute(Sym, MCSA_Global);
 
-  Triple TheTriple = TMachine->getTargetTriple();
+  Triple TheTriple = ObjFileInfo->getTargetTriple();
 
   if (TheTriple.getObjectFormat() == Triple::ELF) {
     // An ARM function symbol should be marked with an appropriate ELF attribute
@@ -353,7 +342,7 @@ void ObjectWriter::EmitSymbolDef(const char *SymbolName, bool global) {
       case Triple::thumbeb:
       case Triple::aarch64:
       case Triple::aarch64_be:
-        Streamer->EmitSymbolAttribute(Sym, MCSA_ELF_TypeFunction);
+        Streamer->emitSymbolAttribute(Sym, MCSA_ELF_TypeFunction);
         break;
       default:
         break;
@@ -362,11 +351,11 @@ void ObjectWriter::EmitSymbolDef(const char *SymbolName, bool global) {
 
     // Mark the symbol hidden if requested
     if (!global) {
-      Streamer->EmitSymbolAttribute(Sym, MCSA_Hidden);
+      Streamer->emitSymbolAttribute(Sym, MCSA_Hidden);
     }
   }
 
-  Streamer->EmitLabel(Sym);
+  Streamer->emitLabel(Sym);
 }
 
 const MCSymbolRefExpr *
@@ -384,7 +373,7 @@ unsigned ObjectWriter::GetDFSize() {
 
 bool ObjectWriter::EmitRelocDirective(const int Offset, StringRef Name, const MCExpr *Expr) {
   const MCExpr *OffsetExpr = MCConstantExpr::create(Offset, *OutContext);
-  return Streamer->EmitRelocDirective(*OffsetExpr, Name, Expr, SMLoc());
+  return Streamer->emitRelocDirective(*OffsetExpr, Name, Expr, SMLoc(), *SubtargetInfo).hasValue();
 }
 
 const MCExpr *ObjectWriter::GenTargetExpr(const char *SymbolName,
@@ -471,7 +460,7 @@ int ObjectWriter::EmitSymbolRef(const char *SymbolName,
   }
 
   const MCExpr *TargetExpr = GenTargetExpr(SymbolName, Kind, Delta, IsPCRel, Size);
-  Streamer->EmitValueImpl(TargetExpr, Size, SMLoc(), IsPCRel);
+  Streamer->emitValueImpl(TargetExpr, Size, SMLoc(), IsPCRel);
   return Size;
 }
 
@@ -494,12 +483,12 @@ void ObjectWriter::EmitWinFrameInfo(const char *FunctionName, int StartOffset,
   }
 
   Streamer->SwitchSection(Section);
-  Streamer->EmitValueToAlignment(4);
+  Streamer->emitValueToAlignment(4);
 
   const MCExpr *BaseRefRel =
       GetSymbolRefExpr(FunctionName, MCSymbolRefExpr::VK_COFF_IMGREL32);
 
-  Triple::ArchType Arch = TMachine->getTargetTriple().getArch();
+  Triple::ArchType Arch = ObjFileInfo->getTargetTriple().getArch();
 
   if (Arch == Triple::thumb || Arch == Triple::thumbeb) {
     StartOffset |= 1;
@@ -507,30 +496,30 @@ void ObjectWriter::EmitWinFrameInfo(const char *FunctionName, int StartOffset,
 
   // start Offset
   const MCExpr *StartOfs = MCConstantExpr::create(StartOffset, *OutContext);
-  Streamer->EmitValue(
+  Streamer->emitValue(
       MCBinaryExpr::createAdd(BaseRefRel, StartOfs, *OutContext), 4);
 
   if (Arch == Triple::x86 || Arch == Triple::x86_64) {
     // end Offset
     const MCExpr *EndOfs = MCConstantExpr::create(EndOffset, *OutContext);
-    Streamer->EmitValue(
+    Streamer->emitValue(
         MCBinaryExpr::createAdd(BaseRefRel, EndOfs, *OutContext), 4);
   }
 
   // frame symbol reference
-  Streamer->EmitValue(
+  Streamer->emitValue(
       GetSymbolRefExpr(BlobSymbolName, MCSymbolRefExpr::VK_COFF_IMGREL32), 4);
 }
 
 void ObjectWriter::EmitCFIStart(int Offset) {
   assert(!FrameOpened && "frame should be closed before CFIStart");
-  Streamer->EmitCFIStartProc(false);
+  Streamer->emitCFIStartProc(false);
   FrameOpened = true;
 }
 
 void ObjectWriter::EmitCFIEnd(int Offset) {
   assert(FrameOpened && "frame should be opened before CFIEnd");
-  Streamer->EmitCFIEndProc();
+  Streamer->emitCFIEndProc();
   FrameOpened = false;
 }
 
@@ -540,7 +529,7 @@ void ObjectWriter::EmitCFILsda(const char *LsdaBlobSymbolName) {
   // Create symbol reference
   MCSymbol *T = OutContext->getOrCreateSymbol(LsdaBlobSymbolName);
   Assembler->registerSymbol(*T);
-  Streamer->EmitCFILsda(T, llvm::dwarf::Constants::DW_EH_PE_pcrel |
+  Streamer->emitCFILsda(T, llvm::dwarf::Constants::DW_EH_PE_pcrel |
                                llvm::dwarf::Constants::DW_EH_PE_sdata4);
 }
 
@@ -552,20 +541,20 @@ void ObjectWriter::EmitCFICode(int Offset, const char *Blob) {
   case CFI_ADJUST_CFA_OFFSET:
     assert(CfiCode->DwarfReg == DWARF_REG_ILLEGAL &&
            "Unexpected Register Value for OpAdjustCfaOffset");
-    Streamer->EmitCFIAdjustCfaOffset(CfiCode->Offset);
+    Streamer->emitCFIAdjustCfaOffset(CfiCode->Offset);
     break;
   case CFI_REL_OFFSET:
-    Streamer->EmitCFIRelOffset(CfiCode->DwarfReg, CfiCode->Offset);
+    Streamer->emitCFIRelOffset(CfiCode->DwarfReg, CfiCode->Offset);
     break;
   case CFI_DEF_CFA_REGISTER:
     assert(CfiCode->Offset == 0 &&
            "Unexpected Offset Value for OpDefCfaRegister");
-    Streamer->EmitCFIDefCfaRegister(CfiCode->DwarfReg);
+    Streamer->emitCFIDefCfaRegister(CfiCode->DwarfReg);
     break;
   case CFI_DEF_CFA:
     assert(CfiCode->Offset != 0 &&
            "Unexpected Offset Value for OpDefCfa");
-    Streamer->EmitCFIDefCfa(CfiCode->DwarfReg, CfiCode->Offset);
+    Streamer->emitCFIDefCfa(CfiCode->DwarfReg, CfiCode->Offset);
     break;
   default:
     assert(false && "Unrecognized CFI");
@@ -580,14 +569,14 @@ void ObjectWriter::EmitLabelDiff(const MCSymbol *From, const MCSymbol *To,
                *ToRef = MCSymbolRefExpr::create(To, Variant, *OutContext);
   const MCExpr *AddrDelta =
       MCBinaryExpr::create(MCBinaryExpr::Sub, ToRef, FromRef, *OutContext);
-  Streamer->EmitValue(AddrDelta, Size);
+  Streamer->emitValue(AddrDelta, Size);
 }
 
 void ObjectWriter::EmitSymRecord(int Size, SymbolRecordKind SymbolKind) {
   RecordPrefix Rec;
   Rec.RecordLen = ulittle16_t(Size + sizeof(ulittle16_t));
   Rec.RecordKind = ulittle16_t((uint16_t)SymbolKind);
-  Streamer->EmitBytes(StringRef((char *)&Rec, sizeof(Rec)));
+  Streamer->emitBytes(StringRef((char *)&Rec, sizeof(Rec)));
 }
 
 void ObjectWriter::EmitCOFFSecRel32Value(MCExpr const *Value) {
@@ -604,7 +593,7 @@ void ObjectWriter::EmitVarDefRange(const MCSymbol *Fn,
   const MCExpr *Expr = MCBinaryExpr::createAdd(BaseSym, Offset, *OutContext);
   EmitCOFFSecRel32Value(Expr);
   Streamer->EmitCOFFSectionIndex(Fn);
-  Streamer->EmitIntValue(Range.Range, 2);
+  Streamer->emitIntValue(Range.Range, 2);
 }
 
 // Maps an ICorDebugInfo register number to the corresponding CodeView
@@ -617,7 +606,7 @@ CVRegNum ObjectWriter::GetCVRegNum(unsigned RegNum) {
     CV_AMD64_R12, CV_AMD64_R13, CV_AMD64_R14, CV_AMD64_R15,
   };
 
-  switch (TMachine->getTargetTriple().getArch()) {
+  switch (ObjFileInfo->getTargetTriple().getArch()) {
   case Triple::x86:
     if (X86::ICorDebugInfo::REGNUM_EAX <= RegNum &&
         RegNum <= X86::ICorDebugInfo::REGNUM_EDI) {
@@ -672,9 +661,9 @@ void ObjectWriter::EmitCVDebugVarInfo(const MCSymbol *Fn,
     if (Var.IsParam) {
       Flags |= LocalSymFlags::IsParameter;
     }
-    Streamer->EmitBytes(StringRef((char *)&Type, sizeof(Type)));
-    Streamer->EmitIntValue(static_cast<uint16_t>(Flags), sizeof(Flags));
-    Streamer->EmitBytes(StringRef(Var.Name.c_str(), NameLength));
+    Streamer->emitBytes(StringRef((char *)&Type, sizeof(Type)));
+    Streamer->emitIntValue(static_cast<uint16_t>(Flags), sizeof(Flags));
+    Streamer->emitBytes(StringRef(Var.Name.c_str(), NameLength));
 
     for (const auto &Range : Var.Ranges) {
       // Emit a range record
@@ -702,7 +691,7 @@ void ObjectWriter::EmitCVDebugVarInfo(const MCSymbol *Fn,
         DefRangeRegisterSymbol.Hdr.MayHaveNoName = 0;
 
         unsigned Length = sizeof(DefRangeRegisterSymbol.Hdr);
-        Streamer->EmitBytes(
+        Streamer->emitBytes(
             StringRef((char *)&DefRangeRegisterSymbol.Hdr, Length));
         EmitVarDefRange(Fn, DefRangeRegisterSymbol.Range);
         break;
@@ -733,7 +722,7 @@ void ObjectWriter::EmitCVDebugVarInfo(const MCSymbol *Fn,
             Range.loc.vlStk.vlsOffset;
 
         unsigned Length = sizeof(DefRangeRegisterRelSymbol.Hdr);
-        Streamer->EmitBytes(
+        Streamer->emitBytes(
             StringRef((char *)&DefRangeRegisterRelSymbol.Hdr, Length));
         EmitVarDefRange(Fn, DefRangeRegisterRelSymbol.Range);
         break;
@@ -764,22 +753,22 @@ void ObjectWriter::EmitCVDebugFunctionInfo(const char *FunctionName,
 
   // Mark the end of function.
   MCSymbol *FnEnd = OutContext->createTempSymbol();
-  Streamer->EmitLabel(FnEnd);
+  Streamer->emitLabel(FnEnd);
 
   MCSection *Section = ObjFileInfo->getCOFFDebugSymbolsSection();
   Streamer->SwitchSection(Section);
   // Emit debug section magic before the first entry.
   if (FuncId == 1) {
-    Streamer->EmitIntValue(COFF::DEBUG_SECTION_MAGIC, 4);
+    Streamer->emitIntValue(COFF::DEBUG_SECTION_MAGIC, 4);
   }
   MCSymbol *Fn = OutContext->getOrCreateSymbol(Twine(FunctionName));
 
   // Emit a symbol subsection, required by VS2012+ to find function boundaries.
   MCSymbol *SymbolsBegin = OutContext->createTempSymbol(),
            *SymbolsEnd = OutContext->createTempSymbol();
-  Streamer->EmitIntValue(unsigned(DebugSubsectionKind::Symbols), 4);
+  Streamer->emitIntValue(unsigned(DebugSubsectionKind::Symbols), 4);
   EmitLabelDiff(SymbolsBegin, SymbolsEnd);
-  Streamer->EmitLabel(SymbolsBegin);
+  Streamer->emitLabel(SymbolsBegin);
   {
     ProcSym ProcSymbol(SymbolRecordKind::GlobalProcIdSym);
     ProcSymbol.CodeSize = FunctionSize;
@@ -794,17 +783,17 @@ void ObjectWriter::EmitCVDebugFunctionInfo(const char *FunctionName,
     unsigned SymbolSize = HeaderSize + 4 + 2 + 1 + FunctionNameLength;
     EmitSymRecord(SymbolSize, SymbolRecordKind::GlobalProcIdSym);
 
-    Streamer->EmitBytes(StringRef((char *)&ProcSymbol.Parent, HeaderSize));
+    Streamer->emitBytes(StringRef((char *)&ProcSymbol.Parent, HeaderSize));
     // Emit relocation
     Streamer->EmitCOFFSecRel32(Fn, 0);
     Streamer->EmitCOFFSectionIndex(Fn);
 
     // Emit flags
-    Streamer->EmitIntValue(0, 1);
+    Streamer->emitIntValue(0, 1);
 
     // Emit the function display name as a null-terminated string.
 
-    Streamer->EmitBytes(StringRef(FunctionName, FunctionNameLength));
+    Streamer->emitBytes(StringRef(FunctionName, FunctionNameLength));
 
     // Emit local var info
     int NumVarInfos = DebugVarInfos.size();
@@ -817,14 +806,14 @@ void ObjectWriter::EmitCVDebugFunctionInfo(const char *FunctionName,
     EmitSymRecord(0, SymbolRecordKind::ProcEnd);
   }
 
-  Streamer->EmitLabel(SymbolsEnd);
+  Streamer->emitLabel(SymbolsEnd);
 
   // Every subsection must be aligned to a 4-byte boundary.
-  Streamer->EmitValueToAlignment(4);
+  Streamer->emitValueToAlignment(4);
 
   // We have an assembler directive that takes care of the whole line table.
   // We also increase function id for the next function.
-  Streamer->EmitCVLinetableDirective(FuncId++, Fn, FnEnd);
+  Streamer->emitCVLinetableDirective(FuncId++, Fn, FnEnd);
 }
 
 void ObjectWriter::EmitDwarfFunctionInfo(const char *FunctionName,
@@ -846,9 +835,10 @@ void ObjectWriter::EmitDwarfFunctionInfo(const char *FunctionName,
 void ObjectWriter::EmitDebugFileInfo(int FileId, const char *FileName) {
   assert(FileId > 0 && "FileId should be greater than 0.");
   if (ObjFileInfo->getObjectFileType() == ObjFileInfo->IsCOFF) {
-    Streamer->EmitCVFileDirective(FileId, FileName);
+    ArrayRef<uint8_t> ChecksumAsBytes;
+    Streamer->EmitCVFileDirective(FileId, FileName, ChecksumAsBytes, 0);
   } else {
-    Streamer->EmitDwarfFileDirective(FileId, "", FileName);
+    Streamer->emitDwarfFileDirective(FileId, "", FileName);
   }
 }
 
@@ -861,7 +851,7 @@ void ObjectWriter::EmitDebugFunctionInfo(const char *FunctionName,
   } else {
     if (ObjFileInfo->getObjectFileType() == ObjFileInfo->IsELF) {
       MCSymbol *Sym = OutContext->getOrCreateSymbol(Twine(FunctionName));
-      Streamer->EmitSymbolAttribute(Sym, MCSA_ELF_TypeFunction);
+      Streamer->emitSymbolAttribute(Sym, MCSA_ELF_TypeFunction);
       Streamer->emitELFSize(Sym,
                             MCConstantExpr::create(FunctionSize, *OutContext));
       EmitDwarfFunctionInfo(FunctionName, FunctionSize, MethodTypeIndex);
@@ -896,10 +886,10 @@ void ObjectWriter::EmitDebugLoc(int NativeOffset, int FileId, int LineNumber,
   assert(FileId > 0 && "FileId should be greater than 0.");
   if (ObjFileInfo->getObjectFileType() == ObjFileInfo->IsCOFF) {
     Streamer->EmitCVFuncIdDirective(FuncId);
-    Streamer->EmitCVLocDirective(FuncId, FileId, LineNumber, ColNumber, false,
+    Streamer->emitCVLocDirective(FuncId, FileId, LineNumber, ColNumber, false,
                                  true, "", SMLoc());
   } else {
-    Streamer->EmitDwarfLocDirective(FileId, LineNumber, ColNumber, 1, 0, 0, "");
+    Streamer->emitDwarfLocDirective(FileId, LineNumber, ColNumber, 1, 0, 0, "");
   }
 }
 
@@ -913,20 +903,20 @@ void ObjectWriter::EmitCVUserDefinedTypesSymbols() {
 
   MCSymbol *SymbolsBegin = OutContext->createTempSymbol(),
            *SymbolsEnd = OutContext->createTempSymbol();
-  Streamer->EmitIntValue(unsigned(DebugSubsectionKind::Symbols), 4);
+  Streamer->emitIntValue(unsigned(DebugSubsectionKind::Symbols), 4);
   EmitLabelDiff(SymbolsBegin, SymbolsEnd);
-  Streamer->EmitLabel(SymbolsBegin);
+  Streamer->emitLabel(SymbolsBegin);
 
   for (const std::pair<std::string, uint32_t> &UDT : UDTs) {
     unsigned NameLength = UDT.first.length() + 1;
     unsigned RecordLength = 2 + 4 + NameLength;
-    Streamer->EmitIntValue(RecordLength, 2);
-    Streamer->EmitIntValue(unsigned(SymbolKind::S_UDT), 2);
-    Streamer->EmitIntValue(UDT.second, 4);
-    Streamer->EmitBytes(StringRef(UDT.first.c_str(), NameLength));
+    Streamer->emitIntValue(RecordLength, 2);
+    Streamer->emitIntValue(unsigned(SymbolKind::S_UDT), 2);
+    Streamer->emitIntValue(UDT.second, 4);
+    Streamer->emitBytes(StringRef(UDT.first.c_str(), NameLength));
   }
-  Streamer->EmitLabel(SymbolsEnd);
-  Streamer->EmitValueToAlignment(4);
+  Streamer->emitLabel(SymbolsEnd);
+  Streamer->emitValueToAlignment(4);
 }
 
 void ObjectWriter::EmitDebugModuleInfo() {
@@ -943,8 +933,8 @@ void ObjectWriter::EmitDebugModuleInfo() {
   if (ObjFileInfo->getObjectFileType() == ObjFileInfo->IsCOFF) {
     MCSection *Section = ObjFileInfo->getCOFFDebugSymbolsSection();
     Streamer->SwitchSection(Section);
-    Streamer->EmitCVFileChecksumsDirective();
-    Streamer->EmitCVStringTableDirective();
+    Streamer->emitCVFileChecksumsDirective();
+    Streamer->emitCVStringTableDirective();
   } else if (ObjFileInfo->getObjectFileType() == ObjFileInfo->IsELF) {
     DwarfGenerator->EmitAbbrev();
     DwarfGenerator->EmitAranges();
@@ -1066,7 +1056,7 @@ void ObjectWriter::EmitARMExIdxPerOffset()
     {
     case CFI_REL_OFFSET:
       assert(IsVector == (Reg >= 16) && "Unexpected Register Type");
-      RegSet.push_back(MRI->getLLVMRegNum(Reg, true));
+      RegSet.push_back(MRI->getLLVMRegNum(Reg, true).getValue());
       break;
     case CFI_ADJUST_CFA_OFFSET:
       assert(Reg == DWARF_REG_ILLEGAL &&
@@ -1074,7 +1064,7 @@ void ObjectWriter::EmitARMExIdxPerOffset()
       ATS.emitPad(CFIsPerOffset[i].Offset);
       break;
     case CFI_DEF_CFA_REGISTER:
-      ATS.emitMovSP(MRI->getLLVMRegNum(Reg, true));
+      ATS.emitMovSP(MRI->getLLVMRegNum(Reg, true).getValue());
       break;
     default:
       assert(false && "Unrecognized CFI");

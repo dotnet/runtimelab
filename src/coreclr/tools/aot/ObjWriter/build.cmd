@@ -17,15 +17,15 @@ if "%TargetArch%"=="" (
 
 cd "%ArtifactsDir%" || goto Error
 
-if not exist llvm (
+if not exist llvm-project (
     rem Clone the LLVM repo
-    git clone --depth 1 -b release_50 https://github.com/llvm-mirror/llvm.git || goto Error
-    cd llvm || goto Error
+    git clone --depth 1 -b release/12.x https://github.com/llvm/llvm-project.git || goto Error
+    cd llvm-project\llvm || goto Error
     goto ApplyPatch
 )
 
 :: Check whether the current diff is the same as the patch
-cd llvm || goto Error
+cd llvm-project\llvm || goto Error
 if not exist build mkdir build
 set "DiffFile=build\llvm_%RANDOM%.patch"
 git diff --full-index >"%DiffFile%" || goto Error

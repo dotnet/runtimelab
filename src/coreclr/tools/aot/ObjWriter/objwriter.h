@@ -169,8 +169,6 @@ private:
   std::unique_ptr<MCInstrInfo> InstrInfo;
   std::unique_ptr<MCSubtargetInfo> SubtargetInfo;
   MCCodeEmitter *CodeEmitter; // Owned by MCStreamer
-  std::unique_ptr<TargetMachine> TMachine;
-  std::unique_ptr<AsmPrinter> AssemblerPrinter;
   MCAssembler *Assembler; // Owned by MCStreamer
   std::unique_ptr<DwarfGen> DwarfGenerator;
 

@@ -34,11 +34,11 @@ void DwarfInfo::Dump(UserDefinedDwarfTypesBuilder *TypeBuilder, MCObjectStreamer
 
   Streamer->SwitchSection(StrSection);
   StrSymbol = context.createTempSymbol();
-  Streamer->EmitLabel(StrSymbol);
+  Streamer->emitLabel(StrSymbol);
   DumpStrings(Streamer);
 
   Streamer->SwitchSection(TypeSection);
-  Streamer->EmitLabel(InfoSymbol);
+  Streamer->emitLabel(InfoSymbol);
   DumpTypeInfo(Streamer, TypeBuilder);
 }
 
@@ -58,16 +58,16 @@ void DwarfInfo::EmitSectionOffset(MCObjectStreamer *Streamer,
 
   if (context.getAsmInfo()->doesDwarfUseRelocationsAcrossSections()) {
     if (Offset == 0) {
-      Streamer->EmitSymbolValue(Symbol, Size);
+      Streamer->emitSymbolValue(Symbol, Size);
     } else {
       const MCSymbolRefExpr *SymbolExpr = MCSymbolRefExpr::create(Symbol,
           MCSymbolRefExpr::VK_None, context);
       const MCExpr *OffsetExpr = MCConstantExpr::create(Offset, context);
       const MCExpr *Expr = MCBinaryExpr::createAdd(SymbolExpr, OffsetExpr, context);
-      Streamer->EmitValue(Expr, Size);
+      Streamer->emitValue(Expr, Size);
     }
   } else {
-    Streamer->EmitIntValue(Symbol->getOffset() + Offset, Size);
+    Streamer->emitIntValue(Symbol->getOffset() + Offset, Size);
   }
 }
 
@@ -89,17 +89,17 @@ void DwarfInfo::EmitOffset(MCObjectStreamer *Streamer,
 
   if (!context.getAsmInfo()->hasAggressiveSymbolFolding()) {
     MCSymbol *Temp = context.createTempSymbol();
-    Streamer->EmitAssignment(Temp, OffsetExpr);
+    Streamer->emitAssignment(Temp, OffsetExpr);
     OffsetExpr = MCSymbolRefExpr::create(Temp, context);
   }
 
-  Streamer->EmitValue(OffsetExpr, Size);
+  Streamer->emitValue(OffsetExpr, Size);
 }
 
 void DwarfInfo::EmitInfoOffset(MCObjectStreamer *Streamer, const DwarfInfo *Info, unsigned Size) {
   uint64_t Offset = Info->InfoSymbol->getOffset();
   if (Offset != 0) {
-    Streamer->EmitIntValue(Offset, Size);
+    Streamer->emitIntValue(Offset, Size);
   } else {
     EmitOffset(Streamer, Info->InfoExpr, Size);
   }
@@ -143,8 +143,8 @@ void DwarfPrimitiveTypeInfo::DumpStrings(MCObjectStreamer *Streamer) {
   if (TD.Name == nullptr)
     return;
 
-  Streamer->EmitBytes(StringRef(TD.Name));
-  Streamer->EmitIntValue(0, 1);
+  Streamer->emitBytes(StringRef(TD.Name));
+  Streamer->emitIntValue(0, 1);
 }
 
 void DwarfPrimitiveTypeInfo::DumpTypeInfo(MCObjectStreamer *Streamer, UserDefinedDwarfTypesBuilder *TypeBuilder) {
@@ -156,28 +156,28 @@ void DwarfPrimitiveTypeInfo::DumpTypeInfo(MCObjectStreamer *Streamer, UserDefine
     return;
 
   // Abbrev Number
-  Streamer->EmitULEB128IntValue(DwarfAbbrev::BaseType);
+  Streamer->emitULEB128IntValue(DwarfAbbrev::BaseType);
 
   // DW_AT_name
   EmitSectionOffset(Streamer, StrSymbol, 4);
 
   // DW_AT_encoding
-  Streamer->EmitIntValue(TD.Encoding, 1);
+  Streamer->emitIntValue(TD.Encoding, 1);
 
   // DW_AT_byte_size
-  Streamer->EmitIntValue(TD.ByteSize, 1);
+  Streamer->emitIntValue(TD.ByteSize, 1);
 }
 
 // DwarfVoidTypeInfo
 
 void DwarfVoidTypeInfo::DumpStrings(MCObjectStreamer* Streamer) {
-  Streamer->EmitBytes(StringRef("void"));
-  Streamer->EmitIntValue(0, 1);
+  Streamer->emitBytes(StringRef("void"));
+  Streamer->emitIntValue(0, 1);
 }
 
 void DwarfVoidTypeInfo::DumpTypeInfo(MCObjectStreamer* Streamer, UserDefinedDwarfTypesBuilder* TypeBuilder) {
   // Abbrev Number
-  Streamer->EmitULEB128IntValue(DwarfAbbrev::VoidType);
+  Streamer->emitULEB128IntValue(DwarfAbbrev::VoidType);
 
   // DW_AT_name
   EmitSectionOffset(Streamer, StrSymbol, 4);
@@ -186,8 +186,8 @@ void DwarfVoidTypeInfo::DumpTypeInfo(MCObjectStreamer* Streamer, UserDefinedDwar
 // DwarfEnumerator
 
 void DwarfEnumerator::DumpStrings(MCObjectStreamer *Streamer) {
-  Streamer->EmitBytes(Name);
-  Streamer->EmitIntValue(0, 1);
+  Streamer->emitBytes(Name);
+  Streamer->emitIntValue(0, 1);
 }
 
 void DwarfEnumerator::DumpTypeInfo(MCObjectStreamer *Streamer, UserDefinedDwarfTypesBuilder *TypeBuilder) {
@@ -196,16 +196,16 @@ void DwarfEnumerator::DumpTypeInfo(MCObjectStreamer *Streamer, UserDefinedDwarfT
   // Abbrev Number
   switch (Size) {
     case 1:
-      Streamer->EmitULEB128IntValue(DwarfAbbrev::Enumerator1);
+      Streamer->emitULEB128IntValue(DwarfAbbrev::Enumerator1);
       break;
     case 2:
-      Streamer->EmitULEB128IntValue(DwarfAbbrev::Enumerator2);
+      Streamer->emitULEB128IntValue(DwarfAbbrev::Enumerator2);
       break;
     case 4:
-      Streamer->EmitULEB128IntValue(DwarfAbbrev::Enumerator4);
+      Streamer->emitULEB128IntValue(DwarfAbbrev::Enumerator4);
       break;
     case 8:
-      Streamer->EmitULEB128IntValue(DwarfAbbrev::Enumerator8);
+      Streamer->emitULEB128IntValue(DwarfAbbrev::Enumerator8);
       break;
     default:
       assert(false && "Unexpected byte size value");
@@ -215,7 +215,7 @@ void DwarfEnumerator::DumpTypeInfo(MCObjectStreamer *Streamer, UserDefinedDwarfT
   EmitSectionOffset(Streamer, StrSymbol, 4);
 
   // DW_AT_const_value
-  Streamer->EmitIntValue(Value, Size);
+  Streamer->emitIntValue(Value, Size);
 }
 
 // DwarfEnumTypeInfo
@@ -265,17 +265,17 @@ void DwarfEnumTypeInfo::Dump(UserDefinedDwarfTypesBuilder *TypeBuilder, MCObject
 
   // Terminate DIE
   Streamer->SwitchSection(TypeSection);
-  Streamer->EmitIntValue(0, 1);
+  Streamer->emitIntValue(0, 1);
 }
 
 void DwarfEnumTypeInfo::DumpStrings(MCObjectStreamer *Streamer) {
-  Streamer->EmitBytes(Name);
-  Streamer->EmitIntValue(0, 1);
+  Streamer->emitBytes(Name);
+  Streamer->emitIntValue(0, 1);
 }
 
 void DwarfEnumTypeInfo::DumpTypeInfo(MCObjectStreamer *Streamer, UserDefinedDwarfTypesBuilder *TypeBuilder) {
   // Abbrev Number
-  Streamer->EmitULEB128IntValue(DwarfAbbrev::EnumerationType);
+  Streamer->emitULEB128IntValue(DwarfAbbrev::EnumerationType);
 
   // DW_AT_name
   EmitSectionOffset(Streamer, StrSymbol, 4);
@@ -287,14 +287,14 @@ void DwarfEnumTypeInfo::DumpTypeInfo(MCObjectStreamer *Streamer, UserDefinedDwar
   EmitInfoOffset(Streamer, Info, 4);
 
   // DW_AT_byte_size
-  Streamer->EmitIntValue(ByteSize, 1);
+  Streamer->emitIntValue(ByteSize, 1);
 }
 
 // DwarfDataField
 
 void DwarfDataField::DumpStrings(MCObjectStreamer *Streamer) {
-  Streamer->EmitBytes(StringRef(Name));
-  Streamer->EmitIntValue(0, 1);
+  Streamer->emitBytes(StringRef(Name));
+  Streamer->emitIntValue(0, 1);
 }
 
 void DwarfDataField::DumpTypes(UserDefinedDwarfTypesBuilder *TypeBuilder, MCObjectStreamer *Streamer,
@@ -312,7 +312,7 @@ void DwarfDataField::DumpTypes(UserDefinedDwarfTypesBuilder *TypeBuilder, MCObje
 
 void DwarfDataField::DumpTypeInfo(MCObjectStreamer *Streamer, UserDefinedDwarfTypesBuilder *TypeBuilder) {
   // Abbrev Number
-  Streamer->EmitULEB128IntValue(DwarfAbbrev::ClassMember);
+  Streamer->emitULEB128IntValue(DwarfAbbrev::ClassMember);
 
   // DW_AT_name
   EmitSectionOffset(Streamer, StrSymbol, 4);
@@ -323,14 +323,14 @@ void DwarfDataField::DumpTypeInfo(MCObjectStreamer *Streamer, UserDefinedDwarfTy
   EmitInfoOffset(Streamer, MemberTypeInfo, 4);
 
   // DW_AT_data_member_location
-  Streamer->EmitIntValue(Offset, 4);
+  Streamer->emitIntValue(Offset, 4);
 }
 
 // DwarfStaticDataField
 
 void DwarfStaticDataField::DumpTypeInfo(MCObjectStreamer *Streamer, UserDefinedDwarfTypesBuilder *TypeBuilder) {
   // Abbrev Number
-  Streamer->EmitULEB128IntValue(DwarfAbbrev::ClassMemberStatic);
+  Streamer->emitULEB128IntValue(DwarfAbbrev::ClassMemberStatic);
 
   // DW_AT_name
   EmitSectionOffset(Streamer, StrSymbol, 4);
@@ -413,24 +413,24 @@ void DwarfClassTypeInfo::Dump(UserDefinedDwarfTypesBuilder *TypeBuilder, MCObjec
 
   // Terminate DIE
   Streamer->SwitchSection(TypeSection);
-  Streamer->EmitIntValue(0, 1);
+  Streamer->emitIntValue(0, 1);
 }
 
 void DwarfClassTypeInfo::DumpStrings(MCObjectStreamer *Streamer) {
-  Streamer->EmitBytes(StringRef(Name));
-  Streamer->EmitIntValue(0, 1);
+  Streamer->emitBytes(StringRef(Name));
+  Streamer->emitIntValue(0, 1);
 }
 
 void DwarfClassTypeInfo::DumpTypeInfo(MCObjectStreamer *Streamer, UserDefinedDwarfTypesBuilder *TypeBuilder) {
   // Abbrev Number
-  Streamer->EmitULEB128IntValue(IsForwardDecl ? DwarfAbbrev::ClassTypeDecl : DwarfAbbrev::ClassType);
+  Streamer->emitULEB128IntValue(IsForwardDecl ? DwarfAbbrev::ClassTypeDecl : DwarfAbbrev::ClassType);
 
   // DW_AT_name
   EmitSectionOffset(Streamer, StrSymbol, 4);
 
   if (!IsForwardDecl) {
     // DW_AT_byte_size
-    Streamer->EmitIntValue(Size, 4);
+    Streamer->emitIntValue(Size, 4);
   }
 
   if (BaseClassId != 0) {
@@ -440,13 +440,13 @@ void DwarfClassTypeInfo::DumpTypeInfo(MCObjectStreamer *Streamer, UserDefinedDwa
     // DW_TAG_inheritance DIE
 
     // Abbrev Number
-    Streamer->EmitULEB128IntValue(DwarfAbbrev::ClassInheritance);
+    Streamer->emitULEB128IntValue(DwarfAbbrev::ClassInheritance);
 
     // DW_AT_type
     EmitInfoOffset(Streamer, BaseClassInfo, 4);
 
     // DW_AT_data_member_location = 0
-    Streamer->EmitIntValue(0, 1);
+    Streamer->emitIntValue(0, 1);
   }
 }
 
@@ -471,7 +471,7 @@ void DwarfSimpleArrayTypeInfo::DumpStrings(MCObjectStreamer *Streamer) {
 
 void DwarfSimpleArrayTypeInfo::DumpTypeInfo(MCObjectStreamer *Streamer, UserDefinedDwarfTypesBuilder *TypeBuilder) {
   // Abbrev Number
-  Streamer->EmitULEB128IntValue(DwarfAbbrev::ArrayType);
+  Streamer->emitULEB128IntValue(DwarfAbbrev::ArrayType);
 
   DwarfInfo *Info = TypeBuilder->GetTypeInfoByIndex(ElementType);
   assert(Info != nullptr);
@@ -482,13 +482,13 @@ void DwarfSimpleArrayTypeInfo::DumpTypeInfo(MCObjectStreamer *Streamer, UserDefi
   // DW_TAG_subrange_type DIE
 
   // Abbrev Number
-  Streamer->EmitULEB128IntValue(DwarfAbbrev::SubrangeType);
+  Streamer->emitULEB128IntValue(DwarfAbbrev::SubrangeType);
 
   // DW_AT_upper_bound
-  Streamer->EmitULEB128IntValue(Size - 1);
+  Streamer->emitULEB128IntValue(Size - 1);
 
   // Terminate DIE
-  Streamer->EmitIntValue(0, 1);
+  Streamer->emitIntValue(0, 1);
 }
 
 // DwarfPointerTypeInfo
@@ -512,7 +512,7 @@ void DwarfPointerTypeInfo::DumpStrings(MCObjectStreamer *Streamer) {
 
 void DwarfPointerTypeInfo::DumpTypeInfo(MCObjectStreamer *Streamer, UserDefinedDwarfTypesBuilder *TypeBuilder) {
   // Abbrev Number
-  Streamer->EmitULEB128IntValue(TypeDesc.IsReference ? DwarfAbbrev::ReferenceType : DwarfAbbrev::PointerType);
+  Streamer->emitULEB128IntValue(TypeDesc.IsReference ? DwarfAbbrev::ReferenceType : DwarfAbbrev::PointerType);
 
   DwarfInfo *Info = TypeBuilder->GetTypeInfoByIndex(TypeDesc.ElementType);
   assert(Info != nullptr);
@@ -521,7 +521,7 @@ void DwarfPointerTypeInfo::DumpTypeInfo(MCObjectStreamer *Streamer, UserDefinedD
   EmitInfoOffset(Streamer, Info, 4);
 
   // DW_AT_byte_size
-  Streamer->EmitIntValue(TypeDesc.Is64Bit ? 8 : 4, 1);
+  Streamer->emitIntValue(TypeDesc.Is64Bit ? 8 : 4, 1);
 }
 
 // DwarfVoidPtrTypeInfo
@@ -532,7 +532,7 @@ void DwarfVoidPtrTypeInfo::DumpStrings(MCObjectStreamer* Streamer) {
 
 void DwarfVoidPtrTypeInfo::DumpTypeInfo(MCObjectStreamer* Streamer, UserDefinedDwarfTypesBuilder* TypeBuilder) {
   // Abbrev Number
-  Streamer->EmitULEB128IntValue(DwarfAbbrev::VoidPointerType);
+  Streamer->emitULEB128IntValue(DwarfAbbrev::VoidPointerType);
 }
 
 // DwarfMemberFunctionTypeInfo
@@ -588,21 +588,21 @@ void DwarfMemberFunctionIdTypeInfo::DumpTypes(UserDefinedDwarfTypesBuilder *Type
 }
 
 void DwarfMemberFunctionIdTypeInfo::DumpStrings(MCObjectStreamer *Streamer) {
-  Streamer->EmitBytes(StringRef(Name));
-  Streamer->EmitIntValue(0, 1);
+  Streamer->emitBytes(StringRef(Name));
+  Streamer->emitIntValue(0, 1);
 
   MCContext &context = Streamer->getContext();
   LinkageNameSymbol = context.createTempSymbol();
-  Streamer->EmitLabel(LinkageNameSymbol);
-  Streamer->EmitBytes(StringRef(LinkageName));
-  Streamer->EmitIntValue(0, 1);
+  Streamer->emitLabel(LinkageNameSymbol);
+  Streamer->emitBytes(StringRef(LinkageName));
+  Streamer->emitIntValue(0, 1);
 }
 
 void DwarfMemberFunctionIdTypeInfo::DumpTypeInfo(MCObjectStreamer *Streamer, UserDefinedDwarfTypesBuilder *TypeBuilder) {
   // Abbrev Number
   bool IsStatic = MemberFunctionTypeInfo->IsStatic();
 
-  Streamer->EmitULEB128IntValue(IsStatic ? DwarfAbbrev::SubprogramStaticSpec : DwarfAbbrev::SubprogramSpec);
+  Streamer->emitULEB128IntValue(IsStatic ? DwarfAbbrev::SubprogramStaticSpec : DwarfAbbrev::SubprogramSpec);
 
   // DW_AT_name
   EmitSectionOffset(Streamer, StrSymbol, 4);
@@ -611,10 +611,10 @@ void DwarfMemberFunctionIdTypeInfo::DumpTypeInfo(MCObjectStreamer *Streamer, Use
   EmitSectionOffset(Streamer, LinkageNameSymbol, 4);
 
   // DW_AT_decl_file
-  Streamer->EmitIntValue(1, 1);
+  Streamer->emitIntValue(1, 1);
 
   // DW_AT_decl_line
-  Streamer->EmitIntValue(1, 1);
+  Streamer->emitIntValue(1, 1);
 
   // DW_AT_type
   DwarfInfo *ReturnTypeInfo = TypeBuilder->GetTypeInfoByIndex(MemberFunctionTypeInfo->GetReturnTypeIndex());
@@ -626,14 +626,14 @@ void DwarfMemberFunctionIdTypeInfo::DumpTypeInfo(MCObjectStreamer *Streamer, Use
     // DW_AT_object_pointer
     uint32_t Offset = Streamer->getOrCreateDataFragment()->getContents().size();
 
-    Streamer->EmitIntValue(Offset + 4, 4);
+    Streamer->emitIntValue(Offset + 4, 4);
 
     // This formal parameter DIE
     DwarfInfo *ThisTypeInfo = TypeBuilder->GetTypeInfoByIndex(MemberFunctionTypeInfo->GetThisPtrTypeIndex());
     assert(ThisTypeInfo != nullptr);
 
     // Abbrev Number
-    Streamer->EmitULEB128IntValue(DwarfAbbrev::FormalParameterThisSpec);
+    Streamer->emitULEB128IntValue(DwarfAbbrev::FormalParameterThisSpec);
 
     // DW_AT_type
     EmitInfoOffset(Streamer, ThisTypeInfo, 4);
@@ -646,14 +646,14 @@ void DwarfMemberFunctionIdTypeInfo::DumpTypeInfo(MCObjectStreamer *Streamer, Use
     // Formal parameter DIE
 
     // Abbrev Number
-    Streamer->EmitULEB128IntValue(DwarfAbbrev::FormalParameterSpec);
+    Streamer->emitULEB128IntValue(DwarfAbbrev::FormalParameterSpec);
 
     // DW_AT_type
     EmitInfoOffset(Streamer, ArgTypeInfo, 4);
   }
 
   // Ternimate DIE
-  Streamer->EmitIntValue(0, 1);
+  Streamer->emitIntValue(0, 1);
 }
 
 // DwarfTypesBuilder
@@ -671,14 +671,14 @@ unsigned UserDefinedDwarfTypesBuilder::GetEnumTypeIndex(
     const EnumRecordTypeDescriptor *TypeRecords) {
   unsigned TypeIndex = ArrayIndexToTypeIndex(DwarfTypes.size());
   UserDefinedTypes.push_back(std::make_pair(TypeDescriptor.Name, TypeIndex));
-  DwarfTypes.push_back(make_unique<DwarfEnumTypeInfo>(TypeDescriptor, TypeRecords));
+  DwarfTypes.push_back(std::make_unique<DwarfEnumTypeInfo>(TypeDescriptor, TypeRecords));
   return TypeIndex;
 }
 
 unsigned UserDefinedDwarfTypesBuilder::GetClassTypeIndex(
     const ClassTypeDescriptor &ClassDescriptor) {
   unsigned TypeIndex = ArrayIndexToTypeIndex(DwarfTypes.size());
-  DwarfTypes.push_back(make_unique<DwarfClassTypeInfo>(ClassDescriptor));
+  DwarfTypes.push_back(std::make_unique<DwarfClassTypeInfo>(ClassDescriptor));
   return TypeIndex;
 }
 
@@ -730,7 +730,7 @@ unsigned UserDefinedDwarfTypesBuilder::GetArrayTypeIndex(
 
   unsigned TypeIndex = ArrayIndexToTypeIndex(DwarfTypes.size());
   UserDefinedTypes.push_back(std::make_pair(ArrayClassDescriptor.Name, TypeIndex));
-  DwarfTypes.push_back(make_unique<DwarfClassTypeInfo>(ArrayClassDescriptor, FieldsTypeDesc, FieldDescs.data(), nullptr));
+  DwarfTypes.push_back(std::make_unique<DwarfClassTypeInfo>(ArrayClassDescriptor, FieldsTypeDesc, FieldDescs.data(), nullptr));
 
   return TypeIndex;
 }
@@ -750,9 +750,9 @@ unsigned UserDefinedDwarfTypesBuilder::GetPointerTypeIndex(const PointerTypeDesc
   // We resort to this kludge to generate the exact same debug info for void* that
   // clang would generate (pointer type with no element type specified).
   if (PointerDescriptor.ElementType == VoidTypeIndex)
-    DwarfTypes.push_back(make_unique<DwarfVoidPtrTypeInfo>());
+    DwarfTypes.push_back(std::make_unique<DwarfVoidPtrTypeInfo>());
   else
-    DwarfTypes.push_back(make_unique<DwarfPointerTypeInfo>(PointerDescriptor));
+    DwarfTypes.push_back(std::make_unique<DwarfPointerTypeInfo>(PointerDescriptor));
 
   return TypeIndex;
 }
@@ -762,7 +762,7 @@ unsigned UserDefinedDwarfTypesBuilder::GetMemberFunctionTypeIndex(const MemberFu
 {
   bool IsStatic = MemberDescriptor.TypeIndexOfThisPointer == GetPrimitiveTypeIndex(PrimitiveTypeFlags::Void);
   unsigned TypeIndex = ArrayIndexToTypeIndex(DwarfTypes.size());
-  DwarfTypes.push_back(make_unique<DwarfMemberFunctionTypeInfo>(MemberDescriptor, ArgumentTypes, IsStatic));
+  DwarfTypes.push_back(std::make_unique<DwarfMemberFunctionTypeInfo>(MemberDescriptor, ArgumentTypes, IsStatic));
   return TypeIndex;
 }
 
@@ -796,9 +796,9 @@ unsigned UserDefinedDwarfTypesBuilder::GetPrimitiveTypeIndex(PrimitiveTypeFlags 
   unsigned TypeIndex = ArrayIndexToTypeIndex(DwarfTypes.size());
 
   if (Type == PrimitiveTypeFlags::Void)
-    DwarfTypes.push_back(make_unique<DwarfVoidTypeInfo>());
+    DwarfTypes.push_back(std::make_unique<DwarfVoidTypeInfo>());
   else 
-    DwarfTypes.push_back(make_unique<DwarfPrimitiveTypeInfo>(Type));
+    DwarfTypes.push_back(std::make_unique<DwarfPrimitiveTypeInfo>(Type));
 
   PrimitiveDwarfTypes.insert(std::make_pair(Type, TypeIndex));
 
@@ -815,7 +815,7 @@ unsigned UserDefinedDwarfTypesBuilder::GetSimpleArrayTypeIndex(unsigned ElemInde
   }
 
   unsigned TypeIndex = ArrayIndexToTypeIndex(DwarfTypes.size());
-  DwarfTypes.push_back(make_unique<DwarfSimpleArrayTypeInfo>(ElemIndex, Size));
+  DwarfTypes.push_back(std::make_unique<DwarfSimpleArrayTypeInfo>(ElemIndex, Size));
 
   SimpleArrayDwarfTypes[ElemIndex][Size] = TypeIndex;
 

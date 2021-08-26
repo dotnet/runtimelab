@@ -20,7 +20,7 @@ UserDefinedCodeViewTypesBuilder::UserDefinedCodeViewTypesBuilder()
     // record is not expressive enough to capture our vtable shape (where the
     // vtable slots don't start at the beginning of the vtable).
     VFTableShapeRecord vfTableShape(TypeRecordKind::VFTableShape);
-    ClassVTableTypeIndex = TypeTable.writeKnownType(vfTableShape);
+    ClassVTableTypeIndex = TypeTable.writeLeafType(vfTableShape);
 
     PointerRecord ptrToVfTableShape(ClassVTableTypeIndex,
         TargetPointerSize == 8 ? PointerKind::Near64 : PointerKind::Near32,
@@ -28,13 +28,13 @@ UserDefinedCodeViewTypesBuilder::UserDefinedCodeViewTypesBuilder()
         PointerOptions::None,
         0);
 
-    VFuncTabTypeIndex = TypeTable.writeKnownType(ptrToVfTableShape);
+    VFuncTabTypeIndex = TypeTable.writeLeafType(ptrToVfTableShape);
 }
 
 void UserDefinedCodeViewTypesBuilder::EmitCodeViewMagicVersion() {
-  Streamer->EmitValueToAlignment(4);
+  Streamer->emitValueToAlignment(4);
   Streamer->AddComment("Debug section magic");
-  Streamer->EmitIntValue(COFF::DEBUG_SECTION_MAGIC, 4);
+  Streamer->emitIntValue(COFF::DEBUG_SECTION_MAGIC, 4);
 }
 
 ClassOptions UserDefinedCodeViewTypesBuilder::GetCommonClassOptions() {
@@ -52,16 +52,16 @@ void UserDefinedCodeViewTypesBuilder::EmitTypeInformation(
   EmitCodeViewMagicVersion();
 
   TypeTable.ForEachRecord([&](TypeIndex FieldTypeIndex,
-                              ArrayRef<uint8_t> Record) {
-    StringRef S(reinterpret_cast<const char *>(Record.data()), Record.size());
-    Streamer->EmitBinaryData(S);
+                              CVRecord<TypeLeafKind> Record) {
+    StringRef S(reinterpret_cast<const char *>(Record.data().data()), Record.data().size());
+    Streamer->emitBinaryData(S);
   });
 }
 
 unsigned UserDefinedCodeViewTypesBuilder::GetEnumFieldListType(
     uint64 Count, const EnumRecordTypeDescriptor *TypeRecords) {
-  FieldListRecordBuilder FLRB(TypeTable);
-  FLRB.begin();
+  ContinuationRecordBuilder FLRB;
+  FLRB.begin(ContinuationRecordKind::FieldList);
 #ifndef NDEBUG
   uint64 MaxInt = (unsigned int)-1;
   assert(Count <= MaxInt && "There are too many fields inside enum");
@@ -72,8 +72,7 @@ unsigned UserDefinedCodeViewTypesBuilder::GetEnumFieldListType(
                         record.Name);
     FLRB.writeMemberType(ER);
   }
-  TypeIndex Type = FLRB.end(true);
-  return Type.getIndex();
+  return TypeTable.insertRecord(FLRB).getIndex();
 }
 
 unsigned UserDefinedCodeViewTypesBuilder::GetEnumTypeIndex(
@@ -90,7 +89,7 @@ unsigned UserDefinedCodeViewTypesBuilder::GetEnumTypeIndex(
                         TypeDescriptor.Name, StringRef(),
                         ElementTypeIndex);
 
-  TypeIndex Type = TypeTable.writeKnownType(EnumRecord);
+  TypeIndex Type = TypeTable.writeLeafType(EnumRecord);
   UserDefinedTypes.push_back(std::make_pair(TypeDescriptor.Name, Type.getIndex()));
   return Type.getIndex();
 }
@@ -103,7 +102,7 @@ unsigned UserDefinedCodeViewTypesBuilder::GetClassTypeIndex(
 
   ClassRecord CR(Kind, 0, CO, TypeIndex(), TypeIndex(), TypeIndex(), 0,
                  ClassDescriptor.Name, StringRef());
-  TypeIndex FwdDeclTI = TypeTable.writeKnownType(CR);
+  TypeIndex FwdDeclTI = TypeTable.writeLeafType(CR);
   return FwdDeclTI.getIndex();
 }
 
@@ -113,8 +112,8 @@ unsigned UserDefinedCodeViewTypesBuilder::GetCompleteClassTypeIndex(
     const DataFieldDescriptor *FieldsDescriptors,
     const StaticDataFieldDescriptor *StaticsDescriptors) {
 
-  FieldListRecordBuilder FLBR(TypeTable);
-  FLBR.begin();
+  ContinuationRecordBuilder FLBR;
+  FLBR.begin(ContinuationRecordKind::FieldList);
 
   uint16_t memberCount = 0;
   if (ClassDescriptor.BaseClassId != 0) {
@@ -144,14 +143,14 @@ unsigned UserDefinedCodeViewTypesBuilder::GetCompleteClassTypeIndex(
     }
     memberCount++;
   }
-  TypeIndex FieldListIndex = FLBR.end(true);
+  TypeIndex FieldListIndex = TypeTable.insertRecord(FLBR);
   TypeRecordKind Kind =
       ClassDescriptor.IsStruct ? TypeRecordKind::Struct : TypeRecordKind::Class;
   ClassOptions CO = GetCommonClassOptions();
   ClassRecord CR(Kind, memberCount, CO, FieldListIndex,
                  TypeIndex(), TypeIndex(), ClassFieldsDescriptor.Size,
                  ClassDescriptor.Name, StringRef());
-  TypeIndex ClassIndex = TypeTable.writeKnownType(CR);
+  TypeIndex ClassIndex = TypeTable.writeLeafType(CR);
 
   UserDefinedTypes.push_back(std::make_pair(ClassDescriptor.Name, ClassIndex.getIndex()));
 
@@ -161,8 +160,8 @@ unsigned UserDefinedCodeViewTypesBuilder::GetCompleteClassTypeIndex(
 unsigned UserDefinedCodeViewTypesBuilder::GetArrayTypeIndex(
     const ClassTypeDescriptor &ClassDescriptor,
     const ArrayTypeDescriptor &ArrayDescriptor) {
-  FieldListRecordBuilder FLBR(TypeTable);
-  FLBR.begin();
+  ContinuationRecordBuilder FLBR;
+  FLBR.begin(ContinuationRecordKind::FieldList);
 
   unsigned Offset = 0;
   unsigned FieldsCount = 0;
@@ -200,12 +199,12 @@ unsigned UserDefinedCodeViewTypesBuilder::GetArrayTypeIndex(
 
   TypeIndex ElementTypeIndex = TypeIndex(ArrayDescriptor.ElementType);
   ArrayRecord AR(ElementTypeIndex, IndexType, ArrayDescriptor.Size, "");
-  TypeIndex ArrayIndex = TypeTable.writeKnownType(AR);
+  TypeIndex ArrayIndex = TypeTable.writeLeafType(AR);
   DataMemberRecord ArrayDMR(Access, ArrayIndex, Offset, "values");
   FLBR.writeMemberType(ArrayDMR);
   FieldsCount++;
 
-  TypeIndex FieldListIndex = FLBR.end(true);
+  TypeIndex FieldListIndex = TypeTable.insertRecord(FLBR);
 
   assert(ClassDescriptor.IsStruct == false);
   TypeRecordKind Kind = TypeRecordKind::Class;
@@ -213,7 +212,7 @@ unsigned UserDefinedCodeViewTypesBuilder::GetArrayTypeIndex(
   ClassRecord CR(Kind, FieldsCount, CO, FieldListIndex, TypeIndex(),
                  TypeIndex(), ArrayDescriptor.Size, ClassDescriptor.Name,
                  StringRef());
-  TypeIndex ClassIndex = TypeTable.writeKnownType(CR);
+  TypeIndex ClassIndex = TypeTable.writeLeafType(CR);
 
   UserDefinedTypes.push_back(std::make_pair(ClassDescriptor.Name, ClassIndex.getIndex()));
 
@@ -228,7 +227,7 @@ unsigned UserDefinedCodeViewTypesBuilder::GetPointerTypeIndex(const PointerTypeD
     PointerOptions pointerOptions = PointerDescriptor.IsConst ? PointerOptions::Const : PointerOptions::None;
 
     PointerRecord PointerToClass(TypeIndex(elementType), pointerKind, pointerMode, pointerOptions, 0);
-    TypeIndex PointerIndex = TypeTable.writeKnownType(PointerToClass);
+    TypeIndex PointerIndex = TypeTable.writeLeafType(PointerToClass);
     return PointerIndex.getIndex();
 }
 
@@ -243,7 +242,7 @@ unsigned UserDefinedCodeViewTypesBuilder::GetMemberFunctionTypeIndex(const Membe
     }
 
     ArgListRecord ArgList(TypeRecordKind::ArgList, argumentTypes);
-    TypeIndex ArgumentList = TypeTable.writeKnownType(ArgList);
+    TypeIndex ArgumentList = TypeTable.writeLeafType(ArgList);
 
     MemberFunctionRecord MemberFunction(TypeIndex(MemberDescriptor.ReturnType), 
                                         TypeIndex(MemberDescriptor.ContainingClass), 
@@ -253,14 +252,14 @@ unsigned UserDefinedCodeViewTypesBuilder::GetMemberFunctionTypeIndex(const Membe
                                         ArgumentList, 
                                         MemberDescriptor.ThisAdjust);
 
-    TypeIndex MemberFunctionIndex = TypeTable.writeKnownType(MemberFunction);
+    TypeIndex MemberFunctionIndex = TypeTable.writeLeafType(MemberFunction);
     return MemberFunctionIndex.getIndex();
 }
 
 unsigned UserDefinedCodeViewTypesBuilder::GetMemberFunctionId(const MemberFunctionIdTypeDescriptor& MemberIdDescriptor)
 {
     MemberFuncIdRecord MemberFuncId(TypeIndex(MemberIdDescriptor.MemberFunction), TypeIndex(MemberIdDescriptor.ParentClass), MemberIdDescriptor.Name);
-    TypeIndex MemberFuncIdIndex = TypeTable.writeKnownType(MemberFuncId);
+    TypeIndex MemberFuncIdIndex = TypeTable.writeLeafType(MemberFuncId);
     return MemberFuncIdIndex.getIndex();
 }
 
@@ -302,7 +301,7 @@ unsigned UserDefinedCodeViewTypesBuilder::GetPrimitiveTypeIndex(PrimitiveTypeFla
   }
 }
 
-void UserDefinedCodeViewTypesBuilder::AddBaseClass(FieldListRecordBuilder &FLBR,
+void UserDefinedCodeViewTypesBuilder::AddBaseClass(ContinuationRecordBuilder &FLBR,
                                            unsigned BaseClassId) {
   MemberAttributes def;
   TypeIndex BaseTypeIndex(BaseClassId);
@@ -310,7 +309,7 @@ void UserDefinedCodeViewTypesBuilder::AddBaseClass(FieldListRecordBuilder &FLBR,
   FLBR.writeMemberType(BCR);
 }
 
-void UserDefinedCodeViewTypesBuilder::AddClassVTShape(FieldListRecordBuilder &FLBR) {
+void UserDefinedCodeViewTypesBuilder::AddClassVTShape(ContinuationRecordBuilder &FLBR) {
   VFPtrRecord VfPtr(VFuncTabTypeIndex);
   FLBR.writeMemberType(VfPtr);
 }

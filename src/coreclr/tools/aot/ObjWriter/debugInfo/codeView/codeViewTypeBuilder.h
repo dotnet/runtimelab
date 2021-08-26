@@ -10,7 +10,8 @@
 #pragma once
 
 #include "debugInfo/typeBuilder.h"
-#include "llvm/DebugInfo/CodeView/TypeTableBuilder.h"
+#include "llvm/DebugInfo/CodeView/ContinuationRecordBuilder.h"
+#include "llvm/DebugInfo/CodeView/GlobalTypeTableBuilder.h"
 
 #include <vector>
 
@@ -61,11 +62,11 @@ private:
   unsigned GetEnumFieldListType(uint64 Count,
                                 const EnumRecordTypeDescriptor *TypeRecords);
 
-  void AddBaseClass(FieldListRecordBuilder &FLBR, unsigned BaseClassId);
-  void AddClassVTShape(FieldListRecordBuilder &FLBR);
+  void AddBaseClass(ContinuationRecordBuilder&FLBR, unsigned BaseClassId);
+  void AddClassVTShape(ContinuationRecordBuilder&FLBR);
 
   BumpPtrAllocator Allocator;
-  TypeTableBuilder TypeTable;
+  GlobalTypeTableBuilder TypeTable;
 
   ArrayDimensionsDescriptor ArrayDimentions;
   TypeIndex ClassVTableTypeIndex;
