@@ -96,6 +96,12 @@ namespace System.Text.RegularExpressions
             ValidateOptions(options);
             ValidateMatchTimeout(matchTimeout);
 
+            _useSRM = (options & RegexOptions.DFA) != 0;
+            if (_useSRM)
+                // Ignore Compiled flag if DFA is used
+                // this is to make sure the pattern is not being compiled as well as being used in SRM
+                options = options & ~RegexOptions.Compiled;
+
             this.pattern = pattern;
             internalMatchTimeout = matchTimeout;
             roptions = options;
@@ -113,24 +119,19 @@ namespace System.Text.RegularExpressions
             // Extract the relevant information
             capnames = tree.CapNames;
             capslist = tree.CapsList;
+            // code related info is relevant in DFA mode only regarding caps
+            // that are used in RegexReplacement to check absense of subtitutions
+            _code = RegexWriter.Write(tree);
+            caps = _code.Caps;
+            capsize = _code.CapSize;
+
+            InitializeReferences();
 
             // If SRM is used then construct the SMR.Regex matcher.
             // This construction fails and throws a NotSupportedException
             // if constructs that are not compatible with DFA are being used in the pattern.
-            _useSRM = (options & RegexOptions.DFA) != 0;
             if (_useSRM)
-            {
                 _srm = InitializeSRM(tree.Root, roptions & ~RegexOptions.DFA, matchTimeout, culture);
-            }
-            else
-            {
-                // code related info is only set in non-DFA mode
-                _code = RegexWriter.Write(tree);
-                caps = _code.Caps;
-                capsize = _code.CapSize;
-            }
-
-            InitializeReferences();
         }
 
         /// <summary>
@@ -147,9 +148,6 @@ namespace System.Text.RegularExpressions
             // TBD: this could also be supported easily, but is not of priority right now
             if ((options & RegexOptions.ECMAScript) != 0)
                 throw new NotSupportedException(SRM.Regex._DFA_incompatible_with + RegexOptions.ECMAScript);
-            // TBD: this will eventually be supported
-            if ((options & RegexOptions.Compiled) != 0)
-                throw new NotSupportedException(SRM.Regex._DFA_incompatible_with + RegexOptions.Compiled);
 
             return SRM.Regex.Create(rootNode, options, matchTimeout, culture);
         }

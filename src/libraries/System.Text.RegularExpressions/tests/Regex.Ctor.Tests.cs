@@ -88,7 +88,6 @@ namespace System.Text.RegularExpressions.Tests
             // DFA option is not supported together with these other options
             Assert.Throws<NotSupportedException>(() => new Regex("abc", RegexOptions.ECMAScript | RegexSRMTests.DFA));
             Assert.Throws<NotSupportedException>(() => new Regex("abc", RegexOptions.RightToLeft | RegexSRMTests.DFA));
-            Assert.Throws<NotSupportedException>(() => new Regex("abc", RegexOptions.Compiled | RegexSRMTests.DFA));
 
             // DFA option is not supported for these constructs
             Assert.Throws<NotSupportedException>(() => new Regex("(?=a)", RegexSRMTests.DFA));

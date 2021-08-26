@@ -11,6 +11,16 @@ namespace System.Text.RegularExpressions.Tests
     {
         public static IEnumerable<object[]> Replace_String_TestData()
         {
+            foreach (var data in Replace_String_TestData_Core())
+            {
+                yield return data;
+                if (!((string)data[0]).Contains(@"G") && !((string)data[2]).Contains("$") &&
+                    ((((RegexOptions)data[3]) & (RegexOptions.RightToLeft | RegexOptions.ECMAScript)) == 0))
+                    yield return new object[] { data[0], data[1], data[2], ((RegexOptions)data[3]) | RegexSRMTests.DFA, data[4], data[5], data[6]};
+            }
+        }
+        private static IEnumerable<object[]> Replace_String_TestData_Core()
+        {
             yield return new object[] { @"a", "bbbb", "c", RegexOptions.None, 4, 3, "bbbb" };
             yield return new object[] { @"", "   ", "123", RegexOptions.None, 4, 0, "123 123 123 123" };
             yield return new object[] { @"[^ ]+\s(?<time>)", "08/10/99 16:00", "${time}", RegexOptions.None, 14, 0, "16:00" };
@@ -145,6 +155,18 @@ namespace System.Text.RegularExpressions.Tests
 
         public static IEnumerable<object[]> Replace_MatchEvaluator_TestData()
         {
+            foreach (var data in Replace_MatchEvaluator_TestData_Core())
+            {
+                yield return data;
+                // Duplicate the data for DFA mode
+                // but ignore both RightToLeft and Compiled as these cases are either not supported or ignored in DFA mode
+                // also avoid \b for now
+                if ((((RegexOptions)data[3]) & (RegexOptions.RightToLeft| RegexOptions.Compiled)) == 0 && !((string)data[0]).Contains(@"\b"))
+                    yield return new object[] { data[0], data[1], data[2], (RegexOptions)data[3] | RegexSRMTests.DFA, data[4], data[5], data[6] };
+            }
+        }
+        private static IEnumerable<object[]> Replace_MatchEvaluator_TestData_Core()
+        {
             yield return new object[] { "a", "bbbb", new MatchEvaluator(match => "uhoh"), RegexOptions.None, 4, 0, "bbbb" };
             yield return new object[] { "(Big|Small)", "Big mountain", new MatchEvaluator(MatchEvaluator1), RegexOptions.None, 12, 0, "Huge mountain" };
             yield return new object[] { "(Big|Small)", "Small village", new MatchEvaluator(MatchEvaluator1), RegexOptions.None, 13, 0, "Tiny village" };
@@ -215,16 +237,22 @@ namespace System.Text.RegularExpressions.Tests
             Assert.Equal(expected, new Regex(pattern, options).Replace(input, evaluator, count, start));
         }
 
-        [Fact]
-        public void Replace_NoMatch()
+        [Theory]
+        [InlineData(RegexOptions.None)]
+        [InlineData(RegexOptions.Compiled)]
+        [InlineData(RegexSRMTests.DFA)]
+        public void Replace_NoMatch(RegexOptions options)
         {
             string input = "";
-            Assert.Same(input, Regex.Replace(input, "no-match", "replacement"));
-            Assert.Same(input, Regex.Replace(input, "no-match", new MatchEvaluator(MatchEvaluator1)));
+            Assert.Same(input, Regex.Replace(input, "no-match", "replacement", options));
+            Assert.Same(input, Regex.Replace(input, "no-match", new MatchEvaluator(MatchEvaluator1), options));
         }
 
-        [Fact]
-        public void Replace_MatchEvaluator_UniqueMatchObjects()
+        [Theory]
+        [InlineData(RegexOptions.None)]
+        [InlineData(RegexOptions.Compiled)]
+        [InlineData(RegexSRMTests.DFA)]
+        public void Replace_MatchEvaluator_UniqueMatchObjects(RegexOptions options)
         {
             const string Input = "abcdefghijklmnopqrstuvwxyz";
 
@@ -235,7 +263,7 @@ namespace System.Text.RegularExpressions.Tests
                 Assert.Equal(((char)('a' + matches.Count)).ToString(), match.Value);
                 matches.Add(match);
                 return match.Value.ToUpperInvariant();
-            });
+            }, options);
 
             Assert.Equal(26, matches.Count);
             Assert.Equal("ABCDEFGHIJKLMNOPQRSTUVWXYZ", result);
@@ -246,6 +274,8 @@ namespace System.Text.RegularExpressions.Tests
         [Theory]
         [InlineData(RegexOptions.None)]
         [InlineData(RegexOptions.RightToLeft)]
+        [InlineData(RegexOptions.Compiled)]
+        [InlineData(RegexSRMTests.DFA)]
         public void Replace_MatchEvaluatorReturnsNullOrEmpty(RegexOptions options)
         {
             string result = Regex.Replace("abcde", @"[abcd]", (Match match) => {
@@ -315,6 +345,9 @@ namespace System.Text.RegularExpressions.Tests
 
             AssertExtensions.Throws<ArgumentOutOfRangeException>("startat", () => new Regex("pattern").Replace("input", "replacement", 0, 6));
             AssertExtensions.Throws<ArgumentOutOfRangeException>("startat", () => new Regex("pattern").Replace("input", new MatchEvaluator(MatchEvaluator1), 0, 6));
+
+            // Sustitutions not supported in DFA mode
+            Assert.Throws<NotSupportedException>(() => new Regex("pattern", RegexSRMTests.DFA).Replace("input", "$0", -1));
         }
 
         public static string MatchEvaluator1(Match match) => match.Value.ToLower() == "big" ? "Huge": "Tiny";
@@ -332,5 +365,57 @@ namespace System.Text.RegularExpressions.Tests
 
         private static string MatchEvaluatorBar(Match match) => "bar";
         private static string MatchEvaluatorPoundSign(Match match) => "#";
+
+        [Theory]
+        [InlineData("[ab]+", "012aaabb34bba56", "###", 0, "012aaabb34bba56")]
+        [InlineData("[ab]+", "012aaabb34bba56", "###", -1, "012###34###56")]
+        [InlineData("[ab]+", "012aaabb34bba56", "###", 1, "012###34bba56")]
+        [InlineData(@"\b", "Hello World!", "#", 2, "#Hello# World!")]
+        [InlineData(@"\b", "Hello World!", "#$$#", -1, "#$#Hello#$# #$#World#$#!")]
+        [InlineData(@"", "hej", "  ", -1, "  h  e  j  ")]
+        [InlineData(@"\bis\b", "this is it", "${2}", -1, "this ${2} it")]
+        private void TestReplaceCornerCases(string pattern, string input, string replacement, int count, string expectedoutput)
+        {
+            RegexOptions[] testoptions = new RegexOptions[] { RegexSRMTests.DFA, RegexOptions.None, RegexOptions.Compiled };
+            foreach (var opt in testoptions)
+            {
+                var regex = new Regex(pattern, opt);
+                var output = regex.Replace(input, replacement, count);
+                Assert.Equal(expectedoutput, output);
+            }
+        }
+
+        [Theory]
+        [InlineData(@"(\$\d+):(\d+)", "it costs $500000:55 I think", "$$???:${2}", "it costs $???:55 I think")]
+        [InlineData(@"(\d+)([a-z]+)", "---12345abc---", "$2$1", "---abc12345---")]
+        private void TestReplaceWithSubstitution(string pattern, string input, string replacement, string expectedoutput)
+        {
+            RegexOptions[] testoptions = new RegexOptions[] { RegexOptions.None, RegexOptions.Compiled };
+            foreach (var opt in testoptions)
+            {
+                var output = new Regex(pattern, opt).Replace(input, replacement, -1);
+                Assert.Equal(expectedoutput, output);
+                var output2 = Regex.Replace(input, pattern, replacement, opt);
+                Assert.Equal(expectedoutput, output2);
+            }
+
+            Assert.Throws<NotSupportedException>(() => Regex.Replace(input, pattern, replacement, RegexSRMTests.DFA));
+            Assert.Throws<NotSupportedException>(() => new Regex(pattern, RegexSRMTests.DFA).Replace(input, replacement, -1));
+        }
+
+        [Theory]
+        [InlineData(@"(\bis\b)", "this is it", "this IS it")]
+        private void TestReplaceWithToUpperMatchEvaluator(string pattern, string input, string expectedoutput)
+        {
+            MatchEvaluator f = new MatchEvaluator(m => m.Value.ToUpper());
+            RegexOptions[] testoptions = new RegexOptions[] { RegexSRMTests.DFA, RegexOptions.None, RegexOptions.Compiled };
+            foreach (var opt in testoptions)
+            {
+                var output = new Regex(pattern, opt).Replace(input, f);
+                Assert.Equal(expectedoutput, output);
+                var output2 = Regex.Replace(input, pattern, f, opt);
+                Assert.Equal(expectedoutput, output2);
+            }
+        }
     }
 }
