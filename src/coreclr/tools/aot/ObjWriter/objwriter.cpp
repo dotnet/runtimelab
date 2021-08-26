@@ -835,6 +835,7 @@ void ObjectWriter::EmitDwarfFunctionInfo(const char *FunctionName,
 void ObjectWriter::EmitDebugFileInfo(int FileId, const char *FileName) {
   assert(FileId > 0 && "FileId should be greater than 0.");
   if (ObjFileInfo->getObjectFileType() == ObjFileInfo->IsCOFF) {
+    // TODO: we could pipe through the checksum and hash algorithm from the managed PDB
     ArrayRef<uint8_t> ChecksumAsBytes;
     Streamer->EmitCVFileDirective(FileId, FileName, ChecksumAsBytes, 0);
   } else {

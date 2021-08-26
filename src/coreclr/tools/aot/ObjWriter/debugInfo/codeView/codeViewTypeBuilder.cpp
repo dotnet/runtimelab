@@ -60,8 +60,8 @@ void UserDefinedCodeViewTypesBuilder::EmitTypeInformation(
 
 unsigned UserDefinedCodeViewTypesBuilder::GetEnumFieldListType(
     uint64 Count, const EnumRecordTypeDescriptor *TypeRecords) {
-  ContinuationRecordBuilder FLRB;
-  FLRB.begin(ContinuationRecordKind::FieldList);
+  ContinuationRecordBuilder CRB;
+  CRB.begin(ContinuationRecordKind::FieldList);
 #ifndef NDEBUG
   uint64 MaxInt = (unsigned int)-1;
   assert(Count <= MaxInt && "There are too many fields inside enum");
@@ -70,9 +70,9 @@ unsigned UserDefinedCodeViewTypesBuilder::GetEnumFieldListType(
     EnumRecordTypeDescriptor record = TypeRecords[i];
     EnumeratorRecord ER(MemberAccess::Public, APSInt::getUnsigned(record.Value),
                         record.Name);
-    FLRB.writeMemberType(ER);
+    CRB.writeMemberType(ER);
   }
-  return TypeTable.insertRecord(FLRB).getIndex();
+  return TypeTable.insertRecord(CRB).getIndex();
 }
 
 unsigned UserDefinedCodeViewTypesBuilder::GetEnumTypeIndex(
@@ -112,17 +112,17 @@ unsigned UserDefinedCodeViewTypesBuilder::GetCompleteClassTypeIndex(
     const DataFieldDescriptor *FieldsDescriptors,
     const StaticDataFieldDescriptor *StaticsDescriptors) {
 
-  ContinuationRecordBuilder FLBR;
-  FLBR.begin(ContinuationRecordKind::FieldList);
+  ContinuationRecordBuilder CRB;
+  CRB.begin(ContinuationRecordKind::FieldList);
 
   uint16_t memberCount = 0;
   if (ClassDescriptor.BaseClassId != 0) {
     memberCount++;
-    AddBaseClass(FLBR, ClassDescriptor.BaseClassId);
+    AddBaseClass(CRB, ClassDescriptor.BaseClassId);
   }
   else if (!ClassDescriptor.IsStruct) {
     memberCount++;
-    AddClassVTShape(FLBR);
+    AddClassVTShape(CRB);
   }
 
   for (int i = 0; i < ClassFieldsDescriptor.FieldsCount; ++i) {
@@ -132,18 +132,18 @@ unsigned UserDefinedCodeViewTypesBuilder::GetCompleteClassTypeIndex(
     if (desc.Offset == 0xFFFFFFFF)
     {
       StaticDataMemberRecord SDMR(Access, MemberBaseType, desc.Name);
-      FLBR.writeMemberType(SDMR);
+      CRB.writeMemberType(SDMR);
     }
     else
     {
       int MemberOffsetInBytes = desc.Offset;
       DataMemberRecord DMR(Access, MemberBaseType, MemberOffsetInBytes,
           desc.Name);
-      FLBR.writeMemberType(DMR);
+      CRB.writeMemberType(DMR);
     }
     memberCount++;
   }
-  TypeIndex FieldListIndex = TypeTable.insertRecord(FLBR);
+  TypeIndex FieldListIndex = TypeTable.insertRecord(CRB);
   TypeRecordKind Kind =
       ClassDescriptor.IsStruct ? TypeRecordKind::Struct : TypeRecordKind::Class;
   ClassOptions CO = GetCommonClassOptions();
@@ -160,22 +160,22 @@ unsigned UserDefinedCodeViewTypesBuilder::GetCompleteClassTypeIndex(
 unsigned UserDefinedCodeViewTypesBuilder::GetArrayTypeIndex(
     const ClassTypeDescriptor &ClassDescriptor,
     const ArrayTypeDescriptor &ArrayDescriptor) {
-  ContinuationRecordBuilder FLBR;
-  FLBR.begin(ContinuationRecordKind::FieldList);
+  ContinuationRecordBuilder CRB;
+  CRB.begin(ContinuationRecordKind::FieldList);
 
   unsigned Offset = 0;
   unsigned FieldsCount = 0;
 
   assert(ClassDescriptor.BaseClassId != 0);
 
-  AddBaseClass(FLBR, ClassDescriptor.BaseClassId);
+  AddBaseClass(CRB, ClassDescriptor.BaseClassId);
   FieldsCount++;
   Offset += TargetPointerSize;
 
   MemberAccess Access = MemberAccess::Public;
   TypeIndex IndexType = TypeIndex(SimpleTypeKind::Int32);
   DataMemberRecord CountDMR(Access, IndexType, Offset, "count");
-  FLBR.writeMemberType(CountDMR);
+  CRB.writeMemberType(CountDMR);
   FieldsCount++;
   Offset += TargetPointerSize;
 
@@ -183,7 +183,7 @@ unsigned UserDefinedCodeViewTypesBuilder::GetArrayTypeIndex(
     for (unsigned i = 0; i < ArrayDescriptor.Rank; ++i) {
       DataMemberRecord LengthDMR(Access, TypeIndex(SimpleTypeKind::Int32),
                                  Offset, ArrayDimentions.GetLengthName(i));
-      FLBR.writeMemberType(LengthDMR);
+      CRB.writeMemberType(LengthDMR);
       FieldsCount++;
       Offset += 4;
     }
@@ -191,7 +191,7 @@ unsigned UserDefinedCodeViewTypesBuilder::GetArrayTypeIndex(
     for (unsigned i = 0; i < ArrayDescriptor.Rank; ++i) {
       DataMemberRecord BoundsDMR(Access, TypeIndex(SimpleTypeKind::Int32),
                                  Offset, ArrayDimentions.GetBoundsName(i));
-      FLBR.writeMemberType(BoundsDMR);
+      CRB.writeMemberType(BoundsDMR);
       FieldsCount++;
       Offset += 4;
     }
@@ -201,10 +201,10 @@ unsigned UserDefinedCodeViewTypesBuilder::GetArrayTypeIndex(
   ArrayRecord AR(ElementTypeIndex, IndexType, ArrayDescriptor.Size, "");
   TypeIndex ArrayIndex = TypeTable.writeLeafType(AR);
   DataMemberRecord ArrayDMR(Access, ArrayIndex, Offset, "values");
-  FLBR.writeMemberType(ArrayDMR);
+  CRB.writeMemberType(ArrayDMR);
   FieldsCount++;
 
-  TypeIndex FieldListIndex = TypeTable.insertRecord(FLBR);
+  TypeIndex FieldListIndex = TypeTable.insertRecord(CRB);
 
   assert(ClassDescriptor.IsStruct == false);
   TypeRecordKind Kind = TypeRecordKind::Class;
@@ -301,17 +301,17 @@ unsigned UserDefinedCodeViewTypesBuilder::GetPrimitiveTypeIndex(PrimitiveTypeFla
   }
 }
 
-void UserDefinedCodeViewTypesBuilder::AddBaseClass(ContinuationRecordBuilder &FLBR,
+void UserDefinedCodeViewTypesBuilder::AddBaseClass(ContinuationRecordBuilder &CRB,
                                            unsigned BaseClassId) {
   MemberAttributes def;
   TypeIndex BaseTypeIndex(BaseClassId);
   BaseClassRecord BCR(def, BaseTypeIndex, 0);
-  FLBR.writeMemberType(BCR);
+  CRB.writeMemberType(BCR);
 }
 
-void UserDefinedCodeViewTypesBuilder::AddClassVTShape(ContinuationRecordBuilder &FLBR) {
+void UserDefinedCodeViewTypesBuilder::AddClassVTShape(ContinuationRecordBuilder &CRB) {
   VFPtrRecord VfPtr(VFuncTabTypeIndex);
-  FLBR.writeMemberType(VfPtr);
+  CRB.writeMemberType(VfPtr);
 }
 
 const char *ArrayDimensionsDescriptor::GetLengthName(unsigned index) {
