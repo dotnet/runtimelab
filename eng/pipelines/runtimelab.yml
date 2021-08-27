@@ -68,7 +68,7 @@ stages:
         jobParameters:
           timeoutInMinutes: 100
           testGroup: innerloop
-          buildArgs: -s nativeaot+libs+nativeaot.packages -lc release -rc debug
+          buildArgs: -s nativeaot+libs+nativeaot.packages -lc Release -rc Debug
           extraStepsTemplate: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
 
   #
@@ -85,7 +85,7 @@ stages:
         jobParameters:
           timeoutInMinutes: 100
           testGroup: innerloop
-          buildArgs: -s nativeaot+libs+nativeaot.packages -lc release -rc checked
+          buildArgs: -s nativeaot+libs+nativeaot.packages -lc Release -rc Checked
           extraStepsTemplate: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
 
   #
@@ -106,7 +106,7 @@ stages:
         timeoutInMinutes: 100
         isOfficialBuild: ${{ variables.isOfficialBuild }}
         testGroup: innerloop
-        buildArgs: -s nativeaot.objwriter+nativeaot+libs+nativeaot.packages -c release
+        buildArgs: -s nativeaot.objwriter+nativeaot+libs+nativeaot.packages -c Release
         extraStepsTemplate: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
         extraStepsParameters:
           uploadIntermediateArtifacts: ${{ variables.isOfficialBuild }}
