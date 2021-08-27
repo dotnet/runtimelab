@@ -15,8 +15,10 @@ steps:
 - ${{ if ne(parameters.archType, 'arm64') }}:
 
   - ${{ if eq(parameters.buildConfig, 'Release') }}:
+    - script: $(Build.SourcesDirectory)/build$(scriptExt) libs.tests -c Release
+      displayName: Build libraries tests
     - script: $(Build.SourcesDirectory)/build$(scriptExt) libs.tests -c Release -test
-      displayName: Build and run libraries tests
+      displayName: Run libraries tests
 
   # Build coreclr native test output
   - ${{ if eq(parameters.osGroup, 'windows') }}:
