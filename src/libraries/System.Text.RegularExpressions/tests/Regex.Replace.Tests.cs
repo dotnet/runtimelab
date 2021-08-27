@@ -11,16 +11,6 @@ namespace System.Text.RegularExpressions.Tests
     {
         public static IEnumerable<object[]> Replace_String_TestData()
         {
-            foreach (var data in Replace_String_TestData_Core())
-            {
-                yield return data;
-                if (!((string)data[0]).Contains(@"G") && !((string)data[2]).Contains("$") &&
-                    ((((RegexOptions)data[3]) & (RegexOptions.RightToLeft | RegexOptions.ECMAScript)) == 0))
-                    yield return new object[] { data[0], data[1], data[2], ((RegexOptions)data[3]) | RegexSRMTests.DFA, data[4], data[5], data[6]};
-            }
-        }
-        private static IEnumerable<object[]> Replace_String_TestData_Core()
-        {
             yield return new object[] { @"a", "bbbb", "c", RegexOptions.None, 4, 3, "bbbb" };
             yield return new object[] { @"", "   ", "123", RegexOptions.None, 4, 0, "123 123 123 123" };
             yield return new object[] { @"[^ ]+\s(?<time>)", "08/10/99 16:00", "${time}", RegexOptions.None, 14, 0, "16:00" };
@@ -115,7 +105,26 @@ namespace System.Text.RegularExpressions.Tests
             yield return new object[] { @"\Ga", "aaaaa", "b", RegexOptions.None, 5, 0, "bbbbb" };
         }
 
+        public static IEnumerable<object[]> Replace_String_TestData_DFA()
+        {
+            yield return new object[] { @"a", "bbbb", "c", RegexSRMTests.DFA, 4, 3, "bbbb" };
+            yield return new object[] { @"", "   ", "123", RegexSRMTests.DFA, 4, 0, "123 123 123 123" };
+            yield return new object[] { "icrosoft", "MiCrOsOfT", "icrosoft", RegexOptions.IgnoreCase | RegexSRMTests.DFA, 9, 0, "Microsoft" };
+            yield return new object[] { "dog", "my dog has fleas", "CAT", RegexOptions.IgnoreCase | RegexSRMTests.DFA, 16, 0, "my CAT has fleas" };
+            yield return new object[] { "a", "aaaaa", "b", RegexSRMTests.DFA, 2, 0, "bbaaa" };
+            yield return new object[] { "a", "aaaaa", "b", RegexSRMTests.DFA, 2, 3, "aaabb" };
+
+            // Stress
+            yield return new object[] { ".", new string('a', 1000), "b", RegexSRMTests.DFA, 1000, 0, new string('b', 1000) };
+
+            // Undefined groups
+            yield return new object[] { "([a_z])(.+)", "abc", "$3", RegexSRMTests.DFA, 3, 0, "$3" };
+            yield return new object[] { @"(?<256>cat)\s*(?<512>dog)", "slkfjsdcat dogkljeah", "STARTcat$2048$1024dogEND", RegexSRMTests.DFA, 20, 0, "slkfjsdSTARTcat$2048$1024dogENDkljeah" };
+            yield return new object[] { @"(?<cat>cat)\s*(?<dog>dog)", "slkfjsdcat dogkljeah", "START${catTWO}dogcat${dogTWO}END", RegexSRMTests.DFA, 20, 0, "slkfjsdSTART${catTWO}dogcat${dogTWO}ENDkljeah" };
+        }
+
         [Theory]
+        [MemberData(nameof(Replace_String_TestData_DFA))]
         [MemberData(nameof(Replace_String_TestData))]
         [MemberData(nameof(RegexCompilationHelper.TransformRegexOptions), nameof(Replace_String_TestData), 3, MemberType = typeof(RegexCompilationHelper))]
         public void Replace(string pattern, string input, string replacement, RegexOptions options, int count, int start, string expected)
