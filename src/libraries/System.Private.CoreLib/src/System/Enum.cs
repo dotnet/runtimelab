@@ -361,6 +361,7 @@ namespace System
 
             return FindDefinedIndex(ulValues, ulValue) >= 0;
         }
+#endif
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static int FindDefinedIndex(ulong[] ulValues, ulong ulValue)
@@ -377,6 +378,7 @@ namespace System
                 SpanHelpers.BinarySearch(ref start, ulValuesLength, ulValue);
         }
 
+#if !CORERT
         public static bool IsDefined(Type enumType, object value)
         {
             if (enumType is null)
