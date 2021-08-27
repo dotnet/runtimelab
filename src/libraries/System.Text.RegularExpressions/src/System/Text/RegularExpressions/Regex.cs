@@ -98,10 +98,11 @@ namespace System.Text.RegularExpressions
 
             _useSRM = (options & RegexOptions.DFA) != 0;
             if (_useSRM)
+            {
                 // Ignore Compiled flag if DFA is used
                 // this is to make sure the pattern is not being compiled as well as being used in SRM
                 options = options & ~RegexOptions.Compiled;
-
+            } 
             this.pattern = pattern;
             internalMatchTimeout = matchTimeout;
             roptions = options;
@@ -120,7 +121,7 @@ namespace System.Text.RegularExpressions
             capnames = tree.CapNames;
             capslist = tree.CapsList;
             // code related info is relevant in DFA mode only regarding caps
-            // that are used in RegexReplacement to check absense of subtitutions
+            // that are used in RegexReplacement to check absence of subtitutions
             _code = RegexWriter.Write(tree);
             caps = _code.Caps;
             capsize = _code.CapSize;
