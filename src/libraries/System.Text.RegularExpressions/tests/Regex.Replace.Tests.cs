@@ -346,7 +346,7 @@ namespace System.Text.RegularExpressions.Tests
             AssertExtensions.Throws<ArgumentOutOfRangeException>("startat", () => new Regex("pattern").Replace("input", "replacement", 0, 6));
             AssertExtensions.Throws<ArgumentOutOfRangeException>("startat", () => new Regex("pattern").Replace("input", new MatchEvaluator(MatchEvaluator1), 0, 6));
 
-            // Sustitutions not supported in DFA mode
+            // Substitutions not supported in DFA mode
             Assert.Throws<NotSupportedException>(() => new Regex("pattern", RegexSRMTests.DFA).Replace("input", "$0", -1));
         }
 
