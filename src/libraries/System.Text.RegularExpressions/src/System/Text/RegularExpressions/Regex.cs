@@ -98,10 +98,11 @@ namespace System.Text.RegularExpressions
 
             _useSRM = (options & RegexOptions.DFA) != 0;
             if (_useSRM)
+            {
                 // Ignore Compiled flag if DFA is used
                 // this is to make sure the pattern is not being compiled as well as being used in SRM
                 options = options & ~RegexOptions.Compiled;
-
+            } 
             this.pattern = pattern;
             internalMatchTimeout = matchTimeout;
             roptions = options;
