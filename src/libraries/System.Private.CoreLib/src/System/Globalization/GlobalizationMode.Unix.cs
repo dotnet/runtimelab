@@ -22,7 +22,10 @@ namespace System.Globalization
                 }
                 else
                 {
-                    int loaded = Interop.Globalization.LoadICU();
+#if TARGET_WASM // Wasm for NativeAOT is not including ICU (emscripten flag -s USE_ICU is not set) and even if it did, attempting to dlopen any ICU libraries is going to fail.
+                    return true;
+#else
+                    int loaded = LoadICU();
                     if (loaded == 0 && !OperatingSystem.IsBrowser())
                     {
                         // This can't go into resources, because a resource lookup requires globalization, which requires ICU
@@ -35,6 +38,7 @@ namespace System.Globalization
 
                     // fallback to Invariant mode if LoadICU failed (Browser).
                     return loaded == 0;
+#endif
                 }
             }
             return invariantEnabled;

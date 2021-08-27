@@ -48,37 +48,54 @@ bool Compiler::fgHaveProfileData()
 }
 
 //------------------------------------------------------------------------
-// fgComputeProfileScale: determine how much scaling to apply
-//   to raw profile count data.
+// fgApplyProfileScale: scale inlinee counts by appropriate scale factor
 //
-// Notes:
-//   Scaling is only needed for inlinees, and the results of this
-//   computation are recorded in fields of impInlineInfo.
-//
-void Compiler::fgComputeProfileScale()
+void Compiler::fgApplyProfileScale()
 {
     // Only applicable to inlinees
-    assert(compIsForInlining());
-
-    // Have we already determined the scale?
-    if (impInlineInfo->profileScaleState != InlineInfo::ProfileScaleState::UNDETERMINED)
+    //
+    if (!compIsForInlining())
     {
         return;
     }
 
-    // No, not yet -- try and compute the scale.
     JITDUMP("Computing inlinee profile scale:\n");
 
-    // Call site has profile weight?
+    // Callee has profile data?
     //
-    // Todo: handle case of unprofiled caller invoking profiled callee.
+    if (!fgHaveProfileData())
+    {
+        // No; we will carry on nonetheless.
+        //
+        JITDUMP("   ... no callee profile data, will use non-pgo weight to scale\n");
+    }
+
+    // Ostensibly this should be fgCalledCount for the callee, but that's not available
+    // as it requires some analysis.
+    //
+    // For most callees it will be the same as the entry block count.
+    //
+    // Note when/if we early do normalization this may need to change.
+    //
+    BasicBlock::weight_t calleeWeight = fgFirstBB->bbWeight;
+
+    // Callee entry weight is nonzero?
+    // If so, just choose the smallest plausible weight.
+    //
+    if (calleeWeight == BB_ZERO_WEIGHT)
+    {
+        calleeWeight = fgHaveProfileData() ? 1.0f : BB_UNITY_WEIGHT;
+        JITDUMP("   ... callee entry has weight zero, will use weight of " FMT_WT " to scale\n", calleeWeight);
+    }
+
+    // Call site has profile weight?
     //
     const BasicBlock* callSiteBlock = impInlineInfo->iciBlock;
     if (!callSiteBlock->hasProfileWeight())
     {
-        JITDUMP("   ... call site not profiled\n");
-        impInlineInfo->profileScaleState = InlineInfo::ProfileScaleState::UNAVAILABLE;
-        return;
+        // No? We will carry on nonetheless.
+        //
+        JITDUMP("   ... call site not profiled, will use non-pgo weight to scale\n");
     }
 
     const BasicBlock::weight_t callSiteWeight = callSiteBlock->bbWeight;
@@ -88,39 +105,14 @@ void Compiler::fgComputeProfileScale()
     // Todo: perhaps retain some semblance of callee profile data,
     // possibly scaled down severely.
     //
-    if (callSiteWeight == 0)
+    // You might wonder why we bother to inline at cold sites.
+    // Recall ALWAYS and FORCE inlines bypass all profitability checks.
+    // And, there can be hot-path benefits to a cold-path inline.
+    //
+    if (callSiteWeight == BB_ZERO_WEIGHT)
     {
-        JITDUMP("   ... zero call site count\n");
-        impInlineInfo->profileScaleState = InlineInfo::ProfileScaleState::UNAVAILABLE;
-        return;
+        JITDUMP("   ... zero call site count; scale will be 0.0\n");
     }
-
-    // Callee has profile data?
-    //
-    if (!fgHaveProfileData())
-    {
-        JITDUMP("   ... no callee profile data\n");
-        impInlineInfo->profileScaleState = InlineInfo::ProfileScaleState::UNAVAILABLE;
-        return;
-    }
-
-    // Find callee's unscaled entry weight.
-    //
-    // Ostensibly this should be fgCalledCount for the callee, but that's not available
-    // as it requires some analysis.
-    //
-    // For most callees it will be the same as the entry block count.
-    //
-    if (!fgFirstBB->hasProfileWeight())
-    {
-        JITDUMP("   ... no callee profile data for entry block\n");
-        impInlineInfo->profileScaleState = InlineInfo::ProfileScaleState::UNAVAILABLE;
-        return;
-    }
-
-    // Note when/if we early do normalization this may need to change.
-    //
-    BasicBlock::weight_t const calleeWeight = fgFirstBB->bbWeight;
 
     // If profile data reflects a complete single run we can expect
     // calleeWeight >= callSiteWeight.
@@ -131,20 +123,18 @@ void Compiler::fgComputeProfileScale()
     // So, we are willing to scale the callee counts down or up as
     // needed to match the call site.
     //
-    if (calleeWeight == BB_ZERO_WEIGHT)
-    {
-        JITDUMP("   ... callee entry count is zero\n");
-        impInlineInfo->profileScaleState = InlineInfo::ProfileScaleState::UNAVAILABLE;
-        return;
-    }
-
     // Hence, scale can be somewhat arbitrary...
     //
-    const double scale                = ((double)callSiteWeight) / calleeWeight;
-    impInlineInfo->profileScaleFactor = scale;
-    impInlineInfo->profileScaleState  = InlineInfo::ProfileScaleState::KNOWN;
+    const BasicBlock::weight_t scale = callSiteWeight / calleeWeight;
 
-    JITDUMP("   call site count %f callee entry count %f scale %f\n", callSiteWeight, calleeWeight, scale);
+    JITDUMP("   call site count " FMT_WT " callee entry count " FMT_WT " scale " FMT_WT "\n", callSiteWeight,
+            calleeWeight, scale);
+    JITDUMP("Scaling inlinee blocks\n");
+
+    for (BasicBlock* bb = fgFirstBB; bb != nullptr; bb = bb->bbNext)
+    {
+        bb->scaleBBWeight(scale);
+    }
 }
 
 //------------------------------------------------------------------------
@@ -175,7 +165,7 @@ bool Compiler::fgGetProfileWeightForBasicBlock(IL_OFFSET offset, BasicBlock::wei
 
         if (hash % 3 == 0)
         {
-            weight = 0;
+            weight = BB_ZERO_WEIGHT;
         }
         else if (hash % 11 == 0)
         {
@@ -187,7 +177,7 @@ bool Compiler::fgGetProfileWeightForBasicBlock(IL_OFFSET offset, BasicBlock::wei
         }
 
         // The first block is never given a weight of zero
-        if ((offset == 0) && (weight == 0))
+        if ((offset == 0) && (weight == BB_ZERO_WEIGHT))
         {
             weight = (BasicBlock::weight_t)1 + (hash % 5);
         }
@@ -280,8 +270,11 @@ public:
 //
 class BlockCountInstrumentor : public Instrumentor
 {
+private:
+    BasicBlock* m_entryBlock;
+
 public:
-    BlockCountInstrumentor(Compiler* comp) : Instrumentor(comp)
+    BlockCountInstrumentor(Compiler* comp) : Instrumentor(comp), m_entryBlock(nullptr)
     {
     }
     bool ShouldProcess(BasicBlock* block) override
@@ -348,6 +341,15 @@ void BlockCountInstrumentor::BuildSchemaElements(BasicBlock* block, Schema& sche
     schema.push_back(schemaElem);
 
     m_schemaCount++;
+
+    // If this is the entry block, remember it for later.
+    // Note it might not be fgFirstBB, if we have a scratchBB.
+    //
+    if (offset == 0)
+    {
+        assert(m_entryBlock == nullptr);
+        m_entryBlock = block;
+    }
 }
 
 //------------------------------------------------------------------------
@@ -406,11 +408,14 @@ void BlockCountInstrumentor::InstrumentMethodEntry(Schema& schema, BYTE* profile
 
     // Find the address of the entry block's counter.
     //
-    BasicBlock* const block            = m_comp->fgFirstBB;
-    const int         firstSchemaIndex = block->bbCountSchemaIndex;
-    assert(block->bbCodeOffs == (IL_OFFSET)schema[firstSchemaIndex].ILOffset);
+    assert(m_entryBlock != nullptr);
+    assert(m_entryBlock->bbCodeOffs == 0);
+
+    const int firstSchemaIndex = (int)m_entryBlock->bbCountSchemaIndex;
+    assert((IL_OFFSET)schema[firstSchemaIndex].ILOffset == 0);
     assert(schema[firstSchemaIndex].InstrumentationKind == ICorJitInfo::PgoInstrumentationKind::BasicBlockIntCount);
-    size_t addrOfFirstExecutionCount = (size_t)(schema[firstSchemaIndex].Offset + profileMemory);
+
+    const size_t addrOfFirstExecutionCount = (size_t)(schema[firstSchemaIndex].Offset + profileMemory);
 
     GenTree* arg;
 
@@ -435,20 +440,29 @@ void BlockCountInstrumentor::InstrumentMethodEntry(Schema& schema, BYTE* profile
         arg = m_comp->gtNewIconEmbMethHndNode(info.compMethodHnd);
     }
 
+    // We want to call CORINFO_HELP_BBT_FCN_ENTER just one time,
+    // the first time this method is called. So make the call conditional
+    // on the entry block's profile count.
+    //
     GenTreeCall::Use* args = m_comp->gtNewCallArgs(arg);
     GenTree*          call = m_comp->gtNewHelperCallNode(CORINFO_HELP_BBT_FCN_ENTER, TYP_VOID, args);
 
     // Read Basic-Block count value
+    //
     GenTree* valueNode = m_comp->gtNewIndOfIconHandleNode(TYP_INT, addrOfFirstExecutionCount, GTF_ICON_BBC_PTR, false);
 
     // Compare Basic-Block count value against zero
+    //
     GenTree*   relop = m_comp->gtNewOperNode(GT_NE, TYP_INT, valueNode, m_comp->gtNewIconNode(0, TYP_INT));
     GenTree*   colon = new (m_comp, GT_COLON) GenTreeColon(TYP_VOID, m_comp->gtNewNothingNode(), call);
     GenTree*   cond  = m_comp->gtNewQmarkNode(TYP_VOID, relop, colon);
     Statement* stmt  = m_comp->gtNewStmt(cond);
 
+    // Add this check into the scratch block entry so we only do the check once per call.
+    // If we put it in block we may be putting it inside a loop.
+    //
     m_comp->fgEnsureFirstBBisScratch();
-    m_comp->fgInsertStmtAtEnd(block, stmt);
+    m_comp->fgInsertStmtAtEnd(m_comp->fgFirstBB, stmt);
 }
 
 //------------------------------------------------------------------------
@@ -1462,35 +1476,48 @@ PhaseStatus Compiler::fgPrepareToInstrumentMethod()
 
     // Choose instrumentation technology.
     //
+    // We enable edge profiling by default, except when:
+    // * disabled by option
+    // * we are prejitting
+    // * we are jitting osr methods
+    //
     // Currently, OSR is incompatible with edge profiling. So if OSR is enabled,
     // always do block profiling.
     //
     // Note this incompatibility only exists for methods that actually have
     // patchpoints, but we won't know that until we import.
     //
-    const bool methodMayHavePatchpoints =
-        (opts.jitFlags->IsSet(JitFlags::JIT_FLAG_TIER0) && (JitConfig.TC_OnStackReplacement() > 0));
+    CLANG_FORMAT_COMMENT_ANCHOR;
 
-    if ((JitConfig.JitEdgeProfiling() > 0) && !methodMayHavePatchpoints)
+    const bool prejit = opts.jitFlags->IsSet(JitFlags::JIT_FLAG_PREJIT);
+    const bool osr    = (opts.jitFlags->IsSet(JitFlags::JIT_FLAG_TIER0) && (JitConfig.TC_OnStackReplacement() > 0));
+    const bool useEdgeProfiles = (JitConfig.JitEdgeProfiling() > 0) && !prejit && !osr;
+
+    if (useEdgeProfiles)
     {
         fgCountInstrumentor = new (this, CMK_Pgo) EfficientEdgeCountInstrumentor(this);
     }
     else
     {
-        if (JitConfig.JitEdgeProfiling() > 0)
-        {
-            JITDUMP("OSR and edge profiling not yet compatible; using block profiling\n");
-        }
+        JITDUMP("Using block profiling, because %s\n",
+                (JitConfig.JitEdgeProfiling() > 0) ? "edge profiles disabled" : prejit ? "prejitting" : "OSR");
 
         fgCountInstrumentor = new (this, CMK_Pgo) BlockCountInstrumentor(this);
     }
 
-    if (JitConfig.JitClassProfiling() > 0)
+    // Enable class profiling by default, when jitting.
+    // Todo: we may also want this on by default for prejitting.
+    //
+    const bool useClassProfiles = (JitConfig.JitClassProfiling() > 0) && !prejit;
+    if (useClassProfiles)
     {
         fgClassInstrumentor = new (this, CMK_Pgo) ClassProbeInstrumentor(this);
     }
     else
     {
+        JITDUMP("Not doing class profiling, because %s\n",
+                (JitConfig.JitClassProfiling() > 0) ? "class profiles disabled" : "prejit");
+
         fgClassInstrumentor = new (this, CMK_Pgo) NonInstrumentor(this);
     }
 
@@ -1550,13 +1577,29 @@ PhaseStatus Compiler::fgInstrumentMethod()
     //
     assert(fgClassInstrumentor->SchemaCount() == info.compClassProbeCount);
 
-    // Optionally, if there were no class probes and only one count probe,
+    // Optionally, when jitting, if there were no class probes and only one count probe,
     // suppress instrumentation.
     //
-    if ((JitConfig.JitMinimalProfiling() > 0) && (fgCountInstrumentor->SchemaCount() == 1) &&
-        (fgClassInstrumentor->SchemaCount() == 0))
+    // We leave instrumentation in place when prejitting as the sample hits in the method
+    // may be used to determine if the method should be prejitted or not.
+    //
+    // For jitting, no information is conveyed by the count in a single=block method.
+    //
+    bool minimalProbeMode = false;
+
+    if (opts.jitFlags->IsSet(JitFlags::JIT_FLAG_PREJIT))
     {
-        JITDUMP("Not instrumenting method: only one counter, and no class probes\n");
+        minimalProbeMode = (JitConfig.JitMinimalPrejitProfiling() > 0);
+    }
+    else
+    {
+        minimalProbeMode = (JitConfig.JitMinimalJitProfiling() > 0);
+    }
+
+    if (minimalProbeMode && (fgCountInstrumentor->SchemaCount() == 1) && (fgClassInstrumentor->SchemaCount() == 0))
+    {
+        JITDUMP(
+            "Not instrumenting method: minimal probing enabled, and method has only one counter and no class probes\n");
         return PhaseStatus::MODIFIED_NOTHING;
     }
 
@@ -1626,6 +1669,7 @@ PhaseStatus Compiler::fgInstrumentMethod()
 
 //------------------------------------------------------------------------
 // fgIncorporateProfileData: add block/edge profile data to the flowgraph
+//   and compute profile scale for inlinees
 //
 // Returns:
 //   appropriate phase status
@@ -1638,6 +1682,7 @@ PhaseStatus Compiler::fgIncorporateProfileData()
     {
         JITDUMP("JitStress -- incorporating random profile data\n");
         fgIncorporateBlockCounts();
+        fgApplyProfileScale();
         return PhaseStatus::MODIFIED_EVERYTHING;
     }
 
@@ -1645,6 +1690,8 @@ PhaseStatus Compiler::fgIncorporateProfileData()
     //
     if (!fgHaveProfileData())
     {
+        // No...
+        //
         if (opts.jitFlags->IsSet(JitFlags::JIT_FLAG_BBOPT))
         {
             JITDUMP("BBOPT set, but no profile data available (hr=%08x)\n", fgPgoQueryResult);
@@ -1653,7 +1700,12 @@ PhaseStatus Compiler::fgIncorporateProfileData()
         {
             JITDUMP("BBOPT not set\n");
         }
-        return PhaseStatus::MODIFIED_NOTHING;
+
+        // Scale the "synthetic" block weights.
+        //
+        fgApplyProfileScale();
+
+        return compIsForInlining() ? PhaseStatus::MODIFIED_EVERYTHING : PhaseStatus::MODIFIED_NOTHING;
     }
 
     // Summarize profile data
@@ -1714,13 +1766,9 @@ PhaseStatus Compiler::fgIncorporateProfileData()
         fgIncorporateEdgeCounts();
     }
 
-    // Now that we have profile data, compute the profile scale for inlinees,
-    // if we haven'd done so already.
+    // Scale data as appropriate
     //
-    if (compIsForInlining())
-    {
-        fgComputeProfileScale();
-    }
+    fgApplyProfileScale();
 
     return PhaseStatus::MODIFIED_EVERYTHING;
 }
@@ -1738,27 +1786,7 @@ PhaseStatus Compiler::fgIncorporateProfileData()
 //
 void Compiler::fgSetProfileWeight(BasicBlock* block, BasicBlock::weight_t profileWeight)
 {
-    // Scale count appropriately for inlinees.
-    //
-    if (compIsForInlining())
-    {
-        if (impInlineInfo->profileScaleState == InlineInfo::ProfileScaleState::KNOWN)
-        {
-            double scaledWeight = impInlineInfo->profileScaleFactor * profileWeight;
-            profileWeight       = (BasicBlock::weight_t)scaledWeight;
-        }
-    }
-
     block->setBBProfileWeight(profileWeight);
-
-    if (profileWeight == BB_ZERO_WEIGHT)
-    {
-        block->bbSetRunRarely();
-    }
-    else
-    {
-        block->bbFlags &= ~BBF_RUN_RARELY;
-    }
 
 #if HANDLER_ENTRY_MUST_BE_IN_HOT_SECTION
     // Handle a special case -- some handler entries can't have zero profile count.
@@ -1776,8 +1804,6 @@ void Compiler::fgSetProfileWeight(BasicBlock* block, BasicBlock::weight_t profil
 //   and set block weights
 //
 // Notes:
-//   Count data for inlinees is scaled (usually down).
-//
 //   Since we are now running before the importer, we do not know which
 //   blocks will be imported, and we should not see any internal blocks.
 //
@@ -1985,6 +2011,7 @@ private:
     bool m_mismatch;
     bool m_negativeCount;
     bool m_failedToConverge;
+    bool m_allWeightsZero;
 
 public:
     EfficientEdgeCountReconstructor(Compiler* comp)
@@ -2002,6 +2029,7 @@ public:
         , m_mismatch(false)
         , m_negativeCount(false)
         , m_failedToConverge(false)
+        , m_allWeightsZero(true)
     {
     }
 
@@ -2132,49 +2160,49 @@ void EfficientEdgeCountReconstructor::Prepare()
                 // Optimization TODO: if profileCount is zero, we can just ignore this edge
                 // and the right things will happen.
                 //
-                uint32_t const profileCount = *(uint32_t*)(m_comp->fgPgoData + schemaEntry.Offset);
+                uint32_t const             profileCount = *(uint32_t*)(m_comp->fgPgoData + schemaEntry.Offset);
+                BasicBlock::weight_t const weight       = (BasicBlock::weight_t)profileCount;
+
+                m_allWeightsZero &= (profileCount == 0);
+
+                // Find the blocks.
+                //
+                BasicBlock* sourceBlock = nullptr;
+
+                if (!m_keyToBlockMap.Lookup(schemaEntry.ILOffset, &sourceBlock))
                 {
-                    BasicBlock::weight_t const weight = (BasicBlock::weight_t)profileCount;
-
-                    // Find the blocks.
-                    //
-                    BasicBlock* sourceBlock = nullptr;
-
-                    if (!m_keyToBlockMap.Lookup(schemaEntry.ILOffset, &sourceBlock))
-                    {
-                        JITDUMP("Could not find source block for schema entry %d (IL offset/key %08x\n", iSchema,
-                                schemaEntry.ILOffset);
-                    }
-
-                    BasicBlock* targetBlock = nullptr;
-
-                    if (!m_keyToBlockMap.Lookup(schemaEntry.Other, &targetBlock))
-                    {
-                        JITDUMP("Could not find target block for schema entry %d (IL offset/key %08x\n", iSchema,
-                                schemaEntry.ILOffset);
-                    }
-
-                    if ((sourceBlock == nullptr) || (targetBlock == nullptr))
-                    {
-                        // Looks like there is skew between schema and graph.
-                        //
-                        Mismatch();
-                        continue;
-                    }
-
-                    Edge* const edge = new (m_allocator) Edge(sourceBlock, targetBlock);
-
-                    JITDUMP("... adding known edge " FMT_BB " -> " FMT_BB ": weight %0f\n", edge->m_sourceBlock->bbNum,
-                            edge->m_targetBlock->bbNum, weight);
-
-                    edge->m_weightKnown = true;
-                    edge->m_weight      = weight;
-
-                    EdgeKey edgeKey(schemaEntry.ILOffset, schemaEntry.Other);
-                    m_edgeKeyToEdgeMap.Set(edgeKey, edge);
-
-                    m_edges++;
+                    JITDUMP("Could not find source block for schema entry %d (IL offset/key %08x\n", iSchema,
+                            schemaEntry.ILOffset);
                 }
+
+                BasicBlock* targetBlock = nullptr;
+
+                if (!m_keyToBlockMap.Lookup(schemaEntry.Other, &targetBlock))
+                {
+                    JITDUMP("Could not find target block for schema entry %d (IL offset/key %08x\n", iSchema,
+                            schemaEntry.ILOffset);
+                }
+
+                if ((sourceBlock == nullptr) || (targetBlock == nullptr))
+                {
+                    // Looks like there is skew between schema and graph.
+                    //
+                    Mismatch();
+                    continue;
+                }
+
+                Edge* const edge = new (m_allocator) Edge(sourceBlock, targetBlock);
+
+                JITDUMP("... adding known edge " FMT_BB " -> " FMT_BB ": weight " FMT_WT "\n",
+                        edge->m_sourceBlock->bbNum, edge->m_targetBlock->bbNum, weight);
+
+                edge->m_weightKnown = true;
+                edge->m_weight      = weight;
+
+                EdgeKey edgeKey(schemaEntry.ILOffset, schemaEntry.Other);
+                m_edgeKeyToEdgeMap.Set(edgeKey, edge);
+
+                m_edges++;
             }
             break;
 
@@ -2191,9 +2219,10 @@ void EfficientEdgeCountReconstructor::Solve()
 {
     // If issues arose earlier, then don't try solving.
     //
-    if (m_badcode || m_mismatch)
+    if (m_badcode || m_mismatch || m_allWeightsZero)
     {
-        JITDUMP("... not solving because of the %s\n", m_badcode ? "badcode" : "mismatch")
+        JITDUMP("... not solving because of the %s\n",
+                m_badcode ? "badcode" : m_allWeightsZero ? "zero counts" : "mismatch");
         return;
     }
 
@@ -2238,11 +2267,11 @@ void EfficientEdgeCountReconstructor::Solve()
                                     edge->m_sourceBlock->bbNum, edge->m_targetBlock->bbNum);
                         }
                         assert(edge->m_weightKnown);
-                        JITDUMP("  " FMT_BB " -> " FMT_BB " has weight %0f\n", edge->m_sourceBlock->bbNum,
+                        JITDUMP("  " FMT_BB " -> " FMT_BB " has weight " FMT_WT "\n", edge->m_sourceBlock->bbNum,
                                 edge->m_targetBlock->bbNum, edge->m_weight);
                         weight += edge->m_weight;
                     }
-                    JITDUMP(FMT_BB ": all incoming edge weights known, sum is %0f\n", block->bbNum, weight);
+                    JITDUMP(FMT_BB ": all incoming edge weights known, sum is " FMT_WT "\n", block->bbNum, weight);
                     weightKnown = true;
                 }
                 else if (info->m_outgoingUnknown == 0)
@@ -2256,11 +2285,11 @@ void EfficientEdgeCountReconstructor::Solve()
                                     edge->m_sourceBlock->bbNum, edge->m_targetBlock->bbNum);
                         }
                         assert(edge->m_weightKnown);
-                        JITDUMP("  " FMT_BB " -> " FMT_BB " has weight %0f\n", edge->m_sourceBlock->bbNum,
+                        JITDUMP("  " FMT_BB " -> " FMT_BB " has weight " FMT_WT "\n", edge->m_sourceBlock->bbNum,
                                 edge->m_targetBlock->bbNum, edge->m_weight);
                         weight += edge->m_weight;
                     }
-                    JITDUMP(FMT_BB ": all outgoing edge weights known, sum is %0f\n", block->bbNum, weight);
+                    JITDUMP(FMT_BB ": all outgoing edge weights known, sum is " FMT_WT "\n", block->bbNum, weight);
                     weightKnown = true;
                 }
 
@@ -2304,7 +2333,8 @@ void EfficientEdgeCountReconstructor::Solve()
                 weight = info->m_weight - weight;
 
                 JITDUMP(FMT_BB " -> " FMT_BB
-                               ": target block weight and all other incoming edge weights known, so weight is %0f\n",
+                               ": target block weight and all other incoming edge weights known, so weight is " FMT_WT
+                               "\n",
                         resolvedEdge->m_sourceBlock->bbNum, resolvedEdge->m_targetBlock->bbNum, weight);
 
                 // If we arrive at a negative count for this edge, set it to zero.
@@ -2350,7 +2380,8 @@ void EfficientEdgeCountReconstructor::Solve()
                 weight = info->m_weight - weight;
 
                 JITDUMP(FMT_BB " -> " FMT_BB
-                               ": source block weight and all other outgoing edge weights known, so weight is %0f\n",
+                               ": source block weight and all other outgoing edge weights known, so weight is " FMT_WT
+                               "\n",
                         resolvedEdge->m_sourceBlock->bbNum, resolvedEdge->m_targetBlock->bbNum, weight);
 
                 // If we arrive at a negative count for this edge, set it to zero.
@@ -2376,58 +2407,93 @@ void EfficientEdgeCountReconstructor::Solve()
         }
     }
 
-    if (m_unknownBlocks == 0)
-    {
-        JITDUMP("\nSolver: converged in %u passes\n", nPasses);
-    }
-    else
+    if (m_unknownBlocks != 0)
     {
         JITDUMP("\nSolver: failed to converge in %u passes, %u blocks and %u edges remain unsolved\n", nPasses,
                 m_unknownBlocks, m_unknownEdges);
         FailedToConverge();
+        return;
+    }
+
+    JITDUMP("\nSolver: converged in %u passes\n", nPasses);
+
+    // If, after solving, the entry weight ends up as zero, set it to
+    // the max of the weight of successor edges or join-free successor
+    // block weight. We do this so we can determine a plausible scale
+    // count.
+    //
+    // This can happen for methods that do not return (say they always
+    // throw, or had not yet returned when we snapped the counts).
+    //
+    // Note we know there are nonzero counts elsewhere in the method, otherwise
+    // m_allWeightsZero would be true and we would have bailed out above.
+    //
+    BlockInfo* const firstInfo = BlockToInfo(m_comp->fgFirstBB);
+    if (firstInfo->m_weight == BB_ZERO_WEIGHT)
+    {
+        assert(!m_allWeightsZero);
+
+        BasicBlock::weight_t newWeight = BB_ZERO_WEIGHT;
+
+        for (Edge* edge = firstInfo->m_outgoingEdges; edge != nullptr; edge = edge->m_nextOutgoingEdge)
+        {
+            if (edge->m_weightKnown)
+            {
+                newWeight = max(newWeight, edge->m_weight);
+            }
+
+            BlockInfo* const targetBlockInfo  = BlockToInfo(edge->m_targetBlock);
+            Edge* const      targetBlockEdges = targetBlockInfo->m_incomingEdges;
+
+            if (targetBlockInfo->m_weightKnown && (targetBlockEdges->m_nextIncomingEdge == nullptr))
+            {
+                newWeight = max(newWeight, targetBlockInfo->m_weight);
+            }
+        }
+
+        if (newWeight == BB_ZERO_WEIGHT)
+        {
+            JITDUMP("Entry block weight and neighborhood was zero\n");
+        }
+        else
+        {
+            JITDUMP("Entry block weight was zero, setting entry weight to neighborhood max " FMT_WT "\n", newWeight);
+        }
+
+        firstInfo->m_weight = newWeight;
     }
 }
 
 //------------------------------------------------------------------------
 // EfficientEdgeCountReconstructor::Propagate: actually set block weights.
 //
-// Notes:
-//    For inlinees, weights are scaled appropriately.
-//
 void EfficientEdgeCountReconstructor::Propagate()
 {
     // We don't expect mismatches or convergence failures.
     //
-    assert(!m_mismatch);
+
+    // Mismatches are currently expected as the flow for static pgo doesn't prevent them now.
+    //    assert(!m_mismatch);
+
     assert(!m_failedToConverge);
 
     // If any issues arose during reconstruction, don't set weights.
     //
-    if (m_badcode || m_mismatch || m_failedToConverge)
+    if (m_badcode || m_mismatch || m_failedToConverge || m_allWeightsZero)
     {
         JITDUMP("... discarding profile data because of %s\n",
-                m_badcode ? "badcode" : m_mismatch ? "mismatch" : "failed to converge");
+                m_badcode ? "badcode" : m_mismatch ? "mismatch" : m_allWeightsZero ? "zero counts"
+                                                                                   : "failed to converge");
 
         // Make sure nothing else in the jit looks at the profile data.
         //
-        m_comp->fgPgoSchema = nullptr;
+        m_comp->fgPgoSchema     = nullptr;
+        m_comp->fgPgoFailReason = "PGO data available, but there was a reconstruction problem";
 
         return;
     }
 
-    if (m_comp->compIsForInlining())
-    {
-        // Tentatively set first block's profile to compute inlinee profile scale.
-        //
-        BlockInfo* const info = BlockToInfo(m_comp->fgFirstBB);
-        assert(info->m_weightKnown);
-
-        m_comp->fgSetProfileWeight(m_comp->fgFirstBB, info->m_weight);
-        m_comp->fgComputeProfileScale();
-    }
-
-    // Set weight on all blocks (will reset entry weight for inlinees based
-    // on above computed scale).
+    // Set weight on all blocks.
     //
     for (BasicBlock* block = m_comp->fgFirstBB; (block != nullptr); block = block->bbNext)
     {
@@ -2462,7 +2528,24 @@ void Compiler::fgIncorporateEdgeCounts()
     e.Propagate();
 }
 
-bool flowList::setEdgeWeightMinChecked(BasicBlock::weight_t newWeight, BasicBlock::weight_t slop, bool* wbUsedSlop)
+//------------------------------------------------------------------------
+// setEdgeWeightMinChecked: possibly update minimum edge weight
+//
+// Arguments:
+//    newWeight - proposed new weight
+//    bDst - destination block for edge
+//    slop - profile slush fund
+//    wbUsedSlop [out] - true if we tapped into the slush fund
+//
+// Returns:
+//    true if the edge weight was adjusted
+//    false if the edge weight update was inconsistent with the
+//      edge's current [min,max}
+//
+bool flowList::setEdgeWeightMinChecked(BasicBlock::weight_t newWeight,
+                                       BasicBlock*          bDst,
+                                       BasicBlock::weight_t slop,
+                                       bool*                wbUsedSlop)
 {
     bool result = false;
     if ((newWeight <= flEdgeWeightMax) && (newWeight >= flEdgeWeightMin))
@@ -2481,7 +2564,7 @@ bool flowList::setEdgeWeightMinChecked(BasicBlock::weight_t newWeight, BasicBloc
             {
                 result = true;
 
-                if (flEdgeWeightMax != 0)
+                if (flEdgeWeightMax != BB_ZERO_WEIGHT)
                 {
                     // We will raise flEdgeWeightMin and Max towards newWeight
                     flEdgeWeightMin = flEdgeWeightMax;
@@ -2494,20 +2577,19 @@ bool flowList::setEdgeWeightMinChecked(BasicBlock::weight_t newWeight, BasicBloc
                 }
             }
         }
-        else
+        else if (flEdgeWeightMin > newWeight)
         {
-            assert(flEdgeWeightMin > newWeight);
-
             // We have already determined that this edge's weight
             // is more than newWeight, so we just allow for the slop
             if ((newWeight + slop) >= flEdgeWeightMin)
             {
                 result = true;
 
-                assert(flEdgeWeightMax != 0);
-
-                // We will lower flEdgeWeightMin towards newWeight
-                flEdgeWeightMin = newWeight;
+                if (flEdgeWeightMax != BB_ZERO_WEIGHT)
+                {
+                    // We will lower flEdgeWeightMin towards newWeight
+                    flEdgeWeightMin = newWeight;
+                }
 
                 if (wbUsedSlop != nullptr)
                 {
@@ -2517,22 +2599,28 @@ bool flowList::setEdgeWeightMinChecked(BasicBlock::weight_t newWeight, BasicBloc
         }
 
         // If we are returning true then we should have adjusted the range so that
-        // the newWeight is in new range [Min..Max] or fgEdjeWeightMax is zero.
+        // the newWeight is in new range [Min..Max] or fgEdgeWeightMax is zero.
         // Also we should have set wbUsedSlop to true.
-        if (result == true)
+        if (result)
         {
-            assert((flEdgeWeightMax == 0) || ((newWeight <= flEdgeWeightMax) && (newWeight >= flEdgeWeightMin)));
+            assert((flEdgeWeightMax == BB_ZERO_WEIGHT) ||
+                   ((newWeight <= flEdgeWeightMax) && (newWeight >= flEdgeWeightMin)));
 
-            if (wbUsedSlop != nullptr)
-            {
-                assert(*wbUsedSlop == true);
-            }
+            assert((wbUsedSlop == nullptr) || (*wbUsedSlop));
         }
     }
 
 #if DEBUG
-    if (result == false)
+    if (result)
     {
+        JITDUMP("Updated min weight of " FMT_BB " -> " FMT_BB " to [" FMT_WT ".." FMT_WT "]\n", getBlock()->bbNum,
+                bDst->bbNum, flEdgeWeightMin, flEdgeWeightMax);
+    }
+    else
+    {
+        JITDUMP("Not adjusting min weight of " FMT_BB " -> " FMT_BB "; new value " FMT_WT " not in range [" FMT_WT
+                ".." FMT_WT "] (+/- " FMT_WT ")\n",
+                getBlock()->bbNum, bDst->bbNum, newWeight, flEdgeWeightMin, flEdgeWeightMax, slop);
         result = false; // break here
     }
 #endif // DEBUG
@@ -2540,7 +2628,24 @@ bool flowList::setEdgeWeightMinChecked(BasicBlock::weight_t newWeight, BasicBloc
     return result;
 }
 
-bool flowList::setEdgeWeightMaxChecked(BasicBlock::weight_t newWeight, BasicBlock::weight_t slop, bool* wbUsedSlop)
+//------------------------------------------------------------------------
+// setEdgeWeightMaxChecked: possibly update maximum edge weight
+//
+// Arguments:
+//    newWeight - proposed new weight
+//    bDst - destination block for edge
+//    slop - profile slush fund
+//    wbUsedSlop [out] - true if we tapped into the slush fund
+//
+// Returns:
+//    true if the edge weight was adjusted
+//    false if the edge weight update was inconsistent with the
+//      edge's current [min,max}
+//
+bool flowList::setEdgeWeightMaxChecked(BasicBlock::weight_t newWeight,
+                                       BasicBlock*          bDst,
+                                       BasicBlock::weight_t slop,
+                                       bool*                wbUsedSlop)
 {
     bool result = false;
     if ((newWeight >= flEdgeWeightMin) && (newWeight <= flEdgeWeightMax))
@@ -2559,7 +2664,7 @@ bool flowList::setEdgeWeightMaxChecked(BasicBlock::weight_t newWeight, BasicBloc
             {
                 result = true;
 
-                if (flEdgeWeightMax != 0)
+                if (flEdgeWeightMax != BB_ZERO_WEIGHT)
                 {
                     // We will allow this to raise flEdgeWeightMax towards newWeight
                     flEdgeWeightMax = newWeight;
@@ -2571,21 +2676,20 @@ bool flowList::setEdgeWeightMaxChecked(BasicBlock::weight_t newWeight, BasicBloc
                 }
             }
         }
-        else
+        else if (flEdgeWeightMin > newWeight)
         {
-            assert(flEdgeWeightMin > newWeight);
-
             // We have already determined that this edge's weight
             // is more than newWeight, so we just allow for the slop
             if ((newWeight + slop) >= flEdgeWeightMin)
             {
                 result = true;
 
-                assert(flEdgeWeightMax != 0);
-
-                // We will allow this to lower flEdgeWeightMin and Max towards newWeight
-                flEdgeWeightMax = flEdgeWeightMin;
-                flEdgeWeightMin = newWeight;
+                if (flEdgeWeightMax != BB_ZERO_WEIGHT)
+                {
+                    // We will allow this to lower flEdgeWeightMin and Max towards newWeight
+                    flEdgeWeightMax = flEdgeWeightMin;
+                    flEdgeWeightMin = newWeight;
+                }
 
                 if (wbUsedSlop != nullptr)
                 {
@@ -2595,19 +2699,28 @@ bool flowList::setEdgeWeightMaxChecked(BasicBlock::weight_t newWeight, BasicBloc
         }
 
         // If we are returning true then we should have adjusted the range so that
-        // the newWeight is in new range [Min..Max] or fgEdjeWeightMax is zero
+        // the newWeight is in new range [Min..Max] or fgEdgeWeightMax is zero
         // Also we should have set wbUsedSlop to true, unless it is NULL
-        if (result == true)
+        if (result)
         {
-            assert((flEdgeWeightMax == 0) || ((newWeight <= flEdgeWeightMax) && (newWeight >= flEdgeWeightMin)));
+            assert((flEdgeWeightMax == BB_ZERO_WEIGHT) ||
+                   ((newWeight <= flEdgeWeightMax) && (newWeight >= flEdgeWeightMin)));
 
-            assert((wbUsedSlop == nullptr) || (*wbUsedSlop == true));
+            assert((wbUsedSlop == nullptr) || (*wbUsedSlop));
         }
     }
 
 #if DEBUG
-    if (result == false)
+    if (result)
     {
+        JITDUMP("Updated max weight of " FMT_BB " -> " FMT_BB " to [" FMT_WT ".." FMT_WT "]\n", getBlock()->bbNum,
+                bDst->bbNum, flEdgeWeightMin, flEdgeWeightMax);
+    }
+    else
+    {
+        JITDUMP("Not adjusting max weight of " FMT_BB " -> " FMT_BB "; new value " FMT_WT " not in range [" FMT_WT
+                ".." FMT_WT "] (+/- " FMT_WT ")\n",
+                getBlock()->bbNum, bDst->bbNum, newWeight, flEdgeWeightMin, flEdgeWeightMax, slop);
         result = false; // break here
     }
 #endif // DEBUG
@@ -2623,10 +2736,14 @@ bool flowList::setEdgeWeightMaxChecked(BasicBlock::weight_t newWeight, BasicBloc
 // Arguments:
 //    theMinWeight - the new minimum lower (flEdgeWeightMin)
 //    theMaxWeight - the new maximum upper (flEdgeWeightMin)
+//    bDst         - the destination block for the edge
 //
-void flowList::setEdgeWeights(BasicBlock::weight_t theMinWeight, BasicBlock::weight_t theMaxWeight)
+void flowList::setEdgeWeights(BasicBlock::weight_t theMinWeight, BasicBlock::weight_t theMaxWeight, BasicBlock* bDst)
 {
     assert(theMinWeight <= theMaxWeight);
+
+    JITDUMP("Setting edge weights for " FMT_BB " -> " FMT_BB " to [" FMT_WT " .. " FMT_WT "]\n", getBlock()->bbNum,
+            bDst->bbNum, theMinWeight, theMaxWeight);
 
     flEdgeWeightMin = theMinWeight;
     flEdgeWeightMax = theMaxWeight;
@@ -2761,7 +2878,7 @@ BasicBlock::weight_t Compiler::fgComputeMissingBlockWeights()
                     changed        = true;
                     modified       = true;
                     bDst->bbWeight = newWeight;
-                    if (newWeight == 0)
+                    if (newWeight == BB_ZERO_WEIGHT)
                     {
                         bDst->bbFlags |= BBF_RUN_RARELY;
                     }
@@ -2834,7 +2951,7 @@ void Compiler::fgComputeCalledCount(BasicBlock::weight_t returnWeight)
     // (i.e. the function never returns because it always throws)
     // then just use the first block weight rather than 0.
     //
-    if ((firstILBlock->countOfInEdges() == 1) || (returnWeight == 0))
+    if ((firstILBlock->countOfInEdges() == 1) || (returnWeight == BB_ZERO_WEIGHT))
     {
         assert(firstILBlock->hasProfileWeight()); // This should always be a profile-derived weight
         fgCalledCount = firstILBlock->bbWeight;
@@ -2849,20 +2966,12 @@ void Compiler::fgComputeCalledCount(BasicBlock::weight_t returnWeight)
     if (fgFirstBBisScratch())
     {
         fgFirstBB->setBBProfileWeight(fgCalledCount);
-        if (fgFirstBB->bbWeight == 0)
-        {
-            fgFirstBB->bbFlags |= BBF_RUN_RARELY;
-        }
-        else
-        {
-            fgFirstBB->bbFlags &= ~BBF_RUN_RARELY;
-        }
     }
 
 #if DEBUG
     if (verbose)
     {
-        printf("We are using the Profile Weights and fgCalledCount is %.0f.\n", fgCalledCount);
+        printf("We are using the Profile Weights and fgCalledCount is " FMT_WT "\n", fgCalledCount);
     }
 #endif
 }
@@ -2893,6 +3002,8 @@ void Compiler::fgComputeEdgeWeights()
     unsigned             numEdges                 = 0;
     unsigned             iterations               = 0;
 
+    JITDUMP("Initial weight assignments\n\n");
+
     // Now we will compute the initial flEdgeWeightMin and flEdgeWeightMax values
     for (bDst = fgFirstBB; bDst != nullptr; bDst = bDst->bbNext)
     {
@@ -2922,7 +3033,7 @@ void Compiler::fgComputeEdgeWeights()
 
             if (!bSrc->hasProfileWeight() || !bDst->hasProfileWeight())
             {
-                edge->setEdgeWeights(BB_ZERO_WEIGHT, BB_MAX_WEIGHT);
+                edge->setEdgeWeights(BB_ZERO_WEIGHT, BB_MAX_WEIGHT, bDst);
             }
 
             slop = BasicBlock::GetSlopFraction(bSrc, bDst) + 1;
@@ -2933,8 +3044,8 @@ void Compiler::fgComputeEdgeWeights()
                 case BBJ_NONE:
                 case BBJ_CALLFINALLY:
                     // We know the exact edge weight
-                    assignOK &= edge->setEdgeWeightMinChecked(bSrc->bbWeight, slop, &usedSlop);
-                    assignOK &= edge->setEdgeWeightMaxChecked(bSrc->bbWeight, slop, &usedSlop);
+                    assignOK &= edge->setEdgeWeightMinChecked(bSrc->bbWeight, bDst, slop, &usedSlop);
+                    assignOK &= edge->setEdgeWeightMaxChecked(bSrc->bbWeight, bDst, slop, &usedSlop);
                     break;
 
                 case BBJ_COND:
@@ -2944,7 +3055,7 @@ void Compiler::fgComputeEdgeWeights()
                     if (edge->edgeWeightMax() > bSrc->bbWeight)
                     {
                         // The maximum edge weight to block can't be greater than the weight of bSrc
-                        assignOK &= edge->setEdgeWeightMaxChecked(bSrc->bbWeight, slop, &usedSlop);
+                        assignOK &= edge->setEdgeWeightMaxChecked(bSrc->bbWeight, bDst, slop, &usedSlop);
                     }
                     break;
 
@@ -2957,7 +3068,7 @@ void Compiler::fgComputeEdgeWeights()
             // The maximum edge weight to block can't be greater than the weight of bDst
             if (edge->edgeWeightMax() > bDstWeight)
             {
-                assignOK &= edge->setEdgeWeightMaxChecked(bDstWeight, slop, &usedSlop);
+                assignOK &= edge->setEdgeWeightMaxChecked(bDstWeight, bDst, slop, &usedSlop);
             }
 
             if (!assignOK)
@@ -2976,11 +3087,14 @@ void Compiler::fgComputeEdgeWeights()
 
     do
     {
+        JITDUMP("\nSolver pass %u\n", iterations);
+
         iterations++;
         goodEdgeCountPrevious    = goodEdgeCountCurrent;
         goodEdgeCountCurrent     = 0;
         hasIncompleteEdgeWeights = false;
 
+        JITDUMP("\n -- step 1 --\n");
         for (bDst = fgFirstBB; bDst != nullptr; bDst = bDst->bbNext)
         {
             for (edge = bDst->bbPreds; edge != nullptr; edge = edge->flNext)
@@ -2995,39 +3109,51 @@ void Compiler::fgComputeEdgeWeights()
                 {
                     BasicBlock::weight_t diff;
                     flowList*            otherEdge;
+                    BasicBlock*          otherDst;
                     if (bSrc->bbNext == bDst)
                     {
-                        otherEdge = fgGetPredForBlock(bSrc->bbJumpDest, bSrc);
+                        otherDst = bSrc->bbJumpDest;
                     }
                     else
                     {
-                        otherEdge = fgGetPredForBlock(bSrc->bbNext, bSrc);
+                        otherDst = bSrc->bbNext;
                     }
-                    noway_assert(edge->edgeWeightMin() <= edge->edgeWeightMax());
-                    noway_assert(otherEdge->edgeWeightMin() <= otherEdge->edgeWeightMax());
+                    otherEdge = fgGetPredForBlock(otherDst, bSrc);
 
-                    // Adjust edge->flEdgeWeightMin up or adjust otherEdge->flEdgeWeightMax down
-                    diff = bSrc->bbWeight - (edge->edgeWeightMin() + otherEdge->edgeWeightMax());
-                    if (diff > 0)
-                    {
-                        assignOK &= edge->setEdgeWeightMinChecked(edge->edgeWeightMin() + diff, slop, &usedSlop);
-                    }
-                    else if (diff < 0)
-                    {
-                        assignOK &=
-                            otherEdge->setEdgeWeightMaxChecked(otherEdge->edgeWeightMax() + diff, slop, &usedSlop);
-                    }
+                    // If we see min/max violations, just give up on the computations
+                    //
+                    const bool edgeWeightSensible      = edge->edgeWeightMin() <= edge->edgeWeightMax();
+                    const bool otherEdgeWeightSensible = otherEdge->edgeWeightMin() <= otherEdge->edgeWeightMax();
 
-                    // Adjust otherEdge->flEdgeWeightMin up or adjust edge->flEdgeWeightMax down
-                    diff = bSrc->bbWeight - (otherEdge->edgeWeightMin() + edge->edgeWeightMax());
-                    if (diff > 0)
+                    assignOK &= edgeWeightSensible && otherEdgeWeightSensible;
+
+                    if (assignOK)
                     {
-                        assignOK &=
-                            otherEdge->setEdgeWeightMinChecked(otherEdge->edgeWeightMin() + diff, slop, &usedSlop);
-                    }
-                    else if (diff < 0)
-                    {
-                        assignOK &= edge->setEdgeWeightMaxChecked(edge->edgeWeightMax() + diff, slop, &usedSlop);
+                        // Adjust edge->flEdgeWeightMin up or adjust otherEdge->flEdgeWeightMax down
+                        diff = bSrc->bbWeight - (edge->edgeWeightMin() + otherEdge->edgeWeightMax());
+                        if (diff > 0)
+                        {
+                            assignOK &=
+                                edge->setEdgeWeightMinChecked(edge->edgeWeightMin() + diff, bDst, slop, &usedSlop);
+                        }
+                        else if (diff < 0)
+                        {
+                            assignOK &= otherEdge->setEdgeWeightMaxChecked(otherEdge->edgeWeightMax() + diff, otherDst,
+                                                                           slop, &usedSlop);
+                        }
+
+                        // Adjust otherEdge->flEdgeWeightMin up or adjust edge->flEdgeWeightMax down
+                        diff = bSrc->bbWeight - (otherEdge->edgeWeightMin() + edge->edgeWeightMax());
+                        if (diff > 0)
+                        {
+                            assignOK &= otherEdge->setEdgeWeightMinChecked(otherEdge->edgeWeightMin() + diff, otherDst,
+                                                                           slop, &usedSlop);
+                        }
+                        else if (diff < 0)
+                        {
+                            assignOK &=
+                                edge->setEdgeWeightMaxChecked(edge->edgeWeightMax() + diff, bDst, slop, &usedSlop);
+                        }
                     }
 
                     if (!assignOK)
@@ -3049,6 +3175,8 @@ void Compiler::fgComputeEdgeWeights()
                 }
             }
         }
+
+        JITDUMP("\n -- step 2 --\n");
 
         for (bDst = fgFirstBB; bDst != nullptr; bDst = bDst->bbNext)
         {
@@ -3096,41 +3224,49 @@ void Compiler::fgComputeEdgeWeights()
 
                     // otherMaxEdgesWeightSum is the sum of all of the other edges flEdgeWeightMax values
                     // This can be used to compute a lower bound for our minimum edge weight
-                    noway_assert(maxEdgeWeightSum >= edge->edgeWeightMax());
-                    BasicBlock::weight_t otherMaxEdgesWeightSum = maxEdgeWeightSum - edge->edgeWeightMax();
+                    //
+                    BasicBlock::weight_t const otherMaxEdgesWeightSum = maxEdgeWeightSum - edge->edgeWeightMax();
 
-                    // otherMinEdgesWeightSum is the sum of all of the other edges flEdgeWeightMin values
-                    // This can be used to compute an upper bound for our maximum edge weight
-                    noway_assert(minEdgeWeightSum >= edge->edgeWeightMin());
-                    BasicBlock::weight_t otherMinEdgesWeightSum = minEdgeWeightSum - edge->edgeWeightMin();
-
-                    if (bDstWeight >= otherMaxEdgesWeightSum)
+                    if (otherMaxEdgesWeightSum >= BB_ZERO_WEIGHT)
                     {
-                        // minWeightCalc is our minWeight when every other path to bDst takes it's flEdgeWeightMax value
-                        BasicBlock::weight_t minWeightCalc =
-                            (BasicBlock::weight_t)(bDstWeight - otherMaxEdgesWeightSum);
-                        if (minWeightCalc > edge->edgeWeightMin())
+                        if (bDstWeight >= otherMaxEdgesWeightSum)
                         {
-                            assignOK &= edge->setEdgeWeightMinChecked(minWeightCalc, slop, &usedSlop);
+                            // minWeightCalc is our minWeight when every other path to bDst takes it's flEdgeWeightMax
+                            // value
+                            BasicBlock::weight_t minWeightCalc =
+                                (BasicBlock::weight_t)(bDstWeight - otherMaxEdgesWeightSum);
+                            if (minWeightCalc > edge->edgeWeightMin())
+                            {
+                                assignOK &= edge->setEdgeWeightMinChecked(minWeightCalc, bDst, slop, &usedSlop);
+                            }
                         }
                     }
 
-                    if (bDstWeight >= otherMinEdgesWeightSum)
+                    // otherMinEdgesWeightSum is the sum of all of the other edges flEdgeWeightMin values
+                    // This can be used to compute an upper bound for our maximum edge weight
+                    //
+                    BasicBlock::weight_t const otherMinEdgesWeightSum = minEdgeWeightSum - edge->edgeWeightMin();
+
+                    if (otherMinEdgesWeightSum >= BB_ZERO_WEIGHT)
                     {
-                        // maxWeightCalc is our maxWeight when every other path to bDst takes it's flEdgeWeightMin value
-                        BasicBlock::weight_t maxWeightCalc =
-                            (BasicBlock::weight_t)(bDstWeight - otherMinEdgesWeightSum);
-                        if (maxWeightCalc < edge->edgeWeightMax())
+                        if (bDstWeight >= otherMinEdgesWeightSum)
                         {
-                            assignOK &= edge->setEdgeWeightMaxChecked(maxWeightCalc, slop, &usedSlop);
+                            // maxWeightCalc is our maxWeight when every other path to bDst takes it's flEdgeWeightMin
+                            // value
+                            BasicBlock::weight_t maxWeightCalc =
+                                (BasicBlock::weight_t)(bDstWeight - otherMinEdgesWeightSum);
+                            if (maxWeightCalc < edge->edgeWeightMax())
+                            {
+                                assignOK &= edge->setEdgeWeightMaxChecked(maxWeightCalc, bDst, slop, &usedSlop);
+                            }
                         }
                     }
 
                     if (!assignOK)
                     {
                         // Here we have inconsistent profile data
-                        JITDUMP("Inconsistent profile data at " FMT_BB " -> " FMT_BB
-                                ": dest weight %f, min/max into dest is %f/%f, edge %f/%f\n",
+                        JITDUMP("Inconsistent profile data at " FMT_BB " -> " FMT_BB ": dest weight " FMT_WT
+                                ", min/max into dest is " FMT_WT "/" FMT_WT ", edge " FMT_WT "/" FMT_WT "\n",
                                 bSrc->bbNum, bDst->bbNum, bDstWeight, minEdgeWeightSum, maxEdgeWeightSum,
                                 edge->edgeWeightMin(), edge->edgeWeightMax());
 
@@ -3254,14 +3390,14 @@ bool Compiler::fgProfileWeightsEqual(BasicBlock::weight_t weight1, BasicBlock::w
 //
 bool Compiler::fgProfileWeightsConsistent(BasicBlock::weight_t weight1, BasicBlock::weight_t weight2)
 {
-    if (weight2 == 0)
+    if (weight2 == BB_ZERO_WEIGHT)
     {
         return fgProfileWeightsEqual(weight1, weight2);
     }
 
     BasicBlock::weight_t const relativeDiff = (weight2 - weight1) / weight2;
 
-    return fgProfileWeightsEqual(relativeDiff, 0.0f);
+    return fgProfileWeightsEqual(relativeDiff, BB_ZERO_WEIGHT);
 }
 
 #ifdef DEBUG
@@ -3280,9 +3416,14 @@ bool Compiler::fgProfileWeightsConsistent(BasicBlock::weight_t weight1, BasicBlo
 //
 void Compiler::fgDebugCheckProfileData()
 {
-    // We can't check before we have pred lists built.
-    //
     assert(fgComputePredsDone);
+
+    // We can't check before we have computed edge weights.
+    //
+    if (!fgEdgeWeightsComputed)
+    {
+        return;
+    }
 
     JITDUMP("Checking Profile Data\n");
     unsigned             problemBlocks    = 0;
@@ -3377,10 +3518,10 @@ void Compiler::fgDebugCheckProfileData()
     //
     if (entryProfiled && exitProfiled)
     {
-        if (entryWeight != exitWeight)
+        if (!fgProfileWeightsConsistent(entryWeight, exitWeight))
         {
             problemBlocks++;
-            JITDUMP("  Entry %f exit %f weight mismatch\n", entryWeight, exitWeight);
+            JITDUMP("  Entry " FMT_WT " exit " FMT_WT " weight mismatch\n", entryWeight, exitWeight);
         }
     }
 
@@ -3444,22 +3585,24 @@ bool Compiler::fgDebugCheckIncomingProfileData(BasicBlock* block)
         return true;
     }
 
-    if (incomingWeightMin > incomingWeightMax)
+    if (!fgProfileWeightsConsistent(incomingWeightMin, incomingWeightMax))
     {
-        JITDUMP("  " FMT_BB " - incoming min %f > incoming max %f\n", block->bbNum, incomingWeightMin,
-                incomingWeightMax);
+        JITDUMP("  " FMT_BB " - incoming min " FMT_WT " inconsistent with incoming max " FMT_WT "\n", block->bbNum,
+                incomingWeightMin, incomingWeightMax);
         return false;
     }
 
-    if (blockWeight < incomingWeightMin)
+    if (!fgProfileWeightsConsistent(blockWeight, incomingWeightMin))
     {
-        JITDUMP("  " FMT_BB " - block weight %f < incoming min %f\n", block->bbNum, blockWeight, incomingWeightMin);
+        JITDUMP("  " FMT_BB " - block weight " FMT_WT " inconsistent with incoming min " FMT_WT "\n", block->bbNum,
+                blockWeight, incomingWeightMin);
         return false;
     }
 
-    if (blockWeight > incomingWeightMax)
+    if (!fgProfileWeightsConsistent(blockWeight, incomingWeightMax))
     {
-        JITDUMP("  " FMT_BB " - block weight %f > incoming max %f\n", block->bbNum, blockWeight, incomingWeightMax);
+        JITDUMP("  " FMT_BB " - block weight " FMT_WT " inconsistent with incoming max " FMT_WT "\n", block->bbNum,
+                blockWeight, incomingWeightMax);
         return false;
     }
 
@@ -3481,7 +3624,9 @@ bool Compiler::fgDebugCheckIncomingProfileData(BasicBlock* block)
 //
 bool Compiler::fgDebugCheckOutgoingProfileData(BasicBlock* block)
 {
-    const unsigned numSuccs = block->NumSucc();
+    // We want switch targets unified, but not EH edges.
+    //
+    const unsigned numSuccs = block->NumSucc(this);
 
     if (numSuccs == 0)
     {
@@ -3490,18 +3635,24 @@ bool Compiler::fgDebugCheckOutgoingProfileData(BasicBlock* block)
         return true;
     }
 
+    // We won't check finally or filter returns (for now).
+    //
+    if ((block->bbJumpKind == BBJ_EHFINALLYRET) || (block->bbJumpKind == BBJ_EHFILTERRET))
+    {
+        return true;
+    }
+
     BasicBlock::weight_t const blockWeight       = block->bbWeight;
     BasicBlock::weight_t       outgoingWeightMin = 0;
     BasicBlock::weight_t       outgoingWeightMax = 0;
 
-    // Walking successor edges is a bit wonky. Seems like it should be easier.
-    // Note this can also fail to enumerate all the edges, if we have a multigraph
+    // Walk successor edges and add up flow counts.
     //
     int missingEdges = 0;
 
     for (unsigned i = 0; i < numSuccs; i++)
     {
-        BasicBlock* succBlock = block->GetSucc(i);
+        BasicBlock* succBlock = block->GetSucc(i, this);
         flowList*   succEdge  = nullptr;
 
         for (flowList* edge = succBlock->bbPreds; edge != nullptr; edge = edge->flNext)
@@ -3529,22 +3680,24 @@ bool Compiler::fgDebugCheckOutgoingProfileData(BasicBlock* block)
         JITDUMP("  " FMT_BB " - missing %d successor edges\n", block->bbNum, missingEdges);
     }
 
-    if (outgoingWeightMin > outgoingWeightMax)
+    if (!fgProfileWeightsConsistent(outgoingWeightMin, outgoingWeightMax))
     {
-        JITDUMP("  " FMT_BB " - outgoing min %f > outgoing max %f\n", block->bbNum, outgoingWeightMin,
-                outgoingWeightMax);
+        JITDUMP("  " FMT_BB " - outgoing min " FMT_WT " inconsistent with outgoing max " FMT_WT "\n", block->bbNum,
+                outgoingWeightMin, outgoingWeightMax);
         return false;
     }
 
-    if (blockWeight < outgoingWeightMin)
+    if (!fgProfileWeightsConsistent(blockWeight, outgoingWeightMin))
     {
-        JITDUMP("  " FMT_BB " - block weight %f < outgoing min %f\n", block->bbNum, blockWeight, outgoingWeightMin);
+        JITDUMP("  " FMT_BB " - block weight " FMT_WT " inconsistent with outgoing min " FMT_WT "\n", block->bbNum,
+                blockWeight, outgoingWeightMin);
         return false;
     }
 
-    if (blockWeight > outgoingWeightMax)
+    if (!fgProfileWeightsConsistent(blockWeight, outgoingWeightMax))
     {
-        JITDUMP("  " FMT_BB " - block weight %f > outgoing max %f\n", block->bbNum, blockWeight, outgoingWeightMax);
+        JITDUMP("  " FMT_BB " - block weight " FMT_WT " inconsistent with outgoing max " FMT_WT "\n", block->bbNum,
+                blockWeight, outgoingWeightMax);
         return false;
     }
 

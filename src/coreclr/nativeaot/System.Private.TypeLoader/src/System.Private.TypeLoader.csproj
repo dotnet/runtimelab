@@ -213,6 +213,12 @@
     <Compile Include="$(CompilerCommonPath)\TypeSystem\Common\ModuleDesc.cs">
       <Link>Internal\TypeSystem\ModuleDesc.cs</Link>
     </Compile>
+    <Compile Include="$(CompilerCommonPath)\TypeSystem\Common\NotFoundBehavior.cs">
+      <Link>TypeSystem\Common\NotFoundBehavior.cs</Link>
+    </Compile>
+    <Compile Include="$(CompilerCommonPath)\TypeSystem\Common\ResolutionFailure.cs">
+      <Link>TypeSystem\Common\ResolutionFailure.cs</Link>
+    </Compile>
     <Compile Include="$(CompilerCommonPath)\TypeSystem\Common\ParameterizedType.cs">
       <Link>Internal\TypeSystem\ParameterizedType.cs</Link>
     </Compile>
@@ -274,12 +280,10 @@
       <Link>Internal\TypeSystem\WellKnownType.cs</Link>
     </Compile>
     <Compile Include="Internal\Runtime\CompilerHelpers\LibraryInitializer.cs" />
-    <Compile Include="Internal\Runtime\DebuggerSupport\DebuggerSupport.cs" />
     <Compile Include="Internal\Runtime\TypeLoader\CallConverterThunk.CallConversionInfo.cs" />
     <Compile Include="Internal\Runtime\TypeLoader\CallConverterThunk.CallConversionParameters.cs" />
     <Compile Include="Internal\Runtime\TypeLoader\CallConverterThunk.cs" />
     <Compile Include="Internal\Runtime\TypeLoader\CallingConventions.cs" />
-    <Compile Include="Internal\Runtime\TypeLoader\CallInterceptor.cs" />
     <Compile Include="Internal\Runtime\TypeLoader\CanonicallyEquivalentEntryLocator.cs" />
     <Compile Include="Internal\Runtime\TypeLoader\DispatchCellInfo.cs" />
     <Compile Include="Internal\Runtime\TypeLoader\EEType.Runtime.cs" />

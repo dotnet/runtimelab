@@ -98,7 +98,6 @@ namespace ILCompiler.DependencyAnalysis
                         encoder.EmitMOV(encoder.TargetRegister.Arg1, encoder.TargetRegister.Arg0);
                         EmitDictionaryLookup(factory, ref encoder, encoder.TargetRegister.Arg0, encoder.TargetRegister.Result, _lookupSignature, relocsOnly);
                         encoder.EmitLDR(encoder.TargetRegister.Result, encoder.TargetRegister.Result);
-                        encoder.EmitLDR(encoder.TargetRegister.Result, encoder.TargetRegister.Result);
 
                         MetadataType target = (MetadataType)_target;
                         if (!factory.PreinitializationManager.HasLazyStaticConstructor(target))

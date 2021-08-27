@@ -6,8 +6,7 @@ using System.Runtime.InteropServices;
 
 namespace System
 {
-    [StructLayout(LayoutKind.Sequential)]
-    internal class Delegate
+    public class Delegate
     {
     }
 }

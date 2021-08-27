@@ -111,7 +111,10 @@ stages:
       buildConfig: Release
       platforms:
       - Linux_x64
+      - Linux_musl_x64
+#      - Linux_arm64    # ILCompiler for LLVM depends on libLLVM.runtime.linux-arm64 with version (>= 11.0.0) which is missing https://github.com/microsoft/LLVMSharp/issues/177. TODO: reinstate when fixed
       - windows_x64
+      - windows_arm64
       - OSX_x64
       jobParameters:
         isOfficialBuild: ${{ variables.isOfficialBuild }}

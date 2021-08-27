@@ -42,13 +42,15 @@ private:
 
 public:
 
+    bool ReadConfigValue(_In_z_ const TCHAR* wszName, uint32_t* pValue);
+
 #define DEFINE_VALUE_ACCESSOR(_name, defaultVal)        \
     uint32_t Get##_name()                                 \
     {                                                   \
         if (m_uiConfigValuesRead & (1 << RCV_##_name))  \
             return m_uiConfigValues[RCV_##_name];       \
-        uint32_t uiValue = ReadConfigValue(_T("RH_") _T(#_name), defaultVal); \
-        m_uiConfigValues[RCV_##_name] = uiValue;        \
+        uint32_t uiValue;                               \
+        m_uiConfigValues[RCV_##_name] = ReadConfigValue(_T(#_name), &uiValue) ? uiValue : defaultVal; \
         m_uiConfigValuesRead |= 1 << RCV_##_name;       \
         return uiValue;                                 \
     }
@@ -70,8 +72,6 @@ public:
 #undef RETAIL_CONFIG_VALUE_WITH_DEFAULT
 
 private:
-
-    uint32_t ReadConfigValue(_In_z_ const TCHAR *wszName, uint32_t uiDefault);
 
     enum RhConfigValue
     {

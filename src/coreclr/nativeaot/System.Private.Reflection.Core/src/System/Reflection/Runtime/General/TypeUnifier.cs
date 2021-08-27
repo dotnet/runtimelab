@@ -36,14 +36,43 @@ namespace System.Reflection.Runtime.General
 {
     internal static partial class TypeUnifier
     {
+        // This can be replaced at native compile time using a feature switch.
+        internal static bool IsTypeConstructionEagerlyValidated => true;
+
         public static RuntimeTypeInfo GetArrayType(this RuntimeTypeInfo elementType)
         {
             return RuntimeArrayTypeInfo.GetArrayTypeInfo(elementType, multiDim: false, rank: 1);
         }
 
+        public static RuntimeTypeInfo GetArrayTypeWithTypeHandle(this RuntimeTypeInfo elementType)
+        {
+            return RuntimeArrayTypeInfo.GetArrayTypeInfo(elementType, multiDim: false, rank: 1).WithVerifiedTypeHandle(elementType);
+        }
+
         public static RuntimeTypeInfo GetMultiDimArrayType(this RuntimeTypeInfo elementType, int rank)
         {
             return RuntimeArrayTypeInfo.GetArrayTypeInfo(elementType, multiDim: true, rank: rank);
+        }
+
+        public static RuntimeTypeInfo GetMultiDimArrayTypeWithTypeHandle(this RuntimeTypeInfo elementType, int rank)
+        {
+            return RuntimeArrayTypeInfo.GetArrayTypeInfo(elementType, multiDim: true, rank: rank).WithVerifiedTypeHandle(elementType);
+        }
+
+        private static RuntimeArrayTypeInfo WithVerifiedTypeHandle(this RuntimeArrayTypeInfo arrayType, RuntimeTypeInfo elementType)
+        {
+            // We only permit creating parameterized types if the pay-for-play policy specifically allows them *or* if the result
+            // type would be an open type.
+            RuntimeTypeHandle typeHandle = arrayType.InternalTypeHandleIfAvailable;
+            if (IsTypeConstructionEagerlyValidated
+                && typeHandle.IsNull() && !elementType.ContainsGenericParameters
+#if FEATURE_COMINTEROP
+                && !(elementType is RuntimeCLSIDTypeInfo)
+#endif
+                )
+                throw ReflectionCoreExecution.ExecutionDomain.CreateMissingArrayTypeException(elementType, isMultiDim: false, 1);
+
+            return arrayType;
         }
 
         public static RuntimeTypeInfo GetByRefType(this RuntimeTypeInfo targetType)
@@ -59,6 +88,31 @@ namespace System.Reflection.Runtime.General
         public static RuntimeTypeInfo GetConstructedGenericType(this RuntimeTypeInfo genericTypeDefinition, RuntimeTypeInfo[] genericTypeArguments)
         {
             return RuntimeConstructedGenericTypeInfo.GetRuntimeConstructedGenericTypeInfo(genericTypeDefinition, genericTypeArguments);
+        }
+
+        public static RuntimeTypeInfo GetConstructedGenericTypeWithTypeHandle(this RuntimeTypeInfo genericTypeDefinition, RuntimeTypeInfo[] genericTypeArguments)
+        {
+            return RuntimeConstructedGenericTypeInfo.GetRuntimeConstructedGenericTypeInfo(genericTypeDefinition, genericTypeArguments).WithVerifiedTypeHandle(genericTypeArguments);
+        }
+
+        private static RuntimeConstructedGenericTypeInfo WithVerifiedTypeHandle(this RuntimeConstructedGenericTypeInfo genericType, RuntimeTypeInfo[] genericTypeArguments)
+        {
+            // We only permit creating parameterized types if the pay-for-play policy specifically allows them *or* if the result
+            // type would be an open type.
+            RuntimeTypeHandle typeHandle = genericType.InternalTypeHandleIfAvailable;
+            if (IsTypeConstructionEagerlyValidated && typeHandle.IsNull())
+            {
+                bool atLeastOneOpenType = false;
+                foreach (RuntimeTypeInfo genericTypeArgument in genericTypeArguments)
+                {
+                    if (genericTypeArgument.ContainsGenericParameters)
+                        atLeastOneOpenType = true;
+                }
+                if (!atLeastOneOpenType)
+                    throw ReflectionCoreExecution.ExecutionDomain.CreateMissingConstructedGenericTypeException(genericType.GetGenericTypeDefinition(), genericTypeArguments.CloneTypeArray());
+            }
+
+            return genericType;
         }
 
         public static RuntimeTypeInfo GetTypeForRuntimeTypeHandle(this RuntimeTypeHandle typeHandle)
@@ -281,15 +335,6 @@ namespace System.Reflection.Runtime.TypeInfos
 
             if (elementType.IsByRef)
                 throw new TypeLoadException(SR.Format(SR.ArgumentException_InvalidArrayElementType, elementType));
-
-            // We only permit creating parameterized types if the pay-for-play policy specifically allows them *or* if the result
-            // type would be an open type.
-            if (typeHandle.IsNull() && !elementType.ContainsGenericParameters
-#if FEATURE_COMINTEROP
-                && !(elementType is RuntimeCLSIDTypeInfo)
-#endif
-                )
-                throw ReflectionCoreExecution.ExecutionDomain.CreateMissingArrayTypeException(elementType, multiDim, rank);
         }
     }
 
@@ -429,19 +474,11 @@ namespace System.Reflection.Runtime.TypeInfos
         {
             protected sealed override RuntimeConstructedGenericTypeInfo Factory(UnificationKey key)
             {
-                bool atLeastOneOpenType = false;
                 foreach (RuntimeTypeInfo genericTypeArgument in key.GenericTypeArguments)
                 {
                     if (genericTypeArgument.IsByRef || genericTypeArgument.IsGenericTypeDefinition)
                         throw new ArgumentException(SR.Format(SR.ArgumentException_InvalidTypeArgument, genericTypeArgument));
-                    if (genericTypeArgument.ContainsGenericParameters)
-                        atLeastOneOpenType = true;
                 }
-
-                // We only permit creating parameterized types if the pay-for-play policy specifically allows them *or* if the result
-                // type would be an open type.
-                if (key.TypeHandle.IsNull() && !atLeastOneOpenType)
-                    throw ReflectionCoreExecution.ExecutionDomain.CreateMissingConstructedGenericTypeException(key.GenericTypeDefinition, key.GenericTypeArguments.CloneTypeArray());
 
                 return new RuntimeConstructedGenericTypeInfo(key);
             }

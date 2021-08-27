@@ -37,12 +37,7 @@ namespace System.Threading
 
         ~PreAllocatedOverlapped()
         {
-            //
-            // During shutdown, don't automatically clean up, because this instance may still be
-            // reachable/usable by other code.
-            //
-            if (!Environment.HasShutdownStarted)
-                Dispose();
+            Dispose();
         }
 
         unsafe void IDeferredDisposable.OnFinalRelease(bool disposed)
@@ -55,5 +50,7 @@ namespace System.Threading
                     *Win32ThreadPoolNativeOverlapped.ToNativeOverlapped(_overlapped) = default(NativeOverlapped);
             }
         }
+
+        internal unsafe bool IsUserObject(byte[]? buffer) => _overlapped->IsUserObject(buffer);
     }
 }

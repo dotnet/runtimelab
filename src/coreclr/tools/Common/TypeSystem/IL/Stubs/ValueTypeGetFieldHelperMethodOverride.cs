@@ -91,7 +91,7 @@ namespace Internal.IL.Stubs
 
                 // The fact that the type is a reference type is sufficient for the callers.
                 // Don't unnecessarily create an EEType for the field type.
-                if (!boxableFieldType.IsValueType)
+                if (!boxableFieldType.IsSignatureVariable && !boxableFieldType.IsValueType)
                     boxableFieldType = Context.GetWellKnownType(WellKnownType.Object);
 
                 // If this is an enum, it's okay to Equals/GetHashCode the underlying type.

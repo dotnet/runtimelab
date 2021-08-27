@@ -1251,21 +1251,8 @@ namespace ILCompiler.DependencyAnalysis
         public override ISymbolNode GetTarget(NodeFactory factory, GenericLookupResultContext dictionary)
         {
             TypeDesc instantiatedType = _type.GetNonRuntimeDeterminedTypeFromRuntimeDeterminedSubtypeViaSubstitution(dictionary.TypeInstantiation, dictionary.MethodInstantiation);
-            MethodDesc defaultCtor = instantiatedType.GetDefaultConstructor();
-
-            if (defaultCtor == null)
-            {
-                // If there isn't a default constructor, use the fallback one.
-                MetadataType missingCtorType = factory.TypeSystemContext.SystemModule.GetKnownType("System", "Activator");
-                missingCtorType = missingCtorType.GetKnownNestedType("ClassWithMissingConstructor");
-                defaultCtor = missingCtorType.GetParameterlessConstructor();
-            }
-            else
-            {
-                defaultCtor = defaultCtor.GetCanonMethodTarget(CanonicalFormKind.Specific);
-            }
-
-            return factory.MethodEntrypoint(defaultCtor);
+            MethodDesc defaultCtor = Compilation.GetConstructorForCreateInstanceIntrinsic(instantiatedType);
+            return factory.CanonicalEntrypoint(defaultCtor);
         }
 
         public override void AppendMangledName(NameMangler nameMangler, Utf8StringBuilder sb)

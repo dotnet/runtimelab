@@ -197,7 +197,11 @@ namespace System.Reflection.Runtime.MethodInfos
                 if (invoker != null)
                     return invoker;
 
-                return _common.GetUncachedMethodInvoker(Array.Empty<RuntimeTypeInfo>(), this);
+                invoker = _common.GetUncachedMethodInvoker(Array.Empty<RuntimeTypeInfo>(), this, out Exception exception);
+                if (invoker == null)
+                    throw exception;
+
+                return invoker;
             }
         }
 

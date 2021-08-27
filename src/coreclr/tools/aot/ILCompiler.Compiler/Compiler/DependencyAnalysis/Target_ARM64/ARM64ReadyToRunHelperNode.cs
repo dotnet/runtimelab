@@ -105,7 +105,6 @@ namespace ILCompiler.DependencyAnalysis
 
                         encoder.EmitMOV(encoder.TargetRegister.Result, factory.TypeGCStaticsSymbol(target));
                         encoder.EmitLDR(encoder.TargetRegister.Result, encoder.TargetRegister.Result);
-                        encoder.EmitLDR(encoder.TargetRegister.Result, encoder.TargetRegister.Result);
 
                         if (!factory.PreinitializationManager.HasLazyStaticConstructor(target))
                         {

@@ -53,7 +53,7 @@ namespace System
             return ToObject(enumType.TypeHandle.ToEETypePtr(), value);
         }
 
-        public override bool Equals(object? obj)
+        public override bool Equals([NotNullWhen(true)] object? obj)
         {
             if (obj == null)
                 return false;
@@ -222,7 +222,7 @@ namespace System
                 return enumType.GetEnumNames();
 
             if (!enumType.IsEnum)
-                throw new ArgumentException(SR.Arg_MustBeEnum);
+                throw new ArgumentException(SR.Arg_MustBeEnum, nameof(enumType));
 
             string[] ret = GetEnumInfo(enumType).Names;
 
@@ -254,7 +254,7 @@ namespace System
                 return enumType.GetEnumValues();
 
             if (!enumType.IsEnum)
-                throw new ArgumentException(SR.Arg_MustBeEnum);
+                throw new ArgumentException(SR.Arg_MustBeEnum, nameof(enumType));
 
             Array values = GetEnumInfo(enumType).ValuesAsUnderlyingType;
             int count = values.Length;

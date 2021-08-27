@@ -147,7 +147,7 @@ namespace ILCompiler.DependencyAnalysis
             if (defaultCtor != null)
             {
                 dependencyList.Add(new DependencyListEntry(
-                    factory.MethodEntrypoint(defaultCtor.GetCanonMethodTarget(CanonicalFormKind.Specific), closestDefType.IsValueType), 
+                    factory.ReflectableMethod(defaultCtor), 
                     "DefaultConstructorNode"));
             }
 

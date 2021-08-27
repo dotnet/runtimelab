@@ -69,28 +69,13 @@ RhpNewFast_RarePath
         ;; Preserve the EEType in x19
         mov         x19, x0
 
-        ldr         w2, [x0, #OFFSETOF__EEType__m_uBaseSize]
+        mov         w2, #0              ; numElements
 
         ;; Call the rest of the allocation helper.
-        ;; void* RhpGcAlloc(EEType *pEEType, uint32_t uFlags, uintptr_t cbSize, void * pTransitionFrame)
+        ;; void* RhpGcAlloc(EEType *pEEType, uint32_t uFlags, uintptr_t numElements, void * pTransitionFrame)
         bl          RhpGcAlloc
 
-        ;; Set the new object's EEType pointer on success.
         cbz         x0, NewOutOfMemory
-        str         x19, [x0, #OFFSETOF__Object__m_pEEType]
-
-        ;; If the object is bigger than RH_LARGE_OBJECT_SIZE, we must publish it to the BGC
-        ldr         w1, [x19, #OFFSETOF__EEType__m_uBaseSize]
-        movz        x2, #(RH_LARGE_OBJECT_SIZE & 0xFFFF)
-        movk        x2, #(RH_LARGE_OBJECT_SIZE >> 16), lsl #16
-        cmp         x1, x2
-        blo         New_SkipPublish
-
-        ;; x0: object
-        ;; x1: already contains object size
-        bl          RhpPublishObject    ;; x0: this function returns the object that was passed-in
-
-New_SkipPublish
 
         POP_COOP_PINVOKE_FRAME
         EPILOG_RETURN
@@ -99,8 +84,8 @@ NewOutOfMemory
         ;; This is the OOM failure path. We're going to tail-call to a managed helper that will throw
         ;; an out of memory exception that the caller of this allocator understands.
 
-        mov         x0, x19            ; EEType pointer
-        mov         x1, 0               ; Indicate that we should throw OOM.
+        mov         x0, x19             ; EEType pointer
+        mov         x1, #0              ; Indicate that we should throw OOM.
 
         POP_COOP_PINVOKE_FRAME
         EPILOG_NOP b RhExceptionHandling_FailedAllocation
@@ -245,32 +230,14 @@ ArraySizeOverflow
 
         ; Preserve data we'll need later into the callee saved registers
         mov         x19, x0             ; Preserve EEType
-        mov         x20, x1             ; Preserve element count
-        mov         x21, x2             ; Preserve array size
 
-        mov         x1, #0
+        mov         x2, x1              ; numElements
+        mov         x1, #0              ; uFlags
 
-        ;; void* RhpGcAlloc(EEType *pEEType, uint32_t uFlags, uintptr_t cbSize, void * pTransitionFrame)
+        ;; void* RhpGcAlloc(EEType *pEEType, uint32_t uFlags, uintptr_t numElements, void * pTransitionFrame)
         bl          RhpGcAlloc
 
-        ; Set the new object's EEType pointer and length on success.
         cbz         x0, ArrayOutOfMemory
-
-        ; Success, set the array's type and element count in the new object.
-        str         x19, [x0, #OFFSETOF__Object__m_pEEType]
-        str         x20, [x0, #OFFSETOF__Array__m_Length]
-
-        ;; If the object is bigger than RH_LARGE_OBJECT_SIZE, we must publish it to the BGC
-        movz        x2, #(RH_LARGE_OBJECT_SIZE & 0xFFFF)
-        movk        x2, #(RH_LARGE_OBJECT_SIZE >> 16), lsl #16
-        cmp         x21, x2
-        blo         NewArray_SkipPublish
-
-        ;; x0 = newly allocated array. x1 = size
-        mov         x1, x21
-        bl          RhpPublishObject
-
-NewArray_SkipPublish
 
         POP_COOP_PINVOKE_FRAME
         EPILOG_RETURN
@@ -280,7 +247,7 @@ ArrayOutOfMemory
         ;; an out of memory exception that the caller of this allocator understands.
 
         mov         x0, x19             ; EEType Pointer
-        mov         x1, 0               ; Indicate that we should throw OOM.
+        mov         x1, #0              ; Indicate that we should throw OOM.
 
         POP_COOP_PINVOKE_FRAME
         EPILOG_NOP b RhExceptionHandling_FailedAllocation

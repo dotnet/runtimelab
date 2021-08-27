@@ -13,7 +13,7 @@ using Internal.Runtime.Augments;
 
 namespace System
 {
-    internal class PreallocatedOutOfMemoryException
+    internal static class PreallocatedOutOfMemoryException
     {
         public static OutOfMemoryException Instance { get; private set; }
 

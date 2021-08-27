@@ -4,6 +4,7 @@
 using System.Collections;
 using System.Diagnostics;
 using System.Runtime.Serialization;
+using System.Text;
 
 namespace System
 {
@@ -46,6 +47,7 @@ namespace System
             _innerException = (Exception?)(info.GetValue("InnerException", typeof(Exception))); // Do not rename (binary serialization)
             _helpURL = info.GetString("HelpURL"); // Do not rename (binary serialization)
             _stackTraceString = info.GetString("StackTraceString"); // Do not rename (binary serialization)
+            _remoteStackTraceString = info.GetString("RemoteStackTraceString"); // Do not rename (binary serialization)
             _HResult = info.GetInt32("HResult"); // Do not rename (binary serialization)
             _source = info.GetString("Source"); // Do not rename (binary serialization)
 
@@ -109,7 +111,7 @@ namespace System
             info.AddValue("InnerException", _innerException, typeof(Exception)); // Do not rename (binary serialization)
             info.AddValue("HelpURL", _helpURL, typeof(string)); // Do not rename (binary serialization)
             info.AddValue("StackTraceString", SerializationStackTraceString, typeof(string)); // Do not rename (binary serialization)
-            info.AddValue("RemoteStackTraceString", SerializationRemoteStackTraceString, typeof(string)); // Do not rename (binary serialization)
+            info.AddValue("RemoteStackTraceString", _remoteStackTraceString, typeof(string)); // Do not rename (binary serialization)
             info.AddValue("RemoteStackIndex", 0, typeof(int)); // Do not rename (binary serialization)
             info.AddValue("ExceptionMethod", null, typeof(string)); // Do not rename (binary serialization)
             info.AddValue("HResult", _HResult); // Do not rename (binary serialization)
@@ -175,7 +177,7 @@ namespace System
 
             static void Write(string source, ref Span<char> dest)
             {
-                source.AsSpan().CopyTo(dest);
+                source.CopyTo(dest);
                 dest = dest.Slice(source.Length);
             }
         }
@@ -197,5 +199,34 @@ namespace System
         public new Type GetType() => base.GetType();
 
         partial void RestoreRemoteStackTrace(SerializationInfo info, StreamingContext context);
+
+        [StackTraceHidden]
+        internal void SetCurrentStackTrace()
+        {
+            if (!CanSetRemoteStackTrace())
+            {
+                return; // early-exit
+            }
+
+            // Store the current stack trace into the "remote" stack trace, which was originally introduced to support
+            // remoting of exceptions cross app-domain boundaries, and is thus concatenated into Exception.StackTrace
+            // when it's retrieved.
+            var sb = new StringBuilder(256);
+            new StackTrace(fNeedFileInfo: true).ToString(System.Diagnostics.StackTrace.TraceFormat.TrailingNewLine, sb);
+            sb.AppendLine(SR.Exception_EndStackTraceFromPreviousThrow);
+            _remoteStackTraceString = sb.ToString();
+        }
+
+        internal void SetRemoteStackTrace(string stackTrace)
+        {
+            if (!CanSetRemoteStackTrace())
+            {
+                return; // early-exit
+            }
+
+            // Store the provided text into the "remote" stack trace, following the same format SetCurrentStackTrace
+            // would have generated.
+            _remoteStackTraceString = stackTrace + Environment.NewLineConst + SR.Exception_EndStackTraceFromPreviousThrow + Environment.NewLineConst;
+        }
     }
 }

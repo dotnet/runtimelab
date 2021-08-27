@@ -432,7 +432,7 @@ namespace System.Reflection.Runtime.TypeInfos
             // Do not implement this as a call to MakeArrayType(1) - they are not interchangable. MakeArrayType() returns a
             // vector type ("SZArray") while MakeArrayType(1) returns a multidim array of rank 1. These are distinct types
             // in the ECMA model and in CLR Reflection.
-            return this.GetArrayType();
+            return this.GetArrayTypeWithTypeHandle();
         }
 
         public sealed override Type MakeArrayType(int rank)
@@ -444,7 +444,7 @@ namespace System.Reflection.Runtime.TypeInfos
 
             if (rank <= 0)
                 throw new IndexOutOfRangeException();
-            return this.GetMultiDimArrayType(rank);
+            return this.GetMultiDimArrayTypeWithTypeHandle(rank);
         }
 
         public sealed override Type MakeByRefType()
@@ -509,7 +509,7 @@ namespace System.Reflection.Runtime.TypeInfos
                     throw new TypeLoadException(SR.CannotUseByRefLikeTypeInInstantiation);
             }
 
-            return this.GetConstructedGenericType(runtimeTypeArguments);
+            return this.GetConstructedGenericTypeWithTypeHandle(runtimeTypeArguments);
         }
 
         public sealed override Type MakePointerType()
@@ -569,11 +569,12 @@ namespace System.Reflection.Runtime.TypeInfos
                 if (!typeHandle.IsNull())
                     return typeHandle;
 
-                // If a constructed type doesn't have an type handle, it's either because the reducer tossed it (in which case,
-                // we would thrown a MissingMetadataException when attempting to construct the type) or because one of
-                // component types contains open type parameters. Since we eliminated the first case, it must be the second.
-                // Throwing PlatformNotSupported since the desktop does, in fact, create type handles for open types.
-                if (HasElementType || IsConstructedGenericType || IsGenericParameter)
+                // If a type doesn't have a type handle, it's either because we optimized away the EEType
+                // but the reflection metadata had to be kept around, or because we have an open type somewhere
+                // (open types never get EETypes). Open types are PlatformNotSupported and there's nothing
+                // that can be done about that. Missing EEType can be fixed by helping the AOT compiler
+                // with some hints.
+                if (!IsGenericTypeDefinition && ContainsGenericParameters)
                     throw new PlatformNotSupportedException(SR.PlatformNotSupported_NoTypeHandleForOpenTypes);
 
                 // If got here, this is a "plain old type" that has metadata but no type handle. We can get here if the only

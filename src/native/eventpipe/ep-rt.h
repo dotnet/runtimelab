@@ -177,6 +177,10 @@ static
 int64_t
 ep_rt_atomic_dec_int64_t (volatile int64_t *value);
 
+static
+size_t
+ep_rt_atomic_compare_exchange_size_t (volatile size_t *target, size_t expected, size_t value);
+
 /*
  * EventPipe.
  */
@@ -792,7 +796,7 @@ ep_rt_thread_set_activity_id (
  * ThreadSequenceNumberMap.
  */
 
-EP_RT_DECLARE_HASH_MAP(thread_sequence_number_map, ep_rt_thread_sequence_number_hash_map_t, EventPipeThreadSessionState *, uint32_t)
+EP_RT_DECLARE_HASH_MAP_REMOVE(thread_sequence_number_map, ep_rt_thread_sequence_number_hash_map_t, EventPipeThreadSessionState *, uint32_t)
 EP_RT_DECLARE_HASH_MAP_ITERATOR(thread_sequence_number_map, ep_rt_thread_sequence_number_hash_map_t, ep_rt_thread_sequence_number_hash_map_iterator_t, EventPipeThreadSessionState *, uint32_t)
 
 

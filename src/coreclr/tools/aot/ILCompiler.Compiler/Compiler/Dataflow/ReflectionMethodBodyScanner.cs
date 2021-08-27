@@ -25,7 +25,7 @@ namespace ILCompiler.Dataflow
         private readonly FlowAnnotations _flowAnnotations;
         private readonly Logger _logger;
         private readonly NodeFactory _factory;
-        private readonly DependencyList _dependencies = new DependencyList();
+        private DependencyList _dependencies = new DependencyList();
 
         public static bool RequiresReflectionMethodBodyScannerForCallSite(FlowAnnotations flowAnnotations, MethodDesc methodDefinition)
         {
@@ -310,6 +310,7 @@ namespace ILCompiler.Dataflow
             TypeDelegator_Ctor,
             Array_Empty,
             TypeInfo_AsType,
+            MethodBase_GetMethodFromHandle,
 
             // Anything above this marker will require the method to be run through
             // the reflection body scanner.
@@ -332,6 +333,7 @@ namespace ILCompiler.Dataflow
             Type_GetMembers,
             Type_get_AssemblyQualifiedName,
             Type_get_UnderlyingSystemType,
+            Type_get_BaseType,
             Expression_Call,
             Expression_Field,
             Expression_Property,
@@ -374,6 +376,13 @@ namespace ILCompiler.Dataflow
                 // System.Type.GetTypeHandle (Type type)
                 "get_TypeHandle" when calledMethod.IsDeclaredOnType("System", "Type") => IntrinsicId.Type_get_TypeHandle,
 
+                // System.Reflection.MethodBase.GetMethodFromHandle (RuntimeMethodHandle handle)
+                // System.Reflection.MethodBase.GetMethodFromHandle (RuntimeMethodHandle handle, RuntimeTypeHandle declaringType)
+                "GetMethodFromHandle" when calledMethod.IsDeclaredOnType("System.Reflection", "MethodBase")
+                    && calledMethod.HasParameterOfType(0, "System", "RuntimeMethodHandle")
+                    && (calledMethod.Signature.Length == 1 || calledMethod.Signature.Length == 2)
+                    => IntrinsicId.MethodBase_GetMethodFromHandle,
+
                 // static System.Type.MakeGenericType (Type [] typeArguments)
                 "MakeGenericType" when calledMethod.IsDeclaredOnType("System", "Type") => IntrinsicId.Type_MakeGenericType,
 
@@ -414,9 +423,10 @@ namespace ILCompiler.Dataflow
                     => IntrinsicId.Expression_Field,
 
                 // static System.Linq.Expressions.Expression.Property (Expression, Type, String)
+                // static System.Linq.Expressions.Expression.Property (Expression, MethodInfo)
                 "Property" when calledMethod.IsDeclaredOnType("System.Linq.Expressions", "Expression")
-                    && calledMethod.HasParameterOfType(1, "System", "Type")
-                    && calledMethod.Signature.Length == 3
+                    && ((calledMethod.HasParameterOfType(1, "System", "Type") && calledMethod.Signature.Length == 3)
+                    || (calledMethod.HasParameterOfType(1, "System.Reflection", "MethodInfo") && calledMethod.Signature.Length == 2))
                     => IntrinsicId.Expression_Property,
 
                 // static System.Linq.Expressions.Expression.New (Type)
@@ -466,6 +476,7 @@ namespace ILCompiler.Dataflow
                     => IntrinsicId.Type_GetType,
 
                 // System.Type.GetConstructor (Type[])
+                // System.Type.GetConstructor (BindingFlags, Type[])
                 // System.Type.GetConstructor (BindingFlags, Binder, Type[], ParameterModifier [])
                 // System.Type.GetConstructor (BindingFlags, Binder, CallingConventions, Type[], ParameterModifier [])
                 "GetConstructor" when calledMethod.IsDeclaredOnType("System", "Type")
@@ -483,8 +494,9 @@ namespace ILCompiler.Dataflow
                 // System.Type.GetMethod (string, BindingFlags)
                 // System.Type.GetMethod (string, Type[])
                 // System.Type.GetMethod (string, Type[], ParameterModifier[])
-                // System.Type.GetMethod (string, BindingFlags, Binder, Type[], ParameterModifier[]) 6
-                // System.Type.GetMethod (string, BindingFlags, Binder, CallingConventions, Type[], ParameterModifier[]) 7
+                // System.Type.GetMethod (string, BindingFlags, Type[])
+                // System.Type.GetMethod (string, BindingFlags, Binder, Type[], ParameterModifier[])
+                // System.Type.GetMethod (string, BindingFlags, Binder, CallingConventions, Type[], ParameterModifier[])
                 // System.Type.GetMethod (string, int, Type[])
                 // System.Type.GetMethod (string, int, Type[], ParameterModifier[]?)
                 // System.Type.GetMethod (string, int, BindingFlags, Binder?, Type[], ParameterModifier[]?)
@@ -572,6 +584,12 @@ namespace ILCompiler.Dataflow
                     && calledMethod.Signature.Length == 0
                     && !calledMethod.Signature.IsStatic
                     => IntrinsicId.Type_get_UnderlyingSystemType,
+
+                // System.Type.BaseType
+                "get_BaseType" when calledMethod.IsDeclaredOnType("System", "Type")
+                    && calledMethod.Signature.Length == 0
+                    && !calledMethod.Signature.IsStatic
+                    => IntrinsicId.Type_get_BaseType,
 
                 // System.Type.GetProperty (string)
                 // System.Type.GetProperty (string, BindingFlags)
@@ -774,6 +792,21 @@ namespace ILCompiler.Dataflow
                         }
                         break;
 
+                    // System.Reflection.MethodBase.GetMethodFromHandle (RuntimeMethodHandle handle)
+                    // System.Reflection.MethodBase.GetMethodFromHandle (RuntimeMethodHandle handle, RuntimeTypeHandle declaringType)
+                    case IntrinsicId.MethodBase_GetMethodFromHandle:
+                        {
+                            // Infrastructure piece to support "ldtoken method -> GetMethodFromHandle"
+                            if (methodParams[0] is RuntimeMethodHandleValue methodHandle)
+                                methodReturnValue = new SystemReflectionMethodBaseValue(methodHandle.MethodRepresented);
+                        }
+                        break;
+
+                    //
+                    // System.Type
+                    //
+                    // Type MakeGenericType (params Type[] typeArguments)
+                    //
                     case IntrinsicId.Type_MakeGenericType:
                         {
                             reflectionContext.AnalyzingPattern();
@@ -783,10 +816,16 @@ namespace ILCompiler.Dataflow
                                 {
                                     foreach (GenericParameterDesc genericParameter in typeValue.TypeRepresented.GetTypeDefinition().Instantiation)
                                     {
-                                        if (_flowAnnotations.GetGenericParameterAnnotation(genericParameter) != DynamicallyAccessedMemberTypes.None)
+                                        if (_flowAnnotations.GetGenericParameterAnnotation(genericParameter) != DynamicallyAccessedMemberTypes.None ||
+                                            (genericParameter.HasDefaultConstructorConstraint && !typeValue.TypeRepresented.IsNullable))
                                         {
                                             // There is a generic parameter which has some requirements on the input types.
                                             // For now we don't support tracking actual array elements, so we can't validate that the requirements are fulfilled.
+
+                                            // Special case: Nullable<T> where T : struct
+                                            //  The struct constraint in C# implies new() constraints, but Nullable doesn't make a use of that part.
+                                            //  There are several places even in the framework where typeof(Nullable<>).MakeGenericType would warn
+                                            //  without any good reason to do so.
                                             reflectionContext.RecordUnrecognizedPattern(
                                                 2055,
                                                 $"Call to '{calledMethod.GetDisplayName()}' can not be statically analyzed. " +
@@ -862,7 +901,7 @@ namespace ILCompiler.Dataflow
                                                     reflectionContext.RecordHandledPattern();
                                                     break;
                                                 case IntrinsicId.RuntimeReflectionExtensions_GetRuntimeMethod:
-                                                    MarkMethodsOnTypeHierarchy(ref reflectionContext, systemTypeValue.TypeRepresented, m => m.Name == stringValue.Contents, bindingFlags);
+                                                    ProcessGetMethodByName(ref reflectionContext, systemTypeValue.TypeRepresented, stringValue.Contents, bindingFlags, ref methodReturnValue);
                                                     reflectionContext.RecordHandledPattern();
                                                     break;
                                                 case IntrinsicId.RuntimeReflectionExtensions_GetRuntimeProperty:
@@ -934,6 +973,43 @@ namespace ILCompiler.Dataflow
                     //
                     // System.Linq.Expressions.Expression
                     // 
+                    // static Property (Expression, MethodInfo)
+                    //
+                    case IntrinsicId.Expression_Property when calledMethod.HasParameterOfType(1, "System.Reflection", "MethodInfo"):
+                        {
+                            reflectionContext.AnalyzingPattern();
+                            foreach (var value in methodParams[1].UniqueValues())
+                            {
+                                if (value is SystemReflectionMethodBaseValue methodBaseValue)
+                                {
+                                    // We have one of the accessors for the property. The Expression.Property will in this case search
+                                    // for the matching PropertyInfo and store that. So to be perfectly correct we need to mark the
+                                    // respective PropertyInfo as "accessed via reflection".
+                                    var propertyDefinition = methodBaseValue.MethodRepresented.GetPropertyForAccessor();
+                                    if (propertyDefinition is not null)
+                                    {
+                                        MarkProperty(ref reflectionContext, propertyDefinition);
+                                        continue;
+                                    }
+                                }
+                                else if (value == NullValue.Instance)
+                                {
+                                    reflectionContext.RecordHandledPattern();
+                                    continue;
+                                }
+                                // In all other cases we may not even know which type this is about, so there's nothing we can do
+                                // report it as a warning.
+                                reflectionContext.RecordUnrecognizedPattern(
+                                    2103, string.Format(Resources.Strings.IL2103,
+                                        DiagnosticUtilities.GetParameterNameForErrorMessage(new ParameterOrigin(calledMethod, 1)),
+                                        DiagnosticUtilities.GetMethodSignatureDisplayName(calledMethod)));
+                            }
+                        }
+                        break;
+
+                    //
+                    // System.Linq.Expressions.Expression
+                    // 
                     // static Field (Expression, Type, String)
                     // static Property (Expression, Type, String)
                     //
@@ -953,8 +1029,6 @@ namespace ILCompiler.Dataflow
                                         if (stringParam is KnownStringValue stringValue)
                                         {
                                             BindingFlags bindingFlags = methodParams[0].Kind == ValueNodeKind.Null ? BindingFlags.Static : BindingFlags.Default;
-                                            // TODO: Change this as needed after deciding if we are to keep all fields/properties on a type
-                                            // that is accessed via reflection. For now, let's only keep the field/property that is retrieved.
                                             if (fieldOrPropertyInstrinsic == IntrinsicId.Expression_Property)
                                             {
                                                 MarkPropertiesOnTypeHierarchy(ref reflectionContext, systemTypeValue.TypeRepresented, filter: p => p.Name == stringValue.Contents, bindingFlags);
@@ -1214,6 +1288,7 @@ namespace ILCompiler.Dataflow
 
                     //
                     // GetConstructor (Type[])
+                    // GetConstructor (BindingFlags, Type[])
                     // GetConstructor (BindingFlags, Binder, Type[], ParameterModifier [])
                     // GetConstructor (BindingFlags, Binder, CallingConventions, Type[], ParameterModifier [])
                     //
@@ -1232,6 +1307,7 @@ namespace ILCompiler.Dataflow
                             int? ctorParameterCount = parameters.Length switch
                             {
                                 1 => (methodParams[1] as ArrayValue)?.Size.AsConstInt(),
+                                2 => (methodParams[2] as ArrayValue)?.Size.AsConstInt(),
                                 4 => (methodParams[3] as ArrayValue)?.Size.AsConstInt(),
                                 5 => (methodParams[4] as ArrayValue)?.Size.AsConstInt(),
                                 _ => null,
@@ -1243,9 +1319,21 @@ namespace ILCompiler.Dataflow
                                 if (value is SystemTypeValue systemTypeValue)
                                 {
                                     if (BindingFlagsAreUnsupported(bindingFlags))
+                                    {
                                         RequireDynamicallyAccessedMembers(ref reflectionContext, DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.NonPublicConstructors, value, new MethodOrigin(calledMethod));
+                                    }
                                     else
-                                        MarkConstructorsOnType(ref reflectionContext, systemTypeValue.TypeRepresented, null, bindingFlags);
+                                    {
+                                        if (HasBindingFlag(bindingFlags, BindingFlags.Public) && !HasBindingFlag(bindingFlags, BindingFlags.NonPublic)
+                                            && ctorParameterCount == 0)
+                                        {
+                                            MarkConstructorsOnType(ref reflectionContext, systemTypeValue.TypeRepresented, m => m.IsPublic() && m.Signature.Length == 0, bindingFlags);
+                                        }
+                                        else
+                                        {
+                                            MarkConstructorsOnType(ref reflectionContext, systemTypeValue.TypeRepresented, null, bindingFlags);
+                                        }
+                                    }
                                     reflectionContext.RecordHandledPattern();
                                 }
                                 else
@@ -1267,6 +1355,7 @@ namespace ILCompiler.Dataflow
                     // GetMethod (string, BindingFlags)
                     // GetMethod (string, Type[])
                     // GetMethod (string, Type[], ParameterModifier[])
+                    // GetMethod (string, BindingFlags, Type[])
                     // GetMethod (string, BindingFlags, Binder, Type[], ParameterModifier[])
                     // GetMethod (string, BindingFlags, Binder, CallingConventions, Type[], ParameterModifier[])
                     // GetMethod (string, int, Type[])
@@ -1297,9 +1386,13 @@ namespace ILCompiler.Dataflow
                                         if (stringParam is KnownStringValue stringValue)
                                         {
                                             if (BindingFlagsAreUnsupported(bindingFlags))
+                                            {
                                                 RequireDynamicallyAccessedMembers(ref reflectionContext, DynamicallyAccessedMemberTypes.PublicMethods | DynamicallyAccessedMemberTypes.NonPublicMethods, value, new MethodOrigin(calledMethod));
+                                            }
                                             else
-                                                MarkMethodsOnTypeHierarchy(ref reflectionContext, systemTypeValue.TypeRepresented, m => m.Name == stringValue.Contents, bindingFlags);
+                                            {
+                                                ProcessGetMethodByName(ref reflectionContext, systemTypeValue.TypeRepresented, stringValue.Contents, bindingFlags, ref methodReturnValue);
+                                            }
                                             reflectionContext.RecordHandledPattern();
                                         }
                                         else
@@ -1432,6 +1525,63 @@ namespace ILCompiler.Dataflow
                         {
                             // This is identity for the purposes of the analysis.
                             methodReturnValue = methodParams[0];
+                        }
+                        break;
+
+                    //
+                    // Type.BaseType
+                    //
+                    case IntrinsicId.Type_get_BaseType:
+                        {
+                            foreach (var value in methodParams[0].UniqueValues())
+                            {
+                                if (value is LeafValueWithDynamicallyAccessedMemberNode dynamicallyAccessedMemberNode)
+                                {
+                                    DynamicallyAccessedMemberTypes propagatedMemberTypes = DynamicallyAccessedMemberTypes.None;
+                                    if (dynamicallyAccessedMemberNode.DynamicallyAccessedMemberTypes == DynamicallyAccessedMemberTypes.All)
+                                        propagatedMemberTypes = DynamicallyAccessedMemberTypes.All;
+                                    else
+                                    {
+                                        // PublicConstructors are not propagated to base type
+
+                                        if (dynamicallyAccessedMemberNode.DynamicallyAccessedMemberTypes.HasFlag(DynamicallyAccessedMemberTypes.PublicEvents))
+                                            propagatedMemberTypes |= DynamicallyAccessedMemberTypes.PublicEvents;
+
+                                        if (dynamicallyAccessedMemberNode.DynamicallyAccessedMemberTypes.HasFlag(DynamicallyAccessedMemberTypes.PublicFields))
+                                            propagatedMemberTypes |= DynamicallyAccessedMemberTypes.PublicFields;
+
+                                        if (dynamicallyAccessedMemberNode.DynamicallyAccessedMemberTypes.HasFlag(DynamicallyAccessedMemberTypes.PublicMethods))
+                                            propagatedMemberTypes |= DynamicallyAccessedMemberTypes.PublicMethods;
+
+                                        // PublicNestedTypes are not propagated to base type
+
+                                        // PublicParameterlessConstructor is not propagated to base type
+
+                                        if (dynamicallyAccessedMemberNode.DynamicallyAccessedMemberTypes.HasFlag(DynamicallyAccessedMemberTypes.PublicProperties))
+                                            propagatedMemberTypes |= DynamicallyAccessedMemberTypes.PublicProperties;
+                                    }
+
+                                    methodReturnValue = MergePointValue.MergeValues(methodReturnValue, new MethodReturnValue(calledMethod, propagatedMemberTypes));
+                                }
+                                else if (value is SystemTypeValue systemTypeValue)
+                                {
+                                    DefType baseTypeDefinition = systemTypeValue.TypeRepresented.BaseType;
+                                    if (baseTypeDefinition != null)
+                                        methodReturnValue = MergePointValue.MergeValues(methodReturnValue, new SystemTypeValue(baseTypeDefinition));
+                                    else
+                                        methodReturnValue = MergePointValue.MergeValues(methodReturnValue, new MethodReturnValue(calledMethod, DynamicallyAccessedMemberTypes.None));
+                                }
+                                else if (value == NullValue.Instance)
+                                {
+                                    // Ignore nulls - null.BaseType will fail at runtime, but it has no effect on static analysis
+                                    continue;
+                                }
+                                else
+                                {
+                                    // Unknown input - propagate a return value without any annotation - we know it's a Type but we know nothing about it
+                                    methodReturnValue = MergePointValue.MergeValues(methodReturnValue, new MethodReturnValue(calledMethod, DynamicallyAccessedMemberTypes.None));
+                                }
+                            }
                         }
                         break;
 
@@ -1853,9 +2003,40 @@ namespace ILCompiler.Dataflow
                         {
                             reflectionContext.AnalyzingPattern();
 
-                            // We don't track MethodInfo values, so we can't determine if the MakeGenericMethod is problematic or not.
-                            // Since some of the generic parameters may have annotations, all calls are potentially dangerous.
-                            reflectionContext.RecordUnrecognizedPattern(2060, $"Call to `{calledMethod.GetDisplayName()}` can not be statically analyzed. It's not possible to guarantee the availability of requirements of the generic method.");
+                            foreach (var methodValue in methodParams[0].UniqueValues())
+                            {
+                                if (methodValue is SystemReflectionMethodBaseValue methodBaseValue)
+                                {
+                                    foreach (GenericParameterDesc genericParameter in methodBaseValue.MethodRepresented.GetTypicalMethodDefinition().Instantiation)
+                                    {
+                                        if (_flowAnnotations.GetGenericParameterAnnotation(genericParameter) != DynamicallyAccessedMemberTypes.None ||
+                                            genericParameter.HasDefaultConstructorConstraint)
+                                        {
+                                            // There is a generic parameter which has some requirements on input types.
+                                            // For now we don't support tracking actual array elements, so we can't validate that the requirements are fulfilled.
+                                            reflectionContext.RecordUnrecognizedPattern(
+                                                2060, string.Format(Resources.Strings.IL2060,
+                                                    DiagnosticUtilities.GetMethodSignatureDisplayName(calledMethod)));
+                                        }
+                                    }
+                                    // We haven't found any generic parameters with annotations, so there's nothing to validate
+                                    reflectionContext.RecordHandledPattern();
+                                }
+                                else if (methodValue == NullValue.Instance)
+                                {
+                                    reflectionContext.RecordHandledPattern();
+                                }
+                                else
+                                {
+                                    // There is a generic parameter which has some requirements on input types.
+                                    // For now we don't support tracking actual array elements, so we can't validate that the requirements are fulfilled.
+                                    reflectionContext.RecordUnrecognizedPattern(
+                                        2060, string.Format(Resources.Strings.IL2060,
+                                            DiagnosticUtilities.GetMethodSignatureDisplayName(calledMethod)));
+                                }
+                            }
+                            // MakeGenericMethod doesn't change the identity of the MethodBase we're tracking so propagate to the return value
+                            methodReturnValue = methodParams[0];
 
                             if (shouldEnableAotWarnings)
                                 LogDynamicCodeWarning(_logger, callingMethodBody, offset, calledMethod);
@@ -2035,6 +2216,28 @@ namespace ILCompiler.Dataflow
             }
         }
 #endif
+
+        void ProcessGetMethodByName(
+            ref ReflectionPatternContext reflectionContext,
+            TypeDesc typeDefinition,
+            string methodName,
+            BindingFlags? bindingFlags,
+            ref ValueNode methodReturnValue)
+        {
+            bool foundAny = false;
+            foreach (var method in typeDefinition.GetMethodsOnTypeHierarchy(m => m.Name == methodName, bindingFlags))
+            {
+                MarkMethod(ref reflectionContext, method);
+                methodReturnValue = MergePointValue.MergeValues(methodReturnValue, new SystemReflectionMethodBaseValue(method));
+                foundAny = true;
+            }
+            // If there were no methods found the API will return null at runtime, so we should
+            // track the null as a return value as well.
+            // This also prevents warnings in such case, since if we don't set the return value it will be
+            // "unknown" and consumers may warn.
+            if (!foundAny)
+                methodReturnValue = MergePointValue.MergeValues(methodReturnValue, NullValue.Instance);
+        }
 
         void RequireDynamicallyAccessedMembers(ref ReflectionPatternContext reflectionContext, DynamicallyAccessedMemberTypes requiredMemberTypes, ValueNode value, Origin targetContext)
         {
@@ -2353,6 +2556,9 @@ namespace ILCompiler.Dataflow
                     case EventPseudoDesc @event:
                         MarkEvent(ref reflectionContext, @event);
                         break;
+                    case null:
+                        MarkEntireType(ref reflectionContext, typeDefinition);
+                        break;
                     default:
                         Debug.Fail(member.GetType().ToString());
                         break;
@@ -2368,84 +2574,7 @@ namespace ILCompiler.Dataflow
 
         void MarkMethod(ref ReflectionPatternContext reflectionContext, MethodDesc method)
         {
-            // Code below assumes we need to specialize generic methods
-            Debug.Assert(method.IsMethodDefinition);
-
-            // If there's any genericness involved, try to create a fitting instantiation that would be usable at runtime.
-            // This is not a complete solution to the problem.
-            // If we ever decide that MakeGenericType/MakeGenericMethod should simply be considered unsafe, this code can be deleted
-            // and instantiations that are not fully closed can be ignored.
-            if (method.OwningType.IsGenericDefinition || method.OwningType.ContainsSignatureVariables(treatGenericParameterLikeSignatureVariable: true))
-            {
-                TypeDesc owningType = method.OwningType.GetTypeDefinition();
-                Instantiation inst = ILCompiler.TypeExtensions.GetInstantiationThatMeetsConstraints(owningType.Instantiation, allowCanon: false);
-                if (inst.IsNull)
-                {
-                    if (_logger.IsVerbose)
-                        _logger.Writer.WriteLine($"Would mark {method} but can't get a good owning type");
-                    return;
-                }
-
-                method = method.Context.GetMethodForInstantiatedType(
-                    method.GetTypicalMethodDefinition(),
-                    ((MetadataType)owningType).MakeInstantiatedType(inst));
-            }
-
-            if (method.HasInstantiation)
-            {
-                Instantiation inst = ILCompiler.TypeExtensions.GetInstantiationThatMeetsConstraints(method.Instantiation, allowCanon: false);
-                if (inst.IsNull)
-                {
-                    if (_logger.IsVerbose)
-                        _logger.Writer.WriteLine($"Would mark {method} but can't get a good instantiation");
-                    return;
-                }
-
-                method = method.MakeInstantiatedMethod(inst);
-            }
-
-            string reason = reflectionContext.MemberWithRequirements.ToString();
-
-            // For the method to be actually usable with reflection, we need to add the constructed type.
-            _dependencies.Add(_factory.MaximallyConstructableType(method.OwningType), reason);
-
-            if (!MetadataManager.IsMethodSupportedInReflectionInvoke(method))
-            {
-                if (_logger.IsVerbose)
-                    _logger.Writer.WriteLine($"Would mark {method} but it's not usable for reflection invoke");
-                // TODO: do we need to drop a MethodMetadata node into the dependencies here?
-            }
-            else
-            {
-                if (method.IsVirtual)
-                {
-                    if (method.HasInstantiation)
-                    {
-                        _dependencies.Add(_factory.GVMDependencies(method), reason);
-                    }
-                    else
-                    {
-                        // Virtual method use is tracked on the slot defining method only.
-                        MethodDesc slotDefiningMethod = MetadataVirtualMethodAlgorithm.FindSlotDefiningMethodForVirtualMethod(method);
-                        if (!_factory.VTable(slotDefiningMethod.OwningType).HasFixedSlots)
-                            _dependencies.Add(_factory.VirtualMethodUse(slotDefiningMethod), reason);
-                    }
-
-                    if (method.IsAbstract)
-                    {
-                        _dependencies.Add(_factory.ReflectableMethod(method), reason);
-                    }
-                }
-
-                if (!method.IsAbstract)
-                {
-                    _dependencies.Add(_factory.CanonicalEntrypoint(method), reason);
-                    if (method.HasInstantiation
-                        && method != method.GetCanonMethodTarget(CanonicalFormKind.Specific))
-                        _dependencies.Add(_factory.MethodGenericDictionary(method), reason);
-                }
-            }
-
+            RootingHelpers.TryGetDependenciesForReflectedMethod(ref _dependencies, _factory, method, reflectionContext.MemberWithRequirements.ToString());
             reflectionContext.RecordHandledPattern();
         }
 
@@ -2456,26 +2585,19 @@ namespace ILCompiler.Dataflow
 
         void MarkField(ref ReflectionPatternContext reflectionContext, FieldDesc field)
         {
-            reflectionContext.RecordRecognizedPattern(() => { if (_logger.IsVerbose) _logger.Writer.WriteLine($"Marking {field.GetDisplayName()}"); });
+            RootingHelpers.TryGetDependenciesForReflectedField(ref _dependencies, _factory, field, reflectionContext.MemberWithRequirements.ToString());
+            reflectionContext.RecordHandledPattern();
         }
 
         void MarkProperty(ref ReflectionPatternContext reflectionContext, PropertyPseudoDesc property)
         {
-            if (property.GetMethod != null)
-                MarkMethod(ref reflectionContext, property.GetMethod);
-            if (property.SetMethod != null)
-                MarkMethod(ref reflectionContext, property.SetMethod);
-
+            RootingHelpers.TryGetDependenciesForReflectedProperty(ref _dependencies, _factory, property, reflectionContext.MemberWithRequirements.ToString());
             reflectionContext.RecordHandledPattern();
         }
 
         void MarkEvent(ref ReflectionPatternContext reflectionContext, EventPseudoDesc @event)
         {
-            if (@event.AddMethod != null)
-                MarkMethod(ref reflectionContext, @event.AddMethod);
-            if (@event.RemoveMethod != null)
-                MarkMethod(ref reflectionContext, @event.RemoveMethod);
-
+            RootingHelpers.TryGetDependenciesForReflectedEvent(ref _dependencies, _factory, @event, reflectionContext.MemberWithRequirements.ToString());
             reflectionContext.RecordHandledPattern();
         }
 
@@ -2522,6 +2644,12 @@ namespace ILCompiler.Dataflow
                 MarkEvent(ref reflectionContext, @event);
         }
 
+        void MarkEntireType(ref ReflectionPatternContext reflectionContext, TypeDesc type)
+        {
+            RootingHelpers.GetDependenciesForEntireReflectedType(ref _dependencies, _factory, type, reflectionContext.MemberWithRequirements.ToString());
+            reflectionContext.RecordHandledPattern();
+        }
+
         static DynamicallyAccessedMemberTypes GetDynamicallyAccessedMemberTypesFromBindingFlagsForNestedTypes(BindingFlags? bindingFlags) =>
             (HasBindingFlag(bindingFlags, BindingFlags.Public) ? DynamicallyAccessedMemberTypes.PublicNestedTypes : DynamicallyAccessedMemberTypes.None) |
             (HasBindingFlag(bindingFlags, BindingFlags.NonPublic) ? DynamicallyAccessedMemberTypes.NonPublicNestedTypes : DynamicallyAccessedMemberTypes.None);
@@ -2552,6 +2680,7 @@ namespace ILCompiler.Dataflow
         {
             public static class Strings
             {
+                public const string IL2060 = "Call to '{0}' can not be statically analyzed. It's not possible to guarantee the availability of requirements of the generic method.";
                 public const string IL2067 = "'{0}' argument does not satisfy {4} in call to '{1}'. The parameter '{2}' of method '{3}' does not have matching annotations. The source value must declare at least the same requirements as those declared on the target location it is assigned to.";
                 public const string IL2068 = "'{0}' method return value does not satisfy {3} requirements. The parameter '{1}' of method '{2}' does not have matching annotations. The source value must declare at least the same requirements as those declared on the target location it is assigned to.";
                 public const string IL2069 = "value stored in field '{0}' does not satisfy {3} requirements. The parameter '{1}' of method '{2}' does not have matching annotations. The source value must declare at least the same requirements as those declared on the target location it is assigned to.";
@@ -2577,11 +2706,13 @@ namespace ILCompiler.Dataflow
                 public const string IL2089 = "value stored in field '{0}' does not satisfy {3} requirements. The generic parameter '{1}' of '{2}' does not have matching annotations. The source value must declare at least the same requirements as those declared on the target location it is assigned to.";
                 public const string IL2090 = "'this' argument does not satisfy {3} in call to '{0}'. The generic parameter '{1}' of '{2}' does not have matching annotations. The source value must declare at least the same requirements as those declared on the target location it is assigned to.";
                 public const string IL2091 = "'{0}' generic argument does not satisfy {4} in '{1}'. The generic parameter '{2}' of '{3}' does not have matching annotations. The source value must declare at least the same requirements as those declared on the target location it is assigned to.";
+                public const string IL2103 = "Value passed to the '{0}' parameter of method '{1}' cannot be statically determined as a property accessor.";
 
                 // Error codes > 6000 are reserved for custom steps and illink doesn't claim ownership of them
 
                 // TODO: these are all unique to NativeAOT - mono/linker repo is not aware this error code is used.
                 public const string IL9700 = "Calling '{0}' which has `RequiresDynamicCodeAttribute` can break functionality when compiled fully ahead of time.";
+                // IL9701 - COM
             }
         }
     }

@@ -28,7 +28,6 @@ namespace Internal.Runtime.TypeLoader
         private ExternalReferencesTable _externalReferencesLookup;
         public Instantiation _typeArgumentHandles;
         public Instantiation _methodArgumentHandles;
-        public ulong[] _debuggerPreparedExternalReferences;
 
         private TypeDesc GetInstantiationType(ref NativeParser parser, uint arity)
         {
@@ -66,15 +65,8 @@ namespace Internal.Runtime.TypeLoader
         {
             if (!_externalReferencesLookup.IsInitialized())
             {
-                if (this._debuggerPreparedExternalReferences == null)
-                {
-                    bool success = _externalReferencesLookup.InitializeNativeReferences(_module);
-                    Debug.Assert(success);
-                }
-                else
-                {
-                    _externalReferencesLookup.InitializeDebuggerReference(this._debuggerPreparedExternalReferences);
-                }
+                bool success = _externalReferencesLookup.InitializeNativeReferences(_module);
+                Debug.Assert(success);
             }
         }
 

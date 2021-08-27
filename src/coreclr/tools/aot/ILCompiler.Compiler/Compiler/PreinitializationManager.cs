@@ -17,7 +17,7 @@ namespace ILCompiler
 
         public PreinitializationManager(TypeSystemContext context, CompilationModuleGroup compilationGroup, ILProvider ilprovider, bool enableInterpreter)
         {
-            _supportsLazyCctors = context.SystemModule.GetType("System.Runtime.CompilerServices", "ClassConstructorRunner", false) != null;
+            _supportsLazyCctors = context.SystemModule.GetType("System.Runtime.CompilerServices", "ClassConstructorRunner", NotFoundBehavior.ReturnNull) != null;
             _preinitHashTable = new PreinitializationInfoHashtable(compilationGroup, ilprovider);
             _enableInterpreter = enableInterpreter;
         }

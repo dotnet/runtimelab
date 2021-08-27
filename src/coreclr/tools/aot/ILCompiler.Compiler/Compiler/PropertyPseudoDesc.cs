@@ -21,7 +21,7 @@ namespace ILCompiler
         private PropertyDefinition Definition => _type.MetadataReader.GetPropertyDefinition(_handle);
 
         public PropertySignature Signature =>
-            new EcmaSignatureParser(_type.EcmaModule, _type.MetadataReader.GetBlobReader(Definition.Signature))
+            new EcmaSignatureParser(_type.EcmaModule, _type.MetadataReader.GetBlobReader(Definition.Signature), NotFoundBehavior.Throw)
             .ParsePropertySignature();
 
         public MethodDesc GetMethod

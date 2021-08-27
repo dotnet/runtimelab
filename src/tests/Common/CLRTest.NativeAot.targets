@@ -66,8 +66,7 @@ if [ ! -z ${RunNativeAot+x} ]%3B then
     # So instead we point LD_LIBRARY_PATH to the directory where the native component is.
     if [[ "$OSTYPE" == "darwin"* ]]; then
         cp *.dylib  native/ 2>/dev/null
-    fi
-    if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+    else
         export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${PWD}
     fi
 
@@ -155,8 +154,10 @@ if defined RunNativeAot (
     <OutputType>Exe</OutputType>
     <OutputPath>%24(MSBuildProjectDirectory)\</OutputPath>
     <IntermediateOutputPath>%24(MSBuildProjectDirectory)\</IntermediateOutputPath>
+    <PlatformTarget>$(TargetArchitecture)</PlatformTarget>
     <Optimize>$(Optimize)</Optimize>
     <DebugSymbols>true</DebugSymbols>
+    <NETCoreSdkVersion>$(NETCoreSdkVersion)</NETCoreSdkVersion>
   </PropertyGroup>
 
   $(NativeAotProjectLines)

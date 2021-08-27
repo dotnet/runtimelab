@@ -392,8 +392,12 @@ namespace System.Runtime
     [ReflectionBlocked]
     public delegate IntPtr RuntimeObjectFactory(IntPtr context, IntPtr signature, object contextObject, ref IntPtr auxResult);
 
-    internal unsafe class RawCalliHelper
+    internal static unsafe class RawCalliHelper
     {
+        [MethodImplAttribute(MethodImplOptions.AggressiveInlining)]
+        public static void Call(System.IntPtr pfn, ref byte data)
+            => ((delegate*<ref byte, void>)pfn)(ref data);
+
         [MethodImplAttribute(MethodImplOptions.AggressiveInlining)]
         public static T Call<T>(System.IntPtr pfn, IntPtr arg)
             => ((delegate*<IntPtr, T>)pfn)(arg);

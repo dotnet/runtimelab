@@ -230,5 +230,7 @@ namespace System.Threading
 
             data._callback(errorCode, bytesWritten, ToNativeOverlapped(overlapped));
         }
+
+        internal bool IsUserObject(byte[]? buffer) => ReferenceEquals(Data._pinnedData, buffer);
     }
 }

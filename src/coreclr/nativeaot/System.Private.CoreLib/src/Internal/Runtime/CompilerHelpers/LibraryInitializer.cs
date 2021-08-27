@@ -13,7 +13,7 @@ namespace Internal.Runtime.CompilerHelpers
     /// Container class to run specific class constructors in a defined order. Since we can't
     /// directly invoke class constructors in C#, they're renamed Initialize.
     /// </summary>
-    internal class LibraryInitializer
+    internal static class LibraryInitializer
     {
         public static void InitializeLibrary()
         {

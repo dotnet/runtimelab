@@ -29,22 +29,6 @@ namespace System.Runtime
         [SuppressGCTransition]
         internal static extern ulong PalGetTickCount64();
 
-        [MethodImpl(MethodImplOptions.InternalCall)]
-        [RuntimeImport(RuntimeLibrary, "RhpSendCustomEventToDebugger")]
-        internal static extern void RhpSendCustomEventToDebugger(IntPtr payload, int length);
-
-        [DllImport(RuntimeLibrary, ExactSpelling = true, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern uint RhpGetFuncEvalParameterBufferSize();
-
-        [DllImport(RuntimeLibrary, ExactSpelling = true, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern uint RhpGetFuncEvalMode();
-
-        [DllImport(RuntimeLibrary, ExactSpelling = true, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern unsafe uint RhpRecordDebuggeeInitiatedHandle(void* objectHandle);
-
-        [DllImport(RuntimeLibrary, ExactSpelling = true, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern void RhpVerifyDebuggerCleanup();
-
         [DllImport(RuntimeLibrary, ExactSpelling = true, CallingConvention = CallingConvention.Cdecl)]
         internal static extern IntPtr RhpGetCurrentThread();
 
@@ -209,6 +193,9 @@ namespace System.Runtime
 
         [DllImport(RuntimeLibrary, ExactSpelling = true)]
         internal static unsafe extern void RhAllocateNewArray(IntPtr pArrayEEType, uint numElements, uint flags, void* pResult);
+
+        [DllImport(RuntimeLibrary, ExactSpelling = true)]
+        internal static unsafe extern void RhAllocateNewObject(IntPtr pEEType, uint flags, void* pResult);
 
         [MethodImpl(MethodImplOptions.InternalCall)]
         [RuntimeImport(RuntimeLibrary, "RhCompareObjectContentsAndPadding")]

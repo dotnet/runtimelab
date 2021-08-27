@@ -163,35 +163,32 @@ namespace ILCompiler.DependencyAnalysis
             return null;
         }
 
-        DebugLocInfo[] INodeWithDebugInfo.DebugLocInfos
+        IEnumerable<NativeSequencePoint> INodeWithDebugInfo.GetNativeSequencePoints()
         {
-            get
+            if (_id == ReadyToRunHelperId.VirtualCall)
             {
-                if (_id == ReadyToRunHelperId.VirtualCall)
+                // Generate debug information that lets debuggers step into the virtual calls.
+                // We generate a step into sequence point at the point where the helper jumps to
+                // the target of the virtual call.
+                TargetDetails target = ((MethodDesc)_target).Context.Target;
+                int debuggerStepInOffset = -1;
+                switch (target.Architecture)
                 {
-                    // Generate debug information that lets debuggers step into the virtual calls.
-                    // We generate a step into sequence point at the point where the helper jumps to
-                    // the target of the virtual call.
-                    TargetDetails target = ((MethodDesc)_target).Context.Target;
-                    int debuggerStepInOffset = -1;
-                    switch (target.Architecture)
-                    {
-                        case TargetArchitecture.X64:
-                            debuggerStepInOffset = 3;
-                            break;
-                    }
-                    if (debuggerStepInOffset != -1)
-                    {
-                        return new DebugLocInfo[]
-                        {
-                            new DebugLocInfo(0, String.Empty, WellKnownLineNumber.DebuggerStepThrough),
-                            new DebugLocInfo(debuggerStepInOffset, String.Empty, WellKnownLineNumber.DebuggerStepIn)
-                        };
-                    }
+                    case TargetArchitecture.X64:
+                        debuggerStepInOffset = 3;
+                        break;
                 }
-
-                return Array.Empty<DebugLocInfo>();
+                if (debuggerStepInOffset != -1)
+                {
+                    return new NativeSequencePoint[]
+                    {
+                        new NativeSequencePoint(0, String.Empty, WellKnownLineNumber.DebuggerStepThrough),
+                        new NativeSequencePoint(debuggerStepInOffset, String.Empty, WellKnownLineNumber.DebuggerStepIn)
+                    };
+                }
             }
+
+            return Array.Empty<NativeSequencePoint>();
         }
 
         IEnumerable<DebugVarInfoMetadata> INodeWithDebugInfo.GetDebugVars()

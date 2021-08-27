@@ -367,7 +367,7 @@ namespace ILCompiler.Dataflow
                             if (setMethod.Signature.Length > 0)
                             {
                                 DynamicallyAccessedMemberTypes[] paramAnnotations = new DynamicallyAccessedMemberTypes[setMethod.Signature.Length + offset];
-                                paramAnnotations[offset] = annotation;
+                                paramAnnotations[paramAnnotations.Length - 1] = annotation;
                                 annotatedMethods.Add(new MethodAnnotations(setMethod, paramAnnotations, DynamicallyAccessedMemberTypes.None, null));
                             }
                         }

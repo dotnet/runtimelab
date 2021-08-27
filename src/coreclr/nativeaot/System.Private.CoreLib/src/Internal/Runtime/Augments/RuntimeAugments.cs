@@ -382,27 +382,23 @@ namespace Internal.Runtime.Augments
         public static object CallDynamicInvokeMethod(
             object thisPtr,
             IntPtr methodToCall,
-            object thisPtrDynamicInvokeMethod,
             IntPtr dynamicInvokeHelperMethod,
             IntPtr dynamicInvokeHelperGenericDictionary,
             object defaultParametersContext,
             object[] parameters,
             BinderBundle binderBundle,
             bool wrapInTargetInvocationException,
-            bool invokeMethodHelperIsThisCall,
             bool methodToCallIsThisCall)
         {
             object result = InvokeUtils.CallDynamicInvokeMethod(
                 thisPtr,
                 methodToCall,
-                thisPtrDynamicInvokeMethod,
                 dynamicInvokeHelperMethod,
                 dynamicInvokeHelperGenericDictionary,
                 defaultParametersContext,
                 parameters,
                 binderBundle,
                 wrapInTargetInvocationException,
-                invokeMethodHelperIsThisCall,
                 methodToCallIsThisCall);
             System.Diagnostics.DebugAnnotations.PreviousCallContainsDebuggerStepInCode();
             return result;
@@ -977,7 +973,7 @@ namespace Internal.Runtime.Augments
             return Delegate.CreateObjectArrayDelegate(delegateType, invoker);
         }
 
-        internal class RawCalliHelper
+        internal static class RawCalliHelper
         {
             [DebuggerHidden]
             [DebuggerStepThrough]
@@ -1079,29 +1075,6 @@ namespace Internal.Runtime.Augments
             return typeHandle.LastResortToString;
         }
 
-        public static void RhpSendCustomEventToDebugger(IntPtr payload, int length)
-        {
-            RuntimeImports.RhpSendCustomEventToDebugger(payload, length);
-        }
-
-        [CLSCompliant(false)]
-        public static uint RhpGetFuncEvalParameterBufferSize()
-        {
-            return RuntimeImports.RhpGetFuncEvalParameterBufferSize();
-        }
-
-        [CLSCompliant(false)]
-        public static uint RhpGetFuncEvalMode()
-        {
-            return RuntimeImports.RhpGetFuncEvalMode();
-        }
-
-        [CLSCompliant(false)]
-        public static unsafe uint RhpRecordDebuggeeInitiatedHandle(IntPtr objectHandle)
-        {
-            return RuntimeImports.RhpRecordDebuggeeInitiatedHandle((void*)objectHandle);
-        }
-
         public static IntPtr RhHandleAlloc(object value, GCHandleType type)
         {
             return RuntimeImports.RhHandleAlloc(value, type);
@@ -1115,11 +1088,6 @@ namespace Internal.Runtime.Augments
         public static IntPtr RhGetOSModuleForMrt()
         {
             return RuntimeImports.RhGetOSModuleForMrt();
-        }
-
-        public static void RhpVerifyDebuggerCleanup()
-        {
-            RuntimeImports.RhpVerifyDebuggerCleanup();
         }
 
         public static IntPtr RhpGetCurrentThread()

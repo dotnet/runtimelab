@@ -43,7 +43,7 @@ namespace System
         public static object CheckArgument(object srcObject, RuntimeTypeHandle dstType, BinderBundle binderBundle)
         {
             EETypePtr dstEEType = dstType.ToEETypePtr();
-            return CheckArgument(srcObject, dstEEType, CheckArgumentSemantics.DynamicInvoke, binderBundle, getExactTypeForCustomBinder: null);
+            return CheckArgument(srcObject, dstEEType, CheckArgumentSemantics.DynamicInvoke, binderBundle, ref Unsafe.NullRef<ArgSetupState>());
         }
 
         // This option tweaks the coercion rules to match classic inconsistencies.
@@ -54,7 +54,12 @@ namespace System
             SetFieldDirect,      // Throws ArgumentException - other than that, like DynamicInvoke except that enums and integers cannot be intermingled, and null cannot substitute for default(valuetype).
         }
 
-        internal static object CheckArgument(object srcObject, EETypePtr dstEEType, CheckArgumentSemantics semantics, BinderBundle binderBundle, Func<Type> getExactTypeForCustomBinder = null)
+        internal static object CheckArgument(object srcObject, EETypePtr dstEEType, CheckArgumentSemantics semantics, BinderBundle binderBundle)
+        {
+            return CheckArgument(srcObject, dstEEType, semantics, binderBundle, ref Unsafe.NullRef<ArgSetupState>());
+        }
+
+        internal static object CheckArgument(object srcObject, EETypePtr dstEEType, CheckArgumentSemantics semantics, BinderBundle binderBundle, ref ArgSetupState argSetupState)
         {
             // Methods with ByRefLike types in signatures should be filtered out by the compiler
             Debug.Assert(!dstEEType.IsByRefLike);
@@ -94,7 +99,7 @@ namespace System
 
                 // Our normal coercion rules could not convert the passed in argument but we were supplied a custom binder. See if it can do it.
                 Type exactDstType;
-                if (getExactTypeForCustomBinder == null)
+                if (Unsafe.IsNullRef(ref argSetupState))
                 {
                     // We were called by someone other than DynamicInvokeParamHelperCore(). Those callers pass the correct dstEEType.
                     exactDstType = Type.GetTypeFromHandle(new RuntimeTypeHandle(dstEEType));
@@ -103,13 +108,13 @@ namespace System
                 {
                     // We were called by DynamicInvokeParamHelperCore(). He passes a dstEEType that enums folded to int and possibly other adjustments. A custom binder
                     // is app code however and needs the exact type.
-                    exactDstType = getExactTypeForCustomBinder();
+                    exactDstType = GetExactTypeForCustomBinder(argSetupState);
                 }
 
                 srcObject = binderBundle.ChangeType(srcObject, exactDstType);
 
                 // For compat with desktop, the result of the binder call gets processed through the default rules again.
-                dstObject = CheckArgument(srcObject, dstEEType, semantics, binderBundle: null, getExactTypeForCustomBinder: null);
+                dstObject = CheckArgument(srcObject, dstEEType, semantics, binderBundle: null, ref Unsafe.NullRef<ArgSetupState>());
                 return dstObject;
             }
         }
@@ -296,49 +301,25 @@ namespace System
         public struct ArgSetupState
         {
             public bool fComplete;
+            public object[] parameters;
             public object[] nullableCopyBackObjects;
+            public int curIndex;
+            public object targetMethodOrDelegate;
+            public BinderBundle binderBundle;
+            public object[] customBinderProvidedParameters;
         }
 
-        // These thread static fields are used instead of passing parameters normally through to the helper functions
-        // that actually implement dynamic invocation. This allows the large number of dynamically generated
-        // functions to be just that little bit smaller, which, when spread across the many invocation helper thunks
-        // generated adds up quite a bit.
-        [ThreadStatic]
-        private static object[] s_parameters;
-        [ThreadStatic]
-        private static object[] s_nullableCopyBackObjects;
-        [ThreadStatic]
-        private static int s_curIndex;
-        [ThreadStatic]
-        private static object s_targetMethodOrDelegate;
-        [ThreadStatic]
-        private static BinderBundle s_binderBundle;
-        [ThreadStatic]
-        private static object[] s_customBinderProvidedParameters;
-
-        private static object GetDefaultValue(RuntimeTypeHandle thType, int argIndex)
+        private static object GetDefaultValue(object targetMethodOrDelegate, RuntimeTypeHandle thType, int argIndex)
         {
-            object targetMethodOrDelegate = s_targetMethodOrDelegate;
             if (targetMethodOrDelegate == null)
             {
                 throw new ArgumentException(SR.Arg_DefaultValueMissingException);
             }
 
-            object defaultValue;
-            bool hasDefaultValue;
-            Delegate delegateInstance = targetMethodOrDelegate as Delegate;
-            if (delegateInstance != null)
-            {
-                hasDefaultValue = delegateInstance.TryGetDefaultParameterValue(thType, argIndex, out defaultValue);
-            }
-            else
-            {
-                hasDefaultValue = RuntimeAugments.Callbacks.TryGetDefaultParameterValue(targetMethodOrDelegate, thType, argIndex, out defaultValue);
-            }
-
+            bool hasDefaultValue = RuntimeAugments.Callbacks.TryGetDefaultParameterValue(targetMethodOrDelegate, thType, argIndex, out object defaultValue);
             if (!hasDefaultValue)
             {
-                throw new ArgumentException(SR.Arg_DefaultValueMissingException);
+                throw new ArgumentException(SR.Arg_DefaultValueMissingException, "parameters");
             }
 
             // Note that we might return null even for value types which cannot have null value here.
@@ -348,29 +329,25 @@ namespace System
 
         // This is only called if we have to invoke a custom binder to coerce a parameter type. It leverages s_targetMethodOrDelegate to retrieve
         // the unaltered parameter type to pass to the binder.
-        private static Type GetExactTypeForCustomBinder()
+        private static Type GetExactTypeForCustomBinder(in ArgSetupState argSetupState)
         {
-            Debug.Assert(s_binderBundle != null && s_targetMethodOrDelegate is MethodBase);
-            MethodBase method = (MethodBase)s_targetMethodOrDelegate;
+            Debug.Assert(argSetupState.binderBundle != null && argSetupState.targetMethodOrDelegate is MethodBase);
+            MethodBase method = (MethodBase)argSetupState.targetMethodOrDelegate;
 
             // DynamicInvokeParamHelperCore() increments s_curIndex before calling us - that's why we have to subtract 1.
-            return method.GetParametersNoCopy()[s_curIndex - 1].ParameterType;
+            return method.GetParametersNoCopy()[argSetupState.curIndex - 1].ParameterType;
         }
-
-        private static readonly Func<Type> s_getExactTypeForCustomBinder = GetExactTypeForCustomBinder;
 
         [DebuggerGuidedStepThroughAttribute]
         internal static unsafe object CallDynamicInvokeMethod(
             object thisPtr,
             IntPtr methodToCall,
-            object thisPtrDynamicInvokeMethod,
             IntPtr dynamicInvokeHelperMethod,
             IntPtr dynamicInvokeHelperGenericDictionary,
             object targetMethodOrDelegate,
             object[] parameters,
             BinderBundle binderBundle,
             bool wrapInTargetInvocationException,
-            bool invokeMethodHelperIsThisCall = true,
             bool methodToCallIsThisCall = true)
         {
             // This assert is needed because we've double-purposed "targetMethodOrDelegate" (which is actually a MethodBase anytime a custom binder is used)
@@ -378,49 +355,28 @@ namespace System
             // isn't always the exact type (byref stripped off, enums converted to int, etc.)
             Debug.Assert(!(binderBundle != null && !(targetMethodOrDelegate is MethodBase)), "The only callers that can pass a custom binder are those servicing MethodBase.Invoke() apis.");
 
-            bool parametersNeedCopyBack = false;
-            ArgSetupState argSetupState = default(ArgSetupState);
+            ArgSetupState argSetupState = new ArgSetupState
+            {
+                binderBundle = binderBundle,
+                targetMethodOrDelegate = targetMethodOrDelegate,
+            };
 
-            // Capture state of thread static invoke helper statics
-            object[] parametersOld = s_parameters;
-            object[] nullableCopyBackObjectsOld = s_nullableCopyBackObjects;
-            int curIndexOld = s_curIndex;
-            object targetMethodOrDelegateOld = s_targetMethodOrDelegate;
-            BinderBundle binderBundleOld = s_binderBundle;
-            s_binderBundle = binderBundle;
-            object[] customBinderProvidedParametersOld = s_customBinderProvidedParameters;
-            s_customBinderProvidedParameters = null;
-
-            try
             {
                 // If the passed in array is not an actual object[] instance, we need to copy it over to an actual object[]
                 // instance so that the rest of the code can safely create managed object references to individual elements.
                 if (parameters != null && EETypePtr.EETypePtrOf<object[]>() != parameters.EETypePtr)
                 {
-                    s_parameters = new object[parameters.Length];
-                    Array.Copy(parameters, s_parameters, parameters.Length);
-                    parametersNeedCopyBack = true;
+                    argSetupState.parameters = new object[parameters.Length];
+                    Array.Copy(parameters, argSetupState.parameters, parameters.Length);
                 }
                 else
                 {
-                    s_parameters = parameters;
+                    argSetupState.parameters = parameters;
                 }
-
-                s_nullableCopyBackObjects = null;
-                s_curIndex = 0;
-                s_targetMethodOrDelegate = targetMethodOrDelegate;
 
                 object result;
                 try
                 {
-                    if (invokeMethodHelperIsThisCall)
-                    {
-                        Debug.Assert(methodToCallIsThisCall == true);
-                        result = ((delegate*<object, object, IntPtr, ref ArgSetupState, object>)dynamicInvokeHelperMethod)
-                            (thisPtrDynamicInvokeMethod, thisPtr, methodToCall, ref argSetupState);
-                        System.Diagnostics.DebugAnnotations.PreviousCallContainsDebuggerStepInCode();
-                    }
-                    else
                     {
                         if (dynamicInvokeHelperGenericDictionary != IntPtr.Zero)
                         {
@@ -442,9 +398,9 @@ namespace System
                 }
                 finally
                 {
-                    if (parametersNeedCopyBack)
+                    if (argSetupState.parameters != parameters)
                     {
-                        Array.Copy(s_parameters, parameters, parameters.Length);
+                        Array.Copy(argSetupState.parameters, parameters, parameters.Length);
                     }
 
                     if (argSetupState.fComplete)
@@ -469,30 +425,18 @@ namespace System
 
                 return result;
             }
-            finally
-            {
-                // Restore state of thread static helper statics
-                s_parameters = parametersOld;
-                s_nullableCopyBackObjects = nullableCopyBackObjectsOld;
-                s_curIndex = curIndexOld;
-                s_targetMethodOrDelegate = targetMethodOrDelegateOld;
-                s_binderBundle = binderBundleOld;
-                s_customBinderProvidedParameters = customBinderProvidedParametersOld;
-            }
         }
 
         [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
         internal static void DynamicInvokeArgSetupComplete(ref ArgSetupState argSetupState)
         {
-            int parametersLength = s_parameters != null ? s_parameters.Length : 0;
+            int parametersLength = argSetupState.parameters != null ? argSetupState.parameters.Length : 0;
 
-            if (s_curIndex != parametersLength)
+            if (argSetupState.curIndex != parametersLength)
             {
                 throw new System.Reflection.TargetParameterCountException();
             }
             argSetupState.fComplete = true;
-            argSetupState.nullableCopyBackObjects = s_nullableCopyBackObjects;
-            s_nullableCopyBackObjects = null;
         }
 
         [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
@@ -500,94 +444,6 @@ namespace System
         {
             // argSetupStatePtr is a pointer to a *pinned* ArgSetupState object
             DynamicInvokeArgSetupComplete(ref Unsafe.As<byte, ArgSetupState>(ref *(byte*)argSetupStatePtr));
-        }
-
-        // Template function that is used to call dynamically
-        internal static object DynamicInvokeThisCallTemplate(object thisPtr, IntPtr methodToCall, ref ArgSetupState argSetupState)
-        {
-            // This function will look like
-            //
-            // !For each parameter to the method
-            //    !if (parameter is In Parameter)
-            //       localX is TypeOfParameterX&
-            //       ldtoken TypeOfParameterX
-            //       call DynamicInvokeParamHelperIn(RuntimeTypeHandle)
-            //       stloc localX
-            //    !else
-            //       localX is TypeOfParameter
-            //       ldtoken TypeOfParameterX
-            //       call DynamicInvokeParamHelperRef(RuntimeTypeHandle)
-            //       stloc localX
-
-            // ldarg.2
-            // call DynamicInvokeArgSetupComplete(ref ArgSetupState)
-
-            // ldarg.0 // Load this pointer
-            // !For each parameter
-            //    !if (parameter is In Parameter)
-            //       ldloc localX
-            //       ldobj TypeOfParameterX
-            //    !else
-            //       ldloc localX
-            // ldarg.1
-            // calli ReturnType thiscall(TypeOfParameter1, ...)
-            // !if ((ReturnType != void) && !(ReturnType is a byref)
-            //    ldnull
-            // !else
-            //    box ReturnType
-            // ret
-            return null;
-        }
-
-        internal static object DynamicInvokeCallTemplate(object thisPtr, IntPtr methodToCall, ref ArgSetupState argSetupState, bool targetIsThisCall)
-        {
-            // This function will look like
-            //
-            // !For each parameter to the method
-            //    !if (parameter is In Parameter)
-            //       localX is TypeOfParameterX&
-            //       ldtoken TypeOfParameterX
-            //       call DynamicInvokeParamHelperIn(RuntimeTypeHandle)
-            //       stloc localX
-            //    !else
-            //       localX is TypeOfParameter
-            //       ldtoken TypeOfParameterX
-            //       call DynamicInvokeParamHelperRef(RuntimeTypeHandle)
-            //       stloc localX
-
-            // ldarg.2
-            // call DynamicInvokeArgSetupComplete(ref ArgSetupState)
-
-            // !if (targetIsThisCall)
-            //    ldarg.0 // Load this pointer
-            //    !For each parameter
-            //       !if (parameter is In Parameter)
-            //          ldloc localX
-            //          ldobj TypeOfParameterX
-            //       !else
-            //          ldloc localX
-            //    ldarg.1
-            //    calli ReturnType thiscall(TypeOfParameter1, ...)
-            //    !if ((ReturnType != void) && !(ReturnType is a byref)
-            //       ldnull
-            //    !else
-            //       box ReturnType
-            //    ret
-            // !else
-            //    !For each parameter
-            //       !if (parameter is In Parameter)
-            //          ldloc localX
-            //          ldobj TypeOfParameterX
-            //       !else
-            //          ldloc localX
-            //    ldarg.1
-            //    calli ReturnType (TypeOfParameter1, ...)
-            //    !if ((ReturnType != void) && !(ReturnType is a byref)
-            //       ldnull
-            //    !else
-            //       box ReturnType
-            //    ret
-            return null;
         }
 
         private static void DynamicInvokeUnboxIntoActualNullable(object actualBoxedNullable, object boxedFillObject, EETypePtr nullableType)
@@ -604,7 +460,7 @@ namespace System
 
         [DebuggerStepThrough]
         [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
-        internal static ref IntPtr DynamicInvokeParamHelperIn(RuntimeTypeHandle rth)
+        internal static ref IntPtr DynamicInvokeParamHelperIn(ref ArgSetupState argSetupState, RuntimeTypeHandle rth)
         {
             //
             // Call DynamicInvokeParamHelperCore as an in parameter, and return a managed byref to the interesting bit.
@@ -612,7 +468,7 @@ namespace System
             // This function exactly matches DynamicInvokeParamHelperRef except for the value of the enum passed to DynamicInvokeParamHelperCore
             //
 
-            object obj = DynamicInvokeParamHelperCore(rth, out DynamicInvokeParamLookupType paramLookupType, out int index, DynamicInvokeParamType.In);
+            object obj = DynamicInvokeParamHelperCore(ref argSetupState, rth, out DynamicInvokeParamLookupType paramLookupType, out int index, DynamicInvokeParamType.In);
 
             if (paramLookupType == DynamicInvokeParamLookupType.ValuetypeObjectReturned)
             {
@@ -626,7 +482,7 @@ namespace System
 
         [DebuggerStepThrough]
         [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
-        internal static ref IntPtr DynamicInvokeParamHelperRef(RuntimeTypeHandle rth)
+        internal static ref IntPtr DynamicInvokeParamHelperRef(ref ArgSetupState argSetupState, RuntimeTypeHandle rth)
         {
             //
             // Call DynamicInvokeParamHelperCore as a ref parameter, and return a managed byref to the interesting bit. As this can't actually be defined in C# there is an IL transform that fills this in.
@@ -634,7 +490,7 @@ namespace System
             // This function exactly matches DynamicInvokeParamHelperIn except for the value of the enum passed to DynamicInvokeParamHelperCore
             //
 
-            object obj = DynamicInvokeParamHelperCore(rth, out DynamicInvokeParamLookupType paramLookupType, out int index, DynamicInvokeParamType.Ref);
+            object obj = DynamicInvokeParamHelperCore(ref argSetupState, rth, out DynamicInvokeParamLookupType paramLookupType, out int index, DynamicInvokeParamType.Ref);
 
             if (paramLookupType == DynamicInvokeParamLookupType.ValuetypeObjectReturned)
             {
@@ -646,7 +502,7 @@ namespace System
             }
         }
 
-        internal static object DynamicInvokeBoxedValuetypeReturn(out DynamicInvokeParamLookupType paramLookupType, object boxedValuetype, int index, RuntimeTypeHandle type, DynamicInvokeParamType paramType)
+        internal static object DynamicInvokeBoxedValuetypeReturn(out DynamicInvokeParamLookupType paramLookupType, object boxedValuetype, object[] parameters, int index, RuntimeTypeHandle type, DynamicInvokeParamType paramType, ref object[] nullableCopyBackObjects)
         {
             object finalObjectToReturn = boxedValuetype;
             EETypePtr eeType = type.ToEETypePtr();
@@ -665,20 +521,20 @@ namespace System
             {
                 if (paramType == DynamicInvokeParamType.Ref)
                 {
-                    if (s_nullableCopyBackObjects == null)
+                    if (nullableCopyBackObjects == null)
                     {
-                        s_nullableCopyBackObjects = new object[s_parameters.Length];
+                        nullableCopyBackObjects = new object[parameters.Length];
                     }
 
-                    s_nullableCopyBackObjects[index] = finalObjectToReturn;
-                    s_parameters[index] = null;
+                    nullableCopyBackObjects[index] = finalObjectToReturn;
+                    parameters[index] = null;
                 }
             }
             else
             {
                 System.Diagnostics.Debug.Assert(finalObjectToReturn != null);
                 if (paramType == DynamicInvokeParamType.Ref)
-                    s_parameters[index] = finalObjectToReturn;
+                    parameters[index] = finalObjectToReturn;
             }
 
             paramLookupType = DynamicInvokeParamLookupType.ValuetypeObjectReturned;
@@ -694,23 +550,28 @@ namespace System
             return finalObjectToReturn;
         }
 
-        public static object DynamicInvokeParamHelperCore(RuntimeTypeHandle type, out DynamicInvokeParamLookupType paramLookupType, out int index, DynamicInvokeParamType paramType)
+        public static unsafe object DynamicInvokeParamHelperCore(IntPtr argSetupState, RuntimeTypeHandle type, out DynamicInvokeParamLookupType paramLookupType, out int index, DynamicInvokeParamType paramType)
         {
-            index = s_curIndex++;
-            int parametersLength = s_parameters != null ? s_parameters.Length : 0;
+            return DynamicInvokeParamHelperCore(ref Unsafe.AsRef<ArgSetupState>((void*)argSetupState), type, out paramLookupType, out index, paramType);
+        }
+
+        public static object DynamicInvokeParamHelperCore(ref ArgSetupState argSetupState, RuntimeTypeHandle type, out DynamicInvokeParamLookupType paramLookupType, out int index, DynamicInvokeParamType paramType)
+        {
+            index = argSetupState.curIndex++;
+            int parametersLength = argSetupState.parameters != null ? argSetupState.parameters.Length : 0;
 
             if (index >= parametersLength)
                 throw new System.Reflection.TargetParameterCountException();
 
-            object incomingParam = s_parameters[index];
+            object incomingParam = argSetupState.parameters[index];
 
             // Handle default parameters
             if ((incomingParam == System.Reflection.Missing.Value) && paramType == DynamicInvokeParamType.In)
             {
-                incomingParam = GetDefaultValue(type, index);
+                incomingParam = GetDefaultValue(argSetupState.targetMethodOrDelegate, type, index);
 
                 // The default value is captured into the parameters array
-                s_parameters[index] = incomingParam;
+                argSetupState.parameters[index] = incomingParam;
             }
 
             RuntimeTypeHandle widenAndCompareType = type;
@@ -729,10 +590,10 @@ namespace System
                     {
                         if (widenAndCompareType.ToEETypePtr() != incomingParam.EETypePtr)
                         {
-                            if (s_binderBundle == null)
+                            if (argSetupState.binderBundle == null)
                                 throw CreateChangeTypeArgumentException(incomingParam.EETypePtr, type.ToEETypePtr());
-                            Type exactDstType = GetExactTypeForCustomBinder();
-                            incomingParam = s_binderBundle.ChangeType(incomingParam, exactDstType);
+                            Type exactDstType = GetExactTypeForCustomBinder(argSetupState);
+                            incomingParam = argSetupState.binderBundle.ChangeType(incomingParam, exactDstType);
                             if (incomingParam != null && widenAndCompareType.ToEETypePtr() != incomingParam.EETypePtr)
                                 throw CreateChangeTypeArgumentException(incomingParam.EETypePtr, type.ToEETypePtr());
                         }
@@ -742,41 +603,41 @@ namespace System
                         if (widenAndCompareType.ToEETypePtr().ElementType != incomingParam.EETypePtr.ElementType)
                         {
                             System.Diagnostics.Debug.Assert(paramType == DynamicInvokeParamType.In);
-                            incomingParam = InvokeUtils.CheckArgument(incomingParam, widenAndCompareType.ToEETypePtr(), InvokeUtils.CheckArgumentSemantics.DynamicInvoke, s_binderBundle, s_getExactTypeForCustomBinder);
+                            incomingParam = InvokeUtils.CheckArgument(incomingParam, widenAndCompareType.ToEETypePtr(), InvokeUtils.CheckArgumentSemantics.DynamicInvoke, argSetupState.binderBundle, ref argSetupState);
                         }
                     }
                 }
 
-                return DynamicInvokeBoxedValuetypeReturn(out paramLookupType, incomingParam, index, type, paramType);
+                return DynamicInvokeBoxedValuetypeReturn(out paramLookupType, incomingParam, argSetupState.parameters, index, type, paramType, ref argSetupState.nullableCopyBackObjects);
             }
             else if (type.ToEETypePtr().IsValueType)
             {
-                incomingParam = InvokeUtils.CheckArgument(incomingParam, type.ToEETypePtr(), InvokeUtils.CheckArgumentSemantics.DynamicInvoke, s_binderBundle, s_getExactTypeForCustomBinder);
-                if (s_binderBundle == null)
+                incomingParam = InvokeUtils.CheckArgument(incomingParam, type.ToEETypePtr(), InvokeUtils.CheckArgumentSemantics.DynamicInvoke, argSetupState.binderBundle, ref argSetupState);
+                if (argSetupState.binderBundle == null)
                 {
-                    System.Diagnostics.Debug.Assert(s_parameters[index] == null || object.ReferenceEquals(incomingParam, s_parameters[index]));
+                    System.Diagnostics.Debug.Assert(argSetupState.parameters[index] == null || object.ReferenceEquals(incomingParam, argSetupState.parameters[index]));
                 }
-                return DynamicInvokeBoxedValuetypeReturn(out paramLookupType, incomingParam, index, type, paramType);
+                return DynamicInvokeBoxedValuetypeReturn(out paramLookupType, incomingParam, argSetupState.parameters, index, type, paramType, ref argSetupState.nullableCopyBackObjects);
             }
             else if (type.ToEETypePtr().IsPointer)
             {
-                incomingParam = InvokeUtils.CheckArgument(incomingParam, type.ToEETypePtr(), InvokeUtils.CheckArgumentSemantics.DynamicInvoke, s_binderBundle, s_getExactTypeForCustomBinder);
+                incomingParam = InvokeUtils.CheckArgument(incomingParam, type.ToEETypePtr(), InvokeUtils.CheckArgumentSemantics.DynamicInvoke, argSetupState.binderBundle, ref argSetupState);
                 return DynamicInvokeUnmanagedPointerReturn(out paramLookupType, incomingParam, index, type, paramType);
             }
             else
             {
-                incomingParam = InvokeUtils.CheckArgument(incomingParam, widenAndCompareType.ToEETypePtr(), InvokeUtils.CheckArgumentSemantics.DynamicInvoke, s_binderBundle, s_getExactTypeForCustomBinder);
+                incomingParam = InvokeUtils.CheckArgument(incomingParam, widenAndCompareType.ToEETypePtr(), InvokeUtils.CheckArgumentSemantics.DynamicInvoke, argSetupState.binderBundle, ref argSetupState);
                 paramLookupType = DynamicInvokeParamLookupType.IndexIntoObjectArrayReturned;
-                if (s_binderBundle == null)
+                if (argSetupState.binderBundle == null)
                 {
-                    System.Diagnostics.Debug.Assert(object.ReferenceEquals(incomingParam, s_parameters[index]));
-                    return s_parameters;
+                    System.Diagnostics.Debug.Assert(object.ReferenceEquals(incomingParam, argSetupState.parameters[index]));
+                    return argSetupState.parameters;
                 }
                 else
                 {
-                    if (object.ReferenceEquals(incomingParam, s_parameters[index]))
+                    if (object.ReferenceEquals(incomingParam, argSetupState.parameters[index]))
                     {
-                        return s_parameters;
+                        return argSetupState.parameters;
                     }
                     else
                     {
@@ -784,19 +645,19 @@ namespace System
 
                         if (paramType == DynamicInvokeParamType.Ref)
                         {
-                            s_parameters[index] = incomingParam;
-                            return s_parameters;
+                            argSetupState.parameters[index] = incomingParam;
+                            return argSetupState.parameters;
                         }
                         else
                         {
                             // Since this not a by-ref parameter, we don't want to bash the original user-owned argument array but the rules of DynamicInvokeParamHelperCore() require
                             // that we return non-value types as the "index"th element in an array. Thus, create an on-demand throwaway array just for this purpose.
-                            if (s_customBinderProvidedParameters == null)
+                            if (argSetupState.customBinderProvidedParameters == null)
                             {
-                                s_customBinderProvidedParameters = new object[s_parameters.Length];
+                                argSetupState.customBinderProvidedParameters = new object[argSetupState.parameters.Length];
                             }
-                            s_customBinderProvidedParameters[index] = incomingParam;
-                            return s_customBinderProvidedParameters;
+                            argSetupState.customBinderProvidedParameters[index] = incomingParam;
+                            return argSetupState.customBinderProvidedParameters;
                         }
                     }
                 }

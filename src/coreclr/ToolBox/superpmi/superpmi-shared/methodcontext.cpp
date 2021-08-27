@@ -632,7 +632,7 @@ unsigned int toCorInfoSize(CorInfoType cit)
         case CORINFO_TYPE_PTR:
         case CORINFO_TYPE_BYREF:
         case CORINFO_TYPE_CLASS:
-            return sizeof(void*);
+            return (int)SpmiTargetPointerSize();
 
         case CORINFO_TYPE_STRING:
         case CORINFO_TYPE_VALUECLASS:
@@ -769,6 +769,28 @@ DWORD MethodContext::repGetClassAttribs(CORINFO_CLASS_HANDLE classHandle)
     DWORD value = (DWORD)GetClassAttribs->Get(CastHandle(classHandle));
     DEBUG_REP(dmpGetClassAttribs(CastHandle(classHandle), value));
     return value;
+}
+
+void MethodContext::recIsJitIntrinsic(CORINFO_METHOD_HANDLE ftn, bool result)
+{
+    if (IsJitIntrinsic == nullptr)
+        IsJitIntrinsic = new LightWeightMap<DWORDLONG, DWORD>();
+
+    IsJitIntrinsic->Add(CastHandle(ftn), (DWORD)result);
+    DEBUG_REC(dmpIsJitIntrinsic(CastHandle(ftn), (DWORD)result));
+}
+void MethodContext::dmpIsJitIntrinsic(DWORDLONG key, DWORD value)
+{
+    printf("IsJitIntrinsic key ftn-%016llX, value res-%u", key, value);
+}
+bool MethodContext::repIsJitIntrinsic(CORINFO_METHOD_HANDLE ftn)
+{
+    AssertCodeMsg((IsJitIntrinsic != nullptr) && (IsJitIntrinsic->GetIndex(CastHandle(ftn)) != -1), EXCEPTIONCODE_MC,
+                  "Didn't find %016llX", CastHandle(ftn));
+
+    bool result = (BOOL)IsJitIntrinsic->Get(CastHandle(ftn));
+    DEBUG_REP(dmpIsJitIntrinsic(CastHandle(ftn), (DWORD)result));
+    return result;
 }
 
 void MethodContext::recGetMethodAttribs(CORINFO_METHOD_HANDLE methodHandle, DWORD attribs)
@@ -1015,8 +1037,12 @@ CorInfoInitClassResult MethodContext::repInitClass(CORINFO_FIELD_HANDLE   field,
     key.method      = CastHandle(method);
     key.context     = CastHandle(context);
 
-    AssertCodeMsg(InitClass != nullptr, EXCEPTIONCODE_MC, "Didn't find anything for %016llX", key.method);
-    AssertCodeMsg(InitClass->GetIndex(key) != -1, EXCEPTIONCODE_MC, "Didn't find %016llX", key.method);
+    if ((InitClass == nullptr) || (InitClass->GetIndex(key) == -1))
+    {
+        // We could try additional inlines with stress modes, just reject them.
+        return CORINFO_INITCLASS_DONT_INLINE;
+    }
+
     CorInfoInitClassResult result = (CorInfoInitClassResult)InitClass->Get(key);
 
     DEBUG_REP(dmpInitClass(key, result));
@@ -2681,8 +2707,11 @@ void MethodContext::dmpGetArgNext(DWORDLONG key, DWORDLONG value)
 }
 CORINFO_ARG_LIST_HANDLE MethodContext::repGetArgNext(CORINFO_ARG_LIST_HANDLE args)
 {
-    CORINFO_ARG_LIST_HANDLE temp = (CORINFO_ARG_LIST_HANDLE)GetArgNext->Get(CastHandle(args));
-    DEBUG_REP(dmpGetArgNext(CastHandle(args), CastHandle(temp)));
+    DWORDLONG key = CastHandle(args);
+    AssertCodeMsg(GetArgNext != nullptr, EXCEPTIONCODE_MC, "Didn't find %016llx", key);
+    AssertCodeMsg(GetArgNext->GetIndex(key) != -1, EXCEPTIONCODE_MC, "Didn't find %016llx", key);
+    CORINFO_ARG_LIST_HANDLE temp = (CORINFO_ARG_LIST_HANDLE)GetArgNext->Get(key);
+    DEBUG_REP(dmpGetArgNext(key, CastHandle(temp)));
     return temp;
 }
 void MethodContext::recGetMethodSig(CORINFO_METHOD_HANDLE ftn, CORINFO_SIG_INFO* sig, CORINFO_CLASS_HANDLE memberParent)
@@ -3554,6 +3583,9 @@ void MethodContext::dmpGetStaticFieldCurrentClass(DWORDLONG key, const Agnostic_
 }
 CORINFO_CLASS_HANDLE MethodContext::repGetStaticFieldCurrentClass(CORINFO_FIELD_HANDLE field, bool* pIsSpeculative)
 {
+    AssertCodeMsg(GetStaticFieldCurrentClass != nullptr, EXCEPTIONCODE_MC, "Didn't find anything for %016llX", CastHandle(field));
+    AssertCodeMsg(GetStaticFieldCurrentClass->GetIndex(CastHandle(field)) != -1, EXCEPTIONCODE_MC, "Didn't find %016llX", CastHandle(field));
+
     Agnostic_GetStaticFieldCurrentClass value = GetStaticFieldCurrentClass->Get(CastHandle(field));
 
     if (pIsSpeculative != nullptr)
@@ -4098,6 +4130,7 @@ void MethodContext::recGetGSCookie(GSCookie* pCookieVal, GSCookie** ppCookieVal)
     else
         value.B = 0;
     GetGSCookie->Add((DWORD)0, value);
+    DEBUG_REC(dmpGetGSCookie(0, value));
 }
 void MethodContext::dmpGetGSCookie(DWORD key, DLDL value)
 {
@@ -4105,6 +4138,21 @@ void MethodContext::dmpGetGSCookie(DWORD key, DLDL value)
 }
 void MethodContext::repGetGSCookie(GSCookie* pCookieVal, GSCookie** ppCookieVal)
 {
+    if (GetGSCookie == nullptr)
+    {
+        // fake the result because for the codegen it is just a constant.
+        if (pCookieVal != nullptr)
+        {
+            *pCookieVal = (GSCookie)0x06000000;
+        }
+        if (ppCookieVal != nullptr)
+        {
+            *ppCookieVal = (GSCookie*)0x06000001;
+        }
+        return;
+    }
+
+    AssertCodeMsg(GetGSCookie->GetIndex(0) != -1, EXCEPTIONCODE_MC, "Didn't find GetGSCookie");
     DLDL value;
 
     value = GetGSCookie->Get((DWORD)0);
@@ -5438,8 +5486,15 @@ void MethodContext::recGetPgoInstrumentationResults(CORINFO_METHOD_HANDLE ftnHnd
     size_t maxOffset = 0;
     for (UINT32 i = 0; i < (*pCountSchemaItems); i++)
     {
-        if (pInSchema[i].Offset > maxOffset)
-            maxOffset = pInSchema[i].Offset;
+        // Note >= here; for type histograms the count and handle schema entries have the same offset,
+        // but the handle schema (which comes second) has a larger count.
+        //
+        // The sizeof should really be target pointer size, so cross-bitness replay may not work here.
+        //
+        if (pInSchema[i].Offset >= maxOffset)
+        {
+            maxOffset = pInSchema[i].Offset + pInSchema[i].Count * sizeof(uintptr_t);
+        }
 
         agnosticSchema[i].Offset              = (DWORDLONG)pInSchema[i].Offset;
         agnosticSchema[i].InstrumentationKind = (DWORD)pInSchema[i].InstrumentationKind;
@@ -5450,11 +5505,8 @@ void MethodContext::recGetPgoInstrumentationResults(CORINFO_METHOD_HANDLE ftnHnd
     value.schema_index = GetPgoInstrumentationResults->AddBuffer((unsigned char*)agnosticSchema, sizeof(Agnostic_PgoInstrumentationSchema) * (*pCountSchemaItems));
     free(agnosticSchema);
 
-    // This isn't strictly accurate, but I think it'll do
-    size_t bufSize = maxOffset + 16;
-
-    value.data_index    = GetPgoInstrumentationResults->AddBuffer((unsigned char*)*pInstrumentationData, (unsigned)bufSize);
-    value.dataByteCount = (unsigned)bufSize;
+    value.data_index    = GetPgoInstrumentationResults->AddBuffer((unsigned char*)*pInstrumentationData, (unsigned)maxOffset);
+    value.dataByteCount = (unsigned)maxOffset;
     value.result        = (DWORD)result;
 
     GetPgoInstrumentationResults->Add(CastHandle(ftnHnd), value);
@@ -5469,14 +5521,46 @@ void MethodContext::dmpGetPgoInstrumentationResults(DWORDLONG key, const Agnosti
         Agnostic_PgoInstrumentationSchema* pBuf =
             (Agnostic_PgoInstrumentationSchema*)GetPgoInstrumentationResults->GetBuffer(value.schema_index);
 
+        BYTE* pInstrumentationData = (BYTE*)GetPgoInstrumentationResults->GetBuffer(value.data_index);
+
         printf("\n");
         for (DWORD i = 0; i < value.countSchemaItems; i++)
         {
-            printf(" %u-{Offset %016llX ILOffset %u Kind %u(0x%x) Count %u Other %u}\n",
+            printf(" %u-{Offset %016llX ILOffset %u Kind %u(0x%x) Count %u Other %u Data ",
                 i, pBuf[i].Offset, pBuf[i].ILOffset, pBuf[i].InstrumentationKind, pBuf[i].InstrumentationKind, pBuf[i].Count, pBuf[i].Other);
+
+            switch((ICorJitInfo::PgoInstrumentationKind)pBuf[i].InstrumentationKind)
+            {
+                case ICorJitInfo::PgoInstrumentationKind::BasicBlockIntCount:
+                    printf("B %u", *(unsigned*)(pInstrumentationData + pBuf[i].Offset));
+                    break;
+                case ICorJitInfo::PgoInstrumentationKind::EdgeIntCount:
+                    printf("E %u", *(unsigned*)(pInstrumentationData + pBuf[i].Offset));
+                    break;
+                case ICorJitInfo::PgoInstrumentationKind::TypeHandleHistogramCount:
+                    printf("T %u", *(unsigned*)(pInstrumentationData + pBuf[i].Offset));
+                    break;
+                case ICorJitInfo::PgoInstrumentationKind::TypeHandleHistogramTypeHandle:
+                    for (unsigned int j = 0; j < pBuf[i].Count; j++)
+                    {
+                        printf("[%u] %016llX ", j, CastHandle(*(uintptr_t*)(pInstrumentationData + pBuf[i].Offset + j * sizeof(uintptr_t))));
+                    }
+                    break;
+                case ICorJitInfo::PgoInstrumentationKind::GetLikelyClass:
+                    {
+                        // (N)umber, (L)ikelihood, (C)lass
+                        printf("N %u L %u C %016llX", (unsigned)(pBuf[i].Other >> 8), (unsigned)(pBuf[i].Other && 0xFF), CastHandle(*(uintptr_t*)(pInstrumentationData + pBuf[i].Offset)));
+                    }
+                    break;
+                default:
+                    printf("?");
+                    break;
+            }
+
+            printf("}\n");
         }
     }
-    printf("} data_index-%u [TODO, dump actual count data]", value.data_index);
+    printf("} data_index-%u", value.data_index);
 }
 HRESULT MethodContext::repGetPgoInstrumentationResults(CORINFO_METHOD_HANDLE ftnHnd,
                                                        ICorJitInfo::PgoInstrumentationSchema** pSchema,
@@ -5508,48 +5592,6 @@ HRESULT MethodContext::repGetPgoInstrumentationResults(CORINFO_METHOD_HANDLE ftn
 
     HRESULT result = (HRESULT)tempValue.result;
     return result;
-}
-
-void MethodContext::recGetLikelyClass(CORINFO_METHOD_HANDLE ftnHnd, CORINFO_CLASS_HANDLE baseHnd, UINT32 ilOffset, CORINFO_CLASS_HANDLE result, UINT32* pLikelihood, UINT32* pNumberOfClasses)
-{
-    if (GetLikelyClass == nullptr)
-        GetLikelyClass = new LightWeightMap<Agnostic_GetLikelyClass, Agnostic_GetLikelyClassResult>();
-
-    Agnostic_GetLikelyClass key;
-    ZeroMemory(&key, sizeof(Agnostic_GetLikelyClass));
-
-    key.ftnHnd = CastHandle(ftnHnd);
-    key.baseHnd = CastHandle(baseHnd);
-    key.ilOffset = (DWORD) ilOffset;
-
-    Agnostic_GetLikelyClassResult value;
-    ZeroMemory(&value, sizeof(Agnostic_GetLikelyClassResult));
-    value.classHnd = CastHandle(result);
-    value.likelihood = *pLikelihood;
-    value.numberOfClasses = *pNumberOfClasses;
-
-    GetLikelyClass->Add(key, value);
-    DEBUG_REC(dmpGetLikelyClass(key, value));
-}
-void MethodContext::dmpGetLikelyClass(const Agnostic_GetLikelyClass& key, const Agnostic_GetLikelyClassResult& value)
-{
-    printf("GetLikelyClass key ftn-%016llX base-%016llX il-%u, class-%016llX likelihood-%u numberOfClasses-%u",
-        key.ftnHnd, key.baseHnd, key.ilOffset, value.classHnd, value.likelihood, value.numberOfClasses);
-}
-CORINFO_CLASS_HANDLE MethodContext::repGetLikelyClass(CORINFO_METHOD_HANDLE ftnHnd, CORINFO_CLASS_HANDLE baseHnd, UINT32 ilOffset, UINT32* pLikelihood, UINT32* pNumberOfClasses)
-{
-    Agnostic_GetLikelyClass key;
-    ZeroMemory(&key, sizeof(Agnostic_GetLikelyClass));
-    key.ftnHnd = CastHandle(ftnHnd);
-    key.baseHnd = CastHandle(baseHnd);
-    key.ilOffset = (DWORD) ilOffset;
-
-    Agnostic_GetLikelyClassResult value = GetLikelyClass->Get(key);
-    DEBUG_REP(dmpGetLikelyClass(key, value));
-
-    *pLikelihood = value.likelihood;
-    *pNumberOfClasses = value.numberOfClasses;
-    return (CORINFO_CLASS_HANDLE) value.classHnd;
 }
 
 void MethodContext::recMergeClasses(CORINFO_CLASS_HANDLE cls1, CORINFO_CLASS_HANDLE cls2, CORINFO_CLASS_HANDLE result)
@@ -6658,6 +6700,58 @@ int MethodContext::dumpMethodIdentityInfoToBuffer(char* buff, int len, bool igno
     buff += t;
     len -= t;
 
+    // Fingerprint the root method PGO data (if any) and append it to the ID info.
+    //
+    if ((GetPgoInstrumentationResults != nullptr) &&
+        (GetPgoInstrumentationResults->GetIndex(CastHandle(pInfo->ftn)) != -1))
+    {
+        ICorJitInfo::PgoInstrumentationSchema* schema = nullptr;
+        UINT32 schemaCount = 0;
+        BYTE* schemaData = nullptr;
+        HRESULT pgoHR = repGetPgoInstrumentationResults(pInfo->ftn, &schema, &schemaCount, &schemaData);
+
+        size_t minOffset = (size_t) ~0;
+        size_t maxOffset = 0;
+        uint32_t totalCount = 0;
+
+        if (SUCCEEDED(pgoHR))
+        {
+            // Locate the range of the counter data.
+            //
+            for (UINT32 i = 0; i < schemaCount; i++)
+            {
+                if ((schema[i].InstrumentationKind == ICorJitInfo::PgoInstrumentationKind::BasicBlockIntCount)
+                    || (schema[i].InstrumentationKind == ICorJitInfo::PgoInstrumentationKind::EdgeIntCount))
+                {
+                    if (schema[i].Offset < minOffset)
+                    {
+                        minOffset = schema[i].Offset;
+                    }
+
+                    if (schema[i].Offset > maxOffset)
+                    {
+                        maxOffset = schema[i].Offset;
+                    }
+
+                    totalCount += *(uint32_t*)(schemaData + schema[i].Offset);
+                }
+            }
+
+            // Hash the counter values.
+            //
+            if (minOffset < maxOffset)
+            {
+                char pgoHash[MD5_HASH_BUFFER_SIZE];
+                dumpMD5HashToBuffer(schemaData + minOffset, (int)(maxOffset + sizeof(int) - minOffset), pgoHash,
+                                    MD5_HASH_BUFFER_SIZE);
+
+                t = sprintf_s(buff, len, " Pgo Counters %u, Count %u, Hash: %s", schemaCount, totalCount, pgoHash);
+                buff += t;
+                len -= t;
+            }
+        }
+    }
+
     return (int)(buff - obuff);
 }
 
@@ -6688,6 +6782,45 @@ int MethodContext::dumpMD5HashToBuffer(BYTE* pBuffer, int bufLen, char* hash, in
     }
 
     return m_hash.HashBuffer(pBuffer, bufLen, hash, hashLen);
+}
+
+bool MethodContext::hasPgoData(bool& hasEdgeProfile, bool& hasClassProfile, bool& hasLikelyClass)
+{
+    hasEdgeProfile = false;
+    hasClassProfile = false;
+
+    // Obtain the Method Info structure for this method
+    CORINFO_METHOD_INFO  info;
+    unsigned             flags = 0;
+    repCompileMethod(&info, &flags);
+
+    if ((GetPgoInstrumentationResults != nullptr) &&
+        (GetPgoInstrumentationResults->GetIndex(CastHandle(info.ftn)) != -1))
+    {
+        ICorJitInfo::PgoInstrumentationSchema* schema = nullptr;
+        UINT32 schemaCount = 0;
+        BYTE* schemaData = nullptr;
+        HRESULT pgoHR = repGetPgoInstrumentationResults(info.ftn, &schema, &schemaCount, &schemaData);
+
+        if (SUCCEEDED(pgoHR))
+        {
+            for (UINT32 i = 0; i < schemaCount; i++)
+            {
+                hasEdgeProfile |= (schema[i].InstrumentationKind == ICorJitInfo::PgoInstrumentationKind::EdgeIntCount);
+                hasClassProfile |= (schema[i].InstrumentationKind == ICorJitInfo::PgoInstrumentationKind::TypeHandleHistogramCount);
+                hasLikelyClass |= (schema[i].InstrumentationKind == ICorJitInfo::PgoInstrumentationKind::GetLikelyClass);
+
+                if (hasEdgeProfile && hasClassProfile && hasLikelyClass)
+                {
+                    break;
+                }
+            }
+
+            return true;
+        }
+    }
+
+    return false;
 }
 
 MethodContext::Environment MethodContext::cloneEnvironment()

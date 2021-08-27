@@ -1,6 +1,7 @@
 # Using Native AOT
 
 - [Limitations](limitations.md)
+- [Compiling applications](compiling.md)
 - [Debugging applications](debugging.md)
 - [Optimizing applications](optimizing.md)
 - [Reflection Free Mode](reflection-free-mode.md)

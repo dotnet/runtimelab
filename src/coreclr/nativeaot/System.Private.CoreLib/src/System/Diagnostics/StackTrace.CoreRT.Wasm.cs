@@ -57,5 +57,10 @@ namespace System.Diagnostics
 
             return stackTraceString;
         }
+
+        internal void ToString(TraceFormat traceFormat, StringBuilder builder)
+        {
+            builder.Append(ToString(traceFormat));
+        }
     }
 }

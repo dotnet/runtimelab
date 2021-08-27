@@ -2460,6 +2460,26 @@ namespace Internal.IL
                         return true;
                     }
                     break;
+                case "AllocatorOf":
+                    if (metadataType.Namespace == "System" && metadataType.Name == "Activator" && method.Instantiation.Length == 1)
+                    {
+                        if (runtimeDeterminedMethod.IsRuntimeDeterminedExactMethod)
+                        {
+                            var ctorRef = CallGenericHelper(ReadyToRunHelperId.ObjectAllocator, runtimeDeterminedMethod.Instantiation[0]);
+                            PushExpression(StackValueKind.Int32, "object allocator", ctorRef, GetWellKnownType(WellKnownType.IntPtr));
+                        }
+                        else
+                        {
+                            IMethodNode methodNode = (IMethodNode)_compilation.ComputeConstantLookup(ReadyToRunHelperId.ObjectAllocator, method.Instantiation[0]);
+                            _dependencies.Add(methodNode, "LLVM AllocatorOf");
+
+                            MethodDesc allocator = methodNode.Method;
+                            PushExpression(StackValueKind.Int32, "object allocator", LLVMFunctionForMethod(allocator, allocator, null, false, null, allocator, out bool _, out LLVMValueRef _, out LLVMValueRef _), GetWellKnownType(WellKnownType.IntPtr));
+                        }
+
+                        return true;
+                    }
+                    break;
                 case "EETypePtrOf":
                     if (metadataType.Namespace == "System" && metadataType.Name == "EETypePtr" && method.Instantiation.Length == 1)
                     {
@@ -4587,7 +4607,7 @@ namespace Internal.IL
                             {
                                 node = _compilation.NodeFactory.TypeGCStaticsSymbol(owningType);
                                 LLVMValueRef basePtrPtr = LoadAddressOfSymbolNode(node);
-                                staticBase = _builder.BuildLoad(_builder.BuildLoad(_builder.BuildPointerCast(basePtrPtr, LLVMTypeRef.CreatePointer(LLVMTypeRef.CreatePointer(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), 0), 0), "castBasePtrPtr"), "basePtr"), "base");
+                                staticBase = _builder.BuildLoad(_builder.BuildPointerCast(basePtrPtr, LLVMTypeRef.CreatePointer(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), 0), "castBasePtr"), "base");
                             }
                         }
                         else

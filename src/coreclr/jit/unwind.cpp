@@ -180,7 +180,7 @@ void Compiler::unwindBegPrologCFI()
         unwindGetFuncLocations(func, false, &func->coldStartLoc, &func->coldEndLoc);
     }
 
-    func->cfiCodes = new (getAllocator()) CFICodeVector(getAllocator());
+    func->cfiCodes = new (getAllocator(CMK_UnwindInfo)) CFICodeVector(getAllocator());
 #endif // FEATURE_EH_FUNCLETS
 }
 

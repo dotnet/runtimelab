@@ -1,7 +1,7 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-//On unix make sure to compile using -ldl flag.
+//On unix make sure to compile using -ldl and -pthread flags.
 
 //Set this value accordingly to your workspace settings
 #if defined(_WIN32)
@@ -61,7 +61,7 @@ int callSumFunc(char *path, char *funcName, int firstInt, int secondInt)
         void *handle = dlopen(path, RTLD_LAZY);
     #endif
 
-    typedef int(*myFunc)();
+    typedef int(*myFunc)(int,int);
     myFunc MyImport = (myFunc)symLoad(handle, funcName);
 
     int result = MyImport(firstInt, secondInt);
@@ -81,7 +81,7 @@ char *callSumStringFunc(char *path, char *funcName, char *firstString, char *sec
     #endif
 
     // Declare a typedef
-    typedef char *(*myFunc)();
+    typedef char *(*myFunc)(char*,char*);
 
     // Import Symbol named funcName
     myFunc MyImport = (myFunc)symLoad(handle, funcName);

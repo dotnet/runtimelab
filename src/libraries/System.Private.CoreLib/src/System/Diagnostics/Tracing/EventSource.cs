@@ -227,6 +227,11 @@ namespace System.Diagnostics.Tracing
     /// }
     /// </code>
     /// </remarks>
+#if !ES_BUILD_STANDALONE
+    // The EnsureDescriptorsInitialized() method might need to access EventSource and its derived type
+    // members and the trimmer ensures that these members are preserved.
+    [DynamicallyAccessedMembers(ManifestMemberTypes)]
+#endif
     public partial class EventSource : IDisposable
     {
 
@@ -765,12 +770,20 @@ namespace System.Diagnostics.Tracing
 
 #pragma warning disable 1591
         // optimized for common signatures (no args)
+#if !ES_BUILD_STANDALONE
+        [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2026:UnrecognizedReflectionPattern",
+                   Justification = EventSourceSuppressMessage)]
+#endif
         protected unsafe void WriteEvent(int eventId)
         {
             WriteEventCore(eventId, 0, null);
         }
 
         // optimized for common signatures (ints)
+#if !ES_BUILD_STANDALONE
+        [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2026:UnrecognizedReflectionPattern",
+                   Justification = EventSourceSuppressMessage)]
+#endif
         protected unsafe void WriteEvent(int eventId, int arg1)
         {
             if (IsEnabled())
@@ -783,6 +796,10 @@ namespace System.Diagnostics.Tracing
             }
         }
 
+#if !ES_BUILD_STANDALONE
+        [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2026:UnrecognizedReflectionPattern",
+                   Justification = EventSourceSuppressMessage)]
+#endif
         protected unsafe void WriteEvent(int eventId, int arg1, int arg2)
         {
             if (IsEnabled())
@@ -798,6 +815,10 @@ namespace System.Diagnostics.Tracing
             }
         }
 
+#if !ES_BUILD_STANDALONE
+        [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2026:UnrecognizedReflectionPattern",
+                   Justification = EventSourceSuppressMessage)]
+#endif
         protected unsafe void WriteEvent(int eventId, int arg1, int arg2, int arg3)
         {
             if (IsEnabled())
@@ -817,6 +838,10 @@ namespace System.Diagnostics.Tracing
         }
 
         // optimized for common signatures (longs)
+#if !ES_BUILD_STANDALONE
+        [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2026:UnrecognizedReflectionPattern",
+                   Justification = EventSourceSuppressMessage)]
+#endif
         protected unsafe void WriteEvent(int eventId, long arg1)
         {
             if (IsEnabled())
@@ -829,6 +854,10 @@ namespace System.Diagnostics.Tracing
             }
         }
 
+#if !ES_BUILD_STANDALONE
+        [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2026:UnrecognizedReflectionPattern",
+                   Justification = EventSourceSuppressMessage)]
+#endif
         protected unsafe void WriteEvent(int eventId, long arg1, long arg2)
         {
             if (IsEnabled())
@@ -844,6 +873,10 @@ namespace System.Diagnostics.Tracing
             }
         }
 
+#if !ES_BUILD_STANDALONE
+        [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2026:UnrecognizedReflectionPattern",
+                   Justification = EventSourceSuppressMessage)]
+#endif
         protected unsafe void WriteEvent(int eventId, long arg1, long arg2, long arg3)
         {
             if (IsEnabled())
@@ -863,6 +896,10 @@ namespace System.Diagnostics.Tracing
         }
 
         // optimized for common signatures (strings)
+#if !ES_BUILD_STANDALONE
+        [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2026:UnrecognizedReflectionPattern",
+                   Justification = EventSourceSuppressMessage)]
+#endif
         protected unsafe void WriteEvent(int eventId, string? arg1)
         {
             if (IsEnabled())
@@ -879,6 +916,10 @@ namespace System.Diagnostics.Tracing
             }
         }
 
+#if !ES_BUILD_STANDALONE
+        [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2026:UnrecognizedReflectionPattern",
+                   Justification = EventSourceSuppressMessage)]
+#endif
         protected unsafe void WriteEvent(int eventId, string? arg1, string? arg2)
         {
             if (IsEnabled())
@@ -900,6 +941,10 @@ namespace System.Diagnostics.Tracing
             }
         }
 
+#if !ES_BUILD_STANDALONE
+        [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2026:UnrecognizedReflectionPattern",
+                   Justification = EventSourceSuppressMessage)]
+#endif
         protected unsafe void WriteEvent(int eventId, string? arg1, string? arg2, string? arg3)
         {
             if (IsEnabled())
@@ -927,6 +972,10 @@ namespace System.Diagnostics.Tracing
         }
 
         // optimized for common signatures (string and ints)
+#if !ES_BUILD_STANDALONE
+        [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2026:UnrecognizedReflectionPattern",
+                   Justification = EventSourceSuppressMessage)]
+#endif
         protected unsafe void WriteEvent(int eventId, string? arg1, int arg2)
         {
             if (IsEnabled())
@@ -946,6 +995,10 @@ namespace System.Diagnostics.Tracing
             }
         }
 
+#if !ES_BUILD_STANDALONE
+        [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2026:UnrecognizedReflectionPattern",
+                   Justification = EventSourceSuppressMessage)]
+#endif
         protected unsafe void WriteEvent(int eventId, string? arg1, int arg2, int arg3)
         {
             if (IsEnabled())
@@ -969,6 +1022,10 @@ namespace System.Diagnostics.Tracing
         }
 
         // optimized for common signatures (string and longs)
+#if !ES_BUILD_STANDALONE
+        [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2026:UnrecognizedReflectionPattern",
+                   Justification = EventSourceSuppressMessage)]
+#endif
         protected unsafe void WriteEvent(int eventId, string? arg1, long arg2)
         {
             if (IsEnabled())
@@ -989,6 +1046,10 @@ namespace System.Diagnostics.Tracing
         }
 
         // optimized for common signatures (long and string)
+#if !ES_BUILD_STANDALONE
+        [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2026:UnrecognizedReflectionPattern",
+                   Justification = EventSourceSuppressMessage)]
+#endif
         protected unsafe void WriteEvent(int eventId, long arg1, string? arg2)
         {
             if (IsEnabled())
@@ -1009,6 +1070,10 @@ namespace System.Diagnostics.Tracing
         }
 
         // optimized for common signatures (int and string)
+#if !ES_BUILD_STANDALONE
+        [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2026:UnrecognizedReflectionPattern",
+                   Justification = EventSourceSuppressMessage)]
+#endif
         protected unsafe void WriteEvent(int eventId, int arg1, string? arg2)
         {
             if (IsEnabled())
@@ -1028,6 +1093,10 @@ namespace System.Diagnostics.Tracing
             }
         }
 
+#if !ES_BUILD_STANDALONE
+        [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2026:UnrecognizedReflectionPattern",
+                   Justification = EventSourceSuppressMessage)]
+#endif
         protected unsafe void WriteEvent(int eventId, byte[]? arg1)
         {
             if (IsEnabled())
@@ -1061,6 +1130,10 @@ namespace System.Diagnostics.Tracing
             }
         }
 
+#if !ES_BUILD_STANDALONE
+        [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2026:UnrecognizedReflectionPattern",
+                   Justification = EventSourceSuppressMessage)]
+#endif
         protected unsafe void WriteEvent(int eventId, long arg1, byte[]? arg2)
         {
             if (IsEnabled())
@@ -1184,6 +1257,9 @@ namespace System.Diagnostics.Tracing
         ///    }
         /// </code>
         /// </remarks>
+#if !ES_BUILD_STANDALONE
+        [RequiresUnreferencedCode(EventSourceRequiresUnreferenceMessage)]
+#endif
         [CLSCompliant(false)]
         protected unsafe void WriteEventCore(int eventId, int eventDataCount, EventSource.EventData* data)
         {
@@ -1215,6 +1291,9 @@ namespace System.Diagnostics.Tracing
         ///    }
         /// </code>
         /// </remarks>
+#if !ES_BUILD_STANDALONE
+        [RequiresUnreferencedCode(EventSourceRequiresUnreferenceMessage)]
+#endif
         [CLSCompliant(false)]
         protected unsafe void WriteEventWithRelatedActivityIdCore(int eventId, Guid* relatedActivityId, int eventDataCount, EventSource.EventData* data)
         {
@@ -1311,6 +1390,9 @@ namespace System.Diagnostics.Tracing
         /// method signature. Even if you use this for rare events, this call should be guarded by an <see cref="IsEnabled()"/>
         /// check so that the varargs call is not made when the EventSource is not active.
         /// </summary>
+#if !ES_BUILD_STANDALONE
+        [RequiresUnreferencedCode(EventSourceRequiresUnreferenceMessage)]
+#endif
         protected unsafe void WriteEvent(int eventId, params object?[] args)
         {
             WriteEventVarargs(eventId, null, args);
@@ -1324,6 +1406,9 @@ namespace System.Diagnostics.Tracing
         /// particular method signature. Even if you use this for rare events, this call should be guarded by an <see cref="IsEnabled()"/>
         /// check so that the varargs call is not made when the EventSource is not active.
         /// </summary>
+#if !ES_BUILD_STANDALONE
+        [RequiresUnreferencedCode(EventSourceRequiresUnreferenceMessage)]
+#endif
         protected unsafe void WriteEventWithRelatedActivityId(int eventId, Guid relatedActivityId, params object?[] args)
         {
             WriteEventVarargs(eventId, &relatedActivityId, args);
@@ -1761,6 +1846,9 @@ namespace System.Diagnostics.Tracing
             return dispatcher;
         }
 
+#if !ES_BUILD_STANDALONE
+        [RequiresUnreferencedCode(EventSourceRequiresUnreferenceMessage)]
+#endif
         private unsafe void WriteEventVarargs(int eventId, Guid* childActivityID, object?[] args)
         {
             if (IsEnabled())
@@ -1886,6 +1974,9 @@ namespace System.Diagnostics.Tracing
             }
         }
 
+#if !ES_BUILD_STANDALONE
+        [RequiresUnreferencedCode(EventSourceRequiresUnreferenceMessage)]
+#endif
         private unsafe object?[] SerializeEventArgs(int eventId, object?[] args)
         {
             Debug.Assert(m_eventData != null);
@@ -2065,7 +2156,15 @@ namespace System.Diagnostics.Tracing
                     Keywords = (EventKeywords)unchecked(keywords),
                     Level = level
                 };
-                var tlet = new TraceLoggingEventTypes(EventName, EventTags.None, new Type[] { typeof(string) });
+
+#if !ES_BUILD_STANDALONE
+                [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2026:RequiresUnreferencedCode",
+                    Justification = "The call to TraceLoggingEventTypes with the below parameter values are trim safe")]
+#endif
+                static TraceLoggingEventTypes GetTrimSafeTraceLoggingEventTypes() =>
+                    new TraceLoggingEventTypes(EventName, EventTags.None, new Type[] { typeof(string) });
+
+                var tlet = GetTrimSafeTraceLoggingEventTypes();
                 WriteMultiMergeInner(EventName, ref opt, tlet, null, null, msgString);
             }
             else
@@ -2307,7 +2406,7 @@ namespace System.Diagnostics.Tracing
         /// <summary>
         /// This class lets us hook the 'OnEventCommand' from the eventSource.
         /// </summary>
-        private class OverrideEventProvider : EventProvider
+        private sealed class OverrideEventProvider : EventProvider
         {
             public OverrideEventProvider(EventSource eventSource, EventProviderType providerType)
                 : base(providerType)
@@ -2671,7 +2770,16 @@ namespace System.Diagnostics.Tracing
             {
                 // get the metadata via reflection.
                 Debug.Assert(m_rawManifest == null);
+#if !ES_BUILD_STANDALONE
+                [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2026:RequiresUnreferencedCode",
+                    Justification = "Based on the annotation on EventSource class, Trimmer will see from its analysis members " +
+                                    "that are marked with RequiresUnreferencedCode and will warn." +
+                                    "This method will not access any of these members and is safe to call.")]
+                byte[]? GetCreateManifestAndDescriptorsViaLocalMethod(string name) => CreateManifestAndDescriptors(this.GetType(), name, this);
+                m_rawManifest = GetCreateManifestAndDescriptorsViaLocalMethod(Name);
+#else
                 m_rawManifest = CreateManifestAndDescriptors(this.GetType(), Name, this);
+#endif
                 Debug.Assert(m_eventData != null);
 
                 // TODO Enforce singleton pattern
@@ -5035,7 +5143,7 @@ namespace System.Diagnostics.Tracing
     /// one EventListener (although EventDispatcher does not 'remember' the EventSource it is
     /// associated with.
     /// </summary>
-    internal class EventDispatcher
+    internal sealed class EventDispatcher
     {
         internal EventDispatcher(EventDispatcher? next, bool[]? eventEnabled, EventListener listener)
         {
@@ -5089,7 +5197,7 @@ namespace System.Diagnostics.Tracing
     /// ManifestBuilder is designed to isolate the details of the message of the event from the
     /// rest of EventSource.  This one happens to create XML.
     /// </summary>
-    internal class ManifestBuilder
+    internal sealed class ManifestBuilder
     {
         /// <summary>
         /// Build a manifest for 'providerName' with the given GUID, which will be packaged into 'dllName'.
@@ -5995,7 +6103,7 @@ namespace System.Diagnostics.Tracing
         }
 
 #if FEATURE_MANAGED_ETW_CHANNELS
-        private class ChannelInfo
+        private sealed class ChannelInfo
         {
             public string? Name;
             public ulong Keywords;

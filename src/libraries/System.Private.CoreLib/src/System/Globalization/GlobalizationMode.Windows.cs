@@ -9,9 +9,14 @@ namespace System.Globalization
         // So we need Invariant to be initialized first.
         internal static bool Invariant { get; } = GetInvariantSwitchValue();
 
+#if CORERT
+        // CORERT-TODO: Enable Icu on Windows
+        internal static bool UseNls { get; } = !Invariant;
+#else
         internal static bool UseNls { get; } = !Invariant &&
-            (GetSwitchValue("System.Globalization.UseNls", "DOTNET_SYSTEM_GLOBALIZATION_USENLS") ||
+            (AppContextConfigHelper.GetBooleanConfig("System.Globalization.UseNls", "DOTNET_SYSTEM_GLOBALIZATION_USENLS") ||
                 !LoadIcu());
+#endif
 
         private static bool LoadIcu()
         {

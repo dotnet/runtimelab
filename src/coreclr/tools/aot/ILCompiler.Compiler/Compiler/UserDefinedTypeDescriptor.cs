@@ -573,6 +573,11 @@ namespace ILCompiler
             {
                 classTypeDescriptor.BaseClassId = GetTypeIndex(defType.BaseType, true);
             }
+            else if (type.IsInterface)
+            {
+                // Allows debuggers to vtcast the types and see the real instance types.
+                classTypeDescriptor.BaseClassId = GetTypeIndex(type.Context.GetWellKnownType(WellKnownType.Object), true);
+            }
 
             List<DataFieldDescriptor> fieldsDescs = new List<DataFieldDescriptor>();
             List<DataFieldDescriptor> nonGcStaticFields = new List<DataFieldDescriptor>();

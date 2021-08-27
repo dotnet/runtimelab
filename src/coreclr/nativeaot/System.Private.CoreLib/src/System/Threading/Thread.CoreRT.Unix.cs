@@ -46,7 +46,7 @@ namespace System.Threading
             {
                 // Inform the wait subsystem that the thread is exiting. For instance, this would abandon any mutexes locked by
                 // the thread.
-                WaitSubsystem.OnThreadExiting(currentThread);
+                currentThread._waitInfo.OnThreadExiting();
                 StopThread(currentThread);
                 currentThread._stopped.Set();
             }
@@ -148,8 +148,6 @@ namespace System.Threading
         }
 
         public void Interrupt() => WaitSubsystem.Interrupt(this);
-        internal static void UninterruptibleSleep0() => WaitSubsystem.UninterruptibleSleep0();
-        private static void SleepInternal(int millisecondsTimeout) => WaitSubsystem.Sleep(millisecondsTimeout);
 
         internal const bool ReentrantWaitsEnabled = false;
 

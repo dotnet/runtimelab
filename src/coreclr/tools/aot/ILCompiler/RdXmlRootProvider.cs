@@ -161,10 +161,9 @@ namespace ILCompiler
                 for (int i = 0; i < method.Signature.Length; i++)
                 {
                     if (method.Signature[i] != parameter[i])
-                    {
                         return false;
-                    }
                 }
+
                 return true;
             }
 
@@ -176,17 +175,17 @@ namespace ILCompiler
                 if (method.Name != methodName)
                     continue;
 
-                if (parameter.Count > 0 && !SignatureMatches(method, parameter))
-                    continue;
-
                 if (instArgs.Count != method.Instantiation.Length)
-                    throw new Exception($"Could not instantiate Method {method} specified by a Runtime Directive. Method takes {method.Instantiation.Length} generic argument(s) but {instArgs.Count} were provided.");
+                    continue;
 
                 if (instArgs.Count > 0)
                 {
                     var methodInst = new Instantiation(instArgs.ToArray());
                     method = method.MakeInstantiatedMethod(methodInst);
                 }
+
+                if (parameter.Count > 0 && !SignatureMatches(method, parameter))
+                    continue;
 
                 RootingHelpers.RootMethod(rootProvider, method, "RD.XML root");
                 rootedAnyMethod = true;
@@ -195,7 +194,8 @@ namespace ILCompiler
             if (!rootedAnyMethod)
             {
                 string parameterString = parameter.Count > 0 ? "(" + string.Join(", ", parameter) + ")" : null;
-                throw new Exception($"Could not find Method(s) {containingType}.{methodName}{parameterString} specified by a Runtime Directive.");
+                string instantiationString = instArgs.Count > 0 ? "<" + string.Join(", ", instArgs) + ">" : null;
+                throw new Exception($"Could not find Method(s) {containingType}.{methodName}{instantiationString}{parameterString} specified by a Runtime Directive.");
             }
         }
     }

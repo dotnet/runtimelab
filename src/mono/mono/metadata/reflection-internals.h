@@ -20,7 +20,7 @@ TYPED_HANDLE_DECL (MonoReflectionAssembly)
 TYPED_HANDLE_DECL (MonoReflectionTypeBuilder)
 
 MonoReflectionAssemblyHandle
-mono_domain_try_type_resolve_name (MonoDomain *domain, MonoAssembly *assembly, MonoStringHandle name, MonoError *error);
+mono_domain_try_type_resolve_name (MonoAssembly *assembly, MonoStringHandle name, MonoError *error);
 
 MonoReflectionTypeBuilderHandle
 mono_class_get_ref_info (MonoClass *klass);
@@ -135,5 +135,8 @@ mono_runtime_get_caller_from_stack_mark (MonoStackCrawlMark *stack_mark);
 
 void
 mono_reflection_get_param_info_member_and_pos (MonoReflectionParameterHandle p, MonoObjectHandle member_impl, int *out_position);
+
+MonoGCHandle
+mono_method_to_dyn_method (MonoMethod *method);
 
 #endif /* __MONO_METADATA_REFLECTION_INTERNALS_H__ */

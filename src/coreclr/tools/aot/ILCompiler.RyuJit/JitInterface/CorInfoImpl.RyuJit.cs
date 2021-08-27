@@ -24,12 +24,6 @@ namespace Internal.JitInterface
 {
     unsafe public partial class CorInfoImpl
     {
-        private struct SequencePoint
-        {
-            public string Document;
-            public int LineNumber;
-        }
-
         private const CORINFO_RUNTIME_ABI TargetABI = CORINFO_RUNTIME_ABI.CORINFO_CORERT_ABI;
 
         private uint OffsetOfDelegateFirstTarget => (uint)(4 * PointerSize); // Delegate::m_functionPointer
@@ -40,7 +34,6 @@ namespace Internal.JitInterface
         private IMethodCodeNode _methodCodeNode;
         private DebugLocInfo[] _debugLocInfos;
         private DebugVarInfo[] _debugVarInfos;
-        private Dictionary<int, SequencePoint> _sequencePoints;
         private readonly UnboxingMethodDescFactory _unboxingThunkFactory = new UnboxingMethodDescFactory();
         private bool _isFallbackBodyCompilation;
         private DependencyList _additionalDependencies;
@@ -745,11 +738,6 @@ namespace Internal.JitInterface
         private void setBoundaries(CORINFO_METHOD_STRUCT_* ftn, uint cMap, OffsetMapping* pMap)
         {
             Debug.Assert(_debugLocInfos == null);
-            // No interest if sequencePoints is not populated before.
-            if (_sequencePoints == null)
-            {
-                return;
-            }
 
             int largestILOffset = 0; // All epiloges point to the largest IL offset.
             for (int i = 0; i < cMap; i++)
@@ -762,18 +750,11 @@ namespace Internal.JitInterface
                 }
             }
 
-            int previousNativeOffset = -1;
-            List<DebugLocInfo> debugLocInfos = new List<DebugLocInfo>();
+            ArrayBuilder<DebugLocInfo> debugLocInfos = new ArrayBuilder<DebugLocInfo>();
             for (int i = 0; i < cMap; i++)
             {
-                OffsetMapping nativeToILInfo = pMap[i];
-                int ilOffset = (int)nativeToILInfo.ilOffset;
-                int nativeOffset = (int)pMap[i].nativeOffset;
-                if (nativeOffset == previousNativeOffset)
-                {
-                    // Save the first one, skip others.
-                    continue;
-                }
+                OffsetMapping* nativeToILInfo = &pMap[i];
+                int ilOffset = (int)nativeToILInfo->ilOffset;
                 switch (ilOffset)
                 {
                     case (int)MappingTypes.PROLOG:
@@ -786,68 +767,20 @@ namespace Internal.JitInterface
                         continue;
                 }
 
-                SequencePoint s;
-                if (_sequencePoints.TryGetValue((int)ilOffset, out s))
-                {
-                    Debug.Assert(s.Document != null);
-                    DebugLocInfo loc = new DebugLocInfo(nativeOffset, s.Document, s.LineNumber);
-                    debugLocInfos.Add(loc);
-                    previousNativeOffset = nativeOffset;
-                }
+                debugLocInfos.Add(new DebugLocInfo((int)nativeToILInfo->nativeOffset, ilOffset));
             }
 
             if (debugLocInfos.Count > 0)
             {
                 _debugLocInfos = debugLocInfos.ToArray();
             }
+
+            freeArray(pMap);
         }
 
         private void SetDebugInformation(IMethodNode methodCodeNodeNeedingCode, MethodIL methodIL)
         {
-            try
-            {
-                MethodDebugInformation debugInfo = _compilation.GetDebugInfo(methodIL);
-
-                _debugInfo = debugInfo;
-
-                // TODO: NoLineNumbers
-                //if (!_compilation.Options.NoLineNumbers)
-                {
-                    IEnumerable<ILSequencePoint> ilSequencePoints = debugInfo.GetSequencePoints();
-                    if (ilSequencePoints != null)
-                    {
-                        try
-                        {
-                            SetSequencePoints(ilSequencePoints);
-                        }
-                        catch (BadImageFormatException)
-                        {
-                            // Roslyn had a bug where it was generating bad sequence points:
-                            // https://github.com/dotnet/roslyn/issues/20118
-                            // Do not crash the compiler.
-                            _compilation.Logger.Writer.WriteLine($"Warning: ignoring debug info for {methodCodeNodeNeedingCode.Method.ToString()}");
-                        }
-                    }
-                }
-            }
-            catch (Exception e)
-            {
-                // Debug info not successfully loaded.
-                Log.WriteLine(e.Message + " (" + methodCodeNodeNeedingCode.ToString() + ")");
-            }
-        }
-
-        public void SetSequencePoints(IEnumerable<ILSequencePoint> ilSequencePoints)
-        {
-            Debug.Assert(ilSequencePoints != null);
-            Dictionary<int, SequencePoint> sequencePoints = new Dictionary<int, SequencePoint>();
-
-            foreach (var point in ilSequencePoints)
-            {
-                sequencePoints.Add(point.Offset, new SequencePoint() { Document = point.Document, LineNumber = point.LineNumber });
-            }
-
-            _sequencePoints = sequencePoints;
+            _debugInfo = _compilation.GetDebugInfo(methodIL);
         }
 
         private ISymbolNode GetGenericLookupHelper(CORINFO_RUNTIME_LOOKUP_KIND runtimeLookupKind, ReadyToRunHelperId helperId, object helperArgument)
@@ -1386,6 +1319,24 @@ namespace Internal.JitInterface
             pResult->_wrapperDelegateInvoke = 0;
         }
 
+        private CORINFO_CLASS_STRUCT_* embedClassHandle(CORINFO_CLASS_STRUCT_* handle, ref void* ppIndirection)
+        {
+            TypeDesc type = HandleToObject(handle);
+            ISymbolNode typeHandleSymbol = _compilation.NodeFactory.NecessaryTypeSymbol(type);
+            CORINFO_CLASS_STRUCT_* result = (CORINFO_CLASS_STRUCT_*)ObjectToHandle(typeHandleSymbol);
+
+            if (typeHandleSymbol.RepresentsIndirectionCell)
+            {
+                ppIndirection = result;
+                return null;
+            }
+            else
+            {
+                ppIndirection = null;
+                return result;
+            }
+        }
+
         private void embedGenericHandle(ref CORINFO_RESOLVED_TOKEN pResolvedToken, bool fEmbedParent, ref CORINFO_GENERICHANDLE_RESULT pResult)
         {
 #if DEBUG
@@ -1569,11 +1520,6 @@ namespace Internal.JitInterface
         private unsafe HRESULT allocPgoInstrumentationBySchema(CORINFO_METHOD_STRUCT_* ftnHnd, PgoInstrumentationSchema* pSchema, uint countSchemaItems, byte** pInstrumentationData)
         {
             throw new NotImplementedException("allocPgoInstrumentationBySchema");
-        }
-
-        private HRESULT getPgoInstrumentationResults(CORINFO_METHOD_STRUCT_* ftnHnd, ref PgoInstrumentationSchema* pSchema, ref uint pCountSchemaItems, byte** pInstrumentationData)
-        {
-            throw new NotImplementedException("getPgoInstrumentationResults");
         }
 
         private CORINFO_CLASS_STRUCT_* getLikelyClass(CORINFO_METHOD_STRUCT_* ftnHnd, CORINFO_CLASS_STRUCT_* baseHnd, uint IlOffset, ref uint pLikelihood, ref uint pNumberOfClasses)

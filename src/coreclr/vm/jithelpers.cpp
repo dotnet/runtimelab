@@ -56,6 +56,7 @@
 #include "castcache.h"
 #include "onstackreplacement.h"
 #include "pgo.h"
+#include "pgo_formatprocessing.h"
 
 #ifndef FEATURE_EH_FUNCLETS
 #include "excep.h"
@@ -3945,7 +3946,6 @@ HCIMPL_MONHELPER(JIT_MonEnterStatic_Portable, AwareLock *lock)
     MONHELPER_STATE(_ASSERTE(pbLockTaken != NULL && *pbLockTaken == 0));
 
     Thread *pCurThread = GetThread();
-
     if (pCurThread->CatchAtSafePointOpportunistic())
     {
         goto FramedLockHelper;
@@ -5260,12 +5260,13 @@ HCIMPL2(void, JIT_ClassProfile, Object *obj, void* tableAddress)
 
     MethodTable* pMT = objRef->GetMethodTable();
 
-    // If the object class is collectible, record NULL
-    // for the class handle.
+    // If the object class is collectible, record an unknown typehandle.
+    // We do this instead of recording NULL so that we won't over-estimate
+    // the likelihood of known type handles.
     //
     if (pMT->GetLoaderAllocator()->IsCollectible())
     {
-        pMT = NULL;
+        pMT = (MethodTable*)DEFAULT_UNKNOWN_TYPEHANDLE;
     }
 
 #ifdef _DEBUG

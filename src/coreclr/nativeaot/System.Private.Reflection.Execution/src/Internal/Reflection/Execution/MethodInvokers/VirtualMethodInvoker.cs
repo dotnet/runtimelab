@@ -60,14 +60,12 @@ namespace Internal.Reflection.Execution.MethodInvokers
             object result = RuntimeAugments.CallDynamicInvokeMethod(
                 thisObject,
                 resolvedVirtual,
-                null /*thisPtrDynamicInvokeMethod*/,
                 MethodInvokeInfo.DynamicInvokeMethod,
                 MethodInvokeInfo.DynamicInvokeGenericDictionary,
                 MethodInvokeInfo.MethodInfo,
                 arguments,
                 binderBundle,
                 wrapInTargetInvocationException: wrapInTargetInvocationException,
-                invokeMethodHelperIsThisCall: false,
                 methodToCallIsThisCall: true);
             System.Diagnostics.DebugAnnotations.PreviousCallContainsDebuggerStepInCode();
             return result;

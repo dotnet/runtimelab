@@ -4,6 +4,9 @@
     <NoWarn>$(NoWarn);CS0672</NoWarn>
   </PropertyGroup>
   <ItemGroup>
+    <ILLinkSubstitutionsXmls Include="ILLink\ILLink.Substitutions.xml" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\..\System.Private.CoreLib\src\System.Private.CoreLib.csproj" />
     <ProjectReference Include="..\..\System.Private.Reflection.Metadata\src\System.Private.Reflection.Metadata.csproj" />
     <ProjectReference Include="..\..\System.Private.TypeLoader\src\System.Private.TypeLoader.csproj" />
@@ -165,7 +168,7 @@
     <Compile Include="$(CompilerCommonPath)\Internal\LowLevelLinq\LowLevelEnumerable.ToArray.cs">
       <Link>Internal\LowLevelLinq\LowLevelEnumerable.ToArray.cs</Link>
     </Compile>
-    <Compile Include="$(AotCommonPath)\System\Collections\HashHelpers.cs">
+    <Compile Include="$(LibrariesProjectRoot)\System.Private.CoreLib\src\System\Collections\HashHelpers.cs" >
       <Link>System\Collections\HashHelpers.cs</Link>
     </Compile>
     <Compile Include="$(AotCommonPath)\System\Collections\Generic\EnumerableExtensions.cs">

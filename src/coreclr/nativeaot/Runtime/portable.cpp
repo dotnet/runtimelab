@@ -36,8 +36,7 @@
 #include "GCMemoryHelpers.inl"
 
 #if defined(USE_PORTABLE_HELPERS)
-EXTERN_C REDHAWK_API void* REDHAWK_CALLCONV RhpGcAlloc(EEType *pEEType, uint32_t uFlags, uintptr_t cbSize, void * pTransitionFrame);
-EXTERN_C REDHAWK_API void* REDHAWK_CALLCONV RhpPublishObject(void* pObject, uintptr_t cbSize);
+EXTERN_C REDHAWK_API void* REDHAWK_CALLCONV RhpGcAlloc(EEType *pEEType, uint32_t uFlags, uintptr_t numElements, void * pTransitionFrame);
 
 struct gc_alloc_context
 {
@@ -73,15 +72,11 @@ COOP_PINVOKE_HELPER(Object *, RhpNewFast, (EEType* pEEType))
         return pObject;
     }
 
-    pObject = (Object *)RhpGcAlloc(pEEType, 0, size, NULL);
+    pObject = (Object *)RhpGcAlloc(pEEType, 0, 0, NULL);
     if (pObject == nullptr)
     {
         ASSERT_UNCONDITIONALLY("NYI");  // TODO: Throw OOM
     }
-    pObject->set_EEType(pEEType);
-
-    if (size >= RH_LARGE_OBJECT_SIZE)
-        RhpPublishObject(pObject, size);
 
     return pObject;
 }
@@ -94,17 +89,11 @@ COOP_PINVOKE_HELPER(Object *, RhpNewFinalizable, (EEType* pEEType))
 {
     ASSERT(pEEType->HasFinalizer());
 
-    size_t size = pEEType->get_BaseSize();
-
-    Object * pObject = (Object *)RhpGcAlloc(pEEType, GC_ALLOC_FINALIZE, size, NULL);
+    Object * pObject = (Object *)RhpGcAlloc(pEEType, GC_ALLOC_FINALIZE, 0, NULL);
     if (pObject == nullptr)
     {
         ASSERT_UNCONDITIONALLY("NYI");  // TODO: Throw OOM
     }
-    pObject->set_EEType(pEEType);
-
-    if (size >= RH_LARGE_OBJECT_SIZE)
-        RhpPublishObject(pObject, size);
 
     return pObject;
 }
@@ -154,16 +143,11 @@ COOP_PINVOKE_HELPER(Array *, RhpNewArray, (EEType * pArrayEEType, int numElement
         return pObject;
     }
 
-    pObject = (Array *)RhpGcAlloc(pArrayEEType, 0, size, NULL);
+    pObject = (Array *)RhpGcAlloc(pArrayEEType, 0, numElements, NULL);
     if (pObject == nullptr)
     {
         ASSERT_UNCONDITIONALLY("NYI");  // TODO: Throw OOM
     }
-    pObject->set_EEType(pArrayEEType);
-    pObject->InitArrayLength((uint32_t)numElements);
-
-    if (size >= RH_LARGE_OBJECT_SIZE)
-        RhpPublishObject(pObject, size);
 
     return pObject;
 }
@@ -229,15 +213,11 @@ COOP_PINVOKE_HELPER(Object *, RhpNewFastAlign8, (EEType* pEEType))
         return pObject;
     }
 
-    pObject = (Object*)RhpGcAlloc(pEEType, GC_ALLOC_ALIGN8, size, NULL);
+    pObject = (Object*)RhpGcAlloc(pEEType, GC_ALLOC_ALIGN8, 0, NULL);
     if (pObject == nullptr)
     {
         ASSERT_UNCONDITIONALLY("NYI");  // TODO: Throw OOM
     }
-    pObject->set_EEType(pEEType);
-
-    if (size >= RH_LARGE_OBJECT_SIZE)
-        RhpPublishObject(pObject, size);
 
     return pObject;
 }
@@ -277,15 +257,11 @@ COOP_PINVOKE_HELPER(Object*, RhpNewFastMisalign, (EEType* pEEType))
         return pObject;
     }
 
-    pObject = (Object*)RhpGcAlloc(pEEType, GC_ALLOC_ALIGN8 | GC_ALLOC_ALIGN8_BIAS, size, NULL);
+    pObject = (Object*)RhpGcAlloc(pEEType, GC_ALLOC_ALIGN8 | GC_ALLOC_ALIGN8_BIAS, 0, NULL);
     if (pObject == nullptr)
     {
         ASSERT_UNCONDITIONALLY("NYI");  // TODO: Throw OOM
     }
-    pObject->set_EEType(pEEType);
-
-    if (size >= RH_LARGE_OBJECT_SIZE)
-        RhpPublishObject(pObject, size);
 
     return pObject;
 }
@@ -351,16 +327,11 @@ COOP_PINVOKE_HELPER(Array *, RhpNewArrayAlign8, (EEType * pArrayEEType, int numE
         return pObject;
     }
 
-    pObject = (Array*)RhpGcAlloc(pArrayEEType, GC_ALLOC_ALIGN8, size, NULL);
+    pObject = (Array*)RhpGcAlloc(pArrayEEType, GC_ALLOC_ALIGN8, numElements, NULL);
     if (pObject == nullptr)
     {
         ASSERT_UNCONDITIONALLY("NYI");  // TODO: Throw OOM
     }
-    pObject->set_EEType(pArrayEEType);
-    pObject->InitArrayLength((uint32_t)numElements);
-
-    if (size >= RH_LARGE_OBJECT_SIZE)
-        RhpPublishObject(pObject, size);
 
     return pObject;
 }
@@ -429,10 +400,10 @@ void * ReturnFromCallDescrThunk;
 #endif
 
 #if defined(USE_PORTABLE_HELPERS) || defined(TARGET_UNIX)
-#if !defined (HOST_ARM64)
 //
 // Return address hijacking
 //
+#if !defined (HOST_ARM64)
 COOP_PINVOKE_HELPER(void, RhpGcProbeHijackScalar, ())
 {
     ASSERT_UNCONDITIONALLY("NYI");
@@ -457,7 +428,16 @@ COOP_PINVOKE_HELPER(void, RhpGcStressHijackByref, ())
 {
     ASSERT_UNCONDITIONALLY("NYI");
 }
-#endif
+#else // !defined (HOST_ARM64)
+COOP_PINVOKE_HELPER(void, RhpGcProbeHijack, ())
+{
+    ASSERT_UNCONDITIONALLY("NYI");
+}
+COOP_PINVOKE_HELPER(void, RhpGcStressHijack, ())
+{
+    ASSERT_UNCONDITIONALLY("NYI");
+}
+#endif // !defined (HOST_ARM64)
 #endif // defined(USE_PORTABLE_HELPERS) || defined(TARGET_UNIX)
 
 #if defined(USE_PORTABLE_HELPERS)

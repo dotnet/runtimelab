@@ -79,6 +79,16 @@ private:
   PrimitiveTypeFlags Type;
 };
 
+class DwarfVoidTypeInfo : public DwarfPrimitiveTypeInfo
+{
+public:
+  DwarfVoidTypeInfo() : DwarfPrimitiveTypeInfo(PrimitiveTypeFlags::Void) {}
+
+protected:
+  void DumpStrings(MCObjectStreamer* Streamer) override;
+  void DumpTypeInfo(MCObjectStreamer* Streamer, UserDefinedDwarfTypesBuilder* TypeBuilder) override;
+};
+
 class DwarfEnumTypeInfo;
 
 class DwarfEnumerator : public DwarfInfo
@@ -249,6 +259,16 @@ protected:
 
 private:
   PointerTypeDescriptor TypeDesc;
+};
+
+class DwarfVoidPtrTypeInfo : public DwarfInfo
+{
+public:
+  DwarfVoidPtrTypeInfo() {}
+
+protected:
+  void DumpStrings(MCObjectStreamer* Streamer) override;
+  void DumpTypeInfo(MCObjectStreamer* Streamer, UserDefinedDwarfTypesBuilder* TypeBuilder) override;
 };
 
 class DwarfMemberFunctionTypeInfo : public DwarfInfo

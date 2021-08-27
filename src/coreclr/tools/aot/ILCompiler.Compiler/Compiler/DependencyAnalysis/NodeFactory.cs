@@ -472,7 +472,6 @@ namespace ILCompiler.DependencyAnalysis
             });
 
             NativeLayout = new NativeLayoutHelper(this);
-            WindowsDebugData = new WindowsDebugDataHelper(this);
         }
 
         protected virtual ISymbolNode CreateGenericLookupFromDictionaryNode(ReadyToRunGenericHelperKey helperKey)
@@ -1108,11 +1107,6 @@ namespace ILCompiler.DependencyAnalysis
             "__FrozenSegmentRegionStart",
             "__FrozenSegmentRegionEnd",
             new SortableDependencyNode.EmbeddedObjectNodeComparer(new CompilerComparer()));
-
-        public ArrayOfEmbeddedPointersNode<MrtProcessedImportAddressTableNode> ImportAddressTablesTable = new ArrayOfEmbeddedPointersNode<MrtProcessedImportAddressTableNode>(
-            "__ImportTablesTableStart",
-            "__ImportTablesTableEnd",
-            new SortableDependencyNode.ObjectNodeComparer(new CompilerComparer()));
 
         public InterfaceDispatchCellSectionNode InterfaceDispatchCellSection { get; }
 
