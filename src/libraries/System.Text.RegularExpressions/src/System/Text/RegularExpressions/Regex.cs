@@ -102,7 +102,7 @@ namespace System.Text.RegularExpressions
                 // Ignore Compiled flag if DFA is used
                 // this is to make sure the pattern is not being compiled as well as being used in SRM
                 options = options & ~RegexOptions.Compiled;
-            } 
+            }
             this.pattern = pattern;
             internalMatchTimeout = matchTimeout;
             roptions = options;
