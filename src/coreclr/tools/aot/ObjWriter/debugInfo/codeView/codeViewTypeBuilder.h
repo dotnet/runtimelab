@@ -62,8 +62,8 @@ private:
   unsigned GetEnumFieldListType(uint64 Count,
                                 const EnumRecordTypeDescriptor *TypeRecords);
 
-  void AddBaseClass(ContinuationRecordBuilder&CRB, unsigned BaseClassId);
-  void AddClassVTShape(ContinuationRecordBuilder&CRB);
+  void AddBaseClass(ContinuationRecordBuilder &CRB, unsigned BaseClassId);
+  void AddClassVTShape(ContinuationRecordBuilder &CRB);
 
   BumpPtrAllocator Allocator;
   GlobalTypeTableBuilder TypeTable;
