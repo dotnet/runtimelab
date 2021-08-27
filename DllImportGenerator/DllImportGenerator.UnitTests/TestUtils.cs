@@ -120,7 +120,7 @@ namespace DllImportGenerator.UnitTests
                     "net6.0",
                     new PackageIdentity(
                         "Microsoft.NETCore.App.Ref",
-                        "6.0.0-preview.7.21376.23"),
+                        "6.0.100-preview.7.21379.14"),
                     Path.Combine("ref", "net6.0"))
                 .WithNuGetConfigFilePath(Path.Combine(Path.GetDirectoryName(typeof(TestUtils).Assembly.Location)!, "NuGet.config"));
 
