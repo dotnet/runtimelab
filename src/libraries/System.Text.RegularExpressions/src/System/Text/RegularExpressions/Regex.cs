@@ -120,7 +120,7 @@ namespace System.Text.RegularExpressions
             capnames = tree.CapNames;
             capslist = tree.CapsList;
             // code related info is relevant in DFA mode only regarding caps
-            // that are used in RegexReplacement to check absense of subtitutions
+            // that are used in RegexReplacement to check absence of subtitutions
             _code = RegexWriter.Write(tree);
             caps = _code.Caps;
             capsize = _code.CapSize;
