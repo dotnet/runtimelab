@@ -24,6 +24,7 @@ namespace System
         public static bool IsMonoRuntime => Type.GetType("Mono.RuntimeStructs") != null;
         public static bool IsNotMonoRuntime => !IsMonoRuntime;
         public static bool IsMonoInterpreter => GetIsRunningOnMonoInterpreter();
+        public static bool IsMonoAOT => Environment.GetEnvironmentVariable("MONO_AOT_MODE") == "aot";
         public static bool IsNativeAot => !IsReflectionEmitSupported;
         public static bool IsFreeBSD => RuntimeInformation.IsOSPlatform(OSPlatform.Create("FREEBSD"));
         public static bool IsNetBSD => RuntimeInformation.IsOSPlatform(OSPlatform.Create("NETBSD"));
@@ -162,6 +163,9 @@ namespace System
         public static bool IsNotDomainJoinedMachine => !IsDomainJoinedMachine;
 
         public static bool IsOpenSslSupported => IsLinux || IsFreeBSD || Isillumos || IsSolaris;
+
+        // Changed to `true` when linking
+        public static bool IsBuiltWithAggressiveTrimming => false;
 
         // Windows - Schannel supports alpn from win8.1/2012 R2 and higher.
         // Linux - OpenSsl supports alpn from openssl 1.0.2 and higher.
@@ -401,7 +405,7 @@ namespace System
                         return c == 1 && s == 1;
                     }
                 }
-                catch { };
+                catch { }
                 // assume no if positive entry is missing on older Windows
                 // Latest insider builds have TLS 1.3 enabled by default.
                 // The build number is approximation.
@@ -431,10 +435,10 @@ namespace System
 
         private static bool GetIsRunningOnMonoInterpreter()
         {
-            // Browser is always using interpreter right now
+#if NETCOREAPP
             if (IsBrowser)
-                return true;
-
+                return RuntimeFeature.IsDynamicCodeSupported;
+#endif
             // This is a temporary solution because mono does not support interpreter detection
             // within the runtime.
             var val = Environment.GetEnvironmentVariable("MONO_ENV_OPTIONS");

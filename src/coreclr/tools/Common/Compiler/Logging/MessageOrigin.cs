@@ -19,7 +19,7 @@ namespace ILCompiler.Logging
         public int? SourceLine { get; }
         public int? SourceColumn { get; }
 
-        public MessageOrigin(string fileName, int sourceLine = 0, int sourceColumn = 0)
+        public MessageOrigin(string fileName, int? sourceLine = null, int? sourceColumn = null)
         {
             FileName = fileName;
             SourceLine = sourceLine;

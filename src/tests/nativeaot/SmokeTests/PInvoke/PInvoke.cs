@@ -272,6 +272,9 @@ namespace PInvokeTests
         public static int callbackFunc1() { return 1; }
         public static int callbackFunc2() { return 2; }
 
+        [DllImport("PInvokeNative", CallingConvention = CallingConvention.StdCall, PreserveSig = false)]
+        static extern void ValidateSuccessCall(int errorCode);
+
         public static int Main(string[] args)
         {
             TestBlittableType();
@@ -292,6 +295,7 @@ namespace PInvokeTests
             TestLayoutClass();
             TestAsAny();
             TestMarshalStructAPIs();
+            TestWithoutPreserveSig();
             TestForwardDelegateWithUnmanagedCallersOnly();
 
             return 100;
@@ -997,6 +1001,22 @@ namespace PInvokeTests
         static void UnmanagedCallback()
         {
             GC.Collect();
+        }
+
+        private static void TestWithoutPreserveSig()
+        {
+            Console.WriteLine("Testing with PreserveSig = false");
+            ValidateSuccessCall(0);
+
+            try
+            {
+                const int E_NOTIMPL = -2147467263;
+                ValidateSuccessCall(E_NOTIMPL);
+                throw new Exception("Exception should be thrown for E_NOTIMPL error code");
+            }
+            catch (NotImplementedException)
+            {
+            }
         }
 
         public static unsafe void TestForwardDelegateWithUnmanagedCallersOnly()

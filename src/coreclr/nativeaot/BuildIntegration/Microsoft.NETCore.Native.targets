@@ -201,6 +201,35 @@ The .NET Foundation licenses this file to you under the MIT license.
       Outputs="$(NativeIntermediateOutputPath)%(ManagedBinary.Filename)$(IlcOutputFileExt)"
       DependsOnTargets="$(IlcCompileDependsOn)">
 
+    <!-- Set up default properties that have their defaults in the 6.0 SDK (Can be dropped once we drop 5.0 support) -->
+    <PropertyGroup Condition="$([MSBuild]::VersionLessThan('$(NETCoreSdkVersion)', '6.0.0'))">
+      <TrimmerSingleWarn Condition="'$(TrimmerSingleWarn)' == ''">true</TrimmerSingleWarn>
+    </PropertyGroup>
+
+    <!-- Set up single warn trimming like in the 6.0 SDK (Can be dropped once we drop 5.0 support) -->
+    <ItemGroup Condition="$([MSBuild]::VersionLessThan('$(NETCoreSdkVersion)', '6.0.0'))">
+      <!-- Don't collapse to a single warning for the intermediate assembly.
+           This just sets metadata on the items in ManagedAssemblyToLink that came from IntermediateAssembly. -->
+      <!-- Find ManagedAssemblyToLink _except_ IntermediateAssembly -->
+      <__SingleWarnIntermediateAssembly Include="@(ManagedAssemblyToLink)" />
+      <__SingleWarnIntermediateAssembly Remove="@(IntermediateAssembly)" />
+      <!-- Subtract these from ManagedAssemblyToLink, to get the intersection. -->
+      <_SingleWarnIntermediateAssembly Include="@(ManagedAssemblyToLink)" />
+      <_SingleWarnIntermediateAssembly Remove="@(__SingleWarnIntermediateAssembly)" />
+      <!-- Set metadata on the intersection. -->
+      <_SingleWarnIntermediateAssembly>
+        <TrimmerSingleWarn Condition=" '%(_SingleWarnIntermediateAssembly.TrimmerSingleWarn)' == '' ">false</TrimmerSingleWarn>
+      </_SingleWarnIntermediateAssembly>
+      <!-- Replace these items in ManagedAssemblyToLink. -->
+      <ManagedAssemblyToLink Remove="@(_SingleWarnIntermediateAssembly)" />
+      <ManagedAssemblyToLink Include="@(_SingleWarnIntermediateAssembly)" />
+
+      <!-- Don't collapse to a single warning for project references -->
+      <ManagedAssemblyToLink Condition=" '%(ManagedAssemblyToLink.ProjectReferenceOriginalItemSpec)' != '' ">
+        <TrimmerSingleWarn Condition=" '%(ManagedAssemblyToLink.TrimmerSingleWarn)' == '' ">false</TrimmerSingleWarn>
+      </ManagedAssemblyToLink>
+    </ItemGroup>
+
     <!-- Propagate the global TrimMode to all the assembly that don't have it yet -->
     <ItemGroup>
       <ManagedAssemblyToLink Condition=" '%(ManagedAssemblyToLink.TrimMode)' == '' ">
@@ -211,6 +240,7 @@ The .NET Foundation licenses this file to you under the MIT license.
     <ItemGroup>
       <_IlcRootedAssemblies Include="@(TrimmerRootAssembly)" />
       <_IlcConditionallyRootedAssemblies Include="@(ManagedAssemblyToLink)" Condition="%(ManagedAssemblyToLink.TrimMode) == 'copyused'" />
+      <_IlcNoSingleWarnAssemblies Include="@(ManagedAssemblyToLink)" Condition="%(ManagedAssemblyToLink.TrimmerSingleWarn) == 'false'" />
     </ItemGroup>
 
     <ItemGroup>
@@ -249,8 +279,10 @@ The .NET Foundation licenses this file to you under the MIT license.
       <IlcArg Condition="$(IlcSystemModule) != ''" Include="--systemmodule:$(IlcSystemModule)" />
       <IlcArg Condition="$(IlcDumpIL) == 'true'" Include="--ildump:$(NativeIntermediateOutputPath)%(ManagedBinary.Filename).il" />
       <IlcArg Condition="$(NoWarn) != ''" Include='--nowarn:"$([MSBuild]::Escape($(NoWarn)))"' />
+      <IlcArg Condition="$(TrimmerSingleWarn) == 'true'" Include="--singlewarn" />
       <IlcArg Include="@(_IlcRootedAssemblies->'--root:%(Identity)')" />
       <IlcArg Include="@(_IlcConditionallyRootedAssemblies->'--conditionalroot:%(Identity)')" />
+      <IlcArg Include="@(_IlcNoSingleWarnAssemblies->'--nosinglewarnassembly:%(Filename)')" />
 
       <!-- The Emit-based DataContractSerializer won't work -->
       <IlcArg Include="--feature:System.Runtime.Serialization.DataContractSerializer.IsReflectionOnly=true" />

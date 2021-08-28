@@ -4,6 +4,8 @@ parameters:
   osGroup: ''
   osSubgroup: ''
   platform: ''
+  pgoType: ''
+  runtimeVariant: ''
   uploadTests: false
   smokeTestsOnly: true
   runSingleFileTests: true

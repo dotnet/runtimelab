@@ -94,7 +94,10 @@ namespace Internal.IL.Stubs
                     Debug.Assert(i == parameterMetadataArray[parameterIndex].Index);
                     parameterMetadata = parameterMetadataArray[parameterIndex++];
                 }
-                TypeDesc parameterType = (i == 0) ? methodSig.ReturnType : methodSig[i - 1];  //first item is the return type
+
+                TypeDesc parameterType = (i == 0)
+                    ? methodSig.ReturnType //first item is the return type
+                    : methodSig[i - 1];
                 marshallers[i] = Marshaller.CreateMarshaller(parameterType,
                                                     parameterIndex,
                                                     methodSig.GetEmbeddedSignatureData(),
@@ -178,7 +181,7 @@ namespace Internal.IL.Stubs
                 if (_flags.SetLastError)
                 {
                     callsiteSetupCodeStream.Emit(ILOpcode.call, emitter.NewToken(
-                                InteropTypes.GetPInvokeMarshal(context).GetKnownMethod("ClearLastWin32Error", null)));
+                                InteropTypes.GetPInvokeMarshal(context).GetKnownMethod("ClearLastError", null)));
                 }
 
                 //
@@ -212,14 +215,13 @@ namespace Internal.IL.Stubs
 
                 callsiteSetupCodeStream.Emit(ILOpcode.calli, emitter.NewToken(nativeSig));
 
-                // if the SetLastError flag is set in UnmanagedFunctionPointerAttribute, call the PInvokeMarshal.
-                // SaveLastWin32Error so that last error can be used later by calling 
-                // PInvokeMarshal.GetLastWin32Error
+                // if the SetLastError flag is set in UnmanagedFunctionPointerAttribute, call the PInvokeMarshal.SaveLastError
+                // so that last error can be used later by calling Marshal.GetLastPInvokeError
                 if (_flags.SetLastError)
                 {
                     callsiteSetupCodeStream.Emit(ILOpcode.call, emitter.NewToken(
                                 InteropTypes.GetPInvokeMarshal(context)
-                                .GetKnownMethod("SaveLastWin32Error", null)));
+                                .GetKnownMethod("SaveLastError", null)));
                 }
             }
             else
@@ -230,7 +232,7 @@ namespace Internal.IL.Stubs
 
         private void EmitPInvokeCall(PInvokeILCodeStreams ilCodeStreams)
         {
-            if (!_flags.PreserveSig)
+            if (!_flags.PreserveSig && _targetMethod.Signature.ReturnType != _targetMethod.Context.GetWellKnownType(WellKnownType.Void))
                 throw new NotSupportedException();
 
             ILEmitter emitter = ilCodeStreams.Emitter;
@@ -238,14 +240,14 @@ namespace Internal.IL.Stubs
             ILCodeStream callsiteSetupCodeStream = ilCodeStreams.CallsiteSetupCodeStream;
             TypeSystemContext context = _targetMethod.Context;
 
-            TypeDesc nativeReturnType = _marshallers[0].NativeParameterType;
+            TypeDesc nativeReturnType = _flags.PreserveSig ? _marshallers[0].NativeParameterType : context.GetWellKnownType(WellKnownType.Int32);
             TypeDesc[] nativeParameterTypes = new TypeDesc[_marshallers.Length - 1];
 
             // if the SetLastError flag is set in DllImport, clear the error code before doing P/Invoke 
             if (_flags.SetLastError)
             {
                 callsiteSetupCodeStream.Emit(ILOpcode.call, emitter.NewToken(
-                            InteropTypes.GetPInvokeMarshal(context).GetKnownMethod("ClearLastWin32Error", null)));
+                            InteropTypes.GetPInvokeMarshal(context).GetKnownMethod("ClearLastError", null)));
             }
 
             for (int i = 1; i < _marshallers.Length; i++)
@@ -303,14 +305,20 @@ namespace Internal.IL.Stubs
                 callsiteSetupCodeStream.Emit(ILOpcode.call, emitter.NewToken(nativeMethod));
             }
 
-            // if the SetLastError flag is set in DllImport, call the PInvokeMarshal.
-            // SaveLastWin32Error so that last error can be used later by calling 
-            // PInvokeMarshal.GetLastWin32Error
+            if (!_flags.PreserveSig)
+            {
+                callsiteSetupCodeStream.Emit(ILOpcode.call, emitter.NewToken(
+                    InteropTypes.GetMarshal(context)
+                    .GetKnownMethod("ThrowExceptionForHR", null)));
+            }
+
+            // if the SetLastError flag is set in DllImport, call the PInvokeMarshal.SaveLastError
+            // so that last error can be used later by calling Marshal.GetLastPInvokeError
             if (_flags.SetLastError)
             {
                 callsiteSetupCodeStream.Emit(ILOpcode.call, emitter.NewToken(
                             InteropTypes.GetPInvokeMarshal(context)
-                            .GetKnownMethod("SaveLastWin32Error", null)));
+                            .GetKnownMethod("SaveLastError", null)));
             }
         }
 

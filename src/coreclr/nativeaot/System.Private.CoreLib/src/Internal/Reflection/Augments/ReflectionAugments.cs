@@ -153,10 +153,11 @@ namespace Internal.Reflection.Augments
         public abstract Delegate CreateDelegate(Type type, MethodInfo method, bool throwOnBindFailure);
 
         // V1 api: Creates closed delegates to instance methods only, relaxed signature checking disallowed.
+        [RequiresUnreferencedCode("The target method might be removed")]
         public abstract Delegate CreateDelegate(Type type, object target, string method, bool ignoreCase, bool throwOnBindFailure);
 
         // V1 api: Creates open delegates to static methods only, relaxed signature checking disallowed.
-        public abstract Delegate CreateDelegate(Type type, Type target, string method, bool ignoreCase, bool throwOnBindFailure);
+        public abstract Delegate CreateDelegate(Type type, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type target, string method, bool ignoreCase, bool throwOnBindFailure);
 
 #if FEATURE_COMINTEROP
         public abstract Type GetTypeFromCLSID(Guid clsid, string server, bool throwOnError);

@@ -21,26 +21,7 @@ namespace System.Runtime.InteropServices
     public partial class PInvokeMarshal
     {
         [ThreadStatic]
-        internal static int s_lastWin32Error;
-
-        public static int GetLastWin32Error()
-        {
-            return s_lastWin32Error;
-        }
-
-        public static void SetLastWin32Error(int errorCode)
-        {
-            s_lastWin32Error = errorCode;
-        }
-
-        public static int GetHRForLastWin32Error()
-        {
-            int dwLastError = GetLastWin32Error();
-            if ((dwLastError & 0x80000000) == 0x80000000)
-                return dwLastError;
-            else
-                return (dwLastError & 0x0000FFFF) | unchecked((int)0x80070000);
-        }
+        internal static int t_lastError;
 
         [MethodImplAttribute(MethodImplOptions.NoInlining)]
         public static int GetHRForException(Exception e)
