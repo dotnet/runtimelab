@@ -6,17 +6,32 @@
 
 #include <stdlib.h>
 #include <string.h>
-#if HAVE_SCHED_GETCPU
-#include <sched.h>
-#endif
 #if HAVE_NSGETENVIRON
 #include <crt_externs.h>
 #endif
-
+#if HAVE_SCHED_GETCPU
+#include <sched.h>
+#endif
 
 char* SystemNative_GetEnv(const char* variable)
 {
     return getenv(variable);
+}
+
+char** SystemNative_GetEnviron()
+{
+#if HAVE_NSGETENVIRON
+    return *(_NSGetEnviron());
+#else
+    extern char **environ;
+    return environ;
+#endif
+}
+
+void SystemNative_FreeEnviron(char** environ)
+{
+    // no op
+    (void)environ;
 }
 
 int32_t SystemNative_SchedGetCpu()
@@ -38,18 +53,4 @@ __attribute__((noreturn))
 void SystemNative_Abort()
 {
     abort();
-}
-
-char** SystemNative_GetEnviron()
-{
-    char** sysEnviron;
-
-#if HAVE_NSGETENVIRON
-    sysEnviron = *(_NSGetEnviron());
-#else   // HAVE_NSGETENVIRON
-    extern char **environ;
-    sysEnviron = environ;
-#endif  // HAVE_NSGETENVIRON
-
-    return sysEnviron;
 }
