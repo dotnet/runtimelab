@@ -396,56 +396,70 @@ namespace System.Text.RegularExpressions.Tests
         private static string MatchEvaluatorBar(Match match) => "bar";
         private static string MatchEvaluatorPoundSign(Match match) => "#";
 
-        [Theory]
-        [InlineData("[ab]+", "012aaabb34bba56", "###", 0, "012aaabb34bba56")]
-        [InlineData("[ab]+", "012aaabb34bba56", "###", -1, "012###34###56")]
-        [InlineData("[ab]+", "012aaabb34bba56", "###", 1, "012###34bba56")]
-        [InlineData(@"\b", "Hello World!", "#", 2, "#Hello# World!")]
-        [InlineData(@"\b", "Hello World!", "#$$#", -1, "#$#Hello#$# #$#World#$#!")]
-        [InlineData(@"", "hej", "  ", -1, "  h  e  j  ")]
-        [InlineData(@"\bis\b", "this is it", "${2}", -1, "this ${2} it")]
-        private void TestReplaceCornerCases(string pattern, string input, string replacement, int count, string expectedoutput)
+        public static IEnumerable<object[]> TestReplaceCornerCases_TestData()
         {
-            RegexOptions[] testoptions = new RegexOptions[] { RegexSRMTests.DFA, RegexOptions.None, RegexOptions.Compiled };
-            foreach (var opt in testoptions)
+            foreach (var options in new RegexOptions[] { RegexSRMTests.DFA, RegexOptions.None, RegexOptions.Compiled })
             {
-                var regex = new Regex(pattern, opt);
-                var output = regex.Replace(input, replacement, count);
-                Assert.Equal(expectedoutput, output);
+                yield return new object[] { "[ab]+", "012aaabb34bba56", "###", 0, "012aaabb34bba56", options };
+                yield return new object[] { "[ab]+", "012aaabb34bba56", "###", -1, "012###34###56", options };
+                yield return new object[] { @"\b", "Hello World!", "#", 2, "#Hello# World!", options };
+                yield return new object[] { "[ab]+", "012aaabb34bba56", "###", 1, "012###34bba56", options };
+                yield return new object[] { @"\b", "Hello World!", "#$$#", -1, "#$#Hello#$# #$#World#$#!", options };
+                yield return new object[] { @"", "hej", "  ", -1, "  h  e  j  ", options };
+                yield return new object[] { @"\bis\b", "this is it", "${2}", -1, "this ${2} it", options };
             }
         }
-
         [Theory]
-        [InlineData(@"(\$\d+):(\d+)", "it costs $500000:55 I think", "$$???:${2}", "it costs $???:55 I think")]
-        [InlineData(@"(\d+)([a-z]+)", "---12345abc---", "$2$1", "---abc12345---")]
-        private void TestReplaceWithSubstitution(string pattern, string input, string replacement, string expectedoutput)
+        [MemberData(nameof(TestReplaceCornerCases_TestData))]
+        private void TestReplaceCornerCases(string pattern, string input, string replacement, int count, string expectedoutput, RegexOptions opt)
         {
-            RegexOptions[] testoptions = new RegexOptions[] { RegexOptions.None, RegexOptions.Compiled };
-            foreach (var opt in testoptions)
+            var regex = new Regex(pattern, opt);
+            var output = regex.Replace(input, replacement, count);
+            Assert.Equal(expectedoutput, output);
+        }
+
+        public static IEnumerable<object[]> TestReplaceWithSubstitution_TestData()
+        {
+            foreach (var options in new RegexOptions[] { RegexSRMTests.DFA, RegexOptions.None, RegexOptions.Compiled })
+            {
+                yield return new object[] { @"(\$\d+):(\d+)", "it costs $500000:55 I think", "$$???:${2}", "it costs $???:55 I think", options };
+                yield return new object[] { @"(\d+)([a-z]+)", "---12345abc---", "$2$1", "---abc12345---", options };
+            }
+        }
+        [Theory]
+        [MemberData(nameof(TestReplaceWithSubstitution_TestData))]
+        private void TestReplaceWithSubstitution(string pattern, string input, string replacement, string expectedoutput, RegexOptions opt)
+        {
+            if (opt == RegexSRMTests.DFA)
+            {
+                Assert.Throws<NotSupportedException>(() => Regex.Replace(input, pattern, replacement, opt));
+                Assert.Throws<NotSupportedException>(() => new Regex(pattern, opt).Replace(input, replacement, -1));
+            }
+            else
             {
                 var output = new Regex(pattern, opt).Replace(input, replacement, -1);
                 Assert.Equal(expectedoutput, output);
                 var output2 = Regex.Replace(input, pattern, replacement, opt);
                 Assert.Equal(expectedoutput, output2);
             }
-
-            Assert.Throws<NotSupportedException>(() => Regex.Replace(input, pattern, replacement, RegexSRMTests.DFA));
-            Assert.Throws<NotSupportedException>(() => new Regex(pattern, RegexSRMTests.DFA).Replace(input, replacement, -1));
         }
 
+        public static IEnumerable<object[]> TestReplaceWithToUpperMatchEvaluator_TestData()
+        {
+            foreach (var opt in new RegexOptions[] { RegexSRMTests.DFA, RegexOptions.None, RegexOptions.Compiled })
+            {
+                yield return new object[] { @"(\bis\b)", "this is it", "this IS it", opt };
+            }
+        }
         [Theory]
-        [InlineData(@"(\bis\b)", "this is it", "this IS it")]
-        private void TestReplaceWithToUpperMatchEvaluator(string pattern, string input, string expectedoutput)
+        [MemberData(nameof(TestReplaceWithToUpperMatchEvaluator_TestData))]
+        private void TestReplaceWithToUpperMatchEvaluator(string pattern, string input, string expectedoutput, RegexOptions opt)
         {
             MatchEvaluator f = new MatchEvaluator(m => m.Value.ToUpper());
-            RegexOptions[] testoptions = new RegexOptions[] { RegexSRMTests.DFA, RegexOptions.None, RegexOptions.Compiled };
-            foreach (var opt in testoptions)
-            {
-                var output = new Regex(pattern, opt).Replace(input, f);
-                Assert.Equal(expectedoutput, output);
-                var output2 = Regex.Replace(input, pattern, f, opt);
-                Assert.Equal(expectedoutput, output2);
-            }
+            var output = new Regex(pattern, opt).Replace(input, f);
+            Assert.Equal(expectedoutput, output);
+            var output2 = Regex.Replace(input, pattern, f, opt);
+            Assert.Equal(expectedoutput, output2);
         }
     }
 }
