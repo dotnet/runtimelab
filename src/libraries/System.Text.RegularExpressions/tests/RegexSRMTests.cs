@@ -29,31 +29,32 @@ namespace System.Text.RegularExpressions.Tests
         private const char Turkish_i_withoutDot = '\u0131';
         private const char Kelvin_sign = '\u212A';
 
-        //[Theory]
-        //[InlineData(RegexOptions.None)]
-        //[InlineData(DFA)]
-        //public void TestBoundary(RegexOptions options)
-        //{
-        //    var W = new Regex(@"\W", options);
-        //    var b = new Regex(@"\b", options);
-        //    var ambiguous = new List<char>();
-        //    for (char c = '\0'; c < '\uFFFF'; c++)
-        //        if (W.IsMatch(c.ToString()) && b.IsMatch(c.ToString()))
-        //            ambiguous.Add(c);
-        //    Assert.Empty(ambiguous);
-        //}
+        [Fact]
+        [ActiveIssue(@"inconsitent treatement of \u200c and \u200d in \w vs \b")]
+        public void TestBoundary()
+        {
+            Assert.True(Regex.IsMatch(" AB\u200cCD ", @"\b\w+\b"));
+            Assert.True(Regex.IsMatch(" AB\u200dCD ", @"\b\w+\b"));
+        }
 
-        //[Fact]
-        //public void TestWordchar()
-        //{
-        //    var w1 = new Regex(@"\w", RegexOptions.None);
-        //    var w2 = new Regex(@"\w", DFA);
-        //    var ambiguous = new List<char>();
-        //    for (char c = '\0'; c < '\uFFFF'; c++)
-        //        if (w1.IsMatch(c.ToString()) != w2.IsMatch(c.ToString()))
-        //            ambiguous.Add(c);
-        //    Assert.Empty(ambiguous);
-        //}
+        [Fact]
+        public void TestBoundary_DFA()
+        {
+            Assert.True(Regex.IsMatch(" AB\u200cCD ", @"\b\w+\b", RegexSRMTests.DFA));
+            Assert.True(Regex.IsMatch(" AB\u200dCD ", @"\b\w+\b", RegexSRMTests.DFA));
+        }
+
+        [Fact]
+        public void TestWordchar()
+        {
+            var w1 = new Regex(@"\w", RegexOptions.None);
+            var w2 = new Regex(@"\w", DFA);
+            var ambiguous = new List<char>();
+            for (char c = '\0'; c < '\uFFFF'; c++)
+                if (w1.IsMatch(c.ToString()) != w2.IsMatch(c.ToString()))
+                    ambiguous.Add(c);
+            Assert.Empty(ambiguous);
+        }
 
         [Theory]
         [InlineData("((?:0*)+?(?:.*)+?)?", "0a", 2)]

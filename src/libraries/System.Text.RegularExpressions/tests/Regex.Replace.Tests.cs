@@ -164,18 +164,6 @@ namespace System.Text.RegularExpressions.Tests
 
         public static IEnumerable<object[]> Replace_MatchEvaluator_TestData()
         {
-            foreach (var data in Replace_MatchEvaluator_TestData_Core())
-            {
-                yield return data;
-                // Duplicate the data for DFA mode
-                // but ignore both RightToLeft and Compiled as these cases are either not supported or ignored in DFA mode
-                // also avoid \b for now
-                if ((((RegexOptions)data[3]) & (RegexOptions.RightToLeft| RegexOptions.Compiled)) == 0 && !((string)data[0]).Contains(@"\b"))
-                    yield return new object[] { data[0], data[1], data[2], (RegexOptions)data[3] | RegexSRMTests.DFA, data[4], data[5], data[6] };
-            }
-        }
-        private static IEnumerable<object[]> Replace_MatchEvaluator_TestData_Core()
-        {
             yield return new object[] { "a", "bbbb", new MatchEvaluator(match => "uhoh"), RegexOptions.None, 4, 0, "bbbb" };
             yield return new object[] { "(Big|Small)", "Big mountain", new MatchEvaluator(MatchEvaluator1), RegexOptions.None, 12, 0, "Huge mountain" };
             yield return new object[] { "(Big|Small)", "Small village", new MatchEvaluator(MatchEvaluator1), RegexOptions.None, 13, 0, "Tiny village" };
@@ -207,8 +195,27 @@ namespace System.Text.RegularExpressions.Tests
             yield return new object[] { @"\d", "0123456789foo4567890foo         ", new MatchEvaluator(MatchEvaluatorPoundSign), RegexOptions.RightToLeft, 0, 32, "0123456789foo4567890foo         " };
             yield return new object[] { @"\d", "0123456789foo4567890foo         ", new MatchEvaluator(MatchEvaluatorPoundSign), RegexOptions.RightToLeft, -1, 32, "##########foo#######foo         " };
         }
+        public static IEnumerable<object[]> Replace_MatchEvaluator_TestData_DFA()
+        {
+            yield return new object[] { "a", "bbbb", new MatchEvaluator(match => "uhoh"), RegexSRMTests.DFA, 4, 0, "bbbb" };
+            yield return new object[] { "(Big|Small)", "Big mountain", new MatchEvaluator(MatchEvaluator1), RegexSRMTests.DFA, 12, 0, "Huge mountain" };
+            yield return new object[] { "(Big|Small)", "Small village", new MatchEvaluator(MatchEvaluator1), RegexSRMTests.DFA, 13, 0, "Tiny village" };
+
+            if ("i".ToUpper() == "I")
+            {
+                yield return new object[] { "(Big|Small)", "bIG horse", new MatchEvaluator(MatchEvaluator1), RegexOptions.IgnoreCase | RegexSRMTests.DFA, 9, 0, "Huge horse" };
+            }
+
+            yield return new object[] { "(Big|Small)", "sMaLl dog", new MatchEvaluator(MatchEvaluator1), RegexOptions.IgnoreCase | RegexSRMTests.DFA, 9, 0, "Tiny dog" };
+
+            yield return new object[] { ".+", "XSP_TEST_FAILURE", new MatchEvaluator(MatchEvaluator2), RegexSRMTests.DFA, 16, 0, "SUCCESS" };
+            yield return new object[] { "[abcabc]", "abcabc", new MatchEvaluator(MatchEvaluator3), RegexSRMTests.DFA, 6, 0, "ABCABC" };
+            yield return new object[] { "[abcabc]", "abcabc", new MatchEvaluator(MatchEvaluator3), RegexSRMTests.DFA, 3, 0, "ABCabc" };
+            yield return new object[] { "[abcabc]", "abcabc", new MatchEvaluator(MatchEvaluator3), RegexSRMTests.DFA, 3, 2, "abCABc" };
+        }
 
         [Theory]
+        [MemberData(nameof(Replace_MatchEvaluator_TestData_DFA))]
         [MemberData(nameof(Replace_MatchEvaluator_TestData))]
         [MemberData(nameof(RegexCompilationHelper.TransformRegexOptions), nameof(Replace_MatchEvaluator_TestData), 3, MemberType = typeof(RegexCompilationHelper))]
         public void Replace_MatchEvaluator_Test(string pattern, string input, MatchEvaluator evaluator, RegexOptions options, int count, int start, string expected)
@@ -244,6 +251,20 @@ namespace System.Text.RegularExpressions.Tests
             }
             // Use Replace(string, MatchEvaluator, int, int)
             Assert.Equal(expected, new Regex(pattern, options).Replace(input, evaluator, count, start));
+        }
+
+        [Fact]
+        [ActiveIssue("incorrect replacement in DFA mode involving Devanagari matra characters")]
+        public void Replace_MatchEvaluator_Test_DFA_Matra()
+        {
+            // Regression test carried over from above to DFA mode:
+            // Regex treating Devanagari matra characters as matching "\b"
+            // Unicode characters in the "Mark, NonSpacing" Category, U+0902=Devanagari sign anusvara, U+0947=Devanagri vowel sign E
+            string boldInput = "\u092f\u0939 \u0915\u0930 \u0935\u0939 \u0915\u0930\u0947\u0902 \u0939\u0948\u0964";
+            string boldExpected = "\u092f\u0939 <b>\u0915\u0930</b> \u0935\u0939 <b>\u0915\u0930\u0947\u0902</b> \u0939\u0948\u0964";
+            string pattern = @"\u0915\u0930.*?\b";
+            var re = new Regex(pattern, RegexOptions.CultureInvariant | RegexOptions.Singleline | RegexSRMTests.DFA);
+            Assert.Equal(boldExpected, re.Replace(boldInput, new MatchEvaluator(MatchEvaluatorBold)));
         }
 
         [Theory]
