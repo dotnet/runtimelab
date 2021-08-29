@@ -55,7 +55,14 @@ namespace System.Threading
         }
 
         [CLSCompliant(false)]
-        public unsafe NativeOverlapped* AllocateNativeOverlapped(IOCompletionCallback callback, object state, object pinData)
+        public unsafe NativeOverlapped* AllocateNativeOverlapped(IOCompletionCallback callback, object? state, object? pinData) =>
+            AllocateNativeOverlapped(callback, state, pinData, flowExecutionContext: true);
+
+        [CLSCompliant(false)]
+        public unsafe NativeOverlapped* UnsafeAllocateNativeOverlapped(IOCompletionCallback callback, object? state, object? pinData) =>
+            AllocateNativeOverlapped(callback, state, pinData, flowExecutionContext: false);
+
+        private unsafe NativeOverlapped* AllocateNativeOverlapped(IOCompletionCallback callback, object state, object pinData, bool flowExecutionContext)
         {
             if (callback == null)
                 throw new ArgumentNullException(nameof(callback));
@@ -63,7 +70,7 @@ namespace System.Threading
             AddRef();
             try
             {
-                Win32ThreadPoolNativeOverlapped* overlapped = Win32ThreadPoolNativeOverlapped.Allocate(callback, state, pinData, preAllocated: null);
+                Win32ThreadPoolNativeOverlapped* overlapped = Win32ThreadPoolNativeOverlapped.Allocate(callback, state, pinData, preAllocated: null, flowExecutionContext);
                 overlapped->Data._boundHandle = this;
 
                 Interop.Kernel32.StartThreadpoolIo(_threadPoolHandle);

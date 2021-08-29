@@ -4,9 +4,10 @@
 using System.Collections.Concurrent;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Text.Encodings.Web;
-using System.Text.Json.Node;
+using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using System.Text.Json.Serialization.Metadata;
 
@@ -558,12 +559,13 @@ namespace System.Text.Json
             {
                 if (_memberAccessorStrategy == null)
                 {
-#if NETFRAMEWORK
+#if NETCOREAPP
+                    // if dynamic code isn't supported, fallback to reflection
+                    _memberAccessorStrategy = RuntimeFeature.IsDynamicCodeSupported ?
+                        new ReflectionEmitMemberAccessor() :
+                        new ReflectionMemberAccessor();
+#elif NETFRAMEWORK
                     _memberAccessorStrategy = new ReflectionEmitMemberAccessor();
-#elif NETCOREAPP
-                    _memberAccessorStrategy = RuntimeFeature.IsDynamicCodeSupported
-                        ? new ReflectionEmitMemberAccessor()
-                        : new ReflectionMemberAccessor();
 #else
                     _memberAccessorStrategy = new ReflectionMemberAccessor();
 #endif
@@ -571,6 +573,16 @@ namespace System.Text.Json
 
                 return _memberAccessorStrategy;
             }
+        }
+
+        [RequiresUnreferencedCode(JsonSerializer.SerializationUnreferencedCodeMessage)]
+        internal void RootBuiltInConvertersAndTypeInfoCreator()
+        {
+            RootBuiltInConverters();
+            _typeInfoCreationFunc ??= CreateJsonTypeInfo;
+
+            [RequiresUnreferencedCode(JsonSerializer.SerializationUnreferencedCodeMessage)]
+            static JsonTypeInfo CreateJsonTypeInfo(Type type, JsonSerializerOptions options) => new JsonTypeInfo(type, options);
         }
 
         internal JsonTypeInfo GetOrAddClass(Type type)

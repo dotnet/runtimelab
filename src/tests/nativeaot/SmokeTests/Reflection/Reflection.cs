@@ -58,6 +58,8 @@ internal class ReflectionTest
         TestGetUninitializedObject.Run();
         TestInstanceFields.Run();
         TestReflectionInvoke.Run();
+        TestDefaultInterfaceInvoke.Run();
+        TestCovariantReturnInvoke.Run();
 #if !CODEGEN_CPP
         TypeConstructionTest.Run();
         TestThreadStaticFields.Run();
@@ -258,6 +260,101 @@ internal class ReflectionTest
                     throw new Exception();
             }
 #endif
+        }
+    }
+
+    class TestDefaultInterfaceInvoke
+    {
+        interface IFoo<T>
+        {
+            string Format(string s) => "IFoo<" + typeof(T) + ">::Format(" + s + ")";
+        }
+
+        interface IFoo
+        {
+            string Format(string s) => "IFoo::Format(" + s + ")";
+        }
+
+        interface IBar : IFoo
+        {
+            string IFoo.Format(string s) => "IBar::Format(" + s + ")";
+        }
+
+        class Foo : IFoo<string>, IFoo<object>, IFoo<int>, IFoo<Enum>, IBar
+        {
+            string IFoo<Enum>.Format(string s) => "Foo.IFoo<Enum>::Format(" + s + ")";
+        }
+
+        public static void Run()
+        {
+            Console.WriteLine(nameof(TestDefaultInterfaceInvoke));
+
+            {
+                var result = (string)typeof(IFoo<string>).GetMethod(nameof(IFoo<int>.Format)).Invoke(new Foo(), new object[] { "abc" });
+                if (result != "IFoo<System.String>::Format(abc)")
+                    throw new Exception();
+            }
+
+            {
+                var result = (string)typeof(IFoo<object>).GetMethod(nameof(IFoo<int>.Format)).Invoke(new Foo(), new object[] { "abc" });
+                if (result != "IFoo<System.Object>::Format(abc)")
+                    throw new Exception();
+            }
+
+            {
+                var result = (string)typeof(IFoo<int>).GetMethod(nameof(IFoo<int>.Format)).Invoke(new Foo(), new object[] { "abc" });
+                if (result != "IFoo<System.Int32>::Format(abc)")
+                    throw new Exception();
+            }
+
+            {
+                var result = (string)typeof(IFoo<Enum>).GetMethod(nameof(IFoo<int>.Format)).Invoke(new Foo(), new object[] { "abc" });
+                if (result != "Foo.IFoo<Enum>::Format(abc)")
+                    throw new Exception();
+            }
+
+            {
+                var result = (string)typeof(IFoo).GetMethod(nameof(IFoo.Format)).Invoke(new Foo(), new object[] { "abc" });
+                if (result != "IBar::Format(abc)")
+                    throw new Exception();
+            }
+        }
+    }
+
+    class TestCovariantReturnInvoke
+    {
+        interface IFoo
+        {
+        }
+        class Foo : IFoo
+        {
+            public readonly string State;
+            public Foo(string state) => State = state;
+        }
+        class Base
+        {
+            public virtual IFoo GetFoo() => throw new NotImplementedException();
+        }
+        class Derived : Base
+        {
+            public override Foo GetFoo() => new Foo("Derived");
+        }
+        class SuperDerived : Derived
+        {
+            public override Foo GetFoo() => new Foo("SuperDerived");
+        }
+
+        public static void Run()
+        {
+            Console.WriteLine(nameof(TestCovariantReturnInvoke));
+
+            MethodInfo mi = typeof(Base).GetMethod(nameof(Base.GetFoo));
+
+            if (((Foo)mi.Invoke(new Derived(), Array.Empty<object>())).State != "Derived")
+                throw new Exception();
+
+            if (((Foo)mi.Invoke(new SuperDerived(), Array.Empty<object>())).State != "SuperDerived")
+                throw new Exception();
         }
     }
 
@@ -993,6 +1090,18 @@ internal class ReflectionTest
             public static unsafe ref ByRefLike ByRefLikeRefReturningMethod(ByRefLike* a) => ref *a;
         }
 
+        private sealed class TestClass2<T>
+        {
+            private T _value;
+
+            public TestClass2(T value) { _value = value; }
+
+#if OPTIMIZED_MODE_WITHOUT_SCANNER
+            [MethodImpl(MethodImplOptions.NoInlining)]
+#endif
+            public ref T RefReturningMethod(T someArgument) => ref _value;
+        }
+
         private sealed unsafe class TestClassIntPointer
         {
             private int* _value;
@@ -1031,6 +1140,10 @@ internal class ReflectionTest
             TestRefReturnInvoke(new BigStruct { X = 123, D = 456 }, (p, t) => p.GetGetMethod().Invoke(t, Array.Empty<object>()));
             TestRefReturnInvoke(new object(), (p, t) => p.GetGetMethod().Invoke(t, Array.Empty<object>()));
             TestRefReturnInvoke((object)null, (p, t) => p.GetGetMethod().Invoke(t, Array.Empty<object>()));
+
+            // Regression test
+            MethodInfo mi = typeof(TestClass2<string>).GetMethod(nameof(TestClass2<string>.RefReturningMethod));
+            mi.Invoke(new TestClass2<string>("Hello"), new object[] { "Hello" });
         }
 
         public static void TestRefReturnNullable()

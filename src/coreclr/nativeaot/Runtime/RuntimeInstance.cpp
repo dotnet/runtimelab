@@ -24,7 +24,6 @@
 #include "TypeManager.h"
 #include "eetype.h"
 #include "varint.h"
-#include "DebugEventSource.h"
 
 #include "CommonMacros.inl"
 #include "slist.inl"
@@ -310,10 +309,6 @@ COOP_PINVOKE_HELPER(TypeManagerHandle, RhpCreateTypeManager, (HANDLE osModule, v
 {
     TypeManager * typeManager = TypeManager::Create(osModule, pModuleHeader, pClasslibFunctions, nClasslibFunctions);
     GetRuntimeInstance()->RegisterTypeManager(typeManager);
-
-    // This event must occur after the module is added to the enumeration
-    if (osModule != nullptr)
-        DebugEventSource::SendModuleLoadEvent(osModule);
 
     return TypeManagerHandle::Create(typeManager);
 }

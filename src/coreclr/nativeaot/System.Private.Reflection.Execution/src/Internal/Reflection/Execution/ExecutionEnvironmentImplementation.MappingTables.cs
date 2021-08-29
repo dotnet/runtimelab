@@ -498,11 +498,10 @@ namespace Internal.Reflection.Execution
 
             // This is either a constructor ("returns" void) or an instance method
             MethodInfo reflectionMethodInfo = reflectionMethodBase as MethodInfo;
-            Type returnType = reflectionMethodInfo != null ? reflectionMethodInfo.ReturnType : typeof(void);
 
             // Only use the return type if it's not void
-            if (returnType != typeof(void))
-                dynamicInvokeMethodGenArguments.Add(returnType.TypeHandle);
+            if (reflectionMethodInfo != null && reflectionMethodInfo.ReturnType != typeof(void))
+                dynamicInvokeMethodGenArguments.Add(methodParamsInfo.ReturnTypeHandle);
 
             for (int i = 0; i < dynamicInvokeMethodGenArguments.Count; i++)
             {
@@ -1510,18 +1509,24 @@ namespace Internal.Reflection.Execution
                 }
             }
 
+            public RuntimeTypeHandle ReturnTypeHandle
+            {
+                get
+                {
+                    MethodInfo reflectionMethodInfo = _methodBase as MethodInfo;
+                    Type returnType = reflectionMethodInfo != null ? reflectionMethodInfo.ReturnType : typeof(void);
+                    if (returnType.IsByRef)
+                        returnType = returnType.GetElementType();
+                    return returnType.TypeHandle;
+                }
+            }
+
             public LowLevelList<RuntimeTypeHandle> ReturnTypeAndParameterTypeHandles
             {
                 get
                 {
                     LowLevelList<RuntimeTypeHandle> result = ParameterTypeHandles;
-
-                    MethodInfo reflectionMethodInfo = _methodBase as MethodInfo;
-                    Type returnType = reflectionMethodInfo != null ? reflectionMethodInfo.ReturnType : typeof(void);
-                    if (returnType.IsByRef)
-                        returnType = returnType.GetElementType();
-                    result.Insert(0, returnType.TypeHandle);
-
+                    result.Insert(0, ReturnTypeHandle);
                     return result;
                 }
             }

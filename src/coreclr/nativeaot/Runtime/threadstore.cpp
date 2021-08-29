@@ -27,8 +27,6 @@
 #include "slist.inl"
 #include "GCMemoryHelpers.h"
 
-#include "DebugEventSource.h"
-
 EXTERN_C volatile uint32_t RhpTrapThreads = (uint32_t)TrapThreadsFlags::None;
 
 GVAL_IMPL_INIT(PTR_Thread, RhpSuspendingThread, 0);
@@ -165,16 +163,14 @@ void ThreadStore::DetachCurrentThread()
         return;
     }
 
-#ifdef STRESS_LOG
-    ThreadStressLog * ptsl = reinterpret_cast<ThreadStressLog *>(
-        pDetachingThread->GetThreadStressLog());
-    StressLog::ThreadDetach(ptsl);
-#endif // STRESS_LOG
+    {
+        ThreadStore* pTS = GetThreadStore();
+        ReaderWriterLock::WriteHolder write(&pTS->m_Lock);
+        ASSERT(rh::std::count(pTS->m_ThreadList.Begin(), pTS->m_ThreadList.End(), pDetachingThread) == 1);
+        pTS->m_ThreadList.RemoveFirst(pDetachingThread);
+        pDetachingThread->Detach();
+    }
 
-    ThreadStore* pTS = GetThreadStore();
-    ReaderWriterLock::WriteHolder write(&pTS->m_Lock);
-    ASSERT(rh::std::count(pTS->m_ThreadList.Begin(), pTS->m_ThreadList.End(), pDetachingThread) == 1);
-    pTS->m_ThreadList.RemoveFirst(pDetachingThread);
     pDetachingThread->Destroy();
 }
 

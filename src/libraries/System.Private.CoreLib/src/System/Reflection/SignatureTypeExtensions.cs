@@ -166,6 +166,8 @@ namespace System.Reflection
             }
         }
 
+        [UnconditionalSuppressMessage("AotAnalysis", "IL9700:AotUnfriendlyApi",
+            Justification = "Used to find matching method overloads. Only used for assignability checks.")]
         private static Type? TryMakeArrayType(this Type type)
         {
             try
@@ -178,6 +180,8 @@ namespace System.Reflection
             }
         }
 
+        [UnconditionalSuppressMessage("AotAnalysis", "IL9700:AotUnfriendlyApi",
+            Justification = "Used to find matching method overloads. Only used for assignability checks.")]
         private static Type? TryMakeArrayType(this Type type, int rank)
         {
             try

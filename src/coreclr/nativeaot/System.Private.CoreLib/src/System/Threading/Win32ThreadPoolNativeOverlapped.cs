@@ -28,12 +28,12 @@ namespace System.Threading
             get { return s_dataArray[_dataIndex]; }
         }
 
-        internal static unsafe Win32ThreadPoolNativeOverlapped* Allocate(IOCompletionCallback callback, object state, object pinData, PreAllocatedOverlapped preAllocated)
+        internal static unsafe Win32ThreadPoolNativeOverlapped* Allocate(IOCompletionCallback callback, object state, object pinData, PreAllocatedOverlapped preAllocated, bool flowExecutionControl)
         {
             Win32ThreadPoolNativeOverlapped* overlapped = AllocateNew();
             try
             {
-                overlapped->SetData(callback, state, pinData, preAllocated);
+                overlapped->SetData(callback, state, pinData, preAllocated, flowExecutionControl);
             }
             catch
             {
@@ -112,7 +112,7 @@ namespace System.Threading
             }
         }
 
-        private void SetData(IOCompletionCallback callback, object state, object pinData, PreAllocatedOverlapped preAllocated)
+        private void SetData(IOCompletionCallback callback, object state, object pinData, PreAllocatedOverlapped preAllocated, bool flowExecutionContext)
         {
             Debug.Assert(callback != null);
 
@@ -120,7 +120,7 @@ namespace System.Threading
 
             data._callback = callback;
             data._state = state;
-            data._executionContext = ExecutionContext.Capture();
+            data._executionContext = flowExecutionContext ? ExecutionContext.Capture() : null;
             data._preAllocated = preAllocated;
 
             //

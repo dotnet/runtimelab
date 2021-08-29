@@ -15,11 +15,12 @@ namespace Mono.Linker.Dataflow
 	{
 		readonly LinkContext _context;
 		readonly Dictionary<TypeDefinition, TypeAnnotations> _annotations = new Dictionary<TypeDefinition, TypeAnnotations> ();
-		readonly TypeHierarchyCache _hierarchyInfo = new TypeHierarchyCache ();
+		readonly TypeHierarchyCache _hierarchyInfo;
 
 		public FlowAnnotations (LinkContext context)
 		{
 			_context = context;
+			_hierarchyInfo = new TypeHierarchyCache (context);
 		}
 
 		public bool RequiresDataFlowAnalysis (MethodDefinition method)
@@ -69,9 +70,14 @@ namespace Mono.Linker.Dataflow
 			return DynamicallyAccessedMemberTypes.None;
 		}
 
+		public DynamicallyAccessedMemberTypes GetTypeAnnotation (TypeDefinition type)
+		{
+			return GetAnnotations (type).TypeAnnotation;
+		}
+
 		public DynamicallyAccessedMemberTypes GetGenericParameterAnnotation (GenericParameter genericParameter)
 		{
-			TypeDefinition declaringType = genericParameter.DeclaringType?.Resolve ();
+			TypeDefinition declaringType = _context.Resolve (genericParameter.DeclaringType);
 			if (declaringType != null) {
 				if (GetAnnotations (declaringType).TryGetAnnotation (genericParameter, out var annotation))
 					return annotation;
@@ -79,7 +85,7 @@ namespace Mono.Linker.Dataflow
 				return DynamicallyAccessedMemberTypes.None;
 			}
 
-			MethodDefinition declaringMethod = genericParameter.DeclaringMethod?.Resolve ();
+			MethodDefinition declaringMethod = _context.Resolve (genericParameter.DeclaringMethod);
 			if (declaringMethod != null && GetAnnotations (declaringMethod.DeclaringType).TryGetAnnotation (declaringMethod, out var methodTypeAnnotations) &&
 				methodTypeAnnotations.TryGetAnnotation (genericParameter, out var methodAnnotation))
 				return methodAnnotation;
@@ -122,6 +128,9 @@ namespace Mono.Linker.Dataflow
 
 		TypeAnnotations BuildTypeAnnotations (TypeDefinition type)
 		{
+			// class, interface, struct can have annotations
+			DynamicallyAccessedMemberTypes typeAnnotation = GetMemberTypesForDynamicallyAccessedMembersAttribute (type);
+
 			var annotatedFields = new ArrayBuilder<FieldAnnotation> ();
 
 			// First go over all fields with an explicit annotation
@@ -338,10 +347,10 @@ namespace Mono.Linker.Dataflow
 				}
 			}
 
-			return new TypeAnnotations (type, annotatedMethods.ToArray (), annotatedFields.ToArray (), typeGenericParameterAnnotations);
+			return new TypeAnnotations (type, typeAnnotation, annotatedMethods.ToArray (), annotatedFields.ToArray (), typeGenericParameterAnnotations);
 		}
 
-		static bool ScanMethodBodyForFieldAccess (MethodBody body, bool write, out FieldDefinition found)
+		bool ScanMethodBodyForFieldAccess (MethodBody body, bool write, out FieldDefinition found)
 		{
 			// Tries to find the backing field for a property getter/setter.
 			// Returns true if this is a method body that we can unambiguously analyze.
@@ -375,7 +384,7 @@ namespace Mono.Linker.Dataflow
 				return true;
 			}
 
-			found = foundReference.Resolve ();
+			found = _context.Resolve (foundReference);
 
 			if (found == null) {
 				// If the field doesn't resolve, it can't be a field on the current type
@@ -397,9 +406,13 @@ namespace Mono.Linker.Dataflow
 
 		bool IsTypeInterestingForDataflow (TypeReference typeReference)
 		{
-			return typeReference.MetadataType == MetadataType.String ||
-				_hierarchyInfo.IsSystemType (typeReference) ||
-				_hierarchyInfo.IsSystemReflectionIReflect (typeReference);
+			if (typeReference.MetadataType == MetadataType.String)
+				return true;
+
+			TypeDefinition type = _context.TryResolve (typeReference);
+			return type != null && (
+				_hierarchyInfo.IsSystemType (type) ||
+				_hierarchyInfo.IsSystemReflectionIReflect (type));
 		}
 
 		internal void ValidateMethodAnnotationsAreSame (MethodDefinition method, MethodDefinition baseMethod)
@@ -518,17 +531,21 @@ namespace Mono.Linker.Dataflow
 		readonly struct TypeAnnotations
 		{
 			readonly TypeDefinition _type;
+			readonly DynamicallyAccessedMemberTypes _typeAnnotation;
 			readonly MethodAnnotations[] _annotatedMethods;
 			readonly FieldAnnotation[] _annotatedFields;
 			readonly DynamicallyAccessedMemberTypes[] _genericParameterAnnotations;
 
 			public TypeAnnotations (
 				TypeDefinition type,
+				DynamicallyAccessedMemberTypes typeAnnotation,
 				MethodAnnotations[] annotatedMethods,
 				FieldAnnotation[] annotatedFields,
 				DynamicallyAccessedMemberTypes[] genericParameterAnnotations)
-				=> (_type, _annotatedMethods, _annotatedFields, _genericParameterAnnotations)
-				 = (type, annotatedMethods, annotatedFields, genericParameterAnnotations);
+				=> (_type, _typeAnnotation, _annotatedMethods, _annotatedFields, _genericParameterAnnotations)
+				 = (type, typeAnnotation, annotatedMethods, annotatedFields, genericParameterAnnotations);
+
+			public DynamicallyAccessedMemberTypes TypeAnnotation { get => _typeAnnotation; }
 
 			public bool TryGetAnnotation (MethodDefinition method, out MethodAnnotations annotations)
 			{

@@ -79,8 +79,14 @@ namespace System.Reflection.Runtime.MethodInfos
                 // VB uses "ByRef" but it should precede (not follow) the parameter name.
                 // Why don't we just use "&"?
                 if (parameterTypeString.EndsWith("&"))
-                    parameterTypeString = parameterTypeString.Substring(0, parameterTypeString.Length - 1) + " ByRef";
-                sb.Append(parameterTypeString);
+                {
+                    sb.Append(parameterTypeString, 0, parameterTypeString.Length - 1);
+                    sb.Append(" ByRef");
+                }
+                else
+                {
+                    sb.Append(parameterTypeString);
+                }
             }
             return sb.ToString();
         }

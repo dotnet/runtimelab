@@ -61,13 +61,11 @@ if [ ! -z ${RunNativeAot+x} ]%3B then
       exit 1
     fi
 
-    # In OSX we copy the native component to the directory where the exectuable resides.
-    # However, in Linux dlopen doesn't seem to look for current directory to resolve the dynamic library.
-    # So instead we point LD_LIBRARY_PATH to the directory where the native component is.
+    # Copy the native component to the directory where the executable resides.
     if [[ "$OSTYPE" == "darwin"* ]]; then
         cp *.dylib  native/ 2>/dev/null
     else
-        export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${PWD}
+        cp *.so  native/ 2>/dev/null
     fi
 
     ExePath=native/$(MSBuildProjectName)
@@ -140,6 +138,7 @@ if defined RunNativeAot (
   </Target>
 
   <Target Name="CreateNativeAotBuildProjectFile"
+    Condition="'$(_WillCLRTestProjectBuild)' == 'true'"
     Inputs="$(MSBuildProjectFullPath)"
     Outputs="$(OutputPath)\nativebuild.proj"
     BeforeTargets="Build">
@@ -154,7 +153,7 @@ if defined RunNativeAot (
     <OutputType>Exe</OutputType>
     <OutputPath>%24(MSBuildProjectDirectory)\</OutputPath>
     <IntermediateOutputPath>%24(MSBuildProjectDirectory)\</IntermediateOutputPath>
-    <PlatformTarget>$(TargetArchitecture)</PlatformTarget>
+    <TargetArchitecture>$(TargetArchitecture)</TargetArchitecture>
     <Optimize>$(Optimize)</Optimize>
     <DebugSymbols>true</DebugSymbols>
     <NETCoreSdkVersion>$(NETCoreSdkVersion)</NETCoreSdkVersion>

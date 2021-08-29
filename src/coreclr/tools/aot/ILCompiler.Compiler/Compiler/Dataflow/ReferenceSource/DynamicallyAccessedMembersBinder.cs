@@ -10,12 +10,19 @@ using Mono.Cecil;
 
 namespace Mono.Linker
 {
+	// Temporary workaround - should be removed once linker can be upgraded to build against
+	// high enough version of the framework which has this enum value.
+	internal static class DynamicallyAccessedMemberTypesOverlay
+	{
+		public const DynamicallyAccessedMemberTypes Interfaces = (DynamicallyAccessedMemberTypes) 0x2000;
+	}
+
 	internal static class DynamicallyAccessedMembersBinder
 	{
-		// Returns the members of the type bound by memberTypes. For MemberTypes.All, this returns a single null result.
-		// This sentinel value allows callers to handle the case where MemberTypes.All conceptually binds to the entire type
-		// including all recursive nested members.	
-		public static IEnumerable<IMemberDefinition> GetDynamicallyAccessedMembers (this TypeDefinition typeDefinition, DynamicallyAccessedMemberTypes memberTypes)
+		// Returns the members of the type bound by memberTypes. For DynamicallyAccessedMemberTypes.All, this returns a single null result.
+		// This sentinel value allows callers to handle the case where DynamicallyAccessedMemberTypes.All conceptually binds to the entire type
+		// including all recursive nested members.
+		public static IEnumerable<IMetadataTokenProvider> GetDynamicallyAccessedMembers (this TypeDefinition typeDefinition, LinkContext context, DynamicallyAccessedMemberTypes memberTypes)
 		{
 			if (memberTypes == DynamicallyAccessedMemberTypes.All) {
 				yield return null;
@@ -38,22 +45,22 @@ namespace Mono.Linker
 			}
 
 			if (memberTypes.HasFlag (DynamicallyAccessedMemberTypes.NonPublicMethods)) {
-				foreach (var m in typeDefinition.GetMethodsOnTypeHierarchy (filter: null, bindingFlags: BindingFlags.NonPublic))
+				foreach (var m in typeDefinition.GetMethodsOnTypeHierarchy (context, filter: null, bindingFlags: BindingFlags.NonPublic))
 					yield return m;
 			}
 
 			if (memberTypes.HasFlag (DynamicallyAccessedMemberTypes.PublicMethods)) {
-				foreach (var m in typeDefinition.GetMethodsOnTypeHierarchy (filter: null, bindingFlags: BindingFlags.Public))
+				foreach (var m in typeDefinition.GetMethodsOnTypeHierarchy (context, filter: null, bindingFlags: BindingFlags.Public))
 					yield return m;
 			}
 
 			if (memberTypes.HasFlag (DynamicallyAccessedMemberTypes.NonPublicFields)) {
-				foreach (var f in typeDefinition.GetFieldsOnTypeHierarchy (filter: null, bindingFlags: BindingFlags.NonPublic))
+				foreach (var f in typeDefinition.GetFieldsOnTypeHierarchy (context, filter: null, bindingFlags: BindingFlags.NonPublic))
 					yield return f;
 			}
 
 			if (memberTypes.HasFlag (DynamicallyAccessedMemberTypes.PublicFields)) {
-				foreach (var f in typeDefinition.GetFieldsOnTypeHierarchy (filter: null, bindingFlags: BindingFlags.Public))
+				foreach (var f in typeDefinition.GetFieldsOnTypeHierarchy (context, filter: null, bindingFlags: BindingFlags.Public))
 					yield return f;
 			}
 
@@ -68,23 +75,28 @@ namespace Mono.Linker
 			}
 
 			if (memberTypes.HasFlag (DynamicallyAccessedMemberTypes.NonPublicProperties)) {
-				foreach (var p in typeDefinition.GetPropertiesOnTypeHierarchy (filter: null, bindingFlags: BindingFlags.NonPublic))
+				foreach (var p in typeDefinition.GetPropertiesOnTypeHierarchy (context, filter: null, bindingFlags: BindingFlags.NonPublic))
 					yield return p;
 			}
 
 			if (memberTypes.HasFlag (DynamicallyAccessedMemberTypes.PublicProperties)) {
-				foreach (var p in typeDefinition.GetPropertiesOnTypeHierarchy (filter: null, bindingFlags: BindingFlags.Public))
+				foreach (var p in typeDefinition.GetPropertiesOnTypeHierarchy (context, filter: null, bindingFlags: BindingFlags.Public))
 					yield return p;
 			}
 
 			if (memberTypes.HasFlag (DynamicallyAccessedMemberTypes.NonPublicEvents)) {
-				foreach (var e in typeDefinition.GetEventsOnTypeHierarchy (filter: null, bindingFlags: BindingFlags.NonPublic))
+				foreach (var e in typeDefinition.GetEventsOnTypeHierarchy (context, filter: null, bindingFlags: BindingFlags.NonPublic))
 					yield return e;
 			}
 
 			if (memberTypes.HasFlag (DynamicallyAccessedMemberTypes.PublicEvents)) {
-				foreach (var e in typeDefinition.GetEventsOnTypeHierarchy (filter: null, bindingFlags: BindingFlags.Public))
+				foreach (var e in typeDefinition.GetEventsOnTypeHierarchy (context, filter: null, bindingFlags: BindingFlags.Public))
 					yield return e;
+			}
+
+			if (memberTypes.HasFlag (DynamicallyAccessedMemberTypesOverlay.Interfaces)) {
+				foreach (var i in typeDefinition.GetAllInterfaceImplementations (context))
+					yield return i;
 			}
 		}
 
@@ -113,7 +125,7 @@ namespace Mono.Linker
 			}
 		}
 
-		public static IEnumerable<MethodDefinition> GetMethodsOnTypeHierarchy (this TypeDefinition type, Func<MethodDefinition, bool> filter, BindingFlags? bindingFlags = null)
+		public static IEnumerable<MethodDefinition> GetMethodsOnTypeHierarchy (this TypeDefinition type, LinkContext context, Func<MethodDefinition, bool> filter, BindingFlags? bindingFlags = null)
 		{
 			bool onBaseType = false;
 			while (type != null) {
@@ -148,12 +160,12 @@ namespace Mono.Linker
 					yield return method;
 				}
 
-				type = type.BaseType?.Resolve ();
+				type = context.TryResolve (type.BaseType);
 				onBaseType = true;
 			}
 		}
 
-		public static IEnumerable<FieldDefinition> GetFieldsOnTypeHierarchy (this TypeDefinition type, Func<FieldDefinition, bool> filter, BindingFlags? bindingFlags = BindingFlags.Default)
+		public static IEnumerable<FieldDefinition> GetFieldsOnTypeHierarchy (this TypeDefinition type, LinkContext context, Func<FieldDefinition, bool> filter, BindingFlags? bindingFlags = BindingFlags.Default)
 		{
 			bool onBaseType = false;
 			while (type != null) {
@@ -184,7 +196,7 @@ namespace Mono.Linker
 					yield return field;
 				}
 
-				type = type.BaseType?.Resolve ();
+				type = context.TryResolve (type.BaseType);
 				onBaseType = true;
 			}
 		}
@@ -209,7 +221,7 @@ namespace Mono.Linker
 			}
 		}
 
-		public static IEnumerable<PropertyDefinition> GetPropertiesOnTypeHierarchy (this TypeDefinition type, Func<PropertyDefinition, bool> filter, BindingFlags? bindingFlags = BindingFlags.Default)
+		public static IEnumerable<PropertyDefinition> GetPropertiesOnTypeHierarchy (this TypeDefinition type, LinkContext context, Func<PropertyDefinition, bool> filter, BindingFlags? bindingFlags = BindingFlags.Default)
 		{
 			bool onBaseType = false;
 			while (type != null) {
@@ -249,12 +261,12 @@ namespace Mono.Linker
 					yield return property;
 				}
 
-				type = type.BaseType?.Resolve ();
+				type = context.TryResolve (type.BaseType);
 				onBaseType = true;
 			}
 		}
 
-		public static IEnumerable<EventDefinition> GetEventsOnTypeHierarchy (this TypeDefinition type, Func<EventDefinition, bool> filter, BindingFlags? bindingFlags = BindingFlags.Default)
+		public static IEnumerable<EventDefinition> GetEventsOnTypeHierarchy (this TypeDefinition type, LinkContext context, Func<EventDefinition, bool> filter, BindingFlags? bindingFlags = BindingFlags.Default)
 		{
 			bool onBaseType = false;
 			while (type != null) {
@@ -294,8 +306,25 @@ namespace Mono.Linker
 					yield return @event;
 				}
 
-				type = type.BaseType?.Resolve ();
+				type = context.TryResolve (type.BaseType);
 				onBaseType = true;
+			}
+		}
+
+		public static IEnumerable<InterfaceImplementation> GetAllInterfaceImplementations (this TypeDefinition type, LinkContext context)
+		{
+			while (type != null) {
+				foreach (var i in type.Interfaces) {
+					yield return i;
+
+					TypeDefinition interfaceType = context.TryResolve (i.InterfaceType);
+					if (interfaceType != null) {
+						foreach (var innerInterface in interfaceType.GetAllInterfaceImplementations (context))
+							yield return innerInterface;
+					}
+				}
+
+				type = context.TryResolve (type.BaseType);
 			}
 		}
 	}

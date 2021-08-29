@@ -199,7 +199,7 @@ namespace System.Reflection.Runtime.TypeInfos
             return defaultMemberName != null ? GetMember(defaultMemberName) : Array.Empty<MemberInfo>();
         }
 
-        public sealed override InterfaceMapping GetInterfaceMap(Type interfaceType)
+        public sealed override InterfaceMapping GetInterfaceMap([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicMethods | DynamicallyAccessedMemberTypes.NonPublicMethods)] Type interfaceType)
         {
             // restrictions and known limitations compared to CoreCLR:
             // - only interface.GetMethods() reflection visible interface methods are returned
@@ -254,6 +254,9 @@ namespace System.Reflection.Runtime.TypeInfos
 
         public sealed override IEnumerable<Type> ImplementedInterfaces
         {
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces)]
+            [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2075:UnrecognizedReflectionPattern",
+                Justification = "Interface lists on base types will be preserved same as for the current type")]
             get
             {
                 LowLevelListWithIList<Type> result = new LowLevelListWithIList<Type>();
@@ -422,6 +425,7 @@ namespace System.Reflection.Runtime.TypeInfos
             throw new InvalidOperationException(SR.InvalidOperation_NotGenericType);
         }
 
+        [RequiresDynamicCode("The native code for the array might not be available at runtime.")]
         public sealed override Type MakeArrayType()
         {
 #if ENABLE_REFLECTION_TRACE
@@ -435,6 +439,7 @@ namespace System.Reflection.Runtime.TypeInfos
             return this.GetArrayTypeWithTypeHandle();
         }
 
+        [RequiresDynamicCode("The native code for the array might not be available at runtime.")]
         public sealed override Type MakeArrayType(int rank)
         {
 #if ENABLE_REFLECTION_TRACE
@@ -456,6 +461,7 @@ namespace System.Reflection.Runtime.TypeInfos
             return this.GetByRefType();
         }
 
+        [RequiresDynamicCode("The native code for this instantiation might not be available at runtime.")]
         public sealed override Type MakeGenericType(params Type[] typeArguments)
         {
 #if ENABLE_REFLECTION_TRACE

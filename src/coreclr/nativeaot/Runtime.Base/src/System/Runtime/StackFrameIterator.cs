@@ -37,20 +37,17 @@ namespace System.Runtime
 
         internal bool Next()
         {
-            uint uExCollideClauseIdx;
-            bool fUnwoundReversePInvoke;
-            return Next(out uExCollideClauseIdx, out fUnwoundReversePInvoke);
+            return Next(null, null);
         }
 
-        internal bool Next(out uint uExCollideClauseIdx)
+        internal bool Next(uint* uExCollideClauseIdx)
         {
-            bool fUnwoundReversePInvoke;
-            return Next(out uExCollideClauseIdx, out fUnwoundReversePInvoke);
+            return Next(uExCollideClauseIdx, null);
         }
 
-        internal bool Next(out uint uExCollideClauseIdx, out bool fUnwoundReversePInvoke)
+        internal bool Next(uint* uExCollideClauseIdx, bool* fUnwoundReversePInvoke)
         {
-            return InternalCalls.RhpSfiNext(ref this, out uExCollideClauseIdx, out fUnwoundReversePInvoke);
+            return InternalCalls.RhpSfiNext(ref this, uExCollideClauseIdx, fUnwoundReversePInvoke);
         }
     }
 }

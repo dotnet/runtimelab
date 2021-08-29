@@ -91,6 +91,8 @@ namespace System.Reflection.Runtime.Assemblies
 
         public sealed override Assembly GetSatelliteAssembly(CultureInfo culture) { throw new PlatformNotSupportedException(); }
         public sealed override Assembly GetSatelliteAssembly(CultureInfo culture, Version version) { throw new PlatformNotSupportedException(); }
+
+        [RequiresUnreferencedCode("Assembly references might be removed")]
         public sealed override AssemblyName[] GetReferencedAssemblies() { throw new PlatformNotSupportedException(); }
         public sealed override Module GetModule(string name) { throw new PlatformNotSupportedException(); }
     }
@@ -173,7 +175,10 @@ namespace System.Reflection.Runtime.TypeInfos
         }
 
         public sealed override bool IsGenericType => IsConstructedGenericType || IsGenericTypeDefinition;
+
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces)]
         public sealed override Type[] GetInterfaces() => ImplementedInterfaces.ToArray();
+
         public sealed override string GetEnumName(object value) => Enum.GetName(this, value);
         public sealed override string[] GetEnumNames() => Enum.GetNames(this);
         public sealed override Type GetEnumUnderlyingType() => Enum.GetUnderlyingType(this);
@@ -186,6 +191,10 @@ namespace System.Reflection.Runtime.TypeInfos
         public sealed override bool IsSecuritySafeCritical => false;
         public sealed override bool IsSecurityTransparent => false;
 
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces)]
+        [return: DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces)]
+        [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2073:UnrecognizedReflectionPattern",
+            Justification = "The returned interface is one of the interfaces implemented by this type and does have DynamicallyAccessedMemberTypes.Interfaces")]
         public sealed override Type GetInterface(string name, bool ignoreCase)
         {
             if (name == null)

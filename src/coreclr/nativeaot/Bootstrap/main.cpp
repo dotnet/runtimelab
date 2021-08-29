@@ -114,6 +114,7 @@ extern "C" void FailFast();
 extern "C" void AppendExceptionStackFrame();
 extern "C" void GetSystemArrayEEType();
 extern "C" void OnFirstChanceException();
+extern "C" void OnUnhandledException();
 
 typedef void(*pfn)();
 
@@ -125,6 +126,7 @@ static const pfn c_classlibFunctions[] = {
     nullptr, // &CheckStaticClassConstruction,
     &GetSystemArrayEEType,
     &OnFirstChanceException,
+    &OnUnhandledException,
 };
 
 #ifndef _countof

@@ -200,7 +200,7 @@ namespace ILCompiler
                 syntax.DefineOption("stacktracedata", ref _emitStackTraceData, "Emit data to support generating stack trace strings at runtime");
                 syntax.DefineOption("methodbodyfolding", ref _methodBodyFolding, "Fold identical method bodies");
                 syntax.DefineOptionList("initassembly", ref _initAssemblies, "Assembly(ies) with a library initializer");
-                syntax.DefineOptionList("appcontextswitch", ref _appContextSwitches, "System.AppContext switches to set");
+                syntax.DefineOptionList("appcontextswitch", ref _appContextSwitches, "System.AppContext switches to set (format: 'Key=Value')");
                 syntax.DefineOptionList("feature", ref _featureSwitches, "Feature switches to apply (format: 'Namespace.Name=[true|false]'");
                 syntax.DefineOptionList("runtimeopt", ref _runtimeOptions, "Runtime options to set");
                 syntax.DefineOption("singlethreaded", ref _singleThreaded, "Run compilation on a single thread");
@@ -760,12 +760,14 @@ namespace ILCompiler
                 // This could be a command line switch if we really wanted to.
                 builder.UseGenericDictionaryLayoutProvider(scanResults.GetDictionaryLayoutInfo());
 
-                // If we feed any outputs of the scanner into the compilation, it's essential
-                // we use scanner's devirtualization manager. It prevents optimizing codegens
-                // from accidentally devirtualizing cases that can never happen at runtime
-                // (e.g. devirtualizing a method on a type that never gets allocated).
+                // If we have a scanner, we can drive devirtualization using the information
+                // we collected at scanning time (effectively sealing unsealed types if possible).
+                // This could be a command line switch if we really wanted to.
                 builder.UseDevirtualizationManager(scanResults.GetDevirtualizationManager());
 
+                // If we use the scanner's result, we need to consult it to drive inlining.
+                // This prevents e.g. devirtualizing and inlining methods on types that were
+                // never actually allocated.
                 builder.UseInliningPolicy(scanResults.GetInliningPolicy());
             }
 

@@ -58,9 +58,9 @@ POINTER_SIZE = 0x08
     //
     LEAF_ENTRY RhGetCurrentThunkContext, _TEXT
 
-        INLINE_GET_TLS_VAR x0, tls_thunkData
+        INLINE_GET_TLS_VAR x1, tls_thunkData
 
-        ldr x0, [x0]
+        ldr x0, [x1]
 
         ret
 

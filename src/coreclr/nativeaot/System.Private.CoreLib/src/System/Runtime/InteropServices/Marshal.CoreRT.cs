@@ -34,13 +34,6 @@ namespace System.Runtime.InteropServices
             return new IntPtr(RuntimeAugments.InteropCallbacks.GetStructFieldOffset(t.TypeHandle, fieldName));
         }
 
-        private static object PtrToStructureHelper(IntPtr ptr, Type structureType)
-        {
-            object boxedStruct = InteropExtensions.RuntimeNewObject(structureType.TypeHandle);
-            PtrToStructureImpl(ptr, boxedStruct);
-            return boxedStruct;
-        }
-
         private static void PtrToStructureHelper(IntPtr ptr, object structure, bool allowValueClasses)
         {
             if (ptr == IntPtr.Zero)

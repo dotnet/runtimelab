@@ -68,8 +68,15 @@ namespace Internal.TypeSystem
             return resolvedMethod;
         }
 
-        protected virtual IEnumerable<MethodDesc> GetAllMethodsForEnum(TypeDesc enumType)
+        protected virtual IEnumerable<MethodDesc> GetAllMethodsForEnum(TypeDesc enumType, bool virtualOnly)
         {
+            if (virtualOnly)
+            {
+                // We devirtualize these, but they're not actually virtual. We don't want standalone method bodies
+                // referenced from vtables. The base implementation on System.Enum is perflectly adequate.
+                yield break;
+            }
+
             if (_objectEqualsMethod == null)
                 _objectEqualsMethod = GetWellKnownType(WellKnownType.Object).GetMethod("Equals", null);
 

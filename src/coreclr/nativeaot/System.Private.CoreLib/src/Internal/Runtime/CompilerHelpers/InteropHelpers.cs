@@ -223,6 +223,59 @@ namespace Internal.Runtime.CompilerHelpers
             return PInvokeMarshal.AnsiCharToWideChar(nativeValue);
         }
 
+        internal static double DateTimeToOleDateTime(DateTime value)
+        {
+            return value.ToOADate();
+        }
+
+        internal static DateTime OleDateTimeToDateTime(double value)
+        {
+            return DateTime.FromOADate(value);
+        }
+
+        internal static long DecimalToOleCurrency(decimal value)
+        {
+            return decimal.ToOACurrency(value);
+        }
+
+        internal static decimal OleCurrencyToDecimal(long value)
+        {
+            return decimal.FromOACurrency(value);
+        }
+
+        internal static unsafe string BstrBufferToString(char* buffer)
+        {
+            if (buffer == null)
+                return null;
+
+            return Marshal.PtrToStringBSTR((IntPtr)buffer);
+        }
+
+        internal static unsafe byte* StringToAnsiBstrBuffer(string s)
+        {
+            if (s is null)
+            {
+                return (byte*)IntPtr.Zero;
+            }
+
+            int stringLength = s.Length;
+            fixed (char* pStr = s)
+            {
+                int nativeLength = PInvokeMarshal.GetByteCount(pStr, stringLength);
+                byte* bstr = (byte*)Marshal.AllocBSTRByteLen((uint)nativeLength);
+                PInvokeMarshal.ConvertWideCharToMultiByte(pStr, stringLength, bstr, nativeLength, bestFit: false, throwOnUnmappableChar: false);
+                return bstr;
+            }
+        }
+
+        internal static unsafe string AnsiBstrBufferToString(byte* buffer)
+        {
+            if (buffer == null)
+                return null;
+
+            return Marshal.PtrToStringAnsi((IntPtr)buffer, (int)Marshal.SysStringByteLen((IntPtr)buffer));
+        }
+
         internal static unsafe IntPtr ResolvePInvoke(MethodFixupCell* pCell)
         {
             if (pCell->Target != IntPtr.Zero)
@@ -421,6 +474,22 @@ namespace Internal.Runtime.CompilerHelpers
 #endif
         }
 
+        public static IntPtr ConvertManagedComInterfaceToIUnknown(object pUnk)
+        {
+            if (pUnk == null)
+            {
+                return IntPtr.Zero;
+            }
+
+#if TARGET_WINDOWS
+#pragma warning disable CA1416
+            return ComWrappers.ComInterfaceForObject(pUnk);
+#pragma warning restore CA1416
+#else
+            throw new PlatformNotSupportedException(SR.PlatformNotSupported_ComInterop);
+#endif
+        }
+
         public static object ConvertNativeComInterfaceToManaged(IntPtr pUnk)
         {
             if (pUnk == IntPtr.Zero)
@@ -428,7 +497,13 @@ namespace Internal.Runtime.CompilerHelpers
                 return null;
             }
 
+#if TARGET_WINDOWS
+#pragma warning disable CA1416
+            return ComWrappers.ComObjectForInterface(pUnk);
+#pragma warning restore CA1416
+#else
             throw new PlatformNotSupportedException(SR.PlatformNotSupported_ComInterop);
+#endif
         }
 
         internal static int AsAnyGetNativeSize(object o)
@@ -482,6 +557,45 @@ namespace Internal.Runtime.CompilerHelpers
             }
 
             Marshal.DestroyStructure(address, o.GetType());
+        }
+
+        internal static unsafe object? VariantToObject(IntPtr pSrcNativeVariant)
+        {
+            if (pSrcNativeVariant == IntPtr.Zero)
+            {
+                return null;
+            }
+
+#if TARGET_WINDOWS
+#pragma warning disable CA1416
+            return Marshal.GetObjectForNativeVariant(pSrcNativeVariant);
+#pragma warning restore CA1416
+#else
+            throw new PlatformNotSupportedException(SR.PlatformNotSupported_ComInterop);
+#endif
+        }
+
+        internal static unsafe void ConvertObjectToVariant(object? obj, IntPtr pDstNativeVariant)
+        {
+#if TARGET_WINDOWS
+#pragma warning disable CA1416
+            Marshal.GetNativeVariantForObject(obj, pDstNativeVariant);
+#pragma warning restore CA1416
+#else
+            throw new PlatformNotSupportedException(SR.PlatformNotSupported_ComInterop);
+#endif
+        }
+
+        internal static unsafe void CleanupVariant(IntPtr pDstNativeVariant)
+        {
+#if TARGET_WINDOWS
+#pragma warning disable CA1416
+            Variant* data = (Variant*)pDstNativeVariant;
+            data->Clear();
+#pragma warning restore CA1416
+#else
+            throw new PlatformNotSupportedException(SR.PlatformNotSupported_ComInterop);
+#endif
         }
 
         [StructLayout(LayoutKind.Sequential)]

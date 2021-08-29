@@ -19,6 +19,7 @@
 using System;
 using System.Runtime;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Runtime.CompilerServices;
@@ -122,6 +123,8 @@ namespace Internal.Runtime.Augments
         // As a concession to the fact that we don't actually support non-zero lower bounds, "lowerBounds" accepts "null"
         // to avoid unnecessary array allocations by the caller.
         //
+        [UnconditionalSuppressMessage("AotAnalysis", "IL9700:RequiresDynamicCode",
+            Justification = "The compiler ensures that if we have a TypeHandle of a Rank-1 MdArray, we also generated the SzArray.")]
         public static unsafe Array NewMultiDimArray(RuntimeTypeHandle typeHandleForArrayType, int[] lengths, int[] lowerBounds)
         {
             Debug.Assert(lengths != null);
@@ -749,26 +752,22 @@ namespace Internal.Runtime.Augments
             return new RuntimeTypeHandle(theT);
         }
 
-        //
-        // Useful helper for finding .pdb's. (This design is admittedly tied to the single-module design of Project N.)
-        //
-        public static string TryGetFullPathToMainApplication()
-        {
-            Func<string> delegateToAnythingInsideMergedApp = TryGetFullPathToMainApplication;
-            IntPtr ipToAnywhereInsideMergedApp = delegateToAnythingInsideMergedApp.GetFunctionPointer(out RuntimeTypeHandle _, out bool _, out bool _);
-            IntPtr moduleBase = RuntimeImports.RhGetOSModuleFromPointer(ipToAnywhereInsideMergedApp);
-            return TryGetFullPathToApplicationModule(moduleBase);
-        }
-
         /// <summary>
         /// Locate the file path for a given native application module.
         /// </summary>
+        /// <param name="ip">Address inside the module</param>
         /// <param name="moduleBase">Module base address</param>
-        public static unsafe string TryGetFullPathToApplicationModule(IntPtr moduleBase)
+        public static unsafe string TryGetFullPathToApplicationModule(IntPtr ip, out IntPtr moduleBase)
         {
+            moduleBase = RuntimeImports.RhGetOSModuleFromPointer(ip);
+            if (moduleBase == IntPtr.Zero)
+                return null;
 #if TARGET_UNIX
+            // RhGetModuleFileName on Unix calls dladdr that accepts any ip. Avoid the redundant lookup
+            // and pass the ip into RhGetModuleFileName directly. Also, older versions of Musl have a bug
+            // that leads to crash with the redundant lookup.
             byte* pModuleNameUtf8;
-            int numUtf8Chars = RuntimeImports.RhGetModuleFileName(moduleBase, out pModuleNameUtf8);
+            int numUtf8Chars = RuntimeImports.RhGetModuleFileName(ip, out pModuleNameUtf8);
             string modulePath = System.Text.Encoding.UTF8.GetString(pModuleNameUtf8, numUtf8Chars);
 #else // TARGET_UNIX
             char* pModuleName;
@@ -777,19 +776,6 @@ namespace Internal.Runtime.Augments
 #endif // TARGET_UNIX
             return modulePath;
         }
-
-        //
-        // Useful helper for getting RVA's to pass to DiaSymReader.
-        //
-        public static int ConvertIpToRva(IntPtr ip)
-        {
-            unsafe
-            {
-                IntPtr moduleBase = RuntimeImports.RhGetOSModuleFromPointer(ip);
-                return (int)(ip.ToInt64() - moduleBase.ToInt64());
-            }
-        }
-
 
         public static IntPtr GetRuntimeTypeHandleRawValue(RuntimeTypeHandle runtimeTypeHandle)
         {
@@ -1063,11 +1049,6 @@ namespace Internal.Runtime.Augments
 
                 RuntimeImports.RhDisableConservativeReportingRegion(pRegionDesc);
             }
-        }
-
-        public static bool FileExists(string path)
-        {
-            return Internal.IO.File.Exists(path);
         }
 
         public static string GetLastResortString(RuntimeTypeHandle typeHandle)

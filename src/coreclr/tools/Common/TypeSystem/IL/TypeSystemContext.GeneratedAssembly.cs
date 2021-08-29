@@ -203,6 +203,16 @@ namespace Internal.TypeSystem
                 }
             }
 
+
+            public override DefType BaseType
+            {
+                get
+                {
+                    // See below
+                    return null;
+                }
+            }
+
             public override MetadataType MetadataBaseType
             {
                 get

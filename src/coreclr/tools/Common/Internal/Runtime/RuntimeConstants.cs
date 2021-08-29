@@ -51,4 +51,10 @@ namespace Internal.Runtime
         GC_ALLOC_ZEROING_OPTIONAL = 16,
         GC_ALLOC_PINNED_OBJECT_HEAP = 64,
     }
+
+    internal static class SpecialDispatchMapSlot
+    {
+        public const ushort Diamond = 0xFFFE;
+        public const ushort Reabstraction = 0xFFFF;
+    }
 }

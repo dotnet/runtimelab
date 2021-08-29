@@ -11,12 +11,21 @@ namespace System.Threading
         private DeferredDisposableLifetime<PreAllocatedOverlapped> _lifetime;
 
         [CLSCompliant(false)]
-        public unsafe PreAllocatedOverlapped(IOCompletionCallback callback, object state, object pinData)
+        public PreAllocatedOverlapped(IOCompletionCallback callback, object? state, object? pinData) :
+            this(callback, state, pinData, flowExecutionContext: true)
+        {
+        }
+
+        [CLSCompliant(false)]
+        public static PreAllocatedOverlapped UnsafeCreate(IOCompletionCallback callback, object? state, object? pinData) =>
+            new PreAllocatedOverlapped(callback, state, pinData, flowExecutionContext: false);
+
+        private unsafe PreAllocatedOverlapped(IOCompletionCallback callback, object? state, object? pinData, bool flowExecutionContext)
         {
             if (callback == null)
                 throw new ArgumentNullException(nameof(callback));
 
-            _overlapped = Win32ThreadPoolNativeOverlapped.Allocate(callback, state, pinData, this);
+            _overlapped = Win32ThreadPoolNativeOverlapped.Allocate(callback, state, pinData, this, flowExecutionContext);
         }
 
         internal bool AddRef()

@@ -96,8 +96,10 @@ namespace ILCompiler.Logging
                     TypeDesc type => type,
                     MethodDesc method => method.OwningType,
                     FieldDesc field => field.OwningType,
+#if !READYTORUN
                     PropertyPseudoDesc property => property.OwningType,
                     EventPseudoDesc @event => @event.OwningType,
+#endif
                     _ => null,
                 };
 

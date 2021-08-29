@@ -17,6 +17,8 @@ namespace System.Reflection.Runtime.General
             Justification = "Just instantiating over formals for desktop compat reasons")]
         [UnconditionalSuppressMessage("AotAnalysis", "IL9700:AotUnfriendlyApi",
             Justification = "Just instantiating over formals for desktop compat reasons")]
+        [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2070:UnrecognizedReflectionPattern",
+            Justification = "Looking at interface list is safe because we wouldn't remove reflection-visible interface from a reflection-visible type")]
         public static bool IsAssignableFrom(Type toTypeInfo, Type fromTypeInfo)
         {
             if (toTypeInfo == null)
@@ -58,6 +60,8 @@ namespace System.Reflection.Runtime.General
             return false;
         }
 
+        [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2070:UnrecognizedReflectionPattern",
+            Justification = "Looking at interface list is safe because we wouldn't remove reflection-visible interface from a reflection-visible type")]
         private static bool CanCastTo(this Type fromTypeInfo, Type toTypeInfo)
         {
             if (fromTypeInfo.Equals(toTypeInfo))
@@ -339,6 +343,8 @@ namespace System.Reflection.Runtime.General
         // T[] casts to IList<T>. This could be handled by the normal ancestor-walking code
         // but for one complication: T[] also casts to IList<U> if T[] casts to U[].
         //
+        [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2070:UnrecognizedReflectionPattern",
+            Justification = "Looking at interface list is safe because we wouldn't remove reflection-visible interface from a reflection-visible type")]
         private static bool CanCastArrayToInterface(this Type fromTypeInfo, Type toTypeInfo)
         {
             Debug.Assert(fromTypeInfo.IsArray);

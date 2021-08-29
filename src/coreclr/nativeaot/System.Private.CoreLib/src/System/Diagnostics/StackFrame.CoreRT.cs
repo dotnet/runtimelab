@@ -1,14 +1,11 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-
-using System;
-using System.Reflection;
 using System.Runtime;
+using System.Runtime.CompilerServices;
 using System.Text;
 
 using Internal.DeveloperExperience;
-using Internal.Diagnostics;
 
 namespace System.Diagnostics
 {
@@ -47,7 +44,7 @@ namespace System.Diagnostics
             _ipAddress = ipAddress;
             _needFileInfo = needFileInfo;
 
-            if (_ipAddress == StackTraceHelper.SpecialIP.EdiSeparator)
+            if (_ipAddress == Exception.EdiSeparator)
             {
                 _isLastFrameFromForeignExceptionStackTrace = true;
             }
@@ -55,7 +52,7 @@ namespace System.Diagnostics
             {
                 IntPtr methodStartAddress = RuntimeImports.RhFindMethodStartAddress(ipAddress);
 
-                _nativeOffset = (int)(_ipAddress.ToInt64() - methodStartAddress.ToInt64());
+                _nativeOffset = (int)((nint)_ipAddress - (nint)methodStartAddress);
 
                 DeveloperExperience.Default.TryGetILOffsetWithinMethod(_ipAddress, out _ilOffset);
                 DeveloperExperience.Default.TryGetMethodBase(methodStartAddress, out _method);
@@ -74,27 +71,18 @@ namespace System.Diagnostics
         /// <summary>
         /// Internal stack frame initialization based on frame index within the stack of the current thread.
         /// </summary>
+        [MethodImplAttribute(MethodImplOptions.NoInlining)]
         private void BuildStackFrame(int frameIndex, bool needFileInfo)
         {
-            IntPtr ipAddress = LocateIpAddressForStackFrame(frameIndex);
-            InitializeForIpAddress(ipAddress, needFileInfo);
-        }
+            const int SystemDiagnosticsStackDepth = 2;
 
-        /// <summary>
-        /// Locate IP address corresponding to a given frame. Ignore .NET Native-specific rethrow markers.
-        /// </summary>
-        private IntPtr LocateIpAddressForStackFrame(int frameIndex)
-        {
+            frameIndex += SystemDiagnosticsStackDepth;
             IntPtr[] frameArray = new IntPtr[frameIndex + 1];
             int returnedFrameCount = RuntimeImports.RhGetCurrentThreadStackTrace(frameArray);
             int realFrameCount = (returnedFrameCount >= 0 ? returnedFrameCount : frameArray.Length);
-            if (frameIndex < realFrameCount)
-            {
-                return frameArray[frameIndex];
-            }
 
-            // No more frames are available
-            return IntPtr.Zero;
+            IntPtr ipAddress = (frameIndex < realFrameCount) ? frameArray[frameIndex] : IntPtr.Zero;
+            InitializeForIpAddress(ipAddress, needFileInfo);
         }
 
         /// <summary>
@@ -136,9 +124,12 @@ namespace System.Diagnostics
         /// </summary>
         internal void AppendToStackTrace(StringBuilder builder)
         {
-            if (_ipAddress != StackTraceHelper.SpecialIP.EdiSeparator)
+            if (_ipAddress != Exception.EdiSeparator)
             {
-                builder.Append(SR.StackTrace_AtWord);
+                // Passing a default string for "at" in case SR.UsingResourceKeys() is true
+                // as this is a special case and we don't want to have "Word_At" on stack traces.
+                string word_At = SR.GetResourceString(nameof(SR.Word_At), defaultString: "at");
+                builder.AppendFormat("   {0} ", word_At);
                 builder.AppendLine(DeveloperExperience.Default.CreateStackTraceString(_ipAddress, _needFileInfo));
             }
             if (_isLastFrameFromForeignExceptionStackTrace)

@@ -52,7 +52,7 @@ public class SingleFileTestRunner : XunitTestFramework
         discoverer.Find(false, discoverySink, TestFrameworkOptions.ForDiscovery());
         discoverySink.Finished.WaitOne();
         XunitFilters filters = new XunitFilters();
-        filters.ExcludedTraits.Add("category", new List<string> { "failing" });
+        filters.ExcludedTraits.Add("category", new List<string> { "failing", "OuterLoop" });
         var filteredTestCases = discoverySink.TestCases.Where(filters.Filter).ToList();
         var executor = xunitTestFx.CreateExecutor(asmName);
         executor.RunTests(filteredTestCases, resultsSink, TestFrameworkOptions.ForExecution());

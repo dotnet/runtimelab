@@ -382,15 +382,15 @@ EXTERN_C REDHAWK_API void __cdecl RhpReleaseThunkPoolLock()
     g_ThunkPoolLock.Leave();
 }
 
-EXTERN_C int32_t __cdecl RhpCalculateStackTraceWorker(void* pOutputBuffer, uint32_t outputBufferLength);
+EXTERN_C int32_t __cdecl RhpCalculateStackTraceWorker(void* pOutputBuffer, uint32_t outputBufferLength, void* pAddressInCurrentFrame);
 
-EXTERN_C REDHAWK_API int32_t __cdecl RhpGetCurrentThreadStackTrace(void* pOutputBuffer, uint32_t outputBufferLength)
+EXTERN_C REDHAWK_API int32_t __cdecl RhpGetCurrentThreadStackTrace(void* pOutputBuffer, uint32_t outputBufferLength, void* pAddressInCurrentFrame)
 {
     // This must be called via p/invoke rather than RuntimeImport to make the stack crawlable.
 
     ThreadStore::GetCurrentThread()->SetupHackPInvokeTunnel();
 
-    return RhpCalculateStackTraceWorker(pOutputBuffer, outputBufferLength);
+    return RhpCalculateStackTraceWorker(pOutputBuffer, outputBufferLength, pAddressInCurrentFrame);
 }
 
 COOP_PINVOKE_HELPER(void*, RhpRegisterFrozenSegment, (void* pSegmentStart, size_t length))

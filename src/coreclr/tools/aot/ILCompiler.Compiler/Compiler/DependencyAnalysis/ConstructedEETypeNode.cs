@@ -36,9 +36,11 @@ namespace ILCompiler.DependencyAnalysis
                     // First, check if this type has any GVM that overrides a GVM on a parent type. If that's the case, this makes
                     // the current type interesting for GVM analysis (i.e. instantiate its overriding GVMs for existing GVMDependenciesNodes
                     // of the instantiated GVM on the parent types).
-                    foreach (var method in _type.GetAllMethods())
+                    foreach (var method in _type.GetAllVirtualMethods())
                     {
-                        if (method.HasInstantiation && method.IsVirtual)
+                        Debug.Assert(method.IsVirtual);
+
+                        if (method.HasInstantiation)
                         {
                             MethodDesc slotDecl = MetadataVirtualMethodAlgorithm.FindSlotDefiningMethodForVirtualMethod(method);
                             if (slotDecl != method)
@@ -50,9 +52,11 @@ namespace ILCompiler.DependencyAnalysis
                     // make the current type interesting for dynamic dependency analysis to that we can instantiate its GVMs.
                     foreach (DefType interfaceImpl in _type.RuntimeInterfaces)
                     {
-                        foreach (var method in interfaceImpl.GetAllMethods())
+                        foreach (var method in interfaceImpl.GetAllVirtualMethods())
                         {
-                            if (method.HasInstantiation && method.IsVirtual)
+                            Debug.Assert(method.IsVirtual);
+
+                            if (method.HasInstantiation)
                             {
                                 // We found a GVM on one of the implemented interfaces. Find if the type implements this method. 
                                 // (Note, do this comparision against the generic definition of the method, not the specific method instantiation

@@ -35,7 +35,10 @@ public class BringUpTest
             return Fail;
 
         TestDefaultInterfaceMethods.Run();
+        TestDefaultInterfaceVariance.Run();
         TestVariantInterfaceOptimizations.Run();
+        TestSharedIntefaceMethods.Run();
+        TestCovariantReturns.Run();
 
         return Pass;
     }
@@ -501,21 +504,184 @@ public class BringUpTest
             if (((IFoo)new Baz()).GetNumber() != 100)
                 throw new Exception();
 
-            bool thrown = false;
-            try
-            {
-                ((IFoo<object>)new Foo<object>()).GetInterfaceType();
-            }
-            catch (EntryPointNotFoundException)
-            {
-                thrown = true;
-            }
-            if (!thrown)
+            if (((IFoo<object>)new Foo<object>()).GetInterfaceType() != typeof(IFoo<object>))
                 throw new Exception();
 
             if (((IFoo<int>)new Foo<int>()).GetInterfaceType() != typeof(IFoo<int>))
-            {
                 throw new Exception();
+        }
+    }
+
+    class TestDefaultInterfaceVariance
+    {
+        class Foo : IVariant<string>, IVariant<object>
+        {
+            string IVariant<object>.Frob() => "Hello class";
+        }
+
+        interface IVariant<in T>
+        {
+            string Frob() => "Hello default";
+        }
+
+        public static void Run()
+        {
+            Console.WriteLine("Testing default interface variant ordering...");
+
+            if (((IVariant<object>)new Foo()).Frob() != "Hello class")
+                throw new Exception();
+            if (((IVariant<string>)new Foo()).Frob() != "Hello class")
+                throw new Exception();
+            if (((IVariant<ValueType>)new Foo()).Frob() != "Hello class")
+                throw new Exception();
+        }
+    }
+
+    class TestSharedIntefaceMethods
+    {
+        interface IInnerValueGrabber
+        {
+            string GetInnerValue();
+        }
+
+        interface IFace<T> : IInnerValueGrabber
+        {
+            string GrabValue(T x) => $"'{GetInnerValue()}' over '{typeof(T)}' with '{x}'";
+        }
+
+        class Base<T> : IFace<T>, IInnerValueGrabber
+        {
+            public string InnerValue;
+
+            public string GetInnerValue() => InnerValue;
+        }
+
+        class Derived<T, U> : Base<T>, IFace<U> { }
+
+        struct Yadda : IFace<object>, IInnerValueGrabber
+        {
+            public string InnerValue;
+
+            public string GetInnerValue() => InnerValue;
+        }
+
+        class Atom1 { public override string ToString() => "The Atom1"; }
+        class Atom2 { public override string ToString() => "The Atom2"; }
+
+        public static void Run()
+        {
+            Console.WriteLine("Testing default interface methods and shared code...");
+
+            var x = new Derived<Atom1, Atom2>() { InnerValue = "My inner value" };
+            string r1 = ((IFace<Atom1>)x).GrabValue(new Atom1());
+            if (r1 != "'My inner value' over 'BringUpTest+TestSharedIntefaceMethods+Atom1' with 'The Atom1'")
+                throw new Exception();
+            string r2 = ((IFace<Atom2>)x).GrabValue(new Atom2());
+            if (r2 != "'My inner value' over 'BringUpTest+TestSharedIntefaceMethods+Atom2' with 'The Atom2'")
+                throw new Exception();
+
+            IFace<object> o = new Yadda() { InnerValue = "SomeString" };
+            string r3 = o.GrabValue("Hello there");
+            if (r3 != "'SomeString' over 'System.Object' with 'Hello there'")
+                throw new Exception();
+        }
+    }
+
+    class TestCovariantReturns
+    {
+        interface IFoo
+        {
+        }
+
+        class Foo : IFoo
+        {
+            public readonly string State;
+            public Foo(string state) => State = state;
+        }
+
+        class Base
+        {
+            public virtual IFoo GetFoo() => throw new NotImplementedException();
+        }
+
+        class Derived : Base
+        {
+            public override Foo GetFoo() => new Foo("Derived");
+        }
+
+        class SuperDerived : Derived
+        {
+            public override Foo GetFoo() => new Foo("SuperDerived");
+        }
+
+        class BaseWithUnusedVirtual
+        {
+            public virtual IFoo GetFoo() => throw new NotImplementedException();
+        }
+
+        class DerivedWithOverridenUnusedVirtual : BaseWithUnusedVirtual
+        {
+            public override Foo GetFoo() => new Foo("DerivedWithOverridenUnusedVirtual");
+        }
+
+        class SuperDerivedWithOverridenUnusedVirtual : DerivedWithOverridenUnusedVirtual
+        {
+            public override Foo GetFoo() => new Foo("SuperDerivedWithOverridenUnusedVirtual");
+        }
+
+        interface IInterfaceWithCovariantReturn
+        {
+            IFoo GetFoo();
+        }
+
+        class ClassImplementingInterface : IInterfaceWithCovariantReturn
+        {
+            public virtual IFoo GetFoo() => throw new NotImplementedException();
+        }
+
+        class DerivedClassImplementingInterface : ClassImplementingInterface
+        {
+            public override Foo GetFoo() => new Foo("DerivedClassImplementingInterface");
+        }
+
+        public static void Run()
+        {
+            Console.WriteLine("Testing covariant returns...");
+
+            {
+                Base b = new Derived();
+                if (((Foo)b.GetFoo()).State != "Derived")
+                    throw new Exception();
+            }
+
+            {
+                Base b = new SuperDerived();
+                if (((Foo)b.GetFoo()).State != "SuperDerived")
+                    throw new Exception();
+            }
+
+            {
+                Derived d = new SuperDerived();
+                if (d.GetFoo().State != "SuperDerived")
+                    throw new Exception();
+            }
+
+            {
+                DerivedWithOverridenUnusedVirtual b = new DerivedWithOverridenUnusedVirtual();
+                if (b.GetFoo().State != "DerivedWithOverridenUnusedVirtual")
+                    throw new Exception();
+            }
+
+            {
+                DerivedWithOverridenUnusedVirtual b = new SuperDerivedWithOverridenUnusedVirtual();
+                if (b.GetFoo().State != "SuperDerivedWithOverridenUnusedVirtual")
+                    throw new Exception();
+            }
+
+            {
+                IInterfaceWithCovariantReturn i = new DerivedClassImplementingInterface();
+                if (((Foo)i.GetFoo()).State != "DerivedClassImplementingInterface")
+                    throw new Exception();
             }
         }
     }

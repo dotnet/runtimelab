@@ -79,12 +79,10 @@ namespace Internal.IL.Stubs
             }
         }
 
-        public override bool IsPInvoke
+        public override PInvokeMetadata GetPInvokeMethodMetadata()
         {
-            get
-            {
-                return true;
-            }
+            // Return PInvokeAttributes.PreserveSig to circumvent marshalling required checks
+            return new PInvokeMetadata(null, null, PInvokeAttributes.PreserveSig);
         }
 
         public override MethodIL EmitIL()
