@@ -12,7 +12,11 @@ namespace System.Globalization
         private static partial class Settings
         {
             internal static readonly bool PredefinedCulturesOnly = AppContextConfigHelper.GetBooleanConfig("System.Globalization.PredefinedCulturesOnly", "DOTNET_SYSTEM_GLOBALIZATION_PREDEFINED_CULTURES_ONLY");
+#if TARGET_WASM
+            internal static bool Invariant { get; } = true;
+#else
             internal static bool Invariant { get; } = GetInvariantSwitchValue();
+#endif
         }
 
         // Note: Invariant=true and Invariant=false are substituted at different levels in the ILLink.Substitutions file.

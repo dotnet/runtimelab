@@ -4,6 +4,7 @@
     <CLRTestKind>BuildAndRun</CLRTestKind>
     <CLRTestPriority>0</CLRTestPriority>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <DefineConstants Condition="$(TargetArchitecture) == 'wasm'">$(DefineConstants);CODEGEN_WASM</DefineConstants>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Exceptions.cs" />

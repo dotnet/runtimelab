@@ -21,9 +21,6 @@ namespace System.Globalization
                     }
                     else
                     {
-#if TARGET_WASM // Wasm for NativeAOT is not including ICU (emscripten flag -s USE_ICU is not set) and even if it did, attempting to dlopen any ICU libraries is going to fail.
-                    return true;
-#else
                         int loaded = LoadICU();
                         if (loaded == 0)
                         {
@@ -47,7 +44,6 @@ namespace System.Globalization
                         "Please install libicu using your package manager and try again. " +
                         "Alternatively you can set the configuration flag System.Globalization.Invariant to true if you want to run with no globalization support. " +
                         "Please see https://aka.ms/dotnet-missing-libicu for more information.";
-#endif
                 }
             }
         }
