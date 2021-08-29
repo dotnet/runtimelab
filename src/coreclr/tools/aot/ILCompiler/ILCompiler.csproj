@@ -33,7 +33,7 @@
   <PropertyGroup>
     <ILCompilerVersion>6.0.0-preview.5.21222.2</ILCompilerVersion>
 
-    <ObjWriterArtifactPath Condition="'$(TargetsWindows)' == 'true'">$(ArtifactsDir)llvm\build\$(TargetArchitecture)\bin\Release\$(LibPrefix)objwriter$(LibSuffix)</ObjWriterArtifactPath>
+    <ObjWriterArtifactPath Condition="'$(TargetsWindows)' == 'true'">$(ArtifactsDir)llvm\build\$(TargetArchitecture)\bin\$(ObjWriterConfiguration)\$(LibPrefix)objwriter$(LibSuffix)</ObjWriterArtifactPath>
     <ObjWriterArtifactPath Condition="'$(TargetsWindows)' != 'true'">$(ArtifactsDir)llvm\build\$(TargetArchitecture)\lib\$(LibPrefix)objwriter$(LibSuffix)</ObjWriterArtifactPath>
 
     <!-- CoreDisTools are used in debugging visualizers. -->

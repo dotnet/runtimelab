@@ -7,7 +7,7 @@
 
     <BuildArguments>"$(ArtifactsDir)" "$(RepoRoot)"</BuildArguments>
     <BuildArguments>$(BuildArguments) $(BuildArchitecture) $(TargetArchitecture)</BuildArguments>
-    <BuildArguments>$(BuildArguments) Release $(Compiler)</BuildArguments>
+    <BuildArguments>$(BuildArguments) $(ObjWriterConfiguration) $(Compiler)</BuildArguments>
   </PropertyGroup>
 
   <Target Name="Build">

@@ -104,6 +104,7 @@
     <!-- There's no checked configuration on Mono. -->
     <MonoConfiguration Condition="'$(MonoConfiguration)' == '' and '$(RuntimeConfiguration.ToLower())' == 'checked'">Debug</MonoConfiguration>
     <LibrariesConfiguration Condition="'$(LibrariesConfiguration)' == ''">$(Configuration)</LibrariesConfiguration>
+    <ObjWriterConfiguration Condition="'$(ObjWriterConfiguration)' == ''">Release</ObjWriterConfiguration>
   </PropertyGroup>
 
   <PropertyGroup Label="CalculateOS">
