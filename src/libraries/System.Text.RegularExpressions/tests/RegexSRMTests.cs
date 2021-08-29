@@ -23,11 +23,38 @@ namespace System.Text.RegularExpressions.Tests
 #endif
         }
 
-        internal static RegexOptions DFA = (RegexOptions)0x400;
+        internal const RegexOptions DFA = (RegexOptions)0x400;
 
         private const char Turkish_I_withDot = '\u0130';
         private const char Turkish_i_withoutDot = '\u0131';
         private const char Kelvin_sign = '\u212A';
+
+        [Fact]
+        [ActiveIssue(@"inconsitent treatement of \u200c and \u200d in \w vs \b")]
+        public void TestBoundary()
+        {
+            Assert.True(Regex.IsMatch(" AB\u200cCD ", @"\b\w+\b"));
+            Assert.True(Regex.IsMatch(" AB\u200dCD ", @"\b\w+\b"));
+        }
+
+        [Fact]
+        public void TestBoundary_DFA()
+        {
+            Assert.True(Regex.IsMatch(" AB\u200cCD ", @"\b\w+\b", RegexSRMTests.DFA));
+            Assert.True(Regex.IsMatch(" AB\u200dCD ", @"\b\w+\b", RegexSRMTests.DFA));
+        }
+
+        [Fact]
+        public void TestWordchar()
+        {
+            var w1 = new Regex(@"\w", RegexOptions.None);
+            var w2 = new Regex(@"\w", DFA);
+            var ambiguous = new List<char>();
+            for (char c = '\0'; c < '\uFFFF'; c++)
+                if (w1.IsMatch(c.ToString()) != w2.IsMatch(c.ToString()))
+                    ambiguous.Add(c);
+            Assert.Empty(ambiguous);
+        }
 
         [Theory]
         [InlineData("((?:0*)+?(?:.*)+?)?", "0a", 2)]

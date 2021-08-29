@@ -105,6 +105,7 @@ namespace System.Text.RegularExpressions
             var parser = new RegexParser(pattern, options, culture, caps, capsize, capnames, stackalloc int[OptionStackDefaultSize]);
 
             RegexNode root = parser.ScanReplacement();
+
             var regexReplacement = new RegexReplacement(pattern, root, caps);
             parser.Dispose();
 

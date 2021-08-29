@@ -24,6 +24,9 @@ namespace System.Text.RegularExpressions
         private readonly string[] _strings; // table of string constants
         private readonly int[] _rules;      // negative -> group #, positive -> string #
 
+        // If true then this replacement contains at least one capture group name
+        public bool HasGroups { get; private set; }
+
         /// <summary>
         /// Since RegexReplacement shares the same parser as Regex,
         /// the constructor takes a RegexNode which is a concatenation
@@ -41,6 +44,7 @@ namespace System.Text.RegularExpressions
             FourStackStrings stackStrings = default;
             var strings = new ValueListBuilder<string>(MemoryMarshal.CreateSpan(ref stackStrings.Item1!, 4));
             var rules = new ValueListBuilder<int>(stackalloc int[64]);
+            HasGroups = false;
 
             int childCount = concat.ChildCount();
             for (int i = 0; i < childCount; i++)
@@ -72,6 +76,8 @@ namespace System.Text.RegularExpressions
                         }
 
                         rules.Append(-Specials - 1 - slot);
+                        HasGroups = true;
+
                         break;
 
                     default:
@@ -114,6 +120,9 @@ namespace System.Text.RegularExpressions
             if (!replRef.TryGetTarget(out repl) || !repl.Pattern.Equals(replacement))
             {
                 repl = RegexParser.ParseReplacement(replacement, roptions, caps, capsize, capnames);
+                if (repl.HasGroups && ((roptions & RegexOptions.DFA) != 0))
+                    throw new NotSupportedException(SRM.Regex._DFA_incompatible_with + "replacement pattern with substitutions");
+
                 replRef.SetTarget(repl);
             }
 
@@ -213,7 +222,30 @@ namespace System.Text.RegularExpressions
 
             var state = (replacement: this, segments: SegmentStringBuilder.Create(), inputMemory: input.AsMemory(), prevat: 0, count);
 
-            if (!regex.RightToLeft)
+            if (regex._useSRM)
+            {
+                Match match = regex.Match(input, startat, input.Length - startat);
+                if (!match.Success)
+                    return input;
+
+                while (match.Success)
+                {
+                    if (state.prevat < match.Index)
+                        state.segments.Add(state.inputMemory.Slice(state.prevat, match.Index - state.prevat));
+                    state.prevat = match.Index + match.Length;
+                    ReplacementImpl(ref state.segments, match);
+
+                    if (state.count > 0) state.count -= 1;
+                    if (state.count == 0) break;
+
+                    match = match.NextMatch();
+                }
+
+                // final segment
+                if (state.prevat < input.Length)
+                    state.segments.Add(state.inputMemory.Slice(state.prevat, input.Length - state.prevat));
+            }
+            else if (!regex.RightToLeft)
             {
                 regex.Run(input, startat, ref state, (ref (RegexReplacement thisRef, SegmentStringBuilder segments, ReadOnlyMemory<char> inputMemory, int prevat, int count) state, Match match) =>
                 {
