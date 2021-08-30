@@ -350,13 +350,13 @@ namespace System.Text.RegularExpressions.SRM
 
         #region various properties
         /// <summary>
-        /// Returns true if this is equivalent to .*
+        /// Returns true if this is equivalent to .* (the node must be eager also)
         /// </summary>
         public bool IsDotStar
         {
             get
             {
-                return this.IsStar && this.left.kind == SymbolicRegexKind.Singleton &&
+                return this.IsStar && this.left.kind == SymbolicRegexKind.Singleton && !IsLazy &&
                     this.builder.solver.AreEquivalent(this.builder.solver.True, this.left.set);
             }
         }
@@ -1018,10 +1018,6 @@ namespace System.Text.RegularExpressions.SRM
                                 var deriv = builder.MkConcat(step, star);
                                 return deriv;
                             }
-                            //else if (IsMaybe)
-                            //{
-                            //    return step;
-                            //}
                             else
                             {
                                 int newupper = (upper == int.MaxValue ? int.MaxValue : upper - 1);
