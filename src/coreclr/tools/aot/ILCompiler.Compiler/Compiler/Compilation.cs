@@ -15,6 +15,7 @@ using Internal.IL.Stubs;
 using Internal.TypeSystem;
 using Internal.TypeSystem.Ecma;
 
+using CORINFO_DEVIRTUALIZATION_DETAIL = Internal.JitInterface.CORINFO_DEVIRTUALIZATION_DETAIL;
 using Debug = System.Diagnostics.Debug;
 
 namespace ILCompiler
@@ -94,6 +95,11 @@ namespace ILCompiler
         public bool CanInline(MethodDesc caller, MethodDesc callee)
         {
             return _inliningPolicy.CanInline(caller, callee);
+        }
+
+        public bool CanConstructType(TypeDesc type)
+        {
+            return _devirtualizationManager.CanConstructType(type);
         }
 
         public DelegateCreationInfo GetDelegateCtor(TypeDesc delegateType, MethodDesc target, bool followVirtualDispatch)
@@ -207,9 +213,9 @@ namespace ILCompiler
             return _devirtualizationManager.IsEffectivelySealed(method);
         }
 
-        public MethodDesc ResolveVirtualMethod(MethodDesc declMethod, TypeDesc implType)
+        public MethodDesc ResolveVirtualMethod(MethodDesc declMethod, TypeDesc implType, out CORINFO_DEVIRTUALIZATION_DETAIL devirtualizationDetail)
         {
-            return _devirtualizationManager.ResolveVirtualMethod(declMethod, implType);
+            return _devirtualizationManager.ResolveVirtualMethod(declMethod, implType, out devirtualizationDetail);
         }
 
         public bool NeedsRuntimeLookup(ReadyToRunHelperId lookupKind, object targetOfLookup)
@@ -400,7 +406,7 @@ namespace ILCompiler
                 return reflectionCoreModule.GetKnownType("System.Reflection.Runtime.TypeInfos", "RuntimeTypeInfo");
             }
 
-            return null;
+            return TypeSystemContext.SystemModule.GetKnownType("System", "Type");
         }
 
         public bool IsFatPointerCandidate(MethodDesc containingMethod, MethodSignature signature)

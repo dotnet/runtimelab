@@ -1,7 +1,7 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection.Runtime.Assemblies;
 using System.Reflection.Runtime.General;
 using System.Reflection.Runtime.CustomAttributes;
@@ -60,6 +60,7 @@ namespace System.Reflection.Runtime.Modules.NativeFormat
             }
         }
 
+        [RequiresUnreferencedCode("Fields might be removed")]
         public sealed override FieldInfo GetField(string name, BindingFlags bindingAttr)
         {
             QScopeDefinition scope = _assembly.Scope;
@@ -67,6 +68,7 @@ namespace System.Reflection.Runtime.Modules.NativeFormat
             return scope.ScopeDefinition.GlobalModuleType.GetNamedType(reader).GetField(name, bindingAttr);
         }
 
+        [RequiresUnreferencedCode("Fields might be removed")]
         public sealed override FieldInfo[] GetFields(BindingFlags bindingFlags)
         {
             QScopeDefinition scope = _assembly.Scope;
@@ -74,6 +76,7 @@ namespace System.Reflection.Runtime.Modules.NativeFormat
             return scope.ScopeDefinition.GlobalModuleType.GetNamedType(reader).GetFields(bindingFlags);
         }
 
+        [RequiresUnreferencedCode("Methods might be removed")]
         protected sealed override MethodInfo GetMethodImpl(string name, BindingFlags bindingAttr, Binder binder, CallingConventions callConvention, Type[] types, ParameterModifier[] modifiers)
         {
             QScopeDefinition scope = _assembly.Scope;
@@ -90,6 +93,7 @@ namespace System.Reflection.Runtime.Modules.NativeFormat
             }
         }
 
+        [RequiresUnreferencedCode("Methods might be removed")]
         public sealed override MethodInfo[] GetMethods(BindingFlags bindingFlags)
         {
             QScopeDefinition scope = _assembly.Scope;

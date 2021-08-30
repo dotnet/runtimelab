@@ -42,7 +42,7 @@ private:
 
 public:
 
-    bool ReadConfigValue(_In_z_ const TCHAR* wszName, uint32_t* pValue);
+    bool ReadConfigValue(_In_z_ const TCHAR* wszName, uint32_t* pValue, bool decimal = false);
 
 #define DEFINE_VALUE_ACCESSOR(_name, defaultVal)        \
     uint32_t Get##_name()                                 \
@@ -52,7 +52,7 @@ public:
         uint32_t uiValue;                               \
         m_uiConfigValues[RCV_##_name] = ReadConfigValue(_T(#_name), &uiValue) ? uiValue : defaultVal; \
         m_uiConfigValuesRead |= 1 << RCV_##_name;       \
-        return uiValue;                                 \
+        return m_uiConfigValues[RCV_##_name];           \
     }
 
 

@@ -88,6 +88,10 @@ namespace ILCompiler
 
         public IReadOnlyList<string> _mibcFilePaths = Array.Empty<string>();
 
+        private IReadOnlyList<string> _singleWarnEnabledAssemblies = Array.Empty<string>();
+        private IReadOnlyList<string> _singleWarnDisabledAssemblies = Array.Empty<string>();
+        private bool _singleWarn;
+
         private bool _help;
 
         private Program()
@@ -196,7 +200,7 @@ namespace ILCompiler
                 syntax.DefineOption("stacktracedata", ref _emitStackTraceData, "Emit data to support generating stack trace strings at runtime");
                 syntax.DefineOption("methodbodyfolding", ref _methodBodyFolding, "Fold identical method bodies");
                 syntax.DefineOptionList("initassembly", ref _initAssemblies, "Assembly(ies) with a library initializer");
-                syntax.DefineOptionList("appcontextswitch", ref _appContextSwitches, "System.AppContext switches to set");
+                syntax.DefineOptionList("appcontextswitch", ref _appContextSwitches, "System.AppContext switches to set (format: 'Key=Value')");
                 syntax.DefineOptionList("feature", ref _featureSwitches, "Feature switches to apply (format: 'Namespace.Name=[true|false]'");
                 syntax.DefineOptionList("runtimeopt", ref _runtimeOptions, "Runtime options to set");
                 syntax.DefineOption("singlethreaded", ref _singleThreaded, "Run compilation on a single thread");
@@ -204,6 +208,9 @@ namespace ILCompiler
                 syntax.DefineOption("preinitstatics", ref _preinitStatics, "Interpret static constructors at compile time if possible (implied by -O)");
                 syntax.DefineOption("nopreinitstatics", ref _noPreinitStatics, "Do not interpret static constructors at compile time");
                 syntax.DefineOptionList("nowarn", ref _suppressedWarnings, "Disable specific warning messages");
+                syntax.DefineOption("singlewarn", ref _singleWarn, "Generate single AOT/trimming warning per assembly");
+                syntax.DefineOptionList("singlewarnassembly", ref _singleWarnEnabledAssemblies, "Generate single AOT/trimming warning for given assembly");
+                syntax.DefineOptionList("nosinglewarnassembly", ref _singleWarnDisabledAssemblies, "Expand AOT/trimming warnings for given assembly");
                 syntax.DefineOptionList("directpinvoke", ref _directPInvokes, "PInvoke to call directly");
                 syntax.DefineOptionList("directpinvokelist", ref _directPInvokeLists, "File with list of PInvokes to call directly");
 
@@ -213,7 +220,7 @@ namespace ILCompiler
                 syntax.DefineOption("targetarch", ref _targetArchitectureStr, "Target architecture for cross compilation");
                 syntax.DefineOption("targetos", ref _targetOSStr, "Target OS for cross compilation");
 
-                syntax.DefineOption("singlemethodtypename", ref _singleMethodTypeName, "Single method compilation: name of the owning type");
+                syntax.DefineOption("singlemethodtypename", ref _singleMethodTypeName, "Single method compilation: assembly-qualified name of the owning type");
                 syntax.DefineOption("singlemethodname", ref _singleMethodName, "Single method compilation: name of the method");
                 syntax.DefineOptionList("singlemethodgenericarg", ref _singleMethodGenericArgs, "Single method compilation: generic arguments to the method");
 
@@ -629,7 +636,7 @@ namespace ILCompiler
             }
             ilProvider = new FeatureSwitchManager(ilProvider, featureSwitches);
 
-            var logger = new Logger(Console.Out, _isVerbose, ProcessWarningCodes(_suppressedWarnings));
+            var logger = new Logger(Console.Out, _isVerbose, ProcessWarningCodes(_suppressedWarnings), _singleWarn, _singleWarnEnabledAssemblies, _singleWarnDisabledAssemblies);
 
             var stackTracePolicy = _emitStackTraceData ?
                 (StackTraceEmissionPolicy)new EcmaMethodStackTraceEmissionPolicy() : new NoStackTraceEmissionPolicy();
@@ -753,12 +760,14 @@ namespace ILCompiler
                 // This could be a command line switch if we really wanted to.
                 builder.UseGenericDictionaryLayoutProvider(scanResults.GetDictionaryLayoutInfo());
 
-                // If we feed any outputs of the scanner into the compilation, it's essential
-                // we use scanner's devirtualization manager. It prevents optimizing codegens
-                // from accidentally devirtualizing cases that can never happen at runtime
-                // (e.g. devirtualizing a method on a type that never gets allocated).
+                // If we have a scanner, we can drive devirtualization using the information
+                // we collected at scanning time (effectively sealing unsealed types if possible).
+                // This could be a command line switch if we really wanted to.
                 builder.UseDevirtualizationManager(scanResults.GetDevirtualizationManager());
 
+                // If we use the scanner's result, we need to consult it to drive inlining.
+                // This prevents e.g. devirtualizing and inlining methods on types that were
+                // never actually allocated.
                 builder.UseInliningPolicy(scanResults.GetInliningPolicy());
             }
 

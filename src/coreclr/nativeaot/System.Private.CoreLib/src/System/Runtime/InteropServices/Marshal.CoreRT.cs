@@ -34,13 +34,6 @@ namespace System.Runtime.InteropServices
             return new IntPtr(RuntimeAugments.InteropCallbacks.GetStructFieldOffset(t.TypeHandle, fieldName));
         }
 
-        private static object PtrToStructureHelper(IntPtr ptr, Type structureType)
-        {
-            object boxedStruct = InteropExtensions.RuntimeNewObject(structureType.TypeHandle);
-            PtrToStructureImpl(ptr, boxedStruct);
-            return boxedStruct;
-        }
-
         private static void PtrToStructureHelper(IntPtr ptr, object structure, bool allowValueClasses)
         {
             if (ptr == IntPtr.Zero)
@@ -199,14 +192,14 @@ namespace System.Runtime.InteropServices
             return PInvokeMarshal.GetFunctionPointerForDelegate(d);
         }
 
-        public static int GetLastWin32Error()
+        public static int GetLastPInvokeError()
         {
-            return PInvokeMarshal.GetLastWin32Error();
+            return PInvokeMarshal.t_lastError;
         }
 
-        internal static void SetLastWin32Error(int errorCode)
+        public static void SetLastPInvokeError(int error)
         {
-            PInvokeMarshal.SetLastWin32Error(errorCode);
+            PInvokeMarshal.t_lastError = error;
         }
 
         internal static bool IsPinnable(object o)

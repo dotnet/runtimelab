@@ -25,7 +25,7 @@
 
 #include <string.h>
 
-bool RhConfig::ReadConfigValue(_In_z_ const TCHAR *wszName, uint32_t* pValue)
+bool RhConfig::ReadConfigValue(_In_z_ const TCHAR *wszName, uint32_t* pValue, bool decimal)
 {
     TCHAR wszBuffer[CONFIG_VAL_MAXLEN + 1]; // 8 hex digits plus a nul terminator.
     const uint32_t cchBuffer = sizeof(wszBuffer) / sizeof(wszBuffer[0]);
@@ -52,17 +52,30 @@ bool RhConfig::ReadConfigValue(_In_z_ const TCHAR *wszName, uint32_t* pValue)
 
     for (uint32_t i = 0; i < cchResult; i++)
     {
-        uiResult <<= 4;
-
         TCHAR ch = wszBuffer[i];
-        if ((ch >= _T('0')) && (ch <= _T('9')))
-            uiResult += ch - _T('0');
-        else if ((ch >= _T('a')) && (ch <= _T('f')))
-            uiResult += (ch - _T('a')) + 10;
-        else if ((ch >= _T('A')) && (ch <= _T('F')))
-            uiResult += (ch - _T('A')) + 10;
+
+        if (decimal)
+        {
+            uiResult *= 10;
+
+            if ((ch >= _T('0')) && (ch <= _T('9')))
+                uiResult += ch - _T('0');
+            else
+                return false; // parse error
+        }
         else
-            return false; // parse error
+        {
+            uiResult *= 16;
+
+            if ((ch >= _T('0')) && (ch <= _T('9')))
+                uiResult += ch - _T('0');
+            else if ((ch >= _T('a')) && (ch <= _T('f')))
+                uiResult += (ch - _T('a')) + 10;
+            else if ((ch >= _T('A')) && (ch <= _T('F')))
+                uiResult += (ch - _T('A')) + 10;
+            else
+                return false; // parse error
+        }
     }
 
     *pValue = uiResult;

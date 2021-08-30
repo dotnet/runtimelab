@@ -198,7 +198,6 @@ EXTERN RhpWaitForSuspend2                       : PROC
 EXTERN RhpWaitForGC2                            : PROC
 EXTERN RhpReversePInvokeAttachOrTrapThread2     : PROC
 EXTERN RhExceptionHandling_FailedAllocation     : PROC
-EXTERN RhpCalculateStackTraceWorker             : PROC
 EXTERN RhThrowHwEx                              : PROC
 EXTERN RhThrowEx                                : PROC
 EXTERN RhRethrow                                : PROC

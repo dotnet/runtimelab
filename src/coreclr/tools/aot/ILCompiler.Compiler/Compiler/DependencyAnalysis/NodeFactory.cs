@@ -297,6 +297,11 @@ namespace ILCompiler.DependencyAnalysis
                 return new ReflectableMethodNode(method);
             });
 
+            _objectGetTypeFlowDependencies = new NodeCache<MetadataType, ObjectGetTypeFlowDependenciesNode>(type =>
+            {
+                return new ObjectGetTypeFlowDependenciesNode(type);
+            });
+
             _shadowConcreteMethods = new NodeCache<MethodKey, IMethodNode>(methodKey =>
             {
                 MethodDesc canonMethod = methodKey.Method.GetCanonMethodTarget(CanonicalFormKind.Specific);
@@ -857,6 +862,12 @@ namespace ILCompiler.DependencyAnalysis
             return _reflectableMethods.GetOrAdd(method);
         }
 
+        private NodeCache<MetadataType, ObjectGetTypeFlowDependenciesNode> _objectGetTypeFlowDependencies;
+        internal ObjectGetTypeFlowDependenciesNode ObjectGetTypeFlowDependencies(MetadataType type)
+        {
+            return _objectGetTypeFlowDependencies.GetOrAdd(type);
+        }
+
         private NodeCache<MethodDesc, DynamicInvokeTemplateNode> _dynamicInvokeTemplates;
         internal DynamicInvokeTemplateNode DynamicInvokeTemplate(MethodDesc method)
         {
@@ -923,6 +934,22 @@ namespace ILCompiler.DependencyAnalysis
                     _systemArrayOfTEnumeratorType = ArrayOfTClass.GetNestedType("ArrayEnumerator");
                 }
                 return _systemArrayOfTEnumeratorType;
+            }
+        }
+
+        private MethodDesc _instanceMethodRemovedHelper;
+        public MethodDesc InstanceMethodRemovedHelper
+        {
+            get
+            {
+                if (_instanceMethodRemovedHelper == null)
+                {
+                    // This helper is optional, but it's fine for this cache to be ineffective if that happens.
+                    // Those scenarios are rare and typically deal with small compilations.
+                    _instanceMethodRemovedHelper = TypeSystemContext.GetOptionalHelperEntryPoint("ThrowHelpers", "ThrowInstanceBodyRemoved");
+                }
+
+                return _instanceMethodRemovedHelper;
             }
         }
 

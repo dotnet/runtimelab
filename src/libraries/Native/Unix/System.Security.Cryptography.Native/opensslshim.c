@@ -5,7 +5,6 @@
 #include <assert.h>
 #include <dlfcn.h>
 #include <stdio.h>
-#include <stdbool.h>
 #include <string.h>
 
 #include "opensslshim.h"
@@ -51,7 +50,7 @@ static void DlOpen(const char* libraryName)
     }
 }
 
-static bool OpenLibrary()
+int OpenLibrary()
 {
     // If there is an override of the version specified using the CLR_OPENSSL_VERSION_OVERRIDE
     // env variable, try to load that first.
@@ -90,7 +89,7 @@ static bool OpenLibrary()
     if (libssl == NULL)
     {
         // Debian 9 has dropped support for SSLv3 and so they have bumped their soname. Let's try it
-        // before trying the version 1.0.0 to make it less probable that some of our other dependencies 
+        // before trying the version 1.0.0 to make it less probable that some of our other dependencies
         // end up loading conflicting version of libssl.
         DlOpen(MAKELIB("1.0.2"));
     }
@@ -124,7 +123,14 @@ static bool OpenLibrary()
         DlOpen(MAKELIB("8"));
     }
 
-    return libssl != NULL;
+    if (libssl != NULL)
+    {
+        return 1;
+    }
+    else
+    {
+        return 0;
+    }
 }
 
 void InitializeOpenSSLShim(void)
@@ -139,6 +145,10 @@ void InitializeOpenSSLShim(void)
     // libcrypto.so.1.1.0/libssl.so.1.1.0
     const void* v1_0_sentinel = dlsym(libssl, "SSL_state");
 
+    // Only permit a single assignment here so that two assemblies both triggering the initializer doesn't cause a
+    // race where the fn_ptr is nullptr, then properly bound, then goes back to nullptr right before being used (then bound again).
+    void* volatile tmp_ptr;
+
     // Get pointers to all the functions that are needed
 #define REQUIRED_FUNCTION(fn) \
     if (!(fn##_ptr = (TYPEOF(fn))(dlsym(libssl, #fn)))) { fprintf(stderr, "Cannot get required symbol " #fn " from libssl\n"); abort(); }
@@ -150,11 +160,13 @@ void InitializeOpenSSLShim(void)
     fn##_ptr = (TYPEOF(fn))(dlsym(libssl, #fn));
 
 #define FALLBACK_FUNCTION(fn) \
-    if (!(fn##_ptr = (TYPEOF(fn))(dlsym(libssl, #fn)))) { fn##_ptr = (TYPEOF(fn))local_##fn; }
+    if (!(tmp_ptr = dlsym(libssl, #fn))) { tmp_ptr = (void*)local_##fn; } \
+    fn##_ptr = (TYPEOF(fn))tmp_ptr;
 
 #define RENAMED_FUNCTION(fn,oldfn) \
-    fn##_ptr = (TYPEOF(fn))(dlsym(libssl, #fn));\
-    if (!fn##_ptr && !(fn##_ptr = (TYPEOF(fn))(dlsym(libssl, #oldfn)))) { fprintf(stderr, "Cannot get required symbol " #oldfn " from libssl\n"); abort(); }
+    tmp_ptr = dlsym(libssl, #fn);\
+    if (!tmp_ptr && !(tmp_ptr = dlsym(libssl, #oldfn))) { fprintf(stderr, "Cannot get required symbol " #oldfn " from libssl\n"); abort(); } \
+    fn##_ptr = (TYPEOF(fn))tmp_ptr;
 
 #define LEGACY_FUNCTION(fn) \
     if (v1_0_sentinel && !(fn##_ptr = (TYPEOF(fn))(dlsym(libssl, #fn)))) { fprintf(stderr, "Cannot get required symbol " #fn " from libssl\n"); abort(); }

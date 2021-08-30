@@ -17,7 +17,7 @@ scriptroot="$( cd -P "$( dirname "$source" )" && pwd )"
 usage()
 {
   echo "Common settings:"
-  echo "  --arch                          Target platform: x86, x64, arm, armel, arm64 or wasm."
+  echo "  --arch (-a)                     Target platform: x86, x64, arm, armel, arm64, s390x or wasm."
   echo "                                  [Default: Your machine's architecture.]"
   echo "  --binaryLog (-bl)               Output binary log."
   echo "  --cross                         Optional argument to signify cross compilation."
@@ -199,19 +199,19 @@ while [[ $# > 0 ]]; do
       fi
       ;;
 
-     -arch)
+     -arch|-a)
       if [ -z ${2+x} ]; then
         echo "No architecture supplied. See help (--help) for supported architectures." 1>&2
         exit 1
       fi
       passedArch="$(echo "$2" | tr "[:upper:]" "[:lower:]")"
       case "$passedArch" in
-        x64|x86|arm|armel|arm64|wasm)
+        x64|x86|arm|armel|arm64|s390x|wasm)
           arch=$passedArch
           ;;
         *)
           echo "Unsupported target architecture '$2'."
-          echo "The allowed values are x86, x64, arm, armel, arm64, and wasm."
+          echo "The allowed values are x86, x64, arm, armel, arm64, s390x, and wasm."
           exit 1
           ;;
       esac

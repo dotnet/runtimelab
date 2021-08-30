@@ -144,7 +144,9 @@ namespace Internal.Reflection.Augments
         public abstract object ActivatorCreateInstance(
             [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.NonPublicConstructors)]
             Type type, bool nonPublic);
-        public abstract object ActivatorCreateInstance(Type type, BindingFlags bindingAttr, Binder binder, object[] args, CultureInfo culture, object[] activationAttributes);
+        public abstract object ActivatorCreateInstance(
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.NonPublicConstructors)]
+            Type type, BindingFlags bindingAttr, Binder binder, object[] args, CultureInfo culture, object[] activationAttributes);
 
         // V2 api: Creates open or closed delegates to static or instance methods - relaxed signature checking allowed.
         public abstract Delegate CreateDelegate(Type type, object firstArgument, MethodInfo method, bool throwOnBindFailure);
@@ -153,10 +155,11 @@ namespace Internal.Reflection.Augments
         public abstract Delegate CreateDelegate(Type type, MethodInfo method, bool throwOnBindFailure);
 
         // V1 api: Creates closed delegates to instance methods only, relaxed signature checking disallowed.
+        [RequiresUnreferencedCode("The target method might be removed")]
         public abstract Delegate CreateDelegate(Type type, object target, string method, bool ignoreCase, bool throwOnBindFailure);
 
         // V1 api: Creates open delegates to static methods only, relaxed signature checking disallowed.
-        public abstract Delegate CreateDelegate(Type type, Type target, string method, bool ignoreCase, bool throwOnBindFailure);
+        public abstract Delegate CreateDelegate(Type type, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type target, string method, bool ignoreCase, bool throwOnBindFailure);
 
 #if FEATURE_COMINTEROP
         public abstract Type GetTypeFromCLSID(Guid clsid, string server, bool throwOnError);

@@ -1,1 +1,1 @@
-Sources taken from https://github.com/mono/linker/tree/dd7d70118b7146125781c830bbff47a8cb953f39/src/linker/Linker.Dataflow.
+Sources taken from https://github.com/mono/linker/tree/620b243420f5218be7002fdc04223c05854c60d6/src/linker/Linker.Dataflow.

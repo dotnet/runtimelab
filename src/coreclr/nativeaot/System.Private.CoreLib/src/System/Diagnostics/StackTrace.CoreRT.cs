@@ -1,43 +1,32 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-using System;
 using System.Runtime;
+using System.Runtime.CompilerServices;
 using System.Text;
-using System.Reflection;
-
-using Internal.Diagnostics;
 
 namespace System.Diagnostics
 {
     public partial class StackTrace
     {
-        /// <summary>
-        /// Construct a stack trace based on a subset of a precomputed array of IP addresses.
-        /// </summary>
-        /// <param name="ipAddresses">Array of IP addresses to use as the stack trace</param>
-        /// <param name="startIndex">Starting index in the array to use</param>
-        /// <param name="endIndex">Ending index in the array (one plus the last element)</param>
-        /// <param name="needFileInfo">True when source file / line information is requested</param>
-        internal StackTrace(IntPtr[] ipAddresses, int startIndex, int endIndex, bool needFileInfo)
-        {
-            InitializeForIpAddressArray(ipAddresses, startIndex, endIndex, needFileInfo);
-        }
-
 #if !TARGET_WASM
         /// <summary>
         /// Initialize the stack trace based on current thread and given initial frame index.
         /// </summary>
+        [MethodImplAttribute(MethodImplOptions.NoInlining)]
         private void InitializeForCurrentThread(int skipFrames, bool needFileInfo)
         {
+            const int SystemDiagnosticsStackDepth = 2;
+
             int frameCount = -RuntimeImports.RhGetCurrentThreadStackTrace(Array.Empty<IntPtr>());
             Debug.Assert(frameCount >= 0);
             IntPtr[] stackTrace = new IntPtr[frameCount];
             int trueFrameCount = RuntimeImports.RhGetCurrentThreadStackTrace(stackTrace);
             Debug.Assert(trueFrameCount == frameCount);
-            InitializeForIpAddressArray(stackTrace, skipFrames, frameCount, needFileInfo);
+            InitializeForIpAddressArray(stackTrace, skipFrames + SystemDiagnosticsStackDepth, frameCount, needFileInfo);
         }
 #endif
+
         /// <summary>
         /// Initialize the stack trace based on a given exception and initial frame index.
         /// </summary>
@@ -59,7 +48,7 @@ namespace System.Diagnostics
             int outputFrameCount = 0;
             for (int frameIndex = 0; frameIndex < frameCount; frameIndex++)
             {
-                if (ipAddresses[frameIndex + skipFrames] != StackTraceHelper.SpecialIP.EdiSeparator)
+                if (ipAddresses[frameIndex + skipFrames] != Exception.EdiSeparator)
                 {
                     outputFrameCount++;
                 }
@@ -72,7 +61,7 @@ namespace System.Diagnostics
                 for (int frameIndex = 0; frameIndex < frameCount; frameIndex++)
                 {
                     IntPtr ipAddress = ipAddresses[frameIndex + skipFrames];
-                    if (ipAddress != StackTraceHelper.SpecialIP.EdiSeparator)
+                    if (ipAddress != Exception.EdiSeparator)
                     {
                         _stackFrames[outputFrameIndex++] = new StackFrame(ipAddress, needFileInfo);
                     }

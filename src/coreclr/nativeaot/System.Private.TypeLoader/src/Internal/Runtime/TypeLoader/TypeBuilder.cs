@@ -449,11 +449,15 @@ namespace Internal.Runtime.TypeLoader
 
                 if (templateMethod == null)
                 {
+#if SUPPORTS_NATIVE_METADATA_TYPE_LOADING
                     // In this case we were looking for the r2r template to create the dictionary, but
                     // there isn't one. This implies that we don't need a Canon specific dictionary
                     // so just generate something empty
                     method.SetGenericDictionary(new GenericMethodDictionary(Array.Empty<GenericDictionaryCell>()));
                     return;
+#else
+                    throw new TypeBuilder.MissingTemplateException();
+#endif
                 }
             }
 

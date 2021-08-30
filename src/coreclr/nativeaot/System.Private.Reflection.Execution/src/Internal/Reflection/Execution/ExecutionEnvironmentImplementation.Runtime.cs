@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using System.Reflection.Runtime.General;
 
@@ -78,7 +79,7 @@ namespace Internal.Reflection.Execution
             throw new ArgumentException(SR.Arg_NotFoundIFace);
         }
 
-        public sealed override void GetInterfaceMap(Type instanceType, Type interfaceType, out MethodInfo[] interfaceMethods, out MethodInfo[] targetMethods)
+        public sealed override void GetInterfaceMap(Type instanceType, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicMethods | DynamicallyAccessedMemberTypes.NonPublicMethods)] Type interfaceType, out MethodInfo[] interfaceMethods, out MethodInfo[] targetMethods)
         {
             MethodInfo[] ifaceMethods = interfaceType.GetMethods();
             var tMethods = new MethodInfo[ifaceMethods.Length];

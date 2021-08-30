@@ -7,6 +7,7 @@ using System.Diagnostics;
 
 using Internal.Text;
 using Internal.TypeSystem;
+using Internal.Runtime;
 
 namespace ILCompiler.DependencyAnalysis
 {
@@ -75,6 +76,9 @@ namespace ILCompiler.DependencyAnalysis
             if (!type.IsArray && !type.IsDefType)
                 return false;
 
+            if (type.IsInterface)
+                return false;
+
             TypeDesc declType = type.GetClosestDefType();
 
             for (int interfaceIndex = 0; interfaceIndex < declType.RuntimeInterfaces.Length; interfaceIndex++)
@@ -93,21 +97,28 @@ namespace ILCompiler.DependencyAnalysis
                 if (vtableSlice.HasFixedSlots)
                     slots = vtableSlice.Slots;
                 else
-                    slots = interfaceType.GetAllMethods();
+                    slots = interfaceType.GetAllVirtualMethods();
 
                 foreach (MethodDesc slotMethod in slots)
                 {
                     MethodDesc declMethod = slotMethod;
 
-                    if (declMethod.Signature.IsStatic || !declMethod.IsVirtual)
-                        continue;
+                    Debug.Assert(!declMethod.Signature.IsStatic && declMethod.IsVirtual);
 
                     if (interfaceOnDefinitionType != null)
                         declMethod = factory.TypeSystemContext.GetMethodForInstantiatedType(declMethod.GetTypicalMethodDefinition(), interfaceOnDefinitionType);
 
                     var implMethod = declType.GetTypeDefinition().ResolveInterfaceMethodToVirtualMethodOnType(declMethod);
                     if (implMethod != null)
+                    {
                         return true;
+                    }
+                    else
+                    {
+                        DefaultInterfaceMethodResolution result = declType.ResolveInterfaceMethodToDefaultImplementationOnType(slotMethod, out _);
+                        if (result != DefaultInterfaceMethodResolution.None)
+                            return true;
+                    }
                 }
             }
 
@@ -116,18 +127,25 @@ namespace ILCompiler.DependencyAnalysis
 
         void EmitDispatchMap(ref ObjectDataBuilder builder, NodeFactory factory)
         {
-            var entryCountReservation = builder.ReserveInt();
+            var entryCountReservation = builder.ReserveShort();
+            var defaultEntryCountReservation = builder.ReserveShort();
             int entryCount = 0;
 
             TypeDesc declType = _type.GetClosestDefType();
+            TypeDesc declTypeDefinition = declType.GetTypeDefinition();
+            DefType[] declTypeRuntimeInterfaces = declType.RuntimeInterfaces;
+            DefType[] declTypeDefinitionRuntimeInterfaces = declTypeDefinition.RuntimeInterfaces;
 
             // Catch any runtime interface collapsing. We shouldn't have any
-            Debug.Assert(declType.RuntimeInterfaces.Length == declType.GetTypeDefinition().RuntimeInterfaces.Length);
+            Debug.Assert(declTypeRuntimeInterfaces.Length == declTypeDefinitionRuntimeInterfaces.Length);
 
-            for (int interfaceIndex = 0; interfaceIndex < declType.RuntimeInterfaces.Length; interfaceIndex++)
+            var defaultImplementations = new List<(int InterfaceIndex, int InterfaceMethodSlot, int ImplMethodSlot)>();
+
+            // Resolve all the interfaces, but only emit non-default implementations
+            for (int interfaceIndex = 0; interfaceIndex < declTypeRuntimeInterfaces.Length; interfaceIndex++)
             {
-                var interfaceType = declType.RuntimeInterfaces[interfaceIndex];
-                var interfaceDefinitionType = declType.GetTypeDefinition().RuntimeInterfaces[interfaceIndex];
+                var interfaceType = declTypeRuntimeInterfaces[interfaceIndex];
+                var interfaceDefinitionType = declTypeDefinitionRuntimeInterfaces[interfaceIndex];
                 Debug.Assert(interfaceType.IsInterface);
 
                 IReadOnlyList<MethodDesc> virtualSlots = factory.VTable(interfaceType).Slots;
@@ -138,7 +156,7 @@ namespace ILCompiler.DependencyAnalysis
                     if(!interfaceType.IsTypeDefinition)
                         declMethod = factory.TypeSystemContext.GetMethodForInstantiatedType(declMethod.GetTypicalMethodDefinition(), (InstantiatedType)interfaceDefinitionType);
 
-                    var implMethod = declType.GetTypeDefinition().ResolveInterfaceMethodToVirtualMethodOnType(declMethod);
+                    var implMethod = declTypeDefinition.ResolveInterfaceMethodToVirtualMethodOnType(declMethod);
 
                     // Interface methods first implemented by a base type in the hierarchy will return null for the implMethod (runtime interface
                     // dispatch will walk the inheritance chain).
@@ -152,15 +170,57 @@ namespace ILCompiler.DependencyAnalysis
                         if (!implType.IsTypeDefinition)
                             targetMethod = factory.TypeSystemContext.GetMethodForInstantiatedType(implMethod.GetTypicalMethodDefinition(), (InstantiatedType)implType);
 
-                        builder.EmitShort(checked((short)interfaceIndex));
-                        builder.EmitShort(checked((short)(interfaceMethodSlot + (interfaceType.HasGenericDictionarySlot() ? 1 : 0))));
-                        builder.EmitShort(checked((short)VirtualMethodSlotHelper.GetVirtualMethodSlot(factory, targetMethod, declType)));
+                        builder.EmitShort((short)checked((ushort)interfaceIndex));
+                        builder.EmitShort((short)checked((ushort)(interfaceMethodSlot + (interfaceType.HasGenericDictionarySlot() ? 1 : 0))));
+                        builder.EmitShort((short)checked((ushort)VirtualMethodSlotHelper.GetVirtualMethodSlot(factory, targetMethod, declType)));
                         entryCount++;
+                    }
+                    else
+                    {
+                        // Is there a default implementation?
+
+                        int? implSlot = null;
+
+                        DefaultInterfaceMethodResolution result = declTypeDefinition.ResolveInterfaceMethodToDefaultImplementationOnType(declMethod, out implMethod);
+                        if (result == DefaultInterfaceMethodResolution.DefaultImplementation)
+                        {
+                            DefType providingInterfaceDefinitionType = (DefType)implMethod.OwningType;
+                            if (interfaceType != interfaceDefinitionType)
+                                implMethod = implMethod.InstantiateSignature(declType.Instantiation, Instantiation.Empty);
+
+                            implSlot = VirtualMethodSlotHelper.GetDefaultInterfaceMethodSlot(factory, implMethod, declType, providingInterfaceDefinitionType);
+                        }
+                        else if (result == DefaultInterfaceMethodResolution.Reabstraction)
+                        {
+                            implSlot = SpecialDispatchMapSlot.Reabstraction;
+                        }
+                        else if (result == DefaultInterfaceMethodResolution.Diamond)
+                        {
+                            implSlot = SpecialDispatchMapSlot.Diamond;
+                        }
+
+                        if (implSlot.HasValue)
+                        {
+                            defaultImplementations.Add((
+                                interfaceIndex, 
+                                interfaceMethodSlot + (interfaceType.HasGenericDictionarySlot() ? 1 : 0),
+                                implSlot.Value));
+                        }
                     }
                 }
             }
 
-            builder.EmitInt(entryCountReservation, entryCount);
+            // Now emit the default implementations
+            foreach (var defaultImplementation in defaultImplementations)
+            {
+                builder.EmitShort((short)checked((ushort)defaultImplementation.InterfaceIndex));
+                builder.EmitShort((short)checked((ushort)defaultImplementation.InterfaceMethodSlot));
+                builder.EmitShort((short)checked((ushort)defaultImplementation.ImplMethodSlot));
+            }
+
+            // Update the header
+            builder.EmitShort(entryCountReservation, (short)checked((ushort)entryCount));
+            builder.EmitShort(defaultEntryCountReservation, (short)checked((ushort)defaultImplementations.Count));
         }
 
         public override ObjectData GetData(NodeFactory factory, bool relocsOnly = false)

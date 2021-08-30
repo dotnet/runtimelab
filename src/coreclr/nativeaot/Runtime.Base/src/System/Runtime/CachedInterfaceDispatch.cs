@@ -32,7 +32,9 @@ namespace System.Runtime
                 return InternalCalls.RhpUpdateDispatchCellCache(pCell, pTargetCode, pObject.EEType, ref cellInfo);
             }
 
-            throw pObject.EEType->GetClasslibException(ExceptionIDs.EntrypointNotFound);
+            // "Valid method implementation was not found."
+            EH.FallbackFailFast(RhFailFastReason.InternalError, null);
+            return IntPtr.Zero;
         }
 
         [RuntimeExport("RhpResolveInterfaceMethod")]

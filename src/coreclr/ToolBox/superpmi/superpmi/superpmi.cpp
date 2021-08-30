@@ -230,6 +230,8 @@ int __cdecl main(int argc, char* argv[])
         diffMCL.InitializeMCL(o.diffMCLFilename);
     }
 
+    SetDebugDumpVariables();
+
     // The method context reader handles skipping any unrequested method contexts
     // Used in conjunction with an MCI file, it does a lot less work...
     MethodContextReader* reader =
@@ -293,7 +295,8 @@ int __cdecl main(int argc, char* argv[])
         // Now read the data into a MethodContext. This could throw if the method context data is corrupt.
 
         loadedCount++;
-        if (!MethodContext::Initialize(loadedCount, mcb.buff, mcb.size, &mc))
+        const int mcIndex = reader->GetMethodContextIndex();
+        if (!MethodContext::Initialize(mcIndex, mcb.buff, mcb.size, &mc))
         {
             return (int)SpmiResult::GeneralFailure;
         }

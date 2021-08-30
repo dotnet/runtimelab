@@ -54,11 +54,10 @@
     </Compile>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Internal\Diagnostics\ExceptionExtensions.cs" />
-    <Compile Include="Internal\Diagnostics\StackTraceHelper.cs" />
     <Compile Include="Internal\Runtime\CompilerHelpers\DelegateHelpers.cs" />
     <Compile Include="Internal\Runtime\CompilerHelpers\LibraryInitializer.cs" />
     <Compile Include="Internal\Runtime\CompilerHelpers\ReflectionHelpers.cs" />
+    <Compile Include="Internal\Runtime\CompilerHelpers\SharedCodeHelpers.cs" />
     <Compile Include="Internal\Runtime\CompilerHelpers\StartupCode\ThreadingHelpers.cs" />
     <Compile Include="Internal\Runtime\CompilerHelpers\StartupCode\StartupCodeHelpers.Reflection.cs" />
   </ItemGroup>
@@ -265,11 +264,11 @@
   <ItemGroup Condition="'$(TargetsWindows)'=='true'">
     <Compile Include="Microsoft\Win32\SafeHandles\SafeThreadPoolIOHandle.cs" />
     <Compile Include="System\Runtime\InteropServices\PInvokeMarshal.Windows.cs" />
+    <Compile Include="$(CommonPath)\System\Runtime\InteropServices\Variant.cs">
+      <Link>System\Runtime\InteropServices\Variant.cs</Link>
+    </Compile>
     <Compile Include="$(CommonPath)\Interop\Windows\Kernel32\Interop.GetCurrentThreadId.cs">
       <Link>Interop\Windows\Kernel32\Interop.GetCurrentThreadId.cs</Link>
-    </Compile>
-    <Compile Include="$(CommonPath)\Interop\Windows\Kernel32\Interop.SetLastError.cs">
-      <Link>Interop\Windows\Kernel32\Interop.SetLastError.cs</Link>
     </Compile>
     <Compile Include="$(CommonPath)\Interop\Windows\Kernel32\Interop.IsDebuggerPresent.cs">
       <Link>Interop\Windows\Kernel32\Interop.IsDebuggerPresent.cs</Link>
@@ -285,6 +284,9 @@
     </Compile>
     <Compile Include="$(CommonPath)\Interop\Windows\Ole32\Interop.CoGetApartmentType.cs">
       <Link>Interop\Windows\Ole32\Interop.CoGetApartmentType.cs</Link>
+    </Compile>
+    <Compile Include="$(CommonPath)\Interop\Windows\OleAut32\Interop.VariantClear.cs">
+      <Link>Interop\Windows\OleAut32\Interop.VariantClear.cs</Link>
     </Compile>
     <Compile Include="System\Environment.CoreRT.Windows.cs" />
     <Compile Include="System\Environment.CoreRT.Win32.cs" />
@@ -339,9 +341,6 @@
     </Compile>
     <Compile Include="$(CommonPath)\Interop\Unix\System.Native\Interop.Threading.cs">
       <Link>Interop\Unix\System.Native\Interop.Threading.cs</Link>
-    </Compile>
-    <Compile Include="$(CommonPath)\Interop\Unix\System.Native\Interop.ErrNo.cs">
-      <Link>Interop\Unix\System.Native\Interop.ErrNo.cs</Link>
     </Compile>
     <Compile Include="$(CommonPath)\Interop\Unix\System.Native\Interop.GetEnviron.cs">
       <Link>Interop\Unix\System.Native\Interop.GetEnviron.cs</Link>
@@ -403,6 +402,9 @@
     <DefineConstants Condition="'$(Platform)' == 'arm'">FEATURE_64BIT_ALIGNMENT;$(DefineConstants)</DefineConstants>
     <DefineConstants Condition="'$(Platform)' == 'armel'">FEATURE_64BIT_ALIGNMENT;$(DefineConstants)</DefineConstants>
     <DefineConstants Condition="'$(Platform)' == 'wasm'">FEATURE_64BIT_ALIGNMENT;$(DefineConstants)</DefineConstants>
+
+    <IntermediatesDir>$(ArtifactsObjDir)\coreclr\$(TargetOS).$(TargetArchitecture).$(CoreCLRConfiguration)</IntermediatesDir>
+    <IntermediatesDir Condition="'$(Ninja)' == 'false' and $([MSBuild]::IsOsPlatform('Windows'))">$(IntermediatesDir)\ide</IntermediatesDir>
   </PropertyGroup>
   <ItemGroup Condition="'$(InPlaceRuntime)' == 'true'">
     <Compile Include="$(RuntimeBasePath)System\Runtime\CachedInterfaceDispatch.cs">
@@ -452,8 +454,8 @@
     </Compile>
   </ItemGroup>
   <ItemGroup Condition="'$(InPlaceRuntime)' == 'true'">
-    <Compile Include="$(BaseIntermediateOutputPath)..\..\$(TargetOS).$(TargetArchitecture).$(CoreCLRConfiguration)\nativeaot\Runtime\Full\AsmOffsets.cs" Condition="'$(Platform)'!='llvm'"/>
-    <Compile Include="$(BaseIntermediateOutputPath)..\..\$(TargetOS).$(TargetArchitecture).$(CoreCLRConfiguration)\nativeaot\Runtime\Portable\AsmOffsetsPortable.cs" Condition="'$(Platform)'=='llvm'"/>
+    <Compile Include="$(IntermediatesDir)\nativeaot\Runtime\Full\AsmOffsets.cs" Condition="'$(Platform)'!='llvm'"/>
+    <Compile Include="$(IntermediatesDir)\nativeaot\Runtime\Portable\AsmOffsetsPortable.cs" Condition="'$(Platform)'=='llvm'"/>
   </ItemGroup>
 
   <Import Project="$(LibrariesProjectRoot)\System.Private.CoreLib\src\System.Private.CoreLib.Shared.projitems" Label="Shared" />

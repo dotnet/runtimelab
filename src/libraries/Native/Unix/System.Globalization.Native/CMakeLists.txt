@@ -14,12 +14,12 @@ if(CLR_CMAKE_TARGET_UNIX)
     add_compile_options(-Wno-unknown-warning-option)
 
     if (CLR_CMAKE_TARGET_UNIX_WASM)
-	    message("including ICU")
-	    # add ICU support to emscripten and workaround https://github.com/emscripten-core/emscripten/issues/9302
-	    # ucol_setVariableTop is deprecated so disable warnings
-	    add_compile_options(-s USE_ICU=1 -I$ENV{EMSDK}/upstream/emscripten/cache/ports/icu/icu/source/i18n -Wno-deprecated-declarations)
+        message("including ICU")
+        # add ICU support to emscripten and workaround https://github.com/emscripten-core/emscripten/issues/9302
+        # ucol_setVariableTop is deprecated so disable warnings
+        add_compile_options(-s USE_ICU=1 -I$ENV{EMSDK}/upstream/emscripten/cache/ports/icu/icu/source/i18n -Wno-deprecated-declarations)
     elseif (NOT CLR_CMAKE_TARGET_ANDROID)
-        if (CLR_CMAKE_TARGET_OSX)
+        if (CLR_CMAKE_TARGET_OSX OR CLR_CMAKE_TARGET_MACCATALYST)
             execute_process(COMMAND  brew --prefix OUTPUT_VARIABLE brew_prefix OUTPUT_STRIP_TRAILING_WHITESPACE)
             set(ICU_HOMEBREW_INC_PATH "${brew_prefix}/opt/icu4c/include")
         endif()
@@ -30,7 +30,7 @@ if(CLR_CMAKE_TARGET_UNIX)
             return()
         endif()
 
-        if(CLR_CMAKE_TARGET_OSX)
+        if(CLR_CMAKE_TARGET_OSX OR CLR_CMAKE_TARGET_MACCATALYST)
             add_definitions(-DOSX_ICU_LIBRARY_PATH="/usr/lib/libicucore.dylib")
             add_definitions(-DU_DISABLE_RENAMING)
         else()

@@ -61,6 +61,7 @@ namespace ILCompiler.DependencyAnalysis
         internal readonly EETypeOptionalFieldsBuilder _optionalFieldsBuilder = new EETypeOptionalFieldsBuilder();
         internal readonly EETypeOptionalFieldsNode _optionalFieldsNode;
         protected bool? _mightHaveInterfaceDispatchMap;
+        private bool _hasConditionalDependenciesFromMetadataManager;
 
         public EETypeNode(NodeFactory factory, TypeDesc type)
         {
@@ -72,6 +73,7 @@ namespace ILCompiler.DependencyAnalysis
             Debug.Assert(!type.IsRuntimeDeterminedSubtype);
             _type = type;
             _optionalFieldsNode = new EETypeOptionalFieldsNode(this);
+            _hasConditionalDependenciesFromMetadataManager = factory.MetadataManager.HasConditionalDependenciesDueToEETypePresence(type);
 
             factory.TypeSystemContext.EnsureLoadableType(type);
         }
@@ -199,12 +201,12 @@ namespace ILCompiler.DependencyAnalysis
                 {
                     if (currentType == _type || (currentType is MetadataType mdType && mdType.IsAbstract))
                     {
-                        foreach (var method in currentType.GetAllMethods())
+                        foreach (var method in currentType.GetAllVirtualMethods())
                         {
                             // Abstract methods don't have a body associated with it so there's no conditional
                             // dependency to add.
                             // Generic virtual methods are tracked by an orthogonal mechanism.
-                            if (method.IsVirtual && !method.IsAbstract && !method.HasInstantiation)
+                            if (!method.IsAbstract && !method.HasInstantiation)
                                 return true;
                         }
                     }
@@ -217,12 +219,14 @@ namespace ILCompiler.DependencyAnalysis
                 if (_type.RuntimeInterfaces.Length > 0)
                     return true;
 
-                return false;
+                return _hasConditionalDependenciesFromMetadataManager;
             }
         }
 
         public sealed override IEnumerable<CombinedDependencyListEntry> GetConditionalStaticDependencies(NodeFactory factory)
         {
+            List<CombinedDependencyListEntry> result = new List<CombinedDependencyListEntry>();
+
             IEETypeNode maximallyConstructableType = factory.MaximallyConstructableType(_type);
 
             if (maximallyConstructableType != this)
@@ -230,16 +234,16 @@ namespace ILCompiler.DependencyAnalysis
                 // EEType upgrading from necessary to constructed if some template instantation exists that matches up
                 if (CanonFormTypeMayExist)
                 {
-                    yield return new CombinedDependencyListEntry(maximallyConstructableType, factory.MaximallyConstructableType(_type.ConvertToCanonForm(CanonicalFormKind.Specific)), "Trigger full type generation if canonical form exists");
+                    result.Add(new CombinedDependencyListEntry(maximallyConstructableType, factory.MaximallyConstructableType(_type.ConvertToCanonForm(CanonicalFormKind.Specific)), "Trigger full type generation if canonical form exists"));
 
                     if (_type.Context.SupportsUniversalCanon)
-                        yield return new CombinedDependencyListEntry(maximallyConstructableType, factory.MaximallyConstructableType(_type.ConvertToCanonForm(CanonicalFormKind.Universal)), "Trigger full type generation if universal canonical form exists");
+                        result.Add(new CombinedDependencyListEntry(maximallyConstructableType, factory.MaximallyConstructableType(_type.ConvertToCanonForm(CanonicalFormKind.Universal)), "Trigger full type generation if universal canonical form exists"));
                 }
-                yield break;
+                return result;
             }
 
             if (!EmitVirtualSlotsAndInterfaces)
-                yield break;
+                return result;
 
             DefType defType = _type.GetClosestDefType();
 
@@ -283,24 +287,12 @@ namespace ILCompiler.DependencyAnalysis
                         IMethodNode implNode = canUseTentativeMethod ?
                             factory.TentativeMethodEntrypoint(canonImpl, impl.OwningType.IsValueType) :
                             factory.MethodEntrypoint(canonImpl, impl.OwningType.IsValueType);
-                        yield return new CombinedDependencyListEntry(implNode, factory.VirtualMethodUse(decl), "Virtual method");
+                        result.Add(new CombinedDependencyListEntry(implNode, factory.VirtualMethodUse(decl), "Virtual method"));
                     }
-                }
 
-                // Add conditional dependencies for interface methods with default implementations
-                if (defType.IsInterface)
-                {
-                    foreach (MethodDesc method in defType.GetAllMethods())
+                    if (impl.OwningType == defType)
                     {
-                        // Generic virtual methods are tracked by an orthogonal mechanism.
-                        if (method.HasInstantiation)
-                            continue;
-
-                        if (method.IsVirtual && !method.IsAbstract)
-                        {
-                            MethodDesc canonMethod = method.GetCanonMethodTarget(CanonicalFormKind.Specific);
-                            yield return new CombinedDependencyListEntry(factory.MethodEntrypoint(canonMethod), factory.VirtualMethodUse(method), "Default interface method");
-                        }
+                        factory.MetadataManager.NoteOverridingMethod(decl, impl);
                     }
                 }
 
@@ -312,17 +304,17 @@ namespace ILCompiler.DependencyAnalysis
                 // Add conditional dependencies for interface methods the type implements. For example, if the type T implements
                 // interface IFoo which has a method M1, add a dependency on T.M1 dependent on IFoo.M1 being called, since it's
                 // possible for any IFoo object to actually be an instance of T.
-                foreach (DefType interfaceType in defType.RuntimeInterfaces)
+                DefType[] defTypeRuntimeInterfaces = defType.RuntimeInterfaces;
+                for (int interfaceIndex = 0; interfaceIndex < defTypeRuntimeInterfaces.Length; interfaceIndex++)
                 {
+                    DefType interfaceType = defTypeRuntimeInterfaces[interfaceIndex];
+
                     Debug.Assert(interfaceType.IsInterface);
 
                     bool isVariantInterfaceImpl = VariantInterfaceMethodUseNode.IsVariantInterfaceImplementation(factory, _type, interfaceType);
 
-                    foreach (MethodDesc interfaceMethod in interfaceType.GetAllMethods())
+                    foreach (MethodDesc interfaceMethod in interfaceType.GetAllVirtualMethods())
                     {
-                        if (interfaceMethod.Signature.IsStatic || !interfaceMethod.IsVirtual)
-                            continue;
-
                         // Generic virtual methods are tracked by an orthogonal mechanism.
                         if (interfaceMethod.HasInstantiation)
                             continue;
@@ -330,7 +322,7 @@ namespace ILCompiler.DependencyAnalysis
                         MethodDesc implMethod = defType.ResolveInterfaceMethodToVirtualMethodOnType(interfaceMethod);
                         if (implMethod != null)
                         {
-                            yield return new CombinedDependencyListEntry(factory.VirtualMethodUse(implMethod), factory.VirtualMethodUse(interfaceMethod), "Interface method");
+                            result.Add(new CombinedDependencyListEntry(factory.VirtualMethodUse(implMethod), factory.VirtualMethodUse(interfaceMethod), "Interface method"));
 
                             // If any of the implemented interfaces have variance, calls against compatible interface methods
                             // could result in interface methods of this type being used (e.g. IEnumerable<object>.GetEnumerator()
@@ -338,13 +330,46 @@ namespace ILCompiler.DependencyAnalysis
                             if (isVariantInterfaceImpl)
                             {
                                 MethodDesc typicalInterfaceMethod = interfaceMethod.GetTypicalMethodDefinition();
-                                yield return new CombinedDependencyListEntry(factory.VirtualMethodUse(implMethod), factory.VariantInterfaceMethodUse(typicalInterfaceMethod), "Interface method");
-                                yield return new CombinedDependencyListEntry(factory.VirtualMethodUse(interfaceMethod), factory.VariantInterfaceMethodUse(typicalInterfaceMethod), "Interface method");
+                                result.Add(new CombinedDependencyListEntry(factory.VirtualMethodUse(implMethod), factory.VariantInterfaceMethodUse(typicalInterfaceMethod), "Interface method"));
+                                result.Add(new CombinedDependencyListEntry(factory.VirtualMethodUse(interfaceMethod), factory.VariantInterfaceMethodUse(typicalInterfaceMethod), "Interface method"));
+                            }
+
+                            factory.MetadataManager.NoteOverridingMethod(interfaceMethod, implMethod);
+                        }
+                        else
+                        {
+                            // Is the implementation provided by a default interface method?
+                            // If so, add a dependency on the entrypoint directly since nobody else is going to do that
+                            // (interface types have an empty vtable, modulo their generic dictionary).
+                            TypeDesc interfaceOnDefinition = defType.GetTypeDefinition().RuntimeInterfaces[interfaceIndex];
+                            MethodDesc interfaceMethodDefinition = interfaceMethod;
+                            if (!interfaceType.IsTypeDefinition)
+                                interfaceMethodDefinition = factory.TypeSystemContext.GetMethodForInstantiatedType(interfaceMethod.GetTypicalMethodDefinition(), (InstantiatedType)interfaceOnDefinition);
+
+                            var resolution = defType.GetTypeDefinition().ResolveInterfaceMethodToDefaultImplementationOnType(interfaceMethodDefinition, out implMethod);
+                            if (resolution == DefaultInterfaceMethodResolution.DefaultImplementation)
+                            {
+                                DefType providingInterfaceDefinitionType = (DefType)implMethod.OwningType;
+                                if (!interfaceType.IsTypeDefinition)
+                                    implMethod = implMethod.InstantiateSignature(defType.Instantiation, Instantiation.Empty);
+
+                                MethodDesc defaultIntfMethod = implMethod.GetCanonMethodTarget(CanonicalFormKind.Specific);
+                                if (defaultIntfMethod.IsCanonicalMethod(CanonicalFormKind.Any))
+                                {
+                                    defaultIntfMethod = factory.TypeSystemContext.GetDefaultInterfaceMethodImplementationThunk(defaultIntfMethod, _type.ConvertToCanonForm(CanonicalFormKind.Specific), providingInterfaceDefinitionType);
+                                }
+                                result.Add(new CombinedDependencyListEntry(factory.MethodEntrypoint(defaultIntfMethod), factory.VirtualMethodUse(interfaceMethod), "Interface method"));
+
+                                factory.MetadataManager.NoteOverridingMethod(interfaceMethod, implMethod);
                             }
                         }
                     }
                 }
             }
+
+            factory.MetadataManager.GetConditionalDependenciesDueToEETypePresence(ref result, factory, _type);
+
+            return result;
         }
 
         public static bool IsTypeNodeShareable(TypeDesc type)
@@ -743,6 +768,13 @@ namespace ILCompiler.DependencyAnalysis
             if (relocsOnly && !declVTable.HasFixedSlots)
                 return;
 
+            // Inteface types don't place anything else in their physical vtable.
+            // Interfaces have logical slots for their methods but since they're all abstract, they would be zero.
+            // We place default implementations of interface methods into the vtable of the interface-implementing
+            // type, pretending there was an extra virtual slot.
+            if (_type.IsInterface)
+                return;
+
             // Actual vtable slots follow
             IReadOnlyList<MethodDesc> virtualSlots = declVTable.Slots;
 
@@ -769,28 +801,19 @@ namespace ILCompiler.DependencyAnalysis
                 {
                     MethodDesc canonImplMethod = implMethod.GetCanonMethodTarget(CanonicalFormKind.Specific);
 
-                    if (canonImplMethod != implMethod && implMethod.OwningType.IsInterface)
-                    {
-                        // We need an instantiating stub here. For now, pretend this was a reabstraction or that there's no default
-                        // implementation.
-                        objData.EmitZeroPointer();
-                    }
-                    else
-                    {
-                        // If the type we're generating now is abstract, and the implementation comes from an abstract type,
-                        // only use a tentative method entrypoint that can have its body replaced by a throwing stub
-                        // if no "hard" reference to that entrypoint exists in the program.
-                        // This helps us to eliminate method bodies for virtual methods on abstract types that are fully overriden
-                        // in the children of that abstract type.
-                        bool canUseTentativeEntrypoint = implType is MetadataType mdImplType && mdImplType.IsAbstract && !mdImplType.IsInterface
-                            && implMethod.OwningType is MetadataType mdImplMethodType && mdImplMethodType.IsAbstract
-                            && factory.CompilationModuleGroup.AllowVirtualMethodOnAbstractTypeOptimization(canonImplMethod);
+                    // If the type we're generating now is abstract, and the implementation comes from an abstract type,
+                    // only use a tentative method entrypoint that can have its body replaced by a throwing stub
+                    // if no "hard" reference to that entrypoint exists in the program.
+                    // This helps us to eliminate method bodies for virtual methods on abstract types that are fully overriden
+                    // in the children of that abstract type.
+                    bool canUseTentativeEntrypoint = implType is MetadataType mdImplType && mdImplType.IsAbstract && !mdImplType.IsInterface
+                        && implMethod.OwningType is MetadataType mdImplMethodType && mdImplMethodType.IsAbstract
+                        && factory.CompilationModuleGroup.AllowVirtualMethodOnAbstractTypeOptimization(canonImplMethod);
 
-                        IMethodNode implSymbol =  canUseTentativeEntrypoint ?
-                            factory.TentativeMethodEntrypoint(canonImplMethod, implMethod.OwningType.IsValueType) :
-                            factory.MethodEntrypoint(canonImplMethod, implMethod.OwningType.IsValueType);
-                        objData.EmitPointerReloc(implSymbol);
-                    }
+                    IMethodNode implSymbol =  canUseTentativeEntrypoint ?
+                        factory.TentativeMethodEntrypoint(canonImplMethod, implMethod.OwningType.IsValueType) :
+                        factory.MethodEntrypoint(canonImplMethod, implMethod.OwningType.IsValueType);
+                    objData.EmitPointerReloc(implSymbol);
                 }
                 else
                 {
@@ -1083,9 +1106,9 @@ namespace ILCompiler.DependencyAnalysis
         {
             if (factory.TypeSystemContext.SupportsUniversalCanon)
             {
-                foreach (MethodDesc method in type.GetMethods())
+                foreach (MethodDesc method in type.GetVirtualMethods())
                 {
-                    if (!method.IsVirtual || !method.HasInstantiation)
+                    if (!method.HasInstantiation)
                         continue;
 
                     if (method.IsAbstract)

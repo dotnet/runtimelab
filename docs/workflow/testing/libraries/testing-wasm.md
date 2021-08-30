@@ -100,11 +100,11 @@ The following shows how to run tests for a specific library
 
 - `$(WasmXHarnessArgs)` - xharness command arguments
 
-    Example: `WasmXHarnessArgs="--xyz"` -> becomes `dotnet xharness wasm test --xyz`
+    Example: `WasmXHarnessArgs="--set-web-server-http-env=DOTNET_TEST_WEBSOCKETHOST"` -> becomes `dotnet xharness wasm test --set-web-server-http-env=DOTNET_TEST_WEBSOCKETHOST`
 
-- `$(WasmXHarnessMonoArgs)` - arguments to mono
+- `$(WasmXHarnessMonoArgs)` - arguments and variables for mono
 
-    Example: `WasmXHarnessMonoArgs="--runtime-arg=--trace=E"`
+    Example: `WasmXHarnessMonoArgs="--runtime-arg=--trace=E --setenv=MONO_LOG_LEVEL=debug"`
 
 - `$(WasmTestAppArgs)` - arguments for the test app itself
 
@@ -144,6 +144,21 @@ At the moment supported values are:
 
 By default, `chrome` browser is used.
 
+## AOT library tests
+
+- Building library tests with AOT, and (even) with `EnableAggressiveTrimming` takes 3-9mins on CI, and that adds up for all the assemblies, causing
+a large build time. To circumvent that on CI, we build the test assemblies on the build machine, but skip the WasmApp build part of it, since
+that includes the expensive AOT step.
+
+- Instead, we take the built test assembly+dependencies, and enough related bits to be able to run the `WasmBuildApp` target, with the original
+inputs.
+
+- To recreate a similar build+test run locally, add `/p:BuildAOTTestsOnHelix=true` to the usual command line.
+- For example, with `./dotnet.sh build /t:Test src/libraries/System.AppContext/tests /p:TargetOS=Browser /p:TargetArchitecture=wasm /p:Configuration=Release`
+
+    - AOT:  add `/p:EnableAggressiveTrimming=true /p:RunAOTCompilation=true /p:BuildAOTTestsOnHelix=true`
+    - Only trimming (helpful to isolate issues caused by trimming):
+        - add `/p:EnableAggressiveTrimming=true /p:BuildAOTTestsOnHelix=true`
 ## Debugging
 
 ### Getting more information

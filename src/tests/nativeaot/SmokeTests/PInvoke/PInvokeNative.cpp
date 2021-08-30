@@ -4,8 +4,10 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdint.h>
 #ifdef TARGET_WINDOWS
 #include <windows.h>
+#include <wtypes.h>
 #define DLL_EXPORT extern "C" __declspec(dllexport)
 #else
 #include<errno.h>
@@ -669,6 +671,72 @@ struct Callbacks
 DLL_EXPORT bool __stdcall RegisterCallbacks(Callbacks *callbacks)
 {
     return callbacks->callback0() == 0 && callbacks->callback1() == 1 && callbacks->callback2() == 2;
+}
+
+DLL_EXPORT int __stdcall ValidateSuccessCall(int errorCode)
+{
+    return errorCode;
+}
+
+DLL_EXPORT int __stdcall ValidateIntResult(int errorCode, int* result)
+{
+    *result = 42;
+    return errorCode;
+}
+
+#ifndef DECIMAL_NEG // defined in wtypes.h
+typedef struct tagDEC {
+    uint16_t wReserved;
+    union {
+        struct {
+            uint8_t scale;
+            uint8_t sign;
+        };
+        uint16_t signscale;
+    };
+    uint32_t Hi32;
+    union {
+        struct {
+            uint32_t Lo32;
+            uint32_t Mid32;
+        };
+        uint64_t Lo64;
+    };
+} DECIMAL;
+#endif
+
+DLL_EXPORT DECIMAL __stdcall DecimalTest(DECIMAL value)
+{
+    DECIMAL zero;
+    memset(&zero, 0, sizeof(DECIMAL));
+
+    if (value.Lo32 != 100) {
+        return zero;
+    }
+
+    if (value.Mid32 != 101) {
+        return zero;
+    }
+
+    if (value.Hi32 != 102) {
+        return zero;
+    }
+
+    if (value.sign != 0) {
+        return zero;
+    }
+
+    if (value.scale != 1) {
+        return zero;
+    }
+
+    value.sign = 128;
+    value.scale = 2;
+    value.Lo32 = 99;
+    value.Mid32 = 98;
+    value.Hi32 = 97;
+
+    return value;
 }
 
 #if (_MSC_VER >= 1400)         // Check MSC version

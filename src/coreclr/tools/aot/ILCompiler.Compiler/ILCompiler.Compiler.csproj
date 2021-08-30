@@ -173,6 +173,7 @@
     <Compile Include="Compiler\CompilationModuleGroup.Aot.cs" />
     <Compile Include="Compiler\CompilerTypeSystemContext.Aot.cs" />
     <Compile Include="Compiler\CompilerTypeSystemContext.BoxedTypes.cs" />
+    <Compile Include="Compiler\CompilerTypeSystemContext.IntefaceThunks.cs" />
     <Compile Include="Compiler\CompilerTypeSystemContext.Mangling.cs" />
     <Compile Include="Compiler\CompilerTypeSystemContext.Sorting.cs" />
     <Compile Include="Compiler\CompilerGeneratedInteropStubManager.cs" />
@@ -198,6 +199,7 @@
     <Compile Include="Compiler\DependencyAnalysis\IndirectionExtensions.cs" />
     <Compile Include="Compiler\DependencyAnalysis\InterfaceDispatchCellSectionNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\MethodExceptionHandlingInfoNode.cs" />
+    <Compile Include="Compiler\DependencyAnalysis\ObjectGetTypeFlowDependenciesNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\ReflectionMethodBodyScanner.cs" />
     <Compile Include="Compiler\DependencyAnalysis\StructMarshallingDataNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\Target_ARM64\ARM64TentativeMethodNode.cs" />
@@ -446,6 +448,12 @@
     <Compile Include="..\..\Common\JitInterface\CorInfoInstructionSet.cs">
       <Link>JitInterface\CorInfoInstructionSet.cs</Link>
     </Compile>
+    <Compile Include="..\..\Common\JitInterface\CorInfoHelpFunc.cs">
+      <Link>JitInterface\CorInfoHelpFunc.cs</Link>
+    </Compile>
+    <Compile Include="..\..\Common\JitInterface\CorInfoTypes.cs">
+      <Link>JitInterface\CorInfoTypes.cs</Link>
+    </Compile>
     <Compile Include="..\..\Common\JitInterface\CorInfoTypes.VarInfo.cs">
       <Link>JitInterface\CorInfoTypes.VarInfo.cs</Link>
     </Compile>
@@ -454,6 +462,9 @@
     </Compile>
     <Compile Include="..\..\Common\TypeSystem\TypesDebugInfoWriter\TypesDebugInfoWriter.cs">
       <Link>TypeSystem\TypesDebugInfoWriter\TypesDebugInfoWriter.cs</Link>
+    </Compile>
+    <Compile Include="..\..\Common\Pgo\PgoFormat.cs">
+      <Link>Pgo\PgoFormat.cs</Link>
     </Compile>
   </ItemGroup>
 </Project>

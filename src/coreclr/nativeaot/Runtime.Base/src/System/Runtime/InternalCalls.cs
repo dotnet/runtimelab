@@ -41,6 +41,7 @@ namespace System.Runtime
         // unused = 4,
         GetSystemArrayEEType = 5,
         OnFirstChance = 6,
+        OnUnhandledException = 7,
     }
 
     internal static class InternalCalls
@@ -224,18 +225,7 @@ namespace System.Runtime
 
         [RuntimeImport(Redhawk.BaseName, "RhpSfiNext")]
         [MethodImpl(MethodImplOptions.InternalCall)]
-        internal static extern bool RhpSfiNext(ref StackFrameIterator pThis, out uint uExCollideClauseIdx, out bool fUnwoundReversePInvoke);
-
-        //
-        // DebugEventSource
-        //
-
-        [RuntimeImport(Redhawk.BaseName, "RhpGetRequestedExceptionEvents")]
-        [MethodImpl(MethodImplOptions.InternalCall)]
-        internal static extern ExceptionEventKind RhpGetRequestedExceptionEvents();
-
-        [DllImport(Redhawk.BaseName)]
-        internal static extern unsafe void RhpSendExceptionEventToDebugger(ExceptionEventKind eventKind, byte* ip, UIntPtr sp);
+        internal static extern unsafe bool RhpSfiNext(ref StackFrameIterator pThis, uint* uExCollideClauseIdx, bool* fUnwoundReversePInvoke);
 
         //
         // Miscellaneous helpers.

@@ -5,6 +5,7 @@ using System;
 using System.Reflection.Metadata;
 using System.Runtime.InteropServices;
 using System.Diagnostics;
+using System.Text;
 
 using Internal.TypeSystem;
 using System.Collections.Generic;
@@ -159,13 +160,42 @@ namespace Internal.TypeSystem.Ecma
                         var elementType = ParseType();
                         var rank = _reader.ReadCompressedInteger();
 
-                        // TODO: Bounds for multi-dimmensional arrays
-                        var boundsCount = _reader.ReadCompressedInteger();
-                        for (int i = 0; i < boundsCount; i++)
-                            _reader.ReadCompressedInteger();
-                        var lowerBoundsCount = _reader.ReadCompressedInteger();
-                        for (int j = 0; j < lowerBoundsCount; j++)
-                            _reader.ReadCompressedInteger();
+                        if (_embeddedSignatureDataList != null)
+                        {
+                            var boundsCount = _reader.ReadCompressedInteger();
+                            int []bounds = boundsCount > 0 ? new int[boundsCount] : Array.Empty<int>();
+                            for (int i = 0; i < boundsCount; i++)
+                                bounds[i] = _reader.ReadCompressedInteger();
+
+                            var lowerBoundsCount = _reader.ReadCompressedInteger();
+                            int []lowerBounds = lowerBoundsCount > 0 ? new int[lowerBoundsCount] : Array.Empty<int>();
+                            bool nonZeroLowerBounds = false;
+                            for (int j = 0; j < lowerBoundsCount; j++)
+                            {
+                                int loBound = _reader.ReadCompressedSignedInteger();
+                                if (loBound != 0)
+                                    nonZeroLowerBounds = true;
+                                lowerBounds[j] = loBound;
+                            }
+
+                            if (boundsCount != 0 || lowerBoundsCount != rank || nonZeroLowerBounds)
+                            {
+                                StringBuilder arrayShapeString = new StringBuilder();
+                                arrayShapeString.Append(string.Join(",", bounds));
+                                arrayShapeString.Append('|');
+                                arrayShapeString.Append(string.Join(",", lowerBounds));
+                                _embeddedSignatureDataList.Add(new EmbeddedSignatureData { index = string.Join(".", _indexStack) + "|" + arrayShapeString.ToString(), kind = EmbeddedSignatureDataKind.ArrayShape, type = null });
+                            }
+                        }
+                        else
+                        {
+                            var boundsCount = _reader.ReadCompressedInteger();
+                            for (int i = 0; i < boundsCount; i++)
+                                _reader.ReadCompressedInteger();
+                            var lowerBoundsCount = _reader.ReadCompressedInteger();
+                            for (int j = 0; j < lowerBoundsCount; j++)
+                                _reader.ReadCompressedSignedInteger();
+                        }
 
                         if (elementType != null)
                             return _tsc.GetArrayType(elementType, rank);

@@ -92,6 +92,8 @@ check_symbol_exists(
     time.h
     HAVE_CLOCK_GETTIME_NSEC_NP)
 
+check_library_exists(c sched_getaffinity "" HAVE_SCHED_GETAFFINITY)
+
 check_cxx_source_compiles("
 thread_local int x;
 

@@ -347,6 +347,7 @@ namespace System.Drawing
         public override object ConvertTo(System.ComponentModel.ITypeDescriptorContext? context, System.Globalization.CultureInfo? culture, object? value, System.Type destinationType) { throw null; }
         public override object CreateInstance(System.ComponentModel.ITypeDescriptorContext? context, System.Collections.IDictionary propertyValues) { throw null; }
         public override bool GetCreateInstanceSupported(System.ComponentModel.ITypeDescriptorContext? context) { throw null; }
+        [Diagnostics.CodeAnalysis.RequiresUnreferencedCode("The Type of value cannot be statically discovered. The public parameterless constructor or the 'Default' static field may be trimmed from the Attribute's Type.")]
         public override System.ComponentModel.PropertyDescriptorCollection GetProperties(System.ComponentModel.ITypeDescriptorContext? context, object? value, System.Attribute[]? attributes) { throw null; }
         public override bool GetPropertiesSupported(System.ComponentModel.ITypeDescriptorContext context) { throw null; }
         public sealed partial class FontNameConverter : System.ComponentModel.TypeConverter, System.IDisposable
@@ -418,7 +419,6 @@ namespace System.Drawing
         public int TextContrast { get { throw null; } set { } }
         public System.Drawing.Text.TextRenderingHint TextRenderingHint { get { throw null; } set { } }
         public System.Drawing.Drawing2D.Matrix Transform { get { throw null; } set { } }
-        public System.Numerics.Matrix3x2 TransformElements { get { throw null; } set { } }
         public System.Drawing.RectangleF VisibleClipBounds { get { throw null; } }
         public void AddMetafileComment(byte[] data) { }
         public System.Drawing.Drawing2D.GraphicsContainer BeginContainer() { throw null; }
@@ -793,6 +793,7 @@ namespace System.Drawing
         public override bool CanConvertTo(System.ComponentModel.ITypeDescriptorContext? context, System.Type? destinationType) { throw null; }
         public override object ConvertFrom(System.ComponentModel.ITypeDescriptorContext? context, System.Globalization.CultureInfo? culture, object value) { throw null; }
         public override object ConvertTo(System.ComponentModel.ITypeDescriptorContext? context, System.Globalization.CultureInfo? culture, object? value, System.Type destinationType) { throw null; }
+        [Diagnostics.CodeAnalysis.RequiresUnreferencedCode("The Type of value cannot be statically discovered. The public parameterless constructor or the 'Default' static field may be trimmed from the Attribute's Type.")]
         public override System.ComponentModel.PropertyDescriptorCollection GetProperties(System.ComponentModel.ITypeDescriptorContext? context, object? value, System.Attribute[]? attributes) { throw null; }
         public override bool GetPropertiesSupported(System.ComponentModel.ITypeDescriptorContext? context) { throw null; }
     }
@@ -1660,9 +1661,7 @@ namespace System.Drawing.Drawing2D
         public Matrix(System.Drawing.Rectangle rect, System.Drawing.Point[] plgpts) { }
         public Matrix(System.Drawing.RectangleF rect, System.Drawing.PointF[] plgpts) { }
         public Matrix(float m11, float m12, float m21, float m22, float dx, float dy) { }
-        public Matrix(System.Numerics.Matrix3x2 matrix) { }
         public float[] Elements { get { throw null; } }
-        public System.Numerics.Matrix3x2 MatrixElements { get { throw null; } set { } }
         public bool IsIdentity { get { throw null; } }
         public bool IsInvertible { get { throw null; } }
         public float OffsetX { get { throw null; } }

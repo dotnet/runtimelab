@@ -50,7 +50,18 @@ namespace Internal.Runtime.Augments
             // declaring "rawValues" as "Array" would prevent us from using the generic overload of Array.Sort()).
             //
             // The array element type is the underlying type, not the enum type. (The enum type could be an open generic.)
-            ValuesAsUnderlyingType = Array.CreateInstance(UnderlyingType, numValues);
+            ValuesAsUnderlyingType = Type.GetTypeCode(UnderlyingType) switch
+            {
+                TypeCode.Byte => new byte[numValues],
+                TypeCode.SByte => new sbyte[numValues],
+                TypeCode.UInt16 => new ushort[numValues],
+                TypeCode.Int16 => new short[numValues],
+                TypeCode.UInt32 => new uint[numValues],
+                TypeCode.Int32 => new int[numValues],
+                TypeCode.UInt64 => new ulong[numValues],
+                TypeCode.Int64 => new long[numValues],
+                _ => throw new NotSupportedException(),
+            };
             Array.Copy(rawValues, ValuesAsUnderlyingType, numValues);
 
             HasFlagsAttribute = isFlags;

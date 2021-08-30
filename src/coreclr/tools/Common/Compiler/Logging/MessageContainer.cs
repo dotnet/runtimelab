@@ -5,6 +5,8 @@ using System;
 using System.Text;
 using Internal.TypeSystem;
 
+using Debug = System.Diagnostics.Debug;
+
 namespace ILCompiler.Logging
 {
     public enum MessageCategory
@@ -86,6 +88,28 @@ namespace ILCompiler.Logging
         {
             if (context.IsWarningSuppressed(code, origin))
                 return null;
+
+            if (subcategory == MessageSubCategory.AotAnalysis || subcategory == MessageSubCategory.TrimAnalysis)
+            {
+                var declaringType = origin.MemberDefinition switch
+                {
+                    TypeDesc type => type,
+                    MethodDesc method => method.OwningType,
+                    FieldDesc field => field.OwningType,
+#if !READYTORUN
+                    PropertyPseudoDesc property => property.OwningType,
+                    EventPseudoDesc @event => @event.OwningType,
+#endif
+                    _ => null,
+                };
+
+                ModuleDesc declaringAssembly = (declaringType as MetadataType)?.Module;
+                Debug.Assert(declaringAssembly != null);
+                if (declaringAssembly != null && context.IsSingleWarn(declaringAssembly, subcategory))
+                {
+                    return null;
+                }
+            }
 
             if (context.IsWarningAsError(code))
                 return new MessageContainer(MessageCategory.WarningAsError, text, code, subcategory, origin);

@@ -7,6 +7,7 @@
 #include "compiler.h"
 #include "block.h"
 #include "gentree.h"
+#pragma warning (disable: 4702)
 #include "llvm.h"
 #include "llvm/ADT/StringRef.h"
 #include "llvm/IR/LLVMContext.h"
@@ -16,6 +17,7 @@
 #include "llvm/Bitcode/BitcodeWriter.h"
 #include "llvm/IR/DIBuilder.h"
 #include "llvm/BinaryFormat/Dwarf.h"
+#pragma warning (error: 4702)
 
 #include <unordered_map>
 

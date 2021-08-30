@@ -97,10 +97,11 @@ namespace ILCompiler.Dataflow
                 var requiredMemberTypes = scanner._flowAnnotations.GetReturnParameterAnnotation(method);
                 if (requiredMemberTypes != 0)
                 {
-                    var targetContext = new MethodOrigin(method);
+                    var targetContext = new MethodReturnOrigin(method);
                     var reflectionContext = new ReflectionPatternContext(scanner._logger, scanner.ShouldEnableReflectionPatternReporting(method), method, targetContext);
                     reflectionContext.AnalyzingPattern();
                     scanner.RequireDynamicallyAccessedMembers(ref reflectionContext, requiredMemberTypes, scanner.MethodReturnValue, targetContext);
+                    reflectionContext.Dispose();
                 }
             }
 
@@ -201,6 +202,19 @@ namespace ILCompiler.Dataflow
             return result;
         }
 
+        public static DependencyList ProcessTypeGetTypeDataflow(NodeFactory factory, FlowAnnotations flowAnnotations, Logger logger, MetadataType type)
+        {
+            DynamicallyAccessedMemberTypes annotation = flowAnnotations.GetTypeAnnotation(type);
+            Debug.Assert(annotation != DynamicallyAccessedMemberTypes.None);
+            var scanner = new ReflectionMethodBodyScanner(factory, flowAnnotations, logger);
+            ReflectionPatternContext reflectionPatternContext = new ReflectionPatternContext(logger, reportingEnabled: true, type, new TypeOrigin(type));
+            reflectionPatternContext.AnalyzingPattern();
+            scanner.MarkTypeForDynamicallyAccessedMembers(ref reflectionPatternContext, type, annotation);
+            reflectionPatternContext.RecordHandledPattern();
+            reflectionPatternContext.Dispose();
+            return scanner._dependencies;
+        }
+
         static ValueNode GetValueNodeForCustomAttributeArgument(object argument)
         {
             ValueNode result = null;
@@ -234,6 +248,7 @@ namespace ILCompiler.Dataflow
             var reflectionContext = new ReflectionPatternContext(logger, reportingEnabled: true, source, origin);
             reflectionContext.AnalyzingPattern();
             scanner.RequireDynamicallyAccessedMembers(ref reflectionContext, annotation, valueNode, origin);
+            reflectionContext.Dispose();
 
             return scanner._dependencies;
         }
@@ -261,7 +276,7 @@ namespace ILCompiler.Dataflow
             {
                 case "EmptyTypes" when field.OwningType.IsTypeOf("System", "Type"):
                     {
-                        return new ArrayValue(new ConstIntValue(0));
+                        return new ArrayValue(new ConstIntValue(0), field.OwningType);
                     }
                 case "Empty" when field.OwningType.IsTypeOf("System", "String"):
                     {
@@ -285,6 +300,7 @@ namespace ILCompiler.Dataflow
                 var reflectionContext = new ReflectionPatternContext(_logger, ShouldEnableReflectionPatternReporting(methodBody.OwningMethod), methodBody, offset, origin);
                 reflectionContext.AnalyzingPattern();
                 RequireDynamicallyAccessedMembers(ref reflectionContext, requiredMemberTypes, valueToStore, origin);
+                reflectionContext.Dispose();
             }
         }
 
@@ -297,6 +313,7 @@ namespace ILCompiler.Dataflow
                 var reflectionContext = new ReflectionPatternContext(_logger, ShouldEnableReflectionPatternReporting(method.OwningMethod), method, offset, parameter);
                 reflectionContext.AnalyzingPattern();
                 RequireDynamicallyAccessedMembers(ref reflectionContext, requiredMemberTypes, valueToStore, parameter);
+                reflectionContext.Dispose();
             }
         }
 
@@ -331,6 +348,7 @@ namespace ILCompiler.Dataflow
             Type_GetNestedTypes,
             Type_GetMember,
             Type_GetMembers,
+            Type_GetInterface,
             Type_get_AssemblyQualifiedName,
             Type_get_UnderlyingSystemType,
             Type_get_BaseType,
@@ -573,6 +591,15 @@ namespace ILCompiler.Dataflow
                     && !calledMethod.Signature.IsStatic
                     => IntrinsicId.Type_GetMembers,
 
+                // System.Type.GetInterface (string)
+                // System.Type.GetInterface (string, bool)
+                "GetInterface" when calledMethod.IsDeclaredOnType("System", "Type")
+                    && calledMethod.HasParameterOfType(0, "System", "String")
+                    && !calledMethod.Signature.IsStatic
+                    && (calledMethod.Signature.Length == 1 ||
+                    (calledMethod.Signature.Length == 2 && calledMethod.Signature[1].IsWellKnownType(WellKnownType.Boolean)))
+                    => IntrinsicId.Type_GetInterface,
+
                 // System.Type.AssemblyQualifiedName
                 "get_AssemblyQualifiedName" when calledMethod.IsDeclaredOnType("System", "Type")
                     && calledMethod.Signature.Length == 0
@@ -760,7 +787,7 @@ namespace ILCompiler.Dataflow
 
                     case IntrinsicId.Array_Empty:
                         {
-                            methodReturnValue = new ArrayValue(new ConstIntValue(0));
+                            methodReturnValue = new ArrayValue(new ConstIntValue(0), calledMethod.Instantiation[0]);
                         }
                         break;
 
@@ -814,22 +841,34 @@ namespace ILCompiler.Dataflow
                             {
                                 if (value is SystemTypeValue typeValue)
                                 {
-                                    foreach (GenericParameterDesc genericParameter in typeValue.TypeRepresented.GetTypeDefinition().Instantiation)
+                                    if (AnalyzeGenericInstatiationTypeArray(methodParams[1], ref reflectionContext, calledMethod, typeValue.TypeRepresented.GetTypeDefinition().Instantiation))
                                     {
-                                        if (_flowAnnotations.GetGenericParameterAnnotation(genericParameter) != DynamicallyAccessedMemberTypes.None ||
-                                            (genericParameter.HasDefaultConstructorConstraint && !typeValue.TypeRepresented.IsNullable))
+                                        reflectionContext.RecordHandledPattern();
+                                    }
+                                    else
+                                    {
+                                        bool hasUncheckedAnnotation = false;
+                                        foreach (GenericParameterDesc genericParameter in typeValue.TypeRepresented.GetTypeDefinition().Instantiation)
                                         {
-                                            // There is a generic parameter which has some requirements on the input types.
-                                            // For now we don't support tracking actual array elements, so we can't validate that the requirements are fulfilled.
-
-                                            // Special case: Nullable<T> where T : struct
-                                            //  The struct constraint in C# implies new() constraints, but Nullable doesn't make a use of that part.
-                                            //  There are several places even in the framework where typeof(Nullable<>).MakeGenericType would warn
-                                            //  without any good reason to do so.
+                                            if (_flowAnnotations.GetGenericParameterAnnotation(genericParameter) != DynamicallyAccessedMemberTypes.None ||
+                                                (genericParameter.HasDefaultConstructorConstraint && !typeValue.TypeRepresented.IsNullable))
+                                            {
+                                                // If we failed to analyze the array, we go through the analyses again
+                                                // and intentionally ignore one particular annotation:
+                                                // Special case: Nullable<T> where T : struct
+                                                //  The struct constraint in C# implies new() constraints, but Nullable doesn't make a use of that part.
+                                                //  There are several places even in the framework where typeof(Nullable<>).MakeGenericType would warn
+                                                //  without any good reason to do so.
+                                                hasUncheckedAnnotation = true;
+                                                break;
+                                            }
+                                        }
+                                        if (hasUncheckedAnnotation)
+                                        {
                                             reflectionContext.RecordUnrecognizedPattern(
-                                                2055,
-                                                $"Call to '{calledMethod.GetDisplayName()}' can not be statically analyzed. " +
-                                                $"It's not possible to guarantee the availability of requirements of the generic type.");
+                                                    2055,
+                                                    $"Call to '{calledMethod.GetDisplayName()}' can not be statically analyzed. " +
+                                                    $"It's not possible to guarantee the availability of requirements of the generic type.");
                                         }
                                     }
 
@@ -925,6 +964,7 @@ namespace ILCompiler.Dataflow
                             }
                         }
                         break;
+
                     //
                     // System.Linq.Expressions.Expression
                     // 
@@ -935,21 +975,34 @@ namespace ILCompiler.Dataflow
                             reflectionContext.AnalyzingPattern();
                             BindingFlags bindingFlags = BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.FlattenHierarchy;
 
+                            bool hasTypeArguments = (methodParams[2] as ArrayValue)?.Size.AsConstInt() != 0;
                             foreach (var value in methodParams[0].UniqueValues())
                             {
                                 if (value is SystemTypeValue systemTypeValue)
                                 {
                                     foreach (var stringParam in methodParams[1].UniqueValues())
                                     {
-                                        // TODO: Change this as needed after deciding whether or not we are to keep
-                                        // all methods on a type that was accessed via reflection.
                                         if (stringParam is KnownStringValue stringValue)
                                         {
-                                            MarkMethodsOnTypeHierarchy(ref reflectionContext, systemTypeValue.TypeRepresented, m => m.Name == stringValue.Contents, bindingFlags);
+                                            foreach (var method in systemTypeValue.TypeRepresented.GetMethodsOnTypeHierarchy(m => m.Name == stringValue.Contents, bindingFlags))
+                                            {
+                                                ValidateGenericMethodInstantiation(ref reflectionContext, method, methodParams[2], calledMethod);
+                                                MarkMethod(ref reflectionContext, method);
+                                            }
+
                                             reflectionContext.RecordHandledPattern();
                                         }
                                         else
                                         {
+                                            if (hasTypeArguments)
+                                            {
+                                                // We don't know what method the `MakeGenericMethod` was called on, so we have to assume
+                                                // that the method may have requirements which we can't fullfil -> warn.
+                                                reflectionContext.RecordUnrecognizedPattern(
+                                                    2060, string.Format(Resources.Strings.IL2060,
+                                                        DiagnosticUtilities.GetMethodSignatureDisplayName(calledMethod)));
+                                            }
+
                                             RequireDynamicallyAccessedMembers(
                                                 ref reflectionContext,
                                                 GetDynamicallyAccessedMemberTypesFromBindingFlagsForMethods(bindingFlags),
@@ -960,6 +1013,15 @@ namespace ILCompiler.Dataflow
                                 }
                                 else
                                 {
+                                    if (hasTypeArguments)
+                                    {
+                                        // We don't know what method the `MakeGenericMethod` was called on, so we have to assume
+                                        // that the method may have requirements which we can't fullfil -> warn.
+                                        reflectionContext.RecordUnrecognizedPattern(
+                                            2060, string.Format(Resources.Strings.IL2060,
+                                                DiagnosticUtilities.GetMethodSignatureDisplayName(calledMethod)));
+                                    }
+
                                     RequireDynamicallyAccessedMembers(
                                         ref reflectionContext,
                                         GetDynamicallyAccessedMemberTypesFromBindingFlagsForMethods(bindingFlags),
@@ -1176,48 +1238,67 @@ namespace ILCompiler.Dataflow
                     //
                     case IntrinsicId.Object_GetType:
                         {
-                            // We could do better here if we start tracking the static types of values within the method body.
-                            // Right now, this can only analyze a couple cases for which we have static information for.
-                            TypeDesc staticType = null;
-                            if (methodParams[0] is MethodParameterValue methodParam)
+                            foreach (var valueNode in methodParams[0].UniqueValues())
                             {
-                                if (!callingMethodDefinition.Signature.IsStatic)
+                                // Note that valueNode can be statically typed in IL as some generic argument type.
+                                // For example:
+                                //   void Method<T>(T instance) { instance.GetType().... }
+                                // Currently this case will end up with null StaticType - since there's no typedef for the generic argument type.
+                                // But it could be that T is annotated with for example PublicMethods:
+                                //   void Method<[DAM(PublicMethods)] T>(T instance) { instance.GetType().GetMethod("Test"); }
+                                // In this case it's in theory possible to handle it, by treating the T basically as a base class
+                                // for the actual type of "instance". But the analysis for this would be pretty complicated (as the marking
+                                // has to happen on the callsite, which doesn't know that GetType() will be used...).
+                                // For now we're intentionally ignoring this case - it will produce a warning.
+                                // The counter example is:
+                                //   Method<Base>(new Derived);
+                                // In this case to get correct results, trimmer would have to mark all public methods on Derived. Which
+                                // currently it won't do.
+
+                                TypeDesc staticType = valueNode.StaticType;
+                                if (staticType is null || (!staticType.IsDefType && !staticType.IsArray))
                                 {
-                                    if (methodParam.ParameterIndex == 0)
-                                    {
-                                        staticType = callingMethodDefinition.OwningType;
-                                    }
-                                    else
-                                    {
-                                        staticType = callingMethodDefinition.Signature[methodParam.ParameterIndex - 1];
-                                    }
+                                    // We don't know anything about the type GetType was called on. Track this as a usual "result of a method call without any annotations"
+                                    methodReturnValue = MergePointValue.MergeValues(methodReturnValue, new MethodReturnValue(calledMethod, DynamicallyAccessedMemberTypes.None));
+                                }
+                                else if (staticType.IsSealed() || staticType.IsTypeOf("System", "Delegate"))
+                                {
+                                    // We can treat this one the same as if it was a typeof() expression
+
+                                    // We can allow Object.GetType to be modeled as System.Delegate because we keep all methods
+                                    // on delegates anyway so reflection on something this approximation would miss is actually safe.
+
+                                    // We ignore the fact that the type can be annotated (see below for handling of annotated types)
+                                    // This means the annotations (if any) won't be applied - instead we rely on the exact knowledge
+                                    // of the type. So for example even if the type is annotated with PublicMethods
+                                    // but the code calls GetProperties on it - it will work - mark properties, don't mark methods
+                                    // since we ignored the fact that it's annotated.
+                                    // This can be seen a little bit as a violation of the annotation, but we already have similar cases
+                                    // where a parameter is annotated and if something in the method sets a specific known type to it
+                                    // we will also make it just work, even if the annotation doesn't match the usage.
+                                    methodReturnValue = MergePointValue.MergeValues(methodReturnValue, new SystemTypeValue(staticType));
                                 }
                                 else
                                 {
-                                    staticType = callingMethodDefinition.Signature[methodParam.ParameterIndex];
-                                }
-                            }
-                            else if (methodParams[0] is LoadFieldValue loadedField)
-                            {
-                                staticType = loadedField.Field.FieldType;
-                            }
+                                    reflectionContext.AnalyzingPattern();
 
-                            if (staticType != null)
-                            {
-                                // We can only analyze the Object.GetType call with the precise type if the type is sealed.
-                                // The type could be a descendant of the type in question, making us miss reflection.
-                                bool canUse = staticType is MetadataType mdType && mdType.IsSealed;
+                                    Debug.Assert(staticType is MetadataType || staticType.IsArray);
+                                    MetadataType closestMetadataType = staticType is MetadataType mdType ?
+                                        mdType : (MetadataType)_factory.TypeSystemContext.GetWellKnownType(WellKnownType.Array);
 
-                                if (!canUse)
-                                {
-                                    // We can allow Object.GetType to be modeled as System.Delegate because we keep all methods
-                                    // on delegates anyway so reflection on something this approximation would miss is actually safe.
-                                    canUse = staticType.IsTypeOf("System", "Delegate");
-                                }
+                                    var annotation = _flowAnnotations.GetTypeAnnotation(staticType);
 
-                                if (canUse)
-                                {
-                                    methodReturnValue = new SystemTypeValue(staticType);
+                                    if (annotation != default)
+                                    {
+                                        _dependencies.Add(_factory.ObjectGetTypeFlowDependencies(closestMetadataType), "GetType called on this type");
+                                    }
+
+                                    reflectionContext.RecordHandledPattern();
+
+                                    // Return a value which is "unknown type" with annotation. For now we'll use the return value node
+                                    // for the method, which means we're loosing the information about which staticType this
+                                    // started with. For now we don't need it, but we can add it later on.
+                                    methodReturnValue = MergePointValue.MergeValues(methodReturnValue, new MethodReturnValue(calledMethod, annotation));
                                 }
                             }
                         }
@@ -1777,6 +1858,30 @@ namespace ILCompiler.Dataflow
                         break;
 
                     //
+                    // GetInterface (String)
+                    // GetInterface (String, bool)
+                    //
+                    case IntrinsicId.Type_GetInterface:
+                        {
+                            reflectionContext.AnalyzingPattern();
+                            foreach (var value in methodParams[0].UniqueValues())
+                            {
+                                // For now no support for marking a single interface by name. We would have to correctly support
+                                // mangled names for generics to do that correctly. Simply mark all interfaces on the type for now.
+                                // Require Interfaces annotation
+                                RequireDynamicallyAccessedMembers(ref reflectionContext, DynamicallyAccessedMemberTypes.Interfaces, value, new MethodOrigin(calledMethod));
+                                // Interfaces is transitive, so the return values will always have at least Interfaces annotation
+                                DynamicallyAccessedMemberTypes returnMemberTypes = DynamicallyAccessedMemberTypes.Interfaces;
+                                // Propagate All annotation across the call - All is a superset of Interfaces
+                                if (value is LeafValueWithDynamicallyAccessedMemberNode annotatedNode
+                                    && annotatedNode.DynamicallyAccessedMemberTypes == DynamicallyAccessedMemberTypes.All)
+                                    returnMemberTypes = DynamicallyAccessedMemberTypes.All;
+                                methodReturnValue = MergePointValue.MergeValues(methodReturnValue, new MethodReturnValue(calledMethod, returnMemberTypes));
+                            }
+                        }
+                        break;
+
+                    //
                     // System.Activator
                     // 
                     // static CreateInstance (System.Type type)
@@ -1957,9 +2062,7 @@ namespace ILCompiler.Dataflow
                     // CreateInstance (string typeName, bool ignoreCase, BindingFlags bindingAttr, Binder? binder, object []? args, CultureInfo? culture, object []? activationAttributes)
                     //
                     case IntrinsicId.Assembly_CreateInstance:
-                        //
-                        // TODO: This could be supported for "this" only calls
-                        //
+                        // For now always fail since we don't track assemblies (mono/linker/issues/1947)
                         reflectionContext.AnalyzingPattern();
                         reflectionContext.RecordUnrecognizedPattern(2058, $"Parameters passed to method '{calledMethod.GetDisplayName()}' cannot be analyzed. Consider using methods 'System.Type.GetType' and `System.Activator.CreateInstance` instead.");
                         break;
@@ -2007,20 +2110,7 @@ namespace ILCompiler.Dataflow
                             {
                                 if (methodValue is SystemReflectionMethodBaseValue methodBaseValue)
                                 {
-                                    foreach (GenericParameterDesc genericParameter in methodBaseValue.MethodRepresented.GetTypicalMethodDefinition().Instantiation)
-                                    {
-                                        if (_flowAnnotations.GetGenericParameterAnnotation(genericParameter) != DynamicallyAccessedMemberTypes.None ||
-                                            genericParameter.HasDefaultConstructorConstraint)
-                                        {
-                                            // There is a generic parameter which has some requirements on input types.
-                                            // For now we don't support tracking actual array elements, so we can't validate that the requirements are fulfilled.
-                                            reflectionContext.RecordUnrecognizedPattern(
-                                                2060, string.Format(Resources.Strings.IL2060,
-                                                    DiagnosticUtilities.GetMethodSignatureDisplayName(calledMethod)));
-                                        }
-                                    }
-                                    // We haven't found any generic parameters with annotations, so there's nothing to validate
-                                    reflectionContext.RecordHandledPattern();
+                                    ValidateGenericMethodInstantiation(ref reflectionContext, methodBaseValue.MethodRepresented, methodParams[1], calledMethod);
                                 }
                                 else if (methodValue == NullValue.Instance)
                                 {
@@ -2028,8 +2118,8 @@ namespace ILCompiler.Dataflow
                                 }
                                 else
                                 {
-                                    // There is a generic parameter which has some requirements on input types.
-                                    // For now we don't support tracking actual array elements, so we can't validate that the requirements are fulfilled.
+                                    // We don't know what method the `MakeGenericMethod` was called on, so we have to assume
+                                    // that the method may have requirements which we can't fullfil -> warn.
                                     reflectionContext.RecordUnrecognizedPattern(
                                         2060, string.Format(Resources.Strings.IL2060,
                                             DiagnosticUtilities.GetMethodSignatureDisplayName(calledMethod)));
@@ -2133,24 +2223,85 @@ namespace ILCompiler.Dataflow
             }
 
             // Validate that the return value has the correct annotations as per the method return value annotations
-            if (returnValueDynamicallyAccessedMemberTypes != 0 && methodReturnValue != null)
+            if (returnValueDynamicallyAccessedMemberTypes != 0)
             {
-                if (methodReturnValue is LeafValueWithDynamicallyAccessedMemberNode methodReturnValueWithMemberTypes)
+                foreach (var uniqueValue in methodReturnValue.UniqueValues())
                 {
-                    if (!methodReturnValueWithMemberTypes.DynamicallyAccessedMemberTypes.HasFlag(returnValueDynamicallyAccessedMemberTypes))
+                    if (uniqueValue is LeafValueWithDynamicallyAccessedMemberNode methodReturnValueWithMemberTypes)
+                    {
+                        if (!methodReturnValueWithMemberTypes.DynamicallyAccessedMemberTypes.HasFlag(returnValueDynamicallyAccessedMemberTypes))
+                            throw new InvalidOperationException($"Internal linker error: processing of call from {callingMethodDefinition.GetDisplayName()} to {calledMethod.GetDisplayName()} returned value which is not correctly annotated with the expected dynamic member access kinds.");
+                    }
+                    else if (uniqueValue is SystemTypeValue)
+                    {
+                        // SystemTypeValue can fullfill any requirement, so it's always valid
+                        // The requirements will be applied at the point where it's consumed (passed as a method parameter, set as field value, returned from the method)
+                    }
+                    else
+                    {
                         throw new InvalidOperationException($"Internal linker error: processing of call from {callingMethodDefinition.GetDisplayName()} to {calledMethod.GetDisplayName()} returned value which is not correctly annotated with the expected dynamic member access kinds.");
-                }
-                else if (methodReturnValue is SystemTypeValue)
-                {
-                    // SystemTypeValue can fullfill any requirement, so it's always valid
-                    // The requirements will be applied at the point where it's consumed (passed as a method parameter, set as field value, returned from the method)
-                }
-                else
-                {
-                    throw new InvalidOperationException($"Internal linker error: processing of call from {callingMethodDefinition.GetDisplayName()} to {calledMethod.GetDisplayName()} returned value which is not correctly annotated with the expected dynamic member access kinds.");
+                    }
                 }
             }
 
+            return true;
+        }
+
+        private bool AnalyzeGenericInstatiationTypeArray(ValueNode arrayParam, ref ReflectionPatternContext reflectionContext, MethodDesc calledMethod, Instantiation genericParameters)
+        {
+            bool hasRequirements = false;
+            foreach (GenericParameterDesc genericParameter in genericParameters)
+            {
+                if (_flowAnnotations.GetGenericParameterAnnotation(genericParameter) != DynamicallyAccessedMemberTypes.None)
+                {
+                    hasRequirements = true;
+                    break;
+                }
+            }
+
+            // If there are no requirements, then there's no point in warning
+            if (!hasRequirements)
+                return true;
+
+            foreach (var typesValue in arrayParam.UniqueValues())
+            {
+                if (typesValue.Kind != ValueNodeKind.Array)
+                {
+                    return false;
+                }
+                ArrayValue array = (ArrayValue)typesValue;
+                int? size = array.Size.AsConstInt();
+                if (size == null || size != genericParameters.Length)
+                {
+                    return false;
+                }
+                bool allIndicesKnown = true;
+                for (int i = 0; i < size.Value; i++)
+                {
+                    if (!array.IndexValues.TryGetValue(i, out ValueBasicBlockPair value) || value.Value is null or { Kind: ValueNodeKind.Unknown })
+                    {
+                        allIndicesKnown = false;
+                        break;
+                    }
+                }
+
+                if (!allIndicesKnown)
+                {
+                    return false;
+                }
+
+                for (int i = 0; i < size.Value; i++)
+                {
+                    if (array.IndexValues.TryGetValue(i, out ValueBasicBlockPair value))
+                    {
+                        RequireDynamicallyAccessedMembers(
+                            ref reflectionContext,
+                            _flowAnnotations.GetGenericParameterAnnotation((GenericParameterDesc)genericParameters[i]),
+                            value.Value,
+                            new MethodOrigin(calledMethod));
+                    }
+                }
+            }
             return true;
         }
 
@@ -2254,17 +2405,17 @@ namespace ILCompiler.Dataflow
                 {
                     if (!valueWithDynamicallyAccessedMember.DynamicallyAccessedMemberTypes.HasFlag(requiredMemberTypes))
                     {
-                        string missingMemberTypes = $"'{nameof(DynamicallyAccessedMemberTypes.All)}'";
+                        string missingMemberTypes = $"'{nameof(DynamicallyAccessedMemberTypes)}.{nameof(DynamicallyAccessedMemberTypes.All)}'";
                         if (requiredMemberTypes != DynamicallyAccessedMemberTypes.All)
                         {
                             var missingMemberTypesList = Enum.GetValues(typeof(DynamicallyAccessedMemberTypes))
                                 .Cast<DynamicallyAccessedMemberTypes>()
                                 .Where(damt => (requiredMemberTypes & ~valueWithDynamicallyAccessedMember.DynamicallyAccessedMemberTypes & damt) == damt && damt != DynamicallyAccessedMemberTypes.None)
-                                .Select(damt => damt.ToString()).ToList();
+                                .ToList();
 
-                            if (missingMemberTypesList.Contains(nameof(DynamicallyAccessedMemberTypes.PublicConstructors)) &&
-                                missingMemberTypesList.SingleOrDefault(x => x == nameof(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor)) is var ppc &&
-                                ppc != null)
+                            if (missingMemberTypesList.Contains(DynamicallyAccessedMemberTypes.PublicConstructors) &&
+                                missingMemberTypesList.SingleOrDefault(x => x == DynamicallyAccessedMemberTypes.PublicParameterlessConstructor) is var ppc &&
+                                ppc != DynamicallyAccessedMemberTypes.None)
                                 missingMemberTypesList.Remove(ppc);
 
                             missingMemberTypes = string.Join(", ", missingMemberTypesList.Select(mmt => $"'DynamicallyAccessedMemberTypes.{mmt}'"));
@@ -2607,12 +2758,6 @@ namespace ILCompiler.Dataflow
                 MarkMethod(ref reflectionContext, ctor);
         }
 
-        void MarkMethodsOnTypeHierarchy(ref ReflectionPatternContext reflectionContext, TypeDesc type, Func<MethodDesc, bool> filter, BindingFlags? bindingFlags = null)
-        {
-            foreach (var method in type.GetMethodsOnTypeHierarchy(filter, bindingFlags))
-                MarkMethod(ref reflectionContext, method);
-        }
-
         void MarkFieldsOnTypeHierarchy(ref ReflectionPatternContext reflectionContext, TypeDesc type, Func<FieldDesc, bool> filter, BindingFlags? bindingFlags = BindingFlags.Default)
         {
             foreach (var field in type.GetFieldsOnTypeHierarchy(filter, bindingFlags))
@@ -2648,6 +2793,29 @@ namespace ILCompiler.Dataflow
         {
             RootingHelpers.GetDependenciesForEntireReflectedType(ref _dependencies, _factory, type, reflectionContext.MemberWithRequirements.ToString());
             reflectionContext.RecordHandledPattern();
+        }
+
+        void ValidateGenericMethodInstantiation(
+            ref ReflectionPatternContext reflectionContext,
+            MethodDesc genericMethod,
+            ValueNode genericParametersArray,
+            MethodDesc reflectionMethod)
+        {
+            if (!genericMethod.HasInstantiation)
+            {
+                reflectionContext.RecordHandledPattern();
+                return;
+            }
+            if (!AnalyzeGenericInstatiationTypeArray(genericParametersArray, ref reflectionContext, reflectionMethod, genericMethod.GetMethodDefinition().Instantiation))
+            {
+                reflectionContext.RecordUnrecognizedPattern(
+                    2060,
+                    string.Format(Resources.Strings.IL2060, DiagnosticUtilities.GetMethodSignatureDisplayName(reflectionMethod)));
+            }
+            else
+            {
+                reflectionContext.RecordHandledPattern();
+            }
         }
 
         static DynamicallyAccessedMemberTypes GetDynamicallyAccessedMemberTypesFromBindingFlagsForNestedTypes(BindingFlags? bindingFlags) =>
@@ -2713,6 +2881,7 @@ namespace ILCompiler.Dataflow
                 // TODO: these are all unique to NativeAOT - mono/linker repo is not aware this error code is used.
                 public const string IL9700 = "Calling '{0}' which has `RequiresDynamicCodeAttribute` can break functionality when compiled fully ahead of time.";
                 // IL9701 - COM
+                // IL9702 - AOT analysis warnings
             }
         }
     }

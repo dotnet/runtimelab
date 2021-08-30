@@ -28,6 +28,10 @@ namespace ILCompiler.DependencyAnalysis
                 {
                     return MethodEntrypoint(TypeSystemContext.GetRealSpecialUnboxingThunkTargetMethod(method));
                 }
+                else if (TypeSystemContext.IsDefaultInterfaceMethodImplementationThunkTargetMethod(method))
+                {
+                    return MethodEntrypoint(TypeSystemContext.GetRealDefaultInterfaceMethodImplementationThunkTargetMethod(method));
+                }
                 else if (method.IsArrayAddressMethod())
                 {
                     return new ScannedMethodNode(((ArrayType)method.OwningType).GetArrayMethod(ArrayMethodKind.AddressWithHiddenArg));

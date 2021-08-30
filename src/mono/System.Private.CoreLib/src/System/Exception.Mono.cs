@@ -5,12 +5,18 @@ using System.Collections;
 using System.Diagnostics;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Diagnostics.Tracing;
 
 namespace System
 {
     [StructLayout(LayoutKind.Sequential)]
     public partial class Exception
     {
+        internal static uint GetExceptionCount()
+        {
+            return (uint)EventPipeInternal.GetRuntimeCounterValue(EventPipeInternal.RuntimeCounters.EXCEPTION_COUNT);
+        }
+
         internal readonly struct DispatchState
         {
             public readonly MonoStackFrame[]? StackFrames;
@@ -40,6 +46,8 @@ namespace System
         private int caught_in_unmanaged;
         #endregion
 
+        private bool HasBeenThrown => _traceIPs != null;
+
         public MethodBase? TargetSite
         {
             get
@@ -50,21 +58,6 @@ namespace System
 
                 return null;
             }
-        }
-
-        public virtual string? StackTrace => GetStackTrace(true);
-
-        private string? GetStackTrace(bool needFileInfo)
-        {
-            string? stackTraceString = _stackTraceString;
-            string? remoteStackTraceString = _remoteStackTraceString;
-
-            if (stackTraceString != null)
-                return remoteStackTraceString + stackTraceString;
-            if (_traceIPs == null)
-                return remoteStackTraceString;
-
-            return remoteStackTraceString + new StackTrace(this, needFileInfo).ToString(Diagnostics.StackTrace.TraceFormat.Normal);
         }
 
         internal DispatchState CaptureDispatchState()
@@ -143,6 +136,5 @@ namespace System
         private static IDictionary CreateDataContainer() => new ListDictionaryInternal();
 
         private static string? SerializationWatsonBuckets => null;
-        private string? SerializationStackTraceString => GetStackTrace(true);
     }
 }

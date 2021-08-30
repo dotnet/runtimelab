@@ -5,6 +5,7 @@ using System.Runtime;
 using System.Threading;
 using System.Collections;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Reflection;
@@ -24,8 +25,8 @@ namespace System
     // IList<U> and IReadOnlyList<U>, where T : U dynamically.  See the SZArrayHelper class for details.
     public abstract partial class Array : ICollection, IEnumerable, IList, IStructuralComparable, IStructuralEquatable, ICloneable
     {
-        // CS0649: Field '{blah}' is never assigned to, and will always have its default value
-#pragma warning disable 649
+        // CS0169: The field 'Array._numComponents' is never used
+#pragma warning disable 0169
         // This field should be the first field in Array as the runtime/compilers depend on it
         [NonSerialized]
         private int _numComponents;
@@ -39,23 +40,12 @@ namespace System
         //                                    Header       + m_pEEType    + _numComponents (with an optional padding)
         private const int SZARRAY_BASE_SIZE = POINTER_SIZE + POINTER_SIZE + POINTER_SIZE;
 
-        public int Length
-        {
-            get
-            {
-                // NOTE: The compiler has assumptions about the implementation of this method.
-                // Changing the implementation here (or even deleting this) will NOT have the desired impact
-                return _numComponents;
-            }
-        }
+        public int Length => checked((int)Unsafe.As<RawArrayData>(this).Length);
 
-        public long LongLength
-        {
-            get
-            {
-                return Length;
-            }
-        }
+        // This could return a length greater than int.MaxValue
+        internal nuint NativeLength => Unsafe.As<RawArrayData>(this).Length;
+
+        public long LongLength => (long)NativeLength;
 
         internal bool IsSzArray
         {
@@ -73,6 +63,7 @@ namespace System
             return EETypePtr.EETypePtrOf<Array>().ToPointer();
         }
 
+        [RequiresDynamicCode("The native code for the array might not be available at runtime.")]
         public static Array CreateInstance(Type elementType, int length)
         {
             if (elementType is null)
@@ -81,6 +72,8 @@ namespace System
             return CreateSzArray(elementType, length);
         }
 
+        [UnconditionalSuppressMessage("AotAnalysis", "IL9700:RequiresDynamicCode",
+            Justification = "MDArrays of Rank != 1 can be created because they don't implement generic interfaces.")]
         public static unsafe Array CreateInstance(Type elementType, int length1, int length2)
         {
             if (elementType is null)
@@ -97,6 +90,8 @@ namespace System
             return NewMultiDimArray(arrayType.TypeHandle.ToEETypePtr(), pLengths, 2);
         }
 
+        [UnconditionalSuppressMessage("AotAnalysis", "IL9700:RequiresDynamicCode",
+            Justification = "MDArrays of Rank != 1 can be created because they don't implement generic interfaces.")]
         public static unsafe Array CreateInstance(Type elementType, int length1, int length2, int length3)
         {
             if (elementType is null)
@@ -116,6 +111,7 @@ namespace System
             return NewMultiDimArray(arrayType.TypeHandle.ToEETypePtr(), pLengths, 3);
         }
 
+        [RequiresDynamicCode("The native code for the array might not be available at runtime.")]
         public static Array CreateInstance(Type elementType, params int[] lengths)
         {
             if (elementType is null)
@@ -144,6 +140,7 @@ namespace System
             }
         }
 
+        [RequiresDynamicCode("The native code for the array might not be available at runtime.")]
         public static Array CreateInstance(Type elementType, int[] lengths, int[] lowerBounds)
         {
             if (elementType is null)
@@ -160,6 +157,7 @@ namespace System
             return CreateMultiDimArray(elementType, lengths, lowerBounds);
         }
 
+        [RequiresDynamicCode("The native code for the array might not be available at runtime.")]
         private static Array CreateSzArray(Type elementType, int length)
         {
             // Though our callers already validated length once, this parameter is passed via arrays, so we must check it again
@@ -171,6 +169,7 @@ namespace System
             return RuntimeImports.RhNewArray(arrayType.TypeHandle.ToEETypePtr(), length);
         }
 
+        [RequiresDynamicCode("The native code for the array might not be available at runtime.")]
         private static Array CreateMultiDimArray(Type elementType, int[] lengths, int[] lowerBounds)
         {
             Debug.Assert(lengths != null);
@@ -187,6 +186,7 @@ namespace System
             return RuntimeAugments.NewMultiDimArray(arrayType.TypeHandle, lengths, lowerBounds);
         }
 
+        [RequiresDynamicCode("The native code for the array might not be available at runtime.")]
         private static Type GetArrayTypeFromElementType(Type elementType, bool multiDim, int rank)
         {
             elementType = elementType.UnderlyingSystemType;
@@ -223,16 +223,10 @@ namespace System
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal ref byte GetRawArrayData()
-        {
-            return ref Unsafe.Add(ref Unsafe.As<RawArrayData>(this).Data, (int)(EETypePtr.BaseSize - SZARRAY_BASE_SIZE));
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private ref int GetRawMultiDimArrayBounds()
         {
             Debug.Assert(!IsSzArray);
-            return ref Unsafe.AddByteOffset(ref _numComponents, POINTER_SIZE);
+            return ref Unsafe.As<byte, int>(ref Unsafe.As<RawArrayData>(this).Data);
         }
 
         // Provides a strong exception guarantee - either it succeeds, or
@@ -255,8 +249,8 @@ namespace System
             EETypePtr eeType = sourceArray.EETypePtr;
             if (eeType.FastEquals(destinationArray.EETypePtr) &&
                 eeType.IsSzArray &&
-                (uint)length <= (nuint)sourceArray.LongLength &&
-                (uint)length <= (nuint)destinationArray.LongLength)
+                (uint)length <= sourceArray.NativeLength &&
+                (uint)length <= destinationArray.NativeLength)
             {
                 nuint byteCount = (uint)length * (nuint)eeType.ComponentSize;
                 ref byte src = ref Unsafe.As<RawArrayData>(sourceArray).Data;
@@ -283,8 +277,8 @@ namespace System
                 if (eeType.FastEquals(destinationArray.EETypePtr) &&
                     eeType.IsSzArray &&
                     length >= 0 && sourceIndex >= 0 && destinationIndex >= 0 &&
-                    (uint)(sourceIndex + length) <= (nuint)sourceArray.LongLength &&
-                    (uint)(destinationIndex + length) <= (nuint)destinationArray.LongLength)
+                    (uint)(sourceIndex + length) <= sourceArray.NativeLength &&
+                    (uint)(destinationIndex + length) <= destinationArray.NativeLength)
                 {
                     nuint elementSize = (nuint)eeType.ComponentSize;
                     nuint byteCount = (uint)length * elementSize;
@@ -332,9 +326,9 @@ namespace System
                 throw new ArgumentOutOfRangeException(nameof(destinationIndex), SR.ArgumentOutOfRange_ArrayLB);
             destinationIndex -= dstLB;
 
-            if ((uint)(sourceIndex + length) > (nuint)sourceArray.LongLength)
+            if ((uint)(sourceIndex + length) > sourceArray.NativeLength)
                 throw new ArgumentException(SR.Arg_LongerThanSrcArray, nameof(sourceArray));
-            if ((uint)(destinationIndex + length) > (nuint)destinationArray.LongLength)
+            if ((uint)(destinationIndex + length) > destinationArray.NativeLength)
                 throw new ArgumentException(SR.Arg_LongerThanDestArray, nameof(destinationArray));
 
             EETypePtr sourceElementEEType = sourceArray.ElementEEType;
@@ -449,8 +443,8 @@ namespace System
             }
 
             bool reverseCopy = ((object)sourceArray == (object)destinationArray) && (sourceIndex < destinationIndex);
-            ref object refDestinationArray = ref Unsafe.As<byte, object>(ref destinationArray.GetRawArrayData());
-            ref object refSourceArray = ref Unsafe.As<byte, object>(ref sourceArray.GetRawArrayData());
+            ref object refDestinationArray = ref Unsafe.As<byte, object>(ref MemoryMarshal.GetArrayDataReference(destinationArray));
+            ref object refSourceArray = ref Unsafe.As<byte, object>(ref MemoryMarshal.GetArrayDataReference(sourceArray));
             if (reverseCopy)
             {
                 sourceIndex += length - 1;
@@ -492,10 +486,10 @@ namespace System
             EETypePtr sourceElementEEType = sourceArray.ElementEEType;
             nuint sourceElementSize = sourceArray.ElementSize;
 
-            fixed (byte* pSourceArray = &sourceArray.GetRawArrayData())
+            fixed (byte* pSourceArray = &MemoryMarshal.GetArrayDataReference(sourceArray))
             {
                 byte* pElement = pSourceArray + (nuint)sourceIndex * sourceElementSize;
-                ref object refDestinationArray = ref Unsafe.As<byte, object>(ref destinationArray.GetRawArrayData());
+                ref object refDestinationArray = ref Unsafe.As<byte, object>(ref MemoryMarshal.GetArrayDataReference(destinationArray));
                 for (int i = 0; i < length; i++)
                 {
                     object boxedValue = RuntimeImports.RhBox(sourceElementEEType, ref *pElement);
@@ -520,9 +514,9 @@ namespace System
             nuint destinationElementSize = destinationArray.ElementSize;
             bool isNullable = destinationElementEEType.IsNullable;
 
-            fixed (byte* pDestinationArray = &destinationArray.GetRawArrayData())
+            fixed (byte* pDestinationArray = &MemoryMarshal.GetArrayDataReference(destinationArray))
             {
-                ref object refSourceArray = ref Unsafe.As<byte, object>(ref sourceArray.GetRawArrayData());
+                ref object refSourceArray = ref Unsafe.As<byte, object>(ref MemoryMarshal.GetArrayDataReference(sourceArray));
                 byte* pElement = pDestinationArray + (nuint)destinationIndex * destinationElementSize;
 
                 for (int i = 0; i < length; i++)
@@ -566,7 +560,7 @@ namespace System
                 reverseCopy = false;
             }
 
-            fixed (byte* pDstArray = &destinationArray.GetRawArrayData(), pSrcArray = &sourceArray.GetRawArrayData())
+            fixed (byte* pDstArray = &MemoryMarshal.GetArrayDataReference(destinationArray), pSrcArray = &MemoryMarshal.GetArrayDataReference(sourceArray))
             {
                 nuint cbElementSize = sourceArray.ElementSize;
                 byte* pSourceElement = pSrcArray + (nuint)sourceIndex * cbElementSize;
@@ -601,7 +595,7 @@ namespace System
 
             if (reliable)
             {
-                fixed (byte* pDstArray = &destinationArray.GetRawArrayData())
+                fixed (byte* pDstArray = &MemoryMarshal.GetArrayDataReference(destinationArray))
                 {
                     nuint cbElementSize = sourceArray.ElementSize;
                     byte* pDestinationElement = pDstArray + (nuint)destinationIndex * cbElementSize;
@@ -628,8 +622,8 @@ namespace System
             nuint elementSize = sourceArray.ElementSize;
 
             Buffer.Memmove(
-                ref Unsafe.AddByteOffset(ref destinationArray.GetRawArrayData(), (nuint)destinationIndex * elementSize),
-                ref Unsafe.AddByteOffset(ref sourceArray.GetRawArrayData(), (nuint)sourceIndex * elementSize),
+                ref Unsafe.AddByteOffset(ref MemoryMarshal.GetArrayDataReference(destinationArray), (nuint)destinationIndex * elementSize),
+                ref Unsafe.AddByteOffset(ref MemoryMarshal.GetArrayDataReference(sourceArray), (nuint)sourceIndex * elementSize),
                 elementSize * (nuint)length);
         }
 
@@ -659,7 +653,7 @@ namespace System
                     throw new ArrayTypeMismatchException(SR.ArrayTypeMismatch_ConstrainedCopy);
             }
 
-            fixed (byte* pSrcArray = &sourceArray.GetRawArrayData(), pDstArray = &destinationArray.GetRawArrayData())
+            fixed (byte* pSrcArray = &MemoryMarshal.GetArrayDataReference(sourceArray), pDstArray = &MemoryMarshal.GetArrayDataReference(destinationArray))
             {
                 byte* srcData = pSrcArray + (nuint)sourceIndex * srcElementSize;
                 byte* data = pDstArray + (nuint)destinationIndex * destElementSize;
@@ -911,6 +905,26 @@ namespace System
             }
         }
 
+        public static unsafe void Clear(Array array)
+        {
+            if (array == null)
+                ThrowHelper.ThrowArgumentNullException(ExceptionArgument.array);
+
+            EETypePtr eeType = array.EETypePtr;
+            nuint totalByteLength = eeType.ComponentSize * array.NativeLength;
+            ref byte pStart = ref MemoryMarshal.GetArrayDataReference(array);
+
+            if (!eeType.HasPointers)
+            {
+                SpanHelpers.ClearWithoutReferences(ref pStart, totalByteLength);
+            }
+            else
+            {
+                Debug.Assert(totalByteLength % (nuint)sizeof(IntPtr) == 0);
+                SpanHelpers.ClearWithReferences(ref Unsafe.As<byte, IntPtr>(ref pStart), totalByteLength / (nuint)sizeof(IntPtr));
+            }
+        }
+
         public static unsafe void Clear(Array array, int index, int length)
         {
             if (array == null)
@@ -929,7 +943,7 @@ namespace System
 
             int offset = index - lowerBound;
 
-            if (index < lowerBound || offset < 0 || length < 0 || (uint)(offset + length) > (nuint)array.LongLength)
+            if (index < lowerBound || offset < 0 || length < 0 || (uint)(offset + length) > array.NativeLength)
                 ThrowHelper.ThrowIndexOutOfRangeException();
 
             nuint elementSize = eeType.ComponentSize;
@@ -938,9 +952,14 @@ namespace System
             nuint byteLength = (uint)length * elementSize;
 
             if (eeType.HasPointers)
+            {
+                Debug.Assert(byteLength % (nuint)sizeof(IntPtr) == 0);
                 SpanHelpers.ClearWithReferences(ref Unsafe.As<byte, IntPtr>(ref ptr), byteLength / (uint)sizeof(IntPtr));
+            }
             else
+            {
                 SpanHelpers.ClearWithoutReferences(ref ptr, byteLength);
+            }
 
             // GC.KeepAlive(array) not required. pMT kept alive via `ptr`
         }
@@ -1057,13 +1076,13 @@ namespace System
                         ThrowHelper.ThrowIndexOutOfRangeException();
                     flattenedIndex = (length * flattenedIndex) + index;
                 }
-                Debug.Assert((nuint)flattenedIndex < (nuint)LongLength);
+                Debug.Assert((nuint)flattenedIndex < NativeLength);
                 return flattenedIndex;
             }
             else
             {
                 int index = indices[0];
-                if ((uint)index >= (uint)LongLength)
+                if ((uint)index >= NativeLength)
                     ThrowHelper.ThrowIndexOutOfRangeException();
                 return index;
             }
@@ -1071,12 +1090,12 @@ namespace System
 
         internal object? InternalGetValue(nint flattenedIndex)
         {
-            Debug.Assert((nuint)flattenedIndex < (nuint)LongLength);
+            Debug.Assert((nuint)flattenedIndex < NativeLength);
 
             if (ElementEEType.IsPointer)
                 throw new NotSupportedException(SR.NotSupported_Type);
 
-            ref byte element = ref Unsafe.AddByteOffset(ref GetRawArrayData(), (nuint)flattenedIndex * ElementSize);
+            ref byte element = ref Unsafe.AddByteOffset(ref MemoryMarshal.GetArrayDataReference(this), (nuint)flattenedIndex * ElementSize);
 
             EETypePtr pElementEEType = ElementEEType;
             if (pElementEEType.IsValueType)
@@ -1092,12 +1111,12 @@ namespace System
 
         private unsafe void InternalSetValue(object? value, nint flattenedIndex)
         {
-            Debug.Assert((nuint)flattenedIndex < (nuint)LongLength);
+            Debug.Assert((nuint)flattenedIndex < NativeLength);
 
             if (ElementEEType.IsPointer)
                 throw new NotSupportedException(SR.NotSupported_Type);
 
-            ref byte element = ref Unsafe.AddByteOffset(ref GetRawArrayData(), (nuint)flattenedIndex * ElementSize);
+            ref byte element = ref Unsafe.AddByteOffset(ref MemoryMarshal.GetArrayDataReference(this), (nuint)flattenedIndex * ElementSize);
 
             EETypePtr pElementEEType = ElementEEType;
             if (pElementEEType.IsValueType)
@@ -1352,7 +1371,7 @@ namespace System
 
         private sealed class ArrayEnumerator : ArrayEnumeratorBase, IEnumerator<T>
         {
-            private T[] _array;
+            private readonly T[] _array;
 
             // Passing -1 for endIndex so that MoveNext always returns false without mutating _index
             internal static readonly ArrayEnumerator Empty = new ArrayEnumerator(null, -1);

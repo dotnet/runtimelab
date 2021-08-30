@@ -4,6 +4,7 @@
 using System;
 using System.Reflection;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Reflection.Runtime.General;
@@ -125,6 +126,7 @@ namespace System.Reflection.Runtime.MethodInfos
 
         public sealed override int GenericParameterCount => _common.GenericParameterCount;
 
+        [RequiresDynamicCode("The native code for this instantiation might not be available at runtime.")]
         public sealed override MethodInfo MakeGenericMethod(params Type[] typeArguments)
         {
 #if ENABLE_REFLECTION_TRACE

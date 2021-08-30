@@ -39,6 +39,8 @@ option (DISABLE_EXECUTABLES "Disable the build of the runtime executables")
 option (DISABLE_CRASH_REPORTING "Disable crash reporting subsystem")
 option (DISABLE_ICALL_TABLES "Enable separate icall table library")
 option (DISABLE_QCALLS "Disable support for QCalls")
+option (DISABLE_PERF_COUNTERS "Disable support for perf counters")
+option (DISABLE_LOG_DEST "Disable MONO_LOG_DEST support")
 option (ENABLE_ICALL_EXPORT "Export icall functions")
 option (ENABLE_ICALL_SYMBOL_MAP "Generate tables which map icall functions to their C symbols")
 option (ENABLE_PERFTRACING "Enables support for eventpipe library")
@@ -51,7 +53,6 @@ option (ENABLE_CHECKED_BUILD_PRIVATE_TYPES "Enable compile time checking that ge
 option (ENABLE_CHECKED_BUILD_GC "Enable runtime GC Safe / Unsafe mode assertion checks (must set env var MONO_CHECK_MODE=gc)")
 option (ENABLE_CHECKED_BUILD_THREAD "Enable runtime history of per-thread coop state transitions (must set env var MONO_CHECK_MODE=thread)")
 option (ENABLE_CHECKED_BUILD_METADATA "Enable runtime checks of mempool references between metadata images (must set env var MONO_CHECK_MODE=metadata)")
-option (ENABLE_METADATA_UPDATE "Enable runtime support for metadata updates")
 option (ENABLE_MSCORDBI "Generate mscordbi to support icordbg interface")
 option (STATIC_COMPONENTS "Compile mono runtime components as static (not dynamic) libraries")
 
@@ -61,4 +62,3 @@ set (ENABLE_MINIMAL "" CACHE STRING "Set many DISABLE_ options at once. Comma-se
 set (AOT_TARGET_TRIPLE "" CACHE STRING "Target triple for AOT cross compiler")
 set (AOT_OFFSETS_FILE "" CACHE STRING "Offsets file for AOT cross compiler")
 set (LLVM_PREFIX "" CACHE STRING "Enable LLVM support with LLVM installed at <LLVM_PREFIX>.")
-

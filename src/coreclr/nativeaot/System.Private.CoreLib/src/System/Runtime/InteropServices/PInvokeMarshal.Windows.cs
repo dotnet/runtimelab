@@ -12,12 +12,12 @@ namespace System.Runtime.InteropServices
     /// </summary>
     public partial class PInvokeMarshal
     {
-        public static void SaveLastWin32Error()
+        public static void SaveLastError()
         {
-            s_lastWin32Error = Interop.Kernel32.GetLastError();
+            t_lastError = Interop.Kernel32.GetLastError();
         }
 
-        public static void ClearLastWin32Error()
+        public static void ClearLastError()
         {
             Interop.Kernel32.SetLastError(0);
         }

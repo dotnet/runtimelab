@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Reflection;
 using System.Runtime.InteropServices;
@@ -19,7 +20,8 @@ namespace Microsoft.Extensions.Hosting
     public static class HostingHostBuilderExtensions
     {
         /// <summary>
-        /// Specify the environment to be used by the host.
+        /// Specify the environment to be used by the host. To avoid the environment being overwritten by a default
+        /// value, ensure this is called after defaults are configured.
         /// </summary>
         /// <param name="hostBuilder">The <see cref="IHostBuilder"/> to configure.</param>
         /// <param name="environment">The environment to host the application in.</param>
@@ -31,13 +33,14 @@ namespace Microsoft.Extensions.Hosting
                 configBuilder.AddInMemoryCollection(new[]
                 {
                     new KeyValuePair<string, string>(HostDefaults.EnvironmentKey,
-                        environment  ?? throw new ArgumentNullException(nameof(environment)))
+                        environment ?? throw new ArgumentNullException(nameof(environment)))
                 });
             });
         }
 
         /// <summary>
-        /// Specify the content root directory to be used by the host.
+        /// Specify the content root directory to be used by the host. To avoid the content root directory being
+        /// overwritten by a default value, ensure this is called after defaults are configured.
         /// </summary>
         /// <param name="hostBuilder">The <see cref="IHostBuilder"/> to configure.</param>
         /// <param name="contentRoot">Path to root directory of the application.</param>
@@ -164,7 +167,8 @@ namespace Microsoft.Extensions.Hosting
         }
 
         /// <summary>
-        /// Configures an existing <see cref="IHostBuilder"/> instance with pre-configured defaults.
+        /// Configures an existing <see cref="IHostBuilder"/> instance with pre-configured defaults. This will overwrite
+        /// previously configured values and is intended to be called before additional configuration calls.
         /// </summary>
         /// <remarks>
         ///   The following defaults are applied to the <see cref="IHostBuilder"/>:
@@ -198,11 +202,10 @@ namespace Microsoft.Extensions.Hosting
             builder.ConfigureAppConfiguration((hostingContext, config) =>
             {
                 IHostEnvironment env = hostingContext.HostingEnvironment;
-
-                bool reloadOnChange = hostingContext.Configuration.GetValue("hostBuilder:reloadConfigOnChange", defaultValue: true);
+                bool reloadOnChange = GetReloadConfigOnChangeValue(hostingContext);
 
                 config.AddJsonFile("appsettings.json", optional: true, reloadOnChange: reloadOnChange)
-                      .AddJsonFile($"appsettings.{env.EnvironmentName}.json", optional: true, reloadOnChange: reloadOnChange);
+                        .AddJsonFile($"appsettings.{env.EnvironmentName}.json", optional: true, reloadOnChange: reloadOnChange);
 
                 if (env.IsDevelopment() && env.ApplicationName is { Length: > 0 })
                 {
@@ -260,6 +263,9 @@ namespace Microsoft.Extensions.Hosting
             });
 
             return builder;
+
+            [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2026:RequiresUnreferencedCode", Justification = "Calling IConfiguration.GetValue is safe when the T is bool.")]
+            static bool GetReloadConfigOnChangeValue(HostBuilderContext hostingContext) => hostingContext.Configuration.GetValue("hostBuilder:reloadConfigOnChange", defaultValue: true);
         }
 
         /// <summary>

@@ -3,6 +3,7 @@
 
 using System.Reflection;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using CultureInfo = System.Globalization.CultureInfo;
 
 namespace System
@@ -27,6 +28,8 @@ namespace System
         //
         // The most specific match will be selected.
         //
+        [UnconditionalSuppressMessage("AotAnalysis", "IL9700:RequiresDynamicCode",
+            Justification = "Known corner case bug https://github.com/dotnet/runtimelab/issues/1079.")]
         public sealed override MethodBase BindToMethod(
             BindingFlags bindingAttr, MethodBase[] match, ref object?[] args,
             ParameterModifier[]? modifiers, CultureInfo? cultureInfo, string[]? names, out object? state)

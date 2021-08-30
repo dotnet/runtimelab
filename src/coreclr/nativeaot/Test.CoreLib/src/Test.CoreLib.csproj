@@ -24,6 +24,9 @@
     <DefineConstants>INPLACE_RUNTIME;$(DefineConstants)</DefineConstants>
     <DefineConstants Condition="'$(Platform)' == 'arm'">FEATURE_64BIT_ALIGNMENT;$(DefineConstants)</DefineConstants>
     <DefineConstants Condition="'$(Platform)' == 'armel'">FEATURE_64BIT_ALIGNMENT;$(DefineConstants)</DefineConstants>
+
+    <IntermediatesDir>$(ArtifactsObjDir)\coreclr\$(TargetOS).$(TargetArchitecture).$(CoreCLRConfiguration)</IntermediatesDir>
+    <IntermediatesDir Condition="'$(Ninja)' == 'false' and $([MSBuild]::IsOsPlatform('Windows'))">$(IntermediatesDir)\ide</IntermediatesDir>
   </PropertyGroup>
   <ItemGroup Condition="'$(InPlaceRuntime)' == 'true'">
     <Compile Include="..\..\Runtime.Base\src\System\Runtime\CachedInterfaceDispatch.cs">
@@ -73,8 +76,8 @@
     </Compile>
   </ItemGroup>
   <ItemGroup Condition="'$(InPlaceRuntime)' == 'true'">
-    <Compile Include="$(BaseIntermediateOutputPath)..\..\$(TargetOS).$(TargetArchitecture).$(CoreCLRConfiguration)\nativeaot\Runtime\Full\AsmOffsets.cs" Condition="'$(Platform)'!='llvm'"/>
-    <Compile Include="$(BaseIntermediateOutputPath)..\..\$(TargetOS).$(TargetArchitecture).$(CoreCLRConfiguration)\nativeaot\Runtime\Portable\AsmOffsetsPortable.cs" Condition="'$(Platform)'=='llvm'"/>
+    <Compile Include="$(IntermediatesDir)\nativeaot\Runtime\Full\AsmOffsets.cs" Condition="'$(Platform)'!='llvm'"/>
+    <Compile Include="$(IntermediatesDir)\nativeaot\Runtime\Portable\AsmOffsetsPortable.cs" Condition="'$(Platform)'=='llvm'"/>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="$(CompilerCommonPath)\Internal\NativeFormat\NativeFormatReader.Primitives.cs">
