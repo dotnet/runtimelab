@@ -48,25 +48,13 @@ namespace System.Text.RegularExpressions.Tests
                 yield return new object[] { options, "digits:0123456789", @"\W.*?\b", true, 6, 1 };
                 yield return new object[] { options, "e.g:abc", @"\B.*?\B", true, 5, 0 };
                 yield return new object[] { options, "e.g:abc", @"\B\W+?", false, 0, 0 };
+                yield return new object[] { options, "e.g:abc", @"\B\W*?", true, 5, 0 };
             }
-            yield return new object[] { RegexOptions.Singleline, "e.g:abc", @"\B\W*?", true, 5, 0 };
-            yield return new object[] { RegexOptions.Compiled | RegexOptions.Singleline, "e.g:abc", @"\B\W*?", true, 5, 0 };
         }
 
         [Theory]
         [MemberData(nameof(TestLazyLoops_Data))]
         public void TestLazyLoops(RegexOptions options, string input, string pattern, bool success, int index, int length)
-        {
-            Match m = Regex.Match(input, pattern, options);
-            Assert.Equal(success, m.Success);
-            Assert.Equal(index, m.Index);
-            Assert.Equal(length, m.Length);
-        }
-
-        [Theory]
-        [InlineData(DFA, "e.g:abc", @"\B\W*?", true, 5, 0)]
-        [ActiveIssue("bug with use of startset finding no match while there is an empty match")]
-        public void TestLazyLoops_ActiveIssue(RegexOptions options, string input, string pattern, bool success, int index, int length)
         {
             Match m = Regex.Match(input, pattern, options);
             Assert.Equal(success, m.Success);
