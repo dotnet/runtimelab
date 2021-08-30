@@ -66,7 +66,7 @@ namespace System.Text.RegularExpressions.Tests
         [Theory]
         [InlineData(DFA, "e.g:abc", @"\B\W*?", true, 5, 0)]
         [ActiveIssue("bug with use of startset finding no match while there is an empty match")]
-        public void TestLazyLoops_AvtiveIssue(RegexOptions options, string input, string pattern, bool success, int index, int length)
+        public void TestLazyLoops_ActiveIssue(RegexOptions options, string input, string pattern, bool success, int index, int length)
         {
             Match m = Regex.Match(input, pattern, options);
             Assert.Equal(success, m.Success);
