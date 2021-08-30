@@ -371,9 +371,10 @@ unsigned ObjectWriter::GetDFSize() {
   return Streamer->getOrCreateDataFragment()->getContents().size();
 }
 
-bool ObjectWriter::EmitRelocDirective(const int Offset, StringRef Name, const MCExpr *Expr) {
+void ObjectWriter::EmitRelocDirective(const int Offset, StringRef Name, const MCExpr *Expr) {
   const MCExpr *OffsetExpr = MCConstantExpr::create(Offset, *OutContext);
-  return Streamer->emitRelocDirective(*OffsetExpr, Name, Expr, SMLoc(), *SubtargetInfo).hasValue();
+  Optional<std::pair<bool, std::string>> result = Streamer->emitRelocDirective(*OffsetExpr, Name, Expr, SMLoc(), *SubtargetInfo);
+  assert(!result.hasValue());
 }
 
 const MCExpr *ObjectWriter::GenTargetExpr(const char *SymbolName,
@@ -435,7 +436,7 @@ int ObjectWriter::EmitSymbolRef(const char *SymbolName,
   }
   case RelocType::IMAGE_REL_BASED_THUMB_BRANCH24: {
     const MCExpr *TargetExpr = GenTargetExpr(SymbolName, Kind, Delta);
-    EmitRelocDirective(GetDFSize(), "R_ARM_THM_JUMP24", TargetExpr);
+    EmitRelocDirective(GetDFSize(), "R_ARM_THM_CALL", TargetExpr);
     return 4;
   }
   case RelocType::IMAGE_REL_BASED_ARM64_BRANCH26: {

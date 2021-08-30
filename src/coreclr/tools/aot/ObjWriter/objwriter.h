@@ -153,7 +153,7 @@ private:
   void InitTripleName(const char* tripleName = nullptr);
   Triple GetTriple();
   unsigned GetDFSize();
-  bool EmitRelocDirective(const int Offset, StringRef Name, const MCExpr *Expr);
+  void EmitRelocDirective(const int Offset, StringRef Name, const MCExpr *Expr);
   const MCExpr *GenTargetExpr(const char *SymbolName,
                               MCSymbolRefExpr::VariantKind Kind, int Delta,
                               bool IsPCRel = false, int Size = 0);

@@ -94,7 +94,7 @@ index 901d2c06e716f0ab05ea18385662ab548fcba9b4..932f487f7dcd612627f6aa205edea86c
  
    if (Header.Machine == COFF::IMAGE_FILE_MACHINE_ARMNT) {
 diff --git a/llvm/lib/Target/AArch64/MCTargetDesc/AArch64AsmBackend.cpp b/llvm/lib/Target/AArch64/MCTargetDesc/AArch64AsmBackend.cpp
-index 75a9f2f5c80e3b6c81258084f52237a54f6aad43..855d132547ddd62d41b6dd1948720f9f05eee128 100644
+index 75a9f2f5c80e3b6c81258084f52237a54f6aad43..eb4a28b05637a65e78f395528bb9b60df92da401 100644
 --- a/llvm/lib/Target/AArch64/MCTargetDesc/AArch64AsmBackend.cpp
 +++ b/llvm/lib/Target/AArch64/MCTargetDesc/AArch64AsmBackend.cpp
 @@ -141,6 +141,7 @@ static unsigned getFixupKindNumBytes(unsigned Kind) {
@@ -105,7 +105,7 @@ index 75a9f2f5c80e3b6c81258084f52237a54f6aad43..855d132547ddd62d41b6dd1948720f9f
      return 4;
  
    case FK_Data_8:
-@@ -330,6 +331,7 @@ static uint64_t adjustFixupValue(const MCFixup &Fixup, const MCValue &Target,
+@@ -330,13 +331,19 @@ static uint64_t adjustFixupValue(const MCFixup &Fixup, const MCValue &Target,
    case FK_Data_8:
    case FK_SecRel_2:
    case FK_SecRel_4:
@@ -113,6 +113,20 @@ index 75a9f2f5c80e3b6c81258084f52237a54f6aad43..855d132547ddd62d41b6dd1948720f9f
      return Value;
    }
  }
+ 
+ Optional<MCFixupKind> AArch64AsmBackend::getFixupKind(StringRef Name) const {
+-  if (!TheTriple.isOSBinFormatELF())
+-    return None;
++  if (!TheTriple.isOSBinFormatELF()) {
++      return StringSwitch<Optional<MCFixupKind>>(Name)
++          .Case("R_AARCH64_JUMP26", (MCFixupKind)AArch64::fixup_aarch64_pcrel_call26)
++          .Case("R_AARCH64_ADR_PREL_LO21", (MCFixupKind)AArch64::fixup_aarch64_pcrel_adrp_imm21)
++          .Case("R_AARCH64_ADD_ABS_LO12_NC", (MCFixupKind)AArch64::fixup_aarch64_add_imm12)
++          .Default(MCAsmBackend::getFixupKind(Name));
++  }
+ 
+   unsigned Type = llvm::StringSwitch<unsigned>(Name)
+ #define ELF_RELOC(X, Y)  .Case(#X, Y)
 diff --git a/llvm/lib/Target/AArch64/MCTargetDesc/AArch64ELFObjectWriter.cpp b/llvm/lib/Target/AArch64/MCTargetDesc/AArch64ELFObjectWriter.cpp
 index fcf67bd2f740f5f01454029d0d33c5f1172737f8..c6bcf963f6f89fe6eb7962c3fc0edd08cad94816 100644
 --- a/llvm/lib/Target/AArch64/MCTargetDesc/AArch64ELFObjectWriter.cpp
