@@ -37,6 +37,43 @@ namespace System.Text.RegularExpressions.Tests
             Assert.True(Regex.IsMatch(" AB\u200dCD ", @"\b\w+\b"));
         }
 
+        public static IEnumerable<object[]> TestLazyLoops_Data()
+        {
+            foreach (var options in new RegexOptions[] { RegexOptions.Singleline, RegexOptions.Compiled | RegexOptions.Singleline, DFA | RegexOptions.Singleline })
+            {
+                yield return new object[] { options, "seq 012 of 3 digits", @"\W.*?\D", true, 3, 5 };
+                yield return new object[] { options, "seq 012 of 3 digits", @"\W.+?\D", true, 3, 5 };
+                yield return new object[] { options, "seq 012 of 3 digits", @"\W.{1,7}?\D", true, 3, 5 };
+                yield return new object[] { options, "seq 012 of 3 digits", @"\W.{1,2}?\D", true, 7, 3 };
+                yield return new object[] { options, "digits:0123456789", @"\W.*?\b", true, 6, 1 };
+                yield return new object[] { options, "e.g:abc", @"\B.*?\B", true, 5, 0 };
+                yield return new object[] { options, "e.g:abc", @"\B\W+?", false, 0, 0 };
+            }
+            yield return new object[] { RegexOptions.Singleline, "e.g:abc", @"\B\W*?", true, 5, 0 };
+            yield return new object[] { RegexOptions.Compiled | RegexOptions.Singleline, "e.g:abc", @"\B\W*?", true, 5, 0 };
+        }
+
+        [Theory]
+        [MemberData(nameof(TestLazyLoops_Data))]
+        public void TestLazyLoops(RegexOptions options, string input, string pattern, bool success, int index, int length)
+        {
+            Match m = Regex.Match(input, pattern, options);
+            Assert.Equal(success, m.Success);
+            Assert.Equal(index, m.Index);
+            Assert.Equal(length, m.Length);
+        }
+
+        [Theory]
+        [InlineData(DFA, "e.g:abc", @"\B\W*?", true, 5, 0)]
+        [ActiveIssue("bug with use of startset finding no match while there is an empty match")]
+        public void TestLazyLoops_AvtiveIssue(RegexOptions options, string input, string pattern, bool success, int index, int length)
+        {
+            Match m = Regex.Match(input, pattern, options);
+            Assert.Equal(success, m.Success);
+            Assert.Equal(index, m.Index);
+            Assert.Equal(length, m.Length);
+        }
+
         [Fact]
         public void TestBoundary_DFA()
         {
