@@ -8,14 +8,8 @@ AssemblyLoadContext::AssemblyLoadContext()
 {
 }
 
-HRESULT AssemblyLoadContext::GetBinderID(
-    UINT_PTR* pBinderId)
-{
-    *pBinderId = reinterpret_cast<UINT_PTR>(this);
-    return S_OK;
-}
-
 #ifndef DACCESS_COMPILE
+
 NativeImage *AssemblyLoadContext::LoadNativeImage(Module *componentModule, LPCUTF8 nativeImageName)
 {
     STANDARD_VM_CONTRACT;
@@ -24,19 +18,22 @@ NativeImage *AssemblyLoadContext::LoadNativeImage(Module *componentModule, LPCUT
     AssemblyLoadContext *loadContext = componentModule->GetFile()->GetAssemblyLoadContext();
     PTR_LoaderAllocator moduleLoaderAllocator = componentModule->GetLoaderAllocator();
 
-    NativeImage *nativeImage = NativeImage::Open(componentModule, nativeImageName, loadContext, moduleLoaderAllocator);
-    m_nativeImages.Append(nativeImage);
+    bool isNewNativeImage;
+    NativeImage *nativeImage = NativeImage::Open(componentModule, nativeImageName, loadContext, moduleLoaderAllocator, &isNewNativeImage);
 
-    for (COUNT_T assemblyIndex = 0; assemblyIndex < m_loadedAssemblies.GetCount(); assemblyIndex++)
+    if (isNewNativeImage && nativeImage != nullptr)
     {
-        nativeImage->CheckAssemblyMvid(m_loadedAssemblies[assemblyIndex]);
+        m_nativeImages.Append(nativeImage);
+
+        for (COUNT_T assemblyIndex = 0; assemblyIndex < m_loadedAssemblies.GetCount(); assemblyIndex++)
+        {
+            nativeImage->CheckAssemblyMvid(m_loadedAssemblies[assemblyIndex]);
+        }
     }
 
     return nativeImage;
 }
-#endif
 
-#ifndef DACCESS_COMPILE
 void AssemblyLoadContext::AddLoadedAssembly(Assembly *loadedAssembly)
 {
     BaseDomain::LoadLockHolder lock(AppDomain::GetCurrentDomain());
@@ -46,4 +43,5 @@ void AssemblyLoadContext::AddLoadedAssembly(Assembly *loadedAssembly)
         m_nativeImages[nativeImageIndex]->CheckAssemblyMvid(loadedAssembly);
     }
 }
-#endif
+
+#endif  //DACCESS_COMPILE

@@ -46,16 +46,14 @@ namespace System
         private readonly TimeSpan _baseUtcOffset;
         private readonly bool _supportsDaylightSavingTime;
         private readonly AdjustmentRule[]? _adjustmentRules;
-        // As we support IANA and Windows Ids, it is possible we create equivalent zone objects which differ only in the Ids.
+        // As we support IANA and Windows IDs, it is possible we create equivalent zone objects which differ only in the IDs.
         private List<TimeZoneInfo>? _equivalentZones;
 
         // constants for TimeZoneInfo.Local and TimeZoneInfo.Utc
         private const string UtcId = "UTC";
         private const string LocalId = "Local";
-        private const string InvariantUtcStandardDisplayName = "Coordinated Universal Time";
 
         private static readonly TimeZoneInfo s_utcTimeZone = CreateUtcTimeZone();
-
         private static CachedData s_cachedData = new CachedData();
 
         //
@@ -137,6 +135,11 @@ namespace System
 
         public string Id => _id;
 
+        /// <summary>
+        /// Returns true if this TimeZoneInfo object has an IANA ID.
+        /// </summary>
+        public bool HasIanaId { get; }
+
         public string DisplayName => _displayName ?? string.Empty;
 
         public string StandardName => _standardDisplayName ?? string.Empty;
@@ -149,7 +152,7 @@ namespace System
 
         /// <summary>
         /// Returns an array of TimeSpan objects representing all of
-        /// possible UTC offset values for this ambiguous time.
+        /// the possible UTC offset values for this ambiguous time.
         /// </summary>
         public TimeSpan[] GetAmbiguousTimeOffsets(DateTimeOffset dateTimeOffset)
         {
@@ -881,7 +884,8 @@ namespace System
                 string? standardDisplayName,
                 string? daylightDisplayName,
                 AdjustmentRule[]? adjustmentRules,
-                bool disableDaylightSavingTime)
+                bool disableDaylightSavingTime,
+                bool hasIanaId = false)
         {
             ValidateTimeZoneInfo(id, baseUtcOffset, adjustmentRules, out bool adjustmentRulesSupportDst);
 
@@ -892,6 +896,8 @@ namespace System
             _daylightDisplayName = disableDaylightSavingTime ? null : daylightDisplayName;
             _supportsDaylightSavingTime = adjustmentRulesSupportDst && !disableDaylightSavingTime;
             _adjustmentRules = adjustmentRules;
+
+            HasIanaId = _id.Equals(UtcId, StringComparison.OrdinalIgnoreCase) ? true : hasIanaId;
         }
 
         /// <summary>
@@ -903,6 +909,8 @@ namespace System
             string? displayName,
             string? standardDisplayName)
         {
+            bool hasIanaId = TimeZoneInfo.TryConvertIanaIdToWindowsId(id, allocate: false, out string _);
+
             return new TimeZoneInfo(
                 id,
                 baseUtcOffset,
@@ -910,7 +918,8 @@ namespace System
                 standardDisplayName,
                 standardDisplayName,
                 adjustmentRules: null,
-                disableDaylightSavingTime: false);
+                disableDaylightSavingTime: false,
+                hasIanaId);
         }
 
         /// <summary>
@@ -951,6 +960,8 @@ namespace System
                 adjustmentRules = (AdjustmentRule[])adjustmentRules.Clone();
             }
 
+            bool hasIanaId = TimeZoneInfo.TryConvertIanaIdToWindowsId(id, allocate: false, out string _);
+
             return new TimeZoneInfo(
                 id,
                 baseUtcOffset,
@@ -958,8 +969,34 @@ namespace System
                 standardDisplayName,
                 daylightDisplayName,
                 adjustmentRules,
-                disableDaylightSavingTime);
+                disableDaylightSavingTime,
+                hasIanaId);
         }
+
+        /// <summary>
+        /// Tries to convert an IANA time zone ID to a Windows ID.
+        /// </summary>
+        /// <param name="ianaId">The IANA time zone ID.</param>
+        /// <param name="windowsId">String object holding the Windows ID which resulted from the IANA ID conversion.</param>
+        /// <returns>True if the ID conversion succeeded, false otherwise.</returns>
+        public static unsafe bool TryConvertIanaIdToWindowsId(string ianaId, [NotNullWhen(true)] out string? windowsId) => TryConvertIanaIdToWindowsId(ianaId, allocate: true, out windowsId);
+
+        /// <summary>
+        /// Tries to convert a Windows time zone ID to an IANA ID.
+        /// </summary>
+        /// <param name="windowsId">The Windows time zone ID.</param>
+        /// <param name="ianaId">String object holding the IANA ID which resulted from the Windows ID conversion.</param>
+        /// <returns>True if the ID conversion succeeded, false otherwise.</returns>
+        public static bool TryConvertWindowsIdToIanaId(string windowsId, [NotNullWhen(true)] out string? ianaId) =>  TryConvertWindowsIdToIanaId(windowsId, region: null, allocate: true, out ianaId);
+
+        /// <summary>
+        /// Tries to convert a Windows time zone ID to an IANA ID.
+        /// </summary>
+        /// <param name="windowsId">The Windows time zone ID.</param>
+        /// <param name="region">The ISO 3166 code for the country/region.</param>
+        /// <param name="ianaId">String object holding the IANA ID which resulted from the Windows ID conversion.</param>
+        /// <returns>True if the ID conversion succeeded, false otherwise.</returns>
+        public static unsafe bool TryConvertWindowsIdToIanaId(string windowsId, string? region, [NotNullWhen(true)] out string? ianaId) => TryConvertWindowsIdToIanaId(windowsId, region, allocate: true, out ianaId);
 
         void IDeserializationCallback.OnDeserialization(object? sender)
         {
@@ -1795,7 +1832,7 @@ namespace System
             TimeZoneInfoResult result = TryGetTimeZoneUsingId(id, dstDisabled, out value, out e, cachedData, alwaysFallbackToLocalMachine);
             if (result != TimeZoneInfoResult.Success)
             {
-                string? alternativeId = GetAlternativeId(id);
+                string? alternativeId = GetAlternativeId(id, out bool idIsIana);
                 if (alternativeId != null)
                 {
                     result = TryGetTimeZoneUsingId(alternativeId, dstDisabled, out value, out e, cachedData, alwaysFallbackToLocalMachine);
@@ -1805,7 +1842,7 @@ namespace System
                         if (value!._equivalentZones == null)
                         {
                             zone = new TimeZoneInfo(id, value!._baseUtcOffset, value!._displayName, value!._standardDisplayName,
-                                                    value!._daylightDisplayName, value!._adjustmentRules, dstDisabled && value!._supportsDaylightSavingTime);
+                                                    value!._daylightDisplayName, value!._adjustmentRules, dstDisabled && value!._supportsDaylightSavingTime, idIsIana);
                             value!._equivalentZones = new List<TimeZoneInfo>();
                             lock (value!._equivalentZones)
                             {
@@ -1825,7 +1862,7 @@ namespace System
                             if (zone == null)
                             {
                                 zone = new TimeZoneInfo(id, value!._baseUtcOffset, value!._displayName, value!._standardDisplayName,
-                                                        value!._daylightDisplayName, value!._adjustmentRules, dstDisabled && value!._supportsDaylightSavingTime);
+                                                        value!._daylightDisplayName, value!._adjustmentRules, dstDisabled && value!._supportsDaylightSavingTime, idIsIana);
                                 lock (value!._equivalentZones)
                                 {
                                     value!._equivalentZones.Add(zone);
@@ -1862,7 +1899,7 @@ namespace System
                     else
                     {
                         value = new TimeZoneInfo(match._id, match._baseUtcOffset, match._displayName, match._standardDisplayName,
-                                              match._daylightDisplayName, match._adjustmentRules, disableDaylightSavingTime: false);
+                                              match._daylightDisplayName, match._adjustmentRules, disableDaylightSavingTime: false, match.HasIanaId);
                     }
 
                     return result;
@@ -2020,7 +2057,7 @@ namespace System
         private static TimeZoneInfo CreateUtcTimeZone()
         {
             string standardDisplayName = GetUtcStandardDisplayName();
-            string displayName = $"(UTC) {standardDisplayName}";
+            string displayName = GetUtcFullDisplayName(UtcId, standardDisplayName);
             return CreateCustomTimeZone(UtcId, TimeSpan.Zero, displayName, standardDisplayName);
         }
     }

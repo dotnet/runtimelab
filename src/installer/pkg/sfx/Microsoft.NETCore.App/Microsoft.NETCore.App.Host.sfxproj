@@ -2,7 +2,7 @@
   <Sdk Name="Microsoft.DotNet.SharedFramework.Sdk" />
 
   <PropertyGroup>
-    <SkipBuild Condition="'$(RuntimeFlavor)' == 'Mono' and '$(TargetArchitecture)' != 's390x'">true</SkipBuild>
+    <SkipBuild Condition="'$(RuntimeFlavor)' != '$(PrimaryRuntimeFlavor)'">true</SkipBuild>
     <PlatformPackageType>AppHostPack</PlatformPackageType>
     <UseTemplatedPlatformManifest>true</UseTemplatedPlatformManifest>
     <ArchiveName>dotnet-apphost-pack</ArchiveName>
@@ -28,7 +28,6 @@
     <NativeRuntimeAsset Include="$(DotNetHostBinDir)/coreclr_delegates.h" />
   </ItemGroup>
   <ItemGroup Condition="'$(RuntimeFlavor)' != 'Mono'">
-    <!-- FIXME: See src/installer/corehost/cli/apphost/CMakeLists.txt -->
     <NativeRuntimeAsset Include="$(DotNetHostBinDir)/singlefilehost$(ExeSuffix)" />
   </ItemGroup>
   <ItemGroup Condition="'$(TargetOS)' == 'windows'">

@@ -81,6 +81,8 @@ inline CHECK CheckOverflow(RVA value1, COUNT_T value2)
 #define IMAGE_FILE_MACHINE_NATIVE   IMAGE_FILE_MACHINE_ARMNT
 #elif defined(TARGET_ARM64)
 #define IMAGE_FILE_MACHINE_NATIVE   IMAGE_FILE_MACHINE_ARM64
+#elif defined(TARGET_S390X)
+#define IMAGE_FILE_MACHINE_NATIVE   IMAGE_FILE_MACHINE_UNKNOWN
 #else
 #error "port me"
 #endif
@@ -236,7 +238,7 @@ class PEDecoder
     BOOL IsILOnly() const;
     CHECK CheckILOnly() const;
 
-    void LayoutILOnly(void *base, BOOL allowFullPE = FALSE) const;
+    void LayoutILOnly(void *base, bool enableExecution) const;
 
     // Strong name & hashing support
 
@@ -283,7 +285,6 @@ class PEDecoder
     // Native header access
     BOOL HasNativeHeader() const;
     CHECK CheckNativeHeader() const;
-    CORCOMPILE_HEADER *GetNativeHeader() const;
     BOOL IsNativeMachineFormat() const;
     BOOL IsI386() const;
 
@@ -306,40 +307,6 @@ class PEDecoder
 
     PTR_CVOID GetNativeManifestMetadata(COUNT_T* pSize = NULL) const;
 
-#ifdef FEATURE_PREJIT
-    CHECK CheckNativeHeaderVersion() const;
-
-    // ManagedNative fields
-    CORCOMPILE_CODE_MANAGER_ENTRY *GetNativeCodeManagerTable() const;
-    CORCOMPILE_EE_INFO_TABLE *GetNativeEEInfoTable() const;
-    void *GetNativeHelperTable(COUNT_T *pSize = NULL) const;
-    CORCOMPILE_VERSION_INFO *GetNativeVersionInfo() const;
-    CORCOMPILE_VERSION_INFO *GetNativeVersionInfoMaybeNull(bool skipCheckNativeHeader = false) const;
-    BOOL HasNativeDebugMap() const;
-    TADDR GetNativeDebugMap(COUNT_T *pSize = NULL) const;
-    Module *GetPersistedModuleImage(COUNT_T *pSize = NULL) const;
-    PCODE GetNativeHotCode(COUNT_T * pSize = NULL) const;
-    PCODE GetNativeCode(COUNT_T * pSize = NULL) const;
-    PCODE GetNativeColdCode(COUNT_T * pSize = NULL) const;
-
-    CORCOMPILE_METHOD_PROFILE_LIST *GetNativeProfileDataList(COUNT_T *pSize = NULL) const;
-    const void *GetNativePreferredBase() const;
-    BOOL GetNativeILHasSecurityDirectory() const;
-    BOOL GetNativeILIsIbcOptimized() const;
-    BOOL GetNativeILHasReadyToRunHeader() const;
-    BOOL IsNativeILILOnly() const;
-    BOOL IsNativeILDll() const;
-    void GetNativeILPEKindAndMachine(DWORD* pdwKind, DWORD* pdwMachine) const;
-    CORCOMPILE_DEPENDENCY * GetNativeDependencies(COUNT_T *pCount = NULL) const;
-
-    PTR_CORCOMPILE_IMPORT_SECTION GetNativeImportSections(COUNT_T *pCount = NULL) const;
-    PTR_CORCOMPILE_IMPORT_SECTION GetNativeImportSectionFromIndex(COUNT_T index) const;
-    PTR_CORCOMPILE_IMPORT_SECTION GetNativeImportSectionForRVA(RVA rva) const;
-
-    TADDR GetStubsTable(COUNT_T *pSize = NULL) const;
-    TADDR GetVirtualSectionsTable(COUNT_T *pSize = NULL) const;
-#endif // FEATURE_PREJIT
-
     BOOL IsComponentAssembly() const;
     BOOL HasReadyToRunHeader() const;
     READYTORUN_HEADER *GetReadyToRunHeader() const;
@@ -353,7 +320,7 @@ class PEDecoder
     void *GetNativeEntryPoint() const;
 
     // Look up a named symbol in the export directory
-    void *GetExport(LPCSTR exportName) const;
+    PTR_VOID GetExport(LPCSTR exportName) const;
 
 #ifdef _DEBUG
     // Stress mode for relocations
@@ -395,9 +362,6 @@ class PEDecoder
     enum METADATA_SECTION_TYPE
     {
         METADATA_SECTION_FULL,
-#ifdef FEATURE_PREJIT
-        METADATA_SECTION_MANIFEST
-#endif
     };
 
     IMAGE_DATA_DIRECTORY *GetMetaDataHelper(METADATA_SECTION_TYPE type) const;
@@ -406,7 +370,6 @@ class PEDecoder
 
     IMAGE_NT_HEADERS *FindNTHeaders() const;
     IMAGE_COR20_HEADER *FindCorHeader() const;
-    CORCOMPILE_HEADER *FindNativeHeader() const;
     READYTORUN_HEADER *FindReadyToRunHeader() const;
 
     // Flat mapping utilities
@@ -445,7 +408,6 @@ class PEDecoder
 
     PTR_IMAGE_NT_HEADERS   m_pNTHeaders;
     PTR_IMAGE_COR20_HEADER m_pCorHeader;
-    PTR_CORCOMPILE_HEADER  m_pNativeHeader;
     PTR_READYTORUN_HEADER  m_pReadyToRunHeader;
 };
 

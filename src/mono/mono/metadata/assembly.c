@@ -42,7 +42,6 @@
 #include <mono/metadata/reflection.h>
 #include <mono/metadata/coree.h>
 #include <mono/metadata/cil-coff.h>
-#include <mono/utils/mono-io-portability.h>
 #include <mono/utils/atomic.h>
 #include <mono/utils/mono-os-mutex.h>
 #include <mono/metadata/mono-private-unstable.h>
@@ -70,6 +69,7 @@ static char **assemblies_path = NULL;
 
 /* keeps track of loaded assemblies, excluding dynamic ones */
 static GList *loaded_assemblies = NULL;
+static guint32 loaded_assembly_count = 0;
 static MonoAssembly *corlib;
 
 static char* unquote (const char *str);
@@ -1060,7 +1060,8 @@ netcore_load_reference (MonoAssemblyName *aname, MonoAssemblyLoadContext *alc, M
 	 *
 	 * 7. If this is a satellite request, call the ALC ResolveSatelliteAssembly method.
 	 *
-	 * 8. Call the ALC Resolving event.
+	 * 8. Call the ALC Resolving event.  If the ALC is not the default and this is not
+	 *    a satellite request, call the Resolving event in the default ALC first.
 	 *
 	 * 9. Call the ALC AssemblyResolve event (except for corlib satellite assemblies).
 	 *
@@ -1137,6 +1138,15 @@ netcore_load_reference (MonoAssemblyName *aname, MonoAssemblyLoadContext *alc, M
 		}
 	}
 
+	// For compatibility with CoreCLR, invoke the Resolving event in the default ALC first whenever loading
+	// a non-satellite assembly into a non-default ALC.  See: https://github.com/dotnet/runtime/issues/54814
+	if (!is_default && !is_satellite) {
+		reference = mono_alc_invoke_resolve_using_resolving_event_nofail (mono_alc_get_default (), aname);
+		if (reference) {
+			mono_trace (G_LOG_LEVEL_DEBUG, MONO_TRACE_ASSEMBLY, "Assembly found with the Resolving event (default ALC): '%s'.", aname->name);
+			goto leave;
+		}
+	}
 	reference = mono_alc_invoke_resolve_using_resolving_event_nofail (alc, aname);
 	if (reference) {
 		mono_trace (G_LOG_LEVEL_DEBUG, MONO_TRACE_ASSEMBLY, "Assembly found with the Resolving event: '%s'.", aname->name);
@@ -1578,9 +1588,21 @@ invoke_assembly_preload_hook (MonoAssemblyLoadContext *alc, MonoAssemblyName *an
 			if (hook->version == 2)
 				assembly = hook->func.v2 (alc, aname, apath, hook->user_data, error);
 			else { // v3
-				MonoGCHandle strong_gchandle = mono_gchandle_from_handle (mono_gchandle_get_target_handle (alc->gchandle), TRUE);
+				/*
+				 * For the default ALC, pass the globally known gchandle (since it's never collectible, it's always a strong handle).
+				 * For other ALCs, make a new strong handle that is passed to the caller.
+				 * Early at startup, when the default ALC exists, but its managed object doesn't, so the default ALC gchandle points to null.
+				 */
+				gboolean needs_free = TRUE;
+				MonoGCHandle strong_gchandle;
+				if (mono_alc_is_default (alc)) {
+					needs_free = FALSE;
+					strong_gchandle = alc->gchandle;
+				} else
+					strong_gchandle = mono_gchandle_from_handle (mono_gchandle_get_target_handle (alc->gchandle), TRUE);
 				assembly = hook->func.v3 (strong_gchandle, aname, apath, hook->user_data, error);
-				mono_gchandle_free_internal (strong_gchandle);
+				if (needs_free)
+					mono_gchandle_free_internal (strong_gchandle);
 			}
 			/* TODO: propagage error out to callers */
 			mono_error_assert_ok (error);
@@ -1934,34 +1956,7 @@ mono_assembly_request_open (const char *filename, const MonoAssemblyOpenRequest 
 		status = &def_status;
 	*status = MONO_IMAGE_OK;
 
-	if (strncmp (filename, "file://", 7) == 0) {
-		GError *gerror = NULL;
-		gchar *uri = (gchar *) filename;
-		gchar *tmpuri;
-
-		/*
-		 * MS allows file://c:/... and fails on file://localhost/c:/... 
-		 * They also throw an IndexOutOfRangeException if "file://"
-		 */
-		if (uri [7] != '/')
-			uri = g_strdup_printf ("file:///%s", uri + 7);
-	
-		tmpuri = uri;
-		uri = mono_escape_uri_string (tmpuri);
-		fname = g_filename_from_uri (uri, NULL, &gerror);
-		g_free (uri);
-
-		if (tmpuri != filename)
-			g_free (tmpuri);
-
-		if (gerror != NULL) {
-			g_warning ("%s\n", gerror->message);
-			g_error_free (gerror);
-			fname = g_strdup (filename);
-		}
-	} else {
-		fname = g_strdup (filename);
-	}
+	fname = g_strdup (filename);
 
 	mono_trace (G_LOG_LEVEL_DEBUG, MONO_TRACE_ASSEMBLY,
 			"Assembly Loader probing location: '%s'.", fname);
@@ -2414,6 +2409,7 @@ mono_assembly_request_load_from (MonoImage *image, const char *fname,
 		image->assembly = ass;
 
 	loaded_assemblies = g_list_prepend (loaded_assemblies, ass);
+	loaded_assembly_count++;
 	mono_assemblies_unlock ();
 
 #ifdef HOST_WIN32
@@ -3312,6 +3308,7 @@ mono_assembly_close_except_image_pools (MonoAssembly *assembly)
 
 	mono_assemblies_lock ();
 	loaded_assemblies = g_list_remove (loaded_assemblies, assembly);
+	loaded_assembly_count--;
 	mono_assemblies_unlock ();
 
 	assembly->image->assembly = NULL;
@@ -3749,4 +3746,10 @@ mono_assembly_is_jit_optimizer_disabled (MonoAssembly *ass)
 
 	return disable_opts;
 
+}
+
+guint32
+mono_assembly_get_count (void)
+{
+	return loaded_assembly_count;
 }

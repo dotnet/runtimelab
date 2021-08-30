@@ -31,9 +31,6 @@ endif()
 
 set(metadata_win32_sources
     w32file-win32.c
-    icall-windows.c
-    marshal-windows.c
-    mono-security-windows.c
     w32event-win32.c
     w32error-win32.c)
 
@@ -71,6 +68,8 @@ set(metadata_common_sources
     class-setup-vtable.c
     cominterop.c
     cominterop.h
+    components.h
+    components.c
     coree.c
     coree.h
     coree-internals.h
@@ -94,6 +93,7 @@ set(metadata_common_sources
     icall-eventpipe.c
     image.c
     image-internals.h
+    jit-info.h
     jit-info.c
     loader.c
     lock-tracer.c
@@ -139,10 +139,6 @@ set(metadata_common_sources
     profiler.c
     profiler-private.h
     runtime.c
-    security.h
-    security-core-clr.c
-    security-core-clr.h
-    security-manager.h
     string-icalls.c
     string-icalls.h
     sysmath.c
@@ -158,9 +154,6 @@ set(metadata_common_sources
     custom-attrs-internals.h
     sre-internals.h
     reflection-internals.h
-    file-mmap-posix.c
-    file-mmap-windows.c
-    file-mmap.h
     object-offsets.h
     abi-details.h
     class-abi-details.h

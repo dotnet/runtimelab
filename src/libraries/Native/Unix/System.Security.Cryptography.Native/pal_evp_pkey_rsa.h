@@ -16,6 +16,11 @@ typedef enum
 } RsaPaddingMode;
 
 /*
+Create a new EVP_PKEY* wrapping an existing RSA key.
+*/
+PALEXPORT EVP_PKEY* CryptoNative_EvpPKeyCreateRsa(RSA* currentKey);
+
+/*
 Creates an RSA key of the requested size.
 */
 PALEXPORT EVP_PKEY* CryptoNative_RsaGenerateKey(int32_t keySize);
@@ -34,16 +39,43 @@ PALEXPORT int32_t CryptoNative_RsaDecrypt(EVP_PKEY* pkey,
                                           int32_t destinationLen);
 
 /*
-Shims the EVP_PKEY_get1_RSA method.
+Encrypt source into destination using the specified RSA key (wrapped in an EVP_PKEY) and padding/digest options.
 
-Returns the RSA instance for the EVP_PKEY.
+Returns the number of bytes written to destination, -1 on error.
 */
-PALEXPORT RSA* CryptoNative_EvpPkeyGetRsa(EVP_PKEY* pkey);
+PALEXPORT int32_t CryptoNative_RsaEncrypt(EVP_PKEY* pkey,
+                                          const uint8_t* source,
+                                          int32_t sourceLen,
+                                          RsaPaddingMode padding,
+                                          const EVP_MD* digest,
+                                          uint8_t* destination,
+                                          int32_t destinationLen);
 
 /*
-Shims the EVP_PKEY_set1_RSA method to set the RSA
-instance on the EVP_KEY.
+Complete the RSA signature generation for the specified hash using the provided RSA key
+(wrapped in an EVP_PKEY) and padding/digest options.
 
-Returns 1 upon success, otherwise 0.
+Returns the number of bytes written to destination, -1 on error.
 */
-PALEXPORT int32_t CryptoNative_EvpPkeySetRsa(EVP_PKEY* pkey, RSA* rsa);
+PALEXPORT int32_t CryptoNative_RsaSignHash(EVP_PKEY* pkey,
+                                           RsaPaddingMode padding,
+                                           const EVP_MD* digest,
+                                           const uint8_t* hash,
+                                           int32_t hashLen,
+                                           uint8_t* destination,
+                                           int32_t destinationLen);
+
+/*
+Verify an RSA signature for the specified hash using the provided RSA key (wrapped in an EVP_PKEY)
+and padding/digest options.
+
+Returns 1 on a verified signature, 0 on a mismatched signature, -1 on error.
+*/
+PALEXPORT int32_t CryptoNative_RsaVerifyHash(EVP_PKEY* pkey,
+                                             RsaPaddingMode padding,
+                                             const EVP_MD* digest,
+                                             const uint8_t* hash,
+                                             int32_t hashLen,
+                                             const uint8_t* signature,
+                                             int32_t signatureLen);
+

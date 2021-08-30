@@ -5,9 +5,12 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Net.Http;
 using System.Net.Security;
+using System.Runtime.InteropServices;
 using System.Security.Authentication;
 using System.Security.Cryptography.X509Certificates;
 using Microsoft.Win32.SafeHandles;
+
+#pragma warning disable CA1419 // TODO https://github.com/dotnet/roslyn-analyzers/issues/5232: not intended for use with P/Invoke
 
 namespace System.Net
 {
@@ -20,8 +23,6 @@ namespace System.Net
         private const int OSStatus_errSSLWouldBlock = -9803;
         private const int InitialBufferSize = 2048;
         private SafeSslHandle _sslContext;
-        private Interop.AppleCrypto.SSLReadFunc _readCallback;
-        private Interop.AppleCrypto.SSLWriteFunc _writeCallback;
         private ArrayBuffer _inputBuffer = new ArrayBuffer(InitialBufferSize);
         private ArrayBuffer _outputBuffer = new ArrayBuffer(InitialBufferSize);
 
@@ -36,18 +37,19 @@ namespace System.Net
             {
                 int osStatus;
 
-                unsafe
-                {
-                    _readCallback = ReadFromConnection;
-                    _writeCallback = WriteToConnection;
-                }
-
                 _sslContext = CreateSslContext(credential, sslAuthenticationOptions.IsServer);
 
-                osStatus = Interop.AppleCrypto.SslSetIoCallbacks(
-                    _sslContext,
-                    _readCallback,
-                    _writeCallback);
+                // Make sure the class instance is associated to the session and is provided
+                // in the Read/Write callback connection parameter
+                SslSetConnection(_sslContext);
+
+                unsafe
+                {
+                    osStatus = Interop.AppleCrypto.SslSetIoCallbacks(
+                        _sslContext,
+                        &ReadFromConnection,
+                        &WriteToConnection);
+                }
 
                 if (osStatus != 0)
                 {
@@ -75,7 +77,7 @@ namespace System.Net
                     }
                 }
 
-                if (sslAuthenticationOptions.ApplicationProtocols != null)
+                if (sslAuthenticationOptions.ApplicationProtocols != null && sslAuthenticationOptions.ApplicationProtocols.Count != 0)
                 {
                     // On OSX coretls supports only client side. For server, we will silently ignore the option.
                     if (!sslAuthenticationOptions.IsServer)
@@ -140,6 +142,13 @@ namespace System.Net
             return sslContext;
         }
 
+        private void SslSetConnection(SafeSslHandle sslContext)
+        {
+            GCHandle handle = GCHandle.Alloc(this, GCHandleType.Weak);
+
+            Interop.AppleCrypto.SslSetConnection(sslContext, GCHandle.ToIntPtr(handle));
+        }
+
         public override bool IsInvalid => _sslContext?.IsInvalid ?? true;
 
         protected override void Dispose(bool disposing)
@@ -158,8 +167,12 @@ namespace System.Net
             base.Dispose(disposing);
         }
 
-        private unsafe int WriteToConnection(void* connection, byte* data, void** dataLength)
+        [UnmanagedCallersOnly]
+        private static unsafe int WriteToConnection(IntPtr connection, byte* data, void** dataLength)
         {
+            SafeDeleteSslContext? context = (SafeDeleteSslContext?)GCHandle.FromIntPtr(connection).Target;
+            Debug.Assert(context != null);
+
             // We don't pool these buffers and we can't because there's a race between their us in the native
             // read/write callbacks and being disposed when the SafeHandle is disposed. This race is benign currently,
             // but if we were to pool the buffers we would have a potential use-after-free issue.
@@ -171,9 +184,9 @@ namespace System.Net
                 int toWrite = (int)length;
                 var inputBuffer = new ReadOnlySpan<byte>(data, toWrite);
 
-                _outputBuffer.EnsureAvailableSpace(toWrite);
-                inputBuffer.CopyTo(_outputBuffer.AvailableSpan);
-                _outputBuffer.Commit(toWrite);
+                context._outputBuffer.EnsureAvailableSpace(toWrite);
+                inputBuffer.CopyTo(context._outputBuffer.AvailableSpan);
+                context._outputBuffer.Commit(toWrite);
                 // Since we can enqueue everything, no need to re-assign *dataLength.
 
                 return OSStatus_noErr;
@@ -181,13 +194,17 @@ namespace System.Net
             catch (Exception e)
             {
                 if (NetEventSource.Log.IsEnabled())
-                    NetEventSource.Error(this, $"WritingToConnection failed: {e.Message}");
+                    NetEventSource.Error(context, $"WritingToConnection failed: {e.Message}");
                 return OSStatus_writErr;
             }
         }
 
-        private unsafe int ReadFromConnection(void* connection, byte* data, void** dataLength)
+        [UnmanagedCallersOnly]
+        private static unsafe int ReadFromConnection(IntPtr connection, byte* data, void** dataLength)
         {
+            SafeDeleteSslContext? context = (SafeDeleteSslContext?)GCHandle.FromIntPtr(connection).Target;
+            Debug.Assert(context != null);
+
             try
             {
                 ulong toRead = (ulong)*dataLength;
@@ -199,16 +216,16 @@ namespace System.Net
 
                 uint transferred = 0;
 
-                if (_inputBuffer.ActiveLength == 0)
+                if (context._inputBuffer.ActiveLength == 0)
                 {
                     *dataLength = (void*)0;
                     return OSStatus_errSSLWouldBlock;
                 }
 
-                int limit = Math.Min((int)toRead, _inputBuffer.ActiveLength);
+                int limit = Math.Min((int)toRead, context._inputBuffer.ActiveLength);
 
-                _inputBuffer.ActiveSpan.Slice(0, limit).CopyTo(new Span<byte>(data, limit));
-                _inputBuffer.Discard(limit);
+                context._inputBuffer.ActiveSpan.Slice(0, limit).CopyTo(new Span<byte>(data, limit));
+                context._inputBuffer.Discard(limit);
                 transferred = (uint)limit;
 
                 *dataLength = (void*)transferred;
@@ -217,7 +234,7 @@ namespace System.Net
             catch (Exception e)
             {
                 if (NetEventSource.Log.IsEnabled())
-                    NetEventSource.Error(this, $"ReadFromConnectionfailed: {e.Message}");
+                    NetEventSource.Error(context, $"ReadFromConnectionfailed: {e.Message}");
                 return OSStatus_readErr;
             }
         }
@@ -272,68 +289,11 @@ namespace System.Net
 
         private static void SetProtocols(SafeSslHandle sslContext, SslProtocols protocols)
         {
-            // A contiguous range of protocols is required.  Find the min and max of the range,
-            // or throw if it's non-contiguous or if no protocols are specified.
+            (int minIndex, int maxIndex) = protocols.ValidateContiguous(s_orderedSslProtocols);
+            SslProtocols minProtocolId = s_orderedSslProtocols[minIndex];
+            SslProtocols maxProtocolId = s_orderedSslProtocols[maxIndex];
 
-            // First, mark all of the specified protocols.
-            SslProtocols[] orderedSslProtocols = s_orderedSslProtocols;
-            Span<bool> protocolSet = stackalloc bool[orderedSslProtocols.Length];
-            for (int i = 0; i < orderedSslProtocols.Length; i++)
-            {
-                protocolSet[i] = (protocols & orderedSslProtocols[i]) != 0;
-            }
-
-            SslProtocols minProtocolId = (SslProtocols)(-1);
-            SslProtocols maxProtocolId = (SslProtocols)(-1);
-
-            // Loop through them, starting from the lowest.
-            for (int min = 0; min < protocolSet.Length; min++)
-            {
-                if (protocolSet[min])
-                {
-                    // We found the first one that's set; that's the bottom of the range.
-                    minProtocolId = orderedSslProtocols[min];
-
-                    // Now loop from there to look for the max of the range.
-                    for (int max = min + 1; max < protocolSet.Length; max++)
-                    {
-                        if (!protocolSet[max])
-                        {
-                            // We found the first one after the min that's not set; the top of the range
-                            // is the one before this (which might be the same as the min).
-                            maxProtocolId = orderedSslProtocols[max - 1];
-
-                            // Finally, verify that nothing beyond this one is set, as that would be
-                            // a discontiguous set of protocols.
-                            for (int verifyNotSet = max + 1; verifyNotSet < protocolSet.Length; verifyNotSet++)
-                            {
-                                if (protocolSet[verifyNotSet])
-                                {
-                                    throw new PlatformNotSupportedException(SR.Format(SR.net_security_sslprotocol_contiguous, protocols));
-                                }
-                            }
-
-                            break;
-                        }
-                    }
-
-                    break;
-                }
-            }
-
-            // If no protocols were set, throw.
-            if (minProtocolId == (SslProtocols)(-1))
-            {
-                throw new PlatformNotSupportedException(SR.net_securityprotocolnotsupported);
-            }
-
-            // If we didn't find an unset protocol after the min, go all the way to the last one.
-            if (maxProtocolId == (SslProtocols)(-1))
-            {
-                maxProtocolId = orderedSslProtocols[orderedSslProtocols.Length - 1];
-            }
-
-            // Finally set this min and max.
+            // Set the min and max.
             Interop.AppleCrypto.SslSetMinProtocolVersion(sslContext, minProtocolId);
             Interop.AppleCrypto.SslSetMaxProtocolVersion(sslContext, maxProtocolId);
         }
@@ -357,7 +317,7 @@ namespace System.Net
                     // The current value of intermediateCert is still in elements, which will
                     // get Disposed at the end of this method.  The new value will be
                     // in the intermediate certs array, which also gets serially Disposed.
-                    intermediateCert = new X509Certificate2(intermediateCert.RawData);
+                    intermediateCert = new X509Certificate2(intermediateCert.RawDataMemory.Span);
                 }
 
                 ptrs[i + 1] = intermediateCert.Handle;

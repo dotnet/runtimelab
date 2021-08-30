@@ -3,6 +3,7 @@
 
 using System.Collections;
 using System.Collections.Generic;
+using System.Text.Json.Serialization.Metadata;
 
 namespace System.Text.Json.Serialization.Converters
 {
@@ -10,13 +11,13 @@ namespace System.Text.Json.Serialization.Converters
     /// Converter for <cref>System.Collections.IDictionary</cref> that (de)serializes as a JSON object with properties
     /// representing the dictionary element key and value.
     /// </summary>
-    internal sealed class IDictionaryConverter<TCollection>
-        : DictionaryDefaultConverter<TCollection, string, object?>
-        where TCollection : IDictionary
+    internal sealed class IDictionaryConverter<TDictionary>
+        : JsonDictionaryConverter<TDictionary, string, object?>
+        where TDictionary : IDictionary
     {
         protected override void Add(string key, in object? value, JsonSerializerOptions options, ref ReadStack state)
         {
-            TCollection collection = (TCollection)state.Current.ReturnValue!;
+            TDictionary collection = (TDictionary)state.Current.ReturnValue!;
             collection[key] = value;
             if (IsValueType)
             {
@@ -26,7 +27,7 @@ namespace System.Text.Json.Serialization.Converters
 
         protected override void CreateCollection(ref Utf8JsonReader reader, ref ReadStack state)
         {
-            JsonClassInfo classInfo = state.Current.JsonClassInfo;
+            JsonTypeInfo typeInfo = state.Current.JsonTypeInfo;
 
             if (TypeToConvert.IsInterface || TypeToConvert.IsAbstract)
             {
@@ -40,12 +41,12 @@ namespace System.Text.Json.Serialization.Converters
             }
             else
             {
-                if (classInfo.CreateObject == null)
+                if (typeInfo.CreateObject == null)
                 {
                     ThrowHelper.ThrowNotSupportedException_DeserializeNoConstructor(TypeToConvert, ref reader, ref state);
                 }
 
-                TCollection returnValue = (TCollection)classInfo.CreateObject()!;
+                TDictionary returnValue = (TDictionary)typeInfo.CreateObject()!;
 
                 if (returnValue.IsReadOnly)
                 {
@@ -56,7 +57,7 @@ namespace System.Text.Json.Serialization.Converters
             }
         }
 
-        protected internal override bool OnWriteResume(Utf8JsonWriter writer, TCollection value, JsonSerializerOptions options, ref WriteStack state)
+        protected internal override bool OnWriteResume(Utf8JsonWriter writer, TDictionary value, JsonSerializerOptions options, ref WriteStack state)
         {
             IDictionaryEnumerator enumerator;
             if (state.Current.CollectionEnumerator == null)
@@ -72,8 +73,8 @@ namespace System.Text.Json.Serialization.Converters
                 enumerator = (IDictionaryEnumerator)state.Current.CollectionEnumerator;
             }
 
-            JsonClassInfo classInfo = state.Current.JsonClassInfo;
-            _valueConverter ??= GetConverter<object?>(classInfo.ElementClassInfo!);
+            JsonTypeInfo typeInfo = state.Current.JsonTypeInfo;
+            _valueConverter ??= GetConverter<object?>(typeInfo.ElementTypeInfo!);
 
             do
             {
@@ -90,14 +91,14 @@ namespace System.Text.Json.Serialization.Converters
                     // Optimize for string since that's the hot path.
                     if (key is string keyString)
                     {
-                        _keyConverter ??= GetConverter<string>(classInfo.KeyClassInfo!);
-                        _keyConverter.WriteWithQuotes(writer, keyString, options, ref state);
+                        _keyConverter ??= GetConverter<string>(typeInfo.KeyTypeInfo!);
+                        _keyConverter.WriteAsPropertyNameCore(writer, keyString, options, state.Current.IsWritingExtensionDataProperty);
                     }
                     else
                     {
                         // IDictionary is a special case since it has polymorphic object semantics on serialization
                         // but needs to use JsonConverter<string> on deserialization.
-                        _valueConverter.WriteWithQuotes(writer, key, options, ref state);
+                        _valueConverter.WriteAsPropertyNameCore(writer, key, options, state.Current.IsWritingExtensionDataProperty);
                     }
                 }
 

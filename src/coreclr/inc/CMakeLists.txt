@@ -6,8 +6,6 @@ set( CORGUIDS_IDL_SOURCES
   xclrdata.idl
   corprof.idl
   corpub.idl
-  mscorsvc.idl
-  clrprivbinding.idl
   corsym.idl
   sospriv.idl
 )
@@ -58,13 +56,13 @@ if(FEATURE_JIT_PITCHING)
 endif(FEATURE_JIT_PITCHING)
 
 # Compile *_i.cpp to lib
-_add_library(corguids_obj OBJECT ${CORGUIDS_SOURCES})
+add_library_clr(corguids_obj OBJECT ${CORGUIDS_SOURCES})
 add_library(corguids INTERFACE)
 target_sources(corguids INTERFACE $<TARGET_OBJECTS:corguids_obj>)
 
 # Binplace the inc files for packaging later.
 
-_install (FILES cfi.h
+install (FILES cfi.h
                cor.h
                cordebuginfo.h
                coredistools.h
