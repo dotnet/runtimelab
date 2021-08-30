@@ -313,9 +313,17 @@ namespace System.Text.RegularExpressions.SRM
             InitializeRegexes();
 
             A_startset = A.GetStartSet();
-            if (!builder.solver.IsSatisfiable(A_startset))
-                //if the startset is empty make it full instead by including all characters
-                //this is to ensure that startset is nonempty -- as an invariant assumed by operations using it
+            if (!builder.solver.IsSatisfiable(A_startset) || A.CanBeNullable)
+                // If the startset is empty make it full instead by including all characters
+                // this is to ensure that startset is nonempty -- as an invariant assumed by operations using it
+                //
+                // Also, if A can be nullable then effectively disable use of startset by making it true
+                // because it may force search of next character in startset and fail to recognize an empty match
+                // because (by definition) an empty match has no start character.
+                //
+                // For example (this is also a unit test):
+                // for pattern "\B\W*?" or "\B\W*" or "\B\W?" and input "e.g:abc" there is an empty match in position 5
+                // but startset \W will force search beyond position 5 and fails to find that match
                 A_startset = builder.solver.True;
 
             this.A_StartSet_Size = (int)builder.solver.ComputeDomainSize(A_startset);

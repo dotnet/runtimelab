@@ -49,6 +49,10 @@ namespace System.Text.RegularExpressions.Tests
                 yield return new object[] { options, "e.g:abc", @"\B.*?\B", true, 5, 0 };
                 yield return new object[] { options, "e.g:abc", @"\B\W+?", false, 0, 0 };
                 yield return new object[] { options, "e.g:abc", @"\B\W*?", true, 5, 0 };
+
+                //while not lazy loops themselves, variants of the prior case that should give same results here
+                yield return new object[] { options, "e.g:abc", @"\B\W*", true, 5, 0 };
+                yield return new object[] { options, "e.g:abc", @"\B\W?", true, 5, 0 };
             }
         }
 
