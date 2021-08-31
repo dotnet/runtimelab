@@ -153,7 +153,7 @@ private:
   void InitTripleName(const char* tripleName = nullptr);
   Triple GetTriple();
   unsigned GetDFSize();
-  bool EmitRelocDirective(const int Offset, StringRef Name, const MCExpr *Expr);
+  void EmitRelocDirective(const int Offset, StringRef Name, const MCExpr *Expr);
   const MCExpr *GenTargetExpr(const char *SymbolName,
                               MCSymbolRefExpr::VariantKind Kind, int Delta,
                               bool IsPCRel = false, int Size = 0);
@@ -169,8 +169,6 @@ private:
   std::unique_ptr<MCInstrInfo> InstrInfo;
   std::unique_ptr<MCSubtargetInfo> SubtargetInfo;
   MCCodeEmitter *CodeEmitter; // Owned by MCStreamer
-  std::unique_ptr<TargetMachine> TMachine;
-  std::unique_ptr<AsmPrinter> AssemblerPrinter;
   MCAssembler *Assembler; // Owned by MCStreamer
   std::unique_ptr<DwarfGen> DwarfGenerator;
 

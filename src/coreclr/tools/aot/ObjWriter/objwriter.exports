@@ -1,5 +1,3 @@
-LIBRARY objwriter
-EXPORTS
 InitObjWriter
 FinishObjWriter
 SwitchSection
@@ -12,13 +10,14 @@ EmitSymbolRef
 EmitWinFrameInfo
 EmitCFIStart
 EmitCFIEnd
-EmitCFICode
 EmitCFILsda
+EmitCFICode
 EmitDebugFileInfo
-EmitDebugLoc
 EmitDebugFunctionInfo
-EmitDebugModuleInfo
 EmitDebugVar
+EmitDebugEHClause
+EmitDebugLoc
+EmitDebugModuleInfo
 GetEnumTypeIndex
 GetClassTypeIndex
 GetCompleteClassTypeIndex
@@ -26,7 +25,8 @@ GetArrayTypeIndex
 GetPointerTypeIndex
 GetMemberFunctionTypeIndex
 GetMemberFunctionIdTypeIndex
+GetPrimitiveTypeIndex
 EmitARMFnStart
 EmitARMFnEnd
-EmitARMExIdxCode
 EmitARMExIdxLsda
+EmitARMExIdxCode

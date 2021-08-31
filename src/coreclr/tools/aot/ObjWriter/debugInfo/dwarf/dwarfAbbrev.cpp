@@ -285,7 +285,7 @@ void Dump(MCObjectStreamer *Streamer, uint16_t DwarfVersion, unsigned TargetPoin
   Streamer->SwitchSection(context.getObjectFileInfo()->getDwarfAbbrevSection());
 
   for (uint16_t e : AbbrevTable) {
-      Streamer->EmitULEB128IntValue(e);
+      Streamer->emitULEB128IntValue(e);
   }
 }
 

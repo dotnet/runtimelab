@@ -1,36 +1,24 @@
-diff --git a/include/llvm/BinaryFormat/COFF.h b/include/llvm/BinaryFormat/COFF.h
-index b395db6eaa8387d87c899e718998b210be317a01..74820a8f79fb98c62856c1c803d8c3c1031d41f2 100644
---- a/include/llvm/BinaryFormat/COFF.h
-+++ b/include/llvm/BinaryFormat/COFF.h
-@@ -395,6 +395,7 @@ enum RelocationTypesARM64 {
-   IMAGE_REL_ARM64_ADDR64 = 0x000E,
-   IMAGE_REL_ARM64_BRANCH19 = 0x000F,
-   IMAGE_REL_ARM64_BRANCH14 = 0x0010,
-+  IMAGE_REL_ARM64_REL32 = 0x0011,
- };
- 
- enum COMDATType {
-diff --git a/include/llvm/MC/MCObjectStreamer.h b/include/llvm/MC/MCObjectStreamer.h
-index 7c1189e46ab237aec24f8898d0c5cf9d6414d7be..d1d77c97311d4729d3eaf8a5feb894a0b1da28ac 100644
---- a/include/llvm/MC/MCObjectStreamer.h
-+++ b/include/llvm/MC/MCObjectStreamer.h
-@@ -101,6 +101,11 @@ public:
-   void EmitInstruction(const MCInst &Inst, const MCSubtargetInfo &STI,
-                        bool = false) override;
- 
+diff --git a/llvm/include/llvm/MC/MCObjectStreamer.h b/llvm/include/llvm/MC/MCObjectStreamer.h
+index a00000bc11b60cae8567ee49da9dd7a4967aac1e..810fe68fc5bf3501c7a3543696485990ea558cb9 100644
+--- a/llvm/include/llvm/MC/MCObjectStreamer.h
++++ b/llvm/include/llvm/MC/MCObjectStreamer.h
+@@ -120,6 +120,11 @@ public:
+   void emitAssignment(MCSymbol *Symbol, const MCExpr *Value) override;
+   void emitValueImpl(const MCExpr *Value, unsigned Size,
+                      SMLoc Loc = SMLoc()) override;
 +  /// \brief EmitValueImpl with additional param, that allows to emit PCRelative
 +  /// MCFixup.
-+  void EmitValueImpl(const MCExpr *Value, unsigned Size, SMLoc Loc,
++  void emitValueImpl(const MCExpr *Value, unsigned Size, SMLoc Loc,
 +                     bool isPCRelative);
 +
-   /// \brief Emit an instruction to a special fragment, because this instruction
-   /// can change its size during relaxation.
-   virtual void EmitInstToFragment(const MCInst &Inst, const MCSubtargetInfo &);
-diff --git a/include/llvm/MC/MCStreamer.h b/include/llvm/MC/MCStreamer.h
-index 5390e79424248c560f6cf7e91b9cd96ad73bdd5a..5b258e767870c7b1a8249454dbbd48d61fe239d5 100644
---- a/include/llvm/MC/MCStreamer.h
-+++ b/include/llvm/MC/MCStreamer.h
-@@ -115,6 +115,7 @@ public:
+   void emitULEB128Value(const MCExpr *Value) override;
+   void emitSLEB128Value(const MCExpr *Value) override;
+   void emitWeakReference(MCSymbol *Alias, const MCSymbol *Symbol) override;
+diff --git a/llvm/include/llvm/MC/MCStreamer.h b/llvm/include/llvm/MC/MCStreamer.h
+index cdc728f7377207f809781e53831fe4e8cc32d82e..8457b465e807bf5b8ee889548074de00a199a81f 100644
+--- a/llvm/include/llvm/MC/MCStreamer.h
++++ b/llvm/include/llvm/MC/MCStreamer.h
+@@ -146,6 +146,7 @@ public:
    virtual void emitPad(int64_t Offset);
    virtual void emitRegSave(const SmallVectorImpl<unsigned> &RegList,
                             bool isVector);
@@ -38,77 +26,30 @@ index 5390e79424248c560f6cf7e91b9cd96ad73bdd5a..5b258e767870c7b1a8249454dbbd48d6
    virtual void emitUnwindRaw(int64_t StackOffset,
                               const SmallVectorImpl<uint8_t> &Opcodes);
  
-@@ -548,6 +549,9 @@ public:
+@@ -669,6 +670,9 @@ public:
    /// etc.
-   virtual void EmitBytes(StringRef Data);
+   virtual void emitBytes(StringRef Data);
  
 +  /// \brief Emit the given \p Instruction data into the current section.
-+  virtual void EmitInstructionBytes(StringRef Data);
++  virtual void emitInstructionBytes(StringRef Data);
 +
    /// Functionally identical to EmitBytes. When emitting textual assembly, this
    /// method uses .byte directives instead of .ascii or .asciz for readability.
-   virtual void EmitBinaryData(StringRef Data);
-diff --git a/include/llvm/Support/ManagedStatic.h b/include/llvm/Support/ManagedStatic.h
-index b4bf3210cc7384423749ec8e5379871cfabc3491..f7f7cbf781a77ff3b51a751e7711d6ba152bd6d5 100644
---- a/include/llvm/Support/ManagedStatic.h
-+++ b/include/llvm/Support/ManagedStatic.h
-@@ -33,18 +33,41 @@ template <typename T, size_t N> struct object_deleter<T[N]> {
-   static void call(void *Ptr) { delete[](T *)Ptr; }
- };
- 
-+// ManagedStatic must be initialized to zero, and it must *not* have a dynamic
-+// initializer because managed statics are often created while running other
-+// dynamic initializers. In standard C++11, the best way to accomplish this is
-+// with a constexpr default constructor. However, different versions of the
-+// Visual C++ compiler have had bugs where, even though the constructor may be
-+// constexpr, a dynamic initializer may be emitted depending on optimization
-+// settings. For the affected versions of MSVC, use the old linker
-+// initialization pattern of not providing a constructor and leaving the fields
-+// uninitialized. See http://llvm.org/PR41367 for details.
-+#if !defined(_MSC_VER) || (_MSC_VER >= 1925) || defined(__clang__)
-+#define LLVM_USE_CONSTEXPR_CTOR
-+#endif
-+
- /// ManagedStaticBase - Common base class for ManagedStatic instances.
- class ManagedStaticBase {
- protected:
-+#ifdef LLVM_USE_CONSTEXPR_CTOR
-+  mutable std::atomic<void *> Ptr{};
-+  mutable void (*DeleterFn)(void *) = nullptr;
-+  mutable const ManagedStaticBase *Next = nullptr;
-+#else
-   // This should only be used as a static variable, which guarantees that this
-   // will be zero initialized.
-   mutable std::atomic<void *> Ptr;
--  mutable void (*DeleterFn)(void*);
-+  mutable void (*DeleterFn)(void *);
-   mutable const ManagedStaticBase *Next;
-+#endif
- 
-   void RegisterManagedStatic(void *(*creator)(), void (*deleter)(void*)) const;
- 
- public:
-+#ifdef LLVM_USE_CONSTEXPR_CTOR
-+  constexpr ManagedStaticBase() = default;
-+#endif
-+
-   /// isConstructed - Return true if this object has not been created yet.
-   bool isConstructed() const { return Ptr != nullptr; }
- 
-diff --git a/lib/MC/MCObjectStreamer.cpp b/lib/MC/MCObjectStreamer.cpp
-index 174397e273960066b428250e0eecdc9f85c7f41a..ef7161fb56c4fe2f7740dde5d87c12c3e563166f 100644
---- a/lib/MC/MCObjectStreamer.cpp
-+++ b/lib/MC/MCObjectStreamer.cpp
-@@ -122,7 +122,7 @@ void MCObjectStreamer::EmitCFISections(bool EH, bool Debug) {
+   virtual void emitBinaryData(StringRef Data);
+diff --git a/llvm/lib/MC/MCObjectStreamer.cpp b/llvm/lib/MC/MCObjectStreamer.cpp
+index 1c23d31f8744a6f842fa96279daf7ab7770157b1..1c7012bd9b77360d20c860fc6fa198c4cc06e6e5 100644
+--- a/llvm/lib/MC/MCObjectStreamer.cpp
++++ b/llvm/lib/MC/MCObjectStreamer.cpp
+@@ -223,7 +223,7 @@ void MCObjectStreamer::emitCFISections(bool EH, bool Debug) {
  }
  
- void MCObjectStreamer::EmitValueImpl(const MCExpr *Value, unsigned Size,
+ void MCObjectStreamer::emitValueImpl(const MCExpr *Value, unsigned Size,
 -                                     SMLoc Loc) {
 +                                     SMLoc Loc, bool isPCRelative) {
-   MCStreamer::EmitValueImpl(Value, Size, Loc);
+   MCStreamer::emitValueImpl(Value, Size, Loc);
    MCDataFragment *DF = getOrCreateDataFragment();
    flushPendingLabels(DF, DF->getContents().size());
-@@ -143,10 +143,16 @@ void MCObjectStreamer::EmitValueImpl(const MCExpr *Value, unsigned Size,
+@@ -243,10 +243,15 @@ void MCObjectStreamer::emitValueImpl(const MCExpr *Value, unsigned Size,
    }
    DF->getFixups().push_back(
        MCFixup::create(DF->getContents().size(), Value,
@@ -117,32 +58,31 @@ index 174397e273960066b428250e0eecdc9f85c7f41a..ef7161fb56c4fe2f7740dde5d87c12c3
    DF->getContents().resize(DF->getContents().size() + Size, 0);
  }
  
-+
-+void MCObjectStreamer::EmitValueImpl(const MCExpr *Value, unsigned Size,
++void MCObjectStreamer::emitValueImpl(const MCExpr *Value, unsigned Size,
 +                                     SMLoc Loc) {
-+  EmitValueImpl(Value, Size, Loc, false);
++  emitValueImpl(Value, Size, Loc, false);
 +}
 +
- void MCObjectStreamer::EmitCFIStartProcImpl(MCDwarfFrameInfo &Frame) {
-   // We need to create a local symbol to avoid relocations.
-   Frame.Begin = getContext().createTempSymbol();
-diff --git a/lib/MC/MCStreamer.cpp b/lib/MC/MCStreamer.cpp
-index 2bfb9a63eedbd6cb10f4a14ba5e11610f934106f..a710098e7987a34c3cc3ad44aa45fdb422a3d1f6 100644
---- a/lib/MC/MCStreamer.cpp
-+++ b/lib/MC/MCStreamer.cpp
-@@ -830,6 +830,7 @@ void MCStreamer::EmitTBSSSymbol(MCSection *Section, MCSymbol *Symbol,
- void MCStreamer::ChangeSection(MCSection *, const MCExpr *) {}
- void MCStreamer::EmitWeakReference(MCSymbol *Alias, const MCSymbol *Symbol) {}
- void MCStreamer::EmitBytes(StringRef Data) {}
-+void MCStreamer::EmitInstructionBytes(StringRef Data) { EmitBytes(Data); }
- void MCStreamer::EmitBinaryData(StringRef Data) { EmitBytes(Data); }
- void MCStreamer::EmitValueImpl(const MCExpr *Value, unsigned Size, SMLoc Loc) {
+ MCSymbol *MCObjectStreamer::emitCFILabel() {
+   MCSymbol *Label = getContext().createTempSymbol("cfi");
+   emitLabel(Label);
+diff --git a/llvm/lib/MC/MCStreamer.cpp b/llvm/lib/MC/MCStreamer.cpp
+index 4b5ae3cc202de943e93ea7f3d84cfe9b47c40baf..623e06fa6ba889c6d0c7cc203821f4411678e39e 100644
+--- a/llvm/lib/MC/MCStreamer.cpp
++++ b/llvm/lib/MC/MCStreamer.cpp
+@@ -1136,6 +1136,7 @@ void MCStreamer::emitTBSSSymbol(MCSection *Section, MCSymbol *Symbol,
+ void MCStreamer::changeSection(MCSection *, const MCExpr *) {}
+ void MCStreamer::emitWeakReference(MCSymbol *Alias, const MCSymbol *Symbol) {}
+ void MCStreamer::emitBytes(StringRef Data) {}
++void MCStreamer::emitInstructionBytes(StringRef Data) { emitBytes(Data); }
+ void MCStreamer::emitBinaryData(StringRef Data) { emitBytes(Data); }
+ void MCStreamer::emitValueImpl(const MCExpr *Value, unsigned Size, SMLoc Loc) {
    visitUsedExpr(*Value);
-diff --git a/lib/MC/WinCOFFObjectWriter.cpp b/lib/MC/WinCOFFObjectWriter.cpp
-index 956ae70b38d199444e9196289b25e01a0fe9972c..b8ac715f61abec9b112f01c6cdb13b96c7710660 100644
---- a/lib/MC/WinCOFFObjectWriter.cpp
-+++ b/lib/MC/WinCOFFObjectWriter.cpp
-@@ -790,7 +790,9 @@ void WinCOFFObjectWriter::recordRelocation(MCAssembler &Asm,
+diff --git a/llvm/lib/MC/WinCOFFObjectWriter.cpp b/llvm/lib/MC/WinCOFFObjectWriter.cpp
+index 901d2c06e716f0ab05ea18385662ab548fcba9b4..932f487f7dcd612627f6aa205edea86c969d1740 100644
+--- a/llvm/lib/MC/WinCOFFObjectWriter.cpp
++++ b/llvm/lib/MC/WinCOFFObjectWriter.cpp
+@@ -794,7 +794,9 @@ void WinCOFFObjectWriter::recordRelocation(MCAssembler &Asm,
    if ((Header.Machine == COFF::IMAGE_FILE_MACHINE_AMD64 &&
         Reloc.Data.Type == COFF::IMAGE_REL_AMD64_REL32) ||
        (Header.Machine == COFF::IMAGE_FILE_MACHINE_I386 &&
@@ -153,77 +93,11 @@ index 956ae70b38d199444e9196289b25e01a0fe9972c..b8ac715f61abec9b112f01c6cdb13b96
      FixedValue += 4;
  
    if (Header.Machine == COFF::IMAGE_FILE_MACHINE_ARMNT) {
-diff --git a/lib/Object/COFFObjectFile.cpp b/lib/Object/COFFObjectFile.cpp
-index 0a2053477caf180f6212171968be58b411b6b5df..049657d9bfa1201665161eff2a338c849dd89bad 100644
---- a/lib/Object/COFFObjectFile.cpp
-+++ b/lib/Object/COFFObjectFile.cpp
-@@ -1238,6 +1238,7 @@ void COFFObjectFile::getRelocationTypeName(
-     LLVM_COFF_SWITCH_RELOC_TYPE_NAME(IMAGE_REL_ARM64_ADDR64);
-     LLVM_COFF_SWITCH_RELOC_TYPE_NAME(IMAGE_REL_ARM64_BRANCH19);
-     LLVM_COFF_SWITCH_RELOC_TYPE_NAME(IMAGE_REL_ARM64_BRANCH14);
-+    LLVM_COFF_SWITCH_RELOC_TYPE_NAME(IMAGE_REL_ARM64_REL32);
-     default:
-       Res = "Unknown";
-     }
-diff --git a/lib/Support/Windows/Signals.inc b/lib/Support/Windows/Signals.inc
-index 1ef51888baf39eaa5cee02b9bb7fac779db89e6e..09795b4e20a14c4f92da1759a7cc8b3e6ebf6950 100644
---- a/lib/Support/Windows/Signals.inc
-+++ b/lib/Support/Windows/Signals.inc
-@@ -526,7 +526,7 @@ void llvm::sys::PrintStackTrace(raw_ostream &OS) {
-   StackFrame.AddrPC.Offset = Context.Rip;
-   StackFrame.AddrStack.Offset = Context.Rsp;
-   StackFrame.AddrFrame.Offset = Context.Rbp;
--#else
-+#elif defined(_M_IX86)
-   StackFrame.AddrPC.Offset = Context.Eip;
-   StackFrame.AddrStack.Offset = Context.Esp;
-   StackFrame.AddrFrame.Offset = Context.Ebp;
-diff --git a/lib/Target/AArch64/MCTargetDesc/AArch64AsmBackend.cpp b/lib/Target/AArch64/MCTargetDesc/AArch64AsmBackend.cpp
-index 2bd0cbf9f7c6a44692513929db1b54a76d0f88da..99b2142d8c4aa8612acdd04dc1cba96dfc2cd51f 100644
---- a/lib/Target/AArch64/MCTargetDesc/AArch64AsmBackend.cpp
-+++ b/lib/Target/AArch64/MCTargetDesc/AArch64AsmBackend.cpp
-@@ -30,17 +30,28 @@ namespace {
- class AArch64AsmBackend : public MCAsmBackend {
-   static const unsigned PCRelFlagVal =
-       MCFixupKindInfo::FKF_IsAlignedDownTo32Bits | MCFixupKindInfo::FKF_IsPCRel;
-+  Triple TheTriple;
-+
- public:
-   bool IsLittleEndian;
- 
- public:
--  AArch64AsmBackend(const Target &T, bool IsLittleEndian)
--     : MCAsmBackend(), IsLittleEndian(IsLittleEndian) {}
-+  AArch64AsmBackend(const Target &T, const Triple &TT, bool IsLittleEndian)
-+      : MCAsmBackend(), TheTriple(TT), IsLittleEndian(IsLittleEndian) {}
- 
-   unsigned getNumFixupKinds() const override {
-     return AArch64::NumTargetFixupKinds;
-   }
- 
-+ Optional<MCFixupKind> getFixupKind(StringRef Name) const {
-+    return StringSwitch<Optional<MCFixupKind>>(Name)
-+       .Case("R_AARCH64_JUMP26", (MCFixupKind)AArch64::fixup_aarch64_pcrel_call26)
-+       .Case("R_AARCH64_ADR_PREL_LO21",(MCFixupKind)AArch64::fixup_aarch64_pcrel_adrp_imm21)
-+       .Case("R_AARCH64_ADD_ABS_LO12_NC", (MCFixupKind)AArch64::fixup_aarch64_add_imm12)
-+       .Default(MCAsmBackend::getFixupKind(Name));
-+  }
-+
-+
-   const MCFixupKindInfo &getFixupKindInfo(MCFixupKind Kind) const override {
-     const static MCFixupKindInfo Infos[AArch64::NumTargetFixupKinds] = {
-         // This table *must* be in the order that the fixup_* kinds are defined
-@@ -88,6 +99,9 @@ public:
-   unsigned getPointerSize() const { return 8; }
- 
-   unsigned getFixupKindContainereSizeInBytes(unsigned Kind) const;
-+
-+  bool shouldForceRelocation(const MCAssembler &Asm, const MCFixup &Fixup,
-+                             const MCValue &Target) override;
- };
- 
- } // end anonymous namespace
-@@ -126,6 +140,7 @@ static unsigned getFixupKindNumBytes(unsigned Kind) {
+diff --git a/llvm/lib/Target/AArch64/MCTargetDesc/AArch64AsmBackend.cpp b/llvm/lib/Target/AArch64/MCTargetDesc/AArch64AsmBackend.cpp
+index 75a9f2f5c80e3b6c81258084f52237a54f6aad43..73a2d7b2c5bf966bddc0d0435ca6c008bd8bc6c9 100644
+--- a/llvm/lib/Target/AArch64/MCTargetDesc/AArch64AsmBackend.cpp
++++ b/llvm/lib/Target/AArch64/MCTargetDesc/AArch64AsmBackend.cpp
+@@ -141,6 +141,7 @@ static unsigned getFixupKindNumBytes(unsigned Kind) {
    case AArch64::fixup_aarch64_pcrel_call26:
    case FK_Data_4:
    case FK_SecRel_4:
@@ -231,70 +105,7 @@ index 2bd0cbf9f7c6a44692513929db1b54a76d0f88da..99b2142d8c4aa8612acdd04dc1cba96d
      return 4;
  
    case FK_Data_8:
-@@ -140,7 +155,8 @@ static unsigned AdrImmBits(unsigned Value) {
- }
- 
- static uint64_t adjustFixupValue(const MCFixup &Fixup, uint64_t Value,
--                                 MCContext &Ctx) {
-+                                 MCContext &Ctx, const Triple &TheTriple,
-+                                 bool IsResolved) {
-   unsigned Kind = Fixup.getKind();
-   int64_t SignedValue = static_cast<int64_t>(Value);
-   switch (Kind) {
-@@ -151,6 +167,9 @@ static uint64_t adjustFixupValue(const MCFixup &Fixup, uint64_t Value,
-       Ctx.reportError(Fixup.getLoc(), "fixup value out of range");
-     return AdrImmBits(Value & 0x1fffffULL);
-   case AArch64::fixup_aarch64_pcrel_adrp_imm21:
-+    assert(!IsResolved);
-+    if (TheTriple.isOSBinFormatCOFF())
-+      return AdrImmBits(Value & 0x1fffffULL);
-     return AdrImmBits((Value & 0x1fffff000ULL) >> 12);
-   case AArch64::fixup_aarch64_ldr_pcrel_imm19:
-   case AArch64::fixup_aarch64_pcrel_branch19:
-@@ -163,11 +182,15 @@ static uint64_t adjustFixupValue(const MCFixup &Fixup, uint64_t Value,
-     return (Value >> 2) & 0x7ffff;
-   case AArch64::fixup_aarch64_add_imm12:
-   case AArch64::fixup_aarch64_ldst_imm12_scale1:
-+    if (TheTriple.isOSBinFormatCOFF() && !IsResolved)
-+      Value &= 0xfff;
-     // Unsigned 12-bit immediate
-     if (Value >= 0x1000)
-       Ctx.reportError(Fixup.getLoc(), "fixup value out of range");
-     return Value;
-   case AArch64::fixup_aarch64_ldst_imm12_scale2:
-+    if (TheTriple.isOSBinFormatCOFF() && !IsResolved)
-+      Value &= 0xfff;
-     // Unsigned 12-bit immediate which gets multiplied by 2
-     if (Value >= 0x2000)
-       Ctx.reportError(Fixup.getLoc(), "fixup value out of range");
-@@ -175,6 +198,8 @@ static uint64_t adjustFixupValue(const MCFixup &Fixup, uint64_t Value,
-       Ctx.reportError(Fixup.getLoc(), "fixup must be 2-byte aligned");
-     return Value >> 1;
-   case AArch64::fixup_aarch64_ldst_imm12_scale4:
-+    if (TheTriple.isOSBinFormatCOFF() && !IsResolved)
-+      Value &= 0xfff;
-     // Unsigned 12-bit immediate which gets multiplied by 4
-     if (Value >= 0x4000)
-       Ctx.reportError(Fixup.getLoc(), "fixup value out of range");
-@@ -182,6 +207,8 @@ static uint64_t adjustFixupValue(const MCFixup &Fixup, uint64_t Value,
-       Ctx.reportError(Fixup.getLoc(), "fixup must be 4-byte aligned");
-     return Value >> 2;
-   case AArch64::fixup_aarch64_ldst_imm12_scale8:
-+    if (TheTriple.isOSBinFormatCOFF() && !IsResolved)
-+      Value &= 0xfff;
-     // Unsigned 12-bit immediate which gets multiplied by 8
-     if (Value >= 0x8000)
-       Ctx.reportError(Fixup.getLoc(), "fixup value out of range");
-@@ -189,6 +216,8 @@ static uint64_t adjustFixupValue(const MCFixup &Fixup, uint64_t Value,
-       Ctx.reportError(Fixup.getLoc(), "fixup must be 8-byte aligned");
-     return Value >> 3;
-   case AArch64::fixup_aarch64_ldst_imm12_scale16:
-+    if (TheTriple.isOSBinFormatCOFF() && !IsResolved)
-+      Value &= 0xfff;
-     // Unsigned 12-bit immediate which gets multiplied by 16
-     if (Value >= 0x10000)
-       Ctx.reportError(Fixup.getLoc(), "fixup value out of range");
-@@ -222,6 +251,7 @@ static uint64_t adjustFixupValue(const MCFixup &Fixup, uint64_t Value,
+@@ -330,13 +331,19 @@ static uint64_t adjustFixupValue(const MCFixup &Fixup, const MCValue &Target,
    case FK_Data_8:
    case FK_SecRel_2:
    case FK_SecRel_4:
@@ -302,149 +113,37 @@ index 2bd0cbf9f7c6a44692513929db1b54a76d0f88da..99b2142d8c4aa8612acdd04dc1cba96d
      return Value;
    }
  }
-@@ -275,7 +305,7 @@ void AArch64AsmBackend::applyFixup(const MCAssembler &Asm, const MCFixup &Fixup,
-   MCFixupKindInfo Info = getFixupKindInfo(Fixup.getKind());
-   MCContext &Ctx = Asm.getContext();
-   // Apply any target-specific value adjustments.
--  Value = adjustFixupValue(Fixup, Value, Ctx);
-+  Value = adjustFixupValue(Fixup, Value, Ctx, TheTriple, IsResolved);
  
-   // Shift the value into position.
-   Value <<= Info.TargetOffset;
-@@ -338,6 +368,26 @@ bool AArch64AsmBackend::writeNopData(uint64_t Count, MCObjectWriter *OW) const {
-   return true;
- }
+ Optional<MCFixupKind> AArch64AsmBackend::getFixupKind(StringRef Name) const {
+-  if (!TheTriple.isOSBinFormatELF())
+-    return None;
++  if (!TheTriple.isOSBinFormatELF()) {
++      return StringSwitch<Optional<MCFixupKind>>(Name)
++          .Case("R_AARCH64_CALL26", (MCFixupKind)AArch64::fixup_aarch64_pcrel_call26)
++          .Case("R_AARCH64_ADR_PREL_PG_HI21", (MCFixupKind)AArch64::fixup_aarch64_pcrel_adrp_imm21)
++          .Case("R_AARCH64_ADD_ABS_LO12_NC", (MCFixupKind)AArch64::fixup_aarch64_add_imm12)
++          .Default(MCAsmBackend::getFixupKind(Name));
++  }
  
-+bool AArch64AsmBackend::shouldForceRelocation(const MCAssembler &Asm,
-+                                              const MCFixup &Fixup,
-+                                              const MCValue &Target) {
-+  // The ADRP instruction adds some multiple of 0x1000 to the current PC &
-+  // ~0xfff. This means that the required offset to reach a symbol can vary by
-+  // up to one step depending on where the ADRP is in memory. For example:
-+  //
-+  //     ADRP x0, there
-+  //  there:
-+  //
-+  // If the ADRP occurs at address 0xffc then "there" will be at 0x1000 and
-+  // we'll need that as an offset. At any other address "there" will be in the
-+  // same page as the ADRP and the instruction should encode 0x0. Assuming the
-+  // section isn't 0x1000-aligned, we therefore need to delegate this decision
-+  // to the linker -- a relocation!
-+  if ((uint32_t)Fixup.getKind() == AArch64::fixup_aarch64_pcrel_adrp_imm21)
-+    return true;
-+  return false;
-+}
-+
- namespace {
- 
- namespace CU {
-@@ -389,8 +439,9 @@ class DarwinAArch64AsmBackend : public AArch64AsmBackend {
-   }
- 
- public:
--  DarwinAArch64AsmBackend(const Target &T, const MCRegisterInfo &MRI)
--      : AArch64AsmBackend(T, /*IsLittleEndian*/true), MRI(MRI) {}
-+  DarwinAArch64AsmBackend(const Target &T, const Triple &TT,
-+                          const MCRegisterInfo &MRI)
-+      : AArch64AsmBackend(T, TT, /*IsLittleEndian*/ true), MRI(MRI) {}
- 
-   MCObjectWriter *createObjectWriter(raw_pwrite_stream &OS) const override {
-     return createAArch64MachObjectWriter(OS, MachO::CPU_TYPE_ARM64,
-@@ -537,45 +588,23 @@ public:
-   uint8_t OSABI;
-   bool IsILP32;
- 
--  ELFAArch64AsmBackend(const Target &T, uint8_t OSABI, bool IsLittleEndian,
--                       bool IsILP32)
--    : AArch64AsmBackend(T, IsLittleEndian), OSABI(OSABI), IsILP32(IsILP32) {}
-+  ELFAArch64AsmBackend(const Target &T, const Triple &TT, uint8_t OSABI,
-+                       bool IsLittleEndian, bool IsILP32)
-+      : AArch64AsmBackend(T, TT, IsLittleEndian), OSABI(OSABI),
-+        IsILP32(IsILP32) {}
- 
-   MCObjectWriter *createObjectWriter(raw_pwrite_stream &OS) const override {
-     return createAArch64ELFObjectWriter(OS, OSABI, IsLittleEndian, IsILP32);
-   }
--
--  bool shouldForceRelocation(const MCAssembler &Asm, const MCFixup &Fixup,
--                             const MCValue &Target) override;
- };
- 
--bool ELFAArch64AsmBackend::shouldForceRelocation(const MCAssembler &Asm,
--                                                 const MCFixup &Fixup,
--                                                 const MCValue &Target) {
--  // The ADRP instruction adds some multiple of 0x1000 to the current PC &
--  // ~0xfff. This means that the required offset to reach a symbol can vary by
--  // up to one step depending on where the ADRP is in memory. For example:
--  //
--  //     ADRP x0, there
--  //  there:
--  //
--  // If the ADRP occurs at address 0xffc then "there" will be at 0x1000 and
--  // we'll need that as an offset. At any other address "there" will be in the
--  // same page as the ADRP and the instruction should encode 0x0. Assuming the
--  // section isn't 0x1000-aligned, we therefore need to delegate this decision
--  // to the linker -- a relocation!
--  if ((uint32_t)Fixup.getKind() == AArch64::fixup_aarch64_pcrel_adrp_imm21)
--    return true;
--  return false;
--}
--
- }
- 
- namespace {
- class COFFAArch64AsmBackend : public AArch64AsmBackend {
- public:
-   COFFAArch64AsmBackend(const Target &T, const Triple &TheTriple)
--      : AArch64AsmBackend(T, /*IsLittleEndian*/true) {}
-+      : AArch64AsmBackend(T, TheTriple, /*IsLittleEndian*/ true) {}
- 
-   MCObjectWriter *createObjectWriter(raw_pwrite_stream &OS) const override {
-     return createAArch64WinCOFFObjectWriter(OS);
-@@ -589,7 +618,7 @@ MCAsmBackend *llvm::createAArch64leAsmBackend(const Target &T,
-                                               StringRef CPU,
-                                               const MCTargetOptions &Options) {
-   if (TheTriple.isOSBinFormatMachO())
--    return new DarwinAArch64AsmBackend(T, MRI);
-+    return new DarwinAArch64AsmBackend(T, TheTriple, MRI);
- 
-   if (TheTriple.isOSBinFormatCOFF())
-     return new COFFAArch64AsmBackend(T, TheTriple);
-@@ -598,7 +627,8 @@ MCAsmBackend *llvm::createAArch64leAsmBackend(const Target &T,
- 
-   uint8_t OSABI = MCELFObjectTargetWriter::getOSABI(TheTriple.getOS());
-   bool IsILP32 = Options.getABIName() == "ilp32";
--  return new ELFAArch64AsmBackend(T, OSABI, /*IsLittleEndian=*/true, IsILP32);
-+  return new ELFAArch64AsmBackend(T, TheTriple, OSABI, /*IsLittleEndian=*/true,
-+                                  IsILP32);
- }
- 
- MCAsmBackend *llvm::createAArch64beAsmBackend(const Target &T,
-@@ -610,5 +640,6 @@ MCAsmBackend *llvm::createAArch64beAsmBackend(const Target &T,
-          "Big endian is only supported for ELF targets!");
-   uint8_t OSABI = MCELFObjectTargetWriter::getOSABI(TheTriple.getOS());
-   bool IsILP32 = Options.getABIName() == "ilp32";
--  return new ELFAArch64AsmBackend(T, OSABI, /*IsLittleEndian=*/false, IsILP32);
-+  return new ELFAArch64AsmBackend(T, TheTriple, OSABI, /*IsLittleEndian=*/false,
-+                                  IsILP32);
- }
-diff --git a/lib/Target/AArch64/MCTargetDesc/AArch64ELFObjectWriter.cpp b/lib/Target/AArch64/MCTargetDesc/AArch64ELFObjectWriter.cpp
-index 89c3e5b4c76eccd0af94c1723eb090848469a570..ba105365d74be6eb01864427449ccedc8335fa80 100644
---- a/lib/Target/AArch64/MCTargetDesc/AArch64ELFObjectWriter.cpp
-+++ b/lib/Target/AArch64/MCTargetDesc/AArch64ELFObjectWriter.cpp
-@@ -129,6 +129,7 @@ unsigned AArch64ELFObjectWriter::getRelocType(MCContext &Ctx,
+   unsigned Type = llvm::StringSwitch<unsigned>(Name)
+ #define ELF_RELOC(X, Y)  .Case(#X, Y)
+diff --git a/llvm/lib/Target/AArch64/MCTargetDesc/AArch64ELFObjectWriter.cpp b/llvm/lib/Target/AArch64/MCTargetDesc/AArch64ELFObjectWriter.cpp
+index fcf67bd2f740f5f01454029d0d33c5f1172737f8..c6bcf963f6f89fe6eb7962c3fc0edd08cad94816 100644
+--- a/llvm/lib/Target/AArch64/MCTargetDesc/AArch64ELFObjectWriter.cpp
++++ b/llvm/lib/Target/AArch64/MCTargetDesc/AArch64ELFObjectWriter.cpp
+@@ -130,6 +130,7 @@ unsigned AArch64ELFObjectWriter::getRelocType(MCContext &Ctx,
+       return ELF::R_AARCH64_NONE;
      case FK_Data_2:
        return R_CLS(PREL16);
-     case FK_Data_4:
 +    case FK_PCRel_4:
-       return R_CLS(PREL32);
-     case FK_Data_8:
-       if (IsILP32) {
-diff --git a/lib/Target/AArch64/MCTargetDesc/AArch64WinCOFFObjectWriter.cpp b/lib/Target/AArch64/MCTargetDesc/AArch64WinCOFFObjectWriter.cpp
-index 31762b9e4cd50e429725a3f32323cc5a555dfe2f..d53ab3e3b61c2fd73e7333682289d310dcff9fe2 100644
---- a/lib/Target/AArch64/MCTargetDesc/AArch64WinCOFFObjectWriter.cpp
-+++ b/lib/Target/AArch64/MCTargetDesc/AArch64WinCOFFObjectWriter.cpp
-@@ -65,6 +65,9 @@ unsigned AArch64WinCOFFObjectWriter::getRelocType(
+     case FK_Data_4: {
+       return Target.getAccessVariant() == MCSymbolRefExpr::VK_PLT
+                  ? R_CLS(PLT32)
+diff --git a/llvm/lib/Target/AArch64/MCTargetDesc/AArch64WinCOFFObjectWriter.cpp b/llvm/lib/Target/AArch64/MCTargetDesc/AArch64WinCOFFObjectWriter.cpp
+index aaadc8dc1b6001ace9268be68eadb7bd38035304..48ed1e63f6d9bd73a4816e5816b6e34992c5c0a1 100644
+--- a/llvm/lib/Target/AArch64/MCTargetDesc/AArch64WinCOFFObjectWriter.cpp
++++ b/llvm/lib/Target/AArch64/MCTargetDesc/AArch64WinCOFFObjectWriter.cpp
+@@ -91,6 +91,9 @@ unsigned AArch64WinCOFFObjectWriter::getRelocType(
    case FK_Data_8:
      return COFF::IMAGE_REL_ARM64_ADDR64;
  
@@ -454,26 +153,11 @@ index 31762b9e4cd50e429725a3f32323cc5a555dfe2f..d53ab3e3b61c2fd73e7333682289d310
    case FK_SecRel_2:
      return COFF::IMAGE_REL_ARM64_SECTION;
  
-diff --git a/lib/Target/ARM/MCTargetDesc/ARMAsmBackend.cpp b/lib/Target/ARM/MCTargetDesc/ARMAsmBackend.cpp
-index a77df7a2598f4176ccfda98c72c35471a679285b..e1aa7526f9b07205ca27ab0489e11a6081bcf8e9 100644
---- a/lib/Target/ARM/MCTargetDesc/ARMAsmBackend.cpp
-+++ b/lib/Target/ARM/MCTargetDesc/ARMAsmBackend.cpp
-@@ -48,6 +48,14 @@ public:
- };
- } // end anonymous namespace
- 
-+Optional<MCFixupKind> ARMAsmBackend::getFixupKind(StringRef Name) const {
-+  return StringSwitch<Optional<MCFixupKind>>(Name)
-+      .Case("R_ARM_THM_MOVW_ABS_NC", (MCFixupKind)ARM::fixup_t2_movw_lo16)
-+      .Case("R_ARM_THM_MOVT_ABS", (MCFixupKind)ARM::fixup_t2_movt_hi16)
-+      .Case("R_ARM_THM_JUMP24", (MCFixupKind)ARM::fixup_arm_thumb_blx)
-+      .Default(MCAsmBackend::getFixupKind(Name));
-+}
-+
- const MCFixupKindInfo &ARMAsmBackend::getFixupKindInfo(MCFixupKind Kind) const {
-   const static MCFixupKindInfo InfosLE[ARM::NumTargetFixupKinds] = {
-       // This table *must* be in the order that the fixup_* kinds are defined in
-@@ -386,6 +394,8 @@ unsigned ARMAsmBackend::adjustFixupValue(const MCAssembler &Asm,
+diff --git a/llvm/lib/Target/ARM/MCTargetDesc/ARMAsmBackend.cpp b/llvm/lib/Target/ARM/MCTargetDesc/ARMAsmBackend.cpp
+index b02aef3c338b8fcc4f7d3f110a6a9c5417518c88..f9636aed5068c8fdd20d1b5b2c03e97c9f1b2f20 100644
+--- a/llvm/lib/Target/ARM/MCTargetDesc/ARMAsmBackend.cpp
++++ b/llvm/lib/Target/ARM/MCTargetDesc/ARMAsmBackend.cpp
+@@ -448,6 +448,8 @@ unsigned ARMAsmBackend::adjustFixupValue(const MCAssembler &Asm,
    case FK_Data_2:
    case FK_Data_4:
      return Value;
@@ -482,8 +166,8 @@ index a77df7a2598f4176ccfda98c72c35471a679285b..e1aa7526f9b07205ca27ab0489e11a60
    case FK_SecRel_2:
      return Value;
    case FK_SecRel_4:
-@@ -825,6 +835,9 @@ static unsigned getFixupKindNumBytes(unsigned Kind) {
-   case ARM::fixup_t2_so_imm:
+@@ -967,6 +969,9 @@ static unsigned getFixupKindNumBytes(unsigned Kind) {
+   case ARM::fixup_le:
      return 4;
  
 +  case FK_PCRel_4:
@@ -492,37 +176,41 @@ index a77df7a2598f4176ccfda98c72c35471a679285b..e1aa7526f9b07205ca27ab0489e11a60
    case FK_SecRel_2:
      return 2;
    case FK_SecRel_4:
-diff --git a/lib/Target/ARM/MCTargetDesc/ARMAsmBackend.h b/lib/Target/ARM/MCTargetDesc/ARMAsmBackend.h
-index 02374966dafe71e641ff43d763f94fc2f9b3186c..01676a016830e1bf0feacba93cb0cfe4ba6ac8df 100644
---- a/lib/Target/ARM/MCTargetDesc/ARMAsmBackend.h
-+++ b/lib/Target/ARM/MCTargetDesc/ARMAsmBackend.h
-@@ -36,6 +36,7 @@ public:
- 
-   bool hasNOP() const { return STI->getFeatureBits()[ARM::HasV6T2Ops]; }
- 
-+  Optional<MCFixupKind> getFixupKind(StringRef Name) const override;
-   const MCFixupKindInfo &getFixupKindInfo(MCFixupKind Kind) const override;
- 
-   bool shouldForceRelocation(const MCAssembler &Asm, const MCFixup &Fixup,
-diff --git a/lib/Target/ARM/MCTargetDesc/ARMELFObjectWriter.cpp b/lib/Target/ARM/MCTargetDesc/ARMELFObjectWriter.cpp
-index 59f31be69d58c2201338acc9a66c934eff23075d..9b95598f99f1d75a84c922565edf91a75c8a549f 100644
---- a/lib/Target/ARM/MCTargetDesc/ARMELFObjectWriter.cpp
-+++ b/lib/Target/ARM/MCTargetDesc/ARMELFObjectWriter.cpp
-@@ -103,6 +103,9 @@ unsigned ARMELFObjectWriter::GetRelocTypeInner(const MCValue &Target,
-         break;
+diff --git a/llvm/lib/Target/ARM/MCTargetDesc/ARMELFObjectWriter.cpp b/llvm/lib/Target/ARM/MCTargetDesc/ARMELFObjectWriter.cpp
+index 37d81e4b0af13dd0c450849d2a24ab33a5b0c6d1..00a543cc08a9665c42dafa8a863aa41e85705ee9 100644
+--- a/llvm/lib/Target/ARM/MCTargetDesc/ARMELFObjectWriter.cpp
++++ b/llvm/lib/Target/ARM/MCTargetDesc/ARMELFObjectWriter.cpp
+@@ -111,6 +111,8 @@ unsigned ARMELFObjectWriter::GetRelocTypeInner(const MCValue &Target,
+       case MCSymbolRefExpr::VK_ARM_PREL31:
+         return ELF::R_ARM_PREL31;
        }
-       break;
 +    case FK_PCRel_4:
-+      Type = ELF::R_ARM_REL32;
-+      break;
++      return ELF::R_ARM_REL32;
      case ARM::fixup_arm_blx:
      case ARM::fixup_arm_uncondbl:
        switch (Modifier) {
-diff --git a/lib/Target/ARM/MCTargetDesc/ARMELFStreamer.cpp b/lib/Target/ARM/MCTargetDesc/ARMELFStreamer.cpp
-index 93f4006cee87653dabc701385511d9d70507fa96..108e9c51e1335ff61fdceb9f1a91d9bef725a102 100644
---- a/lib/Target/ARM/MCTargetDesc/ARMELFStreamer.cpp
-+++ b/lib/Target/ARM/MCTargetDesc/ARMELFStreamer.cpp
-@@ -396,6 +396,7 @@ private:
+diff --git a/llvm/lib/Target/ARM/MCTargetDesc/ARMELFStreamer.cpp b/llvm/lib/Target/ARM/MCTargetDesc/ARMELFStreamer.cpp
+index 07ca5c29f0ec995c9f0213a78d3f0f6e386289e0..fa9f498182403136765f29136a1318260c14deb2 100644
+--- a/llvm/lib/Target/ARM/MCTargetDesc/ARMELFStreamer.cpp
++++ b/llvm/lib/Target/ARM/MCTargetDesc/ARMELFStreamer.cpp
+@@ -84,6 +84,7 @@ class ARMTargetAsmStreamer : public ARMTargetStreamer {
+   void emitPad(int64_t Offset) override;
+   void emitRegSave(const SmallVectorImpl<unsigned> &RegList,
+                    bool isVector) override;
++  void emitLsda(const MCSymbol* Symbol) override;
+   void emitUnwindRaw(int64_t Offset,
+                      const SmallVectorImpl<uint8_t> &Opcodes) override;
+ 
+@@ -272,6 +273,8 @@ void ARMTargetAsmStreamer::emitUnwindRaw(int64_t Offset,
+   OS << '\n';
+ }
+ 
++void ARMTargetAsmStreamer::emitLsda(const MCSymbol* Symbol) {}
++
+ class ARMTargetELFStreamer : public ARMTargetStreamer {
+ private:
+   // This structure holds all attributes, accounting for
+@@ -388,6 +391,7 @@ private:
    void emitPad(int64_t Offset) override;
    void emitRegSave(const SmallVectorImpl<unsigned> &RegList,
                     bool isVector) override;
@@ -530,34 +218,34 @@ index 93f4006cee87653dabc701385511d9d70507fa96..108e9c51e1335ff61fdceb9f1a91d9be
    void emitUnwindRaw(int64_t Offset,
                       const SmallVectorImpl<uint8_t> &Opcodes) override;
  
-@@ -461,6 +462,7 @@ public:
+@@ -457,6 +461,7 @@ public:
    void emitMovSP(unsigned Reg, int64_t Offset = 0);
    void emitPad(int64_t Offset);
    void emitRegSave(const SmallVectorImpl<unsigned> &RegList, bool isVector);
-+  void emitLsda(const MCSymbol *Symbol);
++  void emitLsda(const MCSymbol* Symbol);
    void emitUnwindRaw(int64_t Offset, const SmallVectorImpl<uint8_t> &Opcodes);
- 
-   void ChangeSection(MCSection *Section, const MCExpr *Subsection) override {
-@@ -533,6 +535,18 @@ public:
-     MCELFStreamer::EmitBytes(Data);
+   void emitFill(const MCExpr &NumBytes, uint64_t FillValue,
+                 SMLoc Loc) override {
+@@ -536,6 +541,18 @@ public:
+     MCELFStreamer::emitBytes(Data);
    }
  
 +  /// This function is the one used to emit instruction data into the ELF
 +  /// streamer. We override it to add the appropriate mapping symbol if
 +  /// necessary.
-+  void EmitInstructionBytes(StringRef Data) override {
++  void emitInstructionBytes(StringRef Data) override {
 +    if (IsThumb)
 +      EmitThumbMappingSymbol();
 +    else
 +      EmitARMMappingSymbol();
 +
-+    MCELFStreamer::EmitBytes(Data);
++    MCELFStreamer::emitBytes(Data);
 +  }
 +
    void FlushPendingMappingSymbol() {
      if (!LastEMSInfo->hasInfo())
        return;
-@@ -698,6 +712,7 @@ private:
+@@ -699,6 +716,7 @@ private:
    bool CantUnwind;
    SmallVector<uint8_t, 64> Opcodes;
    UnwindOpcodeAssembler UnwindOpAsm;
@@ -565,7 +253,7 @@ index 93f4006cee87653dabc701385511d9d70507fa96..108e9c51e1335ff61fdceb9f1a91d9be
  };
  
  } // end anonymous namespace
-@@ -740,6 +755,10 @@ void ARMTargetELFStreamer::emitRegSave(const SmallVectorImpl<unsigned> &RegList,
+@@ -741,6 +759,10 @@ void ARMTargetELFStreamer::emitRegSave(const SmallVectorImpl<unsigned> &RegList,
    getStreamer().emitRegSave(RegList, isVector);
  }
  
@@ -576,7 +264,7 @@ index 93f4006cee87653dabc701385511d9d70507fa96..108e9c51e1335ff61fdceb9f1a91d9be
  void ARMTargetELFStreamer::emitUnwindRaw(int64_t Offset,
                                        const SmallVectorImpl<uint8_t> &Opcodes) {
    getStreamer().emitUnwindRaw(Offset, Opcodes);
-@@ -1233,6 +1252,7 @@ void ARMELFStreamer::EHReset() {
+@@ -1241,6 +1263,7 @@ void ARMELFStreamer::EHReset() {
    PendingOffset = 0;
    UsedFP = false;
    CantUnwind = false;
@@ -584,7 +272,7 @@ index 93f4006cee87653dabc701385511d9d70507fa96..108e9c51e1335ff61fdceb9f1a91d9be
  
    Opcodes.clear();
    UnwindOpAsm.Reset();
-@@ -1330,6 +1350,8 @@ void ARMELFStreamer::FlushUnwindOpcodes(bool NoHandlerData) {
+@@ -1343,6 +1366,8 @@ void ARMELFStreamer::FlushUnwindOpcodes(bool NoHandlerData) {
    }
  
    // Finalize the unwind opcode sequence
@@ -593,7 +281,7 @@ index 93f4006cee87653dabc701385511d9d70507fa96..108e9c51e1335ff61fdceb9f1a91d9be
    UnwindOpAsm.Finalize(PersonalityIndex, Opcodes);
  
    // For compact model 0, we have to emit the unwind opcodes in the .ARM.exidx
-@@ -1374,7 +1396,13 @@ void ARMELFStreamer::FlushUnwindOpcodes(bool NoHandlerData) {
+@@ -1387,7 +1412,13 @@ void ARMELFStreamer::FlushUnwindOpcodes(bool NoHandlerData) {
    //
    // In case that the .handlerdata directive is not specified by the
    // programmer, we should emit zero to terminate the handler data.
@@ -603,12 +291,12 @@ index 93f4006cee87653dabc701385511d9d70507fa96..108e9c51e1335ff61fdceb9f1a91d9be
 +      MCSymbolRefExpr::create(Lsda,
 +                              MCSymbolRefExpr::VK_None,
 +                              getContext());
-+    EmitValue(LsdaRef, 4);
++    emitValue(LsdaRef, 4);
 +  } else if (NoHandlerData && !Personality)
-     EmitIntValue(0, 4);
+     emitInt32(0);
  }
  
-@@ -1457,6 +1485,10 @@ void ARMELFStreamer::emitRegSave(const SmallVectorImpl<unsigned> &RegList,
+@@ -1470,6 +1501,10 @@ void ARMELFStreamer::emitRegSave(const SmallVectorImpl<unsigned> &RegList,
      UnwindOpAsm.EmitRegSave(Mask);
  }
  
@@ -619,11 +307,11 @@ index 93f4006cee87653dabc701385511d9d70507fa96..108e9c51e1335ff61fdceb9f1a91d9be
  void ARMELFStreamer::emitUnwindRaw(int64_t Offset,
                                     const SmallVectorImpl<uint8_t> &Opcodes) {
    FlushPendingOffset();
-diff --git a/lib/Target/ARM/MCTargetDesc/ARMTargetStreamer.cpp b/lib/Target/ARM/MCTargetDesc/ARMTargetStreamer.cpp
-index 4a943187ab6da611825e796c569ae18e2bd5ce59..f4f5aa11bf81ee2cbabb4acc7fabf6a3c6e4aab2 100644
---- a/lib/Target/ARM/MCTargetDesc/ARMTargetStreamer.cpp
-+++ b/lib/Target/ARM/MCTargetDesc/ARMTargetStreamer.cpp
-@@ -61,6 +61,7 @@ void ARMTargetStreamer::emitMovSP(unsigned Reg, int64_t Offset) {}
+diff --git a/llvm/lib/Target/ARM/MCTargetDesc/ARMTargetStreamer.cpp b/llvm/lib/Target/ARM/MCTargetDesc/ARMTargetStreamer.cpp
+index 1fee354cad93266060222bec3ed6ceef3d310e54..7d2eb8ef5e367372466c0bf1fb7d98494a00cfcd 100644
+--- a/llvm/lib/Target/ARM/MCTargetDesc/ARMTargetStreamer.cpp
++++ b/llvm/lib/Target/ARM/MCTargetDesc/ARMTargetStreamer.cpp
+@@ -97,6 +97,7 @@ void ARMTargetStreamer::emitMovSP(unsigned Reg, int64_t Offset) {}
  void ARMTargetStreamer::emitPad(int64_t Offset) {}
  void ARMTargetStreamer::emitRegSave(const SmallVectorImpl<unsigned> &RegList,
                                      bool isVector) {}
@@ -631,14 +319,14 @@ index 4a943187ab6da611825e796c569ae18e2bd5ce59..f4f5aa11bf81ee2cbabb4acc7fabf6a3
  void ARMTargetStreamer::emitUnwindRaw(int64_t StackOffset,
                                        const SmallVectorImpl<uint8_t> &Opcodes) {
  }
-diff --git a/tools/CMakeLists.txt b/tools/CMakeLists.txt
-index b654b8c5cb8e0d1f24d4acc8b8faa9d48422733c..58d25159af825508cbd04849d1b5114ce621a25a 100644
---- a/tools/CMakeLists.txt
-+++ b/tools/CMakeLists.txt
-@@ -46,6 +46,7 @@ add_llvm_external_project(clang)
- add_llvm_external_project(llgo)
- add_llvm_external_project(lld)
- add_llvm_external_project(lldb)
+diff --git a/llvm/tools/CMakeLists.txt b/llvm/tools/CMakeLists.txt
+index b6d3b2c2fcbeb1f3c9ec041766ae60604ec2db64..491715166e96527b09d3299f35615fd9f8ad5fd8 100644
+--- a/llvm/tools/CMakeLists.txt
++++ b/llvm/tools/CMakeLists.txt
+@@ -39,6 +39,7 @@ add_llvm_external_project(lldb)
+ add_llvm_external_project(mlir)
+ # Flang depends on mlir, so place it afterward
+ add_llvm_external_project(flang)
 +add_llvm_external_project(ObjWriter)
  
  # Automatically add remaining sub-directories containing a 'CMakeLists.txt'
