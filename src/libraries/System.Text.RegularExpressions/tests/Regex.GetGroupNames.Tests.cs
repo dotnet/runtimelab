@@ -9,10 +9,11 @@ namespace System.Text.RegularExpressions.Tests
     public class GetGroupNamesTests
     {
         [Theory]
-        [InlineData("(?<first_name>\\S+)\\s(?<last_name>\\S+)", new string[] { "0", "first_name", "last_name" })]
-        public void GetGroupNames(string pattern, string[] expectedGroupNames)
+        [InlineData("(?<first_name>\\S+)\\s(?<last_name>\\S+)", RegexOptions.None, new string[] { "0", "first_name", "last_name" })]
+        [InlineData("(?<first_name>\\S+)\\s(?<last_name>\\S+)", RegexSRMTests.DFA, new string[] { "0" })]
+        public void GetGroupNames(string pattern, RegexOptions options, string[] expectedGroupNames)
         {
-            Regex regex = new Regex(pattern);
+            Regex regex = new Regex(pattern, options);
             Assert.Equal(expectedGroupNames, regex.GetGroupNames());
         }
 
