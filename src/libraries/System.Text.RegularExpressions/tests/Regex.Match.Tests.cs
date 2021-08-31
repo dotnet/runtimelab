@@ -1266,5 +1266,43 @@ namespace System.Text.RegularExpressions.Tests
 
             AssertExtensions.Throws<ArgumentNullException>("inner", () => System.Text.RegularExpressions.Match.Synchronized(null));
         }
+
+        [Fact]
+        [ActiveIssue(@"inconsitent treatement of \u200c and \u200d in \w vs \b")]
+        public void Match_Boundary()
+        {
+            Assert.True(Regex.IsMatch(" AB\u200cCD ", @"\b\w+\b"));
+            Assert.True(Regex.IsMatch(" AB\u200dCD ", @"\b\w+\b"));
+        }
+
+        /// <summary>
+        /// Same test as above but it succeeds in DFA mode because \u200c and \u200d are not in \w
+        /// and in DFA mode \b is treated equivalently to (?<!\w)(?=\w)|(?<=\w)(?!\w)
+        /// </summary>
+        [Fact]
+        public void Mach_Boundary_DFA()
+        {
+            Assert.True(Regex.IsMatch(" AB\u200cCD ", @"\b\w+\b", RegexSRMTests.DFA));
+            Assert.True(Regex.IsMatch(" AB\u200dCD ", @"\b\w+\b", RegexSRMTests.DFA));
+        }
+
+        /// <summary>
+        /// Test that \w has the same meaning in backtracking as well as non-backtracking mode and compiled mode
+        /// </summary>
+        [Fact]
+        public void Match_Wordchar()
+        {
+            var w1 = new Regex(@"\w", RegexOptions.None);
+            var w2 = new Regex(@"\w", RegexSRMTests.DFA);
+            var w3 = new Regex(@"\w", RegexOptions.Compiled);
+            var ambiguous = new List<char>();
+            for (char c = '\0'; c < '\uFFFF'; c++)
+            {
+                bool test = w2.IsMatch(c.ToString());
+                if (test != w1.IsMatch(c.ToString()) || test != w3.IsMatch(c.ToString()))
+                    ambiguous.Add(c);
+            }
+            Assert.Empty(ambiguous);
+        }
     }
 }
