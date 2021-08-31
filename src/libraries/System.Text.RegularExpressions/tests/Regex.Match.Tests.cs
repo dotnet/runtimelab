@@ -13,6 +13,29 @@ namespace System.Text.RegularExpressions.Tests
 {
     public class RegexMatchTests
     {
+
+        public static IEnumerable<object[]> Match_Basic_TestData_LazyLoops()
+        {
+            foreach (var options in new RegexOptions[] { RegexOptions.Singleline, RegexOptions.Compiled | RegexOptions.Singleline, RegexSRMTests.DFA | RegexOptions.Singleline })
+            {
+                yield return new object[] { @"\W.*?\D", "seq 012 of 3 digits", options, 0, 19, true, " 012 " };
+                yield return new object[] { @"\W.+?\D", "seq 012 of 3 digits", options, 0, 19, true, " 012 " };
+                yield return new object[] { @"\W.{1,7}?\D", "seq 012 of 3 digits", options, 0, 19, true, " 012 " };
+                yield return new object[] { @"\W.{1,2}?\D", "seq 012 of 3 digits", options, 0, 19, true, " of" };
+                yield return new object[] { @"\W.*?\b", "digits:0123456789", options, 0, 17, true, ":" };
+                yield return new object[] { @"\B.*?\B", "e.g:abc", options, 0, 7, true, "" };
+                yield return new object[] { @"\B\W+?", "e.g:abc", options, 0, 7, false, "" };
+                yield return new object[] { @"\B\W*?", "e.g:abc", options, 0, 7, true, "" };
+
+                // While not lazy loops themselves, variants of the prior case that should give same results here
+                yield return new object[] { @"\B\W*", "e.g:abc", options, 0, 7, true, "" };
+                yield return new object[] { @"\B\W?", "e.g:abc", options, 0, 7, true, "" };
+
+                //mixed lazy and eager counting
+                yield return new object[] { "z(a{0,5}|a{0,10}?)", "xyzaaaaaaaaaxyz", options, 0, 15, true, "zaaaaa" };
+            }
+        }
+
         public static IEnumerable<object[]> Match_Basic_TestData()
         {
             // pattern, input, options, beginning, length, expectedSuccess, expectedValue
@@ -474,6 +497,7 @@ namespace System.Text.RegularExpressions.Tests
         }
 
         [Theory]
+        [MemberData(nameof(Match_Basic_TestData_LazyLoops))]
         [MemberData(nameof(Match_Basic_TestData))]
         [MemberData(nameof(RegexCompilationHelper.TransformRegexOptions), nameof(Match_Basic_TestData), 2, MemberType = typeof(RegexCompilationHelper))]
         public void Match(string pattern, string input, RegexOptions options, int beginning, int length, bool expectedSuccess, string expectedValue)

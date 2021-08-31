@@ -37,35 +37,10 @@ namespace System.Text.RegularExpressions.Tests
             Assert.True(Regex.IsMatch(" AB\u200dCD ", @"\b\w+\b"));
         }
 
-        public static IEnumerable<object[]> TestLazyLoops_Data()
-        {
-            foreach (var options in new RegexOptions[] { RegexOptions.Singleline, RegexOptions.Compiled | RegexOptions.Singleline, DFA | RegexOptions.Singleline })
-            {
-                yield return new object[] { options, "seq 012 of 3 digits", @"\W.*?\D", true, 3, 5 };
-                yield return new object[] { options, "seq 012 of 3 digits", @"\W.+?\D", true, 3, 5 };
-                yield return new object[] { options, "seq 012 of 3 digits", @"\W.{1,7}?\D", true, 3, 5 };
-                yield return new object[] { options, "seq 012 of 3 digits", @"\W.{1,2}?\D", true, 7, 3 };
-                yield return new object[] { options, "digits:0123456789", @"\W.*?\b", true, 6, 1 };
-                yield return new object[] { options, "e.g:abc", @"\B.*?\B", true, 5, 0 };
-                yield return new object[] { options, "e.g:abc", @"\B\W+?", false, 0, 0 };
-                yield return new object[] { options, "e.g:abc", @"\B\W*?", true, 5, 0 };
-
-                //while not lazy loops themselves, variants of the prior case that should give same results here
-                yield return new object[] { options, "e.g:abc", @"\B\W*", true, 5, 0 };
-                yield return new object[] { options, "e.g:abc", @"\B\W?", true, 5, 0 };
-            }
-        }
-
-        [Theory]
-        [MemberData(nameof(TestLazyLoops_Data))]
-        public void TestLazyLoops(RegexOptions options, string input, string pattern, bool success, int index, int length)
-        {
-            Match m = Regex.Match(input, pattern, options);
-            Assert.Equal(success, m.Success);
-            Assert.Equal(index, m.Index);
-            Assert.Equal(length, m.Length);
-        }
-
+        /// <summary>
+        /// Same test as above but it succeeds in DFA mode because \u200c and \u200d are not in \w
+        /// and in DFA mode \b is treated equivalently to (?<!\w)(?=\w)|(?<=\w)(?!\w)
+        /// </summary>
         [Fact]
         public void TestBoundary_DFA()
         {
@@ -73,6 +48,9 @@ namespace System.Text.RegularExpressions.Tests
             Assert.True(Regex.IsMatch(" AB\u200dCD ", @"\b\w+\b", RegexSRMTests.DFA));
         }
 
+        /// <summary>
+        /// Test that \w has the same meaning in DFA mode as in non-DFA mode
+        /// </summary>
         [Fact]
         public void TestWordchar()
         {
@@ -85,6 +63,9 @@ namespace System.Text.RegularExpressions.Tests
             Assert.Empty(ambiguous);
         }
 
+        /// <summary>
+        /// Specific cases that are very slow/difficult with backtracking but fast/easy without backtracking
+        /// </summary>
         [Theory]
         [InlineData("((?:0*)+?(?:.*)+?)?", "0a", 2)]
         [InlineData("(?:(?:0?)+?(?:a?)+?)?", "0a", 2)]
@@ -102,48 +83,25 @@ namespace System.Text.RegularExpressions.Tests
             Assert.Equal(matchcount, matches.Count);
         }
 
-        [Fact]
-        public void TestMixedLazyEagerCounting()
+        /// <summary>
+        /// Causes SRM to switch to Antimirov mode internally.
+        /// Antimirov mode is otherwise never triggered by typical cases.
+        /// </summary>
+        [Theory]
+        [InlineData("a.{20}$", "a01234567890123456789", 21)]
+        [InlineData("(a.{20}|a.{10})bc$", "a01234567890123456789bc", 23)]
+        public void TestAntimirovMode(string pattern, string input_suffix, int matchlength)
         {
-            string pattern = "z(a{0,5}|a{0,10}?)";
-            var input = "xyzaaaaaaaaaxyz";
-            Regex re = new Regex(pattern, DFA);
-            Match m = re.Match(input);
-            Assert.True(m.Success);
-            Assert.Equal(2, m.Index);
-            Assert.Equal(6, m.Length);
-        }
-
-        [Fact]
-        public void TestNFAmode()
-        {
-            string rawregex = "a.{20}$";
             Random random = new Random(0);
             byte[] buffer = new byte[50000];
             random.NextBytes(buffer);
             var input = new string(Array.ConvertAll(buffer, b => (b <= 0x7F ? 'a' : 'b')));
-            input += "a01234567890123456789";
-            Regex re = new Regex(rawregex, DFA | RegexOptions.Singleline);
+            input += input_suffix;
+            Regex re = new Regex(pattern, DFA | RegexOptions.Singleline);
             Match m = re.Match(input);
             Assert.True(m.Success);
             Assert.Equal(buffer.Length, m.Index);
-            Assert.Equal(21, m.Length);
-        }
-
-        [Fact]
-        public void TestNFAmodeAntimirov()
-        {
-            string rawregex = "(a.{20}|a.{10})bc$";
-            Random random = new Random(0);
-            byte[] buffer = new byte[50000];
-            random.NextBytes(buffer);
-            var input = new string(Array.ConvertAll(buffer, b => (b <= 0x7F ? 'a' : 'b')));
-            input += "a01234567890123456789bc";
-            Regex re = new Regex(rawregex, DFA | RegexOptions.Singleline);
-            Match m = re.Match(input);
-            Assert.True(m.Success);
-            Assert.Equal(buffer.Length, m.Index);
-            Assert.Equal(23, m.Length);
+            Assert.Equal(matchlength, m.Length);
         }
 
         /// <summary>
