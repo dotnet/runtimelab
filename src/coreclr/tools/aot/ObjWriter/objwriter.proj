@@ -5,9 +5,12 @@
     <BuildScriptName Condition="'$(TargetOS)' == 'windows'">build.cmd</BuildScriptName>
     <BuildScriptName Condition="'$(TargetOS)' != 'windows'">build.sh</BuildScriptName>
 
+    <_ObjWriterBuildType>$(Configuration)</_ObjWriterBuildType>
+    <_ObjWriterBuildType Condition="'$(_ObjWriterBuildType)' == 'Checked'">Debug</_ObjWriterBuildType>
+
     <BuildArguments>"$(ArtifactsDir)" "$(RepoRoot)"</BuildArguments>
     <BuildArguments>$(BuildArguments) $(BuildArchitecture) $(TargetArchitecture)</BuildArguments>
-    <BuildArguments>$(BuildArguments) Release $(Compiler)</BuildArguments>
+    <BuildArguments>$(BuildArguments) $(_ObjWriterBuildType) $(Compiler)</BuildArguments>
   </PropertyGroup>
 
   <Target Name="Build">
