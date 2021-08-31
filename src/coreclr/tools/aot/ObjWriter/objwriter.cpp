@@ -441,14 +441,14 @@ int ObjectWriter::EmitSymbolRef(const char *SymbolName,
   }
   case RelocType::IMAGE_REL_BASED_ARM64_BRANCH26: {
     const MCExpr *TargetExpr = GenTargetExpr(SymbolName, Kind, Delta);
-    EmitRelocDirective(GetDFSize(), "R_AARCH64_JUMP26", TargetExpr);
+    EmitRelocDirective(GetDFSize(), "R_AARCH64_CALL26", TargetExpr);
     return 4;
   }
   case RelocType::IMAGE_REL_BASED_ARM64_PAGEBASE_REL21: {
     const MCExpr *TargetExpr = GenTargetExpr(SymbolName, Kind, Delta);
     TargetExpr =
         AArch64MCExpr::create(TargetExpr, AArch64MCExpr::VK_CALL, *OutContext);
-    EmitRelocDirective(GetDFSize(), "R_AARCH64_ADR_PREL_LO21", TargetExpr);
+    EmitRelocDirective(GetDFSize(), "R_AARCH64_ADR_PREL_PG_HI21", TargetExpr);
     return 4;
   }
   case RelocType::IMAGE_REL_BASED_ARM64_PAGEOFFSET_12A: {
