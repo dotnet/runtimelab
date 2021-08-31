@@ -1001,5 +1001,14 @@ namespace System.Text.RegularExpressions.Tests
             yield return new object[] { @"\G(\w+\s?\w*),?", RegexOptions.None, "contiguous matches" };
             yield return new object[] { @"(?>a*).", RegexOptions.None, "atomic" };
         }
+
+        [Fact]
+        public void StressTestSymbolicRegexConversion()
+        {
+            string pattern = string.Concat(Enumerable.Repeat("([a-z]", 1000).Concat(Enumerable.Repeat(")", 1000)));
+            string input = string.Concat(Enumerable.Repeat("abcde", 200));
+            var re = new Regex(pattern, DFA);
+            Assert.True(re.IsMatch(input));
+        }
     }
 }
