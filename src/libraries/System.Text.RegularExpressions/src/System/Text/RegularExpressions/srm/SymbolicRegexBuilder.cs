@@ -284,18 +284,10 @@ namespace System.Text.RegularExpressions.SRM
                 else
                     return this.eagerEmptyLoop;
             }
-            else if (lower == 0 && upper == int.MaxValue && regex.kind == SymbolicRegexKind.Singleton && this.solver.AreEquivalent(this.solver.True, regex.set))
+            else if (!isLazy && lower == 0 && upper == int.MaxValue && regex.kind == SymbolicRegexKind.Singleton && this.solver.AreEquivalent(this.solver.True, regex.set))
             {
                 return this.dotStar;
             }
-            //else if (lower == upper && lower < 3)
-            //{
-            //    // unwind a fixed length loop of low bound into a concatenation
-            //    var elems = new SymbolicRegexNode<S>[lower];
-            //    for (int i = 0; i < lower; i++)
-            //        elems[i] = regex;
-            //    return MkConcat(elems, toplevel);
-            //}
             else
             {
                 var loop = SymbolicRegexNode<S>.MkLoop(this, regex, lower, upper, isLazy);

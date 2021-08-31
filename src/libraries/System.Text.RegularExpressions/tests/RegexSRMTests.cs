@@ -29,33 +29,9 @@ namespace System.Text.RegularExpressions.Tests
         private const char Turkish_i_withoutDot = '\u0131';
         private const char Kelvin_sign = '\u212A';
 
-        [Fact]
-        [ActiveIssue(@"inconsitent treatement of \u200c and \u200d in \w vs \b")]
-        public void TestBoundary()
-        {
-            Assert.True(Regex.IsMatch(" AB\u200cCD ", @"\b\w+\b"));
-            Assert.True(Regex.IsMatch(" AB\u200dCD ", @"\b\w+\b"));
-        }
-
-        [Fact]
-        public void TestBoundary_DFA()
-        {
-            Assert.True(Regex.IsMatch(" AB\u200cCD ", @"\b\w+\b", RegexSRMTests.DFA));
-            Assert.True(Regex.IsMatch(" AB\u200dCD ", @"\b\w+\b", RegexSRMTests.DFA));
-        }
-
-        [Fact]
-        public void TestWordchar()
-        {
-            var w1 = new Regex(@"\w", RegexOptions.None);
-            var w2 = new Regex(@"\w", DFA);
-            var ambiguous = new List<char>();
-            for (char c = '\0'; c < '\uFFFF'; c++)
-                if (w1.IsMatch(c.ToString()) != w2.IsMatch(c.ToString()))
-                    ambiguous.Add(c);
-            Assert.Empty(ambiguous);
-        }
-
+        /// <summary>
+        /// Specific cases that are very slow/difficult with backtracking but fast/easy without backtracking
+        /// </summary>
         [Theory]
         [InlineData("((?:0*)+?(?:.*)+?)?", "0a", 2)]
         [InlineData("(?:(?:0?)+?(?:a?)+?)?", "0a", 2)]
@@ -73,48 +49,25 @@ namespace System.Text.RegularExpressions.Tests
             Assert.Equal(matchcount, matches.Count);
         }
 
-        [Fact]
-        public void TestMixedLazyEagerCounting()
+        /// <summary>
+        /// Causes SRM to switch to Antimirov mode internally.
+        /// Antimirov mode is otherwise never triggered by typical cases.
+        /// </summary>
+        [Theory]
+        [InlineData("a.{20}$", "a01234567890123456789", 21)]
+        [InlineData("(a.{20}|a.{10})bc$", "a01234567890123456789bc", 23)]
+        public void TestAntimirovMode(string pattern, string input_suffix, int matchlength)
         {
-            string pattern = "z(a{0,5}|a{0,10}?)";
-            var input = "xyzaaaaaaaaaxyz";
-            Regex re = new Regex(pattern, DFA);
-            Match m = re.Match(input);
-            Assert.True(m.Success);
-            Assert.Equal(2, m.Index);
-            Assert.Equal(6, m.Length);
-        }
-
-        [Fact]
-        public void TestNFAmode()
-        {
-            string rawregex = "a.{20}$";
             Random random = new Random(0);
             byte[] buffer = new byte[50000];
             random.NextBytes(buffer);
             var input = new string(Array.ConvertAll(buffer, b => (b <= 0x7F ? 'a' : 'b')));
-            input += "a01234567890123456789";
-            Regex re = new Regex(rawregex, DFA | RegexOptions.Singleline);
+            input += input_suffix;
+            Regex re = new Regex(pattern, DFA | RegexOptions.Singleline);
             Match m = re.Match(input);
             Assert.True(m.Success);
             Assert.Equal(buffer.Length, m.Index);
-            Assert.Equal(21, m.Length);
-        }
-
-        [Fact]
-        public void TestNFAmodeAntimirov()
-        {
-            string rawregex = "(a.{20}|a.{10})bc$";
-            Random random = new Random(0);
-            byte[] buffer = new byte[50000];
-            random.NextBytes(buffer);
-            var input = new string(Array.ConvertAll(buffer, b => (b <= 0x7F ? 'a' : 'b')));
-            input += "a01234567890123456789bc";
-            Regex re = new Regex(rawregex, DFA | RegexOptions.Singleline);
-            Match m = re.Match(input);
-            Assert.True(m.Success);
-            Assert.Equal(buffer.Length, m.Index);
-            Assert.Equal(23, m.Length);
+            Assert.Equal(matchlength, m.Length);
         }
 
         /// <summary>

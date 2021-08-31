@@ -254,7 +254,6 @@ namespace System.Text.RegularExpressions.Tests
         }
 
         [Fact]
-        [ActiveIssue("incorrect replacement in DFA mode involving Devanagari matra characters")]
         public void Replace_MatchEvaluator_Test_DFA_Matra()
         {
             // Regression test carried over from above to DFA mode:
