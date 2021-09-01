@@ -323,7 +323,7 @@ namespace System.Text.RegularExpressions
                         goto ContinueOuterScan;
 
                     case '[':
-                        AddUnitSet(ScanCharClass(UseOptionI(), scanOnly: false)!.ToStringClass((_options & RegexOptions.DFA) != 0));
+                        AddUnitSet(ScanCharClass(UseOptionI(), scanOnly: false)!.ToStringClass((_options & RegexOptions.NonBacktracking) != 0));
                         break;
 
                     case '(':
@@ -1207,7 +1207,7 @@ namespace System.Text.RegularExpressions
                         cc.AddLowercase(_culture);
                     }
 
-                    return new RegexNode(RegexNode.Set, _options, cc.ToStringClass((_options & RegexOptions.DFA) != 0));
+                    return new RegexNode(RegexNode.Set, _options, cc.ToStringClass((_options & RegexOptions.NonBacktracking) != 0));
 
                 default:
                     return ScanBasicBackslash(scanOnly);

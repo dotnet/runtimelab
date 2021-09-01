@@ -72,9 +72,6 @@ namespace System.Text.RegularExpressions.Tests
 {
     public class AttRegexTests
     {
-
-        private static RegexOptions DFA = (RegexOptions)0x400;
-
         [Theory]
 
         // basic.dat
@@ -376,10 +373,17 @@ namespace System.Text.RegularExpressions.Tests
                 input = "";
             }
 
-            foreach (RegexOptions options in new[] { DFA, DFA | RegexOptions.Multiline, RegexOptions.None, RegexOptions.Compiled })
+            var allOptions = new List<RegexOptions>() { RegexOptions.None, RegexOptions.Compiled };
+            if (PlatformDetection.IsNetCore)
+            {
+                allOptions.Add(RegexHelpers.RegexOptionNonBacktracking);
+                allOptions.Add(RegexHelpers.RegexOptionNonBacktracking | RegexOptions.Multiline);
+            }
+
+            foreach (RegexOptions options in allOptions)
             {
                 string captures = nondfa_captures;
-                bool dfa_mode = ((options & DFA) != 0);
+                bool dfa_mode = ((options & RegexHelpers.RegexOptionNonBacktracking) != 0);
                 if (dfa_mode && dfa_match != null)
                     //dfa_match value overrides the expected result in DFA mode
                     captures = dfa_match;

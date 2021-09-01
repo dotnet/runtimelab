@@ -16,7 +16,13 @@ namespace System.Text.RegularExpressions.Tests
 
         public static IEnumerable<object[]> Match_Basic_TestData_LazyLoops()
         {
-            foreach (var options in new RegexOptions[] { RegexOptions.Singleline, RegexOptions.Compiled | RegexOptions.Singleline, RegexSRMTests.DFA | RegexOptions.Singleline })
+            var allOptions = new List<RegexOptions>() { RegexOptions.Singleline, RegexOptions.Compiled | RegexOptions.Singleline };
+            if (PlatformDetection.IsNetCore)
+            {
+                allOptions.Add(RegexHelpers.RegexOptionNonBacktracking | RegexOptions.Singleline);
+            }
+
+            foreach (RegexOptions options in allOptions)
             {
                 yield return new object[] { @"\W.*?\D", "seq 012 of 3 digits", options, 0, 19, true, " 012 " };
                 yield return new object[] { @"\W.+?\D", "seq 012 of 3 digits", options, 0, 19, true, " 012 " };
@@ -621,9 +627,9 @@ namespace System.Text.RegularExpressions.Tests
 
         [Theory]
         [InlineData(RegexOptions.None)]
-        [InlineData(RegexOptions.None | (RegexOptions)0x80 /* Debug */)]
+        [InlineData(RegexOptions.None | RegexHelpers.RegexOptionDebug)]
         [InlineData(RegexOptions.Compiled)]
-        [InlineData(RegexOptions.Compiled | (RegexOptions)0x80 /* Debug */)]
+        [InlineData(RegexOptions.Compiled | RegexHelpers.RegexOptionDebug)]
         public void Match_Timeout_Throws(RegexOptions options)
         {
             const string Pattern = @"^([0-9a-zA-Z]([-.\w]*[0-9a-zA-Z])*@(([0-9a-zA-Z])+([-\w]*[0-9a-zA-Z])*\.)+[a-zA-Z]{2,9})$";
@@ -634,9 +640,9 @@ namespace System.Text.RegularExpressions.Tests
 
         [ConditionalTheory(typeof(RemoteExecutor), nameof(RemoteExecutor.IsSupported))]
         [InlineData(RegexOptions.None)]
-        [InlineData(RegexOptions.None | (RegexOptions)0x80 /* Debug */)]
+        [InlineData(RegexOptions.None | RegexHelpers.RegexOptionDebug)]
         [InlineData(RegexOptions.Compiled)]
-        [InlineData(RegexOptions.Compiled | (RegexOptions)0x80 /* Debug */)]
+        [InlineData(RegexOptions.Compiled | RegexHelpers.RegexOptionDebug)]
         public void Match_DefaultTimeout_Throws(RegexOptions options)
         {
             RemoteExecutor.Invoke(optionsString =>
@@ -669,9 +675,9 @@ namespace System.Text.RegularExpressions.Tests
 
         [Theory]
         [InlineData(RegexOptions.None)]
-        [InlineData(RegexOptions.None | (RegexOptions)0x80 /* Debug */)]
+        [InlineData(RegexOptions.None | RegexHelpers.RegexOptionDebug)]
         [InlineData(RegexOptions.Compiled)]
-        [InlineData(RegexOptions.Compiled | (RegexOptions)0x80 /* Debug */)]
+        [InlineData(RegexOptions.Compiled | RegexHelpers.RegexOptionDebug)]
         public void Match_CachedPattern_NewTimeoutApplies(RegexOptions options)
         {
             const string PatternLeadingToLotsOfBacktracking = @"^(\w+\s?)*$";
@@ -1279,21 +1285,23 @@ namespace System.Text.RegularExpressions.Tests
         /// Same test as above but it succeeds in DFA mode because \u200c and \u200d are not in \w
         /// and in DFA mode \b is treated equivalently to (?<!\w)(?=\w)|(?<=\w)(?!\w)
         /// </summary>
+        [SkipOnTargetFramework(TargetFrameworkMonikers.NetFramework, "Doesn't support NonBacktracking")]
         [Fact]
         public void Mach_Boundary_DFA()
         {
-            Assert.True(Regex.IsMatch(" AB\u200cCD ", @"\b\w+\b", RegexSRMTests.DFA));
-            Assert.True(Regex.IsMatch(" AB\u200dCD ", @"\b\w+\b", RegexSRMTests.DFA));
+            Assert.True(Regex.IsMatch(" AB\u200cCD ", @"\b\w+\b", RegexHelpers.RegexOptionNonBacktracking));
+            Assert.True(Regex.IsMatch(" AB\u200dCD ", @"\b\w+\b", RegexHelpers.RegexOptionNonBacktracking));
         }
 
         /// <summary>
         /// Test that \w has the same meaning in backtracking as well as non-backtracking mode and compiled mode
         /// </summary>
+        [SkipOnTargetFramework(TargetFrameworkMonikers.NetFramework, "Doesn't support NonBacktracking")]
         [Fact]
         public void Match_Wordchar()
         {
             var w1 = new Regex(@"\w", RegexOptions.None);
-            var w2 = new Regex(@"\w", RegexSRMTests.DFA);
+            var w2 = new Regex(@"\w", RegexHelpers.RegexOptionNonBacktracking);
             var w3 = new Regex(@"\w", RegexOptions.Compiled);
             var ambiguous = new List<char>();
             for (char c = '\0'; c < '\uFFFF'; c++)

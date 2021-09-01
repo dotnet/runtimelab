@@ -1,11 +1,27 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using Xunit;
+
 namespace System.Text.RegularExpressions.Tests
 {
     public static class RegexHelpers
     {
         public const string DefaultMatchTimeout_ConfigKeyName = "REGEX_DEFAULT_MATCH_TIMEOUT";
+
+        /// <summary>RegexOptions.NonBacktracking.</summary>
+        /// <remarks>Defined here to be able to reference the value by name even on .NET Framework test builds.</remarks>
+        public const RegexOptions RegexOptionNonBacktracking = (RegexOptions)0x400;
+
+        public const RegexOptions RegexOptionDebug = (RegexOptions)0x80;
+
+        static RegexHelpers()
+        {
+            if (PlatformDetection.IsNetCore)
+            {
+                Assert.Equal(RegexOptionNonBacktracking, Enum.Parse(typeof(RegexOptions), "NonBacktracking"));
+            }
+        }
 
         public static bool IsDefaultCount(string input, RegexOptions options, int count)
         {

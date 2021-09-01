@@ -53,8 +53,6 @@ namespace System.Text.RegularExpressions.Tests
             Assert.Equal(expected, result);
         }
 
-        private static RegexOptions DFA = (RegexOptions)0x400;
-
         public static IEnumerable<object[]> RegexTestCasesWithOptions()
         {
             foreach (object[] obj in RegexTestCases())
@@ -64,26 +62,29 @@ namespace System.Text.RegularExpressions.Tests
                 yield return new object[] { obj[0], RegexOptions.Compiled | (RegexOptions)obj[1], obj[2], obj[3] };
                 yield return new object[] { obj[0], RegexOptions.Compiled | RegexOptions.CultureInvariant | (RegexOptions)obj[1], obj[2], obj[3] };
 
-                #region DFA option
-                //for the DFA option, skip the tests that use nonsupported options 
-                //or if the optional 5th arguments says "DFAINCOMPATIBLE" that applies
-                //when the following are being used in the pattern:
-                //backreferences, (negative/positive) lookahead, (negative/positive) lookbehind, atomic, \G
-                if ((((RegexOptions)obj[1] & (RegexOptions.ECMAScript | RegexOptions.RightToLeft)) != 0) ||
-                    (obj.Length > 4 && obj[4].Equals("DFAINCOMPATIBLE")))
-                    continue;
+                if (PlatformDetection.IsNetCore)
+                {
+                    #region DFA option
+                    //for the DFA option, skip the tests that use nonsupported options 
+                    //or if the optional 5th arguments says "DFAINCOMPATIBLE" that applies
+                    //when the following are being used in the pattern:
+                    //backreferences, (negative/positive) lookahead, (negative/positive) lookbehind, atomic, \G
+                    if ((((RegexOptions)obj[1] & (RegexOptions.ECMAScript | RegexOptions.RightToLeft)) != 0) ||
+                        (obj.Length > 4 && obj[4].Equals("DFAINCOMPATIBLE")))
+                        continue;
 
-                //add the DFA specific tests
-                //group i values for i>0 are not generated in DFA mode and are removed
-                //-- thus the string beyond the first ')' when the test succeeds is removed in obj[3]
-                string expected_result = (string)obj[3];
-                int j = expected_result.IndexOf(')');
-                if (j > 0)
-                    expected_result = expected_result.Substring(0, j + 1);
+                    //add the DFA specific tests
+                    //group i values for i>0 are not generated in DFA mode and are removed
+                    //-- thus the string beyond the first ')' when the test succeeds is removed in obj[3]
+                    string expected_result = (string)obj[3];
+                    int j = expected_result.IndexOf(')');
+                    if (j > 0)
+                        expected_result = expected_result.Substring(0, j + 1);
 
-                yield return new object[] { obj[0], DFA | (RegexOptions)obj[1], obj[2], expected_result };
-                yield return new object[] { obj[0], DFA | (RegexOptions)obj[1] | RegexOptions.CultureInvariant, obj[2], expected_result };
-                #endregion
+                    yield return new object[] { obj[0], RegexHelpers.RegexOptionNonBacktracking | (RegexOptions)obj[1], obj[2], expected_result };
+                    yield return new object[] { obj[0], RegexHelpers.RegexOptionNonBacktracking | (RegexOptions)obj[1] | RegexOptions.CultureInvariant, obj[2], expected_result };
+                    #endregion
+                }
             }
         }
 

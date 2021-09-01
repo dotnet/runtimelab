@@ -381,7 +381,7 @@ namespace System.Text.RegularExpressions
 
             // the conversion to atomic is incompatible with DFA mode
             // because it may introduce atomic loops that are not supported in DFA mode
-            if ((node.Options & RegexOptions.DFA) != 0)
+            if ((node.Options & RegexOptions.NonBacktracking) != 0)
             {
                 return;
             }
@@ -558,7 +558,7 @@ namespace System.Text.RegularExpressions
         {
             // this work is incompatible with and unnecessary in DFA mode
             // because atomic loops are not supported in DFA mode
-            if ((Options & RegexOptions.DFA) != 0)
+            if ((Options & RegexOptions.NonBacktracking) != 0)
             {
                 return this;
             }
@@ -861,7 +861,7 @@ namespace System.Text.RegularExpressions
                             }
 
                             prev.Type = Set;
-                            prev.Str = prevCharClass.ToStringClass((Options & RegexOptions.DFA) != 0);
+                            prev.Str = prevCharClass.ToStringClass((Options & RegexOptions.NonBacktracking) != 0);
                         }
                         else if (at.Type == Nothing)
                         {
@@ -1329,7 +1329,7 @@ namespace System.Text.RegularExpressions
         {
             // the conversion to atomic is incompatible with DFA mode
             // because it may introduce atomic loops that are not supported in DFA mode
-            if ((Options & RegexOptions.DFA) != 0)
+            if ((Options & RegexOptions.NonBacktracking) != 0)
             {
                 return;
             }
