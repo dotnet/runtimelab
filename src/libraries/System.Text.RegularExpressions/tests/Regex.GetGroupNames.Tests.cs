@@ -114,13 +114,31 @@ namespace System.Text.RegularExpressions.Tests
                 new int[] { 0, 15 },
                 new string[] { "Ryan Byington", "Byington" }
             };
+
+            yield return new object[]
+            {
+                "(?'15'\\S+)\\s(?'15'\\S+)", "Ryan Byington",
+                new string[] { "0" },
+                new int[] { 0 },
+                new string[] { "Ryan Byington" },
+                RegexSRMTests.DFA
+            };
+
+            yield return new object[]
+            {
+                "(?<first_name>\\S+)\\s(?<last_name>\\S+)", "Ryan Byington",
+                new string[] { "0" },
+                new int[] { 0 },
+                new string[] { "Ryan Byington" },
+                RegexSRMTests.DFA
+            };
         }
 
         [Theory]
         [MemberData(nameof(GroupNamesAndNumbers_TestData))]
-        public void GroupNamesAndNumbers(string pattern, string input, string[] expectedNames, int[] expectedNumbers, string[] expectedGroups)
+        public void GroupNamesAndNumbers(string pattern, string input, string[] expectedNames, int[] expectedNumbers, string[] expectedGroups, RegexOptions options = RegexOptions.None)
         {
-            Regex regex = new Regex(pattern);
+            Regex regex = new Regex(pattern, options);
             Match match = regex.Match(input);
             Assert.True(match.Success);
 
@@ -145,24 +163,30 @@ namespace System.Text.RegularExpressions.Tests
         }
 
         [Theory]
+        [InlineData("(f)(oo)", 1, RegexSRMTests.DFA)]
+        [InlineData("(f)(oo)", -1, RegexSRMTests.DFA)]
+        [InlineData("(f)(oo)", 2, RegexSRMTests.DFA)]
         [InlineData("foo", 1)]
         [InlineData("foo", -1)]
         [InlineData("(?<first_name>\\S+)\\s(?<last_name>\\S+)", -1)]
         [InlineData("(?<first_name>\\S+)\\s(?<last_name>\\S+)", 3)]
         [InlineData(@"((?<256>abc)\d+)?(?<16>xyz)(.*)", -1)]
-        public void GroupNameFromNumber_InvalidIndex_ReturnsEmptyString(string pattern, int index)
+        public void GroupNameFromNumber_InvalidIndex_ReturnsEmptyString(string pattern, int index, RegexOptions options = RegexOptions.None)
         {
-            Assert.Same(string.Empty, new Regex(pattern).GroupNameFromNumber(index));
+            Assert.Same(string.Empty, new Regex(pattern, options).GroupNameFromNumber(index));
         }
 
         [Theory]
+        [InlineData("(f)(oo)", "no-such-name", RegexSRMTests.DFA)]
+        [InlineData("(f)(oo)", "1", RegexSRMTests.DFA)]
+        [InlineData("(f)(oo)", "2", RegexSRMTests.DFA)]
         [InlineData("foo", "no-such-name")]
         [InlineData("foo", "1")]
         [InlineData("(?<first_name>\\S+)\\s(?<last_name>\\S+)", "no-such-name")]
         [InlineData("(?<first_name>\\S+)\\s(?<last_name>\\S+)", "FIRST_NAME")]
-        public void GroupNumberFromName_InvalidName_ReturnsMinusOne(string pattern, string name)
+        public void GroupNumberFromName_InvalidName_ReturnsMinusOne(string pattern, string name, RegexOptions options = RegexOptions.None)
         {
-            Assert.Equal(-1, new Regex(pattern).GroupNumberFromName(name));
+            Assert.Equal(-1, new Regex(pattern, options).GroupNumberFromName(name));
         }
 
         [Fact]
