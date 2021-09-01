@@ -10,7 +10,7 @@ namespace System.Text.RegularExpressions.Tests
     {
         [Theory]
         [InlineData("(?<first_name>\\S+)\\s(?<last_name>\\S+)", RegexOptions.None, new string[] { "0", "first_name", "last_name" })]
-        [InlineData("(?<first_name>\\S+)\\s(?<last_name>\\S+)", RegexSRMTests.DFA, new string[] { "0" })]
+        [InlineData("(?<first_name>\\S+)\\s(?<last_name>\\S+)", RegexHelpers.RegexOptionNonBacktracking, new string[] { "0" })]
         public void GetGroupNames(string pattern, RegexOptions options, string[] expectedGroupNames)
         {
             Regex regex = new Regex(pattern, options);
@@ -121,7 +121,7 @@ namespace System.Text.RegularExpressions.Tests
                 new string[] { "0" },
                 new int[] { 0 },
                 new string[] { "Ryan Byington" },
-                RegexSRMTests.DFA
+                RegexHelpers.RegexOptionNonBacktracking
             };
 
             yield return new object[]
@@ -130,7 +130,7 @@ namespace System.Text.RegularExpressions.Tests
                 new string[] { "0" },
                 new int[] { 0 },
                 new string[] { "Ryan Byington" },
-                RegexSRMTests.DFA
+                RegexHelpers.RegexOptionNonBacktracking
             };
         }
 
@@ -163,9 +163,9 @@ namespace System.Text.RegularExpressions.Tests
         }
 
         [Theory]
-        [InlineData("(f)(oo)", 1, RegexSRMTests.DFA)]
-        [InlineData("(f)(oo)", -1, RegexSRMTests.DFA)]
-        [InlineData("(f)(oo)", 2, RegexSRMTests.DFA)]
+        [InlineData("(f)(oo)", 1, RegexHelpers.RegexOptionNonBacktracking)]
+        [InlineData("(f)(oo)", -1, RegexHelpers.RegexOptionNonBacktracking)]
+        [InlineData("(f)(oo)", 2, RegexHelpers.RegexOptionNonBacktracking)]
         [InlineData("foo", 1)]
         [InlineData("foo", -1)]
         [InlineData("(?<first_name>\\S+)\\s(?<last_name>\\S+)", -1)]
@@ -177,9 +177,9 @@ namespace System.Text.RegularExpressions.Tests
         }
 
         [Theory]
-        [InlineData("(f)(oo)", "no-such-name", RegexSRMTests.DFA)]
-        [InlineData("(f)(oo)", "1", RegexSRMTests.DFA)]
-        [InlineData("(f)(oo)", "2", RegexSRMTests.DFA)]
+        [InlineData("(f)(oo)", "no-such-name", RegexHelpers.RegexOptionNonBacktracking)]
+        [InlineData("(f)(oo)", "1", RegexHelpers.RegexOptionNonBacktracking)]
+        [InlineData("(f)(oo)", "2", RegexHelpers.RegexOptionNonBacktracking)]
         [InlineData("foo", "no-such-name")]
         [InlineData("foo", "1")]
         [InlineData("(?<first_name>\\S+)\\s(?<last_name>\\S+)", "no-such-name")]
