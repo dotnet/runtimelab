@@ -140,7 +140,7 @@ namespace System.Text
         public static explicit operator Rune(int value) => new Rune(value);
 
         // Displayed as "'<char>' (U+XXXX)"; e.g., "'e' (U+0065)"
-        private string DebuggerDisplay => FormattableString.Invariant($"U+{_value:X4} '{(IsValid(_value) ? ToString() : "\uFFFD")}'");
+        private string DebuggerDisplay => string.Create(CultureInfo.InvariantCulture, $"U+{_value:X4} '{(IsValid(_value) ? ToString() : "\uFFFD")}'");
 
         /// <summary>
         /// Returns true if and only if this scalar value is ASCII ([ U+0000..U+007F ])
@@ -919,6 +919,8 @@ namespace System.Text
 #if SYSTEM_PRIVATE_CORELIB
         bool ISpanFormattable.TryFormat(Span<char> destination, out int charsWritten, ReadOnlySpan<char> format, IFormatProvider? provider) =>
             TryEncodeToUtf16(destination, out charsWritten);
+
+        string IFormattable.ToString(string? format, IFormatProvider? formatProvider) => ToString();
 #endif
 
         /// <summary>
@@ -1400,9 +1402,7 @@ namespace System.Text
 
             if (GlobalizationMode.Invariant)
             {
-                // If the value isn't ASCII and if the globalization tables aren't available,
-                // case changing has no effect.
-                return value;
+                return UnsafeCreate(CharUnicodeInfo.ToLower(value._value));
             }
 
             // Non-ASCII data requires going through the case folding tables.
@@ -1451,9 +1451,7 @@ namespace System.Text
 
             if (GlobalizationMode.Invariant)
             {
-                // If the value isn't ASCII and if the globalization tables aren't available,
-                // case changing has no effect.
-                return value;
+                return UnsafeCreate(CharUnicodeInfo.ToUpper(value._value));
             }
 
             // Non-ASCII data requires going through the case folding tables.

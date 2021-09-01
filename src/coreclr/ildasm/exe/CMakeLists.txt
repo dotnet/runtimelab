@@ -58,7 +58,7 @@ if(CLR_CMAKE_HOST_LINUX OR CLR_CMAKE_HOST_FREEBSD OR CLR_CMAKE_HOST_NETBSD OR CL
     set(END_LIBRARY_GROUP -Wl,--end-group)
 endif(CLR_CMAKE_HOST_LINUX OR CLR_CMAKE_HOST_FREEBSD OR CLR_CMAKE_HOST_NETBSD OR CLR_CMAKE_HOST_SUNOS)
 
-_add_executable(ildasm
+add_executable_clr(ildasm
     ${ILDASM_SOURCES}
     ${ILDASM_RESOURCES}
 )
@@ -66,7 +66,6 @@ _add_executable(ildasm
 set(ILDASM_LINK_LIBRARIES
     ${START_LIBRARY_GROUP} # Start group of libraries that have circular references
     utilcodestaticnohost
-    mdhotdata_full
     mdcompiler_wks
     mdruntime_wks
     mdruntimerw_wks
@@ -115,4 +114,4 @@ else()
     )
 endif(CLR_CMAKE_HOST_UNIX)
 
-install_clr(TARGETS ildasm)
+install_clr(TARGETS ildasm DESTINATIONS . COMPONENT iltools)

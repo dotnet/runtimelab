@@ -13,7 +13,6 @@
     <NativeBinary Include="$(DotNetHostBinDir)/nethost.h" />
   </ItemGroup>
   <ItemGroup Condition="'$(RuntimeFlavor)' != 'Mono'">
-    <!-- FIXME: See src/installer/corehost/cli/apphost/CMakeLists.txt -->
     <NativeBinary Include="$(DotNetHostBinDir)/singlefilehost$(ExeSuffix)" />
   </ItemGroup>
   <ItemGroup Condition="'$(TargetOS)' == 'windows'">

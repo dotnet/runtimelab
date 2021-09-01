@@ -9,8 +9,15 @@
 #include "peimagelayout.inl"
 #include "dataimage.h"
 
-#if defined(TARGET_WINDOWS) && !defined(CROSSGEN_COMPILE)
+#if defined(TARGET_WINDOWS)
 #include "amsi.h"
+#endif
+
+#if defined(CORECLR_EMBEDDED)
+extern "C"
+{
+#include "pal_zlib.h"
+}
 #endif
 
 #ifndef DACCESS_COMPILE
@@ -54,7 +61,7 @@ PEImageLayout* PEImageLayout::Load(PEImage* pOwner, BOOL bNTSafeLoad, HRESULT* r
 {
     STANDARD_VM_CONTRACT;
 
-#if defined(CROSSGEN_COMPILE) || defined(TARGET_UNIX)
+#if defined(TARGET_UNIX)
     return PEImageLayout::Map(pOwner);
 #else
     if (pOwner->IsInBundle())
@@ -94,15 +101,21 @@ PEImageLayout* PEImageLayout::Map(PEImage* pOwner)
     }
     CONTRACT_END;
 
-    PEImageLayoutHolder pAlloc(new MappedImageLayout(pOwner));
+    PEImageLayoutHolder pAlloc = pOwner->GetUncompressedSize() != 0 ?
+        LoadConverted(pOwner, /* isInBundle */ true):
+        new MappedImageLayout(pOwner);
+
     if (pAlloc->GetBase()==NULL)
     {
         //cross-platform or a bad image
         pAlloc = LoadConverted(pOwner);
     }
     else
-        if(!pAlloc->CheckFormat())
+    {
+        if (!pAlloc->CheckFormat())
             ThrowHR(COR_E_BADIMAGEFORMAT);
+    }
+
     RETURN pAlloc.Extract();
 }
 
@@ -222,14 +235,14 @@ void PEImageLayout::ApplyBaseRelocations()
             if (((pSection->Characteristics & VAL32(IMAGE_SCN_MEM_WRITE)) == 0))
             {
                 DWORD dwNewProtection = PAGE_READWRITE;
-#if defined(TARGET_UNIX) && !defined(CROSSGEN_COMPILE)
+#if defined(TARGET_UNIX)
                 if (((pSection->Characteristics & VAL32(IMAGE_SCN_MEM_EXECUTE)) != 0))
                 {
                     // On SELinux, we cannot change protection that doesn't have execute access rights
                     // to one that has it, so we need to set the protection to RWX instead of RW
                     dwNewProtection = PAGE_EXECUTE_READWRITE;
                 }
-#endif // TARGET_UNIX && !CROSSGEN_COMPILE
+#endif // TARGET_UNIX
                 if (!ClrVirtualProtect(pWriteableRegion, cbWriteableRegion,
                                        dwNewProtection, &dwOldProtection))
                     ThrowLastError();
@@ -291,7 +304,6 @@ void PEImageLayout::ApplyBaseRelocations()
     }
     _ASSERTE(dirSize == dirPos);
 
-#ifndef CROSSGEN_COMPILE
     if (dwOldProtection != 0)
     {
         BOOL bExecRegion = (dwOldProtection & (PAGE_EXECUTE | PAGE_EXECUTE_READ |
@@ -305,7 +317,6 @@ void PEImageLayout::ApplyBaseRelocations()
 #ifdef TARGET_UNIX
     PAL_LOADMarkSectionAsNotNeeded((void*)dir);
 #endif // TARGET_UNIX
-#endif // CROSSGEN_COMPILE
 
     if (pFlushRegion != NULL)
     {
@@ -330,7 +341,7 @@ RawImageLayout::RawImageLayout(const void *flat, COUNT_T size, PEImage* pOwner)
 
     if (size)
     {
-#if defined(TARGET_WINDOWS) && !defined(CROSSGEN_COMPILE)
+#if defined(TARGET_WINDOWS)
         if (Amsi::IsBlockedByAmsiScan((void*)flat, size))
         {
             // This is required to throw a BadImageFormatException for compatibility, but
@@ -339,7 +350,7 @@ RawImageLayout::RawImageLayout(const void *flat, COUNT_T size, PEImage* pOwner)
             GetHRMsg(HRESULT_FROM_WIN32(ERROR_VIRUS_INFECTED), virusHrString);
             ThrowHR(COR_E_BADIMAGEFORMAT, virusHrString);
         }
-#endif // defined(TARGET_WINDOWS) && !defined(CROSSGEN_COMPILE)
+#endif // defined(TARGET_WINDOWS)
 
         HandleHolder mapping(WszCreateFileMapping(INVALID_HANDLE_VALUE,
                                                   NULL,
@@ -397,7 +408,6 @@ ConvertedImageLayout::ConvertedImageLayout(PEImageLayout* source, BOOL isInBundl
     m_Layout=LAYOUT_LOADED;
     m_pOwner=source->m_pOwner;
     _ASSERTE(!source->IsMapped());
-    m_isInBundle = isInBundle;
 
     m_pExceptionDir = NULL;
 
@@ -405,46 +415,44 @@ ConvertedImageLayout::ConvertedImageLayout(PEImageLayout* source, BOOL isInBundl
         EEFileLoadException::Throw(GetPath(), COR_E_BADIMAGEFORMAT);
     LOG((LF_LOADER, LL_INFO100, "PEImage: Opening manually mapped stream\n"));
 
-#if !defined(CROSSGEN_COMPILE) && !defined(TARGET_UNIX)
-    // on Windows we may want to enable execution if the image contains R2R sections
+    // in bundle we may want to enable execution if the image contains R2R sections
     // so must ensure the mapping is compatible with that
-    m_FileMap.Assign(WszCreateFileMapping(INVALID_HANDLE_VALUE, NULL,
-        PAGE_EXECUTE_READWRITE, 0,
-        source->GetVirtualSize(), NULL));
+    bool enableExecution = isInBundle &&
+        source->HasCorHeader() &&
+        source->HasReadyToRunHeader() &&
+        g_fAllowNativeImages;
 
-    DWORD allAccess = FILE_MAP_EXECUTE | FILE_MAP_WRITE;
-#else
-    m_FileMap.Assign(WszCreateFileMapping(INVALID_HANDLE_VALUE, NULL,
-        PAGE_READWRITE, 0,
-        source->GetVirtualSize(), NULL));
+    DWORD mapAccess = PAGE_READWRITE;
+    DWORD viewAccess = FILE_MAP_ALL_ACCESS;
 
-    DWORD allAccess = FILE_MAP_ALL_ACCESS;
+#if !defined(TARGET_UNIX)
+    if (enableExecution)
+    {
+        // to make sections executable on Windows the view must have EXECUTE permissions
+        mapAccess = PAGE_EXECUTE_READWRITE;
+        viewAccess = FILE_MAP_EXECUTE | FILE_MAP_WRITE;
+    }
 #endif
+
+    m_FileMap.Assign(WszCreateFileMapping(INVALID_HANDLE_VALUE, NULL,
+        mapAccess, 0,
+        source->GetVirtualSize(), NULL));
 
     if (m_FileMap == NULL)
         ThrowLastError();
 
-    m_FileView.Assign(CLRMapViewOfFile(m_FileMap, allAccess, 0, 0, 0,
+    m_FileView.Assign(CLRMapViewOfFile(m_FileMap, viewAccess, 0, 0, 0,
                                 (void *) source->GetPreferredBase()));
     if (m_FileView == NULL)
-        m_FileView.Assign(CLRMapViewOfFile(m_FileMap, allAccess, 0, 0, 0));
+        m_FileView.Assign(CLRMapViewOfFile(m_FileMap, viewAccess, 0, 0, 0));
 
     if (m_FileView == NULL)
         ThrowLastError();
 
-    source->LayoutILOnly(m_FileView, TRUE); //@TODO should be false for streams
+    source->LayoutILOnly(m_FileView, enableExecution);
     IfFailThrow(Init(m_FileView));
 
-#if defined(CROSSGEN_COMPILE)
-    if (HasNativeHeader())
-    {
-        ApplyBaseRelocations();
-    }
-#elif !defined(TARGET_UNIX)
-    if (m_isInBundle &&
-        HasCorHeader() &&
-        (HasNativeHeader() || HasReadyToRunHeader()) &&
-        g_fAllowNativeImages)
+    if (enableExecution)
     {
         if (!IsNativeMachineFormat())
             ThrowHR(COR_E_BADIMAGEFORMAT);
@@ -453,8 +461,8 @@ ConvertedImageLayout::ConvertedImageLayout(PEImageLayout* source, BOOL isInBundl
         // otherwise R2R will be disabled for this image.
         ApplyBaseRelocations();
 
-        // Check if there is a static function table and install it. (except x86)
-#if !defined(TARGET_X86)
+        // Check if there is a static function table and install it. (Windows only, except x86)
+#if !defined(TARGET_UNIX) && !defined(TARGET_X86)
         COUNT_T cbSize = 0;
         PT_RUNTIME_FUNCTION   pExceptionDir = (PT_RUNTIME_FUNCTION)GetDirectoryEntryData(IMAGE_DIRECTORY_ENTRY_EXCEPTION, &cbSize);
         DWORD tableSize = cbSize / sizeof(T_RUNTIME_FUNCTION);
@@ -468,7 +476,6 @@ ConvertedImageLayout::ConvertedImageLayout(PEImageLayout* source, BOOL isInBundl
         }
 #endif //TARGET_X86
     }
-#endif
 }
 
 ConvertedImageLayout::~ConvertedImageLayout()
@@ -481,7 +488,7 @@ ConvertedImageLayout::~ConvertedImageLayout()
     }
     CONTRACTL_END;
 
-#if !defined(CROSSGEN_COMPILE) && !defined(TARGET_UNIX) && !defined(TARGET_X86)
+#if !defined(TARGET_UNIX) && !defined(TARGET_X86)
     if (m_pExceptionDir)
     {
         RtlDeleteFunctionTable(m_pExceptionDir);
@@ -502,6 +509,7 @@ MappedImageLayout::MappedImageLayout(PEImage* pOwner)
 
     HANDLE hFile = pOwner->GetFileHandle();
     INT64 offset = pOwner->GetOffset();
+    _ASSERTE(pOwner->GetUncompressedSize() == 0);
 
     // If mapping was requested, try to do SEC_IMAGE mapping
     LOG((LF_LOADER, LL_INFO100, "PEImage: Opening OS mapped %S (hFile %p)\n", (LPCWSTR) GetPath(), hFile));
@@ -515,7 +523,6 @@ MappedImageLayout::MappedImageLayout(PEImage* pOwner)
     m_FileMap.Assign(WszCreateFileMapping(hFile, NULL, PAGE_READONLY | SEC_IMAGE, 0, 0, NULL));
     if (m_FileMap == NULL)
     {
-#ifndef CROSSGEN_COMPILE
 
         // Capture last error as it may get reset below.
 
@@ -533,7 +540,6 @@ MappedImageLayout::MappedImageLayout(PEImage* pOwner)
             ThrowWin32(dwLastError);
         }
 
-#endif // !CROSSGEN_COMPILE
 
         return;
     }
@@ -552,31 +558,6 @@ MappedImageLayout::MappedImageLayout(PEImage* pOwner)
         ThrowLastError();
     IfFailThrow(Init((void *) m_FileView));
 
-#ifdef CROSSGEN_COMPILE
-    //Do base relocation for PE. Unlike LoadLibrary, MapViewOfFile will not do that for us even with SEC_IMAGE
-    if (pOwner->IsTrustedNativeImage())
-    {
-        // This should never happen in correctly setup system, but do a quick check right anyway to
-        // avoid running too far with bogus data
-
-        if (!HasCorHeader())
-            ThrowHR(COR_E_BADIMAGEFORMAT);
-
-        // For phone, we need to be permissive of MSIL assemblies pretending to be native images,
-        // to support forced fall back to JIT
-        // if (!HasNativeHeader())
-        //     ThrowHR(COR_E_BADIMAGEFORMAT);
-
-        if (HasNativeHeader() && g_fAllowNativeImages)
-        {
-            if (!IsNativeMachineFormat())
-                ThrowHR(COR_E_BADIMAGEFORMAT);
-
-            ApplyBaseRelocations();
-        }
-    }
-    else
-#endif // CROSSGEN_COMPILE
     if (!IsNativeMachineFormat() && !IsI386())
     {
         //can't rely on the image
@@ -602,17 +583,10 @@ MappedImageLayout::MappedImageLayout(PEImage* pOwner)
 
 #else //!TARGET_UNIX
 
-#ifndef CROSSGEN_COMPILE
     m_LoadedFile = PAL_LOADLoadPEFile(hFile, offset);
 
     if (m_LoadedFile == NULL)
-    {
-        // For CoreCLR, try to load all files via LoadLibrary first. If LoadLibrary did not work, retry using
-        // regular mapping - but not for native images.
-        if (pOwner->IsTrustedNativeImage())
-            ThrowHR(E_FAIL); // we don't have any indication of what kind of failure. Possibly a corrupt image.
         return;
-    }
 
     LOG((LF_LOADER, LL_INFO1000, "PEImage: image %S (hFile %p) mapped @ %p\n",
         (LPCWSTR) GetPath(), hFile, (void*)m_LoadedFile));
@@ -622,7 +596,7 @@ MappedImageLayout::MappedImageLayout(PEImage* pOwner)
     if (!HasCorHeader())
         ThrowHR(COR_E_BADIMAGEFORMAT);
 
-    if ((HasNativeHeader() || HasReadyToRunHeader()) && g_fAllowNativeImages)
+    if (HasReadyToRunHeader() && g_fAllowNativeImages)
     {
         //Do base relocation for PE, if necessary.
         if (!IsNativeMachineFormat())
@@ -632,14 +606,11 @@ MappedImageLayout::MappedImageLayout(PEImage* pOwner)
         SetRelocated();
     }
 
-#else // !CROSSGEN_COMPILE
-    m_LoadedFile = NULL;
-#endif // !CROSSGEN_COMPILE
 
 #endif // !TARGET_UNIX
 }
 
-#if !defined(CROSSGEN_COMPILE) && !defined(TARGET_UNIX)
+#if !defined(TARGET_UNIX)
 LoadedImageLayout::LoadedImageLayout(PEImage* pOwner, BOOL bNTSafeLoad, HRESULT* returnDontThrow)
 {
     CONTRACTL
@@ -674,7 +645,7 @@ LoadedImageLayout::LoadedImageLayout(PEImage* pOwner, BOOL bNTSafeLoad, HRESULT*
 
     LOG((LF_LOADER, LL_INFO1000, "PEImage: Opened HMODULE %S\n", (LPCWSTR) GetPath()));
 }
-#endif // !CROSSGEN_COMPILE && !TARGET_UNIX
+#endif // !TARGET_UNIX
 
 FlatImageLayout::FlatImageLayout(PEImage* pOwner)
 {
@@ -704,6 +675,8 @@ FlatImageLayout::FlatImageLayout(PEImage* pOwner)
         }
     }
 
+    LPVOID addr = 0;
+
     // It's okay if resource files are length zero
     if (size > 0)
     {
@@ -721,14 +694,68 @@ FlatImageLayout::FlatImageLayout(PEImage* pOwner)
         _ASSERTE((offset - mapBegin) < mapSize);
         _ASSERTE(mapSize >= (UINT64)size);
 
-        char *addr = (char*)CLRMapViewOfFile(m_FileMap, FILE_MAP_READ, mapBegin >> 32, (DWORD)mapBegin, (DWORD)mapSize);
-        if (addr == NULL)
+        LPVOID view = CLRMapViewOfFile(m_FileMap, FILE_MAP_READ, mapBegin >> 32, (DWORD)mapBegin, (DWORD)mapSize);
+        if (view == NULL)
             ThrowLastError();
 
-        addr += (offset - mapBegin);
-        m_FileView.Assign((LPVOID)addr);
+        m_FileView.Assign(view);
+        addr = (LPVOID)((size_t)view + offset - mapBegin);
+
+        INT64 uncompressedSize = pOwner->GetUncompressedSize();
+        if (uncompressedSize > 0)
+        {
+#if defined(CORECLR_EMBEDDED)
+            // The mapping we have just created refers to the region in the bundle that contains compressed data.
+            // We will create another anonymous memory-only mapping and uncompress file there.
+            // The flat image will refer to the anonymous mapping instead and we will release the original mapping.
+            HandleHolder anonMap = WszCreateFileMapping(INVALID_HANDLE_VALUE, NULL, PAGE_READWRITE, uncompressedSize >> 32, (DWORD)uncompressedSize, NULL);
+            if (anonMap == NULL)
+                ThrowLastError();
+
+            LPVOID anonView = CLRMapViewOfFile(anonMap, FILE_MAP_READ | FILE_MAP_WRITE, 0, 0, 0);
+            if (anonView == NULL)
+                ThrowLastError();
+
+            //NB: PE cannot be larger than 4GB and we are decompressing a managed assembly, which is a PE image,
+            //    thus converting sizes to uint32 is ok.
+            PAL_ZStream zStream;
+            zStream.nextIn = (uint8_t*)addr;
+            zStream.availIn = (uint32_t)size;
+            zStream.nextOut = (uint8_t*)anonView;
+            zStream.availOut = (uint32_t)uncompressedSize;
+
+            // we match the compression side here. 15 is the window sise, negative means no zlib header.
+            const int Deflate_DefaultWindowBits = -15;
+            if (CompressionNative_InflateInit2_(&zStream, Deflate_DefaultWindowBits) != PAL_Z_OK)
+                ThrowHR(COR_E_BADIMAGEFORMAT);
+
+            int ret = CompressionNative_Inflate(&zStream, PAL_Z_NOFLUSH);
+
+            // decompression should have consumed the entire input
+            // and the entire output budgets
+            if ((ret < 0) ||
+                !(zStream.availIn == 0 && zStream.availOut == 0))
+            {
+                CompressionNative_InflateEnd(&zStream);
+                ThrowHR(COR_E_BADIMAGEFORMAT);
+            }
+
+            CompressionNative_InflateEnd(&zStream);
+
+            addr = anonView;
+            size = uncompressedSize;
+            // Replace file handles with the handles to anonymous map. This will release the handles to the original view and map.
+            m_FileView.Assign(anonView);
+            m_FileMap.Assign(anonMap);
+
+#else
+            _ASSERTE(!"Failure extracting contents of the application bundle. Compressed files used with a standalone (not singlefile) apphost.");
+            ThrowHR(E_FAIL); // we don't have any indication of what kind of failure. Possibly a corrupt image.
+#endif
+        }
     }
-    Init(m_FileView, (COUNT_T)size);
+
+    Init(addr, (COUNT_T)size);
 }
 
 NativeImageLayout::NativeImageLayout(LPCWSTR fullPath)
@@ -756,7 +783,7 @@ NativeImageLayout::NativeImageLayout(LPCWSTR fullPath)
 #else
     loadedImage = CLRLoadLibraryEx(fullPath, NULL, GetLoadWithAlteredSearchPathFlag());
 #endif
-    
+
     if (loadedImage == NULL)
     {
         ThrowLastError();

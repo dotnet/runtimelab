@@ -23,6 +23,7 @@
 #include <mono/metadata/appdomain.h>
 #include <mono/metadata/domain-internals.h>
 #include <mono/metadata/mono-debug.h>
+#include <mono/metadata/jit-info.h>
 #include <mono/utils/mono-error-internals.h>
 #include <mono/utils/mono-logger-internals.h>
 #include <string.h>
@@ -1121,7 +1122,6 @@ char *
 mono_exception_handle_get_native_backtrace (MonoExceptionHandle exc)
 {
 #ifdef HAVE_BACKTRACE_SYMBOLS
-	MonoDomain *domain;
 	MonoArrayHandle arr = MONO_HANDLE_NEW(MonoArray, NULL);
 	int i, len;
 	GString *text;
@@ -1131,7 +1131,6 @@ mono_exception_handle_get_native_backtrace (MonoExceptionHandle exc)
 
 	if (MONO_HANDLE_IS_NULL(arr))
 		return g_strdup ("");
-	domain = mono_domain_get ();
 	len = mono_array_handle_length (arr);
 	text = g_string_new_len (NULL, len * 20);
 	MonoGCHandle gchandle;
@@ -1144,7 +1143,7 @@ mono_exception_handle_get_native_backtrace (MonoExceptionHandle exc)
 	for (i = 0; i < len; ++i) {
 		gpointer ip;
 		MONO_HANDLE_ARRAY_GETVAL (ip, arr, gpointer, i);
-		MonoJitInfo *ji = mono_jit_info_table_find (domain, ip);
+		MonoJitInfo *ji = mono_jit_info_table_find_internal (ip, TRUE, FALSE);
 		if (ji) {
 			char *msg = mono_debug_print_stack_frame (mono_jit_info_get_method (ji), (char*)ip - (char*)ji->code_start, NULL);
 			g_string_append_printf (text, "%s\n", msg);
@@ -1159,24 +1158,6 @@ mono_exception_handle_get_native_backtrace (MonoExceptionHandle exc)
 #else
 	return g_strdup ("");
 #endif
-}
-
-MonoStringHandle
-ves_icall_Mono_Runtime_GetNativeStackTrace (MonoExceptionHandle exc, MonoError *error)
-{
-	char *trace;
-	MonoStringHandle res;
-	error_init (error);
-
-	if (MONO_HANDLE_IS_NULL (exc)) {
-		mono_error_set_argument_null (error, "exception", "");
-		return NULL_HANDLE_STRING;
-	}
-
-	trace = mono_exception_handle_get_native_backtrace (exc);
-	res = mono_string_new_handle (trace, error);
-	g_free (trace);
-	return res;
 }
 
 /**

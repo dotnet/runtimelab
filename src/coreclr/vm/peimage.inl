@@ -59,6 +59,12 @@ inline INT64 PEImage::GetSize() const
     return m_bundleFileLocation.Size;
 }
 
+inline INT64 PEImage::GetUncompressedSize() const
+{
+    LIMITED_METHOD_CONTRACT;
+    return m_bundleFileLocation.UncompresedSize;
+}
+
 inline void PEImage::SetModuleFileNameHintForDAC()
 {
     LIMITED_METHOD_DAC_CONTRACT;
@@ -161,21 +167,6 @@ inline BOOL PEImage::IsOpened()
     return m_pLayouts[IMAGE_LOADED]!=NULL ||m_pLayouts[IMAGE_MAPPED]!=NULL || m_pLayouts[IMAGE_FLAT] !=NULL;
 }
 
-
-#ifdef FEATURE_PREJIT
-inline CHECK PEImage::CheckNativeFormat()
-{
-    WRAPPER_NO_CONTRACT;
-    if (HasLoadedLayout())
-        CHECK(GetLoadedLayout()->CheckNativeFormat());
-    else
-    {
-        PEImageLayoutHolder pLayout(GetLayout(PEImageLayout::LAYOUT_ANY,LAYOUT_CREATEIFNEEDED));
-        CHECK(pLayout->CheckNativeFormat());
-    }
-    CHECK_OK;
-};
-#endif // FEATURE_PREJIT
 
 inline BOOL PEImage::IsReferenceAssembly()
 {
@@ -331,44 +322,6 @@ inline WORD PEImage::GetSubsystem()
     }
 }
 
-#ifdef FEATURE_PREJIT
-inline BOOL PEImage::IsNativeILILOnly()
-{
-    WRAPPER_NO_CONTRACT;
-    if (HasLoadedLayout())
-        return GetLoadedLayout()->IsNativeILILOnly();
-    else
-    {
-        PEImageLayoutHolder pLayout(GetLayout(PEImageLayout::LAYOUT_ANY,LAYOUT_CREATEIFNEEDED));
-        return pLayout->IsNativeILILOnly();
-    }
-}
-
-inline void PEImage::GetNativeILPEKindAndMachine(DWORD* pdwKind, DWORD* pdwMachine)
-{
-    WRAPPER_NO_CONTRACT;
-    if (HasLoadedLayout())
-        GetLoadedLayout()->GetNativeILPEKindAndMachine(pdwKind, pdwMachine);
-    else
-    {
-        PEImageLayoutHolder pLayout(GetLayout(PEImageLayout::LAYOUT_ANY,LAYOUT_CREATEIFNEEDED));
-        pLayout->GetNativeILPEKindAndMachine(pdwKind, pdwMachine);
-    }
-}
-
-inline BOOL PEImage::IsNativeILDll()
-{
-    WRAPPER_NO_CONTRACT;
-    if (HasLoadedLayout())
-        return GetLoadedLayout()->IsNativeILDll();
-    else
-    {
-        PEImageLayoutHolder pLayout(GetLayout(PEImageLayout::LAYOUT_ANY,LAYOUT_CREATEIFNEEDED));
-        return pLayout->IsNativeILDll();
-    }
-}
-#endif // FEATURE_PREJIT
-
 inline BOOL PEImage::IsDll()
 {
     WRAPPER_NO_CONTRACT;
@@ -383,18 +336,7 @@ inline BOOL PEImage::IsDll()
 
 inline BOOL PEImage::IsIbcOptimized()
 {
-#ifdef FEATURE_PREJIT
-    WRAPPER_NO_CONTRACT;
-    if (HasLoadedLayout())
-        return GetLoadedLayout()->GetNativeILIsIbcOptimized();
-    else
-    {
-        PEImageLayoutHolder pLayout(GetLayout(PEImageLayout::LAYOUT_ANY,LAYOUT_CREATEIFNEEDED));
-        return pLayout->GetNativeILIsIbcOptimized();
-    }
-#else
     return false;
-#endif
 }
 
 inline PTR_CVOID PEImage::GetNativeManifestMetadata(COUNT_T *pSize)
@@ -418,18 +360,6 @@ inline PTR_CVOID PEImage::GetMetadata(COUNT_T *pSize)
     {
         PEImageLayoutHolder pLayout(GetLayout(PEImageLayout::LAYOUT_ANY,LAYOUT_CREATEIFNEEDED));
         return pLayout->GetMetadata(pSize);
-    }
-}
-
-inline BOOL PEImage::HasNativeHeader()
-{
-    WRAPPER_NO_CONTRACT;
-    if (HasLoadedLayout())
-        return GetLoadedLayout()->HasNativeHeader();
-    else
-    {
-        PEImageLayoutHolder pLayout(GetLayout(PEImageLayout::LAYOUT_ANY,LAYOUT_CREATEIFNEEDED));
-        return pLayout->HasNativeHeader();
     }
 }
 
@@ -528,10 +458,6 @@ inline PTR_PEImage PEImage::OpenImage(LPCWSTR pPath, MDInternalImportFlags flags
         }
 
         PEImageHolder pImage(new PEImage);
-#ifdef FEATURE_PREJIT
-        if (flags &  MDInternalImport_TrustedNativeImage)
-            pImage->SetIsTrustedNativeImage();
-#endif
         pImage->Init(pPath, bundleFileLocation);
 
         pImage->AddToHashMap();

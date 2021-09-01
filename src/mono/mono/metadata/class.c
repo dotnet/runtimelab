@@ -36,8 +36,6 @@
 #include <mono/metadata/debug-helpers.h>
 #include <mono/metadata/reflection.h>
 #include <mono/metadata/exception.h>
-#include <mono/metadata/security-manager.h>
-#include <mono/metadata/security-core-clr.h>
 #include <mono/metadata/attrdefs.h>
 #include <mono/metadata/gc-internals.h>
 #include <mono/metadata/mono-debug.h>
@@ -1116,6 +1114,37 @@ mono_class_inflate_generic_method_checked (MonoMethod *method, MonoGenericContex
 	return mono_class_inflate_generic_method_full_checked (method, NULL, context, error);
 }
 
+static gboolean
+inflated_method_equal (gconstpointer a, gconstpointer b)
+{
+	const MonoMethodInflated *ma = (const MonoMethodInflated *)a;
+	const MonoMethodInflated *mb = (const MonoMethodInflated *)b;
+	if (ma->declaring != mb->declaring)
+		return FALSE;
+	return mono_metadata_generic_context_equal (&ma->context, &mb->context);
+}
+
+static guint
+inflated_method_hash (gconstpointer a)
+{
+	const MonoMethodInflated *ma = (const MonoMethodInflated *)a;
+	return (mono_metadata_generic_context_hash (&ma->context) ^ mono_aligned_addr_hash (ma->declaring));
+}
+
+static void
+free_inflated_method (MonoMethodInflated *imethod)
+{
+	MonoMethod *method = (MonoMethod*)imethod;
+
+	if (method->signature)
+		mono_metadata_free_inflated_signature (method->signature);
+
+	if (method->wrapper_type)
+		g_free (((MonoMethodWrapper*)method)->method_data);
+
+	g_free (method);
+}
+
 /**
  * mono_class_inflate_generic_method_full_checked:
  * Instantiate method \p method with the generic context \p context.
@@ -1178,12 +1207,14 @@ mono_class_inflate_generic_method_full_checked (MonoMethod *method, MonoClass *k
 	if (!mono_class_is_gtd (iresult->declaring->klass) && !mono_class_is_ginst (iresult->declaring->klass))
 		iresult->context.class_inst = NULL;
 
-	MonoImageSet *set = mono_metadata_get_image_set_for_method (iresult);
+	MonoMemoryManager *mm = mono_metadata_get_mem_manager_for_method (iresult);
 
 	// check cache
-	mono_image_set_lock (set);
-	cached = (MonoMethodInflated *)g_hash_table_lookup (set->gmethod_cache, iresult);
-	mono_image_set_unlock (set);
+	mono_mem_manager_lock (mm);
+	if (!mm->gmethod_cache)
+		mm->gmethod_cache = g_hash_table_new_full (inflated_method_hash, inflated_method_equal, NULL, (GDestroyNotify)free_inflated_method);
+	cached = (MonoMethodInflated *)g_hash_table_lookup (mm->gmethod_cache, iresult);
+	mono_mem_manager_unlock (mm);
 
 	if (cached) {
 		g_free (iresult);
@@ -1276,14 +1307,14 @@ mono_class_inflate_generic_method_full_checked (MonoMethod *method, MonoClass *k
 	 */
 
 	// check cache
-	mono_image_set_lock (set);
-	cached = (MonoMethodInflated *)g_hash_table_lookup (set->gmethod_cache, iresult);
+	mono_mem_manager_lock (mm);
+	cached = (MonoMethodInflated *)g_hash_table_lookup (mm->gmethod_cache, iresult);
 	if (!cached) {
-		g_hash_table_insert (set->gmethod_cache, iresult, iresult);
-		iresult->owner = set;
+		g_hash_table_insert (mm->gmethod_cache, iresult, iresult);
+		iresult->owner = mm;
 		cached = iresult;
 	}
-	mono_image_set_unlock (set);
+	mono_mem_manager_unlock (mm);
 
 	return (MonoMethod*)cached;
 
@@ -2932,9 +2963,12 @@ mono_type_get_checked (MonoImage *image, guint32 type_token, MonoGenericContext 
 MonoClass *
 mono_class_get (MonoImage *image, guint32 type_token)
 {
+	MonoClass *result;
+	MONO_ENTER_GC_UNSAFE;
 	ERROR_DECL (error);
-	MonoClass *result = mono_class_get_checked (image, type_token, error);
+	result = mono_class_get_checked (image, type_token, error);
 	mono_error_assert_ok (error);
+	MONO_EXIT_GC_UNSAFE;
 	return result;
 }
 
@@ -3490,8 +3524,10 @@ mono_class_is_subclass_of_internal (MonoClass *klass, MonoClass *klassc,
 {
 	MONO_REQ_GC_UNSAFE_MODE;
 	/* FIXME test for interfaces with variant generic arguments */
-	mono_class_init_internal (klass);
-	mono_class_init_internal (klassc);
+	if (check_interfaces) {
+		mono_class_init_internal (klass);
+		mono_class_init_internal (klassc);
+	}
 	
 	if (check_interfaces && MONO_CLASS_IS_INTERFACE_INTERNAL (klassc) && !MONO_CLASS_IS_INTERFACE_INTERNAL (klass)) {
 		if (MONO_CLASS_IMPLEMENTS_INTERFACE (klass, m_class_get_interface_id (klassc)))
@@ -4550,9 +4586,12 @@ gpointer
 mono_ldtoken (MonoImage *image, guint32 token, MonoClass **handle_class,
 	      MonoGenericContext *context)
 {
+	gpointer res;
+	MONO_ENTER_GC_UNSAFE;
 	ERROR_DECL (error);
-	gpointer res = mono_ldtoken_checked (image, token, handle_class, context, error);
+	res = mono_ldtoken_checked (image, token, handle_class, context, error);
 	mono_error_assert_ok (error);
+	MONO_EXIT_GC_UNSAFE;
 	return res;
 }
 
@@ -5248,7 +5287,11 @@ mono_class_is_delegate (MonoClass *klass)
 mono_bool
 mono_class_implements_interface (MonoClass* klass, MonoClass* iface)
 {
-	return mono_class_is_assignable_from_internal (iface, klass);
+	mono_bool result;
+	MONO_ENTER_GC_UNSAFE;
+	result = mono_class_is_assignable_from_internal (iface, klass);
+	MONO_EXIT_GC_UNSAFE;
+	return result;
 }
 
 static mono_bool

@@ -134,8 +134,6 @@
 //
 
 // winbase.h
-#define WszGetEnvironmentStrings   GetEnvironmentStringsW
-#define WszFreeEnvironmentStrings   FreeEnvironmentStringsW
 #define WszFormatMessage   FormatMessageW
 #define Wszlstrcmp   lstrcmpW
 #define Wszlstrcmpi   lstrcmpiW
@@ -331,17 +329,6 @@ InterlockedCompareExchangePointer (
 
 #endif // HOST_X86 && _MSC_VER
 
-#if defined(HOST_ARM) & !defined(HOST_UNIX)
-//
-// InterlockedCompareExchangeAcquire/InterlockedCompareExchangeRelease is not mapped in SDK to the correct intrinsics. Remove once
-// the SDK definition is fixed (OS Bug #516255)
-//
-#undef InterlockedCompareExchangeAcquire
-#define InterlockedCompareExchangeAcquire _InterlockedCompareExchange_acq
-#undef InterlockedCompareExchangeRelease
-#define InterlockedCompareExchangeRelease _InterlockedCompareExchange_rel
-#endif
-
 #if defined(HOST_X86) & !defined(InterlockedIncrement64)
 
 // Interlockedxxx64 that do not have intrinsics are only supported on Windows Server 2003
@@ -494,7 +481,7 @@ inline int LateboundMessageBoxA(HWND hWnd,
     return LateboundMessageBoxW(hWnd, wszText, wszCaption, uType);
 }
 
-#if defined(FEATURE_CORESYSTEM) && !defined(CROSSGEN_COMPILE)
+#if defined(FEATURE_CORESYSTEM)
 
 #define MessageBoxW LateboundMessageBoxW
 #define MessageBoxA LateboundMessageBoxA

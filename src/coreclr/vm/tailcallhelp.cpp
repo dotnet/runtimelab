@@ -10,7 +10,6 @@
 #include "gcrefmap.h"
 #include "threads.h"
 
-#ifndef CROSSGEN_COMPILE
 
 FCIMPL2(void*, TailCallHelp::AllocTailCallArgBuffer, INT32 size, void* gcDesc)
 {
@@ -43,7 +42,6 @@ FCIMPL2(void*, TailCallHelp::GetTailCallInfo, void** retAddrSlot, void** retAddr
 }
 FCIMPLEND
 
-#endif
 
 struct ArgBufferValue
 {
@@ -465,10 +463,10 @@ MethodDesc* TailCallHelp::CreateCallTargetStub(const TailCallInfo& info)
 
     ILCodeStream* pCode = sl.NewCodeStream(ILStubLinker::kDispatch);
 
-    // void CallTarget(void* argBuffer, void* retVal, void** pTailCallAwareRetAddress)
+    // void CallTarget(void* argBuffer, void* retVal, PortableTailCallFrame* pFrame)
     const int ARG_ARG_BUFFER = 0;
     const int ARG_RET_VAL = 1;
-    const int ARG_PTR_TAILCALL_AWARE_RET_ADDR = 2;
+    const int ARG_PTR_FRAME = 2;
 
     auto emitOffs = [&](UINT offs)
     {
@@ -477,10 +475,16 @@ MethodDesc* TailCallHelp::CreateCallTargetStub(const TailCallInfo& info)
         pCode->EmitADD();
     };
 
-    // *pTailCallAwareRetAddr = NextCallReturnAddress();
-    pCode->EmitLDARG(ARG_PTR_TAILCALL_AWARE_RET_ADDR);
+    // pFrame->NextCall = 0;
+    pCode->EmitLDARG(ARG_PTR_FRAME);
+    pCode->EmitLDC(0);
+    pCode->EmitCONV_U();
+    pCode->EmitSTFLD(FIELD__PORTABLE_TAIL_CALL_FRAME__NEXT_CALL);
+
+    // pFrame->TailCallAwareReturnAddress = NextCallReturnAddress();
+    pCode->EmitLDARG(ARG_PTR_FRAME);
     pCode->EmitCALL(METHOD__STUBHELPERS__NEXT_CALL_RETURN_ADDRESS, 0, 1);
-    pCode->EmitSTIND_I();
+    pCode->EmitSTFLD(FIELD__PORTABLE_TAIL_CALL_FRAME__TAILCALL_AWARE_RETURN_ADDRESS);
 
     for (COUNT_T i = 0; i < info.ArgBufLayout.Values.GetCount(); i++)
     {
@@ -613,7 +617,7 @@ void TailCallHelp::CreateCallTargetStubSig(const TailCallInfo& info, SigBuilder*
     // Return value
     sig->AppendElementType(ELEMENT_TYPE_I);
 
-    // Pointer to tail call aware return address
+    // Pointer to tail call frame
     sig->AppendElementType(ELEMENT_TYPE_I);
 
 #ifdef _DEBUG

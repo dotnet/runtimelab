@@ -52,7 +52,13 @@ if (NOT CLR_CMAKE_TARGET_BROWSER)
     )
 
     # Disable implicit fallthrough warning for Brotli
-    set_source_files_properties(${NATIVECOMPRESSION_SOURCES} PROPERTIES COMPILE_FLAGS -Wno-implicit-fallthrough)
+    set(FLAGS -Wno-implicit-fallthrough)
+
+    # Delete this supression once brotli is upgraded to vNext (current latest v1.0.9
+    # does not contain upstream fix: https://github.com/google/brotli/commit/0a3944c)
+    set(FLAGS "${FLAGS} -Wno-vla-parameter")
+
+    set_source_files_properties(${NATIVECOMPRESSION_SOURCES} PROPERTIES COMPILE_FLAGS ${FLAGS})
 endif()
 
 if (GEN_SHARED_LIB)
@@ -100,4 +106,4 @@ add_library(System.IO.Compression.Native-Static
 
 set_target_properties(System.IO.Compression.Native-Static PROPERTIES OUTPUT_NAME System.IO.Compression.Native  CLEAN_DIRECT_OUTPUT 1)
 
-install (TARGETS System.IO.Compression.Native-Static DESTINATION ${STATIC_LIB_DESTINATION})
+install (TARGETS System.IO.Compression.Native-Static DESTINATION ${STATIC_LIB_DESTINATION} COMPONENT libs)

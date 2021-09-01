@@ -23,7 +23,7 @@ namespace
     // This function is an API exported to the runtime via the BUNDLE_PROBE property.
     // This function used by the runtime to probe for bundled assemblies
     // This function assumes that the currently executing app is a single-file bundle.
-    bool STDMETHODCALLTYPE bundle_probe(const char* path, int64_t* offset, int64_t* size)
+    bool STDMETHODCALLTYPE bundle_probe(const char* path, int64_t* offset, int64_t* size, int64_t* compressedSize)
     {
         if (path == nullptr)
         {
@@ -40,7 +40,7 @@ namespace
             return false;
         }
 
-        return bundle::runner_t::app()->probe(file_path, offset, size);
+        return bundle::runner_t::app()->probe(file_path, offset, size, compressedSize);
     }
 
 #if defined(NATIVE_LIBS_EMBEDDED)
@@ -247,7 +247,7 @@ int hostpolicy_context_t::initialize(hostpolicy_init_t &hostpolicy_init, const a
         }
     }
 
-    // App paths and App NI paths.
+    // App paths.
     // Note: Keep this check outside of the loop above since the _last_ key wins
     // and that could indicate the app paths shouldn't be set.
     if (set_app_paths)
@@ -255,12 +255,6 @@ int hostpolicy_context_t::initialize(hostpolicy_init_t &hostpolicy_init, const a
         if (!coreclr_properties.add(common_property::AppPaths, app_base.c_str()))
         {
             log_duplicate_property_error(coreclr_property_bag_t::common_property_to_string(common_property::AppPaths));
-            return StatusCode::LibHostDuplicateProperty;
-        }
-
-        if (!coreclr_properties.add(common_property::AppNIPaths, app_base.c_str()))
-        {
-            log_duplicate_property_error(coreclr_property_bag_t::common_property_to_string(common_property::AppNIPaths));
             return StatusCode::LibHostDuplicateProperty;
         }
     }

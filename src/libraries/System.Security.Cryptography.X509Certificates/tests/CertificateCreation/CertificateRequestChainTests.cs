@@ -7,6 +7,7 @@ using Xunit;
 
 namespace System.Security.Cryptography.X509Certificates.Tests.CertificateCreation
 {
+    [ActiveIssue("https://github.com/dotnet/runtime/issues/57506", typeof(PlatformDetection), nameof(PlatformDetection.IsMonoRuntime), nameof(PlatformDetection.IsMariner))]
     public static class CertificateRequestChainTests
     {
         public static bool PlatformSupportsPss { get; } = DetectPssSupport();
@@ -526,6 +527,13 @@ namespace System.Security.Cryptography.X509Certificates.Tests.CertificateCreatio
 
         private static bool DetectPssSupport()
         {
+            if (PlatformDetection.IsAndroid)
+            {
+                // Android supports PSS at the algorithms layer, but does not support it
+                // being used in cert chains.
+                return false;
+            }
+
             using (X509Certificate2 cert = new X509Certificate2(TestData.PfxData, TestData.PfxDataPassword))
             using (RSA rsa = cert.GetRSAPrivateKey())
             {

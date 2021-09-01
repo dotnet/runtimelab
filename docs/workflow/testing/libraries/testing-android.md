@@ -9,7 +9,7 @@ The following dependencies should be installed in order to be able to run tests:
 
 OpenJDK can be installed on Linux (Ubuntu) using `apt-get`:
 ```bash
-sudo apt-get install openjdk-8 unzip
+sudo apt-get install openjdk-8 zip unzip
 ```
 
 Android SDK, NDK and OpenSSL can be automatically installed via the following script:
@@ -45,6 +45,7 @@ curl https://dl.google.com/android/repository/commandlinetools-${HOST_OS_SHORT}-
 mkdir ${ANDROID_SDK_ROOT} && unzip ~/asdk.zip -d ${ANDROID_SDK_ROOT}/cmdline-tools && rm -rf ~/asdk.zip
 yes | ${ANDROID_SDK_ROOT}/cmdline-tools/tools/bin/sdkmanager --sdk_root=${ANDROID_SDK_ROOT} --licenses
 ${ANDROID_SDK_ROOT}/cmdline-tools/tools/bin/sdkmanager --sdk_root=${ANDROID_SDK_ROOT} "platform-tools" "platforms;android-${SDK_API_LEVEL}" "build-tools;${SDK_BUILD_TOOLS}"
+```
 
 ## Building Libs and Tests for Android
 

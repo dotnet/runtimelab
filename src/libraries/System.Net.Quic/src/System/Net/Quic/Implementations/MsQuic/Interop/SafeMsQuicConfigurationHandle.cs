@@ -5,8 +5,10 @@ using System.Buffers;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Net.Security;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography.X509Certificates;
+using System.Text;
 using System.Threading;
 using static System.Net.Quic.Implementations.MsQuic.Internal.MsQuicNativeMethods;
 
@@ -14,34 +16,94 @@ namespace System.Net.Quic.Implementations.MsQuic.Internal
 {
     internal sealed class SafeMsQuicConfigurationHandle : SafeHandle
     {
+        private static readonly FieldInfo _contextCertificate = typeof(SslStreamCertificateContext).GetField("Certificate", BindingFlags.NonPublic | BindingFlags.Instance)!;
+        private static readonly FieldInfo _contextChain = typeof(SslStreamCertificateContext).GetField("IntermediateCertificates", BindingFlags.NonPublic | BindingFlags.Instance)!;
+
         public override bool IsInvalid => handle == IntPtr.Zero;
 
-        private SafeMsQuicConfigurationHandle()
+        public SafeMsQuicConfigurationHandle()
             : base(IntPtr.Zero, ownsHandle: true)
         { }
 
         protected override bool ReleaseHandle()
         {
             MsQuicApi.Api.ConfigurationCloseDelegate(handle);
+            SetHandle(IntPtr.Zero);
             return true;
         }
 
         // TODO: consider moving the static code from here to keep all the handle classes small and simple.
-        public static unsafe SafeMsQuicConfigurationHandle Create(QuicClientConnectionOptions options)
+        public static SafeMsQuicConfigurationHandle Create(QuicClientConnectionOptions options)
         {
-            // TODO: lots of ClientAuthenticationOptions are not yet supported by MsQuic.
-            return Create(options, QUIC_CREDENTIAL_FLAGS.CLIENT, certificate: null, options.ClientAuthenticationOptions?.ApplicationProtocols);
+            X509Certificate? certificate = null;
+
+            if (options.ClientAuthenticationOptions != null)
+            {
+                if (options.ClientAuthenticationOptions.CipherSuitesPolicy != null)
+                {
+                    throw new PlatformNotSupportedException(SR.Format(SR.net_quic_ssl_option, nameof(options.ClientAuthenticationOptions.CipherSuitesPolicy)));
+                }
+
+                if (options.ClientAuthenticationOptions.EncryptionPolicy == EncryptionPolicy.NoEncryption)
+                {
+                    throw new PlatformNotSupportedException(SR.Format(SR.net_quic_ssl_option, nameof(options.ClientAuthenticationOptions.EncryptionPolicy)));
+                }
+
+                if (options.ClientAuthenticationOptions.ClientCertificates != null)
+                {
+                    foreach (var cert in options.ClientAuthenticationOptions.ClientCertificates)
+                    {
+                        try
+                        {
+                            if (((X509Certificate2)cert).HasPrivateKey)
+                            {
+                                // Pick first certificate with private key.
+                                certificate = cert;
+                                break;
+                            }
+                        }
+                        catch { }
+                    }
+                }
+            }
+
+            return Create(options, QUIC_CREDENTIAL_FLAGS.CLIENT, certificate: certificate, certificateContext: null, options.ClientAuthenticationOptions?.ApplicationProtocols);
         }
 
-        public static unsafe SafeMsQuicConfigurationHandle Create(QuicListenerOptions options)
+        public static SafeMsQuicConfigurationHandle Create(QuicOptions options, SslServerAuthenticationOptions? serverAuthenticationOptions, string? targetHost = null)
         {
-            // TODO: lots of ServerAuthenticationOptions are not yet supported by MsQuic.
-            return Create(options, QUIC_CREDENTIAL_FLAGS.NONE, options.ServerAuthenticationOptions?.ServerCertificate, options.ServerAuthenticationOptions?.ApplicationProtocols);
+            QUIC_CREDENTIAL_FLAGS flags = QUIC_CREDENTIAL_FLAGS.NONE;
+            X509Certificate? certificate = serverAuthenticationOptions?.ServerCertificate;
+
+            if (serverAuthenticationOptions != null)
+            {
+                if (serverAuthenticationOptions.CipherSuitesPolicy != null)
+                {
+                    throw new PlatformNotSupportedException(SR.Format(SR.net_quic_ssl_option, nameof(serverAuthenticationOptions.CipherSuitesPolicy)));
+                }
+
+                if (serverAuthenticationOptions.EncryptionPolicy == EncryptionPolicy.NoEncryption)
+                {
+                    throw new PlatformNotSupportedException(SR.Format(SR.net_quic_ssl_option, nameof(serverAuthenticationOptions.EncryptionPolicy)));
+                }
+
+                if (serverAuthenticationOptions.ClientCertificateRequired)
+                {
+                    flags |= QUIC_CREDENTIAL_FLAGS.REQUIRE_CLIENT_AUTHENTICATION | QUIC_CREDENTIAL_FLAGS.INDICATE_CERTIFICATE_RECEIVED | QUIC_CREDENTIAL_FLAGS.NO_CERTIFICATE_VALIDATION;
+                }
+
+                if (certificate == null && serverAuthenticationOptions?.ServerCertificateSelectionCallback != null && targetHost != null)
+                {
+                    certificate = serverAuthenticationOptions.ServerCertificateSelectionCallback(options, targetHost);
+                }
+            }
+
+            return Create(options, flags, certificate, serverAuthenticationOptions?.ServerCertificateContext, serverAuthenticationOptions?.ApplicationProtocols);
         }
 
         // TODO: this is called from MsQuicListener and when it fails it wreaks havoc in MsQuicListener finalizer.
         //       Consider moving bigger logic like this outside of constructor call chains.
-        private static unsafe SafeMsQuicConfigurationHandle Create(QuicOptions options, QUIC_CREDENTIAL_FLAGS flags, X509Certificate? certificate, List<SslApplicationProtocol>? alpnProtocols)
+        private static unsafe SafeMsQuicConfigurationHandle Create(QuicOptions options, QUIC_CREDENTIAL_FLAGS flags, X509Certificate? certificate, SslStreamCertificateContext? certificateContext, List<SslApplicationProtocol>? alpnProtocols)
         {
             // TODO: some of these checks should be done by the QuicOptions type.
             if (alpnProtocols == null || alpnProtocols.Count == 0)
@@ -57,6 +119,24 @@ namespace System.Net.Quic.Implementations.MsQuic.Internal
             if (options.MaxBidirectionalStreams > ushort.MaxValue)
             {
                 throw new Exception("MaxBidirectionalStreams overflow.");
+            }
+
+            if ((flags & QUIC_CREDENTIAL_FLAGS.CLIENT) == 0)
+            {
+                if (certificate == null && certificateContext == null)
+                {
+                    throw new Exception("Server must provide certificate");
+                }
+            }
+            else
+            {
+                flags |= QUIC_CREDENTIAL_FLAGS.INDICATE_CERTIFICATE_RECEIVED | QUIC_CREDENTIAL_FLAGS.NO_CERTIFICATE_VALIDATION;
+            }
+
+            if (!OperatingSystem.IsWindows())
+            {
+                // Use certificate handles on Windows, fall-back to ASN1 otherwise.
+                flags |= QUIC_CREDENTIAL_FLAGS.USE_PORTABLE_CERTIFICATES;
             }
 
             Debug.Assert(!MsQuicApi.Api.Registration.IsInvalid);
@@ -82,6 +162,7 @@ namespace System.Net.Quic.Implementations.MsQuic.Internal
 
             uint status;
             SafeMsQuicConfigurationHandle? configurationHandle;
+            X509Certificate2[]? intermediates = null;
 
             MemoryHandle[]? handles = null;
             QuicBuffer[]? buffers = null;
@@ -99,31 +180,67 @@ namespace System.Net.Quic.Implementations.MsQuic.Internal
 
             try
             {
-                // TODO: find out what to do for OpenSSL here -- passing handle won't work, because
-                // MsQuic has a private copy of OpenSSL so the SSL_CTX will be incompatible.
-
                 CredentialConfig config = default;
-
                 config.Flags = flags; // TODO: consider using LOAD_ASYNCHRONOUS with a callback.
+
+                if (certificateContext != null)
+                {
+                    certificate = (X509Certificate2?) _contextCertificate.GetValue(certificateContext);
+                    intermediates = (X509Certificate2[]?) _contextChain.GetValue(certificateContext);
+
+                    if (certificate == null || intermediates == null)
+                    {
+                        throw new ArgumentException(nameof(certificateContext));
+                    }
+                }
 
                 if (certificate != null)
                 {
-#if true
-                    // If using stub TLS.
-                    config.Type = QUIC_CREDENTIAL_TYPE.STUB_NULL;
-#else
-					// TODO: doesn't work on non-Windows
-                    config.Type = QUIC_CREDENTIAL_TYPE.CONTEXT;
-                    config.Certificate = certificate.Handle;
-#endif
+                    if (OperatingSystem.IsWindows())
+                    {
+                        config.Type = QUIC_CREDENTIAL_TYPE.CONTEXT;
+                        config.Certificate = certificate.Handle;
+                        status = MsQuicApi.Api.ConfigurationLoadCredentialDelegate(configurationHandle, ref config);
+                    }
+                    else
+                    {
+                        CredentialConfigCertificatePkcs12 pkcs12Config;
+                        byte[] asn1;
+
+                        if (intermediates?.Length > 0)
+                        {
+                            X509Certificate2Collection collection = new X509Certificate2Collection();
+                            collection.Add(certificate);
+                            for (int i= 0; i < intermediates?.Length; i++)
+                            {
+                                collection.Add(intermediates[i]);
+                            }
+
+                            asn1 = collection.Export(X509ContentType.Pkcs12)!;
+                        }
+                        else
+                        {
+                            asn1 = certificate.Export(X509ContentType.Pkcs12);
+                        }
+
+                        fixed (void* ptr = asn1)
+                        {
+                            pkcs12Config.Asn1Blob = (IntPtr)ptr;
+                            pkcs12Config.Asn1BlobLength = (uint)asn1.Length;
+                            pkcs12Config.PrivateKeyPassword = IntPtr.Zero;
+
+                            config.Type = QUIC_CREDENTIAL_TYPE.PKCS12;
+                            config.Certificate = (IntPtr)(&pkcs12Config);
+                            status = MsQuicApi.Api.ConfigurationLoadCredentialDelegate(configurationHandle, ref config);
+                        }
+                    }
                 }
                 else
                 {
-                    // TODO: not allowed for OpenSSL and server
                     config.Type = QUIC_CREDENTIAL_TYPE.NONE;
+                    status = MsQuicApi.Api.ConfigurationLoadCredentialDelegate(configurationHandle, ref config);
                 }
 
-                status = MsQuicApi.Api.ConfigurationLoadCredentialDelegate(configurationHandle, ref config);
                 QuicExceptionHelpers.ThrowIfFailed(status, "ConfigurationLoadCredential failed.");
             }
             catch

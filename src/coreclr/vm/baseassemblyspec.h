@@ -27,7 +27,7 @@ protected:
     DWORD                       m_dwFlags;             // CorAssemblyFlags
     LPCWSTR                     m_wszCodeBase;         // URL to the code
     int                         m_ownedFlags;
-    ICLRPrivBinder             *m_pBindingContext;
+    AssemblyBinder             *m_pBindingContext;
 
 public:
     enum
@@ -56,8 +56,6 @@ public:
     HRESULT Init(mdAssembly tkAssemblyRef, IMetaDataAssemblyImport* pImport);
     HRESULT Init(LPCSTR pAssemblyDisplayName);
 
-    HRESULT Init(IAssemblyName *pName);
-
     // Note that this method does not clone the fields!
     VOID CopyFrom(const BaseAssemblySpec *pSpec);
 
@@ -65,14 +63,14 @@ public:
     VOID    CloneFieldsToLoaderHeap(int flags, LoaderHeap *pHeap, AllocMemTracker *pamTracker);
     VOID    CloneFieldsToStackingAllocator(StackingAllocator* alloc);
 
-    inline void SetBindingContext(ICLRPrivBinder *pBindingContext)
+    inline void SetBindingContext(AssemblyBinder *pBindingContext)
     {
         LIMITED_METHOD_CONTRACT;
 
         m_pBindingContext = pBindingContext;
     }
 
-    inline ICLRPrivBinder* GetBindingContext()
+    inline AssemblyBinder* GetBindingContext()
     {
         LIMITED_METHOD_CONTRACT;
 
@@ -94,7 +92,6 @@ public:
     void SetCodeBase(LPCWSTR szCodeBase);
 
     VOID SetCulture(LPCSTR szCulture);
-    bool IsNeutralCulture();
 
     VOID ConvertPublicKeyToToken();
 
@@ -109,13 +106,6 @@ public:
     BOOL IsCoreLibSatellite() const;
     BOOL IsCoreLib();
 
-    // Returns true
-    inline BOOL HasUniqueIdentity() const
-    {
-        STATIC_CONTRACT_LIMITED_METHOD;
-        return TRUE;
-    }
-
     enum CompareExFlags
     {
         ASC_Default                 = 0x00, // Default comparison policy.
@@ -129,8 +119,12 @@ public:
     void GetFileOrDisplayName(DWORD flags, SString &result) const;
     void GetDisplayName(DWORD flags, SString &result) const;
 
-protected:
+protected: // static
     static BOOL CompareRefToDef(const BaseAssemblySpec *pRef, const BaseAssemblySpec *pDef);
+
+protected:
+    void InitializeWithAssemblyIdentity(BINDER_SPACE::AssemblyIdentity *identity);
+    void PopulateAssemblyNameData(AssemblyNameData &data) const;
 
 private:
     void GetDisplayNameInternal(DWORD flags, SString &result) const;
