@@ -106,6 +106,9 @@ struct DotNetRuntimeDebugHeader
     GlobalValueEntry (* volatile GlobalEntries)[GlobalEntriesArraySize] = nullptr;
 };
 
+#ifdef TARGET_WINDOWS
+#pragma comment (linker, "/EXPORT:DotNetRuntimeDebugHeader,DATA")
+#endif
 extern "C" DotNetRuntimeDebugHeader DotNetRuntimeDebugHeader = {};
 
 #define MAKE_DEBUG_ENTRY(TypeName, FieldName, Value)                             \
