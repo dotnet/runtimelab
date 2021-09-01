@@ -96,7 +96,7 @@ namespace System.Text.RegularExpressions
             ValidateOptions(options);
             ValidateMatchTimeout(matchTimeout);
 
-            _useSRM = (options & RegexOptions.DFA) != 0;
+            _useSRM = (options & RegexOptions.NonBacktracking) != 0;
             if (_useSRM)
             {
                 // Ignore Compiled flag if DFA is used
@@ -132,7 +132,7 @@ namespace System.Text.RegularExpressions
             // This construction fails and throws a NotSupportedException
             // if constructs that are not compatible with DFA are being used in the pattern.
             if (_useSRM)
-                _srm = InitializeSRM(tree.Root, roptions & ~RegexOptions.DFA, matchTimeout, culture);
+                _srm = InitializeSRM(tree.Root, roptions & ~RegexOptions.NonBacktracking, matchTimeout, culture);
         }
 
         /// <summary>
@@ -169,7 +169,7 @@ namespace System.Text.RegularExpressions
 #if DEBUG
                              RegexOptions.Debug |
 #endif
-                             RegexOptions.DFA |
+                             RegexOptions.NonBacktracking |
                              RegexOptions.CultureInvariant)) != 0))
             {
                 ThrowHelper.ThrowArgumentOutOfRangeException(ExceptionArgument.options);

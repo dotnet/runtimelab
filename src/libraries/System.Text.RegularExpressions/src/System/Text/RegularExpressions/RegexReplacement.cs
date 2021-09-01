@@ -120,7 +120,7 @@ namespace System.Text.RegularExpressions
             if (!replRef.TryGetTarget(out repl) || !repl.Pattern.Equals(replacement))
             {
                 repl = RegexParser.ParseReplacement(replacement, roptions, caps, capsize, capnames);
-                if (repl.HasGroups && ((roptions & RegexOptions.DFA) != 0))
+                if (repl.HasGroups && ((roptions & RegexOptions.NonBacktracking) != 0))
                     throw new NotSupportedException(SRM.Regex._DFA_incompatible_with + "replacement pattern with substitutions");
 
                 replRef.SetTarget(repl);

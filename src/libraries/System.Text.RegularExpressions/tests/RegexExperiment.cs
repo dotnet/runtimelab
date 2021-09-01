@@ -4,7 +4,6 @@
 using System.Collections.Generic;
 using System.IO;
 using Xunit;
-using Xunit.Abstractions;
 using System.Diagnostics;
 using System.Reflection;
 
@@ -69,8 +68,6 @@ namespace System.Text.RegularExpressions.Tests
         /// Output directory for generated dgml files.
         /// </summary>
         private const string dgmloutdirectory = tmpWorkingDir + @"dgml\";
-
-        private static RegexOptions DFA = (RegexOptions)0x400;
 
         private static MethodInfo _Deserialize = typeof(Regex).GetMethod("Deserialize", BindingFlags.NonPublic | BindingFlags.Static);
         private static Regex Deserialize(string s) => _Deserialize.Invoke(null, new object[] { s }) as Regex;
@@ -195,7 +192,7 @@ namespace System.Text.RegularExpressions.Tests
         {
             string rawregex = @"\bis\w*\b";
             //string rawregex = And(".*[0-9].*", ".*[A-Z].*");
-            Regex re = new Regex(rawregex, DFA | RegexOptions.Singleline);
+            Regex re = new Regex(rawregex, RegexHelpers.RegexOptionNonBacktracking | RegexOptions.Singleline);
             ViewDGML(re);
             ViewDGML(re, inReverse: true);
             ViewDGML(re, addDotStar: true);
@@ -205,7 +202,7 @@ namespace System.Text.RegularExpressions.Tests
         {
             Regex reC = new Regex(rawregex, RegexOptions.Compiled, new TimeSpan(0, 0, 10));
             Regex reN = new Regex(rawregex, RegexOptions.None, new TimeSpan(0, 0, 10));
-            Regex reD = new Regex(rawregex, DFA);
+            Regex reD = new Regex(rawregex, RegexHelpers.RegexOptionNonBacktracking);
             Match mC;
             Match mN;
             Match mD;
@@ -251,7 +248,7 @@ namespace System.Text.RegularExpressions.Tests
             int k = rawregexes.Length;
             //construct
             var sw = Stopwatch.StartNew();
-            var rs = Array.ConvertAll(rawregexes, s => new Regex(s, DFA, new TimeSpan(0,0,1)));
+            var rs = Array.ConvertAll(rawregexes, s => new Regex(s, RegexHelpers.RegexOptionNonBacktracking, new TimeSpan(0,0,1)));
             int totConstrTime = (int)sw.ElapsedMilliseconds;
             //-------
             //serialize

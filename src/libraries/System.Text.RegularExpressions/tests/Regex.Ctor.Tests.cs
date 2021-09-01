@@ -19,8 +19,11 @@ namespace System.Text.RegularExpressions.Tests
     {
         public static IEnumerable<object[]> Ctor_TestData()
         {
-            yield return new object[] { "foo", RegexSRMTests.DFA, Regex.InfiniteMatchTimeout };
-            yield return new object[] { "foo", RegexSRMTests.DFA, new TimeSpan(1) };
+            if (PlatformDetection.IsNetCore)
+            {
+                yield return new object[] { "foo", RegexHelpers.RegexOptionNonBacktracking, Regex.InfiniteMatchTimeout };
+                yield return new object[] { "foo", RegexHelpers.RegexOptionNonBacktracking, new TimeSpan(1) };
+            }
             yield return new object[] { "foo", RegexOptions.None, Regex.InfiniteMatchTimeout };
             yield return new object[] { "foo", RegexOptions.RightToLeft, Regex.InfiniteMatchTimeout };
             yield return new object[] { "foo", RegexOptions.Compiled, Regex.InfiniteMatchTimeout };
@@ -57,26 +60,34 @@ namespace System.Text.RegularExpressions.Tests
             Assert.Equal(matchTimeout, regex3.MatchTimeout);
         }
 
+        public static IEnumerable<object[]> NoneCompiledBacktracking()
+        {
+            yield return new object[] { RegexOptions.None };
+            yield return new object[] { RegexOptions.Compiled };
+            if (PlatformDetection.IsNetCore)
+            {
+                yield return new object[] { RegexHelpers.RegexOptionNonBacktracking };
+            }
+        }
+
         [Theory]
-        [InlineData(RegexSRMTests.DFA)]
-        [InlineData(RegexOptions.None)]
-        [InlineData(RegexOptions.Compiled)]
+        [MemberData(nameof(NoneCompiledBacktracking))]
         public void CtorDebugInvoke(RegexOptions options)
         {
             Regex r;
 
-            r = new Regex("[abc]def(ghi|jkl)", options | (RegexOptions)0x80 /*RegexOptions.Debug*/);
+            r = new Regex("[abc]def(ghi|jkl)", options | RegexHelpers.RegexOptionDebug);
             Assert.False(r.Match("a").Success);
             Assert.True(r.Match("adefghi").Success);
             string repl = r.Replace("123adefghi78bdefjkl9", "###");
             Assert.Equal("123###78###9", repl);
 
-            r = new Regex("(ghi|jkl)*ghi", options | (RegexOptions)0x80 /*RegexOptions.Debug*/);
+            r = new Regex("(ghi|jkl)*ghi", options | RegexHelpers.RegexOptionDebug);
             Assert.False(r.Match("jkl").Success);
             Assert.True(r.Match("ghi").Success);
             Assert.Equal("123456789", r.Replace("123ghi789", "456"));
 
-            r = new Regex("(ghi|jkl)*ghi", options | (RegexOptions)0x80 /*RegexOptions.Debug*/, TimeSpan.FromDays(1));
+            r = new Regex("(ghi|jkl)*ghi", options | RegexHelpers.RegexOptionDebug, TimeSpan.FromDays(1));
             Assert.False(r.Match("jkl").Success);
             Assert.True(r.Match("ghi").Success);
             Assert.Equal("123456789", r.Replace("123ghi789", "456"));
@@ -85,17 +96,20 @@ namespace System.Text.RegularExpressions.Tests
         [Fact]
         public static void Ctor_Invalid()
         {
-            // DFA option is not supported together with these other options
-            Assert.Throws<NotSupportedException>(() => new Regex("abc", RegexOptions.ECMAScript | RegexSRMTests.DFA));
-            Assert.Throws<NotSupportedException>(() => new Regex("abc", RegexOptions.RightToLeft | RegexSRMTests.DFA));
+            if (PlatformDetection.IsNetCore)
+            {
+                // DFA option is not supported together with these other options
+                Assert.Throws<NotSupportedException>(() => new Regex("abc", RegexOptions.ECMAScript | RegexHelpers.RegexOptionNonBacktracking));
+                Assert.Throws<NotSupportedException>(() => new Regex("abc", RegexOptions.RightToLeft | RegexHelpers.RegexOptionNonBacktracking));
 
-            // DFA option is not supported for these constructs
-            Assert.Throws<NotSupportedException>(() => new Regex("(?=a)", RegexSRMTests.DFA));
-            Assert.Throws<NotSupportedException>(() => new Regex("(?!a)", RegexSRMTests.DFA));
-            Assert.Throws<NotSupportedException>(() => new Regex("(?<=a)", RegexSRMTests.DFA));
-            Assert.Throws<NotSupportedException>(() => new Regex("(?<!a)", RegexSRMTests.DFA));
-            Assert.Throws<NotSupportedException>(() => new Regex(@"(?(0)ab)", RegexSRMTests.DFA));
-            Assert.Throws<NotSupportedException>(() => new Regex(@"([ab])\1", RegexSRMTests.DFA));
+                // DFA option is not supported for these constructs
+                Assert.Throws<NotSupportedException>(() => new Regex("(?=a)", RegexHelpers.RegexOptionNonBacktracking));
+                Assert.Throws<NotSupportedException>(() => new Regex("(?!a)", RegexHelpers.RegexOptionNonBacktracking));
+                Assert.Throws<NotSupportedException>(() => new Regex("(?<=a)", RegexHelpers.RegexOptionNonBacktracking));
+                Assert.Throws<NotSupportedException>(() => new Regex("(?<!a)", RegexHelpers.RegexOptionNonBacktracking));
+                Assert.Throws<NotSupportedException>(() => new Regex(@"(?(0)ab)", RegexHelpers.RegexOptionNonBacktracking));
+                Assert.Throws<NotSupportedException>(() => new Regex(@"([ab])\1", RegexHelpers.RegexOptionNonBacktracking));
+            }
 
             // Pattern is null
             AssertExtensions.Throws<ArgumentNullException>("pattern", () => new Regex(null));
@@ -109,6 +123,11 @@ namespace System.Text.RegularExpressions.Tests
             // 0x400 is new DFA option that must no longer throw ArgumentOutOfRangeException, option 0x800 in still out of range
             AssertExtensions.Throws<ArgumentOutOfRangeException>("options", () => new Regex("foo", (RegexOptions)0x800));
             AssertExtensions.Throws<ArgumentOutOfRangeException>("options", () => new Regex("foo", (RegexOptions)0x800, new TimeSpan()));
+            if (PlatformDetection.IsNetFramework)
+            {
+                AssertExtensions.Throws<ArgumentOutOfRangeException>("options", () => new Regex("foo", RegexHelpers.RegexOptionNonBacktracking));
+                AssertExtensions.Throws<ArgumentOutOfRangeException>("options", () => new Regex("foo", RegexHelpers.RegexOptionNonBacktracking, new TimeSpan()));
+            }
 
             AssertExtensions.Throws<ArgumentOutOfRangeException>("options", () => new Regex("foo", RegexOptions.ECMAScript | RegexOptions.IgnoreCase | RegexOptions.Multiline | RegexOptions.CultureInvariant | RegexOptions.RightToLeft));
             AssertExtensions.Throws<ArgumentOutOfRangeException>("options", () => new Regex("foo", RegexOptions.ECMAScript | RegexOptions.IgnoreCase | RegexOptions.Multiline | RegexOptions.CultureInvariant | RegexOptions.ExplicitCapture));
