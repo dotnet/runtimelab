@@ -1003,7 +1003,7 @@ namespace System.Text.RegularExpressions.Tests
         [Theory]
         [InlineData(RegexOptions.None)]
         [InlineData(RegexOptions.Compiled)]
-        [InlineData(DFA)]
+        [InlineData(RegexHelpers.RegexOptionNonBacktracking)]
         public void StressTestDeepNestingOfConcat(RegexOptions options)
         {
             string pattern = string.Concat(Enumerable.Repeat("([a-z]", 1000).Concat(Enumerable.Repeat(")", 1000)));
