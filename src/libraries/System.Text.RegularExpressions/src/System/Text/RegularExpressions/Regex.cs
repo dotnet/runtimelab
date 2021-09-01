@@ -379,6 +379,10 @@ namespace System.Text.RegularExpressions
         /// </summary>
         public string GroupNameFromNumber(int i)
         {
+            //in DFA mode there is a single top level group 0
+            if (_useSRM)
+                return (i == 0 ? "0" : string.Empty);
+
             if (capslist is null)
             {
                 return (uint)i < (uint)capsize ?
@@ -398,6 +402,10 @@ namespace System.Text.RegularExpressions
         /// </summary>
         public int GroupNumberFromName(string name)
         {
+            //in DFA mode there is a single top level group 0
+            if (_useSRM)
+                return (name ==  "0" ? 0 : -1);
+
             if (name is null)
             {
                 ThrowHelper.ThrowArgumentNullException(ExceptionArgument.name);

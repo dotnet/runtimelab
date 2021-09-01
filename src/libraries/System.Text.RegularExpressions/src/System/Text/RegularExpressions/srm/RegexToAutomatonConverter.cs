@@ -21,6 +21,8 @@ namespace System.Text.RegularExpressions.SRM
 
         private CultureInfo _culture;
 
+        private Dictionary<(bool, string), S> _CreateConditionFromSet_Cache = new();
+
         /// <summary>
         /// The character solver associated with the regex converter
         /// </summary>
@@ -51,6 +53,18 @@ namespace System.Text.RegularExpressions.SRM
         private const char Lastchar = '\uFFFF';
 
         internal S CreateConditionFromSet(bool ignoreCase, string set)
+        {
+            S result;
+            var key = (ignoreCase, set);
+            if (!_CreateConditionFromSet_Cache.TryGetValue(key, out result))
+            {
+                result = CreateConditionFromSet_compute(ignoreCase, set);
+                _CreateConditionFromSet_Cache[key] = result;
+            }
+            return result;
+        }
+
+        private S CreateConditionFromSet_compute(bool ignoreCase, string set)
         {
             //char at position 0 is 1 iff the set is negated
             //bool negate = ((int)set[0] == 1);
@@ -240,7 +254,7 @@ namespace System.Text.RegularExpressions.SRM
                 case RegexNode.Capture:  //treat as non-capturing group (...)
                     return ConvertNodeToSymbolicRegex(node.Child(0), topLevel);
                 case RegexNode.Concatenate:
-                    return this.srBuilder.MkConcat(Array.ConvertAll(node.ChildrenToArray(), x => ConvertNodeToSymbolicRegex(x, false)), topLevel);
+                    return this.srBuilder.MkConcat(Array.ConvertAll(FlattenNestedConcatenations(node), x => ConvertNodeToSymbolicRegex(x, false)), topLevel);
                 case RegexNode.Empty:
                 case RegexNode.UpdateBumpalong: // optional directive that behaves the same as Empty
                     return this.srBuilder.epsilon;
@@ -302,6 +316,31 @@ namespace System.Text.RegularExpressions.SRM
                     throw new NotSupportedException(SRM.Regex._DFA_incompatible_with + DescribeRegexNodeType(node.Type));
             }
         }
+
+
+        private RegexNode[] FlattenNestedConcatenations(RegexNode concat)
+        {
+            List<RegexNode> result = new();
+            Stack<RegexNode> todo = new();
+            todo.Push(concat);
+            while (todo.Count > 0)
+            {
+                RegexNode node = todo.Pop();
+                if (node.Type == RegexNode.Concatenate)
+                {
+                    // flatten nested concatenations
+                    for (int i = node.ChildCount() - 1; i >= 0; i--)
+                        todo.Push(node.Child(i));
+                }
+                else if (node.Type == RegexNode.Capture)
+                    // unwrap captures
+                    todo.Push(node.Child(0));
+                else
+                    result.Add(node);
+            }
+            return result.ToArray();
+        }
+
 
         /// <summary>
         /// Used in exception messages for nonsupported node types
