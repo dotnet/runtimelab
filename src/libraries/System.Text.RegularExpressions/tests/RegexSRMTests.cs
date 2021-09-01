@@ -1002,12 +1002,15 @@ namespace System.Text.RegularExpressions.Tests
             yield return new object[] { @"(?>a*).", RegexOptions.None, "atomic" };
         }
 
-        [Fact]
-        public void StressTestSymbolicRegexConversion()
+        [Theory]
+        [InlineData(RegexOptions.None)]
+        [InlineData(RegexOptions.Compiled)]
+        [InlineData(DFA)]
+        public void StressTestDeepNestingOfConcat(RegexOptions options)
         {
             string pattern = string.Concat(Enumerable.Repeat("([a-z]", 1000).Concat(Enumerable.Repeat(")", 1000)));
             string input = string.Concat(Enumerable.Repeat("abcde", 200));
-            var re = new Regex(pattern, DFA);
+            var re = new Regex(pattern, options);
             Assert.True(re.IsMatch(input));
         }
     }
