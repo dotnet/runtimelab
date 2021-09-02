@@ -29,7 +29,7 @@ target_compile_definitions(Runtime.ServerGC PRIVATE -DFEATURE_SVR_GC)
 if (CLR_CMAKE_TARGET_WIN32)
   add_library(Runtime.ServerGC.GuardCF STATIC ${COMMON_RUNTIME_SOURCES} ${FULL_RUNTIME_SOURCES} ${RUNTIME_SOURCES_ARCH_ASM} ${SERVER_GC_SOURCES} ${RUNTIME_ARCH_ASM_OBJECTS})
   target_compile_definitions(Runtime.ServerGC.GuardCF PRIVATE -DFEATURE_SVR_GC)
-  target_compile_options(Runtime.ServerGC.GuardCF PRIVATE /guard:cf)
+  target_compile_options(Runtime.ServerGC.GuardCF PRIVATE $<$<OR:$<COMPILE_LANGUAGE:C>,$<COMPILE_LANGUAGE:CXX>>:/guard:cf>)
 endif (CLR_CMAKE_TARGET_WIN32)
 
 # Get the current list of definitions
