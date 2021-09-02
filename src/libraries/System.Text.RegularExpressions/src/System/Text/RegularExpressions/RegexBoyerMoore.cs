@@ -323,7 +323,7 @@ namespace System.Text.RegularExpressions
                     while (true)
                     {
                         if (match == endmatch)
-                            return (RightToLeft ? test2 + 1 : test2);
+                            return RightToLeft ? test2 + 1 : test2;
 
                         match -= bump;
                         test2 -= bump;
@@ -337,9 +337,9 @@ namespace System.Text.RegularExpressions
                         {
                             advance = Positive[match];
                             if ((chTest & 0xFF80) == 0)
-                                test2 = (match - startmatch) + NegativeASCII[chTest];
+                                test2 = match - startmatch + NegativeASCII[chTest];
                             else if (null != NegativeUnicode && (null != (unicodeLookup = NegativeUnicode[chTest >> 8])))
-                                test2 = (match - startmatch) + unicodeLookup[chTest & 0xFF];
+                                test2 = match - startmatch + unicodeLookup[chTest & 0xFF];
                             else
                             {
                                 test += advance;

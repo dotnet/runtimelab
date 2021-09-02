@@ -172,7 +172,7 @@ namespace System.Text.RegularExpressions
             int leadingAnchor = RegexPrefixAnalyzer.FindLeadingAnchor(tree);
 
             // Convert the string table into an ordered string array.
-            var strings = new string[_stringTable.Count];
+            string[] strings = new string[_stringTable.Count];
             foreach (KeyValuePair<string, int> stringEntry in _stringTable)
             {
                 strings[stringEntry.Value] = stringEntry.Key;
@@ -186,10 +186,7 @@ namespace System.Text.RegularExpressions
         /// Fixes up a jump instruction at the specified offset
         /// so that it jumps to the specified jumpDest.
         /// </summary>
-        private void PatchJump(int offset, int jumpDest)
-        {
-            _emitted[offset + 1] = jumpDest;
-        }
+        private void PatchJump(int offset, int jumpDest) => _emitted[offset + 1] = jumpDest;
 
         /// <summary>
         /// Emits a zero-argument operation. Note that the emit
@@ -402,7 +399,7 @@ namespace System.Text.RegularExpressions
                 case RegexNode.Lazyloop | AfterChild:
                     {
                         int StartJumpPos = _emitted.Length;
-                        int Lazy = (nodetype - (RegexNode.Loop | AfterChild));
+                        int Lazy = nodetype - (RegexNode.Loop | AfterChild);
 
                         if (node.N < int.MaxValue || node.M > 1)
                             Emit(RegexCode.Branchcount + Lazy, _intStack.Pop(), node.N == int.MaxValue ? int.MaxValue : node.N - node.M);

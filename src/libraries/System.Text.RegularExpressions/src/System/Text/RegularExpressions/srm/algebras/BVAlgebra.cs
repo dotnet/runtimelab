@@ -1,19 +1,18 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
-using System.Runtime.Serialization;
 
 namespace System.Text.RegularExpressions.SRM
 {
     internal abstract class BVAlgebraBase
     {
-        internal Classifier _classifier;
-        protected ulong[] _cardinalities;
-        protected int _bits;
-        protected BDD[]? _partition;
+        internal readonly Classifier _classifier;
+        protected readonly ulong[] _cardinalities;
+        protected readonly int _bits;
+        protected readonly BDD[]? _partition;
 
         internal BVAlgebraBase(Classifier classifier, ulong[] cardinalities, BDD[]? partition)
         {
@@ -41,19 +40,21 @@ namespace System.Text.RegularExpressions.SRM
         /// </summary>
         public static BVAlgebraBase Deserialize(string input)
         {
-            string[] parts = input.Split(';');
-            if (parts.Length != 2)
-                throw new ArgumentException($"{nameof(BVAlgebraBase.Deserialize)} input error" );
+            int firstEnd = input.IndexOf(';');
+            if (firstEnd == -1 || input.IndexOf(';', firstEnd + 1) != -1)
+            {
+                throw new ArgumentException($"{nameof(BVAlgebraBase.Deserialize)} input error");
+            }
 
-            ulong[] cardinalities = Base64.DecodeUInt64Array(parts[0]);
+            ulong[] cardinalities = Base64.DecodeUInt64Array(input.AsSpan(0, firstEnd));
+
             //here one could potentially pass in the global CharSetSolver as the second parameter.
             //but it is not needed, practically speaking, because the functionality
             //needed during matching will not use operations that need the BDD algebra.
-            Classifier cl = Classifier.Deserialize(parts[1]);
-            if (cardinalities.Length <= 64)
-                return new BV64Algebra(cl, cardinalities);
-            else
-                return new BVAlgebra(cl, cardinalities);
+            Classifier cl = Classifier.Deserialize(input.AsSpan(firstEnd + 1));
+            return cardinalities.Length <= 64 ?
+                new BV64Algebra(cl, cardinalities) :
+                new BVAlgebra(cl, cardinalities);
         }
         #endregion
     }
@@ -61,31 +62,40 @@ namespace System.Text.RegularExpressions.SRM
     /// <summary>
     /// Bit vector algebra
     /// </summary>
-    internal class BVAlgebra : BVAlgebraBase, ICharAlgebra<BV>
+    internal sealed class BVAlgebra : BVAlgebraBase, ICharAlgebra<BV>
     {
-        private MintermGenerator<BV> mtg;
-        private BV zero;
-        private BV ones;
-        internal BV[] atoms;
+        private readonly MintermGenerator<BV> _mtg;
+        private readonly BV _zero;
+        private readonly BV _ones;
+        internal BV[] _atoms;
 
         public ulong ComputeDomainSize(BV set)
         {
             ulong size = 0;
             for (int i = 0; i < _bits; i++)
+            {
                 if (set[i])
+                {
                     size += _cardinalities[i];
+                }
+            }
+
             return size;
         }
 
         public BVAlgebra(CharSetSolver solver, BDD[] minterms) :
             base(Classifier.Create(solver, minterms), Array.ConvertAll(minterms, solver.ComputeDomainSize), minterms)
         {
-            mtg = new MintermGenerator<BV>(this);
-            zero = BV.MkFalse(_bits);
-            ones = BV.MkTrue(_bits);
-            atoms = new BV[_bits];
-            for (int i = 0; i < _bits; i++)
-               atoms[i] = BV.MkBit1(_bits, i);
+            _mtg = new MintermGenerator<BV>(this);
+            _zero = BV.MkFalse(_bits);
+            _ones = BV.MkTrue(_bits);
+
+            var atoms = new BV[_bits];
+            for (int i = 0; i < atoms.Length; i++)
+            {
+                atoms[i] = BV.MkBit1(_bits, i);
+            }
+            _atoms = atoms;
         }
 
         /// <summary>
@@ -93,30 +103,37 @@ namespace System.Text.RegularExpressions.SRM
         /// </summary>
         public BVAlgebra(Classifier classifier, ulong[] cardinalities) : base(classifier, cardinalities, null)
         {
-            mtg = new MintermGenerator<BV>(this);
-            zero = BV.MkFalse(_bits);
-            ones = BV.MkTrue(_bits);
-            atoms = new BV[_bits];
-            for (int i = 0; i < _bits; i++)
+            _mtg = new MintermGenerator<BV>(this);
+            _zero = BV.MkFalse(_bits);
+            _ones = BV.MkTrue(_bits);
+
+            var atoms = new BV[_bits];
+            for (int i = 0; i < atoms.Length; i++)
+            {
                 atoms[i] = BV.MkBit1(_bits, i);
+            }
+            _atoms = atoms;
         }
 
-        public BV False => zero;
+        public BV False => _zero;
         public bool IsExtensional => true;
         public bool HashCodesRespectEquivalence => true;
-        public BV True => ones;
+        public BV True => _ones;
         public CharSetSolver CharSetProvider => throw new NotSupportedException();
         public bool AreEquivalent(BV predicate1, BV predicate2) => predicate1.Equals(predicate2);
-        public IEnumerable<Tuple<bool[], BV>> GenerateMinterms(params BV[] constraints) => mtg.GenerateMinterms(constraints);
+        public IEnumerable<Tuple<bool[], BV>> GenerateMinterms(params BV[] constraints) => _mtg.GenerateMinterms(constraints);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool IsSatisfiable(BV predicate) => !predicate.Equals(zero);
+        public bool IsSatisfiable(BV predicate) => !predicate.Equals(_zero);
 
         public BV MkAnd(params BV[] predicates)
         {
-            var and = ones;
+            BV and = _ones;
             for (int i = 0; i < predicates.Length; i++)
-                and = and & predicates[i];
+            {
+                and &= predicates[i];
+            }
+
             return and;
         }
 
@@ -130,9 +147,12 @@ namespace System.Text.RegularExpressions.SRM
 
         public BV MkOr(IEnumerable<BV> predicates)
         {
-            var res = zero;
-            foreach (var p in predicates)
-                res = res | p;
+            BV res = _zero;
+            foreach (BV p in predicates)
+            {
+                res |= p;
+            }
+
             return res;
         }
 
@@ -143,12 +163,9 @@ namespace System.Text.RegularExpressions.SRM
 
         public BV MkCharConstraint(char c, bool caseInsensitive = false, string culture = null)
         {
-#if DEBUG
-            if (caseInsensitive == true)
-                throw new AutomataException(AutomataExceptionKind.NotSupported);
-#endif
+            Debug.Assert(!caseInsensitive);
             int i = _classifier.Find(c);
-            return this.atoms[i];
+            return _atoms[i];
         }
 
         /// <summary>
@@ -159,46 +176,51 @@ namespace System.Text.RegularExpressions.SRM
         {
             if (set == null)
                 return null;
-#if DEBUG
-            if (_partition == null)
-                throw new NotImplementedException(nameof(ConvertFromCharSet));
-#endif
-            BV res = this.zero;
+
+            Debug.Assert(_partition is not null);
+
+            BV res = _zero;
             for (int i = 0; i < _bits; i++)
             {
                 BDD bdd_i = _partition[i];
-                var conj = alg.MkAnd(bdd_i, set);
+                BDD conj = alg.MkAnd(bdd_i, set);
                 if (alg.IsSatisfiable(conj))
-                    res = res | atoms[i];
+                {
+                    res |= _atoms[i];
+                }
             }
+
             return res;
         }
 
         public BDD ConvertToCharSet(ICharAlgebra<BDD> solver, BV pred)
         {
-#if DEBUG
-            if (_partition == null)
-                throw new NotImplementedException(nameof(ConvertToCharSet));
-#endif
+            Debug.Assert(_partition is not null);
+
             BDD res = solver.False;
-            if (!pred.Equals(this.zero))
+            if (!pred.Equals(_zero))
             {
                 for (int i = 0; i < _bits; i++)
-                    //construct the union of the corresponding atoms
+                {
+                    // construct the union of the corresponding atoms
                     if (pred[i])
+                    {
                         res = solver.MkOr(res, _partition[i]);
+                    }
+                }
             }
+
             return res;
         }
 
-        public BV[] GetPartition() => atoms;
+        public BV[] GetPartition() => _atoms;
         public IEnumerable<char> GenerateAllCharacters(BV set) => throw new NotImplementedException(nameof(GenerateAllCharacters));
         public BV MkCharPredicate(string name, BV pred) => throw new NotImplementedException(nameof(GenerateAllCharacters));
 
         /// <summary>
         /// calls bv.Serialize()
         /// </summary>
-        public string SerializePredicate(BV bv) => bv.SerializeToString();
+        public void SerializePredicate(BV bv, StringBuilder builder) => bv.Serialize(builder);
 
         /// <summary>
         /// calls BV.Deserialize(s)
@@ -211,12 +233,12 @@ namespace System.Text.RegularExpressions.SRM
         public string PrettyPrint(BV bv)
         {
             //accesses the shared BDD solver
-            var bddalgebra = System.Text.RegularExpressions.SRM.Regex.s_unicode.solver;
+            ICharAlgebra<BDD> bddalgebra = Regex.s_unicode._solver;
 
             if (_partition == null || bddalgebra == null)
-                return "[" + bv.SerializeToString() + "]";
+                return $"[{bv.SerializeToString()}]";
 
-            var bdd = ConvertToCharSet(bddalgebra, bv);
+            BDD bdd = ConvertToCharSet(bddalgebra, bv);
             string str = bddalgebra.PrettyPrint(bdd);
             return str;
         }

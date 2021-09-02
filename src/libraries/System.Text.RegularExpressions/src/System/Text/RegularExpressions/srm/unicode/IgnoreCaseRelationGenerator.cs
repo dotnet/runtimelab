@@ -1,9 +1,7 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-using System;
 using System.Collections.Generic;
-using System.Text;
 using System.Globalization;
 using System.IO;
 
@@ -21,10 +19,10 @@ namespace System.Text.RegularExpressions.SRM.Unicode
             if (path == null)
                 throw new ArgumentNullException(nameof(path));
 
-            if (path != "" && !path.EndsWith("/"))
-                path = path + "/";
+            if (path != "" && !path.EndsWith('/'))
+                path += "/";
 
-            string version = System.Environment.Version.ToString();
+            string version = Environment.Version.ToString();
 
             string prefix = @"// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
@@ -40,10 +38,10 @@ internal static class " + classname + @"
             string suffix = @"}
 }
 ";
-            FileInfo fi = new FileInfo(string.Format("{1}{0}.cs", classname, path));
+            FileInfo fi = new FileInfo($"{path}{classname}.cs");
             if (fi.Exists)
                 fi.IsReadOnly = false;
-            StreamWriter sw = new StreamWriter(string.Format("{1}{0}.cs", classname, path));
+            StreamWriter sw = new StreamWriter($"{path}{classname}.cs");
             sw.WriteLine(prefix);
 
             WriteIgnoreCaseBDD(sw);
@@ -61,13 +59,13 @@ internal static class " + classname + @"
 
             Dictionary<char, BDD> ignoreCase = ComputeIgnoreCaseDictionary(solver, new CultureInfo("en-US"));
             BDD ignorecase = solver.False;
-            foreach (var kv in ignoreCase)
+            foreach (KeyValuePair<char, BDD> kv in ignoreCase)
             {
-                var a = solver.MkCharSetFromRange(kv.Key, kv.Key);
-                var b = kv.Value;
+                BDD a = solver.MkCharSetFromRange(kv.Key, kv.Key);
+                BDD b = kv.Value;
                 ignorecase = solver.MkOr(ignorecase, solver.MkAnd(solver.ShiftLeft(a, 16), b));
             }
-            var ignorecase_repr = ignorecase.SerializeToString();
+            string ignorecase_repr = ignorecase.SerializeToString();
             sw.WriteLine("public const string s_IgnoreCaseBDD_repr =");
             sw.Write('"');
             sw.Write(ignorecase_repr);
@@ -92,7 +90,7 @@ internal static class " + classname + @"
                     //c may be different from both cU as well as cL
                     //make sure that the regex engine considers c as being equivalent to cU and cL, else ignore c
                     //in some cases c != cU but the regex engine does not consider the chacarters equivalent wrt the ignore-case option.
-                    if (System.Text.RegularExpressions.Regex.IsMatch(cU.ToString() + cL.ToString(), "^(?i:" + StringUtility.Escape(c, true) + StringUtility.Escape(c, true) + ")$"))
+                    if (RegularExpressions.Regex.IsMatch(cU.ToString() + cL.ToString(), "^(?i:" + StringUtility.Escape(c, true) + StringUtility.Escape(c, true) + ")$"))
                     {
                         BDD equiv = solver.False;
 

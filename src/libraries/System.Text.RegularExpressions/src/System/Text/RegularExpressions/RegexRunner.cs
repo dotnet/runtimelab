@@ -512,17 +512,13 @@ namespace System.Text.RegularExpressions
         /// at the specified index is a boundary or not. It's just not worth
         /// emitting inline code for this logic.
         /// </summary>
-        protected bool IsBoundary(int index, int startpos, int endpos)
-        {
-            return (index > startpos && RegexCharClass.IsWordChar(runtext![index - 1])) !=
-                   (index < endpos && RegexCharClass.IsWordChar(runtext![index]));
-        }
+        protected bool IsBoundary(int index, int startpos, int endpos) =>
+            (index > startpos && RegexCharClass.IsWordChar(runtext![index - 1])) !=
+            (index < endpos && RegexCharClass.IsWordChar(runtext![index]));
 
-        protected bool IsECMABoundary(int index, int startpos, int endpos)
-        {
-            return (index > startpos && RegexCharClass.IsECMAWordChar(runtext![index - 1])) !=
-                   (index < endpos && RegexCharClass.IsECMAWordChar(runtext![index]));
-        }
+        protected bool IsECMABoundary(int index, int startpos, int endpos) =>
+            (index > startpos && RegexCharClass.IsECMAWordChar(runtext![index - 1])) !=
+            (index < endpos && RegexCharClass.IsECMAWordChar(runtext![index]));
 
         protected static bool CharInSet(char ch, string set, string category)
         {
@@ -530,10 +526,8 @@ namespace System.Text.RegularExpressions
             return RegexCharClass.CharInClass(ch, charClass);
         }
 
-        protected static bool CharInClass(char ch, string charClass)
-        {
-            return RegexCharClass.CharInClass(ch, charClass);
-        }
+        protected static bool CharInClass(char ch, string charClass) =>
+            RegexCharClass.CharInClass(ch, charClass);
 
         /// <summary>
         /// Called by the implementation of Go() to increase the size of the
@@ -587,18 +581,12 @@ namespace System.Text.RegularExpressions
         /// <summary>
         /// Remove a number from the longjump unrolling stack
         /// </summary>
-        protected int Popcrawl()
-        {
-            return runcrawl![runcrawlpos++];
-        }
+        protected int Popcrawl() => runcrawl![runcrawlpos++];
 
         /// <summary>
         /// Get the height of the stack
         /// </summary>
-        protected int Crawlpos()
-        {
-            return runcrawl!.Length - runcrawlpos;
-        }
+        protected int Crawlpos() => runcrawl!.Length - runcrawlpos;
 
         /// <summary>
         /// Called by Go() to capture a subexpression. Note that the
@@ -678,26 +666,17 @@ namespace System.Text.RegularExpressions
         /// <summary>
         /// Call out to runmatch to get around visibility issues
         /// </summary>
-        protected bool IsMatched(int cap)
-        {
-            return runmatch!.IsMatched(cap);
-        }
+        protected bool IsMatched(int cap) => runmatch!.IsMatched(cap);
 
         /// <summary>
         /// Call out to runmatch to get around visibility issues
         /// </summary>
-        protected int MatchIndex(int cap)
-        {
-            return runmatch!.MatchIndex(cap);
-        }
+        protected int MatchIndex(int cap) => runmatch!.MatchIndex(cap);
 
         /// <summary>
         /// Call out to runmatch to get around visibility issues
         /// </summary>
-        protected int MatchLength(int cap)
-        {
-            return runmatch!.MatchLength(cap);
-        }
+        protected int MatchLength(int cap) => runmatch!.MatchLength(cap);
 
 #if DEBUG
         /// <summary>

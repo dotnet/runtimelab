@@ -1,34 +1,30 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-using System;
 using System.Collections.Generic;
-using System.Text;
+using System.Diagnostics;
 
 namespace System.Text.RegularExpressions.SRM
 {
-
     /// <summary>
     /// Provides a generic implementation for minterm generation over a given Boolean Algebra.
     /// </summary>
-    /// <typeparam name="PRED">type of predicates</typeparam>
-    internal class MintermGenerator<PRED>
+    /// <typeparam name="TPredicate">type of predicates</typeparam>
+    internal sealed class MintermGenerator<TPredicate>
     {
-        private IBooleanAlgebra<PRED> _ba;
+        private readonly IBooleanAlgebra<TPredicate> _ba;
 
         /// <summary>
         /// Constructs a minterm generator for a given Boolean Algebra.
         /// </summary>
         /// <param name="ba">given Boolean Algebra</param>
-        public MintermGenerator(IBooleanAlgebra<PRED> ba)
+        public MintermGenerator(IBooleanAlgebra<TPredicate> ba)
         {
-#if DEBUG
-            if (!ba.HashCodesRespectEquivalence)
-                //cannot rely on equivalent predicates having the same hashcode
-                //so all predicates would end up in the same bucket that causes a linear search
-                //with Equals to check equivalence --- this case must never arise here
-                throw new AutomataException(AutomataExceptionKind.InternalError_SymbolicRegex);
-#endif
+            // cannot rely on equivalent predicates having the same hashcode
+            // so all predicates would end up in the same bucket that causes a linear search
+            // with Equals to check equivalence --- this case must never arise here
+            Debug.Assert(ba.HashCodesRespectEquivalence);
+
             _ba = ba;
         }
 
@@ -40,18 +36,18 @@ namespace System.Text.RegularExpressions.SRM
         /// If n=0 return Tuple({},True).
         /// </summary>
         /// <param name="preds">array of predicates</param>
-       /// <returns>all minterms of the given predicate sequence</returns>
-        public IEnumerable<Tuple<bool[], PRED>> GenerateMinterms(params PRED[] preds)
+        /// <returns>all minterms of the given predicate sequence</returns>
+        public IEnumerable<Tuple<bool[], TPredicate>> GenerateMinterms(params TPredicate[] preds)
         {
             if (preds.Length == 0)
             {
-                yield return new Tuple<bool[], PRED>(Array.Empty<bool>(), _ba.True);
+                yield return new Tuple<bool[], TPredicate>(Array.Empty<bool>(), _ba.True);
             }
             else
             {
-                var count = preds.Length;
+                int count = preds.Length;
 
-                List<PRED> nonequivalentSets = new List<PRED>();
+                List<TPredicate> nonequivalentSets = new List<TPredicate>();
 
                 //work only with nonequivalent sets as distinct elements
                 var indexLookup = new Dictionary<int, int>();
@@ -60,9 +56,8 @@ namespace System.Text.RegularExpressions.SRM
 
                 for (int i = 0; i < count; i++)
                 {
-                    int newIndex;
                     EquivClass equiv = CreateEquivalenceClass(preds[i]);
-                    if (!newIndexMap.TryGetValue(equiv, out newIndex))
+                    if (!newIndexMap.TryGetValue(equiv, out int newIndex))
                     {
                         newIndex = newIndexMap.Count;
                         newIndexMap[equiv] = newIndex;
@@ -73,136 +68,134 @@ namespace System.Text.RegularExpressions.SRM
                     equivs[newIndex].Add(i);
                 }
 
-                //var pairs = new List<Tuple<IntSet, PRED>>(GenerateMinterms1(nonequivalentSets.ToArray()));
-                //foreach (var pair in pairs)
-                //{
-                //    var characteristic = new bool[preds.Length];
-                //    for (int i = 0; i < count; i++)
-                //        if (pair.First.Contains(indexLookup[i]))
-                //            characteristic[i] = true;
-                //    yield return
-                //        new Tuple<bool[], PRED>(characteristic, pair.Second);
-                //}
-
-                var tree = new PartitonTree<PRED>(_ba);
-                foreach (var psi in nonequivalentSets)
-                    tree.Refine(psi);
-                foreach (var leaf in tree.GetLeaves())
+                var tree = new PartitonTree<TPredicate>(_ba);
+                foreach (TPredicate psi in nonequivalentSets)
                 {
-                    var characteristic = new bool[preds.Length];
-                    foreach (var k in leaf.GetPath())
-                        foreach (var n in equivs[k])
+                    tree.Refine(psi);
+                }
+
+                foreach (PartitonTree<TPredicate> leaf in tree.GetLeaves())
+                {
+                    bool[] characteristic = new bool[preds.Length];
+                    foreach (int k in leaf.GetPath())
+                    {
+                        foreach (int n in equivs[k])
+                        {
                             characteristic[n] = true;
-                    yield return
-                        new Tuple<bool[], PRED>(characteristic, leaf.phi);
+                        }
+                    }
+
+                    yield return new Tuple<bool[], TPredicate>(characteristic, leaf._phi);
                 }
             }
         }
 
-        private EquivClass CreateEquivalenceClass(PRED set)
-        {
-            return new EquivClass(_ba, set);
-        }
+        private EquivClass CreateEquivalenceClass(TPredicate set) => new EquivClass(_ba, set);
 
         /// <summary>
         /// Wraps a predicate as an equivalence class object whose Equals method is Equivalence checking
         /// </summary>
-        private class EquivClass
+        private sealed class EquivClass
         {
-            private PRED _set;
-            private IBooleanAlgebra<PRED> _ba;
+            private readonly TPredicate _set;
+            private readonly IBooleanAlgebra<TPredicate> _ba;
 
-            internal EquivClass(IBooleanAlgebra<PRED> ba, PRED set)
+            internal EquivClass(IBooleanAlgebra<TPredicate> ba, TPredicate set)
             {
                 _set = set;
                 _ba = ba;
             }
 
-            public override int GetHashCode()
-            {
-                return _set.GetHashCode();
-            }
+            public override int GetHashCode() => _set.GetHashCode();
 
-            public override bool Equals(object obj) =>
-                obj is EquivClass ec && _ba.AreEquivalent(_set, ec._set);
+            public override bool Equals(object obj) => obj is EquivClass ec && _ba.AreEquivalent(_set, ec._set);
         }
     }
 
-    internal class PartitonTree<PRED>
+    internal sealed class PartitonTree<TPredicate>
     {
-        private PartitonTree<PRED> parent;
-        private int nr;
-        internal PRED phi;
-        private IBooleanAlgebra<PRED> solver;
-        private PartitonTree<PRED> left;
-        private PartitonTree<PRED> right;  //complement
-        internal PartitonTree(IBooleanAlgebra<PRED> solver)
+        private readonly PartitonTree<TPredicate> _parent;
+        private readonly int _nr;
+        internal readonly TPredicate _phi;
+        private readonly IBooleanAlgebra<TPredicate> _solver;
+        private PartitonTree<TPredicate> _left;
+        private PartitonTree<TPredicate> _right;  // complement
+
+        internal PartitonTree(IBooleanAlgebra<TPredicate> solver)
         {
-            this.solver = solver;
-            nr = -1;
-            parent = null;
-            this.phi = solver.True;
-            this.left = null;
-            this.right = null;
-        }
-        private PartitonTree(IBooleanAlgebra<PRED> solver, int depth, PartitonTree<PRED> parent, PRED phi, PartitonTree<PRED> left, PartitonTree<PRED> right)
-        {
-            this.solver = solver;
-            this.parent = parent;
-            this.nr = depth;
-            this.phi = phi;
-            this.left = left;
-            this.right = right;
+            _solver = solver;
+            _nr = -1;
+            _parent = null;
+            _phi = solver.True;
+            _left = null;
+            _right = null;
         }
 
-        internal void Refine(PRED psi)
+        private PartitonTree(IBooleanAlgebra<TPredicate> solver, int depth, PartitonTree<TPredicate> parent, TPredicate phi, PartitonTree<TPredicate> left, PartitonTree<TPredicate> right)
         {
+            _solver = solver;
+            _parent = parent;
+            _nr = depth;
+            _phi = phi;
+            _left = left;
+            _right = right;
+        }
 
-            if (left == null && right == null)
+        internal void Refine(TPredicate psi)
+        {
+            if (_left == null && _right == null)
             {
                 #region leaf
-                var phi_and_psi = solver.MkAnd(phi, psi);
-                if (solver.IsSatisfiable(phi_and_psi))
+                TPredicate phi_and_psi = _solver.MkAnd(_phi, psi);
+                if (_solver.IsSatisfiable(phi_and_psi))
                 {
-                    var phi_min_psi = solver.MkAnd(phi, solver.MkNot(psi));
-                    if (solver.IsSatisfiable(phi_min_psi))
+                    TPredicate phi_min_psi = _solver.MkAnd(_phi, _solver.MkNot(psi));
+                    if (_solver.IsSatisfiable(phi_min_psi))
                     {
-                        left = new PartitonTree<PRED>(solver, nr + 1, this, phi_and_psi, null, null);
-                        right = new PartitonTree<PRED>(solver, nr + 1, this, phi_min_psi, null, null);
+                        _left = new PartitonTree<TPredicate>(_solver, _nr + 1, this, phi_and_psi, null, null);
+                        _right = new PartitonTree<TPredicate>(_solver, _nr + 1, this, phi_min_psi, null, null);
                     }
                     else // [[phi]] subset of [[psi]]
-                        left = new PartitonTree<PRED>(solver, nr + 1, this, phi, null, null); //psi must true
+                    {
+                        _left = new PartitonTree<TPredicate>(_solver, _nr + 1, this, _phi, null, null); //psi must true
+                    }
                 }
                 else // [[phi]] subset of [[not(psi)]]
-                    right = new PartitonTree<PRED>(solver, nr + 1, this, phi, null, null); //psi must be false
+                {
+                    _right = new PartitonTree<TPredicate>(_solver, _nr + 1, this, _phi, null, null); //psi must be false
+                }
                 #endregion
             }
-            else if (left == null)
-                right.Refine(psi);
-            else if (right == null)
-                left.Refine(psi);
+            else if (_left == null)
+            {
+                _right.Refine(psi);
+            }
+            else if (_right == null)
+            {
+                _left.Refine(psi);
+            }
             else
             {
                 #region nonleaf
-                var phi_and_psi = solver.MkAnd(phi, psi);
-                if (solver.IsSatisfiable(phi_and_psi))
+                TPredicate phi_and_psi = _solver.MkAnd(_phi, psi);
+                if (_solver.IsSatisfiable(phi_and_psi))
                 {
-                    var phi_min_psi = solver.MkAnd(phi, solver.MkNot(psi));
-                    if (solver.IsSatisfiable(phi_min_psi))
+                    TPredicate phi_min_psi = _solver.MkAnd(_phi, _solver.MkNot(psi));
+                    if (_solver.IsSatisfiable(phi_min_psi))
                     {
-                        left.Refine(psi);
-                        right.Refine(psi);
+                        _left.Refine(psi);
+                        _right.Refine(psi);
                     }
                     else // [[phi]] subset of [[psi]]
                     {
-                        left.ExtendLeft(); //psi is true
-                        right.ExtendLeft();
+                        _left.ExtendLeft(); //psi is true
+                        _right.ExtendLeft();
                     }
                 }
                 else // [[phi]] subset of [[not(psi)]]
                 {
-                    left.ExtendRight();
-                    right.ExtendRight(); //psi is false
+                    _left.ExtendRight();
+                    _right.ExtendRight(); //psi is false
                 }
                 #endregion
             }
@@ -210,56 +203,73 @@ namespace System.Text.RegularExpressions.SRM
 
         private void ExtendRight()
         {
-            if (left == null && right == null)
-                right = new PartitonTree<PRED>(solver, nr + 1, this, phi, null, null);
-            else if (left == null)
-                right.ExtendRight();
-            else if (right == null)
-                left.ExtendRight();
+            if (_left == null && _right == null)
+                _right = new PartitonTree<TPredicate>(_solver, _nr + 1, this, _phi, null, null);
+            else if (_left == null)
+                _right.ExtendRight();
+            else if (_right == null)
+                _left.ExtendRight();
             else
             {
-                left.ExtendRight();
-                right.ExtendRight();
+                _left.ExtendRight();
+                _right.ExtendRight();
             }
         }
 
         private void ExtendLeft()
         {
-            if (left == null && right == null)
-                left = new PartitonTree<PRED>(solver, nr + 1, this, phi, null, null);
-            else if (left == null)
-                right.ExtendLeft();
-            else if (right == null)
-                left.ExtendLeft();
+            if (_left == null && _right == null)
+            {
+                _left = new PartitonTree<TPredicate>(_solver, _nr + 1, this, _phi, null, null);
+            }
+            else if (_left == null)
+            {
+                _right.ExtendLeft();
+            }
+            else if (_right == null)
+            {
+                _left.ExtendLeft();
+            }
             else
             {
-                left.ExtendLeft();
-                right.ExtendLeft();
+                _left.ExtendLeft();
+                _right.ExtendLeft();
             }
         }
 
         internal IEnumerable<int> GetPath()
         {
-            for (var curr = this; curr.parent != null; curr = curr.parent)
-                if (curr.parent.left == curr) //curr is the left child of its parent
-                    yield return curr.nr;
+            for (PartitonTree<TPredicate> curr = this; curr._parent != null; curr = curr._parent)
+            {
+                if (curr._parent._left == curr) //curr is the left child of its parent
+                {
+                    yield return curr._nr;
+                }
+            }
         }
 
-        internal IEnumerable<PartitonTree<PRED>> GetLeaves()
+        internal IEnumerable<PartitonTree<TPredicate>> GetLeaves()
         {
-            if (left == null && right == null)
+            if (_left == null && _right == null)
+            {
                 yield return this;
-            else if (right == null)
-                foreach (var leaf in left.GetLeaves())
+            }
+            else if (_right == null)
+            {
+                foreach (PartitonTree<TPredicate> leaf in _left.GetLeaves())
                     yield return leaf;
-            else if (left == null)
-                foreach (var leaf in right.GetLeaves())
+            }
+            else if (_left == null)
+            {
+                foreach (PartitonTree<TPredicate> leaf in _right.GetLeaves())
                     yield return leaf;
+            }
             else
             {
-                foreach (var leaf in left.GetLeaves())
+                foreach (PartitonTree<TPredicate> leaf in _left.GetLeaves())
                     yield return leaf;
-                foreach (var leaf in right.GetLeaves())
+
+                foreach (PartitonTree<TPredicate> leaf in _right.GetLeaves())
                     yield return leaf;
             }
         }

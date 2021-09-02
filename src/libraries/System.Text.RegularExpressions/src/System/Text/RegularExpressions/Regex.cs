@@ -34,14 +34,9 @@ namespace System.Text.RegularExpressions
         private RegexCode? _code;                             // if interpreted, this is the code for RegexInterpreter
         private bool _refsInitialized;
 
-        // SRM specific fields
-        internal bool _useSRM;                                // if true then SRM is used for matching
         internal SRM.Regex? _srm;                             // defined as SRM.Regex when _useSRM is true else null
 
-        protected Regex()
-        {
-            internalMatchTimeout = s_defaultMatchTimeout;
-        }
+        protected Regex() => internalMatchTimeout = s_defaultMatchTimeout;
 
         /// <summary>
         /// Creates a regular expression object for the specified regular expression.
@@ -64,13 +59,11 @@ namespace System.Text.RegularExpressions
         {
         }
 
-        internal Regex(string pattern, CultureInfo? culture)
-        {
+        internal Regex(string pattern, CultureInfo? culture) =>
             // Call Init directly rather than delegating to a Regex ctor that takes
             // options to enable linking / tree shaking to remove the Regex compiler
-            // if it may not be used.
+            // and NonBacktracking implementation if it's not used.
             Init(pattern, RegexOptions.None, s_defaultMatchTimeout, culture);
-        }
 
         internal Regex(string pattern, RegexOptions options, TimeSpan matchTimeout, CultureInfo? culture)
         {
@@ -96,16 +89,18 @@ namespace System.Text.RegularExpressions
             ValidateOptions(options);
             ValidateMatchTimeout(matchTimeout);
 
-            _useSRM = (options & RegexOptions.NonBacktracking) != 0;
-            if (_useSRM)
+            bool useNonBacktracking = (options & RegexOptions.NonBacktracking) != 0;
+            if (useNonBacktracking)
             {
-                // Ignore Compiled flag if DFA is used
-                // this is to make sure the pattern is not being compiled as well as being used in SRM
-                options = options & ~RegexOptions.Compiled;
+                // Ignore Compiled flag if NonBacktracking is used.
+                // This avoids the compilation overhead when it won't actually be needed.
+                options &= ~RegexOptions.Compiled;
             }
+
             this.pattern = pattern;
             internalMatchTimeout = matchTimeout;
             roptions = options;
+            culture ??= (options & RegexOptions.CultureInvariant) != 0 ? CultureInfo.InvariantCulture : CultureInfo.CurrentCulture;
 
 #if DEBUG
             if (IsDebug)
@@ -115,7 +110,7 @@ namespace System.Text.RegularExpressions
 #endif
 
             // Parse the input
-            RegexTree tree = RegexParser.Parse(pattern, roptions, culture ?? ((options & RegexOptions.CultureInvariant) != 0 ? CultureInfo.InvariantCulture : CultureInfo.CurrentCulture));
+            RegexTree tree = RegexParser.Parse(pattern, roptions, culture);
 
             // Extract the relevant information
             capnames = tree.CapNames;
@@ -130,27 +125,31 @@ namespace System.Text.RegularExpressions
 
             // If SRM is used then construct the SMR.Regex matcher.
             // This construction fails and throws a NotSupportedException
-            // if constructs that are not compatible with DFA are being used in the pattern.
-            if (_useSRM)
-                _srm = InitializeSRM(tree.Root, roptions & ~RegexOptions.NonBacktracking, matchTimeout, culture);
+            // if constructs that are not compatible with NonBacktracking are being used in the pattern.
+            if (useNonBacktracking)
+            {
+                _srm = InitializeSRM(tree.Root, roptions, matchTimeout, culture);
+            }
         }
 
         /// <summary>
         /// Checks that the options are supported and creates a DFA matcher.
         /// The method throws NotSuppportedException if the regex uses constructs not compatible with the DFA option.
         /// </summary>
-        private static SRM.Regex InitializeSRM(RegexNode rootNode, RegexOptions options, TimeSpan matchTimeout, CultureInfo? culture)
+        private static SRM.Regex InitializeSRM(RegexNode rootNode, RegexOptions options, TimeSpan matchTimeout, CultureInfo culture)
         {
-            // TBD: this could potentially be supported quite easily but is not of priority
-            // it essentially affects how the iput string is being processed  -- characters are read backwards --
-            // and what the right semantics of anchors is in this case (perhaps reversed)
-            if ((options & RegexOptions.RightToLeft) != 0)
-                throw new NotSupportedException(SRM.Regex._DFA_incompatible_with + RegexOptions.RightToLeft);
-            // TBD: this could also be supported easily, but is not of priority right now
-            if ((options & RegexOptions.ECMAScript) != 0)
-                throw new NotSupportedException(SRM.Regex._DFA_incompatible_with + RegexOptions.ECMAScript);
+            Debug.Assert((options & RegexOptions.NonBacktracking) != 0, "Should only be initializing SRM if NonBacktracking");
+            Debug.Assert((options & RegexOptions.Compiled) == 0, "Compiled should have been nop'd with NonBacktracking");
 
-            return SRM.Regex.Create(rootNode, options, matchTimeout, culture);
+            // RightToLeft and ECMAScript are currently not supported in conjunction with NonBacktracking.
+            if ((options & (RegexOptions.RightToLeft | RegexOptions.ECMAScript)) != 0)
+            {
+                throw new NotSupportedException(
+                    SR.Format(SR.NotSupported_NonBacktrackingConflictingOption,
+                        (options & RegexOptions.RightToLeft) != 0 ? nameof(RegexOptions.RightToLeft) : nameof(RegexOptions.ECMAScript)));
+            }
+
+            return SRM.Regex.Create(rootNode, options & ~RegexOptions.NonBacktracking, matchTimeout, culture);
         }
 
         internal static void ValidatePattern(string pattern)
@@ -192,15 +191,9 @@ namespace System.Text.RegularExpressions
             }
         }
 
-        protected Regex(SerializationInfo info, StreamingContext context)
-        {
-            throw new PlatformNotSupportedException();
-        }
+        protected Regex(SerializationInfo info, StreamingContext context) => throw new PlatformNotSupportedException();
 
-        void ISerializable.GetObjectData(SerializationInfo si, StreamingContext context)
-        {
-            throw new PlatformNotSupportedException();
-        }
+        void ISerializable.GetObjectData(SerializationInfo si, StreamingContext context) => throw new PlatformNotSupportedException();
 
         [CLSCompliant(false), DisallowNull]
         protected IDictionary? Caps
@@ -319,13 +312,14 @@ namespace System.Text.RegularExpressions
         /// </summary>
         public string[] GetGroupNames()
         {
-            //in DFA mode there is a single top level groupname "0"
-            if (_useSRM)
-                return new string[] { "0" };
-
             string[] result;
 
-            if (capslist is null)
+            if (_srm is not null)
+            {
+                // In NonBacktracking mode there is a single top level groupname "0".
+                result = new string[] { "0" };
+            }
+            else if (capslist is null)
             {
                 result = new string[capsize];
                 for (int i = 0; i < result.Length; i++)
@@ -346,13 +340,14 @@ namespace System.Text.RegularExpressions
         /// </summary>
         public int[] GetGroupNumbers()
         {
-            //in DFA mode there is a single top level group 0
-            if (_useSRM)
-                return new int[] { 0 };
-
             int[] result;
 
-            if (caps is null)
+            if (_srm is not null)
+            {
+                // In NonBacktracking mode there is a single top level group 0.
+                result = new int[] { 0 };
+            }
+            else if (caps is null)
             {
                 result = new int[capsize];
                 for (int i = 0; i < result.Length; i++)
@@ -379,9 +374,11 @@ namespace System.Text.RegularExpressions
         /// </summary>
         public string GroupNameFromNumber(int i)
         {
-            //in DFA mode there is a single top level group 0
-            if (_useSRM)
-                return (i == 0 ? "0" : string.Empty);
+            if (_srm is not null)
+            {
+                // In NonBacktracking mode there is a single top level group 0.
+                return i == 0 ? "0" : string.Empty;
+            }
 
             if (capslist is null)
             {
@@ -389,12 +386,11 @@ namespace System.Text.RegularExpressions
                     ((uint)i).ToString() :
                     string.Empty;
             }
-            else
-            {
-                return caps != null && !caps.TryGetValue(i, out i) ? string.Empty :
-                    (uint)i < (uint)capslist.Length ? capslist[i] :
-                    string.Empty;
-            }
+
+            return
+                caps != null && !caps.TryGetValue(i, out i) ? string.Empty :
+                (uint)i < (uint)capslist.Length ? capslist[i] :
+                string.Empty;
         }
 
         /// <summary>
@@ -402,25 +398,37 @@ namespace System.Text.RegularExpressions
         /// </summary>
         public int GroupNumberFromName(string name)
         {
-            //in DFA mode there is a single top level group 0
-            if (_useSRM)
-                return (name ==  "0" ? 0 : -1);
-
             if (name is null)
             {
                 ThrowHelper.ThrowArgumentNullException(ExceptionArgument.name);
             }
 
-            if (capnames != null)
+            if (_srm is not null)
+            {
+                // In NonBacktracking mode there is a single top level group 0
+                if (name == "0")
+                {
+                    return 0;
+                }
+            }
+            else if (capnames != null)
             {
                 // Look up name if we have a hashtable of names.
-                return capnames.TryGetValue(name, out int result) ? result : -1;
+                if (capnames.TryGetValue(name, out int result))
+                {
+                    return result;
+                }
             }
             else
             {
                 // Otherwise, try to parse it as a number.
-                return uint.TryParse(name, NumberStyles.None, CultureInfo.InvariantCulture, out uint result) && result < capsize ? (int)result : -1;
+                if (uint.TryParse(name, NumberStyles.None, CultureInfo.InvariantCulture, out uint result) && result < capsize)
+                {
+                    return (int)result;
+                }
             }
+
+            return -1;
         }
 
         protected void InitializeReferences()
@@ -446,9 +454,11 @@ namespace System.Text.RegularExpressions
                 ThrowHelper.ThrowArgumentOutOfRangeException(ExceptionArgument.length, ExceptionResource.LengthNotNegative);
             }
 
-            // DFA option
-            if (_useSRM)
+            if (_srm is not null)
+            {
+                // NonBacktracking mode.
                 return RunSRM(quick, input, beginning, startat, length, prevlen);
+            }
 
             RegexRunner runner = RentRunner();
             try

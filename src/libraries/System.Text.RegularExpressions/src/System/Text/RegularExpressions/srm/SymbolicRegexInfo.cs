@@ -1,11 +1,7 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace System.Text.RegularExpressions.SRM
 {
@@ -16,27 +12,31 @@ namespace System.Text.RegularExpressions.SRM
     {
         private readonly uint _info;
 
-        private SymbolicRegexInfo(uint i) { _info = i; }
-
+        private SymbolicRegexInfo(uint i) => _info = i;
 
         /// <summary>
         /// Optimized lookup array for most common combinations.
         /// Most common cases will be 0 (no anchors and not nullable) and 1 (no anchors and nullable)
         /// </summary>
-        private static SymbolicRegexInfo[] s_infos = new SymbolicRegexInfo[128];
+        private static readonly SymbolicRegexInfo[] s_infos = CreateSymbolicRegexInfos();
 
-        static SymbolicRegexInfo()
+        private static SymbolicRegexInfo[] CreateSymbolicRegexInfos()
         {
+            var infos = new SymbolicRegexInfo[128];
             for (uint i = 0; i < 128; i++)
-                s_infos[i] = new SymbolicRegexInfo(i);
+            {
+                infos[i] = new SymbolicRegexInfo(i);
+            }
+            return infos;
         }
 
         private static SymbolicRegexInfo Mk(uint i)
         {
-            if (i < s_infos.Length)
-                return s_infos[i];
-            else
-                return new SymbolicRegexInfo(i);
+            SymbolicRegexInfo[] infos = s_infos;
+            if (i < infos.Length)
+                return infos[i];
+
+            return new SymbolicRegexInfo(i);
         }
 
         private const uint IsAlwaysNullableMask = 1;
@@ -63,50 +63,23 @@ namespace System.Text.RegularExpressions.SRM
             return Mk(i);
         }
 
-        public bool IsNullable
-        {
-            get { return (_info & IsAlwaysNullableMask) != 0; }
-        }
+        public bool IsNullable => (_info & IsAlwaysNullableMask) != 0;
 
-        public bool CanBeNullable
-        {
-            get { return (_info & CanBeNullableMask) != 0; }
-        }
+        public bool CanBeNullable => (_info & CanBeNullableMask) != 0;
 
-        public bool StartsWithSomeAnchor
-        {
-            get { return (_info & (StartsWithLineAnchorMask | StartsWithBoundaryAnchorMask)) != 0; }
-        }
+        public bool StartsWithSomeAnchor => (_info & (StartsWithLineAnchorMask | StartsWithBoundaryAnchorMask)) != 0;
 
-        public bool StartsWithLineAnchor
-        {
-            get { return (_info & StartsWithLineAnchorMask) != 0; }
-        }
+        public bool StartsWithLineAnchor => (_info & StartsWithLineAnchorMask) != 0;
 
-        public bool StartsWithBoundaryAnchor
-        {
-            get { return (_info & StartsWithBoundaryAnchorMask) != 0; }
-        }
+        public bool StartsWithBoundaryAnchor => (_info & StartsWithBoundaryAnchorMask) != 0;
 
-        public bool ContainsSomeAnchor
-        {
-            get { return (_info & ContainsSomeAnchorMask) != 0; }
-        }
+        public bool ContainsSomeAnchor => (_info & ContainsSomeAnchorMask) != 0;
 
-        public bool ContainsLineAnchor
-        {
-            get { return (_info & ContainsLineAnchorMask) != 0; }
-        }
+        public bool ContainsLineAnchor => (_info & ContainsLineAnchorMask) != 0;
 
-        public bool ContainsSomeCharacter
-        {
-            get { return (_info & ContainsSomeCharacterMask) != 0; }
-        }
+        public bool ContainsSomeCharacter => (_info & ContainsSomeCharacterMask) != 0;
 
-        public bool IsLazy
-        {
-            get { return (_info & IsLazyMask) != 0; }
-        }
+        public bool IsLazy => (_info & IsLazyMask) != 0;
 
         public static SymbolicRegexInfo Or(IEnumerable<SymbolicRegexInfo> infos)
         {
@@ -139,7 +112,7 @@ namespace System.Text.RegularExpressions.SRM
         public static SymbolicRegexInfo And(IEnumerable<SymbolicRegexInfo> infos)
         {
             uint isLazy = IsLazyMask;
-            uint isNullable = IsAlwaysNullableMask|CanBeNullableMask;
+            uint isNullable = IsAlwaysNullableMask | CanBeNullableMask;
             uint i = 0;
             foreach (SymbolicRegexInfo info in infos)
             {
@@ -189,12 +162,16 @@ namespace System.Text.RegularExpressions.SRM
             // inherit anchor visibility from the loop body
             uint i = body_info._info;
             // the loop is nullable if either the body is nullable or if the lower boud is 0
-            i = i |(lowerBound == 0 ? (IsAlwaysNullableMask | CanBeNullableMask) : 0);
+            i |= lowerBound == 0 ? (IsAlwaysNullableMask | CanBeNullableMask) : 0;
             // the loop is lazy iff it is marked lazy
             if (isLazy)
-                i = i | IsLazyMask;
+            {
+                i |= IsLazyMask;
+            }
             else
-                i = i & ~IsLazyMask;
+            {
+                i &= ~IsLazyMask;
+            }
             return Mk(i);
         }
 
@@ -204,14 +181,16 @@ namespace System.Text.RegularExpressions.SRM
 
             // nullability is determined as follows
             // it is unclear exactly what the correct behavior should be of anchors in ITE and for lazy loops
-            bool isAlwaysNullable = (cond_info.IsNullable ? then_info.IsNullable : else_info.IsNullable);
+            bool isAlwaysNullable = cond_info.IsNullable ? then_info.IsNullable : else_info.IsNullable;
             if (isAlwaysNullable)
-                i = i | (IsAlwaysNullableMask | CanBeNullableMask);
+            {
+                i |= IsAlwaysNullableMask | CanBeNullableMask;
+            }
 
             return Mk(i);
         }
 
-        public override bool Equals(object? obj) => (obj is SymbolicRegexInfo i && i._info == _info);
+        public override bool Equals(object? obj) => obj is SymbolicRegexInfo i && i._info == _info;
 
         public override int GetHashCode() => _info.GetHashCode();
 
@@ -224,11 +203,10 @@ namespace System.Text.RegularExpressions.SRM
         /// </summary>
         public static SymbolicRegexInfo Parse(string info)
         {
-            uint i;
-            if (uint.TryParse(info, Globalization.NumberStyles.HexNumber, null, out i) & i < 64)
+            if (uint.TryParse(info, Globalization.NumberStyles.HexNumber, null, out uint i) && i < 64)
                 return s_infos[i];
-            else
-                throw new ArgumentException($"{nameof(Parse)} error of {nameof(SymbolicRegexInfo)}", nameof(info));
+
+            throw new ArgumentException($"{nameof(Parse)} error of {nameof(SymbolicRegexInfo)}", nameof(info));
         }
     }
 }

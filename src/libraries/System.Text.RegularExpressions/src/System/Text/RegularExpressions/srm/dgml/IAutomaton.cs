@@ -8,13 +8,13 @@ namespace System.Text.RegularExpressions.SRM.DGML
     /// <summary>
     /// For accessing the key components of an automaton.
     /// </summary>
-    /// <typeparam name="L">type of labels in moves</typeparam>
-    internal interface IAutomaton<L>
+    /// <typeparam name="TLabel">type of labels in moves</typeparam>
+    internal interface IAutomaton<TLabel>
     {
         /// <summary>
         /// Enumerates all moves of the automaton.
         /// </summary>
-        IEnumerable<Move<L>> GetMoves();
+        IEnumerable<Move<TLabel>> GetMoves();
 
         /// <summary>
         /// Enumerates all states of the automaton.
@@ -24,7 +24,7 @@ namespace System.Text.RegularExpressions.SRM.DGML
         /// <summary>
         /// Returns the minterm partition of the alphabet.
         /// </summary>
-        L[] Alphabet { get; }
+        TLabel[] Alphabet { get; }
 
         /// <summary>
         /// Provides a description of the state for visualization purposes.
@@ -34,7 +34,7 @@ namespace System.Text.RegularExpressions.SRM.DGML
         /// <summary>
         /// Provides a description of the label for visualization purposes.
         /// </summary>
-        string DescribeLabel(L lab);
+        string DescribeLabel(TLabel lab);
 
         /// <summary>
         /// Provides a description of the start label for visualization purposes.

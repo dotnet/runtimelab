@@ -170,30 +170,43 @@ namespace System.Text.RegularExpressions
                 return input;
             }
 
-            var state = (segments: SegmentStringBuilder.Create(), evaluator, prevat: 0, input, count);
+            (SegmentStringBuilder segments, MatchEvaluator evaluator, int prevat, string input, int count) state = (segments: SegmentStringBuilder.Create(), evaluator, prevat: 0, input, count);
 
-            if (regex._useSRM)
+            if (regex._srm is not null)
             {
                 Match match = regex.Match(input, startat, input.Length - startat);
                 if (!match.Success)
+                {
                     return input;
+                }
 
                 while (match.Success)
                 {
                     if (state.prevat < match.Index)
+                    {
                         state.segments.Add(state.input.AsMemory(state.prevat, match.Index - state.prevat));
+                    }
                     state.prevat = match.Index + match.Length;
                     state.segments.Add(state.evaluator(match).AsMemory());
 
-                    if (state.count > 0) state.count -= 1;
-                    if (state.count == 0) break;
+                    if (state.count > 0)
+                    {
+                        state.count -= 1;
+                    }
+
+                    if (state.count == 0)
+                    {
+                        break;
+                    }
 
                     match = match.NextMatch();
                 }
 
                 // final segment
                 if (state.prevat < input.Length)
+                {
                     state.segments.Add(state.input.AsMemory(state.prevat, input.Length - state.prevat));
+                }
             }
             else if (!regex.RightToLeft)
             {

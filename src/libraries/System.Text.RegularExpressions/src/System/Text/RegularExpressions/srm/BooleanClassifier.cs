@@ -1,21 +1,19 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-using System;
 using System.Runtime.CompilerServices;
-using System.Runtime.Serialization;
 
 namespace System.Text.RegularExpressions.SRM
 {
     /// <summary>
     /// Classifies characters into true or false
     /// </summary>
-    internal class BooleanClassifier
+    internal sealed class BooleanClassifier
     {
         //stores the remaining characters in a BDD
-        private BDD _nonascii;
+        private readonly BDD _nonascii;
         //explcit array for ascii
-        private bool[] _ascii;
+        private readonly bool[] _ascii;
 
         private BooleanClassifier(ulong lower, ulong upper, BDD bdd)
         {
@@ -39,11 +37,11 @@ namespace System.Text.RegularExpressions.SRM
         /// <returns></returns>
         internal static BooleanClassifier Create(CharSetSolver solver, BDD domain)
         {
-            var ascii = new bool[128];
+            bool[] ascii = new bool[128];
             for (int i = 0; i < 128; i++)
                 ascii[i] = domain.Contains(i);
             //remove the ASCII characters from the domain if the domain is not everything
-            BDD bdd = (domain.IsFull ? domain : solver.MkAnd(solver.nonascii, domain));
+            BDD bdd = domain.IsFull ? domain : solver.MkAnd(solver._nonascii, domain);
             return new BooleanClassifier(ascii, bdd);
         }
 
@@ -55,28 +53,41 @@ namespace System.Text.RegularExpressions.SRM
         {
             ulong lower = 0;
             for (int i = 0; i < 64; i++)
-                lower |= (_ascii[i] ? (ulong)1 << i : 0);
+            {
+                lower |= _ascii[i] ? (ulong)1 << i : 0;
+            }
+
             ulong upper = 0;
             for (int i = 0; i < 64; i++)
-                upper |= (_ascii[i + 64] ? (ulong)1 << i : 0);
+            {
+                upper |= _ascii[i + 64] ? (ulong)1 << i : 0;
+            }
+
             //use comma to separate the elements, comma is not used in _bdd.Serialize
-            sb.Append(Base64.Encode(lower));
+            Base64.Encode(lower, sb);
             sb.Append(',');
-            sb.Append(Base64.Encode(upper));
+            Base64.Encode(upper, sb);
             sb.Append(',');
             _nonascii.Serialize(sb);
         }
 
         public static BooleanClassifier Deserialize(string input, BDDAlgebra solver = null)
         {
-            string[] parts = input.Split(',');
-            if (parts.Length != 3)
-                throw new ArgumentException($"{nameof(BooleanClassifier.Deserialize)} invalid '{nameof(input)}' parameter");
+            int firstEnd = input.IndexOf(',');
+            if (firstEnd >= 0)
+            {
+                int secondEnd = input.IndexOf(',', firstEnd + 1);
+                if (secondEnd >= 0 && input.IndexOf(',', secondEnd + 1) == -1)
+                {
+                    ReadOnlySpan<char> s = input;
+                    ulong lower = Base64.DecodeUInt64(s[..firstEnd]);
+                    ulong upper = Base64.DecodeUInt64(s[(firstEnd + 1)..secondEnd]);
+                    BDD bdd = BDD.Deserialize(s[(secondEnd + 1)..], solver);
+                    return new BooleanClassifier(lower, upper, bdd);
+                }
+            }
 
-            ulong lower = Base64.DecodeUInt64(parts[0]);
-            ulong upper = Base64.DecodeUInt64(parts[1]);
-            BDD bdd = BDD.Deserialize(parts[2], solver);
-            return new BooleanClassifier(lower, upper, bdd);
+            throw new ArgumentException($"{nameof(BooleanClassifier.Deserialize)} invalid '{nameof(input)}' parameter");
         }
         #endregion
     }

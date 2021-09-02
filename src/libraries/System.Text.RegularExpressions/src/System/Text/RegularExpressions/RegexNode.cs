@@ -149,10 +149,7 @@ namespace System.Text.RegularExpressions
             N = n;
         }
 
-        public bool UseOptionR()
-        {
-            return (Options & RegexOptions.RightToLeft) != 0;
-        }
+        public bool UseOptionR() => (Options & RegexOptions.RightToLeft) != 0;
 
         public RegexNode ReverseLeft()
         {
@@ -169,7 +166,7 @@ namespace System.Text.RegularExpressions
         /// </summary>
         private void MakeRep(int type, int min, int max)
         {
-            Type += (type - One);
+            Type += type - One;
             M = min;
             N = max;
         }
@@ -918,7 +915,7 @@ namespace System.Text.RegularExpressions
 
                 RegexOptions startingNodeOptions = startingNode.Options;
                 string? originalStartingString = startingNode.Str;
-                ReadOnlySpan<char> startingSpan = startingNode.Type == One ? stackalloc char[1] { startingNode.Ch } : (ReadOnlySpan<char>)originalStartingString;
+                ReadOnlySpan<char> startingSpan = startingNode.Type == One ? stackalloc char[1] { startingNode.Ch } : originalStartingString;
                 Debug.Assert(startingSpan.Length > 0);
 
                 // Now compare the rest of the branches against it.
@@ -1552,7 +1549,7 @@ namespace System.Text.RegularExpressions
                         case End:
                         case EndZ when !RegexCharClass.CharInClass('\n', node.Str!):
                         case Eol when !RegexCharClass.CharInClass('\n', node.Str!):
-                        case Boundary when node.Str == RegexCharClass.WordClass || node.Str == RegexCharClass.DigitClass: // TODO: Expand these with a more inclusive overlap check that considers categories
+                        case Boundary when node.Str == RegexCharClass.WordClass || node.Str == RegexCharClass.DigitClass:
                         case NonBoundary when node.Str == RegexCharClass.NotWordClass || node.Str == RegexCharClass.NotDigitClass:
                         case ECMABoundary when node.Str == RegexCharClass.ECMAWordClass || node.Str == RegexCharClass.ECMADigitClass:
                         case NonECMABoundary when node.Str == RegexCharClass.NotECMAWordClass || node.Str == RegexCharClass.NotDigitClass:
@@ -1916,7 +1913,7 @@ namespace System.Text.RegularExpressions
         {
             RegexNode? curNode = this;
             int curChild = 0;
-            var sb = new StringBuilder().AppendLine(curNode.Description());
+            StringBuilder sb = new StringBuilder().AppendLine(curNode.Description());
             var stack = new List<int>();
             while (true)
             {

@@ -16,8 +16,8 @@ namespace System.Text.RegularExpressions
         /// <summary>Type count used to augment generated type names to create unique names.</summary>
         private static int s_typeCount;
 
-        private AssemblyBuilder _assembly;
-        private ModuleBuilder _module;
+        private readonly AssemblyBuilder _assembly;
+        private readonly ModuleBuilder _module;
 
         internal RegexAssemblyCompiler(AssemblyName an, CustomAttributeBuilder[]? attribs, string? resourceFile) :
             base(persistsAssembly: true)

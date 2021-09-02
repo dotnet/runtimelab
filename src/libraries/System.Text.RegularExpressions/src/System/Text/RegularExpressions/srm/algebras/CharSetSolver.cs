@@ -1,11 +1,8 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-using System;
 using System.Collections.Generic;
-//using RestrictKeyType = System.Int64;
-using System.IO;
-using System.Text.RegularExpressions;
+using System.Linq;
 
 namespace System.Text.RegularExpressions.SRM
 {
@@ -14,30 +11,25 @@ namespace System.Text.RegularExpressions.SRM
     /// and to construct an SFA over character sets from a regex.
     /// Character sets are represented by bitvector sets.
     /// </summary>
-    internal class CharSetSolver : BDDAlgebra, ICharAlgebra<BDD>
+    internal sealed class CharSetSolver : BDDAlgebra, ICharAlgebra<BDD>
     {
         /// <summary>
         /// BDDs for all characters for fast lookup.
         /// </summary>
-        private BDD[] charPredTable = new BDD[0x10000];
-
-        internal BDD nonascii;
+        private readonly BDD[] _charPredTable = new BDD[0x10000];
+        private readonly Unicode.IgnoreCaseTransformer _ignoreCase;
+        internal BDD _nonascii;
 
         /// <summary>
         /// Construct the solver.
         /// </summary>
         public CharSetSolver()
         {
-            nonascii = MkCharSetFromRange('\x80', '\uFFFF');
-            _IgnoreCase = new Unicode.IgnoreCaseTransformer(this);
+            _nonascii = MkCharSetFromRange('\x80', '\uFFFF');
+            _ignoreCase = new Unicode.IgnoreCaseTransformer(this);
         }
 
-        private Unicode.IgnoreCaseTransformer _IgnoreCase;
-
-        public BDD ApplyIgnoreCase(BDD set, string culture = null)
-        {
-            return _IgnoreCase.Apply(set, culture);
-        }
+        public BDD ApplyIgnoreCase(BDD set, string culture = null) => _ignoreCase.Apply(set, culture);
 
         /// <summary>
         /// Make a character predicate for the given character c.
@@ -46,14 +38,12 @@ namespace System.Text.RegularExpressions.SRM
         {
             if (ignoreCase)
             {
-                return _IgnoreCase.Apply(c, culture);
+                return _ignoreCase.Apply(c, culture);
             }
             else
             {
                 //individual character BDDs are always fixed
-                if (charPredTable[c] == null)
-                    charPredTable[c] = MkSetFrom(c, 15);
-                return charPredTable[c];
+                return _charPredTable[c] ??= MkSetFrom(c, 15);
             }
         }
 
@@ -64,8 +54,11 @@ namespace System.Text.RegularExpressions.SRM
         public BDD MkCharSetFromRange(char m, char n)
         {
             if (m == n)
+            {
                 return MkCharConstraint(m);
-            return MkSetFromRange((uint)m, (uint)n, 15);
+            }
+
+            return MkSetFromRange(m, n, 15);
         }
 
         /// <summary>
@@ -74,8 +67,11 @@ namespace System.Text.RegularExpressions.SRM
         public BDD MkCharSetFromRanges(IEnumerable<Tuple<uint, uint>> ranges)
         {
             BDD res = False;
-            foreach (var range in ranges)
+            foreach (Tuple<uint, uint> range in ranges)
+            {
                 res = MkOr(res, MkSetFromRange(range.Item1, range.Item2, 15));
+            }
+
             return res;
         }
 
@@ -86,11 +82,16 @@ namespace System.Text.RegularExpressions.SRM
         public BDD MkRangeConstraint(char c, char d, bool ignoreCase = false, string culture = null)
         {
             if (c == d)
+            {
                 return MkCharConstraint(c, ignoreCase, culture);
+            }
 
-            var res = MkSetFromRange((uint)c, (uint)d, 15);
+            BDD res = MkSetFromRange(c, d, 15);
             if (ignoreCase)
-                res = _IgnoreCase.Apply(res, culture);
+            {
+                res = _ignoreCase.Apply(res, culture);
+            }
+
             return res;
         }
 
@@ -100,37 +101,33 @@ namespace System.Text.RegularExpressions.SRM
         internal BDD MkBddForIntRanges(IEnumerable<int[]> ranges)
         {
             BDD bdd = False;
-            foreach (var range in ranges)
+            foreach (int[] range in ranges)
+            {
                 bdd = MkOr(bdd, MkSetFromRange((uint)range[0], (uint)range[1], 15));
+            }
+
             return bdd;
         }
 
         /// <summary>
         /// Identity function, returns s.
         /// </summary>
-        public BDD ConvertFromCharSet(BDDAlgebra _, BDD s)
-        {
-            return s;
-        }
+        public BDD ConvertFromCharSet(BDDAlgebra _, BDD s) => s;
 
         /// <summary>
         /// Returns this character set solver.
         /// </summary>
-        public CharSetSolver CharSetProvider
-        {
-            get { return this; }
-        }
+        public CharSetSolver CharSetProvider => this;
 
         public IEnumerable<char> GenerateAllCharacters(BDD bvSet, bool inReverseOrder = false)
         {
-            foreach (var c in GenerateAllElements(bvSet, inReverseOrder))
+            foreach (uint c in GenerateAllElements(bvSet, inReverseOrder))
+            {
                 yield return (char)c;
+            }
         }
 
-        public IEnumerable<char> GenerateAllCharacters(BDD set)
-        {
-            return GenerateAllCharacters(set, false);
-        }
+        public IEnumerable<char> GenerateAllCharacters(BDD set) => GenerateAllCharacters(set, false);
 
 
         /// <summary>
@@ -138,46 +135,42 @@ namespace System.Text.RegularExpressions.SRM
         /// </summary>
         /// <param name="set">the given set</param>
         /// <returns>the cardinality of the set</returns>
-        public ulong ComputeDomainSize(BDD set)
-        {
-            var card = ComputeDomainSize(set, 15);
-            return card;
-        }
+        public ulong ComputeDomainSize(BDD set) => ComputeDomainSize(set, 15);
 
         /// <summary>
         /// Returns true iff the set contains exactly one element.
         /// </summary>
         /// <param name="set">the given set</param>
         /// <returns>true iff the set is a singleton</returns>
-        public bool IsSingleton(BDD set)
-        {
-            var card = ComputeDomainSize(set, 15);
-            return card == (long)1;
-        }
+        public bool IsSingleton(BDD set) => ComputeDomainSize(set, 15) == 1;
 
         /// <summary>
         /// Convert the set into an equivalent array of ranges. The ranges are nonoverlapping and ordered.
         /// If limit > 0 then returns null if the total number of ranges exceeds limit.
         /// </summary>
-        public Tuple<uint, uint>[] ToRanges(BDD set, int limit = 0)
-        {
-            return ToRanges(set, 15, limit);
-        }
+        public Tuple<uint, uint>[] ToRanges(BDD set, int limit = 0) => ToRanges(set, 15, limit);
 
         private IEnumerable<uint> GenerateAllCharactersInOrder(BDD set)
         {
-            var ranges = ToRanges(set);
-            foreach (var range in ranges)
+            foreach (Tuple<uint, uint> range in ToRanges(set))
+            {
                 for (uint i = range.Item1; i <= range.Item2; i++)
-                    yield return (uint)i;
+                {
+                    yield return i;
+                }
+            }
         }
 
         private IEnumerable<uint> GenerateAllCharactersInReverseOrder(BDD set)
         {
-            var ranges = ToRanges(set);
+            Tuple<uint, uint>[] ranges = ToRanges(set);
             for (int j = ranges.Length - 1; j >= 0; j--)
+            {
                 for (uint i = ranges[j].Item2; i >= ranges[j].Item1; i--)
+                {
                     yield return (char)i;
+                }
+            }
         }
 
         /// <summary>
@@ -186,30 +179,14 @@ namespace System.Text.RegularExpressions.SRM
         /// <param name="set">the given set</param>
         /// <param name="inReverseOrder">if true the members are generated in reverse alphabetical order with the largest first, otherwise in alphabetical order</param>
         /// <returns>enumeration of all characters in the set, the enumeration is empty if the set is empty</returns>
-        public IEnumerable<uint> GenerateAllElements(BDD set, bool inReverseOrder)
-        {
-            if (set == False)
-                return GenerateNothing();
-            else if (inReverseOrder)
-                return GenerateAllCharactersInReverseOrder(set);
-            else
-                return GenerateAllCharactersInOrder(set);
-        }
+        private IEnumerable<uint> GenerateAllElements(BDD set, bool inReverseOrder) =>
+            set == False ? Enumerable.Empty<uint>() :
+            inReverseOrder ? GenerateAllCharactersInReverseOrder(set) :
+            GenerateAllCharactersInOrder(set);
 
-        private IEnumerable<uint> GenerateNothing()
-        {
-            yield break;
-        }
+        public BDD ConvertToCharSet(ICharAlgebra<BDD> _, BDD pred) => pred;
 
-        public BDD ConvertToCharSet(ICharAlgebra<BDD> _, BDD pred)
-        {
-            return pred;
-        }
-
-        public BDD[] GetPartition()
-        {
-            return null;
-        }
+        public BDD[] GetPartition() => null;
 
         public string PrettyPrint(BDD pred)
         {
@@ -220,32 +197,28 @@ namespace System.Text.RegularExpressions.SRM
             if (pred.IsFull)
                 return ".";
 
-            #region try to optimize representation involving common direct use of \d \w and \s to avoid blowup of ranges
-            if (SRM.Regex.s_unicode != null)
-            {
-                BDD digit = Regex.s_unicode.CategoryCondition(8);
-                if (pred == Regex.s_unicode.WordLetterCondition)
-                    return @"\w";
-                if (pred == Regex.s_unicode.WhiteSpaceCondition)
-                    return @"\s";
-                if (pred == digit)
-                    return @"\d";
-                if (pred == MkNot(Regex.s_unicode.WordLetterCondition))
-                    return @"\W";
-                if (pred == MkNot(Regex.s_unicode.WhiteSpaceCondition))
-                    return @"\S";
-                if (pred == MkNot(digit))
-                    return @"\D";
-            }
-            #endregion
+            // try to optimize representation involving common direct use of \d \w and \s to avoid blowup of ranges
+            BDD digit = Regex.s_unicode.CategoryCondition(8);
+            if (pred == Regex.s_unicode.WordLetterCondition)
+                return @"\w";
+            if (pred == Regex.s_unicode.WhiteSpaceCondition)
+                return @"\s";
+            if (pred == digit)
+                return @"\d";
+            if (pred == MkNot(Regex.s_unicode.WordLetterCondition))
+                return @"\W";
+            if (pred == MkNot(Regex.s_unicode.WhiteSpaceCondition))
+                return @"\S";
+            if (pred == MkNot(digit))
+                return @"\D";
 
-            var ranges = ToRanges(pred);
+            Tuple<uint, uint>[] ranges = ToRanges(pred);
 
             if (IsSingletonRange(ranges))
                 return StringUtility.Escape((char)ranges[0].Item1);
 
             #region if too many ranges try to optimize the representation using \d \w etc.
-            if (SRM.Regex.s_unicode != null && ranges.Length > 10)
+            if (Regex.s_unicode != null && ranges.Length > 10)
             {
                 BDD w = Regex.s_unicode.WordLetterCondition;
                 BDD W = MkNot(w);
@@ -277,16 +250,16 @@ namespace System.Text.RegularExpressions.SRM
                 // singletons
                 //---
                 if (MkOr(s, pred) == s)
-                    return RepresentSetInPattern("[^\\S{0}]", MkAnd(s, MkNot(pred)));
+                    return $"[^\\S{RepresentSet(MkAnd(s, MkNot(pred)))}]";
                 //---
                 if (MkOr(d, pred) == d)
-                    return RepresentSetInPattern("[^\\D{0}]", MkAnd(d, MkNot(pred)));
+                    return $"[^\\D{RepresentSet(MkAnd(d, MkNot(pred)))}]";
                 //---
                 if (MkOr(wD, pred) == wD)
-                    return RepresentSetInPattern("[\\w-[\\d{0}]]", MkAnd(wD, MkNot(pred)));
+                    return $"[\\w-[\\d{RepresentSet(MkAnd(wD, MkNot(pred)))}]]";
                 //---
                 if (MkOr(SW, pred) == SW)
-                    return RepresentSetInPattern("[^\\s\\w{0}]", MkAnd(SW, MkNot(pred)));
+                    return $"[^\\s\\w{RepresentSet(MkAnd(SW, MkNot(pred)))}]";
                 //-------------------------------------------------------------------
                 // unions of two
                 // s|SW
@@ -295,93 +268,74 @@ namespace System.Text.RegularExpressions.SRM
                     string repr1 = null;
                     if (MkAnd(s, pred) == s)
                         //pred contains all of \s and is contained in \W
-                        repr1 = RepresentSetInPattern("[\\s{0}]", MkAnd(S, pred));
+                        repr1 = $"[\\s{RepresentSet(MkAnd(S, pred))}]";
                     //the more common case is that pred is not \w and not some specific non-word character such as ':'
-                    string repr2 = RepresentSetInPattern("[^\\w{0}]", MkAnd(W, MkNot(pred)));
-                    if (repr1 != null && repr1.Length < repr2.Length)
-                        return repr1;
-                    else
-                        return repr2;
+                    string repr2 = $"[^\\w{RepresentSet(MkAnd(W, MkNot(pred)))}]";
+                    return repr1 != null && repr1.Length < repr2.Length ? repr1 : repr2;
                 }
                 //---
                 // s|d
                 BDD s_or_d = MkOr(s, d);
                 if (pred == s_or_d)
                     return "[\\s\\d]";
+
                 if (MkOr(s_or_d, pred) == s_or_d)
                 {
                     //check first if this is purely ascii range for digits
                     if (MkAnd(pred, s).Equals(s) && MkAnd(pred, nonasciiDigit).IsEmpty)
-                        return string.Format("[\\s{0}]", RepresentRanges(ToRanges(MkAnd(pred, asciiDigit)), false));
-                    else
-                        return RepresentSetInPattern("[\\s\\d-[{0}]]", MkAnd(s_or_d, MkNot(pred)));
+                        return $"[\\s{RepresentRanges(ToRanges(MkAnd(pred, asciiDigit)), checkSingletonComlement: false)}]";
+
+                    return $"[\\s\\d-[{RepresentSet(MkAnd(s_or_d, MkNot(pred)))}]]";
                 }
                 //---
                 // s|wD
                 BDD s_or_wD = MkOr(s, wD);
                 if (MkOr(s_or_wD, pred) == s_or_wD)
-                    return RepresentSetInPattern("[\\s\\w-[\\d{0}]]", MkAnd(s_or_wD, MkNot(pred)));
+                    return $"[\\s\\w-[\\d{RepresentSet(MkAnd(s_or_wD, MkNot(pred)))}]]";
                 //---
                 // d|wD
                 if (MkOr(w, pred) == w)
-                    return RepresentSetInPattern("[\\w-[{0}]]", MkAnd(w, MkNot(pred)));
+                    return $"[\\w-[{RepresentSet(MkAnd(w, MkNot(pred)))}]]";
                 //---
                 // d|SW
                 BDD d_or_SW = MkOr(d, SW);
                 if (pred == d_or_SW)
                     return "\\d|[^\\s\\w]";
                 if (MkOr(d_or_SW, pred) == d_or_SW)
-                    return RepresentSetInPattern("[\\d-[{0}]]|[^\\s\\w{1}]", MkAnd(d, MkNot(pred)), MkAnd(SW, MkNot(pred)));
+                    return $"[\\d-[{RepresentSet(MkAnd(d, MkNot(pred)))}]]|[^\\s\\w{RepresentSet(MkAnd(SW, MkNot(pred)))}]";
                 // wD|SW = S&D
                 BDD SD = MkOr(wD, SW);
                 if (MkOr(SD, pred) == SD)
-                    return RepresentSetInPattern("[^\\s\\d{0}]", MkAnd(SD, MkNot(pred)));
+                    return $"[^\\s\\d{RepresentSet(MkAnd(SD, MkNot(pred)))}]";
                 //-------------------------------------------------------------------
                 //unions of three
                 // s|SW|wD = D
                 if (MkOr(D, pred) == D)
-                    return RepresentSetInPattern("[^\\d{0}]", MkAnd(D, MkNot(pred)));
+                    return $"[^\\d{RepresentSet(MkAnd(D, MkNot(pred)))}]";
                 // SW|wD|d = S
                 if (MkOr(S, pred) == S)
-                    return RepresentSetInPattern("[^\\s{0}]", MkAnd(S, MkNot(pred)));
+                    return $"[^\\s{RepresentSet(MkAnd(S, MkNot(pred)))}]";
                 // s|SW|d = complement of wD = W|d
                 BDD W_or_d = MkNot(wD);
                 if (MkOr(W_or_d, pred) == W_or_d)
-                    return RepresentSetInPattern("[\\W\\d-[{0}]]", MkAnd(W_or_d, MkNot(pred)));
+                    return $"[\\W\\d-[{RepresentSet(MkAnd(W_or_d, MkNot(pred)))}]]";
                 // s|wD|d = s|w
                 BDD s_or_w = MkOr(s, w);
                 if (MkOr(s_or_w, pred) == s_or_w)
-                    return RepresentSetInPattern("[\\s\\w-[{0}]]", MkAnd(s_or_w, MkNot(pred)));
+                    return $"[\\s\\w-[{RepresentSet(MkAnd(s_or_w, MkNot(pred)))}]]";
                 //-------------------------------------------------------------------
                 //touches all four minterms, typically happens as the fallback arc in .* extension
             }
             #endregion
 
-            //rpresent either the ranges or its complemet,
-            //if the complement representation is more copmpact
-            string ranges_repr = "[" + RepresentRanges(ranges, false) + "]";
-            string ranges_compl_repr = "[^" + RepresentRanges(ToRanges(MkNot(pred)), false) + "]";
-            if (ranges_repr.Length <= ranges_compl_repr.Length)
-                return ranges_repr;
-            else
-                return ranges_compl_repr;
+            // Represent either the ranges or its complement, if the complement representation is more compact.
+            string ranges_repr = $"[{RepresentRanges(ranges, checkSingletonComlement: false)}]";
+            string ranges_compl_repr = $"[^{RepresentRanges(ToRanges(MkNot(pred)), checkSingletonComlement: false)}]";
+            return ranges_repr.Length <= ranges_compl_repr.Length ? ranges_repr : ranges_compl_repr;
         }
 
-
-        private string RepresentSetInPattern(string pat, BDD set)
-        {
-            var str = (set.IsEmpty ? "" : RepresentRanges(ToRanges(set)));
-            var res = string.Format(pat, str);
-            return res;
-        }
-
-        private string RepresentSetInPattern(string pat, BDD set1, BDD set2)
-        {
-            var str1 = (set1.IsEmpty ? "" : RepresentRanges(ToRanges(set1)));
-            var str2 = (set2.IsEmpty ? "" : RepresentRanges(ToRanges(set2)));
-            var res = string.Format(pat, str1, str2);
-            return res;
-        }
+        private string RepresentSet(BDD set) =>
+            set.IsEmpty ? "" : RepresentRanges(ToRanges(set));
 
         private static string RepresentRanges(Tuple<uint, uint>[] ranges, bool checkSingletonComlement = true)
         {
@@ -389,13 +343,17 @@ namespace System.Text.RegularExpressions.SRM
             if (checkSingletonComlement && ranges.Length == 2 &&
                 ranges[0].Item1 == 0 && ranges[1].Item2 == 0xFFFF &&
                 ranges[0].Item2 + 2 == ranges[1].Item1)
-                    return "^" + (StringUtility.Escape((char)(ranges[0].Item2 + 1)));
+            {
+                return "^" + StringUtility.Escape((char)(ranges[0].Item2 + 1));
+            }
 
             StringBuilder sb = new();
             for (int i = 0; i < ranges.Length; i++)
             {
                 if (ranges[i].Item1 == ranges[i].Item2)
+                {
                     sb.Append(StringUtility.Escape((char)ranges[i].Item1));
+                }
                 else if (ranges[i].Item2 == ranges[i].Item1 + 1)
                 {
                     sb.Append(StringUtility.Escape((char)ranges[i].Item1));

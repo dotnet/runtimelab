@@ -6,12 +6,12 @@ using System.IO;
 
 namespace System.Text.RegularExpressions.SRM.DGML
 {
-    internal class DgmlWriter
+    internal sealed class DgmlWriter
     {
-        private int _maxDgmlTransitionLabelLength;
-        private TextWriter _tw;
-        private bool _hideStateInfo;
-        private bool _onlyDFAinfo;
+        private readonly int _maxDgmlTransitionLabelLength;
+        private readonly TextWriter _tw;
+        private readonly bool _hideStateInfo;
+        private readonly bool _onlyDFAinfo;
 
         internal DgmlWriter(TextWriter tw, bool hideStateInfo, int maxDgmlTransitionLabelLength = -1, bool onlyDFAinfo = false)
         {
@@ -30,19 +30,18 @@ namespace System.Text.RegularExpressions.SRM.DGML
             var epsilonmoves = new List<Move<S>>();
 
             var nonEpsilonStates = new HashSet<int>();
-            Func<int, bool> IsEpsilonState = (s => !nonEpsilonStates.Contains(s));
 
-            foreach (var move in fa.GetMoves())
+            foreach (Move<S> move in fa.GetMoves())
             {
                 if (move.IsEpsilon)
+                {
                     epsilonmoves.Add(move);
-
+                }
                 else
                 {
                     nonEpsilonStates.Add(move.SourceState);
-                    List<S> rules;
                     var p = new Tuple<int, int>(move.SourceState, move.TargetState);
-                    if (!nonEpsilonMoves.TryGetValue(p, out rules))
+                    if (!nonEpsilonMoves.TryGetValue(p, out List<S> rules))
                     {
                         rules = new List<S>();
                         nonEpsilonMoves[p] = rules;
@@ -57,17 +56,22 @@ namespace System.Text.RegularExpressions.SRM.DGML
             _tw.WriteLine("<Node Id=\"dfa\" Label=\" \" Group=\"Collapsed\" Category=\"DFA\" DFAInfo=\"{0}\" />", GetDFAInfo(fa));
             _tw.WriteLine("<Node Id=\"dfainfo\" Category=\"DFAInfo\" Label=\"{0}\"/>", GetDFAInfo(fa));
             if (_onlyDFAinfo)
+            {
                 _tw.WriteLine("</Nodes>");
+            }
             else
             {
                 foreach (int state in fa.GetStates())
                 {
-                    _tw.WriteLine("<Node Id=\"{0}\" Label=\"{0}\" Category=\"State\" Group=\"{1}\" StateInfo=\"{2}\">", state,
-                        _hideStateInfo ? "Collapsed" : "Expanded", GetStateInfo(fa, state));
+                    _tw.WriteLine("<Node Id=\"{0}\" Label=\"{0}\" Category=\"State\" Group=\"{1}\" StateInfo=\"{2}\">", state, _hideStateInfo ? "Collapsed" : "Expanded", GetStateInfo(fa, state));
                     if (state == fa.InitialState)
+                    {
                         _tw.WriteLine("<Category Ref=\"InitialState\" />");
+                    }
                     if (fa.IsFinalState(state))
+                    {
                         _tw.WriteLine("<Category Ref=\"FinalState\" />");
+                    }
                     _tw.WriteLine("</Node>");
                     _tw.WriteLine("<Node Id=\"{0}info\" Label=\"{1}\" Category=\"StateInfo\"/>", state, GetStateInfo(fa, state));
                 }
@@ -75,14 +79,22 @@ namespace System.Text.RegularExpressions.SRM.DGML
                 _tw.WriteLine("<Links>");
                 _tw.WriteLine("<Link Source=\"dfa\" Target=\"{0}\" Label=\"{1}\" Category=\"StartTransition\" />", fa.InitialState, fa.DescribeStartLabel());
                 _tw.WriteLine("<Link Source=\"dfa\" Target=\"dfainfo\" Label=\"\" Category=\"Contains\" />");
-                foreach (var move in epsilonmoves)
-                    _tw.WriteLine("<Link Source=\"{0}\" Target=\"{1}\" Category=\"EpsilonTransition\" />", move.SourceState, move.TargetState);
 
-                foreach (var move in nonEpsilonMoves)
+                foreach (Move<S> move in epsilonmoves)
+                {
+                    _tw.WriteLine("<Link Source=\"{0}\" Target=\"{1}\" Category=\"EpsilonTransition\" />", move.SourceState, move.TargetState);
+                }
+
+                foreach (KeyValuePair<Tuple<int, int>, List<S>> move in nonEpsilonMoves)
+                {
                     _tw.WriteLine(GetNonFinalRuleInfo(fa, move.Key.Item1, move.Key.Item2, move.Value));
+                }
 
                 foreach (int state in fa.GetStates())
+                {
                     _tw.WriteLine("<Link Source=\"{0}\" Target=\"{0}info\" Category=\"Contains\" />", state);
+                }
+
                 _tw.WriteLine("</Links>");
                 WriteCategoriesAndStyles();
             }
@@ -96,16 +108,16 @@ namespace System.Text.RegularExpressions.SRM.DGML
             sb.Append(fa.StateCount);
             sb.Append("&#13;");
             sb.Append('|');
-            sb.Append(DELTA_CAPITAL);
+            sb.Append(DeltaCapital);
             sb.Append("|=");
             sb.Append(fa.TransitionCount);
             sb.Append("&#13;");
             sb.Append('|');
-            sb.Append(SIGMA_CAPITAL);
+            sb.Append(SigmalCapital);
             sb.Append("|=");
             sb.Append(fa.Alphabet.Length);
             sb.Append("&#13;");
-            sb.Append(SIGMA_CAPITAL);
+            sb.Append(SigmalCapital);
             sb.Append('=');
             for (int i = 0; i < fa.Alphabet.Length; i++)
             {
@@ -116,8 +128,8 @@ namespace System.Text.RegularExpressions.SRM.DGML
             return sb.ToString();
         }
 
-        private const string DELTA_CAPITAL = "&#x0394;";
-        private const string SIGMA_CAPITAL = "&#x03A3;";
+        private const string DeltaCapital = "&#x0394;";
+        private const string SigmalCapital = "&#x03A3;";
 
         private static string GetStateInfo<S>(IAutomaton<S> fa, int state)
         {
@@ -134,14 +146,15 @@ namespace System.Text.RegularExpressions.SRM.DGML
             {
                 lab += (lab == "" ? "" : ",\n ") + aut.DescribeLabel(rules[i]);
             }
-            var lab_length = lab.Length;
+
+            int lab_length = lab.Length;
             if (_maxDgmlTransitionLabelLength >= 0 && lab_length > _maxDgmlTransitionLabelLength)
             {
-                info += string.Format(" FullLabel = \"{0}\"", lab);
+                info += $" FullLabel = \"{lab}\"";
                 lab = string.Concat(lab.AsSpan(0, _maxDgmlTransitionLabelLength), "..");
             }
 
-            return string.Format("<Link Source=\"{0}\" Target=\"{1}\" Label=\"{2}\" Category=\"NonepsilonTransition\" {3}/>", source, target, lab, info);
+            return $"<Link Source=\"{source}\" Target=\"{target}\" Label=\"{lab}\" Category=\"NonepsilonTransition\" {info}/>";
         }
 
         private void WriteCategoriesAndStyles()
