@@ -174,7 +174,35 @@ bool ObjectWriter::Init(llvm::StringRef ObjectFilePath, const char* tripleName) 
   return true;
 }
 
-void ObjectWriter::Finish() { Streamer->Finish(); }
+void ObjectWriter::Finish() {
+
+  if (ObjFileInfo->getObjectFileType() == ObjFileInfo->IsCOFF
+    && AddressTakenFunctions.size() > 0) {
+
+    // Emit all address-taken functions into the GFIDs section
+    // to support control flow guard.
+    Streamer->SwitchSection(ObjFileInfo->getGFIDsSection());
+    for (const MCSymbol* S : AddressTakenFunctions) {
+      Streamer->EmitCOFFSymbolIndex(S);
+    }
+
+    // Emit the feat.00 symbol that controls various linker behaviors
+    MCSymbol* S = OutContext->getOrCreateSymbol(StringRef("@feat.00"));
+    Streamer->BeginCOFFSymbolDef(S);
+    Streamer->EmitCOFFSymbolStorageClass(COFF::IMAGE_SYM_CLASS_STATIC);
+    Streamer->EmitCOFFSymbolType(COFF::IMAGE_SYM_DTYPE_NULL);
+    Streamer->EndCOFFSymbolDef();
+    int64_t Feat00Flags = 0;
+
+    Feat00Flags |= 0x800; // cfGuardCF flags this object as control flow guard aware
+
+    Streamer->emitSymbolAttribute(S, MCSA_Global);
+    Streamer->emitAssignment(
+      S, MCConstantExpr::create(Feat00Flags, *OutContext));
+  }
+
+  Streamer->Finish();
+}
 
 void ObjectWriter::SwitchSection(const char *SectionName,
                                  CustomSectionAttributes attributes,
@@ -377,10 +405,9 @@ void ObjectWriter::EmitRelocDirective(const int Offset, StringRef Name, const MC
   assert(!result.hasValue());
 }
 
-const MCExpr *ObjectWriter::GenTargetExpr(const char *SymbolName,
-                                          MCSymbolRefExpr::VariantKind Kind,
+const MCExpr *ObjectWriter::GenTargetExpr(const MCSymbol* Symbol, MCSymbolRefExpr::VariantKind Kind,
                                           int Delta, bool IsPCRel, int Size) {
-  const MCExpr *TargetExpr = GetSymbolRefExpr(SymbolName, Kind);
+  const MCExpr *TargetExpr = MCSymbolRefExpr::create(Symbol, Kind, *OutContext);
   if (IsPCRel && Size != 0) {
     // If the fixup is pc-relative, we need to bias the value to be relative to
     // the start of the field, not the end of the field
@@ -395,10 +422,16 @@ const MCExpr *ObjectWriter::GenTargetExpr(const char *SymbolName,
 }
 
 int ObjectWriter::EmitSymbolRef(const char *SymbolName,
-                                RelocType RelocationType, int Delta) {
+                                RelocType RelocationType, int Delta, SymbolRefFlags Flags) {
   bool IsPCRel = false;
   int Size = 0;
   MCSymbolRefExpr::VariantKind Kind = MCSymbolRefExpr::VK_None;
+
+  MCSymbol* Symbol = OutContext->getOrCreateSymbol(SymbolName);
+
+  if ((int)Flags & (int)SymbolRefFlags::SymbolRefFlags_AddressTakenFunction) {
+    AddressTakenFunctions.insert(Symbol);
+  }
 
   // Convert RelocationType to MCSymbolRefExpr
   switch (RelocationType) {
@@ -429,30 +462,30 @@ int ObjectWriter::EmitSymbolRef(const char *SymbolName,
     break;
   case RelocType::IMAGE_REL_BASED_THUMB_MOV32: {
     const unsigned Offset = GetDFSize();
-    const MCExpr *TargetExpr = GenTargetExpr(SymbolName, Kind, Delta);
+    const MCExpr *TargetExpr = GenTargetExpr(Symbol, Kind, Delta);
     EmitRelocDirective(Offset, "R_ARM_THM_MOVW_ABS_NC", TargetExpr);
     EmitRelocDirective(Offset + 4, "R_ARM_THM_MOVT_ABS", TargetExpr);
     return 8;
   }
   case RelocType::IMAGE_REL_BASED_THUMB_BRANCH24: {
-    const MCExpr *TargetExpr = GenTargetExpr(SymbolName, Kind, Delta);
+    const MCExpr *TargetExpr = GenTargetExpr(Symbol, Kind, Delta);
     EmitRelocDirective(GetDFSize(), "R_ARM_THM_CALL", TargetExpr);
     return 4;
   }
   case RelocType::IMAGE_REL_BASED_ARM64_BRANCH26: {
-    const MCExpr *TargetExpr = GenTargetExpr(SymbolName, Kind, Delta);
+    const MCExpr *TargetExpr = GenTargetExpr(Symbol, Kind, Delta);
     EmitRelocDirective(GetDFSize(), "R_AARCH64_CALL26", TargetExpr);
     return 4;
   }
   case RelocType::IMAGE_REL_BASED_ARM64_PAGEBASE_REL21: {
-    const MCExpr *TargetExpr = GenTargetExpr(SymbolName, Kind, Delta);
+    const MCExpr *TargetExpr = GenTargetExpr(Symbol, Kind, Delta);
     TargetExpr =
         AArch64MCExpr::create(TargetExpr, AArch64MCExpr::VK_CALL, *OutContext);
     EmitRelocDirective(GetDFSize(), "R_AARCH64_ADR_PREL_PG_HI21", TargetExpr);
     return 4;
   }
   case RelocType::IMAGE_REL_BASED_ARM64_PAGEOFFSET_12A: {
-    const MCExpr *TargetExpr = GenTargetExpr(SymbolName, Kind, Delta);
+    const MCExpr *TargetExpr = GenTargetExpr(Symbol, Kind, Delta);
     TargetExpr =
         AArch64MCExpr::create(TargetExpr, AArch64MCExpr::VK_LO12, *OutContext);
     EmitRelocDirective(GetDFSize(), "R_AARCH64_ADD_ABS_LO12_NC", TargetExpr);
@@ -460,7 +493,7 @@ int ObjectWriter::EmitSymbolRef(const char *SymbolName,
   }
   }
 
-  const MCExpr *TargetExpr = GenTargetExpr(SymbolName, Kind, Delta, IsPCRel, Size);
+  const MCExpr *TargetExpr = GenTargetExpr(Symbol, Kind, Delta, IsPCRel, Size);
   Streamer->emitValueImpl(TargetExpr, Size, SMLoc(), IsPCRel);
   return Size;
 }

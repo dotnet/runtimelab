@@ -59,6 +59,7 @@ namespace ILCompiler
         private bool _methodBodyFolding;
         private bool _singleThreaded;
         private string _instructionSet;
+        private string _guard;
 
         private string _singleMethodTypeName;
         private string _singleMethodName;
@@ -202,6 +203,7 @@ namespace ILCompiler
                 syntax.DefineOptionList("runtimeopt", ref _runtimeOptions, "Runtime options to set");
                 syntax.DefineOption("singlethreaded", ref _singleThreaded, "Run compilation on a single thread");
                 syntax.DefineOption("instructionset", ref _instructionSet, "Instruction set to allow or disallow");
+                syntax.DefineOption("guard", ref _guard, "Enable mitigations. Options: 'cf': CFG (Control Flow Guard, Windows only)");
                 syntax.DefineOption("preinitstatics", ref _preinitStatics, "Interpret static constructors at compile time if possible (implied by -O)");
                 syntax.DefineOption("nopreinitstatics", ref _noPreinitStatics, "Do not interpret static constructors at compile time");
                 syntax.DefineOptionList("nowarn", ref _suppressedWarnings, "Disable specific warning messages");
@@ -476,6 +478,21 @@ namespace ILCompiler
             if (typeSystemContext.InputFilePaths.Count == 0)
                 throw new CommandLineException("No input files specified");
 
+            SecurityMitigationOptions securityMitigationOptions = 0;
+            if (StringComparer.OrdinalIgnoreCase.Equals(_guard, "cf"))
+            {
+                if (_targetOS != TargetOS.Windows)
+                {
+                    throw new CommandLineException($"Control flow guard only available on Windows");
+                }
+
+                securityMitigationOptions = SecurityMitigationOptions.ControlFlowGuardAnnotations;
+            }
+            else if (!String.IsNullOrEmpty(_guard))
+            {
+                throw new CommandLineException($"Unrecognized mitigation option '{_guard}'");
+            }
+
             //
             // Initialize compilation group and compilation roots
             //
@@ -727,6 +744,7 @@ namespace ILCompiler
                 .UseDependencyTracking(trackingLevel)
                 .UseCompilationRoots(compilationRoots)
                 .UseOptimizationMode(_optimizationMode)
+                .UseSecurityMitigationOptions(securityMitigationOptions)
                 .UseDebugInfoProvider(debugInfoProvider);
 
             if (scanResults != null)

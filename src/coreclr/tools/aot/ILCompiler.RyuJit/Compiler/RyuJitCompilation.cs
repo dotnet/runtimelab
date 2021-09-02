@@ -70,6 +70,9 @@ namespace ILCompiler
             if (_debugInformationProvider is not NullDebugInformationProvider)
                 options |= ObjectWritingOptions.GenerateDebugInfo;
 
+            if ((_compilationOptions & RyuJitCompilationOptions.ControlFlowGuardAnnotations) != 0)
+                options |= ObjectWritingOptions.ControlFlowGuard;
+
             ObjectWriter.EmitObject(outputFile, nodes, NodeFactory, options, dumper);
         }
 
@@ -214,5 +217,6 @@ namespace ILCompiler
     {
         MethodBodyFolding = 0x1,
         SingleThreadedCompilation = 0x2,
+        ControlFlowGuardAnnotations = 0x4,
     }
 }
