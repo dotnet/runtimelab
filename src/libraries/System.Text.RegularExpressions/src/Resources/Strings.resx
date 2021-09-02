@@ -225,4 +225,31 @@
   <data name="UnterminatedComment" xml:space="preserve">
     <value>Unterminated (?#...) comment.</value>
   </data>
+  <data name="NotSupported_NonBacktrackingAndReplacementsWithSubstitutions" xml:space="preserve">
+    <value>Regex replacements with substitutions are not supported with RegexOptions.NonBacktracking.</value>
+  </data>
+  <data name="NotSupported_NonBacktrackingConflictingOption" xml:space="preserve">
+    <value>RegexOptions.NonBacktracking is not supported in conjunction with RegexOptions.{0}.</value>
+  </data>
+  <data name="NotSupported_NonBacktrackingConflictingExpression" xml:space="preserve">
+    <value>RegexOptions.NonBacktracking is not supported in conjunction with expressions containing {0}.</value>
+  </data>
+  <data name="ExpressionDescription_Backreference" xml:space="preserve">
+    <value>backreference (\\ number)</value>
+  </data>
+  <data name="ExpressionDescription_Conditional" xml:space="preserve">
+    <value>captured group conditional (?( name ) yes-pattern | no-pattern ) or (?( number ) yes-pattern| no-pattern )</value>
+  </data>
+  <data name="ExpressionDescription_PositiveLookaround" xml:space="preserve">
+    <value>positive lookahead (?= pattern) or positive lookbehind (?&lt;= pattern)</value>
+  </data>
+  <data name="ExpressionDescription_NegativeLookaround" xml:space="preserve">
+    <value>negative lookahead (?! pattern) or negative lookbehind (?&lt;! pattern)</value>
+  </data>
+  <data name="ExpressionDescription_ContiguousMatches" xml:space="preserve">
+    <value>contiguous matches (\\G)</value>
+  </data>
+  <data name="ExpressionDescription_AtomicSubexpressions" xml:space="preserve">
+    <value>atomic subexpressions (?> pattern)</value>
+  </data>
 </root>

@@ -85,7 +85,7 @@ namespace System.Text.RegularExpressions
             }
 
             count--;
-            var state = (results: new List<string>(), prevat: 0, input, count);
+            (List<string> results, int prevat, string input, int count) state = (results: new List<string>(), prevat: 0, input, count);
 
             if (!regex.RightToLeft)
             {

@@ -1,9 +1,7 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-using System;
 using System.Collections.Generic;
-using System.Text;
 using System.Globalization;
 using System.IO;
 
@@ -30,10 +28,10 @@ namespace System.Text.RegularExpressions.SRM.Unicode
             if (path == null)
                 throw new ArgumentNullException(nameof(path));
 
-            if (path != "" && !path.EndsWith("/"))
-                path = path + "/";
+            if (path != "" && !path.EndsWith('/'))
+                path += "/";
 
-            string version = System.Environment.Version.ToString();
+            string version = Environment.Version.ToString();
 
             string prefix = @"// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
@@ -49,10 +47,10 @@ internal static class " + classname + @"
             string suffix = @"}
 }
 ";
-            FileInfo fi = new FileInfo(string.Format("{1}{0}.cs", classname, path));
+            FileInfo fi = new FileInfo($"{path}{classname}.cs");
             if (fi.Exists)
                 fi.IsReadOnly = false;
-            StreamWriter sw = new StreamWriter(string.Format("{1}{0}.cs", classname, path));
+            StreamWriter sw = new StreamWriter($"{path}{classname}.cs");
             sw.WriteLine(prefix);
 
             WriteSerializedBDDs(sw);
@@ -67,11 +65,14 @@ internal static class " + classname + @"
             int maxChar = 0xFFFF;
             var catMap = new Dictionary<UnicodeCategory, Ranges>();
             for (int c = 0; c < 30; c++)
+            {
                 catMap[(UnicodeCategory)c] = new Ranges();
+            }
+
             Ranges whitespace = new Ranges();
             Ranges wordcharacter = new Ranges();
-            System.Text.RegularExpressions.Regex s_regex = new(@"\s");
-            System.Text.RegularExpressions.Regex w_regex = new(@"\w");
+            RegularExpressions.Regex s_regex = new(@"\s");
+            RegularExpressions.Regex w_regex = new(@"\w");
             for (int i = 0; i <= maxChar; i++)
             {
                 char ch = (char)i;
@@ -79,10 +80,10 @@ internal static class " + classname + @"
                     whitespace.Add(i);
                 UnicodeCategory cat = char.GetUnicodeCategory(ch);
                 catMap[cat].Add(i);
-                int catCode = (int)cat;
                 if (w_regex.IsMatch(ch.ToString()))
                     wordcharacter.Add(i);
             }
+
             //generate bdd reprs for each of the category ranges
             BDD[] catBDDs = new BDD[30];
             CharSetSolver bddb = new CharSetSolver();
@@ -96,7 +97,7 @@ internal static class " + classname + @"
             sw.WriteLine(@"/// <summary>
 /// Serialized BDD representations of all the Unicode categories.
 /// </summary>");
-            sw.WriteLine("public static string[] s_UnicodeCategoryBdd_repr = new string[]{");
+            sw.WriteLine("public static readonly string[] s_UnicodeCategoryBdd_repr = new string[]{");
             for (int i = 0; i < 30; i++)
             {
                 UnicodeCategory c = (UnicodeCategory)i;
@@ -129,12 +130,10 @@ internal static class " + classname + @"
     /// <summary>
     /// Used internally for creating a collection of ranges for serialization.
     /// </summary>
-    internal class Ranges
+    internal sealed class Ranges
     {
-        public List<int[]> ranges = new List<int[]>();
-        public Ranges()
-        {
-        }
+        public readonly List<int[]> ranges = new List<int[]>();
+
         public void Add(int n)
         {
             for (int i = 0; i < ranges.Count; i++)
@@ -148,10 +147,7 @@ internal static class " + classname + @"
             ranges.Add(new int[] { n, n });
         }
 
-        public int Count
-        {
-            get { return ranges.Count; }
-        }
+        public int Count => ranges.Count;
     }
 #endif
 }

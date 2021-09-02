@@ -24,8 +24,8 @@ namespace System.Text.RegularExpressions
         private readonly string[] _strings; // table of string constants
         private readonly int[] _rules;      // negative -> group #, positive -> string #
 
-        // If true then this replacement contains at least one capture group name
-        public bool HasGroups { get; private set; }
+        /// <summary>If true then this replacement contains at least one capture group name.</summary>
+        public bool HasGroups { get; }
 
         /// <summary>
         /// Since RegexReplacement shares the same parser as Regex,
@@ -44,7 +44,6 @@ namespace System.Text.RegularExpressions
             FourStackStrings stackStrings = default;
             var strings = new ValueListBuilder<string>(MemoryMarshal.CreateSpan(ref stackStrings.Item1!, 4));
             var rules = new ValueListBuilder<int>(stackalloc int[64]);
-            HasGroups = false;
 
             int childCount = concat.ChildCount();
             for (int i = 0; i < childCount; i++)
@@ -115,13 +114,14 @@ namespace System.Text.RegularExpressions
         public static RegexReplacement GetOrCreate(WeakReference<RegexReplacement> replRef, string replacement, Hashtable caps,
             int capsize, Hashtable capnames, RegexOptions roptions)
         {
-            RegexReplacement? repl;
 
-            if (!replRef.TryGetTarget(out repl) || !repl.Pattern.Equals(replacement))
+            if (!replRef.TryGetTarget(out RegexReplacement? repl) || !repl.Pattern.Equals(replacement))
             {
                 repl = RegexParser.ParseReplacement(replacement, roptions, caps, capsize, capnames);
-                if (repl.HasGroups && ((roptions & RegexOptions.NonBacktracking) != 0))
-                    throw new NotSupportedException(SRM.Regex._DFA_incompatible_with + "replacement pattern with substitutions");
+                if (((roptions & RegexOptions.NonBacktracking) != 0) && repl.HasGroups)
+                {
+                    throw new NotSupportedException(SR.NotSupported_NonBacktrackingAndReplacementsWithSubstitutions);
+                }
 
                 replRef.SetTarget(repl);
             }
@@ -220,9 +220,9 @@ namespace System.Text.RegularExpressions
                 return input;
             }
 
-            var state = (replacement: this, segments: SegmentStringBuilder.Create(), inputMemory: input.AsMemory(), prevat: 0, count);
+            (RegexReplacement replacement, SegmentStringBuilder segments, ReadOnlyMemory<char> inputMemory, int prevat, int count) state = (replacement: this, segments: SegmentStringBuilder.Create(), inputMemory: input.AsMemory(), prevat: 0, count);
 
-            if (regex._useSRM)
+            if (regex._srm is not null)
             {
                 Match match = regex.Match(input, startat, input.Length - startat);
                 if (!match.Success)

@@ -11,7 +11,7 @@ namespace System.Text.RegularExpressions.SRM.Unicode
         /// <summary>
         /// Serialized BDD representations of all the Unicode categories.
         /// </summary>
-        public static string[] s_UnicodeCategoryBdd_repr = new string[]{
+        public static readonly string[] s_UnicodeCategoryBdd_repr = new string[]{
 //UppercaseLetter(0):
 "4.9.200.G.20X.60H.601.X.40H.n.60X.401.H.40n.201.20n.802.A0I.1Y.C02.E0I.20Y.G12.41o.I1Y.62Y.E0Y.402.42o.E02.32.41Y.61I.G3I.212.I02.202.G3Y.Y.A3Y.81Y.I3Y.E2I.22o.23Y.1o.81I.23o.61Y.U0o.M02.K1I.3I.O2o.2I.U0I.822.612.O2Y.C22.61o.E0o.A0o.422.M3o.U22.A32.K22.U1Y.243.Y0J.a03.e4p.g0Z.45Z.k0Z.463.6J.q0Z.46p.473.w03.s63.+7Z.1283.28Z.1603.187Z.1C9J.1G9p.1KAJ.Ap.93.J.p.B3.uBJ.2BZ.1O03.1U4Z.1403.1YC3.1a6Z.1eCp.1g0Z.DZ.1k93.1QE3.kDZ.1o0Z.sEZ.1s0Z.6F3.1eFJ.1y2p.1+Ep.22G3.26GZ.4H3.66Z.40p.2CHK.Hq.2G04.2KIK.2OIq.4JK.4Jq.2W04.2aKK.2eKq.2g04.2i04.2E04.2mLq.2qMK.2sN4.N4.2w04.2+Na.2wNq.4O4.2OK.K.2Oa.3604.2P4.4Ha.3A0a.3C0a.204.4Pq.3IQ4.3K04.3MHa.R4.3Q04.4Ra.4Rq.3YS4.3cSa.3gT4.4Ta.3k0a.4U4.28a.UL.3sUb.3wV5.4Vb.Jb.3+05.4W5.4WL.Wb.2Wr.4805.4A05.4EXb.2uY5.YL.4MYb.4ONL.4Q0b.4UZb.2a5.L.4Y05.4a05.4ar.4e0b.4g0b.b.2bb.4mbr.4qcL.cr.4u05.4dL.4+db.52e5.56eb.4f5.5A05.3o05.5C06.5Gfs.5KgM.5M06.h6.4hM.5Uhc.5W06.5aiM.5eis.5ijM.5k0c.5m06.5qkM.5qks.5wl6.5+lc.62m6.66mc.n6.6CnM.6Gns.6KoM.os.p6.6Q07.6Upd.6Yq7.6cqd.6gr7.6krd.4s7.sN.sd.st.6u07.6ytN.70tt.7207.76ud.7Av7.ve.7Gvu.7I08.we.7Owu.7Q08.xe.7U08.7Yy8.7cye.7gz8.zf.zv.7m09.7o09.7s+f.7w/9.7y09.80/v.10Q.10g.10w.880A.11Q.8C0A.8H1w.12R.8K0B.8P2x.8T3R.8U0B.14C.8Y0C.8a0C.8f4y.15T.15j.8n5z.8r6U.8s0E.8x7F",
 //LowercaseLetter(1):

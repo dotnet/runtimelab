@@ -129,10 +129,7 @@ namespace System.Text.RegularExpressions
         private const int Uniquecount = 10;
         private const int LoopTimeoutCheckCount = 2048; // A conservative value to guarantee the correct timeout handling.
 
-        protected RegexCompiler(bool persistsAssembly)
-        {
-            _persistsAssembly = persistsAssembly;
-        }
+        protected RegexCompiler(bool persistsAssembly) => _persistsAssembly = persistsAssembly;
 
         private static FieldInfo RegexRunnerField(string fieldname) => typeof(RegexRunner).GetField(fieldname, BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static)!;
 
@@ -520,8 +517,8 @@ namespace System.Text.RegularExpressions
         /// <summary>Returned a rented local to the pool.</summary>
         private struct RentedLocalBuilder : IDisposable
         {
-            private Stack<LocalBuilder> _pool;
-            private LocalBuilder _local;
+            private readonly Stack<LocalBuilder> _pool;
+            private readonly LocalBuilder _local;
 
             internal RentedLocalBuilder(Stack<LocalBuilder> pool, LocalBuilder local)
             {
@@ -1705,7 +1702,7 @@ namespace System.Text.RegularExpressions
                 // if (!CharInClass(textSpan[i + 2], prefix[2], "...")) goto returnFalse;
                 // ...
                 Debug.Assert(charClassIndex == 0 || charClassIndex == 1);
-                for ( ; charClassIndex < _leadingCharClasses.Length; charClassIndex++)
+                for (; charClassIndex < _leadingCharClasses.Length; charClassIndex++)
                 {
                     Debug.Assert(needLoop);
                     Ldloca(textSpanLocal);
@@ -2691,7 +2688,7 @@ namespace System.Text.RegularExpressions
                 // the amount of IL and asm that results from this unrolling. Also, this optimization
                 // is subject to endianness issues if the generated code is used on a machine with a
                 // different endianness; for now, we simply disable the optimization if the generated
-                // code is being saved. TODO https://github.com/dotnet/runtime/issues/30153.
+                // code is being saved.
                 if (!caseInsensitive && !_persistsAssembly)
                 {
                     // On 64-bit, process 4 characters at a time until the string isn't at least 4 characters long.

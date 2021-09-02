@@ -1,21 +1,15 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
 namespace System.Text.RegularExpressions.SRM.Unicode
 {
-    internal class IgnoreCaseTransformer
+    internal sealed class IgnoreCaseTransformer
     {
         private const char Turkish_I_withDot = '\u0130';
         private const char Turkish_i_withoutDot = '\u0131';
         private const char Kelvin_sign = '\u212A';
 
-        private CharSetSolver _solver;
+        private readonly CharSetSolver _solver;
 
         private BDD _IgnoreCaseRel_default;
         private BDD _IgnoreCaseRel_inv;
@@ -24,13 +18,13 @@ namespace System.Text.RegularExpressions.SRM.Unicode
         private BDD _IgnoreCaseRel_inv_dom;
         private BDD _IgnoreCaseRel_tr_dom;
 
-        private BDD _i_default;
-        private BDD _i_inv;
-        private BDD _i_tr;
-        private BDD _I_tr;
+        private readonly BDD _i_default;
+        private readonly BDD _i_inv;
+        private readonly BDD _i_tr;
+        private readonly BDD _I_tr;
 
         //maps each char c to the Case-Insensitive set of c that is culture-idependent (for non-null entries)
-        private BDD[] _char_table_CI = new BDD[0x10000];
+        private readonly BDD[] _char_table_CI = new BDD[0x10000];
 
         public IgnoreCaseTransformer(CharSetSolver solver)
         {
@@ -58,7 +52,7 @@ namespace System.Text.RegularExpressions.SRM.Unicode
         /// </summary>
         private BDD GetIgnoreCaseRel(out BDD domain, string culture = null)
         {
-            culture = (culture != null ? culture : Globalization.CultureInfo.CurrentCulture.Name);
+            culture ??= Globalization.CultureInfo.CurrentCulture.Name;
             //pick the correct transformer BDD based on current culture
             if (culture == "en-US")
             {
@@ -74,9 +68,9 @@ namespace System.Text.RegularExpressions.SRM.Unicode
                     //compute the inv table based off of default
                     //in the default (en-US) culture: Turkish_I_withDot = i = I
                     //in the invariant culture: i = I, while Turkish_I_withDot is caseinsensitive
-                    var tr_I_withdot_BDD = _solver.MkCharConstraint(Turkish_I_withDot);
-                    var i_BDD = _solver.MkCharConstraint('i');
-                    var I_BDD = _solver.MkCharConstraint('I');
+                    BDD tr_I_withdot_BDD = _solver.MkCharConstraint(Turkish_I_withDot);
+                    BDD i_BDD = _solver.MkCharConstraint('i');
+                    BDD I_BDD = _solver.MkCharConstraint('I');
                     //since Turkish_I_withDot is caseinsensitive in invariant culture, remove it from the default (en-US culture) table
                     BDD inv_table = _solver.MkAnd(_IgnoreCaseRel_default, _solver.MkNot(tr_I_withdot_BDD));
                     //Next remove Turkish_I_withDot from the RHS of the relation also
@@ -96,13 +90,13 @@ namespace System.Text.RegularExpressions.SRM.Unicode
                     //compute the tr table based off of default
                     //in the default (en-US) culture: Turkish_I_withDot = i = I
                     //in the tr culture: i = Turkish_I_withDot, I = Turkish_i_withoutDot
-                    var tr_I_withdot_BDD = _solver.MkCharConstraint(Turkish_I_withDot);
-                    var tr_i_withoutdot_BDD = _solver.MkCharConstraint(Turkish_i_withoutDot);
-                    var i_BDD = _solver.MkCharConstraint('i');
-                    var I_BDD = _solver.MkCharConstraint('I');
+                    BDD tr_I_withdot_BDD = _solver.MkCharConstraint(Turkish_I_withDot);
+                    BDD tr_i_withoutdot_BDD = _solver.MkCharConstraint(Turkish_i_withoutDot);
+                    BDD i_BDD = _solver.MkCharConstraint('i');
+                    BDD I_BDD = _solver.MkCharConstraint('I');
                     //first remove all i's from the default table from the LHS and from the RHS
                     //note that Turkish_i_withoutDot is not in the default table because it is caseinsensitive in the en-US culture
-                    var iDefault = _solver.MkOr(i_BDD, _solver.MkOr(I_BDD, tr_I_withdot_BDD));
+                    BDD iDefault = _solver.MkOr(i_BDD, _solver.MkOr(I_BDD, tr_I_withdot_BDD));
                     BDD tr_table = _solver.MkAnd(_IgnoreCaseRel_default, _solver.MkNot(iDefault));
                     tr_table = _solver.MkAnd(tr_table, _solver.MkNot(_solver.ShiftLeft(iDefault, 16)));
                     // i_tr = {i,Turkish_I_withDot}
@@ -139,7 +133,7 @@ namespace System.Text.RegularExpressions.SRM.Unicode
         {
             if (_char_table_CI[c] == null)
             {
-                culture = (culture != null ? culture : Globalization.CultureInfo.CurrentCulture.Name);
+                culture ??= Globalization.CultureInfo.CurrentCulture.Name;
                 switch (c)
                 {
                     case 'i':
@@ -181,7 +175,7 @@ namespace System.Text.RegularExpressions.SRM.Unicode
                     default:
                         if (c == 'k' || c == 'K' || c == Kelvin_sign)
                         {
-                            var k = _solver.MkOr(_solver.MkOr(_solver.MkCharConstraint('k'), _solver.MkCharConstraint('K')), _solver.MkCharConstraint(Kelvin_sign));
+                            BDD k = _solver.MkOr(_solver.MkOr(_solver.MkCharConstraint('k'), _solver.MkCharConstraint('K')), _solver.MkCharConstraint(Kelvin_sign));
                             _char_table_CI[c] = k;
                             return k;
                         }
@@ -197,7 +191,7 @@ namespace System.Text.RegularExpressions.SRM.Unicode
                         {
                             //bring in the full transfomation relation, but here it does not actually depend on culture
                             //so it is safe to store the result for c
-                            var set = Apply(_solver.MkCharConstraint(c));
+                            BDD set = Apply(_solver.MkCharConstraint(c));
                             _char_table_CI[c] = set;
                             return set;
                         }
@@ -215,21 +209,22 @@ namespace System.Text.RegularExpressions.SRM.Unicode
         public BDD Apply(BDD bdd, string culture = null)
         {
             //first get the culture specific relation
-            BDD domain;
-            BDD ignoreCaseRel = GetIgnoreCaseRel(out domain, culture);
+            BDD ignoreCaseRel = GetIgnoreCaseRel(out BDD domain, culture);
             if (_solver.MkAnd(domain, bdd).IsEmpty)
+            {
                 //no elements need to be added
                 return bdd;
+            }
             else
             {
                 //compute the set of all characters that are equivalent to some element in bdd
                 //restr is the relation restricted to the relevant characters in bdd
                 //this conjunction works because bdd is unspecified for bits > 15
-                var restr = _solver.MkAnd(bdd, ignoreCaseRel);
+                BDD restr = _solver.MkAnd(bdd, ignoreCaseRel);
                 //shiftright essentially produces the LHS of the relation (char X char) that restr represents
-                var ignorecase = _solver.ShiftRight(restr, 16);
+                BDD ignorecase = _solver.ShiftRight(restr, 16);
                 //the final set is the union of all the characters
-                var res = _solver.MkOr(ignorecase, bdd);
+                BDD res = _solver.MkOr(ignorecase, bdd);
                 return res;
             }
         }

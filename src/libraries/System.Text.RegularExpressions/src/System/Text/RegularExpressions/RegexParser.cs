@@ -241,10 +241,7 @@ namespace System.Text.RegularExpressions
             _stack = null;
         }
 
-        public void Dispose()
-        {
-            _optionsStack.Dispose();
-        }
+        public void Dispose() => _optionsStack.Dispose();
 
         /*
          * The main parsing function.
@@ -2255,22 +2252,13 @@ namespace System.Text.RegularExpressions
         }
 
         /// <summary>Sets the current unit to a single set node</summary>
-        private void AddUnitSet(string cc)
-        {
-            _unit = new RegexNode(RegexNode.Set, _options, cc);
-        }
+        private void AddUnitSet(string cc) => _unit = new RegexNode(RegexNode.Set, _options, cc);
 
         /// <summary>Sets the current unit to a subtree</summary>
-        private void AddUnitNode(RegexNode node)
-        {
-            _unit = node;
-        }
+        private void AddUnitNode(RegexNode node) => _unit = node;
 
         /// <summary>Sets the current unit to an assertion of the specified type</summary>
-        private void AddUnitType(int type)
-        {
-            _unit = new RegexNode(type, _options);
-        }
+        private void AddUnitType(int type) => _unit = new RegexNode(type, _options);
 
         /// <summary>Finish the current group (in response to a ')' or end)</summary>
         private void AddGroup()

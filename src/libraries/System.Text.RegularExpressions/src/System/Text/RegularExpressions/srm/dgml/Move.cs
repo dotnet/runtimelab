@@ -1,12 +1,6 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
 namespace System.Text.RegularExpressions.SRM.DGML
 {
     /// <summary>
@@ -14,8 +8,8 @@ namespace System.Text.RegularExpressions.SRM.DGML
     /// The value default(L) is reserved to represent the label of an epsilon move.
     /// Thus if S is a reference type the label of an epsilon move is null.
     /// </summary>
-    /// <typeparam name="L">the type of the labels on moves</typeparam>
-    internal class Move<L>
+    /// <typeparam name="TLabel">the type of the labels on moves</typeparam>
+    internal sealed class Move<TLabel>
     {
         /// <summary>
         /// Source state of the move
@@ -28,7 +22,7 @@ namespace System.Text.RegularExpressions.SRM.DGML
         /// <summary>
         /// Label of the move
         /// </summary>
-        public readonly L Label;
+        public readonly TLabel Label;
 
         /// <summary>
         /// Transition of an automaton.
@@ -36,33 +30,27 @@ namespace System.Text.RegularExpressions.SRM.DGML
         /// <param name="sourceState">source state of the transition</param>
         /// <param name="targetState">target state of the transition</param>
         /// <param name="lab">label of the transition</param>
-        public Move(int sourceState, int targetState, L lab)
+        public Move(int sourceState, int targetState, TLabel lab)
         {
-            this.SourceState = sourceState;
-            this.TargetState = targetState;
-            this.Label = lab;
+            SourceState = sourceState;
+            TargetState = targetState;
+            Label = lab;
         }
 
         /// <summary>
         /// Creates a move. Creates an epsilon move if label is default(L).
         /// </summary>
-        public static Move<L> Create(int sourceState, int targetState, L condition)
-        {
-            return new Move<L>(sourceState, targetState, condition);
-        }
+        public static Move<TLabel> Create(int sourceState, int targetState, TLabel condition) => new Move<TLabel>(sourceState, targetState, condition);
 
         /// <summary>
         /// Creates an epsilon move. Same as Create(sourceState, targetState, default(L)).
         /// </summary>
-        public static Move<L> Epsilon(int sourceState, int targetState)
-        {
-            return new Move<L>(sourceState, targetState, default(L));
-        }
+        public static Move<TLabel> Epsilon(int sourceState, int targetState) => new Move<TLabel>(sourceState, targetState, default);
 
         /// <summary>
         /// Returns true if label equals default(S).
         /// </summary>
-        public bool IsEpsilon => object.Equals(Label, default(L));
+        public bool IsEpsilon => Equals(Label, default(TLabel));
 
         /// <summary>
         /// Returns true if the source state and the target state are identical
@@ -72,22 +60,14 @@ namespace System.Text.RegularExpressions.SRM.DGML
         /// <summary>
         /// Returns true if obj is a move with the same source state, target state, and label.
         /// </summary>
-        public override bool Equals(object obj)
-        {
-            if (!(obj is Move<L>))
-                return false;
-            Move<L> t = (Move<L>)obj;
-            return (t.SourceState == SourceState && t.TargetState == TargetState &&
-                (object.Equals(t.Label, default(L)) ? object.Equals(Label, default(L))
-                : t.Label.Equals(Label)));
-        }
+        public override bool Equals(object obj) =>
+            obj is not Move<TLabel> t ? false :
+            t.SourceState == SourceState && t.TargetState == TargetState && (Equals(t.Label, default(TLabel)) ? Equals(Label, default(TLabel)) :
+            t.Label.Equals(Label));
 
         public override int GetHashCode() => (SourceState, Label, TargetState).GetHashCode();
 
-        public override string ToString()
-        {
-            return "(" + SourceState + "," + (object.Equals(Label, default(L)) ? "" : Label + ",") + TargetState + ")";
-        }
+        public override string ToString() => $"({SourceState},{(Equals(Label, default(TLabel)) ? "" : Label + ",")}{TargetState})";
     }
 
 }

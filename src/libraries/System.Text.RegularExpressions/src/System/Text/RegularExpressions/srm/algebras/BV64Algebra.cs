@@ -1,19 +1,18 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
-using System.Runtime.Serialization;
 
 namespace System.Text.RegularExpressions.SRM
 {
     /// <summary>
     /// Bit vector algebra of up to 64 bits
     /// </summary>
-    internal class BV64Algebra : BVAlgebraBase, ICharAlgebra<ulong>
+    internal sealed class BV64Algebra : BVAlgebraBase, ICharAlgebra<ulong>
     {
-        private MintermGenerator<ulong> _mtg;
+        private readonly MintermGenerator<ulong> _mtg;
         private readonly ulong _False;
         private readonly ulong _True;
 
@@ -29,10 +28,7 @@ namespace System.Text.RegularExpressions.SRM
         public BV64Algebra(CharSetSolver solver, BDD[] minterms) :
             base(Classifier.Create(solver, minterms), Array.ConvertAll(minterms, solver.ComputeDomainSize), minterms)
         {
-#if DEBUG
-            if (minterms.Length > 64)
-                throw new AutomataException(AutomataExceptionKind.NrOfMintermsCanBeAtMost64);
-#endif
+            Debug.Assert(minterms.Length <= 64);
             _mtg = new MintermGenerator<ulong>(this);
             _False = 0;
             _True = _bits == 64 ? ulong.MaxValue : ulong.MaxValue >> (64 - _bits);
@@ -43,10 +39,7 @@ namespace System.Text.RegularExpressions.SRM
         /// </summary>
         public BV64Algebra(Classifier classifier, ulong[] cardinalities) : base(classifier, cardinalities, null)
         {
-#if DEBUG
-            if (cardinalities.Length > 64)
-                throw new AutomataException(AutomataExceptionKind.InternalError_SymbolicRegex);
-#endif
+            Debug.Assert(cardinalities.Length <= 64);
             _mtg = new MintermGenerator<ulong>(this);
             _False = 0;
             _True = _bits == 64 ? ulong.MaxValue : ulong.MaxValue >> (64 - _bits);
@@ -70,10 +63,10 @@ namespace System.Text.RegularExpressions.SRM
 
         public ulong MkAnd(params ulong[] predicates)
         {
-            var and = _True;
+            ulong and = _True;
             for (int i = 0; i < predicates.Length; i++)
             {
-                and = and & predicates[i];
+                and &= predicates[i];
                 if (and == _False)
                     return _False;
             }
@@ -90,10 +83,10 @@ namespace System.Text.RegularExpressions.SRM
 
         public ulong MkOr(IEnumerable<ulong> predicates)
         {
-            var res = _False;
-            foreach (var p in predicates)
+            ulong res = _False;
+            foreach (ulong p in predicates)
             {
-                res = res | p;
+                res |= p;
                 if (res == _True)
                     return _True;
             }
@@ -129,7 +122,7 @@ namespace System.Text.RegularExpressions.SRM
             ulong res = _False;
             for (int i = 0; i < _bits; i++)
                 if (alg.IsSatisfiable(alg.MkAnd(_partition[i], set)))
-                    res = res | ((ulong)1 << i);
+                    res |= (ulong)1 << i;
             return res;
         }
 
@@ -161,18 +154,12 @@ namespace System.Text.RegularExpressions.SRM
         /// <summary>
         /// Serialize pred using Base64.Encode
         /// </summary>
-        public string SerializePredicate(ulong pred)
-        {
-            return Base64.Encode(pred);
-        }
+        public void SerializePredicate(ulong pred, StringBuilder sb) => Base64.Encode(pred, sb);
 
         /// <summary>
         /// Deserialize s from a string created by SerializePredicate
         /// </summary>
-        public ulong DeserializePredicate(string s)
-        {
-            return Base64.DecodeUInt64(s);
-        }
+        public ulong DeserializePredicate(string s) => Base64.DecodeUInt64(s);
         #endregion
 
         public ulong MkCharPredicate(string name, ulong pred) => throw new NotImplementedException(nameof(MkCharPredicate));
@@ -183,12 +170,18 @@ namespace System.Text.RegularExpressions.SRM
         public string PrettyPrint(ulong bv)
         {
             //accesses the shared BDD solver
-            var bddalgebra = System.Text.RegularExpressions.SRM.Regex.s_unicode.solver;
+            ICharAlgebra<BDD> bddalgebra = Regex.s_unicode._solver;
 
             if (_partition == null || bddalgebra == null)
-                return "[" + SerializePredicate(bv) + "]";
+            {
+                var sb = new StringBuilder();
+                sb.Append('[');
+                SerializePredicate(bv, sb);
+                sb.Append(']');
+                return sb.ToString();
+            }
 
-            var bdd = ConvertToCharSet(bddalgebra, bv);
+            BDD bdd = ConvertToCharSet(bddalgebra, bv);
             string str = bddalgebra.PrettyPrint(bdd);
             return str;
         }

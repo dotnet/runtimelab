@@ -1,10 +1,8 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-using System;
-using System.Collections.Generic;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
-using System.Runtime.Serialization;
 
 
 namespace System.Text.RegularExpressions.SRM
@@ -12,9 +10,9 @@ namespace System.Text.RegularExpressions.SRM
     /// <summary>
     /// Represents a bitvector of given Length (number of bits).
     /// </summary>
-    internal class BV : IComparable
+    internal sealed class BV : IComparable
     {
-        private ulong[] _blocks;
+        private readonly ulong[] _blocks;
 
         private const ulong UL1 = 1;
 
@@ -30,28 +28,26 @@ namespace System.Text.RegularExpressions.SRM
         {
             get
             {
-#if DEBUG
-                if (i < 0 || i >= Length)
-                    throw new ArgumentOutOfRangeException(nameof(i));
-#endif
+                Debug.Assert(i >= 0 && i < Length);
                 int k = i / 64;
                 int j = i % 64;
                 return (_blocks[k] & (UL1 << j)) != 0;
             }
             private set
             {
-#if DEBUG
-                if (i < 0 || i >= Length)
-                    throw new ArgumentOutOfRangeException(nameof(i));
-#endif
+                Debug.Assert(i >= 0 && i < Length);
                 int k = i / 64;
                 int j = i % 64;
                 if (value)
+                {
                     //set the j'th bit of the k'th block to 1
                     _blocks[k] |= (UL1 << j);
+                }
                 else
+                {
                     //set the j'th bit of the k'th block to 0
                     _blocks[k] &= ~(UL1 << j);
+                }
             }
         }
 
@@ -106,13 +102,13 @@ namespace System.Text.RegularExpressions.SRM
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static BV operator &(BV x, BV y)
         {
-#if DEBUG
-            if (x.Length != y.Length)
-                throw new InvalidOperationException();
-#endif
-            ulong[] blocks = new ulong[x._blocks.Length];
+            Debug.Assert(x.Length == y.Length);
+
+            var blocks = new ulong[x._blocks.Length];
             for (int i = 0; i < blocks.Length; i++)
+            {
                 blocks[i] = x._blocks[i] & y._blocks[i];
+            }
             return new BV(x.Length, blocks);
         }
 
@@ -122,13 +118,13 @@ namespace System.Text.RegularExpressions.SRM
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static BV operator |(BV x, BV y)
         {
-#if DEBUG
-            if (x.Length != y.Length)
-                throw new InvalidOperationException();
-#endif
-            ulong[] blocks = new ulong[x._blocks.Length];
+            Debug.Assert(x.Length == y.Length);
+
+            var blocks = new ulong[x._blocks.Length];
             for (int i = 0; i < blocks.Length; i++)
+            {
                 blocks[i] = x._blocks[i] | y._blocks[i];
+            }
             return new BV(x.Length, blocks);
         }
 
@@ -138,13 +134,13 @@ namespace System.Text.RegularExpressions.SRM
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static BV operator ^(BV x, BV y)
         {
-#if DEBUG
-            if (x.Length != y.Length)
-                throw new InvalidOperationException();
-#endif
-            ulong[] blocks = new ulong[x._blocks.Length];
+            Debug.Assert(x.Length == y.Length);
+
+            var blocks = new ulong[x._blocks.Length];
             for (int i = 0; i < blocks.Length; i++)
+            {
                 blocks[i] = x._blocks[i] ^ y._blocks[i];
+            }
             return new BV(x.Length, blocks);
         }
 
@@ -154,9 +150,12 @@ namespace System.Text.RegularExpressions.SRM
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static BV operator ~(BV x)
         {
-            ulong[] blocks = new ulong[x._blocks.Length];
+            var blocks = new ulong[x._blocks.Length];
             for (int i = 0; i < blocks.Length; i++)
+            {
                 blocks[i] = ~x._blocks[i];
+            }
+
             int j = x.Length % 64;
             if (j > 0)
             {
@@ -165,6 +164,7 @@ namespace System.Text.RegularExpressions.SRM
                 int last = (x.Length - 1) / 64;
                 blocks[last] &= (UL1 << j) - 1;
             }
+
             return new BV(x.Length, blocks);
         }
 
@@ -172,50 +172,32 @@ namespace System.Text.RegularExpressions.SRM
         /// less than
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool operator <(BV x, BV y)
-        {
-            return x.CompareTo(y) < 0;
-        }
+        public static bool operator <(BV x, BV y) => x.CompareTo(y) < 0;
 
         /// <summary>
         /// greater than
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool operator >(BV x, BV y)
-        {
-            return x.CompareTo(y) > 0;
-        }
+        public static bool operator >(BV x, BV y) => x.CompareTo(y) > 0;
 
         /// <summary>
         /// less than or equal
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool operator <=(BV x, BV y)
-        {
-            return x.CompareTo(y) <= 0;
-        }
+        public static bool operator <=(BV x, BV y) => x.CompareTo(y) <= 0;
 
         /// <summary>
         /// greater than or equal
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool operator >=(BV x, BV y)
-        {
-            return x.CompareTo(y) >= 0;
-        }
+        public static bool operator >=(BV x, BV y) => x.CompareTo(y) >= 0;
 
         /// <summary>
         /// Returns the serialized representation
         /// </summary>
-        public override string ToString()
-        {
-            return SerializeToString();
-        }
+        public override string ToString() => SerializeToString();
 
-        public override bool Equals(object obj)
-        {
-            return CompareTo(obj) == 0;
-        }
+        public override bool Equals(object obj) => CompareTo(obj) == 0;
 
         private int _hashcode;
         public override int GetHashCode()
@@ -224,30 +206,33 @@ namespace System.Text.RegularExpressions.SRM
             {
                 _hashcode = Length.GetHashCode();
                 for (int i = 0; i < _blocks.Length; i++)
+                {
                     _hashcode = (_hashcode << 1) ^ _blocks[i].GetHashCode();
+                }
             }
+
             return _hashcode;
         }
 
         public int CompareTo(object obj)
         {
-            BV that = obj as BV;
-            if (that == null)
+            if (obj is not BV that)
                 return 1;
-            else if (Length != that.Length)
+
+            if (Length != that.Length)
                 return Length.CompareTo(that.Length);
-            else
+
+            for (int i = _blocks.Length - 1; i >= 0; i--)
             {
-                for (int i = _blocks.Length - 1; i >= 0; i--)
-                {
-                    if (_blocks[i] < that._blocks[i])
-                        return -1;
-                    else if (_blocks[i] > that._blocks[i])
-                        return 1;
-                }
-                //all blocks were equal
-                return 0;
+                if (_blocks[i] < that._blocks[i])
+                    return -1;
+
+                if (_blocks[i] > that._blocks[i])
+                    return 1;
             }
+
+            //all blocks were equal
+            return 0;
         }
 
         #region serialization
@@ -257,7 +242,7 @@ namespace System.Text.RegularExpressions.SRM
         public void Serialize(StringBuilder sb)
         {
             //start with the length, i.e., the number of bits
-            sb.Append(Base64.Encode(Length));
+            Base64.Encode(Length, sb);
             sb.Append('-');
             Base64.Encode(_blocks, sb);
         }
@@ -275,9 +260,8 @@ namespace System.Text.RegularExpressions.SRM
         public static BV Deserialize(string s)
         {
             int i = s.IndexOf('-');
-            int K = Base64.DecodeInt(s.Substring(0, i));
-            string blocks_str = s.Substring(i + 1);
-            ulong[] blocks = Base64.DecodeUInt64Array(blocks_str);
+            int K = Base64.DecodeInt(s.AsSpan(0, i));
+            ulong[] blocks = Base64.DecodeUInt64Array(s.AsSpan(i + 1));
             return new BV(K, blocks);
         }
         #endregion

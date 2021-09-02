@@ -1,14 +1,11 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-using System;
 using System.Collections.Generic;
-using System.Runtime.CompilerServices;
-using System.Numerics;
-using System.Runtime.Serialization;
-using System.Runtime.Serialization.Formatters.Binary;
-using System.IO;
+using System.Diagnostics;
 using System.Globalization;
+using System.IO;
+using System.Runtime.CompilerServices;
 
 namespace System.Text.RegularExpressions.SRM
 {
@@ -18,43 +15,43 @@ namespace System.Text.RegularExpressions.SRM
     /// <typeparam name="S">character set type</typeparam>
     internal partial class SymbolicRegexMatcher<S> : IMatcher
     {
-        internal SymbolicRegexBuilder<S> builder;
+        internal readonly SymbolicRegexBuilder<S> _builder;
 
         /// <summary>
         /// Maps each character into a partition id in the range 0..K-1.
         /// </summary>
-        private Classifier dt;
+        private readonly Classifier _dt;
 
         /// <summary>
         /// Original regex.
         /// </summary>
-        internal SymbolicRegexNode<S> A;
+        internal readonly SymbolicRegexNode<S> _A;
 
         /// <summary>
         /// The RegexOptions this regex was created with
         /// </summary>
-        internal System.Text.RegularExpressions.RegexOptions Options { get; set; }
+        internal RegexOptions Options { get; }
 
         /// <summary>
         /// Timeout for matching.
         /// </summary>
-        private TimeSpan _matchTimeout;
+        private readonly TimeSpan _matchTimeout;
         /// <summary>
         /// corresponding timeout in ms
         /// </summary>
-        private int _timeout;
+        private readonly int _timeout;
         private int _timeoutOccursAt;
-        private bool _checkTimeout;
+        private readonly bool _checkTimeout;
 
         /// <summary>
         /// Set of elements that matter as first element of A.
         /// </summary>
-        internal BooleanClassifier A_StartSet;
+        internal BooleanClassifier _A_StartSet;
 
         /// <summary>
         /// predicate over characters that make some progress
         /// </summary>
-        private S A_startset;
+        private readonly S _A_startset;
 
         /// <summary>
         /// maximum allowed size of A_startset_array
@@ -64,68 +61,67 @@ namespace System.Text.RegularExpressions.SRM
         /// <summary>
         /// string of at most s_A_startset_array_max_size many characters
         /// </summary>
-        private char[] A_startset_array;
+        private readonly char[] _A_startset_array;
 
         /// <summary>
         /// Number of elements in A_StartSet
         /// </summary>
-        private int A_StartSet_Size;
+        private readonly int _A_StartSet_Size;
 
         /// <summary>
         /// if nonempty then A has that fixed prefix
         /// </summary>
-        private string A_prefix;
+        private readonly string _A_prefix;
 
         /// <summary>
         /// non-null when A_prefix is nonempty
         /// </summary>
-        private RegexBoyerMoore A_prefixBM;
+        private RegexBoyerMoore _A_prefixBM;
 
         /// <summary>
         /// if true then the fixed prefix of A is idependent of case
         /// </summary>
-        private bool A_fixedPrefix_ignoreCase;
+        private readonly bool _A_fixedPrefix_ignoreCase;
 
         /// <summary>
         /// Cached skip states from the initial state of A1 for the 6 possible previous character kinds.
         /// </summary>
-        private State<S>[] _A1_skipState = new State<S>[5];
+        private readonly State<S>[] _A1_skipState = new State<S>[5];
 
         private State<S> GetA1_skipState(uint prevCharKind)
         {
-            if (_A1_skipState[prevCharKind] == null)
+            if (_A1_skipState[prevCharKind] is null)
             {
-                var state = DeltaPlus<BrzozowskiTransition>(A_prefix, _A1q0[prevCharKind]);
+                State<S> state = DeltaPlus<BrzozowskiTransition>(_A_prefix, _A1q0[prevCharKind]);
                 lock (this)
                 {
-                    if (_A1_skipState[prevCharKind] == null)
-                        _A1_skipState[prevCharKind] = state;
+                    _A1_skipState[prevCharKind] ??= state;
                 }
             }
+
             return _A1_skipState[prevCharKind];
         }
 
         /// <summary>
         /// Reverse(A).
         /// </summary>
-        internal SymbolicRegexNode<S> Ar;
+        internal SymbolicRegexNode<S> _Ar;
 
-        private string Ar_prefix;
+        private readonly string _Ar_prefix;
 
         /// <summary>
         /// Cached skip states from the initial state of Ar for the 6 possible previous character kinds.
         /// </summary>
-        private State<S>[] _Ar_skipState = new State<S>[6];
+        private readonly State<S>[] _Ar_skipState = new State<S>[6];
 
         private State<S> GetAr_skipState(uint prevCharKind)
         {
-            if (_Ar_skipState[prevCharKind] == null)
+            if (_Ar_skipState[prevCharKind] is null)
             {
-                var state = DeltaPlus<BrzozowskiTransition>(Ar_prefix, _Arq0[prevCharKind]);
+                State<S> state = DeltaPlus<BrzozowskiTransition>(_Ar_prefix, _Arq0[prevCharKind]);
                 lock (this)
                 {
-                    if (_Ar_skipState[prevCharKind] == null)
-                        _Ar_skipState[prevCharKind] = state;
+                    _Ar_skipState[prevCharKind] ??= state;
                 }
             }
             return _Ar_skipState[prevCharKind];
@@ -134,33 +130,31 @@ namespace System.Text.RegularExpressions.SRM
         /// <summary>
         /// .*A start regex
         /// </summary>
-        internal SymbolicRegexNode<S> A1;
+        internal SymbolicRegexNode<S> _A1;
 
-        private State<S>[] _Aq0 = new State<S>[5];
+        private readonly State<S>[] _Aq0 = new State<S>[5];
 
-        private State<S>[] _A1q0 = new State<S>[5];
+        private readonly State<S>[] _A1q0 = new State<S>[5];
 
-        private State<S>[] _Arq0 = new State<S>[5];
+        private readonly State<S>[] _Arq0 = new State<S>[5];
 
-        private uint[] _asciiCharKind = new uint[128];
+        private readonly uint[] _asciiCharKind = new uint[128];
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal State<S> GetState(int stateId)
-        {
+        internal State<S> GetState(int stateId) =>
             // the builder maintains a mapping
             // from stateIds to states
-            return builder.statearray[stateId];
-        }
+            _builder._statearray[stateId];
 
         /// <summary>
         /// Get the atom of character c
         /// </summary>
         /// <param name="c">character code</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private S GetAtom(int c) => builder.atoms[dt.Find(c)];
+        private S GetAtom(int c) => _builder._atoms[_dt.Find(c)];
 
-        private const int s_STATEMAXBOUND = 10000;
-        private const int s_STATEBOUNDLEEWAY = 1000;
+        private const int StateMaxBound = 10000;
+        private const int StateBoundLeeway = 1000;
 
         #region custom serialization/deserialization
         /// <summary>
@@ -171,46 +165,46 @@ namespace System.Text.RegularExpressions.SRM
         {
             //-----------------------------------0
             sb.Append(_culture.Name);
-            sb.Append(Regex.s_top_level_separator);
+            sb.Append(Regex.TopLevelSeparator);
             //-----------------------------------1
-            this.builder.solver.Serialize(sb);
-            sb.Append(Regex.s_top_level_separator);
+            _builder._solver.Serialize(sb);
+            sb.Append(Regex.TopLevelSeparator);
             //-----------------------------------2
-            A.Serialize(sb);
-            sb.Append(Regex.s_top_level_separator);
+            _A.Serialize(sb);
+            sb.Append(Regex.TopLevelSeparator);
             //-----------------------------------3
-            sb.Append(Base64.Encode((int)Options));
-            sb.Append(Regex.s_top_level_separator);
+            Base64.Encode((int)Options, sb);
+            sb.Append(Regex.TopLevelSeparator);
             //-----------------------------------4
-            sb.Append(builder.solver.SerializePredicate(builder.wordLetterPredicate));
-            sb.Append(Regex.s_top_level_separator);
+            _builder._solver.SerializePredicate(_builder._wordLetterPredicate, sb);
+            sb.Append(Regex.TopLevelSeparator);
             //-----------------------------------5
-            sb.Append(builder.solver.SerializePredicate(builder.newLinePredicate));
-            sb.Append(Regex.s_top_level_separator);
+            _builder._solver.SerializePredicate(_builder._newLinePredicate, sb);
+            sb.Append(Regex.TopLevelSeparator);
             //-----------------------------------6
-            sb.Append(builder.solver.SerializePredicate(A_startset));
-            sb.Append(Regex.s_top_level_separator);
+            _builder._solver.SerializePredicate(_A_startset, sb);
+            sb.Append(Regex.TopLevelSeparator);
             //-----------------------------------7
-            A_StartSet.Serialize(sb);
-            sb.Append(Regex.s_top_level_separator);
+            _A_StartSet.Serialize(sb);
+            sb.Append(Regex.TopLevelSeparator);
             //-----------------------------------8
-            sb.Append(Base64.Encode(A_StartSet_Size));
-            sb.Append(Regex.s_top_level_separator);
+            Base64.Encode(_A_StartSet_Size, sb);
+            sb.Append(Regex.TopLevelSeparator);
             //-----------------------------------9
-            Base64.Encode(A_startset_array, sb);
-            sb.Append(Regex.s_top_level_separator);
+            Base64.Encode(_A_startset_array, sb);
+            sb.Append(Regex.TopLevelSeparator);
             //-----------------------------------10
-            Base64.Encode(A_prefix, sb);
-            sb.Append(Regex.s_top_level_separator);
+            Base64.Encode(_A_prefix, sb);
+            sb.Append(Regex.TopLevelSeparator);
             //-----------------------------------11
-            sb.Append(A_fixedPrefix_ignoreCase);
-            sb.Append(Regex.s_top_level_separator);
+            sb.Append(_A_fixedPrefix_ignoreCase);
+            sb.Append(Regex.TopLevelSeparator);
             //-----------------------------------12
-            Base64.Encode(Ar_prefix, sb);
-            sb.Append(Regex.s_top_level_separator);
+            Base64.Encode(_Ar_prefix, sb);
+            sb.Append(Regex.TopLevelSeparator);
             //-----------------------------------13
-            dt.Serialize(sb);
-            sb.Append(Regex.s_top_level_separator);
+            _dt.Serialize(sb);
+            sb.Append(Regex.TopLevelSeparator);
             //-----------------------------------14
             if (_checkTimeout)
                 sb.Append(_matchTimeout.ToString());
@@ -223,26 +217,26 @@ namespace System.Text.RegularExpressions.SRM
         {
             //deserialize the components in the same order they were serialized
             //fragments[1] contains info that was used to construct the solver
-            _culture = (fragments[0] == string.Empty ? CultureInfo.InvariantCulture :
-                (fragments[0] == CultureInfo.CurrentCulture.Name ? CultureInfo.CurrentCulture : new CultureInfo(fragments[0])));
-            builder = new SymbolicRegexBuilder<S>(solver);
-            A = builder.Deserialize(fragments[2]);
+            _culture = fragments[0] == string.Empty ? CultureInfo.InvariantCulture :
+                (fragments[0] == CultureInfo.CurrentCulture.Name ? CultureInfo.CurrentCulture : new CultureInfo(fragments[0]));
+            _builder = new SymbolicRegexBuilder<S>(solver);
+            _A = _builder.Deserialize(fragments[2]);
             Options = (RegexOptions)Base64.DecodeInt(fragments[3]);
             //these predicates are relevant only when anchors are used
-            builder.wordLetterPredicate = builder.solver.DeserializePredicate(fragments[4]);
-            builder.newLinePredicate = builder.solver.DeserializePredicate(fragments[5]);
-            A_startset = builder.solver.DeserializePredicate(fragments[6]);
-            A_StartSet = BooleanClassifier.Deserialize(fragments[7]);
-            A_StartSet_Size = Base64.DecodeInt(fragments[8]);
-            A_startset_array = Base64.DecodeCharArray(fragments[9]);
-            A_prefix = Base64.DecodeString(fragments[10]);
-            A_fixedPrefix_ignoreCase = bool.Parse(fragments[11]);
-            Ar_prefix = Base64.DecodeString(fragments[12]);
-            dt = Classifier.Deserialize(fragments[13]);
+            _builder._wordLetterPredicate = _builder._solver.DeserializePredicate(fragments[4]);
+            _builder._newLinePredicate = _builder._solver.DeserializePredicate(fragments[5]);
+            _A_startset = _builder._solver.DeserializePredicate(fragments[6]);
+            _A_StartSet = BooleanClassifier.Deserialize(fragments[7]);
+            _A_StartSet_Size = Base64.DecodeInt(fragments[8]);
+            _A_startset_array = Base64.DecodeCharArray(fragments[9]);
+            _A_prefix = Base64.DecodeString(fragments[10]);
+            _A_fixedPrefix_ignoreCase = bool.Parse(fragments[11]);
+            _Ar_prefix = Base64.DecodeString(fragments[12]);
+            _dt = Classifier.Deserialize(fragments[13]);
             string potentialTimeout = fragments[14].TrimEnd();
             if (potentialTimeout == string.Empty)
             {
-                _matchTimeout = System.Text.RegularExpressions.Regex.InfiniteMatchTimeout;
+                _matchTimeout = RegularExpressions.Regex.InfiniteMatchTimeout;
                 _checkTimeout = false;
             }
             else
@@ -252,21 +246,19 @@ namespace System.Text.RegularExpressions.SRM
                 _timeout = (int)(_matchTimeout.TotalMilliseconds + 0.5); // Round up, so it will at least 1ms;
                 _timeoutChecksToSkip = TimeoutCheckFrequency;
             }
-            if (A.info.ContainsSomeAnchor)
+            if (_A._info.ContainsSomeAnchor)
             {
                 //line anchors are being used when builder.newLinePredicate is different from False
-                if (!builder.newLinePredicate.Equals(builder.solver.False))
+                if (!_builder._newLinePredicate.Equals(_builder._solver.False))
                     _asciiCharKind[10] = CharKind.Newline;
+
                 //word boundary is being used when builder.wordLetterPredicate is different from False
-                if (!builder.wordLetterPredicate.Equals(builder.solver.False))
+                if (!_builder._wordLetterPredicate.Equals(_builder._solver.False))
                 {
                     _asciiCharKind['_'] = CharKind.WordLetter;
-                    for (char i = '0'; i <= '9'; i++)
-                        _asciiCharKind[i] = CharKind.WordLetter;
-                    for (char i = 'A'; i <= 'Z'; i++)
-                        _asciiCharKind[i] = CharKind.WordLetter;
-                    for (char i = 'a'; i <= 'z'; i++)
-                        _asciiCharKind[i] = CharKind.WordLetter;
+                    _asciiCharKind.AsSpan('0', 9).Fill(CharKind.WordLetter);
+                    _asciiCharKind.AsSpan('A', 26).Fill(CharKind.WordLetter);
+                    _asciiCharKind.AsSpan('a', 26).Fill(CharKind.WordLetter);
                 }
             }
             InitializeRegexes();
@@ -283,37 +275,37 @@ namespace System.Text.RegularExpressions.SRM
         {
             _culture = culture;
             _matchTimeout = matchTimeout;
-            _checkTimeout = (System.Text.RegularExpressions.Regex.InfiniteMatchTimeout != _matchTimeout);
+            _checkTimeout = RegularExpressions.Regex.InfiniteMatchTimeout != _matchTimeout;
             _timeout = (int)(matchTimeout.TotalMilliseconds + 0.5); // Round up, so it will at least 1ms;
             _timeoutChecksToSkip = TimeoutCheckFrequency;
 
-            this.Options = options;
-            this.builder = sr.builder;
-            if (builder.solver is BV64Algebra)
+            Options = options;
+            _builder = sr._builder;
+            if (_builder._solver is BV64Algebra)
             {
-                BV64Algebra bva = builder.solver as BV64Algebra;
-                dt = bva._classifier;
+                BV64Algebra bva = _builder._solver as BV64Algebra;
+                _dt = bva._classifier;
             }
-            else if (builder.solver is BVAlgebra)
+            else if (_builder._solver is BVAlgebra)
             {
-                BVAlgebra bva = builder.solver as BVAlgebra;
-                dt = bva._classifier;
+                BVAlgebra bva = _builder._solver as BVAlgebra;
+                _dt = bva._classifier;
             }
-            else if (builder.solver is CharSetSolver)
+            else if (_builder._solver is CharSetSolver)
             {
-                dt = Classifier.Create(builder.solver as CharSetSolver, minterms);
+                _dt = Classifier.Create(_builder._solver as CharSetSolver, minterms);
             }
             else
             {
                 throw new NotSupportedException($"only {nameof(BV64Algebra)} or {nameof(BVAlgebra)} or {nameof(CharSetSolver)} algebra is supported");
             }
 
-            this.A = sr;
+            _A = sr;
 
             InitializeRegexes();
 
-            A_startset = A.GetStartSet();
-            if (!builder.solver.IsSatisfiable(A_startset) || A.CanBeNullable)
+            _A_startset = _A.GetStartSet();
+            if (!_builder._solver.IsSatisfiable(_A_startset) || _A.CanBeNullable)
                 // If the startset is empty make it full instead by including all characters
                 // this is to ensure that startset is nonempty -- as an invariant assumed by operations using it
                 //
@@ -324,65 +316,64 @@ namespace System.Text.RegularExpressions.SRM
                 // For example (this is also a unit test):
                 // for pattern "\B\W*?" or "\B\W*" or "\B\W?" and input "e.g:abc" there is an empty match in position 5
                 // but startset \W will force search beyond position 5 and fails to find that match
-                A_startset = builder.solver.True;
+                _A_startset = _builder._solver.True;
 
-            this.A_StartSet_Size = (int)builder.solver.ComputeDomainSize(A_startset);
+            _A_StartSet_Size = (int)_builder._solver.ComputeDomainSize(_A_startset);
 
-            var startbdd = builder.solver.ConvertToCharSet(css, A_startset);
-            this.A_StartSet = BooleanClassifier.Create(css, startbdd);
+            BDD startbdd = _builder._solver.ConvertToCharSet(css, _A_startset);
+            _A_StartSet = BooleanClassifier.Create(css, startbdd);
             //store the start characters in the A_startset_array if there are not too many characters
-            if (this.A_StartSet_Size <= s_A_startset_array_max_size)
-                this.A_startset_array = new List<char>(css.GenerateAllCharacters(startbdd)).ToArray();
-            else
-                this.A_startset_array = Array.Empty<char>();
+            _A_startset_array = _A_StartSet_Size <= s_A_startset_array_max_size ?
+                new List<char>(css.GenerateAllCharacters(startbdd)).ToArray() :
+                Array.Empty<char>();
 
-            this.A_prefix = A.GetFixedPrefix(css, culture.Name, out this.A_fixedPrefix_ignoreCase);
-            this.Ar_prefix = Ar.GetFixedPrefix(css, culture.Name, out _);
+            _A_prefix = _A.GetFixedPrefix(css, culture.Name, out _A_fixedPrefix_ignoreCase);
+            _Ar_prefix = _Ar.GetFixedPrefix(css, culture.Name, out _);
 
             InitializePrefixBoyerMoore();
 
-            if (A.info.ContainsSomeAnchor)
+            if (_A._info.ContainsSomeAnchor)
                 for (int i = 0; i < 128; i++)
                     _asciiCharKind[i] =
-                        i == 10 ? (builder.solver.MkAnd(GetAtom(i), builder.newLinePredicate).Equals(builder.solver.False) ? 0 : CharKind.Newline)
-                                : (builder.solver.MkAnd(GetAtom(i), builder.wordLetterPredicate).Equals(builder.solver.False) ? 0 : CharKind.WordLetter);
+                        i == 10 ? (_builder._solver.MkAnd(GetAtom(i), _builder._newLinePredicate).Equals(_builder._solver.False) ? 0 : CharKind.Newline)
+                                : (_builder._solver.MkAnd(GetAtom(i), _builder._wordLetterPredicate).Equals(_builder._solver.False) ? 0 : CharKind.WordLetter);
         }
 
         private void InitializePrefixBoyerMoore()
         {
-            if (this.A_prefix != string.Empty && this.A_prefix.Length <= RegexBoyerMoore.MaxLimit && this.A_prefix.Length > 1)
+            if (_A_prefix != string.Empty && _A_prefix.Length <= RegexBoyerMoore.MaxLimit && _A_prefix.Length > 1)
             {
-                string prefix = this.A_prefix;
+                string prefix = _A_prefix;
                 // RegexBoyerMoore expects the prefix to be lower case when case is ignored
-                if (this.A_fixedPrefix_ignoreCase)
+                if (_A_fixedPrefix_ignoreCase)
                     //use the culture of the matcher
-                    prefix = this.A_prefix.ToLower(_culture);
-                this.A_prefixBM = new RegexBoyerMoore(prefix, this.A_fixedPrefix_ignoreCase, false, _culture);
+                    prefix = _A_prefix.ToLower(_culture);
+                _A_prefixBM = new RegexBoyerMoore(prefix, _A_fixedPrefix_ignoreCase, false, _culture);
             }
         }
 
         private void InitializeRegexes()
         {
-            A1 = builder.MkConcat(builder.dotStar, A);
-            Ar = A.Reverse();
+            _A1 = _builder.MkConcat(_builder._dotStar, _A);
+            _Ar = _A.Reverse();
             // create initial states for A, A1 and Ar
-            if (!A.info.ContainsSomeAnchor)
+            if (!_A._info.ContainsSomeAnchor)
             {
                 // only the default previous character kind 0 is ever going to be used for all initial states
-                _Aq0[0] = builder.MkState(A, 0);
-                _A1q0[0] = builder.MkState(A1, 0);
+                _Aq0[0] = _builder.MkState(_A, 0);
+                _A1q0[0] = _builder.MkState(_A1, 0);
                 // _A1q0[0] is recognized as special initial state,
                 // this information is used for search optimization based on start set and prefix of A
                 _A1q0[0].IsInitialState = true;
-                _Arq0[0] = builder.MkState(Ar, 0);
+                _Arq0[0] = _builder.MkState(_Ar, 0);
             }
             else
             {
                 for (uint i = 0; i < 5; i++)
                 {
-                    _Aq0[i] = builder.MkState(A, i);
-                    _A1q0[i] = builder.MkState(A1, i);
-                    _Arq0[i] = builder.MkState(Ar, i);
+                    _Aq0[i] = _builder.MkState(_A, i);
+                    _A1q0[i] = _builder.MkState(_A1, i);
+                    _Arq0[i] = _builder.MkState(_Ar, i);
                     //used to detect if initial state was reentered, then startset can be triggered
                     //but observe that the behavior from the state may ultimately depend on the previous
                     //input char e.g. possibly causing nullability of \b or \B or of a start-of-line anchor,
@@ -431,9 +422,9 @@ namespace System.Text.RegularExpressions.SRM
         {
             int c = input[i];
             // atom_id = atoms.Length represents \Z (last \n)
-            int atom_id = (c == 10 && i == input.Length - 1 && q.StartsWithLineAnchor ? builder.atoms.Length : dt.Find(c));
+            int atom_id = c == 10 && i == input.Length - 1 && q.StartsWithLineAnchor ? _builder._atoms.Length : _dt.Find(c);
             // atom=False represents \Z
-            S atom = atom_id == builder.atoms.Length ? builder.solver.False : builder.atoms[atom_id];
+            S atom = atom_id == _builder._atoms.Length ? _builder._solver.False : _builder._atoms[atom_id];
             return default(Transition).TakeTransition(this, q, atom_id, atom);
         }
 
@@ -445,9 +436,9 @@ namespace System.Text.RegularExpressions.SRM
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public State<S> TakeTransition(SymbolicRegexMatcher<S> matcher, State<S> q, int atom_id, S atom)
             {
-                int offset = (q.Id << matcher.builder.K) | atom_id;
-                var p = matcher.builder.delta[offset];
-                if (p == null)
+                int offset = (q.Id << matcher._builder._K) | atom_id;
+                State<S> p = matcher._builder._delta[offset];
+                if (p is null)
                     return matcher.CreateNewTransition(q, atom, offset);
                 else
                     return p;
@@ -464,22 +455,22 @@ namespace System.Text.RegularExpressions.SRM
             {
                 if (q.Node.Kind == SymbolicRegexKind.Or)
                 {
-                    SymbolicRegexNode<S> union = matcher.builder.nothing;
+                    SymbolicRegexNode<S> union = matcher._builder._nothing;
                     uint kind = 0;
                     // consider transitions from the members one at a time
-                    foreach (var r in q.Node.alts)
+                    foreach (SymbolicRegexNode<S> r in q.Node._alts)
                     {
-                        var s = matcher.builder.MkState(r, q.PrevCharKind);
-                        int offset = (s.Id << matcher.builder.K) | atom_id;
-                        var p = matcher.builder.delta[offset];
-                        if (p == null)
+                        State<S> s = matcher._builder.MkState(r, q.PrevCharKind);
+                        int offset = (s.Id << matcher._builder._K) | atom_id;
+                        State<S> p = matcher._builder._delta[offset];
+                        if (p is null)
                             p = matcher.CreateNewTransition(s, atom, offset);
                         // observe that if p.Node is an Or it will be flattened
-                        union = matcher.builder.MkOr2(union, p.Node);
+                        union = matcher._builder.MkOr2(union, p.Node);
                         // kind is just the kind of the atom
                         kind = p.PrevCharKind;
                     }
-                    var powerstate = matcher.builder.MkState(union, kind, true);
+                    State<S> powerstate = matcher._builder.MkState(union, kind, true);
                     return powerstate;
                 }
                 else
@@ -497,17 +488,17 @@ namespace System.Text.RegularExpressions.SRM
             lock (this)
             {
                 // check if meanwhile delta[offset] has become defined possibly by another thread
-                State<S> p = builder.delta[offset];
+                State<S> p = _builder._delta[offset];
                 if (p != null)
                     return p;
                 else
                 {
                     // this is the only place in code where the Next method is called in the matcher
                     p = q.Next(atom);
-                    builder.delta[offset] = p;
+                    _builder._delta[offset] = p;
                     //switch to antimirov mode if the maximum bound has been reached
-                    if (p.Id == s_STATEMAXBOUND)
-                        builder.antimirov = true;
+                    if (p.Id == StateMaxBound)
+                        _builder._antimirov = true;
                     return p;
                 }
             }
@@ -520,6 +511,7 @@ namespace System.Text.RegularExpressions.SRM
         /// </summary>
         private const int TimeoutCheckFrequency = 5;
         private int _timeoutChecksToSkip;
+
         /// <summary>
         /// This code is identical to RegexRunner.DoCheckTimeout()
         /// </summary>
@@ -567,7 +559,7 @@ namespace System.Text.RegularExpressions.SRM
                 //in this case the only possible match is an empty match
                 uint prevKind = GetCharKind(input, startat - 1);
                 uint nextKind = GetCharKind(input, startat);
-                bool emptyMatchExists = A.IsNullableFor(CharKind.Context(prevKind, nextKind));
+                bool emptyMatchExists = _A.IsNullableFor(CharKind.Context(prevKind, nextKind));
                 if (emptyMatchExists)
                 {
                     if (quick)
@@ -583,11 +575,9 @@ namespace System.Text.RegularExpressions.SRM
             //initial start position in the input is i = 0
             int i = startat;
 
-            int i_q0_A1;
-            int watchdog;
             //may return -1 as a legitimate value when the initial state is nullable and startat=0
             //returns -2 when there is no match
-            i = FindFinalStatePosition(input, k, i, out i_q0_A1, out watchdog);
+            i = FindFinalStatePosition(input, k, i, out int i_q0_A1, out int watchdog);
 
             if (i == -2)
                 return Match.NoMatch;
@@ -609,15 +599,15 @@ namespace System.Text.RegularExpressions.SRM
                 {
                     if (i < startat)
                     {
-#if DEBUG
-                        if (i != startat - 1)
-                            throw new AutomataException(AutomataExceptionKind.InternalError);
-#endif
+                        Debug.Assert(i == startat - 1);
                         i_start = startat;
                     }
                     else
+                    {
                         //walk in reverse to locate the start position of the match
                         i_start = FindStartPosition(input, i, i_q0_A1);
+                    }
+
                     i_end = FindEndPosition(input, k, i_start);
                 }
 
@@ -649,8 +639,8 @@ namespace System.Text.RegularExpressions.SRM
             while (i < k)
             {
                 bool done;
-                int j = Math.Min(k, i + s_STATEBOUNDLEEWAY);
-                if (!builder.antimirov)
+                int j = Math.Min(k, i + StateBoundLeeway);
+                if (!_builder._antimirov)
                 {
                     done = FindEndPositionDeltas<BrzozowskiTransition>(input, ref i, j, ref q, ref i_end);
                 }
@@ -662,10 +652,7 @@ namespace System.Text.RegularExpressions.SRM
                     break;
             }
 
-#if DEBUG
-            if (i_end == k)
-                throw new AutomataException(AutomataExceptionKind.InternalError_SymbolicRegex);
-#endif
+            Debug.Assert(i_end != k);
             return i_end;
         }
 
@@ -715,19 +702,15 @@ namespace System.Text.RegularExpressions.SRM
             uint prevKind = GetCharKind(input, i + 1);
             State<S> q = _Arq0[prevKind];
             //Ar may have a fixed prefix sequence
-            if (Ar_prefix.Length > 0)
+            if (_Ar_prefix.Length > 0)
             {
                 //skip past the prefix portion of Ar
                 q = GetAr_skipState(prevKind);
-                i = i - this.Ar_prefix.Length;
+                i -= _Ar_prefix.Length;
             }
             if (i == -1)
             {
-#if DEBUG
-                //we reached the beginning of the input, thus the state q must be accepting
-                if (!q.IsNullable(GetCharKind(input, i)))
-                    throw new AutomataException(AutomataExceptionKind.InternalError_SymbolicRegex);
-#endif
+                Debug.Assert(q.IsNullable(GetCharKind(input, i)), "we reached the beginning of the input, thus the state q must be accepting");
                 return 0;
             }
 
@@ -743,8 +726,8 @@ namespace System.Text.RegularExpressions.SRM
             while (i >= match_start_boundary)
             {
                 bool done;
-                int j = Math.Max(match_start_boundary, i - s_STATEBOUNDLEEWAY);
-                if (!builder.antimirov)
+                int j = Math.Max(match_start_boundary, i - StateBoundLeeway);
+                if (!_builder._antimirov)
                 {
                     done = FindStartPositionDeltas<BrzozowskiTransition>(input, ref i, j, ref q, ref last_start);
                 }
@@ -755,10 +738,8 @@ namespace System.Text.RegularExpressions.SRM
                 if (done)
                     break;
             }
-#if DEBUG
-            if (last_start == -1)
-                throw new AutomataException(AutomataExceptionKind.InternalError_SymbolicRegex);
-#endif
+
+            Debug.Assert(last_start != -1);
             return last_start;
         }
 
@@ -832,14 +813,14 @@ namespace System.Text.RegularExpressions.SRM
                     //i_q0_A1 is the most recent position in the input when A1 is in the initial state
                     i_q0_A1 = i;
 
-                    if (this.A_prefixBM != null)
+                    if (_A_prefixBM != null)
                     {
                         #region prefix optimization
                         //stay in the initial state if the prefix does not match
                         //thus advance the current position to the
                         //first position where the prefix does match
 
-                        i = A_prefixBM.Scan(input, i, 0, input.Length);
+                        i = _A_prefixBM.Scan(input, i, 0, input.Length);
 
                         if (i == -1)
                         {
@@ -859,7 +840,7 @@ namespace System.Text.RegularExpressions.SRM
                             q = GetA1_skipState(q.PrevCharKind);
 
                             // skip the prefix
-                            i = i + this.A_prefix.Length;
+                            i += _A_prefix.Length;
                             // here i points at the next character (the character immediately following the prefix)
                             if (q.IsNullable(GetCharKind(input, i)))
                             {
@@ -905,8 +886,8 @@ namespace System.Text.RegularExpressions.SRM
 
                 int result;
                 bool done;
-                int j = Math.Min(k, i + s_STATEBOUNDLEEWAY);
-                if (!builder.antimirov)
+                int j = Math.Min(k, i + StateBoundLeeway);
+                if (!_builder._antimirov)
                 {
                     done = FindFinalStatePositionDeltas<BrzozowskiTransition>(input, j, ref i, ref q, i_q0_A1, ref i_q0, ref watchdog, out result);
                 }
@@ -958,7 +939,7 @@ namespace System.Text.RegularExpressions.SRM
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private uint GetCharKind(string input, int i)
         {
-            if (A.info.ContainsSomeAnchor)
+            if (_A._info.ContainsSomeAnchor)
             {
                 if (i == -1 || i == input.Length)
                     return CharKind.StartStop;
@@ -966,7 +947,7 @@ namespace System.Text.RegularExpressions.SRM
                 char nextChar = input[i];
                 if (nextChar == '\n')
                 {
-                    if (builder.newLinePredicate.Equals(builder.solver.False))
+                    if (_builder._newLinePredicate.Equals(_builder._solver.False))
                         //ignore \n
                         return 0;
                     else
@@ -984,7 +965,7 @@ namespace System.Text.RegularExpressions.SRM
                     return _asciiCharKind[nextChar];
                 else
                     //apply the wordletter predicate to compute the kind of the next character
-                    return builder.solver.MkAnd(GetAtom(nextChar), builder.wordLetterPredicate).Equals(builder.solver.False) ? 0 : CharKind.WordLetter;
+                    return _builder._solver.MkAnd(GetAtom(nextChar), _builder._wordLetterPredicate).Equals(_builder._solver.False) ? 0 : CharKind.WordLetter;
             }
             else
             {
@@ -1006,99 +987,18 @@ namespace System.Text.RegularExpressions.SRM
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private int IndexOfStartset(string input, int i)
         {
-            if (A_StartSet_Size <= s_A_startset_array_max_size)
-                return input.IndexOfAny(A_startset_array, i);
+            if (_A_StartSet_Size <= s_A_startset_array_max_size)
+                return input.IndexOfAny(_A_startset_array, i);
             else
             {
                 for (int j = i; j < input.Length; j++)
                 {
                     char c = input[j];
-                    if (A_StartSet.Contains(c))
+                    if (_A_StartSet.Contains(c))
                         return j;
                 }
             }
             return -1;
-        }
-
-        /// <summary>
-        ///  Find first occurrence of startset element in input starting from index i.
-        /// </summary>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private int IndexOfStartsetUTF8(byte[] input, int i, ref int surrogate_codepoint)
-        {
-            int k = input.Length;
-            int step = 1;
-            int codepoint = 0;
-            while (i < k)
-            {
-                int c = input[i];
-                if (c > 0x7F)
-                {
-                    UTF8Encoding.DecodeNextNonASCII(input, i, out step, out codepoint);
-                    if (codepoint > 0xFFFF)
-                    {
-                        throw new NotImplementedException("surrogate pairs");
-                    }
-                    else
-                    {
-                        c = codepoint;
-                    }
-                }
-
-                if (A_StartSet.Contains((ushort)c))
-                    break;
-                else
-                {
-                    i += step;
-                }
-            }
-            if (i == k)
-                return -1;
-            else
-                return i;
-        }
-
-        /// <summary>
-        ///  Find first occurrence of value in input starting from index i.
-        /// </summary>
-        /// <param name="input">input array to search in</param>
-        /// <param name="value">nonempty subarray that is searched for</param>
-        /// <param name="i">the search start index in input</param>
-        /// <returns></returns>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private int IndexOf(byte[] input, byte[] value, int i)
-        {
-            int n = value.Length;
-            int k = (input.Length - n) + 1;
-            while (i < k)
-            {
-                i = Array.IndexOf<byte>(input, value[0], i);
-                if (i == -1)
-                    return -1;
-                int j = 1;
-                while (j < n && input[i + j] == value[j])
-                    j += 1;
-                if (j == n)
-                    return i;
-                i += 1;
-            }
-            return -1;
-        }
-
-        /// <summary>
-        ///  Find first occurrence of byte in input starting from index i that maps to true by the predicate.
-        /// </summary>
-        /// <param name="input">input array to search in</param>
-        /// <param name="pred">boolean array of size 256 telling which bytes to match</param>
-        /// <param name="i">the search start index in input</param>
-        /// <returns></returns>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private int IndexOf(byte[] input, bool[] pred, int i)
-        {
-            int k = input.Length;
-            while (i < k && !pred[input[i]])
-                i += 1;
-            return (i == k ? -1 : i);
         }
 
         public void SaveDGML(TextWriter writer, int bound = 0, bool hideStateInfo = false, bool addDotStar = false, bool inReverse = false, bool onlyDFAinfo = false, int maxLabelLength = 500)

@@ -1,7 +1,6 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-using System;
 using System.Collections.Generic;
 
 namespace System.Text.RegularExpressions.SRM
@@ -11,61 +10,61 @@ namespace System.Text.RegularExpressions.SRM
     /// Provides operations for conjunction, disjunction, and negation.
     /// Allows to decide if a predicate is satisfiable and if two predicates are equivalent.
     /// </summary>
-    /// <typeparam name="S">predicates</typeparam>
-    internal interface IBooleanAlgebra<S>
+    /// <typeparam name="T">predicates</typeparam>
+    internal interface IBooleanAlgebra<T>
     {
         /// <summary>
         /// Top element of the Boolean algebra, corresponds to the value true.
         /// </summary>
-        S True { get; }
+        T True { get; }
 
         /// <summary>
         /// Bottom element of the Boolean algebra, corresponds to the value false.
         /// </summary>
-        S False { get; }
+        T False { get; }
 
         /// <summary>
         /// Make a conjunction of predicate1 and predicate2.
         /// </summary>
-        S MkAnd(S predicate1, S predicate2);
+        T MkAnd(T predicate1, T predicate2);
 
         /// <summary>
         /// Make a conjunction of all the predicates in the enumeration.
         /// Returns True if the enumeration is empty.
         /// </summary>
-        S MkAnd(IEnumerable<S> predicates);
+        T MkAnd(IEnumerable<T> predicates);
 
         /// <summary>
         /// Make a conjunction of all the predicates.
         /// Returns True if the enumeration is empty.
         /// </summary>
-        S MkAnd(params S[] predicates);
+        T MkAnd(params T[] predicates);
 
         /// <summary>
         /// Make a disjunction of predicate1 and predicate2.
         /// </summary>
-        S MkOr(S predicate1, S predicate2);
+        T MkOr(T predicate1, T predicate2);
 
         /// <summary>
         /// Make a disjunction of all the predicates in the enumeration.
         /// Must return False if the enumeration is empty.
         /// </summary>
-        S MkOr(IEnumerable<S> predicates);
+        T MkOr(IEnumerable<T> predicates);
 
         /// <summary>
         /// Negate the predicate.
         /// </summary>
-        S MkNot(S predicate);
+        T MkNot(T predicate);
 
         /// <summary>
         /// Returns true iff the predicate is satisfiable.
         /// </summary>
-        bool IsSatisfiable(S predicate);
+        bool IsSatisfiable(T predicate);
 
         /// <summary>
         /// Returns true iff predicate1 is equivalent to predicate2.
         /// </summary>
-        bool AreEquivalent(S predicate1, S predicate2);
+        bool AreEquivalent(T predicate1, T predicate2);
 
         /// <summary>
         /// True means then if two predicates are equivalent then their hashcodes are equal.
@@ -87,19 +86,20 @@ namespace System.Text.RegularExpressions.SRM
         /// </summary>
         /// <param name="constraints">array of constraints</param>
         /// <returns>Booolean combinations that are satisfiable</returns>
-        IEnumerable<Tuple<bool[], S>> GenerateMinterms(params S[] constraints);
+        IEnumerable<Tuple<bool[], T>> GenerateMinterms(params T[] constraints);
 
         /// <summary>
         /// Serialize the predicate as a nonempty string only using characters in the Base64 subset [0-9a-zA-Z/+.]
         /// </summary>
         /// <param name="s">given predicate</param>
-        string SerializePredicate(S s);
+        /// <param name="builder">The builder into which serialized data should be stored.</param>
+        void SerializePredicate(T s, StringBuilder builder);
 
         /// <summary>
         /// Deserialize the predicate from a string constructed with SerializePredicate
         /// </summary>
         /// <param name="s">given serialized predicate</param>
-        S DeserializePredicate(string s);
+        T DeserializePredicate(string s);
 
         void Serialize(StringBuilder sb);
     }

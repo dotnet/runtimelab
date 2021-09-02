@@ -145,11 +145,9 @@ namespace System.Text.RegularExpressions
             return message;
         }
 
-        private RegexParseException(SerializationInfo info, StreamingContext context)
-        {
+        private RegexParseException(SerializationInfo info, StreamingContext context) =>
             // It means someone modified the payload.
             throw new NotImplementedException();
-        }
 
         public override void GetObjectData(SerializationInfo info, StreamingContext context)
         {

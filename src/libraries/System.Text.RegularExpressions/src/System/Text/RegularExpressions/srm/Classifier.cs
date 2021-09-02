@@ -1,25 +1,22 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-using System.Collections.Generic;
 using System.Runtime.CompilerServices;
-using System.Runtime.Serialization;
-using System.Text;
 
 namespace System.Text.RegularExpressions.SRM
 {
     /// <summary>
     /// Classifies characters into partition block ids.
     /// </summary>
-    internal class Classifier
+    internal sealed class Classifier
     {
-        private int[] _precomputed;
-        private BDD _mtbdd;
+        private readonly int[] _precomputed;
+        private readonly BDD _mtbdd;
 
         /// <summary>
         /// this value can be tuned for efficiency to control how many input character partition ids are precomputed, default value is ASCII
         /// </summary>
-        private const int s_precomputeCount = 128;
+        private const int PrecomputeCount = 128;
 
         private Classifier(int[] precomputed, BDD mtbdd)
         {
@@ -50,14 +47,14 @@ namespace System.Text.RegularExpressions.SRM
                 //due to the partition -- every element belongs to EXACTLY one part of the partition
                 mtbdd = solver.MkOr(mtbdd, part_i);
             }
-            var precomp = new int[s_precomputeCount];
+            int[] precomp = new int[PrecomputeCount];
             //precompute all the entries below precomputeCount
             //observe that all entries will return nonnegative terminal ids -- again, because of the partition
-            for (int i = 0; i < s_precomputeCount; i++)
+            for (int i = 0; i < PrecomputeCount; i++)
                 precomp[i] = mtbdd.Find(i);
 
-            BDD filter = s_precomputeCount == 128 ? solver.nonascii :
-                (s_precomputeCount >= 0x10000 ? BDD.False : solver.MkCharSetFromRange((char)s_precomputeCount, '\uFFFF'));
+            BDD filter = PrecomputeCount == 128 ? solver._nonascii :
+                (PrecomputeCount >= 0x10000 ? BDD.False : solver.MkCharSetFromRange((char)PrecomputeCount, '\uFFFF'));
 
             //apply the filter to the mtbdd because the precomputed characters will never be applied
             //-- the 'Find' method of mtbdd is never called for any value below precomputeCount ---
@@ -71,8 +68,7 @@ namespace System.Text.RegularExpressions.SRM
             //further small otimization: check if the mtbdd maps all elements to the same terminal
             //this happens e.g. when all the relevant input is really over ASCII and all non-ASCII maps to another fixed therminal
             //then use that terminal instead of the whole mtbdd
-            BDD the_terminal;
-            if (mtbdd.IsEssentiallyBoolean(out the_terminal))
+            if (mtbdd.IsEssentiallyBoolean(out BDD the_terminal))
                 return new Classifier(precomp, the_terminal);
             else
                 return new Classifier(precomp, mtbdd);
@@ -98,14 +94,16 @@ namespace System.Text.RegularExpressions.SRM
         /// <summary>
         /// Deserializes the classifier from the string s created by Serialize.
         /// </summary>
-        public static Classifier Deserialize(string input, BDDAlgebra algebra = null)
+        public static Classifier Deserialize(ReadOnlySpan<char> input, BDDAlgebra algebra = null)
         {
-            string[] parts = input.Split(',');
-            if (parts.Length != 2)
+            int firstEnd = input.IndexOf(',');
+            if (firstEnd == -1 || input.Slice(firstEnd + 1).IndexOf(',') != -1)
+            {
                 throw new ArgumentException($"{nameof(Classifier.Deserialize)} invalid '{nameof(input)}' parameter");
+            }
 
-            int[] precomp = Base64.DecodeIntArray(parts[0]);
-            BDD bst = BDD.Deserialize(parts[1], algebra);
+            int[] precomp = Base64.DecodeIntArray(input[..firstEnd]);
+            BDD bst = BDD.Deserialize(input.Slice(firstEnd + 1), algebra);
             return new Classifier(precomp, bst);
         }
 

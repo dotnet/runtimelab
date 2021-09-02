@@ -35,7 +35,7 @@ namespace System.Text.RegularExpressions
 
         private const string NullCharString = "\0";
         private const char NullChar = '\0';
-        private const char LastChar = '\uFFFF';
+        internal const char LastChar = '\uFFFF';
 
         private const short SpaceConst = 100;
         private const short NotSpaceConst = -100;
@@ -304,7 +304,7 @@ namespace System.Text.RegularExpressions
 
         public bool Negate
         {
-            set { _negate = value; }
+            set => _negate = value;
         }
 
         public void AddChar(char c) => AddRange(c, c);
@@ -1221,16 +1221,16 @@ namespace System.Text.RegularExpressions
         /// <summary>
         /// Constructs the string representation of the class.
         /// </summary>
-        public string ToStringClass(bool isDFA = false)
+        public string ToStringClass(bool isNonBacktracking = false)
         {
             var vsb = new ValueStringBuilder(stackalloc char[256]);
-            ToStringClass(isDFA, ref vsb);
+            ToStringClass(isNonBacktracking, ref vsb);
             return vsb.ToString();
         }
 
-        private void ToStringClass(bool isDFA, ref ValueStringBuilder vsb)
+        private void ToStringClass(bool isNonBacktracking, ref ValueStringBuilder vsb)
         {
-            Canonicalize(isDFA);
+            Canonicalize(isNonBacktracking);
 
             int initialLength = vsb.Length;
             int categoriesLength = _categories?.Length ?? 0;
@@ -1256,7 +1256,7 @@ namespace System.Text.RegularExpressions
 
             // Update the range length.  The ValueStringBuilder may have already had some
             // contents (if this is a subtactor), so we need to offset by the initial length.
-            vsb[initialLength + SetLengthIndex] = (char)((vsb.Length - initialLength) - SetStartIndex);
+            vsb[initialLength + SetLengthIndex] = (char)(vsb.Length - initialLength - SetStartIndex);
 
             // Append categories
             if (categoriesLength != 0)
@@ -1268,13 +1268,13 @@ namespace System.Text.RegularExpressions
             }
 
             // Append a subtractor if there is one.
-            _subtractor?.ToStringClass(isDFA, ref vsb);
+            _subtractor?.ToStringClass(isNonBacktracking, ref vsb);
         }
 
         /// <summary>
         /// Logic to reduce a character class to a unique, sorted form.
         /// </summary>
-        private void Canonicalize(bool isDFA)
+        private void Canonicalize(bool isNonBacktracking)
         {
             List<SingleRange>? rangelist = _rangelist;
             if (rangelist != null)
@@ -1327,13 +1327,13 @@ namespace System.Text.RegularExpressions
 
                     rangelist.RemoveRange(j, rangelist.Count - j);
                 }
-                // Do not produce the IsSigletonInverse transformation in DFA mode
-                if (isDFA)
-                    return;
 
                 // If the class now represents a single negated character, but does so by including every
                 // other character, invert it to produce a normalized form recognized by IsSingletonInverse.
-                if (!_negate && _subtractor is null && (_categories is null || _categories.Length == 0))
+                if (!isNonBacktracking && // do not produce the IsSingletonInverse transformation in NonBacktracking mode
+                    !_negate &&
+                    _subtractor is null &&
+                    (_categories is null || _categories.Length == 0))
                 {
                     if (rangelist.Count == 2)
                     {
@@ -1570,10 +1570,10 @@ namespace System.Text.RegularExpressions
 
             if ((short)ch < 0)
             {
-                return "\\P{" + CategoryIdToName[(-((short)ch) - 1)] + "}";
+                return "\\P{" + CategoryIdToName[-(short)ch - 1] + "}";
             }
 
-            return "\\p{" + CategoryIdToName[(ch - 1)] + "}";
+            return "\\p{" + CategoryIdToName[ch - 1] + "}";
         }
 #endif
 
