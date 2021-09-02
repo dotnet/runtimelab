@@ -7,18 +7,34 @@ using System.Diagnostics;
 namespace System.Text.RegularExpressions.SRM
 {
     /// <summary>
-    /// Represents a Binary Decision Diagram.
+    /// Represents nodes in a Binary Decision Diagram (BDD), which compactly represent sets of integers. All non-leaf
+    /// nodes have an Ordinal, which indicates the position of the bit the node relates to (0 for the least significant
+    /// bit), and two children, One and Zero, for the cases of the current bit being 1 or 0, respectively. An integer
+    /// belongs to the set represented by the BDD if the path from the root following the branches that correspond to
+    /// the bits of the integer leads to the True leaf. This class also supports multi-terminal BDDs, i.e. ones where
+    /// the leaves are something other than True or False, which are used for representing classifiers.
     /// </summary>
     internal sealed class BDD : IComparable
     {
         /// <summary>
+        /// The ordinal for the True special value.
+        /// </summary>
+        private const int TrueOrdinal = -2;
+
+        /// <summary>
+        /// The ordinal for the False special value.
+        /// </summary>
+        private const int FalseOrdinal = -1;
+
+        /// <summary>
         /// The unique BDD leaf that represents the full set or true.
         /// </summary>
-        public static readonly BDD True = new BDD(-2, null, null);
+        public static readonly BDD True = new BDD(TrueOrdinal, null, null);
+
         /// <summary>
         /// The unique BDD leaf that represents the empty set or false.
         /// </summary>
-        public static readonly BDD False = new BDD(-1, null, null);
+        public static readonly BDD False = new BDD(FalseOrdinal, null, null);
 
         /// <summary>
         /// The encoding of the set for lower ordinals for the case when the current bit is 1.
@@ -40,7 +56,17 @@ namespace System.Text.RegularExpressions.SRM
         /// <summary>
         /// Preassigned hashcode value that respects equivalence: equivalent BDDs have equal hashcodes
         /// </summary>
-        internal readonly int _hashcode;
+        private readonly int _hashcode;
+
+        /// <summary>
+        /// Representation of False for serialization.
+        /// </summary>
+        private static readonly long[] s_falseRepresentation = new long[] { 0 };
+
+        /// <summary>
+        /// Representation of True for serialization.
+        /// </summary>
+        private static readonly long[] s_trueRepresentation = new long[] { 1 };
 
         internal BDD(int ordinal, BDD one, BDD zero)
         {
@@ -113,50 +139,23 @@ namespace System.Text.RegularExpressions.SRM
             if (set.IsEmpty)
                 throw new AutomataException(AutomataExceptionKind.SetIsEmpty);
 
+            // starting from all 0, bits will be flipped to 1 as necessary
             ulong res = 0;
 
+            // follow the minimum path throught the branches to a True leaf
             while (!set.IsLeaf)
             {
                 if (set.Zero.IsEmpty) //the bit must be set to 1
                 {
+                    // the bit must be set to 1 when the zero branch is False
                     res |= (ulong)1 << set.Ordinal;
-                    set = set.One;  //must follow the 1-branch
-                }
-                else
-                {
-                    set = set.Zero;
-                }
-            }
-
-            return res;
-        }
-
-        /// <summary>
-        /// Gets the lexicographically maximum bitvector in this BDD as a ulong.
-        /// The BDD must be nonempty.
-        /// </summary>
-        public ulong GetMax()
-        {
-            BDD set = this;
-
-            if (set.IsFull)
-                return ulong.MaxValue;
-
-            if (set.IsEmpty)
-                throw new AutomataException(AutomataExceptionKind.SetIsEmpty);
-
-            ulong res = ulong.MaxValue;
-
-            while (!set.IsLeaf)
-            {
-                if (set.One.IsEmpty) //the bit must be set to 0
-                {
-                    res &= ~((ulong)1 << set.Ordinal);
-                    set = set.Zero; //must follow the 0-branch
-                }
-                else
-                {
+                    // if zero is empty then by the way BDDs are constructed one is not
                     set = set.One;
+                }
+                else
+                {
+                    // otherwise, leaving the bit as 0 gives the smaller bitvector
+                    set = set.Zero;
                 }
             }
 
@@ -183,7 +182,7 @@ namespace System.Text.RegularExpressions.SRM
         /// So this BDD itself (if different from True or False) appears last.
         /// In the case of True or False returns the empty array.
         /// </summary>
-        public BDD[] TopSort()
+        public BDD[] TopologicalSort()
         {
             if (IsFull || IsEmpty)
                 return Array.Empty<BDD>();
@@ -194,90 +193,90 @@ namespace System.Text.RegularExpressions.SRM
             //order the nodes according to their ordinals
             //into the nonterminals array
             var nonterminals = new List<BDD>[Ordinal + 1];
-            var nodes = new List<BDD>();
-            var stack = new Stack<BDD>();
-            var set = new HashSet<BDD>();
+            var sorted = new List<BDD>();
+            var toVisit = new Stack<BDD>();
+            var visited = new HashSet<BDD>();
 
-            stack.Push(this);
+            toVisit.Push(this);
 
-            while (stack.Count > 0)
+            while (toVisit.Count > 0)
             {
-                BDD node = stack.Pop();
+                BDD node = toVisit.Pop();
+                // true and False are not included in the result
                 if (node.IsFull || node.IsEmpty)
                     continue;
 
                 if (node.IsLeaf)
                 {
-                    nodes.Add(node);
+                    // MTBDD terminals can be directly added to the sorted nodes
+                    sorted.Add(node);
                 }
                 else
                 {
+                    // non-terminals are grouped by their ordinal first
                     (nonterminals[node.Ordinal] ??= new List<BDD>()).Add(node);
 
-                    if (set.Add(node.Zero))
-                        stack.Push(node.Zero);
+                    if (visited.Add(node.Zero))
+                        toVisit.Push(node.Zero);
 
-                    if (set.Add(node.One))
-                        stack.Push(node.One);
+                    if (visited.Add(node.One))
+                        toVisit.Push(node.One);
                 }
             }
 
+            // Flush the grouped non-terminals into the sorted nodes from smallest to highest ordinal. The highest
+            // ordinal is guaranteed to have only one node, which places the root of the BDD at the end.
             for (int i = 0; i < nonterminals.Length; i++)
             {
                 if (nonterminals[i] != null)
                 {
-                    nodes.AddRange(nonterminals[i]);
+                    sorted.AddRange(nonterminals[i]);
                 }
             }
 
-            return nodes.ToArray();
+            return sorted.ToArray();
         }
 
         #region Serialization
-        private static readonly long[] s_False_repr = new long[] { 0 };
-        private static readonly long[] s_True_repr = new long[] { 1 };
-
         /// <summary>
-        /// Serialize this BDD in a flat ulong array.
-        /// The BDD may have at most 2^k ordinals and 2^n nodes, st. k+2n&lt;64.
+        /// Serialize this BDD in a flat ulong array. The BDD may have at most 2^k ordinals and 2^n nodes, such that k+2n &lt; 64
         /// BDD.False is represented by return value ulong[]{0}.
         /// BDD.True is represented by return value ulong[]{1}.
-        /// Serializer uses more compacted representations when fewer bits are needed, which
-        /// is reflected in the first two numbers of the return value.
-        /// MTBDD terminals are represented by negated numbers as -id.
+        /// Serializer uses more compacted representations when fewer bits are needed, which is reflected in the first
+        /// two numbers of the return value. MTBDD terminals are represented by negated numbers as -id.
         /// </summary>
         public long[] Serialize()
         {
             if (IsEmpty)
-                return s_False_repr; //represents False
+                return s_falseRepresentation;
 
             if (IsFull)
-                return s_True_repr; //represents True
+                return s_trueRepresentation;
 
             if (IsLeaf)
                 return new long[] { 0, 0, -Ordinal };
 
-            BDD[] nodes = TopSort();
+            BDD[] nodes = TopologicalSort();
 
             Debug.Assert(nodes[nodes.Length - 1] == this);
             Debug.Assert(nodes.Length <= (1 << 24));
 
-            //use fewer bits when possible, starting with nibble size
+            // As few bits as possible are used to for ordinals and node identifiers for compact serialization.
+            // use at least a nibble (4 bits) to represent the ordinal and count how many are needed
             int ordinal_bits = 4;
             while (Ordinal >= (1 << ordinal_bits))
             {
                 ordinal_bits += 1;
             }
 
-            //use as few bits as possible for node identifiers, starting with 2 bits
-            //this will give smaller and more compact serialized representations
+            // use at least 2 bits to represent the node identifier and count how many are needed
             int node_bits = 2;
             while (nodes.Length >= (1 << node_bits))
             {
                 node_bits += 1;
             }
 
-            //add 2 extra positions: index 0 and 1 are reserved for False and True
+            // reserve space for all nodes plus 2 extra: index 0 and 1 are reserved for False and True
             long[] res = new long[nodes.Length + 2];
             res[0] = ordinal_bits;
             res[1] = node_bits;
@@ -293,6 +292,7 @@ namespace System.Text.RegularExpressions.SRM
                 [False] = 0
             };
 
+            // give all nodes ascending identifiers and produce their serializations into the result
             for (int i = 0; i < nodes.Length; i++)
             {
                 BDD node = nodes[i];
@@ -300,15 +300,16 @@ namespace System.Text.RegularExpressions.SRM
 
                 if (node.IsLeaf)
                 {
-                    //this is MTBDD leaf: negate the value (it may be 0)
-                    //because True and False are excluded from TopSort()
+                    // This is MTBDD leaf. Negating it should make it less than or equal to zero, as True and False are
+                    // excluded here and MTBDD Ordinals are required to be non-negative.
                     res[i + 2] = -node.Ordinal;
                 }
                 else
                 {
+                    // combine ordinal and child identifiers according to the bit layout
                     long v = (((long)node.Ordinal) << ordinal_shift) | (idmap[node.One] << one_node_shift) | (idmap[node.Zero] << zero_node_shift);
                     Debug.Assert(v >= 0);
-                    res[i + 2] = v; //children ids are well-defined due to the topological order of nodes
+                    res[i + 2] = v; // children ids are well-defined due to the topological order of nodes
                 }
             }
             return res;
@@ -345,13 +346,16 @@ namespace System.Text.RegularExpressions.SRM
 
         private static BDD Deserialize_(long[] arcs, Func<int, BDD, BDD, BDD> mkBDD)
         {
+            // the number of bits used for ordinals and node identifiers are stored in the first two values
             int k = arcs.Length;
             int ordinal_bits = (int)arcs[0];
+            int node_bits = (int)arcs[1];
+            // create bit masks for the sizes of ordinals and node identifiers
             long ordinal_mask = (1 << ordinal_bits) - 1;
-            int node_bits = (int)arcs[1];    //how many bits are used in a node id
             long node_mask = (1 << node_bits) - 1;
             BitLayout(ordinal_bits, node_bits, out int zero_node_shift, out int one_node_shift, out int ordinal_shift);
 
+            // store BDD nodes by their id when they are created
             BDD[] nodes = new BDD[k];
             nodes[0] = False;
             nodes[1] = True;
@@ -361,13 +365,16 @@ namespace System.Text.RegularExpressions.SRM
                 long arc = arcs[i];
                 if (arc <= 0)
                 {
+                    // this is an MTBDD leaf. Its ordinal was serialized negated
                     nodes[i] = mkBDD((int)-arc, null, null);
                 }
                 else
                 {
+                    // reconstruct the ordinal and child identifiers for a non-terminal
                     int ord = (int)((arc >> ordinal_shift) & ordinal_mask);
                     int oneId = (int)((arc >> one_node_shift) & node_mask);
                     int zeroId = (int)((arc >> zero_node_shift) & node_mask);
+                    // the BDD nodes for the children are guaranteed to exist already due to the topological order
                     nodes[i] = mkBDD(ord, nodes[oneId], nodes[zeroId]);
                 }
             }
@@ -447,7 +454,7 @@ namespace System.Text.RegularExpressions.SRM
         /// Assumes BDD is not MTBDD and returns true iff it contains the input.
         /// (Otherwise use BDD.Find if this is if fact a MTBDD.)
         /// </summary>
-        public bool Contains(int input) => Find(input) == -2; //-2 is the Ordinal of BDD.True
+        public bool Contains(int input) => Find(input) == TrueOrdinal; //-2 is the Ordinal of BDD.True
 
         /// <summary>
         /// Returns true if the only other terminal besides False is a MTBDD terminal that is different from True.
@@ -467,16 +474,17 @@ namespace System.Text.RegularExpressions.SRM
                 return true;
             }
 
-            var stack = new Stack<BDD>();
-            var set = new HashSet<BDD>();
+            var toVisit = new Stack<BDD>();
+            var visited = new HashSet<BDD>();
 
-            stack.Push(this);
+            toVisit.Push(this);
 
+            // this will hold the unique MTBDD leaf
             BDD leaf = null;
 
-            while (stack.Count > 0)
+            while (toVisit.Count > 0)
             {
-                BDD node = stack.Pop();
+                BDD node = toVisit.Pop();
                 if (node.IsEmpty)
                     continue;
 
@@ -491,27 +499,28 @@ namespace System.Text.RegularExpressions.SRM
                 {
                     if (leaf is null)
                     {
-                        //first time that we see a MTBDD terminal
+                        // remember the first MTBDD leaf seen
                         leaf = node;
                     }
                     else if (leaf != node)
                     {
-                        //there are two different MTBDD leaves present
+                        // found two different MTBDD leaves
                         terminalActingAsTrue = null;
                         return false;
                     }
                 }
                 else
                 {
-                    if (set.Add(node.Zero))
-                        stack.Push(node.Zero);
+                    if (visited.Add(node.Zero))
+                        toVisit.Push(node.Zero);
 
-                    if (set.Add(node.One))
-                        stack.Push(node.One);
+                    if (visited.Add(node.One))
+                        toVisit.Push(node.One);
                 }
             }
 
             Debug.Assert(leaf is not null, "this should never happen because there must exist another leaf besides False");
+            // found an MTBDD leaf and didn't find any other (non-False) leaves
             terminalActingAsTrue = leaf;
             return true;
         }

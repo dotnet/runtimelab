@@ -3,11 +3,13 @@
 
 using System.Collections.Generic;
 using System.Diagnostics;
-using BDD_Int = System.Tuple<System.Text.RegularExpressions.SRM.BDD, int>;
-using BoolOpKey = System.Tuple<System.Text.RegularExpressions.SRM.BoolOp, System.Text.RegularExpressions.SRM.BDD, System.Text.RegularExpressions.SRM.BDD>;
 
 namespace System.Text.RegularExpressions.SRM
 {
+    // types used as keys in BDD operation caches
+    using BoolOpKey = ValueTuple<BoolOp, BDD, BDD>;
+    using ShiftOpKey = ValueTuple<BDD, int>;
+
     /// <summary>
     /// Boolean operations over BDDs.
     /// </summary>
@@ -17,7 +19,8 @@ namespace System.Text.RegularExpressions.SRM
     }
 
     /// <summary>
-    /// Solver for Specialized BDDs.
+    /// Boolean algebra for Binary Decision Diagrams. Boolean operations on BDDs are cached for efficiency. The
+    /// IBooleanAlgebra interface implemented by this class is thread safe.
     /// TBD: policy for clearing/reducing the caches when they grow too large.
     /// Ultimately, the caches are crucial for efficiency, not for correctness.
     /// </summary>
@@ -59,7 +62,7 @@ namespace System.Text.RegularExpressions.SRM
         /// </summary>
         private static BoolOpKey MkBoolOpKey(BoolOp op, BDD left, BDD right)
         {
-            if (left._hashcode <= right._hashcode)
+            if (left.GetHashCode() <= right.GetHashCode())
                 return new BoolOpKey(op, left, right);
 
             return new BoolOpKey(op, right, left);
@@ -141,9 +144,9 @@ namespace System.Text.RegularExpressions.SRM
 
         /// <summary>
         /// Apply the operation in the key in a thread safe manner.
-        /// All new entries in _boolOpCache, _notCache, and _bddCache are created through this call.
+        /// All new entries in _boolOpCache and _notCache are created through this call.
         /// </summary>
-        /// <param name="key">containing the Boolean operation and two BDD arguments</param>
+        /// <param name="key">contains the Boolean operation and two BDD arguments</param>
         private BDD MkBoolOP_lock(BoolOpKey key)
         {
             //updates to _boolOpCache and _notCache  may only happen through this method call
@@ -236,8 +239,7 @@ namespace System.Text.RegularExpressions.SRM
                     if (a == b)
                         return a;
                     break;
-
-                default: //BDDOp.XOR
+                case BoolOp.XOR:
                     if (a == False)
                         return b;
                     if (b == False)
@@ -248,6 +250,9 @@ namespace System.Text.RegularExpressions.SRM
                         return MkNot_rec(b);
                     if (b == True)
                         return MkNot_rec(a);
+                    break;
+                default:
+                    Debug.Assert(false, "Unhandled binary BoolOp case");
                     break;
             }
             #endregion
@@ -303,7 +308,7 @@ namespace System.Text.RegularExpressions.SRM
                 return neg;
 
             neg = a.IsLeaf ?
-                MkBDD(CombineTerminals(BoolOp.NOT, a.Ordinal, 0), null, null) : //muti-terminal case
+                MkBDD(CombineTerminals(BoolOp.NOT, a.Ordinal, 0), null, null) : // multi-terminal case
                 MkBDD(a.Ordinal, MkNot_rec(a.One), MkNot_rec(a.Zero));
             _notCache[a] = neg;
             return neg;
@@ -421,7 +426,7 @@ namespace System.Text.RegularExpressions.SRM
         {
             lock (this)
             {
-                return Shift_rec(new Dictionary<BDD_Int, BDD>(), set, k);
+                return Shift_rec(new Dictionary<ShiftOpKey, BDD>(), set, k);
             }
         }
 
@@ -429,7 +434,7 @@ namespace System.Text.RegularExpressions.SRM
         /// Uses shiftCache to avoid recomputations in shared BDDs (DAGs).
         /// Is executed in a single thread mode.
         /// </summary>
-        private BDD Shift_rec(Dictionary<BDD_Int, BDD> shiftCache, BDD set, int k)
+        private BDD Shift_rec(Dictionary<ShiftOpKey, BDD> shiftCache, BDD set, int k)
         {
             if (set.IsLeaf || k == 0)
                 return set;
@@ -439,7 +444,7 @@ namespace System.Text.RegularExpressions.SRM
             if (ordinal < 0)
                 return True;  //this arises if k is negative
 
-            var key = new BDD_Int(set, k);
+            var key = new ShiftOpKey(set, k);
 
             if (shiftCache.TryGetValue(key, out BDD res))
                 return res;
@@ -456,11 +461,15 @@ namespace System.Text.RegularExpressions.SRM
 
         #endregion
 
-        #region Minterm generation
-
+        /// <summary>
+        /// Generate all non-overlapping Boolean combinations of a set of BDDs.
+        /// </summary>
+        /// <param name="sets">the BDDs to create the minterms for</param>
+        /// <returns>
+        /// tuples of booleans indicating which of the input sets are true in the minterm and the BDD for the minterm
+        /// </returns>
         public IEnumerable<Tuple<bool[], BDD>> GenerateMinterms(params BDD[] sets) => _mintermGen.GenerateMinterms(sets);
 
-        #endregion
 
         /// <summary>
         /// Make a set containing all integers whose bits up to maxBit equal n.
@@ -589,7 +598,7 @@ namespace System.Text.RegularExpressions.SRM
         /// <summary>
         /// Caches previously calculated values in sizeCache so that computations are not repeated inside a BDD for the same sub-BDD.
         /// Thus the number of internal calls is propotional to the number of nodes of the BDD, that could otherwise be exponential in the worst case.
-        /// The size cache cused to be a static field but the current way makes it thread-safe without use of locks.
+        /// The size cache used to be a static field but the current way makes it thread-safe without use of locks.
         /// </summary>
         /// <param name="sizeCache">previously computed sizes</param>
         /// <param name="set">given set to compute size of</param>
