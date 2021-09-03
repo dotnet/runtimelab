@@ -466,7 +466,7 @@ namespace System.Text.RegularExpressions.Tests
         {
             StringWriter sw = new StringWriter();
             var re = new Regex(".*a+", RegexOptions.NonBacktracking | RegexOptions.Singleline);
-            RegexExperiment.ViewDGML(re, name : "TestDGMLGeneration");
+            // RegexExperiment.ViewDGML(re, name : "TestDGMLGeneration");
             SaveDGML(re, sw);
             string str = sw.ToString();
             Assert.StartsWith("<?xml version=\"1.0\" encoding=\"utf-8\"?>", str);
