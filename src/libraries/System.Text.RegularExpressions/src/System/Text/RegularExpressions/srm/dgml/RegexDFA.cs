@@ -46,7 +46,7 @@ namespace System.Text.RegularExpressions.SRM.DGML
                         }
                         var qp = new Tuple<int, int>(q.Id, p.Id);
                         if (normalizedmoves.ContainsKey(qp))
-                            normalizedmoves[qp] = _builder._solver.MkOr(normalizedmoves[qp], c);
+                            normalizedmoves[qp] = _builder._solver.Or(normalizedmoves[qp], c);
                         else
                             normalizedmoves[qp] = c;
                     }

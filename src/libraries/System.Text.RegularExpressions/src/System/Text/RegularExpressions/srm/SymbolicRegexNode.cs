@@ -856,7 +856,7 @@ namespace System.Text.RegularExpressions.SRM
                     return this;
                 case SymbolicRegexKind.Singleton:
                     {
-                        S newset = _builder._solver.MkAnd(_set, pred);
+                        S newset = _builder._solver.And(_set, pred);
                         if (_set.Equals(newset))
                             return this;
                         else
@@ -977,7 +977,7 @@ namespace System.Text.RegularExpressions.SRM
                 {
                     case SymbolicRegexKind.Singleton:
                         {
-                            if (_builder._solver.IsSatisfiable(_builder._solver.MkAnd(elem, _set)))
+                            if (_builder._solver.IsSatisfiable(_builder._solver.And(elem, _set)))
                                 return _builder._epsilon;
                             else
                                 return _builder._nothing;
@@ -1467,7 +1467,7 @@ namespace System.Text.RegularExpressions.SRM
             }
             for (int i = 0; i < bdds.Length; i++)
             {
-                if (!css.ApplyIgnoreCase(css.MkCharConstraint((char)bdds[i].GetMin()), culture).Equals(bdds[i]))
+                if (!css.ApplyIgnoreCase(css.CharConstraint((char)bdds[i].GetMin()), culture).Equals(bdds[i]))
                     break;
 
                 ic_pref += ((char)bdds[i].GetMin()).ToString();
@@ -1576,7 +1576,7 @@ namespace System.Text.RegularExpressions.SRM
                         if (_left.CanBeNullable)
                         {
                             S set2 = _right.GetStartSet();
-                            startSet = _builder._solver.MkOr(startSet, set2);
+                            startSet = _builder._solver.Or(startSet, set2);
                         }
                         return startSet;
                     }
@@ -1585,7 +1585,7 @@ namespace System.Text.RegularExpressions.SRM
                         S startSet = _builder._solver.False;
                         foreach (SymbolicRegexNode<S> alt in _alts)
                         {
-                            startSet = _builder._solver.MkOr(startSet, alt.GetStartSet());
+                            startSet = _builder._solver.Or(startSet, alt.GetStartSet());
                         }
                         return startSet;
                     }
@@ -1594,15 +1594,15 @@ namespace System.Text.RegularExpressions.SRM
                         S startSet = _builder._solver.True;
                         foreach (SymbolicRegexNode<S> alt in _alts)
                         {
-                            startSet = _builder._solver.MkAnd(startSet, alt.GetStartSet());
+                            startSet = _builder._solver.And(startSet, alt.GetStartSet());
                         }
                         return startSet;
                     }
                 default: //if-then-else
                     {
-                        return _builder._solver.MkOr(
-                            _builder._solver.MkAnd(_iteCond.GetStartSet(), _left.GetStartSet()),
-                            _builder._solver.MkAnd(_builder._solver.MkNot(_iteCond.GetStartSet()), _right.GetStartSet()));
+                        return _builder._solver.Or(
+                            _builder._solver.And(_iteCond.GetStartSet(), _left.GetStartSet()),
+                            _builder._solver.And(_builder._solver.Not(_iteCond.GetStartSet()), _right.GetStartSet()));
                     }
             }
         }

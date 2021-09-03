@@ -41,7 +41,7 @@ namespace System.Text.RegularExpressions.SRM
             for (int i = 0; i < 128; i++)
                 ascii[i] = domain.Contains(i);
             //remove the ASCII characters from the domain if the domain is not everything
-            BDD bdd = domain.IsFull ? domain : solver.MkAnd(solver._nonascii, domain);
+            BDD bdd = domain.IsFull ? domain : solver.And(solver._nonascii, domain);
             return new BooleanClassifier(ascii, bdd);
         }
 

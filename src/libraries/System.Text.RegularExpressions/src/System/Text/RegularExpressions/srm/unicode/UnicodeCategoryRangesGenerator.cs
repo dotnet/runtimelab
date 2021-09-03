@@ -88,11 +88,11 @@ internal static class " + classname + @"
             BDD[] catBDDs = new BDD[30];
             CharSetSolver bddb = new CharSetSolver();
             for (int c = 0; c < 30; c++)
-                catBDDs[c] = bddb.MkBddForIntRanges(catMap[(UnicodeCategory)c].ranges);
+                catBDDs[c] = bddb.CreateBddForIntRanges(catMap[(UnicodeCategory)c].ranges);
 
-            BDD whitespaceBdd = bddb.MkBddForIntRanges(whitespace.ranges);
+            BDD whitespaceBdd = bddb.CreateBddForIntRanges(whitespace.ranges);
 
-            BDD wordCharBdd = bddb.MkBddForIntRanges(wordcharacter.ranges);
+            BDD wordCharBdd = bddb.CreateBddForIntRanges(wordcharacter.ranges);
 
             sw.WriteLine(@"/// <summary>
 /// Serialized BDD representations of all the Unicode categories.

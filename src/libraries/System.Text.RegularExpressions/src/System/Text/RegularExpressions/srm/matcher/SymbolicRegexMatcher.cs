@@ -335,8 +335,8 @@ namespace System.Text.RegularExpressions.SRM
             if (_A._info.ContainsSomeAnchor)
                 for (int i = 0; i < 128; i++)
                     _asciiCharKind[i] =
-                        i == 10 ? (_builder._solver.MkAnd(GetAtom(i), _builder._newLinePredicate).Equals(_builder._solver.False) ? 0 : CharKind.Newline)
-                                : (_builder._solver.MkAnd(GetAtom(i), _builder._wordLetterPredicate).Equals(_builder._solver.False) ? 0 : CharKind.WordLetter);
+                        i == 10 ? (_builder._solver.And(GetAtom(i), _builder._newLinePredicate).Equals(_builder._solver.False) ? 0 : CharKind.Newline)
+                                : (_builder._solver.And(GetAtom(i), _builder._wordLetterPredicate).Equals(_builder._solver.False) ? 0 : CharKind.WordLetter);
         }
 
         private void InitializePrefixBoyerMoore()
@@ -965,7 +965,7 @@ namespace System.Text.RegularExpressions.SRM
                     return _asciiCharKind[nextChar];
                 else
                     //apply the wordletter predicate to compute the kind of the next character
-                    return _builder._solver.MkAnd(GetAtom(nextChar), _builder._wordLetterPredicate).Equals(_builder._solver.False) ? 0 : CharKind.WordLetter;
+                    return _builder._solver.And(GetAtom(nextChar), _builder._wordLetterPredicate).Equals(_builder._solver.False) ? 0 : CharKind.WordLetter;
             }
             else
             {

@@ -66,7 +66,7 @@ namespace System.Text.RegularExpressions.SRM
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool IsSatisfiable(ulong predicate) => predicate != _False;
 
-        public ulong MkAnd(params ulong[] predicates)
+        public ulong And(params ulong[] predicates)
         {
             ulong and = _True;
             for (int i = 0; i < predicates.Length; i++)
@@ -79,15 +79,15 @@ namespace System.Text.RegularExpressions.SRM
             return and;
         }
 
-        public ulong MkAnd(IEnumerable<ulong> predicates) => throw new NotImplementedException();
+        public ulong And(IEnumerable<ulong> predicates) => throw new NotImplementedException();
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public ulong MkAnd(ulong predicate1, ulong predicate2) => predicate1 & predicate2;
+        public ulong And(ulong predicate1, ulong predicate2) => predicate1 & predicate2;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public ulong MkNot(ulong predicate) => _True & ~predicate; //NOTE: must filter off unused bits
+        public ulong Not(ulong predicate) => _True & ~predicate; //NOTE: must filter off unused bits
 
-        public ulong MkOr(IEnumerable<ulong> predicates)
+        public ulong Or(IEnumerable<ulong> predicates)
         {
             ulong res = _False;
             foreach (ulong p in predicates)
@@ -101,15 +101,15 @@ namespace System.Text.RegularExpressions.SRM
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public ulong MkOr(ulong predicate1, ulong predicate2) => predicate1 | predicate2;
+        public ulong Or(ulong predicate1, ulong predicate2) => predicate1 | predicate2;
 
-        public ulong MkRangeConstraint(char lower, char upper, bool caseInsensitive = false, string culture = null) => throw new NotSupportedException();
+        public ulong RangeConstraint(char lower, char upper, bool caseInsensitive = false, string culture = null) => throw new NotSupportedException();
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public ulong MkCharConstraint(char c, bool caseInsensitive = false, string culture = null)
+        public ulong CharConstraint(char c, bool caseInsensitive = false, string culture = null)
         {
             if (caseInsensitive)
-                throw new NotImplementedException(nameof(MkCharConstraint));
+                throw new NotImplementedException(nameof(CharConstraint));
 
             return ((ulong)1) << _classifier.Find(c);
         }
@@ -126,7 +126,7 @@ namespace System.Text.RegularExpressions.SRM
             ulong res = _False;
             for (int i = 0; i < _bits; i++)
                 // set the i'th bit if the i'th minterm is in the set
-                if (alg.IsSatisfiable(alg.MkAnd(_partition[i], set)))
+                if (alg.IsSatisfiable(alg.And(_partition[i], set)))
                     res |= (ulong)1 << i;
             return res;
         }
@@ -142,7 +142,7 @@ namespace System.Text.RegularExpressions.SRM
                 for (int i = 0; i < _bits; i++)
                     // include the i'th minterm in the union if the i'th bit is set
                     if ((pred & ((ulong)1 << i)) != _False)
-                        res = solver.MkOr(res, _partition[i]);
+                        res = solver.Or(res, _partition[i]);
             return res;
         }
 
@@ -170,8 +170,6 @@ namespace System.Text.RegularExpressions.SRM
         /// </summary>
         public ulong DeserializePredicate(string s) => Base64.DecodeUInt64(s);
         #endregion
-
-        public ulong MkCharPredicate(string name, ulong pred) => throw new NotImplementedException(nameof(MkCharPredicate));
 
         /// <summary>
         /// Pretty print the bitvector bv as the character set it represents.

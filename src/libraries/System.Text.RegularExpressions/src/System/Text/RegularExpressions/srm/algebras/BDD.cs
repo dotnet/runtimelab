@@ -335,7 +335,7 @@ namespace System.Text.RegularExpressions.SRM
                 return DeserializeWithFactory(arcs, algebra.GetOrCreateBDD);
             }
 
-            static BDD DeserializeWithFactory(long[] arcs, Func<int, BDD, BDD, BDD> mkBDD)
+            static BDD DeserializeWithFactory(long[] arcs, Func<int, BDD, BDD, BDD> createBDD)
             {
                 // the number of bits used for ordinals and node identifiers are stored in the first two values
                 int k = arcs.Length;
@@ -357,7 +357,7 @@ namespace System.Text.RegularExpressions.SRM
                     if (arc <= 0)
                     {
                         // this is an MTBDD leaf. Its ordinal was serialized negated
-                        nodes[i] = mkBDD((int)-arc, null, null);
+                        nodes[i] = createBDD((int)-arc, null, null);
                     }
                     else
                     {
@@ -366,7 +366,7 @@ namespace System.Text.RegularExpressions.SRM
                         int oneId = (int)((arc >> one_node_shift) & node_mask);
                         int zeroId = (int)((arc >> zero_node_shift) & node_mask);
                         // the BDD nodes for the children are guaranteed to exist already due to the topological order
-                        nodes[i] = mkBDD(ord, nodes[oneId], nodes[zeroId]);
+                        nodes[i] = createBDD(ord, nodes[oneId], nodes[zeroId]);
                     }
                 }
 

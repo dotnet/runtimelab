@@ -68,8 +68,8 @@ namespace System.Text.RegularExpressions.SRM
 
             foreach (Tuple<char, char> range in ranges)
             {
-                S cond = _solver.MkRangeConstraint(range.Item1, range.Item2, ignoreCase, _culture.Name);
-                conditions.Add(negate ? _solver.MkNot(cond) : cond);
+                S cond = _solver.RangeConstraint(range.Item1, range.Item2, ignoreCase, _culture.Name);
+                conditions.Add(negate ? _solver.Not(cond) : cond);
             }
             #endregion
 
@@ -91,7 +91,7 @@ namespace System.Text.RegularExpressions.SRM
                 {
                     //note that double negation cancels out the negation of the category
                     S cond = MapCategoryCodeToCondition(Math.Abs(catCode) - 1);
-                    conditions.Add(catCode < 0 ^ negate ? _solver.MkNot(cond) : cond);
+                    conditions.Add(catCode < 0 ^ negate ? _solver.Not(cond) : cond);
                 }
                 else
                 {
@@ -115,7 +115,7 @@ namespace System.Text.RegularExpressions.SRM
                     // C1 | C2 | ... | Cn
                     S catCondDisj = MapCategoryCodeSetToCondition(catCodes);
 
-                    S catGroupCond = negate ^ negGroup ? _solver.MkNot(catCondDisj) : catCondDisj;
+                    S catGroupCond = negate ^ negGroup ? _solver.Not(catCondDisj) : catCondDisj;
                     conditions.Add(catGroupCond);
                 }
             }
@@ -141,7 +141,7 @@ namespace System.Text.RegularExpressions.SRM
             //and means that all characters are accepted
             S moveCond = conditions.Count == 0 ?
                 (negate ? _solver.False : _solver.True) :
-                (negate ? _solver.MkAnd(conditions) : _solver.MkOr(conditions));
+                (negate ? _solver.And(conditions) : _solver.Or(conditions));
 
             //Subtelty of regex sematics:
             //note that the subtractor is not within the scope of the negation (if there is a negation)
@@ -149,7 +149,7 @@ namespace System.Text.RegularExpressions.SRM
             //performed above
             if (!Equals(subtractorCond, default(S)))
             {
-                moveCond = _solver.MkAnd(moveCond, _solver.MkNot(subtractorCond));
+                moveCond = _solver.And(moveCond, _solver.Not(subtractorCond));
             }
 
             return moveCond;
@@ -200,7 +200,7 @@ namespace System.Text.RegularExpressions.SRM
             foreach (int cat in catCodes)
             {
                 S cond = MapCategoryCodeToCondition(cat);
-                catCond = Equals(catCond, default(S)) ? cond : _solver.MkOr(catCond, cond);
+                catCond = Equals(catCond, default(S)) ? cond : _solver.Or(catCond, cond);
             }
             return catCond;
         }
@@ -228,7 +228,7 @@ namespace System.Text.RegularExpressions.SRM
                 case RegexNode.Bol:
                     // update the \n predicate in the builder if it has not been updated already
                     if (_srBuilder._newLinePredicate.Equals(_srBuilder._solver.False))
-                        _srBuilder._newLinePredicate = _srBuilder._solver.MkCharConstraint('\n');
+                        _srBuilder._newLinePredicate = _srBuilder._solver.CharConstraint('\n');
                     return _srBuilder._bolAnchor;
                 case RegexNode.Capture:  //treat as non-capturing group (...)
                     return ConvertNodeToSymbolicRegex(node.Child(0), topLevel);
@@ -242,12 +242,12 @@ namespace System.Text.RegularExpressions.SRM
                 case RegexNode.EndZ: // \Z anchor
                     // update the \n predicate in the builder if it has not been updated already
                     if (_srBuilder._newLinePredicate.Equals(_srBuilder._solver.False))
-                        _srBuilder._newLinePredicate = _srBuilder._solver.MkCharConstraint('\n');
+                        _srBuilder._newLinePredicate = _srBuilder._solver.CharConstraint('\n');
                     return _srBuilder._endAnchorZ;
                 case RegexNode.Eol:
                     // update the \n predicate in the builder if it has not been updated already
                     if (_srBuilder._newLinePredicate.Equals(_srBuilder._solver.False))
-                        _srBuilder._newLinePredicate = _srBuilder._solver.MkCharConstraint('\n');
+                        _srBuilder._newLinePredicate = _srBuilder._solver.CharConstraint('\n');
                     return _srBuilder._eolAnchor;
                 case RegexNode.Loop:
                     return _srBuilder.MkLoop(ConvertNodeToSymbolicRegex(node.Child(0), false), false, node.M, node.N, topLevel);
@@ -378,7 +378,7 @@ namespace System.Text.RegularExpressions.SRM
             string sequence = node.Str;
             bool ignoreCase = (node.Options & RegexOptions.IgnoreCase) != 0;
 
-            S[] conds = Array.ConvertAll(sequence.ToCharArray(), c => _solver.MkCharConstraint(c, ignoreCase, _culture.Name));
+            S[] conds = Array.ConvertAll(sequence.ToCharArray(), c => _solver.CharConstraint(c, ignoreCase, _culture.Name));
             SymbolicRegexNode<S> seq = _srBuilder.MkSequence(conds, topLevel);
             return seq;
         }
@@ -390,7 +390,7 @@ namespace System.Text.RegularExpressions.SRM
         {
             bool ignoreCase = (node.Options & RegexOptions.IgnoreCase) != 0;
 
-            S cond = _solver.MkNot(_solver.MkCharConstraint(node.Ch, ignoreCase, _culture.Name));
+            S cond = _solver.Not(_solver.CharConstraint(node.Ch, ignoreCase, _culture.Name));
 
             return _srBuilder.MkSingleton(cond);
         }
@@ -402,7 +402,7 @@ namespace System.Text.RegularExpressions.SRM
         {
             bool ignoreCase = (node.Options & RegexOptions.IgnoreCase) != 0;
 
-            S cond = _solver.MkCharConstraint(node.Ch, ignoreCase, _culture.Name);
+            S cond = _solver.CharConstraint(node.Ch, ignoreCase, _culture.Name);
 
             return _srBuilder.MkSingleton(cond);
         }
@@ -423,7 +423,7 @@ namespace System.Text.RegularExpressions.SRM
         private SymbolicRegexNode<S> ConvertNodeNotoneloopToSymbolicRegex(RegexNode node, bool isLazy)
         {
             bool ignoreCase = (node.Options & RegexOptions.IgnoreCase) != 0;
-            S cond = _solver.MkNot(_solver.MkCharConstraint(node.Ch, ignoreCase, _culture.Name));
+            S cond = _solver.Not(_solver.CharConstraint(node.Ch, ignoreCase, _culture.Name));
 
             SymbolicRegexNode<S> body = _srBuilder.MkSingleton(cond);
             SymbolicRegexNode<S> loop = _srBuilder.MkLoop(body, isLazy, node.M, node.N);
@@ -433,7 +433,7 @@ namespace System.Text.RegularExpressions.SRM
         private SymbolicRegexNode<S> ConvertNodeOneloopToSymbolicRegex(RegexNode node, bool isLazy)
         {
             bool ignoreCase = (node.Options & RegexOptions.IgnoreCase) != 0;
-            S cond = _solver.MkCharConstraint(node.Ch, ignoreCase, _culture.Name);
+            S cond = _solver.CharConstraint(node.Ch, ignoreCase, _culture.Name);
 
             SymbolicRegexNode<S> body = _srBuilder.MkSingleton(cond);
             SymbolicRegexNode<S> loop = _srBuilder.MkLoop(body, isLazy, node.M, node.N);

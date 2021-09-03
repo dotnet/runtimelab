@@ -26,35 +26,35 @@ namespace System.Text.RegularExpressions.SRM
         /// <summary>
         /// Make a conjunction of predicate1 and predicate2.
         /// </summary>
-        T MkAnd(T predicate1, T predicate2);
+        T And(T predicate1, T predicate2);
 
         /// <summary>
         /// Make a conjunction of all the predicates in the enumeration.
         /// Returns True if the enumeration is empty.
         /// </summary>
-        T MkAnd(IEnumerable<T> predicates);
+        T And(IEnumerable<T> predicates);
 
         /// <summary>
         /// Make a conjunction of all the predicates.
         /// Returns True if the enumeration is empty.
         /// </summary>
-        T MkAnd(params T[] predicates);
+        T And(params T[] predicates);
 
         /// <summary>
         /// Make a disjunction of predicate1 and predicate2.
         /// </summary>
-        T MkOr(T predicate1, T predicate2);
+        T Or(T predicate1, T predicate2);
 
         /// <summary>
         /// Make a disjunction of all the predicates in the enumeration.
         /// Must return False if the enumeration is empty.
         /// </summary>
-        T MkOr(IEnumerable<T> predicates);
+        T Or(IEnumerable<T> predicates);
 
         /// <summary>
         /// Negate the predicate.
         /// </summary>
-        T MkNot(T predicate);
+        T Not(T predicate);
 
         /// <summary>
         /// Returns true iff the predicate is satisfiable.

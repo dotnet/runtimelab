@@ -97,13 +97,13 @@ namespace System.Text.RegularExpressions.SRM
             base(Classifier.Create(solver, minterms), Array.ConvertAll(minterms, solver.ComputeDomainSize), minterms)
         {
             _mtg = new MintermGenerator<BV>(this);
-            _zero = BV.MkFalse(_bits);
-            _ones = BV.MkTrue(_bits);
+            _zero = BV.CreateFalse(_bits);
+            _ones = BV.CreateTrue(_bits);
 
             var atoms = new BV[_bits];
             for (int i = 0; i < atoms.Length; i++)
             {
-                atoms[i] = BV.MkBit1(_bits, i);
+                atoms[i] = BV.CreateSingleBit(_bits, i);
             }
             _atoms = atoms;
         }
@@ -114,13 +114,13 @@ namespace System.Text.RegularExpressions.SRM
         public BVAlgebra(Classifier classifier, ulong[] cardinalities) : base(classifier, cardinalities, null)
         {
             _mtg = new MintermGenerator<BV>(this);
-            _zero = BV.MkFalse(_bits);
-            _ones = BV.MkTrue(_bits);
+            _zero = BV.CreateFalse(_bits);
+            _ones = BV.CreateTrue(_bits);
 
             var atoms = new BV[_bits];
             for (int i = 0; i < atoms.Length; i++)
             {
-                atoms[i] = BV.MkBit1(_bits, i);
+                atoms[i] = BV.CreateSingleBit(_bits, i);
             }
             _atoms = atoms;
         }
@@ -136,7 +136,7 @@ namespace System.Text.RegularExpressions.SRM
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool IsSatisfiable(BV predicate) => !predicate.Equals(_zero);
 
-        public BV MkAnd(params BV[] predicates)
+        public BV And(params BV[] predicates)
         {
             BV and = _ones;
             for (int i = 0; i < predicates.Length; i++)
@@ -147,15 +147,15 @@ namespace System.Text.RegularExpressions.SRM
             return and;
         }
 
-        public BV MkAnd(IEnumerable<BV> predicates) => throw new NotImplementedException();
+        public BV And(IEnumerable<BV> predicates) => throw new NotImplementedException();
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public BV MkAnd(BV predicate1, BV predicate2) => predicate1 & predicate2;
+        public BV And(BV predicate1, BV predicate2) => predicate1 & predicate2;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public BV MkNot(BV predicate) => ~predicate;
+        public BV Not(BV predicate) => ~predicate;
 
-        public BV MkOr(IEnumerable<BV> predicates)
+        public BV Or(IEnumerable<BV> predicates)
         {
             BV res = _zero;
             foreach (BV p in predicates)
@@ -167,11 +167,11 @@ namespace System.Text.RegularExpressions.SRM
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public BV MkOr(BV predicate1, BV predicate2) => predicate1 | predicate2;
+        public BV Or(BV predicate1, BV predicate2) => predicate1 | predicate2;
 
-        public BV MkRangeConstraint(char lower, char upper, bool caseInsensitive = false, string culture = null) => throw new NotSupportedException(nameof(MkRangeConstraint));
+        public BV RangeConstraint(char lower, char upper, bool caseInsensitive = false, string culture = null) => throw new NotSupportedException(nameof(RangeConstraint));
 
-        public BV MkCharConstraint(char c, bool caseInsensitive = false, string culture = null)
+        public BV CharConstraint(char c, bool caseInsensitive = false, string culture = null)
         {
             Debug.Assert(!caseInsensitive);
             int i = _classifier.Find(c);
@@ -193,7 +193,7 @@ namespace System.Text.RegularExpressions.SRM
             for (int i = 0; i < _bits; i++)
             {
                 BDD bdd_i = _partition[i];
-                BDD conj = alg.MkAnd(bdd_i, set);
+                BDD conj = alg.And(bdd_i, set);
                 if (alg.IsSatisfiable(conj))
                 {
                     res |= _atoms[i];
@@ -216,7 +216,7 @@ namespace System.Text.RegularExpressions.SRM
                     // include the i'th minterm in the union if the i'th bit is set
                     if (pred[i])
                     {
-                        res = solver.MkOr(res, _partition[i]);
+                        res = solver.Or(res, _partition[i]);
                     }
                 }
             }
@@ -226,7 +226,6 @@ namespace System.Text.RegularExpressions.SRM
 
         public BV[] GetPartition() => _atoms;
         public IEnumerable<char> GenerateAllCharacters(BV set) => throw new NotImplementedException(nameof(GenerateAllCharacters));
-        public BV MkCharPredicate(string name, BV pred) => throw new NotImplementedException(nameof(GenerateAllCharacters));
 
         /// <summary>
         /// calls bv.Serialize()
