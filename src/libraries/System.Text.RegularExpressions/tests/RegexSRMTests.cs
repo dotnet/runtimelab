@@ -14,15 +14,6 @@ namespace System.Text.RegularExpressions.Tests
 {
     public class RegexSRMTests
     {
-
-        static void WriteLine(string s)
-        {
-#if DEBUG
-            // the string will appear in the Output window
-            System.Diagnostics.Debug.WriteLine(s);
-#endif
-        }
-
         private const char Turkish_I_withDot = '\u0130';
         private const char Turkish_i_withoutDot = '\u0131';
         private const char Kelvin_sign = '\u212A';
@@ -110,21 +101,25 @@ namespace System.Text.RegularExpressions.Tests
         {
             List<string> diffs = new();
             Func<HashSet<char>, int, string> F = (s, i) =>
-             {
-                 if (s == null)
-                     return ((char)i).ToString();
-                 List<char> elems = new List<char>(s);
-                 elems.Sort();
-                 string res = new string(elems.ToArray());
-                 return res;
-             };
+            {
+                if (s == null)
+                    return ((char)i).ToString();
+
+                var elems = new List<char>(s);
+                elems.Sort();
+                return new string(elems.ToArray());
+            };
+
             for (int i = 0; i <= 0xFFFF; i++)
             {
-                var s1 = F(table1[i], i);
-                var s2 = F(table2[i], i);
+                string s1 = F(table1[i], i);
+                string s2 = F(table2[i], i);
                 if (s1 != s2)
-                    diffs.Add(string.Format("{0}:{1}/{2}", (char)i, s1, s2));
+                {
+                    diffs.Add($"{(char)i}:{s1}/{s2}");
+                }
             }
+
             return string.Join(",", diffs.ToArray());
         }
 
@@ -529,7 +524,7 @@ namespace System.Text.RegularExpressions.Tests
             var ser2 = Array.ConvertAll(drs, Serialize);
             //check idempotence
             for (int i = 0; i < k; i++)
-                Assert.True(ser[i] == ser2[i], string.Format("idempotence of serialization of regex {0} fails", i));
+                Assert.True(ser[i] == ser2[i], $"idempotence of serialization of regex {i} failed");
 
             string input = "this text contains math symbols +~<> and names like Ann and Anne and maku and jaan";
             for (int i = 0; i < k; i++)

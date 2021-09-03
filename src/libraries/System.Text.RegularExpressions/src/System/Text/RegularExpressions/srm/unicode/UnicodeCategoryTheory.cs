@@ -5,76 +5,71 @@ using System.Diagnostics;
 
 namespace System.Text.RegularExpressions.SRM.Unicode
 {
-    internal sealed class UnicodeCategoryTheory<PRED>
+    internal sealed class UnicodeCategoryTheory<TPredicate> where TPredicate : class
     {
-        internal readonly ICharAlgebra<PRED> _solver;
-        private readonly PRED[] _catConditions = new PRED[30];
-        private PRED _whiteSpaceCondition;
-        private PRED _wordLetterCondition;
+        internal readonly ICharAlgebra<TPredicate> _solver;
+        private readonly TPredicate[] _catConditions = new TPredicate[30];
 
-        public UnicodeCategoryTheory(ICharAlgebra<PRED> solver) => _solver = solver;
+        private TPredicate _whiteSpaceCondition;
+        private TPredicate _wordLetterCondition;
+
+        public UnicodeCategoryTheory(ICharAlgebra<TPredicate> solver) => _solver = solver;
 
         public static string UnicodeCategoryPredicateName(int cat) => $"Is{(Globalization.UnicodeCategory)cat}";
 
-        #region IUnicodeCategoryTheory<Expr> Members
-
-        public PRED CategoryCondition(int i)
+        public TPredicate CategoryCondition(int i)
         {
-            if (Equals(_catConditions[i], default(PRED))) //uninitialized
+            if (_catConditions[i] is not TPredicate condition)
             {
-                BDD cat_i = BDD.Deserialize(UnicodeCategoryRanges.s_UnicodeCategoryBdd_repr[i], _solver.CharSetProvider);
-                _catConditions[i] = _solver.ConvertFromCharSet(_solver.CharSetProvider, cat_i);
-                ValidateSerialization(_catConditions[i]);
+                BDD bdd = BDD.Deserialize(UnicodeCategoryRanges.AllCategoriesSerializedBDD[i], _solver.CharSetProvider);
+                _catConditions[i] = condition = _solver.ConvertFromCharSet(_solver.CharSetProvider, bdd);
+                ValidateSerialization(condition);
             }
 
-            return _catConditions[i];
+            return condition;
         }
 
-        public PRED WhiteSpaceCondition
+        public TPredicate WhiteSpaceCondition
         {
             get
             {
-                if (Equals(_whiteSpaceCondition, default(PRED)))
+                if (_whiteSpaceCondition is not TPredicate condition)
                 {
-                    BDD sBDD = BDD.Deserialize(UnicodeCategoryRanges.s_UnicodeWhitespaceBdd_repr, _solver.CharSetProvider);
-                    _whiteSpaceCondition = _solver.ConvertFromCharSet(_solver.CharSetProvider, sBDD);
-                    ValidateSerialization(_whiteSpaceCondition);
+                    BDD bdd = BDD.Deserialize(UnicodeCategoryRanges.WhitespaceSerializedBDD, _solver.CharSetProvider);
+                    _whiteSpaceCondition = condition = _solver.ConvertFromCharSet(_solver.CharSetProvider, bdd);
+                    ValidateSerialization(condition);
                 }
 
-                return _whiteSpaceCondition;
+                return condition;
             }
         }
 
-        public PRED WordLetterCondition
+        public TPredicate WordLetterCondition
         {
             get
             {
-                if (Equals(_wordLetterCondition, default(PRED)))
+                if (_wordLetterCondition is not TPredicate condition)
                 {
-                    BDD wBDD = BDD.Deserialize(UnicodeCategoryRanges.s_UnicodeWordCharacterBdd_repr, _solver.CharSetProvider);
-                    _wordLetterCondition = _solver.ConvertFromCharSet(_solver.CharSetProvider, wBDD);
-                    ValidateSerialization(_wordLetterCondition);
+                    BDD bdd = BDD.Deserialize(UnicodeCategoryRanges.WordCharactersSerializedBDD, _solver.CharSetProvider);
+                    _wordLetterCondition = condition = _solver.ConvertFromCharSet(_solver.CharSetProvider, bdd);
+                    ValidateSerialization(condition);
                 }
 
-                return _wordLetterCondition;
+                return condition;
             }
         }
 
-        /// <summary>
-        /// Validate correctness of serialization/deserialization for the given predicate
-        /// </summary>
+        /// <summary>Validate correctness of serialization/deserialization for the given predicate.</summary>
         [Conditional("DEBUG")]
-        private void ValidateSerialization(PRED pred)
+        private void ValidateSerialization(TPredicate pred)
         {
             var sb = new StringBuilder();
             _solver.SerializePredicate(pred, sb);
-            PRED psi = _solver.DeserializePredicate(sb.ToString());
+            TPredicate psi = _solver.DeserializePredicate(sb.ToString());
             if (!pred.Equals(psi))
             {
                 throw new AutomataException(AutomataExceptionKind.BDDDeserializationError);
             }
         }
-
-        #endregion
     }
 }
