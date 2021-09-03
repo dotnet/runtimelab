@@ -8,7 +8,8 @@ using System.Runtime.CompilerServices;
 namespace System.Text.RegularExpressions.SRM
 {
     /// <summary>
-    /// Bit vector algebra of up to 64 bits
+    /// Bit vector algebra for up to 64 bits that uses an ulong directly as the term representation, unlike the more
+    /// general BVAlgebra that uses an array of them. This simplifies the operations making the algebra more efficient.
     /// </summary>
     internal sealed class BV64Algebra : BVAlgebraBase, ICharAlgebra<ulong>
     {
@@ -16,10 +17,14 @@ namespace System.Text.RegularExpressions.SRM
         private readonly ulong _False;
         private readonly ulong _True;
 
+        /// <summary>
+        /// Return the number of characters belonging to the minterms in the given set.
+        /// </summary>
         public ulong ComputeDomainSize(ulong set)
         {
             ulong size = 0;
             for (int i = 0; i < _bits; i++)
+                // if the bit is set then include the corresponding minterm's cardinality
                 if (IsSatisfiable(set & ((ulong)1 << i)))
                     size += _cardinalities[i];
             return size;
@@ -67,6 +72,7 @@ namespace System.Text.RegularExpressions.SRM
             for (int i = 0; i < predicates.Length; i++)
             {
                 and &= predicates[i];
+                // short circuit the evaluation on false, since 0&x=0
                 if (and == _False)
                     return _False;
             }
@@ -87,6 +93,7 @@ namespace System.Text.RegularExpressions.SRM
             foreach (ulong p in predicates)
             {
                 res |= p;
+                // short circuit the evaluation on true, since 1|x=1
                 if (res == _True)
                     return _True;
             }
@@ -95,9 +102,6 @@ namespace System.Text.RegularExpressions.SRM
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ulong MkOr(ulong predicate1, ulong predicate2) => predicate1 | predicate2;
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public ulong MkSymmetricDifference(ulong p1, ulong p2) => p1 ^ p2;
 
         public ulong MkRangeConstraint(char lower, char upper, bool caseInsensitive = false, string culture = null) => throw new NotSupportedException();
 
@@ -121,6 +125,7 @@ namespace System.Text.RegularExpressions.SRM
 
             ulong res = _False;
             for (int i = 0; i < _bits; i++)
+                // set the i'th bit if the i'th minterm is in the set
                 if (alg.IsSatisfiable(alg.MkAnd(_partition[i], set)))
                     res |= (ulong)1 << i;
             return res;
@@ -131,15 +136,19 @@ namespace System.Text.RegularExpressions.SRM
             if (_partition == null)
                 throw new NotImplementedException(nameof(ConvertToCharSet));
 
+            // the result will be the union of all minterms in the set
             BDD res = BDD.False;
             if (pred != _False)
                 for (int i = 0; i < _bits; i++)
-                    //construct the union of the corresponding minterms in the partition
+                    // include the i'th minterm in the union if the i'th bit is set
                     if ((pred & ((ulong)1 << i)) != _False)
                         res = solver.MkOr(res, _partition[i]);
             return res;
         }
 
+        /// <summary>
+        /// Return an array of bitvectors representing each of the minterms.
+        /// </summary>
         public ulong[] GetPartition()
         {
             ulong[] atoms = new ulong[_bits];

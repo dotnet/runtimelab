@@ -5,11 +5,17 @@ using System.Collections.Generic;
 
 namespace System.Text.RegularExpressions.SRM
 {
-    internal sealed class RangeConverter
+    /// <summary>
+    /// Converts sets of integers expressed as BDDs into non-overlapping and ordered arrays of ranges.
+    /// </summary>
+    internal sealed class BDDRangeConverter
     {
+        /// <summary>
+        /// Cache for all range conversions. Having this cache is required to avoid exponential running time.
+        /// </summary>
         private readonly Dictionary<BDD, Tuple<uint, uint>[]> _rangeCache = new Dictionary<BDD, Tuple<uint, uint>[]>();
 
-        private RangeConverter() { }
+        private BDDRangeConverter() { }
 
         /// <summary>
         /// Convert the set into an equivalent array of ranges.
@@ -23,59 +29,67 @@ namespace System.Text.RegularExpressions.SRM
             if (set.IsFull)
                 return new Tuple<uint, uint>[] { new Tuple<uint, uint>(0, ((uint)1 << maxBit << 1) - 1) }; //note: maxBit could be 31
 
-            var rc = new RangeConverter();
-            return rc.LiftRanges(maxBit + 1, maxBit - set.Ordinal, rc.ToRanges1(set));
+            var rc = new BDDRangeConverter();
+            return rc.LiftRanges(maxBit + 1, maxBit - set.Ordinal, rc.ToRangesFromOrdinal(set));
         }
 
-        //e.g. if b = 6 and p = 2 and ranges = (in binary form) {[0000 1010, 0000 1110]} i.e. [x0A,x0E]
-        //then res = {[0000 1010, 0000 1110], [0001 1010, 0001 1110],
-        //            [0010 1010, 0010 1110], [0011 1010, 0011 1110]},
-        private Tuple<uint, uint>[] LiftRanges(int b, int p, Tuple<uint, uint>[] ranges)
+        /// <summary>
+        /// Extends a set of ranges to include more significant bits. The new bits are allowed to be anything and all
+        /// combinations of the new bits are included.
+        /// e.g. if toBits = 6 and newBits = 2 and ranges = (in binary form) {[0000 1010, 0000 1110]} i.e. [x0A,x0E]
+        /// then res = {[0000 1010, 0000 1110], [0001 1010, 0001 1110],
+        ///             [0010 1010, 0010 1110], [0011 1010, 0011 1110]},
+        /// </summary>
+        private Tuple<uint, uint>[] LiftRanges(int toBits, int newBits, Tuple<uint, uint>[] ranges)
         {
-            if (p == 0)
+            // nothing happens if no new bits are added
+            if (newBits == 0)
                 return ranges;
 
-            int k = b - p;
-            uint maximal = ((uint)1 << k) - 1;
+            int fromBits = toBits - newBits;
 
-            Tuple<uint, uint>[] res = new Tuple<uint, uint>[(1 << p) * ranges.Length];
+            Tuple<uint, uint>[] result = new Tuple<uint, uint>[(1 << newBits) * ranges.Length];
             int j = 0;
-            for (uint i = 0; i < (1 << p); i++)
+            // iterate through all combinations of the new bits
+            for (uint i = 0; i < (1 << newBits); i++)
             {
-                uint prefix = i << k;
+                // shift the prefix to be past the existing range of bits
+                uint prefix = i << fromBits;
+                // generate each range with this prefix added
                 foreach (Tuple<uint, uint> range in ranges)
-                    res[j++] = new Tuple<uint, uint>(range.Item1 | prefix, range.Item2 | prefix);
+                    result[j++] = new Tuple<uint, uint>(range.Item1 | prefix, range.Item2 | prefix);
             }
 
-            //the range wraps around : [0...][...2^k-1][2^k...][...2^(k+1)-1]
+            // lifted ranges can wrap around like this [0...][...2^fromBits-1][2^fromBits...][...2^(fromBits+1)-1]
+            uint maximal = ((uint)1 << fromBits) - 1;
             if (ranges[0].Item1 == 0 && ranges[ranges.Length - 1].Item2 == maximal)
             {
-                //merge consequtive ranges, we know that res has at least two elements here
-                List<Tuple<uint, uint>> res1 = new List<Tuple<uint, uint>>();
-                uint from = res[0].Item1;
-                uint to = res[0].Item2;
-                for (int i = 1; i < res.Length; i++)
+                // merge consequtive ranges, we know that res has at least two elements here
+                List<Tuple<uint, uint>> merged = new List<Tuple<uint, uint>>();
+                uint from = result[0].Item1;
+                uint to = result[0].Item2;
+                for (int i = 1; i < result.Length; i++)
                 {
-                    if (to == res[i].Item1 - 1)
+                    if (to == result[i].Item1 - 1)
                     {
-                        to = res[i].Item2;
+                        // merge into previous instead of adding a new range
+                        to = result[i].Item2;
                     }
                     else
                     {
-                        res1.Add(new Tuple<uint, uint>(from, to));
-                        from = res[i].Item1;
-                        to = res[i].Item2;
+                        merged.Add(new Tuple<uint, uint>(from, to));
+                        from = result[i].Item1;
+                        to = result[i].Item2;
                     }
                 }
-                res1.Add(new Tuple<uint, uint>(from, to));
-                res = res1.ToArray();
+                merged.Add(new Tuple<uint, uint>(from, to));
+                result = merged.ToArray();
             }
 
-            //CheckBug(res);
-            return res;
+            return result;
         }
 
-        private Tuple<uint, uint>[] ToRanges1(BDD set)
+        private Tuple<uint, uint>[] ToRangesFromOrdinal(BDD set)
         {
             if (!_rangeCache.TryGetValue(set, out Tuple<uint, uint>[] ranges))
             {
@@ -91,7 +105,7 @@ namespace System.Text.RegularExpressions.SRM
                     }
                     else //1-case is neither full nor empty
                     {
-                        Tuple<uint, uint>[] ranges1 = LiftRanges(b, b - set.One.Ordinal - 1, ToRanges1(set.One));
+                        Tuple<uint, uint>[] ranges1 = LiftRanges(b, b - set.One.Ordinal - 1, ToRangesFromOrdinal(set.One));
                         ranges = new Tuple<uint, uint>[ranges1.Length];
                         for (int i = 0; i < ranges1.Length; i++)
                         {
@@ -110,7 +124,7 @@ namespace System.Text.RegularExpressions.SRM
                     }
                     else
                     {
-                        Tuple<uint, uint>[] rangesR = LiftRanges(b, b - set.One.Ordinal - 1, ToRanges1(set.One));
+                        Tuple<uint, uint>[] rangesR = LiftRanges(b, b - set.One.Ordinal - 1, ToRangesFromOrdinal(set.One));
                         Tuple<uint, uint> range = rangesR[0];
                         if (range.Item1 == 0)
                         {
@@ -136,7 +150,7 @@ namespace System.Text.RegularExpressions.SRM
                 else
                 {
                     #region 0-case is neither full nor empty
-                    Tuple<uint, uint>[] rangesL = LiftRanges(b, b - set.Zero.Ordinal - 1, ToRanges1(set.Zero));
+                    Tuple<uint, uint>[] rangesL = LiftRanges(b, b - set.Zero.Ordinal - 1, ToRangesFromOrdinal(set.Zero));
                     Tuple<uint, uint> last = rangesL[rangesL.Length - 1];
 
                     if (set.One.IsEmpty)
@@ -165,7 +179,7 @@ namespace System.Text.RegularExpressions.SRM
                     }
                     else //general case: neither 0-case, not 1-case is full or empty
                     {
-                        Tuple<uint, uint>[] rangesR0 = ToRanges1(set.One);
+                        Tuple<uint, uint>[] rangesR0 = ToRangesFromOrdinal(set.One);
 
                         Tuple<uint, uint>[] rangesR = LiftRanges(b, b - set.One.Ordinal - 1, rangesR0);
 

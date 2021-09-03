@@ -7,6 +7,15 @@ using System.Runtime.CompilerServices;
 
 namespace System.Text.RegularExpressions.SRM
 {
+    /// <summary>
+    /// Base class for bitvector algebras, which represent sets as bitvectors indexed by the elements. An element is in
+    /// the set if the corresponding bit is set.
+    ///
+    /// These bitvector algebras are used to represent sets of minterms, and thus represent sets of characters
+    /// indirectly. However, the bitvector algebras are aware of this indirection in that the cardinalities of sets
+    /// count the characters rather than the minterms. For example, the cardinality of a bitvector "110" where the bits
+    /// correspond to minterms [a-c], [0-9] and [^a-c0-9] is 13 rather than 2.
+    /// </summary>
     internal abstract class BVAlgebraBase
     {
         internal readonly Classifier _classifier;
@@ -48,9 +57,9 @@ namespace System.Text.RegularExpressions.SRM
 
             ulong[] cardinalities = Base64.DecodeUInt64Array(input.AsSpan(0, firstEnd));
 
-            //here one could potentially pass in the global CharSetSolver as the second parameter.
-            //but it is not needed, practically speaking, because the functionality
-            //needed during matching will not use operations that need the BDD algebra.
+            // Here one could potentially pass in the global CharSetSolver as the second parameter, but it is not
+            // needed, practically speaking, because the functionality needed during matching will not use operations
+            // that need the BDD algebra.
             Classifier cl = Classifier.Deserialize(input.AsSpan(firstEnd + 1));
             return cardinalities.Length <= 64 ?
                 new BV64Algebra(cl, cardinalities) :
@@ -74,6 +83,7 @@ namespace System.Text.RegularExpressions.SRM
             ulong size = 0;
             for (int i = 0; i < _bits; i++)
             {
+                // if the bit is set then add the minterm's size
                 if (set[i])
                 {
                     size += _cardinalities[i];
@@ -99,7 +109,7 @@ namespace System.Text.RegularExpressions.SRM
         }
 
         /// <summary>
-        /// Constructor used by BVAlgebraBase.Deserialize. Here the minters and the CharSetSolver are unknown and set to null.
+        /// Constructor used by BVAlgebraBase.Deserialize. Here the minterms and the CharSetSolver are unknown and set to null.
         /// </summary>
         public BVAlgebra(Classifier classifier, ulong[] cardinalities) : base(classifier, cardinalities, null)
         {
@@ -197,12 +207,13 @@ namespace System.Text.RegularExpressions.SRM
         {
             Debug.Assert(_partition is not null);
 
+            // the result will be the union of all minterms in the set
             BDD res = solver.False;
             if (!pred.Equals(_zero))
             {
                 for (int i = 0; i < _bits; i++)
                 {
-                    // construct the union of the corresponding atoms
+                    // include the i'th minterm in the union if the i'th bit is set
                     if (pred[i])
                     {
                         res = solver.MkOr(res, _partition[i]);

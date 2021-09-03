@@ -8,18 +8,25 @@ using System.Runtime.CompilerServices;
 namespace System.Text.RegularExpressions.SRM
 {
     /// <summary>
-    /// Represents a bitvector of given Length (number of bits).
+    /// Represents a bitvector of arbitrary length (i.e. number of bits).
     /// </summary>
     internal sealed class BV : IComparable
     {
+        /// <summary>
+        /// Stores the bits in an array of 64-bit integers. If Length is not evenly divisible by 64 then the remaining
+        /// bits are in the least significant bits of the last element.
+        /// </summary>
         private readonly ulong[] _blocks;
-
-        private const ulong UL1 = 1;
 
         /// <summary>
         /// Number of bits.
         /// </summary>
         internal readonly int Length;
+
+        /// <summary>
+        /// Cache for the lazily computed hash code.
+        /// </summary>
+        private int? _hashcode;
 
         /// <summary>
         /// Returns true iff the i'th bit is 1
@@ -31,7 +38,7 @@ namespace System.Text.RegularExpressions.SRM
                 Debug.Assert(i >= 0 && i < Length);
                 int k = i / 64;
                 int j = i % 64;
-                return (_blocks[k] & (UL1 << j)) != 0;
+                return (_blocks[k] & (1ul << j)) != 0;
             }
             private set
             {
@@ -41,12 +48,12 @@ namespace System.Text.RegularExpressions.SRM
                 if (value)
                 {
                     //set the j'th bit of the k'th block to 1
-                    _blocks[k] |= (UL1 << j);
+                    _blocks[k] |= (1ul << j);
                 }
                 else
                 {
                     //set the j'th bit of the k'th block to 0
-                    _blocks[k] &= ~(UL1 << j);
+                    _blocks[k] &= ~(1ul << j);
                 }
             }
         }
@@ -84,19 +91,6 @@ namespace System.Text.RegularExpressions.SRM
         }
 
         /// <summary>
-        /// Constructs a bitvector with the given bit valuation.
-        /// </summary>
-        public static BV Mk(params bool[] bits)
-        {
-            var bv = new BV(bits.Length);
-            //all bits are initially 0 so need not be set to 0
-            for (int i = 0; i < bits.Length; i++)
-                if (bits[i])
-                    bv[i] = true;
-            return bv;
-        }
-
-        /// <summary>
         /// Bitwise AND
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -105,6 +99,7 @@ namespace System.Text.RegularExpressions.SRM
             Debug.Assert(x.Length == y.Length);
 
             var blocks = new ulong[x._blocks.Length];
+            // produce new blocks as the bitwise AND of the arguments' blocks
             for (int i = 0; i < blocks.Length; i++)
             {
                 blocks[i] = x._blocks[i] & y._blocks[i];
@@ -121,6 +116,7 @@ namespace System.Text.RegularExpressions.SRM
             Debug.Assert(x.Length == y.Length);
 
             var blocks = new ulong[x._blocks.Length];
+            // produce new blocks as the bitwise OR of the arguments' blocks
             for (int i = 0; i < blocks.Length; i++)
             {
                 blocks[i] = x._blocks[i] | y._blocks[i];
@@ -137,6 +133,7 @@ namespace System.Text.RegularExpressions.SRM
             Debug.Assert(x.Length == y.Length);
 
             var blocks = new ulong[x._blocks.Length];
+            // produce new blocks as the bitwise XOR of the arguments' blocks
             for (int i = 0; i < blocks.Length; i++)
             {
                 blocks[i] = x._blocks[i] ^ y._blocks[i];
@@ -159,38 +156,14 @@ namespace System.Text.RegularExpressions.SRM
             int j = x.Length % 64;
             if (j > 0)
             {
-                //the number of bits is not a precise multiple of 64
-                //so the last block has extra bits that need to be reset to 0
+                // the number of bits is not a precise multiple of 64
+                // reset the extra bits in the last block to 0
                 int last = (x.Length - 1) / 64;
-                blocks[last] &= (UL1 << j) - 1;
+                blocks[last] &= (1ul << j) - 1;
             }
 
             return new BV(x.Length, blocks);
         }
-
-        /// <summary>
-        /// less than
-        /// </summary>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool operator <(BV x, BV y) => x.CompareTo(y) < 0;
-
-        /// <summary>
-        /// greater than
-        /// </summary>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool operator >(BV x, BV y) => x.CompareTo(y) > 0;
-
-        /// <summary>
-        /// less than or equal
-        /// </summary>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool operator <=(BV x, BV y) => x.CompareTo(y) <= 0;
-
-        /// <summary>
-        /// greater than or equal
-        /// </summary>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool operator >=(BV x, BV y) => x.CompareTo(y) >= 0;
 
         /// <summary>
         /// Returns the serialized representation
@@ -199,19 +172,18 @@ namespace System.Text.RegularExpressions.SRM
 
         public override bool Equals(object obj) => CompareTo(obj) == 0;
 
-        private int _hashcode;
         public override int GetHashCode()
         {
-            if (_hashcode == 0)
+            // if the hash code hasn't been calculated yet, do so before returning it
+            if (_hashcode == null)
             {
                 _hashcode = Length.GetHashCode();
                 for (int i = 0; i < _blocks.Length; i++)
                 {
-                    _hashcode = (_hashcode << 1) ^ _blocks[i].GetHashCode();
+                    _hashcode = HashCode.Combine(_hashcode, _blocks[i].GetHashCode());
                 }
             }
-
-            return _hashcode;
+            return (int)_hashcode;
         }
 
         public int CompareTo(object obj)
@@ -222,6 +194,7 @@ namespace System.Text.RegularExpressions.SRM
             if (Length != that.Length)
                 return Length.CompareTo(that.Length);
 
+            // compare all blocks starting from the last one (i.e. most significant)
             for (int i = _blocks.Length - 1; i >= 0; i--)
             {
                 if (_blocks[i] < that._blocks[i])
