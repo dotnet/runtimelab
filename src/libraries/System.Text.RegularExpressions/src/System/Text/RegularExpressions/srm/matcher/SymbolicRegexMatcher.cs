@@ -577,7 +577,7 @@ namespace System.Text.RegularExpressions.SRM
 
             //may return -1 as a legitimate value when the initial state is nullable and startat=0
             //returns -2 when there is no match
-            i = FindFinalStatePosition(input, k, i, out int iDotstarredInitialState, out int watchdog);
+            i = FindFinalStatePosition(input, k, i, out int initialStateIndex, out int watchdog);
 
             if (i == -2)
                 return Match.NoMatch;
@@ -605,7 +605,7 @@ namespace System.Text.RegularExpressions.SRM
                     else
                     {
                         //walk in reverse to locate the start position of the match
-                        i_start = FindStartPosition(input, i, iDotstarredInitialState);
+                        i_start = FindStartPosition(input, i, initialStateIndex);
                     }
 
                     i_end = FindEndPosition(input, k, i_start);
@@ -775,15 +775,15 @@ namespace System.Text.RegularExpressions.SRM
         /// <param name="input">given input string</param>
         /// <param name="k">input length or bounded input length</param>
         /// <param name="i">start position</param>
-        /// <param name="iInitialState">last position the initial state of _dotstarredPattern was visited</param>
+        /// <param name="initialStateIndex">last position the initial state of _dotstarredPattern was visited</param>
         /// <param name="watchdog">length of match when positive</param>
-        private int FindFinalStatePosition(string input, int k, int i, out int iInitialState, out int watchdog)
+        private int FindFinalStatePosition(string input, int k, int i, out int initialStateIndex, out int watchdog)
         {
             // get the correct start state of A1,
             // which in general depends on the previous character kind in the input
             uint prevCharKindId = GetCharKind(input, i - 1);
             State<S> q = _dotstarredInitialStates[prevCharKindId];
-            iInitialState = i;
+            initialStateIndex = i;
 
             if (q.IsNothing)
             {
@@ -809,8 +809,8 @@ namespace System.Text.RegularExpressions.SRM
             {
                 if (q.IsInitialState)
                 {
-                    // iInitialState is the most recent position in the input when _dotstarredPattern is in the initial state
-                    iInitialState = i;
+                    // initialStateIndex is the most recent position in the input when _dotstarredPattern is in the initial state
+                    initialStateIndex = i;
 
                     if (_prefixBoyerMoore != null)
                     {
