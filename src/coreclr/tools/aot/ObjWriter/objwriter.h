@@ -60,6 +60,11 @@ enum class RelocType {
   IMAGE_REL_BASED_ARM64_PAGEOFFSET_12A = 0x82,
 };
 
+enum class SymbolRefFlags
+{
+  SymbolRefFlags_AddressTakenFunction = 0x0001,
+};
+
 class ObjectWriter {
 public:
   bool Init(StringRef FunctionName, const char* tripleName = nullptr);
@@ -78,7 +83,7 @@ public:
   void EmitSymbolDef(const char *SymbolName, bool global);
   void EmitWinFrameInfo(const char *FunctionName, int StartOffset,
                         int EndOffset, const char *BlobSymbolName);
-  int EmitSymbolRef(const char *SymbolName, RelocType RelocType, int Delta);
+  int EmitSymbolRef(const char *SymbolName, RelocType RelocType, int Delta, SymbolRefFlags Flags);
 
   void EmitDebugFileInfo(int FileId, const char *FileName);
   void EmitDebugFunctionInfo(const char *FunctionName, int FunctionSize, unsigned MethodTypeIndex);
@@ -154,7 +159,7 @@ private:
   Triple GetTriple();
   unsigned GetDFSize();
   void EmitRelocDirective(const int Offset, StringRef Name, const MCExpr *Expr);
-  const MCExpr *GenTargetExpr(const char *SymbolName,
+  const MCExpr *GenTargetExpr(const MCSymbol* Symbol,
                               MCSymbolRefExpr::VariantKind Kind, int Delta,
                               bool IsPCRel = false, int Size = 0);
   void EmitARMExIdxPerOffset();
@@ -177,6 +182,7 @@ private:
   bool FrameOpened;
   std::vector<DebugVarInfo> DebugVarInfos;
   std::vector<DebugEHClauseInfo> DebugEHClauseInfos;
+  DenseSet<MCSymbol *> AddressTakenFunctions;
 
   std::set<MCSection *> Sections;
   int FuncId;
@@ -243,9 +249,9 @@ DLL_EXPORT STDMETHODCALLTYPE void EmitSymbolDef(ObjectWriter *OW, const char *Sy
 }
 
 DLL_EXPORT STDMETHODCALLTYPE int EmitSymbolRef(ObjectWriter *OW, const char *SymbolName,
-                             RelocType RelocType, int Delta) {
+                             RelocType RelocType, int Delta, SymbolRefFlags Flags) {
   assert(OW && "ObjWriter is null");
-  return OW->EmitSymbolRef(SymbolName, RelocType, Delta);
+  return OW->EmitSymbolRef(SymbolName, RelocType, Delta, Flags);
 }
 
 DLL_EXPORT STDMETHODCALLTYPE void EmitWinFrameInfo(ObjectWriter *OW, const char *FunctionName,
