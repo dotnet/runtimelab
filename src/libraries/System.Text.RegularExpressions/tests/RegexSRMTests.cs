@@ -466,11 +466,23 @@ namespace System.Text.RegularExpressions.Tests
         {
             StringWriter sw = new StringWriter();
             var re = new Regex(".*a+", RegexOptions.NonBacktracking | RegexOptions.Singleline);
+            RegexExperiment.ViewDGML(re, name : "TestDGMLGeneration");
             SaveDGML(re, sw);
             string str = sw.ToString();
             Assert.StartsWith("<?xml version=\"1.0\" encoding=\"utf-8\"?>", str);
             Assert.Contains("DirectedGraph", str);
+#if DEBUG
+            // in debug mode re may be serialized and then deserialized internally 
+            // if that happens the predicate label .*a+ becomes .*[2]+
+            // the partition of characters in this regex is into two sets (in binary):
+            //   01 or [1] representing [^a]  (first part)
+            //   10 or [2] representinng 'a' (second part) which is where 2 comes from
+            //   (3rd part would be 100 = [4], 4th 1000 = [8] etc)
+            // '.' here is the union of all parts, i.e. 01 and 10 that is 11 (in binary internally) but printed as '.' also.
+            Assert.True(str.Contains(".*a+") || str.Contains(".*[2]+"));
+#else
             Assert.Contains(".*a+", str);
+#endif
         }
 
         [Fact]
