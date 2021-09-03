@@ -190,8 +190,7 @@ namespace System.Text.RegularExpressions.SRM
             if (IsLeaf)
                 return new BDD[] { this };
 
-            //order the nodes according to their ordinals
-            //into the nonterminals array
+            // Order the nodes according to their ordinals into the nonterminals array
             var nonterminals = new List<BDD>[Ordinal + 1];
             var sorted = new List<BDD>();
             var toVisit = new Stack<BDD>();
@@ -208,12 +207,13 @@ namespace System.Text.RegularExpressions.SRM
 
                 if (node.IsLeaf)
                 {
-                    // MTBDD terminals can be directly added to the sorted nodes
+                    // MTBDD terminals can be directly added to the sorted nodes, since they have no children that
+                    // would come first in the topological ordering.
                     sorted.Add(node);
                 }
                 else
                 {
-                    // non-terminals are grouped by their ordinal first
+                    // Non-terminals are grouped by their ordinal so that they can be sorted into a topological order.
                     (nonterminals[node.Ordinal] ??= new List<BDD>()).Add(node);
 
                     if (visited.Add(node.Zero))
