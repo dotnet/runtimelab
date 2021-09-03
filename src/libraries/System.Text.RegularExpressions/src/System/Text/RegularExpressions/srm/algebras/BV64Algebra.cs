@@ -13,7 +13,7 @@ namespace System.Text.RegularExpressions.SRM
     /// </summary>
     internal sealed class BV64Algebra : BVAlgebraBase, ICharAlgebra<ulong>
     {
-        private readonly MintermGenerator<ulong> _mtg;
+        private readonly MintermGenerator<ulong> _mintermGenerator;
         private readonly ulong _False;
         private readonly ulong _True;
 
@@ -34,7 +34,7 @@ namespace System.Text.RegularExpressions.SRM
             base(Classifier.Create(solver, minterms), Array.ConvertAll(minterms, solver.ComputeDomainSize), minterms)
         {
             Debug.Assert(minterms.Length <= 64);
-            _mtg = new MintermGenerator<ulong>(this);
+            _mintermGenerator = new MintermGenerator<ulong>(this);
             _False = 0;
             _True = _bits == 64 ? ulong.MaxValue : ulong.MaxValue >> (64 - _bits);
         }
@@ -45,7 +45,7 @@ namespace System.Text.RegularExpressions.SRM
         public BV64Algebra(Classifier classifier, ulong[] cardinalities) : base(classifier, cardinalities, null)
         {
             Debug.Assert(cardinalities.Length <= 64);
-            _mtg = new MintermGenerator<ulong>(this);
+            _mintermGenerator = new MintermGenerator<ulong>(this);
             _False = 0;
             _True = _bits == 64 ? ulong.MaxValue : ulong.MaxValue >> (64 - _bits);
         }
@@ -61,7 +61,7 @@ namespace System.Text.RegularExpressions.SRM
 
         public bool AreEquivalent(ulong predicate1, ulong predicate2) => predicate1 == predicate2;
 
-        public IEnumerable<Tuple<bool[], ulong>> GenerateMinterms(params ulong[] constraints) => _mtg.GenerateMinterms(constraints);
+        public IEnumerable<Tuple<bool[], ulong>> GenerateMinterms(params ulong[] constraints) => _mintermGenerator.GenerateMinterms(constraints);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool IsSatisfiable(ulong predicate) => predicate != _False;

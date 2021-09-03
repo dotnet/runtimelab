@@ -73,7 +73,7 @@ namespace System.Text.RegularExpressions.SRM
     /// </summary>
     internal sealed class BVAlgebra : BVAlgebraBase, ICharAlgebra<BV>
     {
-        private readonly MintermGenerator<BV> _mtg;
+        private readonly MintermGenerator<BV> _mintermGenerator;
         private readonly BV _zero;
         private readonly BV _ones;
         internal BV[] _atoms;
@@ -96,7 +96,7 @@ namespace System.Text.RegularExpressions.SRM
         public BVAlgebra(CharSetSolver solver, BDD[] minterms) :
             base(Classifier.Create(solver, minterms), Array.ConvertAll(minterms, solver.ComputeDomainSize), minterms)
         {
-            _mtg = new MintermGenerator<BV>(this);
+            _mintermGenerator = new MintermGenerator<BV>(this);
             _zero = BV.CreateFalse(_bits);
             _ones = BV.CreateTrue(_bits);
 
@@ -113,7 +113,7 @@ namespace System.Text.RegularExpressions.SRM
         /// </summary>
         public BVAlgebra(Classifier classifier, ulong[] cardinalities) : base(classifier, cardinalities, null)
         {
-            _mtg = new MintermGenerator<BV>(this);
+            _mintermGenerator = new MintermGenerator<BV>(this);
             _zero = BV.CreateFalse(_bits);
             _ones = BV.CreateTrue(_bits);
 
@@ -131,7 +131,7 @@ namespace System.Text.RegularExpressions.SRM
         public BV True => _ones;
         public CharSetSolver CharSetProvider => throw new NotSupportedException();
         public bool AreEquivalent(BV predicate1, BV predicate2) => predicate1.Equals(predicate2);
-        public IEnumerable<Tuple<bool[], BV>> GenerateMinterms(params BV[] constraints) => _mtg.GenerateMinterms(constraints);
+        public IEnumerable<Tuple<bool[], BV>> GenerateMinterms(params BV[] constraints) => _mintermGenerator.GenerateMinterms(constraints);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool IsSatisfiable(BV predicate) => !predicate.Equals(_zero);
