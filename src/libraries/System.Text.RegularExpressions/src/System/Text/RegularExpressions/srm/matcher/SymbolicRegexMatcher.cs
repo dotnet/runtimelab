@@ -1,4 +1,4 @@
-﻿// Licensed to the .NET Foundation under one or more agreements.
+// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Collections.Generic;
@@ -64,12 +64,12 @@ namespace System.Text.RegularExpressions.SRM
         internal BooleanClassifier _startSetClassifier;
 
         /// <summary>
-        /// maximum allowed size of A_startset_array
+        /// maximum allowed size of _startSetArray
         /// </summary>
         private const int StartSetArrayMaxSize = 5;
 
         /// <summary>
-        /// string of at most s_A_startset_array_max_size many characters
+        /// string of at most StartSetArrayMaxSize many characters
         /// </summary>
         private readonly char[] _startSetArray;
 
@@ -322,7 +322,7 @@ namespace System.Text.RegularExpressions.SRM
 
             BDD startbdd = _builder._solver.ConvertToCharSet(css, _startSet);
             _startSetClassifier = BooleanClassifier.Create(css, startbdd);
-            //store the start characters in the A_startset_array if there are not too many characters
+            //store the start characters in the _startSetArray if there are not too many characters
             _startSetArray = _startSetSize <= StartSetArrayMaxSize ?
                 new List<char>(css.GenerateAllCharacters(startbdd)).ToArray() :
                 Array.Empty<char>();
@@ -362,7 +362,7 @@ namespace System.Text.RegularExpressions.SRM
                 // only the default previous character kind 0 is ever going to be used for all initial states
                 _initialStates[0] = _builder.MkState(_pattern, 0);
                 _dotstarredInitialStates[0] = _builder.MkState(_dotstarredPattern, 0);
-                // _A1q0[0] is recognized as special initial state,
+                // _dotstarredInitialStates[0] is recognized as special initial state,
                 // this information is used for search optimization based on start set and prefix of A
                 _dotstarredInitialStates[0].IsInitialState = true;
                 _reverseInitialStates[0] = _builder.MkState(_reversePattern, 0);
