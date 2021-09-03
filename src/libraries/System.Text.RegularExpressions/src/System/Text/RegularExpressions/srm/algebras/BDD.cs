@@ -11,7 +11,7 @@ namespace System.Text.RegularExpressions.SRM
     /// nodes have an Ordinal, which indicates the position of the bit the node relates to (0 for the least significant
     /// bit), and two children, One and Zero, for the cases of the current bit being 1 or 0, respectively. An integer
     /// belongs to the set represented by the BDD if the path from the root following the branches that correspond to
-    /// the bits of the integer leads to the True leaf. This class also supports multi-terminal BDDs, i.e. ones where
+    /// the bits of the integer leads to the True leaf. This class also supports multi-terminal BDDs (MTBDD), i.e. ones where
     /// the leaves are something other than True or False, which are used for representing classifiers.
     /// </summary>
     internal sealed class BDD : IComparable
@@ -202,7 +202,7 @@ namespace System.Text.RegularExpressions.SRM
             while (toVisit.Count > 0)
             {
                 BDD node = toVisit.Pop();
-                // true and False are not included in the result
+                // True and False are not included in the result
                 if (node.IsFull || node.IsEmpty)
                     continue;
 
@@ -262,21 +262,21 @@ namespace System.Text.RegularExpressions.SRM
             Debug.Assert(nodes.Length <= (1 << 24));
 
             // As few bits as possible are used to for ordinals and node identifiers for compact serialization.
-            // use at least a nibble (4 bits) to represent the ordinal and count how many are needed
+            // Use at least a nibble (4 bits) to represent the ordinal and count how many are needed.
             int ordinal_bits = 4;
             while (Ordinal >= (1 << ordinal_bits))
             {
                 ordinal_bits += 1;
             }
 
-            // use at least 2 bits to represent the node identifier and count how many are needed
+            // Use at least 2 bits to represent the node identifier and count how many are needed
             int node_bits = 2;
             while (nodes.Length >= (1 << node_bits))
             {
                 node_bits += 1;
             }
 
-            // reserve space for all nodes plus 2 extra: index 0 and 1 are reserved for False and True
+            // Reserve space for all nodes plus 2 extra: index 0 and 1 are reserved for False and True
             long[] res = new long[nodes.Length + 2];
             res[0] = ordinal_bits;
             res[1] = node_bits;
@@ -292,7 +292,7 @@ namespace System.Text.RegularExpressions.SRM
                 [False] = 0
             };
 
-            // give all nodes ascending identifiers and produce their serializations into the result
+            // Give all nodes ascending identifiers and produce their serializations into the result
             for (int i = 0; i < nodes.Length; i++)
             {
                 BDD node = nodes[i];
@@ -306,7 +306,7 @@ namespace System.Text.RegularExpressions.SRM
                 }
                 else
                 {
-                    // combine ordinal and child identifiers according to the bit layout
+                    // Combine ordinal and child identifiers according to the bit layout
                     long v = (((long)node.Ordinal) << ordinal_shift) | (idmap[node.One] << one_node_shift) | (idmap[node.Zero] << zero_node_shift);
                     Debug.Assert(v >= 0);
                     res[i + 2] = v; // children ids are well-defined due to the topological order of nodes

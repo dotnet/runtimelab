@@ -295,6 +295,7 @@ namespace System.Text.RegularExpressions.SRM
                 if (_left != null)
                     foreach (PartitionTree<TPredicate> leaf in _left.GetLeaves())
                         yield return leaf;
+
                 if (_right != null)
                     foreach (PartitionTree<TPredicate> leaf in _right.GetLeaves())
                         yield return leaf;
