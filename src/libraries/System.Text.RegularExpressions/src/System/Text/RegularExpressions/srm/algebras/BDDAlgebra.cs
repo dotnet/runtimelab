@@ -252,7 +252,7 @@ namespace System.Text.RegularExpressions.SRM
                         return MkNot_rec(a);
                     break;
                 default:
-                    Debug.Assert(false, "Unhandled binary BoolOp case");
+                    Debug.Fail("Unhandled binary BoolOp case");
                     break;
             }
             #endregion
