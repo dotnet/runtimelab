@@ -2,62 +2,41 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 
 namespace System.Text.RegularExpressions.SRM.Unicode
 {
 #if DEBUG
-    /// <summary>
-    /// Utility for generating unicode category ranges and corresponing binary decision diagrams
-    /// </summary>
+    /// <summary>Utility for generating unicode category ranges and corresponing binary decision diagrams.</summary>
     internal static class UnicodeCategoryRangesGenerator
     {
-        /// <summary>
-        ///  Generator for BDD Unicode category definitions.
-        /// </summary>
+        /// <summary>Generator for BDD Unicode category definitions.</summary>
         /// <param name="namespacename">namespace for the class</param>
         /// <param name="classname">name of the class</param>
         /// <param name="path">path where the file classname.cs is written</param>
         public static void Generate(string namespacename, string classname, string path)
         {
-            if (namespacename == null)
-                throw new ArgumentNullException(nameof(namespacename));
-            if (classname == null)
-                throw new ArgumentNullException(nameof(classname));
-            if (path == null)
-                throw new ArgumentNullException(nameof(path));
+            Debug.Assert(namespacename != null);
+            Debug.Assert(classname != null);
+            Debug.Assert(path != null);
 
-            if (path != "" && !path.EndsWith('/'))
-                path += "/";
-
-            string version = Environment.Version.ToString();
-
-            string prefix = @"// Licensed to the .NET Foundation under one or more agreements.
+            using StreamWriter sw = new StreamWriter($"{Path.Combine(path, classname)}.cs");
+            sw.WriteLine(
+$@"// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
 // This is a programmatically generated file from Regex.GenerateUnicodeTables.
-// It provides serialized BDD Unicode category definitions for System.Environment.Version = " + version + @"
+// It provides serialized BDD Unicode category definitions for System.Environment.Version = {Environment.Version}
 
-namespace " + namespacename + @"
-{
-internal static class " + classname + @"
-{";
-
-            string suffix = @"}
-}
-";
-            FileInfo fi = new FileInfo($"{path}{classname}.cs");
-            if (fi.Exists)
-                fi.IsReadOnly = false;
-            StreamWriter sw = new StreamWriter($"{path}{classname}.cs");
-            sw.WriteLine(prefix);
-
+namespace {namespacename}
+{{
+    internal static class {classname}
+    {{");
             WriteSerializedBDDs(sw);
-            sw.WriteLine();
-
-            sw.WriteLine(suffix);
-            sw.Close();
+            sw.WriteLine($@"    }}
+}}");
         }
 
         private static void WriteSerializedBDDs(StreamWriter sw)
@@ -71,16 +50,17 @@ internal static class " + classname + @"
 
             Ranges whitespace = new Ranges();
             Ranges wordcharacter = new Ranges();
-            RegularExpressions.Regex s_regex = new(@"\s");
-            RegularExpressions.Regex w_regex = new(@"\w");
+            RegularExpressions.Regex whitespaceRegex = new(@"\s");
+            RegularExpressions.Regex wordcharRegex = new(@"\w");
             for (int i = 0; i <= maxChar; i++)
             {
                 char ch = (char)i;
-                if (s_regex.IsMatch(ch.ToString())) //(char.IsWhiteSpace(ch))
+                catMap[char.GetUnicodeCategory(ch)].Add(i);
+
+                if (whitespaceRegex.IsMatch(ch.ToString()))
                     whitespace.Add(i);
-                UnicodeCategory cat = char.GetUnicodeCategory(ch);
-                catMap[cat].Add(i);
-                if (w_regex.IsMatch(ch.ToString()))
+
+                if (wordcharRegex.IsMatch(ch.ToString()))
                     wordcharacter.Add(i);
             }
 
@@ -94,42 +74,29 @@ internal static class " + classname + @"
 
             BDD wordCharBdd = bddb.MkBddForIntRanges(wordcharacter.ranges);
 
-            sw.WriteLine(@"/// <summary>
-/// Serialized BDD representations of all the Unicode categories.
-/// </summary>");
-            sw.WriteLine("public static readonly string[] s_UnicodeCategoryBdd_repr = new string[]{");
+            sw.WriteLine("        /// <summary>Serialized BDD representations of all the Unicode categories.</summary>");
+            sw.WriteLine("        public static readonly string[] AllCategoriesSerializedBDD = new string[]");
+            sw.WriteLine("        {");
             for (int i = 0; i < 30; i++)
             {
-                UnicodeCategory c = (UnicodeCategory)i;
-                sw.WriteLine("//{0}({1}):", c, i);
-                BDD catBdd = catBDDs[i];
-                sw.Write('"');
-                sw.Write(catBdd.SerializeToString());
+                sw.WriteLine("            // {0}({1}):", (UnicodeCategory)i, i);
+                sw.Write("            \"");
+                sw.Write(catBDDs[i].SerializeToString());
                 sw.WriteLine("\",");
             }
-            sw.WriteLine("};");
+            sw.WriteLine("        };");
+            sw.WriteLine();
 
-            sw.WriteLine(@"/// <summary>
-/// Serialized BDD representation of the set of all whitespace characters.
-/// </summary>");
-            sw.WriteLine("public const string s_UnicodeWhitespaceBdd_repr = ");
-            sw.Write('"');
-            sw.Write(whitespaceBdd.SerializeToString());
-            sw.WriteLine("\";");
+            sw.WriteLine("        /// <summary>Serialized BDD representation of the set of all whitespace characters.</summary>");
+            sw.WriteLine($"        public const string WhitespaceSerializedBDD = \"{whitespaceBdd.SerializeToString()}\";");
+            sw.WriteLine();
 
-            sw.WriteLine(@"/// <summary>
-/// Serialized BDD representation of the set of all word characters
-/// </summary>");
-            sw.WriteLine("public const string s_UnicodeWordCharacterBdd_repr = ");
-            sw.Write('"');
-            sw.Write(wordCharBdd.SerializeToString());
-            sw.WriteLine("\";");
+            sw.WriteLine("        /// <summary>Serialized BDD representation of the set of all word characters</summary>");
+            sw.WriteLine($"        public const string WordCharactersSerializedBDD = \"{wordCharBdd.SerializeToString()}\";");
         }
     }
 
-    /// <summary>
-    /// Used internally for creating a collection of ranges for serialization.
-    /// </summary>
+    /// <summary>Used internally for creating a collection of ranges for serialization.</summary>
     internal sealed class Ranges
     {
         public readonly List<int[]> ranges = new List<int[]>();
@@ -144,6 +111,7 @@ internal static class " + classname + @"
                     return;
                 }
             }
+
             ranges.Add(new int[] { n, n });
         }
 
