@@ -736,6 +736,11 @@ namespace System.Runtime
             }
         }
 
+        internal struct ArrayElement
+        {
+            public object Value;
+        }
+
         //
         // Array stelem/ldelema helpers with RyuJIT conventions
         //
@@ -745,38 +750,68 @@ namespace System.Runtime
             // This is supported only on arrays
             Debug.Assert(array.MethodTable->IsArray, "first argument must be an array");
 
+#if INPLACE_RUNTIME
+            // this will throw appropriate exceptions if array is null or access is out of range.
+            ref object element = ref Unsafe.As<ArrayElement[]>(array)[index].Value;
+#else
+            if (array is null)
+            {
+                // TODO: If both array and obj are null, we're likely going to throw Redhawk's NullReferenceException.
+                //       This should blame the caller.
+                throw obj.MethodTable->GetClasslibException(ExceptionIDs.NullReference);
+            }
             if ((uint)index >= (uint)array.Length)
             {
                 throw array.MethodTable->GetClasslibException(ExceptionIDs.IndexOutOfRange);
             }
+            ref object rawData = ref Unsafe.As<byte, object>(ref Unsafe.As<RawArrayData>(array).Data);
+            ref object element = ref Unsafe.Add(ref rawData, index);
+#endif
 
-            if (obj != null)
+            MethodTable* elementType = array.MethodTable->RelatedParameterType;
+
+            if (obj == null)
+                goto assigningNull;
+
+            if (elementType != obj.MethodTable)
+                goto notExactMatch;
+
+doWrite:
+            InternalCalls.RhpAssignRef(ref element, obj);
+            return;
+
+assigningNull:
+            element = null;
+            return;
+
+        notExactMatch:
+#if INPLACE_RUNTIME
+            // This optimization only makes sense for inplace runtime where there's only one System.Object.
+            if (array.MethodTable == MethodTableOf<object[]>())
+                goto doWrite;
+#endif
+
+            StelemRef_Helper(ref element, elementType, obj);
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private static unsafe void StelemRef_Helper(ref object element, MethodTable* elementType, object obj)
+        {
+            if (CastCache.AreTypesAssignableInternal(obj.MethodTable, elementType, AssignmentVariation.BoxedSource, null))
             {
-                MethodTable* arrayElemType = array.MethodTable->RelatedParameterType;
-
-                if (!CastCache.AreTypesAssignableInternal(obj.MethodTable, arrayElemType, AssignmentVariation.BoxedSource, null))
-                {
-                    // If object type implements IDynamicInterfaceCastable then there's one more way to check whether it implements
-                    // the interface.
-                    if (!obj.MethodTable->IsIDynamicInterfaceCastable || !IsInstanceOfInterfaceViaIDynamicInterfaceCastable(arrayElemType, obj, throwing: false))
-                    {
-                        // Throw the array type mismatch exception defined by the classlib, using the input array's
-                        // MethodTable* to find the correct classlib.
-                        throw array.MethodTable->GetClasslibException(ExceptionIDs.ArrayTypeMismatch);
-                    }
-                }
-
-                // Both bounds and type check are ok.
-
-                // Call write barrier directly. Assigning object reference would call slower checked write barrier.
-                ref object rawData = ref Unsafe.As<byte, object>(ref Unsafe.As<RawArrayData>(array).Data);
-                InternalCalls.RhpAssignRef(ref Unsafe.Add(ref rawData, index), obj);
+                InternalCalls.RhpAssignRef(ref element, obj);
             }
             else
             {
-                // Storing null does not require write barrier
-                ref IntPtr rawData = ref Unsafe.As<byte, IntPtr>(ref Unsafe.As<RawArrayData>(array).Data);
-                Unsafe.Add(ref rawData, index) = default(IntPtr);
+                // If object type implements IDynamicInterfaceCastable then there's one more way to check whether it implements
+                // the interface.
+                if (!obj.MethodTable->IsIDynamicInterfaceCastable || !IsInstanceOfInterfaceViaIDynamicInterfaceCastable(elementType, obj, throwing: false))
+                {
+                    // Throw the array type mismatch exception defined by the classlib, using the input array's
+                    // MethodTable* to find the correct classlib.
+                    throw elementType->GetClasslibException(ExceptionIDs.ArrayTypeMismatch);
+                }
+                InternalCalls.RhpAssignRef(ref element, obj);
             }
         }
 

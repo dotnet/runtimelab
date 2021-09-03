@@ -1546,6 +1546,7 @@ namespace Internal.JitInterface
             switch (method.Name)
             {
                 case "EETypePtrOf":
+                case "MethodTableOf":
                     ComputeLookup(ref pResolvedToken, method.Instantiation[0], ReadyToRunHelperId.TypeHandle, ref pResult.lookup);
                     break;
                 case "DefaultConstructorOf":

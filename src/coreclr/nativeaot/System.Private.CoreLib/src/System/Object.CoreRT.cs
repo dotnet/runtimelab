@@ -38,6 +38,9 @@ namespace System
         }
 #endif
 
+        [Runtime.CompilerServices.Intrinsic]
+        internal static extern MethodTable* MethodTableOf<T>();
+
         [Intrinsic]
         public Type GetType()
         {
