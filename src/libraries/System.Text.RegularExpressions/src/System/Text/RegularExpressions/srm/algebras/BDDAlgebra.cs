@@ -73,7 +73,7 @@ namespace System.Text.RegularExpressions.SRM
         /// Returns the BDD from the cache if it already exists.
         /// Must be executed in a single thread mode.
         /// </summary>
-        public BDD MkBDD(int ordinal, BDD one, BDD zero)
+        public BDD GetOrCreateBDD(int ordinal, BDD one, BDD zero)
         {
             var key = new BDD(ordinal, one, zero);
             if (!_bddCache.TryGetValue(key, out BDD set))
@@ -163,13 +163,13 @@ namespace System.Text.RegularExpressions.SRM
                     {
                         //multi-terminal case, we know here that a is neither True nor False
                         int ord = CombineTerminals(op, a.Ordinal, 0);
-                        res = MkBDD(ord, null, null);
+                        res = GetOrCreateBDD(ord, null, null);
                         _notCache[a] = res;
                         return res;
                     }
                     else
                     {
-                        res = MkBDD(a.Ordinal, MkNot_rec(a.One), MkNot_rec(a.Zero));
+                        res = GetOrCreateBDD(a.Ordinal, MkNot_rec(a.One), MkNot_rec(a.Zero));
                         _notCache[a] = res;
                         return res;
                     }
@@ -179,25 +179,25 @@ namespace System.Text.RegularExpressions.SRM
                 {
                     //multi-terminal case, we know here that a is neither True nor False
                     int ord = CombineTerminals(op, a.Ordinal, b.Ordinal);
-                    res = MkBDD(ord, null, null);
+                    res = GetOrCreateBDD(ord, null, null);
                 }
                 else if (a.IsLeaf || b.Ordinal > a.Ordinal)
                 {
                     BDD t = MkBinBoolOP_rec(op, a, b.One);
                     BDD f = MkBinBoolOP_rec(op, a, b.Zero);
-                    res = t == f ? t : MkBDD(b.Ordinal, t, f);
+                    res = t == f ? t : GetOrCreateBDD(b.Ordinal, t, f);
                 }
                 else if (b.IsLeaf || a.Ordinal > b.Ordinal)
                 {
                     BDD t = MkBinBoolOP_rec(op, a.One, b);
                     BDD f = MkBinBoolOP_rec(op, a.Zero, b);
-                    res = t == f ? t : MkBDD(a.Ordinal, t, f);
+                    res = t == f ? t : GetOrCreateBDD(a.Ordinal, t, f);
                 }
                 else
                 {
                     BDD t = MkBinBoolOP_rec(op, a.One, b.One);
                     BDD f = MkBinBoolOP_rec(op, a.Zero, b.Zero);
-                    res = t == f ? t : MkBDD(a.Ordinal, t, f);
+                    res = t == f ? t : GetOrCreateBDD(a.Ordinal, t, f);
                 }
 
                 _binOpCache[key] = res;
@@ -265,7 +265,7 @@ namespace System.Text.RegularExpressions.SRM
             {
                 //multi-terminal case, we know here that a is neither True nor False
                 int ord = CombineTerminals(op, a.Ordinal, b.Ordinal);
-                res = MkBDD(ord, null, null);
+                res = GetOrCreateBDD(ord, null, null);
             }
             else
             {
@@ -273,19 +273,19 @@ namespace System.Text.RegularExpressions.SRM
                 {
                     BDD t = MkBinBoolOP_rec(op, a, b.One);
                     BDD f = MkBinBoolOP_rec(op, a, b.Zero);
-                    res = t == f ? t : MkBDD(b.Ordinal, t, f);
+                    res = t == f ? t : GetOrCreateBDD(b.Ordinal, t, f);
                 }
                 else if (b.IsLeaf || a.Ordinal > b.Ordinal)
                 {
                     BDD t = MkBinBoolOP_rec(op, a.One, b);
                     BDD f = MkBinBoolOP_rec(op, a.Zero, b);
-                    res = t == f ? t : MkBDD(a.Ordinal, t, f);
+                    res = t == f ? t : GetOrCreateBDD(a.Ordinal, t, f);
                 }
                 else
                 {
                     BDD t = MkBinBoolOP_rec(op, a.One, b.One);
                     BDD f = MkBinBoolOP_rec(op, a.Zero, b.Zero);
-                    res = t == f ? t : MkBDD(a.Ordinal, t, f);
+                    res = t == f ? t : GetOrCreateBDD(a.Ordinal, t, f);
                 }
             }
 
@@ -308,8 +308,8 @@ namespace System.Text.RegularExpressions.SRM
                 return neg;
 
             neg = a.IsLeaf ?
-                MkBDD(CombineTerminals(BoolOp.NOT, a.Ordinal, 0), null, null) : // multi-terminal case
-                MkBDD(a.Ordinal, MkNot_rec(a.One), MkNot_rec(a.Zero));
+                GetOrCreateBDD(CombineTerminals(BoolOp.NOT, a.Ordinal, 0), null, null) : // multi-terminal case
+                GetOrCreateBDD(a.Ordinal, MkNot_rec(a.One), MkNot_rec(a.Zero));
             _notCache[a] = neg;
             return neg;
         }
@@ -454,7 +454,7 @@ namespace System.Text.RegularExpressions.SRM
 
             res = (zero == one) ?
                 zero :
-                MkBDD((ushort)ordinal, one, zero);
+                GetOrCreateBDD((ushort)ordinal, one, zero);
             shiftCache[key] = res;
             return res;
         }
@@ -515,8 +515,8 @@ namespace System.Text.RegularExpressions.SRM
             if (mask == 1) //base case: LSB
             {
                 return
-                    n == 0 ? MkBDD((ushort)bit, False, True) : //implies that m==0
-                    m == 1 ? MkBDD((ushort)bit, True, False) : //implies that n==1
+                    n == 0 ? GetOrCreateBDD((ushort)bit, False, True) : //implies that m==0
+                    m == 1 ? GetOrCreateBDD((ushort)bit, True, False) : //implies that n==1
                     True; //m=0 and n=1, thus full range from 0 to ((mask << 1)-1)
             }
 
@@ -533,18 +533,18 @@ namespace System.Text.RegularExpressions.SRM
             if (nb == 0) // implies that 1-branch is empty
             {
                 BDD fcase = CreateFromInterval_rec(mask >> 1, bit - 1, m, n);
-                return MkBDD((ushort)bit, False, fcase);
+                return GetOrCreateBDD((ushort)bit, False, fcase);
             }
             else if (mb == mask) // implies that 0-branch is empty
             {
                 BDD tcase = CreateFromInterval_rec(mask >> 1, bit - 1, m & ~mask, n & ~mask);
-                return MkBDD((ushort)bit, tcase, False);
+                return GetOrCreateBDD((ushort)bit, tcase, False);
             }
             else //split the interval in two
             {
                 BDD fcase = CreateFromInterval_rec(mask >> 1, bit - 1, m, mask - 1);
                 BDD tcase = CreateFromInterval_rec(mask >> 1, bit - 1, 0, n & ~mask);
-                return MkBDD((ushort)bit, tcase, fcase);
+                return GetOrCreateBDD((ushort)bit, tcase, fcase);
             }
         }
 
@@ -692,7 +692,7 @@ namespace System.Text.RegularExpressions.SRM
 
             lock (this)
             {
-                BDD leaf = MkBDD(terminal, null, null);
+                BDD leaf = GetOrCreateBDD(terminal, null, null);
                 return ReplaceTrue_(bdd, leaf, new Dictionary<BDD, BDD>());
             }
         }
@@ -710,7 +710,7 @@ namespace System.Text.RegularExpressions.SRM
 
             BDD one = ReplaceTrue_(bdd.One, leaf, cache);
             BDD zero = ReplaceTrue_(bdd.Zero, leaf, cache);
-            res = MkBDD(bdd.Ordinal, one, zero);
+            res = GetOrCreateBDD(bdd.Ordinal, one, zero);
             cache[bdd] = res;
             return res;
         }

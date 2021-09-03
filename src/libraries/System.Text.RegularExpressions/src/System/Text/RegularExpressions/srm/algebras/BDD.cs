@@ -328,11 +328,11 @@ namespace System.Text.RegularExpressions.SRM
                 return arcs[0] == 0 ? False : True;
 
             if (algebra is null)
-                return DeserializeWithFactory(arcs, MkBDD);
+                return DeserializeWithFactory(arcs, CreateBDD);
 
             lock (algebra)
             {
-                return DeserializeWithFactory(arcs, algebra.MkBDD);
+                return DeserializeWithFactory(arcs, algebra.GetOrCreateBDD);
             }
 
             static BDD DeserializeWithFactory(long[] arcs, Func<int, BDD, BDD, BDD> mkBDD)
@@ -375,7 +375,7 @@ namespace System.Text.RegularExpressions.SRM
             }
         }
 
-        private static BDD MkBDD(int ordinal, BDD one, BDD zero)
+        private static BDD CreateBDD(int ordinal, BDD one, BDD zero)
         {
             Debug.Assert(one != zero || one is null);
             Debug.Assert(one is not null || zero is null);
