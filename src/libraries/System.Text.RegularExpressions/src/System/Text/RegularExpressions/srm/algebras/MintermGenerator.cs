@@ -7,25 +7,26 @@ using System.Diagnostics;
 namespace System.Text.RegularExpressions.SRM
 {
     /// <summary>
-    /// Provides a generic implementation for minterm generation over a given Boolean Algebra.
+    /// Provides a generic implementation for minterm generation over a given Boolean Algebra. The minterms for a set of
+    /// predicates are all their non-overlapping, satisfiable Boolean combinations. For example if the predicates are
+    /// [0-9] and [0-4], then there are three minterms: [0-4], [5-9] and [^0-9]. Notably, there is no minterm
+    /// corresponding to "[0-9] and not [0-4]", since that is unsatisfiable.
     /// </summary>
     /// <typeparam name="TPredicate">type of predicates</typeparam>
     internal sealed class MintermGenerator<TPredicate>
     {
-        private readonly IBooleanAlgebra<TPredicate> _ba;
+        private readonly IBooleanAlgebra<TPredicate> _algebra;
 
         /// <summary>
         /// Constructs a minterm generator for a given Boolean Algebra.
         /// </summary>
-        /// <param name="ba">given Boolean Algebra</param>
-        public MintermGenerator(IBooleanAlgebra<TPredicate> ba)
+        /// <param name="algebra">given Boolean Algebra</param>
+        public MintermGenerator(IBooleanAlgebra<TPredicate> algebra)
         {
-            // cannot rely on equivalent predicates having the same hashcode
-            // so all predicates would end up in the same bucket that causes a linear search
-            // with Equals to check equivalence --- this case must never arise here
-            Debug.Assert(ba.HashCodesRespectEquivalence);
+            // check that we can rely on equivalent predicates having the same hashcode, which EquivClass assumes
+            Debug.Assert(algebra.HashCodesRespectEquivalence);
 
-            _ba = ba;
+            _algebra = algebra;
         }
 
         /// <summary>
@@ -41,236 +42,262 @@ namespace System.Text.RegularExpressions.SRM
         {
             if (preds.Length == 0)
             {
-                yield return new Tuple<bool[], TPredicate>(Array.Empty<bool>(), _ba.True);
+                yield return new Tuple<bool[], TPredicate>(Array.Empty<bool>(), _algebra.True);
+                yield break;
             }
-            else
+
+            // The minterms will be solved using non-equivalent predicates, i.e., the equivalence classes of preds. The
+            // following code maps each predicate to an equivalence class and also stores for each equivalence class the
+            // predicates belonging to it, so that a valuation for the original predicates may be reconstructed.
+
+            // all the equivalence classes
+            var equivClasses = new List<TPredicate>();
+            // mapping from equivalcence classes to their members' indices
+            var classIndices = new Dictionary<EquivalenceClass, int>();
+            var memberLists = new List<List<int>>();
+
+            for (int i = 0; i < preds.Length; i++)
             {
-                int count = preds.Length;
-
-                List<TPredicate> nonequivalentSets = new List<TPredicate>();
-
-                //work only with nonequivalent sets as distinct elements
-                var indexLookup = new Dictionary<int, int>();
-                var newIndexMap = new Dictionary<EquivClass, int>();
-                var equivs = new List<List<int>>();
-
-                for (int i = 0; i < count; i++)
+                // use a wrapper that overloads Equals to be logical equivalence as the key
+                EquivalenceClass equiv = CreateEquivalenceClass(preds[i]);
+                if (!classIndices.TryGetValue(equiv, out int classIndex))
                 {
-                    EquivClass equiv = CreateEquivalenceClass(preds[i]);
-                    if (!newIndexMap.TryGetValue(equiv, out int newIndex))
+                    // if no equivalence class exists yet create a new index
+                    classIndex = classIndices.Count;
+                    classIndices[equiv] = classIndex;
+                    equivClasses.Add(preds[i]);
+                    memberLists.Add(new List<int>());
+                }
+                // add the index of the input predicate to its equivalence class
+                memberLists[classIndex].Add(i);
+            }
+
+            var tree = new PartitionTree<TPredicate>(_algebra);
+            // push each equivalence class into the partition tree
+            foreach (TPredicate x in equivClasses)
+            {
+                tree.Refine(x);
+            }
+
+            // iterate through all minterms as the leaves of the partition tree
+            foreach (PartitionTree<TPredicate> leaf in tree.GetLeaves())
+            {
+                // reconstruct a valuation of the original predicates for each minterm
+                bool[] characteristic = new bool[preds.Length];
+                // the path enumerates all the indices of all equivalence classes that are true in the minterm
+                foreach (int k in leaf.GetPath())
+                {
+                    // for each equivalence class mark all of its members as true
+                    foreach (int n in memberLists[k])
                     {
-                        newIndex = newIndexMap.Count;
-                        newIndexMap[equiv] = newIndex;
-                        nonequivalentSets.Add(preds[i]);
-                        equivs.Add(new List<int>());
+                        characteristic[n] = true;
                     }
-                    indexLookup[i] = newIndex;
-                    equivs[newIndex].Add(i);
                 }
 
-                var tree = new PartitonTree<TPredicate>(_ba);
-                foreach (TPredicate psi in nonequivalentSets)
-                {
-                    tree.Refine(psi);
-                }
-
-                foreach (PartitonTree<TPredicate> leaf in tree.GetLeaves())
-                {
-                    bool[] characteristic = new bool[preds.Length];
-                    foreach (int k in leaf.GetPath())
-                    {
-                        foreach (int n in equivs[k])
-                        {
-                            characteristic[n] = true;
-                        }
-                    }
-
-                    yield return new Tuple<bool[], TPredicate>(characteristic, leaf._phi);
-                }
+                yield return new Tuple<bool[], TPredicate>(characteristic, leaf._pred);
             }
         }
 
-        private EquivClass CreateEquivalenceClass(TPredicate set) => new EquivClass(_ba, set);
+        private EquivalenceClass CreateEquivalenceClass(TPredicate set) => new EquivalenceClass(_algebra, set);
 
         /// <summary>
         /// Wraps a predicate as an equivalence class object whose Equals method is Equivalence checking
         /// </summary>
-        private sealed class EquivClass
+        private struct EquivalenceClass
         {
             private readonly TPredicate _set;
-            private readonly IBooleanAlgebra<TPredicate> _ba;
+            private readonly IBooleanAlgebra<TPredicate> _algebra;
 
-            internal EquivClass(IBooleanAlgebra<TPredicate> ba, TPredicate set)
+            internal EquivalenceClass(IBooleanAlgebra<TPredicate> algebra, TPredicate set)
             {
                 _set = set;
-                _ba = ba;
+                _algebra = algebra;
             }
 
             public override int GetHashCode() => _set.GetHashCode();
 
-            public override bool Equals(object obj) => obj is EquivClass ec && _ba.AreEquivalent(_set, ec._set);
+            public override bool Equals(object obj) => obj is EquivalenceClass ec && _algebra.AreEquivalent(_set, ec._set);
         }
     }
 
-    internal sealed class PartitonTree<TPredicate>
+    /// <summary>
+    /// A partition tree for efficiently solving minterms. Predicates are pushed into the tree with Refine(), which
+    /// creates leaves in the tree for all satisfiable and non-overlapping combinations with any previously pushed
+    /// predicates. At the end of the process the minterms can be read from the paths to the leaves of the tree.
+    ///
+    /// The valuations of the predicates are represented as follows. Given a path a^-1, a^0, a^1, ..., a^n, predicate
+    /// p^i is true in the corresponding minterm if and only if a^i is the left child of a^i-1.
+    ///
+    /// This class assumes that all predicates passed to Refine() are non-equivalent.
+    /// </summary>
+    internal sealed class PartitionTree<TPredicate>
     {
-        private readonly PartitonTree<TPredicate> _parent;
-        private readonly int _nr;
-        internal readonly TPredicate _phi;
+        private readonly PartitionTree<TPredicate> _parent;
+        private readonly int _index;
+        internal readonly TPredicate _pred;
         private readonly IBooleanAlgebra<TPredicate> _solver;
-        private PartitonTree<TPredicate> _left;
-        private PartitonTree<TPredicate> _right;  // complement
+        private PartitionTree<TPredicate> _left;
+        private PartitionTree<TPredicate> _right; // complement
 
-        internal PartitonTree(IBooleanAlgebra<TPredicate> solver)
+        /// <summary>
+        /// Create the root of the partition tree. Nodes below this will be indexed starting from 0. The initial
+        /// predicate is true.
+        /// </summary>
+        internal PartitionTree(IBooleanAlgebra<TPredicate> solver)
         {
             _solver = solver;
-            _nr = -1;
+            _index = -1;
             _parent = null;
-            _phi = solver.True;
+            _pred = solver.True;
             _left = null;
             _right = null;
         }
 
-        private PartitonTree(IBooleanAlgebra<TPredicate> solver, int depth, PartitonTree<TPredicate> parent, TPredicate phi, PartitonTree<TPredicate> left, PartitonTree<TPredicate> right)
+        private PartitionTree(IBooleanAlgebra<TPredicate> solver, int depth, PartitionTree<TPredicate> parent, TPredicate pred, PartitionTree<TPredicate> left, PartitionTree<TPredicate> right)
         {
             _solver = solver;
             _parent = parent;
-            _nr = depth;
-            _phi = phi;
+            _index = depth;
+            _pred = pred;
             _left = left;
             _right = right;
         }
 
-        internal void Refine(TPredicate psi)
+        internal void Refine(TPredicate other)
         {
             if (_left == null && _right == null)
             {
-                #region leaf
-                TPredicate phi_and_psi = _solver.MkAnd(_phi, psi);
-                if (_solver.IsSatisfiable(phi_and_psi))
+                // if this is a leaf node create left and/or right children for the new predicate
+                TPredicate thisAndOther = _solver.MkAnd(_pred, other);
+                if (_solver.IsSatisfiable(thisAndOther))
                 {
-                    TPredicate phi_min_psi = _solver.MkAnd(_phi, _solver.MkNot(psi));
-                    if (_solver.IsSatisfiable(phi_min_psi))
+                    // the predicates overlap, now check if this is contained in other
+                    TPredicate thisMinusOther = _solver.MkAnd(_pred, _solver.MkNot(other));
+                    if (_solver.IsSatisfiable(thisMinusOther))
                     {
-                        _left = new PartitonTree<TPredicate>(_solver, _nr + 1, this, phi_and_psi, null, null);
-                        _right = new PartitonTree<TPredicate>(_solver, _nr + 1, this, phi_min_psi, null, null);
+                        // this is not contained in other, both children are needed
+                        _left = new PartitionTree<TPredicate>(_solver, _index + 1, this, thisAndOther, null, null);
+                        // the right child corresponds to a conjunction with a negation, which matches thisMinusOther
+                        _right = new PartitionTree<TPredicate>(_solver, _index + 1, this, thisMinusOther, null, null);
                     }
-                    else // [[phi]] subset of [[psi]]
+                    else // [[this]] subset of [[other]]
                     {
-                        _left = new PartitonTree<TPredicate>(_solver, _nr + 1, this, _phi, null, null); //psi must true
+                        // other implies this, so populate the left child with this
+                        _left = new PartitionTree<TPredicate>(_solver, _index + 1, this, _pred, null, null);
                     }
                 }
-                else // [[phi]] subset of [[not(psi)]]
+                else // [[this]] subset of [[not(other)]]
                 {
-                    _right = new PartitonTree<TPredicate>(_solver, _nr + 1, this, _phi, null, null); //psi must be false
+                    // negation of other implies this, so populate the right child with this
+                    _right = new PartitionTree<TPredicate>(_solver, _index + 1, this, _pred, null, null); //other must be false
                 }
-                #endregion
             }
             else if (_left == null)
             {
-                _right.Refine(psi);
+                // no choice has to be made here, refine the single child that exists
+                _right.Refine(other);
             }
             else if (_right == null)
             {
-                _left.Refine(psi);
+                // no choice has to be made here, refine the single child that exists
+                _left.Refine(other);
             }
             else
             {
-                #region nonleaf
-                TPredicate phi_and_psi = _solver.MkAnd(_phi, psi);
-                if (_solver.IsSatisfiable(phi_and_psi))
+                TPredicate thisAndOther = _solver.MkAnd(_pred, other);
+                if (_solver.IsSatisfiable(thisAndOther))
                 {
-                    TPredicate phi_min_psi = _solver.MkAnd(_phi, _solver.MkNot(psi));
-                    if (_solver.IsSatisfiable(phi_min_psi))
+                    // other is satisfiable in this subtree
+                    TPredicate thisMinusOther = _solver.MkAnd(_pred, _solver.MkNot(other));
+                    if (_solver.IsSatisfiable(thisMinusOther))
                     {
-                        _left.Refine(psi);
-                        _right.Refine(psi);
+                        // but other does not imply this whole subtree, refine both children
+                        _left.Refine(other);
+                        _right.Refine(other);
                     }
-                    else // [[phi]] subset of [[psi]]
+                    else // [[this]] subset of [[other]]
                     {
-                        _left.ExtendLeft(); //psi is true
+                        // and other implies the whole subtree, include it in all minterms under here
+                        _left.ExtendLeft();
                         _right.ExtendLeft();
                     }
                 }
-                else // [[phi]] subset of [[not(psi)]]
+                else // [[this]] subset of [[not(other)]]
                 {
+                    // other is not satisfiable in this subtree, include its negation in all minterms under here
                     _left.ExtendRight();
-                    _right.ExtendRight(); //psi is false
+                    _right.ExtendRight();
                 }
-                #endregion
             }
         }
 
-        private void ExtendRight()
-        {
-            if (_left == null && _right == null)
-                _right = new PartitonTree<TPredicate>(_solver, _nr + 1, this, _phi, null, null);
-            else if (_left == null)
-                _right.ExtendRight();
-            else if (_right == null)
-                _left.ExtendRight();
-            else
-            {
-                _left.ExtendRight();
-                _right.ExtendRight();
-            }
-        }
-
+        /// <summary>
+        /// Include the next predicate in all minterms under this node. Assumes the next predicate implies the predicate
+        /// of this node.
+        /// </summary>
         private void ExtendLeft()
         {
             if (_left == null && _right == null)
             {
-                _left = new PartitonTree<TPredicate>(_solver, _nr + 1, this, _phi, null, null);
-            }
-            else if (_left == null)
-            {
-                _right.ExtendLeft();
-            }
-            else if (_right == null)
-            {
-                _left.ExtendLeft();
+                _left = new PartitionTree<TPredicate>(_solver, _index + 1, this, _pred, null, null);
             }
             else
             {
-                _left.ExtendLeft();
-                _right.ExtendLeft();
+                Debug.Assert(_left is not null || _right is not null);
+                _left?.ExtendLeft();
+                _right?.ExtendLeft();
             }
         }
 
+        /// <summary>
+        /// Include the negation of next predicate in all minterms under this node. Assumes the negation of the next
+        /// predicate implies the predicate of this node.
+        /// </summary>
+        private void ExtendRight()
+        {
+            if (_left == null && _right == null)
+            {
+                _right = new PartitionTree<TPredicate>(_solver, _index + 1, this, _pred, null, null);
+            }
+            else
+            {
+                Debug.Assert(_left is not null || _right is not null);
+                _left?.ExtendRight();
+                _right?.ExtendRight();
+            }
+        }
+
+        /// <summary>
+        /// Enumerate all predicates included in this minterm in their non-negated form.
+        /// </summary>
         internal IEnumerable<int> GetPath()
         {
-            for (PartitonTree<TPredicate> curr = this; curr._parent != null; curr = curr._parent)
+            for (PartitionTree<TPredicate> curr = this; curr._parent != null; curr = curr._parent)
             {
                 if (curr._parent._left == curr) //curr is the left child of its parent
                 {
-                    yield return curr._nr;
+                    yield return curr._index;
                 }
             }
         }
 
-        internal IEnumerable<PartitonTree<TPredicate>> GetLeaves()
+        /// <summary>
+        /// Enumerate all of the leaves in the tree.
+        /// </summary>
+        internal IEnumerable<PartitionTree<TPredicate>> GetLeaves()
         {
             if (_left == null && _right == null)
             {
                 yield return this;
             }
-            else if (_right == null)
-            {
-                foreach (PartitonTree<TPredicate> leaf in _left.GetLeaves())
-                    yield return leaf;
-            }
-            else if (_left == null)
-            {
-                foreach (PartitonTree<TPredicate> leaf in _right.GetLeaves())
-                    yield return leaf;
-            }
             else
             {
-                foreach (PartitonTree<TPredicate> leaf in _left.GetLeaves())
-                    yield return leaf;
-
-                foreach (PartitonTree<TPredicate> leaf in _right.GetLeaves())
-                    yield return leaf;
+                if (_left != null)
+                    foreach (PartitionTree<TPredicate> leaf in _left.GetLeaves())
+                        yield return leaf;
+                if (_right != null)
+                    foreach (PartitionTree<TPredicate> leaf in _right.GetLeaves())
+                        yield return leaf;
             }
         }
     }
