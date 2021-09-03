@@ -1,4 +1,4 @@
-// Licensed to the .NET Foundation under one or more agreements.
+﻿// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Collections.Generic;
@@ -577,7 +577,7 @@ namespace System.Text.RegularExpressions.SRM
 
             //may return -1 as a legitimate value when the initial state is nullable and startat=0
             //returns -2 when there is no match
-            i = FindFinalStatePosition(input, k, i, out int i_q0_A1, out int watchdog);
+            i = FindFinalStatePosition(input, k, i, out int iDotstarredInitialState, out int watchdog);
 
             if (i == -2)
                 return Match.NoMatch;
@@ -605,7 +605,7 @@ namespace System.Text.RegularExpressions.SRM
                     else
                     {
                         //walk in reverse to locate the start position of the match
-                        i_start = FindStartPosition(input, i, i_q0_A1);
+                        i_start = FindStartPosition(input, i, iDotstarredInitialState);
                     }
 
                     i_end = FindEndPosition(input, k, i_start);
@@ -775,15 +775,15 @@ namespace System.Text.RegularExpressions.SRM
         /// <param name="input">given input string</param>
         /// <param name="k">input length or bounded input length</param>
         /// <param name="i">start position</param>
-        /// <param name="i_q0">last position the initial state of A1 was visited</param>
+        /// <param name="iInitialState">last position the initial state of _dotstarredPattern was visited</param>
         /// <param name="watchdog">length of match when positive</param>
-        private int FindFinalStatePosition(string input, int k, int i, out int i_q0, out int watchdog)
+        private int FindFinalStatePosition(string input, int k, int i, out int iInitialState, out int watchdog)
         {
             // get the correct start state of A1,
             // which in general depends on the previous character kind in the input
             uint prevCharKindId = GetCharKind(input, i - 1);
             State<S> q = _dotstarredInitialStates[prevCharKindId];
-            i_q0 = i;
+            iInitialState = i;
 
             if (q.IsNothing)
             {
@@ -802,7 +802,6 @@ namespace System.Text.RegularExpressions.SRM
                 return i - 1;
             }
 
-            int i_q0_A1 = i;
             watchdog = -1;
 
             // search for a match end position within input[i..k-1]
@@ -810,8 +809,8 @@ namespace System.Text.RegularExpressions.SRM
             {
                 if (q.IsInitialState)
                 {
-                    //i_q0_A1 is the most recent position in the input when A1 is in the initial state
-                    i_q0_A1 = i;
+                    // iInitialState is the most recent position in the input when _dotstarredPattern is in the initial state
+                    iInitialState = i;
 
                     if (_prefixBoyerMoore != null)
                     {
@@ -825,7 +824,6 @@ namespace System.Text.RegularExpressions.SRM
                         if (i == -1)
                         {
                             // when a matching position does not exist then Scan returns -1
-                            i_q0 = i_q0_A1;
                             watchdog = -1;
                             return -2;
                         }
@@ -844,7 +842,6 @@ namespace System.Text.RegularExpressions.SRM
                             // here i points at the next character (the character immediately following the prefix)
                             if (q.IsNullable(GetCharKind(input, i)))
                             {
-                                i_q0 = i_q0_A1;
                                 watchdog = q.WatchDog;
                                 //return the last position of the match
                                 return i - 1;
@@ -852,7 +849,6 @@ namespace System.Text.RegularExpressions.SRM
                             if (i == k)
                             {
                                 // no match was found
-                                i_q0 = i_q0_A1;
                                 return -2;
                             }
                         }
@@ -867,18 +863,15 @@ namespace System.Text.RegularExpressions.SRM
                         if (i == -1)
                         {
                             // no match was found
-                            i_q0 = i_q0_A1;
                             return -2;
                         }
 
-                        i_q0_A1 = i;
                         // the start state must be updated
                         // to reflect the kind of the previous character
                         // when anchors are not used, q will remain the same state
                         q = _dotstarredInitialStates[GetCharKind(input, i - 1)];
                         if (q.IsNothing)
                         {
-                            i_q0 = i_q0_A1;
                             return -2;
                         }
                     }
@@ -889,11 +882,11 @@ namespace System.Text.RegularExpressions.SRM
                 int j = Math.Min(k, i + StateBoundLeeway);
                 if (!_builder._antimirov)
                 {
-                    done = FindFinalStatePositionDeltas<BrzozowskiTransition>(input, j, ref i, ref q, i_q0_A1, ref i_q0, ref watchdog, out result);
+                    done = FindFinalStatePositionDeltas<BrzozowskiTransition>(input, j, ref i, ref q, ref watchdog, out result);
                 }
                 else
                 {
-                    done = FindFinalStatePositionDeltas<AntimirovTransition>(input, j, ref i, ref q, i_q0_A1, ref i_q0, ref watchdog, out result);
+                    done = FindFinalStatePositionDeltas<AntimirovTransition>(input, j, ref i, ref q, ref watchdog, out result);
                 }
                 if (done)
                     return result;
@@ -902,13 +895,12 @@ namespace System.Text.RegularExpressions.SRM
             }
 
             //no match was found
-            i_q0 = i_q0_A1;
             return -2;
         }
 
         // Inner loop for FindFinalStatePosition parameterized by an ITransition type.
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private bool FindFinalStatePositionDeltas<Transition>(string input, int j, ref int i, ref State<S> q, int i_q0_A1, ref int i_q0, ref int watchdog, out int result) where Transition : struct, ITransition
+        private bool FindFinalStatePositionDeltas<Transition>(string input, int j, ref int i, ref State<S> q, ref int watchdog, out int result) where Transition : struct, ITransition
         {
             do
             {
@@ -917,7 +909,6 @@ namespace System.Text.RegularExpressions.SRM
 
                 if (q.IsNullable(GetCharKind(input, i + 1)))
                 {
-                    i_q0 = i_q0_A1;
                     watchdog = q.WatchDog;
                     result = i;
                     return true;
@@ -925,7 +916,6 @@ namespace System.Text.RegularExpressions.SRM
                 else if (q.IsNothing)
                 {
                     //q is a deadend state so any further search is meaningless
-                    i_q0 = i_q0_A1;
                     result = -2;
                     return true;
                 }
