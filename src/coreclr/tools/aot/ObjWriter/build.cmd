@@ -9,6 +9,8 @@ set "TargetArch=%~4"
 set "BuildType=%~5"
 if "%BuildType%"=="" set "BuildType=Release"
 
+set LLVMBranch=release/12.x
+
 :: Check that we have enough arguments
 if "%TargetArch%"=="" (
     echo Usage: %~nx0 ArtifactsDir RepoRoot BuildArch TargetArch [BuildType]
@@ -19,8 +21,13 @@ cd "%ArtifactsDir%" || goto Error
 
 if not exist llvm-project (
     rem Clone the LLVM repo
-    git clone --depth 1 -b release/12.x https://github.com/llvm/llvm-project.git || goto Error
-    cd llvm-project\llvm || goto Error
+    git clone --no-checkout --depth 1 -b %LLVMBranch% https://github.com/llvm/llvm-project.git || goto Error
+    cd llvm-project || goto Error
+    :: Purposefuly ignoring exit codes of sparse-checkout so that this works with git lower than 2.26
+    git sparse-checkout init
+    git sparse-checkout set /llvm/* !/llvm/test/*
+    git checkout %LLVMBranch% || goto Error
+    cd llvm || goto Error
     goto ApplyPatch
 )
 
@@ -99,6 +106,7 @@ set "ExtraCMakeArgs=%~3"
 
 echo Executing "%CMakePath%" --build "build\%Arch%" --config %BuildType% --target %Target% -- -m
 "%CMakePath%" --build "build\%Arch%" --config %BuildType% --target %Target% -- -m || goto Error
+echo Done building target %Target%
 exit /b 0
 
 :Error

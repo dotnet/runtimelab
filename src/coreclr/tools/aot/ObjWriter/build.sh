@@ -8,6 +8,8 @@ TargetArch="$4"
 BuildType="${5:-Release}"
 CompilerId="$(echo "$6" | tr "[:upper:]" "[:lower:]")"
 
+LLVMBranch="release/12.x"
+
 # Check that we have enough arguments
 if [ $# -lt 4 ]; then
     echo "Usage: $(basename $0) ArtifactsDir RepoRoot BuildArch TargetArch [BuildType [CompilerId]]"
@@ -37,8 +39,13 @@ PatchApplied=0
 
 if [ ! -d llvm-project ]; then
     # Clone the LLVM repo
-    git clone --depth 1 -b release/12.x https://github.com/llvm/llvm-project.git || exit 1
-    cd llvm-project/llvm || exit 1
+    git clone --no-checkout --depth 1 -b $LLVMBranch https://github.com/llvm/llvm-project.git || exit 1
+    cd llvm-project || exit 1
+    # Purposefuly ignoring exit codes of sparse-checkout so that this works with git lower than 2.26
+    git sparse-checkout init
+    git sparse-checkout set /llvm/\* !/llvm/test/\*
+    git checkout $LLVMBranch || exit 1
+    cd llvm || exit 1
 else
     # Check whether the current diff is the same as the patch
     cd llvm-project/llvm || exit 1
@@ -105,3 +112,4 @@ MaxJobs=$((NumProc+1))
 
 echo "Executing cmake --build \"build/$TargetArch\" --config \"$BuildType\" --target objwriter -j \"$MaxJobs\""
 cmake --build "build/$TargetArch" --config "$BuildType" --target objwriter -j "$MaxJobs" || exit 1
+echo "Done building target objwriter"
