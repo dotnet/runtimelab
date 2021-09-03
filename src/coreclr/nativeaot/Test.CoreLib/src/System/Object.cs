@@ -56,6 +56,9 @@ namespace System
             }
         }
 
+        [Runtime.CompilerServices.Intrinsic]
+        internal static extern MethodTable* MethodTableOf<T>();
+
         [StructLayout(LayoutKind.Sequential)]
         private class RawData
         {
