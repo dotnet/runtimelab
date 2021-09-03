@@ -556,7 +556,7 @@ namespace System.Text.RegularExpressions.SRM
         /// </summary>
         public static Tuple<uint, uint>[] ToRanges(BDD set, int maxBit, int limit = 0)
         {
-            Tuple<uint, uint>[] ranges = RangeConverter.ToRanges(set, maxBit);
+            Tuple<uint, uint>[] ranges = BDDRangeConverter.ToRanges(set, maxBit);
 
             if (limit == 0 || ranges.Length <= limit)
                 return ranges;

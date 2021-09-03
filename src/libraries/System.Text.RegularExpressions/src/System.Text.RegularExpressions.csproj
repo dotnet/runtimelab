@@ -77,7 +77,7 @@
     <Compile Include="System\Text\RegularExpressions\srm\algebras\IBooleanAlgebra.cs" />
     <Compile Include="System\Text\RegularExpressions\srm\algebras\ICharAlgebra.cs" />
     <Compile Include="System\Text\RegularExpressions\srm\algebras\MintermGenerator.cs" />
-    <Compile Include="System\Text\RegularExpressions\srm\algebras\RangeConverter.cs" />
+    <Compile Include="System\Text\RegularExpressions\srm\algebras\BDDRangeConverter.cs" />
     <Compile Include="System\Text\RegularExpressions\srm\matcher\IMatcher.cs" />
     <Compile Include="System\Text\RegularExpressions\srm\matcher\SymbolicRegexMatcher.cs" />
     <Compile Include="System\Text\RegularExpressions\srm\unicode\IgnoreCaseRelation.cs" />
