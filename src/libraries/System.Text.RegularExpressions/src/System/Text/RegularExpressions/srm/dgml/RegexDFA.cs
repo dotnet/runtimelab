@@ -19,10 +19,10 @@ namespace System.Text.RegularExpressions.SRM.DGML
         internal RegexDFA(SymbolicRegexMatcher<T> srm, int bound, bool addDotStar, bool inReverse)
         {
             _builder = srm._builder;
-            uint startId = inReverse ? (srm._Ar._info.StartsWithLineAnchor ? CharKind.StartStop : 0)
-                                            : (srm._A._info.StartsWithLineAnchor ? CharKind.StartStop : 0);
+            uint startId = inReverse ? (srm._reversePattern._info.StartsWithLineAnchor ? CharKind.StartStop : 0)
+                                            : (srm._pattern._info.StartsWithLineAnchor ? CharKind.StartStop : 0);
             //inReverse only matters if Ar contains some line anchor
-            _q0 = _builder.MkState(inReverse ? srm._Ar : (addDotStar ? srm._A1 : srm._A), startId);
+            _q0 = _builder.MkState(inReverse ? srm._reversePattern : (addDotStar ? srm._dotstarredPattern : srm._pattern), startId);
             var stack = new Stack<State<T>>();
             stack.Push(_q0);
             _states.Add(_q0.Id);
