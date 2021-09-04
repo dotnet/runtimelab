@@ -6,12 +6,6 @@ using System.Globalization;
 using System.Tests;
 using Xunit;
 
-using System.IO;
-using Xunit.Abstractions;
-using System.Linq;
-using System.Reflection;
-using System.Runtime.Serialization;
-
 namespace System.Text.RegularExpressions.Tests
 {
     public class RegexGroupTests
