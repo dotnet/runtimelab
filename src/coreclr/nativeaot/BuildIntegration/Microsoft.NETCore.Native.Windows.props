@@ -17,7 +17,7 @@ The .NET Foundation licenses this file to you under the MIT license.
     <CppCompiler>cl</CppCompiler>
     <CppLinker>link</CppLinker>
     <CppLibCreator>lib</CppLibCreator>
-    <FullRuntimeName>Runtime</FullRuntimeName>
+    <FullRuntimeName>Runtime.WorkstationGC</FullRuntimeName>
     <FullRuntimeName Condition="'$(ServerGarbageCollection)' != ''">Runtime.ServerGC</FullRuntimeName>
     <FullRuntimeName Condition="'$(ControlFlowGuard)' == 'Guard'">Runtime.ServerGC.GuardCF</FullRuntimeName>
     <EntryPointSymbol Condition="'$(EntryPointSymbol)' == ''">wmainCRTStartup</EntryPointSymbol>
