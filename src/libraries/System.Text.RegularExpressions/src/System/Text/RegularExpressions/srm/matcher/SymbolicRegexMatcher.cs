@@ -37,16 +37,7 @@ namespace System.Text.RegularExpressions.SRM
 
         /// <summary>Corresponding timeout in ms.</summary>
         private readonly int _timeout;
-        private int _timeoutOccursAt;
         private readonly bool _checkTimeout;
-
-        /// <summary>
-        /// The frequence is lower in DFA mode because timeout tests are performed much
-        /// less frequently here, once per transition, compared to non-DFA mode.
-        /// So, e.g., 5 here imples checking after every 5 transitions.
-        /// </summary>
-        private const int TimeoutCheckFrequency = 5;
-        private int _timeoutChecksToSkip;
 
         /// <summary>Set of elements that matter as first element of A.</summary>
         internal readonly BooleanClassifier _startSetClassifier;
@@ -241,7 +232,6 @@ namespace System.Text.RegularExpressions.SRM
                 TimeSpan timeout = TimeSpan.Parse(potentialTimeout);
                 _checkTimeout = true;
                 _timeout = (int)(timeout.TotalMilliseconds + 0.5); // Round up, so it will at least 1ms;
-                _timeoutChecksToSkip = TimeoutCheckFrequency;
             }
 
             if (_pattern._info.ContainsSomeAnchor)
@@ -279,7 +269,6 @@ namespace System.Text.RegularExpressions.SRM
 
             _checkTimeout = RegularExpressions.Regex.InfiniteMatchTimeout != matchTimeout;
             _timeout = (int)(matchTimeout.TotalMilliseconds + 0.5); // Round up, so it will be at least 1ms
-            _timeoutChecksToSkip = TimeoutCheckFrequency;
             _culture = culture;
 
             Debug.Assert(_builder._solver is BV64Algebra or BVAlgebra or CharSetSolver, $"Unsupported algebra: {_builder._solver}");
@@ -506,22 +495,19 @@ namespace System.Text.RegularExpressions.SRM
             }
         }
 
-        /// <summary>
-        /// This code is identical to RegexRunner.DoCheckTimeout()
-        /// </summary>
-        private void DoCheckTimeout()
+        private void DoCheckTimeout(int timeoutOccursAt)
         {
-            if (--_timeoutChecksToSkip != 0)
-                return;
-
-            _timeoutChecksToSkip = TimeoutCheckFrequency;
+            // This code is identical to RegexRunner.DoCheckTimeout(),
+            // with the exception of check skipping. RegexRunner calls
+            // DoCheckTimeout potentially on every iteration of a loop,
+            // whereas this calls it only once per transition.
 
             int currentMillis = Environment.TickCount;
 
-            if (currentMillis < _timeoutOccursAt)
+            if (currentMillis < timeoutOccursAt)
                 return;
 
-            if (0 > _timeoutOccursAt && 0 < currentMillis)
+            if (0 > timeoutOccursAt && 0 < currentMillis)
                 return;
 
             //regex pattern is in general not available in srm and
@@ -537,11 +523,11 @@ namespace System.Text.RegularExpressions.SRM
         /// <param name="k">the next position after the end position in the input</param>
         public Match FindMatch(bool quick, string input, int startat, int k)
         {
+            int timeoutOccursAt = 0;
             if (_checkTimeout)
             {
                 // Using Environment.TickCount for efficiency instead of Stopwatch -- as in the non-DFA case.
-                int timeout = (int)(_timeout + 0.5);
-                _timeoutOccursAt = Environment.TickCount + timeout;
+                timeoutOccursAt = Environment.TickCount + (int)(_timeout + 0.5);
             }
 
             if (startat == k)
@@ -561,13 +547,12 @@ namespace System.Text.RegularExpressions.SRM
                 return Match.NoMatch;
             }
 
-            //find the first accepting state
-            //initial start position in the input is i = 0
+            // Find the first accepting state. Initial start position in the input is i == 0.
             int i = startat;
 
-            // may return -1 as a legitimate value when the initial state is nullable and startat=0
-            // returns NoMatchExists when there is no match
-            i = FindFinalStatePosition(input, k, i, out int i_q0_A1, out int watchdog);
+            // May return -1 as a legitimate value when the initial state is nullable and startat == 0.
+            // Returns NoMatchExists when there is no match.
+            i = FindFinalStatePosition(input, k, i, timeoutOccursAt, out int i_q0_A1, out int watchdog);
 
             if (i == NoMatchExists)
             {
@@ -597,7 +582,7 @@ namespace System.Text.RegularExpressions.SRM
                 }
                 else
                 {
-                    //walk in reverse to locate the start position of the match
+                    // Walk in reverse to locate the start position of the match
                     i_start = FindStartPosition(input, i, i_q0_A1);
                 }
 
@@ -767,9 +752,10 @@ namespace System.Text.RegularExpressions.SRM
         /// <param name="input">given input string</param>
         /// <param name="k">input length or bounded input length</param>
         /// <param name="i">start position</param>
-        /// <param name="initialStateIndex">last position the initial state of _dotstarredPattern was visited</param>
+        /// <param name="timeoutOccursAt">The time at which timeout occurs, if timeouts are being checked.</param>
+        /// <param name="initialStateIndex">last position the initial state of <see cref="_dotstarredPattern"/> was visited</param>
         /// <param name="watchdog">length of match when positive</param>
-        private int FindFinalStatePosition(string input, int k, int i, out int initialStateIndex, out int watchdog)
+        private int FindFinalStatePosition(string input, int k, int i, int timeoutOccursAt, out int initialStateIndex, out int watchdog)
         {
             // Get the correct start state of A1, which in general depends on the previous character kind in the input.
             uint prevCharKindId = GetCharKind(input, i - 1);
@@ -880,7 +866,7 @@ namespace System.Text.RegularExpressions.SRM
 
                 if (_checkTimeout)
                 {
-                    DoCheckTimeout();
+                    DoCheckTimeout(timeoutOccursAt);
                 }
             }
 
