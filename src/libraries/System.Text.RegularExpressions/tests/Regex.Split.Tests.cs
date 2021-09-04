@@ -57,7 +57,59 @@ namespace System.Text.RegularExpressions.Tests
             yield return new object[] { @"(?<=\G..)(?=..)", "aabbccdd", RegexOptions.None, 8, 0, new string[] { "aa", "bb", "cc", "dd" } };
         }
 
+        // Test data addjusted from Split_TestData for RegexOptions.NonBacktracking
+        public static IEnumerable<object[]> Split_TestData_NonBacktracking()
+        {
+            yield return new object[] { "", "", RegexHelpers.RegexOptionNonBacktracking, 0, 0, new string[] { "", "" } };
+            yield return new object[] { "123", "abc", RegexHelpers.RegexOptionNonBacktracking, 3, 0, new string[] { "abc" } };
+
+            yield return new object[] { "    ", "word0    word1    word2    word3", RegexHelpers.RegexOptionNonBacktracking, 32, 0, new string[] { "word0", "word1", "word2", "word3" } };
+
+            yield return new object[] { ":", "kkk:lll:mmm:nnn:ooo", RegexHelpers.RegexOptionNonBacktracking, 19, 0, new string[] { "kkk", "lll", "mmm", "nnn", "ooo" } };
+            yield return new object[] { ":", "kkk:lll:mmm:nnn:ooo", RegexHelpers.RegexOptionNonBacktracking, 0, 0, new string[] { "kkk", "lll", "mmm", "nnn", "ooo" } };
+
+            // RegexOptions.NonBacktracking is similar to RegexOptions.ExplicitCapture when there are no explicit capture names because NonBacktracking does not support captures
+            // This is the reason for including the RegexOptions.ExplicitCapture options after the tests to check that the results are the same in this case
+            yield return new object[] { @"(\s)?(-)", "once -upon-a time", RegexHelpers.RegexOptionNonBacktracking, 17, 0, new string[] { "once", "upon", "a time" } };
+            yield return new object[] { @"(\s)?(-)", "once -upon-a time", RegexOptions.ExplicitCapture, 17, 0, new string[] { "once", "upon", "a time" } };
+            yield return new object[] { @"(\s)?(-)", "once upon a time", RegexHelpers.RegexOptionNonBacktracking, 16, 0, new string[] { "once upon a time" } };
+            yield return new object[] { @"(\s)?(-)", "once upon a time", RegexOptions.ExplicitCapture, 16, 0, new string[] { "once upon a time" } };
+            yield return new object[] { @"(\s)?(-)", "once - -upon- a- time", RegexHelpers.RegexOptionNonBacktracking, 21, 0, new string[] { "once", "", "upon", " a", " time" } };
+            yield return new object[] { @"(\s)?(-)", "once - -upon- a- time", RegexOptions.ExplicitCapture, 21, 0, new string[] { "once", "", "upon", " a", " time" } };
+            yield return new object[] { "a(.)c(.)e", "123abcde456aBCDe789", RegexHelpers.RegexOptionNonBacktracking, 19, 0, new string[] { "123", "456aBCDe789" } };
+            yield return new object[] { "a(.)c(.)e", "123abcde456aBCDe789", RegexOptions.ExplicitCapture, 19, 0, new string[] { "123", "456aBCDe789" } };
+            yield return new object[] { "a.c.e", "123abcde456aBCDe789", RegexHelpers.RegexOptionNonBacktracking, 19, 0, new string[] { "123", "456aBCDe789" } };
+            yield return new object[] { "a.c.e", "123abcde456aBCDe789", RegexOptions.ExplicitCapture, 19, 0, new string[] { "123", "456aBCDe789" } };
+            yield return new object[] { "a.c.e", "123abcde456aBCDe789", RegexHelpers.RegexOptionNonBacktracking | RegexOptions.IgnoreCase, 19, 0, new string[] { "123", "456", "789" } };
+            yield return new object[] { "a.c.e", "123abcde456aBCDe789", RegexOptions.ExplicitCapture | RegexOptions.IgnoreCase, 19, 0, new string[] { "123", "456", "789" } };
+
+            // RegexOptions.NonBacktracking also ignores named captures as if they were not given
+            yield return new object[] { "a(?<dot1>.)c(.)e", "123abcde456aBCDe789", RegexHelpers.RegexOptionNonBacktracking, 19, 0, new string[] { "123", "456aBCDe789" } };
+            yield return new object[] { "a(?<dot1>.)c(.)e", "123abcde456aBCDe789", RegexHelpers.RegexOptionNonBacktracking | RegexOptions.IgnoreCase, 19, 0, new string[] { "123", "456", "789" } };
+
+            // IgnoreCase
+            yield return new object[] { "[abc]", "1A2B3C4", RegexHelpers.RegexOptionNonBacktracking | RegexOptions.IgnoreCase, 7, 0, new string[] { "1", "2", "3", "4" } };
+
+            // Use of custom index and count
+            yield return new object[] { ":", "kkk:lll:mmm:nnn:ooo", RegexHelpers.RegexOptionNonBacktracking, 2, 0, new string[] { "kkk", "lll:mmm:nnn:ooo" } };
+            yield return new object[] { ":", "kkk:lll:mmm:nnn:ooo", RegexHelpers.RegexOptionNonBacktracking, 3, 6, new string[] { "kkk:lll", "mmm", "nnn:ooo" } };
+        }
+
+        // Tricky corner cases involving empty matches of anchors
+        public static IEnumerable<object[]> Split_TestData_AnchorMatches()
+        {         
+            foreach (var options in new RegexOptions[] { RegexHelpers.RegexOptionNonBacktracking, RegexOptions.None, RegexOptions.Compiled })
+            {
+                yield return new object[] { @"\b", "Hello World!", options, 3, 6, new string[] { "Hello ", "World", "!" } };
+                yield return new object[] { @"\b", "Hello World!", options, 0, 0, new string[] { "", "Hello", " ", "World", "!" } };
+                yield return new object[] { @"^", "Hello \nWorld!", options | RegexOptions.Multiline, 0, 0, new string[] { "", "Hello \n", "World!" } };
+                yield return new object[] { @"$", "Hello \nWorld!", options | RegexOptions.Multiline, 0, 0, new string[] { "Hello ", "\nWorld!", "" } };
+            }
+        }
+
         [Theory]
+        [MemberData(nameof(Split_TestData_AnchorMatches))]
+        [MemberData(nameof(Split_TestData_NonBacktracking))]
         [MemberData(nameof(Split_TestData))]
         [MemberData(nameof(RegexCompilationHelper.TransformRegexOptions), nameof(Split_TestData), 2, MemberType = typeof(RegexCompilationHelper))]
         public void Split(string pattern, string input, RegexOptions options, int count, int start, string[] expected)
