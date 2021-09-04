@@ -31,7 +31,7 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <ILCompilerVersion>6.0.0-preview.5.21222.2</ILCompilerVersion>
+    <ILCompilerVersion>7.0.0-alpha.1.21453.5</ILCompilerVersion>
 
     <ObjWriterBuildType>$(Configuration)</ObjWriterBuildType>
     <ObjWriterBuildType Condition="'$(ObjWriterBuildType)' == 'Checked'">Debug</ObjWriterBuildType>
