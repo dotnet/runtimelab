@@ -23,7 +23,7 @@ The .NET Foundation licenses this file to you under the MIT license.
   <Target Name="SetupOSSpecificProps" DependsOnTargets="$(IlcDynamicBuildPropertyDependencies)">
 
     <PropertyGroup>
-      <FullRuntimeName>libRuntime</FullRuntimeName>
+      <FullRuntimeName>libRuntime.WorkstationGC</FullRuntimeName>
       <FullRuntimeName Condition="'$(ServerGarbageCollection)' != ''">libRuntime.ServerGC</FullRuntimeName>
 
       <CrossCompileRid />
