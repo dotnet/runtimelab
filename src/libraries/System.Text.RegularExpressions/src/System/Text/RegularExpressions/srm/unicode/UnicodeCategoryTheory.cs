@@ -10,8 +10,8 @@ namespace System.Text.RegularExpressions.SRM.Unicode
         internal readonly ICharAlgebra<TPredicate> _solver;
         private readonly TPredicate[] _catConditions = new TPredicate[30];
 
-        private TPredicate _whiteSpaceCondition;
-        private TPredicate _wordLetterCondition;
+        private TPredicate? _whiteSpaceCondition;
+        private TPredicate? _wordLetterCondition;
 
         public UnicodeCategoryTheory(ICharAlgebra<TPredicate> solver) => _solver = solver;
 

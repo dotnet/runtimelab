@@ -82,7 +82,7 @@ namespace System.Text.RegularExpressions.SRM
             _nonAsciiBDD.Serialize(sb);
         }
 
-        public static BooleanClassifier Deserialize(string input, BDDAlgebra solver = null)
+        public static BooleanClassifier Deserialize(string input, BDDAlgebra? solver = null)
         {
             int firstEnd = input.IndexOf(',');
             if (firstEnd >= 0)

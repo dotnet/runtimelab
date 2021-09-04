@@ -3,6 +3,7 @@
 
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 
 namespace System.Text.RegularExpressions.SRM
 {
@@ -13,7 +14,7 @@ namespace System.Text.RegularExpressions.SRM
     /// corresponding to "[0-9] and not [0-4]", since that is unsatisfiable.
     /// </summary>
     /// <typeparam name="TPredicate">type of predicates</typeparam>
-    internal sealed class MintermGenerator<TPredicate>
+    internal sealed class MintermGenerator<TPredicate> where TPredicate : notnull
     {
         private readonly IBooleanAlgebra<TPredicate> _algebra;
 
@@ -116,7 +117,7 @@ namespace System.Text.RegularExpressions.SRM
 
             public override int GetHashCode() => _set.GetHashCode();
 
-            public override bool Equals(object obj) => obj is EquivalenceClass ec && _algebra.AreEquivalent(_set, ec._set);
+            public override bool Equals([NotNullWhen(true)] object? obj) => obj is EquivalenceClass ec && _algebra.AreEquivalent(_set, ec._set);
         }
     }
 
@@ -132,12 +133,12 @@ namespace System.Text.RegularExpressions.SRM
     /// </summary>
     internal sealed class PartitionTree<TPredicate>
     {
-        private readonly PartitionTree<TPredicate> _parent;
+        private readonly PartitionTree<TPredicate>? _parent;
         private readonly int _index;
         internal readonly TPredicate _pred;
         private readonly IBooleanAlgebra<TPredicate> _solver;
-        private PartitionTree<TPredicate> _left;
-        private PartitionTree<TPredicate> _right; // complement
+        private PartitionTree<TPredicate>? _left;
+        private PartitionTree<TPredicate>? _right; // complement
 
         /// <summary>
         /// Create the root of the partition tree. Nodes below this will be indexed starting from 0. The initial
@@ -153,7 +154,7 @@ namespace System.Text.RegularExpressions.SRM
             _right = null;
         }
 
-        private PartitionTree(IBooleanAlgebra<TPredicate> solver, int depth, PartitionTree<TPredicate> parent, TPredicate pred, PartitionTree<TPredicate> left, PartitionTree<TPredicate> right)
+        private PartitionTree(IBooleanAlgebra<TPredicate> solver, int depth, PartitionTree<TPredicate> parent, TPredicate pred, PartitionTree<TPredicate>? left, PartitionTree<TPredicate>? right)
         {
             _solver = solver;
             _parent = parent;
@@ -195,12 +196,12 @@ namespace System.Text.RegularExpressions.SRM
             else if (_left == null)
             {
                 // no choice has to be made here, refine the single child that exists
-                _right.Refine(other);
+                _right!.Refine(other);
             }
             else if (_right == null)
             {
                 // no choice has to be made here, refine the single child that exists
-                _left.Refine(other);
+                _left!.Refine(other);
             }
             else
             {

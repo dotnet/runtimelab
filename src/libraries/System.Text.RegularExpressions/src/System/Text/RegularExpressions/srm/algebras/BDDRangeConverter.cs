@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Collections.Generic;
+using System.Diagnostics;
 
 namespace System.Text.RegularExpressions.SRM
 {
@@ -91,8 +92,10 @@ namespace System.Text.RegularExpressions.SRM
 
         private Tuple<uint, uint>[] ToRangesFromOrdinal(BDD set)
         {
-            if (!_rangeCache.TryGetValue(set, out Tuple<uint, uint>[] ranges))
+            if (!_rangeCache.TryGetValue(set, out Tuple<uint, uint>[]? ranges))
             {
+                Debug.Assert(!set.IsLeaf);
+
                 int b = set.Ordinal;
                 uint mask = (uint)1 << b;
                 if (set.Zero.IsEmpty)

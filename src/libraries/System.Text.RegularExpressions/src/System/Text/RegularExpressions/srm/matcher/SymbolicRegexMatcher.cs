@@ -11,7 +11,7 @@ namespace System.Text.RegularExpressions.SRM
 {
     /// <summary>Represents a precompiled form of a regex that implements match generation using symbolic derivatives.</summary>
     /// <typeparam name="TSetType">character set type</typeparam>
-    internal sealed class SymbolicRegexMatcher<TSetType> : IMatcher
+    internal sealed class SymbolicRegexMatcher<TSetType> : IMatcher where TSetType : notnull
     {
         private const int NoMatchExists = -2;
         private const int StateMaxBound = 10000;
@@ -67,7 +67,7 @@ namespace System.Text.RegularExpressions.SRM
         private readonly string _prefix;
 
         /// <summary>Non-null when <see cref="_prefix"/> is nonempty</summary>
-        private readonly RegexBoyerMoore _prefixBoyerMoore;
+        private readonly RegexBoyerMoore? _prefixBoyerMoore;
 
         /// <summary>If true then the fixed prefix of <see cref="_pattern"/> is idependent of case</summary>
         private readonly bool _isPrefixCaseInsensitive;
@@ -132,7 +132,11 @@ namespace System.Text.RegularExpressions.SRM
         /// <summary>Get the atom of character c</summary>
         /// <param name="c">character code</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private TSetType GetAtom(int c) => _builder._atoms[_partitions.Find(c)];
+        private TSetType GetAtom(int c)
+        {
+            Debug.Assert(_builder._atoms is not null);
+            return _builder._atoms[_partitions.Find(c)];
+        }
 
         #region custom serialization/deserialization
         /// <summary>
@@ -426,11 +430,19 @@ namespace System.Text.RegularExpressions.SRM
             int c = input[i];
 
             // atom_id = atoms.Length represents \Z (last \n)
-            int atom_id = c == '\n' && i == input.Length - 1 && q.StartsWithLineAnchor ?
-                _builder._atoms.Length :
-                _partitions.Find(c);
+            int atom_id;
+            if (c == '\n' && i == input.Length - 1 && q.StartsWithLineAnchor)
+            {
+                Debug.Assert(_builder._atoms is not null);
+                atom_id = _builder._atoms.Length;
+            }
+            else
+            {
+                atom_id = _partitions.Find(c);
+            }
 
             // atom=False represents \Z
+            Debug.Assert(_builder._atoms is not null);
             TSetType atom = atom_id == _builder._atoms.Length ?
                 _builder._solver.False :
                 _builder._atoms[atom_id];
@@ -444,6 +456,8 @@ namespace System.Text.RegularExpressions.SRM
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public State<TSetType> TakeTransition(SymbolicRegexMatcher<TSetType> matcher, State<TSetType> q, int atom_id, TSetType atom)
             {
+                Debug.Assert(matcher._builder._delta is not null);
+
                 int offset = (q.Id << matcher._builder._K) | atom_id;
                 return
                     matcher._builder._delta[offset] ??
@@ -459,10 +473,13 @@ namespace System.Text.RegularExpressions.SRM
             {
                 if (q.Node.Kind == SymbolicRegexKind.Or)
                 {
+                    Debug.Assert(matcher._builder._delta is not null);
+
                     SymbolicRegexNode<TSetType> union = matcher._builder._nothing;
                     uint kind = 0;
 
                     // consider transitions from the members one at a time
+                    Debug.Assert(q.Node._alts is not null);
                     foreach (SymbolicRegexNode<TSetType> r in q.Node._alts)
                     {
                         State<TSetType> s = matcher._builder.MkState(r, q.PrevCharKind);
@@ -486,6 +503,7 @@ namespace System.Text.RegularExpressions.SRM
         /// <summary>Critical region for defining a new transition</summary>
         private State<TSetType> CreateNewTransition(State<TSetType> q, TSetType atom, int offset)
         {
+            Debug.Assert(_builder._delta is not null);
             lock (this)
             {
                 // check if meanwhile delta[offset] has become defined possibly by another thread
@@ -535,7 +553,7 @@ namespace System.Text.RegularExpressions.SRM
         /// <param name="input">input string</param>
         /// <param name="startat">the position to start search in the input string</param>
         /// <param name="k">the next position after the end position in the input</param>
-        public Match FindMatch(bool quick, string input, int startat, int k)
+        public Match? FindMatch(bool quick, string input, int startat, int k)
         {
             if (_checkTimeout)
             {

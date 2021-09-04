@@ -1,6 +1,7 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 
@@ -100,9 +101,10 @@ namespace System.Text.RegularExpressions.SRM
             try
             {
                 BVAlgebraBase alg = BVAlgebraBase.Deserialize(fragments[1]);
+                Debug.Assert(alg is BV64Algebra || alg is BVAlgebra);
                 IMatcher matcher = alg is BV64Algebra bv64 ?
                     new SymbolicRegexMatcher<ulong>(bv64, fragments) :
-                    new SymbolicRegexMatcher<BV>(alg as BVAlgebra, fragments);
+                    new SymbolicRegexMatcher<BV>((BVAlgebra)alg, fragments);
                 return new Regex(matcher);
             }
             catch (Exception e)

@@ -1,6 +1,7 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Runtime.CompilerServices;
@@ -13,6 +14,8 @@ namespace System.Text.RegularExpressions
         [MethodImpl(MethodImplOptions.NoInlining)]
         internal Match? RunSRM(bool quick, string input, int beg, int startat, int length, int prevlen)
         {
+            Debug.Assert(_srm != null);
+
             int endAt = beg + length;
 
             // If the previous match was empty, advance by one before matching
@@ -25,7 +28,7 @@ namespace System.Text.RegularExpressions
                 startat += 1;
             }
 
-            SRM.Match match = _srm._matcher.FindMatch(quick, input, startat, endAt);
+            SRM.Match? match = _srm._matcher.FindMatch(quick, input, startat, endAt);
             if (quick)
             {
                 if (match is null)
@@ -33,14 +36,18 @@ namespace System.Text.RegularExpressions
                     return null;
                 }
             }
-            else if (match.Success)
+            else
             {
-                var m = new Match(this, 1, input, beg, length, startat);
-                m._matches[0][0] = match.Index;
-                m._matches[0][1] = match.Length;
-                m._matchcount[0] = 1;
-                m.Tidy(match.Index + match.Length);
-                return m;
+                Debug.Assert(match is not null);
+                if (match.Success)
+                {
+                    var m = new Match(this, 1, input, beg, length, startat);
+                    m._matches[0][0] = match.Index;
+                    m._matches[0][1] = match.Length;
+                    m._matchcount[0] = 1;
+                    m.Tidy(match.Index + match.Length);
+                    return m;
+                }
             }
 
             return RegularExpressions.Match.Empty;

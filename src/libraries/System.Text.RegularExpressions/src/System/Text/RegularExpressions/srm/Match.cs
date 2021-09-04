@@ -1,6 +1,8 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Diagnostics.CodeAnalysis;
+
 namespace System.Text.RegularExpressions.SRM
 {
     internal sealed class Match
@@ -22,7 +24,7 @@ namespace System.Text.RegularExpressions.SRM
 
         public static bool operator !=(Match left, Match right) => !(left == right);
 
-        public override bool Equals(object obj) => obj is Match other && this == other;
+        public override bool Equals([NotNullWhen(true)] object? obj) => obj is Match other && this == other;
 
         public override int GetHashCode() => (Index, Length).GetHashCode();
     }

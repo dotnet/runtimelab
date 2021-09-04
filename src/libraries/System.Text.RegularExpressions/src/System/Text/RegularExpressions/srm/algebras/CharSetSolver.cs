@@ -2,6 +2,8 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 
 namespace System.Text.RegularExpressions.SRM
@@ -29,12 +31,12 @@ namespace System.Text.RegularExpressions.SRM
             _ignoreCase = new Unicode.IgnoreCaseTransformer(this);
         }
 
-        public BDD ApplyIgnoreCase(BDD set, string culture = null) => _ignoreCase.Apply(set, culture);
+        public BDD ApplyIgnoreCase(BDD set, string? culture = null) => _ignoreCase.Apply(set, culture);
 
         /// <summary>
         /// Make a character predicate for the given character c.
         /// </summary>
-        public BDD CharConstraint(char c, bool ignoreCase = false, string culture = null)
+        public BDD CharConstraint(char c, bool ignoreCase = false, string? culture = null)
         {
             if (ignoreCase)
             {
@@ -79,7 +81,7 @@ namespace System.Text.RegularExpressions.SRM
         /// Make a character set of all the characters in the interval from c to d.
         /// If ignoreCase is true ignore cases for upper and lower case characters by including both versions.
         /// </summary>
-        public BDD RangeConstraint(char c, char d, bool ignoreCase = false, string culture = null)
+        public BDD RangeConstraint(char c, char d, bool ignoreCase = false, string? culture = null)
         {
             if (c == d)
             {
@@ -146,9 +148,8 @@ namespace System.Text.RegularExpressions.SRM
 
         /// <summary>
         /// Convert the set into an equivalent array of ranges. The ranges are nonoverlapping and ordered.
-        /// If limit > 0 then returns null if the total number of ranges exceeds limit.
         /// </summary>
-        public Tuple<uint, uint>[] ToRanges(BDD set, int limit = 0) => ToRanges(set, 15, limit);
+        public Tuple<uint, uint>[] ToRanges(BDD set) => ToRanges(set, 15);
 
         private IEnumerable<uint> GenerateAllCharactersInOrder(BDD set)
         {
@@ -186,7 +187,7 @@ namespace System.Text.RegularExpressions.SRM
 
         public BDD ConvertToCharSet(ICharAlgebra<BDD> _, BDD pred) => pred;
 
-        public BDD[] GetPartition() => null;
+        public BDD[]? GetPartition() => null;
 
         public string PrettyPrint(BDD pred)
         {
@@ -265,10 +266,13 @@ namespace System.Text.RegularExpressions.SRM
                 // s|SW
                 if (Or(W, pred) == W)
                 {
-                    string repr1 = null;
+                    string? repr1 = null;
                     if (And(s, pred) == s)
+                    {
                         //pred contains all of \s and is contained in \W
                         repr1 = $"[\\s{RepresentSet(And(S, pred))}]";
+                    }
+
                     //the more common case is that pred is not \w and not some specific non-word character such as ':'
                     string repr2 = $"[^\\w{RepresentSet(And(W, Not(pred)))}]";
                     return repr1 != null && repr1.Length < repr2.Length ? repr1 : repr2;

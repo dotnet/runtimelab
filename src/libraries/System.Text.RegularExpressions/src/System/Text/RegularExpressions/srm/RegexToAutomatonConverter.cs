@@ -43,7 +43,7 @@ namespace System.Text.RegularExpressions.SRM
         internal T CreateConditionFromSet(bool ignoreCase, string set)
         {
             (bool ignoreCase, string set) key = (ignoreCase, set);
-            if (!_createConditionFromSet_Cache.TryGetValue(key, out T result))
+            if (!_createConditionFromSet_Cache.TryGetValue(key, out T? result))
             {
                 _createConditionFromSet_Cache[key] = result = CreateConditionFromSet_compute(ignoreCase, set);
             }
@@ -122,7 +122,7 @@ namespace System.Text.RegularExpressions.SRM
             #endregion
 
             #region Subtractor
-            T subtractorCond = default;
+            T? subtractorCond = null;
             if (set.Length > j)
             {
                 //the set has a subtractor-set at the end
@@ -179,12 +179,12 @@ namespace System.Text.RegularExpressions.SRM
 
         private T MapCategoryCodeSetToCondition(HashSet<int> catCodes)
         {
-            //TBD: perhaps other common cases should be specialized similarly
-            //check first if all word character category combinations are covered
-            //which is the most common case, then use the combined predicate \w
-            //rather than a disjunction of the component category predicates
-            //the word character class \w covers categories 0,1,2,3,4,8,18
-            T catCond = default;
+            // TBD: perhaps other common cases should be specialized similarly
+            // check first if all word character category combinations are covered
+            // which is the most common case, then use the combined predicate \w
+            // rather than a disjunction of the component category predicates
+            // the word character class \w covers categories 0,1,2,3,4,8,18
+            T? catCond = null;
             if (catCodes.Contains(0) && catCodes.Contains(1) && catCodes.Contains(2) && catCodes.Contains(3) &&
                 catCodes.Contains(4) && catCodes.Contains(8) && catCodes.Contains(18))
             {
@@ -197,12 +197,15 @@ namespace System.Text.RegularExpressions.SRM
                 catCodes.Remove(18);
                 catCond = _categorizer.WordLetterCondition;
             }
+
             foreach (int cat in catCodes)
             {
                 T cond = MapCategoryCodeToCondition(cat);
                 catCond = catCond is null ? cond : _solver.Or(catCond, cond);
             }
-            return catCond;
+
+            Debug.Assert(catCodes.Count != 0);
+            return catCond!;
         }
 
         private T MapCategoryCodeToCondition(int code) =>
@@ -374,8 +377,9 @@ namespace System.Text.RegularExpressions.SRM
         /// </summary>
         private SymbolicRegexNode<T> ConvertNodeMultiToSymbolicRegex(RegexNode node, bool topLevel)
         {
-            //sequence of characters
-            string sequence = node.Str;
+            string? sequence = node.Str;
+            Debug.Assert(sequence is not null);
+
             bool ignoreCase = (node.Options & RegexOptions.IgnoreCase) != 0;
 
             T[] conds = Array.ConvertAll(sequence.ToCharArray(), c => _solver.CharConstraint(c, ignoreCase, _culture.Name));
@@ -413,7 +417,8 @@ namespace System.Text.RegularExpressions.SRM
         private SymbolicRegexNode<T> ConvertNodeSetToSymbolicRegex(RegexNode node)
         {
             //ranges and categories are encoded in set
-            string set = node.Str;
+            string? set = node.Str;
+            Debug.Assert(set is not null);
 
             T moveCond = CreateConditionFromSet((node.Options & RegexOptions.IgnoreCase) != 0, set);
 
@@ -443,7 +448,8 @@ namespace System.Text.RegularExpressions.SRM
         private SymbolicRegexNode<T> ConvertNodeSetloopToSymbolicRegex(RegexNode node, bool isLazy)
         {
             //ranges and categories are encoded in set
-            string set = node.Str;
+            string? set = node.Str;
+            Debug.Assert(set is not null);
 
             T moveCond = CreateConditionFromSet((node.Options & RegexOptions.IgnoreCase) != 0, set);
 

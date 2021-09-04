@@ -103,10 +103,10 @@ namespace System.Text.RegularExpressions.SRM
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ulong Or(ulong predicate1, ulong predicate2) => predicate1 | predicate2;
 
-        public ulong RangeConstraint(char lower, char upper, bool caseInsensitive = false, string culture = null) => throw new NotSupportedException();
+        public ulong RangeConstraint(char lower, char upper, bool caseInsensitive = false, string? culture = null) => throw new NotSupportedException();
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public ulong CharConstraint(char c, bool caseInsensitive = false, string culture = null)
+        public ulong CharConstraint(char c, bool caseInsensitive = false, string? culture = null)
         {
             if (caseInsensitive)
                 throw new NotImplementedException(nameof(CharConstraint));
@@ -125,9 +125,16 @@ namespace System.Text.RegularExpressions.SRM
 
             ulong res = _False;
             for (int i = 0; i < _bits; i++)
+            {
+                Debug.Assert(_partition is not null);
+
                 // set the i'th bit if the i'th minterm is in the set
                 if (alg.IsSatisfiable(alg.And(_partition[i], set)))
+                {
                     res |= (ulong)1 << i;
+                }
+            }
+
             return res;
         }
 

@@ -1,6 +1,9 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
+
 namespace System.Text.RegularExpressions.SRM.Unicode
 {
     internal sealed class IgnoreCaseTransformer
@@ -15,14 +18,14 @@ namespace System.Text.RegularExpressions.SRM.Unicode
         private readonly BDD _i_Turkish;
         private readonly BDD _I_Turkish;
 
-        private BDD _ignoreCaseRel_Default;
-        private BDD _ignoreCaseRel_Default_Domain;
+        private BDD? _ignoreCaseRel_Default;
+        private BDD? _ignoreCaseRel_Default_Domain;
 
-        private BDD _ignoreCaseRel_Invariant;
-        private BDD _ignoreCaseRel_Invariant_Domain;
+        private BDD? _ignoreCaseRel_Invariant;
+        private BDD? _ignoreCaseRel_Invariant_Domain;
 
-        private BDD _ignoreCaseRel_Turkish;
-        private BDD _ignoreCaseRel_Turkish_Domain;
+        private BDD? _ignoreCaseRel_Turkish;
+        private BDD? _ignoreCaseRel_Turkish_Domain;
 
         /// <summary>Maps each char c to the case-insensitive set of c that is culture-independent (for non-null entries).</summary>
         private readonly BDD[] _char_table_CI = new BDD[0x10000];
@@ -36,6 +39,8 @@ namespace System.Text.RegularExpressions.SRM.Unicode
             _I_Turkish = solver.Or(solver.CharConstraint('I'), solver.CharConstraint(Turkish_i_WithoutDot));
         }
 
+        [MemberNotNull(nameof(_ignoreCaseRel_Default))]
+        [MemberNotNull(nameof(_ignoreCaseRel_Default_Domain))]
         private void SetUpDefault()
         {
             if (_ignoreCaseRel_Default == null)
@@ -46,13 +51,15 @@ namespace System.Text.RegularExpressions.SRM.Unicode
                 // Represents the set of all case-sensitive characters in the default culture.
                 _ignoreCaseRel_Default_Domain = _solver.ShiftRight(_ignoreCaseRel_Default, 16);
             }
+
+            Debug.Assert(_ignoreCaseRel_Default is not null && _ignoreCaseRel_Default_Domain is not null);
         }
 
         /// <summary>
         /// Gets the correct transformation relation based on the current culture;
         /// culture=="" means InvariantCulture while culture==null means to use the current culture.
         /// </summary>
-        private BDD GetIgnoreCaseRel(out BDD domain, string culture = null)
+        private BDD GetIgnoreCaseRel(out BDD domain, string? culture = null)
         {
             culture ??= Globalization.CultureInfo.CurrentCulture.Name;
 
@@ -80,6 +87,7 @@ namespace System.Text.RegularExpressions.SRM.Unicode
                     _ignoreCaseRel_Invariant_Domain = _solver.And(_ignoreCaseRel_Default_Domain, _solver.Not(tr_I_withdot_BDD));
                 }
 
+                Debug.Assert(_ignoreCaseRel_Invariant_Domain is not null);
                 domain = _ignoreCaseRel_Invariant_Domain;
                 return _ignoreCaseRel_Invariant;
             }
@@ -118,6 +126,7 @@ namespace System.Text.RegularExpressions.SRM.Unicode
                     _ignoreCaseRel_Turkish_Domain = _solver.Or(_ignoreCaseRel_Default_Domain, tr_i_withoutdot_BDD);
                 }
 
+                Debug.Assert(_ignoreCaseRel_Turkish_Domain is not null);
                 domain = _ignoreCaseRel_Turkish_Domain;
                 return _ignoreCaseRel_Turkish;
             }
@@ -133,7 +142,7 @@ namespace System.Text.RegularExpressions.SRM.Unicode
         /// This operation depends on culture for i, I, '\u0130', and '\u0131';
         /// culture="" means InvariantCulture while culture=null means to use the current culture.
         /// </summary>
-        public BDD Apply(char c, string culture = null)
+        public BDD Apply(char c, string? culture = null)
         {
             if (_char_table_CI[c] is BDD bdd)
             {
@@ -188,7 +197,7 @@ namespace System.Text.RegularExpressions.SRM.Unicode
         /// This operation depends on culture for i, I, '\u0130', and '\u0131';
         /// culture="" means InvariantCulture while culture=null means to use the current culture.
         /// </summary>
-        public BDD Apply(BDD bdd, string culture = null)
+        public BDD Apply(BDD bdd, string? culture = null)
         {
             // First get the culture specific relation
             BDD ignoreCaseRel = GetIgnoreCaseRel(out BDD domain, culture);

@@ -1,6 +1,8 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Diagnostics.CodeAnalysis;
+
 namespace System.Text.RegularExpressions.SRM.DGML
 {
     /// <summary>
@@ -22,7 +24,7 @@ namespace System.Text.RegularExpressions.SRM.DGML
         /// <summary>
         /// Label of the move
         /// </summary>
-        public readonly TLabel Label;
+        public readonly TLabel? Label;
 
         /// <summary>
         /// Transition of an automaton.
@@ -30,7 +32,7 @@ namespace System.Text.RegularExpressions.SRM.DGML
         /// <param name="sourceState">source state of the transition</param>
         /// <param name="targetState">target state of the transition</param>
         /// <param name="lab">label of the transition</param>
-        public Move(int sourceState, int targetState, TLabel lab)
+        public Move(int sourceState, int targetState, TLabel? lab)
         {
             SourceState = sourceState;
             TargetState = targetState;
@@ -60,10 +62,11 @@ namespace System.Text.RegularExpressions.SRM.DGML
         /// <summary>
         /// Returns true if obj is a move with the same source state, target state, and label.
         /// </summary>
-        public override bool Equals(object obj) =>
-            obj is not Move<TLabel> t ? false :
-            t.SourceState == SourceState && t.TargetState == TargetState && (Equals(t.Label, default(TLabel)) ? Equals(Label, default(TLabel)) :
-            t.Label.Equals(Label));
+        public override bool Equals([NotNullWhen(false)] object? obj) =>
+            obj is Move<TLabel> t &&
+            t.SourceState == SourceState &&
+            t.TargetState == TargetState &&
+            (t.Label is null ? Label is null : t.Label.Equals(Label));
 
         public override int GetHashCode() => (SourceState, Label, TargetState).GetHashCode();
 
