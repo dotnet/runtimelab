@@ -400,7 +400,11 @@ namespace ILCompiler.DependencyAnalysis
             // This IsRhpUnmanagedIndirection condition identifies those indirections and replaces the destination with a thunk which removes the shadow stack argument.
             if (_currentObjectNode is IndirectionNode && IsRhpUnmanagedIndirection(realName))
             {
-                _dataToFill.Add(new ObjectNodeDataEmission(arrayglobal, _currentObjectData.ToArray(), ReplaceWithThunks(_currentObjectSymbolRefs)));
+                _dataToFill.Add(new ObjectNodeDataEmission(arrayglobal, _currentObjectData.ToArray(), ReplaceIndirectionSymbolsWithThunks(_currentObjectSymbolRefs)));
+            }
+            else if (_currentObjectNode is MethodGenericDictionaryNode)
+            {
+                _dataToFill.Add(new ObjectNodeDataEmission(arrayglobal, _currentObjectData.ToArray(), ReplaceMethodDictionaryUnmanagedSymbolsWithThunks(_currentObjectSymbolRefs)));
             }
             else _dataToFill.Add(new ObjectNodeDataEmission(arrayglobal, _currentObjectData.ToArray(), _currentObjectSymbolRefs));
 
@@ -415,7 +419,24 @@ namespace ILCompiler.DependencyAnalysis
             _symbolDefs.Clear();
         }
 
-        Dictionary<int, SymbolRefData> ReplaceWithThunks(Dictionary<int, SymbolRefData> unmanagedSymbolRefs)
+        Dictionary<int, SymbolRefData> ReplaceMethodDictionaryUnmanagedSymbolsWithThunks(Dictionary<int, SymbolRefData> unmanagedSymbolRefs)
+        {
+            foreach (KeyValuePair<int, SymbolRefData> keyValuePair in unmanagedSymbolRefs)
+            {
+                if (IsRhpUnmanagedIndirection(keyValuePair.Value.SymbolName))
+                {
+                    unmanagedSymbolRefs[keyValuePair.Key] = new SymbolRefData(EnsureIndirectionThunk(keyValuePair.Value.SymbolName), keyValuePair.Value.Offset);
+                }
+                // else
+                // {
+                //     withThunks[keyValuePair.Key] = keyValuePair.Value;
+                // }
+            }
+
+            return unmanagedSymbolRefs;
+        }
+
+        Dictionary<int, SymbolRefData> ReplaceIndirectionSymbolsWithThunks(Dictionary<int, SymbolRefData> unmanagedSymbolRefs)
         {
             Dictionary<int, SymbolRefData> thunks = new Dictionary<int, SymbolRefData>();
             foreach (KeyValuePair<int, SymbolRefData> keyValuePair in unmanagedSymbolRefs)
@@ -438,7 +459,7 @@ namespace ILCompiler.DependencyAnalysis
                         new LLVMTypeRef[] {
                             LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0) /* shadow stack not used */,
                             LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0) /* return spill slot */,
-                            callee.TypeOf.ElementType.ParamTypes[0] /* EEType* */ }));
+                            callee.TypeOf.ElementType.ParamTypes[0] /* MethodTable* */ }));
                 LLVMBuilderRef builder = LLVMBuilderRef.Create(Module.Context);
                 LLVMBasicBlockRef block = func.AppendBasicBlock("thunk");
                 builder.PositionAtEnd(block);
@@ -451,14 +472,14 @@ namespace ILCompiler.DependencyAnalysis
             return thunkSymbolName;
         }
 
-        // hack to identity indirections to unmanaged symbols which dont accept a shadowstack arg.  Copy of names from JitHelper.GetNewObjectHelperForType
+        // hack to identify unmanaged symbols which dont accept a shadowstack arg.  Copy of names from JitHelper.GetNewObjectHelperForType
         private static bool IsRhpUnmanagedIndirection(string realName)
         {
-            return realName.StartsWith("__indirectionRhpNewFast")
-                   || realName.StartsWith("__indirectionRhpNewFinalizableAlign8")
-                   || realName.StartsWith("__indirectionRhpNewFastMisalign")
-                   || realName.StartsWith("__indirectionRhpNewFastAlign8")
-                   || realName.StartsWith("__indirectionRhpNewFinalizable");
+            return realName.EndsWith("RhpNewFast")
+                   || realName.EndsWith("RhpNewFinalizableAlign8")
+                   || realName.EndsWith("RhpNewFastMisalign")
+                   || realName.EndsWith("RhpNewFastAlign8")
+                   || realName.EndsWith("RhpNewFinalizable");
         }
 
         public void EmitAlignment(int byteAlignment)

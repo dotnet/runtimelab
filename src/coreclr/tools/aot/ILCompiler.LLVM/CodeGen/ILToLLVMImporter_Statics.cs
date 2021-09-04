@@ -238,8 +238,8 @@ namespace Internal.IL
         {
             if (_pinvokeMap.TryGetValue(nativeName, out MethodDesc existing))
             {
-                if (existing != method)
-                    throw new InvalidProgramException("export and import function were mismatched");
+                // if (existing != method) return;
+                    // throw new InvalidProgramException("export and import function were mismatched");
             }
             else
             {

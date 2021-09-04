@@ -209,7 +209,7 @@ namespace ILCompiler
 
             if (hasHiddenParam)
             {
-                signatureTypes.Add(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0)); // *EEType
+                signatureTypes.Add(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0)); // *MethodTable
             }
 
             // Intentionally skipping the 'this' pointer since it could always be a GC reference

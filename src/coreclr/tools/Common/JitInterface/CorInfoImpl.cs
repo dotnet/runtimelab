@@ -86,9 +86,6 @@ namespace Internal.JitInterface
         private static class JitPointerAccessor
         {
             [DllImport(JitLibrary)]
-        private extern static void jitShutdown([MarshalAs(UnmanagedType.I1)] bool processIsTerminating);
-
-        [DllImport(JitLibrary)]
             private extern static IntPtr getJit();
 
             [DllImport(JitSupportLibrary)]

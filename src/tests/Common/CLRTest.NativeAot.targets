@@ -90,7 +90,7 @@ fi
         ]]>
       </NativeAotMultimoduleIncompatibleScript>
 
-      <NativeAotCleanupBatchScript Condition="'$(CLRTestKind)' == 'BuildAndRun' and '$(NativeAotTest)' != 'false'">
+      <NativeAotCleanupBatchScript Condition="'$(CLRTestKind)' == 'BuildAndRun' and '$(NativeAotTest)' != 'false' and '$(TargetArchitecture)' != 'wasm'">
         <![CDATA[
 if defined RunNativeAot (
     rem Delete any leftover native compilation bits

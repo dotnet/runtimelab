@@ -787,6 +787,11 @@ namespace Internal.IL
             _builder.CurrentDebugLocation = default(LLVMValueRef);
         }
 
+        private bool IsInternalRuntimeImport(MethodDesc methodDesc)
+        {
+            return methodDesc.IsInternalCall && methodDesc.HasCustomAttribute("System.Runtime", "RuntimeImportAttribute");
+        }
+
         private void ImportNop()
         {
             EmitDoNothingCall();
@@ -1801,6 +1806,8 @@ namespace Internal.IL
         {
             MethodDesc runtimeDeterminedMethod = (MethodDesc)_methodIL.GetObject(token);
             MethodDesc callee = (MethodDesc)_canonMethodIL.GetObject(token);
+            _compilation.NodeFactory.MetadataManager.GetDependenciesDueToAccess(ref _dependencies, _compilation.NodeFactory, _canonMethodIL, callee);
+
             if (callee.IsIntrinsic)
             {
                 if (ImportIntrinsicCall(callee, runtimeDeterminedMethod))
@@ -1824,7 +1831,7 @@ namespace Internal.IL
                 }
             }
 
-            if (callee.IsRawPInvoke() || (callee.IsInternalCall && callee.HasCustomAttribute("System.Runtime", "RuntimeImportAttribute")))
+            if (callee.IsRawPInvoke() || IsInternalRuntimeImport(callee))
             {
                 ImportRawPInvoke(callee);
                 return;
@@ -1839,7 +1846,7 @@ namespace Internal.IL
                 if (newType.IsArray)
                 {
                     var paramCnt = callee.Signature.Length;
-                    var eeTypeDesc = _compilation.TypeSystemContext.SystemModule.GetKnownType("Internal.Runtime", "EEType").MakePointerType();
+                    var eeTypeDesc = _compilation.TypeSystemContext.SystemModule.GetKnownType("Internal.Runtime", "MethodTable").MakePointerType();
                     LLVMValueRef dimensions = _builder.BuildArrayAlloca(LLVMTypeRef.Int32, BuildConstInt32(paramCnt), "newobj_array_pdims_" + _currentOffset);
                     for (int i = paramCnt - 1; i >= 0; --i)
                     {
@@ -2121,7 +2128,7 @@ namespace Internal.IL
         private ISymbolNode GetMethodGenericDictionaryNode(MethodDesc method)
         {
             ISymbolNode node = _compilation.NodeFactory.MethodGenericDictionary(method);
-            _dependencies.Add(node, "LLVM GMV dictionary node");
+            _dependencies.Add(node, "LLVM GVM dictionary node");
 
             return node;
         }
@@ -2150,7 +2157,7 @@ namespace Internal.IL
                 if (runtimeDeterminedMethod.OwningType.IsRuntimeDeterminedSubtype)
                 {
                     //TODO interfaceEEType can be refactored out
-                    eeTypeExpression = CallRuntime("System", _compilation.TypeSystemContext, "Object", "get_EEType",
+                    eeTypeExpression = CallRuntime("System", _compilation.TypeSystemContext, "Object", "get_MethodTable",
                         new[] { new ExpressionEntry(StackValueKind.ObjRef, "thisPointer", thisPointer) });
                     interfaceEEType = new ExpressionEntry(StackValueKind.ValueType, "interfaceEEType", CallGenericHelper(ReadyToRunHelperId.TypeHandle, runtimeDeterminedMethod.OwningType), GetWellKnownType(WellKnownType.IntPtr));
                 }
@@ -2645,26 +2652,46 @@ namespace Internal.IL
                     {
                         if (!resolvedConstraint)
                         {
-                            if (callee.RequiresInstMethodDescArg())
-                            {
-                                hiddenParam = CallGenericHelper(ReadyToRunHelperId.MethodDictionary, runtimeDeterminedMethod);
-                            }
-                            else
-                            {
-                                hiddenParam = CallGenericHelper(ReadyToRunHelperId.TypeHandle, runtimeDeterminedMethod.OwningType);
-                            }
+                            hiddenParam =
+                                callee.RequiresInstMethodDescArg()
+                                    ? CallGenericHelper(ReadyToRunHelperId.MethodDictionary, runtimeDeterminedMethod)
+                                    : CallGenericHelper(ReadyToRunHelperId.TypeHandle, runtimeDeterminedMethod.OwningType);
                         }
                         else
                         {
-                            Debug.Assert(canonMethod.RequiresInstMethodTableArg() && constrainedType != null);
+                            Debug.Assert(canonMethod.RequiresInstArg() && constrainedType != null);
                             if (constrainedType.IsRuntimeDeterminedSubtype)
                             {
-                                hiddenParam = CallGenericHelper(ReadyToRunHelperId.TypeHandle, constrainedType);
+                                if (canonMethod.RequiresInstMethodTableArg())
+                                {
+                                    hiddenParam = CallGenericHelper(ReadyToRunHelperId.TypeHandle, constrainedType);
+                                }
+                                else
+                                {
+                                    // TODO refactor with ImportCall
+                                    MethodDesc targetOfLookup;
+                                    if (constrainedType.IsRuntimeDeterminedType)
+                                        targetOfLookup = _compilation.TypeSystemContext.GetMethodForRuntimeDeterminedType(callee.GetTypicalMethodDefinition(), (RuntimeDeterminedType)constrainedType);
+                                    else
+                                        targetOfLookup = _compilation.TypeSystemContext.GetMethodForInstantiatedType(callee.GetTypicalMethodDefinition(), (InstantiatedType)constrainedType);
+                                    if (targetOfLookup.HasInstantiation)
+                                    {
+                                        targetOfLookup = targetOfLookup.MakeInstantiatedMethod(runtimeDeterminedMethod.Instantiation);
+                                    }
+
+                                    hiddenParam = canonMethod.RequiresInstMethodTableArg()
+                                        ? CallGenericHelper(ReadyToRunHelperId.TypeHandle, constrainedType)
+                                        : CallGenericHelper(ReadyToRunHelperId.MethodDictionary, targetOfLookup);
+
+                                }
                             }
                             else
                             {
-                                var constrainedTypeSymbol = _compilation.NodeFactory.ConstructedTypeSymbol(constrainedType);
-                                _dependencies.Add(constrainedTypeSymbol, "LLVM constrained typr");
+                                var constrainedTypeSymbol =
+                                    canonMethod.RequiresInstMethodTableArg()
+                                        ? _compilation.NodeFactory.ConstructedTypeSymbol(constrainedType) // TODO: should this Type symbol node be added as a dependency here?
+                                        : GetMethodGenericDictionaryNode(runtimeDeterminedMethod);
+                                _dependencies.Add(constrainedTypeSymbol, "LLVM constrained type");
                                 hiddenParam = LoadAddressOfSymbolNode(constrainedTypeSymbol);
                             }
                         }
@@ -3306,7 +3333,13 @@ namespace Internal.IL
                         targetLLVMFunction = MakeFatPointer(_builder, LoadAddressOfSymbolNode(fatFunctionSymbol), _compilation);
                     }
                 }
-                else AddMethodReference(canonMethod);
+                else
+                {
+                    if (!IsInternalRuntimeImport(canonMethod))
+                    {
+                        AddMethodReference(canonMethod);
+                    }
+                }
             }
 
             if (targetLLVMFunction.Handle.Equals(IntPtr.Zero))
@@ -4913,7 +4946,7 @@ namespace Internal.IL
             TypeDesc runtimeDeterminedArrayType = runtimeDeterminedType.MakeArrayType();
             var sizeOfArray = _stack.Pop();
             StackEntry[] arguments;
-            var eeTypeDesc = _compilation.TypeSystemContext.SystemModule.GetKnownType("Internal.Runtime", "EEType").MakePointerType();
+            var eeTypeDesc = _compilation.TypeSystemContext.SystemModule.GetKnownType("Internal.Runtime", "MethodTable").MakePointerType();
             if (runtimeDeterminedArrayType.IsRuntimeDeterminedSubtype)
             {
                 var lookedUpType = CallGenericHelper(ReadyToRunHelperId.TypeHandle, runtimeDeterminedArrayType);
@@ -5131,7 +5164,7 @@ namespace Internal.IL
 
             MetadataType helperType = context.SystemModule.GetKnownType(@namespace, className);
             MethodDesc helperMethod = helperType.GetKnownMethod(methodName, null);
-            if ((helperMethod.IsInternalCall && helperMethod.HasCustomAttribute("System.Runtime", "RuntimeImportAttribute")))
+            if (IsInternalRuntimeImport(helperMethod))
                 return ImportRawPInvoke(helperMethod, arguments, forcedReturnType: forcedReturnType, builder: builder);
             else
                 return HandleCall(helperMethod, helperMethod.Signature, helperMethod, arguments, helperMethod, fromLandingPad: fromLandingPad, builder: builder).Item1;
