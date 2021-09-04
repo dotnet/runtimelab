@@ -57,7 +57,7 @@ namespace System.Text.RegularExpressions.Tests
             yield return new object[] { @"(?<=\G..)(?=..)", "aabbccdd", RegexOptions.None, 8, 0, new string[] { "aa", "bb", "cc", "dd" } };
         }
 
-        // Test data addjusted from Split_TestData for RegexOptions.NonBacktracking
+        // Test data adjusted from Split_TestData for RegexOptions.NonBacktracking
         public static IEnumerable<object[]> Split_TestData_NonBacktracking()
         {
             yield return new object[] { "", "", RegexHelpers.RegexOptionNonBacktracking, 0, 0, new string[] { "", "" } };
