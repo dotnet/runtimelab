@@ -230,6 +230,7 @@
     <Compile Include="$(MSBuildThisFileDirectory)System\ComponentModel\DefaultValueAttribute.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\ComponentModel\EditorBrowsableAttribute.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\ComponentModel\EditorBrowsableState.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)System\ComponentModel\Win32Exception.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\Configuration\Assemblies\AssemblyHashAlgorithm.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\Configuration\Assemblies\AssemblyVersionCompatibility.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\Context.cs" />
@@ -438,7 +439,6 @@
     <Compile Include="$(MSBuildThisFileDirectory)System\IO\MatchType.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\IO\MemoryStream.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\IO\Path.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)System\IO\PathInternal.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\IO\PathTooLongException.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\IO\PinnedBufferMemoryStream.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\IO\RandomAccess.cs" />
@@ -1218,6 +1218,9 @@
     <Compile Include="$(CommonPath)System\Diagnostics\CodeAnalysis\ExcludeFromCodeCoverageAttribute.cs">
       <Link>Common\System\Diagnostics\CodeAnalysis\ExcludeFromCodeCoverageAttribute.cs</Link>
     </Compile>
+    <Compile Include="$(CommonPath)System\IO\PathInternal.cs">
+      <Link>Common\System\IO\PathInternal.cs</Link>
+    </Compile>
     <Compile Include="$(CommonPath)System\IO\PathInternal.CaseSensitivity.cs">
       <Link>Common\System\IO\PathInternal.CaseSensitivity.cs</Link>
     </Compile>
@@ -1807,6 +1810,9 @@
     <Compile Include="$(CommonPath)System\IO\FileSystem.DirectoryCreation.Windows.cs">
       <Link>Common\System\IO\FileSystem.DirectoryCreation.Windows.cs</Link>
     </Compile>
+    <Compile Include="$(CommonPath)System\IO\PathInternal.Windows.cs">
+      <Link>Common\System\IO\PathInternal.Windows.cs</Link>
+    </Compile>
     <Compile Include="$(MSBuildThisFileDirectory)Internal\Console.Windows.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Internal\Win32\RegistryKey.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Microsoft\Win32\SafeHandles\SafeFileHandle.Windows.cs" />
@@ -1820,6 +1826,7 @@
     <Compile Include="$(MSBuildThisFileDirectory)System\DateTime.Windows.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\Environment.Win32.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\Environment.Windows.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)System\ComponentModel\Win32Exception.Windows.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\Diagnostics\DebugProvider.Windows.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\Diagnostics\Stopwatch.Windows.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\Diagnostics\Tracing\RuntimeEventSourceHelper.Windows.cs" Condition="'$(FeaturePerfTracing)' == 'true'" />
@@ -1836,7 +1843,6 @@
     <Compile Include="$(MSBuildThisFileDirectory)System\IO\FileSystemInfo.Windows.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\IO\Path.Windows.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\IO\PathHelper.Windows.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)System\IO\PathInternal.Windows.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\IO\RandomAccess.Windows.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\IO\Enumeration\FileSystemEntry.Windows.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\IO\Enumeration\FileSystemEnumerator.Windows.cs" />
@@ -2095,10 +2101,14 @@
     <Compile Include="$(CommonPath)System\Text\ValueUtf8Converter.cs">
       <Link>Common\System\Text\ValueUtf8Converter.cs</Link>
     </Compile>
+    <Compile Include="$(CommonPath)System\IO\PathInternal.Unix.cs">
+      <Link>Common\System\IO\PathInternal.Unix.cs</Link>
+    </Compile>
     <Compile Include="$(MSBuildThisFileDirectory)Internal\Console.Unix.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Microsoft\Win32\SafeHandles\SafeFileHandle.Unix.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\AppDomain.Unix.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\Buffer.Unix.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)System\ComponentModel\Win32Exception.Unix.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\DateTime.Unix.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\Diagnostics\DebugProvider.Unix.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\Diagnostics\Stopwatch.Unix.cs" />
@@ -2107,7 +2117,7 @@
     <Compile Include="$(MSBuildThisFileDirectory)System\Environment.UnixOrBrowser.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\Environment.OSVersion.OSX.cs" Condition="'$(IsOSXLike)' == 'true' AND '$(TargetsMacCatalyst)' != 'true'" />
     <Compile Include="$(MSBuildThisFileDirectory)System\Environment.OSVersion.MacCatalyst.cs" Condition="'$(TargetsMacCatalyst)' == 'true'" />
-    <Compile Include="$(MSBuildThisFileDirectory)System\Environment.GetFolderPathCore.Unix.cs" Condition="'$(IsiOSLike)' != 'true'" />
+    <Compile Include="$(MSBuildThisFileDirectory)System\Environment.GetFolderPathCore.Unix.cs" Condition="'$(IsiOSLike)' != 'true' and '$(TargetsAndroid)' != 'true'" />
     <Compile Include="$(MSBuildThisFileDirectory)System\Globalization\CalendarData.Unix.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\Globalization\CultureData.Unix.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\Globalization\CultureInfo.Unix.cs" />
@@ -2123,7 +2133,6 @@
     <Compile Include="$(MSBuildThisFileDirectory)System\IO\Path.Unix.cs" />
     <Compile Condition="'$(IsiOSLike)' == 'true'" Include="$(MSBuildThisFileDirectory)System\IO\Path.Unix.iOS.cs" />
     <Compile Condition="'$(IsiOSLike)' != 'true'" Include="$(MSBuildThisFileDirectory)System\IO\Path.Unix.NoniOS.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)System\IO\PathInternal.Unix.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\IO\PersistedFiles.Names.Unix.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\IO\RandomAccess.Unix.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\IO\Enumeration\FileSystemEntry.Unix.cs" />
