@@ -7,7 +7,7 @@ using System.Diagnostics;
 namespace System.Text.RegularExpressions.SRM
 {
     // types used as keys in BDD operation caches
-    using BoolOpKey = ValueTuple<BoolOp, BDD, BDD>;
+    using BoolOpKey = ValueTuple<BoolOp, BDD, BDD?>;
     using ShiftOpKey = ValueTuple<BDD, int>;
 
     /// <summary>
@@ -73,14 +73,15 @@ namespace System.Text.RegularExpressions.SRM
         /// Returns the BDD from the cache if it already exists.
         /// Must be executed in a single thread mode.
         /// </summary>
-        public BDD GetOrCreateBDD(int ordinal, BDD one, BDD zero)
+        public BDD GetOrCreateBDD(int ordinal, BDD? one, BDD? zero)
         {
             var key = new BDD(ordinal, one, zero);
-            if (!_bddCache.TryGetValue(key, out BDD set))
+            if (!_bddCache.TryGetValue(key, out BDD? set))
             {
                 set = key;
                 _bddCache.Add(set);
             }
+
             return set;
         }
 
@@ -105,7 +106,7 @@ namespace System.Text.RegularExpressions.SRM
                 return a;
 
             BoolOpKey key = CreateBoolOpKey(BoolOp.OR, a, b);
-            return _binOpCache.TryGetValue(key, out BDD res) ?
+            return _binOpCache.TryGetValue(key, out BDD? res) ?
                 res :
                 CreateBoolOP_lock(key);
         }
@@ -128,7 +129,7 @@ namespace System.Text.RegularExpressions.SRM
                 return a;
 
             BoolOpKey key = CreateBoolOpKey(BoolOp.AND, a, b);
-            return _binOpCache.TryGetValue(key, out BDD res) ?
+            return _binOpCache.TryGetValue(key, out BDD? res) ?
                 res :
                 CreateBoolOP_lock(key);
         }
@@ -139,7 +140,7 @@ namespace System.Text.RegularExpressions.SRM
         public BDD Not(BDD a) =>
             a == False ? True :
             a == True ? False :
-            _notCache.TryGetValue(a, out BDD neg) ? neg :
+            _notCache.TryGetValue(a, out BDD? neg) ? neg :
             CreateBoolOP_lock(new BoolOpKey(BoolOp.NOT, a, null));
 
         /// <summary>
@@ -175,6 +176,8 @@ namespace System.Text.RegularExpressions.SRM
                     }
                 }
 
+                Debug.Assert(b is not null);
+
                 if (a.IsLeaf && b.IsLeaf)
                 {
                     //multi-terminal case, we know here that a is neither True nor False
@@ -183,18 +186,22 @@ namespace System.Text.RegularExpressions.SRM
                 }
                 else if (a.IsLeaf || b.Ordinal > a.Ordinal)
                 {
+                    Debug.Assert(!b.IsLeaf);
                     BDD t = CreateBinBoolOP_rec(op, a, b.One);
                     BDD f = CreateBinBoolOP_rec(op, a, b.Zero);
                     res = t == f ? t : GetOrCreateBDD(b.Ordinal, t, f);
                 }
                 else if (b.IsLeaf || a.Ordinal > b.Ordinal)
                 {
+                    Debug.Assert(!a.IsLeaf);
                     BDD t = CreateBinBoolOP_rec(op, a.One, b);
                     BDD f = CreateBinBoolOP_rec(op, a.Zero, b);
                     res = t == f ? t : GetOrCreateBDD(a.Ordinal, t, f);
                 }
                 else
                 {
+                    Debug.Assert(!a.IsLeaf);
+                    Debug.Assert(!b.IsLeaf);
                     BDD t = CreateBinBoolOP_rec(op, a.One, b.One);
                     BDD f = CreateBinBoolOP_rec(op, a.Zero, b.Zero);
                     res = t == f ? t : GetOrCreateBDD(a.Ordinal, t, f);
@@ -258,7 +265,7 @@ namespace System.Text.RegularExpressions.SRM
             #endregion
 
             BoolOpKey key = CreateBoolOpKey(op, a, b);
-            if (_binOpCache.TryGetValue(key, out BDD res))
+            if (_binOpCache.TryGetValue(key, out BDD? res))
                 return res;
 
             if (a.IsLeaf && b.IsLeaf)
@@ -267,26 +274,27 @@ namespace System.Text.RegularExpressions.SRM
                 int ord = CombineTerminals(op, a.Ordinal, b.Ordinal);
                 res = GetOrCreateBDD(ord, null, null);
             }
+            else if (a.IsLeaf || b.Ordinal > a.Ordinal)
+            {
+                Debug.Assert(!b.IsLeaf);
+                BDD t = CreateBinBoolOP_rec(op, a, b.One);
+                BDD f = CreateBinBoolOP_rec(op, a, b.Zero);
+                res = t == f ? t : GetOrCreateBDD(b.Ordinal, t, f);
+            }
+            else if (b.IsLeaf || a.Ordinal > b.Ordinal)
+            {
+                Debug.Assert(!a.IsLeaf);
+                BDD t = CreateBinBoolOP_rec(op, a.One, b);
+                BDD f = CreateBinBoolOP_rec(op, a.Zero, b);
+                res = t == f ? t : GetOrCreateBDD(a.Ordinal, t, f);
+            }
             else
             {
-                if (a.IsLeaf || b.Ordinal > a.Ordinal)
-                {
-                    BDD t = CreateBinBoolOP_rec(op, a, b.One);
-                    BDD f = CreateBinBoolOP_rec(op, a, b.Zero);
-                    res = t == f ? t : GetOrCreateBDD(b.Ordinal, t, f);
-                }
-                else if (b.IsLeaf || a.Ordinal > b.Ordinal)
-                {
-                    BDD t = CreateBinBoolOP_rec(op, a.One, b);
-                    BDD f = CreateBinBoolOP_rec(op, a.Zero, b);
-                    res = t == f ? t : GetOrCreateBDD(a.Ordinal, t, f);
-                }
-                else
-                {
-                    BDD t = CreateBinBoolOP_rec(op, a.One, b.One);
-                    BDD f = CreateBinBoolOP_rec(op, a.Zero, b.Zero);
-                    res = t == f ? t : GetOrCreateBDD(a.Ordinal, t, f);
-                }
+                Debug.Assert(!a.IsLeaf);
+                Debug.Assert(!b.IsLeaf);
+                BDD t = CreateBinBoolOP_rec(op, a.One, b.One);
+                BDD f = CreateBinBoolOP_rec(op, a.Zero, b.Zero);
+                res = t == f ? t : GetOrCreateBDD(a.Ordinal, t, f);
             }
 
             _binOpCache[key] = res;
@@ -304,7 +312,7 @@ namespace System.Text.RegularExpressions.SRM
             if (a == True)
                 return False;
 
-            if (_notCache.TryGetValue(a, out BDD neg))
+            if (_notCache.TryGetValue(a, out BDD? neg))
                 return neg;
 
             neg = a.IsLeaf ?
@@ -392,7 +400,7 @@ namespace System.Text.RegularExpressions.SRM
                 return False;
 
             BoolOpKey key = CreateBoolOpKey(BoolOp.XOR, a, b);
-            return _binOpCache.TryGetValue(key, out BDD res) ?
+            return _binOpCache.TryGetValue(key, out BDD? res) ?
                 res :
                 CreateBoolOP_lock(key);
         }
@@ -446,7 +454,7 @@ namespace System.Text.RegularExpressions.SRM
 
             var key = new ShiftOpKey(set, k);
 
-            if (shiftCache.TryGetValue(key, out BDD res))
+            if (shiftCache.TryGetValue(key, out BDD? res))
                 return res;
 
             BDD zero = Shift_rec(shiftCache, set.Zero, k);
@@ -552,17 +560,8 @@ namespace System.Text.RegularExpressions.SRM
         /// Convert the set into an equivalent array of uint ranges.
         /// Bits above maxBit are ignored.
         /// The ranges are nonoverlapping and ordered.
-        /// If limit > 0 and there are more ranges than limit then return null.
         /// </summary>
-        public static Tuple<uint, uint>[] ToRanges(BDD set, int maxBit, int limit = 0)
-        {
-            Tuple<uint, uint>[] ranges = BDDRangeConverter.ToRanges(set, maxBit);
-
-            if (limit == 0 || ranges.Length <= limit)
-                return ranges;
-
-            return null;
-        }
+        public static Tuple<uint, uint>[] ToRanges(BDD set, int maxBit) => BDDRangeConverter.ToRanges(set, maxBit);
 
         #region domain size and min computation
 
@@ -705,7 +704,7 @@ namespace System.Text.RegularExpressions.SRM
             if (bdd.IsLeaf)
                 return bdd;
 
-            if (cache.TryGetValue(bdd, out BDD res))
+            if (cache.TryGetValue(bdd, out BDD? res))
                 return res;
 
             BDD one = ReplaceTrue_(bdd.One, leaf, cache);
