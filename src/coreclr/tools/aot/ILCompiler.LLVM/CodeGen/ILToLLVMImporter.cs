@@ -17,6 +17,7 @@ using ILCompiler.DependencyAnalysis;
 using ILCompiler.DependencyAnalysisFramework;
 using ILCompiler.LLVM;
 using Internal.IL.Stubs;
+using Internal.ReadyToRunConstants;
 using Internal.TypeSystem.Ecma;
 
 namespace Internal.IL
@@ -1801,6 +1802,8 @@ namespace Internal.IL
         {
             MethodDesc runtimeDeterminedMethod = (MethodDesc)_methodIL.GetObject(token);
             MethodDesc callee = (MethodDesc)_canonMethodIL.GetObject(token);
+            _compilation.NodeFactory.MetadataManager.GetDependenciesDueToAccess(ref _dependencies, _compilation.NodeFactory, _canonMethodIL, callee);
+
             if (callee.IsIntrinsic)
             {
                 if (ImportIntrinsicCall(callee, runtimeDeterminedMethod))

@@ -373,6 +373,8 @@ internal static class Program
 
         TestBoolCompare();
 
+        TestGetDependenciesDueToAccess();
+
         // This test should remain last to get other results before stopping the debugger
         PrintLine("Debugger.Break() test: Ok if debugger is open and breaks.");
         System.Diagnostics.Debugger.Break();
@@ -3464,6 +3466,23 @@ internal static class Program
         bool expected = true;
         bool actual = true;
         EndTest(expected.Equals(actual));
+    }
+
+    public class BaseClass<T>
+    {
+        public virtual string GVMethod1<U>(T t, U u) { return "BaseClass.GVMethod1"; }
+    }
+
+    public class DerivedClass1<T> : BaseClass<T>
+    {
+        public override sealed string GVMethod1<U>(T t, U u) { return "DerivedClass1.GVMethod1"; }
+    }
+
+    static void TestGetDependenciesDueToAccess()
+    {
+        StartTest("Test GetDependenciesDueToAccess (MakeGenericMethod)");
+        MethodInfo gvm1 = typeof(DerivedClass1<string>).GetTypeInfo().GetDeclaredMethod("GVMethod1").MakeGenericMethod(typeof(string));
+        EndTest(gvm1.Invoke(new DerivedClass1<string>(), new[] { "", "" }) == "DerivedClass1.GVMethod1");
     }
 
     static ushort ReadUInt16()
