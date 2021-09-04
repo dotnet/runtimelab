@@ -929,8 +929,15 @@ namespace System.Tests
         {
             foreach (Type nonRuntimeType in Helpers.NonRuntimeTypes)
             {
-                Type t = typeof(List<>).MakeGenericType(nonRuntimeType);
-                Assert.NotNull(t);
+                if (PlatformDetection.IsReflectionEmitSupported)
+                {
+                    Type t = typeof(List<>).MakeGenericType(nonRuntimeType);
+                    Assert.NotNull(t);
+                }
+                else
+                {
+                    Assert.Throws<PlatformNotSupportedException>(() => typeof(List<>).MakeGenericType(nonRuntimeType));
+                }
             }
         }
 
