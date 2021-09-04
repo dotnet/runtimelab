@@ -12,21 +12,23 @@
 // Macro that generates a stub consuming a cache with the given number of entries.
 .macro DEFINE_INTERFACE_DISPATCH_STUB entries
 
-LEAF_ENTRY RhpInterfaceDispatch\entries, _TEXT
+NESTED_ENTRY RhpInterfaceDispatch\entries, _TEXT, NoHandler
         // r12 currently contains the indirection cell address. But we need more scratch registers and
-        // we may A/V on a null this. Both of these suggest we need a real prolog and epilog.
-        PROLOG_PUSH {r1-r2}
+        // we may A/V on a null this. Store r1 and r2 in red zone.
+        str         r1, [sp, #-8]
+        str         r2, [sp, #-4]
 
         // r12 currently holds the indirection cell address. We need to get the cache structure instead.
         ldr         r2, [r12, #OFFSETOF__InterfaceDispatchCell__m_pCache]
 
-        // Load the EEType from the object instance in r0.
+        // Load the MethodTable from the object instance in r0.
+        ALTERNATE_ENTRY RhpInterfaceDispatchAVLocation\entries
         ldr         r1, [r0]
 
         CurrentOffset = OFFSETOF__InterfaceDispatchCache__m_rgEntries
-        // For each entry in the cache, see if its EEType type matches the EEType in r1.
+        // For each entry in the cache, see if its MethodTable type matches the MethodTable in r1.
         // If so, call the second cache entry.  If not, skip the InterfaceDispatchCacheEntry.
-        //  R1 : Instance EEType*
+        //  R1 : Instance MethodTable*
         //  R2: Cache data structure
         //  R12 : Trashed. On succesful check, set to the target address to jump to.
         .rept \entries
@@ -42,7 +44,8 @@ LEAF_ENTRY RhpInterfaceDispatch\entries, _TEXT
         // Point r12 to the indirection cell using the back pointer in the cache block
         ldr         r12, [r2, #OFFSETOF__InterfaceDispatchCache__m_pCell]
 
-        EPILOG_POP  {r1-r2}
+        ldr         r1, [sp, #-8]
+        ldr         r2, [sp, #-4]
         b           C_FUNC(RhpInterfaceDispatchSlow)
 
         // Common epilog for cache hits. Have to out of line it here due to limitation on the number of
@@ -51,13 +54,13 @@ LOCAL_LABEL(99_\entries):
         // R2 contains address of the cache block. We store it in the red zone in case the target we jump
         // to needs it.
         // R12 contains the target address to jump to
-        EPILOG_POP  {r1}
-        // The red zone is only 8 bytes long, so we have to store r2 into it between the pops.
-        str         r2, [sp, #-4]
-        EPILOG_POP  {r2}
+        ldr         r1, [sp, #-8]
+        // We have to store R2 with address of the cache block into red zone before restoring original r2.
+        str         r2, [sp, #-8]
+        ldr         r2, [sp, #-4]
         EPILOG_BRANCH_REG r12
 
-LEAF_END RhpInterfaceDispatch\entries, _TEXT
+NESTED_END RhpInterfaceDispatch\entries, _TEXT
 
 .endm // DEFINE_INTERFACE_DISPATCH_STUB
 
@@ -84,10 +87,10 @@ LEAF_ENTRY RhpVTableOffsetDispatch, _TEXT
         // offset instead.
         ldr         r12, [r12, #OFFSETOF__InterfaceDispatchCell__m_pCache]
 
-        // Load the EEType from the object instance in r0.
+        // Load the MethodTable from the object instance in r0.
         ldr         r1, [r0]
 
-        // add the vtable offset to the EEType pointer
+        // add the vtable offset to the MethodTable pointer
         add         r12, r1, r12
 
         // Load the target address of the vtable into r12

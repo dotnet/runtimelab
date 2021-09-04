@@ -18,7 +18,7 @@ namespace System.Threading
         {
             return new ThreadPoolCallbackWrapper
             {
-                _currentThread = Thread.InitializeThreadPoolThread(),
+                _currentThread = Thread.EnsureThreadPoolThreadInitialized(),
             };
         }
 

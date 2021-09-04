@@ -46,6 +46,7 @@ internal class ReflectionTest
         TestPropertyAndEventAttributes.Run();
         TestNecessaryEETypeReflection.Run();
         TestRuntimeLab929Regression.Run();
+        CodelessMethodMetadataTest.Run();
 #if !REFLECTION_FROM_USAGE
         TestNotReflectedIsNotReflectable.Run();
         TestGenericInstantiationsAreEquallyReflectable.Run();
@@ -268,11 +269,13 @@ internal class ReflectionTest
         interface IFoo<T>
         {
             string Format(string s) => "IFoo<" + typeof(T) + ">::Format(" + s + ")";
+            sealed string InstanceMethod(string s) => "IFoo<" + typeof(T) + ">::InstanceMethod(" + s + ")";
         }
 
         interface IFoo
         {
             string Format(string s) => "IFoo::Format(" + s + ")";
+            sealed string InstanceMethod(string s) => "IFoo::InstanceMethod(" + s + ")";
         }
 
         interface IBar : IFoo
@@ -316,6 +319,18 @@ internal class ReflectionTest
             {
                 var result = (string)typeof(IFoo).GetMethod(nameof(IFoo.Format)).Invoke(new Foo(), new object[] { "abc" });
                 if (result != "IBar::Format(abc)")
+                    throw new Exception();
+            }
+
+            {
+                var result = (string)typeof(IFoo).GetMethod(nameof(IFoo.InstanceMethod)).Invoke(new Foo(), new object[] { "abc" });
+                if (result != "IFoo::InstanceMethod(abc)")
+                    throw new Exception();
+            }
+
+            {
+                var result = (string)typeof(IFoo<Enum>).GetMethod(nameof(IFoo<Enum>.InstanceMethod)).Invoke(new Foo(), new object[] { "abc" });
+                if (result != "IFoo<System.Enum>::InstanceMethod(abc)")
                     throw new Exception();
             }
         }
@@ -1592,6 +1607,29 @@ internal class ReflectionTest
                 message3 = ex.Message;
             }
             if (!message3.Contains("ReflectionTest.TypeConstructionTest.Atom[]"))
+                throw new Exception();
+        }
+    }
+
+    class CodelessMethodMetadataTest
+    {
+        static class TypeWithCodelessMethods
+        {
+            // "where T: struct" prevents the compiler from coming up with a good T
+            public static void CodelessMethod<T>() where T : struct { }
+        }
+
+        static class CodelessType<T> where T : struct
+        {
+            public static void CodelessMethod() { }
+        }
+
+        public static void Run()
+        {
+            if (typeof(CodelessType<>).GetMethods(BindingFlags.Public | BindingFlags.Static).Length != 1)
+                throw new Exception();
+
+            if (typeof(TypeWithCodelessMethods).GetMethods(BindingFlags.Public | BindingFlags.Static).Length != 1)
                 throw new Exception();
         }
     }

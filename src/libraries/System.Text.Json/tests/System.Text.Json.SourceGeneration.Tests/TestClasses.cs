@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Collections.Generic;
+using System.Text.Json.Serialization;
 
 namespace System.Text.Json.SourceGeneration.Tests.RepeatedTypes
 {
@@ -32,6 +33,21 @@ namespace System.Text.Json.SourceGeneration.Tests
         public string Name { get; set; }
         public string PhoneNumber { get; set; }
         public string Country { get; set; }
+    }
+
+    public class NumberTypes
+    {
+        public float Single { get; set; }
+        public double Double { get; set; }
+        public decimal Decimal { get; set; }
+        public sbyte SByte { get; set; }
+        public byte Byte { get; set; }
+        public ushort UShort { get; set; }
+        public short Short { get; set; }
+        public uint UInt { get; set; }
+        public int Int { get; set; }
+        public ulong ULong { get; set; }
+        public long Long { get; set; }
     }
 
     public class ActiveOrUpcomingEvent
@@ -108,9 +124,137 @@ namespace System.Text.Json.SourceGeneration.Tests
         public MyType Type = new();
     }
 
+    public class MyTypeWithCallbacks : IJsonOnSerializing, IJsonOnSerialized
+    {
+        public string MyProperty { get; set; }
+
+        public void OnSerializing() => MyProperty = "Before";
+        void IJsonOnSerialized.OnSerialized() => MyProperty = "After";
+    }
+
+    public class MyTypeWithPropertyOrdering
+    {
+        public int B { get; set; }
+
+        [JsonPropertyOrder(1)]
+        public int A { get; set; }
+
+        [JsonPropertyOrder(-1)]
+        [JsonInclude]
+        public int C = 0;
+    }
+
     public class JsonMessage
     {
         public string Message { get; set; }
         public int Length => Message?.Length ?? 0; // Read-only property
+    }
+
+    internal struct MyStruct { }
+
+    /// <summary>
+    /// Custom converter that adds\substract 100 from MyIntProperty.
+    /// </summary>
+    public class CustomConverterForClass : JsonConverter<ClassWithCustomConverter>
+    {
+        public override ClassWithCustomConverter Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        {
+            if (reader.TokenType != JsonTokenType.StartObject)
+            {
+                throw new JsonException("No StartObject");
+            }
+
+            ClassWithCustomConverter obj = new();
+
+            reader.Read();
+            if (reader.TokenType != JsonTokenType.PropertyName &&
+                reader.GetString() != "MyInt")
+            {
+                throw new JsonException("Wrong property name");
+            }
+
+            reader.Read();
+            obj.MyInt = reader.GetInt32() - 100;
+
+            reader.Read();
+            if (reader.TokenType != JsonTokenType.EndObject)
+            {
+                throw new JsonException("No EndObject");
+            }
+
+            return obj;
+        }
+
+        public override void Write(Utf8JsonWriter writer, ClassWithCustomConverter value, JsonSerializerOptions options)
+        {
+            writer.WriteStartObject();
+            writer.WriteNumber(nameof(ClassWithCustomConverter.MyInt), value.MyInt + 100);
+            writer.WriteEndObject();
+        }
+    }
+
+    [JsonConverter(typeof(CustomConverterForClass))]
+    public class ClassWithCustomConverter
+    {
+        public int MyInt { get; set; }
+    }
+
+    [JsonConverter(typeof(CustomConverterForStruct))] // Invalid
+    public struct ClassWithBadCustomConverter
+    {
+        public int MyInt { get; set; }
+    }
+
+    /// <summary>
+    /// Custom converter that adds\substract 100 from MyIntProperty.
+    /// </summary>
+    public class CustomConverterForStruct : JsonConverter<StructWithCustomConverter>
+    {
+        public override StructWithCustomConverter Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        {
+            if (reader.TokenType != JsonTokenType.StartObject)
+            {
+                throw new JsonException("No StartObject");
+            }
+
+            StructWithCustomConverter obj = new();
+
+            reader.Read();
+            if (reader.TokenType != JsonTokenType.PropertyName &&
+                reader.GetString() != "MyInt")
+            {
+                throw new JsonException("Wrong property name");
+            }
+
+            reader.Read();
+            obj.MyInt = reader.GetInt32() - 100;
+
+            reader.Read();
+            if (reader.TokenType != JsonTokenType.EndObject)
+            {
+                throw new JsonException("No EndObject");
+            }
+
+            return obj;
+        }
+
+        public override void Write(Utf8JsonWriter writer, StructWithCustomConverter value, JsonSerializerOptions options)
+        {
+            writer.WriteStartObject();
+            writer.WriteNumber(nameof(StructWithCustomConverter.MyInt), value.MyInt + 100);
+            writer.WriteEndObject();
+        }
+    }
+
+    [JsonConverter(typeof(CustomConverterForStruct))]
+    public struct StructWithCustomConverter
+    {
+        public int MyInt { get; set; }
+    }
+
+    [JsonConverter(typeof(CustomConverterForClass))] // Invalid
+    public struct StructWithBadCustomConverter
+    {
+        public int MyInt { get; set; }
     }
 }

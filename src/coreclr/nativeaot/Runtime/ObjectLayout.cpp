@@ -13,12 +13,12 @@
 #include "PalRedhawkCommon.h"
 #include "PalRedhawk.h"
 #include "TargetPtrs.h"
-#include "eetype.h"
+#include "MethodTable.h"
 #include "ObjectLayout.h"
-#include "eetype.inl"
+#include "MethodTable.inl"
 
 #ifndef DACCESS_COMPILE
-void Object::InitEEType(EEType * pEEType)
+void Object::InitEEType(MethodTable * pEEType)
 {
     ASSERT(NULL == m_pEEType);
     m_pEEType = pEEType;
@@ -55,7 +55,7 @@ void ObjHeader::ClrBit(uint32_t uBit)
 
 size_t Object::GetSize()
 {
-    EEType * pEEType = get_EEType();
+    MethodTable * pEEType = get_EEType();
 
     // strings have component size2, all other non-arrays should have 0
     ASSERT(( pEEType->get_ComponentSize() <= 2) || pEEType->IsArray());

@@ -69,10 +69,27 @@ In CoreRT, reflection metadata (names of types, list of their methods, fields, s
 
 If compiler cannot detect types used by the aplication, an rd.xml file can be supplemented to help ILCompiler find types that should be analyzed.
 For that, file `rd.xml` should be created and following lines added to project file
-```
+```xml
 <ItemGroup>
   <RdXmlFile Include="rd.xml" />
 </ItemGroup>
 ```
 
 Format of the file described [here](rd-xml-format.md)
+
+## Shimming
+
+Native AOT libraries have configuration settings (shims) that enable replacing some of frequently used reflection patterns that are incompatible with Native AOT with compatible equivalents that approximate their functionality, without changing the source code. The shim settings documented in this section are meant to be used as temporary unreliable workarounds until the permanent source code fix can be made. They are not guaranteed to make the application work correctly.
+
+### Simulated calling assembly
+
+`Assembly.GetCallingAssembly` is not supported in Native AOT and throws `PlatformNotSupportedException` by default. 
+
+`Assembly.GetCallingAssembly` can be in certain situations simulated by `Assembly.GetEntryAssembly`. 
+
+To enable simulated `Assembly.GetCallingAssembly`, you will need:
+
+```xml
+  <ItemGroup>
+    <RuntimeHostConfigurationOption Include="Switch.System.Reflection.Assembly.SimulatedCallingAssembly" Value="true" />
+  </ItemGroup>

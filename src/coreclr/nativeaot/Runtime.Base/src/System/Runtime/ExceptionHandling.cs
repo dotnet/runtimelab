@@ -142,7 +142,7 @@ namespace System.Runtime
         private static void OnFirstChanceExceptionViaClassLib(object exception)
         {
             IntPtr pOnFirstChanceFunction =
-                (IntPtr)InternalCalls.RhpGetClasslibFunctionFromEEType((IntPtr)exception.EEType, ClassLibFunctionId.OnFirstChance);
+                (IntPtr)InternalCalls.RhpGetClasslibFunctionFromEEType(exception.MethodTable, ClassLibFunctionId.OnFirstChance);
 
             if (pOnFirstChanceFunction == IntPtr.Zero)
             {
@@ -162,7 +162,7 @@ namespace System.Runtime
         private static void OnUnhandledExceptionViaClassLib(object exception)
         {
             IntPtr pOnUnhandledExceptionFunction =
-                (IntPtr)InternalCalls.RhpGetClasslibFunctionFromEEType((IntPtr)exception.EEType, ClassLibFunctionId.OnUnhandledException);
+                (IntPtr)InternalCalls.RhpGetClasslibFunctionFromEEType(exception.MethodTable, ClassLibFunctionId.OnUnhandledException);
 
             if (pOnUnhandledExceptionFunction == IntPtr.Zero)
             {
@@ -280,15 +280,15 @@ namespace System.Runtime
             return e;
         }
 
-        // Given an ExceptionID and an EEType address, get an exception object of a type that the module containing
+        // Given an ExceptionID and an MethodTable address, get an exception object of a type that the module containing
         // the given address will understand. This finds the classlib-defined GetRuntimeException function and asks
         // it for the exception object.
-        internal static Exception GetClasslibExceptionFromEEType(ExceptionIDs id, IntPtr pEEType)
+        internal static Exception GetClasslibExceptionFromEEType(ExceptionIDs id, MethodTable* pEEType)
         {
             // Find the classlib function that will give us the exception object we want to throw. This
             // is a RuntimeExport function from the classlib module, and is therefore managed-callable.
             IntPtr pGetRuntimeExceptionFunction = IntPtr.Zero;
-            if (pEEType != IntPtr.Zero)
+            if (pEEType != null)
             {
                 pGetRuntimeExceptionFunction = (IntPtr)InternalCalls.RhpGetClasslibFunctionFromEEType(pEEType, ClassLibFunctionId.GetRuntimeException);
             }
@@ -310,7 +310,7 @@ namespace System.Runtime
                 FailFastViaClasslib(
                     RhFailFastReason.ClassLibDidNotTranslateExceptionID,
                     null,
-                    pEEType);
+                    (IntPtr)pEEType);
             }
 
             return e;
@@ -342,7 +342,7 @@ namespace System.Runtime
         {
             ExceptionIDs exID = fIsOverflow ? ExceptionIDs.Overflow : ExceptionIDs.OutOfMemory;
 
-            // Throw the out of memory exception defined by the classlib, using the input EEType*
+            // Throw the out of memory exception defined by the classlib, using the input MethodTable*
             // to find the correct classlib.
 
             throw pEEType.ToPointer()->GetClasslibException(exID);
@@ -794,7 +794,7 @@ namespace System.Runtime
                 // most containing.
                 if (clauseKind == RhEHClauseKind.RH_EH_CLAUSE_TYPED)
                 {
-                    if (ShouldTypedClauseCatchThisException(exception, (EEType*)ehClause._pTargetType))
+                    if (ShouldTypedClauseCatchThisException(exception, (MethodTable*)ehClause._pTargetType))
                     {
                         pHandler = ehClause._handlerAddress;
                         tryRegionIdx = curIdx;
@@ -820,8 +820,8 @@ namespace System.Runtime
         }
 
 #if DEBUG && !INPLACE_RUNTIME
-        private static EEType* s_pLowLevelObjectType;
-        private static void AssertNotRuntimeObject(EEType* pClauseType)
+        private static MethodTable* s_pLowLevelObjectType;
+        private static void AssertNotRuntimeObject(MethodTable* pClauseType)
         {
             //
             // The C# try { } catch { } clause expands into a typed catch of System.Object.
@@ -836,7 +836,7 @@ namespace System.Runtime
             if (s_pLowLevelObjectType == null)
             {
                 // Allocating might fail, but since this is just a debug assert, it's probably fine.
-                s_pLowLevelObjectType = new System.Object().EEType;
+                s_pLowLevelObjectType = new System.Object().MethodTable;
             }
 
             Debug.Assert(!pClauseType->IsEquivalentTo(s_pLowLevelObjectType));
@@ -844,7 +844,7 @@ namespace System.Runtime
 #endif // DEBUG && !INPLACE_RUNTIME
 
 
-        private static bool ShouldTypedClauseCatchThisException(object exception, EEType* pClauseType)
+        private static bool ShouldTypedClauseCatchThisException(object exception, MethodTable* pClauseType)
         {
 #if DEBUG && !INPLACE_RUNTIME
             AssertNotRuntimeObject(pClauseType);

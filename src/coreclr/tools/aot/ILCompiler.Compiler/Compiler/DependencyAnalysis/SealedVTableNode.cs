@@ -33,7 +33,7 @@ namespace ILCompiler.DependencyAnalysis
 
         public virtual void AppendMangledName(NameMangler nameMangler, Utf8StringBuilder sb)
         {
-            sb.Append(nameMangler.CompilationUnitPrefix + "__SealedVTable_" + nameMangler.NodeMangler.EEType(_type));
+            sb.Append(nameMangler.CompilationUnitPrefix + "__SealedVTable_" + nameMangler.NodeMangler.MethodTable(_type));
         }
 
         int ISymbolNode.Offset => 0;
@@ -109,8 +109,11 @@ namespace ILCompiler.DependencyAnalysis
 
             _sealedVTableEntries = new List<SealedVTableEntry>();
 
-            // If this is an interface, we're done. They don't have any slots.
-            if (_type.IsInterface)
+            // Interfaces don't have any virtual slots with the exception of interfaces that provide
+            // IDynamicInterfaceCastable implementation.
+            // Normal interface don't need one because the dispatch is done at the class level.
+            // For IDynamicInterfaceCastable, we don't have an implementing class.
+            if (_type.IsInterface && !((MetadataType)_type).IsDynamicInterfaceCastableImplementation())
                 return true;
 
             IReadOnlyList<MethodDesc> virtualSlots = factory.VTable(declType).Slots;
@@ -171,9 +174,7 @@ namespace ILCompiler.DependencyAnalysis
                         if (resolution == DefaultInterfaceMethodResolution.DefaultImplementation)
                         {
                             DefType providingInterfaceDefinitionType = (DefType)implMethod.OwningType;
-                            if (interfaceType != interfaceDefinitionType)
-                                implMethod = implMethod.InstantiateSignature(declType.Instantiation, Instantiation.Empty);
-
+                            implMethod = implMethod.InstantiateSignature(declType.Instantiation, Instantiation.Empty);
                             _sealedVTableEntries.Add(SealedVTableEntry.FromDefaultInterfaceMethod(implMethod, providingInterfaceDefinitionType));
                         }
                     }

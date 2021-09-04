@@ -111,14 +111,14 @@ namespace Internal.Runtime.TypeLoader
         /// Preconditions:
         ///    runtimeTypeHandle is a typedef (not a constructed type such as an array or generic instance.)
         /// </summary>
-        /// <param name="runtimeTypeHandle">EEType of the type in question</param>
+        /// <param name="runtimeTypeHandle">MethodTable of the type in question</param>
         /// <param name="metadataReader">Metadata reader for the type</param>
         /// <param name="typeRefHandle">Located TypeRef handle</param>
         public static unsafe bool TryGetTypeReferenceForNamedType(RuntimeTypeHandle runtimeTypeHandle, out MetadataReader metadataReader, out TypeReferenceHandle typeRefHandle)
         {
             int hashCode = runtimeTypeHandle.GetHashCode();
 
-            // Iterate over all modules, starting with the module that defines the EEType
+            // Iterate over all modules, starting with the module that defines the MethodTable
             foreach (NativeFormatModuleInfo module in ModuleList.EnumerateModules(RuntimeAugments.GetModuleFromTypeHandle(runtimeTypeHandle)))
             {
                 NativeReader typeMapReader;
@@ -173,7 +173,7 @@ namespace Internal.Runtime.TypeLoader
         /// </summary>
         /// <param name="metadataReader">Metadata reader for module containing the type reference</param>
         /// <param name="typeRefHandle">TypeRef handle to look up</param>
-        /// <param name="runtimeTypeHandle">Resolved EEType for the type reference</param>
+        /// <param name="runtimeTypeHandle">Resolved MethodTable for the type reference</param>
         /// <param name="searchAllModules">Search all modules</param>
         public static unsafe bool TryGetNamedTypeForTypeReference(MetadataReader metadataReader, TypeReferenceHandle typeRefHandle, out RuntimeTypeHandle runtimeTypeHandle, bool searchAllModules = false)
         {
@@ -184,7 +184,7 @@ namespace Internal.Runtime.TypeLoader
 
         /// <summary>
         /// Return the RuntimeTypeHandle for the named type referenced by another type that pay-for-play denotes as browsable (for example,
-        /// in a member signature.) This lookup will attempt to resolve to an EEType in any module to cover situations where the type
+        /// in a member signature.) This lookup will attempt to resolve to an MethodTable in any module to cover situations where the type
         /// does not have a TypeDefinition (non-browsable type) as well as cases where it does.
         ///
         /// Preconditions:
@@ -196,7 +196,7 @@ namespace Internal.Runtime.TypeLoader
         /// </summary>
         /// <param name="metadataReader">Metadata reader for module containing the type reference</param>
         /// <param name="typeRefHandle">TypeRef handle to look up</param>
-        /// <param name="runtimeTypeHandle">Resolved EEType for the type reference</param>
+        /// <param name="runtimeTypeHandle">Resolved MethodTable for the type reference</param>
         public static unsafe bool TryResolveNamedTypeForTypeReference(MetadataReader metadataReader, TypeReferenceHandle typeRefHandle, out RuntimeTypeHandle runtimeTypeHandle)
         {
             int hashCode = typeRefHandle.ComputeHashCode(metadataReader);
@@ -281,8 +281,8 @@ namespace Internal.Runtime.TypeLoader
         /// Preconditions:
         ///     elementTypeHandle is a valid RuntimeTypeHandle.
         /// </summary>
-        /// <param name="elementTypeHandle">EEType of the array element type</param>
-        /// <param name="arrayTypeHandle">Resolved EEType of the array type</param>
+        /// <param name="elementTypeHandle">MethodTable of the array element type</param>
+        /// <param name="arrayTypeHandle">Resolved MethodTable of the array type</param>
         public static unsafe bool TryGetArrayTypeForNonDynamicElementType(RuntimeTypeHandle elementTypeHandle, out RuntimeTypeHandle arrayTypeHandle)
         {
             arrayTypeHandle = new RuntimeTypeHandle();
@@ -403,9 +403,9 @@ namespace Internal.Runtime.TypeLoader
         }
 
         /// <summary>
-        /// Locate the static constructor context given the runtime type handle (EEType) for the type in question.
+        /// Locate the static constructor context given the runtime type handle (MethodTable) for the type in question.
         /// </summary>
-        /// <param name="typeHandle">EEType of the type to look up</param>
+        /// <param name="typeHandle">MethodTable of the type to look up</param>
         public static unsafe IntPtr TryGetStaticClassConstructionContext(RuntimeTypeHandle typeHandle)
         {
             if (RuntimeAugments.HasCctor(typeHandle))
@@ -543,7 +543,7 @@ namespace Internal.Runtime.TypeLoader
         /// Look up the default constructor for a given type. Should not be called by code which has already initialized
         /// the type system.
         /// </summary>
-        /// <param name="runtimeTypeHandle">Type handle (EEType) for the type in question</param>
+        /// <param name="runtimeTypeHandle">Type handle (MethodTable) for the type in question</param>
         /// <returns>Function pointer representing the constructor, IntPtr.Zero when not found</returns>
         public IntPtr TryGetDefaultConstructorForType(RuntimeTypeHandle runtimeTypeHandle)
         {
@@ -709,7 +709,7 @@ namespace Internal.Runtime.TypeLoader
             //
 
             int logicalSlot = vtableSlot;
-            EEType* ptrType = type.ToEETypePtr();
+            MethodTable* ptrType = type.ToEETypePtr();
             RuntimeTypeHandle openOrNonGenericTypeDefinition = default(RuntimeTypeHandle);
 
             // Compute the logical slot by removing space reserved for generic dictionary pointers
@@ -720,7 +720,7 @@ namespace Internal.Runtime.TypeLoader
             }
             else
             {
-                EEType* searchForSharedGenericTypesInParentHierarchy = ptrType;
+                MethodTable* searchForSharedGenericTypesInParentHierarchy = ptrType;
                 while (searchForSharedGenericTypesInParentHierarchy != null)
                 {
                     // See if this type is shared generic. If so, adjust the slot by 1.

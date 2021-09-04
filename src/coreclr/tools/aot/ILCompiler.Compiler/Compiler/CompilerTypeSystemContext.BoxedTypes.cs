@@ -22,12 +22,12 @@ using Debug = System.Diagnostics.Debug;
 // * Instance methods on shared generic valuetypes expect two arguments
 //   (aside from the arguments declared in the signature): a ByRef to the
 //   first byte of the value of the valuetype (this), and a generic context
-//   argument (EEType)
+//   argument (MethodTable)
 // * Interface calls expect 'this' to be a reference type (with the generic
 //   context to be inferred from 'this' by the callee).
 //
 // Instantiating and unboxing stubs bridge this by extracting a managed
-// pointer out of a boxed valuetype, along with the EEType of the boxed
+// pointer out of a boxed valuetype, along with the MethodTable of the boxed
 // valuetype (to provide the generic context) before dispatching to the
 // instance method with the different calling convention.
 //
@@ -434,7 +434,7 @@ namespace ILCompiler
                 codeStream.EmitLdArg(0);
                 codeStream.Emit(ILOpcode.ldflda, emit.NewToken(Context.SystemModule.GetKnownType("System.Runtime.CompilerServices", "RawData").GetField("Data")));
 
-                // Load the EEType of the boxed valuetype (this is the hidden generic context parameter expected
+                // Load the MethodTable of the boxed valuetype (this is the hidden generic context parameter expected
                 // by the (canonical) instance method, but normally not part of the signature in IL).
                 codeStream.EmitLdArg(0);
                 codeStream.Emit(ILOpcode.ldfld, emit.NewToken(eeTypeField));

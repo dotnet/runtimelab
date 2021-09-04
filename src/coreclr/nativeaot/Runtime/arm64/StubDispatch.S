@@ -13,7 +13,7 @@
     .macro CHECK_CACHE_ENTRY entry
         // Check a single entry in the cache.
         //  x9   : Cache data structure. Also used for target address jump.
-        //  x10  : Instance EEType*
+        //  x10  : Instance MethodTable*
         //  x11  : Indirection cell address, preserved
         //  x12  : Trashed
         ldr     x12, [x9, #(OFFSETOF__InterfaceDispatchCache__m_rgEntries + (\entry * 16))]
@@ -34,7 +34,7 @@
         // x11 holds the indirection cell address. Load the cache pointer.
         ldr     x9, [x11, #OFFSETOF__InterfaceDispatchCell__m_pCache]
 
-        // Load the EEType from the object instance in x0.
+        // Load the MethodTable from the object instance in x0.
         ALTERNATE_ENTRY RhpInterfaceDispatchAVLocation\entries
         ldr     x10, [x0]
 
@@ -91,7 +91,7 @@
         // load x12 to point to the vtable offset (which is stored in the m_pCache field).
         ldr     x12, [x11, #OFFSETOF__InterfaceDispatchCell__m_pCache]
 
-        // Load the EEType from the object instance in x0, and add it to the vtable offset
+        // Load the MethodTable from the object instance in x0, and add it to the vtable offset
         // to get the address in the vtable of what we want to dereference
         ldr     x13, [x0]
         add     x12, x12, x13

@@ -32,7 +32,7 @@
 #include "TypeManager.h"
 #include "RuntimeInstance.h"
 #include "objecthandle.h"
-#include "eetype.inl"
+#include "MethodTable.inl"
 #include "RhConfig.h"
 
 #include "threadstore.h"
@@ -68,7 +68,7 @@
     #define ETW_EVENT_ENABLED(e,f) false
 #endif // FEATURE_ETW
 
-GPTR_IMPL(EEType, g_pFreeObjectEEType);
+GPTR_IMPL(MethodTable, g_pFreeObjectEEType);
 
 #include "gctoclreventsink.h"
 
@@ -147,7 +147,7 @@ CrstStatic g_SuspendEELock;
 #ifdef _MSC_VER
 #pragma warning(disable:4815) // zero-sized array in stack object will have no elements
 #endif // _MSC_VER
-EEType g_FreeObjectEEType;
+MethodTable g_FreeObjectEEType;
 
 // static
 bool RedhawkGCInterface::InitializeSubsystems()
@@ -164,7 +164,7 @@ bool RedhawkGCInterface::InitializeSubsystems()
     MICROSOFT_WINDOWS_REDHAWK_GC_PUBLIC_PROVIDER_Context.RegistrationHandle = Microsoft_Windows_Redhawk_GC_PublicHandle;
 #endif // FEATURE_ETW
 
-    // Initialize the special EEType used to mark free list entries in the GC heap.
+    // Initialize the special MethodTable used to mark free list entries in the GC heap.
     g_FreeObjectEEType.InitializeAsGcFreeType();
     g_pFreeObjectEEType = &g_FreeObjectEEType;
 
@@ -203,7 +203,7 @@ bool RedhawkGCInterface::InitializeSubsystems()
 }
 #endif // !DACCESS_COMPILE
 
-Object* GcAllocInternal(EEType *pEEType, uint32_t uFlags, uintptr_t numElements, Thread* pThread)
+Object* GcAllocInternal(MethodTable *pEEType, uint32_t uFlags, uintptr_t numElements, Thread* pThread)
 {
     ASSERT(!pThread->IsDoNotTriggerGcSet());
 
@@ -261,7 +261,7 @@ Object* GcAllocInternal(EEType *pEEType, uint32_t uFlags, uintptr_t numElements,
             return NULL;
     }
 
-    // Save the EEType for instrumentation purposes.
+    // Save the MethodTable for instrumentation purposes.
     RedhawkGCInterface::SetLastAllocEEType(pEEType);
 
     Object * pObject = GCHeapUtilities::GetGCHeap()->Alloc(pThread->GetAllocContext(), cbSize, uFlags);
@@ -294,7 +294,7 @@ Object* GcAllocInternal(EEType *pEEType, uint32_t uFlags, uintptr_t numElements,
 //  pTransitionFrame-  transition frame to make stack crawable
 // Returns a pointer to the object allocated or NULL on failure.
 
-COOP_PINVOKE_HELPER(void*, RhpGcAlloc, (EEType* pEEType, uint32_t uFlags, uintptr_t numElements, void* pTransitionFrame))
+COOP_PINVOKE_HELPER(void*, RhpGcAlloc, (MethodTable* pEEType, uint32_t uFlags, uintptr_t numElements, void* pTransitionFrame))
 {
     Thread* pThread = ThreadStore::GetCurrentThread();
 
@@ -328,12 +328,12 @@ void RedhawkGCInterface::WaitForGCCompletion()
 }
 
 //-------------------------------------------------------------------------------------------------
-// Used only by GC initialization, this initializes the EEType used to mark free entries in the GC heap. It
+// Used only by GC initialization, this initializes the MethodTable used to mark free entries in the GC heap. It
 // should be an array type with a component size of one (so the GC can easily size it as appropriate) and
 // should be marked as not containing any references. The rest of the fields don't matter: the GC does not
 // query them and the rest of the runtime will never hold a reference to free object.
 
-void EEType::InitializeAsGcFreeType()
+void MethodTable::InitializeAsGcFreeType()
 {
     m_usComponentSize = 1;
     m_usFlags = ParameterizedEEType;
@@ -741,11 +741,11 @@ COOP_PINVOKE_HELPER(void, RhpCopyObjectContents, (Object* pobjDest, Object* pobj
 COOP_PINVOKE_HELPER(Boolean, RhCompareObjectContentsAndPadding, (Object* pObj1, Object* pObj2))
 {
     ASSERT(pObj1->get_EEType()->IsEquivalentTo(pObj2->get_EEType()));
-    EEType * pEEType = pObj1->get_EEType();
-    size_t cbFields = pEEType->get_BaseSize() - (sizeof(ObjHeader) + sizeof(EEType*));
+    MethodTable * pEEType = pObj1->get_EEType();
+    size_t cbFields = pEEType->get_BaseSize() - (sizeof(ObjHeader) + sizeof(MethodTable*));
 
-    uint8_t * pbFields1 = (uint8_t*)pObj1 + sizeof(EEType*);
-    uint8_t * pbFields2 = (uint8_t*)pObj2 + sizeof(EEType*);
+    uint8_t * pbFields1 = (uint8_t*)pObj1 + sizeof(MethodTable*);
+    uint8_t * pbFields2 = (uint8_t*)pObj2 + sizeof(MethodTable*);
 
     return (memcmp(pbFields1, pbFields2, cbFields) == 0) ? Boolean_true : Boolean_false;
 }
@@ -753,16 +753,16 @@ COOP_PINVOKE_HELPER(Boolean, RhCompareObjectContentsAndPadding, (Object* pObj1, 
 // Thread static representing the last allocation.
 // This is used to log the type information for each slow allocation.
 DECLSPEC_THREAD
-EEType * RedhawkGCInterface::tls_pLastAllocationEEType = NULL;
+MethodTable * RedhawkGCInterface::tls_pLastAllocationEEType = NULL;
 
 // Get the last allocation for this thread.
-EEType * RedhawkGCInterface::GetLastAllocEEType()
+MethodTable * RedhawkGCInterface::GetLastAllocEEType()
 {
     return tls_pLastAllocationEEType;
 }
 
 // Set the last allocation for this thread.
-void RedhawkGCInterface::SetLastAllocEEType(EEType * pEEType)
+void RedhawkGCInterface::SetLastAllocEEType(MethodTable * pEEType)
 {
     tls_pLastAllocationEEType = pEEType;
 }

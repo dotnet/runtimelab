@@ -25,11 +25,11 @@ namespace System
         // statement on partially typed objects. Wouldn't have to do this if we could directly declared pinned
         // locals.
         [NonSerialized]
-        private EEType* m_pEEType;
+        private MethodTable* m_pEEType;
 #pragma warning restore
 
 #if INPLACE_RUNTIME
-        internal unsafe EEType* EEType
+        internal unsafe MethodTable* MethodTable
         {
             get
             {
@@ -64,12 +64,12 @@ namespace System
         }
 
         /// <summary>
-        /// Return size of all data (excluding ObjHeader and EEType*).
+        /// Return size of all data (excluding ObjHeader and MethodTable*).
         /// Note that for strings/arrays this would include the Length as well.
         /// </summary>
         internal unsafe uint GetRawDataSize()
         {
-            return EETypePtr.BaseSize - (uint)sizeof(ObjHeader) - (uint)sizeof(EEType*);
+            return EETypePtr.BaseSize - (uint)sizeof(ObjHeader) - (uint)sizeof(MethodTable*);
         }
     }
 }

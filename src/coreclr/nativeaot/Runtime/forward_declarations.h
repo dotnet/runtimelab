@@ -48,5 +48,5 @@ namespace rh {
 
 // inc
 FWD_DECL(EEInterfaceInfo)
-FWD_DECL(EEType)
+FWD_DECL(MethodTable)
 

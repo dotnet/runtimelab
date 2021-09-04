@@ -39,6 +39,7 @@ internal class Program
         TestLotsOfBackwardsBranches.Run();
         TestDrawCircle.Run();
         TestValueTypeDup.Run();
+        TestFunctionPointers.Run();
 #else
         Console.WriteLine("Preinitialization is disabled in multimodule builds for now. Skipping test.");
 #endif
@@ -814,6 +815,22 @@ class TestValueTypeDup
         Assert.AreEqual(2, Dup.s_bytes.Length);
         Assert.AreEqual(42, Dup.s_bytes[0]);
         Assert.AreEqual(42, Dup.s_bytes[1]);
+    }
+}
+
+unsafe class TestFunctionPointers
+{
+    struct WithFunctionPointer
+    {
+        public void* Ptr;
+        internal static WithFunctionPointer s_foo { get; } = new WithFunctionPointer() { Ptr = (delegate*<void>)&X };
+        internal static void X() { }
+    }
+
+    public static void Run()
+    {
+        Assert.IsLazyInitialized(typeof(WithFunctionPointer));
+        Assert.AreEqual(WithFunctionPointer.s_foo.Ptr, (delegate*<void>)&WithFunctionPointer.X);
     }
 }
 

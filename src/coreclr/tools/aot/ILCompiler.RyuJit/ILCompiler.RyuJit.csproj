@@ -37,8 +37,8 @@
     <Compile Include="..\..\Common\System\Collections\Generic\ArrayBuilder.cs">
       <Link>Common\ArrayBuilder.cs</Link>
     </Compile>
-    <Compile Include="..\..\Common\Internal\Runtime\EEType.Constants.cs">
-      <Link>Common\EEType.Constants.cs</Link>
+    <Compile Include="..\..\Common\Internal\Runtime\MethodTable.Constants.cs">
+      <Link>Common\MethodTable.Constants.cs</Link>
     </Compile>
     <Compile Include="..\..\Common\Internal\Runtime\CorConstants.cs">
       <Link>Common\CorConstants.cs</Link>

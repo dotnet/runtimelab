@@ -32,8 +32,8 @@ public:
 //-------------------------------------------------------------------------------------------------
 static uintptr_t const SYNC_BLOCK_SKEW  = sizeof(void *);
 
-class EEType;
-typedef DPTR(class EEType) PTR_EEType;
+class MethodTable;
+typedef DPTR(class MethodTable) PTR_EEType;
 class MethodTable;
 
 //-------------------------------------------------------------------------------------------------
@@ -43,9 +43,9 @@ class Object
 
     PTR_EEType  m_pEEType;
 public:
-    EEType * get_EEType() const
+    MethodTable * get_EEType() const
         { return m_pEEType; }
-    EEType * get_SafeEEType() const
+    MethodTable * get_SafeEEType() const
 #ifdef TARGET_64BIT
         { return dac_cast<PTR_EEType>((dac_cast<TADDR>(m_pEEType)) & ~((uintptr_t)7)); }
 #else
@@ -53,9 +53,9 @@ public:
 #endif
     ObjHeader * GetHeader() { return dac_cast<DPTR(ObjHeader)>(dac_cast<TADDR>(this) - SYNC_BLOCK_SKEW); }
 #ifndef DACCESS_COMPILE
-    void set_EEType(EEType * pEEType)
+    void set_EEType(MethodTable * pEEType)
         { m_pEEType = pEEType; }
-    void InitEEType(EEType * pEEType);
+    void InitEEType(MethodTable * pEEType);
 
     size_t GetSize();
 #endif
@@ -74,7 +74,7 @@ public:
     }
     void RawSetMethodTable(MethodTable * pMT)
     {
-        m_pEEType = PTR_EEType((EEType *)pMT);
+        m_pEEType = PTR_EEType((MethodTable *)pMT);
     }
     ////// End adaptor methods
 };

@@ -343,7 +343,7 @@ namespace ILCompiler
                         factory.ObjectGetTypeFlowDependencies((MetadataType)baseType),
                         "GetType called on the base type"));
 
-                    // We don't have to follow all the bases since the base EEType will bubble this up
+                    // We don't have to follow all the bases since the base MethodTable will bubble this up
                 }
 
                 foreach (DefType interfaceType in type.RuntimeInterfaces)
@@ -384,25 +384,9 @@ namespace ILCompiler
         public override void GetDependenciesDueToLdToken(ref DependencyList dependencies, NodeFactory factory, MethodDesc method)
         {
             dependencies = dependencies ?? new DependencyList();
-            dependencies.Add(factory.ReflectableMethod(method), "LDTOKEN method");
-        }
 
-        public override bool ShouldConsiderLdTokenReferenceAConstruction(TypeDesc type)
-        {
-            // TODO: this can be further optimized
-            //
-            // Codegen will consult metadata manager on this whenever it sees LDTOKEN of some type.
-            // We could report false here if we had guarantees some other code (e.g. GetDependenciesDueToMethodCodePresenceInternal)
-            // is going to look at this again and create a constructed type dependendency if it's what's necessary
-            // (don't forget that "necessary" and "constructed" EETypes get coalesced into a single constructed EEType
-            // if there's at least one constructed EEType for this type in the graph, so telling codegen to just grab
-            // a necessary EEType doesn't hurt anything.
-            //
-            // The advantage of reporting false and trying to narrow this down is in being able to eliminate
-            // constructed EETypes for patterns like "if (typeof(T) == typeof(Foo))". The typecheck
-            // doesn't need a constructed EEType with a full vtable - we can get away with a stripped down
-            // EEType that has a lot less dependencies (the virtual methods are not generated).
-            return ConstructedEETypeNode.CreationAllowed(type);
+            if (!IsReflectionBlocked(method))
+                dependencies.Add(factory.ReflectableMethod(method), "LDTOKEN method");
         }
 
         protected override void GetDependenciesDueToMethodCodePresenceInternal(ref DependencyList dependencies, NodeFactory factory, MethodDesc method, MethodIL methodIL)
@@ -748,7 +732,7 @@ namespace ILCompiler
             return new AnalysisBasedMetadataManager(
                 _typeSystemContext, _blockingPolicy, _resourceBlockingPolicy, _metadataLogFile, _stackTraceEmissionPolicy, _dynamicInvokeThunkGenerationPolicy,
                 _modulesWithMetadata, reflectableTypes.ToEnumerable(), reflectableMethods.ToEnumerable(),
-                reflectableFields.ToEnumerable(), _customAttributesWithMetadata, GetTypesWithConstructedEETypes());
+                reflectableFields.ToEnumerable(), _customAttributesWithMetadata);
         }
 
         private struct ReflectableEntityBuilder<T>

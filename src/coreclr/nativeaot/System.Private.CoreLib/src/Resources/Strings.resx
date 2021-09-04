@@ -584,6 +584,9 @@
   <data name="Argument_CultureNotSupported" xml:space="preserve">
     <value>Culture is not supported.</value>
   </data>
+  <data name="Argument_CultureNotSupportedInInvariantMode" xml:space="preserve">
+    <value>Only the invariant culture is supported in globalization-invariant mode. See https://aka.ms/GlobalizationInvariantMode for more information.</value>
+  </data>
   <data name="Argument_CustomCultureCannotBePassedByNumber" xml:space="preserve">
     <value>Customized cultures cannot be passed by LCID, only by name.</value>
   </data>
@@ -1419,6 +1422,9 @@
   </data>
   <data name="IO_PathTooLong_Path" xml:space="preserve">
     <value>The path '{0}' is too long, or a component of the specified path is too long.</value>
+  </data>
+  <data name="IO_TooManySymbolicLinkLevels" xml:space="preserve">
+    <value>Too many levels of symbolic links in '{0}'.</value>
   </data>
   <data name="IO_SharingViolation_File" xml:space="preserve">
     <value>The process cannot access the file '{0}' because it is being used by another process.</value>
@@ -2317,11 +2323,20 @@
   <data name="IO_FileTooLong2GB" xml:space="preserve">
     <value>The file is too long. This operation is currently limited to supporting files less than 2 gigabytes in size.</value>
   </data>
+  <data name="IO_FileTooLong" xml:space="preserve">
+    <value>IO operation will not work. Most likely the file will become too long.</value>
+  </data>
+  <data name="IO_FileTooLongOrHandleNotSync" xml:space="preserve">
+    <value>IO operation will not work. Most likely the file will become too long or the handle was not opened to support synchronous IO operations.</value>
+  </data>
   <data name="NotSupported_FileStreamOnNonFiles" xml:space="preserve">
     <value>FileStream was asked to open a device that was not a file. For support for devices like 'com1:' or 'lpt1:', call CreateFile, then use the FileStream constructors that take an OS handle as an IntPtr.</value>
   </data>
   <data name="IO_BindHandleFailed" xml:space="preserve">
     <value>BindHandle for ThreadPool failed on this handle.</value>
+  </data>
+  <data name="IO_InconsistentLinkType" xml:space="preserve">
+    <value>The link's file system entry type is inconsistent with that of its target: {0}</value>
   </data>
   <data name="Arg_HandleNotSync" xml:space="preserve">
     <value>Handle does not support synchronous operations. The parameters to the FileStream constructor may need to be changed to indicate that the handle was opened asynchronously (that is, it was opened explicitly for overlapped I/O).</value>
@@ -2331,9 +2346,6 @@
   </data>
   <data name="IO_SeekAppendOverwrite" xml:space="preserve">
     <value>Unable seek backward to overwrite data that previously existed in a file opened in Append mode.</value>
-  </data>
-  <data name="IO_FileTooLongOrHandleNotSync" xml:space="preserve">
-    <value>IO operation will not work. Most likely the file will become too long or the handle was not opened to support synchronous IO operations.</value>
   </data>
   <data name="Arg_ResourceFileUnsupportedVersion" xml:space="preserve">
     <value>The ResourceReader class does not know how to read this version of .resources files.</value>
@@ -2649,9 +2661,6 @@
   </data>
   <data name="Serialization_DateTimeTicksOutOfRange" xml:space="preserve">
     <value>Invalid serialized DateTime data. Ticks must be between DateTime.MinValue.Ticks and DateTime.MaxValue.Ticks.</value>
-  </data>
-  <data name="FeatureRemoved_Message" xml:space="preserve">
-    <value>Code to support feature '{0}' was removed during publishing. If this is in error, update the project configuration to not disable feature '{0}'.</value>
   </data>
   <data name="Arg_InvalidANSIString" xml:space="preserve">
     <value>The ANSI string passed in could not be converted from the default ANSI code page to Unicode.</value>
@@ -3139,6 +3148,15 @@
   <data name="Encoding_UTF7_Disabled" xml:space="preserve">
     <value>Support for UTF-7 is disabled. See {0} for more information.</value>
   </data>
+  <data name="IDynamicInterfaceCastable_DoesNotImplementRequested" xml:space="preserve">
+    <value>Type '{0}' returned by IDynamicInterfaceCastable does not implement the requested interface '{1}'.</value>
+  </data>
+  <data name="IDynamicInterfaceCastable_MissingImplementationAttribute" xml:space="preserve">
+    <value>Type '{0}' returned by IDynamicInterfaceCastable does not have the attribute '{1}'.</value>
+  </data>
+  <data name="IDynamicInterfaceCastable_NotInterface" xml:space="preserve">
+    <value>Type '{0}' returned by IDynamicInterfaceCastable is not an interface.</value>
+  </data>
   <data name="NotSupported_BodyRemoved" xml:space="preserve">
     <value>The body of this method was removed by the AOT compiler because it's not callable.</value>
   </data>
@@ -3193,6 +3211,12 @@
   <data name="IO_CannotCreateDirectory" xml:space="preserve">
     <value>The specified directory '{0}' cannot be created.</value>
   </data>
+  <data name="IO_CannotReplaceSameFile" xml:space="preserve">
+    <value>The source '{0}' and destination '{1}' are the same file.</value>
+  </data>
+  <data name="IO_NotAFile" xml:space="preserve">
+    <value>The specified path '{0}' is not a file.</value>
+  </data>
   <data name="IO_SourceDestMustBeDifferent" xml:space="preserve">
     <value>Source and destination path must be different.</value>
   </data>
@@ -3210,5 +3234,8 @@
   </data>
   <data name="Arg_MemberInfoNotFound" xml:space="preserve">
     <value>A MemberInfo that matches '{0}' could not be found.</value>
+  </data>
+  <data name="NullabilityInfoContext_NotSupported" xml:space="preserve">
+    <value>NullabilityInfoContext is not supported in the current application because 'System.Reflection.NullabilityInfoContext.IsSupported' is set to false. Set the MSBuild Property 'NullabilityInfoContextSupport' to true in order to enable it.</value>
   </data>
 </root>

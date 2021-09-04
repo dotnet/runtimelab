@@ -76,8 +76,18 @@ namespace ILCompiler.DependencyAnalysis
             if (!type.IsArray && !type.IsDefType)
                 return false;
 
+            // Interfaces don't have a dispatch map because we dispatch them based on the
+            // dispatch map of the implementing class.
+            // The only exception are IDynamicInterfaceCastable scenarios that dispatch
+            // using the interface dispatch map.
+            // We generate the dispatch map irrespective of whether the interface actually
+            // implements any methods (we don't run the for loop below) so that at runtime
+            // we can distinguish between "the interface returned by IDynamicInterfaceCastable
+            // wasn't marked as [DynamicInterfaceCastableImplementation]" and "we couldn't find an
+            // implementation". We don't want to use the custom attribute for that at runtime because
+            // that's reflection and this should work without reflection.
             if (type.IsInterface)
-                return false;
+                return ((MetadataType)type).IsDynamicInterfaceCastableImplementation();
 
             TypeDesc declType = type.GetClosestDefType();
 
@@ -185,9 +195,7 @@ namespace ILCompiler.DependencyAnalysis
                         if (result == DefaultInterfaceMethodResolution.DefaultImplementation)
                         {
                             DefType providingInterfaceDefinitionType = (DefType)implMethod.OwningType;
-                            if (interfaceType != interfaceDefinitionType)
-                                implMethod = implMethod.InstantiateSignature(declType.Instantiation, Instantiation.Empty);
-
+                            implMethod = implMethod.InstantiateSignature(declType.Instantiation, Instantiation.Empty);
                             implSlot = VirtualMethodSlotHelper.GetDefaultInterfaceMethodSlot(factory, implMethod, declType, providingInterfaceDefinitionType);
                         }
                         else if (result == DefaultInterfaceMethodResolution.Reabstraction)

@@ -86,7 +86,7 @@ enum LogFacilitiesEnum: unsigned int {
 // about certain suffixes for the %p format specification (normally used to print a pointer)
 //
 //          %pM     // The pointer is a MethodInfo -- not supported yet (use %pK instead)
-//          %pT     // The pointer is a type (EEType)
+//          %pT     // The pointer is a type (MethodTable)
 //          %pV     // The pointer is a C++ Vtable pointer
 //          %pK     // The pointer is a code address (used for call stacks or method names)
 //

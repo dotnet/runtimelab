@@ -281,11 +281,15 @@ namespace System.Reflection.Runtime.Assemblies
             throw new PlatformNotSupportedException();
         }
 
+        internal const string ThrowingMessageInRAF = "This member throws an exception for assemblies embedded in a single-file app";
+
+        [RequiresAssemblyFiles(ThrowingMessageInRAF)]
         public sealed override FileStream GetFile(string name)
         {
             throw new PlatformNotSupportedException();
         }
 
+        [RequiresAssemblyFiles(ThrowingMessageInRAF)]
         public sealed override FileStream[] GetFiles(bool getResourceModules)
         {
             throw new PlatformNotSupportedException();

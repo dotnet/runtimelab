@@ -15,7 +15,7 @@
 UserDefinedCodeViewTypesBuilder::UserDefinedCodeViewTypesBuilder()
     : Allocator(), TypeTable(Allocator)
 {
-    // We pretend that the EEType pointer in System.Object is VTable shape.
+    // We pretend that the MethodTable pointer in System.Object is VTable shape.
     // We use the same "Vtable" for all types because the vtable shape debug
     // record is not expressive enough to capture our vtable shape (where the
     // vtable slots don't start at the beginning of the vtable).

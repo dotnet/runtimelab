@@ -9,6 +9,7 @@ The Native AOT toolchain can be currently built for Linux, macOS and Windows x64
 - The build will place the toolchain packages at `artifacts\packages\[Debug|Release]\Shipping`. To publish your project using these packages:
    - Add the package directory to your `nuget.config` file. For example, replace `dotnet-experimental` line in `samples\HelloWorld\nuget.config` with `<add key="local" value="C:\runtimelab\artifacts\packages\Debug\Shipping" />`
    - Run `dotnet publish --packages pkg -r [win-x64|linux-x64|osx-64] -c [Debug|Release]` to publish your project. `--packages pkg` option restores the package into a local directory that is easy to cleanup once you are done. It avoids polluting the global nuget cache with your locally built dev package.
+- *Optional*. If you want fix ObjWriter, or work on unsupported platform, as additional pre-requiresites you need to run `build[.cmd|.sh] nativeaot.objwriter` before building `nativeaot` subset.
 
 ## Building for Web Assembly
 - This branch contains a version of the WebAssembly compiler that creates LLVM from the clrjit to take advantage of RyuJits optimisations.  It goes from RyuJIT IR -> LLVM instead of the NativeAOT-LLVM branch way of CIL -> LLVM.

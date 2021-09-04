@@ -170,7 +170,7 @@ namespace Internal.Runtime
         {
             // NOTE: This format cannot properly represent element types with sizes >= 64k bytes.
             //       We guard it with an assert, but it is the responsibility of the code using this
-            //       to cap array component sizes. EEType only has a UInt16 field for component sizes too.
+            //       to cap array component sizes. MethodTable only has a UInt16 field for component sizes too.
 
             int numSeries = 0;
             int leadingNonPointerCount = 0;

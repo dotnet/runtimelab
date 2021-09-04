@@ -41,8 +41,8 @@
     <Compile Include="..\..\Runtime.Base\src\System\Runtime\__Finalizer.cs">
       <Link>Runtime.Base\src\System\Runtime\__Finalizer.cs</Link>
     </Compile>
-    <Compile Include="..\..\Runtime.Base\src\System\Runtime\EEType.Runtime.cs">
-      <Link>Runtime.Base\src\System\Runtime\EEType.Runtime.cs</Link>
+    <Compile Include="..\..\Runtime.Base\src\System\Runtime\MethodTable.Runtime.cs">
+      <Link>Runtime.Base\src\System\Runtime\MethodTable.Runtime.cs</Link>
     </Compile>
     <Compile Include="..\..\Runtime.Base\src\System\Runtime\ExceptionHandling.cs">
       <Link>Runtime.Base\src\System\Runtime\ExceptionHandling.cs</Link>
@@ -89,11 +89,11 @@
     <Compile Include="$(AotCommonPath)\Internal\Runtime\CompilerHelpers\StartupDebug.cs">
       <Link>Internal\Runtime\CompilerHelpers\StartupDebug.cs</Link>
     </Compile>
-    <Compile Include="$(CompilerCommonPath)\Internal\Runtime\EEType.Constants.cs">
-      <Link>System\Runtime\EEType.Constants.cs</Link>
+    <Compile Include="$(CompilerCommonPath)\Internal\Runtime\MethodTable.Constants.cs">
+      <Link>System\Runtime\MethodTable.Constants.cs</Link>
     </Compile>
-    <Compile Include="$(AotCommonPath)\Internal\Runtime\EEType.cs">
-      <Link>System\Runtime\EEType.cs</Link>
+    <Compile Include="$(AotCommonPath)\Internal\Runtime\MethodTable.cs">
+      <Link>System\Runtime\MethodTable.cs</Link>
     </Compile>
     <Compile Include="$(CompilerCommonPath)\Internal\Runtime\ModuleHeaders.cs">
       <Link>Internal\Runtime\ModuleHeaders.cs</Link>

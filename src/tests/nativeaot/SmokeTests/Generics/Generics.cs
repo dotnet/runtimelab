@@ -34,7 +34,12 @@ class Program
         TestDevirtualization.Run();
         TestGenericInlining.Run();
         TestGenericInliningDoesntHappen.Run();
-#if !CODEGEN_CPP 
+        TestGvmDependenciesFromLazy.Run();
+        TestGvmDependencyFromGenericLazy.Run();
+        TestConstrainedGvmCalls.Run();
+        TestConstrainedGvmValueTypeCalls.Run();
+        TestDefaultGenericVirtualInterfaceMethods.Run();
+#if !CODEGEN_CPP
         TestNullableCasting.Run();
         TestVariantCasting.Run();
         TestMDArrayAddressMethod.Run();
@@ -1005,6 +1010,12 @@ class Program
             }
         }
 
+        struct MyDisposableStruct<T> : IDisposable
+        {
+            public static Type TypeSeenWhenDisposed { get; private set; }
+            void IDisposable.Dispose() => TypeSeenWhenDisposed = typeof(T);
+        }
+
         [MethodImpl(MethodImplOptions.NoInlining)]
         static bool DoFrob<T, U>(ref T t, object o) where T : IFoo<U>
         {
@@ -1030,6 +1041,14 @@ class Program
             // EEType for Atom2[,,] that we'll check for was never allocated.
             var foo2 = new Foo<Atom2>();
             if (DoFrob<Foo<Atom2>, Atom2>(ref foo2, new object()))
+                throw new Exception();
+
+            using (var myDisposable = new MyDisposableStruct<string>())
+            {
+                if (MyDisposableStruct<string>.TypeSeenWhenDisposed != null)
+                    throw new Exception();
+            }
+            if (MyDisposableStruct<string>.TypeSeenWhenDisposed != typeof(string))
                 throw new Exception();
         }
     }
@@ -2576,6 +2595,368 @@ class Program
         {
             // Regression test for https://github.com/dotnet/runtimelab/issues/485
             GenericType<object>.GenericMethod<int>();
+        }
+    }
+
+    class TestGvmDependenciesFromLazy
+    {
+        interface IFoo
+        {
+            string FrobToo<T>();
+            void Blah<T>();
+        }
+
+        class Foo : IFoo
+        {
+            public virtual string Frob<T>() => $"Foo.Frob<{typeof(T)}>()";
+            public virtual string FrobToo<T>() => Frob<T>();
+
+            // RyuJIT doesn't inline, but futureproofing
+            [MethodImpl(MethodImplOptions.NoInlining)]
+            void IFoo.Blah<T>() => Bork<T>();
+
+            // In optimized builds, Bork method body will not be generated and its generic dictionary is
+            // useless in practice (it gets inlined), but the native layout for Blah still needs info on
+            // how to build the empty dictionary because the generic dictionary of Blah
+            // refers to this method's dictionary.
+            //
+            // The dictionary layouts are computed without any assumptions about inlining.
+            private static void Bork<T>() { }
+        }
+
+        class Bar : Foo
+        {
+            public override string Frob<T>() => $"Bar.Frob<{typeof(T)}>()";
+        }
+
+        // Make it unlikely things will devirtualize
+        static IFoo s_f = new Bar();
+
+        public static void Run()
+        {
+            // Regression test for https://github.com/dotnet/runtimelab/issues/537
+            if (s_f.FrobToo<object>() != "Bar.Frob<System.Object>()")
+                throw new Exception();
+
+            s_f.Blah<object>();
+        }
+    }
+
+    class TestGvmDependencyFromGenericLazy
+    {
+        abstract class GenericBase<T, U>
+        {
+            public abstract string Get<V>();
+        }
+
+        class GenericDerived<T> : GenericBase<T, object>
+        {
+            public override string Get<V>() => $"GenericDerived<{typeof(T)}>.Get<{typeof(V)}>";
+        }
+
+        abstract class LazyGenBase
+        {
+            public abstract string Gen<T, U>();
+        }
+
+        class LazyGenDerived : LazyGenBase
+        {
+            public override string Gen<T, U>()
+            {
+                GenericBase<T, object> b = new GenericDerived<T>();
+                return Roundtrip(b).Get<U>();
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        static T Roundtrip<T>(T x) => x;
+
+        public static void Run()
+        {
+            LazyGenBase b = new LazyGenDerived();
+            Console.WriteLine(Roundtrip(b).Gen<object, string>());
+        }
+    }
+
+    class TestConstrainedGvmCalls
+    {
+        interface IInterface<T>
+        {
+            string Method<X>();
+        }
+
+        class Base<T> : IInterface<T>
+        {
+            string IInterface<T>.Method<X>() => $"Base<{typeof(T)}>.Method<{typeof(X)}>()";
+        }
+
+        class Derived<T, U> : Base<T>, IInterface<U>
+        {
+            string IInterface<U>.Method<X>() => $"Derived<{typeof(T)},{typeof(U)}>.Method<{typeof(X)}>()";
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        static string ConstrainedCall<T, U, X>(ref T instance) where T : IInterface<U>
+        {
+            return instance.Method<X>();
+        }
+
+        class Atom1 { }
+        class Atom2 { }
+        class Atom3 { }
+
+        public static void Run()
+        {
+            var derived = new Derived<Atom1, Atom2>();
+            if (ConstrainedCall<Derived<Atom1, Atom2>, Atom2, Atom3>(ref derived) != "Derived<Program+TestConstrainedGvmCalls+Atom1,Program+TestConstrainedGvmCalls+Atom2>.Method<Program+TestConstrainedGvmCalls+Atom3>()")
+                throw new Exception();
+            if (ConstrainedCall<Derived<Atom1, Atom2>, Atom1, Atom3>(ref derived) != "Base<Program+TestConstrainedGvmCalls+Atom1>.Method<Program+TestConstrainedGvmCalls+Atom3>()")
+                throw new Exception();
+        }
+    }
+
+    class TestConstrainedGvmValueTypeCalls
+    {
+        class Atom1 { }
+        class Atom2 { }
+
+        interface IFoo<T>
+        {
+            bool Frob(object o);
+        }
+
+        struct Foo<T> : IFoo<T>
+        {
+            public int FrobbedValue;
+
+            public bool Frob(object o)
+            {
+                FrobbedValue = 12345;
+                return o is T[,,];
+            }
+        }
+
+        interface IBar<T>
+        {
+            bool Frob<U>(object o);
+        }
+
+        struct Bar<T> : IBar<T>
+        {
+            public int FrobbedValue;
+
+            public bool Frob<U>(object o)
+            {
+                FrobbedValue = 5678;
+                return o is T[,,,];
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        static bool DoFrob1<T, U>(ref T t, object o) where T : IFoo<U>
+        {
+            // Perform a constrained interface call from shared code.
+            // This should have been resolved to a direct call at compile time.
+            return t.Frob(o);
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        static bool DoFrob2<T, U>(ref T t, object o) where T : IBar<U>
+        {
+            // Perform a constrained interface call from shared code.
+            // This should have been resolved to a direct call at compile time.
+            return t.Frob<U>(o);
+        }
+
+        public static void Run()
+        {
+            {
+                var foo1 = new Foo<Atom1>();
+                bool result = DoFrob1<Foo<Atom1>, Atom1>(ref foo1, new Atom1[0, 0, 0]);
+
+                // If the FrobbedValue doesn't change when we frob, we must have done box+interface call.
+                if (foo1.FrobbedValue != 12345)
+                    throw new Exception();
+
+                // Also check we passed the right generic context to Foo.Frob
+                if (!result)
+                    throw new Exception();
+
+                // Also check dependency analysis:
+                // EEType for Atom2[,,] that we'll check for was never allocated.
+                var foo2 = new Foo<Atom2>();
+                if (DoFrob1<Foo<Atom2>, Atom2>(ref foo2, new object()))
+                    throw new Exception();
+            }
+
+            {
+                var bar1 = new Bar<Atom1>();
+                bool result = DoFrob2<Bar<Atom1>, Atom1>(ref bar1, new Atom1[0, 0, 0, 0]);
+
+                // If the FrobbedValue doesn't change when we frob, we must have done box+interface call.
+                if (bar1.FrobbedValue != 5678)
+                    throw new Exception();
+
+                // Also check we passed the right generic context to Foo.Frob
+                if (!result)
+                    throw new Exception();
+
+                // Also check dependency analysis:
+                // EEType for Atom2[,,,] that we'll check for was never allocated.
+                var bar2 = new Bar<Atom2>();
+                if (DoFrob2<Bar<Atom2>, Atom2>(ref bar2, new object()))
+                    throw new Exception();
+            }
+        }
+    }
+
+    class TestDefaultGenericVirtualInterfaceMethods
+    {
+        class Atom1 { }
+        class Atom2 { }
+        struct SAtom1 { }
+
+        interface IFoo
+        {
+            string Foo<T>() => $"Hello from IFoo.Foo<{typeof(T).Name}>";
+        }
+
+        interface IFoo<T>
+        {
+            string Foo<U>() => $"Hello from IFoo<{typeof(T).Name}>.Foo<{typeof(U).Name}>";
+        }
+
+        interface IBar<T> : IFoo, IFoo<T[]>, IFoo<T>
+        {
+            string IFoo.Foo<U>() => $"Hello from IBar<{typeof(T).Name}>.IFoo.Foo<{typeof(U).Name}>";
+            string IFoo<T[]>.Foo<U>() => $"Hello from IBar<{typeof(T).Name}>.IFoo<T[]>.Foo<{typeof(U).Name}>";
+            string IFoo<T>.Foo<U>() => $"Hello from IBar<{typeof(T).Name}>.IFoo<T>.Foo<{typeof(U).Name}>";
+        }
+
+        class Foo : IFoo, IFoo<Atom1>, IFoo<Atom2>, IFoo<SAtom1>
+        {
+            string IFoo<Atom2>.Foo<T>() => $"Hello from Foo.Foo<{typeof(T).Name}>";
+        }
+
+        class Bar : IBar<Atom1> { }
+
+        class Bar<T> : IBar<T> { }
+
+        class DerivedBar : Bar<Atom1> { }
+
+        class DerivedSBar : Bar<SAtom1> { }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        static string ConstrainedCall<T, U, X>(ref T instance) where T : IFoo<U>
+        {
+            return instance.Foo<X>();
+        }
+
+        public static void Run()
+        {
+            {
+                IFoo f = new Foo();
+                if (f.Foo<Atom2>() != "Hello from IFoo.Foo<Atom2>")
+                    throw new Exception();
+            }
+
+            {
+                IFoo<Atom1> f = new Foo();
+                if (f.Foo<Atom2>() != "Hello from IFoo<Atom1>.Foo<Atom2>")
+                    throw new Exception();
+            }
+
+            {
+                IFoo<Atom2> f = new Foo();
+                if (f.Foo<Atom1>() != "Hello from Foo.Foo<Atom1>")
+                    throw new Exception();
+            }
+
+            {
+                IFoo<SAtom1> f = new Foo();
+                if (f.Foo<SAtom1>() != "Hello from IFoo<SAtom1>.Foo<SAtom1>")
+                    throw new Exception();
+            }
+
+            {
+                IFoo f = new Bar();
+                if (f.Foo<Atom2>() != "Hello from IBar<Atom1>.IFoo.Foo<Atom2>")
+                    throw new Exception();
+            }
+
+            {
+                IFoo<Atom1> f = new Bar();
+                if (f.Foo<Atom2>() != "Hello from IBar<Atom1>.IFoo<T>.Foo<Atom2>")
+                    throw new Exception();
+            }
+
+            {
+                IFoo<Atom1[]> f = new Bar();
+                if (f.Foo<Atom2>() != "Hello from IBar<Atom1>.IFoo<T[]>.Foo<Atom2>")
+                    throw new Exception();
+            }
+
+            {
+                IFoo<Atom1[]> f = new Bar();
+                if (f.Foo<SAtom1>() != "Hello from IBar<Atom1>.IFoo<T[]>.Foo<SAtom1>")
+                    throw new Exception();
+            }
+
+            {
+                Foo f = new Foo();
+                if (ConstrainedCall<Foo, Atom1, Atom1>(ref f) != "Hello from IFoo<Atom1>.Foo<Atom1>")
+                    throw new Exception();
+                if (ConstrainedCall<Foo, Atom2, Atom1>(ref f) != "Hello from Foo.Foo<Atom1>")
+                    throw new Exception();
+            }
+
+            {
+                IFoo f = new DerivedBar();
+                if (f.Foo<Atom2>() != "Hello from IBar<Atom1>.IFoo.Foo<Atom2>")
+                    throw new Exception();
+            }
+
+            {
+                IFoo<Atom1> f = new DerivedBar();
+                if (f.Foo<Atom2>() != "Hello from IBar<Atom1>.IFoo<T>.Foo<Atom2>")
+                    throw new Exception();
+            }
+
+            {
+                IFoo<Atom1[]> f = new DerivedBar();
+                if (f.Foo<Atom2>() != "Hello from IBar<Atom1>.IFoo<T[]>.Foo<Atom2>")
+                    throw new Exception();
+            }
+
+            {
+                IFoo<Atom1[]> f = new DerivedBar();
+                if (f.Foo<SAtom1>() != "Hello from IBar<Atom1>.IFoo<T[]>.Foo<SAtom1>")
+                    throw new Exception();
+            }
+
+            {
+                IFoo f = new DerivedSBar();
+                if (f.Foo<Atom2>() != "Hello from IBar<SAtom1>.IFoo.Foo<Atom2>")
+                    throw new Exception();
+            }
+
+            {
+                IFoo<SAtom1> f = new DerivedSBar();
+                if (f.Foo<Atom2>() != "Hello from IBar<SAtom1>.IFoo<T>.Foo<Atom2>")
+                    throw new Exception();
+            }
+
+            {
+                IFoo<SAtom1[]> f = new DerivedSBar();
+                if (f.Foo<Atom2>() != "Hello from IBar<SAtom1>.IFoo<T[]>.Foo<Atom2>")
+                    throw new Exception();
+            }
+
+            {
+                IFoo<SAtom1[]> f = new DerivedSBar();
+                if (f.Foo<SAtom1>() != "Hello from IBar<SAtom1>.IFoo<T[]>.Foo<SAtom1>")
+                    throw new Exception();
+            }
         }
     }
 }

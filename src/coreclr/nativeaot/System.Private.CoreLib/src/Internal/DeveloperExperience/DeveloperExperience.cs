@@ -33,22 +33,6 @@ namespace Internal.DeveloperExperience
             return disableMetadata;
         }
 
-        internal static void WriteLine(string s)
-        {
-            // We need to write into stderr, but CoreLib doesn't have a way to write to stderr, so we rely
-            // on a separate library on the startup path to hook this up.
-            // If nothing hooked it up, just use Debug.WriteLine.
-            Action<string> writeLineMethod = AppContext.GetData("System.Runtime.ExceptionServices.WriteLine") as Action<string>;
-            if (writeLineMethod != null)
-            {
-                writeLineMethod(s);
-            }
-            else
-            {
-                Debug.WriteLine(s);
-            }
-        }
-
         public virtual string CreateStackTraceString(IntPtr ip, bool includeFileInfo)
         {
             if (!IsMetadataStackTraceResolutionDisabled())

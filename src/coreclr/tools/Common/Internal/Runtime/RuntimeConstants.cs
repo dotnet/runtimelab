@@ -22,8 +22,8 @@ namespace Internal.Runtime
     {
         /// <summary>
         /// Flag set if the corresponding GCStatic entry has not yet been initialized and
-        /// the corresponding EEType pointer has been changed into a instance pointer of
-        /// that EEType.
+        /// the corresponding MethodTable pointer has been changed into a instance pointer of
+        /// that MethodTable.
         /// </summary>
         public const int Uninitialized = 0x1;
 
@@ -56,5 +56,19 @@ namespace Internal.Runtime
     {
         public const ushort Diamond = 0xFFFE;
         public const ushort Reabstraction = 0xFFFF;
+    }
+
+    internal static class SpecialGVMInterfaceEntry
+    {
+        public const uint Diamond = 0xFFFFFFFF;
+        public const uint Reabstraction = 0xFFFFFFFE;
+    }
+
+    internal enum RuntimeHelperKind
+    {
+        AllocateObject,
+        IsInst,
+        CastClass,
+        AllocateArray,
     }
 }

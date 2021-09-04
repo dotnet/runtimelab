@@ -45,9 +45,6 @@ namespace ILCompiler.DependencyAnalysis
             if (!method.IsVirtual)
                 return false;
 
-            if (method.OwningType.IsInterface)
-                return true;
-
             if (method.IsFinal)
                 return false;
 
@@ -132,7 +129,7 @@ namespace ILCompiler.DependencyAnalysis
             {
                 MethodDesc method = mappingEntry.Entity;
 
-                // The current format requires us to have an EEType for the owning type. We might want to lift this.
+                // The current format requires us to have an MethodTable for the owning type. We might want to lift this.
                 if (!factory.MetadataManager.TypeGeneratesEEType(method.OwningType))
                     continue;
 

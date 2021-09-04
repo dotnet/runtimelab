@@ -115,6 +115,8 @@ extern "C" void AppendExceptionStackFrame();
 extern "C" void GetSystemArrayEEType();
 extern "C" void OnFirstChanceException();
 extern "C" void OnUnhandledException();
+extern "C" void IDynamicCastableIsInterfaceImplemented();
+extern "C" void IDynamicCastableGetInterfaceImplementation();
 
 typedef void(*pfn)();
 
@@ -127,6 +129,8 @@ static const pfn c_classlibFunctions[] = {
     &GetSystemArrayEEType,
     &OnFirstChanceException,
     &OnUnhandledException,
+    &IDynamicCastableIsInterfaceImplemented,
+    &IDynamicCastableGetInterfaceImplementation,
 };
 
 #ifndef _countof

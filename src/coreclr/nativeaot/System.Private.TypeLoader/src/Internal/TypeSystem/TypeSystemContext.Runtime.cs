@@ -44,7 +44,7 @@ namespace Internal.TypeSystem
             {
                 unsafe
                 {
-                    return ((EEType*)pointer.ToPointer())->ToRuntimeTypeHandle();
+                    return ((MethodTable*)pointer.ToPointer())->ToRuntimeTypeHandle();
                 }
             }
 
@@ -228,7 +228,7 @@ namespace Internal.TypeSystem
             }
 
             // We either retrieved an existing DefType that is already registered with the runtime
-            // or one that is not associated with an EEType yet. If it's not associated, associate it.
+            // or one that is not associated with an MethodTable yet. If it's not associated, associate it.
             if (returnedType.RuntimeTypeHandle.IsNull())
             {
                 TypeBuilderState state = returnedType.GetTypeBuilderStateIfExist();

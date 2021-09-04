@@ -96,22 +96,40 @@ namespace System
             IntPtr block = Interop.Sys.GetEnviron();
             if (block != IntPtr.Zero)
             {
-                // Per man page, environment variables come back as an array of pointers to strings
-                // Parse each pointer of strings individually
-                while (ParseEntry(block, out string key, out string value))
+                try
                 {
-                    if (key != null && value != null)
-                        results.Add(key, value);
+                    IntPtr blockIterator = block;
 
-                    // Increment to next environment variable entry
-                    block += IntPtr.Size;
+                    // Per man page, environment variables come back as an array of pointers to strings
+                    // Parse each pointer of strings individually
+                    while (ParseEntry(blockIterator, out string? key, out string? value))
+                    {
+                        if (key != null && value != null)
+                        {
+                            try
+                            {
+                                // Add may throw if the environment block was corrupted leading to duplicate entries.
+                                // We allow such throws and eat them (rather than proactively checking for duplication)
+                                // to provide a non-fatal notification about the corruption.
+                                results.Add(key, value);
+                            }
+                            catch (ArgumentException) { }
+                        }
+
+                        // Increment to next environment variable entry
+                        blockIterator += IntPtr.Size;
+                    }
+                }
+                finally
+                {
+                    Interop.Sys.FreeEnviron(block);
                 }
             }
 
             return results;
 
             // Use a local, unsafe function since we cannot use `yield return` inside of an `unsafe` block
-            static unsafe bool ParseEntry(IntPtr current, out string key, out string value)
+            static unsafe bool ParseEntry(IntPtr current, out string? key, out string? value)
             {
                 // Setup
                 key = null;

@@ -2,8 +2,8 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Diagnostics;
+using System.Runtime;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 
 namespace System.Threading
 {
@@ -12,11 +12,9 @@ namespace System.Threading
     /// with the Monitor.Enter/TryEnter/Exit methods.
     /// </summary>
     /// <remarks>
-    /// This implementation is faster than ConditionalWeakTable for two reasons:
-    /// 1) We store the synchronization entry index in the object header, which avoids a hash table
-    ///    lookup.
-    /// 2) We store a strong reference to the synchronization object, which allows retrieving it
-    ///    much faster than going through a DependentHandle.
+    /// This implementation is faster than ConditionalWeakTable since we store the synchronization
+    /// entry index in the object header, which avoids a hash table lookup. It closely matches
+    /// implementation of SyncBlocks.
     ///
     /// SyncTable assigns a unique table entry to each object it is asked for.  The assigned entry
     /// index is stored in the object header and preserved during table expansion (we never shrink
@@ -32,33 +30,17 @@ namespace System.Threading
     /// Here is the state diagram for an entry:
     ///    Free --{AssignEntry}--> Live --{GC}--> Dead --{(Recycle|Free)DeadEntries} --> Free
     ///
-    /// Dead entries are freed/recycled when there are no free entries available (in this case they
-    /// are recycled and added to the free list) or periodically from the finalizer thread (in this
-    /// case they are freed without adding to the free list).  That small difference in behavior
-    /// allows using a more fine-grained locking when freeing is done on the finalizer thread.
-    ///
-    /// Thread safety is ensured by two locks: s_freeEntriesLock and s_usedEntriesLock.  The former
-    /// protects everything related to free entries: s_freeEntryList, s_unusedEntryIndex, and the
-    /// content of free entries in the s_entries array.  The latter protects the content of used
-    /// entries in the s_entries array.  Growing the table and updating the s_entries reference is
-    /// protected by both locks.  Having two locks is not required for correctness, they may be
-    /// merged into a single coarser lock.
-    ///
     /// The public methods operates on live entries only and acquire the following locks:
     /// * GetLockObject : Lock-free.  We always allocate a Monitor synchronization object before
     ///                   the entry goes live.  The returned object may be used as normal; no
     ///                   additional synchronization required.
     /// * GetHashCode   : Lock-free.  A stale zero value may be returned.
-    /// * SetHashCode   : Acquires s_usedEntriesLock.
-    /// * AssignEntry   : Acquires s_freeEntriesLock if at least one free entry is available;
-    ///                   otherwise also acquires s_usedEntriesLock to recycle dead entries
-    ///                   and/or grow the table.
+    /// * SetHashCode   : Acquires s_lock.
+    /// * AssignEntry   : Acquires s_lock.
     ///
     /// The important part here is that all read operations are lock-free and fast, and write
     /// operations are expected to be much less frequent than read ones.
     ///
-    /// One possible future optimization is recycling Monitor synchronization objects from dead
-    /// entries.
     /// </remarks>
     [EagerStaticClassConstruction]
     internal static class SyncTable
@@ -85,10 +67,9 @@ namespace System.Threading
         private const int DoublingSizeThreshold = 1 << 20;
 
         /// <summary>
-        /// Protects everything related to free entries: s_freeEntryList, s_unusedEntryIndex, and the
-        /// content of free entries in the s_entries array.  Also protects growing the table.
+        /// Protects all mutable operations on s_entrie, s_freeEntryList, s_unusedEntryIndex. Also protects growing the table.
         /// </summary>
-        internal static Lock s_freeEntriesLock = new Lock();
+        internal static Lock s_lock = new Lock();
 
         /// <summary>
         /// The dynamically growing array of sync entries.
@@ -108,190 +89,75 @@ namespace System.Threading
         private static int s_unusedEntryIndex = 1;
 
         /// <summary>
-        /// Protects the content of used entries in the s_entries array.  Also protects growing
-        /// the table.
-        /// </summary>
-        private static Lock s_usedEntriesLock = new Lock();
-
-        /// <summary>
-        /// Creates the initial array of entries and the dead entries collector.
-        /// </summary>
-        static SyncTable()
-        {
-            // Create only one collector instance and do not store any references to it, so it may
-            // be finalized.  Use GC.KeepAlive to ensure the allocation will not be optimized out.
-            GC.KeepAlive(new DeadEntryCollector());
-        }
-
-        /// <summary>
         /// Assigns a sync table entry to the object in a thread-safe way.
         /// </summary>
         public static unsafe int AssignEntry(object obj, int* pHeader)
         {
             // Allocate the synchronization object outside the lock
             Lock lck = new Lock();
+            DeadEntryCollector collector = new DeadEntryCollector();
+            DependentHandle handle = new DependentHandle(obj, collector);
 
-            using (LockHolder.Hold(s_freeEntriesLock))
+            try
             {
-                // After acquiring the lock check whether another thread already assigned the sync entry
-                int hashOrIndex;
-                if (ObjectHeader.GetSyncEntryIndex(*pHeader, out hashOrIndex))
+                using (LockHolder.Hold(s_lock))
                 {
-                    return hashOrIndex;
-                }
+                    // After acquiring the lock check whether another thread already assigned the sync entry
+                    if (ObjectHeader.GetSyncEntryIndex(*pHeader, out int hashOrIndex))
+                    {
+                        return hashOrIndex;
+                    }
 
-                // Allocate a new sync entry.  First, make sure all data is ready.  This call may OOM.
-                GCHandle owner = GCHandle.Alloc(obj, GCHandleType.WeakTrackResurrection);
-
-                try
-                {
-                    // Now find a free entry in the table
                     int syncIndex;
-
                     if (s_freeEntryList != 0)
                     {
                         // Grab a free entry from the list
                         syncIndex = s_freeEntryList;
-                        s_freeEntryList = s_entries[syncIndex].Next;
-                        s_entries[syncIndex].Next = 0;
-                    }
-                    else if (s_unusedEntryIndex < s_entries.Length)
-                    {
-                        // Grab the next unused entry
-                        syncIndex = s_unusedEntryIndex++;
+
+                        ref Entry freeEntry = ref s_entries[syncIndex];
+                        s_freeEntryList = freeEntry.Next;
+                        freeEntry.Next = 0;
                     }
                     else
                     {
-                        // No free entries, use the slow path.  This call may OOM.
-                        syncIndex = EnsureFreeEntry();
+                        if (s_unusedEntryIndex >= s_entries.Length)
+                        {
+                            // No free entries, use the slow path.  This call may OOM.
+                            Grow();
+                        }
+
+                        // Grab the next unused entry
+                        Debug.Assert(s_unusedEntryIndex < s_entries.Length);
+                        syncIndex = s_unusedEntryIndex++;
                     }
 
+                    ref Entry entry = ref s_entries[syncIndex];
+
                     // Found a free entry to assign
-                    Debug.Assert(!s_entries[syncIndex].Owner.IsAllocated);
-                    Debug.Assert(s_entries[syncIndex].Lock == null);
-                    Debug.Assert(s_entries[syncIndex].HashCode == 0);
+                    Debug.Assert(!entry.Owner.IsAllocated);
+                    Debug.Assert(entry.Lock == null);
+                    Debug.Assert(entry.HashCode == 0);
 
                     // Set up the new entry.  We should not fail after this point.
-                    s_entries[syncIndex].Lock = lck;
+                    entry.Lock = lck;
+
                     // The hash code will be set by the SetSyncEntryIndex call below
-                    s_entries[syncIndex].Owner = owner;
-                    owner = default(GCHandle);
+                    entry.Owner = handle;
+                    handle = default;
+
+                    collector.Activate(syncIndex);
+                    collector = default;
 
                     // Finally, store the entry index in the object header
                     ObjectHeader.SetSyncEntryIndex(pHeader, syncIndex);
                     return syncIndex;
                 }
-                finally
-                {
-                    if (owner.IsAllocated)
-                    {
-                        owner.Free();
-                    }
-                }
             }
-        }
-
-        /// <summary>
-        /// Creates a free entry by either freeing dead entries or growing the sync table.
-        /// This method either returns an index of a free entry or throws an OOM exception
-        /// keeping the state valid.
-        /// </summary>
-        private static int EnsureFreeEntry()
-        {
-            Debug.Assert(s_freeEntriesLock.IsAcquired);
-            Debug.Assert((s_freeEntryList == 0) && (s_unusedEntryIndex == s_entries.Length));
-
-            int syncIndex;
-
-            // Scan for dead and freed entries and put them into s_freeEntryList
-            int recycledEntries = RecycleDeadEntries();
-            if (s_freeEntryList != 0)
+            finally
             {
-                // If the table is almost full (less than 1/8 of free entries), try growing it
-                // to avoid frequent RecycleDeadEntries scans, which may degrade performance.
-                if (recycledEntries < (s_entries.Length >> 3))
-                {
-                    try
-                    {
-                        Grow();
-                    }
-                    catch (OutOfMemoryException)
-                    {
-                        // Since we still have free entries, ignore memory shortage
-                    }
-                }
-                syncIndex = s_freeEntryList;
-                s_freeEntryList = s_entries[syncIndex].Next;
-                s_entries[syncIndex].Next = 0;
-            }
-            else
-            {
-                // No entries were recycled; must grow the table.
-                // This call may throw OOM; keep the state valid.
-                Grow();
-                Debug.Assert(s_unusedEntryIndex < s_entries.Length);
-                syncIndex = s_unusedEntryIndex++;
-            }
-            return syncIndex;
-        }
-
-        /// <summary>
-        /// Scans the table and recycles all dead and freed entries adding them to the free entry
-        /// list.  Returns the number of recycled entries.
-        /// </summary>
-        private static int RecycleDeadEntries()
-        {
-            Debug.Assert(s_freeEntriesLock.IsAcquired);
-
-            using (LockHolder.Hold(s_usedEntriesLock))
-            {
-                int recycledEntries = 0;
-                for (int idx = s_unusedEntryIndex; --idx > 0;)
-                {
-                    bool freed = !s_entries[idx].Owner.IsAllocated;
-                    if (freed || (s_entries[idx].Owner.Target == null))
-                    {
-                        s_entries[idx].Lock = null;
-                        s_entries[idx].Next = s_freeEntryList;
-                        if (!freed)
-                        {
-                            s_entries[idx].Owner.Free();
-                        }
-                        s_freeEntryList = idx;
-                        recycledEntries++;
-                    }
-                }
-                return recycledEntries;
-            }
-        }
-
-        /// <summary>
-        /// Scans the table and frees all dead entries without adding them to the free entry list.
-        /// Runs on the finalizer thread.
-        /// </summary>
-        private static void FreeDeadEntries()
-        {
-            // Be cautious as this method may run in parallel with grabbing a free entry in the
-            // AssignEntry method.  The potential race is checking IsAllocated && (Target == null)
-            // while a new non-zero (allocated) GCHandle is being assigned to the Owner field
-            // containing a zero (non-allocated) GCHandle.  That must be safe as a GCHandle is
-            // just an IntPtr, which is assigned atomically, and Target has load dependency on it.
-            using (LockHolder.Hold(s_usedEntriesLock))
-            {
-                // We do not care if the s_unusedEntryIndex value is stale here; it suffices that
-                // the s_entries reference is locked and s_unusedEntryIndex points within that array.
-                Debug.Assert(s_unusedEntryIndex <= s_entries.Length);
-
-                for (int idx = s_unusedEntryIndex; --idx > 0;)
-                {
-                    bool allocated = s_entries[idx].Owner.IsAllocated;
-                    if (allocated && (s_entries[idx].Owner.Target == null))
-                    {
-                        s_entries[idx].Lock = null;
-                        s_entries[idx].Next = 0;
-                        s_entries[idx].Owner.Free();
-                    }
-                }
+                if (collector != null)
+                    GC.SuppressFinalize(collector);
+                handle.Dispose();
             }
         }
 
@@ -301,21 +167,18 @@ namespace System.Threading
         /// </summary>
         private static void Grow()
         {
-            Debug.Assert(s_freeEntriesLock.IsAcquired);
+            Debug.Assert(s_lock.IsAcquired);
 
             int oldSize = s_entries.Length;
             int newSize = CalculateNewSize(oldSize);
             Entry[] newEntries = new Entry[newSize];
 
-            using (LockHolder.Hold(s_usedEntriesLock))
-            {
-                // Copy the shallow content of the table
-                Array.Copy(s_entries, newEntries, oldSize);
+            // Copy the shallow content of the table
+            Array.Copy(s_entries, newEntries, oldSize);
 
-                // Publish the new table.  Lock-free reader threads must not see the new value of
-                // s_entries until all the content is copied to the new table.
-                Volatile.Write(ref s_entries, newEntries);
-            }
+            // Publish the new table.  Lock-free reader threads must not see the new value of
+            // s_entries until all the content is copied to the new table.
+            Volatile.Write(ref s_entries, newEntries);
         }
 
         /// <summary>
@@ -374,7 +237,7 @@ namespace System.Threading
             // Acquire the lock to ensure we are updating the latest version of s_entries.  This
             // lock may be avoided if we store the hash code and Monitor synchronization data in
             // the same object accessed by a reference.
-            using (LockHolder.Hold(s_usedEntriesLock))
+            using (LockHolder.Hold(s_lock))
             {
                 int currentHash = s_entries[syncIndex].HashCode;
                 if (currentHash != 0)
@@ -387,12 +250,12 @@ namespace System.Threading
         }
 
         /// <summary>
-        /// Sets the hash code assuming the caller holds s_freeEntriesLock.  Use for not yet
+        /// Sets the hash code assuming the caller holds s_lock.  Use for not yet
         /// published entries only.
         /// </summary>
         public static void MoveHashCodeToNewEntry(int syncIndex, int hashCode)
         {
-            Debug.Assert(s_freeEntriesLock.IsAcquired);
+            Debug.Assert(s_lock.IsAcquired);
             Debug.Assert((0 < syncIndex) && (syncIndex < s_unusedEntryIndex));
             s_entries[syncIndex].HashCode = hashCode;
         }
@@ -407,20 +270,48 @@ namespace System.Threading
             return s_entries[syncIndex].Lock;
         }
 
-        /// <summary>
-        /// Periodically scans the SyncTable and frees dead entries.  It runs on the finalizer
-        /// thread roughly every full (i.e. generation 2) garbage collection.
-        /// </summary>
         private sealed class DeadEntryCollector
         {
+            private int _index;
+
+            public DeadEntryCollector()
+            {
+            }
+
+            public void Activate(int index) => _index = index;
+
             ~DeadEntryCollector()
             {
-                if (!Environment.HasShutdownStarted)
+                if (_index == 0)
+                    return;
+
+                Lock lockToDispose = default;
+                DependentHandle dependentHadleToDispose = default;
+
+                using (LockHolder.Hold(s_lock))
                 {
-                    SyncTable.FreeDeadEntries();
-                    // Resurrect itself by re-registering for finalization
-                    GC.ReRegisterForFinalize(this);
+                    ref Entry entry = ref s_entries[_index];
+
+                    if (entry.Owner.Target != null)
+                    {
+                        // Retry later if the owner is not collected yet.
+                        GC.ReRegisterForFinalize(this);
+                        return;
+                    }
+
+                    dependentHadleToDispose = entry.Owner;
+                    entry.Owner = default;
+
+                    lockToDispose = entry.Lock;
+                    entry.Lock = default;
+
+                    entry.Next = s_freeEntryList;
+                    s_freeEntryList = _index;
                 }
+
+                // Dispose outside the lock
+                dependentHadleToDispose.Dispose();
+                lockToDispose?.Dispose();
             }
         }
 
@@ -440,9 +331,10 @@ namespace System.Threading
             private int _hashOrNext;
 
             /// <summary>
-            /// The long weak GC handle representing the owner object of this sync entry.
+            /// The dependent GC handle representing the owner object of this sync entry and the collector responsible
+            /// for freeing the entry.
             /// </summary>
-            public GCHandle Owner;
+            public DependentHandle Owner;
 
             /// <summary>
             /// For entries in use, this property gets or sets the hash code of the owner object.

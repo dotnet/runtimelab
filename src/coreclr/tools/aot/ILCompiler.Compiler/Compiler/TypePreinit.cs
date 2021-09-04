@@ -1340,6 +1340,10 @@ namespace ILCompiler
                             {
                                 return Status.Fail(methodIL.OwningMethod, opcode, "Null array");
                             }
+                            else if (array.Value is ForeignTypeInstance)
+                            {
+                                return Status.Fail(methodIL.OwningMethod, opcode, "Foreign array");
+                            }
                             else
                             {
                                 ThrowHelper.ThrowInvalidProgramException();
@@ -1991,7 +1995,7 @@ namespace ILCompiler
 
                 Debug.Assert(!creationInfo.TargetNeedsVTableLookup);
 
-                // EEType
+                // MethodTable
                 var node = factory.ConstructedTypeSymbol(Type);
                 Debug.Assert(!node.RepresentsIndirectionCell);  // Shouldn't have allowed this
                 builder.EmitPointerReloc(node);
@@ -2102,7 +2106,7 @@ namespace ILCompiler
 
             public virtual void WriteContent(ref ObjectDataBuilder builder, ISymbolNode thisNode, NodeFactory factory)
             {
-                // EEType
+                // MethodTable
                 var node = factory.ConstructedTypeSymbol(Type);
                 Debug.Assert(!node.RepresentsIndirectionCell);  // Arrays are always local
                 builder.EmitPointerReloc(node);
@@ -2220,12 +2224,12 @@ namespace ILCompiler
 
             public virtual void WriteContent(ref ObjectDataBuilder builder, ISymbolNode thisNode, NodeFactory factory)
             {
-                // EEType
+                // MethodTable
                 var node = factory.ConstructedTypeSymbol(Type);
                 Debug.Assert(!node.RepresentsIndirectionCell);  // Shouldn't have allowed preinitializing this
                 builder.EmitPointerReloc(node);
 
-                // We skip the first pointer because that's the EEType pointer
+                // We skip the first pointer because that's the MethodTable pointer
                 // we just initialized above.
                 int pointerSize = factory.Target.PointerSize;
                 builder.EmitBytes(_data, pointerSize, _data.Length - pointerSize);
@@ -2274,7 +2278,15 @@ namespace ILCompiler
                 if (fieldOffset + fieldSize > _instanceBytes.Length - _offset)
                     ThrowHelper.ThrowInvalidProgramException();
 
-                Array.Copy(((ValueTypeValue)value).InstanceBytes, 0, _instanceBytes, _offset + fieldOffset, fieldSize);
+                if (value is not ValueTypeValue vtValue)
+                {
+                    // This is either invalid IL, or value is one of our modeling-only values
+                    // that don't have a bit representation (e.g. function pointer).
+                    ThrowHelper.ThrowInvalidProgramException();
+                    return; // unreached
+                }
+
+                Array.Copy(vtValue.InstanceBytes, 0, _instanceBytes, _offset + fieldOffset, fieldSize);
             }
 
             public ByRefValue GetFieldAddress(FieldDesc field)

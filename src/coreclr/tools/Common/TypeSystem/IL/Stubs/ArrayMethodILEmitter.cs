@@ -102,7 +102,7 @@ namespace Internal.IL.Stubs
                 else if (_method.Kind == ArrayMethodKind.AddressWithHiddenArg)
                 {
                     TypeDesc objectType = context.GetWellKnownType(WellKnownType.Object);
-                    TypeDesc eetypeType = context.SystemModule.GetKnownType("Internal.Runtime", "EEType");
+                    TypeDesc eetypeType = context.SystemModule.GetKnownType("Internal.Runtime", "MethodTable");
 
                     typeMismatchExceptionLabel = _emitter.NewCodeLabel();
 
@@ -115,13 +115,13 @@ namespace Internal.IL.Stubs
                     codeStream.EmitLdArg(1);
                     codeStream.Emit(ILOpcode.brfalse, typeCheckPassedLabel);
 
-                    // EEType* actualElementType = this.EEType.RelatedParameterType; // ArrayElementType
+                    // MethodTable* actualElementType = this.MethodTable.RelatedParameterType; // ArrayElementType
                     codeStream.EmitLdArg(0);
-                    codeStream.Emit(ILOpcode.call, _emitter.NewToken(objectType.GetKnownMethod("get_EEType", null)));
+                    codeStream.Emit(ILOpcode.call, _emitter.NewToken(objectType.GetKnownMethod("get_MethodTable", null)));
                     codeStream.Emit(ILOpcode.call,
                         _emitter.NewToken(eetypeType.GetKnownMethod("get_RelatedParameterType", null)));
 
-                    // EEType* expectedElementType = hiddenArg->RelatedParameterType; // ArrayElementType
+                    // MethodTable* expectedElementType = hiddenArg->RelatedParameterType; // ArrayElementType
                     codeStream.EmitLdArg(1);
                     codeStream.Emit(ILOpcode.call,
                         _emitter.NewToken(eetypeType.GetKnownMethod("get_RelatedParameterType", null)));
@@ -143,15 +143,12 @@ namespace Internal.IL.Stubs
             if (_rank == 1)
             {
                 TypeDesc objectType = context.GetWellKnownType(WellKnownType.Object);
-                TypeDesc eetypePtrType = context.SystemModule.GetKnownType("System", "EETypePtr");
-                ILLocalVariable thisEEType = _emitter.NewLocal(eetypePtrType);
+                TypeDesc eetypeType = context.SystemModule.GetKnownType("Internal.Runtime", "MethodTable");
 
                 codeStream.EmitLdArg(0);
-                codeStream.Emit(ILOpcode.call, _emitter.NewToken(objectType.GetKnownMethod("get_EETypePtr", null)));
-                codeStream.EmitStLoc(thisEEType);
-                codeStream.EmitLdLoca(thisEEType);
+                codeStream.Emit(ILOpcode.call, _emitter.NewToken(objectType.GetKnownMethod("get_MethodTable", null)));
                 codeStream.Emit(ILOpcode.call,
-                    _emitter.NewToken(eetypePtrType.GetKnownMethod("get_IsSzArray", null)));
+                    _emitter.NewToken(eetypeType.GetKnownMethod("get_IsSzArray", null)));
 
                 ILCodeLabel notSzArrayLabel = _emitter.NewCodeLabel();
                 codeStream.Emit(ILOpcode.brfalse, notSzArrayLabel);
@@ -176,7 +173,7 @@ namespace Internal.IL.Stubs
 
             for (int i = 0; i < _rank; i++)
             {
-                // The first two fields are EEType pointer and total length. Lengths for each dimension follows.
+                // The first two fields are MethodTable pointer and total length. Lengths for each dimension follows.
                 int lengthOffset = (2 * pointerSize + i * sizeof(int));
 
                 EmitLoadInteriorAddress(codeStream, lengthOffset);

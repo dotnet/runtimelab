@@ -56,7 +56,7 @@ namespace ILCompiler.DependencyAnalysis
                 && _targetMethod.HasInstantiation && _targetMethod.IsVirtual)
             {
                 dependencies = dependencies ?? new DependencyList();
-                dependencies.Add(factory.GVMDependencies(_targetMethod), "GVM dependencies for runtime method handle");
+                dependencies.Add(factory.GVMDependencies(_targetMethod.GetCanonMethodTarget(CanonicalFormKind.Specific)), "GVM dependencies for runtime method handle");
             }
 
             factory.MetadataManager.GetDependenciesDueToLdToken(ref dependencies, factory, _targetMethod);

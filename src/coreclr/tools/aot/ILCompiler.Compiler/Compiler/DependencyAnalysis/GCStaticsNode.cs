@@ -11,7 +11,7 @@ using GCStaticRegionConstants = Internal.Runtime.GCStaticRegionConstants;
 
 namespace ILCompiler.DependencyAnalysis
 {
-    public class GCStaticsNode : ObjectNode, IExportableSymbolNode, ISortableSymbolNode
+    public class GCStaticsNode : ObjectNode, ISymbolDefinitionNode, ISortableSymbolNode
     {
         private readonly MetadataType _type;
         private readonly TypePreinit.PreinitializationInfo _preinitializationInfo;
@@ -39,8 +39,6 @@ namespace ILCompiler.DependencyAnalysis
         {
             return nameMangler.NodeMangler.GCStatics(type);
         }
-
-        public virtual ExportForm GetExportForm(NodeFactory factory) => factory.CompilationModuleGroup.GetExportTypeForm(Type);
 
         private ISymbolNode GetGCStaticEETypeNode(NodeFactory factory)
         {
@@ -84,7 +82,7 @@ namespace ILCompiler.DependencyAnalysis
 
             int delta = GCStaticRegionConstants.Uninitialized;
 
-            // Set the flag that indicates next pointer following EEType is the preinit data
+            // Set the flag that indicates next pointer following MethodTable is the preinit data
             bool isPreinitialized = _preinitializationInfo != null && _preinitializationInfo.IsPreinitialized;
             if (isPreinitialized)
                 delta |= GCStaticRegionConstants.HasPreInitializedData;

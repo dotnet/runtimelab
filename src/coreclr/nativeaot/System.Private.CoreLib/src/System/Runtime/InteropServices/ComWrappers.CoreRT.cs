@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Runtime.Versioning;
 using System.Threading;
 using Internal.Runtime.CompilerServices;
 
@@ -465,6 +466,7 @@ namespace System.Runtime.InteropServices
         ///  * P/Invokes with COM-related types
         ///  * COM activation
         /// </remarks>
+        [SupportedOSPlatformAttribute("windows")]
         public static void RegisterForMarshalling(ComWrappers instance)
         {
             if (instance == null)

@@ -89,7 +89,7 @@ namespace System.Reflection.Runtime.MethodInfos
 
                 MethodImplAttributes implAttributes = _common.MethodImplementationFlags;
                 if (0 != (implAttributes & MethodImplAttributes.PreserveSig))
-                    yield return new RuntimePseudoCustomAttributeData(typeof(PreserveSigAttribute), null, null);
+                    yield return new RuntimePseudoCustomAttributeData(typeof(PreserveSigAttribute), null);
             }
         }
 
@@ -127,6 +127,7 @@ namespace System.Reflection.Runtime.MethodInfos
         public sealed override int GenericParameterCount => _common.GenericParameterCount;
 
         [RequiresDynamicCode("The native code for this instantiation might not be available at runtime.")]
+        [RequiresUnreferencedCode("If some of the generic arguments are annotated (either with DynamicallyAccessedMembersAttribute, or generic constraints), trimming can't validate that the requirements of those annotations are met.")]
         public sealed override MethodInfo MakeGenericMethod(params Type[] typeArguments)
         {
 #if ENABLE_REFLECTION_TRACE

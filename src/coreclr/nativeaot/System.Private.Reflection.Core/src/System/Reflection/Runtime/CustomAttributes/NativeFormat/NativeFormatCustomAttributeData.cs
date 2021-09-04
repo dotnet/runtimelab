@@ -4,6 +4,7 @@
 using System;
 using System.Reflection;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -47,6 +48,8 @@ namespace System.Reflection.Runtime.CustomAttributes.NativeFormat
 
         public sealed override ConstructorInfo Constructor
         {
+            [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2072:UnrecognizedReflectionPattern",
+                Justification = "Metadata generation ensures custom attribute constructors are resolvable.")]
             get
             {
                 MetadataReader reader = _reader;
@@ -189,9 +192,27 @@ namespace System.Reflection.Runtime.CustomAttributes.NativeFormat
                     Debug.Assert(!throwIfMissingMetadata);
                     return null;
                 }
-                customAttributeNamedArguments.Add(ReflectionAugments.CreateCustomAttributeNamedArgument(this.AttributeType, memberName, isField, typedValue));
+
+                customAttributeNamedArguments.Add(CreateCustomAttributeNamedArgument(this.AttributeType, memberName, isField, typedValue));
             }
             return customAttributeNamedArguments;
+        }
+
+        [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2070:UnrecognizedReflectionPattern",
+            Justification = "Metadata generation ensures fields/properties referenced from attributes are preserved.")]
+        private static CustomAttributeNamedArgument CreateCustomAttributeNamedArgument(Type attributeType, string memberName, bool isField, CustomAttributeTypedArgument typedValue)
+        {
+            MemberInfo memberInfo;
+
+            if (isField)
+                memberInfo = attributeType.GetField(memberName, BindingFlags.Public | BindingFlags.Instance);
+            else
+                memberInfo = attributeType.GetProperty(memberName, BindingFlags.Public | BindingFlags.Instance);
+
+            if (memberInfo == null)
+                throw ReflectionCoreExecution.ExecutionDomain.CreateMissingMetadataException(attributeType);
+
+            return new CustomAttributeNamedArgument(memberInfo, typedValue);
         }
 
         // Equals/GetHashCode no need to override (they just implement reference equality but desktop never unified these things.)

@@ -30,6 +30,8 @@ namespace ILCompiler.DependencyAnalysis
 
         public override IEnumerable<DependencyListEntry> GetStaticDependencies(NodeFactory factory)
         {
+            Debug.Assert(!factory.MetadataManager.IsReflectionBlocked(_method.GetTypicalMethodDefinition()));
+
             DependencyList dependencies = new DependencyList();
             factory.MetadataManager.GetDependenciesDueToReflectability(ref dependencies, factory, _method);
 
@@ -61,7 +63,7 @@ namespace ILCompiler.DependencyAnalysis
                 {
                     if (_method.HasInstantiation)
                     {
-                        dependencies.Add(factory.GVMDependencies(_method), "GVM callable reflectable method");
+                        dependencies.Add(factory.GVMDependencies(_method.GetCanonMethodTarget(CanonicalFormKind.Specific)), "GVM callable reflectable method");
                     }
                     else
                     {

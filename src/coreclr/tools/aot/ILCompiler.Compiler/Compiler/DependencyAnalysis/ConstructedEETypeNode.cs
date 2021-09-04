@@ -24,66 +24,6 @@ namespace ILCompiler.DependencyAnalysis
 
         protected override bool EmitVirtualSlotsAndInterfaces => true;
 
-        public override bool InterestingForDynamicDependencyAnalysis
-        {
-            get
-            {
-                if (_type.IsInterface)
-                    return _type.HasGenericVirtualMethods();
-
-                if (_type.IsDefType)
-                {
-                    // First, check if this type has any GVM that overrides a GVM on a parent type. If that's the case, this makes
-                    // the current type interesting for GVM analysis (i.e. instantiate its overriding GVMs for existing GVMDependenciesNodes
-                    // of the instantiated GVM on the parent types).
-                    foreach (var method in _type.GetAllVirtualMethods())
-                    {
-                        Debug.Assert(method.IsVirtual);
-
-                        if (method.HasInstantiation)
-                        {
-                            MethodDesc slotDecl = MetadataVirtualMethodAlgorithm.FindSlotDefiningMethodForVirtualMethod(method);
-                            if (slotDecl != method)
-                                return true;
-                        }
-                    }
-
-                    // Second, check if this type has any GVMs that implement any GVM on any of the implemented interfaces. This would
-                    // make the current type interesting for dynamic dependency analysis to that we can instantiate its GVMs.
-                    foreach (DefType interfaceImpl in _type.RuntimeInterfaces)
-                    {
-                        foreach (var method in interfaceImpl.GetAllVirtualMethods())
-                        {
-                            Debug.Assert(method.IsVirtual);
-
-                            if (method.HasInstantiation)
-                            {
-                                // We found a GVM on one of the implemented interfaces. Find if the type implements this method. 
-                                // (Note, do this comparision against the generic definition of the method, not the specific method instantiation
-                                MethodDesc genericDefinition = method.GetMethodDefinition();
-                                MethodDesc slotDecl = _type.ResolveInterfaceMethodTarget(genericDefinition);
-                                if (slotDecl != null)
-                                {
-                                    // If the type doesn't introduce this interface method implementation (i.e. the same implementation
-                                    // already exists in the base type), do not consider this type interesting for GVM analysis just yet.
-                                    //
-                                    // We need to limit the number of types that are interesting for GVM analysis at all costs since
-                                    // these all will be looked at for every unique generic virtual method call in the program.
-                                    // Having a long list of interesting types affects the compilation throughput heavily.
-                                    if (slotDecl.OwningType == _type ||
-                                        _type.BaseType.ResolveInterfaceMethodTarget(genericDefinition) != slotDecl)
-                                    {
-                                        return true;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                return false;
-            }
-        }
-
         protected override DependencyList ComputeNonRelocationBasedDependencies(NodeFactory factory)
         {
             DependencyList dependencyList = base.ComputeNonRelocationBasedDependencies(factory);
@@ -102,7 +42,7 @@ namespace ILCompiler.DependencyAnalysis
 
             if (_type.IsArray)
             {
-                // Array EEType depends on System.Array's virtuals. Array EETypes don't point to
+                // Array MethodTable depends on System.Array's virtuals. Array EETypes don't point to
                 // their base type (i.e. there's no reloc based dependency making this "just work").
                 dependencyList.Add(factory.ConstructedTypeSymbol(_type.BaseType), "Array base type");
 
@@ -136,7 +76,7 @@ namespace ILCompiler.DependencyAnalysis
             // Generated type contains generic virtual methods that will get added to the GVM tables
             if (TypeGVMEntriesNode.TypeNeedsGVMTableEntries(_type))
             {
-                dependencyList.Add(new DependencyListEntry(factory.TypeGVMEntries(_type), "Type with generic virtual methods"));
+                dependencyList.Add(new DependencyListEntry(factory.TypeGVMEntries(_type.GetTypeDefinition()), "Type with generic virtual methods"));
 
                 AddDependenciesForUniversalGVMSupport(factory, _type, ref dependencyList);
             }
@@ -151,7 +91,7 @@ namespace ILCompiler.DependencyAnalysis
             if (defaultCtor != null)
             {
                 dependencyList.Add(new DependencyListEntry(
-                    factory.ReflectableMethod(defaultCtor), 
+                    factory.CanonicalEntrypoint(defaultCtor), 
                     "DefaultConstructorNode"));
             }
 
@@ -195,7 +135,7 @@ namespace ILCompiler.DependencyAnalysis
                     if (type.IsGenericDefinition)
                         return false;
 
-                    // Full EEType of System.Canon should never be used.
+                    // Full MethodTable of System.Canon should never be used.
                     if (type.IsCanonicalDefinitionType(CanonicalFormKind.Any))
                         return false;
 

@@ -96,7 +96,7 @@ namespace Internal.Runtime.TypeLoader
                 throw new BadImageFormatException();
 
             // TODO: indirection through IAT
-            if (EEType.SupportsRelativePointers)
+            if (MethodTable.SupportsRelativePointers)
             {
                 int* pRelPtr32 = &((int*)_elements)[index];
                 return (IntPtr)((byte*)pRelPtr32 + *pRelPtr32);

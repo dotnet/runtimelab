@@ -26,7 +26,7 @@
 #include "CommonMacros.h"
 #include "daccess.h"
 #include "TargetPtrs.h"
-#include "eetype.h"
+#include "MethodTable.h"
 #include "ObjectLayout.h"
 #include "rheventtrace.h"
 #include "PalRedhawkCommon.h"
@@ -39,7 +39,7 @@
 #include "shash.h"
 #include "TypeManager.h"
 #include "RuntimeInstance.h"
-#include "eetype.inl"
+#include "MethodTable.inl"
 #include "volatile.h"
 
 #include "gcenv.inl"
@@ -68,12 +68,7 @@
 
 #endif // FEATURE_ETW
 
-#define MAX_LONGPATH 1024
 #define LOG(x)
-
-#ifndef YieldProcessor
-#define YieldProcessor PalYieldProcessor
-#endif
 
 // Adapter for GC's view of Array
 class ArrayBase : Array
@@ -88,32 +83,6 @@ public:
     {
         return offsetof(ArrayBase, m_Length);
     }
-};
-
-//
-// -----------------------------------------------------------------------------------------------------------
-//
-// Bridge GC/HandleTable's version of MethodTable to Redhawk's EEType. Neither component tries to access any
-// fields of MethodTable directly so this is mostly just a case of providing all the CLR-style accessors they
-// need implemented on top of EEType functionality (we can simply recast the 'this' pointer into an EEType
-// pointer).
-//
-// ****** NOTE: Do NOT attempt to add fields or virtual methods to this class! The pointer passed in 'this'
-// ****** really does point to an EEType (there's no such thing as a MethodTable structure in RH).
-//
-class MethodTable
-{
-public:
-    uint32_t GetBaseSize() { return ((EEType*)this)->get_BaseSize(); }
-    uint16_t GetComponentSize() { return ((EEType*)this)->get_ComponentSize(); }
-    uint16_t RawGetComponentSize() { return ((EEType*)this)->get_ComponentSize(); }
-    uint32_t ContainsPointers() { return ((EEType*)this)->HasReferenceFields(); }
-    uint32_t ContainsPointersOrCollectible() { return ((EEType*)this)->HasReferenceFields(); }
-    UInt32_BOOL HasComponentSize() const { return TRUE; }
-    UInt32_BOOL HasFinalizer() { return ((EEType*)this)->HasFinalizer(); }
-    UInt32_BOOL HasCriticalFinalizer() { return FALSE; }
-    bool IsValueType() { return ((EEType*)this)->get_IsValueType(); }
-    UInt32_BOOL SanityCheck() { return ((EEType*)this)->Validate(); }
 };
 
 EXTERN_C uint32_t _tls_index;

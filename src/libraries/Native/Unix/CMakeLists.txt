@@ -82,15 +82,23 @@ endif()
 if(CLR_CMAKE_TARGET_MACCATALYST)
     # -target overrides -mmacosx-version-min so suppress warning about that
     # https://gitlab.kitware.com/cmake/cmake/-/issues/20132
-    add_compile_options(-Wno-overriding-t-option)
+    set(DISABLE_OVERRIDING_MIN_VERSION_ERROR -Wno-overriding-t-option)
     add_link_options(-Wno-overriding-t-option)
     if (CLR_CMAKE_TARGET_ARCH_AMD64)
-        add_compile_options(-target x86_64-apple-ios13.5-macabi)
+        set(MACOS_VERSION_MIN_FLAGS "-target x86_64-apple-ios13.5-macabi")
         add_link_options(-target x86_64-apple-ios13.5-macabi)
     elseif (CLR_CMAKE_TARGET_ARCH_ARM64)
-        add_compile_options(-target arm64-apple-ios14.2-macabi)
+        set(MACOS_VERSION_MIN_FLAGS "-target arm64-apple-ios14.2-macabi")
         add_link_options(-target arm64-apple-ios14.2-macabi)
     endif()
+
+    # These options are intentionally set using the CMAKE_XXX_FLAGS instead of
+    # add_compile_options so that they take effect on the configuration functions
+    # in various configure.cmake files.
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${MACOS_VERSION_MIN_FLAGS} ${DISABLE_OVERRIDING_MIN_VERSION_ERROR}")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${MACOS_VERSION_MIN_FLAGS} ${DISABLE_OVERRIDING_MIN_VERSION_ERROR}")
+    set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} ${MACOS_VERSION_MIN_FLAGS} ${DISABLE_OVERRIDING_MIN_VERSION_ERROR}")
+
 endif()
 
 if(CLR_CMAKE_TARGET_TVOS)
@@ -227,7 +235,7 @@ if(CLR_CMAKE_TARGET_UNIX)
         else()
             add_compile_options($<$<COMPILE_LANGUAGE:ASM>:-Wa,--noexecstack>)
             if(CLR_CMAKE_TARGET_SUNOS)
-                add_definitions(-D__EXTENSIONS__ -D_XPG4_2 -D_POSIX_PTHREAD_SEMANTICS)
+                add_definitions(-D__EXTENSIONS__ -D_XPG4_2 -D_POSIX_PTHREAD_SEMANTICS -DTARGET_SUNOS)
             else()
                 # -z,now is required for full relro.
                 # see https://www.redhat.com/en/blog/hardening-elf-binaries-using-relocation-read-only-relro

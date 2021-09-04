@@ -27,16 +27,16 @@
 #include "threadstore.h"
 #include "threadstore.inl"
 
-#include "eetype.h"
+#include "MethodTable.h"
 #include "TypeManager.h"
-#include "eetype.inl"
+#include "MethodTable.inl"
 #include "ObjectLayout.h"
 
 #include "GCMemoryHelpers.h"
 #include "GCMemoryHelpers.inl"
 
 #if defined(USE_PORTABLE_HELPERS)
-EXTERN_C REDHAWK_API void* REDHAWK_CALLCONV RhpGcAlloc(EEType *pEEType, uint32_t uFlags, uintptr_t numElements, void * pTransitionFrame);
+EXTERN_C REDHAWK_API void* REDHAWK_CALLCONV RhpGcAlloc(MethodTable *pEEType, uint32_t uFlags, uintptr_t numElements, void * pTransitionFrame);
 
 struct gc_alloc_context
 {
@@ -52,7 +52,7 @@ struct gc_alloc_context
 //
 // Allocations
 //
-COOP_PINVOKE_HELPER(Object *, RhpNewFast, (EEType* pEEType))
+COOP_PINVOKE_HELPER(Object *, RhpNewFast, (MethodTable* pEEType))
 {
     ASSERT(!pEEType->HasFinalizer());
 
@@ -85,7 +85,7 @@ COOP_PINVOKE_HELPER(Object *, RhpNewFast, (EEType* pEEType))
 #define GC_ALLOC_ALIGN8_BIAS 0x4 // TODO: Defined in gc.h
 #define GC_ALLOC_ALIGN8      0x8 // TODO: Defined in gc.h
 
-COOP_PINVOKE_HELPER(Object *, RhpNewFinalizable, (EEType* pEEType))
+COOP_PINVOKE_HELPER(Object *, RhpNewFinalizable, (MethodTable* pEEType))
 {
     ASSERT(pEEType->HasFinalizer());
 
@@ -98,7 +98,7 @@ COOP_PINVOKE_HELPER(Object *, RhpNewFinalizable, (EEType* pEEType))
     return pObject;
 }
 
-COOP_PINVOKE_HELPER(Array *, RhpNewArray, (EEType * pArrayEEType, int numElements))
+COOP_PINVOKE_HELPER(Array *, RhpNewArray, (MethodTable * pArrayEEType, int numElements))
 {
     Thread * pCurThread = ThreadStore::GetCurrentThread();
     gc_alloc_context * acontext = pCurThread->GetAllocContext();
@@ -152,7 +152,7 @@ COOP_PINVOKE_HELPER(Array *, RhpNewArray, (EEType * pArrayEEType, int numElement
     return pObject;
 }
 
-COOP_PINVOKE_HELPER(String *, RhNewString, (EEType * pArrayEEType, int numElements))
+COOP_PINVOKE_HELPER(String *, RhNewString, (MethodTable * pArrayEEType, int numElements))
 {
     // TODO: Implement. We tail call to RhpNewArray for now since there's a bunch of TODOs in the places
     // that matter anyway.
@@ -163,9 +163,9 @@ COOP_PINVOKE_HELPER(String *, RhNewString, (EEType * pArrayEEType, int numElemen
 #if defined(USE_PORTABLE_HELPERS)
 #if defined(FEATURE_64BIT_ALIGNMENT)
 
-GPTR_DECL(EEType, g_pFreeObjectEEType);
+GPTR_DECL(MethodTable, g_pFreeObjectEEType);
 
-COOP_PINVOKE_HELPER(Object *, RhpNewFinalizableAlign8, (EEType* pEEType))
+COOP_PINVOKE_HELPER(Object *, RhpNewFinalizableAlign8, (MethodTable* pEEType))
 {
     Object * pObject = nullptr;
     /* Not reachable as finalizable types are never align8 */ ASSERT_UNCONDITIONALLY("UNREACHABLE");
@@ -173,7 +173,7 @@ COOP_PINVOKE_HELPER(Object *, RhpNewFinalizableAlign8, (EEType* pEEType))
 }
 
 #ifndef HOST_64BIT
-COOP_PINVOKE_HELPER(Object *, RhpNewFastAlign8, (EEType* pEEType))
+COOP_PINVOKE_HELPER(Object *, RhpNewFastAlign8, (MethodTable* pEEType))
 {
     ASSERT(!pEEType->HasFinalizer());
 
@@ -222,7 +222,7 @@ COOP_PINVOKE_HELPER(Object *, RhpNewFastAlign8, (EEType* pEEType))
     return pObject;
 }
 
-COOP_PINVOKE_HELPER(Object*, RhpNewFastMisalign, (EEType* pEEType))
+COOP_PINVOKE_HELPER(Object*, RhpNewFastMisalign, (MethodTable* pEEType))
 {
     Thread* pCurThread = ThreadStore::GetCurrentThread();
     gc_alloc_context* acontext = pCurThread->GetAllocContext();
@@ -266,7 +266,7 @@ COOP_PINVOKE_HELPER(Object*, RhpNewFastMisalign, (EEType* pEEType))
     return pObject;
 }
 
-COOP_PINVOKE_HELPER(Array *, RhpNewArrayAlign8, (EEType * pArrayEEType, int numElements))
+COOP_PINVOKE_HELPER(Array *, RhpNewArrayAlign8, (MethodTable * pArrayEEType, int numElements))
 {
     Thread* pCurThread = ThreadStore::GetCurrentThread();
     gc_alloc_context* acontext = pCurThread->GetAllocContext();

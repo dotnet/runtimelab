@@ -516,6 +516,27 @@ namespace Internal.IL
                     _dependencies.Add(_factory.FatFunctionPointer(runtimeDeterminedMethod), reason);
                 }
             }
+            else if (directCall && resolvedConstraint && exactContextNeedsRuntimeLookup)
+            {
+                // We want to do a direct call to a shared method on a valuetype. We need to provide
+                // a generic context, but the JitInterface doesn't provide a way for us to do it from here.
+                // So we do the next best thing and ask RyuJIT to look up a fat pointer.
+                //
+                // We have the canonical version of the method - find the runtime determined version.
+                // This is simplified because we know the method is on a valuetype.
+                Debug.Assert(targetMethod.OwningType.IsValueType);
+                MethodDesc targetOfLookup;
+                if (_constrained.IsRuntimeDeterminedType)
+                    targetOfLookup = _compilation.TypeSystemContext.GetMethodForRuntimeDeterminedType(targetMethod.GetTypicalMethodDefinition(), (RuntimeDeterminedType)_constrained);
+                else
+                    targetOfLookup = _compilation.TypeSystemContext.GetMethodForInstantiatedType(targetMethod.GetTypicalMethodDefinition(), (InstantiatedType)_constrained);
+                if (targetOfLookup.HasInstantiation)
+                {
+                    targetOfLookup = targetOfLookup.MakeInstantiatedMethod(runtimeDeterminedMethod.Instantiation);
+                }
+                Debug.Assert(targetOfLookup.GetCanonMethodTarget(CanonicalFormKind.Specific) == targetMethod.GetCanonMethodTarget(CanonicalFormKind.Specific));
+                _dependencies.Add(GetGenericLookupHelper(ReadyToRunHelperId.MethodEntry, targetOfLookup), reason);
+            }
             else if (directCall)
             {
                 bool referencingArrayAddressMethod = false;
@@ -792,20 +813,9 @@ namespace Internal.IL
 
             if (obj is TypeDesc)
             {
-                var type = (TypeDesc)obj;
-
-                ISymbolNode reference;
-                if (type.IsRuntimeDeterminedSubtype)
-                {
-                    reference = GetGenericLookupHelper(ReadyToRunHelperId.TypeHandle, type);
-                }
-                else
-                {
-                    reference = _compilation.ComputeConstantLookup(_compilation.GetLdTokenHelperForType(type), type);
-                }
-                _dependencies.Add(reference, "ldtoken");
-
                 // If this is a ldtoken Type / Type.GetTypeFromHandle sequence, we need one more helper.
+                // We might also be able to optimize this a little if this is a ldtoken/GetTypeFromHandle/Equals sequence.
+                bool isTypeEquals = false;
                 BasicBlock nextBasicBlock = _basicBlocks[_currentOffset];
                 if (nextBasicBlock == null)
                 {
@@ -817,11 +827,37 @@ namespace Internal.IL
                         {
                             // Codegen will swap this one for GetRuntimeTypeHandle when optimizing
                             _dependencies.Add(GetHelperEntrypoint(ReadyToRunHelper.GetRuntimeType), "ldtoken");
+
+                            // Is the next instruction a call to Type::Equals?
+                            nextBasicBlock = _basicBlocks[_currentOffset + 5];
+                            if (nextBasicBlock == null)
+                            {
+                                if ((ILOpcode)_ilBytes[_currentOffset + 5] == ILOpcode.call)
+                                {
+                                    methodToken = ReadILTokenAt(_currentOffset + 6);
+                                    method = (MethodDesc)_methodIL.GetObject(methodToken);
+                                    isTypeEquals = IsTypeEquals(method);
+                                }
+                            }
                         }
                     }
                 }
 
                 _dependencies.Add(GetHelperEntrypoint(ReadyToRunHelper.GetRuntimeTypeHandle), "ldtoken");
+
+                var type = (TypeDesc)obj;
+
+                ISymbolNode reference;
+                if (type.IsRuntimeDeterminedSubtype)
+                {
+                    reference = GetGenericLookupHelper(ReadyToRunHelperId.TypeHandle, type);
+                }
+                else
+                {
+                    reference = _compilation.ComputeConstantLookup(
+                        isTypeEquals ? ReadyToRunHelperId.NecessaryTypeHandle : _compilation.GetLdTokenHelperForType(type), type);
+                }
+                _dependencies.Add(reference, "ldtoken");
             }
             else if (obj is MethodDesc)
             {
@@ -1054,19 +1090,47 @@ namespace Internal.IL
             {
                 case ILOpcode.add_ovf:
                 case ILOpcode.add_ovf_un:
-                case ILOpcode.mul_ovf:
-                case ILOpcode.mul_ovf_un:
                 case ILOpcode.sub_ovf:
                 case ILOpcode.sub_ovf_un:
                     _dependencies.Add(GetHelperEntrypoint(ReadyToRunHelper.Overflow), "_ovf");
                     break;
+                case ILOpcode.mul_ovf:
+                case ILOpcode.mul_ovf_un:
+                    if (_compilation.TypeSystemContext.Target.Architecture == TargetArchitecture.ARM)
+                    {
+                        _dependencies.Add(GetHelperEntrypoint(ReadyToRunHelper.LMulOfv), "_lmulovf");
+                        _dependencies.Add(GetHelperEntrypoint(ReadyToRunHelper.ULMulOvf), "_ulmulovf");
+                    }
 
+                    _dependencies.Add(GetHelperEntrypoint(ReadyToRunHelper.Overflow), "_ovf");
+                    break;
                 case ILOpcode.div:
                 case ILOpcode.div_un:
+                    if (_compilation.TypeSystemContext.Target.Architecture == TargetArchitecture.ARM)
+                    {
+                        _dependencies.Add(GetHelperEntrypoint(ReadyToRunHelper.ULDiv), "_uldiv");
+                        _dependencies.Add(GetHelperEntrypoint(ReadyToRunHelper.LDiv), "_ldiv");
+                        _dependencies.Add(GetHelperEntrypoint(ReadyToRunHelper.UDiv), "_udiv");
+                        _dependencies.Add(GetHelperEntrypoint(ReadyToRunHelper.Div), "_div");
+                    }
+                    else if (_compilation.TypeSystemContext.Target.Architecture == TargetArchitecture.ARM64)
+                    {
+                        _dependencies.Add(GetHelperEntrypoint(ReadyToRunHelper.ThrowDivZero), "_divbyzero");
+                    }
+                    break;                    
                 case ILOpcode.rem:
                 case ILOpcode.rem_un:
-                    // Required for ARM64
-                    _dependencies.Add(GetHelperEntrypoint(ReadyToRunHelper.ThrowDivZero), "_divbyzero");
+                    if (_compilation.TypeSystemContext.Target.Architecture == TargetArchitecture.ARM)
+                    {
+                        _dependencies.Add(GetHelperEntrypoint(ReadyToRunHelper.ULMod), "_ulmod");
+                        _dependencies.Add(GetHelperEntrypoint(ReadyToRunHelper.LMod), "_lmod");
+                        _dependencies.Add(GetHelperEntrypoint(ReadyToRunHelper.UMod), "_umod");
+                        _dependencies.Add(GetHelperEntrypoint(ReadyToRunHelper.Mod), "_mod");
+                    }
+                    else if (_compilation.TypeSystemContext.Target.Architecture == TargetArchitecture.ARM64)
+                    {
+                        _dependencies.Add(GetHelperEntrypoint(ReadyToRunHelper.ThrowDivZero), "_divbyzero");
+                    }
                     break;
             }
         }
@@ -1121,6 +1185,20 @@ namespace Internal.IL
         private bool IsTypeGetTypeFromHandle(MethodDesc method)
         {
             if (method.IsIntrinsic && method.Name == "GetTypeFromHandle")
+            {
+                MetadataType owningType = method.OwningType as MetadataType;
+                if (owningType != null)
+                {
+                    return owningType.Name == "Type" && owningType.Namespace == "System";
+                }
+            }
+
+            return false;
+        }
+
+        private bool IsTypeEquals(MethodDesc method)
+        {
+            if (method.IsIntrinsic && method.Name == "op_Equality")
             {
                 MetadataType owningType = method.OwningType as MetadataType;
                 if (owningType != null)

@@ -69,7 +69,7 @@
     )   \
     )
 
-class EEType;
+class MethodTable;
 class BulkTypeEventLogger;
 
 namespace ETW

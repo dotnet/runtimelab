@@ -21,6 +21,7 @@ namespace System.Reflection.Emit
             }
         }
 
+        [RequiresAssemblyFiles(UnknownStringMessageInRAF)]
         public override string FullyQualifiedName
         {
             get
@@ -29,6 +30,7 @@ namespace System.Reflection.Emit
             }
         }
 
+        [RequiresAssemblyFiles(UnknownStringMessageInRAF)]
         public override string Name
         {
             get
@@ -66,11 +68,13 @@ namespace System.Reflection.Emit
             return default;
         }
 
+        [RequiresUnreferencedCode("P/Invoke marshalling may dynamically access members that could be trimmed.")]
         public MethodBuilder DefinePInvokeMethod(string name, string dllName, MethodAttributes attributes, CallingConventions callingConvention, Type returnType, Type[] parameterTypes, CallingConvention nativeCallConv, CharSet nativeCharSet)
         {
             return default;
         }
 
+        [RequiresUnreferencedCode("P/Invoke marshalling may dynamically access members that could be trimmed.")]
         public MethodBuilder DefinePInvokeMethod(string name, string dllName, string entryName, MethodAttributes attributes, CallingConventions callingConvention, Type returnType, Type[] parameterTypes, CallingConvention nativeCallConv, CharSet nativeCharSet)
         {
             return default;

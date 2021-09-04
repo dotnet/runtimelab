@@ -105,7 +105,7 @@ namespace Internal.Runtime
 
         /// <summary>
         /// Compute the encoded value type padding and alignment that are stored as optional fields on an
-        /// <c>EEType</c>. This padding as added to naturally align value types when laid out as fields
+        /// <c>MethodTable</c>. This padding as added to naturally align value types when laid out as fields
         /// of objects on the GCHeap. The amount of padding is recorded to allow unboxing to locals /
         /// arrays of value types which don't need it.
         /// </summary>

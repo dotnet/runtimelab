@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Reflection;
 using Internal.Reflection.Augments;
@@ -20,12 +21,17 @@ namespace Internal.Reflection
                 isFlags: false);
         }
 
-        public override object ActivatorCreateInstance(Type type, bool nonPublic) => throw new NotSupportedException(SR.Reflection_Disabled);
-        public override object ActivatorCreateInstance(Type type, BindingFlags bindingAttr, Binder binder, object[] args, CultureInfo culture, object[] activationAttributes) => throw new NotSupportedException(SR.Reflection_Disabled);
+        public override object ActivatorCreateInstance(
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.NonPublicConstructors)]
+            Type type, bool nonPublic) => throw new NotSupportedException(SR.Reflection_Disabled);
+        public override object ActivatorCreateInstance(
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.NonPublicConstructors)]
+            Type type, BindingFlags bindingAttr, Binder binder, object[] args, CultureInfo culture, object[] activationAttributes) => throw new NotSupportedException(SR.Reflection_Disabled);
         public override Delegate CreateDelegate(Type type, object firstArgument, MethodInfo method, bool throwOnBindFailure) => throw new NotSupportedException(SR.Reflection_Disabled);
         public override Delegate CreateDelegate(Type type, MethodInfo method, bool throwOnBindFailure) => throw new NotSupportedException(SR.Reflection_Disabled);
+        [RequiresUnreferencedCode("The target method might be removed")]
         public override Delegate CreateDelegate(Type type, object target, string method, bool ignoreCase, bool throwOnBindFailure) => throw new NotSupportedException(SR.Reflection_Disabled);
-        public override Delegate CreateDelegate(Type type, Type target, string method, bool ignoreCase, bool throwOnBindFailure) => throw new NotSupportedException(SR.Reflection_Disabled);
+        public override Delegate CreateDelegate(Type type, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type target, string method, bool ignoreCase, bool throwOnBindFailure) => throw new NotSupportedException(SR.Reflection_Disabled);
         public override FieldInfo GetFieldFromHandle(RuntimeFieldHandle runtimeFieldHandle) => throw new NotSupportedException(SR.Reflection_Disabled);
         public override FieldInfo GetFieldFromHandle(RuntimeFieldHandle runtimeFieldHandle, RuntimeTypeHandle declaringTypeHandle) => throw new NotSupportedException(SR.Reflection_Disabled);
         public override IntPtr GetFunctionPointer(RuntimeMethodHandle runtimeMethodHandle, RuntimeTypeHandle declaringTypeHandle) => throw new NotSupportedException(SR.Reflection_Disabled);

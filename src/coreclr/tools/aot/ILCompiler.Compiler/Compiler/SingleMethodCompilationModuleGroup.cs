@@ -36,42 +36,22 @@ namespace ILCompiler
         public sealed override bool ContainsMethodDictionary(MethodDesc method)
         {
             Debug.Assert(method.GetCanonMethodTarget(CanonicalFormKind.Specific) != method);
-            return ContainsMethodBody(method, false);
+            return true;
         }
 
         public override bool ContainsType(TypeDesc type)
         {
-            return false;
+            return true;
         }
 
         public override bool ContainsTypeDictionary(TypeDesc type)
         {
-            return false;
+            return true;
         }
 
         public override bool ImportsMethod(MethodDesc method, bool unboxingStub)
         {
             return false;
-        }
-
-        public override ExportForm GetExportTypeForm(TypeDesc type)
-        {
-            return ExportForm.None;
-        }
-
-        public override ExportForm GetExportTypeFormDictionary(TypeDesc type)
-        {
-            return ExportForm.None;
-        }
-
-        public override ExportForm GetExportMethodForm(MethodDesc method, bool unboxingStub)
-        {
-            return ExportForm.None;
-        }
-
-        public override ExportForm GetExportMethodDictionaryForm(MethodDesc method)
-        {
-            return ExportForm.None;
         }
 
         public override bool ShouldProduceFullVTable(TypeDesc type)

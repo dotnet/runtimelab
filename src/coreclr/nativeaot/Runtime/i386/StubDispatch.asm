@@ -35,10 +35,10 @@ StubName textequ @CatStr( _RhpInterfaceDispatch, entries )
     StubName proc public
 
         ;; Check the instance here to catch null references. We're going to touch it again below (to cache
-        ;; the EEType pointer), but that's after we've pushed ebx below, and taking an A/V there will
+        ;; the MethodTable pointer), but that's after we've pushed ebx below, and taking an A/V there will
         ;; mess up the stack trace for debugging. We also don't have a spare scratch register (eax holds
         ;; the cache pointer and the push of ebx below is precisely so we can access a second register
-        ;; to hold the EEType pointer).
+        ;; to hold the MethodTable pointer).
         test    ecx, ecx
         je      RhpInterfaceDispatchNullReference
 
@@ -50,7 +50,7 @@ StubName textequ @CatStr( _RhpInterfaceDispatch, entries )
         ;; another scratch register to hold the instance type so save the value of ebx and use that.
         push    ebx
 
-        ;; Load the EEType from the object instance in ebx.
+        ;; Load the MethodTable from the object instance in ebx.
         mov     ebx, [ecx]
 
 CurrentEntry = 0
@@ -108,7 +108,7 @@ _RhpVTableOffsetDispatch proc public
         ;; eax currently contains the indirection cell address. We need to update it to point to the vtable offset (which is in the m_pCache field)
         mov     eax, [eax + OFFSETOF__InterfaceDispatchCell__m_pCache]
 
-        ;; add the vtable offset to the EEType pointer
+        ;; add the vtable offset to the MethodTable pointer
         add     eax, [ecx]
 
         ;; Load the target address of the vtable into eax

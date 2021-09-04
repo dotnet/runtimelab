@@ -132,11 +132,6 @@ COOP_PINVOKE_HELPER(void, RhUnregisterGcCallout, (GcRestrictedCalloutKind eKind,
     RestrictedCallouts::UnregisterGcCallout(eKind, pCallout);
 }
 
-COOP_PINVOKE_HELPER(Boolean, RhIsPromoted, (OBJECTREF obj))
-{
-    return GCHeapUtilities::GetGCHeap()->IsPromoted(obj) ? Boolean_true : Boolean_false;
-}
-
 COOP_PINVOKE_HELPER(int32_t, RhGetLohCompactionMode, ())
 {
     return GCHeapUtilities::GetGCHeap()->GetLOHCompactionMode();
@@ -329,9 +324,9 @@ EXTERN_C REDHAWK_API int64_t __cdecl RhGetTotalAllocatedBytesPrecise()
     return allocated;
 }
 
-extern Object* GcAllocInternal(EEType* pEEType, uint32_t uFlags, uintptr_t cbSize, Thread* pThread);
+extern Object* GcAllocInternal(MethodTable* pEEType, uint32_t uFlags, uintptr_t cbSize, Thread* pThread);
 
-EXTERN_C REDHAWK_API void RhAllocateNewArray(EEType* pArrayEEType, uint32_t numElements, uint32_t flags, Array** pResult)
+EXTERN_C REDHAWK_API void RhAllocateNewArray(MethodTable* pArrayEEType, uint32_t numElements, uint32_t flags, Array** pResult)
 {
     Thread* pThread = ThreadStore::GetCurrentThread();
 
@@ -345,7 +340,7 @@ EXTERN_C REDHAWK_API void RhAllocateNewArray(EEType* pArrayEEType, uint32_t numE
     pThread->EnablePreemptiveMode();
 }
 
-EXTERN_C REDHAWK_API void RhAllocateNewObject(EEType* pEEType, uint32_t flags, Object** pResult)
+EXTERN_C REDHAWK_API void RhAllocateNewObject(MethodTable* pEEType, uint32_t flags, Object** pResult)
 {
     Thread* pThread = ThreadStore::GetCurrentThread();
 

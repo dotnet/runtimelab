@@ -54,7 +54,7 @@ namespace ILCompiler.DependencyAnalysis
         {
             DependencyList result = new DependencyList();
 
-            result.Add(new DependencyListEntry(GetGCStaticEETypeNode(factory), "ThreadStatic EEType"));
+            result.Add(new DependencyListEntry(GetGCStaticEETypeNode(factory), "ThreadStatic MethodTable"));
 
             if (factory.PreinitializationManager.HasEagerStaticConstructor(_type))
             {
