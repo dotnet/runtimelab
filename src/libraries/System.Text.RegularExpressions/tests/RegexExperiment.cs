@@ -2,81 +2,66 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Collections.Generic;
-using System.IO;
-using Xunit;
 using System.Diagnostics;
+using System.IO;
 using System.Reflection;
+using Xunit;
 
 namespace System.Text.RegularExpressions.Tests
 {
     /// <summary>
     /// This class is to be ignored wrt unit tests.
     /// It contains temporary experimental code, such as lightweight profiling and debuggging locally.
-    /// The entry point is TestRun().
+    /// Set <see cref="Enabled"/> to true to run the tests.
     /// </summary>
     public class RegexExperiment
     {
-        [Fact]
-        public void TestRun()
+        public static bool Enabled => false;
+
+        private static readonly MethodInfo s_deserializeMethodInfo = typeof(Regex).GetMethod("Deserialize", BindingFlags.NonPublic | BindingFlags.Static);
+        private static readonly MethodInfo s_serializeMethodInfo = typeof(Regex).GetMethod("Serialize", BindingFlags.NonPublic | BindingFlags.Instance);
+
+        /// <summary>Temporary local output directory for experiment results.</summary>
+        private static readonly string s_tmpWorkingDir = Path.GetTempPath();
+
+        /// <summary>Works as a console.</summary>
+        private static string OutputFilePath => Path.Combine(s_tmpWorkingDir, "vsoutput.txt");
+
+        /// <summary>Local input file.</summary>
+        private static string InputFilePath => Path.Combine(s_tmpWorkingDir, "vsinput.txt");
+
+        /// <summary>Local regexes file.</summary>
+        private static string RegexFilePath => Path.Combine(s_tmpWorkingDir, "vsregexes.txt");
+
+        /// <summary>Serialized regexes are stored in this file, one per line.</summary>
+        private static string SerializedOutputPath => Path.Combine(s_tmpWorkingDir, "serialized.txt");
+
+        /// <summary>Output directory for generated dgml files.</summary>
+        private static string DgmlOutputDirectoryPath => Path.Combine(s_tmpWorkingDir, "dgml");
+
+        private static string ExperimentDirectoryPath => Path.Combine(s_tmpWorkingDir, "experiments");
+
+        [ConditionalFact(nameof(Enabled))]
+        public void RegenerateUnicodeTables()
         {
-            //call the actual code from here
-            //ViewSampleRegexInDGML();
-            //TestRunPerformance();
-            //RegenerateUnicodeTables();
-            //string b = @"((?<=\w)(?!\w)|(?<!\w)(?=\w))"; //word-border anchor
-            //string b1 = @"((?<=\w)(?=\W)|(?<=\W)(?=\w))";
-            //TestLookaround(string.Format(@"{0}\w+{0}",b), "one two three", 3);
-            //TestLookaround(string.Format(@"{0}\w+{0}", b1), "one two three", 1);
+            MethodInfo genUnicode = typeof(Regex).GetMethod("GenerateUnicodeTables", BindingFlags.NonPublic | BindingFlags.Static);
+            genUnicode.Invoke(null, new object[] { s_tmpWorkingDir });
         }
 
-        private void TestLookaround(string pattern, string input, int matchcount)
+        [ConditionalTheory(nameof(Enabled))]
+        [InlineData(@"((?<=\w)(?!\w)|(?<!\w)(?=\w))", 3)] // word-border anchor
+        [InlineData(@"((?<=\w)(?=\W)|(?<=\W)(?=\w))", 1)]
+        public void TestLookaround(string pattern, int expectedCount)
         {
-            var regex = new Regex(pattern);
-            List<Match> matches = new List<Match>();
-            var match = regex.Match(input);
-            while (match.Success)
-            {
-                matches.Add(match);
-                match = match.NextMatch();
-            }
-            Assert.Equal(matchcount, matches.Count);
+            Assert.Equal(expectedCount, Regex.Matches("one two three", $@"{pattern}\w+{pattern}").Count);
         }
 
-        private const string experimentDirectory = @"\\maku1\experiments\";
+        private static Regex Deserialize(string s) => s_deserializeMethodInfo.Invoke(null, new object[] { s }) as Regex;
 
-        /// <summary>
-        /// Temporary local output directory for experiment results.
-        /// </summary>
-        private const string tmpWorkingDir = @"c:\tmp\runtimelab\";
-        /// <summary>
-        /// Works as a console.
-        /// </summary>
-        private const string outputfile = tmpWorkingDir + "vsoutput.txt";
-        /// <summary>
-        /// Local input file.
-        /// </summary>
-        private const string inputfile = tmpWorkingDir + "vsinput.txt";
-        /// <summary>
-        /// Local regexes file.
-        /// </summary>
-        private const string regexesfile = tmpWorkingDir + "vsregexes.txt";
-        /// <summary>
-        /// Serialized regexes are stored in this file, one per line.
-        /// </summary>
-        private const string serializedout = tmpWorkingDir + "serialized.txt";
-        /// <summary>
-        /// Output directory for generated dgml files.
-        /// </summary>
-        private const string dgmloutdirectory = tmpWorkingDir + @"dgml\";
+        private static string Serialize(Regex r) => s_serializeMethodInfo.Invoke(r, null) as string;
 
-        private static MethodInfo _Deserialize = typeof(Regex).GetMethod("Deserialize", BindingFlags.NonPublic | BindingFlags.Static);
-        private static Regex Deserialize(string s) => _Deserialize.Invoke(null, new object[] { s }) as Regex;
-
-        private static MethodInfo _Serialize = typeof(Regex).GetMethod("Serialize", BindingFlags.NonPublic | BindingFlags.Instance);
-        private static string Serialize(Regex r) => _Serialize.Invoke(r, null) as string;
-
-        private static void WriteOutput(string format, params object[] args) => File.AppendAllText(outputfile, string.Format(format, args));
-
+        private static void WriteOutput(string message) =>
+            File.AppendAllText(OutputFilePath, message);
 
         /// <summary>
         /// Save the regex as a DFA in DGML format in the textwriter.
@@ -88,21 +73,21 @@ namespace System.Text.RegularExpressions.Tests
             saveDgml.Invoke(regex, new object[] { writer, bound, hideStateInfo, addDotStar, inReverse, onlyDFAinfo, maxLabelLength });
         }
 
-        private void RegenerateUnicodeTables()
-        {
-            MethodInfo genUnicode = typeof(Regex).GetMethod("GenerateUnicodeTables", BindingFlags.NonPublic | BindingFlags.Static);
-            genUnicode.Invoke(null, new object[] { tmpWorkingDir });
-        }
-
         /// <summary>
         /// View the regex as a DFA in DGML format in VS.
         /// </summary>
         /// <param name="r"></param>
         internal static void ViewDGML(Regex regex, int bound = -1, bool hideStateInfo = true, bool addDotStar = false, bool inReverse = false, bool onlyDFAinfo = false, string name = "DFA", int maxLabelLength = 20)
         {
-            StringWriter sw = new StringWriter();
+            if (!Directory.Exists(DgmlOutputDirectoryPath))
+            {
+                Directory.CreateDirectory(DgmlOutputDirectoryPath);
+            }
+
+            var sw = new StringWriter();
             SaveDGML(regex, sw, bound, hideStateInfo, addDotStar, inReverse, onlyDFAinfo, maxLabelLength);
-            File.WriteAllText(string.Format("{1}{0}.dgml", inReverse ? name + "r" : (addDotStar ? name + "1" : name), dgmloutdirectory), sw.ToString());
+
+            File.WriteAllText(Path.Combine(DgmlOutputDirectoryPath, $"{(inReverse ? name + "r" : (addDotStar ? name + "1" : name))}.dgml"), sw.ToString());
         }
 
         /// <summary>
@@ -119,14 +104,21 @@ namespace System.Text.RegularExpressions.Tests
         ///   ERROR 
         ///  and in the case of TIMEOUT or ERROR time is 10000 (the timeout limit of 10sec)
         /// </summary>
-        private void TestRunPerformance()
+        [ConditionalFact(nameof(Enabled))]
+        public void TestRunPerformance()
         {
-            var dirs = Directory.GetDirectories(experimentDirectory);
+            if (!Directory.Exists(ExperimentDirectoryPath))
+            {
+                Directory.CreateDirectory(ExperimentDirectoryPath);
+            }
+
+            string[] dirs = Directory.GetDirectories(ExperimentDirectoryPath);
             if (dirs.Length == 0)
             {
                 WriteOutput("\nExperiments directory is empty");
                 return;
             }
+
             DirectoryInfo experimentDI = Directory.GetParent(dirs[0]);
             DirectoryInfo[] experiments =
                 Array.FindAll(experimentDI.GetDirectories(),
@@ -138,19 +130,18 @@ namespace System.Text.RegularExpressions.Tests
                 WriteOutput("\nExperiments directory has no indiviual experiment subdirectories containing files 'regexes.txt' and 'input.txt'.");
                 return;
             }
+
             for (int i = 0; i < experiments.Length; i++)
             {
-                string input = File.ReadAllText(experiments[i].FullName + "\\input.txt");
-                string[] rawregexes = File.ReadAllLines(experiments[i].FullName + "\\regexes.txt");
-                TestRunPerformance(experiments[i].Name, input, rawregexes);
-            }
-        }
+                string input = File.ReadAllText(Path.Combine(experiments[i].FullName, "input.txt"));
+                string[] rawRegexes = File.ReadAllLines(Path.Combine(experiments[i].FullName, "regexes.txt"));
 
-        private void TestRunPerformance(string name, string input, string[] rawregexes)
-        {
-            WriteOutput("\n---------- {0} ----------", name);
-            for (int i = 0; i < rawregexes.Length; i++)
-                TestRunRegex((i + 1).ToString(), rawregexes[i], input);
+                WriteOutput($"\n---------- {experiments[i].Name} ----------");
+                for (int r = 0; r < rawRegexes.Length; r++)
+                {
+                    TestRunRegex((r + 1).ToString(), rawRegexes[r], input);
+                }
+            }
         }
 
         private static long MeasureMatchTime(Regex re, string input, out Match match)
@@ -173,22 +164,21 @@ namespace System.Text.RegularExpressions.Tests
             }
         }
 
-        static string And(params string[] regexes)
+        private static string And(params string[] regexes)
         {
-            string conj = "(" + regexes[regexes.Length - 1] + ")";
+            string conj = $"({regexes[regexes.Length - 1]})";
             for (int i = regexes.Length - 2; i >= 0; i--)
             {
                 conj = $"(?({regexes[i]}){conj}|[0-[0]])";
             }
+
             return conj;
         }
 
-        static string Not(string regex)
-        {
-            return $"(?({regex})[0-[0]]|.*)";
-        }
+        private static string Not(string regex) => $"(?({regex})[0-[0]]|.*)";
 
-        private void ViewSampleRegexInDGML()
+        [ConditionalFact(nameof(Enabled))]
+        public void ViewSampleRegexInDGML()
         {
             string rawregex = @"\bis\w*\b";
             //string rawregex = And(".*[0-9].*", ".*[A-Z].*");
@@ -200,42 +190,41 @@ namespace System.Text.RegularExpressions.Tests
 
         private void TestRunRegex(string name, string rawregex, string input, bool viewDGML = false, bool dotStar = false)
         {
-            Regex reC = new Regex(rawregex, RegexOptions.Compiled, new TimeSpan(0, 0, 10));
-            Regex reN = new Regex(rawregex, RegexOptions.None, new TimeSpan(0, 0, 10));
-            Regex reD = new Regex(rawregex, RegexHelpers.RegexOptionNonBacktracking);
-            Match mC;
-            Match mN;
-            Match mD;
-            long tC;
-            long tN;
-            long tD;
+            var reNone = new Regex(rawregex, RegexOptions.None, new TimeSpan(0, 0, 10));
+            var reCompiled = new Regex(rawregex, RegexOptions.Compiled, new TimeSpan(0, 0, 10));
+            var reNonBacktracking = new Regex(rawregex, RegexOptions.NonBacktracking);
+
             if (viewDGML)
-                ViewDGML(reD, addDotStar: dotStar);
-            WriteOutput("\n{0}", name);
-            //first call in each case is a warmup
-            //DFA
-            MeasureMatchTime(reD, input, out _);
-            tD = MeasureMatchTime(reD, input, out mD);
-            WriteMatchOutput(tD, mD);
-            //Compiled
-            MeasureMatchTime(reC, input, out _);
-            tC = MeasureMatchTime(reC, input, out mC);
-            WriteMatchOutput(tC, mC);
-            //None
-            MeasureMatchTime(reN, input, out _);
-            tN = MeasureMatchTime(reN, input, out mN);
+                ViewDGML(reNonBacktracking, addDotStar: dotStar);
+            WriteOutput($"\n{name}");
+
+            // First call in each case is a warmup
+
+            // None
+            MeasureMatchTime(reNone, input, out _);
+            long tN = MeasureMatchTime(reNone, input, out Match mN);
             WriteMatchOutput(tN, mN);
-        }
-        private void WriteMatchOutput(long t, Match m)
-        {
-            if (t == -1)
-                WriteOutput(",10000,TIMEOUT");
-            else if (t == -2)
-                WriteOutput(",10000,ERROR");
-            else if (m.Success)
-                WriteOutput(",{0},Yes({1}:{2})", t, m.Index, m.Length);
-            else 
-                WriteOutput(",{0},No", t);
+
+            // Compiled
+            MeasureMatchTime(reCompiled, input, out _);
+            long tC = MeasureMatchTime(reCompiled, input, out Match mC);
+            WriteMatchOutput(tC, mC);
+
+            // Non-Backtracking
+            MeasureMatchTime(reNonBacktracking, input, out _);
+            long tD = MeasureMatchTime(reNonBacktracking, input, out Match mD);
+            WriteMatchOutput(tD, mD);
+
+            void WriteMatchOutput(long t, Match m)
+            {
+                WriteOutput(t switch
+                {
+                    -1 => ",10000,TIMEOUT",
+                    -2 => ",10000,ERROR",
+                    _ when m.Success => $",{t},Yes({m.Index}:{m.Length})",
+                    _ => $",{t},No"
+                });
+            }
         }
 
         /// <summary>
@@ -243,34 +232,36 @@ namespace System.Text.RegularExpressions.Tests
         /// </summary>
         private void TestRunSerialization()
         {
-            string[] rawregexes = File.ReadAllLines(regexesfile);
-            WriteOutput("\n========= TimeStamp:{0} =========\n", System.DateTime.Now);
-            int k = rawregexes.Length;
-            //construct
-            var sw = Stopwatch.StartNew();
-            var rs = Array.ConvertAll(rawregexes, s => new Regex(s, RegexHelpers.RegexOptionNonBacktracking, new TimeSpan(0,0,1)));
+            string[] rawregexes = File.ReadAllLines(RegexFilePath);
+            WriteOutput($"\n========= TimeStamp:{System.DateTime.Now} =========\n");
+
+            // Construct
+            Stopwatch sw = Stopwatch.StartNew();
+            Regex[] rs = Array.ConvertAll(rawregexes, s => new Regex(s, RegexHelpers.RegexOptionNonBacktracking, new TimeSpan(0,0,1)));
             int totConstrTime = (int)sw.ElapsedMilliseconds;
-            //-------
-            //serialize
+
+            // Serialize multiple times
             sw = Stopwatch.StartNew();
-            //repeat ten times
-            var ser = Array.ConvertAll(rs, Serialize);
+            string[] serialized = Array.ConvertAll(rs, Serialize);
             for (int j = 0; j < 9; j++)
-                ser = Array.ConvertAll(rs, Serialize);
+            {
+                serialized = Array.ConvertAll(rs, Serialize);
+            }
             int totSerTime = (int)sw.ElapsedMilliseconds / 10;
-            //-------
+
             //save the serializations
-            File.WriteAllLines(serializedout, ser);
-            //----------
-            //deserialize
+            File.WriteAllLines(SerializedOutputPath, serialized);
+
+            // Deserialize multiple times
             sw = Stopwatch.StartNew();
-            //repeat ten times
-            var drs = Array.ConvertAll(ser, Deserialize);
+            Array.ConvertAll(serialized, Deserialize);
             for (int j = 0; j < 9; j++)
-                drs = Array.ConvertAll(ser, Deserialize);
+            {
+                Array.ConvertAll(serialized, Deserialize);
+            }
             int totDeSerTime = (int)sw.ElapsedMilliseconds / 10;
-            //----------
-            File.AppendAllText(outputfile, string.Format("\nconstr:{0}ms, serialization:{1}ms, deserialization:{2}ms\n", totConstrTime, totSerTime, totDeSerTime));
+
+            File.AppendAllText(OutputFilePath, $"\nconstr:{totConstrTime}ms, serialization:{totSerTime}ms, deserialization:{totDeSerTime}ms\n");
         }
     }
 }

@@ -61,9 +61,9 @@ namespace System.Text.RegularExpressions.SRM
         {
             var regex = new Regex(rootNode, options, matchTimeout, culture);
 #if DEBUG
-            //// Test the serialization roundtrip.
-            //// Effectively, here all tests in DEBUG mode are run with deserialized matchers, not the original ones.
-            //regex = Deserialize(regex.Serialize());
+            // Test the serialization roundtrip.
+            // Effectively, here all tests in DEBUG mode are run with deserialized matchers, not the original ones.
+            regex = Deserialize(regex.Serialize());
 #endif
             return regex;
         }

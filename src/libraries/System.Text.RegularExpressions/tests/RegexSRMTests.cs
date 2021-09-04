@@ -14,15 +14,6 @@ namespace System.Text.RegularExpressions.Tests
 {
     public class RegexSRMTests
     {
-
-        static void WriteLine(string s)
-        {
-#if DEBUG
-            // the string will appear in the Output window
-            System.Diagnostics.Debug.WriteLine(s);
-#endif
-        }
-
         private const char Turkish_I_withDot = '\u0130';
         private const char Turkish_i_withoutDot = '\u0131';
         private const char Kelvin_sign = '\u212A';
@@ -110,21 +101,25 @@ namespace System.Text.RegularExpressions.Tests
         {
             List<string> diffs = new();
             Func<HashSet<char>, int, string> F = (s, i) =>
-             {
-                 if (s == null)
-                     return ((char)i).ToString();
-                 List<char> elems = new List<char>(s);
-                 elems.Sort();
-                 string res = new string(elems.ToArray());
-                 return res;
-             };
+            {
+                if (s == null)
+                    return ((char)i).ToString();
+
+                var elems = new List<char>(s);
+                elems.Sort();
+                return new string(elems.ToArray());
+            };
+
             for (int i = 0; i <= 0xFFFF; i++)
             {
-                var s1 = F(table1[i], i);
-                var s2 = F(table2[i], i);
+                string s1 = F(table1[i], i);
+                string s2 = F(table2[i], i);
                 if (s1 != s2)
-                    diffs.Add(string.Format("{0}:{1}/{2}", (char)i, s1, s2));
+                {
+                    diffs.Add($"{(char)i}:{s1}/{s2}");
+                }
             }
+
             return string.Join(",", diffs.ToArray());
         }
 
@@ -466,11 +461,19 @@ namespace System.Text.RegularExpressions.Tests
         {
             StringWriter sw = new StringWriter();
             var re = new Regex(".*a+", RegexOptions.NonBacktracking | RegexOptions.Singleline);
+            // RegexExperiment.ViewDGML(re, name : "TestDGMLGeneration");
             SaveDGML(re, sw);
             string str = sw.ToString();
             Assert.StartsWith("<?xml version=\"1.0\" encoding=\"utf-8\"?>", str);
             Assert.Contains("DirectedGraph", str);
-            Assert.Contains(".*a+", str);
+            // in debug mode re may be serialized and then deserialized internally 
+            // if that happens the predicate label .*a+ becomes .*[2]+
+            // the partition of characters in this regex is into two sets (in binary):
+            //   01 or [1] representing [^a]  (first part)
+            //   10 or [2] representinng 'a' (second part) which is where 2 comes from
+            //   (3rd part would be 100 = [4], 4th 1000 = [8] etc)
+            // '.' here is the union of all parts, i.e. 01 and 10 that is 11 (in binary internally) but printed as '.' also.
+            Assert.True(str.Contains(".*a+") || str.Contains(".*[2]+"));
         }
 
         [Fact]
@@ -529,7 +532,7 @@ namespace System.Text.RegularExpressions.Tests
             var ser2 = Array.ConvertAll(drs, Serialize);
             //check idempotence
             for (int i = 0; i < k; i++)
-                Assert.True(ser[i] == ser2[i], string.Format("idempotence of serialization of regex {0} fails", i));
+                Assert.True(ser[i] == ser2[i], $"idempotence of serialization of regex {i} failed");
 
             string input = "this text contains math symbols +~<> and names like Ann and Anne and maku and jaan";
             for (int i = 0; i < k; i++)
