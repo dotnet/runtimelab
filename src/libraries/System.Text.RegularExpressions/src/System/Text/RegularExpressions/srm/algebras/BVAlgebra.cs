@@ -3,6 +3,7 @@
 
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 
 namespace System.Text.RegularExpressions.SRM
@@ -169,9 +170,9 @@ namespace System.Text.RegularExpressions.SRM
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public BV Or(BV predicate1, BV predicate2) => predicate1 | predicate2;
 
-        public BV RangeConstraint(char lower, char upper, bool caseInsensitive = false, string culture = null) => throw new NotSupportedException(nameof(RangeConstraint));
+        public BV RangeConstraint(char lower, char upper, bool caseInsensitive = false, string? culture = null) => throw new NotSupportedException(nameof(RangeConstraint));
 
-        public BV CharConstraint(char c, bool caseInsensitive = false, string culture = null)
+        public BV CharConstraint(char c, bool caseInsensitive = false, string? culture = null)
         {
             Debug.Assert(!caseInsensitive);
             int i = _classifier.Find(c);
@@ -182,7 +183,8 @@ namespace System.Text.RegularExpressions.SRM
         /// Assumes that set is a union of some minterms (or empty).
         /// If null then null is returned.
         /// </summary>
-        public BV ConvertFromCharSet(BDDAlgebra alg, BDD set)
+        [return: NotNullIfNotNull("set")]
+        public BV? ConvertFromCharSet(BDDAlgebra alg, BDD set)
         {
             if (set == null)
                 return null;

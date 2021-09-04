@@ -11,7 +11,7 @@ namespace System.Text.RegularExpressions.SRM
 {
     /// <summary>Represents a precompiled form of a regex that implements match generation using symbolic derivatives.</summary>
     /// <typeparam name="TSetType">character set type</typeparam>
-    internal sealed class SymbolicRegexMatcher<TSetType> : IMatcher
+    internal sealed class SymbolicRegexMatcher<TSetType> : IMatcher where TSetType : notnull
     {
         private const int NoMatchExists = -2;
         private const int StateMaxBound = 10000;
@@ -37,16 +37,7 @@ namespace System.Text.RegularExpressions.SRM
 
         /// <summary>Corresponding timeout in ms.</summary>
         private readonly int _timeout;
-        private int _timeoutOccursAt;
         private readonly bool _checkTimeout;
-
-        /// <summary>
-        /// The frequence is lower in DFA mode because timeout tests are performed much
-        /// less frequently here, once per transition, compared to non-DFA mode.
-        /// So, e.g., 5 here imples checking after every 5 transitions.
-        /// </summary>
-        private const int TimeoutCheckFrequency = 5;
-        private int _timeoutChecksToSkip;
 
         /// <summary>Set of elements that matter as first element of A.</summary>
         internal readonly BooleanClassifier _startSetClassifier;
@@ -67,7 +58,7 @@ namespace System.Text.RegularExpressions.SRM
         private readonly string _prefix;
 
         /// <summary>Non-null when <see cref="_prefix"/> is nonempty</summary>
-        private readonly RegexBoyerMoore _prefixBoyerMoore;
+        private readonly RegexBoyerMoore? _prefixBoyerMoore;
 
         /// <summary>If true then the fixed prefix of <see cref="_pattern"/> is idependent of case</summary>
         private readonly bool _isPrefixCaseInsensitive;
@@ -132,7 +123,11 @@ namespace System.Text.RegularExpressions.SRM
         /// <summary>Get the atom of character c</summary>
         /// <param name="c">character code</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private TSetType GetAtom(int c) => _builder._atoms[_partitions.Find(c)];
+        private TSetType GetAtom(int c)
+        {
+            Debug.Assert(_builder._atoms is not null);
+            return _builder._atoms[_partitions.Find(c)];
+        }
 
         #region custom serialization/deserialization
         /// <summary>
@@ -241,7 +236,6 @@ namespace System.Text.RegularExpressions.SRM
                 TimeSpan timeout = TimeSpan.Parse(potentialTimeout);
                 _checkTimeout = true;
                 _timeout = (int)(timeout.TotalMilliseconds + 0.5); // Round up, so it will at least 1ms;
-                _timeoutChecksToSkip = TimeoutCheckFrequency;
             }
 
             if (_pattern._info.ContainsSomeAnchor)
@@ -279,7 +273,6 @@ namespace System.Text.RegularExpressions.SRM
 
             _checkTimeout = RegularExpressions.Regex.InfiniteMatchTimeout != matchTimeout;
             _timeout = (int)(matchTimeout.TotalMilliseconds + 0.5); // Round up, so it will be at least 1ms
-            _timeoutChecksToSkip = TimeoutCheckFrequency;
             _culture = culture;
 
             Debug.Assert(_builder._solver is BV64Algebra or BVAlgebra or CharSetSolver, $"Unsupported algebra: {_builder._solver}");
@@ -426,11 +419,19 @@ namespace System.Text.RegularExpressions.SRM
             int c = input[i];
 
             // atom_id = atoms.Length represents \Z (last \n)
-            int atom_id = c == '\n' && i == input.Length - 1 && q.StartsWithLineAnchor ?
-                _builder._atoms.Length :
-                _partitions.Find(c);
+            int atom_id;
+            if (c == '\n' && i == input.Length - 1 && q.StartsWithLineAnchor)
+            {
+                Debug.Assert(_builder._atoms is not null);
+                atom_id = _builder._atoms.Length;
+            }
+            else
+            {
+                atom_id = _partitions.Find(c);
+            }
 
             // atom=False represents \Z
+            Debug.Assert(_builder._atoms is not null);
             TSetType atom = atom_id == _builder._atoms.Length ?
                 _builder._solver.False :
                 _builder._atoms[atom_id];
@@ -444,6 +445,8 @@ namespace System.Text.RegularExpressions.SRM
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public State<TSetType> TakeTransition(SymbolicRegexMatcher<TSetType> matcher, State<TSetType> q, int atom_id, TSetType atom)
             {
+                Debug.Assert(matcher._builder._delta is not null);
+
                 int offset = (q.Id << matcher._builder._K) | atom_id;
                 return
                     matcher._builder._delta[offset] ??
@@ -459,10 +462,13 @@ namespace System.Text.RegularExpressions.SRM
             {
                 if (q.Node.Kind == SymbolicRegexKind.Or)
                 {
+                    Debug.Assert(matcher._builder._delta is not null);
+
                     SymbolicRegexNode<TSetType> union = matcher._builder._nothing;
                     uint kind = 0;
 
                     // consider transitions from the members one at a time
+                    Debug.Assert(q.Node._alts is not null);
                     foreach (SymbolicRegexNode<TSetType> r in q.Node._alts)
                     {
                         State<TSetType> s = matcher._builder.MkState(r, q.PrevCharKind);
@@ -486,6 +492,7 @@ namespace System.Text.RegularExpressions.SRM
         /// <summary>Critical region for defining a new transition</summary>
         private State<TSetType> CreateNewTransition(State<TSetType> q, TSetType atom, int offset)
         {
+            Debug.Assert(_builder._delta is not null);
             lock (this)
             {
                 // check if meanwhile delta[offset] has become defined possibly by another thread
@@ -506,22 +513,19 @@ namespace System.Text.RegularExpressions.SRM
             }
         }
 
-        /// <summary>
-        /// This code is identical to RegexRunner.DoCheckTimeout()
-        /// </summary>
-        private void DoCheckTimeout()
+        private void DoCheckTimeout(int timeoutOccursAt)
         {
-            if (--_timeoutChecksToSkip != 0)
-                return;
-
-            _timeoutChecksToSkip = TimeoutCheckFrequency;
+            // This code is identical to RegexRunner.DoCheckTimeout(),
+            // with the exception of check skipping. RegexRunner calls
+            // DoCheckTimeout potentially on every iteration of a loop,
+            // whereas this calls it only once per transition.
 
             int currentMillis = Environment.TickCount;
 
-            if (currentMillis < _timeoutOccursAt)
+            if (currentMillis < timeoutOccursAt)
                 return;
 
-            if (0 > _timeoutOccursAt && 0 < currentMillis)
+            if (0 > timeoutOccursAt && 0 < currentMillis)
                 return;
 
             //regex pattern is in general not available in srm and
@@ -535,13 +539,13 @@ namespace System.Text.RegularExpressions.SRM
         /// <param name="input">input string</param>
         /// <param name="startat">the position to start search in the input string</param>
         /// <param name="k">the next position after the end position in the input</param>
-        public Match FindMatch(bool quick, string input, int startat, int k)
+        public Match? FindMatch(bool quick, string input, int startat, int k)
         {
+            int timeoutOccursAt = 0;
             if (_checkTimeout)
             {
                 // Using Environment.TickCount for efficiency instead of Stopwatch -- as in the non-DFA case.
-                int timeout = (int)(_timeout + 0.5);
-                _timeoutOccursAt = Environment.TickCount + timeout;
+                timeoutOccursAt = Environment.TickCount + (int)(_timeout + 0.5);
             }
 
             if (startat == k)
@@ -561,13 +565,12 @@ namespace System.Text.RegularExpressions.SRM
                 return Match.NoMatch;
             }
 
-            //find the first accepting state
-            //initial start position in the input is i = 0
+            // Find the first accepting state. Initial start position in the input is i == 0.
             int i = startat;
 
-            // may return -1 as a legitimate value when the initial state is nullable and startat=0
-            // returns NoMatchExists when there is no match
-            i = FindFinalStatePosition(input, k, i, out int i_q0_A1, out int watchdog);
+            // May return -1 as a legitimate value when the initial state is nullable and startat == 0.
+            // Returns NoMatchExists when there is no match.
+            i = FindFinalStatePosition(input, k, i, timeoutOccursAt, out int i_q0_A1, out int watchdog);
 
             if (i == NoMatchExists)
             {
@@ -597,7 +600,7 @@ namespace System.Text.RegularExpressions.SRM
                 }
                 else
                 {
-                    //walk in reverse to locate the start position of the match
+                    // Walk in reverse to locate the start position of the match
                     i_start = FindStartPosition(input, i, i_q0_A1);
                 }
 
@@ -767,9 +770,10 @@ namespace System.Text.RegularExpressions.SRM
         /// <param name="input">given input string</param>
         /// <param name="k">input length or bounded input length</param>
         /// <param name="i">start position</param>
-        /// <param name="initialStateIndex">last position the initial state of _dotstarredPattern was visited</param>
+        /// <param name="timeoutOccursAt">The time at which timeout occurs, if timeouts are being checked.</param>
+        /// <param name="initialStateIndex">last position the initial state of <see cref="_dotstarredPattern"/> was visited</param>
         /// <param name="watchdog">length of match when positive</param>
-        private int FindFinalStatePosition(string input, int k, int i, out int initialStateIndex, out int watchdog)
+        private int FindFinalStatePosition(string input, int k, int i, int timeoutOccursAt, out int initialStateIndex, out int watchdog)
         {
             // Get the correct start state of A1, which in general depends on the previous character kind in the input.
             uint prevCharKindId = GetCharKind(input, i - 1);
@@ -880,7 +884,7 @@ namespace System.Text.RegularExpressions.SRM
 
                 if (_checkTimeout)
                 {
-                    DoCheckTimeout();
+                    DoCheckTimeout(timeoutOccursAt);
                 }
             }
 

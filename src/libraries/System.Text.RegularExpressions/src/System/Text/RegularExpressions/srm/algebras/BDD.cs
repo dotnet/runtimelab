@@ -3,6 +3,7 @@
 
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 
 namespace System.Text.RegularExpressions.SRM
 {
@@ -40,13 +41,13 @@ namespace System.Text.RegularExpressions.SRM
         /// The encoding of the set for lower ordinals for the case when the current bit is 1.
         /// The value is null iff IsLeaf is true.
         /// </summary>
-        public readonly BDD One;
+        public readonly BDD? One;
 
         /// <summary>
         /// The encoding of the set for lower ordinals for the case when the current bit is 0.
         /// The value is null iff IsLeaf is true.
         /// </summary>
-        public readonly BDD Zero;
+        public readonly BDD? Zero;
 
         /// <summary>
         /// Ordinal of this bit if nonleaf else MTBDD terminal value when nonnegative
@@ -68,7 +69,7 @@ namespace System.Text.RegularExpressions.SRM
         /// </summary>
         private static readonly long[] s_trueRepresentation = new long[] { 1 };
 
-        internal BDD(int ordinal, BDD one, BDD zero)
+        internal BDD(int ordinal, BDD? one, BDD? zero)
         {
             One = one;
             Zero = zero;
@@ -84,7 +85,21 @@ namespace System.Text.RegularExpressions.SRM
         /// True iff the node is a terminal (One and Zero are both null).
         /// True and False are terminals.
         /// </summary>
-        public bool IsLeaf => One is null;
+        [MemberNotNullWhen(false, nameof(One))]
+        [MemberNotNullWhen(false, nameof(Zero))]
+        public bool IsLeaf
+        {
+            get
+            {
+                if (One is null)
+                {
+                    return true;
+                }
+
+                Debug.Assert(Zero is not null);
+                return false;
+            }
+        }
 
         /// <summary>
         /// True iff the BDD is True.
@@ -322,25 +337,36 @@ namespace System.Text.RegularExpressions.SRM
         /// which implies that all BDD nodes other than True and False are new BDD objects
         /// that have not been internalized or cached.
         /// </summary>
-        public static BDD Deserialize(long[] arcs, BDDAlgebra algebra = null)
+        public static BDD Deserialize(long[] arcs, BDDAlgebra? algebra = null)
         {
             if (arcs.Length == 1)
+            {
                 return arcs[0] == 0 ? False : True;
+            }
 
             if (algebra is null)
-                return DeserializeWithFactory(arcs, CreateBDD);
+            {
+                return DeserializeWithFactory(arcs, (int ordinal, BDD? one, BDD? zero) =>
+                {
+                    Debug.Assert(one != zero || one is null);
+                    Debug.Assert(one is not null || zero is null);
+                    Debug.Assert(one is null || zero is not null);
+                    return new BDD(ordinal, one, zero);
+                });
+            }
 
             lock (algebra)
             {
                 return DeserializeWithFactory(arcs, algebra.GetOrCreateBDD);
             }
 
-            static BDD DeserializeWithFactory(long[] arcs, Func<int, BDD, BDD, BDD> createBDD)
+            static BDD DeserializeWithFactory(long[] arcs, Func<int, BDD?, BDD?, BDD> createBDD)
             {
                 // the number of bits used for ordinals and node identifiers are stored in the first two values
                 int k = arcs.Length;
                 int ordinal_bits = (int)arcs[0];
                 int node_bits = (int)arcs[1];
+
                 // create bit masks for the sizes of ordinals and node identifiers
                 long ordinal_mask = (1 << ordinal_bits) - 1;
                 long node_mask = (1 << node_bits) - 1;
@@ -365,6 +391,7 @@ namespace System.Text.RegularExpressions.SRM
                         int ord = (int)((arc >> ordinal_shift) & ordinal_mask);
                         int oneId = (int)((arc >> one_node_shift) & node_mask);
                         int zeroId = (int)((arc >> zero_node_shift) & node_mask);
+
                         // the BDD nodes for the children are guaranteed to exist already due to the topological order
                         nodes[i] = createBDD(ord, nodes[oneId], nodes[zeroId]);
                     }
@@ -373,14 +400,6 @@ namespace System.Text.RegularExpressions.SRM
                 //the result is the final BDD in the nodes array
                 return nodes[k - 1];
             }
-        }
-
-        private static BDD CreateBDD(int ordinal, BDD one, BDD zero)
-        {
-            Debug.Assert(one != zero || one is null);
-            Debug.Assert(one is not null || zero is null);
-            Debug.Assert(one is null || zero is not null);
-            return new BDD(ordinal, one, zero);
         }
 
         /// <summary>
@@ -417,7 +436,7 @@ namespace System.Text.RegularExpressions.SRM
         /// IMPORTANT: When created without any algebra the BDD
         /// can still be used as a classifier with Find that does not use or require any algebra.
         /// </summary>
-        public static BDD Deserialize(ReadOnlySpan<char> input, BDDAlgebra algebra = null) =>
+        public static BDD Deserialize(ReadOnlySpan<char> input, BDDAlgebra? algebra = null) =>
             Deserialize(Base64.DecodeInt64Array(input), algebra);
         #endregion
 
@@ -460,7 +479,7 @@ namespace System.Text.RegularExpressions.SRM
         /// Returns true if the only other terminal besides False is a MTBDD terminal that is different from True.
         /// If this is the case, outputs that terminal.
         /// </summary>
-        public bool IsEssentiallyBoolean(out BDD terminalActingAsTrue)
+        public bool IsEssentiallyBoolean([NotNullWhen(true)] out BDD? terminalActingAsTrue)
         {
             if (IsFull || IsEmpty)
             {
@@ -480,7 +499,7 @@ namespace System.Text.RegularExpressions.SRM
             toVisit.Push(this);
 
             // this will hold the unique MTBDD leaf
-            BDD leaf = null;
+            BDD? leaf = null;
 
             while (toVisit.Count > 0)
             {

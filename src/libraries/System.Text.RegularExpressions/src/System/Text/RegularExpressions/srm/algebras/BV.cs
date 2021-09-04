@@ -2,8 +2,8 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
-
 
 namespace System.Text.RegularExpressions.SRM
 {
@@ -170,7 +170,7 @@ namespace System.Text.RegularExpressions.SRM
         /// </summary>
         public override string ToString() => SerializeToString();
 
-        public override bool Equals(object obj) => CompareTo(obj) == 0;
+        public override bool Equals([NotNullWhen(true)] object? obj) => CompareTo(obj) == 0;
 
         public override int GetHashCode()
         {
@@ -186,7 +186,7 @@ namespace System.Text.RegularExpressions.SRM
             return (int)_hashcode;
         }
 
-        public int CompareTo(object obj)
+        public int CompareTo(object? obj)
         {
             if (obj is not BV that)
                 return 1;

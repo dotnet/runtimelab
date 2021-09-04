@@ -2,7 +2,7 @@
   <PropertyGroup>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <TargetFrameworks>$(NetCoreAppCurrent)</TargetFrameworks>
-    <Nullable>annotations</Nullable> <!-- TODO: Annotate SRM for nullable reference types and flip this back to enable -->
+    <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="System\Collections\HashtableExtensions.cs" />

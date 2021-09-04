@@ -79,7 +79,7 @@ namespace System.Text.RegularExpressions.SRM
     /// <summary>
     /// Captures a state of a DFA explored during matching.
     /// </summary>
-    internal sealed class State<T>
+    internal sealed class State<T> where T : notnull
     {
         internal int Id { get; set; }
         internal bool IsInitialState { get; set; }
@@ -99,7 +99,24 @@ namespace System.Text.RegularExpressions.SRM
         /// <summary>
         /// The node must be nullable here
         /// </summary>
-        internal int WatchDog => Node._kind == SymbolicRegexKind.WatchDog ? Node._lower : (Node._kind == SymbolicRegexKind.Or ? Node._alts._watchdog : -1);
+        internal int WatchDog
+        {
+            get
+            {
+                if (Node._kind == SymbolicRegexKind.WatchDog)
+                {
+                    return Node._lower;
+                }
+
+                if (Node._kind == SymbolicRegexKind.Or)
+                {
+                    Debug.Assert(Node._alts is not null);
+                    return Node._alts._watchdog;
+                }
+
+                return -1;
+            }
+        }
 
         /// <summary>
         /// If true then the state is a dead-end, rejects all inputs.
@@ -152,8 +169,10 @@ namespace System.Text.RegularExpressions.SRM
 
             // combined character context
             uint context = CharKind.Context(PrevCharKind, nextCharKind);
+
             // compute the derivative of the node for the given context
             SymbolicRegexNode<T> derivative = Node.MkDerivative(atom, context);
+
             // nextCharKind will be the PrevCharKind of the target state
             // use an existing state instead if one exists already
             // otherwise create a new new id for it

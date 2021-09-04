@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 
 namespace System.Text.RegularExpressions.SRM.DGML
@@ -41,11 +42,13 @@ namespace System.Text.RegularExpressions.SRM.DGML
                 {
                     nonEpsilonStates.Add(move.SourceState);
                     var p = new Tuple<int, int>(move.SourceState, move.TargetState);
-                    if (!nonEpsilonMoves.TryGetValue(p, out List<S> rules))
+                    if (!nonEpsilonMoves.TryGetValue(p, out List<S>? rules))
                     {
                         rules = new List<S>();
                         nonEpsilonMoves[p] = rules;
                     }
+
+                    Debug.Assert(move.Label is not null);
                     rules.Add(move.Label);
                 }
             }
