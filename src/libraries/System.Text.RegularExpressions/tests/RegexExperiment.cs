@@ -48,8 +48,9 @@ namespace System.Text.RegularExpressions.Tests
             genUnicode.Invoke(null, new object[] { s_tmpWorkingDir });
         }
 
-        [ConditionalTheory(nameof(Enabled))]
-        [InlineData(@"((?<=\w)(?!\w)|(?<!\w)(?=\w))", 3)] // word-border anchor
+        [Theory]
+        [InlineData(@"\b", 3)]
+        [InlineData(@"((?<=\w)(?!\w)|(?<!\w)(?=\w))", 3)] // similar to word-border anchor
         [InlineData(@"((?<=\w)(?=\W)|(?<=\W)(?=\w))", 1)]
         public void TestLookaround(string pattern, int expectedCount)
         {
