@@ -109,7 +109,6 @@ namespace System.Text.RegularExpressions
                         break;
                     }
 
-                    // Omit the matched substring itself and find the next match
                     match = match.NextMatch();
                 }
 

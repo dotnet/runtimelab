@@ -69,19 +69,16 @@ namespace System.Text.RegularExpressions.Tests
             yield return new object[] { ":", "kkk:lll:mmm:nnn:ooo", RegexHelpers.RegexOptionNonBacktracking, 0, 0, new string[] { "kkk", "lll", "mmm", "nnn", "ooo" } };
 
             // RegexOptions.NonBacktracking is similar to RegexOptions.ExplicitCapture when there are no explicit capture names because NonBacktracking does not support captures
-            // This is the reason for including the RegexOptions.ExplicitCapture options after the tests to check that the results are the same in this case
-            yield return new object[] { @"(\s)?(-)", "once -upon-a time", RegexHelpers.RegexOptionNonBacktracking, 17, 0, new string[] { "once", "upon", "a time" } };
-            yield return new object[] { @"(\s)?(-)", "once -upon-a time", RegexOptions.ExplicitCapture, 17, 0, new string[] { "once", "upon", "a time" } };
-            yield return new object[] { @"(\s)?(-)", "once upon a time", RegexHelpers.RegexOptionNonBacktracking, 16, 0, new string[] { "once upon a time" } };
-            yield return new object[] { @"(\s)?(-)", "once upon a time", RegexOptions.ExplicitCapture, 16, 0, new string[] { "once upon a time" } };
-            yield return new object[] { @"(\s)?(-)", "once - -upon- a- time", RegexHelpers.RegexOptionNonBacktracking, 21, 0, new string[] { "once", "", "upon", " a", " time" } };
-            yield return new object[] { @"(\s)?(-)", "once - -upon- a- time", RegexOptions.ExplicitCapture, 21, 0, new string[] { "once", "", "upon", " a", " time" } };
-            yield return new object[] { "a(.)c(.)e", "123abcde456aBCDe789", RegexHelpers.RegexOptionNonBacktracking, 19, 0, new string[] { "123", "456aBCDe789" } };
-            yield return new object[] { "a(.)c(.)e", "123abcde456aBCDe789", RegexOptions.ExplicitCapture, 19, 0, new string[] { "123", "456aBCDe789" } };
-            yield return new object[] { "a.c.e", "123abcde456aBCDe789", RegexHelpers.RegexOptionNonBacktracking, 19, 0, new string[] { "123", "456aBCDe789" } };
-            yield return new object[] { "a.c.e", "123abcde456aBCDe789", RegexOptions.ExplicitCapture, 19, 0, new string[] { "123", "456aBCDe789" } };
-            yield return new object[] { "a.c.e", "123abcde456aBCDe789", RegexHelpers.RegexOptionNonBacktracking | RegexOptions.IgnoreCase, 19, 0, new string[] { "123", "456", "789" } };
-            yield return new object[] { "a.c.e", "123abcde456aBCDe789", RegexOptions.ExplicitCapture | RegexOptions.IgnoreCase, 19, 0, new string[] { "123", "456", "789" } };
+            // This is the reason for including the RegexOptions.ExplicitCapture options also to check that the results are the same in this case
+            foreach (RegexOptions options in new[] { RegexHelpers.RegexOptionNonBacktracking, RegexOptions.ExplicitCapture })
+            {
+                yield return new object[] { @"(\s)?(-)", "once -upon-a time", options, 17, 0, new string[] { "once", "upon", "a time" } };
+                yield return new object[] { @"(\s)?(-)", "once upon a time", options, 16, 0, new string[] { "once upon a time" } };
+                yield return new object[] { @"(\s)?(-)", "once - -upon- a- time", options, 21, 0, new string[] { "once", "", "upon", " a", " time" } };
+                yield return new object[] { "a(.)c(.)e", "123abcde456aBCDe789", options, 19, 0, new string[] { "123", "456aBCDe789" } };
+                yield return new object[] { "a.c.e", "123abcde456aBCDe789", options, 19, 0, new string[] { "123", "456aBCDe789" } };
+                yield return new object[] { "a.c.e", "123abcde456aBCDe789", options | RegexOptions.IgnoreCase, 19, 0, new string[] { "123", "456", "789" } };
+            }
 
             // RegexOptions.NonBacktracking also ignores named captures as if they were not given
             yield return new object[] { "a(?<dot1>.)c(.)e", "123abcde456aBCDe789", RegexHelpers.RegexOptionNonBacktracking, 19, 0, new string[] { "123", "456aBCDe789" } };
