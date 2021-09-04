@@ -60,6 +60,11 @@ namespace System.Text.RegularExpressions.Tests
         // Test data adjusted from Split_TestData for RegexOptions.NonBacktracking
         public static IEnumerable<object[]> Split_TestData_NonBacktracking()
         {
+            if (PlatformDetection.IsNetFramework)
+            {
+                yield break;
+            }
+
             yield return new object[] { "", "", RegexHelpers.RegexOptionNonBacktracking, 0, 0, new string[] { "", "" } };
             yield return new object[] { "123", "abc", RegexHelpers.RegexOptionNonBacktracking, 3, 0, new string[] { "abc" } };
 
@@ -97,6 +102,11 @@ namespace System.Text.RegularExpressions.Tests
         {         
             foreach (var options in new RegexOptions[] { RegexHelpers.RegexOptionNonBacktracking, RegexOptions.None, RegexOptions.Compiled })
             {
+                if (PlatformDetection.IsNetFramework && options == RegexHelpers.RegexOptionNonBacktracking)
+                {
+                    yield break;
+                }
+
                 yield return new object[] { @"\b", "Hello World!", options, 3, 6, new string[] { "Hello ", "World", "!" } };
                 yield return new object[] { @"\b", "Hello World!", options, 0, 0, new string[] { "", "Hello", " ", "World", "!" } };
                 yield return new object[] { @"^", "Hello \nWorld!", options | RegexOptions.Multiline, 0, 0, new string[] { "", "Hello \n", "World!" } };

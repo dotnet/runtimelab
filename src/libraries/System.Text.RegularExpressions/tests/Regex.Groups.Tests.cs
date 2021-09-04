@@ -922,7 +922,10 @@ namespace System.Text.RegularExpressions.Tests
                 Groups(pattern, input, RegexOptions.Compiled | options, expectedGroups);
                 // Alternative altMatch when order of alternations matters in backtracking but order does not matter in NonBacktracking mode
                 // Also in NonBacktracking there is only a single top-level match, which is expectedGroups[0] when altMatch is null
-                Groups(pattern, input, RegexHelpers.RegexOptionNonBacktracking | options, new string[] { altMatch == null ? expectedGroups[0] : altMatch });
+                if (!PlatformDetection.IsNetFramework)
+                {
+                    Groups(pattern, input, RegexHelpers.RegexOptionNonBacktracking | options, new string[] { altMatch == null ? expectedGroups[0] : altMatch });
+                }
             }
 
             static void Groups(string pattern, string input, RegexOptions options, string[] expectedGroups)
