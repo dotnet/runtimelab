@@ -16,7 +16,7 @@ namespace System.Text.RegularExpressions.SRM
         /// Add both uppercase and lowercase elelements if caseInsensitive is true using the given culture
         /// or the current culture when the given culture is null.
         /// </summary>
-        T MkRangeConstraint(char lower, char upper, bool caseInsensitive = false, string culture = null);
+        T RangeConstraint(char lower, char upper, bool caseInsensitive = false, string culture = null);
 
         /// <summary>
         /// Make a constraint describing a singleton set containing the character c, or
@@ -25,7 +25,7 @@ namespace System.Text.RegularExpressions.SRM
         /// <param name="caseInsensitive">if true include both the uppercase and the lowercase versions of the given character</param>
         /// <param name="c">the given character</param>
         /// <param name="culture">given culture, if null then the current culture is assumed</param>
-        T MkCharConstraint(char c, bool caseInsensitive = false, string culture = null);
+        T CharConstraint(char c, bool caseInsensitive = false, string culture = null);
 
         /// <summary>
         /// Make a term that encodes the given character set.

@@ -45,9 +45,9 @@ namespace {namespacename}
             BDD ignorecase = solver.False;
             foreach (KeyValuePair<char, BDD> kv in ignoreCase)
             {
-                BDD a = solver.MkCharSetFromRange(kv.Key, kv.Key);
+                BDD a = solver.CreateCharSetFromRange(kv.Key, kv.Key);
                 BDD b = kv.Value;
-                ignorecase = solver.MkOr(ignorecase, solver.MkAnd(solver.ShiftLeft(a, 16), b));
+                ignorecase = solver.Or(ignorecase, solver.And(solver.ShiftLeft(a, 16), b));
             }
 
             sw.WriteLine($"        public const string IgnoreCaseEnUsSerializedBDD = \"{ignorecase.SerializeToString()}\";");
@@ -81,16 +81,16 @@ namespace {namespacename}
                         BDD equiv = solver.False;
 
                         if (ignoreCase.ContainsKey(c))
-                            equiv = solver.MkOr(equiv, ignoreCase[c]);
+                            equiv = solver.Or(equiv, ignoreCase[c]);
 
                         if (ignoreCase.ContainsKey(cUpper))
-                            equiv = solver.MkOr(equiv, ignoreCase[cUpper]);
+                            equiv = solver.Or(equiv, ignoreCase[cUpper]);
 
                         if (ignoreCase.ContainsKey(cLower))
-                            equiv = solver.MkOr(equiv, ignoreCase[cLower]);
+                            equiv = solver.Or(equiv, ignoreCase[cLower]);
 
                         // Make sure all characters are included initially or when some is still missing
-                        equiv = solver.MkOr(equiv, solver.MkOr(solver.MkCharSetFromRange(c, c), solver.MkOr(solver.MkCharSetFromRange(cUpper, cUpper), solver.MkCharSetFromRange(cLower, cLower))));
+                        equiv = solver.Or(equiv, solver.Or(solver.CreateCharSetFromRange(c, c), solver.Or(solver.CreateCharSetFromRange(cUpper, cUpper), solver.CreateCharSetFromRange(cLower, cLower))));
 
                         // Update all the members with their case-invariance equivalence classes
                         foreach (char d in solver.GenerateAllCharacters(equiv))

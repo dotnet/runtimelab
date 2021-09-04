@@ -168,11 +168,11 @@ namespace System.Text.RegularExpressions.SRM
             if (_left == null && _right == null)
             {
                 // if this is a leaf node create left and/or right children for the new predicate
-                TPredicate thisAndOther = _solver.MkAnd(_pred, other);
+                TPredicate thisAndOther = _solver.And(_pred, other);
                 if (_solver.IsSatisfiable(thisAndOther))
                 {
                     // the predicates overlap, now check if this is contained in other
-                    TPredicate thisMinusOther = _solver.MkAnd(_pred, _solver.MkNot(other));
+                    TPredicate thisMinusOther = _solver.And(_pred, _solver.Not(other));
                     if (_solver.IsSatisfiable(thisMinusOther))
                     {
                         // this is not contained in other, both children are needed
@@ -204,11 +204,11 @@ namespace System.Text.RegularExpressions.SRM
             }
             else
             {
-                TPredicate thisAndOther = _solver.MkAnd(_pred, other);
+                TPredicate thisAndOther = _solver.And(_pred, other);
                 if (_solver.IsSatisfiable(thisAndOther))
                 {
                     // other is satisfiable in this subtree
-                    TPredicate thisMinusOther = _solver.MkAnd(_pred, _solver.MkNot(other));
+                    TPredicate thisMinusOther = _solver.And(_pred, _solver.Not(other));
                     if (_solver.IsSatisfiable(thisMinusOther))
                     {
                         // but other does not imply this whole subtree, refine both children

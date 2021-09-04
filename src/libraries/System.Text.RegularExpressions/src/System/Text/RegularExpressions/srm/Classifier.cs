@@ -45,7 +45,7 @@ namespace System.Text.RegularExpressions.SRM
                 //make union of part_i with the mtbdd created so far
                 //IMPORTANT: the folowing works correctly because 2 elements can never never map to different ids in the updated mtbdd
                 //due to the partition -- every element belongs to EXACTLY one part of the partition
-                mtbdd = solver.MkOr(mtbdd, part_i);
+                mtbdd = solver.Or(mtbdd, part_i);
             }
             int[] precomp = new int[PrecomputeCount];
             //precompute all the entries below precomputeCount
@@ -54,7 +54,7 @@ namespace System.Text.RegularExpressions.SRM
                 precomp[i] = mtbdd.Find(i);
 
             BDD filter = PrecomputeCount == 128 ? solver._nonascii :
-                (PrecomputeCount >= 0x10000 ? BDD.False : solver.MkCharSetFromRange((char)PrecomputeCount, '\uFFFF'));
+                (PrecomputeCount >= 0x10000 ? BDD.False : solver.CreateCharSetFromRange((char)PrecomputeCount, '\uFFFF'));
 
             //apply the filter to the mtbdd because the precomputed characters will never be applied
             //-- the 'Find' method of mtbdd is never called for any value below precomputeCount ---
@@ -63,7 +63,7 @@ namespace System.Text.RegularExpressions.SRM
             //however, it will increase the number of nodes in (size of) the mtbdd and also its serialization size
             // essentially --- this removes irrelevant characters
             // IMPORTANT: this works because of the semantics of MTBDD And-operation
-            mtbdd = solver.MkAnd(mtbdd, filter);
+            mtbdd = solver.And(mtbdd, filter);
 
             //further small otimization: check if the mtbdd maps all elements to the same terminal
             //this happens e.g. when all the relevant input is really over ASCII and all non-ASCII maps to another fixed therminal

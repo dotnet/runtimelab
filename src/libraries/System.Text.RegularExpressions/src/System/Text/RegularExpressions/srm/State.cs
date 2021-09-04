@@ -145,7 +145,7 @@ namespace System.Text.RegularExpressions.SRM
                     CharKind.NewLineS :
                     CharKind.Newline;
             }
-            else if (alg.IsSatisfiable(alg.MkAnd(WLpred, atom)))
+            else if (alg.IsSatisfiable(alg.And(WLpred, atom)))
             {
                 nextCharKind = CharKind.WordLetter;
             }

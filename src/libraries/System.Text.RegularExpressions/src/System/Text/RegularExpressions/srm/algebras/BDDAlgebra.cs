@@ -60,7 +60,7 @@ namespace System.Text.RegularExpressions.SRM
         /// Treats the arguments as if they are unordered.
         /// Orders left and right by hashcode in the constructed key.
         /// </summary>
-        private static BoolOpKey MkBoolOpKey(BoolOp op, BDD left, BDD right)
+        private static BoolOpKey CreateBoolOpKey(BoolOp op, BDD left, BDD right)
         {
             if (left.GetHashCode() <= right.GetHashCode())
                 return new BoolOpKey(op, left, right);
@@ -89,7 +89,7 @@ namespace System.Text.RegularExpressions.SRM
         /// <summary>
         /// Make the union of a and b
         /// </summary>
-        public BDD MkOr(BDD a, BDD b)
+        public BDD Or(BDD a, BDD b)
         {
             //one of a or b is a leaf
             if (a == False)
@@ -104,16 +104,16 @@ namespace System.Text.RegularExpressions.SRM
             if (a == b)
                 return a;
 
-            BoolOpKey key = MkBoolOpKey(BoolOp.OR, a, b);
+            BoolOpKey key = CreateBoolOpKey(BoolOp.OR, a, b);
             return _binOpCache.TryGetValue(key, out BDD res) ?
                 res :
-                MkBoolOP_lock(key);
+                CreateBoolOP_lock(key);
         }
 
         /// <summary>
         /// Make the intersection of a and b
         /// </summary>
-        public BDD MkAnd(BDD a, BDD b)
+        public BDD And(BDD a, BDD b)
         {
             if (a == True)
                 return b;
@@ -127,27 +127,27 @@ namespace System.Text.RegularExpressions.SRM
             if (a == b)
                 return a;
 
-            BoolOpKey key = MkBoolOpKey(BoolOp.AND, a, b);
+            BoolOpKey key = CreateBoolOpKey(BoolOp.AND, a, b);
             return _binOpCache.TryGetValue(key, out BDD res) ?
                 res :
-                MkBoolOP_lock(key);
+                CreateBoolOP_lock(key);
         }
 
         /// <summary>
         /// Complement a
         /// </summary>
-        public BDD MkNot(BDD a) =>
+        public BDD Not(BDD a) =>
             a == False ? True :
             a == True ? False :
             _notCache.TryGetValue(a, out BDD neg) ? neg :
-            MkBoolOP_lock(new BoolOpKey(BoolOp.NOT, a, null));
+            CreateBoolOP_lock(new BoolOpKey(BoolOp.NOT, a, null));
 
         /// <summary>
         /// Apply the operation in the key in a thread safe manner.
         /// All new entries in _boolOpCache and _notCache are created through this call.
         /// </summary>
         /// <param name="key">contains the Boolean operation and two BDD arguments</param>
-        private BDD MkBoolOP_lock(BoolOpKey key)
+        private BDD CreateBoolOP_lock(BoolOpKey key)
         {
             //updates to _boolOpCache and _notCache  may only happen through this method call
             lock (this)
@@ -169,7 +169,7 @@ namespace System.Text.RegularExpressions.SRM
                     }
                     else
                     {
-                        res = GetOrCreateBDD(a.Ordinal, MkNot_rec(a.One), MkNot_rec(a.Zero));
+                        res = GetOrCreateBDD(a.Ordinal, CreateNot_rec(a.One), CreateNot_rec(a.Zero));
                         _notCache[a] = res;
                         return res;
                     }
@@ -183,20 +183,20 @@ namespace System.Text.RegularExpressions.SRM
                 }
                 else if (a.IsLeaf || b.Ordinal > a.Ordinal)
                 {
-                    BDD t = MkBinBoolOP_rec(op, a, b.One);
-                    BDD f = MkBinBoolOP_rec(op, a, b.Zero);
+                    BDD t = CreateBinBoolOP_rec(op, a, b.One);
+                    BDD f = CreateBinBoolOP_rec(op, a, b.Zero);
                     res = t == f ? t : GetOrCreateBDD(b.Ordinal, t, f);
                 }
                 else if (b.IsLeaf || a.Ordinal > b.Ordinal)
                 {
-                    BDD t = MkBinBoolOP_rec(op, a.One, b);
-                    BDD f = MkBinBoolOP_rec(op, a.Zero, b);
+                    BDD t = CreateBinBoolOP_rec(op, a.One, b);
+                    BDD f = CreateBinBoolOP_rec(op, a.Zero, b);
                     res = t == f ? t : GetOrCreateBDD(a.Ordinal, t, f);
                 }
                 else
                 {
-                    BDD t = MkBinBoolOP_rec(op, a.One, b.One);
-                    BDD f = MkBinBoolOP_rec(op, a.Zero, b.Zero);
+                    BDD t = CreateBinBoolOP_rec(op, a.One, b.One);
+                    BDD f = CreateBinBoolOP_rec(op, a.Zero, b.Zero);
                     res = t == f ? t : GetOrCreateBDD(a.Ordinal, t, f);
                 }
 
@@ -213,7 +213,7 @@ namespace System.Text.RegularExpressions.SRM
         /// <param name="a">first BDD</param>
         /// <param name="b">second BDD</param>
         /// <returns></returns>
-        private BDD MkBinBoolOP_rec(BoolOp op, BDD a, BDD b)
+        private BDD CreateBinBoolOP_rec(BoolOp op, BDD a, BDD b)
         {
             #region the cases when one of a or b is True or False or when a == b
             switch (op)
@@ -247,9 +247,9 @@ namespace System.Text.RegularExpressions.SRM
                     if (a == b)
                         return False;
                     if (a == True)
-                        return MkNot_rec(b);
+                        return CreateNot_rec(b);
                     if (b == True)
-                        return MkNot_rec(a);
+                        return CreateNot_rec(a);
                     break;
                 default:
                     Debug.Fail("Unhandled binary BoolOp case");
@@ -257,7 +257,7 @@ namespace System.Text.RegularExpressions.SRM
             }
             #endregion
 
-            BoolOpKey key = MkBoolOpKey(op, a, b);
+            BoolOpKey key = CreateBoolOpKey(op, a, b);
             if (_binOpCache.TryGetValue(key, out BDD res))
                 return res;
 
@@ -271,20 +271,20 @@ namespace System.Text.RegularExpressions.SRM
             {
                 if (a.IsLeaf || b.Ordinal > a.Ordinal)
                 {
-                    BDD t = MkBinBoolOP_rec(op, a, b.One);
-                    BDD f = MkBinBoolOP_rec(op, a, b.Zero);
+                    BDD t = CreateBinBoolOP_rec(op, a, b.One);
+                    BDD f = CreateBinBoolOP_rec(op, a, b.Zero);
                     res = t == f ? t : GetOrCreateBDD(b.Ordinal, t, f);
                 }
                 else if (b.IsLeaf || a.Ordinal > b.Ordinal)
                 {
-                    BDD t = MkBinBoolOP_rec(op, a.One, b);
-                    BDD f = MkBinBoolOP_rec(op, a.Zero, b);
+                    BDD t = CreateBinBoolOP_rec(op, a.One, b);
+                    BDD f = CreateBinBoolOP_rec(op, a.Zero, b);
                     res = t == f ? t : GetOrCreateBDD(a.Ordinal, t, f);
                 }
                 else
                 {
-                    BDD t = MkBinBoolOP_rec(op, a.One, b.One);
-                    BDD f = MkBinBoolOP_rec(op, a.Zero, b.Zero);
+                    BDD t = CreateBinBoolOP_rec(op, a.One, b.One);
+                    BDD f = CreateBinBoolOP_rec(op, a.Zero, b.Zero);
                     res = t == f ? t : GetOrCreateBDD(a.Ordinal, t, f);
                 }
             }
@@ -297,7 +297,7 @@ namespace System.Text.RegularExpressions.SRM
         /// Negate a.
         /// Is executed in a single thread mode.
         /// </summary>
-        private BDD MkNot_rec(BDD a)
+        private BDD CreateNot_rec(BDD a)
         {
             if (a == False)
                 return True;
@@ -309,7 +309,7 @@ namespace System.Text.RegularExpressions.SRM
 
             neg = a.IsLeaf ?
                 GetOrCreateBDD(CombineTerminals(BoolOp.NOT, a.Ordinal, 0), null, null) : // multi-terminal case
-                GetOrCreateBDD(a.Ordinal, MkNot_rec(a.One), MkNot_rec(a.Zero));
+                GetOrCreateBDD(a.Ordinal, CreateNot_rec(a.One), CreateNot_rec(a.Zero));
             _notCache[a] = neg;
             return neg;
         }
@@ -317,12 +317,12 @@ namespace System.Text.RegularExpressions.SRM
         /// <summary>
         /// Intersect all sets in the enumeration
         /// </summary>
-        public BDD MkAnd(IEnumerable<BDD> sets)
+        public BDD And(IEnumerable<BDD> sets)
         {
             BDD res = True;
             foreach (BDD bdd in sets)
             {
-                res = MkAnd(res, bdd);
+                res = And(res, bdd);
             }
             return res;
         }
@@ -330,12 +330,12 @@ namespace System.Text.RegularExpressions.SRM
         /// <summary>
         /// Intersect all sets in the array
         /// </summary>
-        public BDD MkAnd(params BDD[] sets)
+        public BDD And(params BDD[] sets)
         {
             BDD res = True;
             foreach (BDD bdd in sets)
             {
-                res = MkAnd(res, bdd);
+                res = And(res, bdd);
             }
             return res;
         }
@@ -343,12 +343,12 @@ namespace System.Text.RegularExpressions.SRM
         /// <summary>
         /// Take the union of all sets in the enumeration
         /// </summary>
-        public BDD MkOr(IEnumerable<BDD> sets)
+        public BDD Or(IEnumerable<BDD> sets)
         {
             BDD res = False;
             foreach (BDD bdd in sets)
             {
-                res = MkOr(res, bdd);
+                res = Or(res, bdd);
             }
             return res;
         }
@@ -371,30 +371,30 @@ namespace System.Text.RegularExpressions.SRM
         /// <summary>
         /// Returns true if a and b represent equivalent BDDs.
         /// </summary>
-        public bool AreEquivalent(BDD a, BDD b) => MkXOr(a, b) == False;
+        public bool AreEquivalent(BDD a, BDD b) => Xor(a, b) == False;
 
         #endregion
 
         /// <summary>
         /// Make the XOR of a and b
         /// </summary>
-        internal BDD MkXOr(BDD a, BDD b)
+        internal BDD Xor(BDD a, BDD b)
         {
             if (a == False)
                 return b;
             if (b == False)
                 return a;
             if (a == True)
-                return MkNot(b);
+                return Not(b);
             if (b == True)
-                return MkNot(a);
+                return Not(a);
             if (a == b)
                 return False;
 
-            BoolOpKey key = MkBoolOpKey(BoolOp.XOR, a, b);
+            BoolOpKey key = CreateBoolOpKey(BoolOp.XOR, a, b);
             return _binOpCache.TryGetValue(key, out BDD res) ?
                 res :
-                MkBoolOP_lock(key);
+                CreateBoolOP_lock(key);
         }
 
         #region bit-shift operations
@@ -477,7 +477,7 @@ namespace System.Text.RegularExpressions.SRM
         /// <param name="n">the given integer</param>
         /// <param name="maxBit">bits above maxBit are unspecified</param>
         /// <returns></returns>
-        public BDD MkSetFrom(uint n, int maxBit) => MkSetFromRange(n, n, maxBit);
+        public BDD CreateSetFrom(uint n, int maxBit) => CreateSetFromRange(n, n, maxBit);
 
         /// <summary>
         /// Make the set containing all values greater than or equal to m and less than or equal to n when considering bits between 0 and maxBit.
@@ -486,7 +486,7 @@ namespace System.Text.RegularExpressions.SRM
         /// <param name="m">lower bound</param>
         /// <param name="n">upper bound</param>
         /// <param name="maxBit">bits above maxBit are unspecified</param>
-        public BDD MkSetFromRange(uint m, uint n, int maxBit)
+        public BDD CreateSetFromRange(uint m, uint n, int maxBit)
         {
             lock (this)
             {

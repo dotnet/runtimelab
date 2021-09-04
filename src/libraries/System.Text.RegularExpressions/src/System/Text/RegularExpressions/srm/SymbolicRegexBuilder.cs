@@ -699,9 +699,9 @@ namespace System.Text.RegularExpressions.SRM
             TElement WLpred = _wordLetterPredicate;
             TElement startSet = node.GetStartSet();
             //true if the startset of the node overlaps with some wordletter or the node can be nullable
-            bool contWithWL = node.CanBeNullable || _solver.IsSatisfiable(_solver.MkAnd(WLpred, startSet));
+            bool contWithWL = node.CanBeNullable || _solver.IsSatisfiable(_solver.And(WLpred, startSet));
             //true if the startset of the node overlaps with some nonwordletter or the node can be nullable
-            bool contWithNWL = node.CanBeNullable || _solver.IsSatisfiable(_solver.MkAnd(_solver.MkNot(WLpred), startSet));
+            bool contWithNWL = node.CanBeNullable || _solver.IsSatisfiable(_solver.And(_solver.Not(WLpred), startSet));
             SymbolicRegexNode<TElement> pruned_node = node.PruneAnchors(prevCharKind, contWithWL, contWithNWL);
             State<TElement> s = new State<TElement>(pruned_node, prevCharKind);
             if (!_stateCache.TryGetValue(s, out State<TElement> state))

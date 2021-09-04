@@ -73,17 +73,17 @@ namespace System.Text.RegularExpressions.SRM
         /// <summary>
         /// Constructs a bitvector of K bits initially all 0.
         /// </summary>
-        public static BV MkFalse(int K) => new(K);
+        public static BV CreateFalse(int K) => new(K);
 
         /// <summary>
         /// Constructs a bitvector of K bits initially all 1.
         /// </summary>
-        public static BV MkTrue(int K) => ~MkFalse(K);
+        public static BV CreateTrue(int K) => ~CreateFalse(K);
 
         /// <summary>
         /// Returns the bitvector of length K with its i'th bit set to 1 all other bits are 0.
         /// </summary>
-        public static BV MkBit1(int K, int i)
+        public static BV CreateSingleBit(int K, int i)
         {
             BV bv = new BV(K);
             bv[i] = true;
