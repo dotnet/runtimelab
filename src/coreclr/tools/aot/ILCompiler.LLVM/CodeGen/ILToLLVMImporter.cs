@@ -4555,6 +4555,7 @@ namespace Internal.IL
 
         private LLVMValueRef GetFieldAddress(FieldDesc runtimeDeterminedField, FieldDesc field, bool isStatic)
         {
+            _compilation.NodeFactory.MetadataManager.GetDependenciesDueToAccess(ref _dependencies, _compilation.NodeFactory, _canonMethodIL, field);
             if (field.IsStatic)
             {
                 //pop unused value
