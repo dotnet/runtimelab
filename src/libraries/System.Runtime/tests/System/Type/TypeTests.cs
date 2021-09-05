@@ -924,6 +924,23 @@ namespace System.Tests
             Assert.True(!typeof(ContextBoundClass).IsContextful);
         }
 
+        [Fact]
+        public void MakeGenericType_NonRuntimeType()
+        {
+            foreach (Type nonRuntimeType in Helpers.NonRuntimeTypes)
+            {
+                if (PlatformDetection.IsReflectionEmitSupported)
+                {
+                    Type t = typeof(List<>).MakeGenericType(nonRuntimeType);
+                    Assert.NotNull(t);
+                }
+                else
+                {
+                    Assert.Throws<PlatformNotSupportedException>(() => typeof(List<>).MakeGenericType(nonRuntimeType));
+                }
+            }
+        }
+
 #region GetInterfaceMap tests
         public static IEnumerable<object[]> GetInterfaceMap_TestData()
         {
