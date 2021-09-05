@@ -7,48 +7,6 @@
 // Emscripten does not provide a complete implementation of mmap and munmap: munmap cannot unmap partial allocations
 // Emscripten does provide an implementation of posix_memalign which is used here.
 
-struct _reserved
-{
-    void * address;
-    size_t size;
-    int used;
-};
-
-typedef struct _reserved reserved;
-
-static int nextPos = 0;
-static reserved blocks[1000]; // better to allocate and grow this as needed (until malloc fails)?
-static int init = 0;
-
-static void Init()
-{
-    int i;
-    for(i = 0; i < 1000; i++)
-    {
-        blocks[i].used = 0;
-    }
-}
-
-static int FirstUnused()
-{
-    int i;
-    for(i = 0; i < 1000; i++)
-    {
-        if(blocks[i].used == 0) return i;
-    }
-    assert(false);
-}
-
-static int FindBlock(void * address)
-{
-    int i;
-    for(i = 0; i < 1000; i++)
-    {
-        if(blocks[i].used == 1 && blocks[i].address <= address && (size_t)blocks[i].address + blocks[i].size > (size_t)address) return i;
-    }
-    return -1;
-}
-
 // Reserve virtual memory range.
 // Parameters:
 //  size      - size of the virtual memory range
@@ -58,13 +16,6 @@ static int FindBlock(void * address)
 //  Starting virtual address of the reserved range
 static void* VirtualReserveInner(size_t size, size_t alignment, uint32_t flags)
 {
-    int b;
-    b = FirstUnused();
-    if(b == -1)
-    {
-        assert(false);
-    }
-
     assert(!(flags & VirtualReserveFlags::WriteWatch) && "WriteWatch not supported on Wasm");
     if (alignment < OS_PAGE_SIZE)
     {
@@ -78,9 +29,6 @@ static void* VirtualReserveInner(size_t size, size_t alignment, uint32_t flags)
         return NULL; // failed
     }
     memset(pRetVal, 0, size);
-    blocks[b].address = pRetVal;
-    blocks[b].size = size;
-    blocks[b].used = 1;
     return pRetVal;
 }
 
@@ -107,22 +55,6 @@ bool GCToOSInterface::VirtualRelease(void* address, size_t size)
 {
     // WASM: TODO: if an attempt is made to release a partial range from an alloc, starting from the start of the range, this will release the whole range
     // This would cause corruption, but this case does not appear to happen at the time of writing
-    int b;
-    b = FindBlock(address);
-    if(b == -1)
-    {
-        assert(false);
-    }
-
-    if(blocks[b].address != address)
-    {
-        assert(false);
-    }
-    if(blocks[b].size != size)
-    {
-        assert(false);
-    }
-    blocks[b].used = 0;
     free(address);
 
     return TRUE; // free() is void
@@ -153,12 +85,6 @@ void* GCToOSInterface::VirtualReserveAndCommitLargePages(size_t size, uint16_t n
 //  true if it has succeeded, false if it has failed
 bool GCToOSInterface::VirtualCommit(void* address, size_t size, uint16_t node)
 {
-    int b;
-    b = FindBlock(address);
-    if (b == -1)
-    {
-        assert(false);
-    }
     return TRUE;
 }
 
@@ -170,12 +96,6 @@ bool GCToOSInterface::VirtualCommit(void* address, size_t size, uint16_t node)
 //  true if it has succeeded, false if it has failed
 bool GCToOSInterface::VirtualDecommit(void* address, size_t size)
 {
-    int b;
-    b = FindBlock(address);
-    if(b == -1)
-    {
-        assert(false);
-    }
     memset(address, 0, size);
     return TRUE;
 }
