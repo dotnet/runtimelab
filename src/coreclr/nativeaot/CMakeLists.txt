@@ -42,5 +42,9 @@ if(CLR_CMAKE_HOST_ALPINE_LINUX)
     add_definitions(-DENSURE_PRIMARY_STACK_SIZE)
 endif()
 
+if(CLR_CMAKE_TARGET_ANDROID)
+    add_definitions(-DFEATURE_EMULATED_TLS)
+endif()
+
 add_subdirectory(Bootstrap)
 add_subdirectory(Runtime)
