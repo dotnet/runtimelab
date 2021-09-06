@@ -14,6 +14,7 @@ class Program
     static int Main()
     {
         TestReturnValue.Run();
+        TestFieldAccess.Run();
         TestGetMethodEventFieldPropertyConstructor.Run();
         TestGetInterface.Run();
         TestInGenericCode.Run();
@@ -55,6 +56,26 @@ class Program
 
             GiveMePublicAndPrivate();
             Assert.Equal(2, typeof(PublicAndPrivate).CountConstructors());
+        }
+    }
+
+    class TestFieldAccess
+    {
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicMethods)]
+        static Type s_annotatedType;
+
+        static class TestClass
+        {
+            public static void UnusedButKeptMethod() { }
+        }
+
+        private static void SetField() => s_annotatedType = typeof(TestClass);
+
+        public static void Run()
+        {
+            SetField();
+
+            Assert.Equal(1, typeof(TestClass).CountPublicMethods());
         }
     }
 
