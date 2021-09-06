@@ -31,6 +31,8 @@ namespace Internal.Reflection
 
         public override RuntimeTypeHandle TypeHandle => _typeHandle;
 
+        public override bool IsGenericType => RuntimeAugments.IsGenericTypeDefinition(_typeHandle) || RuntimeAugments.IsGenericType(_typeHandle);
+
         public override string Name => DoNotThrowForNames ? RuntimeAugments.GetLastResortString(_typeHandle) : throw new NotSupportedException(SR.Reflection_Disabled);
 
         public override string Namespace => DoNotThrowForNames ? "" : throw new NotSupportedException(SR.Reflection_Disabled);
@@ -115,6 +117,8 @@ namespace Internal.Reflection
 
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces)]
         [return: DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces)]
+        [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2063:UnrecognizedReflectionPattern",
+                Justification = "Linker doesn't recognize always throwing method. https://github.com/mono/linker/issues/2025")]
         public override Type GetInterface(string name, bool ignoreCase) => throw new NotSupportedException(SR.Reflection_Disabled);
 
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces)]
