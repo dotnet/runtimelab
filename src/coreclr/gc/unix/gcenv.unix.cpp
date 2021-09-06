@@ -622,6 +622,7 @@ void GCToOSInterface::YieldThread(uint32_t switchCount)
     assert(ret == 0);
 }
 
+#if !TARGET_WASM
 // Reserve virtual memory range.
 // Parameters:
 //  size      - size of the virtual memory range
@@ -761,6 +762,7 @@ bool GCToOSInterface::VirtualDecommit(void* address, size_t size)
     // be zeroed-out.
     return mmap(address, size, PROT_NONE, MAP_FIXED | MAP_ANON | MAP_PRIVATE, -1, 0) != NULL;
 }
+#endif // TARGET_WASM
 
 // Reset virtual memory range. Indicates that data in the memory range specified by address and size is no
 // longer of interest, but it should not be decommitted.
