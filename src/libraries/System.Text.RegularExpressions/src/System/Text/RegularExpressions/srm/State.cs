@@ -182,16 +182,9 @@ namespace System.Text.RegularExpressions.SRM
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal bool IsNullable(uint nextCharKind)
         {
-            ValidateCharKind(nextCharKind);
+            Debug.Assert(nextCharKind is 0 or CharKind.StartStop or CharKind.Newline or CharKind.WordLetter or CharKind.NewLineS);
             uint context = CharKind.Context(PrevCharKind, nextCharKind);
             return Node.IsNullableFor(context);
-        }
-
-        [Conditional("DEBUG")]
-        private static void ValidateCharKind(uint x)
-        {
-            if (x != 0 && x != CharKind.StartStop && x != CharKind.Newline && x != CharKind.WordLetter && x != CharKind.NewLineS)
-                throw new AutomataException(AutomataExceptionKind.InternalError_SymbolicRegex);
         }
 
         public override bool Equals(object? obj) =>

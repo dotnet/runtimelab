@@ -66,10 +66,7 @@ namespace System.Text.RegularExpressions.SRM.Unicode
             var sb = new StringBuilder();
             _solver.SerializePredicate(pred, sb);
             TPredicate psi = _solver.DeserializePredicate(sb.ToString());
-            if (!pred.Equals(psi))
-            {
-                throw new AutomataException(AutomataExceptionKind.BDDDeserializationError);
-            }
+            Debug.Assert(pred.Equals(psi));
         }
     }
 }

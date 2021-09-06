@@ -122,8 +122,7 @@ namespace System.Text.RegularExpressions.SRM
         /// </summary>
         internal SymbolicRegexNode<TElement> MkOr(params SymbolicRegexNode<TElement>[] regexes)
         {
-            if (regexes.Length < 1)
-                throw new AutomataException(AutomataExceptionKind.InvalidArgument);
+            Debug.Assert(regexes.Length != 0);
 
             SymbolicRegexNode<TElement> sr = regexes[regexes.Length - 1];
 
@@ -142,8 +141,7 @@ namespace System.Text.RegularExpressions.SRM
         /// </summary>
         internal SymbolicRegexNode<TElement> MkAnd(params SymbolicRegexNode<TElement>[] regexes)
         {
-            if (regexes.Length < 1)
-                throw new AutomataException(AutomataExceptionKind.InvalidArgument);
+            Debug.Assert(regexes.Length != 0);
 
             SymbolicRegexNode<TElement> sr = regexes[regexes.Length - 1];
 

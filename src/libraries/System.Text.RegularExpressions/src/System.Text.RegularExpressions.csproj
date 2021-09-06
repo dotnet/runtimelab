@@ -62,7 +62,6 @@
     <Compile Include="$(CoreLibSharedDir)System\Collections\Generic\ValueListBuilder.cs" Link="Common\System\Collections\Generic\ValueListBuilder.cs" />
     <Compile Include="$(CommonPath)System\Text\ValueStringBuilder.cs" Link="Common\System\Text\ValueStringBuilder.cs" />
     <!-- SRM Implementation -->
-    <Compile Include="System\Text\RegularExpressions\srm\AutomataException.cs" />
     <Compile Include="System\Text\RegularExpressions\srm\Match.cs" />
     <Compile Include="System\Text\RegularExpressions\srm\Regex.cs" />
     <Compile Include="System\Text\RegularExpressions\srm\RegexToAutomatonConverter.cs" />

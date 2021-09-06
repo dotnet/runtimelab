@@ -686,8 +686,7 @@ namespace System.Text.RegularExpressions.SRM
 
         internal static SymbolicRegexNode<S> MkLoop(SymbolicRegexBuilder<S> builder, SymbolicRegexNode<S> body, int lower, int upper, bool isLazy)
         {
-            if (lower < 0 || upper < lower)
-                throw new AutomataException(AutomataExceptionKind.InvalidArgument);
+            Debug.Assert(lower >= 0 && lower <= upper);
 
             var loop = new SymbolicRegexNode<S>(builder, SymbolicRegexKind.Loop, body, null, lower, upper, default, null, null)
             {

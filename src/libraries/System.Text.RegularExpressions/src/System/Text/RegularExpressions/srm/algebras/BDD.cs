@@ -147,12 +147,10 @@ namespace System.Text.RegularExpressions.SRM
         public ulong GetMin()
         {
             BDD set = this;
+            Debug.Assert(!set.IsEmpty);
 
             if (set.IsFull)
                 return 0;
-
-            if (set.IsEmpty)
-                throw new AutomataException(AutomataExceptionKind.SetIsEmpty);
 
             // starting from all 0, bits will be flipped to 1 as necessary
             ulong res = 0;

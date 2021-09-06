@@ -408,24 +408,26 @@ namespace System.Text.RegularExpressions.SRM
         #region bit-shift operations
 
         /// <summary>
-        /// Shift all elements k (=1 by default) bits to the right.
+        /// Shift all elements k bits to the right.
         /// For example if set denotes {*0000,*1110,*1111} then
         /// ShiftRight(set) denotes {*000,*111} where * denotes any prefix of 0's or 1's.
         /// </summary>
-        public BDD ShiftRight(BDD set, int k = 1) =>
-            k < 0 ? throw new AutomataException(AutomataExceptionKind.InvalidArgument) :
-            set.IsLeaf || k == 0 ? set :
-            Shift_lock(set, 0 - k);
+        public BDD ShiftRight(BDD set, int k)
+        {
+            Debug.Assert(k >= 0);
+            return set.IsLeaf ? set : Shift_lock(set, 0 - k);
+        }
 
         /// <summary>
         /// Shift all elements k bits to the left.
         /// For example if k=1 and set denotes {*0000,*1111} then
         /// ShiftLeft(set) denotes {*00000,*00001,*11110,*11111} where * denotes any prefix of 0's or 1's.
         /// </summary>
-        public BDD ShiftLeft(BDD set, int k = 1) =>
-            k < 0 ? throw new AutomataException(AutomataExceptionKind.InvalidArgument) :
-            set.IsLeaf || k == 0 ? set :
-            Shift_lock(set, k);
+        public BDD ShiftLeft(BDD set, int k)
+        {
+            Debug.Assert(k >= 0);
+            return set.IsLeaf ? set : Shift_lock(set, k);
+        }
 
         /// <summary>
         /// Allow shift_lock only single thread at a time because _bddCache is updated.
