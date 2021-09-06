@@ -67,6 +67,8 @@
     <Compile Include="System\Text\RegularExpressions\srm\RegexToAutomatonConverter.cs" />
     <Compile Include="System\Text\RegularExpressions\srm\SymbolicRegexBuilder.cs" />
     <Compile Include="System\Text\RegularExpressions\srm\SymbolicRegexNode.cs" />
+    <Compile Include="System\Text\RegularExpressions\srm\SymbolicRegexKind.cs" />
+    <Compile Include="System\Text\RegularExpressions\srm\SymbolicRegexSet.cs" />
     <Compile Include="System\Text\RegularExpressions\srm\algebras\BDD.cs" />
     <Compile Include="System\Text\RegularExpressions\srm\algebras\BDDAlgebra.cs" />
     <Compile Include="System\Text\RegularExpressions\srm\algebras\BV.cs" />

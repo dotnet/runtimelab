@@ -181,7 +181,7 @@ namespace System.Text.RegularExpressions.SRM
             return Mk(i);
         }
 
-        public static SymbolicRegexInfo ITE(SymbolicRegexInfo cond_info, SymbolicRegexInfo then_info, SymbolicRegexInfo else_info)
+        public static SymbolicRegexInfo IfThenElse(SymbolicRegexInfo cond_info, SymbolicRegexInfo then_info, SymbolicRegexInfo else_info)
         {
             uint i = (cond_info._info | then_info._info | else_info._info) & ~IsAlwaysNullableMask;
 
