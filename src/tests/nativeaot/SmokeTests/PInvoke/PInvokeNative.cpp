@@ -19,6 +19,10 @@
 #define __stdcall
 #endif
 
+#if !defined(__cdecl)
+#define __cdecl
+#endif
+
 #if (_MSC_VER >= 1400)         // Check MSC version
 #pragma warning(push)
 #pragma warning(disable: 4996) // Disable deprecation
