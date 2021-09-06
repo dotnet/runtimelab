@@ -53,7 +53,7 @@ int main(int argc, char **argv)
     return (int)_lwp_self();
 }" HAVE_LWP_SELF)
 
-set(CMAKE_REQUIRED_LIBRARIES pthread)
+set(CMAKE_REQUIRED_LIBRARIES ${PTHREAD_LIBRARY})
 check_cxx_source_runs("
 #include <stdlib.h>
 #include <sched.h>
