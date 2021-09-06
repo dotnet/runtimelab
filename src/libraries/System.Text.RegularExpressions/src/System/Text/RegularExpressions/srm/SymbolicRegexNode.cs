@@ -468,31 +468,6 @@ namespace System.Text.RegularExpressions.SRM
         public S? Set => _set;
 
         /// <summary>
-        /// Returns the number of top-level concatenation nodes.
-        /// </summary>
-        private int _ConcatCount = -1;
-        public int ConcatCount
-        {
-            get
-            {
-                if (_ConcatCount == -1)
-                {
-                    if (_kind == SymbolicRegexKind.Concat)
-                    {
-                        Debug.Assert(_left is not null && _right is not null);
-                        _ConcatCount = _left.ConcatCount + _right.ConcatCount + 1;
-                    }
-                    else
-                    {
-                        _ConcatCount = 0;
-                    }
-                }
-
-                return _ConcatCount;
-            }
-        }
-
-        /// <summary>
         /// IfThenElse condition
         /// </summary>
         public SymbolicRegexNode<S>? IteCond => _iteCond;
@@ -527,172 +502,119 @@ namespace System.Text.RegularExpressions.SRM
             _alts = alts;
         }
 
-        internal SymbolicRegexNode<S> ConcatWithoutNormalizing(SymbolicRegexNode<S> next)
-        {
-            var concat = new SymbolicRegexNode<S>(_builder, SymbolicRegexKind.Concat, this, next, -1, -1, default, null, null)
+        internal SymbolicRegexNode<S> ConcatWithoutNormalizing(SymbolicRegexNode<S> next) =>
+            new SymbolicRegexNode<S>(_builder, SymbolicRegexKind.Concat, this, next, -1, -1, default, null, null)
             {
                 _info = SymbolicRegexInfo.Concat(_info, next._info)
             };
-            return concat;
-        }
 
         #region called only once, in the constructor of SymbolicRegexBuilder
 
-        internal static SymbolicRegexNode<S> MkFalse(SymbolicRegexBuilder<S> builder)
-        {
-            var f = new SymbolicRegexNode<S>(builder, SymbolicRegexKind.Singleton, null, null, -1, -1, builder._solver.False, null, null)
+        internal static SymbolicRegexNode<S> MkFalse(SymbolicRegexBuilder<S> builder) =>
+            new SymbolicRegexNode<S>(builder, SymbolicRegexKind.Singleton, null, null, -1, -1, builder._solver.False, null, null)
             {
                 _info = SymbolicRegexInfo.Mk()
             };
-            return f;
-        }
 
-        internal static SymbolicRegexNode<S> MkTrue(SymbolicRegexBuilder<S> builder)
-        {
-            var t = new SymbolicRegexNode<S>(builder, SymbolicRegexKind.Singleton, null, null, -1, -1, builder._solver.True, null, null)
+        internal static SymbolicRegexNode<S> MkTrue(SymbolicRegexBuilder<S> builder) =>
+            new SymbolicRegexNode<S>(builder, SymbolicRegexKind.Singleton, null, null, -1, -1, builder._solver.True, null, null)
             {
                 _info = SymbolicRegexInfo.Mk(containsSomeCharacter: true)
             };
-            return t;
-        }
 
-        internal static SymbolicRegexNode<S> MkNewline(SymbolicRegexBuilder<S> builder, S nl)
-        {
-            var node = new SymbolicRegexNode<S>(builder, SymbolicRegexKind.Singleton, null, null, -1, -1, nl, null, null)
+        internal static SymbolicRegexNode<S> MkNewline(SymbolicRegexBuilder<S> builder, S nl) =>
+            new SymbolicRegexNode<S>(builder, SymbolicRegexKind.Singleton, null, null, -1, -1, nl, null, null)
             {
                 _info = SymbolicRegexInfo.Mk()
             };
-            return node;
-        }
 
-        internal static SymbolicRegexNode<S> MkWatchDog(SymbolicRegexBuilder<S> builder, int length)
-        {
-            var node = new SymbolicRegexNode<S>(builder, SymbolicRegexKind.WatchDog, null, null, length, -1, default, null, null)
+        internal static SymbolicRegexNode<S> MkWatchDog(SymbolicRegexBuilder<S> builder, int length) =>
+            new SymbolicRegexNode<S>(builder, SymbolicRegexKind.WatchDog, null, null, length, -1, default, null, null)
             {
                 _info = SymbolicRegexInfo.Mk(isAlwaysNullable: true)
             };
-            return node;
-        }
 
-        internal static SymbolicRegexNode<S> MkEpsilon(SymbolicRegexBuilder<S> builder)
-        {
-            var node = new SymbolicRegexNode<S>(builder, SymbolicRegexKind.Epsilon, null, null, -1, -1, default, null, null)
+        internal static SymbolicRegexNode<S> MkEpsilon(SymbolicRegexBuilder<S> builder) =>
+            new SymbolicRegexNode<S>(builder, SymbolicRegexKind.Epsilon, null, null, -1, -1, default, null, null)
             {
                 _info = SymbolicRegexInfo.Mk(isAlwaysNullable: true)
             };
-            return node;
-        }
 
-        internal static SymbolicRegexNode<S> MkEagerEmptyLoop(SymbolicRegexBuilder<S> builder, SymbolicRegexNode<S> body)
-        {
-            var node = new SymbolicRegexNode<S>(builder, SymbolicRegexKind.Loop, body, null, 0, 0, default, null, null)
+        internal static SymbolicRegexNode<S> MkEagerEmptyLoop(SymbolicRegexBuilder<S> builder, SymbolicRegexNode<S> body) =>
+            new SymbolicRegexNode<S>(builder, SymbolicRegexKind.Loop, body, null, 0, 0, default, null, null)
             {
                 _info = SymbolicRegexInfo.Mk(isAlwaysNullable: true, isLazy: false)
             };
-            return node;
-        }
 
-        internal static SymbolicRegexNode<S> MkStartAnchor(SymbolicRegexBuilder<S> builder)
-        {
-            var node = new SymbolicRegexNode<S>(builder, SymbolicRegexKind.StartAnchor, null, null, -1, -1, default, null, null)
+        internal static SymbolicRegexNode<S> MkStartAnchor(SymbolicRegexBuilder<S> builder) =>
+            new SymbolicRegexNode<S>(builder, SymbolicRegexKind.StartAnchor, null, null, -1, -1, default, null, null)
             {
                 _info = SymbolicRegexInfo.Mk(startsWithLineAnchor: true, canBeNullable: true)
             };
-            return node;
-        }
 
-        internal static SymbolicRegexNode<S> MkEndAnchor(SymbolicRegexBuilder<S> builder)
-        {
-            var node = new SymbolicRegexNode<S>(builder, SymbolicRegexKind.EndAnchor, null, null, -1, -1, default, null, null)
+        internal static SymbolicRegexNode<S> MkEndAnchor(SymbolicRegexBuilder<S> builder) =>
+            new SymbolicRegexNode<S>(builder, SymbolicRegexKind.EndAnchor, null, null, -1, -1, default, null, null)
             {
                 _info = SymbolicRegexInfo.Mk(startsWithLineAnchor: true, canBeNullable: true)
             };
-            return node;
-        }
 
-        internal static SymbolicRegexNode<S> MkEndAnchorZ(SymbolicRegexBuilder<S> builder)
-        {
-            var node = new SymbolicRegexNode<S>(builder, SymbolicRegexKind.EndAnchorZ, null, null, -1, -1, default, null, null)
+        internal static SymbolicRegexNode<S> MkEndAnchorZ(SymbolicRegexBuilder<S> builder) =>
+            new SymbolicRegexNode<S>(builder, SymbolicRegexKind.EndAnchorZ, null, null, -1, -1, default, null, null)
             {
                 _info = SymbolicRegexInfo.Mk(startsWithLineAnchor: true, canBeNullable: true)
             };
-            return node;
-        }
 
-        internal static SymbolicRegexNode<S> MkEndAnchorZRev(SymbolicRegexBuilder<S> builder)
-        {
-            var node = new SymbolicRegexNode<S>(builder, SymbolicRegexKind.EndAnchorZRev, null, null, -1, -1, default, null, null)
+        internal static SymbolicRegexNode<S> MkEndAnchorZRev(SymbolicRegexBuilder<S> builder) =>
+            new SymbolicRegexNode<S>(builder, SymbolicRegexKind.EndAnchorZRev, null, null, -1, -1, default, null, null)
             {
                 _info = SymbolicRegexInfo.Mk(startsWithLineAnchor: true, canBeNullable: true)
             };
-            return node;
-        }
 
-        internal static SymbolicRegexNode<S> MkEolAnchor(SymbolicRegexBuilder<S> builder)
-        {
-            var node = new SymbolicRegexNode<S>(builder, SymbolicRegexKind.EOLAnchor, null, null, -1, -1, default, null, null)
+        internal static SymbolicRegexNode<S> MkEolAnchor(SymbolicRegexBuilder<S> builder) =>
+            new SymbolicRegexNode<S>(builder, SymbolicRegexKind.EOLAnchor, null, null, -1, -1, default, null, null)
             {
                 _info = SymbolicRegexInfo.Mk(startsWithLineAnchor: true, canBeNullable: true)
             };
-            return node;
-        }
 
-        internal static SymbolicRegexNode<S> MkBolAnchor(SymbolicRegexBuilder<S> builder)
-        {
-            var node = new SymbolicRegexNode<S>(builder, SymbolicRegexKind.BOLAnchor, null, null, -1, -1, default, null, null)
+        internal static SymbolicRegexNode<S> MkBolAnchor(SymbolicRegexBuilder<S> builder) =>
+            new SymbolicRegexNode<S>(builder, SymbolicRegexKind.BOLAnchor, null, null, -1, -1, default, null, null)
             {
                 _info = SymbolicRegexInfo.Mk(startsWithLineAnchor: true, canBeNullable: true)
             };
-            return node;
-        }
 
-        internal static SymbolicRegexNode<S> MkWBAnchor(SymbolicRegexBuilder<S> builder)
-        {
-            var node = new SymbolicRegexNode<S>(builder, SymbolicRegexKind.WBAnchor, null, null, -1, -1, default, null, null)
+        internal static SymbolicRegexNode<S> MkWBAnchor(SymbolicRegexBuilder<S> builder) =>
+            new SymbolicRegexNode<S>(builder, SymbolicRegexKind.WBAnchor, null, null, -1, -1, default, null, null)
             {
                 _info = SymbolicRegexInfo.Mk(startsWithBoundaryAnchor: true, canBeNullable: true)
             };
-            return node;
-        }
 
-        internal static SymbolicRegexNode<S> MkNWBAnchor(SymbolicRegexBuilder<S> builder)
-        {
-            var node = new SymbolicRegexNode<S>(builder, SymbolicRegexKind.NWBAnchor, null, null, -1, -1, default, null, null)
+        internal static SymbolicRegexNode<S> MkNWBAnchor(SymbolicRegexBuilder<S> builder) =>
+            new SymbolicRegexNode<S>(builder, SymbolicRegexKind.NWBAnchor, null, null, -1, -1, default, null, null)
             {
                 _info = SymbolicRegexInfo.Mk(startsWithBoundaryAnchor: true, canBeNullable: true)
             };
-            return node;
-        }
 
-        internal static SymbolicRegexNode<S> MkDotStar(SymbolicRegexBuilder<S> builder, SymbolicRegexNode<S> body)
-        {
-            var node = new SymbolicRegexNode<S>(builder, SymbolicRegexKind.Loop, body, null, 0, int.MaxValue, default, null, null)
+        internal static SymbolicRegexNode<S> MkDotStar(SymbolicRegexBuilder<S> builder, SymbolicRegexNode<S> body) =>
+            new SymbolicRegexNode<S>(builder, SymbolicRegexKind.Loop, body, null, 0, int.MaxValue, default, null, null)
             {
                 _info = SymbolicRegexInfo.Loop(body._info, 0, false)
             };
-            return node;
-        }
 
         #endregion
 
-        internal static SymbolicRegexNode<S> MkSingleton(SymbolicRegexBuilder<S> builder, S set)
-        {
-            var node = new SymbolicRegexNode<S>(builder, SymbolicRegexKind.Singleton, null, null, -1, -1, set, null, null)
+        internal static SymbolicRegexNode<S> MkSingleton(SymbolicRegexBuilder<S> builder, S set) =>
+            new SymbolicRegexNode<S>(builder, SymbolicRegexKind.Singleton, null, null, -1, -1, set, null, null)
             {
                 _info = SymbolicRegexInfo.Mk(containsSomeCharacter: !set.Equals(builder._solver.False))
             };
-            return node;
-        }
 
         internal static SymbolicRegexNode<S> MkLoop(SymbolicRegexBuilder<S> builder, SymbolicRegexNode<S> body, int lower, int upper, bool isLazy)
         {
             Debug.Assert(lower >= 0 && lower <= upper);
-
-            var loop = new SymbolicRegexNode<S>(builder, SymbolicRegexKind.Loop, body, null, lower, upper, default, null, null)
+            return new SymbolicRegexNode<S>(builder, SymbolicRegexKind.Loop, body, null, lower, upper, default, null, null)
             {
                 _info = SymbolicRegexInfo.Loop(body._info, lower, isLazy)
             };
-            return loop;
         }
 
         internal static SymbolicRegexNode<S> MkOr(SymbolicRegexBuilder<S> builder, params SymbolicRegexNode<S>[] choices)

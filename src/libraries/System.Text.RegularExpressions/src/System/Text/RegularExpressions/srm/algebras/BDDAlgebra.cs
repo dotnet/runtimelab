@@ -15,7 +15,10 @@ namespace System.Text.RegularExpressions.SRM
     /// </summary>
     internal enum BoolOp
     {
-        OR, AND, XOR, NOT
+        Or,
+        And,
+        Xor,
+        Not
     }
 
     /// <summary>
@@ -60,13 +63,10 @@ namespace System.Text.RegularExpressions.SRM
         /// Treats the arguments as if they are unordered.
         /// Orders left and right by hashcode in the constructed key.
         /// </summary>
-        private static BoolOpKey CreateBoolOpKey(BoolOp op, BDD left, BDD right)
-        {
-            if (left.GetHashCode() <= right.GetHashCode())
-                return new BoolOpKey(op, left, right);
-
-            return new BoolOpKey(op, right, left);
-        }
+        private static BoolOpKey CreateBoolOpKey(BoolOp op, BDD left, BDD right) =>
+            left.GetHashCode() <= right.GetHashCode() ?
+                new BoolOpKey(op, left, right) :
+                new BoolOpKey(op, right, left);
 
         /// <summary>
         /// Create a BDD with given ordinal and given one and zero child.
@@ -105,7 +105,7 @@ namespace System.Text.RegularExpressions.SRM
             if (a == b)
                 return a;
 
-            BoolOpKey key = CreateBoolOpKey(BoolOp.OR, a, b);
+            BoolOpKey key = CreateBoolOpKey(BoolOp.Or, a, b);
             return _binOpCache.TryGetValue(key, out BDD? res) ?
                 res :
                 CreateBoolOP_lock(key);
@@ -128,7 +128,7 @@ namespace System.Text.RegularExpressions.SRM
             if (a == b)
                 return a;
 
-            BoolOpKey key = CreateBoolOpKey(BoolOp.AND, a, b);
+            BoolOpKey key = CreateBoolOpKey(BoolOp.And, a, b);
             return _binOpCache.TryGetValue(key, out BDD? res) ?
                 res :
                 CreateBoolOP_lock(key);
@@ -141,7 +141,7 @@ namespace System.Text.RegularExpressions.SRM
             a == False ? True :
             a == True ? False :
             _notCache.TryGetValue(a, out BDD? neg) ? neg :
-            CreateBoolOP_lock(new BoolOpKey(BoolOp.NOT, a, null));
+            CreateBoolOP_lock(new BoolOpKey(BoolOp.Not, a, null));
 
         /// <summary>
         /// Apply the operation in the key in a thread safe manner.
@@ -158,7 +158,7 @@ namespace System.Text.RegularExpressions.SRM
                 BDD? b = key.Item3;
                 BDD res;
 
-                if (op == BoolOp.NOT)
+                if (op == BoolOp.Not)
                 {
                     if (a.IsLeaf)
                     {
@@ -225,7 +225,7 @@ namespace System.Text.RegularExpressions.SRM
             #region the cases when one of a or b is True or False or when a == b
             switch (op)
             {
-                case BoolOp.OR:
+                case BoolOp.Or:
                     if (a == False)
                         return b;
                     if (b == False)
@@ -236,7 +236,7 @@ namespace System.Text.RegularExpressions.SRM
                         return a;
                     break;
 
-                case BoolOp.AND:
+                case BoolOp.And:
                     if (a == True)
                         return b;
                     if (b == True)
@@ -246,7 +246,7 @@ namespace System.Text.RegularExpressions.SRM
                     if (a == b)
                         return a;
                     break;
-                case BoolOp.XOR:
+                case BoolOp.Xor:
                     if (a == False)
                         return b;
                     if (b == False)
@@ -316,7 +316,7 @@ namespace System.Text.RegularExpressions.SRM
                 return neg;
 
             neg = a.IsLeaf ?
-                GetOrCreateBDD(CombineTerminals(BoolOp.NOT, a.Ordinal, 0), null, null) : // multi-terminal case
+                GetOrCreateBDD(CombineTerminals(BoolOp.Not, a.Ordinal, 0), null, null) : // multi-terminal case
                 GetOrCreateBDD(a.Ordinal, CreateNot_rec(a.One), CreateNot_rec(a.Zero));
             _notCache[a] = neg;
             return neg;
@@ -399,7 +399,7 @@ namespace System.Text.RegularExpressions.SRM
             if (a == b)
                 return False;
 
-            BoolOpKey key = CreateBoolOpKey(BoolOp.XOR, a, b);
+            BoolOpKey key = CreateBoolOpKey(BoolOp.Xor, a, b);
             return _binOpCache.TryGetValue(key, out BDD? res) ?
                 res :
                 CreateBoolOP_lock(key);

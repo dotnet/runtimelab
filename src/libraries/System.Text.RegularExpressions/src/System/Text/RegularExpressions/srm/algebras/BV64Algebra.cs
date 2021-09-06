@@ -108,9 +108,7 @@ namespace System.Text.RegularExpressions.SRM
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ulong CharConstraint(char c, bool caseInsensitive = false, string? culture = null)
         {
-            if (caseInsensitive)
-                throw new NotImplementedException(nameof(CharConstraint));
-
+            Debug.Assert(!caseInsensitive);
             return ((ulong)1) << _classifier.Find(c);
         }
 

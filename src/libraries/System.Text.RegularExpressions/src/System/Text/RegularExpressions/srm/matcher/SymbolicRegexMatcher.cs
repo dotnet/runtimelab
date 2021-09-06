@@ -557,12 +557,10 @@ namespace System.Text.RegularExpressions.SRM
                 uint nextKind = GetCharKind(input, startat);
 
                 bool emptyMatchExists = _pattern.IsNullableFor(CharKind.Context(prevKind, nextKind));
-                if (emptyMatchExists)
-                {
-                    return quick ? null : new Match(startat, 0);
-                }
-
-                return Match.NoMatch;
+                return
+                    !emptyMatchExists ? Match.NoMatch :
+                    quick ? null :
+                    new Match(startat, 0);
             }
 
             // Find the first accepting state. Initial start position in the input is i == 0.
