@@ -61,7 +61,7 @@ namespace System.Text.RegularExpressions.SRM
 
         public bool AreEquivalent(ulong predicate1, ulong predicate2) => predicate1 == predicate2;
 
-        public IEnumerable<Tuple<bool[], ulong>> GenerateMinterms(params ulong[] constraints) => _mintermGenerator.GenerateMinterms(constraints);
+        public IEnumerable<(bool[], ulong)> GenerateMinterms(params ulong[] constraints) => _mintermGenerator.GenerateMinterms(constraints);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool IsSatisfiable(ulong predicate) => predicate != _False;

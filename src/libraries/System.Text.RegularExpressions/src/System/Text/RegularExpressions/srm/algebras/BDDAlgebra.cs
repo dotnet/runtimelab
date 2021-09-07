@@ -478,8 +478,7 @@ namespace System.Text.RegularExpressions.SRM
         /// <returns>
         /// tuples of booleans indicating which of the input sets are true in the minterm and the BDD for the minterm
         /// </returns>
-        public IEnumerable<Tuple<bool[], BDD>> GenerateMinterms(params BDD[] sets) => _mintermGen.GenerateMinterms(sets);
-
+        public IEnumerable<(bool[], BDD)> GenerateMinterms(params BDD[] sets) => _mintermGen.GenerateMinterms(sets);
 
         /// <summary>
         /// Make a set containing all integers whose bits up to maxBit equal n.

@@ -39,11 +39,11 @@ namespace System.Text.RegularExpressions.SRM
         /// </summary>
         /// <param name="preds">array of predicates</param>
         /// <returns>all minterms of the given predicate sequence</returns>
-        public IEnumerable<Tuple<bool[], TPredicate>> GenerateMinterms(params TPredicate[] preds)
+        public IEnumerable<(bool[], TPredicate)> GenerateMinterms(params TPredicate[] preds)
         {
             if (preds.Length == 0)
             {
-                yield return new Tuple<bool[], TPredicate>(Array.Empty<bool>(), _algebra.True);
+                yield return (Array.Empty<bool>(), _algebra.True);
                 yield break;
             }
 
@@ -95,7 +95,7 @@ namespace System.Text.RegularExpressions.SRM
                     }
                 }
 
-                yield return new Tuple<bool[], TPredicate>(characteristic, leaf._pred);
+                yield return (characteristic, leaf._pred);
             }
         }
 

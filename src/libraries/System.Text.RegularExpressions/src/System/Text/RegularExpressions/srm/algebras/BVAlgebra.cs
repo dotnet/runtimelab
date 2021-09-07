@@ -132,7 +132,7 @@ namespace System.Text.RegularExpressions.SRM
         public BV True => _ones;
         public CharSetSolver CharSetProvider => throw new NotSupportedException();
         public bool AreEquivalent(BV predicate1, BV predicate2) => predicate1.Equals(predicate2);
-        public IEnumerable<Tuple<bool[], BV>> GenerateMinterms(params BV[] constraints) => _mintermGenerator.GenerateMinterms(constraints);
+        public IEnumerable<(bool[], BV)> GenerateMinterms(params BV[] constraints) => _mintermGenerator.GenerateMinterms(constraints);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool IsSatisfiable(BV predicate) => !predicate.Equals(_zero);

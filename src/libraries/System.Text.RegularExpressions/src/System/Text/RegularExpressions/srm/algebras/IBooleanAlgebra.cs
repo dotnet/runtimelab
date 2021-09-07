@@ -86,7 +86,7 @@ namespace System.Text.RegularExpressions.SRM
         /// </summary>
         /// <param name="constraints">array of constraints</param>
         /// <returns>Booolean combinations that are satisfiable</returns>
-        IEnumerable<Tuple<bool[], T>> GenerateMinterms(params T[] constraints);
+        IEnumerable<(bool[], T)> GenerateMinterms(params T[] constraints);
 
         /// <summary>
         /// Serialize the predicate as a nonempty string only using characters in the Base64 subset [0-9a-zA-Z/+.]
