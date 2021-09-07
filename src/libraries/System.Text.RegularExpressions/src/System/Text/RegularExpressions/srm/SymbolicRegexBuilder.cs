@@ -73,8 +73,8 @@ namespace System.Text.RegularExpressions.SRM
             _bolAnchor = SymbolicRegexNode<TElement>.MkBolAnchor(this);
             _wbAnchor = SymbolicRegexNode<TElement>.MkWBAnchor(this);
             _nwbAnchor = SymbolicRegexNode<TElement>.MkNWBAnchor(this);
-            _emptySet = SymbolicRegexSet<TElement>.MkEmptySet(this);
-            _fullSet = SymbolicRegexSet<TElement>.MkFullSet(this);
+            _emptySet = SymbolicRegexSet<TElement>.CreateEmpty(this);
+            _fullSet = SymbolicRegexSet<TElement>.CreateFull(this);
             _eagerEmptyLoop = SymbolicRegexNode<TElement>.MkEagerEmptyLoop(this, _epsilon);
 
             // atoms = null if partition of the solver is undefined and returned as null
@@ -122,8 +122,7 @@ namespace System.Text.RegularExpressions.SRM
         /// </summary>
         internal SymbolicRegexNode<TElement> MkOr(params SymbolicRegexNode<TElement>[] regexes)
         {
-            if (regexes.Length < 1)
-                throw new AutomataException(AutomataExceptionKind.InvalidArgument);
+            Debug.Assert(regexes.Length != 0);
 
             SymbolicRegexNode<TElement> sr = regexes[regexes.Length - 1];
 
@@ -142,8 +141,7 @@ namespace System.Text.RegularExpressions.SRM
         /// </summary>
         internal SymbolicRegexNode<TElement> MkAnd(params SymbolicRegexNode<TElement>[] regexes)
         {
-            if (regexes.Length < 1)
-                throw new AutomataException(AutomataExceptionKind.InvalidArgument);
+            Debug.Assert(regexes.Length != 0);
 
             SymbolicRegexNode<TElement> sr = regexes[regexes.Length - 1];
 
@@ -163,7 +161,7 @@ namespace System.Text.RegularExpressions.SRM
         internal SymbolicRegexNode<TElement> MkOr(SymbolicRegexSet<TElement> regexset) =>
             regexset.IsNothing ? _nothing :
             regexset.IsEverything ? _dotStar :
-            regexset.IsSigleton ? regexset.GetTheElement() :
+            regexset.IsSingleton ? regexset.GetSingletonElement() :
             SymbolicRegexNode<TElement>.MkOr(this, regexset);
 
         internal SymbolicRegexNode<TElement> MkOr2(SymbolicRegexNode<TElement> x, SymbolicRegexNode<TElement> y) =>
@@ -185,7 +183,7 @@ namespace System.Text.RegularExpressions.SRM
         internal SymbolicRegexNode<TElement> MkAnd(SymbolicRegexSet<TElement> regexset) =>
             regexset.IsNothing ? _nothing :
             regexset.IsEverything ? _dotStar :
-            regexset.IsSigleton ? regexset.GetTheElement() :
+            regexset.IsSingleton ? regexset.GetSingletonElement() :
             SymbolicRegexNode<TElement>.MkAnd(this, regexset);
 
         /// <summary>
@@ -370,12 +368,14 @@ namespace System.Text.RegularExpressions.SRM
                 case SymbolicRegexKind.Or:
                     {
                         Debug.Assert(sr._alts is not null);
-                        var alts = new List<SymbolicRegexNode<TElement>>();
-                        foreach (SymbolicRegexNode<TElement> elem in sr._alts)
+                        var alts = new SymbolicRegexNode<TElement>[sr._alts.Count];
+                        int i = 0;
+                        foreach (SymbolicRegexNode<TElement> e in sr._alts)
                         {
-                            alts.Add(NormalizeGeneralLoops(elem));
+                            alts[i++] = NormalizeGeneralLoops(e);
                         }
-                        SymbolicRegexNode<TElement> or = MkOr(alts.ToArray());
+                        Debug.Assert(i == alts.Length);
+                        SymbolicRegexNode<TElement> or = MkOr(alts);
                         return or;
                     }
 

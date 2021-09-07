@@ -49,16 +49,18 @@ namespace System.Text.RegularExpressions.SRM
 
             int fromBits = toBits - newBits;
 
+            // Iterate through all combinations of the new bits
             Tuple<uint, uint>[] result = new Tuple<uint, uint>[(1 << newBits) * ranges.Length];
-            int j = 0;
-            // iterate through all combinations of the new bits
+            int resultPos = 0;
             for (uint i = 0; i < (1 << newBits); i++)
             {
-                // shift the prefix to be past the existing range of bits
+                // Shift the prefix to be past the existing range of bits, and
+                // generate each range with this prefix added.
                 uint prefix = i << fromBits;
-                // generate each range with this prefix added
                 foreach (Tuple<uint, uint> range in ranges)
-                    result[j++] = new Tuple<uint, uint>(range.Item1 | prefix, range.Item2 | prefix);
+                {
+                    result[resultPos++] = new Tuple<uint, uint>(range.Item1 | prefix, range.Item2 | prefix);
+                }
             }
 
             // lifted ranges can wrap around like this [0...][...2^fromBits-1][2^fromBits...][...2^(fromBits+1)-1]

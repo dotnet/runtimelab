@@ -93,6 +93,7 @@ namespace System.Text.RegularExpressions.SRM
             {
                 if (One is null)
                 {
+                    Debug.Assert(Zero is null);
                     return true;
                 }
 
@@ -147,12 +148,10 @@ namespace System.Text.RegularExpressions.SRM
         public ulong GetMin()
         {
             BDD set = this;
+            Debug.Assert(!set.IsEmpty);
 
             if (set.IsFull)
                 return 0;
-
-            if (set.IsEmpty)
-                throw new AutomataException(AutomataExceptionKind.SetIsEmpty);
 
             // starting from all 0, bits will be flipped to 1 as necessary
             ulong res = 0;
@@ -553,23 +552,22 @@ namespace System.Text.RegularExpressions.SRM
         public int CompareTo(object? obj)
         {
             if (obj is not BDD bdd)
-                return -1;
-
-            if (IsLeaf)
             {
-                if (bdd.IsLeaf)
-                {
-                    return
-                        Ordinal < bdd.Ordinal ? -1 :
-                        Ordinal == bdd.Ordinal ? 0 :
-                        1;
-                }
-
                 return -1;
             }
 
+            if (IsLeaf)
+            {
+                return
+                    !bdd.IsLeaf || Ordinal < bdd.Ordinal ? -1 :
+                    Ordinal == bdd.Ordinal ? 0 :
+                    1;
+            }
+
             if (bdd.IsLeaf)
+            {
                 return 1;
+            }
 
             ulong min = GetMin();
             ulong bdd_min = bdd.GetMin();

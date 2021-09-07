@@ -20,7 +20,7 @@ namespace System.Text.RegularExpressions.SRM
         /// </summary>
         private readonly BDD[] _charPredTable = new BDD[0x10000];
         private readonly Unicode.IgnoreCaseTransformer _ignoreCase;
-        internal BDD _nonascii;
+        internal readonly BDD _nonascii;
 
         /// <summary>
         /// Construct the solver.
@@ -53,15 +53,9 @@ namespace System.Text.RegularExpressions.SRM
         /// Make a CharSet from all the characters in the range from m to n.
         /// Returns the empty set if n is less than m
         /// </summary>
-        public BDD CreateCharSetFromRange(char m, char n)
-        {
-            if (m == n)
-            {
-                return CharConstraint(m);
-            }
-
-            return CreateSetFromRange(m, n, 15);
-        }
+        public BDD CreateCharSetFromRange(char m, char n) =>
+            m == n ? CharConstraint(m) :
+            CreateSetFromRange(m, n, 15);
 
         /// <summary>
         /// Make a character set that is the union of the character sets of the given ranges.

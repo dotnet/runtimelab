@@ -3,102 +3,28 @@
 
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using System.Net;
 
 namespace System.Text.RegularExpressions.SRM
 {
-    internal static class CharKind
-    {
-        /// <summary>
-        /// Start or Stop of input (bit 0 is 1)
-        /// </summary>
-        internal const uint StartStop = 1;
-        /// <summary>
-        /// new line character (\n) (bit 1 is 1)
-        /// </summary>
-        internal const uint Newline = 2;
-        /// <summary>
-        /// Last \n or first \n in reverse mode (both Newline and StartStop bits are 1)
-        /// </summary>
-        internal const uint NewLineS = 3;
-        /// <summary>
-        /// word letter (bit 2 is 1)
-        /// </summary>
-        internal const uint WordLetter = 4;
-
-        /// <summary>
-        /// Prettyprints the character kind
-        /// </summary>
-        internal static string PrettyPrint(uint kind) => kind switch
-        {
-            StartStop => @"\A",
-            WordLetter => @"\w",
-            Newline => @"\n",
-            NewLineS => @"\A\n",
-            _ => "",
-        };
-
-        /// <summary>
-        /// Gets the previous character kind from a context
-        /// </summary>
-        internal static uint Prev(uint context) => context & 0x7;
-
-        /// <summary>
-        /// Gets the next character kind from a context
-        /// </summary>
-        internal static uint Next(uint context) => context >> 3;
-
-        /// <summary>
-        /// Creates the context of the previous and the next character kinds.
-        /// </summary>
-        internal static uint Context(uint prevKind, uint nextKind) => (nextKind << 3) | prevKind;
-
-        internal static string DescribeContext(uint context)
-        {
-            string prev = DescribePrev(Prev(context));
-            string next = DescribeNext(Next(context));
-            return next == string.Empty ?
-                prev :
-                $"{prev}/{next}";
-        }
-
-        internal static string DescribePrev(uint i) =>
-            i == WordLetter ? @"\w" :
-            i == StartStop ? @"\A" :
-            i == Newline ? @"\n" :
-            i == NewLineS ? @"\A\n" :
-            string.Empty;
-
-        internal static string DescribeNext(uint i) =>
-            i == WordLetter ? @"\w" :
-            i == StartStop ? @"\z" :
-            i == Newline ? @"\n" :
-            i == NewLineS ? @"\n\z" :
-            string.Empty;
-    }
-
-    /// <summary>
-    /// Captures a state of a DFA explored during matching.
-    /// </summary>
+    /// <summary>Captures a state of a DFA explored during matching.</summary>
     internal sealed class State<T> where T : notnull
     {
         internal int Id { get; set; }
+
         internal bool IsInitialState { get; set; }
+
         internal uint PrevCharKind { get; private set; }
+
         internal SymbolicRegexNode<T> Node { get; private set; }
 
-        /// <summary>
-        /// State is lazy
-        /// </summary>
+        /// <summary>State is lazy</summary>
         internal bool IsLazy => Node._info.IsLazy;
 
-        /// <summary>
-        /// This is a deadend state
-        /// </summary>
+        /// <summary>This is a deadend state</summary>
         internal bool IsDeadend => Node.IsNothing;
 
-        /// <summary>
-        /// The node must be nullable here
-        /// </summary>
+        /// <summary>The node must be nullable here</summary>
         internal int WatchDog
         {
             get
@@ -118,14 +44,10 @@ namespace System.Text.RegularExpressions.SRM
             }
         }
 
-        /// <summary>
-        /// If true then the state is a dead-end, rejects all inputs.
-        /// </summary>
+        /// <summary>If true then the state is a dead-end, rejects all inputs.</summary>
         internal bool IsNothing => Node.IsNothing;
 
-        /// <summary>
-        /// If true then state starts with a ^ or $ or \A or \z or \Z
-        /// </summary>
+        /// <summary>If true then state starts with a ^ or $ or \A or \z or \Z</summary>
         internal bool StartsWithLineAnchor => Node._info.StartsWithLineAnchor;
 
         internal State(SymbolicRegexNode<T> node, uint prevCharKind) : base()
@@ -154,10 +76,9 @@ namespace System.Text.RegularExpressions.SRM
             }
             else if (NLpred.Equals(atom))
             {
-                //if the previous state was the start state, mark this as the very FIRST \n
-                //essentially, this looks the same as the very last \n and
-                //is used to nullify rev(\Z) in the conext of a reversed automaton
-                //either \Z or rev(\Z) is ever possible as an anchor
+                // If the previous state was the start state, mark this as the very FIRST \n.
+                // Essentially, this looks the same as the very last \n and is used to nullify
+                // rev(\Z) in the conext of a reversed automaton.
                 nextCharKind = PrevCharKind == CharKind.StartStop ?
                     CharKind.NewLineS :
                     CharKind.Newline;
@@ -167,10 +88,10 @@ namespace System.Text.RegularExpressions.SRM
                 nextCharKind = CharKind.WordLetter;
             }
 
-            // combined character context
+            // Combined character context
             uint context = CharKind.Context(PrevCharKind, nextCharKind);
 
-            // compute the derivative of the node for the given context
+            // Compute the derivative of the node for the given context
             SymbolicRegexNode<T> derivative = Node.MkDerivative(atom, context);
 
             // nextCharKind will be the PrevCharKind of the target state
@@ -182,16 +103,9 @@ namespace System.Text.RegularExpressions.SRM
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal bool IsNullable(uint nextCharKind)
         {
-            ValidateCharKind(nextCharKind);
+            Debug.Assert(nextCharKind is 0 or CharKind.StartStop or CharKind.Newline or CharKind.WordLetter or CharKind.NewLineS);
             uint context = CharKind.Context(PrevCharKind, nextCharKind);
             return Node.IsNullableFor(context);
-        }
-
-        [Conditional("DEBUG")]
-        private static void ValidateCharKind(uint x)
-        {
-            if (x != 0 && x != CharKind.StartStop && x != CharKind.Newline && x != CharKind.WordLetter && x != CharKind.NewLineS)
-                throw new AutomataException(AutomataExceptionKind.InternalError_SymbolicRegex);
         }
 
         public override bool Equals(object? obj) =>
@@ -203,19 +117,17 @@ namespace System.Text.RegularExpressions.SRM
             PrevCharKind == 0 ? Node.ToString() :
              $"({CharKind.DescribePrev(PrevCharKind)},{Node})";
 
-        internal string Description => ToString();
-
         internal string DgmlView
         {
             get
             {
-                string info = CharKind.PrettyPrint(PrevCharKind);
+                string info = CharKind.DescribePrev(PrevCharKind);
                 if (info != string.Empty)
                 {
                     info = $"Previous: {info}&#13;";
                 }
 
-                string deriv = HTMLEncodeChars(Node.ToString());
+                string deriv = WebUtility.HtmlEncode(Node.ToString());
                 if (deriv == string.Empty)
                 {
                     deriv = "()";
@@ -224,7 +136,5 @@ namespace System.Text.RegularExpressions.SRM
                 return $"{info}{deriv}";
             }
         }
-
-        private static string HTMLEncodeChars(string s) => s.Replace("&", "&amp;").Replace("\"", "&quot;").Replace("<", "&lt;").Replace(">", "&gt;");
     }
 }

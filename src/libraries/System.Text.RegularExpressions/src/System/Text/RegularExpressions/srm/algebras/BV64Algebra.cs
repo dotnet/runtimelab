@@ -61,7 +61,7 @@ namespace System.Text.RegularExpressions.SRM
 
         public bool AreEquivalent(ulong predicate1, ulong predicate2) => predicate1 == predicate2;
 
-        public IEnumerable<Tuple<bool[], ulong>> GenerateMinterms(params ulong[] constraints) => _mintermGenerator.GenerateMinterms(constraints);
+        public IEnumerable<(bool[], ulong)> GenerateMinterms(params ulong[] constraints) => _mintermGenerator.GenerateMinterms(constraints);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool IsSatisfiable(ulong predicate) => predicate != _False;
@@ -108,9 +108,7 @@ namespace System.Text.RegularExpressions.SRM
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ulong CharConstraint(char c, bool caseInsensitive = false, string? culture = null)
         {
-            if (caseInsensitive)
-                throw new NotImplementedException(nameof(CharConstraint));
-
+            Debug.Assert(!caseInsensitive);
             return ((ulong)1) << _classifier.Find(c);
         }
 
