@@ -1312,5 +1312,166 @@ namespace System.Text.RegularExpressions.Tests
             }
             Assert.Empty(ambiguous);
         }
+
+        [Theory]
+        [InlineData(RegexOptions.None)]
+        [InlineData(RegexOptions.Compiled)]
+        [InlineData(RegexHelpers.RegexOptionNonBacktracking)]
+        public void StressTestDeepNestingOfConcat(RegexOptions options)
+        {
+            if (PlatformDetection.IsNetFramework && options == RegexHelpers.RegexOptionNonBacktracking)
+            {
+                return;
+            }
+
+            string pattern = string.Concat(Enumerable.Repeat("([a-z]", 1000).Concat(Enumerable.Repeat(")", 1000)));
+            string input = string.Concat(Enumerable.Repeat("abcde", 200));
+            var re = new Regex(pattern, options);
+            Assert.True(re.IsMatch(input));
+        }
+
+        public static IEnumerable<object[]> AllMatches_TestData()
+        {
+            foreach (RegexOptions options in new[] { RegexHelpers.RegexOptionNonBacktracking, RegexOptions.None, RegexOptions.Compiled })
+            {
+                if (PlatformDetection.IsNetFramework && options == RegexHelpers.RegexOptionNonBacktracking)
+                {
+                    yield break;
+                }
+
+                // Basic
+                yield return new object[] { @"a+", options, "xxxxxaaaaxxxxxxxxxxaaaaaa", new (int, int, string)[] { (5, 4, "aaaa"), (19, 6, "aaaaaa") } };
+                yield return new object[] { @"(...)+", options, "abcd\nfghijklm", new (int, int, string)[] { (0, 3, "abc"), (5, 6, "fghijk") } };
+                yield return new object[] { @"something", options, "nothing", null };
+                yield return new object[] { "(a|ba)c", options, "bac", new (int, int, string)[] { (0, 3, "bac") } };
+                yield return new object[] { "(a|ba)c", options, "ac", new (int, int, string)[] { (0, 2, "ac") } };
+                yield return new object[] { "(a|ba)c", options, "baacd", new (int, int, string)[] { (2, 2, "ac") } };
+                yield return new object[] { "\n", options, "\n", new (int, int, string)[] { (0, 1, "\n") } };
+                yield return new object[] { "[^a]", options, "\n", new (int, int, string)[] { (0, 1, "\n") } };
+
+                // In Singleline mode . includes all characters, also \n
+                yield return new object[] { @"(...)+", options | RegexOptions.Singleline, "abcd\nfghijklm", new (int, int, string)[] { (0, 12, "abcd\nfghijkl") } };
+
+                // Ignoring case
+                yield return new object[] { @"a+", options | RegexOptions.IgnoreCase, "xxxxxaAAaxxxxxxxxxxaaaaAa", new (int, int, string)[] { (5, 4, "aAAa"), (19, 6, "aaaaAa") } };
+
+                // NonASCII characters
+                yield return new object[] { @"(\uFFFE\uFFFF)+", options, "=====\uFFFE\uFFFF\uFFFE\uFFFF\uFFFE====",
+                    new (int, int, string)[] { (5, 4, "\uFFFE\uFFFF\uFFFE\uFFFF") } };
+                yield return new object[] { @"\d\s\w+", options, "=====1\v\u212A4==========1\ta\u0130Aa",
+                    new (int, int, string)[] { (5, 4, "1\v\u212A4"), (19, 6, "1\ta\u0130Aa") } };
+                yield return new object[] { @"\u221E|\u2713", options, "infinity \u221E and checkmark \u2713 are contained here",
+                    new (int, int, string)[] { (9, 1, "\u221E"), (25, 1, "\u2713") } };
+
+
+                // Whitespace
+                yield return new object[] { @"\s+", options, "===== \n\t\v\r ====", new (int, int, string)[] { (5, 6, " \n\t\v\r ") } };
+
+                // Unicode character classes, the input string uses the first element of each character class 
+                yield return new object[] {
+                        @"\p{Lu}\p{Ll}\p{Lt}\p{Lm}\p{Lo}\p{Mn}\p{Mc}\p{Me}\p{Nd}\p{Nl}", options,
+                        "=====Aa\u01C5\u02B0\u01BB\u0300\u0903\u04880\u16EE===",
+                        new (int, int, string)[] { (5, 10, "Aa\u01C5\u02B0\u01BB\u0300\u0903\u04880\u16EE") }
+                    };
+                yield return new object[] {
+                        @"\p{No}\p{Zs}\p{Zl}\p{Zp}\p{Cc}\p{Cf}\p{Cs}\p{Co}\p{Pc}\p{Pd}",
+                        options,
+                        "=====\u00B2 \u2028\u2029\0\u0600\uD800\uE000_\u002D===",
+                        new (int, int, string)[] { (5, 10, "\u00B2 \u2028\u2029\0\u0600\uD800\uE000_\u002D") }
+                    };
+                yield return new object[] {
+                        @"\p{Ps}\p{Pe}\p{Pi}\p{Pf}\p{Po}\p{Sm}\p{Sc}\p{Sk}\p{So}\p{Cn}",
+                        options,
+                        "=====()\xAB\xBB!+$^\xA6\u0378===",
+                        new (int, int, string)[] { (5, 10, "()\xAB\xBB!+$^\xA6\u0378") }
+                    };
+                yield return new object[] {
+                        @"\p{Lu}\p{Ll}\p{Lt}\p{Lm}\p{Lo}\p{Mn}\p{Mc}\p{Me}\p{Nd}\p{Nl}\p{No}\p{Zs}\p{Zl}\p{Zp}\p{Cc}\p{Cf}\p{Cs}\p{Co}\p{Pc}\p{Pd}\p{Ps}\p{Pe}\p{Pi}\p{Pf}\p{Po}\p{Sm}\p{Sc}\p{Sk}\p{So}\p{Cn}",
+                        options,
+                        "=====Aa\u01C5\u02B0\u01BB\u0300\u0903\u04880\u16EE\xB2 \u2028\u2029\0\u0600\uD800\uE000_\x2D()\xAB\xBB!+$^\xA6\u0378===",
+                        new (int, int, string)[] { (5, 30, "Aa\u01C5\u02B0\u01BB\u0300\u0903\u04880\u16EE\xB2 \u2028\u2029\0\u0600\uD800\uE000_\x2D()\xAB\xBB!+$^\xA6\u0378") }
+                    };
+
+                // Case insensitive cases by using ?i and some non-ASCII characters like Kelvin sign and applying ?i over negated character classes
+                yield return new object[] { "(?i:[a-d’]+k*)", options, "xyxaBıc\u212AKAyy", new (int, int, string)[] { (3, 6, "aBıc\u212AK"), (9, 1, "A") } };
+                yield return new object[] { "(?i:[a-d]+)", options, "xyxaBcyy", new (int, int, string)[] { (3, 3, "aBc") } };
+                yield return new object[] { "(?i:[\0-@B-\uFFFF]+)", options, "xaAaAy", new (int, int, string)[] { (0, 6, "xaAaAy") } }; // this is the same as .+
+                yield return new object[] { "(?i:[\0-ac-\uFFFF])", options, "b", new (int, int, string)[] { (0, 1, "b") } };
+                yield return new object[] { "(?i:[\0-PR-\uFFFF])", options, "Q", new (int, int, string)[] { (0, 1, "Q") } };
+                yield return new object[] { "(?i:[\0-pr-\uFFFF])", options, "q", new (int, int, string)[] { (0, 1, "q") } };
+                yield return new object[] { "(?i:[^a])", options, "aAaA", null };             // this correponds to not{a,A}
+                yield return new object[] { "(?i:[\0-\uFFFF-[A]])", options, "aAaA", null };  // this correponds to not{a,A}
+                yield return new object[] { "(?i:[^Q])", options, "q", null };
+                yield return new object[] { "(?i:[^b])", options, "b", null };
+
+                // Use of anchors
+                yield return new object[] { @"\b\w+nn\b", options, "both Anne and Ann are names that contain nn", new (int, int, string)[] { (14, 3, "Ann") } };
+                yield return new object[] { @"\B x", options, " xx", new (int, int, string)[] { (0, 2, " x") } };
+                yield return new object[] { @"\bxx\b", options, " zxx:xx", new (int, int, string)[] { (5, 2, "xx") } };
+                yield return new object[] { @"^abc*\B", options | RegexOptions.Multiline, "\nabcc \nabcccd\n", new (int, int, string)[] { (1, 3, "abc"), (7, 5, "abccc") } };
+                yield return new object[] { "^abc", options, "abcccc", new (int, int, string)[] { (0, 3, "abc") } };
+                yield return new object[] { "^abc", options, "aabcccc", null };
+                yield return new object[] { "abc$", options, "aabcccc", null };
+                yield return new object[] { @"abc\z", options, "aabc\n", null };
+                yield return new object[] { @"abc\Z", options, "aabc\n", new (int, int, string)[] { (1, 3, "abc") } };
+                yield return new object[] { "abc$", options, "aabc\nabc", new (int, int, string)[] { (5, 3, "abc") } };
+                yield return new object[] { "abc$", options | RegexOptions.Multiline, "aabc\nabc", new (int, int, string)[] { (1, 3, "abc"), (5, 3, "abc") } };
+                yield return new object[] { @"a\bb", options, "ab", null };
+                yield return new object[] { @"a\Bb", options, "ab", new (int, int, string)[] { (0, 2, "ab") } };
+                yield return new object[] { @"(a\Bb|a\bb)", options, "ab", new (int, int, string)[] { (0, 2, "ab") } };
+                yield return new object[] { @"a$", options | RegexOptions.Multiline, "b\na", new (int, int, string)[] { (2, 1, "a") } };
+
+                // Various loop constructs
+                yield return new object[] { "a[bcd]{4,5}(.)", options, "acdbcdbe", new (int, int, string)[] { (0, 7, "acdbcdb") } };
+                yield return new object[] { "a[bcd]{4,5}?(.)", options, "acdbcdbe", new (int, int, string)[] { (0, 6, "acdbcd") } };
+                yield return new object[] { "(x{3})+", options, "abcxxxxxxxxacacaca", new (int, int, string)[] { (3, 6, "xxxxxx") } };
+                yield return new object[] { "(x{3})+?", options, "abcxxxxxxxxacacaca", new (int, int, string)[] { (3, 3, "xxx"), (6, 3, "xxx") } };
+                yield return new object[] { "a[0-9]+0", options, "ababca123000xyz", new (int, int, string)[] { (5, 7, "a123000") } };
+                yield return new object[] { "a[0-9]+?0", options, "ababca123000xyz", new (int, int, string)[] { (5, 5, "a1230") } };
+                // Mixed lazy/eager loop
+                yield return new object[] { "a[0-9]+?0|b[0-9]+0", options, "ababca123000xyzababcb123000xyz", new (int, int, string)[] { (5, 5, "a1230"), (20, 7, "b123000") } };
+
+                // Mostly empty matches using unusual regexes consisting mostly of anchors only
+                yield return new object[] { "^", options, "", new (int, int, string)[] { (0, 0, "") } };
+                yield return new object[] { "$", options, "", new (int, int, string)[] { (0, 0, "") } };
+                yield return new object[] { "^$", options, "", new (int, int, string)[] { (0, 0, "") } };
+                yield return new object[] { "$^", options, "", new (int, int, string)[] { (0, 0, "") } };
+                yield return new object[] { "$^$$^^$^$", options, "", new (int, int, string)[] { (0, 0, "") } };
+                yield return new object[] { "a*", options, "bbb", new (int, int, string)[] { (0, 0, ""), (1, 0, ""), (2, 0, ""), (3, 0, "") } };
+                yield return new object[] { "a*", options, "baaabb", new (int, int, string)[] { (0, 0, ""), (1, 3, "aaa"), (4, 0, ""), (5, 0, ""), (6, 0, "") } };
+                yield return new object[] { @"\b", options, "hello--world", new (int, int, string)[] { (0, 0, ""), (5, 0, ""), (7, 0, ""), (12, 0, "") } };
+                yield return new object[] { @"\B", options, "hello--world",
+                    new (int, int, string)[] { (1, 0, ""), (2, 0, ""), (3, 0, ""), (4, 0, ""), (6, 0, ""), (8, 0, ""), (9, 0, ""), (10, 0, ""), (11, 0, "") } };
+            }
+        }
+
+        /// <summary>
+        /// Test all top level matches for given pattern and options.
+        /// </summary>
+        [Theory]
+        [MemberData(nameof(AllMatches_TestData))]
+        public void AllMatches(string pattern, RegexOptions options, string input, (int, int, string)[] matches)
+        {
+            Regex re = new(pattern, options);
+            Match m = re.Match(input);
+            if (matches == null)
+            {
+                Assert.False(m.Success);
+            }
+            else
+            {
+                int i = 0;
+                do
+                {
+                    Assert.True(m.Success);
+                    Assert.True(i < matches.Length);
+                    Assert.Equal(matches[i].Item1, m.Index);
+                    Assert.Equal(matches[i].Item2, m.Length);
+                    Assert.Equal(matches[i++].Item3, m.Value);
+                    m = m.NextMatch();
+                } while (m.Success);
+                Assert.Equal(matches.Length, i);
+            }
+        }
     }
 }

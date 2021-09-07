@@ -227,64 +227,6 @@ namespace System.Text.RegularExpressions.Tests
         }
 
         [Theory]
-        [InlineData("^", RegexOptions.None, "", "0")]
-        [InlineData("$", RegexOptions.None, "", "0")]
-        [InlineData("^$", RegexOptions.None, "", "0")]
-        [InlineData("$^", RegexOptions.None, "", "0")]
-        [InlineData("a*", RegexOptions.None, "bbb", "0,1,2,3")]
-        [InlineData("a*", RegexOptions.None, "baaabb", "0,1,4,5,6")]
-        [InlineData("\\b", RegexOptions.None, "hello--world", "0,5,7,12")]
-        [InlineData("\\B", RegexOptions.None, "hello--world", "1,2,3,4,6,8,9,10,11")]
-        public void TestEmptyMatches(string pattern, RegexOptions options, string input, string indices)
-        {
-            //testing both DFA and nonDFA to make sure they agree
-            int[] positions = Array.ConvertAll(indices.Split(','), int.Parse);
-            Regex re_ = new Regex(pattern, options);
-            Match m_ = re_.Match(input);
-            Assert.True(m_.Success);
-            Assert.Equal(positions[0], m_.Index);
-            Regex re = new Regex(pattern, options | RegexOptions.NonBacktracking);
-            Match m = re.Match(input);
-            Assert.True(m.Success);
-            Assert.Equal(positions[0], m.Index);
-            for (int i = 1; i < positions.Length; i++)
-            {
-                m_ = m_.NextMatch();
-                Assert.True(m_.Success);
-                Assert.Equal(positions[i], m_.Index);
-                m = m.NextMatch();
-                Assert.True(m.Success);
-                Assert.Equal(positions[i], m.Index);
-            }
-            //there should be no more matches remaining
-            var m_fail = m_.NextMatch();
-            Assert.False(m_fail.Success);
-            var mfail = m.NextMatch();
-            Assert.False(mfail.Success);
-        }
-
-        [Theory]    
-        [InlineData("^abc", RegexOptions.None, "abcccc",  true, "abc", 0)]
-        [InlineData("^abc", RegexOptions.None, "aabcccc", false, "", 0)]
-        [InlineData("abc$", RegexOptions.None, "aabcccc", false, "", 0)]
-        [InlineData("abc\\z", RegexOptions.None, "aabc\n", false, "", 0)]
-        [InlineData("abc\\Z", RegexOptions.None, "aabc\n", true, "abc", 1)]
-        [InlineData("abc$", RegexOptions.None, "aabc\nabc", true, "abc", 5)]
-        [InlineData("abc$", RegexOptions.Multiline, "aabc\nabc", true, "abc", 1)]
-        [InlineData("a\\bb", RegexOptions.None, "ab", false, "", 0)]
-        [InlineData("a\\Bb", RegexOptions.None, "ab", true, "ab", 0)]
-        [InlineData("(a\\Bb|a\\bb)", RegexOptions.None, "ab", true, "ab", 0)]
-        public void TestAnchorPruning(string pattern, RegexOptions options, string input, bool success, string match, int index)
-        {
-            Regex re = new Regex(pattern, options | RegexOptions.NonBacktracking);
-            Match m = re.Match(input);
-            Assert.Equal(success, m.Success);
-            Assert.Equal(match, m.Value);
-            if (success)
-                Assert.Equal(index, m.Index);
-        }
-
-        [Theory]
         [InlineData("[abc]{0,10}", "a[abc]{0,3}", "xxxabbbbbbbyyy", true, "abbb")]
         [InlineData("[abc]{0,10}?", "a[abc]{0,3}?", "xxxabbbbbbbyyy", true, "a")]
         public void TestConjunctionOverCounting(string conjunct1, string conjunct2, string input, bool success, string match)
@@ -306,31 +248,6 @@ namespace System.Text.RegularExpressions.Tests
             Match m = re.Match(input);
             Assert.Equal(success, m.Success);
             Assert.Equal(match, m.Value);
-        }
-
-
-        [Theory]
-        [InlineData("(?i:[a-dÕ]+k*)", "xyxaBõc\u212AKAyy", true, "aBõc\u212AK")]
-        [InlineData("(?i:[a-d]+)", "xyxaBcyy", true, "aBc")]
-        [InlineData("(?i:[^a])", "aAaA", false, "")]                             // this correponds to not{a,A}
-        [InlineData("(?i:[\0-\uFFFF-[A]])", "aAaA", false, "")]                  // this correponds to not{a,A}
-        [InlineData("(?i:[\0-@B-\uFFFF]+)", "xaAaAy", true, "xaAaAy")]           // this correponds to .+
-        [InlineData("(?i:[\0-ac-\uFFFF])", "b", true, "b")]
-        [InlineData("(?i:[^b])", "b", false, "")]
-        [InlineData("(?i:[\0-PR-\uFFFF])", "Q", true, "Q")]
-        [InlineData("(?i:[^Q])", "q", false, "")]
-        [InlineData("(?i:[\0-pr-\uFFFF])", "q", true, "q")]
-        public void TestOfCaseInsensitiveCornerCasesInSRM(string pattern, string input, bool success, string match_expected)
-        {
-            Regex r_ = new Regex(pattern);
-            Regex r = new Regex(pattern, RegexOptions.NonBacktracking);
-            //RegexExperiment.ViewDGML(r);
-            var m = r.Match(input);
-            var m_ = r_.Match(input);
-            Assert.Equal(success, m_.Success);
-            Assert.Equal(match_expected, m_.Value);
-            Assert.Equal(success, m.Success);
-            Assert.Equal(match_expected, m.Value);
         }
 
         [Theory]
@@ -384,7 +301,7 @@ namespace System.Text.RegularExpressions.Tests
             Assert.Equal(match_tr_expected, match_tr.Value);
         }
 
-            [Fact]
+        [Fact]
         public void TestAltOrderIndependence()
         {
             string rawregex = @"(the)\s*(0?[1-9]|[12][0-9]|3[01])";
@@ -476,34 +393,6 @@ namespace System.Text.RegularExpressions.Tests
             Assert.True(str.Contains(".*a+") || str.Contains(".*[2]+"));
         }
 
-        [Fact]
-        public void TestWordBoundary()
-        {
-            var re = new Regex(@"\b\w+nn\b", RegexOptions.NonBacktracking);
-            var match = re.Match("both Anne and Ann are names that contain nn");
-            Assert.True(match.Success);
-            Assert.Equal<int>(14, match.Index);
-            Assert.Equal<int>(3, match.Length);
-            var match2 = match.NextMatch();
-            Assert.False(match2.Success);
-        }
-
-        [Fact]
-        public void TestStartSet()
-        {
-            var re = new Regex(@"\u221E|\u2713", RegexOptions.NonBacktracking);
-            var match = re.Match("infinity \u221E and checkmark \u2713 are contained here");
-            Assert.True(match.Success);
-            Assert.Equal<int>(9, match.Index);
-            Assert.Equal<int>(1, match.Length);
-            var match2 = match.NextMatch();
-            Assert.True(match2.Success);
-            Assert.Equal<int>(25, match2.Index);
-            Assert.Equal<int>(1, match2.Length);
-            var match3 = match2.NextMatch();
-            Assert.False(match3.Success);
-        }
-
         private static MethodInfo _Deserialize = typeof(Regex).GetMethod("Deserialize", BindingFlags.NonPublic | BindingFlags.Static);
         private static Regex Deserialize(string s) => _Deserialize.Invoke(null, new object[] { s }) as Regex;
 
@@ -545,239 +434,6 @@ namespace System.Text.RegularExpressions.Tests
                 Assert.Equal(matchExpected.Value, match1.Value);
                 Assert.Equal(matchExpected.Value, match2.Value);
             }
-        }
-
-        [Fact]
-        public void SRMPrefixBugFixTest()
-        {
-            var re1 = new Regex("(a|ba)c", RegexOptions.NonBacktracking);
-            var match1 = re1.Match("bac");
-            Assert.True(match1.Success);
-            Assert.Equal(0, match1.Index);
-            Assert.Equal(3, match1.Length);
-            //---
-            var match2 = re1.Match("ac");
-            Assert.True(match2.Success);
-            Assert.Equal(0, match2.Index);
-            Assert.Equal(2, match2.Length);
-            //---
-            var match3 = re1.Match("baacd");
-            Assert.True(match3.Success);
-            Assert.Equal(2, match3.Index);
-            Assert.Equal(2, match3.Length);
-        }
-
-        [Fact]
-        public void BasicSRMTestBorderAnchors1()
-        {
-            var re1 = new Regex(@"\B x", RegexOptions.NonBacktracking);
-            var match1 = re1.Match(" xx");
-            Assert.True(match1.Success);
-            Assert.Equal(0, match1.Index);
-            Assert.Equal(2, match1.Length);
-            //---
-            var re2 = new Regex(@"\bxx\b", RegexOptions.NonBacktracking);
-            var match2 = re2.Match(" zxx:xx");
-            Assert.True(match2.Success);
-            Assert.Equal(5, match2.Index);
-            Assert.Equal(2, match2.Length);
-        }
-
-        [Fact]
-        public void BasicSRMTestBorderAnchors2()
-        {
-            var re3 = new Regex(@"^abc*\B", RegexOptions.Multiline | RegexOptions.NonBacktracking);
-            var match3 = re3.Match("\nabcc \nabcccd\n");
-            Assert.True(match3.Success);
-            Assert.Equal(1, match3.Index);
-            Assert.Equal(3, match3.Length);
-            var match3b = match3.NextMatch();
-            Assert.True(match3b.Success);
-            Assert.Equal(7, match3b.Index);
-            Assert.Equal(5, match3b.Length);
-        }
-
-        [Fact]
-        public void BasicSRMTestBorderAnchors3()
-        {
-            var re = new Regex(@"a$", RegexOptions.Multiline | RegexOptions.NonBacktracking);
-            var match = re.Match("b\na");
-            Assert.True(match.Success);
-            Assert.Equal(2, match.Index);
-            Assert.Equal(1, match.Length);
-        }
-
-        [Fact]
-        public void BasicSRMTest()
-        {
-            var re = new Regex(@"a+", RegexOptions.NonBacktracking);
-            var match1 = re.Match("xxxxxaaaaxxxxxxxxxxaaaaaa");
-            Assert.True(match1.Success);
-            Assert.Equal(5, match1.Index);
-            Assert.Equal(4, match1.Length);
-            Assert.Equal("aaaa", match1.Value);
-            var match2 = match1.NextMatch();
-            Assert.True(match2.Success);
-            Assert.Equal(19, match2.Index);
-            Assert.Equal(6, match2.Length);
-            Assert.Equal("aaaaaa", match2.Value);
-            var match3 = match2.NextMatch();
-            Assert.False(match3.Success);
-        }
-
-        [Fact]
-        public void BasicSRMTestWithIgnoreCase()
-        {
-            var re = new Regex(@"a+", RegexOptions.NonBacktracking | RegexOptions.IgnoreCase);
-            var match1 = re.Match("xxxxxaAAaxxxxxxxxxxaaaaAa");
-            Assert.True(match1.Success);
-            Assert.Equal(5, match1.Index);
-            Assert.Equal(4, match1.Length);
-            Assert.Equal("aAAa", match1.Value);
-            var match2 = match1.NextMatch();
-            Assert.True(match2.Success);
-            Assert.Equal(19, match2.Index);
-            Assert.Equal(6, match2.Length);
-            Assert.Equal("aaaaAa", match2.Value);
-            var match3 = match2.NextMatch();
-            Assert.False(match3.Success);
-        }
-
-        [Fact]
-        public void BasicSRMTestNonASCII()
-        {
-            var re = new Regex(@"\d\s\w+", RegexOptions.NonBacktracking);
-            var match1 = re.Match("=====1\v\u212A4==========1\ta\u0130Aa");
-            Assert.True(match1.Success);
-            Assert.Equal(5, match1.Index);
-            Assert.Equal(4, match1.Length);
-            Assert.Equal("1\v\u212A4", match1.Value);
-            var match2 = match1.NextMatch();
-            Assert.True(match2.Success);
-            Assert.Equal(19, match2.Index);
-            Assert.Equal(6, match2.Length);
-            Assert.Equal("1\ta\u0130Aa", match2.Value);
-            var match3 = match2.NextMatch();
-            Assert.False(match3.Success);
-        }
-
-        [Fact]
-        public void BasicSRMTest_WhiteSpace()
-        {
-            var re = new Regex(@"\s+", RegexOptions.NonBacktracking);
-            var match1 = re.Match("===== \n\t\v\r ====");
-            Assert.True(match1.Success);
-            Assert.Equal(5, match1.Index);
-            Assert.Equal(6, match1.Length);
-            Assert.Equal(" \n\t\v\r ", match1.Value);
-        }
-
-        [Fact]
-        public void BasicSRMTest_FFFF()
-        {
-            var re = new Regex(@"(\uFFFE\uFFFF)+", RegexOptions.NonBacktracking);
-            var match1 = re.Match("=====\uFFFE\uFFFF\uFFFE\uFFFF\uFFFE====");
-            Assert.True(match1.Success);
-            Assert.Equal(5, match1.Index);
-            Assert.Equal(4, match1.Length);
-            Assert.Equal("\uFFFE\uFFFF\uFFFE\uFFFF", match1.Value);
-        }
-
-        [Fact]
-        public void BasicSRMTest_NoPartition()
-        {
-            var re = new Regex(@"(...)+", RegexOptions.NonBacktracking | RegexOptions.Singleline);
-            var match1 = re.Match("abcdefgh");
-            Assert.True(match1.Success);
-            Assert.Equal(0, match1.Index);
-            Assert.Equal(6, match1.Length);
-            Assert.Equal("abcdef", match1.Value);
-        }
-
-        [Fact]
-        public void SRMTest_UnicodeCategories00to09()
-        {
-            //"Lu", 0: UppercaseLetter
-            //"Ll", 1: LowercaseLetter
-            //"Lt", 2: TitlecaseLetter
-            //"Lm", 3: ModifierLetter
-            //"Lo", 4: OtherLetter
-            //"Mn", 5: NonSpacingMark
-            //"Mc", 6: SpacingCombiningMark
-            //"Me", 7: EnclosingMark
-            //"Nd", 8: DecimalDigitNumber
-            //"Nl", 9: LetterNumber
-            var re = new Regex(@"\p{Lu}\p{Ll}\p{Lt}\p{Lm}\p{Lo}\p{Mn}\p{Mc}\p{Me}\p{Nd}\p{Nl}", RegexOptions.NonBacktracking);
-            //match contains the first character from each category
-            string input = "=====Aa\u01C5\u02B0\u01BB\u0300\u0903\u04880\u16EE===";
-            var match1 = re.Match(input);
-            Assert.True(match1.Success);
-            Assert.Equal(5, match1.Index);
-            Assert.Equal(10, match1.Length);
-            var match2 = match1.NextMatch();
-            Assert.False(match2.Success);
-        }
-
-        [Fact]
-        public void SRMTest_UnicodeCategories10to19()
-        {
-            //"No", 10: OtherNumber
-            //"Zs", 11: SpaceSeparator
-            //"Zl", 12: LineSeparator
-            //"Zp", 13: ParagraphSeparator
-            //"Cc", 14: Control
-            //"Cf", 15: Format
-            //"Cs", 16: Surrogate
-            //"Co", 17: PrivateUse
-            //"Pc", 18: ConnectorPunctuation
-            //"Pd", 19: DashPunctuation
-            var re = new Regex(@"\p{No}\p{Zs}\p{Zl}\p{Zp}\p{Cc}\p{Cf}\p{Cs}\p{Co}\p{Pc}\p{Pd}", RegexOptions.NonBacktracking);
-            //match contains the first character from each category
-            string input = "=====\u00B2 \u2028\u2029\0\u0600\uD800\uE000_\u002D===";
-            var match1 = re.Match(input);
-            Assert.True(match1.Success);
-            Assert.Equal(5, match1.Index);
-            Assert.Equal(10, match1.Length);
-            var match2 = match1.NextMatch();
-            Assert.False(match2.Success);
-        }
-
-        [Fact]
-        public void SRMTest_UnicodeCategories20to29()
-        {
-            //"Ps", 20: OpenPunctuation
-            //"Pe", 21: ClosePunctuation
-            //"Pi", 22: InitialQuotePunctuation
-            //"Pf", 23: FinalQuotePunctuation
-            //"Po", 24: OtherPunctuation
-            //"Sm", 25: MathSymbol
-            //"Sc", 26: CurrencySymbol
-            //"Sk", 27: ModifierSymbol
-            //"So", 28: OtherSymbol
-            //"Cn", 29: OtherNotAssigned
-            var re = new Regex(@"\p{Ps}\p{Pe}\p{Pi}\p{Pf}\p{Po}\p{Sm}\p{Sc}\p{Sk}\p{So}\p{Cn}", RegexOptions.NonBacktracking);
-            //match contains the first character from each category
-            string input = "=====()\xAB\xBB!+$^\xA6\u0378======";
-            var match1 = re.Match(input);
-            Assert.True(match1.Success);
-            Assert.Equal(5, match1.Index);
-            Assert.Equal(10, match1.Length);
-            var match2 = match1.NextMatch();
-            Assert.False(match2.Success);
-        }
-
-        [Fact]
-        public void SRMTest_UnicodeCategories00to29()
-        {
-            var re = new Regex(@"\p{Lu}\p{Ll}\p{Lt}\p{Lm}\p{Lo}\p{Mn}\p{Mc}\p{Me}\p{Nd}\p{Nl}\p{No}\p{Zs}\p{Zl}\p{Zp}\p{Cc}\p{Cf}\p{Cs}\p{Co}\p{Pc}\p{Pd}\p{Ps}\p{Pe}\p{Pi}\p{Pf}\p{Po}\p{Sm}\p{Sc}\p{Sk}\p{So}\p{Cn}", RegexOptions.NonBacktracking);
-            //match contains the first character from each category
-            string input = "=====Aa\u01C5\u02B0\u01BB\u0300\u0903\u04880\u16EE\xB2 \u2028\u2029\0\u0600\uD800\uE000_\x2D()\xAB\xBB!+$^\xA6\u0378======";
-            var match1 = re.Match(input);
-            Assert.True(match1.Success);
-            Assert.Equal(5, match1.Index); 
-            Assert.Equal(30, match1.Length);
-            var match2 = match1.NextMatch();
-            Assert.False(match2.Success);
         }
 
         [Fact]
@@ -879,96 +535,6 @@ namespace System.Text.RegularExpressions.Tests
             Assert.Equal(7, match.Length);
         }
 
-        [Fact]
-        public void SRMTest_LazyLoopMatch()
-        {
-            //eager
-            var re = new Regex("a[0-9]+0", RegexOptions.NonBacktracking);
-            var match = re.Match("ababca123000xyz");
-            Assert.True(match.Success);
-            Assert.Equal(5, match.Index);
-            Assert.Equal(7, match.Length);
-            //---
-            //lazy
-            var reL = new Regex("a[0-9]+?0", RegexOptions.NonBacktracking);
-            var matchL = reL.Match("ababca123000xyz");
-            Assert.True(matchL.Success);
-            Assert.Equal(5, matchL.Index);
-            Assert.Equal(5, matchL.Length);
-            //lazy and eager combined
-            var re2 = new Regex("a[0-9]+?0|b[0-9]+0", RegexOptions.NonBacktracking);
-            var match21 = re2.Match("ababca123000xyzababcb123000xyz");
-            //the first match starting with 'a' uses lazy loop
-            Assert.True(match21.Success);
-            Assert.Equal(5, match21.Index);
-            Assert.Equal(5, match21.Length);
-            //the second match starting with 'b' uses eager loop
-            var match22 = match21.NextMatch();
-            Assert.True(match22.Success);
-            Assert.Equal(20, match22.Index);
-            Assert.Equal(7, match22.Length);
-        }
-
-        [Fact]
-        public void SRMTest_NestedLazyLoop()
-        {
-            //read lazily blocks of 3 x's at a time
-            var re = new Regex("(x{3})+?", RegexOptions.NonBacktracking);
-            var match = re.Match("abcxxxxxxxxacacaca");
-            Assert.True(match.Success);
-            Assert.Equal(3, match.Index);
-            Assert.Equal(3, match.Length);
-        }
-
-        [Fact]
-        public void SRMTest_NestedEagerLoop()
-        {
-            //read eagerly blocks of 3 x's at a time
-            var re = new Regex("(x{3})+", RegexOptions.NonBacktracking);
-            var match = re.Match("abcxxxxxxxxacacaca");
-            Assert.True(match.Success);
-            Assert.Equal(3, match.Index);
-            Assert.Equal(6, match.Length);
-        }
-
-        [Fact]
-        public void SRMTest_CountedLazyLoop()
-        {
-            var re = new Regex("a[bcd]{4,5}?(.)", RegexOptions.NonBacktracking);
-            var match = re.Match("acdbcdbe");
-            Assert.True(match.Success);
-            Assert.Equal(0, match.Index);
-            // lazy loop [bcd]{4,5}? only needs to iterate 4 times
-            Assert.Equal(6, match.Length);
-        }
-
-        [Fact]
-        public void SRMTest_CountedLoop()
-        {
-            //eager matching of the loop must match 5 elements in the loop
-            var re = new Regex("a[bcd]{4,5}(.)", RegexOptions.NonBacktracking);
-            var match = re.Match("acdbcdbe");
-            Assert.True(match.Success);
-            Assert.Equal(0, match.Index);
-            Assert.Equal(7, match.Length);
-        }
-
-        [Fact]
-        public void SRMTest_NewLine()
-        {
-            var re = new Regex("\n", RegexOptions.NonBacktracking);
-            var match = re.Match("\n");
-            Assert.True(match.Success);
-            Assert.Equal(0, match.Index);
-            Assert.Equal(1, match.Length);
-            //---
-            var re2 = new Regex("[^a]", RegexOptions.NonBacktracking);
-            var match2 = re2.Match("\n");
-            Assert.True(match2.Success);
-            Assert.Equal(0, match2.Index);
-            Assert.Equal(1, match2.Length);
-        }
-
         [Theory]
         [MemberData(nameof(ValidateSRMRegex_NotSupportedCases_Data))]
         public void ValidateSRMRegex_NotSupportedCases(string pattern, RegexOptions options, string expected)
@@ -1001,18 +567,6 @@ namespace System.Text.RegularExpressions.Tests
             yield return new object[] { @"(?>(abc)*).", RegexOptions.None, "atomic" };
             yield return new object[] { @"\G(\w+\s?\w*),?", RegexOptions.None, "contiguous matches" };
             yield return new object[] { @"(?>a*).", RegexOptions.None, "atomic" };
-        }
-
-        [Theory]
-        [InlineData(RegexOptions.None)]
-        [InlineData(RegexOptions.Compiled)]
-        [InlineData(RegexOptions.NonBacktracking)]
-        public void StressTestDeepNestingOfConcat(RegexOptions options)
-        {
-            string pattern = string.Concat(Enumerable.Repeat("([a-z]", 1000).Concat(Enumerable.Repeat(")", 1000)));
-            string input = string.Concat(Enumerable.Repeat("abcde", 200));
-            var re = new Regex(pattern, options);
-            Assert.True(re.IsMatch(input));
         }
     }
 }
