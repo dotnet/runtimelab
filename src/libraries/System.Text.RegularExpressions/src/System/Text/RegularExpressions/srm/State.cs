@@ -6,76 +6,6 @@ using System.Runtime.CompilerServices;
 
 namespace System.Text.RegularExpressions.SRM
 {
-    internal static class CharKind
-    {
-        /// <summary>
-        /// Start or Stop of input (bit 0 is 1)
-        /// </summary>
-        internal const uint StartStop = 1;
-        /// <summary>
-        /// new line character (\n) (bit 1 is 1)
-        /// </summary>
-        internal const uint Newline = 2;
-        /// <summary>
-        /// Last \n or first \n in reverse mode (both Newline and StartStop bits are 1)
-        /// </summary>
-        internal const uint NewLineS = 3;
-        /// <summary>
-        /// word letter (bit 2 is 1)
-        /// </summary>
-        internal const uint WordLetter = 4;
-
-        /// <summary>
-        /// Prettyprints the character kind
-        /// </summary>
-        internal static string PrettyPrint(uint kind) => kind switch
-        {
-            StartStop => @"\A",
-            WordLetter => @"\w",
-            Newline => @"\n",
-            NewLineS => @"\A\n",
-            _ => "",
-        };
-
-        /// <summary>
-        /// Gets the previous character kind from a context
-        /// </summary>
-        internal static uint Prev(uint context) => context & 0x7;
-
-        /// <summary>
-        /// Gets the next character kind from a context
-        /// </summary>
-        internal static uint Next(uint context) => context >> 3;
-
-        /// <summary>
-        /// Creates the context of the previous and the next character kinds.
-        /// </summary>
-        internal static uint Context(uint prevKind, uint nextKind) => (nextKind << 3) | prevKind;
-
-        internal static string DescribeContext(uint context)
-        {
-            string prev = DescribePrev(Prev(context));
-            string next = DescribeNext(Next(context));
-            return next == string.Empty ?
-                prev :
-                $"{prev}/{next}";
-        }
-
-        internal static string DescribePrev(uint i) =>
-            i == WordLetter ? @"\w" :
-            i == StartStop ? @"\A" :
-            i == Newline ? @"\n" :
-            i == NewLineS ? @"\A\n" :
-            string.Empty;
-
-        internal static string DescribeNext(uint i) =>
-            i == WordLetter ? @"\w" :
-            i == StartStop ? @"\z" :
-            i == Newline ? @"\n" :
-            i == NewLineS ? @"\n\z" :
-            string.Empty;
-    }
-
     /// <summary>
     /// Captures a state of a DFA explored during matching.
     /// </summary>
@@ -196,13 +126,11 @@ namespace System.Text.RegularExpressions.SRM
             PrevCharKind == 0 ? Node.ToString() :
              $"({CharKind.DescribePrev(PrevCharKind)},{Node})";
 
-        internal string Description => ToString();
-
         internal string DgmlView
         {
             get
             {
-                string info = CharKind.PrettyPrint(PrevCharKind);
+                string info = CharKind.DescribePrev(PrevCharKind);
                 if (info != string.Empty)
                 {
                     info = $"Previous: {info}&#13;";
