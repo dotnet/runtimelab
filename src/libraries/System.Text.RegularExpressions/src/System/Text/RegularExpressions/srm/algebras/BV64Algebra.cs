@@ -14,8 +14,8 @@ namespace System.Text.RegularExpressions.SRM
     internal sealed class BV64Algebra : BVAlgebraBase, ICharAlgebra<ulong>
     {
         private readonly MintermGenerator<ulong> _mintermGenerator;
-        private readonly ulong _False;
-        private readonly ulong _True;
+        private readonly ulong _false;
+        private readonly ulong _true;
 
         /// <summary>
         /// Return the number of characters belonging to the minterms in the given set.
@@ -24,9 +24,14 @@ namespace System.Text.RegularExpressions.SRM
         {
             ulong size = 0;
             for (int i = 0; i < _bits; i++)
+            {
                 // if the bit is set then include the corresponding minterm's cardinality
                 if (IsSatisfiable(set & ((ulong)1 << i)))
+                {
                     size += _cardinalities[i];
+                }
+            }
+
             return size;
         }
 
@@ -35,8 +40,8 @@ namespace System.Text.RegularExpressions.SRM
         {
             Debug.Assert(minterms.Length <= 64);
             _mintermGenerator = new MintermGenerator<ulong>(this);
-            _False = 0;
-            _True = _bits == 64 ? ulong.MaxValue : ulong.MaxValue >> (64 - _bits);
+            _false = 0;
+            _true = _bits == 64 ? ulong.MaxValue : ulong.MaxValue >> (64 - _bits);
         }
 
         /// <summary>
@@ -46,8 +51,8 @@ namespace System.Text.RegularExpressions.SRM
         {
             Debug.Assert(cardinalities.Length <= 64);
             _mintermGenerator = new MintermGenerator<ulong>(this);
-            _False = 0;
-            _True = _bits == 64 ? ulong.MaxValue : ulong.MaxValue >> (64 - _bits);
+            _false = 0;
+            _true = _bits == 64 ? ulong.MaxValue : ulong.MaxValue >> (64 - _bits);
         }
 
         public bool IsExtensional => true;
@@ -55,48 +60,56 @@ namespace System.Text.RegularExpressions.SRM
 
         public CharSetSolver CharSetProvider => throw new NotSupportedException();
 
-        ulong IBooleanAlgebra<ulong>.False => _False;
+        ulong IBooleanAlgebra<ulong>.False => _false;
 
-        ulong IBooleanAlgebra<ulong>.True => _True;
+        ulong IBooleanAlgebra<ulong>.True => _true;
 
         public bool AreEquivalent(ulong predicate1, ulong predicate2) => predicate1 == predicate2;
 
-        public IEnumerable<(bool[], ulong)> GenerateMinterms(params ulong[] constraints) => _mintermGenerator.GenerateMinterms(constraints);
+        public List<ulong> GenerateMinterms(params ulong[] constraints) => _mintermGenerator.GenerateMinterms(constraints);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool IsSatisfiable(ulong predicate) => predicate != _False;
+        public bool IsSatisfiable(ulong predicate) => predicate != _false;
 
         public ulong And(params ulong[] predicates)
         {
-            ulong and = _True;
+            ulong and = _true;
             for (int i = 0; i < predicates.Length; i++)
             {
                 and &= predicates[i];
+
                 // short circuit the evaluation on false, since 0&x=0
-                if (and == _False)
-                    return _False;
+                if (and == _false)
+                {
+                    return _false;
+                }
             }
+
             return and;
         }
 
-        public ulong And(IEnumerable<ulong> predicates) => throw new NotImplementedException();
+        public ulong And(IEnumerable<ulong> predicates) => throw new NotSupportedException();
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ulong And(ulong predicate1, ulong predicate2) => predicate1 & predicate2;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public ulong Not(ulong predicate) => _True & ~predicate; //NOTE: must filter off unused bits
+        public ulong Not(ulong predicate) => _true & ~predicate; //NOTE: must filter off unused bits
 
         public ulong Or(IEnumerable<ulong> predicates)
         {
-            ulong res = _False;
+            ulong res = _false;
             foreach (ulong p in predicates)
             {
                 res |= p;
+
                 // short circuit the evaluation on true, since 1|x=1
-                if (res == _True)
-                    return _True;
+                if (res == _true)
+                {
+                    return _true;
+                }
             }
+
             return res;
         }
 
@@ -116,20 +129,21 @@ namespace System.Text.RegularExpressions.SRM
         /// Assumes that set is a union of some minterms (or empty).
         /// If null then 0 is returned.
         /// </summary>
-        public ulong ConvertFromCharSet(BDDAlgebra alg, BDD set)
+        public ulong ConvertFromCharSet(BDDAlgebra alg, BDD? set)
         {
-            if (set == null)
-                return _False;
+            ulong res = _false;
 
-            ulong res = _False;
-            for (int i = 0; i < _bits; i++)
+            if (set is not null)
             {
-                Debug.Assert(_partition is not null);
-
-                // set the i'th bit if the i'th minterm is in the set
-                if (alg.IsSatisfiable(alg.And(_partition[i], set)))
+                for (int i = 0; i < _bits; i++)
                 {
-                    res |= (ulong)1 << i;
+                    Debug.Assert(_partition is not null);
+
+                    // set the i'th bit if the i'th minterm is in the set
+                    if (alg.IsSatisfiable(alg.And(_partition[i], set)))
+                    {
+                        res |= (ulong)1 << i;
+                    }
                 }
             }
 
@@ -138,16 +152,22 @@ namespace System.Text.RegularExpressions.SRM
 
         public BDD ConvertToCharSet(ICharAlgebra<BDD> solver, ulong pred)
         {
-            if (_partition == null)
-                throw new NotImplementedException(nameof(ConvertToCharSet));
+            Debug.Assert(_partition is not null);
 
             // the result will be the union of all minterms in the set
             BDD res = BDD.False;
-            if (pred != _False)
+            if (pred != _false)
+            {
                 for (int i = 0; i < _bits; i++)
+                {
                     // include the i'th minterm in the union if the i'th bit is set
-                    if ((pred & ((ulong)1 << i)) != _False)
+                    if ((pred & ((ulong)1 << i)) != _false)
+                    {
                         res = solver.Or(res, _partition[i]);
+                    }
+                }
+            }
+
             return res;
         }
 
@@ -158,11 +178,14 @@ namespace System.Text.RegularExpressions.SRM
         {
             ulong[] atoms = new ulong[_bits];
             for (int i = 0; i < _bits; i++)
+            {
                 atoms[i] = (ulong)1 << i;
+            }
+
             return atoms;
         }
 
-        public IEnumerable<char> GenerateAllCharacters(ulong set) => throw new NotImplementedException(nameof(GenerateAllCharacters));
+        public IEnumerable<char> GenerateAllCharacters(ulong set) => throw new NotSupportedException();
 
         #region serialization
         /// <summary>

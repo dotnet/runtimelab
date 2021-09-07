@@ -43,9 +43,9 @@ namespace {namespacename}
         {
             int maxChar = 0xFFFF;
             var catMap = new Dictionary<UnicodeCategory, Ranges>();
-            for (int c = 0; c < 30; c++)
+            foreach (UnicodeCategory c in Enum.GetValues<UnicodeCategory>())
             {
-                catMap[(UnicodeCategory)c] = new Ranges();
+                catMap[c] = new Ranges();
             }
 
             Ranges whitespace = new Ranges();
@@ -65,9 +65,9 @@ namespace {namespacename}
             }
 
             //generate bdd reprs for each of the category ranges
-            BDD[] catBDDs = new BDD[30];
+            BDD[] catBDDs = new BDD[catMap.Count];
             CharSetSolver bddb = new CharSetSolver();
-            for (int c = 0; c < 30; c++)
+            for (int c = 0; c < catBDDs.Length; c++)
                 catBDDs[c] = bddb.CreateBddForIntRanges(catMap[(UnicodeCategory)c].ranges);
 
             BDD whitespaceBdd = bddb.CreateBddForIntRanges(whitespace.ranges);
@@ -77,7 +77,7 @@ namespace {namespacename}
             sw.WriteLine("        /// <summary>Serialized BDD representations of all the Unicode categories.</summary>");
             sw.WriteLine("        public static readonly string[] AllCategoriesSerializedBDD = new string[]");
             sw.WriteLine("        {");
-            for (int i = 0; i < 30; i++)
+            for (int i = 0; i < catBDDs.Length; i++)
             {
                 sw.WriteLine("            // {0}({1}):", (UnicodeCategory)i, i);
                 sw.Write("            \"");

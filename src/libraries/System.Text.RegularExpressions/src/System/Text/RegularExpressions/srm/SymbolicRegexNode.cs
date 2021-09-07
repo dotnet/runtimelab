@@ -1,13 +1,11 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
-using System.Runtime.CompilerServices;
 
 namespace System.Text.RegularExpressions.SRM
 {
@@ -519,39 +517,23 @@ namespace System.Text.RegularExpressions.SRM
             return node;
         }
 
-        internal static SymbolicRegexNode<S> MkOr(SymbolicRegexBuilder<S> builder, SymbolicRegexSet<S> alts)
-        {
-            if (alts.IsNothing)
-                return builder._nothing;
-
-            if (alts.IsEverything)
-                return builder._dotStar;
-
-            if (alts.IsSingleton)
-                return alts.GetSingletonElement();
-
-            return new SymbolicRegexNode<S>(builder, SymbolicRegexKind.Or, null, null, -1, -1, default, null, alts)
+        internal static SymbolicRegexNode<S> MkOr(SymbolicRegexBuilder<S> builder, SymbolicRegexSet<S> alts) =>
+            alts.IsNothing ? builder._nothing :
+            alts.IsEverything ? builder._dotStar :
+            alts.IsSingleton ? alts.GetSingletonElement() :
+            new SymbolicRegexNode<S>(builder, SymbolicRegexKind.Or, null, null, -1, -1, default, null, alts)
             {
                 _info = SymbolicRegexInfo.Or(GetInfos(alts))
             };
-        }
 
-        internal static SymbolicRegexNode<S> MkAnd(SymbolicRegexBuilder<S> builder, SymbolicRegexSet<S> alts)
-        {
-            if (alts.IsNothing)
-                return builder._nothing;
-
-            if (alts.IsEverything)
-                return builder._dotStar;
-
-            if (alts.IsSingleton)
-                return alts.GetSingletonElement();
-
-            return new SymbolicRegexNode<S>(builder, SymbolicRegexKind.And, null, null, -1, -1, default, null, alts)
+        internal static SymbolicRegexNode<S> MkAnd(SymbolicRegexBuilder<S> builder, SymbolicRegexSet<S> alts) =>
+            alts.IsNothing ? builder._nothing :
+            alts.IsEverything ? builder._dotStar :
+            alts.IsSingleton ? alts.GetSingletonElement() :
+            new SymbolicRegexNode<S>(builder, SymbolicRegexKind.And, null, null, -1, -1, default, null, alts)
             {
                 _info = SymbolicRegexInfo.And(GetInfos(alts))
             };
-        }
 
         private static SymbolicRegexInfo[] GetInfos(SymbolicRegexNode<S>[] nodes)
         {
@@ -1139,6 +1121,8 @@ namespace System.Text.RegularExpressions.SRM
         /// </summary>
         public S[] ComputeMinterms()
         {
+            Debug.Assert(typeof(S).IsAssignableTo(typeof(IComparable)));
+
             HashSet<S> predicates = GetPredicates();
             Debug.Assert(predicates.Count != 0);
 
@@ -1150,17 +1134,8 @@ namespace System.Text.RegularExpressions.SRM
             }
             Debug.Assert(i == predicatesArray.Length);
 
-            var mt = new List<S>();
-            foreach ((bool[], S) pair in _builder._solver.GenerateMinterms(predicatesArray))
-            {
-                mt.Add(pair.Item2);
-            }
-
-            if (mt[0] is IComparable)
-            {
-                mt.Sort();
-            }
-
+            List<S> mt = _builder._solver.GenerateMinterms(predicatesArray);
+            mt.Sort();
             return mt.ToArray();
         }
 

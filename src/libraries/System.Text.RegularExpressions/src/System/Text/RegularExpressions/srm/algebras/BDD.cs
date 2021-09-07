@@ -187,7 +187,7 @@ namespace System.Text.RegularExpressions.SRM
         /// </summary>
         public override bool Equals(object? obj) =>
             obj is BDD bdd &&
-            (this == bdd || Ordinal == bdd.Ordinal && One == bdd.One && Zero == bdd.Zero);
+            (this == bdd || (Ordinal == bdd.Ordinal && One == bdd.One && Zero == bdd.Zero));
 
         /// <summary>
         /// Returns a topologically sorted array of all the nodes (other than True or False) in this BDD

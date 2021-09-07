@@ -73,8 +73,6 @@ namespace System.Text.RegularExpressions.SRM.Unicode
                     // In the default (en-US) culture: Turkish_I_withDot = i = I
                     // In the invariant culture: i = I, while Turkish_I_withDot is case-insensitive
                     BDD tr_I_withdot_BDD = _solver.CharConstraint(Turkish_I_WithDot);
-                    BDD i_BDD = _solver.CharConstraint('i');
-                    BDD I_BDD = _solver.CharConstraint('I');
 
                     // Since Turkish_I_withDot is case-insensitive in invariant culture, remove it from the default (en-US culture) table.
                     BDD inv_table = _solver.And(_ignoreCaseRel_Default, _solver.Not(tr_I_withdot_BDD));

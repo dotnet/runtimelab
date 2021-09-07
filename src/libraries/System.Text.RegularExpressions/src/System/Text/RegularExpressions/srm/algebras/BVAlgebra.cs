@@ -53,7 +53,7 @@ namespace System.Text.RegularExpressions.SRM
             int firstEnd = input.IndexOf(';');
             if (firstEnd == -1 || input.IndexOf(';', firstEnd + 1) != -1)
             {
-                throw new ArgumentException($"{nameof(BVAlgebraBase.Deserialize)} input error");
+                throw new ArgumentOutOfRangeException(nameof(input));
             }
 
             ulong[] cardinalities = Base64.DecodeUInt64Array(input.AsSpan(0, firstEnd));
@@ -75,8 +75,6 @@ namespace System.Text.RegularExpressions.SRM
     internal sealed class BVAlgebra : BVAlgebraBase, ICharAlgebra<BV>
     {
         private readonly MintermGenerator<BV> _mintermGenerator;
-        private readonly BV _zero;
-        private readonly BV _ones;
         internal BV[] _atoms;
 
         public ulong ComputeDomainSize(BV set)
@@ -98,8 +96,8 @@ namespace System.Text.RegularExpressions.SRM
             base(Classifier.Create(solver, minterms), Array.ConvertAll(minterms, solver.ComputeDomainSize), minterms)
         {
             _mintermGenerator = new MintermGenerator<BV>(this);
-            _zero = BV.CreateFalse(_bits);
-            _ones = BV.CreateTrue(_bits);
+            False = BV.CreateFalse(_bits);
+            True = BV.CreateTrue(_bits);
 
             var atoms = new BV[_bits];
             for (int i = 0; i < atoms.Length; i++)
@@ -115,8 +113,8 @@ namespace System.Text.RegularExpressions.SRM
         public BVAlgebra(Classifier classifier, ulong[] cardinalities) : base(classifier, cardinalities, null)
         {
             _mintermGenerator = new MintermGenerator<BV>(this);
-            _zero = BV.CreateFalse(_bits);
-            _ones = BV.CreateTrue(_bits);
+            False = BV.CreateFalse(_bits);
+            True = BV.CreateTrue(_bits);
 
             var atoms = new BV[_bits];
             for (int i = 0; i < atoms.Length; i++)
@@ -126,20 +124,21 @@ namespace System.Text.RegularExpressions.SRM
             _atoms = atoms;
         }
 
-        public BV False => _zero;
+        public BV False { get; }
+        public BV True { get; }
+
         public bool IsExtensional => true;
         public bool HashCodesRespectEquivalence => true;
-        public BV True => _ones;
         public CharSetSolver CharSetProvider => throw new NotSupportedException();
         public bool AreEquivalent(BV predicate1, BV predicate2) => predicate1.Equals(predicate2);
-        public IEnumerable<(bool[], BV)> GenerateMinterms(params BV[] constraints) => _mintermGenerator.GenerateMinterms(constraints);
+        public List<BV> GenerateMinterms(params BV[] constraints) => _mintermGenerator.GenerateMinterms(constraints);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool IsSatisfiable(BV predicate) => !predicate.Equals(_zero);
+        public bool IsSatisfiable(BV predicate) => !predicate.Equals(False);
 
         public BV And(params BV[] predicates)
         {
-            BV and = _ones;
+            BV and = True;
             for (int i = 0; i < predicates.Length; i++)
             {
                 and &= predicates[i];
@@ -148,7 +147,7 @@ namespace System.Text.RegularExpressions.SRM
             return and;
         }
 
-        public BV And(IEnumerable<BV> predicates) => throw new NotImplementedException();
+        public BV And(IEnumerable<BV> predicates) => throw new NotSupportedException();
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public BV And(BV predicate1, BV predicate2) => predicate1 & predicate2;
@@ -158,7 +157,7 @@ namespace System.Text.RegularExpressions.SRM
 
         public BV Or(IEnumerable<BV> predicates)
         {
-            BV res = _zero;
+            BV res = False;
             foreach (BV p in predicates)
             {
                 res |= p;
@@ -170,7 +169,7 @@ namespace System.Text.RegularExpressions.SRM
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public BV Or(BV predicate1, BV predicate2) => predicate1 | predicate2;
 
-        public BV RangeConstraint(char lower, char upper, bool caseInsensitive = false, string? culture = null) => throw new NotSupportedException(nameof(RangeConstraint));
+        public BV RangeConstraint(char lower, char upper, bool caseInsensitive = false, string? culture = null) => throw new NotSupportedException();
 
         public BV CharConstraint(char c, bool caseInsensitive = false, string? culture = null)
         {
@@ -191,7 +190,7 @@ namespace System.Text.RegularExpressions.SRM
 
             Debug.Assert(_partition is not null);
 
-            BV res = _zero;
+            BV res = False;
             for (int i = 0; i < _bits; i++)
             {
                 BDD bdd_i = _partition[i];
@@ -211,7 +210,7 @@ namespace System.Text.RegularExpressions.SRM
 
             // the result will be the union of all minterms in the set
             BDD res = solver.False;
-            if (!pred.Equals(_zero))
+            if (!pred.Equals(False))
             {
                 for (int i = 0; i < _bits; i++)
                 {
@@ -227,7 +226,7 @@ namespace System.Text.RegularExpressions.SRM
         }
 
         public BV[] GetPartition() => _atoms;
-        public IEnumerable<char> GenerateAllCharacters(BV set) => throw new NotImplementedException(nameof(GenerateAllCharacters));
+        public IEnumerable<char> GenerateAllCharacters(BV set) => throw new NotSupportedException();
 
         /// <summary>
         /// calls bv.Serialize()

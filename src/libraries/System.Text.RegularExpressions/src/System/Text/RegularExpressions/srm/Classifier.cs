@@ -103,7 +103,7 @@ namespace System.Text.RegularExpressions.SRM
             int firstEnd = input.IndexOf(',');
             if (firstEnd == -1 || input.Slice(firstEnd + 1).IndexOf(',') != -1)
             {
-                throw new ArgumentException($"{nameof(Classifier.Deserialize)} invalid '{nameof(input)}' parameter");
+                throw new ArgumentOutOfRangeException(nameof(input));
             }
 
             int[] precomp = Base64.DecodeIntArray(input[..firstEnd]);

@@ -96,12 +96,14 @@ namespace System.Text.RegularExpressions.SRM
         {
             string[] fragments = input.Split(TopLevelSeparator);
             if (fragments.Length != 15)
-                throw new ArgumentException($"{nameof(Regex.Deserialize)} error", nameof(input));
+            {
+                throw new ArgumentOutOfRangeException(nameof(input));
+            }
 
             try
             {
                 BVAlgebraBase alg = BVAlgebraBase.Deserialize(fragments[1]);
-                Debug.Assert(alg is BV64Algebra || alg is BVAlgebra);
+                Debug.Assert(alg is BV64Algebra or BVAlgebra);
                 IMatcher matcher = alg is BV64Algebra bv64 ?
                     new SymbolicRegexMatcher<ulong>(bv64, fragments) :
                     new SymbolicRegexMatcher<BV>((BVAlgebra)alg, fragments);
@@ -109,7 +111,7 @@ namespace System.Text.RegularExpressions.SRM
             }
             catch (Exception e)
             {
-                throw new ArgumentException($"{nameof(Regex.Deserialize)} error", nameof(input), e);
+                throw new ArgumentOutOfRangeException(nameof(input), e);
             }
         }
 
