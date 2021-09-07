@@ -3,32 +3,28 @@
 
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using System.Net;
 
 namespace System.Text.RegularExpressions.SRM
 {
-    /// <summary>
-    /// Captures a state of a DFA explored during matching.
-    /// </summary>
+    /// <summary>Captures a state of a DFA explored during matching.</summary>
     internal sealed class State<T> where T : notnull
     {
         internal int Id { get; set; }
+
         internal bool IsInitialState { get; set; }
+
         internal uint PrevCharKind { get; private set; }
+
         internal SymbolicRegexNode<T> Node { get; private set; }
 
-        /// <summary>
-        /// State is lazy
-        /// </summary>
+        /// <summary>State is lazy</summary>
         internal bool IsLazy => Node._info.IsLazy;
 
-        /// <summary>
-        /// This is a deadend state
-        /// </summary>
+        /// <summary>This is a deadend state</summary>
         internal bool IsDeadend => Node.IsNothing;
 
-        /// <summary>
-        /// The node must be nullable here
-        /// </summary>
+        /// <summary>The node must be nullable here</summary>
         internal int WatchDog
         {
             get
@@ -48,14 +44,10 @@ namespace System.Text.RegularExpressions.SRM
             }
         }
 
-        /// <summary>
-        /// If true then the state is a dead-end, rejects all inputs.
-        /// </summary>
+        /// <summary>If true then the state is a dead-end, rejects all inputs.</summary>
         internal bool IsNothing => Node.IsNothing;
 
-        /// <summary>
-        /// If true then state starts with a ^ or $ or \A or \z or \Z
-        /// </summary>
+        /// <summary>If true then state starts with a ^ or $ or \A or \z or \Z</summary>
         internal bool StartsWithLineAnchor => Node._info.StartsWithLineAnchor;
 
         internal State(SymbolicRegexNode<T> node, uint prevCharKind) : base()
@@ -84,10 +76,9 @@ namespace System.Text.RegularExpressions.SRM
             }
             else if (NLpred.Equals(atom))
             {
-                //if the previous state was the start state, mark this as the very FIRST \n
-                //essentially, this looks the same as the very last \n and
-                //is used to nullify rev(\Z) in the conext of a reversed automaton
-                //either \Z or rev(\Z) is ever possible as an anchor
+                // If the previous state was the start state, mark this as the very FIRST \n.
+                // Essentially, this looks the same as the very last \n and is used to nullify
+                // rev(\Z) in the conext of a reversed automaton.
                 nextCharKind = PrevCharKind == CharKind.StartStop ?
                     CharKind.NewLineS :
                     CharKind.Newline;
@@ -97,10 +88,10 @@ namespace System.Text.RegularExpressions.SRM
                 nextCharKind = CharKind.WordLetter;
             }
 
-            // combined character context
+            // Combined character context
             uint context = CharKind.Context(PrevCharKind, nextCharKind);
 
-            // compute the derivative of the node for the given context
+            // Compute the derivative of the node for the given context
             SymbolicRegexNode<T> derivative = Node.MkDerivative(atom, context);
 
             // nextCharKind will be the PrevCharKind of the target state
@@ -136,7 +127,7 @@ namespace System.Text.RegularExpressions.SRM
                     info = $"Previous: {info}&#13;";
                 }
 
-                string deriv = HTMLEncodeChars(Node.ToString());
+                string deriv = WebUtility.HtmlEncode(Node.ToString());
                 if (deriv == string.Empty)
                 {
                     deriv = "()";
@@ -145,7 +136,5 @@ namespace System.Text.RegularExpressions.SRM
                 return $"{info}{deriv}";
             }
         }
-
-        private static string HTMLEncodeChars(string s) => s.Replace("&", "&amp;").Replace("\"", "&quot;").Replace("<", "&lt;").Replace(">", "&gt;");
     }
 }
