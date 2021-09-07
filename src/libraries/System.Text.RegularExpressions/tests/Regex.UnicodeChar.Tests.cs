@@ -12,8 +12,20 @@ namespace System.Text.RegularExpressions.Tests
     {
         private const int MaxUnicodeRange = 2 << 15;
 
-        [Fact]
-        public void RegexUnicodeChar()
+        public static IEnumerable<object[]> RegexUnicodeChar_TestData()
+        {
+            if (!PlatformDetection.IsNetFramework)
+            {
+                yield return new object[] { RegexHelpers.RegexOptionNonBacktracking };
+            }
+
+            yield return new object[] { RegexOptions.None };
+            yield return new object[] { RegexOptions.Compiled };
+        }
+
+        [Theory]
+        [MemberData(nameof(RegexUnicodeChar_TestData))]
+        public void RegexUnicodeChar(RegexOptions options)
         {
             // Regex engine is Unicode aware now for the \w and \d character classes
             // \s is not - i.e. it still only recognizes the ASCII space separators, not Unicode ones
@@ -48,7 +60,7 @@ namespace System.Text.RegularExpressions.Tests
             // \w - we will create strings from valid characters that form \w and make sure that the regex engine catches this.
             // Build a random string with valid characters followed by invalid characters
             Random random = new Random(-55);
-            Regex regex = new Regex(@"\w*");
+            Regex regex = new Regex(@"\w*", options);
 
             int validCharLength = 10;
             int invalidCharLength = 15;
@@ -91,7 +103,7 @@ namespace System.Text.RegularExpressions.Tests
 
             // Build a random string with invalid characters followed by valid characters and then again invalid
             random = new Random(-55);
-            regex = new Regex(@"\w+");
+            regex = new Regex(@"\w+", options);
 
             validCharLength = 10;
             invalidCharLength = 15;
@@ -148,7 +160,7 @@ namespace System.Text.RegularExpressions.Tests
 
             // \d - we will create strings from valid characters that form \d and make sure that the regex engine catches this.
             // Build a random string with valid characters and then again invalid
-            regex = new Regex(@"\d+");
+            regex = new Regex(@"\d+", options);
 
             validCharLength = 10;
             invalidCharLength = 15;
@@ -183,7 +195,7 @@ namespace System.Text.RegularExpressions.Tests
             }
 
             // Build a random string with invalid characters, valid and then again invalid
-            regex = new Regex(@"\d+");
+            regex = new Regex(@"\d+", options);
 
             validCharLength = 10;
             invalidCharLength = 15;
