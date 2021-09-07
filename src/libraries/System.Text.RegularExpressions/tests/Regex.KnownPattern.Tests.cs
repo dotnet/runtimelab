@@ -1,6 +1,7 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using Xunit;
@@ -9,6 +10,24 @@ namespace System.Text.RegularExpressions.Tests
 {
     public class RegexKnownPatternTests
     {
+        public static IEnumerable<RegexOptions> RegexOptionsExtended()
+        {
+            if (!PlatformDetection.IsNetFramework)
+            {
+                yield return RegexHelpers.RegexOptionNonBacktracking;
+            }
+
+            yield return RegexOptions.None;
+            yield return RegexOptions.Compiled;
+        }
+
+        public static IEnumerable<object[]> RegexOptions_TestData()
+        {
+            foreach (RegexOptions options in RegexOptionsExtended())
+            {
+                yield return new object[] { options };
+            }
+        }
         //
         // These patterns come from the Regex documentation at docs.microsoft.com.
         //
@@ -294,8 +313,7 @@ namespace System.Text.RegularExpressions.Tests
 
         // https://docs.microsoft.com/en-us/dotnet/standard/base-types/grouping-constructs-in-regular-expressions#noncapturing-groups
         [Theory]
-        [InlineData(RegexOptions.None)]
-        [InlineData(RegexOptions.Compiled)]
+        [MemberData(nameof(RegexOptions_TestData))]
         public void Docs_GroupingConstructs_NoncapturingGroups(RegexOptions options)
         {
             const string Pattern = @"(?:\b(?:\w+)\W*)+\.";
@@ -309,8 +327,7 @@ namespace System.Text.RegularExpressions.Tests
 
         // https://docs.microsoft.com/en-us/dotnet/standard/base-types/grouping-constructs-in-regular-expressions#group-options
         [Theory]
-        [InlineData(RegexOptions.None)]
-        [InlineData(RegexOptions.Compiled)]
+        [MemberData(nameof(RegexOptions_TestData))]
         public void Docs_GroupingConstructs_GroupOptions(RegexOptions options)
         {
             const string Pattern = @"\b(?ix: d \w+)\s";
@@ -614,8 +631,7 @@ namespace System.Text.RegularExpressions.Tests
 
         // https://docs.microsoft.com/en-us/dotnet/standard/base-types/backtracking-in-regular-expressions#linear-comparison-without-backtracking
         [Theory]
-        [InlineData(RegexOptions.None)]
-        [InlineData(RegexOptions.Compiled)]
+        [MemberData(nameof(RegexOptions_TestData))]
         public void Docs_Backtracking_LinearComparisonWithoutBacktracking(RegexOptions options)
         {
             const string Pattern = @"e{2}\w\b";
@@ -647,13 +663,20 @@ namespace System.Text.RegularExpressions.Tests
 
         // https://docs.microsoft.com/en-us/dotnet/standard/base-types/backtracking-in-regular-expressions#nonbacktracking-subexpression
         [Theory]
-        [InlineData(RegexOptions.None)]
-        [InlineData(RegexOptions.Compiled)]
+        [MemberData(nameof(RegexOptions_TestData))]
         public void Docs_Backtracking_WithNestedOptionalQuantifiers(RegexOptions options)
         {
             const string Input = "b51:4:1DB:9EE1:5:27d60:f44:D4:cd:E:5:0A5:4a:D24:41Ad:";
             // Assert.False(Regex.IsMatch(Input, "^(([0-9a-fA-F]{1,4}:)*([0-9a-fA-F]{1,4}))*(::)$")); // takes too long due to backtracking
-            Assert.False(Regex.IsMatch(Input, "^((?>[0-9a-fA-F]{1,4}:)*(?>[0-9a-fA-F]{1,4}))*(::)$", options)); // non-backtracking
+            if (options == RegexHelpers.RegexOptionNonBacktracking)
+            {
+                // With NonBacktracking option this test becomes feasible: from almost a minute to less than a second
+                Assert.False(Regex.IsMatch(Input, "^(([0-9a-fA-F]{1,4}:)*([0-9a-fA-F]{1,4}))*(::)$", options));
+            }
+            else
+            {
+                Assert.False(Regex.IsMatch(Input, "^((?>[0-9a-fA-F]{1,4}:)*(?>[0-9a-fA-F]{1,4}))*(::)$", options)); // forced non-backtracking
+            }
         }
 
         // https://docs.microsoft.com/en-us/dotnet/standard/base-types/backtracking-in-regular-expressions#lookbehind-assertions
@@ -864,8 +887,7 @@ namespace System.Text.RegularExpressions.Tests
 
         // https://docs.microsoft.com/en-us/dotnet/standard/base-types/miscellaneous-constructs-in-regular-expressions#end-of-line-comment
         [Theory]
-        [InlineData(RegexOptions.None)]
-        [InlineData(RegexOptions.Compiled)]
+        [MemberData(nameof(RegexOptions_TestData))]
         public void Docs_EndOfLineComment(RegexOptions options)
         {
             const string Pattern = @"\{\d+(,-*\d+)*(\:\w{1,4}?)*\}(?x) # Looks for a composite format item.";
@@ -943,7 +965,7 @@ namespace System.Text.RegularExpressions.Tests
 
             const string IdentifierRegex = @"^(" + StartCharacterRegex + ")(" + PartCharactersRegex + ")*$";
 
-            foreach (RegexOptions options in new[] { RegexOptions.Compiled, RegexOptions.None })
+            foreach (RegexOptions options in RegexOptionsExtended())
             {
                 Regex r = new Regex(IdentifierRegex, options);
                 Assert.Equal(isExpectedMatch, r.IsMatch(value));
@@ -961,7 +983,7 @@ namespace System.Text.RegularExpressions.Tests
         {
             const string CommentLineRegex = @"^\s*;\s*(.*?)\s*$";
 
-            foreach (RegexOptions options in new[] { RegexOptions.Compiled, RegexOptions.None })
+            foreach (RegexOptions options in RegexOptionsExtended())
             {
                 Regex r = new Regex(CommentLineRegex, options);
                 Assert.Equal(isExpectedMatch, r.IsMatch(value));
@@ -980,7 +1002,7 @@ namespace System.Text.RegularExpressions.Tests
         {
             const string SectionLineRegex = @"^\s*\[([\w\.\-\+:\/\(\)\\]+)\]\s*$";
 
-            foreach (RegexOptions options in new[] { RegexOptions.Compiled, RegexOptions.None })
+            foreach (RegexOptions options in RegexOptionsExtended())
             {
                 Regex r = new Regex(SectionLineRegex, options);
                 Assert.Equal(isExpectedMatch, r.IsMatch(value));
