@@ -3,12 +3,9 @@
 
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 using Internal.TypeSystem;
 using ILCompiler;
 using LLVMSharp.Interop;
@@ -17,7 +14,6 @@ using ILCompiler.DependencyAnalysis;
 using ILCompiler.DependencyAnalysisFramework;
 using ILCompiler.LLVM;
 using Internal.IL.Stubs;
-using Internal.ReadyToRunConstants;
 using Internal.TypeSystem.Ecma;
 
 namespace Internal.IL
