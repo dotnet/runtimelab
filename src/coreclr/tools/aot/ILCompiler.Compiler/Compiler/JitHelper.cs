@@ -236,10 +236,10 @@ namespace ILCompiler
                     break;
 
                 case ReadyToRunHelper.ReversePInvokeEnter:
-                    mangledName = "RhpReversePInvoke2";
+                    mangledName = "RhpReversePInvoke";
                     break;
                 case ReadyToRunHelper.ReversePInvokeExit:
-                    mangledName = "RhpReversePInvokeReturn2";
+                    mangledName = "RhpReversePInvokeReturn";
                     break;
 
                 case ReadyToRunHelper.CheckCastAny:

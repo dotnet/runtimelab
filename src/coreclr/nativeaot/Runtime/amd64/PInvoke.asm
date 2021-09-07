@@ -178,28 +178,6 @@ NESTED_END RhpReversePInvokeAttachOrTrapThread, _TEXT
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-;; RhpReversePInvokeReturn
-;;
-;; IN:  RCX: address of reverse pinvoke frame
-;;
-;; TRASHES:  RCX, RDX, R10, R11
-;;
-;; PRESERVES: RAX (return value)
-;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-LEAF_ENTRY RhpReversePInvokeReturn, _TEXT
-        mov         rdx, [rcx + 8]  ; get Thread pointer
-        mov         rcx, [rcx + 0]  ; get previous M->U transition frame
-
-        mov         [rdx + OFFSETOF__Thread__m_pTransitionFrame], rcx
-        cmp         [RhpTrapThreads], TrapThreadsFlags_None
-        jne         RhpWaitForSuspend
-        ret
-LEAF_END RhpReversePInvokeReturn, _TEXT
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
 ;; RhpPInvoke
 ;;
 ;; IN:  RCX: address of pinvoke frame

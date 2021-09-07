@@ -113,28 +113,5 @@ Done:
         ret
 _RhpWaitForGC endp
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
-;; RhpReversePInvokeReturn
-;;
-;; IN:  ECX: address of reverse pinvoke frame
-;;                  0: save slot for previous M->U transition frame
-;;                  4: save slot for thread pointer to avoid re-calc in epilog sequence
-;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-FASTCALL_FUNC RhpReversePInvokeReturn, 0
-        push        edx         ; save return value
-
-        mov         edx, [ecx + 4]  ; get Thread pointer
-        mov         ecx, [ecx + 0]  ; get previous M->U transition frame
-
-        mov         [edx + OFFSETOF__Thread__m_pTransitionFrame], ecx
-        test        [RhpTrapThreads], TrapThreadsFlags_TrapThreads
-        pop         edx         ; restore return value
-        jnz         _RhpWaitForSuspend
-        ret
-
-FASTCALL_ENDFUNC
-
 
         end

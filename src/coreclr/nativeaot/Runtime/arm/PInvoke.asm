@@ -120,34 +120,4 @@ NoAbort
         NESTED_END RhpReversePInvokeTrapThread
 
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
-;; RhpReversePInvokeReturn
-;;
-;; IN:  r3: address of reverse pinvoke frame
-;;                  0: save slot for previous M->U transition frame
-;;                  4: save slot for thread pointer to avoid re-calc in epilog sequence
-;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-        LEAF_ENTRY RhpReversePInvokeReturn
-
-        ldr         r2, [r3, #4]    ; get Thread pointer
-        ldr         r3, [r3, #0]    ; get previous M->U transition frame
-
-        str         r3, [r2, #OFFSETOF__Thread__m_pTransitionFrame]
-        dmb
-
-        ldr         r3, =RhpTrapThreads
-        ldr         r3, [r3]
-        tst         r3, #TrapThreadsFlags_TrapThreads
-        bne         RareTrapThread
-
-        bx          lr
-
-RareTrapThread
-        b           RhpWaitForSuspend
-
-        LEAF_END RhpReversePInvokeReturn
-
-
         end

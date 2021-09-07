@@ -1394,8 +1394,7 @@ EXTERN_C NOINLINE void FASTCALL RhpReversePInvokeAttachOrTrapThread2(ReversePInv
 // PInvoke
 //
 
-// Standard calling convention variant of RhpReversePInvoke
-COOP_PINVOKE_HELPER(void, RhpReversePInvoke2, (ReversePInvokeFrame * pFrame))
+COOP_PINVOKE_HELPER(void, RhpReversePInvoke, (ReversePInvokeFrame * pFrame))
 {
     Thread * pCurThread = ThreadStore::RawGetCurrentThread();
     pFrame->m_savedThread = pCurThread;
@@ -1405,8 +1404,7 @@ COOP_PINVOKE_HELPER(void, RhpReversePInvoke2, (ReversePInvokeFrame * pFrame))
     RhpReversePInvokeAttachOrTrapThread2(pFrame);
 }
 
-// Standard calling convention variant of RhpReversePInvokeReturn
-COOP_PINVOKE_HELPER(void, RhpReversePInvokeReturn2, (ReversePInvokeFrame * pFrame))
+COOP_PINVOKE_HELPER(void, RhpReversePInvokeReturn, (ReversePInvokeFrame * pFrame))
 {
     pFrame->m_savedThread->InlineReversePInvokeReturn(pFrame);
 }
