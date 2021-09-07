@@ -43,12 +43,11 @@ ILC is designed to support multiple code generation backends that target the sam
 ILC currently supports following codegen backends (with varying levels of completeness):
 
 * **RyuJIT**: native code generator also used as the JIT compiler in CoreCLR. This backend supports x64, arm64, arm32 on Windows, Linux, macOS, and BSD.
-* **CppCodegen**: a portable code generator that translates CIL into C++ code. This supports rapid platform bringup (instead of having to build a code generator for a new CPU architecture, it relies on the C++ compiler the platform likely already has). Portability comes at certain costs.
-* **LLVM**: the LLVM backend is currently used to generate WebAssembly code in connection with Emscripten.
+* **LLVM**: the LLVM backend is currently used to generate WebAssembly code in connection with Emscripten. Lives in [NativeAOT-LLVM branch](https://github.com/dotnet/runtimelab/blob/feature/NativeAOT-LLVM/docs/design/coreclr/botr/ilc-architecture.md).
 
 This document describes the common parts of the compiler that are applicable to all codegen backends.
 
-Related project files: ILCompiler.CppCodegen.csproj, ILCompiler.WebAssembly.csproj
+Related project files: ILCompiler.LLVM.csproj, ILCompiler.RyuJit.csproj
 
 ## Dependency analysis
 The core concept driving the compilation in ILC is dependency analysis. Dependency analysis is the process of determining the set of runtime artifacts (method code bodies and various data structures) that need to be generated into the output object file. Dependency analysis builds a graph where each vertex either
@@ -59,7 +58,7 @@ The edges of the graph represent a "requires" relationship. The compilation proc
 
 Related classes: `DependencyNodeCore<>`, `ObjectNode`
 
-Related project files and tests: ILCompiler.DependencyAnalysisFramework.csproj, ILCompiler.DependencyAnalysisFramework.Tests.csproj
+Related project files and tests: ILCompiler.DependencyAnalysisFramework.csproj
 
 ### Dependency expansion process
 The compilation starts with a set of nodes in the dependency graph called compilation roots. The roots are specified by the compilation driver and typically contain the `Main()` method, but the exact set of roots depends on the compilation mode: the set of roots will be different when we're e.g. building a library, or when we're doing a multi-file compilation, or when we're building a single file app.
@@ -135,10 +134,9 @@ While the object file format is highly target specific, the compiler represents 
 
 On a high level, the role of the object writer is to go over all the marked `ObjectNode`s in the graph, retrieve their data, defined symbols, and relocations to other symbols, and store them in the object file.
 
-CoreRT compiler contains multiple object writers:
-* Native object writer (`src/Native/ObjWriter`) based on LLVM that is capable of producing Windows PE, Linux ELF, and macOS Mach-O file formats
+NativeAOT compiler contains multiple object writers:
+* Native object writer (`src/coreclr/tools/aot/ObjWriter`) based on LLVM that is capable of producing Windows PE, Linux ELF, and macOS Mach-O file formats
 * Native object writer based on LLVM for WebAssembly
-* CppWriter that generates textual C++ code describing the data structures
 * Ready to run object writer that generates mixed CIL/native executables in the ready to run format for CoreCLR
 
 Related command line arguments: `--map` produces a map of all the object nodes that were emitted into the object file.
@@ -173,7 +171,7 @@ The compiler also needs to call into some well-known entrypoints within the base
 
 One interesting thing to point out is that the coupling of the compiler with the base class libraries is relatively loose (there are only few mandatory parts). This allows different base class libraries to be used with ILC. Such base class libraries could look quite different from what regular .NET developers are used to (e.g. a `System.Object` that doesn't have a `ToString` method) but could allow using type safe code in environments where regular .NET would be considered "too heavy". Various experiments with such lightweight code have been done in the past, and some of them even shipped as part of the Windows operating system.
 
-Example of such alternative base class library is [Test.CoreLib](../../src/Test.CoreLib/). The `Test.CoreLib` library provides a very minimal API surface. This, coupled with the fact that it requires almost no initialization, makes it a great assistant in bringing CoreRT to new platforms.
+Example of such alternative base class library is [Test.CoreLib](../../../../src/coreclr/nativeaot/Test.CoreLib/). The `Test.CoreLib` library provides a very minimal API surface. This, coupled with the fact that it requires almost no initialization, makes it a great assistant in bringing NativeAOT to new platforms.
 
 ## Compiler-generated method bodies
 Besides compiling the code provided by the user in the form of input assemblies, the compiler also needs to compile various helpers generated within the compiler. The helpers are used to lower some of the higher-level .NET constructs into concepts that the underlying code generation backend understands. These helpers are emitted as IL code on the fly, without being physically backed by IL in an assembly on disk. Having the higher level concepts expressed as regular IL helps avoid having to implement the higher-level concept in each code generation backend (we only must do it once because IL is the thing all backends understand).
