@@ -920,6 +920,7 @@ namespace System.Text.RegularExpressions.Tests
             {
                 Groups(pattern, input, options, expectedGroups);
                 Groups(pattern, input, RegexOptions.Compiled | options, expectedGroups);
+
                 if (PlatformDetection.IsNetCore)
                 {
                     // Alternative altMatch when order of alternations matters in backtracking but order does not matter in NonBacktracking mode

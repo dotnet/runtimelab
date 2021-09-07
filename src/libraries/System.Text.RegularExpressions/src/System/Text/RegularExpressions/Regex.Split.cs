@@ -87,7 +87,35 @@ namespace System.Text.RegularExpressions
             count--;
             (List<string> results, int prevat, string input, int count) state = (results: new List<string>(), prevat: 0, input, count);
 
-            if (!regex.RightToLeft)
+            if (regex._srm is not null)
+            {
+                Match match = regex.Match(input, startat, input.Length - startat);
+                if (!match.Success)
+                {
+                    // If there is no match then return the input as the only part in the split
+                    return new[] { input };
+                }
+
+                while (match.Success)
+                {
+                    // Add the substring before the found match, this may be empty
+                    state.results.Add(state.input.Substring(state.prevat, match.Index - state.prevat));
+                    state.prevat = match.Index + match.Length;
+
+                    if (--state.count == 0)
+                    {
+                        // If the maximum number of allowed mathes is reached break the splitting
+                        // If the initial value of count is 0 or negative this value just keeps decreasing further
+                        break;
+                    }
+
+                    match = match.NextMatch();
+                }
+
+                // Add the final suffix that either did not contain any matches or was cut off due to max split count being reached, this may be empty
+                state.results.Add(state.input.Substring(state.prevat, input.Length - state.prevat));
+            }
+            else if (!regex.RightToLeft)
             {
                 regex.Run(input, startat, ref state, static (ref (List<string> results, int prevat, string input, int count) state, Match match) =>
                 {
