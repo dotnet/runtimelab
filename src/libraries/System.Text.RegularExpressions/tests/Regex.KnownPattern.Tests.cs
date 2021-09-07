@@ -10,6 +10,24 @@ namespace System.Text.RegularExpressions.Tests
 {
     public class RegexKnownPatternTests
     {
+        public static IEnumerable<RegexOptions> RegexOptionsExtended()
+        {
+            if (!PlatformDetection.IsNetFramework)
+            {
+                yield return RegexHelpers.RegexOptionNonBacktracking;
+            }
+
+            yield return RegexOptions.None;
+            yield return RegexOptions.Compiled;
+        }
+
+        public static IEnumerable<object[]> RegexOptions_TestData()
+        {
+            foreach (RegexOptions options in RegexOptionsExtended())
+            {
+                yield return new object[] { options };
+            }
+        }
         //
         // These patterns come from the Regex documentation at docs.microsoft.com.
         //
