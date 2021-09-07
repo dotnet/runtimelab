@@ -649,7 +649,6 @@ namespace System.Text.RegularExpressions.Tests
         public void Docs_Backtracking_WithNestedOptionalQuantifiers(RegexOptions options)
         {
             const string Input = "b51:4:1DB:9EE1:5:27d60:f44:D4:cd:E:5:0A5:4a:D24:41Ad:";
-            // Assert.False(Regex.IsMatch(Input, "^(([0-9a-fA-F]{1,4}:)*([0-9a-fA-F]{1,4}))*(::)$")); // takes too long due to backtracking
             if (options == RegexHelpers.RegexOptionNonBacktracking)
             {
                 // With NonBacktracking option this test becomes feasible: from almost a minute to less than a second
