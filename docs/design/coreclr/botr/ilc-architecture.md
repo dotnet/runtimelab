@@ -43,7 +43,7 @@ ILC is designed to support multiple code generation backends that target the sam
 ILC currently supports following codegen backends (with varying levels of completeness):
 
 * **RyuJIT**: native code generator also used as the JIT compiler in CoreCLR. This backend supports x64, arm64, arm32 on Windows, Linux, macOS, and BSD.
-* **LLVM**: the LLVM backend is currently used to generate WebAssembly code in connection with Emscripten. Lives in [NativeAOT-LLVM branch](https://github.com/dotnet/runtimelab/blob/feature/NativeAOT-LLVM/docs/design/coreclr/botr/ilc-architecture.md).
+* **LLVM**: the LLVM backend is currently used to generate WebAssembly code in connection with Emscripten. Lives in [NativeAOT-LLVM branch](https://github.com/dotnet/runtimelab/tree/feature/NativeAOT-LLVM).
 
 This document describes the common parts of the compiler that are applicable to all codegen backends.
 
