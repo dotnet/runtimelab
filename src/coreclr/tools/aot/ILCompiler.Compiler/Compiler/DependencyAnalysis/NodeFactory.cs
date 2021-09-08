@@ -339,11 +339,6 @@ namespace ILCompiler.DependencyAnalysis
             _genericReadyToRunHelpersFromDict = new NodeCache<ReadyToRunGenericHelperKey, ISymbolNode>(CreateGenericLookupFromDictionaryNode);
             _genericReadyToRunHelpersFromType = new NodeCache<ReadyToRunGenericHelperKey, ISymbolNode>(CreateGenericLookupFromTypeNode);
 
-            _indirectionNodes = new NodeCache<ISortableSymbolNode, ISymbolNode>(indirectedNode =>
-            {
-                return new IndirectionNode(Target, indirectedNode, 0);                
-            });
-
             _frozenStringNodes = new NodeCache<string, FrozenStringNode>((string data) =>
             {
                 return new FrozenStringNode(data, Target);
@@ -986,20 +981,6 @@ namespace ILCompiler.DependencyAnalysis
         public ISymbolNode ReadyToRunHelperFromTypeLookup(ReadyToRunHelperId id, Object target, TypeSystemEntity dictionaryOwner)
         {
             return _genericReadyToRunHelpersFromType.GetOrAdd(new ReadyToRunGenericHelperKey(id, target, dictionaryOwner));
-        }
-
-        private NodeCache<ISortableSymbolNode, ISymbolNode> _indirectionNodes;
-
-        public ISymbolNode Indirection(ISortableSymbolNode symbol)
-        {
-            if (symbol.RepresentsIndirectionCell)
-            {
-                return symbol;
-            }
-            else
-            {
-                return _indirectionNodes.GetOrAdd(symbol);
-            }
         }
 
         private NodeCache<MetadataType, TypeMetadataNode> _typesWithMetadata;

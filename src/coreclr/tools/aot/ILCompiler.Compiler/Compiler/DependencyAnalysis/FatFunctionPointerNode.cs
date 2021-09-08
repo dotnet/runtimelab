@@ -84,8 +84,8 @@ namespace ILCompiler.DependencyAnalysis
                 contextParameter = factory.ConstructedTypeSymbol(Method.OwningType);
             }
 
-            // The next entry is a pointer to the pointer to the context to be used for the canonical method
-            builder.EmitPointerReloc(factory.Indirection(contextParameter));
+            // The next entry is a pointer to the context to be used for the canonical method
+            builder.EmitPointerReloc(contextParameter);
             
             return builder.ToObjectData();
         }

@@ -34,7 +34,7 @@ namespace Internal.Runtime.TypeLoader
         /// Get a pointer to the nongc static field data of a type. This function works for dynamic
         /// types, reflectable types, and for all generic types
         /// </summary>
-        public IntPtr TryGetNonGcStaticFieldDataDirect(RuntimeTypeHandle runtimeTypeHandle)
+        public IntPtr TryGetNonGcStaticFieldData(RuntimeTypeHandle runtimeTypeHandle)
         {
             unsafe
             {
@@ -71,27 +71,6 @@ namespace Internal.Runtime.TypeLoader
                 return nonGcStaticsAddress;
             }
 
-            // The indirected helper function can be used to find all dynamic types not found via
-            // TryGetStaticsInfoForNamedType as well as generics
-            IntPtr ptrToStaticFieldData = TryGetNonGcStaticFieldData(runtimeTypeHandle);
-            if (ptrToStaticFieldData == IntPtr.Zero)
-            {
-                return IntPtr.Zero;
-            }
-            else
-            {
-                unsafe
-                {
-                    return *(IntPtr*)ptrToStaticFieldData;
-                }
-            }
-        }
-
-        /// <summary>
-        /// Get a pointer to a pointer to the nongc static field data of a type. This function works for all generic types
-        /// </summary>
-        public IntPtr TryGetNonGcStaticFieldData(RuntimeTypeHandle runtimeTypeHandle)
-        {
             unsafe
             {
                 // Non-generic, non-dynamic static data is found via the FieldAccessMap
@@ -129,7 +108,7 @@ namespace Internal.Runtime.TypeLoader
         /// Get a pointer to the gc static field data of a type. This function works for dynamic
         /// types, reflectable types, and for all generic types
         /// </summary>
-        public IntPtr TryGetGcStaticFieldDataDirect(RuntimeTypeHandle runtimeTypeHandle)
+        public IntPtr TryGetGcStaticFieldData(RuntimeTypeHandle runtimeTypeHandle)
         {
             unsafe
             {
@@ -159,27 +138,6 @@ namespace Internal.Runtime.TypeLoader
                 return gcStaticsAddress;
             }
 
-            // The indirected helper function can be used to find all dynamic types not found via
-            // TryGetStaticsInfoForNamedType as well as generics
-            IntPtr ptrToStaticFieldData = TryGetGcStaticFieldData(runtimeTypeHandle);
-            if (ptrToStaticFieldData == IntPtr.Zero)
-            {
-                return IntPtr.Zero;
-            }
-            else
-            {
-                unsafe
-                {
-                    return *(IntPtr*)ptrToStaticFieldData;
-                }
-            }
-        }
-
-        /// <summary>
-        /// Get a pointer to a pointer to the gc static field data of a type. This function works for all generic types
-        /// </summary>
-        public IntPtr TryGetGcStaticFieldData(RuntimeTypeHandle runtimeTypeHandle)
-        {
             unsafe
             {
                 // Non-generic, non-dynamic static data is found via the FieldAccessMap

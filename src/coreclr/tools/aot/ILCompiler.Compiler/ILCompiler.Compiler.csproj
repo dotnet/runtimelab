@@ -284,7 +284,6 @@
     <Compile Include="Compiler\DependencyAnalysis\GenericCompositionNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\GenericDefinitionEETypeNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\HelperEntrypoint.cs" />
-    <Compile Include="Compiler\DependencyAnalysis\IndirectionNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\ReflectionInvokeMapNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\ReflectionVirtualInvokeMapNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\GenericDictionaryNode.cs" />
