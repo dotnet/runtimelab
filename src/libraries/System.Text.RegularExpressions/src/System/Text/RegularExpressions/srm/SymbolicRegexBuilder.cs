@@ -39,9 +39,12 @@ namespace System.Text.RegularExpressions.SRM
         /// </summary>
         internal TElement[]? _atoms;
 
+        private readonly Dictionary<SymbolicRegexNode<TElement>, int> _counterIdMap = new Dictionary<SymbolicRegexNode<TElement>, int>();
         private readonly Dictionary<TElement, SymbolicRegexNode<TElement>> _singletonCache = new Dictionary<TElement, SymbolicRegexNode<TElement>>();
+
         // states that have been created
         internal HashSet<State<TElement>> _stateCache = new HashSet<State<TElement>>();
+
         /// <summary>
         /// Maps state ids to states, initial capacity is 1024 states.
         /// Each time more states are needed the length is increased by 1024.
@@ -235,7 +238,7 @@ namespace System.Text.RegularExpressions.SRM
         /// <summary>
         /// Make loop regex
         /// </summary>
-        internal SymbolicRegexNode<TElement> MkLoop(SymbolicRegexNode<TElement> regex, bool isLazy, int lower = 0, int upper = int.MaxValue, bool toplevel = false)
+        internal SymbolicRegexNode<TElement> MkLoop(SymbolicRegexNode<TElement> regex, bool isLazy, int lower = 0, int upper = int.MaxValue)
         {
             if (lower == 1 && upper == 1)
             {
@@ -314,6 +317,10 @@ namespace System.Text.RegularExpressions.SRM
         {
             switch (sr._kind)
             {
+                default:
+                    Debug.Fail($"Unexpected kind: {sr._kind}");
+                    goto case SymbolicRegexKind.StartAnchor;
+
                 case SymbolicRegexKind.StartAnchor:
                 case SymbolicRegexKind.EndAnchor:
                 case SymbolicRegexKind.BOLAnchor:
@@ -378,27 +385,20 @@ namespace System.Text.RegularExpressions.SRM
                         SymbolicRegexNode<TElement> or = MkOr(alts);
                         return or;
                     }
-
-                default:
-                    throw new NotSupportedException($"{nameof(NormalizeGeneralLoops)}:{sr._kind}");
             }
         }
 
-        private readonly Dictionary<SymbolicRegexNode<TElement>, int> counterIdMap = new Dictionary<SymbolicRegexNode<TElement>, int>();
-
         internal int GetCounterId(SymbolicRegexNode<TElement> node)
         {
-            if (node._kind == SymbolicRegexKind.Loop && node._upper < int.MaxValue)
+            int c = -1;
+            if (node._kind == SymbolicRegexKind.Loop &&
+                node._upper < int.MaxValue &&
+                !_counterIdMap.TryGetValue(node, out c))
             {
-                if (!counterIdMap.TryGetValue(node, out int c))
-                {
-                    counterIdMap[node] = c = counterIdMap.Count;
-                }
-
-                return c;
+                _counterIdMap[node] = c = _counterIdMap.Count;
             }
 
-            return -1;
+            return c;
         }
 
         private SymbolicRegexNode<TElement> ToLeftAssocForm(SymbolicRegexNode<TElement> node)
@@ -493,15 +493,13 @@ namespace System.Text.RegularExpressions.SRM
                         return builderT.MkConcat(sr_elems_trasformed, false);
                     }
 
-                case SymbolicRegexKind.IfThenElse:
+                default:
+                    Debug.Assert(sr._kind == SymbolicRegexKind.IfThenElse);
                     Debug.Assert(sr._iteCond is not null && sr._left is not null && sr._right is not null);
                     return builderT.MkIfThenElse(
                         Transform(sr._iteCond, builderT, predicateTransformer),
                         Transform(sr._left, builderT, predicateTransformer),
                         Transform(sr._right, builderT, predicateTransformer));
-
-                default:
-                    throw new NotImplementedException($"{nameof(Transform)}:{sr._kind}");
             }
         }
 
@@ -686,7 +684,7 @@ namespace System.Text.RegularExpressions.SRM
                         #endregion
                     }
                 default:
-                    throw new ArgumentException($"{nameof(Parse)}:{s[i]}");
+                    throw new ArgumentOutOfRangeException(nameof(s));
             }
         }
 

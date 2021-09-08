@@ -246,6 +246,7 @@ namespace System.Text.RegularExpressions.SRM
                     if (a == b)
                         return a;
                     break;
+
                 case BoolOp.Xor:
                     if (a == False)
                         return b;
@@ -258,6 +259,7 @@ namespace System.Text.RegularExpressions.SRM
                     if (b == True)
                         return CreateNot_rec(a);
                     break;
+
                 default:
                     Debug.Fail("Unhandled binary BoolOp case");
                     break;
@@ -475,10 +477,8 @@ namespace System.Text.RegularExpressions.SRM
         /// Generate all non-overlapping Boolean combinations of a set of BDDs.
         /// </summary>
         /// <param name="sets">the BDDs to create the minterms for</param>
-        /// <returns>
-        /// tuples of booleans indicating which of the input sets are true in the minterm and the BDD for the minterm
-        /// </returns>
-        public IEnumerable<(bool[], BDD)> GenerateMinterms(params BDD[] sets) => _mintermGen.GenerateMinterms(sets);
+        /// <returns>BDDs for the minterm</returns>
+        public List<BDD> GenerateMinterms(params BDD[] sets) => _mintermGen.GenerateMinterms(sets);
 
         /// <summary>
         /// Make a set containing all integers whose bits up to maxBit equal n.
@@ -674,12 +674,11 @@ namespace System.Text.RegularExpressions.SRM
         #endregion
 
         /// <summary>
-        /// Throws NotSupportedException.
-        /// Can be overwridden in a derived algebra.
         /// The returned integer must be nonegative
         /// and will act as the combined terminal in a multi-terminal BDD.
+        /// May throw NotSupportedException.
         /// </summary>
-        public virtual int CombineTerminals(BoolOp op, int terminal1, int terminal2) => throw new NotSupportedException($"{nameof(CombineTerminals)}:{op}");
+        public abstract int CombineTerminals(BoolOp op, int terminal1, int terminal2);
 
         /// <summary>
         /// Replace the True node in the BDD by a non-Boolean terminal.

@@ -39,7 +39,7 @@ namespace System.Text.RegularExpressions.SRM
         internal static BooleanClassifier Create(CharSetSolver solver, BDD domain)
         {
             var ascii = new bool[128];
-            for (int i = 0; i < 128; i++)
+            for (int i = 0; i < ascii.Length; i++)
             {
                 ascii[i] = domain.Contains(i);
             }
@@ -98,7 +98,7 @@ namespace System.Text.RegularExpressions.SRM
                 }
             }
 
-            throw new ArgumentException($"{nameof(BooleanClassifier.Deserialize)} invalid '{nameof(input)}' parameter");
+            throw new ArgumentOutOfRangeException(nameof(input));
         }
         #endregion
     }

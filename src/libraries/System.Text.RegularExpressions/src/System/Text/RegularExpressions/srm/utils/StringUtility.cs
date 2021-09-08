@@ -52,9 +52,9 @@ namespace System.Text.RegularExpressions.SRM
                 '\v' => @"\v",
                 '\f' => @"\f",
                 '\n' => @"\n",
-                _ when code >= 0x20 && code <= 0x7E => c.ToString(),
+                _ when code is >= 0x20 and <= 0x7E => c.ToString(),
                 _ when code <= 0xFF => $"\\x{code:X2}",
-                _  => $"\\u{code:X4}",
+                _ => $"\\u{code:X4}",
             };
         }
     }

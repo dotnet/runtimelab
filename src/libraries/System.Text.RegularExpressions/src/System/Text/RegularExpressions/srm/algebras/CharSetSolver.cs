@@ -2,8 +2,6 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 
 namespace System.Text.RegularExpressions.SRM
@@ -280,10 +278,9 @@ namespace System.Text.RegularExpressions.SRM
                 if (Or(s_or_d, pred) == s_or_d)
                 {
                     //check first if this is purely ascii range for digits
-                    if (And(pred, s).Equals(s) && And(pred, nonasciiDigit).IsEmpty)
-                        return $"[\\s{RepresentRanges(ToRanges(And(pred, asciiDigit)), checkSingletonComlement: false)}]";
-
-                    return $"[\\s\\d-[{RepresentSet(And(s_or_d, Not(pred)))}]]";
+                    return And(pred, s).Equals(s) && And(pred, nonasciiDigit).IsEmpty ?
+                        $"[\\s{RepresentRanges(ToRanges(And(pred, asciiDigit)), checkSingletonComlement: false)}]" :
+                        $"[\\s\\d-[{RepresentSet(And(s_or_d, Not(pred)))}]]";
                 }
                 //---
                 // s|wD
@@ -368,5 +365,7 @@ namespace System.Text.RegularExpressions.SRM
         }
 
         private static bool IsSingletonRange(Tuple<uint, uint>[] ranges) => ranges.Length == 1 && ranges[0].Item1 == ranges[0].Item2;
+
+        public override int CombineTerminals(BoolOp op, int terminal1, int terminal2) => throw new NotSupportedException();
     }
 }

@@ -48,7 +48,7 @@ namespace System.Text.RegularExpressions.SRM
                 if (value)
                 {
                     //set the j'th bit of the k'th block to 1
-                    _blocks[k] |= (1ul << j);
+                    _blocks[k] |= 1ul << j;
                 }
                 else
                 {

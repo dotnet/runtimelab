@@ -3,7 +3,6 @@
 
 using System.Collections;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
@@ -194,17 +193,10 @@ namespace System.Text.RegularExpressions.SRM
                 other.ExceptWith(others1);
             }
 
-            if (other.Count == 0 && loops.Count == 0)
-            {
-                return kind == SymbolicRegexKind.Or ?
-                    builder._emptySet :
-                    builder._fullSet;
-            }
-
-            return new SymbolicRegexSet<S>(builder, kind, other, loops)
-            {
-                _watchdog = watchdog
-            };
+            return
+                other.Count != 0 || loops.Count != 0 ? new SymbolicRegexSet<S>(builder, kind, other, loops) { _watchdog = watchdog } :
+                kind == SymbolicRegexKind.Or ? builder._emptySet :
+                builder._fullSet;
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             static void AddLoopElement(
@@ -388,7 +380,8 @@ namespace System.Text.RegularExpressions.SRM
             Debug.Assert(IsSingleton);
 
             Enumerator e = GetEnumerator();
-            e.MoveNext();
+            bool success = e.MoveNext();
+            Debug.Assert(success);
             return e.Current;
         }
 
