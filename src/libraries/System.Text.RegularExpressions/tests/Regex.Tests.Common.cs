@@ -1,6 +1,7 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Collections.Generic;
 using Xunit;
 
 namespace System.Text.RegularExpressions.Tests
@@ -8,6 +9,8 @@ namespace System.Text.RegularExpressions.Tests
     public static class RegexHelpers
     {
         public const string DefaultMatchTimeout_ConfigKeyName = "REGEX_DEFAULT_MATCH_TIMEOUT";
+
+        public const int StressTestNestingDepth = 1000;
 
         /// <summary>RegexOptions.NonBacktracking.</summary>
         /// <remarks>Defined here to be able to reference the value by name even on .NET Framework test builds.</remarks>
@@ -39,6 +42,25 @@ namespace System.Text.RegularExpressions.Tests
                 return start == input.Length;
             }
             return start == 0;
+        }
+
+        public static IEnumerable<RegexOptions> RegexOptionsExtended()
+        {
+            if (!PlatformDetection.IsNetFramework)
+            {
+                yield return RegexOptionNonBacktracking;
+            }
+
+            yield return RegexOptions.None;
+            yield return RegexOptions.Compiled;
+        }
+
+        public static IEnumerable<object[]> RegexOptions_TestData()
+        {
+            foreach (RegexOptions options in RegexOptionsExtended())
+            {
+                yield return new object[] { options };
+            }
         }
     }
 
