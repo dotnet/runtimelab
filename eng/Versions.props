@@ -15,11 +15,11 @@
     <UsingToolXliff>false</UsingToolXliff>
     <!-- Libs -->
     <MicrosoftNETTestSdkVersion>16.7.1</MicrosoftNETTestSdkVersion>
-    <VSRedistCommonNetCoreSharedFrameworkx6460Version>6.0.0-preview.6.21317.4</VSRedistCommonNetCoreSharedFrameworkx6460Version>
+    <VSRedistCommonNetCoreSharedFrameworkx6460Version>6.0.0-preview.7.21377.19</VSRedistCommonNetCoreSharedFrameworkx6460Version>
     <XUnitVersion>2.4.1</XUnitVersion>
     <XUnitRunnerVisualStudioVersion>2.4.3</XUnitRunnerVisualStudioVersion>
     <!-- Roslyn dependencies -->
-    <CompilerPlatformVersion>3.10.0-3.21229.26</CompilerPlatformVersion>
+    <CompilerPlatformVersion>4.0.0-2.21329.25</CompilerPlatformVersion>
     <CompilerPlatformTestingVersion>1.1.0</CompilerPlatformTestingVersion>
     <MicrosoftCodeAnalysisAnalyzersVersion>3.3.3-beta1.21268.3</MicrosoftCodeAnalysisAnalyzersVersion>
     <!-- Package dependencies -->
