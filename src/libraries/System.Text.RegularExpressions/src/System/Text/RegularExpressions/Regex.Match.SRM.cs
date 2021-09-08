@@ -1,63 +1,32 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
-using System.Runtime.CompilerServices;
+using System.Text.RegularExpressions.SRM;
 
 namespace System.Text.RegularExpressions
 {
     public partial class Regex
     {
-        /// <summary>Used iff <see cref="_srm"/> is non-null.</summary>
-        [MethodImpl(MethodImplOptions.NoInlining)]
-        internal Match? RunSRM(bool quick, string input, int beg, int startat, int length, int prevlen)
+        // TODO: Avoid rooting Serialize/Deserialize in ILLink purely for use by tests
+        // TODO: Only compile SaveDGML into Debug build
+        // TODO: Figure out what to do about Serialize/Deserialize in general (e.g. delete them, expose them, use them in source generated code, etc.)
+
+        internal string Serialize()
         {
-            Debug.Assert(_srm != null);
-
-            int endAt = beg + length;
-
-            // If the previous match was empty, advance by one before matching
-            // or terminate the matching if there is no remaining input to search in
-            if (prevlen == 0)
+            if (factory is not SymbolicRegexRunnerFactory srmFactory)
             {
-                if (startat == endAt)
-                    return RegularExpressions.Match.Empty;
-
-                startat += 1;
+                throw new NotSupportedException();
             }
 
-            SRM.Match? match = _srm._matcher.FindMatch(quick, input, startat, endAt);
-            if (quick)
-            {
-                if (match is null)
-                {
-                    return null;
-                }
-            }
-            else
-            {
-                Debug.Assert(match is not null);
-                if (match.Success)
-                {
-                    var m = new Match(this, 1, input, beg, length, startat);
-                    m._matches[0][0] = match.Index;
-                    m._matches[0][1] = match.Length;
-                    m._matchcount[0] = 1;
-                    m.Tidy(match.Index + match.Length);
-                    return m;
-                }
-            }
-
-            return RegularExpressions.Match.Empty;
+            return srmFactory._runner.Serialize();
         }
 
-        // TODO: Avoid rooting SaveDGML/Serialize/Deserialize in ILLink purely for use by tests
+        internal static Regex Deserialize(string serializedNonBacktrackingRegex) =>
+            SymbolicRegexRunner.DeserializeRegex(serializedNonBacktrackingRegex);
 
-        /// <summary>
-        /// Unwind the regex and save the resulting state graph in DGML
-        /// </summary>
+        /// <summary>Unwind the regex and save the resulting state graph in DGML</summary>
         /// <param name="bound">roughly the maximum number of states, 0 means no bound</param>
         /// <param name="hideStateInfo">if true then hide state info</param>
         /// <param name="addDotStar">if true then pretend that there is a .* at the beginning</param>
@@ -67,27 +36,13 @@ namespace System.Text.RegularExpressions
         /// <param name="maxLabelLength">maximum length of labels in nodes anything over that length is indicated with .. </param>
         internal void SaveDGML(TextWriter writer, int bound, bool hideStateInfo, bool addDotStar, bool inReverse, bool onlyDFAinfo, int maxLabelLength)
         {
-            if (_srm is null)
+            if (factory is not SymbolicRegexRunnerFactory srmFactory)
             {
                 throw new NotSupportedException();
             }
 
-            _srm.SaveDGML(writer, bound, hideStateInfo, addDotStar, inReverse, onlyDFAinfo, maxLabelLength);
+            srmFactory._runner.SaveDGML(writer, bound, hideStateInfo, addDotStar, inReverse, onlyDFAinfo, maxLabelLength);
         }
-
-        internal string Serialize()
-        {
-            if (_srm is null)
-            {
-                throw new NotSupportedException();
-            }
-
-            return _srm.Serialize();
-        }
-
-        internal static Regex Deserialize(string s) => new(SRM.Regex.Deserialize(s));
-
-        private Regex(SRM.Regex srm) => _srm = srm;
 
 #if DEBUG
         /// <summary>

@@ -222,30 +222,7 @@ namespace System.Text.RegularExpressions
 
             (RegexReplacement replacement, SegmentStringBuilder segments, ReadOnlyMemory<char> inputMemory, int prevat, int count) state = (replacement: this, segments: SegmentStringBuilder.Create(), inputMemory: input.AsMemory(), prevat: 0, count);
 
-            if (regex._srm is not null)
-            {
-                Match match = regex.Match(input, startat, input.Length - startat);
-                if (!match.Success)
-                    return input;
-
-                while (match.Success)
-                {
-                    if (state.prevat < match.Index)
-                        state.segments.Add(state.inputMemory.Slice(state.prevat, match.Index - state.prevat));
-                    state.prevat = match.Index + match.Length;
-                    ReplacementImpl(ref state.segments, match);
-
-                    if (state.count > 0) state.count -= 1;
-                    if (state.count == 0) break;
-
-                    match = match.NextMatch();
-                }
-
-                // final segment
-                if (state.prevat < input.Length)
-                    state.segments.Add(state.inputMemory.Slice(state.prevat, input.Length - state.prevat));
-            }
-            else if (!regex.RightToLeft)
+            if (!regex.RightToLeft)
             {
                 regex.Run(input, startat, ref state, (ref (RegexReplacement thisRef, SegmentStringBuilder segments, ReadOnlyMemory<char> inputMemory, int prevat, int count) state, Match match) =>
                 {

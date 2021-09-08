@@ -9,6 +9,7 @@ using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
 using System.Runtime.Serialization;
+using System.Text.RegularExpressions.SRM;
 using System.Threading;
 
 namespace System.Text.RegularExpressions
@@ -23,7 +24,7 @@ namespace System.Text.RegularExpressions
 
         protected internal string? pattern;                   // The string pattern provided
         protected internal RegexOptions roptions;             // the top-level options from the options string
-        protected internal RegexRunnerFactory? factory;
+        protected internal RegexRunnerFactory? factory;       // Factory used to create runner instances for executing the regex
         protected internal Hashtable? caps;                   // if captures are sparse, this is the hashtable capnum->index
         protected internal Hashtable? capnames;               // if named captures are used, this maps names->index
         protected internal string[]? capslist;                // if captures are sparse or named captures are used, this is the sorted list of names
@@ -33,8 +34,6 @@ namespace System.Text.RegularExpressions
         private volatile RegexRunner? _runner;                // cached runner
         private RegexCode? _code;                             // if interpreted, this is the code for RegexInterpreter
         private bool _refsInitialized;
-
-        internal SRM.Regex? _srm;                             // defined as SRM.Regex when _useSRM is true else null
 
         protected Regex() => internalMatchTimeout = s_defaultMatchTimeout;
 
@@ -67,15 +66,25 @@ namespace System.Text.RegularExpressions
 
         internal Regex(string pattern, RegexOptions options, TimeSpan matchTimeout, CultureInfo? culture)
         {
-            Init(pattern, options, matchTimeout, culture);
+            culture ??= GetTargetCulture(options);
+            RegexTree tree = Init(pattern, options, matchTimeout, culture);
 
-            // if the compile option is set, then compile the code
-            if (RuntimeFeature.IsDynamicCodeCompiled && UseOptionC())
+            if ((options & RegexOptions.NonBacktracking) != 0)
             {
+                // If we're in non-backtracking mode, create the appropriate factory.
+                factory = SymbolicRegexRunner.CreateFactory(tree.Root, options & ~RegexOptions.NonBacktracking, matchTimeout, culture);
+                _code = null;
+            }
+            else if (RuntimeFeature.IsDynamicCodeCompiled && UseOptionC())
+            {
+                // If the compile option is set and compilation is supported, then compile the code.
                 factory = Compile(pattern, _code!, options, matchTimeout != InfiniteMatchTimeout);
                 _code = null;
             }
         }
+
+        private static CultureInfo GetTargetCulture(RegexOptions options) =>
+            (options & RegexOptions.CultureInvariant) != 0 ? CultureInfo.InvariantCulture : CultureInfo.CurrentCulture;
 
         /// <summary>Initializes the instance.</summary>
         /// <remarks>
@@ -83,24 +92,16 @@ namespace System.Text.RegularExpressions
         /// rather than 'new Regex(pattern, options)' can avoid statically referencing the Regex
         /// compiler, such that a tree shaker / linker can trim it away if it's not otherwise used.
         /// </remarks>
-        private void Init(string pattern, RegexOptions options, TimeSpan matchTimeout, CultureInfo? culture)
+        private RegexTree Init(string pattern, RegexOptions options, TimeSpan matchTimeout, CultureInfo? culture)
         {
             ValidatePattern(pattern);
             ValidateOptions(options);
             ValidateMatchTimeout(matchTimeout);
 
-            bool useNonBacktracking = (options & RegexOptions.NonBacktracking) != 0;
-            if (useNonBacktracking)
-            {
-                // Ignore Compiled flag if NonBacktracking is used.
-                // This avoids the compilation overhead when it won't actually be needed.
-                options &= ~RegexOptions.Compiled;
-            }
-
             this.pattern = pattern;
             internalMatchTimeout = matchTimeout;
             roptions = options;
-            culture ??= (options & RegexOptions.CultureInvariant) != 0 ? CultureInfo.InvariantCulture : CultureInfo.CurrentCulture;
+            culture ??= GetTargetCulture(options);
 
 #if DEBUG
             if (IsDebug)
@@ -115,41 +116,19 @@ namespace System.Text.RegularExpressions
             // Extract the relevant information
             capnames = tree.CapNames;
             capslist = tree.CapsList;
-            // code related info is relevant in DFA mode only regarding caps
-            // that are used in RegexReplacement to check absence of subtitutions
+
+            // Generate the RegexCode from the node tree.  This is required for interpreting,
+            // and is used as input into compilation. For NonBacktracking, the output is necessary
+            // purely for the values of caps{ize}, as they're used in RegexReplacement to determine
+            // whether referenced substitutions are valid (and thus are treated as references) or
+            // invalid (and thus are treated as regular text).
             _code = RegexWriter.Write(tree);
             caps = _code.Caps;
             capsize = _code.CapSize;
 
             InitializeReferences();
 
-            // If SRM is used then construct the SMR.Regex matcher.
-            // This construction fails and throws a NotSupportedException
-            // if constructs that are not compatible with NonBacktracking are being used in the pattern.
-            if (useNonBacktracking)
-            {
-                _srm = InitializeSRM(tree.Root, roptions, matchTimeout, culture);
-            }
-        }
-
-        /// <summary>
-        /// Checks that the options are supported and creates a DFA matcher.
-        /// The method throws NotSuppportedException if the regex uses constructs not compatible with the DFA option.
-        /// </summary>
-        private static SRM.Regex InitializeSRM(RegexNode rootNode, RegexOptions options, TimeSpan matchTimeout, CultureInfo culture)
-        {
-            Debug.Assert((options & RegexOptions.NonBacktracking) != 0, "Should only be initializing SRM if NonBacktracking");
-            Debug.Assert((options & RegexOptions.Compiled) == 0, "Compiled should have been nop'd with NonBacktracking");
-
-            // RightToLeft and ECMAScript are currently not supported in conjunction with NonBacktracking.
-            if ((options & (RegexOptions.RightToLeft | RegexOptions.ECMAScript)) != 0)
-            {
-                throw new NotSupportedException(
-                    SR.Format(SR.NotSupported_NonBacktrackingConflictingOption,
-                        (options & RegexOptions.RightToLeft) != 0 ? nameof(RegexOptions.RightToLeft) : nameof(RegexOptions.ECMAScript)));
-            }
-
-            return SRM.Regex.Create(rootNode, options & ~RegexOptions.NonBacktracking, matchTimeout, culture);
+            return tree;
         }
 
         internal static void ValidatePattern(string pattern)
@@ -312,26 +291,26 @@ namespace System.Text.RegularExpressions
         /// </summary>
         public string[] GetGroupNames()
         {
-            string[] result;
-
-            if (_srm is not null)
+            if ((roptions & RegexOptions.NonBacktracking) != 0)
             {
                 // In NonBacktracking mode there is a single top level groupname "0".
-                result = new string[] { "0" };
-            }
-            else if (capslist is null)
-            {
-                result = new string[capsize];
-                for (int i = 0; i < result.Length; i++)
-                {
-                    result[i] = ((uint)i).ToString();
-                }
-            }
-            else
-            {
-                result = capslist.AsSpan().ToArray();
+                // The contents of capsize and caps are necessary to preserve in order to enable
+                // proper behavior of replacements, where references to non-existent groups are treated
+                // as normal text, and as such these public members return the desired contents
+                // rather than overwriting those members.
+                return new string[] { "0" };
             }
 
+            if (capslist is not null)
+            {
+                return capslist.AsSpan().ToArray();
+            }
+
+            var result = new string[capsize];
+            for (int i = 0; i < result.Length; i++)
+            {
+                result[i] = ((uint)i).ToString();
+            }
             return result;
         }
 
@@ -340,14 +319,16 @@ namespace System.Text.RegularExpressions
         /// </summary>
         public int[] GetGroupNumbers()
         {
-            int[] result;
-
-            if (_srm is not null)
+            if ((roptions & RegexOptions.NonBacktracking) != 0)
             {
                 // In NonBacktracking mode there is a single top level group 0.
-                result = new int[] { 0 };
+                // See comment in GetGroupNames.
+                return new int[] { 0 };
             }
-            else if (caps is null)
+
+            int[] result;
+
+            if (caps is null)
             {
                 result = new int[capsize];
                 for (int i = 0; i < result.Length; i++)
@@ -357,7 +338,6 @@ namespace System.Text.RegularExpressions
             }
             else
             {
-                // Manual use of IDictionaryEnumerator instead of foreach to avoid DictionaryEntry box allocations.
                 result = new int[caps.Count];
                 IDictionaryEnumerator de = caps.GetEnumerator();
                 while (de.MoveNext())
@@ -374,9 +354,10 @@ namespace System.Text.RegularExpressions
         /// </summary>
         public string GroupNameFromNumber(int i)
         {
-            if (_srm is not null)
+            if ((roptions & RegexOptions.NonBacktracking) != 0)
             {
                 // In NonBacktracking mode there is a single top level group 0.
+                // See comment in GetGroupNames.
                 return i == 0 ? "0" : string.Empty;
             }
 
@@ -403,15 +384,16 @@ namespace System.Text.RegularExpressions
                 ThrowHelper.ThrowArgumentNullException(ExceptionArgument.name);
             }
 
-            if (_srm is not null)
+            if ((roptions & RegexOptions.NonBacktracking) != 0)
             {
                 // In NonBacktracking mode there is a single top level group 0
+                // See comment in GetGroupNames.
                 if (name == "0")
                 {
                     return 0;
                 }
             }
-            else if (capnames != null)
+            else if (capnames is not null)
             {
                 // Look up name if we have a hashtable of names.
                 if (capnames.TryGetValue(name, out int result))
@@ -454,17 +436,11 @@ namespace System.Text.RegularExpressions
                 ThrowHelper.ThrowArgumentOutOfRangeException(ExceptionArgument.length, ExceptionResource.LengthNotNegative);
             }
 
-            if (_srm is not null)
-            {
-                // NonBacktracking mode.
-                return RunSRM(quick, input, beginning, startat, length, prevlen);
-            }
-
-            RegexRunner runner = RentRunner();
+            RegexRunner runner = Interlocked.Exchange(ref _runner, null) ?? CreateRunner();
             try
             {
                 // Do the scan starting at the requested position
-                Match? match = runner.Scan(this, input, beginning, beginning + length, startat, prevlen, quick, internalMatchTimeout);
+                Match? match = runner.ScanInternal(this, input, beginning, beginning + length, startat, prevlen, quick, internalMatchTimeout);
 #if DEBUG
                 if (IsDebug) match?.Dump();
 #endif
@@ -472,42 +448,34 @@ namespace System.Text.RegularExpressions
             }
             finally
             {
-                ReturnRunner(runner);
+                _runner = runner;
             }
         }
 
         internal void Run<TState>(string input, int startat, ref TState state, MatchCallback<TState> callback, bool reuseMatchObject)
         {
             Debug.Assert((uint)startat <= (uint)input.Length);
-            RegexRunner runner = RentRunner();
+            RegexRunner runner = Interlocked.Exchange(ref _runner, null) ?? CreateRunner();
             try
             {
-                runner.Scan(this, input, startat, ref state, callback, reuseMatchObject, internalMatchTimeout);
+                runner.ScanInternal(this, input, startat, ref state, callback, reuseMatchObject, internalMatchTimeout);
             }
             finally
             {
-                ReturnRunner(runner);
+                _runner = runner;
             }
         }
 
-        /// <summary>Gets a runner from the cache, or creates a new one.</summary>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)] // factored out to be used by only two call sites
-        private RegexRunner RentRunner() =>
-            Interlocked.Exchange(ref _runner, null) ?? // use a cached runner if there is one
-            (factory != null ? factory.CreateInstance() : // use the compiled RegexRunner factory if there is one
-            new RegexInterpreter(_code!, UseOptionInvariant() ? CultureInfo.InvariantCulture : CultureInfo.CurrentCulture));
-
-        /// <summary>Release the runner back to the cache.</summary>
-        internal void ReturnRunner(RegexRunner runner) => _runner = runner;
+        /// <summary>Creates a new runner instance.</summary>
+        private RegexRunner CreateRunner() =>
+            factory?.CreateInstance() ??
+            new RegexInterpreter(_code!, GetTargetCulture(roptions));
 
         /// <summary>True if the <see cref="RegexOptions.Compiled"/> option was set.</summary>
         protected bool UseOptionC() => (roptions & RegexOptions.Compiled) != 0;
 
         /// <summary>True if the <see cref="RegexOptions.RightToLeft"/> option was set.</summary>
         protected internal bool UseOptionR() => (roptions & RegexOptions.RightToLeft) != 0;
-
-        /// <summary>True if the <see cref="RegexOptions.CultureInvariant"/> option was set.</summary>
-        internal bool UseOptionInvariant() => (roptions & RegexOptions.CultureInvariant) != 0;
 
 #if DEBUG
         /// <summary>True if the regex has debugging enabled.</summary>
