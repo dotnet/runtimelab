@@ -21,7 +21,7 @@ namespace Microsoft.Interop
             if (info.IsNativeReturnPosition && !info.IsManagedReturnPosition)
             {
                 // Use marshaller for native HRESULT return / exception throwing
-                System.Diagnostics.Debug.Assert(info.ManagedType.SpecialType == SpecialType.System_Int32);
+                System.Diagnostics.Debug.Assert(info.ManagedType.Equals(SpecialTypeInfo.Int32));
                 return HResultException;
             }
             return inner.Create(info, context);

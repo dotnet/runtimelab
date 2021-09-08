@@ -69,6 +69,20 @@ namespace Microsoft.Interop
     }
 
     /// <summary>
+    /// Interface for generating attributes for native return types.
+    /// </summary>
+    public interface IAttributedReturnTypeMarshallingGenerator : IMarshallingGenerator
+    {
+        /// <summary>
+        /// Gets any attributes that should be applied to the return type for this <paramref name="info"/>.
+        /// </summary>
+        /// <param name="info">Object to marshal</param>
+        /// <returns>Attributes for the return type for this <paramref name="info"/>, or <c>null</c> if no attributes should be added.</returns>
+        AttributeListSyntax? GenerateAttributesForReturnType(TypePositionInfo info);
+    }
+
+
+    /// <summary>
     /// Exception used to indicate marshalling isn't supported.
     /// </summary>
     public sealed class MarshallingNotSupportedException : Exception

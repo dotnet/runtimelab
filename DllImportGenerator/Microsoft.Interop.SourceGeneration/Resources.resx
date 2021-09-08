@@ -189,4 +189,34 @@
   <data name="ValuePropertyMustHaveSetterMessage" xml:space="preserve">
     <value>The 'Value' property on the native type '{0}' must have a setter</value>
   </data>
+  <data name="CyclicalCountInfo" xml:space="preserve">
+    <value>This element cannot depend on '{0}' for collection size information without creating a dependency cycle</value>
+  </data>
+  <data name="DuplicateCountInfo" xml:space="preserve">
+    <value>Count information for a given element at a given indirection level can only be specified once</value>
+  </data>
+  <data name="DuplicateMarshallingInfo" xml:space="preserve">
+    <value>Multiple marshalling attributes per element per indirection level is unsupported, but duplicate information was provided for indirection level {0}</value>
+  </data>
+  <data name="ExtraneousMarshallingInfo" xml:space="preserve">
+    <value>Marshalling info was specified for 'ElementIndirectionLevel' {0}, but marshalling info was only needed for {1} level(s) of indirection</value>
+  </data>
+  <data name="NativeGenericTypeMustBeClosedOrMatchArityMessage" xml:space="preserve">
+    <value>The native type '{0}' for managed type '{1}' must be a closed generic type or have the same arity as the managed type.</value>
+  </data>
+  <data name="NativeTypeMustHaveRequiredShapeDescription" xml:space="preserve">
+    <value>The native type must have at least one of the two marshalling methods to enable marshalling the managed type.</value>
+  </data>
+  <data name="NativeTypeMustHaveRequiredShapeMessage" xml:space="preserve">
+    <value>The native type '{0}' must be a value type and have a constructor that takes one parameter of type '{1}' or a parameterless instance method named 'ToManaged' that returns '{1}'</value>
+  </data>
+  <data name="CollectionNativeTypeMustHaveRequiredShapeDescription" xml:space="preserve">
+    <value>A native type with the 'GenericContiguousCollectionMarshallerAttribute' must have at least one of the two marshalling methods as well as a 'ManagedValues' property of type 'Span&lt;T&gt;' for some 'T' and a 'NativeValueStorage' property of type 'Span&lt;byte&gt;' to enable marshalling the managed type.</value>
+  </data>
+  <data name="CollectionNativeTypeMustHaveRequiredShapeMessage" xml:space="preserve">
+    <value>The native type '{0}' must be a value type and have a constructor that takes two parameters, one of type '{1}' and an 'int', or have a parameterless instance method named 'ToManaged' that returns '{1}' as well as a 'ManagedValues' property of type 'Span&lt;T&gt;' for some 'T' and a 'NativeValueStorage' property of type 'Span&lt;byte&gt;'</value>
+  </data>
+  <data name="ConstantAndElementCountInfoDisallowed" xml:space="preserve">
+    <value>Only one of 'ConstantElementCount' or 'ElementCountInfo' may be used in a 'MarshalUsingAttribute' for a given 'ElementIndirectionLevel'</value>
+  </data>
 </root>

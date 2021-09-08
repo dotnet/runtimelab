@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -7,6 +8,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
+using static Microsoft.Interop.StubCodeContext;
 
 namespace Microsoft.Interop
 {
@@ -26,6 +28,8 @@ namespace Microsoft.Interop
     /// </remarks>
     internal sealed class PInvokeStubCodeGenerator : StubCodeContext
     {
+        private record struct BoundGenerator(TypePositionInfo TypeInfo, IMarshallingGenerator Generator);
+
         public override bool SingleFrameSpansNativeContext => true;
 
         public override bool AdditionalTemporaryStateLivesAcrossStages => true;
@@ -39,58 +43,69 @@ namespace Microsoft.Interop
         /// Identifier for native return value
         /// </summary>
         /// <remarks>Same as the managed identifier by default</remarks>
-        public string ReturnNativeIdentifier { get; private set; } = ReturnIdentifier;
+        public string ReturnNativeIdentifier { get; } = ReturnIdentifier;
 
         private const string InvokeReturnIdentifier = "__invokeRetVal";
         private const string LastErrorIdentifier = "__lastError";
+        private const string InvokeSucceededIdentifier = "__invokeSucceeded";
 
         // Error code representing success. This maps to S_OK for Windows HRESULT semantics and 0 for POSIX errno semantics.
         private const int SuccessErrorCode = 0;
 
-        private static readonly Stage[] Stages = new Stage[]
-        {
-            Stage.Setup,
-            Stage.Marshal,
-            Stage.Pin,
-            Stage.Invoke,
-            Stage.KeepAlive,
-            Stage.Unmarshal,
-            Stage.GuaranteedUnmarshal,
-            Stage.Cleanup
-        };
-
-        private readonly IGeneratorDiagnostics diagnostics;
-        private readonly IMethodSymbol stubMethod;
         private readonly bool setLastError;
-        private readonly IEnumerable<TypePositionInfo> paramsTypeInfo;
-        private readonly IReadOnlyList<(TypePositionInfo TypeInfo, IMarshallingGenerator Generator)> paramMarshallers;
-        private readonly (TypePositionInfo TypeInfo, IMarshallingGenerator Generator) retMarshaller;
-        private readonly List<(TypePositionInfo TypeInfo, IMarshallingGenerator Generator)> sortedMarshallers;
+        private readonly List<BoundGenerator> paramMarshallers;
+        private readonly BoundGenerator retMarshaller;
+        private readonly List<BoundGenerator> sortedMarshallers;
+        private readonly bool stubReturnsVoid;
 
         public PInvokeStubCodeGenerator(
-            IMethodSymbol stubMethod,
-            IEnumerable<TypePositionInfo> paramsTypeInfo,
-            TypePositionInfo retTypeInfo,
-            IGeneratorDiagnostics generatorDiagnostics,
+            IEnumerable<TypePositionInfo> argTypes,
             bool setLastError,
+            Action<TypePositionInfo, MarshallingNotSupportedException> marshallingNotSupportedCallback,
             IMarshallingGeneratorFactory generatorFactory)
         {
-            Debug.Assert(retTypeInfo.IsNativeReturnPosition);
-
-            this.stubMethod = stubMethod;
             this.setLastError = setLastError;
-            this.paramsTypeInfo = paramsTypeInfo.ToList();
-            this.diagnostics = generatorDiagnostics;
 
-            // Get marshallers for parameters
-            this.paramMarshallers = paramsTypeInfo.Select(p => CreateGenerator(p)).ToList();
+            List<BoundGenerator> allMarshallers = new();
+            List<BoundGenerator> paramMarshallers = new();
+            bool foundNativeRetMarshaller = false;
+            bool foundManagedRetMarshaller = false;
+            BoundGenerator nativeRetMarshaller = new(new TypePositionInfo(SpecialTypeInfo.Void, NoMarshallingInfo.Instance), new Forwarder());
+            BoundGenerator managedRetMarshaller = new(new TypePositionInfo(SpecialTypeInfo.Void, NoMarshallingInfo.Instance), new Forwarder());
 
-            // Get marshaller for return
-            this.retMarshaller = CreateGenerator(retTypeInfo);
+            foreach (var argType in argTypes)
+            {
+                BoundGenerator generator = CreateGenerator(argType);
+                allMarshallers.Add(generator);
+                if (argType.IsManagedReturnPosition)
+                {
+                    Debug.Assert(!foundManagedRetMarshaller);
+                    managedRetMarshaller = generator;
+                    foundManagedRetMarshaller = true;
+                }
+                if (argType.IsNativeReturnPosition)
+                {
+                    Debug.Assert(!foundNativeRetMarshaller);
+                    nativeRetMarshaller = generator;
+                    foundNativeRetMarshaller = true;
+                }
+                if (!argType.IsManagedReturnPosition && !argType.IsNativeReturnPosition)
+                {
+                    paramMarshallers.Add(generator);
+                }
+            }
 
+            this.stubReturnsVoid = managedRetMarshaller.TypeInfo.ManagedType == SpecialTypeInfo.Void;
 
-            List<(TypePositionInfo TypeInfo, IMarshallingGenerator Generator)> allMarshallers = new(this.paramMarshallers);
-            allMarshallers.Add(retMarshaller);
+            if (!managedRetMarshaller.TypeInfo.IsNativeReturnPosition && !this.stubReturnsVoid)
+            {
+                // If the managed ret marshaller isn't the native ret marshaller, then the managed ret marshaller
+                // is a parameter.
+                paramMarshallers.Add(managedRetMarshaller);
+            }
+
+            this.retMarshaller = nativeRetMarshaller;
+            this.paramMarshallers = paramMarshallers;
 
             // We are doing a topological sort of our marshallers to ensure that each parameter/return value's
             // dependencies are unmarshalled before their dependents. This comes up in the case of contiguous
@@ -120,17 +135,10 @@ namespace Microsoft.Interop
                 static m => GetInfoDependencies(m.TypeInfo))
                 .ToList();
 
-            (TypePositionInfo info, IMarshallingGenerator gen) CreateGenerator(TypePositionInfo p)
+            if (managedRetMarshaller.Generator.UsesNativeIdentifier(managedRetMarshaller.TypeInfo, this))
             {
-                try
-                {
-                    return (p, generatorFactory.Create(p, this));
-                }
-                catch (MarshallingNotSupportedException e)
-                {
-                    this.diagnostics.ReportMarshallingNotSupported(this.stubMethod, p, e.NotSupportedDetails);
-                    return (p, new Forwarder());
-                }
+                // Update the native identifier for the return value
+                this.ReturnNativeIdentifier = $"{ReturnIdentifier}{GeneratedNativeIdentifierSuffix}";
             }
 
             static IEnumerable<int> GetInfoDependencies(TypePositionInfo info)
@@ -153,6 +161,19 @@ namespace Microsoft.Interop
                     return -info.NativeIndex;
                 }
                 return info.ManagedIndex;
+            }
+            
+            BoundGenerator CreateGenerator(TypePositionInfo p)
+            {
+                try
+                {
+                    return new BoundGenerator(p, generatorFactory.Create(p, this));
+                }
+                catch (MarshallingNotSupportedException e)
+                {
+                    marshallingNotSupportedCallback(p, e);
+                    return new BoundGenerator(p, new Forwarder());
+                }
             }
         }
 
@@ -186,15 +207,9 @@ namespace Microsoft.Interop
             }
         }
 
-        public BlockSyntax GeneratePInvokeBody(ExpressionSyntax targetMethodExpression)
+        public BlockSyntax GeneratePInvokeBody(string dllImportName)
         {
             var setupStatements = new List<StatementSyntax>();
-
-            if (retMarshaller.Generator.UsesNativeIdentifier(retMarshaller.TypeInfo, this))
-            {
-                // Update the native identifier for the return value
-                ReturnNativeIdentifier = $"{ReturnIdentifier}{GeneratedNativeIdentifierSuffix}";
-            }
 
             foreach (var marshaller in paramMarshallers)
             {
@@ -218,8 +233,7 @@ namespace Microsoft.Interop
                 AppendVariableDeclations(setupStatements, info, marshaller.Generator);
             }
 
-            bool invokeReturnsVoid = retMarshaller.TypeInfo.ManagedType.SpecialType == SpecialType.System_Void;
-            bool stubReturnsVoid = stubMethod.ReturnsVoid;
+            bool invokeReturnsVoid = retMarshaller.TypeInfo.ManagedType == SpecialTypeInfo.Void;
 
             // Stub return is not the same as invoke return
             if (!stubReturnsVoid && !retMarshaller.TypeInfo.IsManagedReturnPosition)
@@ -228,11 +242,6 @@ namespace Microsoft.Interop
                 Debug.Assert(paramMarshallers.Any() && paramMarshallers.Last().TypeInfo.IsManagedReturnPosition, "Expected stub return to be the last parameter for the invoke");
 
                 (TypePositionInfo stubRetTypeInfo, IMarshallingGenerator stubRetGenerator) = paramMarshallers.Last();
-                if (stubRetGenerator.UsesNativeIdentifier(stubRetTypeInfo, this))
-                {
-                    // Update the native identifier for the return value
-                    ReturnNativeIdentifier = $"{ReturnIdentifier}{GeneratedNativeIdentifierSuffix}";
-                }
 
                 // Declare variables for stub return value
                 AppendVariableDeclations(setupStatements, stubRetTypeInfo, stubRetGenerator);
@@ -255,139 +264,32 @@ namespace Microsoft.Interop
             }
 
             var tryStatements = new List<StatementSyntax>();
-            var finallyStatements = new List<StatementSyntax>();
-            var invoke = InvocationExpression(targetMethodExpression);
-            var fixedStatements = new List<FixedStatementSyntax>();
-            foreach (var stage in Stages)
+            var guaranteedUnmarshalStatements = new List<StatementSyntax>();
+            var cleanupStatements = new List<StatementSyntax>();
+            var invoke = InvocationExpression(IdentifierName(dllImportName));
+
+            // Handle GuaranteedUnmarshal first since that stage producing statements affects multiple other stages.
+            GenerateStatementsForStage(Stage.GuaranteedUnmarshal, guaranteedUnmarshalStatements);
+            if (guaranteedUnmarshalStatements.Count > 0)
             {
-                var statements = GetStatements(stage);
-                int initialCount = statements.Count;
-                this.CurrentStage = stage;
-
-                if (!invokeReturnsVoid && (stage is Stage.Setup or Stage.Cleanup))
-                {
-                    // Handle setup and unmarshalling for return
-                    var retStatements = retMarshaller.Generator.Generate(retMarshaller.TypeInfo, this);
-                    statements.AddRange(retStatements);
-                }
-
-                if (stage is Stage.Unmarshal or Stage.GuaranteedUnmarshal)
-                {
-                    // For Unmarshal and GuaranteedUnmarshal stages, use the topologically sorted
-                    // marshaller list to generate the marshalling statements
-
-                    foreach (var marshaller in sortedMarshallers)
-                    {
-                        statements.AddRange(marshaller.Generator.Generate(marshaller.TypeInfo, this));
-                    }
-                }
-                else
-                {
-                    // Generate code for each parameter for the current stage
-                    foreach (var marshaller in paramMarshallers)
-                    {
-                        if (stage == Stage.Invoke)
-                        {
-                            // Get arguments for invocation
-                            ArgumentSyntax argSyntax = marshaller.Generator.AsArgument(marshaller.TypeInfo, this);
-                            invoke = invoke.AddArgumentListArguments(argSyntax);
-                        }
-                        else
-                        {
-                            var generatedStatements = marshaller.Generator.Generate(marshaller.TypeInfo, this);
-                            if (stage == Stage.Pin)
-                            {
-                                // Collect all the fixed statements. These will be used in the Invoke stage.
-                                foreach (var statement in generatedStatements)
-                                {
-                                    if (statement is not FixedStatementSyntax fixedStatement)
-                                        continue;
-
-                                    fixedStatements.Add(fixedStatement);
-                                }
-                            }
-                            else
-                            {
-                                statements.AddRange(generatedStatements);
-                            }
-                        }
-                    }
-                }
-
-                if (stage == Stage.Invoke)
-                {
-                    StatementSyntax invokeStatement;
-
-                    // Assign to return value if necessary
-                    if (invokeReturnsVoid)
-                    {
-                        invokeStatement = ExpressionStatement(invoke);
-                    }
-                    else
-                    {
-                        invokeStatement = ExpressionStatement(
-                            AssignmentExpression(
-                                SyntaxKind.SimpleAssignmentExpression,
-                                IdentifierName(this.GetIdentifiers(retMarshaller.TypeInfo).native),
-                                invoke));
-                    }
-
-                    // Do not manually handle SetLastError when generating forwarders.
-                    // We want the runtime to handle everything.
-                    if (this.setLastError)
-                    {
-                        // Marshal.SetLastSystemError(0);
-                        var clearLastError = ExpressionStatement(
-                            InvocationExpression(
-                                MemberAccessExpression(
-                                    SyntaxKind.SimpleMemberAccessExpression,
-                                    ParseName(TypeNames.System_Runtime_InteropServices_Marshal),
-                                    IdentifierName("SetLastSystemError")),
-                                ArgumentList(SingletonSeparatedList(
-                                    Argument(LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(SuccessErrorCode)))))));
-
-                        // <lastError> = Marshal.GetLastSystemError();
-                        var getLastError = ExpressionStatement(
-                            AssignmentExpression(
-                                SyntaxKind.SimpleAssignmentExpression,
-                                IdentifierName(LastErrorIdentifier),
-                                InvocationExpression(
-                                    MemberAccessExpression(
-                                    SyntaxKind.SimpleMemberAccessExpression,
-                                    ParseName(TypeNames.System_Runtime_InteropServices_Marshal),
-                                    IdentifierName("GetLastSystemError")))));
-
-                        invokeStatement = Block(clearLastError, invokeStatement, getLastError);
-                    }
-
-                    // Nest invocation in fixed statements
-                    if (fixedStatements.Any())
-                    {
-                        fixedStatements.Reverse();
-                        invokeStatement = fixedStatements.First().WithStatement(invokeStatement);
-                        foreach (var fixedStatement in fixedStatements.Skip(1))
-                        {
-                            invokeStatement = fixedStatement.WithStatement(Block(invokeStatement));
-                        }
-                    }
-
-                    statements.Add(invokeStatement);
-                }
-
-                if (statements.Count > initialCount)
-                {
-                    // Comment separating each stage
-                    var newLeadingTrivia = TriviaList(
-                        Comment($"//"),
-                        Comment($"// {stage}"),
-                        Comment($"//"));
-                    var firstStatementInStage = statements[initialCount];
-                    newLeadingTrivia = newLeadingTrivia.AddRange(firstStatementInStage.GetLeadingTrivia());
-                    statements[initialCount] = firstStatementInStage.WithLeadingTrivia(newLeadingTrivia);
-                }
+                setupStatements.Add(MarshallerHelpers.DeclareWithDefault(PredefinedType(Token(SyntaxKind.BoolKeyword)), InvokeSucceededIdentifier));
             }
 
+            GenerateStatementsForStage(Stage.Setup, setupStatements);
+            GenerateStatementsForStage(Stage.Marshal, tryStatements);
+            GenerateStatementsForInvoke(tryStatements, invoke);
+            GenerateStatementsForStage(Stage.KeepAlive, tryStatements);
+            GenerateStatementsForStage(Stage.Unmarshal, tryStatements);
+            GenerateStatementsForStage(Stage.Cleanup, cleanupStatements);
+
             List<StatementSyntax> allStatements = setupStatements;
+            List<StatementSyntax> finallyStatements = new List<StatementSyntax>();
+            if (guaranteedUnmarshalStatements.Count > 0)
+            {
+                finallyStatements.Add(IfStatement(IdentifierName(InvokeSucceededIdentifier), Block(guaranteedUnmarshalStatements)));
+            }
+
+            finallyStatements.AddRange(cleanupStatements);
             if (finallyStatements.Count > 0)
             {
                 // Add try-finally block if there are any statements in the finally block
@@ -419,49 +321,163 @@ namespace Microsoft.Interop
             // Wrap all statements in an unsafe block
             return Block(UnsafeStatement(Block(allStatements)));
 
-            List<StatementSyntax> GetStatements(Stage stage)
+            void GenerateStatementsForStage(Stage stage, List<StatementSyntax> statementsToUpdate)
             {
-                return stage switch
+                int initialCount = statementsToUpdate.Count;
+                this.CurrentStage = stage;
+
+                if (!invokeReturnsVoid && (stage is Stage.Setup or Stage.Cleanup))
                 {
-                    Stage.Setup => setupStatements,
-                    Stage.Marshal or Stage.Pin or Stage.Invoke or Stage.KeepAlive or Stage.Unmarshal => tryStatements,
-                    Stage.GuaranteedUnmarshal or Stage.Cleanup => finallyStatements,
-                    _ => throw new ArgumentOutOfRangeException(nameof(stage))
-                };
+                    var retStatements = retMarshaller.Generator.Generate(retMarshaller.TypeInfo, this);
+                    statementsToUpdate.AddRange(retStatements);
+                }
+
+                if (stage is Stage.Unmarshal or Stage.GuaranteedUnmarshal)
+                {
+                    // For Unmarshal and GuaranteedUnmarshal stages, use the topologically sorted
+                    // marshaller list to generate the marshalling statements
+
+                    foreach (var marshaller in sortedMarshallers)
+                    {
+                        statementsToUpdate.AddRange(marshaller.Generator.Generate(marshaller.TypeInfo, this));
+                    }
+                }
+                else
+                {
+                    // Generate code for each parameter for the current stage in declaration order.
+                    foreach (var marshaller in paramMarshallers)
+                    {
+                        var generatedStatements = marshaller.Generator.Generate(marshaller.TypeInfo, this);
+                        statementsToUpdate.AddRange(generatedStatements);
+                    }
+                }
+
+                if (statementsToUpdate.Count > initialCount)
+                {
+                    // Comment separating each stage
+                    var newLeadingTrivia = TriviaList(
+                        Comment($"//"),
+                        Comment($"// {stage}"),
+                        Comment($"//"));
+                    var firstStatementInStage = statementsToUpdate[initialCount];
+                    newLeadingTrivia = newLeadingTrivia.AddRange(firstStatementInStage.GetLeadingTrivia());
+                    statementsToUpdate[initialCount] = firstStatementInStage.WithLeadingTrivia(newLeadingTrivia);
+                }
+            }
+
+            void GenerateStatementsForInvoke(List<StatementSyntax> statementsToUpdate, InvocationExpressionSyntax invoke)
+            {
+                var fixedStatements = new List<FixedStatementSyntax>();
+                this.CurrentStage = Stage.Pin;
+                // Generate code for each parameter for the current stage
+                foreach (var marshaller in paramMarshallers)
+                {
+                    var generatedStatements = marshaller.Generator.Generate(marshaller.TypeInfo, this);
+                    // Collect all the fixed statements. These will be used in the Invoke stage.
+                    foreach (var statement in generatedStatements)
+                    {
+                        if (statement is not FixedStatementSyntax fixedStatement)
+                            continue;
+
+                        fixedStatements.Add(fixedStatement);
+                    }
+                }
+
+                this.CurrentStage = Stage.Invoke;
+                // Generate code for each parameter for the current stage
+                foreach (var marshaller in paramMarshallers)
+                {
+                    // Get arguments for invocation
+                    ArgumentSyntax argSyntax = marshaller.Generator.AsArgument(marshaller.TypeInfo, this);
+                    invoke = invoke.AddArgumentListArguments(argSyntax);
+                }
+
+                StatementSyntax invokeStatement;
+                // Assign to return value if necessary
+                if (invokeReturnsVoid)
+                {
+                    invokeStatement = ExpressionStatement(invoke);
+                }
+                else
+                {
+                    invokeStatement = ExpressionStatement(
+                        AssignmentExpression(
+                            SyntaxKind.SimpleAssignmentExpression,
+                            IdentifierName(this.GetIdentifiers(retMarshaller.TypeInfo).native),
+                            invoke));
+                }
+
+                // Do not manually handle SetLastError when generating forwarders.
+                // We want the runtime to handle everything.
+                if (setLastError)
+                {
+                    // Marshal.SetLastSystemError(0);
+                    var clearLastError = ExpressionStatement(
+                        InvocationExpression(
+                            MemberAccessExpression(
+                                SyntaxKind.SimpleMemberAccessExpression,
+                                ParseName(TypeNames.System_Runtime_InteropServices_Marshal),
+                                IdentifierName("SetLastSystemError")),
+                            ArgumentList(SingletonSeparatedList(
+                                Argument(LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(SuccessErrorCode)))))));
+
+                    // <lastError> = Marshal.GetLastSystemError();
+                    var getLastError = ExpressionStatement(
+                        AssignmentExpression(
+                            SyntaxKind.SimpleAssignmentExpression,
+                            IdentifierName(LastErrorIdentifier),
+                            InvocationExpression(
+                                MemberAccessExpression(
+                                SyntaxKind.SimpleMemberAccessExpression,
+                                ParseName(TypeNames.System_Runtime_InteropServices_Marshal),
+                                IdentifierName("GetLastSystemError")))));
+
+                    invokeStatement = Block(clearLastError, invokeStatement, getLastError);
+                }
+                // Nest invocation in fixed statements
+                if (fixedStatements.Any())
+                {
+                    fixedStatements.Reverse();
+                    invokeStatement = fixedStatements.First().WithStatement(invokeStatement);
+                    foreach (var fixedStatement in fixedStatements.Skip(1))
+                    {
+                        invokeStatement = fixedStatement.WithStatement(Block(invokeStatement));
+                    }
+                }
+
+                statementsToUpdate.Add(invokeStatement);
+                // <invokeSucceeded> = true;
+                if (guaranteedUnmarshalStatements.Count > 0)
+                {
+                    statementsToUpdate.Add(ExpressionStatement(AssignmentExpression(SyntaxKind.SimpleAssignmentExpression,
+                        IdentifierName(InvokeSucceededIdentifier),
+                        LiteralExpression(SyntaxKind.TrueLiteralExpression))));
+                }
             }
         }
 
-        public (ParameterListSyntax ParameterList, TypeSyntax ReturnType) GenerateTargetMethodSignatureData()
+        public (ParameterListSyntax ParameterList, TypeSyntax ReturnType, AttributeListSyntax? ReturnTypeAttributes) GenerateTargetMethodSignatureData()
         {
             return (
                 ParameterList(
                     SeparatedList(
                         paramMarshallers.Select(marshaler => marshaler.Generator.AsParameter(marshaler.TypeInfo)))),
-                retMarshaller.Generator.AsNativeType(retMarshaller.TypeInfo)
+                retMarshaller.Generator.AsNativeType(retMarshaller.TypeInfo),
+                retMarshaller.Generator is IAttributedReturnTypeMarshallingGenerator attributedReturn
+                ? attributedReturn.GenerateAttributesForReturnType(retMarshaller.TypeInfo)
+                : null
             );
-        }
-
-        public override TypePositionInfo? GetTypePositionInfoForManagedIndex(int index)
-        {
-            foreach (var info in paramsTypeInfo)
-            {
-                if (info.ManagedIndex == index)
-                {
-                    return info;
-                }
-            }
-            return null;
         }
 
         private void AppendVariableDeclations(List<StatementSyntax> statementsToUpdate, TypePositionInfo info, IMarshallingGenerator generator)
         {
-            var (managed, native) = GetIdentifiers(info);
+            var (managed, native) = this.GetIdentifiers(info);
 
             // Declare variable for return value
             if (info.IsManagedReturnPosition || info.IsNativeReturnPosition)
             {
                 statementsToUpdate.Add(MarshallerHelpers.DeclareWithDefault(
-                    info.ManagedType.AsTypeSyntax(),
+                    info.ManagedType.Syntax,
                     managed));
             }
 

@@ -61,7 +61,7 @@ namespace Microsoft.Interop
             GuaranteedUnmarshal
         }
 
-        public Stage CurrentStage { get; protected set; } = Stage.Invalid;
+        public Stage CurrentStage { get; set; } = Stage.Invalid;
 
         /// <summary>
         /// The stub emits code that runs in a single stack frame and the frame spans over the native context.
@@ -88,7 +88,7 @@ namespace Microsoft.Interop
         /// </summary>
         public StubCodeContext? ParentContext { get; protected set; }
 
-        protected const string GeneratedNativeIdentifierSuffix = "_gen_native";
+        public const string GeneratedNativeIdentifierSuffix = "_gen_native";
 
         /// <summary>
         /// Get managed and native instance identifiers for the <paramref name="info"/>
@@ -104,7 +104,5 @@ namespace Microsoft.Interop
         {
             return $"{GetIdentifiers(info).native}__{name}";
         }
-
-        public abstract TypePositionInfo? GetTypePositionInfoForManagedIndex(int index);
     }
 }

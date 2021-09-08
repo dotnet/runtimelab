@@ -129,11 +129,20 @@
   <data name="CannotHaveMultipleMarshallingAttributesMessage" xml:space="preserve">
     <value>Type '{0}' is marked with 'BlittableTypeAttribute' and 'NativeMarshallingAttribute'. A type can only have one of these two attributes.</value>
   </data>
+  <data name="CollectionNativeTypeMustHaveRequiredShapeDescription" xml:space="preserve">
+    <value>A native type with the 'GenericContiguousCollectionMarshallerAttribute' must have at least one of the two marshalling methods as well as a 'ManagedValues' property of type 'Span&lt;T&gt;' for some 'T' and a 'NativeValueStorage' property of type 'Span&lt;byte&gt;' to enable marshalling the managed type.</value>
+  </data>
+  <data name="CollectionNativeTypeMustHaveRequiredShapeMessage" xml:space="preserve">
+    <value>The native type '{0}' must be a value type and have a constructor that takes two parameters, one of type '{1}' and an 'int', or have a parameterless instance method named 'ToManaged' that returns '{1}' as well as a 'ManagedValues' property of type 'Span&lt;T&gt;' for some 'T' and a 'NativeValueStorage' property of type 'Span&lt;byte&gt;'</value>
+  </data>
   <data name="ConfigurationNotSupportedDescription" xml:space="preserve">
     <value>Source-generated P/Invokes will ignore any configuration that is not supported.</value>
   </data>
   <data name="ConfigurationNotSupportedMessage" xml:space="preserve">
     <value>The '{0}' configuration is not supported by source-generated P/Invokes. If the specified configuration is required, use a regular `DllImport` instead.</value>
+  </data>
+  <data name="ConfigurationNotSupportedMessageMarshallingInfo" xml:space="preserve">
+    <value>The specified marshalling configuration is not supported by source-generated P/Invokes. {0}.</value>
   </data>
   <data name="ConfigurationNotSupportedMessageParameter" xml:space="preserve">
     <value>The specified '{0}' configuration for parameter '{1}' is not supported by source-generated P/Invokes. If the specified configuration is required, use a regular `DllImport` instead.</value>
@@ -146,6 +155,9 @@
   </data>
   <data name="ConfigurationNotSupportedTitle" xml:space="preserve">
     <value>Specified configuration is not supported by source-generated P/Invokes.</value>
+  </data>
+  <data name="ConstantAndElementCountInfoDisallowed" xml:space="preserve">
+    <value>Only one of 'ConstantElementCount' or 'ElementCountInfo' may be used in a 'MarshalUsingAttribute' for a given 'ElementIndirectionLevel'</value>
   </data>
   <data name="ConvertToGeneratedDllImportDescription" xml:space="preserve">
     <value>Use 'GeneratedDllImportAttribute' instead of 'DllImportAttribute' to generate P/Invoke marshalling code at compile time</value>
@@ -205,8 +217,11 @@
   <data name="NativeGenericTypeMustBeClosedDescription" xml:space="preserve">
     <value>The native type '{0}' must be a closed generic so the emitted code can use a specific instantiation.</value>
   </data>
-  <data name="NativeGenericTypeMustBeClosedMessage" xml:space="preserve">
-    <value>The native type '{0}' for managed type '{1}' must be a closed generic type.</value>
+  <data name="NativeGenericTypeMustBeClosedOrMatchArityDescription" xml:space="preserve">
+    <value>The native type '{0}' must be a closed generic or have the same number of generic parameters as the managed type so the emitted code can use a specific instantiation.</value>
+  </data>
+  <data name="NativeGenericTypeMustBeClosedOrMatchArityMessage" xml:space="preserve">
+    <value>The native type '{0}' for managed type '{1}' must be a closed generic type or have the same arity as the managed type.</value>
   </data>
   <data name="NativeTypeMustBeBlittableDescription" xml:space="preserve">
     <value>A native type for a given type must be blittable.</value>

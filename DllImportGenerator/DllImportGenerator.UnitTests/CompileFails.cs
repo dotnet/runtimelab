@@ -56,8 +56,8 @@ namespace DllImportGenerator.UnitTests
             yield return new object[] { CodeSnippets.ByValueParameterWithModifier<byte>("In, Out"), 1, 0 };
 
             // Unsupported named arguments
-            //  * BestFitMapping, ThrowOnUnmappableChar
-            yield return new object[] { CodeSnippets.AllDllImportNamedArguments, 2, 0 };
+            //  * BestFitMapping, ThrowOnUnmappableChar, CallingConvention
+            yield return new object[] { CodeSnippets.AllDllImportNamedArguments, 3, 0 };
 
             // LCIDConversion
             yield return new object[] { CodeSnippets.LCIDConversionAttribute, 1, 0 };
@@ -121,6 +121,7 @@ namespace DllImportGenerator.UnitTests
             yield return new object[] { CodeSnippets.RecursiveCountElementNameOnReturnValue, 2, 0 };
             yield return new object[] { CodeSnippets.RecursiveCountElementNameOnParameter, 2, 0 };
             yield return new object[] { CodeSnippets.MutuallyRecursiveCountElementNameOnParameter, 4, 0 };
+            yield return new object[] { CodeSnippets.MutuallyRecursiveSizeParamIndexOnParameter, 4, 0 };
         }
 
         [Theory]
