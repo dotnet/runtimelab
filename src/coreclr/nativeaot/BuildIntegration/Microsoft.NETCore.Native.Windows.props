@@ -17,9 +17,12 @@ The .NET Foundation licenses this file to you under the MIT license.
     <CppCompiler>cl</CppCompiler>
     <CppLinker>link</CppLinker>
     <CppLibCreator>lib</CppLibCreator>
+    <LibrarySuffix>.lib</LibrarySuffix>
+    <LibrarySuffix Condition="'$(ControlFlowGuard)' == 'Guard'">.GuardCF.lib</LibrarySuffix>
     <FullRuntimeName>Runtime.WorkstationGC</FullRuntimeName>
-    <FullRuntimeName Condition="'$(ServerGarbageCollection)' != ''">Runtime.ServerGC</FullRuntimeName>
-    <FullRuntimeName Condition="'$(ControlFlowGuard)' == 'Guard'">Runtime.ServerGC.GuardCF</FullRuntimeName>
+    <FullRuntimeName Condition="'$(ServerGarbageCollection)' == 'true' or '$(ControlFlowGuard)' == 'Guard'">Runtime.ServerGC</FullRuntimeName>
+    <BootstrapperName>bootstrapper</BootstrapperName>
+    <BootstrapperName Condition="$(NativeLib) != ''">bootstrapperdll</BootstrapperName>
     <EntryPointSymbol Condition="'$(EntryPointSymbol)' == ''">wmainCRTStartup</EntryPointSymbol>
     <LinkerSubsystem Condition="'$(OutputType)' == 'WinExe' and '$(LinkerSubsystem)' == ''">WINDOWS</LinkerSubsystem>
     <LinkerSubsystem Condition="'$(OutputType)' == 'Exe' and '$(LinkerSubsystem)' == ''">CONSOLE</LinkerSubsystem>
@@ -29,9 +32,8 @@ The .NET Foundation licenses this file to you under the MIT license.
   <Target Name="SetupOSSpecificProps" DependsOnTargets="$(IlcDynamicBuildPropertyDependencies)">
 
     <ItemGroup>
-      <NativeLibrary Condition="$(NativeLib) == ''" Include="$(IlcPath)\sdk\bootstrapper.lib" />
-      <NativeLibrary Condition="$(NativeLib) != ''" Include="$(IlcPath)\sdk\bootstrapperdll.lib" />
-      <NativeLibrary Include="$(IlcPath)\sdk\$(FullRuntimeName).lib" />
+      <NativeLibrary Include="$(IlcPath)\sdk\$(BootstrapperName)$(LibrarySuffix)" />
+      <NativeLibrary Include="$(IlcPath)\sdk\$(FullRuntimeName)$(LibrarySuffix)" />
       <NativeLibrary Condition="'$(IlcMultiModule)' == 'true'" Include="$(SharedLibrary)" />
     </ItemGroup>
 
