@@ -58,7 +58,7 @@ The edges of the graph represent a "requires" relationship. The compilation proc
 
 Related classes: `DependencyNodeCore<>`, `ObjectNode`
 
-Related project files and tests: ILCompiler.DependencyAnalysisFramework.csproj
+Related project files: ILCompiler.DependencyAnalysisFramework.csproj
 
 ### Dependency expansion process
 The compilation starts with a set of nodes in the dependency graph called compilation roots. The roots are specified by the compilation driver and typically contain the `Main()` method, but the exact set of roots depends on the compilation mode: the set of roots will be different when we're e.g. building a library, or when we're doing a multi-file compilation, or when we're building a single file app.
