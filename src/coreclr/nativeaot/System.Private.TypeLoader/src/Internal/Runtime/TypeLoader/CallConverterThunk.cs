@@ -99,11 +99,12 @@ namespace Internal.Runtime.TypeLoader
         [DllImport("*", ExactSpelling = true, EntryPoint = "CallingConventionConverter_GetStubs")]
         private static extern unsafe void CallingConventionConverter_GetStubs(out IntPtr returnVoidStub,
                                                                       out IntPtr returnIntegerStub,
-                                                                      out IntPtr commonStub
 #if CALLDESCR_FPARGREGSARERETURNREGS
+                                                                      out IntPtr commonStub
 #else
-                                                                     , out IntPtr returnFloatingPointReturn4Thunk,
-                                                                       out IntPtr returnFloatingPointReturn8Thunk
+                                                                      out IntPtr commonStub,
+                                                                      out IntPtr returnFloatingPointReturn4Thunk,
+                                                                      out IntPtr returnFloatingPointReturn8Thunk
 #endif
                                                                      );
 
@@ -119,10 +120,11 @@ namespace Internal.Runtime.TypeLoader
 #if TARGET_UNIX
             // TODO
 #else
-            CallingConventionConverter_GetStubs(out ReturnVoidReturnThunk, out ReturnIntegerPointReturnThunk, out CommonInputThunkStub
+            CallingConventionConverter_GetStubs(out ReturnVoidReturnThunk, out ReturnIntegerPointReturnThunk,
 #if CALLDESCR_FPARGREGSARERETURNREGS
+                                                out CommonInputThunkStub
 #else
-                                               , out ReturnFloatingPointReturn4Thunk, out ReturnFloatingPointReturn8Thunk
+                                                out CommonInputThunkStub, out ReturnFloatingPointReturn4Thunk, out ReturnFloatingPointReturn8Thunk
 #endif
                                                 );
             s_commonStubData.ManagedCallConverterThunk = (IntPtr)(delegate*<IntPtr, IntPtr, IntPtr>)&CallConversionThunk;
