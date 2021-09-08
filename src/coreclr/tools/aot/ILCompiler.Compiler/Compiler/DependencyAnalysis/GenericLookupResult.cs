@@ -833,7 +833,7 @@ namespace ILCompiler.DependencyAnalysis
         public override ISymbolNode GetTarget(NodeFactory factory, GenericLookupResultContext dictionary)
         {
             var instantiatedType = (MetadataType)_type.GetNonRuntimeDeterminedTypeFromRuntimeDeterminedSubtypeViaSubstitution(dictionary.TypeInstantiation, dictionary.MethodInstantiation);
-            return factory.Indirection(factory.TypeNonGCStaticsSymbol(instantiatedType));
+            return factory.TypeNonGCStaticsSymbol(instantiatedType);
         }
 
         public override void AppendMangledName(NameMangler nameMangler, Utf8StringBuilder sb)
@@ -847,11 +847,6 @@ namespace ILCompiler.DependencyAnalysis
         public override NativeLayoutVertexNode TemplateDictionaryNode(NodeFactory factory)
         {
             return factory.NativeLayout.NonGcStaticDictionarySlot(_type);
-        }
-
-        public override GenericLookupResultReferenceType LookupResultReferenceType(NodeFactory factory)
-        {
-            return GenericLookupResultReferenceType.Indirect;
         }
 
         public override void WriteDictionaryTocData(NodeFactory factory, IGenericLookupResultTocWriter writer)
@@ -951,7 +946,7 @@ namespace ILCompiler.DependencyAnalysis
         public override ISymbolNode GetTarget(NodeFactory factory, GenericLookupResultContext dictionary)
         {
             var instantiatedType = (MetadataType)_type.GetNonRuntimeDeterminedTypeFromRuntimeDeterminedSubtypeViaSubstitution(dictionary.TypeInstantiation, dictionary.MethodInstantiation);
-            return factory.Indirection(factory.TypeGCStaticsSymbol(instantiatedType));
+            return factory.TypeGCStaticsSymbol(instantiatedType);
         }
 
         public override void AppendMangledName(NameMangler nameMangler, Utf8StringBuilder sb)
@@ -966,11 +961,6 @@ namespace ILCompiler.DependencyAnalysis
         public override NativeLayoutVertexNode TemplateDictionaryNode(NodeFactory factory)
         {
             return factory.NativeLayout.GcStaticDictionarySlot(_type);
-        }
-
-        public override GenericLookupResultReferenceType LookupResultReferenceType(NodeFactory factory)
-        {
-            return GenericLookupResultReferenceType.Indirect;
         }
 
         public override void WriteDictionaryTocData(NodeFactory factory, IGenericLookupResultTocWriter writer)

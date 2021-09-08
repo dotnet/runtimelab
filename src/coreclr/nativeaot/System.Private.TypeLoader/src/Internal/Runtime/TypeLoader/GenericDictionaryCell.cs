@@ -243,10 +243,6 @@ namespace Internal.Runtime.TypeLoader
         {
             internal StaticDataKind DataKind;
             internal TypeDesc Type;
-#if SUPPORTS_NATIVE_METADATA_TYPE_LOADING
-            internal bool Direct; // Set this flag if a direct pointer to the static data is requested
-                                  // otherwise, an extra indirection will be inserted
-#endif
 
             internal override void Prepare(TypeBuilder builder)
             {
@@ -262,28 +258,10 @@ namespace Internal.Runtime.TypeLoader
                 switch (DataKind)
                 {
                     case StaticDataKind.NonGc:
-#if SUPPORTS_NATIVE_METADATA_TYPE_LOADING
-                        if (Direct)
-                        {
-                            return TypeLoaderEnvironment.Instance.TryGetNonGcStaticFieldDataDirect(typeHandle);
-                        }
-                        else
-#endif
-                        {
-                            return TypeLoaderEnvironment.Instance.TryGetNonGcStaticFieldData(typeHandle);
-                        }
+                        return TypeLoaderEnvironment.Instance.TryGetNonGcStaticFieldData(typeHandle);
 
                     case StaticDataKind.Gc:
-#if SUPPORTS_NATIVE_METADATA_TYPE_LOADING
-                        if (Direct)
-                        {
-                            return TypeLoaderEnvironment.Instance.TryGetGcStaticFieldDataDirect(typeHandle);
-                        }
-                        else
-#endif
-                        {
-                            return TypeLoaderEnvironment.Instance.TryGetGcStaticFieldData(typeHandle);
-                        }
+                        return TypeLoaderEnvironment.Instance.TryGetGcStaticFieldData(typeHandle);
 
                     default:
                         Debug.Assert(false);
@@ -1292,7 +1270,7 @@ namespace Internal.Runtime.TypeLoader
                         var staticDataKind = StaticDataKind.Gc;
                         TypeLoaderLogger.WriteLine("Direct StaticData (" + (staticDataKind == StaticDataKind.Gc ? "Gc" : "NonGc") + ": " + type.ToString());
 
-                        cell = new StaticDataCell() { DataKind = staticDataKind, Type = type, Direct = true };
+                        cell = new StaticDataCell() { DataKind = staticDataKind, Type = type };
                     }
                     break;
 
@@ -1302,7 +1280,7 @@ namespace Internal.Runtime.TypeLoader
                         var staticDataKind = StaticDataKind.NonGc;
                         TypeLoaderLogger.WriteLine("Direct StaticData (" + (staticDataKind == StaticDataKind.Gc ? "Gc" : "NonGc") + ": " + type.ToString());
 
-                        cell = new StaticDataCell() { DataKind = staticDataKind, Type = type, Direct = true };
+                        cell = new StaticDataCell() { DataKind = staticDataKind, Type = type };
                     }
                     break;
 

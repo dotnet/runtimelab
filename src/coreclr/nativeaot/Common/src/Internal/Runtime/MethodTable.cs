@@ -1110,7 +1110,7 @@ namespace Internal.Runtime
                 uint cbOffset = GetFieldOffset(EETypeField.ETF_DynamicGcStatics);
                 fixed (MethodTable* pThis = &this)
                 {
-                    return (IntPtr)((byte*)pThis + cbOffset);
+                    return *(IntPtr*)((byte*)pThis + cbOffset);
                 }
             }
 #if TYPE_LOADER_IMPLEMENTATION
@@ -1134,7 +1134,7 @@ namespace Internal.Runtime
                 uint cbOffset = GetFieldOffset(EETypeField.ETF_DynamicNonGcStatics);
                 fixed (MethodTable* pThis = &this)
                 {
-                    return (IntPtr)((byte*)pThis + cbOffset);
+                    return *(IntPtr*)((byte*)pThis + cbOffset);
                 }
             }
 #if TYPE_LOADER_IMPLEMENTATION

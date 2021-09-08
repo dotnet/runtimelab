@@ -1238,7 +1238,7 @@ namespace Internal.Runtime.TypeLoader
                 // fat pointer within the non-GC static data.
                 IntPtr templateTypeStaticData = TypeLoaderEnvironment.Instance.TryGetNonGcStaticFieldData(GetRuntimeTypeHandle(state.TemplateType));
                 Debug.Assert(templateTypeStaticData != IntPtr.Zero);
-                IntPtr* templateTypeClassConstructorSlotPointer = (IntPtr*)((byte*)*((IntPtr*)templateTypeStaticData) + ClassConstructorOffset);
+                IntPtr* templateTypeClassConstructorSlotPointer = (IntPtr*)((byte*)templateTypeStaticData + ClassConstructorOffset);
                 IntPtr templateTypeClassConstructorFatFunctionPointer = templateTypeClassConstructorFatFunctionPointer = *templateTypeClassConstructorSlotPointer;
 
                 // Crack the fat function pointer into the raw class constructor method pointer and the generic type dictionary.
@@ -1249,7 +1249,7 @@ namespace Internal.Runtime.TypeLoader
             }
 
             IntPtr generatedTypeStaticData = GetRuntimeTypeHandle(type).ToEETypePtr()->DynamicNonGcStaticsData;
-            IntPtr* generatedTypeClassConstructorSlotPointer = (IntPtr*)((byte*)*((IntPtr*)generatedTypeStaticData) + ClassConstructorOffset);
+            IntPtr* generatedTypeClassConstructorSlotPointer = (IntPtr*)((byte*)generatedTypeStaticData + ClassConstructorOffset);
 
             if (exactClassConstructorFunctionPointer != IntPtr.Zero)
             {
