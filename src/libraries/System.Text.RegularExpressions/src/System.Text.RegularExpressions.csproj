@@ -8,6 +8,7 @@
     <Compile Include="System\Collections\HashtableExtensions.cs" />
     <Compile Include="System\Collections\Generic\ValueListBuilder.Pop.cs" />
     <Compile Include="System\Text\RegularExpressions\RegexCharClass.MappingTable.cs" />
+    <Compile Include="System\Text\RegularExpressions\srm\SymbolicRegexRunnerFactory.cs" />
     <Compile Include="System\Text\SegmentStringBuilder.cs" />
     <Compile Include="System\Text\RegularExpressions\Capture.cs" />
     <Compile Include="System\Text\RegularExpressions\CaptureCollection.cs" />
@@ -56,15 +57,16 @@
     <Compile Include="System\Text\RegularExpressions\srm\BooleanClassifier.cs" />
     <Compile Include="System\Text\RegularExpressions\srm\CharKind.cs" />
     <Compile Include="System\Text\RegularExpressions\srm\Classifier.cs" />
-    <Compile Include="System\Text\RegularExpressions\srm\Match.cs" />
-    <Compile Include="System\Text\RegularExpressions\srm\Regex.cs" />
     <Compile Include="System\Text\RegularExpressions\srm\RegexToAutomatonConverter.cs" />
     <Compile Include="System\Text\RegularExpressions\srm\State.cs" />
+    <Compile Include="System\Text\RegularExpressions\srm\SymbolicMatch.cs" />
     <Compile Include="System\Text\RegularExpressions\srm\SymbolicRegexBuilder.cs" />
     <Compile Include="System\Text\RegularExpressions\srm\SymbolicRegexNode.cs" />
     <Compile Include="System\Text\RegularExpressions\srm\SymbolicRegexKind.cs" />
-    <Compile Include="System\Text\RegularExpressions\srm\SymbolicRegexSet.cs" />
     <Compile Include="System\Text\RegularExpressions\srm\SymbolicRegexInfo.cs" />
+    <Compile Include="System\Text\RegularExpressions\srm\SymbolicRegexMatcher.cs" />
+    <Compile Include="System\Text\RegularExpressions\srm\SymbolicRegexRunner.cs" />
+    <Compile Include="System\Text\RegularExpressions\srm\SymbolicRegexSet.cs" />
     <Compile Include="System\Text\RegularExpressions\srm\algebras\BDD.cs" />
     <Compile Include="System\Text\RegularExpressions\srm\algebras\BDDAlgebra.cs" />
     <Compile Include="System\Text\RegularExpressions\srm\algebras\BDDRangeConverter.cs" />
@@ -79,8 +81,6 @@
     <Compile Include="System\Text\RegularExpressions\srm\dgml\IAutomaton.cs" />
     <Compile Include="System\Text\RegularExpressions\srm\dgml\Move.cs" />
     <Compile Include="System\Text\RegularExpressions\srm\dgml\RegexDFA.cs" />
-    <Compile Include="System\Text\RegularExpressions\srm\matcher\IMatcher.cs" />
-    <Compile Include="System\Text\RegularExpressions\srm\matcher\SymbolicRegexMatcher.cs" />
     <Compile Include="System\Text\RegularExpressions\srm\unicode\IgnoreCaseRelation.cs" />
     <Compile Include="System\Text\RegularExpressions\srm\unicode\IgnoreCaseRelationGenerator.cs" />
     <Compile Include="System\Text\RegularExpressions\srm\unicode\IgnoreCaseTransformer.cs" />
@@ -103,13 +103,8 @@
     <Reference Include="System.Reflection.Emit.Lightweight" />
     <Reference Include="System.Reflection.Primitives" />
     <!-- References required for SRM -->
-    <Reference Include="System.Runtime.InteropServices" />
-    <Reference Include="System.Runtime.Serialization.Formatters" />
-    <Reference Include="System.Numerics.Vectors" />
     <Reference Include="System.Collections.Immutable" />
-    <Reference Include="System.IO.FileSystem" />
     <Reference Include="System.Linq" />
-    <Reference Include="System.Text.Encoding.Extensions" />
-    <Reference Include="System.Threading" />
+    <Reference Include="System.Runtime.InteropServices" />
   </ItemGroup>
 </Project>

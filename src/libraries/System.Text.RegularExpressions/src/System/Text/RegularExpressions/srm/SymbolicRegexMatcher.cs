@@ -9,9 +9,37 @@ using System.Runtime.CompilerServices;
 
 namespace System.Text.RegularExpressions.SRM
 {
+    /// <summary>Provides IsMatch and Matches methods.</summary>
+    internal abstract class SymbolicRegexMatcher
+    {
+        /// <summary>Returns the next match (startindex, length) in the input string.</summary>
+        /// <param name="isMatch">Whether to return once we know there's a match without determining where exactly it matched.</param>
+        /// <param name="input">given iput string</param>
+        /// <param name="startat">start position in the input</param>
+        /// <param name="endat">end position in the input</param>
+        public abstract SymbolicMatch FindMatch(bool isMatch, string input, int startat, int endat);
+
+        /// <summary>
+        /// Custom serialization of the matcher as text in visible ASCII range.
+        /// </summary>
+        public abstract void Serialize(StringBuilder sb);
+
+        /// <summary>
+        /// Unwind the regex of the matcher and save the resulting state graph in DGML
+        /// </summary>
+        /// <param name="bound">roughly the maximum number of states, 0 means no bound</param>
+        /// <param name="hideStateInfo">if true then hide state info</param>
+        /// <param name="addDotStar">if true then pretend that there is a .* at the beginning</param>
+        /// <param name="inReverse">if true then unwind the regex backwards (addDotStar is then ignored)</param>
+        /// <param name="onlyDFAinfo">if true then compute and save only genral DFA info</param>
+        /// <param name="writer">dgml output is written here</param>
+        /// <param name="maxLabelLength">maximum length of labels in nodes anything over that length is indicated with .. </param>
+        public abstract void SaveDGML(TextWriter writer, int bound, bool hideStateInfo, bool addDotStar, bool inReverse, bool onlyDFAinfo, int maxLabelLength);
+    }
+
     /// <summary>Represents a precompiled form of a regex that implements match generation using symbolic derivatives.</summary>
     /// <typeparam name="TSetType">character set type</typeparam>
-    internal sealed class SymbolicRegexMatcher<TSetType> : IMatcher where TSetType : notnull
+    internal sealed class SymbolicRegexMatcher<TSetType> : SymbolicRegexMatcher where TSetType : notnull
     {
         private const int NoMatchExists = -2;
         private const int StateMaxBound = 10000;
@@ -134,63 +162,63 @@ namespace System.Text.RegularExpressions.SRM
         /// Append the custom format of this matcher into sb. All characters are in visible ASCII.
         /// Main fragments are separated by a custom separator character not used in any individual fragment.
         /// </summary>
-        public void Serialize(StringBuilder sb)
+        public override void Serialize(StringBuilder sb)
         {
             //-----------------------------------0
             sb.Append(_culture.Name);
-            sb.Append(Regex.TopLevelSeparator);
+            sb.Append(SymbolicRegexRunner.TopLevelSeparator);
 
             //-----------------------------------1
             _builder._solver.Serialize(sb);
-            sb.Append(Regex.TopLevelSeparator);
+            sb.Append(SymbolicRegexRunner.TopLevelSeparator);
 
             //-----------------------------------2
             _pattern.Serialize(sb);
-            sb.Append(Regex.TopLevelSeparator);
+            sb.Append(SymbolicRegexRunner.TopLevelSeparator);
 
             //-----------------------------------3
             Base64.Encode((int)Options, sb);
-            sb.Append(Regex.TopLevelSeparator);
+            sb.Append(SymbolicRegexRunner.TopLevelSeparator);
 
             //-----------------------------------4
             _builder._solver.SerializePredicate(_builder._wordLetterPredicate, sb);
-            sb.Append(Regex.TopLevelSeparator);
+            sb.Append(SymbolicRegexRunner.TopLevelSeparator);
 
             //-----------------------------------5
             _builder._solver.SerializePredicate(_builder._newLinePredicate, sb);
-            sb.Append(Regex.TopLevelSeparator);
+            sb.Append(SymbolicRegexRunner.TopLevelSeparator);
 
             //-----------------------------------6
             _builder._solver.SerializePredicate(_startSet, sb);
-            sb.Append(Regex.TopLevelSeparator);
+            sb.Append(SymbolicRegexRunner.TopLevelSeparator);
 
             //-----------------------------------7
             _startSetClassifier.Serialize(sb);
-            sb.Append(Regex.TopLevelSeparator);
+            sb.Append(SymbolicRegexRunner.TopLevelSeparator);
 
             //-----------------------------------8
             Base64.Encode(_startSetSize, sb);
-            sb.Append(Regex.TopLevelSeparator);
+            sb.Append(SymbolicRegexRunner.TopLevelSeparator);
 
             //-----------------------------------9
             Base64.Encode(_startSetArray, sb);
-            sb.Append(Regex.TopLevelSeparator);
+            sb.Append(SymbolicRegexRunner.TopLevelSeparator);
 
             //-----------------------------------10
             Base64.Encode(_prefix, sb);
-            sb.Append(Regex.TopLevelSeparator);
+            sb.Append(SymbolicRegexRunner.TopLevelSeparator);
 
             //-----------------------------------11
             sb.Append(_isPrefixCaseInsensitive);
-            sb.Append(Regex.TopLevelSeparator);
+            sb.Append(SymbolicRegexRunner.TopLevelSeparator);
 
             //-----------------------------------12
             Base64.Encode(_reversePrefix, sb);
-            sb.Append(Regex.TopLevelSeparator);
+            sb.Append(SymbolicRegexRunner.TopLevelSeparator);
 
             //-----------------------------------13
             _partitions.Serialize(sb);
-            sb.Append(Regex.TopLevelSeparator);
+            sb.Append(SymbolicRegexRunner.TopLevelSeparator);
 
             //-----------------------------------14
             if (_checkTimeout)
@@ -228,7 +256,7 @@ namespace System.Text.RegularExpressions.SRM
             string potentialTimeout = fragments[14].TrimEnd();
             if (potentialTimeout == string.Empty)
             {
-                _timeout = System.Threading.Timeout.Infinite;
+                _timeout = Threading.Timeout.Infinite;
                 _checkTimeout = false;
             }
             else
@@ -271,7 +299,7 @@ namespace System.Text.RegularExpressions.SRM
 
             Options = options;
 
-            _checkTimeout = RegularExpressions.Regex.InfiniteMatchTimeout != matchTimeout;
+            _checkTimeout = Regex.InfiniteMatchTimeout != matchTimeout;
             _timeout = (int)(matchTimeout.TotalMilliseconds + 0.5); // Round up, so it will be at least 1ms
             _culture = culture;
 
@@ -535,11 +563,11 @@ namespace System.Text.RegularExpressions.SRM
 
         #region match generation
         /// <summary>Find a match.</summary>
-        /// <param name="quick">if true return null iff there exists a match</param>
+        /// <param name="isMatch">Whether to return once we know there's a match without determining where exactly it matched.</param>
         /// <param name="input">input string</param>
         /// <param name="startat">the position to start search in the input string</param>
         /// <param name="k">the next position after the end position in the input</param>
-        public Match? FindMatch(bool quick, string input, int startat, int k)
+        public override SymbolicMatch FindMatch(bool isMatch, string input, int startat, int k)
         {
             int timeoutOccursAt = 0;
             if (_checkTimeout)
@@ -558,9 +586,8 @@ namespace System.Text.RegularExpressions.SRM
 
                 bool emptyMatchExists = _pattern.IsNullableFor(CharKind.Context(prevKind, nextKind));
                 return
-                    !emptyMatchExists ? Match.NoMatch :
-                    quick ? null :
-                    new Match(startat, 0);
+                    !emptyMatchExists ? SymbolicMatch.NoMatch :
+                    new SymbolicMatch(startat, 0);
             }
 
             // Find the first accepting state. Initial start position in the input is i == 0.
@@ -572,13 +599,13 @@ namespace System.Text.RegularExpressions.SRM
 
             if (i == NoMatchExists)
             {
-                return Match.NoMatch;
+                return SymbolicMatch.NoMatch;
             }
 
-            if (quick)
+            if (isMatch)
             {
                 // this means success -- the original call was IsMatch
-                return null;
+                return SymbolicMatch.QuickMatch;
             }
 
             int i_start;
@@ -605,7 +632,7 @@ namespace System.Text.RegularExpressions.SRM
                 i_end = FindEndPosition(input, k, i_start);
             }
 
-            return new Match(i_start, i_end + 1 - i_start);
+            return new SymbolicMatch(i_start, i_end + 1 - i_start);
         }
 
         /// <summary>Find match end position using A, end position is known to exist.</summary>
@@ -980,7 +1007,7 @@ namespace System.Text.RegularExpressions.SRM
             return -1;
         }
 
-        public void SaveDGML(TextWriter writer, int bound = 0, bool hideStateInfo = false, bool addDotStar = false, bool inReverse = false, bool onlyDFAinfo = false, int maxLabelLength = 500)
+        public override void SaveDGML(TextWriter writer, int bound = 0, bool hideStateInfo = false, bool addDotStar = false, bool inReverse = false, bool onlyDFAinfo = false, int maxLabelLength = 500)
         {
             var graph = new DGML.RegexDFA<TSetType>(this, bound, addDotStar, inReverse);
             var dgml = new DGML.DgmlWriter(writer, hideStateInfo, maxLabelLength, onlyDFAinfo);

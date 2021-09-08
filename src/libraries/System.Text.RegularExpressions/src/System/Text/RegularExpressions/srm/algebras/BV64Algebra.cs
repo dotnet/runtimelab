@@ -205,7 +205,7 @@ namespace System.Text.RegularExpressions.SRM
         public string PrettyPrint(ulong bv)
         {
             //accesses the shared BDD solver
-            ICharAlgebra<BDD> bddalgebra = Regex.s_unicode._solver;
+            ICharAlgebra<BDD> bddalgebra = SymbolicRegexRunner.s_unicode._solver;
 
             if (_partition == null || bddalgebra == null)
             {

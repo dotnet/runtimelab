@@ -68,7 +68,7 @@ namespace System.Text.RegularExpressions
         private const int TimeoutCheckFrequency = 1000;
         private int _timeoutChecksToSkip;
 
-        protected internal RegexRunner() { }
+        protected RegexRunner() { }
 
         /// <summary>
         /// Scans the string to find the first match. Uses the Match object
@@ -82,10 +82,13 @@ namespace System.Text.RegularExpressions
         /// and we could use a separate method Skip() that will quickly scan past
         /// any characters that we know can't match.
         /// </summary>
-        protected internal Match? Scan(Regex regex, string text, int textbeg, int textend, int textstart, int prevlen, bool quick) =>
-            Scan(regex, text, textbeg, textend, textstart, prevlen, quick, regex.MatchTimeout);
+        protected Match? Scan(Regex regex, string text, int textbeg, int textend, int textstart, int prevlen, bool quick) =>
+            ScanInternal(regex, text, textbeg, textend, textstart, prevlen, quick, regex.MatchTimeout);
 
-        protected internal Match? Scan(Regex regex, string text, int textbeg, int textend, int textstart, int prevlen, bool quick, TimeSpan timeout)
+        protected Match? Scan(Regex regex, string text, int textbeg, int textend, int textstart, int prevlen, bool quick, TimeSpan timeout) =>
+            ScanInternal(regex, text, textbeg, textend, textstart, prevlen, quick, timeout);
+
+        internal virtual Match? ScanInternal(Regex regex, string text, int textbeg, int textend, int textstart, int prevlen, bool quick, TimeSpan timeout)
         {
             // Handle timeout argument
             _timeout = -1; // (int)Regex.InfiniteMatchTimeout.TotalMilliseconds
@@ -218,7 +221,7 @@ namespace System.Text.RegularExpressions
         /// This optionally repeatedly hands out the same Match instance, updated with new information.
         /// <paramref name="reuseMatchObject"/> should be set to false if the Match object is handed out to user code.
         /// </remarks>
-        internal void Scan<TState>(Regex regex, string text, int textstart, ref TState state, MatchCallback<TState> callback, bool reuseMatchObject, TimeSpan timeout)
+        internal virtual void ScanInternal<TState>(Regex regex, string text, int textstart, ref TState state, MatchCallback<TState> callback, bool reuseMatchObject, TimeSpan timeout)
         {
             // Handle timeout argument
             _timeout = -1; // (int)Regex.InfiniteMatchTimeout.TotalMilliseconds

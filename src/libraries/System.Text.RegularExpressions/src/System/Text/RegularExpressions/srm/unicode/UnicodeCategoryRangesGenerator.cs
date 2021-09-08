@@ -50,8 +50,8 @@ namespace {namespacename}
 
             Ranges whitespace = new Ranges();
             Ranges wordcharacter = new Ranges();
-            RegularExpressions.Regex whitespaceRegex = new(@"\s");
-            RegularExpressions.Regex wordcharRegex = new(@"\w");
+            Regex whitespaceRegex = new(@"\s");
+            Regex wordcharRegex = new(@"\w");
             for (int i = 0; i <= maxChar; i++)
             {
                 char ch = (char)i;
