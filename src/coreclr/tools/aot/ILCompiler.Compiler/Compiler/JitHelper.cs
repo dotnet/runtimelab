@@ -12,7 +12,7 @@ namespace ILCompiler
     internal class JitHelper
     {
         /// <summary>
-        /// Returns JIT helper entrypoint. JIT helpers can be either implemented by entrypoint with given mangled name or 
+        /// Returns JIT helper entrypoint. JIT helpers can be either implemented by entrypoint with given mangled name or
         /// by a method in class library.
         /// </summary>
         public static void GetEntryPoint(TypeSystemContext context, ReadyToRunHelper id, out string mangledName, out MethodDesc methodDesc)
@@ -73,14 +73,32 @@ namespace ILCompiler
                 case ReadyToRunHelper.WriteBarrier_EAX:
                     mangledName = "RhpAssignRefEAX";
                     break;
+                case ReadyToRunHelper.WriteBarrier_EBX:
+                    mangledName = "RhpAssignRefEBX";
+                    break;
                 case ReadyToRunHelper.WriteBarrier_ECX:
                     mangledName = "RhpAssignRefECX";
+                    break;
+                case ReadyToRunHelper.WriteBarrier_EDI:
+                    mangledName = "RhpAssignRefEDI";
+                    break;
+                case ReadyToRunHelper.WriteBarrier_ESI:
+                    mangledName = "RhpAssignRefESI";
                     break;
                 case ReadyToRunHelper.CheckedWriteBarrier_EAX:
                     mangledName = "RhpCheckedAssignRefEAX";
                     break;
+                case ReadyToRunHelper.CheckedWriteBarrier_EBX:
+                    mangledName = "RhpCheckedAssignRefEBX";
+                    break;
                 case ReadyToRunHelper.CheckedWriteBarrier_ECX:
                     mangledName = "RhpCheckedAssignRefECX";
+                    break;
+                case ReadyToRunHelper.CheckedWriteBarrier_EDI:
+                    mangledName = "RhpCheckedAssignRefEDI";
+                    break;
+                case ReadyToRunHelper.CheckedWriteBarrier_ESI:
+                    mangledName = "RhpCheckedAssignRefESI";
                     break;
 
                 case ReadyToRunHelper.Box:
