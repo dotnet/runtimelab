@@ -47,6 +47,10 @@ ILC currently supports following codegen backends (with varying levels of comple
 
 This document describes the common parts of the compiler that are applicable to all codegen backends.
 
+In the past, ILC supported following backends:
+
+* **CppCodegen**: a portable code generator that translates CIL into C++ code. This supports rapid platform bringup (instead of having to build a code generator for a new CPU architecture, it relies on the C++ compiler the platform likely already has). Portability comes at certain costs. This codegen backend wasn't [brought over](https://github.com/dotnet/corert/tree/master/src/ILCompiler.CppCodeGen/src) from the now archived CoreRT repo.
+
 Related project files: ILCompiler.LLVM.csproj, ILCompiler.RyuJit.csproj
 
 ## Dependency analysis
