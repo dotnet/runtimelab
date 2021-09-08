@@ -1028,11 +1028,6 @@ namespace ILCompiler.DependencyAnalysis
             return factory.NativeLayout.AllocateObjectDictionarySlot(_type);
         }
 
-        public override GenericLookupResultReferenceType LookupResultReferenceType(NodeFactory factory)
-        {
-            return GenericLookupResultReferenceType.Direct;
-        }
-
         public override void WriteDictionaryTocData(NodeFactory factory, IGenericLookupResultTocWriter writer)
         {
             writer.WriteData(LookupResultReferenceType(factory), LookupResultType.AllocObject, _type);
@@ -1087,11 +1082,6 @@ namespace ILCompiler.DependencyAnalysis
         public override NativeLayoutVertexNode TemplateDictionaryNode(NodeFactory factory)
         {
             return factory.NativeLayout.AllocateArrayDictionarySlot(_type);
-        }
-
-        public override GenericLookupResultReferenceType LookupResultReferenceType(NodeFactory factory)
-        {
-            return GenericLookupResultReferenceType.Direct;
         }
 
         public override void WriteDictionaryTocData(NodeFactory factory, IGenericLookupResultTocWriter writer)
@@ -1149,11 +1139,6 @@ namespace ILCompiler.DependencyAnalysis
             return factory.NativeLayout.CastClassDictionarySlot(_type);
         }
 
-        public override GenericLookupResultReferenceType LookupResultReferenceType(NodeFactory factory)
-        {
-            return GenericLookupResultReferenceType.Direct;
-        }
-
         public override void WriteDictionaryTocData(NodeFactory factory, IGenericLookupResultTocWriter writer)
         {
             writer.WriteData(LookupResultReferenceType(factory), LookupResultType.CastClass, _type);
@@ -1207,11 +1192,6 @@ namespace ILCompiler.DependencyAnalysis
         public override NativeLayoutVertexNode TemplateDictionaryNode(NodeFactory factory)
         {
             return factory.NativeLayout.IsInstDictionarySlot(_type);
-        }
-
-        public override GenericLookupResultReferenceType LookupResultReferenceType(NodeFactory factory)
-        {
-            return GenericLookupResultReferenceType.Direct;
         }
 
         public override void WriteDictionaryTocData(NodeFactory factory, IGenericLookupResultTocWriter writer)
