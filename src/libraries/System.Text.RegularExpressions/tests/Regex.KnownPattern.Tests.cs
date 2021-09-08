@@ -10,24 +10,6 @@ namespace System.Text.RegularExpressions.Tests
 {
     public class RegexKnownPatternTests
     {
-        public static IEnumerable<RegexOptions> RegexOptionsExtended()
-        {
-            if (!PlatformDetection.IsNetFramework)
-            {
-                yield return RegexHelpers.RegexOptionNonBacktracking;
-            }
-
-            yield return RegexOptions.None;
-            yield return RegexOptions.Compiled;
-        }
-
-        public static IEnumerable<object[]> RegexOptions_TestData()
-        {
-            foreach (RegexOptions options in RegexOptionsExtended())
-            {
-                yield return new object[] { options };
-            }
-        }
         //
         // These patterns come from the Regex documentation at docs.microsoft.com.
         //
@@ -313,7 +295,7 @@ namespace System.Text.RegularExpressions.Tests
 
         // https://docs.microsoft.com/en-us/dotnet/standard/base-types/grouping-constructs-in-regular-expressions#noncapturing-groups
         [Theory]
-        [MemberData(nameof(RegexOptions_TestData))]
+        [MemberData(nameof(RegexHelpers.RegexOptions_TestData), MemberType = typeof(RegexHelpers))]
         public void Docs_GroupingConstructs_NoncapturingGroups(RegexOptions options)
         {
             const string Pattern = @"(?:\b(?:\w+)\W*)+\.";
@@ -327,7 +309,7 @@ namespace System.Text.RegularExpressions.Tests
 
         // https://docs.microsoft.com/en-us/dotnet/standard/base-types/grouping-constructs-in-regular-expressions#group-options
         [Theory]
-        [MemberData(nameof(RegexOptions_TestData))]
+        [MemberData(nameof(RegexHelpers.RegexOptions_TestData), MemberType = typeof(RegexHelpers))]
         public void Docs_GroupingConstructs_GroupOptions(RegexOptions options)
         {
             const string Pattern = @"\b(?ix: d \w+)\s";
@@ -631,7 +613,7 @@ namespace System.Text.RegularExpressions.Tests
 
         // https://docs.microsoft.com/en-us/dotnet/standard/base-types/backtracking-in-regular-expressions#linear-comparison-without-backtracking
         [Theory]
-        [MemberData(nameof(RegexOptions_TestData))]
+        [MemberData(nameof(RegexHelpers.RegexOptions_TestData), MemberType = typeof(RegexHelpers))]
         public void Docs_Backtracking_LinearComparisonWithoutBacktracking(RegexOptions options)
         {
             const string Pattern = @"e{2}\w\b";
@@ -663,7 +645,7 @@ namespace System.Text.RegularExpressions.Tests
 
         // https://docs.microsoft.com/en-us/dotnet/standard/base-types/backtracking-in-regular-expressions#nonbacktracking-subexpression
         [Theory]
-        [MemberData(nameof(RegexOptions_TestData))]
+        [MemberData(nameof(RegexHelpers.RegexOptions_TestData), MemberType = typeof(RegexHelpers))]
         public void Docs_Backtracking_WithNestedOptionalQuantifiers(RegexOptions options)
         {
             const string Input = "b51:4:1DB:9EE1:5:27d60:f44:D4:cd:E:5:0A5:4a:D24:41Ad:";
@@ -887,7 +869,7 @@ namespace System.Text.RegularExpressions.Tests
 
         // https://docs.microsoft.com/en-us/dotnet/standard/base-types/miscellaneous-constructs-in-regular-expressions#end-of-line-comment
         [Theory]
-        [MemberData(nameof(RegexOptions_TestData))]
+        [MemberData(nameof(RegexHelpers.RegexOptions_TestData), MemberType = typeof(RegexHelpers))]
         public void Docs_EndOfLineComment(RegexOptions options)
         {
             const string Pattern = @"\{\d+(,-*\d+)*(\:\w{1,4}?)*\}(?x) # Looks for a composite format item.";
@@ -965,7 +947,7 @@ namespace System.Text.RegularExpressions.Tests
 
             const string IdentifierRegex = @"^(" + StartCharacterRegex + ")(" + PartCharactersRegex + ")*$";
 
-            foreach (RegexOptions options in RegexOptionsExtended())
+            foreach (RegexOptions options in RegexHelpers.RegexOptionsExtended())
             {
                 Regex r = new Regex(IdentifierRegex, options);
                 Assert.Equal(isExpectedMatch, r.IsMatch(value));
@@ -983,7 +965,7 @@ namespace System.Text.RegularExpressions.Tests
         {
             const string CommentLineRegex = @"^\s*;\s*(.*?)\s*$";
 
-            foreach (RegexOptions options in RegexOptionsExtended())
+            foreach (RegexOptions options in RegexHelpers.RegexOptionsExtended())
             {
                 Regex r = new Regex(CommentLineRegex, options);
                 Assert.Equal(isExpectedMatch, r.IsMatch(value));
@@ -1002,7 +984,7 @@ namespace System.Text.RegularExpressions.Tests
         {
             const string SectionLineRegex = @"^\s*\[([\w\.\-\+:\/\(\)\\]+)\]\s*$";
 
-            foreach (RegexOptions options in RegexOptionsExtended())
+            foreach (RegexOptions options in RegexHelpers.RegexOptionsExtended())
             {
                 Regex r = new Regex(SectionLineRegex, options);
                 Assert.Equal(isExpectedMatch, r.IsMatch(value));

@@ -13,7 +13,6 @@ namespace System.Text.RegularExpressions.Tests
 {
     public class RegexMatchTests
     {
-
         public static IEnumerable<object[]> Match_Basic_TestData_LazyLoops()
         {
             var allOptions = new List<RegexOptions>() { RegexOptions.Singleline, RegexOptions.Compiled | RegexOptions.Singleline };
@@ -1314,31 +1313,19 @@ namespace System.Text.RegularExpressions.Tests
         }
 
         [Theory]
-        [InlineData(RegexOptions.None)]
-        [InlineData(RegexOptions.Compiled)]
-        [InlineData(RegexHelpers.RegexOptionNonBacktracking)]
+        [MemberData(nameof(RegexHelpers.RegexOptions_TestData), MemberType = typeof(RegexHelpers))]
         public void StressTestDeepNestingOfConcat(RegexOptions options)
         {
-            if (PlatformDetection.IsNetFramework && options == RegexHelpers.RegexOptionNonBacktracking)
-            {
-                return;
-            }
-
-            string pattern = string.Concat(Enumerable.Repeat("([a-z]", 1000).Concat(Enumerable.Repeat(")", 1000)));
-            string input = string.Concat(Enumerable.Repeat("abcde", 200));
+            string pattern = string.Concat(Enumerable.Repeat("([a-z]", RegexHelpers.StressTestNestingDepth).Concat(Enumerable.Repeat(")", RegexHelpers.StressTestNestingDepth)));
+            string input = string.Concat(Enumerable.Repeat("abcde", RegexHelpers.StressTestNestingDepth / 5));
             var re = new Regex(pattern, options);
             Assert.True(re.IsMatch(input));
         }
 
         public static IEnumerable<object[]> AllMatches_TestData()
         {
-            foreach (RegexOptions options in new[] { RegexHelpers.RegexOptionNonBacktracking, RegexOptions.None, RegexOptions.Compiled })
+            foreach (RegexOptions options in RegexHelpers.RegexOptionsExtended())
             {
-                if (PlatformDetection.IsNetFramework && options == RegexHelpers.RegexOptionNonBacktracking)
-                {
-                    yield break;
-                }
-
                 // Basic
                 yield return new object[] { @"a+", options, "xxxxxaaaaxxxxxxxxxxaaaaaa", new (int, int, string)[] { (5, 4, "aaaa"), (19, 6, "aaaaaa") } };
                 yield return new object[] { @"(...)+", options, "abcd\nfghijklm", new (int, int, string)[] { (0, 3, "abc"), (5, 6, "fghijk") } };
