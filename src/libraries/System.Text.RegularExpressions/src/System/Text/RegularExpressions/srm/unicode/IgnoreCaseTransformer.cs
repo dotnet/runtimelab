@@ -1,8 +1,9 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
+using System.Threading;
 
 namespace System.Text.RegularExpressions.SRM.Unicode
 {
@@ -18,17 +19,24 @@ namespace System.Text.RegularExpressions.SRM.Unicode
         private readonly BDD _i_Turkish;
         private readonly BDD _I_Turkish;
 
-        private BDD? _ignoreCaseRel_Default;
-        private BDD? _ignoreCaseRel_Default_Domain;
-
-        private BDD? _ignoreCaseRel_Invariant;
-        private BDD? _ignoreCaseRel_Invariant_Domain;
-
-        private BDD? _ignoreCaseRel_Turkish;
-        private BDD? _ignoreCaseRel_Turkish_Domain;
+        private volatile IgnoreCaseRelation? _relationDefault;
+        private volatile IgnoreCaseRelation? _relationInvariant;
+        private volatile IgnoreCaseRelation? _relationTurkish;
 
         /// <summary>Maps each char c to the case-insensitive set of c that is culture-independent (for non-null entries).</summary>
-        private readonly BDD[] _char_table_CI = new BDD[0x10000];
+        private readonly BDD?[] _char_table_CI = new BDD[char.MaxValue + 1];
+
+        private sealed class IgnoreCaseRelation
+        {
+            public IgnoreCaseRelation(BDD instance, BDD instanceDomain)
+            {
+                Instance = instance;
+                InstanceDomain = instanceDomain;
+            }
+
+            public BDD Instance { get; }
+            public BDD InstanceDomain { get; }
+        }
 
         public IgnoreCaseTransformer(CharSetSolver solver)
         {
@@ -39,102 +47,6 @@ namespace System.Text.RegularExpressions.SRM.Unicode
             _I_Turkish = solver.Or(solver.CharConstraint('I'), solver.CharConstraint(Turkish_i_WithoutDot));
         }
 
-        [MemberNotNull(nameof(_ignoreCaseRel_Default))]
-        [MemberNotNull(nameof(_ignoreCaseRel_Default_Domain))]
-        private void SetUpDefault()
-        {
-            if (_ignoreCaseRel_Default == null)
-            {
-                // Deserialize the table for the default culture.
-                _ignoreCaseRel_Default = BDD.Deserialize(IgnoreCaseRelation.IgnoreCaseEnUsSerializedBDD, _solver);
-
-                // Represents the set of all case-sensitive characters in the default culture.
-                _ignoreCaseRel_Default_Domain = _solver.ShiftRight(_ignoreCaseRel_Default, 16);
-            }
-
-            Debug.Assert(_ignoreCaseRel_Default is not null && _ignoreCaseRel_Default_Domain is not null);
-        }
-
-        /// <summary>
-        /// Gets the correct transformation relation based on the current culture;
-        /// culture=="" means InvariantCulture while culture==null means to use the current culture.
-        /// </summary>
-        private BDD GetIgnoreCaseRel(out BDD domain, string? culture = null)
-        {
-            culture ??= Globalization.CultureInfo.CurrentCulture.Name;
-
-            if (culture == string.Empty)
-            {
-                if (_ignoreCaseRel_Invariant == null)
-                {
-                    SetUpDefault();
-
-                    // Compute the invariant table based off of default.
-                    // In the default (en-US) culture: Turkish_I_withDot = i = I
-                    // In the invariant culture: i = I, while Turkish_I_withDot is case-insensitive
-                    BDD tr_I_withdot_BDD = _solver.CharConstraint(Turkish_I_WithDot);
-
-                    // Since Turkish_I_withDot is case-insensitive in invariant culture, remove it from the default (en-US culture) table.
-                    BDD inv_table = _solver.And(_ignoreCaseRel_Default, _solver.Not(tr_I_withdot_BDD));
-
-                    // Next, remove Turkish_I_withDot from the RHS of the relation.
-                    // This also effectively removes Turkish_I_withDot from the equivalence sets of 'i' and 'I'.
-                    _ignoreCaseRel_Invariant = _solver.And(inv_table, _solver.Not(_solver.ShiftLeft(tr_I_withdot_BDD, 16)));
-
-                    // Remove Turkish_I_withDot from the domain of casesensitive characters in the default case
-                    _ignoreCaseRel_Invariant_Domain = _solver.And(_ignoreCaseRel_Default_Domain, _solver.Not(tr_I_withdot_BDD));
-                }
-
-                Debug.Assert(_ignoreCaseRel_Invariant_Domain is not null);
-                domain = _ignoreCaseRel_Invariant_Domain;
-                return _ignoreCaseRel_Invariant;
-            }
-
-            if (IsTurkishAlphabet(culture))
-            {
-                SetUpDefault();
-
-                if (_ignoreCaseRel_Turkish == null)
-                {
-                    // Compute the tr table based off of default.
-                    // In the default (en-US) culture: Turkish_I_withDot = i = I
-                    // In the tr culture: i = Turkish_I_withDot, I = Turkish_i_withoutDot
-                    BDD tr_I_withdot_BDD = _solver.CharConstraint(Turkish_I_WithDot);
-                    BDD tr_i_withoutdot_BDD = _solver.CharConstraint(Turkish_i_WithoutDot);
-                    BDD i_BDD = _solver.CharConstraint('i');
-                    BDD I_BDD = _solver.CharConstraint('I');
-
-                    // First remove all i's from the default table from the LHS and from the RHS.
-                    // Note that Turkish_i_withoutDot is not in the default table because it is case-insensitive in the en-US culture.
-                    BDD iDefault = _solver.Or(i_BDD, _solver.Or(I_BDD, tr_I_withdot_BDD));
-                    BDD tr_table = _solver.And(_ignoreCaseRel_Default, _solver.Not(iDefault));
-                    tr_table = _solver.And(tr_table, _solver.Not(_solver.ShiftLeft(iDefault, 16)));
-
-                    BDD i_tr = _solver.Or(i_BDD, tr_I_withdot_BDD);
-                    BDD I_tr = _solver.Or(I_BDD, tr_i_withoutdot_BDD);
-
-                    // The Cartesian product i_tr X i_tr.
-                    BDD i_trXi_tr = _solver.And(_solver.ShiftLeft(i_tr, 16), i_tr);
-
-                    // The Cartesian product I_tr X I_tr.
-                    BDD I_trXI_tr = _solver.And(_solver.ShiftLeft(I_tr, 16), I_tr);
-
-                    // Update the table with the new entries, and add Turkish_i_withoutDot also into the domain of case-sensitive characters.
-                    _ignoreCaseRel_Turkish = _solver.Or(tr_table, _solver.Or(i_trXi_tr, I_trXI_tr));
-                    _ignoreCaseRel_Turkish_Domain = _solver.Or(_ignoreCaseRel_Default_Domain, tr_i_withoutdot_BDD);
-                }
-
-                Debug.Assert(_ignoreCaseRel_Turkish_Domain is not null);
-                domain = _ignoreCaseRel_Turkish_Domain;
-                return _ignoreCaseRel_Turkish;
-            }
-
-            // All other cultures are equivalent to the default culture wrt case-sensitivity.
-            SetUpDefault();
-            domain = _ignoreCaseRel_Default_Domain;
-            return _ignoreCaseRel_Default;
-        }
-
         /// <summary>
         /// Get the set of CI-equivalent characters to c.
         /// This operation depends on culture for i, I, '\u0130', and '\u0131';
@@ -142,12 +54,12 @@ namespace System.Text.RegularExpressions.SRM.Unicode
         /// </summary>
         public BDD Apply(char c, string? culture = null)
         {
-            if (_char_table_CI[c] is BDD bdd)
+            if (Volatile.Read(ref _char_table_CI[c]) is BDD bdd)
             {
                 return bdd;
             }
 
-            culture ??= Globalization.CultureInfo.CurrentCulture.Name;
+            culture ??= CultureInfo.CurrentCulture.Name;
             switch (c)
             {
                 case 'i':
@@ -176,17 +88,20 @@ namespace System.Text.RegularExpressions.SRM.Unicode
                 case 'k':
                 case 'K':
                 case KelvinSign:
-                    return _char_table_CI[c] = _solver.Or(_solver.Or(_solver.CharConstraint('k'), _solver.CharConstraint('K')), _solver.CharConstraint(KelvinSign));
+                    Interlocked.CompareExchange(ref _char_table_CI[c], _solver.Or(_solver.Or(_solver.CharConstraint('k'), _solver.CharConstraint('K')), _solver.CharConstraint(KelvinSign)), null);
+                    return _char_table_CI[c]!;
 
                 case <= '\x7F':
                     // For ASCII range other than letters i, I, k, and K, the case-conversion is independent of culture and does
                     // not include case-insensitive-equivalent non-ASCII.
-                    return _char_table_CI[c] = _solver.Or(_solver.CharConstraint(char.ToLower(c)), _solver.CharConstraint(char.ToUpper(c)));
+                    Interlocked.CompareExchange(ref _char_table_CI[c], _solver.Or(_solver.CharConstraint(char.ToLower(c)), _solver.CharConstraint(char.ToUpper(c))), null);
+                    return _char_table_CI[c]!;
 
                 default:
                     // Bring in the full transfomation relation, but here it does not actually depend on culture
                     // so it is safe to store the result for c.
-                    return _char_table_CI[c] = Apply(_solver.CharConstraint(c));
+                    Interlocked.CompareExchange(ref _char_table_CI[c], Apply(_solver.CharConstraint(c)), null);
+                    return _char_table_CI[c]!;
             }
         }
 
@@ -198,23 +113,116 @@ namespace System.Text.RegularExpressions.SRM.Unicode
         public BDD Apply(BDD bdd, string? culture = null)
         {
             // First get the culture specific relation
-            BDD ignoreCaseRel = GetIgnoreCaseRel(out BDD domain, culture);
-            if (_solver.And(domain, bdd).IsEmpty)
+            IgnoreCaseRelation relation = GetIgnoreCaseRelation(culture);
+
+            if (_solver.And(relation.InstanceDomain, bdd).IsEmpty)
             {
-                //no elements need to be added
+                // No elements need to be added
                 return bdd;
             }
 
             // Compute the set of all characters that are equivalent to some element in bdd.
             // restr is the relation restricted to the relevant characters in bdd.
             // This conjunction works because bdd is unspecified for bits > 15.
-            BDD restr = _solver.And(bdd, ignoreCaseRel);
+            BDD restr = _solver.And(bdd, relation.Instance);
 
-            // Shiftright essentially produces the LHS of the relation (char X char) that restr represents.
+            // ShiftRight essentially produces the LHS of the relation (char X char) that restr represents.
             BDD ignorecase = _solver.ShiftRight(restr, 16);
 
             // The final set is the union of all the characters.
             return _solver.Or(ignorecase, bdd);
+        }
+
+        /// <summary>Gets the transformation relation based on the current culture.</summary>
+        /// <remarks>culture == "" means InvariantCulture. culture == null means to use the current culture.</remarks>
+        private IgnoreCaseRelation GetIgnoreCaseRelation(string? culture = null)
+        {
+            culture ??= CultureInfo.CurrentCulture.Name;
+
+            if (culture == string.Empty)
+            {
+                return _relationInvariant ?? CreateIgnoreCaseRelationInvariant();
+            }
+
+            if (IsTurkishAlphabet(culture))
+            {
+                return _relationTurkish ?? CreateIgnoreCaseRelationTurkish();
+            }
+
+            // All other cultures are equivalent to the default culture wrt case-sensitivity.
+            return _relationDefault ?? EnsureDefault();
+        }
+
+        [MemberNotNull(nameof(_relationDefault))]
+        private IgnoreCaseRelation EnsureDefault()
+        {
+            // Deserialize the table for the default culture.
+            if (_relationDefault is null)
+            {
+                BDD instance = BDD.Deserialize(Unicode.IgnoreCaseRelation.IgnoreCaseEnUsSerializedBDD, _solver);
+                BDD instanceDomain = _solver.ShiftRight(instance, 16); // represents the set of all case-sensitive characters in the default culture.
+                Interlocked.CompareExchange(ref _relationDefault, new IgnoreCaseRelation(instance, instanceDomain), null);
+            }
+
+            return _relationDefault;
+        }
+
+        private IgnoreCaseRelation CreateIgnoreCaseRelationInvariant()
+        {
+            EnsureDefault();
+
+            // Compute the invariant table based off of default.
+            // In the default (en-US) culture: Turkish_I_withDot = i = I
+            // In the invariant culture: i = I, while Turkish_I_withDot is case-insensitive
+            BDD tr_I_withdot_BDD = _solver.CharConstraint(Turkish_I_WithDot);
+
+            // Since Turkish_I_withDot is case-insensitive in invariant culture, remove it from the default (en-US culture) table.
+            BDD inv_table = _solver.And(_relationDefault.Instance, _solver.Not(tr_I_withdot_BDD));
+
+            // Next, remove Turkish_I_withDot from the RHS of the relation.
+            // This also effectively removes Turkish_I_withDot from the equivalence sets of 'i' and 'I'.
+            BDD instance = _solver.And(inv_table, _solver.Not(_solver.ShiftLeft(tr_I_withdot_BDD, 16)));
+
+            // Remove Turkish_I_withDot from the domain of casesensitive characters in the default case
+            BDD instanceDomain = _solver.And(instance, _solver.Not(tr_I_withdot_BDD));
+
+            Interlocked.CompareExchange(ref _relationInvariant, new IgnoreCaseRelation(instance, instanceDomain), null);
+            return _relationInvariant;
+        }
+
+        private IgnoreCaseRelation CreateIgnoreCaseRelationTurkish()
+        {
+            EnsureDefault();
+
+            // Compute the tr table based off of default.
+            // In the default (en-US) culture: Turkish_I_withDot = i = I
+            // In the tr culture: i = Turkish_I_withDot, I = Turkish_i_withoutDot
+            BDD tr_I_withdot_BDD = _solver.CharConstraint(Turkish_I_WithDot);
+            BDD tr_i_withoutdot_BDD = _solver.CharConstraint(Turkish_i_WithoutDot);
+            BDD i_BDD = _solver.CharConstraint('i');
+            BDD I_BDD = _solver.CharConstraint('I');
+
+            // First remove all i's from the default table from the LHS and from the RHS.
+            // Note that Turkish_i_withoutDot is not in the default table because it is case-insensitive in the en-US culture.
+            BDD iDefault = _solver.Or(i_BDD, _solver.Or(I_BDD, tr_I_withdot_BDD));
+            BDD tr_table = _solver.And(_relationDefault.Instance, _solver.Not(iDefault));
+            tr_table = _solver.And(tr_table, _solver.Not(_solver.ShiftLeft(iDefault, 16)));
+
+            BDD i_tr = _solver.Or(i_BDD, tr_I_withdot_BDD);
+            BDD I_tr = _solver.Or(I_BDD, tr_i_withoutdot_BDD);
+
+            // The Cartesian product i_tr X i_tr.
+            BDD i_trXi_tr = _solver.And(_solver.ShiftLeft(i_tr, 16), i_tr);
+
+            // The Cartesian product I_tr X I_tr.
+            BDD I_trXI_tr = _solver.And(_solver.ShiftLeft(I_tr, 16), I_tr);
+
+            // Update the table with the new entries, and add Turkish_i_withoutDot also into the domain of case-sensitive characters.
+            BDD instance = _solver.Or(tr_table, _solver.Or(i_trXi_tr, I_trXI_tr));
+            BDD instanceDomain = _solver.Or(_relationDefault.InstanceDomain, tr_i_withoutdot_BDD);
+
+            Interlocked.CompareExchange(ref _relationTurkish, new IgnoreCaseRelation(instance, instanceDomain), null);
+            return _relationTurkish;
         }
 
         private static bool IsTurkishAlphabet(string culture) =>
