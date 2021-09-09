@@ -24,7 +24,7 @@ namespace System.Text.RegularExpressions.SRM.Unicode
         private volatile IgnoreCaseRelation? _relationTurkish;
 
         /// <summary>Maps each char c to the case-insensitive set of c that is culture-independent (for non-null entries).</summary>
-        private readonly BDD?[] _char_table_CI = new BDD[char.MaxValue + 1];
+        private readonly BDD?[] _cultureIndependentChars = new BDD[char.MaxValue + 1];
 
         private sealed class IgnoreCaseRelation
         {
@@ -54,7 +54,7 @@ namespace System.Text.RegularExpressions.SRM.Unicode
         /// </summary>
         public BDD Apply(char c, string? culture = null)
         {
-            if (Volatile.Read(ref _char_table_CI[c]) is BDD bdd)
+            if (Volatile.Read(ref _cultureIndependentChars[c]) is BDD bdd)
             {
                 return bdd;
             }
@@ -62,6 +62,8 @@ namespace System.Text.RegularExpressions.SRM.Unicode
             culture ??= CultureInfo.CurrentCulture.Name;
             switch (c)
             {
+                // Do not cache in _cultureIndependentChars values that are culture-dependent
+
                 case 'i':
                     return
                         culture == string.Empty ? _i_Invariant :
@@ -88,20 +90,24 @@ namespace System.Text.RegularExpressions.SRM.Unicode
                 case 'k':
                 case 'K':
                 case KelvinSign:
-                    Interlocked.CompareExchange(ref _char_table_CI[c], _solver.Or(_solver.Or(_solver.CharConstraint('k'), _solver.CharConstraint('K')), _solver.CharConstraint(KelvinSign)), null);
-                    return _char_table_CI[c]!;
+                    Volatile.Write(ref _cultureIndependentChars[c], _solver.Or(_solver.Or(_solver.CharConstraint('k'), _solver.CharConstraint('K')), _solver.CharConstraint(KelvinSign)));
+                    return _cultureIndependentChars[c]!;
+
+                // Cache in _cultureIndependentChars entries that are culture-independent.
+                // BDDs are idempotent, so while we use volatile to ensure proper adherence
+                // to ECMA's memory model, we don't need Interlocked.CompareExchange.
 
                 case <= '\x7F':
                     // For ASCII range other than letters i, I, k, and K, the case-conversion is independent of culture and does
                     // not include case-insensitive-equivalent non-ASCII.
-                    Interlocked.CompareExchange(ref _char_table_CI[c], _solver.Or(_solver.CharConstraint(char.ToLower(c)), _solver.CharConstraint(char.ToUpper(c))), null);
-                    return _char_table_CI[c]!;
+                    Volatile.Write(ref _cultureIndependentChars[c], _solver.Or(_solver.CharConstraint(char.ToLower(c)), _solver.CharConstraint(char.ToUpper(c))));
+                    return _cultureIndependentChars[c]!;
 
                 default:
                     // Bring in the full transfomation relation, but here it does not actually depend on culture
                     // so it is safe to store the result for c.
-                    Interlocked.CompareExchange(ref _char_table_CI[c], Apply(_solver.CharConstraint(c)), null);
-                    return _char_table_CI[c]!;
+                    Volatile.Write(ref _cultureIndependentChars[c], Apply(_solver.CharConstraint(c)));
+                    return _cultureIndependentChars[c]!;
             }
         }
 
@@ -161,7 +167,7 @@ namespace System.Text.RegularExpressions.SRM.Unicode
             {
                 BDD instance = BDD.Deserialize(Unicode.IgnoreCaseRelation.IgnoreCaseEnUsSerializedBDD, _solver);
                 BDD instanceDomain = _solver.ShiftRight(instance, 16); // represents the set of all case-sensitive characters in the default culture.
-                Interlocked.CompareExchange(ref _relationDefault, new IgnoreCaseRelation(instance, instanceDomain), null);
+                _relationDefault = new IgnoreCaseRelation(instance, instanceDomain);
             }
 
             return _relationDefault;
@@ -186,7 +192,7 @@ namespace System.Text.RegularExpressions.SRM.Unicode
             // Remove Turkish_I_withDot from the domain of casesensitive characters in the default case
             BDD instanceDomain = _solver.And(instance, _solver.Not(tr_I_withdot_BDD));
 
-            Interlocked.CompareExchange(ref _relationInvariant, new IgnoreCaseRelation(instance, instanceDomain), null);
+            _relationInvariant = new IgnoreCaseRelation(instance, instanceDomain);
             return _relationInvariant;
         }
 
@@ -221,7 +227,7 @@ namespace System.Text.RegularExpressions.SRM.Unicode
             BDD instance = _solver.Or(tr_table, _solver.Or(i_trXi_tr, I_trXI_tr));
             BDD instanceDomain = _solver.Or(_relationDefault.InstanceDomain, tr_i_withoutdot_BDD);
 
-            Interlocked.CompareExchange(ref _relationTurkish, new IgnoreCaseRelation(instance, instanceDomain), null);
+            _relationTurkish = new IgnoreCaseRelation(instance, instanceDomain);
             return _relationTurkish;
         }
 
