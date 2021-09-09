@@ -11,7 +11,7 @@ namespace System.Text.RegularExpressions.SRM.DGML
     /// </summary>
     internal sealed class RegexDFA<T> : IAutomaton<T> where T : notnull
     {
-        private readonly State<T> _q0;
+        private readonly DfaMatchingState<T> _q0;
         private readonly List<int> _states = new();
         private readonly HashSet<int> _stateSet = new();
         private readonly List<Move<T>> _moves = new();
@@ -26,7 +26,7 @@ namespace System.Text.RegularExpressions.SRM.DGML
 
             //inReverse only matters if Ar contains some line anchor
             _q0 = _builder.MkState(inReverse ? srm._reversePattern : (addDotStar ? srm._dotstarredPattern : srm._pattern), startId);
-            var stack = new Stack<State<T>>();
+            var stack = new Stack<DfaMatchingState<T>>();
             stack.Push(_q0);
             _states.Add(_q0.Id);
             _stateSet.Add(_q0.Id);
@@ -39,10 +39,10 @@ namespace System.Text.RegularExpressions.SRM.DGML
             //unwind until the stack is empty or the bound has been reached
             while (stack.Count > 0 && (bound <= 0 || _states.Count < bound))
             {
-                State<T> q = stack.Pop();
+                DfaMatchingState<T> q = stack.Pop();
                 foreach (T c in partition)
                 {
-                    State<T> p = q.Next(c);
+                    DfaMatchingState<T> p = q.Next(c);
 
                     // check that p is not a dead-end
                     if (!p.IsNothing)

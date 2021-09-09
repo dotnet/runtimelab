@@ -43,14 +43,14 @@ namespace System.Text.RegularExpressions.SRM
         private readonly Dictionary<TElement, SymbolicRegexNode<TElement>> _singletonCache = new Dictionary<TElement, SymbolicRegexNode<TElement>>();
 
         // states that have been created
-        internal HashSet<State<TElement>> _stateCache = new HashSet<State<TElement>>();
+        internal HashSet<DfaMatchingState<TElement>> _stateCache = new HashSet<DfaMatchingState<TElement>>();
 
         /// <summary>
         /// Maps state ids to states, initial capacity is 1024 states.
         /// Each time more states are needed the length is increased by 1024.
         /// </summary>
-        internal State<TElement>[]? _statearray;
-        internal State<TElement>[]? _delta;
+        internal DfaMatchingState<TElement>[]? _statearray;
+        internal DfaMatchingState<TElement>[]? _delta;
         private const int InitialStateLimit = 1024;
 
         /// <summary>
@@ -88,7 +88,7 @@ namespace System.Text.RegularExpressions.SRM
             }
             else
             {
-                _statearray = new State<TElement>[InitialStateLimit];
+                _statearray = new DfaMatchingState<TElement>[InitialStateLimit];
 
                 // the extra slot with id atoms.Length is reserved for \Z (last occurrence of \n)
                 int k = 1;
@@ -97,7 +97,7 @@ namespace System.Text.RegularExpressions.SRM
                     k += 1;
                 }
                 _K = k;
-                _delta = new State<TElement>[InitialStateLimit << _K];
+                _delta = new DfaMatchingState<TElement>[InitialStateLimit << _K];
             }
 
             _solver = solver;
@@ -720,7 +720,7 @@ namespace System.Text.RegularExpressions.SRM
         /// <summary>
         /// Make a state with given node and previous character context
         /// </summary>
-        public State<TElement> MkState(SymbolicRegexNode<TElement> node, uint prevCharKind, bool antimirov = false)
+        public DfaMatchingState<TElement> MkState(SymbolicRegexNode<TElement> node, uint prevCharKind, bool antimirov = false)
         {
             //first prune the anchors in the node
             TElement WLpred = _wordLetterPredicate;
@@ -732,8 +732,8 @@ namespace System.Text.RegularExpressions.SRM
             //true if the startset of the node overlaps with some nonwordletter or the node can be nullable
             bool contWithNWL = node.CanBeNullable || _solver.IsSatisfiable(_solver.And(_solver.Not(WLpred), startSet));
             SymbolicRegexNode<TElement> pruned_node = node.PruneAnchors(prevCharKind, contWithWL, contWithNWL);
-            var s = new State<TElement>(pruned_node, prevCharKind);
-            if (!_stateCache.TryGetValue(s, out State<TElement>? state))
+            var s = new DfaMatchingState<TElement>(pruned_node, prevCharKind);
+            if (!_stateCache.TryGetValue(s, out DfaMatchingState<TElement>? state))
             {
                 // do not cache set of states as states in antimirov mode
                 if (antimirov && pruned_node.Kind == SymbolicRegexKind.Or)
@@ -750,7 +750,7 @@ namespace System.Text.RegularExpressions.SRM
             return state;
         }
 
-        private State<TElement> MakeNewState(State<TElement> state)
+        private DfaMatchingState<TElement> MakeNewState(DfaMatchingState<TElement> state)
         {
             lock (this)
             {

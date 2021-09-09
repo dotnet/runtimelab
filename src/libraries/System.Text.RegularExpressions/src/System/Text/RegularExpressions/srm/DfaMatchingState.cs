@@ -8,15 +8,19 @@ using System.Net;
 namespace System.Text.RegularExpressions.SRM
 {
     /// <summary>Captures a state of a DFA explored during matching.</summary>
-    internal sealed class State<T> where T : notnull
+    internal sealed class DfaMatchingState<T> where T : notnull
     {
+        internal DfaMatchingState(SymbolicRegexNode<T> node, uint prevCharKind)
+        {
+            Node = node;
+            PrevCharKind = prevCharKind;
+        }
+
+        internal SymbolicRegexNode<T> Node { get; }
+        internal uint PrevCharKind { get; }
+
         internal int Id { get; set; }
-
         internal bool IsInitialState { get; set; }
-
-        internal uint PrevCharKind { get; private set; }
-
-        internal SymbolicRegexNode<T> Node { get; private set; }
 
         /// <summary>State is lazy</summary>
         internal bool IsLazy => Node._info.IsLazy;
@@ -50,31 +54,25 @@ namespace System.Text.RegularExpressions.SRM
         /// <summary>If true then state starts with a ^ or $ or \A or \z or \Z</summary>
         internal bool StartsWithLineAnchor => Node._info.StartsWithLineAnchor;
 
-        internal State(SymbolicRegexNode<T> node, uint prevCharKind) : base()
-        {
-            Node = node;
-            PrevCharKind = prevCharKind;
-        }
-
         /// <summary>
         /// Compute the target state for the given input atom.
         /// If atom is False this means that this is \n and it is the last character of the input.
         /// </summary>
         /// <param name="atom">minterm corresponding to some input character or False corresponding to last \n</param>
-        internal State<T> Next(T atom)
+        internal DfaMatchingState<T> Next(T atom)
         {
             ICharAlgebra<T> alg = Node._builder._solver;
-            T WLpred = Node._builder._wordLetterPredicate;
-            T NLpred = Node._builder._newLinePredicate;
+            T wordLetterPredicate = Node._builder._wordLetterPredicate;
+            T newLinePredicate = Node._builder._newLinePredicate;
 
             // atom == solver.False is used to represent the very last \n
             uint nextCharKind = 0;
             if (alg.False.Equals(atom))
             {
                 nextCharKind = CharKind.NewLineS;
-                atom = NLpred;
+                atom = newLinePredicate;
             }
-            else if (NLpred.Equals(atom))
+            else if (newLinePredicate.Equals(atom))
             {
                 // If the previous state was the start state, mark this as the very FIRST \n.
                 // Essentially, this looks the same as the very last \n and is used to nullify
@@ -83,7 +81,7 @@ namespace System.Text.RegularExpressions.SRM
                     CharKind.NewLineS :
                     CharKind.Newline;
             }
-            else if (alg.IsSatisfiable(alg.And(WLpred, atom)))
+            else if (alg.IsSatisfiable(alg.And(wordLetterPredicate, atom)))
             {
                 nextCharKind = CharKind.WordLetter;
             }
@@ -109,7 +107,7 @@ namespace System.Text.RegularExpressions.SRM
         }
 
         public override bool Equals(object? obj) =>
-            obj is State<T> s && PrevCharKind == s.PrevCharKind && Node.Equals(s.Node);
+            obj is DfaMatchingState<T> s && PrevCharKind == s.PrevCharKind && Node.Equals(s.Node);
 
         public override int GetHashCode() => (PrevCharKind, Node).GetHashCode();
 

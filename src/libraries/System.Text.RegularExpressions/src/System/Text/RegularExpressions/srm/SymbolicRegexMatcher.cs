@@ -49,7 +49,7 @@ namespace System.Text.RegularExpressions.SRM
         internal readonly SymbolicRegexBuilder<TSetType> _builder;
 
         /// <summary>Maps each character into a partition id in the range 0..K-1.</summary>
-        private readonly Classifier _partitions;
+        private readonly PartitionClassifier _partitions;
 
         /// <summary>Original regex.</summary>
         internal readonly SymbolicRegexNode<TSetType> _pattern;
@@ -92,26 +92,26 @@ namespace System.Text.RegularExpressions.SRM
         private readonly bool _isPrefixCaseInsensitive;
 
         /// <summary>Cached skip states from the initial state of <see cref="_dotstarredPattern"/> for the 6 possible previous character kinds.</summary>
-        private readonly State<TSetType>[] _prefixSkipStates = new State<TSetType>[StateCount];
+        private readonly DfaMatchingState<TSetType>[] _prefixSkipStates = new DfaMatchingState<TSetType>[StateCount];
 
         private readonly string _reversePrefix;
 
-        private readonly State<TSetType>[] _initialStates = new State<TSetType>[StateCount];
-        private readonly State<TSetType>[] _dotstarredInitialStates = new State<TSetType>[StateCount];
-        private readonly State<TSetType>[] _reverseInitialStates = new State<TSetType>[StateCount];
+        private readonly DfaMatchingState<TSetType>[] _initialStates = new DfaMatchingState<TSetType>[StateCount];
+        private readonly DfaMatchingState<TSetType>[] _dotstarredInitialStates = new DfaMatchingState<TSetType>[StateCount];
+        private readonly DfaMatchingState<TSetType>[] _reverseInitialStates = new DfaMatchingState<TSetType>[StateCount];
 
         private readonly uint[] _asciiCharKinds = new uint[128];
 
         internal readonly CultureInfo _culture;
 
-        private State<TSetType> GetSkipState(uint prevCharKind)
+        private DfaMatchingState<TSetType> GetSkipState(uint prevCharKind)
         {
-            if (_prefixSkipStates[prevCharKind] is not State<TSetType> state)
+            if (_prefixSkipStates[prevCharKind] is not DfaMatchingState<TSetType> state)
             {
                 state = DeltaPlus<BrzozowskiTransition>(_prefix, _dotstarredInitialStates[prevCharKind]);
                 lock (this)
                 {
-                    if (_prefixSkipStates[prevCharKind] is State<TSetType> existingState)
+                    if (_prefixSkipStates[prevCharKind] is DfaMatchingState<TSetType> existingState)
                     {
                         state = existingState;
                     }
@@ -126,16 +126,16 @@ namespace System.Text.RegularExpressions.SRM
         }
 
         /// <summary>Cached skip states from the initial state of Ar for the 6 possible previous character kinds.</summary>
-        private readonly State<TSetType>[] _reversePrefixSkipStates = new State<TSetType>[6];
+        private readonly DfaMatchingState<TSetType>[] _reversePrefixSkipStates = new DfaMatchingState<TSetType>[6];
 
-        private State<TSetType> GetReverseSkipState(uint prevCharKind)
+        private DfaMatchingState<TSetType> GetReverseSkipState(uint prevCharKind)
         {
             if (_reversePrefixSkipStates[prevCharKind] is null)
             {
-                State<TSetType> state = DeltaPlus<BrzozowskiTransition>(_reversePrefix, _reverseInitialStates[prevCharKind]);
+                DfaMatchingState<TSetType> state = DeltaPlus<BrzozowskiTransition>(_reversePrefix, _reverseInitialStates[prevCharKind]);
                 lock (this)
                 {
-                    if (_reversePrefixSkipStates[prevCharKind] is State<TSetType> existingState)
+                    if (_reversePrefixSkipStates[prevCharKind] is DfaMatchingState<TSetType> existingState)
                     {
                         state = existingState;
                     }
@@ -251,7 +251,7 @@ namespace System.Text.RegularExpressions.SRM
             _prefix = Base64.DecodeString(fragments[10]);
             _isPrefixCaseInsensitive = bool.Parse(fragments[11]);
             _reversePrefix = Base64.DecodeString(fragments[12]);
-            _partitions = Classifier.Deserialize(fragments[13]);
+            _partitions = PartitionClassifier.Deserialize(fragments[13]);
 
             string potentialTimeout = fragments[14].TrimEnd();
             if (potentialTimeout == string.Empty)
@@ -308,7 +308,7 @@ namespace System.Text.RegularExpressions.SRM
             {
                 BV64Algebra bv64 => bv64._classifier,
                 BVAlgebra bv => bv._classifier,
-                _ => Classifier.Create((CharSetSolver)(object)_builder._solver, minterms),
+                _ => PartitionClassifier.Create((CharSetSolver)(object)_builder._solver, minterms),
             };
 
             _dotstarredPattern = _builder.MkConcat(_builder._dotStar, _pattern);
@@ -416,7 +416,7 @@ namespace System.Text.RegularExpressions.SRM
         }
 
         /// <summary>Return the state after the given input string from the given state q.</summary>
-        private State<TSetType> DeltaPlus<TTransition>(string input, State<TSetType> q) where TTransition : struct, ITransition
+        private DfaMatchingState<TSetType> DeltaPlus<TTransition>(string input, DfaMatchingState<TSetType> q) where TTransition : struct, ITransition
         {
             for (int i = 0; i < input.Length; i++)
             {
@@ -434,7 +434,7 @@ namespace System.Text.RegularExpressions.SRM
             /// <param name="q">the current state</param>
             /// <param name="atom_id">the partition id of the next character</param>
             /// <param name="atom">the partition of the next character</param>
-            State<TSetType> TakeTransition(SymbolicRegexMatcher<TSetType> matcher, State<TSetType> q, int atom_id, TSetType atom);
+            DfaMatchingState<TSetType> TakeTransition(SymbolicRegexMatcher<TSetType> matcher, DfaMatchingState<TSetType> q, int atom_id, TSetType atom);
         }
 
         /// <summary>Compute the target state for source state q and input[i] character.</summary>
@@ -442,7 +442,7 @@ namespace System.Text.RegularExpressions.SRM
         /// <param name="i">refers to i'th character in the input</param>
         /// <param name="q">source state</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private State<TSetType> Delta<TTransition>(string input, int i, State<TSetType> q) where TTransition : struct, ITransition
+        private DfaMatchingState<TSetType> Delta<TTransition>(string input, int i, DfaMatchingState<TSetType> q) where TTransition : struct, ITransition
         {
             int c = input[i];
 
@@ -471,7 +471,7 @@ namespace System.Text.RegularExpressions.SRM
         private readonly struct BrzozowskiTransition : ITransition
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public State<TSetType> TakeTransition(SymbolicRegexMatcher<TSetType> matcher, State<TSetType> q, int atom_id, TSetType atom)
+            public DfaMatchingState<TSetType> TakeTransition(SymbolicRegexMatcher<TSetType> matcher, DfaMatchingState<TSetType> q, int atom_id, TSetType atom)
             {
                 Debug.Assert(matcher._builder._delta is not null);
 
@@ -486,7 +486,7 @@ namespace System.Text.RegularExpressions.SRM
         private readonly struct AntimirovTransition : ITransition
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public State<TSetType> TakeTransition(SymbolicRegexMatcher<TSetType> matcher, State<TSetType> q, int atom_id, TSetType atom)
+            public DfaMatchingState<TSetType> TakeTransition(SymbolicRegexMatcher<TSetType> matcher, DfaMatchingState<TSetType> q, int atom_id, TSetType atom)
             {
                 if (q.Node.Kind == SymbolicRegexKind.Or)
                 {
@@ -499,9 +499,9 @@ namespace System.Text.RegularExpressions.SRM
                     Debug.Assert(q.Node._alts is not null);
                     foreach (SymbolicRegexNode<TSetType> r in q.Node._alts)
                     {
-                        State<TSetType> s = matcher._builder.MkState(r, q.PrevCharKind);
+                        DfaMatchingState<TSetType> s = matcher._builder.MkState(r, q.PrevCharKind);
                         int offset = (s.Id << matcher._builder._K) | atom_id;
-                        State<TSetType> p = matcher._builder._delta[offset] ?? matcher.CreateNewTransition(s, atom, offset);
+                        DfaMatchingState<TSetType> p = matcher._builder._delta[offset] ?? matcher.CreateNewTransition(s, atom, offset);
 
                         // observe that if p.Node is an Or it will be flattened
                         union = matcher._builder.MkOr2(union, p.Node);
@@ -518,13 +518,13 @@ namespace System.Text.RegularExpressions.SRM
         }
 
         /// <summary>Critical region for defining a new transition</summary>
-        private State<TSetType> CreateNewTransition(State<TSetType> q, TSetType atom, int offset)
+        private DfaMatchingState<TSetType> CreateNewTransition(DfaMatchingState<TSetType> q, TSetType atom, int offset)
         {
             Debug.Assert(_builder._delta is not null);
             lock (this)
             {
                 // check if meanwhile delta[offset] has become defined possibly by another thread
-                State<TSetType> p = _builder._delta[offset];
+                DfaMatchingState<TSetType> p = _builder._delta[offset];
                 if (p is null)
                 {
                     // this is the only place in code where the Next method is called in the matcher
@@ -646,7 +646,7 @@ namespace System.Text.RegularExpressions.SRM
 
             // Pick the correct start state based on previous character kind.
             uint prevCharKind = GetCharKind(input, i - 1);
-            State<TSetType> q = _initialStates[prevCharKind];
+            DfaMatchingState<TSetType> q = _initialStates[prevCharKind];
 
             if (q.IsNullable(GetCharKind(input, i)))
             {
@@ -679,7 +679,7 @@ namespace System.Text.RegularExpressions.SRM
 
         // Inner loop for FindEndPosition parameterized by an ITransition type.
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private bool FindEndPositionDeltas<TTransition>(string input, ref int i, int j, ref State<TSetType> q, ref int i_end) where TTransition : struct, ITransition
+        private bool FindEndPositionDeltas<TTransition>(string input, ref int i, int j, ref DfaMatchingState<TSetType> q, ref int i_end) where TTransition : struct, ITransition
         {
             do
             {
@@ -721,7 +721,7 @@ namespace System.Text.RegularExpressions.SRM
             // Fetch the correct start state for Ar.
             // This depends on previous character --- which, because going backwards, is character number i+1.
             uint prevKind = GetCharKind(input, i + 1);
-            State<TSetType> q = _reverseInitialStates[prevKind];
+            DfaMatchingState<TSetType> q = _reverseInitialStates[prevKind];
 
             // Ar may have a fixed prefix sequence
             if (_reversePrefix.Length > 0)
@@ -765,7 +765,7 @@ namespace System.Text.RegularExpressions.SRM
 
         // Inner loop for FindStartPosition parameterized by an ITransition type.
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private bool FindStartPositionDeltas<TTransition>(string input, ref int i, int j, ref State<TSetType> q, ref int last_start) where TTransition : struct, ITransition
+        private bool FindStartPositionDeltas<TTransition>(string input, ref int i, int j, ref DfaMatchingState<TSetType> q, ref int last_start) where TTransition : struct, ITransition
         {
             do
             {
@@ -802,7 +802,7 @@ namespace System.Text.RegularExpressions.SRM
         {
             // Get the correct start state of A1, which in general depends on the previous character kind in the input.
             uint prevCharKindId = GetCharKind(input, i - 1);
-            State<TSetType> q = _dotstarredInitialStates[prevCharKindId];
+            DfaMatchingState<TSetType> q = _dotstarredInitialStates[prevCharKindId];
             initialStateIndex = i;
 
             if (q.IsNothing)
@@ -919,7 +919,7 @@ namespace System.Text.RegularExpressions.SRM
 
         // Inner loop for FindFinalStatePosition parameterized by an ITransition type.
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private bool FindFinalStatePositionDeltas<TTransition>(string input, int j, ref int i, ref State<TSetType> q, ref int watchdog, out int result) where TTransition : struct, ITransition
+        private bool FindFinalStatePositionDeltas<TTransition>(string input, int j, ref int i, ref DfaMatchingState<TSetType> q, ref int watchdog, out int result) where TTransition : struct, ITransition
         {
             do
             {

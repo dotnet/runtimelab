@@ -19,12 +19,12 @@ namespace System.Text.RegularExpressions.SRM
     /// </summary>
     internal abstract class BVAlgebraBase
     {
-        internal readonly Classifier _classifier;
+        internal readonly PartitionClassifier _classifier;
         protected readonly ulong[] _cardinalities;
         protected readonly int _bits;
         protected readonly BDD[]? _partition;
 
-        internal BVAlgebraBase(Classifier classifier, ulong[] cardinalities, BDD[]? partition)
+        internal BVAlgebraBase(PartitionClassifier classifier, ulong[] cardinalities, BDD[]? partition)
         {
             _classifier = classifier;
             _cardinalities = cardinalities;
@@ -61,7 +61,7 @@ namespace System.Text.RegularExpressions.SRM
             // Here one could potentially pass in the global CharSetSolver as the second parameter, but it is not
             // needed, practically speaking, because the functionality needed during matching will not use operations
             // that need the BDD algebra.
-            Classifier cl = Classifier.Deserialize(input.AsSpan(firstEnd + 1));
+            PartitionClassifier cl = PartitionClassifier.Deserialize(input.AsSpan(firstEnd + 1));
             return cardinalities.Length <= 64 ?
                 new BV64Algebra(cl, cardinalities) :
                 new BVAlgebra(cl, cardinalities);
@@ -93,7 +93,7 @@ namespace System.Text.RegularExpressions.SRM
         }
 
         public BVAlgebra(CharSetSolver solver, BDD[] minterms) :
-            base(Classifier.Create(solver, minterms), Array.ConvertAll(minterms, solver.ComputeDomainSize), minterms)
+            base(PartitionClassifier.Create(solver, minterms), Array.ConvertAll(minterms, solver.ComputeDomainSize), minterms)
         {
             _mintermGenerator = new MintermGenerator<BV>(this);
             False = BV.CreateFalse(_bits);
@@ -110,7 +110,7 @@ namespace System.Text.RegularExpressions.SRM
         /// <summary>
         /// Constructor used by BVAlgebraBase.Deserialize. Here the minterms and the CharSetSolver are unknown and set to null.
         /// </summary>
-        public BVAlgebra(Classifier classifier, ulong[] cardinalities) : base(classifier, cardinalities, null)
+        public BVAlgebra(PartitionClassifier classifier, ulong[] cardinalities) : base(classifier, cardinalities, null)
         {
             _mintermGenerator = new MintermGenerator<BV>(this);
             False = BV.CreateFalse(_bits);

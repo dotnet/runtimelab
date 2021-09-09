@@ -36,7 +36,7 @@ namespace System.Text.RegularExpressions.SRM
         }
 
         public BV64Algebra(CharSetSolver solver, BDD[] minterms) :
-            base(Classifier.Create(solver, minterms), Array.ConvertAll(minterms, solver.ComputeDomainSize), minterms)
+            base(PartitionClassifier.Create(solver, minterms), Array.ConvertAll(minterms, solver.ComputeDomainSize), minterms)
         {
             Debug.Assert(minterms.Length <= 64);
             _mintermGenerator = new MintermGenerator<ulong>(this);
@@ -47,7 +47,7 @@ namespace System.Text.RegularExpressions.SRM
         /// <summary>
         /// Constructor used by BVAlgebraBase.Deserialize. Here the minters and the CharSetSolver are unknown and set to null.
         /// </summary>
-        public BV64Algebra(Classifier classifier, ulong[] cardinalities) : base(classifier, cardinalities, null)
+        public BV64Algebra(PartitionClassifier classifier, ulong[] cardinalities) : base(classifier, cardinalities, null)
         {
             Debug.Assert(cardinalities.Length <= 64);
             _mintermGenerator = new MintermGenerator<ulong>(this);
