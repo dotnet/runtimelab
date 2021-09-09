@@ -196,12 +196,12 @@ namespace System.Runtime.InteropServices
 
             private unsafe IntPtr AsRuntimeDefined(in Guid riid)
             {
-                int i = UsedDefinedCount;
+                int i = UserDefinedCount;
                 if ((Flags & CreateComInterfaceFlagsEx.CallerDefinedIUnknown) == 0)
                 {
                     if (riid == IID_IUnknown)
                     {
-                        return (IntPtr)(Dispatches + UserDefinedCount);
+                        return (IntPtr)(Dispatches + i);
                     }
 
                     i++;
