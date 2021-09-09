@@ -196,29 +196,22 @@ namespace System.Runtime.InteropServices
 
             private unsafe IntPtr AsRuntimeDefined(in Guid riid)
             {
-                if ((Flags & CreateComInterfaceFlagsEx.CallerDefinedIUnknown) == CreateComInterfaceFlagsEx.None)
+                int i = UsedDefinedCount;
+                if ((Flags & CreateComInterfaceFlagsEx.CallerDefinedIUnknown) == 0)
                 {
                     if (riid == IID_IUnknown)
                     {
                         return (IntPtr)(Dispatches + UserDefinedCount);
                     }
 
-                    if ((Flags & CreateComInterfaceFlagsEx.TrackerSupport) == CreateComInterfaceFlagsEx.TrackerSupport)
-                    {
-                        if (riid == IID_IReferenceTrackerTarget)
-                        {
-                            return (IntPtr)(Dispatches + UserDefinedCount + 1);
-                        }
-                    }
+                    i++;
                 }
-                else
+
+                if ((Flags & CreateComInterfaceFlagsEx.TrackerSupport) != 0)
                 {
-                    if ((Flags & CreateComInterfaceFlagsEx.TrackerSupport) == CreateComInterfaceFlagsEx.TrackerSupport)
+                    if (riid == IID_IReferenceTrackerTarget)
                     {
-                        if (riid == IID_IReferenceTrackerTarget)
-                        {
-                            return (IntPtr)(Dispatches + UserDefinedCount);
-                        }
+                        return (IntPtr)(Dispatches + i);
                     }
                 }
 
