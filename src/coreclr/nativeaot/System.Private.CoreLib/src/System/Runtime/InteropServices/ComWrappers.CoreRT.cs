@@ -365,7 +365,7 @@ namespace System.Runtime.InteropServices
                 runtimeDefinedVtable[runtimeDefinedCount++] = DefaultIUnknownVftblPtr;
             }
 
-            if ((flags & CreateComInterfaceFlags.TrackerSupport) == CreateComInterfaceFlags.TrackerSupport)
+            if ((flags & CreateComInterfaceFlags.TrackerSupport) != 0)
             {
                 runtimeDefinedVtable[runtimeDefinedCount++] = DefaultIReferenceTrackerTargetVftblPtr;
             }
