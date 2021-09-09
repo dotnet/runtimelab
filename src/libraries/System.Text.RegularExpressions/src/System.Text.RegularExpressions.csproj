@@ -56,9 +56,9 @@
     <!-- SRM Implementation -->
     <Compile Include="System\Text\RegularExpressions\srm\BooleanClassifier.cs" />
     <Compile Include="System\Text\RegularExpressions\srm\CharKind.cs" />
-    <Compile Include="System\Text\RegularExpressions\srm\PartitionClassifier.cs" />
-    <Compile Include="System\Text\RegularExpressions\srm\RegexToAutomatonConverter.cs" />
     <Compile Include="System\Text\RegularExpressions\srm\DfaMatchingState.cs" />
+    <Compile Include="System\Text\RegularExpressions\srm\PartitionClassifier.cs" />
+    <Compile Include="System\Text\RegularExpressions\srm\RegexNodeToSymbolicConverter.cs" />
     <Compile Include="System\Text\RegularExpressions\srm\SymbolicMatch.cs" />
     <Compile Include="System\Text\RegularExpressions\srm\SymbolicRegexBuilder.cs" />
     <Compile Include="System\Text\RegularExpressions\srm\SymbolicRegexNode.cs" />

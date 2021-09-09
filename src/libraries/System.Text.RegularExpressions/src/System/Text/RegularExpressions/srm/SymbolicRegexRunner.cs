@@ -17,9 +17,9 @@ namespace System.Text.RegularExpressions.SRM
 
         private SymbolicRegexRunner(RegexNode rootNode, RegexOptions options, TimeSpan matchTimeout, CultureInfo culture)
         {
-            var converter = new RegexToAutomatonConverter<BDD>(s_unicode, culture);
+            var converter = new RegexNodeToSymbolicConverter(s_unicode, culture);
             var solver = (CharSetSolver)s_unicode._solver;
-            SymbolicRegexNode<BDD> root = converter.ConvertNodeToSymbolicRegex(rootNode, true);
+            SymbolicRegexNode<BDD> root = converter.Convert(rootNode, topLevel: true);
 
             BDD[] minterms = root.ComputeMinterms();
             if (minterms.Length > 64)
@@ -30,13 +30,12 @@ namespace System.Text.RegularExpressions.SRM
 
                 // The default constructor sets the following predicates to False; this update happens after the fact.
                 // It depends on whether anchors where used in the regex whether the predicates are actually different from False.
-                builderBV._wordLetterPredicate = algBV.ConvertFromCharSet(solver, converter._srBuilder._wordLetterPredicate);
-                builderBV._newLinePredicate = algBV.ConvertFromCharSet(solver, converter._srBuilder._newLinePredicate);
+                builderBV._wordLetterPredicate = algBV.ConvertFromCharSet(solver, converter._builder._wordLetterPredicate);
+                builderBV._newLinePredicate = algBV.ConvertFromCharSet(solver, converter._builder._newLinePredicate);
 
                 //Convert the BDD based AST to BV based AST
-                SymbolicRegexNode<BV> rootBV = converter._srBuilder.Transform(root, builderBV, bdd => builderBV._solver.ConvertFromCharSet(solver, bdd));
-                var matcherBV = new SymbolicRegexMatcher<BV>(rootBV, solver, minterms, options, matchTimeout, culture);
-                _matcher = matcherBV;
+                SymbolicRegexNode<BV> rootBV = converter._builder.Transform(root, builderBV, bdd => builderBV._solver.ConvertFromCharSet(solver, bdd));
+                _matcher = new SymbolicRegexMatcher<BV>(rootBV, solver, minterms, options, matchTimeout, culture);
             }
             else
             {
@@ -46,14 +45,13 @@ namespace System.Text.RegularExpressions.SRM
                 {
                     // The default constructor sets the following predicates to False, this update happens after the fact
                     // It depends on whether anchors where used in the regex whether the predicates are actually different from False
-                    _wordLetterPredicate = alg64.ConvertFromCharSet(solver, converter._srBuilder._wordLetterPredicate),
-                    _newLinePredicate = alg64.ConvertFromCharSet(solver, converter._srBuilder._newLinePredicate)
+                    _wordLetterPredicate = alg64.ConvertFromCharSet(solver, converter._builder._wordLetterPredicate),
+                    _newLinePredicate = alg64.ConvertFromCharSet(solver, converter._builder._newLinePredicate)
                 };
 
                 // Convert the BDD-based AST to ulong-based AST
-                SymbolicRegexNode<ulong> root64 = converter._srBuilder.Transform(root, builder64, bdd => builder64._solver.ConvertFromCharSet(solver, bdd));
-                var matcher64 = new SymbolicRegexMatcher<ulong>(root64, solver, minterms, options, matchTimeout, culture);
-                _matcher = matcher64;
+                SymbolicRegexNode<ulong> root64 = converter._builder.Transform(root, builder64, bdd => builder64._solver.ConvertFromCharSet(solver, bdd));
+                _matcher = new SymbolicRegexMatcher<ulong>(root64, solver, minterms, options, matchTimeout, culture);
             }
         }
 
