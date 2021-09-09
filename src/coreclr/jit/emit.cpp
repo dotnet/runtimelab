@@ -6201,6 +6201,7 @@ unsigned emitter::emitEndCodeGen(Compiler* comp,
 // printf("Variable #%2u/%2u is at stack offset %d\n", num, indx, offs);
 
 #ifdef JIT32_GCENCODER
+#error "JIT32_GCENCODER"
 #ifndef FEATURE_EH_FUNCLETS
                 // Remember the frame offset of the "this" argument for synchronized methods.
                 if (emitComp->lvaIsOriginalThisArg(num) && emitComp->lvaKeepAliveAndReportThis())
@@ -7564,7 +7565,7 @@ void emitter::emitGCvarLiveSet(int offs, GCtype gcType, BYTE* addr, ssize_t disp
 
     desc->vpdNext = nullptr;
 
-#if !defined(JIT32_GCENCODER) || !defined(FEATURE_EH_FUNCLETS)
+#if !defined(TARGET_X86) || !defined(FEATURE_EH_FUNCLETS)
     /* the lower 2 bits encode props about the stk ptr */
 
     if (offs == emitSyncThisObjOffs)
