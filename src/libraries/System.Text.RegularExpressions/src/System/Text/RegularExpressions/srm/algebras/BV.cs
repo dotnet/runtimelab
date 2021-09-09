@@ -5,7 +5,7 @@ using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 
-namespace System.Text.RegularExpressions.SRM
+namespace System.Text.RegularExpressions.Symbolic
 {
     /// <summary>
     /// Represents a bitvector of arbitrary length (i.e. number of bits).

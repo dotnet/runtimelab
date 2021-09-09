@@ -4,7 +4,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 
-namespace System.Text.RegularExpressions.SRM
+namespace System.Text.RegularExpressions.Symbolic
 {
     // types used as keys in BDD operation caches
     using BoolOpKey = ValueTuple<BoolOp, BDD, BDD?>;

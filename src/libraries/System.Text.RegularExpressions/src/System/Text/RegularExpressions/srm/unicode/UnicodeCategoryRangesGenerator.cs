@@ -6,7 +6,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 
-namespace System.Text.RegularExpressions.SRM.Unicode
+namespace System.Text.RegularExpressions.Symbolic.Unicode
 {
 #if DEBUG
     /// <summary>Utility for generating unicode category ranges and corresponing binary decision diagrams.</summary>

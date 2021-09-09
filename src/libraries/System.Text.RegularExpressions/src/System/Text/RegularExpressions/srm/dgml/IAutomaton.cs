@@ -3,7 +3,7 @@
 
 using System.Collections.Generic;
 
-namespace System.Text.RegularExpressions.SRM.DGML
+namespace System.Text.RegularExpressions.Symbolic.DGML
 {
     /// <summary>
     /// For accessing the key components of an automaton.

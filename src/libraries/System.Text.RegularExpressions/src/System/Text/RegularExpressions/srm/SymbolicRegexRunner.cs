@@ -4,9 +4,9 @@
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
-using System.Text.RegularExpressions.SRM.Unicode;
+using System.Text.RegularExpressions.Symbolic.Unicode;
 
-namespace System.Text.RegularExpressions.SRM
+namespace System.Text.RegularExpressions.Symbolic
 {
     internal sealed class SymbolicRegexRunner : RegexRunner
     {

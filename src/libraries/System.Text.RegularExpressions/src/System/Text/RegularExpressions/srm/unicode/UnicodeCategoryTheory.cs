@@ -3,7 +3,7 @@
 
 using System.Diagnostics;
 
-namespace System.Text.RegularExpressions.SRM.Unicode
+namespace System.Text.RegularExpressions.Symbolic.Unicode
 {
     internal sealed class UnicodeCategoryTheory<TPredicate> where TPredicate : class
     {

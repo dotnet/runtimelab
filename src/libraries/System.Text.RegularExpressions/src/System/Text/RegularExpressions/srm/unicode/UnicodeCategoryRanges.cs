@@ -4,7 +4,7 @@
 // This is a programmatically generated file from Regex.GenerateUnicodeTables.
 // It provides serialized BDD Unicode category definitions for System.Environment.Version = 7.0.0
 
-namespace System.Text.RegularExpressions.SRM.Unicode
+namespace System.Text.RegularExpressions.Symbolic.Unicode
 {
     internal static class UnicodeCategoryRanges
     {

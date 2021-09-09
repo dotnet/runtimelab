@@ -7,7 +7,7 @@ using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 
-namespace System.Text.RegularExpressions.SRM
+namespace System.Text.RegularExpressions.Symbolic
 {
     /// <summary>Represents an AST node of a symbolic regex.</summary>
     internal sealed class SymbolicRegexNode<S> where S : notnull

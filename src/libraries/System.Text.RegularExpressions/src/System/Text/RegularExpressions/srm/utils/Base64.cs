@@ -3,7 +3,7 @@
 
 using System.Collections.Generic;
 
-namespace System.Text.RegularExpressions.SRM
+namespace System.Text.RegularExpressions.Symbolic
 {
     /// <summary>
     /// Custom serialization and deserialization for numbers and arrays of numbers using a base-64 alphabet similar to a decimal alphabet.

@@ -3,7 +3,7 @@
 
 using System.Diagnostics.CodeAnalysis;
 
-namespace System.Text.RegularExpressions.SRM.DGML
+namespace System.Text.RegularExpressions.Symbolic.DGML
 {
     /// <summary>
     /// Represents a move of a symbolic finite automaton.

@@ -7,7 +7,7 @@ using System.Globalization;
 using System.IO;
 using System.Runtime.CompilerServices;
 
-namespace System.Text.RegularExpressions.SRM
+namespace System.Text.RegularExpressions.Symbolic
 {
     /// <summary>Provides IsMatch and Matches methods.</summary>
     internal abstract class SymbolicRegexMatcher

@@ -3,7 +3,7 @@
 
 using System.Runtime.CompilerServices;
 
-namespace System.Text.RegularExpressions.SRM
+namespace System.Text.RegularExpressions.Symbolic
 {
     /// <summary>Classifies characters into partition block ids.</summary>
     internal sealed class PartitionClassifier

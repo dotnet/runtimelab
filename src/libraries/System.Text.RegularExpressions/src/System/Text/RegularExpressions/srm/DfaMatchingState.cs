@@ -5,7 +5,7 @@ using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Net;
 
-namespace System.Text.RegularExpressions.SRM
+namespace System.Text.RegularExpressions.Symbolic
 {
     /// <summary>Captures a state of a DFA explored during matching.</summary>
     internal sealed class DfaMatchingState<T> where T : notnull

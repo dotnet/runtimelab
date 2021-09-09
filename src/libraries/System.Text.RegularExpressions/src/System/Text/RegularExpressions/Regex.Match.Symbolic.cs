@@ -3,7 +3,10 @@
 
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
-using System.Text.RegularExpressions.SRM;
+using System.Text.RegularExpressions.Symbolic;
+#if DEBUG
+using System.Text.RegularExpressions.Symbolic.Unicode;
+#endif
 
 namespace System.Text.RegularExpressions
 {
@@ -46,14 +49,14 @@ namespace System.Text.RegularExpressions
 
 #if DEBUG
         /// <summary>
-        /// Generates two files IgnoreCaseRelation.cs and UnicodeCategoryRanges.cs for the namespace System.Text.RegularExpressions.SRM.Unicode
+        /// Generates two files IgnoreCaseRelation.cs and UnicodeCategoryRanges.cs for the namespace System.Text.RegularExpressions.Symbolic.Unicode
         /// in the given directory path. Only avaliable in DEBUG mode.
         /// </summary>
         [ExcludeFromCodeCoverage(Justification = "Debug only")]
         internal static void GenerateUnicodeTables(string path)
         {
-            SRM.Unicode.IgnoreCaseRelationGenerator.Generate("System.Text.RegularExpressions.SRM.Unicode", "IgnoreCaseRelation", path);
-            SRM.Unicode.UnicodeCategoryRangesGenerator.Generate("System.Text.RegularExpressions.SRM.Unicode", "UnicodeCategoryRanges", path);
+            IgnoreCaseRelationGenerator.Generate("System.Text.RegularExpressions.Symbolic.Unicode", "IgnoreCaseRelation", path);
+            UnicodeCategoryRangesGenerator.Generate("System.Text.RegularExpressions.Symbolic.Unicode", "UnicodeCategoryRanges", path);
         }
 #endif
     }

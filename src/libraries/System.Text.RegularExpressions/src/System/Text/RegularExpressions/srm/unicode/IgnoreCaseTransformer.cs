@@ -5,7 +5,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Threading;
 
-namespace System.Text.RegularExpressions.SRM.Unicode
+namespace System.Text.RegularExpressions.Symbolic.Unicode
 {
     internal sealed class IgnoreCaseTransformer
     {

@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 
-namespace System.Text.RegularExpressions.SRM
+namespace System.Text.RegularExpressions.Symbolic
 {
     /// <summary>Provides a generic implementation for minterm generation over a given Boolean Algebra.</summary>
     /// <typeparam name="TPredicate">type of predicates</typeparam>

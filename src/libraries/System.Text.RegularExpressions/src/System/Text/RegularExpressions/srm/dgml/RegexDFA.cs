@@ -4,7 +4,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 
-namespace System.Text.RegularExpressions.SRM.DGML
+namespace System.Text.RegularExpressions.Symbolic.DGML
 {
     /// <summary>
     /// Used by DgmlWriter to unwind a regex into a DFA up to a bound that limits the number of states

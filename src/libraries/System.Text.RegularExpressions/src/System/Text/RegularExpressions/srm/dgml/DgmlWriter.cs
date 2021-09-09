@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 
-namespace System.Text.RegularExpressions.SRM.DGML
+namespace System.Text.RegularExpressions.Symbolic.DGML
 {
     internal sealed class DgmlWriter
     {

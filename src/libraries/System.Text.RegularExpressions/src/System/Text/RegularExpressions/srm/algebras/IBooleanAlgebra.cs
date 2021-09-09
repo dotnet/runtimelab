@@ -3,7 +3,7 @@
 
 using System.Collections.Generic;
 
-namespace System.Text.RegularExpressions.SRM
+namespace System.Text.RegularExpressions.Symbolic
 {
     /// <summary>
     /// Generic Boolean Algebra solver.
