@@ -720,7 +720,6 @@ namespace System.Runtime.InteropServices
         private static unsafe IntPtr CreateDefaultIReferenceTrackerTargetVftbl()
         {
             IntPtr* vftbl = (IntPtr*)RuntimeHelpers.AllocateTypeAssociatedMemory(typeof(ComWrappers), 7 * sizeof(IntPtr));
-            GetIUnknownImpl(out vftbl[0], out vftbl[1], out vftbl[2]);
             vftbl[0] = (IntPtr)(delegate* unmanaged<IntPtr, Guid*, IntPtr*, int>)&ComWrappers.IReferenceTrackerTarget_QueryInterface;
             vftbl[1] = (IntPtr)(delegate* unmanaged<IntPtr, uint>)&ComWrappers.IUnknown_AddRef;
             vftbl[2] = (IntPtr)(delegate* unmanaged<IntPtr, uint>)&ComWrappers.IUnknown_Release;
