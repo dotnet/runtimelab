@@ -232,7 +232,7 @@
     <value>RegexOptions.NonBacktracking is not supported in conjunction with RegexOptions.{0}.</value>
   </data>
   <data name="NotSupported_NonBacktrackingConflictingExpression" xml:space="preserve">
-    <value>RegexOptions.NonBacktracking is not supported in conjunction with expressions containing {0}.</value>
+    <value>RegexOptions.NonBacktracking is not supported in conjunction with expressions containing: '{0}'.</value>
   </data>
   <data name="ExpressionDescription_Backreference" xml:space="preserve">
     <value>backreference (\\ number)</value>
