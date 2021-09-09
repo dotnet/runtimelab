@@ -489,9 +489,6 @@ namespace System.Runtime.InteropServices
             if (flags.HasFlag(CreateObjectFlags.Aggregation))
                 throw new NotImplementedException();
 
-            if (flags.HasFlag(CreateObjectFlags.TrackerObject))
-                throw new NotImplementedException();
-
             if (flags.HasFlag(CreateObjectFlags.Unwrap))
             {
                 var comInterfaceDispatch = TryGetComInterfaceDispatch(externalComObject);
