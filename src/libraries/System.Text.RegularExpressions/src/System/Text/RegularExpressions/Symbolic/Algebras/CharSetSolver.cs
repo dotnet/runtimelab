@@ -206,7 +206,7 @@ namespace System.Text.RegularExpressions.Symbolic
             (uint, uint)[] ranges = ToRanges(pred);
 
             if (IsSingletonRange(ranges))
-                return StringUtility.Escape((char)ranges[0].Item1);
+                return Escape((char)ranges[0].Item1);
 
             #region if too many ranges try to optimize the representation using \d \w etc.
             if (SymbolicRegexRunner.s_unicode != null && ranges.Length > 10)
@@ -337,7 +337,7 @@ namespace System.Text.RegularExpressions.Symbolic
                 ranges[0].Item1 == 0 && ranges[1].Item2 == 0xFFFF &&
                 ranges[0].Item2 + 2 == ranges[1].Item1)
             {
-                return "^" + StringUtility.Escape((char)(ranges[0].Item2 + 1));
+                return "^" + Escape((char)(ranges[0].Item2 + 1));
             }
 
             StringBuilder sb = new();
@@ -345,21 +345,57 @@ namespace System.Text.RegularExpressions.Symbolic
             {
                 if (ranges[i].Item1 == ranges[i].Item2)
                 {
-                    sb.Append(StringUtility.Escape((char)ranges[i].Item1));
+                    sb.Append(Escape((char)ranges[i].Item1));
                 }
                 else if (ranges[i].Item2 == ranges[i].Item1 + 1)
                 {
-                    sb.Append(StringUtility.Escape((char)ranges[i].Item1));
-                    sb.Append(StringUtility.Escape((char)ranges[i].Item2));
+                    sb.Append(Escape((char)ranges[i].Item1));
+                    sb.Append(Escape((char)ranges[i].Item2));
                 }
                 else
                 {
-                    sb.Append(StringUtility.Escape((char)ranges[i].Item1));
+                    sb.Append(Escape((char)ranges[i].Item1));
                     sb.Append('-');
-                    sb.Append(StringUtility.Escape((char)ranges[i].Item2));
+                    sb.Append(Escape((char)ranges[i].Item2));
                 }
             }
             return sb.ToString();
+        }
+
+        /// <summary>Make an escaped string from a character.</summary>
+        /// <param name="c">The character to escape.</param>
+        private static string Escape(char c)
+        {
+            uint code = c;
+            return c switch
+            {
+                '.' => @"\.",
+                '[' => @"\[",
+                ']' => @"\]",
+                '(' => @"\(",
+                ')' => @"\)",
+                '{' => @"\{",
+                '}' => @"\}",
+                '?' => @"\?",
+                '+' => @"\+",
+                '*' => @"\*",
+                '|' => @"\|",
+                '\\' => @"\\",
+                '^' => @"\^",
+                '$' => @"\$",
+                '-' => @"\-",
+                ':' => @"\:",
+                '\"' => "\\\"",
+                '\0' => @"\0",
+                '\t' => @"\t",
+                '\r' => @"\r",
+                '\v' => @"\v",
+                '\f' => @"\f",
+                '\n' => @"\n",
+                _ when code is >= 0x20 and <= 0x7E => c.ToString(),
+                _ when code <= 0xFF => $"\\x{code:X2}",
+                _ => $"\\u{code:X4}",
+            };
         }
 
         private static bool IsSingletonRange((uint, uint)[] ranges) => ranges.Length == 1 && ranges[0].Item1 == ranges[0].Item2;

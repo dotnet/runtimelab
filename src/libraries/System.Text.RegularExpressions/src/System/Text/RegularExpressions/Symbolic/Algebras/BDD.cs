@@ -417,7 +417,7 @@ namespace System.Text.RegularExpressions.Symbolic
         /// where N is the length of the array returned by Serialize() and code_i is the cencoding of the i'th element.
         /// Uses '.' as separator.
         /// </summary>
-        public void Serialize(StringBuilder sb) => Base64.Encode(Serialize(), sb);
+        public void Serialize(StringBuilder sb) => Base64Utility.Encode(Serialize(), sb);
 
         public string SerializeToString()
         {
@@ -436,7 +436,7 @@ namespace System.Text.RegularExpressions.Symbolic
         /// can still be used as a classifier with Find that does not use or require any algebra.
         /// </summary>
         public static BDD Deserialize(ReadOnlySpan<char> input, BDDAlgebra? algebra = null) =>
-            Deserialize(Base64.DecodeInt64Array(input), algebra);
+            Deserialize(Base64Utility.DecodeInt64Array(input), algebra);
         #endregion
 
         /// <summary>

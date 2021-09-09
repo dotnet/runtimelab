@@ -189,14 +189,14 @@ namespace System.Text.RegularExpressions.Symbolic
 
         #region serialization
         /// <summary>
-        /// Serialize pred using Base64.Encode
+        /// Serialize pred using Base64Utility.Encode
         /// </summary>
-        public void SerializePredicate(ulong pred, StringBuilder sb) => Base64.Encode(pred, sb);
+        public void SerializePredicate(ulong pred, StringBuilder sb) => Base64Utility.Encode(pred, sb);
 
         /// <summary>
         /// Deserialize s from a string created by SerializePredicate
         /// </summary>
-        public ulong DeserializePredicate(string s) => Base64.DecodeUInt64(s);
+        public ulong DeserializePredicate(string s) => Base64Utility.DecodeUInt64(s);
         #endregion
 
         /// <summary>

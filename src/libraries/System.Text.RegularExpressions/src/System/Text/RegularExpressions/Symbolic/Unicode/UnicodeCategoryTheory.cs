@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Diagnostics;
+using System.Globalization;
 
 namespace System.Text.RegularExpressions.Symbolic.Unicode
 {
@@ -15,7 +16,7 @@ namespace System.Text.RegularExpressions.Symbolic.Unicode
 
         public UnicodeCategoryTheory(ICharAlgebra<TPredicate> solver) => _solver = solver;
 
-        public static string UnicodeCategoryPredicateName(int cat) => $"Is{(Globalization.UnicodeCategory)cat}";
+        public static string UnicodeCategoryPredicateName(int cat) => $"Is{(UnicodeCategory)cat}";
 
         public TPredicate CategoryCondition(int i)
         {

@@ -215,9 +215,9 @@ namespace System.Text.RegularExpressions.Symbolic
         public void Serialize(StringBuilder sb)
         {
             //start with the length, i.e., the number of bits
-            Base64.Encode(Length, sb);
+            Base64Utility.Encode(Length, sb);
             sb.Append('-');
-            Base64.Encode(_blocks, sb);
+            Base64Utility.Encode(_blocks, sb);
         }
 
         public string SerializeToString()
@@ -233,8 +233,8 @@ namespace System.Text.RegularExpressions.Symbolic
         public static BV Deserialize(string s)
         {
             int i = s.IndexOf('-');
-            int K = Base64.DecodeInt(s.AsSpan(0, i));
-            ulong[] blocks = Base64.DecodeUInt64Array(s.AsSpan(i + 1));
+            int K = Base64Utility.DecodeInt32(s.AsSpan(0, i));
+            ulong[] blocks = Base64Utility.DecodeUInt64Array(s.AsSpan(i + 1));
             return new BV(K, blocks);
         }
         #endregion

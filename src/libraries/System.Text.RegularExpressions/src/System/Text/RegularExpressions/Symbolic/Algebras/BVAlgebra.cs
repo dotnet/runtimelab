@@ -39,7 +39,7 @@ namespace System.Text.RegularExpressions.Symbolic
         public void Serialize(StringBuilder sb)
         {
             //does not use ';'
-            Base64.Encode(_cardinalities, sb);
+            Base64Utility.Encode(_cardinalities, sb);
             sb.Append(';'); //separator
             //does not use ';'
             _classifier.Serialize(sb);
@@ -56,7 +56,7 @@ namespace System.Text.RegularExpressions.Symbolic
                 throw new ArgumentOutOfRangeException(nameof(input));
             }
 
-            ulong[] cardinalities = Base64.DecodeUInt64Array(input.AsSpan(0, firstEnd));
+            ulong[] cardinalities = Base64Utility.DecodeUInt64Array(input.AsSpan(0, firstEnd));
 
             // Here one could potentially pass in the global CharSetSolver as the second parameter, but it is not
             // needed, practically speaking, because the functionality needed during matching will not use operations

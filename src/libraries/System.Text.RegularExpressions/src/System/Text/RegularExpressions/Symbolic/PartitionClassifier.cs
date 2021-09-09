@@ -83,7 +83,7 @@ namespace System.Text.RegularExpressions.Symbolic
         public void Serialize(StringBuilder sb)
         {
             // This encoding does not use ','
-            Base64.Encode(_precomputed, sb);
+            Base64Utility.Encode(_precomputed, sb);
             // Separate the precomputed serialization from the BDD serialization using ','
             sb.Append(',');
             // This encoding does not use ','
@@ -99,7 +99,7 @@ namespace System.Text.RegularExpressions.Symbolic
                 throw new ArgumentOutOfRangeException(nameof(input));
             }
 
-            int[] precomp = Base64.DecodeIntArray(input[..firstEnd]);
+            int[] precomp = Base64Utility.DecodeInt32Array(input[..firstEnd]);
             BDD bst = BDD.Deserialize(input.Slice(firstEnd + 1), algebra);
             return new PartitionClassifier(precomp, bst);
         }
