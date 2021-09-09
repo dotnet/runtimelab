@@ -34,7 +34,7 @@ namespace System.Text.RegularExpressions.SRM.DGML
             T[]? partition = _builder._solver.GetPartition();
             Debug.Assert(partition is not null);
 
-            Dictionary<Tuple<int, int>, T> normalizedmoves = new();
+            Dictionary<(int, int), T> normalizedmoves = new();
 
             //unwind until the stack is empty or the bound has been reached
             while (stack.Count > 0 && (bound <= 0 || _states.Count < bound))
@@ -53,7 +53,7 @@ namespace System.Text.RegularExpressions.SRM.DGML
                             _states.Add(p.Id);
                         }
 
-                        var qp = new Tuple<int, int>(q.Id, p.Id);
+                        var qp = (q.Id, p.Id);
                         normalizedmoves[qp] = normalizedmoves.ContainsKey(qp) ?
                             _builder._solver.Or(normalizedmoves[qp], c) :
                             c;
@@ -61,7 +61,7 @@ namespace System.Text.RegularExpressions.SRM.DGML
                 }
             }
 
-            foreach (KeyValuePair<Tuple<int, int>, T> entry in normalizedmoves)
+            foreach (KeyValuePair<(int, int), T> entry in normalizedmoves)
                 _moves.Add(Move<T>.Create(entry.Key.Item1, entry.Key.Item2, entry.Value));
         }
 

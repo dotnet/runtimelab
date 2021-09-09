@@ -56,10 +56,10 @@ namespace System.Text.RegularExpressions.SRM
         /// <summary>
         /// Make a character set that is the union of the character sets of the given ranges.
         /// </summary>
-        public BDD CreateCharSetFromRanges(IEnumerable<Tuple<uint, uint>> ranges)
+        public BDD CreateCharSetFromRanges(IEnumerable<(uint, uint)> ranges)
         {
             BDD res = False;
-            foreach (Tuple<uint, uint> range in ranges)
+            foreach ((uint, uint) range in ranges)
             {
                 res = Or(res, CreateSetFromRange(range.Item1, range.Item2, 15));
             }
@@ -139,11 +139,11 @@ namespace System.Text.RegularExpressions.SRM
         /// <summary>
         /// Convert the set into an equivalent array of ranges. The ranges are nonoverlapping and ordered.
         /// </summary>
-        public Tuple<uint, uint>[] ToRanges(BDD set) => ToRanges(set, 15);
+        public (uint, uint)[] ToRanges(BDD set) => ToRanges(set, 15);
 
         private IEnumerable<uint> GenerateAllCharactersInOrder(BDD set)
         {
-            foreach (Tuple<uint, uint> range in ToRanges(set))
+            foreach ((uint, uint) range in ToRanges(set))
             {
                 for (uint i = range.Item1; i <= range.Item2; i++)
                 {
@@ -154,7 +154,7 @@ namespace System.Text.RegularExpressions.SRM
 
         private IEnumerable<uint> GenerateAllCharactersInReverseOrder(BDD set)
         {
-            Tuple<uint, uint>[] ranges = ToRanges(set);
+            (uint, uint)[] ranges = ToRanges(set);
             for (int j = ranges.Length - 1; j >= 0; j--)
             {
                 for (uint i = ranges[j].Item2; i >= ranges[j].Item1; i--)
@@ -203,7 +203,7 @@ namespace System.Text.RegularExpressions.SRM
             if (pred == Not(digit))
                 return @"\D";
 
-            Tuple<uint, uint>[] ranges = ToRanges(pred);
+            (uint, uint)[] ranges = ToRanges(pred);
 
             if (IsSingletonRange(ranges))
                 return StringUtility.Escape((char)ranges[0].Item1);
@@ -330,7 +330,7 @@ namespace System.Text.RegularExpressions.SRM
         private string RepresentSet(BDD set) =>
             set.IsEmpty ? "" : RepresentRanges(ToRanges(set));
 
-        private static string RepresentRanges(Tuple<uint, uint>[] ranges, bool checkSingletonComlement = true)
+        private static string RepresentRanges((uint, uint)[] ranges, bool checkSingletonComlement = true)
         {
             //check if ranges represents a complement of a singleton
             if (checkSingletonComlement && ranges.Length == 2 &&
@@ -362,7 +362,7 @@ namespace System.Text.RegularExpressions.SRM
             return sb.ToString();
         }
 
-        private static bool IsSingletonRange(Tuple<uint, uint>[] ranges) => ranges.Length == 1 && ranges[0].Item1 == ranges[0].Item2;
+        private static bool IsSingletonRange((uint, uint)[] ranges) => ranges.Length == 1 && ranges[0].Item1 == ranges[0].Item2;
 
         public override int CombineTerminals(BoolOp op, int terminal1, int terminal2) => throw new NotSupportedException();
     }

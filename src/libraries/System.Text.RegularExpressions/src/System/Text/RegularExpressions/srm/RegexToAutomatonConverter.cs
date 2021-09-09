@@ -60,16 +60,11 @@ namespace System.Text.RegularExpressions.SRM
             //or conjuncts of a conjunction in case negate is true
             //negation is pushed in when the conditions are created
             List<T> conditions = new List<T>();
-
-            #region ranges
-            List<Tuple<char, char>> ranges = ComputeRanges(set);
-
-            foreach (Tuple<char, char> range in ranges)
+            foreach ((char first, char last) in ComputeRanges(set))
             {
-                T cond = Solver.RangeConstraint(range.Item1, range.Item2, ignoreCase, _culture.Name);
+                T cond = Solver.RangeConstraint(first, last, ignoreCase, _culture.Name);
                 conditions.Add(negate ? Solver.Not(cond) : cond);
             }
-            #endregion
 
             #region categories
             int setLength = set[RegexCharClass.SetLengthIndex];
@@ -153,11 +148,11 @@ namespace System.Text.RegularExpressions.SRM
             return moveCond;
         }
 
-        private static List<Tuple<char, char>> ComputeRanges(string set)
+        private static List<(char First, char Last)> ComputeRanges(string set)
         {
             int setLength = set[RegexCharClass.SetLengthIndex];
 
-            var ranges = new List<Tuple<char, char>>(setLength);
+            var ranges = new List<(char, char)>(setLength);
             int i = RegexCharClass.SetStartIndex;
             int end = i + setLength;
             while (i < end)
@@ -168,10 +163,11 @@ namespace System.Text.RegularExpressions.SRM
                 char last = i < end ?
                     (char)(set[i] - 1) :
                     RegexCharClass.LastChar;
-
                 i++;
-                ranges.Add(new Tuple<char, char>(first, last));
+
+                ranges.Add((first, last));
             }
+
             return ranges;
         }
 

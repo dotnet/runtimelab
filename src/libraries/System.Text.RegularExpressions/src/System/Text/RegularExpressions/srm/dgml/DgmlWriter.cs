@@ -27,7 +27,7 @@ namespace System.Text.RegularExpressions.SRM.DGML
         /// </summary>
         public void Write<S>(IAutomaton<S> fa)
         {
-            var nonEpsilonMoves = new Dictionary<Tuple<int, int>, List<S>>();
+            var nonEpsilonMoves = new Dictionary<(int, int), List<S>>();
             var epsilonmoves = new List<Move<S>>();
 
             var nonEpsilonStates = new HashSet<int>();
@@ -41,7 +41,7 @@ namespace System.Text.RegularExpressions.SRM.DGML
                 else
                 {
                     nonEpsilonStates.Add(move.SourceState);
-                    var p = new Tuple<int, int>(move.SourceState, move.TargetState);
+                    var p = (move.SourceState, move.TargetState);
                     if (!nonEpsilonMoves.TryGetValue(p, out List<S>? rules))
                     {
                         rules = new List<S>();
@@ -88,7 +88,7 @@ namespace System.Text.RegularExpressions.SRM.DGML
                     _tw.WriteLine("<Link Source=\"{0}\" Target=\"{1}\" Category=\"EpsilonTransition\" />", move.SourceState, move.TargetState);
                 }
 
-                foreach (KeyValuePair<Tuple<int, int>, List<S>> move in nonEpsilonMoves)
+                foreach (KeyValuePair<(int, int), List<S>> move in nonEpsilonMoves)
                 {
                     _tw.WriteLine(GetNonFinalRuleInfo(fa, move.Key.Item1, move.Key.Item2, move.Value));
                 }

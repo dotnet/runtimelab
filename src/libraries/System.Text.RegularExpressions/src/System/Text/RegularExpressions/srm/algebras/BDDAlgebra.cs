@@ -562,7 +562,7 @@ namespace System.Text.RegularExpressions.SRM
         /// Bits above maxBit are ignored.
         /// The ranges are nonoverlapping and ordered.
         /// </summary>
-        public static Tuple<uint, uint>[] ToRanges(BDD set, int maxBit) => BDDRangeConverter.ToRanges(set, maxBit);
+        public static (uint, uint)[] ToRanges(BDD set, int maxBit) => BDDRangeConverter.ToRanges(set, maxBit);
 
         #region domain size and min computation
 
