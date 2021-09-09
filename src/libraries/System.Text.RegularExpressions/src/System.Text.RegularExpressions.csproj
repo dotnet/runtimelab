@@ -8,7 +8,6 @@
     <Compile Include="System\Collections\HashtableExtensions.cs" />
     <Compile Include="System\Collections\Generic\ValueListBuilder.Pop.cs" />
     <Compile Include="System\Text\RegularExpressions\RegexCharClass.MappingTable.cs" />
-    <Compile Include="System\Text\RegularExpressions\srm\SymbolicRegexRunnerFactory.cs" />
     <Compile Include="System\Text\SegmentStringBuilder.cs" />
     <Compile Include="System\Text\RegularExpressions\Capture.cs" />
     <Compile Include="System\Text\RegularExpressions\CaptureCollection.cs" />
@@ -20,7 +19,7 @@
     <Compile Include="System\Text\RegularExpressions\Regex.cs" />
     <Compile Include="System\Text\RegularExpressions\Regex.Cache.cs" />
     <Compile Include="System\Text\RegularExpressions\Regex.Match.cs" />
-    <Compile Include="System\Text\RegularExpressions\Regex.Match.SRM.cs" />
+    <Compile Include="System\Text\RegularExpressions\Regex.Match.Symbolic.cs" />
     <Compile Include="System\Text\RegularExpressions\Regex.Replace.cs" />
     <Compile Include="System\Text\RegularExpressions\Regex.Split.cs" />
     <Compile Include="System\Text\RegularExpressions\Regex.Timeout.cs" />
@@ -54,41 +53,42 @@
     <Compile Include="$(CoreLibSharedDir)System\Collections\Generic\ValueListBuilder.cs" Link="Common\System\Collections\Generic\ValueListBuilder.cs" />
     <Compile Include="$(CommonPath)System\Text\ValueStringBuilder.cs" Link="Common\System\Text\ValueStringBuilder.cs" />
     <!-- SRM Implementation -->
-    <Compile Include="System\Text\RegularExpressions\srm\BooleanClassifier.cs" />
-    <Compile Include="System\Text\RegularExpressions\srm\CharKind.cs" />
-    <Compile Include="System\Text\RegularExpressions\srm\Classifier.cs" />
-    <Compile Include="System\Text\RegularExpressions\srm\RegexToAutomatonConverter.cs" />
-    <Compile Include="System\Text\RegularExpressions\srm\State.cs" />
-    <Compile Include="System\Text\RegularExpressions\srm\SymbolicMatch.cs" />
-    <Compile Include="System\Text\RegularExpressions\srm\SymbolicRegexBuilder.cs" />
-    <Compile Include="System\Text\RegularExpressions\srm\SymbolicRegexNode.cs" />
-    <Compile Include="System\Text\RegularExpressions\srm\SymbolicRegexKind.cs" />
-    <Compile Include="System\Text\RegularExpressions\srm\SymbolicRegexInfo.cs" />
-    <Compile Include="System\Text\RegularExpressions\srm\SymbolicRegexMatcher.cs" />
-    <Compile Include="System\Text\RegularExpressions\srm\SymbolicRegexRunner.cs" />
-    <Compile Include="System\Text\RegularExpressions\srm\SymbolicRegexSet.cs" />
-    <Compile Include="System\Text\RegularExpressions\srm\algebras\BDD.cs" />
-    <Compile Include="System\Text\RegularExpressions\srm\algebras\BDDAlgebra.cs" />
-    <Compile Include="System\Text\RegularExpressions\srm\algebras\BDDRangeConverter.cs" />
-    <Compile Include="System\Text\RegularExpressions\srm\algebras\BV.cs" />
-    <Compile Include="System\Text\RegularExpressions\srm\algebras\BV64Algebra.cs" />
-    <Compile Include="System\Text\RegularExpressions\srm\algebras\BVAlgebra.cs" />
-    <Compile Include="System\Text\RegularExpressions\srm\algebras\CharSetSolver.cs" />
-    <Compile Include="System\Text\RegularExpressions\srm\algebras\IBooleanAlgebra.cs" />
-    <Compile Include="System\Text\RegularExpressions\srm\algebras\ICharAlgebra.cs" />
-    <Compile Include="System\Text\RegularExpressions\srm\algebras\MintermGenerator.cs" />
-    <Compile Include="System\Text\RegularExpressions\srm\dgml\DgmlWriter.cs" />
-    <Compile Include="System\Text\RegularExpressions\srm\dgml\IAutomaton.cs" />
-    <Compile Include="System\Text\RegularExpressions\srm\dgml\Move.cs" />
-    <Compile Include="System\Text\RegularExpressions\srm\dgml\RegexDFA.cs" />
-    <Compile Include="System\Text\RegularExpressions\srm\unicode\IgnoreCaseRelation.cs" />
-    <Compile Include="System\Text\RegularExpressions\srm\unicode\IgnoreCaseRelationGenerator.cs" />
-    <Compile Include="System\Text\RegularExpressions\srm\unicode\IgnoreCaseTransformer.cs" />
-    <Compile Include="System\Text\RegularExpressions\srm\unicode\UnicodeCategoryRanges.cs" />
-    <Compile Include="System\Text\RegularExpressions\srm\unicode\UnicodeCategoryRangesGenerator.cs" />
-    <Compile Include="System\Text\RegularExpressions\srm\unicode\UnicodeCategoryTheory.cs" />
-    <Compile Include="System\Text\RegularExpressions\srm\utils\Base64.cs" />
-    <Compile Include="System\Text\RegularExpressions\srm\utils\StringUtility.cs" />
+    <Compile Include="System\Text\RegularExpressions\Symbolic\BooleanClassifier.cs" />
+    <Compile Include="System\Text\RegularExpressions\Symbolic\CharKind.cs" />
+    <Compile Include="System\Text\RegularExpressions\Symbolic\DfaMatchingState.cs" />
+    <Compile Include="System\Text\RegularExpressions\Symbolic\PartitionClassifier.cs" />
+    <Compile Include="System\Text\RegularExpressions\Symbolic\RegexNodeToSymbolicConverter.cs" />
+    <Compile Include="System\Text\RegularExpressions\Symbolic\SymbolicMatch.cs" />
+    <Compile Include="System\Text\RegularExpressions\Symbolic\SymbolicRegexBuilder.cs" />
+    <Compile Include="System\Text\RegularExpressions\Symbolic\SymbolicRegexNode.cs" />
+    <Compile Include="System\Text\RegularExpressions\Symbolic\SymbolicRegexKind.cs" />
+    <Compile Include="System\Text\RegularExpressions\Symbolic\SymbolicRegexInfo.cs" />
+    <Compile Include="System\Text\RegularExpressions\Symbolic\SymbolicRegexMatcher.cs" />
+    <Compile Include="System\Text\RegularExpressions\Symbolic\SymbolicRegexRunner.cs" />
+    <Compile Include="System\Text\RegularExpressions\Symbolic\SymbolicRegexRunnerFactory.cs" />
+    <Compile Include="System\Text\RegularExpressions\Symbolic\SymbolicRegexSet.cs" />
+    <Compile Include="System\Text\RegularExpressions\Symbolic\algebras\BDD.cs" />
+    <Compile Include="System\Text\RegularExpressions\Symbolic\algebras\BDDAlgebra.cs" />
+    <Compile Include="System\Text\RegularExpressions\Symbolic\algebras\BDDRangeConverter.cs" />
+    <Compile Include="System\Text\RegularExpressions\Symbolic\algebras\BV.cs" />
+    <Compile Include="System\Text\RegularExpressions\Symbolic\algebras\BV64Algebra.cs" />
+    <Compile Include="System\Text\RegularExpressions\Symbolic\algebras\BVAlgebra.cs" />
+    <Compile Include="System\Text\RegularExpressions\Symbolic\algebras\CharSetSolver.cs" />
+    <Compile Include="System\Text\RegularExpressions\Symbolic\algebras\IBooleanAlgebra.cs" />
+    <Compile Include="System\Text\RegularExpressions\Symbolic\algebras\ICharAlgebra.cs" />
+    <Compile Include="System\Text\RegularExpressions\Symbolic\algebras\MintermGenerator.cs" />
+    <Compile Include="System\Text\RegularExpressions\Symbolic\dgml\DgmlWriter.cs" />
+    <Compile Include="System\Text\RegularExpressions\Symbolic\dgml\IAutomaton.cs" />
+    <Compile Include="System\Text\RegularExpressions\Symbolic\dgml\Move.cs" />
+    <Compile Include="System\Text\RegularExpressions\Symbolic\dgml\RegexDFA.cs" />
+    <Compile Include="System\Text\RegularExpressions\Symbolic\unicode\IgnoreCaseRelation.cs" />
+    <Compile Include="System\Text\RegularExpressions\Symbolic\unicode\IgnoreCaseRelationGenerator.cs" />
+    <Compile Include="System\Text\RegularExpressions\Symbolic\unicode\IgnoreCaseTransformer.cs" />
+    <Compile Include="System\Text\RegularExpressions\Symbolic\unicode\UnicodeCategoryRanges.cs" />
+    <Compile Include="System\Text\RegularExpressions\Symbolic\unicode\UnicodeCategoryRangesGenerator.cs" />
+    <Compile Include="System\Text\RegularExpressions\Symbolic\unicode\UnicodeCategoryTheory.cs" />
+    <Compile Include="System\Text\RegularExpressions\Symbolic\utils\Base64.cs" />
+    <Compile Include="System\Text\RegularExpressions\Symbolic\utils\StringUtility.cs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="System.Collections" />
@@ -102,7 +102,7 @@
     <Reference Include="System.Reflection.Emit.ILGeneration" />
     <Reference Include="System.Reflection.Emit.Lightweight" />
     <Reference Include="System.Reflection.Primitives" />
-    <!-- References required for SRM -->
+    <!-- References required for symbolic feature -->
     <Reference Include="System.Collections.Immutable" />
     <Reference Include="System.Linq" />
     <Reference Include="System.Runtime.InteropServices" />

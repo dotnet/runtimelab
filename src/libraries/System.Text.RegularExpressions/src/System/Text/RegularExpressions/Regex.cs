@@ -9,7 +9,7 @@ using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
 using System.Runtime.Serialization;
-using System.Text.RegularExpressions.SRM;
+using System.Text.RegularExpressions.Symbolic;
 using System.Threading;
 
 namespace System.Text.RegularExpressions

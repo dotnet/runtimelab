@@ -39,7 +39,7 @@ namespace System.Text.RegularExpressions.Tests
         }
 
         /// <summary>
-        /// Causes SRM to switch to Antimirov mode internally.
+        /// Causes symbolic matcher to switch to Antimirov mode internally.
         /// Antimirov mode is otherwise never triggered by typical cases.
         /// </summary>
         [Theory]
