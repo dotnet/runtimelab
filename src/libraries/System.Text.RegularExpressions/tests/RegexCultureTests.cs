@@ -1,6 +1,7 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Tests;
@@ -10,11 +11,19 @@ namespace System.Text.RegularExpressions.Tests
 {
     public class RegexCultureTests
     {
+        public static IEnumerable<object[]> CharactersComparedOneByOne_AnchoredPattern_TestData()
+        {
+            foreach (RegexOptions options in RegexHelpers.RegexOptionsExtended())
+            {
+                yield return new object[] { "^aa$", "aA", "da-DK", options, false };
+                yield return new object[] { "^aA$", "aA", "da-DK", options, true };
+                yield return new object[] { "^aa$", "aA", "da-DK", options | RegexOptions.IgnoreCase, true };
+                yield return new object[] { "^aA$", "aA", "da-DK", options | RegexOptions.IgnoreCase, true };
+            }
+        }
+
         [Theory]
-        [InlineData("^aa$", "aA", "da-DK", RegexOptions.None, false)]
-        [InlineData("^aA$", "aA", "da-DK", RegexOptions.None, true)]
-        [InlineData("^aa$", "aA", "da-DK", RegexOptions.IgnoreCase, true)]
-        [InlineData("^aA$", "aA", "da-DK", RegexOptions.IgnoreCase, true)]
+        [MemberData(nameof(CharactersComparedOneByOne_AnchoredPattern_TestData))]
         public void CharactersComparedOneByOne_AnchoredPattern(string pattern, string input, string culture, RegexOptions options, bool expected)
         {
             // Regex compares characters one by one.  If that changes, it could impact the behavior of
@@ -29,11 +38,18 @@ namespace System.Text.RegularExpressions.Tests
             }
         }
 
+
+        public static IEnumerable<object[]> CharactersComparedOneByOne_Invariant_TestData()
+        {
+            foreach (RegexOptions options in RegexHelpers.RegexOptionsExtended())
+            {
+                yield return new object[] { options };
+                yield return new object[] { options | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant };
+            }
+        }
+
         [Theory]
-        [InlineData(RegexOptions.None)]
-        [InlineData(RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
-        [InlineData(RegexOptions.Compiled)]
-        [InlineData(RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
+        [MemberData(nameof(CharactersComparedOneByOne_Invariant_TestData))]
         public void CharactersComparedOneByOne_Invariant(RegexOptions options)
         {
             // Regex compares characters one by one.  If that changes, it could impact the behavior of
