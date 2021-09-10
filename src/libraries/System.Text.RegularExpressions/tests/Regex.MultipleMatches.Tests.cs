@@ -3,6 +3,7 @@
 
 using System.Collections.Generic;
 using Xunit;
+using System.Linq;
 
 namespace System.Text.RegularExpressions.Tests
 {
@@ -49,9 +50,10 @@ namespace System.Text.RegularExpressions.Tests
         }
 
         public static IEnumerable<object[]> Matches_TestData_NonBacktracking() =>
-            PlatformDetection.IsNetFramework ? RegexHelpers.NoTestData() : Matches_TestData_WithOptions(RegexHelpers.RegexOptionNonBacktracking);   
+            PlatformDetection.IsNetFramework ? RegexHelpers.NoTestData() : Matches_TestData_WithOptions(RegexHelpers.RegexOptionNonBacktracking);
 
-        public static IEnumerable<object[]> Matches_TestData() => Matches_TestData_WithOptions(RegexOptions.None);   
+        public static IEnumerable<object[]> Matches_TestData() =>
+            Matches_TestData_WithOptions(RegexOptions.None).Union(Matches_TestData_WithOptions_Backtracking(RegexOptions.None));
 
         private static IEnumerable<object[]> Matches_TestData_WithOptions(RegexOptions options)
         {
@@ -132,20 +134,6 @@ namespace System.Text.RegularExpressions.Tests
                 }
             };
 
-            // RegexOptions.RightToLeft is not supported with NonBacktracking
-            if (options != RegexHelpers.RegexOptionNonBacktracking)
-            {
-                yield return new object[]
-                {
-                @"foo\d+", "0123456789foo4567890foo1foo  0987", options | RegexOptions.RightToLeft,
-                new CaptureData[]
-                {
-                    new CaptureData("foo1", 20, 4),
-                    new CaptureData("foo4567890", 10, 10),
-                }
-                };
-            }
-
             yield return new object[]
             {
                 "[a-z]", "a", options,
@@ -165,31 +153,6 @@ namespace System.Text.RegularExpressions.Tests
                     new CaptureData("c", 3, 1)
                 }
             };
-
-            // Alternation construct
-            // General conditional statements (?(A)B|C) are not supported with NonBacktracking
-            if (options != RegexHelpers.RegexOptionNonBacktracking)
-            {
-                yield return new object[]
-                {
-                "(?(A)A123|C789)", "A123 B456 C789", options,
-                new CaptureData[]
-                {
-                    new CaptureData("A123", 0, 4),
-                    new CaptureData("C789", 10, 4),
-                }
-                };
-
-                yield return new object[]
-                {
-                "(?(A)A123|C789)", "A123 B456 C789", options,
-                new CaptureData[]
-                {
-                    new CaptureData("A123", 0, 4),
-                    new CaptureData("C789", 10, 4),
-                }
-                };
-            }
 
             yield return new object[]
             {
@@ -252,23 +215,6 @@ namespace System.Text.RegularExpressions.Tests
                 }
             };
 
-            // RegexOptions.RightToLeft is not supported with NonBacktracking
-            if (options != RegexHelpers.RegexOptionNonBacktracking)
-            {
-                yield return new object[]
-                {
-                @"^.*$", "abc\ndefg\n\nhijkl\n", options | RegexOptions.Multiline | RegexOptions.RightToLeft,
-                new[]
-                {
-                    new CaptureData("", 16, 0),
-                    new CaptureData("hijkl", 10, 5),
-                    new CaptureData("", 9, 0),
-                    new CaptureData("defg", 4, 4),
-                    new CaptureData("abc", 0, 3),
-                }
-                };
-            }
-
             yield return new object[]
             {
                 ".*", "abc", options,
@@ -292,13 +238,62 @@ namespace System.Text.RegularExpressions.Tests
                         new CaptureData("#", 2, 1),
                     }
                 };
+            }
+        }
 
-                // RegexOptions.ECMAScript is not supported with NonBacktracking
-                if (options != RegexHelpers.RegexOptionNonBacktracking)
+        // Is called for options other than NonBacktracking
+        private static IEnumerable<object[]> Matches_TestData_WithOptions_Backtracking(RegexOptions options)
+        {
+            yield return new object[]
+            {
+                @"foo\d+", "0123456789foo4567890foo1foo  0987", options | RegexOptions.RightToLeft,
+                new CaptureData[]
                 {
-                    // .NET Framework missing fix in https://github.com/dotnet/runtime/pull/993
-                    yield return new object[]
-                    {
+                    new CaptureData("foo1", 20, 4),
+                    new CaptureData("foo4567890", 10, 10),
+                }
+            };
+
+            yield return new object[]
+            {
+                "(?(A)A123|C789)", "A123 B456 C789", options,
+                new CaptureData[]
+                {
+                    new CaptureData("A123", 0, 4),
+                    new CaptureData("C789", 10, 4),
+                }
+            };
+
+            yield return new object[]
+            {
+                "(?(A)A123|C789)", "A123 B456 C789", options,
+                new CaptureData[]
+                {
+                    new CaptureData("A123", 0, 4),
+                    new CaptureData("C789", 10, 4),
+                }
+            };
+
+
+            yield return new object[]
+            {
+                @"^.*$", "abc\ndefg\n\nhijkl\n", options | RegexOptions.Multiline | RegexOptions.RightToLeft,
+                new[]
+                {
+                    new CaptureData("", 16, 0),
+                    new CaptureData("hijkl", 10, 5),
+                    new CaptureData("", 9, 0),
+                    new CaptureData("defg", 4, 4),
+                    new CaptureData("abc", 0, 3),
+                }
+            };
+
+
+            if (!PlatformDetection.IsNetFramework)
+            {
+                // .NET Framework missing fix in https://github.com/dotnet/runtime/pull/993
+                yield return new object[]
+                {
                     "[^]", "every", options | RegexOptions.ECMAScript,
                     new CaptureData[]
                     {
@@ -308,8 +303,7 @@ namespace System.Text.RegularExpressions.Tests
                         new CaptureData("r", 3, 1),
                         new CaptureData("y", 4, 1),
                     }
-                    };
-                }
+                };
             }
         }
 

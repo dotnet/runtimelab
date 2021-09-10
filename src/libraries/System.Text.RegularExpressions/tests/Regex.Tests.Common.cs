@@ -64,6 +64,15 @@ namespace System.Text.RegularExpressions.Tests
         }
 
         public static IEnumerable<object[]> NoTestData() { yield break; }
+
+
+        public static Regex CreateRegexInCulture(string pattern, RegexOptions options, Globalization.CultureInfo culture)
+        {
+            using (new System.Tests.ThreadCultureChange(culture))
+            {
+                return new Regex(pattern, options);
+            }
+        }
     }
 
     public class CaptureData

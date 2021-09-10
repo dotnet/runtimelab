@@ -107,6 +107,12 @@ namespace System.Text.RegularExpressions.Tests
             // same input and regex does match so far so good
             Assert.All(cultInvariantRegex, rex => Assert.True(rex.IsMatch(input)));
 
+            // |-----------------------------------------------------------------------------------|
+            // | TODO: the following Assert must not be tested as expected behavior, this is a BUG |
+            // |       In other words, it should be Assert.True(rex.IsMatch(input)))               |
+            // |       and the whole test should be marked with ActiveIssue (unconditionally)      |
+            // |       with a link to https://github.com/dotnet/runtime/issues/58958               |
+            // |-----------------------------------------------------------------------------------|
             // when the Regex was created with a turkish locale the lower cased turkish version will
             // no longer match the input string which contains upper and lower case iiiis hence even the input string
             // will no longer match
@@ -151,8 +157,8 @@ namespace System.Text.RegularExpressions.Tests
 
             // Use the input as the regex also
             // Ignore the Compiled option here because it is a noop in combination with NonBacktracking 
-            Regex cultInvariantRegex = Create(input, CultureInfo.InvariantCulture, RegexHelpers.RegexOptionNonBacktracking | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)[0];
-            Regex turkishRegex = Create(input, turkish, RegexHelpers.RegexOptionNonBacktracking | RegexOptions.IgnoreCase)[0];
+            Regex cultInvariantRegex = RegexHelpers.CreateRegexInCulture(input, RegexHelpers.RegexOptionNonBacktracking | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, CultureInfo.InvariantCulture);
+            Regex turkishRegex = RegexHelpers.CreateRegexInCulture(input, RegexHelpers.RegexOptionNonBacktracking | RegexOptions.IgnoreCase, turkish);
 
             Assert.True(cultInvariantRegex.IsMatch(input));
             Assert.True(turkishRegex.IsMatch(input));    // <---------- This result differs from the result in the previous test!!!
@@ -181,7 +187,7 @@ namespace System.Text.RegularExpressions.Tests
             string input = "I\u0131\u0130i";
             string pattern = "[H-J][\u0131-\u0140][\u0120-\u0130][h-j]";
 
-            Regex regex = Create(pattern, turkish, RegexOptions.IgnoreCase)[0];
+            Regex regex = RegexHelpers.CreateRegexInCulture(pattern, RegexOptions.IgnoreCase, turkish);
 
             // The pattern must trivially match the input because all of the letters fall in the given intervals
             // Ignoring case can only add more letters here -- not REMOVE letters
@@ -196,7 +202,7 @@ namespace System.Text.RegularExpressions.Tests
             string input = "I\u0131\u0130i";
             string pattern = "[H-J][\u0131-\u0140][\u0120-\u0130][h-j]";
 
-            Regex regex = Create(pattern, turkish, RegexOptions.IgnoreCase | RegexHelpers.RegexOptionNonBacktracking)[0];
+            Regex regex = RegexHelpers.CreateRegexInCulture(pattern, RegexOptions.IgnoreCase | RegexHelpers.RegexOptionNonBacktracking, turkish);
 
             // The pattern must trivially match the input because all of the letters fall in the given intervals
             // Ignoring case can only add more letters here -- not REMOVE letters
@@ -235,30 +241,53 @@ namespace System.Text.RegularExpressions.Tests
                 yield return new object[] { "(?i:iI+)", options, turkish, "abcI\u0130ixyz", "" };
                 yield return new object[] { "(?i:[^IJKLM]I)", options, turkish, "ii\u0130i\u0131ab", "i\u0131" };
 
-                if (options != RegexOptions.None && options != RegexOptions.Compiled)
+                // None and Compiled are separated into the Match_In_Different_Cultures_CriticalCases test
+                if (options == RegexHelpers.RegexOptionNonBacktracking)
                 {
-                    // Otherwise the following tests fail (in disjoint cases), see one extracted active issue below
-
-                    // Expected answers in the invariant culture
-                    yield return new object[] { "(?i:iI+)", options, invariant, "abcIi\u0130xyz", "Ii" };               // <-- failing for None, Compiled
-                    yield return new object[] { "(?i:iI+)", options, invariant, "abcI\u0130ixyz", "" };                 // <-- failing for Compiled
-                    yield return new object[] { "(?i:iI+)", options, invariant, "abc\u0130IIxyz", "II" };               // <-- failing for Compiled
-                    yield return new object[] { "(?i:iI+)", options, invariant, "abc\u0130Iixyz", "Ii" };               // <-- failing for Compiled
-                    yield return new object[] { "(?i:[^IJKLM]I)", options, invariant, "ii\u0130i\u0131ab", "\u0130i" }; // <-- failing for None, Compiled
-
-                    // Expected answers in the Turkish culture
-                    yield return new object[] { "(?i:iI+)", options, turkish, "abc\u0130IIxyz", "\u0130II" };           // <-- failing for None, Compiled
-                    yield return new object[] { "(?i:iI+)", options, turkish, "abc\u0130\u0131Ixyz", "\u0130\u0131I" }; // <-- failing for None, Compiled
-                    yield return new object[] { "(?i:iI+)", options, turkish, "abc\u0130Iixyz", "\u0130I" };            // <-- failing for None, Compiled
+                    foreach (var data in Match_In_Different_Cultures_CriticalCases_TestData_For(options))
+                    {
+                        yield return data;
+                    }
                 }
             }
         }
+
+        public static IEnumerable<object[]> Match_In_Different_Cultures_CriticalCases_TestData_For(RegexOptions options)
+        {
+            CultureInfo invariant = CultureInfo.InvariantCulture;
+            CultureInfo turkish = new CultureInfo("tr-TR");
+
+            // Expected answers in the invariant culture
+            yield return new object[] { "(?i:iI+)", options, invariant, "abcIi\u0130xyz", "Ii" };               // <-- failing for None, Compiled
+            yield return new object[] { "(?i:iI+)", options, invariant, "abcI\u0130ixyz", "" };                 // <-- failing for Compiled
+            yield return new object[] { "(?i:iI+)", options, invariant, "abc\u0130IIxyz", "II" };               // <-- failing for Compiled
+            yield return new object[] { "(?i:iI+)", options, invariant, "abc\u0130Iixyz", "Ii" };               // <-- failing for Compiled
+            yield return new object[] { "(?i:[^IJKLM]I)", options, invariant, "ii\u0130i\u0131ab", "\u0130i" }; // <-- failing for None, Compiled
+
+            // Expected answers in the Turkish culture
+            yield return new object[] { "(?i:iI+)", options, turkish, "abc\u0130IIxyz", "\u0130II" };           // <-- failing for None, Compiled
+            yield return new object[] { "(?i:iI+)", options, turkish, "abc\u0130\u0131Ixyz", "\u0130\u0131I" }; // <-- failing for None, Compiled
+            yield return new object[] { "(?i:iI+)", options, turkish, "abc\u0130Iixyz", "\u0130I" };            // <-- failing for None, Compiled
+        }
+
+        public static IEnumerable<object[]> Match_In_Different_Cultures_CriticalCases_TestData() =>
+            Match_In_Different_Cultures_CriticalCases_TestData_For(RegexOptions.None).Union(Match_In_Different_Cultures_CriticalCases_TestData_For(RegexOptions.Compiled));
 
         [Theory]
         [MemberData(nameof(Match_In_Different_Cultures_TestData))]
         public void Match_In_Different_Cultures(string pattern, RegexOptions options, CultureInfo culture, string input, string match_expected)
         {
-            Regex r = Create(pattern, culture, options)[0];
+            Regex r = RegexHelpers.CreateRegexInCulture(pattern, options, culture);
+            var match = r.Match(input);
+            Assert.Equal(match_expected, match.Value);
+        }
+
+        [ActiveIssue("Incorrect treatment of IgnoreCase in Turkish and Invariant cultures, https://github.com/dotnet/runtime/issues/58956, https://github.com/dotnet/runtime/issues/58958 ")]
+        [Theory]
+        [MemberData(nameof(Match_In_Different_Cultures_CriticalCases_TestData))]
+        public void Match_In_Different_Cultures_CriticalCases(string pattern, RegexOptions options, CultureInfo culture, string input, string match_expected)
+        {
+            Regex r = RegexHelpers.CreateRegexInCulture(pattern, options, culture);
             var match = r.Match(input);
             Assert.Equal(match_expected, match.Value);
         }
@@ -270,8 +299,8 @@ namespace System.Text.RegularExpressions.Tests
             string pattern = "(?i:iI+)";
             string input = "abc\u0130IIxyz";
             Regex[] re = Create(pattern, CultureInfo.InvariantCulture, RegexOptions.None);
-            Assert.Equal(re[0].Match(input).Value, re[1].Match(input).Value); // <-- Compiled gives the wrong result
-            // Assert.Equal("II", re[0].Match(input).Value); <-- expected result
+            Assert.Equal(re[0].Match(input).Value, re[1].Match(input).Value); 
+            Assert.Equal("II", re[0].Match(input).Value);
         }
     }
 }
