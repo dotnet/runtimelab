@@ -173,7 +173,7 @@ namespace System.Text.RegularExpressions.Tests
             Assert.True(turkishRegex.IsMatch(input.ToUpper(turkish)));
         }
 
-        [ActiveIssue("Incorrect handling of IgnoreCase over intervals in Turkish Culture")]
+        [ActiveIssue("Incorrect handling of IgnoreCase over intervals in Turkish Culture, https://github.com/dotnet/runtime/issues/58958")]
         [Fact]
         public void TurkishCulture_Handling_Of_IgnoreCase()
         {
@@ -263,7 +263,7 @@ namespace System.Text.RegularExpressions.Tests
             Assert.Equal(match_expected, match.Value);
         }
 
-        [ActiveIssue("Incorrect result of match in complied mode in Invariant culture")]
+        [ActiveIssue("Incorrect result of match in complied mode in Invariant culture, https://github.com/dotnet/runtime/issues/58956")]
         [Fact]
         public void Match_InvariantCulture_None_vs_Compiled()
         {
