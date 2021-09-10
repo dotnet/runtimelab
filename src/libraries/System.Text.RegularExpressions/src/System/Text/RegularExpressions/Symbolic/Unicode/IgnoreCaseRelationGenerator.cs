@@ -76,7 +76,7 @@ namespace {namespacename}
                     // c may be different from both cUpper as well as cLower.
                     // Make sure that the regex engine considers c as being equivalent to cUpper and cLower, else ignore c.
                     // In some cases c != cU but the regex engine does not consider the chacarters equivalent wrt the ignore-case option.
-                    if (Regex.IsMatch($"{cUpper}{cLower}", $"^(?i:{StringUtility.Escape(c, useNumericRepresentationOnly: true)}{StringUtility.Escape(c, useNumericRepresentationOnly: true)})$"))
+                    if (Regex.IsMatch($"{cUpper}{cLower}", $"^(?i:\\u{i:X4}\\u{i:X4})$"))
                     {
                         BDD equiv = solver.False;
 

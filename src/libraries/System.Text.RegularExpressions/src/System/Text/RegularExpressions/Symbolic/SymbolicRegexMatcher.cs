@@ -177,7 +177,7 @@ namespace System.Text.RegularExpressions.Symbolic
             sb.Append(SymbolicRegexRunner.TopLevelSeparator);
 
             //-----------------------------------3
-            Base64.Encode((int)Options, sb);
+            Base64Utility.Encode((int)Options, sb);
             sb.Append(SymbolicRegexRunner.TopLevelSeparator);
 
             //-----------------------------------4
@@ -197,15 +197,15 @@ namespace System.Text.RegularExpressions.Symbolic
             sb.Append(SymbolicRegexRunner.TopLevelSeparator);
 
             //-----------------------------------8
-            Base64.Encode(_startSetSize, sb);
+            Base64Utility.Encode(_startSetSize, sb);
             sb.Append(SymbolicRegexRunner.TopLevelSeparator);
 
             //-----------------------------------9
-            Base64.Encode(_startSetArray, sb);
+            Base64Utility.Encode(_startSetArray, sb);
             sb.Append(SymbolicRegexRunner.TopLevelSeparator);
 
             //-----------------------------------10
-            Base64.Encode(_prefix, sb);
+            Base64Utility.Encode(_prefix, sb);
             sb.Append(SymbolicRegexRunner.TopLevelSeparator);
 
             //-----------------------------------11
@@ -213,7 +213,7 @@ namespace System.Text.RegularExpressions.Symbolic
             sb.Append(SymbolicRegexRunner.TopLevelSeparator);
 
             //-----------------------------------12
-            Base64.Encode(_reversePrefix, sb);
+            Base64Utility.Encode(_reversePrefix, sb);
             sb.Append(SymbolicRegexRunner.TopLevelSeparator);
 
             //-----------------------------------13
@@ -239,18 +239,18 @@ namespace System.Text.RegularExpressions.Symbolic
             _builder = new SymbolicRegexBuilder<TSetType>(solver);
             _pattern = _builder.Deserialize(fragments[2]);
 
-            Options = (RegexOptions)Base64.DecodeInt(fragments[3]);
+            Options = (RegexOptions)Base64Utility.DecodeInt32(fragments[3]);
 
             //these predicates are relevant only when anchors are used
             _builder._wordLetterPredicate = _builder._solver.DeserializePredicate(fragments[4]);
             _builder._newLinePredicate = _builder._solver.DeserializePredicate(fragments[5]);
             _startSet = _builder._solver.DeserializePredicate(fragments[6]);
             _startSetClassifier = BooleanClassifier.Deserialize(fragments[7]);
-            _startSetSize = Base64.DecodeInt(fragments[8]);
-            _startSetArray = Base64.DecodeCharArray(fragments[9]);
-            _prefix = Base64.DecodeString(fragments[10]);
+            _startSetSize = Base64Utility.DecodeInt32(fragments[8]);
+            _startSetArray = Base64Utility.DecodeCharArray(fragments[9]);
+            _prefix = Base64Utility.DecodeString(fragments[10]);
             _isPrefixCaseInsensitive = bool.Parse(fragments[11]);
-            _reversePrefix = Base64.DecodeString(fragments[12]);
+            _reversePrefix = Base64Utility.DecodeString(fragments[12]);
             _partitions = PartitionClassifier.Deserialize(fragments[13]);
 
             string potentialTimeout = fragments[14].TrimEnd();

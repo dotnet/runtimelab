@@ -75,9 +75,9 @@ namespace System.Text.RegularExpressions.Symbolic
             }
 
             //use comma to separate the elements, comma is not used in _bdd.Serialize
-            Base64.Encode(lower, sb);
+            Base64Utility.Encode(lower, sb);
             sb.Append(',');
-            Base64.Encode(upper, sb);
+            Base64Utility.Encode(upper, sb);
             sb.Append(',');
             _nonAsciiBDD.Serialize(sb);
         }
@@ -91,8 +91,8 @@ namespace System.Text.RegularExpressions.Symbolic
                 if (secondEnd >= 0 && input.IndexOf(',', secondEnd + 1) == -1)
                 {
                     ReadOnlySpan<char> s = input;
-                    ulong lower = Base64.DecodeUInt64(s[..firstEnd]);
-                    ulong upper = Base64.DecodeUInt64(s[(firstEnd + 1)..secondEnd]);
+                    ulong lower = Base64Utility.DecodeUInt64(s[..firstEnd]);
+                    ulong upper = Base64Utility.DecodeUInt64(s[(firstEnd + 1)..secondEnd]);
                     BDD bdd = BDD.Deserialize(s[(secondEnd + 1)..], solver);
                     return new BooleanClassifier(lower, upper, bdd);
                 }

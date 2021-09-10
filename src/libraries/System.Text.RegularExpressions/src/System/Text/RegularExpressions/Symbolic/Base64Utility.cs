@@ -2,36 +2,13 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Collections.Generic;
+using System.Diagnostics;
 
 namespace System.Text.RegularExpressions.Symbolic
 {
-    /// <summary>
-    /// Custom serialization and deserialization for numbers and arrays of numbers using a base-64 alphabet similar to a decimal alphabet.
-    /// </summary>
-    internal static class Base64
+    /// <summary>Custom serialization and deserialization for numbers and arrays of numbers using a base-64 alphabet similar to a decimal alphabet.</summary>
+    internal static class Base64Utility
     {
-        private static readonly char[] s_customBase64encoding = new char[64] {
-            '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
-            'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
-            'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
-            '+', '/'
-        };
-
-        private static ReadOnlySpan<byte> CustomBase64Decoding => new byte[128] {
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            62, //'+' maps to 62
-            0, 0, 0,
-            63, //'/' maps to 63
-            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, //digits map to 0..9
-            0, 0, 0, 0, 0, 0, 0,
-            10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, //uppercase letters
-            0, 0, 0, 0, 0, 0,
-            36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, //lowercase letters
-            0, 0, 0, 0, 0
-        };
-
         /// <summary>
         /// Custom Base64 encoder for int.
         /// It uses the standard base 64 alphabet but reordered to 0-9A-Za-z+/ so numbers up to 15 (0-9A-F) coincide with hexadecimal digits.
@@ -39,9 +16,12 @@ namespace System.Text.RegularExpressions.Symbolic
         /// </summary>
         public static void Encode(int n, StringBuilder builder)
         {
+            Debug.Assert(n != int.MinValue);
+
             if (n == 0)
             {
-                builder.Append(s_customBase64encoding[0]);
+                builder.Append((char)CustomBase64Encoding[0]);
+                return;
             }
 
             if (n < 0)
@@ -54,7 +34,7 @@ namespace System.Text.RegularExpressions.Symbolic
             int pos = span.Length;
             while (n > 0)
             {
-                span[--pos] = s_customBase64encoding[n & 0x3F];
+                span[--pos] = (char)CustomBase64Encoding[n & 0x3F];
                 n >>= 6;
             }
             builder.Append(span.Slice(pos));
@@ -67,9 +47,12 @@ namespace System.Text.RegularExpressions.Symbolic
         /// </summary>
         public static void Encode(long n, StringBuilder builder)
         {
+            Debug.Assert(n != long.MinValue);
+
             if (n == 0)
             {
-                builder.Append(s_customBase64encoding[0]);
+                builder.Append((char)CustomBase64Encoding[0]);
+                return;
             }
 
             if (n < 0)
@@ -82,7 +65,7 @@ namespace System.Text.RegularExpressions.Symbolic
             int pos = span.Length;
             while (n > 0)
             {
-                span[--pos] = s_customBase64encoding[n & 0x3F];
+                span[--pos] = (char)CustomBase64Encoding[(int)(n & 0x3F)];
                 n >>= 6;
             }
             builder.Append(span.Slice(pos));
@@ -96,14 +79,15 @@ namespace System.Text.RegularExpressions.Symbolic
         {
             if (n == 0)
             {
-                builder.Append(s_customBase64encoding[0]);
+                builder.Append((char)CustomBase64Encoding[0]);
+                return;
             }
 
             Span<char> span = stackalloc char[11];
             int pos = span.Length;
             while (n > 0)
             {
-                span[--pos] = s_customBase64encoding[n & 0x3F];
+                span[--pos] = (char)CustomBase64Encoding[(int)(n & 0x3F)];
                 n >>= 6;
             }
             builder.Append(span.Slice(pos));
@@ -205,11 +189,11 @@ namespace System.Text.RegularExpressions.Symbolic
                 int periodPos = s.IndexOf('.');
                 if (periodPos == -1)
                 {
-                    vsb.Append((char)DecodeUInt(s));
+                    vsb.Append((char)DecodeUInt32(s));
                     break;
                 }
 
-                vsb.Append((char)DecodeUInt(s[0..periodPos]));
+                vsb.Append((char)DecodeUInt32(s[0..periodPos]));
                 s = s.Slice(periodPos + 1);
             }
 
@@ -219,7 +203,7 @@ namespace System.Text.RegularExpressions.Symbolic
         /// <summary>
         /// Custom Base64 deserializer for int.
         /// </summary>
-        public static int DecodeInt(ReadOnlySpan<char> s)
+        public static int DecodeInt32(ReadOnlySpan<char> s)
         {
             bool isNegative = false;
             if (s[0] == '-')
@@ -240,7 +224,7 @@ namespace System.Text.RegularExpressions.Symbolic
         /// <summary>
         /// Custom Base64 deserializer for uint.
         /// </summary>
-        public static uint DecodeUInt(ReadOnlySpan<char> s)
+        public static uint DecodeUInt32(ReadOnlySpan<char> s)
         {
             uint res = 0;
             for (int i = 0; i < s.Length; i++)
@@ -251,24 +235,29 @@ namespace System.Text.RegularExpressions.Symbolic
             return res;
         }
 
-        /// <summary>
-        /// Custom Base64 deserializer for char.
-        /// </summary>
-        public static char DecodeChar(ReadOnlySpan<char> s)
+        /// <summary>Custom Base64 deserializer for ulong.</summary>
+        public static ulong DecodeUInt64(ReadOnlySpan<char> s)
         {
-            uint res = 0;
+            ulong res = 0;
             for (int i = 0; i < s.Length; i++)
             {
                 res = (res << 6) | CustomBase64Decoding[s[i] & 0x7F];
             }
 
-            return (char)res;
+            return res;
         }
 
-        /// <summary>
-        /// Custom Base64 deserializer for long.
-        /// </summary>
-        public static long DecodeInt64(ReadOnlySpan<char> s)
+        /// <summary>Custom Base64 deserializer for unit[].</summary>
+        public static uint[] DecodeUInt32Array(ReadOnlySpan<char> s) => DecodeArray(s, s => DecodeUInt32(s));
+
+        /// <summary>Custom Base64 deserializer for int[].</summary>
+        public static int[] DecodeInt32Array(ReadOnlySpan<char> s) => DecodeArray(s, s => DecodeInt32(s));
+
+        /// <summary>Custom Base64 deserializer for ulong[].</summary>
+        public static ulong[] DecodeUInt64Array(ReadOnlySpan<char> s) => DecodeArray(s, s => DecodeUInt64(s));
+
+        /// <summary>Custom Base64 deserializer for long[].</summary>
+        public static long[] DecodeInt64Array(ReadOnlySpan<char> s) => DecodeArray(s, s =>
         {
             bool isNegative = false;
             if (s[0] == '-')
@@ -284,46 +273,19 @@ namespace System.Text.RegularExpressions.Symbolic
             }
 
             return isNegative ? -res : res;
-        }
+        });
 
-        /// <summary>
-        /// Custom Base64 deserializer for ulong.
-        /// </summary>
-        public static ulong DecodeUInt64(ReadOnlySpan<char> s)
+        /// <summary>Custom Base64 deserializer for char[].</summary>
+        public static char[] DecodeCharArray(ReadOnlySpan<char> s) => DecodeArray(s, s =>
         {
-            ulong res = 0;
+            uint res = 0;
             for (int i = 0; i < s.Length; i++)
             {
                 res = (res << 6) | CustomBase64Decoding[s[i] & 0x7F];
             }
 
-            return res;
-        }
-
-        /// <summary>
-        /// Custom Base64 deserializer for int[].
-        /// </summary>
-        public static int[] DecodeIntArray(ReadOnlySpan<char> s) => DecodeArray(s, span => DecodeInt(span));
-
-        /// <summary>
-        /// Custom Base64 deserializer for unit[].
-        /// </summary>
-        public static uint[] DecodeUIntArray(ReadOnlySpan<char> s) => DecodeArray(s, span => DecodeUInt(span));
-
-        /// <summary>
-        /// Custom Base64 deserializer for long[].
-        /// </summary>
-        public static long[] DecodeInt64Array(ReadOnlySpan<char> s) => DecodeArray(s, span => DecodeInt64(span));
-
-        /// <summary>
-        /// Custom Base64 deserializer for ulong[].
-        /// </summary>
-        public static ulong[] DecodeUInt64Array(ReadOnlySpan<char> s) => DecodeArray(s, span => DecodeUInt64(span));
-
-        /// <summary>
-        /// Custom Base64 deserializer for char[].
-        /// </summary>
-        public static char[] DecodeCharArray(ReadOnlySpan<char> s) => DecodeArray(s, span => DecodeChar(span));
+            return (char)res;
+        });
 
         private static T[] DecodeArray<T>(ReadOnlySpan<char> s, DecodeFunc<T> decode) where T : unmanaged
         {
@@ -350,5 +312,29 @@ namespace System.Text.RegularExpressions.Symbolic
         }
 
         private delegate T DecodeFunc<T>(ReadOnlySpan<char> span);
+
+        private static ReadOnlySpan<byte> CustomBase64Encoding => new byte[64]
+        {
+            (byte)'0', (byte)'1', (byte)'2', (byte)'3', (byte)'4', (byte)'5', (byte)'6', (byte)'7', (byte)'8', (byte)'9',
+            (byte)'A', (byte)'B', (byte)'C', (byte)'D', (byte)'E', (byte)'F', (byte)'G', (byte)'H', (byte)'I', (byte)'J', (byte)'K', (byte)'L', (byte)'M', (byte)'N', (byte)'O', (byte)'P', (byte)'Q', (byte)'R', (byte)'S', (byte)'T', (byte)'U', (byte)'V', (byte)'W', (byte)'X', (byte)'Y', (byte)'Z',
+            (byte)'a', (byte)'b', (byte)'c', (byte)'d', (byte)'e', (byte)'f', (byte)'g', (byte)'h', (byte)'i', (byte)'j', (byte)'k', (byte)'l', (byte)'m', (byte)'n', (byte)'o', (byte)'p', (byte)'q', (byte)'r', (byte)'s', (byte)'t', (byte)'u', (byte)'v', (byte)'w', (byte)'x', (byte)'y', (byte)'z',
+            (byte)'+', (byte)'/'
+        };
+
+        private static ReadOnlySpan<byte> CustomBase64Decoding => new byte[128]
+        {
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            62, //'+' maps to 62
+            0, 0, 0,
+            63, //'/' maps to 63
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, //digits map to 0..9
+            0, 0, 0, 0, 0, 0, 0,
+            10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, //uppercase letters
+            0, 0, 0, 0, 0, 0,
+            36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, //lowercase letters
+            0, 0, 0, 0, 0
+        };
     }
 }
