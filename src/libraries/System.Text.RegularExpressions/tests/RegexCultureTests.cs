@@ -85,13 +85,9 @@ namespace System.Text.RegularExpressions.Tests
 
         public static IEnumerable<object[]> TurkishI_Is_Differently_LowerUpperCased_In_Turkish_Culture_TestData()
         {
-            // TODO:  foreach (RegexOptions options in RegexHelpers.RegexOptionsExtended())
-            // this currently fails for NonBacktracking, although all the culture support is there
-            foreach (RegexOptions options in new RegexOptions[] { RegexOptions.None })
-            {
-                yield return new object[] { 2, options };
-                yield return new object[] { 256, options };
-            }
+            // this test fails for NonBacktracking, see next test
+            yield return new object[] { 2, RegexOptions.None };
+            yield return new object[] { 256, RegexOptions.None };
         }
 
         /// <summary>
@@ -144,6 +140,37 @@ namespace System.Text.RegularExpressions.Tests
                     new Regex(input, RegexOptions.Compiled | additional)
                 };
             }
+        }
+
+        [SkipOnTargetFramework(TargetFrameworkMonikers.NetFramework, "Doesn't support NonBacktracking")]
+        [Fact]
+        public void TurkishI_Is_Differently_LowerUpperCased_In_Turkish_Culture_NonBacktracking()
+        {
+            var turkish = new CultureInfo("tr-TR");
+            string input = "I\u0131\u0130i";
+
+            // Use the input as the regex also
+            // Ignore the Compiled option here because it is a noop in combination with NonBacktracking 
+            Regex cultInvariantRegex = Create(input, CultureInfo.InvariantCulture, RegexHelpers.RegexOptionNonBacktracking | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)[0];
+            Regex turkishRegex = Create(input, turkish, RegexHelpers.RegexOptionNonBacktracking | RegexOptions.IgnoreCase)[0];
+
+            Assert.True(cultInvariantRegex.IsMatch(input));
+            Assert.True(turkishRegex.IsMatch(input));    // <---------- This result differs from the result in the previous test!!!
+
+            // As above and no surprises here
+            // The regexes recognize different lowercase variants of different versions of i differently
+            Assert.True(cultInvariantRegex.IsMatch(input.ToLowerInvariant()));
+            Assert.False(cultInvariantRegex.IsMatch(input.ToLower(turkish)));
+
+            Assert.False(turkishRegex.IsMatch(input.ToLowerInvariant()));
+            Assert.True(turkishRegex.IsMatch(input.ToLower(turkish)));
+
+            // The same holds symmetrically for ToUpper
+            Assert.True(cultInvariantRegex.IsMatch(input.ToUpperInvariant()));
+            Assert.False(cultInvariantRegex.IsMatch(input.ToUpper(turkish)));
+
+            Assert.False(turkishRegex.IsMatch(input.ToUpperInvariant()));
+            Assert.True(turkishRegex.IsMatch(input.ToUpper(turkish)));
         }
     }
 }
