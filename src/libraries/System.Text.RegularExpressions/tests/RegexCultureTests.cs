@@ -172,5 +172,35 @@ namespace System.Text.RegularExpressions.Tests
             Assert.False(turkishRegex.IsMatch(input.ToUpperInvariant()));
             Assert.True(turkishRegex.IsMatch(input.ToUpper(turkish)));
         }
+
+        [ActiveIssue("Incorrect handling of IgnoreCase over intervals in Turkish Culture")]
+        [Fact]
+        public void TurkishCulture_Handling_Of_IgnoreCase()
+        {
+            var turkish = new CultureInfo("tr-TR");
+            string input = "I\u0131\u0130i";
+            string pattern = "[H-J][\u0131-\u0140][\u0120-\u0130][h-j]";
+
+            Regex regex = Create(pattern, turkish, RegexOptions.IgnoreCase)[0];
+
+            // The pattern must trivially match the input because all of the letters fall in the given intervals
+            // Ignoring case can only add more letters here -- not REMOVE letters
+            Assert.True(regex.IsMatch(input));
+        }
+
+        [SkipOnTargetFramework(TargetFrameworkMonikers.NetFramework, "Doesn't support NonBacktracking")]
+        [Fact]
+        public void TurkishCulture_Handling_Of_IgnoreCase_NonBacktracking()
+        {
+            var turkish = new CultureInfo("tr-TR");
+            string input = "I\u0131\u0130i";
+            string pattern = "[H-J][\u0131-\u0140][\u0120-\u0130][h-j]";
+
+            Regex regex = Create(pattern, turkish, RegexOptions.IgnoreCase | RegexHelpers.RegexOptionNonBacktracking)[0];
+
+            // The pattern must trivially match the input because all of the letters fall in the given intervals
+            // Ignoring case can only add more letters here -- not REMOVE letters
+            Assert.True(regex.IsMatch(input));
+        }
     }
 }
