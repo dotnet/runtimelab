@@ -62,6 +62,8 @@ namespace System.Text.RegularExpressions.Tests
                 yield return new object[] { options };
             }
         }
+
+        public static IEnumerable<object[]> NoTestData() { yield break; }
     }
 
     public class CaptureData

@@ -48,11 +48,16 @@ namespace System.Text.RegularExpressions.Tests
             }
         }
 
-        public static IEnumerable<object[]> Matches_TestData()
+        public static IEnumerable<object[]> Matches_TestData_NonBacktracking() =>
+            PlatformDetection.IsNetFramework ? RegexHelpers.NoTestData() : Matches_TestData_WithOptions(RegexHelpers.RegexOptionNonBacktracking);   
+
+        public static IEnumerable<object[]> Matches_TestData() => Matches_TestData_WithOptions(RegexOptions.None);   
+
+        private static IEnumerable<object[]> Matches_TestData_WithOptions(RegexOptions options)
         {
             yield return new object[]
             {
-                "[0-9]", "12345asdfasdfasdfljkhsda67890", RegexOptions.None,
+                "[0-9]", "12345asdfasdfasdfljkhsda67890", options,
                 new CaptureData[]
                 {
                     new CaptureData("1", 0, 1),
@@ -70,7 +75,7 @@ namespace System.Text.RegularExpressions.Tests
 
             yield return new object[]
             {
-                "[a-z0-9]+", "[token1]? GARBAGEtoken2GARBAGE ;token3!", RegexOptions.None,
+                "[a-z0-9]+", "[token1]? GARBAGEtoken2GARBAGE ;token3!", options,
                 new CaptureData[]
                 {
                     new CaptureData("token1", 1, 6),
@@ -91,7 +96,7 @@ namespace System.Text.RegularExpressions.Tests
 
             yield return new object[]
             {
-                @"\b\w*\b", "handling words of various lengths", RegexOptions.None,
+                @"\b\w*\b", "handling words of various lengths", options,
                 new CaptureData[]
                 {
                     new CaptureData("handling", 0, 8),
@@ -109,7 +114,7 @@ namespace System.Text.RegularExpressions.Tests
 
             yield return new object[]
             {
-                @"\b\w{2}\b", "handling words of various lengths", RegexOptions.None,
+                @"\b\w{2}\b", "handling words of various lengths", options,
                 new CaptureData[]
                 {
                     new CaptureData("of", 15, 2),
@@ -118,7 +123,7 @@ namespace System.Text.RegularExpressions.Tests
 
             yield return new object[]
             {
-                @"\w{6,}", "handling words of various lengths", RegexOptions.None,
+                @"\w{6,}", "handling words of various lengths", options,
                 new CaptureData[]
                 {
                     new CaptureData("handling", 0, 8),
@@ -127,19 +132,23 @@ namespace System.Text.RegularExpressions.Tests
                 }
             };
 
-            yield return new object[]
+            // RegexOptions.RightToLeft is not supported with NonBacktracking
+            if (options != RegexHelpers.RegexOptionNonBacktracking)
             {
-                @"foo\d+", "0123456789foo4567890foo1foo  0987", RegexOptions.RightToLeft,
+                yield return new object[]
+                {
+                @"foo\d+", "0123456789foo4567890foo1foo  0987", options | RegexOptions.RightToLeft,
                 new CaptureData[]
                 {
                     new CaptureData("foo1", 20, 4),
                     new CaptureData("foo4567890", 10, 10),
                 }
-            };
+                };
+            }
 
             yield return new object[]
             {
-                "[a-z]", "a", RegexOptions.None,
+                "[a-z]", "a", options,
                 new CaptureData[]
                 {
                     new CaptureData("a", 0, 1)
@@ -148,7 +157,7 @@ namespace System.Text.RegularExpressions.Tests
 
             yield return new object[]
             {
-                "[a-z]", "a1bc", RegexOptions.None,
+                "[a-z]", "a1bc", options,
                 new CaptureData[]
                 {
                     new CaptureData("a", 0, 1),
@@ -158,29 +167,33 @@ namespace System.Text.RegularExpressions.Tests
             };
 
             // Alternation construct
-            yield return new object[]
+            // General conditional statements (?(A)B|C) are not supported with NonBacktracking
+            if (options != RegexHelpers.RegexOptionNonBacktracking)
             {
-                "(?(A)A123|C789)", "A123 B456 C789", RegexOptions.None,
+                yield return new object[]
+                {
+                "(?(A)A123|C789)", "A123 B456 C789", options,
                 new CaptureData[]
                 {
                     new CaptureData("A123", 0, 4),
                     new CaptureData("C789", 10, 4),
                 }
-            };
+                };
 
-            yield return new object[]
-            {
-                "(?(A)A123|C789)", "A123 B456 C789", RegexOptions.None,
+                yield return new object[]
+                {
+                "(?(A)A123|C789)", "A123 B456 C789", options,
                 new CaptureData[]
                 {
                     new CaptureData("A123", 0, 4),
                     new CaptureData("C789", 10, 4),
                 }
-            };
+                };
+            }
 
             yield return new object[]
             {
-                "(?:ab|cd|ef|gh|i)j", "abj    cdj  efj           ghjij", RegexOptions.None,
+                "(?:ab|cd|ef|gh|i)j", "abj    cdj  efj           ghjij", options,
                 new CaptureData[]
                 {
                     new CaptureData("abj", 0, 3),
@@ -194,12 +207,12 @@ namespace System.Text.RegularExpressions.Tests
             // Using ^ with multiline
             yield return new object[]
             {
-                "^", "", RegexOptions.Multiline,
+                "^", "", options | RegexOptions.Multiline,
                 new[] { new CaptureData("", 0, 0) }
             };
             yield return new object[]
             {
-                "^", "\n\n\n", RegexOptions.Multiline,
+                "^", "\n\n\n", options | RegexOptions.Multiline,
                 new[]
                 {
                     new CaptureData("", 0, 0),
@@ -210,7 +223,7 @@ namespace System.Text.RegularExpressions.Tests
             };
             yield return new object[]
             {
-                "^abc", "abc\nabc \ndef abc \nab\nabc", RegexOptions.Multiline,
+                "^abc", "abc\nabc \ndef abc \nab\nabc", options | RegexOptions.Multiline,
                 new[]
                 {
                     new CaptureData("abc", 0, 3),
@@ -220,7 +233,7 @@ namespace System.Text.RegularExpressions.Tests
             };
             yield return new object[]
             {
-                @"^\w{5}", "abc\ndefg\n\nhijkl\n", RegexOptions.Multiline,
+                @"^\w{5}", "abc\ndefg\n\nhijkl\n", options | RegexOptions.Multiline,
                 new[]
                 {
                     new CaptureData("hijkl", 10, 5),
@@ -228,7 +241,7 @@ namespace System.Text.RegularExpressions.Tests
             };
             yield return new object[]
             {
-                @"^.*$", "abc\ndefg\n\nhijkl\n", RegexOptions.Multiline,
+                @"^.*$", "abc\ndefg\n\nhijkl\n", options | RegexOptions.Multiline,
                 new[]
                 {
                     new CaptureData("abc", 0, 3),
@@ -236,24 +249,29 @@ namespace System.Text.RegularExpressions.Tests
                     new CaptureData("", 9, 0),
                     new CaptureData("hijkl", 10, 5),
                     new CaptureData("", 16, 0),
-                }
-            };
-            yield return new object[]
-            {
-                @"^.*$", "abc\ndefg\n\nhijkl\n", RegexOptions.Multiline | RegexOptions.RightToLeft,
-                new[]
-                {
-                    new CaptureData("", 16, 0),
-                    new CaptureData("hijkl", 10, 5),
-                    new CaptureData("", 9, 0),
-                    new CaptureData("defg", 4, 4),
-                    new CaptureData("abc", 0, 3),
                 }
             };
 
+            // RegexOptions.RightToLeft is not supported with NonBacktracking
+            if (options != RegexHelpers.RegexOptionNonBacktracking)
+            {
+                yield return new object[]
+                {
+                @"^.*$", "abc\ndefg\n\nhijkl\n", options | RegexOptions.Multiline | RegexOptions.RightToLeft,
+                new[]
+                {
+                    new CaptureData("", 16, 0),
+                    new CaptureData("hijkl", 10, 5),
+                    new CaptureData("", 9, 0),
+                    new CaptureData("defg", 4, 4),
+                    new CaptureData("abc", 0, 3),
+                }
+                };
+            }
+
             yield return new object[]
             {
-                ".*", "abc", RegexOptions.None,
+                ".*", "abc", options,
                 new[]
                 {
                     new CaptureData("abc", 0, 3),
@@ -266,7 +284,7 @@ namespace System.Text.RegularExpressions.Tests
                 // .NET Framework missing fix in https://github.com/dotnet/runtime/pull/1075
                 yield return new object[]
                 {
-                    @"[a -\-\b]", "a #.", RegexOptions.None,
+                    @"[a -\-\b]", "a #.", options,
                     new CaptureData[]
                     {
                         new CaptureData("a", 0, 1),
@@ -275,10 +293,13 @@ namespace System.Text.RegularExpressions.Tests
                     }
                 };
 
-                // .NET Framework missing fix in https://github.com/dotnet/runtime/pull/993
-                yield return new object[]
+                // RegexOptions.ECMAScript is not supported with NonBacktracking
+                if (options != RegexHelpers.RegexOptionNonBacktracking)
                 {
-                    "[^]", "every", RegexOptions.ECMAScript,
+                    // .NET Framework missing fix in https://github.com/dotnet/runtime/pull/993
+                    yield return new object[]
+                    {
+                    "[^]", "every", options | RegexOptions.ECMAScript,
                     new CaptureData[]
                     {
                         new CaptureData("e", 0, 1),
@@ -287,11 +308,13 @@ namespace System.Text.RegularExpressions.Tests
                         new CaptureData("r", 3, 1),
                         new CaptureData("y", 4, 1),
                     }
-                };
+                    };
+                }
             }
         }
 
         [Theory]
+        [MemberData(nameof(Matches_TestData_NonBacktracking))]
         [MemberData(nameof(Matches_TestData))]
         [MemberData(nameof(RegexCompilationHelper.TransformRegexOptions), nameof(Matches_TestData), 2, MemberType = typeof(RegexCompilationHelper))]
         public void Matches(string pattern, string input, RegexOptions options, CaptureData[] expected)
@@ -368,7 +391,7 @@ namespace System.Text.RegularExpressions.Tests
             AssertExtensions.Throws<ArgumentOutOfRangeException>("options", () => Regex.Matches("input", "pattern", (RegexOptions)(-1)));
             AssertExtensions.Throws<ArgumentOutOfRangeException>("options", () => Regex.Matches("input", "pattern", (RegexOptions)(-1), TimeSpan.FromSeconds(1)));
 
-            // 0x400 is new DFA mode that is now valid, 0x800 is still invalid
+            // 0x400 is new NonBacktracking mode that is now valid, 0x800 is still invalid
             AssertExtensions.Throws<ArgumentOutOfRangeException>("options", () => Regex.Matches("input", "pattern", (RegexOptions)0x800));
             AssertExtensions.Throws<ArgumentOutOfRangeException>("options", () => Regex.Matches("input", "pattern", (RegexOptions)0x800, TimeSpan.FromSeconds(1)));
 
