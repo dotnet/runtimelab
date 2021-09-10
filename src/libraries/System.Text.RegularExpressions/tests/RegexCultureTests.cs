@@ -202,5 +202,76 @@ namespace System.Text.RegularExpressions.Tests
             // Ignoring case can only add more letters here -- not REMOVE letters
             Assert.True(regex.IsMatch(input));
         }
+
+        public static IEnumerable<object[]> Match_In_Different_Cultures_TestData()
+        {
+            CultureInfo invariant = CultureInfo.InvariantCulture;
+            CultureInfo current = CultureInfo.CurrentCulture;
+            CultureInfo turkish = new CultureInfo("tr-TR");
+
+            foreach (RegexOptions options in RegexHelpers.RegexOptionsExtended())
+            {
+                // \u0130 (Turkish I with dot) and \u0131 (Turkish i without dot) are unrelated characters in general
+
+                // Expected answers in the default en-US culture
+                yield return new object[] { "(?i:I)", options, current, "xy\u0131ab", "" };
+                yield return new object[] { "(?i:iI+)", options, current, "abcIIIxyz", "III" };
+                yield return new object[] { "(?i:iI+)", options, current, "abcIi\u0130xyz", "Ii\u0130" };
+                yield return new object[] { "(?i:iI+)", options, current, "abcI\u0130ixyz", "I\u0130i" };
+                yield return new object[] { "(?i:iI+)", options, current, "abc\u0130IIxyz", "\u0130II" };
+                yield return new object[] { "(?i:iI+)", options, current, "abc\u0130\u0131Ixyz", "" };
+                yield return new object[] { "(?i:iI+)", options, current, "abc\u0130Iixyz", "\u0130Ii" };
+                yield return new object[] { "(?i:[^IJKLM]I)", options, current, "ii\u0130i\u0131ab", "" };
+
+                // Expected answers in the invariant culture
+                yield return new object[] { "(?i:I)", options, invariant, "xy\u0131ab", "" };
+                yield return new object[] { "(?i:iI+)", options, invariant, "abcIIIxyz", "III" };
+                yield return new object[] { "(?i:iI+)", options, invariant, "abc\u0130\u0131Ixyz", "" };
+
+                // Expected answers in the Turkish culture
+                yield return new object[] { "(?i:I)", options, turkish, "xy\u0131ab", "\u0131" };
+                yield return new object[] { "(?i:iI+)", options, turkish, "abcIIIxyz", "" };
+                yield return new object[] { "(?i:iI+)", options, turkish, "abcIi\u0130xyz", "" };
+                yield return new object[] { "(?i:iI+)", options, turkish, "abcI\u0130ixyz", "" };
+                yield return new object[] { "(?i:[^IJKLM]I)", options, turkish, "ii\u0130i\u0131ab", "i\u0131" };
+
+                if (options != RegexOptions.None && options != RegexOptions.Compiled)
+                {
+                    // Otherwise the following tests fail (in disjoint cases), see one extracted active issue below
+
+                    // Expected answers in the invariant culture
+                    yield return new object[] { "(?i:iI+)", options, invariant, "abcIi\u0130xyz", "Ii" };               // <-- failing for None, Compiled
+                    yield return new object[] { "(?i:iI+)", options, invariant, "abcI\u0130ixyz", "" };                 // <-- failing for Compiled
+                    yield return new object[] { "(?i:iI+)", options, invariant, "abc\u0130IIxyz", "II" };               // <-- failing for Compiled
+                    yield return new object[] { "(?i:iI+)", options, invariant, "abc\u0130Iixyz", "Ii" };               // <-- failing for Compiled
+                    yield return new object[] { "(?i:[^IJKLM]I)", options, invariant, "ii\u0130i\u0131ab", "\u0130i" }; // <-- failing for None, Compiled
+
+                    // Expected answers in the Turkish culture
+                    yield return new object[] { "(?i:iI+)", options, turkish, "abc\u0130IIxyz", "\u0130II" };           // <-- failing for None, Compiled
+                    yield return new object[] { "(?i:iI+)", options, turkish, "abc\u0130\u0131Ixyz", "\u0130\u0131I" }; // <-- failing for None, Compiled
+                    yield return new object[] { "(?i:iI+)", options, turkish, "abc\u0130Iixyz", "\u0130I" };            // <-- failing for None, Compiled
+                }
+            }
+        }
+
+        [Theory]
+        [MemberData(nameof(Match_In_Different_Cultures_TestData))]
+        public void Match_In_Different_Cultures(string pattern, RegexOptions options, CultureInfo culture, string input, string match_expected)
+        {
+            Regex r = Create(pattern, culture, options)[0];
+            var match = r.Match(input);
+            Assert.Equal(match_expected, match.Value);
+        }
+
+        [ActiveIssue("Incorrect result of match in complied mode in Invariant culture")]
+        [Fact]
+        public void Match_InvariantCulture_None_vs_Compiled()
+        {
+            string pattern = "(?i:iI+)";
+            string input = "abc\u0130IIxyz";
+            Regex[] re = Create(pattern, CultureInfo.InvariantCulture, RegexOptions.None);
+            Assert.Equal(re[0].Match(input).Value, re[1].Match(input).Value); // <-- Compiled gives the wrong result
+            // Assert.Equal("II", re[0].Match(input).Value); <-- expected result
+        }
     }
 }
