@@ -30,7 +30,6 @@
 
     <ItemGroup Condition="'$(TestBuildMode)' == 'nativeaot' and '$(TargetArchitecture)' == 'wasm'">
       <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\BasicThreading\BasicThreading.csproj" />
-      <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\DataFlow\DataFlow.csproj" />
       <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\HardwareIntrinsics\*.csproj" />
       <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\Delegates\Delegates.csproj" />
       <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\DynamicGenerics\DynamicGenerics.csproj" />

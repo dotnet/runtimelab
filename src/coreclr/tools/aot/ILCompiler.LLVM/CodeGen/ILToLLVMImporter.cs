@@ -3,12 +3,9 @@
 
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 using Internal.TypeSystem;
 using ILCompiler;
 using LLVMSharp.Interop;
@@ -4585,6 +4582,7 @@ namespace Internal.IL
 
         private LLVMValueRef GetFieldAddress(FieldDesc runtimeDeterminedField, FieldDesc field, bool isStatic)
         {
+            _compilation.NodeFactory.MetadataManager.GetDependenciesDueToAccess(ref _dependencies, _compilation.NodeFactory, _canonMethodIL, field);
             if (field.IsStatic)
             {
                 //pop unused value
