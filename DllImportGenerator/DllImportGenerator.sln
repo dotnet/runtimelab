@@ -29,6 +29,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Benchmarks", "Benchmarks\Be
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DllImportGenerator.Vsix", "DllImportGenerator.Vsix\DllImportGenerator.Vsix.csproj", "{F9215CDD-7B47-4C17-9166-0BE5066CA6BB}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Microsoft.Interop.SourceGeneration", "Microsoft.Interop.SourceGeneration\Microsoft.Interop.SourceGeneration.csproj", "{03FAE24C-728D-419C-B6EC-5C7AE8C45705}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -79,6 +81,10 @@ Global
 		{F9215CDD-7B47-4C17-9166-0BE5066CA6BB}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F9215CDD-7B47-4C17-9166-0BE5066CA6BB}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F9215CDD-7B47-4C17-9166-0BE5066CA6BB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{03FAE24C-728D-419C-B6EC-5C7AE8C45705}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{03FAE24C-728D-419C-B6EC-5C7AE8C45705}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{03FAE24C-728D-419C-B6EC-5C7AE8C45705}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{03FAE24C-728D-419C-B6EC-5C7AE8C45705}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
