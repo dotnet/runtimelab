@@ -83,20 +83,30 @@ namespace System.Text.RegularExpressions.Tests
             }
         }
 
+        public static IEnumerable<object[]> TurkishI_Is_Differently_LowerUpperCased_In_Turkish_Culture_TestData()
+        {
+            // TODO:  foreach (RegexOptions options in RegexHelpers.RegexOptionsExtended())
+            // this currently fails for NonBacktracking, although all the culture support is there
+            foreach (RegexOptions options in new RegexOptions[] { RegexOptions.None })
+            {
+                yield return new object[] { 2, options };
+                yield return new object[] { 256, options };
+            }
+        }
+
         /// <summary>
         /// See https://en.wikipedia.org/wiki/Dotted_and_dotless_I
         /// </summary>
         [Theory]
-        [InlineData(2)]
-        [InlineData(256)]
+        [MemberData(nameof(TurkishI_Is_Differently_LowerUpperCased_In_Turkish_Culture_TestData))]
         [ActiveIssue("https://github.com/dotnet/runtime/issues/56407", TestPlatforms.Android)]
-        public void TurkishI_Is_Differently_LowerUpperCased_In_Turkish_Culture(int length)
+        public void TurkishI_Is_Differently_LowerUpperCased_In_Turkish_Culture(int length, RegexOptions options)
         {
             var turkish = new CultureInfo("tr-TR");
             string input = string.Concat(Enumerable.Repeat("I\u0131\u0130i", length / 2));
 
-            Regex[] cultInvariantRegex = Create(input, CultureInfo.InvariantCulture, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
-            Regex[] turkishRegex = Create(input, turkish, RegexOptions.IgnoreCase);
+            Regex[] cultInvariantRegex = Create(input, CultureInfo.InvariantCulture, options | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+            Regex[] turkishRegex = Create(input, turkish, options | RegexOptions.IgnoreCase);
 
             // same input and regex does match so far so good
             Assert.All(cultInvariantRegex, rex => Assert.True(rex.IsMatch(input)));
