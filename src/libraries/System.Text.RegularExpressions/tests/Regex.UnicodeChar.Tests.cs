@@ -12,19 +12,8 @@ namespace System.Text.RegularExpressions.Tests
     {
         private const int MaxUnicodeRange = 2 << 15;
 
-        public static IEnumerable<object[]> RegexUnicodeChar_TestData()
-        {
-            if (!PlatformDetection.IsNetFramework)
-            {
-                yield return new object[] { RegexHelpers.RegexOptionNonBacktracking };
-            }
-
-            yield return new object[] { RegexOptions.None };
-            yield return new object[] { RegexOptions.Compiled };
-        }
-
         [Theory]
-        [MemberData(nameof(RegexUnicodeChar_TestData))]
+        [MemberData(nameof(RegexHelpers.RegexOptions_TestData), MemberType = typeof(RegexHelpers))]
         public void RegexUnicodeChar(RegexOptions options)
         {
             // Regex engine is Unicode aware now for the \w and \d character classes
