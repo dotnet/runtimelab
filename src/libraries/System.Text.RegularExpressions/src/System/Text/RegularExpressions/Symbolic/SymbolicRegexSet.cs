@@ -330,8 +330,7 @@ namespace System.Text.RegularExpressions.Symbolic
             {
                 Enumerator enumerator = GetEnumerator();
                 bool nonempty = enumerator.MoveNext();
-                // Collection must be nonempty because IsNothing is false and IsEverything is false
-                Debug.Assert(nonempty);
+                Debug.Assert(nonempty, "Collection must be nonempty because IsNothing is false and IsEverything is false");
                 SymbolicRegexNode<S> node = enumerator.Current;
                 if (!enumerator.MoveNext())
                 {
