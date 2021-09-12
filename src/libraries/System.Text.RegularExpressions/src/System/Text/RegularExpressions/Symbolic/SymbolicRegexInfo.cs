@@ -181,9 +181,14 @@ namespace System.Text.RegularExpressions.Symbolic
 
         public static SymbolicRegexInfo Not(SymbolicRegexInfo info) =>
             // Nullability is complemented, all other properties remain the same
-            // Observe that Not(Not(info)) == info
-            Mk(isAlwaysNullable: !info.IsNullable,
-                canBeNullable: !info.CanBeNullable,
+            // The following rules are used to determine nullability of Not(node):
+            // Observe that this is used as an over-approximation, actual nullability is checked dynamically based on given context.
+            // - If node is never nullable (for any context, info.CanBeNullable=false) then Not(node) is always nullable
+            // - If node is always nullable (info.IsNullable=true) then Not(node) can never be nullable
+            // For example \B.CanBeNullable=true and \B.IsNullable=false
+            // and ~(\B).CanBeNullable=true and ~(\B).IsNullable=false
+            Mk(isAlwaysNullable: !info.CanBeNullable,
+                canBeNullable: !info.IsNullable,
                 startsWithLineAnchor: info.StartsWithLineAnchor,
                 startsWithBoundaryAnchor: info.StartsWithBoundaryAnchor,
                 containsSomeAnchor: info.ContainsSomeAnchor,
