@@ -446,6 +446,7 @@ namespace System.Text.RegularExpressions.Symbolic
                 {
                     return false;
                 }
+
                 conjuncts.Add(node.Child(0));
                 node = node.Child(1);
                 while (IsIntersect(node))
