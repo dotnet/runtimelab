@@ -294,7 +294,7 @@ namespace System.Text.RegularExpressions.Symbolic
                     }
                     throw new NotSupportedException(SR.Format(SR.NotSupported_NonBacktrackingConflictingExpression, node.Type switch
                     {
-                        RegexNode.Testgroup => SR.ExpressionDescription_IfThenElse,
+                        //RegexNode.Testgroup => SR.ExpressionDescription_IfThenElse,
                         RegexNode.Ref => SR.ExpressionDescription_Backreference,
                         RegexNode.Testref => SR.ExpressionDescription_Conditional,
                         RegexNode.Require => SR.ExpressionDescription_PositiveLookaround,
