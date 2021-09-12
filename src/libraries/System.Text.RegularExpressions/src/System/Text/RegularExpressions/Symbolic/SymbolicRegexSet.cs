@@ -377,8 +377,11 @@ namespace System.Text.RegularExpressions.Symbolic
                             count++;
                         }
                         node.ToString(sb);
+
                         while (count-- > 0)
+                        {
                             sb.Append($"|{SymbolicRegexNode<S>.EmptyCharClass})");
+                        }
                     }
                 }
             }
