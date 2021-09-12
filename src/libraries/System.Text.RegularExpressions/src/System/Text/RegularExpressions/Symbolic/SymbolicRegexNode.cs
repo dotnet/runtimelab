@@ -954,80 +954,152 @@ namespace System.Text.RegularExpressions.Symbolic
             };
         }
 
-        private string ToStringForLoop() => _kind switch
+        private void ToStringForLoop(StringBuilder sb)
         {
-            SymbolicRegexKind.Singleton => ToString(),
-            _ => $"({ToString()})",
-        };
-
-        internal string ToStringForAlts() => _kind switch
-        {
-            SymbolicRegexKind.Concat or SymbolicRegexKind.Singleton or SymbolicRegexKind.Loop => ToString(),
-            _ => $"({ToString()})",
-        };
+            if (_kind == SymbolicRegexKind.Singleton)
+            {
+                ToString(sb);
+            }
+            else
+            {
+                sb.Append('(');
+                ToString(sb);
+                sb.Append(')');
+            }
+        }
 
         public override string ToString()
+        {
+            StringBuilder sb = new();
+            ToString(sb);
+            return sb.ToString();
+        }
+
+        internal void ToString(StringBuilder sb)
         {
             switch (_kind)
             {
                 case SymbolicRegexKind.EndAnchor:
-                    return "\\z";
+                    sb.Append("\\z");
+                    return;
 
                 case SymbolicRegexKind.StartAnchor:
-                    return "\\A";
+                    sb.Append("\\A");
+                    return;
 
                 case SymbolicRegexKind.BOLAnchor:
-                    return "^";
+                    sb.Append('^');
+                    return;
 
                 case SymbolicRegexKind.EOLAnchor:
-                    return "$";
+                    sb.Append('$');
+                    return;
 
                 case SymbolicRegexKind.Epsilon:
-                    return "";
-
                 case SymbolicRegexKind.WatchDog:
-                    return "";
+                    return;
 
                 case SymbolicRegexKind.WBAnchor:
-                    return "\\b";
+                    sb.Append("\\b");
+                    return;
 
                 case SymbolicRegexKind.NWBAnchor:
-                    return "\\B";
+                   sb.Append("\\B");
+                    return;
 
                 case SymbolicRegexKind.EndAnchorZ:
-                    return "\\Z";
+                    sb.Append("\\Z");
+                    return;
 
                 case SymbolicRegexKind.EndAnchorZRev:
-                    return "\\a";
+                    sb.Append("\\a");
+                    return;
 
                 case SymbolicRegexKind.Or:
                 case SymbolicRegexKind.And:
                     Debug.Assert(_alts is not null);
-                    return _alts.ToString();
+                    _alts.ToString(sb);
+                    return;
 
                 case SymbolicRegexKind.Concat:
                     Debug.Assert(_left is not null && _right is not null);
-                    return _left.ToString() + _right.ToString();
+                    _left.ToString(sb);
+                    _right.ToString(sb);
+                    return;
 
                 case SymbolicRegexKind.Singleton:
                     Debug.Assert(_set is not null);
-                    return _builder._solver.PrettyPrint(_set);
+                    sb.Append(_builder._solver.PrettyPrint(_set));
+                    return;
 
                 case SymbolicRegexKind.Loop:
                     Debug.Assert(_left is not null);
-                    return
-                        IsDotStar ? ".*" :
-                        IsMaybe ? _left.ToStringForLoop() + "?" :
-                        IsStar ? _left.ToStringForLoop() + "*" + (IsLazy ? "?" : "") :
-                        IsPlus ? _left.ToStringForLoop() + "+" + (IsLazy ? "?" : "") :
-                        _lower == 0 && _upper == 0 ? "()" :
-                        !IsBoundedLoop ? _left.ToStringForLoop() + "{" + _lower + ",}" + (IsLazy ? "?" : "") :
-                        _lower == _upper ? _left.ToStringForLoop() + "{" + _lower + "}" + (IsLazy ? "?" : "") :
-                        _left.ToStringForLoop() + "{" + _lower + "," + _upper + "}" + (IsLazy ? "?" : "");
+                    if (IsDotStar)
+                    {
+                        sb.Append(".*");
+                    }
+                    else if (IsMaybe)
+                    {
+                        _left.ToStringForLoop(sb);
+                        sb.Append('?');
+                    }
+                    else if (IsStar)
+                    {
+                        _left.ToStringForLoop(sb);
+                        sb.Append('*');
+                        if (IsLazy)
+                        {
+                            sb.Append('?');
+                        }
+                    }
+                    else if (IsPlus)
+                    {
+                        _left.ToStringForLoop(sb);
+                        sb.Append('+');
+                        if (IsLazy)
+                        {
+                            sb.Append('?');
+                        }
+                    }
+                    else if (_lower == 0 && _upper == 0)
+                    {
+                        sb.Append("()");
+                    }
+                    else if (!IsBoundedLoop)
+                    {
+                        _left.ToStringForLoop(sb);
+                        sb.Append('{');
+                        sb.Append(_lower);
+                        sb.Append(",}");
+                        if (IsLazy)
+                            sb.Append('?');
+                    }
+                    else if (_lower == _upper)
+                    {
+                        _left.ToStringForLoop(sb);
+                        sb.Append('{');
+                        sb.Append(_lower);
+                        sb.Append('}');
+                        if (IsLazy)
+                            sb.Append('?');
+                    }
+                    else
+                    {
+                        _left.ToStringForLoop(sb);
+                        sb.Append('{');
+                        sb.Append(_lower);
+                        sb.Append(',');
+                        sb.Append(_upper);
+                        sb.Append('}');
+                        if (IsLazy)
+                            sb.Append('?');
+                    }
+                    return;
 
                 default:
                     Debug.Assert(_kind == SymbolicRegexKind.IfThenElse);
-                    return "(TBD:if-then-else)"; // TODO
+                    sb.Append("(TBD:if-then-else)"); // TODO: this is going to be gone
+                    return;
             }
         }
 

@@ -316,37 +316,74 @@ namespace System.Text.RegularExpressions.Symbolic
             return true;
         }
 
-        public override string ToString()
+        public void ToString(StringBuilder sb)
         {
-            var list = new List<string>();
-            foreach (SymbolicRegexNode<S> s in this)
+            const string EmptyCharClass = "[]";
+
+            if (IsNothing)
             {
-                list.Add(s.ToStringForAlts());
+                sb.Append(EmptyCharClass);
             }
-
-            string result = string.Empty;
-
-            if (list.Count != 0)
+            else if (IsEverything)
             {
-                if (_kind == SymbolicRegexKind.Or)
+                sb.Append(".*");
+            }
+            else
+            {
+                Enumerator enumerator = GetEnumerator();
+                bool nonempty = enumerator.MoveNext();
+                // Collection must be nonempty because IsNothing is false and IsEverything is false
+                Debug.Assert(nonempty);
+                SymbolicRegexNode<S> node = enumerator.Current;
+                if (!enumerator.MoveNext())
                 {
-                    // Display as (R[0]|R[1]|...)
-                    result = $"({string.Join('|', list)})";
+                    // The collection only has one element
+                    node.ToString(sb);
                 }
                 else
                 {
-                    // Display using if-then-else construct: (?(A)(B)|[0-[0]]) to represent intersect(A,B)
-                    Debug.Assert(_kind == SymbolicRegexKind.And);
-                    result = list[^1].ToString();
-                    for (int i = list.Count - 2; i >= 0; i--)
+                    if (_kind == SymbolicRegexKind.Or)
                     {
-                        const string EmptyCharClass = "[0-[0]]";
-                        result = $"(?({list[i]})({result})|{EmptyCharClass})";
+                        // Union of two or more elements
+                        sb.Append('(');
+                        // Append the first two elements
+                        node.ToString(sb);
+                        sb.Append('|');
+                        enumerator.Current.ToString(sb);
+                        while (enumerator.MoveNext())
+                        {
+                            // Append all the remaining elements
+                            sb.Append('|');
+                            enumerator.Current.ToString(sb);
+                        }
+                        sb.Append(')');
+                    }
+                    else
+                    {
+                        // Intersection A&B is displayed as (?(A)B|[])
+                        // Intersection A&B&C is displayed as (?(A)(?(B)C|[])|[])
+                        // Intersection A&B&C&D is displayed as (?(A)(?(B)(?(C)D|[])|[])|[]) ... etc
+
+                        // Intersection of two or more elements
+                        sb.Append("(?(");
+                        node.ToString(sb);
+                        sb.Append(')');
+                        node = enumerator.Current;
+                        int count = 1;
+                        while (enumerator.MoveNext())
+                        {
+                            sb.Append("(?(");
+                            node.ToString(sb);
+                            sb.Append(')');
+                            node = enumerator.Current;
+                            count++;
+                        }
+                        node.ToString(sb);
+                        while (count-- > 0)
+                            sb.Append($"|{EmptyCharClass})");
                     }
                 }
             }
-
-            return result;
         }
 
         internal SymbolicRegexSet<S> CreateDerivative(S elem, uint context)
