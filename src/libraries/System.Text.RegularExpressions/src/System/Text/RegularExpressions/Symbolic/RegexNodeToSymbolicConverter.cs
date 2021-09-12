@@ -454,6 +454,7 @@ namespace System.Text.RegularExpressions.Symbolic
                     conjuncts.Add(node.Child(0));
                     node = node.Child(1);
                 }
+
                 conjuncts.Add(node);
                 return true;
             }
