@@ -179,19 +179,17 @@ namespace System.Text.RegularExpressions.Symbolic
             return Mk(i);
         }
 
-        public static SymbolicRegexInfo IfThenElse(SymbolicRegexInfo cond_info, SymbolicRegexInfo then_info, SymbolicRegexInfo else_info)
-        {
-            uint i = (cond_info._info | then_info._info | else_info._info) & ~IsAlwaysNullableMask;
-
-            // It is unclear exactly what the correct behavior should be of anchors in ITE and for lazy loops
-            bool isAlwaysNullable = cond_info.IsNullable ? then_info.IsNullable : else_info.IsNullable;
-            if (isAlwaysNullable)
-            {
-                i |= IsAlwaysNullableMask | CanBeNullableMask;
-            }
-
-            return Mk(i);
-        }
+        public static SymbolicRegexInfo Not(SymbolicRegexInfo info) =>
+            // Nullability is complemented, all other properties remain the same
+            // Observe that Not(Not(info)) == info
+            Mk(isAlwaysNullable: !info.IsNullable,
+                canBeNullable: !info.CanBeNullable,
+                startsWithLineAnchor: info.StartsWithLineAnchor,
+                startsWithBoundaryAnchor: info.StartsWithBoundaryAnchor,
+                containsSomeAnchor: info.ContainsSomeAnchor,
+                containsLineAnchor: info.ContainsLineAnchor,
+                containsSomeCharacter: info.ContainsSomeCharacter,
+                isLazy: info.IsLazy);
 
         public override bool Equals(object? obj) => obj is SymbolicRegexInfo i && i._info == _info;
 

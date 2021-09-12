@@ -318,11 +318,9 @@ namespace System.Text.RegularExpressions.Symbolic
 
         public void ToString(StringBuilder sb)
         {
-            const string EmptyCharClass = "[]";
-
             if (IsNothing)
             {
-                sb.Append(EmptyCharClass);
+                sb.Append(SymbolicRegexNode<S>.EmptyCharClass);
             }
             else if (IsEverything)
             {
@@ -380,7 +378,7 @@ namespace System.Text.RegularExpressions.Symbolic
                         }
                         node.ToString(sb);
                         while (count-- > 0)
-                            sb.Append($"|{EmptyCharClass})");
+                            sb.Append($"|{SymbolicRegexNode<S>.EmptyCharClass})");
                     }
                 }
             }

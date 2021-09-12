@@ -13,7 +13,7 @@ namespace System.Text.RegularExpressions.Symbolic
         Or = 0x10,
         Concat = 0x20,
         Loop = 0x40,
-        IfThenElse = 0x80,
+        Not = 0x80,
         And = 0x100,
         WatchDog = 0x200,
         BOLAnchor = 0x400,
