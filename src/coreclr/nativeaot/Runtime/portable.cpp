@@ -167,8 +167,11 @@ GPTR_DECL(MethodTable, g_pFreeObjectEEType);
 
 COOP_PINVOKE_HELPER(Object *, RhpNewFinalizableAlign8, (MethodTable* pEEType))
 {
-    Object * pObject = nullptr;
-    /* Not reachable as finalizable types are never align8 */ ASSERT_UNCONDITIONALLY("UNREACHABLE");
+    Object* pObject = (Object*)RhpGcAlloc(pEEType, GC_ALLOC_FINALIZE | GC_ALLOC_ALIGN8, 0, NULL);
+    if (pObject == nullptr)
+    {
+        ASSERT_UNCONDITIONALLY("NYI");  // TODO: Throw OOM
+    }
     return pObject;
 }
 
