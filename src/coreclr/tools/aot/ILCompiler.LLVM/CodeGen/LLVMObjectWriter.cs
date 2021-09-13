@@ -427,10 +427,6 @@ namespace ILCompiler.DependencyAnalysis
                 {
                     unmanagedSymbolRefs[keyValuePair.Key] = new SymbolRefData(EnsureIndirectionThunk(keyValuePair.Value.SymbolName), keyValuePair.Value.Offset);
                 }
-                // else
-                // {
-                //     withThunks[keyValuePair.Key] = keyValuePair.Value;
-                // }
             }
 
             return unmanagedSymbolRefs;

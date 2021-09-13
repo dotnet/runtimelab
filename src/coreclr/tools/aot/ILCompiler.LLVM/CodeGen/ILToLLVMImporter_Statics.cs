@@ -236,12 +236,7 @@ namespace Internal.IL
 
         internal static void EmitNativeToManagedThunk(LLVMCodegenCompilation compilation, MethodDesc method, string nativeName, LLVMValueRef managedFunction)
         {
-            if (_pinvokeMap.TryGetValue(nativeName, out MethodDesc existing))
-            {
-                // if (existing != method) return;
-                    // throw new InvalidProgramException("export and import function were mismatched");
-            }
-            else
+            if (!_pinvokeMap.ContainsKey(nativeName))
             {
                 _pinvokeMap.Add(nativeName, method);
             }
