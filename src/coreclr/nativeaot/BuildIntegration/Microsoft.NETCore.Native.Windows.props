@@ -43,7 +43,7 @@ The .NET Foundation licenses this file to you under the MIT license.
 
     <ItemGroup>
       <DirectPInvoke Include="@(NetCoreAppNativeLibrary->'%(Identity)')" />
-      <NativeLibrary Include="@(NetCoreAppNativeLibrary->'$(IlcPath)\sdk\%(Identity).NativeAOT-Static$(LibrarySuffix)')" />
+      <NativeLibrary Include="@(NetCoreAppNativeLibrary->'$(IlcPath)\sdk\%(Identity).Aot$(LibrarySuffix)')" />
     </ItemGroup>
 
     <ItemGroup>

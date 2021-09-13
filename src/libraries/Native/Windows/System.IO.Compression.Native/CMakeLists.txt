@@ -104,16 +104,18 @@ add_library(System.IO.Compression.Native-Static
 target_compile_options(System.IO.Compression.Native-Static PRIVATE /guard:cf)
 target_compile_options(System.IO.Compression.Native-Static PRIVATE $<$<CONFIG:RELEASE>:/GL>)
 
-add_library(System.IO.Compression.Native.NativeAOT-Static
-    STATIC
-    ${NATIVECOMPRESSION_SOURCES}
-)
+if(STATIC_LIBS_ONLY)
+    add_library(System.IO.Compression.Native.Aot
+        STATIC
+        ${NATIVECOMPRESSION_SOURCES}
+    )
 
-add_library(System.IO.Compression.Native.NativeAOT-Static.GuardCF
-    STATIC
-    ${NATIVECOMPRESSION_SOURCES}
-)
-target_compile_options(System.IO.Compression.Native.NativeAOT-Static.GuardCF PRIVATE /guard:cf)
+    add_library(System.IO.Compression.Native.Aot.GuardCF
+        STATIC
+        ${NATIVECOMPRESSION_SOURCES}
+    )
+    target_compile_options(System.IO.Compression.Native.Aot.GuardCF PRIVATE /guard:cf)
+endif()
 
 # Allow specification of arguments that should be passed to the linker
 if (GEN_SHARED_LIB)
@@ -126,8 +128,11 @@ if (GEN_SHARED_LIB)
     target_link_libraries(System.IO.Compression.Native ${__LinkLibraries})
 endif()
 target_link_libraries(System.IO.Compression.Native-Static ${__LinkLibraries})
-target_link_libraries(System.IO.Compression.Native.NativeAOT-Static ${__LinkLibraries})
-target_link_libraries(System.IO.Compression.Native.NativeAOT-Static.GuardCF ${__LinkLibraries})
+
+if(STATIC_LIBS_ONLY)
+    target_link_libraries(System.IO.Compression.Native.Aot ${__LinkLibraries})
+    target_link_libraries(System.IO.Compression.Native.Aot.GuardCF ${__LinkLibraries})
+endif()
 
 if (GEN_SHARED_LIB)
     GENERATE_EXPORT_HEADER( System.IO.Compression.Native
@@ -143,5 +148,7 @@ endif()
 
 install (TARGETS System.IO.Compression.Native-Static DESTINATION ${STATIC_LIB_DESTINATION} COMPONENT libs)
 
-install_static_library(System.IO.Compression.Native.NativeAOT-Static aotsdk nativeaot)
-install_static_library(System.IO.Compression.Native.NativeAOT-Static.GuardCF aotsdk nativeaot)
+if(STATIC_LIBS_ONLY)
+    install_static_library(System.IO.Compression.Native.Aot aotsdk nativeaot)
+    install_static_library(System.IO.Compression.Native.Aot.GuardCF aotsdk nativeaot)
+endif()
