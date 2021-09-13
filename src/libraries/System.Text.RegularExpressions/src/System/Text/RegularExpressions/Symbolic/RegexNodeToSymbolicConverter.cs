@@ -263,9 +263,6 @@ namespace System.Text.RegularExpressions.Symbolic
                 case RegexNode.Setlazy:
                     return ConvertSetloop(node, node.Type == RegexNode.Setlazy);
 
-                case RegexNode.Testgroup:
-                    return _builder.MkIfThenElse(Convert(node.Child(0), false), Convert(node.Child(1), false), Convert(node.Child(2), false));
-
                 // TBD: ECMA case intersect predicate with ascii range ?
                 case RegexNode.Boundary:
                 case RegexNode.ECMABoundary:
@@ -281,9 +278,25 @@ namespace System.Text.RegularExpressions.Symbolic
                 case RegexNode.Nothing:
                     return _builder._nothing;
 
+                case RegexNode.Testgroup:
+                    // Try to extract the special case representing complement or intersection
+                    if (IsComplementedNode(node))
+                    {
+                        return _builder.MkNot(Convert(node.Child(0), false));
+                    }
+
+                    List<RegexNode>? conjuncts;
+                    if (TryGetIntersection(node, out conjuncts))
+                    {
+                        return _builder.MkAnd(Array.ConvertAll(conjuncts.ToArray(), x => Convert(x, false)));
+                    }
+
+                    goto default;
+
                 default:
                     throw new NotSupportedException(SR.Format(SR.NotSupported_NonBacktrackingConflictingExpression, node.Type switch
                     {
+                        RegexNode.Testgroup => SR.ExpressionDescription_IfThenElse,
                         RegexNode.Ref => SR.ExpressionDescription_Backreference,
                         RegexNode.Testref => SR.ExpressionDescription_Conditional,
                         RegexNode.Require => SR.ExpressionDescription_PositiveLookaround,
@@ -421,6 +434,36 @@ namespace System.Text.RegularExpressions.Symbolic
                 SymbolicRegexNode<BDD> body = _builder.MkSingleton(moveCond);
                 return _builder.MkLoop(body, isLazy, node.M, node.N);
             }
+
+            // TODO: recognizing strictly only [] (RegexNode.Nothing), for example [0-[0]] would not be recognized
+            bool IsNothing(RegexNode node) => node.Type == RegexNode.Nothing || (node.Type == RegexNode.Set && ConvertSet(node).IsNothing);
+
+            bool IsDotStar(RegexNode node) => node.Type == RegexNode.Setloop && Convert(node, false).IsDotStar;
+
+            bool IsIntersect(RegexNode node) => node.Type == RegexNode.Testgroup && IsNothing(node.Child(2));
+
+            bool TryGetIntersection(RegexNode node, [Diagnostics.CodeAnalysis.NotNullWhen(true)] out List<RegexNode>? conjuncts)
+            {
+                if (!IsIntersect(node))
+                {
+                    conjuncts = null;
+                    return false;
+                }
+
+                conjuncts = new();
+                conjuncts.Add(node.Child(0));
+                node = node.Child(1);
+                while (IsIntersect(node))
+                {
+                    conjuncts.Add(node.Child(0));
+                    node = node.Child(1);
+                }
+
+                conjuncts.Add(node);
+                return true;
+            }
+
+            bool IsComplementedNode(RegexNode node) => IsNothing(node.Child(1)) && IsDotStar(node.Child(2));
         }
     }
 }

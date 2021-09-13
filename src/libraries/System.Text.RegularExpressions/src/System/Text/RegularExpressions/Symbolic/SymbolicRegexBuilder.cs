@@ -304,14 +304,11 @@ namespace System.Text.RegularExpressions.Symbolic
         }
 
         /// <summary>
-        /// Make an if-then-else regex (?(cond)left|right),
-        /// or create it as conjuction if right is false
+        /// Make a complemented node
         /// </summary>
-        /// <param name="cond">condition</param>
-        /// <param name="left">true case</param>
-        /// <param name="right">false case</param>
+        /// <param name="node">node to be complemented</param>
         /// <returns></returns>
-        internal SymbolicRegexNode<TElement> MkIfThenElse(SymbolicRegexNode<TElement> cond, SymbolicRegexNode<TElement> left, SymbolicRegexNode<TElement> right) => SymbolicRegexNode<TElement>.MkIfThenElse(this, cond, left, right);
+        internal SymbolicRegexNode<TElement> MkNot(SymbolicRegexNode<TElement> node) => SymbolicRegexNode<TElement>.MkNot(this, node);
 
         internal SymbolicRegexNode<TElement> NormalizeGeneralLoops(SymbolicRegexNode<TElement> sr)
         {
@@ -494,12 +491,9 @@ namespace System.Text.RegularExpressions.Symbolic
                     }
 
                 default:
-                    Debug.Assert(sr._kind == SymbolicRegexKind.IfThenElse);
-                    Debug.Assert(sr._iteCond is not null && sr._left is not null && sr._right is not null);
-                    return builderT.MkIfThenElse(
-                        Transform(sr._iteCond, builderT, predicateTransformer),
-                        Transform(sr._left, builderT, predicateTransformer),
-                        Transform(sr._right, builderT, predicateTransformer));
+                    Debug.Assert(sr._kind == SymbolicRegexKind.Not);
+                    Debug.Assert(sr._left is not null);
+                    return builderT.MkNot(Transform(sr._left, builderT, predicateTransformer));
             }
         }
 
@@ -607,15 +601,13 @@ namespace System.Text.RegularExpressions.Symbolic
                         return disj;
                         #endregion
                     }
-                case 'I': //if then else I(x,y,z)
+                case 'N': //Negation Nx
                     {
-                        #region ITE
-                        SymbolicRegexNode<TElement> cond = Parse(s, i + 2, out int n);
-                        SymbolicRegexNode<TElement> first = Parse(s, n + 1, out int m);
-                        SymbolicRegexNode<TElement> second = Parse(s, m + 1, out int k);
-                        var ite = SymbolicRegexNode<TElement>.MkIfThenElse(this, cond, first, second);
-                        i_next = k + 1;
-                        return ite;
+                        #region negation
+                        SymbolicRegexNode<TElement> cond = Parse(s, i + 1, out int n);
+                        var compl = SymbolicRegexNode<TElement>.MkNot(this, cond);
+                        i_next = n;
+                        return compl;
                         #endregion
                     }
                 case 'A':
@@ -755,6 +747,7 @@ namespace System.Text.RegularExpressions.Symbolic
             lock (this)
             {
                 state.Id = _stateCache.Count;
+                int k = state.GetHashCode();
                 _stateCache.Add(state);
 
                 Debug.Assert(_statearray is not null);

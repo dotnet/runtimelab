@@ -179,19 +179,22 @@ namespace System.Text.RegularExpressions.Symbolic
             return Mk(i);
         }
 
-        public static SymbolicRegexInfo IfThenElse(SymbolicRegexInfo cond_info, SymbolicRegexInfo then_info, SymbolicRegexInfo else_info)
-        {
-            uint i = (cond_info._info | then_info._info | else_info._info) & ~IsAlwaysNullableMask;
-
-            // It is unclear exactly what the correct behavior should be of anchors in ITE and for lazy loops
-            bool isAlwaysNullable = cond_info.IsNullable ? then_info.IsNullable : else_info.IsNullable;
-            if (isAlwaysNullable)
-            {
-                i |= IsAlwaysNullableMask | CanBeNullableMask;
-            }
-
-            return Mk(i);
-        }
+        public static SymbolicRegexInfo Not(SymbolicRegexInfo info) =>
+            // Nullability is complemented, all other properties remain the same
+            // The following rules are used to determine nullability of Not(node):
+            // Observe that this is used as an over-approximation, actual nullability is checked dynamically based on given context.
+            // - If node is never nullable (for any context, info.CanBeNullable=false) then Not(node) is always nullable
+            // - If node is always nullable (info.IsNullable=true) then Not(node) can never be nullable
+            // For example \B.CanBeNullable=true and \B.IsNullable=false
+            // and ~(\B).CanBeNullable=true and ~(\B).IsNullable=false
+            Mk(isAlwaysNullable: !info.CanBeNullable,
+                canBeNullable: !info.IsNullable,
+                startsWithLineAnchor: info.StartsWithLineAnchor,
+                startsWithBoundaryAnchor: info.StartsWithBoundaryAnchor,
+                containsSomeAnchor: info.ContainsSomeAnchor,
+                containsLineAnchor: info.ContainsLineAnchor,
+                containsSomeCharacter: info.ContainsSomeCharacter,
+                isLazy: info.IsLazy);
 
         public override bool Equals(object? obj) => obj is SymbolicRegexInfo i && i._info == _info;
 
