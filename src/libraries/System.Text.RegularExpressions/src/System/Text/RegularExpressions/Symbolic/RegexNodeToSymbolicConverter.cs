@@ -433,7 +433,7 @@ namespace System.Text.RegularExpressions.Symbolic
                 return _builder.MkLoop(body, isLazy, node.M, node.N);
             }
 
-            // TODO: recognizing strictly only [] (RegexNode.Nothing), for example [0-[0]] would not be regonized
+            // TODO: recognizing strictly only [] (RegexNode.Nothing), for example [0-[0]] would not be recognized
             bool IsNothing(RegexNode node) => node.Type == RegexNode.Nothing || (node.Type == RegexNode.Set && ConvertSet(node).IsNothing);
 
             bool IsDotStar(RegexNode node) => node.Type == RegexNode.Setloop && Convert(node, false).IsDotStar;
