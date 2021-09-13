@@ -14,7 +14,10 @@ namespace System.Text.RegularExpressions.Symbolic
     {
         internal const string EmptyCharClass = "[]";
 
-        internal const int MaxPrefixLength = RegexBoyerMoore.MaxLimit;
+        // Limit the maximum prefix length in the NonBacktracking case to 1000
+        // TODO: alternative is to rewrite SymbolicRegexNode.GetPrefixSequence
+        // to avoid deep recursion
+        internal const int MaxPrefixLength = 1000; // RegexBoyerMoore.MaxLimit;
 
         internal readonly SymbolicRegexBuilder<S> _builder;
         internal readonly SymbolicRegexKind _kind;
@@ -50,8 +53,9 @@ namespace System.Text.RegularExpressions.Symbolic
             _upper = upper;
             _set = set;
             _alts = alts;
+            // Ensure Hashcode is precomputed at construction time
+            EnsureHashCode();
         }
-
         /// <summary>True if this node only involves lazy loops</summary>
         internal bool IsLazy => _info.IsLazy;
 
@@ -836,6 +840,11 @@ namespace System.Text.RegularExpressions.Symbolic
 
         public override int GetHashCode()
         {
+            return _hashcode;
+        }
+
+        private void EnsureHashCode()
+        {
             if (_hashcode == -1)
             {
                 switch (_kind)
@@ -878,7 +887,6 @@ namespace System.Text.RegularExpressions.Symbolic
                         break;
                 };
             }
-            return _hashcode;
         }
 
         public override bool Equals([NotNullWhen(true)] object? obj)
@@ -1287,36 +1295,38 @@ namespace System.Text.RegularExpressions.Symbolic
         /// </summary>
         internal string GetFixedPrefix(CharSetSolver css, string culture, out bool ignoreCase)
         {
-            string singletonsPrefix = string.Empty;
-            string ignorecasePrefix = string.Empty;
+            StringBuilder singletonsPrefix = new();
+            StringBuilder ignorecasePrefix = new();
 
             BDD[] bdds = Array.ConvertAll(GetPrefix(), p => _builder._solver.ConvertToCharSet(css, p));
 
             for (int i = 0; i < bdds.Length && css.IsSingleton(bdds[i]); i++)
             {
-                singletonsPrefix += ((char)bdds[i].GetMin()).ToString();
+                singletonsPrefix.Append((char)bdds[i].GetMin());
             }
 
             for (int i = 0; i < bdds.Length && css.ApplyIgnoreCase(css.CharConstraint((char)bdds[i].GetMin()), culture).Equals(bdds[i]); i++)
             {
-                ignorecasePrefix += ((char)bdds[i].GetMin()).ToString();
+                ignorecasePrefix.Append((char)bdds[i].GetMin());
             }
 
             // Return the longer of the two prefixes, prefer the case-sensitive setting
             if (singletonsPrefix.Length >= ignorecasePrefix.Length)
             {
                 ignoreCase = false;
-                return singletonsPrefix;
+                return singletonsPrefix.ToString();
             }
             else
             {
                 ignoreCase = true;
-                return ignorecasePrefix;
+                return ignorecasePrefix.ToString();
             }
         }
 
         internal S[] GetPrefix() => GetPrefixSequence(ImmutableList<S>.Empty, MaxPrefixLength).ToArray();
 
+        // TODO: nonrecusrive to avoid DEEP RECURSION, in particular with Concat, and smarter in not doing unnecessary work
+        // stop computing a candidate list when encountering a predicate that is neither a singleton nor closed under ignore-case
         private ImmutableList<S> GetPrefixSequence(ImmutableList<S> pref, int lengthBound)
         {
             if (lengthBound == 0)

@@ -747,6 +747,7 @@ namespace System.Text.RegularExpressions.Symbolic
             lock (this)
             {
                 state.Id = _stateCache.Count;
+                int k = state.GetHashCode();
                 _stateCache.Add(state);
 
                 Debug.Assert(_statearray is not null);

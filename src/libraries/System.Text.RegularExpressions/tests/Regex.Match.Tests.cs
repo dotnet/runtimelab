@@ -1316,8 +1316,9 @@ namespace System.Text.RegularExpressions.Tests
         [MemberData(nameof(RegexHelpers.RegexOptions_TestData), MemberType = typeof(RegexHelpers))]
         public void StressTestDeepNestingOfConcat(RegexOptions options)
         {
-            string pattern = string.Concat(Enumerable.Repeat("([a-z]", RegexHelpers.StressTestNestingDepth).Concat(Enumerable.Repeat(")", RegexHelpers.StressTestNestingDepth)));
-            string input = string.Concat(Enumerable.Repeat("abcde", RegexHelpers.StressTestNestingDepth / 5));
+            int k = RegexHelpers.StressTestNestingDepth;
+            string pattern = string.Concat(Enumerable.Repeat("([a-z]",k).Concat(Enumerable.Repeat(")", k)));
+            string input = string.Concat(Enumerable.Repeat("abcde", k / 5));
             var re = new Regex(pattern, options);
             Assert.True(re.IsMatch(input));
         }
