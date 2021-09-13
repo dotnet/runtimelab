@@ -1068,27 +1068,30 @@ int32_t CryptoNative_LookupFriendlyNameByOid(const char* oidValue, const char** 
         return -2;
     }
 
+    // First, check if oidValue parses as a dotted decimal OID. If not, we'll
+    // return not-found and let the system cache that.
+    int asnRet = a2d_ASN1_OBJECT(NULL, 0, oidValue, -1);
+
+    if (asnRet <= 0)
+    {
+        return 0;
+    }
+
     // Do a lookup with no_name set. The purpose of this function is to map only the
     // dotted decimal to the friendly name. "sha1" in should not result in "sha1" out.
     oid = OBJ_txt2obj(oidValue, 1);
 
-    if (!oid)
+    if (oid == NULL)
     {
-        unsigned long err = ERR_peek_last_error();
-
-        // If the most recent error pushed onto the error queue is NOT from OID parsing
-        // then signal for an exception to be thrown.
-        if (err != 0 && ERR_GET_FUNC(err) != ASN1_F_A2D_ASN1_OBJECT)
-        {
-            return -1;
-        }
-
-        return 0;
+        // We know that the OID parsed (unless it underwent concurrent modification,
+        // which is unsupported), so any error in this stage should be an exception.
+        return -1;
     }
 
     // Look in the predefined, and late-registered, OIDs list to get the lookup table
     // identifier for this OID.  The OBJ_txt2obj object will not have ln set.
     nid = OBJ_obj2nid(oid);
+    ASN1_OBJECT_free(oid);
 
     if (nid == NID_undef)
     {
@@ -1119,6 +1122,16 @@ Version number as MNNFFRBB (major minor fix final beta/patch)
 int64_t CryptoNative_OpenSslVersionNumber()
 {
     return (int64_t)OpenSSL_version_num();
+}
+
+void CryptoNative_RegisterLegacyAlgorithms()
+{
+#ifdef NEED_OPENSSL_3_0
+    if (API_EXISTS(OSSL_PROVIDER_try_load))
+    {
+        OSSL_PROVIDER_try_load(NULL, "legacy", 1);
+    }
+#endif
 }
 
 #ifdef NEED_OPENSSL_1_0
@@ -1260,7 +1273,7 @@ done:
 }
 #endif // NEED_OPENSSL_1_0 */
 
-#ifdef NEED_OPENSSL_1_1
+#if defined NEED_OPENSSL_1_1 || defined NEED_OPENSSL_3_0
 
 // Only defined in OpenSSL 1.1.1+, has no effect on 1.1.0.
 #ifndef OPENSSL_INIT_NO_ATEXIT
@@ -1309,7 +1322,20 @@ static int32_t EnsureOpenSsl11Initialized()
 
 #endif
 
-int32_t CryptoNative_EnsureOpenSslInitialized()
+int32_t CryptoNative_OpenSslAvailable()
+{
+#ifdef FEATURE_DISTRO_AGNOSTIC_SSL
+    // OpenLibrary will attempt to open libssl. DlOpen will handle
+    // the case of it already being open and dlclose the duplicate
+    return OpenLibrary();
+#else
+    return 1;
+#endif
+}
+
+static int32_t g_initStatus = 1;
+
+static int32_t EnsureOpenSslInitializedCore()
 {
     // If portable then decide which OpenSSL we are, and call the right one.
     // If 1.0, call the 1.0 one.
@@ -1330,4 +1356,17 @@ int32_t CryptoNative_EnsureOpenSslInitialized()
 #else
     return EnsureOpenSsl11Initialized();
 #endif
+}
+
+static void EnsureOpenSslInitializedOnce()
+{
+    g_initStatus = EnsureOpenSslInitializedCore();
+}
+
+static pthread_once_t g_initializeShim = PTHREAD_ONCE_INIT;
+
+int32_t CryptoNative_EnsureOpenSslInitialized()
+{
+    pthread_once(&g_initializeShim, EnsureOpenSslInitializedOnce);
+    return g_initStatus;
 }

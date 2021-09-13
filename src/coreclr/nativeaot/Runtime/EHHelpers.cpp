@@ -25,8 +25,8 @@
 #include "threadstore.inl"
 #include "stressLog.h"
 #include "rhbinder.h"
-#include "eetype.h"
-#include "eetype.inl"
+#include "MethodTable.h"
+#include "MethodTable.inl"
 
 COOP_PINVOKE_HELPER(Boolean, RhpEHEnumInitFromStackFrameIterator, (
     StackFrameIterator* pFrameIter, void ** pMethodStartAddressOut, EHEnum* pEHEnum))
@@ -53,7 +53,7 @@ COOP_PINVOKE_HELPER(void *, RhpGetClasslibFunctionFromCodeAddress, (void * addre
 // Unmanaged helper to locate one of two classlib-provided functions that the runtime needs to
 // implement throwing of exceptions out of Rtm, and fail-fast. This may return NULL if the classlib
 // found via the provided address does not have the necessary exports.
-COOP_PINVOKE_HELPER(void *, RhpGetClasslibFunctionFromEEType, (EEType * pEEType, ClasslibFunctionId functionId))
+COOP_PINVOKE_HELPER(void *, RhpGetClasslibFunctionFromEEType, (MethodTable * pEEType, ClasslibFunctionId functionId))
 {
     return pEEType->GetTypeManagerPtr()->AsTypeManager()->GetClasslibFunction(functionId);
 }
@@ -449,6 +449,16 @@ int32_t __stdcall RhpHardwareExceptionHandler(uintptr_t faultCode, uintptr_t fau
 
 #else // TARGET_UNIX
 
+static bool g_ContinueOnFatalErrors = false;
+
+// Set the runtime to continue search when encountering an unhandled runtime exception. Once done it is forever.
+// Continuing the search allows any vectored exception handlers or SEH installed by the client to take effect.
+// Any client that does so is expected to handle stack overflows.
+EXTERN_C void RhpContinueOnFatalErrors()
+{
+    g_ContinueOnFatalErrors = true;
+}
+
 int32_t __stdcall RhpVectoredExceptionHandler(PEXCEPTION_POINTERS pExPtrs)
 {
     uintptr_t faultCode = pExPtrs->ExceptionRecord->ExceptionCode;
@@ -477,8 +487,13 @@ int32_t __stdcall RhpVectoredExceptionHandler(PEXCEPTION_POINTERS pExPtrs)
         }
         else if (faultCode == STATUS_STACK_OVERFLOW)
         {
-            // Do not use ASSERT_UNCONDITIONALLY here. It will crash because of it consumes too much stack.
+            if (g_ContinueOnFatalErrors)
+            {
+                // The client is responsible for the handling.
+                return EXCEPTION_CONTINUE_SEARCH;
+            }
 
+            // Do not use ASSERT_UNCONDITIONALLY here. It will crash because of it consumes too much stack.
             PalPrintFatalError("\nProcess is terminating due to StackOverflowException.\n");
             PalRaiseFailFastException(pExPtrs->ExceptionRecord, pExPtrs->ContextRecord, 0);
         }
@@ -515,6 +530,10 @@ int32_t __stdcall RhpVectoredExceptionHandler(PEXCEPTION_POINTERS pExPtrs)
         return EXCEPTION_CONTINUE_EXECUTION;
     }
 
+    // The client may have told us to continue to search for custom handlers,
+    // but in general we consider any form of hardware exception within the runtime itself a fatal error.
+    // Note this includes the managed code within the runtime.
+    if (!g_ContinueOnFatalErrors)
     {
         static uint8_t *s_pbRuntimeModuleLower = NULL;
         static uint8_t *s_pbRuntimeModuleUpper = NULL;
@@ -538,8 +557,6 @@ int32_t __stdcall RhpVectoredExceptionHandler(PEXCEPTION_POINTERS pExPtrs)
 
         if (((uint8_t*)faultingIP >= s_pbRuntimeModuleLower) && ((uint8_t*)faultingIP < s_pbRuntimeModuleUpper))
         {
-            // Generally any form of hardware exception within the runtime itself is considered a fatal error.
-            // Note this includes the managed code within the runtime.
             ASSERT_UNCONDITIONALLY("Hardware exception raised inside the runtime.");
             PalRaiseFailFastException(pExPtrs->ExceptionRecord, pExPtrs->ContextRecord, 0);
         }

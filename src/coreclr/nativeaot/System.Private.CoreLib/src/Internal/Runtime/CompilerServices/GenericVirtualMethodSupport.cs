@@ -2,10 +2,8 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System;
-using System.Collections.Generic;
-using System.Threading;
+
 using Internal.Runtime.Augments;
-using System.Runtime.InteropServices;
 
 namespace Internal.Runtime.CompilerServices
 {
@@ -16,19 +14,21 @@ namespace Internal.Runtime.CompilerServices
             bool slotChanged = false;
 
             IntPtr resolution = IntPtr.Zero;
-
-            // Otherwise, walk parent hierarchy attempting to resolve
-            EETypePtr eetype = type.ToEETypePtr();
-
             IntPtr functionPointer = IntPtr.Zero;
             IntPtr genericDictionary = IntPtr.Zero;
 
-            while (!eetype.IsNull)
+            bool lookForDefaultImplementations = false;
+
+        again:
+            // Walk parent hierarchy attempting to resolve
+            EETypePtr eeType = type.ToEETypePtr();
+
+            while (!eeType.IsNull)
             {
-                RuntimeTypeHandle handle = new RuntimeTypeHandle(eetype);
+                RuntimeTypeHandle handle = new RuntimeTypeHandle(eeType);
                 string methodName = methodNameAndSignature.Name;
                 RuntimeSignature methodSignature = methodNameAndSignature.Signature;
-                if (RuntimeAugments.TypeLoaderCallbacks.TryGetGenericVirtualTargetForTypeAndSlot(handle, ref declaringType, genericArguments, ref methodName, ref methodSignature, out functionPointer, out genericDictionary, out slotChanged))
+                if (RuntimeAugments.TypeLoaderCallbacks.TryGetGenericVirtualTargetForTypeAndSlot(handle, ref declaringType, genericArguments, ref methodName, ref methodSignature, lookForDefaultImplementations, out functionPointer, out genericDictionary, out slotChanged))
                 {
                     methodNameAndSignature = new MethodNameAndSignature(methodName, methodSignature);
 
@@ -37,7 +37,7 @@ namespace Internal.Runtime.CompilerServices
                     break;
                 }
 
-                eetype = eetype.BaseType;
+                eeType = eeType.BaseType;
             }
 
             // If the current slot to examine has changed, restart the lookup.
@@ -47,9 +47,29 @@ namespace Internal.Runtime.CompilerServices
                 return GVMLookupForSlotWorker(type, declaringType, genericArguments, methodNameAndSignature);
             }
 
+            if (resolution == IntPtr.Zero
+                && !lookForDefaultImplementations
+                && declaringType.ToEETypePtr().IsInterface)
+            {
+                lookForDefaultImplementations = true;
+                goto again;
+            }
+
             if (resolution == IntPtr.Zero)
             {
-                Environment.FailFast("GVM resolution failure");
+                var sb = new System.Text.StringBuilder();
+                sb.AppendLine("Generic virtual method pointer lookup failure.");
+                sb.AppendLine();
+                sb.AppendLine("Declaring type: " + declaringType.LastResortToString);
+                sb.AppendLine("Target type: " + type.LastResortToString);
+                sb.AppendLine("Method name: " + methodNameAndSignature.Name);
+                sb.AppendLine("Instantiation:");
+                for (int i = 0; i < genericArguments.Length; i++)
+                {
+                    sb.AppendLine("  Argument " + i.LowLevelToString() + ": " + genericArguments[i].LastResortToString);
+                }
+
+                Environment.FailFast(sb.ToString());
             }
 
             return resolution;

@@ -5,7 +5,7 @@ namespace Internal.TypeSystem
 {
     /// <summary>
     /// Used to mark TypeDesc types that are not part of the core type system
-    /// that should never be turned into an EEType.
+    /// that should never be turned into an MethodTable.
     /// </summary>
     public interface INonEmittableType
     { }

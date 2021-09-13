@@ -27,7 +27,7 @@ namespace ILCompiler.DependencyAnalysis
 
         private string GetBaseSymbolName(ISymbolNode symbol, NameMangler nameMangler, bool objectWriterUse = false)
         {
-            if (symbol is LLVMMethodCodeNode || symbol is LLVMBlockRefNode)
+            if (symbol is LLVMMethodCodeNode || symbol is LLVMBlockRefNode || symbol is ExternSymbolNode)
             {
                 return symbol.GetMangledName(nameMangler);
             }
@@ -103,7 +103,7 @@ namespace ILCompiler.DependencyAnalysis
 
         private static int GetNumericOffsetFromBaseSymbolValue(ISymbolNode symbol)
         {
-            if (symbol is LLVMMethodCodeNode || symbol is LLVMBlockRefNode)
+            if (symbol is LLVMMethodCodeNode || symbol is LLVMBlockRefNode || symbol is ExternSymbolNode)
             {
                 return 0;
             }
@@ -292,32 +292,23 @@ namespace ILCompiler.DependencyAnalysis
             mainFunc.Linkage = LLVMLinkage.LLVMExternalLinkage;
         }
 
-        public void SetCodeSectionAttribute(ObjectNodeSection section)
-        {
-            //throw new NotImplementedException(); // This function isn't complete
-        }
-
-        public void EnsureCurrentSection()
-        {
-        }
-
         ArrayBuilder<byte> _currentObjectData = new ArrayBuilder<byte>();
         struct SymbolRefData
         {
-            public SymbolRefData(bool isFunction, string symbolName, uint offset)
+            public SymbolRefData(string symbolName, uint offset)
             {
-                IsFunction = isFunction;
                 SymbolName = symbolName;
                 Offset = offset;
             }
 
-            readonly bool IsFunction;
-            readonly string SymbolName;
-            readonly uint Offset;
+            internal readonly string SymbolName;
+            internal readonly uint Offset;
 
             public LLVMValueRef ToLLVMValueRef(LLVMModuleRef module)
             {
-                LLVMValueRef valRef = IsFunction ? module.GetNamedFunction(SymbolName) : module.GetNamedGlobal(SymbolName);
+                // Dont know if symbol is for an extern function or a variable, so check both
+                LLVMValueRef valRef = module.GetNamedGlobal(SymbolName); 
+                if (valRef.Handle == IntPtr.Zero) valRef = module.GetNamedFunction(SymbolName);
 
                 if (Offset != 0 && valRef.Handle != IntPtr.Zero)
                 {
@@ -405,7 +396,17 @@ namespace ILCompiler.DependencyAnalysis
             arrayglobal.Linkage = LLVMLinkage.LLVMExternalLinkage;
 
 
-            _dataToFill.Add(new ObjectNodeDataEmission(arrayglobal, _currentObjectData.ToArray(), _currentObjectSymbolRefs));
+            // Indirections to RhpNew* unmanaged functions are made using delegate*s so get a shadow stack first argument which is not present in the function.
+            // This IsRhpUnmanagedIndirection condition identifies those indirections and replaces the destination with a thunk which removes the shadow stack argument.
+            if (_currentObjectNode is IndirectionNode && IsRhpUnmanagedIndirection(realName))
+            {
+                _dataToFill.Add(new ObjectNodeDataEmission(arrayglobal, _currentObjectData.ToArray(), ReplaceIndirectionSymbolsWithThunks(_currentObjectSymbolRefs)));
+            }
+            else if (_currentObjectNode is MethodGenericDictionaryNode)
+            {
+                _dataToFill.Add(new ObjectNodeDataEmission(arrayglobal, _currentObjectData.ToArray(), ReplaceMethodDictionaryUnmanagedSymbolsWithThunks(_currentObjectSymbolRefs)));
+            }
+            else _dataToFill.Add(new ObjectNodeDataEmission(arrayglobal, _currentObjectData.ToArray(), _currentObjectSymbolRefs));
 
             foreach (var symbolIdInfo in _symbolDefs)
             {
@@ -416,6 +417,65 @@ namespace ILCompiler.DependencyAnalysis
             _currentObjectSymbolRefs = new Dictionary<int, SymbolRefData>();
             _currentObjectData = new ArrayBuilder<byte>();
             _symbolDefs.Clear();
+        }
+
+        Dictionary<int, SymbolRefData> ReplaceMethodDictionaryUnmanagedSymbolsWithThunks(Dictionary<int, SymbolRefData> unmanagedSymbolRefs)
+        {
+            foreach (KeyValuePair<int, SymbolRefData> keyValuePair in unmanagedSymbolRefs)
+            {
+                if (IsRhpUnmanagedIndirection(keyValuePair.Value.SymbolName))
+                {
+                    unmanagedSymbolRefs[keyValuePair.Key] = new SymbolRefData(EnsureIndirectionThunk(keyValuePair.Value.SymbolName), keyValuePair.Value.Offset);
+                }
+            }
+
+            return unmanagedSymbolRefs;
+        }
+
+        Dictionary<int, SymbolRefData> ReplaceIndirectionSymbolsWithThunks(Dictionary<int, SymbolRefData> unmanagedSymbolRefs)
+        {
+            Dictionary<int, SymbolRefData> thunks = new Dictionary<int, SymbolRefData>();
+            foreach (KeyValuePair<int, SymbolRefData> keyValuePair in unmanagedSymbolRefs)
+            {
+                thunks[keyValuePair.Key] = new SymbolRefData(EnsureIndirectionThunk(keyValuePair.Value.SymbolName), keyValuePair.Value.Offset);
+            }
+
+            return thunks;
+        }
+
+        private string EnsureIndirectionThunk(string unmanagedSymbolName)
+        {
+            string thunkSymbolName = unmanagedSymbolName + "_Thunk";
+            var func = Module.GetNamedFunction(thunkSymbolName);
+            if (func.Handle == IntPtr.Zero)
+            {
+                LLVMValueRef callee = Module.GetNamedFunction(unmanagedSymbolName);
+                func = Module.AddFunction(thunkSymbolName,
+                    LLVMTypeRef.CreateFunction(LLVMTypeRef.Void,
+                        new LLVMTypeRef[] {
+                            LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0) /* shadow stack not used */,
+                            LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0) /* return spill slot */,
+                            callee.TypeOf.ElementType.ParamTypes[0] /* MethodTable* */ }));
+                LLVMBuilderRef builder = LLVMBuilderRef.Create(Module.Context);
+                LLVMBasicBlockRef block = func.AppendBasicBlock("thunk");
+                builder.PositionAtEnd(block);
+                var ret = builder.BuildCall(Module.GetNamedFunction(unmanagedSymbolName), new LLVMValueRef[] { func.Params[2]});
+                builder.BuildStore(ret, ILImporter.CastIfNecessary(builder, func.Params[1], LLVMTypeRef.CreatePointer(ret.TypeOf, 0)));
+                builder.BuildRetVoid();
+                builder.Dispose();
+            }
+
+            return thunkSymbolName;
+        }
+
+        // hack to identify unmanaged symbols which dont accept a shadowstack arg.  Copy of names from JitHelper.GetNewObjectHelperForType
+        private static bool IsRhpUnmanagedIndirection(string realName)
+        {
+            return realName.EndsWith("RhpNewFast")
+                   || realName.EndsWith("RhpNewFinalizableAlign8")
+                   || realName.EndsWith("RhpNewFastMisalign")
+                   || realName.EndsWith("RhpNewFastAlign8")
+                   || realName.EndsWith("RhpNewFinalizable");
         }
 
         public void EmitAlignment(int byteAlignment)
@@ -478,7 +538,7 @@ namespace ILCompiler.DependencyAnalysis
             }
         }
 
-        public int EmitSymbolRef(string realSymbolName, int offsetFromSymbolName, bool isFunction, RelocType relocType, int delta = 0)
+        public int EmitSymbolRef(string realSymbolName, int offsetFromSymbolName, RelocType relocType, int delta = 0)
         {
             int symbolStartOffset = _currentObjectData.Count;
 
@@ -496,7 +556,7 @@ namespace ILCompiler.DependencyAnalysis
             {
                 return this._nodeFactory.Target.PointerSize;
             }
-            _currentObjectSymbolRefs.Add(symbolStartOffset, new SymbolRefData(isFunction, realSymbolName, totalOffset));
+            _currentObjectSymbolRefs.Add(symbolStartOffset, new SymbolRefData(realSymbolName, totalOffset));
             return _nodeFactory.Target.PointerSize;
         }
 
@@ -551,7 +611,7 @@ namespace ILCompiler.DependencyAnalysis
                 return pointerSize;
             }
             int offsetFromBase = GetNumericOffsetFromBaseSymbolValue(target) + target.Offset;
-            return EmitSymbolRef(realSymbolName, offsetFromBase, target is LLVMMethodCodeNode || target is LLVMBlockRefNode || target is TentativeMethodNode, relocType, delta);
+            return EmitSymbolRef(realSymbolName, offsetFromBase, relocType, delta);
         }
 
         public void EmitBlobWithRelocs(byte[] blob, Relocation[] relocs)
@@ -985,9 +1045,9 @@ namespace ILCompiler.DependencyAnalysis
                     {
                         MetadataType target = (MetadataType)node.Target;
 
-                        var ptrPtrPtr = builder.BuildBitCast(resVar, LLVMTypeRef.CreatePointer(LLVMTypeRef.CreatePointer(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), 0), 0), "ptrPtrPtr");
+                        var ptrPtr = builder.BuildBitCast(resVar, LLVMTypeRef.CreatePointer(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), 0), "ptrPtr");
 
-                        resVar = builder.BuildLoad(builder.BuildLoad(ptrPtrPtr, "ind1"), "ind2");
+                        resVar = builder.BuildLoad(ptrPtr, "ind");
             
                         if (compilation.HasLazyStaticConstructor(target))
                         {
@@ -1030,6 +1090,7 @@ namespace ILCompiler.DependencyAnalysis
                 case ReadyToRunHelperId.MethodEntry:
                 case ReadyToRunHelperId.VirtualDispatchCell:
                 case ReadyToRunHelperId.DefaultConstructor:
+                case ReadyToRunHelperId.ObjectAllocator:
                     break;
                 default:
                     throw new NotImplementedException();
@@ -1090,7 +1151,7 @@ namespace ILCompiler.DependencyAnalysis
                         var symbolNode = factory.TypeGCStaticsSymbol(target);
                         LLVMValueRef addressOfAddress = GetSymbolValuePointer(Module, symbolNode, factory.NameMangler, false);
                         LLVMValueRef basePtrPtr = builder.BuildLoad(addressOfAddress, "LoadAddressOfSymbolNode");
-                        LLVMValueRef ptr = builder.BuildLoad(builder.BuildLoad(builder.BuildPointerCast(basePtrPtr, LLVMTypeRef.CreatePointer(LLVMTypeRef.CreatePointer(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), 0), 0), "castBasePtrPtr"), "basePtr"), "base");
+                        LLVMValueRef ptr = builder.BuildLoad(builder.BuildPointerCast(basePtrPtr, LLVMTypeRef.CreatePointer(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), 0), "basePtr"), "base");
                         
                         resVar = builder.BuildPointerCast(ptr, LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0));
                     }

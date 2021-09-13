@@ -120,7 +120,7 @@ namespace System
         private static void CreateInstanceCheckType(Type type)
         {
             if (type == null || !type.IsRuntimeImplemented())
-                throw new ArgumentException(SR.Arg_MustBeType);
+                throw new ArgumentException(SR.Arg_MustBeType, nameof(type));
 
             if (type.IsAbstract)
                 throw new MissingMethodException(type.IsInterface ? SR.Acc_CreateInterface : SR.Acc_CreateAbst);  // Strange but compatible exception.

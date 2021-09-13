@@ -44,6 +44,11 @@ namespace ILCompiler.Metadata
         bool GeneratesMetadata(Cts.Ecma.EcmaModule module, Ecma.CustomAttributeHandle customAttribute);
 
         /// <summary>
+        /// Returns true if an exported type entry should generate <see cref="TypeForwarder"/> metadata.
+        /// </summary>
+        bool GeneratesMetadata(Cts.Ecma.EcmaModule module, Ecma.ExportedTypeHandle exportedType);
+
+        /// <summary>
         /// Returns true if a type should be blocked from generating any metadata.
         /// Blocked interfaces are skipped from interface lists, and custom attributes referring to
         /// blocked types are dropped from metadata.

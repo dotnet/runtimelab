@@ -18,7 +18,7 @@
 
 #define USE_COM_CONTEXT_DEF
 
-#if defined(_DEBUG) && !defined(CROSSGEN_COMPILE)
+#if defined(_DEBUG)
 #define DEBUG_REGDISPLAY
 #endif
 
@@ -116,7 +116,6 @@ typedef DPTR(class AssemblyNameBaseObject) PTR_AssemblyNameBaseObject;
 typedef VPTR(class BaseDomain)          PTR_BaseDomain;
 typedef DPTR(class ClassLoader)         PTR_ClassLoader;
 typedef DPTR(class ComCallMethodDesc)   PTR_ComCallMethodDesc;
-typedef VPTR(class CompilationDomain)   PTR_CompilationDomain;
 typedef DPTR(class ComPlusCallMethodDesc) PTR_ComPlusCallMethodDesc;
 typedef VPTR(class DebugInterface)      PTR_DebugInterface;
 typedef DPTR(class Dictionary)          PTR_Dictionary;
@@ -181,7 +180,11 @@ typedef PTR_Object OBJECTREF;
 typedef DPTR(OBJECTREF) PTR_OBJECTREF;
 typedef DPTR(PTR_OBJECTREF) PTR_PTR_OBJECTREF;
 
-EXTERN_C Thread* STDCALL GetThread();
+Thread* GetThread();
+Thread* GetThreadNULLOk();
+
+EXTERN_C Thread* STDCALL GetThreadHelper();
+
 void SetThread(Thread*);
 
 // This is a mechanism by which macros can make the Thread pointer available to inner scopes
@@ -233,7 +236,7 @@ FORCEINLINE void* memcpyUnsafe(void *dest, const void *src, size_t len)
 // These can be enabled in non-debug by removing the #ifdef _DEBUG
 // allowing one to log/check_gc a free build.
 //
-#if defined(_DEBUG) && !defined(DACCESS_COMPILE) && !defined(CROSSGEN_COMPILE)
+#if defined(_DEBUG) && !defined(DACCESS_COMPILE)
 
     //If memcpy has been defined to PAL_memcpy, we undefine it so that this case
     //can be covered by the if !defined(memcpy) block below
@@ -259,13 +262,13 @@ FORCEINLINE void* memcpyUnsafe(void *dest, const void *src, size_t len)
     extern "C" void *  __cdecl GCSafeMemCpy(void *, const void *, size_t);
     #define memcpy(dest, src, len) GCSafeMemCpy(dest, src, len)
     #endif // !defined(memcpy)
-#else // !_DEBUG && !DACCESS_COMPILE && !CROSSGEN_COMPILE
+#else // !_DEBUG && !DACCESS_COMPILE
     FORCEINLINE void* memcpyNoGCRefs(void * dest, const void * src, size_t len) {
             WRAPPER_NO_CONTRACT;
 
             return memcpy(dest, src, len);
         }
-#endif // !_DEBUG && !DACCESS_COMPILE && !CROSSGEN_COMPILE
+#endif // !_DEBUG && !DACCESS_COMPILE
 
 namespace Loader
 {
@@ -277,11 +280,22 @@ namespace Loader
     } LoadFlag;
 }
 
+#if !defined(DACCESS_COMPILE)
+#if defined(TARGET_WINDOWS) && defined(TARGET_AMD64)
+EXTERN_C void STDCALL ClrRestoreNonvolatileContext(PCONTEXT ContextRecord);
+#elif !(defined(TARGET_WINDOWS) && defined(TARGET_X86)) // !(TARGET_WINDOWS && TARGET_AMD64) && !(TARGET_WINDOWS && TARGET_X86)
+inline void ClrRestoreNonvolatileContext(PCONTEXT ContextRecord)
+{
+    // Falling back to RtlRestoreContext() for now, though it should be possible to have simpler variants for these cases
+    RtlRestoreContext(ContextRecord, NULL);
+}
+#endif // TARGET_WINDOWS && TARGET_AMD64
+#endif // !DACCESS_COMPILE
+
 // src/inc
 #include "utilcode.h"
 #include "log.h"
 #include "loaderheap.h"
-#include "fixuppointer.h"
 #include "stgpool.h"
 
 // src/vm
@@ -351,6 +365,7 @@ namespace Loader
 #include "pefile.inl"
 #include "excep.h"
 #include "method.hpp"
+#include "field.h"
 #include "callingconvention.h"
 #include "frames.h"
 #include "qcall.h"

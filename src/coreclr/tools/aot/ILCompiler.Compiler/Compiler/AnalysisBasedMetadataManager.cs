@@ -12,6 +12,7 @@ using ILCompiler.DependencyAnalysis;
 using Debug = System.Diagnostics.Debug;
 using EcmaModule = Internal.TypeSystem.Ecma.EcmaModule;
 using CustomAttributeHandle = System.Reflection.Metadata.CustomAttributeHandle;
+using ExportedTypeHandle = System.Reflection.Metadata.ExportedTypeHandle;
 
 namespace ILCompiler
 {
@@ -27,15 +28,12 @@ namespace ILCompiler
         private readonly Dictionary<FieldDesc, MetadataCategory> _reflectableFields = new Dictionary<FieldDesc, MetadataCategory>();
         private readonly HashSet<ReflectableCustomAttribute> _reflectableAttributes = new HashSet<ReflectableCustomAttribute>();
 
-        private readonly HashSet<TypeDesc> _ldtokenReferenceableTypes;
-
         public AnalysisBasedMetadataManager(CompilerTypeSystemContext typeSystemContext)
             : this(typeSystemContext, new FullyBlockedMetadataBlockingPolicy(),
                 new FullyBlockedManifestResourceBlockingPolicy(), null, new NoStackTraceEmissionPolicy(),
                 new NoDynamicInvokeThunkGenerationPolicy(), Array.Empty<ModuleDesc>(),
                 Array.Empty<ReflectableEntity<TypeDesc>>(), Array.Empty<ReflectableEntity<MethodDesc>>(),
-                Array.Empty<ReflectableEntity<FieldDesc>>(), Array.Empty<ReflectableCustomAttribute>(),
-                Array.Empty<TypeDesc>())
+                Array.Empty<ReflectableEntity<FieldDesc>>(), Array.Empty<ReflectableCustomAttribute>())
         {
         }
 
@@ -50,8 +48,7 @@ namespace ILCompiler
             IEnumerable<ReflectableEntity<TypeDesc>> reflectableTypes,
             IEnumerable<ReflectableEntity<MethodDesc>> reflectableMethods,
             IEnumerable<ReflectableEntity<FieldDesc>> reflectableFields,
-            IEnumerable<ReflectableCustomAttribute> reflectableAttributes,
-            IEnumerable<TypeDesc> ldtokenReferenceableTypes)
+            IEnumerable<ReflectableCustomAttribute> reflectableAttributes)
             : base(typeSystemContext, blockingPolicy, resourceBlockingPolicy, logFile, stackTracePolicy, invokeThunkGenerationPolicy)
         {
             _modulesWithMetadata = new List<ModuleDesc>(modulesWithMetadata);
@@ -87,8 +84,6 @@ namespace ILCompiler
             {
                 _reflectableAttributes.Add(refAttribute);
             }
-
-            _ldtokenReferenceableTypes = new HashSet<TypeDesc>(ldtokenReferenceableTypes);
 
 #if DEBUG
             HashSet<ModuleDesc> moduleHash = new HashSet<ModuleDesc>(_modulesWithMetadata);
@@ -126,11 +121,6 @@ namespace ILCompiler
         public override IEnumerable<ModuleDesc> GetCompilationModulesWithMetadata()
         {
             return _modulesWithMetadata;
-        }
-
-        public override bool ShouldConsiderLdTokenReferenceAConstruction(TypeDesc type)
-        {
-            return _ldtokenReferenceableTypes.Contains(type);
         }
 
         protected override void ComputeMetadata(NodeFactory factory,
@@ -196,14 +186,7 @@ namespace ILCompiler
                 if ((pair.Value & MetadataCategory.RuntimeMapping) != 0)
                 {
                     MethodDesc method = pair.Key;
-
-                    // We need to root virtual methods as if they were called virtually.
-                    // This will possibly trigger the generation of other overrides too.
-                    if (method.IsVirtual)
-                        rootProvider.RootVirtualMethodForReflection(method, reason);
-
-                    if (!method.IsAbstract)
-                        rootProvider.AddCompilationRoot(pair.Key, reason);
+                    rootProvider.AddReflectionRoot(method, reason);
                 }
             }
 
@@ -258,6 +241,25 @@ namespace ILCompiler
             public bool GeneratesMetadata(EcmaModule module, CustomAttributeHandle caHandle)
             {
                 return _parent._reflectableAttributes.Contains(new ReflectableCustomAttribute(module, caHandle));
+            }
+
+            public bool GeneratesMetadata(EcmaModule module, ExportedTypeHandle exportedTypeHandle)
+            {
+                try
+                {
+                    // We'll possibly need to do something else here if we ever use this MetadataManager
+                    // with compilation modes that generate multiple metadata blobs.
+                    // (Multi-module or .NET Native style shared library.)
+                    // We are currently missing type forwarders pointing to the other blobs.
+                    var targetType = (MetadataType)module.GetObject(exportedTypeHandle);
+                    return GeneratesMetadata(targetType);
+                }
+                catch (TypeSystemException)
+                {
+                    // No harm in generating a forwarder that didn't resolve.
+                    // We'll get matching behavior at runtime.
+                    return true;
+                }
             }
 
             public bool IsBlocked(MetadataType typeDef)

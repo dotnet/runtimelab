@@ -90,12 +90,12 @@ namespace Internal.IL.Stubs
                     boxableFieldType = Context.GetWellKnownType(WellKnownType.IntPtr);
 
                 // The fact that the type is a reference type is sufficient for the callers.
-                // Don't unnecessarily create an EEType for the field type.
-                if (!boxableFieldType.IsValueType)
+                // Don't unnecessarily create an MethodTable for the field type.
+                if (!boxableFieldType.IsSignatureVariable && !boxableFieldType.IsValueType)
                     boxableFieldType = Context.GetWellKnownType(WellKnownType.Object);
 
                 // If this is an enum, it's okay to Equals/GetHashCode the underlying type.
-                // Don't unnecessarily create an EEType for the enum.
+                // Don't unnecessarily create an MethodTable for the enum.
                 boxableFieldType = boxableFieldType.UnderlyingType;
 
                 MethodDesc ptrOfField = eeTypePtrOfMethod.MakeInstantiatedMethod(boxableFieldType);

@@ -2,7 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System;
-using System.Text;
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
@@ -119,106 +119,6 @@ namespace Internal.Reflection.Execution
         }
 
         /// <summary>
-        /// Compares FieldInfos, sorting by name.
-        /// </summary>
-        private class FieldInfoNameComparer : IComparer<FieldInfo>
-        {
-            private static FieldInfoNameComparer s_instance = new FieldInfoNameComparer();
-            public static FieldInfoNameComparer Instance
-            {
-                get
-                {
-                    return s_instance;
-                }
-            }
-
-            public int Compare(FieldInfo x, FieldInfo y)
-            {
-                return x.Name.CompareTo(y.Name);
-            }
-        }
-
-#if PROJECTN
-        /// <summary>
-        /// Reflection-based implementation of ValueType.GetHashCode. Matches the implementation created by the ValueTypeTransform.
-        /// </summary>
-        /// <param name="valueType">Boxed value type</param>
-        /// <returns>Hash code for the value type</returns>
-        public sealed override int ValueTypeGetHashCodeUsingReflection(object valueType)
-        {
-            // The algorithm is to use the hash of the first non-null instance field sorted by name.
-            List<FieldInfo> sortedFilteredFields = new List<FieldInfo>();
-            foreach (FieldInfo field in valueType.GetType().GetTypeInfo().DeclaredFields)
-            {
-                if (field.IsStatic)
-                {
-                    continue;
-                }
-
-                sortedFilteredFields.Add(field);
-            }
-            sortedFilteredFields.Sort(FieldInfoNameComparer.Instance);
-
-            foreach (FieldInfo field in sortedFilteredFields)
-            {
-                object fieldValue = field.GetValue(valueType);
-                if (fieldValue != null)
-                {
-                    return fieldValue.GetHashCode();
-                }
-            }
-
-            // Fallback path if no non-null instance field. The desktop hashes the GetType() object, but this seems like a lot of effort
-            // for a corner case - let's wait and see if we really need that.
-            return 1;
-        }
-
-        /// <summary>
-        /// Reflection-based implementation of ValueType.Equals. Matches the implementation created by the ValueTypeTransform.
-        /// </summary>
-        /// <param name="left">Boxed 'this' value type</param>
-        /// <param name="right">Boxed 'that' value type</param>
-        /// <returns>True if all nonstatic fields of the objects are equal</returns>
-        public sealed override bool ValueTypeEqualsUsingReflection(object left, object right)
-        {
-            if (right == null)
-            {
-                return false;
-            }
-
-            if (left.GetType() != right.GetType())
-            {
-                return false;
-            }
-
-            foreach (FieldInfo field in left.GetType().GetTypeInfo().DeclaredFields)
-            {
-                if (field.IsStatic)
-                {
-                    continue;
-                }
-
-                object leftField = field.GetValue(left);
-                object rightField = field.GetValue(right);
-
-                if (leftField == null)
-                {
-                    if (rightField != null)
-                    {
-                        return false;
-                    }
-                }
-                else if (!leftField.Equals(rightField))
-                {
-                    return false;
-                }
-            }
-
-            return true;
-        }
-#endif
-
-        /// <summary>
         /// Retrieves the default value for a parameter of a method.
         /// </summary>
         /// <param name="defaultParametersContext">The default parameters context used to invoke the method,
@@ -231,9 +131,27 @@ namespace Internal.Reflection.Execution
         {
             defaultValue = null;
 
-            if (!(defaultParametersContext is MethodBase methodBase))
+            MethodBase methodBase = defaultParametersContext as MethodBase;
+            if (methodBase is null)
             {
-                return false;
+                if (defaultParametersContext is Delegate)
+                {
+                    methodBase = GetDelegateInvokeMethod(defaultParametersContext.GetType());
+                }
+
+                if (methodBase is null)
+                {
+                    return false;
+                }
+
+                [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2070:UnrecognizedReflectionPattern",
+                    Justification = "Delegates always generate metadata for the Invoke method")]
+                static MethodBase GetDelegateInvokeMethod(Type delegateType)
+                {
+                    MethodInfo result = delegateType.GetMethod("Invoke", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.DeclaredOnly);
+                    Debug.Assert(result != null);
+                    return result;
+                }
             }
 
             ParameterInfo parameterInfo = methodBase.GetParametersNoCopy()[argIndex];

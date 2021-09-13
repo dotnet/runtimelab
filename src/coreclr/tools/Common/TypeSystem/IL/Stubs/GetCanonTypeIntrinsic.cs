@@ -39,7 +39,7 @@ namespace Internal.IL.Stubs
                 // We're not conditioning this on SupportsUniversalCanon because the runtime type loader
                 // does a lot of comparisons against UniversalCanon and not having a RuntimeTypeHandle
                 // for it makes these checks awkward.
-                // Would be nice if we didn't have to emit the EEType if universal canonical code wasn't enabled
+                // Would be nice if we didn't have to emit the MethodTable if universal canonical code wasn't enabled
                 // at the time of compilation.
                 ILCodeLabel lNotUniversalCanon = emitter.NewCodeLabel();
                 codeStream.Emit(ILOpcode.ldarg_0);

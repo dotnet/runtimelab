@@ -13,8 +13,6 @@
 #include "commodule.h"
 #include "reflectclasswriter.h"
 #include "corerror.h"
-#include "iceefilegen.h"
-#include "ceefilegenwriter.h"
 #include "typekey.h"
 
 
@@ -365,7 +363,7 @@ void QCALLTYPE COMDynamicWrite::SetMethodIL(QCall::ModuleHandle pModule,
     if (totalSizeSafe.IsOverflow())
         COMPlusThrowOM();
     UINT32 totalSize = totalSizeSafe.Value();
-    ICeeGen* pGen = pRCW->GetCeeGen();
+    ICeeGenInternal* pGen = pRCW->GetCeeGen();
     BYTE* buf = NULL;
     ULONG methodRVA;
     pGen->AllocateMethodBuffer(totalSize, &buf, &methodRVA);

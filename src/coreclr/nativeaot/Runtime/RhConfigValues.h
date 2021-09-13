@@ -13,11 +13,9 @@
 // By default, print assert to console and break in the debugger, if attached.  Set to 0 for a pop-up dialog on assert.
 DEBUG_CONFIG_VALUE_WITH_DEFAULT(BreakOnAssert, 1)
 
-RETAIL_CONFIG_VALUE(HeapVerify)
 RETAIL_CONFIG_VALUE(StressLogLevel)
 RETAIL_CONFIG_VALUE(TotalStressLogSize)
-RETAIL_CONFIG_VALUE(DisableBGC)
-RETAIL_CONFIG_VALUE(UseServerGC)
+RETAIL_CONFIG_VALUE(gcServer)
 DEBUG_CONFIG_VALUE(GcStressThrottleMode)    // gcstm_TriggerAlways / gcstm_TriggerOnFirstHit / gcstm_TriggerRandom
 DEBUG_CONFIG_VALUE(GcStressFreqCallsite)    // Number of times to force GC out of GcStressFreqDenom (for GCSTM_RANDOM)
 DEBUG_CONFIG_VALUE(GcStressFreqLoop)        // Number of times to force GC out of GcStressFreqDenom (for GCSTM_RANDOM)

@@ -132,11 +132,6 @@ COOP_PINVOKE_HELPER(void, RhUnregisterGcCallout, (GcRestrictedCalloutKind eKind,
     RestrictedCallouts::UnregisterGcCallout(eKind, pCallout);
 }
 
-COOP_PINVOKE_HELPER(Boolean, RhIsPromoted, (OBJECTREF obj))
-{
-    return GCHeapUtilities::GetGCHeap()->IsPromoted(obj) ? Boolean_true : Boolean_false;
-}
-
 COOP_PINVOKE_HELPER(int32_t, RhGetLohCompactionMode, ())
 {
     return GCHeapUtilities::GetGCHeap()->GetLOHCompactionMode();
@@ -329,96 +324,9 @@ EXTERN_C REDHAWK_API int64_t __cdecl RhGetTotalAllocatedBytesPrecise()
     return allocated;
 }
 
-static Array* AllocateNewArrayImpl(Thread* pThread, EEType* pArrayEEType, uint32_t numElements, uint32_t flags)
-{
-    size_t size;
-#ifndef HOST_64BIT
-    // if the element count is <= 0x10000, no overflow is possible because the component size is
-    // <= 0xffff, and thus the product is <= 0xffff0000, and the base size is only ~12 bytes
-    if (numElements > 0x10000)
-    {
-        // Perform the size computation using 64-bit integeres to detect overflow
-        uint64_t size64 = (uint64_t)pArrayEEType->get_BaseSize() + ((uint64_t)numElements * (uint64_t)pArrayEEType->get_ComponentSize());
-        size64 = (size64 + (sizeof(uintptr_t) - 1)) & ~(sizeof(uintptr_t) - 1);
+extern Object* GcAllocInternal(MethodTable* pEEType, uint32_t uFlags, uintptr_t cbSize, Thread* pThread);
 
-        size = (size_t)size64;
-        if (size != size64)
-        {
-            return NULL;
-        }
-    }
-    else
-#endif // !HOST_64BIT
-    {
-        size = (size_t)pArrayEEType->get_BaseSize() + ((size_t)numElements * (size_t)pArrayEEType->get_ComponentSize());
-        size = ALIGN_UP(size, sizeof(uintptr_t));
-    }
-
-    size_t max_object_size;
-#ifdef HOST_64BIT
-    if (g_pConfig->GetGCAllowVeryLargeObjects())
-    {
-        max_object_size = (INT64_MAX - 7 - min_obj_size);
-    }
-    else
-#endif // HOST_64BIT
-    {
-        max_object_size = (INT32_MAX - 7 - min_obj_size);
-    }
-
-    if (size >= max_object_size)
-    {
-        return NULL;
-    }
-
-    const int MaxArrayLength = 0x7FEFFFFF;
-    const int MaxByteArrayLength = 0x7FFFFFC7;
-
-    // Impose limits on maximum array length in each dimension to allow efficient
-    // implementation of advanced range check elimination in future. We have to allow
-    // higher limit for array of bytes (or one byte structs) for backward compatibility.
-    // Keep in sync with Array.MaxArrayLength in BCL.
-    if (size > MaxByteArrayLength /* note: comparing allocation size with element count */)
-    {
-        // Ensure the above if check covers the minimal interesting size
-        static_assert(MaxByteArrayLength < (uint64_t)MaxArrayLength * 2, "");
-
-        if (pArrayEEType->get_ComponentSize() != 1)
-        {
-            size_t elementCount = (size - pArrayEEType->get_BaseSize()) / pArrayEEType->get_ComponentSize();
-            if (elementCount > MaxArrayLength)
-                return NULL;
-        }
-        else
-        {
-            size_t elementCount = size - pArrayEEType->get_BaseSize();
-            if (elementCount > MaxByteArrayLength)
-                return NULL;
-        }
-    }
-
-    if (size >= RH_LARGE_OBJECT_SIZE)
-        flags |= GC_ALLOC_LARGE_OBJECT_HEAP;
-
-    // Save the EEType for instrumentation purposes.
-    RedhawkGCInterface::SetLastAllocEEType(pArrayEEType);
-
-    Array* pArray = (Array*)GCHeapUtilities::GetGCHeap()->Alloc(pThread->GetAllocContext(), size, flags);
-    if (pArray == NULL)
-    {
-        return NULL;
-    }
-
-    pArray->set_EEType(pArrayEEType);
-    pArray->InitArrayLength(numElements);
-
-    if (flags & GC_ALLOC_USER_OLD_HEAP)
-        GCHeapUtilities::GetGCHeap()->PublishObject((uint8_t*)pArray);
-
-    return pArray;
-}
-
-EXTERN_C REDHAWK_API void RhAllocateNewArray(EEType* pArrayEEType, uint32_t numElements, uint32_t flags, Array** pResult)
+EXTERN_C REDHAWK_API void RhAllocateNewArray(MethodTable* pArrayEEType, uint32_t numElements, uint32_t flags, Array** pResult)
 {
     Thread* pThread = ThreadStore::GetCurrentThread();
 
@@ -427,7 +335,21 @@ EXTERN_C REDHAWK_API void RhAllocateNewArray(EEType* pArrayEEType, uint32_t numE
 
     ASSERT(!pThread->IsDoNotTriggerGcSet());
 
-    *pResult = AllocateNewArrayImpl(pThread, pArrayEEType, numElements, flags);
+    *pResult = (Array*)GcAllocInternal(pArrayEEType, flags, numElements, pThread);
+
+    pThread->EnablePreemptiveMode();
+}
+
+EXTERN_C REDHAWK_API void RhAllocateNewObject(MethodTable* pEEType, uint32_t flags, Object** pResult)
+{
+    Thread* pThread = ThreadStore::GetCurrentThread();
+
+    pThread->SetupHackPInvokeTunnel();
+    pThread->DisablePreemptiveMode();
+
+    ASSERT(!pThread->IsDoNotTriggerGcSet());
+
+    *pResult = GcAllocInternal(pEEType, flags, 0, pThread);
 
     pThread->EnablePreemptiveMode();
 }

@@ -102,6 +102,7 @@ namespace Internal.IL.Stubs
 
         public void EmitLdArg(int index)
         {
+            Debug.Assert(index >= 0);
             if (index < 4)
             {
                 Emit((ILOpcode)(ILOpcode.ldarg_0 + index));
@@ -115,6 +116,7 @@ namespace Internal.IL.Stubs
 
         public void EmitLdArga(int index)
         {
+            Debug.Assert(index >= 0);
             if (index < 0x100)
             {
                 Emit(ILOpcode.ldarga_s);
@@ -620,7 +622,7 @@ namespace Internal.IL.Stubs
         {
             return _locals;
         }
-        public override Object GetObject(int token)
+        public override Object GetObject(int token, NotFoundBehavior notFoundBehavior)
         {
             return _tokens[(token & 0xFFFFFF) - 1];
         }

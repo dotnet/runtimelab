@@ -17,19 +17,16 @@ protected:
 	IMetaDataEmit2*			m_emitter;			// Emit interface.
 	IMetaDataImport*		m_importer;			// Import interface.
 	IMDInternalImport*		m_internalimport;	// Scopeless internal import interface
-	ICeeGen*				m_pCeeGen;
-    ICeeFileGen*            m_pCeeFileGen;
-    HCEEFILE                m_ceeFile;
+    ICeeGenInternal*	    m_pCeeGen;
 	IMetaDataEmitHelper*	m_pEmitHelper;
 	ULONG					m_ulResourceSize;
-    mdFile                  m_tkFile;
 
 public:
     RefClassWriter() {
         LIMITED_METHOD_CONTRACT;
     }
 
-	HRESULT		Init(ICeeGen *pCeeGen, IUnknown *pUnk, LPCWSTR szName);
+	HRESULT		Init(ICeeGenInternal *pCeeGen, IUnknown *pUnk, LPCWSTR szName);
 
 	IMetaDataEmit2* GetEmitter() {
         LIMITED_METHOD_CONTRACT;
@@ -51,19 +48,9 @@ public:
 		return m_internalimport;
 	}
 
-	ICeeGen* GetCeeGen() {
+    ICeeGenInternal* GetCeeGen() {
         LIMITED_METHOD_CONTRACT;
 		return m_pCeeGen;
-	}
-
-	ICeeFileGen* GetCeeFileGen() {
-        LIMITED_METHOD_CONTRACT;
-		return m_pCeeFileGen;
-	}
-
-	HCEEFILE GetHCEEFILE() {
-        LIMITED_METHOD_CONTRACT;
-		return m_ceeFile;
 	}
 
 	~RefClassWriter();

@@ -60,7 +60,7 @@ namespace BundleTests.Helpers
 
         public static string[] GetExtractedFiles(TestProjectFixture fixture, BundleOptions bundleOptions)
         {
-            switch (bundleOptions)
+            switch (bundleOptions & ~BundleOptions.EnableCompression)
             {
                 case BundleOptions.None:
                 case BundleOptions.BundleOtherFiles:
@@ -195,7 +195,7 @@ namespace BundleTests.Helpers
             var targetOS = GetTargetOS(fixture.CurrentRid);
             var targetArch = GetTargetArch(fixture.CurrentRid);
 
-            var bundler = new Bundler(hostName, bundleDir.FullName, options, targetOS, targetArch, targetFrameworkVersion);
+            var bundler = new Bundler(hostName, bundleDir.FullName, options, targetOS, targetArch, targetFrameworkVersion, macosCodesign: true);
             singleFile = GenerateBundle(bundler, publishPath, bundleDir.FullName, copyExcludedFiles);
 
             return bundler;

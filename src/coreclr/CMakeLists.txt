@@ -1,8 +1,15 @@
 cmake_minimum_required(VERSION 3.6.2)
 
-cmake_policy(SET CMP0042 NEW)
+cmake_policy(SET CMP0042 NEW) # MACOSX_RPATH is enabled by default.
+
+if (CMAKE_VERSION VERSION_GREATER 3.7 OR CMAKE_VERSION VERSION_EQUAL 3.7)
+  cmake_policy(SET CMP0066 NEW) # Honor per-config flags in try_compile() source-file signature.
+endif()
+if (CMAKE_VERSION VERSION_GREATER 3.8 OR CMAKE_VERSION VERSION_EQUAL 3.8)
+  cmake_policy(SET CMP0067 NEW) # Honor language standard in try_compile() source-file signature
+endif()
 if (CMAKE_VERSION VERSION_GREATER 3.15 OR CMAKE_VERSION VERSION_EQUAL 3.15)
-  cmake_policy(SET CMP0091 NEW)
+  cmake_policy(SET CMP0091 NEW) # MSVC runtime library flags are selected by an abstraction.
 endif()
 
 # Set the project name
@@ -12,8 +19,6 @@ include(../../eng/native/configurepaths.cmake)
 include(${CLR_ENG_NATIVE_DIR}/configurecompiler.cmake)
 
 if(MSVC)
-  string(REPLACE "/EHsc" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
-  add_compile_options($<$<COMPILE_LANGUAGE:CXX>:/EHa>) # enable C++ EH (w/ SEH exceptions)
   set(CMAKE_CXX_STANDARD_LIBRARIES "") # do not link against standard win32 libs i.e. kernel32, uuid, user32, etc.
 endif (MSVC)
 
@@ -36,11 +41,19 @@ endif(CORECLR_SET_RPATH)
 
 OPTION(CLR_CMAKE_ENABLE_CODE_COVERAGE "Enable code coverage" OFF)
 
+if(CLR_CMAKE_HOST_ARCH_S390X)
+  add_definitions(-DBIGENDIAN)
+endif(CLR_CMAKE_HOST_ARCH_S390X)
+
 #----------------------------------------------------
 # Cross target Component build specific configuration
 #----------------------------------------------------
 if(CLR_CROSS_COMPONENTS_BUILD)
-  include(crosscomponents.cmake)
+  add_definitions(-DCROSS_COMPILE)
+
+  if(CLR_CMAKE_HOST_ARCH_AMD64 AND (CLR_CMAKE_TARGET_ARCH_ARM OR CLR_CMAKE_TARGET_ARCH_I386))
+    set(FEATURE_CROSSBITNESS 1)
+  endif(CLR_CMAKE_HOST_ARCH_AMD64 AND (CLR_CMAKE_TARGET_ARCH_ARM OR CLR_CMAKE_TARGET_ARCH_I386))
 endif(CLR_CROSS_COMPONENTS_BUILD)
 
 #-------------------
@@ -48,10 +61,31 @@ endif(CLR_CROSS_COMPONENTS_BUILD)
 #-------------------
 include(pgosupport.cmake)
 
+#---------------------------------------------------
+# Define sub-component targets for the build
+#---------------------------------------------------
+include(components.cmake)
+
+#---------------------------
+# Build the single file host
+#---------------------------
+if(NOT CLR_CROSS_COMPONENTS_BUILD AND NOT ((RUNTIME_FLAVOR STREQUAL CoreClr AND CLR_CMAKE_TARGET_ARCH STREQUAL wasm) OR BUILD_WASM_JIT))
+  set(CLR_SINGLE_FILE_HOST_ONLY 1)
+  add_subdirectory(${CLR_SRC_NATIVE_DIR}/corehost/apphost/static Corehost.Static)
+  add_dependencies(runtime singlefilehost)
+endif()
+#-------------------------
+# Enable C++ EH with SEH
+#-------------------------
+if (MSVC)
+  string(REPLACE "/EHsc" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+  add_compile_options($<$<COMPILE_LANGUAGE:CXX>:/EHa>) # enable C++ EH (w/ SEH exceptions)
+endif()
+
 #-------------------------------
 # Include libraries native shims
 #-------------------------------
-if(NOT CLR_CROSS_COMPONENTS_BUILD AND CLR_CMAKE_BUILD_SUBSET_RUNTIME)
+if(NOT CLR_CROSS_COMPONENTS_BUILD)
     set(STATIC_LIBS_ONLY 1)
 
     if(CLR_CMAKE_TARGET_WIN32)
@@ -59,7 +93,7 @@ if(NOT CLR_CROSS_COMPONENTS_BUILD AND CLR_CMAKE_BUILD_SUBSET_RUNTIME)
     else()
         add_subdirectory(${CLR_REPO_ROOT_DIR}/src/libraries/Native/Unix Native.Unix)
     endif()
-endif(NOT CLR_CROSS_COMPONENTS_BUILD AND CLR_CMAKE_BUILD_SUBSET_RUNTIME)
+endif(NOT CLR_CROSS_COMPONENTS_BUILD)
 
 #-----------------------------------------
 # Add Projects
@@ -94,7 +128,9 @@ if(NOT CLR_CMAKE_HOST_UNIX_WASM)
     add_subdirectory(debug/debug-pal)
 endif(NOT CLR_CMAKE_HOST_UNIX_WASM)
 
-if(CLR_CMAKE_TARGET_WIN32 AND CLR_CMAKE_BUILD_SUBSET_RUNTIME)
+add_subdirectory(minipal)
+
+if(CLR_CMAKE_TARGET_WIN32)
   add_subdirectory(gc/sample)
 endif()
 
@@ -108,6 +144,7 @@ include_directories("../../artifacts/obj/coreclr")
 if(NOT CLR_CMAKE_HOST_UNIX_WASM)
     add_subdirectory(tools/aot/jitinterface)
 endif(NOT CLR_CMAKE_HOST_UNIX_WASM)
+
 
 if(NOT CLR_CROSS_COMPONENTS_BUILD)
   add_subdirectory(nativeaot)
@@ -129,9 +166,7 @@ include(clrdefinitions.cmake)
 
 if(FEATURE_STANDALONE_GC)
   add_definitions(-DFEATURE_STANDALONE_GC)
-  if (CLR_CMAKE_BUILD_SUBSET_RUNTIME)
-    add_subdirectory(gc)
-  endif (CLR_CMAKE_BUILD_SUBSET_RUNTIME)
+  add_subdirectory(gc)
 endif(FEATURE_STANDALONE_GC)
 
 if (CLR_CMAKE_HOST_UNIX)
@@ -153,6 +188,7 @@ include_directories("classlibnative/cryptography")
 include_directories("classlibnative/inc")
 include_directories("${GENERATED_INCLUDE_DIR}")
 include_directories("hosts/inc")
+include_directories("minipal")
 
 if(CLR_CMAKE_TARGET_WIN32 AND FEATURE_EVENT_TRACE)
     include_directories("${GENERATED_INCLUDE_DIR}/etw")
@@ -163,11 +199,9 @@ if (NOT CLR_CMAKE_TARGET_ARCH_WASM)
 endif(NOT CLR_CMAKE_TARGET_ARCH_WASM)
 
 if(CLR_CMAKE_HOST_UNIX)
-  if(CLR_CMAKE_BUILD_SUBSET_RUNTIME)
-    if(CLR_CMAKE_HOST_OSX OR (CLR_CMAKE_HOST_LINUX AND NOT CLR_CMAKE_HOST_UNIX_X86 AND NOT CLR_CMAKE_HOST_ANDROID))
-      add_subdirectory(debug/createdump)
-    endif(CLR_CMAKE_HOST_OSX OR (CLR_CMAKE_HOST_LINUX AND NOT CLR_CMAKE_HOST_UNIX_X86 AND NOT CLR_CMAKE_HOST_ANDROID))
-  endif(CLR_CMAKE_BUILD_SUBSET_RUNTIME)
+  if(CLR_CMAKE_HOST_OSX OR (CLR_CMAKE_HOST_LINUX AND NOT CLR_CMAKE_HOST_UNIX_X86 AND NOT CLR_CMAKE_HOST_ANDROID))
+    add_subdirectory(debug/createdump)
+  endif(CLR_CMAKE_HOST_OSX OR (CLR_CMAKE_HOST_LINUX AND NOT CLR_CMAKE_HOST_UNIX_X86 AND NOT CLR_CMAKE_HOST_ANDROID))
 
   # Include the dummy c++ include files
   include_directories("pal/inc/rt/cpp")
@@ -211,7 +245,9 @@ if ((CMAKE_CXX_COMPILER_ID STREQUAL "GNU") AND (CMAKE_CXX_COMPILER_VERSION VERSI
     add_compile_options(-Wno-error=stringop-overflow=)
 endif()
 
+message("testing CLR_CMAKE_TARGET_ARCH_WASM")
 if (NOT CLR_CMAKE_TARGET_ARCH_WASM)
+    message("not wasm target CLR_CMAKE_TARGET_ARCH_WASM")
     add_subdirectory(utilcode)
     add_subdirectory(gcinfo)
     add_subdirectory(jit)
@@ -222,11 +258,13 @@ if(CLR_CMAKE_HOST_UNIX)
     add_subdirectory(palrt)
 endif(CLR_CMAKE_HOST_UNIX)
 
+message("testing BUILD_WASM_JIT")
 if (NOT CLR_CMAKE_TARGET_ARCH_WASM)
-    add_subdirectory(vm)
-endif(NOT CLR_CMAKE_TARGET_ARCH_WASM)
-if (CLR_CMAKE_BUILD_SUBSET_RUNTIME)
-  if (NOT CLR_CMAKE_TARGET_ARCH_WASM)
+  add_subdirectory(vm)
+  if (NOT BUILD_WASM_JIT)
+message("NOT BUILD_WASM_JIT")
+    add_subdirectory(ilasm)
+    add_subdirectory(ildasm)
     add_subdirectory(md)
     add_subdirectory(debug)
     add_subdirectory(binder)
@@ -235,19 +273,17 @@ if (CLR_CMAKE_BUILD_SUBSET_RUNTIME)
     add_subdirectory(ToolBox)
     add_subdirectory(tools)
     add_subdirectory(unwinder)
-    add_subdirectory(ildasm)
-    add_subdirectory(ilasm)
     add_subdirectory(interop)
-  endif(NOT CLR_CMAKE_TARGET_ARCH_WASM)
+  endif(NOT BUILD_WASM_JIT)
+endif(NOT CLR_CMAKE_TARGET_ARCH_WASM)
 
-  if(CLR_CMAKE_HOST_WIN32)
-    add_subdirectory(hosts)
-  endif(CLR_CMAKE_HOST_WIN32)
-else()
-  if(CLR_CMAKE_HOST_UNIX)
-    # this is needed to compile the jit on unix platforms.
-    # When the runtime subset is compiled, the add_subdirectory(dlls) above
-    # brings the mscorrc library into the build graph
-    add_subdirectory(dlls/mscorrc)
-  endif(CLR_CMAKE_HOST_UNIX)
-endif(CLR_CMAKE_BUILD_SUBSET_RUNTIME)
+if(CLR_CMAKE_HOST_WIN32)
+  add_subdirectory(hosts)
+endif(CLR_CMAKE_HOST_WIN32)
+
+#----------------------------------------------------
+# Cross target Component install configuration
+#----------------------------------------------------
+if(CLR_CROSS_COMPONENTS_BUILD)
+  include(crosscomponents.cmake)
+endif(CLR_CROSS_COMPONENTS_BUILD)

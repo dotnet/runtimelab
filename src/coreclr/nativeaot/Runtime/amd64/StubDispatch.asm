@@ -35,7 +35,7 @@ LEAF_ENTRY StubName, _TEXT
         ;; load r11 to point to the cache block.
         mov     r11, [r10 + OFFSETOF__InterfaceDispatchCell__m_pCache]
 
-        ;; Load the EEType from the object instance in rcx.
+        ;; Load the MethodTable from the object instance in rcx.
         ALTERNATE_ENTRY StubAVLocation
         mov     rax, [rcx]
 
@@ -77,7 +77,7 @@ LEAF_ENTRY RhpVTableOffsetDispatch, _TEXT
         ;; load rax to point to the vtable offset (which is stored in the m_pCache field).
         mov     rax, [r10 + OFFSETOF__InterfaceDispatchCell__m_pCache]
 
-        ;; Load the EEType from the object instance in rcx, and add it to the vtable offset
+        ;; Load the MethodTable from the object instance in rcx, and add it to the vtable offset
         ;; to get the address in the vtable of what we want to dereference
         add     rax, [rcx]
 

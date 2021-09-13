@@ -15,6 +15,7 @@ using Internal.IL.Stubs;
 using Internal.TypeSystem;
 using Internal.TypeSystem.Ecma;
 
+using CORINFO_DEVIRTUALIZATION_DETAIL = Internal.JitInterface.CORINFO_DEVIRTUALIZATION_DETAIL;
 using Debug = System.Diagnostics.Debug;
 
 namespace ILCompiler
@@ -24,7 +25,7 @@ namespace ILCompiler
         protected readonly DependencyAnalyzerBase<NodeFactory> _dependencyGraph;
         protected readonly NodeFactory _nodeFactory;
         protected readonly Logger _logger;
-        private readonly DebugInformationProvider _debugInformationProvider;
+        protected readonly DebugInformationProvider _debugInformationProvider;
         private readonly DevirtualizationManager _devirtualizationManager;
         private readonly IInliningPolicy _inliningPolicy;
 
@@ -94,6 +95,11 @@ namespace ILCompiler
         public bool CanInline(MethodDesc caller, MethodDesc callee)
         {
             return _inliningPolicy.CanInline(caller, callee);
+        }
+
+        public bool CanConstructType(TypeDesc type)
+        {
+            return _devirtualizationManager.CanConstructType(type);
         }
 
         public DelegateCreationInfo GetDelegateCtor(TypeDesc delegateType, MethodDesc target, bool followVirtualDispatch)
@@ -207,9 +213,9 @@ namespace ILCompiler
             return _devirtualizationManager.IsEffectivelySealed(method);
         }
 
-        public MethodDesc ResolveVirtualMethod(MethodDesc declMethod, TypeDesc implType)
+        public MethodDesc ResolveVirtualMethod(MethodDesc declMethod, TypeDesc implType, out CORINFO_DEVIRTUALIZATION_DETAIL devirtualizationDetail)
         {
-            return _devirtualizationManager.ResolveVirtualMethod(declMethod, implType);
+            return _devirtualizationManager.ResolveVirtualMethod(declMethod, implType, out devirtualizationDetail);
         }
 
         public bool NeedsRuntimeLookup(ReadyToRunHelperId lookupKind, object targetOfLookup)
@@ -239,9 +245,29 @@ namespace ILCompiler
 
         public ReadyToRunHelperId GetLdTokenHelperForType(TypeDesc type)
         {
-            return _nodeFactory.MetadataManager.ShouldConsiderLdTokenReferenceAConstruction(type)
+            bool canConstructPerWholeProgramAnalysis = _devirtualizationManager == null ? true : _devirtualizationManager.CanConstructType(type);
+            return canConstructPerWholeProgramAnalysis & DependencyAnalysis.ConstructedEETypeNode.CreationAllowed(type)
                 ? ReadyToRunHelperId.TypeHandle
                 : ReadyToRunHelperId.NecessaryTypeHandle;
+        }
+
+        public static MethodDesc GetConstructorForCreateInstanceIntrinsic(TypeDesc type)
+        {
+            MethodDesc ctor = type.GetDefaultConstructor();
+            if (ctor == null)
+            {
+                MetadataType activatorType = type.Context.SystemModule.GetKnownType("System", "Activator");
+                if (type.IsValueType && type.GetParameterlessConstructor() == null)
+                {
+                    ctor = activatorType.GetKnownNestedType("StructWithNoConstructor").GetKnownMethod(".ctor", null);
+                }
+                else
+                {
+                    ctor = activatorType.GetKnownMethod("MissingConstructorMethod", null);
+                }
+            }
+
+            return ctor;
         }
 
         public ISymbolNode ComputeConstantLookup(ReadyToRunHelperId lookupKind, object targetOfLookup)
@@ -269,14 +295,8 @@ namespace ILCompiler
                     return NodeFactory.RuntimeFieldHandle((FieldDesc)targetOfLookup);
                 case ReadyToRunHelperId.DefaultConstructor:
                     {
-                        var type = (TypeDesc)targetOfLookup;   
-                        MethodDesc ctor = type.GetDefaultConstructor();
-                        if (ctor == null)
-                        {
-                            MetadataType activatorType = TypeSystemContext.SystemModule.GetKnownType("System", "Activator");
-                            MetadataType classWithMissingCtor = activatorType.GetKnownNestedType("ClassWithMissingConstructor");
-                            ctor = classWithMissingCtor.GetParameterlessConstructor();
-                        }
+                        var type = (TypeDesc)targetOfLookup;
+                        MethodDesc ctor = GetConstructorForCreateInstanceIntrinsic(type);
                         return NodeFactory.CanonicalEntrypoint(ctor);
                     }
                 case ReadyToRunHelperId.ObjectAllocator:
@@ -387,7 +407,7 @@ namespace ILCompiler
                 return reflectionCoreModule.GetKnownType("System.Reflection.Runtime.TypeInfos", "RuntimeTypeInfo");
             }
 
-            return null;
+            return TypeSystemContext.SystemModule.GetKnownType("System", "Type");
         }
 
         public bool IsFatPointerCandidate(MethodDesc containingMethod, MethodSignature signature)
@@ -412,15 +432,20 @@ namespace ILCompiler
             // Needs to be either a concrete method, or a runtime determined form.
             Debug.Assert(!calledMethod.IsCanonicalMethod(CanonicalFormKind.Specific));
 
-            // If the method defines the slot, we can use that.
-            if (calledMethod.IsNewSlot)
-                return calledMethod;
-
             MethodDesc targetMethod = calledMethod.GetCanonMethodTarget(CanonicalFormKind.Specific);
+            MethodDesc targetMethodDefinition = targetMethod.GetMethodDefinition();
+
+            MethodDesc slotNormalizedMethodDefinition = MetadataVirtualMethodAlgorithm.FindSlotDefiningMethodForVirtualMethod(targetMethodDefinition);
+
+            // If the method defines the slot, we can use that.
+            if (slotNormalizedMethodDefinition == targetMethodDefinition)
+            {
+                return calledMethod;
+            }
 
             // Normalize to the slot defining method
             MethodDesc slotNormalizedMethod = TypeSystemContext.GetInstantiatedMethod(
-                MetadataVirtualMethodAlgorithm.FindSlotDefiningMethodForVirtualMethod(targetMethod.GetMethodDefinition()),
+                slotNormalizedMethodDefinition,
                 targetMethod.Instantiation);
 
             // Since the slot normalization logic modified what method we're looking at, we need to compute the new target of lookup.

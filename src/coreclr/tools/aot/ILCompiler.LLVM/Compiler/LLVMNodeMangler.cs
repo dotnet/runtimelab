@@ -18,9 +18,9 @@ namespace ILCompiler
             return "Boxed_" + NameMangler.GetMangledTypeName(type);
         }
 
-        public sealed override string EEType(TypeDesc type)
+        public override string MethodTable(TypeDesc type)
         {
-            return "__EEType_" + NameMangler.GetMangledTypeName(type);
+            return "__MethodTable_" + NameMangler.GetMangledTypeName(type);
         }
 
         public sealed override string GCStatics(TypeDesc type)
@@ -36,6 +36,11 @@ namespace ILCompiler
         public sealed override string ThreadStatics(TypeDesc type)
         {
             return "__ThreadStaticBase_" + NameMangler.GetMangledTypeName(type);
+        }
+
+        public override string ThreadStaticsIndex(TypeDesc type)
+        {
+            return "__ThreadStaticsIndex_" + NameMangler.GetMangledTypeName(type);
         }
 
         public sealed override string TypeGenericDictionary(TypeDesc type)

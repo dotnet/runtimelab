@@ -40,7 +40,9 @@ namespace System.Reflection.Runtime.Assemblies
         public sealed override Type GetType(string name, bool throwOnError) => base.GetType(name, throwOnError);
         public sealed override bool IsDynamic => base.IsDynamic;
         public sealed override string ToString() => base.ToString();
+        [RequiresAssemblyFilesAttribute("The code will return an empty string for assemblies embedded in a single-file app")]
         public sealed override string EscapedCodeBase => base.EscapedCodeBase;
+        [RequiresAssemblyFiles("The code will throw for assemblies embedded in a single-file app")]
         public sealed override FileStream[] GetFiles() => base.GetFiles();
 #endif //DEBUG
     }
@@ -114,6 +116,7 @@ namespace System.Reflection.Runtime.Modules
         public sealed override Type GetType(string className) => base.GetType(className);
         [RequiresUnreferencedCode("Types might be removed")]
         public sealed override Type GetType(string className, bool ignoreCase) => base.GetType(className, ignoreCase);
+        public sealed override string ToString() => base.ToString();
 #endif //DEBUG
     }
 }
@@ -144,6 +147,7 @@ namespace System.Reflection.Runtime.TypeInfos
     internal abstract partial class RuntimeTypeInfo
     {
 #if DEBUG
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces)]
         public sealed override Type[] FindInterfaces(TypeFilter filter, object filterCriteria) => base.FindInterfaces(filter, filterCriteria);
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
         public sealed override MemberInfo[] FindMembers(MemberTypes memberType, BindingFlags bindingAttr, MemberFilter filter, object filterCriteria) => base.FindMembers(memberType, bindingAttr, filter, filterCriteria);

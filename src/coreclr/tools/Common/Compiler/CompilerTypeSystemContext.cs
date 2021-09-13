@@ -183,14 +183,31 @@ namespace ILCompiler
             }
         }
 
-        private EcmaModule AddModule(string filePath, string expectedSimpleName, bool useForBinding)
+        private EcmaModule AddModule(string filePath, string expectedSimpleName, bool useForBinding, ModuleData oldModuleData = null)
         {
+            PEReader peReader = null;
             MemoryMappedViewAccessor mappedViewAccessor = null;
             PdbSymbolReader pdbReader = null;
             try
             {
-                PEReader peReader = OpenPEFile(filePath, out mappedViewAccessor);
-                pdbReader = PortablePdbSymbolReader.TryOpenEmbedded(peReader, GetMetadataStringDecoder()) ?? OpenAssociatedSymbolFile(filePath, peReader);
+                if (oldModuleData == null)
+                {
+                    peReader = OpenPEFile(filePath, out mappedViewAccessor);
+
+#if !READYTORUN
+                if (peReader.HasMetadata && (peReader.PEHeaders.CorHeader.Flags & (CorFlags.ILLibrary | CorFlags.ILOnly)) == 0)
+                    throw new NotSupportedException($"Error: C++/CLI is not supported: '{filePath}'");
+#endif
+
+                    pdbReader = PortablePdbSymbolReader.TryOpenEmbedded(peReader, GetMetadataStringDecoder()) ?? OpenAssociatedSymbolFile(filePath, peReader);
+                }
+                else
+                {
+                    filePath = oldModuleData.FilePath;
+                    peReader = oldModuleData.Module.PEReader;
+                    mappedViewAccessor = oldModuleData.MappedViewAccessor;
+                    pdbReader = oldModuleData.Module.PdbReader;
+                }
 
                 EcmaModule module = EcmaModule.Create(this, peReader, containingAssembly: null, pdbReader);
 
@@ -234,6 +251,14 @@ namespace ILCompiler
                     mappedViewAccessor.Dispose();
                 if (pdbReader != null)
                     pdbReader.Dispose();
+            }
+        }
+
+        protected void InheritOpenModules(CompilerTypeSystemContext oldTypeSystemContext)
+        {
+            foreach (ModuleData oldModuleData in ModuleHashtable.Enumerator.Get(oldTypeSystemContext._moduleHashtable))
+            {
+                AddModule(null, null, true, oldModuleData);
             }
         }
 

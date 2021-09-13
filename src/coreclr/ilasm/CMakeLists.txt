@@ -13,7 +13,6 @@ include_directories(.)
 set(ILASM_SOURCES
   assem.cpp
   writer.cpp
-  writer_enc.cpp
   method.cpp
   asmman.cpp
   main.cpp
@@ -66,7 +65,7 @@ if(CLR_CMAKE_HOST_LINUX OR CLR_CMAKE_HOST_FREEBSD OR CLR_CMAKE_HOST_NETBSD OR CL
     set(END_LIBRARY_GROUP -Wl,--end-group)
 endif(CLR_CMAKE_HOST_LINUX OR CLR_CMAKE_HOST_FREEBSD OR CLR_CMAKE_HOST_NETBSD OR CLR_CMAKE_HOST_SUNOS)
 
-_add_executable(ilasm
+add_executable_clr(ilasm
   ${ILASM_SOURCES}
   ${ILASM_RESOURCES}
 )
@@ -75,7 +74,6 @@ set(ILASM_LINK_LIBRARIES
   utilcodestaticnohost
   mscorpe
   ${START_LIBRARY_GROUP} # Start group of libraries that have circular references
-  mdhotdata_ppdb
   mdcompiler_ppdb
   mdruntime_ppdb
   mdruntimerw_ppdb
@@ -127,4 +125,4 @@ else()
   )
 endif(CLR_CMAKE_HOST_UNIX)
 
-install_clr(TARGETS ilasm)
+install_clr(TARGETS ilasm DESTINATIONS . COMPONENT iltools)

@@ -200,25 +200,6 @@ void * Thread::GetCurrentThreadPInvokeReturnAddress()
 }
 #endif // !DACCESS_COMPILE
 
-
-
-PTR_UInt8 Thread::GetTEB()
-{
-    return m_pTEB;
-}
-
-#ifndef DACCESS_COMPILE
-void Thread::SetThreadStressLog(void * ptsl)
-{
-    m_pThreadStressLog = ptsl;
-}
-#endif // DACCESS_COMPILE
-
-PTR_VOID Thread::GetThreadStressLog() const
-{
-    return m_pThreadStressLog;
-}
-
 #if defined(FEATURE_GC_STRESS) & !defined(DACCESS_COMPILE)
 void Thread::SetRandomSeed(uint32_t seed)
 {
@@ -367,8 +348,20 @@ bool Thread::IsCurrentThread()
     return m_threadId.IsCurrentThread();
 }
 
+void Thread::Detach()
+{
+    // Thread::Destroy is called when the thread's "home" fiber dies.  We mark the thread as "detached" here
+    // so that we can validate, in our DLL_THREAD_DETACH handler, that the thread was already destroyed at that
+    // point.
+    SetDetached();
+
+    RedhawkGCInterface::ReleaseAllocContext(GetAllocContext());
+}
+
 void Thread::Destroy()
 {
+    ASSERT(IsDetached());
+
     if (m_hPalThread != INVALID_HANDLE_VALUE)
         PalCloseHandle(m_hPalThread);
 
@@ -394,12 +387,10 @@ void Thread::Destroy()
         delete[] m_pThreadLocalModuleStatics;
     }
 
-    RedhawkGCInterface::ReleaseAllocContext(GetAllocContext());
-
-    // Thread::Destroy is called when the thread's "home" fiber dies.  We mark the thread as "detached" here
-    // so that we can validate, in our DLL_THREAD_DETACH handler, that the thread was already destroyed at that
-    // point.
-    SetDetached();
+#ifdef STRESS_LOG
+    ThreadStressLog* ptsl = reinterpret_cast<ThreadStressLog*>(GetThreadStressLog());
+    StressLog::ThreadDetach(ptsl);
+#endif // STRESS_LOG
 }
 
 #ifdef HOST_WASM
@@ -645,7 +636,12 @@ bool Thread::Hijack()
 
     // requires THREAD_SUSPEND_RESUME / THREAD_GET_CONTEXT / THREAD_SET_CONTEXT permissions
 
-    return PalHijack(m_hPalThread, HijackCallback, this) == 0;
+    Thread* pCurrentThread = ThreadStore::GetCurrentThread();
+    pCurrentThread->EnterCantAllocRegion();
+    uint32_t result = PalHijack(m_hPalThread, HijackCallback, this);
+    pCurrentThread->LeaveCantAllocRegion();
+    return result == 0;
+
 }
 
 UInt32_BOOL Thread::HijackCallback(HANDLE /*hThread*/, PAL_LIMITED_CONTEXT* pThreadContext, void* pCallbackContext)

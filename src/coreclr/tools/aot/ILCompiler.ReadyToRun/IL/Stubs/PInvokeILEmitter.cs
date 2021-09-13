@@ -43,7 +43,7 @@ namespace Internal.IL.Stubs
 
             MetadataType stubHelpersType = InteropTypes.GetStubHelpers(context);
 
-            // if the SetLastError flag is set in DllImport, clear the error code before doing P/Invoke 
+            // if the SetLastError flag is set in DllImport, clear the error code before doing P/Invoke
             if (_importMetadata.Flags.SetLastError)
             {
                 callsiteSetupCodeStream.Emit(ILOpcode.call, emitter.NewToken(
@@ -63,9 +63,8 @@ namespace Internal.IL.Stubs
 
             callsiteSetupCodeStream.Emit(ILOpcode.call, emitter.NewToken(rawTargetMethod));
 
-            // if the SetLastError flag is set in DllImport, call the PInvokeMarshal.
-            // SaveLastWin32Error so that last error can be used later by calling 
-            // PInvokeMarshal.GetLastWin32Error
+            // if the SetLastError flag is set in DllImport, call the PInvokeMarshal.SaveLastError
+            // so that last error can be used later by calling Marshal.GetLastPInvokeError
             if (_importMetadata.Flags.SetLastError)
             {
                 callsiteSetupCodeStream.Emit(ILOpcode.call, emitter.NewToken(
@@ -77,6 +76,11 @@ namespace Internal.IL.Stubs
         {
             if (!_importMetadata.Flags.PreserveSig)
                 throw new NotSupportedException();
+
+#if READYTORUN
+            if (MarshalHelpers.ShouldCheckForPendingException(_targetMethod.Context.Target, _importMetadata))
+                throw new NotSupportedException();
+#endif
 
             if (_targetMethod.IsUnmanagedCallersOnly)
                 throw new NotSupportedException();

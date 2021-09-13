@@ -69,7 +69,7 @@ namespace Internal.Runtime.TypeLoader
             {
                 int hashCode = GetKeyHashCode(key);
 
-                // Iterate over all modules, starting with the module that defines the EEType
+                // Iterate over all modules, starting with the module that defines the MethodTable
                 foreach (NativeFormatModuleInfo module in ModuleList.EnumerateModules(RuntimeAugments.GetModuleFromTypeHandle(key)))
                 {
                     NativeReader typeMapReader;
@@ -247,7 +247,7 @@ namespace Internal.Runtime.TypeLoader
         /// guarantees that any type enabled for metadata also has a RuntimeTypeHandle underneath.
         /// </summary>
         /// <param name="qTypeDefinition">TypeDef handle for the type to look up</param>
-        /// <param name="runtimeTypeHandle">Runtime type handle (EEType) for the given type</param>
+        /// <param name="runtimeTypeHandle">Runtime type handle (MethodTable) for the given type</param>
         public unsafe bool TryGetNamedTypeForMetadata(QTypeDefinition qTypeDefinition, out RuntimeTypeHandle runtimeTypeHandle)
         {
             runtimeTypeHandle = default(RuntimeTypeHandle);
@@ -261,7 +261,7 @@ namespace Internal.Runtime.TypeLoader
 
         public void RegisterNewNamedTypeRuntimeTypeHandle(QTypeDefinition qTypeDefinition, RuntimeTypeHandle runtimeTypeHandle, IntPtr nonGcStaticFields, IntPtr gcStaticFields)
         {
-            TypeLoaderLogger.WriteLine("Register new type with eetype = " + runtimeTypeHandle.ToIntPtr().LowLevelToString() + " nonGcStaticFields " + nonGcStaticFields.LowLevelToString() + " gcStaticFields " + gcStaticFields.LowLevelToString());
+            TypeLoaderLogger.WriteLine("Register new type with MethodTable = " + runtimeTypeHandle.ToIntPtr().LowLevelToString() + " nonGcStaticFields " + nonGcStaticFields.LowLevelToString() + " gcStaticFields " + gcStaticFields.LowLevelToString());
             NamedTypeLookupResult result = _metadataToRuntimeTypeHandleHashtable.GetOrCreateValue(qTypeDefinition);
 
             result.VersionNumber = _namedTypeLookupLiveVersion + 1;

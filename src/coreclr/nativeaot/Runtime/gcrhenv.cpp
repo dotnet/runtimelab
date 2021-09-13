@@ -32,7 +32,7 @@
 #include "TypeManager.h"
 #include "RuntimeInstance.h"
 #include "objecthandle.h"
-#include "eetype.inl"
+#include "MethodTable.inl"
 #include "RhConfig.h"
 
 #include "threadstore.h"
@@ -68,9 +68,7 @@
     #define ETW_EVENT_ENABLED(e,f) false
 #endif // FEATURE_ETW
 
-GPTR_IMPL(EEType, g_pFreeObjectEEType);
-
-#include "DebuggerHook.h"
+GPTR_IMPL(MethodTable, g_pFreeObjectEEType);
 
 #include "gctoclreventsink.h"
 
@@ -79,13 +77,6 @@ GPTR_IMPL(EEType, g_pFreeObjectEEType);
 bool RhInitializeFinalization();
 bool RhStartFinalizerThread();
 void RhEnableFinalization();
-
-// Simplified EEConfig -- It is just a static member, which statically initializes to the default values and
-// has no dynamic initialization.  Some settings may change at runtime, however.  (Example: gcstress is
-// enabled via a compiled-in call from a given managed module, not through snooping an environment setting.)
-//
-static EEConfig s_sDummyConfig;
-EEConfig* g_pConfig = &s_sDummyConfig;
 
 // A few settings are now backed by the cut-down version of Redhawk configuration values.
 static RhConfig g_sRhConfig;
@@ -156,13 +147,11 @@ CrstStatic g_SuspendEELock;
 #ifdef _MSC_VER
 #pragma warning(disable:4815) // zero-sized array in stack object will have no elements
 #endif // _MSC_VER
-EEType g_FreeObjectEEType;
+MethodTable g_FreeObjectEEType;
 
 // static
 bool RedhawkGCInterface::InitializeSubsystems()
 {
-    g_pConfig->Construct();
-
 #ifdef FEATURE_ETW
     MICROSOFT_WINDOWS_REDHAWK_GC_PRIVATE_PROVIDER_Context.IsEnabled = FALSE;
     MICROSOFT_WINDOWS_REDHAWK_GC_PUBLIC_PROVIDER_Context.IsEnabled = FALSE;
@@ -175,7 +164,7 @@ bool RedhawkGCInterface::InitializeSubsystems()
     MICROSOFT_WINDOWS_REDHAWK_GC_PUBLIC_PROVIDER_Context.RegistrationHandle = Microsoft_Windows_Redhawk_GC_PublicHandle;
 #endif // FEATURE_ETW
 
-    // Initialize the special EEType used to mark free list entries in the GC heap.
+    // Initialize the special MethodTable used to mark free list entries in the GC heap.
     g_FreeObjectEEType.InitializeAsGcFreeType();
     g_pFreeObjectEEType = &g_FreeObjectEEType;
 
@@ -183,7 +172,7 @@ bool RedhawkGCInterface::InitializeSubsystems()
         return false;
 
 #ifdef FEATURE_SVR_GC
-    g_heap_type = (g_pRhConfig->GetUseServerGC() && PalGetProcessCpuCount() > 1) ? GC_HEAP_SVR : GC_HEAP_WKS;
+    g_heap_type = (g_pRhConfig->GetgcServer() && PalGetProcessCpuCount() > 1) ? GC_HEAP_SVR : GC_HEAP_WKS;
 #else
     g_heap_type = GC_HEAP_WKS;
 #endif
@@ -214,85 +203,104 @@ bool RedhawkGCInterface::InitializeSubsystems()
 }
 #endif // !DACCESS_COMPILE
 
-// Allocate an object on the GC heap.
-//  pEEType         -  type of the object
-//  uFlags          -  GC type flags (see gc.h GC_ALLOC_*)
-//  cbSize          -  size in bytes of the final object
-//  pTransitionFrame-  transition frame to make stack crawable
-// Returns a pointer to the object allocated or NULL on failure.
-
-COOP_PINVOKE_HELPER(void*, RhpGcAlloc, (EEType *pEEType, uint32_t uFlags, uintptr_t cbSize, void * pTransitionFrame))
+Object* GcAllocInternal(MethodTable *pEEType, uint32_t uFlags, uintptr_t numElements, Thread* pThread)
 {
-    Thread * pThread = ThreadStore::GetCurrentThread();
-
-    pThread->SetCurrentThreadPInvokeTunnelForGcAlloc(pTransitionFrame);
-
     ASSERT(!pThread->IsDoNotTriggerGcSet());
 
-    size_t max_object_size;
-#ifdef HOST_64BIT
-    if (g_pConfig->GetGCAllowVeryLargeObjects())
+    size_t cbSize = pEEType->get_BaseSize();
+
+    if (pEEType->get_ComponentSize() != 0)
     {
-        max_object_size = (INT64_MAX - 7 - min_obj_size);
-    }
-    else
-#endif // HOST_64BIT
-    {
-        max_object_size = (INT32_MAX - 7 - min_obj_size);
-    }
-
-    if (cbSize >= max_object_size)
-        return NULL;
-
-    const int MaxArrayLength = 0x7FEFFFFF;
-    const int MaxByteArrayLength = 0x7FFFFFC7;
-
-    // Impose limits on maximum array length in each dimension to allow efficient
-    // implementation of advanced range check elimination in future. We have to allow
-    // higher limit for array of bytes (or one byte structs) for backward compatibility.
-    // Keep in sync with Array.MaxArrayLength in BCL.
-    if (cbSize > MaxByteArrayLength /* note: comparing allocation size with element count */)
-    {
-        // Ensure the above if check covers the minimal interesting size
-        static_assert(MaxByteArrayLength < (uint64_t)MaxArrayLength * 2, "");
-
-        if (pEEType->IsArray())
+        // Impose limits on maximum array length to prevent corner case integer overflow bugs
+        // Keep in sync with Array.MaxLength in BCL.
+        if (pEEType->IsSzArray()) // multi-dimensional arrays are checked up-front
         {
-            if (pEEType->get_ComponentSize() != 1)
+            const int MaxArrayLength = 0x7FFFFFC7;
+            if (numElements > MaxArrayLength)
+                return NULL;
+        }
+
+#ifndef HOST_64BIT
+        // if the element count is <= 0x10000, no overflow is possible because the component size is
+        // <= 0xffff, and thus the product is <= 0xffff0000, and the base size is only ~12 bytes
+        if (numElements > 0x10000)
+        {
+            // Perform the size computation using 64-bit integeres to detect overflow
+            uint64_t size64 = (uint64_t)cbSize + ((uint64_t)numElements * (uint64_t)pEEType->get_ComponentSize());
+            size64 = (size64 + (sizeof(uintptr_t) - 1)) & ~(sizeof(uintptr_t) - 1);
+
+            cbSize = (size_t)size64;
+            if (cbSize != size64)
             {
-                size_t elementCount = (cbSize - pEEType->get_BaseSize()) / pEEType->get_ComponentSize();
-                if (elementCount > MaxArrayLength)
-                    return NULL;
-            }
-            else
-            {
-                size_t elementCount = cbSize - pEEType->get_BaseSize();
-                if (elementCount > MaxByteArrayLength)
-                    return NULL;
+                return NULL;
             }
         }
+        else
+#endif // !HOST_64BIT
+        {
+            cbSize = cbSize + ((size_t)numElements * (size_t)pEEType->get_ComponentSize());
+            cbSize = ALIGN_UP(cbSize, sizeof(uintptr_t));
+        }
+    }
+    else
+    {
+        ASSERT(numElements == 0);
     }
 
     if (cbSize >= RH_LARGE_OBJECT_SIZE)
+    {
         uFlags |= GC_ALLOC_LARGE_OBJECT_HEAP;
 
-    // Save the EEType for instrumentation purposes.
+#ifdef HOST_64BIT
+        const size_t max_object_size = (INT64_MAX - 7 - min_obj_size);
+#else
+        const size_t max_object_size = (INT32_MAX - 7 - min_obj_size);
+#endif
+
+        if (cbSize >= max_object_size)
+            return NULL;
+    }
+
+    // Save the MethodTable for instrumentation purposes.
     RedhawkGCInterface::SetLastAllocEEType(pEEType);
 
     Object * pObject = GCHeapUtilities::GetGCHeap()->Alloc(pThread->GetAllocContext(), cbSize, uFlags);
+    if (pObject == NULL)
+        return NULL;
 
-    // NOTE: we cannot call PublishObject here because the object isn't initialized!
+    pObject->set_EEType(pEEType);
+    if (pEEType->get_ComponentSize() != 0)
+    {
+        ASSERT(numElements == (uint32_t)numElements);
+        ((Array*)pObject)->InitArrayLength((uint32_t)numElements);
+    }
+
+    if (uFlags & GC_ALLOC_USER_OLD_HEAP)
+        GCHeapUtilities::GetGCHeap()->PublishObject((uint8_t*)pObject);
+
+#ifdef _DEBUG
+    // We assume that the allocation quantum is never big enough for LARGE_OBJECT_SIZE.
+    gc_alloc_context* acontext = pThread->GetAllocContext();
+    ASSERT(acontext->alloc_limit - acontext->alloc_ptr <= RH_LARGE_OBJECT_SIZE);
+#endif
 
     return pObject;
 }
 
-// returns the object pointer for caller's convenience
-COOP_PINVOKE_HELPER(void*, RhpPublishObject, (void* pObject, uintptr_t cbSize))
+// Allocate an object on the GC heap.
+//  pEEType         -  type of the object
+//  uFlags          -  GC type flags (see gc.h GC_ALLOC_*)
+//  numElements     -  number of array elements
+//  pTransitionFrame-  transition frame to make stack crawable
+// Returns a pointer to the object allocated or NULL on failure.
+
+COOP_PINVOKE_HELPER(void*, RhpGcAlloc, (MethodTable* pEEType, uint32_t uFlags, uintptr_t numElements, void* pTransitionFrame))
 {
-    UNREFERENCED_PARAMETER(cbSize);
-    ASSERT(cbSize >= LARGE_OBJECT_SIZE);
-    GCHeapUtilities::GetGCHeap()->PublishObject((uint8_t*)pObject);
-    return pObject;
+    Thread* pThread = ThreadStore::GetCurrentThread();
+
+    pThread->SetCurrentThreadPInvokeTunnelForGcAlloc(pTransitionFrame);
+
+    return GcAllocInternal(pEEType, uFlags, numElements, pThread);
 }
 
 // static
@@ -320,12 +328,12 @@ void RedhawkGCInterface::WaitForGCCompletion()
 }
 
 //-------------------------------------------------------------------------------------------------
-// Used only by GC initialization, this initializes the EEType used to mark free entries in the GC heap. It
+// Used only by GC initialization, this initializes the MethodTable used to mark free entries in the GC heap. It
 // should be an array type with a component size of one (so the GC can easily size it as appropriate) and
 // should be marked as not containing any references. The rest of the fields don't matter: the GC does not
 // query them and the rest of the runtime will never hold a reference to free object.
 
-void EEType::InitializeAsGcFreeType()
+void MethodTable::InitializeAsGcFreeType()
 {
     m_usComponentSize = 1;
     m_usFlags = ParameterizedEEType;
@@ -601,7 +609,6 @@ void RedhawkGCInterface::StressGc()
 COOP_PINVOKE_HELPER(void, RhpInitializeGcStress, ())
 {
     g_fGcStressStarted = UInt32_TRUE;
-    g_pConfig->SetGCStressLevel(EEConfig::GCSTRESS_INSTR_NGEN);   // this is the closest CLR equivalent to what we do.
 }
 #endif // FEATURE_GC_STRESS
 
@@ -734,11 +741,11 @@ COOP_PINVOKE_HELPER(void, RhpCopyObjectContents, (Object* pobjDest, Object* pobj
 COOP_PINVOKE_HELPER(Boolean, RhCompareObjectContentsAndPadding, (Object* pObj1, Object* pObj2))
 {
     ASSERT(pObj1->get_EEType()->IsEquivalentTo(pObj2->get_EEType()));
-    EEType * pEEType = pObj1->get_EEType();
-    size_t cbFields = pEEType->get_BaseSize() - (sizeof(ObjHeader) + sizeof(EEType*));
+    MethodTable * pEEType = pObj1->get_EEType();
+    size_t cbFields = pEEType->get_BaseSize() - (sizeof(ObjHeader) + sizeof(MethodTable*));
 
-    uint8_t * pbFields1 = (uint8_t*)pObj1 + sizeof(EEType*);
-    uint8_t * pbFields2 = (uint8_t*)pObj2 + sizeof(EEType*);
+    uint8_t * pbFields1 = (uint8_t*)pObj1 + sizeof(MethodTable*);
+    uint8_t * pbFields2 = (uint8_t*)pObj2 + sizeof(MethodTable*);
 
     return (memcmp(pbFields1, pbFields2, cbFields) == 0) ? Boolean_true : Boolean_false;
 }
@@ -746,16 +753,16 @@ COOP_PINVOKE_HELPER(Boolean, RhCompareObjectContentsAndPadding, (Object* pObj1, 
 // Thread static representing the last allocation.
 // This is used to log the type information for each slow allocation.
 DECLSPEC_THREAD
-EEType * RedhawkGCInterface::tls_pLastAllocationEEType = NULL;
+MethodTable * RedhawkGCInterface::tls_pLastAllocationEEType = NULL;
 
 // Get the last allocation for this thread.
-EEType * RedhawkGCInterface::GetLastAllocEEType()
+MethodTable * RedhawkGCInterface::GetLastAllocEEType()
 {
     return tls_pLastAllocationEEType;
 }
 
 // Set the last allocation for this thread.
-void RedhawkGCInterface::SetLastAllocEEType(EEType * pEEType)
+void RedhawkGCInterface::SetLastAllocEEType(MethodTable * pEEType)
 {
     tls_pLastAllocationEEType = pEEType;
 }
@@ -829,10 +836,12 @@ void GCToEEInterface::RestartEE(bool /*bFinishedGC*/)
 
 void GCToEEInterface::GcStartWork(int condemned, int /*max_gen*/)
 {
-    DebuggerHook::OnBeforeGcCollection();
-
     // Invoke any registered callouts for the start of the collection.
     RestrictedCallouts::InvokeGcCallouts(GCRC_StartCollection, condemned);
+}
+
+void GCToEEInterface::BeforeGcScanRoots(int condemned, bool is_bgc, bool is_concurrent)
+{
 }
 
 // EE can perform post stack scanning action, while the user threads are still suspended
@@ -840,10 +849,6 @@ void GCToEEInterface::AfterGcScanRoots(int condemned, int /*max_gen*/, ScanConte
 {
     // Invoke any registered callouts for the end of the mark phase.
     RestrictedCallouts::InvokeGcCallouts(GCRC_AfterMarkPhase, condemned);
-}
-
-void GCToEEInterface::GcBeforeBGCSweepWork()
-{
 }
 
 void GCToEEInterface::GcDone(int condemned)
@@ -1440,6 +1445,11 @@ void GCToEEInterface::UpdateGCEventStatus(int currentPublicLevel, int currentPub
     // TODO: Linux LTTng
 }
 
+uint32_t GCToEEInterface::GetCurrentProcessCpuCount()
+{
+    return PalGetProcessCpuCount();
+}
+
 MethodTable* GCToEEInterface::GetFreeObjectMethodTable()
 {
     assert(g_pFreeObjectEEType != nullptr);
@@ -1455,42 +1465,46 @@ bool GCToEEInterface::GetBooleanConfigValue(const char* privateKey, const char* 
         return true;
     }
 
-    if (strcmp(privateKey, "gcConcurrent") == 0)
-    {
-        *value = !g_pRhConfig->GetDisableBGC();
-        return true;
-    }
-
     if (strcmp(privateKey, "gcConservative") == 0)
     {
-        *value = g_pConfig->GetGCConservative();
+        *value = true;
         return true;
     }
 
-    return false;
+#ifdef UNICODE
+    size_t keyLength = strlen(privateKey) + 1;
+    TCHAR* pKey = (TCHAR*)_alloca(sizeof(TCHAR) * keyLength);
+    for (int i = 0; i < keyLength; i++)
+        pKey[i] = privateKey[i];
+#else
+    const TCHAR* pKey = privateKey;
+#endif
+
+    uint32_t uiValue;
+    if (!g_pRhConfig->ReadConfigValue(pKey, &uiValue))
+        return false;
+
+    *value = uiValue != 0;
+    return true;
 }
 
 bool GCToEEInterface::GetIntConfigValue(const char* privateKey, const char* publicKey, int64_t* value)
 {
-    if (strcmp(privateKey, "HeapVerify") == 0)
-    {
-        *value = g_pRhConfig->GetHeapVerify();
-        return true;
-    }
-
-    if (strcmp(privateKey, "GCgen0size") == 0)
-    {
-#if defined(USE_PORTABLE_HELPERS) && !defined(HOST_WASM)
-        // CORERT-TODO: remove this
-        //              https://github.com/dotnet/corert/issues/2033
-        *value = 100 * 1024 * 1024;
+#ifdef UNICODE
+    size_t keyLength = strlen(privateKey) + 1;
+    TCHAR* pKey = (TCHAR*)_alloca(sizeof(TCHAR) * keyLength);
+    for (int i = 0; i < keyLength; i++)
+        pKey[i] = privateKey[i];
 #else
-        *value = 0;
+    const TCHAR* pKey = privateKey;
 #endif
-        return true;
-    }
 
-    return false;
+    uint32_t uiValue;
+    if (!g_pRhConfig->ReadConfigValue(pKey, &uiValue))
+        return false;
+
+    *value = uiValue;
+    return true;
 }
 
 bool GCToEEInterface::GetStringConfigValue(const char* privateKey, const char* publicKey, const char** value)
@@ -1498,6 +1512,7 @@ bool GCToEEInterface::GetStringConfigValue(const char* privateKey, const char* p
     UNREFERENCED_PARAMETER(privateKey);
     UNREFERENCED_PARAMETER(publicKey);
     UNREFERENCED_PARAMETER(value);
+
     return false;
 }
 
@@ -1543,9 +1558,6 @@ ProfilingScanContext::ProfilingScanContext(BOOL fProfilerPinnedParam)
     pHeapId = NULL;
     fProfilerPinned = fProfilerPinnedParam;
     pvEtwContext = NULL;
-#ifdef FEATURE_CONSERVATIVE_GC
-    // To not confuse GCScan::GcScanRoots
-    promotion = g_pConfig->GetGCConservative();
-#endif
+    promotion = true;
 }
 #endif // defined(FEATURE_EVENT_TRACE) && !defined(DACCESS_COMPILE)

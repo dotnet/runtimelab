@@ -4,6 +4,7 @@
 using System;
 using System.Reflection;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Collections.Generic;
 using System.Reflection.Runtime.General;
@@ -43,6 +44,7 @@ namespace System.Reflection.Runtime.MethodInfos
             throw new NotSupportedException();
         }
 
+        [RequiresUnreferencedCode("Trimming may change method bodies. For example it can change some instructions, remove branches or local variables.")]
         public sealed override MethodBody GetMethodBody()
         {
             throw new PlatformNotSupportedException();

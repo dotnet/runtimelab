@@ -66,6 +66,7 @@ namespace System.Reflection.Runtime.Assemblies
             }
         }
 
+        [RequiresUnreferencedCode("Types might be removed")]
         public sealed override Type GetType(string name, bool throwOnError, bool ignoreCase)
         {
 #if ENABLE_REFLECTION_TRACE
@@ -204,9 +205,17 @@ namespace System.Reflection.Runtime.Assemblies
 
         // Types that derive from RuntimeAssembly must implement the following public surface area members
         public abstract override IEnumerable<CustomAttributeData> CustomAttributes { get; }
-        public abstract override IEnumerable<TypeInfo> DefinedTypes { get; }
+        public abstract override IEnumerable<TypeInfo> DefinedTypes
+        {
+            [RequiresUnreferencedCode("Types might be removed")]
+            get;
+        }
         public abstract override MethodInfo EntryPoint { get; }
-        public abstract override IEnumerable<Type> ExportedTypes { get; }
+        public abstract override IEnumerable<Type> ExportedTypes
+        {
+            [RequiresUnreferencedCode("Types might be removed")]
+            get;
+        }
         public abstract override ManifestResourceInfo GetManifestResourceInfo(string resourceName);
         public abstract override string[] GetManifestResourceNames();
         public abstract override Stream GetManifestResourceStream(string name);
@@ -266,16 +275,21 @@ namespace System.Reflection.Runtime.Assemblies
             }
         }
 
+        [RequiresUnreferencedCode("Types and members the loaded module depends on might be removed")]
         public sealed override Module LoadModule(string moduleName, byte[] rawModule, byte[] rawSymbolStore)
         {
             throw new PlatformNotSupportedException();
         }
 
+        internal const string ThrowingMessageInRAF = "This member throws an exception for assemblies embedded in a single-file app";
+
+        [RequiresAssemblyFiles(ThrowingMessageInRAF)]
         public sealed override FileStream GetFile(string name)
         {
             throw new PlatformNotSupportedException();
         }
 
+        [RequiresAssemblyFiles(ThrowingMessageInRAF)]
         public sealed override FileStream[] GetFiles(bool getResourceModules)
         {
             throw new PlatformNotSupportedException();

@@ -1,5 +1,0 @@
-<Project>
-  <PropertyGroup>
-    <MonoAotCrossCompilerPath>$(MSBuildThisFileDirectory)..\tools\mono-aot-cross</MonoAotCrossCompilerPath>
-  </PropertyGroup>
-</Project>

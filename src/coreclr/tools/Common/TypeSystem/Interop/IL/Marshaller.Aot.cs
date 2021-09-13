@@ -2,12 +2,15 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System;
+using System.Buffers.Binary;
 using System.Runtime.InteropServices;
 using Internal.IL.Stubs;
 using Internal.IL;
 
 using Debug = System.Diagnostics.Debug;
 using ILLocalVariable = Internal.IL.Stubs.ILLocalVariable;
+using Internal.TypeSystem.Ecma;
+using System.Reflection.Metadata;
 
 namespace Internal.TypeSystem.Interop
 {
@@ -33,12 +36,18 @@ namespace Internal.TypeSystem.Interop
                 case MarshallerKind.Bool:
                 case MarshallerKind.CBool:
                     return new BooleanMarshaller();
+                case MarshallerKind.VariantBool:
+                    return new BooleanMarshaller((short)-1);
                 case MarshallerKind.AnsiString:
                     return new AnsiStringMarshaller();
                 case MarshallerKind.UTF8String:
                     return new UTF8StringMarshaller();
                 case MarshallerKind.UnicodeString:
                     return new UnicodeStringMarshaller();
+                case MarshallerKind.AnsiBSTRString:
+                    return new AnsiBSTRStringMarshaller();
+                case MarshallerKind.BSTRString:
+                    return new BSTRStringMarshaller();
                 case MarshallerKind.SafeHandle:
                     return new SafeHandleMarshaller();
                 case MarshallerKind.UnicodeStringBuilder:
@@ -50,6 +59,7 @@ namespace Internal.TypeSystem.Interop
                 case MarshallerKind.FunctionPointer:
                     return new DelegateMarshaller();
                 case MarshallerKind.Struct:
+                case MarshallerKind.Decimal:
                     return new StructMarshaller();
                 case MarshallerKind.ByValAnsiString:
                     return new ByValAnsiStringMarshaller();
@@ -72,9 +82,15 @@ namespace Internal.TypeSystem.Interop
                     return new AsAnyMarshaller(isAnsi: false);
                 case MarshallerKind.ComInterface:
                     return new ComInterfaceMarshaller();
+                case MarshallerKind.OleDateTime:
+                    return new OleDateTimeMarshaller();
+                case MarshallerKind.OleCurrency:
+                    return new OleCurrencyMarshaller();
+                case MarshallerKind.Variant:
+                    return new VariantMarshaller();
                 default:
                     // ensures we don't throw during create marshaller. We will throw NSE
-                    // during EmitIL which will be handled and an Exception method body 
+                    // during EmitIL which will be handled and an Exception method body
                     // will be emitted.
                     return new NotSupportedMarshaller();
             }
@@ -237,12 +253,12 @@ namespace Internal.TypeSystem.Interop
 
         protected override void TransformNativeToManaged(ILCodeStream codeStream)
         {
-            throw new InvalidProgramException();
+            ThrowHelper.ThrowMarshalDirectiveException();
         }
 
         protected override void TransformManagedToNative(ILCodeStream codeStream)
         {
-            throw new InvalidProgramException();
+            ThrowHelper.ThrowMarshalDirectiveException();
         }
 
         protected override void EmitCleanupManaged(ILCodeStream codeStream)
@@ -365,7 +381,7 @@ namespace Internal.TypeSystem.Interop
             // It generates the following code
             //if (ManagedArg.Field != null)
             //{
-            //          
+            //
             //  fixed (InlineArray* pUnsafe = &NativeArg.Field)
             //  {
             //        uint index = 0u;
@@ -474,7 +490,7 @@ namespace Internal.TypeSystem.Interop
             codeStream.EmitLdLoc(vLength);
             codeStream.Emit(ILOpcode.newarr, emitter.NewToken(managedElementType));
             codeStream.Emit(ILOpcode.stfld, emitter.NewToken(_managedField));
-            
+
 
             var vIndex = emitter.NewLocal(Context.GetWellKnownType(WellKnownType.Int32));
 
@@ -522,7 +538,7 @@ namespace Internal.TypeSystem.Interop
     {
         protected virtual bool IsAnsi
         {
-            get;    
+            get;
         }
 
         protected virtual MethodDesc GetManagedToNativeHelper()
@@ -871,34 +887,242 @@ namespace Internal.TypeSystem.Interop
         {
             ILEmitter emitter = _ilCodeStreams.Emitter;
 
-            var helper = Context.GetHelperEntryPoint("InteropHelpers", "ConvertManagedComInterfaceToNative");
             LoadManagedValue(codeStream);
+            var parameterType = this.ManagedParameterType;
+            if (parameterType.IsByRef)
+            {
+                parameterType = ((ByRefType)this.ManagedParameterType).ParameterType;
+            }
 
-            codeStream.Emit(ILOpcode.call, emitter.NewToken(helper));
+            CustomAttributeValue<TypeDesc>? guidAttributeValue = (parameterType as EcmaType)?
+                .GetDecodedCustomAttribute("System.Runtime.InteropServices", "GuidAttribute");
+            if (guidAttributeValue != null)
+            {
+                var guidValue = (string)guidAttributeValue.Value.FixedArguments[0].Value;
+                Span<byte> bytes = Guid.Parse(guidValue).ToByteArray();
+                codeStream.EmitLdc(BinaryPrimitives.ReadInt32LittleEndian(bytes));
+                codeStream.EmitLdc(BinaryPrimitives.ReadInt16LittleEndian(bytes.Slice(4)));
+                codeStream.EmitLdc(BinaryPrimitives.ReadInt16LittleEndian(bytes.Slice(6)));
+                for (int i = 8; i < 16; i++)
+                    codeStream.EmitLdc(bytes[i]);
+
+                MetadataType guidType = Context.SystemModule.GetKnownType("System", "Guid");
+                var int32Type = Context.GetWellKnownType(WellKnownType.Int32);
+                var int16Type = Context.GetWellKnownType(WellKnownType.Int16);
+                var byteType = Context.GetWellKnownType(WellKnownType.Byte);
+                var sig = new MethodSignature(
+                    MethodSignatureFlags.None,
+                    genericParameterCount: 0,
+                    returnType: Context.GetWellKnownType(WellKnownType.Void),
+                    parameters: new TypeDesc[] { int32Type, int16Type, int16Type, byteType, byteType, byteType, byteType, byteType, byteType, byteType, byteType });
+                MethodDesc guidCtorHandleMethod =
+                    guidType.GetKnownMethod(".ctor", sig);
+                codeStream.Emit(ILOpcode.newobj, emitter.NewToken(guidCtorHandleMethod));
+
+                MethodDesc helper = Context.GetHelperEntryPoint("InteropHelpers", "ConvertManagedComInterfaceToNative");
+                codeStream.Emit(ILOpcode.call, emitter.NewToken(helper));
+            }
+            else
+            {
+                if (!parameterType.IsObject)
+                {
+                    throw new NotSupportedException();
+                }
+
+                MethodDesc helper = Context.GetHelperEntryPoint("InteropHelpers", "ConvertManagedComInterfaceToIUnknown");
+                codeStream.Emit(ILOpcode.call, emitter.NewToken(helper));
+            }
 
             StoreNativeValue(codeStream);
         }
 
-        protected override void AllocAndTransformNativeToManaged(ILCodeStream codeStream)
+        protected override void TransformNativeToManaged(ILCodeStream codeStream)
         {
             ILEmitter emitter = _ilCodeStreams.Emitter;
 
-            var helper = Context.GetHelperEntryPoint("InteropHelpers", "ConvertNativeComInterfaceToManaged");
             LoadNativeValue(codeStream);
-
+            MethodDesc helper = Context.GetHelperEntryPoint("InteropHelpers", "ConvertNativeComInterfaceToManaged");
             codeStream.Emit(ILOpcode.call, emitter.NewToken(helper));
 
             StoreManagedValue(codeStream);
         }
 
-        protected override void TransformNativeToManaged(ILCodeStream codeStream)
+        protected override void TransformManagedToNative(ILCodeStream codeStream)
         {
             throw new NotSupportedException();
+        }
+    }
+
+    class AnsiBSTRStringMarshaller : Marshaller
+    {
+
+        internal override bool CleanupRequired => true;
+
+        internal override void EmitElementCleanup(ILCodeStream codeStream, ILEmitter emitter)
+        {
+            var helper = InteropTypes.GetMarshal(Context).GetKnownMethod("FreeBSTR", null);
+            codeStream.Emit(ILOpcode.call, emitter.NewToken(helper));
+        }
+        protected override void TransformManagedToNative(ILCodeStream codeStream)
+        {
+            ILEmitter emitter = _ilCodeStreams.Emitter;
+            LoadManagedValue(codeStream);
+
+            var helper = Context.GetHelperEntryPoint("InteropHelpers", "StringToAnsiBstrBuffer");
+            codeStream.Emit(ILOpcode.call, emitter.NewToken(helper));
+
+            StoreNativeValue(codeStream);
+        }
+
+        protected override void TransformNativeToManaged(ILCodeStream codeStream)
+        {
+            ILEmitter emitter = _ilCodeStreams.Emitter;
+            LoadNativeValue(codeStream);
+
+            var helper = Context.GetHelperEntryPoint("InteropHelpers", "AnsiBstrBufferToString");
+            codeStream.Emit(ILOpcode.call, emitter.NewToken(helper));
+
+            StoreManagedValue(codeStream);
+        }
+    }
+
+    class BSTRStringMarshaller : Marshaller
+    {
+
+        internal override bool CleanupRequired => true;
+
+        internal override void EmitElementCleanup(ILCodeStream codeStream, ILEmitter emitter)
+        {
+            var helper = InteropTypes.GetMarshal(Context).GetKnownMethod("FreeBSTR", null);
+            codeStream.Emit(ILOpcode.call, emitter.NewToken(helper));
+        }
+        protected override void TransformManagedToNative(ILCodeStream codeStream)
+        {
+            ILEmitter emitter = _ilCodeStreams.Emitter;
+            LoadManagedValue(codeStream);
+
+            var helper = InteropTypes.GetMarshal(Context).GetKnownMethod("StringToBSTR", null);
+            codeStream.Emit(ILOpcode.call, emitter.NewToken(helper));
+
+            StoreNativeValue(codeStream);
+        }
+
+        protected override void TransformNativeToManaged(ILCodeStream codeStream)
+        {
+            ILEmitter emitter = _ilCodeStreams.Emitter;
+            LoadNativeValue(codeStream);
+
+            var helper = Context.GetHelperEntryPoint("InteropHelpers", "BstrBufferToString");
+            codeStream.Emit(ILOpcode.call, emitter.NewToken(helper));
+
+            StoreManagedValue(codeStream);
+        }
+    }
+
+    class OleDateTimeMarshaller : Marshaller
+    {
+        protected override void TransformManagedToNative(ILCodeStream codeStream)
+        {
+            ILEmitter emitter = _ilCodeStreams.Emitter;
+            LoadManagedValue(codeStream);
+
+            var helper = Context.GetHelperEntryPoint("InteropHelpers", "DateTimeToOleDateTime");
+            codeStream.Emit(ILOpcode.call, emitter.NewToken(helper));
+
+            StoreNativeValue(codeStream);
+        }
+
+        protected override void TransformNativeToManaged(ILCodeStream codeStream)
+        {
+            ILEmitter emitter = _ilCodeStreams.Emitter;
+            LoadNativeValue(codeStream);
+
+            var helper = Context.GetHelperEntryPoint("InteropHelpers", "OleDateTimeToDateTime");
+            codeStream.Emit(ILOpcode.call, emitter.NewToken(helper));
+
+            StoreManagedValue(codeStream);
+        }
+    }
+
+    class OleCurrencyMarshaller : Marshaller
+    {
+        protected override void TransformManagedToNative(ILCodeStream codeStream)
+        {
+            ILEmitter emitter = _ilCodeStreams.Emitter;
+            LoadManagedValue(codeStream);
+
+            var helper = Context.GetHelperEntryPoint("InteropHelpers", "DecimalToOleCurrency");
+            codeStream.Emit(ILOpcode.call, emitter.NewToken(helper));
+
+            StoreNativeValue(codeStream);
+        }
+
+        protected override void TransformNativeToManaged(ILCodeStream codeStream)
+        {
+            ILEmitter emitter = _ilCodeStreams.Emitter;
+            LoadNativeValue(codeStream);
+
+            var helper = Context.GetHelperEntryPoint("InteropHelpers", "OleCurrencyToDecimal");
+            codeStream.Emit(ILOpcode.call, emitter.NewToken(helper));
+
+            StoreManagedValue(codeStream);
+        }
+    }
+
+    class VariantMarshaller : Marshaller
+    {
+        protected override void AllocManagedToNative(ILCodeStream codeStream)
+        {
+            LoadNativeAddr(codeStream);
+            codeStream.Emit(ILOpcode.initobj, _ilCodeStreams.Emitter.NewToken(NativeType));
         }
 
         protected override void TransformManagedToNative(ILCodeStream codeStream)
         {
-            throw new NotSupportedException();
+            if (this.MarshalDirection == MarshalDirection.Reverse)
+            {
+                throw new NotSupportedException();
+            }
+
+            ILEmitter emitter = _ilCodeStreams.Emitter;
+
+            LoadManagedValue(codeStream);
+            LoadNativeAddr(codeStream);
+
+            var helper = Context.GetHelperEntryPoint("InteropHelpers", "ConvertObjectToVariant");
+            codeStream.Emit(ILOpcode.call, emitter.NewToken(helper));
+        }
+
+        protected override void TransformNativeToManaged(ILCodeStream codeStream)
+        {
+            if (this.MarshalDirection == MarshalDirection.Reverse)
+            {
+                throw new NotSupportedException();
+            }
+
+            ILEmitter emitter = _ilCodeStreams.Emitter;
+
+            LoadNativeAddr(codeStream);
+
+            var helper = Context.GetHelperEntryPoint("InteropHelpers", "VariantToObject");
+            codeStream.Emit(ILOpcode.call, emitter.NewToken(helper));
+
+            StoreManagedValue(codeStream);
+        }
+
+        protected override void EmitCleanupManaged(ILCodeStream codeStream)
+        {
+            // Only do cleanup if it is IN
+            if (!In)
+            {
+                return;
+            }
+
+            ILEmitter emitter = _ilCodeStreams.Emitter;
+
+            LoadNativeAddr(codeStream);
+            var helper = Context.GetHelperEntryPoint("InteropHelpers", "CleanupVariant");
+            codeStream.Emit(ILOpcode.call, emitter.NewToken(helper));
         }
     }
 }

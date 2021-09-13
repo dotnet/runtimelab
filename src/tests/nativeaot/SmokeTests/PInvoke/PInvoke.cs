@@ -209,9 +209,6 @@ namespace PInvokeTests
         [DllImport("PInvokeNative", CallingConvention = CallingConvention.StdCall)]
         static extern bool IsNULL(SequentialStruct[] foo);
 
-        [DllImport("PInvokeNative", CallingConvention = CallingConvention.StdCall)]
-        static extern bool IsNULL(IComInterface foo);
-
         [StructLayout(LayoutKind.Sequential, CharSet= CharSet.Ansi, Pack = 4)]
         public unsafe struct InlineArrayStruct
         {
@@ -275,6 +272,23 @@ namespace PInvokeTests
         public static int callbackFunc1() { return 1; }
         public static int callbackFunc2() { return 2; }
 
+        [DllImport("PInvokeNative", CallingConvention = CallingConvention.StdCall, PreserveSig = false)]
+        static extern void ValidateSuccessCall(int errorCode);
+
+        [DllImport("PInvokeNative", CallingConvention = CallingConvention.StdCall, PreserveSig = false)]
+        static extern int ValidateIntResult(int errorCode);
+
+        [DllImport("PInvokeNative", EntryPoint = "ValidateIntResult", CallingConvention = CallingConvention.StdCall, PreserveSig = false)]
+        static extern MagicEnum ValidateEnumResult(int errorCode);
+
+        [DllImport("PInvokeNative", CallingConvention = CallingConvention.StdCall)]
+        internal static extern decimal DecimalTest(decimal value);
+
+        internal enum MagicEnum
+        {
+            MagicResult = 42,
+        }
+
         public static int Main(string[] args)
         {
             TestBlittableType();
@@ -295,10 +309,9 @@ namespace PInvokeTests
             TestLayoutClass();
             TestAsAny();
             TestMarshalStructAPIs();
+            TestWithoutPreserveSig();
             TestForwardDelegateWithUnmanagedCallersOnly();
-
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-                TestComInteropNullPointers();
+            TestDecimal();
 
             return 100;
         }
@@ -360,7 +373,7 @@ namespace PInvokeTests
 
             Foo[] arr_foo = null;
             ThrowIfNotEquals(true, IsNULL(arr_foo), "Blittable array null check failed");
-            
+
             arr_foo = new Foo[ArraySize];
             for (int i = 0; i < ArraySize; i++)
             {
@@ -801,7 +814,7 @@ namespace PInvokeTests
                 ssa[i].f1 = 0;
                 ssa[i].f1 = i;
                 ssa[i].f2 = i*i;
-                ssa[i].f3 = i.LowLevelToString(); 
+                ssa[i].f3 = i.LowLevelToString();
             }
             ThrowIfNotEquals(true, StructTest_Array(ssa, ssa.Length), "Array of struct marshalling failed");
 
@@ -925,7 +938,7 @@ namespace PInvokeTests
             ThrowIfNotEquals(true, StructTest_NestedClass(ns), "LayoutClass marshalling scenario1 failed.");
         }
 
-        private static void TestMarshalStructAPIs()
+        private static unsafe void TestMarshalStructAPIs()
         {
             Console.WriteLine("Testing Marshal APIs for structs");
 
@@ -936,7 +949,9 @@ namespace PInvokeTests
             try
             {
                 Marshal.StructureToPtr<BlittableStruct>(bs, bs_memory, false);
-                BlittableStruct bs2 = Marshal.PtrToStructure<BlittableStruct>(bs_memory);
+                // Marshal.PtrToStructure uses reflection
+                // BlittableStruct bs2 = Marshal.PtrToStructure<BlittableStruct>(bs_memory);
+                BlittableStruct bs2 = *(BlittableStruct*)bs_memory;
                 ThrowIfNotEquals(true, bs2.FirstField == 1.0f && bs2.SecondField == 2.0f && bs2.ThirdField == 3 , "BlittableStruct marshalling Marshal API failed");
 
                 IntPtr offset = Marshal.OffsetOf<BlittableStruct>("SecondField");
@@ -954,8 +969,9 @@ namespace PInvokeTests
             try
             {
                 Marshal.StructureToPtr<NonBlittableStruct>(ts, memory, false);
-                NonBlittableStruct ts2 = Marshal.PtrToStructure<NonBlittableStruct>(memory);
-                ThrowIfNotEquals(true, ts2.f1 == 100 && ts2.f2 == true && ts2.f3 == false && ts2.f4 == true, "NonBlittableStruct marshalling Marshal API failed");
+                // Marshal.PtrToStructure uses reflection
+                // NonBlittableStruct ts2 = Marshal.PtrToStructure<NonBlittableStruct>(memory);
+                // ThrowIfNotEquals(true, ts2.f1 == 100 && ts2.f2 == true && ts2.f3 == false && ts2.f4 == true, "NonBlittableStruct marshalling Marshal API failed");
 
                 IntPtr offset = Marshal.OffsetOf<NonBlittableStruct>("f2");
                 ThrowIfNotEquals(new IntPtr(4), offset, "Struct marshalling OffsetOf failed.");
@@ -972,7 +988,8 @@ namespace PInvokeTests
             try
             {
                 Marshal.StructureToPtr<BlittableClass>(bc, bc_memory, false);
-                BlittableClass bc2 = Marshal.PtrToStructure<BlittableClass>(bc_memory);
+                BlittableClass bc2 = new BlittableClass();
+                Marshal.PtrToStructure<BlittableClass>(bc_memory, bc2);
                 ThrowIfNotEquals(true, bc2.f1 == 100 && bc2.f2 == 12345678 && bc2.f3 == 999 && bc2.f4 == -4, "BlittableClass marshalling Marshal API failed");
             }
             finally
@@ -987,7 +1004,8 @@ namespace PInvokeTests
             try
             {
                 Marshal.StructureToPtr<NonBlittableClass>(nbc, nbc_memory, false);
-                NonBlittableClass nbc2 = Marshal.PtrToStructure<NonBlittableClass>(nbc_memory);
+                NonBlittableClass nbc2 = new NonBlittableClass();
+                Marshal.PtrToStructure<NonBlittableClass>(nbc_memory, nbc2);
                 ThrowIfNotEquals(true, nbc2.f1 == false && nbc2.f2 == true && nbc2.f3 == 42, "NonBlittableClass marshalling Marshal API failed");
             }
             finally
@@ -999,10 +1017,51 @@ namespace PInvokeTests
             ThrowIfNotEquals(4, cftf_size, "ClassForTestingFlowAnalysis marshalling Marshal API failed");
         }
 
+        private unsafe static void TestDecimal()
+        {
+            Console.WriteLine("Testing Decimals");
+            var d = new decimal(100, 101, 102, false, 1);
+            var ret = DecimalTest(d);
+            var expected = new decimal(99, 98, 97, true, 2);
+            ThrowIfNotEquals(ret, expected, "Decimal marshalling failed.");
+        }
+
         [UnmanagedCallersOnly]
         static void UnmanagedCallback()
         {
             GC.Collect();
+        }
+
+        private static void TestWithoutPreserveSig()
+        {
+            Console.WriteLine("Testing with PreserveSig = false");
+            ValidateSuccessCall(0);
+
+            try
+            {
+                const int E_NOTIMPL = -2147467263;
+                ValidateSuccessCall(E_NOTIMPL);
+                throw new Exception("Exception should be thrown for E_NOTIMPL error code");
+            }
+            catch (NotImplementedException)
+            {
+            }
+
+            var intResult = ValidateIntResult(0);
+            ThrowIfNotEquals(intResult, 42, "Int32 marshalling failed.");
+
+            try
+            {
+                const int E_NOTIMPL = -2147467263;
+                intResult = ValidateIntResult(E_NOTIMPL);
+                throw new Exception("Exception should be thrown for E_NOTIMPL error code");
+            }
+            catch (NotImplementedException)
+            {
+            }
+
+            var enumResult = ValidateEnumResult(0);
+            ThrowIfNotEquals(enumResult, MagicEnum.MagicResult, "Enum marshalling failed.");
         }
 
         public static unsafe void TestForwardDelegateWithUnmanagedCallersOnly()
@@ -1010,14 +1069,6 @@ namespace PInvokeTests
             Console.WriteLine("Testing Forward Delegate with UnmanagedCallersOnly");
             Action a = Marshal.GetDelegateForFunctionPointer<Action>((IntPtr)(void*)(delegate* unmanaged<void>)&UnmanagedCallback);
             a();
-        }
-
-        public static void TestComInteropNullPointers()
-        {
-            Console.WriteLine("Testing Marshal APIs for COM interfaces");
-            IComInterface comPointer = null;
-            var result = IsNULL(comPointer);
-            ThrowIfNotEquals(true, IsNULL(comPointer), "COM interface marshalling null check failed");
         }
     }
 
@@ -1046,14 +1097,6 @@ namespace PInvokeTests
             return ReleaseMemory(handle);
         }
     } //end of SafeMemoryHandle class
-
-    [ComImport]
-    [ComVisible(true)]
-    [Guid("D6DD68D1-86FD-4332-8666-9ABEDEA2D24C")]
-    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-    public interface IComInterface
-    {
-    }
 
     public static class LowLevelExtensions
     {

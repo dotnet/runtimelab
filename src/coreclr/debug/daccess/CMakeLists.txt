@@ -19,6 +19,7 @@ set(DACCESS_SOURCES
   dacfn.cpp
   enummem.cpp
   fntableaccess.cpp
+  gcdump_dac.cpp
   inspect.cpp
   reimpl.cpp
   request.cpp
@@ -42,7 +43,7 @@ target_precompile_headers(daccess PRIVATE [["stdafx.h"]])
 
 add_dependencies(daccess eventing_headers)
 
-if(CLR_CMAKE_HOST_OSX OR CLR_CMAKE_HOST_FREEBSD OR CLR_CMAKE_HOST_NETBSD OR CLR_CMAKE_HOST_SUNOS)
+if(CLR_CMAKE_HOST_FREEBSD OR CLR_CMAKE_HOST_NETBSD OR CLR_CMAKE_HOST_SUNOS)
   add_definitions(-DUSE_DAC_TABLE_RVA)
 
   set(args $<$<NOT:$<BOOL:${CLR_CMAKE_HOST_OSX}>>:--dynamic> $<TARGET_FILE:coreclr> ${GENERATED_INCLUDE_DIR}/dactablerva.h)
@@ -67,4 +68,4 @@ if(CLR_CMAKE_HOST_OSX OR CLR_CMAKE_HOST_FREEBSD OR CLR_CMAKE_HOST_NETBSD OR CLR_
   )
 
   add_dependencies(daccess dactablerva_header)
-endif(CLR_CMAKE_HOST_OSX OR CLR_CMAKE_HOST_FREEBSD OR CLR_CMAKE_HOST_NETBSD OR CLR_CMAKE_HOST_SUNOS)
+endif(CLR_CMAKE_HOST_FREEBSD OR CLR_CMAKE_HOST_NETBSD OR CLR_CMAKE_HOST_SUNOS)

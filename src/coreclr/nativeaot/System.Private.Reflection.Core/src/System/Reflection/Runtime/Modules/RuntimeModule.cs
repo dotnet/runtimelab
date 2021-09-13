@@ -25,6 +25,9 @@ namespace System.Reflection.Runtime.Modules
 
         public abstract override IEnumerable<CustomAttributeData> CustomAttributes { get; }
 
+        internal const string UnknownStringMessageInRAF = "Returns <Unknown> for modules with no file path";
+
+        [RequiresAssemblyFiles(UnknownStringMessageInRAF)]
         public sealed override string FullyQualifiedName
         {
             get
@@ -33,7 +36,14 @@ namespace System.Reflection.Runtime.Modules
             }
         }
 
-        public abstract override string Name { get; }
+        [RequiresAssemblyFiles(UnknownStringMessageInRAF)]
+        public sealed override string Name
+        {
+            get
+            {
+                return "<Unknown>";
+            }
+        }
 
         public sealed override bool Equals(object obj)
         {
@@ -69,25 +79,20 @@ namespace System.Reflection.Runtime.Modules
 
         public abstract override Guid ModuleVersionId { get; }
 
-        public sealed override string ToString()
-        {
-            return "<Unknown>";
-        }
-
         public sealed override bool IsResource() { throw new PlatformNotSupportedException(); }
         public sealed override void GetPEKind(out PortableExecutableKinds peKind, out ImageFileMachine machine) { throw new PlatformNotSupportedException(); }
         public sealed override int MDStreamVersion { get { throw new PlatformNotSupportedException(); } }
-        public sealed override string ScopeName { get { throw new PlatformNotSupportedException(); } }
-
-        public sealed override FieldInfo GetField(string name, BindingFlags bindingAttr) { throw new PlatformNotSupportedException(); }
-        public sealed override FieldInfo[] GetFields(BindingFlags bindingFlags) { throw new PlatformNotSupportedException(); }
-        protected sealed override MethodInfo GetMethodImpl(string name, BindingFlags bindingAttr, Binder binder, CallingConventions callConvention, Type[] types, ParameterModifier[] modifiers) { throw new PlatformNotSupportedException(); }
-        public sealed override MethodInfo[] GetMethods(BindingFlags bindingFlags) { throw new PlatformNotSupportedException(); }
+        [RequiresUnreferencedCode("Trimming changes metadata tokens")]
         public sealed override FieldInfo ResolveField(int metadataToken, Type[] genericTypeArguments, Type[] genericMethodArguments) { throw new PlatformNotSupportedException(); }
+        [RequiresUnreferencedCode("Trimming changes metadata tokens")]
         public sealed override MemberInfo ResolveMember(int metadataToken, Type[] genericTypeArguments, Type[] genericMethodArguments) { throw new PlatformNotSupportedException(); }
+        [RequiresUnreferencedCode("Trimming changes metadata tokens")]
         public sealed override MethodBase ResolveMethod(int metadataToken, Type[] genericTypeArguments, Type[] genericMethodArguments) { throw new PlatformNotSupportedException(); }
+        [RequiresUnreferencedCode("Trimming changes metadata tokens")]
         public sealed override byte[] ResolveSignature(int metadataToken) { throw new PlatformNotSupportedException(); }
+        [RequiresUnreferencedCode("Trimming changes metadata tokens")]
         public sealed override string ResolveString(int metadataToken) { throw new PlatformNotSupportedException(); }
+        [RequiresUnreferencedCode("Trimming changes metadata tokens")]
         public sealed override Type ResolveType(int metadataToken, Type[] genericTypeArguments, Type[] genericMethodArguments) { throw new PlatformNotSupportedException(); }
 
         protected sealed override ModuleHandle GetModuleHandleImpl() => new ModuleHandle(this);

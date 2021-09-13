@@ -4,6 +4,7 @@
 using System;
 using System.Reflection;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Reflection.Runtime.General;
@@ -88,7 +89,7 @@ namespace System.Reflection.Runtime.MethodInfos
 
                 MethodImplAttributes implAttributes = _common.MethodImplementationFlags;
                 if (0 != (implAttributes & MethodImplAttributes.PreserveSig))
-                    yield return new RuntimePseudoCustomAttributeData(typeof(PreserveSigAttribute), null, null);
+                    yield return new RuntimePseudoCustomAttributeData(typeof(PreserveSigAttribute), null);
             }
         }
 
@@ -125,6 +126,8 @@ namespace System.Reflection.Runtime.MethodInfos
 
         public sealed override int GenericParameterCount => _common.GenericParameterCount;
 
+        [RequiresDynamicCode("The native code for this instantiation might not be available at runtime.")]
+        [RequiresUnreferencedCode("If some of the generic arguments are annotated (either with DynamicallyAccessedMembersAttribute, or generic constraints), trimming can't validate that the requirements of those annotations are met.")]
         public sealed override MethodInfo MakeGenericMethod(params Type[] typeArguments)
         {
 #if ENABLE_REFLECTION_TRACE
@@ -305,7 +308,36 @@ namespace System.Reflection.Runtime.MethodInfos
 
         internal sealed override MethodInvoker GetUncachedMethodInvoker(RuntimeTypeInfo[] methodArguments, MemberInfo exceptionPertainant)
         {
-            return _common.GetUncachedMethodInvoker(methodArguments, exceptionPertainant);
+            MethodInvoker invoker = _common.GetUncachedMethodInvoker(methodArguments, exceptionPertainant, out Exception exception);
+            if (invoker == null)
+            {
+                // If we have byref-like types in the signature, the reason we couldn't find an invoker
+                // is that.
+                bool hasByRefLikeParameter = false;
+                foreach (ParameterInfo parameter in GetParametersNoCopy())
+                {
+                    if (Unwrap(parameter.ParameterType).IsByRefLike)
+                    {
+                        hasByRefLikeParameter = true;
+                    }
+                }
+
+                if (hasByRefLikeParameter || Unwrap(ReturnType).IsByRefLike)
+                {
+                    throw new NotSupportedException(SR.NotSupported_ByRefLike);
+                }
+
+                static Type Unwrap(Type t)
+                {
+                    while (t.HasElementType)
+                        t = t.GetElementType();
+                    return t;
+                }
+
+                throw exception;
+            }
+
+            return invoker;
         }
 
         protected sealed override MethodInvoker UncachedMethodInvoker

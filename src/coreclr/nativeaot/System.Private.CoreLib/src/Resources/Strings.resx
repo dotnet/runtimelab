@@ -315,6 +315,14 @@
   <data name="Arg_MustBeChar" xml:space="preserve">
     <value>Object must be of type Char.</value>
   </data>
+  <data name="Arg_MustBeDateOnly" xml:space="preserve">
+    <value>Object must be of type DateOnly.</value>
+    <comment>{Locked="DateOnly"}</comment>
+  </data>
+  <data name="Arg_MustBeTimeOnly" xml:space="preserve">
+    <value>Object must be of type TimeOnly.</value>
+    <comment>{Locked="TimeOnly"}</comment>
+  </data>
   <data name="Arg_MustBeDateTime" xml:space="preserve">
     <value>Object must be of type DateTime.</value>
   </data>
@@ -456,6 +464,9 @@
   <data name="Arg_RankMultiDimNotSupported" xml:space="preserve">
     <value>Only single dimensional arrays are supported for the requested action.</value>
   </data>
+  <data name="Rank_MustMatch" xml:space="preserve">
+    <value>The specified arrays must have the same number of dimensions.</value>
+  </data>
   <data name="Arg_RanksAndBounds" xml:space="preserve">
     <value>Number of lengths and lowerBounds must match.</value>
   </data>
@@ -534,6 +545,9 @@
   <data name="Argument_AdjustmentRulesOutOfOrder" xml:space="preserve">
     <value>The elements of the AdjustmentRule array must be in chronological order and must not overlap.</value>
   </data>
+  <data name="Argument_AlignmentMustBePow2" xml:space="preserve">
+    <value>The alignment must be a power of two.</value>
+  </data>
   <data name="Argument_AttributeNamesMustBeUnique" xml:space="preserve">
     <value>Attribute names must be unique.</value>
   </data>
@@ -570,6 +584,9 @@
   <data name="Argument_CultureNotSupported" xml:space="preserve">
     <value>Culture is not supported.</value>
   </data>
+  <data name="Argument_CultureNotSupportedInInvariantMode" xml:space="preserve">
+    <value>Only the invariant culture is supported in globalization-invariant mode. See https://aka.ms/GlobalizationInvariantMode for more information.</value>
+  </data>
   <data name="Argument_CustomCultureCannotBePassedByNumber" xml:space="preserve">
     <value>Customized cultures cannot be passed by LCID, only by name.</value>
   </data>
@@ -602,6 +619,9 @@
   </data>
   <data name="Argument_EmptyDecString" xml:space="preserve">
     <value>Decimal separator cannot be the empty string.</value>
+  </data>
+  <data name="Argument_EmptyFileName" xml:space="preserve">
+    <value>Empty file name is not legal.</value>
   </data>
   <data name="Argument_EmptyName" xml:space="preserve">
     <value>Empty name is not legal.</value>
@@ -665,6 +685,10 @@
   </data>
   <data name="Argument_InvalidDateTimeStyles" xml:space="preserve">
     <value>An undefined DateTimeStyles value is being used.</value>
+  </data>
+  <data name="Argument_InvalidDateStyles" xml:space="preserve">
+    <value>The only allowed values for the styles are AllowWhiteSpaces, AllowTrailingWhite, AllowLeadingWhite, and AllowInnerWhite.</value>
+    <comment>{Locked="AllowWhiteSpaces, AllowTrailingWhite, AllowLeadingWhite, and AllowInnerWhite"}</comment>
   </data>
   <data name="Argument_InvalidDigitSubstitution" xml:space="preserve">
     <value>The DigitSubstitution property must be of a valid member of the DigitShapes enumeration. Valid entries include Context, NativeNational or None.</value>
@@ -786,6 +810,9 @@
   <data name="Argument_OutOfOrderDateTimes" xml:space="preserve">
     <value>The DateStart property must come before the DateEnd property.</value>
   </data>
+  <data name="ArgumentOutOfRange_ArrayLB" xml:space="preserve">
+    <value>Number was less than the array's lower bound in the first dimension.</value>
+  </data>
   <data name="ArgumentOutOfRange_HugeArrayNotSupported" xml:space="preserve">
     <value>Arrays larger than 2GB are not supported.</value>
   </data>
@@ -888,6 +915,9 @@
   <data name="ArgumentNull_Dictionary" xml:space="preserve">
     <value>Dictionary cannot be null.</value>
   </data>
+  <data name="ArgumentNull_FileName" xml:space="preserve">
+    <value>File name cannot be null.</value>
+  </data>
   <data name="ArgumentNull_Generic" xml:space="preserve">
     <value>Value cannot be null.</value>
   </data>
@@ -938,6 +968,9 @@
   </data>
   <data name="ArgumentOutOfRange_DateTimeBadTicks" xml:space="preserve">
     <value>Ticks must be between DateTime.MinValue.Ticks and DateTime.MaxValue.Ticks.</value>
+  </data>
+  <data name="ArgumentOutOfRange_TimeOnlyBadTicks" xml:space="preserve">
+    <value>Ticks must be between 0 and and TimeOnly.MaxValue.Ticks.</value>
   </data>
   <data name="ArgumentOutOfRange_DateTimeBadYears" xml:space="preserve">
     <value>Years value must be between +/-10000.</value>
@@ -1022,6 +1055,10 @@
   </data>
   <data name="ArgumentOutOfRange_Month" xml:space="preserve">
     <value>Month must be between one and twelve.</value>
+  </data>
+  <data name="ArgumentOutOfRange_DayNumber" xml:space="preserve">
+    <value>Day number must be between 0 and DateOnly.MaxValue.DayNumber.</value>
+    <comment>{Locked="DateOnly.MaxValue.DayNumber"}</comment>
   </data>
   <data name="ArgumentOutOfRange_MonthParam" xml:space="preserve">
     <value>The Month parameter must be in the range 1 through 12.</value>
@@ -1130,6 +1167,9 @@
   </data>
   <data name="Exception_EndOfInnerExceptionStack" xml:space="preserve">
     <value>--- End of inner exception stack trace ---</value>
+  </data>
+  <data name="Exception_EndStackTraceFromPreviousThrow" xml:space="preserve">
+    <value>--- End of stack trace from previous location ---</value>
   </data>
   <data name="Exception_WasThrown" xml:space="preserve">
     <value>Exception of type '{0}' was thrown.</value>
@@ -1383,6 +1423,9 @@
   <data name="IO_PathTooLong_Path" xml:space="preserve">
     <value>The path '{0}' is too long, or a component of the specified path is too long.</value>
   </data>
+  <data name="IO_TooManySymbolicLinkLevels" xml:space="preserve">
+    <value>Too many levels of symbolic links in '{0}'.</value>
+  </data>
   <data name="IO_SharingViolation_File" xml:space="preserve">
     <value>The process cannot access the file '{0}' because it is being used by another process.</value>
   </data>
@@ -1391,6 +1434,12 @@
   </data>
   <data name="IO_AlreadyExists_Name" xml:space="preserve">
     <value>Cannot create '{0}' because a file or directory with the same name already exists.</value>
+  </data>
+  <data name="IO_DiskFull_Path_AllocationSize" xml:space="preserve">
+    <value>Failed to create '{0}' with allocation size '{1}' because the disk was full.</value>
+  </data>
+  <data name="IO_FileTooLarge_Path_AllocationSize" xml:space="preserve">
+    <value>Failed to create '{0}' with allocation size '{1}' because the file was too large.</value>
   </data>
   <data name="UnauthorizedAccess_IODenied_NoPathName" xml:space="preserve">
     <value>Access to the path is denied.</value>
@@ -1593,6 +1642,12 @@
   <data name="Arg_EnumValueNotFound" xml:space="preserve">
     <value>Requested value '{0}' was not found.</value>
   </data>
+  <data name="Arg_LongerThanDestArray" xml:space="preserve">
+    <value>Destination array was not long enough. Check the destination index, length, and the array's lower bounds.</value>
+  </data>
+  <data name="Arg_LongerThanSrcArray" xml:space="preserve">
+    <value>Source array was not long enough. Check the source index, length, and the array's lower bounds.</value>
+  </data>
   <data name="Argument_StringZeroLength" xml:space="preserve">
     <value>String cannot be of zero length.</value>
   </data>
@@ -1691,6 +1746,17 @@
   </data>
   <data name="Format_BadDateTime" xml:space="preserve">
     <value>String '{0}' was not recognized as a valid DateTime.</value>
+  </data>
+  <data name="Format_BadDateOnly" xml:space="preserve">
+    <value>String '{0}' was not recognized as a valid DateOnly.</value>
+    <comment>{Locked="DateOnly"}</comment>
+  </data>
+  <data name="Format_BadTimeOnly" xml:space="preserve">
+    <value>String '{0}' was not recognized as a valid TimeOnly.</value>
+    <comment>{Locked="TimeOnly"}</comment>
+  </data>
+  <data name="Format_DateTimeOnlyContainsNoneDateParts" xml:space="preserve">
+    <value>String '{0}' contains parts which are not specific to the {1}.</value>
   </data>
   <data name="Format_BadDateTimeCalendar" xml:space="preserve">
     <value>The DateTime represented by the string '{0}' is not supported in calendar '{1}'.</value>
@@ -1809,6 +1875,9 @@
   </data>
   <data name="Task_ContinueWith_NotOnAnything" xml:space="preserve">
     <value>The specified TaskContinuationOptions excluded all continuation kinds.</value>
+  </data>
+  <data name="Task_InvalidTimerTimeSpan" xml:space="preserve">
+    <value>The value needs to translate in milliseconds to -1 (signifying an infinite timeout), 0, or a positive integer less than or equal to the maximum allowed timer duration.</value>
   </data>
   <data name="Task_RunSynchronously_AlreadyStarted" xml:space="preserve">
     <value>RunSynchronously may not be called on a task that was already started.</value>
@@ -2254,11 +2323,20 @@
   <data name="IO_FileTooLong2GB" xml:space="preserve">
     <value>The file is too long. This operation is currently limited to supporting files less than 2 gigabytes in size.</value>
   </data>
+  <data name="IO_FileTooLong" xml:space="preserve">
+    <value>IO operation will not work. Most likely the file will become too long.</value>
+  </data>
+  <data name="IO_FileTooLongOrHandleNotSync" xml:space="preserve">
+    <value>IO operation will not work. Most likely the file will become too long or the handle was not opened to support synchronous IO operations.</value>
+  </data>
   <data name="NotSupported_FileStreamOnNonFiles" xml:space="preserve">
     <value>FileStream was asked to open a device that was not a file. For support for devices like 'com1:' or 'lpt1:', call CreateFile, then use the FileStream constructors that take an OS handle as an IntPtr.</value>
   </data>
   <data name="IO_BindHandleFailed" xml:space="preserve">
     <value>BindHandle for ThreadPool failed on this handle.</value>
+  </data>
+  <data name="IO_InconsistentLinkType" xml:space="preserve">
+    <value>The link's file system entry type is inconsistent with that of its target: {0}</value>
   </data>
   <data name="Arg_HandleNotSync" xml:space="preserve">
     <value>Handle does not support synchronous operations. The parameters to the FileStream constructor may need to be changed to indicate that the handle was opened asynchronously (that is, it was opened explicitly for overlapped I/O).</value>
@@ -2268,12 +2346,6 @@
   </data>
   <data name="IO_SeekAppendOverwrite" xml:space="preserve">
     <value>Unable seek backward to overwrite data that previously existed in a file opened in Append mode.</value>
-  </data>
-  <data name="IO_FileTooLongOrHandleNotSync" xml:space="preserve">
-    <value>IO operation will not work. Most likely the file will become too long or the handle was not opened to support synchronous IO operations.</value>
-  </data>
-  <data name="IndexOutOfRange_IORaceCondition" xml:space="preserve">
-    <value>Probable I/O race condition detected while copying memory. The I/O package is not thread safe by default. In multithreaded applications, a stream must be accessed in a thread-safe way, such as a thread-safe wrapper returned by TextReader's or TextWriter's Synchronized methods. This also applies to classes like StreamWriter and StreamReader.</value>
   </data>
   <data name="Arg_ResourceFileUnsupportedVersion" xml:space="preserve">
     <value>The ResourceReader class does not know how to read this version of .resources files.</value>
@@ -2358,9 +2430,6 @@
   </data>
   <data name="PlatformNotSupported_NamedSynchronizationPrimitives" xml:space="preserve">
     <value>The named version of this synchronization primitive is not supported on this platform.</value>
-  </data>
-  <data name="InvalidOperation_EmptyQueue" xml:space="preserve">
-    <value>Queue empty.</value>
   </data>
   <data name="Overflow_MutexReacquireCount" xml:space="preserve">
     <value>The current thread attempted to reacquire a mutex that has reached its maximum acquire count.</value>
@@ -2592,9 +2661,6 @@
   </data>
   <data name="Serialization_DateTimeTicksOutOfRange" xml:space="preserve">
     <value>Invalid serialized DateTime data. Ticks must be between DateTime.MinValue.Ticks and DateTime.MaxValue.Ticks.</value>
-  </data>
-  <data name="FeatureRemoved_Message" xml:space="preserve">
-    <value>Code to support feature '{0}' was removed during publishing. If this is in error, update the project configuration to not disable feature '{0}'.</value>
   </data>
   <data name="Arg_InvalidANSIString" xml:space="preserve">
     <value>The ANSI string passed in could not be converted from the default ANSI code page to Unicode.</value>
@@ -2884,8 +2950,8 @@
   <data name="NotSupported_ByRefLikeArray" xml:space="preserve">
     <value>Cannot create arrays of ByRef-like values.</value>
   </data>
-  <data name="StackTrace_AtWord" xml:space="preserve">
-    <value>   at </value>
+  <data name="Word_At" xml:space="preserve">
+    <value>at</value>
   </data>
   <data name="StackTrace_EndStackTraceFromPreviousThrow" xml:space="preserve">
     <value>--- End of stack trace from previous location where exception was thrown ---</value>
@@ -3082,6 +3148,15 @@
   <data name="Encoding_UTF7_Disabled" xml:space="preserve">
     <value>Support for UTF-7 is disabled. See {0} for more information.</value>
   </data>
+  <data name="IDynamicInterfaceCastable_DoesNotImplementRequested" xml:space="preserve">
+    <value>Type '{0}' returned by IDynamicInterfaceCastable does not implement the requested interface '{1}'.</value>
+  </data>
+  <data name="IDynamicInterfaceCastable_MissingImplementationAttribute" xml:space="preserve">
+    <value>Type '{0}' returned by IDynamicInterfaceCastable does not have the attribute '{1}'.</value>
+  </data>
+  <data name="IDynamicInterfaceCastable_NotInterface" xml:space="preserve">
+    <value>Type '{0}' returned by IDynamicInterfaceCastable is not an interface.</value>
+  </data>
   <data name="NotSupported_BodyRemoved" xml:space="preserve">
     <value>The body of this method was removed by the AOT compiler because it's not callable.</value>
   </data>
@@ -3103,7 +3178,64 @@
   <data name="Argv_IncludeDoubleQuote" xml:space="preserve">
     <value>The argv[0] argument cannot include a double quote.</value>
   </data>
+  <data name="InvalidOperation_ResetGlobalComWrappersInstance" xml:space="preserve">
+    <value>Attempt to update previously set global instance.</value>
+  </data>
   <data name="ResourceManager_ReflectionNotAllowed" xml:space="preserve">
     <value>Use of ResourceManager for custom types is disabled. Set the MSBuild Property CustomResourceTypesSupport to true in order to enable it.</value>
+  </data>
+  <data name="InvalidOperation_ComInteropRequireComWrapperInstance" xml:space="preserve">
+    <value>COM Interop requires ComWrapper instance registered for marshalling.</value>
+  </data>
+  <data name="InvalidOperation_EmptyQueue" xml:space="preserve">
+    <value>Queue empty.</value>
+  </data>
+  <data name="Arg_FileIsDirectory_Name" xml:space="preserve">
+    <value>The target file '{0}' is a directory, not a file.</value>
+  </data>
+  <data name="Arg_InvalidFileAttrs" xml:space="preserve">
+    <value>Invalid File or Directory attributes value.</value>
+  </data>
+  <data name="Arg_Path2IsRooted" xml:space="preserve">
+    <value>Second path fragment must not be a drive or UNC name.</value>
+  </data>
+  <data name="Arg_PathIsVolume" xml:space="preserve">
+    <value>Path must not be a drive.</value>
+  </data>
+  <data name="Argument_FileNotResized" xml:space="preserve">
+    <value>The stream's length cannot be changed.</value>
+  </data>
+  <data name="Argument_InvalidSubPath" xml:space="preserve">
+    <value>The directory specified, '{0}', is not a subdirectory of '{1}'.</value>
+  </data>
+  <data name="IO_CannotCreateDirectory" xml:space="preserve">
+    <value>The specified directory '{0}' cannot be created.</value>
+  </data>
+  <data name="IO_CannotReplaceSameFile" xml:space="preserve">
+    <value>The source '{0}' and destination '{1}' are the same file.</value>
+  </data>
+  <data name="IO_NotAFile" xml:space="preserve">
+    <value>The specified path '{0}' is not a file.</value>
+  </data>
+  <data name="IO_SourceDestMustBeDifferent" xml:space="preserve">
+    <value>Source and destination path must be different.</value>
+  </data>
+  <data name="IO_SourceDestMustHaveSameRoot" xml:space="preserve">
+    <value>Source and destination path must have identical roots. Move will not work across volumes.</value>
+  </data>
+  <data name="IO_SyncOpOnUIThread" xml:space="preserve">
+    <value>Synchronous operations should not be performed on the UI thread.  Consider wrapping this method in Task.Run.</value>
+  </data>
+  <data name="IndexOutOfRange_IORaceCondition" xml:space="preserve">
+    <value>Probable I/O race condition detected while copying memory. The I/O package is not thread safe by default. In multithreaded applications, a stream must be accessed in a thread-safe way, such as a thread-safe wrapper returned by TextReader's or TextWriter's Synchronized methods. This also applies to classes like StreamWriter and StreamReader.</value>
+  </data>
+  <data name="PlatformNotSupported_FileEncryption" xml:space="preserve">
+    <value>File encryption is not supported on this platform.</value>
+  </data>
+  <data name="Arg_MemberInfoNotFound" xml:space="preserve">
+    <value>A MemberInfo that matches '{0}' could not be found.</value>
+  </data>
+  <data name="NullabilityInfoContext_NotSupported" xml:space="preserve">
+    <value>NullabilityInfoContext is not supported in the current application because 'System.Reflection.NullabilityInfoContext.IsSupported' is set to false. Set the MSBuild Property 'NullabilityInfoContextSupport' to true in order to enable it.</value>
   </data>
 </root>

@@ -23,6 +23,7 @@ namespace ILCompiler
         private readonly ExternSymbolMappedField _hardwareIntrinsicFlags;
         private CountdownEvent _compilationCountdown;
         private readonly Dictionary<string, InstructionSet> _instructionSetMap;
+        private readonly ProfileDataManager _profileDataManager;
 
         public InstructionSetSupport InstructionSetSupport { get; }
 
@@ -36,6 +37,7 @@ namespace ILCompiler
             DevirtualizationManager devirtualizationManager,
             IInliningPolicy inliningPolicy,
             InstructionSetSupport instructionSetSupport,
+            ProfileDataManager profileDataManager,
             RyuJitCompilationOptions options)
             : base(dependencyGraph, nodeFactory, roots, ilProvider, debugInformationProvider, devirtualizationManager, inliningPolicy, logger)
         {
@@ -51,7 +53,11 @@ namespace ILCompiler
 
                 _instructionSetMap.Add(instructionSetInfo.ManagedName, instructionSetInfo.InstructionSet);
             }
+
+            _profileDataManager = profileDataManager;
         }
+
+        public ProfileDataManager ProfileData => _profileDataManager;
 
         protected override void CompileInternal(string outputFile, ObjectDumper dumper)
         {
@@ -59,7 +65,12 @@ namespace ILCompiler
             var nodes = _dependencyGraph.MarkedNodeList;
 
             NodeFactory.SetMarkingComplete();
-            ObjectWriter.EmitObject(outputFile, nodes, NodeFactory, dumper);
+
+            ObjectWritingOptions options = default;
+            if (_debugInformationProvider is not NullDebugInformationProvider)
+                options |= ObjectWritingOptions.GenerateDebugInfo;
+
+            ObjectWriter.EmitObject(outputFile, nodes, NodeFactory, options, dumper);
         }
 
         protected override void ComputeDependencyNodeDependencies(List<DependencyNodeCore<NodeFactory>> obj)
@@ -157,10 +168,16 @@ namespace ILCompiler
                 MethodIL throwingIL = TypeSystemThrowingILEmitter.EmitIL(method, ex);
                 corInfo.CompileMethod(methodCodeNodeNeedingCode, throwingIL);
 
-                // TODO: Log as a warning. For now, just log to the logger; but this needs to
-                // have an error code, be supressible, the method name/sig needs to be properly formatted, etc.
-                // https://github.com/dotnet/corert/issues/72
-                Logger.Writer.WriteLine($"Warning: Method `{method}` will always throw because: {ex.Message}");
+                if (ex is TypeSystemException.InvalidProgramException
+                    && method.OwningType is MetadataType mdOwningType
+                    && mdOwningType.HasCustomAttribute("System.Runtime.InteropServices", "ClassInterfaceAttribute"))
+                {
+                    Logger.LogWarning("COM interop is not supported with full ahead of time compilation", 9701, method, MessageSubCategory.AotAnalysis);
+                }
+                else
+                {
+                    Logger.LogWarning($"Method will always throw because: {ex.Message}", 1005, method, MessageSubCategory.AotAnalysis);
+                }
             }
             finally
             {

@@ -82,7 +82,7 @@ namespace Internal.IL
                             return GetCanonTypeIntrinsic.EmitIL(method);
                     }
                     break;
-                case "EEType":
+                case "MethodTable":
                     {
                         if (owningType.Namespace == "Internal.Runtime" && method.Name == "get_SupportsRelativePointers")
                         {
@@ -114,6 +114,28 @@ namespace Internal.IL
 
             switch (owningType.Name)
             {
+                case "Activator":
+                    {
+                        TypeSystemContext context = owningType.Context;
+                        if (methodName == "CreateInstance" && method.Signature.Length == 0 && method.HasInstantiation
+                            && method.Instantiation[0] is TypeDesc activatedType
+                            && activatedType != context.UniversalCanonType
+                            && activatedType.IsValueType
+                            && activatedType.GetParameterlessConstructor() == null)
+                        {
+                            ILEmitter emit = new ILEmitter();
+                            ILCodeStream codeStream = emit.NewCodeStream();
+
+                            var t = emit.NewLocal(context.GetSignatureVariable(0, method: true));
+                            codeStream.EmitLdLoca(t);
+                            codeStream.Emit(ILOpcode.initobj, emit.NewToken(context.GetSignatureVariable(0, method: true)));
+                            codeStream.EmitLdLoc(t);
+                            codeStream.Emit(ILOpcode.ret);
+
+                            return new InstantiatedMethodIL(method, emit.Link(method.GetMethodDefinition()));
+                        }
+                    }
+                    break;
                 case "RuntimeHelpers":
                     {
                         if (owningType.Namespace == "System.Runtime.CompilerServices")
@@ -130,6 +152,40 @@ namespace Internal.IL
                     {
                         if (methodName == "Create" && owningType.Namespace == "System.Collections.Generic")
                             return ComparerIntrinsics.EmitEqualityComparerCreate(method);
+                    }
+                    break;
+                case "ComparerHelpers":
+                    {
+                        if (owningType.Namespace != "Internal.IntrinsicSupport")
+                            return null;
+
+                        if (methodName == "EnumOnlyCompare")
+                        {
+                            //calls CompareTo for underlyingType to avoid boxing
+
+                            TypeDesc elementType = method.Instantiation[0];
+                            if (!elementType.IsEnum)
+                                return null;
+
+                            TypeDesc underlyingType = elementType.UnderlyingType;
+                            TypeDesc returnType = method.Context.GetWellKnownType(WellKnownType.Int32);
+                            MethodDesc underlyingCompareToMethod = underlyingType.GetKnownMethod("CompareTo",
+                                new MethodSignature(
+                                    MethodSignatureFlags.None,
+                                    genericParameterCount: 0,
+                                    returnType: returnType,
+                                    parameters: new TypeDesc[] {underlyingType}));
+
+                            ILEmitter emitter = new ILEmitter();
+                            var codeStream = emitter.NewCodeStream();
+
+                            codeStream.EmitLdArga(0);
+                            codeStream.EmitLdArg(1);
+                            codeStream.Emit(ILOpcode.call, emitter.NewToken(underlyingCompareToMethod));
+                            codeStream.Emit(ILOpcode.ret);
+
+                            return emitter.Link(method);
+                        }
                     }
                     break;
                 case "EqualityComparerHelpers":

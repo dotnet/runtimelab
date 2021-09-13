@@ -19,6 +19,9 @@
 
 #include "holder.h"
 
+#define _T(s) L##s
+#include "RhConfig.h"
+
 #define PalRaiseFailFastException RaiseFailFastException
 
 uint32_t PalEventWrite(REGHANDLE arg1, const EVENT_DESCRIPTOR * arg2, uint32_t arg3, EVENT_DATA_DESCRIPTOR * arg4)
@@ -51,6 +54,86 @@ void __stdcall FiberDetachCallback(void* lpFlsData)
     }
 }
 
+void InitializeCurrentProcessCpuCount()
+{
+    DWORD count;
+
+    // If the configuration value has been set, it takes precedence. Otherwise, take into account
+    // process affinity and CPU quota limit.
+
+    const unsigned int MAX_PROCESSOR_COUNT = 0xffff;
+    uint32_t configValue;
+
+    if (g_pRhConfig->ReadConfigValue(_T("PROCESSOR_COUNT"), &configValue, true /* decimal */) &&
+        0 < configValue && configValue <= MAX_PROCESSOR_COUNT)
+    {
+        count = configValue;
+    }
+    else
+    {
+        DWORD_PTR pmask, smask;
+
+        if (!GetProcessAffinityMask(GetCurrentProcess(), &pmask, &smask))
+        {
+            count = 1;
+        }
+        else
+        {
+            pmask &= smask;
+            count = 0;
+
+            while (pmask)
+            {
+                pmask &= (pmask - 1);
+                count++;
+            }
+
+            // GetProcessAffinityMask can return pmask=0 and smask=0 on systems with more
+            // than 64 processors, which would leave us with a count of 0.  Since the GC
+            // expects there to be at least one processor to run on (and thus at least one
+            // heap), we'll return 64 here if count is 0, since there are likely a ton of
+            // processors available in that case.
+            if (count == 0)
+                count = 64;
+        }
+
+        JOBOBJECT_CPU_RATE_CONTROL_INFORMATION cpuRateControl;
+
+        if (QueryInformationJobObject(NULL, JobObjectCpuRateControlInformation, &cpuRateControl,
+            sizeof(cpuRateControl), NULL))
+        {
+            const DWORD HardCapEnabled = JOB_OBJECT_CPU_RATE_CONTROL_ENABLE | JOB_OBJECT_CPU_RATE_CONTROL_HARD_CAP;
+            const DWORD MinMaxRateEnabled = JOB_OBJECT_CPU_RATE_CONTROL_ENABLE | JOB_OBJECT_CPU_RATE_CONTROL_MIN_MAX_RATE;
+            DWORD maxRate = 0;
+
+            if ((cpuRateControl.ControlFlags & HardCapEnabled) == HardCapEnabled)
+            {
+                maxRate = cpuRateControl.CpuRate;
+            }
+            else if ((cpuRateControl.ControlFlags & MinMaxRateEnabled) == MinMaxRateEnabled)
+            {
+                maxRate = cpuRateControl.MaxRate;
+            }
+
+            // The rate is the percentage times 100
+            const DWORD MAXIMUM_CPU_RATE = 10000;
+
+            if (0 < maxRate && maxRate < MAXIMUM_CPU_RATE)
+            {
+                SYSTEM_INFO systemInfo;
+                GetSystemInfo(&systemInfo);
+
+                DWORD cpuLimit = (maxRate * systemInfo.dwNumberOfProcessors + MAXIMUM_CPU_RATE - 1) / MAXIMUM_CPU_RATE;
+                if (cpuLimit < count)
+                    count = cpuLimit;
+            }
+        }
+    }
+
+    _ASSERTE(count > 0);
+    g_RhNumberOfProcessors = count;
+}
+
 // The Redhawk PAL must be initialized before any of its exports can be called. Returns true for a successful
 // initialization and false on failure.
 REDHAWK_PALEXPORT bool REDHAWK_PALAPI PalInit()
@@ -68,8 +151,7 @@ REDHAWK_PALEXPORT bool REDHAWK_PALAPI PalInit()
         return false;
     }
 
-    // Use the same adjustment for current processor count as GC
-    g_RhNumberOfProcessors = GCToOSInterface::GetCurrentProcessCpuCount();
+    InitializeCurrentProcessCpuCount();
 
     return true;
 }
@@ -337,7 +419,7 @@ REDHAWK_PALEXPORT uint32_t REDHAWK_PALAPI PalHijack(HANDLE hThread, _In_ PalHija
     return result;
 }
 
-REDHAWK_PALEXPORT HANDLE REDHAWK_PALAPI PalStartBackgroundWork(_In_ BackgroundCallback callback, _In_opt_ void* pCallbackContext, BOOL highPriority)
+REDHAWK_PALEXPORT bool REDHAWK_PALAPI PalStartBackgroundWork(_In_ BackgroundCallback callback, _In_opt_ void* pCallbackContext, BOOL highPriority)
 {
     HANDLE hThread = CreateThread(
         NULL,
@@ -348,7 +430,7 @@ REDHAWK_PALEXPORT HANDLE REDHAWK_PALAPI PalStartBackgroundWork(_In_ BackgroundCa
         NULL);
 
     if (hThread == NULL)
-        return NULL;
+        return false;
 
     if (highPriority)
     {
@@ -356,17 +438,18 @@ REDHAWK_PALEXPORT HANDLE REDHAWK_PALAPI PalStartBackgroundWork(_In_ BackgroundCa
         ResumeThread(hThread);
     }
 
-    return hThread;
+    CloseHandle(hThread);
+    return true;
 }
 
 REDHAWK_PALEXPORT bool REDHAWK_PALAPI PalStartBackgroundGCThread(_In_ BackgroundCallback callback, _In_opt_ void* pCallbackContext)
 {
-    return PalStartBackgroundWork(callback, pCallbackContext, FALSE) != NULL;
+    return PalStartBackgroundWork(callback, pCallbackContext, FALSE);
 }
 
 REDHAWK_PALEXPORT bool REDHAWK_PALAPI PalStartFinalizerThread(_In_ BackgroundCallback callback, _In_opt_ void* pCallbackContext)
 {
-    return PalStartBackgroundWork(callback, pCallbackContext, TRUE) != NULL;
+    return PalStartBackgroundWork(callback, pCallbackContext, TRUE);
 }
 
 REDHAWK_PALEXPORT bool REDHAWK_PALAPI PalEventEnabled(REGHANDLE regHandle, _In_ const EVENT_DESCRIPTOR* eventDescriptor)

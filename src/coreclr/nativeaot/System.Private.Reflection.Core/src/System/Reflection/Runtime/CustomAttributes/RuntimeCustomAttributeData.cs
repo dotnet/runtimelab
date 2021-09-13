@@ -84,9 +84,9 @@ namespace System.Reflection.Runtime.CustomAttributes
             }
         }
 
-        [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2070:UnrecognizedReflectionPattern",
-            Justification = "Metadata generation ensures custom attribute constructors are resolvable.")]
-        protected static ConstructorInfo ResolveAttributeConstructor(Type attributeType, Type[] parameterTypes)
+        protected static ConstructorInfo ResolveAttributeConstructor(
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.NonPublicConstructors)]
+            Type attributeType, Type[] parameterTypes)
         {
             int parameterCount = parameterTypes.Length;
             foreach (ConstructorInfo candidate in attributeType.GetConstructors(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.DeclaredOnly))

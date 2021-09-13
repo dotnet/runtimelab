@@ -36,7 +36,7 @@ namespace ILCompiler.DependencyAnalysis
                             slot = VirtualMethodSlotHelper.GetVirtualMethodSlot(factory, targetMethod, targetMethod.OwningType);
                             Debug.Assert(slot != -1);
                         }
-                        Debug.Assert(((INodeWithDebugInfo)this).DebugLocInfos[1].NativeOffset == encoder.Builder.CountBytes);
+                        Debug.Assert(((NativeSequencePoint[])((INodeWithDebugInfo)this).GetNativeSequencePoints())[1].NativeOffset == encoder.Builder.CountBytes);
 
                         AddrMode jmpAddrMode = new AddrMode(encoder.TargetRegister.Result, null, EETypeNode.GetVTableOffset(pointerSize) + (slot * pointerSize), 0, AddrModeSize.Int64);
                         encoder.EmitJmpToAddrMode(ref jmpAddrMode);
@@ -107,7 +107,6 @@ namespace ILCompiler.DependencyAnalysis
 
                         encoder.EmitLEAQ(encoder.TargetRegister.Result, factory.TypeGCStaticsSymbol(target));
                         AddrMode loadFromRax = new AddrMode(encoder.TargetRegister.Result, null, 0, 0, AddrModeSize.Int64);
-                        encoder.EmitMOV(encoder.TargetRegister.Result, ref loadFromRax);
                         encoder.EmitMOV(encoder.TargetRegister.Result, ref loadFromRax);
 
                         if (!factory.PreinitializationManager.HasLazyStaticConstructor(target))

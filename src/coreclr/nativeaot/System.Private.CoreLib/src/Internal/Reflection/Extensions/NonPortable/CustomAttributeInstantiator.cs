@@ -126,6 +126,8 @@ namespace Internal.Reflection.Extensions.NonPortable
         //
         // Convert the argument value reported by Reflection into an actual object.
         //
+        [UnconditionalSuppressMessage("AotAnalysis", "IL9700:RequiresDynamicCode",
+            Justification = "The AOT compiler ensures array types required by custom attribute blobs are generated.")]
         private static object Convert(this CustomAttributeTypedArgument typedArgument)
         {
             Type argumentType = typedArgument.ArgumentType;

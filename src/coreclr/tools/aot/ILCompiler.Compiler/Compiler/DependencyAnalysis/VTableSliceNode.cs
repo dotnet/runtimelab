@@ -59,15 +59,6 @@ namespace ILCompiler.DependencyAnalysis
         public override bool InterestingForDynamicDependencyAnalysis => false;
         public override bool HasDynamicDependencies => false;
         public override bool HasConditionalStaticDependencies => false;
-
-        protected static IEnumerable<MethodDesc> GetAllVirtualMethods(TypeDesc type)
-        {
-            foreach (MethodDesc method in type.GetAllMethods())
-            {
-                if (method.IsVirtual)
-                    yield return method;
-            }
-        }
     }
 
     /// <summary>
@@ -119,7 +110,7 @@ namespace ILCompiler.DependencyAnalysis
             DefType defType = type.GetClosestDefType();
 
             IEnumerable<MethodDesc> allSlots = type.IsInterface ?
-                GetAllVirtualMethods(type) : defType.EnumAllVirtualSlots();
+                type.GetAllVirtualMethods() : defType.EnumAllVirtualSlots();
 
             foreach (var method in allSlots)
             {
@@ -127,7 +118,7 @@ namespace ILCompiler.DependencyAnalysis
                 if (method.HasInstantiation)
                     continue;
 
-                // Finalizers are called via a field on the EEType, not through the VTable
+                // Finalizers are called via a field on the MethodTable, not through the VTable
                 if (isObjectType && method.Name == "Finalize")
                     continue;
 
@@ -200,7 +191,7 @@ namespace ILCompiler.DependencyAnalysis
             Debug.Assert(_slots == null && _usedMethods != null);
             Debug.Assert(virtualMethod.OwningType == _type);
 
-            // Finalizers are called via a field on the EEType, not through the VTable
+            // Finalizers are called via a field on the MethodTable, not through the VTable
             if (_type.IsObject && virtualMethod.Name == "Finalize")
                 return;
 
@@ -222,7 +213,7 @@ namespace ILCompiler.DependencyAnalysis
             DefType defType = _type.GetClosestDefType();
 
             IEnumerable<MethodDesc> allSlots = _type.IsInterface ?
-                GetAllVirtualMethods(_type) : defType.EnumAllVirtualSlots();
+                _type.GetAllVirtualMethods() : defType.EnumAllVirtualSlots();
 
             foreach (var method in allSlots)
             {

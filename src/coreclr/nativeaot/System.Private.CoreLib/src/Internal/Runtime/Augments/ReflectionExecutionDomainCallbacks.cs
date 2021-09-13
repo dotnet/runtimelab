@@ -50,11 +50,6 @@ namespace Internal.Runtime.Augments
         public abstract MethodBase GetMethodBaseFromStartAddressIfAvailable(IntPtr methodStartAddress);
         public abstract Assembly GetAssemblyForHandle(RuntimeTypeHandle typeHandle);
 
-#if PROJECTN
-        public abstract int ValueTypeGetHashCodeUsingReflection(object valueType);
-        public abstract bool ValueTypeEqualsUsingReflection(object left, object right);
-#endif
-
         /// <summary>
         /// Retrieves the default value for a parameter of a method.
         /// </summary>

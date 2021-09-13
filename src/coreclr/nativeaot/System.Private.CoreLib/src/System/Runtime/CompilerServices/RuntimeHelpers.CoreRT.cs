@@ -27,6 +27,7 @@ namespace System.Runtime.CompilerServices
             throw new PlatformNotSupportedException();
         }
 
+        [RequiresUnreferencedCode("Trimmer can't guarantee existence of class constructor")]
         public static void RunClassConstructor(RuntimeTypeHandle type)
         {
             if (type.IsNull)
@@ -81,11 +82,6 @@ namespace System.Runtime.CompilerServices
             return RuntimeImports.RhCompareObjectContentsAndPadding(o1, o2);
         }
 
-#if !FEATURE_SYNCTABLE
-        private const int HASHCODE_BITS = 26;
-        private const int MASK_HASHCODE = (1 << HASHCODE_BITS) - 1;
-#endif
-
         [ThreadStatic]
         private static int t_hashSeed;
 
@@ -101,56 +97,8 @@ namespace System.Runtime.CompilerServices
 
         public static unsafe int GetHashCode(object o)
         {
-#if FEATURE_SYNCTABLE
             return ObjectHeader.GetHashCode(o);
-#else
-            if (o == null)
-                return 0;
-
-            fixed (IntPtr* pEEType = &o.m_pEEType)
-            {
-                int* pSyncBlockIndex = (int*)((byte*)pEEType - 4); // skipping exactly 4 bytes for the SyncTableEntry (exactly 4 bytes not a pointer size).
-                int hash = *pSyncBlockIndex & MASK_HASHCODE;
-
-                if (hash == 0)
-                    return MakeHashCode(o, pSyncBlockIndex);
-                else
-                    return hash;
-            }
-#endif
         }
-
-#if !FEATURE_SYNCTABLE
-        private static unsafe int MakeHashCode(Object o, int* pSyncBlockIndex)
-        {
-            int hash = GetNewHashCode() & MASK_HASHCODE;
-
-            if (hash == 0)
-                hash = 1;
-
-            while (true)
-            {
-                int oldIndex = Volatile.Read(ref *pSyncBlockIndex);
-
-                int currentHash = oldIndex & MASK_HASHCODE;
-                if (currentHash != 0)
-                {
-                    // Someone else set the hash code.
-                    hash = currentHash;
-                    break;
-                }
-
-                int newIndex = oldIndex | hash;
-
-                if (Interlocked.CompareExchange(ref *pSyncBlockIndex, newIndex, oldIndex) == oldIndex)
-                    break;
-                // If we get here someone else modified the header.  They may have set the hash code, or maybe some
-                // other bits.  Let's try again.
-            }
-
-            return hash;
-        }
-#endif
 
         public static int OffsetToStringData
         {
@@ -253,10 +201,14 @@ namespace System.Runtime.CompilerServices
 
         public static void PrepareMethod(RuntimeMethodHandle method)
         {
+            if (method.Value == IntPtr.Zero)
+                throw new ArgumentException(SR.InvalidOperation_HandleIsNotInitialized, nameof(method));
         }
 
         public static void PrepareMethod(RuntimeMethodHandle method, RuntimeTypeHandle[] instantiation)
         {
+            if (method.Value == IntPtr.Zero)
+                throw new ArgumentException(SR.InvalidOperation_HandleIsNotInitialized, nameof(method));
         }
 
         /// <summary>
@@ -268,7 +220,7 @@ namespace System.Runtime.CompilerServices
         /// <returns>The allocated memory</returns>
         public static IntPtr AllocateTypeAssociatedMemory(Type type, int size)
         {
-            if (!type.IsRuntimeImplemented())
+            if (type is null || !type.IsRuntimeImplemented())
                 throw new ArgumentException(SR.Arg_MustBeType, nameof(type));
 
             if (size < 0)
@@ -280,14 +232,12 @@ namespace System.Runtime.CompilerServices
 
         public static void PrepareDelegate(Delegate d)
         {
-            if (d == null)
-                throw new ArgumentNullException(nameof(d));
         }
 
         [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2059:UnrecognizedReflectionPattern",
-            Justification = "We keep class constructors of all types with an EEType")]
+            Justification = "We keep class constructors of all types with an MethodTable")]
         [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2072:UnrecognizedReflectionPattern",
-            Justification = "Constructed EEType of a Nullable forces a constructed EEType of the element type")]
+            Justification = "Constructed MethodTable of a Nullable forces a constructed MethodTable of the element type")]
         public static object GetUninitializedObject(
             // This API doesn't call any constructors, but the type needs to be seen as constructed.
             // A type is seen as constructed if a constructor is kept.
@@ -297,6 +247,16 @@ namespace System.Runtime.CompilerServices
             [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.NonPublicConstructors)]
             Type type)
         {
+            if (type is null)
+            {
+                throw new ArgumentNullException(nameof(type), SR.ArgumentNull_Type);
+            }
+
+            if (!type.IsRuntimeImplemented())
+            {
+                throw new SerializationException(SR.Format(SR.Serialization_InvalidType, type));
+            }
+
             if (type.HasElementType || type.IsGenericParameter)
             {
                 throw new ArgumentException(SR.Argument_InvalidValue);
@@ -314,9 +274,20 @@ namespace System.Runtime.CompilerServices
 
             EETypePtr eeTypePtr = type.TypeHandle.ToEETypePtr();
 
-            if (eeTypePtr == EETypePtr.EETypePtrOf<string>())
+            if (eeTypePtr.ElementType == Internal.Runtime.EETypeElementType.Void)
+            {
+                throw new ArgumentException(SR.Argument_InvalidValue);
+            }
+
+            // Don't allow strings (we already checked for arrays above)
+            if (eeTypePtr.ComponentSize != 0)
             {
                 throw new ArgumentException(SR.Argument_NoUninitializedStrings);
+            }
+
+            if (RuntimeImports.AreTypesAssignable(eeTypePtr, EETypePtr.EETypePtrOf<Delegate>()))
+            {
+                throw new MemberAccessException();
             }
 
             if (eeTypePtr.IsAbstract)
@@ -336,7 +307,7 @@ namespace System.Runtime.CompilerServices
 
             // Triggering the .cctor here is slightly different than desktop/CoreCLR, which
             // decide based on BeforeFieldInit, but we don't want to include BeforeFieldInit
-            // in EEType just for this API to behave slightly differently.
+            // in MethodTable just for this API to behave slightly differently.
             RunClassConstructor(type.TypeHandle);
 
             return RuntimeImports.RhNewObject(eeTypePtr);

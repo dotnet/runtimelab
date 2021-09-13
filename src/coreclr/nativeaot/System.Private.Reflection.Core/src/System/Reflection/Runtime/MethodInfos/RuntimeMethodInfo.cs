@@ -4,6 +4,7 @@
 using System;
 using System.Reflection;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
@@ -151,6 +152,7 @@ namespace System.Reflection.Runtime.MethodInfos
 
         public abstract override MethodInfo GetGenericMethodDefinition();
 
+        [RequiresUnreferencedCode("Trimming may change method bodies. For example it can change some instructions, remove branches or local variables.")]
         public sealed override MethodBody GetMethodBody()
         {
             throw new PlatformNotSupportedException();
@@ -209,6 +211,8 @@ namespace System.Reflection.Runtime.MethodInfos
             get;
         }
 
+        [RequiresDynamicCode("The native code for this instantiation might not be available at runtime.")]
+        [RequiresUnreferencedCode("If some of the generic arguments are annotated (either with DynamicallyAccessedMembersAttribute, or generic constraints), trimming can't validate that the requirements of those annotations are met.")]
         public abstract override MethodInfo MakeGenericMethod(params Type[] typeArguments);
 
         public abstract override MethodBase MetadataDefinitionMethod { get; }

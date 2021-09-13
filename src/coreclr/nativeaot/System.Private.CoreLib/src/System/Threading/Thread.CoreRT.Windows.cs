@@ -307,6 +307,20 @@ namespace System.Threading
             s_comInitializedOnFinalizerThread = true;
         }
 
+        private static void InitializeComForThreadPoolThread()
+        {
+            // Initialized COM - take advantage of implicit MTA initialized by the finalizer thread
+            SpinWait sw = new SpinWait();
+            while (!s_comInitializedOnFinalizerThread)
+            {
+                RuntimeImports.RhInitializeFinalizerThread();
+                sw.SpinOnce(0);
+            }
+
+            // Prevent re-initialization of COM model on threadpool threads
+            t_comState |= ComState.Locked;
+        }
+
         private static void InitializeCom(ApartmentState state = ApartmentState.MTA)
         {
             if ((t_comState & ComState.InitializedByUs) != 0)
@@ -360,34 +374,28 @@ namespace System.Threading
         // TODO: https://github.com/dotnet/corefx/issues/20766
         public void DisableComObjectEagerCleanup() { }
 
-        private static void InitializeExistingThreadPoolThread()
+        private static Thread InitializeExistingThreadPoolThread()
         {
-            // Take advantage of implicit MTA initialized by the finalizer thread
-            SpinWait sw = new SpinWait();
-            while (!s_comInitializedOnFinalizerThread)
-            {
-                RuntimeImports.RhInitializeFinalizerThread();
-                sw.SpinOnce(0);
-            }
-
-            // Prevent re-initialization of COM model on threadpool threads
-            t_comState |= ComState.Locked;
-
             ThreadPool.InitializeForThreadPoolThread();
+
+            InitializeComForThreadPoolThread();
+
+            Thread thread = CurrentThread;
+            thread.SetThreadStateBit(ThreadPoolThread);
+            return thread;
+        }
+
+        // Use ThreadPoolCallbackWrapper instead of calling this function directly
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static Thread EnsureThreadPoolThreadInitialized()
+        {
+            Thread? thread = t_currentThread;
+            if (thread != null && thread.GetThreadStateBit(ThreadPoolThread))
+                return thread;
+            return InitializeExistingThreadPoolThread();
         }
 
         public void Interrupt() { throw new PlatformNotSupportedException(); }
-
-        internal static void UninterruptibleSleep0()
-        {
-            Interop.Kernel32.Sleep(0);
-        }
-
-        private static void SleepInternal(int millisecondsTimeout)
-        {
-            Debug.Assert(millisecondsTimeout >= -1);
-            Interop.Kernel32.Sleep((uint)millisecondsTimeout);
-        }
 
         //
         // Suppresses reentrant waits on the current thread, until a matching call to RestoreReentrantWaits.

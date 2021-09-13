@@ -28,7 +28,7 @@ namespace Internal.TypeSystem
 
         private ValueTypeMethodHashtable _valueTypeMethodHashtable = new ValueTypeMethodHashtable();
 
-        protected virtual IEnumerable<MethodDesc> GetAllMethodsForValueType(TypeDesc valueType)
+        protected virtual IEnumerable<MethodDesc> GetAllMethodsForValueType(TypeDesc valueType, bool virtualOnly)
         {
             TypeDesc valueTypeDefinition = valueType.GetTypeDefinition();
 
@@ -46,7 +46,8 @@ namespace Internal.TypeSystem
                 }
             }
 
-            foreach (MethodDesc method in valueType.GetMethods())
+            IEnumerable<MethodDesc> metadataMethods = virtualOnly ? valueType.GetVirtualMethods() : valueType.GetMethods();
+            foreach (MethodDesc method in metadataMethods)
                 yield return method;
         }
 

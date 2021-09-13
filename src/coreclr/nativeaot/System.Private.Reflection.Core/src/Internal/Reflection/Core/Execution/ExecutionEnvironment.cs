@@ -5,6 +5,7 @@ using System;
 using System.IO;
 using System.Reflection;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection.Runtime.General;
 using System.Reflection.Runtime.TypeInfos;
 using Internal.Metadata.NativeFormat;
@@ -42,7 +43,7 @@ namespace Internal.Reflection.Core.Execution
         public abstract bool TryGetBaseType(RuntimeTypeHandle typeHandle, out RuntimeTypeHandle baseTypeHandle);
         public abstract IEnumerable<RuntimeTypeHandle> TryGetImplementedInterfaces(RuntimeTypeHandle typeHandle);
         public abstract void VerifyInterfaceIsImplemented(RuntimeTypeHandle typeHandle, RuntimeTypeHandle ifaceHandle);
-        public abstract void GetInterfaceMap(Type instanceType, Type interfaceType, out MethodInfo[] interfaceMethods, out MethodInfo[] targetMethods);
+        public abstract void GetInterfaceMap(Type instanceType, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicMethods | DynamicallyAccessedMemberTypes.NonPublicMethods)] Type interfaceType, out MethodInfo[] interfaceMethods, out MethodInfo[] targetMethods);
         public abstract bool IsReflectionBlocked(RuntimeTypeHandle typeHandle);
         public abstract string GetLastResortString(RuntimeTypeHandle typeHandle);
 
@@ -100,8 +101,10 @@ namespace Internal.Reflection.Core.Execution
         //==============================================================================================
         // Non-public methods
         //==============================================================================================
-        internal MethodInvoker GetMethodInvoker(RuntimeTypeInfo declaringType, QMethodDefinition methodHandle, RuntimeTypeInfo[] genericMethodTypeArguments, MemberInfo exceptionPertainant)
+        internal MethodInvoker GetMethodInvoker(RuntimeTypeInfo declaringType, QMethodDefinition methodHandle, RuntimeTypeInfo[] genericMethodTypeArguments, MemberInfo exceptionPertainant, out Exception exception)
         {
+            exception = null;
+
             if (declaringType.ContainsGenericParameters)
                 return new OpenMethodInvoker();
             for (int i = 0; i < genericMethodTypeArguments.Length; i++)
@@ -119,7 +122,7 @@ namespace Internal.Reflection.Core.Execution
             }
             MethodInvoker methodInvoker = TryGetMethodInvoker(typeDefinitionHandle, methodHandle, genericMethodTypeArgumentHandles);
             if (methodInvoker == null)
-                throw ReflectionCoreExecution.ExecutionDomain.CreateNonInvokabilityException(exceptionPertainant);
+                exception = ReflectionCoreExecution.ExecutionDomain.CreateNonInvokabilityException(exceptionPertainant);
             return methodInvoker;
         }
 

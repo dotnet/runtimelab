@@ -30,6 +30,25 @@
 #define __PN__MACHINECALL_CDECL_OR_DEFAULT __cdecl
 #endif
 
+#ifndef _MSC_VER
+
+// Note:  Win32-hosted GCC predefines __stdcall and __cdecl, but Unix-
+// hosted GCC does not.
+
+#ifdef __i386__
+
+#if !defined(__cdecl)
+#define __cdecl        __attribute__((cdecl))
+#endif
+
+#else   // !defined(__i386__)
+
+#define __cdecl
+
+#endif  // !defined(__i386__)
+
+#endif // !_MSC_VER
+
 #ifndef _INC_WINDOWS
 //#ifndef DACCESS_COMPILE
 
@@ -571,9 +590,6 @@ REDHAWK_PALIMPORT bool REDHAWK_PALAPI PalInit();
 // Given the OS handle of a loaded module, compute the upper and lower virtual address bounds (inclusive).
 REDHAWK_PALIMPORT void REDHAWK_PALAPI PalGetModuleBounds(HANDLE hOsHandle, _Out_ uint8_t ** ppLowerBound, _Out_ uint8_t ** ppUpperBound);
 
-typedef struct _GUID GUID;
-REDHAWK_PALIMPORT void REDHAWK_PALAPI PalGetPDBInfo(HANDLE hOsHandle, _Out_ GUID * pGuidSignature, _Out_ uint32_t * pdwAge, _Out_writes_z_(cchPath) WCHAR * wszPath, int32_t cchPath);
-
 REDHAWK_PALIMPORT bool REDHAWK_PALAPI PalGetThreadContext(HANDLE hThread, _Out_ PAL_LIMITED_CONTEXT * pCtx);
 
 REDHAWK_PALIMPORT int32_t REDHAWK_PALAPI PalGetProcessCpuCount();
@@ -705,8 +721,12 @@ REDHAWK_PALIMPORT int32_t __cdecl _stricmp(const char *string1, const char *stri
 
 #ifdef UNICODE
 #define _tcsicmp _wcsicmp
+#define _tcscat wcscat
+#define _tcslen wcslen
 #else
 #define _tcsicmp _stricmp
+#define _tcscat strcat
+#define _tcslen strlen
 #endif
 
 #if defined(HOST_X86) || defined(HOST_AMD64)

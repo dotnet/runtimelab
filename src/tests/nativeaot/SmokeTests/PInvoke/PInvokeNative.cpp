@@ -4,8 +4,10 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdint.h>
 #ifdef TARGET_WINDOWS
 #include <windows.h>
+#include <wtypes.h>
 #define DLL_EXPORT extern "C" __declspec(dllexport)
 #else
 #include<errno.h>
@@ -20,7 +22,7 @@
 #if (_MSC_VER >= 1400)         // Check MSC version
 #pragma warning(push)
 #pragma warning(disable: 4996) // Disable deprecation
-#endif 
+#endif
 
 void* MemAlloc(long bytes)
 {
@@ -82,7 +84,7 @@ DLL_EXPORT int __stdcall CheckIncremental_Foo(Foo *array, int sz)
             return 1;
     }
     return 0;
-}  
+}
 
 DLL_EXPORT int __stdcall Inc(int *val)
 {
@@ -104,7 +106,7 @@ DLL_EXPORT int __stdcall VerifyByRefFoo(Foo *val)
     val->b++;
 
     return 0;
-}    
+}
 
 DLL_EXPORT bool __stdcall GetNextChar(short *value)
 {
@@ -129,7 +131,7 @@ int CompareUnicodeString(const unsigned short *val, const unsigned short *expect
         return 0;
     const unsigned short *p = val;
     const unsigned short *q = expected;
-    
+
     while (*p  && *q && *p == *q)
     {
         p++;
@@ -196,7 +198,7 @@ DLL_EXPORT int __stdcall VerifyAnsiStringArray(char **val)
 
 void ToUpper(char *val)
 {
-    if (val == NULL) 
+    if (val == NULL)
         return;
     char *p = val;
     while (*p != '\0')
@@ -236,7 +238,7 @@ DLL_EXPORT int __stdcall VerifyUnicodeStringOut(unsigned short **val)
     unsigned short expected[] = { 'H', 'e', 'l', 'l', 'o', ' ', 'W', 'o', 'r', 'l', 'd', 0 };
     for (int i = 0; i < 12; i++)
         p[i] = expected[i];
-    
+
     *val = p;
     return 1;
 }
@@ -252,7 +254,7 @@ DLL_EXPORT int __stdcall VerifyUnicodeStringRef(unsigned short **val)
 
     if (!CompareUnicodeString(p, q))
         return 0;
-    
+
     MemFree(*val);
 
     p = (unsigned short*)MemAlloc(sizeof(unsigned short) * 13);
@@ -401,7 +403,7 @@ DLL_EXPORT int __stdcall VerifyUnicodeStringBuilderOut(unsigned short *val)
     unsigned short src[] = { 'H', 'e', 'l', 'l', 'o', ' ', 'W', 'o', 'r', 'l', 'd', 0 };
     for (int i = 0; i < 12; i++)
         val[i] = src[i];
-    
+
     return 1;
 }
 
@@ -519,7 +521,7 @@ DLL_EXPORT bool __stdcall StructTest_Array(NativeSequentialStruct *nss, int leng
 {
     if (nss == NULL)
         return false;
-    
+
     char expected[16];
 
     for (int i = 0; i < 3; i++)
@@ -562,7 +564,7 @@ DLL_EXPORT bool __stdcall InlineArrayTest(inlineStruct* p, inlineUnicodeStruct *
             return false;
         p->inlineArray[i] = i + 1;
     }
-    
+
     if (CompareAnsiString(p->inlineString, "Hello") != 1)
        return false;
 
@@ -613,7 +615,7 @@ DLL_EXPORT bool __stdcall StructTest_Nested(NativeNestedStruct nns)
 {
     if (nns.a != 100)
         return false;
-    
+
     return StructTest_Explicit(nns.nes);
 }
 
@@ -624,9 +626,9 @@ DLL_EXPORT bool __stdcall VerifyAnsiCharArrayIn(char *a)
 
 DLL_EXPORT bool __stdcall VerifyAnsiCharArrayOut(char *a)
 {
-    if (a == NULL) 
+    if (a == NULL)
         return false;
-    
+
     CopyAnsiString(a, "Hello World!");
     return true;
 }
@@ -669,6 +671,72 @@ struct Callbacks
 DLL_EXPORT bool __stdcall RegisterCallbacks(Callbacks *callbacks)
 {
     return callbacks->callback0() == 0 && callbacks->callback1() == 1 && callbacks->callback2() == 2;
+}
+
+DLL_EXPORT int __stdcall ValidateSuccessCall(int errorCode)
+{
+    return errorCode;
+}
+
+DLL_EXPORT int __stdcall ValidateIntResult(int errorCode, int* result)
+{
+    *result = 42;
+    return errorCode;
+}
+
+#ifndef DECIMAL_NEG // defined in wtypes.h
+typedef struct tagDEC {
+    uint16_t wReserved;
+    union {
+        struct {
+            uint8_t scale;
+            uint8_t sign;
+        };
+        uint16_t signscale;
+    };
+    uint32_t Hi32;
+    union {
+        struct {
+            uint32_t Lo32;
+            uint32_t Mid32;
+        };
+        uint64_t Lo64;
+    };
+} DECIMAL;
+#endif
+
+DLL_EXPORT DECIMAL __stdcall DecimalTest(DECIMAL value)
+{
+    DECIMAL zero;
+    memset(&zero, 0, sizeof(DECIMAL));
+
+    if (value.Lo32 != 100) {
+        return zero;
+    }
+
+    if (value.Mid32 != 101) {
+        return zero;
+    }
+
+    if (value.Hi32 != 102) {
+        return zero;
+    }
+
+    if (value.sign != 0) {
+        return zero;
+    }
+
+    if (value.scale != 1) {
+        return zero;
+    }
+
+    value.sign = 128;
+    value.scale = 2;
+    value.Lo32 = 99;
+    value.Mid32 = 98;
+    value.Hi32 = 97;
+
+    return value;
 }
 
 #if (_MSC_VER >= 1400)         // Check MSC version

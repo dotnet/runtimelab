@@ -40,6 +40,12 @@ namespace ILCompiler
             _rootAdder(_factory.MaximallyConstructableType(type), reason);
         }
 
+        public void AddReflectionRoot(MethodDesc method, string reason)
+        {
+            if (!_factory.MetadataManager.IsReflectionBlocked(method))
+                _rootAdder(_factory.ReflectableMethod(method), reason);
+        }
+
         public void RootThreadStaticBaseForType(TypeDesc type, string reason)
         {
             Debug.Assert(!type.IsGenericDefinition);
@@ -78,28 +84,6 @@ namespace ILCompiler
             if (metadataType != null && (metadataType.NonGCStaticFieldSize.AsInt > 0 || _factory.PreinitializationManager.HasLazyStaticConstructor(type)))
             {
                 _rootAdder(_factory.TypeNonGCStaticsSymbol(metadataType), reason);
-            }
-        }
-
-        public void RootVirtualMethodForReflection(MethodDesc method, string reason)
-        {
-            Debug.Assert(method.IsVirtual);
-
-            if (method.HasInstantiation)
-            {
-                _rootAdder(_factory.GVMDependencies(method), reason);
-            }
-            else
-            {
-                // Virtual method use is tracked on the slot defining method only.
-                MethodDesc slotDefiningMethod = MetadataVirtualMethodAlgorithm.FindSlotDefiningMethodForVirtualMethod(method);
-                if (!_factory.VTable(slotDefiningMethod.OwningType).HasFixedSlots)
-                    _rootAdder(_factory.VirtualMethodUse(slotDefiningMethod), reason);
-            }
-
-            if (method.IsAbstract)
-            {
-                _rootAdder(_factory.ReflectableMethod(method), reason);
             }
         }
 

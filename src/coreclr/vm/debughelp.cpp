@@ -194,7 +194,7 @@ void *DumpEnvironmentBlock(void)
     CONTRACTL_END;
 
     LPTSTR lpszVariable;
-    lpszVariable = (LPTSTR)WszGetEnvironmentStrings();
+    lpszVariable = (LPTSTR)GetEnvironmentStringsW();
 
     while (*lpszVariable)
     {
@@ -203,7 +203,7 @@ void *DumpEnvironmentBlock(void)
 
     fprintf(stderr, "\n");
 
-    return WszGetEnvironmentStrings();
+    return GetEnvironmentStringsW();
 }
 
 #if defined(TARGET_X86) && !defined(TARGET_UNIX)
@@ -309,15 +309,13 @@ MethodDesc* AsMethodDesc(size_t addr)
 
             if (isMemoryReadable((TADDR)chunk, sizeof(MethodDescChunk)))
             {
-                RelativeFixupPointer<PTR_MethodTable> * ppMT = chunk->GetMethodTablePtr();
+                PTR_MethodTable * ppMT = chunk->GetMethodTablePtr();
 
-                // The MethodTable is stored as a RelativeFixupPointer which does an
-                // extra indirection if the address is tagged (the low bit is set).
-                // That could AV if we don't check it first.
+                // Access to the MethodTable could AV if we don't check it first.
 
-                if (!ppMT->IsTagged((TADDR)ppMT) || isMemoryReadable((TADDR)ppMT->GetValuePtr(), sizeof(MethodTable*)))
+                if (isMemoryReadable((TADDR)ppMT, sizeof(MethodTable*)))
                 {
-                    if (AsMethodTable((size_t)RelativeFixupPointer<PTR_MethodTable>::GetValueAtPtr((TADDR)ppMT)) != 0)
+                    if (*ppMT != NULL)
                     {
                         pValidMD = pMD;
                     }
@@ -698,18 +696,6 @@ PCCOR_SIGNATURE RawSigForMethodDesc(MethodDesc* pMD)
     CONTRACTL_END;
 
     return(pMD->GetSig());
-}
-
-Thread * CurrentThreadInfo ()
-{
-    CONTRACTL
-    {
-        NOTHROW;
-        GC_NOTRIGGER;
-    }
-    CONTRACTL_END;
-
-    return GetThread ();
 }
 
 SyncBlock *GetSyncBlockForObject(UINT_PTR obj)

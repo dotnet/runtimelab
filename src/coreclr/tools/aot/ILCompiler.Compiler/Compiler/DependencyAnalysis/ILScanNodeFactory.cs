@@ -28,6 +28,10 @@ namespace ILCompiler.DependencyAnalysis
                 {
                     return MethodEntrypoint(TypeSystemContext.GetRealSpecialUnboxingThunkTargetMethod(method));
                 }
+                else if (TypeSystemContext.IsDefaultInterfaceMethodImplementationThunkTargetMethod(method))
+                {
+                    return MethodEntrypoint(TypeSystemContext.GetRealDefaultInterfaceMethodImplementationThunkTargetMethod(method));
+                }
                 else if (method.IsArrayAddressMethod())
                 {
                     return new ScannedMethodNode(((ArrayType)method.OwningType).GetArrayMethod(ArrayMethodKind.AddressWithHiddenArg));
@@ -60,7 +64,7 @@ namespace ILCompiler.DependencyAnalysis
             {
                 // Unboxing stubs to canonical instance methods need a special unboxing stub that unboxes
                 // 'this' and also provides an instantiation argument (we do a calling convention conversion).
-                // We don't do this for generic instance methods though because they don't use the EEType
+                // We don't do this for generic instance methods though because they don't use the MethodTable
                 // for the generic context anyway.
                 return new ScannedMethodNode(TypeSystemContext.GetSpecialUnboxingThunk(method, TypeSystemContext.GeneratedAssembly));
             }

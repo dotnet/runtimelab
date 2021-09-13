@@ -104,7 +104,7 @@ struct StaticGcDesc
 typedef SPTR(StaticGcDesc) PTR_StaticGcDesc;
 typedef DPTR(StaticGcDesc::GCSeries) PTR_StaticGcDescGCSeries;
 
-class EEType;
+class MethodTable;
 
 #ifdef FEATURE_CACHED_INTERFACE_DISPATCH
 
@@ -118,7 +118,7 @@ enum class DispatchCellType
 struct DispatchCellInfo
 {
     DispatchCellType CellType;
-    EEType *InterfaceType = nullptr;
+    MethodTable *InterfaceType = nullptr;
     uint16_t InterfaceSlot = 0;
     uint8_t HasCache = 0;
     uint32_t MetadataToken = 0;
@@ -137,7 +137,7 @@ private:
     };
 
 public:
-    void Initialize(EEType *pInterfaceType, uint16_t interfaceSlot, uint32_t metadataToken)
+    void Initialize(MethodTable *pInterfaceType, uint16_t interfaceSlot, uint32_t metadataToken)
     {
         if (pInterfaceType != nullptr)
         {
@@ -191,7 +191,7 @@ public:
     }
 
 private:
-    EEType *    m_pInterfaceType;   // EEType of interface to dispatch on
+    MethodTable *    m_pInterfaceType;   // MethodTable of interface to dispatch on
     uint32_t      m_slotIndexOrMetadataTokenEncoded;
 };
 
@@ -275,7 +275,7 @@ struct InterfaceDispatchCell
             switch (cachePointerValue & IDC_CachePointerMask)
             {
             case IDC_CachePointerIsInterfacePointerOrMetadataToken:
-                cellInfo.InterfaceType = (EEType*)(cachePointerValue & ~IDC_CachePointerMask);
+                cellInfo.InterfaceType = (MethodTable*)(cachePointerValue & ~IDC_CachePointerMask);
                 break;
 
             case IDC_CachePointerIsInterfaceRelativePointer:
@@ -285,11 +285,11 @@ struct InterfaceDispatchCell
                     interfacePointerValue &= ~IDC_CachePointerMask;
                     if ((cachePointerValue & IDC_CachePointerMask) == IDC_CachePointerIsInterfaceRelativePointer)
                     {
-                        cellInfo.InterfaceType = (EEType*)interfacePointerValue;
+                        cellInfo.InterfaceType = (MethodTable*)interfacePointerValue;
                     }
                     else
                     {
-                        cellInfo.InterfaceType = *(EEType**)interfacePointerValue;
+                        cellInfo.InterfaceType = *(MethodTable**)interfacePointerValue;
                     }
                 }
                 break;
@@ -560,15 +560,15 @@ struct PInvokeTransitionFrame
 #define OFFSETOF__Thread__m_pTransitionFrame 0x2c
 #endif
 
-typedef DPTR(EEType) PTR_EEType;
+typedef DPTR(MethodTable) PTR_EEType;
 typedef DPTR(PTR_EEType) PTR_PTR_EEType;
 
 struct EETypeRef
 {
     union
     {
-        EEType *    pEEType;
-        EEType **   ppEEType;
+        MethodTable *    pEEType;
+        MethodTable **   ppEEType;
         uint8_t *     rawPtr;
         UIntTarget  rawTargetPtr; // x86_amd64: keeps union big enough for target-platform pointer
     };

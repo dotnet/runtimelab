@@ -1,15 +1,31 @@
-<Project
-  xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
   <PropertyGroup Condition="'$(RuntimeIdentifier)' != ''">
 
-    <!-- Part of workaround for lack of secondary build artifact import - https://github.com/Microsoft/msbuild/issues/2807 -->
     <!-- Define the name of the runtime specific compiler package to import -->
-    <PortableRuntimeIdentifier Condition="$(RuntimeIdentifier.StartsWith('win'))">win</PortableRuntimeIdentifier>
-    <PortableRuntimeIdentifier Condition="$(RuntimeIdentifier.StartsWith('osx'))">osx</PortableRuntimeIdentifier>
-    <PortableRuntimeIdentifier Condition="$(RuntimeIdentifier.StartsWith('linux-musl')) OR $(RuntimeIdentifier.StartsWith('alpine'))">linux-musl</PortableRuntimeIdentifier>
-    <PortableRuntimeIdentifier Condition="'$(PortableRuntimeIdentifier)' == ''">linux</PortableRuntimeIdentifier>
-    <PortableRuntimeIdentifier>$(PortableRuntimeIdentifier)-$(PlatformTarget)</PortableRuntimeIdentifier>
-    <RuntimeIlcPackageName>runtime.$(PortableRuntimeIdentifier).Microsoft.DotNet.ILCompiler</RuntimeIlcPackageName>
+    <OSIdentifier Condition="$(RuntimeIdentifier.StartsWith('win'))">win</OSIdentifier>
+    <OSIdentifier Condition="$(RuntimeIdentifier.StartsWith('osx'))">osx</OSIdentifier>
+    <OSIdentifier Condition="$(RuntimeIdentifier.StartsWith('linux-musl')) OR $(RuntimeIdentifier.StartsWith('alpine'))">linux-musl</OSIdentifier>
+    <OSIdentifier Condition="'$(OSIdentifier)' == ''">linux</OSIdentifier>
+
+    <!-- Determine TargetArchitecture from RuntimeIdentifier -->
+    <RidWithHyphen>$(RuntimeIdentifier)-</RidWithHyphen>
+    <TargetArchitecture Condition="$(RidWithHyphen.Contains('-x86-'))">x86</TargetArchitecture>
+    <TargetArchitecture Condition="$(RidWithHyphen.Contains('-x64-'))">x64</TargetArchitecture>
+    <TargetArchitecture Condition="$(RidWithHyphen.Contains('-arm-'))">arm</TargetArchitecture>
+    <TargetArchitecture Condition="$(RidWithHyphen.Contains('-arm64-'))">arm64</TargetArchitecture>
+    <TargetArchitecture Condition="'$(TargetArchitecture)' == ''">unknown</TargetArchitecture>
+
+    <RuntimeIlcPackageName>runtime.$(OSIdentifier)-$(TargetArchitecture).Microsoft.DotNet.ILCompiler</RuntimeIlcPackageName>
+
+    <OSHostArch>$([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString().ToLowerInvariant)</OSHostArch>
+    <!-- OSArchitecture does not report the true OS architecture for x86 and x64 processes running on Windows ARM64. -->
+    <!-- The following condition checks those cases. -->
+    <OSHostArch Condition="$([MSBuild]::IsOSPlatform('Windows')) and
+        $([System.Environment]::GetEnvironmentVariable('PROCESSOR_ARCHITECTURE', EnvironmentVariableTarget.Machine)) == 'ARM64'">arm64</OSHostArch>
+
+    <IlcHostArch Condition="'$(IlcHostArch)' == ''">$(OSHostArch)</IlcHostArch>
+    <IlcHostPackageName>runtime.$(OSIdentifier)-$(IlcHostArch).Microsoft.DotNet.ILCompiler</IlcHostPackageName>
     <IlcCalledViaPackage>true</IlcCalledViaPackage>
 
   </PropertyGroup>
@@ -23,18 +39,17 @@
 
   </PropertyGroup>
 
-  <!-- Part of workaround for lack of secondary build artifact import - https://github.com/Microsoft/msbuild/issues/2807 -->
   <!-- Locate the runtime package according to the current target runtime -->
   <Target Name="ImportRuntimeIlcPackageTarget" Condition="'$(BuildingFrameworkLibrary)' != 'true' AND $(IlcCalledViaPackage) == 'true'" DependsOnTargets="$(ImportRuntimeIlcPackageTargetDependsOn)" BeforeTargets="Publish">
     <!-- CoreRT SDK and Framework Assemblies need to be defined to avoid CoreCLR implementations being set as compiler inputs -->
     <Error Condition="'@(PackageDefinitions)' == ''" Text="The PackageDefinitions ItemGroup is required for target ImportRuntimeIlcPackageTarget" />
-    <ItemGroup>
-      <RuntimePackage Include="@(PackageDefinitions)" Condition="'%(PackageDefinitions.Name)' == '$(RuntimeIlcPackageName)'" />
-    </ItemGroup>
-    <CreateProperty Value="%(RuntimePackage.ResolvedPath)">
-      <Output TaskParameter="Value" PropertyName="RuntimePackagePath"/>
-    </CreateProperty>
+
+    <PropertyGroup>
+      <RuntimePackagePath Condition="'%(PackageDefinitions.Name)' == '$(RuntimeIlcPackageName)'">%(PackageDefinitions.ResolvedPath)</RuntimePackagePath>
+      <IlcHostPackagePath Condition="'%(PackageDefinitions.Name)' == '$(IlcHostPackageName)'">%(PackageDefinitions.ResolvedPath)</IlcHostPackagePath>
+    </PropertyGroup>
   </Target>
 
   <Import Project="$(MSBuildThisFileDirectory)\Microsoft.NETCore.Native.targets" />
+
 </Project>

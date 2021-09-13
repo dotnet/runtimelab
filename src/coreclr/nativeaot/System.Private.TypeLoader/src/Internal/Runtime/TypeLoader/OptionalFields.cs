@@ -76,7 +76,7 @@ namespace Internal.Runtime.TypeLoader
             return _encoder.Size;
         }
 
-        internal void WriteToEEType(EEType* pEEType, int sizeOfOptionalFieldsDataInEEType)
+        internal void WriteToEEType(MethodTable* pEEType, int sizeOfOptionalFieldsDataInEEType)
         {
             byte* pOptionalFieldsPtr = pEEType->OptionalFieldsPtr;
             _encoder.Save(pOptionalFieldsPtr, sizeOfOptionalFieldsDataInEEType);

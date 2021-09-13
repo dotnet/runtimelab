@@ -160,10 +160,10 @@ namespace System.Runtime
 
         public static unsafe IntPtr GetDelegateThunk(object delegateObj, int whichThunk)
         {
-            Entry entry = LookupInCache(s_cache, (IntPtr)delegateObj.EEType, new IntPtr(whichThunk));
+            Entry entry = LookupInCache(s_cache, (IntPtr)delegateObj.MethodTable, new IntPtr(whichThunk));
             if (entry == null)
             {
-                entry = CacheMiss((IntPtr)delegateObj.EEType, new IntPtr(whichThunk),
+                entry = CacheMiss((IntPtr)delegateObj.MethodTable, new IntPtr(whichThunk),
                     (IntPtr context, IntPtr signature, object contextObject, ref IntPtr auxResult)
                         => RuntimeAugments.TypeLoaderCallbacks.GetDelegateThunk((Delegate)contextObject, (int)signature),
                     delegateObj);
@@ -173,10 +173,10 @@ namespace System.Runtime
 
         public static unsafe IntPtr GVMLookupForSlot(object obj, RuntimeMethodHandle slot)
         {
-            Entry entry = LookupInCache(s_cache, (IntPtr)obj.EEType, *(IntPtr*)&slot);
+            Entry entry = LookupInCache(s_cache, (IntPtr)obj.MethodTable, *(IntPtr*)&slot);
             if (entry == null)
             {
-                entry = CacheMiss((IntPtr)obj.EEType, *(IntPtr*)&slot,
+                entry = CacheMiss((IntPtr)obj.MethodTable, *(IntPtr*)&slot,
                     (IntPtr context, IntPtr signature, object contextObject, ref IntPtr auxResult)
                         => Internal.Runtime.CompilerServices.GenericVirtualMethodSupport.GVMLookupForSlot(new RuntimeTypeHandle(new EETypePtr(context)), *(RuntimeMethodHandle*)&signature));
             }
@@ -186,10 +186,10 @@ namespace System.Runtime
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static unsafe IntPtr OpenInstanceMethodLookup(IntPtr openResolver, object obj)
         {
-            Entry entry = LookupInCache(s_cache, (IntPtr)obj.EEType, openResolver);
+            Entry entry = LookupInCache(s_cache, (IntPtr)obj.MethodTable, openResolver);
             if (entry == null)
             {
-                entry = CacheMiss((IntPtr)obj.EEType, openResolver,
+                entry = CacheMiss((IntPtr)obj.MethodTable, openResolver,
                     (IntPtr context, IntPtr signature, object contextObject, ref IntPtr auxResult)
                         => Internal.Runtime.CompilerServices.OpenMethodResolver.ResolveMethodWorker(signature, contextObject),
                     obj);
@@ -392,8 +392,12 @@ namespace System.Runtime
     [ReflectionBlocked]
     public delegate IntPtr RuntimeObjectFactory(IntPtr context, IntPtr signature, object contextObject, ref IntPtr auxResult);
 
-    internal unsafe class RawCalliHelper
+    internal static unsafe class RawCalliHelper
     {
+        [MethodImplAttribute(MethodImplOptions.AggressiveInlining)]
+        public static void Call(System.IntPtr pfn, ref byte data)
+            => ((delegate*<ref byte, void>)pfn)(ref data);
+
         [MethodImplAttribute(MethodImplOptions.AggressiveInlining)]
         public static T Call<T>(System.IntPtr pfn, IntPtr arg)
             => ((delegate*<IntPtr, T>)pfn)(arg);

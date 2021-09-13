@@ -25,7 +25,7 @@
 
 #include <string.h>
 
-uint32_t RhConfig::ReadConfigValue(_In_z_ const TCHAR *wszName, uint32_t uiDefaultValue)
+bool RhConfig::ReadConfigValue(_In_z_ const TCHAR *wszName, uint32_t* pValue, bool decimal)
 {
     TCHAR wszBuffer[CONFIG_VAL_MAXLEN + 1]; // 8 hex digits plus a nul terminator.
     const uint32_t cchBuffer = sizeof(wszBuffer) / sizeof(wszBuffer[0]);
@@ -33,7 +33,10 @@ uint32_t RhConfig::ReadConfigValue(_In_z_ const TCHAR *wszName, uint32_t uiDefau
     uint32_t cchResult = 0;
 
 #ifdef FEATURE_ENVIRONMENT_VARIABLE_CONFIG
-    cchResult = PalGetEnvironmentVariable(wszName, wszBuffer, cchBuffer);
+    TCHAR wszVariableName[64] = _T("DOTNET_");
+    assert(_tcslen(wszVariableName) + _tcslen(wszName) < sizeof(wszVariableName) / sizeof(wszVariableName[0]));
+    _tcscat(wszVariableName, wszName);
+    cchResult = PalGetEnvironmentVariable(wszVariableName, wszBuffer, cchBuffer);
 #endif // FEATURE_ENVIRONMENT_VARIABLE_CONFIG
 
 #ifdef FEATURE_EMBEDDED_CONFIG
@@ -43,26 +46,40 @@ uint32_t RhConfig::ReadConfigValue(_In_z_ const TCHAR *wszName, uint32_t uiDefau
 #endif // FEATURE_EMBEDDED_CONFIG
 
     if ((cchResult == 0) || (cchResult >= cchBuffer))
-        return uiDefaultValue; // not found, return default
+        return false; // not found
 
     uint32_t uiResult = 0;
 
     for (uint32_t i = 0; i < cchResult; i++)
     {
-        uiResult <<= 4;
-
         TCHAR ch = wszBuffer[i];
-        if ((ch >= _T('0')) && (ch <= _T('9')))
-            uiResult += ch - _T('0');
-        else if ((ch >= _T('a')) && (ch <= _T('f')))
-            uiResult += (ch - _T('a')) + 10;
-        else if ((ch >= _T('A')) && (ch <= _T('F')))
-            uiResult += (ch - _T('A')) + 10;
+
+        if (decimal)
+        {
+            uiResult *= 10;
+
+            if ((ch >= _T('0')) && (ch <= _T('9')))
+                uiResult += ch - _T('0');
+            else
+                return false; // parse error
+        }
         else
-            return uiDefaultValue; // parse error, return default
+        {
+            uiResult *= 16;
+
+            if ((ch >= _T('0')) && (ch <= _T('9')))
+                uiResult += ch - _T('0');
+            else if ((ch >= _T('a')) && (ch <= _T('f')))
+                uiResult += (ch - _T('a')) + 10;
+            else if ((ch >= _T('A')) && (ch <= _T('F')))
+                uiResult += (ch - _T('A')) + 10;
+            else
+                return false; // parse error
+        }
     }
 
-    return uiResult;
+    *pValue = uiResult;
+    return true;
 }
 
 #ifdef FEATURE_EMBEDDED_CONFIG

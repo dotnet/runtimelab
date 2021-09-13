@@ -170,9 +170,6 @@ FOR_ALL_NUMA_FUNCTIONS
 // The cached total number of CPUs that can be used in the OS.
 static uint32_t g_totalCpuCount = 0;
 
-// The cached number of CPUs available for the current process.
-static uint32_t g_currentProcessCpuCount = 0;
-
 //
 // Helper membarrier function
 //
@@ -196,21 +193,6 @@ enum membarrier_cmd
 
 bool CanFlushUsingMembarrier()
 {
-#ifdef TARGET_ANDROID
-    // Calling membarrier on older Android versions can just kill the process
-#ifdef __ANDROID_API_Q__    
-    int api_level = android_get_device_api_level();
-
-    if (api_level < __ANDROID_API_Q__)
-    {
-        return false;
-    }
-#else
-    return false;
-#endif // __ANDROID_API_Q__
-
-#endif // TARGET_ANDROID
-
     // Starting with Linux kernel 4.14, process memory barriers can be generated
     // using MEMBARRIER_CMD_PRIVATE_EXPEDITED.
 
@@ -240,7 +222,6 @@ static pthread_mutex_t g_flushProcessWriteBuffersMutex;
 
 size_t GetRestrictedPhysicalMemoryLimit();
 bool GetPhysicalMemoryUsed(size_t* val);
-bool GetCpuLimit(uint32_t* val);
 
 static size_t g_RestrictedPhysicalMemoryLimit = 0;
 
@@ -317,10 +298,14 @@ void NUMASupportInitialize()
         return;
     }
 
-    g_numaHandle = dlopen("libnuma.so", RTLD_LAZY);
+    g_numaHandle = dlopen("libnuma.so.1", RTLD_LAZY);
     if (g_numaHandle == 0)
     {
-        g_numaHandle = dlopen("libnuma.so.1", RTLD_LAZY);
+        g_numaHandle = dlopen("libnuma.so.1.0.0", RTLD_LAZY);
+        if (g_numaHandle == 0)
+        {
+            g_numaHandle = dlopen("libnuma.so", RTLD_LAZY);
+        }
     }
     if (g_numaHandle != 0)
     {
@@ -425,8 +410,6 @@ bool GCToOSInterface::Initialize()
 
 #if HAVE_SCHED_GETAFFINITY
 
-    g_currentProcessCpuCount = 0;
-
     cpu_set_t cpuSet;
     int st = sched_getaffinity(getpid(), sizeof(cpu_set_t), &cpuSet);
 
@@ -436,7 +419,6 @@ bool GCToOSInterface::Initialize()
         {
             if (CPU_ISSET(i, &cpuSet))
             {
-                g_currentProcessCpuCount++;
                 g_processAffinitySet.Add(i);
             }
         }
@@ -450,20 +432,12 @@ bool GCToOSInterface::Initialize()
 
 #else // HAVE_SCHED_GETAFFINITY
 
-    g_currentProcessCpuCount = g_totalCpuCount;
-
     for (size_t i = 0; i < g_totalCpuCount; i++)
     {
         g_processAffinitySet.Add(i);
     }
 
 #endif // HAVE_SCHED_GETAFFINITY
-
-    uint32_t cpuLimit;
-    if (GetCpuLimit(&cpuLimit) && cpuLimit < g_currentProcessCpuCount)
-    {
-        g_currentProcessCpuCount = cpuLimit;
-    }
 
     NUMASupportInitialize();
 
@@ -648,6 +622,7 @@ void GCToOSInterface::YieldThread(uint32_t switchCount)
     assert(ret == 0);
 }
 
+#if !TARGET_WASM
 // Reserve virtual memory range.
 // Parameters:
 //  size      - size of the virtual memory range
@@ -787,6 +762,7 @@ bool GCToOSInterface::VirtualDecommit(void* address, size_t size)
     // be zeroed-out.
     return mmap(address, size, PROT_NONE, MAP_FIXED | MAP_ANON | MAP_PRIVATE, -1, 0) != NULL;
 }
+#endif // TARGET_WASM
 
 // Reset virtual memory range. Indicates that data in the memory range specified by address and size is no
 // longer of interest, but it should not be decommitted.
@@ -910,14 +886,14 @@ static size_t GetLogicalProcessorCacheSizeFromOS()
     cacheSize = std::max(cacheSize, ( size_t) sysconf(_SC_LEVEL4_CACHE_SIZE));
 #endif
 
-#if defined(TARGET_LINUX) && !defined(HOST_ARM)
+#if defined(TARGET_LINUX) && !defined(HOST_ARM) && !defined(HOST_X86)
     if (cacheSize == 0)
     {
         //
-        // Fallback to retrieve cachesize via /sys/.. if sysconf was not available 
-        // for the platform. Currently musl and arm64 should be only cases to use  
+        // Fallback to retrieve cachesize via /sys/.. if sysconf was not available
+        // for the platform. Currently musl and arm64 should be only cases to use
         // this method to determine cache size.
-        // 
+        //
         size_t size;
 
         if (ReadMemoryValueFromFile("/sys/devices/system/cpu/cpu0/cache/index0/size", &size))
@@ -1129,14 +1105,6 @@ const AffinitySet* GCToOSInterface::SetGCThreadsAffinitySet(uintptr_t configAffi
     }
 
     return &g_processAffinitySet;
-}
-
-// Get number of processors assigned to the current process
-// Return:
-//  The number of processors
-uint32_t GCToOSInterface::GetCurrentProcessCpuCount()
-{
-    return g_currentProcessCpuCount;
 }
 
 // Return the size of the user-mode portion of the virtual address space of this process.
@@ -1501,10 +1469,24 @@ bool GCToOSInterface::ParseGCHeapAffinitizeRangesEntry(const char** config_strin
 }
 
 // Initialize the critical section
-void CLRCriticalSection::Initialize()
+bool CLRCriticalSection::Initialize()
 {
-    int st = pthread_mutex_init(&m_cs.mutex, NULL);
-    assert(st == 0);
+    pthread_mutexattr_t mutexAttributes;
+    int st = pthread_mutexattr_init(&mutexAttributes);
+    if (st != 0)
+    {
+        return false;
+    }
+
+    st = pthread_mutexattr_settype(&mutexAttributes, PTHREAD_MUTEX_RECURSIVE);
+    if (st == 0)
+    {
+        st = pthread_mutex_init(&m_cs.mutex, &mutexAttributes);
+    }
+
+    pthread_mutexattr_destroy(&mutexAttributes);
+
+    return (st == 0);
 }
 
 // Destroy the critical section

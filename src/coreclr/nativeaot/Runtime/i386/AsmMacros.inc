@@ -183,7 +183,6 @@ RhpWaitForSuspend2                          equ @RhpWaitForSuspend2@0
 RhpWaitForGC2                               equ @RhpWaitForGC2@4
 RhpReversePInvokeAttachOrTrapThread2        equ @RhpReversePInvokeAttachOrTrapThread2@4
 RhpTrapThreads                              equ _RhpTrapThreads
-RhpPublishObject                            equ @RhpPublishObject@8
 
 ifdef FEATURE_GC_STRESS
 THREAD__HIJACKFORGCSTRESS                   equ ?HijackForGcStress@Thread@@SGXPAUPAL_LIMITED_CONTEXT@@@Z
@@ -199,8 +198,6 @@ EXTERN RhpWaitForSuspend2                       : PROC
 EXTERN RhpWaitForGC2                            : PROC
 EXTERN RhpReversePInvokeAttachOrTrapThread2     : PROC
 EXTERN RhExceptionHandling_FailedAllocation     : PROC
-EXTERN RhpPublishObject                         : PROC
-EXTERN RhpCalculateStackTraceWorker             : PROC
 EXTERN RhThrowHwEx                              : PROC
 EXTERN RhThrowEx                                : PROC
 EXTERN RhRethrow                                : PROC

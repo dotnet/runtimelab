@@ -33,22 +33,6 @@ namespace Internal.DeveloperExperience
             return disableMetadata;
         }
 
-        internal static void WriteLine(string s)
-        {
-            // We need to write into stderr, but CoreLib doesn't have a way to write to stderr, so we rely
-            // on a separate library on the startup path to hook this up.
-            // If nothing hooked it up, just use Debug.WriteLine.
-            Action<string> writeLineMethod = AppContext.GetData("System.Runtime.ExceptionServices.WriteLine") as Action<string>;
-            if (writeLineMethod != null)
-            {
-                writeLineMethod(s);
-            }
-            else
-            {
-                Debug.WriteLine(s);
-            }
-        }
-
         public virtual string CreateStackTraceString(IntPtr ip, bool includeFileInfo)
         {
             if (!IsMetadataStackTraceResolutionDisabled())
@@ -73,8 +57,7 @@ namespace Internal.DeveloperExperience
             }
 
             // If we don't have precise information, try to map it at least back to the right module.
-            IntPtr moduleBase = RuntimeImports.RhGetOSModuleFromPointer(ip);
-            string moduleFullFileName = RuntimeAugments.TryGetFullPathToApplicationModule(moduleBase);
+            string moduleFullFileName = RuntimeAugments.TryGetFullPathToApplicationModule(ip, out IntPtr moduleBase);
 
             // Without any callbacks or the ability to map ip correctly we better admit that we don't know
             if (string.IsNullOrEmpty(moduleFullFileName))
@@ -84,7 +67,7 @@ namespace Internal.DeveloperExperience
 
             StringBuilder sb = new StringBuilder();
             string fileNameWithoutExtension = GetFileNameWithoutExtension(moduleFullFileName);
-            int rva = RuntimeAugments.ConvertIpToRva(ip);
+            int rva = (int)(ip.ToInt64() - moduleBase.ToInt64());
             sb.Append(fileNameWithoutExtension);
             sb.Append("!<BaseAddress>+0x");
             sb.Append(rva.ToString("x"));

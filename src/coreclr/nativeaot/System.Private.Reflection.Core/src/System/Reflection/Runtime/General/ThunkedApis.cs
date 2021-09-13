@@ -64,33 +64,23 @@ namespace System.Reflection.Runtime.Assemblies
         {
             get
             {
-                if (AppContext.TryGetSwitch("Switch.System.Reflection.Assembly.SimulatedLocationInBaseDirectory", out bool isSimulated) && isSimulated)
-                    return Path.Combine(AppContext.BaseDirectory, ManifestModule.Name);
-
                 return string.Empty;
             }
         }
 
+        [RequiresAssemblyFiles("The code will throw for assemblies embedded in a single-file app")]
         public sealed override string CodeBase
         {
             get
             {
-                var assemblyPath = Location;
-                if (string.IsNullOrEmpty(assemblyPath))
-                {
-                    assemblyPath = Path.Combine(AppContext.BaseDirectory, typeof(object).Assembly.ManifestModule.Name);
-                }
-                assemblyPath = assemblyPath.Replace('\\', '/');
-                if (assemblyPath.StartsWith('/'))
-                {
-                    return "file://" + assemblyPath;
-                }
-                return "file:///" + assemblyPath;
+                throw new NotSupportedException(SR.NotSupported_CodeBase);
             }
         }
 
         public sealed override Assembly GetSatelliteAssembly(CultureInfo culture) { throw new PlatformNotSupportedException(); }
         public sealed override Assembly GetSatelliteAssembly(CultureInfo culture, Version version) { throw new PlatformNotSupportedException(); }
+
+        [RequiresUnreferencedCode("Assembly references might be removed")]
         public sealed override AssemblyName[] GetReferencedAssemblies() { throw new PlatformNotSupportedException(); }
         public sealed override Module GetModule(string name) { throw new PlatformNotSupportedException(); }
     }
@@ -173,7 +163,10 @@ namespace System.Reflection.Runtime.TypeInfos
         }
 
         public sealed override bool IsGenericType => IsConstructedGenericType || IsGenericTypeDefinition;
+
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces)]
         public sealed override Type[] GetInterfaces() => ImplementedInterfaces.ToArray();
+
         public sealed override string GetEnumName(object value) => Enum.GetName(this, value);
         public sealed override string[] GetEnumNames() => Enum.GetNames(this);
         public sealed override Type GetEnumUnderlyingType() => Enum.GetUnderlyingType(this);
@@ -186,10 +179,14 @@ namespace System.Reflection.Runtime.TypeInfos
         public sealed override bool IsSecuritySafeCritical => false;
         public sealed override bool IsSecurityTransparent => false;
 
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces)]
+        [return: DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces)]
+        [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2073:UnrecognizedReflectionPattern",
+            Justification = "The returned interface is one of the interfaces implemented by this type and does have DynamicallyAccessedMemberTypes.Interfaces")]
         public sealed override Type GetInterface(string name, bool ignoreCase)
         {
             if (name == null)
-                throw new ArgumentNullException(nameof(name));
+                throw new ArgumentNullException("fullname" /* Yep, CoreCLR names this different than the ref assembly */);
 
             string simpleName;
             string ns;

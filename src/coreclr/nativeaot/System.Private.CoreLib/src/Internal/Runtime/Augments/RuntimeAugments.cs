@@ -19,6 +19,7 @@
 using System;
 using System.Runtime;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Runtime.CompilerServices;
@@ -72,7 +73,7 @@ namespace Internal.Runtime.Augments
         //==============================================================================================
 
         //
-        // Perform the equivalent of a "newobj", but without invoking any constructors. Other than the EEType, the result object is zero-initialized.
+        // Perform the equivalent of a "newobj", but without invoking any constructors. Other than the MethodTable, the result object is zero-initialized.
         //
         // Special cases:
         //
@@ -95,8 +96,8 @@ namespace Internal.Runtime.Augments
         }
 
         //
-        // Helper API to perform the equivalent of a "newobj" for any EEType.
-        // Unlike the NewObject API, this is the raw version that does not special case any EEType, and should be used with
+        // Helper API to perform the equivalent of a "newobj" for any MethodTable.
+        // Unlike the NewObject API, this is the raw version that does not special case any MethodTable, and should be used with
         // caution for very specific scenarios.
         //
         public static object RawNewObject(RuntimeTypeHandle typeHandle)
@@ -109,7 +110,7 @@ namespace Internal.Runtime.Augments
         //
         public static Array NewArray(RuntimeTypeHandle typeHandleForArrayType, int count)
         {
-            // Don't make the easy mistake of passing in the element EEType rather than the "array of element" EEType.
+            // Don't make the easy mistake of passing in the element MethodTable rather than the "array of element" MethodTable.
             Debug.Assert(typeHandleForArrayType.ToEETypePtr().IsSzArray);
             return RuntimeImports.RhNewArray(typeHandleForArrayType.ToEETypePtr(), count);
         }
@@ -122,6 +123,8 @@ namespace Internal.Runtime.Augments
         // As a concession to the fact that we don't actually support non-zero lower bounds, "lowerBounds" accepts "null"
         // to avoid unnecessary array allocations by the caller.
         //
+        [UnconditionalSuppressMessage("AotAnalysis", "IL9700:RequiresDynamicCode",
+            Justification = "The compiler ensures that if we have a TypeHandle of a Rank-1 MdArray, we also generated the SzArray.")]
         public static unsafe Array NewMultiDimArray(RuntimeTypeHandle typeHandleForArrayType, int[] lengths, int[] lowerBounds)
         {
             Debug.Assert(lengths != null);
@@ -180,23 +183,18 @@ namespace Internal.Runtime.Augments
 
         public static IntPtr GetAllocateObjectHelperForType(RuntimeTypeHandle type)
         {
-            return RuntimeImports.RhGetRuntimeHelperForType(CreateEETypePtr(type), RuntimeImports.RuntimeHelperKind.AllocateObject);
+            return RuntimeImports.RhGetRuntimeHelperForType(CreateEETypePtr(type), RuntimeHelperKind.AllocateObject);
         }
 
         public static IntPtr GetAllocateArrayHelperForType(RuntimeTypeHandle type)
         {
-            return RuntimeImports.RhGetRuntimeHelperForType(CreateEETypePtr(type), RuntimeImports.RuntimeHelperKind.AllocateArray);
+            return RuntimeImports.RhGetRuntimeHelperForType(CreateEETypePtr(type), RuntimeHelperKind.AllocateArray);
         }
 
         public static IntPtr GetCastingHelperForType(RuntimeTypeHandle type, bool throwing)
         {
             return RuntimeImports.RhGetRuntimeHelperForType(CreateEETypePtr(type),
-                throwing ? RuntimeImports.RuntimeHelperKind.CastClass : RuntimeImports.RuntimeHelperKind.IsInst);
-        }
-
-        public static IntPtr GetCheckArrayElementTypeHelperForType(RuntimeTypeHandle type)
-        {
-            return RuntimeImports.RhGetRuntimeHelperForType(CreateEETypePtr(type), RuntimeImports.RuntimeHelperKind.CheckArrayElementType);
+                throwing ? RuntimeHelperKind.CastClass : RuntimeHelperKind.IsInst);
         }
 
         public static IntPtr GetDispatchMapForType(RuntimeTypeHandle typeHandle)
@@ -382,27 +380,23 @@ namespace Internal.Runtime.Augments
         public static object CallDynamicInvokeMethod(
             object thisPtr,
             IntPtr methodToCall,
-            object thisPtrDynamicInvokeMethod,
             IntPtr dynamicInvokeHelperMethod,
             IntPtr dynamicInvokeHelperGenericDictionary,
             object defaultParametersContext,
             object[] parameters,
             BinderBundle binderBundle,
             bool wrapInTargetInvocationException,
-            bool invokeMethodHelperIsThisCall,
             bool methodToCallIsThisCall)
         {
             object result = InvokeUtils.CallDynamicInvokeMethod(
                 thisPtr,
                 methodToCall,
-                thisPtrDynamicInvokeMethod,
                 dynamicInvokeHelperMethod,
                 dynamicInvokeHelperGenericDictionary,
                 defaultParametersContext,
                 parameters,
                 binderBundle,
                 wrapInTargetInvocationException,
-                invokeMethodHelperIsThisCall,
                 methodToCallIsThisCall);
             System.Diagnostics.DebugAnnotations.PreviousCallContainsDebuggerStepInCode();
             return result;
@@ -753,26 +747,22 @@ namespace Internal.Runtime.Augments
             return new RuntimeTypeHandle(theT);
         }
 
-        //
-        // Useful helper for finding .pdb's. (This design is admittedly tied to the single-module design of Project N.)
-        //
-        public static string TryGetFullPathToMainApplication()
-        {
-            Func<string> delegateToAnythingInsideMergedApp = TryGetFullPathToMainApplication;
-            IntPtr ipToAnywhereInsideMergedApp = delegateToAnythingInsideMergedApp.GetFunctionPointer(out RuntimeTypeHandle _, out bool _, out bool _);
-            IntPtr moduleBase = RuntimeImports.RhGetOSModuleFromPointer(ipToAnywhereInsideMergedApp);
-            return TryGetFullPathToApplicationModule(moduleBase);
-        }
-
         /// <summary>
         /// Locate the file path for a given native application module.
         /// </summary>
+        /// <param name="ip">Address inside the module</param>
         /// <param name="moduleBase">Module base address</param>
-        public static unsafe string TryGetFullPathToApplicationModule(IntPtr moduleBase)
+        public static unsafe string TryGetFullPathToApplicationModule(IntPtr ip, out IntPtr moduleBase)
         {
+            moduleBase = RuntimeImports.RhGetOSModuleFromPointer(ip);
+            if (moduleBase == IntPtr.Zero)
+                return null;
 #if TARGET_UNIX
+            // RhGetModuleFileName on Unix calls dladdr that accepts any ip. Avoid the redundant lookup
+            // and pass the ip into RhGetModuleFileName directly. Also, older versions of Musl have a bug
+            // that leads to crash with the redundant lookup.
             byte* pModuleNameUtf8;
-            int numUtf8Chars = RuntimeImports.RhGetModuleFileName(moduleBase, out pModuleNameUtf8);
+            int numUtf8Chars = RuntimeImports.RhGetModuleFileName(ip, out pModuleNameUtf8);
             string modulePath = System.Text.Encoding.UTF8.GetString(pModuleNameUtf8, numUtf8Chars);
 #else // TARGET_UNIX
             char* pModuleName;
@@ -781,19 +771,6 @@ namespace Internal.Runtime.Augments
 #endif // TARGET_UNIX
             return modulePath;
         }
-
-        //
-        // Useful helper for getting RVA's to pass to DiaSymReader.
-        //
-        public static int ConvertIpToRva(IntPtr ip)
-        {
-            unsafe
-            {
-                IntPtr moduleBase = RuntimeImports.RhGetOSModuleFromPointer(ip);
-                return (int)(ip.ToInt64() - moduleBase.ToInt64());
-            }
-        }
-
 
         public static IntPtr GetRuntimeTypeHandleRawValue(RuntimeTypeHandle runtimeTypeHandle)
         {
@@ -977,7 +954,7 @@ namespace Internal.Runtime.Augments
             return Delegate.CreateObjectArrayDelegate(delegateType, invoker);
         }
 
-        internal class RawCalliHelper
+        internal static class RawCalliHelper
         {
             [DebuggerHidden]
             [DebuggerStepThrough]
@@ -1069,37 +1046,9 @@ namespace Internal.Runtime.Augments
             }
         }
 
-        public static bool FileExists(string path)
-        {
-            return Internal.IO.File.Exists(path);
-        }
-
         public static string GetLastResortString(RuntimeTypeHandle typeHandle)
         {
             return typeHandle.LastResortToString;
-        }
-
-        public static void RhpSendCustomEventToDebugger(IntPtr payload, int length)
-        {
-            RuntimeImports.RhpSendCustomEventToDebugger(payload, length);
-        }
-
-        [CLSCompliant(false)]
-        public static uint RhpGetFuncEvalParameterBufferSize()
-        {
-            return RuntimeImports.RhpGetFuncEvalParameterBufferSize();
-        }
-
-        [CLSCompliant(false)]
-        public static uint RhpGetFuncEvalMode()
-        {
-            return RuntimeImports.RhpGetFuncEvalMode();
-        }
-
-        [CLSCompliant(false)]
-        public static unsafe uint RhpRecordDebuggeeInitiatedHandle(IntPtr objectHandle)
-        {
-            return RuntimeImports.RhpRecordDebuggeeInitiatedHandle((void*)objectHandle);
         }
 
         public static IntPtr RhHandleAlloc(object value, GCHandleType type)
@@ -1115,11 +1064,6 @@ namespace Internal.Runtime.Augments
         public static IntPtr RhGetOSModuleForMrt()
         {
             return RuntimeImports.RhGetOSModuleForMrt();
-        }
-
-        public static void RhpVerifyDebuggerCleanup()
-        {
-            RuntimeImports.RhpVerifyDebuggerCleanup();
         }
 
         public static IntPtr RhpGetCurrentThread()
@@ -1147,7 +1091,7 @@ namespace Internal.Runtime.Augments
         {
             get
             {
-                return Internal.Runtime.EEType.SupportsRelativePointers;
+                return Internal.Runtime.MethodTable.SupportsRelativePointers;
             }
         }
 

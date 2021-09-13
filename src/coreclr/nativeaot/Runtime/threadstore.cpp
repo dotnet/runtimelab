@@ -27,10 +27,6 @@
 #include "slist.inl"
 #include "GCMemoryHelpers.h"
 
-#include "Debug.h"
-#include "DebugEventSource.h"
-#include "DebugFuncEval.h"
-
 EXTERN_C volatile uint32_t RhpTrapThreads = (uint32_t)TrapThreadsFlags::None;
 
 GVAL_IMPL_INIT(PTR_Thread, RhpSuspendingThread, 0);
@@ -167,16 +163,14 @@ void ThreadStore::DetachCurrentThread()
         return;
     }
 
-#ifdef STRESS_LOG
-    ThreadStressLog * ptsl = reinterpret_cast<ThreadStressLog *>(
-        pDetachingThread->GetThreadStressLog());
-    StressLog::ThreadDetach(ptsl);
-#endif // STRESS_LOG
+    {
+        ThreadStore* pTS = GetThreadStore();
+        ReaderWriterLock::WriteHolder write(&pTS->m_Lock);
+        ASSERT(rh::std::count(pTS->m_ThreadList.Begin(), pTS->m_ThreadList.End(), pDetachingThread) == 1);
+        pTS->m_ThreadList.RemoveFirst(pDetachingThread);
+        pDetachingThread->Detach();
+    }
 
-    ThreadStore* pTS = GetThreadStore();
-    ReaderWriterLock::WriteHolder write(&pTS->m_Lock);
-    ASSERT(rh::std::count(pTS->m_ThreadList.Begin(), pTS->m_ThreadList.End(), pDetachingThread) == 1);
-    pTS->m_ThreadList.RemoveFirst(pDetachingThread);
     pDetachingThread->Destroy();
 }
 
@@ -203,26 +197,6 @@ void ThreadStore::UnlockThreadStore()
 
 void ThreadStore::SuspendAllThreads(bool waitForGCEvent)
 {
-    ThreadStore::SuspendAllThreads(waitForGCEvent, /* fireDebugEvent = */ true);
-}
-
-void ThreadStore::SuspendAllThreads(bool waitForGCEvent, bool fireDebugEvent)
-{
-    //
-    // SuspendAllThreads requires all threads running
-    //
-    // Threads are by default frozen by the debugger during FuncEval
-    // Therefore, in case of FuncEval, we need to inform the debugger
-    // to unfreeze the threads.
-    //
-    if (fireDebugEvent && DebugFuncEval::GetMostRecentFuncEvalHijackInstructionPointer() != 0)
-    {
-        struct DebuggerFuncEvalCrossThreadDependencyNotification crossThreadDependencyEventPayload;
-        crossThreadDependencyEventPayload.kind = DebuggerResponseKind::FuncEvalCrossThreadDependency;
-        crossThreadDependencyEventPayload.payload = 0;
-        DebugEventSource::SendCustomEvent(&crossThreadDependencyEventPayload, sizeof(struct DebuggerFuncEvalCrossThreadDependencyNotification));
-    }
-
     Thread * pThisThread = GetCurrentThreadIfAvailable();
 
     LockThreadStore();
@@ -325,7 +299,7 @@ void ThreadStore::WaitForSuspendComplete()
 
 void ThreadStore::InitiateThreadAbort(Thread* targetThread, Object * threadAbortException, bool doRudeAbort)
 {
-    SuspendAllThreads(/* waitForGCEvent = */ false, /* fireDebugEvent = */ false);
+    SuspendAllThreads(/* waitForGCEvent = */ false);
     // TODO: consider enabling multiple thread aborts running in parallel on different threads
     ASSERT((RhpTrapThreads & (uint32_t)TrapThreadsFlags::AbortInProgress) == 0);
     RhpTrapThreads |= (uint32_t)TrapThreadsFlags::AbortInProgress;
@@ -364,7 +338,7 @@ void ThreadStore::InitiateThreadAbort(Thread* targetThread, Object * threadAbort
 
 void ThreadStore::CancelThreadAbort(Thread* targetThread)
 {
-    SuspendAllThreads(/* waitForGCEvent = */ false, /* fireDebugEvent = */ false);
+    SuspendAllThreads(/* waitForGCEvent = */ false);
 
     ASSERT((RhpTrapThreads & (uint32_t)TrapThreadsFlags::AbortInProgress) != 0);
     RhpTrapThreads &= ~(uint32_t)TrapThreadsFlags::AbortInProgress;

@@ -307,7 +307,7 @@ namespace Internal.Runtime.TypeLoader
                 int converterId;
                 if (s_callConvertersCache.TryGetValue(newConversionInfo, out converterId))
                 {
-                    Debug.Assert(converterId < s_callConvertersCount && s_callConverters[converterId].Equals(newConversionInfo));
+                    Debug.Assert((uint)converterId < (uint)s_callConvertersCount && s_callConverters[converterId].Equals(newConversionInfo));
                     return converterId;
                 }
 

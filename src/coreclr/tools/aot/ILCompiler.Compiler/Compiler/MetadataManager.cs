@@ -13,6 +13,7 @@ using Debug = System.Diagnostics.Debug;
 using ReadyToRunSectionType = Internal.Runtime.ReadyToRunSectionType;
 using ReflectionMapBlob = Internal.Runtime.ReflectionMapBlob;
 using DependencyList = ILCompiler.DependencyAnalysisFramework.DependencyNodeCore<ILCompiler.DependencyAnalysis.NodeFactory>.DependencyList;
+using CombinedDependencyList = System.Collections.Generic.List<ILCompiler.DependencyAnalysisFramework.DependencyNodeCore<ILCompiler.DependencyAnalysis.NodeFactory>.CombinedDependencyListEntry>;
 using MethodIL = Internal.IL.MethodIL;
 using CustomAttributeValue = System.Reflection.Metadata.CustomAttributeValue<Internal.TypeSystem.TypeDesc>;
 
@@ -50,12 +51,14 @@ namespace ILCompiler
         private readonly HashSet<TypeDesc> _typesWithEETypesGenerated = new HashSet<TypeDesc>();
         private readonly HashSet<TypeDesc> _typesWithConstructedEETypesGenerated = new HashSet<TypeDesc>();
         private HashSet<MethodDesc> _methodsGenerated = new HashSet<MethodDesc>();
+        private HashSet<MethodDesc> _reflectableMethods = new HashSet<MethodDesc>();
         private HashSet<GenericDictionaryNode> _genericDictionariesGenerated = new HashSet<GenericDictionaryNode>();
         private HashSet<IMethodBodyNode> _methodBodiesGenerated = new HashSet<IMethodBodyNode>();
         private List<TypeGVMEntriesNode> _typeGVMEntries = new List<TypeGVMEntriesNode>();
         private HashSet<DefType> _typesWithDelegateMarshalling = new HashSet<DefType>();
         private HashSet<DefType> _typesWithStructMarshalling = new HashSet<DefType>();
         private HashSet<MethodDesc> _dynamicInvokeTemplates = new HashSet<MethodDesc>();
+        private HashSet<NativeLayoutTemplateMethodSignatureVertexNode> _templateMethodEntries = new HashSet<NativeLayoutTemplateMethodSignatureVertexNode>();
 
         internal NativeLayoutInfoNode NativeLayoutInfo { get; private set; }
         internal DynamicInvokeTemplateDataNode DynamicInvokeTemplateData { get; private set; }
@@ -186,13 +189,17 @@ namespace ILCompiler
             if (methodNode != null)
             {
                 _methodsGenerated.Add(methodNode.Method);
+
+                if (AllMethodsCanBeReflectable)
+                    _reflectableMethods.Add(methodNode.Method);
+
                 return;
             }
 
             var reflectableMethodNode = obj as ReflectableMethodNode;
             if (reflectableMethodNode != null)
             {
-                _methodsGenerated.Add(reflectableMethodNode.Method);
+                _reflectableMethods.Add(reflectableMethodNode.Method);
             }
 
             var nonGcStaticSectionNode = obj as NonGCStaticsNode;
@@ -227,7 +234,14 @@ namespace ILCompiler
             {
                 _dynamicInvokeTemplates.Add(dynamicInvokeTemplate.Method);
             }
+
+            if (obj is NativeLayoutTemplateMethodSignatureVertexNode templateMethodEntry)
+            {
+                _templateMethodEntries.Add(templateMethodEntry);
+            }
         }
+
+        protected virtual bool AllMethodsCanBeReflectable => false;
 
         /// <summary>
         /// Is a method that is reflectable a method which should be placed into the invoke map as invokable?
@@ -289,7 +303,7 @@ namespace ILCompiler
         /// </summary>
         public bool ShouldMethodBeInInvokeMap(MethodDesc method)
         {
-            // The current format requires us to have an EEType for the owning type. We might want to lift this.
+            // The current format requires us to have an MethodTable for the owning type. We might want to lift this.
             if (!TypeGeneratesEEType(method.OwningType))
                 return false;
 
@@ -303,15 +317,8 @@ namespace ILCompiler
         /// <summary>
         /// This method is an extension point that can provide additional metadata-based dependencies to compiled method bodies.
         /// </summary>
-        public void GetDependenciesDueToReflectability(ref DependencyList dependencies, NodeFactory factory, MethodDesc method, MethodIL methodIL)
+        public void GetDependenciesDueToReflectability(ref DependencyList dependencies, NodeFactory factory, MethodDesc method)
         {
-            if (method.HasInstantiation)
-            {
-                ExactMethodInstantiationsNode.GetExactMethodInstantiationDependenciesForMethod(ref dependencies, factory, method);
-            }
-
-            GetDependenciesDueToMethodCodePresence(ref dependencies, factory, method, methodIL);
-
             MetadataCategory category = GetMetadataCategory(method);
 
             if ((category & MetadataCategory.Description) != 0)
@@ -324,7 +331,7 @@ namespace ILCompiler
                 if (IsReflectionInvokable(method))
                 {
                     // We're going to generate a mapping table entry for this. Collect dependencies.
-                    CodeBasedDependencyAlgorithm.AddDependenciesDueToReflectability(ref dependencies, factory, method);
+                    ReflectionInvokeMapNode.AddDependenciesDueToReflectability(ref dependencies, factory, method);
                 }
             }
         }
@@ -332,16 +339,8 @@ namespace ILCompiler
         /// <summary>
         /// This method is an extension point that can provide additional metadata-based dependencies on a virtual method.
         /// </summary>
-        public void GetDependenciesDueToVirtualMethodReflectability(ref DependencyList dependencies, NodeFactory factory, MethodDesc method)
+        public virtual void GetDependenciesDueToVirtualMethodReflectability(ref DependencyList dependencies, NodeFactory factory, MethodDesc method)
         {
-            // If we have a use of an abstract method, GetDependenciesDueToReflectability is not going to see the method
-            // as being used since there's no body. We inject a dependency on a new node that serves as a logical method body
-            // for the metadata manager. Metadata manager treats that node the same as a body.
-            if (method.IsAbstract && GetMetadataCategory(method) != 0)
-            {
-                dependencies = dependencies ?? new DependencyList();
-                dependencies.Add(factory.ReflectableMethod(method), "Abstract reflectable method");
-            }
         }
 
         protected virtual void GetMetadataDependenciesDueToReflectability(ref DependencyList dependencies, NodeFactory factory, MethodDesc method)
@@ -367,7 +366,7 @@ namespace ILCompiler
             {
                 // We're going to generate a mapping table entry for this. Collect dependencies.
 
-                // Nothing special is needed for the mapping table (we only emit the EEType and we already
+                // Nothing special is needed for the mapping table (we only emit the MethodTable and we already
                 // have one, since we got this callback). But check if a child wants to do something extra.
                 GetRuntimeMappingDependenciesDueToReflectability(ref dependencies, factory, type);
             }
@@ -390,7 +389,18 @@ namespace ILCompiler
 
         protected virtual void GetDependenciesDueToEETypePresence(ref DependencyList dependencies, NodeFactory factory, TypeDesc type)
         {
-            // MetadataManagers can override this to provide additional dependencies caused by the emission of an EEType.
+            // MetadataManagers can override this to provide additional dependencies caused by the emission of an MethodTable.
+        }
+
+        public virtual void GetConditionalDependenciesDueToEETypePresence(ref CombinedDependencyList dependencies, NodeFactory factory, TypeDesc type)
+        {
+            // MetadataManagers can override this to provide additional dependencies caused by the presence of
+            // an MethodTable.
+        }
+
+        public virtual bool HasConditionalDependenciesDueToEETypePresence(TypeDesc type)
+        {
+            return false;
         }
 
         /// <summary>
@@ -414,7 +424,46 @@ namespace ILCompiler
         /// <summary>
         /// This method is an extension point that can provide additional metadata-based dependencies to generated method bodies.
         /// </summary>
-        protected virtual void GetDependenciesDueToMethodCodePresence(ref DependencyList dependencies, NodeFactory factory, MethodDesc method, MethodIL methodIL)
+        public void GetDependenciesDueToMethodCodePresence(ref DependencyList dependencies, NodeFactory factory, MethodDesc method, MethodIL methodIL)
+        {
+            if (method.HasInstantiation)
+            {
+                ExactMethodInstantiationsNode.GetExactMethodInstantiationDependenciesForMethod(ref dependencies, factory, method);
+            }
+
+            GetDependenciesDueToTemplateTypeLoader(ref dependencies, factory, method);
+            GetDependenciesDueToMethodCodePresenceInternal(ref dependencies, factory, method, methodIL);
+        }
+
+        public virtual void GetConditionalDependenciesDueToMethodCodePresence(ref CombinedDependencyList dependencies, NodeFactory factory, MethodDesc method)
+        {
+            // MetadataManagers can override this to provide additional dependencies caused by the presence of
+            // method code.
+        }
+
+        private void GetDependenciesDueToTemplateTypeLoader(ref DependencyList dependencies, NodeFactory factory, MethodDesc method)
+        {
+            // TODO-SIZE: this is overly generous in the templates we create
+            if (_blockingPolicy is FullyBlockedMetadataBlockingPolicy)
+                return;
+
+            if (method.HasInstantiation)
+            {
+                GenericMethodsTemplateMap.GetTemplateMethodDependencies(ref dependencies, factory, method);
+            }
+            else
+            {
+                TypeDesc owningTemplateType = method.OwningType;
+
+                // Unboxing and Instantiating stubs use a different type as their template
+                if (factory.TypeSystemContext.IsSpecialUnboxingThunk(method))
+                    owningTemplateType = factory.TypeSystemContext.GetTargetOfSpecialUnboxingThunk(method).OwningType;
+
+                GenericTypesTemplateMap.GetTemplateTypeDependencies(ref dependencies, factory, owningTemplateType);
+            }
+        }
+
+        protected virtual void GetDependenciesDueToMethodCodePresenceInternal(ref DependencyList dependencies, NodeFactory factory, MethodDesc method, MethodIL methodIL)
         {
             // MetadataManagers can override this to provide additional dependencies caused by the presence of a
             // compiled method body.
@@ -494,8 +543,6 @@ namespace ILCompiler
 
             ComputeMetadata(factory, out _metadataBlob, out _typeMappings, out _methodMappings, out _fieldMappings, out _stackTraceMappings);
         }
-
-        public abstract bool ShouldConsiderLdTokenReferenceAConstruction(TypeDesc type);
 
         void ICompilationRootProvider.AddCompilationRoots(IRootingServiceProvider rootProvider)
         {
@@ -629,6 +676,11 @@ namespace ILCompiler
             return _methodsGenerated;
         }
 
+        public IEnumerable<MethodDesc> GetReflectableMethods()
+        {
+            return _reflectableMethods;
+        }
+
         internal IEnumerable<IMethodBodyNode> GetCompiledMethodBodies()
         {
             return _methodBodiesGenerated;
@@ -652,6 +704,11 @@ namespace ILCompiler
         internal IEnumerable<MethodDesc> GetDynamicInvokeTemplateMethods()
         {
             return _dynamicInvokeTemplates;
+        }
+
+        internal IEnumerable<NativeLayoutTemplateMethodSignatureVertexNode> GetTemplateMethodEntries()
+        {
+            return _templateMethodEntries;
         }
 
         public bool IsReflectionBlocked(TypeDesc type)
@@ -763,7 +820,7 @@ namespace ILCompiler
 
         /// <summary>
         /// Gets the metadata category for a generated type in the current compilation.
-        /// The method can assume it will only get called with '<paramref name="type"/>' that has an EEType generated
+        /// The method can assume it will only get called with '<paramref name="type"/>' that has an MethodTable generated
         /// in the current compilation.
         /// Note that if this method doesn't return <see cref="MetadataCategory.Description"/>, it doesn't mean
         /// that the method never has metadata. The metadata might just be generated in a different compilation.
@@ -789,6 +846,10 @@ namespace ILCompiler
         }
 
         public virtual void GetDependenciesForGenericDictionary(ref DependencyList dependencies, NodeFactory factory, TypeDesc type)
+        {
+        }
+
+        public virtual void NoteOverridingMethod(MethodDesc baseMethod, MethodDesc overridingMethod)
         {
         }
     }

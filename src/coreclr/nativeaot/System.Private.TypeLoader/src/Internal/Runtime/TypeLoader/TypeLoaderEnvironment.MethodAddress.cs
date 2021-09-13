@@ -227,9 +227,9 @@ namespace Internal.Runtime.TypeLoader
 #endif
 
         /// <summary>
-        /// Resolve a dispatch on an interface EEType/slot index pair to a function pointer
+        /// Resolve a dispatch on an interface MethodTable/slot index pair to a function pointer
         /// </summary>
-        private unsafe bool TryResolveTypeSlotDispatch_Inner(EEType* pTargetType, EEType* pInterfaceType, ushort slot, out IntPtr methodAddress)
+        private unsafe bool TryResolveTypeSlotDispatch_Inner(MethodTable* pTargetType, MethodTable* pInterfaceType, ushort slot, out IntPtr methodAddress)
         {
             methodAddress = IntPtr.Zero;
 

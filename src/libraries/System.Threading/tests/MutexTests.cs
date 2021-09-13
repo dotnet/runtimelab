@@ -39,6 +39,7 @@ namespace System.Threading.Tests
         [Fact]
         [ActiveIssue("https://github.com/mono/mono/issues/15159", TestRuntimes.Mono)]
         [PlatformSpecific(TestPlatforms.AnyUnix)]
+        [ActiveIssue("https://github.com/dotnet/runtime/issues/48720", TestPlatforms.AnyUnix, TargetFrameworkMonikers.Netcoreapp, TestRuntimes.Any /* NativeAOT */)]
         public void Ctor_InvalidNames_Unix()
         {
             AssertExtensions.Throws<ArgumentException>("name", null, () => new Mutex(false, new string('a', 1000), out bool createdNew));
@@ -123,6 +124,7 @@ namespace System.Threading.Tests
 
         [Fact]
         [ActiveIssue("https://github.com/mono/mono/issues/15158", TestRuntimes.Mono)]
+        [ActiveIssue("https://github.com/dotnet/runtime/issues/48720", TestPlatforms.AnyUnix, TargetFrameworkMonikers.Netcoreapp, TestRuntimes.Any /* NativeAOT */)]
         public void OpenExisting_InvalidNames()
         {
             AssertExtensions.Throws<ArgumentNullException>("name", () => Mutex.OpenExisting(null));
@@ -344,7 +346,7 @@ namespace System.Threading.Tests
                             }
                             else
                             {
-                                Assert.True(m2Index < notAbandonedWaitIndex);
+                                Assert.True(!isNotAbandonedWaitObjectSignaled || m2Index < notAbandonedWaitIndex);
                                 Assert.Equal(m2Index, ame.MutexIndex);
                             }
 

@@ -19,7 +19,6 @@
 #include "corimage.h"
 #include "metadata.h"
 #include <sstring.h>
-#include "peinformation.h"
 //
 
 interface IAssemblyName;
@@ -77,11 +76,8 @@ enum MDInternalImportFlags
 {
     MDInternalImport_Default            = 0,
     MDInternalImport_NoCache            = 1, // Do not share/cached the results of opening the image
-#ifdef FEATURE_PREJIT
-    MDInternalImport_TrustedNativeImage = 2, // The image is a native image, and so its format can be trusted
-    MDInternalImport_ILMetaData         = 4, // Open the IL metadata, even if this is a native image
-    MDInternalImport_TrustedNativeImage_and_IL = MDInternalImport_TrustedNativeImage | MDInternalImport_ILMetaData,
-#endif
+    // unused                           = 2,
+    // unused                           = 4,
     MDInternalImport_OnlyLookInCache    =0x20, // Only look in the cache. (If the cache does not have the image already loaded, return NULL)
 };  // enum MDInternalImportFlags
 
@@ -294,17 +290,162 @@ typedef enum CorOpenFlagsInternal
 #define COR_MODULE_CLASS    "<Module>"
 #define COR_WMODULE_CLASS   W("<Module>")
 
+//*****************************************************************************
+//*****************************************************************************
+//
+// CeeGen interfaces for generating in-memory Common Language Runtime files
+//
+//*****************************************************************************
+//*****************************************************************************
+
+typedef void* HCEESECTION;
+
+typedef enum {
+    sdNone = 0,
+    sdReadOnly = IMAGE_SCN_MEM_READ | IMAGE_SCN_CNT_INITIALIZED_DATA,
+    sdReadWrite = sdReadOnly | IMAGE_SCN_MEM_WRITE,
+    sdExecute = IMAGE_SCN_MEM_READ | IMAGE_SCN_CNT_CODE | IMAGE_SCN_MEM_EXECUTE
+} CeeSectionAttr;
+
+//
+// Relocation types.
+//
+
+typedef enum {
+    // generate only a section-relative reloc, nothing into .reloc section
+    srRelocAbsolute,
+
+    // generate a .reloc for a pointer sized location,
+    // This is transformed into BASED_HIGHLOW or BASED_DIR64 based on the platform
+    srRelocHighLow = 3,
+
+    // generate a .reloc for the top 16-bits of a 32 bit number, where the
+    // bottom 16 bits are included in the next word in the .reloc table
+    srRelocHighAdj,     // Never Used
+
+    // generate a token map relocation, nothing into .reloc section
+    srRelocMapToken,
+
+    // relative address fixup
+    srRelocRelative,
+
+    // Generate only a section-relative reloc, nothing into .reloc
+    // section.  This reloc is relative to the file position of the
+    // section, not the section's virtual address.
+    srRelocFilePos,
+
+    // code relative address fixup
+    srRelocCodeRelative,
+
+    // generate a .reloc for a 64 bit address in an ia64 movl instruction
+    srRelocIA64Imm64,
+
+    // generate a .reloc for a 64 bit address
+    srRelocDir64,
+
+    // generate a .reloc for a 25-bit PC relative address in an ia64 br.call instruction
+    srRelocIA64PcRel25,
+
+    // generate a .reloc for a 64-bit PC relative address in an ia64 brl.call instruction
+    srRelocIA64PcRel64,
+
+    // generate a 30-bit section-relative reloc, used for tagged pointer values
+    srRelocAbsoluteTagged,
+
+
+    // A sentinel value to help ensure any additions to this enum are reflected
+    // in PEWriter.cpp's RelocName array.
+    srRelocSentinel,
+
+    // Flags that can be used with the above reloc types
+
+    // do not emit base reloc
+    srNoBaseReloc = 0x4000,
+
+    // pre-fixup contents of memory are ptr rather than a section offset
+    srRelocPtr = 0x8000,
+
+    // legal enums which include the Ptr flag
+    srRelocAbsolutePtr = srRelocPtr + srRelocAbsolute,
+    srRelocHighLowPtr = srRelocPtr + srRelocHighLow,
+    srRelocRelativePtr = srRelocPtr + srRelocRelative,
+    srRelocIA64Imm64Ptr = srRelocPtr + srRelocIA64Imm64,
+    srRelocDir64Ptr = srRelocPtr + srRelocDir64,
+
+} CeeSectionRelocType;
+
+typedef union {
+    USHORT highAdj;
+} CeeSectionRelocExtra;
+
 //-------------------------------------
 //--- ICeeGenInternal
 //-------------------------------------
-// {9fd3c7af-dc4e-4b9b-be22-9cf8cc577489}
-EXTERN_GUID(IID_ICeeGenInternal, 0x9fd3c7af, 0xdc4e, 0x4b9b, 0xbe, 0x22, 0x9c, 0xf8, 0xcc, 0x57, 0x74, 0x89);
-
+// {8C26FC02-BE39-476D-B835-E17EDD120246}
+EXTERN_GUID(IID_ICeeGenInternal, 0x8c26fc02, 0xbe39, 0x476d, 0xb8, 0x35, 0xe1, 0x7e, 0xdd, 0x12, 0x2, 0x46);
 #undef  INTERFACE
 #define INTERFACE ICeeGenInternal
 DECLARE_INTERFACE_(ICeeGenInternal, IUnknown)
 {
-    STDMETHOD (SetInitialGrowth) (DWORD growth) PURE;
+    STDMETHOD(EmitString) (
+        _In_
+        LPWSTR lpString,                    // [IN] String to emit
+        ULONG * RVA) PURE;                   // [OUT] RVA for string emitted string
+
+    STDMETHOD(GetString) (
+        ULONG RVA,                          // [IN] RVA for string to return
+        _Out_opt_
+        LPWSTR * lpString) PURE;             // [OUT] Returned string
+
+    STDMETHOD(AllocateMethodBuffer) (
+        ULONG cchBuffer,                    // [IN] Length of buffer to create
+        UCHAR * *lpBuffer,                   // [OUT] Returned buffer
+        ULONG * RVA) PURE;                   // [OUT] RVA for method
+
+    STDMETHOD(GetMethodBuffer) (
+        ULONG RVA,                          // [IN] RVA for method to return
+        UCHAR * *lpBuffer) PURE;             // [OUT] Returned buffer
+
+    STDMETHOD(GetIMapTokenIface) (
+        IUnknown * *pIMapToken) PURE;
+
+    STDMETHOD(GenerateCeeFile) () PURE;
+
+    STDMETHOD(GetIlSection) (
+        HCEESECTION * section) PURE;
+
+    STDMETHOD(GetStringSection) (
+        HCEESECTION * section) PURE;
+
+    STDMETHOD(AddSectionReloc) (
+        HCEESECTION section,
+        ULONG offset,
+        HCEESECTION relativeTo,
+        CeeSectionRelocType relocType) PURE;
+
+    // use these only if you have special section requirements not handled
+    // by other APIs
+    STDMETHOD(GetSectionCreate) (
+        const char* name,
+        DWORD flags,
+        HCEESECTION * section) PURE;
+
+    STDMETHOD(GetSectionDataLen) (
+        HCEESECTION section,
+        ULONG * dataLen) PURE;
+
+    STDMETHOD(GetSectionBlock) (
+        HCEESECTION section,
+        ULONG len,
+        ULONG align = 1,
+        void** ppBytes = 0) PURE;
+
+    STDMETHOD(ComputePointer) (
+        HCEESECTION section,
+        ULONG RVA,                          // [IN] RVA for method to return
+        UCHAR * *lpBuffer) PURE;             // [OUT] Returned buffer
+
+    STDMETHOD(SetInitialGrowth) (DWORD growth) PURE;
 };
 
 //
@@ -325,62 +466,6 @@ DECLARE_INTERFACE_(IGetIMDInternalImport, IUnknown)
         IMDInternalImport ** ppIMDInternalImport   // [OUT] Buffer to receive IMDInternalImport*
     ) PURE;
 };
-
-// ===========================================================================
-#ifdef FEATURE_PREJIT
-// ===========================================================================
-
-// Use the default JIT compiler
-#define DEFAULT_NGEN_COMPILER_DLL_NAME W("clrjit.dll")
-
-#ifndef DACCESS_COMPILE
-
-/* --------------------------------------------------------------------------- *
- * NGen logger
- * --------------------------------------------------------------------------- */
- #include "mscorsvc.h"
-
-struct ICorSvcLogger;
-class SvcLogger
-{
-public:
-
-    SvcLogger();
-    ~SvcLogger();
-    void ReleaseLogger();
-    void SetSvcLogger(ICorSvcLogger *pCorSvcLoggerArg);
-    BOOL HasSvcLogger();
-    ICorSvcLogger* GetSvcLogger();
-    void Printf(const CHAR *format, ...);
-    void SvcPrintf(const CHAR *format, ...);
-    void Printf(const WCHAR *format, ...);
-    void Printf(CorSvcLogLevel logLevel, const WCHAR *format, ...);
-    void SvcPrintf(const WCHAR *format, ...);
-    void Log(const WCHAR *message, CorSvcLogLevel logLevel = LogLevel_Warning);
-    //Need to add this to allocate StackSString, as we don't want static class
-
-private:
-
-    void LogHelper(SString s, CorSvcLogLevel logLevel = LogLevel_Success);
-    //instantiations that need VM services like contracts in dllmain.
-    void CheckInit();
-
-    StackSString* pss;
-    ICorSvcLogger *pCorSvcLogger;
-};  // class SvcLogger
-
-SvcLogger *GetSvcLogger();
-BOOL       HasSvcLogger();
-#endif // #ifndef DACCESS_COMPILE
-
-// ===========================================================================
-#endif // #ifdef FEATURE_PREJIT
-// ===========================================================================
-
-struct CORCOMPILE_ASSEMBLY_SIGNATURE;
-struct CORCOMPILE_VERSION_INFO;
-struct CORCOMPILE_DEPENDENCY;
-typedef GUID CORCOMPILE_NGEN_SIGNATURE;
 
 #endif  // _CORPRIV_H_
 

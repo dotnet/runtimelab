@@ -14,7 +14,7 @@ namespace ILCompiler.DependencyAnalysis
 {
     /// <summary>
     /// Represents a subset of <see cref="EETypeNode"/> that is used to describe GC static field regions for
-    /// types. It only fills out enough pieces of the EEType structure so that the GC can operate on it. Runtime should
+    /// types. It only fills out enough pieces of the MethodTable structure so that the GC can operate on it. Runtime should
     /// never see these.
     /// </summary>
     public class GCStaticEETypeNode : ObjectNode, ISymbolDefinitionNode
@@ -67,7 +67,7 @@ namespace ILCompiler.DependencyAnalysis
             dataBuilder.RequireInitialPointerAlignment();
             dataBuilder.AddSymbol(this);
 
-            // +1 for SyncBlock (in CoreRT static size already includes EEType)
+            // +1 for SyncBlock (in CoreRT static size already includes MethodTable)
             Debug.Assert(factory.Target.Abi == TargetAbi.CoreRT || factory.Target.Abi == TargetAbi.CppCodegen);
             int totalSize = (_gcMap.Size + 1) * _target.PointerSize;
 
@@ -91,7 +91,7 @@ namespace ILCompiler.DependencyAnalysis
 
             dataBuilder.EmitShort(flags);
 
-            totalSize = Math.Max(totalSize, _target.PointerSize * 3); // minimum GC eetype size is 3 pointers
+            totalSize = Math.Max(totalSize, _target.PointerSize * 3); // minimum GC MethodTable size is 3 pointers
             dataBuilder.EmitInt(totalSize);
 
             // Related type: System.Object. This allows storing an instance of this type in an array of objects.

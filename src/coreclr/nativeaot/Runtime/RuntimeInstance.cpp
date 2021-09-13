@@ -22,13 +22,12 @@
 #include "gcrhinterface.h"
 #include "shash.h"
 #include "TypeManager.h"
-#include "eetype.h"
+#include "MethodTable.h"
 #include "varint.h"
-#include "DebugEventSource.h"
 
 #include "CommonMacros.inl"
 #include "slist.inl"
-#include "eetype.inl"
+#include "MethodTable.inl"
 
 #ifdef  FEATURE_GC_STRESS
 enum HijackType { htLoop, htCallsite };
@@ -87,7 +86,7 @@ ICodeManager * RuntimeInstance::FindCodeManagerByAddress(PTR_VOID pvAddress)
 
 // Find the code manager containing the given address, which might be a return address from a managed function. The
 // address may be to another managed function, or it may be to an unmanaged function. The address may also refer to
-// an EEType.
+// an MethodTable.
 ICodeManager * RuntimeInstance::FindCodeManagerForClasslibFunction(PTR_VOID address)
 {
     // Try looking up the code manager assuming the address is for code first. This is expected to be most common.
@@ -103,7 +102,7 @@ ICodeManager * RuntimeInstance::FindCodeManagerForClasslibFunction(PTR_VOID addr
 void * RuntimeInstance::GetClasslibFunctionFromCodeAddress(PTR_VOID address, ClasslibFunctionId functionId)
 {
     // Find the code manager for the given address, which is an address into some managed module. It could
-    // be code, or it could be an EEType. No matter what, it's an address into a managed module in some non-Rtm
+    // be code, or it could be an MethodTable. No matter what, it's an address into a managed module in some non-Rtm
     // type system.
     ICodeManager * pCodeManager = FindCodeManagerForClasslibFunction(address);
 
@@ -311,10 +310,6 @@ COOP_PINVOKE_HELPER(TypeManagerHandle, RhpCreateTypeManager, (HANDLE osModule, v
     TypeManager * typeManager = TypeManager::Create(osModule, pModuleHeader, pClasslibFunctions, nClasslibFunctions);
     GetRuntimeInstance()->RegisterTypeManager(typeManager);
 
-    // This event must occur after the module is added to the enumeration
-    if (osModule != nullptr)
-        DebugEventSource::SendModuleLoadEvent(osModule);
-
     return TypeManagerHandle::Create(typeManager);
 }
 
@@ -394,121 +389,15 @@ bool RuntimeInstance::ShouldHijackCallsiteForGcStress(uintptr_t CallsiteIP)
 #endif // FEATURE_GC_STRESS
 }
 
-COOP_PINVOKE_HELPER(uint32_t, RhGetGCDescSize, (EEType* pEEType))
+COOP_PINVOKE_HELPER(uint32_t, RhGetGCDescSize, (MethodTable* pEEType))
 {
     return RedhawkGCInterface::GetGCDescSize(pEEType);
 }
 
-
-// Keep in sync with ndp\fxcore\src\System.Private.CoreLib\system\runtime\runtimeimports.cs
-enum RuntimeHelperKind
-{
-    AllocateObject,
-    IsInst,
-    CastClass,
-    AllocateArray,
-    CheckArrayElementType,
-};
-
-// The dictionary codegen expects a pointer that points at a memory location that points to the method pointer
-// Create indirections for all helpers used below
-
-#define DECLARE_INDIRECTION(RET_TYPE, HELPER_NAME, ARGS) \
-    EXTERN_C RET_TYPE HELPER_NAME ARGS; \
-    const PTR_VOID indirection_##HELPER_NAME = (PTR_VOID)&HELPER_NAME
-
-#define INDIRECTION(HELPER_NAME) ((PTR_VOID)&indirection_##HELPER_NAME)
-
-DECLARE_INDIRECTION(Object *, RhpNewFast, (EEType *));
-DECLARE_INDIRECTION(Object *, RhpNewFinalizable, (EEType *));
-
-DECLARE_INDIRECTION(Array *, RhpNewArray, (EEType *, int));
-
-DECLARE_INDIRECTION(Object *, RhTypeCast_IsInstanceOf, (EEType *, Object *));
-DECLARE_INDIRECTION(Object *, RhTypeCast_CheckCast, (EEType *, Object *));
-DECLARE_INDIRECTION(Object *, RhTypeCast_IsInstanceOfClass, (EEType *, Object *));
-DECLARE_INDIRECTION(Object *, RhTypeCast_CheckCastClass, (EEType *, Object *));
-DECLARE_INDIRECTION(Object *, RhTypeCast_IsInstanceOfArray, (EEType *, Object *));
-DECLARE_INDIRECTION(Object *, RhTypeCast_CheckCastArray, (EEType *, Object *));
-DECLARE_INDIRECTION(Object *, RhTypeCast_IsInstanceOfInterface, (EEType *, Object *));
-DECLARE_INDIRECTION(Object *, RhTypeCast_CheckCastInterface, (EEType *, Object *));
-
-DECLARE_INDIRECTION(void, RhTypeCast_CheckVectorElemAddr, (EEType *, Object *));
-
-#ifdef HOST_ARM
-DECLARE_INDIRECTION(Object *, RhpNewFinalizableAlign8, (EEType *));
-DECLARE_INDIRECTION(Object *, RhpNewFastMisalign, (EEType *));
-DECLARE_INDIRECTION(Object *, RhpNewFastAlign8, (EEType *));
-
-DECLARE_INDIRECTION(Array *, RhpNewArrayAlign8, (EEType *, int));
-#endif
-
-COOP_PINVOKE_HELPER(PTR_VOID, RhGetRuntimeHelperForType, (EEType * pEEType, int helperKind))
-{
-    // This implementation matches what the binder does (MetaDataEngine::*() in rh\src\tools\rhbind\MetaDataEngine.cpp)
-    // If you change the binder's behavior, change this implementation too
-
-    switch (helperKind)
-    {
-    case RuntimeHelperKind::AllocateObject:
-#ifdef HOST_ARM
-        if ((pEEType->get_RareFlags() & EEType::RareFlags::RequiresAlign8Flag) == EEType::RareFlags::RequiresAlign8Flag)
-        {
-            if (pEEType->HasFinalizer())
-                return INDIRECTION(RhpNewFinalizableAlign8);
-            else if (pEEType->get_IsValueType())            // returns true for enum types as well
-                return INDIRECTION(RhpNewFastMisalign);
-            else
-                return INDIRECTION(RhpNewFastAlign8);
-        }
-#endif
-        if (pEEType->HasFinalizer())
-            return INDIRECTION(RhpNewFinalizable);
-        else
-            return INDIRECTION(RhpNewFast);
-
-    case RuntimeHelperKind::IsInst:
-        if (pEEType->IsArray())
-            return INDIRECTION(RhTypeCast_IsInstanceOfArray);
-        else if (pEEType->IsInterface())
-            return INDIRECTION(RhTypeCast_IsInstanceOfInterface);
-        else if (pEEType->IsParameterizedType())
-            return INDIRECTION(RhTypeCast_IsInstanceOf); // Array handled above; pointers and byrefs handled here
-        else
-            return INDIRECTION(RhTypeCast_IsInstanceOfClass);
-
-    case RuntimeHelperKind::CastClass:
-        if (pEEType->IsArray())
-            return INDIRECTION(RhTypeCast_CheckCastArray);
-        else if (pEEType->IsInterface())
-            return INDIRECTION(RhTypeCast_CheckCastInterface);
-        else if (pEEType->IsParameterizedType())
-            return INDIRECTION(RhTypeCast_CheckCast); // Array handled above; pointers and byrefs handled here
-        else
-            return INDIRECTION(RhTypeCast_CheckCastClass);
-
-    case RuntimeHelperKind::AllocateArray:
-#ifdef HOST_ARM
-        if (pEEType->RequiresAlign8())
-            return INDIRECTION(RhpNewArrayAlign8);
-#endif
-        return INDIRECTION(RhpNewArray);
-
-    case RuntimeHelperKind::CheckArrayElementType:
-        return INDIRECTION(RhTypeCast_CheckVectorElemAddr);
-
-    default:
-        UNREACHABLE();
-    }
-}
-
-#undef DECLARE_INDIRECTION
-#undef INDIRECTION
-
 #ifdef FEATURE_CACHED_INTERFACE_DISPATCH
 EXTERN_C void RhpInitialDynamicInterfaceDispatch();
 
-COOP_PINVOKE_HELPER(void *, RhNewInterfaceDispatchCell, (EEType * pInterface, int32_t slotNumber))
+COOP_PINVOKE_HELPER(void *, RhNewInterfaceDispatchCell, (MethodTable * pInterface, int32_t slotNumber))
 {
     InterfaceDispatchCell * pCell = new (nothrow) InterfaceDispatchCell[2];
     if (pCell == NULL)

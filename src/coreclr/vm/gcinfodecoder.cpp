@@ -21,9 +21,9 @@
 #endif // !GET_CALLER_SP
 
 #ifndef VALIDATE_OBJECTREF
-#if defined(DACCESS_COMPILE) || defined(CROSSGEN_COMPILE)
+#if defined(DACCESS_COMPILE)
 #define VALIDATE_OBJECTREF(objref, fDeep)
-#else // DACCESS_COMPILE || CROSSGEN_COMPILE
+#else // DACCESS_COMPILE
 #define VALIDATE_OBJECTREF(objref, fDeep)                          \
     do {                                                           \
         Object* objPtr = OBJECTREF_TO_UNCHECKED_OBJECTREF(objref); \
@@ -32,7 +32,7 @@
             objPtr->Validate(fDeep);                               \
         }                                                          \
     } while(0)
-#endif // DACCESS_COMPILE || CROSSGEN_COMPILE
+#endif // DACCESS_COMPILE
 #endif // !VALIDATE_OBJECTREF
 
 #ifndef VALIDATE_ROOT
@@ -1486,6 +1486,17 @@ OBJECTREF* GcInfoDecoder::GetRegisterSlot(
     _ASSERTE(regNum >= 0 && regNum <= 14);
     _ASSERTE(regNum != 13);  // sp
 
+#ifdef FEATURE_REDHAWK
+    if(regNum < 14)
+    {
+        PTR_UIntNative* ppReg = &pRD->pR0;
+        return (OBJECTREF*)*(ppReg + regNum);
+    }
+    else
+    {
+        return (OBJECTREF*) pRD->pLR;
+    }
+#else
     DWORD **ppReg;
 
     if(regNum <= 3)
@@ -1505,10 +1516,10 @@ OBJECTREF* GcInfoDecoder::GetRegisterSlot(
     ppReg = &pRD->pCurrentContextPointers->R4;
 
     return (OBJECTREF*)*(ppReg + regNum-4);
-
+#endif
 }
 
-#ifdef TARGET_UNIX
+#if defined(TARGET_UNIX) && !defined(FEATURE_REDHAWK)
 OBJECTREF* GcInfoDecoder::GetCapturedRegister(
     int             regNum,
     PREGDISPLAY     pRD
@@ -1524,7 +1535,7 @@ OBJECTREF* GcInfoDecoder::GetCapturedRegister(
 
     return (OBJECTREF*)(pR0 + regNum);
 }
-#endif // TARGET_UNIX
+#endif // TARGET_UNIX && !FEATURE_REDHAWK
 
 
 bool GcInfoDecoder::IsScratchRegister(int regNum,  PREGDISPLAY pRD)
@@ -1664,7 +1675,7 @@ void GcInfoDecoder::ReportRegisterToGC( // ARM64
     LOG((LF_GCROOTS, LL_INFO1000, "Reporting " FMT_REG, regNum ));
 
     OBJECTREF* pObjRef = GetRegisterSlot( regNum, pRD );
-#if defined(TARGET_UNIX) && !defined(SOS_TARGET_ARM64)
+#if defined(TARGET_UNIX) && !defined(FEATURE_REDHAWK) && !defined(SOS_TARGET_AMD64)
     // On PAL, we don't always have the context pointers available due to
     // a limitation of an unwinding library. In such case, the context
     // pointers for some nonvolatile registers are NULL.
@@ -1706,7 +1717,7 @@ void GcInfoDecoder::ReportRegisterToGC( // ARM64
     pCallBack(hCallBack, pObjRef, gcFlags DAC_ARG(DacSlotLocation(regNum, 0, false)));
 }
 
-#ifdef TARGET_UNIX
+#if defined(TARGET_UNIX) && !defined(FEATURE_REDHAWK)
 OBJECTREF* GcInfoDecoder::GetCapturedRegister(
     int             regNum,
     PREGDISPLAY     pRD
@@ -1731,7 +1742,7 @@ OBJECTREF* GcInfoDecoder::GetCapturedRegister(
 
     return (OBJECTREF*)(pX0 + regNum);
 }
-#endif // TARGET_UNIX
+#endif // TARGET_UNIX && !FEATURE_REDHAWK
 
 #else // Unknown platform
 
@@ -1776,10 +1787,6 @@ OBJECTREF* GcInfoDecoder::GetStackSlot(
                         PREGDISPLAY     pRD
                         )
 {
-#ifdef CROSSGEN_COMPILE
-    _ASSERTE(!"GcInfoDecoder::GetStackSlot not supported in this build configuration");
-    return NULL;
-#else // CROSSGEN_COMPILE
     OBJECTREF* pObjRef;
 
     if( GC_SP_REL == spBase )
@@ -1811,7 +1818,6 @@ OBJECTREF* GcInfoDecoder::GetStackSlot(
     }
 
     return pObjRef;
-#endif // CROSSGEN_COMPILE
 }
 
 #ifdef DACCESS_COMPILE

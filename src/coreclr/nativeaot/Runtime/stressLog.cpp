@@ -30,6 +30,7 @@
 #include "event.h"
 #include "threadstore.h"
 #include "threadstore.inl"
+#include "thread.inl"
 
 template<typename T> inline T VolatileLoad(T const * pt) { return *(T volatile const *)pt; }
 template<typename T> inline void VolatileStore(T* pt, T val) { *(T volatile *)pt = val; }
@@ -144,6 +145,12 @@ ThreadStressLog* StressLog::CreateThreadStressLog(Thread * pThread) {
         return msgs;
     }
 
+    //if we are not allowed to allocate stress log, we should not even try to take the lock
+    if (pThread->IsInCantAllocStressLogRegion())
+    {
+        return NULL;
+    }
+
     // if it looks like we won't be allowed to allocate a new chunk, exit early
     if (VolatileLoad(&theLog.deadCount) == 0 && !AllowNewChunk (0))
     {
@@ -256,13 +263,19 @@ void StressLog::ThreadDetach(ThreadStressLog *msgs) {
 
 bool StressLog::AllowNewChunk (long numChunksInCurThread)
 {
+    Thread* pCurrentThread = ThreadStore::GetCurrentThread();
+    if (pCurrentThread->IsInCantAllocStressLogRegion())
+    {
+        return FALSE;
+    }
+
     _ASSERTE (numChunksInCurThread <= VolatileLoad(&theLog.totalChunk));
     uint32_t perThreadLimit = theLog.MaxSizePerThread;
 
     if (numChunksInCurThread == 0 /*&& IsSuspendEEThread()*/)
         return TRUE;
 
-    if (ThreadStore::GetCurrentThread()->IsGCSpecial())
+    if (pCurrentThread->IsGCSpecial())
     {
         perThreadLimit *= GC_STRESSLOG_MULTIPLY;
     }

@@ -5,11 +5,8 @@ set(COMMON_RUNTIME_SOURCES
     rhassert.cpp
     CachedInterfaceDispatch.cpp
     Crst.cpp
-    DebugEventSource.cpp
-    DebugFuncEval.cpp
-    DebuggerHook.cpp
     DebugHeader.cpp
-    eetype.cpp
+    MethodTable.cpp
     EHHelpers.cpp
     event.cpp
     FinalizerHelpers.cpp
@@ -174,6 +171,12 @@ else()
     ${GC_DIR}/unix/cgroup.cpp
   )
 
+  if(CLR_CMAKE_TARGET_ARCH_WASM)
+    list(APPEND COMMON_RUNTIME_SOURCES
+      ${GC_DIR}/wasm/gcenv.wasm.cpp
+    )
+  endif()
+
   list(APPEND FULL_RUNTIME_SOURCES
     unix/HardwareExceptions.cpp
     unix/UnixContext.cpp
@@ -234,7 +237,7 @@ add_definitions(-DFEATURE_BASICFREEZE)
 add_definitions(-DFEATURE_CONSERVATIVE_GC)
 add_definitions(-DFEATURE_CUSTOM_IMPORTS)
 add_definitions(-DFEATURE_DYNAMIC_CODE)
-add_compile_options($<$<OR:$<CONFIG:Debug>,$<CONFIG:Checked>>:-DFEATURE_GC_STRESS>)
+add_compile_definitions($<$<OR:$<CONFIG:Debug>,$<CONFIG:Checked>>:FEATURE_GC_STRESS>)
 add_definitions(-DFEATURE_REDHAWK)
 add_definitions(-DVERIFY_HEAP)
 add_definitions(-DCORERT)

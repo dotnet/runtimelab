@@ -157,9 +157,9 @@ __forceinline int decodeSigned(PTR_CBYTE& src)
  *  computation of PrologOffs/EpilogOffs.
  *  Returns the size of the header (number of bytes decoded).
  */
-static size_t   DecodeGCHdrInfo(GCInfoToken gcInfoToken,
-                                unsigned    curOffset,
-                                hdrInfo   * infoPtr)
+size_t DecodeGCHdrInfo(GCInfoToken gcInfoToken,
+                       unsigned    curOffset,
+                       hdrInfo   * infoPtr)
 {
     CONTRACTL {
         NOTHROW;
@@ -1346,6 +1346,7 @@ HRESULT EECodeManager::FixContextForEnC(PCONTEXT         pCtx,
                     // points to will be zeroed out
                     // ...
                 }
+                __fallthrough;
 
             case ICorDebugInfo::VLT_STK:
             case ICorDebugInfo::VLT_STK2:
@@ -3261,7 +3262,7 @@ unsigned SKIP_ALLOC_FRAME(int size, PTR_CBYTE base, unsigned offset)
 #endif // !USE_GC_INFO_DECODER
 
 
-#if defined(FEATURE_EH_FUNCLETS) && !defined(CROSSGEN_COMPILE)
+#if defined(FEATURE_EH_FUNCLETS)
 
 void EECodeManager::EnsureCallerContextIsValid( PREGDISPLAY  pRD, StackwalkCacheEntry* pCacheEntry, EECodeInfo * pCodeInfo /*= NULL*/ )
 {
@@ -3315,7 +3316,7 @@ size_t EECodeManager::GetCallerSp( PREGDISPLAY  pRD )
     return GetSP(pRD->pCallerContext);
 }
 
-#endif // FEATURE_EH_FUNCLETS && !CROSSGEN_COMPILE
+#endif // FEATURE_EH_FUNCLETS
 
 #ifdef HAS_QUICKUNWIND
 /*
@@ -4304,7 +4305,6 @@ size_t EECodeManager::GetResumeSp( PCONTEXT  pContext )
 #endif // TARGET_X86
 #endif // FEATURE_EH_FUNCLETS
 
-#ifndef CROSSGEN_COMPILE
 #ifndef FEATURE_EH_FUNCLETS
 
 /*****************************************************************************
@@ -4363,7 +4363,6 @@ bool EECodeManager::UnwindStackFrame(PREGDISPLAY     pContext,
 
 /*****************************************************************************/
 #endif // FEATURE_EH_FUNCLETS
-#endif // !CROSSGEN_COMPILE
 
 /*****************************************************************************/
 
@@ -4415,7 +4414,6 @@ void promoteVarArgs(PTR_BYTE argsStart, PTR_VASigCookie varArgSig, GCCONTEXT* ct
 
 INDEBUG(void* forceStack1;)
 
-#ifndef CROSSGEN_COMPILE
 #ifndef USE_GC_INFO_DECODER
 
 /*****************************************************************************
@@ -5107,7 +5105,7 @@ bool EECodeManager::EnumGcRefs( PREGDISPLAY     pContext,
         else
             argsStart = PTR_BYTE((size_t)argBase) + info.stackSize + sizeof(void*);   // ESP + locals + retAddr
 
-#if defined(_DEBUG) && !defined(DACCESS_COMPILE) && !defined(CROSSGEN_COMPILE)
+#if defined(_DEBUG) && !defined(DACCESS_COMPILE)
         // Note that I really want to say hCallBack is a GCCONTEXT, but this is pretty close
         extern void GcEnumObject(LPVOID pData, OBJECTREF *pObj, uint32_t flags);
         _ASSERTE((void*) GcEnumObject == pCallBack);
@@ -5373,9 +5371,7 @@ bool EECodeManager::EnumGcRefs( PREGDISPLAY     pRD,
 }
 
 #endif // USE_GC_INFO_DECODER
-#endif // !CROSSGEN_COMPILE
 
-#ifndef CROSSGEN_COMPILE
 /*****************************************************************************
  *
  *  Returns "this" pointer if it is a non-static method
@@ -5527,7 +5523,6 @@ OBJECTREF EECodeManager::GetInstance( PREGDISPLAY    pContext,
     return oRef;
 #endif // USE_GC_INFO_DECODER
 }
-#endif // !CROSSGEN_COMPILE
 
 GenericParamContextType EECodeManager::GetParamContextType(PREGDISPLAY     pContext,
                                                            EECodeInfo *    pCodeInfo)
@@ -5586,7 +5581,6 @@ GenericParamContextType EECodeManager::GetParamContextType(PREGDISPLAY     pCont
 #endif // USE_GC_INFO_DECODER
 }
 
-#ifndef CROSSGEN_COMPILE
 /*****************************************************************************
  *
  *  Returns the extra argument passed to to shared generic code if it is still alive.
@@ -5626,9 +5620,8 @@ PTR_VOID EECodeManager::GetParamTypeArg(PREGDISPLAY     pContext,
 
 #endif // USE_GC_INFO_DECODER
 }
-#endif // !CROSSGEN_COMPILE
 
-#if defined(FEATURE_EH_FUNCLETS) && defined(USE_GC_INFO_DECODER) && !defined(CROSSGEN_COMPILE)
+#if defined(FEATURE_EH_FUNCLETS) && defined(USE_GC_INFO_DECODER)
 /*
     Returns the generics token.  This is used by GetInstance() and GetParamTypeArg() on WIN64.
 */
@@ -5699,9 +5692,8 @@ PTR_VOID EECodeManager::GetExactGenericsToken(SIZE_T          baseStackSlot,
 }
 
 
-#endif // FEATURE_EH_FUNCLETS && USE_GC_INFO_DECODER && !CROSSGEN_COMPILE
+#endif // FEATURE_EH_FUNCLETS && USE_GC_INFO_DECODER
 
-#ifndef CROSSGEN_COMPILE
 /*****************************************************************************/
 
 void * EECodeManager::GetGSCookieAddr(PREGDISPLAY     pContext,
@@ -5780,7 +5772,6 @@ void * EECodeManager::GetGSCookieAddr(PREGDISPLAY     pContext,
 
 #endif // USE_GC_INFO_DECODER
 }
-#endif // !CROSSGEN_COMPILE
 
 #ifndef USE_GC_INFO_DECODER
 /*****************************************************************************
@@ -5890,6 +5881,12 @@ bool EECodeManager::GetReturnAddressHijackInfo(GCInfoToken gcInfoToken, ReturnKi
     hdrInfo info;
 
     DecodeGCHdrInfo(gcInfoToken, 0, &info);
+
+    if (info.revPInvokeOffset != INVALID_REV_PINVOKE_OFFSET)
+    {
+        // Hijacking of UnmanagedCallersOnly method is not allowed
+        return false;
+    }
 
     *returnKind = info.returnKind;
     return true;

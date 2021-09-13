@@ -11,12 +11,21 @@ namespace System.Threading
         private DeferredDisposableLifetime<PreAllocatedOverlapped> _lifetime;
 
         [CLSCompliant(false)]
-        public unsafe PreAllocatedOverlapped(IOCompletionCallback callback, object state, object pinData)
+        public PreAllocatedOverlapped(IOCompletionCallback callback, object? state, object? pinData) :
+            this(callback, state, pinData, flowExecutionContext: true)
+        {
+        }
+
+        [CLSCompliant(false)]
+        public static PreAllocatedOverlapped UnsafeCreate(IOCompletionCallback callback, object? state, object? pinData) =>
+            new PreAllocatedOverlapped(callback, state, pinData, flowExecutionContext: false);
+
+        private unsafe PreAllocatedOverlapped(IOCompletionCallback callback, object? state, object? pinData, bool flowExecutionContext)
         {
             if (callback == null)
                 throw new ArgumentNullException(nameof(callback));
 
-            _overlapped = Win32ThreadPoolNativeOverlapped.Allocate(callback, state, pinData, this);
+            _overlapped = Win32ThreadPoolNativeOverlapped.Allocate(callback, state, pinData, this, flowExecutionContext);
         }
 
         internal bool AddRef()
@@ -37,12 +46,7 @@ namespace System.Threading
 
         ~PreAllocatedOverlapped()
         {
-            //
-            // During shutdown, don't automatically clean up, because this instance may still be
-            // reachable/usable by other code.
-            //
-            if (!Environment.HasShutdownStarted)
-                Dispose();
+            Dispose();
         }
 
         unsafe void IDeferredDisposable.OnFinalRelease(bool disposed)
@@ -55,5 +59,7 @@ namespace System.Threading
                     *Win32ThreadPoolNativeOverlapped.ToNativeOverlapped(_overlapped) = default(NativeOverlapped);
             }
         }
+
+        internal unsafe bool IsUserObject(byte[]? buffer) => _overlapped->IsUserObject(buffer);
     }
 }

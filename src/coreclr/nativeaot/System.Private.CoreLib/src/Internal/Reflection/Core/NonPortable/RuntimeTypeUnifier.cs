@@ -46,7 +46,7 @@ namespace Internal.Reflection.Core.NonPortable
         {
             // If writable data is supported, we shouldn't be using the hashtable - the runtime type
             // is accessible through a couple indirections from the EETypePtr which is much faster.
-            Debug.Assert(!Internal.Runtime.EEType.SupportsWritableData);
+            Debug.Assert(!Internal.Runtime.MethodTable.SupportsWritableData);
             return RuntimeTypeHandleToTypeCache.Table.GetOrAdd(eeType.RawValue);
         }
 

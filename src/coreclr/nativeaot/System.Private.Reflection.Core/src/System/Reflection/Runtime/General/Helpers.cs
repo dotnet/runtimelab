@@ -185,6 +185,8 @@ namespace System.Reflection.Runtime.General
         // Helper for ICustomAttributeProvider.GetCustomAttributes(). The result of this helper is returned directly to apps
         // so it must always return a newly allocated array. Unlike most of the newer custom attribute apis, the attribute type
         // need not derive from System.Attribute. (In particular, it can be an interface or System.Object.)
+        [UnconditionalSuppressMessage("AotAnalysis", "IL9700:RequiresDynamicCode",
+            Justification = "Array.CreateInstance is only used with reference types here and is therefore safe.")]
         public static object[] InstantiateAsArray(this IEnumerable<CustomAttributeData> cads, Type actualElementType)
         {
             LowLevelList<object> attributes = new LowLevelList<object>();

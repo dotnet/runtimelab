@@ -90,7 +90,7 @@ public:
 
     BOOL IsSystem() { WRAPPER_NO_CONTRACT; return m_pManifestFile->IsSystem(); }
 
-    static Assembly *CreateDynamic(AppDomain *pDomain, ICLRPrivBinder* pBinderContext, CreateDynamicAssemblyArgs *args);
+    static Assembly *CreateDynamic(AppDomain *pDomain, AssemblyBinder* pBinderContext, CreateDynamicAssemblyArgs *args);
 
     MethodDesc *GetEntryPoint();
 
@@ -373,8 +373,6 @@ public:
         return GetManifestFile()->HashIdentity();
     }
 
-    BOOL IsDisabledPrivateReflection();
-
     //****************************************************************************************
     //
     // Uses the given token to load a module or another assembly. Returns the module in
@@ -406,9 +404,6 @@ public:
 
     Assembly();
     ~Assembly();
-#ifdef  FEATURE_PREJIT
-    void DeleteNativeCodeRanges();
-#endif
 
     BOOL GetResource(LPCSTR szName, DWORD *cbResource,
                      PBYTE *pbInMemoryResource, Assembly **pAssemblyRef,
@@ -428,7 +423,7 @@ public:
     void AddType(Module* pModule,
                  mdTypeDef cl);
     void AddExportedType(mdExportedType cl);
-    mdAssemblyRef AddAssemblyRef(Assembly *refedAssembly, IMetaDataAssemblyEmit *pAssemEmitter = NULL, BOOL fUsePublicKeyToken = TRUE);
+    mdAssemblyRef AddAssemblyRef(Assembly *refedAssembly, IMetaDataAssemblyEmit *pAssemEmitter);
 
     //****************************************************************************************
 
@@ -439,10 +434,10 @@ public:
     OBJECTHANDLE GetLoaderAllocatorObjectHandle() { WRAPPER_NO_CONTRACT; return GetLoaderAllocator()->GetLoaderAllocatorObjectHandle(); }
 #endif // FEATURE_COLLECTIBLE_TYPES
 
-#if defined(FEATURE_PREJIT) || defined(FEATURE_READYTORUN)
+#ifdef FEATURE_READYTORUN
     BOOL IsInstrumented();
     BOOL IsInstrumentedHelper();
-#endif // FEATURE_PREJIT
+#endif // FEATURE_READYTORUN
 
 #ifdef FEATURE_COMINTEROP
     static ITypeLib * const InvalidTypeLib;
@@ -583,7 +578,6 @@ private:
 #endif // FEATURE_COLLECTIBLE_TYPES
     DWORD                 m_nextAvailableModuleIndex;
     PTR_LoaderAllocator   m_pLoaderAllocator;
-    DWORD                 m_isDisabledPrivateReflection;
 
 #ifdef FEATURE_COMINTEROP
     // If a TypeLib is ever required for this module, cache the pointer here.
@@ -595,14 +589,14 @@ private:
 
     BOOL                  m_fTerminated;
 
-#if defined(FEATURE_PREJIT) || defined(FEATURE_READYTORUN)
+#ifdef FEATURE_READYTORUN
     enum IsInstrumentedStatus {
         IS_INSTRUMENTED_UNSET = 0,
         IS_INSTRUMENTED_FALSE = 1,
         IS_INSTRUMENTED_TRUE = 2,
     };
     IsInstrumentedStatus    m_isInstrumentedStatus;
-#endif // FEATURE_PREJIT
+#endif // FEATURE_READYTORUN
 
 };
 

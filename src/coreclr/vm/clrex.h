@@ -722,7 +722,7 @@ class EEFileLoadException : public EEException
 // We're not actually running in the CLR, but we may need access to some CLR-exception
 // related data structures elsewhere in this header file in order to analyze CLR
 // exceptions that occurred in the target.
-#if !defined(DACCESS_COMPILE) && !defined(CROSSGEN_COMPILE)
+#if !defined(DACCESS_COMPILE)
 
 #define GET_THROWABLE() CLRException::GetThrowableFromException(GET_EXCEPTION())
 
@@ -752,7 +752,7 @@ LONG CLRNoCatchHandler(EXCEPTION_POINTERS* pExceptionInfo, PVOID pv);
 #define PAL_SEH_RESTORE_GUARD_PAGE                                                  \
     if (__exCode == STATUS_STACK_OVERFLOW)                                          \
     {                                                                               \
-        Thread *__pThread = GetThread();                                            \
+        Thread *__pThread = GetThreadNULLOk();                                            \
         if (__pThread != NULL)                                                      \
         {                                                                           \
             __pThread->RestoreGuardPage();                                          \
@@ -799,7 +799,7 @@ LONG CLRNoCatchHandler(EXCEPTION_POINTERS* pExceptionInfo, PVOID pv);
             STRESS_LOG1(LF_EH, LL_INFO100,                                              \
                 "EX_RETHROW " INDEBUG(__FILE__) " line %d\n", __LINE__);                \
             __pException.SuppressRelease();                                             \
-            if ((!__state.DidCatchCxx()) && (GetThread() != NULL))                      \
+            if ((!__state.DidCatchCxx()) && (GetThreadNULLOk() != NULL))                      \
             {                                                                           \
                 if (GetThread()->PreemptiveGCDisabled())                                \
                 {                                                                       \
@@ -857,7 +857,7 @@ LONG CLRNoCatchHandler(EXCEPTION_POINTERS* pExceptionInfo, PVOID pv);
     }                                                                           \
     EX_END_CATCH(SwallowAllExceptions)
 
-#endif // !DACCESS_COMPILE && !CROSSGEN_COMPILE
+#endif // !DACCESS_COMPILE
 
 // When collecting dumps, we need to ignore errors unless the user cancels.
 #define EX_CATCH_RETHROW_ONLY_COR_E_OPERATIONCANCELLED                          \
@@ -908,7 +908,7 @@ LONG CLRNoCatchHandler(EXCEPTION_POINTERS* pExceptionInfo, PVOID pv);
     {                                                               \
         HRESULT *__phr = (phresult);                                \
         *__phr = S_OK;                                              \
-        _ASSERTE(GetThread() == NULL ||                             \
+        _ASSERTE(GetThreadNULLOk() == NULL ||                             \
                     !GetThread()->PreemptiveGCDisabled());          \
         MAKE_CURRENT_THREAD_AVAILABLE_EX(GetThreadNULLOk());        \
         if (CURRENT_THREAD == NULL)                                 \

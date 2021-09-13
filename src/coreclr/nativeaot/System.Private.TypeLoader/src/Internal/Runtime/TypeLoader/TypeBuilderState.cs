@@ -65,12 +65,12 @@ namespace Internal.Runtime.TypeLoader
             }
             public int GetVTableSlotInTargetType(int vtableSlotInTemplateType)
             {
-                Debug.Assert(vtableSlotInTemplateType < _slotMap.Length);
+                Debug.Assert((uint)vtableSlotInTemplateType < (uint)_slotMap.Length);
                 return _slotMap[vtableSlotInTemplateType];
             }
             public bool IsDictionarySlot(int vtableSlotInTemplateType, out IntPtr dictionaryPtrValue)
             {
-                Debug.Assert(vtableSlotInTemplateType < _dictionarySlots.Length);
+                Debug.Assert((uint)vtableSlotInTemplateType < (uint)_dictionarySlots.Length);
                 dictionaryPtrValue = _dictionarySlots[vtableSlotInTemplateType];
                 return _dictionarySlots[vtableSlotInTemplateType] != IntPtr.Zero;
             }
@@ -600,7 +600,7 @@ namespace Internal.Runtime.TypeLoader
                                 if (!baseTypeLayout.IsNone)
                                 {
                                     instanceGCLayout = new LowLevelList<bool>();
-                                    baseTypeLayout.WriteToBitfield(instanceGCLayout, IntPtr.Size /* account for the EEType pointer */);
+                                    baseTypeLayout.WriteToBitfield(instanceGCLayout, IntPtr.Size /* account for the MethodTable pointer */);
                                 }
                             }
 
@@ -831,7 +831,7 @@ namespace Internal.Runtime.TypeLoader
                     return TypeBuilder.GCLayout.SingleReference;
             }
 
-            // Is this a type that already exists? If so, get its gclayout from the EEType directly
+            // Is this a type that already exists? If so, get its gclayout from the MethodTable directly
             if (fieldType.RetrieveRuntimeTypeHandleIfPossible())
             {
                 return new TypeBuilder.GCLayout(fieldType.RuntimeTypeHandle);
@@ -929,7 +929,7 @@ namespace Internal.Runtime.TypeLoader
                 }
                 else if (TypeBeingBuilt is ArrayType)
                 {
-                    int basicArraySize = TypeBeingBuilt.BaseType.InstanceByteCountUnaligned.AsInt;
+                    int basicArraySize = 2 * IntPtr.Size; // EETypePtr + Length
                     if (TypeBeingBuilt.IsMdArray)
                     {
                         // MD Arrays are arranged like normal arrays, but they also have 2 int's per rank for the individual dimension loBounds and range.
@@ -1069,16 +1069,16 @@ namespace Internal.Runtime.TypeLoader
             get
             {
 #if TARGET_ARM
-                if (TypeBeingBuilt is DefType)
+                if (TypeBeingBuilt.IsValueType && TypeBeingBuilt is DefType)
                 {
-                    return ((DefType)TypeBeingBuilt).IsHfa;
+                    return ((DefType)TypeBeingBuilt).IsHomogeneousAggregate;
                 }
                 else
                 {
                     return false;
                 }
 #else
-                // On Non-ARM platforms, HFA'ness is not encoded in the EEType as it doesn't effect ABI
+                // On Non-ARM platforms, HFA'ness is not encoded in the MethodTable as it doesn't effect ABI
                 return false;
 #endif
             }

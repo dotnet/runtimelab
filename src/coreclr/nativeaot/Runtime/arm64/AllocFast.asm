@@ -7,19 +7,19 @@
 
 ;; Allocate non-array, non-finalizable object. If the allocation doesn't fit into the current thread's
 ;; allocation context then automatically fallback to the slow allocation path.
-;;  x0 == EEType
+;;  x0 == MethodTable
     LEAF_ENTRY RhpNewFast
 
         ;; x1 = GetThread(), TRASHES x2
         INLINE_GETTHREAD x1, x2
 
         ;;
-        ;; x0 contains EEType pointer
+        ;; x0 contains MethodTable pointer
         ;;
-        ldr         w2, [x0, #OFFSETOF__EEType__m_uBaseSize]
+        ldr         w2, [x0, #OFFSETOF__MethodTable__m_uBaseSize]
 
         ;;
-        ;; x0: EEType pointer
+        ;; x0: MethodTable pointer
         ;; x1: Thread pointer
         ;; x2: base size
         ;;
@@ -37,7 +37,7 @@
         ;; Update the alloc pointer to account for the allocation.
         str         x2, [x1, #OFFSETOF__Thread__m_alloc_context__alloc_ptr]
 
-        ;; Set the new object's EEType pointer
+        ;; Set the new object's MethodTable pointer
         str         x0, [x12, #OFFSETOF__Object__m_pEEType]
 
         mov         x0, x12
@@ -51,14 +51,14 @@ RhpNewFast_RarePath
     INLINE_GETTHREAD_CONSTANT_POOL
 
 ;; Allocate non-array object with finalizer.
-;;  x0 == EEType
+;;  x0 == MethodTable
     LEAF_ENTRY RhpNewFinalizable
         mov         x1, #GC_ALLOC_FINALIZE
         b           RhpNewObject
     LEAF_END RhpNewFinalizable
 
 ;; Allocate non-array object.
-;;  x0 == EEType
+;;  x0 == MethodTable
 ;;  x1 == alloc flags
     NESTED_ENTRY RhpNewObject
 
@@ -66,31 +66,16 @@ RhpNewFast_RarePath
 
         ;; x3: transition frame
 
-        ;; Preserve the EEType in x19
+        ;; Preserve the MethodTable in x19
         mov         x19, x0
 
-        ldr         w2, [x0, #OFFSETOF__EEType__m_uBaseSize]
+        mov         w2, #0              ; numElements
 
         ;; Call the rest of the allocation helper.
-        ;; void* RhpGcAlloc(EEType *pEEType, uint32_t uFlags, uintptr_t cbSize, void * pTransitionFrame)
+        ;; void* RhpGcAlloc(MethodTable *pEEType, uint32_t uFlags, uintptr_t numElements, void * pTransitionFrame)
         bl          RhpGcAlloc
 
-        ;; Set the new object's EEType pointer on success.
         cbz         x0, NewOutOfMemory
-        str         x19, [x0, #OFFSETOF__Object__m_pEEType]
-
-        ;; If the object is bigger than RH_LARGE_OBJECT_SIZE, we must publish it to the BGC
-        ldr         w1, [x19, #OFFSETOF__EEType__m_uBaseSize]
-        movz        x2, #(RH_LARGE_OBJECT_SIZE & 0xFFFF)
-        movk        x2, #(RH_LARGE_OBJECT_SIZE >> 16), lsl #16
-        cmp         x1, x2
-        blo         New_SkipPublish
-
-        ;; x0: object
-        ;; x1: already contains object size
-        bl          RhpPublishObject    ;; x0: this function returns the object that was passed-in
-
-New_SkipPublish
 
         POP_COOP_PINVOKE_FRAME
         EPILOG_RETURN
@@ -99,8 +84,8 @@ NewOutOfMemory
         ;; This is the OOM failure path. We're going to tail-call to a managed helper that will throw
         ;; an out of memory exception that the caller of this allocator understands.
 
-        mov         x0, x19            ; EEType pointer
-        mov         x1, 0               ; Indicate that we should throw OOM.
+        mov         x0, x19             ; MethodTable pointer
+        mov         x1, #0              ; Indicate that we should throw OOM.
 
         POP_COOP_PINVOKE_FRAME
         EPILOG_NOP b RhExceptionHandling_FailedAllocation
@@ -108,7 +93,7 @@ NewOutOfMemory
     NESTED_END RhpNewObject
 
 ;; Allocate a string.
-;;  x0 == EEType
+;;  x0 == MethodTable
 ;;  x1 == element/character count
     LEAF_ENTRY RhNewString
         ;; Make sure computing the overall allocation size won't overflow
@@ -123,7 +108,7 @@ NewOutOfMemory
         umaddl      x2, w1, w2, x3          ; x2 = w1 * w2 + x3
         and         x2, x2, #-8
 
-        ; x0 == EEType
+        ; x0 == MethodTable
         ; x1 == element count
         ; x2 == string size
 
@@ -145,7 +130,7 @@ NewOutOfMemory
         ;; Update the alloc pointer to account for the allocation.
         str         x2, [x3, #OFFSETOF__Thread__m_alloc_context__alloc_ptr]
 
-        ;; Set the new object's EEType pointer and element count.
+        ;; Set the new object's MethodTable pointer and element count.
         str         x0, [x12, #OFFSETOF__Object__m_pEEType]
         str         x1, [x12, #OFFSETOF__Array__m_Length]
 
@@ -159,7 +144,7 @@ StringSizeOverflow
         ; 32-bit value. We're going to tail-call to a managed helper that will throw
         ; an OOM exception that the caller of this allocator understands.
 
-        ; x0 holds EEType pointer already
+        ; x0 holds MethodTable pointer already
         mov         x1, #1                  ; Indicate that we should throw OverflowException
         b           RhExceptionHandling_FailedAllocation
     LEAF_END    RhNewString
@@ -168,7 +153,7 @@ StringSizeOverflow
 
 
 ;; Allocate one dimensional, zero based array (SZARRAY).
-;;  x0 == EEType
+;;  x0 == MethodTable
 ;;  x1 == element count
     LEAF_ENTRY RhpNewArray
 
@@ -180,14 +165,14 @@ StringSizeOverflow
         cmp         x1, x2
         bhi         ArraySizeOverflow
 
-        ldrh        w2, [x0, #OFFSETOF__EEType__m_usComponentSize]
+        ldrh        w2, [x0, #OFFSETOF__MethodTable__m_usComponentSize]
         umull       x2, w1, w2
-        ldr         w3, [x0, #OFFSETOF__EEType__m_uBaseSize]
+        ldr         w3, [x0, #OFFSETOF__MethodTable__m_uBaseSize]
         add         x2, x2, x3
         add         x2, x2, #7
         and         x2, x2, #-8
 
-        ; x0 == EEType
+        ; x0 == MethodTable
         ; x1 == element count
         ; x2 == array size
 
@@ -209,7 +194,7 @@ StringSizeOverflow
         ;; Update the alloc pointer to account for the allocation.
         str         x2, [x3, #OFFSETOF__Thread__m_alloc_context__alloc_ptr]
 
-        ;; Set the new object's EEType pointer and element count.
+        ;; Set the new object's MethodTable pointer and element count.
         str         x0, [x12, #OFFSETOF__Object__m_pEEType]
         str         x1, [x12, #OFFSETOF__Array__m_Length]
 
@@ -223,7 +208,7 @@ ArraySizeOverflow
         ; 32-bit value. We're going to tail-call to a managed helper that will throw
         ; an overflow exception that the caller of this allocator understands.
 
-        ; x0 holds EEType pointer already
+        ; x0 holds MethodTable pointer already
         mov         x1, #1                  ; Indicate that we should throw OverflowException
         b           RhExceptionHandling_FailedAllocation
     LEAF_END    RhpNewArray
@@ -231,7 +216,7 @@ ArraySizeOverflow
     INLINE_GETTHREAD_CONSTANT_POOL
 
 ;; Allocate one dimensional, zero based array (SZARRAY) using the slow path that calls a runtime helper.
-;;  x0 == EEType
+;;  x0 == MethodTable
 ;;  x1 == element count
 ;;  x2 == array size + Thread::m_alloc_context::alloc_ptr
 ;;  x3 == Thread
@@ -244,33 +229,15 @@ ArraySizeOverflow
         PUSH_COOP_PINVOKE_FRAME x3
 
         ; Preserve data we'll need later into the callee saved registers
-        mov         x19, x0             ; Preserve EEType
-        mov         x20, x1             ; Preserve element count
-        mov         x21, x2             ; Preserve array size
+        mov         x19, x0             ; Preserve MethodTable
 
-        mov         x1, #0
+        mov         x2, x1              ; numElements
+        mov         x1, #0              ; uFlags
 
-        ;; void* RhpGcAlloc(EEType *pEEType, uint32_t uFlags, uintptr_t cbSize, void * pTransitionFrame)
+        ;; void* RhpGcAlloc(MethodTable *pEEType, uint32_t uFlags, uintptr_t numElements, void * pTransitionFrame)
         bl          RhpGcAlloc
 
-        ; Set the new object's EEType pointer and length on success.
         cbz         x0, ArrayOutOfMemory
-
-        ; Success, set the array's type and element count in the new object.
-        str         x19, [x0, #OFFSETOF__Object__m_pEEType]
-        str         x20, [x0, #OFFSETOF__Array__m_Length]
-
-        ;; If the object is bigger than RH_LARGE_OBJECT_SIZE, we must publish it to the BGC
-        movz        x2, #(RH_LARGE_OBJECT_SIZE & 0xFFFF)
-        movk        x2, #(RH_LARGE_OBJECT_SIZE >> 16), lsl #16
-        cmp         x21, x2
-        blo         NewArray_SkipPublish
-
-        ;; x0 = newly allocated array. x1 = size
-        mov         x1, x21
-        bl          RhpPublishObject
-
-NewArray_SkipPublish
 
         POP_COOP_PINVOKE_FRAME
         EPILOG_RETURN
@@ -279,8 +246,8 @@ ArrayOutOfMemory
         ;; This is the OOM failure path. We're going to tail-call to a managed helper that will throw
         ;; an out of memory exception that the caller of this allocator understands.
 
-        mov         x0, x19             ; EEType Pointer
-        mov         x1, 0               ; Indicate that we should throw OOM.
+        mov         x0, x19             ; MethodTable Pointer
+        mov         x1, #0              ; Indicate that we should throw OOM.
 
         POP_COOP_PINVOKE_FRAME
         EPILOG_NOP b RhExceptionHandling_FailedAllocation

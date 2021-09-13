@@ -32,37 +32,37 @@ INVALIDGCVALUE  EQU 0xCCCCCCCD
 
     MACRO
         ;; On entry:
-        ;;  $destReg: location to be updated (cannot be x9,x12)
-        ;;  $refReg: objectref to be stored (cannot be x9,x12)
+        ;;  $destReg: location to be updated (cannot be x12,x17)
+        ;;  $refReg: objectref to be stored (cannot be x12,x17)
         ;;
         ;; On exit:
-        ;;  x9,x12: trashed
+        ;;  x12,x17: trashed
         ;;  other registers are preserved
         ;;
         UPDATE_GC_SHADOW $destReg, $refReg
 
         ;; If g_GCShadow is 0, don't perform the check.
-        adrp    x9, $g_GCShadow
-        ldr     x9, [x9, $g_GCShadow]
-        cbz     x9, %ft1
+        adrp    x12, $g_GCShadow
+        ldr     x12, [x12, $g_GCShadow]
+        cbz     x12, %ft1
 
         ;; Save $destReg since we're about to modify it (and we need the original value both within the macro and
         ;; once we exit the macro).
-        mov     x12, $destReg
+        mov     x17, $destReg
 
         ;; Transform $destReg into the equivalent address in the shadow heap.
-        adrp    x9, g_lowest_address
-        ldr     x9, [x9, g_lowest_address]
-        subs    $destReg, $destReg, x9
+        adrp    x12, g_lowest_address
+        ldr     x12, [x12, g_lowest_address]
+        subs    $destReg, $destReg, x12
         blt     %ft0
 
-        adrp    x9, $g_GCShadow
-        ldr     x9, [x9, $g_GCShadow]
-        add     $destReg, $destReg, x9
+        adrp    x12, $g_GCShadow
+        ldr     x12, [x12, $g_GCShadow]
+        add     $destReg, $destReg, x12
 
-        adrp    x9, $g_GCShadowEnd
-        ldr     x9, [x9, $g_GCShadowEnd]
-        cmp     $destReg, x9
+        adrp    x12, $g_GCShadowEnd
+        ldr     x12, [x12, $g_GCShadowEnd]
+        cmp     $destReg, x12
         bgt     %ft0
 
         ;; Update the shadow heap.
@@ -73,19 +73,19 @@ INVALIDGCVALUE  EQU 0xCCCCCCCD
         dmb     ish
 
         ;; Now check that the real heap location still contains the value we just wrote into the shadow heap.
-        mov     x9, x12
-        ldr     x9, [x9]
-        cmp     x9, $refReg
+        mov     x12, x17
+        ldr     x12, [x12]
+        cmp     x12, $refReg
         beq     %ft0
 
         ;; Someone went and updated the real heap. We need to invalidate the shadow location since we can't
         ;; guarantee whose shadow update won.
-        MOVL64  x9, INVALIDGCVALUE, 0
-        str     x9, [$destReg]
+        MOVL64  x12, INVALIDGCVALUE, 0
+        str     x12, [$destReg]
 
 0
         ;; Restore original $destReg value
-        mov     $destReg, x12
+        mov     $destReg, x17
 
 1
     MEND
@@ -107,14 +107,14 @@ INVALIDGCVALUE  EQU 0xCCCCCCCD
 ;; some interlocked helpers that need an inline barrier.
     MACRO
         ;; On entry:
-        ;;   $destReg:  location to be updated (cannot be x9,x12)
-        ;;   $refReg:   objectref to be stored (cannot be x9,x12)
+        ;;   $destReg:  location to be updated (cannot be x12,x17)
+        ;;   $refReg:   objectref to be stored (cannot be x12,x17)
         ;;   $trashReg: register that can be trashed (can be $destReg or $refReg)
         ;;
         ;; On exit:
         ;;   $trashReg: trashed
-        ;;   x9:        trashed
-        ;;   x12:       trashed if WRITE_BARRIER_CHECK
+        ;;   x12:       trashed
+        ;;   x17:       trashed if WRITE_BARRIER_CHECK
         ;;
         INSERT_UNCHECKED_WRITE_BARRIER_CORE $destReg, $refReg, $trashReg
 
@@ -124,29 +124,29 @@ INVALIDGCVALUE  EQU 0xCCCCCCCD
 
         ;; We can skip the card table write if the reference is to
         ;; an object not on the epehemeral segment.
-        adrp    x9, g_ephemeral_low
-        ldr     x9, [x9, g_ephemeral_low]
-        cmp     $refReg, x9
+        adrp    x12, g_ephemeral_low
+        ldr     x12, [x12, g_ephemeral_low]
+        cmp     $refReg, x12
         blt     %ft0
 
-        adrp    x9, g_ephemeral_high
-        ldr     x9, [x9, g_ephemeral_high]
-        cmp     $refReg, x9
+        adrp    x12, g_ephemeral_high
+        ldr     x12, [x12, g_ephemeral_high]
+        cmp     $refReg, x12
         bge     %ft0
 
         ;; Set this object's card, if it hasn't already been set.
-        adrp    x9, g_card_table
-        ldr     x9, [x9, g_card_table]
-        add     $trashReg, x9, $destReg lsr #11
+        adrp    x12, g_card_table
+        ldr     x12, [x12, g_card_table]
+        add     $trashReg, x12, $destReg lsr #11
 
         ;; Check that this card hasn't already been written. Avoiding useless writes is a big win on
         ;; multi-proc systems since it avoids cache trashing.
-        ldrb    w9, [$trashReg]
-        cmp     x9, 0xFF
+        ldrb    w12, [$trashReg]
+        cmp     x12, 0xFF
         beq     %ft0
 
-        mov     x9, 0xFF
-        strb    w9, [$trashReg]
+        mov     x12, 0xFF
+        strb    w12, [$trashReg]
 
 0
         ;; Exit label
@@ -154,27 +154,27 @@ INVALIDGCVALUE  EQU 0xCCCCCCCD
 
     MACRO
         ;; On entry:
-        ;;   $destReg:  location to be updated (cannot be x9,x12)
-        ;;   $refReg:   objectref to be stored (cannot be x9,x12)
+        ;;   $destReg:  location to be updated (cannot be x12,x17)
+        ;;   $refReg:   objectref to be stored (cannot be x12,x17)
         ;;   $trashReg: register that can be trashed (can be $destReg or $refReg)
         ;;
         ;; On exit:
         ;;   $trashReg: trashed
-        ;;   x9:        trashed
-        ;;   x12:       trashed if WRITE_BARRIER_CHECK
+        ;;   x12:       trashed
+        ;;   x17:       trashed if WRITE_BARRIER_CHECK
         ;;
         INSERT_CHECKED_WRITE_BARRIER_CORE $destReg, $refReg, $trashReg
 
         ;; The "check" of this checked write barrier - is $destReg
         ;; within the heap? if no, early out.
-        adrp    x9, g_lowest_address
-        ldr     x9, [x9, g_lowest_address]
-        cmp     $destReg, x9
+        adrp    x12, g_lowest_address
+        ldr     x12, [x12, g_lowest_address]
+        cmp     $destReg, x12
         blt     %ft0
 
-        adrp    x9, g_highest_address
-        ldr     x9, [x9, g_highest_address]
-        cmp     $destReg, x9
+        adrp    x12, g_highest_address
+        ldr     x12, [x12, g_highest_address]
+        cmp     $destReg, x12
         bgt     %ft0
 
         INSERT_UNCHECKED_WRITE_BARRIER_CORE $destReg, $refReg, $trashReg
@@ -194,10 +194,10 @@ INVALIDGCVALUE  EQU 0xCCCCCCCD
 ;;   x1  : the object reference (RHS of the assignment)
 ;;
 ;; On exit:
-;;   x9  : trashed
-;;   x12 : trashed if WRITE_BARRIER_CHECK
+;;   x12 : trashed
 ;;   x14 : trashed
 ;;   x15 : trashed
+;;   x17 : trashed if WRITE_BARRIER_CHECK
     LEAF_ENTRY RhpCheckedAssignRef
     ALTERNATE_ENTRY RhpCheckedAssignRefX1
 
@@ -217,10 +217,10 @@ INVALIDGCVALUE  EQU 0xCCCCCCCD
 ;;   x1  : the object reference (RHS of the assignment)
 ;;
 ;; On exit:
-;;   x9  : trashed
-;;   x12 : trashed if WRITE_BARRIER_CHECK
+;;   x12 : trashed
 ;;   x14 : trashed
 ;;   x15 : trashed
+;;   x17 : trashed if WRITE_BARRIER_CHECK
     LEAF_ENTRY RhpAssignRef
     ALTERNATE_ENTRY RhpAssignRefX1
 
@@ -250,7 +250,8 @@ INVALIDGCVALUE  EQU 0xCCCCCCCD
 ;;   x0  : original value of objectref
 ;;   x9  : trashed
 ;;   x10 : trashed
-;;   x12 : trashed if WRITE_BARRIER_CHECK
+;;   x12 : trashed
+;;   x17 : trashed if WRITE_BARRIER_CHECK
 ;;
     LEAF_ENTRY RhpCheckedLockCmpXchg
     ALTERNATE_ENTRY RhpCheckedLockCmpXchgAVLocation
@@ -295,7 +296,8 @@ CmpXchgNoUpdate
 ;;   x0  : original value of objectref
 ;;   x9  : trashed
 ;;   x10 : trashed
-;;   x12 : trashed if WRITE_BARRIER_CHECK
+;;   x12 : trashed
+;;   x17 : trashed if WRITE_BARRIER_CHECK
 ;;
     LEAF_ENTRY RhpCheckedXchg
     ALTERNATE_ENTRY  RhpCheckedXchgAVLocation
@@ -328,9 +330,9 @@ ExchangeRetry
 ;;   x15  : the object reference (RHS of the assignment).
 ;;
 ;; On exit:
-;;   x9   : trashed
-;;   x12  : trashed if WRITE_BARRIER_CHECK
-;;   x14  : trashed
+;;   x12  : trashed
+;;   x15  : trashed
+;;   x17  : trashed if WRITE_BARRIER_CHECK
 ;;
     LEAF_ENTRY RhpAssignRefArm64, _TEXT
     ALTERNATE_ENTRY RhpAssignRefAVLocation
@@ -338,7 +340,7 @@ ExchangeRetry
 
         stlr    x15, [x14]
 
-        INSERT_UNCHECKED_WRITE_BARRIER_CORE x14, x15, x14
+        INSERT_UNCHECKED_WRITE_BARRIER_CORE x14, x15, x15
 
         ret
     LEAF_END RhpAssignRefArm64
@@ -349,10 +351,9 @@ ExchangeRetry
 ;;   x15 : the object reference (RHS of the assignment)
 ;;
 ;; On exit:
-;;   x9  : trashed
-;;   x12 : trashed if WRITE_BARRIER_CHECK
-;;   x14 : incremented by 8 to implement JIT_ByRefWriteBarrier contract
+;;   x12 : trashed
 ;;   x15 : trashed
+;;   x17 : trashed if WRITE_BARRIER_CHECK
 ;;
     LEAF_ENTRY RhpCheckedAssignRefArm64, _TEXT
     ALTERNATE_ENTRY RhpCheckedAssignRefAVLocation
@@ -361,8 +362,6 @@ ExchangeRetry
         stlr    x15, [x14]
 
         INSERT_CHECKED_WRITE_BARRIER_CORE x14, x15, x15
-
-        add     x14, x14, #8
 
         ret
     LEAF_END RhpCheckedAssignRefArm64
@@ -373,11 +372,11 @@ ExchangeRetry
 ;;   x14 : the destination address (object reference written here)
 ;;
 ;; On exit:
-;;   x9  : trashed
-;;   x12 : trashed if WRITE_BARRIER_CHECK
+;;   x12 : trashed
 ;;   x13 : incremented by 8
 ;;   x14 : incremented by 8
 ;;   x15 : trashed
+;;   x17 : trashed if WRITE_BARRIER_CHECK
 ;;
     LEAF_ENTRY RhpByRefAssignRefArm64, _TEXT
         ldr     x15, [x13]

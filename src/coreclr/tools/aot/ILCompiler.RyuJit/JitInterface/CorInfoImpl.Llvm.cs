@@ -12,6 +12,9 @@ namespace Internal.JitInterface
     {
         private MethodDebugInformation _debugInformation;
 
+        [DllImport(JitLibrary)]
+        private extern static void jitShutdown([MarshalAs(UnmanagedType.I1)] bool processIsTerminating);
+
         [UnmanagedCallersOnly]
         public static void addCodeReloc(IntPtr thisHandle, void* handle)
         {

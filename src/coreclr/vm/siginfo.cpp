@@ -989,7 +989,8 @@ TypeHandle SigPointer::GetTypeHandleThrowing(
                  BOOL                        dropGenericArgumentLevel/*=FALSE*/,
                  const Substitution *        pSubst/*=NULL*/,
                  // ZapSigContext is only set when decoding zapsigs
-                 const ZapSig::Context *     pZapSigContext) const
+                 const ZapSig::Context *     pZapSigContext,
+                 MethodTable *               pMTInterfaceMapOwner) const
 {
     CONTRACT(TypeHandle)
     {
@@ -1414,20 +1415,29 @@ TypeHandle SigPointer::GetTypeHandleThrowing(
                 break;
             }
 
-            // Group together the current signature type context and substitution chain, which
-            // we may later use to instantiate constraints of type arguments that turn out to be
-            // typespecs, i.e. generic types.
-            InstantiationContext instContext(pTypeContext, pSubst);
+            Instantiation genericLoadInst(thisinst, ntypars);
 
-            // Now make the instantiated type
-            // The class loader will check the arity
-            // When we know it was correctly computed at NGen time, we ask the class loader to skip that check.
-            thRet = (ClassLoader::LoadGenericInstantiationThrowing(pGenericTypeModule,
-                                                                   tkGenericType,
-                                                                   Instantiation(thisinst, ntypars),
-                                                                   fLoadTypes, level,
-                                                                   &instContext,
-                                                                   pZapSigContext && pZapSigContext->externalTokens == ZapSig::NormalTokens));
+            if (pMTInterfaceMapOwner != NULL && genericLoadInst.ContainsAllOneType(pMTInterfaceMapOwner))
+            {
+                thRet = ClassLoader::LoadTypeDefThrowing(pGenericTypeModule, tkGenericType, ClassLoader::ThrowIfNotFound, ClassLoader::PermitUninstDefOrRef, 0, level);
+            }
+            else
+            {
+                // Group together the current signature type context and substitution chain, which
+                // we may later use to instantiate constraints of type arguments that turn out to be
+                // typespecs, i.e. generic types.
+                InstantiationContext instContext(pTypeContext, pSubst);
+
+                // Now make the instantiated type
+                // The class loader will check the arity
+                // When we know it was correctly computed at NGen time, we ask the class loader to skip that check.
+                thRet = (ClassLoader::LoadGenericInstantiationThrowing(pGenericTypeModule,
+                                                                    tkGenericType,
+                                                                    genericLoadInst,
+                                                                    fLoadTypes, level,
+                                                                    &instContext,
+                                                                    pZapSigContext && pZapSigContext->externalTokens == ZapSig::NormalTokens));
+            }
             break;
         }
 
@@ -1438,21 +1448,6 @@ TypeHandle SigPointer::GetTypeHandleThrowing(
             mdTypeRef typeToken = 0;
 
             IfFailThrowBF(psig.GetToken(&typeToken), BFA_BAD_SIGNATURE, pOrigModule);
-
-#if defined(FEATURE_NATIVE_IMAGE_GENERATION) && !defined(DACCESS_COMPILE)
-            if ((pOrigModule != pModule) && (pZapSigContext->externalTokens == ZapSig::IbcTokens))
-            {
-                // ibcExternalType tokens are actually encoded as mdtTypeDef tokens in the signature
-                RID            typeRid  = RidFromToken(typeToken);
-                idExternalType ibcToken = RidToToken(typeRid, ibcExternalType);
-                typeToken = pOrigModule->LookupIbcTypeToken(pModule, ibcToken);
-
-                if (IsNilToken(typeToken))
-                {
-                    COMPlusThrow(kTypeLoadException, IDS_IBC_MISSING_EXTERNAL_TYPE);
-                }
-            }
-#endif
 
             if ((TypeFromToken(typeToken) != mdtTypeRef) && (TypeFromToken(typeToken) != mdtTypeDef))
                 THROW_BAD_FORMAT(BFA_UNEXPECTED_TOKEN_AFTER_CLASSVALTYPE, pOrigModule);
@@ -1733,21 +1728,6 @@ TypeHandle SigPointer::GetGenericInstType(Module *        pModule,
     {
         mdToken typeToken = mdTypeRefNil;
         IfFailThrowBF(GetToken(&typeToken), BFA_BAD_SIGNATURE, pOrigModule);
-
-#if defined(FEATURE_NATIVE_IMAGE_GENERATION) && !defined(DACCESS_COMPILE)
-        if ((pOrigModule != pModule) && (pZapSigContext->externalTokens == ZapSig::IbcTokens))
-        {
-            // ibcExternalType tokens are actually encoded as mdtTypeDef tokens in the signature
-            RID            typeRid  = RidFromToken(typeToken);
-            idExternalType ibcToken = RidToToken(typeRid, ibcExternalType);
-            typeToken = pOrigModule->LookupIbcTypeToken(pModule, ibcToken);
-
-            if (IsNilToken(typeToken))
-            {
-                COMPlusThrow(kTypeLoadException, IDS_IBC_MISSING_EXTERNAL_TYPE);
-            }
-        }
-#endif
 
         if ((TypeFromToken(typeToken) != mdtTypeRef) && (TypeFromToken(typeToken) != mdtTypeDef))
             THROW_BAD_FORMAT(BFA_UNEXPECTED_TOKEN_AFTER_GENINST, pOrigModule);
@@ -4910,7 +4890,6 @@ void PromoteCarefully(promote_func   fn,
         return;
     }
 
-#ifndef CROSSGEN_COMPILE
     if (sc->promotion)
     {
         LoaderAllocator*pLoaderAllocator = LoaderAllocator::GetAssociatedLoaderAllocator_Unsafe(PTR_TO_TADDR(*ppObj));
@@ -4919,7 +4898,6 @@ void PromoteCarefully(promote_func   fn,
             GcReportLoaderAllocator(fn, sc, pLoaderAllocator);
         }
     }
-#endif // CROSSGEN_COMPILE
 #endif // !defined(DACCESS_COMPILE)
 
     (*fn) (ppObj, sc, flags);
@@ -5238,181 +5216,6 @@ BOOL MetaSig::IsReturnTypeVoid() const
 }
 
 #ifndef DACCESS_COMPILE
-
-namespace
-{
-    HRESULT GetNameOfTypeRefOrDef(
-        _In_ const Module *pModule,
-        _In_ mdToken token,
-        _Out_ LPCSTR *namespaceOut,
-        _Out_ LPCSTR *nameOut)
-    {
-        STANDARD_VM_CONTRACT;
-
-        IMDInternalImport *pInternalImport = pModule->GetMDImport();
-        if (TypeFromToken(token) == mdtTypeDef)
-        {
-            HRESULT hr = pInternalImport->GetNameOfTypeDef(token, nameOut, namespaceOut);
-            if (FAILED(hr))
-                return hr;
-        }
-        else if (TypeFromToken(token) == mdtTypeRef)
-        {
-            HRESULT hr = pInternalImport->GetNameOfTypeRef(token, namespaceOut, nameOut);
-            if (FAILED(hr))
-                return hr;
-        }
-        else
-        {
-            return E_INVALIDARG;
-        }
-
-        return S_OK;
-    }
-
-    HRESULT GetNameOfTypeRefOrDef(
-        _In_ DynamicResolver *pResolver,
-        _In_ mdToken token,
-        _Out_ LPCSTR *namespaceOut,
-        _Out_ LPCSTR *nameOut)
-    {
-        STANDARD_VM_CONTRACT;
-
-        TypeHandle type;
-        MethodDesc* pMD;
-        FieldDesc* pFD;
-
-        pResolver->ResolveToken(token, &type, &pMD, &pFD);
-
-        _ASSERTE(!type.IsNull());
-
-        *nameOut = type.GetMethodTable()->GetFullyQualifiedNameInfo(namespaceOut);
-
-        return S_OK;
-    }
-
-    HRESULT GetNameOfTypeRefOrDef(
-        _In_ CORINFO_MODULE_HANDLE pModule,
-        _In_ mdToken token,
-        _Out_ LPCSTR *namespaceOut,
-        _Out_ LPCSTR *nameOut)
-    {
-        STANDARD_VM_CONTRACT;
-
-        if (IsDynamicScope(pModule))
-        {
-            return GetNameOfTypeRefOrDef(GetDynamicResolver(pModule), token, namespaceOut, nameOut);
-        }
-        else
-        {
-            return GetNameOfTypeRefOrDef(GetModule(pModule), token, namespaceOut, nameOut);
-        }
-    }
-}
-
-
-//----------------------------------------------------------
-// Returns the unmanaged calling convention.
-//----------------------------------------------------------
-/*static*/
-HRESULT
-MetaSig::TryGetUnmanagedCallingConventionFromModOpt(
-    _In_ CORINFO_MODULE_HANDLE pModule,
-    _In_ PCCOR_SIGNATURE pSig,
-    _In_ ULONG cSig,
-    _Out_ CorInfoCallConvExtension *callConvOut,
-    _Out_ bool* suppressGCTransitionOut,
-    _Out_ UINT *errorResID)
-{
-    CONTRACTL
-    {
-        STANDARD_VM_CHECK;
-        PRECONDITION(callConvOut != NULL);
-        PRECONDITION(suppressGCTransitionOut != NULL);
-        PRECONDITION(errorResID != NULL);
-    }
-    CONTRACTL_END
-
-    *suppressGCTransitionOut = false;
-    HRESULT hr;
-
-    // Instantiations aren't relevant here
-    SigPointer sigPtr(pSig, cSig);
-    uint32_t sigCallConv = 0;
-    IfFailRet(sigPtr.GetCallingConvInfo(&sigCallConv)); // call conv
-    if (sigCallConv & IMAGE_CEE_CS_CALLCONV_GENERIC)
-    {
-        IfFailRet(sigPtr.GetData(NULL)); // type param count
-    }
-    IfFailRet(sigPtr.GetData(NULL)); // arg count
-
-    PCCOR_SIGNATURE pWalk = sigPtr.GetPtr();
-    _ASSERTE(pWalk <= pSig + cSig);
-
-    *callConvOut = CorInfoCallConvExtension::Managed;
-    bool found = false;
-    while ((pWalk < (pSig + cSig)) && ((*pWalk == ELEMENT_TYPE_CMOD_OPT) || (*pWalk == ELEMENT_TYPE_CMOD_REQD)))
-    {
-        BOOL fIsOptional = (*pWalk == ELEMENT_TYPE_CMOD_OPT);
-
-        pWalk++;
-        if (pWalk + CorSigUncompressedDataSize(pWalk) > pSig + cSig)
-        {
-            *errorResID = BFA_BAD_SIGNATURE;
-            return COR_E_BADIMAGEFORMAT; // Bad formatting
-        }
-
-        mdToken tk;
-        pWalk += CorSigUncompressToken(pWalk, &tk);
-
-        if (!fIsOptional)
-            continue;
-
-        LPCSTR typeNamespace;
-        LPCSTR typeName;
-
-        // Check for CallConv types specified in modopt
-        if (FAILED(GetNameOfTypeRefOrDef(pModule, tk, &typeNamespace, &typeName)))
-            continue;
-
-        if (::strcmp(typeNamespace, CMOD_CALLCONV_NAMESPACE) != 0)
-            continue;
-
-        if (::strcmp(typeName, CMOD_CALLCONV_NAME_SUPPRESSGCTRANSITION) == 0)
-        {
-            *suppressGCTransitionOut = true;
-            continue;
-        }
-
-        const struct {
-            LPCSTR name;
-            CorInfoCallConvExtension value;
-        } knownCallConvs[] = {
-            { CMOD_CALLCONV_NAME_CDECL,     CorInfoCallConvExtension::C },
-            { CMOD_CALLCONV_NAME_STDCALL,   CorInfoCallConvExtension::Stdcall },
-            { CMOD_CALLCONV_NAME_THISCALL,  CorInfoCallConvExtension::Thiscall },
-            { CMOD_CALLCONV_NAME_FASTCALL,  CorInfoCallConvExtension::Fastcall } };
-
-        for (const auto &callConv : knownCallConvs)
-        {
-            // Look for a recognized calling convention in metadata.
-            if (::strcmp(typeName, callConv.name) == 0)
-            {
-                // Error if there are multiple recognized calling conventions
-                if (found)
-                {
-                    *errorResID = IDS_EE_MULTIPLE_CALLCONV_UNSUPPORTED;
-                    return COR_E_INVALIDPROGRAM;
-                }
-
-                *callConvOut = callConv.value;
-                found = true;
-            }
-        }
-    }
-
-    return found ? S_OK : S_FALSE;
-}
 
 //---------------------------------------------------------------------------------------
 //

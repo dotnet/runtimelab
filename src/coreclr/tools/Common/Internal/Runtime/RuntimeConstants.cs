@@ -22,8 +22,8 @@ namespace Internal.Runtime
     {
         /// <summary>
         /// Flag set if the corresponding GCStatic entry has not yet been initialized and
-        /// the corresponding EEType pointer has been changed into a instance pointer of
-        /// that EEType.
+        /// the corresponding MethodTable pointer has been changed into a instance pointer of
+        /// that MethodTable.
         /// </summary>
         public const int Uninitialized = 0x1;
 
@@ -42,5 +42,33 @@ namespace Internal.Runtime
         /// Maximum allowable size for array element types.
         /// </summary>
         public const int MaxSizeForValueClassInArray = 0xFFFF;
+    }
+
+    // keep in sync with GC_ALLOC_FLAGS in gcinterface.h
+    internal enum GC_ALLOC_FLAGS
+    {
+        GC_ALLOC_NO_FLAGS = 0,
+        GC_ALLOC_ZEROING_OPTIONAL = 16,
+        GC_ALLOC_PINNED_OBJECT_HEAP = 64,
+    }
+
+    internal static class SpecialDispatchMapSlot
+    {
+        public const ushort Diamond = 0xFFFE;
+        public const ushort Reabstraction = 0xFFFF;
+    }
+
+    internal static class SpecialGVMInterfaceEntry
+    {
+        public const uint Diamond = 0xFFFFFFFF;
+        public const uint Reabstraction = 0xFFFFFFFE;
+    }
+
+    internal enum RuntimeHelperKind
+    {
+        AllocateObject,
+        IsInst,
+        CastClass,
+        AllocateArray,
     }
 }

@@ -199,7 +199,7 @@ namespace System.Reflection.Runtime.TypeInfos
             return defaultMemberName != null ? GetMember(defaultMemberName) : Array.Empty<MemberInfo>();
         }
 
-        public sealed override InterfaceMapping GetInterfaceMap(Type interfaceType)
+        public sealed override InterfaceMapping GetInterfaceMap([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicMethods | DynamicallyAccessedMemberTypes.NonPublicMethods)] Type interfaceType)
         {
             // restrictions and known limitations compared to CoreCLR:
             // - only interface.GetMethods() reflection visible interface methods are returned
@@ -254,6 +254,9 @@ namespace System.Reflection.Runtime.TypeInfos
 
         public sealed override IEnumerable<Type> ImplementedInterfaces
         {
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces)]
+            [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2075:UnrecognizedReflectionPattern",
+                Justification = "Interface lists on base types will be preserved same as for the current type")]
             get
             {
                 LowLevelListWithIList<Type> result = new LowLevelListWithIList<Type>();
@@ -422,6 +425,7 @@ namespace System.Reflection.Runtime.TypeInfos
             throw new InvalidOperationException(SR.InvalidOperation_NotGenericType);
         }
 
+        [RequiresDynamicCode("The native code for the array might not be available at runtime.")]
         public sealed override Type MakeArrayType()
         {
 #if ENABLE_REFLECTION_TRACE
@@ -432,9 +436,10 @@ namespace System.Reflection.Runtime.TypeInfos
             // Do not implement this as a call to MakeArrayType(1) - they are not interchangable. MakeArrayType() returns a
             // vector type ("SZArray") while MakeArrayType(1) returns a multidim array of rank 1. These are distinct types
             // in the ECMA model and in CLR Reflection.
-            return this.GetArrayType();
+            return this.GetArrayTypeWithTypeHandle();
         }
 
+        [RequiresDynamicCode("The native code for the array might not be available at runtime.")]
         public sealed override Type MakeArrayType(int rank)
         {
 #if ENABLE_REFLECTION_TRACE
@@ -444,7 +449,7 @@ namespace System.Reflection.Runtime.TypeInfos
 
             if (rank <= 0)
                 throw new IndexOutOfRangeException();
-            return this.GetMultiDimArrayType(rank);
+            return this.GetMultiDimArrayTypeWithTypeHandle(rank);
         }
 
         public sealed override Type MakeByRefType()
@@ -456,6 +461,8 @@ namespace System.Reflection.Runtime.TypeInfos
             return this.GetByRefType();
         }
 
+        [RequiresDynamicCode("The native code for this instantiation might not be available at runtime.")]
+        [RequiresUnreferencedCode("If some of the generic arguments are annotated (either with DynamicallyAccessedMembersAttribute, or generic constraints), trimming can't validate that the requirements of those annotations are met.")]
         public sealed override Type MakeGenericType(params Type[] typeArguments)
         {
 #if ENABLE_REFLECTION_TRACE
@@ -471,7 +478,7 @@ namespace System.Reflection.Runtime.TypeInfos
 
             // We intentionally don't validate the number of arguments or their suitability to the generic type's constraints.
             // In a pay-for-play world, this can cause needless MissingMetadataExceptions. There is no harm in creating
-            // the Type object for an inconsistent generic type - no EEType will ever match it so any attempt to "invoke" it
+            // the Type object for an inconsistent generic type - no MethodTable will ever match it so any attempt to "invoke" it
             // will throw an exception.
             bool foundSignatureType = false;
             RuntimeTypeInfo[] runtimeTypeArguments = new RuntimeTypeInfo[typeArguments.Length];
@@ -509,7 +516,7 @@ namespace System.Reflection.Runtime.TypeInfos
                     throw new TypeLoadException(SR.CannotUseByRefLikeTypeInInstantiation);
             }
 
-            return this.GetConstructedGenericType(runtimeTypeArguments);
+            return this.GetConstructedGenericTypeWithTypeHandle(runtimeTypeArguments);
         }
 
         public sealed override Type MakePointerType()
@@ -569,15 +576,16 @@ namespace System.Reflection.Runtime.TypeInfos
                 if (!typeHandle.IsNull())
                     return typeHandle;
 
-                // If a constructed type doesn't have an type handle, it's either because the reducer tossed it (in which case,
-                // we would thrown a MissingMetadataException when attempting to construct the type) or because one of
-                // component types contains open type parameters. Since we eliminated the first case, it must be the second.
-                // Throwing PlatformNotSupported since the desktop does, in fact, create type handles for open types.
-                if (HasElementType || IsConstructedGenericType || IsGenericParameter)
+                // If a type doesn't have a type handle, it's either because we optimized away the MethodTable
+                // but the reflection metadata had to be kept around, or because we have an open type somewhere
+                // (open types never get EETypes). Open types are PlatformNotSupported and there's nothing
+                // that can be done about that. Missing MethodTable can be fixed by helping the AOT compiler
+                // with some hints.
+                if (!IsGenericTypeDefinition && ContainsGenericParameters)
                     throw new PlatformNotSupportedException(SR.PlatformNotSupported_NoTypeHandleForOpenTypes);
 
                 // If got here, this is a "plain old type" that has metadata but no type handle. We can get here if the only
-                // representation of the type is in the native metadata and there's no EEType at the runtime side.
+                // representation of the type is in the native metadata and there's no MethodTable at the runtime side.
                 // If you squint hard, this is a missing metadata situation - the metadata is missing on the runtime side - and
                 // the action for the user to take is the same: go mess with RD.XML.
                 throw ReflectionCoreExecution.ExecutionDomain.CreateMissingMetadataException(this);

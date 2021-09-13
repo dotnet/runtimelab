@@ -1,6 +1,7 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 
 namespace System.Reflection.Emit
@@ -20,6 +21,7 @@ namespace System.Reflection.Emit
             }
         }
 
+        [RequiresAssemblyFiles(UnknownStringMessageInRAF)]
         public override string FullyQualifiedName
         {
             get
@@ -28,6 +30,7 @@ namespace System.Reflection.Emit
             }
         }
 
+        [RequiresAssemblyFiles(UnknownStringMessageInRAF)]
         public override string Name
         {
             get
@@ -65,11 +68,13 @@ namespace System.Reflection.Emit
             return default;
         }
 
+        [RequiresUnreferencedCode("P/Invoke marshalling may dynamically access members that could be trimmed.")]
         public MethodBuilder DefinePInvokeMethod(string name, string dllName, MethodAttributes attributes, CallingConventions callingConvention, Type returnType, Type[] parameterTypes, CallingConvention nativeCallConv, CharSet nativeCharSet)
         {
             return default;
         }
 
+        [RequiresUnreferencedCode("P/Invoke marshalling may dynamically access members that could be trimmed.")]
         public MethodBuilder DefinePInvokeMethod(string name, string dllName, string entryName, MethodAttributes attributes, CallingConventions callingConvention, Type returnType, Type[] parameterTypes, CallingConvention nativeCallConv, CharSet nativeCharSet)
         {
             return default;
@@ -85,27 +90,27 @@ namespace System.Reflection.Emit
             return default;
         }
 
-        public TypeBuilder DefineType(string name, TypeAttributes attr, Type parent)
+        public TypeBuilder DefineType(string name, TypeAttributes attr, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type parent)
         {
             return default;
         }
 
-        public TypeBuilder DefineType(string name, TypeAttributes attr, Type parent, int typesize)
+        public TypeBuilder DefineType(string name, TypeAttributes attr, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type parent, int typesize)
         {
             return default;
         }
 
-        public TypeBuilder DefineType(string name, TypeAttributes attr, Type parent, PackingSize packsize)
+        public TypeBuilder DefineType(string name, TypeAttributes attr, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type parent, PackingSize packsize)
         {
             return default;
         }
 
-        public TypeBuilder DefineType(string name, TypeAttributes attr, Type parent, PackingSize packingSize, int typesize)
+        public TypeBuilder DefineType(string name, TypeAttributes attr, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type parent, PackingSize packingSize, int typesize)
         {
             return default;
         }
 
-        public TypeBuilder DefineType(string name, TypeAttributes attr, Type parent, Type[] interfaces)
+        public TypeBuilder DefineType(string name, TypeAttributes attr, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type parent, Type[] interfaces)
         {
             return default;
         }

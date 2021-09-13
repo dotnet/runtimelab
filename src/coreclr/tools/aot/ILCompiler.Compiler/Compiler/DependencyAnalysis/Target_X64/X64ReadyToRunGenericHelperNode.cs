@@ -107,7 +107,6 @@ namespace ILCompiler.DependencyAnalysis
 
                         AddrMode loadFromResult = new AddrMode(encoder.TargetRegister.Result, null, 0, 0, AddrModeSize.Int64);
                         encoder.EmitMOV(encoder.TargetRegister.Result, ref loadFromResult);
-                        encoder.EmitMOV(encoder.TargetRegister.Result, ref loadFromResult);
 
                         if (!factory.PreinitializationManager.HasLazyStaticConstructor(target))
                         {
@@ -231,7 +230,7 @@ namespace ILCompiler.DependencyAnalysis
     {
         protected override void EmitLoadGenericContext(NodeFactory factory, ref X64Emitter encoder, bool relocsOnly)
         {
-            // We start with context register pointing to the EEType
+            // We start with context register pointing to the MethodTable
             Register contextRegister = GetContextRegister(ref encoder);
 
             // Locate the VTable slot that points to the dictionary

@@ -19,15 +19,14 @@
 
 #include <mono/metadata/abi-details.h>
 #include <mono/arch/x86/x86-codegen.h>
-#include <mono/metadata/appdomain.h>
 #include <mono/metadata/tabledefs.h>
 #include <mono/metadata/threads.h>
 #include <mono/metadata/debug-helpers.h>
 #include <mono/metadata/exception.h>
 #include <mono/metadata/gc-internals.h>
 #include <mono/metadata/mono-debug.h>
+#include <mono/metadata/tokentype.h>
 #include <mono/utils/mono-mmap.h>
-#include <mono/utils/mono-state.h>
 
 #include "mini.h"
 #include "mini-x86.h"
@@ -65,8 +64,7 @@ static LONG CALLBACK seh_unhandled_exception_filter(EXCEPTION_POINTERS* ep)
 		return (*mono_old_win_toplevel_exception_filter)(ep);
 	}
 #endif
-	if (mono_dump_start ())
-		mono_handle_native_crash (mono_get_signame (SIGSEGV), NULL, NULL);
+	mono_handle_native_crash (mono_get_signame (SIGSEGV), NULL, NULL);
 
 	return EXCEPTION_CONTINUE_SEARCH;
 }
@@ -142,7 +140,6 @@ mono_win32_get_handle_stackoverflow (void)
 static void 
 win32_handle_stack_overflow (EXCEPTION_POINTERS* ep, CONTEXT *sctx)
 {
-	MonoDomain *domain = mono_domain_get ();
 	MonoJitInfo rji;
 	MonoJitTlsData *jit_tls = mono_tls_get_jit_tls ();
 	MonoLMF *lmf = jit_tls->lmf;		
@@ -165,7 +162,7 @@ win32_handle_stack_overflow (EXCEPTION_POINTERS* ep, CONTEXT *sctx)
 	do {
 		MonoContext new_ctx;
 
-		mono_arch_unwind_frame (domain, jit_tls, &rji, &ctx, &new_ctx, &lmf, NULL, &frame);
+		mono_arch_unwind_frame (jit_tls, &rji, &ctx, &new_ctx, &lmf, NULL, &frame);
 		if (!frame.ji) {
 			g_warning ("Exception inside function without unwind info");
 			g_assert_not_reached ();
@@ -802,11 +799,11 @@ mono_arch_exceptions_init (void)
  * See exceptions-amd64.c for docs.
  */
 gboolean
-mono_arch_unwind_frame (MonoDomain *domain, MonoJitTlsData *jit_tls, 
-							 MonoJitInfo *ji, MonoContext *ctx, 
-							 MonoContext *new_ctx, MonoLMF **lmf,
-							 host_mgreg_t **save_locations,
-							 StackFrameInfo *frame)
+mono_arch_unwind_frame (MonoJitTlsData *jit_tls, 
+						MonoJitInfo *ji, MonoContext *ctx, 
+						MonoContext *new_ctx, MonoLMF **lmf,
+						host_mgreg_t **save_locations,
+						StackFrameInfo *frame)
 {
 	gpointer ip = MONO_CONTEXT_GET_IP (ctx);
 
@@ -866,7 +863,7 @@ mono_arch_unwind_frame (MonoDomain *domain, MonoJitTlsData *jit_tls,
 	} else if (*lmf) {
 		g_assert ((((gsize)(*lmf)->previous_lmf) & 2) == 0);
 
-		if ((ji = mini_jit_info_table_find (domain, (gpointer)(uintptr_t)(*lmf)->eip, NULL))) {
+		if ((ji = mini_jit_info_table_find ((gpointer)(uintptr_t)(*lmf)->eip))) {
 			frame->ji = ji;
 		} else {
 			if (!(*lmf)->method)
@@ -1071,9 +1068,8 @@ restore_soft_guard_pages (void)
 		mono_mprotect (jit_tls->stack_ovf_guard_base, jit_tls->stack_ovf_guard_size, MONO_MMAP_NONE);
 
 	if (jit_tls->stack_ovf_pending) {
-		MonoDomain *domain = mono_domain_get ();
 		jit_tls->stack_ovf_pending = 0;
-		return (MonoObject *) domain->stack_overflow_ex;
+		return (MonoObject *) mini_get_stack_overflow_ex ();
 	}
 	return NULL;
 }
@@ -1119,7 +1115,7 @@ mono_arch_handle_altstack_exception (void *sigctx, MONO_SIG_HANDLER_INFO_TYPE *s
 #if defined (MONO_ARCH_USE_SIGACTION) && !defined (MONO_CROSS_COMPILE)
 	MonoException *exc = NULL;
 	ucontext_t *ctx = (ucontext_t*)sigctx;
-	MonoJitInfo *ji = mini_jit_info_table_find (mono_domain_get (), (gpointer)UCONTEXT_REG_EIP (ctx), NULL);
+	MonoJitInfo *ji = mini_jit_info_table_find ((gpointer)UCONTEXT_REG_EIP (ctx));
 	gpointer *sp;
 	int frame_size;
 
@@ -1129,19 +1125,17 @@ mono_arch_handle_altstack_exception (void *sigctx, MONO_SIG_HANDLER_INFO_TYPE *s
 	 */
 	if (!ji && fault_addr == (gpointer)UCONTEXT_REG_EIP (ctx)) {
 		glong *sp = (glong*)UCONTEXT_REG_ESP (ctx);
-		ji = mini_jit_info_table_find (mono_domain_get (), (gpointer)sp [0], NULL);
+		ji = mini_jit_info_table_find ((gpointer)sp [0]);
 		if (ji)
 			UCONTEXT_REG_EIP (ctx) = sp [0];
 	}
 	if (stack_ovf)
-		exc = mono_domain_get ()->stack_overflow_ex;
+		exc = mini_get_stack_overflow_ex ();
 	if (!ji) {
 		MonoContext mctx;
 		mono_sigctx_to_monoctx (sigctx, &mctx);
-		if (mono_dump_start ())
-			mono_handle_native_crash (mono_get_signame (SIGSEGV), &mctx, siginfo);
-		else
-			abort ();
+		mono_handle_native_crash (mono_get_signame (SIGSEGV), &mctx, siginfo);
+		abort ();
 	}
 	/* setup a call frame on the real stack so that control is returned there
 	 * and exception handling can continue.

@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Collections.Generic;
 using System.Reflection.Runtime.BindingFlagSupport;
 
@@ -9,7 +10,10 @@ namespace System.Reflection.Runtime.TypeInfos
 {
     internal abstract partial class RuntimeTypeInfo
     {
+        [DynamicallyAccessedMembers(GetAllMembers)]
         public sealed override MemberInfo[] GetMembers(BindingFlags bindingAttr) => GetMemberImpl(null, MemberTypes.All, bindingAttr);
+
+        [DynamicallyAccessedMembers(GetAllMembers)]
         public sealed override MemberInfo[] GetMember(string name, BindingFlags bindingAttr)
         {
             if (name == null)
@@ -17,6 +21,7 @@ namespace System.Reflection.Runtime.TypeInfos
             return GetMemberImpl(name, MemberTypes.All, bindingAttr);
         }
 
+        [DynamicallyAccessedMembers(GetAllMembers)]
         public sealed override MemberInfo[] GetMember(string name, MemberTypes type, BindingFlags bindingAttr)
         {
             if (name == null)
@@ -112,5 +117,53 @@ namespace System.Reflection.Runtime.TypeInfos
             // Desktop compat: If we got here, than one MemberType was requested. Return null to signal GetMember() to keep querying the other member types and concatenate the results.
             return null;
         }
+
+        public sealed override MemberInfo GetMemberWithSameMetadataDefinitionAs(MemberInfo member)
+        {
+            if (member is null)
+                throw new ArgumentNullException(nameof(member));
+
+            MemberInfo result = member.MemberType switch
+            {
+                MemberTypes.Method => QueryMemberWithSameMetadataDefinitionAs<MethodInfo>(member),
+                MemberTypes.Constructor => QueryMemberWithSameMetadataDefinitionAs<ConstructorInfo>(member),
+                MemberTypes.Property => QueryMemberWithSameMetadataDefinitionAs<PropertyInfo>(member),
+                MemberTypes.Field => QueryMemberWithSameMetadataDefinitionAs<FieldInfo>(member),
+                MemberTypes.Event => QueryMemberWithSameMetadataDefinitionAs<EventInfo>(member),
+                MemberTypes.NestedType => QueryMemberWithSameMetadataDefinitionAs<Type>(member),
+                _ => null,
+            };
+
+            if (result is null)
+                throw new ArgumentException(SR.Format(SR.Arg_MemberInfoNotFound, member.Name), nameof(member));
+
+            return result;
+        }
+
+        private M QueryMemberWithSameMetadataDefinitionAs<M>(MemberInfo member) where M : MemberInfo
+        {
+            QueryResult<M> members = Query<M>(member.Name, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static);
+            foreach (M candidate in members)
+            {
+                if (candidate.HasSameMetadataDefinitionAs(member))
+                    return candidate;
+            }
+            return null;
+        }
+
+        // DynamicallyAccessedMemberTypes.All keeps more data than what a member can use:
+        // - Keeps info about interfaces
+        // - Complete Nested types (nested type body and all its members including other nested types)
+        // - Public and private base type information
+        // Instead, the GetAllMembers constant will keep:
+        // - The nested types body but not the members
+        // - Base type public information but not private information. This information should not
+        // be visible via the derived type and is ignored by reflection
+        internal const DynamicallyAccessedMemberTypes GetAllMembers = DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.NonPublicFields |
+            DynamicallyAccessedMemberTypes.PublicMethods | DynamicallyAccessedMemberTypes.NonPublicMethods |
+            DynamicallyAccessedMemberTypes.PublicEvents | DynamicallyAccessedMemberTypes.NonPublicEvents |
+            DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties |
+            DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.NonPublicConstructors |
+            DynamicallyAccessedMemberTypes.PublicNestedTypes | DynamicallyAccessedMemberTypes.NonPublicNestedTypes;
     }
 }

@@ -10,8 +10,8 @@ namespace System.Runtime
 {
     internal static unsafe class DispatchResolve
     {
-        public static IntPtr FindInterfaceMethodImplementationTarget(EEType* pTgtType,
-                                                                 EEType* pItfType,
+        public static IntPtr FindInterfaceMethodImplementationTarget(MethodTable* pTgtType,
+                                                                 MethodTable* pItfType,
                                                                  ushort itfSlotNumber)
         {
             DynamicModule* dynamicModule = pTgtType->DynamicModule;
@@ -19,13 +19,13 @@ namespace System.Runtime
             // Use the dynamic module resolver if it's present
             if (dynamicModule != null)
             {
-                delegate*<EEType*, EEType*, ushort, IntPtr> resolver = dynamicModule->DynamicTypeSlotDispatchResolve;
+                delegate*<MethodTable*, MethodTable*, ushort, IntPtr> resolver = dynamicModule->DynamicTypeSlotDispatchResolve;
                 if (resolver != null)
                     return resolver(pTgtType, pItfType, itfSlotNumber);
             }
 
             // Start at the current type and work up the inheritance chain
-            EEType* pCur = pTgtType;
+            MethodTable* pCur = pTgtType;
 
             if (pItfType->IsCloned)
                 pItfType = pItfType->CanonicalEEType;
@@ -42,6 +42,14 @@ namespace System.Runtime
                         // true virtual - need to get the slot from the target type in case it got overridden
                         targetMethod = pTgtType->GetVTableStartAddress()[implSlotNumber];
                     }
+                    else if (implSlotNumber == SpecialDispatchMapSlot.Reabstraction)
+                    {
+                        throw pTgtType->GetClasslibException(ExceptionIDs.EntrypointNotFound);
+                    }
+                    else if (implSlotNumber == SpecialDispatchMapSlot.Diamond)
+                    {
+                        throw pTgtType->GetClasslibException(ExceptionIDs.AmbiguousImplementation);
+                    }
                     else
                     {
                         // sealed virtual - need to get the slot form the implementing type, because
@@ -55,136 +63,12 @@ namespace System.Runtime
                 else
                     pCur = pCur->NonArrayBaseType;
             }
-
-            // We couldn't find an implementation on the current type or the inheritance chain.
-            // There could still be a default interface implementation - look for that on each
-            // of the implemented interfaces.
-            IntPtr defaultTargetMethod = FindDefaultInterfaceImpl(pTgtType, pItfType, itfSlotNumber, actuallyCheckVariance: false);
-            if (defaultTargetMethod == IntPtr.Zero)
-            {
-                defaultTargetMethod = FindDefaultInterfaceImpl(pTgtType, pItfType, itfSlotNumber, actuallyCheckVariance: true);
-            }
-
-            return defaultTargetMethod;
-        }
-
-        private static IntPtr FindDefaultInterfaceImpl(EEType* pTgtType,
-            EEType* pItfType,
-            ushort itfSlotNumber,
-            bool actuallyCheckVariance)
-        {
-            // The caller should have canonicalized already
-            Debug.Assert(!pItfType->IsCloned);
-
-            EEType* pItfOpenGenericType = null;
-
-            EETypeRef* pItfInstantiation = null;
-            int itfArity = 0;
-            GenericVariance* pItfVarianceInfo = null;
-
-            bool fCheckVariance = false;
-
-            if (actuallyCheckVariance)
-            {
-                // We would need extra handling here if generic interfaces implemented by arrays get default interface methods
-                // because they and their enumerators have weird variance rules.
-                fCheckVariance = pItfType->HasGenericVariance;
-
-                // If there is no variance checking, there is no operation to perform. (The non-variance check loop
-                // has already completed)
-                if (!fCheckVariance)
-                {
-                    return IntPtr.Zero;
-                }
-
-                pItfOpenGenericType = pItfType->GenericDefinition;
-            }
-
-            EEType* pMostSpecificInterface = null;
-            ushort implSlotNumber = 0;
-            bool diamondCase = false;
-
-            for (ushort interfaceIdx = 0; interfaceIdx < pTgtType->NumInterfaces; interfaceIdx++)
-            {
-                EEType* pCurInterface = pTgtType->InterfaceMap[interfaceIdx].InterfaceType;
-
-                if (pCurInterface == pItfType)
-                {
-                    // Also consider the default interface method implementation on the interface itself
-                    // if we don't have anything else yet.
-                    if (pMostSpecificInterface == null)
-                    {
-                        pMostSpecificInterface = pCurInterface;
-                        implSlotNumber = itfSlotNumber;
-                    }
-                }
-                else if (fCheckVariance && pCurInterface->IsGeneric && pCurInterface->GenericDefinition == pItfOpenGenericType)
-                {
-                    // Also consider the default interface method implementation on the variant interface itself
-                    // if we don't have anything else yet.
-                    if (pMostSpecificInterface == null)
-                    {
-                        if (pItfInstantiation == null)
-                        {
-                            pItfInstantiation = pItfType->GenericArguments;
-                            itfArity = pItfOpenGenericType->GenericArgumentCount;
-                            pItfVarianceInfo = pItfType->GenericVariance;
-                        }
-
-                        // Grab instantiation details for the candidate interface.
-                        EETypeRef* pCurEntryInstantiation = pCurInterface->GenericArguments;
-
-                        // The types represent different instantiations of the same generic type. The
-                        // arity of both had better be the same.
-                        Debug.Assert(itfArity == (int)pCurInterface->GenericArity, "arity mismatch betweeen generic instantiations");
-
-                        if (TypeCast.TypeParametersAreCompatible(itfArity, pCurEntryInstantiation, pItfInstantiation, pItfVarianceInfo, fForceCovariance: false, pVisited: null))
-                        {
-                            pMostSpecificInterface = pCurInterface;
-                            implSlotNumber = itfSlotNumber;
-                        }
-                    }
-                }
-                else if (pCurInterface->HasDispatchMap)
-                {
-                    // If the interface has a dispatch map, it provides default implementations for
-                    // another interface.
-                    ushort implSlotTemp;
-
-                    if (FindImplSlotInSimpleMap(pCurInterface, pItfType, itfSlotNumber, &implSlotTemp, actuallyCheckVariance: fCheckVariance))
-                    {
-                        // This interface implements the method. Is it also most specific?
-                        if (pMostSpecificInterface == null ||
-                            TypeCast.AreTypesAssignable(pCurInterface, pMostSpecificInterface))
-                        {
-                            pMostSpecificInterface = pCurInterface;
-                            implSlotNumber = implSlotTemp;
-                            diamondCase = false;
-                        }
-                        else if (!TypeCast.AreTypesAssignable(pMostSpecificInterface, pCurInterface))
-                        {
-                            diamondCase = true;
-                        }
-                    }
-                }
-            }
-
-            if (diamondCase)
-            {
-                throw pTgtType->GetClasslibException(ExceptionIDs.AmbiguousImplementation);
-            }
-
-            if (pMostSpecificInterface != null)
-            {
-                return pMostSpecificInterface->GetVTableStartAddress()[implSlotNumber];
-            }
-
             return IntPtr.Zero;
         }
 
 
-        private static bool FindImplSlotForCurrentType(EEType* pTgtType,
-                                        EEType* pItfType,
+        private static bool FindImplSlotForCurrentType(MethodTable* pTgtType,
+                                        MethodTable* pItfType,
                                         ushort itfSlotNumber,
                                         ushort* pImplSlotNumber)
         {
@@ -203,36 +87,50 @@ namespace System.Runtime
 
             if (pTgtType->HasDispatchMap)
             {
+                // We first look at non-default implementation. Default implementations are only considered
+                // if the "old algorithm" didn't come up with an answer.
+
+                bool fDoDefaultImplementationLookup = false;
+
                 // For variant interface dispatch, the algorithm is to walk the parent hierarchy, and at each level
                 // attempt to dispatch exactly first, and then if that fails attempt to dispatch variantly. This can
                 // result in interesting behavior such as a derived type only overriding one particular instantiation
                 // and funneling all the dispatches to it, but its the algorithm.
 
+            again:
                 bool fDoVariantLookup = false; // do not check variance for first scan of dispatch map
 
                 fRes = FindImplSlotInSimpleMap(
-                    pTgtType, pItfType, itfSlotNumber, pImplSlotNumber, fDoVariantLookup);
+                    pTgtType, pItfType, itfSlotNumber, pImplSlotNumber, fDoVariantLookup, fDoDefaultImplementationLookup);
 
                 if (!fRes)
                 {
                     fDoVariantLookup = true; // check variance for second scan of dispatch map
                     fRes = FindImplSlotInSimpleMap(
-                     pTgtType, pItfType, itfSlotNumber, pImplSlotNumber, fDoVariantLookup);
+                     pTgtType, pItfType, itfSlotNumber, pImplSlotNumber, fDoVariantLookup, fDoDefaultImplementationLookup);
+                }
+
+                // If we haven't found anything and haven't looked at the default implementations yet, look now
+                if (!fRes && !fDoDefaultImplementationLookup)
+                {
+                    fDoDefaultImplementationLookup = true;
+                    goto again;
                 }
             }
 
             return fRes;
         }
 
-        private static bool FindImplSlotInSimpleMap(EEType* pTgtType,
-                                     EEType* pItfType,
+        private static bool FindImplSlotInSimpleMap(MethodTable* pTgtType,
+                                     MethodTable* pItfType,
                                      uint itfSlotNumber,
                                      ushort* pImplSlotNumber,
-                                     bool actuallyCheckVariance)
+                                     bool actuallyCheckVariance,
+                                     bool checkDefaultImplementations)
         {
             Debug.Assert(pTgtType->HasDispatchMap, "Missing dispatch map");
 
-            EEType* pItfOpenGenericType = null;
+            MethodTable* pItfOpenGenericType = null;
             EETypeRef* pItfInstantiation = null;
             int itfArity = 0;
             GenericVariance* pItfVarianceInfo = null;
@@ -277,13 +175,13 @@ namespace System.Runtime
             }
 
             DispatchMap* pMap = pTgtType->DispatchMap;
-            DispatchMap.DispatchMapEntry* i = (*pMap)[0];
-            DispatchMap.DispatchMapEntry* iEnd = (*pMap)[(int)pMap->NumEntries];
+            DispatchMap.DispatchMapEntry* i = (*pMap)[checkDefaultImplementations ? (int)pMap->NumStandardEntries : 0];
+            DispatchMap.DispatchMapEntry* iEnd = (*pMap)[checkDefaultImplementations ? (int)(pMap->NumStandardEntries + pMap->NumDefaultEntries) : (int)pMap->NumStandardEntries];
             for (; i != iEnd; ++i)
             {
                 if (i->_usInterfaceMethodSlot == itfSlotNumber)
                 {
-                    EEType* pCurEntryType =
+                    MethodTable* pCurEntryType =
                         pTgtType->InterfaceMap[i->_usInterfaceIndex].InterfaceType;
 
                     if (pCurEntryType->IsCloned)
@@ -311,7 +209,7 @@ namespace System.Runtime
                         }
 
                         // Retrieve the unified generic instance for the interface we're looking at in the map.
-                        EEType* pCurEntryGenericType = pCurEntryType->GenericDefinition;
+                        MethodTable* pCurEntryGenericType = pCurEntryType->GenericDefinition;
 
                         // If the generic types aren't the same then the types aren't compatible.
                         if (pItfOpenGenericType != pCurEntryGenericType)

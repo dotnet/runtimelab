@@ -23,11 +23,20 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Include="..\..\Common\Compiler\Logging\CompilerGeneratedState.cs">
+      <Link>Compiler\Logging\CompilerGeneratedState.cs</Link>
+    </Compile>
     <Compile Include="..\..\Common\Compiler\Logging\MessageContainer.cs">
       <Link>Compiler\Logging\MessageContainer.cs</Link>
     </Compile>
     <Compile Include="..\..\Common\Compiler\Logging\MessageOrigin.cs">
       <Link>Compiler\Logging\MessageOrigin.cs</Link>
+    </Compile>
+    <Compile Include="..\..\Common\Compiler\Logging\DocumentationSignatureParser.cs">
+      <Link>Compiler\Logging\DocumentationSignatureParser.cs</Link>
+    </Compile>
+    <Compile Include="..\..\Common\Compiler\Logging\DocumentationSignatureGenerator.PartVisitor.cs">
+      <Link>Compiler\Logging\DocumentationSignatureGenerator.PartVisitor.cs</Link>
     </Compile>
     <Compile Include="..\..\Common\Internal\Runtime\GCDescEncoder.cs">
       <Link>Common\GCDescEncoder.cs</Link>
@@ -167,6 +176,7 @@
     <Compile Include="Compiler\CompilationModuleGroup.Aot.cs" />
     <Compile Include="Compiler\CompilerTypeSystemContext.Aot.cs" />
     <Compile Include="Compiler\CompilerTypeSystemContext.BoxedTypes.cs" />
+    <Compile Include="Compiler\CompilerTypeSystemContext.IntefaceThunks.cs" />
     <Compile Include="Compiler\CompilerTypeSystemContext.Mangling.cs" />
     <Compile Include="Compiler\CompilerTypeSystemContext.Sorting.cs" />
     <Compile Include="Compiler\CompilerGeneratedInteropStubManager.cs" />
@@ -186,18 +196,14 @@
     <Compile Include="Compiler\DependencyAnalysis\DataflowAnalyzedMethodNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\DefaultConstructorMapNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\DelegateMarshallingDataNode.cs" />
+    <Compile Include="Compiler\DependencyAnalysis\DynamicDependencyAttributeAlgorithm.cs" />
     <Compile Include="Compiler\DependencyAnalysis\DynamicInvokeTemplateNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\ExternSymbolsImportedNodeProvider.cs" />
-    <Compile Include="Compiler\DependencyAnalysis\ExternSymbolsWithIndirectionImportedNodeProvider.cs" />
     <Compile Include="Compiler\DependencyAnalysis\IndirectionExtensions.cs" />
     <Compile Include="Compiler\DependencyAnalysis\InterfaceDispatchCellSectionNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\MethodExceptionHandlingInfoNode.cs" />
-    <Compile Include="Compiler\DependencyAnalysis\MrtImportImportedNodeProvider.cs" />
-    <Compile Include="Compiler\DependencyAnalysis\MrtImports.cs" />
-    <Compile Include="Compiler\DependencyAnalysis\MrtProcessedExportAddressTableNode.cs" />
-    <Compile Include="Compiler\DependencyAnalysis\MrtProcessedImportAddressTableNode.cs" />
+    <Compile Include="Compiler\DependencyAnalysis\ObjectGetTypeFlowDependenciesNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\ReflectionMethodBodyScanner.cs" />
-    <Compile Include="Compiler\DependencyAnalysis\RuntimeDecodableJumpStub.cs" />
     <Compile Include="Compiler\DependencyAnalysis\StructMarshallingDataNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\Target_ARM64\ARM64TentativeMethodNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\Target_ARM\ARMTentativeMethodNode.cs" />
@@ -206,15 +212,6 @@
     <Compile Include="Compiler\DependencyAnalysis\TentativeInstanceMethodNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\TentativeMethodNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\VariantInterfaceMethodUseNode.cs" />
-    <Compile Include="Compiler\DependencyAnalysis\WindowsDebugILImagesSection.cs" />
-    <Compile Include="Compiler\DependencyAnalysis\WindowsDebugManagedNativeDictionaryInfoSection.cs" />
-    <Compile Include="Compiler\DependencyAnalysis\WindowsDebugMergedAssemblyRecordsSection.cs" />
-    <Compile Include="Compiler\DependencyAnalysis\WindowsDebugMethodMapSection.cs" />
-    <Compile Include="Compiler\DependencyAnalysis\WindowsDebugMethodInfoSection.cs" />
-    <Compile Include="Compiler\DependencyAnalysis\WindowsDebugNeedTypeIndicesStoreNode.cs" />
-    <Compile Include="Compiler\DependencyAnalysis\WindowsDebugPseudoAssemblySection.cs" />
-    <Compile Include="Compiler\DependencyAnalysis\WindowsDebugTypeRecordsSection.cs" />
-    <Compile Include="Compiler\DependencyAnalysis\WindowsDebugTypeSignatureMapSection.cs" />
     <Compile Include="Compiler\DependencyAnalysis\CustomAttributeBasedDependencyAlgorithm.cs" />
     <Compile Include="Compiler\DependencyAnalysis\FieldMetadataNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\ILScanNodeFactory.cs" />
@@ -236,7 +233,6 @@
     <Compile Include="Compiler\NoMetadataBlockingPolicy.cs" />
     <Compile Include="Compiler\DependencyAnalysis\FrozenObjectNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\GCStaticsPreInitDataNode.cs" />
-    <Compile Include="Compiler\DependencyAnalysis\ImportedGenericDictionaryNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\DynamicInvokeTemplateDataNode.cs" />
     <Compile Include="Compiler\MetadataBlockingPolicy.cs" />
     <Compile Include="Compiler\DependencyAnalysis\MethodMetadataNode.cs" />
@@ -294,8 +290,6 @@
     <Compile Include="Compiler\DependencyAnalysis\GenericDictionaryNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\GenericLookupResult.cs" />
     <Compile Include="Compiler\DependencyAnalysis\IEETypeNode.cs" />
-    <Compile Include="Compiler\DependencyAnalysis\ImportedEETypeSymbolNode.cs" />
-    <Compile Include="Compiler\DependencyAnalysis\ImportedStaticsNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\PInvokeMethodFixupNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\PInvokeModuleFixupNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\ResourceDataNode.cs" />
@@ -329,12 +323,10 @@
     <Compile Include="Compiler\DependencyAnalysis\StaticsInfoHashtableNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\INodeWithCodeInfo.Aot.cs" />
     <Compile Include="Compiler\DependencyAnalysis\INodeWithDebugInfo.cs" />
-    <Compile Include="Compiler\DependencyAnalysis\IExportableSymbolNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\JumpStubNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\NodeFactory.cs" />
     <Compile Include="Compiler\DependencyAnalysis\NodeFactory.GenericLookups.cs" />
     <Compile Include="Compiler\DependencyAnalysis\NodeFactory.NativeLayout.cs" />
-    <Compile Include="Compiler\DependencyAnalysis\NodeFactory.WindowsDebugData.cs" />
     <Compile Include="Compiler\DependencyAnalysis\NonGCStaticsNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\ObjectWriter.cs" />
     <Compile Include="Compiler\DependencyAnalysis\ReadyToRunHelperNode.cs" />
@@ -370,7 +362,6 @@
     <Compile Include="Compiler\LibraryRootProvider.cs" />
     <Compile Include="Compiler\MainMethodRootProvider.cs" />
     <Compile Include="Compiler\ManagedBinaryEmitter.cs" />
-    <Compile Include="Compiler\MergedAssemblyRecords.cs" />
     <Compile Include="Compiler\MetadataManager.cs" />
     <Compile Include="Compiler\InteropStubManager.cs" />
     <Compile Include="Compiler\MethodExtensions.cs" />
@@ -418,14 +409,14 @@
     <Compile Include="..\..\Common\Internal\Runtime\CanonTypeKind.cs">
       <Link>Common\CanonTypeKind.cs</Link>
     </Compile>
-    <Compile Include="..\..\Common\Internal\Runtime\EEType.Constants.cs">
-      <Link>Common\EEType.Constants.cs</Link>
+    <Compile Include="..\..\Common\Internal\Runtime\MethodTable.Constants.cs">
+      <Link>Common\MethodTable.Constants.cs</Link>
     </Compile>
     <Compile Include="..\..\Common\Internal\Runtime\EETypeOptionalFieldsBuilder.cs">
       <Link>Common\EETypeOptionalFieldsBuilder.cs</Link>
     </Compile>
     <Compile Include="..\..\Common\Internal\Runtime\EETypeBuilderHelpers.cs">
-      <Link>Common\EEType.cs</Link>
+      <Link>Common\EETypeBuilderHelpers.cs</Link>
     </Compile>
     <Compile Include="..\..\Common\Internal\Runtime\InterfaceDispatchCellCachePointerFlags.cs">
       <Link>Common\InterfaceDispatchCellCachePointerFlags.cs</Link>
@@ -459,20 +450,23 @@
     <Compile Include="..\..\Common\JitInterface\CorInfoInstructionSet.cs">
       <Link>JitInterface\CorInfoInstructionSet.cs</Link>
     </Compile>
+    <Compile Include="..\..\Common\JitInterface\CorInfoHelpFunc.cs">
+      <Link>JitInterface\CorInfoHelpFunc.cs</Link>
+    </Compile>
+    <Compile Include="..\..\Common\JitInterface\CorInfoTypes.cs">
+      <Link>JitInterface\CorInfoTypes.cs</Link>
+    </Compile>
     <Compile Include="..\..\Common\JitInterface\CorInfoTypes.VarInfo.cs">
       <Link>JitInterface\CorInfoTypes.VarInfo.cs</Link>
     </Compile>
     <Compile Include="..\..\Common\JitInterface\MemoryHelper.cs">
       <Link>JitInterface\MemoryHelper.cs</Link>
     </Compile>
-    <Compile Include="..\..\Common\TypeSystem\TypesDebugInfoWriter\PrimitiveTypeDescriptor.cs">
-      <Link>TypeSystem\TypesDebugInfoWriter\PrimitiveTypeDescriptor.cs</Link>
-    </Compile>
     <Compile Include="..\..\Common\TypeSystem\TypesDebugInfoWriter\TypesDebugInfoWriter.cs">
       <Link>TypeSystem\TypesDebugInfoWriter\TypesDebugInfoWriter.cs</Link>
     </Compile>
-    <Compile Include="..\..\Common\TypeSystem\TypesDebugInfoWriter\DebugInfoWriter.cs">
-      <Link>TypeSystem\TypesDebugInfoWriter\DebugInfoWriter.cs</Link>
+    <Compile Include="..\..\Common\Pgo\PgoFormat.cs">
+      <Link>Pgo\PgoFormat.cs</Link>
     </Compile>
   </ItemGroup>
 </Project>

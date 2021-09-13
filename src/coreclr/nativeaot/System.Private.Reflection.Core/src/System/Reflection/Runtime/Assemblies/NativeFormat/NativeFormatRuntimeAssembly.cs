@@ -5,6 +5,7 @@ using System;
 using System.IO;
 using System.Text;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using System.Reflection.Runtime.General;
 using System.Reflection.Runtime.MethodInfos;
@@ -51,6 +52,7 @@ namespace System.Reflection.Runtime.Assemblies.NativeFormat
 
         public sealed override IEnumerable<TypeInfo> DefinedTypes
         {
+            [RequiresUnreferencedCode("Types might be removed")]
             get
             {
 #if ENABLE_REFLECTION_TRACE
@@ -74,6 +76,7 @@ namespace System.Reflection.Runtime.Assemblies.NativeFormat
 
         public sealed override IEnumerable<Type> ExportedTypes
         {
+            [RequiresUnreferencedCode("Types might be removed")]
             get
             {
                 foreach (QScopeDefinition scope in AllScopes)

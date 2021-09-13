@@ -28,48 +28,52 @@ namespace System
         // This method is the public surface area. It wraps the CreateInstance intrinsic with the appropriate try/catch
         // block so that the correct exceptions are generated. Also, it handles the cases where the T type doesn't have
         // a default constructor.
+        //
+        // This method is intrinsic. The compiler might replace it with more efficient implementation.
         [DebuggerGuidedStepThrough]
-        public static T CreateInstance<T>()
+        [Intrinsic]
+        public static unsafe T CreateInstance<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor)]T>()
         {
-            if (!RuntimeHelpers.IsReference<T>())
+            // Grab the pointer to the default constructor of the type. If T doesn't have a default
+            // constructor, the intrinsic returns a marker pointer that we check for.
+            IntPtr defaultConstructor = DefaultConstructorOf<T>();
+
+            // Check if we got the marker back.
+            //
+            // TODO: might want to disambiguate the different cases for abstract class, interface, etc.
+            if (defaultConstructor == (IntPtr)(delegate*<Guid>)&MissingConstructorMethod)
+                throw new MissingMethodException(SR.Format(SR.MissingConstructor_Name, typeof(T)));
+
+            T t;
+            try
             {
-                // Early out for valuetypes since we don't support default constructors anyway for now.
-                // This lets codegens that expand IsReference<T> optimize away the rest of this code.
-                return default;
-            }
-            else
-            {
-                // Grab the pointer to the default constructor of the type. If T doesn't have a default
-                // constructor, the intrinsic returns a marker pointer that we check for.
-                IntPtr defaultConstructor = DefaultConstructorOf<T>();
-
-                // Check if we got the marker back.
-                //
-                // TODO: might want to disambiguate the different cases for abstract class, interface, etc.
-                if (defaultConstructor == DefaultConstructorOf<ClassWithMissingConstructor>())
-                    throw new MissingMethodException(SR.Format(SR.MissingConstructor_Name, typeof(T)));
-
-                // Grab a pointer to the optimized allocator for the type and call it.
-                // TODO: we need RyuJIT to respect that RawCalliHelper doesn't do fat pointer transform
-                // IntPtr allocator = AllocatorOf<T>();
-                // T t = RawCalliHelper.Call<T>(allocator, EETypePtr.EETypePtrOf<T>().RawValue);
-                T t = (T)RuntimeImports.RhNewObject(EETypePtr.EETypePtrOf<T>());
-
-                try
+                // Call the default constructor on the allocated instance.
+                if (RuntimeHelpers.IsReference<T>())
                 {
-                    // Call the default constructor on the allocated instance.
+                    // Grab a pointer to the optimized allocator for the type and call it.
+                    IntPtr allocator = AllocatorOf<T>();
+                    t = RawCalliHelper.Call<T>(allocator, EETypePtr.EETypePtrOf<T>().RawValue);
                     RawCalliHelper.Call(defaultConstructor, t);
 
                     // Debugger goo so that stepping in works. Only affects debug info generation.
                     // The call gets optimized away.
                     DebugAnnotations.PreviousCallContainsDebuggerStepInCode();
-
-                    return t;
                 }
-                catch (Exception e)
+                else
                 {
-                    throw new TargetInvocationException(e);
+                    t = default;
+                    RawCalliHelper.Call(defaultConstructor, ref Unsafe.As<T, byte>(ref t));
+
+                    // Debugger goo so that stepping in works. Only affects debug info generation.
+                    // The call gets optimized away.
+                    DebugAnnotations.PreviousCallContainsDebuggerStepInCode();
                 }
+
+                return t;
+            }
+            catch (Exception e)
+            {
+                throw new TargetInvocationException(e);
             }
         }
 
@@ -90,23 +94,16 @@ namespace System
             throw new NotSupportedException();
         }
 
-        internal static IntPtr GetFallbackDefaultConstructor()
+        internal static unsafe IntPtr GetFallbackDefaultConstructor()
         {
-            return DefaultConstructorOf<ClassWithMissingConstructor>();
+            return (IntPtr)(delegate*<Guid>)&MissingConstructorMethod;
         }
 
-        // Marker class. DefaultConstructorOf<T> expands to this type's constructor if
-        // the constructor is missing.
-        private class ClassWithMissingConstructor
-        {
-            public Guid G;
-
-            private ClassWithMissingConstructor()
-            {
-                // Ensure we have a unique method body for this that never gets folded with another ctor.
-                G = new Guid(0x68be9718, 0xf787, 0x45ab, 0x84, 0x3b, 0x1f, 0x31, 0xb6, 0x12, 0x65, 0xeb);
-            }
-        }
+        // This is a marker method. We return a GUID just to make sure the body is unique
+        // and under no circumstances gets folded.
+        private static Guid MissingConstructorMethod() => new Guid(0x68be9718, 0xf787, 0x45ab, 0x84, 0x3b, 0x1f, 0x31, 0xb6, 0x12, 0x65, 0xeb);
+        // The constructor of this struct is used when there's no constructor
+        struct StructWithNoConstructor { public StructWithNoConstructor() { } }
 
         [DebuggerHidden]
         [DebuggerStepThrough]
@@ -115,14 +112,16 @@ namespace System
 
         [DebuggerHidden]
         [DebuggerStepThrough]
-        public static object? CreateInstance(Type type, BindingFlags bindingAttr, Binder? binder, object?[]? args, CultureInfo? culture, object?[]? activationAttributes)
+        public static object? CreateInstance([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.NonPublicConstructors | DynamicallyAccessedMemberTypes.PublicConstructors)] Type type, BindingFlags bindingAttr, Binder? binder, object?[]? args, CultureInfo? culture, object?[]? activationAttributes)
             => ReflectionAugments.ReflectionCoreCallbacks.ActivatorCreateInstance(type, bindingAttr, binder, args, culture, activationAttributes);
 
+        [RequiresUnreferencedCode("Type and its constructor could be removed")]
         public static ObjectHandle CreateInstance(string assemblyName, string typeName)
         {
             throw new PlatformNotSupportedException(); // https://github.com/dotnet/corefx/issues/30845
         }
 
+        [RequiresUnreferencedCode("Type and its constructor could be removed")]
         public static ObjectHandle CreateInstance(string assemblyName,
                                                   string typeName,
                                                   bool ignoreCase,
@@ -135,6 +134,7 @@ namespace System
             throw new PlatformNotSupportedException(); // https://github.com/dotnet/corefx/issues/30845
         }
 
+        [RequiresUnreferencedCode("Type and its constructor could be removed")]
         public static ObjectHandle CreateInstance(string assemblyName, string typeName, object[] activationAttributes)
         {
             throw new PlatformNotSupportedException(); // https://github.com/dotnet/corefx/issues/30845

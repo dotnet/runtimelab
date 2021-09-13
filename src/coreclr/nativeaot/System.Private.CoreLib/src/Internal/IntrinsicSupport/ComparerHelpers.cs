@@ -7,6 +7,7 @@
 using System;
 using System.Collections.Generic;
 using System.Runtime;
+using System.Runtime.CompilerServices;
 
 using Internal.Runtime.Augments;
 
@@ -64,6 +65,11 @@ namespace Internal.IntrinsicSupport
                     comparerTypeArgument = nullableType;
                 }
             }
+            if (EqualityComparerHelpers.IsEnum(t))
+            {
+                openComparerType = typeof(EnumComparer<>).TypeHandle;
+                comparerTypeArgument = t;
+            }
 
             if (openComparerType.Equals(default(RuntimeTypeHandle)))
             {
@@ -86,6 +92,13 @@ namespace Internal.IntrinsicSupport
             }
 
             return RuntimeAugments.NewObject(comparerType);
+        }
+
+        // This one is an intrinsic that is used to make enum comparisions more efficient.
+        [Intrinsic]
+        internal static int EnumOnlyCompare<T>(T x, T y) where T : struct, Enum
+        {
+            return x.CompareTo(y);
         }
     }
 }

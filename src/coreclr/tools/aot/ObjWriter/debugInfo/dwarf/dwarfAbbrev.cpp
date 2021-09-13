@@ -269,7 +269,16 @@ void Dump(MCObjectStreamer *Streamer, uint16_t DwarfVersion, unsigned TargetPoin
         dwarf::DW_TAG_catch_block, dwarf::DW_CHILDREN_no,
         dwarf::DW_AT_low_pc, dwarf::DW_FORM_addr,
         dwarf::DW_AT_high_pc, DW_FORM_size,
-        0, 0
+        0, 0,
+
+    VoidType,
+        dwarf::DW_TAG_unspecified_type, dwarf::DW_CHILDREN_no,
+        dwarf::DW_AT_name, dwarf::DW_FORM_strp,
+        0, 0,
+
+    VoidPointerType,
+        dwarf::DW_TAG_pointer_type, dwarf::DW_CHILDREN_no,
+        0, 0,
   };
 
   MCContext &context = Streamer->getContext();

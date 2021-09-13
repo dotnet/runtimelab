@@ -8,5 +8,5 @@ The key limitations include:
 
 - No dynamic loading (e.g. `Assembly.LoadFile`)
 - No runtime code generation (e.g. `System.Reflection.Emit`)
-- No managed C++, no built-in COM and WinRT interop support
+- No C++/CLI, no built-in COM and WinRT interop support
 - No [unconstrained reflection](reflection-in-aot-mode.md)

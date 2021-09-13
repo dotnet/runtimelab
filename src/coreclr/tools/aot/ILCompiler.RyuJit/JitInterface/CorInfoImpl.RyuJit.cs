@@ -24,12 +24,6 @@ namespace Internal.JitInterface
 {
     unsafe public partial class CorInfoImpl
     {
-        private struct SequencePoint
-        {
-            public string Document;
-            public int LineNumber;
-        }
-
         private const CORINFO_RUNTIME_ABI TargetABI = CORINFO_RUNTIME_ABI.CORINFO_CORERT_ABI;
 
         private uint OffsetOfDelegateFirstTarget => (uint)(4 * PointerSize); // Delegate::m_functionPointer
@@ -40,10 +34,6 @@ namespace Internal.JitInterface
         private IMethodCodeNode _methodCodeNode;
         private DebugLocInfo[] _debugLocInfos;
         private DebugVarInfo[] _debugVarInfos;
-        private Dictionary<int, SequencePoint> _sequencePoints;
-        private Dictionary<uint, ILLocalVariable> _localSlotToInfoMap;
-        private Dictionary<uint, string> _parameterIndexToNameMap;
-        private TypeDesc[] _variableToTypeDesc;
         private readonly UnboxingMethodDescFactory _unboxingThunkFactory = new UnboxingMethodDescFactory();
         private bool _isFallbackBodyCompilation;
         private DependencyList _additionalDependencies;
@@ -581,8 +571,22 @@ namespace Internal.JitInterface
 
         private bool canTailCall(CORINFO_METHOD_STRUCT_* callerHnd, CORINFO_METHOD_STRUCT_* declaredCalleeHnd, CORINFO_METHOD_STRUCT_* exactCalleeHnd, bool fIsTailPrefix)
         {
-            // No restrictions on tailcalls
-            return true;
+            // Assume we can tail call unless proved otherwise
+            bool result = true;
+
+            if (!fIsTailPrefix)
+            {
+                MethodDesc caller = HandleToObject(callerHnd);
+
+                if (caller.IsNoInlining)
+                {
+                    // Do not tailcall from methods that are marked as noinline (people often use no-inline
+                    // to mean "I want to always see this method in stacktrace")
+                    result = false;
+                }
+            }
+
+            return result;
         }
 
         private InfoAccessType constructStringLiteral(CORINFO_MODULE_STRUCT_* module, mdToken metaTok, ref void* ppValue)
@@ -712,50 +716,33 @@ namespace Internal.JitInterface
 
         private void setVars(CORINFO_METHOD_STRUCT_* ftn, uint cVars, NativeVarInfo* vars)
         {
-            if (_localSlotToInfoMap == null && _parameterIndexToNameMap == null)
+            var methodIL = (MethodIL)HandleToObject((IntPtr)_methodScope);
+
+            MethodSignature sig = methodIL.OwningMethod.Signature;
+            int numLocals = methodIL.GetLocals().Length;
+
+            ArrayBuilder<DebugVarRangeInfo>[] debugVarInfoBuilders = new ArrayBuilder<DebugVarRangeInfo>[(sig.IsStatic ? 0 : 1) + sig.Length + numLocals];
+
+            for (uint i = 0; i < cVars; i++)
             {
-                return;
+                uint varNumber = vars[i].varNumber;
+                if (varNumber < debugVarInfoBuilders.Length)
+                    debugVarInfoBuilders[varNumber].Add(new DebugVarRangeInfo(vars[i].startOffset, vars[i].endOffset, vars[i].varLoc));
             }
 
-            uint paramCount = (_parameterIndexToNameMap == null) ? 0 : (uint)_parameterIndexToNameMap.Count;
-            Dictionary<uint, DebugVarInfo> debugVars = new Dictionary<uint, DebugVarInfo>();
-
-            for (int i = 0; i < cVars; i++)
+            var debugVarInfos = new ArrayBuilder<DebugVarInfo>();
+            for (uint i = 0; i < debugVarInfoBuilders.Length; i++)
             {
-                NativeVarInfo nativeVarInfo = vars[i];
-
-                if (nativeVarInfo.varNumber < paramCount)
+                if (debugVarInfoBuilders[i].Count > 0)
                 {
-                    string name = _parameterIndexToNameMap[nativeVarInfo.varNumber];
-                    updateDebugVarInfo(debugVars, name, true, nativeVarInfo);
-                }
-                else if (_localSlotToInfoMap != null)
-                {
-                    ILLocalVariable ilVar;
-                    uint slotNumber = nativeVarInfo.varNumber - paramCount;
-                    if (_localSlotToInfoMap.TryGetValue(slotNumber, out ilVar))
-                    {
-                        updateDebugVarInfo(debugVars, ilVar.Name, false, nativeVarInfo);
-                    }
+                    debugVarInfos.Add(new DebugVarInfo(i, debugVarInfoBuilders[i].ToArray()));
                 }
             }
 
-            _debugVarInfos = new DebugVarInfo[debugVars.Count];
-            debugVars.Values.CopyTo(_debugVarInfos, 0);
-        }
+            _debugVarInfos = debugVarInfos.ToArray();
 
-        private void updateDebugVarInfo(Dictionary<uint, DebugVarInfo> debugVars, string name,
-                                        bool isParam, NativeVarInfo nativeVarInfo)
-        {
-            DebugVarInfo debugVar;
-
-            if (!debugVars.TryGetValue(nativeVarInfo.varNumber, out debugVar))
-            {
-                debugVar = new DebugVarInfo(name, isParam, _variableToTypeDesc[(int)nativeVarInfo.varNumber]);
-                debugVars[nativeVarInfo.varNumber] = debugVar;
-            }
-
-            debugVar.Ranges.Add(nativeVarInfo);
+            // JIT gave the ownership of this to us, so need to free this.
+            freeArray(vars);
         }
 
         /// <summary>
@@ -765,11 +752,6 @@ namespace Internal.JitInterface
         private void setBoundaries(CORINFO_METHOD_STRUCT_* ftn, uint cMap, OffsetMapping* pMap)
         {
             Debug.Assert(_debugLocInfos == null);
-            // No interest if sequencePoints is not populated before.
-            if (_sequencePoints == null)
-            {
-                return;
-            }
 
             int largestILOffset = 0; // All epiloges point to the largest IL offset.
             for (int i = 0; i < cMap; i++)
@@ -782,18 +764,11 @@ namespace Internal.JitInterface
                 }
             }
 
-            int previousNativeOffset = -1;
-            List<DebugLocInfo> debugLocInfos = new List<DebugLocInfo>();
+            ArrayBuilder<DebugLocInfo> debugLocInfos = new ArrayBuilder<DebugLocInfo>();
             for (int i = 0; i < cMap; i++)
             {
-                OffsetMapping nativeToILInfo = pMap[i];
-                int ilOffset = (int)nativeToILInfo.ilOffset;
-                int nativeOffset = (int)pMap[i].nativeOffset;
-                if (nativeOffset == previousNativeOffset)
-                {
-                    // Save the first one, skip others.
-                    continue;
-                }
+                OffsetMapping* nativeToILInfo = &pMap[i];
+                int ilOffset = (int)nativeToILInfo->ilOffset;
                 switch (ilOffset)
                 {
                     case (int)MappingTypes.PROLOG:
@@ -806,135 +781,20 @@ namespace Internal.JitInterface
                         continue;
                 }
 
-                SequencePoint s;
-                if (_sequencePoints.TryGetValue((int)ilOffset, out s))
-                {
-                    Debug.Assert(s.Document != null);
-                    DebugLocInfo loc = new DebugLocInfo(nativeOffset, s.Document, s.LineNumber);
-                    debugLocInfos.Add(loc);
-                    previousNativeOffset = nativeOffset;
-                }
+                debugLocInfos.Add(new DebugLocInfo((int)nativeToILInfo->nativeOffset, ilOffset));
             }
 
             if (debugLocInfos.Count > 0)
             {
                 _debugLocInfos = debugLocInfos.ToArray();
             }
+
+            freeArray(pMap);
         }
 
         private void SetDebugInformation(IMethodNode methodCodeNodeNeedingCode, MethodIL methodIL)
         {
-            try
-            {
-                MethodDebugInformation debugInfo = _compilation.GetDebugInfo(methodIL);
-
-                _debugInfo = debugInfo;
-
-                // TODO: NoLineNumbers
-                //if (!_compilation.Options.NoLineNumbers)
-                {
-                    IEnumerable<ILSequencePoint> ilSequencePoints = debugInfo.GetSequencePoints();
-                    if (ilSequencePoints != null)
-                    {
-                        try
-                        {
-                            SetSequencePoints(ilSequencePoints);
-                        }
-                        catch (BadImageFormatException)
-                        {
-                            // Roslyn had a bug where it was generating bad sequence points:
-                            // https://github.com/dotnet/roslyn/issues/20118
-                            // Do not crash the compiler.
-                            _compilation.Logger.Writer.WriteLine($"Warning: ignoring debug info for {methodCodeNodeNeedingCode.Method.ToString()}");
-                        }
-                    }
-                }
-
-                IEnumerable<ILLocalVariable> localVariables = debugInfo.GetLocalVariables();
-                if (localVariables != null)
-                {
-                    SetLocalVariables(localVariables);
-                }
-
-                IEnumerable<string> parameters = debugInfo.GetParameterNames();
-                if (parameters != null)
-                {
-                    SetParameterNames(parameters);
-                }
-
-                ArrayBuilder<TypeDesc> variableToTypeDesc = new ArrayBuilder<TypeDesc>();
-
-                var signature = MethodBeingCompiled.Signature;
-                if (!signature.IsStatic)
-                {
-                    TypeDesc type = MethodBeingCompiled.OwningType;
-
-                    // This pointer for value types is a byref
-                    if (MethodBeingCompiled.OwningType.IsValueType)
-                        type = type.MakeByRefType();
-
-                    variableToTypeDesc.Add(type);
-                }
-
-                for (int i = 0; i < signature.Length; ++i)
-                {
-                    TypeDesc type = signature[i];
-                    variableToTypeDesc.Add(type);
-                }
-                var locals = methodIL.GetLocals();
-                for (int i = 0; i < locals.Length; ++i)
-                {
-                    TypeDesc type = locals[i].Type;
-                    variableToTypeDesc.Add(type);
-                }
-                _variableToTypeDesc = variableToTypeDesc.ToArray();
-            }
-            catch (Exception e)
-            {
-                // Debug info not successfully loaded.
-                Log.WriteLine(e.Message + " (" + methodCodeNodeNeedingCode.ToString() + ")");
-            }
-        }
-
-        public void SetSequencePoints(IEnumerable<ILSequencePoint> ilSequencePoints)
-        {
-            Debug.Assert(ilSequencePoints != null);
-            Dictionary<int, SequencePoint> sequencePoints = new Dictionary<int, SequencePoint>();
-
-            foreach (var point in ilSequencePoints)
-            {
-                sequencePoints.Add(point.Offset, new SequencePoint() { Document = point.Document, LineNumber = point.LineNumber });
-            }
-
-            _sequencePoints = sequencePoints;
-        }
-
-        public void SetLocalVariables(IEnumerable<ILLocalVariable> localVariables)
-        {
-            Debug.Assert(localVariables != null);
-            var localSlotToInfoMap = new Dictionary<uint, ILLocalVariable>();
-
-            foreach (var v in localVariables)
-            {
-                localSlotToInfoMap[(uint)v.Slot] = v;
-            }
-
-            _localSlotToInfoMap = localSlotToInfoMap;
-        }
-
-        public void SetParameterNames(IEnumerable<string> parameters)
-        {
-            Debug.Assert(parameters != null);
-            var parameterIndexToNameMap = new Dictionary<uint, string>();
-            uint index = 0;
-
-            foreach (var p in parameters)
-            {
-                parameterIndexToNameMap[index] = p;
-                ++index;
-            }
-
-            _parameterIndexToNameMap = parameterIndexToNameMap;
+            _debugInfo = _compilation.GetDebugInfo(methodIL);
         }
 
         private ISymbolNode GetGenericLookupHelper(CORINFO_RUNTIME_LOOKUP_KIND runtimeLookupKind, ReadyToRunHelperId helperId, object helperArgument)
@@ -1101,6 +961,7 @@ namespace Internal.JitInterface
             bool resolvedConstraint = false;
             bool forceUseRuntimeLookup = false;
             bool targetIsFatFunctionPointer = false;
+            bool useFatCallTransform = false;
 
             MethodDesc methodAfterConstraintResolution = method;
             if (constrainedType == null)
@@ -1216,7 +1077,7 @@ namespace Internal.JitInterface
 
             if (directCall && targetMethod.IsAbstract)
             {
-                ThrowHelper.ThrowInvalidProgramException(ExceptionStringID.InvalidProgramCallAbstractMethod);
+                ThrowHelper.ThrowBadImageFormatException();
             }
 
             if (directCall && !allowInstParam && targetMethod.GetCanonMethodTarget(CanonicalFormKind.Specific).RequiresInstArg())
@@ -1255,6 +1116,52 @@ namespace Internal.JitInterface
                     pResult->codePointerOrStubLookup.constLookup =
                         CreateConstLookupToSymbol(_compilation.NodeFactory.FatFunctionPointer(targetMethod));
                 }
+            }
+            else if (directCall && resolvedConstraint && pResult->exactContextNeedsRuntimeLookup)
+            {
+                // We want to do a direct call to a shared method on a valuetype. We need to provide
+                // a generic context, but the JitInterface doesn't provide a way for us to do it from here.
+                // So we do the next best thing and ask RyuJIT to look up a fat pointer.
+
+                pResult->kind = CORINFO_CALL_KIND.CORINFO_CALL_CODE_POINTER;
+                pResult->codePointerOrStubLookup.constLookup.accessType = InfoAccessType.IAT_VALUE;
+                pResult->nullInstanceCheck = true;
+
+                // We have the canonical version of the method - find the runtime determined version.
+                // This is simplified because we know the method is on a valuetype.
+                Debug.Assert(targetMethod.OwningType.IsValueType);
+                TypeDesc runtimeDeterminedConstrainedType = (TypeDesc)GetRuntimeDeterminedObjectForToken(ref *pConstrainedResolvedToken);
+
+                if (forceUseRuntimeLookup)
+                {
+                    // The below logic would incorrectly resolve the lookup into the first match we found,
+                    // but there was a compile-time ambiguity due to shared code. The correct fix should
+                    // use the ConstrainedMethodUseLookupResult dictionary entry so that the exact
+                    // dispatch can be computed with the help of the generic dictionary.
+                    // We fail the compilation here to avoid bad codegen. This is not actually an invalid program.
+                    // https://github.com/dotnet/runtimelab/issues/1431
+                    ThrowHelper.ThrowInvalidProgramException();
+                }
+
+                MethodDesc targetOfLookup;
+                if (runtimeDeterminedConstrainedType.IsRuntimeDeterminedType)
+                    targetOfLookup = _compilation.TypeSystemContext.GetMethodForRuntimeDeterminedType(targetMethod.GetTypicalMethodDefinition(), (RuntimeDeterminedType)runtimeDeterminedConstrainedType);
+                else
+                    targetOfLookup = _compilation.TypeSystemContext.GetMethodForInstantiatedType(targetMethod.GetTypicalMethodDefinition(), (InstantiatedType)runtimeDeterminedConstrainedType);
+                if (targetOfLookup.HasInstantiation)
+                {
+                    var methodToGetInstantiation = (MethodDesc)GetRuntimeDeterminedObjectForToken(ref pResolvedToken);
+                    targetOfLookup = targetOfLookup.MakeInstantiatedMethod(methodToGetInstantiation.Instantiation);
+                }
+                Debug.Assert(targetOfLookup.GetCanonMethodTarget(CanonicalFormKind.Specific) == targetMethod.GetCanonMethodTarget(CanonicalFormKind.Specific));
+
+                ComputeLookup(ref pResolvedToken,
+                    targetOfLookup,
+                    ReadyToRunHelperId.MethodEntry,
+                    ref pResult->codePointerOrStubLookup);
+
+                targetIsFatFunctionPointer = true;
+                useFatCallTransform = true;
             }
             else if (directCall)
             {
@@ -1455,6 +1362,10 @@ namespace Internal.JitInterface
             targetIsFatFunctionPointer |= (flags & CORINFO_CALLINFO_FLAGS.CORINFO_CALLINFO_CALLVIRT) != 0 && !(pResult->kind == CORINFO_CALL_KIND.CORINFO_CALL);
 
             Get_CORINFO_SIG_INFO(targetMethod, &pResult->sig, targetIsFatFunctionPointer);
+            if (useFatCallTransform)
+            {
+                pResult->sig.flags |= CorInfoSigInfoFlags.CORINFO_SIGFLAG_FAT_CALL;
+            }
 
             if ((flags & CORINFO_CALLINFO_FLAGS.CORINFO_CALLINFO_VERIFICATION) != 0)
             {
@@ -1471,6 +1382,24 @@ namespace Internal.JitInterface
             }
 
             pResult->_wrapperDelegateInvoke = 0;
+        }
+
+        private CORINFO_CLASS_STRUCT_* embedClassHandle(CORINFO_CLASS_STRUCT_* handle, ref void* ppIndirection)
+        {
+            TypeDesc type = HandleToObject(handle);
+            ISymbolNode typeHandleSymbol = _compilation.NodeFactory.NecessaryTypeSymbol(type);
+            CORINFO_CLASS_STRUCT_* result = (CORINFO_CLASS_STRUCT_*)ObjectToHandle(typeHandleSymbol);
+
+            if (typeHandleSymbol.RepresentsIndirectionCell)
+            {
+                ppIndirection = result;
+                return null;
+            }
+            else
+            {
+                ppIndirection = null;
+                return result;
+            }
         }
 
         private void embedGenericHandle(ref CORINFO_RESOLVED_TOKEN pResolvedToken, bool fEmbedParent, ref CORINFO_GENERICHANDLE_RESULT pResult)
@@ -1658,11 +1587,6 @@ namespace Internal.JitInterface
             throw new NotImplementedException("allocPgoInstrumentationBySchema");
         }
 
-        private HRESULT getPgoInstrumentationResults(CORINFO_METHOD_STRUCT_* ftnHnd, ref PgoInstrumentationSchema* pSchema, ref uint pCountSchemaItems, byte** pInstrumentationData)
-        {
-            throw new NotImplementedException("getPgoInstrumentationResults");
-        }
-
         private CORINFO_CLASS_STRUCT_* getLikelyClass(CORINFO_METHOD_STRUCT_* ftnHnd, CORINFO_CLASS_STRUCT_* baseHnd, uint IlOffset, ref uint pLikelihood, ref uint pNumberOfClasses)
         {
             return null;
@@ -1732,7 +1656,9 @@ namespace Internal.JitInterface
         private bool convertPInvokeCalliToCall(ref CORINFO_RESOLVED_TOKEN pResolvedToken, bool mustConvert)
         {
             var methodIL = (MethodIL)HandleToObject((IntPtr)pResolvedToken.tokenScope);
-            if (methodIL.OwningMethod.IsPInvoke)
+
+            // Suppress recursive expansion of calli in marshaling stubs
+            if (methodIL is Internal.IL.Stubs.PInvokeILStubMethodIL)
                 return false;
 
             MethodSignature signature = (MethodSignature)methodIL.GetObject((int)pResolvedToken.token);

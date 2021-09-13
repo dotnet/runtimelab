@@ -2,7 +2,7 @@
   <Import Project="$([MSBuild]::GetPathOfFileAbove(Directory.Build.props))" />
 
   <PropertyGroup>
-    <PackageDescription>Provides the tasks+targets for building WebAssembly apps</PackageDescription>
+    <PackageDescription>Provides the tasks+targets, for consumption by wasm based workloads</PackageDescription>
   </PropertyGroup>
 
   <ItemGroup>
@@ -10,8 +10,11 @@
     <ProjectReference Include="$(RepoTasksDir)WasmBuildTasks\WasmBuildTasks.csproj" />
 
     <PackageFile Include="Sdk\Sdk.targets" TargetPath="Sdk" />
+    <PackageFile Include="Sdk\AutoImport.props" TargetPath="Sdk" />
     <PackageFile Include="$(RepoRoot)\src\mono\wasm\build\WasmApp.props" TargetPath="Sdk" />
     <PackageFile Include="$(RepoRoot)\src\mono\wasm\build\WasmApp.targets" TargetPath="Sdk" />
+    <PackageFile Include="$(RepoRoot)\src\mono\wasm\build\WasmApp.Native.*" TargetPath="Sdk" />
+    <PackageFile Include="$(RepoRoot)\src\mono\wasm\build\EmSdkRepo.Defaults.props" TargetPath="Sdk" />
   </ItemGroup>
 
   <Import Project="$([MSBuild]::GetPathOfFileAbove(Directory.Build.targets))" />

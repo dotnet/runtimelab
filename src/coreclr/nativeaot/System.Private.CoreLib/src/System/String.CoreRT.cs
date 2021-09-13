@@ -5,8 +5,6 @@ using System.Diagnostics;
 using System.Runtime;
 using System.Runtime.CompilerServices;
 
-using Internal.Runtime.CompilerServices;
-
 namespace System
 {
     // This class is marked EagerStaticClassConstruction because it's nice to have this
@@ -17,24 +15,6 @@ namespace System
     {
         [Intrinsic]
         public static readonly string Empty = "";
-
-        [System.Runtime.CompilerServices.IndexerName("Chars")]
-        public unsafe char this[int index]
-        {
-            [Intrinsic]
-            get
-            {
-                if ((uint)index >= _stringLength)
-                    ThrowHelper.ThrowIndexOutOfRangeException();
-                return Unsafe.Add(ref _firstChar, index);
-            }
-        }
-
-        public int Length
-        {
-            [Intrinsic]
-            get => _stringLength;
-        }
 
         internal static string FastAllocateString(int length)
         {

@@ -12,18 +12,11 @@ namespace System.Runtime.InteropServices
 {
     public static partial class Marshal
     {
+        private const int DISP_E_PARAMNOTFOUND = unchecked((int)0x80020004);
+
         public static int GetHRForException(Exception? e)
         {
             return PInvokeMarshal.GetHRForException(e);
-        }
-
-        [SupportedOSPlatform("windows")]
-        public static unsafe int AddRef(IntPtr pUnk)
-        {
-            if (pUnk == IntPtr.Zero)
-                throw new ArgumentNullException(nameof(pUnk));
-
-            return ((delegate* unmanaged<IntPtr, int>)(*(*(void***)pUnk + 1 /* IUnknown.AddRef slot */)))(pUnk);
         }
 
         public static bool AreComObjectsAvailableForCleanup() => false;
@@ -34,6 +27,7 @@ namespace System.Runtime.InteropServices
             throw new PlatformNotSupportedException(SR.PlatformNotSupported_ComInterop);
         }
 
+        [RequiresUnreferencedCode("Built-in COM support is not trim compatible", Url = "https://aka.ms/dotnet-illink/com")]
         [SupportedOSPlatform("windows")]
         public static object BindToMoniker(string monikerName)
         {
@@ -57,7 +51,7 @@ namespace System.Runtime.InteropServices
         }
 
         [SupportedOSPlatform("windows")]
-        public static TWrapper CreateWrapperOfType<T, TWrapper>([AllowNull] T o)
+        public static TWrapper CreateWrapperOfType<T, TWrapper>(T? o)
         {
             throw new PlatformNotSupportedException(SR.PlatformNotSupported_ComInterop);
         }
@@ -77,7 +71,17 @@ namespace System.Runtime.InteropServices
         [SupportedOSPlatform("windows")]
         public static IntPtr GetComInterfaceForObject(object o, Type T)
         {
-            throw new PlatformNotSupportedException(SR.PlatformNotSupported_ComInterop);
+            if (o is null)
+            {
+                throw new ArgumentNullException(nameof(o));
+            }
+
+            if (T is null)
+            {
+                throw new ArgumentNullException(nameof(T));
+            }
+
+            return ComWrappers.ComInterfaceForObject(o, T.GUID);
         }
 
         [SupportedOSPlatform("windows")]
@@ -89,7 +93,7 @@ namespace System.Runtime.InteropServices
         [SupportedOSPlatform("windows")]
         public static IntPtr GetComInterfaceForObject<T, TInterface>([DisallowNull] T o)
         {
-            throw new PlatformNotSupportedException(SR.PlatformNotSupported_ComInterop);
+            return GetComInterfaceForObject(o!, typeof(T));
         }
 
         [SupportedOSPlatform("windows")]
@@ -98,38 +102,190 @@ namespace System.Runtime.InteropServices
             throw new PlatformNotSupportedException(SR.PlatformNotSupported_ComInterop);
         }
 
-        public static IntPtr GetHINSTANCE(Module m)
-        {
-            if (m is null)
-            {
-                throw new ArgumentNullException(nameof(m));
-            }
-
-            return (IntPtr)(-1);
-        }
-
         [SupportedOSPlatform("windows")]
         public static IntPtr GetIDispatchForObject(object o)
         {
-            throw new PlatformNotSupportedException(SR.PlatformNotSupported_ComInterop);
+            if (o is null)
+            {
+                throw new ArgumentNullException(nameof(o));
+            }
+
+            return ComWrappers.ComInterfaceForObject(o, new Guid(0x00020400, 0x0000, 0x0000, 0xC0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x46) /* IID_IDispatch */);
         }
 
         [SupportedOSPlatform("windows")]
         public static IntPtr GetIUnknownForObject(object o)
         {
-            throw new PlatformNotSupportedException(SR.PlatformNotSupported_ComInterop);
+            return ComWrappers.ComInterfaceForObject(o);
         }
 
         [SupportedOSPlatform("windows")]
-        public static void GetNativeVariantForObject(object? obj, IntPtr pDstNativeVariant)
+        public static unsafe void GetNativeVariantForObject(object? obj, IntPtr pDstNativeVariant)
         {
-            throw new PlatformNotSupportedException(SR.PlatformNotSupported_ComInterop);
+            if (pDstNativeVariant == IntPtr.Zero)
+            {
+                throw new ArgumentNullException(nameof(pDstNativeVariant));
+            }
+
+            Variant* data = (Variant*)pDstNativeVariant;
+            if (obj == null)
+            {
+                data->VariantType = VarEnum.VT_EMPTY;
+                return;
+            }
+
+            switch (obj)
+            {
+                // Int and String most used types.
+                case int value:
+                    data->AsI4 = value;
+                    break;
+                case string value:
+                    data->AsBstr = value;
+                    break;
+
+                case bool value:
+                    data->AsBool = value;
+                    break;
+                case byte value:
+                    data->AsUi1 = value;
+                    break;
+                case sbyte value:
+                    data->AsI1 = value;
+                    break;
+                case short value:
+                    data->AsI2 = value;
+                    break;
+                case ushort value:
+                    data->AsUi2 = value;
+                    break;
+                case uint value:
+                    data->AsUi4 = value;
+                    break;
+                case long value:
+                    data->AsI8 = value;
+                    break;
+                case ulong value:
+                    data->AsUi8 = value;
+                    break;
+                case float value:
+                    data->AsR4 = value;
+                    break;
+                case double value:
+                    data->AsR8 = value;
+                    break;
+                case DateTime value:
+                    data->AsDate = value;
+                    break;
+                case decimal value:
+                    data->AsDecimal = value;
+                    break;
+                case char value:
+                    data->AsUi2 = value;
+                    break;
+                case BStrWrapper value:
+                    data->AsBstr = value.WrappedObject;
+                    break;
+                case CurrencyWrapper value:
+                    data->AsCy = value.WrappedObject;
+                    break;
+                case UnknownWrapper value:
+                    data->AsUnknown = value.WrappedObject;
+                    break;
+                case DispatchWrapper value:
+                    data->AsDispatch = value.WrappedObject;
+                    break;
+                case ErrorWrapper value:
+                    data->AsError = value.ErrorCode;
+                    break;
+                case VariantWrapper value:
+                    throw new ArgumentException();
+                case DBNull value:
+                    data->SetAsNULL();
+                    break;
+                case Missing value:
+                    data->AsError = DISP_E_PARAMNOTFOUND;
+                    break;
+                case IConvertible value:
+                    switch (value.GetTypeCode())
+                    {
+                        case TypeCode.Empty:
+                            data->VariantType = VarEnum.VT_EMPTY;
+                            break;
+                        case TypeCode.Object:
+                            data->AsUnknown = value;
+                            break;
+                        case TypeCode.DBNull:
+                            data->SetAsNULL();
+                            break;
+                        case TypeCode.Boolean:
+                            data->AsBool = value.ToBoolean(null);
+                            break;
+                        case TypeCode.Char:
+                            data->AsUi2 = value.ToChar(null);
+                            break;
+                        case TypeCode.SByte:
+                            data->AsI1 = value.ToSByte(null);
+                            break;
+                        case TypeCode.Byte:
+                            data->AsUi1 = value.ToByte(null);
+                            break;
+                        case TypeCode.Int16:
+                            data->AsI2 = value.ToInt16(null);
+                            break;
+                        case TypeCode.UInt16:
+                            data->AsUi2 = value.ToUInt16(null);
+                            break;
+                        case TypeCode.Int32:
+                            data->AsI4 = value.ToInt32(null);
+                            break;
+                        case TypeCode.UInt32:
+                            data->AsUi4 = value.ToUInt32(null);
+                            break;
+                        case TypeCode.Int64:
+                            data->AsI8 = value.ToInt64(null);
+                            break;
+                        case TypeCode.UInt64:
+                            data->AsUi8 = value.ToUInt64(null);
+                            break;
+                        case TypeCode.Single:
+                            data->AsR4 = value.ToSingle(null);
+                            break;
+                        case TypeCode.Double:
+                            data->AsR8 = value.ToDouble(null);
+                            break;
+                        case TypeCode.Decimal:
+                            data->AsDecimal = value.ToDecimal(null);
+                            break;
+                        case TypeCode.DateTime:
+                            data->AsDate = value.ToDateTime(null);
+                            break;
+                        case TypeCode.String:
+                            data->AsBstr = value.ToString();
+                            break;
+                        default:
+                            throw new NotSupportedException();
+                    }
+                    break;
+                case CriticalHandle:
+                    throw new ArgumentException();
+                case SafeHandle:
+                    throw new ArgumentException();
+                case Array:
+                    // SAFEARRAY implementation goes here.
+                    throw new NotSupportedException("VT_ARRAY");
+                case ValueType:
+                    throw new NotSupportedException("VT_RECORD");
+                default:
+                    data->AsDispatch = obj;
+                    break;
+            }
         }
 
         [SupportedOSPlatform("windows")]
-        public static void GetNativeVariantForObject<T>([AllowNull] T obj, IntPtr pDstNativeVariant)
+        public static void GetNativeVariantForObject<T>(T? obj, IntPtr pDstNativeVariant)
         {
-            throw new PlatformNotSupportedException(SR.PlatformNotSupported_ComInterop);
+            GetNativeVariantForObject((object?)obj, pDstNativeVariant);
         }
 
         [SupportedOSPlatform("windows")]
@@ -141,13 +297,54 @@ namespace System.Runtime.InteropServices
         [SupportedOSPlatform("windows")]
         public static object GetObjectForIUnknown(IntPtr pUnk)
         {
-            throw new PlatformNotSupportedException(SR.PlatformNotSupported_ComInterop);
+            return ComWrappers.ComObjectForInterface(pUnk);
         }
 
         [SupportedOSPlatform("windows")]
-        public static object? GetObjectForNativeVariant(IntPtr pSrcNativeVariant)
+        public static unsafe object? GetObjectForNativeVariant(IntPtr pSrcNativeVariant)
         {
-            throw new PlatformNotSupportedException(SR.PlatformNotSupported_ComInterop);
+            if (pSrcNativeVariant == IntPtr.Zero)
+            {
+                throw new ArgumentNullException(nameof(pSrcNativeVariant));
+            }
+
+            Variant* data = (Variant*)pSrcNativeVariant;
+
+            if (data->IsEmpty)
+            {
+                return null;
+            }
+
+            switch (data->VariantType)
+            {
+                case VarEnum.VT_NULL:
+                    return DBNull.Value;
+
+                case VarEnum.VT_I1: return data->AsI1;
+                case VarEnum.VT_I2: return data->AsI2;
+                case VarEnum.VT_I4: return data->AsI4;
+                case VarEnum.VT_I8: return data->AsI8;
+                case VarEnum.VT_UI1: return data->AsUi1;
+                case VarEnum.VT_UI2: return data->AsUi2;
+                case VarEnum.VT_UI4: return data->AsUi4;
+                case VarEnum.VT_UI8: return data->AsUi8;
+                case VarEnum.VT_INT: return data->AsInt;
+                case VarEnum.VT_UINT: return data->AsUint;
+                case VarEnum.VT_BOOL: return data->AsBool;
+                case VarEnum.VT_ERROR: return data->AsError;
+                case VarEnum.VT_R4: return data->AsR4;
+                case VarEnum.VT_R8: return data->AsR8;
+                case VarEnum.VT_DECIMAL: return data->AsDecimal;
+                case VarEnum.VT_CY: return data->AsCy;
+                case VarEnum.VT_DATE: return data->AsDate;
+                case VarEnum.VT_BSTR: return data->AsBstr;
+                case VarEnum.VT_UNKNOWN: return data->AsUnknown;
+                case VarEnum.VT_DISPATCH: return data->AsDispatch;
+
+                default:
+                    // Other VARIANT types not supported yet.
+                    throw new NotSupportedException();
+            }
         }
 
         [return: MaybeNull]
@@ -215,28 +412,6 @@ namespace System.Runtime.InteropServices
                 throw new ArgumentNullException(nameof(t));
             }
             return false;
-        }
-
-        [SupportedOSPlatform("windows")]
-        public static unsafe int QueryInterface(IntPtr pUnk, ref Guid iid, out IntPtr ppv)
-        {
-            if (pUnk == IntPtr.Zero)
-                throw new ArgumentNullException(nameof(pUnk));
-
-            fixed (Guid* pIID = &iid)
-            fixed (IntPtr* p = &ppv)
-            {
-                return ((delegate* unmanaged<IntPtr, Guid*, IntPtr*, int>)(*(*(void***)pUnk + 0 /* IUnknown.QueryInterface slot */)))(pUnk, pIID, p);
-            }
-        }
-
-        [SupportedOSPlatform("windows")]
-        public static unsafe int Release(IntPtr pUnk)
-        {
-            if (pUnk == IntPtr.Zero)
-                throw new ArgumentNullException(nameof(pUnk));
-
-            return ((delegate* unmanaged<IntPtr, int>)(*(*(void***)pUnk + 2 /* IUnknown.Release slot */)))(pUnk);
         }
 
         [SupportedOSPlatform("windows")]

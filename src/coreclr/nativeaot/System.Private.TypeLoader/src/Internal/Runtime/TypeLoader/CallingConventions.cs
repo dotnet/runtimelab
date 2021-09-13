@@ -76,9 +76,9 @@ namespace Internal.Runtime.CallConverter
 
     internal unsafe struct TypeHandle
     {
-        public TypeHandle(bool isByRef, RuntimeTypeHandle eeType)
+        public TypeHandle(bool isByRef, RuntimeTypeHandle MethodTable)
         {
-            _eeType = eeType.ToEETypePtr();
+            _eeType = MethodTable.ToEETypePtr();
             _isByRef = isByRef;
 
             if (_eeType->IsByRefType)
@@ -89,7 +89,7 @@ namespace Internal.Runtime.CallConverter
             }
         }
 
-        private readonly EEType* _eeType;
+        private readonly MethodTable* _eeType;
         private readonly bool _isByRef;
 
         public bool Equals(TypeHandle other)

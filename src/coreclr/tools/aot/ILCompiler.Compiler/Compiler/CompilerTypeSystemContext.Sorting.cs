@@ -50,5 +50,32 @@ namespace ILCompiler
                 return comparer.Compare(_methodRepresented, otherMethod._methodRepresented);
             }
         }
+
+        partial class DefaultInterfaceMethodImplementationInstantiationThunk
+        {
+            protected override int ClassCode => -789598;
+
+            protected override int CompareToImpl(MethodDesc other, TypeSystemComparer comparer)
+            {
+                var otherMethod = (DefaultInterfaceMethodImplementationInstantiationThunk)other;
+
+                int result = System.Collections.Generic.Comparer<int>.Default.Compare(_interfaceIndex, otherMethod._interfaceIndex);
+                if (result != 0)
+                    return result;
+
+                return comparer.Compare(_targetMethod, otherMethod._targetMethod);
+            }
+        }
+
+        partial class DefaultInterfaceMethodImplementationWithHiddenParameter
+        {
+            protected override int ClassCode => 4903209;
+
+            protected override int CompareToImpl(MethodDesc other, TypeSystemComparer comparer)
+            {
+                var otherMethod = (DefaultInterfaceMethodImplementationWithHiddenParameter)other;
+                return comparer.Compare(_methodRepresented, otherMethod._methodRepresented);
+            }
+        }
     }
 }

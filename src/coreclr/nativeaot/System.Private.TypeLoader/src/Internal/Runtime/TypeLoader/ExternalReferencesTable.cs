@@ -2,12 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System;
-using System.Runtime;
-using Internal.Runtime;
 using Internal.Runtime.Augments;
-using Debug = System.Diagnostics.Debug;
-
-using TableElement = System.UInt32;
 
 namespace Internal.Runtime.TypeLoader
 {
@@ -16,9 +11,8 @@ namespace Internal.Runtime.TypeLoader
         private IntPtr _elements;
         private uint _elementsCount;
         private TypeManagerHandle _moduleHandle;
-        private ulong[] debuggerPreparedExternalReferences;
 
-        public bool IsInitialized() { return (debuggerPreparedExternalReferences != null) || !_moduleHandle.IsNull; }
+        public bool IsInitialized() { return !_moduleHandle.IsNull; }
 
         private unsafe bool Initialize(NativeFormatModuleInfo module, ReflectionMapBlob blobId)
         {
@@ -37,11 +31,6 @@ namespace Internal.Runtime.TypeLoader
             _elementsCount = (uint)(cbBlob / sizeof(uint));
 
             return true;
-        }
-
-        public void InitializeDebuggerReference(ulong[] debuggerPreparedExternalReferences)
-        {
-            this.debuggerPreparedExternalReferences = debuggerPreparedExternalReferences;
         }
 
         /// <summary>
@@ -93,14 +82,7 @@ namespace Internal.Runtime.TypeLoader
 
         public RuntimeTypeHandle GetRuntimeTypeHandleFromIndex(uint index)
         {
-            if (this.debuggerPreparedExternalReferences == null)
-            {
-                return RuntimeAugments.CreateRuntimeTypeHandle(GetIntPtrFromIndex(index));
-            }
-            else
-            {
-                return RuntimeAugments.CreateRuntimeTypeHandle((IntPtr)this.debuggerPreparedExternalReferences[index]);
-            }
+            return RuntimeAugments.CreateRuntimeTypeHandle(GetIntPtrFromIndex(index));
         }
 
         public IntPtr GetGenericDictionaryFromIndex(uint index)
@@ -114,7 +96,7 @@ namespace Internal.Runtime.TypeLoader
                 throw new BadImageFormatException();
 
             // TODO: indirection through IAT
-            if (EEType.SupportsRelativePointers)
+            if (MethodTable.SupportsRelativePointers)
             {
                 int* pRelPtr32 = &((int*)_elements)[index];
                 return (IntPtr)((byte*)pRelPtr32 + *pRelPtr32);

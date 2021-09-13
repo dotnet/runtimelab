@@ -15,7 +15,7 @@
 #ifndef _ASSEMBLYNATIVE_H
 #define _ASSEMBLYNATIVE_H
 
-class CLRPrivBinderAssemblyLoadContext;
+class CustomAssemblyBinder;
 
 class AssemblyNative
 {
@@ -119,7 +119,7 @@ public:
 #ifndef TARGET_UNIX
     static void QCALLTYPE LoadFromInMemoryModule(INT_PTR ptrNativeAssemblyLoadContext, INT_PTR hModule, QCall::ObjectHandleOnStack retLoadedAssembly);
 #endif
-    static Assembly* LoadFromPEImage(ICLRPrivBinder* pBinderContext, PEImage *pILImage, PEImage *pNIImage);
+    static Assembly* LoadFromPEImage(AssemblyBinder* pBinderContext, PEImage *pImage);
     static INT_PTR QCALLTYPE GetLoadContextForAssembly(QCall::AssemblyHandle pAssembly);
 
     static BOOL QCALLTYPE InternalTryGetRawMetadata(QCall::AssemblyHandle assembly, UINT8 **blobRef, INT32 *lengthRef);
@@ -127,6 +127,9 @@ public:
     static void QCALLTYPE TraceAssemblyResolveHandlerInvoked(LPCWSTR assemblyName, LPCWSTR handlerName, LPCWSTR resultAssemblyName, LPCWSTR resultAssemblyPath);
     static void QCALLTYPE TraceAssemblyLoadFromResolveHandlerInvoked(LPCWSTR assemblyName, bool isTrackedAssembly, LPCWSTR requestingAssemblyPath, LPCWSTR requestedAssemblyPath);
     static void QCALLTYPE TraceSatelliteSubdirectoryPathProbed(LPCWSTR filePath, HRESULT hr);
+
+    static void QCALLTYPE ApplyUpdate(QCall::AssemblyHandle assembly, UINT8* metadataDelta, INT32 metadataDeltaLength, UINT8* ilDelta, INT32 ilDeltaLength, UINT8* pdbDelta, INT32 pdbDeltaLength);
+    static BOOL QCALLTYPE IsApplyUpdateSupported();
 };
 
 #endif

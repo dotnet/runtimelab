@@ -573,6 +573,11 @@ namespace ILCompiler
             {
                 classTypeDescriptor.BaseClassId = GetTypeIndex(defType.BaseType, true);
             }
+            else if (type.IsInterface)
+            {
+                // Allows debuggers to vtcast the types and see the real instance types.
+                classTypeDescriptor.BaseClassId = GetTypeIndex(type.Context.GetWellKnownType(WellKnownType.Object), true);
+            }
 
             List<DataFieldDescriptor> fieldsDescs = new List<DataFieldDescriptor>();
             List<DataFieldDescriptor> nonGcStaticFields = new List<DataFieldDescriptor>();
@@ -679,9 +684,9 @@ namespace ILCompiler
 
             if (NodeFactory.Target.OperatingSystem == TargetOS.Windows)
             {
-                InsertStaticFieldRegionMember(fieldsDescs, defType, nonGcStaticFields, WindowsNodeMangler.NonGCStaticMemberName, "__type_" + WindowsNodeMangler.NonGCStaticMemberName, false);
-                InsertStaticFieldRegionMember(fieldsDescs, defType, gcStaticFields, WindowsNodeMangler.GCStaticMemberName, "__type_" + WindowsNodeMangler.GCStaticMemberName, IsCoreRTAbi);
-                InsertStaticFieldRegionMember(fieldsDescs, defType, threadStaticFields, WindowsNodeMangler.ThreadStaticMemberName, "__type_" + WindowsNodeMangler.ThreadStaticMemberName, IsCoreRTAbi);
+                InsertStaticFieldRegionMember(fieldsDescs, defType, nonGcStaticFields, WindowsNodeMangler.NonGCStaticMemberName, false, false);
+                InsertStaticFieldRegionMember(fieldsDescs, defType, gcStaticFields, WindowsNodeMangler.GCStaticMemberName, IsCoreRTAbi, false);
+                InsertStaticFieldRegionMember(fieldsDescs, defType, threadStaticFields, WindowsNodeMangler.ThreadStaticMemberName, IsCoreRTAbi, true);
             }
             else
             {
@@ -719,7 +724,8 @@ namespace ILCompiler
                 return typeIndex;
         }
 
-        private void InsertStaticFieldRegionMember(List<DataFieldDescriptor> fieldDescs, DefType defType, List<DataFieldDescriptor> staticFields, string staticFieldForm, string staticFieldFormTypePrefix, bool staticDataInObject)
+        private void InsertStaticFieldRegionMember(List<DataFieldDescriptor> fieldDescs, DefType defType, List<DataFieldDescriptor> staticFields, string staticFieldForm,
+                                                   bool staticDataInObject, bool isThreadStatic)
         {
             if (staticFields != null && (staticFields.Count > 0))
             {
@@ -733,7 +739,7 @@ namespace ILCompiler
                 ClassTypeDescriptor classTypeDescriptor = new ClassTypeDescriptor
                 {
                     IsStruct = !staticDataInObject ? 1 : 0,
-                    Name = staticFieldFormTypePrefix + _objectWriter.GetMangledName(defType),
+                    Name = $"__type{staticFieldForm}{_objectWriter.GetMangledName(defType)}",
                     BaseClassId = 0
                 };
 
@@ -745,8 +751,49 @@ namespace ILCompiler
                 uint staticFieldRegionTypeIndex = _objectWriter.GetCompleteClassTypeIndex(classTypeDescriptor, fieldsDescriptor, staticFields.ToArray(), null);
                 uint staticFieldRegionSymbolTypeIndex = staticFieldRegionTypeIndex;
 
-                // This means that access to this static region is done via a double indirection
-                if (staticDataInObject)
+                if (isThreadStatic)
+                {
+                    // Generate helper struct used by natvis to get to the actual thread static data
+                    ClassFieldsTypeDescriptor helperFieldsDescriptor = new ClassFieldsTypeDescriptor
+                    {
+                        Size = (ulong)NodeFactory.Target.PointerSize * 2ul,
+                        FieldsCount = 2
+                    };
+
+                    ClassTypeDescriptor helperClassTypeDescriptor = new ClassTypeDescriptor
+                    {
+                        IsStruct = 1,
+                        Name = $"__ThreadStaticHelper<{classTypeDescriptor.Name}>",
+                        BaseClassId = 0
+                    };
+                    var pointerTypeDescriptor = new PointerTypeDescriptor
+                    {
+                        Is64Bit = Is64Bit ? 1 : 0,
+                        IsConst = 0,
+                        IsReference = 0,
+                        ElementType = GetTypeIndex(defType.Context.SystemModule.GetType("Internal.Runtime.CompilerHelpers", "TypeManagerSlot"), true)
+                    };
+
+                    var helperFields = new DataFieldDescriptor[] {
+                        new DataFieldDescriptor
+                        {
+                            FieldTypeIndex = _objectWriter.GetPointerTypeIndex(pointerTypeDescriptor),
+                            Offset = 0,
+                            Name = "TypeManagerSlot"
+                        },
+                        new DataFieldDescriptor
+                        {
+                            FieldTypeIndex = GetVariableTypeIndex(defType.Context.GetWellKnownType(Is64Bit? WellKnownType.Int64 : WellKnownType.Int32), true),
+                            Offset = (ulong)NodeFactory.Target.PointerSize,
+                            Name = "ClassIndex"
+                        }
+                    };
+
+                    staticFieldRegionTypeIndex = _objectWriter.GetCompleteClassTypeIndex(helperClassTypeDescriptor, helperFieldsDescriptor, helperFields, null);
+                    staticFieldRegionSymbolTypeIndex = staticFieldRegionTypeIndex;
+                    staticFieldForm = WindowsNodeMangler.ThreadStaticIndexName;
+                }
+                else if (staticDataInObject)// This means that access to this static region is done via indirection
                 {
                     PointerTypeDescriptor pointerTypeDescriptor = new PointerTypeDescriptor();
                     pointerTypeDescriptor.Is64Bit = Is64Bit ? 1 : 0;
@@ -754,8 +801,6 @@ namespace ILCompiler
                     pointerTypeDescriptor.IsReference = 0;
                     pointerTypeDescriptor.ElementType = staticFieldRegionTypeIndex;
 
-                    uint intermediatePointerDescriptor = _objectWriter.GetPointerTypeIndex(pointerTypeDescriptor);
-                    pointerTypeDescriptor.ElementType = intermediatePointerDescriptor;
                     staticFieldRegionSymbolTypeIndex = _objectWriter.GetPointerTypeIndex(pointerTypeDescriptor);
                 }
 

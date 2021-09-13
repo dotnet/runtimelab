@@ -9,7 +9,7 @@ using System.Runtime.CompilerServices;
 ** Class:  EETypePtr
 **
 **
-** Purpose: Pointer Type to a EEType in the runtime.
+** Purpose: Pointer Type to a MethodTable in the runtime.
 **
 **
 ===========================================================*/
@@ -34,9 +34,9 @@ namespace System
             return (_value == p._value);
         }
 
-        internal unsafe Internal.Runtime.EEType* ToPointer()
+        internal unsafe Internal.Runtime.MethodTable* ToPointer()
         {
-            return (Internal.Runtime.EEType*)(void*)_value;
+            return (Internal.Runtime.MethodTable*)(void*)_value;
         }
 
         [Intrinsic]

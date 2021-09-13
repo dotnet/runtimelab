@@ -41,8 +41,9 @@ namespace System.Runtime
         // unused = 4,
         GetSystemArrayEEType = 5,
         OnFirstChance = 6,
-        DebugFuncEvalHelper = 7,
-        DebugFuncEvalAbortHelper = 8,
+        OnUnhandledException = 7,
+        IDynamicCastableIsInterfaceImplemented = 8,
+        IDynamicCastableGetInterfaceImplementation = 9,
     }
 
     internal static class InternalCalls
@@ -100,16 +101,6 @@ namespace System.Runtime
         [MethodImpl(MethodImplOptions.InternalCall)]
         internal static extern IntPtr RhpHandleAlloc(object value, GCHandleType type);
 
-        // Allocate dependent handle.
-        [RuntimeImport(Redhawk.BaseName, "RhpHandleAllocDependent")]
-        [MethodImpl(MethodImplOptions.InternalCall)]
-        internal static extern IntPtr RhpHandleAllocDependent(object primary, object secondary);
-
-        // Allocate variable handle.
-        [RuntimeImport(Redhawk.BaseName, "RhpHandleAllocVariable")]
-        [MethodImpl(MethodImplOptions.InternalCall)]
-        internal static extern IntPtr RhpHandleAllocVariable(object value, uint type);
-
         [RuntimeImport(Redhawk.BaseName, "RhHandleGet")]
         [MethodImpl(MethodImplOptions.InternalCall)]
         internal static extern object RhHandleGet(IntPtr handle);
@@ -123,41 +114,37 @@ namespace System.Runtime
         //
         [RuntimeImport(Redhawk.BaseName, "RhpNewFast")]
         [MethodImpl(MethodImplOptions.InternalCall)]
-        internal static extern unsafe object RhpNewFast(EEType* pEEType);  // BEWARE: not for finalizable objects!
+        internal static extern unsafe object RhpNewFast(MethodTable* pEEType);  // BEWARE: not for finalizable objects!
 
         [RuntimeImport(Redhawk.BaseName, "RhpNewFinalizable")]
         [MethodImpl(MethodImplOptions.InternalCall)]
-        internal static extern unsafe object RhpNewFinalizable(EEType* pEEType);
+        internal static extern unsafe object RhpNewFinalizable(MethodTable* pEEType);
 
         [RuntimeImport(Redhawk.BaseName, "RhpNewArray")]
         [MethodImpl(MethodImplOptions.InternalCall)]
-        internal static extern unsafe object RhpNewArray(EEType* pEEType, int length);
+        internal static extern unsafe object RhpNewArray(MethodTable* pEEType, int length);
 
 #if FEATURE_64BIT_ALIGNMENT
         [RuntimeImport(Redhawk.BaseName, "RhpNewFastAlign8")]
         [MethodImpl(MethodImplOptions.InternalCall)]
-        internal static extern unsafe object RhpNewFastAlign8(EEType * pEEType);  // BEWARE: not for finalizable objects!
+        internal static extern unsafe object RhpNewFastAlign8(MethodTable * pEEType);  // BEWARE: not for finalizable objects!
 
         [RuntimeImport(Redhawk.BaseName, "RhpNewFinalizableAlign8")]
         [MethodImpl(MethodImplOptions.InternalCall)]
-        internal static extern unsafe object RhpNewFinalizableAlign8(EEType* pEEType);
+        internal static extern unsafe object RhpNewFinalizableAlign8(MethodTable* pEEType);
 
         [RuntimeImport(Redhawk.BaseName, "RhpNewArrayAlign8")]
         [MethodImpl(MethodImplOptions.InternalCall)]
-        internal static extern unsafe object RhpNewArrayAlign8(EEType* pEEType, int length);
+        internal static extern unsafe object RhpNewArrayAlign8(MethodTable* pEEType, int length);
 
         [RuntimeImport(Redhawk.BaseName, "RhpNewFastMisalign")]
         [MethodImpl(MethodImplOptions.InternalCall)]
-        internal static extern unsafe object RhpNewFastMisalign(EEType * pEEType);
+        internal static extern unsafe object RhpNewFastMisalign(MethodTable * pEEType);
 #endif // FEATURE_64BIT_ALIGNMENT
 
         [RuntimeImport(Redhawk.BaseName, "RhpCopyObjectContents")]
         [MethodImpl(MethodImplOptions.InternalCall)]
         internal static extern unsafe void RhpCopyObjectContents(object objDest, object objSrc);
-
-        [RuntimeImport(Redhawk.BaseName, "RhpCompareObjectContents")]
-        [MethodImpl(MethodImplOptions.InternalCall)]
-        internal static extern bool RhpCompareObjectContentsAndPadding(object obj1, object obj2);
 
         [RuntimeImport(Redhawk.BaseName, "RhpAssignRef")]
         [MethodImpl(MethodImplOptions.InternalCall)]
@@ -192,21 +179,17 @@ namespace System.Runtime
         [MethodImpl(MethodImplOptions.InternalCall)]
         internal static extern unsafe bool RhpEHEnumNext(void* pEHEnum, void* pEHClause);
 
-        [RuntimeImport(Redhawk.BaseName, "RhpGetSealedVirtualSlot")]
-        [MethodImpl(MethodImplOptions.InternalCall)]
-        internal static extern unsafe IntPtr RhpGetSealedVirtualSlot(EEType* pEEType, ushort slot);
-
         [RuntimeImport(Redhawk.BaseName, "RhpGetDispatchCellInfo")]
         [MethodImpl(MethodImplOptions.InternalCall)]
         internal static extern unsafe void RhpGetDispatchCellInfo(IntPtr pCell, out DispatchCellInfo newCellInfo);
 
         [RuntimeImport(Redhawk.BaseName, "RhpSearchDispatchCellCache")]
         [MethodImpl(MethodImplOptions.InternalCall)]
-        internal static extern unsafe IntPtr RhpSearchDispatchCellCache(IntPtr pCell, EEType* pInstanceType);
+        internal static extern unsafe IntPtr RhpSearchDispatchCellCache(IntPtr pCell, MethodTable* pInstanceType);
 
         [RuntimeImport(Redhawk.BaseName, "RhpUpdateDispatchCellCache")]
         [MethodImpl(MethodImplOptions.InternalCall)]
-        internal static extern unsafe IntPtr RhpUpdateDispatchCellCache(IntPtr pCell, IntPtr pTargetCode, EEType* pInstanceType, ref DispatchCellInfo newCellInfo);
+        internal static extern unsafe IntPtr RhpUpdateDispatchCellCache(IntPtr pCell, IntPtr pTargetCode, MethodTable* pInstanceType, ref DispatchCellInfo newCellInfo);
 
         [RuntimeImport(Redhawk.BaseName, "RhpGetClasslibFunctionFromCodeAddress")]
         [MethodImpl(MethodImplOptions.InternalCall)]
@@ -214,7 +197,7 @@ namespace System.Runtime
 
         [RuntimeImport(Redhawk.BaseName, "RhpGetClasslibFunctionFromEEType")]
         [MethodImpl(MethodImplOptions.InternalCall)]
-        internal static extern unsafe void* RhpGetClasslibFunctionFromEEType(IntPtr pEEType, ClassLibFunctionId id);
+        internal static extern unsafe void* RhpGetClasslibFunctionFromEEType(MethodTable* pEEType, ClassLibFunctionId id);
 
         //
         // StackFrameIterator
@@ -226,37 +209,11 @@ namespace System.Runtime
 
         [RuntimeImport(Redhawk.BaseName, "RhpSfiNext")]
         [MethodImpl(MethodImplOptions.InternalCall)]
-        internal static extern bool RhpSfiNext(ref StackFrameIterator pThis, out uint uExCollideClauseIdx, out bool fUnwoundReversePInvoke);
-
-        //
-        // DebugEventSource
-        //
-
-        [RuntimeImport(Redhawk.BaseName, "RhpGetRequestedExceptionEvents")]
-        [MethodImpl(MethodImplOptions.InternalCall)]
-        internal static extern ExceptionEventKind RhpGetRequestedExceptionEvents();
-
-        [DllImport(Redhawk.BaseName)]
-        internal static extern unsafe void RhpSendExceptionEventToDebugger(ExceptionEventKind eventKind, byte* ip, UIntPtr sp);
+        internal static extern unsafe bool RhpSfiNext(ref StackFrameIterator pThis, uint* uExCollideClauseIdx, bool* fUnwoundReversePInvoke);
 
         //
         // Miscellaneous helpers.
         //
-
-        // Get the rarely used (optional) flags of an EEType. If they're not present 0 will be returned.
-        [RuntimeImport(Redhawk.BaseName, "RhpGetEETypeRareFlags")]
-        [MethodImpl(MethodImplOptions.InternalCall)]
-        internal static extern unsafe uint RhpGetEETypeRareFlags(EEType* pEEType);
-
-        // Retrieve the offset of the value embedded in a Nullable<T>.
-        [RuntimeImport(Redhawk.BaseName, "RhpGetNullableEETypeValueOffset")]
-        [MethodImpl(MethodImplOptions.InternalCall)]
-        internal static extern unsafe byte RhpGetNullableEETypeValueOffset(EEType* pEEType);
-
-        // Retrieve the target type T in a Nullable<T>.
-        [RuntimeImport(Redhawk.BaseName, "RhpGetNullableEEType")]
-        [MethodImpl(MethodImplOptions.InternalCall)]
-        internal static extern unsafe EEType* RhpGetNullableEEType(EEType* pEEType);
 
         [RuntimeImport(Redhawk.BaseName, "RhpCallCatchFunclet")]
         [MethodImpl(MethodImplOptions.InternalCall)]

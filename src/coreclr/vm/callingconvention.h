@@ -423,11 +423,12 @@ public:
                             //@todo: Is it more apropos to call LookupApproxFieldTypeHandle() here?	
                             TypeHandle fldHnd = pFD->GetApproxFieldTypeHandleThrowing();	
                             CONSISTENCY_CHECK(!fldHnd.IsNull());
-                            pMT = fldHnd.GetMethodTable();	
+                            pMT = fldHnd.GetMethodTable();
+                            FALLTHROUGH;
                         }	
-                        case ELEMENT_TYPE_PTR:	
-                        case ELEMENT_TYPE_I:	
-                        case ELEMENT_TYPE_U:	
+                        case ELEMENT_TYPE_PTR:
+                        case ELEMENT_TYPE_I:
+                        case ELEMENT_TYPE_U:
                         case ELEMENT_TYPE_I4:	
                         case ELEMENT_TYPE_U4:
                         {	
@@ -715,6 +716,11 @@ public:
             pLoc->m_byteStackIndex = TransitionBlock::GetStackArgumentByteIndexFromOffset(argOffset);
             const bool isValueType = (m_argType == ELEMENT_TYPE_VALUETYPE);
             const bool isFloatHfa = (isValueType && !m_argTypeHandle.IsNull() && m_argTypeHandle.IsHFA());
+            if (isFloatHfa)
+            {
+                CorInfoHFAElemType type = m_argTypeHandle.GetHFAType();
+                pLoc->setHFAFieldSize(type);
+            }
             pLoc->m_byteStackSize = StackElemSize(byteArgSize, isValueType, isFloatHfa);
         }
     }
@@ -1437,7 +1443,8 @@ int ArgIteratorTemplate<ARGITERATOR_BASE>::GetNextOffset()
         break;
     }
     const bool isValueType = (argType == ELEMENT_TYPE_VALUETYPE);
-    const int cbArg = StackElemSize(argSize, isValueType, thValueType.IsFloatHfa());
+    const bool isFloatHfa = thValueType.IsFloatHfa();
+    const int cbArg = StackElemSize(argSize, isValueType, isFloatHfa);
     if (cFPRegs>0 && !this->IsVarArg())
     {
         if (cFPRegs + m_idxFPReg <= 8)
@@ -1494,6 +1501,24 @@ int ArgIteratorTemplate<ARGITERATOR_BASE>::GetNextOffset()
             }
         }
     }
+
+#ifdef OSX_ARM64_ABI
+    int alignment;
+    if (!isValueType)
+    {
+        _ASSERTE((cbArg & (cbArg - 1)) == 0);
+        alignment = cbArg;
+    }
+    else if (isFloatHfa)
+    {
+        alignment = 4;
+    }
+    else
+    {
+        alignment = 8;
+    }
+    m_ofsStack = (int)ALIGN_UP(m_ofsStack, alignment);
+#endif // OSX_ARM64_ABI
 
     int argOfs = TransitionBlock::GetOffsetOfArgs() + m_ofsStack;
     m_ofsStack += cbArg;

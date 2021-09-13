@@ -26,7 +26,8 @@ namespace ILCompiler.DependencyAnalysis
             // Consume type name part
             StringBuilder typeName = new StringBuilder();
             StringBuilder typeNamespace = new StringBuilder();
-            while (i < name.Length && (char.IsLetterOrDigit(name[i]) || name[i] == '.' || name[i] == '`'))
+            string containingTypeName = null;
+            while (i < name.Length && (char.IsLetterOrDigit(name[i]) || name[i] == '.' || name[i] == '`' || name[i] == '+'))
             {
                 if (name[i] == '.')
                 {
@@ -35,11 +36,23 @@ namespace ILCompiler.DependencyAnalysis
                     typeNamespace.Append(typeName);
                     typeName.Clear();
                 }
+                else if (name[i] == '+')
+                {
+                    containingTypeName = typeName.ToString();
+                    typeName.Clear();
+                }
                 else
                 {
                     typeName.Append(name[i]);
                 }
                 i++;
+            }
+
+            string nestedTypeName = null;
+            if (containingTypeName != null)
+            {
+                nestedTypeName = typeName.ToString();
+                typeName = new StringBuilder(containingTypeName);
             }
 
             // Consume any comma or white space
@@ -69,14 +82,20 @@ namespace ILCompiler.DependencyAnalysis
                 return false;
 
             // Resolve type in the assembly
-            type = referenceModule.GetType(typeNamespace.ToString(), typeName.ToString(), false);
-            
+            MetadataType mdType = referenceModule.GetType(typeNamespace.ToString(), typeName.ToString(), NotFoundBehavior.ReturnNull);
+            if (mdType != null && nestedTypeName != null)
+                mdType = mdType.GetNestedType(nestedTypeName);
+
             // If it didn't resolve and wasn't assembly-qualified, we also try core library
-            if (type == null && assemblyName.Length == 0)
+            if (mdType == null && assemblyName.Length == 0)
             {
                 referenceModule = context.SystemModule;
-                type = referenceModule.GetType(typeNamespace.ToString(), typeName.ToString(), false);
+                mdType = referenceModule.GetType(typeNamespace.ToString(), typeName.ToString(), NotFoundBehavior.ReturnNull);
+                if (mdType != null && nestedTypeName != null)
+                    mdType = mdType.GetNestedType(nestedTypeName);
             }
+
+            type = mdType;
             
             return type != null;
         }

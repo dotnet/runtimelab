@@ -77,66 +77,6 @@ namespace ILCompiler
         }
 
         /// <summary>
-        /// Returns true if <paramref name="method"/> is an actual native entrypoint.
-        /// There's a distinction between when a method reports it's a PInvoke in the metadata
-        /// versus how it's treated in the compiler. For many PInvoke methods the compiler will generate
-        /// an IL body. The methods with an IL method body shouldn't be treated as PInvoke within the compiler.
-        /// </summary>
-        public static bool IsRawPInvoke(this MethodDesc method)
-        {
-            return method.IsPInvoke && (method is Internal.IL.Stubs.PInvokeTargetNativeMethod);
-        }
-
-        /// <summary>
-        /// Gets a value indicating whether GC transition should be suppressed on the given p/invoke.
-        /// </summary>
-        public static bool IsSuppressGCTransition(this MethodDesc method)
-        {
-            Debug.Assert(method.IsPInvoke);
-
-            if (method is Internal.IL.Stubs.PInvokeTargetNativeMethod rawPinvoke)
-                method = rawPinvoke.Target;
-
-            return method.HasCustomAttribute("System.Runtime.InteropServices", "SuppressGCTransitionAttribute");
-        }
-
-        /// <summary>
-        /// What is the maximum number of steps that need to be taken from this type to its most contained generic type.
-        /// i.e.
-        /// SomeGenericType&lt;System.Int32&gt;.Method&lt;System.Int32&gt; => 1
-        /// SomeType.Method&lt;System.Int32&gt; => 0
-        /// SomeType.Method&lt;List&lt;System.Int32&gt;&gt; => 1
-        /// </summary>
-        public static int GetGenericDepth(this MethodDesc method)
-        {
-            int genericDepth = method.OwningType.GetGenericDepth();
-            foreach (TypeDesc type in method.Instantiation)
-            {
-                genericDepth = Math.Max(genericDepth, type.GetGenericDepth());
-            }
-            return genericDepth;
-        }
-
-        /// <summary>
-        /// Determine if a type has a generic depth greater than a given value
-        /// </summary>
-        /// <param name="depth"></param>
-        /// <returns></returns>
-        public static bool IsGenericDepthGreaterThan(this MethodDesc method, int depth)
-        {
-            if (method.OwningType.IsGenericDepthGreaterThan(depth))
-                return true;
-
-            foreach (TypeDesc type in method.Instantiation)
-            {
-                if (type.IsGenericDepthGreaterThan(depth))
-                    return true;
-            }
-
-            return false;
-        }
-
-        /// <summary>
         /// Determine whether a method can go into the sealed vtable of a type. Such method must be a sealed virtual 
         /// method that is not overriding any method on a base type. 
         /// Given that such methods can never be overridden in any derived type, we can 
@@ -147,7 +87,10 @@ namespace ILCompiler
         /// </summary>
         public static bool CanMethodBeInSealedVTable(this MethodDesc method)
         {
-            // The sealed vtable optimization doesn't make sense for interfaces since the slots are not inherited by anyone.
+            // Methods on interfaces never go into sealed vtable
+            // We would hit this code path for default implementations of interface methods (they are newslot+final).
+            // Inteface types don't get physical slots, but they have logical slot numbers and that logic shouldn't
+            // attempt to place final+newslot methods differently.
             return method.IsFinal && method.IsNewSlot && !method.OwningType.IsInterface;
         }
 
@@ -157,6 +100,7 @@ namespace ILCompiler
             return !method.Signature.IsStatic && /* Static methods don't have this */
                 !owningType.IsValueType && /* Value type instance methods take a ref to data */
                 !owningType.IsArrayTypeWithoutGenericInterfaces() && /* Type loader can make these at runtime */
+                (owningType is not MetadataType mdType || !mdType.IsModuleType) && /* Compiler parks some instance methods on the <Module> type */
                 !method.IsSharedByGenericInstantiations; /* Current impl limitation; can be lifted */
         }
     }

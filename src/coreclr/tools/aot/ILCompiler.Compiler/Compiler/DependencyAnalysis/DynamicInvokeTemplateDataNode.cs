@@ -68,7 +68,7 @@ namespace ILCompiler.DependencyAnalysis
                 TypeDesc dynamicInvokeMethodContainingType = method.OwningType;
 
                 int templateIndex = (2 * methodToTemplateIndex.Count) + 1;
-                // Add 1 to the index to account for the first blob entry being the containing EEType RVA
+                // Add 1 to the index to account for the first blob entry being the containing MethodTable RVA
                 methodToTemplateIndex.Add(method, templateIndex);
             }
 
@@ -81,7 +81,9 @@ namespace ILCompiler.DependencyAnalysis
             {
                 new DependencyListEntry(factory.MethodEntrypoint(method), "Dynamic invoke stub"),
                 new DependencyListEntry(factory.NativeLayout.PlacedSignatureVertex(factory.NativeLayout.MethodNameAndSignatureVertex(method)), "Dynamic invoke stub"),
-                new DependencyListEntry(factory.NecessaryTypeSymbol(method.OwningType), "Dynamic invoke stub containing type")
+                new DependencyListEntry(factory.NecessaryTypeSymbol(method.OwningType), "Dynamic invoke stub containing type"),
+                new DependencyListEntry(factory.NativeLayout.TemplateMethodLayout(method), "Template"),
+                new DependencyListEntry(factory.NativeLayout.TemplateMethodEntry(method), "Template"),
             };
         }
 

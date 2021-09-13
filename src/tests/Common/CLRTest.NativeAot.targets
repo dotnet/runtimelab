@@ -61,14 +61,11 @@ if [ ! -z ${RunNativeAot+x} ]%3B then
       exit 1
     fi
 
-    # In OSX we copy the native component to the directory where the exectuable resides.
-    # However, in Linux dlopen doesn't seem to look for current directory to resolve the dynamic library.
-    # So instead we point LD_LIBRARY_PATH to the directory where the native component is.
+    # Copy the native component to the directory where the executable resides.
     if [[ "$OSTYPE" == "darwin"* ]]; then
         cp *.dylib  native/ 2>/dev/null
-    fi
-    if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-        export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${PWD}
+    else
+        cp *.so  native/ 2>/dev/null
     fi
 
     ExePath=native/$(MSBuildProjectName)
@@ -93,7 +90,7 @@ fi
         ]]>
       </NativeAotMultimoduleIncompatibleScript>
 
-      <NativeAotCleanupBatchScript Condition="'$(CLRTestKind)' == 'BuildAndRun' and '$(NativeAotTest)' != 'false'">
+      <NativeAotCleanupBatchScript Condition="'$(CLRTestKind)' == 'BuildAndRun' and '$(NativeAotTest)' != 'false' and '$(TargetArchitecture)' != 'wasm'">
         <![CDATA[
 if defined RunNativeAot (
     rem Delete any leftover native compilation bits
@@ -141,10 +138,13 @@ if defined RunNativeAot (
   </Target>
 
   <Target Name="CreateNativeAotBuildProjectFile"
+    Condition="'$(_WillCLRTestProjectBuild)' == 'true'"
     Inputs="$(MSBuildProjectFullPath)"
     Outputs="$(OutputPath)\nativebuild.proj"
     BeforeTargets="Build">
     <PropertyGroup>
+      <_RootEntryAssemblyLine Condition="$(CLRTestFullTrimming) != 'true'">&lt;TrimmerRootAssembly Include=&quot;$(MSBuildProjectName)&quot; /&gt;</_RootEntryAssemblyLine>
+
       <_NativeAotBuildProjectFile>
         <![CDATA[
 <Project DefaultTargets="LinkNative" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
@@ -155,8 +155,10 @@ if defined RunNativeAot (
     <OutputType>Exe</OutputType>
     <OutputPath>%24(MSBuildProjectDirectory)\</OutputPath>
     <IntermediateOutputPath>%24(MSBuildProjectDirectory)\</IntermediateOutputPath>
+    <TargetArchitecture>$(TargetArchitecture)</TargetArchitecture>
     <Optimize>$(Optimize)</Optimize>
     <DebugSymbols>true</DebugSymbols>
+    <NETCoreSdkVersion>$(NETCoreSdkVersion)</NETCoreSdkVersion>
   </PropertyGroup>
 
   $(NativeAotProjectLines)
@@ -164,6 +166,11 @@ if defined RunNativeAot (
   <ItemGroup>
     <!-- Some tests consist of multiple assemblies - make sure ILC sees them -->
     <IlcCompileInput Include="%24(MSBuildProjectDirectory)\*.dll" Exclude="%24(MSBuildProjectDirectory)\$(MSBuildProjectName).dll" />
+
+    <!-- Copy RuntimeHostConfigurationOptions -->
+@(RuntimeHostConfigurationOption->'    <RuntimeHostConfigurationOption Include="%(Identity)" Value="%(Value)" />', '%0A')
+
+    $(_RootEntryAssemblyLine)
   </ItemGroup>
 
   <!-- We don't do anything in the Compile step since the test is already compiled to IL - the AOT compiler hooks up after this -->

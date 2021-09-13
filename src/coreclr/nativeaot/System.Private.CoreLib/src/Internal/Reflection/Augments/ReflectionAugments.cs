@@ -41,11 +41,6 @@ namespace Internal.Reflection.Augments
             s_reflectionCoreCallbacks = reflectionCoreCallbacks;
         }
 
-        public static CustomAttributeNamedArgument CreateCustomAttributeNamedArgument(Type attributeType, string memberName, bool isField, CustomAttributeTypedArgument typedValue)
-        {
-            return new CustomAttributeNamedArgument(attributeType, memberName, isField, typedValue);
-        }
-
         public static TypeCode GetRuntimeTypeCode(Type type)
         {
             Debug.Assert(type != null);
@@ -53,7 +48,7 @@ namespace Internal.Reflection.Augments
             EETypePtr eeType;
             if (!type.TryGetEEType(out eeType))
             {
-                // Type exists in metadata only. Aside from the enums, there is no chance a type with a TypeCode would not have an EEType,
+                // Type exists in metadata only. Aside from the enums, there is no chance a type with a TypeCode would not have an MethodTable,
                 // so if it's not an enum, return the default.
                 if (!type.IsEnum)
                     return TypeCode.Object;
@@ -91,7 +86,7 @@ namespace Internal.Reflection.Augments
             if (type == typeof(decimal))
                 return TypeCode.Decimal;
 
-            if (eeType == DBNull.Value.EETypePtr)
+            if (type == typeof(DBNull))
                 return TypeCode.DBNull;
 
             return TypeCode.Object;
@@ -144,7 +139,9 @@ namespace Internal.Reflection.Augments
         public abstract object ActivatorCreateInstance(
             [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.NonPublicConstructors)]
             Type type, bool nonPublic);
-        public abstract object ActivatorCreateInstance(Type type, BindingFlags bindingAttr, Binder binder, object[] args, CultureInfo culture, object[] activationAttributes);
+        public abstract object ActivatorCreateInstance(
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.NonPublicConstructors)]
+            Type type, BindingFlags bindingAttr, Binder binder, object[] args, CultureInfo culture, object[] activationAttributes);
 
         // V2 api: Creates open or closed delegates to static or instance methods - relaxed signature checking allowed.
         public abstract Delegate CreateDelegate(Type type, object firstArgument, MethodInfo method, bool throwOnBindFailure);
@@ -153,10 +150,11 @@ namespace Internal.Reflection.Augments
         public abstract Delegate CreateDelegate(Type type, MethodInfo method, bool throwOnBindFailure);
 
         // V1 api: Creates closed delegates to instance methods only, relaxed signature checking disallowed.
+        [RequiresUnreferencedCode("The target method might be removed")]
         public abstract Delegate CreateDelegate(Type type, object target, string method, bool ignoreCase, bool throwOnBindFailure);
 
         // V1 api: Creates open delegates to static methods only, relaxed signature checking disallowed.
-        public abstract Delegate CreateDelegate(Type type, Type target, string method, bool ignoreCase, bool throwOnBindFailure);
+        public abstract Delegate CreateDelegate(Type type, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type target, string method, bool ignoreCase, bool throwOnBindFailure);
 
 #if FEATURE_COMINTEROP
         public abstract Type GetTypeFromCLSID(Guid clsid, string server, bool throwOnError);

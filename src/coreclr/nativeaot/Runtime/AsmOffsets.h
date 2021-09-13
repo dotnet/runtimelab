@@ -20,7 +20,6 @@
 // NOTE: the values MUST be in hex notation WITHOUT the 0x prefix
 
 //        32-bit,64-bit, constant symbol
-ASM_CONST( 14c08, 14c08, RH_LARGE_OBJECT_SIZE)
 ASM_CONST(   400,   800, CLUMP_SIZE)
 ASM_CONST(     a,     b, LOG2_CLUMP_SIZE)
 
@@ -35,10 +34,10 @@ ASM_CONST(     2,     2, STRING_COMPONENT_SIZE)
 ASM_CONST(     E,    16, STRING_BASE_SIZE)
 ASM_CONST(3FFFFFDF,3FFFFFDF,MAX_STRING_LENGTH)
 
-ASM_OFFSET(    0,     0, EEType, m_usComponentSize)
-ASM_OFFSET(    2,     2, EEType, m_usFlags)
-ASM_OFFSET(    4,     4, EEType, m_uBaseSize)
-ASM_OFFSET(   14,    18, EEType, m_VTable)
+ASM_OFFSET(    0,     0, MethodTable, m_usComponentSize)
+ASM_OFFSET(    2,     2, MethodTable, m_usFlags)
+ASM_OFFSET(    4,     4, MethodTable, m_uBaseSize)
+ASM_OFFSET(   14,    18, MethodTable, m_VTable)
 
 ASM_OFFSET(    0,     0, Thread, m_rgbAllocContextBuffer)
 ASM_OFFSET(   28,    38, Thread, m_ThreadStateFlags)

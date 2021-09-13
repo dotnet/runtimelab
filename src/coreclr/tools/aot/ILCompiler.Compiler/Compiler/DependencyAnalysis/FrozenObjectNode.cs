@@ -37,7 +37,7 @@ namespace ILCompiler.DependencyAnalysis
         {
             get
             {
-                // The frozen object symbol points at the EEType portion of the object, skipping over the sync block
+                // The frozen object symbol points at the MethodTable portion of the object, skipping over the sync block
                 return OffsetFromBeginningOfArray + _field.Context.Target.PointerSize;
             }
         }

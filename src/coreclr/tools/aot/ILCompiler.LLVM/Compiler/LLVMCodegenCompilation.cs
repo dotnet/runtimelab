@@ -40,7 +40,7 @@ namespace ILCompiler
             IInliningPolicy inliningPolicy,
             DevirtualizationManager devirtualizationManager,
             InstructionSetSupport instructionSetSupport)
-            : base(dependencyGraph, nodeFactory, GetCompilationRoots(roots, nodeFactory), ilProvider, debugInformationProvider, logger, devirtualizationManager, inliningPolicy, instructionSetSupport, 0)
+            : base(dependencyGraph, nodeFactory, GetCompilationRoots(roots, nodeFactory), ilProvider, debugInformationProvider, logger, devirtualizationManager, inliningPolicy, instructionSetSupport, null /* ProfileDataManager */, RyuJitCompilationOptions.SingleThreadedCompilation)
         {
             NodeFactory = nodeFactory;
             LLVMModuleRef m = LLVMModuleRef.CreateWithName(options.ModuleName);
@@ -217,7 +217,7 @@ namespace ILCompiler
 
             if (hasHiddenParam)
             {
-                signatureTypes.Add(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0)); // *EEType
+                signatureTypes.Add(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0)); // *MethodTable
             }
 
             // Intentionally skipping the 'this' pointer since it could always be a GC reference

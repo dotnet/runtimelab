@@ -98,7 +98,6 @@ namespace ILCompiler.DependencyAnalysis
                         encoder.EmitMOV(encoder.TargetRegister.Arg1, encoder.TargetRegister.Arg0);
                         EmitDictionaryLookup(factory, ref encoder, encoder.TargetRegister.Arg0, encoder.TargetRegister.Result, _lookupSignature, relocsOnly);
                         encoder.EmitLDR(encoder.TargetRegister.Result, encoder.TargetRegister.Result);
-                        encoder.EmitLDR(encoder.TargetRegister.Result, encoder.TargetRegister.Result);
 
                         MetadataType target = (MetadataType)_target;
                         if (!factory.PreinitializationManager.HasLazyStaticConstructor(target))
@@ -220,7 +219,7 @@ namespace ILCompiler.DependencyAnalysis
     {
         protected override void EmitLoadGenericContext(NodeFactory factory, ref ARM64Emitter encoder, bool relocsOnly)
         {
-            // We start with context register pointing to the EEType
+            // We start with context register pointing to the MethodTable
             Register contextRegister = GetContextRegister(ref encoder);
 
             // Locate the VTable slot that points to the dictionary

@@ -25,7 +25,7 @@ namespace ILCompiler.DependencyAnalysis
     public enum LookupResultType
     {
         Invalid,
-        EEType,             // a type
+        MethodTable,             // a type
         UnwrapNullable,     // a type (The type T described by a type spec that is generic over Nullable<T>)
         NonGcStatic,        // the non-gc statics of a type
         GcStatic,           // the gc statics of a type
@@ -44,7 +44,6 @@ namespace ILCompiler.DependencyAnalysis
         IsInst,             // isinst helper
         CastClass,          // castclass helper
         AllocArray,         // the array allocator of a type
-        CheckArrayElementType, // check the array element type
         TypeSize,           // size of the type
         FieldOffset,        // field offset
         CallingConvention_NoInstParam,      // CallingConventionConverterThunk NO_INSTANTIATING_PARAM
@@ -211,7 +210,7 @@ namespace ILCompiler.DependencyAnalysis
     }
 
     /// <summary>
-    /// Generic lookup result that points to an EEType.
+    /// Generic lookup result that points to an MethodTable.
     /// </summary>
     public sealed class TypeHandleGenericLookupResult : GenericLookupResult
     {
@@ -260,7 +259,7 @@ namespace ILCompiler.DependencyAnalysis
 
         public override void WriteDictionaryTocData(NodeFactory factory, IGenericLookupResultTocWriter writer)
         {
-            writer.WriteData(LookupResultReferenceType(factory), LookupResultType.EEType, _type);
+            writer.WriteData(LookupResultReferenceType(factory), LookupResultType.MethodTable, _type);
         }
 
         protected override int CompareToImpl(GenericLookupResult other, TypeSystemComparer comparer)
@@ -281,7 +280,7 @@ namespace ILCompiler.DependencyAnalysis
 
 
     /// <summary>
-    /// Generic lookup result that points to an EEType where if the type is Nullable&lt;X&gt; the EEType is X
+    /// Generic lookup result that points to an MethodTable where if the type is Nullable&lt;X&gt; the MethodTable is X
     /// </summary>
     public sealed class UnwrapNullableTypeHandleGenericLookupResult : GenericLookupResult
     {
@@ -1013,7 +1012,7 @@ namespace ILCompiler.DependencyAnalysis
         public override ISymbolNode GetTarget(NodeFactory factory, GenericLookupResultContext dictionary)
         {
             TypeDesc instantiatedType = _type.GetNonRuntimeDeterminedTypeFromRuntimeDeterminedSubtypeViaSubstitution(dictionary.TypeInstantiation, dictionary.MethodInstantiation);
-            return factory.Indirection(factory.ExternSymbol(JitHelper.GetNewObjectHelperForType(instantiatedType)));
+            return factory.ExternSymbol(JitHelper.GetNewObjectHelperForType(instantiatedType));
         }
 
         public override void AppendMangledName(NameMangler nameMangler, Utf8StringBuilder sb)
@@ -1031,7 +1030,7 @@ namespace ILCompiler.DependencyAnalysis
 
         public override GenericLookupResultReferenceType LookupResultReferenceType(NodeFactory factory)
         {
-            return GenericLookupResultReferenceType.Indirect;
+            return GenericLookupResultReferenceType.Direct;
         }
 
         public override void WriteDictionaryTocData(NodeFactory factory, IGenericLookupResultTocWriter writer)
@@ -1074,7 +1073,7 @@ namespace ILCompiler.DependencyAnalysis
         {
             TypeDesc instantiatedType = _type.GetNonRuntimeDeterminedTypeFromRuntimeDeterminedSubtypeViaSubstitution(dictionary.TypeInstantiation, dictionary.MethodInstantiation);
             Debug.Assert(instantiatedType.IsArray);
-            return factory.Indirection(factory.ExternSymbol(JitHelper.GetNewArrayHelperForType(instantiatedType)));
+            return factory.ExternSymbol(JitHelper.GetNewArrayHelperForType(instantiatedType));
         }
 
         public override void AppendMangledName(NameMangler nameMangler, Utf8StringBuilder sb)
@@ -1092,7 +1091,7 @@ namespace ILCompiler.DependencyAnalysis
 
         public override GenericLookupResultReferenceType LookupResultReferenceType(NodeFactory factory)
         {
-            return GenericLookupResultReferenceType.Indirect;
+            return GenericLookupResultReferenceType.Direct;
         }
 
         public override void WriteDictionaryTocData(NodeFactory factory, IGenericLookupResultTocWriter writer)
@@ -1134,7 +1133,7 @@ namespace ILCompiler.DependencyAnalysis
         public override ISymbolNode GetTarget(NodeFactory factory, GenericLookupResultContext dictionary)
         {
             TypeDesc instantiatedType = _type.GetNonRuntimeDeterminedTypeFromRuntimeDeterminedSubtypeViaSubstitution(dictionary.TypeInstantiation, dictionary.MethodInstantiation);
-            return factory.Indirection(factory.ExternSymbol(JitHelper.GetCastingHelperNameForType(instantiatedType, true)));
+            return factory.ExternSymbol(JitHelper.GetCastingHelperNameForType(instantiatedType, true));
         }
 
         public override void AppendMangledName(NameMangler nameMangler, Utf8StringBuilder sb)
@@ -1152,7 +1151,7 @@ namespace ILCompiler.DependencyAnalysis
 
         public override GenericLookupResultReferenceType LookupResultReferenceType(NodeFactory factory)
         {
-            return GenericLookupResultReferenceType.Indirect;
+            return GenericLookupResultReferenceType.Direct;
         }
 
         public override void WriteDictionaryTocData(NodeFactory factory, IGenericLookupResultTocWriter writer)
@@ -1194,7 +1193,7 @@ namespace ILCompiler.DependencyAnalysis
         public override ISymbolNode GetTarget(NodeFactory factory, GenericLookupResultContext dictionary)
         {
             TypeDesc instantiatedType = _type.GetNonRuntimeDeterminedTypeFromRuntimeDeterminedSubtypeViaSubstitution(dictionary.TypeInstantiation, dictionary.MethodInstantiation);
-            return factory.Indirection(factory.ExternSymbol(JitHelper.GetCastingHelperNameForType(instantiatedType, false)));
+            return factory.ExternSymbol(JitHelper.GetCastingHelperNameForType(instantiatedType, false));
         }
 
         public override void AppendMangledName(NameMangler nameMangler, Utf8StringBuilder sb)
@@ -1212,7 +1211,7 @@ namespace ILCompiler.DependencyAnalysis
 
         public override GenericLookupResultReferenceType LookupResultReferenceType(NodeFactory factory)
         {
-            return GenericLookupResultReferenceType.Indirect;
+            return GenericLookupResultReferenceType.Direct;
         }
 
         public override void WriteDictionaryTocData(NodeFactory factory, IGenericLookupResultTocWriter writer)
@@ -1251,21 +1250,8 @@ namespace ILCompiler.DependencyAnalysis
         public override ISymbolNode GetTarget(NodeFactory factory, GenericLookupResultContext dictionary)
         {
             TypeDesc instantiatedType = _type.GetNonRuntimeDeterminedTypeFromRuntimeDeterminedSubtypeViaSubstitution(dictionary.TypeInstantiation, dictionary.MethodInstantiation);
-            MethodDesc defaultCtor = instantiatedType.GetDefaultConstructor();
-
-            if (defaultCtor == null)
-            {
-                // If there isn't a default constructor, use the fallback one.
-                MetadataType missingCtorType = factory.TypeSystemContext.SystemModule.GetKnownType("System", "Activator");
-                missingCtorType = missingCtorType.GetKnownNestedType("ClassWithMissingConstructor");
-                defaultCtor = missingCtorType.GetParameterlessConstructor();
-            }
-            else
-            {
-                defaultCtor = defaultCtor.GetCanonMethodTarget(CanonicalFormKind.Specific);
-            }
-
-            return factory.MethodEntrypoint(defaultCtor);
+            MethodDesc defaultCtor = Compilation.GetConstructorForCreateInstanceIntrinsic(instantiatedType);
+            return factory.CanonicalEntrypoint(defaultCtor);
         }
 
         public override void AppendMangledName(NameMangler nameMangler, Utf8StringBuilder sb)

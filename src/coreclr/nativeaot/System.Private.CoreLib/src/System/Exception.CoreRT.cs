@@ -9,20 +9,23 @@ using System.Runtime.InteropServices;
 
 using MethodBase = System.Reflection.MethodBase;
 
-using Internal.Diagnostics;
-
 namespace System
 {
     public partial class Exception
     {
-        // TargetSite is not supported on CoreRT. Because it's likely use is diagnostic logging, returning null (a permitted return value)
-        // seems more useful than throwing a PlatformNotSupportedException here.
-        public MethodBase TargetSite => null;
+        public MethodBase TargetSite
+        {
+            get
+            {
+                if (!HasBeenThrown)
+                    return null;
+
+                return new StackFrame(_corDbgStackTrace[0], needFileInfo: false).GetMethod();
+            }
+        }
 
         private IDictionary CreateDataContainer() => new ListDictionaryInternal();
 
-        private string SerializationStackTraceString => StackTrace;
-        private string SerializationRemoteStackTraceString => null;
         private string SerializationWatsonBuckets => null;
 
         private string CreateSourceName() => HasBeenThrown ? "<unknown>" : null;
@@ -39,23 +42,8 @@ namespace System
         private int _HResult;     // HResult
 
         // To maintain compatibility across runtimes, if this object was deserialized, it will store its stack trace as a string
-        private string _stackTraceString;
-
-        // Returns the stack trace as a string.  If no stack trace is
-        // available, null is returned.
-        public virtual string StackTrace
-        {
-            get
-            {
-                if (_stackTraceString != null)
-                    return _stackTraceString;
-
-                if (!HasBeenThrown)
-                    return null;
-
-                return StackTraceHelper.FormatStackTrace(GetStackIPs(), true);
-            }
-        }
+        private string? _stackTraceString;
+        private string? _remoteStackTraceString;
 
         internal IntPtr[] GetStackIPs()
         {
@@ -76,6 +64,8 @@ namespace System
         // most nested call to least.) May also include a few "special" IP's from the SpecialIP class:
         private IntPtr[] _corDbgStackTrace;
         private int _idxFirstFreeStackTraceEntry;
+
+        internal static IntPtr EdiSeparator => (IntPtr)1;  // Marks a boundary where an ExceptionDispatchInfo rethrew an exception.
 
         private void AppendStackIP(IntPtr IP, bool isFirstRethrowFrame)
         {
@@ -108,13 +98,7 @@ namespace System
             _corDbgStackTrace = newArray;
         }
 
-        private bool HasBeenThrown
-        {
-            get
-            {
-                return _idxFirstFreeStackTraceEntry != 0;
-            }
-        }
+        private bool HasBeenThrown => _idxFirstFreeStackTraceEntry != 0;
 
         private enum RhEHFrameType
         {
@@ -143,7 +127,7 @@ namespace System
                 // 1. Don't clear if we're rethrowing with `throw;`.
                 // 2. Don't clear if we're throwing through ExceptionDispatchInfo.
                 //    This is done through invoking RestoreDispatchState which sets the last frame to EdiSeparator followed by throwing normally using `throw ex;`.
-                if (!isFirstRethrowFrame && isFirstFrame && ex._idxFirstFreeStackTraceEntry > 0 && ex._corDbgStackTrace[ex._idxFirstFreeStackTraceEntry - 1] != StackTraceHelper.SpecialIP.EdiSeparator)
+                if (!isFirstRethrowFrame && isFirstFrame && ex._idxFirstFreeStackTraceEntry > 0 && ex._corDbgStackTrace[ex._idxFirstFreeStackTraceEntry - 1] != EdiSeparator)
                     ex._idxFirstFreeStackTraceEntry = 0;
 
                 // If out of memory, avoid any calls that may allocate.  Otherwise, they may fail
@@ -203,7 +187,7 @@ namespace System
                 stackTrace = newStackTrace;
                 while (stackTrace[idxFirstFreeStackTraceEntry] != (IntPtr)0)
                     idxFirstFreeStackTraceEntry++;
-                stackTrace[idxFirstFreeStackTraceEntry++] = StackTraceHelper.SpecialIP.EdiSeparator;
+                stackTrace[idxFirstFreeStackTraceEntry++] = EdiSeparator;
             }
 
             // Since EDI can be created at various points during exception dispatch (e.g. at various frames on the stack) for the same exception instance,
@@ -223,12 +207,6 @@ namespace System
             {
                 StackTrace = stackTrace;
             }
-        }
-
-        [StackTraceHidden]
-        internal void SetCurrentStackTrace()
-        {
-            // TODO: Exception.SetCurrentStackTrace
         }
 
         // This is the object against which a lock will be taken
@@ -270,7 +248,7 @@ namespace System
                 {
                     SERIALIZED_EXCEPTION_HEADER* pHeader = (SERIALIZED_EXCEPTION_HEADER*)pBuffer;
                     pHeader->HResult = _HResult;
-                    pHeader->ExceptionEEType = (IntPtr)EEType;
+                    pHeader->ExceptionEEType = (IntPtr)MethodTable;
                     pHeader->StackTraceElementCount = nStackTraceElements;
                     IntPtr* pStackTraceElements = (IntPtr*)(pBuffer + sizeof(SERIALIZED_EXCEPTION_HEADER));
                     for (int i = 0; i < nStackTraceElements; i++)
@@ -281,6 +259,20 @@ namespace System
 
                 return buffer;
             }
+        }
+
+        // Returns true if setting the _remoteStackTraceString field is legal, false if not (immutable exception).
+        // A false return value means the caller should early-exit the operation.
+        // Can also throw InvalidOperationException if a stack trace is already set or if object has been thrown.
+        private bool CanSetRemoteStackTrace()
+        {
+            // Check to see if the exception already has a stack set in it.
+            if (HasBeenThrown || _stackTraceString != null || _remoteStackTraceString != null)
+            {
+                ThrowHelper.ThrowInvalidOperationException();
+            }
+
+            return true; // CoreRT runtime doesn't have immutable agile exceptions, always return true
         }
     }
 }

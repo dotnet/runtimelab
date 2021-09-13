@@ -3,7 +3,6 @@
 
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.InteropServices;
 using Xunit;
 
 namespace System.Reflection.Emit.Tests
@@ -36,7 +35,6 @@ namespace System.Reflection.Emit.Tests
         }
 
         [Theory]
-        [ActiveIssue("https://github.com/dotnet/runtime/issues/2389", TestRuntimes.Mono)]
         [MemberData(nameof(DefineDynamicAssembly_TestData))]
         public void DefineDynamicAssembly_AssemblyName_AssemblyBuilderAccess(AssemblyName name, AssemblyBuilderAccess access)
         {
@@ -57,7 +55,6 @@ namespace System.Reflection.Emit.Tests
         }
 
         [Theory]
-        [ActiveIssue("https://github.com/dotnet/runtime/issues/2389", TestRuntimes.Mono)]
         [MemberData(nameof(DefineDynamicAssembly_CustomAttributes_TestData))]
         public void DefineDynamicAssembly_AssemblyName_AssemblyBuilderAccess_CustomAttributeBuilder(AssemblyName name, AssemblyBuilderAccess access, IEnumerable<CustomAttributeBuilder> attributes)
         {
@@ -340,5 +337,101 @@ namespace System.Reflection.Emit.Tests
             Assert.Empty(assembly.DefinedTypes);
             Assert.Empty(assembly.GetTypes());
         }
+
+	private static void SamplePrivateMethod ()
+	{
+	}
+
+	internal static void SampleInternalMethod ()
+	{
+	}
+
+	[Fact]
+	void Invoke_Private_CrossAssembly_ThrowsMethodAccessException()
+	{
+	    TypeBuilder tb = Helpers.DynamicType(TypeAttributes.Public);
+	    var mb = tb.DefineMethod ("MyMethod", MethodAttributes.Public | MethodAttributes.Static, typeof(void), new Type[] {  });
+
+	    var ilg = mb.GetILGenerator ();
+
+	    var callee = typeof (AssemblyTests).GetMethod ("SamplePrivateMethod", BindingFlags.Static | BindingFlags.NonPublic);
+
+	    ilg.Emit (OpCodes.Call, callee);
+	    ilg.Emit (OpCodes.Ret);
+
+	    var ty = tb.CreateType ();
+
+	    var mi = ty.GetMethod ("MyMethod", BindingFlags.Static | BindingFlags.Public);
+
+	    var d = (Action) mi.CreateDelegate (typeof(Action));
+
+	    Assert.Throws<MethodAccessException>(() => d ());
+	}
+
+	[Fact]
+	void Invoke_Internal_CrossAssembly_ThrowsMethodAccessException()
+	{
+	    TypeBuilder tb = Helpers.DynamicType(TypeAttributes.Public);
+	    var mb = tb.DefineMethod ("MyMethod", MethodAttributes.Public | MethodAttributes.Static, typeof(void), new Type[] {  });
+
+	    var ilg = mb.GetILGenerator ();
+
+	    var callee = typeof (AssemblyTests).GetMethod ("SampleInternalMethod", BindingFlags.Static | BindingFlags.NonPublic);
+
+	    ilg.Emit (OpCodes.Call, callee);
+	    ilg.Emit (OpCodes.Ret);
+
+	    var ty = tb.CreateType ();
+
+	    var mi = ty.GetMethod ("MyMethod", BindingFlags.Static | BindingFlags.Public);
+
+	    var d = (Action) mi.CreateDelegate (typeof(Action));
+
+	    Assert.Throws<MethodAccessException>(() => d ());
+	}
+	
+	[Fact]
+	void Invoke_Private_SameAssembly_ThrowsMethodAccessException()
+	{
+	    ModuleBuilder modb = Helpers.DynamicModule();
+	    
+	    string calleeName = "PrivateMethod";
+
+	    TypeBuilder tbCalled = modb.DefineType ("CalledClass", TypeAttributes.Public);
+	    var mbCalled = tbCalled.DefineMethod (calleeName, MethodAttributes.Private | MethodAttributes.Static);
+	    mbCalled.GetILGenerator().Emit (OpCodes.Ret);
+
+	    var tyCalled = tbCalled.CreateType();
+	    var callee = tyCalled.GetMethod (calleeName, BindingFlags.NonPublic | BindingFlags.Static);
+
+	    TypeBuilder tb = modb.DefineType("CallerClass", TypeAttributes.Public);
+	    var mb = tb.DefineMethod ("MyMethod", MethodAttributes.Public | MethodAttributes.Static, typeof(void), new Type[] {  });
+
+	    var ilg = mb.GetILGenerator ();
+
+	    ilg.Emit (OpCodes.Call, callee);
+	    ilg.Emit (OpCodes.Ret);
+
+	    var ty = tb.CreateType ();
+
+	    var mi = ty.GetMethod ("MyMethod", BindingFlags.Static | BindingFlags.Public);
+
+	    var d = (Action) mi.CreateDelegate (typeof(Action));
+
+	    Assert.Throws<MethodAccessException>(() => d ());
+	}
+
+    [Fact]
+    public void DefineDynamicAssembly_AssemblyBuilderLocationIsEmpty_InternalAssemblyBuilderLocationIsEmpty()
+    {
+        AssemblyBuilder assembly = Helpers.DynamicAssembly(nameof(DefineDynamicAssembly_AssemblyBuilderLocationIsEmpty_InternalAssemblyBuilderLocationIsEmpty));
+        Assembly internalAssemblyBuilder  = AppDomain.CurrentDomain.GetAssemblies()
+                .FirstOrDefault(a => a.FullName == assembly.FullName);
+
+        Assert.Empty(assembly.Location);
+        Assert.NotNull(internalAssemblyBuilder);
+        Assert.Empty(internalAssemblyBuilder.Location);
+    }
+
     }
 }

@@ -55,6 +55,7 @@ namespace ILCompiler
         private bool _noMetadataBlocking;
         private bool _disableReflection;
         private bool _completeTypesMetadata;
+        private bool _reflectedOnly;
         private bool _scanReflection;
         private bool _methodBodyFolding;
         private bool _singleThreaded;
@@ -74,8 +75,6 @@ namespace ILCompiler
 
         private IReadOnlyList<string> _runtimeOptions = Array.Empty<string>();
 
-        private IReadOnlyList<string> _removedFeatures = Array.Empty<string>();
-
         private IReadOnlyList<string> _featureSwitches = Array.Empty<string>();
 
         private IReadOnlyList<string> _suppressedWarnings = Array.Empty<string>();
@@ -86,6 +85,12 @@ namespace ILCompiler
 
         private IReadOnlyList<string> _rootedAssemblies = Array.Empty<string>();
         private IReadOnlyList<string> _conditionallyRootedAssemblies = Array.Empty<string>();
+
+        public IReadOnlyList<string> _mibcFilePaths = Array.Empty<string>();
+
+        private IReadOnlyList<string> _singleWarnEnabledAssemblies = Array.Empty<string>();
+        private IReadOnlyList<string> _singleWarnDisabledAssemblies = Array.Empty<string>();
+        private bool _singleWarn;
 
         private bool _help;
 
@@ -166,6 +171,7 @@ namespace ILCompiler
                 syntax.DefineOption("O", ref optimize, "Enable optimizations");
                 syntax.DefineOption("Os", ref optimizeSpace, "Enable optimizations, favor code space");
                 syntax.DefineOption("Ot", ref optimizeTime, "Enable optimizations, favor code speed");
+                syntax.DefineOptionList("m|mibc", ref _mibcFilePaths, "Mibc file(s) for profile guided optimization"); ;
                 syntax.DefineOption("g", ref _enableDebugInfo, "Emit debugging information");
                 syntax.DefineOption("wasm", ref _isLlvmCodegen, "Compile for Web Assembly code-generation");
                 syntax.DefineOption("llvm", ref _isLlvmCodegen, "Compile for LLVM code-generation");
@@ -186,6 +192,7 @@ namespace ILCompiler
                 syntax.DefineOption("nometadatablocking", ref _noMetadataBlocking, "Ignore metadata blocking for internal implementation details");
                 syntax.DefineOption("disablereflection", ref _disableReflection, "Disable generation of reflection metadata");
                 syntax.DefineOption("completetypemetadata", ref _completeTypesMetadata, "Generate complete metadata for types");
+                syntax.DefineOption("reflectedonly", ref _reflectedOnly, "Generate metadata only for reflected members");
                 syntax.DefineOption("scanreflection", ref _scanReflection, "Scan IL for reflection patterns");
                 syntax.DefineOption("scan", ref _useScanner, "Use IL scanner to generate optimized code (implied by -O)");
                 syntax.DefineOption("noscan", ref _noScanner, "Do not use IL scanner to generate optimized code");
@@ -193,15 +200,17 @@ namespace ILCompiler
                 syntax.DefineOption("stacktracedata", ref _emitStackTraceData, "Emit data to support generating stack trace strings at runtime");
                 syntax.DefineOption("methodbodyfolding", ref _methodBodyFolding, "Fold identical method bodies");
                 syntax.DefineOptionList("initassembly", ref _initAssemblies, "Assembly(ies) with a library initializer");
-                syntax.DefineOptionList("appcontextswitch", ref _appContextSwitches, "System.AppContext switches to set");
+                syntax.DefineOptionList("appcontextswitch", ref _appContextSwitches, "System.AppContext switches to set (format: 'Key=Value')");
                 syntax.DefineOptionList("feature", ref _featureSwitches, "Feature switches to apply (format: 'Namespace.Name=[true|false]'");
                 syntax.DefineOptionList("runtimeopt", ref _runtimeOptions, "Runtime options to set");
-                syntax.DefineOptionList("removefeature", ref _removedFeatures, "Framework features to remove");
                 syntax.DefineOption("singlethreaded", ref _singleThreaded, "Run compilation on a single thread");
                 syntax.DefineOption("instructionset", ref _instructionSet, "Instruction set to allow or disallow");
                 syntax.DefineOption("preinitstatics", ref _preinitStatics, "Interpret static constructors at compile time if possible (implied by -O)");
                 syntax.DefineOption("nopreinitstatics", ref _noPreinitStatics, "Do not interpret static constructors at compile time");
                 syntax.DefineOptionList("nowarn", ref _suppressedWarnings, "Disable specific warning messages");
+                syntax.DefineOption("singlewarn", ref _singleWarn, "Generate single AOT/trimming warning per assembly");
+                syntax.DefineOptionList("singlewarnassembly", ref _singleWarnEnabledAssemblies, "Generate single AOT/trimming warning for given assembly");
+                syntax.DefineOptionList("nosinglewarnassembly", ref _singleWarnDisabledAssemblies, "Expand AOT/trimming warnings for given assembly");
                 syntax.DefineOptionList("directpinvoke", ref _directPInvokes, "PInvoke to call directly");
                 syntax.DefineOptionList("directpinvokelist", ref _directPInvokeLists, "File with list of PInvokes to call directly");
 
@@ -211,7 +220,7 @@ namespace ILCompiler
                 syntax.DefineOption("targetarch", ref _targetArchitectureStr, "Target architecture for cross compilation");
                 syntax.DefineOption("targetos", ref _targetOSStr, "Target OS for cross compilation");
 
-                syntax.DefineOption("singlemethodtypename", ref _singleMethodTypeName, "Single method compilation: name of the owning type");
+                syntax.DefineOption("singlemethodtypename", ref _singleMethodTypeName, "Single method compilation: assembly-qualified name of the owning type");
                 syntax.DefineOption("singlemethodname", ref _singleMethodName, "Single method compilation: name of the method");
                 syntax.DefineOptionList("singlemethodgenericarg", ref _singleMethodGenericArgs, "Single method compilation: generic arguments to the method");
 
@@ -558,8 +567,6 @@ namespace ILCompiler
                     compilationRoots.Add(new ExpectedIsaFeaturesRootProvider(instructionSetSupport));
                 }
 
-                if (_rdXmlFilePaths.Count > 0)
-                    Console.WriteLine("Warning: RD.XML processing will change before release (https://github.com/dotnet/corert/issues/5001)");
                 foreach (var rdXmlFilePath in _rdXmlFilePaths)
                 {
                     compilationRoots.Add(new RdXmlRootProvider(typeSystemContext, rdXmlFilePath));
@@ -604,31 +611,19 @@ namespace ILCompiler
             string compilationUnitPrefix = _multiFile ? System.IO.Path.GetFileNameWithoutExtension(_outputFilePath) : "";
             builder.UseCompilationUnitPrefix(compilationUnitPrefix);
 
-           PInvokeILEmitterConfiguration pinvokePolicy;
+            if (_mibcFilePaths.Count > 0)
+            {
+                // TODO : LLVM, this cast will fail if profile data is ever passed
+                ((RyuJitCompilationBuilder)builder).UseProfileData(_mibcFilePaths);
+            }
+
+            PInvokeILEmitterConfiguration pinvokePolicy;
             if (_isLlvmCodegen)
                 pinvokePolicy = new DirectPInvokePolicy();
             else
                 pinvokePolicy = new ConfigurablePInvokePolicy(typeSystemContext.Target, _directPInvokes, _directPInvokeLists);
 
-            RemovedFeature removedFeatures = 0;
-            foreach (string feature in _removedFeatures)
-            {
-                if (feature == "EventSource")
-                    removedFeatures |= RemovedFeature.Etw;
-                else if (feature == "Globalization")
-                    removedFeatures |= RemovedFeature.Globalization;
-                else if (feature == "Comparers")
-                    removedFeatures |= RemovedFeature.Comparers;
-                else if (feature == "SerializationGuard")
-                    removedFeatures |= RemovedFeature.SerializationGuard;
-                else if (feature == "XmlNonFileStream")
-                    removedFeatures |= RemovedFeature.XmlDownloadNonFileStream;
-            }
-
             ILProvider ilProvider = new CoreRTILProvider();
-
-            if (removedFeatures != 0)
-                ilProvider = new RemovingILProvider(ilProvider, removedFeatures);
 
             List<KeyValuePair<string, bool>> featureSwitches = new List<KeyValuePair<string, bool>>();
             foreach (var switchPair in _featureSwitches)
@@ -641,7 +636,7 @@ namespace ILCompiler
             }
             ilProvider = new FeatureSwitchManager(ilProvider, featureSwitches);
 
-            var logger = new Logger(Console.Out, _isVerbose, ProcessWarningCodes(_suppressedWarnings));
+            var logger = new Logger(Console.Out, _isVerbose, ProcessWarningCodes(_suppressedWarnings), _singleWarn, _singleWarnEnabledAssemblies, _singleWarnDisabledAssemblies);
 
             var stackTracePolicy = _emitStackTraceData ?
                 (StackTraceEmissionPolicy)new EcmaMethodStackTraceEmissionPolicy() : new NoStackTraceEmissionPolicy();
@@ -662,6 +657,8 @@ namespace ILCompiler
                     metadataGenerationOptions |= UsageBasedMetadataGenerationOptions.CompleteTypesOnly;
                 if (_scanReflection)
                     metadataGenerationOptions |= UsageBasedMetadataGenerationOptions.ReflectionILScanning;
+                if (_reflectedOnly)
+                    metadataGenerationOptions |= UsageBasedMetadataGenerationOptions.ReflectedMembersOnly;
             }
             else
             {
@@ -763,12 +760,14 @@ namespace ILCompiler
                 // This could be a command line switch if we really wanted to.
                 builder.UseGenericDictionaryLayoutProvider(scanResults.GetDictionaryLayoutInfo());
 
-                // If we feed any outputs of the scanner into the compilation, it's essential
-                // we use scanner's devirtualization manager. It prevents optimizing codegens
-                // from accidentally devirtualizing cases that can never happen at runtime
-                // (e.g. devirtualizing a method on a type that never gets allocated).
+                // If we have a scanner, we can drive devirtualization using the information
+                // we collected at scanning time (effectively sealing unsealed types if possible).
+                // This could be a command line switch if we really wanted to.
                 builder.UseDevirtualizationManager(scanResults.GetDevirtualizationManager());
 
+                // If we use the scanner's result, we need to consult it to drive inlining.
+                // This prevents e.g. devirtualizing and inlining methods on types that were
+                // never actually allocated.
                 builder.UseInliningPolicy(scanResults.GetInliningPolicy());
             }
 

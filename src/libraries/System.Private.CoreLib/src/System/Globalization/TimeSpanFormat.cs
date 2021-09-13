@@ -269,7 +269,7 @@ namespace System.Globalization
                 }
                 else
                 {
-                    decimalSeparator.AsSpan().CopyTo(destination);
+                    decimalSeparator.CopyTo(destination);
                     idx += decimalSeparator.Length;
                 }
                 WriteDigits(fraction, destination.Slice(idx, fractionDigits));
@@ -315,7 +315,7 @@ namespace System.Globalization
             bool resultBuilderIsPooled = false;
             if (result == null)
             {
-                result = StringBuilderCache.Acquire(InternalGlobalizationHelper.StringBuilderDefaultCapacity);
+                result = StringBuilderCache.Acquire();
                 resultBuilderIsPooled = true;
             }
 
@@ -532,7 +532,7 @@ namespace System.Globalization
                     _literals[i] = string.Empty;
                 }
 
-                StringBuilder sb = StringBuilderCache.Acquire(InternalGlobalizationHelper.StringBuilderDefaultCapacity);
+                StringBuilder sb = StringBuilderCache.Acquire();
                 bool inQuote = false;
                 char quote = '\'';
                 int field = 0;

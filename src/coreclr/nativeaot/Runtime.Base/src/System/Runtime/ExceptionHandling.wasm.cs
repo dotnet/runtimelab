@@ -83,7 +83,7 @@ namespace System.Runtime
                 // most containing.
                 if (clauseKind == EHClauseIterator.RhEHClauseKindWasm.RH_EH_CLAUSE_TYPED)
                 {
-                    if (ShouldTypedClauseCatchThisException(exception, (EEType*)ehClause._typeSymbol))
+                    if (ShouldTypedClauseCatchThisException(exception, (MethodTable*)ehClause._typeSymbol))
                     {
                         pHandler = ehClause._handlerAddress;
                         tryRegionIdx = curIdx;

@@ -26,10 +26,13 @@ The .NET Foundation licenses this file to you under the MIT license.
     <NativeOutputPath Condition="'$(NativeOutputPath)' == ''">$(OutputPath)native\</NativeOutputPath>
     <NativeCompilationDuringPublish Condition="'$(NativeCompilationDuringPublish)' == ''">true</NativeCompilationDuringPublish>
     <IlcBuildTasksPath Condition="'$(IlcBuildTasksPath)' == ''">$(MSBuildThisFileDirectory)..\tools\netstandard\ILCompiler.Build.Tasks.dll</IlcBuildTasksPath>
+    <IlcHostPath Condition="'$(IlcPath)' != ''">$(IlcPath)</IlcHostPath>
     <TargetOS Condition="'$(TargetOS)' == '' and '$([MSBuild]::IsOSPlatform(Windows))' == 'true'">windows</TargetOS>
     <TargetOS Condition="'$(TargetOS)' == '' and '$([MSBuild]::IsOSPlatform(OSX))' == 'true'">OSX</TargetOS>
     <TargetOS Condition="'$(TargetOS)' == ''">$(OS)</TargetOS>
     <NativeDebugSymbols Condition="$(DebugSymbols) == 'true' or ($(DebugType) != 'none' and $(DebugType) != '')">true</NativeDebugSymbols>
+    <!-- Workaround for https://github.com/dotnet/runtimelab/issues/771 -->
+    <ErrorOnDuplicatePublishOutputFiles>false</ErrorOnDuplicatePublishOutputFiles>
   </PropertyGroup>
 
   <!-- Set up the defaults for the compatibility mode -->
@@ -109,23 +112,22 @@ The .NET Foundation licenses this file to you under the MIT license.
 
   <ItemGroup Condition="$(IlcSystemModule) == ''">
     <AutoInitializedAssemblies Include="System.Private.CoreLib" />
-    <AutoInitializedAssemblies Include="System.Private.StackTraceMetadata" Condition="$(IlcDisableReflection) != 'true' or $(IlcGenerateStackTraceData) == 'true'"/>
+    <AutoInitializedAssemblies Include="System.Private.StackTraceMetadata" Condition="$(IlcDisableReflection) != 'true' or $(IlcGenerateStackTraceData) == 'true'" />
     <AutoInitializedAssemblies Include="System.Private.TypeLoader" />
     <AutoInitializedAssemblies Include="System.Private.Reflection.Execution" Condition="$(IlcDisableReflection) != 'true'" />
     <AutoInitializedAssemblies Include="System.Private.DisabledReflection" Condition="$(IlcDisableReflection) == 'true'" />
     <AutoInitializedAssemblies Include="System.Private.Interop" />
-    <AutoInitializedAssemblies Include="System.Private.DeveloperExperience.Console" Condition="$(IlcDisableUnhandledExceptionExperience) != 'true'"  />
   </ItemGroup>
 
   <ItemGroup>
-    <PrivateSdkAssemblies Include="$(IlcPath)\sdk\*.dll" />
-  </ItemGroup>
-  <ItemGroup>
-    <!-- Exclude System.IO.Compression.Native.dll -->
-    <FrameworkAssemblies Include="$(IlcPath)\framework\*.dll" Exclude="$(IlcPath)\framework\*.Native.dll" />
-  </ItemGroup>
+    <_ExcludedPrivateSdkAssemblies Include="$(IlcPath)\sdk\System.Private.Reflection.Core.dll" Condition="$(IlcDisableReflection) == 'true'" />
+    <PrivateSdkAssemblies Include="$(IlcPath)\sdk\*.dll" Exclude="@(_ExcludedPrivateSdkAssemblies)"/>
 
-  <ItemGroup>
+    <!-- Exclude unmanaged dlls -->
+    <FrameworkAssemblies Include="$(IlcPath)\framework\*.dll" Exclude="$(IlcPath)\framework\*.Native.dll;$(IlcPath)\framework\msquic.dll" />
+
+    <MibcFile Include="$(IlcPath)\mibc\*.mibc" Condition="'$(IlcPgoOptimize)' == 'true'" />
+
     <DefaultFrameworkAssemblies Include="@(FrameworkAssemblies)" />
     <DefaultFrameworkAssemblies Include="@(PrivateSdkAssemblies)" />
   </ItemGroup>
@@ -143,26 +145,24 @@ The .NET Foundation licenses this file to you under the MIT license.
     </ItemGroup>
   </Target>
 
-  <!-- Part of workaround for lack of secondary build artifact import - https://github.com/Microsoft/msbuild/issues/2807 -->
   <!-- The properties below need to be defined only after we've found the correct runtime package reference -->
   <Target Name="SetupProperties" DependsOnTargets="$(IlcSetupPropertiesDependsOn)" BeforeTargets="Publish">
     <PropertyGroup>
       <!-- Define paths used in build targets to point to the runtime-specific ILCompiler implementation -->
+      <IlcHostPath Condition="'$(IlcPath)' == ''">$(IlcHostPackagePath)</IlcHostPath>
       <IlcPath Condition="'$(IlcPath)' == ''">$(RuntimePackagePath)</IlcPath>
-      <IlcBuildTasksPath>$(RuntimePackagePath)\tools\netstandard\ILCompiler.Build.Tasks.dll</IlcBuildTasksPath>
-      <!-- Set defaults for unspecified properties -->
     </PropertyGroup>
 
     <!-- If running from a package these values need to be set again with the resolved IlcPath -->
     <ItemGroup>
-      <PrivateSdkAssemblies Include="$(IlcPath)\sdk\*.dll" />
-    </ItemGroup>
-    <ItemGroup>
-      <!-- Exclude System.IO.Compression.Native.dll -->
-      <FrameworkAssemblies Include="$(IlcPath)\framework\*.dll" Exclude="$(IlcPath)\framework\*.Native.dll" />
-    </ItemGroup>
+      <_ExcludedPrivateSdkAssemblies Include="$(IlcPath)\sdk\System.Private.Reflection.Core.dll" Condition="$(IlcDisableReflection) == 'true'" />
+      <PrivateSdkAssemblies Include="$(IlcPath)\sdk\*.dll" Exclude="@(_ExcludedPrivateSdkAssemblies)"/>
 
-    <ItemGroup>
+      <!-- Exclude unmanaged dlls -->
+      <FrameworkAssemblies Include="$(IlcPath)\framework\*.dll" Exclude="$(IlcPath)\framework\*.Native.dll;$(IlcPath)\framework\msquic.dll" />
+
+      <MibcFile Include="$(IlcPath)\mibc\*.mibc" Condition="'$(IlcPgoOptimize)' == 'true'" />
+
       <DefaultFrameworkAssemblies Include="@(FrameworkAssemblies)" />
       <DefaultFrameworkAssemblies Include="@(PrivateSdkAssemblies)" />
     </ItemGroup>
@@ -184,11 +184,13 @@ The .NET Foundation licenses this file to you under the MIT license.
     <ItemGroup>
       <!-- This builds the project with the ILC implementation in the identified runtime package to avoid resolving it again  -->
       <ProjectToBuild Include="$(MSBuildThisFileDirectory)BuildFrameworkNativeObjects.proj">
-          <AdditionalProperties>
+        <AdditionalProperties>
           IntermediateOutputPath=$(IntermediateOutputPath);
           FrameworkLibPath=$(FrameworkLibPath);
           FrameworkObjPath=$(FrameworkObjPath);
-          RuntimePackagePath=$(RuntimePackagePath)
+          RuntimePackagePath=$(RuntimePackagePath);
+          IlcHostPackagePath=$(IlcHostPackagePath);
+          TargetArchitecture=$(TargetArchitecture);
         </AdditionalProperties>
       </ProjectToBuild>
     </ItemGroup>
@@ -200,6 +202,35 @@ The .NET Foundation licenses this file to you under the MIT license.
       Outputs="$(NativeIntermediateOutputPath)%(ManagedBinary.Filename)$(IlcOutputFileExt)"
       DependsOnTargets="$(IlcCompileDependsOn)">
 
+    <!-- Set up default properties that have their defaults in the 6.0 SDK (Can be dropped once we drop 5.0 support) -->
+    <PropertyGroup Condition="$([MSBuild]::VersionLessThan('$(NETCoreSdkVersion)', '6.0.0'))">
+      <TrimmerSingleWarn Condition="'$(TrimmerSingleWarn)' == ''">true</TrimmerSingleWarn>
+    </PropertyGroup>
+
+    <!-- Set up single warn trimming like in the 6.0 SDK (Can be dropped once we drop 5.0 support) -->
+    <ItemGroup Condition="$([MSBuild]::VersionLessThan('$(NETCoreSdkVersion)', '6.0.0'))">
+      <!-- Don't collapse to a single warning for the intermediate assembly.
+           This just sets metadata on the items in ManagedAssemblyToLink that came from IntermediateAssembly. -->
+      <!-- Find ManagedAssemblyToLink _except_ IntermediateAssembly -->
+      <__SingleWarnIntermediateAssembly Include="@(ManagedAssemblyToLink)" />
+      <__SingleWarnIntermediateAssembly Remove="@(IntermediateAssembly)" />
+      <!-- Subtract these from ManagedAssemblyToLink, to get the intersection. -->
+      <_SingleWarnIntermediateAssembly Include="@(ManagedAssemblyToLink)" />
+      <_SingleWarnIntermediateAssembly Remove="@(__SingleWarnIntermediateAssembly)" />
+      <!-- Set metadata on the intersection. -->
+      <_SingleWarnIntermediateAssembly>
+        <TrimmerSingleWarn Condition=" '%(_SingleWarnIntermediateAssembly.TrimmerSingleWarn)' == '' ">false</TrimmerSingleWarn>
+      </_SingleWarnIntermediateAssembly>
+      <!-- Replace these items in ManagedAssemblyToLink. -->
+      <ManagedAssemblyToLink Remove="@(_SingleWarnIntermediateAssembly)" />
+      <ManagedAssemblyToLink Include="@(_SingleWarnIntermediateAssembly)" />
+
+      <!-- Don't collapse to a single warning for project references -->
+      <ManagedAssemblyToLink Condition=" '%(ManagedAssemblyToLink.ProjectReferenceOriginalItemSpec)' != '' ">
+        <TrimmerSingleWarn Condition=" '%(ManagedAssemblyToLink.TrimmerSingleWarn)' == '' ">false</TrimmerSingleWarn>
+      </ManagedAssemblyToLink>
+    </ItemGroup>
+
     <!-- Propagate the global TrimMode to all the assembly that don't have it yet -->
     <ItemGroup>
       <ManagedAssemblyToLink Condition=" '%(ManagedAssemblyToLink.TrimMode)' == '' ">
@@ -210,13 +241,16 @@ The .NET Foundation licenses this file to you under the MIT license.
     <ItemGroup>
       <_IlcRootedAssemblies Include="@(TrimmerRootAssembly)" />
       <_IlcConditionallyRootedAssemblies Include="@(ManagedAssemblyToLink)" Condition="%(ManagedAssemblyToLink.TrimMode) == 'copyused'" />
+      <_IlcNoSingleWarnAssemblies Include="@(ManagedAssemblyToLink)" Condition="%(ManagedAssemblyToLink.TrimmerSingleWarn) == 'false'" />
     </ItemGroup>
 
     <ItemGroup>
       <IlcArg Include="@(IlcCompileInput)" />
       <IlcArg Include="-o:$(NativeIntermediateOutputPath)%(ManagedBinary.Filename)$(IlcOutputFileExt)" />
       <IlcArg Include="@(IlcReference->'-r:%(Identity)')" />
+      <IlcArg Include="@(MibcFile->'--mibc:%(Identity)')" />
       <IlcArg Condition="$(IlcGenerateMetadataLog) == 'true'" Include="--metadatalog:$(NativeIntermediateOutputPath)%(ManagedBinary.Filename).metadata.csv" />
+      <IlcArg Condition="$(TargetArchitecture) != ''" Include="--targetarch:$(TargetArchitecture)" />
       <IlcArg Condition="$(IlcMultiModule) == 'true'" Include="--multifile" />
       <IlcArg Condition="$(Optimize) == 'true'" Include="-O" />
       <IlcArg Condition="$(NativeDebugSymbols) == 'true'" Include="-g" />
@@ -229,11 +263,11 @@ The .NET Foundation licenses this file to you under the MIT license.
       <IlcArg Condition="'$(Platform)' == 'wasm'" Include="--targetarch:wasm" />
       <IlcArg Condition="'$(Platform)' == 'wasm'" Include="--targetos:wasm" />
       <IlcArg Include="@(AutoInitializedAssemblies->'--initassembly:%(Identity)')" />
-      <IlcArg Include="@(AppContextSwitchOverrides->'--appcontextswitch:%(Identity)')" />
+      <IlcArg Include="@(RuntimeHostConfigurationOption->'--appcontextswitch:%(Identity)=%(Value)')" />
       <IlcArg Include="@(DirectPInvoke->'--directpinvoke:%(Identity)')" />
       <IlcArg Include="@(DirectPInvokeList->'--directpinvokelist:%(Identity)')" />
       <IlcArg Include="@(_TrimmerFeatureSettings->'--feature:%(Identity)=%(Value)')" />
-      <IlcArg Condition="$(ServerGarbageCollection) != ''" Include="--runtimeopt:RH_UseServerGC=1" />
+      <IlcArg Condition="$(ServerGarbageCollection) == 'true'" Include="--runtimeopt:gcServer=1" />
       <IlcArg Condition="$(IlcGenerateCompleteTypeMetadata) == 'true' and $(IlcDisableReflection) != 'true'" Include="--completetypemetadata" />
       <IlcArg Condition="$(IlcGenerateStackTraceData) == 'true'" Include="--stacktracedata" />
       <IlcArg Condition="$(IlcScanReflection) == 'true' and $(IlcDisableReflection) != 'true'" Include="--scanreflection" />
@@ -246,8 +280,10 @@ The .NET Foundation licenses this file to you under the MIT license.
       <IlcArg Condition="$(IlcSystemModule) != ''" Include="--systemmodule:$(IlcSystemModule)" />
       <IlcArg Condition="$(IlcDumpIL) == 'true'" Include="--ildump:$(NativeIntermediateOutputPath)%(ManagedBinary.Filename).il" />
       <IlcArg Condition="$(NoWarn) != ''" Include='--nowarn:"$([MSBuild]::Escape($(NoWarn)))"' />
+      <IlcArg Condition="$(TrimmerSingleWarn) == 'true'" Include="--singlewarn" />
       <IlcArg Include="@(_IlcRootedAssemblies->'--root:%(Identity)')" />
       <IlcArg Include="@(_IlcConditionallyRootedAssemblies->'--conditionalroot:%(Identity)')" />
+      <IlcArg Include="@(_IlcNoSingleWarnAssemblies->'--nosinglewarnassembly:%(Filename)')" />
 
       <!-- The Emit-based DataContractSerializer won't work -->
       <IlcArg Include="--feature:System.Runtime.Serialization.DataContractSerializer.IsReflectionOnly=true" />
@@ -255,8 +291,8 @@ The .NET Foundation licenses this file to you under the MIT license.
       <!-- The Emit-based XmlSerializer won't work -->
       <IlcArg Include="--feature:System.Xml.Serialization.XmlSerializer.IsReflectionOnly=true" />
 
-      <!-- Workaround for https://github.com/dotnet/corefx/issues/36723 -->
-      <IlcArg Include="--removefeature:SerializationGuard" />
+      <!-- 6.0 SDK introduces a way to control this through the CustomResourceTypesSupport property, defaulting to false when trimming -->
+      <IlcArg Condition="$([MSBuild]::VersionLessThan('$(NETCoreSdkVersion)', '6.0.0')) and $(CustomResourceTypesSupport) != 'true'" Include="--feature:System.Resources.ResourceManager.AllowCustomResourceTypes=false" />
     </ItemGroup>
 
     <MakeDir Directories="$(NativeIntermediateOutputPath)" />
@@ -265,7 +301,7 @@ The .NET Foundation licenses this file to you under the MIT license.
     <Message Text="Generating native code" Condition="$(_BuildingInCompatibleMode) != 'true'" Importance="high" />
     <Message Text="Generating compatible native code. To optimize for size or speed, visit https://aka.ms/OptimizeCoreRT" Condition="$(_BuildingInCompatibleMode) == 'true'" Importance="high" />
 
-    <Exec Command="&quot;$(IlcPath)\tools\ilc&quot; @&quot;$(NativeIntermediateOutputPath)%(ManagedBinary.Filename).ilc.rsp&quot;" />
+    <Exec Command="&quot;$(IlcHostPath)\tools\ilc&quot; @&quot;$(NativeIntermediateOutputPath)%(ManagedBinary.Filename).ilc.rsp&quot;" />
   </Target>
 
   <Import Project="$(MSBuildThisFileDirectory)Microsoft.NETCore.Native.Windows.props" Condition="'$(TargetOS)' == 'windows'" />
@@ -337,10 +373,10 @@ The .NET Foundation licenses this file to you under the MIT license.
       <CustomLinkerArg Include="-o &quot;$(NativeBinary)&quot;" Condition="'$(TargetOS)' != 'windows'" />
       <CustomLinkerArg Include="/OUT:&quot;$(NativeBinary)&quot;" Condition="'$(TargetOS)' == 'windows'" />
       <CustomLinkerArg Include="/DEF:&quot;$(ExportsFile)&quot;" Condition="'$(TargetOS)' == 'windows' and $(ExportsFile) != ''" />
-      <CustomLinkerArg Include="/EXPORT:DotNetRuntimeDebugHeader,DATA" Condition="'$(OS)' == 'Windows_NT'" />
+      <CustomLinkerArg Include="/EXPORT:DotNetRuntimeDebugHeader,DATA" Condition="'$(TargetOS)' == 'windows' and '$(NativeDebugSymbols)' == 'true'" />
       <CustomLinkerArg Include="/LIBPATH:&quot;%(AdditionalNativeLibraryDirectories.Identity)&quot;" Condition="'$(TargetOS)' == 'windows' and '@(AdditionalNativeLibraryDirectories->Count())' &gt; 0" />
       <CustomLinkerArg Include="-exported_symbols_list &quot;$(ExportsFile)&quot;" Condition="'$(TargetOS)' == 'OSX' and $(ExportsFile) != ''" />
-      <CustomLinkerArg Include="-Wl,--version-script=$(ExportsFile)" Condition="'$(TargetOS)' != 'windows' and '$(TargetOS)' != 'OSX' and $(ExportsFile) != ''"/>
+      <CustomLinkerArg Include="-Wl,--version-script=$(ExportsFile)" Condition="'$(TargetOS)' != 'windows' and '$(TargetOS)' != 'OSX' and $(ExportsFile) != ''" />
       <CustomLinkerArg Condition="Exists('$(_Win32ResFile)')" Include="&quot;$(_Win32ResFile)&quot;" />
       <CustomLinkerArg Include="@(LinkerArg)" />
     </ItemGroup>
@@ -356,12 +392,18 @@ The .NET Foundation licenses this file to you under the MIT license.
 
     <MakeDir Directories="$([System.IO.Path]::GetDirectoryName($(NativeBinary)))" />
 
-    <Exec Command="$(CppLinker) @(CustomLinkerArg, ' ')" Condition="'$(TargetOS)' != 'windows' and '$(NativeLib)' != 'Static'" />
+    <!-- https://github.com/dotnet/runtimelab/issues/956 - we IgnoreStandardErrorWarningFormat on macOS because there's a lot of warnings -->
+    <PropertyGroup>
+      <_IgnoreLinkerWarnings>false</_IgnoreLinkerWarnings>
+      <_IgnoreLinkerWarnings Condition="'$(TargetOS)' == 'OSX'">true</_IgnoreLinkerWarnings>
+    </PropertyGroup>
+    
+    <Exec Command="$(CppLinker) @(CustomLinkerArg, ' ')" Condition="'$(TargetOS)' != 'windows' and '$(NativeLib)' != 'Static'" IgnoreStandardErrorWarningFormat="$(_IgnoreLinkerWarnings)" />
     <Exec Command="$(CppLibCreator) @(CustomLibArg, ' ')" Condition="'$(TargetOS)' != 'windows' and '$(NativeLib)' == 'Static'" />
 
-    <WriteLinesToFile File="$(NativeIntermediateOutputPath)link.rsp" Lines="@(CustomLinkerArg)" Overwrite="true" Condition="'$(TargetOS)' == 'windows' and '$(NativeLib)' != 'Static'" />
+    <WriteLinesToFile File="$(NativeIntermediateOutputPath)link.rsp" Lines="@(CustomLinkerArg)" Overwrite="true" Encoding="utf-8" Condition="'$(TargetOS)' == 'windows' and '$(NativeLib)' != 'Static'" />
     <Exec Command="$(CppLinker)  @&quot;$(NativeIntermediateOutputPath)link.rsp&quot;" Condition="'$(TargetOS)' == 'windows' and '$(NativeLib)' != 'Static'" />
-    <WriteLinesToFile File="$(NativeIntermediateOutputPath)lib.rsp" Lines="@(CustomLibArg)" Overwrite="true" Condition="'$(TargetOS)' == 'windows' and '$(NativeLib)' == 'Static'" />
+    <WriteLinesToFile File="$(NativeIntermediateOutputPath)lib.rsp" Lines="@(CustomLibArg)" Overwrite="true" Encoding="utf-8" Condition="'$(TargetOS)' == 'windows' and '$(NativeLib)' == 'Static'" />
     <Exec Command="$(CppLibCreator)  @&quot;$(NativeIntermediateOutputPath)lib.rsp&quot;" Condition="'$(TargetOS)' == 'windows' and '$(NativeLib)' == 'Static'" />
     <WriteLinesToFile File="$(NativeIntermediateOutputPath)link.rsp" Lines="@(CustomLinkerArg)" Overwrite="true" Condition="'$(OS)' == 'Windows_NT' and '$(NativeLib)' != 'Static'" />
     <Exec Command="$(CppLinker)  @&quot;$(NativeIntermediateOutputPath)link.rsp&quot;" Condition="'$(OS)' == 'Windows_NT' and '$(NativeLib)' != 'Static'" />
@@ -407,7 +449,7 @@ The .NET Foundation licenses this file to you under the MIT license.
       <CustomLibArg Include="@(LibInputs->'%(Identity)')" />
     </ItemGroup>
     <MakeDir Directories="$(NativeIntermediateOutputPath)" />
-    <WriteLinesToFile File="$(NativeIntermediateOutputPath)lib.rsp" Lines="@(CustomLibArg)" Overwrite="true" Condition="'$(TargetOS)' == 'windows'" />
+    <WriteLinesToFile File="$(NativeIntermediateOutputPath)lib.rsp" Lines="@(CustomLibArg)" Overwrite="true" Encoding="utf-8" Condition="'$(TargetOS)' == 'windows'" />
     <MakeDir Directories="$([System.IO.Path]::GetDirectoryName($(SharedLibrary)))" />
     <Exec Command="$(CppLibCreator) @&quot;$(NativeIntermediateOutputPath)lib.rsp&quot;" Condition="'$(TargetOS)' == 'windows'" />
     <Exec Command="$(CppLibCreator) @(CustomLibArg, ' ')" Condition="'$(TargetOS)' != 'windows'" />

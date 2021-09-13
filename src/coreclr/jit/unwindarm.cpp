@@ -71,100 +71,52 @@ short Compiler::mapRegNumToDwarfReg(regNumber reg)
             dwarfReg = 15;
             break;
         case REG_F0:
-            dwarfReg = 64;
-            break;
-        case REG_F1:
-            dwarfReg = 65;
+            dwarfReg = 256;
             break;
         case REG_F2:
-            dwarfReg = 66;
-            break;
-        case REG_F3:
-            dwarfReg = 67;
+            dwarfReg = 257;
             break;
         case REG_F4:
-            dwarfReg = 68;
-            break;
-        case REG_F5:
-            dwarfReg = 69;
+            dwarfReg = 258;
             break;
         case REG_F6:
-            dwarfReg = 70;
-            break;
-        case REG_F7:
-            dwarfReg = 71;
+            dwarfReg = 259;
             break;
         case REG_F8:
-            dwarfReg = 72;
-            break;
-        case REG_F9:
-            dwarfReg = 73;
+            dwarfReg = 260;
             break;
         case REG_F10:
-            dwarfReg = 74;
-            break;
-        case REG_F11:
-            dwarfReg = 75;
+            dwarfReg = 261;
             break;
         case REG_F12:
-            dwarfReg = 76;
-            break;
-        case REG_F13:
-            dwarfReg = 77;
+            dwarfReg = 262;
             break;
         case REG_F14:
-            dwarfReg = 78;
-            break;
-        case REG_F15:
-            dwarfReg = 79;
+            dwarfReg = 263;
             break;
         case REG_F16:
-            dwarfReg = 80;
-            break;
-        case REG_F17:
-            dwarfReg = 81;
+            dwarfReg = 264;
             break;
         case REG_F18:
-            dwarfReg = 82;
-            break;
-        case REG_F19:
-            dwarfReg = 83;
+            dwarfReg = 265;
             break;
         case REG_F20:
-            dwarfReg = 84;
-            break;
-        case REG_F21:
-            dwarfReg = 85;
+            dwarfReg = 266;
             break;
         case REG_F22:
-            dwarfReg = 86;
-            break;
-        case REG_F23:
-            dwarfReg = 87;
+            dwarfReg = 267;
             break;
         case REG_F24:
-            dwarfReg = 88;
-            break;
-        case REG_F25:
-            dwarfReg = 89;
+            dwarfReg = 268;
             break;
         case REG_F26:
-            dwarfReg = 90;
-            break;
-        case REG_F27:
-            dwarfReg = 91;
+            dwarfReg = 269;
             break;
         case REG_F28:
-            dwarfReg = 92;
-            break;
-        case REG_F29:
-            dwarfReg = 93;
+            dwarfReg = 270;
             break;
         case REG_F30:
-            dwarfReg = 94;
-            break;
-        case REG_F31:
-            dwarfReg = 95;
+            dwarfReg = 271;
             break;
         default:
             noway_assert(!"unexpected REG_NUM");
@@ -1615,13 +1567,13 @@ void UnwindFragmentInfo::Finalize(UNATIVE_OFFSET functionLength)
     // The unwind code words are already here, following the header, so we're done!
 }
 
-void UnwindFragmentInfo::Reserve(BOOL isFunclet, bool isHotCode)
+void UnwindFragmentInfo::Reserve(bool isFunclet, bool isHotCode)
 {
     assert(isHotCode || !isFunclet); // TODO-CQ: support hot/cold splitting in functions with EH
 
     MergeCodes();
 
-    BOOL isColdCode = isHotCode ? FALSE : TRUE;
+    bool isColdCode = !isHotCode;
 
     ULONG unwindSize = Size();
 
@@ -1958,7 +1910,7 @@ void UnwindInfo::Split()
 
 // Reserve space for the unwind info for all fragments
 
-void UnwindInfo::Reserve(BOOL isFunclet, bool isHotCode)
+void UnwindInfo::Reserve(bool isFunclet, bool isHotCode)
 {
     assert(uwiInitialized == UWI_INITIALIZED_PATTERN);
     assert(isHotCode || !isFunclet);

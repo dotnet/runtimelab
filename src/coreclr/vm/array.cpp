@@ -230,7 +230,7 @@ void ArrayClass::InitArrayMethodDesc(
     _ASSERTE(pNewMD->GetMethodName() && GetDebugClassName());
     pNewMD->m_pszDebugMethodName = pNewMD->GetMethodName();
     pNewMD->m_pszDebugClassName  = GetDebugClassName();
-    pNewMD->m_pDebugMethodTable.SetValue(pNewMD->GetMethodTable());
+    pNewMD->m_pDebugMethodTable = pNewMD->GetMethodTable();
 #endif // _DEBUG
 }
 
@@ -305,12 +305,6 @@ MethodTable* Module::CreateArrayMethodTable(TypeHandle elemTypeHnd, CorElementTy
             _ASSERTE(cbCGCDescData == CGCDesc::ComputeSizeRepeating(nSeries));
         }
     }
-#ifdef FEATURE_COLLECTIBLE_TYPES
-    else if (this->IsCollectible())
-    {
-        cbCGCDescData = (DWORD)CGCDesc::ComputeSize(1);
-    }
-#endif
 
     DWORD dwMultipurposeSlotsMask = 0;
     dwMultipurposeSlotsMask |= MethodTable::enum_flag_HasPerInstInfo;
@@ -336,12 +330,7 @@ MethodTable* Module::CreateArrayMethodTable(TypeHandle elemTypeHnd, CorElementTy
     // Inherit top level class's interface map
     cbMT += pParentClass->GetNumInterfaces() * sizeof(InterfaceInfo_t);
 
-#ifdef FEATURE_PREJIT
-    Module* pComputedPZM = Module::ComputePreferredZapModule(NULL, Instantiation(&elemTypeHnd, 1));
-    BOOL canShareVtableChunks = MethodTable::CanShareVtableChunksFrom(pParentClass, this, pComputedPZM);
-#else
     BOOL canShareVtableChunks = MethodTable::CanShareVtableChunksFrom(pParentClass, this);
-#endif // FEATURE_PREJIT
 
     size_t offsetOfUnsharedVtableChunks = cbMT;
 
@@ -511,7 +500,7 @@ MethodTable* Module::CreateArrayMethodTable(TypeHandle elemTypeHnd, CorElementTy
             if (canShareVtableChunks)
             {
                 // Share the parent chunk
-                it.SetIndirectionSlot(pParentClass->GetVtableIndirections()[it.GetIndex()].GetValueMaybeNull());
+                it.SetIndirectionSlot(pParentClass->GetVtableIndirections()[it.GetIndex()]);
             }
             else
             {
@@ -714,31 +703,13 @@ MethodTable* Module::CreateArrayMethodTable(TypeHandle elemTypeHnd, CorElementTy
         pSeries->SetSeriesSize(-(SSIZE_T)(pMT->GetBaseSize()));
     }
 
-#ifdef FEATURE_COLLECTIBLE_TYPES
-    if (!pMT->ContainsPointers() && this->IsCollectible())
-    {
-        CGCDescSeries  *pSeries;
-
-        // For collectible types, insert empty gc series
-        CGCDesc::GetCGCDescFromMT(pMT)->InitValueClassSeries(pMT, 1);
-        pSeries = CGCDesc::GetCGCDescFromMT(pMT)->GetHighestSeries();
-        pSeries->SetSeriesOffset(ArrayBase::GetDataPtrOffset(pMT));
-        pSeries->val_serie[0].set_val_serie_item (0, static_cast<HALF_SIZE_T>(pMT->GetComponentSize()));
-    }
-#endif
-
     // If we get here we are assuming that there was no truncation. If this is not the case then
     // an array whose base type is not a value class was created and was larger then 0xffff (a word)
     _ASSERTE(dwComponentSize == pMT->GetComponentSize());
 
-#ifdef FEATURE_PREJIT
-    _ASSERTE(pComputedPZM == Module::GetPreferredZapModuleForMethodTable(pMT));
-#endif
-
     return(pMT);
 } // Module::CreateArrayMethodTable
 
-#ifndef CROSSGEN_COMPILE
 
 #ifdef FEATURE_ARRAYSTUB_AS_IL
 
@@ -1210,6 +1181,11 @@ class ArrayStubCache : public StubCacheBase
     virtual UINT Length(const BYTE *pRawStub);
 
 public:
+public:
+    ArrayStubCache(LoaderHeap* heap) : StubCacheBase(heap)
+    {
+    }
+
     static ArrayStubCache * GetArrayStubCache()
     {
         STANDARD_VM_CONTRACT;
@@ -1218,7 +1194,7 @@ public:
 
         if (s_pArrayStubCache == NULL)
         {
-            ArrayStubCache * pArrayStubCache = new ArrayStubCache();
+            ArrayStubCache * pArrayStubCache = new ArrayStubCache(SystemDomain::GetGlobalLoaderAllocator()->GetStubHeap());
             if (FastInterlockCompareExchangePointer(&s_pArrayStubCache, pArrayStubCache, NULL) != NULL)
                 delete pArrayStubCache;
         }
@@ -1261,7 +1237,6 @@ UINT ArrayStubCache::Length(const BYTE *pRawStub)
 
 #endif // FEATURE_ARRAYSTUB_AS_IL
 
-#endif // CROSSGEN_COMPILE
 
 //---------------------------------------------------------------------
 // This method returns TRUE if pInterfaceMT could be one of the interfaces

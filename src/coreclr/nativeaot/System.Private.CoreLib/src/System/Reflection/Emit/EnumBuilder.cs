@@ -125,7 +125,13 @@ namespace System.Reflection.Emit
         }
 
         [return: DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-        public TypeInfo CreateTypeInfo()
+        public Type? CreateType()
+        {
+            return default;
+        }
+
+        [return: DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
+        public TypeInfo? CreateTypeInfo()
         {
             return default;
         }
@@ -202,28 +208,31 @@ namespace System.Reflection.Emit
             return default;
         }
 
-        public override Type GetInterface(string name, bool ignoreCase)
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces)]
+        [return: DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces)]
+        public override Type? GetInterface(string name, bool ignoreCase)
         {
             return default;
         }
 
-        public override InterfaceMapping GetInterfaceMap(Type interfaceType)
+        public override InterfaceMapping GetInterfaceMap([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicMethods | DynamicallyAccessedMemberTypes.NonPublicMethods)] Type interfaceType)
         {
             return default;
         }
 
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces)]
         public override Type[] GetInterfaces()
         {
             return default;
         }
 
-        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
+        [DynamicallyAccessedMembers(GetAllMembers)]
         public override MemberInfo[] GetMember(string name, MemberTypes type, BindingFlags bindingAttr)
         {
             return default;
         }
 
-        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
+        [DynamicallyAccessedMembers(GetAllMembers)]
         public override MemberInfo[] GetMembers(BindingFlags bindingAttr)
         {
             return default;
@@ -281,7 +290,7 @@ namespace System.Reflection.Emit
             return default;
         }
 
-        public override bool IsAssignableFrom(TypeInfo typeInfo)
+        public override bool IsAssignableFrom([NotNullWhen(true)] TypeInfo? typeInfo)
         {
             return default;
         }

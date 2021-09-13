@@ -6,4 +6,4 @@ set(SOURCES
 
 add_library(bootstrapper STATIC ${SOURCES})
 
-install_static_library(bootstrapper aotsdk)
+install_static_library(bootstrapper aotsdk nativeaot)

@@ -266,8 +266,6 @@ $Name
         EXTERN RhpWaitForGC2
         EXTERN RhpReversePInvokeAttachOrTrapThread2
         EXTERN RhExceptionHandling_FailedAllocation
-        EXTERN RhpPublishObject
-        EXTERN RhpCalculateStackTraceWorker
 
 
         EXTERN $G_LOWEST_ADDRESS

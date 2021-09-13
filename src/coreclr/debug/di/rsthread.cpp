@@ -186,6 +186,10 @@ HRESULT CordbThread::QueryInterface(REFIID id, void ** ppInterface)
     {
         *ppInterface = static_cast<ICorDebugThread4*>(this);
     }
+    else if (id == IID_ICorDebugThread5)
+    {
+        *ppInterface = static_cast<ICorDebugThread5*>(this);
+    }
     else if (id == IID_IUnknown)
     {
         *ppInterface = static_cast<IUnknown *>(static_cast<ICorDebugThread *>(this));
@@ -2456,6 +2460,42 @@ HRESULT CordbThread::GetCurrentCustomDebuggerNotification(ICorDebugValue ** ppNo
     PUBLIC_API_END(hr);
     return hr;
 }
+
+// ICorDebugThread5
+
+/*
+ * GetBytesAllocated
+ *
+ * Returns S_OK if it was possible to obtain the allocation information for the thread
+ * and sets the corresponding SOH and UOH allocations.
+ */
+HRESULT CordbThread::GetBytesAllocated(ULONG64 *pSohAllocatedBytes,
+                                       ULONG64 *pUohAllocatedBytes)
+{
+    PUBLIC_API_ENTRY(this);
+    FAIL_IF_NEUTERED(this);
+    ATT_REQUIRE_STOPPED_MAY_FAIL(GetProcess());
+
+    HRESULT hr = S_OK;
+    EX_TRY
+    {
+        DacThreadAllocInfo threadAllocInfo = { 0 };
+
+        if (pSohAllocatedBytes == NULL || pUohAllocatedBytes == NULL)
+        {
+            ThrowHR(E_INVALIDARG);
+        }
+
+        IDacDbiInterface * pDAC = GetProcess()->GetDAC();
+        pDAC->GetThreadAllocInfo(m_vmThreadToken, &threadAllocInfo);
+
+        *pSohAllocatedBytes = threadAllocInfo.m_allocBytesSOH;
+        *pUohAllocatedBytes = threadAllocInfo.m_allocBytesUOH;
+    }
+    EX_CATCH_HRESULT(hr);
+
+    return hr;
+} // CordbThread::GetBytesAllocated
 
 /*
  *
@@ -8551,10 +8591,10 @@ HRESULT CordbJITILFrame::RemapFunction(ULONG32 nOffset)
     HRESULT hr = S_OK;
     PUBLIC_API_BEGIN(this)
     {
-#if !defined(EnC_SUPPORTED)
+#if !defined(FEATURE_ENC_SUPPORTED)
         ThrowHR(E_NOTIMPL);
 
-#else  // EnC_SUPPORTED
+#else  // FEATURE_ENC_SUPPORTED
         // Can only be called on leaf frame.
         if (!m_nativeFrame->IsLeafFrame())
         {
@@ -8571,7 +8611,7 @@ HRESULT CordbJITILFrame::RemapFunction(ULONG32 nOffset)
         // Tell the left-side to do the remap
         hr = m_nativeFrame->m_pThread->SetRemapIP(nOffset);
 
-#endif // EnC_SUPPORTED
+#endif // FEATURE_ENC_SUPPORTED
     }
     PUBLIC_API_END(hr);
 
@@ -9790,6 +9830,7 @@ HRESULT CordbEval::NewParameterizedObject(ICorDebugFunction * pConstructor,
 
             if (FAILED(hr))
             {
+                delete [] pArgData;
                 return hr;
             }
         }
@@ -10774,4 +10815,3 @@ HRESULT CordbCodeEnum::Next(ULONG celt, ICorDebugCode *values[], ULONG *pceltFet
 
     return hr;
 }
-

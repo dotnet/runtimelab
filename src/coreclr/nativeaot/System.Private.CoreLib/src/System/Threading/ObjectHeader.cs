@@ -7,7 +7,7 @@ using System.Runtime.CompilerServices;
 namespace System.Threading
 {
     /// <summary>
-    /// Manipulates the object header located 4 bytes before each object's EEType pointer
+    /// Manipulates the object header located 4 bytes before each object's MethodTable pointer
     /// in the managed heap.
     /// </summary>
     /// <remarks>
@@ -182,7 +182,7 @@ namespace System.Threading
         {
             // Holding this lock implies there is at most one thread setting the sync entry index at
             // any given time.  We also require that the sync entry index has not been already set.
-            Debug.Assert(SyncTable.s_freeEntriesLock.IsAcquired);
+            Debug.Assert(SyncTable.s_lock.IsAcquired);
             Debug.Assert((syncIndex & MASK_HASHCODE_INDEX) == syncIndex);
             int oldBits, newBits, hashOrIndex;
 

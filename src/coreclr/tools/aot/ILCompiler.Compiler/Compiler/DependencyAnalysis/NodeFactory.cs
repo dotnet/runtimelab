@@ -113,9 +113,9 @@ namespace ILCompiler.DependencyAnalysis
         }
 
         /// <summary>
-        /// Return true if the type is not permitted by the rules of the runtime to have an EEType.
+        /// Return true if the type is not permitted by the rules of the runtime to have an MethodTable.
         /// The implementation here is not intended to be complete, but represents many conditions
-        /// which make a type ineligible to be an EEType. (This function is intended for use in assertions only)
+        /// which make a type ineligible to be an MethodTable. (This function is intended for use in assertions only)
         /// </summary>
         private bool TypeCannotHaveEEType(TypeDesc type)
         {
@@ -297,6 +297,11 @@ namespace ILCompiler.DependencyAnalysis
                 return new ReflectableMethodNode(method);
             });
 
+            _objectGetTypeFlowDependencies = new NodeCache<MetadataType, ObjectGetTypeFlowDependenciesNode>(type =>
+            {
+                return new ObjectGetTypeFlowDependenciesNode(type);
+            });
+
             _shadowConcreteMethods = new NodeCache<MethodKey, IMethodNode>(methodKey =>
             {
                 MethodDesc canonMethod = methodKey.Method.GetCanonMethodTarget(CanonicalFormKind.Specific);
@@ -472,7 +477,6 @@ namespace ILCompiler.DependencyAnalysis
             });
 
             NativeLayout = new NativeLayoutHelper(this);
-            WindowsDebugData = new WindowsDebugDataHelper(this);
         }
 
         protected virtual ISymbolNode CreateGenericLookupFromDictionaryNode(ReadyToRunGenericHelperKey helperKey)
@@ -655,7 +659,7 @@ namespace ILCompiler.DependencyAnalysis
             }
             else
             {
-                return ExternSymbol("__TypeThreadStaticIndex_" + NameMangler.GetMangledTypeName(type));
+                return ExternSymbol(NameMangler.NodeMangler.ThreadStaticsIndex(type));
             }
         }
 
@@ -858,6 +862,12 @@ namespace ILCompiler.DependencyAnalysis
             return _reflectableMethods.GetOrAdd(method);
         }
 
+        private NodeCache<MetadataType, ObjectGetTypeFlowDependenciesNode> _objectGetTypeFlowDependencies;
+        internal ObjectGetTypeFlowDependenciesNode ObjectGetTypeFlowDependencies(MetadataType type)
+        {
+            return _objectGetTypeFlowDependencies.GetOrAdd(type);
+        }
+
         private NodeCache<MethodDesc, DynamicInvokeTemplateNode> _dynamicInvokeTemplates;
         internal DynamicInvokeTemplateNode DynamicInvokeTemplate(MethodDesc method)
         {
@@ -924,6 +934,22 @@ namespace ILCompiler.DependencyAnalysis
                     _systemArrayOfTEnumeratorType = ArrayOfTClass.GetNestedType("ArrayEnumerator");
                 }
                 return _systemArrayOfTEnumeratorType;
+            }
+        }
+
+        private MethodDesc _instanceMethodRemovedHelper;
+        public MethodDesc InstanceMethodRemovedHelper
+        {
+            get
+            {
+                if (_instanceMethodRemovedHelper == null)
+                {
+                    // This helper is optional, but it's fine for this cache to be ineffective if that happens.
+                    // Those scenarios are rare and typically deal with small compilations.
+                    _instanceMethodRemovedHelper = TypeSystemContext.GetOptionalHelperEntryPoint("ThrowHelpers", "ThrowInstanceBodyRemoved");
+                }
+
+                return _instanceMethodRemovedHelper;
             }
         }
 
@@ -1108,11 +1134,6 @@ namespace ILCompiler.DependencyAnalysis
             "__FrozenSegmentRegionStart",
             "__FrozenSegmentRegionEnd",
             new SortableDependencyNode.EmbeddedObjectNodeComparer(new CompilerComparer()));
-
-        public ArrayOfEmbeddedPointersNode<MrtProcessedImportAddressTableNode> ImportAddressTablesTable = new ArrayOfEmbeddedPointersNode<MrtProcessedImportAddressTableNode>(
-            "__ImportTablesTableStart",
-            "__ImportTablesTableEnd",
-            new SortableDependencyNode.ObjectNodeComparer(new CompilerComparer()));
 
         public InterfaceDispatchCellSectionNode InterfaceDispatchCellSection { get; }
 

@@ -50,12 +50,6 @@
     ;; Import to support cross-moodule external method invocation in ngen images
     IMPORT ExternalMethodFixupWorker
 
-#ifdef FEATURE_PREJIT
-    ;; Imports to support virtual import fixup for ngen images
-    IMPORT VirtualMethodFixupWorker
-    IMPORT StubDispatchFixupWorker
-#endif
-
 #ifdef FEATURE_READYTORUN
     IMPORT DynamicHelperWorker
 #endif
@@ -1034,63 +1028,6 @@ stackProbe_loop
     EPILOG_RETURN
     NESTED_END
 
-#ifdef FEATURE_PREJIT
-;------------------------------------------------
-; VirtualMethodFixupStub
-;
-; In NGEN images, virtual slots inherited from cross-module dependencies
-; point to a jump thunk that calls into the following function that will
-; call into a VM helper. The VM helper is responsible for patching up
-; thunk, upon executing the precode, so that all subsequent calls go directly
-; to the actual method body.
-;
-; This is done lazily for performance reasons.
-;
-; On entry:
-;
-; R0 = "this" pointer
-; R12 = Address of thunk + 4
-
-    NESTED_ENTRY VirtualMethodFixupStub
-
-    ; Save arguments and return address
-    PROLOG_PUSH {r0-r3, lr}
-
-    ; Align stack
-    PROLOG_STACK_ALLOC  SIZEOF__FloatArgumentRegisters + 4
-    vstm                sp, {d0-d7}
-
-
-    CHECK_STACK_ALIGNMENT
-
-    ; R12 contains an address that is 4 bytes ahead of
-    ; where the thunk starts. Refer to ZapImportVirtualThunk::Save
-    ; for details on this.
-    ;
-    ; Move the correct thunk start address in R1
-    sub r1, r12, #4
-
-    ; Call the helper in the VM to perform the actual fixup
-    ; and tell us where to tail call. R0 already contains
-    ; the this pointer.
-    bl VirtualMethodFixupWorker
-
-    ; On return, R0 contains the target to tailcall to
-    mov         r12, r0
-
-    ; pop the stack and restore original register state
-    vldm               sp, {d0-d7}
-    EPILOG_STACK_FREE  SIZEOF__FloatArgumentRegisters + 4
-    EPILOG_POP {r0-r3, lr}
-
-    PATCH_LABEL VirtualMethodFixupPatchLabel
-
-    ; and tailcall to the actual method
-    EPILOG_BRANCH_REG r12
-
-    NESTED_END
-#endif // FEATURE_PREJIT
-
 ;------------------------------------------------
 ; ExternalMethodFixupStub
 ;
@@ -1127,41 +1064,6 @@ stackProbe_loop
     EPILOG_BRANCH_REG   r12
 
     NESTED_END
-
-#ifdef FEATURE_PREJIT
-;------------------------------------------------
-; StubDispatchFixupStub
-;
-; In NGEN images, calls to interface methods initially
-; point to a jump thunk that calls into the following function that will
-; call into a VM helper. The VM helper is responsible for patching up the
-; thunk with actual stub dispatch stub.
-;
-; On entry:
-;
-; R4 = Address of indirection cell
-
-    NESTED_ENTRY StubDispatchFixupStub
-
-    PROLOG_WITH_TRANSITION_BLOCK
-
-    ; address of StubDispatchFrame
-    add         r0, sp, #__PWTB_TransitionBlock ; pTransitionBlock
-    mov         r1, r4  ; siteAddrForRegisterIndirect
-    mov         r2, #0  ; sectionIndex
-    mov         r3, #0  ; pModule
-
-    bl          StubDispatchFixupWorker
-
-    ; mov the address we patched to in R12 so that we can tail call to it
-    mov         r12, r0
-
-    EPILOG_WITH_TRANSITION_BLOCK_TAILCALL
-    PATCH_LABEL StubDispatchFixupPatchLabel
-    EPILOG_BRANCH_REG   r12
-
-    NESTED_END
-#endif // FEATURE_PREJIT
 
 ;------------------------------------------------
 ; JIT_RareDisableHelper
@@ -1724,6 +1626,18 @@ tempReg     SETS "$tmpReg"
 
     END_WRITE_BARRIERS
 
+    IMPORT JIT_WriteBarrier_Loc
+
+; ------------------------------------------------------------------
+; __declspec(naked) void F_CALL_CONV JIT_WriteBarrier_Callable(Object **dst, Object* val)
+    LEAF_ENTRY  JIT_WriteBarrier_Callable
+
+    ; Branch to the write barrier
+    ldr     r2, =JIT_WriteBarrier_Loc ; or R3? See targetarm.h
+    ldr     pc, [r2]
+
+    LEAF_END
+
 #ifdef FEATURE_READYTORUN
 
     NESTED_ENTRY DelayLoad_MethodCall_FakeProlog
@@ -1835,7 +1749,7 @@ $__RealName
 ;; The following helper will access ("probe") a word on each page of the stack
 ;; starting with the page right beneath sp down to the one pointed to by r4.
 ;; The procedure is needed to make sure that the "guard" page is pushed down below the allocated stack frame.
-;; The call to the helper will be emitted by JIT in the function/funclet prolog when large (larger than 0x3000 bytes) stack frame is required.
+;; The call to the helper will be emitted by JIT in the function/funclet prolog when stack frame is larger than an OS page.
 ;;-----------------------------------------------------------------------------
 ; On entry:
 ;   r4 - points to the lowest address on the stack frame being allocated (i.e. [InitialSp - FrameSize])
@@ -1845,21 +1759,23 @@ $__RealName
 ;   r5 - is not preserved
 ;
 ; NOTE: this helper will probe at least one page below the one pointed to by sp.
-#define PAGE_SIZE_LOG2 12
+#define PROBE_PAGE_SIZE      4096
+#define PROBE_PAGE_SIZE_LOG2 12
+
     LEAF_ENTRY JIT_StackProbe
     PROLOG_PUSH {r7}
     PROLOG_STACK_SAVE r7
 
-    mov r5, sp                       ; r5 points to some byte on the last probed page
-    bfc r5, #0, #PAGE_SIZE_LOG2      ; r5 points to the **lowest address** on the last probed page
+    mov r5, sp                         ; r5 points to some byte on the last probed page
+    bfc r5, #0, #PROBE_PAGE_SIZE_LOG2  ; r5 points to the **lowest address** on the last probed page
     mov sp, r5
 
 ProbeLoop
-                                     ; Immediate operand for the following instruction can not be greater than 4095.
-    sub sp, #(PAGE_SIZE - 4)         ; sp points to the **fourth** byte on the **next page** to probe
-    ldr r5, [sp, #-4]!               ; sp points to the lowest address on the **last probed** page
+                                       ; Immediate operand for the following instruction can not be greater than 4095.
+    sub sp, #(PROBE_PAGE_SIZE - 4)     ; sp points to the **fourth** byte on the **next page** to probe
+    ldr r5, [sp, #-4]!                 ; sp points to the lowest address on the **last probed** page
     cmp sp, r4
-    bhi ProbeLoop                    ; if (sp > r4), then we need to probe at least one more page.
+    bhi ProbeLoop                      ; if (sp > r4), then we need to probe at least one more page.
 
     EPILOG_STACK_RESTORE r7
     EPILOG_POP {r7}

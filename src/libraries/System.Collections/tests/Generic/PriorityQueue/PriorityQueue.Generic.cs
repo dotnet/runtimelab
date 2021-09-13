@@ -1,24 +1,24 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Collections.Generic;
+
 namespace System.Collections.Tests
 {
     public class PriorityQueue_Generic_Tests_string_string : PriorityQueue_Generic_Tests<string, string>
     {
         protected override (string, string) CreateT(int seed)
         {
-            var element = this.CreateString(seed);
-            var priority = this.CreateString(seed);
-            return (element, priority);
-        }
+            var random = new Random(seed);
+            return (CreateString(random), CreateString(random));
 
-        protected string CreateString(int seed)
-        {
-            int stringLength = seed % 10 + 5;
-            Random rand = new Random(seed);
-            byte[] bytes = new byte[stringLength];
-            rand.NextBytes(bytes);
-            return Convert.ToBase64String(bytes);
+            static string CreateString(Random random)
+            {
+                int stringLength = random.Next(5, 15);
+                byte[] bytes = new byte[stringLength];
+                random.NextBytes(bytes);
+                return Convert.ToBase64String(bytes);
+            }
         }
     }
 
@@ -26,11 +26,18 @@ namespace System.Collections.Tests
     {
         protected override (int, int) CreateT(int seed)
         {
-            var element = this.CreateInt(seed);
-            var priority = this.CreateInt(seed);
-            return (element, priority);
+            var random = new Random(seed);
+            return (random.Next(),random.Next());
         }
+    }
 
-        protected int CreateInt(int seed) => new Random(seed).Next();
+    public class PriorityQueue_Generic_Tests_string_string_CustomComparer : PriorityQueue_Generic_Tests_string_string
+    {
+        protected override IComparer<string> GetPriorityComparer() => StringComparer.InvariantCultureIgnoreCase;
+    }
+
+    public class PriorityQueue_Generic_Tests_int_int_CustomComparer : PriorityQueue_Generic_Tests_int_int
+    {
+        protected override IComparer<int> GetPriorityComparer() => Comparer<int>.Create((x, y) => -x.CompareTo(y));
     }
 }

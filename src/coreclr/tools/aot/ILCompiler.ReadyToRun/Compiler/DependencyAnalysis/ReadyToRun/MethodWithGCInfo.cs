@@ -26,6 +26,7 @@ namespace ILCompiler.DependencyAnalysis.ReadyToRun
         private DebugEHClauseInfo[] _debugEHClauseInfos;
         private List<ISymbolNode> _fixups;
         private MethodDesc[] _inlinedMethods;
+        private bool _lateTriggeredCompilation;
 
         public MethodWithGCInfo(MethodDesc methodDesc)
         {
@@ -33,6 +34,20 @@ namespace ILCompiler.DependencyAnalysis.ReadyToRun
             _fixups = new List<ISymbolNode>();
             _method = methodDesc;
         }
+
+        protected override void OnMarked(NodeFactory context)
+        {
+            // Once past phase 1, no new methods which are interesting for compilation may be marked except for methods
+            // specially enabled for higher phases
+            if (context.CompilationCurrentPhase > 1)
+            {
+                SetCode(new ObjectNode.ObjectData(Array.Empty<byte>(), null, 1, Array.Empty<ISymbolDefinitionNode>()));
+                InitializeFrameInfos(Array.Empty<FrameInfo>());
+            }
+            _lateTriggeredCompilation = context.CompilationCurrentPhase != 0;
+        }
+
+        public override int DependencyPhaseForDeferredStaticComputation => _lateTriggeredCompilation ? 2 : 0;
 
         public void SetCode(ObjectData data)
         {
@@ -286,7 +301,7 @@ namespace ILCompiler.DependencyAnalysis.ReadyToRun
             Debug.Assert(_debugVarInfos == null);
             // Process the debug info from JIT format to R2R format immediately as it is large
             // and not used in the rest of the process except to emit.
-            _debugVarInfos = DebugInfoTableNode.CreateVarBlobForMethod(debugVarInfos);
+            _debugVarInfos = DebugInfoTableNode.CreateVarBlobForMethod(debugVarInfos, _method.Context.Target);
         }
 
         public void InitializeDebugEHClauseInfos(DebugEHClauseInfo[] debugEHClauseInfos)
@@ -310,5 +325,7 @@ namespace ILCompiler.DependencyAnalysis.ReadyToRun
         public int Offset => 0;
         public override bool IsShareable => throw new NotImplementedException();
         public override bool ShouldSkipEmittingObjectNode(NodeFactory factory) => IsEmpty;
+
+        public override string ToString() => _method.ToString();
     }
 }

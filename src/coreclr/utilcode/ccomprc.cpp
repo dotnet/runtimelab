@@ -489,6 +489,9 @@ HRESULT CCompRC::LoadString(ResourceCategory eCategory, UINT iResourceID, __out_
 
 HRESULT CCompRC::LoadString(ResourceCategory eCategory, LocaleID langId, UINT iResourceID, __out_ecount(iMax) LPWSTR szBuffer, int iMax, int *pcwchUsed)
 {
+#ifdef DBI_COMPONENT_MONO
+    return E_NOTIMPL;
+#else
     CONTRACTL
     {
         GC_NOTRIGGER;
@@ -535,6 +538,7 @@ HRESULT CCompRC::LoadString(ResourceCategory eCategory, LocaleID langId, UINT iR
     return LoadNativeStringResource(NATIVE_STRING_RESOURCE_TABLE(NATIVE_STRING_RESOURCE_NAME), iResourceID,
       szBuffer, iMax, pcwchUsed);
 #endif // HOST_WINDOWS
+#endif
 }
 
 #ifndef DACCESS_COMPILE
@@ -668,10 +672,6 @@ HRESULT CCompRC::LoadLibraryThrows(HRESOURCEDLL * pHInst)
 
     _ASSERTE(pHInst != NULL);
 
-#ifdef CROSSGEN_COMPILE
-    // The resources are embeded into the .exe itself for crossgen
-    *pHInst = (HINSTANCE)GetClrModuleBase();
-#else
 
 #ifdef SELF_NO_HOST
     _ASSERTE(!"CCompRC::LoadLibraryThrows not implemented for SELF_NO_HOST");
@@ -688,7 +688,6 @@ HRESULT CCompRC::LoadLibraryThrows(HRESOURCEDLL * pHInst)
     hr = LoadLibraryHelper(pHInst, rcPath);
 #endif
 
-#endif // CROSSGEN_COMPILE
 
     return hr;
 }
