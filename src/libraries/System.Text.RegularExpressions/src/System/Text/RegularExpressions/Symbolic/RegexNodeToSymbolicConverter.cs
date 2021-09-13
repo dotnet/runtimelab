@@ -278,20 +278,22 @@ namespace System.Text.RegularExpressions.Symbolic
                 case RegexNode.Nothing:
                     return _builder._nothing;
 
-                default:
-                    if (node.Type == RegexNode.Testgroup)
+                case RegexNode.Testgroup:
+                    // Try to extract the special case representing complement or intersection
+                    if (IsComplementedNode(node))
                     {
-                        // Try to extract the special case representing complement or intersection
-                        if (IsComplementedNode(node))
-                        {
-                            return _builder.MkNot(Convert(node.Child(0), false));
-                        }
-                        List<RegexNode> conjuncts = new();
-                        if (TryGetIntersection(node, conjuncts))
-                        {
-                            return _builder.MkAnd(Array.ConvertAll(conjuncts.ToArray(), x => Convert(x, false)));
-                        }
+                        return _builder.MkNot(Convert(node.Child(0), false));
                     }
+
+                    List<RegexNode>? conjuncts;
+                    if (TryGetIntersection(node, out conjuncts))
+                    {
+                        return _builder.MkAnd(Array.ConvertAll(conjuncts.ToArray(), x => Convert(x, false)));
+                    }
+
+                    goto default;
+
+                default:
                     throw new NotSupportedException(SR.Format(SR.NotSupported_NonBacktrackingConflictingExpression, node.Type switch
                     {
                         RegexNode.Testgroup => SR.ExpressionDescription_IfThenElse,
@@ -440,13 +442,15 @@ namespace System.Text.RegularExpressions.Symbolic
 
             bool IsIntersect(RegexNode node) => node.Type == RegexNode.Testgroup && IsNothing(node.Child(2));
 
-            bool TryGetIntersection(RegexNode node, List<RegexNode> conjuncts)
+            bool TryGetIntersection(RegexNode node, [Diagnostics.CodeAnalysis.NotNullWhen(true)] out List<RegexNode>? conjuncts)
             {
                 if (!IsIntersect(node))
                 {
+                    conjuncts = null;
                     return false;
                 }
 
+                conjuncts = new();
                 conjuncts.Add(node.Child(0));
                 node = node.Child(1);
                 while (IsIntersect(node))

@@ -53,8 +53,7 @@ namespace System.Text.RegularExpressions.Symbolic
             _upper = upper;
             _set = set;
             _alts = alts;
-            // Ensure Hashcode is precomputed at construction time
-            EnsureHashCode();
+            _hashcode = ComputeHashCode();
         }
         /// <summary>True if this node only involves lazy loops</summary>
         internal bool IsLazy => _info.IsLazy;
@@ -74,7 +73,7 @@ namespace System.Text.RegularExpressions.Symbolic
 
         internal SymbolicRegexInfo _info;
 
-        private int _hashcode = -1;
+        private readonly int _hashcode;
 
         #region Serialization
 
@@ -843,50 +842,40 @@ namespace System.Text.RegularExpressions.Symbolic
             return _hashcode;
         }
 
-        private void EnsureHashCode()
+        private int ComputeHashCode()
         {
-            if (_hashcode == -1)
+            switch (_kind)
             {
-                switch (_kind)
-                {
-                    case SymbolicRegexKind.EndAnchor:
-                    case SymbolicRegexKind.StartAnchor:
-                    case SymbolicRegexKind.BOLAnchor:
-                    case SymbolicRegexKind.EOLAnchor:
-                    case SymbolicRegexKind.Epsilon:
-                    case SymbolicRegexKind.WBAnchor:
-                    case SymbolicRegexKind.NWBAnchor:
-                    case SymbolicRegexKind.EndAnchorZ:
-                    case SymbolicRegexKind.EndAnchorZRev:
-                        _hashcode = HashCode.Combine(_kind, _info);
-                        break;
+                case SymbolicRegexKind.EndAnchor:
+                case SymbolicRegexKind.StartAnchor:
+                case SymbolicRegexKind.BOLAnchor:
+                case SymbolicRegexKind.EOLAnchor:
+                case SymbolicRegexKind.Epsilon:
+                case SymbolicRegexKind.WBAnchor:
+                case SymbolicRegexKind.NWBAnchor:
+                case SymbolicRegexKind.EndAnchorZ:
+                case SymbolicRegexKind.EndAnchorZRev:
+                    return HashCode.Combine(_kind, _info);
 
-                    case SymbolicRegexKind.WatchDog:
-                        _hashcode = HashCode.Combine(_kind, _lower);
-                        break;
+                case SymbolicRegexKind.WatchDog:
+                    return HashCode.Combine(_kind, _lower);
 
-                    case SymbolicRegexKind.Loop:
-                        _hashcode = HashCode.Combine(_kind, _left, _lower, _upper, _info);
-                        break;
+                case SymbolicRegexKind.Loop:
+                    return HashCode.Combine(_kind, _left, _lower, _upper, _info);
 
-                    case SymbolicRegexKind.Or or SymbolicRegexKind.And:
-                        _hashcode = HashCode.Combine(_kind, _alts, _info);
-                        break;
+                case SymbolicRegexKind.Or or SymbolicRegexKind.And:
+                    return HashCode.Combine(_kind, _alts, _info);
 
-                    case SymbolicRegexKind.Concat:
-                        _hashcode = HashCode.Combine(_left, _right, _info);
-                        break;
+                case SymbolicRegexKind.Concat:
+                    return HashCode.Combine(_left, _right, _info);
 
-                    case SymbolicRegexKind.Singleton:
-                        _hashcode = HashCode.Combine(_kind, _set);
-                        break;
+                case SymbolicRegexKind.Singleton:
+                    return HashCode.Combine(_kind, _set);
 
-                    default:
-                        Debug.Assert(_kind == SymbolicRegexKind.Not);
-                        _hashcode = HashCode.Combine(_kind, _left);
-                        break;
-                };
-            }
+                default:
+                    Debug.Assert(_kind == SymbolicRegexKind.Not);
+                    return HashCode.Combine(_kind, _left);
+            };
         }
 
         public override bool Equals([NotNullWhen(true)] object? obj)
