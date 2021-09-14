@@ -531,11 +531,14 @@ namespace System.Text.RegularExpressions.Symbolic
 
         private static SymbolicRegexInfo[] GetInfos(SymbolicRegexSet<S> nodes)
         {
-            List<SymbolicRegexInfo> infos = new();
+            var infos = new SymbolicRegexInfo[nodes.Count];
+            int i = 0;
             foreach (SymbolicRegexNode<S> node in nodes)
             {
-                infos.Add(node._info);
+                Debug.Assert(i < nodes.Count);
+                infos[i++] = node._info;
             }
+            Debug.Assert(i == nodes.Count);
             return infos.ToArray();
         }
 
