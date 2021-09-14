@@ -274,13 +274,13 @@ namespace Internal.Runtime.TypeLoader
         /// <param name="alignRequired">What is the basic alignment requirement of the base type or 1 if there is no base type to consider</param>
         internal void ComputeTypeSizeBeforeFields(TypeDesc type, out LayoutInt initialSize, out LayoutInt alignRequired)
         {
-            // Account for the EEType pointer in objects...
+            // Account for the MethodTable pointer in objects...
             initialSize = new LayoutInt(IntPtr.Size);
             alignRequired = LayoutInt.One;
 
             if (type.IsValueType)
             {
-                // ...unless the type is a ValueType which doesn't have the EEType pointer.
+                // ...unless the type is a ValueType which doesn't have the MethodTable pointer.
                 initialSize = LayoutInt.Zero;
             }
             else if (type.BaseType != null)
@@ -409,14 +409,14 @@ namespace Internal.Runtime.TypeLoader
                 return;
             }
 
-            // Is this a type that already exists? If so, get its size from the EEType directly
+            // Is this a type that already exists? If so, get its size from the MethodTable directly
             if (fieldType.RetrieveRuntimeTypeHandleIfPossible())
             {
                 unsafe
                 {
-                    EEType* eeType = fieldType.RuntimeTypeHandle.ToEETypePtr();
-                    size = new LayoutInt((int)eeType->ValueTypeSize);
-                    alignment = new LayoutInt(eeType->FieldAlignmentRequirement);
+                    MethodTable* MethodTable = fieldType.RuntimeTypeHandle.ToEETypePtr();
+                    size = new LayoutInt((int)MethodTable->ValueTypeSize);
+                    alignment = new LayoutInt(MethodTable->FieldAlignmentRequirement);
                     return;
                 }
             }
@@ -446,11 +446,11 @@ namespace Internal.Runtime.TypeLoader
                 return NotHA;
 
             // There is no reason to compute the entire field layout for the HA type/flag if
-            // the template type is not a universal generic type (information stored in rare flags on the EEType)
+            // the template type is not a universal generic type (information stored in rare flags on the MethodTable)
             TypeDesc templateType = type.ComputeTemplate(false);
             if (templateType != null && !templateType.IsCanonicalSubtype(CanonicalFormKind.Universal))
             {
-                EEType* pEETemplate = templateType.GetRuntimeTypeHandle().ToEETypePtr();
+                MethodTable* pEETemplate = templateType.GetRuntimeTypeHandle().ToEETypePtr();
                 if (!pEETemplate->IsHFA)
                     return NotHA;
 
@@ -514,6 +514,11 @@ namespace Internal.Runtime.TypeLoader
                 return NotHA;
 
             return haResultType;
+        }
+
+        public override bool ComputeIsUnsafeValueType(DefType type)
+        {
+            throw new NotSupportedException();
         }
     }
 }

@@ -24,10 +24,10 @@ namespace System
 
         internal static Type GetTypeFromEETypePtr(EETypePtr eeType)
         {
-            // If we support the writable data section on EETypes, the runtime type associated with the EEType
+            // If we support the writable data section on EETypes, the runtime type associated with the MethodTable
             // is cached there. If writable data is not supported, we need to do a lookup in the runtime type
             // unifier's hash table.
-            if (Internal.Runtime.EEType.SupportsWritableData)
+            if (Internal.Runtime.MethodTable.SupportsWritableData)
             {
                 ref GCHandle handle = ref eeType.GetWritableData<GCHandle>();
                 if (handle.IsAllocated)
@@ -49,7 +49,7 @@ namespace System
         private static Type GetTypeFromEETypePtrSlow(EETypePtr eeType, ref GCHandle handle)
         {
             // Note: this is bypassing the "fast" unifier cache (based on a simple IntPtr
-            // identity of EEType pointers). There is another unifier behind that cache
+            // identity of MethodTable pointers). There is another unifier behind that cache
             // that ensures this code is race-free.
             Type result = RuntimeTypeUnifier.GetRuntimeTypeBypassCache(eeType);
             GCHandle tempHandle = GCHandle.Alloc(result);

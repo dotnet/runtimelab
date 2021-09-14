@@ -1,13 +1,11 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
-using System.Threading;
+
 using Internal.DeveloperExperience;
 using Internal.Runtime.Augments;
 
@@ -241,10 +239,23 @@ namespace System
 
             if (!minimalFailFast)
             {
-                string output = (exception != null) ?
-                    "Unhandled Exception: " + exception.ToString()
-                    : message;
-                DeveloperExperience.WriteLine(output);
+                string prefix;
+                string outputMessage;
+                if (exception != null)
+                {
+                    prefix = "Unhandled Exception: ";
+                    outputMessage = exception.ToString();
+                }
+                else
+                {
+                    prefix = "Process terminated. ";
+                    outputMessage = message;
+                }
+
+                Internal.Console.Error.Write(prefix);
+                if (outputMessage != null)
+                    Internal.Console.Error.Write(outputMessage);
+                Internal.Console.Error.Write(Environment.NewLine);
 
 #if FEATURE_DUMP_DEBUGGING
                 GenerateExceptionInformationForDump(exception, IntPtr.Zero);

@@ -41,11 +41,6 @@ namespace Internal.Reflection.Augments
             s_reflectionCoreCallbacks = reflectionCoreCallbacks;
         }
 
-        public static CustomAttributeNamedArgument CreateCustomAttributeNamedArgument(Type attributeType, string memberName, bool isField, CustomAttributeTypedArgument typedValue)
-        {
-            return new CustomAttributeNamedArgument(attributeType, memberName, isField, typedValue);
-        }
-
         public static TypeCode GetRuntimeTypeCode(Type type)
         {
             Debug.Assert(type != null);
@@ -53,7 +48,7 @@ namespace Internal.Reflection.Augments
             EETypePtr eeType;
             if (!type.TryGetEEType(out eeType))
             {
-                // Type exists in metadata only. Aside from the enums, there is no chance a type with a TypeCode would not have an EEType,
+                // Type exists in metadata only. Aside from the enums, there is no chance a type with a TypeCode would not have an MethodTable,
                 // so if it's not an enum, return the default.
                 if (!type.IsEnum)
                     return TypeCode.Object;
@@ -91,7 +86,7 @@ namespace Internal.Reflection.Augments
             if (type == typeof(decimal))
                 return TypeCode.Decimal;
 
-            if (eeType == DBNull.Value.EETypePtr)
+            if (type == typeof(DBNull))
                 return TypeCode.DBNull;
 
             return TypeCode.Object;

@@ -763,25 +763,6 @@ inline double getR8LittleEndian(const BYTE* ptr)
     return *(double*)&val;
 }
 
-/*****************************************************************************
- *
- *  Return the normalized index to use in the EXPSET_TP for the CSE with
- *  the given CSE index.
- *  Each GenTree has the following field:
- *    signed char       gtCSEnum;        // 0 or the CSE index (negated if def)
- *  So zero is reserved to mean this node is not a CSE
- *  and postive values indicate CSE uses and negative values indicate CSE defs.
- *  The caller of this method must pass a non-zero postive value.
- *  This precondition is checked by the assert on the first line of this method.
- */
-
-inline unsigned int genCSEnum2bit(unsigned index)
-{
-    assert((index > 0) && (index <= EXPSET_SZ));
-
-    return (index - 1);
-}
-
 #ifdef DEBUG
 const char* genES2str(BitVecTraits* traits, EXPSET_TP set);
 const char* refCntWtd2str(BasicBlock::weight_t refCntWtd);
@@ -859,6 +840,7 @@ inline GenTree::GenTree(genTreeOps oper, var_types type DEBUGARG(bool largeNode)
 
 #ifdef DEBUG
     gtSeqNum = 0;
+    gtUseNum = -1;
     gtTreeID = JitTls::GetCompiler()->compGenTreeID++;
     gtVNPair.SetBoth(ValueNumStore::NoVN);
     gtRegTag   = GT_REGTAG_NONE;
@@ -1302,6 +1284,14 @@ inline void Compiler::gtSetStmtInfo(Statement* stmt)
 
 /*****************************************************************************/
 
+inline void Compiler::fgUpdateConstTreeValueNumber(GenTree* tree)
+{
+    if (vnStore != nullptr)
+    {
+        fgValueNumberTreeConst(tree);
+    }
+}
+
 inline void GenTree::SetOper(genTreeOps oper, ValueNumberUpdate vnUpdate)
 {
     assert(((gtDebugFlags & GTF_DEBUG_NODE_SMALL) != 0) != ((gtDebugFlags & GTF_DEBUG_NODE_LARGE) != 0));
@@ -1516,7 +1506,7 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
 inline bool Compiler::lvaHaveManyLocals() const
 {
-    return (lvaCount >= lclMAX_TRACKED);
+    return (lvaCount >= (unsigned)JitConfig.JitMaxLocalsToTrack());
 }
 
 /*****************************************************************************
@@ -3608,7 +3598,7 @@ inline bool Compiler::IsSharedStaticHelper(GenTree* tree)
         helper == CORINFO_HELP_GETSHARED_NONGCTHREADSTATIC_BASE_NOCTOR ||
         helper == CORINFO_HELP_GETSHARED_GCTHREADSTATIC_BASE_DYNAMICCLASS ||
         helper == CORINFO_HELP_GETSHARED_NONGCTHREADSTATIC_BASE_DYNAMICCLASS ||
-#ifdef FEATURE_READYTORUN_COMPILER
+#ifdef FEATURE_READYTORUN
         helper == CORINFO_HELP_READYTORUN_STATIC_BASE || helper == CORINFO_HELP_READYTORUN_GENERIC_STATIC_BASE ||
 #endif
         helper == CORINFO_HELP_CLASSINIT_SHARED_DYNAMICCLASS;

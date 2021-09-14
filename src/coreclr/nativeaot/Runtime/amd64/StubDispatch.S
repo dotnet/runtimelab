@@ -18,13 +18,13 @@ LEAF_ENTRY RhpInterfaceDispatch\entries, _TEXT
         // load r11 to point to the cache block.
         mov     r11, [r10 + OFFSETOF__InterfaceDispatchCell__m_pCache]
 
-        // Load the EEType from the object instance in rdi.
+        // Load the MethodTable from the object instance in rdi.
         ALTERNATE_ENTRY RhpInterfaceDispatchAVLocation\entries
         mov     rax, [rdi]
 
         CurrentOffset = OFFSETOF__InterfaceDispatchCache__m_rgEntries
 
-        // For each entry in the cache, see if its EEType type matches the EEType in rax.
+        // For each entry in the cache, see if its MethodTable type matches the MethodTable in rax.
         // If so, call the second cache entry.  If not, skip the InterfaceDispatchCacheEntry.
         .rept \entries
             cmp     rax, [r11 + CurrentOffset]

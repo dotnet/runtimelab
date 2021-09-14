@@ -17,7 +17,7 @@
 #include "thread.h"
 #include "threadstore.h"
 
-GPTR_DECL(EEType, g_pFreeObjectEEType);
+GPTR_DECL(MethodTable, g_pFreeObjectEEType);
 
 struct DebugTypeEntry
 {
@@ -192,17 +192,17 @@ extern "C" void PopulateDebugHeaders()
     MAKE_DEBUG_FIELD_ENTRY(ThreadBuffer, m_threadId);
     MAKE_DEBUG_FIELD_ENTRY(ThreadBuffer, m_pThreadStressLog);
 
-    MAKE_SIZE_ENTRY(EEType);
-    MAKE_DEBUG_FIELD_ENTRY(EEType, m_uBaseSize);
-    MAKE_DEBUG_FIELD_ENTRY(EEType, m_usComponentSize);
-    MAKE_DEBUG_FIELD_ENTRY(EEType, m_usFlags);
-    MAKE_DEBUG_ENTRY(EEType, m_pBaseType, offsetof(EEType, m_RelatedType) + offsetof(EEType::RelatedTypeUnion, m_pBaseType));
-    MAKE_DEBUG_ENTRY(EEType, m_ppBaseTypeViaIAT, offsetof(EEType, m_RelatedType) + offsetof(EEType::RelatedTypeUnion, m_ppBaseTypeViaIAT));
-    MAKE_DEBUG_ENTRY(EEType, m_pCanonicalType, offsetof(EEType, m_RelatedType) + offsetof(EEType::RelatedTypeUnion, m_pCanonicalType));
-    MAKE_DEBUG_ENTRY(EEType, m_ppCanonicalTypeViaIAT, offsetof(EEType, m_RelatedType) + offsetof(EEType::RelatedTypeUnion, m_ppCanonicalTypeViaIAT));
-    MAKE_DEBUG_ENTRY(EEType, m_pRelatedParameterType, offsetof(EEType, m_RelatedType) + offsetof(EEType::RelatedTypeUnion, m_pRelatedParameterType));
-    MAKE_DEBUG_ENTRY(EEType, m_ppRelatedParameterTypeViaIAT, offsetof(EEType, m_RelatedType) + offsetof(EEType::RelatedTypeUnion, m_ppRelatedParameterTypeViaIAT));
-    MAKE_DEBUG_FIELD_ENTRY(EEType, m_VTable);
+    MAKE_SIZE_ENTRY(MethodTable);
+    MAKE_DEBUG_FIELD_ENTRY(MethodTable, m_uBaseSize);
+    MAKE_DEBUG_FIELD_ENTRY(MethodTable, m_usComponentSize);
+    MAKE_DEBUG_FIELD_ENTRY(MethodTable, m_usFlags);
+    MAKE_DEBUG_ENTRY(MethodTable, m_pBaseType, offsetof(MethodTable, m_RelatedType) + offsetof(MethodTable::RelatedTypeUnion, m_pBaseType));
+    MAKE_DEBUG_ENTRY(MethodTable, m_ppBaseTypeViaIAT, offsetof(MethodTable, m_RelatedType) + offsetof(MethodTable::RelatedTypeUnion, m_ppBaseTypeViaIAT));
+    MAKE_DEBUG_ENTRY(MethodTable, m_pCanonicalType, offsetof(MethodTable, m_RelatedType) + offsetof(MethodTable::RelatedTypeUnion, m_pCanonicalType));
+    MAKE_DEBUG_ENTRY(MethodTable, m_ppCanonicalTypeViaIAT, offsetof(MethodTable, m_RelatedType) + offsetof(MethodTable::RelatedTypeUnion, m_ppCanonicalTypeViaIAT));
+    MAKE_DEBUG_ENTRY(MethodTable, m_pRelatedParameterType, offsetof(MethodTable, m_RelatedType) + offsetof(MethodTable::RelatedTypeUnion, m_pRelatedParameterType));
+    MAKE_DEBUG_ENTRY(MethodTable, m_ppRelatedParameterTypeViaIAT, offsetof(MethodTable, m_RelatedType) + offsetof(MethodTable::RelatedTypeUnion, m_ppRelatedParameterTypeViaIAT));
+    MAKE_DEBUG_FIELD_ENTRY(MethodTable, m_VTable);
 
     MAKE_SIZE_ENTRY(StressLog);
     MAKE_DEBUG_FIELD_ENTRY(StressLog, facilitiesToLog);
@@ -265,12 +265,12 @@ extern "C" void PopulateDebugHeaders()
     DotNetRuntimeDebugHeader.DebugTypeEntries = &s_DebugEntries;
     DotNetRuntimeDebugHeader.GlobalEntries = &s_GlobalEntries;
 
-    static_assert(EEType::Flags::EETypeKindMask         == 0x0003, "The debugging data contract has a hard coded dependency on this value of EEType::Flags. If you change this value you must bump major_version_number.");
-    static_assert(EEType::Flags::RelatedTypeViaIATFlag  == 0x0004, "The debugging data contract has a hard coded dependency on this value of EEType::Flags. If you change this value you must bump major_version_number.");
-    static_assert(EEType::Flags::HasFinalizerFlag       == 0x0010, "The debugging data contract has a hard coded dependency on this value of EEType::Flags. If you change this value you must bump major_version_number.");
-    static_assert(EEType::Flags::HasPointersFlag        == 0x0020, "The debugging data contract has a hard coded dependency on this value of EEType::Flags. If you change this value you must bump major_version_number.");
-    static_assert(EEType::Flags::GenericVarianceFlag    == 0x0080, "The debugging data contract has a hard coded dependency on this value of EEType::Flags. If you change this value you must bump major_version_number.");
-    static_assert(EEType::Flags::IsGenericFlag          == 0x0400, "The debugging data contract has a hard coded dependency on this value of EEType::Flags. If you change this value you must bump major_version_number.");
-    static_assert(EEType::Flags::ElementTypeMask        == 0xf800, "The debugging data contract has a hard coded dependency on this value of EEType::Flags. If you change this value you must bump major_version_number.");
-    static_assert(EEType::Flags::ElementTypeShift       == 11,     "The debugging data contract has a hard coded dependency on this value of EEType::Flags. If you change this value you must bump major_version_number.");
+    static_assert(MethodTable::Flags::EETypeKindMask         == 0x0003, "The debugging data contract has a hard coded dependency on this value of MethodTable::Flags. If you change this value you must bump major_version_number.");
+    static_assert(MethodTable::Flags::RelatedTypeViaIATFlag  == 0x0004, "The debugging data contract has a hard coded dependency on this value of MethodTable::Flags. If you change this value you must bump major_version_number.");
+    static_assert(MethodTable::Flags::HasFinalizerFlag       == 0x0010, "The debugging data contract has a hard coded dependency on this value of MethodTable::Flags. If you change this value you must bump major_version_number.");
+    static_assert(MethodTable::Flags::HasPointersFlag        == 0x0020, "The debugging data contract has a hard coded dependency on this value of MethodTable::Flags. If you change this value you must bump major_version_number.");
+    static_assert(MethodTable::Flags::GenericVarianceFlag    == 0x0080, "The debugging data contract has a hard coded dependency on this value of MethodTable::Flags. If you change this value you must bump major_version_number.");
+    static_assert(MethodTable::Flags::IsGenericFlag          == 0x0400, "The debugging data contract has a hard coded dependency on this value of MethodTable::Flags. If you change this value you must bump major_version_number.");
+    static_assert(MethodTable::Flags::ElementTypeMask        == 0xf800, "The debugging data contract has a hard coded dependency on this value of MethodTable::Flags. If you change this value you must bump major_version_number.");
+    static_assert(MethodTable::Flags::ElementTypeShift       == 11,     "The debugging data contract has a hard coded dependency on this value of MethodTable::Flags. If you change this value you must bump major_version_number.");
 }

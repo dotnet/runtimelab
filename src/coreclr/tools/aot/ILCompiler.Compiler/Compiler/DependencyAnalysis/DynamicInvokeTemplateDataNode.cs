@@ -68,7 +68,7 @@ namespace ILCompiler.DependencyAnalysis
                 TypeDesc dynamicInvokeMethodContainingType = method.OwningType;
 
                 int templateIndex = (2 * methodToTemplateIndex.Count) + 1;
-                // Add 1 to the index to account for the first blob entry being the containing EEType RVA
+                // Add 1 to the index to account for the first blob entry being the containing MethodTable RVA
                 methodToTemplateIndex.Add(method, templateIndex);
             }
 

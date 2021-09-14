@@ -62,14 +62,11 @@ namespace System
                 else
                 {
                     t = default;
-                    if (defaultConstructor != (IntPtr)(delegate*<Guid>)&ValueTypeWithNoConstructorMethod)
-                    {
-                        RawCalliHelper.Call(defaultConstructor, ref Unsafe.As<T, byte>(ref t));
+                    RawCalliHelper.Call(defaultConstructor, ref Unsafe.As<T, byte>(ref t));
 
-                        // Debugger goo so that stepping in works. Only affects debug info generation.
-                        // The call gets optimized away.
-                        DebugAnnotations.PreviousCallContainsDebuggerStepInCode();
-                    }
+                    // Debugger goo so that stepping in works. Only affects debug info generation.
+                    // The call gets optimized away.
+                    DebugAnnotations.PreviousCallContainsDebuggerStepInCode();
                 }
 
                 return t;
@@ -102,10 +99,11 @@ namespace System
             return (IntPtr)(delegate*<Guid>)&MissingConstructorMethod;
         }
 
-        // These two are marker methods. We return a GUID just to make sure the body is unique
+        // This is a marker method. We return a GUID just to make sure the body is unique
         // and under no circumstances gets folded.
         private static Guid MissingConstructorMethod() => new Guid(0x68be9718, 0xf787, 0x45ab, 0x84, 0x3b, 0x1f, 0x31, 0xb6, 0x12, 0x65, 0xeb);
-        private static Guid ValueTypeWithNoConstructorMethod() => new Guid(0x3102c70b, 0xe3c4, 0x4c1b, 0xa1, 0x93, 0xd7, 0x35, 0xc, 0x80, 0x95, 0x20);
+        // The constructor of this struct is used when there's no constructor
+        struct StructWithNoConstructor { public StructWithNoConstructor() { } }
 
         [DebuggerHidden]
         [DebuggerStepThrough]

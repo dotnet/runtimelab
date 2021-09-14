@@ -118,7 +118,7 @@ namespace ILCompiler.DependencyAnalysis
                 if (method.HasInstantiation)
                     continue;
 
-                // Finalizers are called via a field on the EEType, not through the VTable
+                // Finalizers are called via a field on the MethodTable, not through the VTable
                 if (isObjectType && method.Name == "Finalize")
                     continue;
 
@@ -191,7 +191,7 @@ namespace ILCompiler.DependencyAnalysis
             Debug.Assert(_slots == null && _usedMethods != null);
             Debug.Assert(virtualMethod.OwningType == _type);
 
-            // Finalizers are called via a field on the EEType, not through the VTable
+            // Finalizers are called via a field on the MethodTable, not through the VTable
             if (_type.IsObject && virtualMethod.Name == "Finalize")
                 return;
 

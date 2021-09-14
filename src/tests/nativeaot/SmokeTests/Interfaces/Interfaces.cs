@@ -5,6 +5,7 @@ using System;
 using System.Text;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 public class BringUpTest
 {
@@ -39,6 +40,7 @@ public class BringUpTest
         TestVariantInterfaceOptimizations.Run();
         TestSharedIntefaceMethods.Run();
         TestCovariantReturns.Run();
+        TestDynamicInterfaceCastable.Run();
 
         return Pass;
     }
@@ -730,6 +732,80 @@ public class BringUpTest
 
             IContravariantInterface<MySealedClass> i2 = new CoAndContravariantOverSealed();
             i2.DoContravariant(null);
+        }
+    }
+
+    class TestDynamicInterfaceCastable
+    {
+        class CastableClass<TInterface, TImpl> : IDynamicInterfaceCastable
+        {
+            RuntimeTypeHandle IDynamicInterfaceCastable.GetInterfaceImplementation(RuntimeTypeHandle interfaceType)
+                => interfaceType.Equals(typeof(TInterface).TypeHandle) ? typeof(TImpl).TypeHandle : default;
+            bool IDynamicInterfaceCastable.IsInterfaceImplemented(RuntimeTypeHandle interfaceType, bool throwIfNotImplemented)
+                => interfaceType.Equals(typeof(TInterface).TypeHandle);
+        }
+
+        interface IInterface
+        {
+            string GetCookie();
+        }
+
+        [DynamicInterfaceCastableImplementation]
+        interface IInterfaceCastableImpl : IInterface
+        {
+            string IInterface.GetCookie() => "IInterfaceCastableImpl";
+        }
+
+        [DynamicInterfaceCastableImplementation]
+        interface IInterfaceCastableImpl<T> : IInterface
+        {
+            string IInterface.GetCookie() => typeof(T).Name;
+        }
+
+        interface IInterfaceImpl : IInterface
+        {
+            string IInterface.GetCookie() => "IInterfaceImpl";
+        }
+
+        [DynamicInterfaceCastableImplementation]
+        interface IInterfaceIndirectCastableImpl : IInterfaceImpl { }
+
+        public static void Run()
+        {
+            Console.WriteLine("Testing IDynamicInterfaceCastable...");
+
+            {
+                IInterface o = (IInterface)new CastableClass<IInterface, IInterfaceCastableImpl>();
+                if (o.GetCookie() != "IInterfaceCastableImpl")
+                    throw new Exception();
+            }
+
+            {
+                IInterface o = (IInterface)new CastableClass<IInterface, IInterfaceImpl>();
+                bool success = false;
+                try
+                {
+                    o.GetCookie();
+                }
+                catch (InvalidOperationException)
+                {
+                    success = true;
+                }
+                if (!success)
+                    throw new Exception();
+            }
+
+            {
+                IInterface o = (IInterface)new CastableClass<IInterface, IInterfaceIndirectCastableImpl>();
+                if (o.GetCookie() != "IInterfaceImpl")
+                    throw new Exception();
+            }
+
+            {
+                IInterface o = (IInterface)new CastableClass<IInterface, IInterfaceCastableImpl<int>>();
+                if (o.GetCookie() != "Int32")
+                    throw new Exception();
+            }
         }
     }
 }

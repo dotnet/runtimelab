@@ -10,8 +10,8 @@ namespace System.Runtime
 {
     internal static unsafe class DispatchResolve
     {
-        public static IntPtr FindInterfaceMethodImplementationTarget(EEType* pTgtType,
-                                                                 EEType* pItfType,
+        public static IntPtr FindInterfaceMethodImplementationTarget(MethodTable* pTgtType,
+                                                                 MethodTable* pItfType,
                                                                  ushort itfSlotNumber)
         {
             DynamicModule* dynamicModule = pTgtType->DynamicModule;
@@ -19,13 +19,13 @@ namespace System.Runtime
             // Use the dynamic module resolver if it's present
             if (dynamicModule != null)
             {
-                delegate*<EEType*, EEType*, ushort, IntPtr> resolver = dynamicModule->DynamicTypeSlotDispatchResolve;
+                delegate*<MethodTable*, MethodTable*, ushort, IntPtr> resolver = dynamicModule->DynamicTypeSlotDispatchResolve;
                 if (resolver != null)
                     return resolver(pTgtType, pItfType, itfSlotNumber);
             }
 
             // Start at the current type and work up the inheritance chain
-            EEType* pCur = pTgtType;
+            MethodTable* pCur = pTgtType;
 
             if (pItfType->IsCloned)
                 pItfType = pItfType->CanonicalEEType;
@@ -67,8 +67,8 @@ namespace System.Runtime
         }
 
 
-        private static bool FindImplSlotForCurrentType(EEType* pTgtType,
-                                        EEType* pItfType,
+        private static bool FindImplSlotForCurrentType(MethodTable* pTgtType,
+                                        MethodTable* pItfType,
                                         ushort itfSlotNumber,
                                         ushort* pImplSlotNumber)
         {
@@ -121,8 +121,8 @@ namespace System.Runtime
             return fRes;
         }
 
-        private static bool FindImplSlotInSimpleMap(EEType* pTgtType,
-                                     EEType* pItfType,
+        private static bool FindImplSlotInSimpleMap(MethodTable* pTgtType,
+                                     MethodTable* pItfType,
                                      uint itfSlotNumber,
                                      ushort* pImplSlotNumber,
                                      bool actuallyCheckVariance,
@@ -130,7 +130,7 @@ namespace System.Runtime
         {
             Debug.Assert(pTgtType->HasDispatchMap, "Missing dispatch map");
 
-            EEType* pItfOpenGenericType = null;
+            MethodTable* pItfOpenGenericType = null;
             EETypeRef* pItfInstantiation = null;
             int itfArity = 0;
             GenericVariance* pItfVarianceInfo = null;
@@ -181,7 +181,7 @@ namespace System.Runtime
             {
                 if (i->_usInterfaceMethodSlot == itfSlotNumber)
                 {
-                    EEType* pCurEntryType =
+                    MethodTable* pCurEntryType =
                         pTgtType->InterfaceMap[i->_usInterfaceIndex].InterfaceType;
 
                     if (pCurEntryType->IsCloned)
@@ -209,7 +209,7 @@ namespace System.Runtime
                         }
 
                         // Retrieve the unified generic instance for the interface we're looking at in the map.
-                        EEType* pCurEntryGenericType = pCurEntryType->GenericDefinition;
+                        MethodTable* pCurEntryGenericType = pCurEntryType->GenericDefinition;
 
                         // If the generic types aren't the same then the types aren't compatible.
                         if (pItfOpenGenericType != pCurEntryGenericType)

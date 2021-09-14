@@ -16,7 +16,7 @@ namespace System
     // layout and allocation of strings that needs explanation...
     //
     // String is allocated like any other array, using the RhNewArray API.  It is essentially a very special
-    // char[] object.  In order to be an array, the String EEType must have an 'array element size' of 2,
+    // char[] object.  In order to be an array, the String MethodTable must have an 'array element size' of 2,
     // which is setup by a special case in the binder.  Strings must also have a typical array instance
     // layout, which means that the first field after the m_pEEType field is the 'number of array elements'
     // field.  However, here, it is called m_stringLength because it contains the number of characters in the
@@ -27,7 +27,7 @@ namespace System
     //
     //      obj_size = align(base_size + (num_elements * element_size), sizeof(void*))
     //
-    // The values 'base_size' and 'element_size' are both stored in the EEType for String and 'num_elements'
+    // The values 'base_size' and 'element_size' are both stored in the MethodTable for String and 'num_elements'
     // is m_stringLength.
     //
     // Our base_size is the size of the fixed portion of the string defined below.  It, therefore, contains

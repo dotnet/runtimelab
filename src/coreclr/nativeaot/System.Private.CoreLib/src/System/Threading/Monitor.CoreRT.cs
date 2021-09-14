@@ -24,11 +24,6 @@ namespace System.Threading
     {
         #region Object->Lock/Condition mapping
 
-#if !FEATURE_SYNCTABLE
-        private static ConditionalWeakTable<object, Lock> s_lockTable = new ConditionalWeakTable<object, Lock>();
-        private static ConditionalWeakTable<object, Lock>.CreateValueCallback s_createLock = (o) => new Lock();
-#endif
-
         private static ConditionalWeakTable<object, Condition> s_conditionTable = new ConditionalWeakTable<object, Condition>();
         private static ConditionalWeakTable<object, Condition>.CreateValueCallback s_createCondition = (o) => new Condition(GetLock(o));
 
@@ -40,11 +35,7 @@ namespace System.Threading
             Debug.Assert(!(obj is Lock),
                 "Do not use Monitor.Enter or TryEnter on a Lock instance; use Lock methods directly instead.");
 
-#if FEATURE_SYNCTABLE
             return ObjectHeader.GetLockObject(obj);
-#else
-            return s_lockTable.GetValue(obj, s_createLock);
-#endif
         }
 
         private static Condition GetCondition(object obj)

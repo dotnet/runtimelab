@@ -61,26 +61,6 @@ namespace ILCompiler
         {
             return false;
         }
-        
-        public sealed override ExportForm GetExportTypeForm(TypeDesc type)
-        {
-            return ExportForm.None;
-        }
-
-        public sealed override ExportForm GetExportTypeFormDictionary(TypeDesc type)
-        {
-            return ExportForm.None;
-        }
-
-        public sealed override ExportForm GetExportMethodForm(MethodDesc method, bool unboxingStub)
-        {
-            return ExportForm.None;
-        }
-
-        public override ExportForm GetExportMethodDictionaryForm(MethodDesc method)
-        {
-            return ExportForm.None;
-        }
 
         private bool IsModuleInCompilationGroup(EcmaModule module)
         {

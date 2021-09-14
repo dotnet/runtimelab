@@ -219,7 +219,7 @@ namespace ILCompiler.DependencyAnalysis
     {
         protected override void EmitLoadGenericContext(NodeFactory factory, ref ARM64Emitter encoder, bool relocsOnly)
         {
-            // We start with context register pointing to the EEType
+            // We start with context register pointing to the MethodTable
             Register contextRegister = GetContextRegister(ref encoder);
 
             // Locate the VTable slot that points to the dictionary

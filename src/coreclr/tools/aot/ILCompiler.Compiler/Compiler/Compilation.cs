@@ -245,7 +245,8 @@ namespace ILCompiler
 
         public ReadyToRunHelperId GetLdTokenHelperForType(TypeDesc type)
         {
-            return _nodeFactory.MetadataManager.ShouldConsiderLdTokenReferenceAConstruction(type)
+            bool canConstructPerWholeProgramAnalysis = _devirtualizationManager == null ? true : _devirtualizationManager.CanConstructType(type);
+            return canConstructPerWholeProgramAnalysis & DependencyAnalysis.ConstructedEETypeNode.CreationAllowed(type)
                 ? ReadyToRunHelperId.TypeHandle
                 : ReadyToRunHelperId.NecessaryTypeHandle;
         }
@@ -258,7 +259,7 @@ namespace ILCompiler
                 MetadataType activatorType = type.Context.SystemModule.GetKnownType("System", "Activator");
                 if (type.IsValueType && type.GetParameterlessConstructor() == null)
                 {
-                    ctor = activatorType.GetKnownMethod("ValueTypeWithNoConstructorMethod", null);
+                    ctor = activatorType.GetKnownNestedType("StructWithNoConstructor").GetKnownMethod(".ctor", null);
                 }
                 else
                 {
@@ -431,15 +432,20 @@ namespace ILCompiler
             // Needs to be either a concrete method, or a runtime determined form.
             Debug.Assert(!calledMethod.IsCanonicalMethod(CanonicalFormKind.Specific));
 
-            // If the method defines the slot, we can use that.
-            if (calledMethod.IsNewSlot)
-                return calledMethod;
-
             MethodDesc targetMethod = calledMethod.GetCanonMethodTarget(CanonicalFormKind.Specific);
+            MethodDesc targetMethodDefinition = targetMethod.GetMethodDefinition();
+
+            MethodDesc slotNormalizedMethodDefinition = MetadataVirtualMethodAlgorithm.FindSlotDefiningMethodForVirtualMethod(targetMethodDefinition);
+
+            // If the method defines the slot, we can use that.
+            if (slotNormalizedMethodDefinition == targetMethodDefinition)
+            {
+                return calledMethod;
+            }
 
             // Normalize to the slot defining method
             MethodDesc slotNormalizedMethod = TypeSystemContext.GetInstantiatedMethod(
-                MetadataVirtualMethodAlgorithm.FindSlotDefiningMethodForVirtualMethod(targetMethod.GetMethodDefinition()),
+                slotNormalizedMethodDefinition,
                 targetMethod.Instantiation);
 
             // Since the slot normalization logic modified what method we're looking at, we need to compute the new target of lookup.

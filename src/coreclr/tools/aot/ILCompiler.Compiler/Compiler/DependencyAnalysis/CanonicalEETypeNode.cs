@@ -55,7 +55,7 @@ namespace ILCompiler.DependencyAnalysis
             // Track generic virtual methods that will get added to the GVM tables
             if (TypeGVMEntriesNode.TypeNeedsGVMTableEntries(_type))
             {
-                dependencyList.Add(new DependencyListEntry(factory.TypeGVMEntries(_type), "Type with generic virtual methods"));
+                dependencyList.Add(new DependencyListEntry(factory.TypeGVMEntries(_type.GetTypeDefinition()), "Type with generic virtual methods"));
 
                 AddDependenciesForUniversalGVMSupport(factory, _type, ref dependencyList);
             }
@@ -65,7 +65,7 @@ namespace ILCompiler.DependencyAnalysis
             if (defaultCtor != null)
             {
                 dependencyList.Add(new DependencyListEntry(
-                    factory.ReflectableMethod(defaultCtor),
+                    factory.CanonicalEntrypoint(defaultCtor),
                     "DefaultConstructorNode"));
             }
 

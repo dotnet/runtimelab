@@ -21,7 +21,7 @@
 #include "Crst.h"
 #include "RedhawkWarnings.h"
 #include "TargetPtrs.h"
-#include "eetype.h"
+#include "MethodTable.h"
 #include "Range.h"
 #include "allocheap.h"
 #include "rhbinder.h"
@@ -31,7 +31,7 @@
 #include "RWLock.h"
 #include "TypeManager.h"
 #include "RuntimeInstance.h"
-#include "eetype.inl"
+#include "MethodTable.inl"
 #include "CommonMacros.inl"
 
 #include "CachedInterfaceDispatch.h"
@@ -137,7 +137,7 @@ static void * UpdatePointerPairAtomically(void * pPairLocation,
 // update abandoned. This is necessary since it's not safe to update a valid cache entry (one with a non-NULL
 // m_pInstanceType field) outside of a GC.
 static bool UpdateCacheEntryAtomically(InterfaceDispatchCacheEntry *pEntry,
-                                       EEType * pInstanceType,
+                                       MethodTable * pInstanceType,
                                        void * pTargetCode)
 {
     C_ASSERT(sizeof(InterfaceDispatchCacheEntry) == (sizeof(void*) * 2));
@@ -435,7 +435,7 @@ void ReclaimUnusedInterfaceDispatchCaches()
 // One time initialization of interface dispatch.
 bool InitializeInterfaceDispatch()
 {
-    g_pAllocHeap = new AllocHeap();
+    g_pAllocHeap = new (nothrow) AllocHeap();
     if (g_pAllocHeap == NULL)
         return false;
 
@@ -447,7 +447,7 @@ bool InitializeInterfaceDispatch()
     return true;
 }
 
-COOP_PINVOKE_HELPER(PTR_Code, RhpUpdateDispatchCellCache, (InterfaceDispatchCell * pCell, PTR_Code pTargetCode, EEType* pInstanceType, DispatchCellInfo *pNewCellInfo))
+COOP_PINVOKE_HELPER(PTR_Code, RhpUpdateDispatchCellCache, (InterfaceDispatchCell * pCell, PTR_Code pTargetCode, MethodTable* pInstanceType, DispatchCellInfo *pNewCellInfo))
 {
     // Attempt to update the cache with this new mapping (if we have any cache at all, the initial state
     // is none).
@@ -518,7 +518,7 @@ COOP_PINVOKE_HELPER(PTR_Code, RhpUpdateDispatchCellCache, (InterfaceDispatchCell
     return (PTR_Code)pTargetCode;
 }
 
-COOP_PINVOKE_HELPER(PTR_Code, RhpSearchDispatchCellCache, (InterfaceDispatchCell * pCell, EEType* pInstanceType))
+COOP_PINVOKE_HELPER(PTR_Code, RhpSearchDispatchCellCache, (InterfaceDispatchCell * pCell, MethodTable* pInstanceType))
 {
     // This function must be implemented in native code so that we do not take a GC while walking the cache
     InterfaceDispatchCache * pCache = (InterfaceDispatchCache*)pCell->GetCache();

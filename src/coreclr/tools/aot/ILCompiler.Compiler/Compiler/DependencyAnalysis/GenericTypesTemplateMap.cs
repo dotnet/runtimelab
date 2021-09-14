@@ -94,7 +94,7 @@ namespace ILCompiler.DependencyAnalysis
         }
 
         /// <summary>
-        /// Array&lt;T&gt; should not get an EEType in our system. All templates should replace
+        /// Array&lt;T&gt; should not get an MethodTable in our system. All templates should replace
         /// references to Array&lt;T&gt; types with regular arrays.
         /// </summary>
         public static TypeDesc ConvertArrayOfTToRegularArray(NodeFactory factory, TypeDesc type)

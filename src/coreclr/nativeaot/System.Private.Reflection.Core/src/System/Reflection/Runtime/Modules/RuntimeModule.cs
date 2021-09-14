@@ -25,6 +25,9 @@ namespace System.Reflection.Runtime.Modules
 
         public abstract override IEnumerable<CustomAttributeData> CustomAttributes { get; }
 
+        internal const string UnknownStringMessageInRAF = "Returns <Unknown> for modules with no file path";
+
+        [RequiresAssemblyFiles(UnknownStringMessageInRAF)]
         public sealed override string FullyQualifiedName
         {
             get
@@ -33,6 +36,7 @@ namespace System.Reflection.Runtime.Modules
             }
         }
 
+        [RequiresAssemblyFiles(UnknownStringMessageInRAF)]
         public sealed override string Name
         {
             get

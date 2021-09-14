@@ -90,7 +90,7 @@ fi
         ]]>
       </NativeAotMultimoduleIncompatibleScript>
 
-      <NativeAotCleanupBatchScript Condition="'$(CLRTestKind)' == 'BuildAndRun' and '$(NativeAotTest)' != 'false'">
+      <NativeAotCleanupBatchScript Condition="'$(CLRTestKind)' == 'BuildAndRun' and '$(NativeAotTest)' != 'false' and '$(TargetArchitecture)' != 'wasm'">
         <![CDATA[
 if defined RunNativeAot (
     rem Delete any leftover native compilation bits
@@ -143,6 +143,8 @@ if defined RunNativeAot (
     Outputs="$(OutputPath)\nativebuild.proj"
     BeforeTargets="Build">
     <PropertyGroup>
+      <_RootEntryAssemblyLine Condition="$(CLRTestFullTrimming) != 'true'">&lt;TrimmerRootAssembly Include=&quot;$(MSBuildProjectName)&quot; /&gt;</_RootEntryAssemblyLine>
+
       <_NativeAotBuildProjectFile>
         <![CDATA[
 <Project DefaultTargets="LinkNative" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
@@ -164,6 +166,11 @@ if defined RunNativeAot (
   <ItemGroup>
     <!-- Some tests consist of multiple assemblies - make sure ILC sees them -->
     <IlcCompileInput Include="%24(MSBuildProjectDirectory)\*.dll" Exclude="%24(MSBuildProjectDirectory)\$(MSBuildProjectName).dll" />
+
+    <!-- Copy RuntimeHostConfigurationOptions -->
+@(RuntimeHostConfigurationOption->'    <RuntimeHostConfigurationOption Include="%(Identity)" Value="%(Value)" />', '%0A')
+
+    $(_RootEntryAssemblyLine)
   </ItemGroup>
 
   <!-- We don't do anything in the Compile step since the test is already compiled to IL - the AOT compiler hooks up after this -->

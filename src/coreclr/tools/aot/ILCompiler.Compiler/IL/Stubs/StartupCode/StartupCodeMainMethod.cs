@@ -58,7 +58,8 @@ namespace Internal.IL.Stubs.StartupCode
             ILEmitter emitter = new ILEmitter();
             ILCodeStream codeStream = emitter.NewCodeStream();
 
-            codeStream.MarkDebuggerStepThroughPoint();
+            if (Context.Target.IsWindows)
+                codeStream.MarkDebuggerStepThroughPoint();
 
             // Allow the class library to run explicitly ordered class constructors first thing in start-up.
             if (_libraryInitializers != null)
@@ -118,7 +119,8 @@ namespace Internal.IL.Stubs.StartupCode
                 codeStream.Emit(ILOpcode.call, emitter.NewToken(startup.GetKnownMethod("GetMainMethodArguments", null)));
             }
 
-            codeStream.MarkDebuggerStepInPoint();
+            if (Context.Target.IsWindows)
+                codeStream.MarkDebuggerStepInPoint();
             codeStream.Emit(ILOpcode.call, emitter.NewToken(_mainMethod));
 
             MethodDesc setLatchedExitCode = startup?.GetMethod("SetLatchedExitCode", null);
@@ -228,22 +230,19 @@ namespace Internal.IL.Stubs.StartupCode
                 }
             }
 
-            public override bool HasCustomAttribute(string attributeNamespace, string attributeName)
-            {
-                return WrappedMethod.HasCustomAttribute(attributeNamespace, attributeName);
-            }
-
             public override MethodIL EmitIL()
             {
                 ILEmitter emit = new ILEmitter();
                 ILCodeStream codeStream = emit.NewCodeStream();
 
-                codeStream.MarkDebuggerStepThroughPoint();
+                if (Context.Target.IsWindows)
+                    codeStream.MarkDebuggerStepThroughPoint();
 
                 for (int i = 0; i < Signature.Length; i++)
                     codeStream.EmitLdArg(i);
 
-                codeStream.MarkDebuggerStepInPoint();
+                if (Context.Target.IsWindows)
+                    codeStream.MarkDebuggerStepInPoint();
 
                 codeStream.Emit(ILOpcode.call, emit.NewToken(WrappedMethod));
 

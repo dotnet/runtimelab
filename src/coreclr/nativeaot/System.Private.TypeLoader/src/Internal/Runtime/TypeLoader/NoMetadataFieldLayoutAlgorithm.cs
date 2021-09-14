@@ -8,7 +8,7 @@ using System.Diagnostics;
 namespace Internal.Runtime.TypeLoader
 {
     /// <summary>
-    /// Useable when we have runtime EEType structures. Can represent the field layout necessary
+    /// Useable when we have runtime MethodTable structures. Can represent the field layout necessary
     /// to represent the size/alignment of the overall type, but must delegate to either NativeLayoutFieldAlgorithm
     /// or MetadataFieldLayoutAlgorithm to get information about individual fields.
     /// </summary>
@@ -24,7 +24,7 @@ namespace Internal.Runtime.TypeLoader
 
         /// <summary>
         /// Reads the minimal information about type layout encoded in the
-        /// EEType. That doesn't include field information.
+        /// MethodTable. That doesn't include field information.
         /// </summary>
         public unsafe override ComputedInstanceFieldLayout ComputeInstanceLayout(DefType type, InstanceLayoutKind layoutKind)
         {
@@ -39,19 +39,19 @@ namespace Internal.Runtime.TypeLoader
 
             type.RetrieveRuntimeTypeHandleIfPossible();
             Debug.Assert(!type.RuntimeTypeHandle.IsNull());
-            EEType* eeType = type.RuntimeTypeHandle.ToEETypePtr();
+            MethodTable* MethodTable = type.RuntimeTypeHandle.ToEETypePtr();
 
             ComputedInstanceFieldLayout layout = new ComputedInstanceFieldLayout()
             {
                 ByteCountAlignment = new LayoutInt(IntPtr.Size),
-                ByteCountUnaligned = new LayoutInt(eeType->IsInterface ? IntPtr.Size : checked((int)eeType->FieldByteCountNonGCAligned)),
-                FieldAlignment = new LayoutInt(eeType->FieldAlignmentRequirement),
+                ByteCountUnaligned = new LayoutInt(MethodTable->IsInterface ? IntPtr.Size : checked((int)MethodTable->FieldByteCountNonGCAligned)),
+                FieldAlignment = new LayoutInt(MethodTable->FieldAlignmentRequirement),
                 Offsets = (layoutKind == InstanceLayoutKind.TypeOnly) ? null : Array.Empty<FieldAndOffset>(), // No fields in EETypes
             };
 
-            if (eeType->IsValueType)
+            if (MethodTable->IsValueType)
             {
-                int valueTypeSize = checked((int)eeType->ValueTypeSize);
+                int valueTypeSize = checked((int)MethodTable->ValueTypeSize);
                 layout.FieldSize = new LayoutInt(valueTypeSize);
             }
             else
@@ -59,7 +59,7 @@ namespace Internal.Runtime.TypeLoader
                 layout.FieldSize = new LayoutInt(IntPtr.Size);
             }
 
-            if ((eeType->RareFlags & EETypeRareFlags.RequiresAlign8Flag) == EETypeRareFlags.RequiresAlign8Flag)
+            if ((MethodTable->RareFlags & EETypeRareFlags.RequiresAlign8Flag) == EETypeRareFlags.RequiresAlign8Flag)
             {
                 layout.ByteCountAlignment = new LayoutInt(8);
             }
@@ -94,15 +94,15 @@ namespace Internal.Runtime.TypeLoader
             {
                 unsafe
                 {
-                    // On ARM, the HFA type is encoded into the EEType directly
+                    // On ARM, the HFA type is encoded into the MethodTable directly
                     type.RetrieveRuntimeTypeHandleIfPossible();
                     Debug.Assert(!type.RuntimeTypeHandle.IsNull());
-                    EEType* eeType = type.RuntimeTypeHandle.ToEETypePtr();
+                    MethodTable* MethodTable = type.RuntimeTypeHandle.ToEETypePtr();
 
-                    if (!eeType->IsHFA)
+                    if (!MethodTable->IsHFA)
                         return ValueTypeShapeCharacteristics.None;
 
-                    if (eeType->RequiresAlign8)
+                    if (MethodTable->RequiresAlign8)
                         return ValueTypeShapeCharacteristics.Float64Aggregate;
                     else
                         return ValueTypeShapeCharacteristics.Float32Aggregate;
@@ -116,6 +116,11 @@ namespace Internal.Runtime.TypeLoader
 
                 return ValueTypeShapeCharacteristics.None;
             }
+        }
+
+        public override bool ComputeIsUnsafeValueType(DefType type)
+        {
+            throw new NotSupportedException();
         }
     }
 }

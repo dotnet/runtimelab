@@ -10,6 +10,10 @@ if (CLR_CMAKE_HOST_ALPINE_LINUX)
     add_definitions(-DENSURE_PRIMARY_STACK_SIZE)
 endif ()
 
+if (CLR_CMAKE_TARGET_OSX)
+    add_definitions(-D_DARWIN_C_SOURCE)
+endif ()
+
 include_directories("${CLR_SRC_NATIVE_DIR}/common")
 
 set(NATIVE_SOURCES
@@ -42,6 +46,12 @@ if (CLR_CMAKE_TARGET_OSX OR CLR_CMAKE_TARGET_MACCATALYST OR CLR_CMAKE_TARGET_IOS
     set_source_files_properties(pal_autoreleasepool.m PROPERTIES COMPILE_FLAGS -fno-objc-arc)
 else()
     list (APPEND NATIVE_SOURCES pal_autoreleasepool.c)
+endif()
+
+if (CLR_CMAKE_TARGET_MACCATALYST OR CLR_CMAKE_TARGET_IOS OR CLR_CMAKE_TARGET_TVOS)
+    list (APPEND NATIVE_SOURCES pal_environment.m)
+else()
+    list (APPEND NATIVE_SOURCES pal_environment.c)
 endif()
 
 if (CLR_CMAKE_TARGET_MACCATALYST OR CLR_CMAKE_TARGET_IOS OR CLR_CMAKE_TARGET_TVOS)

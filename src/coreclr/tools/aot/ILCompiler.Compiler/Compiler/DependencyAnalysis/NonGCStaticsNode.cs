@@ -17,7 +17,7 @@ namespace ILCompiler.DependencyAnalysis
     /// with the class constructor context if the type has a class constructor that
     /// needs to be triggered before the type members can be accessed.
     /// </summary>
-    public class NonGCStaticsNode : ObjectNode, IExportableSymbolNode, ISortableSymbolNode
+    public class NonGCStaticsNode : ObjectNode, ISymbolDefinitionNode, ISortableSymbolNode
     {
         private readonly MetadataType _type;
         private readonly PreinitializationManager _preinitializationManager;
@@ -82,11 +82,6 @@ namespace ILCompiler.DependencyAnalysis
         public override bool IsShareable => EETypeNode.IsTypeNodeShareable(_type);
 
         public MetadataType Type => _type;
-
-        public virtual ExportForm GetExportForm(NodeFactory factory)
-        {
-            return factory.CompilationModuleGroup.GetExportTypeForm(Type);
-        }
 
         public static int GetClassConstructorContextSize(TargetDetails target)
         {

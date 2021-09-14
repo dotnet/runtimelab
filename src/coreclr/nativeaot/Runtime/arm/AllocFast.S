@@ -9,19 +9,19 @@
 
 // Allocate non-array, non-finalizable object. If the allocation doesn't fit into the current thread's
 // allocation context then automatically fallback to the slow allocation path.
-//  r0 == EEType
+//  r0 == MethodTable
 LEAF_ENTRY RhpNewFast, _TEXT
         PROLOG_PUSH "{r4,lr}"
-        mov	        r4, r0 // save EEType
+        mov	        r4, r0 // save MethodTable
 
         // r0 = GetThread()
         INLINE_GETTHREAD
 
-        // r4 contains EEType pointer
-        ldr         r2, [r4, #OFFSETOF__EEType__m_uBaseSize]
+        // r4 contains MethodTable pointer
+        ldr         r2, [r4, #OFFSETOF__MethodTable__m_uBaseSize]
 
         // r0: Thread pointer
-        // r4: EEType pointer
+        // r4: MethodTable pointer
         // r2: base size
 
         ldr         r3, [r0, #OFFSETOF__Thread__m_alloc_context__alloc_ptr]
@@ -33,7 +33,7 @@ LEAF_ENTRY RhpNewFast, _TEXT
         // set the new alloc pointer
         str         r2, [r0, #OFFSETOF__Thread__m_alloc_context__alloc_ptr]
 
-        // Set the new object's EEType pointer
+        // Set the new object's MethodTable pointer
         str         r4, [r3, #OFFSETOF__Object__m_pEEType]
 
         mov         r0, r3
@@ -41,7 +41,7 @@ LEAF_ENTRY RhpNewFast, _TEXT
         EPILOG_POP  "{r4,pc}"
 
 LOCAL_LABEL(RhpNewFast_RarePath):
-        mov         r0, r4            // restore EEType
+        mov         r0, r4            // restore MethodTable
         mov         r1, #0
         EPILOG_POP  "{r4,lr}"
         b           C_FUNC(RhpNewObject)
@@ -49,7 +49,7 @@ LOCAL_LABEL(RhpNewFast_RarePath):
 LEAF_END RhpNewFast, _TEXT
 
 // Allocate non-array object with finalizer.
-//  r0 == EEType
+//  r0 == MethodTable
 //
 LEAF_ENTRY RhpNewFinalizable, _TEXT
         mov         r1, #GC_ALLOC_FINALIZE
@@ -58,22 +58,22 @@ LEAF_END RhpNewFinalizable, _TEXT
 
 
 // Allocate non-array object.
-//  r0 == EEType
+//  r0 == MethodTable
 //  r1 == alloc flags
 NESTED_ENTRY RhpNewObject, _TEXT, NoHandler
 
         PUSH_COOP_PINVOKE_FRAME r3
 
-        // r0: EEType
+        // r0: MethodTable
         // r1: alloc flags
         // r3: transition frame
 
-        // Preserve the EEType in r5.
+        // Preserve the MethodTable in r5.
         mov         r5, r0
 
         mov         r2, #0              // numElements
 
-        // void* RhpGcAlloc(EEType *pEEType, uint32_t uFlags, uintptr_t numElements, void * pTransitionFrame)
+        // void* RhpGcAlloc(MethodTable *pEEType, uint32_t uFlags, uintptr_t numElements, void * pTransitionFrame)
         blx         C_FUNC(RhpGcAlloc)
 
         cbz         r0, LOCAL_LABEL(NewOutOfMemory)
@@ -85,7 +85,7 @@ LOCAL_LABEL(NewOutOfMemory):
         // This is the OOM failure path. We're going to tail-call to a managed helper that will throw
         // an out of memory exception that the caller of this allocator understands.
 
-        mov         r0, r5            // EEType pointer
+        mov         r0, r5            // MethodTable pointer
         mov         r1, #0            // Indicate that we should throw OOM.
 
         POP_COOP_PINVOKE_FRAME
@@ -96,7 +96,7 @@ NESTED_END RhpNewObject, _TEXT
 
 
 // Allocate a string.
-//  r0 == EEType
+//  r0 == MethodTable
 //  r1 == element/character count
 LEAF_ENTRY RhNewString, _TEXT
         PROLOG_PUSH "{r4-r6,lr}"
@@ -114,12 +114,12 @@ LEAF_ENTRY RhNewString, _TEXT
 #endif
         bic         r2, r2, #3
 
-        mov         r4, r0 // Save EEType
+        mov         r4, r0 // Save MethodTable
         mov         r5, r1 // Save element count
         mov         r6, r2 // Save string size
         // r0 = GetThread()
         INLINE_GETTHREAD
-        // r4 == EEType
+        // r4 == MethodTable
         // r5 == element count
         // r6 == string size
         // r0 == Thread*
@@ -142,7 +142,7 @@ LEAF_ENTRY RhNewString, _TEXT
         // Update the alloc pointer to account for the allocation.
         str         r6, [r0, #OFFSETOF__Thread__m_alloc_context__alloc_ptr]
 
-        // Set the new object's EEType pointer and element count.
+        // Set the new object's MethodTable pointer and element count.
         str         r4, [r12, #OFFSETOF__Object__m_pEEType]
         str         r5, [r12, #OFFSETOF__String__m_Length]
 
@@ -155,7 +155,7 @@ LOCAL_LABEL(StringSizeOverflow):
         // 32-bit value. We're going to tail-call to a managed helper that will throw
         // an OOM exception that the caller of this allocator understands.
 
-        // EEType is in r0 already
+        // MethodTable is in r0 already
         mov         r1, 0                  // Indicate that we should throw OOM
         EPILOG_POP  "{r4-r6,lr}"
         b           C_FUNC(RhExceptionHandling_FailedAllocation)
@@ -165,7 +165,7 @@ LOCAL_LABEL(RhNewString_RarePath):
         mov         r0, r4
         mov         r1, r5
         mov         r2, r6
-        // r0 == EEType
+        // r0 == MethodTable
         // r1 == element count
         // r2 == string size + Thread::m_alloc_context::alloc_ptr
         // r3 == Thread
@@ -176,7 +176,7 @@ LEAF_END RhNewString, _TEXT
 
 
 // Allocate one dimensional, zero based array (SZARRAY).
-//  r0 == EEType
+//  r0 == MethodTable
 //  r1 == element count
 LEAF_ENTRY RhpNewArray, _TEXT
         PROLOG_PUSH "{r4-r6,lr}"
@@ -185,22 +185,22 @@ LEAF_ENTRY RhpNewArray, _TEXT
         // if the element count is <= 0x10000, no overflow is possible because the component
         // size is <= 0xffff (it's an unsigned 16-bit value) and thus the product is <= 0xffff0000
         // and the base size for the worst case (32 dimensional MdArray) is less than 0xffff.
-        ldrh        r2, [r0, #OFFSETOF__EEType__m_usComponentSize]
+        ldrh        r2, [r0, #OFFSETOF__MethodTable__m_usComponentSize]
         cmp         r1, #0x10000
         bhi         LOCAL_LABEL(ArraySizeBig)
         umull       r2, r3, r2, r1
-        ldr         r3, [r0, #OFFSETOF__EEType__m_uBaseSize]
+        ldr         r3, [r0, #OFFSETOF__MethodTable__m_uBaseSize]
         adds        r2, r3
         adds        r2, #3
 LOCAL_LABEL(ArrayAlignSize):
         bic         r2, r2, #3
 
-        mov         r4, r0 // Save EEType
+        mov         r4, r0 // Save MethodTable
         mov         r5, r1 // Save element count
         mov         r6, r2 // Save array size
         // r0 = GetThread()
         INLINE_GETTHREAD
-        // r4 == EEType
+        // r4 == MethodTable
         // r5 == element count
         // r6 == array size
         // r0 == Thread*
@@ -223,7 +223,7 @@ LOCAL_LABEL(ArrayAlignSize):
         // Update the alloc pointer to account for the allocation.
         str         r6, [r0, #OFFSETOF__Thread__m_alloc_context__alloc_ptr]
 
-        // Set the new object's EEType pointer and element count.
+        // Set the new object's MethodTable pointer and element count.
         str         r4, [r12, #OFFSETOF__Object__m_pEEType]
         str         r5, [r12, #OFFSETOF__Array__m_Length]
 
@@ -242,7 +242,7 @@ LOCAL_LABEL(ArraySizeBig):
         // we already have the component size in r2
         umull       r2, r3, r2, r1
         cbnz        r3, LOCAL_LABEL(ArrayOutOfMemoryFinal)
-        ldr         r3, [r0, #OFFSETOF__EEType__m_uBaseSize]
+        ldr         r3, [r0, #OFFSETOF__MethodTable__m_uBaseSize]
         adds        r2, r3
         bcs         LOCAL_LABEL(ArrayOutOfMemoryFinal)
         adds        r2, #3
@@ -251,7 +251,7 @@ LOCAL_LABEL(ArraySizeBig):
 
 LOCAL_LABEL(ArrayOutOfMemoryFinal):
 
-        // EEType is in r0 already
+        // MethodTable is in r0 already
         mov         r1, #0                  // Indicate that we should throw OOM.
         EPILOG_POP  "{r4-r6,lr}"
         b           C_FUNC(RhExceptionHandling_FailedAllocation)
@@ -261,7 +261,7 @@ LOCAL_LABEL(ArraySizeOverflow):
         // 32-bit value. We're going to tail-call to a managed helper that will throw
         // an overflow exception that the caller of this allocator understands.
 
-        // EEType is in r0 already
+        // MethodTable is in r0 already
         mov         r1, #1                  // Indicate that we should throw OverflowException
         EPILOG_POP  "{r4-r6,lr}"
         b           C_FUNC(RhExceptionHandling_FailedAllocation)
@@ -271,7 +271,7 @@ LOCAL_LABEL(RhpNewArray_RarePath):
         mov         r0, r4
         mov         r1, r5
         mov         r2, r6
-        // r0 == EEType
+        // r0 == MethodTable
         // r1 == element count
         // r2 == array size + Thread::m_alloc_context::alloc_ptr
         // r3 == Thread
@@ -282,7 +282,7 @@ LEAF_END RhpNewArray, _TEXT
 
 
 // Allocate one dimensional, zero based array (SZARRAY) using the slow path that calls a runtime helper.
-//  r0 == EEType
+//  r0 == MethodTable
 //  r1 == element count
 //  r2 == array size + Thread::m_alloc_context::alloc_ptr
 //  r3 == Thread
@@ -294,13 +294,13 @@ NESTED_ENTRY RhpNewArrayRare, _TEXT, NoHandler
 
         PUSH_COOP_PINVOKE_FRAME r3
 
-        // Preserve the EEType in r5.
+        // Preserve the MethodTable in r5.
         mov         r5, r0
 
         mov         r2, r1          // numElements
         mov         r1, #0          // uFlags
 
-        // void* RhpGcAlloc(EEType *pEEType, uint32_t uFlags, uintptr_t numElements, void * pTransitionFrame)
+        // void* RhpGcAlloc(MethodTable *pEEType, uint32_t uFlags, uintptr_t numElements, void * pTransitionFrame)
         blx         C_FUNC(RhpGcAlloc)
 
         // Test for failure (NULL return).
@@ -311,7 +311,7 @@ NESTED_ENTRY RhpNewArrayRare, _TEXT, NoHandler
 
 LOCAL_LABEL(ArrayOutOfMemory):
 
-        mov         r0, r5       // EEType
+        mov         r0, r5       // MethodTable
         mov         r1, #0       // Indicate that we should throw OOM.
 
         POP_COOP_PINVOKE_FRAME
@@ -321,19 +321,19 @@ LOCAL_LABEL(ArrayOutOfMemory):
 NESTED_END RhpNewArrayRare, _TEXT
 
 // Allocate simple object (not finalizable, array or value type) on an 8 byte boundary.
-//  r0 == EEType
+//  r0 == MethodTable
 LEAF_ENTRY RhpNewFastAlign8, _TEXT
         PROLOG_PUSH "{r4,lr}"
 
-        mov         r4, r0 // save EEType
+        mov         r4, r0 // save MethodTable
 
         // r0 = GetThread()
         INLINE_GETTHREAD
 
         // Fetch object size into r2.
-        ldr         r2, [r4, #OFFSETOF__EEType__m_uBaseSize]
+        ldr         r2, [r4, #OFFSETOF__MethodTable__m_uBaseSize]
 
-        // r4: EEType pointer
+        // r4: MethodTable pointer
         // r0: Thread pointer
         // r2: base size
 
@@ -356,7 +356,7 @@ LEAF_ENTRY RhpNewFastAlign8, _TEXT
         // Update the alloc pointer to account for the allocation.
         str         r2, [r0, #OFFSETOF__Thread__m_alloc_context__alloc_ptr]
 
-        // Set the new object's EEType pointer.
+        // Set the new object's MethodTable pointer.
         str         r4, [r12, #OFFSETOF__Object__m_pEEType]
 
         // Return the object allocated in r0.
@@ -367,7 +367,7 @@ LEAF_ENTRY RhpNewFastAlign8, _TEXT
 LOCAL_LABEL(Alloc8Failed):
         // Fast allocation failed. Call slow helper with flags set to indicate an 8-byte alignment and no
         // finalization.
-        mov         r0, r4 // restore EEType
+        mov         r0, r4 // restore MethodTable
         mov         r1, #GC_ALLOC_ALIGN8
         EPILOG_POP  "{r4,lr}"
         b           C_FUNC(RhpNewObject)
@@ -375,7 +375,7 @@ LOCAL_LABEL(Alloc8Failed):
 LEAF_END RhpNewFastAlign8, _TEXT
 
 // Allocate a finalizable object (by definition not an array or value type) on an 8 byte boundary.
-//  r0 == EEType
+//  r0 == MethodTable
 LEAF_ENTRY RhpNewFinalizableAlign8, _TEXT
         mov         r1, #(GC_ALLOC_FINALIZE | GC_ALLOC_ALIGN8)
         b           C_FUNC(RhpNewObject)
@@ -383,19 +383,19 @@ LEAF_END RhpNewFinalizableAlign8, _TEXT
 
 // Allocate a value type object (i.e. box it) on an 8 byte boundary + 4 (so that the value type payload
 // itself is 8 byte aligned).
-//  r0 == EEType
+//  r0 == MethodTable
 LEAF_ENTRY RhpNewFastMisalign, _TEXT
         PROLOG_PUSH "{r4,lr}"
 
-        mov         r4, r0 // save EEType
+        mov         r4, r0 // save MethodTable
 
         // r0 = GetThread()
         INLINE_GETTHREAD
 
         // Fetch object size into r2.
-        ldr         r2, [r4, #OFFSETOF__EEType__m_uBaseSize]
+        ldr         r2, [r4, #OFFSETOF__MethodTable__m_uBaseSize]
 
-        // r4: EEType pointer
+        // r4: MethodTable pointer
         // r0: Thread pointer
         // r2: base size
 
@@ -405,7 +405,7 @@ LEAF_ENTRY RhpNewFastMisalign, _TEXT
         mov         r12, r3
 
         // Check whether the current allocation context is already aligned for us (for boxing that means the
-        // address % 8 == 4, so the value type payload following the EEType* is actually 8-byte aligned).
+        // address % 8 == 4, so the value type payload following the MethodTable* is actually 8-byte aligned).
         tst         r3, #0x7
         beq         LOCAL_LABEL(BoxAlloc8Failed)
 
@@ -419,7 +419,7 @@ LEAF_ENTRY RhpNewFastMisalign, _TEXT
         // Update the alloc pointer to account for the allocation.
         str         r2, [r0, #OFFSETOF__Thread__m_alloc_context__alloc_ptr]
 
-        // Set the new object's EEType pointer.
+        // Set the new object's MethodTable pointer.
         str         r4, [r12, #OFFSETOF__Object__m_pEEType]
 
         // Return the object allocated in r0.
@@ -430,7 +430,7 @@ LEAF_ENTRY RhpNewFastMisalign, _TEXT
 LOCAL_LABEL(BoxAlloc8Failed):
         // Fast allocation failed. Call slow helper with flags set to indicate an 8+4 byte alignment and no
         // finalization.
-        mov         r0, r4 // restore EEType
+        mov         r0, r4 // restore MethodTable
         mov         r1, #(GC_ALLOC_ALIGN8 | GC_ALLOC_ALIGN8_BIAS)
         EPILOG_POP  "{r4,lr}"
         b           C_FUNC(RhpNewObject)
@@ -438,30 +438,30 @@ LOCAL_LABEL(BoxAlloc8Failed):
 LEAF_END RhpNewFastMisalign, _TEXT
 
 // Allocate an array on an 8 byte boundary.
-//  r0 == EEType
+//  r0 == MethodTable
 //  r1 == element count
 NESTED_ENTRY RhpNewArrayAlign8, _TEXT, NoHandler
 
         PUSH_COOP_PINVOKE_FRAME r3
 
         // Compute overall allocation size (base size + align((element size * elements), 4)).
-        ldrh        r2, [r0, #OFFSETOF__EEType__m_usComponentSize]
+        ldrh        r2, [r0, #OFFSETOF__MethodTable__m_usComponentSize]
         umull       r2, r4, r2, r1
         cbnz        r4, LOCAL_LABEL(Array8SizeOverflow)
         adds        r2, #3
         bcs         LOCAL_LABEL(Array8SizeOverflow)
         bic         r2, r2, #3
-        ldr         r4, [r0, #OFFSETOF__EEType__m_uBaseSize]
+        ldr         r4, [r0, #OFFSETOF__MethodTable__m_uBaseSize]
         adds        r2, r4
         bcs         LOCAL_LABEL(Array8SizeOverflow)
 
-        // Preserve the EEType in r5.
+        // Preserve the MethodTable in r5.
         mov         r5, r0
 
         mov         r2, r1                  // numElements
         mov         r1, #GC_ALLOC_ALIGN8    // uFlags
 
-        // void* RhpGcAlloc(EEType *pEEType, uint32_t uFlags, uintptr_t numElements, void * pTransitionFrame)
+        // void* RhpGcAlloc(MethodTable *pEEType, uint32_t uFlags, uintptr_t numElements, void * pTransitionFrame)
         blx         C_FUNC(RhpGcAlloc)
 
         // Test for failure (NULL return).
@@ -480,7 +480,7 @@ LOCAL_LABEL(Array8SizeOverflow):
         cmp         r1, #0
         bge         LOCAL_LABEL(Array8OutOfMemory1)
 
-        // r0 holds EEType pointer already
+        // r0 holds MethodTable pointer already
         mov         r1, #1              // Indicate that we should throw OverflowException
 
         POP_COOP_PINVOKE_FRAME
@@ -490,7 +490,7 @@ LOCAL_LABEL(Array8OutOfMemory):
         // This is the OOM failure path. We're going to tail-call to a managed helper that will throw
         // an out of memory exception that the caller of this allocator understands.
 
-        mov         r0, r5              // EEType pointer
+        mov         r0, r5              // MethodTable pointer
 
 LOCAL_LABEL(Array8OutOfMemory1):
 

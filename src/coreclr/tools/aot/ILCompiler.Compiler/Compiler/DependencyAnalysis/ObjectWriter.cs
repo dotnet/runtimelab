@@ -1135,9 +1135,9 @@ namespace ILCompiler.DependencyAnalysis
                         objectWriter.EmitDebugFunctionInfo(node, nodeContents.Data.Length);
                     }
 
-                    if (node is ConstructedEETypeNode eeType)
+                    if (node is ConstructedEETypeNode MethodTable)
                     {
-                        objectWriter._userDefinedTypeDescriptor.GetTypeIndex(eeType.Type, needsCompleteType: true);
+                        objectWriter._userDefinedTypeDescriptor.GetTypeIndex(MethodTable.Type, needsCompleteType: true);
                     }
                 }
 

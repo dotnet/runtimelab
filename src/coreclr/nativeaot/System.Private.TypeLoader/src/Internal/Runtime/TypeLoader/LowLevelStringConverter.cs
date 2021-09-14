@@ -146,7 +146,7 @@ namespace Internal.Runtime.TypeLoader
 
         public static string LowLevelToStringRawEETypeAddress(this RuntimeTypeHandle rtth)
         {
-            return "EEType:0x" + LowLevelToString(rtth.ToIntPtr());
+            return "MethodTable:0x" + LowLevelToString(rtth.ToIntPtr());
         }
     }
 }

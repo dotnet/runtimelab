@@ -42,7 +42,8 @@ namespace ILCompiler
 
         public void AddReflectionRoot(MethodDesc method, string reason)
         {
-            _rootAdder(_factory.ReflectableMethod(method), reason);
+            if (!_factory.MetadataManager.IsReflectionBlocked(method))
+                _rootAdder(_factory.ReflectableMethod(method), reason);
         }
 
         public void RootThreadStaticBaseForType(TypeDesc type, string reason)

@@ -23,6 +23,9 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Include="..\..\Common\Compiler\Logging\CompilerGeneratedState.cs">
+      <Link>Compiler\Logging\CompilerGeneratedState.cs</Link>
+    </Compile>
     <Compile Include="..\..\Common\Compiler\Logging\MessageContainer.cs">
       <Link>Compiler\Logging\MessageContainer.cs</Link>
     </Compile>
@@ -320,7 +323,6 @@
     <Compile Include="Compiler\DependencyAnalysis\StaticsInfoHashtableNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\INodeWithCodeInfo.Aot.cs" />
     <Compile Include="Compiler\DependencyAnalysis\INodeWithDebugInfo.cs" />
-    <Compile Include="Compiler\DependencyAnalysis\IExportableSymbolNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\JumpStubNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\NodeFactory.cs" />
     <Compile Include="Compiler\DependencyAnalysis\NodeFactory.GenericLookups.cs" />
@@ -407,14 +409,14 @@
     <Compile Include="..\..\Common\Internal\Runtime\CanonTypeKind.cs">
       <Link>Common\CanonTypeKind.cs</Link>
     </Compile>
-    <Compile Include="..\..\Common\Internal\Runtime\EEType.Constants.cs">
-      <Link>Common\EEType.Constants.cs</Link>
+    <Compile Include="..\..\Common\Internal\Runtime\MethodTable.Constants.cs">
+      <Link>Common\MethodTable.Constants.cs</Link>
     </Compile>
     <Compile Include="..\..\Common\Internal\Runtime\EETypeOptionalFieldsBuilder.cs">
       <Link>Common\EETypeOptionalFieldsBuilder.cs</Link>
     </Compile>
     <Compile Include="..\..\Common\Internal\Runtime\EETypeBuilderHelpers.cs">
-      <Link>Common\EEType.cs</Link>
+      <Link>Common\EETypeBuilderHelpers.cs</Link>
     </Compile>
     <Compile Include="..\..\Common\Internal\Runtime\InterfaceDispatchCellCachePointerFlags.cs">
       <Link>Common\InterfaceDispatchCellCachePointerFlags.cs</Link>

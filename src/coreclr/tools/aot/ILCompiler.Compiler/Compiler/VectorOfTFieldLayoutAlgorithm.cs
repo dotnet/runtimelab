@@ -78,6 +78,11 @@ namespace ILCompiler
             return _fallbackAlgorithm.ComputeValueTypeShapeCharacteristics(type);
         }
 
+        public override bool ComputeIsUnsafeValueType(DefType type)
+        {
+            return false;
+        }
+
         public static bool IsVectorOfTType(DefType type)
         {
             return type.IsIntrinsic && type.Namespace == "System.Numerics" && type.Name == "Vector`1";

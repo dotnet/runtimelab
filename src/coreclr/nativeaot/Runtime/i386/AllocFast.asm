@@ -11,20 +11,20 @@ include AsmMacros.inc
 
 ;; Allocate non-array, non-finalizable object. If the allocation doesn't fit into the current thread's
 ;; allocation context then automatically fallback to the slow allocation path.
-;;  ECX == EEType
+;;  ECX == MethodTable
 FASTCALL_FUNC   RhpNewFast, 4
 
         ;; edx = GetThread(), TRASHES eax
         INLINE_GETTHREAD edx, eax
 
         ;;
-        ;; ecx contains EEType pointer
+        ;; ecx contains MethodTable pointer
         ;;
-        mov         eax, [ecx + OFFSETOF__EEType__m_uBaseSize]
+        mov         eax, [ecx + OFFSETOF__MethodTable__m_uBaseSize]
 
         ;;
         ;; eax: base size
-        ;; ecx: EEType pointer
+        ;; ecx: MethodTable pointer
         ;; edx: Thread pointer
         ;;
 
@@ -36,32 +36,32 @@ FASTCALL_FUNC   RhpNewFast, 4
         mov         [edx + OFFSETOF__Thread__m_alloc_context__alloc_ptr], eax
 
         ;; calc the new object pointer
-        sub         eax, [ecx + OFFSETOF__EEType__m_uBaseSize]
+        sub         eax, [ecx + OFFSETOF__MethodTable__m_uBaseSize]
 
-        ;; set the new object's EEType pointer
+        ;; set the new object's MethodTable pointer
         mov         [eax], ecx
         ret
 
 AllocFailed:
 
         ;;
-        ;; ecx: EEType pointer
+        ;; ecx: MethodTable pointer
         ;;
         push        ebp
         mov         ebp, esp
 
         PUSH_COOP_PINVOKE_FRAME edx
 
-        ;; Preserve EEType in ESI.
+        ;; Preserve MethodTable in ESI.
         mov         esi, ecx
 
         ;; Push alloc helper arguments
         push        edx                                             ; transition frame
         push        0                                               ; numElements
         xor         edx, edx                                        ; Flags
-        ;; Passing EEType in ecx
+        ;; Passing MethodTable in ecx
 
-        ;; void* RhpGcAlloc(EEType *pEEType, uint32_t uFlags, uintptr_t numElements, void * pTransitionFrame)
+        ;; void* RhpGcAlloc(MethodTable *pEEType, uint32_t uFlags, uintptr_t numElements, void * pTransitionFrame)
         call        RhpGcAlloc
 
         test        eax, eax
@@ -76,21 +76,21 @@ NewFast_OOM:
         ;; This is the failure path. We're going to tail-call to a managed helper that will throw
         ;; an out of memory exception that the caller of this allocator understands.
 
-        mov         eax, esi            ; Preserve EEType pointer over POP_COOP_PINVOKE_FRAME
+        mov         eax, esi            ; Preserve MethodTable pointer over POP_COOP_PINVOKE_FRAME
 
         POP_COOP_PINVOKE_FRAME
 
         ;; Cleanup our ebp frame
         pop         ebp
 
-        mov         ecx, eax            ; EEType pointer
+        mov         ecx, eax            ; MethodTable pointer
         xor         edx, edx            ; Indicate that we should throw OOM.
         jmp         RhExceptionHandling_FailedAllocation
 
 FASTCALL_ENDFUNC
 
 ;; Allocate non-array object with finalizer.
-;;  ECX == EEType
+;;  ECX == MethodTable
 FASTCALL_FUNC   RhpNewFinalizable, 4
         ;; Create EBP frame.
         push        ebp
@@ -98,16 +98,16 @@ FASTCALL_FUNC   RhpNewFinalizable, 4
 
         PUSH_COOP_PINVOKE_FRAME edx
 
-        ;; Preserve EEType in ESI
+        ;; Preserve MethodTable in ESI
         mov         esi, ecx
 
         ;; Push alloc helper arguments
         push        edx                                             ; transition frame
         push        0                                               ; numElements
         mov         edx, GC_ALLOC_FINALIZE                          ; Flags
-        ;; Passing EEType in ecx
+        ;; Passing MethodTable in ecx
 
-        ;; void* RhpGcAlloc(EEType *pEEType, uint32_t uFlags, uintptr_t numElements, void * pTransitionFrame)
+        ;; void* RhpGcAlloc(MethodTable *pEEType, uint32_t uFlags, uintptr_t numElements, void * pTransitionFrame)
         call        RhpGcAlloc
 
         test        eax, eax
@@ -123,21 +123,21 @@ NewFinalizable_OOM:
         ;; This is the failure path. We're going to tail-call to a managed helper that will throw
         ;; an out of memory exception that the caller of this allocator understands.
 
-        mov         eax, esi            ; Preserve EEType pointer over POP_COOP_PINVOKE_FRAME
+        mov         eax, esi            ; Preserve MethodTable pointer over POP_COOP_PINVOKE_FRAME
 
         POP_COOP_PINVOKE_FRAME
 
         ;; Cleanup our ebp frame
         pop         ebp
 
-        mov         ecx, eax            ; EEType pointer
+        mov         ecx, eax            ; MethodTable pointer
         xor         edx, edx            ; Indicate that we should throw OOM.
         jmp         RhExceptionHandling_FailedAllocation
 
 FASTCALL_ENDFUNC
 
 ;; Allocate a new string.
-;;  ECX == EEType
+;;  ECX == MethodTable
 ;;  EDX == element count
 FASTCALL_FUNC   RhNewString, 8
 
@@ -152,7 +152,7 @@ FASTCALL_FUNC   RhNewString, 8
         lea         eax, [(edx * STRING_COMPONENT_SIZE) + (STRING_BASE_SIZE + 3)]
         and         eax, -4
 
-        ; ECX == EEType
+        ; ECX == MethodTable
         ; EAX == allocation size
         ; EDX == scratch
 
@@ -181,7 +181,7 @@ FASTCALL_FUNC   RhNewString, 8
         pop         edx
         pop         ecx
 
-        ; set the new object's EEType pointer and element count
+        ; set the new object's MethodTable pointer and element count
         mov         [eax + OFFSETOF__Object__m_pEEType], ecx
         mov         [eax + OFFSETOF__String__m_Length], edx
         ret
@@ -200,16 +200,16 @@ StringAllocContextOverflow:
 
         PUSH_COOP_PINVOKE_FRAME edx
 
-        ; Get the EEType and put it in ecx.
+        ; Get the MethodTable and put it in ecx.
         mov         ecx, dword ptr [ebp - 8]
 
-        ; Push alloc helper arguments (thread, size, flags, EEType).
+        ; Push alloc helper arguments (thread, size, flags, MethodTable).
         push        edx                                             ; transition frame
         push        [ebp - 4]                                       ; numElements
         xor         edx, edx                                        ; Flags
-        ;; Passing EEType in ecx
+        ;; Passing MethodTable in ecx
 
-        ;; void* RhpGcAlloc(EEType *pEEType, uint32_t uFlags, uintptr_t numElements, void * pTransitionFrame)
+        ;; void* RhpGcAlloc(MethodTable *pEEType, uint32_t uFlags, uintptr_t numElements, void * pTransitionFrame)
         call        RhpGcAlloc
 
         test        eax, eax
@@ -224,13 +224,13 @@ StringOutOfMemoryWithFrame:
         ; This is the OOM failure path. We're going to tail-call to a managed helper that will throw
         ; an out of memory exception that the caller of this allocator understands.
 
-        mov         eax, [ebp - 8]  ; Preserve EEType pointer over POP_COOP_PINVOKE_FRAME
+        mov         eax, [ebp - 8]  ; Preserve MethodTable pointer over POP_COOP_PINVOKE_FRAME
 
         POP_COOP_PINVOKE_FRAME
         add         esp, 8          ; pop ecx / edx
         pop         ebp             ; restore ebp
 
-        mov         ecx, eax        ; EEType pointer
+        mov         ecx, eax        ; MethodTable pointer
         xor         edx, edx        ; Indicate that we should throw OOM.
         jmp         RhExceptionHandling_FailedAllocation
 
@@ -241,7 +241,7 @@ StringSizeOverflow:
 
         add         esp, 8          ; pop ecx / edx
 
-        ;; ecx holds EEType pointer already
+        ;; ecx holds MethodTable pointer already
         xor         edx, edx            ; Indicate that we should throw OOM.
         jmp         RhExceptionHandling_FailedAllocation
 
@@ -249,7 +249,7 @@ FASTCALL_ENDFUNC
 
 
 ;; Allocate one dimensional, zero based array (SZARRAY).
-;;  ECX == EEType
+;;  ECX == MethodTable
 ;;  EDX == element count
 FASTCALL_FUNC   RhpNewArray, 8
 
@@ -260,16 +260,16 @@ FASTCALL_FUNC   RhpNewArray, 8
         ; if the element count is <= 0x10000, no overflow is possible because the component size is
         ; <= 0xffff, and thus the product is <= 0xffff0000, and the base size for the worst case
         ; (32 dimensional MdArray) is less than 0xffff.
-        movzx       eax, word ptr [ecx + OFFSETOF__EEType__m_usComponentSize]
+        movzx       eax, word ptr [ecx + OFFSETOF__MethodTable__m_usComponentSize]
         cmp         edx,010000h
         ja          ArraySizeBig
         mul         edx
-        add         eax, [ecx + OFFSETOF__EEType__m_uBaseSize]
+        add         eax, [ecx + OFFSETOF__MethodTable__m_uBaseSize]
         add         eax, 3
 ArrayAlignSize:
         and         eax, -4
 
-        ; ECX == EEType
+        ; ECX == MethodTable
         ; EAX == array size
         ; EDX == scratch
 
@@ -298,7 +298,7 @@ ArrayAlignSize:
         pop         edx
         pop         ecx
 
-        ; set the new object's EEType pointer and element count
+        ; set the new object's MethodTable pointer and element count
         mov         [eax + OFFSETOF__Object__m_pEEType], ecx
         mov         [eax + OFFSETOF__Array__m_Length], edx
         ret
@@ -310,7 +310,7 @@ ArraySizeBig:
         jl          ArraySizeOverflow
         mul         edx
         jc          ArrayOutOfMemoryNoFrame
-        add         eax, [ecx + OFFSETOF__EEType__m_uBaseSize]
+        add         eax, [ecx + OFFSETOF__MethodTable__m_uBaseSize]
         jc          ArrayOutOfMemoryNoFrame
         add         eax, 3
         jc          ArrayOutOfMemoryNoFrame
@@ -330,16 +330,16 @@ ArrayAllocContextOverflow:
 
         PUSH_COOP_PINVOKE_FRAME edx
 
-        ; Get the EEType and put it in ecx.
+        ; Get the MethodTable and put it in ecx.
         mov         ecx, dword ptr [ebp - 8]
 
-        ; Push alloc helper arguments (thread, size, flags, EEType).
+        ; Push alloc helper arguments (thread, size, flags, MethodTable).
         push        edx                                             ; transition frame
         push        [ebp - 4]                                       ; numElements
         xor         edx, edx                                        ; Flags
-        ;; Passing EEType in ecx
+        ;; Passing MethodTable in ecx
 
-        ;; void* RhpGcAlloc(EEType *pEEType, uint32_t uFlags, uintptr_t numElements, void * pTransitionFrame)
+        ;; void* RhpGcAlloc(MethodTable *pEEType, uint32_t uFlags, uintptr_t numElements, void * pTransitionFrame)
         call        RhpGcAlloc
 
         test        eax, eax
@@ -354,20 +354,20 @@ ArrayOutOfMemoryWithFrame:
         ; This is the OOM failure path. We're going to tail-call to a managed helper that will throw
         ; an out of memory exception that the caller of this allocator understands.
 
-        mov         eax, [ebp - 8]  ; Preserve EEType pointer over POP_COOP_PINVOKE_FRAME
+        mov         eax, [ebp - 8]  ; Preserve MethodTable pointer over POP_COOP_PINVOKE_FRAME
 
         POP_COOP_PINVOKE_FRAME
         add         esp, 8          ; pop ecx / edx
         pop         ebp             ; restore ebp
 
-        mov         ecx, eax        ; EEType pointer
+        mov         ecx, eax        ; MethodTable pointer
         xor         edx, edx        ; Indicate that we should throw OOM.
         jmp         RhExceptionHandling_FailedAllocation
 
 ArrayOutOfMemoryNoFrame:
         add         esp, 8          ; pop ecx / edx
 
-        ; ecx holds EEType pointer already
+        ; ecx holds MethodTable pointer already
         xor         edx, edx        ; Indicate that we should throw OOM.
         jmp         RhExceptionHandling_FailedAllocation
 
@@ -378,7 +378,7 @@ ArraySizeOverflow:
 
         add         esp, 8          ; pop ecx / edx
 
-        ; ecx holds EEType pointer already
+        ; ecx holds MethodTable pointer already
         mov         edx, 1          ; Indicate that we should throw OverflowException
         jmp         RhExceptionHandling_FailedAllocation
 

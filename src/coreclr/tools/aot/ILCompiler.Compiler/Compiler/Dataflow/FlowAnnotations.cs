@@ -230,7 +230,7 @@ namespace ILCompiler.Dataflow
                     {
                         // Already know that there's a non-empty annotation on a field which is not System.Type/String and we're about to ignore it
                         _logger.LogWarning(
-                            $"Field '{field.GetDisplayName()}' has 'DynamicallyAccessedMembersAttribute', but that attribute can only be applied to fields of type 'System.Type' or 'System.String'",
+                            $"Field '{field.GetDisplayName()}' has 'DynamicallyAccessedMembersAttribute', but that attribute can only be applied to fields of type 'System.Type' or 'System.String'.",
                             2097, field, subcategory: MessageSubCategory.TrimAnalysis);
                         continue;
                     }
@@ -305,8 +305,8 @@ namespace ILCompiler.Dataflow
                             if (returnAnnotation != DynamicallyAccessedMemberTypes.None && !IsTypeInterestingForDataflow(signature.ReturnType))
                             {
                                 _logger.LogWarning(
-                                    $"Return parameter of method '{method.GetDisplayName()}' has 'DynamicallyAccessedMembersAttribute', but that attribute can only be applied to parameters of type 'System.Type' or 'System.String'",
-                                    2098, method, subcategory: MessageSubCategory.TrimAnalysis);
+                                    $"Return type of method '{method.GetDisplayName()}' has 'DynamicallyAccessedMembersAttribute', but that attribute can only be applied to parameters of type 'System.Type' or 'System.String'.",
+                                    2106, method, subcategory: MessageSubCategory.TrimAnalysis);
                             }
                         }
                         else
@@ -318,7 +318,7 @@ namespace ILCompiler.Dataflow
                             if (!IsTypeInterestingForDataflow(signature[parameter.SequenceNumber - 1]))
                             {
                                 _logger.LogWarning(
-                                    $"Parameter #{parameter.SequenceNumber} of method '{method.GetDisplayName()}' has 'DynamicallyAccessedMembersAttribute', but that attribute can only be applied to parameters of type 'System.Type' or 'System.String'",
+                                    $"Parameter #{parameter.SequenceNumber} of method '{method.GetDisplayName()}' has 'DynamicallyAccessedMembersAttribute', but that attribute can only be applied to parameters of type 'System.Type' or 'System.String'.",
                                     2098, method, subcategory: MessageSubCategory.TrimAnalysis);
                                 continue;
                             }
@@ -376,7 +376,7 @@ namespace ILCompiler.Dataflow
                     if (!IsTypeInterestingForDataflow(property.Signature.ReturnType))
                     {
                         _logger.LogWarning(
-                            $"Property '{property.GetDisplayName()}' has 'DynamicallyAccessedMembersAttribute', but that attribute can only be applied to properties of type 'System.Type' or 'System.String'",
+                            $"Property '{property.GetDisplayName()}' has 'DynamicallyAccessedMembersAttribute', but that attribute can only be applied to properties of type 'System.Type' or 'System.String'.",
                             2099, property, subcategory: MessageSubCategory.TrimAnalysis);
                         continue;
                     }

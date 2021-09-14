@@ -30,10 +30,10 @@
 #include "gcrhinterface.h"
 #include "shash.h"
 #include "TypeManager.h"
-#include "eetype.h"
+#include "MethodTable.h"
 #include "ObjectLayout.h"
 #include "slist.inl"
-#include "eetype.inl"
+#include "MethodTable.inl"
 #include "CommonMacros.inl"
 #include "volatile.h"
 #include "GCMemoryHelpers.h"
@@ -117,12 +117,12 @@ COOP_PINVOKE_HELPER(HANDLE, RhGetOSModuleFromPointer, (PTR_VOID pPointerVal))
     return NULL;
 }
 
-COOP_PINVOKE_HELPER(HANDLE, RhGetOSModuleFromEEType, (EEType * pEEType))
+COOP_PINVOKE_HELPER(HANDLE, RhGetOSModuleFromEEType, (MethodTable * pEEType))
 {
     return pEEType->GetTypeManagerPtr()->AsTypeManager()->GetOsModuleHandle();
 }
 
-COOP_PINVOKE_HELPER(TypeManagerHandle, RhGetModuleFromEEType, (EEType * pEEType))
+COOP_PINVOKE_HELPER(TypeManagerHandle, RhGetModuleFromEEType, (MethodTable * pEEType))
 {
     return *pEEType->GetTypeManagerPtr();
 }

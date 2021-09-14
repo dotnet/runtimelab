@@ -6,7 +6,7 @@ set(COMMON_RUNTIME_SOURCES
     CachedInterfaceDispatch.cpp
     Crst.cpp
     DebugHeader.cpp
-    eetype.cpp
+    MethodTable.cpp
     EHHelpers.cpp
     event.cpp
     FinalizerHelpers.cpp

@@ -32,7 +32,7 @@ namespace ILCompiler.DependencyAnalysis
         {
             get
             {
-                // The frozen string symbol points at the EEType portion of the object, skipping over the sync block
+                // The frozen string symbol points at the MethodTable portion of the object, skipping over the sync block
                 return OffsetFromBeginningOfArray + _syncBlockSize;
             }
         }
@@ -81,7 +81,7 @@ namespace ILCompiler.DependencyAnalysis
         {
             return new DependencyListEntry[]
             {
-                new DependencyListEntry(GetEETypeNode(factory), "Frozen string literal EEType"),
+                new DependencyListEntry(GetEETypeNode(factory), "Frozen string literal MethodTable"),
             };
         }
 

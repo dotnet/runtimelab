@@ -126,7 +126,7 @@ void GCToCLREventSink::FireGCJoin_V2(uint32_t heap, uint32_t joinTime, uint32_t 
     FireEtwGCJoin_V2(heap, joinTime, joinType, GetClrInstanceId(), joinId);
 }
 
-void GCToCLREventSink::FireGCGlobalHeapHistory_V3(uint64_t finalYoungestDesired,
+void GCToCLREventSink::FireGCGlobalHeapHistory_V4(uint64_t finalYoungestDesired,
         int32_t numHeaps,
         uint32_t condemnedGeneration,
         uint32_t gen0reductionCount,
@@ -135,11 +135,14 @@ void GCToCLREventSink::FireGCGlobalHeapHistory_V3(uint64_t finalYoungestDesired,
         uint32_t pauseMode,
         uint32_t memoryPressure,
         uint32_t condemnReasons0,
-        uint32_t condemnReasons1)
+        uint32_t condemnReasons1,
+        uint32_t count,
+        uint32_t valuesLen,
+        void* values)
 {
     LIMITED_METHOD_CONTRACT;
 
-    // TODO: FireEtwGCGlobalHeapHistory_V3
+    // TODO: FireEtwGCGlobalHeapHistory_V4
     FireEtwGCGlobalHeapHistory_V2(finalYoungestDesired, numHeaps, condemnedGeneration, gen0reductionCount, reason,
         globalMechanisms, GetClrInstanceId(), pauseMode, memoryPressure);
 }
@@ -151,7 +154,11 @@ void GCToCLREventSink::FireGCAllocationTick_V1(uint32_t allocationAmount, uint32
     FireEtwGCAllocationTick_V1(allocationAmount, allocationKind, GetClrInstanceId());
 }
 
-void GCToCLREventSink::FireGCAllocationTick_V3(uint64_t allocationAmount, uint32_t allocationKind, uint32_t heapIndex, void* objectAddress)
+void GCToCLREventSink::FireGCAllocationTick_V4(uint64_t allocationAmount,
+        uint32_t allocationKind,
+        uint32_t heapIndex,
+        void* objectAddress,
+        uint64_t objectSize)
 {
     LIMITED_METHOD_CONTRACT;
 
@@ -175,6 +182,22 @@ void GCToCLREventSink::FirePinObjectAtGCTime(void* object, uint8_t** ppObject)
 {
     UNREFERENCED_PARAMETER(object);
     UNREFERENCED_PARAMETER(ppObject);
+}
+
+void GCToCLREventSink::FireGCLOHCompact(uint16_t count, uint32_t valuesLen, void* values)
+{
+    UNREFERENCED_PARAMETER(count);
+    UNREFERENCED_PARAMETER(valuesLen);
+    UNREFERENCED_PARAMETER(values);
+}
+
+void GCToCLREventSink::FireGCFitBucketInfo(uint16_t bucketKind, size_t size, uint16_t count, uint32_t valuesLen, void* values)
+{
+    UNREFERENCED_PARAMETER(bucketKind);
+    UNREFERENCED_PARAMETER(size);
+    UNREFERENCED_PARAMETER(count);
+    UNREFERENCED_PARAMETER(valuesLen);
+    UNREFERENCED_PARAMETER(values);
 }
 
 void GCToCLREventSink::FirePinPlugAtGCTime(uint8_t* plugStart, uint8_t* plugEnd, uint8_t* gapBeforeSize)

@@ -4,6 +4,7 @@
 using System;
 using System.Reflection;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Reflection.Runtime.General;
@@ -16,16 +17,14 @@ namespace System.Reflection.Runtime.CustomAttributes
     //
     internal sealed class RuntimePseudoCustomAttributeData : RuntimeCustomAttributeData
     {
-        public RuntimePseudoCustomAttributeData(Type attributeType, IList<CustomAttributeTypedArgument> constructorArguments, IList<CustomAttributeNamedArgument> namedArguments)
+        public RuntimePseudoCustomAttributeData(
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.NonPublicConstructors)]
+            Type attributeType, IList<CustomAttributeTypedArgument> constructorArguments)
         {
             _attributeType = attributeType;
             if (constructorArguments == null)
                 constructorArguments = Array.Empty<CustomAttributeTypedArgument>();
             _constructorArguments = new ReadOnlyCollection<CustomAttributeTypedArgument>(constructorArguments);
-            if (namedArguments == null)
-                namedArguments = Array.Empty<CustomAttributeNamedArgument>();
-            _namedArguments = new ReadOnlyCollection<CustomAttributeNamedArgument>(namedArguments);
-            return;
         }
 
         public sealed override Type AttributeType
@@ -68,13 +67,15 @@ namespace System.Reflection.Runtime.CustomAttributes
 
         internal sealed override IList<CustomAttributeNamedArgument> GetNamedArguments(bool throwIfMissingMetadata)
         {
-            return _namedArguments;
+            // Note: if we ever need to return non-empty named arguments, we need to ensure the reflection metadata for the
+            // corresponding fields/properties is kept (we might have to bump the dataflow annotation on _attributeType).
+            return Array.Empty<CustomAttributeNamedArgument>();
         }
 
         // Equals/GetHashCode no need to override (they just implement reference equality but desktop never unified these things.)
 
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.NonPublicConstructors)]
         private readonly Type _attributeType;
         private readonly ReadOnlyCollection<CustomAttributeTypedArgument> _constructorArguments;
-        private readonly ReadOnlyCollection<CustomAttributeNamedArgument> _namedArguments;
     }
 }

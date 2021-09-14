@@ -3,7 +3,7 @@
 #ifndef _TARGETPTRS_H_
 #define _TARGETPTRS_H_
 
-typedef DPTR(class EEType) PTR_EEType;
+typedef DPTR(class MethodTable) PTR_EEType;
 typedef SPTR(struct StaticGcDesc) PTR_StaticGcDesc;
 
 #ifdef TARGET_AMD64

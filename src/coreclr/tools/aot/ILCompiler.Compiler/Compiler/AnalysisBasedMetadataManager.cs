@@ -28,15 +28,12 @@ namespace ILCompiler
         private readonly Dictionary<FieldDesc, MetadataCategory> _reflectableFields = new Dictionary<FieldDesc, MetadataCategory>();
         private readonly HashSet<ReflectableCustomAttribute> _reflectableAttributes = new HashSet<ReflectableCustomAttribute>();
 
-        private readonly HashSet<TypeDesc> _ldtokenReferenceableTypes;
-
         public AnalysisBasedMetadataManager(CompilerTypeSystemContext typeSystemContext)
             : this(typeSystemContext, new FullyBlockedMetadataBlockingPolicy(),
                 new FullyBlockedManifestResourceBlockingPolicy(), null, new NoStackTraceEmissionPolicy(),
                 new NoDynamicInvokeThunkGenerationPolicy(), Array.Empty<ModuleDesc>(),
                 Array.Empty<ReflectableEntity<TypeDesc>>(), Array.Empty<ReflectableEntity<MethodDesc>>(),
-                Array.Empty<ReflectableEntity<FieldDesc>>(), Array.Empty<ReflectableCustomAttribute>(),
-                Array.Empty<TypeDesc>())
+                Array.Empty<ReflectableEntity<FieldDesc>>(), Array.Empty<ReflectableCustomAttribute>())
         {
         }
 
@@ -51,8 +48,7 @@ namespace ILCompiler
             IEnumerable<ReflectableEntity<TypeDesc>> reflectableTypes,
             IEnumerable<ReflectableEntity<MethodDesc>> reflectableMethods,
             IEnumerable<ReflectableEntity<FieldDesc>> reflectableFields,
-            IEnumerable<ReflectableCustomAttribute> reflectableAttributes,
-            IEnumerable<TypeDesc> ldtokenReferenceableTypes)
+            IEnumerable<ReflectableCustomAttribute> reflectableAttributes)
             : base(typeSystemContext, blockingPolicy, resourceBlockingPolicy, logFile, stackTracePolicy, invokeThunkGenerationPolicy)
         {
             _modulesWithMetadata = new List<ModuleDesc>(modulesWithMetadata);
@@ -88,8 +84,6 @@ namespace ILCompiler
             {
                 _reflectableAttributes.Add(refAttribute);
             }
-
-            _ldtokenReferenceableTypes = new HashSet<TypeDesc>(ldtokenReferenceableTypes);
 
 #if DEBUG
             HashSet<ModuleDesc> moduleHash = new HashSet<ModuleDesc>(_modulesWithMetadata);
@@ -127,11 +121,6 @@ namespace ILCompiler
         public override IEnumerable<ModuleDesc> GetCompilationModulesWithMetadata()
         {
             return _modulesWithMetadata;
-        }
-
-        public override bool ShouldConsiderLdTokenReferenceAConstruction(TypeDesc type)
-        {
-            return _ldtokenReferenceableTypes.Contains(type);
         }
 
         protected override void ComputeMetadata(NodeFactory factory,

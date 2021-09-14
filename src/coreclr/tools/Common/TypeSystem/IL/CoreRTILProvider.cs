@@ -82,7 +82,7 @@ namespace Internal.IL
                             return GetCanonTypeIntrinsic.EmitIL(method);
                     }
                     break;
-                case "EEType":
+                case "MethodTable":
                     {
                         if (owningType.Namespace == "Internal.Runtime" && method.Name == "get_SupportsRelativePointers")
                         {

@@ -9,10 +9,10 @@ using Debug = System.Diagnostics.Debug;
 namespace ILCompiler.DependencyAnalysis
 {
     /// <summary>
-    /// Contains all GC static fields for a particular EEType.
+    /// Contains all GC static fields for a particular MethodTable.
     /// Fields that have preinitialized data are pointer reloc pointing to frozen objects.
     /// Other fields are initialized with 0.
-    /// We simply memcpy these over the GC static EEType object.
+    /// We simply memcpy these over the GC static MethodTable object.
     /// </summary>
     public class GCStaticsPreInitDataNode : ObjectNode, ISymbolDefinitionNode
     {

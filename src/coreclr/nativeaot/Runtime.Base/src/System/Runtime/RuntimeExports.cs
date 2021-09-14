@@ -20,7 +20,7 @@ namespace System.Runtime
         // internal calls for allocation
         //
         [RuntimeExport("RhNewObject")]
-        public static unsafe object RhNewObject(EEType* pEEType)
+        public static unsafe object RhNewObject(MethodTable* pEEType)
         {
             // This is structured in a funny way because at the present state of things in CoreRT, the Debug.Assert
             // below will call into the assert defined in the class library (and not the MRT version of it). The one
@@ -55,7 +55,7 @@ namespace System.Runtime
         }
 
         [RuntimeExport("RhNewArray")]
-        public static unsafe object RhNewArray(EEType* pEEType, int length)
+        public static unsafe object RhNewArray(MethodTable* pEEType, int length)
         {
             Debug.Assert(pEEType->IsArray || pEEType->IsString);
 
@@ -72,7 +72,7 @@ namespace System.Runtime
         }
 
         [RuntimeExport("RhBox")]
-        public static unsafe object RhBox(EEType* pEEType, ref byte data)
+        public static unsafe object RhBox(MethodTable* pEEType, ref byte data)
         {
             ref byte dataAdjustedForNullable = ref data;
 
@@ -122,7 +122,7 @@ namespace System.Runtime
         }
 
         [RuntimeExport("RhBoxAny")]
-        public static unsafe object RhBoxAny(ref byte data, EEType* pEEType)
+        public static unsafe object RhBoxAny(ref byte data, MethodTable* pEEType)
         {
             if (pEEType->IsValueType)
             {
@@ -134,7 +134,7 @@ namespace System.Runtime
             }
         }
 
-        private static unsafe bool UnboxAnyTypeCompare(EEType* pEEType, EEType* ptrUnboxToEEType)
+        private static unsafe bool UnboxAnyTypeCompare(MethodTable* pEEType, MethodTable* ptrUnboxToEEType)
         {
             if (TypeCast.AreTypesEquivalent(pEEType, ptrUnboxToEEType))
                 return true;
@@ -165,23 +165,23 @@ namespace System.Runtime
         [RuntimeExport("RhUnboxAny")]
         public static unsafe void RhUnboxAny(object o, ref byte data, EETypePtr pUnboxToEEType)
         {
-            EEType* ptrUnboxToEEType = (EEType*)pUnboxToEEType.ToPointer();
+            MethodTable* ptrUnboxToEEType = (MethodTable*)pUnboxToEEType.ToPointer();
             if (ptrUnboxToEEType->IsValueType)
             {
                 bool isValid = false;
 
                 if (ptrUnboxToEEType->IsNullable)
                 {
-                    isValid = (o == null) || TypeCast.AreTypesEquivalent(o.EEType, ptrUnboxToEEType->NullableType);
+                    isValid = (o == null) || TypeCast.AreTypesEquivalent(o.MethodTable, ptrUnboxToEEType->NullableType);
                 }
                 else
                 {
-                    isValid = (o != null) && UnboxAnyTypeCompare(o.EEType, ptrUnboxToEEType);
+                    isValid = (o != null) && UnboxAnyTypeCompare(o.MethodTable, ptrUnboxToEEType);
                 }
 
                 if (!isValid)
                 {
-                    // Throw the invalid cast exception defined by the classlib, using the input unbox EEType*
+                    // Throw the invalid cast exception defined by the classlib, using the input unbox MethodTable*
                     // to find the correct classlib.
 
                     ExceptionIDs exID = o == null ? ExceptionIDs.NullReference : ExceptionIDs.InvalidCast;
@@ -206,9 +206,9 @@ namespace System.Runtime
         // Unbox helpers with RyuJIT conventions
         //
         [RuntimeExport("RhUnbox2")]
-        public static unsafe ref byte RhUnbox2(EEType* pUnboxToEEType, object obj)
+        public static unsafe ref byte RhUnbox2(MethodTable* pUnboxToEEType, object obj)
         {
-            if ((obj == null) || !UnboxAnyTypeCompare(obj.EEType, pUnboxToEEType))
+            if ((obj == null) || !UnboxAnyTypeCompare(obj.MethodTable, pUnboxToEEType))
             {
                 ExceptionIDs exID = obj == null ? ExceptionIDs.NullReference : ExceptionIDs.InvalidCast;
                 throw pUnboxToEEType->GetClasslibException(exID);
@@ -217,9 +217,9 @@ namespace System.Runtime
         }
 
         [RuntimeExport("RhUnboxNullable")]
-        public static unsafe void RhUnboxNullable(ref byte data, EEType* pUnboxToEEType, object obj)
+        public static unsafe void RhUnboxNullable(ref byte data, MethodTable* pUnboxToEEType, object obj)
         {
-            if ((obj != null) && !TypeCast.AreTypesEquivalent(obj.EEType, pUnboxToEEType->NullableType))
+            if ((obj != null) && !TypeCast.AreTypesEquivalent(obj.MethodTable, pUnboxToEEType->NullableType))
             {
                 throw pUnboxToEEType->GetClasslibException(ExceptionIDs.InvalidCast);
             }
@@ -227,7 +227,7 @@ namespace System.Runtime
         }
 
         [RuntimeExport("RhUnbox")]
-        public static unsafe void RhUnbox(object obj, ref byte data, EEType* pUnboxToEEType)
+        public static unsafe void RhUnbox(object obj, ref byte data, MethodTable* pUnboxToEEType)
         {
             // When unboxing to a Nullable the input object may be null.
             if (obj == null)
@@ -243,7 +243,7 @@ namespace System.Runtime
                 return;
             }
 
-            EEType* pEEType = obj.EEType;
+            MethodTable* pEEType = obj.MethodTable;
 
             // Can unbox value types only.
             Debug.Assert(pEEType->IsValueType);
@@ -283,10 +283,10 @@ namespace System.Runtime
         {
             object objClone;
 
-            if (src.EEType->IsArray)
-                objClone = RhNewArray(src.EEType, Unsafe.As<Array>(src).Length);
+            if (src.MethodTable->IsArray)
+                objClone = RhNewArray(src.MethodTable, Unsafe.As<Array>(src).Length);
             else
-                objClone = RhNewObject(src.EEType);
+                objClone = RhNewObject(src.MethodTable);
 
             InternalCalls.RhpCopyObjectContents(objClone, src);
 
@@ -449,6 +449,63 @@ namespace System.Runtime
         public static int RhGetThunkSize()
         {
             return InternalCalls.RhpGetThunkSize();
+        }
+
+        [RuntimeExport("RhGetRuntimeHelperForType")]
+        internal static unsafe IntPtr RhGetRuntimeHelperForType(MethodTable* pEEType, RuntimeHelperKind kind)
+        {
+            switch (kind)
+            {
+                case RuntimeHelperKind.AllocateObject:
+#if FEATURE_64BIT_ALIGNMENT
+                    if (pEEType->RequiresAlign8)
+                    {
+                        if (pEEType->IsFinalizable)
+                            return (IntPtr)(delegate*<MethodTable*, object>)&InternalCalls.RhpNewFinalizableAlign8;
+                        else if (pEEType->IsValueType)            // returns true for enum types as well
+                            return (IntPtr)(delegate*<MethodTable*, object>)&InternalCalls.RhpNewFastMisalign;
+                        else
+                            return (IntPtr)(delegate*<MethodTable*, object>)&InternalCalls.RhpNewFastAlign8;
+                    }
+#endif // FEATURE_64BIT_ALIGNMENT
+
+                    if (pEEType->IsFinalizable)
+                        return (IntPtr)(delegate*<MethodTable*, object>)&InternalCalls.RhpNewFinalizable;
+                    else
+                        return (IntPtr)(delegate*<MethodTable*, object>)&InternalCalls.RhpNewFast;
+
+                case RuntimeHelperKind.IsInst:
+                    if (pEEType->IsArray)
+                        return (IntPtr)(delegate*<MethodTable*, object, object>)&TypeCast.IsInstanceOfArray;
+                    else if (pEEType->IsInterface)
+                        return (IntPtr)(delegate*<MethodTable*, object, object>)&TypeCast.IsInstanceOfInterface;
+                    else if (pEEType->IsParameterizedType)
+                        return (IntPtr)(delegate*<MethodTable*, object, object>)&TypeCast.IsInstanceOf; // Array handled above; pointers and byrefs handled here
+                    else
+                        return (IntPtr)(delegate*<MethodTable*, object, object>)&TypeCast.IsInstanceOfClass;
+
+                case RuntimeHelperKind.CastClass:
+                    if (pEEType->IsArray)
+                        return (IntPtr)(delegate*<MethodTable*, object, object>)&TypeCast.CheckCastArray;
+                    else if (pEEType->IsInterface)
+                        return (IntPtr)(delegate*<MethodTable*, object, object>)&TypeCast.CheckCastInterface;
+                    else if (pEEType->IsParameterizedType)
+                        return (IntPtr)(delegate*<MethodTable*, object, object>)&TypeCast.CheckCast; // Array handled above; pointers and byrefs handled here
+                    else
+                        return (IntPtr)(delegate*<MethodTable*, object, object>)&TypeCast.CheckCastClass;
+
+                case RuntimeHelperKind.AllocateArray:
+#if FEATURE_64BIT_ALIGNMENT
+                    if (pEEType->RequiresAlign8)
+                        return (IntPtr)(delegate*<MethodTable*, int, object>)&InternalCalls.RhpNewArrayAlign8;
+#endif // FEATURE_64BIT_ALIGNMENT
+
+                    return (IntPtr)(delegate*<MethodTable*, int, object>)&InternalCalls.RhpNewArray;
+
+                default:
+                    Debug.Assert(false, "Unknown RuntimeHelperKind");
+                    return IntPtr.Zero;
+            }
         }
     }
 }

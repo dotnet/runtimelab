@@ -7,6 +7,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using Internal.Runtime.CompilerServices;
 
 #if CORERT
@@ -123,7 +124,7 @@ namespace System
 
         private static string? GetEnumName(EnumInfo enumInfo, ulong ulValue)
         {
-            int index = Array.BinarySearch(enumInfo.Values, ulValue);
+            int index = FindDefinedIndex(enumInfo.Values, ulValue);
             if (index >= 0)
             {
                 return enumInfo.Names[index];
@@ -358,9 +359,26 @@ namespace System
             ulong[] ulValues = Enum.InternalGetValues(enumType);
             ulong ulValue = Enum.ToUInt64(value);
 
-            return Array.BinarySearch(ulValues, ulValue) >= 0;
+            return FindDefinedIndex(ulValues, ulValue) >= 0;
+        }
+#endif
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static int FindDefinedIndex(ulong[] ulValues, ulong ulValue)
+        {
+            // Binary searching has a higher constant overhead than linear.
+            // For smaller enums, use IndexOf.  For larger enums, use BinarySearch.
+            // This threshold can be tweaked over time as optimizations evolve.
+            const int NumberOfValuesThreshold = 32;
+
+            int ulValuesLength = ulValues.Length;
+            ref ulong start = ref MemoryMarshal.GetArrayDataReference(ulValues);
+            return ulValuesLength <= NumberOfValuesThreshold ?
+                SpanHelpers.IndexOf(ref start, ulValue, ulValuesLength) :
+                SpanHelpers.BinarySearch(ref start, ulValuesLength, ulValue);
         }
 
+#if !CORERT
         public static bool IsDefined(Type enumType, object value)
         {
             if (enumType is null)
@@ -881,6 +899,8 @@ namespace System
 
         private static bool TryParseByName(RuntimeType enumType, ReadOnlySpan<char> value, bool ignoreCase, bool throwOnFailure, out ulong result)
         {
+            ReadOnlySpan<char> originalValue = value;
+
             // Find the field. Let's assume that these are always static classes because the class is an enum.
             EnumInfo enumInfo = GetEnumInfo(enumType);
             string[] enumNames = enumInfo.Names;
@@ -954,7 +974,7 @@ namespace System
 
             if (throwOnFailure)
             {
-                throw new ArgumentException(SR.Format(SR.Arg_EnumValueNotFound, value.ToString()));
+                throw new ArgumentException(SR.Format(SR.Arg_EnumValueNotFound, originalValue.ToString()));
             }
 
             result = 0;
@@ -1026,7 +1046,7 @@ namespace System
                 {
                     case 'G':
                     case 'g':
-                        return GetEnumName(rtType, ToUInt64(value)) ?? value.ToString()!;
+                        return InternalFormat(rtType, ToUInt64(value)) ?? value.ToString()!;
 
                     case 'D':
                     case 'd':
@@ -1204,7 +1224,7 @@ namespace System
         #endregion
 
         #region IFormattable
-        [Obsolete("The provider argument is not used. Please use ToString(String).")]
+        [Obsolete("The provider argument is not used. Use ToString(String) instead.")]
         public string ToString(string? format, IFormatProvider? provider)
         {
             return ToString(format);
@@ -1244,7 +1264,7 @@ namespace System
             throw new FormatException(SR.Format_InvalidEnumFormatSpecification);
         }
 
-        [Obsolete("The provider argument is not used. Please use ToString().")]
+        [Obsolete("The provider argument is not used. Use ToString() instead.")]
         public string ToString(IFormatProvider? provider)
         {
             return ToString();

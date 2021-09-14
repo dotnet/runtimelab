@@ -105,6 +105,8 @@ namespace ILCompiler.DependencyAnalysis
         private NativeLayoutMethodSignatureVertexNode _methodSig;
         private NativeLayoutTypeSignatureVertexNode[] _instantiationArgsSig;
 
+        public MethodDesc Method => _method;
+
         public NativeLayoutMethodEntryVertexNode(NodeFactory factory, MethodDesc method, MethodEntryFlags flags)
         {
             _method = method;
@@ -233,6 +235,34 @@ namespace ILCompiler.DependencyAnalysis
         public NativeLayoutMethodLdTokenVertexNode(NodeFactory factory, MethodDesc method)
             : base(factory, method, 0)
         {
+        }
+
+        public override IEnumerable<DependencyListEntry> GetStaticDependencies(NodeFactory context)
+        {
+            if (_method.IsVirtual && _method.HasInstantiation)
+            {
+                return GetGenericVirtualMethodDependencies(context);
+            }
+            else
+            {
+                return base.GetStaticDependencies(context);
+            }
+        }
+
+        private IEnumerable<DependencyListEntry> GetGenericVirtualMethodDependencies(NodeFactory factory)
+        {
+            var dependencies = (DependencyList)base.GetStaticDependencies(factory);
+
+            dependencies.Add(factory.GVMDependencies(_method.GetCanonMethodTarget(CanonicalFormKind.Specific)), "Potential generic virtual method call");
+
+            // Variant generic virtual method calls at runtime might need to build the concrete version of the
+            // type we could be dispatching on to find the appropriate GVM entry.
+            if (_method.OwningType.HasVariance)
+            {
+                GenericTypesTemplateMap.GetTemplateTypeDependencies(ref dependencies, factory, _method.OwningType.ConvertToCanonForm(CanonicalFormKind.Specific));
+            }
+
+            return dependencies;
         }
 
         public override Vertex WriteVertex(NodeFactory factory)
@@ -514,7 +544,11 @@ namespace ILCompiler.DependencyAnalysis
             {
                 return new DependencyListEntry[]
                 {
-                    new DependencyListEntry(context.NecessaryTypeSymbol(_type), "NativeLayoutEETypeVertexNode containing type signature")
+                    // TODO-SIZE: this might be overly generous because we don't track what this type is used for.
+                    //            A necessary EEType might be enough for some cases.
+                    //            But we definitely need constructed if this is e.g. layout for a typehandle.
+                    //            Measurements show this doesn't amount to much (0.004% - 0.3% size cost vs Necessary).
+                    new DependencyListEntry(context.MaximallyConstructableType(_type), "NativeLayoutEETypeVertexNode containing type signature")
                 };
             }
             public override Vertex WriteVertex(NodeFactory factory)
@@ -929,7 +963,7 @@ namespace ILCompiler.DependencyAnalysis
         {
             ISymbolNode typeNode = context.MaximallyConstructableType(_type.ConvertToCanonForm(CanonicalFormKind.Specific));
 
-            yield return new DependencyListEntry(typeNode, "Template EEType");
+            yield return new DependencyListEntry(typeNode, "Template MethodTable");
 
             foreach (var dependency in context.NativeLayout.TemplateConstructableTypes(_type))
             {
@@ -1435,7 +1469,7 @@ namespace ILCompiler.DependencyAnalysis
             }
             else
             {
-                // If allocating an object of the EEType isn't permitted, don't process any vtable entries.
+                // If allocating an object of the MethodTable isn't permitted, don't process any vtable entries.
                 vtableEntriesToProcess = Array.Empty<MethodDesc>();
             }
 
@@ -1742,18 +1776,24 @@ namespace ILCompiler.DependencyAnalysis
         protected sealed override FixupSignatureKind SignatureKind => FixupSignatureKind.MethodDictionary;
         public sealed override IEnumerable<DependencyListEntry> GetStaticDependencies(NodeFactory factory)
         {
+            var dependencies = new DependencyList();
+
             foreach (var dependency in factory.NativeLayout.TemplateConstructableTypes(_method.OwningType))
             {
-                yield return new DependencyListEntry(dependency, "template construction dependency for method OwningType");
+                dependencies.Add(dependency, "template construction dependency for method OwningType");
             }
 
             foreach (var type in _method.Instantiation)
             {
                 foreach (var dependency in factory.NativeLayout.TemplateConstructableTypes(type))
-                    yield return new DependencyListEntry(dependency, "template construction dependency for method Instantiation types");
+                    dependencies.Add(dependency, "template construction dependency for method Instantiation types");
             }
 
-            yield return new DependencyListEntry(_wrappedNode, "wrappednode");
+            GenericMethodsTemplateMap.GetTemplateMethodDependencies(ref dependencies, factory, _method.GetCanonMethodTarget(CanonicalFormKind.Specific));
+
+            dependencies.Add(_wrappedNode, "wrappednode");
+
+            return dependencies;
         }
 
         protected sealed override Vertex WriteSignatureVertex(NativeWriter writer, NodeFactory factory)
@@ -2059,18 +2099,24 @@ namespace ILCompiler.DependencyAnalysis
         protected sealed override FixupSignatureKind SignatureKind => FixupSignatureKind.Method;
         public sealed override IEnumerable<DependencyListEntry> GetStaticDependencies(NodeFactory factory)
         {
+            DependencyList dependencies = new DependencyList();
+
             foreach (var dependency in factory.NativeLayout.TemplateConstructableTypes(_method.OwningType))
             {
-                yield return new DependencyListEntry(dependency, "template construction dependency for method OwningType");
+                dependencies.Add(dependency, "template construction dependency for method OwningType");
             }
 
             foreach (var type in _method.Instantiation)
             {
                 foreach (var dependency in factory.NativeLayout.TemplateConstructableTypes(type))
-                    yield return new DependencyListEntry(dependency, "template construction dependency for method Instantiation types");
+                    dependencies.Add(dependency, "template construction dependency for method Instantiation types");
             }
 
-            yield return new DependencyListEntry(_wrappedNode, "wrappednode");
+            GenericMethodsTemplateMap.GetTemplateMethodDependencies(ref dependencies, factory, _method.GetCanonMethodTarget(CanonicalFormKind.Specific));
+
+            dependencies.Add(_wrappedNode, "wrappednode");
+
+            return dependencies;
         }
 
         protected sealed override Vertex WriteSignatureVertex(NativeWriter writer, NodeFactory factory)

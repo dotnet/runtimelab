@@ -30,6 +30,7 @@ namespace System.Threading
         }
 
         [CLSCompliant(false)]
+        [SupportedOSPlatform("windows")]
         public static unsafe bool UnsafeQueueNativeOverlapped(NativeOverlapped* overlapped)
         {
             // OS doesn't signal handle, so do it here (CoreCLR does this assignment in ThreadPoolNative::CorPostQueuedCompletionStatus)
@@ -39,6 +40,7 @@ namespace System.Threading
         }
 
         [Obsolete("ThreadPool.BindHandle(IntPtr) has been deprecated.  Please use ThreadPool.BindHandle(SafeHandle) instead.", false)]
+        [SupportedOSPlatform("windows")]
         public static bool BindHandle(IntPtr osHandle)
         {
             throw new PlatformNotSupportedException(SR.Arg_PlatformNotSupported); // Replaced by ThreadPoolBoundHandle.BindHandle

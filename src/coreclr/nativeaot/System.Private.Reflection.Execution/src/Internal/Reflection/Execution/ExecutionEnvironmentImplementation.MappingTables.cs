@@ -162,7 +162,7 @@ namespace Internal.Reflection.Execution
         /// guarantees that any type enabled for metadata also has a RuntimeTypeHandle underneath.
         /// </summary>
         /// <param name="qTypeDefinition">TypeDef handle for the type to look up</param>
-        /// <param name="runtimeTypeHandle">Runtime type handle (EEType) for the given type</param>
+        /// <param name="runtimeTypeHandle">Runtime type handle (MethodTable) for the given type</param>
         public unsafe sealed override bool TryGetNamedTypeForMetadata(QTypeDefinition qTypeDefinition, out RuntimeTypeHandle runtimeTypeHandle)
         {
             return TypeLoaderEnvironment.Instance.TryGetOrCreateNamedTypeForMetadata(qTypeDefinition, out runtimeTypeHandle);
@@ -177,7 +177,7 @@ namespace Internal.Reflection.Execution
         /// Preconditions:
         ///    runtimeTypeHandle is a typedef (not a constructed type such as an array or generic instance.)
         /// </summary>
-        /// <param name="runtimeTypeHandle">EEType of the type in question</param>
+        /// <param name="runtimeTypeHandle">MethodTable of the type in question</param>
         /// <param name="metadataReader">Metadata reader for the type</param>
         /// <param name="typeRefHandle">Located TypeRef handle</param>
         public unsafe sealed override bool TryGetTypeReferenceForNamedType(RuntimeTypeHandle runtimeTypeHandle, out MetadataReader metadataReader, out TypeReferenceHandle typeRefHandle)
@@ -202,7 +202,7 @@ namespace Internal.Reflection.Execution
         /// </summary>
         /// <param name="metadataReader">Metadata reader for module containing the type reference</param>
         /// <param name="typeRefHandle">TypeRef handle to look up</param>
-        /// <param name="runtimeTypeHandle">Resolved EEType for the type reference</param>
+        /// <param name="runtimeTypeHandle">Resolved MethodTable for the type reference</param>
         public unsafe sealed override bool TryGetNamedTypeForTypeReference(MetadataReader metadataReader, TypeReferenceHandle typeRefHandle, out RuntimeTypeHandle runtimeTypeHandle)
         {
             return TypeLoaderEnvironment.TryGetNamedTypeForTypeReference(metadataReader, typeRefHandle, out runtimeTypeHandle);
@@ -419,7 +419,7 @@ namespace Internal.Reflection.Execution
                 Debug.Assert(success);
 
                 RuntimeTypeHandle declaringTypeHandle;
-                // All methods referred from this blob are contained in the same type. The first UINT in the blob is a reloc to that EEType
+                // All methods referred from this blob are contained in the same type. The first UINT in the blob is a reloc to that MethodTable
                 if (RuntimeAugments.SupportsRelativePointers)
                 {
                     // CoreRT uses 32bit relative relocs
@@ -1451,9 +1451,9 @@ namespace Internal.Reflection.Execution
         }
 
         /// <summary>
-        /// Locate the static constructor context given the runtime type handle (EEType) for the type in question.
+        /// Locate the static constructor context given the runtime type handle (MethodTable) for the type in question.
         /// </summary>
-        /// <param name="typeHandle">EEType of the type to look up</param>
+        /// <param name="typeHandle">MethodTable of the type to look up</param>
         internal unsafe IntPtr TryGetStaticClassConstructionContext(RuntimeTypeHandle typeHandle)
         {
             return TypeLoaderEnvironment.TryGetStaticClassConstructionContext(typeHandle);

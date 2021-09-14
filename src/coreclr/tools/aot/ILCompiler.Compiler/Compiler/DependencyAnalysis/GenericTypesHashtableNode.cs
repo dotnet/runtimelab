@@ -46,7 +46,14 @@ namespace ILCompiler.DependencyAnalysis
             Section nativeSection = nativeWriter.NewSection();
             nativeSection.Place(hashtable);
 
-            foreach (var type in factory.MetadataManager.GetTypesWithEETypes())
+            // We go over constructed EETypes only. The places that need to consult this hashtable at runtime
+            // all need constructed EETypes. Placing unconstructed EETypes into this hashtable could make us
+            // accidentally satisfy e.g. MakeGenericType for something that was only used in a cast. Those
+            // should throw MissingRuntimeArtifact instead.
+            //
+            // We already make sure "necessary" EETypes that could potentially be loaded at runtime through
+            // the dynamic type loader get upgraded to constructed EETypes at AOT compile time.
+            foreach (var type in factory.MetadataManager.GetTypesWithConstructedEETypes())
             {
                 // If this is an instantiated non-canonical generic type, add it to the generic instantiations hashtable
                 if (!type.HasInstantiation || type.IsGenericDefinition || type.IsCanonicalSubtype(CanonicalFormKind.Any))
