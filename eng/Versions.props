@@ -20,14 +20,14 @@
     <XUnitRunnerVisualStudioVersion>2.4.3</XUnitRunnerVisualStudioVersion>
     <!-- Roslyn dependencies -->
     <CompilerPlatformVersion>4.0.0-2.21329.25</CompilerPlatformVersion>
-    <CompilerPlatformTestingVersion>1.1.0</CompilerPlatformTestingVersion>
+    <CompilerPlatformTestingVersion>1.1.1-beta1.21351.1</CompilerPlatformTestingVersion>
     <MicrosoftCodeAnalysisAnalyzersVersion>3.3.3-beta1.21268.3</MicrosoftCodeAnalysisAnalyzersVersion>
     <!-- Package dependencies -->
-    <SystemCommandLineVersion>2.0.0-beta1.21118.1</SystemCommandLineVersion>
-    <IcedVersion>1.8.0</IcedVersion>
+    <SystemCommandLineVersion>2.0.0-beta1.21216.1</SystemCommandLineVersion>
+    <IcedVersion>1.11.3</IcedVersion>
     <BenchmarkDotNetVersion>0.13.0</BenchmarkDotNetVersion>
-    <CoverletVersion>1.3.0</CoverletVersion>
-    <DNNEVersion>1.0.22</DNNEVersion>
+    <CoverletVersion>3.1.0</CoverletVersion>
+    <DNNEVersion>1.0.23</DNNEVersion>
     <!-- Set the custom NETCoreApp version based on the VS redist package version -->
     <MicrosoftNETCoreAppVersion>$(VSRedistCommonNetCoreSharedFrameworkx6460Version)</MicrosoftNETCoreAppVersion>
   </PropertyGroup>
