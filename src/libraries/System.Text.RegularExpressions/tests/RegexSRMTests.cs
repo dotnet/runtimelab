@@ -418,24 +418,6 @@ namespace System.Text.RegularExpressions.Tests
             Assert.False(match2.Success);
         }
 
-        [Fact]
-        public void SRMTest_BV64_WideLatin()
-        {
-            string pattern_orig = @"abc";
-            //shift each char in the pattern to the Wide-Latin alphabet of Unicode
-            //pattern_WL = "ａｂｃ"
-            string pattern_WL = new String(Array.ConvertAll(pattern_orig.ToCharArray(), c => (char)((int)c + 0xFF00 - 32)));
-            string pattern = "(" + pattern_orig + "===" + pattern_WL + ")+";
-            var re = new Regex(pattern, RegexOptions.NonBacktracking | RegexOptions.IgnoreCase);
-            string input = "=====" + pattern_orig.ToUpper() + "===" + pattern_WL + pattern_orig + "===" + pattern_WL.ToUpper() + "===" + pattern_orig + "===" + pattern_orig;
-            var match1 = re.Match(input);
-            Assert.True(match1.Success);
-            Assert.Equal(5, match1.Index);
-            Assert.Equal(2 * (pattern_orig.Length + 3 + pattern_WL.Length), match1.Length);
-            var match2 = match1.NextMatch();
-            Assert.False(match2.Success);
-        }
-
         static string And(params string[] regexes)
         {
             string conj = "(" + regexes[regexes.Length - 1] + ")";
@@ -482,40 +464,6 @@ namespace System.Text.RegularExpressions.Tests
             Assert.True(match.Success);
             Assert.Equal(6, match.Index);
             Assert.Equal(7, match.Length);
-        }
-
-        [Theory]
-        [MemberData(nameof(ValidateSRMRegex_NotSupportedCases_Data))]
-        public void ValidateSRMRegex_NotSupportedCases(string pattern, RegexOptions options, string expected)
-        {
-            string actual = string.Empty;
-            try
-            {
-                new Regex(pattern, options | RegexOptions.NonBacktracking);
-            }
-            catch (Exception e)
-            {
-                actual = e.Message;
-            }
-            Assert.Contains(expected, actual);
-        }
-
-        /// <summary>
-        /// Nonsupported cases for the DFA option that are detected at Regex construction time
-        /// </summary>
-        public static IEnumerable<object[]> ValidateSRMRegex_NotSupportedCases_Data()
-        {
-            yield return new object[] { @"abc", RegexOptions.RightToLeft, "RightToLeft" };
-            yield return new object[] { @"abc", RegexOptions.ECMAScript, "ECMAScript" };
-            yield return new object[] { @"^(a)?(?(1)a|b)+$", RegexOptions.None, "captured group conditional" };
-            yield return new object[] { @"(abc)\1", RegexOptions.None, "backreference" };
-            yield return new object[] { @"a(?=d).", RegexOptions.None, "positive lookahead" };
-            yield return new object[] { @"a(?!b).", RegexOptions.None, "negative lookahead" };
-            yield return new object[] { @"(?<=a)b", RegexOptions.None, "positive lookbehind" };
-            yield return new object[] { @"(?<!c)b", RegexOptions.None, "negative lookbehind" };
-            yield return new object[] { @"(?>(abc)*).", RegexOptions.None, "atomic" };
-            yield return new object[] { @"\G(\w+\s?\w*),?", RegexOptions.None, "contiguous matches" };
-            yield return new object[] { @"(?>a*).", RegexOptions.None, "atomic" };
         }
     }
 }
