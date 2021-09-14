@@ -89,6 +89,8 @@ if (GEN_SHARED_LIB)
         # This will add versioning to the library
         ${CMAKE_REPO_ROOT}/artifacts/obj/NativeVersion.rc
     )
+    target_compile_options(System.IO.Compression.Native PRIVATE /guard:cf)
+    target_compile_options(System.IO.Compression.Native PRIVATE $<$<CONFIG:RELEASE>:/GL>)
 endif()
 
 if (NOT GEN_SHARED_LIB AND NOT CLR_CMAKE_TARGET_MACCATALYST AND NOT CLR_CMAKE_TARGET_IOS AND NOT CLR_CMAKE_TARGET_TVOS AND NOT CLR_CMAKE_TARGET_ANDROID AND NOT CLR_CMAKE_TARGET_BROWSER)
@@ -99,6 +101,21 @@ add_library(System.IO.Compression.Native-Static
     STATIC
     ${NATIVECOMPRESSION_SOURCES}
 )
+target_compile_options(System.IO.Compression.Native-Static PRIVATE /guard:cf)
+target_compile_options(System.IO.Compression.Native-Static PRIVATE $<$<CONFIG:RELEASE>:/GL>)
+
+if(STATIC_LIBS_ONLY)
+    add_library(System.IO.Compression.Native.Aot
+        STATIC
+        ${NATIVECOMPRESSION_SOURCES}
+    )
+
+    add_library(System.IO.Compression.Native.Aot.GuardCF
+        STATIC
+        ${NATIVECOMPRESSION_SOURCES}
+    )
+    target_compile_options(System.IO.Compression.Native.Aot.GuardCF PRIVATE /guard:cf)
+endif()
 
 # Allow specification of arguments that should be passed to the linker
 if (GEN_SHARED_LIB)
@@ -112,6 +129,11 @@ if (GEN_SHARED_LIB)
 endif()
 target_link_libraries(System.IO.Compression.Native-Static ${__LinkLibraries})
 
+if(STATIC_LIBS_ONLY)
+    target_link_libraries(System.IO.Compression.Native.Aot ${__LinkLibraries})
+    target_link_libraries(System.IO.Compression.Native.Aot.GuardCF ${__LinkLibraries})
+endif()
+
 if (GEN_SHARED_LIB)
     GENERATE_EXPORT_HEADER( System.IO.Compression.Native
          BASE_NAME System.IO.Compression.Native
@@ -124,4 +146,9 @@ if (GEN_SHARED_LIB)
     install (FILES $<TARGET_PDB_FILE:System.IO.Compression.Native> DESTINATION .)
 endif()
 
-install_static_library(System.IO.Compression.Native-Static ${STATIC_LIB_DESTINATION} System.IO.Compression.Native-Static)
+install (TARGETS System.IO.Compression.Native-Static DESTINATION ${STATIC_LIB_DESTINATION} COMPONENT libs)
+
+if(STATIC_LIBS_ONLY)
+    install_static_library(System.IO.Compression.Native.Aot aotsdk nativeaot)
+    install_static_library(System.IO.Compression.Native.Aot.GuardCF aotsdk nativeaot)
+endif()
