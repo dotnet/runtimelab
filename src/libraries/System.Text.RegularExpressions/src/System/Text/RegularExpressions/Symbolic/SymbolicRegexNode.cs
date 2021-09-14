@@ -539,7 +539,7 @@ namespace System.Text.RegularExpressions.Symbolic
                 infos[i++] = node._info;
             }
             Debug.Assert(i == nodes.Count);
-            return infos.ToArray();
+            return infos;
         }
 
         /// <summary>
