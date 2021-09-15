@@ -717,7 +717,7 @@ namespace System.Text.RegularExpressions.Symbolic
                 return this;
             }
 
-            if (Kind == SymbolicRegexKind.Or && !_isInternalizedUnion)
+            if (Kind == SymbolicRegexKind.Or && !_isInternalizedUnion && !_builder._antimirov)
             {
                 // Internalize the node before proceeding
                 // this node could end up being internalized or replaced by
