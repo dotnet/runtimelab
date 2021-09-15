@@ -1292,37 +1292,23 @@ namespace System.Text.RegularExpressions.Tests
             Assert.True(Regex.IsMatch(" AB\u200dCD ", @"\b\w+\b", RegexHelpers.RegexOptionNonBacktracking));
         }
 
-        [Theory]
-        [MemberData(nameof(RegexHelpers.RegexOptions_TestData), MemberType = typeof(RegexHelpers))]
-        public void StressTestDeepNestingOfConcat(RegexOptions options)
+        public static IEnumerable<object[]> StressTestDeepNestingOfConcat_TestData()
         {
-            int k = RegexHelpers.StressTestNestingDepth;
-            string pattern = string.Concat(Enumerable.Repeat("([a-z]",k).Concat(Enumerable.Repeat(")", k)));
-            string input = string.Concat(Enumerable.Repeat("abcde", k / 5));
-            var re = new Regex(pattern, options);
-            Assert.True(re.IsMatch(input));
+            foreach (var options in RegexHelpers.RegexOptionsExtended())
+            {
+                yield return new object[] { "[a-z]", "", options, "abcde", 1000, 200 };
+                yield return new object[] { "[a-e]*", "$", options, "abcde", 100, 20 };
+                yield return new object[] { "[a-d]?[a-e]?[a-f]?[a-g]?[a-h]?", "$", options, "abcda", 20, 4 };
+            }
         }
-
         [Theory]
-        [MemberData(nameof(RegexHelpers.RegexOptions_TestData), MemberType = typeof(RegexHelpers))]
-        public void StressTestDeepNestingOfConcatOfStarLoops(RegexOptions options)
+        [MemberData(nameof(StressTestDeepNestingOfConcat_TestData))]
+        public void StressTestDeepNestingOfConcat(string pattern, string anchor, RegexOptions options, string input, int pattern_repetition, int input_repetition)
         {
-            int k = 100;
-            string pattern = string.Concat(Enumerable.Repeat("([a-e]*", k).Concat(Enumerable.Repeat(")", k))) + "$";
-            string input = string.Concat(Enumerable.Repeat("abcde", k / 5));
-            var re = new Regex(pattern, options);
-            Assert.True(re.Match(input).Success);
-        }
-
-        [Theory]
-        [MemberData(nameof(RegexHelpers.RegexOptions_TestData), MemberType = typeof(RegexHelpers))]
-        public void StressTestDeepNestingOfConcatOfMaybes(RegexOptions options)
-        {
-            int k = 20;
-            string pattern = string.Concat(Enumerable.Repeat("([a-d]?[a-e]?[a-f]?[a-g]?[a-h]?", k).Concat(Enumerable.Repeat(")", k))) + "$";
-            string input = string.Concat(Enumerable.Repeat("abcda", k / 5));
-            var re = new Regex(pattern, options);
-            Assert.True(re.Match(input).Success);
+            string fullpattern = string.Concat(string.Concat(Enumerable.Repeat($"({pattern}", pattern_repetition).Concat(Enumerable.Repeat(")", pattern_repetition))), anchor);
+            string fullinput = string.Concat(Enumerable.Repeat(input, input_repetition));
+            var re = new Regex(fullpattern, options);
+            Assert.True(re.Match(fullinput).Success);
         }
 
         public static IEnumerable<object[]> AllMatches_TestData()
