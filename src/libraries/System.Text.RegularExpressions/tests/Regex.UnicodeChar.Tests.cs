@@ -279,5 +279,23 @@ namespace System.Text.RegularExpressions.Tests
                 }
             }
         }
+
+        [Theory]
+        [MemberData(nameof(RegexHelpers.RegexOptions_TestData), MemberType = typeof(RegexHelpers))]
+        public void WideLatin(RegexOptions options)
+        {
+            string pattern_orig = @"abc";
+            //shift each char in the pattern to the Wide-Latin alphabet of Unicode
+            string pattern_WL = new String(Array.ConvertAll(pattern_orig.ToCharArray(), c => (char)((int)c + 0xFF00 - 32)));
+            string pattern = "(" + pattern_orig + "===" + pattern_WL + ")+";
+            var re = new Regex(pattern, options | RegexOptions.IgnoreCase);
+            string input = "=====" + pattern_orig.ToUpper() + "===" + pattern_WL + pattern_orig + "===" + pattern_WL.ToUpper() + "===" + pattern_orig + "===" + pattern_orig;
+            var match1 = re.Match(input);
+            Assert.True(match1.Success);
+            Assert.Equal(5, match1.Index);
+            Assert.Equal(2 * (pattern_orig.Length + 3 + pattern_WL.Length), match1.Length);
+            var match2 = match1.NextMatch();
+            Assert.False(match2.Success);
+        }
     }
 }

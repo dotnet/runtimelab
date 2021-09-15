@@ -140,6 +140,41 @@ namespace System.Text.RegularExpressions.Tests
             AssertExtensions.Throws<ArgumentOutOfRangeException>("matchTimeout", () => new Regex("foo", RegexOptions.None, TimeSpan.FromMilliseconds(int.MaxValue)));
         }
 
+        /// <summary>
+        /// Nonsupported cases for the NonBacktracking option
+        /// </summary>
+        public static IEnumerable<object[]> Ctor_Invalid_NonBacktracking_Data()
+        {
+            yield return new object[] { @"abc", RegexOptions.RightToLeft, "RightToLeft" };
+            yield return new object[] { @"abc", RegexOptions.ECMAScript, "ECMAScript" };
+            yield return new object[] { @"^(a)?(?(1)a|b)+$", RegexOptions.None, "conditional" };
+            yield return new object[] { @"(abc)\1", RegexOptions.None, "backreference" };
+            yield return new object[] { @"a(?=d).", RegexOptions.None, "positive lookahead" };
+            yield return new object[] { @"a(?!b).", RegexOptions.None, "negative lookahead" };
+            yield return new object[] { @"(?<=a)b", RegexOptions.None, "positive lookbehind" };
+            yield return new object[] { @"(?<!c)b", RegexOptions.None, "negative lookbehind" };
+            yield return new object[] { @"(?>(abc)*).", RegexOptions.None, "atomic" };
+            yield return new object[] { @"\G(\w+\s?\w*),?", RegexOptions.None, "contiguous" };
+            yield return new object[] { @"(?>a*).", RegexOptions.None, "atomic" };
+            yield return new object[] { @"(?(A)B|C)", RegexOptions.None, "conditional" };
+        }
+        [SkipOnTargetFramework(TargetFrameworkMonikers.NetFramework, "Doesn't support NonBacktracking")]
+        [Theory]
+        [MemberData(nameof(Ctor_Invalid_NonBacktracking_Data))]
+        public void Ctor_Invalid_NonBacktracking(string pattern, RegexOptions options, string expected_word_in_error_message)
+        {
+            string actual = string.Empty;
+            try
+            {
+                new Regex(pattern, options | RegexHelpers.RegexOptionNonBacktracking);
+            }
+            catch (NotSupportedException e)
+            {
+                actual = e.Message;
+            }
+            Assert.Contains(expected_word_in_error_message, actual);
+        }
+
         [ConditionalFact(typeof(RemoteExecutor), nameof(RemoteExecutor.IsSupported))]
         public static void StaticCtor_InvalidTimeoutObject_ExceptionThrown()
         {

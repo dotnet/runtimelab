@@ -1292,35 +1292,23 @@ namespace System.Text.RegularExpressions.Tests
             Assert.True(Regex.IsMatch(" AB\u200dCD ", @"\b\w+\b", RegexHelpers.RegexOptionNonBacktracking));
         }
 
-        /// <summary>
-        /// Test that \w has the same meaning in backtracking as well as non-backtracking mode and compiled mode
-        /// </summary>
-        [SkipOnTargetFramework(TargetFrameworkMonikers.NetFramework, "Doesn't support NonBacktracking")]
-        [Fact]
-        public void Match_Wordchar()
+        public static IEnumerable<object[]> StressTestDeepNestingOfConcat_TestData()
         {
-            var w1 = new Regex(@"\w", RegexOptions.None);
-            var w2 = new Regex(@"\w", RegexHelpers.RegexOptionNonBacktracking);
-            var w3 = new Regex(@"\w", RegexOptions.Compiled);
-            var ambiguous = new List<char>();
-            for (char c = '\0'; c < '\uFFFF'; c++)
+            foreach (var options in RegexHelpers.RegexOptionsExtended())
             {
-                bool test = w2.IsMatch(c.ToString());
-                if (test != w1.IsMatch(c.ToString()) || test != w3.IsMatch(c.ToString()))
-                    ambiguous.Add(c);
+                yield return new object[] { "[a-z]", "", options, "abcde", 1000, 200 };
+                yield return new object[] { "[a-e]*", "$", options, "abcde", 100, 20 };
+                yield return new object[] { "[a-d]?[a-e]?[a-f]?[a-g]?[a-h]?", "$", options, "abcda", 20, 4 };
             }
-            Assert.Empty(ambiguous);
         }
-
         [Theory]
-        [MemberData(nameof(RegexHelpers.RegexOptions_TestData), MemberType = typeof(RegexHelpers))]
-        public void StressTestDeepNestingOfConcat(RegexOptions options)
+        [MemberData(nameof(StressTestDeepNestingOfConcat_TestData))]
+        public void StressTestDeepNestingOfConcat(string pattern, string anchor, RegexOptions options, string input, int pattern_repetition, int input_repetition)
         {
-            int k = RegexHelpers.StressTestNestingDepth;
-            string pattern = string.Concat(Enumerable.Repeat("([a-z]",k).Concat(Enumerable.Repeat(")", k)));
-            string input = string.Concat(Enumerable.Repeat("abcde", k / 5));
-            var re = new Regex(pattern, options);
-            Assert.True(re.IsMatch(input));
+            string fullpattern = string.Concat(string.Concat(Enumerable.Repeat($"({pattern}", pattern_repetition).Concat(Enumerable.Repeat(")", pattern_repetition))), anchor);
+            string fullinput = string.Concat(Enumerable.Repeat(input, input_repetition));
+            var re = new Regex(fullpattern, options);
+            Assert.True(re.Match(fullinput).Success);
         }
 
         public static IEnumerable<object[]> AllMatches_TestData()
@@ -1459,6 +1447,24 @@ namespace System.Text.RegularExpressions.Tests
                     m = m.NextMatch();
                 } while (m.Success);
                 Assert.Equal(matches.Length, i);
+            }
+        }
+
+        /// <summary>
+        /// Test that \w has the same meaning in backtracking as well as non-backtracking mode and compiled mode
+        /// </summary>
+        [Theory]
+        [MemberData(nameof(RegexHelpers.RegexOptions_TestData), MemberType = typeof(RegexHelpers))]
+        public void Match_Wordchar(RegexOptions options)
+        {
+            if (options != RegexOptions.None)
+            {
+                var baseline = new Regex(@"\w", RegexOptions.None);
+                var regex = new Regex(@"\w", options);
+                for (char c = '\0'; c < '\uFFFF'; c++)
+                {
+                    Assert.Equal(baseline.IsMatch(c.ToString()), regex.IsMatch(c.ToString()));
+                }
             }
         }
     }
