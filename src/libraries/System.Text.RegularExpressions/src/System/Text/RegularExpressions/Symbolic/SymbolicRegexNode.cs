@@ -58,30 +58,11 @@ namespace System.Text.RegularExpressions.Symbolic
             _hashcode = ComputeHashCode();
         }
 
-        private bool _isInternalizedOrNode;
+        private bool _isInternalizedUnion;
 
         /// <summary> Create a new node or retrieve one from the builder _nodeCache</summary>
         private static SymbolicRegexNode<S> Create(SymbolicRegexBuilder<S> builder, SymbolicRegexKind kind, SymbolicRegexNode<S>? left, SymbolicRegexNode<S>? right, int lower, int upper, S? set, SymbolicRegexSet<S>? alts, SymbolicRegexInfo info)
         {
-            // Internalize an Or-node that is not yet internalized
-            SymbolicRegexNode<S> Internalize(SymbolicRegexNode<S> node)
-            {
-                (SymbolicRegexKind, SymbolicRegexNode<S>?, SymbolicRegexNode<S>?, int, int, S?, SymbolicRegexSet<S>?, SymbolicRegexInfo) node_key =
-                    (SymbolicRegexKind.Or, null, null, -1, -1, default(S), node._alts, node._info);
-                SymbolicRegexNode<S>? node1;
-                if (builder._nodeCache.TryGetValue(node_key, out node1))
-                {
-                    Debug.Assert(node1 is not null && node1._isInternalizedOrNode);
-                    return node1;
-                }
-                else
-                {
-                    node._isInternalizedOrNode = true;
-                    builder._nodeCache[node_key] = node;
-                    return node;
-                }
-            }
-
             SymbolicRegexNode<S>? node;
             var key = (kind, left, right, lower, upper, set, alts, info);
             if (!builder._nodeCache.TryGetValue(key, out node))
@@ -93,8 +74,8 @@ namespace System.Text.RegularExpressions.Symbolic
                     return node;
                 }
 
-                left = left == null || left._kind != SymbolicRegexKind.Or || left._isInternalizedOrNode ? left : Internalize(left);
-                right = right == null || right._kind != SymbolicRegexKind.Or || right._isInternalizedOrNode ? right : Internalize(right);
+                left = left == null || left._kind != SymbolicRegexKind.Or || left._isInternalizedUnion ? left : Internalize(left);
+                right = right == null || right._kind != SymbolicRegexKind.Or || right._isInternalizedUnion ? right : Internalize(right);
 
                 node = new(builder, kind, left, right, lower, upper, set, alts, info);
                 builder._nodeCache[key] = node;
@@ -102,6 +83,27 @@ namespace System.Text.RegularExpressions.Symbolic
 
             Debug.Assert(node is not null);
             return node;
+        }
+
+        /// <summary> Internalize an Or-node that is not yet internalized</summary>
+        private static SymbolicRegexNode<S> Internalize(SymbolicRegexNode<S> node)
+        {
+            Debug.Assert(node._kind == SymbolicRegexKind.Or && !node._isInternalizedUnion);
+
+            (SymbolicRegexKind, SymbolicRegexNode<S>?, SymbolicRegexNode<S>?, int, int, S?, SymbolicRegexSet<S>?, SymbolicRegexInfo) node_key =
+                (SymbolicRegexKind.Or, null, null, -1, -1, default(S), node._alts, node._info);
+            SymbolicRegexNode<S>? node1;
+            if (node._builder._nodeCache.TryGetValue(node_key, out node1))
+            {
+                Debug.Assert(node1 is not null && node1._isInternalizedUnion);
+                return node1;
+            }
+            else
+            {
+                node._isInternalizedUnion = true;
+                node._builder._nodeCache[node_key] = node;
+                return node;
+            }
         }
 
         /// <summary>True if this node only involves lazy loops</summary>
@@ -700,6 +702,7 @@ namespace System.Text.RegularExpressions.Symbolic
             }
         }
 
+        private Dictionary<(S, uint), SymbolicRegexNode<S>>? _MkDerivative_Cache;
         /// <summary>
         /// Takes the derivative of the symbolic regex wrt elem.
         /// Assumes that elem is either a minterm wrt the predicates of the whole regex or a singleton set.
@@ -714,13 +717,36 @@ namespace System.Text.RegularExpressions.Symbolic
                 return this;
             }
 
+            if (Kind == SymbolicRegexKind.Or && !_isInternalizedUnion)
+            {
+                // Internalize the node before proceeding
+                // this node could end up being internalized or replaced by
+                // an already previously created object (!= this)
+                SymbolicRegexNode<S> this_internalized = Internalize(this);
+                Debug.Assert(this_internalized._isInternalizedUnion);
+                if (this_internalized != this)
+                {
+                    return this_internalized.MkDerivative(elem, context);
+                }
+            }
+
+            _MkDerivative_Cache ??= new();
+            (S, uint) key = (elem, context);
+            SymbolicRegexNode<S>? deriv;
+            if (_MkDerivative_Cache.TryGetValue(key, out deriv))
+            {
+                Debug.Assert(deriv != null);
+                return deriv;
+            }
+
             switch (_kind)
             {
                 case SymbolicRegexKind.Singleton:
                     Debug.Assert(_set is not null);
-                    return _builder._solver.IsSatisfiable(_builder._solver.And(elem, _set)) ?
+                    deriv = _builder._solver.IsSatisfiable(_builder._solver.And(elem, _set)) ?
                         _builder._epsilon :
                         _builder._nothing;
+                    break;
 
                 case SymbolicRegexKind.Loop:
                     {
@@ -730,24 +756,28 @@ namespace System.Text.RegularExpressions.Symbolic
 
                         if (step == _builder._nothing || _upper == 0)
                         {
-                            return _builder._nothing;
+                            deriv = _builder._nothing;
+                            break;
                         }
 
                         if (IsStar)
                         {
-                            return _builder.MkConcat(step, this);
+                            deriv = _builder.MkConcat(step, this);
+                            break;
                         }
 
                         if (IsPlus)
                         {
                             SymbolicRegexNode<S> star = _builder.MkLoop(_left, IsLazy);
-                            return _builder.MkConcat(step, star);
+                            deriv = _builder.MkConcat(step, star);
+                            break;
                         }
 
                         int newupper = _upper == int.MaxValue ? int.MaxValue : _upper - 1;
                         int newlower = _lower == 0 ? 0 : _lower - 1;
                         SymbolicRegexNode<S> rest = _builder.MkLoop(_left, IsLazy, newlower, newupper);
-                        return _builder.MkConcat(step, rest);
+                        deriv = _builder.MkConcat(step, rest);
+                        break;
                         #endregion
                     }
 
@@ -774,11 +804,12 @@ namespace System.Text.RegularExpressions.Symbolic
                         if (_left.IsNullableFor(context))
                         {
                             SymbolicRegexNode<S> second = _right.MkDerivative(elem, context);
-                            SymbolicRegexNode<S> deriv = _builder.MkOr2(first, second);
-                            return deriv;
+                            deriv = _builder.MkOr2(first, second);
+                            break;
                         }
 
-                        return first;
+                        deriv = first;
+                        break;
                         #endregion
                     }
 
@@ -788,7 +819,8 @@ namespace System.Text.RegularExpressions.Symbolic
                         Debug.Assert(_alts is not null && _alts._kind == SymbolicRegexKind.Or);
                         SymbolicRegexSet<S> alts_deriv = _alts.CreateDerivative(elem, context);
                         // At this point alts_deriv can be the empty conjunction denoting .*
-                        return _builder.MkOr(alts_deriv);
+                        deriv = _builder.MkOr(alts_deriv);
+                        break;
                         #endregion
                     }
 
@@ -798,7 +830,8 @@ namespace System.Text.RegularExpressions.Symbolic
                         Debug.Assert(_alts is not null && _alts._kind == SymbolicRegexKind.And);
                         SymbolicRegexSet<S> alts_deriv = _alts.CreateDerivative(elem, context);
                         // At this point alts_deriv can be the empty disjunction denoting nothing
-                        return _builder.MkAnd(alts_deriv);
+                        deriv = _builder.MkAnd(alts_deriv);
+                        break;
                         #endregion
                     }
 
@@ -807,13 +840,18 @@ namespace System.Text.RegularExpressions.Symbolic
                         #region d(a,~(A)) = ~(d(a,A))
                         Debug.Assert(_left is not null);
                         SymbolicRegexNode<S> leftD = _left.MkDerivative(elem, context);
-                        return _builder.MkNot(leftD);
+                        deriv = _builder.MkNot(leftD);
+                        break;
                         #endregion
                     }
 
                 default:
-                    return _builder._nothing;
+                    deriv = _builder._nothing;
+                    break;
             }
+
+            _MkDerivative_Cache[key] = deriv;
+            return deriv;
         }
 
         public override int GetHashCode()
@@ -876,7 +914,7 @@ namespace System.Text.RegularExpressions.Symbolic
 
             if (_kind == SymbolicRegexKind.Or)
             {
-                if (_isInternalizedOrNode && that._isInternalizedOrNode)
+                if (_isInternalizedUnion && that._isInternalizedUnion)
                 {
                     // Internalized nodes that are not identical are not equal
                     return false;

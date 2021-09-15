@@ -1307,11 +1307,22 @@ namespace System.Text.RegularExpressions.Tests
         [MemberData(nameof(RegexHelpers.RegexOptions_TestData), MemberType = typeof(RegexHelpers))]
         public void StressTestDeepNestingOfConcatOfStarLoops(RegexOptions options)
         {
-            int k = RegexHelpers.StressTestNestingDepth;
-            string pattern = string.Concat(Enumerable.Repeat("([a-e]*", k).Concat(Enumerable.Repeat(")", k)));
+            int k = 100;
+            string pattern = string.Concat(Enumerable.Repeat("([a-e]*", k).Concat(Enumerable.Repeat(")", k))) + "$";
             string input = string.Concat(Enumerable.Repeat("abcde", k / 5));
             var re = new Regex(pattern, options);
-            Assert.True(re.IsMatch(input));
+            Assert.True(re.Match(input).Success);
+        }
+
+        [Theory]
+        [MemberData(nameof(RegexHelpers.RegexOptions_TestData), MemberType = typeof(RegexHelpers))]
+        public void StressTestDeepNestingOfConcatOfMaybes(RegexOptions options)
+        {
+            int k = 20;
+            string pattern = string.Concat(Enumerable.Repeat("([a-d]?[a-e]?[a-f]?[a-g]?[a-h]?", k).Concat(Enumerable.Repeat(")", k))) + "$";
+            string input = string.Concat(Enumerable.Repeat("abcda", k / 5));
+            var re = new Regex(pattern, options);
+            Assert.True(re.Match(input).Success);
         }
 
         public static IEnumerable<object[]> AllMatches_TestData()
