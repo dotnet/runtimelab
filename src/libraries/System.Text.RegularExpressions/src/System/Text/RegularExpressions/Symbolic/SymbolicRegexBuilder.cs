@@ -73,6 +73,8 @@ namespace System.Text.RegularExpressions.Symbolic
         /// <summary>Create a new symbolic regex builder.</summary>
         internal SymbolicRegexBuilder(ICharAlgebra<TElement> solver)
         {
+            // Solver must be set first, else it will cause null reference exception in the following
+            _solver = solver;
             _epsilon = SymbolicRegexNode<TElement>.MkEpsilon(this);
             _startAnchor = SymbolicRegexNode<TElement>.MkStartAnchor(this);
             _endAnchor = SymbolicRegexNode<TElement>.MkEndAnchor(this);
@@ -105,8 +107,6 @@ namespace System.Text.RegularExpressions.Symbolic
                 _K = k;
                 _delta = new DfaMatchingState<TElement>[InitialStateLimit << _K];
             }
-
-            _solver = solver;
 
             // initialized to False but updated later to the actual condition ony if \b or \B occurs anywhere in the regex
             // this implies that if a regex never uses \b or \B then the character context will never

@@ -30,9 +30,7 @@ namespace System.Text.RegularExpressions.Symbolic
 
         private Dictionary<uint, bool>? _nullabilityCache;
 
-        // Caching the computation of _startSet
-        private bool _startSetIsComputed;
-        private S? _startSet;
+        private S _startSet;
 
         /// <summary>AST node of a symbolic regex</summary>
         /// <param name="builder">the builder</param>
@@ -56,6 +54,7 @@ namespace System.Text.RegularExpressions.Symbolic
             _alts = alts;
             _info = info;
             _hashcode = ComputeHashCode();
+            _startSet = ComputeStartSet();
         }
 
         private bool _isInternalizedUnion;
@@ -1371,82 +1370,66 @@ namespace System.Text.RegularExpressions.Symbolic
         }
 
         /// <summary>Get the predicate that covers all elements that make some progress.</summary>
-        internal S GetStartSet()
+        internal S GetStartSet() => _startSet;
+
+        /// <summary>Compute the predicate that covers all elements that make some progress.</summary>
+        private S ComputeStartSet()
         {
-            if (!_startSetIsComputed)
+            switch (_kind)
             {
-                _startSet = ComputeStartSet();
-                _startSetIsComputed = true;
-            }
+                // Anchors and () do not contribute to the startset
+                case SymbolicRegexKind.Epsilon:
+                case SymbolicRegexKind.WatchDog:
+                case SymbolicRegexKind.EndAnchor:
+                case SymbolicRegexKind.StartAnchor:
+                case SymbolicRegexKind.WBAnchor:
+                case SymbolicRegexKind.NWBAnchor:
+                case SymbolicRegexKind.EOLAnchor:
+                case SymbolicRegexKind.EndAnchorZ:
+                case SymbolicRegexKind.EndAnchorZRev:
+                case SymbolicRegexKind.BOLAnchor:
+                    return _builder._solver.False;
 
-            Debug.Assert(_startSet is not null);
-            return _startSet;
+                case SymbolicRegexKind.Singleton:
+                    Debug.Assert(_set is not null);
+                    return _set;
 
-            S ComputeStartSet()
-            {
-                switch (_kind)
-                {
-                    // Anchors and () do not contribute to the startset
-                    case SymbolicRegexKind.Epsilon:
-                    case SymbolicRegexKind.WatchDog:
-                    case SymbolicRegexKind.EndAnchor:
-                    case SymbolicRegexKind.StartAnchor:
-                    case SymbolicRegexKind.WBAnchor:
-                    case SymbolicRegexKind.NWBAnchor:
-                    case SymbolicRegexKind.EOLAnchor:
-                    case SymbolicRegexKind.EndAnchorZ:
-                    case SymbolicRegexKind.EndAnchorZRev:
-                    case SymbolicRegexKind.BOLAnchor:
-                        return _builder._solver.False;
+                case SymbolicRegexKind.Loop:
+                    Debug.Assert(_left is not null);
+                    return _left._startSet;
 
-                    case SymbolicRegexKind.Singleton:
-                        Debug.Assert(_set is not null);
-                        return _set;
+                case SymbolicRegexKind.Concat:
+                    {
+                        Debug.Assert(_left is not null && _right is not null);
+                        S startSet = _left.CanBeNullable ? _builder._solver.Or(_left._startSet, _right._startSet) : _left._startSet;
+                        return startSet;
+                    }
 
-                    case SymbolicRegexKind.Loop:
-                        Debug.Assert(_left is not null);
-                        return _left.GetStartSet();
-
-                    case SymbolicRegexKind.Concat:
+                case SymbolicRegexKind.Or:
+                    {
+                        Debug.Assert(_alts is not null);
+                        S startSet = _builder._solver.False;
+                        foreach (SymbolicRegexNode<S> alt in _alts)
                         {
-                            Debug.Assert(_left is not null && _right is not null);
-                            S startSet = _left.GetStartSet();
-                            // To avoid deep recursion of trying to get the startset of right
-                            // just return True when left can be nullable
-                            // It is always correct to return True as the startset
-                            if (_left.CanBeNullable)
-                            {
-                                startSet = _builder._solver.True;
-                            }
-                            return startSet;
+                            startSet = _builder._solver.Or(startSet, alt._startSet);
                         }
+                        return startSet;
+                    }
 
-                    case SymbolicRegexKind.Or:
+                case SymbolicRegexKind.And:
+                    {
+                        Debug.Assert(_alts is not null);
+                        S startSet = _builder._solver.True;
+                        foreach (SymbolicRegexNode<S> alt in _alts)
                         {
-                            Debug.Assert(_alts is not null);
-                            S startSet = _builder._solver.False;
-                            foreach (SymbolicRegexNode<S> alt in _alts)
-                            {
-                                startSet = _builder._solver.Or(startSet, alt.GetStartSet());
-                            }
-                            return startSet;
+                            startSet = _builder._solver.And(startSet, alt._startSet);
                         }
+                        return startSet;
+                    }
 
-                    case SymbolicRegexKind.And:
-                        {
-                            Debug.Assert(_alts is not null);
-                            S startSet = _builder._solver.True;
-                            foreach (SymbolicRegexNode<S> alt in _alts)
-                            {
-                                startSet = _builder._solver.And(startSet, alt.GetStartSet());
-                            }
-                            return startSet;
-                        }
-
-                    default:
-                        Debug.Assert(_kind == SymbolicRegexKind.Not);
-                        return _builder._solver.True;
-                }
+                default:
+                    Debug.Assert(_kind == SymbolicRegexKind.Not);
+                    return _builder._solver.True;
             }
         }
 
