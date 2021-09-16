@@ -14,6 +14,13 @@ namespace System.Text.RegularExpressions.Tests
 {
     public class RegexSRMTests
     {
+        private readonly ITestOutputHelper _output;
+
+        public RegexSRMTests(ITestOutputHelper output)
+        {
+            _output = output;
+        }
+
         private const char Turkish_I_withDot = '\u0130';
         private const char Turkish_i_withoutDot = '\u0131';
         private const char Kelvin_sign = '\u212A';
@@ -464,6 +471,77 @@ namespace System.Text.RegularExpressions.Tests
             Assert.True(match.Success);
             Assert.Equal(6, match.Index);
             Assert.Equal(7, match.Length);
+        }
+
+        [Fact]
+        public void PasswordSearch()
+        {
+            var twoLower = ".*[a-z].*[a-z].*";
+            var twoUpper = ".*[A-Z].*[A-Z].*";
+            var threeDigits = ".*[0-9].*[0-9].*[0-9].*";
+            var oneSpecial = @".*[\x21-\x2F\x3A-\x40\x5B-x60\x7B-\x7E].*";
+            var noCountUp = Not(".*(012|123|234|345|456|567|678|789).*");
+            var noCountDown = Not(".*(987|876|765|654|543|432|321|210).*");
+            // Observe that the space character (immediately before '!' in ASCII) is excluded
+            var length = "[!-~]{8,12}";
+
+            // Conjunction of all the above constraints
+            var all = And(twoLower, twoUpper, threeDigits, oneSpecial, noCountUp, noCountDown, length);
+
+            // search for the password in a context surrounded by word boundaries
+            var re = new Regex($@"\b{all}\b", RegexOptions.NonBacktracking | RegexOptions.Singleline);
+
+            // Does not qualify because of 123 and connot end between 2 and 3 because of \b
+            var almostPassw1 = "P@ssW0rd123";
+            // Does not have at least two uppercase
+            var almostPassw2 = "P@55w0rd";
+
+            // These two qualify
+            var password1 = "P@55W0rd";
+            var password2 = "Pa5$w00rD";
+
+            foreach (int k in new int[] {500, 1000, 5000, 10000, 50000, 100000, 200000 })
+            {
+                Random random = new(k);
+                byte[] buffer1 = new byte[k];
+                byte[] buffer2 = new byte[k];
+                byte[] buffer3 = new byte[k];
+                random.NextBytes(buffer1);
+                random.NextBytes(buffer2);
+                random.NextBytes(buffer2);
+                string part1 = new string(Array.ConvertAll(buffer1, b => (char)b));
+                string part2 = new string(Array.ConvertAll(buffer2, b => (char)b));
+                string part3 = new string(Array.ConvertAll(buffer3, b => (char)b));
+
+                string input = $"{part1} {almostPassw1} {part2} {password1} {part3} {password2}, finally this {almostPassw2} does not qualify either";
+
+                int expextedMatch1Index = (2 * k) + almostPassw1.Length + 3;
+                int expextedMatch1Length = password1.Length;
+
+                int expextedMatch2Index = (3 * k) + almostPassw1.Length + password1.Length + 5;
+                int expextedMatch2Length = password2.Length;
+
+                // Random text hiding almostPassw and password
+                int t = System.Environment.TickCount;
+                Match match1 = re.Match(input);
+                Match match2 = match1.NextMatch();
+                Match match3 = match2.NextMatch();
+                t = System.Environment.TickCount - t;
+
+                _output.WriteLine($@"k={k}, t={t}ms");
+
+                Assert.True(match1.Success);
+                Assert.Equal(expextedMatch1Index, match1.Index);
+                Assert.Equal(expextedMatch1Length, match1.Length);
+                Assert.Equal(password1, match1.Value);
+
+                Assert.True(match2.Success);
+                Assert.Equal(expextedMatch2Index, match2.Index);
+                Assert.Equal(expextedMatch2Length, match2.Length);
+                Assert.Equal(password2, match2.Value);
+
+                Assert.False(match3.Success);
+            }
         }
     }
 }
