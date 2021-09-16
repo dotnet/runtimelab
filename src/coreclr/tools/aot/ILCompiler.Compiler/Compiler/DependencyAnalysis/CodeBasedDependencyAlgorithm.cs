@@ -23,6 +23,12 @@ namespace ILCompiler.DependencyAnalysis
 
             factory.InteropStubManager.AddDependeciesDueToPInvoke(ref dependencies, factory, method);
 
+            if (method.OwningType is MetadataType mdOwningType)
+            {
+                dependencies ??= new DependencyList();
+                dependencies.Add(factory.ModuleUse(mdOwningType.Module), "Module with a used method");
+            }
+
             if (method.IsIntrinsic)
             {
                 if (method.OwningType is MetadataType owningType)

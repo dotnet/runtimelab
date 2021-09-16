@@ -547,6 +547,10 @@ namespace ILCompiler.DependencyAnalysis
                 // If necessary MethodTable is the highest load level for this type, ask the metadata manager
                 // if we have any dependencies due to reflectability.
                 factory.MetadataManager.GetDependenciesDueToReflectability(ref dependencies, factory, _type);
+
+                // If necessary MethodTable is the highest load level, consider this a module use
+                if (_type is MetadataType mdType)
+                    dependencies.Add(factory.ModuleUse(mdType.Module), "Module has a used type");
             }
 
             return dependencies;

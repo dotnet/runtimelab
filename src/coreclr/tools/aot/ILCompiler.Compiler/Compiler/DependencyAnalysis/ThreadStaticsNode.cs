@@ -61,6 +61,8 @@ namespace ILCompiler.DependencyAnalysis
                 result.Add(new DependencyListEntry(factory.EagerCctorIndirection(_type.GetStaticConstructor()), "Eager .cctor"));
             }
 
+            result.Add(factory.ModuleUse(_type.Module), "Static base is used in the module");
+
             EETypeNode.AddDependenciesForStaticsNode(factory, _type, ref result);
             return result;
         }

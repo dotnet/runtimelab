@@ -1175,12 +1175,6 @@
         <ExcludeList Include="$(XunitTestBinBase)/Loader/classloader/regressions/347422/b347422/*">
             <Issue>https://github.com/dotnet/runtimelab/issues/194</Issue>
         </ExcludeList>
-        <ExcludeList Include="$(XunitTestBinBase)/Loader/classloader/regressions/529206/vsw529206ModuleCctor/*">
-            <Issue>https://github.com/dotnet/runtimelab/issues/193</Issue>
-        </ExcludeList>
-        <ExcludeList Include="$(XunitTestBinBase)/Loader/classloader/regressions/vsw529206/vsw529206ModuleCctor/*">
-            <Issue>https://github.com/dotnet/runtimelab/issues/193</Issue>
-        </ExcludeList>
         <ExcludeList Include="$(XunitTestBinBase)/Loader/classloader/regressions/asurt150271/test3/*">
             <Issue>https://github.com/dotnet/runtimelab/issues/202</Issue>
         </ExcludeList>

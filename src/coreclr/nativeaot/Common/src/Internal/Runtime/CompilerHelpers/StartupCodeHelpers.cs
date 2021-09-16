@@ -208,6 +208,27 @@ namespace Internal.Runtime.CompilerHelpers
             }
         }
 
+        internal static unsafe void RunModuleInitializers()
+        {
+            for (int i = 0; i < s_moduleCount; i++)
+            {
+                TypeManagerHandle typeManager = s_modules[i];
+
+                // Run module initializers if any are present
+                IntPtr moduleInitializerSection = RuntimeImports.RhGetModuleSection(typeManager, ReadyToRunSectionType.ModuleInitializerList, out int length);
+                if (moduleInitializerSection != IntPtr.Zero)
+                {
+                    Debug.Assert(length % IntPtr.Size == 0);
+                    var currentCctor = (delegate*<void>*)moduleInitializerSection;
+                    var cctorsEnd = (void*)(moduleInitializerSection + length);
+                    while (currentCctor < cctorsEnd)
+                    {
+                        (*currentCctor++)();
+                    }
+                }
+            }
+        }
+
         private static unsafe object[] InitializeStatics(IntPtr gcStaticRegionStart, int length)
         {
             IntPtr gcStaticRegionEnd = (IntPtr)((byte*)gcStaticRegionStart + length);

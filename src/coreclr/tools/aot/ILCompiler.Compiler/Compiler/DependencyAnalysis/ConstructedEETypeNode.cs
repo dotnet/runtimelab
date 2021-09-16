@@ -33,6 +33,11 @@ namespace ILCompiler.DependencyAnalysis
             // relocs to nodes we emit.
             dependencyList.Add(factory.NecessaryTypeSymbol(_type), "NecessaryType for constructed type");
 
+            if (_type is MetadataType mdType)
+            {
+                dependencyList.Add(factory.ModuleUse(mdType.Module), "Module has a used type");
+            }
+
             DefType closestDefType = _type.GetClosestDefType();
 
             if (MightHaveInterfaceDispatchMap(factory))
