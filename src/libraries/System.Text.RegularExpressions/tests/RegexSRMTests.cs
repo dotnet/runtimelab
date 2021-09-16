@@ -484,9 +484,14 @@ namespace System.Text.RegularExpressions.Tests
             var noCountDown = Not(".*(987|876|765|654|543|432|321|210).*");
             // Observe that the space character (immediately before '!' in ASCII) is excluded
             var length = "[!-~]{8,12}";
+ 
+           // Just to make the chance that the randomly generated part actually has a match
+           // be astronomically unlikely require 'P' and 'r' to be present also,
+           // although this constraint is really bogus from password constraints point of view
+            var contains_first_P_and_then_r = ".*P.*r.*";
 
             // Conjunction of all the above constraints
-            var all = And(twoLower, twoUpper, threeDigits, oneSpecial, noCountUp, noCountDown, length);
+            var all = And(twoLower, twoUpper, threeDigits, oneSpecial, noCountUp, noCountDown, length, contains_first_P_and_then_r);
 
             // search for the password in a context surrounded by word boundaries
             var re = new Regex($@"\b{all}\b", RegexOptions.NonBacktracking | RegexOptions.Singleline);
@@ -500,7 +505,7 @@ namespace System.Text.RegularExpressions.Tests
             var password1 = "P@55W0rd";
             var password2 = "Pa5$w00rD";
 
-            foreach (int k in new int[] {500, 1000, 5000, 10000, 50000, 100000, 200000 })
+            foreach (int k in new int[] {500, 1000, 5000, 10000, 50000, 100000, 200000, 500000})
             {
                 Random random = new(k);
                 byte[] buffer1 = new byte[k];
