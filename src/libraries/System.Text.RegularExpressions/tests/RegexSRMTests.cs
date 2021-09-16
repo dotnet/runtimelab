@@ -508,7 +508,7 @@ namespace System.Text.RegularExpressions.Tests
                 byte[] buffer3 = new byte[k];
                 random.NextBytes(buffer1);
                 random.NextBytes(buffer2);
-                random.NextBytes(buffer2);
+                random.NextBytes(buffer3);
                 string part1 = new string(Array.ConvertAll(buffer1, b => (char)b));
                 string part2 = new string(Array.ConvertAll(buffer2, b => (char)b));
                 string part3 = new string(Array.ConvertAll(buffer3, b => (char)b));
