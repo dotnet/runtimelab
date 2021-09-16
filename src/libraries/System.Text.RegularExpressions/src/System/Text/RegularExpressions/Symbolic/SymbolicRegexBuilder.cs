@@ -119,7 +119,7 @@ namespace System.Text.RegularExpressions.Symbolic
             _newLinePredicate = solver.False;
             _nothing = SymbolicRegexNode<TElement>.MkFalse(this);
             _dot = SymbolicRegexNode<TElement>.MkTrue(this);
-            _dotStar = SymbolicRegexNode<TElement>.MkDotStar(this, _dot);
+            _dotStar = SymbolicRegexNode<TElement>.MkStar(this, _dot);
 
             // --- initialize singletonCache ---
             _singletonCache[_solver.False] = _nothing;

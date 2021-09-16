@@ -409,6 +409,21 @@ namespace System.Text.RegularExpressions.Symbolic
             }
         }
 
+        /// <summary>Returns true if this is equivalent to [\0-\xFFFF] </summary>
+        public bool IsDot
+        {
+            get
+            {
+                if (_kind == SymbolicRegexKind.Singleton)
+                {
+                    Debug.Assert(_set is not null);
+                    return _builder._solver.AreEquivalent(_builder._solver.True, _set);
+                }
+
+                return false;
+            }
+        }
+
         /// <summary>Returns true if this is equivalent to [0-[0]]</summary>
         public bool IsNothing
         {
@@ -482,8 +497,11 @@ namespace System.Text.RegularExpressions.Symbolic
         internal static SymbolicRegexNode<S> MkNWBAnchor(SymbolicRegexBuilder<S> builder) =>
             Create(builder, SymbolicRegexKind.NWBAnchor, null, null, -1, -1, default, null, SymbolicRegexInfo.Mk(startsWithBoundaryAnchor: true, canBeNullable: true));
 
-        internal static SymbolicRegexNode<S> MkDotStar(SymbolicRegexBuilder<S> builder, SymbolicRegexNode<S> body) =>
+        internal static SymbolicRegexNode<S> MkStar(SymbolicRegexBuilder<S> builder, SymbolicRegexNode<S> body) =>
             Create(builder, SymbolicRegexKind.Loop, body, null, 0, int.MaxValue, default, null, SymbolicRegexInfo.Loop(body._info, 0, false));
+
+        internal static SymbolicRegexNode<S> MkPlus(SymbolicRegexBuilder<S> builder, SymbolicRegexNode<S> body) =>
+           Create(builder, SymbolicRegexKind.Loop, body, null, 1, int.MaxValue, default, null, SymbolicRegexInfo.Loop(body._info, 1, false));
 
         #endregion
 
@@ -572,8 +590,95 @@ namespace System.Text.RegularExpressions.Symbolic
             return concat;
         }
 
-        internal static SymbolicRegexNode<S> MkNot(SymbolicRegexBuilder<S> builder, SymbolicRegexNode<S> node) =>
-            Create(builder, SymbolicRegexKind.Not, node, null, -1, -1, default, null, SymbolicRegexInfo.Not(node._info));
+        internal static SymbolicRegexNode<S> MkNot(SymbolicRegexBuilder<S> builder, SymbolicRegexNode<S> root)
+        {
+            // Instead of just creating a negated root node
+            // Convert ~root to Negation Normal Form (NNF) by using deMorgan's laws and push ~ to the leaves
+            // This may avoid rather large overhead (such case was discovered with unit test PasswordSearchDual)
+            // Do this transformation in-line without recursion, to avoid any chance of deep recursion
+            // OBSERVE: NNF[node] represents the Negation Normal Form of ~node
+            Dictionary<SymbolicRegexNode<S>, SymbolicRegexNode<S>> NNF = new();
+            Stack<(SymbolicRegexNode<S>, bool)> todo = new();
+            todo.Push((root, false));
+            while (todo.Count > 0)
+            {
+                var top = todo.Pop();
+                bool secondTimePushed = top.Item2;
+                var node = top.Item1;
+                if (secondTimePushed)
+                {
+                    Debug.Assert((node._kind == SymbolicRegexKind.Or || node._kind == SymbolicRegexKind.And) && node._alts is not null);
+                    // Here all members of _alts have been processed
+                    List<SymbolicRegexNode<S>> alts_nnf = new();
+                    foreach (var elem in node._alts)
+                    {
+                        alts_nnf.Add(NNF[elem]);
+                    }
+                    // Using deMorgan's laws, flip the kind: Or becomes And, And becomes Or
+                    SymbolicRegexNode<S> node_nnf = node._kind == SymbolicRegexKind.Or ? MkAnd(builder, alts_nnf.ToArray()) : MkOr(builder, alts_nnf.ToArray());
+                    NNF[node] = node_nnf;
+                }
+                else
+                {
+                    switch (node._kind)
+                    {
+                        case SymbolicRegexKind.Not:
+                            Debug.Assert(node._left is not null);
+                            // Here we assume that top._left is already in NNF, double negation is cancelled out
+                            NNF[node] = node._left;
+                            break;
+
+                        case SymbolicRegexKind.Or or SymbolicRegexKind.And:
+                            Debug.Assert(node._alts is not null);
+                            // Push the node for the second time
+                            todo.Push((node, true));
+                            // Compute the negation normal form of all the members
+                            // Their computation is actually the same independent from being inside an 'Or' or 'And' node
+                            foreach (var elem in node._alts)
+                            {
+                                todo.Push((elem, false));
+                            }
+                            break;
+
+                        case SymbolicRegexKind.Epsilon:
+                            //  ~() = .+
+                            NNF[node] = SymbolicRegexNode<S>.MkPlus(builder, builder._dot);
+                            break;
+
+                        case SymbolicRegexKind.Singleton:
+                            Debug.Assert(node._set is not null);
+                            // ~[] = .*
+                            if (node.IsNothing)
+                            {
+                                NNF[node] = builder._dotStar;
+                                break;
+                            }
+                            goto default;
+
+                        case SymbolicRegexKind.Loop:
+                            Debug.Assert(node._left is not null);
+                            // ~(.*) = [] and ~(.+) = ()
+                            if (node.IsDotStar)
+                            {
+                                NNF[node] = builder._nothing;
+                                break;
+                            }
+                            else if (node.IsPlus && node._left.IsDot)
+                            {
+                                NNF[node] = builder._epsilon;
+                                break;
+                            }
+                            goto default;
+
+                        default:
+                            // In all other cases construct the complement
+                            NNF[node] = Create(builder, SymbolicRegexKind.Not, node, null, -1, -1, default, null, SymbolicRegexInfo.Not(node._info));
+                            break;
+                    }
+                }
+            }
+            return NNF[root];
+        }
 
         /// <summary>
         /// Transform the symbolic regex so that all singletons have been intersected with the given predicate pred.
