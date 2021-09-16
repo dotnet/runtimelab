@@ -598,11 +598,11 @@ namespace System.Text.RegularExpressions.Tests
 
                 string input = $"{part1} {almostPassw1} {part2} {password1} {part3} {password2}, finally this {almostPassw2} does not qualify either";
 
-                int expextedMatch1Index = (2 * k) + almostPassw1.Length + 3;
-                int expextedMatch1Length = password1.Length;
+                int expectedMatch1Index = (2 * k) + almostPassw1.Length + 3;
+                int expectedMatch1Length = password1.Length;
 
-                int expextedMatch2Index = (3 * k) + almostPassw1.Length + password1.Length + 5;
-                int expextedMatch2Length = password2.Length;
+                int expectedMatch2Index = (3 * k) + almostPassw1.Length + password1.Length + 5;
+                int expectedMatch2Length = password2.Length;
 
                 // Random text hiding almostPassw and password
                 int t = System.Environment.TickCount;
@@ -614,13 +614,13 @@ namespace System.Text.RegularExpressions.Tests
                 _output.WriteLine($@"k={k}, t={t}ms");
 
                 Assert.True(match1.Success);
-                Assert.Equal(expextedMatch1Index, match1.Index);
-                Assert.Equal(expextedMatch1Length, match1.Length);
+                Assert.Equal(expectedMatch1Index, match1.Index);
+                Assert.Equal(expectedMatch1Length, match1.Length);
                 Assert.Equal(password1, match1.Value);
 
                 Assert.True(match2.Success);
-                Assert.Equal(expextedMatch2Index, match2.Index);
-                Assert.Equal(expextedMatch2Length, match2.Length);
+                Assert.Equal(expectedMatch2Index, match2.Index);
+                Assert.Equal(expectedMatch2Length, match2.Length);
                 Assert.Equal(password2, match2.Value);
 
                 Assert.False(match3.Success);
