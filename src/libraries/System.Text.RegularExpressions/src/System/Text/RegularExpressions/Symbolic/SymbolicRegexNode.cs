@@ -14,11 +14,6 @@ namespace System.Text.RegularExpressions.Symbolic
     {
         internal const string EmptyCharClass = "[]";
 
-        // Limit the maximum prefix length in the NonBacktracking case to 1000
-        // TODO: alternative is to rewrite SymbolicRegexNode.GetPrefixSequence
-        // to avoid deep recursion
-        internal const int MaxPrefixLength = 1000; // RegexBoyerMoore.MaxLimit;
-
         internal readonly SymbolicRegexBuilder<S> _builder;
         internal readonly SymbolicRegexKind _kind;
         internal readonly int _lower;
