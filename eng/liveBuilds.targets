@@ -162,7 +162,6 @@
       <LibrariesRuntimeFiles Include="
         $(LibrariesNativeArtifactsPath)*.dll;
         $(LibrariesNativeArtifactsPath)*.dylib;
-        $(LibrariesNativeArtifactsPath)*.lib;
         $(LibrariesNativeArtifactsPath)*.a;
         $(LibrariesNativeArtifactsPath)*.so;
         $(LibrariesNativeArtifactsPath)*.dbg;
