@@ -89,8 +89,6 @@ if (GEN_SHARED_LIB)
         # This will add versioning to the library
         ${CMAKE_REPO_ROOT}/artifacts/obj/NativeVersion.rc
     )
-    target_compile_options(System.IO.Compression.Native PRIVATE /guard:cf)
-    target_compile_options(System.IO.Compression.Native PRIVATE $<$<CONFIG:RELEASE>:/GL>)
 endif()
 
 if (NOT GEN_SHARED_LIB AND NOT CLR_CMAKE_TARGET_MACCATALYST AND NOT CLR_CMAKE_TARGET_IOS AND NOT CLR_CMAKE_TARGET_TVOS AND NOT CLR_CMAKE_TARGET_ANDROID AND NOT CLR_CMAKE_TARGET_BROWSER)
@@ -101,20 +99,20 @@ add_library(System.IO.Compression.Native-Static
     STATIC
     ${NATIVECOMPRESSION_SOURCES}
 )
-target_compile_options(System.IO.Compression.Native-Static PRIVATE /guard:cf)
-target_compile_options(System.IO.Compression.Native-Static PRIVATE $<$<CONFIG:RELEASE>:/GL>)
 
 if(STATIC_LIBS_ONLY)
     add_library(System.IO.Compression.Native.Aot
         STATIC
         ${NATIVECOMPRESSION_SOURCES}
     )
+    target_compile_options(System.IO.Compression.Native.Aot PRIVATE /guard:cf-)
+    target_compile_options(System.IO.Compression.Native.Aot PRIVATE /GL-)
 
     add_library(System.IO.Compression.Native.Aot.GuardCF
         STATIC
         ${NATIVECOMPRESSION_SOURCES}
     )
-    target_compile_options(System.IO.Compression.Native.Aot.GuardCF PRIVATE /guard:cf)
+    target_compile_options(System.IO.Compression.Native.Aot.GuardCF PRIVATE /GL-)
 endif()
 
 # Allow specification of arguments that should be passed to the linker
