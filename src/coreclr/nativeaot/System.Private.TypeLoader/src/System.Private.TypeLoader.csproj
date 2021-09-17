@@ -348,9 +348,6 @@
     <Compile Include="Internal\TypeSystem\TypeSystemContext.Runtime.cs" />
     <Compile Include="System\Reflection\Runtime\General\QHandles.cs" />
     <Compile Include="System\Reflection\Runtime\General\QHandles.NativeFormat.cs" />
-    <Compile Include="$(CompilerCommonPath)\TypeSystem\NativeFormat\MetadataExtensions.cs">
-      <Link>NativeFormat\MetadataExtensions.cs</Link>
-    </Compile>
     <Compile Include="$(AotCommonPath)\System\Runtime\CompilerServices\__BlockAllReflectionAttribute.cs">
       <Link>System\Runtime\CompilerServices\__BlockAllReflectionAttribute.cs</Link>
     </Compile>
