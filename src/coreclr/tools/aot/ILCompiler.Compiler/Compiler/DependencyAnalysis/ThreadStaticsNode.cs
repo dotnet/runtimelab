@@ -61,7 +61,10 @@ namespace ILCompiler.DependencyAnalysis
                 result.Add(new DependencyListEntry(factory.EagerCctorIndirection(_type.GetStaticConstructor()), "Eager .cctor"));
             }
 
-            result.Add(factory.ModuleUse(_type.Module), "Static base is used in the module");
+            if (_type.Module.GetGlobalModuleType().GetStaticConstructor() is MethodDesc moduleCctor)
+            {
+                result.Add(factory.MethodEntrypoint(moduleCctor), "Static base in a module with initializer");
+            }
 
             EETypeNode.AddDependenciesForStaticsNode(factory, _type, ref result);
             return result;

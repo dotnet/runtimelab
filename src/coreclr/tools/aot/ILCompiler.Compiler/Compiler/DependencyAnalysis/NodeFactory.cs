@@ -339,8 +339,6 @@ namespace ILCompiler.DependencyAnalysis
             _genericReadyToRunHelpersFromDict = new NodeCache<ReadyToRunGenericHelperKey, ISymbolNode>(CreateGenericLookupFromDictionaryNode);
             _genericReadyToRunHelpersFromType = new NodeCache<ReadyToRunGenericHelperKey, ISymbolNode>(CreateGenericLookupFromTypeNode);
 
-            _moduleUseNodes = new NodeCache<ModuleDesc, ModuleUseNode>(m => new ModuleUseNode(m));
-
             _frozenStringNodes = new NodeCache<string, FrozenStringNode>((string data) =>
             {
                 return new FrozenStringNode(data, Target);
@@ -1033,13 +1031,6 @@ namespace ILCompiler.DependencyAnalysis
             // in the dependency graph otherwise.
             Debug.Assert(MetadataManager is UsageBasedMetadataManager);
             return _customAttributesWithMetadata.GetOrAdd(ca);
-        }
-
-        private NodeCache<ModuleDesc, ModuleUseNode> _moduleUseNodes;
-
-        internal ModuleUseNode ModuleUse(ModuleDesc module)
-        {
-            return _moduleUseNodes.GetOrAdd(module);
         }
 
         private NodeCache<string, FrozenStringNode> _frozenStringNodes;

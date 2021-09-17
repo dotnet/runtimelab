@@ -33,9 +33,10 @@ namespace ILCompiler.DependencyAnalysis
             // relocs to nodes we emit.
             dependencyList.Add(factory.NecessaryTypeSymbol(_type), "NecessaryType for constructed type");
 
-            if (_type is MetadataType mdType)
+            if (_type is MetadataType mdType
+                && mdType.Module.GetGlobalModuleType().GetStaticConstructor() is MethodDesc moduleCctor)
             {
-                dependencyList.Add(factory.ModuleUse(mdType.Module), "Module has a used type");
+                dependencyList.Add(factory.MethodEntrypoint(moduleCctor), "Type in a module with initializer");
             }
 
             DefType closestDefType = _type.GetClosestDefType();

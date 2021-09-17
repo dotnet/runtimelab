@@ -41,14 +41,14 @@ namespace ILCompiler.DependencyAnalysis
             // This is a summary node that doesn't introduce dependencies.
             if (relocsOnly)
                 return new ObjectData(Array.Empty<byte>(), Array.Empty<Relocation>(), 1, new ISymbolDefinitionNode[] { this });
-
             
-            var modulesWithCctor = new HashSet<ModuleDesc>();
+            var modulesWithCctor = new List<ModuleDesc>();
 
             foreach (var methodNode in factory.MetadataManager.GetCompiledMethodBodies())
             {
-                if (methodNode.Method.IsStaticConstructor && methodNode.Method.OwningType is MetadataType mdType
-                    && mdType.IsModuleType)
+                MethodDesc method = methodNode.Method;
+                if (method.OwningType is MetadataType mdType
+                    && mdType.IsModuleType && method.IsStaticConstructor)
                 {
                     modulesWithCctor.Add(mdType.Module);
                 }
