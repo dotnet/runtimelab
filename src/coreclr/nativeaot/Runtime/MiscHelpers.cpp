@@ -46,7 +46,7 @@ COOP_PINVOKE_HELPER(void, RhDebugBreak, ())
 }
 
 // Busy spin for the given number of iterations.
-COOP_PINVOKE_HELPER(void, RhSpinWait, (int32_t iterations))
+EXTERN_C REDHAWK_API void __cdecl RhSpinWait(int32_t iterations)
 {
     YieldProcessorNormalizationInfo normalizationInfo;
     YieldProcessorNormalizedForPreSkylakeCount(normalizationInfo, iterations);
