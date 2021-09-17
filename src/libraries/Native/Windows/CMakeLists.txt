@@ -62,6 +62,7 @@ if (${CLR_CMAKE_HOST_ARCH} STREQUAL "x86")
 endif ()
 
 # enable control-flow-guard support for native components
+add_compile_options(/guard:cf)
 list(APPEND __SharedLinkArgs /guard:cf)
 
 if (${CLR_CMAKE_HOST_ARCH} STREQUAL "x86_64" OR ${CLR_CMAKE_HOST_ARCH} STREQUAL "amd64" OR ${CLR_CMAKE_HOST_ARCH} STREQUAL "x64")
@@ -79,6 +80,8 @@ endif ()
 # production-time scenarios.
 
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+
+add_compile_options($<$<CONFIG:RELEASE>:/GL>)
 
 list(APPEND __LinkLibraries $<$<CONFIG:DEBUG>:libcmtd.lib>)
 list(APPEND __LinkLibraries $<$<CONFIG:RELEASE>:libcmt.lib>)
