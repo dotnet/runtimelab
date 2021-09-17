@@ -1061,11 +1061,6 @@ namespace Internal.Runtime.Augments
             RuntimeImports.RhHandleFree(handle);
         }
 
-        public static IntPtr RhGetOSModuleForMrt()
-        {
-            return RuntimeImports.RhGetOSModuleForMrt();
-        }
-
         public static IntPtr RhpGetCurrentThread()
         {
             return RuntimeImports.RhpGetCurrentThread();
