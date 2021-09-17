@@ -23,8 +23,8 @@ namespace System.Text.RegularExpressions.Symbolic
         internal readonly SymbolicRegexNode<TElement> _endAnchorZRev;
         internal readonly SymbolicRegexNode<TElement> _bolAnchor;
         internal readonly SymbolicRegexNode<TElement> _eolAnchor;
-        internal readonly SymbolicRegexNode<TElement> _dot;
-        internal readonly SymbolicRegexNode<TElement> _dotStar;
+        internal readonly SymbolicRegexNode<TElement> _anyChar;
+        internal readonly SymbolicRegexNode<TElement> _anyStar;
         internal readonly SymbolicRegexNode<TElement> _wbAnchor;
         internal readonly SymbolicRegexNode<TElement> _nwbAnchor;
         internal readonly SymbolicRegexSet<TElement> _fullSet;
@@ -118,12 +118,12 @@ namespace System.Text.RegularExpressions.Symbolic
             // update the previous character context to mark that the previous caharcter was \n
             _newLinePredicate = solver.False;
             _nothing = SymbolicRegexNode<TElement>.MkFalse(this);
-            _dot = SymbolicRegexNode<TElement>.MkTrue(this);
-            _dotStar = SymbolicRegexNode<TElement>.MkDotStar(this, _dot);
+            _anyChar = SymbolicRegexNode<TElement>.MkTrue(this);
+            _anyStar = SymbolicRegexNode<TElement>.MkStar(this, _anyChar);
 
             // --- initialize singletonCache ---
             _singletonCache[_solver.False] = _nothing;
-            _singletonCache[_solver.True] = _dot;
+            _singletonCache[_solver.True] = _anyChar;
         }
 
         /// <summary>
@@ -143,12 +143,12 @@ namespace System.Text.RegularExpressions.Symbolic
         /// </summary>
         internal SymbolicRegexNode<TElement> MkOr(SymbolicRegexSet<TElement> alts) =>
             alts.IsNothing ? _nothing :
-            alts.IsEverything ? _dotStar :
+            alts.IsEverything ? _anyStar :
             alts.IsSingleton ? alts.GetSingletonElement() :
             SymbolicRegexNode<TElement>.MkOr(this, alts);
 
         internal SymbolicRegexNode<TElement> MkOr2(SymbolicRegexNode<TElement> x, SymbolicRegexNode<TElement> y) =>
-            x == _dotStar || y == _dotStar ? _dotStar :
+            x == _anyStar || y == _anyStar ? _anyStar :
             x == _nothing ? y :
             y == _nothing ? x :
             SymbolicRegexNode<TElement>.MkOr(this, x, y);
@@ -159,7 +159,7 @@ namespace System.Text.RegularExpressions.Symbolic
         /// </summary>
         internal SymbolicRegexNode<TElement> MkAnd(SymbolicRegexSet<TElement> alts) =>
             alts.IsNothing ? _nothing :
-            alts.IsEverything ? _dotStar :
+            alts.IsEverything ? _anyStar :
             alts.IsSingleton ? alts.GetSingletonElement() :
             SymbolicRegexNode<TElement>.MkAnd(this, alts);
 
@@ -229,7 +229,7 @@ namespace System.Text.RegularExpressions.Symbolic
                 Debug.Assert(regex._set is not null);
                 if (_solver.AreEquivalent(_solver.True, regex._set))
                 {
-                    return _dotStar;
+                    return _anyStar;
                 }
             }
 
@@ -360,7 +360,7 @@ namespace System.Text.RegularExpressions.Symbolic
                     {
                         #region .
                         i_next = i + 1;
-                        return _dot;
+                        return _anyChar;
                         #endregion
                     }
                 case '[':
