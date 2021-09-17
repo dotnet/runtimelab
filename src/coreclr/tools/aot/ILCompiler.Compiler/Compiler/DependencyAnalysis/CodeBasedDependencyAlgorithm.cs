@@ -23,6 +23,13 @@ namespace ILCompiler.DependencyAnalysis
 
             factory.InteropStubManager.AddDependeciesDueToPInvoke(ref dependencies, factory, method);
 
+            if (method.OwningType is MetadataType mdOwningType
+                && mdOwningType.Module.GetGlobalModuleType().GetStaticConstructor() is MethodDesc moduleCctor)
+            {
+                dependencies ??= new DependencyList();
+                dependencies.Add(factory.MethodEntrypoint(moduleCctor), "Method in a module with initializer");
+            }
+
             if (method.IsIntrinsic)
             {
                 if (method.OwningType is MetadataType owningType)
