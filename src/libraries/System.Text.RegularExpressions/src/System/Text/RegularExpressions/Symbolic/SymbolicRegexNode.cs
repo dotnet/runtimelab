@@ -937,7 +937,7 @@ namespace System.Text.RegularExpressions.Symbolic
                     return;
 
                 case SymbolicRegexKind.NWBAnchor:
-                   sb.Append("\\B");
+                    sb.Append("\\B");
                     return;
 
                 case SymbolicRegexKind.EndAnchorZ:
