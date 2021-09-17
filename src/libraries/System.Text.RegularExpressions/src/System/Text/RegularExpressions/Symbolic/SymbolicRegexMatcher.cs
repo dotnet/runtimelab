@@ -284,7 +284,7 @@ namespace System.Text.RegularExpressions.Symbolic
                 }
             }
 
-            _dotstarredPattern = _builder.MkConcat(_builder._dotStar, _pattern);
+            _dotstarredPattern = _builder.MkConcat(_builder._anyStar, _pattern);
             _reversePattern = _pattern.Reverse();
             ConfigureeRegexes();
             _prefixBoyerMoore = InitializePrefixBoyerMoore();
@@ -311,7 +311,7 @@ namespace System.Text.RegularExpressions.Symbolic
                 _ => PartitionClassifier.Create((CharSetSolver)(object)_builder._solver, minterms),
             };
 
-            _dotstarredPattern = _builder.MkConcat(_builder._dotStar, _pattern);
+            _dotstarredPattern = _builder.MkConcat(_builder._anyStar, _pattern);
             _reversePattern = _pattern.Reverse();
             ConfigureeRegexes();
 

@@ -391,7 +391,7 @@ namespace System.Text.RegularExpressions.Symbolic
         }
 
         /// <summary>Returns true if this is equivalent to .* (the node must be eager also)</summary>
-        public bool IsDotStar
+        public bool IsAnyStar
         {
             get
             {
@@ -410,7 +410,7 @@ namespace System.Text.RegularExpressions.Symbolic
         }
 
         /// <summary>Returns true if this is equivalent to [\0-\xFFFF] </summary>
-        public bool IsDot
+        public bool IsAnyChar
         {
             get
             {
@@ -534,7 +534,7 @@ namespace System.Text.RegularExpressions.Symbolic
 
         private static SymbolicRegexNode<S> MkCollection(SymbolicRegexBuilder<S> builder, SymbolicRegexKind kind, SymbolicRegexSet<S> alts, SymbolicRegexInfo info) =>
             alts.IsNothing ? builder._nothing :
-            alts.IsEverything ? builder._dotStar :
+            alts.IsEverything ? builder._anyStar :
             alts.IsSingleton ? alts.GetSingletonElement() :
             Create(builder, kind, null, null, -1, -1, default, alts, info);
 
@@ -602,15 +602,15 @@ namespace System.Text.RegularExpressions.Symbolic
             todo.Push((root, false));
             while (todo.Count > 0)
             {
-                var top = todo.Pop();
+                (SymbolicRegexNode<S>, bool) top = todo.Pop();
                 bool secondTimePushed = top.Item2;
-                var node = top.Item1;
+                SymbolicRegexNode<S> node = top.Item1;
                 if (secondTimePushed)
                 {
                     Debug.Assert((node._kind == SymbolicRegexKind.Or || node._kind == SymbolicRegexKind.And) && node._alts is not null);
                     // Here all members of _alts have been processed
                     List<SymbolicRegexNode<S>> alts_nnf = new();
-                    foreach (var elem in node._alts)
+                    foreach (SymbolicRegexNode<S> elem in node._alts)
                     {
                         alts_nnf.Add(NNF[elem]);
                     }
@@ -642,7 +642,7 @@ namespace System.Text.RegularExpressions.Symbolic
 
                         case SymbolicRegexKind.Epsilon:
                             //  ~() = .+
-                            NNF[node] = SymbolicRegexNode<S>.MkPlus(builder, builder._dot);
+                            NNF[node] = SymbolicRegexNode<S>.MkPlus(builder, builder._anyChar);
                             break;
 
                         case SymbolicRegexKind.Singleton:
@@ -650,7 +650,7 @@ namespace System.Text.RegularExpressions.Symbolic
                             // ~[] = .*
                             if (node.IsNothing)
                             {
-                                NNF[node] = builder._dotStar;
+                                NNF[node] = builder._anyStar;
                                 break;
                             }
                             goto default;
@@ -658,12 +658,12 @@ namespace System.Text.RegularExpressions.Symbolic
                         case SymbolicRegexKind.Loop:
                             Debug.Assert(node._left is not null);
                             // ~(.*) = [] and ~(.+) = ()
-                            if (node.IsDotStar)
+                            if (node.IsAnyStar)
                             {
                                 NNF[node] = builder._nothing;
                                 break;
                             }
-                            else if (node.IsPlus && node._left.IsDot)
+                            else if (node.IsPlus && node._left.IsAnyChar)
                             {
                                 NNF[node] = builder._epsilon;
                                 break;
@@ -816,7 +816,7 @@ namespace System.Text.RegularExpressions.Symbolic
         /// <returns></returns>
         internal SymbolicRegexNode<S> MkDerivative(S elem, uint context)
         {
-            if (this == _builder._dotStar || this == _builder._nothing)
+            if (this == _builder._anyStar || this == _builder._nothing)
             {
                 return this;
             }
@@ -1112,7 +1112,7 @@ namespace System.Text.RegularExpressions.Symbolic
 
                 case SymbolicRegexKind.Loop:
                     Debug.Assert(_left is not null);
-                    if (IsDotStar)
+                    if (IsAnyStar)
                     {
                         sb.Append(".*");
                     }

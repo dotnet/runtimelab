@@ -476,34 +476,34 @@ namespace System.Text.RegularExpressions.Tests
         [Fact]
         public void PasswordSearch()
         {
-            var twoLower = ".*[a-z].*[a-z].*";
-            var twoUpper = ".*[A-Z].*[A-Z].*";
-            var threeDigits = ".*[0-9].*[0-9].*[0-9].*";
-            var oneSpecial = @".*[\x21-\x2F\x3A-\x40\x5B-x60\x7B-\x7E].*";
-            var noCountUp = Not(".*(012|123|234|345|456|567|678|789).*");
-            var noCountDown = Not(".*(987|876|765|654|543|432|321|210).*");
+            string twoLower = ".*[a-z].*[a-z].*";
+            string twoUpper = ".*[A-Z].*[A-Z].*";
+            string threeDigits = ".*[0-9].*[0-9].*[0-9].*";
+            string oneSpecial = @".*[\x21-\x2F\x3A-\x40\x5B-x60\x7B-\x7E].*";
+            string Not_countUp = Not(".*(012|123|234|345|456|567|678|789).*");
+            string Not_countDown = Not(".*(987|876|765|654|543|432|321|210).*");
             // Observe that the space character (immediately before '!' in ASCII) is excluded
-            var length = "[!-~]{8,12}";
+            string length = "[!-~]{8,12}";
  
            // Just to make the chance that the randomly generated part actually has a match
            // be astronomically unlikely require 'P' and 'r' to be present also,
            // although this constraint is really bogus from password constraints point of view
-            var contains_first_P_and_then_r = ".*P.*r.*";
+            string contains_first_P_and_then_r = ".*P.*r.*";
 
             // Conjunction of all the above constraints
-            var all = And(twoLower, twoUpper, threeDigits, oneSpecial, noCountUp, noCountDown, length, contains_first_P_and_then_r);
+            string all = And(twoLower, twoUpper, threeDigits, oneSpecial, Not_countUp, Not_countDown, length, contains_first_P_and_then_r);
 
             // search for the password in a context surrounded by word boundaries
-            var re = new Regex($@"\b{all}\b", RegexOptions.NonBacktracking | RegexOptions.Singleline);
+            Regex re = new Regex($@"\b{all}\b", RegexOptions.NonBacktracking | RegexOptions.Singleline);
 
             // Does not qualify because of 123 and connot end between 2 and 3 because of \b
-            var almostPassw1 = "P@ssW0rd123";
+            string almostPassw1 = "P@ssW0rd123";
             // Does not have at least two uppercase
-            var almostPassw2 = "P@55w0rd";
+            string almostPassw2 = "P@55w0rd";
 
             // These two qualify
-            var password1 = "P@55W0rd";
-            var password2 = "Pa5$w00rD";
+            string password1 = "P@55W0rd";
+            string password2 = "Pa5$w00rD";
 
             foreach (int k in new int[] {500, 1000, 5000, 10000, 50000, 100000})
             {
@@ -552,36 +552,36 @@ namespace System.Text.RegularExpressions.Tests
         [Fact]
         public void PasswordSearchDual()
         {
-            var Not_twoLower = Not(".*[a-z].*[a-z].*");
-            var Not_twoUpper = Not(".*[A-Z].*[A-Z].*");
-            var Not_threeDigits = Not(".*[0-9].*[0-9].*[0-9].*");
-            var Not_oneSpecial = Not(@".*[\x21-\x2F\x3A-\x40\x5B-x60\x7B-\x7E].*");
-            var countUp = ".*(012|123|234|345|456|567|678|789).*";
-            var countDown = ".*(987|876|765|654|543|432|321|210).*";
+            string Not_twoLower = Not(".*[a-z].*[a-z].*");
+            string Not_twoUpper = Not(".*[A-Z].*[A-Z].*");
+            string Not_threeDigits = Not(".*[0-9].*[0-9].*[0-9].*");
+            string Not_oneSpecial = Not(@".*[\x21-\x2F\x3A-\x40\x5B-x60\x7B-\x7E].*");
+            string countUp = ".*(012|123|234|345|456|567|678|789).*";
+            string countDown = ".*(987|876|765|654|543|432|321|210).*";
             // Observe that the space character (immediately before '!' in ASCII) is excluded
-            var Not_length = Not("[!-~]{8,12}");
+            string Not_length = Not("[!-~]{8,12}");
 
             // Just to make the chance that the randomly generated part actually has a match
             // be astronomically unlikely require 'P' and 'r' to be present also,
             // although this constraint is really bogus from password constraints point of view
-            var Not_contains_first_P_and_then_r = Not(".*P.*r.*");
+            string Not_contains_first_P_and_then_r = Not(".*P.*r.*");
 
             // Negated disjunction of all the above constraints
             // By deMorgan's laws we know that ~(A|B|...|C) = ~A&~B&...&~C and ~~A = A
             // So Not(Not_twoLower|...) is equivalent to twoLower&~(...)
-            var all = Not($"{Not_twoLower}|{Not_twoUpper}|{Not_threeDigits}|{Not_oneSpecial}|{countUp}|{countDown}|{Not_length}|{Not_contains_first_P_and_then_r}");
+            string all = Not($"{Not_twoLower}|{Not_twoUpper}|{Not_threeDigits}|{Not_oneSpecial}|{countUp}|{countDown}|{Not_length}|{Not_contains_first_P_and_then_r}");
 
             // search for the password in a context surrounded by word boundaries
-            var re = new Regex($@"\b{all}\b", RegexOptions.NonBacktracking | RegexOptions.Singleline);
+            Regex re = new Regex($@"\b{all}\b", RegexOptions.NonBacktracking | RegexOptions.Singleline);
 
             // Does not qualify because of 123 and connot end between 2 and 3 because of \b
-            var almostPassw1 = "P@ssW0rd123";
+            string almostPassw1 = "P@ssW0rd123";
             // Does not have at least two uppercase
-            var almostPassw2 = "P@55w0rd";
+            string almostPassw2 = "P@55w0rd";
 
             // These two qualify
-            var password1 = "P@55W0rd";
-            var password2 = "Pa5$w00rD";
+            string password1 = "P@55W0rd";
+            string password2 = "Pa5$w00rD";
 
             foreach (int k in new int[] { 500, 1000, 5000, 10000, 50000, 100000})
             {

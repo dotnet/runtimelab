@@ -82,7 +82,7 @@ namespace System.Text.RegularExpressions.Symbolic
                 }
 
                 #region start foreach
-                if (elem == builder._dotStar)
+                if (elem == builder._anyStar)
                 {
                     // .* is the absorbing element for disjunction
                     if (kind == SymbolicRegexKind.Or)
