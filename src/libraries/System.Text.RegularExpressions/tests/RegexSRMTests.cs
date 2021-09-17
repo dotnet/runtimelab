@@ -304,12 +304,6 @@ namespace System.Text.RegularExpressions.Tests
         [Fact]
         public void TestSRMTimeout() => TestSRMTimeout_(new Regex(@"a.{20}$", RegexOptions.NonBacktracking, new TimeSpan(0, 0, 0, 0, 10)));
 
-        /// <summary>
-        /// Test that serialization preserves timeout information.
-        /// </summary>
-        [Fact]
-        public void TestSRMTimeoutAfterDeser() => TestSRMTimeout_(Deserialize(Serialize(new Regex(@"a.{20}$", RegexOptions.NonBacktracking, new TimeSpan(0, 0, 0, 0, 10)))));
-
         private void TestSRMTimeout_(Regex re)
         {
             Random rnd = new Random(0);
@@ -339,57 +333,7 @@ namespace System.Text.RegularExpressions.Tests
             string str = sw.ToString();
             Assert.StartsWith("<?xml version=\"1.0\" encoding=\"utf-8\"?>", str);
             Assert.Contains("DirectedGraph", str);
-            // in debug mode re may be serialized and then deserialized internally 
-            // if that happens the predicate label .*a+ becomes .*[2]+
-            // the partition of characters in this regex is into two sets (in binary):
-            //   01 or [1] representing [^a]  (first part)
-            //   10 or [2] representinng 'a' (second part) which is where 2 comes from
-            //   (3rd part would be 100 = [4], 4th 1000 = [8] etc)
-            // '.' here is the union of all parts, i.e. 01 and 10 that is 11 (in binary internally) but printed as '.' also.
-            Assert.True(str.Contains(".*a+") || str.Contains(".*[2]+"));
-        }
-
-        private static MethodInfo _Deserialize = typeof(Regex).GetMethod("Deserialize", BindingFlags.NonPublic | BindingFlags.Static);
-        private static Regex Deserialize(string s) => _Deserialize.Invoke(null, new object[] { s }) as Regex;
-
-        private static MethodInfo _Serialize = typeof(Regex).GetMethod("Serialize", BindingFlags.NonPublic | BindingFlags.Instance);
-        private static string Serialize(Regex r) => _Serialize.Invoke(r, null) as string;
-
-        /// <summary>
-        /// Test serialization/deserialization of some sample regexes.
-        /// Verify correctness of all the deserialized regexes against the original ones.
-        /// Test also that deserialization followed by serialization is idempotent.
-        /// </summary>
-        [Fact]
-        public void TestRegexSerialization()
-        {
-            string[] rawregexes = new string[] {@"\b\d\w+nn\b", "An+e", "^this", "(?i:Jaan$)", @"\p{Sm}+" };
-            int k = rawregexes.Length;
-            //DFA versions
-            var rs = Array.ConvertAll(rawregexes, s => new Regex(s, RegexOptions.NonBacktracking));
-            //Compiled versions
-            var rsC = Array.ConvertAll(rawregexes, s => new Regex(s, RegexOptions.Compiled));
-            //serialize
-            var ser = Array.ConvertAll(rs, Serialize);
-            //deserialize
-            var drs = Array.ConvertAll(ser, Deserialize);
-            //repeat serialization on  the deserialized regexes
-            var ser2 = Array.ConvertAll(drs, Serialize);
-            //check idempotence
-            for (int i = 0; i < k; i++)
-                Assert.True(ser[i] == ser2[i], $"idempotence of serialization of regex {i} failed");
-
-            string input = "this text contains math symbols +~<> and names like Ann and Anne and maku and jaan";
-            for (int i = 0; i < k; i++)
-            {
-                var match1 = rs[i].Match(input);
-                var match2 = drs[i].Match(input);
-                var matchExpected = rsC[i].Match(input);
-                Assert.Equal(matchExpected.Success, match1.Success);
-                Assert.Equal(matchExpected.Success, match2.Success);
-                Assert.Equal(matchExpected.Value, match1.Value);
-                Assert.Equal(matchExpected.Value, match2.Value);
-            }
+            Assert.Contains(".*a+", str);
         }
 
         [Fact]

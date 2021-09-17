@@ -55,9 +55,6 @@ namespace System.Text.RegularExpressions.Symbolic
             }
         }
 
-        /// <summary>This constructor is invoked by the deserializer only.</summary>
-        private SymbolicRegexRunner(SymbolicRegexMatcher matcher) => _matcher = matcher;
-
         public static RegexRunnerFactory CreateFactory(RegexNode rootNode, RegexOptions options, TimeSpan matchTimeout, CultureInfo culture)
         {
             // RightToLeft and ECMAScript are currently not supported in conjunction with NonBacktracking.
@@ -68,13 +65,8 @@ namespace System.Text.RegularExpressions.Symbolic
                         (options & RegexOptions.RightToLeft) != 0 ? nameof(RegexOptions.RightToLeft) : nameof(RegexOptions.ECMAScript)));
             }
 
-            var runner = new SymbolicRegexRunner(rootNode, options, matchTimeout, culture);
-#if DEBUG
-            // Test the serialization roundtrip.
-            // Effectively, here all tests in DEBUG mode are run with deserialized matchers, not the original ones.
-            runner = Deserialize(runner.Serialize());
-#endif
-            return new SymbolicRegexRunnerFactory(runner);
+            return new SymbolicRegexRunnerFactory(
+                new SymbolicRegexRunner(rootNode, options, matchTimeout, culture));
         }
 
         internal override Match? ScanInternal(
@@ -154,48 +146,6 @@ namespace System.Text.RegularExpressions.Symbolic
                 textstart = m.Index + m.Length;
             }
         }
-
-        /// <summary>Serialize the matcher.</summary>
-        public string Serialize()
-        {
-            var sb = new StringBuilder();
-            _matcher.Serialize(sb);
-            return sb.ToString();
-        }
-
-        //it must not be '\n' or a character used to serialize the fragments: 0-9A-Za-z/\+*()[].,-^$;?
-        //avoiding '\n' so that multiple serializations can be stored one per line in an ascii text file
-        internal const char TopLevelSeparator = '#';
-
-        /// <summary>Deserializes the matcher from the given input string created with Serialize.</summary>
-        public static SymbolicRegexRunner Deserialize(string serializedNonBacktrackingRegex)
-        {
-            Exception? error = null;
-            try
-            {
-                string[] fragments = serializedNonBacktrackingRegex.Split(TopLevelSeparator);
-                if (fragments.Length == 15)
-                {
-                    BVAlgebraBase alg = BVAlgebraBase.Deserialize(fragments[1]);
-                    Debug.Assert(alg is BV64Algebra or BVAlgebra);
-
-                    SymbolicRegexMatcher matcher = alg is BV64Algebra bv64 ?
-                        new SymbolicRegexMatcher<ulong>(bv64, fragments) :
-                        new SymbolicRegexMatcher<BV>((BVAlgebra)alg, fragments);
-
-                    return new SymbolicRegexRunner(matcher);
-                }
-            }
-            catch (Exception e)
-            {
-                error = e;
-            }
-
-            throw new ArgumentOutOfRangeException(nameof(serializedNonBacktrackingRegex), error);
-        }
-
-        public static Regex DeserializeRegex(string serializedNonBacktrackingRegex) =>
-            new SymbolicRegex(Deserialize(serializedNonBacktrackingRegex));
 
         private sealed class SymbolicRegex : Regex
         {

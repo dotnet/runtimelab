@@ -165,11 +165,6 @@ namespace System.Text.RegularExpressions.Symbolic
             return new BV(x.Length, blocks);
         }
 
-        /// <summary>
-        /// Returns the serialized representation
-        /// </summary>
-        public override string ToString() => SerializeToString();
-
         public override bool Equals([NotNullWhen(true)] object? obj) => CompareTo(obj) == 0;
 
         public override int GetHashCode()
@@ -207,36 +202,5 @@ namespace System.Text.RegularExpressions.Symbolic
             //all blocks were equal
             return 0;
         }
-
-        #region serialization
-        /// <summary>
-        /// Serialize BV into a string of Base64 numerals, number of bits separated by '-' at the start,
-        /// </summary>
-        public void Serialize(StringBuilder sb)
-        {
-            //start with the length, i.e., the number of bits
-            Base64Utility.Encode(Length, sb);
-            sb.Append('-');
-            Base64Utility.Encode(_blocks, sb);
-        }
-
-        public string SerializeToString()
-        {
-            StringBuilder sb = new();
-            Serialize(sb);
-            return sb.ToString();
-        }
-
-        /// <summary>
-        /// Deserialize BV from given string s that was produced by Serialize
-        /// </summary>
-        public static BV Deserialize(string s)
-        {
-            int i = s.IndexOf('-');
-            int K = Base64Utility.DecodeInt32(s.AsSpan(0, i));
-            ulong[] blocks = Base64Utility.DecodeUInt64Array(s.AsSpan(i + 1));
-            return new BV(K, blocks);
-        }
-        #endregion
     }
 }

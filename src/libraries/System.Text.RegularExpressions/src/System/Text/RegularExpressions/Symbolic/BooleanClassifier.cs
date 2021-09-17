@@ -58,48 +58,5 @@ namespace System.Text.RegularExpressions.Symbolic
             bool[] ascii = _ascii;
             return c < ascii.Length ? ascii[c] : _nonAsciiBDD.Contains(c);
         }
-
-        #region Serialization
-        public void Serialize(StringBuilder sb)
-        {
-            ulong lower = 0;
-            for (int i = 0; i < 64; i++)
-            {
-                lower |= _ascii[i] ? (ulong)1 << i : 0;
-            }
-
-            ulong upper = 0;
-            for (int i = 0; i < 64; i++)
-            {
-                upper |= _ascii[i + 64] ? (ulong)1 << i : 0;
-            }
-
-            //use comma to separate the elements, comma is not used in _bdd.Serialize
-            Base64Utility.Encode(lower, sb);
-            sb.Append(',');
-            Base64Utility.Encode(upper, sb);
-            sb.Append(',');
-            _nonAsciiBDD.Serialize(sb);
-        }
-
-        public static BooleanClassifier Deserialize(string input, BDDAlgebra? solver = null)
-        {
-            int firstEnd = input.IndexOf(',');
-            if (firstEnd >= 0)
-            {
-                int secondEnd = input.IndexOf(',', firstEnd + 1);
-                if (secondEnd >= 0 && input.IndexOf(',', secondEnd + 1) == -1)
-                {
-                    ReadOnlySpan<char> s = input;
-                    ulong lower = Base64Utility.DecodeUInt64(s[..firstEnd]);
-                    ulong upper = Base64Utility.DecodeUInt64(s[(firstEnd + 1)..secondEnd]);
-                    BDD bdd = BDD.Deserialize(s[(secondEnd + 1)..], solver);
-                    return new BooleanClassifier(lower, upper, bdd);
-                }
-            }
-
-            throw new ArgumentOutOfRangeException(nameof(input));
-        }
-        #endregion
     }
 }

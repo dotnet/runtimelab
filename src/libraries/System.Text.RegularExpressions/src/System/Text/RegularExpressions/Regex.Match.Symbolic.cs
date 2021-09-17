@@ -12,22 +12,7 @@ namespace System.Text.RegularExpressions
 {
     public partial class Regex
     {
-        // TODO: Avoid rooting Serialize/Deserialize in ILLink purely for use by tests
         // TODO: Only compile SaveDGML into Debug build
-        // TODO: Figure out what to do about Serialize/Deserialize in general (e.g. delete them, expose them, use them in source generated code, etc.)
-
-        internal string Serialize()
-        {
-            if (factory is not SymbolicRegexRunnerFactory srmFactory)
-            {
-                throw new NotSupportedException();
-            }
-
-            return srmFactory._runner.Serialize();
-        }
-
-        internal static Regex Deserialize(string serializedNonBacktrackingRegex) =>
-            SymbolicRegexRunner.DeserializeRegex(serializedNonBacktrackingRegex);
 
         /// <summary>Unwind the regex and save the resulting state graph in DGML</summary>
         /// <param name="bound">roughly the maximum number of states, 0 means no bound</param>

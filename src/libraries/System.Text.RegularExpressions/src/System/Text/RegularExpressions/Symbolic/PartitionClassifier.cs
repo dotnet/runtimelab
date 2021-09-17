@@ -77,40 +77,5 @@ namespace System.Text.RegularExpressions.Symbolic
             int[] precomputed = _precomputed;
             return (uint)c < (uint)precomputed.Length ? precomputed[c] : _mtbdd.Find(c);
         }
-
-        #region serialization
-        /// <summary>Appends a string in [0-9A-Za-z/+.-,]* to sb.</summary>
-        public void Serialize(StringBuilder sb)
-        {
-            // This encoding does not use ','
-            Base64Utility.Encode(_precomputed, sb);
-            // Separate the precomputed serialization from the BDD serialization using ','
-            sb.Append(',');
-            // This encoding does not use ','
-            _mtbdd.Serialize(sb);
-        }
-
-        /// <summary>Deserializes the classifier from the string s created by Serialize.</summary>
-        public static PartitionClassifier Deserialize(ReadOnlySpan<char> input, BDDAlgebra? algebra = null)
-        {
-            int firstEnd = input.IndexOf(',');
-            if (firstEnd == -1 || input.Slice(firstEnd + 1).IndexOf(',') != -1)
-            {
-                throw new ArgumentOutOfRangeException(nameof(input));
-            }
-
-            int[] precomp = Base64Utility.DecodeInt32Array(input[..firstEnd]);
-            BDD bst = BDD.Deserialize(input.Slice(firstEnd + 1), algebra);
-            return new PartitionClassifier(precomp, bst);
-        }
-
-        /// <summary>Returns the serialized format of the classifier for Debugging.</summary>
-        public override string ToString()
-        {
-            var sb = new StringBuilder();
-            Serialize(sb);
-            return sb.ToString();
-        }
-        #endregion
     }
 }

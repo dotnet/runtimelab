@@ -75,24 +75,28 @@ namespace {namespacename}
             BDD wordCharBdd = bddb.CreateBddForIntRanges(wordcharacter.ranges);
 
             sw.WriteLine("        /// <summary>Serialized BDD representations of all the Unicode categories.</summary>");
-            sw.WriteLine("        public static readonly string[] AllCategoriesSerializedBDD = new string[]");
+            sw.WriteLine("        public static readonly long[][] AllCategoriesSerializedBDD = new long[][]");
             sw.WriteLine("        {");
             for (int i = 0; i < catBDDs.Length; i++)
             {
                 sw.WriteLine("            // {0}({1}):", (UnicodeCategory)i, i);
-                sw.Write("            \"");
-                sw.Write(catBDDs[i].SerializeToString());
-                sw.WriteLine("\",");
+                sw.Write("            ");
+                GeneratorHelper.WriteInt64ArrayInitSyntax(sw, catBDDs[i].Serialize());
+                sw.WriteLine(",");
             }
             sw.WriteLine("        };");
             sw.WriteLine();
 
             sw.WriteLine("        /// <summary>Serialized BDD representation of the set of all whitespace characters.</summary>");
-            sw.WriteLine($"        public const string WhitespaceSerializedBDD = \"{whitespaceBdd.SerializeToString()}\";");
+            sw.Write($"        public static readonly long[] WhitespaceSerializedBDD = ");
+            GeneratorHelper.WriteInt64ArrayInitSyntax(sw, whitespaceBdd.Serialize());
+            sw.WriteLine(";");
             sw.WriteLine();
 
             sw.WriteLine("        /// <summary>Serialized BDD representation of the set of all word characters</summary>");
-            sw.WriteLine($"        public const string WordCharactersSerializedBDD = \"{wordCharBdd.SerializeToString()}\";");
+            sw.Write($"        public static readonly long[] WordCharactersSerializedBDD = ");
+            GeneratorHelper.WriteInt64ArrayInitSyntax(sw, wordCharBdd.Serialize());
+            sw.WriteLine(";");
         }
     }
 

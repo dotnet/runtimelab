@@ -661,18 +661,6 @@ namespace System.Text.RegularExpressions.Symbolic
         /// </summary>
         public bool IsExtensional => false;
 
-        #region Serialializing and deserializing BDDs from dags encoded by ulongs arrays
-        /// <summary>
-        /// Serializes the BDD using BDD.Serialize(StringBuilder)
-        /// </summary>
-        public void SerializePredicate(BDD bdd, StringBuilder builder) => bdd.Serialize(builder);
-
-        /// <summary>
-        /// Calls BDD.Deserialize(s, this)
-        /// </summary>
-        public BDD DeserializePredicate(string s) => BDD.Deserialize(s, this);
-        #endregion
-
         /// <summary>
         /// The returned integer must be nonegative
         /// and will act as the combined terminal in a multi-terminal BDD.
@@ -713,7 +701,5 @@ namespace System.Text.RegularExpressions.Symbolic
             cache[bdd] = res;
             return res;
         }
-
-        public void Serialize(StringBuilder sb) => throw new NotSupportedException(nameof(BDDAlgebra.Serialize));
     }
 }
