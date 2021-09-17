@@ -82,7 +82,7 @@ namespace ILCompiler.DependencyAnalysis
                 return false;
 
             // Resolve type in the assembly
-            MetadataType mdType = referenceModule.GetType(typeNamespace.ToString(), typeName.ToString(), NotFoundBehavior.ReturnNull);
+            MetadataType mdType = referenceModule.GetType(typeNamespace.ToString(), typeName.ToString(), throwIfNotFound: false);
             if (mdType != null && nestedTypeName != null)
                 mdType = mdType.GetNestedType(nestedTypeName);
 
@@ -90,7 +90,7 @@ namespace ILCompiler.DependencyAnalysis
             if (mdType == null && assemblyName.Length == 0)
             {
                 referenceModule = context.SystemModule;
-                mdType = referenceModule.GetType(typeNamespace.ToString(), typeName.ToString(), NotFoundBehavior.ReturnNull);
+                mdType = referenceModule.GetType(typeNamespace.ToString(), typeName.ToString(), throwIfNotFound: false);
                 if (mdType != null && nestedTypeName != null)
                     mdType = mdType.GetNestedType(nestedTypeName);
             }
