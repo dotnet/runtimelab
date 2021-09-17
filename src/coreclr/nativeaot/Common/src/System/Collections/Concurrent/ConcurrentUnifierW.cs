@@ -217,7 +217,7 @@ namespace System.Collections.Concurrent
                     {
 #if DEBUG
                         {
-                            V heyYoureSupposedToBeDead;
+                            V? heyYoureSupposedToBeDead;
                             if (_entries[idx]._weakValue.TryGetTarget(out heyYoureSupposedToBeDead))
                                 Debug.Fail("Add: You were supposed to verify inside the lock that this entry's weak reference had already expired!");
                         }
@@ -268,7 +268,7 @@ namespace System.Collections.Concurrent
                     for (int entry = _buckets[bucket]; entry != -1; entry = _entries[entry]._next)
                     {
                         // Check if the weakreference has expired.
-                        V value;
+                        V? value;
                         if (_entries[entry]._weakValue.TryGetTarget(out value))
                             estimatedNumLiveEntries++;
                     }
@@ -302,7 +302,7 @@ namespace System.Collections.Concurrent
                     for (int entry = _buckets[bucket]; entry != -1; entry = _entries[entry]._next)
                     {
                         // Check if the weakreference has expired. If so, this is where we drop the entry altogether.
-                        V value;
+                        V? value;
                         if (_entries[entry]._weakValue.TryGetTarget(out value))
                         {
                             newEntries[newNextFreeEntry]._key = _entries[entry]._key;

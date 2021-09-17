@@ -241,7 +241,7 @@ namespace System.Runtime
             //
             if (s_previousCache.IsAllocated)
             {
-                Entry[] previousCache = (Entry[])s_previousCache.Target;
+                Entry[]? previousCache = (Entry[]?)s_previousCache.Target;
                 if (previousCache != null)
                 {
                     Entry previousEntry = LookupInCache(previousCache, context, signature);

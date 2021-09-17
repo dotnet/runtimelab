@@ -195,7 +195,7 @@ namespace Internal.Reflection.Extensions.NonPortable
             // This behavior goes all the way back to at least 3.5 (and perhaps earlier). For compat reasons,
             // we won't-fixed this in 4.5 and we won't-fix this in Project N.
             //
-            AttributeUsageAttribute usage = attributeType.GetCustomAttribute<AttributeUsageAttribute>(inherit: false);
+            AttributeUsageAttribute? usage = attributeType.GetCustomAttribute<AttributeUsageAttribute>(inherit: false);
             if (usage == null)
                 return new AttributeUsageAttribute(AttributeTargets.All) { AllowMultiple = false, Inherited = true };
             return usage;

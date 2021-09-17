@@ -553,7 +553,7 @@ namespace System
             bool reverseCopy = ((object)sourceArray == (object)destinationArray) && (sourceIndex < destinationIndex);
 
             // Copy scenario: ValueType-array to value-type array with embedded gc-refs.
-            object[] boxedElements = null;
+            object[]? boxedElements = null;
             if (reliable)
             {
                 boxedElements = new object[length];

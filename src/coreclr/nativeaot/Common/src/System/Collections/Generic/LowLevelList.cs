@@ -79,7 +79,7 @@ namespace System.Collections.Generic
             if (collection == null)
                 throw new ArgumentNullException(nameof(collection));
 
-            ICollection<T> c = collection as ICollection<T>;
+            ICollection<T>? c = collection as ICollection<T>;
             if (c != null)
             {
                 int count = c.Count;
@@ -235,10 +235,10 @@ namespace System.Collections.Generic
         //
         public bool Contains(T item)
         {
-            if ((object)item == null)
+            if ((object?)item == null)
             {
                 for (int i = 0; i < _size; i++)
-                    if ((object)_items[i] == null)
+                    if ((object?)_items[i] == null)
                         return true;
                 return false;
             }
@@ -341,7 +341,7 @@ namespace System.Collections.Generic
                 throw new ArgumentOutOfRangeException(nameof(index));
             }
 
-            ICollection<T> c = collection as ICollection<T>;
+            ICollection<T>? c = collection as ICollection<T>;
             if (c != null)
             {    // if collection is ICollection<T>
                 int count = c.Count;

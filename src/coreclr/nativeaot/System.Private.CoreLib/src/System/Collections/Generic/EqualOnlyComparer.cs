@@ -73,7 +73,7 @@ namespace System.Collections.Generic
             return x == y;
         }
 
-        public static bool Equals(string x, string y)
+        public static bool Equals(string? x, string? y)
         {
             return x == y;
         }
@@ -120,7 +120,7 @@ namespace System.Collections.Generic
             else if (typeof(T) == typeof(decimal))
                 return EqualOnlyComparerHelper.Equals(((decimal)(object)(x)), ((decimal)(object)(y)));
             else if (typeof(T) == typeof(string))
-                return EqualOnlyComparerHelper.Equals(((string)(object)(x)), ((string)(object)(y)));
+                return EqualOnlyComparerHelper.Equals(((string?)(object?)(x)), ((string?)(object?)(y)));
 
             // Default Comparer
 

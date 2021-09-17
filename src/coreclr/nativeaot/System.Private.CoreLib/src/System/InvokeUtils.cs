@@ -109,7 +109,7 @@ namespace System
                 if (Unsafe.IsNullRef(ref argSetupState))
                 {
                     // We were called by someone other than DynamicInvokeParamHelperCore(). Those callers pass the correct dstEEType.
-                    exactDstType = Type.GetTypeFromHandle(new RuntimeTypeHandle(dstEEType));
+                    exactDstType = Type.GetTypeFromHandle(new RuntimeTypeHandle(dstEEType))!;
                 }
                 else
                 {
