@@ -55,7 +55,7 @@ namespace System
                 if (default(IntPtr) == h)
                     return default;
 
-                T target = Unsafe.As<T>(RuntimeImports.RhHandleGet(h));
+                T? target = Unsafe.As<T?>(RuntimeImports.RhHandleGet(h));
 
                 if (target == null)
                 {

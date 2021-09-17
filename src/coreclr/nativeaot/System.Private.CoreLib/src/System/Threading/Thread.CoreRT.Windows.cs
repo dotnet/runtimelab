@@ -129,7 +129,7 @@ namespace System.Threading
         [UnmanagedCallersOnly]
         private static void OnThreadExit()
         {
-            Thread currentThread = t_currentThread;
+            Thread? currentThread = t_currentThread;
             if (currentThread != null)
             {
                 StopThread(currentThread);

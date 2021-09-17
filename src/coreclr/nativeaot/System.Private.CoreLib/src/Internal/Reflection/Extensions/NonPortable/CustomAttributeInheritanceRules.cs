@@ -42,32 +42,32 @@ namespace Internal.Reflection.Extensions.NonPortable
         public static IEnumerable<CustomAttributeData> GetMatchingCustomAttributes(this MemberInfo element, Type optionalAttributeTypeFilter, bool inherit, bool skipTypeValidation = false)
         {
             {
-                Type type = element as Type;
+                Type? type = element as Type;
                 if (type != null)
                     return TypeCustomAttributeSearcher.Default.GetMatchingCustomAttributes(type, optionalAttributeTypeFilter, inherit, skipTypeValidation: skipTypeValidation);
             }
             {
-                ConstructorInfo constructorInfo = element as ConstructorInfo;
+                ConstructorInfo? constructorInfo = element as ConstructorInfo;
                 if (constructorInfo != null)
                     return ConstructorCustomAttributeSearcher.Default.GetMatchingCustomAttributes(constructorInfo, optionalAttributeTypeFilter, inherit: false, skipTypeValidation: skipTypeValidation);
             }
             {
-                MethodInfo methodInfo = element as MethodInfo;
+                MethodInfo? methodInfo = element as MethodInfo;
                 if (methodInfo != null)
                     return MethodCustomAttributeSearcher.Default.GetMatchingCustomAttributes(methodInfo, optionalAttributeTypeFilter, inherit, skipTypeValidation: skipTypeValidation);
             }
             {
-                FieldInfo fieldInfo = element as FieldInfo;
+                FieldInfo? fieldInfo = element as FieldInfo;
                 if (fieldInfo != null)
                     return FieldCustomAttributeSearcher.Default.GetMatchingCustomAttributes(fieldInfo, optionalAttributeTypeFilter, inherit: false, skipTypeValidation: skipTypeValidation);
             }
             {
-                PropertyInfo propertyInfo = element as PropertyInfo;
+                PropertyInfo? propertyInfo = element as PropertyInfo;
                 if (propertyInfo != null)
                     return PropertyCustomAttributeSearcher.Default.GetMatchingCustomAttributes(propertyInfo, optionalAttributeTypeFilter, inherit, skipTypeValidation: skipTypeValidation);
             }
             {
-                EventInfo eventInfo = element as EventInfo;
+                EventInfo? eventInfo = element as EventInfo;
                 if (eventInfo != null)
                     return EventCustomAttributeSearcher.Default.GetMatchingCustomAttributes(eventInfo, optionalAttributeTypeFilter, inherit, skipTypeValidation: skipTypeValidation);
             }
@@ -119,7 +119,7 @@ namespace Internal.Reflection.Extensions.NonPortable
 
             public sealed override Type GetParent(Type e)
             {
-                Type baseType = e.BaseType;
+                Type? baseType = e.BaseType;
                 if (baseType == null)
                     return null;
 
@@ -227,10 +227,10 @@ namespace Internal.Reflection.Extensions.NonPortable
 
             public sealed override ParameterInfo GetParent(ParameterInfo e)
             {
-                MethodInfo method = e.Member as MethodInfo;
+                MethodInfo? method = e.Member as MethodInfo;
                 if (method == null)
                     return null;     // This is a constructor parameter.
-                MethodInfo methodParent = new MethodCustomAttributeSearcher().GetParent(method);
+                MethodInfo? methodParent = new MethodCustomAttributeSearcher().GetParent(method);
                 if (methodParent == null)
                     return null;
                 return methodParent.GetParametersNoCopy()[e.Position];
