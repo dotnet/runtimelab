@@ -196,7 +196,7 @@ namespace System.Threading
             get => _managedThreadId.Id;
         }
 
-        partial void ThreadNameChanged(string value)
+        partial void ThreadNameChanged(string? value)
         {
             // TODO: Inform the debugger and the profiler
         }

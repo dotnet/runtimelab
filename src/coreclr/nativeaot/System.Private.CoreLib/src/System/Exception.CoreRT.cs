@@ -201,9 +201,9 @@ namespace System
 
         internal readonly struct DispatchState
         {
-            public readonly IntPtr[] StackTrace;
+            public readonly IntPtr[]? StackTrace;
 
-            public DispatchState(IntPtr[] stackTrace)
+            public DispatchState(IntPtr[]? stackTrace)
             {
                 StackTrace = stackTrace;
             }

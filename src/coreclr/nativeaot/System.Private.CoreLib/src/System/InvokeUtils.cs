@@ -570,7 +570,8 @@ namespace System
             if (index >= parametersLength)
                 throw new System.Reflection.TargetParameterCountException();
 
-            object? incomingParam = argSetupState.parameters![index];
+            Debug.Assert(argSetupState.parameters != null);
+            object? incomingParam = argSetupState.parameters[index];
 
             // Handle default parameters
             if ((incomingParam == System.Reflection.Missing.Value) && paramType == DynamicInvokeParamType.In)
@@ -637,14 +638,14 @@ namespace System
                 paramLookupType = DynamicInvokeParamLookupType.IndexIntoObjectArrayReturned;
                 if (argSetupState.binderBundle == null)
                 {
-                    System.Diagnostics.Debug.Assert(object.ReferenceEquals(incomingParam, argSetupState.parameters![index]));
+                    System.Diagnostics.Debug.Assert(object.ReferenceEquals(incomingParam, argSetupState.parameters[index]));
                     return argSetupState.parameters;
                 }
                 else
                 {
-                    if (object.ReferenceEquals(incomingParam, argSetupState.parameters![index]))
+                    if (object.ReferenceEquals(incomingParam, argSetupState.parameters[index]))
                     {
-                        return argSetupState.parameters!;
+                        return argSetupState.parameters;
                     }
                     else
                     {
@@ -652,7 +653,7 @@ namespace System
 
                         if (paramType == DynamicInvokeParamType.Ref)
                         {
-                            argSetupState.parameters![index] = incomingParam;
+                            argSetupState.parameters[index] = incomingParam;
                             return argSetupState.parameters;
                         }
                         else
