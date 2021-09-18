@@ -1081,7 +1081,7 @@ assigningNull:
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            private static Entry LookupInCache(Entry[] cache, ref Key key)
+            private static Entry? LookupInCache(Entry[] cache, ref Key key)
             {
                 int entryIndex = key.CalculateHashCode() & (cache.Length - 1);
                 Entry entry = cache[entryIndex];

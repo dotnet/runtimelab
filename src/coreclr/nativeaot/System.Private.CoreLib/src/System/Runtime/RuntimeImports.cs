@@ -265,7 +265,7 @@ namespace System.Runtime
         // Set object reference into handle.
         [MethodImpl(MethodImplOptions.InternalCall)]
         [RuntimeImport(RuntimeLibrary, "RhHandleSet")]
-        internal static extern void RhHandleSet(IntPtr handle, object value);
+        internal static extern void RhHandleSet(IntPtr handle, object? value);
 
         // Set the secondary object reference into a dependent handle.
         [MethodImpl(MethodImplOptions.InternalCall)]
@@ -292,7 +292,7 @@ namespace System.Runtime
 
         [MethodImpl(MethodImplOptions.InternalCall)]
         [RuntimeImport(RuntimeLibrary, "RhTypeCast_CheckArrayStore")]
-        internal static extern void RhCheckArrayStore(object array, object obj);
+        internal static extern void RhCheckArrayStore(object array, object? obj);
 
         [MethodImpl(MethodImplOptions.InternalCall)]
         [RuntimeImport(RuntimeLibrary, "RhTypeCast_IsInstanceOf")]
@@ -355,9 +355,9 @@ namespace System.Runtime
 
         [MethodImpl(MethodImplOptions.InternalCall)]
         [RuntimeImport(RuntimeLibrary, "RhUnbox")]
-        private static extern unsafe void RhUnbox(object obj, ref byte data, MethodTable* pUnboxToEEType);
+        private static extern unsafe void RhUnbox(object? obj, ref byte data, MethodTable* pUnboxToEEType);
 
-        internal static unsafe void RhUnbox(object obj, ref byte data, EETypePtr pUnboxToEEType)
+        internal static unsafe void RhUnbox(object? obj, ref byte data, EETypePtr pUnboxToEEType)
             => RhUnbox(obj, ref data, pUnboxToEEType.ToPointer());
 
         [MethodImpl(MethodImplOptions.InternalCall)]

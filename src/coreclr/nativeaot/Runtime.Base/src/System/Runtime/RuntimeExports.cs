@@ -227,7 +227,7 @@ namespace System.Runtime
         }
 
         [RuntimeExport("RhUnbox")]
-        public static unsafe void RhUnbox(object obj, ref byte data, MethodTable* pUnboxToEEType)
+        public static unsafe void RhUnbox(object? obj, ref byte data, MethodTable* pUnboxToEEType)
         {
             // When unboxing to a Nullable the input object may be null.
             if (obj == null)

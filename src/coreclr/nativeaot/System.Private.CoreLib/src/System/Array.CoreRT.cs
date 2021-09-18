@@ -581,7 +581,7 @@ namespace System
 
                     object boxedValue = RuntimeImports.RhBox(sourceElementEEType, ref *pSourceElement);
                     if (reliable)
-                        boxedElements[i] = boxedValue;
+                        boxedElements![i] = boxedValue;
                     else
                         RuntimeImports.RhUnbox(boxedValue, ref *pDestinationElement, sourceElementEEType);
 
@@ -601,7 +601,7 @@ namespace System
                     byte* pDestinationElement = pDstArray + (nuint)destinationIndex * cbElementSize;
                     for (int i = 0; i < length; i++)
                     {
-                        RuntimeImports.RhUnbox(boxedElements[i], ref *pDestinationElement, sourceElementEEType);
+                        RuntimeImports.RhUnbox(boxedElements![i], ref *pDestinationElement, sourceElementEEType);
                         pDestinationElement += cbElementSize;
                     }
                 }
@@ -1144,7 +1144,7 @@ namespace System
                 {
                     throw new InvalidCastException(SR.InvalidCast_StoreArrayElement);
                 }
-                Unsafe.As<byte, object>(ref element) = value;
+                Unsafe.As<byte, object?>(ref element) = value;
             }
         }
 

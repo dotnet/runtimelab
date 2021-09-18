@@ -13,7 +13,7 @@ namespace System
 {
     public partial class Exception
     {
-        public MethodBase TargetSite
+        public MethodBase? TargetSite
         {
             get
             {
@@ -26,9 +26,9 @@ namespace System
 
         private IDictionary CreateDataContainer() => new ListDictionaryInternal();
 
-        private string SerializationWatsonBuckets => null;
+        private string? SerializationWatsonBuckets => null;
 
-        private string CreateSourceName() => HasBeenThrown ? "<unknown>" : null;
+        private string? CreateSourceName() => HasBeenThrown ? "<unknown>" : null;
 
         // WARNING: We allow diagnostic tools to directly inspect these three members (_message, _innerException and _HResult)
         // See https://github.com/dotnet/corert/blob/master/Documentation/design-docs/diagnostics/diagnostics-tools-contract.md for more details.
@@ -173,7 +173,7 @@ namespace System
                 Array.Copy(stackTrace, 0, newStackTrace, 0, stackTrace.Length);
                 stackTrace = newStackTrace;
             }
-            return new DispatchState(stackTrace);
+            return new DispatchState(stackTrace!);
         }
 
         internal void RestoreDispatchState(DispatchState DispatchState)

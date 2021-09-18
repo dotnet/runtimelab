@@ -112,7 +112,7 @@ namespace System.Collections.Concurrent
                     // and only one value may exist per key.
                     Debug.Assert(checkedFound);
                     Debug.Assert(object.ReferenceEquals(checkedValue, value));
-                    GC.KeepAlive(value);
+                    GC.KeepAlive(value!);
                 }
             }
 #endif //DEBUG

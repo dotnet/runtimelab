@@ -184,7 +184,7 @@ namespace System.Reflection.Runtime.General
         [DebuggerStepThrough]
         public sealed override object ActivatorCreateInstance(
             [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.NonPublicConstructors)]
-            Type type, BindingFlags bindingAttr, Binder binder, object[] args, CultureInfo culture, object[] activationAttributes)
+            Type type, BindingFlags bindingAttr, Binder? binder, object[]? args, CultureInfo? culture, object[]? activationAttributes)
         {
             return ActivatorImplementation.CreateInstance(type, bindingAttr, binder, args, culture, activationAttributes);
         }

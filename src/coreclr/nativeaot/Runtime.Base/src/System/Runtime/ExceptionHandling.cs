@@ -547,7 +547,7 @@ namespace System.Runtime
                 exceptionToThrow = GetClasslibException(exceptionId, faultingCodeAddress);
             }
 
-            exInfo.Init(exceptionToThrow, instructionFault);
+            exInfo.Init(exceptionToThrow!, instructionFault);
             DispatchEx(ref exInfo._frameIter, ref exInfo, MaxTryRegionIdx);
             FallbackFailFast(RhFailFastReason.InternalError, null);
         }

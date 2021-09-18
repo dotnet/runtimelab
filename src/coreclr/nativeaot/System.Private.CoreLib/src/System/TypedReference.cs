@@ -33,7 +33,7 @@ namespace System
             return new TypedReference(target, offset, type.TypeHandle);
         }
 
-        public static Type GetTargetType(TypedReference value) => Type.GetTypeFromHandle(value._typeHandle);
+        public static Type? GetTargetType(TypedReference value) => Type.GetTypeFromHandle(value._typeHandle);
 
         public static RuntimeTypeHandle TargetTypeToken(TypedReference value)
         {
