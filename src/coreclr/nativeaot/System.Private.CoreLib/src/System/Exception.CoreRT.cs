@@ -173,7 +173,7 @@ namespace System
                 Array.Copy(stackTrace, 0, newStackTrace, 0, stackTrace.Length);
                 stackTrace = newStackTrace;
             }
-            return new DispatchState(stackTrace!);
+            return new DispatchState(stackTrace);
         }
 
         internal void RestoreDispatchState(DispatchState DispatchState)
