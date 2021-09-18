@@ -204,7 +204,7 @@ namespace System
                 throw new ArgumentException(SR.Arg_MustBeType, nameof(elementType));
             while (elementType.IsArray)
             {
-                elementType = elementType.GetElementType();
+                elementType = elementType.GetElementType()!;
             }
             if (elementType.IsByRef || elementType.IsByRefLike)
                 throw new NotSupportedException(SR.NotSupported_ByRefLikeArray);

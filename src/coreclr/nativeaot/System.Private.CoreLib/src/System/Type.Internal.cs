@@ -84,7 +84,7 @@ namespace System
                 // ToString() which contains namespace.
                 Type rootElementType = this;
                 while (rootElementType.HasElementType)
-                    rootElementType = rootElementType.GetElementType();
+                    rootElementType = rootElementType.GetElementType()!;
                 if (rootElementType.IsNested)
                 {
                     string name = InternalNameIfAvailable;

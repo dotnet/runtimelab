@@ -92,11 +92,11 @@ namespace System.Collections.Concurrent
             Debug.Assert(!_lock.IsAcquired, "GetOrAdd called while lock already acquired. A possible cause of this is an Equals or GetHashCode method that causes reentrancy in the table.");
 
             int hashCode = key.GetHashCode();
-            V value;
+            V? value;
             bool found = _container.TryGetValue(key, hashCode, out value);
 #if DEBUG
             {
-                V checkedValue;
+                V? checkedValue;
                 bool checkedFound;
                 // In debug builds, always exercise a locked TryGet (this is a good way to detect deadlock/reentrancy through Equals/GetHashCode()).
                 using (LockHolder.Hold(_lock))
@@ -139,7 +139,7 @@ namespace System.Collections.Concurrent
 
             using (LockHolder.Hold(_lock))
             {
-                V heyIWasHereFirst;
+                V? heyIWasHereFirst;
                 if (_container.TryGetValue(key, hashCode, out heyIWasHereFirst))
                     return heyIWasHereFirst;
                 if (!_container.HasCapacity)

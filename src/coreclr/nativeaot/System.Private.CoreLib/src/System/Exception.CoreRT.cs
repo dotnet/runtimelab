@@ -166,7 +166,7 @@ namespace System
 
         internal DispatchState CaptureDispatchState()
         {
-            IntPtr[] stackTrace = _corDbgStackTrace;
+            IntPtr[]? stackTrace = _corDbgStackTrace;
             if (stackTrace != null)
             {
                 IntPtr[] newStackTrace = new IntPtr[stackTrace.Length];

@@ -1232,7 +1232,7 @@ assigningNull:
                     // Otherwise, keep the current size and just keep flushing the entries round robin
                 }
 
-                Entry[] newCache = null;
+                Entry[]? newCache = null;
                 if (growCache || shrinkCache)
                 {
                     try
