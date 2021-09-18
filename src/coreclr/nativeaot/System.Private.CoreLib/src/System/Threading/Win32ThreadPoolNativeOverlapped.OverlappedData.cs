@@ -11,11 +11,11 @@ namespace System.Threading
         internal class OverlappedData
         {
             internal GCHandle[] _pinnedData;
-            internal IOCompletionCallback _callback;
-            internal object _state;
-            internal ExecutionContext _executionContext;
+            internal IOCompletionCallback? _callback;
+            internal object? _state;
+            internal ExecutionContext? _executionContext;
             internal ThreadPoolBoundHandle _boundHandle;
-            internal PreAllocatedOverlapped _preAllocated;
+            internal PreAllocatedOverlapped? _preAllocated;
             internal bool _completed;
 
             internal void Reset()

@@ -180,8 +180,9 @@ namespace System.Threading
             GC.SuppressFinalize(this);
         }
 
-        private void FinishUnregisteringAsync(object waitObject)
+        private void FinishUnregisteringAsync(object? waitObject)
         {
+            Debug.Assert(waitObject != null);
             FinishUnregistering();
 
             // Signal the provided wait object
