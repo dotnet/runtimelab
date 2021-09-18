@@ -13,8 +13,8 @@ namespace System.Threading
     {
         internal class Waiter
         {
-            public Waiter next;
-            public Waiter prev;
+            public Waiter? next;
+            public Waiter? prev;
             public AutoResetEvent ev = new AutoResetEvent(false);
             public bool signalled;
         }

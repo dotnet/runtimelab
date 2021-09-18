@@ -71,7 +71,7 @@ namespace System.Collections.Generic
             }
         }
 
-        public bool TryGetValue(TKey key, out TValue value)
+        public bool TryGetValue(TKey key, out TValue? value)
         {
             value = default(TValue);
             if (key == null)
@@ -219,7 +219,7 @@ namespace System.Collections.Generic
             public Entry? m_next;
         }
 
-        private Entry[] _buckets;
+        private Entry?[] _buckets;
         private int _numEntries;
         private int _version;
 

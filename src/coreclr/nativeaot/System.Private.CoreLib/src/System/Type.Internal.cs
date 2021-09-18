@@ -30,7 +30,7 @@ namespace System
         /// <summary>
         /// Return Type.Name if sufficient metadata is available to do so - otherwise return null and set "rootCauseForFailure" to an object to pass to MissingMetadataException.
         /// </summary>
-        public virtual string InternalGetNameIfAvailable(ref Type rootCauseForFailure) => Name;
+        public virtual string InternalGetNameIfAvailable(ref Type? rootCauseForFailure) => Name;
 
         /// <summary>
         /// Return Type.Name if sufficient metadata is available to do so - otherwise return a default (non-null) string.

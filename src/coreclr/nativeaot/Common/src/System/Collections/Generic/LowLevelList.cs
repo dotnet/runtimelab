@@ -40,7 +40,7 @@ namespace System.Collections.Generic
     {
         private const int _defaultCapacity = 4;
 
-        protected T[] _items;
+        protected T?[] _items;
         protected int _size;
         protected int _version;
 
@@ -502,7 +502,7 @@ namespace System.Collections.Generic
             private LowLevelListWithIList<T> _list;
             private int _index;
             private int _version;
-            private T _current;
+            private T? _current;
 
             internal Enumerator(LowLevelListWithIList<T> list)
             {
@@ -545,7 +545,7 @@ namespace System.Collections.Generic
             {
                 get
                 {
-                    return _current;
+                    return _current!;
                 }
             }
 

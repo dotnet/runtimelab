@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 using System.Runtime.CompilerServices;
 
@@ -668,11 +669,11 @@ namespace System.Runtime
 
         [MethodImplAttribute(MethodImplOptions.InternalCall)]
         [RuntimeImport(RuntimeLibrary, "RhpCheckedLockCmpXchg")]
-        internal static extern object InterlockedCompareExchange(ref object location1, object value, object comparand);
+        internal static extern object InterlockedCompareExchange(ref object? location1, object? value, object? comparand);
 
         [MethodImplAttribute(MethodImplOptions.InternalCall)]
         [RuntimeImport(RuntimeLibrary, "RhpCheckedXchg")]
-        internal static extern object InterlockedExchange(ref object location1, object value);
+        internal static extern object InterlockedExchange([NotNullIfNotNull("value")] ref object? location1, object? value);
 
         [MethodImplAttribute(MethodImplOptions.InternalCall)]
         [RuntimeImport(RuntimeLibrary, "RhpMemoryBarrier")]

@@ -19,8 +19,8 @@ namespace System.Threading
         // Bits of _threadState that are returned by the ThreadState property
         private const ThreadState PublicThreadStateMask = (ThreadState)0x1FF;
 
-        internal ExecutionContext _executionContext;
-        internal SynchronizationContext _synchronizationContext;
+        internal ExecutionContext? _executionContext;
+        internal SynchronizationContext? _synchronizationContext;
 
         private volatile int _threadState = (int)ThreadState.Unstarted;
         private ThreadPriority _priority;

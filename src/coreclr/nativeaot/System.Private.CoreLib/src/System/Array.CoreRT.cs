@@ -443,15 +443,15 @@ namespace System
             }
 
             bool reverseCopy = ((object)sourceArray == (object)destinationArray) && (sourceIndex < destinationIndex);
-            ref object refDestinationArray = ref Unsafe.As<byte, object>(ref MemoryMarshal.GetArrayDataReference(destinationArray));
-            ref object refSourceArray = ref Unsafe.As<byte, object>(ref MemoryMarshal.GetArrayDataReference(sourceArray));
+            ref object? refDestinationArray = ref Unsafe.As<byte, object?>(ref MemoryMarshal.GetArrayDataReference(destinationArray));
+            ref object? refSourceArray = ref Unsafe.As<byte, object?>(ref MemoryMarshal.GetArrayDataReference(sourceArray));
             if (reverseCopy)
             {
                 sourceIndex += length - 1;
                 destinationIndex += length - 1;
                 for (int i = 0; i < length; i++)
                 {
-                    object value = Unsafe.Add(ref refSourceArray, sourceIndex - i);
+                    object? value = Unsafe.Add(ref refSourceArray, sourceIndex - i);
                     if (mustCastCheckEachElement && value != null && RuntimeImports.IsInstanceOf(destinationElementEEType, value) == null)
                         throw new InvalidCastException(SR.InvalidCast_DownCastArrayElement);
                     Unsafe.Add(ref refDestinationArray, destinationIndex - i) = value;
@@ -461,7 +461,7 @@ namespace System
             {
                 for (int i = 0; i < length; i++)
                 {
-                    object value = Unsafe.Add(ref refSourceArray, sourceIndex + i);
+                    object? value = Unsafe.Add(ref refSourceArray, sourceIndex + i);
                     if (mustCastCheckEachElement && value != null && RuntimeImports.IsInstanceOf(destinationElementEEType, value) == null)
                         throw new InvalidCastException(SR.InvalidCast_DownCastArrayElement);
                     Unsafe.Add(ref refDestinationArray, destinationIndex + i) = value;

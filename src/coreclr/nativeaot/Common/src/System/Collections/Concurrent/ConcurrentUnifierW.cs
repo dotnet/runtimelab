@@ -176,7 +176,7 @@ namespace System.Collections.Concurrent
                 _owner = owner;
             }
 
-            public bool TryGetValue(K key, int hashCode, out V value)
+            public bool TryGetValue(K key, int hashCode, out V? value)
             {
                 // Lock acquistion NOT required.
 

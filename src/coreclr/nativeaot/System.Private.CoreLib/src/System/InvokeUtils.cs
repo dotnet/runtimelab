@@ -308,11 +308,11 @@ namespace System
         public struct ArgSetupState
         {
             public bool fComplete;
-            public object[] parameters;
+            public object[]? parameters;
             public object[] nullableCopyBackObjects;
             public int curIndex;
             public object targetMethodOrDelegate;
-            public BinderBundle binderBundle;
+            public BinderBundle? binderBundle;
             public object[] customBinderProvidedParameters;
         }
 
@@ -352,8 +352,8 @@ namespace System
             IntPtr dynamicInvokeHelperMethod,
             IntPtr dynamicInvokeHelperGenericDictionary,
             object targetMethodOrDelegate,
-            object[] parameters,
-            BinderBundle binderBundle,
+            object[]? parameters,
+            BinderBundle? binderBundle,
             bool wrapInTargetInvocationException,
             bool methodToCallIsThisCall = true)
         {
