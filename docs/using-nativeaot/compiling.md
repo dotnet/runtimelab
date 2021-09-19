@@ -12,7 +12,7 @@ To use Native AOT with your project, you need to add a reference to the ILCompil
 
 If your project has no `nuget.config` file, it may be created by running
 ```bash
-> dotnet new nuget
+> dotnet new nugetconfig
 ```
 
 from the project's root directory. New package sources must be added after the `<clear />` element if you decide to keep it.
