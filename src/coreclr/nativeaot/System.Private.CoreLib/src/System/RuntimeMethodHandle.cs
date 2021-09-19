@@ -50,11 +50,11 @@ namespace System
                 return false;
             if (genericArgs1 != null)
             {
-                if (genericArgs1.Length != genericArgs2.Length)
+                if (genericArgs1.Length != genericArgs2!.Length)
                     return false;
                 for (int i = 0; i < genericArgs1.Length; i++)
                 {
-                    if (!genericArgs1[i].Equals(genericArgs2[i]))
+                    if (!genericArgs1[i].Equals(genericArgs2![i]))
                         return false;
                 }
             }

@@ -99,7 +99,7 @@ namespace Internal.DeveloperExperience
             }
         }
 
-        public virtual bool OnContractFailure(string stackTrace, ContractFailureKind contractFailureKind, string displayMessage, string userMessage, string conditionText, Exception innerException)
+        public virtual bool OnContractFailure(string? stackTrace, ContractFailureKind contractFailureKind, string? displayMessage, string userMessage, string conditionText, Exception innerException)
         {
             Debug.WriteLine("Assertion failed: " + (displayMessage == null ? "" : displayMessage));
             if (Debugger.IsAttached)

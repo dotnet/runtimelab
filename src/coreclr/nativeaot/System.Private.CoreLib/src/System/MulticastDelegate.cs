@@ -91,7 +91,7 @@ namespace System
 
         public override sealed int GetHashCode()
         {
-            Delegate[] invocationList = m_helperObject as Delegate[];
+            Delegate[]? invocationList = m_helperObject as Delegate[];
             if (invocationList == null)
             {
                 return base.GetHashCode();
@@ -120,7 +120,7 @@ namespace System
                 return (d1 is null) ? true : false;
             }
 
-            return ReferenceEquals(d2, d1) ? true : d2.Equals((object)d1);
+            return ReferenceEquals(d2, d1) ? true : d2.Equals((object?)d1);
         }
 
         // Force inline as the true/false ternary takes it above ALWAYS_INLINE size even though the asm ends up smaller
@@ -203,14 +203,14 @@ namespace System
             }
 
             MulticastDelegate dFollow = (MulticastDelegate)follow;
-            Delegate[] resultList;
+            Delegate[]? resultList;
             int followCount = 1;
-            Delegate[] followList = dFollow.m_helperObject as Delegate[];
+            Delegate[]? followList = dFollow.m_helperObject as Delegate[];
             if (followList != null)
                 followCount = (int)dFollow.m_extraFunctionPointerOrData;
 
             int resultCount;
-            Delegate[] invocationList = m_helperObject as Delegate[];
+            Delegate[]? invocationList = m_helperObject as Delegate[];
             if (invocationList == null)
             {
                 resultCount = 1 + followCount;
@@ -316,13 +316,13 @@ namespace System
             // There is a special case were we are removing using a delegate as
             //    the value we need to check for this case
             //
-            MulticastDelegate v = value as MulticastDelegate;
+            MulticastDelegate? v = value as MulticastDelegate;
 
             if (v is null)
                 return this;
             if (v.m_helperObject as Delegate[] == null)
             {
-                Delegate[] invocationList = m_helperObject as Delegate[];
+                Delegate[]? invocationList = m_helperObject as Delegate[];
                 if (invocationList == null)
                 {
                     // they are both not real Multicast
@@ -352,7 +352,7 @@ namespace System
             }
             else
             {
-                Delegate[] invocationList = m_helperObject as Delegate[];
+                Delegate[]? invocationList = m_helperObject as Delegate[];
                 if (invocationList != null)
                 {
                     int invocationCount = (int)m_extraFunctionPointerOrData;
@@ -387,7 +387,7 @@ namespace System
         public sealed override Delegate[] GetInvocationList()
         {
             Delegate[] del;
-            Delegate[] invocationList = m_helperObject as Delegate[];
+            Delegate[]? invocationList = m_helperObject as Delegate[];
             if (invocationList == null)
             {
                 del = new Delegate[1];

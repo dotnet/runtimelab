@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 using System.Runtime.CompilerServices;
 
@@ -264,7 +265,7 @@ namespace System.Runtime
         // Set object reference into handle.
         [MethodImpl(MethodImplOptions.InternalCall)]
         [RuntimeImport(RuntimeLibrary, "RhHandleSet")]
-        internal static extern void RhHandleSet(IntPtr handle, object value);
+        internal static extern void RhHandleSet(IntPtr handle, object? value);
 
         // Set the secondary object reference into a dependent handle.
         [MethodImpl(MethodImplOptions.InternalCall)]
@@ -291,7 +292,7 @@ namespace System.Runtime
 
         [MethodImpl(MethodImplOptions.InternalCall)]
         [RuntimeImport(RuntimeLibrary, "RhTypeCast_CheckArrayStore")]
-        internal static extern void RhCheckArrayStore(object array, object obj);
+        internal static extern void RhCheckArrayStore(object array, object? obj);
 
         [MethodImpl(MethodImplOptions.InternalCall)]
         [RuntimeImport(RuntimeLibrary, "RhTypeCast_IsInstanceOf")]
@@ -354,9 +355,9 @@ namespace System.Runtime
 
         [MethodImpl(MethodImplOptions.InternalCall)]
         [RuntimeImport(RuntimeLibrary, "RhUnbox")]
-        private static extern unsafe void RhUnbox(object obj, ref byte data, MethodTable* pUnboxToEEType);
+        private static extern unsafe void RhUnbox(object? obj, ref byte data, MethodTable* pUnboxToEEType);
 
-        internal static unsafe void RhUnbox(object obj, ref byte data, EETypePtr pUnboxToEEType)
+        internal static unsafe void RhUnbox(object? obj, ref byte data, EETypePtr pUnboxToEEType)
             => RhUnbox(obj, ref data, pUnboxToEEType.ToPointer());
 
         [MethodImpl(MethodImplOptions.InternalCall)]
@@ -668,11 +669,11 @@ namespace System.Runtime
 
         [MethodImplAttribute(MethodImplOptions.InternalCall)]
         [RuntimeImport(RuntimeLibrary, "RhpCheckedLockCmpXchg")]
-        internal static extern object InterlockedCompareExchange(ref object location1, object value, object comparand);
+        internal static extern object InterlockedCompareExchange(ref object? location1, object? value, object? comparand);
 
         [MethodImplAttribute(MethodImplOptions.InternalCall)]
         [RuntimeImport(RuntimeLibrary, "RhpCheckedXchg")]
-        internal static extern object InterlockedExchange(ref object location1, object value);
+        internal static extern object InterlockedExchange([NotNullIfNotNull("value")] ref object? location1, object? value);
 
         [MethodImplAttribute(MethodImplOptions.InternalCall)]
         [RuntimeImport(RuntimeLibrary, "RhpMemoryBarrier")]

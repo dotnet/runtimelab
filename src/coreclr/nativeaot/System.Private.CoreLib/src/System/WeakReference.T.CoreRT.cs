@@ -44,7 +44,7 @@ namespace System
             GC.KeepAlive(this);
         }
 
-        private T Target
+        private T? Target
         {
             get
             {
@@ -100,7 +100,7 @@ namespace System
         /// go from the managed weak reference to the actual native object even though the managed counterpart might have been collected.
         /// </summary>
         /// <param name="target"></param>
-        private void TrySetComTarget(object target)
+        private void TrySetComTarget(object? target)
         {
 #if ENABLE_WINRT
             WinRTInteropCallbacks callbacks = WinRTInterop.UnsafeCallbacks;
