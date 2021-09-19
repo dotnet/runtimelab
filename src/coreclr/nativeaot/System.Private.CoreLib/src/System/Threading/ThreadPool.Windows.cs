@@ -182,11 +182,10 @@ namespace System.Threading
 
         private void FinishUnregisteringAsync(object? waitObject)
         {
-            Debug.Assert(waitObject != null);
             FinishUnregistering();
 
             // Signal the provided wait object
-            SafeWaitHandle safeWaitHandle = (SafeWaitHandle)waitObject;
+            SafeWaitHandle? safeWaitHandle = (SafeWaitHandle?)waitObject;
 
             if ((safeWaitHandle != null) && !safeWaitHandle.IsInvalid)
             {
