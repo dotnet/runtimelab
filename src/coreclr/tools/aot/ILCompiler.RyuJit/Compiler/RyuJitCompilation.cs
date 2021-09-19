@@ -73,7 +73,7 @@ namespace ILCompiler
             if ((_compilationOptions & RyuJitCompilationOptions.ControlFlowGuardAnnotations) != 0)
                 options |= ObjectWritingOptions.ControlFlowGuard;
 
-            ObjectWriter.EmitObject(outputFile, nodes, NodeFactory, options, dumper);
+            ObjectWriter.EmitObject(outputFile, nodes, NodeFactory, options, dumper, _logger);
         }
 
         protected override void ComputeDependencyNodeDependencies(List<DependencyNodeCore<NodeFactory>> obj)

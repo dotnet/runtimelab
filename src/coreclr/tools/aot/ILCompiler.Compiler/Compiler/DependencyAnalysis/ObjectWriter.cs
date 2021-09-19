@@ -961,7 +961,7 @@ namespace ILCompiler.DependencyAnalysis
             }
         }
 
-        public static void EmitObject(string objectFilePath, IEnumerable<DependencyNode> nodes, NodeFactory factory, ObjectWritingOptions options, IObjectDumper dumper)
+        public static void EmitObject(string objectFilePath, IReadOnlyCollection<DependencyNode> nodes, NodeFactory factory, ObjectWritingOptions options, IObjectDumper dumper, Logger logger)
         {
             ObjectWriter objectWriter = new ObjectWriter(objectFilePath, factory, options);
             bool succeeded = false;
@@ -982,11 +982,27 @@ namespace ILCompiler.DependencyAnalysis
                 }
                 objectWriter.SetCodeSectionAttribute(managedCodeSection);
 
+                ProgressReporter progressReporter = default;
+                if (logger.IsVerbose)
+                {
+                    int count = 0;
+                    foreach (var node in nodes)
+                        if (node is ObjectNode)
+                            count++;
+
+                    logger.Writer.WriteLine($"Writing {count} object nodes...");
+
+                    progressReporter = new ProgressReporter(logger, count);
+                }
+
                 foreach (DependencyNode depNode in nodes)
                 {
                     ObjectNode node = depNode as ObjectNode;
                     if (node == null)
                         continue;
+
+                    if (logger.IsVerbose)
+                        progressReporter.LogProgress();
 
                     if (node.ShouldSkipEmittingObjectNode(factory))
                         continue;
@@ -1151,6 +1167,9 @@ namespace ILCompiler.DependencyAnalysis
                     }
                 }
 
+                if (logger.IsVerbose)
+                    logger.Writer.WriteLine($"Finalizing output to '{objectFilePath}'...");
+
                 objectWriter.EmitDebugModuleInfo();
 
                 succeeded = true;
@@ -1264,6 +1283,34 @@ namespace ILCompiler.DependencyAnalysis
         private enum SymbolRefFlags
         {
             AddressTakenFunction = 0x0001,
+        }
+
+        private struct ProgressReporter
+        {
+            private readonly Logger _logger;
+            private readonly int _increment;
+            private int _current;
+
+            // Will report progress every (100 / 10) = 10%
+            private const int Steps = 10;
+
+            public ProgressReporter(Logger logger, int total)
+            {
+                _logger = logger;
+                _increment = total / Steps;
+                _current = 0;
+            }
+
+            public void LogProgress()
+            {
+                _current++;
+
+                int adjusted = _current + Steps - 1;
+                if ((adjusted % _increment) == 0)
+                {
+                    _logger.Writer.WriteLine($"{(adjusted / _increment) * (100 / Steps)}%...");
+                }
+            }
         }
     }
 
