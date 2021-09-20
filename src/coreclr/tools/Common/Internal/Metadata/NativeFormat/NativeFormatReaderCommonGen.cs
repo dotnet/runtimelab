@@ -36,15 +36,6 @@ namespace Internal.Metadata.NativeFormat
         SHA1 = 0x8004,
     } // AssemblyHashAlgorithm
 
-    [Flags]
-    public enum FixedArgumentAttributes : byte
-    {
-        None = 0x0,
-
-        /// Values should be boxed as Object
-        Boxed = 0x1,
-    } // FixedArgumentAttributes
-
     public enum GenericParameterKind : byte
     {
         /// Represents a type parameter for a generic type.
@@ -102,34 +93,33 @@ namespace Internal.Metadata.NativeFormat
         Event = 0x22,
         Field = 0x23,
         FieldSignature = 0x24,
-        FixedArgument = 0x25,
-        FunctionPointerSignature = 0x26,
-        GenericParameter = 0x27,
-        MemberReference = 0x28,
-        Method = 0x29,
-        MethodImpl = 0x2a,
-        MethodInstantiation = 0x2b,
-        MethodSemantics = 0x2c,
-        MethodSignature = 0x2d,
-        MethodTypeVariableSignature = 0x2e,
-        ModifiedType = 0x2f,
-        NamedArgument = 0x30,
-        NamespaceDefinition = 0x31,
-        NamespaceReference = 0x32,
-        Parameter = 0x33,
-        PointerSignature = 0x34,
-        Property = 0x35,
-        PropertySignature = 0x36,
-        QualifiedField = 0x37,
-        QualifiedMethod = 0x38,
-        SZArraySignature = 0x39,
-        ScopeDefinition = 0x3a,
-        ScopeReference = 0x3b,
-        TypeDefinition = 0x3c,
-        TypeForwarder = 0x3d,
-        TypeInstantiationSignature = 0x3e,
-        TypeReference = 0x3f,
-        TypeSpecification = 0x40,
-        TypeVariableSignature = 0x41,
+        FunctionPointerSignature = 0x25,
+        GenericParameter = 0x26,
+        MemberReference = 0x27,
+        Method = 0x28,
+        MethodImpl = 0x29,
+        MethodInstantiation = 0x2a,
+        MethodSemantics = 0x2b,
+        MethodSignature = 0x2c,
+        MethodTypeVariableSignature = 0x2d,
+        ModifiedType = 0x2e,
+        NamedArgument = 0x2f,
+        NamespaceDefinition = 0x30,
+        NamespaceReference = 0x31,
+        Parameter = 0x32,
+        PointerSignature = 0x33,
+        Property = 0x34,
+        PropertySignature = 0x35,
+        QualifiedField = 0x36,
+        QualifiedMethod = 0x37,
+        SZArraySignature = 0x38,
+        ScopeDefinition = 0x39,
+        ScopeReference = 0x3a,
+        TypeDefinition = 0x3b,
+        TypeForwarder = 0x3c,
+        TypeInstantiationSignature = 0x3d,
+        TypeReference = 0x3e,
+        TypeSpecification = 0x3f,
+        TypeVariableSignature = 0x40,
     } // HandleType
 } // Internal.Metadata.NativeFormat

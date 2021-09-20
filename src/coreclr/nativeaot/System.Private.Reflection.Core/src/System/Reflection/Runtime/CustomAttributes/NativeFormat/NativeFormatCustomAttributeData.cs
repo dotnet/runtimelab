@@ -106,55 +106,48 @@ namespace System.Reflection.Runtime.CustomAttributes.NativeFormat
         internal sealed override IList<CustomAttributeTypedArgument> GetConstructorArguments(bool throwIfMissingMetadata)
         {
             int index = 0;
-            Handle[] lazyCtorTypeHandles = null;
-            LowLevelListWithIList<CustomAttributeTypedArgument> customAttributeTypedArguments = new LowLevelListWithIList<CustomAttributeTypedArgument>();
 
-            foreach (FixedArgumentHandle fixedArgumentHandle in _customAttribute.FixedArguments)
+            HandleCollection parameterTypeSignatureHandles;
+            HandleType handleType = _customAttribute.Constructor.HandleType;
+            switch (handleType)
             {
-                CustomAttributeTypedArgument customAttributeTypedArgument =
-                    ParseFixedArgument(
-                        _reader,
-                        fixedArgumentHandle,
-                        throwIfMissingMetadata,
-                        delegate
-                        {
-                            // If we got here, the custom attribute blob lacked type information (this is actually the typical case.) We must fallback to
-                            // parsing the constructor's signature to get the type info.
-                            if (lazyCtorTypeHandles == null)
-                            {
-                                HandleCollection parameterTypeSignatureHandles;
-                                HandleType handleType = _customAttribute.Constructor.HandleType;
-                                switch (handleType)
-                                {
-                                    case HandleType.QualifiedMethod:
-                                        parameterTypeSignatureHandles = _customAttribute.Constructor.ToQualifiedMethodHandle(_reader).GetQualifiedMethod(_reader).Method.GetMethod(_reader).Signature.GetMethodSignature(_reader).Parameters;
-                                        break;
+                case HandleType.QualifiedMethod:
+                    parameterTypeSignatureHandles = _customAttribute.Constructor.ToQualifiedMethodHandle(_reader).GetQualifiedMethod(_reader).Method.GetMethod(_reader).Signature.GetMethodSignature(_reader).Parameters;
+                    break;
 
-                                    case HandleType.MemberReference:
-                                        parameterTypeSignatureHandles = _customAttribute.Constructor.ToMemberReferenceHandle(_reader).GetMemberReference(_reader).Signature.ToMethodSignatureHandle(_reader).GetMethodSignature(_reader).Parameters;
-                                        break;
-                                    default:
-                                        throw new BadImageFormatException();
-                                }
-                                lazyCtorTypeHandles = parameterTypeSignatureHandles.ToArray();
-                            }
-                            Handle typeHandle = lazyCtorTypeHandles[index];
-                            Exception exception = null;
-                            RuntimeTypeInfo argumentType = typeHandle.TryResolve(_reader, new TypeContext(null, null), ref exception);
-                            if (argumentType == null)
-                            {
-                                if (throwIfMissingMetadata)
-                                    throw exception;
-                                return null;
-                            }
-                            return argumentType;
-                        }
-                );
+                case HandleType.MemberReference:
+                    parameterTypeSignatureHandles = _customAttribute.Constructor.ToMemberReferenceHandle(_reader).GetMemberReference(_reader).Signature.ToMethodSignatureHandle(_reader).GetMethodSignature(_reader).Parameters;
+                    break;
+                default:
+                    throw new BadImageFormatException();
+            }
+            Handle[] ctorTypeHandles = parameterTypeSignatureHandles.ToArray();
 
-                if (customAttributeTypedArgument.ArgumentType == null)
+            LowLevelListWithIList<CustomAttributeTypedArgument> customAttributeTypedArguments = new LowLevelListWithIList<CustomAttributeTypedArgument>();
+            foreach (Handle fixedArgumentHandle in _customAttribute.FixedArguments)
+            {
+                Handle typeHandle = ctorTypeHandles[index];
+                Exception exception = null;
+                RuntimeTypeInfo argumentType = typeHandle.TryResolve(_reader, new TypeContext(null, null), ref exception);
+                if (argumentType == null)
                 {
-                    Debug.Assert(!throwIfMissingMetadata);
+                    if (throwIfMissingMetadata)
+                        throw exception;
                     return null;
+                }
+
+                Exception e = fixedArgumentHandle.TryParseConstantValue(_reader, out object value);
+                CustomAttributeTypedArgument customAttributeTypedArgument;
+                if (e != null)
+                {
+                    if (throwIfMissingMetadata)
+                        throw e;
+                    else
+                        return null;
+                }
+                else
+                {
+                    customAttributeTypedArgument = WrapInCustomAttributeTypedArgument(value, argumentType);
                 }
 
                 customAttributeTypedArguments.Add(customAttributeTypedArgument);
@@ -175,23 +168,27 @@ namespace System.Reflection.Runtime.CustomAttributes.NativeFormat
                 NamedArgument namedArgument = namedArgumentHandle.GetNamedArgument(_reader);
                 string memberName = namedArgument.Name.GetString(_reader);
                 bool isField = (namedArgument.Flags == NamedArgumentMemberKind.Field);
-                CustomAttributeTypedArgument typedValue =
-                    ParseFixedArgument(
-                        _reader,
-                        namedArgument.Value,
-                        throwIfMissingMetadata,
-                        delegate
-                        {
-                            // We got here because the custom attribute blob did not inclue type information. For named arguments, this is considered illegal metadata
-                            // (ECMA always includes type info for named arguments.)
-                            throw new BadImageFormatException();
-                        }
-                );
-                if (typedValue.ArgumentType == null)
+
+                Exception exception = null;
+                RuntimeTypeInfo argumentType = namedArgument.Type.TryResolve(_reader, new TypeContext(null, null), ref exception);
+                if (argumentType == null)
                 {
-                    Debug.Assert(!throwIfMissingMetadata);
-                    return null;
+                    if (throwIfMissingMetadata)
+                        throw exception;
+                    else
+                        return null;
                 }
+
+                object value;
+                Exception e = namedArgument.Value.TryParseConstantValue(_reader, out value);
+                if (e != null)
+                {
+                    if (throwIfMissingMetadata)
+                        throw e;
+                    else
+                        return null;
+                }
+                CustomAttributeTypedArgument typedValue = WrapInCustomAttributeTypedArgument(value, argumentType);
 
                 customAttributeNamedArguments.Add(CreateCustomAttributeNamedArgument(this.AttributeType, memberName, isField, typedValue));
             }
@@ -216,49 +213,6 @@ namespace System.Reflection.Runtime.CustomAttributes.NativeFormat
         }
 
         // Equals/GetHashCode no need to override (they just implement reference equality but desktop never unified these things.)
-
-        //
-        // Helper for parsing custom attribute arguments.
-        //
-        // If throwIfMissingMetadata is false, returns default(CustomAttributeTypedArgument) rather than throwing a MissingMetadataException.
-        //
-        private CustomAttributeTypedArgument ParseFixedArgument(MetadataReader reader, FixedArgumentHandle fixedArgumentHandle, bool throwIfMissingMetadata, Func<RuntimeTypeInfo> getTypeFromConstructor)
-        {
-            FixedArgument fixedArgument = fixedArgumentHandle.GetFixedArgument(reader);
-            RuntimeTypeInfo argumentType = null;
-            if (fixedArgument.Type.IsNull(reader))
-            {
-                argumentType = getTypeFromConstructor();
-                if (argumentType == null)
-                {
-                    Debug.Assert(!throwIfMissingMetadata);
-                    return default(CustomAttributeTypedArgument);
-                }
-            }
-            else
-            {
-                Exception exception = null;
-                argumentType = fixedArgument.Type.TryResolve(reader, new TypeContext(null, null), ref exception);
-                if (argumentType == null)
-                {
-                    if (throwIfMissingMetadata)
-                        throw exception;
-                    else
-                        return default(CustomAttributeTypedArgument);
-                }
-            }
-
-            object value;
-            Exception e = fixedArgument.Value.TryParseConstantValue(reader, out value);
-            if (e != null)
-            {
-                if (throwIfMissingMetadata)
-                    throw e;
-                else
-                    return default(CustomAttributeTypedArgument);
-            }
-            return WrapInCustomAttributeTypedArgument(value, argumentType);
-        }
 
         private readonly MetadataReader _reader;
         private readonly CustomAttribute _customAttribute;
