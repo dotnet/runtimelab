@@ -1299,6 +1299,7 @@ namespace System.Text.RegularExpressions.Tests
                 yield return new object[] { "[a-z]", "", options, "abcde", 1000, 200 };
                 yield return new object[] { "[a-e]*", "$", options, "abcde", 100, 20 };
                 yield return new object[] { "[a-d]?[a-e]?[a-f]?[a-g]?[a-h]?", "$", options, "abcda", 20, 4 };
+                yield return new object[] { "(a|A)", "", options, "aAaAa", 1000, 200 };
             }
         }
         [Theory]
