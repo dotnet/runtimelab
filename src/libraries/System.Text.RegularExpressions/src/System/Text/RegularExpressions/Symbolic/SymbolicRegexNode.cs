@@ -14,11 +14,6 @@ namespace System.Text.RegularExpressions.Symbolic
     {
         internal const string EmptyCharClass = "[]";
 
-        // Limit the maximum prefix length in the NonBacktracking case to 1000
-        // TODO: alternative is to rewrite SymbolicRegexNode.GetPrefixSequence
-        // to avoid deep recursion
-        internal const int MaxPrefixLength = 1000; // RegexBoyerMoore.MaxLimit;
-
         internal readonly SymbolicRegexBuilder<S> _builder;
         internal readonly SymbolicRegexKind _kind;
         internal readonly int _lower;
@@ -937,7 +932,7 @@ namespace System.Text.RegularExpressions.Symbolic
                     return;
 
                 case SymbolicRegexKind.NWBAnchor:
-                   sb.Append("\\B");
+                    sb.Append("\\B");
                     return;
 
                 case SymbolicRegexKind.EndAnchorZ:
@@ -1250,83 +1245,139 @@ namespace System.Text.RegularExpressions.Symbolic
         /// </summary>
         internal string GetFixedPrefix(CharSetSolver css, string culture, out bool ignoreCase)
         {
-            StringBuilder singletonsPrefix = new();
-            StringBuilder ignorecasePrefix = new();
-
-            BDD[] bdds = Array.ConvertAll(GetPrefix(), p => _builder._solver.ConvertToCharSet(css, p));
-
-            for (int i = 0; i < bdds.Length && css.IsSingleton(bdds[i]); i++)
+            ignoreCase = false;
+            StringBuilder prefix = new();
+            bool doneWithoutIgnoreCase = false;
+            bool doneWithIgnoreCase = false;
+            foreach (S x in GetPrefixSequence())
             {
-                singletonsPrefix.Append((char)bdds[i].GetMin());
+                BDD bdd = _builder._solver.ConvertToCharSet(css, x);
+                char character = (char)bdd.GetMin();
+                // Check if the prefix extends without ignore case: the set is a single character
+                if (!doneWithoutIgnoreCase && !css.IsSingleton(bdd))
+                {
+                    doneWithoutIgnoreCase = true;
+                }
+                if (!doneWithIgnoreCase)
+                {
+                    // Check if the prefix extends with ignore case: ignoring case doesn't change the set
+                    if (css.ApplyIgnoreCase(css.CharConstraint(character), culture).Equals(bdd))
+                    {
+                        // Turn ignoreCase on when the prefix extends only under ignore case
+                        if (doneWithoutIgnoreCase)
+                        {
+                            ignoreCase = true;
+                        }
+                    }
+                    else
+                    {
+                        doneWithIgnoreCase = true;
+                    }
+                }
+                // Append the character when the prefix extends in either of the ways
+                if (!doneWithoutIgnoreCase || !doneWithIgnoreCase)
+                    prefix.Append(character);
+                else
+                    break;
             }
+            return prefix.ToString();
+        }
 
-            for (int i = 0; i < bdds.Length && css.ApplyIgnoreCase(css.CharConstraint((char)bdds[i].GetMin()), culture).Equals(bdds[i]); i++)
-            {
-                ignorecasePrefix.Append((char)bdds[i].GetMin());
-            }
+        private IEnumerable<S> GetPrefixSequence()
+        {
+            List<SymbolicRegexNode<S>> paths = new();
+            HashSet<SymbolicRegexNode<S>> nextPaths = new();
 
-            // Return the longer of the two prefixes, prefer the case-sensitive setting
-            if (singletonsPrefix.Length >= ignorecasePrefix.Length)
+            paths.Add(this);
+            while (true)
             {
-                ignoreCase = false;
-                return singletonsPrefix.ToString();
-            }
-            else
-            {
-                ignoreCase = true;
-                return ignorecasePrefix.ToString();
+                bool done = false;
+                Debug.Assert(paths.Count > 0, "The generator should have ended when any path fails to extend.");
+                // Generate the next set from one path
+                S next;
+                if (!GetNextPrefixSet(ref paths, ref nextPaths, ref done, out next))
+                {
+                    // A path didn't have a next set as supported by this algorithm
+                    yield break;
+                }
+                while (paths.Count > 0)
+                {
+                    // For all other paths check that they produce the same set
+                    S newSet;
+                    if (!GetNextPrefixSet(ref paths, ref nextPaths, ref done, out newSet) || !newSet.Equals(next))
+                    {
+                        // Either a path didn't have a next set as supported by this algorithm, or the next set was not equal
+                        yield break;
+                    }
+                }
+                // At this point all paths generated equal next sets
+                yield return next;
+                if (done)
+                {
+                    // Some path had no continuation, end the prefix
+                    yield break;
+                }
+                else
+                {
+                    Debug.Assert(paths.Count == 0, "Not all paths were considered for next set.");
+                    paths.AddRange(nextPaths);
+                    nextPaths.Clear();
+                }
             }
         }
 
-        internal S[] GetPrefix() => GetPrefixSequence(ImmutableList<S>.Empty, MaxPrefixLength).ToArray();
-
-        // TODO: nonrecusrive to avoid DEEP RECURSION, in particular with Concat, and smarter in not doing unnecessary work
-        // stop computing a candidate list when encountering a predicate that is neither a singleton nor closed under ignore-case
-        private ImmutableList<S> GetPrefixSequence(ImmutableList<S> pref, int lengthBound)
+        private bool GetNextPrefixSet(ref List<SymbolicRegexNode<S>> paths, ref HashSet<SymbolicRegexNode<S>> nextPaths, ref bool done, out S set)
         {
-            if (lengthBound == 0)
+            while (paths.Count > 0)
             {
-                return pref;
-            }
-
-            switch (_kind)
-            {
-                case SymbolicRegexKind.Singleton:
-                    Debug.Assert(_set is not null);
-                    return pref.Add(_set);
-
-                case SymbolicRegexKind.Concat:
-                    Debug.Assert(_left is not null && _right is not null);
-                    if (_left._kind == SymbolicRegexKind.Singleton)
-                    {
-                        Debug.Assert(_left._set is not null);
-                        return _right.GetPrefixSequence(pref.Add(_left._set), lengthBound - 1);
-                    }
-                    return pref;
-
-                case SymbolicRegexKind.Or:
-                case SymbolicRegexKind.And:
-                    {
-                        Debug.Assert(_alts is not null);
-
-                        SymbolicRegexSet<S>.Enumerator enumerator = _alts.GetEnumerator();
-                        bool movedNext = enumerator.MoveNext();
-                        Debug.Assert(movedNext, "Expected a minimum of one element");
-                        ImmutableList<S> altsPrefix = enumerator.Current.GetPrefixSequence(ImmutableList<S>.Empty, lengthBound);
-
-                        while (!altsPrefix.IsEmpty && enumerator.MoveNext())
+                SymbolicRegexNode<S> node = paths[paths.Count - 1];
+                paths.RemoveAt(paths.Count - 1);
+                switch (node._kind)
+                {
+                    case SymbolicRegexKind.Singleton:
+                        Debug.Assert(node._set is not null);
+                        set = node._set;
+                        done = true; // No continuation, done after the next set
+                        return true;
+                    case SymbolicRegexKind.Concat:
+                        Debug.Assert(node._left is not null && node._right is not null);
+                        if (!node._left.CanBeNullable)
                         {
-                            ImmutableList<S> p = enumerator.Current.GetPrefixSequence(ImmutableList<S>.Empty, lengthBound);
-                            int prefix_length = altsPrefix.TakeWhile((x, i) => i < p.Count && x.Equals(p[i])).Count();
-                            altsPrefix = altsPrefix.RemoveRange(prefix_length, altsPrefix.Count - prefix_length);
+                            if (node._left.GetFixedLength() == 1)
+                            {
+                                set = node._left.GetStartSet();
+                                // Left side had just one character, can use just right side as path
+                                nextPaths.Add(node._right);
+                                return true;
+                            }
+                            else
+                            {
+                                // Left side may need multiple steps to get through. However, it is safe
+                                // (though not complete) to forget the right side and just expand the path
+                                // for the left side.
+                                paths.Add(node._left);
+                                break;
+                            }
                         }
-
-                        return pref.AddRange(altsPrefix);
-                    }
-
-                default:
-                    return pref;
+                        else
+                        {
+                            // Left side may be nullable, can't extend the prefix
+                            set = _builder._solver.False; // Not going to be used
+                            return false;
+                        }
+                    case SymbolicRegexKind.Or:
+                    case SymbolicRegexKind.And:
+                        Debug.Assert(node._alts is not null);
+                        // Handle alternatives as separate paths
+                        paths.AddRange(node._alts);
+                        break;
+                    default:
+                        set = _builder._solver.False; // Not going to be used
+                        return false; // Cut prefix immediately for unhandled node
+                }
             }
+            set = _builder._solver.False; // Not going to be used
+            return false;
         }
 
         /// <summary>Get the predicate that covers all elements that make some progress.</summary>
