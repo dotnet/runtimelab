@@ -52,11 +52,7 @@ namespace ILCompiler.Metadata
             result.FixedArguments.Capacity = decodedValue.FixedArguments.Length;
             foreach (var decodedArgument in decodedValue.FixedArguments)
             {
-                var fixedArgument = new FixedArgument
-                {
-                    Type = HandleType(decodedArgument.Type),
-                    Value = HandleCustomAttributeConstantValue(decodedArgument.Type, decodedArgument.Value),
-                };
+                var fixedArgument = HandleCustomAttributeConstantValue(decodedArgument.Type, decodedArgument.Value);
                 result.FixedArguments.Add(fixedArgument);
             }
 
@@ -68,11 +64,8 @@ namespace ILCompiler.Metadata
                     Flags = decodedArgument.Kind == Ecma.CustomAttributeNamedArgumentKind.Field ?
                         NamedArgumentMemberKind.Field : NamedArgumentMemberKind.Property,
                     Name = HandleString(decodedArgument.Name),
-                    Value = new FixedArgument
-                    {
-                        Type = HandleType(decodedArgument.Type),
-                        Value = HandleCustomAttributeConstantValue(decodedArgument.Type, decodedArgument.Value)
-                    }
+                    Type = HandleType(decodedArgument.Type),
+                    Value = HandleCustomAttributeConstantValue(decodedArgument.Type, decodedArgument.Value)
                 };
                 result.NamedArguments.Add(namedArgument);
             }

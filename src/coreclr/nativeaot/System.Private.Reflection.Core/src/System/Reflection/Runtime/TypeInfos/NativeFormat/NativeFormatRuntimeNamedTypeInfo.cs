@@ -54,14 +54,13 @@ namespace System.Reflection.Runtime.TypeInfos.NativeFormat
                 if (cah.IsCustomAttributeOfType(_reader, "System.Runtime.InteropServices", "GuidAttribute"))
                 {
                     CustomAttribute ca = cah.GetCustomAttribute(_reader);
-                    FixedArgumentHandleCollection.Enumerator fahEnumerator = ca.FixedArguments.GetEnumerator();
+                    HandleCollection.Enumerator fahEnumerator = ca.FixedArguments.GetEnumerator();
                     if (!fahEnumerator.MoveNext())
                         continue;
-                    FixedArgumentHandle guidStringArgumentHandle = fahEnumerator.Current;
+                    Handle guidStringArgumentHandle = fahEnumerator.Current;
                     if (fahEnumerator.MoveNext())
                         continue;
-                    FixedArgument guidStringArgument = guidStringArgumentHandle.GetFixedArgument(_reader);
-                    if (!(guidStringArgument.Value.ParseConstantValue(_reader) is string guidString))
+                    if (!(guidStringArgumentHandle.ParseConstantValue(_reader) is string guidString))
                         continue;
                     return new Guid(guidString);
                 }

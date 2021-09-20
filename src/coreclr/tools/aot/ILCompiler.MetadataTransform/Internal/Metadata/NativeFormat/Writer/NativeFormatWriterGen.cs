@@ -2247,6 +2247,39 @@ namespace Internal.Metadata.NativeFormat.Writer
                 Constructor.HandleType == HandleType.QualifiedMethod ||
                 Constructor.HandleType == HandleType.MemberReference);
             writer.Write(Constructor);
+            Debug.Assert(FixedArguments.TrueForAll(handle => handle == null ||
+                handle.HandleType == HandleType.TypeDefinition ||
+                handle.HandleType == HandleType.TypeReference ||
+                handle.HandleType == HandleType.TypeSpecification ||
+                handle.HandleType == HandleType.ConstantBooleanArray ||
+                handle.HandleType == HandleType.ConstantBooleanValue ||
+                handle.HandleType == HandleType.ConstantByteArray ||
+                handle.HandleType == HandleType.ConstantByteValue ||
+                handle.HandleType == HandleType.ConstantCharArray ||
+                handle.HandleType == HandleType.ConstantCharValue ||
+                handle.HandleType == HandleType.ConstantDoubleArray ||
+                handle.HandleType == HandleType.ConstantDoubleValue ||
+                handle.HandleType == HandleType.ConstantEnumArray ||
+                handle.HandleType == HandleType.ConstantHandleArray ||
+                handle.HandleType == HandleType.ConstantInt16Array ||
+                handle.HandleType == HandleType.ConstantInt16Value ||
+                handle.HandleType == HandleType.ConstantInt32Array ||
+                handle.HandleType == HandleType.ConstantInt32Value ||
+                handle.HandleType == HandleType.ConstantInt64Array ||
+                handle.HandleType == HandleType.ConstantInt64Value ||
+                handle.HandleType == HandleType.ConstantReferenceValue ||
+                handle.HandleType == HandleType.ConstantSByteArray ||
+                handle.HandleType == HandleType.ConstantSByteValue ||
+                handle.HandleType == HandleType.ConstantSingleArray ||
+                handle.HandleType == HandleType.ConstantSingleValue ||
+                handle.HandleType == HandleType.ConstantStringArray ||
+                handle.HandleType == HandleType.ConstantStringValue ||
+                handle.HandleType == HandleType.ConstantUInt16Array ||
+                handle.HandleType == HandleType.ConstantUInt16Value ||
+                handle.HandleType == HandleType.ConstantUInt32Array ||
+                handle.HandleType == HandleType.ConstantUInt32Value ||
+                handle.HandleType == HandleType.ConstantUInt64Array ||
+                handle.HandleType == HandleType.ConstantUInt64Value));
             writer.Write(FixedArguments);
             writer.Write(NamedArguments);
         } // Save
@@ -2272,7 +2305,7 @@ namespace Internal.Metadata.NativeFormat.Writer
         } // Handle
 
         public MetadataRecord Constructor;
-        public List<FixedArgument> FixedArguments = new List<FixedArgument>();
+        public List<MetadataRecord> FixedArguments = new List<MetadataRecord>();
         public List<NamedArgument> NamedArguments = new List<NamedArgument>();
     } // CustomAttribute
 
@@ -2569,116 +2602,6 @@ namespace Internal.Metadata.NativeFormat.Writer
 
         public MetadataRecord Type;
     } // FieldSignature
-
-    public partial class FixedArgument : MetadataRecord
-    {
-        public override HandleType HandleType
-        {
-            get
-            {
-                return HandleType.FixedArgument;
-            }
-        } // HandleType
-
-        internal override void Visit(IRecordVisitor visitor)
-        {
-            Type = visitor.Visit(this, Type);
-            Value = visitor.Visit(this, Value);
-        } // Visit
-
-        public override sealed bool Equals(Object obj)
-        {
-            if (Object.ReferenceEquals(this, obj)) return true;
-            var other = obj as FixedArgument;
-            if (other == null) return false;
-            if (Flags != other.Flags) return false;
-            if (!Object.Equals(Type, other.Type)) return false;
-            if (!Object.Equals(Value, other.Value)) return false;
-            return true;
-        } // Equals
-
-        public override sealed int GetHashCode()
-        {
-            if (_hash != 0)
-                return _hash;
-            EnterGetHashCode();
-            int hash = -1598595313;
-            hash = ((hash << 13) - (hash >> 19)) ^ Flags.GetHashCode();
-            hash = ((hash << 13) - (hash >> 19)) ^ (Type == null ? 0 : Type.GetHashCode());
-            hash = ((hash << 13) - (hash >> 19)) ^ (Value == null ? 0 : Value.GetHashCode());
-            LeaveGetHashCode();
-            _hash = hash;
-            return _hash;
-        } // GetHashCode
-
-        internal override void Save(NativeWriter writer)
-        {
-            writer.Write(Flags);
-            Debug.Assert(Type == null ||
-                Type.HandleType == HandleType.TypeDefinition ||
-                Type.HandleType == HandleType.TypeReference ||
-                Type.HandleType == HandleType.TypeSpecification);
-            writer.Write(Type);
-            Debug.Assert(Value == null ||
-                Value.HandleType == HandleType.TypeDefinition ||
-                Value.HandleType == HandleType.TypeReference ||
-                Value.HandleType == HandleType.TypeSpecification ||
-                Value.HandleType == HandleType.ConstantBooleanArray ||
-                Value.HandleType == HandleType.ConstantBooleanValue ||
-                Value.HandleType == HandleType.ConstantByteArray ||
-                Value.HandleType == HandleType.ConstantByteValue ||
-                Value.HandleType == HandleType.ConstantCharArray ||
-                Value.HandleType == HandleType.ConstantCharValue ||
-                Value.HandleType == HandleType.ConstantDoubleArray ||
-                Value.HandleType == HandleType.ConstantDoubleValue ||
-                Value.HandleType == HandleType.ConstantEnumArray ||
-                Value.HandleType == HandleType.ConstantHandleArray ||
-                Value.HandleType == HandleType.ConstantInt16Array ||
-                Value.HandleType == HandleType.ConstantInt16Value ||
-                Value.HandleType == HandleType.ConstantInt32Array ||
-                Value.HandleType == HandleType.ConstantInt32Value ||
-                Value.HandleType == HandleType.ConstantInt64Array ||
-                Value.HandleType == HandleType.ConstantInt64Value ||
-                Value.HandleType == HandleType.ConstantReferenceValue ||
-                Value.HandleType == HandleType.ConstantSByteArray ||
-                Value.HandleType == HandleType.ConstantSByteValue ||
-                Value.HandleType == HandleType.ConstantSingleArray ||
-                Value.HandleType == HandleType.ConstantSingleValue ||
-                Value.HandleType == HandleType.ConstantStringArray ||
-                Value.HandleType == HandleType.ConstantStringValue ||
-                Value.HandleType == HandleType.ConstantUInt16Array ||
-                Value.HandleType == HandleType.ConstantUInt16Value ||
-                Value.HandleType == HandleType.ConstantUInt32Array ||
-                Value.HandleType == HandleType.ConstantUInt32Value ||
-                Value.HandleType == HandleType.ConstantUInt64Array ||
-                Value.HandleType == HandleType.ConstantUInt64Value);
-            writer.Write(Value);
-        } // Save
-
-        internal static FixedArgumentHandle AsHandle(FixedArgument record)
-        {
-            if (record == null)
-            {
-                return new FixedArgumentHandle(0);
-            }
-            else
-            {
-                return record.Handle;
-            }
-        } // AsHandle
-
-        internal new FixedArgumentHandle Handle
-        {
-            get
-            {
-                return new FixedArgumentHandle(HandleOffset);
-            }
-        } // Handle
-
-        public FixedArgumentAttributes Flags;
-        public MetadataRecord Type;
-        public MetadataRecord Value;
-    } // FixedArgument
 
     public partial class FunctionPointerSignature : MetadataRecord
     {
@@ -3517,6 +3440,7 @@ namespace Internal.Metadata.NativeFormat.Writer
         internal override void Visit(IRecordVisitor visitor)
         {
             Name = visitor.Visit(this, Name);
+            Type = visitor.Visit(this, Type);
             Value = visitor.Visit(this, Value);
         } // Visit
 
@@ -3527,6 +3451,7 @@ namespace Internal.Metadata.NativeFormat.Writer
             if (other == null) return false;
             if (Flags != other.Flags) return false;
             if (!Object.Equals(Name, other.Name)) return false;
+            if (!Object.Equals(Type, other.Type)) return false;
             if (!Object.Equals(Value, other.Value)) return false;
             return true;
         } // Equals
@@ -3539,6 +3464,7 @@ namespace Internal.Metadata.NativeFormat.Writer
             int hash = -469180039;
             hash = ((hash << 13) - (hash >> 19)) ^ Flags.GetHashCode();
             hash = ((hash << 13) - (hash >> 19)) ^ (Name == null ? 0 : Name.GetHashCode());
+            hash = ((hash << 13) - (hash >> 19)) ^ (Type == null ? 0 : Type.GetHashCode());
             hash = ((hash << 13) - (hash >> 19)) ^ (Value == null ? 0 : Value.GetHashCode());
             LeaveGetHashCode();
             _hash = hash;
@@ -3549,6 +3475,44 @@ namespace Internal.Metadata.NativeFormat.Writer
         {
             writer.Write(Flags);
             writer.Write(Name);
+            Debug.Assert(Type == null ||
+                Type.HandleType == HandleType.TypeDefinition ||
+                Type.HandleType == HandleType.TypeReference ||
+                Type.HandleType == HandleType.TypeSpecification);
+            writer.Write(Type);
+            Debug.Assert(Value == null ||
+                Value.HandleType == HandleType.TypeDefinition ||
+                Value.HandleType == HandleType.TypeReference ||
+                Value.HandleType == HandleType.TypeSpecification ||
+                Value.HandleType == HandleType.ConstantBooleanArray ||
+                Value.HandleType == HandleType.ConstantBooleanValue ||
+                Value.HandleType == HandleType.ConstantByteArray ||
+                Value.HandleType == HandleType.ConstantByteValue ||
+                Value.HandleType == HandleType.ConstantCharArray ||
+                Value.HandleType == HandleType.ConstantCharValue ||
+                Value.HandleType == HandleType.ConstantDoubleArray ||
+                Value.HandleType == HandleType.ConstantDoubleValue ||
+                Value.HandleType == HandleType.ConstantEnumArray ||
+                Value.HandleType == HandleType.ConstantHandleArray ||
+                Value.HandleType == HandleType.ConstantInt16Array ||
+                Value.HandleType == HandleType.ConstantInt16Value ||
+                Value.HandleType == HandleType.ConstantInt32Array ||
+                Value.HandleType == HandleType.ConstantInt32Value ||
+                Value.HandleType == HandleType.ConstantInt64Array ||
+                Value.HandleType == HandleType.ConstantInt64Value ||
+                Value.HandleType == HandleType.ConstantReferenceValue ||
+                Value.HandleType == HandleType.ConstantSByteArray ||
+                Value.HandleType == HandleType.ConstantSByteValue ||
+                Value.HandleType == HandleType.ConstantSingleArray ||
+                Value.HandleType == HandleType.ConstantSingleValue ||
+                Value.HandleType == HandleType.ConstantStringArray ||
+                Value.HandleType == HandleType.ConstantStringValue ||
+                Value.HandleType == HandleType.ConstantUInt16Array ||
+                Value.HandleType == HandleType.ConstantUInt16Value ||
+                Value.HandleType == HandleType.ConstantUInt32Array ||
+                Value.HandleType == HandleType.ConstantUInt32Value ||
+                Value.HandleType == HandleType.ConstantUInt64Array ||
+                Value.HandleType == HandleType.ConstantUInt64Value);
             writer.Write(Value);
         } // Save
 
@@ -3574,7 +3538,8 @@ namespace Internal.Metadata.NativeFormat.Writer
 
         public NamedArgumentMemberKind Flags;
         public ConstantStringValue Name;
-        public FixedArgument Value;
+        public MetadataRecord Type;
+        public MetadataRecord Value;
     } // NamedArgument
 
     public partial class NamespaceDefinition : MetadataRecord

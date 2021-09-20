@@ -3506,8 +3506,9 @@ namespace Internal.Metadata.NativeFormat
         } // Constructor
 
         internal Handle _constructor;
+        /// One of: TypeDefinition, TypeReference, TypeSpecification, ConstantBooleanArray, ConstantBooleanValue, ConstantByteArray, ConstantByteValue, ConstantCharArray, ConstantCharValue, ConstantDoubleArray, ConstantDoubleValue, ConstantEnumArray, ConstantHandleArray, ConstantInt16Array, ConstantInt16Value, ConstantInt32Array, ConstantInt32Value, ConstantInt64Array, ConstantInt64Value, ConstantReferenceValue, ConstantSByteArray, ConstantSByteValue, ConstantSingleArray, ConstantSingleValue, ConstantStringArray, ConstantStringValue, ConstantUInt16Array, ConstantUInt16Value, ConstantUInt32Array, ConstantUInt32Value, ConstantUInt64Array, ConstantUInt64Value
 
-        public FixedArgumentHandleCollection FixedArguments
+        public HandleCollection FixedArguments
         {
             get
             {
@@ -3515,7 +3516,7 @@ namespace Internal.Metadata.NativeFormat
             }
         } // FixedArguments
 
-        internal FixedArgumentHandleCollection _fixedArguments;
+        internal HandleCollection _fixedArguments;
 
         public NamedArgumentHandleCollection NamedArguments
         {
@@ -4024,135 +4025,6 @@ namespace Internal.Metadata.NativeFormat
             return string.Format("{0:X8}", _value);
         } // ToString
     } // FieldSignatureHandle
-
-    public partial struct FixedArgument
-    {
-        internal MetadataReader _reader;
-        internal FixedArgumentHandle _handle;
-
-        public FixedArgumentHandle Handle
-        {
-            get
-            {
-                return _handle;
-            }
-        } // Handle
-
-        public FixedArgumentAttributes Flags
-        {
-            get
-            {
-                return _flags;
-            }
-        } // Flags
-
-        internal FixedArgumentAttributes _flags;
-        /// One of: TypeDefinition, TypeReference, TypeSpecification
-
-        public Handle Type
-        {
-            get
-            {
-                return _type;
-            }
-        } // Type
-
-        internal Handle _type;
-        /// One of: TypeDefinition, TypeReference, TypeSpecification, ConstantBooleanArray, ConstantBooleanValue, ConstantByteArray, ConstantByteValue, ConstantCharArray, ConstantCharValue, ConstantDoubleArray, ConstantDoubleValue, ConstantEnumArray, ConstantHandleArray, ConstantInt16Array, ConstantInt16Value, ConstantInt32Array, ConstantInt32Value, ConstantInt64Array, ConstantInt64Value, ConstantReferenceValue, ConstantSByteArray, ConstantSByteValue, ConstantSingleArray, ConstantSingleValue, ConstantStringArray, ConstantStringValue, ConstantUInt16Array, ConstantUInt16Value, ConstantUInt32Array, ConstantUInt32Value, ConstantUInt64Array, ConstantUInt64Value
-
-        public Handle Value
-        {
-            get
-            {
-                return _value;
-            }
-        } // Value
-
-        internal Handle _value;
-    } // FixedArgument
-
-    public partial struct FixedArgumentHandle
-    {
-        public override bool Equals(object obj)
-        {
-            if (obj is FixedArgumentHandle)
-                return _value == ((FixedArgumentHandle)obj)._value;
-            else if (obj is Handle)
-                return _value == ((Handle)obj)._value;
-            else
-                return false;
-        } // Equals
-
-        public bool Equals(FixedArgumentHandle handle)
-        {
-            return _value == handle._value;
-        } // Equals
-
-        public bool Equals(Handle handle)
-        {
-            return _value == handle._value;
-        } // Equals
-
-        public override int GetHashCode()
-        {
-            return (int)_value;
-        } // GetHashCode
-
-        internal int _value;
-
-        internal FixedArgumentHandle(Handle handle) : this(handle._value)
-        {
-        }
-
-        internal FixedArgumentHandle(int value)
-        {
-            HandleType hType = (HandleType)(value >> 24);
-            if (!(hType == 0 || hType == HandleType.FixedArgument || hType == HandleType.Null))
-                throw new ArgumentException();
-            _value = (value & 0x00FFFFFF) | (((int)HandleType.FixedArgument) << 24);
-            _Validate();
-        }
-
-        public static implicit operator  Handle(FixedArgumentHandle handle)
-        {
-            return new Handle(handle._value);
-        } // Handle
-
-        internal int Offset
-        {
-            get
-            {
-                return (this._value & 0x00FFFFFF);
-            }
-        } // Offset
-
-        public FixedArgument GetFixedArgument(MetadataReader reader)
-        {
-            return reader.GetFixedArgument(this);
-        } // GetFixedArgument
-
-        public bool IsNull(MetadataReader reader)
-        {
-            return reader.IsNull(this);
-        } // IsNull
-
-        public Handle ToHandle(MetadataReader reader)
-        {
-            return reader.ToHandle(this);
-        } // ToHandle
-
-        [System.Diagnostics.Conditional("DEBUG")]
-        internal void _Validate()
-        {
-            if ((HandleType)((_value & 0xFF000000) >> 24) != HandleType.FixedArgument)
-                throw new ArgumentException();
-        } // _Validate
-
-        public override string ToString()
-        {
-            return string.Format("{0:X8}", _value);
-        } // ToString
-    } // FixedArgumentHandle
 
     public partial struct FunctionPointerSignature
     {
@@ -5508,8 +5380,20 @@ namespace Internal.Metadata.NativeFormat
         } // Name
 
         internal ConstantStringValueHandle _name;
+        /// One of: TypeDefinition, TypeReference, TypeSpecification
 
-        public FixedArgumentHandle Value
+        public Handle Type
+        {
+            get
+            {
+                return _type;
+            }
+        } // Type
+
+        internal Handle _type;
+        /// One of: TypeDefinition, TypeReference, TypeSpecification, ConstantBooleanArray, ConstantBooleanValue, ConstantByteArray, ConstantByteValue, ConstantCharArray, ConstantCharValue, ConstantDoubleArray, ConstantDoubleValue, ConstantEnumArray, ConstantHandleArray, ConstantInt16Array, ConstantInt16Value, ConstantInt32Array, ConstantInt32Value, ConstantInt64Array, ConstantInt64Value, ConstantReferenceValue, ConstantSByteArray, ConstantSByteValue, ConstantSingleArray, ConstantSingleValue, ConstantStringArray, ConstantStringValue, ConstantUInt16Array, ConstantUInt16Value, ConstantUInt32Array, ConstantUInt32Value, ConstantUInt64Array, ConstantUInt64Value
+
+        public Handle Value
         {
             get
             {
@@ -5517,7 +5401,7 @@ namespace Internal.Metadata.NativeFormat
             }
         } // Value
 
-        internal FixedArgumentHandle _value;
+        internal Handle _value;
     } // NamedArgument
 
     public partial struct NamedArgumentHandle
@@ -8066,69 +7950,6 @@ namespace Internal.Metadata.NativeFormat
         } // ToString
     } // TypeVariableSignatureHandle
 
-    public partial struct FixedArgumentHandleCollection
-    {
-        private NativeReader _reader;
-        private uint _offset;
-
-        internal FixedArgumentHandleCollection(NativeReader reader, uint offset)
-        {
-            _offset = offset;
-            _reader = reader;
-        }
-
-        public int Count
-        {
-            get
-            {
-                uint count;
-                _reader.DecodeUnsigned(_offset, out count);
-                return (int)count;
-            }
-        } // Count
-
-        public Enumerator GetEnumerator()
-        {
-            return new Enumerator(_reader, _offset);
-        } // GetEnumerator
-
-        public struct Enumerator
-        {
-            private NativeReader _reader;
-            private uint _offset;
-            private uint _remaining;
-            private FixedArgumentHandle _current;
-
-            internal Enumerator(NativeReader reader, uint offset)
-            {
-                _reader = reader;
-                _offset = reader.DecodeUnsigned(offset, out _remaining);
-                _current = default(FixedArgumentHandle);
-            }
-
-            public FixedArgumentHandle Current
-            {
-                get
-                {
-                    return _current;
-                }
-            } // Current
-
-            public bool MoveNext()
-            {
-                if (_remaining == 0)
-                    return false;
-                _remaining--;
-                _offset = _reader.Read(_offset, out _current);
-                return true;
-            } // MoveNext
-
-            public void Dispose()
-            {
-            } // Dispose
-        } // Enumerator
-    } // FixedArgumentHandleCollection
-
     public partial struct NamedArgumentHandleCollection
     {
         private NativeReader _reader;
@@ -9949,11 +9770,6 @@ namespace Internal.Metadata.NativeFormat
             return new FieldSignatureHandle(this);
         } // ToFieldSignatureHandle
 
-        public FixedArgumentHandle ToFixedArgumentHandle(MetadataReader reader)
-        {
-            return new FixedArgumentHandle(this);
-        } // ToFixedArgumentHandle
-
         public FunctionPointerSignatureHandle ToFunctionPointerSignatureHandle(MetadataReader reader)
         {
             return new FunctionPointerSignatureHandle(this);
@@ -10417,7 +10233,7 @@ namespace Internal.Metadata.NativeFormat
         public ConstantStringValue GetConstantStringValue(ConstantStringValueHandle handle)
         {
             if (IsNull(handle))
-                return default;
+                return new ConstantStringValue();
             ConstantStringValue record;
             record._reader = this;
             record._handle = handle;
@@ -10536,18 +10352,6 @@ namespace Internal.Metadata.NativeFormat
             offset = _streamReader.Read(offset, out record._type);
             return record;
         } // GetFieldSignature
-
-        public FixedArgument GetFixedArgument(FixedArgumentHandle handle)
-        {
-            FixedArgument record;
-            record._reader = this;
-            record._handle = handle;
-            var offset = (uint)handle.Offset;
-            offset = _streamReader.Read(offset, out record._flags);
-            offset = _streamReader.Read(offset, out record._type);
-            offset = _streamReader.Read(offset, out record._value);
-            return record;
-        } // GetFixedArgument
 
         public FunctionPointerSignature GetFunctionPointerSignature(FunctionPointerSignatureHandle handle)
         {
@@ -10681,6 +10485,7 @@ namespace Internal.Metadata.NativeFormat
             var offset = (uint)handle.Offset;
             offset = _streamReader.Read(offset, out record._flags);
             offset = _streamReader.Read(offset, out record._name);
+            offset = _streamReader.Read(offset, out record._type);
             offset = _streamReader.Read(offset, out record._value);
             return record;
         } // GetNamedArgument
@@ -11098,11 +10903,6 @@ namespace Internal.Metadata.NativeFormat
             return new Handle(handle._value);
         } // ToHandle
 
-        internal Handle ToHandle(FixedArgumentHandle handle)
-        {
-            return new Handle(handle._value);
-        } // ToHandle
-
         internal Handle ToHandle(FunctionPointerSignatureHandle handle)
         {
             return new Handle(handle._value);
@@ -11423,11 +11223,6 @@ namespace Internal.Metadata.NativeFormat
             return new FieldSignatureHandle(handle._value);
         } // ToFieldSignatureHandle
 
-        internal FixedArgumentHandle ToFixedArgumentHandle(Handle handle)
-        {
-            return new FixedArgumentHandle(handle._value);
-        } // ToFixedArgumentHandle
-
         internal FunctionPointerSignatureHandle ToFunctionPointerSignatureHandle(Handle handle)
         {
             return new FunctionPointerSignatureHandle(handle._value);
@@ -11744,11 +11539,6 @@ namespace Internal.Metadata.NativeFormat
         } // IsNull
 
         internal bool IsNull(FieldSignatureHandle handle)
-        {
-            return (handle._value & 0x00FFFFFF) == 0;
-        } // IsNull
-
-        internal bool IsNull(FixedArgumentHandle handle)
         {
             return (handle._value & 0x00FFFFFF) == 0;
         } // IsNull
