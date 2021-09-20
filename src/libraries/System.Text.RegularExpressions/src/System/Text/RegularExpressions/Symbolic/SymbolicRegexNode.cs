@@ -1341,16 +1341,27 @@ namespace System.Text.RegularExpressions.Symbolic
                         return true;
                     case SymbolicRegexKind.Concat:
                         Debug.Assert(node._left is not null && node._right is not null);
-                        if (node._left._kind == SymbolicRegexKind.Singleton)
+                        if (!node._left.CanBeNullable)
                         {
-                            nextPaths.Add(node._right);
-                            Debug.Assert(node._left._set is not null);
-                            set = node._left._set;
-                            return true;
+                            if (node._left.GetFixedLength() == 1)
+                            {
+                                set = node._left.GetStartSet();
+                                // Left side had just one character, can use just right side as path
+                                nextPaths.Add(node._right);
+                                return true;
+                            }
+                            else
+                            {
+                                // Left side may need multiple steps to get through. However, it is safe
+                                // (though not complete) to forget the right side and just expand the path
+                                // for the left side.
+                                paths.Add(node._left);
+                                break;
+                            }
                         }
                         else
                         {
-                            // Cannot handle non-singleton left hand side in this algorithm, cut prefix short
+                            // Left side may be nullable, can't extend the prefix
                             set = _builder._solver.False; // Not going to be used
                             return false;
                         }
