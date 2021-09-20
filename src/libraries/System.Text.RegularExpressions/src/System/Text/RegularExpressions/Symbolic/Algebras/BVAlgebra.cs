@@ -175,36 +175,14 @@ namespace System.Text.RegularExpressions.Symbolic
         public BV[] GetPartition() => _atoms;
         public IEnumerable<char> GenerateAllCharacters(BV set) => throw new NotSupportedException();
 
-        /// <summary>
-        /// Pretty print the bitvector bv as the character set it represents.
-        /// </summary>
+        /// <summary>Pretty print the bitvector bv as the character set it represents.</summary>
         public string PrettyPrint(BV bv)
         {
             //accesses the shared BDD solver
             ICharAlgebra<BDD> bddalgebra = SymbolicRegexRunner.s_unicode._solver;
+            Debug.Assert(_partition is not null && bddalgebra is not null);
 
-            if (_partition == null || bddalgebra == null)
-            {
-                var sb = new StringBuilder();
-                sb.Append('[');
-                for (int i = 0; i < bv.Length; i++)
-                {
-                    if (sb.Length != 0)
-                    {
-                        sb.Append(',');
-                    }
-                    if (bv[i])
-                    {
-                        sb.Append(i);
-                    }
-                }
-                sb.Append(']');
-                return sb.ToString();
-            }
-
-            BDD bdd = ConvertToCharSet(bddalgebra, bv);
-            string str = bddalgebra.PrettyPrint(bdd);
-            return str;
+            return bddalgebra.PrettyPrint(ConvertToCharSet(bddalgebra, bv));
         }
     }
 }
