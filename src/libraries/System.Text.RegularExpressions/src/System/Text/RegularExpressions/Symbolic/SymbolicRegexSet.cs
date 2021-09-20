@@ -24,6 +24,9 @@ namespace System.Text.RegularExpressions.Symbolic
         /// </remarks>
         private readonly Dictionary<(SymbolicRegexNode<S>, SymbolicRegexNode<S>, bool), int> _loops;
 
+        /// <summary> the union (or intersection) of all singletons in the collection if any or null if none</summary>
+        private readonly SymbolicRegexNode<S>? _singleton;
+
         internal readonly SymbolicRegexKind _kind;
 
         private int _hashCode;
@@ -31,7 +34,7 @@ namespace System.Text.RegularExpressions.Symbolic
         /// <summary>If >= 0 then the maximal length of a watchdog in the set</summary>
         internal int _watchdog = -1;
 
-        private SymbolicRegexSet(SymbolicRegexBuilder<S> builder, SymbolicRegexKind kind, HashSet<SymbolicRegexNode<S>>? set, Dictionary<(SymbolicRegexNode<S>, SymbolicRegexNode<S>, bool), int>? loops)
+        private SymbolicRegexSet(SymbolicRegexBuilder<S> builder, SymbolicRegexKind kind, HashSet<SymbolicRegexNode<S>>? set, Dictionary<(SymbolicRegexNode<S>, SymbolicRegexNode<S>, bool), int>? loops, SymbolicRegexNode<S>? singleton)
         {
             Debug.Assert(kind is SymbolicRegexKind.And or SymbolicRegexKind.Or);
             Debug.Assert((set is null) == (loops is null));
@@ -40,23 +43,24 @@ namespace System.Text.RegularExpressions.Symbolic
             _kind = kind;
             _set = set ?? new HashSet<SymbolicRegexNode<S>>();
             _loops = loops ?? new Dictionary<(SymbolicRegexNode<S>, SymbolicRegexNode<S>, bool), int>();
+            _singleton = singleton;
         }
 
         /// <summary>Denotes the empty conjunction</summary>
-        public bool IsEverything => _kind == SymbolicRegexKind.And && _set.Count == 0 && _loops.Count == 0;
+        public bool IsEverything => _kind == SymbolicRegexKind.And && _set.Count == 0 && _loops.Count == 0 && _singleton == null;
 
         /// <summary>Denotes the empty disjunction</summary>
-        public bool IsNothing => _kind == SymbolicRegexKind.Or && _set.Count == 0 && _loops.Count == 0;
+        public bool IsNothing => _kind == SymbolicRegexKind.Or && _set.Count == 0 && _loops.Count == 0 && _singleton == null;
 
         /// <summary>How many elements are there in this set</summary>
-        public int Count => _set.Count + _loops.Count;
+        public int Count => _set.Count + _loops.Count + (_singleton == null ? 0 : 1);
 
         /// <summary>True iff the set is a singleton</summary>
         public bool IsSingleton => Count == 1;
 
-        internal static SymbolicRegexSet<S> CreateFull(SymbolicRegexBuilder<S> builder) => new SymbolicRegexSet<S>(builder, SymbolicRegexKind.And, null, null);
+        internal static SymbolicRegexSet<S> CreateFull(SymbolicRegexBuilder<S> builder) => new SymbolicRegexSet<S>(builder, SymbolicRegexKind.And, null, null, null);
 
-        internal static SymbolicRegexSet<S> CreateEmpty(SymbolicRegexBuilder<S> builder) => new SymbolicRegexSet<S>(builder, SymbolicRegexKind.Or, null, null);
+        internal static SymbolicRegexSet<S> CreateEmpty(SymbolicRegexBuilder<S> builder) => new SymbolicRegexSet<S>(builder, SymbolicRegexKind.Or, null, null, null);
 
         internal static SymbolicRegexSet<S> CreateMulti(SymbolicRegexBuilder<S> builder, IEnumerable<SymbolicRegexNode<S>> elems, SymbolicRegexKind kind)
         {
@@ -65,6 +69,9 @@ namespace System.Text.RegularExpressions.Symbolic
 
             // Other represents a normal set
             var other = new HashSet<SymbolicRegexNode<S>>();
+
+            // Combination of singletons (when not null)
+            SymbolicRegexNode<S>? singleton = null;
 
             int watchdog = -1;
 
@@ -123,7 +130,26 @@ namespace System.Text.RegularExpressions.Symbolic
                                         }
                                         else
                                         {
-                                            other.Add(alt);
+                                            if (alt._kind == SymbolicRegexKind.Singleton)
+                                            {
+                                                Debug.Assert(alt._set is not null);
+                                                if (singleton is null)
+                                                {
+                                                    singleton = alt;
+                                                }
+                                                else
+                                                {
+                                                    Debug.Assert(singleton._kind == SymbolicRegexKind.Singleton && singleton._set is not null);
+                                                    // Join the predicates either by Intersecting or Unioning
+                                                    // which at the character predicate level translates to conjunction or disjunction in the underlying character algebra
+                                                    S pred = kind == SymbolicRegexKind.Or ? builder._solver.Or(singleton._set, alt._set) : builder._solver.And(singleton._set, alt._set);
+                                                    singleton = SymbolicRegexNode<S>.MkSingleton(builder, pred);
+                                                }
+                                            }
+                                            else
+                                            {
+                                                other.Add(alt);
+                                            }
                                         }
                                     }
                                 }
@@ -157,6 +183,22 @@ namespace System.Text.RegularExpressions.Symbolic
                             }
                             break;
 
+                        case SymbolicRegexKind.Singleton:
+                            Debug.Assert(elem._set is not null);
+                            if (singleton is null)
+                            {
+                                singleton = elem;
+                            }
+                            else
+                            {
+                                Debug.Assert(singleton._kind == SymbolicRegexKind.Singleton && singleton._set is not null);
+                                // Join the predicates either by Intersecting or Unioning
+                                // which at the character predicate level translates to conjunction or disjunction in the underlying character algebra
+                                S pred = kind == SymbolicRegexKind.Or ? builder._solver.Or(singleton._set, elem._set) : builder._solver.And(singleton._set, elem._set);
+                                singleton = SymbolicRegexNode<S>.MkSingleton(builder, pred);
+                            }
+                            break;
+
                         default:
                             other.Add(elem);
                             break;
@@ -165,7 +207,13 @@ namespace System.Text.RegularExpressions.Symbolic
                 #endregion
             }
 
-            // The following further optimizations are only valid for a disjunction
+            // This optimization is only valid for a conjunction/intersection
+            if (kind == SymbolicRegexKind.And && singleton is not null && singleton.Equals(builder._solver.False))
+            {
+                return builder._emptySet;
+            }
+
+            // The following is only valid for a disjunction/union
             if (kind == SymbolicRegexKind.Or)
             {
                 // If any element of other is covered in loops then omit it
@@ -194,7 +242,7 @@ namespace System.Text.RegularExpressions.Symbolic
             }
 
             return
-                other.Count != 0 || loops.Count != 0 ? new SymbolicRegexSet<S>(builder, kind, other, loops) { _watchdog = watchdog } :
+                other.Count != 0 || loops.Count != 0 || singleton is not null ? new SymbolicRegexSet<S>(builder, kind, other, loops, singleton) { _watchdog = watchdog } :
                 kind == SymbolicRegexKind.Or ? builder._emptySet :
                 builder._fullSet;
 
@@ -278,6 +326,11 @@ namespace System.Text.RegularExpressions.Symbolic
             {
                 int hashCode = _kind.GetHashCode();
 
+                if (_singleton is not null)
+                {
+                    hashCode ^= _singleton.GetHashCode();
+                }
+
                 foreach (SymbolicRegexNode<S> n in _set)
                 {
                     hashCode ^= n.GetHashCode();
@@ -298,6 +351,8 @@ namespace System.Text.RegularExpressions.Symbolic
         {
             if (obj is not SymbolicRegexSet<S> that ||
                 _kind != that._kind ||
+                _singleton is null && that._singleton is not null ||
+                _singleton is not null && !_singleton.Equals(that._singleton) ||
                 _set.Count != that._set.Count ||
                 _loops.Count != that._loops.Count ||
                 (_set.Count > 0 && !_set.SetEquals(that._set)))
@@ -480,6 +535,18 @@ namespace System.Text.RegularExpressions.Symbolic
                 }
             }
 
+            if (_singleton is not null && length != 1)
+            {
+                if (length == -1)
+                {
+                    length = 1;
+                }
+                else
+                {
+                    length = -1;
+                }
+            }
+
             return length;
         }
 
@@ -487,14 +554,14 @@ namespace System.Text.RegularExpressions.Symbolic
         internal struct Enumerator : IEnumerator<SymbolicRegexNode<S>>
         {
             private readonly SymbolicRegexSet<S> _set;
-            private int _state; // 0 == iterate set, 1 == iterate loops, 2 == done
+            private int _state; // 0 = return singleton, 1 == iterate set, 2 == iterate loops, 3 == done
             private SymbolicRegexNode<S>? _current;
             private HashSet<SymbolicRegexNode<S>>.Enumerator _setEnumerator;
             private Dictionary<(SymbolicRegexNode<S>, SymbolicRegexNode<S>, bool), int>.Enumerator _loopsEnumerator;
 
             internal Enumerator(SymbolicRegexSet<S> symbolicRegexSet)
             {
-                _state = 0;
+                _state = symbolicRegexSet._singleton is null ? 1 : 0;
                 _set = symbolicRegexSet;
                 _setEnumerator = symbolicRegexSet._set.GetEnumerator();
                 _loopsEnumerator = symbolicRegexSet._loops.GetEnumerator();
@@ -507,7 +574,7 @@ namespace System.Text.RegularExpressions.Symbolic
 
             public void Dispose()
             {
-                _state = 2;
+                _state = 3;
                 _setEnumerator.Dispose();
                 _loopsEnumerator.Dispose();
             }
@@ -517,15 +584,21 @@ namespace System.Text.RegularExpressions.Symbolic
                 switch (_state)
                 {
                     case 0:
+                        Debug.Assert(_set._singleton is not null);
+                        _current = _set._singleton;
+                        _state = 1;
+                        return true;
+
+                    case 1:
                         if (_setEnumerator.MoveNext())
                         {
                             _current = _setEnumerator.Current;
                             return true;
                         }
-                        _state = 1;
-                        goto case 1;
+                        _state = 2;
+                        goto case 2;
 
-                    case 1:
+                    case 2:
                         if (_loopsEnumerator.MoveNext())
                         {
                             // Recreate the symbolic regex from (body,rest)->k to body{0,k}rest
@@ -534,7 +607,7 @@ namespace System.Text.RegularExpressions.Symbolic
                             _current = _set._builder.MkConcat(_set._builder.MkLoop(body, isLazy, 0, upper), rest);
                             return true;
                         }
-                        _state = 2;
+                        _state = 3;
                         goto default;
 
                     default:
