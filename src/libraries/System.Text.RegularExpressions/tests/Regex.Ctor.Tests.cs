@@ -200,7 +200,15 @@ namespace System.Text.RegularExpressions.Tests
         {
             var r = new DerivedRegex();
             r.InitializeReferences();
-            Assert.Throws<NotSupportedException>(() => r.InitializeReferences());
+            if (PlatformDetection.IsNetFramework)
+            {
+                Assert.Throws<NotSupportedException>(() => r.InitializeReferences());
+            }
+            else
+            {
+                // As of .NET 7, this method is a nop.
+                r.InitializeReferences();
+            }
         }
 
         [Fact]

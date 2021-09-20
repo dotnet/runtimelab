@@ -62,17 +62,17 @@ namespace System.Text.RegularExpressions
             _capnames = capnames;
 
             _optionsStack = new ValueListBuilder<int>(optionSpan);
-            _stack = default;
-            _group = default;
-            _alternation = default;
-            _concatenation = default;
-            _unit = default;
+            _stack = null;
+            _group = null;
+            _alternation = null;
+            _concatenation = null;
+            _unit = null;
             _currentPos = 0;
-            _autocap = default;
-            _capcount = default;
-            _captop = default;
-            _capnumlist = default;
-            _capnamelist = default;
+            _autocap = 0;
+            _capcount = 0;
+            _captop = 0;
+            _capnumlist = null;
+            _capnamelist = null;
             _ignoreNextParen = false;
         }
 
