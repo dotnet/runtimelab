@@ -815,13 +815,14 @@ namespace Internal.Metadata.NativeFormat.Writer
         }
     }
 
+    /* COMPLETENESS
     public partial class MethodImpl
     {
         public override string ToString()
         {
             return this.MethodDeclaration.ToString();
         }
-    }
+    }*/
 
     public partial class MethodInstantiation
     {

@@ -616,15 +616,6 @@ namespace Internal.Metadata.NativeFormat
             return offset;
         } // Read
 
-        public static uint Read(this NativeReader reader, uint offset, out MethodImplHandle handle)
-        {
-            uint value;
-            offset = reader.DecodeUnsigned(offset, out value);
-            handle = new MethodImplHandle((int)value);
-            handle._Validate();
-            return offset;
-        } // Read
-
         public static uint Read(this NativeReader reader, uint offset, out MethodInstantiationHandle handle)
         {
             uint value;
@@ -967,18 +958,6 @@ namespace Internal.Metadata.NativeFormat
         public static uint Read(this NativeReader reader, uint offset, out EventHandleCollection values)
         {
             values = new EventHandleCollection(reader, offset);
-            uint count;
-            offset = reader.DecodeUnsigned(offset, out count);
-            for (uint i = 0; i < count; ++i)
-            {
-                offset = reader.SkipInteger(offset);
-            }
-            return offset;
-        } // Read
-
-        public static uint Read(this NativeReader reader, uint offset, out MethodImplHandleCollection values)
-        {
-            values = new MethodImplHandleCollection(reader, offset);
             uint count;
             offset = reader.DecodeUnsigned(offset, out count);
             for (uint i = 0; i < count; ++i)
