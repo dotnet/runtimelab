@@ -31,42 +31,6 @@ namespace System.Text.RegularExpressions.Symbolic
             _bits = cardinalities.Length;
             _partition = partition;
         }
-
-        #region serialization
-        /// <summary>
-        /// Appends a string in [0-9A-Za-z/+.-,;]* to sb
-        /// </summary>
-        public void Serialize(StringBuilder sb)
-        {
-            //does not use ';'
-            Base64Utility.Encode(_cardinalities, sb);
-            sb.Append(';'); //separator
-            //does not use ';'
-            _classifier.Serialize(sb);
-        }
-
-        /// <summary>
-        /// Reconstructs either a BV64Algebra or a BVAlgebra from the input.
-        /// </summary>
-        public static BVAlgebraBase Deserialize(string input)
-        {
-            int firstEnd = input.IndexOf(';');
-            if (firstEnd == -1 || input.IndexOf(';', firstEnd + 1) != -1)
-            {
-                throw new ArgumentOutOfRangeException(nameof(input));
-            }
-
-            ulong[] cardinalities = Base64Utility.DecodeUInt64Array(input.AsSpan(0, firstEnd));
-
-            // Here one could potentially pass in the global CharSetSolver as the second parameter, but it is not
-            // needed, practically speaking, because the functionality needed during matching will not use operations
-            // that need the BDD algebra.
-            PartitionClassifier cl = PartitionClassifier.Deserialize(input.AsSpan(firstEnd + 1));
-            return cardinalities.Length <= 64 ?
-                new BV64Algebra(cl, cardinalities) :
-                new BVAlgebra(cl, cardinalities);
-        }
-        #endregion
     }
 
     /// <summary>
@@ -94,23 +58,6 @@ namespace System.Text.RegularExpressions.Symbolic
 
         public BVAlgebra(CharSetSolver solver, BDD[] minterms) :
             base(PartitionClassifier.Create(solver, minterms), Array.ConvertAll(minterms, solver.ComputeDomainSize), minterms)
-        {
-            _mintermGenerator = new MintermGenerator<BV>(this);
-            False = BV.CreateFalse(_bits);
-            True = BV.CreateTrue(_bits);
-
-            var atoms = new BV[_bits];
-            for (int i = 0; i < atoms.Length; i++)
-            {
-                atoms[i] = BV.CreateSingleBit(_bits, i);
-            }
-            _atoms = atoms;
-        }
-
-        /// <summary>
-        /// Constructor used by BVAlgebraBase.Deserialize. Here the minterms and the CharSetSolver are unknown and set to null.
-        /// </summary>
-        public BVAlgebra(PartitionClassifier classifier, ulong[] cardinalities) : base(classifier, cardinalities, null)
         {
             _mintermGenerator = new MintermGenerator<BV>(this);
             False = BV.CreateFalse(_bits);
@@ -228,30 +175,14 @@ namespace System.Text.RegularExpressions.Symbolic
         public BV[] GetPartition() => _atoms;
         public IEnumerable<char> GenerateAllCharacters(BV set) => throw new NotSupportedException();
 
-        /// <summary>
-        /// calls bv.Serialize()
-        /// </summary>
-        public void SerializePredicate(BV bv, StringBuilder builder) => bv.Serialize(builder);
-
-        /// <summary>
-        /// calls BV.Deserialize(s)
-        /// </summary>
-        public BV DeserializePredicate(string s) => BV.Deserialize(s);
-
-        /// <summary>
-        /// Pretty print the bitvector bv as the character set it represents.
-        /// </summary>
+        /// <summary>Pretty print the bitvector bv as the character set it represents.</summary>
         public string PrettyPrint(BV bv)
         {
             //accesses the shared BDD solver
             ICharAlgebra<BDD> bddalgebra = SymbolicRegexRunner.s_unicode._solver;
+            Debug.Assert(_partition is not null && bddalgebra is not null);
 
-            if (_partition == null || bddalgebra == null)
-                return $"[{bv.SerializeToString()}]";
-
-            BDD bdd = ConvertToCharSet(bddalgebra, bv);
-            string str = bddalgebra.PrettyPrint(bdd);
-            return str;
+            return bddalgebra.PrettyPrint(ConvertToCharSet(bddalgebra, bv));
         }
     }
 }

@@ -87,20 +87,5 @@ namespace System.Text.RegularExpressions.Symbolic
         /// <param name="constraints">array of constraints</param>
         /// <returns>constraints that are satisfiable</returns>
         List<T> GenerateMinterms(params T[] constraints);
-
-        /// <summary>
-        /// Serialize the predicate as a nonempty string only using characters in the Base64 subset [0-9a-zA-Z/+.]
-        /// </summary>
-        /// <param name="s">given predicate</param>
-        /// <param name="builder">The builder into which serialized data should be stored.</param>
-        void SerializePredicate(T s, StringBuilder builder);
-
-        /// <summary>
-        /// Deserialize the predicate from a string constructed with SerializePredicate
-        /// </summary>
-        /// <param name="s">given serialized predicate</param>
-        T DeserializePredicate(string s);
-
-        void Serialize(StringBuilder sb);
     }
 }

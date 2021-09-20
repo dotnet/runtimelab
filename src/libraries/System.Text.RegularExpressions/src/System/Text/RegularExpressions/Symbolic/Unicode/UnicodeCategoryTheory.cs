@@ -24,7 +24,6 @@ namespace System.Text.RegularExpressions.Symbolic.Unicode
             {
                 BDD bdd = BDD.Deserialize(UnicodeCategoryRanges.AllCategoriesSerializedBDD[i], _solver.CharSetProvider);
                 _catConditions[i] = condition = _solver.ConvertFromCharSet(_solver.CharSetProvider, bdd);
-                ValidateSerialization(condition);
             }
 
             return condition;
@@ -38,7 +37,6 @@ namespace System.Text.RegularExpressions.Symbolic.Unicode
                 {
                     BDD bdd = BDD.Deserialize(UnicodeCategoryRanges.WhitespaceSerializedBDD, _solver.CharSetProvider);
                     _whiteSpaceCondition = condition = _solver.ConvertFromCharSet(_solver.CharSetProvider, bdd);
-                    ValidateSerialization(condition);
                 }
 
                 return condition;
@@ -53,21 +51,10 @@ namespace System.Text.RegularExpressions.Symbolic.Unicode
                 {
                     BDD bdd = BDD.Deserialize(UnicodeCategoryRanges.WordCharactersSerializedBDD, _solver.CharSetProvider);
                     _wordLetterCondition = condition = _solver.ConvertFromCharSet(_solver.CharSetProvider, bdd);
-                    ValidateSerialization(condition);
                 }
 
                 return condition;
             }
-        }
-
-        /// <summary>Validate correctness of serialization/deserialization for the given predicate.</summary>
-        [Conditional("DEBUG")]
-        private void ValidateSerialization(TPredicate pred)
-        {
-            var sb = new StringBuilder();
-            _solver.SerializePredicate(pred, sb);
-            TPredicate psi = _solver.DeserializePredicate(sb.ToString());
-            Debug.Assert(pred.Equals(psi));
         }
     }
 }

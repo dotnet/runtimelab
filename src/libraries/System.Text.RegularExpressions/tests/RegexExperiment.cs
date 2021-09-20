@@ -18,23 +18,11 @@ namespace System.Text.RegularExpressions.Tests
     {
         public static bool Enabled => false;
 
-        private static readonly MethodInfo s_deserializeMethodInfo = typeof(Regex).GetMethod("Deserialize", BindingFlags.NonPublic | BindingFlags.Static);
-        private static readonly MethodInfo s_serializeMethodInfo = typeof(Regex).GetMethod("Serialize", BindingFlags.NonPublic | BindingFlags.Instance);
-
         /// <summary>Temporary local output directory for experiment results.</summary>
         private static readonly string s_tmpWorkingDir = Path.GetTempPath();
 
         /// <summary>Works as a console.</summary>
         private static string OutputFilePath => Path.Combine(s_tmpWorkingDir, "vsoutput.txt");
-
-        /// <summary>Local input file.</summary>
-        private static string InputFilePath => Path.Combine(s_tmpWorkingDir, "vsinput.txt");
-
-        /// <summary>Local regexes file.</summary>
-        private static string RegexFilePath => Path.Combine(s_tmpWorkingDir, "vsregexes.txt");
-
-        /// <summary>Serialized regexes are stored in this file, one per line.</summary>
-        private static string SerializedOutputPath => Path.Combine(s_tmpWorkingDir, "serialized.txt");
 
         /// <summary>Output directory for generated dgml files.</summary>
         private static string DgmlOutputDirectoryPath => Path.Combine(s_tmpWorkingDir, "dgml");
@@ -56,10 +44,6 @@ namespace System.Text.RegularExpressions.Tests
         {
             Assert.Equal(expectedCount, Regex.Matches("one two three", $@"{pattern}\w+{pattern}").Count);
         }
-
-        private static Regex Deserialize(string s) => s_deserializeMethodInfo.Invoke(null, new object[] { s }) as Regex;
-
-        private static string Serialize(Regex r) => s_serializeMethodInfo.Invoke(r, null) as string;
 
         private static void WriteOutput(string message) =>
             File.AppendAllText(OutputFilePath, message);
@@ -226,43 +210,6 @@ namespace System.Text.RegularExpressions.Tests
                     _ => $",{t},No"
                 });
             }
-        }
-
-        /// <summary>
-        /// Test serialization/deserialization and measure performance for all regexes in the regexesfile.
-        /// </summary>
-        private void TestRunSerialization()
-        {
-            string[] rawregexes = File.ReadAllLines(RegexFilePath);
-            WriteOutput($"\n========= TimeStamp:{System.DateTime.Now} =========\n");
-
-            // Construct
-            Stopwatch sw = Stopwatch.StartNew();
-            Regex[] rs = Array.ConvertAll(rawregexes, s => new Regex(s, RegexHelpers.RegexOptionNonBacktracking, new TimeSpan(0,0,1)));
-            int totConstrTime = (int)sw.ElapsedMilliseconds;
-
-            // Serialize multiple times
-            sw = Stopwatch.StartNew();
-            string[] serialized = Array.ConvertAll(rs, Serialize);
-            for (int j = 0; j < 9; j++)
-            {
-                serialized = Array.ConvertAll(rs, Serialize);
-            }
-            int totSerTime = (int)sw.ElapsedMilliseconds / 10;
-
-            //save the serializations
-            File.WriteAllLines(SerializedOutputPath, serialized);
-
-            // Deserialize multiple times
-            sw = Stopwatch.StartNew();
-            Array.ConvertAll(serialized, Deserialize);
-            for (int j = 0; j < 9; j++)
-            {
-                Array.ConvertAll(serialized, Deserialize);
-            }
-            int totDeSerTime = (int)sw.ElapsedMilliseconds / 10;
-
-            File.AppendAllText(OutputFilePath, $"\nconstr:{totConstrTime}ms, serialization:{totSerTime}ms, deserialization:{totDeSerTime}ms\n");
         }
     }
 }

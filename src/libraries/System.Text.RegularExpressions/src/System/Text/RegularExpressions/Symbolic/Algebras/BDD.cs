@@ -411,32 +411,6 @@ namespace System.Text.RegularExpressions.Symbolic
             one_node_shift = ordinal_bits;
             ordinal_shift = 0;
         }
-
-        /// <summary>
-        /// Invokes Serialize and appends the array as code_0.code_1. ... .code_{N-1} to sb
-        /// where N is the length of the array returned by Serialize() and code_i is the cencoding of the i'th element.
-        /// Uses '.' as separator.
-        /// </summary>
-        public void Serialize(StringBuilder sb) => Base64Utility.Encode(Serialize(), sb);
-
-        public string SerializeToString()
-        {
-            var sb = new StringBuilder();
-            Serialize(sb);
-            return sb.ToString();
-        }
-
-        /// <summary>
-        /// Recreates a BDD from an input string that has been created using Serialize.
-        /// Is executed using a lock on the algebra (if algebra != null) in a single thread mode.
-        /// If no algebra is given (algebra is null) then creates the BDD without using any BDD algebra --
-        /// which implies that all BDD nodes other than True and False are new BDD objects
-        /// that have not been internalized or cached.
-        /// IMPORTANT: When created without any algebra the BDD
-        /// can still be used as a classifier with Find that does not use or require any algebra.
-        /// </summary>
-        public static BDD Deserialize(ReadOnlySpan<char> input, BDDAlgebra? algebra = null) =>
-            Deserialize(Base64Utility.DecodeInt64Array(input), algebra);
         #endregion
 
         /// <summary>
@@ -462,11 +436,6 @@ namespace System.Text.RegularExpressions.Symbolic
             IsLeaf ? Ordinal :
             (input & ((ulong)1 << Ordinal)) == 0 ? Zero.Find(input) :
             One.Find(input);
-
-        /// <summary>
-        /// Returns the serialized form of the BDD. Useful for Debugging.
-        /// </summary>
-        public override string ToString() => SerializeToString();
 
         /// <summary>
         /// Assumes BDD is not MTBDD and returns true iff it contains the input.

@@ -44,17 +44,6 @@ namespace System.Text.RegularExpressions.Symbolic
             _true = _bits == 64 ? ulong.MaxValue : ulong.MaxValue >> (64 - _bits);
         }
 
-        /// <summary>
-        /// Constructor used by BVAlgebraBase.Deserialize. Here the minters and the CharSetSolver are unknown and set to null.
-        /// </summary>
-        public BV64Algebra(PartitionClassifier classifier, ulong[] cardinalities) : base(classifier, cardinalities, null)
-        {
-            Debug.Assert(cardinalities.Length <= 64);
-            _mintermGenerator = new MintermGenerator<ulong>(this);
-            _false = 0;
-            _true = _bits == 64 ? ulong.MaxValue : ulong.MaxValue >> (64 - _bits);
-        }
-
         public bool IsExtensional => true;
         public bool HashCodesRespectEquivalence => true;
 
@@ -187,38 +176,13 @@ namespace System.Text.RegularExpressions.Symbolic
 
         public IEnumerable<char> GenerateAllCharacters(ulong set) => throw new NotSupportedException();
 
-        #region serialization
-        /// <summary>
-        /// Serialize pred using Base64Utility.Encode
-        /// </summary>
-        public void SerializePredicate(ulong pred, StringBuilder sb) => Base64Utility.Encode(pred, sb);
-
-        /// <summary>
-        /// Deserialize s from a string created by SerializePredicate
-        /// </summary>
-        public ulong DeserializePredicate(string s) => Base64Utility.DecodeUInt64(s);
-        #endregion
-
-        /// <summary>
-        /// Pretty print the bitvector bv as the character set it represents.
-        /// </summary>
+        /// <summary>Pretty print the bitvector bv as the character set it represents.</summary>
         public string PrettyPrint(ulong bv)
         {
-            //accesses the shared BDD solver
             ICharAlgebra<BDD> bddalgebra = SymbolicRegexRunner.s_unicode._solver;
+            Debug.Assert(_partition is not null && bddalgebra is not null);
 
-            if (_partition == null || bddalgebra == null)
-            {
-                var sb = new StringBuilder();
-                sb.Append('[');
-                SerializePredicate(bv, sb);
-                sb.Append(']');
-                return sb.ToString();
-            }
-
-            BDD bdd = ConvertToCharSet(bddalgebra, bv);
-            string str = bddalgebra.PrettyPrint(bdd);
-            return str;
+            return bddalgebra.PrettyPrint(ConvertToCharSet(bddalgebra, bv));
         }
     }
 }

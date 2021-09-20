@@ -454,26 +454,6 @@ namespace System.Text.RegularExpressions.Symbolic
 
         IEnumerator IEnumerable.GetEnumerator() => new Enumerator(this);
 
-        internal void Serialize(StringBuilder sb)
-        {
-            var list = new List<SymbolicRegexNode<S>>(this);
-
-            var str = new List<string>(list.Count);
-            foreach (SymbolicRegexNode<S> node in list)
-            {
-                str.Add(node.Serialize());
-            }
-            str.Sort();
-
-            string separator = "";
-            foreach (string s in str)
-            {
-                sb.Append(separator);
-                sb.Append(s);
-                separator = ",";
-            }
-        }
-
         internal int GetFixedLength()
         {
             if (_loops.Count > 0)

@@ -50,7 +50,9 @@ namespace {namespacename}
                 ignorecase = solver.Or(ignorecase, solver.And(solver.ShiftLeft(a, 16), b));
             }
 
-            sw.WriteLine($"        public const string IgnoreCaseEnUsSerializedBDD = \"{ignorecase.SerializeToString()}\";");
+            sw.Write("        public static readonly long[] IgnoreCaseEnUsSerializedBDD = ");
+            GeneratorHelper.WriteInt64ArrayInitSyntax(sw, ignorecase.Serialize());
+            sw.WriteLine(";");
         }
 
         private static Dictionary<char, BDD> ComputeIgnoreCaseDictionary(CharSetSolver solver, CultureInfo culture)

@@ -42,24 +42,5 @@ namespace System.Text.RegularExpressions.Tests
             Assert.Equal(Pattern, e.Pattern);
             Assert.Equal(timeout, e.MatchTimeout);
         }
-
-        [ConditionalFact(typeof(PlatformDetection), nameof(PlatformDetection.IsBinaryFormatterSupported))]
-        public void SerializationRoundtrip()
-        {
-            const string Input = "abcdef";
-            const string Pattern = "(?:abcdef)*";
-            TimeSpan timeout = TimeSpan.FromSeconds(42);
-            var e = new RegexMatchTimeoutException(Input, Pattern, timeout);
-
-            var bf = new BinaryFormatter();
-            var s = new MemoryStream();
-            bf.Serialize(s, e);
-            s.Position = 0;
-            e = (RegexMatchTimeoutException)bf.Deserialize(s);
-
-            Assert.Equal(Input, e.Input);
-            Assert.Equal(Pattern, e.Pattern);
-            Assert.Equal(timeout, e.MatchTimeout);
-        }
     }
 }
