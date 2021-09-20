@@ -444,7 +444,7 @@ class SchemaDef
                 new MemberDef("Events", "Event", MemberDefFlags.Map | MemberDefFlags.RecordRef | MemberDefFlags.Child),
                 new MemberDef("GenericParameters", "GenericParameter", MemberDefFlags.List | MemberDefFlags.RecordRef | MemberDefFlags.Child),
                 new MemberDef("Interfaces", TypeDefOrRefOrSpec, MemberDefFlags.List | MemberDefFlags.RecordRef),
-                new MemberDef("MethodImpls", "MethodImpl", MemberDefFlags.List | MemberDefFlags.RecordRef | MemberDefFlags.Child),
+                // COMPLETENESS: new MemberDef("MethodImpls", "MethodImpl", MemberDefFlags.List | MemberDefFlags.RecordRef | MemberDefFlags.Child),
                 new MemberDef("CustomAttributes", "CustomAttribute", MemberDefFlags.List | MemberDefFlags.RecordRef | MemberDefFlags.Child),
             }
         ),
@@ -453,14 +453,14 @@ class SchemaDef
             members: new MemberDef[] {
                 new MemberDef("ParentNamespaceOrType", new string[] { "NamespaceReference", "TypeReference" }, MemberDefFlags.RecordRef),
                 new MemberDef("TypeName", "ConstantStringValue", MemberDefFlags.RecordRef | MemberDefFlags.Child | MemberDefFlags.Name),
-                new MemberDef("CustomAttributes", "CustomAttribute", MemberDefFlags.List | MemberDefFlags.RecordRef | MemberDefFlags.Child),
+                // COMPLETENESS: new MemberDef("CustomAttributes", "CustomAttribute", MemberDefFlags.List | MemberDefFlags.RecordRef | MemberDefFlags.Child),
             }
         ),
         new RecordDef(
             name: "TypeSpecification",
             members: new MemberDef[] {
                 new MemberDef("Signature", TypeDefOrRef.Concat(TypeSig).ToArray(), MemberDefFlags.RecordRef | MemberDefFlags.Child),
-                new MemberDef("CustomAttributes", "CustomAttribute", MemberDefFlags.List | MemberDefFlags.RecordRef | MemberDefFlags.Child),
+                // COMPLETENESS: new MemberDef("CustomAttributes", "CustomAttribute", MemberDefFlags.List | MemberDefFlags.RecordRef | MemberDefFlags.Child),
             }
         ),
         new RecordDef(
@@ -496,7 +496,7 @@ class SchemaDef
                 new MemberDef("RevisionNumber", "ushort"),
                 new MemberDef("PublicKeyOrToken", "Byte", MemberDefFlags.Array),
                 new MemberDef("Culture", "ConstantStringValue", MemberDefFlags.RecordRef | MemberDefFlags.Child),
-                new MemberDef("CustomAttributes", "CustomAttribute", MemberDefFlags.List | MemberDefFlags.RecordRef | MemberDefFlags.Child),
+                // COMPLETENESS: new MemberDef("CustomAttributes", "CustomAttribute", MemberDefFlags.List | MemberDefFlags.RecordRef | MemberDefFlags.Child),
             }
         ),
         new RecordDef(
@@ -541,7 +541,7 @@ class SchemaDef
             members: new MemberDef[] {
                 new MemberDef("Method", MethodDefOrRef, MemberDefFlags.RecordRef),
                 new MemberDef("GenericTypeArguments", TypeDefOrRefOrSpec, MemberDefFlags.List | MemberDefFlags.RecordRef),
-                new MemberDef("CustomAttributes", "CustomAttribute", MemberDefFlags.List | MemberDefFlags.RecordRef | MemberDefFlags.Child),
+                // COMPLETENESS: new MemberDef("CustomAttributes", "CustomAttribute", MemberDefFlags.List | MemberDefFlags.RecordRef | MemberDefFlags.Child),
             }
         ),
         new RecordDef(
@@ -550,7 +550,7 @@ class SchemaDef
                 new MemberDef("Parent", TypeDefOrRefOrSpec, MemberDefFlags.RecordRef),
                 new MemberDef("Name", "ConstantStringValue", MemberDefFlags.RecordRef | MemberDefFlags.Child),
                 new MemberDef("Signature", new string[] { "MethodSignature", "FieldSignature" }, MemberDefFlags.RecordRef | MemberDefFlags.Child),
-                new MemberDef("CustomAttributes", "CustomAttribute", MemberDefFlags.List | MemberDefFlags.RecordRef | MemberDefFlags.Child),
+                // COMPLETENESS: new MemberDef("CustomAttributes", "CustomAttribute", MemberDefFlags.List | MemberDefFlags.RecordRef | MemberDefFlags.Child),
             }
         ),
         new RecordDef(
@@ -628,13 +628,13 @@ class SchemaDef
                 new MemberDef("CustomAttributes", "CustomAttribute", MemberDefFlags.List | MemberDefFlags.RecordRef | MemberDefFlags.Child),
             }
         ),
-        new RecordDef(
+        /* COMPLETENESS new RecordDef(
             name: "MethodImpl",
             members: new MemberDef[] {
                 new MemberDef("MethodBody", MethodDefOrRef, MemberDefFlags.RecordRef),
                 new MemberDef("MethodDeclaration", MethodDefOrRef, MemberDefFlags.RecordRef),
             }
-        ),
+        ),*/
         new RecordDef(
             name: "Parameter",
             members: new MemberDef[] {
@@ -734,7 +734,7 @@ class SchemaDef
                 new MemberDef("Scope", "ScopeReference", MemberDefFlags.RecordRef),
                 new MemberDef("Name", "ConstantStringValue", MemberDefFlags.RecordRef | MemberDefFlags.Child | MemberDefFlags.Name),
                 new MemberDef("NestedTypes", "TypeForwarder", MemberDefFlags.List | MemberDefFlags.RecordRef | MemberDefFlags.Child),
-                new MemberDef("CustomAttributes", "CustomAttribute", MemberDefFlags.List | MemberDefFlags.RecordRef | MemberDefFlags.Child),
+                // COMPLETENESS: new MemberDef("CustomAttributes", "CustomAttribute", MemberDefFlags.List | MemberDefFlags.RecordRef | MemberDefFlags.Child),
             }
         ),
         new RecordDef(

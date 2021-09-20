@@ -1154,28 +1154,6 @@ namespace Internal.Metadata.NativeFormat.Writer
             }
         } // Write
 
-        public static void Write(this NativeWriter writer, MethodImpl record)
-        {
-            if (record != null)
-                writer.WriteUnsigned((uint)record.Handle.Offset);
-            else
-                writer.WriteUnsigned(0);
-        } // Write
-
-        public static void Write(this NativeWriter writer, List<MethodImpl> values)
-        {
-            if (values == null)
-            {
-                writer.WriteUnsigned(0);
-                return;
-            }
-            writer.WriteUnsigned((uint)values.Count);
-            foreach (MethodImpl value in values)
-            {
-                writer.Write(value);
-            }
-        } // Write
-
         public static void Write(this NativeWriter writer, MethodInstantiation record)
         {
             if (record != null)
