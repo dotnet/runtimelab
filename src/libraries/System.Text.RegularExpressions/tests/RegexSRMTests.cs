@@ -313,27 +313,30 @@ namespace System.Text.RegularExpressions.Tests
             Assert.Throws<RegexMatchTimeoutException>(() => { re.Match(input); });
         }
 
-        /// <summary>
-        /// Save the regex as a DFA in DGML format in the textwriter.
-        /// </summary>
-        /// <param name="r"></param>
-        private static void SaveDGML(Regex regex, TextWriter writer, int bound = -1, bool hideStateInfo = false, bool addDotStar = false, bool inReverse = false, bool onlyDFAinfo = false, int maxLabelLength = -1)
-        {
-            MethodInfo saveDgml = regex.GetType().GetMethod("SaveDGML", BindingFlags.NonPublic | BindingFlags.Instance);
-            saveDgml.Invoke(regex, new object[] { writer, bound, hideStateInfo, addDotStar, inReverse, onlyDFAinfo, maxLabelLength });
-        }
-
         [Fact]
         public void TestDGMLGeneration()
         {
             StringWriter sw = new StringWriter();
             var re = new Regex(".*a+", RegexOptions.NonBacktracking | RegexOptions.Singleline);
-            // RegexExperiment.ViewDGML(re, name : "TestDGMLGeneration");
-            SaveDGML(re, sw);
-            string str = sw.ToString();
-            Assert.StartsWith("<?xml version=\"1.0\" encoding=\"utf-8\"?>", str);
-            Assert.Contains("DirectedGraph", str);
-            Assert.Contains(".*a+", str);
+            if (TrySaveDGML(re, sw))
+            {
+                string str = sw.ToString();
+                Assert.StartsWith("<?xml version=\"1.0\" encoding=\"utf-8\"?>", str);
+                Assert.Contains("DirectedGraph", str);
+                Assert.Contains(".*a+", str);
+            }
+
+            static bool TrySaveDGML(Regex regex, TextWriter writer, int bound = -1, bool hideStateInfo = false, bool addDotStar = false, bool inReverse = false, bool onlyDFAinfo = false, int maxLabelLength = -1)
+            {
+                MethodInfo saveDgml = regex.GetType().GetMethod("SaveDGML", BindingFlags.NonPublic | BindingFlags.Instance);
+                if (saveDgml is not null)
+                {
+                    saveDgml.Invoke(regex, new object[] { writer, bound, hideStateInfo, addDotStar, inReverse, onlyDFAinfo, maxLabelLength });
+                    return true;
+                }
+
+                return false;
+            }
         }
 
         [Fact]
