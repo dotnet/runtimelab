@@ -10,7 +10,7 @@ namespace System.Net.Http.LowLevel
     /// </summary>
     public class HttpContentStream : Stream, IEnhancedStream
     {
-        internal ValueHttpRequest _request;
+        protected internal ValueHttpRequest _request;
 
         private readonly bool _ownsRequest;
         private UnsafeSpanWrappingMemoryOwner? _spanReadWrapper, _spanWriteWrapper;
@@ -74,7 +74,8 @@ namespace System.Net.Http.LowLevel
                     {
                         try
                         {
-                            await _request.CompleteRequestAsync().ConfigureAwait(false);
+                            // Drain. As we don't have connection factory we darin instead of close connection.
+                            // await _request.DrainAsync().ConfigureAwait(false);
                         }
                         catch (OperationCanceledException)
                         {

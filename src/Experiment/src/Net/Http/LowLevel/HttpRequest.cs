@@ -32,6 +32,11 @@ namespace System.Net.Http.LowLevel
         public static ReadOnlySpan<byte> PutMethod => new byte[] { (byte)'P', (byte)'U', (byte)'T' };
 
         /// <summary>
+        /// The HEAD method.
+        /// </summary>
+        public static ReadOnlySpan<byte> HeadMethod => new byte[] { (byte)'H', (byte)'E', (byte)'A', (byte)'D' };
+
+        /// <summary>
         /// The CONNECT method.
         /// </summary>
         public static ReadOnlySpan<byte> ConnectMethod => new byte[] { (byte)'C', (byte)'O', (byte)'N', (byte)'N', (byte)'E', (byte)'C', (byte)'T' };

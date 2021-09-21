@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+﻿using System.Net.Sockets;
+using System.Threading.Tasks;
 
 namespace System.Net.Http.LowLevel.Tests.Servers
 {
@@ -28,6 +29,10 @@ namespace System.Net.Http.LowLevel.Tests.Servers
                     case IPEndPoint ipEp:
                         uriBuilder.Host = ipEp.Address.ToString();
                         uriBuilder.Port = ipEp.Port;
+                        break;
+                    case {AddressFamily: AddressFamily.Unspecified}:
+                        uriBuilder.Host = "memory";
+                        uriBuilder.Port = 0;
                         break;
                     default:
                         uriBuilder.Host = "localhost";

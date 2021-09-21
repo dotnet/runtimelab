@@ -192,7 +192,7 @@ namespace System.Net.Http.LowLevel.Tests.Connections
                 try
                 {
                     Debug.Assert(_args.AcceptSocket == null);
-                    _args.AcceptSocket = _connectionFactory.CreateSocket(_connectionFactory._addressFamily, _connectionFactory._socketType, _connectionFactory._protocolType, options);
+                    _args.AcceptSocket = null;
                     _args.Reset();
 
                     if (_listener.AcceptAsync(_args))
@@ -208,7 +208,7 @@ namespace System.Net.Http.LowLevel.Tests.Connections
 
                     if (_args.SocketError == SocketError.Success)
                     {
-                        Socket socket = _args.AcceptSocket;
+                        Socket socket = _args.AcceptSocket!;
                         _args.AcceptSocket = null;
 
                         try
