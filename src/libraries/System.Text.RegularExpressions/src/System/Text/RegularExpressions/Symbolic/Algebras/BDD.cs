@@ -336,30 +336,15 @@ namespace System.Text.RegularExpressions.Symbolic
         /// which implies that all BDD nodes other than True and False are new BDD objects
         /// that have not been internalized or cached.
         /// </summary>
-        public static BDD Deserialize(long[] arcs, BDDAlgebra? algebra = null)
+        public static BDD Deserialize(long[] arcs, BDDAlgebra algebra)
         {
             if (arcs.Length == 1)
             {
                 return arcs[0] == 0 ? False : True;
             }
 
-            if (algebra is null)
-            {
-                return DeserializeWithFactory(arcs, (int ordinal, BDD? one, BDD? zero) =>
-                {
-                    Debug.Assert(one != zero || one is null);
-                    Debug.Assert(one is not null || zero is null);
-                    Debug.Assert(one is null || zero is not null);
-                    return new BDD(ordinal, one, zero);
-                });
-            }
-
-            lock (algebra)
-            {
-                return DeserializeWithFactory(arcs, algebra.GetOrCreateBDD);
-            }
-
-            static BDD DeserializeWithFactory(long[] arcs, Func<int, BDD?, BDD?, BDD> createBDD)
+            algebra.Lock.EnterWriteLock();
+            try
             {
                 // the number of bits used for ordinals and node identifiers are stored in the first two values
                 int k = arcs.Length;
@@ -382,7 +367,7 @@ namespace System.Text.RegularExpressions.Symbolic
                     if (arc <= 0)
                     {
                         // this is an MTBDD leaf. Its ordinal was serialized negated
-                        nodes[i] = createBDD((int)-arc, null, null);
+                        nodes[i] = algebra.GetOrCreateBDD((int)-arc, null, null);
                     }
                     else
                     {
@@ -392,12 +377,16 @@ namespace System.Text.RegularExpressions.Symbolic
                         int zeroId = (int)((arc >> zero_node_shift) & node_mask);
 
                         // the BDD nodes for the children are guaranteed to exist already due to the topological order
-                        nodes[i] = createBDD(ord, nodes[oneId], nodes[zeroId]);
+                        nodes[i] = algebra.GetOrCreateBDD(ord, nodes[oneId], nodes[zeroId]);
                     }
                 }
 
                 //the result is the final BDD in the nodes array
                 return nodes[k - 1];
+            }
+            finally
+            {
+                algebra.Lock.ExitWriteLock();
             }
         }
 
