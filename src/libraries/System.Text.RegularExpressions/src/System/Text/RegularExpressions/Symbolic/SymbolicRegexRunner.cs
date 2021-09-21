@@ -1,7 +1,6 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Text.RegularExpressions.Symbolic.Unicode;
@@ -12,14 +11,18 @@ namespace System.Text.RegularExpressions.Symbolic
     {
         /// <summary>The unicode component, including the BDD algebra.</summary>
         internal static readonly UnicodeCategoryTheory<BDD> s_unicode = new UnicodeCategoryTheory<BDD>(new CharSetSolver());
-
+        /// <summary>The matching engine.</summary>
         internal readonly SymbolicRegexMatcher _matcher;
+        /// <summary>Minimum length computed</summary>
+        private readonly int _minRequiredLength;
 
-        private SymbolicRegexRunner(RegexNode rootNode, RegexOptions options, TimeSpan matchTimeout, CultureInfo culture)
+        private SymbolicRegexRunner(RegexCode code, RegexOptions options, TimeSpan matchTimeout, CultureInfo culture)
         {
             var converter = new RegexNodeToSymbolicConverter(s_unicode, culture);
             var solver = (CharSetSolver)s_unicode._solver;
-            SymbolicRegexNode<BDD> root = converter.Convert(rootNode, topLevel: true);
+            SymbolicRegexNode<BDD> root = converter.Convert(code.Tree.Root, topLevel: true);
+
+            _minRequiredLength = code.Tree.MinRequiredLength;
 
             BDD[] minterms = root.ComputeMinterms();
             if (minterms.Length > 64)
@@ -55,7 +58,7 @@ namespace System.Text.RegularExpressions.Symbolic
             }
         }
 
-        public static RegexRunnerFactory CreateFactory(RegexNode rootNode, RegexOptions options, TimeSpan matchTimeout, CultureInfo culture)
+        public static RegexRunnerFactory CreateFactory(RegexCode code, RegexOptions options, TimeSpan matchTimeout, CultureInfo culture)
         {
             // RightToLeft and ECMAScript are currently not supported in conjunction with NonBacktracking.
             if ((options & (RegexOptions.RightToLeft | RegexOptions.ECMAScript)) != 0)
@@ -65,85 +68,42 @@ namespace System.Text.RegularExpressions.Symbolic
                         (options & RegexOptions.RightToLeft) != 0 ? nameof(RegexOptions.RightToLeft) : nameof(RegexOptions.ECMAScript)));
             }
 
-            return new SymbolicRegexRunnerFactory(
-                new SymbolicRegexRunner(rootNode, options, matchTimeout, culture));
+            return new SymbolicRegexRunnerFactory(new SymbolicRegexRunner(code, options, matchTimeout, culture));
         }
+        protected override void InitTrackCount() { } // nop, no backtracking
 
-        internal override Match? ScanInternal(
-            Regex regex, string text, int textbeg, int textend, int textstart, int prevlen, bool quick, TimeSpan timeout)
+        protected override bool FindFirstChar() =>
+            // The real logic is all in Go.  Here we simply validate if there's enough text remaining to possibly match.
+            runtextpos <= runtextend - _minRequiredLength;
+
+        protected override void Go()
         {
-            int length = textend - textbeg;
+            // TODO: In order to produce a SymbolicMatch with a valid Index/Length, FindMatch needs to do additional
+            // work once it's found the end of a match to find the beginning of the match.  If this is an IsMatch
+            // call, however, the details of the match will be ignored, with the only important information being
+            // that there was a match.  We need a mechanism of supplying that information to this operation. At the
+            // moment the only obvious answer to that is new protected surface area, either additional protected
+            // field/property that could be consulted, or a new virtual Scan method that this implementation could
+            // override instead of using the base Scan method that invokes FindFirstChar/Go.  We could choose to bypass
+            // this public/protected surface area for the in-memory implementation, e.g. having it look at some
+            // new private protected field we add to RegexRunner, but for now we simply don't benefit from this optimization.
+            const bool calledFromIsMatch = false;
 
-            // If the previous match was empty, advance by one before matching
-            // or terminate the matching if there is no remaining input to search in
-            if (prevlen == 0)
+            // Perform the match.
+            SymbolicMatch pos = _matcher.FindMatch(calledFromIsMatch, runtext!, runtextpos, runtextend);
+            if (pos.Success)
             {
-                if (textstart == textend)
-                {
-                    return Match.Empty;
-                }
-
-                textstart += 1;
+                // If we successfully matched, capture the match, and then jump the current position to the end of the match.
+                int start = pos.Index;
+                int end = start + pos.Length;
+                Capture(0, start, end);
+                runtextpos = end;
             }
-
-            SymbolicMatch pos = _matcher.FindMatch(quick, text, textstart, textend);
-            if (!pos.Success)
+            else
             {
-                return Match.Empty;
-            }
-
-            if (quick)
-            {
-                return null;
-            }
-
-            var m = new Match(regex, 1, text, textbeg, length, textstart);
-            m._matches[0][0] = pos.Index;
-            m._matches[0][1] = pos.Length;
-            m._matchcount[0] = 1;
-            m.Tidy(pos.Index + pos.Length);
-            return m;
-        }
-
-        internal override void ScanInternal<TState>(Regex regex, string text, int textstart, ref TState state, MatchCallback<TState> callback, bool reuseMatchObject, TimeSpan timeout)
-        {
-            Match? m = null;
-            while (true)
-            {
-                // If the previous match was empty, advance by one before matching or terminate the
-                // matching if there is no remaining input to search in
-                if (m?.Length == 0)
-                {
-                    if (textstart == text.Length)
-                    {
-                        break;
-                    }
-
-                    textstart += 1;
-                }
-
-                SymbolicMatch pos = _matcher.FindMatch(isMatch: false, text, textstart, text.Length);
-                if (!pos.Success)
-                {
-                    break;
-                }
-
-                if (!reuseMatchObject || m is null)
-                {
-                    m = new Match(regex, capcount: 1, text, begpos: 0, text.Length, textstart);
-                }
-
-                m._matches[0][0] = pos.Index;
-                m._matches[0][1] = pos.Length;
-                m._matchcount[0] = 1;
-                m.Tidy(pos.Index + pos.Length);
-
-                if (!callback(ref state, m))
-                {
-                    break;
-                }
-
-                textstart = m.Index + m.Length;
+                // If we failed to find a match in the entire remainder of the input, skip the current position to the end.
+                // The calling scan loop will then exit.
+                runtextpos = runtextend;
             }
         }
 
@@ -154,14 +114,5 @@ namespace System.Text.RegularExpressions.Symbolic
         }
 
         public void SaveDGML(TextWriter writer, int bound, bool hideStateInfo, bool addDotStar, bool inReverse, bool onlyDFAinfo, int maxLabelLength) => _matcher.SaveDGML(writer, bound, hideStateInfo, addDotStar, inReverse, onlyDFAinfo, maxLabelLength);
-
-        protected override void Go() => throw NotSupported();
-        protected override bool FindFirstChar() => throw NotSupported();
-        protected override void InitTrackCount() => throw NotSupported();
-        private static Exception NotSupported()
-        {
-            Debug.Fail("Should never be invoked.  Only applicable to the base ScanInternal implementations.");
-            throw new NotSupportedException();
-        }
     }
 }

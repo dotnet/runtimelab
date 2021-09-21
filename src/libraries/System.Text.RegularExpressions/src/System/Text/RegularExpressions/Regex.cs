@@ -29,11 +29,11 @@ namespace System.Text.RegularExpressions
         protected internal Hashtable? capnames;               // if named captures are used, this maps names->index
         protected internal string[]? capslist;                // if captures are sparse or named captures are used, this is the sorted list of names
         protected internal int capsize;                       // the size of the capture array
+        internal int _capsizeForReplacements;                 // actual capture length from the expression, used to determine how to treat back references in replacements
 
-        internal WeakReference<RegexReplacement?>? _replref;  // cached parsed replacement pattern
+        private WeakReference<RegexReplacement?>? _replref;   // cached parsed replacement pattern
         private volatile RegexRunner? _runner;                // cached runner
         private RegexCode? _code;                             // if interpreted, this is the code for RegexInterpreter
-        private bool _refsInitialized;
 
         protected Regex() => internalMatchTimeout = s_defaultMatchTimeout;
 
@@ -67,18 +67,18 @@ namespace System.Text.RegularExpressions
         internal Regex(string pattern, RegexOptions options, TimeSpan matchTimeout, CultureInfo? culture)
         {
             culture ??= GetTargetCulture(options);
-            RegexTree tree = Init(pattern, options, matchTimeout, culture);
+            Init(pattern, options, matchTimeout, culture);
 
             if ((options & RegexOptions.NonBacktracking) != 0)
             {
                 // If we're in non-backtracking mode, create the appropriate factory.
-                factory = SymbolicRegexRunner.CreateFactory(tree.Root, options & ~RegexOptions.NonBacktracking, matchTimeout, culture);
+                factory = SymbolicRegexRunner.CreateFactory(_code, options & ~RegexOptions.NonBacktracking, matchTimeout, culture);
                 _code = null;
             }
             else if (RuntimeFeature.IsDynamicCodeCompiled && UseOptionC())
             {
                 // If the compile option is set and compilation is supported, then compile the code.
-                factory = Compile(pattern, _code!, options, matchTimeout != InfiniteMatchTimeout);
+                factory = Compile(pattern, _code, options, matchTimeout != InfiniteMatchTimeout);
                 _code = null;
             }
         }
@@ -92,7 +92,8 @@ namespace System.Text.RegularExpressions
         /// rather than 'new Regex(pattern, options)' can avoid statically referencing the Regex
         /// compiler, such that a tree shaker / linker can trim it away if it's not otherwise used.
         /// </remarks>
-        private RegexTree Init(string pattern, RegexOptions options, TimeSpan matchTimeout, CultureInfo? culture)
+        [MemberNotNull(nameof(_code))]
+        private void Init(string pattern, RegexOptions options, TimeSpan matchTimeout, CultureInfo? culture)
         {
             ValidatePattern(pattern);
             ValidateOptions(options);
@@ -113,22 +114,25 @@ namespace System.Text.RegularExpressions
             // Parse the input
             RegexTree tree = RegexParser.Parse(pattern, roptions, culture);
 
-            // Extract the relevant information
-            capnames = tree.CapNames;
-            capslist = tree.CapsList;
-
             // Generate the RegexCode from the node tree.  This is required for interpreting,
-            // and is used as input into compilation. For NonBacktracking, the output is necessary
-            // purely for the values of caps{ize}, as they're used in RegexReplacement to determine
-            // whether referenced substitutions are valid (and thus are treated as references) or
-            // invalid (and thus are treated as regular text).
+            // and is used as input into RegexOptions.Compiled and RegexOptions.NonBacktracking.
             _code = RegexWriter.Write(tree);
-            caps = _code.Caps;
-            capsize = _code.CapSize;
 
-            InitializeReferences();
-
-            return tree;
+            if ((options & RegexOptions.NonBacktracking) != 0)
+            {
+                capnames = null;
+                capslist = null;
+                caps = null;
+                capsize = 1;
+                _capsizeForReplacements = _code.CapSize;
+            }
+            else
+            {
+                capnames = tree.CapNames;
+                capslist = tree.CapsList;
+                caps = _code.Caps;
+                _capsizeForReplacements = capsize = _code.CapSize;
+            }
         }
 
         internal static void ValidatePattern(string pattern)
@@ -291,16 +295,6 @@ namespace System.Text.RegularExpressions
         /// </summary>
         public string[] GetGroupNames()
         {
-            if ((roptions & RegexOptions.NonBacktracking) != 0)
-            {
-                // In NonBacktracking mode there is a single top level groupname "0".
-                // The contents of capsize and caps are necessary to preserve in order to enable
-                // proper behavior of replacements, where references to non-existent groups are treated
-                // as normal text, and as such these public members return the desired contents
-                // rather than overwriting those members.
-                return new string[] { "0" };
-            }
-
             if (capslist is not null)
             {
                 return capslist.AsSpan().ToArray();
@@ -319,13 +313,6 @@ namespace System.Text.RegularExpressions
         /// </summary>
         public int[] GetGroupNumbers()
         {
-            if ((roptions & RegexOptions.NonBacktracking) != 0)
-            {
-                // In NonBacktracking mode there is a single top level group 0.
-                // See comment in GetGroupNames.
-                return new int[] { 0 };
-            }
-
             int[] result;
 
             if (caps is null)
@@ -354,13 +341,6 @@ namespace System.Text.RegularExpressions
         /// </summary>
         public string GroupNameFromNumber(int i)
         {
-            if ((roptions & RegexOptions.NonBacktracking) != 0)
-            {
-                // In NonBacktracking mode there is a single top level group 0.
-                // See comment in GetGroupNames.
-                return i == 0 ? "0" : string.Empty;
-            }
-
             if (capslist is null)
             {
                 return (uint)i < (uint)capsize ?
@@ -384,16 +364,7 @@ namespace System.Text.RegularExpressions
                 ThrowHelper.ThrowArgumentNullException(ExceptionArgument.name);
             }
 
-            if ((roptions & RegexOptions.NonBacktracking) != 0)
-            {
-                // In NonBacktracking mode there is a single top level group 0
-                // See comment in GetGroupNames.
-                if (name == "0")
-                {
-                    return 0;
-                }
-            }
-            else if (capnames is not null)
+            if (capnames is not null)
             {
                 // Look up name if we have a hashtable of names.
                 if (capnames.TryGetValue(name, out int result))
@@ -413,15 +384,16 @@ namespace System.Text.RegularExpressions
             return -1;
         }
 
+        internal WeakReference<RegexReplacement?> RegexReplacementWeakReference =>
+            _replref ??
+            Interlocked.CompareExchange(ref _replref, new WeakReference<RegexReplacement?>(null), null) ??
+            _replref;
+
         protected void InitializeReferences()
         {
-            if (_refsInitialized)
-            {
-                ThrowHelper.ThrowNotSupportedException(ExceptionResource.OnlyAllowedOnce);
-            }
-
-            _replref = new WeakReference<RegexReplacement?>(null);
-            _refsInitialized = true;
+            // This method no longer has anything to initialize. It continues to exist
+            // purely for API compat, as it was originally shipped as protected, with
+            // assemblies generated by Regex.CompileToAssembly calling it.
         }
 
         /// <summary>Internal worker called by the public APIs</summary>
@@ -440,7 +412,7 @@ namespace System.Text.RegularExpressions
             try
             {
                 // Do the scan starting at the requested position
-                Match? match = runner.ScanInternal(this, input, beginning, beginning + length, startat, prevlen, quick, internalMatchTimeout);
+                Match? match = runner.Scan(this, input, beginning, beginning + length, startat, prevlen, quick, internalMatchTimeout);
 #if DEBUG
                 if (IsDebug) match?.Dump();
 #endif

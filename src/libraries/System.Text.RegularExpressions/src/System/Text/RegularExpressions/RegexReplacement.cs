@@ -111,7 +111,7 @@ namespace System.Text.RegularExpressions
         /// Either returns a weakly cached RegexReplacement helper or creates one and caches it.
         /// </summary>
         /// <returns></returns>
-        public static RegexReplacement GetOrCreate(WeakReference<RegexReplacement> replRef, string replacement, Hashtable caps,
+        public static RegexReplacement GetOrCreate(WeakReference<RegexReplacement?> replRef, string replacement, Hashtable caps,
             int capsize, Hashtable capnames, RegexOptions roptions)
         {
 
