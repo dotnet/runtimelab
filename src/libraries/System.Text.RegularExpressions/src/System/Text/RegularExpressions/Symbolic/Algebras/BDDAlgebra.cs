@@ -1,4 +1,4 @@
-// Licensed to the .NET Foundation under one or more agreements.
+﻿// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Collections.Generic;
@@ -342,19 +342,6 @@ namespace System.Text.RegularExpressions.Symbolic
         /// Intersect all sets in the enumeration
         /// </summary>
         public BDD And(IEnumerable<BDD> sets)
-        {
-            BDD res = True;
-            foreach (BDD bdd in sets)
-            {
-                res = And(res, bdd);
-            }
-            return res;
-        }
-
-        /// <summary>
-        /// Intersect all sets in the array
-        /// </summary>
-        public BDD And(params BDD[] sets)
         {
             BDD res = True;
             foreach (BDD bdd in sets)

@@ -60,23 +60,6 @@ namespace System.Text.RegularExpressions.Symbolic
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool IsSatisfiable(ulong predicate) => predicate != _false;
 
-        public ulong And(params ulong[] predicates)
-        {
-            ulong and = _true;
-            for (int i = 0; i < predicates.Length; i++)
-            {
-                and &= predicates[i];
-
-                // short circuit the evaluation on false, since 0&x=0
-                if (and == _false)
-                {
-                    return _false;
-                }
-            }
-
-            return and;
-        }
-
         public ulong And(IEnumerable<ulong> predicates) => throw new NotSupportedException();
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

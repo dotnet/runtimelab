@@ -35,12 +35,6 @@ namespace System.Text.RegularExpressions.Symbolic
         T And(IEnumerable<T> predicates);
 
         /// <summary>
-        /// Make a conjunction of all the predicates.
-        /// Returns True if the enumeration is empty.
-        /// </summary>
-        T And(params T[] predicates);
-
-        /// <summary>
         /// Make a disjunction of predicate1 and predicate2.
         /// </summary>
         T Or(T predicate1, T predicate2);
