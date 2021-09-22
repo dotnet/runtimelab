@@ -26,14 +26,14 @@ namespace System.Reflection.Runtime.Assemblies
     //-----------------------------------------------------------------------------------------------------------
     // Assemblies (maps 1-1 with a MetadataReader/ScopeDefinitionHandle.
     //-----------------------------------------------------------------------------------------------------------
-    internal partial class RuntimeAssembly
+    internal partial class RuntimeAssemblyInfo
     {
         /// <summary>
         /// Returns non-null or throws.
         /// </summary>
         internal static RuntimeAssembly GetRuntimeAssembly(RuntimeAssemblyName assemblyRefName)
         {
-            Exception assemblyLoadException = TryGetRuntimeAssembly(assemblyRefName, out RuntimeAssembly result);
+            Exception assemblyLoadException = TryGetRuntimeAssembly(assemblyRefName, out RuntimeAssemblyInfo result);
             if (assemblyLoadException != null)
                 throw assemblyLoadException;
             return result;
@@ -78,18 +78,18 @@ namespace System.Reflection.Runtime.Assemblies
         /// <summary>
         /// Returns null if no assembly matches the assemblyRefName. Throws for other error cases.
         /// </summary>
-        internal static RuntimeAssembly GetRuntimeAssemblyIfExists(RuntimeAssemblyName assemblyRefName)
+        internal static RuntimeAssemblyInfo GetRuntimeAssemblyIfExists(RuntimeAssemblyName assemblyRefName)
         {
             object runtimeAssemblyOrException = s_assemblyRefNameToAssemblyDispenser.GetOrAdd(assemblyRefName);
-            if (runtimeAssemblyOrException is RuntimeAssembly runtimeAssembly)
+            if (runtimeAssemblyOrException is RuntimeAssemblyInfo runtimeAssembly)
                 return runtimeAssembly;
             return null;
         }
 
-        internal static Exception TryGetRuntimeAssembly(RuntimeAssemblyName assemblyRefName, out RuntimeAssembly result)
+        internal static Exception TryGetRuntimeAssembly(RuntimeAssemblyName assemblyRefName, out RuntimeAssemblyInfo result)
         {
             object runtimeAssemblyOrException = s_assemblyRefNameToAssemblyDispenser.GetOrAdd(assemblyRefName);
-            if (runtimeAssemblyOrException is RuntimeAssembly runtimeAssembly)
+            if (runtimeAssemblyOrException is RuntimeAssemblyInfo runtimeAssembly)
             {
                 result = runtimeAssembly;
                 return null;

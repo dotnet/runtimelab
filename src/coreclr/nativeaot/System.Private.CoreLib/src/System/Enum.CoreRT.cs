@@ -33,21 +33,6 @@ namespace System
             return Array.BinarySearch(ulValues, ulValue) >= 0;
         }
 
-        private static Type ValidateRuntimeType(Type enumType)
-        {
-            if (enumType == null)
-                throw new ArgumentNullException(nameof(enumType));
-            if (!enumType.IsEnum)
-                throw new ArgumentException(SR.Arg_MustBeEnum, nameof(enumType));
-            if (!enumType.IsRuntimeImplemented())
-                throw new ArgumentException(SR.Arg_MustBeType, nameof(enumType));
-
-            // Check for the unfortunate "typeof(Outer<>).InnerEnum" corner case.
-            if (enumType.ContainsGenericParameters)
-                throw new InvalidOperationException(SR.Format(SR.Arg_OpenType, enumType.ToString()));
-            return enumType;
-        }
-
         private static object InternalBoxEnum(Type enumType, long value)
         {
             return ToObject(enumType.TypeHandle.ToEETypePtr(), value);
@@ -186,14 +171,11 @@ namespace System
             }
         }
 
-        public static string? GetName<TEnum>(TEnum value) where TEnum : struct, Enum
-            => GetEnumName(typeof(TEnum), ToUInt64(value));
-
         public static string GetName(Type enumType, object value)
         {
             if (enumType == null)
                 throw new ArgumentNullException(nameof(enumType));
-            if (!enumType.IsRuntimeImplemented())
+            if (enumType is not RuntimeType rtType)
                 return enumType.GetEnumName(value);
             if (value == null)
                 throw new ArgumentNullException(nameof(value));
@@ -204,10 +186,10 @@ namespace System
             // For desktop compatibility, do not bounce an incoming integer that's the wrong size.
             // Do a value-preserving cast of both it and the enum values and do a 64-bit compare.
 
-            if (!enumType.IsEnum)
+            if (!rtType.IsEnum)
                 throw new ArgumentException(SR.Arg_MustBeEnum);
 
-            return GetEnumName(enumType, rawValue);
+            return GetEnumName(rtType, rawValue);
         }
 
         public static string[] GetNames<TEnum>() where TEnum : struct, Enum

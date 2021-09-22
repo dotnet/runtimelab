@@ -35,7 +35,7 @@ namespace System.Reflection.Runtime.TypeInfos
     //     shows up as build error.
     //
     [DebuggerDisplay("{_debugName}")]
-    internal abstract partial class RuntimeTypeInfo : TypeInfo, ITraceableTypeMember, ICloneable, IRuntimeImplemented
+    internal abstract partial class RuntimeTypeInfo : RuntimeType, ITraceableTypeMember, ICloneable
     {
         protected RuntimeTypeInfo()
         {

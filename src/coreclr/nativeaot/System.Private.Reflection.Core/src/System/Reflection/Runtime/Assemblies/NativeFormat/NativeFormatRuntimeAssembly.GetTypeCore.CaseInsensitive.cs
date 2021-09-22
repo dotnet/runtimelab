@@ -48,7 +48,7 @@ namespace System.Reflection.Runtime.Assemblies.NativeFormat
                         TypeForwarder typeForwarder = typeDefOrForwarderHandle.ToTypeForwarderHandle(reader).GetTypeForwarder(reader);
                         ScopeReferenceHandle destinationScope = typeForwarder.Scope;
                         RuntimeAssemblyName destinationAssemblyName = destinationScope.ToRuntimeAssemblyName(reader);
-                        RuntimeAssembly destinationAssembly = RuntimeAssembly.GetRuntimeAssemblyIfExists(destinationAssemblyName);
+                        RuntimeAssemblyInfo destinationAssembly = RuntimeAssemblyInfo.GetRuntimeAssemblyIfExists(destinationAssemblyName);
                         if (destinationAssembly == null)
                             return null;
                         return destinationAssembly.GetTypeCoreCaseInsensitive(fullName);

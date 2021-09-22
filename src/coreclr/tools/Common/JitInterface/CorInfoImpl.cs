@@ -2426,8 +2426,7 @@ namespace Internal.JitInterface
                     return ObjectToHandle(_compilation.TypeSystemContext.GetWellKnownType(WellKnownType.String));
 
                 case CorInfoClassId.CLASSID_RUNTIME_TYPE:
-                    TypeDesc typeOfRuntimeType = _compilation.GetTypeOfRuntimeType();
-                    return typeOfRuntimeType != null ? ObjectToHandle(typeOfRuntimeType) : null;
+                    return ObjectToHandle(_compilation.TypeSystemContext.SystemModule.GetKnownType("System", "RuntimeType"));
 
                 default:
                     throw new NotImplementedException();

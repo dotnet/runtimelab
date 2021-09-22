@@ -112,7 +112,6 @@
     <Compile Include="Internal\Runtime\Augments\EnumInfo.cs" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Internal\Reflection\Core\NonPortable\IRuntimeImplemented.cs" />
     <Compile Include="Internal\Reflection\Core\NonPortable\RuntimeTypeUnifier.cs" />
     <Compile Include="Internal\Reflection\Extensions\NonPortable\CustomAttributeInheritanceRules.cs" />
     <Compile Include="Internal\Reflection\Extensions\NonPortable\CustomAttributeInstantiator.cs" />
@@ -123,6 +122,7 @@
     <Compile Include="System\Reflection\AssemblyNameHelpers.cs" />
     <Compile Include="System\Reflection\AssemblyNameLexer.cs" />
     <Compile Include="System\Reflection\AssemblyNameParser.cs" />
+    <Compile Include="System\Reflection\RuntimeAssembly.cs" />
     <Compile Include="System\Reflection\RuntimeAssemblyName.cs" />
     <Compile Include="System\Reflection\Attribute.CoreRT.cs" />
     <Compile Include="System\Reflection\Assembly.CoreRT.cs" />
@@ -182,6 +182,7 @@
     <Compile Include="System\Reflection\MissingMetadataException.cs" />
     <Compile Include="System\Resources\ManifestBasedResourceGroveler.CoreRT.cs" />
     <Compile Include="System\RuntimeArgumentHandle.cs" />
+    <Compile Include="System\RuntimeType.cs" />
     <Compile Include="System\Runtime\DependentHandle.cs" />
     <Compile Include="System\Runtime\CompilerServices\ForceLazyDictionaryAttribute.cs" />
     <Compile Include="System\Runtime\CompilerServices\EagerStaticClassConstructionAttribute.cs" />

@@ -36,7 +36,7 @@ namespace System.Reflection.Runtime.TypeInfos.NativeFormat
                 ScopeDefinitionHandle scopeDefinitionHandle = NamespaceChain.DefiningScope;
                 RuntimeAssemblyName runtimeAssemblyName = scopeDefinitionHandle.ToRuntimeAssemblyName(_reader);
 
-                return RuntimeAssembly.GetRuntimeAssembly(runtimeAssemblyName);
+                return RuntimeAssemblyInfo.GetRuntimeAssembly(runtimeAssemblyName);
             }
         }
 

@@ -25,7 +25,7 @@ using Internal.Reflection.Extensions.NonPortable;
 
 namespace System.Reflection.Runtime.Assemblies
 {
-    internal partial class RuntimeAssembly
+    internal partial class RuntimeAssemblyInfo
     {
         public sealed override IList<CustomAttributeData> GetCustomAttributesData() => CustomAttributes.ToReadOnlyCollection();
         public sealed override object[] GetCustomAttributes(bool inherit) => CustomAttributeExtensions.GetCustomAttributes(this).ToArray();  // inherit is meaningless for Assemblies
