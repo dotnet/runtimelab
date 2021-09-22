@@ -19,7 +19,7 @@ namespace System
         private static EnumInfo GetEnumInfo(Type enumType)
         {
             Debug.Assert(enumType != null);
-            Debug.Assert(enumType.IsRuntimeImplemented());
+            Debug.Assert(enumType is RuntimeType);
             Debug.Assert(enumType.IsEnum);
 
             return ReflectionAugments.ReflectionCoreCallbacks.GetEnumInfo(enumType);
@@ -200,7 +200,7 @@ namespace System
             if (enumType == null)
                 throw new ArgumentNullException(nameof(enumType));
 
-            if (!enumType.IsRuntimeImplemented())
+            if (enumType is not RuntimeType)
                 return enumType.GetEnumNames();
 
             if (!enumType.IsEnum)
@@ -217,7 +217,7 @@ namespace System
             if (enumType == null)
                 throw new ArgumentNullException(nameof(enumType));
 
-            if (!enumType.IsRuntimeImplemented())
+            if (enumType is not RuntimeType)
                 return enumType.GetEnumUnderlyingType();
 
             if (!enumType.IsEnum)
@@ -232,7 +232,7 @@ namespace System
             if (enumType == null)
                 throw new ArgumentNullException(nameof(enumType));
 
-            if (!enumType.IsRuntimeImplemented())
+            if (enumType is not RuntimeType)
                 return enumType.GetEnumValues();
 
             if (!enumType.IsEnum)
@@ -265,7 +265,7 @@ namespace System
             if (enumType == null)
                 throw new ArgumentNullException(nameof(enumType));
 
-            if (!enumType.IsRuntimeImplemented())
+            if (enumType is not RuntimeType)
                 return enumType.IsEnumDefined(value);
 
             if (value == null)

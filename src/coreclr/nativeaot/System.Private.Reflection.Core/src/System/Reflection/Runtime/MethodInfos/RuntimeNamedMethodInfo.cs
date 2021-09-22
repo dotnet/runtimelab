@@ -146,7 +146,7 @@ namespace System.Reflection.Runtime.MethodInfos
                 if (typeArgument == null)
                     throw new ArgumentNullException();
 
-                if (!typeArgument.IsRuntimeImplemented())
+                if (typeArgument is not RuntimeType)
                     throw new ArgumentException(SR.Format(SR.Reflection_CustomReflectionObjectsNotSupported, typeArguments[i]), "typeArguments[" + i + "]"); // Not a runtime type.
 
                 if (typeArgument.IsByRefLike)
