@@ -1296,10 +1296,10 @@ namespace System.Text.RegularExpressions.Tests
         {
             foreach (var options in RegexHelpers.RegexOptionsExtended())
             {
-                yield return new object[] { "[a-z]", "", options, "abcde", 1000, 200 };
-                yield return new object[] { "[a-e]*", "$", options, "abcde", 100, 20 };
-                yield return new object[] { "[a-d]?[a-e]?[a-f]?[a-g]?[a-h]?", "$", options, "abcda", 20, 4 };
-                yield return new object[] { "(a|A)", "", options, "aAaAa", 1000, 200 };
+                yield return new object[] { "[a-z]", "", options, "abcde", 2000, 400 };
+                yield return new object[] { "[a-e]*", "$", options, "abcde", 2000, 20 };
+                yield return new object[] { "[a-d]?[a-e]?[a-f]?[a-g]?[a-h]?", "$", options, "abcda", 400, 4 };
+                yield return new object[] { "(a|A)", "", options, "aAaAa", 2000, 400 };
             }
         }
         [Theory]
@@ -1307,6 +1307,25 @@ namespace System.Text.RegularExpressions.Tests
         public void StressTestDeepNestingOfConcat(string pattern, string anchor, RegexOptions options, string input, int pattern_repetition, int input_repetition)
         {
             string fullpattern = string.Concat(string.Concat(Enumerable.Repeat($"({pattern}", pattern_repetition).Concat(Enumerable.Repeat(")", pattern_repetition))), anchor);
+            string fullinput = string.Concat(Enumerable.Repeat(input, input_repetition));
+            var re = new Regex(fullpattern, options);
+            Assert.True(re.Match(fullinput).Success);
+        }
+
+        public static IEnumerable<object[]> StressTestDeepNestingOfLoops_TestData()
+        {
+            foreach (var options in RegexHelpers.RegexOptionsExtended())
+            {
+                yield return new object[] { "(", "a", ")*", options, "a", 2000, 1000 };
+                yield return new object[] { "(", "[aA]", ")+", options, "aA", 2000, 3000 };
+                yield return new object[] { "(", "ab", "){0,1}", options, "ab", 2000, 1000 };
+            }
+        }
+        [Theory]
+        [MemberData(nameof(StressTestDeepNestingOfLoops_TestData))]
+        public void StressTestDeepNestingOfLoops(string begin, string inner, string end, RegexOptions options, string input, int pattern_repetition, int input_repetition)
+        {
+            string fullpattern = string.Concat(Enumerable.Repeat(begin, pattern_repetition)) + inner + string.Concat(Enumerable.Repeat(end, pattern_repetition));
             string fullinput = string.Concat(Enumerable.Repeat(input, input_repetition));
             var re = new Regex(fullpattern, options);
             Assert.True(re.Match(fullinput).Success);
