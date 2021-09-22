@@ -4,7 +4,11 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <CLRTestPriority>1</CLRTestPriority>
   </PropertyGroup>
+  <PropertyGroup>
+    <DebugType>PdbOnly</DebugType>
+    <Optimize>True</Optimize>
+  </PropertyGroup>
   <ItemGroup>
-    <Compile Include="vsw307137.cs" />
+    <Compile Include="StructWithSingleFloat.cs" />
   </ItemGroup>
 </Project>
