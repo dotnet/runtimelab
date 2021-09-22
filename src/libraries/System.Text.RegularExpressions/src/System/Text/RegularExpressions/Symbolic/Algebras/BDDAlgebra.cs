@@ -1,13 +1,14 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Threading;
 
 namespace System.Text.RegularExpressions.Symbolic
 {
-    // types used as keys in BDD operation caches
+    // types used as keys in caches
+    using BDDKey = ValueTuple<int, BDD?, BDD?>;
     using BoolOpKey = ValueTuple<BoolOp, BDD, BDD?>;
     using ShiftOpKey = ValueTuple<BDD, int>;
 
@@ -33,7 +34,7 @@ namespace System.Text.RegularExpressions.Symbolic
         /// <summary>
         /// Operation cache for Boolean operations over BDDs.
         /// </summary>
-        private readonly Dictionary<BoolOpKey, BDD> _opCache = new Dictionary<BoolOpKey, BDD>();
+        private readonly ConcurrentDictionary<BoolOpKey, BDD> _opCache = new();
 
         /// <summary>
         /// Internalize the creation of BDDs so that two BDDs with same ordinal and identical children are the same object.
@@ -41,7 +42,7 @@ namespace System.Text.RegularExpressions.Symbolic
         /// (they could but this would make it difficult (or near impossible) to clear caches.
         /// Allowing distinct but equivalent BDDs is also a tradeoff between efficiency and flexibility.
         /// </summary>
-        private readonly HashSet<BDD> _bddCache = new HashSet<BDD>();
+        private readonly ConcurrentDictionary<BDDKey, BDD> _bddCache = new();
 
         /// <summary>
         /// Generator for minterms.
@@ -49,65 +50,28 @@ namespace System.Text.RegularExpressions.Symbolic
         private readonly MintermGenerator<BDD> _mintermGen;
 
         /// <summary>
-        /// All accesses to the caches are protected with this lock.
-        /// </summary>
-        internal readonly ReaderWriterLockSlim Lock = new();
-
-        /// <summary>
         /// Construct a solver for BDDs.
         /// </summary>
         public BDDAlgebra() => _mintermGen = new MintermGenerator<BDD>(this);
 
         /// <summary>
-        /// Assumes op is a binary commutative operation: one of OR, AND, XOR.
-        /// Treats the arguments as if they are unordered.
-        /// Orders left and right by hashcode in the constructed key.
-        /// </summary>
-        private static BoolOpKey CreateBinOpKey(BoolOp op, BDD left, BDD right) =>
-            left.GetHashCode() <= right.GetHashCode() ?
-                new BoolOpKey(op, left, right) :
-                new BoolOpKey(op, right, left);
-
-        /// <summary>
         /// Create a BDD with given ordinal and given one and zero child.
         /// Returns the BDD from the cache if it already exists.
-        /// Lock must be held in write mode when this method is called.
         /// </summary>
-        public BDD GetOrCreateBDD(int ordinal, BDD? one, BDD? zero)
-        {
-            Debug.Assert(Lock.IsWriteLockHeld);
-
-            var key = new BDD(ordinal, one, zero);
-            if (!_bddCache.TryGetValue(key, out BDD? set))
-            {
-                set = key;
-                _bddCache.Add(set);
-            }
-
-            return set;
-        }
+        public BDD GetOrCreateBDD(int ordinal, BDD? one, BDD? zero) =>
+            _bddCache.GetOrAdd(new BDDKey(ordinal, one, zero), key => new BDD(ordinal, one, zero));
 
         #region IBooleanAlgebra members
 
         /// <summary>
         /// Make the union of a and b
         /// </summary>
-        public BDD Or(BDD a, BDD b) =>
-            a == False ? b :
-            b == False ? a :
-            a == True || b == True ? True :
-            a == b ? a :
-            GetOrCreateBoolOp(CreateBinOpKey(BoolOp.Or, a, b));
+        public BDD Or(BDD a, BDD b) => ApplyBinaryOp(BoolOp.Or, a, b);
 
         /// <summary>
         /// Make the intersection of a and b
         /// </summary>
-        public BDD And(BDD a, BDD b) =>
-            a == True ? b :
-            b == True ? a :
-            a == False || b == False ? False :
-            a == b ? a :
-            GetOrCreateBoolOp(CreateBinOpKey(BoolOp.And, a, b));
+        public BDD And(BDD a, BDD b) => ApplyBinaryOp(BoolOp.And, a, b);
 
         /// <summary>
         /// Complement a
@@ -115,124 +79,20 @@ namespace System.Text.RegularExpressions.Symbolic
         public BDD Not(BDD a) =>
             a == False ? True :
             a == True ? False :
-            GetOrCreateBoolOp(new BoolOpKey(BoolOp.Not, a, null));
-
-        private BDD GetOrCreateBoolOp(BoolOpKey key)
-        {
-            Lock.EnterReadLock();
-            try
-            {
-                if (_opCache.TryGetValue(key, out BDD? result))
-                {
-                    return result;
-                }
-            }
-            finally
-            {
-                Lock.ExitReadLock();
-            }
-            // No result was found in cache
-            Lock.EnterUpgradeableReadLock();
-            try
-            {
-                // Check again for entry in cache, since another thread may have created it when read lock was released
-                if (!_opCache.TryGetValue(key, out BDD? result))
-                {
-                    Lock.EnterWriteLock();
-                    try
-                    {
-                        result = CreateBoolOP_lock(key);
-                    }
-                    finally
-                    {
-                        Lock.ExitWriteLock();
-                    }
-                }
-                return result;
-            }
-            finally
-            {
-                Lock.ExitUpgradeableReadLock();
-            }
-        }
-
-        /// <summary>
-        /// Apply the operation in the key in a thread safe manner.
-        /// All new entries in _boolOpCache and _notCache are created through this call.
-        /// </summary>
-        /// <param name="key">contains the Boolean operation and two BDD arguments</param>
-        private BDD CreateBoolOP_lock(BoolOpKey key)
-        {
-            Debug.Assert(Lock.IsWriteLockHeld);
-
-            BoolOp op = key.Item1;
-            BDD a = key.Item2;
-            BDD? b = key.Item3;
-            BDD res;
-
-            if (op == BoolOp.Not)
-            {
-                if (a.IsLeaf)
-                {
-                    //multi-terminal case, we know here that a is neither True nor False
-                    int ord = CombineTerminals(op, a.Ordinal, 0);
-                    res = GetOrCreateBDD(ord, null, null);
-                }
-                else
-                {
-                    res = GetOrCreateBDD(a.Ordinal, CreateNot_rec(a.One), CreateNot_rec(a.Zero));
-                }
-            }
-            else
-            {
-                Debug.Assert(b is not null);
-
-                if (a.IsLeaf && b.IsLeaf)
-                {
-                    //multi-terminal case, we know here that a is neither True nor False
-                    int ord = CombineTerminals(op, a.Ordinal, b.Ordinal);
-                    res = GetOrCreateBDD(ord, null, null);
-                }
-                else if (a.IsLeaf || b.Ordinal > a.Ordinal)
-                {
-                    Debug.Assert(!b.IsLeaf);
-                    BDD t = CreateBinBoolOP_rec(op, a, b.One);
-                    BDD f = CreateBinBoolOP_rec(op, a, b.Zero);
-                    res = t == f ? t : GetOrCreateBDD(b.Ordinal, t, f);
-                }
-                else if (b.IsLeaf || a.Ordinal > b.Ordinal)
-                {
-                    Debug.Assert(!a.IsLeaf);
-                    BDD t = CreateBinBoolOP_rec(op, a.One, b);
-                    BDD f = CreateBinBoolOP_rec(op, a.Zero, b);
-                    res = t == f ? t : GetOrCreateBDD(a.Ordinal, t, f);
-                }
-                else
-                {
-                    Debug.Assert(!a.IsLeaf);
-                    Debug.Assert(!b.IsLeaf);
-                    BDD t = CreateBinBoolOP_rec(op, a.One, b.One);
-                    BDD f = CreateBinBoolOP_rec(op, a.Zero, b.Zero);
-                    res = t == f ? t : GetOrCreateBDD(a.Ordinal, t, f);
-                }
-            }
-
-            _opCache[key] = res;
-            return res;
-        }
+            _opCache.GetOrAdd(new(BoolOp.Not, a, null), key => a.IsLeaf ?
+                GetOrCreateBDD(CombineTerminals(BoolOp.Not, a.Ordinal, 0), null, null) : // multi-terminal case
+                GetOrCreateBDD(a.Ordinal, Not(a.One), Not(a.Zero)));
 
         /// <summary>
         /// Applies the binary Boolean operation op and constructs the BDD recursively from a and b.
-        /// Is executed in a single thread mode.
         /// </summary>
         /// <param name="op">given binary Boolean operation</param>
         /// <param name="a">first BDD</param>
         /// <param name="b">second BDD</param>
         /// <returns></returns>
-        private BDD CreateBinBoolOP_rec(BoolOp op, BDD a, BDD b)
+        private BDD ApplyBinaryOp(BoolOp op, BDD a, BDD b)
         {
-            Debug.Assert(Lock.IsWriteLockHeld);
-
+            // Handle base cases
             #region the cases when one of a or b is True or False or when a == b
             switch (op)
             {
@@ -266,9 +126,9 @@ namespace System.Text.RegularExpressions.Symbolic
                     if (a == b)
                         return False;
                     if (a == True)
-                        return CreateNot_rec(b);
+                        return Not(b);
                     if (b == True)
-                        return CreateNot_rec(a);
+                        return Not(a);
                     break;
 
                 default:
@@ -277,65 +137,45 @@ namespace System.Text.RegularExpressions.Symbolic
             }
             #endregion
 
-            BoolOpKey key = CreateBinOpKey(op, a, b);
-            if (_opCache.TryGetValue(key, out BDD? res))
-                return res;
-
-            if (a.IsLeaf && b.IsLeaf)
+            // Order operands by hash code to increase cache hits
+            if (a.GetHashCode() > b.GetHashCode())
             {
-                //multi-terminal case, we know here that a is neither True nor False
-                int ord = CombineTerminals(op, a.Ordinal, b.Ordinal);
-                res = GetOrCreateBDD(ord, null, null);
-            }
-            else if (a.IsLeaf || b.Ordinal > a.Ordinal)
-            {
-                Debug.Assert(!b.IsLeaf);
-                BDD t = CreateBinBoolOP_rec(op, a, b.One);
-                BDD f = CreateBinBoolOP_rec(op, a, b.Zero);
-                res = t == f ? t : GetOrCreateBDD(b.Ordinal, t, f);
-            }
-            else if (b.IsLeaf || a.Ordinal > b.Ordinal)
-            {
-                Debug.Assert(!a.IsLeaf);
-                BDD t = CreateBinBoolOP_rec(op, a.One, b);
-                BDD f = CreateBinBoolOP_rec(op, a.Zero, b);
-                res = t == f ? t : GetOrCreateBDD(a.Ordinal, t, f);
-            }
-            else
-            {
-                Debug.Assert(!a.IsLeaf);
-                Debug.Assert(!b.IsLeaf);
-                BDD t = CreateBinBoolOP_rec(op, a.One, b.One);
-                BDD f = CreateBinBoolOP_rec(op, a.Zero, b.Zero);
-                res = t == f ? t : GetOrCreateBDD(a.Ordinal, t, f);
+                var tmp = a;
+                a = b;
+                b = tmp;
             }
 
-            _opCache[key] = res;
-            return res;
-        }
-
-        /// <summary>
-        /// Negate a.
-        /// Is executed in a single thread mode.
-        /// </summary>
-        private BDD CreateNot_rec(BDD a)
-        {
-            Debug.Assert(Lock.IsWriteLockHeld);
-
-            if (a == False)
-                return True;
-            if (a == True)
-                return False;
-
-            BoolOpKey key = new(BoolOp.Not, a, null);
-            if (_opCache.TryGetValue(key, out BDD? neg))
-                return neg;
-
-            neg = a.IsLeaf ?
-                GetOrCreateBDD(CombineTerminals(BoolOp.Not, a.Ordinal, 0), null, null) : // multi-terminal case
-                GetOrCreateBDD(a.Ordinal, CreateNot_rec(a.One), CreateNot_rec(a.Zero));
-            _opCache[key] = neg;
-            return neg;
+            return _opCache.GetOrAdd(new BoolOpKey(op, a, b), key =>
+            {
+                if (a.IsLeaf && b.IsLeaf)
+                {
+                    // Multi-terminal case, we know here that a is neither True nor False
+                    int ord = CombineTerminals(op, a.Ordinal, b.Ordinal);
+                    return GetOrCreateBDD(ord, null, null);
+                }
+                else if (a.IsLeaf || b.Ordinal > a.Ordinal)
+                {
+                    Debug.Assert(!b.IsLeaf);
+                    BDD t = ApplyBinaryOp(op, a, b.One);
+                    BDD f = ApplyBinaryOp(op, a, b.Zero);
+                    return t == f ? t : GetOrCreateBDD(b.Ordinal, t, f);
+                }
+                else if (b.IsLeaf || a.Ordinal > b.Ordinal)
+                {
+                    Debug.Assert(!a.IsLeaf);
+                    BDD t = ApplyBinaryOp(op, a.One, b);
+                    BDD f = ApplyBinaryOp(op, a.Zero, b);
+                    return t == f ? t : GetOrCreateBDD(a.Ordinal, t, f);
+                }
+                else
+                {
+                    Debug.Assert(!a.IsLeaf);
+                    Debug.Assert(!b.IsLeaf);
+                    BDD t = ApplyBinaryOp(op, a.One, b.One);
+                    BDD f = ApplyBinaryOp(op, a.Zero, b.Zero);
+                    return t == f ? t : GetOrCreateBDD(a.Ordinal, t, f);
+                }
+            });
         }
 
         /// <summary>
@@ -389,13 +229,7 @@ namespace System.Text.RegularExpressions.Symbolic
         /// <summary>
         /// Make the XOR of a and b
         /// </summary>
-        internal BDD Xor(BDD a, BDD b) =>
-            a == False ? b :
-            b == False ? a :
-            a == True ? Not(b) :
-            b == True ? Not(a) :
-            a == b ? False :
-            GetOrCreateBoolOp(CreateBinOpKey(BoolOp.Xor, a, b));
+        internal BDD Xor(BDD a, BDD b) => ApplyBinaryOp(BoolOp.Xor, a, b);
 
         #region bit-shift operations
 
@@ -407,7 +241,7 @@ namespace System.Text.RegularExpressions.Symbolic
         public BDD ShiftRight(BDD set, int k)
         {
             Debug.Assert(k >= 0);
-            return set.IsLeaf ? set : Shift_lock(set, 0 - k);
+            return set.IsLeaf ? set : ShiftLeftImpl(new Dictionary<ShiftOpKey, BDD>(), set, 0 - k);
         }
 
         /// <summary>
@@ -418,33 +252,14 @@ namespace System.Text.RegularExpressions.Symbolic
         public BDD ShiftLeft(BDD set, int k)
         {
             Debug.Assert(k >= 0);
-            return set.IsLeaf ? set : Shift_lock(set, k);
+            return set.IsLeaf ? set : ShiftLeftImpl(new Dictionary<ShiftOpKey, BDD>(), set, k);
         }
 
         /// <summary>
-        /// Allow shift_lock only single thread at a time because _bddCache is updated.
+        /// Uses shiftCache to avoid recomputations in shared BDDs (which are DAGs).
         /// </summary>
-        private BDD Shift_lock(BDD set, int k)
+        private BDD ShiftLeftImpl(Dictionary<ShiftOpKey, BDD> shiftCache, BDD set, int k)
         {
-            Lock.EnterWriteLock();
-            try
-            {
-                return Shift_rec(new Dictionary<ShiftOpKey, BDD>(), set, k);
-            }
-            finally
-            {
-                Lock.ExitWriteLock();
-            }
-        }
-
-        /// <summary>
-        /// Uses shiftCache to avoid recomputations in shared BDDs (DAGs).
-        /// Is executed in a single thread mode.
-        /// </summary>
-        private BDD Shift_rec(Dictionary<ShiftOpKey, BDD> shiftCache, BDD set, int k)
-        {
-            Debug.Assert(Lock.IsWriteLockHeld);
-
             if (set.IsLeaf || k == 0)
                 return set;
 
@@ -454,17 +269,16 @@ namespace System.Text.RegularExpressions.Symbolic
                 return True;  //this arises if k is negative
 
             var key = new ShiftOpKey(set, k);
+            if (!shiftCache.TryGetValue(key, out BDD? res))
+            {
+                BDD zero = ShiftLeftImpl(shiftCache, set.Zero, k);
+                BDD one = ShiftLeftImpl(shiftCache, set.One, k);
 
-            if (shiftCache.TryGetValue(key, out BDD? res))
-                return res;
-
-            BDD zero = Shift_rec(shiftCache, set.Zero, k);
-            BDD one = Shift_rec(shiftCache, set.One, k);
-
-            res = (zero == one) ?
-                zero :
-                GetOrCreateBDD((ushort)ordinal, one, zero);
-            shiftCache[key] = res;
+                res = (zero == one) ?
+                    zero :
+                    GetOrCreateBDD((ushort)ordinal, one, zero);
+                shiftCache[key] = res;
+            }
             return res;
         }
 
@@ -487,14 +301,12 @@ namespace System.Text.RegularExpressions.Symbolic
 
         /// <summary>
         /// Make the set containing all values greater than or equal to m and less than or equal to n when considering bits between 0 and maxBit.
-        /// Is executed in a single thread mode.
         /// </summary>
         /// <param name="m">lower bound</param>
         /// <param name="n">upper bound</param>
         /// <param name="maxBit">bits above maxBit are unspecified</param>
         public BDD CreateSetFromRange(uint m, uint n, int maxBit)
         {
-
             if (n < m)
                 return False;
 
@@ -508,24 +320,11 @@ namespace System.Text.RegularExpressions.Symbolic
                 n &= filter;
             }
 
-            Lock.EnterWriteLock();
-            try
-            {
-                return CreateFromInterval_rec(mask, maxBit, m, n);
-            }
-            finally
-            {
-                Lock.ExitWriteLock();
-            }
+            return CreateSetFromRangeImpl(mask, maxBit, m, n);
         }
 
-        /// <summary>
-        /// Is executed in single-threaded mode, makes updates to _bddCache.
-        /// </summary>
-        private BDD CreateFromInterval_rec(uint mask, int bit, uint m, uint n)
+        private BDD CreateSetFromRangeImpl(uint mask, int bit, uint m, uint n)
         {
-            Debug.Assert(Lock.IsWriteLockHeld);
-
             if (mask == 1) //base case: LSB
             {
                 return
@@ -546,18 +345,18 @@ namespace System.Text.RegularExpressions.Symbolic
 
             if (nb == 0) // implies that 1-branch is empty
             {
-                BDD fcase = CreateFromInterval_rec(mask >> 1, bit - 1, m, n);
+                BDD fcase = CreateSetFromRangeImpl(mask >> 1, bit - 1, m, n);
                 return GetOrCreateBDD((ushort)bit, False, fcase);
             }
             else if (mb == mask) // implies that 0-branch is empty
             {
-                BDD tcase = CreateFromInterval_rec(mask >> 1, bit - 1, m & ~mask, n & ~mask);
+                BDD tcase = CreateSetFromRangeImpl(mask >> 1, bit - 1, m & ~mask, n & ~mask);
                 return GetOrCreateBDD((ushort)bit, tcase, False);
             }
             else //split the interval in two
             {
-                BDD fcase = CreateFromInterval_rec(mask >> 1, bit - 1, m, mask - 1);
-                BDD tcase = CreateFromInterval_rec(mask >> 1, bit - 1, 0, n & ~mask);
+                BDD fcase = CreateSetFromRangeImpl(mask >> 1, bit - 1, m, mask - 1);
+                BDD tcase = CreateSetFromRangeImpl(mask >> 1, bit - 1, 0, n & ~mask);
                 return GetOrCreateBDD((ushort)bit, tcase, fcase);
             }
         }
@@ -591,7 +390,7 @@ namespace System.Text.RegularExpressions.Symbolic
             if (set.IsLeaf)
                 throw new NotSupportedException(); // multi-terminal case is not supported
 
-            ulong res = CalculateCardinality1(new Dictionary<BDD, ulong>(), set);
+            ulong res = ComputeDomainSizeImpl(new Dictionary<BDD, ulong>(), set);
             if (maxBit > set.Ordinal)
             {
                 res = (1UL << (maxBit - set.Ordinal)) * res;
@@ -603,46 +402,45 @@ namespace System.Text.RegularExpressions.Symbolic
         /// <summary>
         /// Caches previously calculated values in sizeCache so that computations are not repeated inside a BDD for the same sub-BDD.
         /// Thus the number of internal calls is propotional to the number of nodes of the BDD, that could otherwise be exponential in the worst case.
-        /// The size cache used to be a static field but the current way makes it thread-safe without use of locks.
         /// </summary>
         /// <param name="sizeCache">previously computed sizes</param>
         /// <param name="set">given set to compute size of</param>
         /// <returns></returns>
-        private ulong CalculateCardinality1(Dictionary<BDD, ulong> sizeCache, BDD set)
+        private ulong ComputeDomainSizeImpl(Dictionary<BDD, ulong> sizeCache, BDD set)
         {
-            if (sizeCache.TryGetValue(set, out ulong size))
-                return size;
-
-            if (set.IsLeaf)
-                throw new NotSupportedException(); //multi-terminal case is not supported
-
-            ulong sizeL;
-            ulong sizeR;
-            if (set.Zero.IsEmpty)
+            if (!sizeCache.TryGetValue(set, out ulong size))
             {
-                sizeL = 0;
-                sizeR = set.One.IsFull ?
-                    (uint)1 << set.Ordinal :
-                    ((uint)1 << (set.Ordinal - 1 - set.One.Ordinal)) * CalculateCardinality1(sizeCache, set.One);
-            }
-            else if (set.Zero.IsFull)
-            {
-                sizeL = 1UL << set.Ordinal;
-                sizeR = set.One.IsEmpty ?
-                    0UL :
-                    (1UL << (set.Ordinal - 1 - set.One.Ordinal)) * CalculateCardinality1(sizeCache, set.One);
-            }
-            else
-            {
-                sizeL = (1UL << (set.Ordinal - 1 - set.Zero.Ordinal)) * CalculateCardinality1(sizeCache, set.Zero);
-                sizeR =
-                    set.One == False ? 0UL :
-                    set.One == True ? 1UL << set.Ordinal :
-                    (1UL << (set.Ordinal - 1 - set.One.Ordinal)) * CalculateCardinality1(sizeCache, set.One);
-            }
+                if (set.IsLeaf)
+                    throw new NotSupportedException(); //multi-terminal case is not supported
 
-            size = sizeL + sizeR;
-            sizeCache[set] = size;
+                ulong sizeL;
+                ulong sizeR;
+                if (set.Zero.IsEmpty)
+                {
+                    sizeL = 0;
+                    sizeR = set.One.IsFull ?
+                        (uint)1 << set.Ordinal :
+                        ((uint)1 << (set.Ordinal - 1 - set.One.Ordinal)) * ComputeDomainSizeImpl(sizeCache, set.One);
+                }
+                else if (set.Zero.IsFull)
+                {
+                    sizeL = 1UL << set.Ordinal;
+                    sizeR = set.One.IsEmpty ?
+                        0UL :
+                        (1UL << (set.Ordinal - 1 - set.One.Ordinal)) * ComputeDomainSizeImpl(sizeCache, set.One);
+                }
+                else
+                {
+                    sizeL = (1UL << (set.Ordinal - 1 - set.Zero.Ordinal)) * ComputeDomainSizeImpl(sizeCache, set.Zero);
+                    sizeR =
+                        set.One == False ? 0UL :
+                        set.One == True ? 1UL << set.Ordinal :
+                        (1UL << (set.Ordinal - 1 - set.One.Ordinal)) * ComputeDomainSizeImpl(sizeCache, set.One);
+                }
+
+                size = sizeL + sizeR;
+                sizeCache[set] = size;
+            }
             return size;
         }
 
@@ -682,19 +480,11 @@ namespace System.Text.RegularExpressions.Symbolic
         {
             Debug.Assert(terminal >= 0);
 
-            Lock.EnterWriteLock();
-            try
-            {
-                BDD leaf = GetOrCreateBDD(terminal, null, null);
-                return ReplaceTrue_rec(bdd, leaf, new Dictionary<BDD, BDD>());
-            }
-            finally
-            {
-                Lock.ExitWriteLock();
-            }
+            BDD leaf = GetOrCreateBDD(terminal, null, null);
+            return ReplaceTrueImpl(bdd, leaf, new Dictionary<BDD, BDD>());
         }
 
-        private BDD ReplaceTrue_rec(BDD bdd, BDD leaf, Dictionary<BDD, BDD> cache)
+        private BDD ReplaceTrueImpl(BDD bdd, BDD leaf, Dictionary<BDD, BDD> cache)
         {
             if (bdd == True)
                 return leaf;
@@ -702,13 +492,13 @@ namespace System.Text.RegularExpressions.Symbolic
             if (bdd.IsLeaf)
                 return bdd;
 
-            if (cache.TryGetValue(bdd, out BDD? res))
-                return res;
-
-            BDD one = ReplaceTrue_rec(bdd.One, leaf, cache);
-            BDD zero = ReplaceTrue_rec(bdd.Zero, leaf, cache);
-            res = GetOrCreateBDD(bdd.Ordinal, one, zero);
-            cache[bdd] = res;
+            if (!cache.TryGetValue(bdd, out BDD? res))
+            {
+                BDD one = ReplaceTrueImpl(bdd.One, leaf, cache);
+                BDD zero = ReplaceTrueImpl(bdd.Zero, leaf, cache);
+                res = GetOrCreateBDD(bdd.Ordinal, one, zero);
+                cache[bdd] = res;
+            }
             return res;
         }
     }
