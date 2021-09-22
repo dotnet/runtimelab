@@ -5,14 +5,13 @@ using System.Threading;
 using System.Diagnostics;
 using System.Collections.Generic;
 using System.Collections.Concurrent;
+using System.Reflection;
 using System.Reflection.Runtime.General;
 using System.Reflection.Runtime.BindingFlagSupport;
 
 using Internal.Reflection.Core.Execution;
 
 using Unsafe = Internal.Runtime.CompilerServices.Unsafe;
-
-using EnumInfo = Internal.Runtime.Augments.EnumInfo;
 
 namespace System.Reflection.Runtime.TypeInfos
 {

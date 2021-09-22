@@ -25,8 +25,6 @@ using System.Globalization;
 
 using EETypeElementType = Internal.Runtime.EETypeElementType;
 
-using EnumInfo = Internal.Runtime.Augments.EnumInfo;
-
 namespace Internal.Reflection.Augments
 {
     [System.Runtime.CompilerServices.ReflectionBlocked]
