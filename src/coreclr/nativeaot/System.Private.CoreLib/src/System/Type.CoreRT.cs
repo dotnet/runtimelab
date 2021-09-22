@@ -104,6 +104,6 @@ namespace System
         [Intrinsic]
         public static bool operator !=(Type? left, Type? right) => !(left == right);
 
-        public bool IsRuntimeImplemented() => this is IRuntimeImplemented; // Not an api but needs to be public because of Reflection.Core/CoreLib divide.
+        public bool IsRuntimeImplemented() => this is RuntimeType; // Not an api but needs to be public because of Reflection.Core/CoreLib divide.
     }
 }

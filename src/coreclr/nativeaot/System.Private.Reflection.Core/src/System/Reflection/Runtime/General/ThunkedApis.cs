@@ -18,7 +18,7 @@ using Internal.LowLevelLinq;
 
 namespace System.Reflection.Runtime.Assemblies
 {
-    internal partial class RuntimeAssembly
+    internal partial class RuntimeAssemblyInfo
     {
         [RequiresUnreferencedCode("Types might be removed")]
         public sealed override Type[] GetExportedTypes() => ExportedTypes.ToArray();

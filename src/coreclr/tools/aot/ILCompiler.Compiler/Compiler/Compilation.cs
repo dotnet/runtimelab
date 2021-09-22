@@ -396,20 +396,6 @@ namespace ILCompiler
             return GenericDictionaryLookup.CreateHelperLookup(contextSource, lookupKind, targetOfLookup);
         }
 
-        /// <summary>
-        /// Gets the type of System.Type descendant that implements runtime types.
-        /// </summary>
-        public virtual TypeDesc GetTypeOfRuntimeType()
-        {
-            ModuleDesc reflectionCoreModule = TypeSystemContext.GetModuleForSimpleName("System.Private.Reflection.Core", false);
-            if (reflectionCoreModule != null)
-            {
-                return reflectionCoreModule.GetKnownType("System.Reflection.Runtime.TypeInfos", "RuntimeTypeInfo");
-            }
-
-            return TypeSystemContext.SystemModule.GetKnownType("System", "Type");
-        }
-
         public bool IsFatPointerCandidate(MethodDesc containingMethod, MethodSignature signature)
         {
             // Unmanaged calls are never fat pointers

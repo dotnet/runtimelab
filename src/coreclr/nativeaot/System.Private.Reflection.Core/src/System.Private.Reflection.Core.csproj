@@ -15,7 +15,7 @@
     <Compile Include="System\ActivatorImplementation.cs" />
     <Compile Include="System\Reflection\Runtime\Assemblies\NativeFormat\NativeFormatRuntimeAssembly.cs" />
     <Compile Include="System\Reflection\Runtime\Assemblies\NativeFormat\NativeFormatRuntimeAssembly.GetTypeCore.CaseSensitive.cs" />
-    <Compile Include="System\Reflection\Runtime\Assemblies\RuntimeAssembly.cs" />
+    <Compile Include="System\Reflection\Runtime\Assemblies\RuntimeAssemblyInfo.cs" />
     <Compile Include="System\Reflection\Runtime\BindingFlagSupport\ConstructorPolicies.cs" />
     <Compile Include="System\Reflection\Runtime\BindingFlagSupport\EventPolicies.cs" />
     <Compile Include="System\Reflection\Runtime\BindingFlagSupport\FieldPolicies.cs" />

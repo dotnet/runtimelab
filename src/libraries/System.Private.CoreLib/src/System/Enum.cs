@@ -11,7 +11,6 @@ using System.Runtime.InteropServices;
 using Internal.Runtime.CompilerServices;
 
 #if CORERT
-using RuntimeType = System.Type;
 using EnumInfo = Internal.Runtime.Augments.EnumInfo;
 #endif
 
@@ -288,10 +287,10 @@ namespace System
         #endregion
 
         #region Public Static Methods
-#if !CORERT
         public static string? GetName<TEnum>(TEnum value) where TEnum : struct, Enum
             => GetEnumName((RuntimeType)typeof(TEnum), ToUInt64(value));
 
+#if !CORERT
         public static string? GetName(Type enumType, object value)
         {
             if (enumType is null)
@@ -1404,7 +1403,6 @@ namespace System
 
         #endregion
 
-#if !CORERT
         private static RuntimeType ValidateRuntimeType(Type enumType)
         {
             if (enumType == null)
@@ -1413,8 +1411,12 @@ namespace System
                 throw new ArgumentException(SR.Arg_MustBeEnum, nameof(enumType));
             if (!(enumType is RuntimeType rtType))
                 throw new ArgumentException(SR.Arg_MustBeType, nameof(enumType));
+#if CORERT
+            // Check for the unfortunate "typeof(Outer<>).InnerEnum" corner case.
+            if (enumType.ContainsGenericParameters)
+                throw new InvalidOperationException(SR.Format(SR.Arg_OpenType, enumType.ToString()));
+#endif
             return rtType;
         }
-#endif
     }
 }

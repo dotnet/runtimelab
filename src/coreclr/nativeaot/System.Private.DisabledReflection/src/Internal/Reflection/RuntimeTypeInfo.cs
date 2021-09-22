@@ -14,7 +14,7 @@ using System.Collections.Generic;
 
 namespace Internal.Reflection
 {
-    internal sealed class RuntimeTypeInfo : TypeInfo, IRuntimeImplemented
+    internal sealed class RuntimeTypeInfo : RuntimeType
     {
         private readonly RuntimeTypeHandle _typeHandle;
 
