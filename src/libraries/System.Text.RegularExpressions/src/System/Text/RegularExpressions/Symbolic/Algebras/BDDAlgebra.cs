@@ -302,62 +302,67 @@ namespace System.Text.RegularExpressions.Symbolic
         /// <summary>
         /// Make the set containing all values greater than or equal to m and less than or equal to n when considering bits between 0 and maxBit.
         /// </summary>
-        /// <param name="m">lower bound</param>
-        /// <param name="n">upper bound</param>
+        /// <param name="lower">lower bound</param>
+        /// <param name="upper">upper bound</param>
         /// <param name="maxBit">bits above maxBit are unspecified</param>
-        public BDD CreateSetFromRange(uint m, uint n, int maxBit)
+        public BDD CreateSetFromRange(uint lower, uint upper, int maxBit)
         {
-            if (n < m)
+            if (upper < lower)
                 return False;
 
-            uint mask = (uint)1 << maxBit;
-
-            //filter out bits greater than maxBit
+            // Filter out bits greater than maxBit
             if (maxBit < 31)
             {
-                uint filter = (mask << 1) - 1;
-                m &= filter;
-                n &= filter;
+                uint filter = (1u << (maxBit + 1)) - 1;
+                lower &= filter;
+                upper &= filter;
             }
 
-            return CreateSetFromRangeImpl(mask, maxBit, m, n);
+            return CreateSetFromRangeImpl(lower, upper, maxBit);
         }
 
-        private BDD CreateSetFromRangeImpl(uint mask, int bit, uint m, uint n)
+        private BDD CreateSetFromRangeImpl(uint lower, uint upper, int maxBit)
         {
-            if (mask == 1) //base case: LSB
+            // Mask with 1 at position of maxBit
+            uint mask = 1u << maxBit;
+
+            if (mask == 1) // Base case for least significant bit
             {
                 return
-                    n == 0 ? GetOrCreateBDD((ushort)bit, False, True) : //implies that m==0
-                    m == 1 ? GetOrCreateBDD((ushort)bit, True, False) : //implies that n==1
-                    True; //m=0 and n=1, thus full range from 0 to ((mask << 1)-1)
+                    upper == 0 ? GetOrCreateBDD(maxBit, False, True) : // lower must also be 0
+                    lower == 1 ? GetOrCreateBDD(maxBit, True, False) : // upper must also be 1
+                    True; // Otherwise both 0 and 1 are included
             }
 
-            if (m == 0 && n == ((mask << 1) - 1)) //full interval
+            // Check if range includes all numbers up to bit
+            if (lower == 0 && upper == ((mask << 1) - 1))
             {
                 return True;
             }
 
-            // mask > 1, i.e., mask = 2^b for some b > 0, and not full interval
-            // e.g. m = x41 = 100 0001, n = x59 = 101 1001, mask = x40 = 100 0000, ord = 6 = log2(b)
-            uint mb = m & mask; // e.g. mb = b
-            uint nb = n & mask; // e.g. nb = b
+            // Mask out the highest bit for the first and last elements in the range
+            uint lowerMasked = lower & mask;
+            uint upperMasked = upper & mask;
 
-            if (nb == 0) // implies that 1-branch is empty
+            if (upperMasked == 0)
             {
-                BDD fcase = CreateSetFromRangeImpl(mask >> 1, bit - 1, m, n);
-                return GetOrCreateBDD((ushort)bit, False, fcase);
+                // Highest value in range doesn't have maxBit set, so the one branch is empty
+                BDD zero = CreateSetFromRangeImpl(lower, upper, maxBit - 1);
+                return GetOrCreateBDD(maxBit, False, zero);
             }
-            else if (mb == mask) // implies that 0-branch is empty
+            else if (lowerMasked == mask)
             {
-                BDD tcase = CreateSetFromRangeImpl(mask >> 1, bit - 1, m & ~mask, n & ~mask);
-                return GetOrCreateBDD((ushort)bit, tcase, False);
+                // Lowest value in range has maxBit set, so the zero branch is empty
+                BDD one = CreateSetFromRangeImpl(lower & ~mask, upper & ~mask, maxBit - 1);
+                return GetOrCreateBDD(maxBit, one, False);
             }
-            else //split the interval in two
+            else // Otherwise the range straddles (1<<maxBit) and thus both cases need to be considered
             {
-                BDD fcase = CreateSetFromRangeImpl(mask >> 1, bit - 1, m, mask - 1);
-                BDD tcase = CreateSetFromRangeImpl(mask >> 1, bit - 1, 0, n & ~mask);
-                return GetOrCreateBDD((ushort)bit, tcase, fcase);
+                // If zero then less significant bits are from lower bound to maximum value with maxBit-1 bits
+                BDD zero = CreateSetFromRangeImpl(lower, mask - 1, maxBit - 1);
+                // If one then less significant bits are from zero to the upper bound with maxBit stripped away
+                BDD one = CreateSetFromRangeImpl(0, upper & ~mask, maxBit - 1);
+                return GetOrCreateBDD(maxBit, one, zero);
             }
         }
 
