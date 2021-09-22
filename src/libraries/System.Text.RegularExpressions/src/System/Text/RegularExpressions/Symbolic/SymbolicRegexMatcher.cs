@@ -19,9 +19,8 @@ namespace System.Text.RegularExpressions.Symbolic
         /// <param name="endat">end position in the input</param>
         public abstract SymbolicMatch FindMatch(bool isMatch, string input, int startat, int endat);
 
-        /// <summary>
-        /// Unwind the regex of the matcher and save the resulting state graph in DGML
-        /// </summary>
+#if DEBUG
+        /// <summary>Unwind the regex of the matcher and save the resulting state graph in DGML</summary>
         /// <param name="bound">roughly the maximum number of states, 0 means no bound</param>
         /// <param name="hideStateInfo">if true then hide state info</param>
         /// <param name="addDotStar">if true then pretend that there is a .* at the beginning</param>
@@ -30,6 +29,7 @@ namespace System.Text.RegularExpressions.Symbolic
         /// <param name="writer">dgml output is written here</param>
         /// <param name="maxLabelLength">maximum length of labels in nodes anything over that length is indicated with .. </param>
         public abstract void SaveDGML(TextWriter writer, int bound, bool hideStateInfo, bool addDotStar, bool inReverse, bool onlyDFAinfo, int maxLabelLength);
+#endif
     }
 
     /// <summary>Represents a precompiled form of a regex that implements match generation using symbolic derivatives.</summary>
@@ -868,13 +868,14 @@ namespace System.Text.RegularExpressions.Symbolic
             return -1;
         }
 
-        public override void SaveDGML(TextWriter writer, int bound = 0, bool hideStateInfo = false, bool addDotStar = false, bool inReverse = false, bool onlyDFAinfo = false, int maxLabelLength = 500)
+#if DEBUG
+        public override void SaveDGML(TextWriter writer, int bound, bool hideStateInfo, bool addDotStar, bool inReverse, bool onlyDFAinfo, int maxLabelLength)
         {
             var graph = new DGML.RegexDFA<TSetType>(this, bound, addDotStar, inReverse);
             var dgml = new DGML.DgmlWriter(writer, hideStateInfo, maxLabelLength, onlyDFAinfo);
             dgml.Write(graph);
         }
-
-        #endregion
+#endif
+#endregion
     }
 }

@@ -112,7 +112,5 @@ namespace System.Text.RegularExpressions.Symbolic
             public SymbolicRegex(SymbolicRegexRunner runner) =>
                 factory = new SymbolicRegexRunnerFactory(runner);
         }
-
-        public void SaveDGML(TextWriter writer, int bound, bool hideStateInfo, bool addDotStar, bool inReverse, bool onlyDFAinfo, int maxLabelLength) => _matcher.SaveDGML(writer, bound, hideStateInfo, addDotStar, inReverse, onlyDFAinfo, maxLabelLength);
     }
 }

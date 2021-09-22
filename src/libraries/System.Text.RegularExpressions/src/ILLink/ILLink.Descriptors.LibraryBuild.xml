@@ -1,8 +1,0 @@
-<linker>
-  <assembly fullname="System.Text.RegularExpressions">
-    <type fullname="System.Text.RegularExpressions.Regex">
-      <!-- called via reflection from System.Text.RegularExpressions.Tests -->
-      <method name="SaveDGML" />
-    </type>
-  </assembly>
-</linker>
