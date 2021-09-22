@@ -319,7 +319,7 @@ namespace System.Reflection.Runtime.TypeInfos
             Type typeInfo = c;
             RuntimeTypeInfo toTypeInfo = this;
 
-            if (typeInfo == null || !typeInfo.IsRuntimeImplemented())
+            if (typeInfo is not RuntimeType)
                 return false;  // Desktop compat: If typeInfo is null, or implemented by a different Reflection implementation, return "false."
 
             RuntimeTypeInfo fromTypeInfo = typeInfo.CastToRuntimeTypeInfo();

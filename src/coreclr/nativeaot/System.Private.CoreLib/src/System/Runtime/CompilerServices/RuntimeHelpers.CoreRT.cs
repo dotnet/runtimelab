@@ -218,16 +218,16 @@ namespace System.Runtime.CompilerServices
         /// <param name="type">Type associated with the allocated memory.</param>
         /// <param name="size">Amount of memory in bytes to allocate.</param>
         /// <returns>The allocated memory</returns>
-        public static IntPtr AllocateTypeAssociatedMemory(Type type, int size)
+        public static unsafe IntPtr AllocateTypeAssociatedMemory(Type type, int size)
         {
-            if (type is null || !type.IsRuntimeImplemented())
+            if (type is not RuntimeType)
                 throw new ArgumentException(SR.Arg_MustBeType, nameof(type));
 
             if (size < 0)
                 throw new ArgumentOutOfRangeException(nameof(size));
 
             // We don't support unloading; the memory will never be freed.
-            return Marshal.AllocHGlobal(size);
+            return (IntPtr)NativeMemory.Alloc((uint)size);
         }
 
         public static void PrepareDelegate(Delegate d)
@@ -252,7 +252,7 @@ namespace System.Runtime.CompilerServices
                 throw new ArgumentNullException(nameof(type), SR.ArgumentNull_Type);
             }
 
-            if (!type.IsRuntimeImplemented())
+            if (type is not RuntimeType)
             {
                 throw new SerializationException(SR.Format(SR.Serialization_InvalidType, type));
             }

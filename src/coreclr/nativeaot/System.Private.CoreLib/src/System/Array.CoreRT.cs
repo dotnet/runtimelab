@@ -200,7 +200,7 @@ namespace System
 
         private static void ValidateElementType(Type elementType)
         {
-            if (!elementType.IsRuntimeImplemented())
+            if (elementType is not RuntimeType)
                 throw new ArgumentException(SR.Arg_MustBeType, nameof(elementType));
             while (elementType.IsArray)
             {

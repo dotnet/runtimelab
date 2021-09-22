@@ -95,7 +95,7 @@ namespace System
             // CLR-compat: runtime types are never equal to non-runtime types
             // If `left` is a non-runtime type with a weird Equals implementation
             // this is where operator `==` would differ from `Equals` call.
-            if (left.IsRuntimeImplemented() || right.IsRuntimeImplemented())
+            if (left is RuntimeType || right is RuntimeType)
                 return false;
 
             return left.Equals(right);
@@ -103,7 +103,5 @@ namespace System
 
         [Intrinsic]
         public static bool operator !=(Type? left, Type? right) => !(left == right);
-
-        public bool IsRuntimeImplemented() => this is RuntimeType; // Not an api but needs to be public because of Reflection.Core/CoreLib divide.
     }
 }

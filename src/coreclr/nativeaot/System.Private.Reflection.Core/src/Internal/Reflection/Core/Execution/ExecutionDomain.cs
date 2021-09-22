@@ -319,7 +319,7 @@ namespace Internal.Reflection.Core.Execution
         //=======================================================================================
         public RuntimeTypeHandle GetTypeHandleIfAvailable(Type type)
         {
-            if (!type.IsRuntimeImplemented())
+            if (type is not RuntimeType)
                 return default(RuntimeTypeHandle);
 
             RuntimeTypeInfo runtimeType = type.CastToRuntimeTypeInfo();
@@ -330,7 +330,7 @@ namespace Internal.Reflection.Core.Execution
 
         public bool SupportsReflection(Type type)
         {
-            if (!type.IsRuntimeImplemented())
+            if (type is not RuntimeType)
                 return false;
 
             RuntimeTypeInfo runtimeType = type.CastToRuntimeTypeInfo();

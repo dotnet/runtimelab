@@ -119,7 +119,7 @@ namespace System
 
         private static void CreateInstanceCheckType(Type type)
         {
-            if (type == null || !type.IsRuntimeImplemented())
+            if (type is not RuntimeType)
                 throw new ArgumentException(SR.Arg_MustBeType, nameof(type));
 
             if (type.IsAbstract)
