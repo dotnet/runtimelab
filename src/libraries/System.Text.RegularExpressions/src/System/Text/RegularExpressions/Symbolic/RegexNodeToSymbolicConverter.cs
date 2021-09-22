@@ -197,9 +197,12 @@ namespace System.Text.RegularExpressions.Symbolic
             }
         }
 
-        // TODO https://github.com/dotnet/runtimelab/issues/1537: Avoid deep recursion
         public SymbolicRegexNode<BDD> Convert(RegexNode node, bool topLevel)
         {
+            // Guard against stack overflow due to deep recursion
+            if (StackHelper.CallOnEmptyStackIfNecessary(() => Convert(node, topLevel), out SymbolicRegexNode<BDD>? result))
+                return result!;
+
             switch (node.Type)
             {
                 case RegexNode.Alternate:

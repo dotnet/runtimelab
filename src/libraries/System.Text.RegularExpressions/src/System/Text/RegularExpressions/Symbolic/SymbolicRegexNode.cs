@@ -666,6 +666,10 @@ namespace System.Text.RegularExpressions.Symbolic
         /// <returns></returns>
         internal SymbolicRegexNode<S> MkDerivative(S elem, uint context)
         {
+            // Guard against stack overflow due to deep recursion
+            if (StackHelper.CallOnEmptyStackIfNecessary(() => MkDerivative(elem, context), out SymbolicRegexNode<S>? result))
+                return result!;
+
             if (this == _builder._anyStar || this == _builder._nothing)
             {
                 return this;
@@ -905,6 +909,10 @@ namespace System.Text.RegularExpressions.Symbolic
 
         internal void ToString(StringBuilder sb)
         {
+            // Guard against stack overflow due to deep recursion
+            if (StackHelper.CallOnEmptyStackIfNecessary(() => ToString(sb)))
+                return;
+
             switch (_kind)
             {
                 case SymbolicRegexKind.EndAnchor:
@@ -1457,6 +1465,10 @@ namespace System.Text.RegularExpressions.Symbolic
         /// <param name="contWithNWL">if true the continuation can start with nonwordletter or stop</param>
         internal SymbolicRegexNode<S> PruneAnchors(uint prevKind, bool contWithWL, bool contWithNWL)
         {
+            // Guard against stack overflow due to deep recursion
+            if (StackHelper.CallOnEmptyStackIfNecessary(() => PruneAnchors(prevKind, contWithWL, contWithNWL), out SymbolicRegexNode<S>? result))
+                return result!;
+
             if (!_info.StartsWithSomeAnchor)
                 return this;
 
