@@ -2,10 +2,8 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using System.Linq;
 
 namespace System.Text.RegularExpressions.Symbolic
 {
@@ -975,7 +973,7 @@ namespace System.Text.RegularExpressions.Symbolic
                     Debug.Assert(_left is not null);
                     return _left.ExtractNullabilityTest();
                 default:
-                    // All remaininng cases could not be nullable or were trivially nullable
+                    // All remaining cases could not be nullable or were trivially nullable
                     // Sigleton cannot be nullable and Epsilon and Watchdog are trivially nullable
                     Debug.Assert(_kind == SymbolicRegexKind.Not && _left is not null);
                     return _builder.MkNot(_left.ExtractNullabilityTest());
@@ -1199,11 +1197,12 @@ namespace System.Text.RegularExpressions.Symbolic
                     return;
 
                 default:
+                    // Using the operator ~ for complement
                     Debug.Assert(_kind == SymbolicRegexKind.Not);
                     Debug.Assert(_left is not null);
-                    sb.Append("(?(");
+                    sb.Append("~(");
                     _left.ToString(sb);
-                    sb.Append($"){EmptyCharClass}|.*)");
+                    sb.Append(')');
                     return;
             }
         }

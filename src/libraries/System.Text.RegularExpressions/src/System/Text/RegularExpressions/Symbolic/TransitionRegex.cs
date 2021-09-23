@@ -4,8 +4,6 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
-using System.Runtime.CompilerServices;
 
 namespace System.Text.RegularExpressions.Symbolic
 {
@@ -96,6 +94,9 @@ namespace System.Text.RegularExpressions.Symbolic
             }
         }
 
+        public static TransitionRegex<S> Leaf(SymbolicRegexNode<S> node) =>
+            Create(node._builder, TransitionRegexKind.Leaf, default(S), null, null, node);
+
         /// <summary>Concatenate a node at the end of this transition regex</summary>
         public TransitionRegex<S> Concat(SymbolicRegexNode<S> node)
         {
@@ -131,7 +132,7 @@ namespace System.Text.RegularExpressions.Symbolic
 
         private TransitionRegex<S> IntersectWith(TransitionRegex<S> that, S pathIn)
         {
-            Debug.Assert(!_builder._solver.IsSatisfiable(pathIn));
+            Debug.Assert(_builder._solver.IsSatisfiable(pathIn));
 
             #region Conditional
             // Intersect when this is a Conditional
@@ -239,12 +240,12 @@ namespace System.Text.RegularExpressions.Symbolic
             return Create(one._builder, TransitionRegexKind.Union, default(S), one, two, null);
         }
 
-        internal static TransitionRegex<S> Conditional(S test, TransitionRegex<S> thencase, TransitionRegex<S> elsecase) =>
+        public static TransitionRegex<S> Conditional(S test, TransitionRegex<S> thencase, TransitionRegex<S> elsecase) =>
             (thencase == elsecase || thencase._builder._solver.True.Equals(test)) ? thencase :
             thencase._builder._solver.False.Equals(test) ? elsecase :
             Create(thencase._builder, TransitionRegexKind.Conditional, test, thencase, elsecase, null);
 
-        internal static TransitionRegex<S> Lookaround(SymbolicRegexNode<S> nullabilityTest, TransitionRegex<S> thencase, TransitionRegex<S> elsecase) =>
+        public static TransitionRegex<S> Lookaround(SymbolicRegexNode<S> nullabilityTest, TransitionRegex<S> thencase, TransitionRegex<S> elsecase) =>
             (thencase == elsecase) ? thencase : Create(thencase._builder, TransitionRegexKind.Lookaround, default(S), thencase, elsecase, nullabilityTest);
 
         /// <summary>Intersection of transition regexes</summary>
@@ -331,7 +332,32 @@ namespace System.Text.RegularExpressions.Symbolic
             }
         }
 
-        internal static TransitionRegex<S> Leaf(SymbolicRegexNode<S> node) =>
-            Create(node._builder, TransitionRegexKind.Leaf, default(S), null, null, node);
+        /// <summary>Enumerate all leaves that are not nothing. Some leaves may be repeated in the enumeration.</summary>
+        public IEnumerable<TransitionRegex<S>> EnumerateLeaves()
+        {
+            switch (_kind)
+            {
+                case TransitionRegexKind.Leaf:
+                    Debug.Assert(_node is not null);
+                    // Omit any leaf that is nothing
+                    if (!_node.IsNothing)
+                    {
+                        yield return this;
+                    }
+                    break;
+
+                default:
+                    Debug.Assert(_first is not null && _second is not null);
+                    foreach (TransitionRegex<S> leaf in _first.EnumerateLeaves())
+                    {
+                        yield return leaf;
+                    }
+                    foreach (TransitionRegex<S> leaf in _second.EnumerateLeaves())
+                    {
+                        yield return leaf;
+                    }
+                    break;
+            }
+        }
     }
 }

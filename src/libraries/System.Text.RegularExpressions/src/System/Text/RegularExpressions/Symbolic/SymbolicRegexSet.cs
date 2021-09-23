@@ -394,49 +394,21 @@ namespace System.Text.RegularExpressions.Symbolic
                 }
                 else
                 {
-                    if (_kind == SymbolicRegexKind.Or)
+                    // Union of two or more elements
+                    sb.Append('(');
+                    // Append the first two elements
+                    node.ToString(sb);
+                    // Using the operator & for intersection
+                    char op = _kind == SymbolicRegexKind.Or ? '|' : '&';
+                    sb.Append(op);
+                    enumerator.Current.ToString(sb);
+                    while (enumerator.MoveNext())
                     {
-                        // Union of two or more elements
-                        sb.Append('(');
-                        // Append the first two elements
-                        node.ToString(sb);
-                        sb.Append('|');
+                        // Append all the remaining elements
+                        sb.Append(op);
                         enumerator.Current.ToString(sb);
-                        while (enumerator.MoveNext())
-                        {
-                            // Append all the remaining elements
-                            sb.Append('|');
-                            enumerator.Current.ToString(sb);
-                        }
-                        sb.Append(')');
                     }
-                    else
-                    {
-                        // Intersection A&B is displayed as (?(A)B|[])
-                        // Intersection A&B&C is displayed as (?(A)(?(B)C|[])|[])
-                        // Intersection A&B&C&D is displayed as (?(A)(?(B)(?(C)D|[])|[])|[]) ... etc
-
-                        // Intersection of two or more elements
-                        sb.Append("(?(");
-                        node.ToString(sb);
-                        sb.Append(')');
-                        node = enumerator.Current;
-                        int count = 1;
-                        while (enumerator.MoveNext())
-                        {
-                            sb.Append("(?(");
-                            node.ToString(sb);
-                            sb.Append(')');
-                            node = enumerator.Current;
-                            count++;
-                        }
-                        node.ToString(sb);
-
-                        while (count-- > 0)
-                        {
-                            sb.Append($"|{SymbolicRegexNode<S>.EmptyCharClass})");
-                        }
-                    }
+                    sb.Append(')');
                 }
             }
         }
