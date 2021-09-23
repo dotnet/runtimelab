@@ -59,7 +59,7 @@ namespace System.Text.RegularExpressions.Symbolic
         /// Returns the BDD from the cache if it already exists.
         /// </summary>
         public BDD GetOrCreateBDD(int ordinal, BDD? one, BDD? zero) =>
-            _bddCache.GetOrAdd(new BDDKey(ordinal, one, zero), key => new BDD(ordinal, one, zero));
+            _bddCache.GetOrAdd(new BDDKey(ordinal, one, zero), (key, state) => new BDD(state.ordinal, state.one, state.zero), (ordinal, one, zero));
 
         #region IBooleanAlgebra members
 
