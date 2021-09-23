@@ -79,9 +79,10 @@ namespace System.Text.RegularExpressions.Symbolic
         public BDD Not(BDD a) =>
             a == False ? True :
             a == True ? False :
-            _opCache.GetOrAdd(new(BoolOp.Not, a, null), key => a.IsLeaf ?
+            _opCache.GetOrAdd(new(BoolOp.Not, a, null), (key, a) => a.IsLeaf ?
                 GetOrCreateBDD(CombineTerminals(BoolOp.Not, a.Ordinal, 0), null, null) : // multi-terminal case
-                GetOrCreateBDD(a.Ordinal, Not(a.One), Not(a.Zero)));
+                GetOrCreateBDD(a.Ordinal, Not(a.One), Not(a.Zero)),
+                a);
 
         /// <summary>
         /// Applies the binary Boolean operation op and constructs the BDD recursively from a and b.
