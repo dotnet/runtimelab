@@ -83,17 +83,6 @@ namespace System.Text.RegularExpressions.Symbolic
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool IsSatisfiable(BV predicate) => !predicate.Equals(False);
 
-        public BV And(params BV[] predicates)
-        {
-            BV and = True;
-            for (int i = 0; i < predicates.Length; i++)
-            {
-                and &= predicates[i];
-            }
-
-            return and;
-        }
-
         public BV And(IEnumerable<BV> predicates) => throw new NotSupportedException();
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

@@ -336,69 +336,50 @@ namespace System.Text.RegularExpressions.Symbolic
         /// which implies that all BDD nodes other than True and False are new BDD objects
         /// that have not been internalized or cached.
         /// </summary>
-        public static BDD Deserialize(long[] arcs, BDDAlgebra? algebra = null)
+        public static BDD Deserialize(long[] arcs, BDDAlgebra algebra)
         {
             if (arcs.Length == 1)
             {
                 return arcs[0] == 0 ? False : True;
             }
 
-            if (algebra is null)
+            // the number of bits used for ordinals and node identifiers are stored in the first two values
+            int k = arcs.Length;
+            int ordinal_bits = (int)arcs[0];
+            int node_bits = (int)arcs[1];
+
+            // create bit masks for the sizes of ordinals and node identifiers
+            long ordinal_mask = (1 << ordinal_bits) - 1;
+            long node_mask = (1 << node_bits) - 1;
+            BitLayout(ordinal_bits, node_bits, out int zero_node_shift, out int one_node_shift, out int ordinal_shift);
+
+            // store BDD nodes by their id when they are created
+            BDD[] nodes = new BDD[k];
+            nodes[0] = False;
+            nodes[1] = True;
+
+            for (int i = 2; i < k; i++)
             {
-                return DeserializeWithFactory(arcs, (int ordinal, BDD? one, BDD? zero) =>
+                long arc = arcs[i];
+                if (arc <= 0)
                 {
-                    Debug.Assert(one != zero || one is null);
-                    Debug.Assert(one is not null || zero is null);
-                    Debug.Assert(one is null || zero is not null);
-                    return new BDD(ordinal, one, zero);
-                });
-            }
-
-            lock (algebra)
-            {
-                return DeserializeWithFactory(arcs, algebra.GetOrCreateBDD);
-            }
-
-            static BDD DeserializeWithFactory(long[] arcs, Func<int, BDD?, BDD?, BDD> createBDD)
-            {
-                // the number of bits used for ordinals and node identifiers are stored in the first two values
-                int k = arcs.Length;
-                int ordinal_bits = (int)arcs[0];
-                int node_bits = (int)arcs[1];
-
-                // create bit masks for the sizes of ordinals and node identifiers
-                long ordinal_mask = (1 << ordinal_bits) - 1;
-                long node_mask = (1 << node_bits) - 1;
-                BitLayout(ordinal_bits, node_bits, out int zero_node_shift, out int one_node_shift, out int ordinal_shift);
-
-                // store BDD nodes by their id when they are created
-                BDD[] nodes = new BDD[k];
-                nodes[0] = False;
-                nodes[1] = True;
-
-                for (int i = 2; i < k; i++)
-                {
-                    long arc = arcs[i];
-                    if (arc <= 0)
-                    {
-                        // this is an MTBDD leaf. Its ordinal was serialized negated
-                        nodes[i] = createBDD((int)-arc, null, null);
-                    }
-                    else
-                    {
-                        // reconstruct the ordinal and child identifiers for a non-terminal
-                        int ord = (int)((arc >> ordinal_shift) & ordinal_mask);
-                        int oneId = (int)((arc >> one_node_shift) & node_mask);
-                        int zeroId = (int)((arc >> zero_node_shift) & node_mask);
-
-                        // the BDD nodes for the children are guaranteed to exist already due to the topological order
-                        nodes[i] = createBDD(ord, nodes[oneId], nodes[zeroId]);
-                    }
+                    // this is an MTBDD leaf. Its ordinal was serialized negated
+                    nodes[i] = algebra.GetOrCreateBDD((int)-arc, null, null);
                 }
+                else
+                {
+                    // reconstruct the ordinal and child identifiers for a non-terminal
+                    int ord = (int)((arc >> ordinal_shift) & ordinal_mask);
+                    int oneId = (int)((arc >> one_node_shift) & node_mask);
+                    int zeroId = (int)((arc >> zero_node_shift) & node_mask);
 
-                //the result is the final BDD in the nodes array
-                return nodes[k - 1];
+                    // the BDD nodes for the children are guaranteed to exist already due to the topological order
+                    nodes[i] = algebra.GetOrCreateBDD(ord, nodes[oneId], nodes[zeroId]);
+                }
             }
+
+            //the result is the final BDD in the nodes array
+            return nodes[k - 1];
         }
 
         /// <summary>
