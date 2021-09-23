@@ -19,7 +19,7 @@ namespace System.Text.RegularExpressions.Tests
         public static bool Enabled => false;
 
         /// <summary>Temporary local output directory for experiment results.</summary>
-        private static readonly string s_tmpWorkingDir = "c:\\tmp"; // Path.GetTempPath();
+        private static readonly string s_tmpWorkingDir = Path.GetTempPath();
 
         /// <summary>Works as a console.</summary>
         private static string OutputFilePath => Path.Combine(s_tmpWorkingDir, "vsoutput.txt");
