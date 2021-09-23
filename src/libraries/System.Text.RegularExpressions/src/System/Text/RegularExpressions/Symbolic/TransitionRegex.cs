@@ -332,31 +332,38 @@ namespace System.Text.RegularExpressions.Symbolic
             }
         }
 
-        /// <summary>Enumerate all leaves that are not nothing. Some leaves may be repeated in the enumeration.</summary>
+        /// <summary>Enumerate all distinct leaves that are not nothing.</summary>
         public IEnumerable<TransitionRegex<S>> EnumerateLeaves()
         {
-            switch (_kind)
+            Stack<TransitionRegex<S>> todo = new();
+            HashSet<TransitionRegex<S>> done = new();
+            todo.Push(this);
+            while (todo.Count > 0)
             {
-                case TransitionRegexKind.Leaf:
-                    Debug.Assert(_node is not null);
-                    // Omit any leaf that is nothing
-                    if (!_node.IsNothing)
-                    {
-                        yield return this;
-                    }
-                    break;
+                TransitionRegex<S> top = todo.Pop();
+                switch (top._kind)
+                {
+                    case TransitionRegexKind.Leaf:
+                        // Omit any leaf that is nothing or has already been yielded
+                        if (!top.IsNothing && done.Add(top))
+                        {
+                            yield return top;
+                        }
+                        break;
 
-                default:
-                    Debug.Assert(_first is not null && _second is not null);
-                    foreach (TransitionRegex<S> leaf in _first.EnumerateLeaves())
-                    {
-                        yield return leaf;
-                    }
-                    foreach (TransitionRegex<S> leaf in _second.EnumerateLeaves())
-                    {
-                        yield return leaf;
-                    }
-                    break;
+                    default:
+                        Debug.Assert(top._first is not null && top._second is not null);
+                        // In general the structure is a DAG so avoid yielding duplicates
+                        if (done.Add(top._second))
+                        {
+                            todo.Push(top._second);
+                        }
+                        if (done.Add(top._first))
+                        {
+                            todo.Push(top._first);
+                        }
+                        break;
+                }
             }
         }
     }
