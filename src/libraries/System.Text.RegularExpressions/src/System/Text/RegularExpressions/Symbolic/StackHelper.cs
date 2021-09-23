@@ -13,54 +13,32 @@ namespace System.Text.RegularExpressions.Symbolic
     internal static class StackHelper
     {
         /// <summary>
-        /// Calls the provided function on the stack of a new thread if stack space is close to running out (as indicated
-        /// by RuntimeHelpers.TryEnsureSufficientExecutionStack). Does nothing otherwise.
+        /// Calls the provided function on the stack of a new thread.
         /// </summary>
         /// <typeparam name="T">the return type of the function</typeparam>
-        /// <param name="func">the function to possibly call</param>
-        /// <param name="result">the return value of the function if it was called</param>
-        /// <returns>whether the function was called</returns>
-        public static bool CallOnEmptyStackIfNecessary<T>(Func<T> func, out T? result)
+        /// <param name="func">the function to call</param>
+        public static T CallOnEmptyStack<T>(Func<T> func)
         {
-            if (!RuntimeHelpers.TryEnsureSufficientExecutionStack())
-            {
-                // Using default scheduler rather than picking up the current scheduler.
-                Task<T> task = Task.Factory.StartNew(func, CancellationToken.None, TaskCreationOptions.DenyChildAttach, TaskScheduler.Default);
-                // Task.Wait has the potential of inlining the task's execution on the current thread; avoid this.
-                ((IAsyncResult)task).AsyncWaitHandle.WaitOne();
-                // Using awaiter here to propagate original exception
-                result = task.GetAwaiter().GetResult();
-                return true;
-            }
-            else
-            {
-                result = default(T);
-                return false;
-            }
+            // Using default scheduler rather than picking up the current scheduler.
+            Task<T> task = Task.Factory.StartNew(func, CancellationToken.None, TaskCreationOptions.DenyChildAttach, TaskScheduler.Default);
+            // Task.Wait has the potential of inlining the task's execution on the current thread; avoid this.
+            ((IAsyncResult)task).AsyncWaitHandle.WaitOne();
+            // Using awaiter here to propagate original exception
+            return task.GetAwaiter().GetResult();
         }
 
         /// <summary>
-        /// Calls the provided action on the stack of a new thread if stack space is close to running out (as indicated
-        /// by RuntimeHelpers.TryEnsureSufficientExecutionStack). Does nothing otherwise.
+        /// Calls the provided action on the stack of a new thread.
         /// </summary>
-        /// <param name="action">the action to possibly call</param>
-        /// <returns>whether the action was called</returns>
-        public static bool CallOnEmptyStackIfNecessary(Action action)
+        /// <param name="action">the action to call</param>
+        public static void CallOnEmptyStack(Action action)
         {
-            if (!RuntimeHelpers.TryEnsureSufficientExecutionStack())
-            {
-                // Using default scheduler rather than picking up the current scheduler.
-                Task task = Task.Factory.StartNew(action, CancellationToken.None, TaskCreationOptions.DenyChildAttach, TaskScheduler.Default);
-                // Task.Wait has the potential of inlining the task's execution on the current thread; avoid this.
-                ((IAsyncResult)task).AsyncWaitHandle.WaitOne();
-                // Using awaiter here to propagate original exception
-                task.GetAwaiter().GetResult();
-                return true;
-            }
-            else
-            {
-                return false;
-            }
+            // Using default scheduler rather than picking up the current scheduler.
+            Task task = Task.Factory.StartNew(action, CancellationToken.None, TaskCreationOptions.DenyChildAttach, TaskScheduler.Default);
+            // Task.Wait has the potential of inlining the task's execution on the current thread; avoid this.
+            ((IAsyncResult)task).AsyncWaitHandle.WaitOne();
+            // Using awaiter here to propagate original exception
+            task.GetAwaiter().GetResult();
         }
     }
 }
