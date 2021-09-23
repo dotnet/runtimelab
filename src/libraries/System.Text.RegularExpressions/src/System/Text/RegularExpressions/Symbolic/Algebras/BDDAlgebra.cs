@@ -141,7 +141,7 @@ namespace System.Text.RegularExpressions.Symbolic
             // Order operands by hash code to increase cache hits
             if (a.GetHashCode() > b.GetHashCode())
             {
-                var tmp = a;
+                BDD tmp = a;
                 a = b;
                 b = tmp;
             }
