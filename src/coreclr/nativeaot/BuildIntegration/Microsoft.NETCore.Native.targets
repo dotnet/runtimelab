@@ -27,16 +27,17 @@ The .NET Foundation licenses this file to you under the MIT license.
     <NativeDebugSymbols Condition="$(DebugSymbols) == 'true' or ($(DebugType) != 'none' and $(DebugType) != '')">true</NativeDebugSymbols>
     <!-- Workaround for https://github.com/dotnet/runtimelab/issues/771 -->
     <ErrorOnDuplicatePublishOutputFiles>false</ErrorOnDuplicatePublishOutputFiles>
+    <PublishTrimmed>true</PublishTrimmed>
   </PropertyGroup>
 
   <!-- Set up the defaults for the compatibility mode -->
   <PropertyGroup>
-    <_BuildingInCompatibleMode Condition="$(TrimMode) == '' and $(IlcGenerateStackTraceData) == '' and $(IlcDisableReflection) == ''">true</_BuildingInCompatibleMode>
+    <_BuildingInCompatibleMode Condition="$(TrimmerDefaultAction) == '' and $(IlcGenerateStackTraceData) == '' and $(IlcDisableReflection) == ''">true</_BuildingInCompatibleMode>
 
     <IlcGenerateStackTraceData Condition="$(IlcGenerateStackTraceData) == ''">true</IlcGenerateStackTraceData>
     <IlcScanReflection Condition="$(IlcScanReflection) == ''">true</IlcScanReflection>
     <SuppressTrimAnalysisWarnings Condition="$(SuppressTrimAnalysisWarnings) == ''">true</SuppressTrimAnalysisWarnings>
-    <TrimMode Condition="$(TrimMode) == ''">copyused</TrimMode>
+    <TrimmerDefaultAction Condition="$([MSBuild]::VersionLessThan('$(NETCoreSdkVersion)', '6.0.0'))">copyused</TrimmerDefaultAction>
   </PropertyGroup>
 
   <!-- Set up default feature switches -->
@@ -116,13 +117,14 @@ The .NET Foundation licenses this file to you under the MIT license.
   <Target Name="_ComputeManagedAssemblyForILLink" AfterTargets="_ComputeManagedAssemblyToLink">
     <ItemGroup>
       <ManagedAssemblyToLink Remove="@(ManagedAssemblyToLink)" />
+      <ManagedAssemblyToLink Include="@(DefaultFrameworkAssemblies);@(_ManagedResolvedAssembliesToPublish);@(ManagedBinary)" />
+    </ItemGroup>
+    <ItemGroup Condition="$([MSBuild]::VersionLessThan('$(TargetFrameworkVersion)', '6.0'))">
+      <ManagedAssemblyToLink Remove="@(ManagedAssemblyToLink)" />
       <ManagedAssemblyToLink Include="@(DefaultFrameworkAssemblies)">
         <IsTrimmable>true</IsTrimmable>
-        <TrimMode>link</TrimMode>
       </ManagedAssemblyToLink>
-      <ManagedAssemblyToLink Include="@(_ManagedResolvedAssembliesToPublish);@(ManagedBinary)">
-        <IsTrimmable>true</IsTrimmable>
-      </ManagedAssemblyToLink>
+      <ManagedAssemblyToLink Include="@(_ManagedResolvedAssembliesToPublish);@(ManagedBinary)" />
     </ItemGroup>
   </Target>
 
@@ -212,16 +214,11 @@ The .NET Foundation licenses this file to you under the MIT license.
       </ManagedAssemblyToLink>
     </ItemGroup>
 
-    <!-- Propagate the global TrimMode to all the assembly that don't have it yet -->
-    <ItemGroup>
-      <ManagedAssemblyToLink Condition=" '%(ManagedAssemblyToLink.TrimMode)' == '' ">
-        <TrimMode>$(TrimMode)</TrimMode>
-      </ManagedAssemblyToLink>
-    </ItemGroup>
-
     <ItemGroup>
       <_IlcRootedAssemblies Include="@(TrimmerRootAssembly)" />
+      <_IlcRootedAssemblies Include="@(ManagedAssemblyToLink)" Condition="%(ManagedAssemblyToLink.TrimMode) == 'copy'" />
       <_IlcConditionallyRootedAssemblies Include="@(ManagedAssemblyToLink)" Condition="%(ManagedAssemblyToLink.TrimMode) == 'copyused'" />
+      <_IlcTrimmedAssemblies Include="@(ManagedAssemblyToLink)" Condition="%(ManagedAssemblyToLink.TrimMode) == 'link'" />
       <_IlcNoSingleWarnAssemblies Include="@(ManagedAssemblyToLink)" Condition="%(ManagedAssemblyToLink.TrimmerSingleWarn) == 'false'" />
     </ItemGroup>
 
@@ -264,7 +261,9 @@ The .NET Foundation licenses this file to you under the MIT license.
       <IlcArg Condition="'$(ControlFlowGuard)' == 'Guard' and '$(TargetOS)' == 'windows'" Include="--guard:cf" />
       <IlcArg Include="@(_IlcRootedAssemblies->'--root:%(Identity)')" />
       <IlcArg Include="@(_IlcConditionallyRootedAssemblies->'--conditionalroot:%(Identity)')" />
+      <IlcArg Include="@(_IlcTrimmedAssemblies->'--trim:%(Identity)')" />
       <IlcArg Include="@(_IlcNoSingleWarnAssemblies->'--nosinglewarnassembly:%(Filename)')" />
+      <IlcArg Condition="'$(TrimmerDefaultAction)' == 'copyused' or '$(TrimmerDefaultAction)' == 'copy'" Include="--defaultrooting" />
 
       <IlcArg Condition="$(IlcDisableReflection) == 'true'" Include="--feature:System.Reflection.IsReflectionExecutionAvailable=false" />
 
@@ -285,6 +284,10 @@ The .NET Foundation licenses this file to you under the MIT license.
     <Message Text="Generating compatible native code. To optimize for size or speed, visit https://aka.ms/OptimizeCoreRT" Condition="$(_BuildingInCompatibleMode) == 'true'" Importance="high" />
 
     <Exec Command="&quot;$(IlcHostPath)\tools\ilc&quot; @&quot;$(NativeIntermediateOutputPath)%(ManagedBinary.Filename).ilc.rsp&quot;" />
+
+    <!-- Trick ILLinker into not actually running -->
+    <MakeDir Directories="$(IntermediateLinkDir)" />
+    <Touch Files="$(_LinkSemaphore)" AlwaysCreate="true" />
   </Target>
 
   <Import Project="$(MSBuildThisFileDirectory)Microsoft.NETCore.Native.Windows.props" Condition="'$(TargetOS)' == 'windows'" />
