@@ -9,7 +9,7 @@ namespace System
     // Base class for runtime implemented Type
     public abstract class RuntimeType : TypeInfo
     {
-        public override string GetEnumName(object value)
+        public sealed override string GetEnumName(object value)
         {
             if (value == null)
                 throw new ArgumentNullException(nameof(value));
@@ -26,7 +26,7 @@ namespace System
             return Enum.GetEnumName(this, rawValue);
         }
 
-        public override string[] GetEnumNames()
+        public sealed override string[] GetEnumNames()
         {
             if (!IsEnum)
                 throw new ArgumentException(SR.Arg_MustBeEnum, "enumType");
@@ -37,7 +37,7 @@ namespace System
             return new ReadOnlySpan<string>(ret).ToArray();
         }
 
-        public override Type GetEnumUnderlyingType()
+        public sealed override Type GetEnumUnderlyingType()
         {
             if (!IsEnum)
                 throw new ArgumentException(SR.Arg_MustBeEnum, "enumType");
@@ -45,7 +45,7 @@ namespace System
             return Enum.InternalGetUnderlyingType(this);
         }
 
-        public override bool IsEnumDefined(object value)
+        public sealed override bool IsEnumDefined(object value)
         {
             if (value == null)
                 throw new ArgumentNullException(nameof(value));
@@ -91,7 +91,7 @@ namespace System
         }
 
         [RequiresDynamicCode("It might not be possible to create an array of the enum type at runtime. Use the GetValues<TEnum> overload instead.")]
-        public override Array GetEnumValues()
+        public sealed override Array GetEnumValues()
         {
             if (!IsEnum)
                 throw new ArgumentException(SR.Arg_MustBeEnum, "enumType");
