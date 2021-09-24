@@ -4,6 +4,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
+using System.Runtime.CompilerServices;
 
 namespace System.Text.RegularExpressions.Symbolic
 {
@@ -197,9 +198,16 @@ namespace System.Text.RegularExpressions.Symbolic
             }
         }
 
-        // TODO https://github.com/dotnet/runtimelab/issues/1537: Avoid deep recursion
         public SymbolicRegexNode<BDD> Convert(RegexNode node, bool topLevel)
         {
+            // Guard against stack overflow due to deep recursion
+            if (!RuntimeHelpers.TryEnsureSufficientExecutionStack())
+            {
+                RegexNode localNode = node;
+                bool localTopLevel = topLevel;
+                return StackHelper.CallOnEmptyStack(() => Convert(localNode, localTopLevel));
+            }
+
             switch (node.Type)
             {
                 case RegexNode.Alternate:

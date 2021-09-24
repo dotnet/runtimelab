@@ -175,7 +175,7 @@ namespace System.Text.RegularExpressions.Symbolic
 
             _dotstarredPattern = _builder.MkConcat(_builder._anyStar, _pattern);
             _reversePattern = _pattern.Reverse();
-            ConfigureeRegexes();
+            ConfigureRegexes();
 
             _startSet = _pattern.GetStartSet();
             if (!_builder._solver.IsSatisfiable(_startSet) || _pattern.CanBeNullable)
@@ -244,7 +244,7 @@ namespace System.Text.RegularExpressions.Symbolic
             return null;
         }
 
-        private void ConfigureeRegexes()
+        private void ConfigureRegexes()
         {
             void Configure(uint i)
             {

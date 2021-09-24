@@ -1,9 +1,11 @@
-﻿// Licensed to the .NET Foundation under one or more agreements.
+// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Linq;
+using System.Runtime.CompilerServices;
 
 namespace System.Text.RegularExpressions.Symbolic
 {
@@ -683,6 +685,14 @@ namespace System.Text.RegularExpressions.Symbolic
         /// <returns></returns>
         internal SymbolicRegexNode<S> MkDerivative(S elem, uint context)
         {
+            // Guard against stack overflow due to deep recursion
+            if (!RuntimeHelpers.TryEnsureSufficientExecutionStack())
+            {
+                S localElem = elem;
+                uint localContext = context;
+                return StackHelper.CallOnEmptyStack(() => MkDerivative(localElem, localContext));
+            }
+
             if (this == _builder._anyStar || this == _builder._nothing)
             {
                 return this;
@@ -1076,6 +1086,14 @@ namespace System.Text.RegularExpressions.Symbolic
 
         internal void ToString(StringBuilder sb)
         {
+            // Guard against stack overflow due to deep recursion
+            if (!RuntimeHelpers.TryEnsureSufficientExecutionStack())
+            {
+                StringBuilder localSb = sb;
+                StackHelper.CallOnEmptyStack(() => ToString(localSb));
+                return;
+            }
+
             switch (_kind)
             {
                 case SymbolicRegexKind.EndAnchor:
@@ -1629,6 +1647,15 @@ namespace System.Text.RegularExpressions.Symbolic
         /// <param name="contWithNWL">if true the continuation can start with nonwordletter or stop</param>
         internal SymbolicRegexNode<S> PruneAnchors(uint prevKind, bool contWithWL, bool contWithNWL)
         {
+            // Guard against stack overflow due to deep recursion
+            if (!RuntimeHelpers.TryEnsureSufficientExecutionStack())
+            {
+                uint localPrevKind = prevKind;
+                bool localContWithWL = contWithWL;
+                bool localContWithNWL = contWithNWL;
+                return StackHelper.CallOnEmptyStack(() => PruneAnchors(localPrevKind, localContWithWL, localContWithNWL));
+            }
+
             if (!_info.StartsWithSomeAnchor)
                 return this;
 
