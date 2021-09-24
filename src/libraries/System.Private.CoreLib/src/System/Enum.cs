@@ -10,10 +10,6 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using Internal.Runtime.CompilerServices;
 
-#if CORERT
-using EnumInfo = Internal.Runtime.Augments.EnumInfo;
-#endif
-
 // The code below includes partial support for float/double and
 // pointer sized enums.
 //
@@ -290,7 +286,6 @@ namespace System
         public static string? GetName<TEnum>(TEnum value) where TEnum : struct, Enum
             => GetEnumName((RuntimeType)typeof(TEnum), ToUInt64(value));
 
-#if !CORERT
         public static string? GetName(Type enumType, object value)
         {
             if (enumType is null)
@@ -324,9 +319,12 @@ namespace System
             return enumType.GetEnumUnderlyingType();
         }
 
+#if !CORERT
         public static TEnum[] GetValues<TEnum>() where TEnum : struct, Enum
             => (TEnum[])GetValues(typeof(TEnum));
+#endif
 
+        [RequiresDynamicCode("It might not be possible to create an array of the enum type at runtime. Use the GetValues<TEnum> overload instead.")]
         public static Array GetValues(Type enumType)
         {
             if (enumType is null)
@@ -335,6 +333,7 @@ namespace System
             return enumType.GetEnumValues();
         }
 
+#if !CORERT
         [Intrinsic]
         public bool HasFlag(Enum flag)
         {
@@ -345,6 +344,7 @@ namespace System
 
             return InternalHasFlag(flag);
         }
+#endif
 
         internal static ulong[] InternalGetValues(RuntimeType enumType)
         {
@@ -360,7 +360,6 @@ namespace System
 
             return FindDefinedIndex(ulValues, ulValue) >= 0;
         }
-#endif
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static int FindDefinedIndex(ulong[] ulValues, ulong ulValue)
@@ -377,7 +376,6 @@ namespace System
                 SpanHelpers.BinarySearch(ref start, ulValuesLength, ulValue);
         }
 
-#if !CORERT
         public static bool IsDefined(Type enumType, object value)
         {
             if (enumType is null)
@@ -385,7 +383,6 @@ namespace System
 
             return enumType.IsEnumDefined(value);
         }
-#endif
 
         public static object Parse(Type enumType, string value) =>
             Parse(enumType, value, ignoreCase: false);
@@ -1412,7 +1409,8 @@ namespace System
             if (enumType is not RuntimeType rtType)
                 throw new ArgumentException(SR.Arg_MustBeType, nameof(enumType));
 #if CORERT
-            // Check for the unfortunate "typeof(Outer<>).InnerEnum" corner case.
+            // Check for the unfortunate "typeof(Outer<>.InnerEnum)" corner case.
+            // https://github.com/dotnet/runtime/issues/7976
             if (enumType.ContainsGenericParameters)
                 throw new InvalidOperationException(SR.Format(SR.Arg_OpenType, enumType.ToString()));
 #endif

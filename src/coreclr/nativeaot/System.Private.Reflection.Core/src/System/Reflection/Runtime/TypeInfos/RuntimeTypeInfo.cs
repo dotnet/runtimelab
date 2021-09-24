@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
+using System.Reflection;
 using System.Reflection.Runtime.General;
 using System.Reflection.Runtime.MethodInfos;
 
@@ -12,8 +13,6 @@ using Internal.Reflection.Core.Execution;
 using Internal.Reflection.Core.NonPortable;
 using Internal.Reflection.Tracing;
 using Internal.Reflection.Augments;
-
-using EnumInfo = Internal.Runtime.Augments.EnumInfo;
 
 using StructLayoutAttribute = System.Runtime.InteropServices.StructLayoutAttribute;
 

@@ -11,7 +11,6 @@ using System.Reflection.Runtime.TypeInfos;
 using Internal.Metadata.NativeFormat;
 
 using OpenMethodInvoker = System.Reflection.Runtime.MethodInfos.OpenMethodInvoker;
-using EnumInfo = Internal.Runtime.Augments.EnumInfo;
 using System.Reflection.Runtime.MethodInfos;
 
 namespace Internal.Reflection.Core.Execution

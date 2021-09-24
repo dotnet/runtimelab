@@ -7,7 +7,7 @@ using System.Diagnostics;
 using System.Runtime;
 using System.Runtime.CompilerServices;
 
-namespace Internal.Runtime.Augments
+namespace System.Reflection
 {
     [ReflectionBlocked]
     public sealed class EnumInfo

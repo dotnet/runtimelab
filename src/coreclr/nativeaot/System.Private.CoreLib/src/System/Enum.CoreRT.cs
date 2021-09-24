@@ -3,10 +3,10 @@
 
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Reflection;
 using System.Runtime;
 using System.Runtime.CompilerServices;
 using Internal.Runtime.CompilerServices;
-using Internal.Runtime.Augments;
 using Internal.Reflection.Augments;
 
 using CorElementType = System.Reflection.CorElementType;
@@ -16,21 +16,13 @@ namespace System
 {
     public abstract partial class Enum : ValueType, IComparable, IFormattable, IConvertible
     {
-        private static EnumInfo GetEnumInfo(Type enumType)
+        internal static EnumInfo GetEnumInfo(Type enumType, bool getNames = true)
         {
             Debug.Assert(enumType != null);
             Debug.Assert(enumType is RuntimeType);
             Debug.Assert(enumType.IsEnum);
 
             return ReflectionAugments.ReflectionCoreCallbacks.GetEnumInfo(enumType);
-        }
-
-        public static bool IsDefined<TEnum>(TEnum value) where TEnum : struct, Enum
-        {
-            ulong[] ulValues = GetEnumInfo(typeof(TEnum)).Values;
-            ulong ulValue = Enum.ToUInt64(value);
-
-            return Array.BinarySearch(ulValues, ulValue) >= 0;
         }
 
         private static object InternalBoxEnum(Type enumType, long value)
@@ -110,7 +102,7 @@ namespace System
         //
         // The return value is "bool" if "value" is not an enum or an "integer type" as defined by the BCL Enum apis.
         //
-        private static bool TryGetUnboxedValueOfEnumOrInteger(object value, out ulong result)
+        internal static bool TryGetUnboxedValueOfEnumOrInteger(object value, out ulong result)
         {
             EETypePtr eeType = value.EETypePtr;
             // For now, this check is required to flush out pointers.
@@ -171,150 +163,26 @@ namespace System
             }
         }
 
-        public static string GetName(Type enumType, object value)
+        internal static Type InternalGetUnderlyingType(RuntimeType enumType)
         {
-            if (enumType == null)
-                throw new ArgumentNullException(nameof(enumType));
-            if (enumType is not RuntimeType rtType)
-                return enumType.GetEnumName(value);
-            if (value == null)
-                throw new ArgumentNullException(nameof(value));
-            ulong rawValue;
-            if (!TryGetUnboxedValueOfEnumOrInteger(value, out rawValue))
-                throw new ArgumentException(SR.Arg_MustBeEnumBaseTypeOrEnum, nameof(value));
-
-            // For desktop compatibility, do not bounce an incoming integer that's the wrong size.
-            // Do a value-preserving cast of both it and the enum values and do a 64-bit compare.
-
-            if (!rtType.IsEnum)
-                throw new ArgumentException(SR.Arg_MustBeEnum);
-
-            return GetEnumName(rtType, rawValue);
-        }
-
-        public static string[] GetNames<TEnum>() where TEnum : struct, Enum
-            => new ReadOnlySpan<string>(GetEnumInfo(typeof(TEnum)).Names).ToArray();
-
-        public static string[] GetNames(Type enumType)
-        {
-            if (enumType == null)
-                throw new ArgumentNullException(nameof(enumType));
-
-            if (enumType is not RuntimeType)
-                return enumType.GetEnumNames();
-
-            if (!enumType.IsEnum)
-                throw new ArgumentException(SR.Arg_MustBeEnum, nameof(enumType));
-
-            string[] ret = GetEnumInfo(enumType).Names;
-
-            // Make a copy since we can't hand out the same array since users can modify them
-            return new ReadOnlySpan<string>(ret).ToArray();
-        }
-
-        public static Type GetUnderlyingType(Type enumType)
-        {
-            if (enumType == null)
-                throw new ArgumentNullException(nameof(enumType));
-
-            if (enumType is not RuntimeType)
-                return enumType.GetEnumUnderlyingType();
-
-            if (!enumType.IsEnum)
-                throw new ArgumentException(SR.Arg_MustBeEnum, nameof(enumType));
+            Debug.Assert(enumType is RuntimeType);
+            Debug.Assert(enumType.IsEnum);
 
             return GetEnumInfo(enumType).UnderlyingType;
-        }
-
-        [RequiresDynamicCode("It might not be possible to create an array of the enum type at runtime. Use the GetValues<TEnum> overload instead.")]
-        public static Array GetValues(Type enumType)
-        {
-            if (enumType == null)
-                throw new ArgumentNullException(nameof(enumType));
-
-            if (enumType is not RuntimeType)
-                return enumType.GetEnumValues();
-
-            if (!enumType.IsEnum)
-                throw new ArgumentException(SR.Arg_MustBeEnum, nameof(enumType));
-
-            Array values = GetEnumInfo(enumType).ValuesAsUnderlyingType;
-            int count = values.Length;
-            // Without universal shared generics, chances are slim that we'll have the appropriate
-            // array type available. Offer an escape hatch that avoids a MissingMetadataException
-            // at the cost of a small appcompat risk.
-            Array result;
-            if (AppContext.TryGetSwitch("Switch.System.Enum.RelaxedGetValues", out bool isRelaxed) && isRelaxed)
-                result = Array.CreateInstance(Enum.GetUnderlyingType(enumType), count);
-            else
-                result = Array.CreateInstance(enumType, count);
-            Array.CopyImplValueTypeArrayNoInnerGcRefs(values, 0, result, 0, count);
-            return result;
         }
 
         public static TEnum[] GetValues<TEnum>() where TEnum : struct, Enum
         {
             Array values = GetEnumInfo(typeof(TEnum)).ValuesAsUnderlyingType;
             TEnum[] result = new TEnum[values.Length];
-            Array.CopyImplValueTypeArrayNoInnerGcRefs(values, 0, result, 0, values.Length);
+            Array.Copy(values, result, values.Length);
             return result;
-        }
-
-        public static bool IsDefined(Type enumType, object value)
-        {
-            if (enumType == null)
-                throw new ArgumentNullException(nameof(enumType));
-
-            if (enumType is not RuntimeType)
-                return enumType.IsEnumDefined(value);
-
-            if (value == null)
-                throw new ArgumentNullException(nameof(value));
-
-            if (!enumType.IsEnum)
-                throw new ArgumentException(SR.Arg_MustBeEnum);
-
-            if (value is string valueAsString)
-            {
-                EnumInfo enumInfo = GetEnumInfo(enumType);
-                foreach (string name in enumInfo.Names)
-                {
-                    if (valueAsString == name)
-                        return true;
-                }
-                return false;
-            }
-            else
-            {
-                ulong rawValue;
-                if (!TryGetUnboxedValueOfEnumOrInteger(value, out rawValue))
-                {
-                    if (Type.IsIntegerType(value.GetType()))
-                        throw new ArgumentException(SR.Format(SR.Arg_EnumUnderlyingTypeAndObjectMustBeSameType, value.GetType(), Enum.GetUnderlyingType(enumType)));
-                    else
-                        throw new InvalidOperationException(SR.InvalidOperation_UnknownEnumType);
-                }
-
-                EnumInfo enumInfo = GetEnumInfo(enumType);
-                if (value is Enum)
-                {
-                    if (!ValueTypeMatchesEnumType(enumType, value))
-                        throw new ArgumentException(SR.Format(SR.Arg_EnumAndObjectMustBeSameType, value.GetType(), enumType));
-                }
-                else
-                {
-                    if (!(enumInfo.UnderlyingType.TypeHandle.ToEETypePtr() == value.EETypePtr))
-                        throw new ArgumentException(SR.Format(SR.Arg_EnumUnderlyingTypeAndObjectMustBeSameType, value.GetType(), enumInfo.UnderlyingType));
-                }
-
-                return GetEnumName(enumInfo, rawValue) != null;
-            }
         }
 
         //
         // Checks if value.GetType() matches enumType exactly.
         //
-        private static bool ValueTypeMatchesEnumType(Type enumType, object value)
+        internal static bool ValueTypeMatchesEnumType(Type enumType, object value)
         {
             EETypePtr enumEEType;
             if (!enumType.TryGetEEType(out enumEEType))
