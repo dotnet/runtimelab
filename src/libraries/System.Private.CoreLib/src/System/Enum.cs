@@ -333,18 +333,60 @@ namespace System
             return enumType.GetEnumValues();
         }
 
-#if !CORERT
         [Intrinsic]
         public bool HasFlag(Enum flag)
         {
             if (flag is null)
                 throw new ArgumentNullException(nameof(flag));
-            if (!GetType().IsEquivalentTo(flag.GetType()))
+            if (GetType() != flag.GetType() && !GetType().IsEquivalentTo(flag.GetType()))
                 throw new ArgumentException(SR.Format(SR.Argument_EnumTypeDoesNotMatch, flag.GetType(), GetType()));
 
-            return InternalHasFlag(flag);
-        }
+            ref byte pThisValue = ref this.GetRawData();
+            ref byte pFlagsValue = ref flag.GetRawData();
+
+            switch (InternalGetCorElementType())
+            {
+                case CorElementType.ELEMENT_TYPE_I1:
+                case CorElementType.ELEMENT_TYPE_U1:
+                case CorElementType.ELEMENT_TYPE_BOOLEAN:
+                    {
+                        byte flagsValue = pFlagsValue;
+                        return (pThisValue & flagsValue) == flagsValue;
+                    }
+                case CorElementType.ELEMENT_TYPE_I2:
+                case CorElementType.ELEMENT_TYPE_U2:
+                case CorElementType.ELEMENT_TYPE_CHAR:
+                    {
+                        ushort flagsValue = Unsafe.As<byte, ushort>(ref pFlagsValue);
+                        return (Unsafe.As<byte, ushort>(ref pThisValue) & flagsValue) == flagsValue;
+                    }
+                case CorElementType.ELEMENT_TYPE_I4:
+                case CorElementType.ELEMENT_TYPE_U4:
+#if TARGET_32BIT
+                case CorElementType.ELEMENT_TYPE_I:
+                case CorElementType.ELEMENT_TYPE_U:
 #endif
+                case CorElementType.ELEMENT_TYPE_R4:
+                    {
+                        uint flagsValue = Unsafe.As<byte, uint>(ref pFlagsValue);
+                        return (Unsafe.As<byte, uint>(ref pThisValue) & flagsValue) == flagsValue;
+                    }
+                case CorElementType.ELEMENT_TYPE_I8:
+                case CorElementType.ELEMENT_TYPE_U8:
+#if TARGET_64BIT
+                case CorElementType.ELEMENT_TYPE_I:
+                case CorElementType.ELEMENT_TYPE_U:
+#endif
+                case CorElementType.ELEMENT_TYPE_R8:
+                    {
+                        ulong flagsValue = Unsafe.As<byte, ulong>(ref pFlagsValue);
+                        return (Unsafe.As<byte, ulong>(ref pThisValue) & flagsValue) == flagsValue;
+                    }
+                default:
+                    Debug.Fail("Unknown enum underlying type");
+                    return false;
+            }
+        }
 
         internal static ulong[] InternalGetValues(RuntimeType enumType)
         {
@@ -1103,27 +1145,82 @@ namespace System
                 case CorElementType.ELEMENT_TYPE_CHAR:
                     return Unsafe.As<byte, ushort>(ref data);
                 case CorElementType.ELEMENT_TYPE_I4:
+#if TARGET_32BIT
+                case CorElementType.ELEMENT_TYPE_I:
+#endif
                     return (ulong)Unsafe.As<byte, int>(ref data);
                 case CorElementType.ELEMENT_TYPE_U4:
+#if TARGET_32BIT
+                case CorElementType.ELEMENT_TYPE_U:
+#endif
                 case CorElementType.ELEMENT_TYPE_R4:
                     return Unsafe.As<byte, uint>(ref data);
                 case CorElementType.ELEMENT_TYPE_I8:
+#if TARGET_64BIT
+                case CorElementType.ELEMENT_TYPE_I:
+#endif
                     return (ulong)Unsafe.As<byte, long>(ref data);
                 case CorElementType.ELEMENT_TYPE_U8:
+#if TARGET_64BIT
+                case CorElementType.ELEMENT_TYPE_U:
+#endif
                 case CorElementType.ELEMENT_TYPE_R8:
                     return Unsafe.As<byte, ulong>(ref data);
-                case CorElementType.ELEMENT_TYPE_I:
-                    return (ulong)Unsafe.As<byte, IntPtr>(ref data);
-                case CorElementType.ELEMENT_TYPE_U:
-                    return (ulong)Unsafe.As<byte, UIntPtr>(ref data);
                 default:
-                    throw new InvalidOperationException(SR.InvalidOperation_UnknownEnumType);
+                    Debug.Fail("Unknown enum underlying type");
+                    return 0;
             }
         }
 
         #endregion
 
         #region Object Overrides
+
+        public override bool Equals([NotNullWhen(true)] object? obj)
+        {
+            if (obj is null)
+                return false;
+
+            if (this == obj)
+                return true;
+
+            if (this.GetType() != obj.GetType())
+                return false;
+
+            ref byte pThisValue = ref this.GetRawData();
+            ref byte pOtherValue = ref obj.GetRawData();
+
+            switch (InternalGetCorElementType())
+            {
+                case CorElementType.ELEMENT_TYPE_I1:
+                case CorElementType.ELEMENT_TYPE_U1:
+                case CorElementType.ELEMENT_TYPE_BOOLEAN:
+                    return pThisValue == pOtherValue;
+                case CorElementType.ELEMENT_TYPE_I2:
+                case CorElementType.ELEMENT_TYPE_U2:
+                case CorElementType.ELEMENT_TYPE_CHAR:
+                    return Unsafe.As<byte, ushort>(ref pThisValue) == Unsafe.As<byte, ushort>(ref pOtherValue);
+                case CorElementType.ELEMENT_TYPE_I4:
+                case CorElementType.ELEMENT_TYPE_U4:
+#if TARGET_32BIT
+                case CorElementType.ELEMENT_TYPE_I:
+                case CorElementType.ELEMENT_TYPE_U:
+#endif
+                case CorElementType.ELEMENT_TYPE_R4:
+                    return Unsafe.As<byte, uint>(ref pThisValue) == Unsafe.As<byte, uint>(ref pOtherValue);
+                case CorElementType.ELEMENT_TYPE_I8:
+                case CorElementType.ELEMENT_TYPE_U8:
+#if TARGET_64BIT
+                case CorElementType.ELEMENT_TYPE_I:
+                case CorElementType.ELEMENT_TYPE_U:
+#endif
+                case CorElementType.ELEMENT_TYPE_R8:
+                    return Unsafe.As<byte, ulong>(ref pThisValue) == Unsafe.As<byte, ulong>(ref pOtherValue);
+                default:
+                    Debug.Fail("Unknown enum underlying type");
+                    return false;
+            }
+        }
 
         public override int GetHashCode()
         {
@@ -1214,7 +1311,8 @@ namespace System
                 case CorElementType.ELEMENT_TYPE_R8:
                     return Unsafe.As<byte, double>(ref pThisValue).CompareTo(Unsafe.As<byte, double>(ref pTargetValue));
                 default:
-                    throw new InvalidOperationException(SR.InvalidOperation_UnknownEnumType);
+                    Debug.Fail("Unknown enum underlying type");
+                    return 0;
             }
         }
         #endregion
