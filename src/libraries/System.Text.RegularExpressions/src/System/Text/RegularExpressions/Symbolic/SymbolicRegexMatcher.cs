@@ -872,7 +872,7 @@ namespace System.Text.RegularExpressions.Symbolic
 #if DEBUG
         public override void SaveDGML(TextWriter writer, int bound, bool hideStateInfo, bool addDotStar, bool inReverse, bool onlyDFAinfo, int maxLabelLength, bool asNFA)
         {
-            var graph = new DGML.RegexDFA<TSetType>(this, bound, addDotStar, inReverse, asNFA);
+            var graph = new DGML.RegexAutomaton<TSetType>(this, bound, addDotStar, inReverse, asNFA);
             var dgml = new DGML.DgmlWriter(writer, hideStateInfo, maxLabelLength, onlyDFAinfo);
             dgml.Write(graph);
         }

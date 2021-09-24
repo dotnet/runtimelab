@@ -10,7 +10,7 @@ namespace System.Text.RegularExpressions.Symbolic.DGML
     /// <summary>
     /// Used by DgmlWriter to unwind a regex into a DFA up to a bound that limits the number of states
     /// </summary>
-    internal sealed class RegexDFA<T> : IAutomaton<(SymbolicRegexNode<T>?, T)> where T : notnull
+    internal sealed class RegexAutomaton<T> : IAutomaton<(SymbolicRegexNode<T>?, T)> where T : notnull
     {
         private readonly DfaMatchingState<T> _q0;
         private readonly List<int> _states = new();
@@ -21,7 +21,7 @@ namespace System.Text.RegularExpressions.Symbolic.DGML
         private readonly Dictionary<SymbolicRegexNode<T>, int> _nfaStateId = new();
         private readonly bool _asNFA;
 
-        internal RegexDFA(SymbolicRegexMatcher<T> srm, int bound, bool addDotStar, bool inReverse, bool asNFA)
+        internal RegexAutomaton(SymbolicRegexMatcher<T> srm, int bound, bool addDotStar, bool inReverse, bool asNFA)
         {
             _asNFA = asNFA;
             _builder = srm._builder;
