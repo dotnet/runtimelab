@@ -832,7 +832,6 @@ namespace System.Text.RegularExpressions.Symbolic
             if (_transitionRegex is not null)
             {
                 return _transitionRegex;
-
             }
 
             if (IsNothing || IsEpsilon)
