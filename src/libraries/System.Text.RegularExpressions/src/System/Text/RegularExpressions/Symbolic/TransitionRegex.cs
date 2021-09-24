@@ -366,5 +366,69 @@ namespace System.Text.RegularExpressions.Symbolic
                 }
             }
         }
+
+        public SymbolicRegexNode<S> Transition(S minterm, uint context)
+        {
+            // Collect the union of all target leaves
+            SymbolicRegexNode<S> target = _builder._nothing;
+            Stack<TransitionRegex<S>> todo = new();
+            todo.Push(this);
+            while (todo.Count > 0)
+            {
+                TransitionRegex<S> top = todo.Pop();
+                switch (top._kind)
+                {
+                    case TransitionRegexKind.Leaf:
+                        Debug.Assert(top._node is not null);
+                        target = _builder.MkOr2(target, top._node);
+                        break;
+
+                    case TransitionRegexKind.Conditional:
+                        Debug.Assert(top._test is not null && top._first is not null && top._second is not null);
+                        if (_builder._solver.IsSatisfiable(_builder._solver.And(minterm, top._test)))
+                        {
+                            if (!top._first.IsNothing)
+                            {
+                                todo.Push(top._first);
+                            }
+                        }
+                        else
+                        {
+                            if (!top._second.IsNothing)
+                            {
+                                todo.Push(top._second);
+                            }
+                        }
+                        break;
+
+                    case TransitionRegexKind.Union:
+                        // Observe that without Union Transition returns excatly one of the leaves
+                        Debug.Assert(top._first is not null && top._second is not null);
+                        todo.Push(top._second);
+                        todo.Push(top._first);
+                        break;
+
+                    default:
+                        Debug.Assert(top._kind is TransitionRegexKind.Lookaround && top._node is not null && top._first is not null && top._second is not null);
+                        // Branch according to the result of nullability
+                        if (top._node.IsNullableFor(context))
+                        {
+                            if (!top._first.IsNothing)
+                            {
+                                todo.Push(top._first);
+                            }
+                        }
+                        else
+                        {
+                            if (!top._second.IsNothing)
+                            {
+                                todo.Push(top._second);
+                            }
+                        }
+                        break;
+                }
+            }
+            return target;
+        }
     }
 }
