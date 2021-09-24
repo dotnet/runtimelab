@@ -51,6 +51,13 @@ namespace System.Text.RegularExpressions.Symbolic
             SymbolicRegexSet<TElement>?,
             SymbolicRegexInfo), SymbolicRegexNode<TElement>> _nodeCache = new();
 
+        internal readonly Dictionary<(TransitionRegexKind, // _kind
+            TElement?,                                     // _test
+            TransitionRegex<TElement>?,                    // _first
+            TransitionRegex<TElement>?,                    // _second
+            SymbolicRegexNode<TElement>?),                 // _leaf
+            TransitionRegex<TElement>> _trCache = new();
+
         /// <summary>
         /// Maps state ids to states, initial capacity is 1024 states.
         /// Each time more states are needed the length is increased by 1024.

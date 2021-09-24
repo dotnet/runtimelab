@@ -8,6 +8,8 @@
     <Compile Include="System\Collections\HashtableExtensions.cs" />
     <Compile Include="System\Collections\Generic\ValueListBuilder.Pop.cs" />
     <Compile Include="System\Text\RegularExpressions\RegexCharClass.MappingTable.cs" />
+    <Compile Include="System\Text\RegularExpressions\Symbolic\TransitionRegex.cs" />
+    <Compile Include="System\Text\RegularExpressions\Symbolic\TransitionRegexKind.cs" />
     <Compile Include="System\Text\RegularExpressions\Symbolic\StackHelper.cs" />
     <Compile Include="System\Text\SegmentStringBuilder.cs" />
     <Compile Include="System\Text\RegularExpressions\Capture.cs" />
@@ -81,7 +83,7 @@
     <Compile Include="System\Text\RegularExpressions\Symbolic\Dgml\DgmlWriter.cs" />
     <Compile Include="System\Text\RegularExpressions\Symbolic\Dgml\IAutomaton.cs" />
     <Compile Include="System\Text\RegularExpressions\Symbolic\Dgml\Move.cs" />
-    <Compile Include="System\Text\RegularExpressions\Symbolic\Dgml\RegexDFA.cs" />
+    <Compile Include="System\Text\RegularExpressions\Symbolic\Dgml\RegexAutomaton.cs" />
     <Compile Include="System\Text\RegularExpressions\Symbolic\Unicode\GeneratorHelper.cs" />
     <Compile Include="System\Text\RegularExpressions\Symbolic\Unicode\IgnoreCaseRelation.cs" />
     <Compile Include="System\Text\RegularExpressions\Symbolic\Unicode\IgnoreCaseRelationGenerator.cs" />

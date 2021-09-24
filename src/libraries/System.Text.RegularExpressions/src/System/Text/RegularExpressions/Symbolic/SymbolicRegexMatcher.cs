@@ -28,7 +28,8 @@ namespace System.Text.RegularExpressions.Symbolic
         /// <param name="onlyDFAinfo">if true then compute and save only genral DFA info</param>
         /// <param name="writer">dgml output is written here</param>
         /// <param name="maxLabelLength">maximum length of labels in nodes anything over that length is indicated with .. </param>
-        public abstract void SaveDGML(TextWriter writer, int bound, bool hideStateInfo, bool addDotStar, bool inReverse, bool onlyDFAinfo, int maxLabelLength);
+        /// <param name="asNFA">if true creates NFA instead of DFA</param>
+        public abstract void SaveDGML(TextWriter writer, int bound, bool hideStateInfo, bool addDotStar, bool inReverse, bool onlyDFAinfo, int maxLabelLength, bool asNFA);
 #endif
     }
 
@@ -869,9 +870,9 @@ namespace System.Text.RegularExpressions.Symbolic
         }
 
 #if DEBUG
-        public override void SaveDGML(TextWriter writer, int bound, bool hideStateInfo, bool addDotStar, bool inReverse, bool onlyDFAinfo, int maxLabelLength)
+        public override void SaveDGML(TextWriter writer, int bound, bool hideStateInfo, bool addDotStar, bool inReverse, bool onlyDFAinfo, int maxLabelLength, bool asNFA)
         {
-            var graph = new DGML.RegexDFA<TSetType>(this, bound, addDotStar, inReverse);
+            var graph = new DGML.RegexAutomaton<TSetType>(this, bound, addDotStar, inReverse, asNFA);
             var dgml = new DGML.DgmlWriter(writer, hideStateInfo, maxLabelLength, onlyDFAinfo);
             dgml.Write(graph);
         }

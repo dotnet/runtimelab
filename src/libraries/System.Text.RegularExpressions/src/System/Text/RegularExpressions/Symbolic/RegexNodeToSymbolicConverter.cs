@@ -286,6 +286,7 @@ namespace System.Text.RegularExpressions.Symbolic
                 case RegexNode.Nothing:
                     return _builder._nothing;
 
+#if DEBUG
                 case RegexNode.Testgroup:
                     // Try to extract the special case representing complement or intersection
                     if (IsComplementedNode(node))
@@ -300,6 +301,7 @@ namespace System.Text.RegularExpressions.Symbolic
                     }
 
                     goto default;
+#endif
 
                 default:
                     throw new NotSupportedException(SR.Format(SR.NotSupported_NonBacktrackingConflictingExpression, node.Type switch
@@ -443,6 +445,7 @@ namespace System.Text.RegularExpressions.Symbolic
                 return _builder.MkLoop(body, isLazy, node.M, node.N);
             }
 
+#if DEBUG
             // TODO: recognizing strictly only [] (RegexNode.Nothing), for example [0-[0]] would not be recognized
             bool IsNothing(RegexNode node) => node.Type == RegexNode.Nothing || (node.Type == RegexNode.Set && ConvertSet(node).IsNothing);
 
@@ -472,6 +475,7 @@ namespace System.Text.RegularExpressions.Symbolic
             }
 
             bool IsComplementedNode(RegexNode node) => IsNothing(node.Child(1)) && IsDotStar(node.Child(2));
+#endif
         }
     }
 }

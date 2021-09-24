@@ -32,8 +32,12 @@ namespace System.Text.RegularExpressions.Tests
         [ConditionalFact(nameof(Enabled))]
         public void RegenerateUnicodeTables()
         {
-            MethodInfo genUnicode = typeof(Regex).GetMethod("GenerateUnicodeTables", BindingFlags.NonPublic | BindingFlags.Static);
-            genUnicode.Invoke(null, new object[] { s_tmpWorkingDir });
+            MethodInfo? genUnicode = typeof(Regex).GetMethod("GenerateUnicodeTables", BindingFlags.NonPublic | BindingFlags.Static);
+            // GenerateUnicodeTables is not available in Release build
+            if (genUnicode is not null)
+            {
+                genUnicode.Invoke(null, new object[] { s_tmpWorkingDir });
+            }
         }
 
         [Theory]
@@ -52,17 +56,25 @@ namespace System.Text.RegularExpressions.Tests
         /// Save the regex as a DFA in DGML format in the textwriter.
         /// </summary>
         /// <param name="r"></param>
-        private static void SaveDGML(Regex regex, TextWriter writer, int bound = -1, bool hideStateInfo = false, bool addDotStar = false, bool inReverse = false, bool onlyDFAinfo = false, int maxLabelLength = -1)
+        private static bool TrySaveDGML(Regex regex, TextWriter writer, int bound = -1, bool hideStateInfo = false, bool addDotStar = false, bool inReverse = false, bool onlyDFAinfo = false, int maxLabelLength = -1, bool asNFA = false)
         {
-            MethodInfo saveDgml = regex.GetType().GetMethod("SaveDGML", BindingFlags.NonPublic | BindingFlags.Instance);
-            saveDgml.Invoke(regex, new object[] { writer, bound, hideStateInfo, addDotStar, inReverse, onlyDFAinfo, maxLabelLength });
+            MethodInfo? saveDgml = regex.GetType().GetMethod("SaveDGML", BindingFlags.NonPublic | BindingFlags.Instance);
+            if (saveDgml is null)
+            {
+                return false;
+            }
+            else
+            {
+                saveDgml.Invoke(regex, new object[] { writer, bound, hideStateInfo, addDotStar, inReverse, onlyDFAinfo, maxLabelLength, asNFA });
+                return true;
+            }
         }
 
         /// <summary>
         /// View the regex as a DFA in DGML format in VS.
         /// </summary>
         /// <param name="r"></param>
-        internal static void ViewDGML(Regex regex, int bound = -1, bool hideStateInfo = true, bool addDotStar = false, bool inReverse = false, bool onlyDFAinfo = false, string name = "DFA", int maxLabelLength = 20)
+        internal static void ViewDGML(Regex regex, int bound = -1, bool hideStateInfo = true, bool addDotStar = false, bool inReverse = false, bool onlyDFAinfo = false, string name = "DFA", int maxLabelLength = 20, bool asNFA = false)
         {
             if (!Directory.Exists(DgmlOutputDirectoryPath))
             {
@@ -70,9 +82,16 @@ namespace System.Text.RegularExpressions.Tests
             }
 
             var sw = new StringWriter();
-            SaveDGML(regex, sw, bound, hideStateInfo, addDotStar, inReverse, onlyDFAinfo, maxLabelLength);
+            // If TrySaveDGML returns false then Regex.SaveDGML is not supported (in Release build)
+            if (TrySaveDGML(regex, sw, bound, hideStateInfo, addDotStar, inReverse, onlyDFAinfo, maxLabelLength, asNFA))
+            {
+                if (asNFA)
+                {
+                    name = "NFA";
+                }
 
-            File.WriteAllText(Path.Combine(DgmlOutputDirectoryPath, $"{(inReverse ? name + "r" : (addDotStar ? name + "1" : name))}.dgml"), sw.ToString());
+                File.WriteAllText(Path.Combine(DgmlOutputDirectoryPath, $"{(inReverse ? name + "r" : (addDotStar ? name + "1" : name))}.dgml"), sw.ToString());
+            }
         }
 
         /// <summary>
@@ -165,12 +184,16 @@ namespace System.Text.RegularExpressions.Tests
         [ConditionalFact(nameof(Enabled))]
         public void ViewSampleRegexInDGML()
         {
-            string rawregex = @"\bis\w*\b";
-            //string rawregex = And(".*[0-9].*", ".*[A-Z].*");
-            Regex re = new Regex(rawregex, RegexHelpers.RegexOptionNonBacktracking | RegexOptions.Singleline);
+            //string rawregex = @"\bis\w*\b";
+            //string rawregex = And(".*[0-9].*", ".*[A-Z].*", Not(".*(01|12).*"));
+            string rawregex = "a.{4}$";
+            Regex re = new Regex($@"{rawregex}", RegexHelpers.RegexOptionNonBacktracking | RegexOptions.Singleline);
             ViewDGML(re);
             ViewDGML(re, inReverse: true);
             ViewDGML(re, addDotStar: true);
+            ViewDGML(re, asNFA: true);
+            ViewDGML(re, inReverse: true, asNFA: true);
+            ViewDGML(re, addDotStar: true, asNFA: true);
         }
 
         private void TestRunRegex(string name, string rawregex, string input, bool viewDGML = false, bool dotStar = false)

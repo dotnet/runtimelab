@@ -19,15 +19,16 @@ namespace System.Text.RegularExpressions
         /// <param name="onlyDFAinfo">if true then compute and save only general DFA info</param>
         /// <param name="writer">dgml output is written here</param>
         /// <param name="maxLabelLength">maximum length of labels in nodes anything over that length is indicated with .. </param>
+        /// <param name="asNFA">if true creates NFA instead of DFA</param>
         [ExcludeFromCodeCoverage(Justification = "Debug only")]
-        internal void SaveDGML(TextWriter writer, int bound, bool hideStateInfo, bool addDotStar, bool inReverse, bool onlyDFAinfo, int maxLabelLength)
+        internal void SaveDGML(TextWriter writer, int bound, bool hideStateInfo, bool addDotStar, bool inReverse, bool onlyDFAinfo, int maxLabelLength, bool asNFA)
         {
             if (factory is not SymbolicRegexRunnerFactory srmFactory)
             {
                 throw new NotSupportedException();
             }
 
-            srmFactory._runner._matcher.SaveDGML(writer, bound, hideStateInfo, addDotStar, inReverse, onlyDFAinfo, maxLabelLength);
+            srmFactory._runner._matcher.SaveDGML(writer, bound, hideStateInfo, addDotStar, inReverse, onlyDFAinfo, maxLabelLength, asNFA);
         }
 
         /// <summary>

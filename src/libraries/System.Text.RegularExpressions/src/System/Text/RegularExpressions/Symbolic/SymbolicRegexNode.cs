@@ -1,8 +1,7 @@
-﻿// Licensed to the .NET Foundation under one or more agreements.
+// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
@@ -252,7 +251,26 @@ namespace System.Text.RegularExpressions.Symbolic
                     if (_left._kind == SymbolicRegexKind.Singleton)
                     {
                         Debug.Assert(_left._set is not null);
-                        return !IsLazy && _builder._solver.AreEquivalent(_builder._solver.True, _left._set);
+                        return !IsLazy && _builder._solver.True.Equals(_left._set);
+                    }
+                }
+
+                return false;
+            }
+        }
+
+        /// <summary>Returns true if this is equivalent to .+ (the node must be eager also)</summary>
+        public bool IsAnyPlus
+        {
+            get
+            {
+                if (IsPlus)
+                {
+                    Debug.Assert(_left is not null);
+                    if (_left._kind == SymbolicRegexKind.Singleton)
+                    {
+                        Debug.Assert(_left._set is not null);
+                        return !IsLazy && _builder._solver.True.Equals(_left._set);
                     }
                 }
 
@@ -817,6 +835,160 @@ namespace System.Text.RegularExpressions.Symbolic
             return deriv;
         }
 
+        private TransitionRegex<S>? _transitionRegex;
+        /// <summary>Computes the symbolic derivative as a transition regex</summary>
+        internal TransitionRegex<S> MkDerivative()
+        {
+            if (_transitionRegex is not null)
+            {
+                return _transitionRegex;
+            }
+
+            if (IsNothing || IsEpsilon)
+            {
+                _transitionRegex = TransitionRegex<S>.Leaf(_builder._nothing);
+                return _transitionRegex;
+            }
+
+            if (IsAnyStar || IsAnyPlus)
+            {
+                _transitionRegex = TransitionRegex<S>.Leaf(_builder._anyStar);
+                return _transitionRegex;
+            }
+
+            switch (_kind)
+            {
+                case SymbolicRegexKind.Singleton:
+                    Debug.Assert(_set is not null);
+                    _transitionRegex = TransitionRegex<S>.Conditional(_set, TransitionRegex<S>.Leaf(_builder._epsilon), TransitionRegex<S>.Leaf(_builder._nothing));
+                    break;
+
+                case SymbolicRegexKind.Concat:
+                    Debug.Assert(_left is not null && _right is not null);
+                    TransitionRegex<S> mainTransition = _left.MkDerivative().Concat(_right);
+
+                    if (!_left.CanBeNullable)
+                    {
+                        // If _left is never nullable
+                        _transitionRegex = mainTransition;
+                    }
+                    else if (_left.IsNullable)
+                    {
+                        // If _left is unconditionally nullable
+                        _transitionRegex = mainTransition | _right.MkDerivative();
+                    }
+                    else
+                    {
+                        // The left side contains anchors and can be nullable in some context
+                        // Extract the nullability as the lookaround condition
+                        SymbolicRegexNode<S> leftNullabilityTest = _left.ExtractNullabilityTest();
+                        _transitionRegex = TransitionRegex<S>.Lookaround(leftNullabilityTest, mainTransition | _right.MkDerivative(), mainTransition);
+                    }
+                    break;
+
+                case SymbolicRegexKind.Loop:
+                    // d(R*) = d(R+) = d(R)R*
+                    Debug.Assert(_left is not null);
+                    Debug.Assert(_upper > 0);
+                    TransitionRegex<S> step = _left.MkDerivative();
+
+                    if (IsStar || IsPlus)
+                    {
+                        _transitionRegex = step.Concat(_builder.MkLoop(_left, IsLazy));
+                    }
+                    else
+                    {
+                        int newupper = _upper == int.MaxValue ? int.MaxValue : _upper - 1;
+                        int newlower = _lower == 0 ? 0 : _lower - 1;
+                        SymbolicRegexNode<S> rest = _builder.MkLoop(_left, IsLazy, newlower, newupper);
+                        _transitionRegex = step.Concat(rest);
+                    }
+                    break;
+
+                case SymbolicRegexKind.Or:
+                    Debug.Assert(_alts is not null);
+                    _transitionRegex = TransitionRegex<S>.Leaf(_builder._nothing);
+                    foreach (SymbolicRegexNode<S> elem in _alts)
+                    {
+                        _transitionRegex = _transitionRegex | elem.MkDerivative();
+                    }
+                    break;
+
+                case SymbolicRegexKind.And:
+                    Debug.Assert(_alts is not null);
+                    _transitionRegex = TransitionRegex<S>.Leaf(_builder._anyStar);
+                    foreach (SymbolicRegexNode<S> elem in _alts)
+                    {
+                        _transitionRegex = _transitionRegex & elem.MkDerivative();
+                    }
+                    break;
+
+                case SymbolicRegexKind.Not:
+                    Debug.Assert(_left is not null);
+                    _transitionRegex = ~_left.MkDerivative();
+                    break;
+
+                default:
+                    _transitionRegex = TransitionRegex<S>.Leaf(_builder._nothing);
+                    break;
+            }
+            return _transitionRegex;
+        }
+
+        /// <summary>Extracts the nullability test as a Boolean combination of anchors</summary>
+        private SymbolicRegexNode<S> ExtractNullabilityTest()
+        {
+            if (IsNullable)
+            {
+                return _builder._anyStar;
+            }
+
+            if (!CanBeNullable)
+            {
+                return _builder._nothing;
+            }
+
+            switch (_kind)
+            {
+                case SymbolicRegexKind.StartAnchor:
+                case SymbolicRegexKind.EndAnchor:
+                case SymbolicRegexKind.BOLAnchor:
+                case SymbolicRegexKind.EOLAnchor:
+                case SymbolicRegexKind.WBAnchor:
+                case SymbolicRegexKind.NWBAnchor:
+                case SymbolicRegexKind.EndAnchorZ:
+                case SymbolicRegexKind.EndAnchorZRev:
+                    return this;
+                case SymbolicRegexKind.Concat:
+                    Debug.Assert(_left is not null && _right is not null);
+                    return _builder.MkAnd(_left.ExtractNullabilityTest(), _right.ExtractNullabilityTest());
+                case SymbolicRegexKind.Or:
+                    Debug.Assert(_alts is not null);
+                    SymbolicRegexNode<S> disjunction = _builder._nothing;
+                    foreach (SymbolicRegexNode<S> elem in _alts)
+                    {
+                        disjunction = _builder.MkOr(disjunction, elem.ExtractNullabilityTest());
+                    }
+                    return disjunction;
+                case SymbolicRegexKind.And:
+                    Debug.Assert(_alts is not null);
+                    SymbolicRegexNode<S> conjunction = _builder._anyStar;
+                    foreach (SymbolicRegexNode<S> elem in _alts)
+                    {
+                        conjunction = _builder.MkAnd(conjunction, elem.ExtractNullabilityTest());
+                    }
+                    return conjunction;
+                case SymbolicRegexKind.Loop:
+                    Debug.Assert(_left is not null);
+                    return _left.ExtractNullabilityTest();
+                default:
+                    // All remaining cases could not be nullable or were trivially nullable
+                    // Sigleton cannot be nullable and Epsilon and Watchdog are trivially nullable
+                    Debug.Assert(_kind == SymbolicRegexKind.Not && _left is not null);
+                    return _builder.MkNot(_left.ExtractNullabilityTest());
+            }
+        }
+
         public override int GetHashCode()
         {
             return _hashcode;
@@ -1042,11 +1214,12 @@ namespace System.Text.RegularExpressions.Symbolic
                     return;
 
                 default:
+                    // Using the operator ~ for complement
                     Debug.Assert(_kind == SymbolicRegexKind.Not);
                     Debug.Assert(_left is not null);
-                    sb.Append("(?(");
+                    sb.Append("~(");
                     _left.ToString(sb);
-                    sb.Append($"){EmptyCharClass}|.*)");
+                    sb.Append(')');
                     return;
             }
         }
