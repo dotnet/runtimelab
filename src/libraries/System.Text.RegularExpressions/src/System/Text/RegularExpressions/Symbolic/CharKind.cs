@@ -5,6 +5,12 @@ namespace System.Text.RegularExpressions.Symbolic
 {
     internal static class CharKind
     {
+        /// <summary>Number of kinds of chars.</summary>
+        internal const int CharKindCount = 5;
+
+        /// <summary>All characters other than those in the four other kinds.</summary>
+        internal const uint General = 0;
+
         /// <summary>Start or Stop of input (bit 0 is 1)</summary>
         internal const uint StartStop = 1;
 
