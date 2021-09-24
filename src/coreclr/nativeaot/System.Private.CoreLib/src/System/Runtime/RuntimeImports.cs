@@ -969,9 +969,8 @@ namespace System.Runtime
 
         internal struct RhCorElementTypeInfo
         {
-            public RhCorElementTypeInfo(byte log2OfSize, ushort widenMask, bool isPrimitive = false)
+            public RhCorElementTypeInfo(ushort widenMask, bool isPrimitive = false)
             {
-                _log2OfSize = log2OfSize;
                 RhCorElementTypeInfoFlags flags = RhCorElementTypeInfoFlags.IsValid;
                 if (isPrimitive)
                     flags |= RhCorElementTypeInfoFlags.IsPrimitive;
@@ -992,14 +991,6 @@ namespace System.Runtime
                 get
                 {
                     return 0 != (_flags & RhCorElementTypeInfoFlags.IsFloat);
-                }
-            }
-
-            public byte Log2OfSize
-            {
-                get
-                {
-                    return _log2OfSize;
                 }
             }
 
@@ -1033,7 +1024,6 @@ namespace System.Runtime
             }
 
 
-            private byte _log2OfSize;
             private RhCorElementTypeInfoFlags _flags;
 
             [Flags]
@@ -1046,66 +1036,60 @@ namespace System.Runtime
 
             private ushort _widenMask;
 
-
-#if TARGET_64BIT
-            const byte log2PointerSize = 3;
-#else
-            private const byte log2PointerSize = 2;
-#endif
             private static RhCorElementTypeInfo[] s_lookupTable = new RhCorElementTypeInfo[]
             {
                 // index = 0x0
-                new RhCorElementTypeInfo { _log2OfSize = 0, _widenMask = 0x0000, _flags = 0 },
+                new RhCorElementTypeInfo { _widenMask = 0x0000, _flags = 0 },
                 // index = 0x1
-                new RhCorElementTypeInfo { _log2OfSize = 0, _widenMask = 0x0000, _flags = 0 },
+                new RhCorElementTypeInfo { _widenMask = 0x0000, _flags = 0 },
                 // index = 0x2 = ELEMENT_TYPE_BOOLEAN   (W = BOOL)
-                new RhCorElementTypeInfo { _log2OfSize = 0, _widenMask = 0x0004, _flags = RhCorElementTypeInfoFlags.IsValid|RhCorElementTypeInfoFlags.IsPrimitive },
+                new RhCorElementTypeInfo { _widenMask = 0x0004, _flags = RhCorElementTypeInfoFlags.IsValid|RhCorElementTypeInfoFlags.IsPrimitive },
                 // index = 0x3 = ELEMENT_TYPE_CHAR      (W = U2, CHAR, I4, U4, I8, U8, R4, R8) (U2 == Char)
-                new RhCorElementTypeInfo { _log2OfSize = 1, _widenMask = 0x3f88, _flags = RhCorElementTypeInfoFlags.IsValid|RhCorElementTypeInfoFlags.IsPrimitive },
+                new RhCorElementTypeInfo { _widenMask = 0x3f88, _flags = RhCorElementTypeInfoFlags.IsValid|RhCorElementTypeInfoFlags.IsPrimitive },
                 // index = 0x4 = ELEMENT_TYPE_I1        (W = I1, I2, I4, I8, R4, R8)
-                new RhCorElementTypeInfo { _log2OfSize = 0, _widenMask = 0x3550, _flags = RhCorElementTypeInfoFlags.IsValid|RhCorElementTypeInfoFlags.IsPrimitive },
+                new RhCorElementTypeInfo { _widenMask = 0x3550, _flags = RhCorElementTypeInfoFlags.IsValid|RhCorElementTypeInfoFlags.IsPrimitive },
                 // index = 0x5 = ELEMENT_TYPE_U1        (W = CHAR, U1, I2, U2, I4, U4, I8, U8, R4, R8)
-                new RhCorElementTypeInfo { _log2OfSize = 0, _widenMask = 0x3FE8, _flags = RhCorElementTypeInfoFlags.IsValid|RhCorElementTypeInfoFlags.IsPrimitive },
+                new RhCorElementTypeInfo { _widenMask = 0x3FE8, _flags = RhCorElementTypeInfoFlags.IsValid|RhCorElementTypeInfoFlags.IsPrimitive },
                 // index = 0x6 = ELEMENT_TYPE_I2        (W = I2, I4, I8, R4, R8)
-                new RhCorElementTypeInfo { _log2OfSize = 1, _widenMask = 0x3540, _flags = RhCorElementTypeInfoFlags.IsValid|RhCorElementTypeInfoFlags.IsPrimitive },
+                new RhCorElementTypeInfo { _widenMask = 0x3540, _flags = RhCorElementTypeInfoFlags.IsValid|RhCorElementTypeInfoFlags.IsPrimitive },
                 // index = 0x7 = ELEMENT_TYPE_U2        (W = U2, CHAR, I4, U4, I8, U8, R4, R8)
-                new RhCorElementTypeInfo { _log2OfSize = 1, _widenMask = 0x3F88, _flags = RhCorElementTypeInfoFlags.IsValid|RhCorElementTypeInfoFlags.IsPrimitive },
+                new RhCorElementTypeInfo { _widenMask = 0x3F88, _flags = RhCorElementTypeInfoFlags.IsValid|RhCorElementTypeInfoFlags.IsPrimitive },
                 // index = 0x8 = ELEMENT_TYPE_I4        (W = I4, I8, R4, R8)
-                new RhCorElementTypeInfo { _log2OfSize = 2, _widenMask = 0x3500, _flags = RhCorElementTypeInfoFlags.IsValid|RhCorElementTypeInfoFlags.IsPrimitive },
+                new RhCorElementTypeInfo { _widenMask = 0x3500, _flags = RhCorElementTypeInfoFlags.IsValid|RhCorElementTypeInfoFlags.IsPrimitive },
                 // index = 0x9 = ELEMENT_TYPE_U4        (W = U4, I8, R4, R8)
-                new RhCorElementTypeInfo { _log2OfSize = 2, _widenMask = 0x3E00, _flags = RhCorElementTypeInfoFlags.IsValid|RhCorElementTypeInfoFlags.IsPrimitive },
+                new RhCorElementTypeInfo { _widenMask = 0x3E00, _flags = RhCorElementTypeInfoFlags.IsValid|RhCorElementTypeInfoFlags.IsPrimitive },
                 // index = 0xa = ELEMENT_TYPE_I8        (W = I8, R4, R8)
-                new RhCorElementTypeInfo { _log2OfSize = 3, _widenMask = 0x3400, _flags = RhCorElementTypeInfoFlags.IsValid|RhCorElementTypeInfoFlags.IsPrimitive },
+                new RhCorElementTypeInfo { _widenMask = 0x3400, _flags = RhCorElementTypeInfoFlags.IsValid|RhCorElementTypeInfoFlags.IsPrimitive },
                 // index = 0xb = ELEMENT_TYPE_U8        (W = U8, R4, R8)
-                new RhCorElementTypeInfo { _log2OfSize = 3, _widenMask = 0x3800, _flags = RhCorElementTypeInfoFlags.IsValid|RhCorElementTypeInfoFlags.IsPrimitive },
+                new RhCorElementTypeInfo { _widenMask = 0x3800, _flags = RhCorElementTypeInfoFlags.IsValid|RhCorElementTypeInfoFlags.IsPrimitive },
                 // index = 0xc = ELEMENT_TYPE_R4        (W = R4, R8)
-                new RhCorElementTypeInfo { _log2OfSize = 2, _widenMask = 0x3000, _flags = RhCorElementTypeInfoFlags.IsValid|RhCorElementTypeInfoFlags.IsPrimitive|RhCorElementTypeInfoFlags.IsFloat },
+                new RhCorElementTypeInfo { _widenMask = 0x3000, _flags = RhCorElementTypeInfoFlags.IsValid|RhCorElementTypeInfoFlags.IsPrimitive|RhCorElementTypeInfoFlags.IsFloat },
                 // index = 0xd = ELEMENT_TYPE_R8        (W = R8)
-                new RhCorElementTypeInfo { _log2OfSize = 3, _widenMask = 0x2000, _flags = RhCorElementTypeInfoFlags.IsValid|RhCorElementTypeInfoFlags.IsPrimitive|RhCorElementTypeInfoFlags.IsFloat },
+                new RhCorElementTypeInfo { _widenMask = 0x2000, _flags = RhCorElementTypeInfoFlags.IsValid|RhCorElementTypeInfoFlags.IsPrimitive|RhCorElementTypeInfoFlags.IsFloat },
                 // index = 0xe
-                new RhCorElementTypeInfo { _log2OfSize = 0, _widenMask = 0x0000, _flags = 0 },
+                new RhCorElementTypeInfo { _widenMask = 0x0000, _flags = 0 },
                 // index = 0xf
-                new RhCorElementTypeInfo { _log2OfSize = 0, _widenMask = 0x0000, _flags = 0 },
+                new RhCorElementTypeInfo { _widenMask = 0x0000, _flags = 0 },
                 // index = 0x10
-                new RhCorElementTypeInfo { _log2OfSize = 0, _widenMask = 0x0000, _flags = 0 },
+                new RhCorElementTypeInfo { _widenMask = 0x0000, _flags = 0 },
                 // index = 0x11
-                new RhCorElementTypeInfo { _log2OfSize = 0, _widenMask = 0x0000, _flags = 0 },
+                new RhCorElementTypeInfo { _widenMask = 0x0000, _flags = 0 },
                 // index = 0x12
-                new RhCorElementTypeInfo { _log2OfSize = 0, _widenMask = 0x0000, _flags = 0 },
+                new RhCorElementTypeInfo { _widenMask = 0x0000, _flags = 0 },
                 // index = 0x13
-                new RhCorElementTypeInfo { _log2OfSize = 0, _widenMask = 0x0000, _flags = 0 },
+                new RhCorElementTypeInfo { _widenMask = 0x0000, _flags = 0 },
                 // index = 0x14
-                new RhCorElementTypeInfo { _log2OfSize = 0, _widenMask = 0x0000, _flags = 0 },
+                new RhCorElementTypeInfo { _widenMask = 0x0000, _flags = 0 },
                 // index = 0x15
-                new RhCorElementTypeInfo { _log2OfSize = 0, _widenMask = 0x0000, _flags = 0 },
+                new RhCorElementTypeInfo { _widenMask = 0x0000, _flags = 0 },
                 // index = 0x16
-                new RhCorElementTypeInfo { _log2OfSize = 0, _widenMask = 0x0000, _flags = 0 },
+                new RhCorElementTypeInfo { _widenMask = 0x0000, _flags = 0 },
                 // index = 0x17
-                new RhCorElementTypeInfo { _log2OfSize = 0, _widenMask = 0x0000, _flags = 0 },
+                new RhCorElementTypeInfo { _widenMask = 0x0000, _flags = 0 },
                 // index = 0x18 = ELEMENT_TYPE_I
-                new RhCorElementTypeInfo { _log2OfSize = log2PointerSize, _widenMask = 0x0000, _flags = RhCorElementTypeInfoFlags.IsValid|RhCorElementTypeInfoFlags.IsPrimitive },
+                new RhCorElementTypeInfo { _widenMask = 0x0000, _flags = RhCorElementTypeInfoFlags.IsValid|RhCorElementTypeInfoFlags.IsPrimitive },
                 // index = 0x19 = ELEMENT_TYPE_U
-                new RhCorElementTypeInfo { _log2OfSize = log2PointerSize, _widenMask = 0x0000, _flags = RhCorElementTypeInfoFlags.IsValid|RhCorElementTypeInfoFlags.IsPrimitive },
+                new RhCorElementTypeInfo { _widenMask = 0x0000, _flags = RhCorElementTypeInfoFlags.IsValid|RhCorElementTypeInfoFlags.IsPrimitive },
             };
         }
     }
