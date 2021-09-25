@@ -71,7 +71,7 @@ namespace ILCompiler
                 case OptimizationMode.None:
                     // Dont set CORJIT_FLAG_DEBUG_CODE as it will set MinOpts and hence no liveness, and no SSA
                     // TODO: a better way to enable SSA with this flag set?
-                    //jitFlagBuilder.Add(CorJitFlag.CORJIT_FLAG_DEBUG_CODE);
+                    jitFlagBuilder.Add(CorJitFlag.CORJIT_FLAG_DEBUG_CODE);
                     jitFlagBuilder.Add(CorJitFlag.CORJIT_FLAG_DEBUG_INFO);
                     break;
 

@@ -455,7 +455,7 @@
   </ItemGroup>
   <ItemGroup Condition="'$(InPlaceRuntime)' == 'true'">
     <Compile Include="$(IntermediatesDir)\nativeaot\Runtime\Full\AsmOffsets.cs" Condition="'$(Platform)'!='llvm'"/>
-    <Compile Include="$(IntermediatesDir)\nativeaot\Runtime\Portable\AsmOffsetsPortable.cs" Condition="'$(Platform)'=='llvm'"/>
+    <Compile Include="$(IntermediatesDir.Replace('\ide', ''))\nativeaot\Runtime\Portable\AsmOffsetsPortable.cs" Condition="'$(Platform)'=='llvm'"/> <!-- its never in \ide\ -->
   </ItemGroup>
 
   <Import Project="$(LibrariesProjectRoot)\System.Private.CoreLib\src\System.Private.CoreLib.Shared.projitems" Label="Shared" />

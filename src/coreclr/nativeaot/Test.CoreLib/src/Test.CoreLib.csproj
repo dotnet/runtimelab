@@ -77,7 +77,7 @@
   </ItemGroup>
   <ItemGroup Condition="'$(InPlaceRuntime)' == 'true'">
     <Compile Include="$(IntermediatesDir)\nativeaot\Runtime\Full\AsmOffsets.cs" Condition="'$(Platform)'!='llvm'"/>
-    <Compile Include="$(IntermediatesDir)\nativeaot\Runtime\Portable\AsmOffsetsPortable.cs" Condition="'$(Platform)'=='llvm'"/>
+    <Compile Include="$(IntermediatesDir.Replace('\ide', ''))\nativeaot\Runtime\Portable\AsmOffsetsPortable.cs" Condition="'$(Platform)'=='llvm'"/> <!-- its never in \ide\ -->
   </ItemGroup>
   <ItemGroup>
     <Compile Include="$(CompilerCommonPath)\Internal\NativeFormat\NativeFormatReader.Primitives.cs">

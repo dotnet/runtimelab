@@ -124,11 +124,11 @@ namespace ILCompiler
 
             try
             {
-                if (NodeFactory.NameMangler.GetMangledMethodName(method).ToString() ==
-                    "S_P_CoreLib_System_Globalization_DateTimeFormatInfo__get_FormatFlags")
+                if (GetMethodIL(method).GetExceptionRegions().Length == 0)
                 {
                     var sig = method.Signature;
-                    corInfo.RegisterLlvmCallbacks((IntPtr)Unsafe.AsPointer(ref corInfo), _outputFile, Module.Target,
+                    corInfo.RegisterLlvmCallbacks((IntPtr)Unsafe.AsPointer(ref corInfo), _outputFile,
+                        Module.Target,
                         Module.DataLayout);
                     corInfo.InitialiseDebugInfo(method, GetMethodIL(method));
                     corInfo.CompileMethod(methodCodeNodeNeedingCode);

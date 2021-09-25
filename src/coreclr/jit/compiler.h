@@ -220,7 +220,11 @@ public:
 
     LclSsaVarDsc(BasicBlock* block, GenTreeOp* asg) : m_block(block), m_asg(asg)
     {
+#if defined(TARGET_WASM)
+        assert((asg == nullptr) || asg->OperIs(GT_ASG) || asg->OperIsLocalStore());
+#else
         assert((asg == nullptr) || asg->OperIs(GT_ASG));
+#endif
     }
 
     BasicBlock* GetBlock() const
@@ -240,7 +244,11 @@ public:
 
     void SetAssignment(GenTreeOp* asg)
     {
+#if defined(TARGET_WASM)
+        assert((asg == nullptr) || asg->OperIs(GT_ASG) || asg->OperIsLocalStore());
+#else
         assert((asg == nullptr) || asg->OperIs(GT_ASG));
+#endif
         m_asg = asg;
     }
 

@@ -47,6 +47,8 @@ namespace Internal.JitInterface
                     case ReadyToRunHelperId.GetThreadStaticBase:
                         _this._codeRelocs.Add(new Relocation(RelocType.IMAGE_REL_BASED_REL32, 0,
                             _this._compilation.NodeFactory.TypeThreadStaticsSymbol(target)));
+                        var nonGcStaticSymbolForGCStaticBase2 = _this._compilation.NodeFactory.TypeNonGCStaticsSymbol(target);
+                        _this.AddOrReturnGlobalSymbol(nonGcStaticSymbolForGCStaticBase2, _this._compilation.NameMangler);
                         break;
                     default:
                         throw new NotImplementedException();
