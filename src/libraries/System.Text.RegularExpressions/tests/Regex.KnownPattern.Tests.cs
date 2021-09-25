@@ -75,26 +75,34 @@ namespace System.Text.RegularExpressions.Tests
             Assert.Equal("http:8080", m.Result("${proto}${port}"));
         }
 
+        public static IEnumerable<object[]> Docs_Examples_ValidateEmail_TestData()
+        {
+            // The email uses conditional test-patterns so NonBacktracking is not supported here
+            foreach (RegexOptions options in new RegexOptions[] { RegexOptions.None, RegexOptions.Compiled })
+            {
+                yield return new object[] { options, "david.jones@proseware.com", true };
+                yield return new object[] { options, "d.j@server1.proseware.com", true };
+                yield return new object[] { options, "jones@ms1.proseware.com", true };
+                yield return new object[] { options, "j.@server1.proseware.com", false };
+                yield return new object[] { options, "j@proseware.com9", true };
+                yield return new object[] { options, "js#internal@proseware.com", true };
+                yield return new object[] { options, "j_9@[129.126.118.1]", true };
+                yield return new object[] { options, "j..s@proseware.com", false };
+                yield return new object[] { options, "js*@proseware.com", false };
+                yield return new object[] { options, "js@proseware..com", false };
+                yield return new object[] { options, "js@proseware.com9", true };
+                yield return new object[] { options, "j.s@server1.proseware.com", true };
+                yield return new object[] { options, "\"j\\\"s\\\"\"@proseware.com", true };
+                yield return new object[] { options, "js@contoso.\u4E2D\u56FD", true };
+            }
+        }
+
         // https://docs.microsoft.com/en-us/dotnet/standard/base-types/how-to-verify-that-strings-are-in-valid-email-format
         [Theory]
-        [InlineData("david.jones@proseware.com", true)]
-        [InlineData("d.j@server1.proseware.com", true)]
-        [InlineData("jones@ms1.proseware.com", true)]
-        [InlineData("j.@server1.proseware.com", false)]
-        [InlineData("j@proseware.com9", true)]
-        [InlineData("js#internal@proseware.com", true)]
-        [InlineData("j_9@[129.126.118.1]", true)]
-        [InlineData("j..s@proseware.com", false)]
-        [InlineData("js*@proseware.com", false)]
-        [InlineData("js@proseware..com", false)]
-        [InlineData("js@proseware.com9", true)]
-        [InlineData("j.s@server1.proseware.com", true)]
-        [InlineData("\"j\\\"s\\\"\"@proseware.com", true)]
-        [InlineData("js@contoso.\u4E2D\u56FD", true)]
-        public void Docs_Examples_ValidateEmail(string email, bool expectedIsValid)
+        [MemberData(nameof(Docs_Examples_ValidateEmail_TestData))]
+        public void Docs_Examples_ValidateEmail(RegexOptions options, string email, bool expectedIsValid)
         {
-            Assert.Equal(expectedIsValid, IsValidEmail(email, RegexOptions.None));
-            Assert.Equal(expectedIsValid, IsValidEmail(email, RegexOptions.Compiled));
+            Assert.Equal(expectedIsValid, IsValidEmail(email, options));
 
             bool IsValidEmail(string email, RegexOptions options)
             {
