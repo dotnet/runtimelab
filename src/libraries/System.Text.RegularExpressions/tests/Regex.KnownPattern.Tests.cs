@@ -1043,5 +1043,50 @@ namespace System.Text.RegularExpressions.Tests
                 Assert.Equal(c, m.Groups[3].Value);
             }
         }
+
+        /// <summary>
+        /// Test that these well-known patterns that are hard for backtracking engines
+        /// are not a problem with NonBacktracking.
+        /// </summary>
+        [SkipOnTargetFramework(TargetFrameworkMonikers.NetFramework, "Doesn't support NonBacktracking")]
+        [Theory]
+        [InlineData("((?:0*)+?(?:.*)+?)?", "0a", 2)]
+        [InlineData("(?:(?:0?)+?(?:a?)+?)?", "0a", 2)]
+        [InlineData(@"(?i:(\()((?<a>\w+(\.\w+)*)(,(?<a>\w+(\.\w+)*)*)?)(\)))", "some.text(this.is,the.match)", 1)]
+        private void DifficultForBacktracking(string pattern, string input, int matchcount)
+        {
+            var regex = new Regex(pattern, RegexHelpers.RegexOptionNonBacktracking);
+            List<Match> matches = new List<Match>();
+            var match = regex.Match(input);
+            while (match.Success)
+            {
+                matches.Add(match);
+                match = match.NextMatch();
+            }
+            Assert.Equal(matchcount, matches.Count);
+        }
+
+        /// <summary>
+        /// Another difficult pattern in backtracking that is fast in NonBacktracking.
+        /// </summary>
+        [SkipOnTargetFramework(TargetFrameworkMonikers.NetFramework, "Doesn't support NonBacktracking")]
+        [Theory]
+        [InlineData(RegexOptions.None, 1)]
+        [InlineData(RegexOptions.Compiled, 1)]
+        public void TerminationInNonBacktrackingVsBackTracking(RegexOptions options, int sec)
+        {
+            string input = " 123456789 123456789 123456789 123456789 123456789";
+            TimeSpan ts = new TimeSpan(0, 0, sec);
+            for (int i = 0; i < 12; i++)
+                input = input + input;
+            // The input has 2^12 * 50 = 204800 characters
+            string rawregex = @"[\\/]?[^\\/]*?(heythere|hej)[^\\/]*?$";
+            Regex reC = new Regex(rawregex, options, ts);
+            Regex re = new Regex(rawregex, RegexHelpers.RegexOptionNonBacktracking, ts);
+            // It takes over 4min with backtracking, so test that 1sec timeout happens
+            Assert.Throws<RegexMatchTimeoutException>(() => { reC.Match(input); });
+            // NonBacktracking needs way less than 1s
+            Assert.False(re.Match(input).Success);
+        }
     }
 }

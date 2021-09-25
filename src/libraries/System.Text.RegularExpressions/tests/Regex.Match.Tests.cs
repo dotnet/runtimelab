@@ -624,6 +624,28 @@ namespace System.Text.RegularExpressions.Tests
             RegexAssert.Equal("a", match);
         }
 
+        public static IEnumerable<object[]> Match_TestThatTimeoutHappens_TestData()
+        {
+            foreach (RegexOptions options in RegexHelpers.RegexOptionsExtended())
+            {
+                yield return new object[] { @"a.{20}$", options, 10 };
+            }
+        }
+        /// <summary>
+        /// Test that timeout exception is being thrown.
+        /// </summary>
+        [Theory]
+        [MemberData(nameof(Match_TestThatTimeoutHappens_TestData))]
+        private void Match_TestThatTimeoutHappens(string pattern, RegexOptions options, int ms)
+        {
+            Regex re = new(pattern, options, new TimeSpan(0, 0, 0, 0, ms));
+            Random rnd = new Random(0);
+            byte[] buffer = new byte[1000000];
+            rnd.NextBytes(buffer);
+            string input = new String(Array.ConvertAll(buffer, b => b < 200 ? 'a' : (char)b));
+            Assert.Throws<RegexMatchTimeoutException>(() => { re.Match(input); });
+        }
+
         [Theory]
         [InlineData(RegexOptions.None)]
         [InlineData(RegexOptions.None | RegexHelpers.RegexOptionDebug)]
@@ -1435,6 +1457,19 @@ namespace System.Text.RegularExpressions.Tests
                 yield return new object[] { @"\b", options, "hello--world", new (int, int, string)[] { (0, 0, ""), (5, 0, ""), (7, 0, ""), (12, 0, "") } };
                 yield return new object[] { @"\B", options, "hello--world",
                     new (int, int, string)[] { (1, 0, ""), (2, 0, ""), (3, 0, ""), (4, 0, ""), (6, 0, ""), (8, 0, ""), (9, 0, ""), (10, 0, ""), (11, 0, "") } };
+
+                // Involving many different characters in the same regex
+                yield return new object[] { @"(abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789<>:;@)+", options,
+                    "=====abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789<>:;@abcdefg======",
+                    new (int, int, string)[] { (5, 67, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789<>:;@") } };
+
+                //this will need a total of 2x70 + 2 parts in the partition of NonBacktracking
+                string pattern_orig = @"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789<>:;&@%!";
+                string pattern_WL = new String(Array.ConvertAll(pattern_orig.ToCharArray(), c => (char)((int)c + 0xFF00 - 32)));
+                string pattern = "(" + pattern_orig + "===" + pattern_WL + ")+";
+                string input = "=====" + pattern_orig + "===" + pattern_WL + pattern_orig + "===" + pattern_WL + "===" + pattern_orig + "===" + pattern_orig;
+                int length = 2 * (pattern_orig.Length + 3 + pattern_WL.Length);
+                yield return new object[] { pattern, options, input, new (int, int, string)[]{(5, length, input.Substring(5, length)) } };
             }
         }
 
@@ -1483,6 +1518,26 @@ namespace System.Text.RegularExpressions.Tests
                     Assert.Equal(baseline.IsMatch(c.ToString()), regex.IsMatch(c.ToString()));
                 }
             }
+        }
+
+        public static IEnumerable<object[]> Match_DisjunctionOverCounting_TestData()
+        {
+            foreach (var options in RegexHelpers.RegexOptionsExtended())
+            {
+                yield return new object[] { options, "a[abc]{0,10}", "a[abc]{0,3}", "xxxabbbbbbbyyy", true, "abbbbbbb" };
+                yield return new object[] { options, "a[abc]{0,10}?", "a[abc]{0,3}?", "xxxabbbbbbbyyy", true, "a" };
+            }
+        }
+
+        [Theory]
+        [MemberData(nameof(Match_DisjunctionOverCounting_TestData))]
+        public void Match_DisjunctionOverCounting(RegexOptions options, string disjunct1, string disjunct2, string input, bool success, string match)
+        {
+            string pattern = disjunct1 + "|" + disjunct2;
+            Regex re = new Regex(pattern, options);
+            Match m = re.Match(input);
+            Assert.Equal(success, m.Success);
+            Assert.Equal(match, m.Value);
         }
     }
 }
