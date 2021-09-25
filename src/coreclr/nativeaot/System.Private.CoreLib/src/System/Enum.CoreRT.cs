@@ -30,68 +30,10 @@ namespace System
             return ToObject(enumType.TypeHandle.ToEETypePtr(), value);
         }
 
-        public override bool Equals([NotNullWhen(true)] object? obj)
-        {
-            if (obj == null)
-                return false;
-            EETypePtr eeType = this.EETypePtr;
-            if (!eeType.FastEquals(obj.EETypePtr))
-                return false;
-
-            ref byte pThisValue = ref this.GetRawData();
-            ref byte pOtherValue = ref obj.GetRawData();
-
-            RuntimeImports.RhCorElementTypeInfo corElementTypeInfo = eeType.CorElementTypeInfo;
-            switch (corElementTypeInfo.Log2OfSize)
-            {
-                case 0:
-                    return Unsafe.As<byte, byte>(ref pThisValue) == Unsafe.As<byte, byte>(ref pOtherValue);
-                case 1:
-                    return Unsafe.As<byte, ushort>(ref pThisValue) == Unsafe.As<byte, ushort>(ref pOtherValue);
-                case 2:
-                    return Unsafe.As<byte, uint>(ref pThisValue) == Unsafe.As<byte, uint>(ref pOtherValue);
-                case 3:
-                    return Unsafe.As<byte, ulong>(ref pThisValue) == Unsafe.As<byte, ulong>(ref pOtherValue);
-                default:
-                    Debug.Fail("Invalid primitive type");
-                    return false;
-            }
-        }
-
         private CorElementType InternalGetCorElementType()
         {
             return this.EETypePtr.CorElementType;
         }
-
-        [Intrinsic]
-        public bool HasFlag(Enum flag)
-        {
-            if (flag == null)
-                throw new ArgumentNullException(nameof(flag));
-
-            if (!(this.EETypePtr == flag.EETypePtr))
-                throw new ArgumentException(SR.Format(SR.Argument_EnumTypeDoesNotMatch, flag.GetType(), this.GetType()));
-
-            ref byte pThisValue = ref this.GetRawData();
-            ref byte pFlagValue = ref flag.GetRawData();
-
-            switch (this.EETypePtr.CorElementTypeInfo.Log2OfSize)
-            {
-                case 0:
-                    return (Unsafe.As<byte, byte>(ref pThisValue) & Unsafe.As<byte, byte>(ref pFlagValue)) == Unsafe.As<byte, byte>(ref pFlagValue);
-                case 1:
-                    return (Unsafe.As<byte, ushort>(ref pThisValue) & Unsafe.As<byte, ushort>(ref pFlagValue)) == Unsafe.As<byte, ushort>(ref pFlagValue);
-                case 2:
-                    return (Unsafe.As<byte, uint>(ref pThisValue) & Unsafe.As<byte, uint>(ref pFlagValue)) == Unsafe.As<byte, uint>(ref pFlagValue);
-                case 3:
-                    return (Unsafe.As<byte, ulong>(ref pThisValue) & Unsafe.As<byte, ulong>(ref pFlagValue)) == Unsafe.As<byte, ulong>(ref pFlagValue);
-                default:
-                    Debug.Fail("Invalid primitive type");
-                    return false;
-            }
-        }
-
-
 
         //
         // Note: This works on both Enum's and underlying integer values.
