@@ -341,9 +341,10 @@ namespace System.Text.RegularExpressions.Symbolic
             void EnsureWordLetterPredicateInitialized()
             {
                 // Update the word letter predicate based on the Unicode definition of it if it was not updated already
-                if (_builder._wordLetterPredicate.Equals(_builder._solver.False))
+                if (_builder._wordLetterPredicateForAnchors.Equals(_builder._solver.False))
                 {
-                    _builder._wordLetterPredicate = _categorizer.WordLetterCondition;
+                    // Use the predicate including joiner and non joiner
+                    _builder._wordLetterPredicateForAnchors = _categorizer.WordLetterConditionForAnchors;
                 }
             }
 

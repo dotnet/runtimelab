@@ -1272,24 +1272,18 @@ namespace System.Text.RegularExpressions.Tests
             AssertExtensions.Throws<ArgumentNullException>("inner", () => System.Text.RegularExpressions.Match.Synchronized(null));
         }
 
-        [Fact]
-        [ActiveIssue(@"inconsitent treatement of \u200c and \u200d in \w vs \b")]
-        public void Match_Boundary()
-        {
-            Assert.True(Regex.IsMatch(" AB\u200cCD ", @"\b\w+\b"));
-            Assert.True(Regex.IsMatch(" AB\u200dCD ", @"\b\w+\b"));
-        }
-
         /// <summary>
-        /// Same test as above but it succeeds in DFA mode because \u200c and \u200d are not in \w
-        /// and in DFA mode \b is treated equivalently to (?<!\w)(?=\w)|(?<=\w)(?!\w)
+        /// Tests current inconsitent treatment of \b and \w.
+        /// The match fails because \u200c and \u200d do not belong to \w.
+        /// At the same time \u200c and \u200d are considered as word characters for the \b and \B anchors.
+        /// The test checks that the same behavior applies to all backends.
         /// </summary>
-        [SkipOnTargetFramework(TargetFrameworkMonikers.NetFramework, "Doesn't support NonBacktracking")]
-        [Fact]
-        public void Mach_Boundary_DFA()
+        [Theory]
+        [MemberData(nameof(RegexHelpers.RegexOptions_TestData), MemberType = typeof(RegexHelpers))]
+        public void Mach_Boundary_DFA(RegexOptions options)
         {
-            Assert.True(Regex.IsMatch(" AB\u200cCD ", @"\b\w+\b", RegexHelpers.RegexOptionNonBacktracking));
-            Assert.True(Regex.IsMatch(" AB\u200dCD ", @"\b\w+\b", RegexHelpers.RegexOptionNonBacktracking));
+            Assert.False(Regex.IsMatch(" AB\u200cCD ", @"\b\w+\b", options));
+            Assert.False(Regex.IsMatch(" AB\u200dCD ", @"\b\w+\b", options));
         }
 
         public static IEnumerable<object[]> StressTestDeepNestingOfConcat_TestData()
@@ -1302,6 +1296,8 @@ namespace System.Text.RegularExpressions.Tests
                 yield return new object[] { "(a|A)", "", options, "aAaAa", 2000, 400 };
             }
         }
+
+        [OuterLoop("Can take over a minute")]
         [Theory]
         [MemberData(nameof(StressTestDeepNestingOfConcat_TestData))]
         public void StressTestDeepNestingOfConcat(string pattern, string anchor, RegexOptions options, string input, int pattern_repetition, int input_repetition)
@@ -1321,6 +1317,7 @@ namespace System.Text.RegularExpressions.Tests
                 yield return new object[] { "(", "ab", "){0,1}", options, "ab", 2000, 1000 };
             }
         }
+        [OuterLoop("Can take over 10 seconds")]
         [Theory]
         [MemberData(nameof(StressTestDeepNestingOfLoops_TestData))]
         public void StressTestDeepNestingOfLoops(string begin, string inner, string end, RegexOptions options, string input, int pattern_repetition, int input_repetition)

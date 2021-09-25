@@ -226,7 +226,7 @@ namespace System.Text.RegularExpressions.Symbolic
                     }
                     else
                     {
-                        predicate2 = _builder._wordLetterPredicate;
+                        predicate2 = _builder._wordLetterPredicateForAnchors;
                         charKind = CharKind.WordLetter;
                     }
 

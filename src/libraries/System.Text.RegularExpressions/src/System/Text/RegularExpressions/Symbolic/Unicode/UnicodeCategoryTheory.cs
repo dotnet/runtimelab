@@ -13,6 +13,7 @@ namespace System.Text.RegularExpressions.Symbolic.Unicode
 
         private TPredicate? _whiteSpaceCondition;
         private TPredicate? _wordLetterCondition;
+        private TPredicate? _wordLetterConditionForAnchors;
 
         public UnicodeCategoryTheory(ICharAlgebra<TPredicate> solver) => _solver = solver;
 
@@ -51,6 +52,24 @@ namespace System.Text.RegularExpressions.Symbolic.Unicode
                 {
                     BDD bdd = BDD.Deserialize(UnicodeCategoryRanges.WordCharactersSerializedBDD, _solver.CharSetProvider);
                     _wordLetterCondition = condition = _solver.ConvertFromCharSet(_solver.CharSetProvider, bdd);
+                }
+
+                return condition;
+            }
+        }
+
+        public TPredicate WordLetterConditionForAnchors
+        {
+            get
+            {
+                if (_wordLetterConditionForAnchors is not TPredicate condition)
+                {
+                    // Create the condition from WordLetterCondition together with the characters
+                    // \u200C (zero width non joiner) and \u200D (zero width joiner) that are treated
+                    // as if they were word characters in the context of the anchors \b and \B
+                    BDD extra_bdd = _solver.CharSetProvider.CreateCharSetFromRange('\u200C', '\u200D');
+                    TPredicate extra_pred = _solver.ConvertFromCharSet(_solver.CharSetProvider, extra_bdd);
+                    _wordLetterConditionForAnchors = condition = _solver.Or(WordLetterCondition, extra_pred);
                 }
 
                 return condition;

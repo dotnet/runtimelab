@@ -31,7 +31,7 @@ namespace System.Text.RegularExpressions.Symbolic
         internal readonly SymbolicRegexSet<TElement> _emptySet;
         internal readonly SymbolicRegexNode<TElement> _eagerEmptyLoop;
 
-        internal TElement _wordLetterPredicate;
+        internal TElement _wordLetterPredicateForAnchors;
         internal TElement _newLinePredicate;
 
         /// <summary>
@@ -118,7 +118,7 @@ namespace System.Text.RegularExpressions.Symbolic
             // initialized to False but updated later to the actual condition ony if \b or \B occurs anywhere in the regex
             // this implies that if a regex never uses \b or \B then the character context will never
             // update the previous character context to distinguish word and nonword letters
-            _wordLetterPredicate = solver.False;
+            _wordLetterPredicateForAnchors = solver.False;
 
             // initialized to False but updated later to the actual condition of \n ony if a line anchor occurs anywhere in the regex
             // this implies that if a regex never uses a line anchor then the character context will never
@@ -365,7 +365,7 @@ namespace System.Text.RegularExpressions.Symbolic
         public DfaMatchingState<TElement> MkState(SymbolicRegexNode<TElement> node, uint prevCharKind, bool antimirov = false)
         {
             //first prune the anchors in the node
-            TElement WLpred = _wordLetterPredicate;
+            TElement WLpred = _wordLetterPredicateForAnchors;
             TElement startSet = node.GetStartSet();
 
             //true if the startset of the node overlaps with some wordletter or the node can be nullable
