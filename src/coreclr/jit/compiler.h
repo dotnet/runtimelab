@@ -4989,10 +4989,9 @@ public:
     bool backendRequiresLocalVarLifetimes()
     {
 #if TARGET_WASM
-        return true;
-#else
-        return !opts.MinOpts() || m_pLinearScan->willEnregisterLocalVars();
+        if (this->compRationalIRForm) return true;
 #endif
+        return !opts.MinOpts() || m_pLinearScan->willEnregisterLocalVars();
     }
 
     void fgLocalVarLiveness();

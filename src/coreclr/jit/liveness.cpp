@@ -173,14 +173,10 @@ void Compiler::fgLocalVarLivenessInit()
     JITDUMP("In fgLocalVarLivenessInit\n");
 
     // Sort locals first, if we're optimizing
-#if defined(TARGET_WASM)
-    lvaSortByRefCount();
-#else
     if (opts.OptimizationEnabled())
     {
         lvaSortByRefCount();
     }
-#endif
 
     // We mark a lcl as must-init in a first pass of local variable
     // liveness (Liveness1), then assertion prop eliminates the
@@ -2205,9 +2201,10 @@ void Compiler::fgRemoveDeadStoreLIR(GenTree* store, BasicBlock* block)
         blockRange.Remove(store);
     }
 
-#if !defined(TARGET_WASM)
-    assert(!opts.MinOpts());
+#if defined(TARGET_WASM)
+    if (!compRationalIRForm) // conditionally do assert
 #endif
+        assert(!opts.MinOpts());
     fgStmtRemoved = true;
 }
 
@@ -2547,12 +2544,13 @@ void Compiler::fgInterBlockLocalVarLiveness()
      * reported scope, so that it will be visible over the entire scope
      */
 
-#if !defined(TARGET_WASM)
-    if (opts.compDbgCode && (info.compVarScopesCount > 0))
-    {
-        fgExtendDbgLifetimes();
-    }
+#if defined(TARGET_WASM)
+    if (!compRationalIRForm) // dont extend for the LIR pass - will this break the debugging experience?
 #endif
+        if (opts.compDbgCode && (info.compVarScopesCount > 0))
+        {
+            fgExtendDbgLifetimes();
+        }
 
     // Nothing more to be done if the backend does not require accurate local var lifetimes.
     if (!backendRequiresLocalVarLifetimes())
