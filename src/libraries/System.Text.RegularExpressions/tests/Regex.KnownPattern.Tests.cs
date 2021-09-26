@@ -75,26 +75,34 @@ namespace System.Text.RegularExpressions.Tests
             Assert.Equal("http:8080", m.Result("${proto}${port}"));
         }
 
+        public static IEnumerable<object[]> Docs_Examples_ValidateEmail_TestData()
+        {
+            // The email uses conditional test-patterns so NonBacktracking is not supported here
+            foreach (RegexOptions options in new RegexOptions[] { RegexOptions.None, RegexOptions.Compiled })
+            {
+                yield return new object[] { options, "david.jones@proseware.com", true };
+                yield return new object[] { options, "d.j@server1.proseware.com", true };
+                yield return new object[] { options, "jones@ms1.proseware.com", true };
+                yield return new object[] { options, "j.@server1.proseware.com", false };
+                yield return new object[] { options, "j@proseware.com9", true };
+                yield return new object[] { options, "js#internal@proseware.com", true };
+                yield return new object[] { options, "j_9@[129.126.118.1]", true };
+                yield return new object[] { options, "j..s@proseware.com", false };
+                yield return new object[] { options, "js*@proseware.com", false };
+                yield return new object[] { options, "js@proseware..com", false };
+                yield return new object[] { options, "js@proseware.com9", true };
+                yield return new object[] { options, "j.s@server1.proseware.com", true };
+                yield return new object[] { options, "\"j\\\"s\\\"\"@proseware.com", true };
+                yield return new object[] { options, "js@contoso.\u4E2D\u56FD", true };
+            }
+        }
+
         // https://docs.microsoft.com/en-us/dotnet/standard/base-types/how-to-verify-that-strings-are-in-valid-email-format
         [Theory]
-        [InlineData("david.jones@proseware.com", true)]
-        [InlineData("d.j@server1.proseware.com", true)]
-        [InlineData("jones@ms1.proseware.com", true)]
-        [InlineData("j.@server1.proseware.com", false)]
-        [InlineData("j@proseware.com9", true)]
-        [InlineData("js#internal@proseware.com", true)]
-        [InlineData("j_9@[129.126.118.1]", true)]
-        [InlineData("j..s@proseware.com", false)]
-        [InlineData("js*@proseware.com", false)]
-        [InlineData("js@proseware..com", false)]
-        [InlineData("js@proseware.com9", true)]
-        [InlineData("j.s@server1.proseware.com", true)]
-        [InlineData("\"j\\\"s\\\"\"@proseware.com", true)]
-        [InlineData("js@contoso.\u4E2D\u56FD", true)]
-        public void Docs_Examples_ValidateEmail(string email, bool expectedIsValid)
+        [MemberData(nameof(Docs_Examples_ValidateEmail_TestData))]
+        public void Docs_Examples_ValidateEmail(RegexOptions options, string email, bool expectedIsValid)
         {
-            Assert.Equal(expectedIsValid, IsValidEmail(email, RegexOptions.None));
-            Assert.Equal(expectedIsValid, IsValidEmail(email, RegexOptions.Compiled));
+            Assert.Equal(expectedIsValid, IsValidEmail(email, options));
 
             bool IsValidEmail(string email, RegexOptions options)
             {
@@ -1042,6 +1050,51 @@ namespace System.Text.RegularExpressions.Tests
                 Assert.Equal(b, m.Groups[2].Value);
                 Assert.Equal(c, m.Groups[3].Value);
             }
+        }
+
+        /// <summary>
+        /// Test that these well-known patterns that are hard for backtracking engines
+        /// are not a problem with NonBacktracking.
+        /// </summary>
+        [SkipOnTargetFramework(TargetFrameworkMonikers.NetFramework, "Doesn't support NonBacktracking")]
+        [Theory]
+        [InlineData("((?:0*)+?(?:.*)+?)?", "0a", 2)]
+        [InlineData("(?:(?:0?)+?(?:a?)+?)?", "0a", 2)]
+        [InlineData(@"(?i:(\()((?<a>\w+(\.\w+)*)(,(?<a>\w+(\.\w+)*)*)?)(\)))", "some.text(this.is,the.match)", 1)]
+        private void DifficultForBacktracking(string pattern, string input, int matchcount)
+        {
+            var regex = new Regex(pattern, RegexHelpers.RegexOptionNonBacktracking);
+            List<Match> matches = new List<Match>();
+            var match = regex.Match(input);
+            while (match.Success)
+            {
+                matches.Add(match);
+                match = match.NextMatch();
+            }
+            Assert.Equal(matchcount, matches.Count);
+        }
+
+        /// <summary>
+        /// Another difficult pattern in backtracking that is fast in NonBacktracking.
+        /// </summary>
+        [SkipOnTargetFramework(TargetFrameworkMonikers.NetFramework, "Doesn't support NonBacktracking")]
+        [Theory]
+        [InlineData(RegexOptions.None, 1)]
+        [InlineData(RegexOptions.Compiled, 1)]
+        public void TerminationInNonBacktrackingVsBackTracking(RegexOptions options, int sec)
+        {
+            string input = " 123456789 123456789 123456789 123456789 123456789";
+            TimeSpan ts = new TimeSpan(0, 0, sec);
+            for (int i = 0; i < 12; i++)
+                input = input + input;
+            // The input has 2^12 * 50 = 204800 characters
+            string rawregex = @"[\\/]?[^\\/]*?(heythere|hej)[^\\/]*?$";
+            Regex reC = new Regex(rawregex, options, ts);
+            Regex re = new Regex(rawregex, RegexHelpers.RegexOptionNonBacktracking, ts);
+            // It takes over 4min with backtracking, so test that 1sec timeout happens
+            Assert.Throws<RegexMatchTimeoutException>(() => { reC.Match(input); });
+            // NonBacktracking needs way less than 1s
+            Assert.False(re.Match(input).Success);
         }
     }
 }

@@ -33,7 +33,7 @@ namespace System.Text.RegularExpressions.Symbolic
 
                 // The default constructor sets the following predicates to False; this update happens after the fact.
                 // It depends on whether anchors where used in the regex whether the predicates are actually different from False.
-                builderBV._wordLetterPredicate = algBV.ConvertFromCharSet(solver, converter._builder._wordLetterPredicate);
+                builderBV._wordLetterPredicateForAnchors = algBV.ConvertFromCharSet(solver, converter._builder._wordLetterPredicateForAnchors);
                 builderBV._newLinePredicate = algBV.ConvertFromCharSet(solver, converter._builder._newLinePredicate);
 
                 //Convert the BDD based AST to BV based AST
@@ -48,7 +48,7 @@ namespace System.Text.RegularExpressions.Symbolic
                 {
                     // The default constructor sets the following predicates to False, this update happens after the fact
                     // It depends on whether anchors where used in the regex whether the predicates are actually different from False
-                    _wordLetterPredicate = alg64.ConvertFromCharSet(solver, converter._builder._wordLetterPredicate),
+                    _wordLetterPredicateForAnchors = alg64.ConvertFromCharSet(solver, converter._builder._wordLetterPredicateForAnchors),
                     _newLinePredicate = alg64.ConvertFromCharSet(solver, converter._builder._newLinePredicate)
                 };
 

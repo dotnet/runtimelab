@@ -1297,7 +1297,7 @@ namespace System.Text.RegularExpressions.Symbolic
 
                 case SymbolicRegexKind.NWBAnchor:
                 case SymbolicRegexKind.WBAnchor:
-                    predicates.Add(_builder._wordLetterPredicate);
+                    predicates.Add(_builder._wordLetterPredicateForAnchors);
                     return;
 
                 default:

@@ -62,7 +62,7 @@ namespace System.Text.RegularExpressions.Symbolic
         internal DfaMatchingState<T> Next(T atom)
         {
             ICharAlgebra<T> alg = Node._builder._solver;
-            T wordLetterPredicate = Node._builder._wordLetterPredicate;
+            T wordLetterPredicate = Node._builder._wordLetterPredicateForAnchors;
             T newLinePredicate = Node._builder._newLinePredicate;
 
             // atom == solver.False is used to represent the very last \n

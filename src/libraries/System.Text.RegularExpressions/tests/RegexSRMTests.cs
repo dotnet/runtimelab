@@ -21,30 +21,6 @@ namespace System.Text.RegularExpressions.Tests
             _output = output;
         }
 
-        private const char Turkish_I_withDot = '\u0130';
-        private const char Turkish_i_withoutDot = '\u0131';
-        private const char Kelvin_sign = '\u212A';
-
-        /// <summary>
-        /// Specific cases that are very slow/difficult with backtracking but fast/easy without backtracking
-        /// </summary>
-        [Theory]
-        [InlineData("((?:0*)+?(?:.*)+?)?", "0a", 2)]
-        [InlineData("(?:(?:0?)+?(?:a?)+?)?", "0a", 2)]
-        [InlineData(@"(?i:(\()((?<a>\w+(\.\w+)*)(,(?<a>\w+(\.\w+)*)*)?)(\)))", "some.text(this.is,the.match)", 1)]
-        private void TestDifficultCasesForBacktracking(string pattern, string input, int matchcount)
-        {
-            var regex = new Regex(pattern, RegexOptions.NonBacktracking);
-            List<Match> matches = new List<Match>();
-            var match = regex.Match(input);
-            while (match.Success)
-            {
-                matches.Add(match);
-                match = match.NextMatch();
-            }
-            Assert.Equal(matchcount, matches.Count);
-        }
-
         /// <summary>
         /// Causes symbolic matcher to switch to Antimirov mode internally.
         /// Antimirov mode is otherwise never triggered by typical cases.
@@ -64,152 +40,6 @@ namespace System.Text.RegularExpressions.Tests
             Assert.True(m.Success);
             Assert.Equal(buffer.Length, m.Index);
             Assert.Equal(matchlength, m.Length);
-        }
-
-        /// <summary>
-        /// Maps each character c to the set of all of its equivalent characters if case is ignored or null if c in case-insensitive
-        /// </summary>
-        /// <param name="culture">ignoring case wrt this culture</param>
-        /// <param name="treatedAsCaseInsensitive">characters that are otherwise case-sensitive but not in a regex</param>
-        private static HashSet<char>[] ComputeIgnoreCaseTable(CultureInfo culture, HashSet<char> treatedAsCaseInsensitive)
-        {
-            CultureInfo ci = CultureInfo.CurrentCulture;
-            CultureInfo.CurrentCulture = culture;
-            var ignoreCase = new HashSet<char>[0x10000];
-            for (uint i = 0; i <= 0xFFFF; i++)
-            {
-                char c = (char)i;
-                char cU = char.ToUpper(c);
-                char cL = char.ToLower(c);
-                // Turkish i without dot is only considered case-sensitive in tr and az languages
-                if (treatedAsCaseInsensitive.Contains(c) ||
-                    (c == Turkish_i_withoutDot && culture.TwoLetterISOLanguageName != "tr" && culture.TwoLetterISOLanguageName != "az"))
-                    continue;
-                if (cU != cL)
-                {
-                    var set = (ignoreCase[c] == null ? (ignoreCase[cU] == null ? (ignoreCase[cL] == null ? new HashSet<char>()
-                                                     : ignoreCase[cL]) : ignoreCase[cU]) : ignoreCase[c]);
-                    set.Add(c);
-                    set.Add(cU);
-                    set.Add(cL);
-                    ignoreCase[c] = set;
-                    ignoreCase[cL] = set;
-                    ignoreCase[cU] = set;
-                }
-            }
-            CultureInfo.CurrentCulture = ci;
-            return ignoreCase;
-        }
-
-        /// <summary>
-        /// represents the difference between the two tables as a special string
-        /// </summary>
-        private static string GetDiff(HashSet<char>[] table1, HashSet<char>[] table2)
-        {
-            List<string> diffs = new();
-            Func<HashSet<char>, int, string> F = (s, i) =>
-            {
-                if (s == null)
-                    return ((char)i).ToString();
-
-                var elems = new List<char>(s);
-                elems.Sort();
-                return new string(elems.ToArray());
-            };
-
-            for (int i = 0; i <= 0xFFFF; i++)
-            {
-                string s1 = F(table1[i], i);
-                string s2 = F(table2[i], i);
-                if (s1 != s2)
-                {
-                    diffs.Add($"{(char)i}:{s1}/{s2}");
-                }
-            }
-
-            return string.Join(",", diffs.ToArray());
-        }
-
-        /// <summary>
-        /// This test is to make sure that the generated IgnoreCaseRelation table for DFA does not need to be updated.
-        /// It would need to be updated/regenerated if this test fails.
-        /// </summary>
-        [OuterLoop("May take several seconds due to large number of cultures tested")]
-        [Fact]
-        public void TestIgnoreCaseRelation()
-        {
-            // these 22 characters are considered case-insensitive by regex, while they are case-sensitive outside regex
-            // but they are only case-sensitive in an asymmmetrical way: tolower(c)=c, tolower(toupper(c)) != c
-            HashSet<char> treatedAsCaseInsensitive =
-                 new("\u00B5\u017F\u0345\u03C2\u03D0\u03D1\u03D5\u03D6\u03F0\u03F1\u03F5\u1C80\u1C81\u1C82\u1C83\u1C84\u1C85\u1C86\u1C87\u1C88\u1E9B\u1FBE");
-            foreach (char c in treatedAsCaseInsensitive)
-            {
-                char cU = char.ToUpper(c);
-                Assert.NotEqual(c, cU);
-                Assert.False(Regex.IsMatch(c.ToString(), cU.ToString(), RegexOptions.IgnoreCase));
-            }
-
-            Assert.False(Regex.IsMatch(Turkish_i_withoutDot.ToString(), "i", RegexOptions.IgnoreCase));
-
-            // as baseline it is assumed the the invariant culture does not change
-            var inv_table = ComputeIgnoreCaseTable(CultureInfo.InvariantCulture, treatedAsCaseInsensitive);
-            var cultures = System.Globalization.CultureInfo.GetCultures(System.Globalization.CultureTypes.AllCultures);
-            // expected difference between invariant and tr or az culture
-            string tr_diff = string.Format("I:Ii/I{0},i:Ii/i{1},{1}:{1}/i{1},{0}:{0}/I{0}", Turkish_i_withoutDot, Turkish_I_withDot);
-            // expected differnce between invariant and other cultures including the default en-US
-            string default_diff = string.Format("I:Ii/Ii{0},i:Ii/Ii{0},{0}:{0}/Ii{0}", Turkish_I_withDot);
-            // the expected difference between invariant culture and all other cultures is only for i,I,Turkish_I_withDot,Turkish_i_withoutDot
-            // differentiate based on the TwoLetterISOLanguageName only (232 cases instead of 812)
-            List<CultureInfo> testcultures = new();
-            HashSet<string> done = new();
-            for (int i = 0; i < cultures.Length; i++)
-                if (cultures[i] != CultureInfo.InvariantCulture && done.Add(cultures[i].TwoLetterISOLanguageName))
-                    testcultures.Add(cultures[i]);
-            foreach (var culture in testcultures)
-            {
-                var table = ComputeIgnoreCaseTable(culture, treatedAsCaseInsensitive);
-                string diff = GetDiff(inv_table, table);
-                if (culture.TwoLetterISOLanguageName == "tr" || culture.TwoLetterISOLanguageName == "az")
-                    // tr or az alphabet
-                    Assert.Equal(tr_diff, diff);
-                else
-                    // all other alphabets are treated the same as en-US
-                    Assert.Equal(default_diff, diff);
-            }
-        }
-
-        [OuterLoop("May take tens of seconds")]
-        [Fact]
-        public void TestIgnoreCaseRelationBorderCasesInDFAmode()
-        {
-            // these 22 characters are considered case-insensitive by regex, while they are case-sensitive outside regex
-            // but they are only case-sensitive in an asymmmetrical way: tolower(c)=c, tolower(toupper(c)) != c
-            HashSet<char> treatedAsCaseInsensitive =
-                 new("\u00B5\u017F\u0345\u03C2\u03D0\u03D1\u03D5\u03D6\u03F0\u03F1\u03F5\u1C80\u1C81\u1C82\u1C83\u1C84\u1C85\u1C86\u1C87\u1C88\u1E9B\u1FBE");
-            foreach (char c in treatedAsCaseInsensitive)
-            {
-                char cU = char.ToUpper(c);
-                Assert.NotEqual(c, cU);
-                Assert.False(Regex.IsMatch(c.ToString(), cU.ToString(), RegexOptions.IgnoreCase | RegexOptions.NonBacktracking));
-            }
-
-            Assert.False(Regex.IsMatch(Turkish_i_withoutDot.ToString(), "i", RegexOptions.IgnoreCase | RegexOptions.NonBacktracking));
-            Assert.True(Regex.IsMatch(Turkish_I_withDot.ToString(), "i", RegexOptions.IgnoreCase | RegexOptions.NonBacktracking));
-            Assert.True(Regex.IsMatch(Turkish_I_withDot.ToString(), "i", RegexOptions.IgnoreCase | RegexOptions.NonBacktracking));
-            Assert.False(Regex.IsMatch(Turkish_I_withDot.ToString(), "i", RegexOptions.IgnoreCase | RegexOptions.NonBacktracking | RegexOptions.CultureInvariant));
-
-            // Turkish i without dot is not considered case-sensitive in the default en-US culture
-            treatedAsCaseInsensitive.Add(Turkish_i_withoutDot);
-
-            List<char> caseSensitiveChars = new();
-            for (char c = '\0'; c < '\uFFFF'; c++)
-                if (!treatedAsCaseInsensitive.Contains(c) && char.ToUpper(c) != char.ToLower(c))
-                    caseSensitiveChars.Add(c);
-
-            // test all case-sensitive characters exhaustively in DFA mode
-            foreach (char c in caseSensitiveChars)
-                Assert.True(Regex.IsMatch(char.ToUpper(c).ToString() + char.ToLower(c).ToString(),
-                    c.ToString() + c.ToString(), RegexOptions.IgnoreCase | RegexOptions.NonBacktracking));
         }
 
         [Theory]
@@ -233,38 +63,6 @@ namespace System.Text.RegularExpressions.Tests
             Assert.Equal(m1_exp[1], m1_.Length);
         }
 
-        [Theory]
-        [InlineData("[abc]{0,10}", "a[abc]{0,3}", "xxxabbbbbbbyyy", true, "abbb")]
-        [InlineData("[abc]{0,10}?", "a[abc]{0,3}?", "xxxabbbbbbbyyy", true, "a")]
-        public void TestConjunctionOverCounting(string conjunct1, string conjunct2, string input, bool success, string match)
-        {
-            try
-            {
-                string pattern = And(conjunct1, conjunct2);
-                Regex re = new Regex(pattern, RegexOptions.NonBacktracking);
-                Match m = re.Match(input);
-                Assert.Equal(success, m.Success);
-                Assert.Equal(match, m.Value);
-            }
-            catch(NotSupportedException e)
-            {
-                // In Release build (?( test-pattern ) yes-pattern | no-pattern ) is not supported
-                Assert.Contains("conditional", e.Message);
-            }
-        }
-
-        [Theory]
-        [InlineData("a[abc]{0,10}", "a[abc]{0,3}", "xxxabbbbbbbyyy", true, "abbbbbbb")]
-        [InlineData("a[abc]{0,10}?", "a[abc]{0,3}?", "xxxabbbbbbbyyy", true, "a")]
-        public void TestDisjunctionOverCounting(string disjunct1, string disjunct2, string input, bool success, string match)
-        {
-            string pattern = disjunct1 + "|" + disjunct2;
-            Regex re = new Regex(pattern, RegexOptions.NonBacktracking);
-            Match m = re.Match(input);
-            Assert.Equal(success, m.Success);
-            Assert.Equal(match, m.Value);
-        }
-
         [Fact]
         public void TestAltOrderIndependence()
         {
@@ -278,47 +76,37 @@ namespace System.Text.RegularExpressions.Tests
             Assert.Equal(reC_match.Value, re_match.Value);
             Assert.Equal("the 1", re_match.Value);
             //----
-            //equivalent regex as DFA
+            //equivalent regex in NonBacktracking mode
             string rawregex_alt = @"(the)\s*([12][0-9]|3[01]|0?[1-9])";
             var re_alt = new Regex(rawregex_alt, RegexOptions.NonBacktracking);
             var re_alt_match = re_alt.Match(input);
             Assert.Equal(re_match.Index, re_alt_match.Index);
             Assert.Equal(re_match.Value, re_alt_match.Value);
-            //not equivalent as non-DFA because the match will be "the 10"
+            //not equivalent as non-NonBacktracking mode because the match will be "the 10"
             var re_altC = new Regex(rawregex_alt, RegexOptions.Compiled);
             var re_altC_match = re_altC.Match(input);
             Assert.Equal("the 10", re_altC_match.Value);
         }
 
-        [Fact]
-        public void TestSRMTermination()
+        #region Following tests are currently relevant only in DEBUG mode
+        [Theory]
+        [InlineData("[abc]{0,10}", "a[abc]{0,3}", "xxxabbbbbbbyyy", true, "abbb")]
+        [InlineData("[abc]{0,10}?", "a[abc]{0,3}?", "xxxabbbbbbbyyy", true, "a")]
+        public void TestConjunctionOverCounting(string conjunct1, string conjunct2, string input, bool success, string match)
         {
-            string input = " 123456789 123456789 123456789 123456789 123456789";
-            for (int i = 0; i < 12; i++)
-                input = input + input;
-            //the input has 2^12 * 50 = 204800 characters
-            string rawregex = @"[\\/]?[^\\/]*?(heythere|hej)[^\\/]*?$";
-            Regex reC = new Regex(rawregex, RegexOptions.Compiled, new TimeSpan(0, 0, 1));
-            Regex re = new Regex(rawregex, RegexOptions.NonBacktracking, new TimeSpan(0, 0, 0, 0, 100));
-            //it takes over 4min with backtracking, so 1sec times out for sure
-            Assert.Throws<RegexMatchTimeoutException>(() => { reC.Match(input); });
-            //DFA needs less than 100ms
-            Assert.False(re.Match(input).Success);
-        }
-
-        /// <summary>
-        /// Test that timeout is being checked in DFA mode.
-        /// </summary>
-        [Fact]
-        public void TestSRMTimeout() => TestSRMTimeout_(new Regex(@"a.{20}$", RegexOptions.NonBacktracking, new TimeSpan(0, 0, 0, 0, 10)));
-
-        private void TestSRMTimeout_(Regex re)
-        {
-            Random rnd = new Random(0);
-            byte[] buffer = new byte[1000000];
-            rnd.NextBytes(buffer);
-            string input = new String(Array.ConvertAll(buffer, b => b < 200 ? 'a' : (char)b));
-            Assert.Throws<RegexMatchTimeoutException>(() => { re.Match(input); });
+            try
+            {
+                string pattern = And(conjunct1, conjunct2);
+                Regex re = new Regex(pattern, RegexOptions.NonBacktracking);
+                Match m = re.Match(input);
+                Assert.Equal(success, m.Success);
+                Assert.Equal(match, m.Value);
+            }
+            catch (NotSupportedException e)
+            {
+                // In Release build (?( test-pattern ) yes-pattern | no-pattern ) is not supported
+                Assert.Contains("conditional", e.Message);
+            }
         }
 
         [Fact]
@@ -347,43 +135,10 @@ namespace System.Text.RegularExpressions.Tests
             }
         }
 
-        [Fact]
-        public void SRMTest_BV()
-        {
-             //this will need a total of 68 parts, thus will use the general BV algebra instead of BV64 algebra
-            var re = new Regex(@"(abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789<>:;@)+", RegexOptions.NonBacktracking);
-            string input = "=====abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789<>:;@abcdefg======";
-            var match1 = re.Match(input);
-            Assert.True(match1.Success);
-            Assert.Equal(5, match1.Index);
-            Assert.Equal(67, match1.Length);
-            var match2 = match1.NextMatch();
-            Assert.False(match2.Success);
-        }
-
-        [Fact]
-        public void SRMTest_BV_WideLatin()
-        {
-            //this will need a total of 2x70 + 2 parts, thus will use the general BV algebra instead of BV64 algebra
-            string pattern_orig = @"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789<>:;&@%!";
-            //shift each char in the pattern to the Wide-Latin alphabet of Unicode
-            //pattern_WL = "ａｂｃｄｅｆｇｈｉｊｋｌｍｎｏｐｑｒｓｔｕｖｗｘｙｚＡＢＣＤＥＦＧＨＩＪＫＬＭＮＯＰＱＲＳＴＵＶＷＸＹＺ０１２３４５６７８９＜＞：；＆＠％！"
-            string pattern_WL = new String(Array.ConvertAll(pattern_orig.ToCharArray(), c => (char)((int)c + 0xFF00 - 32)));
-            string pattern = "(" + pattern_orig + "===" + pattern_WL + ")+";
-            var re = new Regex(pattern, RegexOptions.NonBacktracking);
-            string input = "=====" + pattern_orig + "===" + pattern_WL + pattern_orig + "===" + pattern_WL + "===" + pattern_orig + "===" + pattern_orig;
-            var match1 = re.Match(input); 
-            Assert.True(match1.Success);
-            Assert.Equal(5, match1.Index);
-            Assert.Equal(2*(pattern_orig.Length + 3 + pattern_WL.Length), match1.Length);
-            var match2 = match1.NextMatch();
-            Assert.False(match2.Success);
-        }
-
         static string And(params string[] regexes)
         {
             string conj = "(" + regexes[regexes.Length - 1] + ")";
-            for (int i= regexes.Length - 2; i >=0; i--)
+            for (int i = regexes.Length - 2; i >= 0; i--)
             {
                 conj = $"(?({regexes[i]}){conj}|[0-[0]])";
             }
@@ -621,5 +376,7 @@ namespace System.Text.RegularExpressions.Tests
                 Assert.Contains("conditional", e.Message);
             }
         }
+
+        #endregion
     }
 }
