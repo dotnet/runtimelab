@@ -172,11 +172,17 @@ void Compiler::fgLocalVarLivenessInit()
 {
     JITDUMP("In fgLocalVarLivenessInit\n");
 
-    // Sort locals first, if we're optimizing
-    if (opts.OptimizationEnabled())
-    {
+#if defined (TARGET_WASM)
+    if (compRationalIRForm) // for LIR, always sort
         lvaSortByRefCount();
-    }
+    else
+#else
+        // Sort locals first, if we're optimizing
+        if (opts.OptimizationEnabled())
+        {
+            lvaSortByRefCount();
+        }
+#endif
 
     // We mark a lcl as must-init in a first pass of local variable
     // liveness (Liveness1), then assertion prop eliminates the
