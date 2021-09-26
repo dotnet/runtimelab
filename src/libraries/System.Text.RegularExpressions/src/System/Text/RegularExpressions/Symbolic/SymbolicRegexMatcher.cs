@@ -832,7 +832,7 @@ namespace System.Text.RegularExpressions.Symbolic
             uint[] asciiCharKinds = _asciiCharKinds;
             return
                 nextChar < asciiCharKinds.Length ? asciiCharKinds[nextChar] :
-                _builder._solver.And(GetAtom(nextChar), _builder._wordLetterPredicate).Equals(_builder._solver.False) ? 0 : //apply the wordletter predicate to compute the kind of the next character
+                _builder._solver.And(GetAtom(nextChar), _builder._wordLetterPredicateForAnchors).Equals(_builder._solver.False) ? 0 : //apply the wordletter predicate to compute the kind of the next character
                 CharKind.WordLetter;
         }
 
