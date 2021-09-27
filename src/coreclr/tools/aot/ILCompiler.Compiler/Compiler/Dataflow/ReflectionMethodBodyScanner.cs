@@ -2874,7 +2874,7 @@ namespace ILCompiler.Dataflow
 
         void MarkType(ref ReflectionPatternContext reflectionContext, TypeDesc type)
         {
-            _dependencies.Add(_factory.MaximallyConstructableType(type), reflectionContext.MemberWithRequirements.ToString());
+            RootingHelpers.TryGetDependenciesForReflectedType(ref _dependencies, _factory, type, reflectionContext.MemberWithRequirements.ToString());
             reflectionContext.RecordHandledPattern();
         }
 
