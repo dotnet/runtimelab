@@ -940,8 +940,17 @@ namespace System.Text.RegularExpressions.Symbolic
             return _transitionRegex;
         }
 
+        /// <summary>
+        /// Computes the closure of MkDerivative, by exploring all the leaves
+        /// of the transition regex until no more new leaves are found.
+        /// Converts the resulting transition system into a symbolic NFA.
+        /// If the exploration remains incomplete due to the given state bound
+        /// being reached then the InComplete property of the constructed NFA is true.
+        /// </summary>
+        internal SymbolicNFA<S> Explore(int bound) => SymbolicNFA<S>.Explore(this, bound);
+
         /// <summary>Extracts the nullability test as a Boolean combination of anchors</summary>
-        private SymbolicRegexNode<S> ExtractNullabilityTest()
+        public SymbolicRegexNode<S> ExtractNullabilityTest()
         {
             if (IsNullable)
             {

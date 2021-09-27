@@ -109,17 +109,40 @@ namespace System.Text.RegularExpressions.Tests
             }
         }
 
-        [Fact]
-        public void TestDGMLGeneration()
+
+        /*
+         *         public void ViewSampleRegexInDGML()
+        {
+            //string rawregex = @"\bis\w*\b";
+            string rawregex = And(".*[0-9].*[0-9].*", ".*[A-Z].*[A-Z].*", Not(".*(01|12).*"));
+            //string rawregex = "a.{4}$";
+            Regex re = new Regex($@"{rawregex}", RegexHelpers.RegexOptionNonBacktracking | RegexOptions.Singleline);
+            ViewDGML(re);
+            ViewDGML(re, inReverse: true);
+            ViewDGML(re, addDotStar: true);
+            ViewDGML(re, asNFA: true, bound:10);
+            ViewDGML(re, inReverse: true, asNFA: true, bound: 10);
+            ViewDGML(re, addDotStar: true, asNFA: true, bound: 10);
+        }
+         * */
+        [Theory]
+        [InlineData(".*a+", -1, new string[] { ".*a+" }, false, false)]
+        [InlineData("ann", -1, new string[] { "nna" }, true, false)]
+        [InlineData("(something|otherstuff)+", 10, new string[] { "Unexplored", "some" }, false, true)]
+        [InlineData("(something|otherstuff)+", 10, new string[] { "Unexplored", "ffut" }, true, true)]
+        public void TestDGMLGeneration(string pattern, int explorationbound, string[] expectedDgmlFragments, bool exploreInReverse, bool exploreAsNFA)
         {
             StringWriter sw = new StringWriter();
-            var re = new Regex(".*a+", RegexOptions.NonBacktracking | RegexOptions.Singleline);
-            if (TrySaveDGML(re, sw))
+            var re = new Regex(pattern, RegexHelpers.RegexOptionNonBacktracking | RegexOptions.Singleline);
+            if (TrySaveDGML(re, writer: sw, bound: explorationbound, inReverse: exploreInReverse, asNFA: exploreAsNFA))
             {
                 string str = sw.ToString();
                 Assert.StartsWith("<?xml version=\"1.0\" encoding=\"utf-8\"?>", str);
                 Assert.Contains("DirectedGraph", str);
-                Assert.Contains(".*a+", str);
+                foreach (string fragment in expectedDgmlFragments)
+                {
+                    Assert.Contains(fragment, str);
+                }
             }
 
             static bool TrySaveDGML(Regex regex, TextWriter writer, int bound = -1, bool hideStateInfo = false, bool addDotStar = false, bool inReverse = false, bool onlyDFAinfo = false, int maxLabelLength = -1, bool asNFA = false)
