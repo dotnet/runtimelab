@@ -4,6 +4,7 @@
 using System.Linq;
 using System.Collections;
 using System.Collections.Generic;
+using System.Formats.Asn1;
 using System.IO;
 using System.Text;
 using Test.Cryptography;
@@ -900,7 +901,13 @@ namespace System.Security.Cryptography.X509Certificates.Tests
                 chain.ChainPolicy.RevocationMode = X509RevocationMode.NoCheck;
                 chain.ChainPolicy.VerificationFlags = X509VerificationFlags.AllFlags;
 
-                chain.Build(microsoftDotCom);
+                // Halfway between microsoftDotCom's NotBefore and NotAfter
+                // This isn't a boundary condition test.
+                chain.ChainPolicy.VerificationTime = new DateTime(2021, 02, 26, 12, 01, 01, DateTimeKind.Local);
+
+                bool valid = chain.Build(microsoftDotCom);
+                Assert.True(valid, "Precondition: Chain built validly");
+
                 ICollection collection = chain.ChainElements;
                 Array array = Array.CreateInstance(typeof(object), new int[] { 10 }, new int[] { 10 });
                 Assert.Throws<IndexOutOfRangeException>(() => collection.CopyTo(array, 0));
@@ -1539,6 +1546,21 @@ namespace System.Security.Cryptography.X509Certificates.Tests
 ";
 
             Assert.Throws<CryptographicException>(() => cc.ImportFromPem(certContents));
+        }
+
+        [Fact]
+        public static void ExportPkcs7_Empty()
+        {
+            X509Certificate2Collection cc = new X509Certificate2Collection();
+            byte[] exported = cc.Export(X509ContentType.Pkcs7);
+            Assert.NotNull(exported);
+
+            AsnReader reader = new AsnReader(exported, AsnEncodingRules.BER);
+            AsnReader sequenceReader = reader.ReadSequence();
+            string oid = sequenceReader.ReadObjectIdentifier();
+            sequenceReader.ReadSequence(new Asn1Tag(TagClass.ContextSpecific, 0));
+            reader.ThrowIfNotEmpty();
+            Assert.Equal("1.2.840.113549.1.7.2", oid); //signedData (PKCS #7)
         }
 
         private static void TestExportSingleCert_SecureStringPassword(X509ContentType ct)

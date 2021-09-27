@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using Xunit;
 
 namespace System.Text.RegularExpressions.Tests
@@ -115,43 +116,25 @@ namespace System.Text.RegularExpressions.Tests
         }
 
         [Theory]
-        [MemberData(nameof(Split_TestData_AnchorMatches))]
-        [MemberData(nameof(Split_TestData_NonBacktracking))]
-        [MemberData(nameof(Split_TestData))]
-        [MemberData(nameof(RegexCompilationHelper.TransformRegexOptions), nameof(Split_TestData), 2, MemberType = typeof(RegexCompilationHelper))]
-        public void Split(string pattern, string input, RegexOptions options, int count, int start, string[] expected)
+        [MemberData(nameof(Split_TestData_WithEngine))]
+        public async Task Split(RegexEngine engine, string pattern, string input, RegexOptions options, int count, int start, string[] expected)
         {
             bool isDefaultStart = RegexHelpers.IsDefaultStart(input, options, start);
             bool isDefaultCount = RegexHelpers.IsDefaultCount(input, options, count);
-            if (options == RegexOptions.None)
-            {
-                // Use Split(string), Split(string, string), Split(string, int) or Split(string, int, int)
-                if (isDefaultStart && isDefaultCount)
-                {
-                    // Use Split(string) or Split(string, string)
-                    Assert.Equal(expected, new Regex(pattern).Split(input));
-                    Assert.Equal(expected, Regex.Split(input, pattern));
-                }
-                if (isDefaultStart)
-                {
-                    // Use Split(string, int)
-                    Assert.Equal(expected, new Regex(pattern).Split(input, count));
-                }
-                // Use Split(string, int, int)
-                Assert.Equal(expected, new Regex(pattern).Split(input, count, start));
-            }
+
+            Regex r = await RegexHelpers.GetRegexAsync(engine, pattern, options);
+
             if (isDefaultStart && isDefaultCount)
             {
-                // Use Split(string, string, RegexOptions)
-                Assert.Equal(expected, Regex.Split(input, pattern, options));
+                Assert.Equal(expected, r.Split(input));
             }
+
             if (isDefaultStart)
             {
-                // Use Split(string, int)
-                Assert.Equal(expected, new Regex(pattern, options).Split(input, count));
+                Assert.Equal(expected, r.Split(input, count));
             }
-            // Use Split(string, int, int, int)
-            Assert.Equal(expected, new Regex(pattern, options).Split(input, count, start));
+
+            Assert.Equal(expected, r.Split(input, count, start));
         }
 
         [Fact]

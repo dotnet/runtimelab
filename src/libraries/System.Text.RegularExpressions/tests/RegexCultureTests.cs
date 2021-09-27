@@ -11,6 +11,8 @@ namespace System.Text.RegularExpressions.Tests
 {
     public class RegexCultureTests
     {
+        // TODO: Validate source generator after figuring out what to do with culture
+
         public static IEnumerable<object[]> CharactersComparedOneByOne_AnchoredPattern_TestData()
         {
             foreach (RegexOptions options in RegexHelpers.RegexOptionsExtended())

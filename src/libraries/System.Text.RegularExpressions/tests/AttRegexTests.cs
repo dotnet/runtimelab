@@ -66,6 +66,7 @@
 
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using Xunit;
 
 namespace System.Text.RegularExpressions.Tests
@@ -366,21 +367,15 @@ namespace System.Text.RegularExpressions.Tests
         [InlineData("(a*){2}(x)", "x", "(0,1)(0,0)(0,1)")]
         [InlineData("(a*){2}(x)", "ax", "(0,2)(1,1)(1,2)")]
         [InlineData("(a*){2}(x)", "axa", "(0,2)(1,1)(1,2)")]
-        public void Test(string pattern, string input, string nondfa_captures, string dfa_match = null)
+        public async Task Test(string pattern, string input, string nondfa_captures, string dfa_match = null)
         {
             if (input == "NULL")
             {
                 input = "";
             }
 
-            var allOptions = new List<RegexOptions>() { RegexOptions.None, RegexOptions.Compiled };
-            if (PlatformDetection.IsNetCore)
-            {
-                allOptions.Add(RegexHelpers.RegexOptionNonBacktracking);
-                allOptions.Add(RegexHelpers.RegexOptionNonBacktracking | RegexOptions.Multiline);
-            }
-
-            foreach (RegexOptions options in allOptions)
+            // TODO: RegexOptionNonBacktracking | RegexOptions.Multiline
+            foreach (RegexEngine engine in RegexHelpers.AvailableEngines)
             {
                 string captures = nondfa_captures;
                 bool dfa_mode = ((options & RegexHelpers.RegexOptionNonBacktracking) != 0);
@@ -390,45 +385,49 @@ namespace System.Text.RegularExpressions.Tests
 
                 if (captures == "BADBR")
                 {
-                    Assert.ThrowsAny<ArgumentException>(() => Regex.IsMatch(input, pattern, options));
+                    await Assert.ThrowsAnyAsync<ArgumentException>(async () => await RegexHelpers.GetRegexAsync(engine, pattern));
+                    return;
                 }
-                else if (captures == "NOMATCH")
+
+                Regex r = await RegexHelpers.GetRegexAsync(engine, pattern);
+
+                if (captures == "NOMATCH")
                 {
-                    Assert.False(Regex.IsMatch(input, pattern, options));
+                    Assert.False(r.IsMatch(input));
+                    return;
                 }
-                else if (dfa_mode && dfa_match == "DFAINCOMPATIBLE")
+                
+                if (dfa_mode && dfa_match == "DFAINCOMPATIBLE")
                 {
-                    //In particular: backreferences are not supported in DFA mode
-                    Assert.ThrowsAny<NotSupportedException>(() => Regex.IsMatch(input, pattern, options));
+                    // In particular: backreferences are not supported in DFA mode
+                    Assert.ThrowsAny<NotSupportedException>(() => r.IsMatch(input));
+                    return;
                 }
-                else
+                Match match = r.Match(input);
+                Assert.True(match.Success);
+
+                var expected = new HashSet<(int start, int end)>(
+                    captures
+                    .Split(new[] { '(', ')' }, StringSplitOptions.RemoveEmptyEntries)
+                    .Select(s => s.Split(','))
+                    .Select(s => (start: int.Parse(s[0]), end: int.Parse(s[1])))
+                    .Distinct()
+                    .OrderBy(c => c.start)
+                    .ThenBy(c => c.end));
+
+                var actual = new HashSet<(int start, int end)>(
+                    match.Groups
+                    .Cast<Group>()
+                    .Select(g => (start: g.Index, end: g.Index + g.Length))
+                    .Distinct()
+                    .OrderBy(g => g.start)
+                    .ThenBy(g => g.end));
+
+                // DFA mode only provides the top-level match.
+                // Else, the .NET implementation sometimes has extra captures beyond what the original data specifies, so we assert a subset.
+                if (dfa_mode ? !actual.IsSubsetOf(expected) : !expected.IsSubsetOf(actual))
                 {
-                    Match match = Regex.Match(input, pattern, options);
-                    Assert.True(match.Success);
-
-                    var expected = new HashSet<(int start, int end)>(
-                        captures
-                        .Split(new[] { '(', ')' }, StringSplitOptions.RemoveEmptyEntries)
-                        .Select(s => s.Split(','))
-                        .Select(s => (start: int.Parse(s[0]), end: int.Parse(s[1])))
-                        .Distinct()
-                        .OrderBy(c => c.start)
-                        .ThenBy(c => c.end));
-
-                    var actual = new HashSet<(int start, int end)>(
-                        match.Groups
-                        .Cast<Group>()
-                        .Select(g => (start: g.Index, end: g.Index + g.Length))
-                        .Distinct()
-                        .OrderBy(g => g.start)
-                        .ThenBy(g => g.end));
-
-                    // DFA mode only provides the top-level match.
-                    // Else, the .NET implementation sometimes has extra captures beyond what the original data specifies, so we assert a subset.
-                    if (dfa_mode ? !actual.IsSubsetOf(expected) : !expected.IsSubsetOf(actual))
-                    {
-                        throw new Xunit.Sdk.XunitException($"Actual: {string.Join(", ", actual)}{Environment.NewLine}Expected: {string.Join(", ", expected)}");
-                    }
+                    throw new Xunit.Sdk.XunitException($"Actual: {string.Join(", ", actual)}{Environment.NewLine}Expected: {string.Join(", ", expected)}");
                 }
             }
         }
