@@ -217,13 +217,6 @@ struct RH_GC_GENERATION_INFO
     uint64_t fragmentationAfter;
 };
 
-#if defined(TARGET_X86) && !defined(TARGET_UNIX)
-#include "pshpack4.h"
-#ifdef _MSC_VER
-#pragma warning(push)
-#pragma warning(disable:4121) // alignment of a member was sensitive to packing
-#endif
-#endif
 struct RH_GH_MEMORY_INFO
 {
 public:
@@ -249,12 +242,6 @@ public:
     uint64_t pauseDuration0;
     uint64_t pauseDuration1;
 };
-#if defined(TARGET_X86) && !defined(TARGET_UNIX)
-#ifdef _MSC_VER
-#pragma warning(pop)
-#endif
-#include "poppack.h"
-#endif
 
 COOP_PINVOKE_HELPER(void, RhGetMemoryInfo, (RH_GH_MEMORY_INFO* pData, int kind))
 {
