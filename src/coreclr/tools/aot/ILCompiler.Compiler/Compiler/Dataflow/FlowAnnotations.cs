@@ -653,9 +653,9 @@ namespace ILCompiler.Dataflow
             if (methodAnnotations.ParameterAnnotations != null || baseMethodAnnotations.ParameterAnnotations != null)
             {
                 if (methodAnnotations.ParameterAnnotations == null)
-                    ValidateMethodParametersHaveNoAnnotations(ref baseMethodAnnotations, method, baseMethod, method);
+                    ValidateMethodParametersHaveNoAnnotations(baseMethodAnnotations.ParameterAnnotations, method, baseMethod, method);
                 else if (baseMethodAnnotations.ParameterAnnotations == null)
-                    ValidateMethodParametersHaveNoAnnotations(ref methodAnnotations, method, baseMethod, method);
+                    ValidateMethodParametersHaveNoAnnotations(methodAnnotations.ParameterAnnotations, method, baseMethod, method);
                 else
                 {
                     if (methodAnnotations.ParameterAnnotations.Length != baseMethodAnnotations.ParameterAnnotations.Length)
@@ -675,9 +675,9 @@ namespace ILCompiler.Dataflow
             if (methodAnnotations.GenericParameterAnnotations != null || baseMethodAnnotations.GenericParameterAnnotations != null)
             {
                 if (methodAnnotations.GenericParameterAnnotations == null)
-                    ValidateMethodGenericParametersHaveNoAnnotations(ref baseMethodAnnotations, method, baseMethod, method);
+                    ValidateMethodGenericParametersHaveNoAnnotations(baseMethodAnnotations.GenericParameterAnnotations, method, baseMethod, method);
                 else if (baseMethodAnnotations.GenericParameterAnnotations == null)
-                    ValidateMethodGenericParametersHaveNoAnnotations(ref methodAnnotations, method, baseMethod, method);
+                    ValidateMethodGenericParametersHaveNoAnnotations(methodAnnotations.GenericParameterAnnotations, method, baseMethod, method);
                 else
                 {
                     if (methodAnnotations.GenericParameterAnnotations.Length != baseMethodAnnotations.GenericParameterAnnotations.Length)
@@ -697,11 +697,11 @@ namespace ILCompiler.Dataflow
             }
         }
 
-        void ValidateMethodParametersHaveNoAnnotations(ref MethodAnnotations methodAnnotations, MethodDesc method, MethodDesc baseMethod, MethodDesc origin)
+        void ValidateMethodParametersHaveNoAnnotations(DynamicallyAccessedMemberTypes[] parameterAnnotations, MethodDesc method, MethodDesc baseMethod, MethodDesc origin)
         {
-            for (int parameterIndex = 0; parameterIndex < methodAnnotations.ParameterAnnotations.Length; parameterIndex++)
+            for (int parameterIndex = 0; parameterIndex < parameterAnnotations.Length; parameterIndex++)
             {
-                var annotation = methodAnnotations.ParameterAnnotations[parameterIndex];
+                var annotation = parameterAnnotations[parameterIndex];
                 if (annotation != DynamicallyAccessedMemberTypes.None)
                     LogValidationWarning(
                         parameterIndex,
@@ -710,11 +710,11 @@ namespace ILCompiler.Dataflow
             }
         }
 
-        void ValidateMethodGenericParametersHaveNoAnnotations(ref MethodAnnotations methodAnnotations, MethodDesc method, MethodDesc baseMethod, MethodDesc origin)
+        void ValidateMethodGenericParametersHaveNoAnnotations(DynamicallyAccessedMemberTypes[] genericParameterAnnotations, MethodDesc method, MethodDesc baseMethod, MethodDesc origin)
         {
-            for (int genericParameterIndex = 0; genericParameterIndex < methodAnnotations.GenericParameterAnnotations.Length; genericParameterIndex++)
+            for (int genericParameterIndex = 0; genericParameterIndex < genericParameterAnnotations.Length; genericParameterIndex++)
             {
-                if (methodAnnotations.GenericParameterAnnotations[genericParameterIndex] != DynamicallyAccessedMemberTypes.None)
+                if (genericParameterAnnotations[genericParameterIndex] != DynamicallyAccessedMemberTypes.None)
                 {
                     LogValidationWarning(
                         method.Instantiation[genericParameterIndex],
