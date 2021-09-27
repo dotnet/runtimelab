@@ -10,7 +10,7 @@ using System.Collections.Generic;
 
 namespace System.Xml
 {
-    [Obsolete("Use XmlReader created by XmlReader.Create() method using appropriate XmlReaderSettings instead. https://go.microsoft.com/fwlink/?linkid=14202")]
+    [Obsolete("XmlValidatingReader has been deprecated. Use XmlReader created by XmlReader.Create() method using appropriate XmlReaderSettings instead.")]
     public class XmlValidatingReader : XmlReader, IXmlLineInfo, IXmlNamespaceResolver
     {
         //
@@ -91,7 +91,7 @@ namespace System.Xml
             get { return _impl.Depth; }
         }
 
-        public override string? BaseURI
+        public override string BaseURI
         {
             get { return _impl.BaseURI; }
         }

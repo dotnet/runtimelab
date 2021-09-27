@@ -46,6 +46,7 @@ namespace System.Runtime.InteropServices.JavaScript.Http.Tests
         [Theory]
         [InlineData("http://host/absolute/")]
         [InlineData("blob:http://host/absolute/")]
+        [InlineData("foo://host/absolute")]
         public void Ctor_AbsoluteStringUri_CorrectValues(string uri)
         {
             var rm = new HttpRequestMessage(HttpMethod.Post, uri);
@@ -82,6 +83,7 @@ namespace System.Runtime.InteropServices.JavaScript.Http.Tests
         [Theory]
         [InlineData("http://host/absolute/")]
         [InlineData("blob:http://host/absolute/")]
+        [InlineData("foo://host/absolute")]
         public void Ctor_AbsoluteUri_CorrectValues(string uriData)
         {
             var uri = new Uri(uriData);
@@ -110,12 +112,6 @@ namespace System.Runtime.InteropServices.JavaScript.Http.Tests
         public void Ctor_NullMethod_ThrowsArgumentNullException(string uriData)
         {
             Assert.Throws<ArgumentNullException>(() => new HttpRequestMessage(null, uriData));
-        }
-
-        [Fact]
-        public void Ctor_NonHttpUri_ThrowsArgumentException()
-        {
-            AssertExtensions.Throws<ArgumentException>("requestUri", () => new HttpRequestMessage(HttpMethod.Put, "ftp://example.com"));
         }
 
         [Theory]
@@ -304,14 +300,6 @@ namespace System.Runtime.InteropServices.JavaScript.Http.Tests
             Assert.False(streamingEnabledValue);
         }
 
-
-        [Fact]
-        public void RequestUri_SetNonHttpUri_ThrowsArgumentException()
-        {
-            var rm = new HttpRequestMessage();
-            AssertExtensions.Throws<ArgumentException>("value", () => { rm.RequestUri = new Uri("ftp://example.com"); });
-        }
-
         [Fact]
         public void Version_SetToNull_ThrowsArgumentNullException()
         {
@@ -381,6 +369,32 @@ namespace System.Runtime.InteropServices.JavaScript.Http.Tests
                 "  Content-Type: text/plain; charset=utf-8" + Environment.NewLine +
                 "  Custom-Content-Header: value2" + Environment.NewLine +
                 "}", rm.ToString());
+        }
+
+        [ConditionalFact(typeof(PlatformDetection), nameof(PlatformDetection.IsBrowserDomSupported))]
+        public async Task BlobUri_Marshal_CorrectValues_Browser()
+        {
+            Runtime.InvokeJS(@"
+                function typedArrayToURL(typedArray, mimeType) {
+                    return URL.createObjectURL(new Blob([typedArray.buffer], {type: mimeType}))
+                }
+                const bytes = new Uint8Array(59);
+                for(let i = 0; i < 59; i++) {
+                    bytes[i] = 32 + i;
+                }
+                const url = typedArrayToURL(bytes, 'text/plain');
+                // Calls method with string that will be marshaled as valid URI
+                App.call_test_method  (""InvokeString"", [ url ]);
+            ");
+
+            var client = new HttpClient ();
+            Assert.StartsWith ("blob:", HelperMarshal._stringResource);
+
+            HttpRequestMessage rm = new HttpRequestMessage(HttpMethod.Get, new Uri (HelperMarshal._stringResource));
+            HttpResponseMessage resp = await client.SendAsync (rm);
+            Assert.NotNull (resp.Content);
+            string content = await resp.Content.ReadAsStringAsync();
+            Assert.Equal (59, content.Length);
         }
 
         [Fact]

@@ -765,6 +765,13 @@ typedef struct _SgenGCInfo {
 	guint64 high_memory_load_threshold_bytes;
 	guint64 memory_load_bytes;
 	guint64 total_available_memory_bytes;
+	guint64 total_committed_bytes;
+	guint64 total_promoted_bytes;
+	guint64 total_nursery_size_bytes;
+	guint64 total_major_size_bytes;
+	guint64 total_major_size_in_use_bytes;
+	guint64 total_los_size_bytes;
+	guint64 total_los_size_in_use_bytes;
 } SgenGCInfo;
 
 extern SgenGCInfo sgen_gc_info;
@@ -931,6 +938,7 @@ int sgen_gc_collection_count (int generation);
 size_t sgen_gc_get_used_size (void)
 	MONO_PERMIT (need (sgen_lock_gc));
 size_t sgen_gc_get_total_heap_allocation (void);
+void sgen_gc_get_gctimeinfo (guint64 *time_last_gc_100ns, guint64 *time_since_last_gc_100ns, guint64 *time_max_gc_100ns);
 
 /* STW */
 
@@ -1130,8 +1138,10 @@ typedef enum {
 } SgenAllocatorType;
 
 void sgen_clear_tlabs (void);
-void sgen_update_allocation_count (void);
-guint64 sgen_get_total_allocated_bytes (MonoBoolean precise);
+void sgen_update_allocation_count (void)
+	MONO_PERMIT (need (sgen_world_stopped));
+guint64 sgen_get_total_allocated_bytes (MonoBoolean precise)
+	MONO_PERMIT (need (sgen_lock_gc, sgen_stop_world));
 
 GCObject* sgen_alloc_obj (GCVTable vtable, size_t size)
 	MONO_PERMIT (need (sgen_lock_gc, sgen_stop_world));

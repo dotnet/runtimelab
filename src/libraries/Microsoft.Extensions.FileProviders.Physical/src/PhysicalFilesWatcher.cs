@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.IO;
+using System.Runtime.Versioning;
 using System.Security;
 using System.Threading;
 using System.Threading.Tasks;
@@ -79,14 +80,30 @@ namespace Microsoft.Extensions.FileProviders.Physical
             bool pollForChanges,
             ExclusionFilters filters)
         {
+            if (fileSystemWatcher == null && !pollForChanges)
+            {
+                throw new ArgumentNullException(nameof(fileSystemWatcher), SR.Error_FileSystemWatcherRequiredWithoutPolling);
+            }
+
             _root = root;
-            _fileWatcher = fileSystemWatcher;
-            _fileWatcher.IncludeSubdirectories = true;
-            _fileWatcher.Created += OnChanged;
-            _fileWatcher.Changed += OnChanged;
-            _fileWatcher.Renamed += OnRenamed;
-            _fileWatcher.Deleted += OnChanged;
-            _fileWatcher.Error += OnError;
+
+            if (fileSystemWatcher != null)
+            {
+#if NETCOREAPP
+                if (OperatingSystem.IsBrowser() || (OperatingSystem.IsIOS() && !OperatingSystem.IsMacCatalyst()) || OperatingSystem.IsTvOS())
+                {
+                    throw new PlatformNotSupportedException(SR.Format(SR.FileSystemWatcher_PlatformNotSupported, typeof(FileSystemWatcher)));
+                }
+#endif
+
+                _fileWatcher = fileSystemWatcher;
+                _fileWatcher.IncludeSubdirectories = true;
+                _fileWatcher.Created += OnChanged;
+                _fileWatcher.Changed += OnChanged;
+                _fileWatcher.Renamed += OnRenamed;
+                _fileWatcher.Deleted += OnChanged;
+                _fileWatcher.Error += OnError;
+            }
 
             PollForChanges = pollForChanges;
             _filters = filters;
@@ -131,7 +148,10 @@ namespace Microsoft.Extensions.FileProviders.Physical
             }
 
             IChangeToken changeToken = GetOrAddChangeToken(filter);
+// We made sure that browser/iOS/tvOS never uses FileSystemWatcher.
+#pragma warning disable CA1416 // Validate platform compatibility
             TryEnableFileSystemWatcher();
+#pragma warning restore CA1416 // Validate platform compatibility
 
             return changeToken;
         }
@@ -255,6 +275,10 @@ namespace Microsoft.Extensions.FileProviders.Physical
             }
         }
 
+        [UnsupportedOSPlatform("browser")]
+        [UnsupportedOSPlatform("ios")]
+        [UnsupportedOSPlatform("tvos")]
+        [SupportedOSPlatform("maccatalyst")]
         private void OnRenamed(object sender, RenamedEventArgs e)
         {
             // For a file name change or a directory's name change notify registered tokens.
@@ -287,11 +311,19 @@ namespace Microsoft.Extensions.FileProviders.Physical
             }
         }
 
+        [UnsupportedOSPlatform("browser")]
+        [UnsupportedOSPlatform("ios")]
+        [UnsupportedOSPlatform("tvos")]
+        [SupportedOSPlatform("maccatalyst")]
         private void OnChanged(object sender, FileSystemEventArgs e)
         {
             OnFileSystemEntryChange(e.FullPath);
         }
 
+        [UnsupportedOSPlatform("browser")]
+        [UnsupportedOSPlatform("ios")]
+        [UnsupportedOSPlatform("tvos")]
+        [SupportedOSPlatform("maccatalyst")]
         private void OnError(object sender, ErrorEventArgs e)
         {
             // Notify all cache entries on error.
@@ -301,6 +333,10 @@ namespace Microsoft.Extensions.FileProviders.Physical
             }
         }
 
+        [UnsupportedOSPlatform("browser")]
+        [UnsupportedOSPlatform("ios")]
+        [UnsupportedOSPlatform("tvos")]
+        [SupportedOSPlatform("maccatalyst")]
         private void OnFileSystemEntryChange(string fullPath)
         {
             try
@@ -323,6 +359,10 @@ namespace Microsoft.Extensions.FileProviders.Physical
             }
         }
 
+        [UnsupportedOSPlatform("browser")]
+        [UnsupportedOSPlatform("ios")]
+        [UnsupportedOSPlatform("tvos")]
+        [SupportedOSPlatform("maccatalyst")]
         private void ReportChangeForMatchedEntries(string path)
         {
             if (string.IsNullOrEmpty(path))
@@ -359,29 +399,43 @@ namespace Microsoft.Extensions.FileProviders.Physical
             }
         }
 
+        [UnsupportedOSPlatform("browser")]
+        [UnsupportedOSPlatform("ios")]
+        [UnsupportedOSPlatform("tvos")]
+        [SupportedOSPlatform("maccatalyst")]
         private void TryDisableFileSystemWatcher()
         {
-            lock (_fileWatcherLock)
+            if (_fileWatcher != null)
             {
-                if (_filePathTokenLookup.IsEmpty &&
-                    _wildcardTokenLookup.IsEmpty &&
-                    _fileWatcher.EnableRaisingEvents)
+                lock (_fileWatcherLock)
                 {
-                    // Perf: Turn off the file monitoring if no files to monitor.
-                    _fileWatcher.EnableRaisingEvents = false;
+                    if (_filePathTokenLookup.IsEmpty &&
+                        _wildcardTokenLookup.IsEmpty &&
+                        _fileWatcher.EnableRaisingEvents)
+                    {
+                        // Perf: Turn off the file monitoring if no files to monitor.
+                        _fileWatcher.EnableRaisingEvents = false;
+                    }
                 }
             }
         }
 
+        [UnsupportedOSPlatform("browser")]
+        [UnsupportedOSPlatform("ios")]
+        [UnsupportedOSPlatform("tvos")]
+        [SupportedOSPlatform("maccatalyst")]
         private void TryEnableFileSystemWatcher()
         {
-            lock (_fileWatcherLock)
+            if (_fileWatcher != null)
             {
-                if ((!_filePathTokenLookup.IsEmpty || !_wildcardTokenLookup.IsEmpty) &&
-                    !_fileWatcher.EnableRaisingEvents)
+                lock (_fileWatcherLock)
                 {
-                    // Perf: Turn off the file monitoring if no files to monitor.
-                    _fileWatcher.EnableRaisingEvents = true;
+                    if ((!_filePathTokenLookup.IsEmpty || !_wildcardTokenLookup.IsEmpty) &&
+                        !_fileWatcher.EnableRaisingEvents)
+                    {
+                        // Perf: Turn off the file monitoring if no files to monitor.
+                        _fileWatcher.EnableRaisingEvents = true;
+                    }
                 }
             }
         }

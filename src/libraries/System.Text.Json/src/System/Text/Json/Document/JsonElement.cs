@@ -27,17 +27,6 @@ namespace System.Text.Json
             _idx = idx;
         }
 
-        // Currently used only as an optimization by the serializer, which does not want to
-        // return elements that are based on the <see cref="JsonDocument.Dispose"/> pattern.
-        internal static JsonElement ParseValue(ref Utf8JsonReader reader)
-        {
-            bool ret = JsonDocument.TryParseValue(ref reader, out JsonDocument? document, shouldThrow: true, useArrayPools: false);
-
-            Debug.Assert(ret != false, "Parse returned false with shouldThrow: true.");
-            Debug.Assert(document != null, "null document returned with shouldThrow: true.");
-            return document.RootElement;
-        }
-
         [DebuggerBrowsable(DebuggerBrowsableState.Never)]
         private JsonTokenType TokenType
         {
@@ -1180,6 +1169,13 @@ namespace System.Text.Json
             return _parent.GetRawValueAsString(_idx);
         }
 
+        internal ReadOnlyMemory<byte> GetRawValue()
+        {
+            CheckValidInstance();
+
+            return _parent.GetRawValue(_idx, includeQuotes: true);
+        }
+
         internal string GetPropertyRawText()
         {
             CheckValidInstance();
@@ -1396,7 +1392,7 @@ namespace System.Text.Json
         /// <exception cref="ObjectDisposedException">
         ///   The parent <see cref="JsonDocument"/> has been disposed.
         /// </exception>
-        public override string? ToString()
+        public override string ToString()
         {
             switch (TokenType)
             {
@@ -1413,10 +1409,10 @@ namespace System.Text.Json
                     {
                         // null parent should have hit the None case
                         Debug.Assert(_parent != null);
-                        return ((JsonDocument)_parent).GetRawValueAsString(_idx);
+                        return _parent.GetRawValueAsString(_idx);
                     }
                 case JsonTokenType.String:
-                    return GetString();
+                    return GetString()!;
                 case JsonTokenType.Comment:
                 case JsonTokenType.EndArray:
                 case JsonTokenType.EndObject:

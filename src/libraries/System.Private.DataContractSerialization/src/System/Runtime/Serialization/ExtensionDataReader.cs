@@ -9,7 +9,7 @@ namespace System.Runtime.Serialization
 {
     // NOTE: XmlReader methods that are not needed have been left un-implemented
 
-    internal class ExtensionDataReader : XmlReader
+    internal sealed class ExtensionDataReader : XmlReader
     {
         private enum ExtensionDataNodeType
         {
@@ -105,8 +105,7 @@ namespace System.Runtime.Serialization
         public override string XmlLang { get { return IsXmlDataNode ? _xmlNodeReader.XmlLang : base.XmlLang; } }
         public override string this[int i] { get { return IsXmlDataNode ? _xmlNodeReader[i] : GetAttribute(i); } }
         public override string? this[string name] { get { return IsXmlDataNode ? _xmlNodeReader[name] : GetAttribute(name); } }
-        // TODO-NULLABLE - unnecessary namespaceURI! - https://github.com/dotnet/roslyn/issues/47221
-        public override string? this[string name, string? namespaceURI] { get { return IsXmlDataNode ? _xmlNodeReader[name, namespaceURI!] : GetAttribute(name, namespaceURI); } }
+        public override string? this[string name, string? namespaceURI] { get { return IsXmlDataNode ? _xmlNodeReader[name, namespaceURI] : GetAttribute(name, namespaceURI); } }
 
         public override bool MoveToFirstAttribute()
         {
@@ -509,7 +508,7 @@ namespace System.Runtime.Serialization
         }
     }
 
-    internal class AttributeData
+    internal sealed class AttributeData
     {
         public string? prefix;
         public string? ns;
@@ -517,7 +516,7 @@ namespace System.Runtime.Serialization
         public string? value;
     }
 
-    internal class ElementData
+    internal sealed class ElementData
     {
         public string? localName;
         public string? ns;

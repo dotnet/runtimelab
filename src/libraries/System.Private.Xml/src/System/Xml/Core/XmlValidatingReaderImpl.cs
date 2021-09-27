@@ -32,7 +32,7 @@ namespace System.Xml
             None,
         }
 
-        internal class ValidationEventHandling : IValidationEventHandling
+        internal sealed class ValidationEventHandling : IValidationEventHandling
         {
             // Fields
             private readonly XmlValidatingReaderImpl _reader;
@@ -356,7 +356,7 @@ namespace System.Xml
         }
 
         // Returns the base URI of the current node.
-        public override string? BaseURI
+        public override string BaseURI
         {
             get
             {
@@ -833,7 +833,7 @@ namespace System.Xml
             }
             remove
             {
-                _eventHandling.RemoveHandler(value); ;
+                _eventHandling.RemoveHandler(value);
             }
         }
 

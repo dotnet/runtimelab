@@ -33,15 +33,15 @@ To run a single test from command line:
 
 * Locate the test binary folder based on the CSPROJ name.
 
-For example: `src\System.Net.Sockets\tests\Functional\System.Net.Sockets.Tests.csproj` will build and output binaries at  `bin\tests\Windows_NT.AnyCPU.Debug\System.Net.Sockets.Tests\netcoreapp1.0`.
+For example: `src\System.Net.Sockets\tests\Functional\System.Net.Sockets.Tests.csproj` will build and output binaries at  `bin\tests\windows.AnyCPU.Debug\System.Net.Sockets.Tests\netcoreapp1.0`.
 
 * Execute the test
 
 Assuming that your repo is at `C:\corefx`:
 
 ```
-cd C:\corefx\bin\tests\Windows_NT.AnyCPU.Debug\System.Net.Sockets.Tests\netcoreapp1.0
-C:\corefx\bin\tests\Windows_NT.AnyCPU.Debug\System.Net.Sockets.Tests\netcoreapp1.0\CoreRun.exe xunit.console.dll System.Net.Sockets.Tests.dll -xml testResults.xml -notrait category=nonwindowstests -notrait category=OuterLoop -notrait category=failing
+cd C:\corefx\bin\tests\windows.AnyCPU.Debug\System.Net.Sockets.Tests\netcoreapp1.0
+C:\corefx\bin\tests\windows.AnyCPU.Debug\System.Net.Sockets.Tests\netcoreapp1.0\CoreRun.exe xunit.console.dll System.Net.Sockets.Tests.dll -xml testResults.xml -notrait category=nonwindowstests -notrait category=OuterLoop -notrait category=failing
 ```
 
 * If the test crashes or encounters a `Debugger.Launch()` method call, WinDBG will automatically start and attach to the `CoreRun.exe` process
@@ -150,7 +150,7 @@ The following EventSources are built-in to CoreFX. The ones that are not marked 
 
 #### System.Net namespaces
 
-Helper scripts are available at https://github.com/dotnet/runtime/tree/master/src/libraries/Common/tests/Scripts/Tools. Run `net_startlog.cmd` as Administrator, run the application, then run `net_stoplog.cmd`. Open the `.etl` file with PerfView.
+Helper scripts are available at https://github.com/dotnet/runtime/tree/main/src/libraries/Common/tests/Scripts/Tools. Run `net_startlog.cmd` as Administrator, run the application, then run `net_stoplog.cmd`. Open the `.etl` file with PerfView.
 
 * `*Microsoft-System-Net-Http {bdd9a83e-1929-5482-0d73-2fe5e1c0e16d}`: HTTP-related traces.
 * `*Microsoft-System-Net-Http-WinHttpHandler {b71555b1-9566-5ce3-27f5-98405bbfde9d}`: WinHttpHandler-related traces.

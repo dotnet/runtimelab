@@ -148,7 +148,7 @@ namespace System.Xml
             get { return _impl.Depth; }
         }
 
-        public override string? BaseURI
+        public override string BaseURI
         {
             get { return _impl.BaseURI; }
         }
@@ -384,7 +384,7 @@ namespace System.Xml
             set { _impl.WhitespaceHandling = value; }
         }
 
-        [Obsolete("Use DtdProcessing property instead.")]
+        [Obsolete("XmlTextReader.ProhibitDtd has been deprecated. Use DtdProcessing instead.")]
         public bool ProhibitDtd
         {
             get { return _impl.DtdProcessing == DtdProcessing.Prohibit; }

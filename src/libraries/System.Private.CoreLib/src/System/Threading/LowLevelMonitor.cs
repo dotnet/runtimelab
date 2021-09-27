@@ -55,8 +55,8 @@ namespace System.Threading
         [Conditional("DEBUG")]
         private void ResetOwnerThread()
         {
-#if DEBUG
             VerifyIsLocked();
+#if DEBUG
             _ownerThread = null;
 #endif
         }
@@ -64,8 +64,8 @@ namespace System.Threading
         [Conditional("DEBUG")]
         private void SetOwnerThreadToCurrent()
         {
-#if DEBUG
             VerifyIsNotLockedByAnyThread();
+#if DEBUG
             _ownerThread = Thread.CurrentThread;
 #endif
         }
@@ -88,6 +88,16 @@ namespace System.Threading
             ResetOwnerThread();
             WaitCore();
             SetOwnerThreadToCurrent();
+        }
+
+        public bool Wait(int timeoutMilliseconds)
+        {
+            Debug.Assert(timeoutMilliseconds >= -1);
+
+            ResetOwnerThread();
+            bool waitResult = WaitCore(timeoutMilliseconds);
+            SetOwnerThreadToCurrent();
+            return waitResult;
         }
 
         public void Signal_Release()

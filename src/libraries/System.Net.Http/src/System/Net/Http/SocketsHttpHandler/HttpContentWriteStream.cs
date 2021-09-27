@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace System.Net.Http
 {
-    internal partial class HttpConnection : IDisposable
+    internal sealed partial class HttpConnection : IDisposable
     {
         private abstract class HttpContentWriteStream : HttpContentStream
         {
@@ -18,7 +18,7 @@ namespace System.Net.Http
                 Debug.Assert(connection != null);
 
             public sealed override bool CanRead => false;
-            public sealed override bool CanWrite => true;
+            public sealed override bool CanWrite => _connection != null;
 
             public sealed override void Flush() =>
                 _connection?.Flush();
@@ -37,7 +37,7 @@ namespace System.Net.Http
 
             public sealed override Task CopyToAsync(Stream destination, int bufferSize, CancellationToken cancellationToken) => throw new NotSupportedException();
 
-            public abstract ValueTask FinishAsync(bool async);
+            public abstract Task FinishAsync(bool async);
         }
     }
 }

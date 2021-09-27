@@ -35,12 +35,6 @@ mono_icall_get_new_line (MonoError *error);
 MonoBoolean
 mono_icall_is_64bit_os (void);
 
-MonoArrayHandle
-mono_icall_get_environment_variable_names (MonoError *error);
-
-void
-mono_icall_set_environment_variable (MonoString *name, MonoString *value);
-
 MonoStringHandle
 mono_icall_get_windows_folder_path (int folder, MonoError *error);
 
@@ -67,11 +61,18 @@ typedef enum {
 	MONO_ICALL_FLAGS_NONE = 0,
 	MONO_ICALL_FLAGS_FOREIGN = 1 << 1,
 	MONO_ICALL_FLAGS_USES_HANDLES = 1 << 2,
-	MONO_ICALL_FLAGS_COOPERATIVE = 1 << 3
+	MONO_ICALL_FLAGS_COOPERATIVE = 1 << 3,
+	MONO_ICALL_FLAGS_NO_WRAPPER = 1 << 4
 } MonoInternalCallFlags;
 
 gconstpointer
 mono_lookup_internal_call_full_with_flags (MonoMethod *method, gboolean warn_on_missing, guint32 *flags);
+
+void
+mono_dangerous_add_internal_call_coop (const char *name, const void* method);
+
+void
+mono_dangerous_add_internal_call_no_wrapper (const char *name, const void* method);
 
 gboolean
 mono_is_missing_icall_addr (gconstpointer addr);

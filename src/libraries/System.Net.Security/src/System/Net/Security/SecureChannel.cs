@@ -15,7 +15,7 @@ namespace System.Net.Security
 {
     // SecureChannel - a wrapper on SSPI based functionality.
     // Provides an additional abstraction layer over SSPI for SslStream.
-    internal class SecureChannel
+    internal sealed class SecureChannel
     {
         // When reading a frame from the wire first read this many bytes for the header.
         internal const int ReadHeaderSize = 5;
@@ -47,11 +47,7 @@ namespace System.Net.Security
             if (NetEventSource.Log.IsEnabled()) NetEventSource.Log.SecureChannelCtor(this, sslStream, sslAuthenticationOptions.TargetHost!, sslAuthenticationOptions.ClientCertificates, sslAuthenticationOptions.EncryptionPolicy);
 
             SslStreamPal.VerifyPackageInfo();
-
-            if (sslAuthenticationOptions.TargetHost == null)
-            {
-                NetEventSource.Fail(this, "sslAuthenticationOptions.TargetHost == null");
-            }
+            Debug.Assert(sslAuthenticationOptions.TargetHost != null, "sslAuthenticationOptions.TargetHost == null");
 
             _securityContext = null;
             _refreshCredentialNeeded = true;
@@ -550,13 +546,9 @@ namespace System.Net.Security
                 }
             }
 
-            if ((object?)clientCertificate != (object?)selectedCert && !clientCertificate!.Equals(selectedCert))
-            {
-                NetEventSource.Fail(this, "'selectedCert' does not match 'clientCertificate'.");
-            }
+            Debug.Assert((object?)clientCertificate == (object?)selectedCert || clientCertificate!.Equals(selectedCert), "'selectedCert' does not match 'clientCertificate'.");
 
-            if (NetEventSource.Log.IsEnabled())
-                NetEventSource.Info(this, $"Selected cert = {selectedCert}");
+            if (NetEventSource.Log.IsEnabled()) NetEventSource.Info(this, $"Selected cert = {selectedCert}");
 
             try
             {
@@ -599,6 +591,10 @@ namespace System.Net.Security
                     _credentialsHandle = cachedCredentialHandle;
                     _selectedClientCertificate = clientCertificate;
                     cachedCred = true;
+                    if (selectedCert != null)
+                    {
+                        _sslAuthenticationOptions.CertificateContext = SslStreamCertificateContext.Create(selectedCert!);
+                    }
                 }
                 else
                 {
@@ -695,11 +691,7 @@ namespace System.Net.Security
                     throw new NotSupportedException(SR.net_ssl_io_no_server_cert);
                 }
 
-                if (!localCertificate.Equals(selectedCert))
-                {
-                    NetEventSource.Fail(this, "'selectedCert' does not match 'localCertificate'.");
-                }
-
+                Debug.Assert(localCertificate.Equals(selectedCert), "'selectedCert' does not match 'localCertificate'.");
                 _sslAuthenticationOptions.CertificateContext = SslStreamCertificateContext.Create(selectedCert);
             }
 
@@ -745,7 +737,7 @@ namespace System.Net.Security
             {
                 if (token.Failed)
                 {
-                    NetEventSource.Error(this, $"Authentication failed. Status: {status.ToString()}, Exception message: {token.GetException()!.Message}");
+                    NetEventSource.Error(this, $"Authentication failed. Status: {status}, Exception message: {token.GetException()!.Message}");
                 }
             }
             return token;
@@ -838,6 +830,15 @@ namespace System.Net.Security
             return status;
         }
 
+        internal SecurityStatusPal Renegotiate(out byte[]? output)
+        {
+            return SslStreamPal.Renegotiate(
+                                      ref _credentialsHandle!,
+                                      ref _securityContext,
+                                      _sslAuthenticationOptions,
+                                      out output);
+        }
+
         /*++
             ProcessHandshakeSuccess -
                Called on successful completion of Handshake -
@@ -856,19 +857,10 @@ namespace System.Net.Security
 
             SslStreamPal.QueryContextStreamSizes(_securityContext!, out StreamSizes streamSizes);
 
-            try
-            {
-                _headerSize = streamSizes.Header;
-                _trailerSize = streamSizes.Trailer;
-                _maxDataSize = checked(streamSizes.MaximumMessage - (_headerSize + _trailerSize));
-
-                Debug.Assert(_maxDataSize > 0, "_maxDataSize > 0");
-            }
-            catch (Exception e) when (!ExceptionCheck.IsFatal(e))
-            {
-                NetEventSource.Fail(this, "StreamSizes out of range.");
-                throw;
-            }
+            _headerSize = streamSizes.Header;
+            _trailerSize = streamSizes.Trailer;
+            _maxDataSize = checked(streamSizes.MaximumMessage - (_headerSize + _trailerSize));
+            Debug.Assert(_maxDataSize > 0, "_maxDataSize > 0");
 
             SslStreamPal.QueryContextConnectionInfo(_securityContext!, out _connectionInfo);
         }
@@ -887,7 +879,7 @@ namespace System.Net.Security
         --*/
         internal SecurityStatusPal Encrypt(ReadOnlyMemory<byte> buffer, ref byte[] output, out int resultSize)
         {
-            if (NetEventSource.Log.IsEnabled()) NetEventSource.DumpBuffer(this, buffer);
+            if (NetEventSource.Log.IsEnabled()) NetEventSource.DumpBuffer(this, buffer.Span);
 
             byte[] writeBuffer = output;
 
@@ -911,24 +903,12 @@ namespace System.Net.Security
             return secStatus;
         }
 
-        internal SecurityStatusPal Decrypt(byte[]? payload, ref int offset, ref int count)
+        internal SecurityStatusPal Decrypt(Span<byte> buffer, out int outputOffset, out int outputCount)
         {
-            if ((uint)offset > (uint)(payload == null ? 0 : payload.Length))
-            {
-                NetEventSource.Fail(this, "Argument 'offset' out of range.");
-                throw new ArgumentOutOfRangeException(nameof(offset));
-            }
-
-            if ((uint)count > (uint)(payload == null ? 0 : payload.Length - offset))
-            {
-                NetEventSource.Fail(this, "Argument 'count' out of range.");
-                throw new ArgumentOutOfRangeException(nameof(count));
-            }
-
-            SecurityStatusPal status = SslStreamPal.DecryptMessage(_securityContext!, payload!, ref offset, ref count);
+            SecurityStatusPal status = SslStreamPal.DecryptMessage(_securityContext!, buffer, out outputOffset, out outputCount);
             if (NetEventSource.Log.IsEnabled() && status.ErrorCode == SecurityStatusPalErrorCode.OK)
             {
-                NetEventSource.DumpBuffer(this, payload!, offset, count);
+                NetEventSource.DumpBuffer(this, buffer.Slice(outputOffset, outputCount));
             }
 
             return status;
@@ -942,7 +922,7 @@ namespace System.Net.Security
         --*/
 
         //This method validates a remote certificate.
-        internal bool VerifyRemoteCertificate(RemoteCertificateValidationCallback? remoteCertValidationCallback, ref ProtocolToken? alertToken, out SslPolicyErrors sslPolicyErrors, out X509ChainStatusFlags chainStatus)
+        internal bool VerifyRemoteCertificate(RemoteCertificateValidationCallback? remoteCertValidationCallback, SslCertificateTrust? trust, ref ProtocolToken? alertToken, out SslPolicyErrors sslPolicyErrors, out X509ChainStatusFlags chainStatus)
         {
             sslPolicyErrors = SslPolicyErrors.None;
             chainStatus = X509ChainStatusFlags.NoError;
@@ -983,6 +963,19 @@ namespace System.Net.Security
                     if (remoteCertificateStore != null)
                     {
                         chain.ChainPolicy.ExtraStore.AddRange(remoteCertificateStore);
+                    }
+
+                    if (trust != null)
+                    {
+                        chain.ChainPolicy.TrustMode = X509ChainTrustMode.CustomRootTrust;
+                        if (trust._store != null)
+                        {
+                            chain.ChainPolicy.CustomTrustStore.AddRange(trust._store.Certificates);
+                        }
+                        if (trust._trustList != null)
+                        {
+                            chain.ChainPolicy.CustomTrustStore.AddRange(trust._trustList);
+                        }
                     }
 
                     sslPolicyErrors |= CertificateValidationPal.VerifyCertificateProperties(
@@ -1232,7 +1225,7 @@ namespace System.Net.Security
     }
 
     // ProtocolToken - used to process and handle the return codes from the SSPI wrapper
-    internal class ProtocolToken
+    internal sealed class ProtocolToken
     {
         internal SecurityStatusPal Status;
         internal byte[]? Payload;

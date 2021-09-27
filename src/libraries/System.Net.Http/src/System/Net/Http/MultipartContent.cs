@@ -4,7 +4,6 @@
 using System.Buffers;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Net.Http.Headers;
 using System.Text;
@@ -333,7 +332,7 @@ namespace System.Net.Http
             }
 
             // Add headers.
-            foreach (KeyValuePair<string, IEnumerable<string>> headerPair in content.Headers)
+            foreach (KeyValuePair<string, HeaderStringValues> headerPair in content.Headers.NonValidated)
             {
                 Encoding headerValueEncoding = HeaderEncodingSelector?.Invoke(headerPair.Key, content) ?? HttpRuleParser.DefaultHttpEncoding;
 
@@ -388,7 +387,7 @@ namespace System.Net.Http
             foreach (HttpContent content in _nestedContent)
             {
                 // Headers.
-                foreach (KeyValuePair<string, IEnumerable<string>> headerPair in content.Headers)
+                foreach (KeyValuePair<string, HeaderStringValues> headerPair in content.Headers.NonValidated)
                 {
                     currentLength += headerPair.Key.Length + ColonSpaceLength;
 
@@ -471,7 +470,7 @@ namespace System.Net.Http
 
             public override int Read(byte[] buffer, int offset, int count)
             {
-                ValidateReadArgs(buffer, offset, count);
+                ValidateBufferArguments(buffer, offset, count);
                 if (count == 0)
                 {
                     return 0;
@@ -532,7 +531,7 @@ namespace System.Net.Http
 
             public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
             {
-                ValidateReadArgs(buffer, offset, count);
+                ValidateBufferArguments(buffer, offset, count);
                 return ReadAsyncPrivate(new Memory<byte>(buffer, offset, count), cancellationToken).AsTask();
             }
 
@@ -640,26 +639,6 @@ namespace System.Net.Http
             }
 
             public override long Length => _length;
-
-            private static void ValidateReadArgs(byte[] buffer, int offset, int count)
-            {
-                if (buffer == null)
-                {
-                    throw new ArgumentNullException(nameof(buffer));
-                }
-                if (offset < 0)
-                {
-                    throw new ArgumentOutOfRangeException(nameof(offset));
-                }
-                if (count < 0)
-                {
-                    throw new ArgumentOutOfRangeException(nameof(count));
-                }
-                if (offset > buffer.Length - count)
-                {
-                    throw new ArgumentException(SR.net_http_buffer_insufficient_length, nameof(buffer));
-                }
-            }
 
             public override void Flush() { }
             public override void SetLength(long value) { throw new NotSupportedException(); }

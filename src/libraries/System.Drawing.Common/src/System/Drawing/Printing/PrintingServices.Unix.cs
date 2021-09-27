@@ -664,11 +664,11 @@ namespace System.Drawing.Printing
 
                 NameValueCollection options = LoadPrinterOptions(cups_dests.options, cups_dests.num_options);
 
-                if (options["printer-state"] != null)
-                    state = int.Parse(options["printer-state"]!); // TODO-NULLABLE dotnet/roslyn#34644
+                if (options["printer-state"] is string printerState)
+                    state = int.Parse(printerState);
 
-                if (options["printer-comment"] != null)
-                    comment = options["printer-state"]!; // TODO-NULLABLE dotnet/roslyn#34644
+                if (options["printer-comment"] is string printerComment)
+                    comment = printerComment;
 
                 switch (state)
                 {
@@ -1021,14 +1021,14 @@ namespace System.Drawing.Printing
         }
     }
 
-    internal class SysPrn
+    internal static class SysPrn
     {
         internal static void GetPrintDialogInfo(string printer, ref string port, ref string type, ref string status, ref string comment)
         {
             PrintingServices.GetPrintDialogInfo(printer, ref port, ref type, ref status, ref comment);
         }
 
-        internal class Printer
+        internal sealed class Printer
         {
             public readonly string Comment;
             public readonly string Port;
@@ -1046,7 +1046,7 @@ namespace System.Drawing.Printing
         }
     }
 
-    internal class GraphicsPrinter
+    internal sealed class GraphicsPrinter
     {
         private Graphics? graphics;
         private IntPtr hDC;

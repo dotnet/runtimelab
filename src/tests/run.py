@@ -7,17 +7,17 @@
 # Title:               run.py
 #
 # Notes:
-#  
-# Universal script to setup and run the xunit console runner. The script relies 
-# on run.proj and the bash and batch wrappers. All test excludes will also 
-# come from issues.targets. If there is a jit stress or gc stress exclude, 
-# please add GCStressIncompatible or JitOptimizationSensitive to the test's 
+#
+# Universal script to setup and run the xunit console runner. The script relies
+# on run.proj and the bash and batch wrappers. All test excludes will also
+# come from issues.targets. If there is a jit stress or gc stress exclude,
+# please add GCStressIncompatible or JitOptimizationSensitive to the test's
 # ilproj or csproj.
 #
 # The xunit runner currently relies on tests being built on the same host as the
 # target platform. This requires all tests run on linux x64 to be built by the
 # same platform and arch. If this is not done, the tests will run correctly;
-# however, expect failures due to incorrect exclusions in the xunit 
+# however, expect failures due to incorrect exclusions in the xunit
 # wrappers setup at build time.
 #
 # Note that for linux targets the native components to the tests are still built
@@ -26,14 +26,9 @@
 # prone to failure; however, copying into the Core_Root directory may create
 # naming conflicts.
 #
-# If you are running tests on a different target than the host that built, the
-# native tests components must be copied from:
-# artifacts/obj/<OS>.<Arch>.<BuildType>/tests to the target. If the location is not
-# standard please pass the -test_native_bin_location flag to the script.
-#
 # Use the instructions here:
-#    https://github.com/dotnet/runtime/blob/master/docs/workflow/testing/coreclr/windows-test-instructions.md
-#    https://github.com/dotnet/runtime/blob/master/docs/workflow/testing/coreclr/unix-test-instructions.md
+#    https://github.com/dotnet/runtime/blob/main/docs/workflow/testing/coreclr/windows-test-instructions.md
+#    https://github.com/dotnet/runtime/blob/main/docs/workflow/testing/coreclr/unix-test-instructions.md
 #
 ################################################################################
 ################################################################################
@@ -44,26 +39,15 @@ import fnmatch
 import json
 import math
 import os
-import platform
 import shutil
 import subprocess
 import sys
 import tempfile
-import time
 import re
 import string
-import zipfile
-
 import xml.etree.ElementTree
 
 from collections import defaultdict
-from sys import platform as _platform
-
-# Version specific imports
-if sys.version_info.major < 3:
-    import urllib
-else:
-    import urllib.request
 
 # Import coreclr_arguments.py from src\coreclr\scripts
 sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "coreclr", "scripts"))
@@ -73,28 +57,23 @@ from coreclr_arguments import *
 # Argument Parser
 ################################################################################
 
-description = ("""Universal script to setup and run the xunit console runner. The script relies 
-on run.proj and the bash and batch wrappers. All test excludes will also 
-come from issues.targets. If there is a jit stress or gc stress exclude, 
-please add GCStressIncompatible or JitOptimizationSensitive to the test's 
+description = ("""Universal script to setup and run the xunit console runner. The script relies
+on run.proj and the bash and batch wrappers. All test excludes will also
+come from issues.targets. If there is a jit stress or gc stress exclude,
+please add GCStressIncompatible or JitOptimizationSensitive to the test's
 ilproj or csproj.
 
 The xunit runner currently relies on tests being built on the same host as the
 target platform. This requires all tests run on linux x64 to be built by the
 same platform and arch. If this is not done, the tests will run correctly;
-however, expect failures due to incorrect exclusions in the xunit 
+however, expect failures due to incorrect exclusions in the xunit
 wrappers setup at build time.
 
 Note that for linux targets the native components to the tests are still built
 by the product build. This requires all native components to be either copied
 into the Core_Root directory or the test's managed directory. The latter is
 prone to failure; however, copying into the Core_Root directory may create
-naming conflicts.
-
-If you are running tests on a different target than the host that built, the
-native tests components must be copied from:
-artifacts/obj/<OS>.<Arch>.<BuildType>/tests to the target. If the location is not
-standard please pass the -test_native_bin_location flag to the script.""")
+naming conflicts.""")
 
 parser = argparse.ArgumentParser(description=description)
 
@@ -103,36 +82,24 @@ parser.add_argument("-arch", dest="arch", nargs='?', default="x64")
 parser.add_argument("-build_type", dest="build_type", nargs='?', default="Debug")
 parser.add_argument("-test_location", dest="test_location", nargs="?", default=None)
 parser.add_argument("-core_root", dest="core_root", nargs='?', default=None)
-parser.add_argument("-product_location", dest="product_location", nargs='?', default=None)
 parser.add_argument("-runtime_repo_location", dest="runtime_repo_location", default=os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))))
 parser.add_argument("-test_env", dest="test_env", default=None)
-parser.add_argument("-crossgen_altjit", dest="crossgen_altjit", default=None)
 
 # Optional arguments which change execution.
-
-# Rid is used only for restoring packages. This is a unspecified and undocumented
-# environment variable that needs to be passed to build.proj. Do not use this
-# unless you are attempting to target package restoration for another host/arch/os
-parser.add_argument("-rid", dest="rid", nargs="?", default=None)
 
 parser.add_argument("--il_link", dest="il_link", action="store_true", default=False)
 parser.add_argument("--long_gc", dest="long_gc", action="store_true", default=False)
 parser.add_argument("--gcsimulator", dest="gcsimulator", action="store_true", default=False)
 parser.add_argument("--ilasmroundtrip", dest="ilasmroundtrip", action="store_true", default=False)
-parser.add_argument("--run_crossgen_tests", dest="run_crossgen_tests", action="store_true", default=False)
 parser.add_argument("--run_crossgen2_tests", dest="run_crossgen2_tests", action="store_true", default=False)
 parser.add_argument("--large_version_bubble", dest="large_version_bubble", action="store_true", default=False)
-parser.add_argument("--precompile_core_root", dest="precompile_core_root", action="store_true", default=False)
-parser.add_argument("--skip_test_run", dest="skip_test_run", action="store_true", default=False, help="Does not run tests. Useful in conjunction with --precompile_core_root")
+parser.add_argument("--skip_test_run", dest="skip_test_run", action="store_true", default=False, help="Does not run tests.")
 parser.add_argument("--sequential", dest="sequential", action="store_true", default=False)
 
 parser.add_argument("--analyze_results_only", dest="analyze_results_only", action="store_true", default=False)
 parser.add_argument("--verbose", dest="verbose", action="store_true", default=False)
 parser.add_argument("--limited_core_dumps", dest="limited_core_dumps", action="store_true", default=False)
 parser.add_argument("--run_in_context", dest="run_in_context", action="store_true", default=False)
-
-# Only used on Unix
-parser.add_argument("-test_native_bin_location", dest="test_native_bin_location", nargs='?', default=None)
 
 ################################################################################
 # Globals
@@ -167,7 +134,7 @@ class TempFile:
             print("Error failed to delete: {}.".format(self.file_name))
 
 class DebugEnv:
-    def __init__(self, 
+    def __init__(self,
                  args,
                  env,
                  test):
@@ -177,7 +144,7 @@ class DebugEnv:
             args
             env                     : env for the repro
             test ({})               : The test metadata
-        
+
         """
         self.unique_name = "%s_%s_%s_%s" % (test["name"],
                                             args.host_os,
@@ -193,7 +160,7 @@ class DebugEnv:
 
         self.path = None
         
-        if self.args.host_os == "Windows_NT":
+        if self.args.host_os == "windows":
             self.path = self.unique_name + ".cmd"
         else:
             self.path = self.unique_name + ".sh"
@@ -204,7 +171,7 @@ class DebugEnv:
         self.repro_location = repro_location
 
         self.path = os.path.join(repro_location, self.path)
-        
+
         exe_location = os.path.splitext(self.test_location)[0] + ".exe"
         if os.path.isfile(exe_location):
             self.exe_location = exe_location
@@ -233,8 +200,8 @@ class DebugEnv:
                 "configurations": []
             }
 
-            json_str = json.dumps(initial_json, 
-                                  indent=4, 
+            json_str = json.dumps(initial_json,
+                                  indent=4,
                                   separators=(',', ': '))
 
             with open(launch_json_location, 'w') as file_handle:
@@ -243,12 +210,12 @@ class DebugEnv:
         launch_json = None
         with open(launch_json_location) as file_handle:
             launch_json = file_handle.read()
-        
+
         launch_json = json.loads(launch_json)
 
         configurations = launch_json["configurations"]
 
-        dbg_type = "cppvsdbg" if self.host_os == "Windows_NT" else ""
+        dbg_type = "cppvsdbg" if self.host_os == "windows" else ""
 
         env = {
             "COMPlus_AssertOnNYI": "1",
@@ -260,7 +227,7 @@ class DebugEnv:
             self.env = defaultdict(lambda: None, self.env)
             for key, value in env.items():
                 self.env[key] = value
-            
+
         else:
             self.env = env
 
@@ -299,7 +266,7 @@ class DebugEnv:
         if not config_exists:
             configurations.append(configuration)
         json_str = json.dumps(launch_json,
-                              indent=4, 
+                              indent=4,
                               separators=(',', ': '))
 
         with open(launch_json_location, 'w') as file_handle:
@@ -309,7 +276,7 @@ class DebugEnv:
         """ Create the repro wrapper
         """
 
-        if self.args.host_os == "Windows_NT":
+        if self.args.host_os == "windows":
             self.__create_batch_wrapper__()
         else:
             self.__create_bash_wrapper__()
@@ -317,14 +284,14 @@ class DebugEnv:
     def __create_batch_wrapper__(self):
         """ Create a windows batch wrapper
         """
-    
+
         wrapper = \
 """@echo off
 REM ============================================================================
 REM Repro environment for %s
-REM 
+REM
 REM Notes:
-REM 
+REM
 REM This wrapper is automatically generated by run.py. It includes the
 REM necessary environment to reproduce a failure that occured during running
 REM the tests.
@@ -352,20 +319,20 @@ echo Core_Root is set to: "%%CORE_ROOT%%"
                 wrapper += "set %s=%s%s" % (key, value, line_sep)
 
         wrapper += "%s" % line_sep
-        wrapper += "echo call %s%s" % (self.test_location, line_sep) 
-        wrapper += "call %s%s" % (self.test_location, line_sep) 
+        wrapper += "echo call %s%s" % (self.test_location, line_sep)
+        wrapper += "call %s%s" % (self.test_location, line_sep)
 
         self.wrapper = wrapper
-    
+
     def __create_bash_wrapper__(self):
         """ Create a unix bash wrapper
         """
-    
+
         wrapper = \
 """
 #============================================================================
 # Repro environment for %s
-# 
+#
 # Notes:
 #
 # This wrapper is automatically generated by run.py. It includes the
@@ -381,13 +348,13 @@ echo Core_Root is set to: "%%CORE_ROOT%%"
 # ============================================================================
 
 # Set Core_Root if it has not been already set.
-if [ \"${CORE_ROOT}\" = \"\" ] || [ ! -z \"${CORE_ROOT}\" ]; then 
-    export CORE_ROOT=%s 
-else 
+if [ \"${CORE_ROOT}\" = \"\" ] || [ ! -z \"${CORE_ROOT}\" ]; then
+    export CORE_ROOT=%s
+else
     echo \"CORE_ROOT set to ${CORE_ROOT}\"
 fi
 
-""" % (self.unique_name, self.core_root)
+""" % (self.unique_name, self.args.core_root)
 
         line_sep = os.linesep
 
@@ -397,8 +364,8 @@ fi
                 wrapper += "export %s=%s%s" % (key, value, line_sep)
 
         wrapper += "%s" % line_sep
-        wrapper += "echo bash %s%s" % (self.test_location, line_sep) 
-        wrapper += "bash %s%s" % (self.test_location, line_sep) 
+        wrapper += "echo bash %s%s" % (self.test_location, line_sep)
+        wrapper += "bash %s%s" % (self.test_location, line_sep)
 
         self.wrapper = wrapper
 
@@ -419,14 +386,14 @@ fi
 ################################################################################
 # Helper Functions
 ################################################################################
-   
+
 def create_and_use_test_env(_os, env, func):
     """ Create a test env based on the env passed
 
     Args:
         _os(str)                        : OS name
         env(defaultdict(lambda: None))  : complus variables, key,value dict
-        func(lambda)                    : lambda to call, after creating the 
+        func(lambda)                    : lambda to call, after creating the
                                         : test_env
 
     Notes:
@@ -464,12 +431,12 @@ def create_and_use_test_env(_os, env, func):
         #
         # errors.
 
-        tempfile_suffix = ".bat" if _os == "Windows_NT" else ""
+        tempfile_suffix = ".bat" if _os == "windows" else ""
         test_env = tempfile.NamedTemporaryFile(mode="w", suffix=tempfile_suffix, delete=False)
         try:
             file_header = None
 
-            if _os == "Windows_NT":
+            if _os == "windows":
                 file_header = \
 """@REM Temporary test env for test run.
 @echo on
@@ -481,11 +448,11 @@ def create_and_use_test_env(_os, env, func):
 
             test_env.write(file_header)
             contents += file_header
-            
+
             for key in complus_vars:
                 value = complus_vars[key]
                 command = None
-                if _os == "Windows_NT":
+                if _os == "windows":
                     command = "set"
                 else:
                     command = "export"
@@ -503,7 +470,7 @@ def create_and_use_test_env(_os, env, func):
 
                 contents += line
 
-            if _os == "Windows_NT":
+            if _os == "windows":
                 file_suffix = \
 """@echo off
 """
@@ -532,7 +499,7 @@ def create_and_use_test_env(_os, env, func):
 
 def get_environment(test_env=None):
     """ Get all the COMPlus_* Environment variables
-    
+
     Notes:
         All COMPlus variables need to be captured as a test_env script to avoid
         influencing the test runner.
@@ -543,7 +510,7 @@ def get_environment(test_env=None):
     global gc_stress
 
     complus_vars = defaultdict(lambda: "")
-    
+
     for key in os.environ:
         if "complus" in key.lower():
             complus_vars[key] = os.environ[key]
@@ -686,7 +653,7 @@ def setup_coredump_generation(host_os):
     if isinstance(coredump_pattern, bytes):
         print("Binary data found. Decoding.")
         coredump_pattern = coredump_pattern.decode('ascii')
-        
+
     print("CoreDump Pattern: {}".format(coredump_pattern))
 
     # resource is only available on Unix platforms
@@ -826,16 +793,16 @@ def inspect_and_delete_coredump_files(host_os, arch, test_location):
     """
     # This function prints some basic information from core files in the current
     # directory and deletes them immediately.
-    
+
     # Depending on distro/configuration, the core files may either be named "core"
-    # or "core.<PID>" by default. We will read /proc/sys/kernel/core_uses_pid to 
+    # or "core.<PID>" by default. We will read /proc/sys/kernel/core_uses_pid to
     # determine which one it is.
     # On OS X/macOS, we checked the kern.corefile value before enabling core dump
     # generation, so we know it always includes the PID.
     coredump_name_uses_pid=False
 
     print("Looking for coredumps...")
-    
+
     if "%P" in coredump_pattern:
         coredump_name_uses_pid=True
     elif host_os == "Linux" and os.path.isfile("/proc/sys/kernel/core_uses_pid"):
@@ -866,14 +833,11 @@ def inspect_and_delete_coredump_files(host_os, arch, test_location):
 def run_tests(args,
               test_env_script_path=None):
     """ Run the coreclr tests
-    
+
     Args:
         args
         test_env_script_path  : Path to script to use to set the test environment, if any.
     """
-
-    if args.precompile_core_root:
-        precompile_core_root(args)
 
     if args.skip_test_run:
         return
@@ -887,7 +851,7 @@ def run_tests(args,
         per_test_timeout = 20*60*1000
         print("Setting RunningLongGCTests=1")
         os.environ["RunningLongGCTests"] = "1"
-    
+
     if args.gcsimulator:
         print("Running GCSimulator tests, extending timeout to one hour.")
         per_test_timeout = 60*60*1000
@@ -898,11 +862,6 @@ def run_tests(args,
         print("Running ILasm round trip.")
         print("Setting RunningIlasmRoundTrip=1")
         os.environ["RunningIlasmRoundTrip"] = "1"
-
-    if args.run_crossgen_tests:
-        print("Running tests R2R")
-        print("Setting RunCrossGen=true")
-        os.environ["RunCrossGen"] = "true"
 
     if args.run_crossgen2_tests:
         print("Running tests R2R (Crossgen2)")
@@ -927,7 +886,7 @@ def run_tests(args,
         per_test_timeout = 20*60*1000
 
     # Set __TestTimeout environment variable, which is the per-test timeout in milliseconds.
-    # This is read by the test wrapper invoker, in src\coreclr\tests\src\Common\Coreclr.TestWrapper\CoreclrTestWrapperLib.cs.
+    # This is read by the test wrapper invoker, in src\tests\Common\Coreclr.TestWrapper\CoreclrTestWrapperLib.cs.
     print("Setting __TestTimeout=%s" % str(per_test_timeout))
     os.environ["__TestTimeout"] = str(per_test_timeout)
 
@@ -943,52 +902,6 @@ def run_tests(args,
         print("Setting __TestEnv=%s" % test_env_script_path)
         os.environ["__TestEnv"] = test_env_script_path
 
-    #=====================================================================================================================================================
-    #
-    # This is a workaround needed to unblock our CI (in particular, Linux/arm and Linux/arm64 jobs) from the following failures appearing almost in every
-    # pull request (but hard to reproduce locally)
-    #
-    #   System.IO.FileLoadException: Could not load file or assembly 'Exceptions.Finalization.XUnitWrapper, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null'.
-    #   An operation is not legal in the current state. (Exception from HRESULT: 0x80131509 (COR_E_INVALIDOPERATION))
-    #
-    # COR_E_INVALIDOPERATION comes from System.InvalidOperationException that is thrown during AssemblyLoadContext.ResolveUsingResolvingEvent
-    # when multiple threads attempt to modify an instance of Dictionary (managedAssemblyCache) during Xunit.DependencyContextAssemblyCache.LoadManagedDll call.
-    #
-    # In order to mitigate the failure we built our own xunit.console.dll with ConcurrentDictionary used for managedAssemblyCache and use this instead of
-    # the one pulled from NuGet. The exact code that got built can be found at the following fork of Xunit
-    #  * https://github.com/echesakovMSFT/xunit/tree/UseConcurrentDictionaryInDependencyContextAssemblyCache
-    #
-    # The assembly was built using Microsoft Visual Studio v15.9.0-pre.4.0 Developer Command Prompt using the following commands
-    #  1) git clone https://github.com/echesakovMSFT/xunit.git --branch UseConcurrentDictionaryInDependencyContextAssemblyCache --single-branch
-    #  2) cd xunit
-    #  3) git submodule update --init
-    #  4) powershell .\build.ps1 -target packages -buildAssemblyVersion 2.4.1 -buildSemanticVersion 2.4.1-coreclr
-    #
-    # Then file "xunit\src\xunit.console\bin\Release\netcoreapp2.0\xunit.console.dll" was archived and uploaded to the clrjit blob storage.
-    #
-    # Ideally, this code should be removed when we find a more robust way of running Xunit tests.
-    #
-    # References:
-    #  * https://github.com/dotnet/runtime/issues/11232
-    #  * https://github.com/dotnet/runtime/issues/11320
-    #  * https://github.com/xunit/xunit/issues/1842
-    #  * https://github.com/xunit/xunit/pull/1846
-    #
-    #=====================================================================================================================================================
-
-    print("Download and overwrite xunit.console.dll in Core_Root")
-
-    urlretrieve = urllib.urlretrieve if sys.version_info.major < 3 else urllib.request.urlretrieve
-    zipfilename = os.path.join(tempfile.gettempdir(), "xunit.console.dll.zip")
-    url = r"https://clrjit.blob.core.windows.net/xunit-console/xunit.console.dll-v2.4.1.zip"
-    urlretrieve(url, zipfilename)
-
-    with zipfile.ZipFile(zipfilename,"r") as ziparch:
-        ziparch.extractall(args.core_root)
-
-    os.remove(zipfilename)
-    assert not os.path.isfile(zipfilename)
-
     return call_msbuild(args)
 
 def setup_args(args):
@@ -1002,10 +915,10 @@ def setup_args(args):
         location using the build type and the arch.
     """
 
-    requires_coreroot = args.arch.lower() != "wasm"
-    coreclr_setup_args = CoreclrArguments(args, 
+    requires_coreroot = args.host_os != "Browser" and args.host_os != "Android"
+    coreclr_setup_args = CoreclrArguments(args,
                                           require_built_test_dir=True,
-                                          require_built_core_root=requires_coreroot, 
+                                          require_built_core_root=requires_coreroot,
                                           require_built_product_dir=False)
 
     normal_location = os.path.join(coreclr_setup_args.artifacts_location, "tests", "coreclr", "%s.%s.%s" % (coreclr_setup_args.host_os, coreclr_setup_args.arch, coreclr_setup_args.build_type))
@@ -1039,11 +952,6 @@ def setup_args(args):
                               "Error setting analyze_results_only")
 
     coreclr_setup_args.verify(args,
-                              "crossgen_altjit",
-                              lambda arg: True,
-                              "Error setting crossgen_altjit")
-
-    coreclr_setup_args.verify(args,
                               "rid",
                               lambda arg: True,
                               "Error setting rid")
@@ -1057,7 +965,7 @@ def setup_args(args):
                               "long_gc",
                               lambda arg: True,
                               "Error setting long_gc")
-    
+
     coreclr_setup_args.verify(args,
                               "gcsimulator",
                               lambda arg: True,
@@ -1072,21 +980,11 @@ def setup_args(args):
                               "large_version_bubble",
                               lambda arg: True,
                               "Error setting large_version_bubble")
-    
-    coreclr_setup_args.verify(args,
-                              "run_crossgen_tests",
-                              lambda arg: True,
-                              "Error setting run_crossgen_tests")
 
     coreclr_setup_args.verify(args,
                               "run_crossgen2_tests",
                               lambda unused: True,
                               "Error setting run_crossgen2_tests")
-
-    coreclr_setup_args.verify(args,
-                              "precompile_core_root",
-                              lambda arg: True,
-                              "Error setting precompile_core_root")
 
     coreclr_setup_args.verify(args,
                               "skip_test_run",
@@ -1097,7 +995,7 @@ def setup_args(args):
                               "sequential",
                               lambda arg: True,
                               "Error setting sequential")
-    
+
     coreclr_setup_args.verify(args,
                               "verbose",
                               lambda arg: True,
@@ -1107,148 +1005,27 @@ def setup_args(args):
                               "limited_core_dumps",
                               lambda arg: True,
                               "Error setting limited_core_dumps")
-    
-    coreclr_setup_args.verify(args,
-                              "test_native_bin_location",
-                              lambda arg: True,
-                              "Error setting test_native_bin_location")
 
     coreclr_setup_args.verify(args,
                               "run_in_context",
                               lambda arg: True,
                               "Error setting run_in_context")
 
-    is_same_os = False
-    is_same_arch = False
-    is_same_build_type = False
-
-    # We will write out build information into the test directory. This is used
-    # by run.py to determine whether we need to rebuild the test wrappers.
-    if os.path.isfile(os.path.join(coreclr_setup_args.test_location, "build_info.json")):
-        with open(os.path.join(coreclr_setup_args.test_location, "build_info.json")) as file_handle:
-            build_info = json.load(file_handle)
-        is_same_os = build_info["build_os"] == coreclr_setup_args.host_os
-        is_same_arch = build_info["build_arch"] == coreclr_setup_args.arch
-        is_same_build_type = build_info["build_type"] == coreclr_setup_args.build_type
-
-    if coreclr_setup_args.host_os != "Windows_NT" and not (is_same_os and is_same_arch and is_same_build_type):
-        test_native_bin_location = None
-        if args.test_native_bin_location is None:
-            test_native_bin_location = os.path.join(os.path.join(coreclr_setup_args.artifacts_location, "tests", "coreclr", "obj", "%s.%s.%s" % (coreclr_setup_args.host_os, coreclr_setup_args.arch, coreclr_setup_args.build_type)))
-        else:
-            test_native_bin_location = args.test_native_bin_location
-        
-        coreclr_setup_args.verify(test_native_bin_location,
-                                  "test_native_bin_location",
-                                  lambda test_native_bin_location: os.path.isdir(test_native_bin_location),
-                                  "Error setting test_native_bin_location")
-    else:
-        setattr(coreclr_setup_args, "test_native_bin_location", None)
-
     print("host_os                  : %s" % coreclr_setup_args.host_os)
     print("arch                     : %s" % coreclr_setup_args.arch)
     print("build_type               : %s" % coreclr_setup_args.build_type)
     print("runtime_repo_location    : %s" % coreclr_setup_args.runtime_repo_location)
-    print("product_location         : %s" % coreclr_setup_args.product_location)
     print("core_root                : %s" % coreclr_setup_args.core_root)
     print("test_location            : %s" % coreclr_setup_args.test_location)
-    print("test_native_bin_location : %s" % coreclr_setup_args.test_native_bin_location)
 
-    coreclr_setup_args.crossgen_path = os.path.join(coreclr_setup_args.core_root, "crossgen%s" % (".exe" if coreclr_setup_args.host_os == "Windows_NT" else ""))
-    coreclr_setup_args.corerun_path = os.path.join(coreclr_setup_args.core_root, "corerun%s" % (".exe" if coreclr_setup_args.host_os == "Windows_NT" else ""))
-    coreclr_setup_args.dotnetcli_script_path = os.path.join(coreclr_setup_args.runtime_repo_location, "dotnet%s" % (".cmd" if coreclr_setup_args.host_os == "Windows_NT" else ".sh"))
+    coreclr_setup_args.corerun_path = os.path.join(coreclr_setup_args.core_root, "corerun%s" % (".exe" if coreclr_setup_args.host_os == "windows" else ""))
+    coreclr_setup_args.dotnetcli_script_path = os.path.join(coreclr_setup_args.runtime_repo_location, "dotnet%s" % (".cmd" if coreclr_setup_args.host_os == "windows" else ".sh"))
     coreclr_setup_args.coreclr_tests_dir = os.path.join(coreclr_setup_args.coreclr_dir, "tests")
     coreclr_setup_args.coreclr_tests_src_dir = os.path.join(coreclr_setup_args.runtime_repo_location, "src", "tests")
-    coreclr_setup_args.runincontext_script_path = os.path.join(coreclr_setup_args.coreclr_tests_src_dir, "Common", "scripts", "runincontext%s" % (".cmd" if coreclr_setup_args.host_os == "Windows_NT" else ".sh"))
+    coreclr_setup_args.runincontext_script_path = os.path.join(coreclr_setup_args.coreclr_tests_src_dir, "Common", "scripts", "runincontext%s" % (".cmd" if coreclr_setup_args.host_os == "windows" else ".sh"))
     coreclr_setup_args.logs_dir = os.path.join(coreclr_setup_args.artifacts_location, "log")
 
     return coreclr_setup_args
-
-def precompile_core_root(args):
-    """ Precompile all of the assemblies in the core_root directory
-
-    Args:
-        args
-    """
-
-    skip_list = [
-        ".*xunit.*",
-        ".*api-ms-win-core.*",
-        ".*api-ms-win.*",
-        ".*System.Private.CoreLib.*"
-    ]
-
-    unix_skip_list = [
-        ".*mscorlib.*",
-        ".*System.Runtime.WindowsRuntime.*",
-        ".*System.Runtime.WindowsRuntime.UI.Xaml.*",
-        ".*R2RDump.dll.*"
-    ]
-
-    arm64_unix_skip_list = [
-        ".*Microsoft.CodeAnalysis.VisualBasic.*",
-        ".*System.Net.NameResolution.*",
-        ".*System.Net.Sockets.*",
-        ".*System.Net.Primitives.*"
-    ]
-
-    if args.host_os != "Windows_NT":
-        skip_list += unix_skip_list
-    
-        if args.arch == "arm64":
-            skip_list += arm64_unix_skip_list
-
-    assert os.path.isdir(args.test_location)
-    assert os.path.isdir(args.core_root)
-
-    def call_crossgen(file, env):
-        assert os.path.isfile(args.crossgen_path)
-        command = [args.crossgen_path, "/Platform_Assemblies_Paths", args.core_root, file]
-
-        proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env)
-        proc.communicate()
-
-        return_code = proc.returncode
-
-        if return_code == -2146230517:
-            print("%s is not a managed assembly." % file)
-            return False
-
-        if return_code != 0:
-            print("Unable to precompile %s (%d)" % (file, return_code))
-            return False
-
-        print("Successfully precompiled %s" % file)
-        return True
-
-    print("Precompiling all assemblies in %s" % args.core_root)
-    print("")
-
-    env = os.environ.copy()
-
-    if not args.crossgen_altjit is None:
-        env["COMPlus_AltJit"]="*"
-        env["COMPlus_AltJitNgen"]="*"
-        env["COMPlus_AltJitName"]=args.crossgen_altjit
-        env["COMPlus_AltJitAssertOnNYI"]="1"
-        env["COMPlus_NoGuiOnAssert"]="1"
-        env["COMPlus_ContinueOnAssert"]="0"
-
-    dlls = [os.path.join(args.core_root, item) for item in os.listdir(args.core_root) if item.endswith("dll") and "mscorlib" not in item]
-
-    def in_skip_list(item):
-        found = False
-        for skip_re in skip_list: 
-            if re.match(skip_re, item.lower()) is not None: 
-                found = True
-        return found
-
-    dlls = [dll for dll in dlls if not in_skip_list(dll)]
-
-    for dll in dlls:
-        call_crossgen(dll, env)
-
-    print("")
 
 if sys.version_info.major < 3:
     def to_unicode(s):
@@ -1265,7 +1042,7 @@ def find_test_from_name(host_os, test_location, test_name):
         test_location (str) :path to the coreclr tests
         test_name (str)     : Name of the test, all special characters will have
                             : been replaced with underscores.
-    
+
     Return:
         test_path (str): Path of the test based on its name
     """
@@ -1323,7 +1100,7 @@ def find_test_from_name(host_os, test_location, test_name):
         for item in dir_contents:
             if test_item in item:
                 count += 1
-        
+
         return count > 1
 
     # Find the test by searching down the directory list.
@@ -1354,13 +1131,14 @@ def find_test_from_name(host_os, test_location, test_name):
                         break
                     elif size_of_largest_name_file < len(os.path.basename(added_path)):
                         break
-        
+
         starting_path = test_path
 
     location = starting_path
     if not os.path.isfile(location):
-        pass
-    
+        print("Warning: couldn't find test: %s" % test_name)
+        return None
+
     assert(os.path.isfile(location))
 
     return location
@@ -1426,19 +1204,19 @@ def parse_test_results(args):
                     test_output = failure_info.text
 
                 test_location_on_filesystem = find_test_from_name(args.host_os, args.test_location, test_name)
+                if test_location_on_filesystem is not None:
+                    assert os.path.isfile(test_location_on_filesystem)
 
-                assert os.path.isfile(test_location_on_filesystem)
-                
-                assert tests[test_name] == None
-                tests[test_name] = defaultdict(lambda: None, {
-                    "name": test_name,
-                    "test_path": test_location_on_filesystem,
-                    "failed": failed,
-                    "skipped": skipped,
-                    "passed": passed,
-                    "time": time,
-                    "test_output": test_output
-                })
+                    assert tests[test_name] == None
+                    tests[test_name] = defaultdict(lambda: None, {
+                        "name": test_name,
+                        "test_path": test_location_on_filesystem,
+                        "failed": failed,
+                        "skipped": skipped,
+                        "passed": passed,
+                        "time": time,
+                        "test_output": test_output
+                    })
 
     return tests
 
@@ -1446,9 +1224,9 @@ def print_summary(tests):
     """ Print a summary of the test results
 
     Args:
-        tests (defaultdict[String]: { }): The tests that were reported by 
+        tests (defaultdict[String]: { }): The tests that were reported by
                                         : xunit
-    
+
     """
 
     assert tests is not None
@@ -1510,7 +1288,7 @@ def print_summary(tests):
         print("%d failed tests:" % len(failed_tests))
         print("")
         print_tests_helper(failed_tests, None)
-        
+
     # The following code is currently disabled, as it produces too much verbosity in a normal
     # test run. It could be put under a switch, or else just enabled as needed when investigating
     # test slowness.
@@ -1530,7 +1308,7 @@ def print_summary(tests):
         for item in failed_tests:
             print("[%s]: " % item["test_path"])
             print("")
-            
+
             test_output = item["test_output"]
 
             # XUnit results are captured as escaped characters.
@@ -1576,16 +1354,16 @@ def create_repro(args, env, tests):
     Args:
         args
         env
-        tests (defaultdict[String]: { }): The tests that were reported by 
+        tests (defaultdict[String]: { }): The tests that were reported by
                                         : xunit
-    
+
     """
     assert tests is not None
 
     failed_tests = [tests[item] for item in tests if tests[item]["failed"] == "1"]
     if len(failed_tests) == 0:
         return
-    
+
     repro_location = os.path.join(args.artifacts_location, "repro", "%s.%s.%s" % (args.host_os, args.arch, args.build_type))
     if os.path.isdir(repro_location):
         shutil.rmtree(repro_location)
@@ -1620,8 +1398,8 @@ def main(args):
         if args.test_env is not None:
             ret_code = run_tests(args, args.test_env)
         else:
-            ret_code = create_and_use_test_env(args.host_os, 
-                                               env, 
+            ret_code = create_and_use_test_env(args.host_os,
+                                               env,
                                                lambda test_env_script_path: run_tests(args, test_env_script_path))
         print("Test run finished.")
 

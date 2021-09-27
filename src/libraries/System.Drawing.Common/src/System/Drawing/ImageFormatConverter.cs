@@ -11,7 +11,7 @@ namespace System.Drawing
 {
     public class ImageFormatConverter : TypeConverter
     {
-        public override bool CanConvertFrom(ITypeDescriptorContext? context, Type? sourceType)
+        public override bool CanConvertFrom(ITypeDescriptorContext? context, Type sourceType)
         {
             return sourceType == typeof(string) || base.CanConvertFrom(context, sourceType);
         }
@@ -25,7 +25,7 @@ namespace System.Drawing
             return base.CanConvertTo(context, destinationType);
         }
 
-        public override object ConvertFrom(ITypeDescriptorContext? context, CultureInfo? culture, object value)
+        public override object? ConvertFrom(ITypeDescriptorContext? context, CultureInfo? culture, object value)
         {
             // we must be able to convert from short names and long names
             string? strFormat = value as string;
@@ -66,7 +66,7 @@ namespace System.Drawing
             throw new FormatException(SR.Format(SR.ConvertInvalidPrimitive, strFormat, nameof(ImageFormat)));
         }
 
-        public override object ConvertTo(ITypeDescriptorContext? context, CultureInfo? culture, object? value, Type destinationType)
+        public override object? ConvertTo(ITypeDescriptorContext? context, CultureInfo? culture, object? value, Type destinationType)
         {
             if (value is ImageFormat imgFormat)
             {
@@ -101,11 +101,11 @@ namespace System.Drawing
 
                     if (strFormat != null)
                     {
-                        return new InstanceDescriptor(typeof(ImageFormat).GetTypeInfo().GetProperty(strFormat), null);
+                        return new InstanceDescriptor(typeof(ImageFormat).GetProperty(strFormat), null);
                     }
                     else
                     {
-                        ConstructorInfo? ctor = typeof(ImageFormat).GetTypeInfo().GetConstructor(new Type[] { typeof(Guid) });
+                        ConstructorInfo? ctor = typeof(ImageFormat).GetConstructor(new Type[] { typeof(Guid) });
                         return new InstanceDescriptor(ctor, new object[] { imgFormat.Guid });
                     }
                 }

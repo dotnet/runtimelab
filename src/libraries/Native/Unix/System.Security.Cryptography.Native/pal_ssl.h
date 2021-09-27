@@ -113,12 +113,6 @@ typedef enum
 // the function pointer definition for the callback used in SslCtxSetVerify
 typedef int32_t (*SslCtxSetVerifyCallback)(int32_t, X509_STORE_CTX*);
 
-// the function pointer definition for the callback used in SslCtxSetCertVerifyCallback
-typedef int32_t (*SslCtxSetCertVerifyCallbackCallback)(X509_STORE_CTX*, void* arg);
-
-// the function pointer definition for the callback used in SslCtxSetClientCertCallback
-typedef int32_t (*SslClientCertCallback)(SSL* ssl, X509** x509, EVP_PKEY** pkey);
-
 // the function pointer definition for the callback used in SslCtxSetAlpnSelectCb
 typedef int32_t (*SslCtxSetAlpnCallback)(SSL* ssl,
     const uint8_t** out,
@@ -220,6 +214,13 @@ when an error is encountered.
 PALEXPORT int32_t CryptoNative_SslRead(SSL* ssl, void* buf, int32_t num);
 
 /*
+Shims the SSL_renegotiate method.
+
+Returns 1 when renegotiation started; 0 on error.
+*/
+PALEXPORT int32_t CryptoNative_SslRenegotiate(SSL* ssl);
+
+/*
 Shims the SSL_renegotiate_pending method.
 
 Returns 1 when negotiation is requested; 0 once a handshake has finished.
@@ -317,12 +318,6 @@ Shims the SSL_CTX_set_verify method.
 PALEXPORT void CryptoNative_SslCtxSetVerify(SSL_CTX* ctx, SslCtxSetVerifyCallback callback);
 
 /*
-Shims the SSL_CTX_set_cert_verify_callback method.
-*/
-PALEXPORT void
-CryptoNative_SslCtxSetCertVerifyCallback(SSL_CTX* ctx, SslCtxSetCertVerifyCallbackCallback callback, void* arg);
-
-/*
 Sets the specified encryption policy on the SSL_CTX.
 */
 PALEXPORT int32_t CryptoNative_SetEncryptionPolicy(SSL_CTX* ctx, EncryptionPolicy policy);
@@ -336,11 +331,6 @@ PALEXPORT int32_t CryptoNative_SetCiphers(SSL_CTX* ctx, const char* cipherList, 
 Determines if TLS 1.3 is supported by this OpenSSL implementation
 */
 PALEXPORT int32_t CryptoNative_Tls13Supported(void);
-
-/*
-Shims the SSL_CTX_set_client_cert_cb method
-*/
-PALEXPORT void CryptoNative_SslCtxSetClientCertCallback(SSL_CTX* ctx, SslClientCertCallback callback);
 
 /*
 Shims the SSL_get_finished method.

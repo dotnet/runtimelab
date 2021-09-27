@@ -5,6 +5,7 @@ using System.Reflection;
 using System.Xml;
 using System.Collections;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 
 namespace System.Runtime.Serialization
 {
@@ -17,7 +18,7 @@ namespace System.Runtime.Serialization
             {
                 if (s_writeStartElementMethod2 == null)
                 {
-                    s_writeStartElementMethod2 = typeof(XmlWriterDelegator).GetMethod("WriteStartElement", Globals.ScanAllMembers, null, new Type[] { typeof(XmlDictionaryString), typeof(XmlDictionaryString) }, null);
+                    s_writeStartElementMethod2 = typeof(XmlWriterDelegator).GetMethod("WriteStartElement", Globals.ScanAllMembers, new Type[] { typeof(XmlDictionaryString), typeof(XmlDictionaryString) });
                     Debug.Assert(s_writeStartElementMethod2 != null);
                 }
                 return s_writeStartElementMethod2;
@@ -31,7 +32,7 @@ namespace System.Runtime.Serialization
             {
                 if (s_writeStartElementMethod3 == null)
                 {
-                    s_writeStartElementMethod3 = typeof(XmlWriterDelegator).GetMethod("WriteStartElement", Globals.ScanAllMembers, null, new Type[] { typeof(string), typeof(XmlDictionaryString), typeof(XmlDictionaryString) }, null);
+                    s_writeStartElementMethod3 = typeof(XmlWriterDelegator).GetMethod("WriteStartElement", Globals.ScanAllMembers, new Type[] { typeof(string), typeof(XmlDictionaryString), typeof(XmlDictionaryString) });
                     Debug.Assert(s_writeStartElementMethod3 != null);
                 }
                 return s_writeStartElementMethod3;
@@ -45,7 +46,7 @@ namespace System.Runtime.Serialization
             {
                 if (s_writeEndElementMethod == null)
                 {
-                    s_writeEndElementMethod = typeof(XmlWriterDelegator).GetMethod("WriteEndElement", Globals.ScanAllMembers, null, Array.Empty<Type>(), null);
+                    s_writeEndElementMethod = typeof(XmlWriterDelegator).GetMethod("WriteEndElement", Globals.ScanAllMembers, Type.EmptyTypes);
                     Debug.Assert(s_writeEndElementMethod != null);
                 }
                 return s_writeEndElementMethod;
@@ -59,7 +60,7 @@ namespace System.Runtime.Serialization
             {
                 if (s_writeNamespaceDeclMethod == null)
                 {
-                    s_writeNamespaceDeclMethod = typeof(XmlWriterDelegator).GetMethod("WriteNamespaceDecl", Globals.ScanAllMembers, null, new Type[] { typeof(XmlDictionaryString) }, null);
+                    s_writeNamespaceDeclMethod = typeof(XmlWriterDelegator).GetMethod("WriteNamespaceDecl", Globals.ScanAllMembers, new Type[] { typeof(XmlDictionaryString) });
                     Debug.Assert(s_writeNamespaceDeclMethod != null);
                 }
                 return s_writeNamespaceDeclMethod;
@@ -77,7 +78,7 @@ namespace System.Runtime.Serialization
             {
                 if (s_dictionaryEnumeratorCtor == null)
                 {
-                    s_dictionaryEnumeratorCtor = typeof(CollectionDataContract.DictionaryEnumerator).GetConstructor(Globals.ScanAllMembers, null, new Type[] { Globals.TypeOfIDictionaryEnumerator }, null);
+                    s_dictionaryEnumeratorCtor = typeof(CollectionDataContract.DictionaryEnumerator).GetConstructor(Globals.ScanAllMembers, new Type[] { Globals.TypeOfIDictionaryEnumerator });
                     Debug.Assert(s_dictionaryEnumeratorCtor != null);
                 }
                 return s_dictionaryEnumeratorCtor;
@@ -115,6 +116,7 @@ namespace System.Runtime.Serialization
         private static MethodInfo? s_getItemContractMethod;
         internal static MethodInfo GetItemContractMethod
         {
+            [RequiresUnreferencedCode(DataContract.SerializerTrimmerWarning)]
             get
             {
                 if (s_getItemContractMethod == null)
@@ -133,7 +135,7 @@ namespace System.Runtime.Serialization
             {
                 if (s_isStartElementMethod2 == null)
                 {
-                    s_isStartElementMethod2 = typeof(XmlReaderDelegator).GetMethod("IsStartElement", Globals.ScanAllMembers, null, new Type[] { typeof(XmlDictionaryString), typeof(XmlDictionaryString) }, null);
+                    s_isStartElementMethod2 = typeof(XmlReaderDelegator).GetMethod("IsStartElement", Globals.ScanAllMembers, new Type[] { typeof(XmlDictionaryString), typeof(XmlDictionaryString) });
                     Debug.Assert(s_isStartElementMethod2 != null);
                 }
                 return s_isStartElementMethod2;
@@ -147,7 +149,7 @@ namespace System.Runtime.Serialization
             {
                 if (s_isStartElementMethod0 == null)
                 {
-                    s_isStartElementMethod0 = typeof(XmlReaderDelegator).GetMethod("IsStartElement", Globals.ScanAllMembers, null, Array.Empty<Type>(), null);
+                    s_isStartElementMethod0 = typeof(XmlReaderDelegator).GetMethod("IsStartElement", Globals.ScanAllMembers, Type.EmptyTypes);
                     Debug.Assert(s_isStartElementMethod0 != null);
                 }
                 return s_isStartElementMethod0;
@@ -157,11 +159,12 @@ namespace System.Runtime.Serialization
         private static MethodInfo? s_getUninitializedObjectMethod;
         internal static MethodInfo GetUninitializedObjectMethod
         {
+            [RequiresUnreferencedCode(DataContract.SerializerTrimmerWarning)]
             get
             {
                 if (s_getUninitializedObjectMethod == null)
                 {
-                    s_getUninitializedObjectMethod = typeof(XmlFormatReaderGenerator).GetMethod("UnsafeGetUninitializedObject", Globals.ScanAllMembers, null, new Type[] { typeof(int) }, null);
+                    s_getUninitializedObjectMethod = typeof(XmlFormatReaderGenerator).GetMethod("UnsafeGetUninitializedObject", Globals.ScanAllMembers, new Type[] { typeof(int) });
                     Debug.Assert(s_getUninitializedObjectMethod != null);
                 }
                 return s_getUninitializedObjectMethod;
@@ -199,16 +202,17 @@ namespace System.Runtime.Serialization
         private static ConstructorInfo? s_extensionDataObjectCtor;
         internal static ConstructorInfo ExtensionDataObjectCtor => s_extensionDataObjectCtor ??
                                                                    (s_extensionDataObjectCtor =
-                                                                       typeof(ExtensionDataObject).GetConstructor(Globals.ScanAllMembers, null, Array.Empty<Type>(), null)!);
+                                                                       typeof(ExtensionDataObject).GetConstructor(Globals.ScanAllMembers, Type.EmptyTypes)!);
 
         private static ConstructorInfo? s_hashtableCtor;
         internal static ConstructorInfo HashtableCtor
         {
+            [RequiresUnreferencedCode(DataContract.SerializerTrimmerWarning)]
             get
             {
                 if (s_hashtableCtor == null)
                 {
-                    s_hashtableCtor = Globals.TypeOfHashtable.GetConstructor(Globals.ScanAllMembers, null, Array.Empty<Type>(), null);
+                    s_hashtableCtor = Globals.TypeOfHashtable.GetConstructor(Globals.ScanAllMembers, Type.EmptyTypes);
                     Debug.Assert(s_hashtableCtor != null);
                 }
                 return s_hashtableCtor;
@@ -250,7 +254,7 @@ namespace System.Runtime.Serialization
             {
                 if (s_storeCollectionMemberInfoMethod == null)
                 {
-                    s_storeCollectionMemberInfoMethod = typeof(XmlObjectSerializerReadContext).GetMethod("StoreCollectionMemberInfo", Globals.ScanAllMembers, null, new Type[] { typeof(object) }, null);
+                    s_storeCollectionMemberInfoMethod = typeof(XmlObjectSerializerReadContext).GetMethod("StoreCollectionMemberInfo", Globals.ScanAllMembers, new Type[] { typeof(object) });
                     Debug.Assert(s_storeCollectionMemberInfoMethod != null);
                 }
                 return s_storeCollectionMemberInfoMethod;
@@ -264,7 +268,7 @@ namespace System.Runtime.Serialization
             {
                 if (s_resetCollectionMemberInfoMethod == null)
                 {
-                    s_resetCollectionMemberInfoMethod = typeof(XmlObjectSerializerReadContext).GetMethod("ResetCollectionMemberInfo", Globals.ScanAllMembers, null, Array.Empty<Type>(), null);
+                    s_resetCollectionMemberInfoMethod = typeof(XmlObjectSerializerReadContext).GetMethod("ResetCollectionMemberInfo", Globals.ScanAllMembers, Type.EmptyTypes);
                     Debug.Assert(s_resetCollectionMemberInfoMethod != null);
                 }
                 return s_resetCollectionMemberInfoMethod;
@@ -344,11 +348,12 @@ namespace System.Runtime.Serialization
         private static MethodInfo? s_internalDeserializeMethod;
         internal static MethodInfo InternalDeserializeMethod
         {
+            [RequiresUnreferencedCode(DataContract.SerializerTrimmerWarning)]
             get
             {
                 if (s_internalDeserializeMethod == null)
                 {
-                    s_internalDeserializeMethod = typeof(XmlObjectSerializerReadContext).GetMethod("InternalDeserialize", Globals.ScanAllMembers, null, new Type[] { typeof(XmlReaderDelegator), typeof(int), typeof(RuntimeTypeHandle), typeof(string), typeof(string) }, null);
+                    s_internalDeserializeMethod = typeof(XmlObjectSerializerReadContext).GetMethod("InternalDeserialize", Globals.ScanAllMembers, new Type[] { typeof(XmlReaderDelegator), typeof(int), typeof(RuntimeTypeHandle), typeof(string), typeof(string) });
                     Debug.Assert(s_internalDeserializeMethod != null);
                 }
                 return s_internalDeserializeMethod;
@@ -372,6 +377,7 @@ namespace System.Runtime.Serialization
         private static MethodInfo? s_getMemberIndexMethod;
         internal static MethodInfo GetMemberIndexMethod
         {
+            [RequiresUnreferencedCode(DataContract.SerializerTrimmerWarning)]
             get
             {
                 if (s_getMemberIndexMethod == null)
@@ -386,6 +392,7 @@ namespace System.Runtime.Serialization
         private static MethodInfo? s_getMemberIndexWithRequiredMembersMethod;
         internal static MethodInfo GetMemberIndexWithRequiredMembersMethod
         {
+            [RequiresUnreferencedCode(DataContract.SerializerTrimmerWarning)]
             get
             {
                 if (s_getMemberIndexWithRequiredMembersMethod == null)
@@ -428,11 +435,12 @@ namespace System.Runtime.Serialization
         private static MethodInfo? s_readIfNullOrRefMethod;
         internal static MethodInfo ReadIfNullOrRefMethod
         {
+            [RequiresUnreferencedCode(DataContract.SerializerTrimmerWarning)]
             get
             {
                 if (s_readIfNullOrRefMethod == null)
                 {
-                    s_readIfNullOrRefMethod = typeof(XmlObjectSerializerReadContext).GetMethod("ReadIfNullOrRef", Globals.ScanAllMembers, null, new Type[] { typeof(XmlReaderDelegator), typeof(Type), typeof(bool) }, null);
+                    s_readIfNullOrRefMethod = typeof(XmlObjectSerializerReadContext).GetMethod("ReadIfNullOrRef", Globals.ScanAllMembers, new Type[] { typeof(XmlReaderDelegator), typeof(Type), typeof(bool) });
                     Debug.Assert(s_readIfNullOrRefMethod != null);
                 }
                 return s_readIfNullOrRefMethod;
@@ -600,7 +608,7 @@ namespace System.Runtime.Serialization
             {
                 if (s_getArrayLengthMethod == null)
                 {
-                    s_getArrayLengthMethod = Globals.TypeOfArray.GetProperty("Length")!.GetMethod;
+                    s_getArrayLengthMethod = typeof(Array).GetProperty("Length")!.GetMethod;
                     Debug.Assert(s_getArrayLengthMethod != null);
                 }
                 return s_getArrayLengthMethod;
@@ -614,7 +622,7 @@ namespace System.Runtime.Serialization
             {
                 if (s_createSerializationExceptionMethod == null)
                 {
-                    s_createSerializationExceptionMethod = typeof(XmlObjectSerializerReadContext).GetMethod("CreateSerializationException", Globals.ScanAllMembers, null, new Type[] { typeof(string) }, null);
+                    s_createSerializationExceptionMethod = typeof(XmlObjectSerializerReadContext).GetMethod("CreateSerializationException", Globals.ScanAllMembers, new Type[] { typeof(string) });
                     Debug.Assert(s_createSerializationExceptionMethod != null);
                 }
                 return s_createSerializationExceptionMethod;
@@ -624,6 +632,7 @@ namespace System.Runtime.Serialization
         private static MethodInfo? s_readSerializationInfoMethod;
         internal static MethodInfo ReadSerializationInfoMethod
         {
+            [RequiresUnreferencedCode(DataContract.SerializerTrimmerWarning)]
             get
             {
                 if (s_readSerializationInfoMethod == null)
@@ -642,7 +651,7 @@ namespace System.Runtime.Serialization
             {
                 if (s_createUnexpectedStateExceptionMethod == null)
                 {
-                    s_createUnexpectedStateExceptionMethod = typeof(XmlObjectSerializerReadContext).GetMethod("CreateUnexpectedStateException", Globals.ScanAllMembers, null, new Type[] { typeof(XmlNodeType), typeof(XmlReaderDelegator) }, null);
+                    s_createUnexpectedStateExceptionMethod = typeof(XmlObjectSerializerReadContext).GetMethod("CreateUnexpectedStateException", Globals.ScanAllMembers, new Type[] { typeof(XmlNodeType), typeof(XmlReaderDelegator) });
                     Debug.Assert(s_createUnexpectedStateExceptionMethod != null);
                 }
                 return s_createUnexpectedStateExceptionMethod;
@@ -652,6 +661,7 @@ namespace System.Runtime.Serialization
         private static MethodInfo? s_internalSerializeReferenceMethod;
         internal static MethodInfo InternalSerializeReferenceMethod
         {
+            [RequiresUnreferencedCode(DataContract.SerializerTrimmerWarning)]
             get
             {
                 if (s_internalSerializeReferenceMethod == null)
@@ -666,6 +676,7 @@ namespace System.Runtime.Serialization
         private static MethodInfo? s_internalSerializeMethod;
         internal static MethodInfo InternalSerializeMethod
         {
+            [RequiresUnreferencedCode(DataContract.SerializerTrimmerWarning)]
             get
             {
                 if (s_internalSerializeMethod == null)
@@ -680,11 +691,12 @@ namespace System.Runtime.Serialization
         private static MethodInfo? s_writeNullMethod;
         internal static MethodInfo WriteNullMethod
         {
+            [RequiresUnreferencedCode(DataContract.SerializerTrimmerWarning)]
             get
             {
                 if (s_writeNullMethod == null)
                 {
-                    s_writeNullMethod = typeof(XmlObjectSerializerWriteContext).GetMethod("WriteNull", Globals.ScanAllMembers, null, new Type[] { typeof(XmlWriterDelegator), typeof(Type), typeof(bool) }, null);
+                    s_writeNullMethod = typeof(XmlObjectSerializerWriteContext).GetMethod("WriteNull", Globals.ScanAllMembers, new Type[] { typeof(XmlWriterDelegator), typeof(Type), typeof(bool) });
                     Debug.Assert(s_writeNullMethod != null);
                 }
                 return s_writeNullMethod;
@@ -712,7 +724,7 @@ namespace System.Runtime.Serialization
             {
                 if (s_incrementCollectionCountMethod == null)
                 {
-                    s_incrementCollectionCountMethod = typeof(XmlObjectSerializerWriteContext).GetMethod("IncrementCollectionCount", Globals.ScanAllMembers, null, new Type[] { typeof(XmlWriterDelegator), typeof(ICollection) }, null);
+                    s_incrementCollectionCountMethod = typeof(XmlObjectSerializerWriteContext).GetMethod("IncrementCollectionCount", Globals.ScanAllMembers, new Type[] { typeof(XmlWriterDelegator), typeof(ICollection) });
                     Debug.Assert(s_incrementCollectionCountMethod != null);
                 }
                 return s_incrementCollectionCountMethod;
@@ -747,6 +759,8 @@ namespace System.Runtime.Serialization
             }
         }
 
+        [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2060:MakeGenericMethod",
+                Justification = "The call to MakeGenericMethod is safe due to the fact that XmlObjectSerializerWriteContext.GetDefaultValue is not annotated.")]
         internal static object? GetDefaultValue(Type type)
         {
             return GetDefaultValueMethod.MakeGenericMethod(type).Invoke(null, Array.Empty<object>());
@@ -797,6 +811,7 @@ namespace System.Runtime.Serialization
         private static MethodInfo? s_writeISerializableMethod;
         internal static MethodInfo WriteISerializableMethod
         {
+            [RequiresUnreferencedCode(DataContract.SerializerTrimmerWarning)]
             get
             {
                 if (s_writeISerializableMethod == null)
@@ -816,7 +831,7 @@ namespace System.Runtime.Serialization
             {
                 if (s_isMemberTypeSameAsMemberValue == null)
                 {
-                    s_isMemberTypeSameAsMemberValue = typeof(XmlObjectSerializerWriteContext).GetMethod("IsMemberTypeSameAsMemberValue", Globals.ScanAllMembers, null, new Type[] { typeof(object), typeof(Type) }, null);
+                    s_isMemberTypeSameAsMemberValue = typeof(XmlObjectSerializerWriteContext).GetMethod("IsMemberTypeSameAsMemberValue", Globals.ScanAllMembers, new Type[] { typeof(object), typeof(Type) });
                     Debug.Assert(s_isMemberTypeSameAsMemberValue != null);
                 }
                 return s_isMemberTypeSameAsMemberValue;
@@ -824,12 +839,23 @@ namespace System.Runtime.Serialization
         }
 
         private static MethodInfo? s_writeExtensionDataMethod;
-        internal static MethodInfo WriteExtensionDataMethod => s_writeExtensionDataMethod ??
-                                                               (s_writeExtensionDataMethod = typeof(XmlObjectSerializerWriteContext).GetMethod("WriteExtensionData", Globals.ScanAllMembers)!);
+        internal static MethodInfo WriteExtensionDataMethod
+        {
+            [RequiresUnreferencedCode(DataContract.SerializerTrimmerWarning)]
+            get
+            {
+                if (s_writeExtensionDataMethod == null)
+                {
+                    s_writeExtensionDataMethod = typeof(XmlObjectSerializerWriteContext).GetMethod("WriteExtensionData", Globals.ScanAllMembers)!;
+                }
+                return s_writeExtensionDataMethod;
+            }
+        }
 
         private static MethodInfo? s_writeXmlValueMethod;
         internal static MethodInfo WriteXmlValueMethod
         {
+            [RequiresUnreferencedCode(DataContract.SerializerTrimmerWarning)]
             get
             {
                 if (s_writeXmlValueMethod == null)
@@ -844,6 +870,7 @@ namespace System.Runtime.Serialization
         private static MethodInfo? s_readXmlValueMethod;
         internal static MethodInfo ReadXmlValueMethod
         {
+            [RequiresUnreferencedCode(DataContract.SerializerTrimmerWarning)]
             get
             {
                 if (s_readXmlValueMethod == null)
@@ -904,6 +931,7 @@ namespace System.Runtime.Serialization
         private static PropertyInfo? s_childElementNamespacesProperty;
         internal static PropertyInfo ChildElementNamespacesProperty
         {
+            [RequiresUnreferencedCode(DataContract.SerializerTrimmerWarning)]
             get
             {
                 if (s_childElementNamespacesProperty == null)
@@ -932,6 +960,7 @@ namespace System.Runtime.Serialization
         private static PropertyInfo? s_childElementNamespaceProperty;
         internal static PropertyInfo ChildElementNamespaceProperty
         {
+            [RequiresUnreferencedCode(DataContract.SerializerTrimmerWarning)]
             get
             {
                 if (s_childElementNamespaceProperty == null)
@@ -971,6 +1000,34 @@ namespace System.Runtime.Serialization
             }
         }
 
+        private static MethodInfo? s_getMemoryStreamMethod;
+        internal static MethodInfo GetMemoryStreamMethod
+        {
+            get
+            {
+                if (s_getMemoryStreamMethod == null)
+                {
+                    s_getMemoryStreamMethod = typeof(MemoryStreamAdapter).GetMethod("GetMemoryStream", Globals.ScanAllMembers);
+                    Debug.Assert(s_getMemoryStreamMethod != null);
+                }
+                return s_getMemoryStreamMethod;
+            }
+        }
+
+        private static MethodInfo? s_getMemoryStreamAdapterMethod;
+        internal static MethodInfo GetMemoryStreamAdapterMethod
+        {
+            get
+            {
+                if (s_getMemoryStreamAdapterMethod == null)
+                {
+                    s_getMemoryStreamAdapterMethod = typeof(MemoryStreamAdapter).GetMethod("GetMemoryStreamAdapter", Globals.ScanAllMembers);
+                    Debug.Assert(s_getMemoryStreamAdapterMethod != null);
+                }
+                return s_getMemoryStreamAdapterMethod;
+            }
+        }
+
         private static MethodInfo? s_getTypeHandleMethod;
         internal static MethodInfo GetTypeHandleMethod
         {
@@ -1006,7 +1063,7 @@ namespace System.Runtime.Serialization
             {
                 if (s_throwInvalidDataContractExceptionMethod == null)
                 {
-                    s_throwInvalidDataContractExceptionMethod = typeof(DataContract).GetMethod("ThrowInvalidDataContractException", Globals.ScanAllMembers, null, new Type[] { typeof(string), typeof(Type) }, null);
+                    s_throwInvalidDataContractExceptionMethod = typeof(DataContract).GetMethod("ThrowInvalidDataContractException", Globals.ScanAllMembers, new Type[] { typeof(string), typeof(Type) });
                     Debug.Assert(s_throwInvalidDataContractExceptionMethod != null);
                 }
                 return s_throwInvalidDataContractExceptionMethod;

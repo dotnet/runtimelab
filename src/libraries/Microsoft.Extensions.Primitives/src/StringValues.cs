@@ -5,9 +5,9 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Numerics.Hashing;
 using System.Runtime.CompilerServices;
 using System.Text;
-using Microsoft.Extensions.Internal;
 
 namespace Microsoft.Extensions.Primitives
 {
@@ -93,13 +93,13 @@ namespace Microsoft.Extensions.Primitives
             {
                 // Take local copy of _values so type checks remain valid even if the StringValues is overwritten in memory
                 object value = _values;
-                if (value is string)
-                {
-                    return 1;
-                }
                 if (value is null)
                 {
                     return 0;
+                }
+                if (value is string)
+                {
+                    return 1;
                 }
                 else
                 {
@@ -419,7 +419,7 @@ namespace Microsoft.Extensions.Primitives
         /// Indicates whether the specified <see cref="StringValues"/> contains no string values.
         /// </summary>
         /// <param name="value">The <see cref="StringValues"/> to test.</param>
-        /// <returns>true if <paramref name="value">value</paramref> contains a single null string or empty array; otherwise, false.</returns>
+        /// <returns>true if <paramref name="value">value</paramref> contains a single null or empty string or an empty array; otherwise, false.</returns>
         public static bool IsNullOrEmpty(StringValues value)
         {
             object data = value._values;
@@ -740,12 +740,12 @@ namespace Microsoft.Extensions.Primitives
                 {
                     return Unsafe.As<string>(this[0])?.GetHashCode() ?? Count.GetHashCode();
                 }
-                var hcc = default(HashCodeCombiner);
+                int hashCode = 0;
                 for (int i = 0; i < values.Length; i++)
                 {
-                    hcc.Add(values[i]);
+                    hashCode = HashHelpers.Combine(hashCode, values[i]?.GetHashCode() ?? 0);
                 }
-                return hcc.CombinedHash;
+                return hashCode;
             }
             else
             {

@@ -8,6 +8,7 @@ using System.Diagnostics;
 using System.Formats.Asn1;
 using System.IO;
 using System.Runtime.Serialization;
+using System.Runtime.Versioning;
 using System.Security;
 using System.Security.Cryptography.X509Certificates.Asn1;
 using System.Text;
@@ -42,6 +43,7 @@ namespace System.Security.Cryptography.X509Certificates
             base.Reset();
         }
 
+        [Obsolete(Obsoletions.X509CertificateImmutableMessage, DiagnosticId = Obsoletions.X509CertificateImmutableDiagId, UrlFormat = Obsoletions.SharedUrlFormat)]
         public X509Certificate2()
             : base()
         {
@@ -170,6 +172,7 @@ namespace System.Security.Cryptography.X509Certificates
                 return Pal.Archived;
             }
 
+            [SupportedOSPlatform("windows")]
             set
             {
                 ThrowIfInvalid();
@@ -216,6 +219,7 @@ namespace System.Security.Cryptography.X509Certificates
                 return Pal.FriendlyName;
             }
 
+            [SupportedOSPlatform("windows")]
             set
             {
                 ThrowIfInvalid();
@@ -234,6 +238,7 @@ namespace System.Security.Cryptography.X509Certificates
             }
         }
 
+        [Obsolete(Obsoletions.X509CertificatePrivateKeyMessage, DiagnosticId = Obsoletions.X509CertificatePrivateKeyDiagId, UrlFormat = Obsoletions.SharedUrlFormat)]
         public AsymmetricAlgorithm? PrivateKey
         {
             get
@@ -340,7 +345,7 @@ namespace System.Security.Cryptography.X509Certificates
                 if (signatureAlgorithm == null)
                 {
                     string oidValue = Pal.SignatureAlgorithm;
-                    signatureAlgorithm = _lazySignatureAlgorithm = Oid.FromOidValue(oidValue, OidGroup.SignatureAlgorithm);
+                    signatureAlgorithm = _lazySignatureAlgorithm = new Oid(oidValue, null);
                 }
                 return signatureAlgorithm;
             }
@@ -630,33 +635,39 @@ namespace System.Security.Cryptography.X509Certificates
             return sb.ToString();
         }
 
+        [Obsolete(Obsoletions.X509CertificateImmutableMessage, DiagnosticId = Obsoletions.X509CertificateImmutableDiagId, UrlFormat = Obsoletions.SharedUrlFormat)]
         public override void Import(byte[] rawData)
         {
             base.Import(rawData);
         }
 
+        [Obsolete(Obsoletions.X509CertificateImmutableMessage, DiagnosticId = Obsoletions.X509CertificateImmutableDiagId, UrlFormat = Obsoletions.SharedUrlFormat)]
         public override void Import(byte[] rawData, string? password, X509KeyStorageFlags keyStorageFlags)
         {
             base.Import(rawData, password, keyStorageFlags);
         }
 
         [System.CLSCompliantAttribute(false)]
+        [Obsolete(Obsoletions.X509CertificateImmutableMessage, DiagnosticId = Obsoletions.X509CertificateImmutableDiagId, UrlFormat = Obsoletions.SharedUrlFormat)]
         public override void Import(byte[] rawData, SecureString? password, X509KeyStorageFlags keyStorageFlags)
         {
             base.Import(rawData, password, keyStorageFlags);
         }
 
+        [Obsolete(Obsoletions.X509CertificateImmutableMessage, DiagnosticId = Obsoletions.X509CertificateImmutableDiagId, UrlFormat = Obsoletions.SharedUrlFormat)]
         public override void Import(string fileName)
         {
             base.Import(fileName);
         }
 
+        [Obsolete(Obsoletions.X509CertificateImmutableMessage, DiagnosticId = Obsoletions.X509CertificateImmutableDiagId, UrlFormat = Obsoletions.SharedUrlFormat)]
         public override void Import(string fileName, string? password, X509KeyStorageFlags keyStorageFlags)
         {
             base.Import(fileName, password, keyStorageFlags);
         }
 
         [System.CLSCompliantAttribute(false)]
+        [Obsolete(Obsoletions.X509CertificateImmutableMessage, DiagnosticId = Obsoletions.X509CertificateImmutableDiagId, UrlFormat = Obsoletions.SharedUrlFormat)]
         public override void Import(string fileName, SecureString? password, X509KeyStorageFlags keyStorageFlags)
         {
             base.Import(fileName, password, keyStorageFlags);
@@ -936,14 +947,14 @@ namespace System.Security.Cryptography.X509Certificates
         /// </remarks>
         public static X509Certificate2 CreateFromPem(ReadOnlySpan<char> certPem, ReadOnlySpan<char> keyPem)
         {
-            using (X509Certificate2 certificate = ExtractCertificateFromPem(certPem))
+            using (X509Certificate2 certificate = CreateFromPem(certPem))
             {
                 string keyAlgorithm = certificate.GetKeyAlgorithm();
 
                 return keyAlgorithm switch
                 {
                     Oids.Rsa => ExtractKeyFromPem<RSA>(keyPem, s_RsaPublicKeyPrivateKeyLabels, RSA.Create, certificate.CopyWithPrivateKey),
-                    Oids.Dsa => ExtractKeyFromPem<DSA>(keyPem, s_DsaPublicKeyPrivateKeyLabels, DSA.Create, certificate.CopyWithPrivateKey),
+                    Oids.Dsa when Helpers.IsDSASupported => ExtractKeyFromPem<DSA>(keyPem, s_DsaPublicKeyPrivateKeyLabels, DSA.Create, certificate.CopyWithPrivateKey),
                     Oids.EcPublicKey when IsECDsa(certificate) =>
                         ExtractKeyFromPem<ECDsa>(
                             keyPem,
@@ -1001,19 +1012,19 @@ namespace System.Security.Cryptography.X509Certificates
         ///   PEM-encoded values and apply any custom loading behavior.
         /// </para>
         /// <para>
-        /// For PEM-encoded keys without a password, use <see cref="CreateFromPem" />.
+        /// For PEM-encoded keys without a password, use <see cref="CreateFromPem(ReadOnlySpan{char}, ReadOnlySpan{char})" />.
         /// </para>
         /// </remarks>
         public static X509Certificate2 CreateFromEncryptedPem(ReadOnlySpan<char> certPem, ReadOnlySpan<char> keyPem, ReadOnlySpan<char> password)
         {
-            using (X509Certificate2 certificate = ExtractCertificateFromPem(certPem))
+            using (X509Certificate2 certificate = CreateFromPem(certPem))
             {
                 string keyAlgorithm = certificate.GetKeyAlgorithm();
 
                 return keyAlgorithm switch
                 {
                     Oids.Rsa => ExtractKeyFromEncryptedPem<RSA>(keyPem, password, RSA.Create, certificate.CopyWithPrivateKey),
-                    Oids.Dsa => ExtractKeyFromEncryptedPem<DSA>(keyPem, password, DSA.Create, certificate.CopyWithPrivateKey),
+                    Oids.Dsa when Helpers.IsDSASupported => ExtractKeyFromEncryptedPem<DSA>(keyPem, password, DSA.Create, certificate.CopyWithPrivateKey),
                     Oids.EcPublicKey when IsECDsa(certificate) =>
                         ExtractKeyFromEncryptedPem<ECDsa>(
                             keyPem,
@@ -1047,7 +1058,28 @@ namespace System.Security.Cryptography.X509Certificates
             }
         }
 
-        private static X509Certificate2 ExtractCertificateFromPem(ReadOnlySpan<char> certPem)
+        /// <summary>
+        /// Creates a new X509 certificate from the contents of an RFC 7468 PEM-encoded
+        /// certificate.
+        /// </summary>
+        /// <param name="certPem">The text of the PEM-encoded X509 certificate.</param>
+        /// <returns>A new X509 certificate.</returns>
+        /// <exception cref="CryptographicException">
+        /// The contents of <paramref name="certPem" /> do not contain a PEM-encoded certificate, or it is malformed.
+        /// </exception>
+        /// <remarks>
+        /// <para>
+        /// This loads the first well-formed PEM found with a CERTIFICATE label.
+        /// </para>
+        /// <para>
+        /// For PEM-encoded certificates with a private key, use
+        /// <see cref="CreateFromPem(ReadOnlySpan{char}, ReadOnlySpan{char})" />.
+        /// </para>
+        /// <para>
+        /// For PEM-encoded certificates in a file, use <see cref="X509Certificate2(string)" />.
+        /// </para>
+        /// </remarks>
+        public static X509Certificate2 CreateFromPem(ReadOnlySpan<char> certPem)
         {
             foreach ((ReadOnlySpan<char> contents, PemFields fields) in new PemEnumerator(certPem))
             {

@@ -119,13 +119,6 @@ mono_arch_get_call_filter (MonoTrampInfo **info, gboolean aot)
 }
 
 gpointer
-mono_arch_get_call_filter (MonoTrampInfo **info, gboolean aot)
-{
-    g_assert_not_reached ();
-    return NULL;
-}
-
-gpointer
 mono_arch_get_throw_exception (MonoTrampInfo **info, gboolean aot)
 {
     g_assert_not_reached ();
@@ -155,7 +148,7 @@ mono_arch_exceptions_init (void)
 }
 
 gboolean
-mono_arch_unwind_frame (MonoDomain *domain, MonoJitTlsData *jit_tls, MonoJitInfo *ji,
+mono_arch_unwind_frame (MonoJitTlsData *jit_tls, MonoJitInfo *ji,
                         MonoContext *ctx, MonoContext *new_ctx, MonoLMF **lmf,
                         host_mgreg_t **save_locations, StackFrameInfo *frame)
 {

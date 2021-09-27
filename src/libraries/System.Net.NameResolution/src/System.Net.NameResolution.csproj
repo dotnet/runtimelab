@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <TargetFrameworks>$(NetCoreAppCurrent)-Windows_NT;$(NetCoreAppCurrent)-Unix;$(NetCoreAppCurrent)-Browser</TargetFrameworks>
+    <TargetFrameworks>$(NetCoreAppCurrent)-windows;$(NetCoreAppCurrent)-Unix;$(NetCoreAppCurrent)-Browser</TargetFrameworks>
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <PropertyGroup>
@@ -31,8 +31,8 @@
              Link="Common\System\Net\IPAddressParserStatics.cs" />
     <Compile Include="$(CommonPath)System\Net\IPEndPointStatics.cs"
              Link="Common\System\Net\IPEndPointStatics.cs" />
-    <Compile Include="$(CommonPath)System\Net\ByteOrder.cs"
-             Link="Common\System\Net\ByteOrder.cs" />
+    <Compile Include="$(CommonPath)System\Net\SocketProtocolSupportPal.cs"
+             Link="Common\System\Net\SocketProtocolSupportPal.cs" />
   </ItemGroup>
   <ItemGroup Condition=" '$(TargetsWindows)' == 'true'">
     <Compile Include="System\Net\NameResolutionPal.Windows.cs" />
@@ -51,6 +51,8 @@
     <!-- Interop -->
     <Compile Include="$(CommonPath)Interop\Windows\Interop.Libraries.cs"
              Link="Common\Interop\Windows\Interop.Libraries.cs" />
+    <Compile Include="$(CommonPath)Interop\Windows\Kernel32\Interop.LoadLibraryEx_IntPtr.cs"
+             Link="Common\Interop\Windows\Kernel32\Interop.LoadLibraryEx_IntPtr.cs" />
     <Compile Include="$(CommonPath)Interop\Windows\WinSock\AddressInfoHints.cs"
              Link="Common\Interop\Windows\WinSock\AddressInfoHints.cs" />
     <Compile Include="$(CommonPath)Interop\Windows\WinSock\hostent.cs"

@@ -19,22 +19,25 @@ parameters:
   condition: succeeded()                 # optional -- condition for step to execute; defaults to succeeded()
   continueOnError: false                 # optional -- determines whether to continue the build if the step errors; defaults to false
   BuildConfig: 'checked'                 # optional -- Mostly, superpmi will be run on checked builds
-  LibrariesArtifacts: ''
-  TestsArtifacts: ''
+  InputArtifacts: ''
+  CollectionType: ''
+  CollectionName: ''
+  ProjectFile: ''
 
 steps:
 - template: /eng/pipelines/common/templates/runtimes/send-to-helix-inner-step.yml
   parameters:
     osGroup: ${{ parameters.osGroup }}
-    sendParams: $(Build.SourcesDirectory)/src/coreclr/scripts/superpmi.proj /restore /t:Test /bl:$(Build.SourcesDirectory)/artifacts/log/$(BuildConfig)/SendToHelix.binlog
+    sendParams: $(Build.SourcesDirectory)/src/coreclr/scripts/${{ parameters.ProjectFile }} /restore /t:Test /bl:$(Build.SourcesDirectory)/artifacts/log/$(BuildConfig)/SendToHelix.binlog
     displayName: ${{ parameters.DisplayNamePrefix }}
     condition: ${{ parameters.condition }}
-    continueOnError: ${{ parameters.continueOnError }}
+    shouldContinueOnError: ${{ parameters.continueOnError }}
     environment:
       MchFileTag: $(MchFileTag)
       BuildConfig:  ${{ parameters.BuildConfig }}
-      LibrariesArtifacts: ${{ parameters.LibrariesArtifacts }}
-      TestsArtifacts: ${{ parameters.TestsArtifacts }}
+      InputArtifacts: ${{ parameters.InputArtifacts }}
+      CollectionType: ${{ parameters.CollectionType }}
+      CollectionName: ${{ parameters.CollectionName }}
       HelixSource: ${{ parameters.HelixSource }}
       HelixType: ${{ parameters.HelixType }}
       HelixBuild: ${{ parameters.HelixBuild }}

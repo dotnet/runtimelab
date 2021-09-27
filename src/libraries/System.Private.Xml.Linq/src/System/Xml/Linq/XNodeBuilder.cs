@@ -6,7 +6,7 @@ using System.Diagnostics;
 
 namespace System.Xml.Linq
 {
-    internal class XNodeBuilder : XmlWriter
+    internal sealed class XNodeBuilder : XmlWriter
     {
         private List<object>? _content;
         private XContainer? _parent;
@@ -83,7 +83,6 @@ namespace System.Xml.Linq
 
         public override void WriteDocType(string name, string? pubid, string? sysid, string? subset)
         {
-            Debug.Assert(subset != null);
             AddNode(new XDocumentType(name, pubid, sysid, subset));
         }
 

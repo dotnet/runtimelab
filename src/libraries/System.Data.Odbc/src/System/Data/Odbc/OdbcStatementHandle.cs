@@ -4,9 +4,11 @@
 using System.Data.Common;
 using System.Runtime.InteropServices;
 
+#pragma warning disable CA1419 // TODO https://github.com/dotnet/roslyn-analyzers/issues/5232: not intended for use with P/Invoke
+
 namespace System.Data.Odbc
 {
-    internal struct SQLLEN
+    internal readonly struct SQLLEN
     {
         private readonly IntPtr _value;
 
@@ -17,11 +19,7 @@ namespace System.Data.Odbc
 
         internal SQLLEN(long value)
         {
-#if WIN32
-            _value = new IntPtr(checked((int)value));
-#else
             _value = new IntPtr(value);
-#endif
         }
 
         internal SQLLEN(IntPtr value)
@@ -30,7 +28,7 @@ namespace System.Data.Odbc
         }
 
         public static implicit operator SQLLEN(int value)
-        { //
+        {
             return new SQLLEN(value);
         }
 
@@ -39,22 +37,17 @@ namespace System.Data.Odbc
             return new SQLLEN(value);
         }
 
-        public static unsafe implicit operator int(SQLLEN value)
+        public static implicit operator int(SQLLEN value)
         {
-#if WIN32
-            return (int)value._value.ToInt32();
-#else
-            long l = (long)value._value.ToInt64();
-            return checked((int)l);
-#endif
+            return value._value.ToInt32();
         }
 
-        public static unsafe explicit operator long(SQLLEN value)
+        public static explicit operator long(SQLLEN value)
         {
             return value._value.ToInt64();
         }
 
-        public unsafe long ToInt64()
+        public long ToInt64()
         {
             return _value.ToInt64();
         }

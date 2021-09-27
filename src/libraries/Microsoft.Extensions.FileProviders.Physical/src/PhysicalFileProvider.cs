@@ -101,7 +101,7 @@ namespace Microsoft.Extensions.FileProviders
             {
                 if (_fileWatcher != null)
                 {
-                    throw new InvalidOperationException($"Cannot modify {nameof(UsePollingFileWatcher)} once file watcher has been initialized.");
+                    throw new InvalidOperationException(SR.Format(SR.CannotModifyWhenFileWatcherInitialized, nameof(UsePollingFileWatcher)));
                 }
                 _usePollingFileWatcher = value;
             }
@@ -159,7 +159,24 @@ namespace Microsoft.Extensions.FileProviders
         internal PhysicalFilesWatcher CreateFileWatcher()
         {
             string root = PathUtils.EnsureTrailingSlash(Path.GetFullPath(Root));
-            return new PhysicalFilesWatcher(root, new FileSystemWatcher(root), UsePollingFileWatcher, _filters)
+
+            FileSystemWatcher watcher;
+#if NETCOREAPP
+            //  For browser/iOS/tvOS we will proactively fallback to polling since FileSystemWatcher is not supported.
+            if (OperatingSystem.IsBrowser() || (OperatingSystem.IsIOS() && !OperatingSystem.IsMacCatalyst()) || OperatingSystem.IsTvOS())
+            {
+                UsePollingFileWatcher = true;
+                UseActivePolling = true;
+                watcher = null;
+            }
+            else
+#endif
+            {
+                // When UsePollingFileWatcher & UseActivePolling are set, we won't use a FileSystemWatcher.
+                watcher = UsePollingFileWatcher && UseActivePolling ? null : new FileSystemWatcher(root);
+            }
+
+            return new PhysicalFilesWatcher(root, watcher, UsePollingFileWatcher, _filters)
             {
                 UseActivePolling = UseActivePolling,
             };

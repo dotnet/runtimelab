@@ -29,15 +29,13 @@ namespace System
             base.Dispose(disposing);
         }
 
-        public override int Read(byte[] buffer, int offset, int count) => throw Error.GetReadNotSupported();
+        public override int Read(Span<byte> buffer) => throw Error.GetReadNotSupported();
 
-        public override unsafe void Write(byte[] buffer, int offset, int count)
+        public override unsafe void Write(ReadOnlySpan<byte> buffer)
         {
-            ValidateWrite(buffer, offset, count);
-
             fixed (byte* bufPtr = buffer)
             {
-                Write(_handle, bufPtr + offset, count);
+                Write(_handle, bufPtr, buffer.Length);
             }
         }
 
@@ -226,14 +224,5 @@ namespace System
         public static void SetWindowPosition(int left, int top) => throw new PlatformNotSupportedException();
 
         public static void SetWindowSize(int width, int height) => throw new PlatformNotSupportedException();
-
-        internal sealed class ControlCHandlerRegistrar
-        {
-            internal ControlCHandlerRegistrar() => throw new PlatformNotSupportedException();
-
-            internal void Register() => throw new PlatformNotSupportedException();
-
-            internal void Unregister() => throw new PlatformNotSupportedException();
-        }
     }
 }

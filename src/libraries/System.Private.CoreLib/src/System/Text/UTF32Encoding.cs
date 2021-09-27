@@ -6,6 +6,7 @@
 //
 
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 
 namespace System.Text
@@ -119,7 +120,9 @@ namespace System.Text
         {
             // Validate input
             if (s == null)
-                throw new ArgumentNullException(nameof(s));
+            {
+                ThrowHelper.ThrowArgumentNullException(ExceptionArgument.s);
+            }
 
             fixed (char* pChars = s)
                 return GetByteCount(pChars, s.Length, null);
@@ -1143,7 +1146,7 @@ namespace System.Text
             _bigEndian ? (ReadOnlySpan<byte>)new byte[4] { 0x00, 0x00, 0xFE, 0xFF } : // uses C# compiler's optimization for static byte[] data
             (ReadOnlySpan<byte>)new byte[4] { 0xFF, 0xFE, 0x00, 0x00 };
 
-        public override bool Equals(object? value)
+        public override bool Equals([NotNullWhen(true)] object? value)
         {
             if (value is UTF32Encoding that)
             {

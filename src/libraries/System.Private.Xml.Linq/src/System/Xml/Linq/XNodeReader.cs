@@ -5,7 +5,7 @@ using Debug = System.Diagnostics.Debug;
 
 namespace System.Xml.Linq
 {
-    internal class XNodeReader : XmlReader, IXmlLineInfo
+    internal sealed class XNodeReader : XmlReader, IXmlLineInfo
     {
         private static readonly char[] s_WhitespaceChars = new char[] { ' ', '\t', '\n', '\r' };
 
@@ -378,7 +378,7 @@ namespace System.Xml.Linq
                         case XmlNodeType.ProcessingInstruction:
                             return ((XProcessingInstruction)o).Data;
                         case XmlNodeType.DocumentType:
-                            return ((XDocumentType)o).InternalSubset;
+                            return ((XDocumentType)o).InternalSubset ?? string.Empty;
                         default:
                             return string.Empty;
                     }
@@ -552,17 +552,18 @@ namespace System.Xml.Linq
             return null;
         }
 
-        // TODO-NULLABLE: decide if base signature should be switched to return string?
         public override string GetAttribute(int index)
         {
             if (!IsInteractive)
             {
-                return null!;
+                throw new InvalidOperationException(SR.InvalidOperation_ExpectedInteractive);
             }
+
             if (index < 0)
             {
-                return null!;
+                throw new ArgumentOutOfRangeException(nameof(index));
             }
+
             XElement? e = GetElementInAttributeScope();
             if (e != null)
             {
@@ -582,7 +583,7 @@ namespace System.Xml.Linq
                     } while (a != e.lastAttr);
                 }
             }
-            return null!;
+            throw new ArgumentOutOfRangeException(nameof(index));
         }
 
         public override string? LookupNamespace(string prefix)
@@ -1387,8 +1388,7 @@ namespace System.Xml.Linq
         /// <returns>The first attribute which is not a namespace attribute or null if the end of attributes has bean reached</returns>
         private XAttribute? GetFirstNonDuplicateNamespaceAttribute(XAttribute candidate)
         {
-            Debug.Assert(_omitDuplicateNamespaces, "This method should only be called if we're omitting duplicate namespace attribute." +
-                                                  "For perf reason it's better to test this flag in the caller method.");
+            Debug.Assert(_omitDuplicateNamespaces, "This method should only be called if we're omitting duplicate namespace attribute. For perf reason it's better to test this flag in the caller method.");
             if (!IsDuplicateNamespaceAttribute(candidate))
             {
                 return candidate;

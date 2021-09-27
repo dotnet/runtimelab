@@ -1,10 +1,4 @@
-include(clrfeatures.cmake)
-
-# Features we're currently flighting, but don't intend to ship in officially supported releases
-if (PRERELEASE)
-  add_definitions(-DFEATURE_UTF8STRING)
-  # add_definitions(-DFEATURE_XXX)
-endif (PRERELEASE)
+include(${CMAKE_CURRENT_LIST_DIR}/clrfeatures.cmake)
 
 add_compile_definitions($<$<BOOL:$<TARGET_PROPERTY:DAC_COMPONENT>>:DACCESS_COMPILE>)
 add_compile_definitions($<$<BOOL:$<TARGET_PROPERTY:CROSSGEN_COMPONENT>>:CROSSGEN_COMPILE>)
@@ -28,10 +22,6 @@ endif (CLR_CMAKE_TARGET_ARCH_ARM64)
 
 if (CLR_CMAKE_TARGET_UNIX)
 
-  if(CLR_CMAKE_TARGET_OSX)
-    add_definitions(-D_XOPEN_SOURCE)
-  endif(CLR_CMAKE_TARGET_OSX)
-
   if (CLR_CMAKE_TARGET_ARCH_AMD64)
     add_compile_definitions($<$<NOT:$<BOOL:$<TARGET_PROPERTY:IGNORE_DEFAULT_TARGET_ARCH>>>:UNIX_AMD64_ABI>)
     add_compile_definitions($<$<NOT:$<BOOL:$<TARGET_PROPERTY:IGNORE_DEFAULT_TARGET_ARCH>>>:FEATURE_MULTIREG_RETURN>)
@@ -42,6 +32,10 @@ if (CLR_CMAKE_TARGET_UNIX)
   endif()
 
 endif(CLR_CMAKE_TARGET_UNIX)
+
+if (CLR_CMAKE_TARGET_OSX AND CLR_CMAKE_TARGET_ARCH_ARM64)
+  add_compile_definitions($<$<NOT:$<BOOL:$<TARGET_PROPERTY:IGNORE_DEFAULT_TARGET_ARCH>>>:OSX_ARM64_ABI>)
+endif(CLR_CMAKE_TARGET_OSX AND CLR_CMAKE_TARGET_ARCH_ARM64)
 
 if(CLR_CMAKE_TARGET_ALPINE_LINUX)
   # Alpine Linux doesn't have fixed stack limit, this define disables some stack pointer
@@ -62,13 +56,15 @@ if(CLR_CMAKE_HOST_WIN32)
   add_definitions(-DWIN32_LEAN_AND_MEAN)
   add_definitions(-D_CRT_SECURE_NO_WARNINGS)
 endif(CLR_CMAKE_HOST_WIN32)
-if(CLR_CMAKE_TARGET_WIN32)
-  if(CLR_CMAKE_TARGET_ARCH_AMD64 OR CLR_CMAKE_TARGET_ARCH_I386)
-    # Only enable edit and continue on windows x86 and x64
-    # exclude Linux, arm & arm64
-    add_compile_definitions($<$<NOT:$<BOOL:$<TARGET_PROPERTY:CROSSGEN_COMPONENT>>>:EnC_SUPPORTED>)
-  endif(CLR_CMAKE_TARGET_ARCH_AMD64 OR CLR_CMAKE_TARGET_ARCH_I386)
-endif(CLR_CMAKE_TARGET_WIN32)
+
+if (NOT (CLR_CMAKE_TARGET_ARCH_I386 AND CLR_CMAKE_TARGET_UNIX))
+  add_compile_definitions($<$<NOT:$<BOOL:$<TARGET_PROPERTY:CROSSGEN_COMPONENT>>>:EnC_SUPPORTED>)
+endif()
+if(CLR_CMAKE_TARGET_ARCH_AMD64 OR (CLR_CMAKE_TARGET_ARCH_I386 AND CLR_CMAKE_TARGET_WIN32))
+  if(CLR_CMAKE_TARGET_WIN32)
+    add_compile_definitions($<$<NOT:$<BOOL:$<TARGET_PROPERTY:CROSSGEN_COMPONENT>>>:FEATURE_ENC_SUPPORTED>)
+  endif(CLR_CMAKE_TARGET_WIN32)
+endif(CLR_CMAKE_TARGET_ARCH_AMD64 OR (CLR_CMAKE_TARGET_ARCH_I386 AND CLR_CMAKE_TARGET_WIN32))
 
 # Features - please keep them alphabetically sorted
 if(CLR_CMAKE_TARGET_WIN32)
@@ -93,7 +89,6 @@ add_compile_definitions($<$<NOT:$<BOOL:$<TARGET_PROPERTY:CROSSGEN_COMPONENT>>>:F
 add_definitions(-DFEATURE_COLLECTIBLE_TYPES)
 
 if(CLR_CMAKE_TARGET_WIN32)
-    add_definitions(-DFEATURE_COMWRAPPERS)
     add_definitions(-DFEATURE_COMINTEROP)
     add_definitions(-DFEATURE_COMINTEROP_APARTMENT_SUPPORT)
     add_definitions(-DFEATURE_COMINTEROP_UNMANAGED_ACTIVATION)
@@ -125,9 +120,9 @@ endif(FEATURE_GDBJIT_LANGID_CS)
 if(FEATURE_GDBJIT_SYMTAB)
     add_definitions(-DFEATURE_GDBJIT_SYMTAB)
 endif(FEATURE_GDBJIT_SYMTAB)
-if(CLR_CMAKE_TARGET_UNIX)
+if(CLR_CMAKE_TARGET_LINUX)
     add_definitions(-DFEATURE_EVENTSOURCE_XPLAT)
-endif(CLR_CMAKE_TARGET_UNIX)
+endif(CLR_CMAKE_TARGET_LINUX)
 # NetBSD doesn't implement this feature
 if(NOT CLR_CMAKE_TARGET_NETBSD)
     add_definitions(-DFEATURE_HIJACK)
@@ -163,6 +158,14 @@ if(FEATURE_PREJIT)
 else()
   add_compile_definitions($<$<BOOL:$<TARGET_PROPERTY:CROSSGEN_COMPONENT>>:FEATURE_PREJIT>)
 endif(FEATURE_PREJIT)
+
+if(FEATURE_COMWRAPPERS)
+    add_compile_definitions(FEATURE_COMWRAPPERS)
+endif(FEATURE_COMWRAPPERS)
+
+if(FEATURE_OBJCMARSHAL)
+  add_compile_definitions(FEATURE_OBJCMARSHAL)
+endif()
 
 add_compile_definitions($<$<AND:$<NOT:$<BOOL:$<TARGET_PROPERTY:CROSSGEN_COMPONENT>>>,$<NOT:$<BOOL:$<TARGET_PROPERTY:DAC_COMPONENT>>>>:FEATURE_PROFAPI_ATTACH_DETACH>)
 
@@ -221,13 +224,13 @@ if(CLR_CMAKE_TARGET_WIN32)
   endif(CLR_CMAKE_TARGET_ARCH_AMD64 OR CLR_CMAKE_TARGET_ARCH_I386)
 endif(CLR_CMAKE_TARGET_WIN32)
 
-if(CLR_CMAKE_TARGET_OSX)
-  add_definitions(-DFEATURE_WRITEBARRIER_COPY)
-endif(CLR_CMAKE_TARGET_OSX)
-
 if (NOT CLR_CMAKE_TARGET_ARCH_I386 OR NOT CLR_CMAKE_TARGET_WIN32)
   add_compile_definitions($<$<NOT:$<BOOL:$<TARGET_PROPERTY:IGNORE_DEFAULT_TARGET_ARCH>>>:FEATURE_EH_FUNCLETS>)
 endif (NOT CLR_CMAKE_TARGET_ARCH_I386 OR NOT CLR_CMAKE_TARGET_WIN32)
+
+if (CLR_CMAKE_TARGET_WIN32 AND CLR_CMAKE_TARGET_ARCH_AMD64)
+  add_definitions(-DFEATURE_SPECIAL_USER_MODE_APC)
+endif()
 
 
 # Use this function to enable building with a specific target OS and architecture set of defines
@@ -240,20 +243,23 @@ function(set_target_definitions_to_custom_os_and_arch)
   set_target_properties(${TARGETDETAILS_TARGET} PROPERTIES IGNORE_DEFAULT_TARGET_ARCH TRUE)
   set_target_properties(${TARGETDETAILS_TARGET} PROPERTIES IGNORE_DEFAULT_TARGET_OS TRUE)
 
-  if ((TARGETDETAILS_OS STREQUAL "unix"))
+  if ((TARGETDETAILS_OS MATCHES "^unix"))
     target_compile_definitions(${TARGETDETAILS_TARGET} PRIVATE TARGET_UNIX)
     if (TARGETDETAILS_ARCH STREQUAL "x64")
       target_compile_definitions(${TARGETDETAILS_TARGET} PRIVATE UNIX_AMD64_ABI)
       target_compile_definitions(${TARGETDETAILS_TARGET} PRIVATE FEATURE_MULTIREG_RETURN)
-    elseif (TARGETDETAILS_ARCH STREQUAL "arm")
+    elseif ((TARGETDETAILS_ARCH STREQUAL "arm") OR (TARGETDETAILS_ARCH STREQUAL "armel"))
       target_compile_definitions(${TARGETDETAILS_TARGET} PRIVATE UNIX_ARM_ABI)
     elseif (TARGETDETAILS_ARCH STREQUAL "x86")
       target_compile_definitions(${TARGETDETAILS_TARGET} PRIVATE UNIX_X86_ABI)
     elseif (TARGETDETAILS_ARCH STREQUAL "arm64")
     endif()
+    if ((TARGETDETAILS_ARCH STREQUAL "arm64") AND (TARGETDETAILS_OS STREQUAL "unix_osx"))
+      target_compile_definitions(${TARGETDETAILS_TARGET} PRIVATE OSX_ARM64_ABI)
+    endif()
   else()
     target_compile_definitions(${TARGETDETAILS_TARGET} PRIVATE TARGET_WINDOWS)
-  endif((TARGETDETAILS_OS STREQUAL "unix"))
+  endif((TARGETDETAILS_OS MATCHES "^unix"))
 
   if (TARGETDETAILS_ARCH STREQUAL "x86")
     target_compile_definitions(${TARGETDETAILS_TARGET} PRIVATE TARGET_X86)
@@ -264,11 +270,15 @@ function(set_target_definitions_to_custom_os_and_arch)
     target_compile_definitions(${TARGETDETAILS_TARGET} PRIVATE TARGET_64BIT)
     target_compile_definitions(${TARGETDETAILS_TARGET} PRIVATE TARGET_ARM64)
     target_compile_definitions(${TARGETDETAILS_TARGET} PRIVATE FEATURE_MULTIREG_RETURN)
-  elseif(TARGETDETAILS_ARCH STREQUAL "arm")
+  elseif((TARGETDETAILS_ARCH STREQUAL "arm") OR (TARGETDETAILS_ARCH STREQUAL "armel"))
     target_compile_definitions(${TARGETDETAILS_TARGET} PRIVATE TARGET_ARM)
   endif()
 
-  if (NOT (TARGETDETAILS_ARCH STREQUAL "x86") OR (TARGETDETAILS_OS STREQUAL "unix"))
+  if (TARGETDETAILS_ARCH STREQUAL "armel")
+    target_compile_definitions(${TARGETDETAILS_TARGET} PRIVATE ARM_SOFTFP)
+  endif()
+
+  if (NOT (TARGETDETAILS_ARCH STREQUAL "x86") OR (TARGETDETAILS_OS MATCHES "^unix"))
     target_compile_definitions(${TARGETDETAILS_TARGET} PRIVATE FEATURE_EH_FUNCLETS)
-  endif (NOT (TARGETDETAILS_ARCH STREQUAL "x86") OR (TARGETDETAILS_OS STREQUAL "unix"))
+  endif (NOT (TARGETDETAILS_ARCH STREQUAL "x86") OR (TARGETDETAILS_OS MATCHES "^unix"))
 endfunction()

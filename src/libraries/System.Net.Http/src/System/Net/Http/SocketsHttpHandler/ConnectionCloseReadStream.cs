@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace System.Net.Http
 {
-    internal partial class HttpConnection : IDisposable
+    internal sealed partial class HttpConnection : IDisposable
     {
         private sealed class ConnectionCloseReadStream : HttpContentReadStream
         {
@@ -89,7 +89,7 @@ namespace System.Net.Http
 
             public override Task CopyToAsync(Stream destination, int bufferSize, CancellationToken cancellationToken)
             {
-                ValidateCopyToArgs(this, destination, bufferSize);
+                ValidateCopyToArguments(destination, bufferSize);
 
                 if (cancellationToken.IsCancellationRequested)
                 {

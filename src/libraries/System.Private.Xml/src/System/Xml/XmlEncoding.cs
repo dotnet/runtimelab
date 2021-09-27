@@ -1,12 +1,13 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Buffers.Binary;
 using System.Text;
 using System.Diagnostics;
 
 namespace System.Xml
 {
-    internal class UTF16Decoder : System.Text.Decoder
+    internal sealed class UTF16Decoder : System.Text.Decoder
     {
         private readonly bool _bigEndian;
         private int _lastByte;
@@ -160,7 +161,7 @@ namespace System.Xml
         }
     }
 
-    internal class SafeAsciiDecoder : Decoder
+    internal sealed class SafeAsciiDecoder : Decoder
     {
         public SafeAsciiDecoder()
         {
@@ -543,7 +544,7 @@ namespace System.Xml
         }
     }
 
-    internal class Ucs4Decoder4321 : Ucs4Decoder
+    internal sealed class Ucs4Decoder4321 : Ucs4Decoder
     {
         internal override int GetFullChars(byte[] bytes, int byteIndex, int byteCount, char[] chars, int charIndex)
         {
@@ -554,7 +555,7 @@ namespace System.Xml
 
             for (i = byteIndex, j = charIndex; i + 3 < byteCount;)
             {
-                code = (uint)((bytes[i + 3] << 24) | (bytes[i + 2] << 16) | (bytes[i + 1] << 8) | bytes[i]);
+                code = BinaryPrimitives.ReadUInt32LittleEndian(bytes.AsSpan(i));
                 if (code > 0x10FFFF)
                 {
                     throw new ArgumentException(SR.Format(SR.Enc_InvalidByteInEncoding, new object[1] { i }), (string?)null);
@@ -584,7 +585,7 @@ namespace System.Xml
         }
     }
 
-    internal class Ucs4Decoder1234 : Ucs4Decoder
+    internal sealed class Ucs4Decoder1234 : Ucs4Decoder
     {
         internal override int GetFullChars(byte[] bytes, int byteIndex, int byteCount, char[] chars, int charIndex)
         {
@@ -595,7 +596,7 @@ namespace System.Xml
 
             for (i = byteIndex, j = charIndex; i + 3 < byteCount;)
             {
-                code = (uint)((bytes[i] << 24) | (bytes[i + 1] << 16) | (bytes[i + 2] << 8) | bytes[i + 3]);
+                code = BinaryPrimitives.ReadUInt32BigEndian(bytes.AsSpan(i));
                 if (code > 0x10FFFF)
                 {
                     throw new ArgumentException(SR.Format(SR.Enc_InvalidByteInEncoding, new object[1] { i }), (string?)null);
@@ -626,7 +627,7 @@ namespace System.Xml
     }
 
 
-    internal class Ucs4Decoder2143 : Ucs4Decoder
+    internal sealed class Ucs4Decoder2143 : Ucs4Decoder
     {
         internal override int GetFullChars(byte[] bytes, int byteIndex, int byteCount, char[] chars, int charIndex)
         {
@@ -668,7 +669,7 @@ namespace System.Xml
     }
 
 
-    internal class Ucs4Decoder3412 : Ucs4Decoder
+    internal sealed class Ucs4Decoder3412 : Ucs4Decoder
     {
         internal override int GetFullChars(byte[] bytes, int byteIndex, int byteCount, char[] chars, int charIndex)
         {

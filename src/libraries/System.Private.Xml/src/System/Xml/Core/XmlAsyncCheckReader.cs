@@ -151,7 +151,7 @@ namespace System.Xml
             }
         }
 
-        public override string? BaseURI
+        public override string BaseURI
         {
             get
             {
@@ -914,7 +914,7 @@ namespace System.Xml
         #endregion
     }
 
-    internal class XmlAsyncCheckReaderWithNS : XmlAsyncCheckReader, IXmlNamespaceResolver
+    internal sealed class XmlAsyncCheckReaderWithNS : XmlAsyncCheckReader, IXmlNamespaceResolver
     {
         private readonly IXmlNamespaceResolver _readerAsIXmlNamespaceResolver;
 
@@ -1004,7 +1004,7 @@ namespace System.Xml
         #endregion
     }
 
-    internal class XmlAsyncCheckReaderWithLineInfoNSSchema : XmlAsyncCheckReaderWithLineInfoNS, IXmlSchemaInfo
+    internal sealed class XmlAsyncCheckReaderWithLineInfoNSSchema : XmlAsyncCheckReaderWithLineInfoNS, IXmlSchemaInfo
     {
         private readonly IXmlSchemaInfo _readerAsIXmlSchemaInfo;
 

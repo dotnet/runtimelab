@@ -1,7 +1,6 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-#nullable enable
 using System.Buffers;
 using System.IO;
 using System.Net.Quic.Implementations;
@@ -41,45 +40,27 @@ namespace System.Net.Quic
         public override void EndWrite(IAsyncResult asyncResult) =>
             TaskToApm.End(asyncResult);
 
-        private static void ValidateBufferArgs(byte[] buffer, int offset, int count)
-        {
-            if (buffer == null)
-            {
-                throw new ArgumentNullException(nameof(buffer));
-            }
-
-            if ((uint)offset > buffer.Length)
-            {
-                throw new ArgumentOutOfRangeException(nameof(offset));
-            }
-
-            if ((uint)count > buffer.Length - offset)
-            {
-                throw new ArgumentOutOfRangeException(nameof(count));
-            }
-        }
-
         public override int Read(byte[] buffer, int offset, int count)
         {
-            ValidateBufferArgs(buffer, offset, count);
+            ValidateBufferArguments(buffer, offset, count);
             return Read(buffer.AsSpan(offset, count));
         }
 
         public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
         {
-            ValidateBufferArgs(buffer, offset, count);
+            ValidateBufferArguments(buffer, offset, count);
             return ReadAsync(new Memory<byte>(buffer, offset, count), cancellationToken).AsTask();
         }
 
         public override void Write(byte[] buffer, int offset, int count)
         {
-            ValidateBufferArgs(buffer, offset, count);
+            ValidateBufferArguments(buffer, offset, count);
             Write(buffer.AsSpan(offset, count));
         }
 
         public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
         {
-            ValidateBufferArgs(buffer, offset, count);
+            ValidateBufferArguments(buffer, offset, count);
             return WriteAsync(new ReadOnlyMemory<byte>(buffer, offset, count), cancellationToken).AsTask();
         }
 
@@ -90,6 +71,8 @@ namespace System.Net.Quic
 
         public override bool CanRead => _provider.CanRead;
 
+        public bool ReadsCompleted => _provider.ReadsCompleted;
+
         public override int Read(Span<byte> buffer) => _provider.Read(buffer);
 
         public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default) => _provider.ReadAsync(buffer, cancellationToken);
@@ -97,6 +80,20 @@ namespace System.Net.Quic
         public override bool CanWrite => _provider.CanWrite;
 
         public override void Write(ReadOnlySpan<byte> buffer) => _provider.Write(buffer);
+
+        public override bool CanTimeout => _provider.CanTimeout;
+
+        public override int ReadTimeout
+        {
+            get => _provider.ReadTimeout;
+            set => _provider.ReadTimeout = value;
+        }
+
+        public override int WriteTimeout
+        {
+            get => _provider.WriteTimeout;
+            set => _provider.WriteTimeout = value;
+        }
 
         public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default) => _provider.WriteAsync(buffer, cancellationToken);
 
@@ -118,7 +115,9 @@ namespace System.Net.Quic
 
         public ValueTask WriteAsync(ReadOnlyMemory<ReadOnlyMemory<byte>> buffers, bool endStream, CancellationToken cancellationToken = default) => _provider.WriteAsync(buffers, endStream, cancellationToken);
 
-        public ValueTask ShutdownWriteCompleted(CancellationToken cancellationToken = default) => _provider.ShutdownWriteCompleted(cancellationToken);
+        public ValueTask ShutdownCompleted(CancellationToken cancellationToken = default) => _provider.ShutdownCompleted(cancellationToken);
+
+        public ValueTask WaitForWriteCompletionAsync(CancellationToken cancellationToken = default) => _provider.WaitForWriteCompletionAsync(cancellationToken);
 
         public void Shutdown() => _provider.Shutdown();
 

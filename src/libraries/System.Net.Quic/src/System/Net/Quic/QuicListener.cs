@@ -13,7 +13,7 @@ namespace System.Net.Quic
         private readonly QuicListenerProvider _provider;
 
         /// <summary>
-        /// Create a QUIC listener on the specified local endpoint and start listening.
+        /// Create a QUIC listener.
         /// </summary>
         /// <param name="listenEndPoint">The local endpoint to listen on.</param>
         /// <param name="sslServerAuthenticationOptions">TLS options for the listener.</param>
@@ -22,12 +22,22 @@ namespace System.Net.Quic
         {
         }
 
-        // !!! TEMPORARY: Remove "implementationProvider" before shipping
-        public QuicListener(QuicImplementationProvider implementationProvider, IPEndPoint listenEndPoint, SslServerAuthenticationOptions sslServerAuthenticationOptions)
-            : this(implementationProvider,  new QuicListenerOptions() { ListenEndPoint = listenEndPoint, ServerAuthenticationOptions = sslServerAuthenticationOptions })
+        /// <summary>
+        /// Create a QUIC listener.
+        /// </summary>
+        /// <param name="options">The listener options.</param>
+        public QuicListener(QuicListenerOptions options)
+            : this(QuicImplementationProviders.Default, options)
         {
         }
 
+        // !!! TEMPORARY: Remove or make internal before shipping
+        public QuicListener(QuicImplementationProvider implementationProvider, IPEndPoint listenEndPoint, SslServerAuthenticationOptions sslServerAuthenticationOptions)
+            : this(implementationProvider, new QuicListenerOptions() { ListenEndPoint = listenEndPoint, ServerAuthenticationOptions = sslServerAuthenticationOptions })
+        {
+        }
+
+        // !!! TEMPORARY: Remove or make internal before shipping
         public QuicListener(QuicImplementationProvider implementationProvider, QuicListenerOptions options)
         {
             _provider = implementationProvider.CreateListener(options);
@@ -41,13 +51,6 @@ namespace System.Net.Quic
         /// <returns></returns>
         public async ValueTask<QuicConnection> AcceptConnectionAsync(CancellationToken cancellationToken = default) =>
             new QuicConnection(await _provider.AcceptConnectionAsync(cancellationToken).ConfigureAwait(false));
-
-        public void Start() => _provider.Start();
-
-        /// <summary>
-        /// Stop listening and close the listener.
-        /// </summary>
-        public void Close() => _provider.Close();
 
         public void Dispose() => _provider.Dispose();
     }

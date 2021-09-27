@@ -5,7 +5,7 @@
 /* interpreter callback stubs */
 
 static MonoJitInfo*
-stub_find_jit_info (MonoDomain *domain, MonoMethod *method)
+stub_find_jit_info (MonoMethod *method)
 {
 	return NULL;
 }
@@ -64,13 +64,6 @@ stub_frame_get_parent (MonoInterpFrameHandle frame)
 	return NULL;
 }
 
-static gpointer
-stub_frame_get_res (MonoInterpFrameHandle frame)
-{
-	g_assert_not_reached ();
-	return NULL;
-}
-
 static void
 stub_start_single_stepping (void)
 {
@@ -87,7 +80,7 @@ stub_set_optimizations (guint32 i)
 }
 
 static void
-stub_invalidate_transformed (MonoDomain *domain)
+stub_invalidate_transformed (void)
 {
 }
 
@@ -149,7 +142,7 @@ stub_create_method_pointer_llvmonly (MonoMethod *method, gboolean compile, MonoE
 }
 
 static void
-stub_free_method (MonoDomain *domain, MonoMethod *method)
+stub_free_method (MonoMethod *method)
 {
 	g_assert_not_reached ();
 }
@@ -212,12 +205,6 @@ stub_frame_arg_to_storage (MonoInterpFrameHandle frame, MonoMethodSignature *sig
 }
 
 static void
-stub_frame_arg_set_storage (MonoInterpFrameHandle frame, MonoMethodSignature *sig, int index, gpointer storage)
-{
-	g_assert_not_reached ();
-}
-
-static void
 stub_free_context (gpointer context)
 {
 	g_assert_not_reached ();
@@ -225,6 +212,11 @@ stub_free_context (gpointer context)
 
 static void
 stub_mark_stack (gpointer thread_data, GcScanFunc func, gpointer gc_data, gboolean precise)
+{
+}
+
+static void
+stub_jit_info_foreach (InterpJitInfoFunc func, gpointer user_data)
 {
 }
 

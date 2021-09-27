@@ -2,19 +2,44 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.IO;
+using System.IO.Tests;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.DotNet.XUnitExtensions;
 using Xunit;
 
 namespace System.Security.Cryptography.Encryption.Tests.Asymmetric
 {
-    public static class CryptoStreamTests
+    public class CryptoStreamTests : WrappingConnectedStreamConformanceTests
     {
+        protected override Task<StreamPair> CreateConnectedStreamsAsync()
+        {
+            (Stream writeable, Stream readable) = ConnectedStreams.CreateBidirectional();
+            return CreateWrappedConnectedStreamsAsync((writeable, readable));
+        }
+
+        protected override Task<StreamPair> CreateWrappedConnectedStreamsAsync(StreamPair wrapped, bool leaveOpen = false)
+        {
+            ICryptoTransform transform = new IdentityTransform(1, 1, true);
+            (Stream writeable, Stream readable) = GetReadWritePair(wrapped);
+            var encryptedWriteable = new CryptoStream(writeable, transform, CryptoStreamMode.Write, leaveOpen);
+            var decryptedReadable = new CryptoStream(readable, transform, CryptoStreamMode.Read, leaveOpen);
+            return Task.FromResult<StreamPair>((encryptedWriteable, decryptedReadable));
+        }
+
+        protected override Type UnsupportedConcurrentExceptionType => null;
+        protected override bool BlocksOnZeroByteReads => true;
+
+        [ActiveIssue("https://github.com/dotnet/runtime/issues/45080")]
+        [Theory]
+        [MemberData(nameof(ReadWrite_Success_Large_MemberData))]
+        public override Task ReadWrite_Success_Large(ReadWriteMode mode, int writeSize, bool startWithFlush) => base.ReadWrite_Success_Large(mode, writeSize, startWithFlush);
+
         [Fact]
         public static void Ctor()
         {
             var transform = new IdentityTransform(1, 1, true);
-            AssertExtensions.Throws<ArgumentException>(null, () => new CryptoStream(new MemoryStream(), transform, (CryptoStreamMode)12345));
+            AssertExtensions.Throws<ArgumentException>("mode", () => new CryptoStream(new MemoryStream(), transform, (CryptoStreamMode)12345));
             AssertExtensions.Throws<ArgumentException>(null, "stream", () => new CryptoStream(new MemoryStream(new byte[0], writable: false), transform, CryptoStreamMode.Write));
             AssertExtensions.Throws<ArgumentException>(null, "stream", () => new CryptoStream(new CryptoStream(new MemoryStream(new byte[0]), transform, CryptoStreamMode.Write), transform, CryptoStreamMode.Read));
         }
@@ -40,17 +65,6 @@ namespace System.Security.Cryptography.Encryption.Tests.Asymmetric
                 Assert.False(encryptStream.CanRead);
                 Assert.False(encryptStream.CanSeek);
                 Assert.False(encryptStream.HasFlushedFinalBlock);
-                Assert.Throws<NotSupportedException>(() => encryptStream.SetLength(1));
-                Assert.Throws<NotSupportedException>(() => encryptStream.Length);
-                Assert.Throws<NotSupportedException>(() => encryptStream.Position);
-                Assert.Throws<NotSupportedException>(() => encryptStream.Position = 0);
-                Assert.Throws<NotSupportedException>(() => encryptStream.Seek(0, SeekOrigin.Begin));
-                Assert.Throws<NotSupportedException>(() => encryptStream.Read(new byte[0], 0, 0));
-                Assert.Throws<NullReferenceException>(() => encryptStream.Write(null, 0, 0)); // No arg validation on buffer?
-                Assert.Throws<ArgumentOutOfRangeException>(() => encryptStream.Write(new byte[0], -1, 0));
-                Assert.Throws<ArgumentOutOfRangeException>(() => encryptStream.Write(new byte[0], 0, -1));
-                Assert.Throws<ArgumentOutOfRangeException>(() => encryptStream.Write(new byte[0], 0, -1));
-                AssertExtensions.Throws<ArgumentException>(null, () => encryptStream.Write(new byte[3], 1, 4));
 
                 byte[] toWrite = Encoding.UTF8.GetBytes(LoremText);
 
@@ -93,17 +107,6 @@ namespace System.Security.Cryptography.Encryption.Tests.Asymmetric
                 Assert.True(decryptStream.CanRead);
                 Assert.False(decryptStream.CanSeek);
                 Assert.False(decryptStream.HasFlushedFinalBlock);
-                Assert.Throws<NotSupportedException>(() => decryptStream.SetLength(1));
-                Assert.Throws<NotSupportedException>(() => decryptStream.Length);
-                Assert.Throws<NotSupportedException>(() => decryptStream.Position);
-                Assert.Throws<NotSupportedException>(() => decryptStream.Position = 0);
-                Assert.Throws<NotSupportedException>(() => decryptStream.Seek(0, SeekOrigin.Begin));
-                Assert.Throws<NotSupportedException>(() => decryptStream.Write(new byte[0], 0, 0));
-                Assert.Throws<NullReferenceException>(() => decryptStream.Read(null, 0, 0)); // No arg validation on buffer?
-                Assert.Throws<ArgumentOutOfRangeException>(() => decryptStream.Read(new byte[0], -1, 0));
-                Assert.Throws<ArgumentOutOfRangeException>(() => decryptStream.Read(new byte[0], 0, -1));
-                Assert.Throws<ArgumentOutOfRangeException>(() => decryptStream.Read(new byte[0], 0, -1));
-                AssertExtensions.Throws<ArgumentException>(null, () => decryptStream.Read(new byte[3], 1, 4));
 
                 using (StreamReader reader = new StreamReader(decryptStream))
                 {
@@ -147,18 +150,6 @@ namespace System.Security.Cryptography.Encryption.Tests.Asymmetric
         }
 
         [Fact]
-        public static void NestedCryptoStreams()
-        {
-            ICryptoTransform encryptor = new IdentityTransform(1, 1, true);
-            using (MemoryStream output = new MemoryStream())
-            using (CryptoStream encryptStream1 = new CryptoStream(output, encryptor, CryptoStreamMode.Write))
-            using (CryptoStream encryptStream2 = new CryptoStream(encryptStream1, encryptor, CryptoStreamMode.Write))
-            {
-                encryptStream2.Write(new byte[] { 1, 2, 3, 4, 5 }, 0, 5);
-            }
-        }
-
-        [Fact]
         public static void Clear()
         {
             ICryptoTransform encryptor = new IdentityTransform(1, 1, true);
@@ -167,23 +158,6 @@ namespace System.Security.Cryptography.Encryption.Tests.Asymmetric
             {
                 encryptStream.Clear();
                 Assert.Throws<NotSupportedException>(() => encryptStream.Write(new byte[] { 1, 2, 3, 4, 5 }, 0, 5));
-            }
-        }
-
-        [Fact]
-        public static void FlushAsync()
-        {
-            ICryptoTransform encryptor = new IdentityTransform(1, 1, true);
-            using (MemoryStream output = new MemoryStream())
-            using (CryptoStream encryptStream = new CryptoStream(output, encryptor, CryptoStreamMode.Write))
-            {
-                encryptStream.WriteAsync(new byte[] { 1, 2, 3, 4, 5 }, 0, 5);
-                Task waitable = encryptStream.FlushAsync(new Threading.CancellationToken(false));
-                Assert.False(waitable.IsCanceled);
-
-                encryptStream.WriteAsync(new byte[] { 1, 2, 3, 4, 5 }, 0, 5);
-                waitable = encryptStream.FlushAsync(new Threading.CancellationToken(true));
-                Assert.True(waitable.IsCanceled);
             }
         }
 
@@ -202,7 +176,7 @@ namespace System.Security.Cryptography.Encryption.Tests.Asymmetric
         }
 
         [Fact]
-        public static async Task FlushFinalBlockAsync_Cancelled()
+        public static async Task FlushFinalBlockAsync_Canceled()
         {
             ICryptoTransform encryptor = new IdentityTransform(1, 1, true);
             using (MemoryStream output = new MemoryStream())
@@ -216,7 +190,7 @@ namespace System.Security.Cryptography.Encryption.Tests.Asymmetric
         }
 
         [Fact]
-        public static void FlushCalledOnFlushAsync_DeriveClass()
+        public static void FlushCalledOnFlushAsync_DerivedClass()
         {
             ICryptoTransform encryptor = new IdentityTransform(1, 1, true);
             using (MemoryStream output = new MemoryStream())
@@ -341,6 +315,74 @@ namespace System.Security.Cryptography.Encryption.Tests.Asymmetric
                 }
 
                 // No exception should be thrown.
+            }
+        }
+
+        [ConditionalFact(typeof(PlatformDetection), nameof(PlatformDetection.Is64BitProcess))]
+        public static void EnormousRead()
+        {
+            // 0x6000_0000 / 3 => 0x2000_0000 * 4 => 0x8000_0000 (overflow)
+            // (output bytes) / (output block size) * (input block size) == (input bytes requested)
+            const int OutputBufferLength = 0x6000_0000;
+            byte[] output;
+
+            try
+            {
+                output = new byte[OutputBufferLength];
+            }
+            catch (OutOfMemoryException)
+            {
+                throw new SkipTestException("Could not create a large enough array");
+            }
+
+            // The input portion doesn't matter, the overflow happens before the call to the inner
+            // stream's read.
+            //
+            // When changing this flow from an OverflowException, there are two reasonable changes:
+            // A really big buffer (but the interior logic clamping the temp read buffer to Array.MaxLength
+            //   will still get it in one read)
+            // A stream that produces more than Array.MaxLength bytes.  Like, oh, 0x8000_0000U of them.
+            byte[] buffer = Array.Empty<byte>();
+
+            using (MemoryStream stream = new MemoryStream(buffer))
+            using (ICryptoTransform transform = new FromBase64Transform())
+            using (CryptoStream cryptoStream = new CryptoStream(stream, transform, CryptoStreamMode.Read))
+            {
+                Assert.Throws<OverflowException>(() => cryptoStream.Read(output, 0, output.Length));
+            }
+        }
+
+        [ConditionalFact(typeof(PlatformDetection), nameof(PlatformDetection.Is64BitProcess))]
+        public static void EnormousWrite()
+        {
+            // 0x6000_0000 / 3 => 0x2000_0000 * 4 => 0x8000_0000 (overflow)
+            // (input bytes) / (input block size) * (output block size) => (output bytes to write)
+            const int InputBufferLength = 0x60000000;
+
+            byte[] buffer;
+
+            try
+            {
+                buffer = new byte[InputBufferLength];
+            }
+            catch (OutOfMemoryException)
+            {
+                throw new SkipTestException("Could not create a large enough array");
+            }
+
+            // In the Read scenario the overflow comes from a reducing transform.
+            // In the Write scenario it comes from an expanding transform.
+            //
+            // When making the write not overflow change the test to use an output stream
+            // that isn't bounded by Array.MaxLength.  e.g. a counting stream, or a stream
+            // that just computes some hash of the input (so total correctness can be measured)
+            byte[] output = Array.Empty<byte>();
+
+            using (MemoryStream stream = new MemoryStream(output))
+            using (ICryptoTransform transform = new ToBase64Transform())
+            using (CryptoStream cryptoStream = new CryptoStream(stream, transform, CryptoStreamMode.Write, leaveOpen: true))
+            {
+                Assert.Throws<OverflowException>(() => cryptoStream.Write(buffer, 0, buffer.Length));
             }
         }
 
