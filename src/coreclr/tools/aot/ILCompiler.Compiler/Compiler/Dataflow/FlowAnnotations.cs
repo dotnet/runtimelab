@@ -142,6 +142,8 @@ namespace ILCompiler.Dataflow
 
         public bool ShouldWarnWhenAccessedForReflection(MethodDesc method)
         {
+            method = method.GetTypicalMethodDefinition();
+            
             if (!GetAnnotations(method.OwningType).TryGetAnnotation(method, out var annotation))
                 return false;
 
@@ -190,8 +192,11 @@ namespace ILCompiler.Dataflow
             return method.IsVirtual || annotation.ParameterAnnotations != null;
         }
 
-        public bool ShouldWarnWhenAccessedForReflection(FieldDesc field) =>
-            GetAnnotations(field.OwningType).TryGetAnnotation(field, out _);
+        public bool ShouldWarnWhenAccessedForReflection(FieldDesc field)
+        {
+            field = field.GetTypicalFieldDefinition();
+            return GetAnnotations(field.OwningType).TryGetAnnotation(field, out _);
+        }
 
         private TypeAnnotations GetAnnotations(TypeDesc type)
         {
