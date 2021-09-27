@@ -1352,7 +1352,7 @@ namespace ILCompiler.Dataflow
 
             for (int i = 0; i < Count; i++)
             {
-                if (!otherList[i].Equals(this[i]))
+                if (!(otherList[i]?.Equals(this[i]) ?? (this[i] is null)))
                     return false;
             }
             return true;
