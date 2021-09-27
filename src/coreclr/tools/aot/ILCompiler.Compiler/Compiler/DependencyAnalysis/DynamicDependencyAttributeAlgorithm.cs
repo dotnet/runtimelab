@@ -144,13 +144,16 @@ namespace ILCompiler.DependencyAnalysis
                             RootingHelpers.TryGetDependenciesForReflectedType(ref dependencies, factory, nestedType, reason);
                             break;
                         case PropertyPseudoDesc property:
-                            RootingHelpers.TryGetDependenciesForReflectedProperty(ref dependencies, factory, property, reason);
+                            if (property.GetMethod != null)
+                                RootingHelpers.TryGetDependenciesForReflectedMethod(ref dependencies, factory, property.GetMethod, reason);
+                            if (property.SetMethod != null)
+                                RootingHelpers.TryGetDependenciesForReflectedMethod(ref dependencies, factory, property.SetMethod, reason);
                             break;
                         case EventPseudoDesc @event:
-                            RootingHelpers.TryGetDependenciesForReflectedEvent(ref dependencies, factory, @event, reason);
-                            break;
-                        case null:
-                            RootingHelpers.GetDependenciesForEntireReflectedType(ref dependencies, factory, targetType, reason);
+                            if (@event.AddMethod != null)
+                                RootingHelpers.TryGetDependenciesForReflectedMethod(ref dependencies, factory, @event.AddMethod, reason);
+                            if (@event.RemoveMethod != null)
+                                RootingHelpers.TryGetDependenciesForReflectedMethod(ref dependencies, factory, @event.RemoveMethod, reason);
                             break;
                         default:
                             Debug.Fail(member.GetType().ToString());

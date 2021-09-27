@@ -73,11 +73,20 @@ namespace ILCompiler.Dataflow
             return ShouldEnablePatternReporting(method, "RequiresDynamicCodeAttribute");
         }
 
-        private ReflectionMethodBodyScanner(NodeFactory factory, FlowAnnotations flowAnnotations, Logger logger)
+        private enum ScanningPurpose
+        {
+            Default,
+            GetTypeDataflow,
+        }
+
+        private ScanningPurpose _purpose;
+
+        private ReflectionMethodBodyScanner(NodeFactory factory, FlowAnnotations flowAnnotations, Logger logger, ScanningPurpose purpose = ScanningPurpose.Default)
         {
             _flowAnnotations = flowAnnotations;
             _logger = logger;
             _factory = factory;
+            _purpose = purpose;
         }
 
         public static DependencyList ScanAndProcessReturnValue(NodeFactory factory, FlowAnnotations flowAnnotations, Logger logger, MethodIL methodBody)
@@ -221,7 +230,7 @@ namespace ILCompiler.Dataflow
         {
             DynamicallyAccessedMemberTypes annotation = flowAnnotations.GetTypeAnnotation(type);
             Debug.Assert(annotation != DynamicallyAccessedMemberTypes.None);
-            var scanner = new ReflectionMethodBodyScanner(factory, flowAnnotations, logger);
+            var scanner = new ReflectionMethodBodyScanner(factory, flowAnnotations, logger, ScanningPurpose.GetTypeDataflow);
             ReflectionPatternContext reflectionPatternContext = new ReflectionPatternContext(logger, reportingEnabled: true, type, new TypeOrigin(type));
             reflectionPatternContext.AnalyzingPattern();
             scanner.MarkTypeForDynamicallyAccessedMembers(ref reflectionPatternContext, type, annotation);
@@ -1936,17 +1945,19 @@ namespace ILCompiler.Dataflow
                                     // Overload that has the parameters as the second or fourth argument
                                     int argsParam = parameters.Length == 2 || parameters.Length == 3 ? 1 : 3;
 
-                                    if (methodParams.Count > argsParam &&
-                                        methodParams[argsParam] is ArrayValue arrayValue &&
-                                        arrayValue.Size.AsConstInt() != null)
+                                    if (methodParams.Count > argsParam)
                                     {
-                                        ctorParameterCount = arrayValue.Size.AsConstInt();
+                                        if (methodParams[argsParam] is ArrayValue arrayValue &&
+                                            arrayValue.Size.AsConstInt() != null)
+                                            ctorParameterCount = arrayValue.Size.AsConstInt();
+                                        else if (methodParams[argsParam] is NullValue)
+                                            ctorParameterCount = 0;
                                     }
 
                                     if (parameters.Length > 3)
                                     {
-                                        if (methodParams[1].AsConstInt() != null)
-                                            bindingFlags |= (BindingFlags)methodParams[1].AsConstInt();
+                                        if (methodParams[1].AsConstInt() is int constInt)
+                                            bindingFlags |= (BindingFlags)constInt;
                                         else
                                             bindingFlags |= BindingFlags.NonPublic | BindingFlags.Public;
                                     }
@@ -1976,9 +1987,14 @@ namespace ILCompiler.Dataflow
                                 else
                                 {
                                     // Otherwise fall back to the bitfield requirements
-                                    var requiredMemberTypes = ctorParameterCount == 0
-                                        ? DynamicallyAccessedMemberTypes.PublicParameterlessConstructor
-                                        : GetDynamicallyAccessedMemberTypesFromBindingFlagsForConstructors(bindingFlags);
+                                    var requiredMemberTypes = GetDynamicallyAccessedMemberTypesFromBindingFlagsForConstructors(bindingFlags);
+
+                                    // Special case the public parameterless constructor if we know that there are 0 args passed in
+                                    if (ctorParameterCount == 0 && requiredMemberTypes.HasFlag(DynamicallyAccessedMemberTypes.PublicConstructors))
+                                    {
+                                        requiredMemberTypes &= ~DynamicallyAccessedMemberTypes.PublicConstructors;
+                                        requiredMemberTypes |= DynamicallyAccessedMemberTypes.PublicParameterlessConstructor;
+                                    }
                                     RequireDynamicallyAccessedMembers(ref reflectionContext, requiredMemberTypes, value, new ParameterOrigin(calledMethod, 0));
                                 }
                             }
@@ -2433,17 +2449,14 @@ namespace ILCompiler.Dataflow
 
             BindingFlags bindingFlags = BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public;
             bool parameterlessConstructor = true;
-            if (calledMethod.Signature.Length == 8 && calledMethod.Signature[2].IsWellKnownType(WellKnownType.Boolean) &&
-                methodParams[3].AsConstInt() != null)
+            if (calledMethod.Parameters.Count == 8 && calledMethod.Parameters[2].ParameterType.MetadataType == MetadataType.Boolean)
             {
                 parameterlessConstructor = false;
-                bindingFlags = BindingFlags.Instance | (BindingFlags)methodParams[3].AsConstInt();
-            }
-            else if (calledMethod.Signature.Length == 8 && calledMethod.Signature[2].IsWellKnownType(WellKnownType.Boolean) &&
-                methodParams[3].AsConstInt() == null)
-            {
-                parameterlessConstructor = false;
-                bindingFlags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
+                bindingFlags = BindingFlags.Instance;
+				if (methodParams[3].AsConstInt() is int bindingFlagsInt)
+					bindingFlags |= (BindingFlags)bindingFlagsInt;
+				else
+					bindingFlags |= BindingFlags.Public | BindingFlags.NonPublic;
             }
 
             int methodParamsOffset = !calledMethod.Signature.IsStatic ? 1 : 0;
@@ -2511,6 +2524,42 @@ namespace ILCompiler.Dataflow
                 methodReturnValue = MergePointValue.MergeValues(methodReturnValue, NullValue.Instance);
         }
 
+        public static DynamicallyAccessedMemberTypes GetMissingMemberTypes(DynamicallyAccessedMemberTypes requiredMemberTypes, DynamicallyAccessedMemberTypes availableMemberTypes)
+        {
+            if (availableMemberTypes.HasFlag(requiredMemberTypes))
+                return DynamicallyAccessedMemberTypes.None;
+
+            if (requiredMemberTypes == DynamicallyAccessedMemberTypes.All)
+                return DynamicallyAccessedMemberTypes.All;
+
+            var missingMemberTypes = requiredMemberTypes & ~availableMemberTypes;
+
+            // PublicConstructors is a special case since its value is 3 - so PublicParameterlessConstructor (1) | _PublicConstructor_WithMoreThanOneParameter_ (2)
+            // The above bit logic only works for value with single bit set.
+            if (requiredMemberTypes.HasFlag(DynamicallyAccessedMemberTypes.PublicConstructors) &&
+                !availableMemberTypes.HasFlag(DynamicallyAccessedMemberTypes.PublicConstructors))
+                missingMemberTypes |= DynamicallyAccessedMemberTypes.PublicConstructors;
+
+            return missingMemberTypes;
+        }
+
+        private string GetMemberTypesString(DynamicallyAccessedMemberTypes memberTypes)
+        {
+            Debug.Assert(memberTypes != DynamicallyAccessedMemberTypes.None);
+
+            if (memberTypes == DynamicallyAccessedMemberTypes.All)
+                return $"'{nameof(DynamicallyAccessedMemberTypes)}.{nameof(DynamicallyAccessedMemberTypes.All)}'";
+
+            var memberTypesList = Enum.GetValues<DynamicallyAccessedMemberTypes>()
+                .Where(damt => (memberTypes & damt) == damt && damt != DynamicallyAccessedMemberTypes.None)
+                .ToList();
+
+            if (memberTypes.HasFlag(DynamicallyAccessedMemberTypes.PublicConstructors))
+                memberTypesList.Remove(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor);
+
+            return string.Join(", ", memberTypesList.Select(mt => $"'{nameof(DynamicallyAccessedMemberTypes)}.{mt}'"));
+        }
+
         void RequireDynamicallyAccessedMembers(ref ReflectionPatternContext reflectionContext, DynamicallyAccessedMemberTypes requiredMemberTypes, ValueNode value, Origin targetContext)
         {
             foreach (var uniqueValue in value.UniqueValues())
@@ -2524,23 +2573,11 @@ namespace ILCompiler.Dataflow
                 }
                 else if (uniqueValue is LeafValueWithDynamicallyAccessedMemberNode valueWithDynamicallyAccessedMember)
                 {
-                    if (!valueWithDynamicallyAccessedMember.DynamicallyAccessedMemberTypes.HasFlag(requiredMemberTypes))
+                    var availableMemberTypes = valueWithDynamicallyAccessedMember.DynamicallyAccessedMemberTypes;
+                    var missingMemberTypesValue = GetMissingMemberTypes(requiredMemberTypes, availableMemberTypes);
+                    if (missingMemberTypesValue != DynamicallyAccessedMemberTypes.None)
                     {
-                        string missingMemberTypes = $"'{nameof(DynamicallyAccessedMemberTypes)}.{nameof(DynamicallyAccessedMemberTypes.All)}'";
-                        if (requiredMemberTypes != DynamicallyAccessedMemberTypes.All)
-                        {
-                            var missingMemberTypesList = Enum.GetValues(typeof(DynamicallyAccessedMemberTypes))
-                                .Cast<DynamicallyAccessedMemberTypes>()
-                                .Where(damt => (requiredMemberTypes & ~valueWithDynamicallyAccessedMember.DynamicallyAccessedMemberTypes & damt) == damt && damt != DynamicallyAccessedMemberTypes.None)
-                                .ToList();
-
-                            if (missingMemberTypesList.Contains(DynamicallyAccessedMemberTypes.PublicConstructors) &&
-                                missingMemberTypesList.SingleOrDefault(x => x == DynamicallyAccessedMemberTypes.PublicParameterlessConstructor) is var ppc &&
-                                ppc != DynamicallyAccessedMemberTypes.None)
-                                missingMemberTypesList.Remove(ppc);
-
-                            missingMemberTypes = string.Join(", ", missingMemberTypesList.Select(mmt => $"'DynamicallyAccessedMemberTypes.{mmt}'"));
-                        }
+                        var missingMemberTypes = GetMemberTypesString(missingMemberTypesValue);
                         switch ((valueWithDynamicallyAccessedMember.SourceContext, targetContext))
                         {
                             case (ParameterOrigin sourceParameter, ParameterOrigin targetParameter):
@@ -2807,9 +2844,9 @@ namespace ILCompiler.Dataflow
         static bool BindingFlagsAreUnsupported(BindingFlags? bindingFlags) => bindingFlags == null || (bindingFlags & BindingFlags.IgnoreCase) == BindingFlags.IgnoreCase || (int)bindingFlags > 255;
         static bool HasBindingFlag(BindingFlags? bindingFlags, BindingFlags? search) => bindingFlags != null && (bindingFlags & search) == search;
 
-        void MarkTypeForDynamicallyAccessedMembers(ref ReflectionPatternContext reflectionContext, TypeDesc typeDefinition, DynamicallyAccessedMemberTypes requiredMemberTypes)
+        void MarkTypeForDynamicallyAccessedMembers(ref ReflectionPatternContext reflectionContext, TypeDesc typeDefinition, DynamicallyAccessedMemberTypes requiredMemberTypes, bool declaredOnly = false)
         {
-            foreach (var member in typeDefinition.GetDynamicallyAccessedMembers(requiredMemberTypes))
+            foreach (var member in typeDefinition.GetDynamicallyAccessedMembers(requiredMemberTypes, declaredOnly))
             {
                 switch (member)
                 {
@@ -2819,17 +2856,14 @@ namespace ILCompiler.Dataflow
                     case FieldDesc field:
                         MarkField(ref reflectionContext, field);
                         break;
-                    case MetadataType nestedType:
-                        MarkNestedType(ref reflectionContext, nestedType);
+                    case MetadataType type:
+                        MarkType(ref reflectionContext, type);
                         break;
                     case PropertyPseudoDesc property:
                         MarkProperty(ref reflectionContext, property);
                         break;
                     case EventPseudoDesc @event:
                         MarkEvent(ref reflectionContext, @event);
-                        break;
-                    case null:
-                        MarkEntireType(ref reflectionContext, typeDefinition);
                         break;
                     default:
                         Debug.Fail(member.GetType().ToString());
@@ -2840,36 +2874,97 @@ namespace ILCompiler.Dataflow
 
         void MarkType(ref ReflectionPatternContext reflectionContext, TypeDesc type)
         {
-            _dependencies.Add(_factory.MaximallyConstructableType(type), reflectionContext.MemberWithRequirements.ToString());
+            RootingHelpers.TryGetDependenciesForReflectedType(ref _dependencies, _factory, type, reflectionContext.MemberWithRequirements.ToString());
             reflectionContext.RecordHandledPattern();
+        }
+
+        void WarnOnReflectionAccess(ref ReflectionPatternContext context, TypeSystemEntity entity)
+        {
+            if (_purpose == ScanningPurpose.GetTypeDataflow)
+            {
+                // Don't check whether the current scope is a RUC type or RUC method because these warnings
+                // are not suppressed in RUC scopes. Here the scope represents the DynamicallyAccessedMembers
+                // annotation on a type, not a callsite which uses the annotation. We always want to warn about
+                // possible reflection access indicated by these annotations.
+
+                var message = string.Format(
+                        "'DynamicallyAccessedMembersAttribute' on '{0}' or one of its base types references '{1}' which has 'DynamicallyAccessedMembersAttribute' requirements.",
+                        ((TypeOrigin)context.MemberWithRequirements).GetDisplayName(),
+                        entity.GetDisplayName());
+                _logger.LogWarning(message, 2115, context.Source, MessageSubCategory.TrimAnalysis);
+            }
+            else
+            {
+                if (entity is FieldDesc && context.ReportingEnabled)
+                {
+                    _logger.LogWarning(
+                        $"Field '{entity.GetDisplayName()}' with 'DynamicallyAccessedMembersAttribute' is accessed via reflection. Trimmer can't guarantee availability of the requirements of the field.",
+                        2110,
+                        context.Source,
+                        MessageSubCategory.TrimAnalysis);
+                }
+                else
+                {
+                    Debug.Assert(entity is MethodDesc);
+
+                    _logger.LogWarning(
+                    $"Method '{entity.GetDisplayName()}' with parameters or return value with `DynamicallyAccessedMembersAttribute` is accessed via reflection. Trimmer can't guarantee availability of the requirements of the method.",
+                    2111,
+                    context.Source,
+                    MessageSubCategory.TrimAnalysis);
+                }
+            }
         }
 
         void MarkMethod(ref ReflectionPatternContext reflectionContext, MethodDesc method)
         {
+            if (method.HasCustomAttribute("System.Diagnostics.CodeAnalysis", "RequiresUnreferencedCodeAttribute"))
+            {
+                if (_purpose == ScanningPurpose.GetTypeDataflow)
+                {
+                    var message = string.Format(
+                        "'DynamicallyAccessedMembersAttribute' on '{0}' or one of its base types references '{1}' which requires unreferenced code.",
+                        ((TypeOrigin)reflectionContext.MemberWithRequirements).GetDisplayName(),
+                        method.GetDisplayName());
+                    _logger.LogWarning(message, 2113, reflectionContext.Source, MessageSubCategory.TrimAnalysis);
+                }
+            }
+
+            if (_flowAnnotations.ShouldWarnWhenAccessedForReflection(method))
+            {
+                WarnOnReflectionAccess(ref reflectionContext, method);
+            }
+
             RootingHelpers.TryGetDependenciesForReflectedMethod(ref _dependencies, _factory, method, reflectionContext.MemberWithRequirements.ToString());
             reflectionContext.RecordHandledPattern();
         }
 
-        void MarkNestedType(ref ReflectionPatternContext reflectionContext, MetadataType nestedType)
-        {
-            reflectionContext.RecordRecognizedPattern(() => { if (_logger.IsVerbose) _logger.Writer.WriteLine($"Marking {nestedType.GetDisplayName()}"); });
-        }
-
         void MarkField(ref ReflectionPatternContext reflectionContext, FieldDesc field)
         {
+            if (_flowAnnotations.ShouldWarnWhenAccessedForReflection(field))
+            {
+                WarnOnReflectionAccess(ref reflectionContext, field);
+            }
+
             RootingHelpers.TryGetDependenciesForReflectedField(ref _dependencies, _factory, field, reflectionContext.MemberWithRequirements.ToString());
             reflectionContext.RecordHandledPattern();
         }
 
         void MarkProperty(ref ReflectionPatternContext reflectionContext, PropertyPseudoDesc property)
         {
-            RootingHelpers.TryGetDependenciesForReflectedProperty(ref _dependencies, _factory, property, reflectionContext.MemberWithRequirements.ToString());
+            if (property.GetMethod != null)
+                MarkMethod(ref reflectionContext, property.GetMethod);
+            if (property.SetMethod != null)
+                MarkMethod(ref reflectionContext, property.SetMethod);
             reflectionContext.RecordHandledPattern();
         }
 
         void MarkEvent(ref ReflectionPatternContext reflectionContext, EventPseudoDesc @event)
         {
-            RootingHelpers.TryGetDependenciesForReflectedEvent(ref _dependencies, _factory, @event, reflectionContext.MemberWithRequirements.ToString());
+            if (@event.AddMethod != null)
+                MarkMethod(ref reflectionContext, @event.AddMethod);
+            if (@event.RemoveMethod != null)
+                MarkMethod(ref reflectionContext, @event.RemoveMethod);
             reflectionContext.RecordHandledPattern();
         }
 
@@ -2892,7 +2987,7 @@ namespace ILCompiler.Dataflow
             foreach (var nestedType in type.GetNestedTypesOnType(filter, bindingFlags))
             {
                 result.Add(nestedType);
-                MarkNestedType(ref reflectionContext, nestedType);
+                MarkTypeForDynamicallyAccessedMembers(ref reflectionContext, nestedType, DynamicallyAccessedMemberTypes.All);
             }
 
             return result.ToArray();
@@ -2908,12 +3003,6 @@ namespace ILCompiler.Dataflow
         {
             foreach (var @event in type.GetEventsOnTypeHierarchy(filter, bindingFlags))
                 MarkEvent(ref reflectionContext, @event);
-        }
-
-        void MarkEntireType(ref ReflectionPatternContext reflectionContext, TypeDesc type)
-        {
-            RootingHelpers.GetDependenciesForEntireReflectedType(ref _dependencies, _factory, type, reflectionContext.MemberWithRequirements.ToString());
-            reflectionContext.RecordHandledPattern();
         }
 
         void ValidateGenericMethodInstantiation(
