@@ -300,11 +300,7 @@
     <Compile Include="$(MSBuildThisFileDirectory)System\FormatException.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\FormattableString.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\Function.cs" />
-
-    <!-- This file has a pretty bad structure because it forces our implementation into a having a Redhawk API that
-         allocates a new instance of a reference type. Need to fix it not to be annoying. -->
-    <Compile Include="$(MSBuildThisFileDirectory)System\GCMemoryInfo.cs" Condition="'$(TargetsCoreRT)' != 'true'" />
-
+    <Compile Include="$(MSBuildThisFileDirectory)System\GCMemoryInfo.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\Gen2GcCallback.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\Globalization\Calendar.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\Globalization\CalendarAlgorithmType.cs" />
