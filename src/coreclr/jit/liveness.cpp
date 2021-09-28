@@ -172,17 +172,11 @@ void Compiler::fgLocalVarLivenessInit()
 {
     JITDUMP("In fgLocalVarLivenessInit\n");
 
-#if defined (TARGET_WASM)
-    if (compRationalIRForm) // for LIR, always sort
+    // Sort locals first, if we're optimizing
+    if (PreciseRefCountsRequired())
+    {
         lvaSortByRefCount();
-    else
-#else
-        // Sort locals first, if we're optimizing
-        if (opts.OptimizationEnabled())
-        {
-            lvaSortByRefCount();
-        }
-#endif
+    }
 
     // We mark a lcl as must-init in a first pass of local variable
     // liveness (Liveness1), then assertion prop eliminates the
@@ -2188,6 +2182,9 @@ bool Compiler::fgTryRemoveNonLocal(GenTree* node, LIR::Range* blockRange)
 //
 void Compiler::fgRemoveDeadStoreLIR(GenTree* store, BasicBlock* block)
 {
+    if (!PreciseRefCountsRequired())
+        return;
+
     LIR::Range& blockRange = LIR::AsRange(block);
 
     // If the store is marked as a late argument, it is referenced by a call.
@@ -2207,10 +2204,7 @@ void Compiler::fgRemoveDeadStoreLIR(GenTree* store, BasicBlock* block)
         blockRange.Remove(store);
     }
 
-#if defined(TARGET_WASM)
-    if (!compRationalIRForm) // conditionally do assert
-#endif
-        assert(!opts.MinOpts());
+    assert(!opts.MinOpts());
     fgStmtRemoved = true;
 }
 
@@ -2551,7 +2545,7 @@ void Compiler::fgInterBlockLocalVarLiveness()
      */
 
 #if defined(TARGET_WASM)
-    if (!compRationalIRForm) // dont extend for the LIR pass - will this break the debugging experience?
+    if (!compRationalIRForm) // TODO-LLVM this will break the debugging experience, so investigate what the problem is with conservative liveness for SSA
 #endif
         if (opts.compDbgCode && (info.compVarScopesCount > 0))
         {

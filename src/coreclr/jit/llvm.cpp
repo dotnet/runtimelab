@@ -84,9 +84,9 @@ struct LocatedLlvmValue
 
 typedef JitHashTable<BasicBlock*, JitPtrKeyFuncs<BasicBlock>, llvm::BasicBlock*> BlkToLlvmBlkVectorMap;
 
-typedef std::pair<unsigned, unsigned> ssaPair;
+typedef std::pair<unsigned, unsigned> SsaPair;
 
-struct ssaPairHash
+struct SsaPairHash
 {
     template <class T1, class T2>
     std::size_t operator()(const std::pair<T1, T2>& pair) const
@@ -120,7 +120,7 @@ llvm::DILocation*                                   _currentOffsetDiLocation;
 BlkToLlvmBlkVectorMap*                              _blkToLlvmBlkVectorMap;
 llvm::IRBuilder<>*                                  _builder;
 std::unordered_map<GenTree*, LocatedLlvmValue>*     _sdsuMap;
-std::unordered_map<ssaPair, LocatedLlvmValue, ssaPairHash>* _localsMap;
+std::unordered_map<SsaPair, LocatedLlvmValue, SsaPairHash>* _localsMap;
 DebugMetadata                                       _debugMetadata;
 
 // DWARF
@@ -228,7 +228,7 @@ LocatedLlvmValue getGenTreeValue(GenTree* op)
 
 LocatedLlvmValue getSsaLocalForPhi(unsigned lclNum, unsigned ssaNum)
 {
-    // when the phi arg is a forward reference this fails, so fail those methods.  TODO: would this actually be valid LLVM and if not how would, e.g., DefaultBinder.GetHierarchyDepth be represented in SSA form?
+    // when the phi arg is a forward reference this fails, so fail those methods.  TODO-LLVM: would this actually be valid LLVM and if not how would, e.g., DefaultBinder.GetHierarchyDepth be represented in SSA form?
     if (_localsMap->find({lclNum, ssaNum}) == _localsMap->end())
         failFunctionCompilation();
 
@@ -268,15 +268,15 @@ CorInfoType toCorInfoType(var_types varType)
 {
     switch (varType)
     {
-        case var_types::TYP_BYREF:
+        case TYP_BYREF:
             return CorInfoType::CORINFO_TYPE_BYREF;
-        case var_types::TYP_LCLBLK: // TODO: outgoing args space - need to get an example compiling, e.g. https://github.com/dotnet/runtimelab/blob/40f9ff64ae80596bcddcec16a7e1a8f57a0b2cff/src/tests/nativeaot/SmokeTests/HelloWasm/HelloWasm.cs#L3492 to see what's
+        case TYP_LCLBLK: // TODO: outgoing args space - need to get an example compiling, e.g. https://github.com/dotnet/runtimelab/blob/40f9ff64ae80596bcddcec16a7e1a8f57a0b2cff/src/tests/nativeaot/SmokeTests/HelloWasm/HelloWasm.cs#L3492 to see what's
             // going on.  CORINFO_TYPE_VALUECLASS is a better mapping but if that is mapped as of now, then canStoreTypeOnLlvmStack will fail compilation for most methods.
-        case var_types::TYP_INT:
+        case TYP_INT:
             return CorInfoType::CORINFO_TYPE_INT;
-        case var_types::TYP_REF:
+        case TYP_REF:
             return CorInfoType::CORINFO_TYPE_REFANY;
-        case var_types::TYP_UNDEF:
+        case TYP_UNDEF:
             return CorInfoType::CORINFO_TYPE_UNDEF;
         default:
             failFunctionCompilation();
@@ -433,16 +433,16 @@ Type* getLLVMTypeForVarType(var_types type)
     // message
     switch (type)
     {
-        case var_types::TYP_BOOL:
-        case var_types::TYP_BYTE:
-        case var_types::TYP_UBYTE:
+        case TYP_BOOL:
+        case TYP_BYTE:
+        case TYP_UBYTE:
             return Type::getInt8Ty(_llvmContext);
-        case var_types::TYP_SHORT:
-        case var_types::TYP_USHORT:
+        case TYP_SHORT:
+        case TYP_USHORT:
             return Type::getInt16Ty(_llvmContext);
-        case var_types::TYP_INT:
+        case TYP_INT:
             return Type::getInt32Ty(_llvmContext);
-        case var_types::TYP_REF:
+        case TYP_REF:
             return Type::getInt8PtrTy(_llvmContext);
         default:
             failFunctionCompilation();
@@ -820,9 +820,9 @@ void buildCall(llvm::IRBuilder<>& builder, GenTree* node)
 
 void buildCast(llvm::IRBuilder<>& builder, GenTreeCast* cast)
 {
-    if (cast->gtCastType == TYP_BOOL && cast->TypeGet() == TYP_INT && cast->gtGetOp1()->TypeGet() == TYP_INT)
+    if (cast->CastToType() == TYP_BOOL && cast->TypeIs(TYP_INT) && cast->CastOp()->TypeIs(TYP_INT))
     {
-        Value* intValue = builder.CreateZExt(getGenTreeValue(cast->gtGetOp1()).getValue(builder), getLLVMTypeForVarType(TYP_INT));
+        Value* intValue = builder.CreateZExt(getGenTreeValue(cast->CastOp()).getValue(builder), getLLVMTypeForVarType(TYP_INT));
         mapGenTreeToValue(cast, intValue); // nothing to do except map the source value to the destination GenTree
     }
     else
@@ -834,12 +834,12 @@ void buildCast(llvm::IRBuilder<>& builder, GenTreeCast* cast)
 
 void buildCnsInt(llvm::IRBuilder<>& builder, GenTree* node)
 {
-    if (node->gtType == var_types::TYP_INT)
+    if (node->gtType == TYP_INT)
     {
-        mapGenTreeToValue(node, builder.getInt32(node->AsIntCon()->gtIconVal));
+        mapGenTreeToValue(node, builder.getInt32(node->AsIntCon()->IconValue()));
         return;
     }
-    if (node->gtType == var_types::TYP_REF)
+    if (node->gtType == TYP_REF)
     {
         ssize_t intCon = node->AsIntCon()->gtIconVal;
         if (node->IsIconHandle(GTF_ICON_STR_HDL))
@@ -915,9 +915,9 @@ void buildPhi(llvm::IRBuilder<>& builder, GenTreePhi* phi)
     llvm::PHINode* llvmPhiNode = nullptr;
     unsigned i = 0;
     bool requiresLoad = false;
+    unsigned numChildren  = phi->NumChildren();
     for (GenTreePhi::Use& use : phi->Uses())
     {
-        assert(use.GetNode()->OperIs(GT_PHI_ARG));
         GenTreePhiArg* phiArg = use.GetNode()->AsPhiArg();
         unsigned       lclNum = phiArg->GetLclNum();
         unsigned       ssaNum = phiArg->GetSsaNum();
@@ -928,7 +928,7 @@ void buildPhi(llvm::IRBuilder<>& builder, GenTreePhi* phi)
             requiresLoad = localPhiArg.valueRequiresLoad();
             Type* phiType = getLLVMTypeForVarType(phi->TypeGet());
 
-            llvmPhiNode = builder.CreatePHI(requiresLoad ? phiType->getPointerTo() : phiType, phi->NumChildren());
+            llvmPhiNode = builder.CreatePHI(requiresLoad ? phiType->getPointerTo() : phiType, numChildren);
         }
 #ifdef DEBUG
         else
@@ -945,7 +945,7 @@ void buildPhi(llvm::IRBuilder<>& builder, GenTreePhi* phi)
                                  getLLVMBasicBlockForBlock(phiArg->gtPredBB));
         i++;
     }
-    Value* phiValue = requiresLoad ? (Value* )builder.CreateLoad(llvmPhiNode) : llvmPhiNode;
+    Value* phiValue = requiresLoad ? (Value*)builder.CreateLoad(llvmPhiNode) : llvmPhiNode;
 
     mapGenTreeToValue(phi, phiValue);
 }
@@ -954,10 +954,10 @@ void buildReturn(llvm::IRBuilder<>& builder, GenTree* node)
 {
     switch (node->gtType)
     {
-        case var_types::TYP_INT:
+        case TYP_INT:
             builder.CreateRet(castIfNecessary(builder, getGenTreeValue(node->gtGetOp1()).getValue(builder), getLlvmTypeForCorInfoType(_sigInfo.retType)));
             return;
-        case var_types::TYP_VOID: 
+        case TYP_VOID: 
             builder.CreateRetVoid();
             return;
         default:
@@ -1184,12 +1184,12 @@ void startImportingBasicBlock(BasicBlock* block)
 
 void endImportingBasicBlock(BasicBlock* block)
 {
-    if ((block->bbJumpKind == BBjumpKinds::BBJ_NONE) && block->bbNext)
+    if ((block->bbJumpKind == BBjumpKinds::BBJ_NONE) && block->bbNext != nullptr)
     {
         _builder->CreateBr(getLLVMBasicBlockForBlock(block->bbNext));
         return;
     }
-    if ((block->bbJumpKind == BBjumpKinds::BBJ_ALWAYS) && block->bbJumpDest)
+    if ((block->bbJumpKind == BBjumpKinds::BBJ_ALWAYS) && block->bbJumpDest != nullptr)
     {
         _builder->CreateBr(getLLVMBasicBlockForBlock(block->bbJumpDest));
         return;
@@ -1293,7 +1293,7 @@ void Llvm::Compile(Compiler* pCompiler)
     _blkToLlvmBlkVectorMap = &blkToLlvmBlkVectorMap;
     std::unordered_map<GenTree*, LocatedLlvmValue> sdsuMap;
     _sdsuMap = &sdsuMap;
-    _localsMap = new std::unordered_map<ssaPair, LocatedLlvmValue, ssaPairHash>();
+    _localsMap = new std::unordered_map<SsaPair, LocatedLlvmValue, SsaPairHash>();
     _spilledExpressions.clear();
     const char* mangledName = (*_getMangledMethodName)(_thisPtr, _info.compMethodHnd);
     _function               = _module->getFunction(mangledName);
@@ -1327,7 +1327,7 @@ void Llvm::Compile(Compiler* pCompiler)
 
         llvm::BasicBlock* entry = getLLVMBasicBlockForBlock(block);
         builder.SetInsertPoint(entry);
-        for (GenTree* node = block->GetFirstLIRNode(); node; node = node->gtNext)
+        for (GenTree* node : LIR::AsRange(block))
         {
             startImportingNode(builder);
             visitNode(builder, node);

@@ -4988,10 +4988,11 @@ public:
 
     bool backendRequiresLocalVarLifetimes()
     {
-#if TARGET_WASM
-        if (this->compRationalIRForm) return true;
-#endif
+#if defined(TARGET_WASM)
+        return true;
+#else
         return !opts.MinOpts() || m_pLinearScan->willEnregisterLocalVars();
+#endif
     }
 
     void fgLocalVarLiveness();
@@ -5112,6 +5113,9 @@ public:
     // a partial def (GTF_VAR_USEASG), looks up and returns the SSA number for the "def",
     // rather than the "use" SSA number recorded in the tree "lcl".
     inline unsigned GetSsaNumForLocalVarDef(GenTree* lcl);
+
+    // 
+    inline bool Compiler::PreciseRefCountsRequired();
 
     // Performs SSA conversion.
     void fgSsaBuild();

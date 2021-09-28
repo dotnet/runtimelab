@@ -4411,14 +4411,11 @@ void Compiler::lvaMarkLocalVars()
     const bool isRecompute = false;
     lvaComputeRefCounts(isRecompute, setSlotNumbers);
 
-#if defined(TARGET_WASM)
-    if (!this->compRationalIRForm) // always want to run for LLVM/LIR
-#endif
-        // If we're not optimizing, we're done.
-        if (opts.OptimizationDisabled())
-        {
-            return;
-        }
+    // If we're not optimizing, we're done.
+    if (!PreciseRefCountsRequired())
+    {
+        return;
+    }
 
     const bool reportParamTypeArg = lvaReportParamTypeArg();
 
@@ -4435,10 +4432,7 @@ void Compiler::lvaMarkLocalVars()
     }
 
 #if ASSERTION_PROP
-#if defined(TARGET_WASM)
-    if (!this->compRationalIRForm) // dont assert for LLVM/LIR
-#endif
-        assert(opts.OptimizationEnabled());
+    assert(PreciseRefCountsRequired());
 
     // Note: optAddCopies() depends on lvaRefBlks, which is set in lvaMarkLocalVars(BasicBlock*), called above.
     optAddCopies();
@@ -4472,14 +4466,11 @@ void Compiler::lvaComputeRefCounts(bool isRecompute, bool setSlotNumbers)
     unsigned   lclNum = 0;
     LclVarDsc* varDsc = nullptr;
 
-#if defined(TARGET_WASM)
-    if (!compRationalIRForm) // for LIR never do this fast path
-#endif
     // Fast path for minopts and debug codegen.
     //
     // On first compute: mark all locals as implicitly referenced and untracked.
     // On recompute: do nothing.
-    if (opts.OptimizationDisabled())
+    if (!PreciseRefCountsRequired())
     {
         if (isRecompute)
         {
@@ -4581,10 +4572,6 @@ void Compiler::lvaComputeRefCounts(bool isRecompute, bool setSlotNumbers)
     {
         if (block->IsLIR())
         {
-#if !defined(TARGET_WASM) // TODO: maybe we should be setting isRecompute to true?
-            assert(isRecompute);
-#endif
-
             const BasicBlock::weight_t weight = block->getBBWeight(this);
             for (GenTree* node : LIR::AsRange(block))
             {

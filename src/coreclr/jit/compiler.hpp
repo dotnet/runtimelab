@@ -1716,16 +1716,13 @@ inline unsigned Compiler::lvaGrabTempWithImplicitUse(bool shortLifetime DEBUGARG
 
 inline void LclVarDsc::incRefCnts(BasicBlock::weight_t weight, Compiler* comp, RefCountState state, bool propagate)
 {
-#if defined(TARGET_WASM)
-    if (!comp->compRationalIRForm) // TODO: introduce bool comp->opts.OptimizationDisabled() && !comp->compRationalIRForm to make clearer?
-#endif
-        // In minopts and debug codegen, we don't maintain normal ref counts.
-        if ((state == RCS_NORMAL) && comp->opts.OptimizationDisabled())
-        {
-            // Note, at least, that there is at least one reference.
-            lvImplicitlyReferenced = 1;
-            return;
-        }
+    // In minopts and debug codegen, we don't maintain normal ref counts.
+    if ((state == RCS_NORMAL) && !comp->PreciseRefCountsRequired())
+    {
+        // Note, at least, that there is at least one reference.
+        lvImplicitlyReferenced = 1;
+        return;
+    }
 
     Compiler::lvaPromotionType promotionType = DUMMY_INIT(Compiler::PROMOTION_TYPE_NONE);
     if (varTypeIsStruct(lvType))
@@ -4189,6 +4186,15 @@ unsigned Compiler::GetSsaNumForLocalVarDef(GenTree* lcl)
     {
         return lcl->AsLclVarCommon()->GetSsaNum();
     }
+}
+
+bool Compiler::PreciseRefCountsRequired()
+{
+#if defined(TARGET_WASM)
+    return opts.OptimizationEnabled() || compRationalIRForm;
+#else
+    return opts.OptimizationEnabled();
+#endif
 }
 
 template <typename TVisitor>

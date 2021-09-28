@@ -107,9 +107,21 @@ void Compiler::fgResetForSsa()
         }
 
 #if defined(TARGET_WASM)
-        if (compRationalIRForm)
+        if (blk->IsLIR())
         {
-            for (GenTree* tree = blk->GetFirstLIRNode(); tree; tree = tree->gtNext)
+            for (GenTree* tree : LIR::AsRange(blk))
+            {
+                if (tree->IsLocal())
+                {
+                    tree->AsLclVarCommon()->SetSsaNum(SsaConfig::RESERVED_SSA_NUM);
+                }
+            }
+            return;
+        }
+#endif
+        for (Statement* const stmt : blk->Statements())
+        {
+            for (GenTree* const tree : stmt->TreeList())
             {
                 if (tree->IsLocal())
                 {
@@ -117,22 +129,6 @@ void Compiler::fgResetForSsa()
                 }
             }
         }
-        else
-        {
-#endif
-            for (Statement* const stmt : blk->Statements())
-            {
-                for (GenTree* const tree : stmt->TreeList())
-                {
-                    if (tree->IsLocal())
-                    {
-                        tree->AsLclVarCommon()->SetSsaNum(SsaConfig::RESERVED_SSA_NUM);
-                    }
-                }
-            }
-#if defined(TARGET_WASM)
-        }
-#endif
     }
 }
 
@@ -172,8 +168,7 @@ int SsaBuilder::TopologicalSort(BasicBlock** postOrder, int count)
     DBEXEC(VERBOSE, comp->fgDispBasicBlocks());
     DBEXEC(VERBOSE, comp->fgDispHandlerTab());
 
-    auto DumpBlockAndSuccessors = [](Compiler* comp, BasicBlock* block)
-    {
+    auto DumpBlockAndSuccessors = [](Compiler* comp, BasicBlock* block) {
 #ifdef DEBUG
         if (comp->verboseSsa)
         {
@@ -500,27 +495,20 @@ void SsaBuilder::ComputeIteratedDominanceFrontier(BasicBlock* b, const BlkToBlkV
  *
  * @return If there is a phi node for the lclNum, returns the GT_PHI tree, else NULL.
  */
-#if defined(TARGET_WASM)
-GenTree* SsaBuilder::GetPhiNode(BasicBlock* block, unsigned lclNum)
-#else
 static GenTree* GetPhiNode(BasicBlock* block, unsigned lclNum)
-#endif
 {
 #if defined(TARGET_WASM)
-    if (m_pCompiler->compRationalIRForm)
+    if (block->IsLIR())
     {
-        // Walk the lir node for phi nodes.
-        for (GenTree* tree = block->GetFirstLIRNode(); tree; tree = tree->gtNext)
+        for (GenTree* tree : LIR::AsRange(block))
         {
-            // A prefix of the statements of the block are phi definition nodes. If we complete processing
-            // that prefix, exit.
             if (!tree->IsPhiNode())
             {
                 break;
             }
 
             // skip the phi node to get to the GT_STORE_LCL_VAR
-            if (tree->OperGet() == GT_PHI_ARG || tree->OperGet() == GT_PHI)
+            if (tree->OperIs(GT_PHI_ARG, GT_PHI))
             {
                 continue;
             }
@@ -531,31 +519,27 @@ static GenTree* GetPhiNode(BasicBlock* block, unsigned lclNum)
                 return tree->AsOp()->gtOp1;
             }
         }
+        return nullptr;
     }
-    else
+#endif
+    // Walk the statements for phi nodes.
+    for (Statement* const stmt : block->Statements())
     {
-#endif
-        // Walk the statements for phi nodes.
-        for (Statement* const stmt : block->Statements())
+        // A prefix of the statements of the block are phi definition nodes. If we complete processing
+        // that prefix, exit.
+        if (!stmt->IsPhiDefnStmt())
         {
-            // A prefix of the statements of the block are phi definition nodes. If we complete processing
-            // that prefix, exit.
-            if (!stmt->IsPhiDefnStmt())
-            {
-                break;
-            }
-
-            GenTree* tree   = stmt->GetRootNode();
-            GenTree* phiLhs = tree->AsOp()->gtOp1;
-            assert(phiLhs->OperGet() == GT_LCL_VAR);
-            if (phiLhs->AsLclVarCommon()->GetLclNum() == lclNum)
-            {
-                return tree->AsOp()->gtOp2;
-            }
+            break;
         }
-#if defined(TARGET_WASM)
+
+        GenTree* tree   = stmt->GetRootNode();
+        GenTree* phiLhs = tree->AsOp()->gtOp1;
+        assert(phiLhs->OperIs(GT_LCL_VAR));
+        if (phiLhs->AsLclVarCommon()->GetLclNum() == lclNum)
+        {
+            return tree->AsOp()->gtOp2;
+        }
     }
-#endif
     return nullptr;
 }
 
@@ -606,23 +590,18 @@ void SsaBuilder::InsertPhi(BasicBlock* block, unsigned lclNum)
 #if defined(TARGET_WASM)
 void SsaBuilder::InsertPhiToRationalIRForm(BasicBlock* block, unsigned lclNum)
 {
-    assert(m_pCompiler->compRationalIRForm);
+    assert(block->IsLIR());
 
     var_types type = m_pCompiler->lvaGetDesc(lclNum)->TypeGet();
 
     // PHIs and all the associated nodes do not generate any code so the costs are always 0
-    GenTree* phi = new (m_pCompiler, GT_PHI) GenTreePhi(type);
-    phi->SetCosts(0, 0);
+    GenTree* phi      = new (m_pCompiler, GT_PHI) GenTreePhi(type);
     GenTree* storeLcl = (GenTree*)m_pCompiler->gtNewStoreLclVar(lclNum, phi);
 
-    storeLcl->SetCosts(0, 0);
-
-    GenTree* firstNode = block->GetFirstLIRNode();
-    block->SetFirstLIRNode(phi);
-    phi->gtNext       = storeLcl;
-    storeLcl->gtPrev  = phi;
-    storeLcl->gtNext  = firstNode;
-    firstNode->gtPrev = storeLcl;
+    LIR::Range& lirRange = LIR::AsRange(block);
+    GenTree*    firstNode = lirRange.FirstNode();
+    lirRange.InsertBefore(firstNode, phi);
+    lirRange.InsertAfter(phi, storeLcl);
 
     JITDUMP("Added PHI definition for V%02u at start of " FMT_BB ".\n", lclNum, block->bbNum);
 }
@@ -660,39 +639,27 @@ void SsaBuilder::AddPhiArg(
     phi->gtUses = new (m_pCompiler, CMK_ASTNode) GenTreePhi::Use(phiArg, phi->gtUses);
 
 #if defined(TARGET_WASM)
-    if (m_pCompiler->compRationalIRForm)
+    if (block->IsLIR())
     {
         // TODO: multiple phis in one block
-        GenTree* firstNode = block->GetFirstLIRNode();
-        block->SetFirstLIRNode(phiArg);
-        phiArg->gtNext    = firstNode;
-        firstNode->gtPrev = phiArg;
-    }
-    else
-    {
-#endif
-        GenTree* head = stmt->GetTreeList();
-        assert(head->OperIs(GT_PHI, GT_PHI_ARG));
-        stmt->SetTreeList(phiArg);
-        phiArg->gtNext = head;
-        head->gtPrev   = phiArg;
-#if defined(TARGET_WASM)
+        LIR::Range& lirRange  = LIR::AsRange(block);
+        GenTree*    firstNode = lirRange.FirstNode();
+        lirRange.InsertBefore(firstNode, phiArg);
+        return;
     }
 #endif
+    GenTree* head = stmt->GetTreeList();
+    assert(head->OperIs(GT_PHI, GT_PHI_ARG));
+    stmt->SetTreeList(phiArg);
+    phiArg->gtNext = head;
+    head->gtPrev   = phiArg;
 
 #ifdef DEBUG
-#if defined(TARGET_WASM)
-    if (!m_pCompiler->compRationalIRForm)
+    unsigned seqNum = 1;
+    for (GenTree* const node : stmt->TreeList())
     {
-#endif // defined(TARGET_WASM)
-        unsigned seqNum = 1;
-        for (GenTree* const node : stmt->TreeList())
-        {
-            node->gtSeqNum = seqNum++;
-        }
-#if defined(TARGET_WASM)
+        node->gtSeqNum = seqNum++;
     }
-#endif // defined(TARGET_WASM)
 #endif // DEBUG
 
     DBG_SSA_JITDUMP("Added PHI arg u:%d for V%02u from " FMT_BB " in " FMT_BB ".\n", ssaNum, lclNum, pred->bbNum,
@@ -768,8 +735,8 @@ void SsaBuilder::InsertPhiFunctions(BasicBlock** postOrder, int count)
                     // We have a variable i that is defined in block j and live at l, and l belongs to dom frontier of
                     // j. So insert a phi node at l.
 #if defined(TARGET_WASM)
-                    m_pCompiler->compRationalIRForm ? InsertPhiToRationalIRForm(bbInDomFront, lclNum)
-                                                    : InsertPhi(bbInDomFront, lclNum);
+                    bbInDomFront->IsLIR() ? InsertPhiToRationalIRForm(bbInDomFront, lclNum)
+                                          : InsertPhi(bbInDomFront, lclNum);
 #else
                     InsertPhi(bbInDomFront, lclNum);
 #endif
@@ -850,13 +817,12 @@ void SsaBuilder::RenameDef(GenTreeOp* asgNode, BasicBlock* block)
     bool                 isFullDef;
 #if defined(TARGET_WASM)
     bool isLocal;
-    if (m_pCompiler->compRationalIRForm)
+    if (block->IsLIR())
     {
         isLocal   = asgNode->OperIsLocalStore();
         lclNode   = asgNode->AsLclVarCommon();
-        // copied from IsPartialLclFld but with both GT_STORE_LCL_FLD and GT_LCL_FLD allowed - TODO : is this right?
-        isFullDef = lclNode != nullptr && !(((asgNode->gtOper == GT_STORE_LCL_FLD || asgNode->gtOper == GT_LCL_FLD) &&
-                     (m_pCompiler->lvaTable[lclNode->GetLclNum()].lvExactSize != genTypeSize(asgNode->gtType))));
+        isFullDef = lclNode != nullptr && !(lclNode->OperIs(GT_STORE_LCL_FLD) &&
+                     (m_pCompiler->lvaTable[lclNode->GetLclNum()].lvExactSize != genTypeSize(asgNode->gtType)));
     }
     else
     {
@@ -908,18 +874,17 @@ void SsaBuilder::RenameDef(GenTreeOp* asgNode, BasicBlock* block)
             // If necessary, add "lclNum/ssaNum" to the arg list of a phi def in any
             // handlers for try blocks that "block" is within.  (But only do this for "real" definitions,
             // not phi definitions.)
+            GenTree* asgPhiOp;
 #if defined(TARGET_WASM)
-            if (m_pCompiler->compRationalIRForm)
+            if (block->IsLIR())
             {
-                if (!asgNode->gtGetOp1()->OperIs(GT_PHI))
-                {
-                    AddDefToHandlerPhis(block, lclNum, ssaNum);
-                }
+                asgPhiOp = asgNode->gtGetOp1();
             }
             else
-#else
-            if (!asgNode->gtGetOp2()->OperIs(GT_PHI))
 #endif
+                asgPhiOp = asgNode->gtGetOp2();
+
+            if (!asgPhiOp->OperIs(GT_PHI))
             {
                 AddDefToHandlerPhis(block, lclNum, ssaNum);
             }
@@ -1036,25 +1001,22 @@ void SsaBuilder::AddDefToHandlerPhis(BasicBlock* block, unsigned lclNum, unsigne
 #endif
                 // TODO: llvm.cpp cant handle fin blocks, but this at least does not assert
 #if defined(TARGET_WASM)
-                if (m_pCompiler->compRationalIRForm)
+                if (handler->IsLIR())
                 {
-                    // Walk the lir node for phi nodes.
-                    for (GenTree* tree = handler->GetFirstLIRNode(); tree; tree = tree->gtNext)
+                    for (GenTree* tree : LIR::AsRange(handler))
                     {
-                        // A prefix of the statements of the block are phi definition nodes. If we complete processing
-                        // that prefix, exit.
                         if (!tree->IsPhiNode())
                         {
                             break;
                         }
 
                         // skip the phi node to get to the GT_STORE_LCL_VAR
-                        if (tree->OperGet() == GT_PHI_ARG || tree->OperGet() == GT_PHI)
+                        if (tree->OperIs(GT_PHI_ARG, GT_PHI))
                         {
                             continue;
                         }
 
-                        assert(tree->OperGet() == GT_STORE_LCL_VAR);
+                        assert(tree->OperIs(GT_STORE_LCL_VAR));
                         if (tree->AsLclVarCommon()->GetLclNum() == lclNum)
                         {
                             AddPhiArg(handler, nullptr, tree->gtGetOp1()->AsPhi(), lclNum, ssaNum, block);
@@ -1221,10 +1183,11 @@ void SsaBuilder::BlockRenameVariables(BasicBlock* block)
     }
 
 #if defined(TARGET_WASM)
-    if (m_pCompiler->compRationalIRForm)
+    if (block->IsLIR())
     {
         // Walk the statements of the block and rename definitions and uses.
-        for (GenTree* tree = block->GetFirstLIRNode(); tree; tree = tree->gtNext)
+            
+        for (GenTree* tree : LIR::AsRange(block))
         {
             if (tree->OperIsLocalStore())
             {
@@ -1310,13 +1273,10 @@ void SsaBuilder::AddPhiArgsToSuccessors(BasicBlock* block)
     for (BasicBlock* succ : block->GetAllSuccs(m_pCompiler))
     {
 #if defined(TARGET_WASM)
-        if (m_pCompiler->compRationalIRForm)
+        if (block->IsLIR())
         {
-            // Walk the nodes for phi nodes.
-            for (GenTree* tree = succ->GetFirstLIRNode(); tree; tree = tree->gtNext)
+            for (GenTree* tree : LIR::AsRange(succ))
             {
-                // A prefix of the statements of the block are phi definition nodes. If we complete processing
-                // that prefix, exit.
                 if (!tree->IsPhiNode())
                 {
                     break;
@@ -1330,10 +1290,6 @@ void SsaBuilder::AddPhiArgsToSuccessors(BasicBlock* block)
                 unsigned    lclNum = tree->AsLclVarCommon()->GetLclNum();
                 GenTreePhi* phi    = tree->gtGetOp1()->AsPhi();
                 unsigned    ssaNum = m_renameStack.Top(lclNum);
-                // Search the arglist for an existing definition for ssaNum.
-                // (Can we assert that its the head of the list?  This should only happen when we add
-                // during renaming for a definition that occurs within a try, and then that's the last
-                // value of the var within that basic block.)
 
                 bool found = false;
                 for (GenTreePhi::Use& use : phi->Uses())
