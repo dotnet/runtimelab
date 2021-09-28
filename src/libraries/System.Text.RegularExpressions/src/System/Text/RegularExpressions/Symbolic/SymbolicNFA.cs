@@ -253,7 +253,6 @@ namespace System.Text.RegularExpressions.Symbolic
                 {
                     Debug.Assert(tr._kind != TransitionRegexKind.Leaf && tr._first is not null && tr._second is not null);
                     transition = new Transition(kind: tr._kind,
-                        leaf: DeadendState,
                         test: tr._test,
                         look: tr._node,
                         first: args.cache[tr._first],
