@@ -354,11 +354,11 @@ namespace System.Text.RegularExpressions.Tests
         [InlineData("(a)*?", "aaa", "(0,0)")]
         [InlineData("(a*?)*?", "aaa", "(0,0)")]
         [InlineData("(a*)*(x)", "x", "(0,1)(0,0)(0,1)")]
-        [InlineData("(a*)*(x)(\\1)", "x", "(0,1)(0,0)(0,1)(1,1)", "DFAINCOMPATIBLE")]
-        [InlineData("(a*)*(x)(\\1)", "ax", "(0,2)(1,1)(1,2)(2,2)", "DFAINCOMPATIBLE")]
-        [InlineData("(a*)*(x)(\\1)", "axa", "(0,2)(1,1)(1,2)(2,2)", "DFAINCOMPATIBLE")] // was "(0,3)(0,1)(1,2)(2,3)"
-        [InlineData("(a*)*(x)(\\1)(x)", "axax", "(0,4)(0,1)(1,2)(2,3)(3,4)", "DFAINCOMPATIBLE")]
-        [InlineData("(a*)*(x)(\\1)(x)", "axxa", "(0,3)(1,1)(1,2)(2,2)(2,3)", "DFAINCOMPATIBLE")]
+        [InlineData("(a*)*(x)(\\1)", "x", "(0,1)(0,0)(0,1)(1,1)", "NONBACKTRACKINGINCOMPATIBLE")]
+        [InlineData("(a*)*(x)(\\1)", "ax", "(0,2)(1,1)(1,2)(2,2)", "NONBACKTRACKINGINCOMPATIBLE")]
+        [InlineData("(a*)*(x)(\\1)", "axa", "(0,2)(1,1)(1,2)(2,2)", "NONBACKTRACKINGINCOMPATIBLE")] // was "(0,3)(0,1)(1,2)(2,3)"
+        [InlineData("(a*)*(x)(\\1)(x)", "axax", "(0,4)(0,1)(1,2)(2,3)(3,4)", "NONBACKTRACKINGINCOMPATIBLE")]
+        [InlineData("(a*)*(x)(\\1)(x)", "axxa", "(0,3)(1,1)(1,2)(2,2)(2,3)", "NONBACKTRACKINGINCOMPATIBLE")]
         [InlineData("(a*)*(x)", "ax", "(0,2)(1,1)(1,2)")]
         [InlineData("(a*)*(x)", "axa", "(0,2)(1,1)(1,2)")] // was "(0,2)(0,1)(1,2)"
         [InlineData("(a*)+(x)", "x", "(0,1)(0,0)(0,1)")]
@@ -367,67 +367,69 @@ namespace System.Text.RegularExpressions.Tests
         [InlineData("(a*){2}(x)", "x", "(0,1)(0,0)(0,1)")]
         [InlineData("(a*){2}(x)", "ax", "(0,2)(1,1)(1,2)")]
         [InlineData("(a*){2}(x)", "axa", "(0,2)(1,1)(1,2)")]
-        public async Task Test(string pattern, string input, string nondfa_captures, string dfa_match = null)
+        public async Task Test(string pattern, string input, string captures, string nonBacktrackingCaptures = null)
         {
             if (input == "NULL")
             {
                 input = "";
             }
 
-            // TODO: RegexOptionNonBacktracking | RegexOptions.Multiline
             foreach (RegexEngine engine in RegexHelpers.AvailableEngines)
             {
-                string captures = nondfa_captures;
-                bool dfa_mode = ((options & RegexHelpers.RegexOptionNonBacktracking) != 0);
-                if (dfa_mode && dfa_match != null)
-                    //dfa_match value overrides the expected result in DFA mode
-                    captures = dfa_match;
-
-                if (captures == "BADBR")
+                foreach (RegexOptions options in new[] { RegexOptions.None, RegexOptions.Multiline })
                 {
-                    await Assert.ThrowsAnyAsync<ArgumentException>(async () => await RegexHelpers.GetRegexAsync(engine, pattern));
-                    return;
-                }
+                    bool nonBacktracking = engine == RegexEngine.NonBacktracking;
+                    string expected = nonBacktracking && nonBacktrackingCaptures != null ?
+                        nonBacktrackingCaptures : // nonBacktrackingCaptures value overrides the expected result in NonBacktracking mode
+                        captures;
 
-                Regex r = await RegexHelpers.GetRegexAsync(engine, pattern);
+                    if (expected == "BADBR")
+                    {
+                        await Assert.ThrowsAnyAsync<ArgumentException>(async () => await RegexHelpers.GetRegexAsync(engine, pattern, options));
+                        return;
+                    }
 
-                if (captures == "NOMATCH")
-                {
-                    Assert.False(r.IsMatch(input));
-                    return;
-                }
-                
-                if (dfa_mode && dfa_match == "DFAINCOMPATIBLE")
-                {
-                    // In particular: backreferences are not supported in DFA mode
-                    Assert.ThrowsAny<NotSupportedException>(() => r.IsMatch(input));
-                    return;
-                }
-                Match match = r.Match(input);
-                Assert.True(match.Success);
+                    if (nonBacktracking && nonBacktrackingCaptures == "NONBACKTRACKINGINCOMPATIBLE")
+                    {
+                        // In particular: backreferences are not supported in NonBacktracking mode
+                        await Assert.ThrowsAnyAsync<NotSupportedException>(() => RegexHelpers.GetRegexAsync(engine, pattern, options));
+                        return;
+                    }
 
-                var expected = new HashSet<(int start, int end)>(
-                    captures
-                    .Split(new[] { '(', ')' }, StringSplitOptions.RemoveEmptyEntries)
-                    .Select(s => s.Split(','))
-                    .Select(s => (start: int.Parse(s[0]), end: int.Parse(s[1])))
-                    .Distinct()
-                    .OrderBy(c => c.start)
-                    .ThenBy(c => c.end));
+                    Regex r = await RegexHelpers.GetRegexAsync(engine, pattern, options);
 
-                var actual = new HashSet<(int start, int end)>(
-                    match.Groups
-                    .Cast<Group>()
-                    .Select(g => (start: g.Index, end: g.Index + g.Length))
-                    .Distinct()
-                    .OrderBy(g => g.start)
-                    .ThenBy(g => g.end));
+                    if (expected == "NOMATCH")
+                    {
+                        Assert.False(r.IsMatch(input));
+                        return;
+                    }
 
-                // DFA mode only provides the top-level match.
-                // Else, the .NET implementation sometimes has extra captures beyond what the original data specifies, so we assert a subset.
-                if (dfa_mode ? !actual.IsSubsetOf(expected) : !expected.IsSubsetOf(actual))
-                {
-                    throw new Xunit.Sdk.XunitException($"Actual: {string.Join(", ", actual)}{Environment.NewLine}Expected: {string.Join(", ", expected)}");
+                    Match match = r.Match(input);
+                    Assert.True(match.Success);
+
+                    var expectedSet = new HashSet<(int start, int end)>(
+                        expected
+                        .Split(new[] { '(', ')' }, StringSplitOptions.RemoveEmptyEntries)
+                        .Select(s => s.Split(','))
+                        .Select(s => (start: int.Parse(s[0]), end: int.Parse(s[1])))
+                        .Distinct()
+                        .OrderBy(c => c.start)
+                        .ThenBy(c => c.end));
+
+                    var actualSet = new HashSet<(int start, int end)>(
+                        match.Groups
+                        .Cast<Group>()
+                        .Select(g => (start: g.Index, end: g.Index + g.Length))
+                        .Distinct()
+                        .OrderBy(g => g.start)
+                        .ThenBy(g => g.end));
+
+                    // NonBacktracking mode only provides the top-level match.
+                    // The .NET implementation sometimes has extra captures beyond what the original data specifies, so we assert a subset.
+                    if (nonBacktracking ? !actualSet.IsSubsetOf(expectedSet) : !expectedSet.IsSubsetOf(actualSet))
+                    {
+                        throw new Xunit.Sdk.XunitException($"Actual: {string.Join(", ", actualSet)}{Environment.NewLine}Expected: {string.Join(", ", expected)}");
+                    }
                 }
             }
         }

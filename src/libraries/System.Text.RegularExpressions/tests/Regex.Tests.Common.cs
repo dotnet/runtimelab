@@ -46,28 +46,6 @@ namespace System.Text.RegularExpressions.Tests
             return start == 0;
         }
 
-        public static IEnumerable<RegexOptions> RegexOptionsExtended()
-        {
-            if (!PlatformDetection.IsNetFramework)
-            {
-                yield return RegexOptionNonBacktracking;
-            }
-
-            yield return RegexOptions.None;
-            yield return RegexOptions.Compiled;
-        }
-
-        public static IEnumerable<object[]> RegexOptions_TestData()
-        {
-            foreach (RegexOptions options in RegexOptionsExtended())
-            {
-                yield return new object[] { options };
-            }
-        }
-
-        public static IEnumerable<object[]> NoTestData() { yield break; }
-
-
         public static Regex CreateRegexInCulture(string pattern, RegexOptions options, Globalization.CultureInfo culture)
         {
             using (new System.Tests.ThreadCultureChange(culture))
@@ -103,15 +81,22 @@ namespace System.Text.RegularExpressions.Tests
                 if (PlatformDetection.IsNetCore)
                 {
                     yield return RegexEngine.NonBacktracking;
+
                     if (PlatformDetection.IsReflectionEmitSupported && // the source generator doesn't use reflection emit, but it does use Roslyn for the equivalent
                         PlatformDetection.IsNotMobile &&
                         PlatformDetection.IsNotBrowser)
                     {
                         yield return RegexEngine.SourceGenerated;
+
+                        // TODO-NONBACKTRACKING:
+                        // yield return RegexEngine.NonBacktrackingSourceGenerated;
                     }
                 }
             }
         }
+
+        public static bool IsNonBacktracking(RegexEngine engine) =>
+            engine is RegexEngine.NonBacktracking or RegexEngine.NonBacktrackingSourceGenerated;
 
         public static async Task<Regex> GetRegexAsync(RegexEngine engine, string pattern, RegexOptions? options = null, TimeSpan? matchTimeout = null)
         {
@@ -142,6 +127,10 @@ namespace System.Text.RegularExpressions.Tests
 
                 case RegexEngine.SourceGenerated:
                     return await RegexGeneratorHelper.SourceGenRegexAsync(pattern, options, matchTimeout);
+
+                // TODO-NONBACKTRACKING:
+                // case RegexEngine.NonBacktrackingSourceGenerated:
+                //     return ...;
             }
 
             throw new ArgumentException($"Unknown engine: {engine}");
@@ -154,6 +143,7 @@ namespace System.Text.RegularExpressions.Tests
         Compiled,
         NonBacktracking,
         SourceGenerated,
+        NonBacktrackingSourceGenerated,
     }
 
     public class CaptureData

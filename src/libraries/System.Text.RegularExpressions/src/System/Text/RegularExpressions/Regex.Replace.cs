@@ -77,7 +77,7 @@ namespace System.Text.RegularExpressions
             // Gets the weakly cached replacement helper or creates one if there isn't one already,
             // then uses it to perform the replace.
             return
-                RegexReplacement.GetOrCreate(RegexReplacementWeakReference, replacement, caps!, _capsizeForReplacements, capnames!, roptions).
+                RegexReplacement.GetOrCreate(RegexReplacementWeakReference, replacement, caps!, _capsizeForReplacements ?? capsize, capnames!, roptions).
                 Replace(this, input, count, startat);
         }
 

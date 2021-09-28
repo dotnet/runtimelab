@@ -60,7 +60,9 @@ namespace System.Text.RegularExpressions.Tests
             {
                 foreach (object[] obj in RegexTestCases())
                 {
-                    if (engine == RegexEngine.NonBacktracking)
+                    string expected_result = (string)obj[3];
+
+                    if (RegexHelpers.IsNonBacktracking(engine))
                     {
                         // For the DFA option, skip the tests that use nonsupported options 
                         // or if the optional 5th arguments says "DFAINCOMPATIBLE" that applies
@@ -75,7 +77,6 @@ namespace System.Text.RegularExpressions.Tests
                         // Add the DFA specific tests
                         // group i values for i>0 are not generated in DFA mode and are removed
                         // -- thus the string beyond the first ')' when the test succeeds is removed in obj[3]
-                        string expected_result = (string)obj[3];
                         int j = expected_result.IndexOf(')');
                         if (j > 0)
                         {
