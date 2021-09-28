@@ -2,7 +2,6 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Globalization;
-using System.IO;
 using System.Text.RegularExpressions.Symbolic.Unicode;
 
 namespace System.Text.RegularExpressions.Symbolic
@@ -78,19 +77,8 @@ namespace System.Text.RegularExpressions.Symbolic
 
         protected override void Go()
         {
-            // TODO-NONBACKTRACKING: In order to produce a SymbolicMatch with a valid Index/Length, FindMatch needs to do additional
-            // work once it's found the end of a match to find the beginning of the match.  If this is an IsMatch
-            // call, however, the details of the match will be ignored, with the only important information being
-            // that there was a match.  We need a mechanism of supplying that information to this operation. At the
-            // moment the only obvious answer to that is new protected surface area, either additional protected
-            // field/property that could be consulted, or a new virtual Scan method that this implementation could
-            // override instead of using the base Scan method that invokes FindFirstChar/Go.  We could choose to bypass
-            // this public/protected surface area for the in-memory implementation, e.g. having it look at some
-            // new private protected field we add to RegexRunner, but for now we simply don't benefit from this optimization.
-            const bool calledFromIsMatch = false;
-
             // Perform the match.
-            SymbolicMatch pos = _matcher.FindMatch(calledFromIsMatch, runtext!, runtextpos, runtextend);
+            SymbolicMatch pos = _matcher.FindMatch(quick, runtext!, runtextpos, runtextend);
             if (pos.Success)
             {
                 // If we successfully matched, capture the match, and then jump the current position to the end of the match.
