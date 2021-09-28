@@ -601,12 +601,6 @@ namespace System.Text.RegularExpressions.Tests
         [MemberData(nameof(Match_VaryingLengthStrings_MemberData))]
         public async Task Match_VaryingLengthStrings(RegexEngine engine, RegexOptions options)
         {
-            if (RegexHelpers.IsNonBacktracking(engine))
-            {
-                // TODO-NONBACKTRACKING: Stack overflowing
-                throw new SkipTestException("ActiveIssue: Stack overflows on RegexOptions.NonBacktracking");
-            }
-
             var lengths = new List<int>() { 2, 3, 4, 5, 6, 7, 8, 9, 31, 32, 33, 63, 64, 65 };
             if ((options & RegexOptions.IgnoreCase) == 0)
             {

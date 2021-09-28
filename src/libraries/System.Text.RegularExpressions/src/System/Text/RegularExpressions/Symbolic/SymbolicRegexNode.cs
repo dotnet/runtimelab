@@ -619,6 +619,13 @@ namespace System.Text.RegularExpressions.Symbolic
         /// </summary>
         public int GetFixedLength()
         {
+            // Guard against stack overflow due to deep recursion.
+            if (!RuntimeHelpers.TryEnsureSufficientExecutionStack())
+            {
+                SymbolicRegexNode<S> thisRef = this;
+                return StackHelper.CallOnEmptyStack(() => thisRef.GetFixedLength());
+            }
+
             switch (_kind)
             {
                 case SymbolicRegexKind.WatchDog:
@@ -647,8 +654,7 @@ namespace System.Text.RegularExpressions.Symbolic
                                 return _lower * body_length;
                             }
                         }
-
-                        return -1;
+                        break;
                     }
 
                 case SymbolicRegexKind.Concat:
@@ -663,16 +669,15 @@ namespace System.Text.RegularExpressions.Symbolic
                                 return left_length + right_length;
                             }
                         }
-                        return -1;
+                        break;
                     }
 
                 case SymbolicRegexKind.Or:
                     Debug.Assert(_alts is not null);
                     return _alts.GetFixedLength();
-
-                default:
-                    return -1;
             }
+
+            return -1;
         }
 
         private Dictionary<(S, uint), SymbolicRegexNode<S>>? _MkDerivative_Cache;
