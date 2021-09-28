@@ -109,22 +109,6 @@ namespace System.Text.RegularExpressions.Tests
             }
         }
 
-
-        /*
-         *         public void ViewSampleRegexInDGML()
-        {
-            //string rawregex = @"\bis\w*\b";
-            string rawregex = And(".*[0-9].*[0-9].*", ".*[A-Z].*[A-Z].*", Not(".*(01|12).*"));
-            //string rawregex = "a.{4}$";
-            Regex re = new Regex($@"{rawregex}", RegexHelpers.RegexOptionNonBacktracking | RegexOptions.Singleline);
-            ViewDGML(re);
-            ViewDGML(re, inReverse: true);
-            ViewDGML(re, addDotStar: true);
-            ViewDGML(re, asNFA: true, bound:10);
-            ViewDGML(re, inReverse: true, asNFA: true, bound: 10);
-            ViewDGML(re, addDotStar: true, asNFA: true, bound: 10);
-        }
-         * */
         [Theory]
         [InlineData(".*a+", -1, new string[] { ".*a+" }, false, false)]
         [InlineData("ann", -1, new string[] { "nna" }, true, false)]

@@ -17,8 +17,6 @@ namespace System.Text.RegularExpressions.Symbolic.DGML
         private readonly HashSet<int> _stateSet = new();
         private readonly List<Move<(SymbolicRegexNode<T>?, T)>> _moves = new();
         private readonly SymbolicRegexBuilder<T> _builder;
-        //private readonly List<SymbolicRegexNode<T>> _nfaStates = new();
-        //private readonly Dictionary<SymbolicRegexNode<T>, int> _nfaStateId = new();
         private SymbolicNFA<T>? _nfa;
 
         internal RegexAutomaton(SymbolicRegexMatcher<T> srm, int bound, bool addDotStar, bool inReverse, bool asNFA)
@@ -40,32 +38,6 @@ namespace System.Text.RegularExpressions.Symbolic.DGML
                     foreach ((T, SymbolicRegexNode<T>?, int) branch in _nfa.EnumeratePaths(q))
                         _moves.Add(Move<(SymbolicRegexNode<T>?, T)>.Create(q, branch.Item3, (branch.Item2, branch.Item1)));
                 }
-                //Stack<SymbolicRegexNode<T>> stack = new();
-                //stack.Push(_q0.Node);
-                //_nfaStates.Add(_q0.Node);
-                //_nfaStateId[_q0.Node] = 0;
-                //_states.Add(0);
-                //_stateSet.Add(0);
-                //while (stack.Count > 0 && (bound <= 0 || _nfaStates.Count < bound))
-                //{
-                //    SymbolicRegexNode<T> q = stack.Pop();
-                //    int qId = _nfaStateId[q];
-                //    foreach ((T, SymbolicRegexNode<T>?, SymbolicRegexNode<T>) branch in q.MkDerivative())
-                //    {
-                //        SymbolicRegexNode<T> p = branch.Item3;
-                //        int pId;
-                //        if (!_nfaStateId.TryGetValue(p, out pId))
-                //        {
-                //            pId = _nfaStates.Count;
-                //            _nfaStateId[p] = pId;
-                //            _nfaStates.Add(p);
-                //            _stateSet.Add(pId);
-                //            _states.Add(pId);
-                //            stack.Push(p);
-                //        }
-                //        _moves.Add(Move<(SymbolicRegexNode<T>?, T)>.Create(qId, pId, (branch.Item2, branch.Item1)));
-                //    }
-                //}
             }
             else
             {
