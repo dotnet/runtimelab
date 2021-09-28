@@ -16,7 +16,7 @@ namespace System.Text.RegularExpressions.Symbolic
         /// <summary>Minimum length computed</summary>
         private readonly int _minRequiredLength;
 
-        private SymbolicRegexRunner(RegexCode code, RegexOptions options, TimeSpan matchTimeout, CultureInfo culture)
+        private SymbolicRegexRunner(RegexCode code, TimeSpan matchTimeout, CultureInfo culture)
         {
             var converter = new RegexNodeToSymbolicConverter(s_unicode, culture);
             var solver = (CharSetSolver)s_unicode._solver;
@@ -68,7 +68,7 @@ namespace System.Text.RegularExpressions.Symbolic
                         (options & RegexOptions.RightToLeft) != 0 ? nameof(RegexOptions.RightToLeft) : nameof(RegexOptions.ECMAScript)));
             }
 
-            return new SymbolicRegexRunnerFactory(new SymbolicRegexRunner(code, options, matchTimeout, culture));
+            return new SymbolicRegexRunnerFactory(new SymbolicRegexRunner(code, matchTimeout, culture));
         }
         protected override void InitTrackCount() { } // nop, no backtracking
 

@@ -57,7 +57,7 @@ namespace System.Text.RegularExpressions.Symbolic
         }
 
         public BVAlgebra(CharSetSolver solver, BDD[] minterms) :
-            base(PartitionClassifier.Create(solver, minterms), Array.ConvertAll(minterms, solver.ComputeDomainSize), minterms)
+            base(PartitionClassifier.Create(solver, minterms), solver.ComputeDomainSizes(minterms), minterms)
         {
             _mintermGenerator = new MintermGenerator<BV>(this);
             False = BV.CreateFalse(_bits);

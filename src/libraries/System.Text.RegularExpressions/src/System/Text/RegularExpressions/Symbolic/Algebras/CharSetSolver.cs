@@ -121,13 +121,23 @@ namespace System.Text.RegularExpressions.Symbolic
 
         public IEnumerable<char> GenerateAllCharacters(BDD set) => GenerateAllCharacters(set, false);
 
-
-        /// <summary>
-        /// Calculate the number of elements in the set.
-        /// </summary>
+        /// <summary>Calculate the number of elements in the set.</summary>
         /// <param name="set">the given set</param>
         /// <returns>the cardinality of the set</returns>
         public ulong ComputeDomainSize(BDD set) => ComputeDomainSize(set, 15);
+
+        /// <summary>Calculate the number of elements in multiple sets.</summary>
+        /// <param name="sets">The sets</param>
+        /// <returns>An array of the cardinality of the sets.</returns>
+        public ulong[] ComputeDomainSizes(BDD[] sets)
+        {
+            var results = new ulong[sets.Length];
+            for (int i = 0; i < sets.Length; i++)
+            {
+                results[i] = ComputeDomainSize(sets[i]);
+            }
+            return results;
+        }
 
         /// <summary>
         /// Returns true iff the set contains exactly one element.

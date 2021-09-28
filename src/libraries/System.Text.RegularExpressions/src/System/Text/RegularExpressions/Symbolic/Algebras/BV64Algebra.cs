@@ -36,7 +36,7 @@ namespace System.Text.RegularExpressions.Symbolic
         }
 
         public BV64Algebra(CharSetSolver solver, BDD[] minterms) :
-            base(PartitionClassifier.Create(solver, minterms), Array.ConvertAll(minterms, solver.ComputeDomainSize), minterms)
+            base(PartitionClassifier.Create(solver, minterms), solver.ComputeDomainSizes(minterms), minterms)
         {
             Debug.Assert(minterms.Length <= 64);
             _mintermGenerator = new MintermGenerator<ulong>(this);
