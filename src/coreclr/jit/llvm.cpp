@@ -930,13 +930,11 @@ void buildPhi(llvm::IRBuilder<>& builder, GenTreePhi* phi)
 
             llvmPhiNode = builder.CreatePHI(requiresLoad ? phiType->getPointerTo() : phiType, numChildren);
         }
-#ifdef DEBUG
         else
         {
             // phi args must be all direct, or all indirect
             assert(requiresLoad == localPhiArg.valueRequiresLoad());
         }
-#endif
 
         // adding a cast as LLVM has GTF_ICON_STR_HDL as i32*, whereas `STORE_LCL_VAR ref` are i8*  This wont work as the cast ends up after the phi.
         // The methods that come through here must be failing compilation on something else, but this at least allows compilation to continue withouth an LLVM type mismatch assert.
