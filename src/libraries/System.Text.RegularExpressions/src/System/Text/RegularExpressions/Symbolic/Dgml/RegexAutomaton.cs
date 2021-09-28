@@ -107,7 +107,12 @@ namespace System.Text.RegularExpressions.Symbolic.DGML
             {
                 T[]? alphabet = _builder._solver.GetPartition();
                 Debug.Assert(alphabet is not null);
-                return Array.ConvertAll<T, (SymbolicRegexNode<T>?, T)>(alphabet, a => (null, a));
+                var results = new (SymbolicRegexNode<T>?, T)[alphabet.Length];
+                for (int i = 0; i < alphabet.Length; i++)
+                {
+                    results[i] = (null, alphabet[i]);
+                }
+                return results;
             }
         }
 

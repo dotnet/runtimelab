@@ -279,7 +279,11 @@ namespace System.Text.RegularExpressions.Symbolic
             }
             else
             {
-                SymbolicRegexNode<TElement>[] singletons = Array.ConvertAll(seq, MkSingleton);
+                var singletons = new SymbolicRegexNode<TElement>[seq.Length];
+                for (int i =0; i < singletons.Length; i++)
+                {
+                    singletons[i] = MkSingleton(seq[i]);
+                }
                 return MkConcat(singletons, topLevel);
             }
         }

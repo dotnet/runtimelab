@@ -211,7 +211,14 @@ namespace System.Text.RegularExpressions.Symbolic
             switch (node.Type)
             {
                 case RegexNode.Alternate:
-                    return _builder.MkOr(Array.ConvertAll(node.ChildrenToArray(), x => Convert(x, topLevel)));
+                    {
+                        var nested = new SymbolicRegexNode<BDD>[node.ChildCount()];
+                        for (int i = 0; i < nested.Length; i++)
+                        {
+                            nested[i] = Convert(node.Child(i), topLevel);
+                        }
+                        return _builder.MkOr(nested);
+                    }
 
                 case RegexNode.Beginning:
                     return _builder._startAnchor;
@@ -224,7 +231,15 @@ namespace System.Text.RegularExpressions.Symbolic
                     return Convert(node.Child(0), topLevel);
 
                 case RegexNode.Concatenate:
-                    return _builder.MkConcat(Array.ConvertAll(FlattenNestedConcatenations(node), x => Convert(x, false)), topLevel);
+                    {
+                        List<RegexNode> nested = FlattenNestedConcatenations(node);
+                        var converted = new SymbolicRegexNode<BDD>[nested.Count];
+                        for (int i = 0; i < converted.Length; i++)
+                        {
+                            converted[i] = Convert(nested[i], topLevel: false);
+                        }
+                        return _builder.MkConcat(converted, topLevel);
+                    }
 
                 case RegexNode.Empty:
                 case RegexNode.UpdateBumpalong: // optional directive that behaves the same as Empty
@@ -242,10 +257,10 @@ namespace System.Text.RegularExpressions.Symbolic
                     return _builder._eolAnchor;
 
                 case RegexNode.Loop:
-                    return _builder.MkLoop(Convert(node.Child(0), false), false, node.M, node.N);
+                    return _builder.MkLoop(Convert(node.Child(0), topLevel: false), isLazy: false, node.M, node.N);
 
                 case RegexNode.Lazyloop:
-                    return _builder.MkLoop(Convert(node.Child(0), false), true, node.M, node.N);
+                    return _builder.MkLoop(Convert(node.Child(0), topLevel: false), isLazy: true, node.M, node.N);
 
                 case RegexNode.Multi:
                     return ConvertMulti(node, topLevel);
@@ -291,13 +306,17 @@ namespace System.Text.RegularExpressions.Symbolic
                     // Try to extract the special case representing complement or intersection
                     if (IsComplementedNode(node))
                     {
-                        return _builder.MkNot(Convert(node.Child(0), false));
+                        return _builder.MkNot(Convert(node.Child(0), topLevel: false));
                     }
 
-                    List<RegexNode>? conjuncts;
-                    if (TryGetIntersection(node, out conjuncts))
+                    if (TryGetIntersection(node, out List<RegexNode>? conjuncts))
                     {
-                        return _builder.MkAnd(Array.ConvertAll(conjuncts.ToArray(), x => Convert(x, false)));
+                        var nested = new SymbolicRegexNode<BDD>[conjuncts.Count];
+                        for (int i = 0; i < nested.Length; i++)
+                        {
+                            nested[i] = Convert(conjuncts[i], topLevel: false);
+                        }
+                        return _builder.MkAnd(nested);
                     }
 
                     goto default;
@@ -348,7 +367,7 @@ namespace System.Text.RegularExpressions.Symbolic
                 }
             }
 
-            RegexNode[] FlattenNestedConcatenations(RegexNode concat)
+            List<RegexNode> FlattenNestedConcatenations(RegexNode concat)
             {
                 var results = new List<RegexNode>();
 
@@ -376,7 +395,7 @@ namespace System.Text.RegularExpressions.Symbolic
                     }
                 }
 
-                return results.ToArray();
+                return results;
             }
 
             SymbolicRegexNode<BDD> ConvertMulti(RegexNode node, bool topLevel)
@@ -450,7 +469,7 @@ namespace System.Text.RegularExpressions.Symbolic
             // TODO-NONBACKTRACKING: recognizing strictly only [] (RegexNode.Nothing), for example [0-[0]] would not be recognized
             bool IsNothing(RegexNode node) => node.Type == RegexNode.Nothing || (node.Type == RegexNode.Set && ConvertSet(node).IsNothing);
 
-            bool IsDotStar(RegexNode node) => node.Type == RegexNode.Setloop && Convert(node, false).IsAnyStar;
+            bool IsDotStar(RegexNode node) => node.Type == RegexNode.Setloop && Convert(node, topLevel: false).IsAnyStar;
 
             bool IsIntersect(RegexNode node) => node.Type == RegexNode.Testgroup && node.ChildCount() > 2 && IsNothing(node.Child(2));
 

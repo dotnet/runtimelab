@@ -1,44 +1,31 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace System.Text.RegularExpressions.Symbolic
 {
-    /// <summary>
-    /// Provides tools for avoiding stack overflows. The approach follows that of System.Linq.Expressions.StackGuard.
-    /// </summary>
+    /// <summary>Provides tools for avoiding stack overflows.</summary>
     internal static class StackHelper
     {
-        /// <summary>
-        /// Calls the provided function on the stack of a new thread.
-        /// </summary>
-        /// <typeparam name="T">the return type of the function</typeparam>
-        /// <param name="func">the function to call</param>
-        public static T CallOnEmptyStack<T>(Func<T> func)
-        {
-            // Using default scheduler rather than picking up the current scheduler.
-            Task<T> task = Task.Factory.StartNew(func, CancellationToken.None, TaskCreationOptions.DenyChildAttach, TaskScheduler.Default);
-            // Task.Wait has the potential of inlining the task's execution on the current thread; avoid this.
-            ((IAsyncResult)task).AsyncWaitHandle.WaitOne();
-            // Using awaiter here to propagate original exception
-            return task.GetAwaiter().GetResult();
-        }
+        // Queues the supplied delegate to the thread pool, then block waiting for it to complete.
+        // It does so in a way that prevents task inlining (which would defeat the purpose) but that
+        // also plays nicely with the thread pool's sync-over-async aggressive thread injection policies.
 
-        /// <summary>
-        /// Calls the provided action on the stack of a new thread.
-        /// </summary>
-        /// <param name="action">the action to call</param>
-        public static void CallOnEmptyStack(Action action)
-        {
-            // Using default scheduler rather than picking up the current scheduler.
-            Task task = Task.Factory.StartNew(action, CancellationToken.None, TaskCreationOptions.DenyChildAttach, TaskScheduler.Default);
-            // Task.Wait has the potential of inlining the task's execution on the current thread; avoid this.
-            ((IAsyncResult)task).AsyncWaitHandle.WaitOne();
-            // Using awaiter here to propagate original exception
-            task.GetAwaiter().GetResult();
-        }
+        /// <summary>Calls the provided function on the stack of a different thread pool thread.</summary>
+        /// <typeparam name="T">The return type of the function.</typeparam>
+        /// <param name="func">The function to invoke.</param>
+        public static T CallOnEmptyStack<T>(Func<T> func) =>
+            Task.Run(func)
+                .ContinueWith(t => t.GetAwaiter().GetResult(), CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default)
+                .GetAwaiter().GetResult();
+
+        /// <summary>Calls the provided action on the stack of a different thread pool thread.</summary>
+        /// <param name="action">The action to invoke.</param>
+        public static void CallOnEmptyStack(Action action) =>
+            Task.Run(action)
+                .ContinueWith(t => t.GetAwaiter().GetResult(), CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default)
+                .GetAwaiter().GetResult();
     }
 }
