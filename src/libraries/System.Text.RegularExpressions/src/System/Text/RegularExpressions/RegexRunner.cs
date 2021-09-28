@@ -57,6 +57,9 @@ namespace System.Text.RegularExpressions
         protected internal Match? runmatch;        // result object
         protected internal Regex? runregex;        // regex object
 
+        // TODO: Expose something as protected internal: https://github.com/dotnet/runtime/issues/59629
+        private protected bool quick;              // false if match details matter, true if only the fact that match occurred matters
+
         private int _timeout;              // timeout in milliseconds (needed for actual)
         private bool _ignoreTimeout;
         private int _timeoutOccursAt;
@@ -87,6 +90,8 @@ namespace System.Text.RegularExpressions
 
         protected internal Match? Scan(Regex regex, string text, int textbeg, int textend, int textstart, int prevlen, bool quick, TimeSpan timeout)
         {
+            this.quick = quick;
+
             // Handle timeout argument
             _timeout = -1; // (int)Regex.InfiniteMatchTimeout.TotalMilliseconds
             bool ignoreTimeout = _ignoreTimeout = Regex.InfiniteMatchTimeout == timeout;
@@ -220,6 +225,8 @@ namespace System.Text.RegularExpressions
         /// </remarks>
         internal void ScanInternal<TState>(Regex regex, string text, int textstart, ref TState state, MatchCallback<TState> callback, bool reuseMatchObject, TimeSpan timeout)
         {
+            quick = false;
+
             // Handle timeout argument
             _timeout = -1; // (int)Regex.InfiniteMatchTimeout.TotalMilliseconds
             bool ignoreTimeout = _ignoreTimeout = Regex.InfiniteMatchTimeout == timeout;
