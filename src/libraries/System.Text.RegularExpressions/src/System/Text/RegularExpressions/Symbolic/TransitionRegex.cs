@@ -233,7 +233,8 @@ namespace System.Text.RegularExpressions.Symbolic
                     return Conditional(one._builder._solver.Or(one._test, two._test), one._first, one._second);
                 }
             }
-            // TODO: keep the representation of Union in right-associative form ordered by hashcode "as a list"
+
+            // TODO-NONBACKTRACKING: keep the representation of Union in right-associative form ordered by hashcode "as a list"
             // so that in a Union, _first is never a union and _first._hashcode is less than _second._hashcode (if _second is not a Union)
             // and if _second is a union then _first._hashcode is less than _second._first._hashcode, etc.
             // This will help to maintain a canonical representation of two equivalent unions and avoid equivalent unions being nonequal

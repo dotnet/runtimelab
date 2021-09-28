@@ -192,7 +192,7 @@ namespace System.Text.RegularExpressions.Symbolic
                     code switch
                     {
                         99 => _categorizer.WhiteSpaceCondition, // whitespace has special code 99
-                        < 0 or > 29 => throw new ArgumentOutOfRangeException(nameof(code), "Must be in the range 0..29 or equal to 99"), // TODO: Remove message or put it into the .resx
+                        < 0 or > 29 => throw new ArgumentOutOfRangeException(nameof(code), "Must be in the range 0..29 or equal to 99"), // TODO-NONBACKTRACKING: Remove message or put it into the .resx
                         _ => _categorizer.CategoryCondition(code)
                     };
             }
@@ -447,12 +447,12 @@ namespace System.Text.RegularExpressions.Symbolic
             }
 
 #if DEBUG
-            // TODO: recognizing strictly only [] (RegexNode.Nothing), for example [0-[0]] would not be recognized
+            // TODO-NONBACKTRACKING: recognizing strictly only [] (RegexNode.Nothing), for example [0-[0]] would not be recognized
             bool IsNothing(RegexNode node) => node.Type == RegexNode.Nothing || (node.Type == RegexNode.Set && ConvertSet(node).IsNothing);
 
             bool IsDotStar(RegexNode node) => node.Type == RegexNode.Setloop && Convert(node, false).IsAnyStar;
 
-            bool IsIntersect(RegexNode node) => node.Type == RegexNode.Testgroup && IsNothing(node.Child(2));
+            bool IsIntersect(RegexNode node) => node.Type == RegexNode.Testgroup && node.ChildCount() > 2 && IsNothing(node.Child(2));
 
             bool TryGetIntersection(RegexNode node, [Diagnostics.CodeAnalysis.NotNullWhen(true)] out List<RegexNode>? conjuncts)
             {

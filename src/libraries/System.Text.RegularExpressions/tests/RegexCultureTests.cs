@@ -11,9 +11,25 @@ namespace System.Text.RegularExpressions.Tests
 {
     public class RegexCultureTests
     {
+        // TODO: Validate source generator after figuring out what to do with culture
+
+        public static IEnumerable<RegexOptions> RegexOptionsExtended()
+        {
+            yield return RegexOptions.None;
+            yield return RegexOptions.Compiled;
+            if (PlatformDetection.IsNetCore)
+            {
+                yield return RegexHelpers.RegexOptionNonBacktracking;
+            }
+        }
+
+        public static IEnumerable<object[]> RegexOptionsExtended_MemberData() =>
+            from options in RegexOptionsExtended()
+            select new object[] { options };
+
         public static IEnumerable<object[]> CharactersComparedOneByOne_AnchoredPattern_TestData()
         {
-            foreach (RegexOptions options in RegexHelpers.RegexOptionsExtended())
+            foreach (RegexOptions options in RegexOptionsExtended())
             {
                 yield return new object[] { "^aa$", "aA", "da-DK", options, false };
                 yield return new object[] { "^aA$", "aA", "da-DK", options, true };
@@ -41,7 +57,7 @@ namespace System.Text.RegularExpressions.Tests
 
         public static IEnumerable<object[]> CharactersComparedOneByOne_Invariant_TestData()
         {
-            foreach (RegexOptions options in RegexHelpers.RegexOptionsExtended())
+            foreach (RegexOptions options in RegexOptionsExtended())
             {
                 yield return new object[] { options };
                 yield return new object[] { options | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant };
@@ -215,7 +231,7 @@ namespace System.Text.RegularExpressions.Tests
             CultureInfo current = CultureInfo.CurrentCulture;
             CultureInfo turkish = new CultureInfo("tr-TR");
 
-            foreach (RegexOptions options in RegexHelpers.RegexOptionsExtended())
+            foreach (RegexOptions options in RegexOptionsExtended())
             {
                 // \u0130 (Turkish I with dot) and \u0131 (Turkish i without dot) are unrelated characters in general
 
@@ -313,7 +329,7 @@ namespace System.Text.RegularExpressions.Tests
         /// </summary>
         [OuterLoop("May take several seconds due to large number of cultures tested")]
         [Theory]
-        [MemberData(nameof(RegexHelpers.RegexOptions_TestData), MemberType = typeof(RegexHelpers))]
+        [MemberData(nameof(RegexOptionsExtended_MemberData))]
         public void TestIgnoreCaseRelation(RegexOptions options)
         {
             // these 22 characters are considered case-insensitive by regex, while they are case-sensitive outside regex

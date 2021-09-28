@@ -29,7 +29,7 @@ namespace System.Text.RegularExpressions
         protected internal Hashtable? capnames;               // if named captures are used, this maps names->index
         protected internal string[]? capslist;                // if captures are sparse or named captures are used, this is the sorted list of names
         protected internal int capsize;                       // the size of the capture array
-        internal int _capsizeForReplacements;                 // actual capture length from the expression, used to determine how to treat back references in replacements
+        internal int? _capsizeForReplacements;                // actual capture length from the expression, used to determine how to treat back references in replacements
 
         private WeakReference<RegexReplacement?>? _replref;   // cached parsed replacement pattern
         private volatile RegexRunner? _runner;                // cached runner
@@ -124,14 +124,14 @@ namespace System.Text.RegularExpressions
                 capslist = null;
                 caps = null;
                 capsize = 1;
-                _capsizeForReplacements = _code.CapSize;
+                _capsizeForReplacements = _code.CapSize; // TODO-NONBACKTRACKING: We need a better mechanism to communicate this; it won't work for source generated non-backtracking
             }
             else
             {
                 capnames = tree.CapNames;
                 capslist = tree.CapsList;
                 caps = _code.Caps;
-                _capsizeForReplacements = capsize = _code.CapSize;
+                capsize = _code.CapSize;
             }
         }
 

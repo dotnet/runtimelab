@@ -2,6 +2,8 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 using Xunit;
 
 namespace System.Text.RegularExpressions.Tests
@@ -44,28 +46,6 @@ namespace System.Text.RegularExpressions.Tests
             return start == 0;
         }
 
-        public static IEnumerable<RegexOptions> RegexOptionsExtended()
-        {
-            if (!PlatformDetection.IsNetFramework)
-            {
-                yield return RegexOptionNonBacktracking;
-            }
-
-            yield return RegexOptions.None;
-            yield return RegexOptions.Compiled;
-        }
-
-        public static IEnumerable<object[]> RegexOptions_TestData()
-        {
-            foreach (RegexOptions options in RegexOptionsExtended())
-            {
-                yield return new object[] { options };
-            }
-        }
-
-        public static IEnumerable<object[]> NoTestData() { yield break; }
-
-
         public static Regex CreateRegexInCulture(string pattern, RegexOptions options, Globalization.CultureInfo culture)
         {
             using (new System.Tests.ThreadCultureChange(culture))
@@ -73,6 +53,97 @@ namespace System.Text.RegularExpressions.Tests
                 return new Regex(pattern, options);
             }
         }
+
+        public static IEnumerable<object[]> AvailableEngines_MemberData =>
+            from engine in AvailableEngines
+            select new object[] { engine };
+
+        public static IEnumerable<object[]> PrependEngines(IEnumerable<object[]> cases)
+        {
+            foreach (RegexEngine engine in AvailableEngines)
+            {
+                foreach (object[] additionalParameters in cases)
+                {
+                    var parameters = new object[additionalParameters.Length + 1];
+                    additionalParameters.CopyTo(parameters, 1);
+                    parameters[0] = engine;
+                    yield return parameters;
+                }
+            }
+        }
+
+        public static IEnumerable<RegexEngine> AvailableEngines
+        {
+            get
+            {
+                yield return RegexEngine.Interpreter;
+                yield return RegexEngine.Compiled;
+                if (PlatformDetection.IsNetCore)
+                {
+                    yield return RegexEngine.NonBacktracking;
+
+                    if (PlatformDetection.IsReflectionEmitSupported && // the source generator doesn't use reflection emit, but it does use Roslyn for the equivalent
+                        PlatformDetection.IsNotMobile &&
+                        PlatformDetection.IsNotBrowser)
+                    {
+                        yield return RegexEngine.SourceGenerated;
+
+                        // TODO-NONBACKTRACKING:
+                        // yield return RegexEngine.NonBacktrackingSourceGenerated;
+                    }
+                }
+            }
+        }
+
+        public static bool IsNonBacktracking(RegexEngine engine) =>
+            engine is RegexEngine.NonBacktracking or RegexEngine.NonBacktrackingSourceGenerated;
+
+        public static async Task<Regex> GetRegexAsync(RegexEngine engine, string pattern, RegexOptions? options = null, TimeSpan? matchTimeout = null)
+        {
+            if (options is null)
+            {
+                Assert.Null(matchTimeout);
+            }
+
+            switch (engine)
+            {
+                case RegexEngine.Interpreter:
+                    return
+                        options is null ? new Regex(pattern) :
+                        matchTimeout is null ? new Regex(pattern, options.Value) :
+                        new Regex(pattern, options.Value, matchTimeout.Value);
+
+                case RegexEngine.Compiled:
+                    return
+                        options is null ? new Regex(pattern, RegexOptions.Compiled) :
+                        matchTimeout is null ? new Regex(pattern, options.Value | RegexOptions.Compiled) :
+                        new Regex(pattern, options.Value | RegexOptions.Compiled, matchTimeout.Value);
+
+                case RegexEngine.NonBacktracking:
+                    return
+                        options is null ? new Regex(pattern, RegexOptionNonBacktracking) :
+                        matchTimeout is null ? new Regex(pattern, options.Value | RegexOptionNonBacktracking) :
+                        new Regex(pattern, options.Value | RegexOptionNonBacktracking, matchTimeout.Value);
+
+                case RegexEngine.SourceGenerated:
+                    return await RegexGeneratorHelper.SourceGenRegexAsync(pattern, options, matchTimeout);
+
+                // TODO-NONBACKTRACKING:
+                // case RegexEngine.NonBacktrackingSourceGenerated:
+                //     return ...;
+            }
+
+            throw new ArgumentException($"Unknown engine: {engine}");
+        }
+    }
+
+    public enum RegexEngine
+    {
+        Interpreter,
+        Compiled,
+        NonBacktracking,
+        SourceGenerated,
+        NonBacktrackingSourceGenerated,
     }
 
     public class CaptureData

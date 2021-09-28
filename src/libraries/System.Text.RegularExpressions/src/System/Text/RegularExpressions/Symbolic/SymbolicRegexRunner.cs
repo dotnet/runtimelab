@@ -78,7 +78,7 @@ namespace System.Text.RegularExpressions.Symbolic
 
         protected override void Go()
         {
-            // TODO: In order to produce a SymbolicMatch with a valid Index/Length, FindMatch needs to do additional
+            // TODO-NONBACKTRACKING: In order to produce a SymbolicMatch with a valid Index/Length, FindMatch needs to do additional
             // work once it's found the end of a match to find the beginning of the match.  If this is an IsMatch
             // call, however, the details of the match will be ignored, with the only important information being
             // that there was a match.  We need a mechanism of supplying that information to this operation. At the

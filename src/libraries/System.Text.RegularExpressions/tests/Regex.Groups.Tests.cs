@@ -4,6 +4,7 @@
 using System.Collections.Generic;
 using System.Globalization;
 using System.Tests;
+using System.Threading.Tasks;
 using Xunit;
 
 namespace System.Text.RegularExpressions.Tests
@@ -908,7 +909,7 @@ namespace System.Text.RegularExpressions.Tests
         [MemberData(nameof(Groups_CustomCulture_TestData_AzeriLatin))]
         [ActiveIssue("https://github.com/dotnet/runtime/issues/56407", TestPlatforms.Android)]
         [ActiveIssue("https://github.com/dotnet/runtime/issues/36900", TestPlatforms.iOS | TestPlatforms.tvOS | TestPlatforms.MacCatalyst)]
-        public void Groups(string cultureName, string pattern, string input, RegexOptions options, string[] expectedGroups, string altMatch = null)
+        public async Task Groups(string cultureName, string pattern, string input, RegexOptions options, string[] expectedGroups, string altMatch = null)
         {
             if (cultureName is null)
             {
@@ -918,55 +919,57 @@ namespace System.Text.RegularExpressions.Tests
 
             using (new ThreadCultureChange(cultureName))
             {
-                Groups(pattern, input, options, expectedGroups);
-                Groups(pattern, input, RegexOptions.Compiled | options, expectedGroups);
-
-                if (PlatformDetection.IsNetCore)
+                foreach (RegexEngine engine in RegexHelpers.AvailableEngines)
                 {
                     // Alternative altMatch when order of alternations matters in backtracking but order does not matter in NonBacktracking mode
                     // Also in NonBacktracking there is only a single top-level match, which is expectedGroups[0] when altMatch is null
-                    Groups(pattern, input, RegexHelpers.RegexOptionNonBacktracking | options, new string[] { altMatch ?? expectedGroups[0] });
+                    string[] expected = engine == RegexEngine.NonBacktracking ?
+                        new string[] { altMatch ?? expectedGroups[0] } :
+                        expectedGroups;
+
+                    await GroupsAsync(engine, pattern, input, options, expected);
                 }
             }
 
-            static void Groups(string pattern, string input, RegexOptions options, string[] expectedGroups)
+            static async Task GroupsAsync(RegexEngine engine, string pattern, string input, RegexOptions options, string[] expectedGroups)
             {
+                if (engine == RegexEngine.NonBacktracking && pattern.Contains("?(cat)"))
+                {
+                    // General if-then-else construct is not supported and uses the ?(cat) condition in the tests
+                    // TODO-NONBACKTRACKING: The constructor will throw NotSupportedException so this check will become obsolete
+                    return;
+                }
+
                 Regex regex;
-                if ((options & RegexHelpers.RegexOptionNonBacktracking) != 0)
+                try
                 {
-                    if (pattern.Contains("?(cat)"))
-                        // General if-then-else construct is not supported and uses the ?(cat) condition in the tests
-                        // TODO: The constructor will throw NotSupportedException so this check will become obsolete
-                        return;
-                    try
-                    {
-                        regex = new Regex(pattern, options);
-                    }
-                    catch (NotSupportedException)
-                    {
-                        // Some constructs are not suppoted in NonBacktracking mode, such as: if-then-else, lookaround, and backreferences
-                        return;
-                    }
+                    regex = await RegexHelpers.GetRegexAsync(engine, pattern, options);
                 }
-                else
+                catch (NotSupportedException) when (RegexHelpers.IsNonBacktracking(engine))
                 {
-                    regex = new Regex(pattern, options);
+                    // Some constructs are not supported in NonBacktracking mode, such as: if-then-else, lookaround, and backreferences
+                    return;
                 }
+
                 Match match = regex.Match(input);
 
                 Assert.True(match.Success);
                 Assert.Equal(expectedGroups[0], match.Value);
-                Assert.Equal(expectedGroups.Length, match.Groups.Count);
 
-                int[] groupNumbers = regex.GetGroupNumbers();
-                string[] groupNames = regex.GetGroupNames();
-                for (int i = 0; i < expectedGroups.Length; i++)
+                if (!RegexHelpers.IsNonBacktracking(engine))
                 {
-                    Assert.Equal(expectedGroups[i], match.Groups[groupNumbers[i]].Value);
-                    Assert.Equal(match.Groups[groupNumbers[i]], match.Groups[groupNames[i]]);
+                    Assert.Equal(expectedGroups.Length, match.Groups.Count);
 
-                    Assert.Equal(groupNumbers[i], regex.GroupNumberFromName(groupNames[i]));
-                    Assert.Equal(groupNames[i], regex.GroupNameFromNumber(groupNumbers[i]));
+                    int[] groupNumbers = regex.GetGroupNumbers();
+                    string[] groupNames = regex.GetGroupNames();
+                    for (int i = 0; i < expectedGroups.Length; i++)
+                    {
+                        Assert.Equal(expectedGroups[i], match.Groups[groupNumbers[i]].Value);
+                        Assert.Equal(match.Groups[groupNumbers[i]], match.Groups[groupNames[i]]);
+
+                        Assert.Equal(groupNumbers[i], regex.GroupNumberFromName(groupNames[i]));
+                        Assert.Equal(groupNames[i], regex.GroupNameFromNumber(groupNumbers[i]));
+                    }
                 }
             }
         }
