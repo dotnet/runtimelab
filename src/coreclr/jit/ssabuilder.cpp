@@ -513,7 +513,7 @@ static GenTree* GetPhiNode(BasicBlock* block, unsigned lclNum)
                 continue;
             }
 
-            assert(tree->OperGet() == GT_STORE_LCL_VAR);
+            assert(tree->OperIs(GT_STORE_LCL_VAR));
             if (tree->AsLclVarCommon()->GetLclNum() == lclNum)
             {
                 return tree->AsOp()->gtOp1;
