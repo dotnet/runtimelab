@@ -184,16 +184,23 @@ namespace System.Text.RegularExpressions.Tests
         [ConditionalFact(nameof(Enabled))]
         public void ViewSampleRegexInDGML()
         {
-            //string rawregex = @"\bis\w*\b";
-            //string rawregex = And(".*[0-9].*", ".*[A-Z].*", Not(".*(01|12).*"));
-            string rawregex = "a.{4}$";
-            Regex re = new Regex($@"{rawregex}", RegexHelpers.RegexOptionNonBacktracking | RegexOptions.Singleline);
-            ViewDGML(re);
-            ViewDGML(re, inReverse: true);
-            ViewDGML(re, addDotStar: true);
-            ViewDGML(re, asNFA: true);
-            ViewDGML(re, inReverse: true, asNFA: true);
-            ViewDGML(re, addDotStar: true, asNFA: true);
+            try
+            {
+                //string rawregex = @"\bis\w*\b";
+                string rawregex = And(".*[0-9].*[0-9].*", ".*[A-Z].*[A-Z].*", Not(".*(01|12).*"));
+                //string rawregex = "a.{4}$";
+                Regex re = new Regex($@"{rawregex}", RegexHelpers.RegexOptionNonBacktracking | RegexOptions.Singleline);
+                ViewDGML(re);
+                ViewDGML(re, inReverse: true);
+                ViewDGML(re, addDotStar: true);
+                ViewDGML(re, asNFA: true, bound: 12);
+                ViewDGML(re, inReverse: true, asNFA: true, bound: 12);
+                ViewDGML(re, addDotStar: true, asNFA: true, bound: 12);
+            }
+            catch (NotSupportedException e)
+            {
+                Assert.Contains("conditional", e.Message);
+            }
         }
 
         private void TestRunRegex(string name, string rawregex, string input, bool viewDGML = false, bool dotStar = false)

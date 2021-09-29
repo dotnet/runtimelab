@@ -17,13 +17,10 @@ namespace System.Text.RegularExpressions.Symbolic.DGML
         private readonly HashSet<int> _stateSet = new();
         private readonly List<Move<(SymbolicRegexNode<T>?, T)>> _moves = new();
         private readonly SymbolicRegexBuilder<T> _builder;
-        private readonly List<SymbolicRegexNode<T>> _nfaStates = new();
-        private readonly Dictionary<SymbolicRegexNode<T>, int> _nfaStateId = new();
-        private readonly bool _asNFA;
+        private SymbolicNFA<T>? _nfa;
 
         internal RegexAutomaton(SymbolicRegexMatcher<T> srm, int bound, bool addDotStar, bool inReverse, bool asNFA)
         {
-            _asNFA = asNFA;
             _builder = srm._builder;
             uint startId = inReverse ?
                 (srm._reversePattern._info.StartsWithLineAnchor ? CharKind.StartStop : 0) :
@@ -34,31 +31,12 @@ namespace System.Text.RegularExpressions.Symbolic.DGML
 
             if (asNFA)
             {
-                Stack<SymbolicRegexNode<T>> stack = new();
-                stack.Push(_q0.Node);
-                _nfaStates.Add(_q0.Node);
-                _nfaStateId[_q0.Node] = 0;
-                _states.Add(0);
-                _stateSet.Add(0);
-                while (stack.Count > 0 && (bound <= 0 || _nfaStates.Count < bound))
+                _nfa = _q0.Node.Explore(bound);
+                for (int q = 0; q < _nfa.StateCount; q++)
                 {
-                    SymbolicRegexNode<T> q = stack.Pop();
-                    int qId = _nfaStateId[q];
-                    foreach ((T, SymbolicRegexNode<T>?, SymbolicRegexNode<T>) branch in q.MkDerivative())
-                    {
-                        SymbolicRegexNode<T> p = branch.Item3;
-                        int pId;
-                        if (!_nfaStateId.TryGetValue(p, out pId))
-                        {
-                            pId = _nfaStates.Count;
-                            _nfaStateId[p] = pId;
-                            _nfaStates.Add(p);
-                            _stateSet.Add(pId);
-                            _states.Add(pId);
-                            stack.Push(p);
-                        }
-                        _moves.Add(Move<(SymbolicRegexNode<T>?, T)>.Create(qId, pId, (branch.Item2, branch.Item1)));
-                    }
+                    _states.Add(q);
+                    foreach ((T, SymbolicRegexNode<T>?, int) branch in _nfa.EnumeratePaths(q))
+                        _moves.Add(Move<(SymbolicRegexNode<T>?, T)>.Create(q, branch.Item3, (branch.Item2, branch.Item1)));
                 }
             }
             else
@@ -116,7 +94,7 @@ namespace System.Text.RegularExpressions.Symbolic.DGML
             }
         }
 
-        public int InitialState => _asNFA ? 0 : _q0.Id;
+        public int InitialState => _nfa is not null ? 0 : _q0.Id;
 
         public int StateCount => _states.Count;
 
@@ -131,10 +109,11 @@ namespace System.Text.RegularExpressions.Symbolic.DGML
 
         public string DescribeState(int state)
         {
-            if (_asNFA)
+            if (_nfa is not null)
             {
-                Debug.Assert(state < _nfaStates.Count);
-                return Net.WebUtility.HtmlEncode(_nfaStates[state].ToString());
+                Debug.Assert(state < _nfa.StateCount);
+                var str = Net.WebUtility.HtmlEncode(_nfa.GetNode(state).ToString());
+                return _nfa.IsUnexplored(state) ? $"Unexplored:{str}" : str;
             }
 
             Debug.Assert(_builder._statearray is not null);
@@ -145,14 +124,14 @@ namespace System.Text.RegularExpressions.Symbolic.DGML
 
         public bool IsFinalState(int state)
         {
-            if (_asNFA)
+            if (_nfa is not null)
             {
-                Debug.Assert(state < _nfaStates.Count);
-                return _nfaStates[state].CanBeNullable;
+                Debug.Assert(state < _nfa.StateCount);
+                return _nfa.CanBeNullable(state);
             }
 
             Debug.Assert(_builder._statearray is not null && state < _builder._statearray.Length);
-            return _builder._statearray[state].IsNullable(CharKind.StartStop);
+            return _builder._statearray[state].Node.CanBeNullable;
         }
 
         public IEnumerable<Move<(SymbolicRegexNode<T>?, T)>> GetMoves() => _moves;
