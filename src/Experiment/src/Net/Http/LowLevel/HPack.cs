@@ -97,7 +97,7 @@ namespace System.Net.Http.LowLevel
         {
             if (TryEncodeInteger(0b0000_0000, IndexedHeaderMask, (uint)value.Length, buffer, out int integerLength))
             {
-                buffer = buffer.Slice(integerLength, 0);
+                buffer = buffer.Slice(integerLength);
                 if (buffer.Length >= value.Length)
                 {
                     value.CopyTo(buffer);
