@@ -19,14 +19,16 @@ namespace System.Net.Http.LowLevel
     /// </summary>
     public partial class Http1Connection : HttpBaseConnection
     {
-        private static ushort s_encodedCrLf => BitConverter.IsLittleEndian ? (ushort)0x0A0D : (ushort)0x0D0Au; // "\r\n"
-        private static ushort s_encodedColonSpace => BitConverter.IsLittleEndian ? (ushort)0x203A : (ushort)0x3A20; // ": "
-        private static ulong s_encodedNewLineHostPrefix => BitConverter.IsLittleEndian ? 0x203A74736F480A0DUL : 0x0D0A486F73743A20UL; // "\r\nHost: "
-        private static ulong s_encodedNewLineTransferEncodingChunked_0 => BitConverter.IsLittleEndian ? 0x66736E6172540A0DUL : 0x0D0A5472616E7366UL; // "\r\nTransf"
-        private static ulong s_encodedNewLineTransferEncodingChunked_1 => BitConverter.IsLittleEndian ? 0x646F636E452D7265UL : 0x65722D456E636F64UL; // "er-Encod"
-        private static ulong s_encodedNewLineTransferEncodingChunked_2 => BitConverter.IsLittleEndian ? 0x756863203A676E69UL : 0x696E673A20636875UL; // "ing: chu"
-        private static uint s_encodedNewLineTransferEncodingChunked_3 => BitConverter.IsLittleEndian ? 0x64656B6EU : 0x6E6B6564U; // "nked"
-        private static ulong s_encodedConnectPrefix => BitConverter.IsLittleEndian ? 0x205443454E4E4F43UL : 0x434F4E4E45435420UL; // "CONNECT "
+        private static ushort s_encodedCrLf { get; } = BitHelpers.AsciiToUInt16("\r\n");
+        private static ushort s_encodedColonSpace { get; } = BitHelpers.AsciiToUInt16(": ");
+        private static ulong s_encodedNewLineHostPrefix { get; } = BitHelpers.AsciiToUInt64("\r\nHost: ");
+        private static ulong s_encodedTransferEncodingChunkedNewLine_0 { get; } = BitHelpers.AsciiToUInt64("Transfer");
+        private static ulong s_encodedTransferEncodingChunkedNewLine_1 { get; } = BitHelpers.AsciiToUInt64("-Encodin");
+        private static ulong s_encodedTransferEncodingChunkedNewLine_2 { get; } = BitHelpers.AsciiToUInt64("g: chunk");
+        private static uint s_encodedTransferEncodingChunkedNewLine_3 { get; } = BitHelpers.AsciiToUInt32("ed\r\n");
+        private static ulong s_encodedContentLength_0 { get; } = BitHelpers.AsciiToUInt64("Content-");
+        private static ulong s_encodedContentLength_1 { get; } = BitHelpers.AsciiToUInt64("Length: ");
+        private static ulong s_encodedConnectPrefix { get; } = BitHelpers.AsciiToUInt64("CONNECT ");
         private static readonly ReadOnlyMemory<byte> s_encodedCRLFMemory = new byte[] { (byte)'\r', (byte)'\n' };
         private static ReadOnlySpan<byte> s_EncodedTransferEncodingName => new byte[] { (byte)'t', (byte)'r', (byte)'a', (byte)'n', (byte)'s', (byte)'f', (byte)'e', (byte)'r', (byte)'-', (byte)'e', (byte)'n', (byte)'c', (byte)'o', (byte)'d', (byte)'i', (byte)'n', (byte)'g' };
         private static ReadOnlySpan<byte> s_EncodedTransferEncodingChunkedValue => new byte[] { (byte)'c', (byte)'h', (byte)'u', (byte)'n', (byte)'k', (byte)'e', (byte)'d' };
@@ -424,68 +426,93 @@ namespace System.Net.Http.LowLevel
                 _requestIsChunked = false;
             }
 
-            int len = GetEncodeRequestLength(method._http1Encoded, authority, pathAndQuery);
-            _writeBuffer.EnsureAvailableSpace(len);
-            EncodeRequest(method._http1Encoded, authority, pathAndQuery, _version, _writeBuffer.AvailableSpan);
-            _writeBuffer.Commit(len);
-            _writeState = WriteState.RequestWritten;
-
-            if (contentLength is not null)
+            int bytesWritten;
+            while (!TryEncodeRequest(method._http1Encoded, authority, pathAndQuery, _version, _requestIsChunked, contentLength ?? -1, _writeBuffer.AvailableSpan, out bytesWritten))
             {
-                Span<byte> buffer = stackalloc byte[32];
-                Utf8Formatter.TryFormat(contentLength.GetValueOrDefault(), buffer, out int bytesWritten);
-                WriteHeader(PreparedHeader.ContentLength, buffer.Slice(0, bytesWritten));
+                _writeBuffer.EnsureAvailableSpace(_writeBuffer.AvailableLength + 1);
             }
+
+            _writeBuffer.Commit(bytesWritten);
+
+            _writeState = WriteState.RequestWritten;
         }
 
-        internal int GetEncodeRequestLength(ReadOnlySpan<byte> method, ReadOnlySpan<byte> authority, ReadOnlySpan<byte> pathAndQuery) =>
-            method.Length + pathAndQuery.Length + authority.Length + (!_requestIsChunked ? 20 : 48); // "{method} {uri} HTTP/x.x\r\nHost: {origin}\r\nTransfer-Encoding: chunked\r\n"
-
-        internal unsafe void EncodeRequest(ReadOnlySpan<byte> method, ReadOnlySpan<byte> authority, ReadOnlySpan<byte> pathAndQuery, HttpPrimitiveVersion version, Span<byte> buffer)
+        internal static bool TryEncodeRequest(ReadOnlySpan<byte> method, ReadOnlySpan<byte> authority, ReadOnlySpan<byte> pathAndQuery, HttpPrimitiveVersion version, bool chunked, long contentLength, Span<byte> buffer, out int bytesWritten)
         {
             Debug.Assert(authority.Length > 0);
             Debug.Assert(method.Length > 0);
             Debug.Assert(pathAndQuery.Length > 0);
-            Debug.Assert(buffer.Length >= GetEncodeRequestLength(authority, method, pathAndQuery));
 
-            ref byte pBuf = ref MemoryMarshal.GetReference(buffer);
-
-            Unsafe.CopyBlockUnaligned(ref pBuf, ref MemoryMarshal.GetReference(method), (uint)method.Length);
-            pBuf = ref Unsafe.Add(ref pBuf, (IntPtr)(uint)method.Length);
-
-            pBuf = (byte)' ';
-            pBuf = ref Unsafe.Add(ref pBuf, 1);
-
-            Unsafe.CopyBlockUnaligned(ref pBuf, ref MemoryMarshal.GetReference(pathAndQuery), (uint)pathAndQuery.Length);
-            pBuf = ref Unsafe.Add(ref pBuf, (IntPtr)(uint)pathAndQuery.Length);
-
-            pBuf = (byte)' ';
-            Unsafe.WriteUnaligned(ref Unsafe.Add(ref pBuf, 1), version._encoded); // "HTTP/x.x"
-            Unsafe.WriteUnaligned(ref Unsafe.Add(ref pBuf, 9), s_encodedNewLineHostPrefix); // "\r\nHost: "
-            pBuf = ref Unsafe.Add(ref pBuf, 17);
-
-            Unsafe.CopyBlockUnaligned(ref pBuf, ref MemoryMarshal.GetReference(authority), (uint)authority.Length);
-            pBuf = ref Unsafe.Add(ref pBuf, (IntPtr)(uint)authority.Length);
-
-            if (!_requestIsChunked)
+            // "{method} {pathAndQuery} HTTP/1.x\r\nHost: {authority}\r\n"
+            if (buffer.Length < method.Length + pathAndQuery.Length + authority.Length + "  HTTP/1.x\r\nHost: \r\n".Length)
             {
-                // \r\n (end of headers)
-                Unsafe.WriteUnaligned(ref pBuf, s_encodedCrLf);
-                pBuf = ref Unsafe.Add(ref pBuf, 2);
-            }
-            else
-            {
-                // \r\nTransfer-Encoding: chunked\r\n
-                Unsafe.WriteUnaligned(ref pBuf, s_encodedNewLineTransferEncodingChunked_0);
-                Unsafe.WriteUnaligned(ref Unsafe.Add(ref pBuf, 8), s_encodedNewLineTransferEncodingChunked_1);
-                Unsafe.WriteUnaligned(ref Unsafe.Add(ref pBuf, 16), s_encodedNewLineTransferEncodingChunked_2);
-                Unsafe.WriteUnaligned(ref Unsafe.Add(ref pBuf, 24), s_encodedNewLineTransferEncodingChunked_3);
-                Unsafe.WriteUnaligned(ref Unsafe.Add(ref pBuf, 28), s_encodedCrLf);
-                pBuf = ref Unsafe.Add(ref pBuf, 30);
+                goto needMore;
             }
 
-            int length = Tools.UnsafeByteOffset(buffer, ref pBuf);
-            Debug.Assert(length == GetEncodeRequestLength(authority, method, pathAndQuery));
+            ref byte start = ref MemoryMarshal.GetReference(buffer);
+            ref byte iter = ref start;
+
+            Unsafe.CopyBlockUnaligned(ref iter, ref MemoryMarshal.GetReference(method), (uint)method.Length);
+            iter = ref Unsafe.Add(ref iter, (nint)(uint)method.Length);
+
+            iter = (byte)' ';
+            iter = ref Unsafe.Add(ref iter, 1);
+
+            Unsafe.CopyBlockUnaligned(ref iter, ref MemoryMarshal.GetReference(pathAndQuery), (uint)pathAndQuery.Length);
+            iter = ref Unsafe.Add(ref iter, (nint)(uint)pathAndQuery.Length);
+
+            iter = (byte)' ';
+            Unsafe.WriteUnaligned(ref Unsafe.Add(ref iter, 1), version._encoded); // "HTTP/x.x"
+            Unsafe.WriteUnaligned(ref Unsafe.Add(ref iter, 9), s_encodedNewLineHostPrefix); // "\r\nHost: "
+            iter = ref Unsafe.Add(ref iter, 17);
+
+            Unsafe.CopyBlockUnaligned(ref iter, ref MemoryMarshal.GetReference(authority), (uint)authority.Length);
+            iter = ref Unsafe.Add(ref iter, (nint)(uint)authority.Length);
+
+            Unsafe.WriteUnaligned(ref iter, s_encodedCrLf); // \r\n (end of request line)
+            iter = ref Unsafe.Add(ref iter, 2);
+
+            if (chunked)
+            {
+                if (buffer.Length - (nint)Unsafe.ByteOffset(ref start, ref iter) < "Transfer-Encoding: chunked\r\n".Length)
+                {
+                    goto needMore;
+                }
+
+                Unsafe.WriteUnaligned(ref iter, s_encodedTransferEncodingChunkedNewLine_0);
+                Unsafe.WriteUnaligned(ref Unsafe.Add(ref iter, 8), s_encodedTransferEncodingChunkedNewLine_1);
+                Unsafe.WriteUnaligned(ref Unsafe.Add(ref iter, 16), s_encodedTransferEncodingChunkedNewLine_2);
+                Unsafe.WriteUnaligned(ref Unsafe.Add(ref iter, 24), s_encodedTransferEncodingChunkedNewLine_3);
+                iter = ref Unsafe.Add(ref iter, 28);
+            }
+
+            if (contentLength >= 0)
+            {
+                if (buffer.Length - (nint)Unsafe.ByteOffset(ref start, ref iter) < "Content-Length: 9223372036854775807\r\n".Length)
+                {
+                    goto needMore;
+                }
+
+                Unsafe.WriteUnaligned(ref iter, s_encodedContentLength_0);
+                Unsafe.WriteUnaligned(ref Unsafe.Add(ref iter, 8), s_encodedContentLength_1);
+                iter = ref Unsafe.Add(ref iter, 16);
+
+                bool numSuccess = Utf8Formatter.TryFormat((ulong)contentLength, MemoryMarshal.CreateSpan(ref iter, "9223372036854775807".Length), out int numLen);
+                Debug.Assert(numSuccess);
+                iter = ref Unsafe.Add(ref iter, (nint)(uint)numLen);
+
+                Unsafe.WriteUnaligned(ref iter, s_encodedCrLf);
+                iter = ref Unsafe.Add(ref iter, 2);
+            }
+
+            bytesWritten = (int)(nint)Unsafe.ByteOffset(ref start, ref iter);
+            Debug.Assert(bytesWritten <= buffer.Length);
+
+            return true;
+
+        needMore:
+            bytesWritten = 0;
+            return false;
         }
 
         internal void WriteHeader(ReadOnlySpan<byte> name, ReadOnlySpan<byte> value)
