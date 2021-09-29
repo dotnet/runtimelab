@@ -6,7 +6,6 @@ using System.Buffers.Text;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.Net;
 using System.Runtime.CompilerServices;
 using System.Runtime.ExceptionServices;
 using System.Runtime.InteropServices;
@@ -34,7 +33,6 @@ namespace System.Net.Http.LowLevel
         private static ReadOnlySpan<byte> s_EncodedContentLengthName => new byte[] { (byte)'c', (byte)'o', (byte)'n', (byte)'t', (byte)'e', (byte)'n', (byte)'t', (byte)'-', (byte)'l', (byte)'e', (byte)'n', (byte)'g', (byte)'t', (byte)'h' };
         private static ReadOnlySpan<byte> s_EncodedConnectionName => new byte[] { (byte)'c', (byte)'o', (byte)'n', (byte)'n', (byte)'e', (byte)'c', (byte)'t', (byte)'i', (byte)'o', (byte)'n' };
         private static ReadOnlySpan<byte> s_EncodedConnectionCloseValue => new byte[] { (byte)'c', (byte)'l', (byte)'o', (byte)'s', (byte)'e' };
-        private static ReadOnlySpan<byte> s_EncodedConnectionKeepAliveValue => new byte[] { (byte)'k', (byte)'e', (byte)'e', (byte)'p', (byte)'-', (byte)'a', (byte)'l', (byte)'i', (byte)'v', (byte)'e' };
 
         internal readonly HttpPrimitiveVersion _version;
         internal readonly Stream _stream;
