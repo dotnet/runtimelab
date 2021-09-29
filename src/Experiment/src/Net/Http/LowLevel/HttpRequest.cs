@@ -3,6 +3,7 @@
 
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Runtime.ExceptionServices;
 using System.Text;
@@ -346,18 +347,21 @@ namespace System.Net.Http.LowLevel
         /// </param>
         protected internal virtual void WriteRequestStart(int version, HttpMethod method, Uri uri, long? contentLength, bool hasTrailingHeaders)
         {
+            if (method is null) throw new ArgumentNullException(nameof(method));
+            if (uri is null) throw new ArgumentNullException(nameof(uri));
+            if (!uri.IsAbsoluteUri) throw new ArgumentException($"{nameof(uri)} must be an absolute URI.", nameof(uri));
+
             HttpPrimitiveMethod primitiveMethod = HttpPrimitiveMethod.Lookup(method.Method)
                 ?? new HttpPrimitiveMethod(method.Method);
 
             string host = uri.IdnHost;
-            int port = uri.Port;
+            string port = uri.Port.ToString(CultureInfo.InvariantCulture);
             string authority =
                 uri.HostNameType == UriHostNameType.IPv6
                 ? $"[{host}]:{port}"
                 : $"{host}:{port}";
 
             byte[] authorityBytes = Encoding.ASCII.GetBytes(authority);
-            byte[] methodBytes = Encoding.ASCII.GetBytes(method.Method);
             byte[] pathAndQueryBytes = Encoding.ASCII.GetBytes(uri.PathAndQuery);
 
             WriteRequestStart(version, primitiveMethod, authorityBytes, pathAndQueryBytes, contentLength, hasTrailingHeaders);
