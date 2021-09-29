@@ -18,41 +18,6 @@ namespace System.Net.Http.LowLevel
     public abstract class HttpRequest
     {
         /// <summary>
-        /// The GET method.
-        /// </summary>
-        public static ReadOnlySpan<byte> GetMethod => new byte[] { (byte)'G', (byte)'E', (byte)'T' };
-
-        /// <summary>
-        /// The POST method.
-        /// </summary>
-        public static ReadOnlySpan<byte> PostMethod => new byte[] { (byte)'P', (byte)'O', (byte)'S', (byte)'T' };
-
-        /// <summary>
-        /// The PUT method.
-        /// </summary>
-        public static ReadOnlySpan<byte> PutMethod => new byte[] { (byte)'P', (byte)'U', (byte)'T' };
-
-        /// <summary>
-        /// The HEAD method.
-        /// </summary>
-        public static ReadOnlySpan<byte> HeadMethod => new byte[] { (byte)'H', (byte)'E', (byte)'A', (byte)'D' };
-
-        /// <summary>
-        /// The DELETE method.
-        /// </summary>
-        public static ReadOnlySpan<byte> DeleteMethod => new byte[] { (byte)'D', (byte)'E', (byte)'L', (byte)'E', (byte)'T', (byte)'E' };
-
-        /// <summary>
-        /// The DELETE method.
-        /// </summary>
-        public static ReadOnlySpan<byte> TraceMethod => new byte[] { (byte)'T', (byte)'R', (byte)'A', (byte)'C', (byte)'E' };
-
-        /// <summary>
-        /// The CONNECT method.
-        /// </summary>
-        public static ReadOnlySpan<byte> ConnectMethod => new byte[] { (byte)'C', (byte)'O', (byte)'N', (byte)'N', (byte)'E', (byte)'C', (byte)'T' };
-
-        /// <summary>
         /// <see cref="HttpRequest"/> instances will be reused across requests, which is potentially dangerous
         /// when a <see cref="ValueHttpRequest"/> is misused. This will be used to perform a sanity check similar to how <see cref="ValueTask"/> works.
         /// </summary>
