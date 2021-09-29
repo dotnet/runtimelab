@@ -96,9 +96,9 @@ namespace System.Net.Http
                 throw new HttpRequestException("SR.SOME_MESSAGE_URI_IS_NULL");
             }
 
-            httpRequest.WriteRequestStart(Encoding.ASCII.GetBytes(request.Method.Method),
-                Encoding.ASCII.GetBytes(request.RequestUri.Host),
-                Encoding.ASCII.GetBytes(request.RequestUri.PathAndQuery),
+            httpRequest.WriteRequestStart(
+                request.Method,
+                request.RequestUri,
                 request.Content?.Headers.ContentLength,
                 hasTrailingHeaders: false);
 

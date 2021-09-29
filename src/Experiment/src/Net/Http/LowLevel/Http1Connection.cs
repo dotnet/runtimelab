@@ -380,38 +380,29 @@ namespace System.Net.Http.LowLevel
             Debug.Assert(length == GetEncodeConnectRequestLength(authority));
         }
 
-        internal void WriteRequestStart(ReadOnlySpan<byte> method, ReadOnlySpan<byte> authority, ReadOnlySpan<byte> pathAndQuery, long? contentLength, bool hasTrailingHeaders)
+        internal void WriteRequestStart(HttpPrimitiveMethod method, ReadOnlySpan<byte> authority, ReadOnlySpan<byte> pathAndQuery, long? contentLength, bool hasTrailingHeaders)
         {
             if (_writeState != WriteState.Unstarted)
             {
                 throw new InvalidOperationException();
             }
 
-            if (method.Length == 0 || authority.Length == 0 || pathAndQuery.Length == 0)
+            if (method is null) throw new ArgumentNullException(nameof(method));
+
+            if (authority.Length == 0 || pathAndQuery.Length == 0)
             {
                 throw new ArgumentException("All parameters must be specified.");
             }
 
-            bool methodHasContent = true;
-
-            switch (method.Length)
+            bool methodHasContent = method._hasRequestContent;
+            if (!methodHasContent && contentLength is not null)
             {
-                case 0:
-                    throw new ArgumentException($"{nameof(method)} must have a non-zero length.");
-                case 3 when method.SequenceEqual(HttpRequest.GetMethod):
-                case 4 when method.SequenceEqual(HttpRequest.HeadMethod):
-                case 5 when method.SequenceEqual(HttpRequest.TraceMethod):
-                case 6 when method.SequenceEqual(HttpRequest.DeleteMethod):
-                    methodHasContent = false;
-                    if (contentLength is not null)
-                    {
-                        if (contentLength.GetValueOrDefault() > 0)
-                        {
-                            throw new ArgumentOutOfRangeException(nameof(contentLength), "A Content-Length greater than zero is not supported by this method.");
-                        }
-                        contentLength = null;
-                    }
-                    break;
+                if (contentLength.GetValueOrDefault() > 0)
+                {
+                    throw new ArgumentOutOfRangeException(nameof(contentLength), $"A Content-Length greater than zero is not supported by the {method} method.");
+                }
+
+                contentLength = null;
             }
 
             if (_version == HttpPrimitiveVersion.Version11)
@@ -435,9 +426,9 @@ namespace System.Net.Http.LowLevel
                 _requestIsChunked = false;
             }
 
-            int len = GetEncodeRequestLength(method, authority, pathAndQuery);
+            int len = GetEncodeRequestLength(method._http1Encoded, authority, pathAndQuery);
             _writeBuffer.EnsureAvailableSpace(len);
-            EncodeRequest(method, authority, pathAndQuery, _version, _writeBuffer.AvailableSpan);
+            EncodeRequest(method._http1Encoded, authority, pathAndQuery, _version, _writeBuffer.AvailableSpan);
             _writeBuffer.Commit(len);
             _writeState = WriteState.RequestWritten;
 

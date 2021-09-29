@@ -129,7 +129,7 @@ namespace System.Net.Http.LowLevel
         /// <para>When using trailing headers, it is recommended to send the "Trailers" header.</para>
         /// <para>HTTP/1.1 or greater is required to use trailing headers. A "Transfer-Encoding: chunked" header will be written.</para>
         /// </param>
-        protected internal abstract void WriteRequestStart(int version, ReadOnlySpan<byte> method, ReadOnlySpan<byte> authority, ReadOnlySpan<byte> pathAndQuery, long? contentLength, bool hasTrailingHeaders);
+        protected internal abstract void WriteRequestStart(int version, HttpPrimitiveMethod method, ReadOnlySpan<byte> authority, ReadOnlySpan<byte> pathAndQuery, long? contentLength, bool hasTrailingHeaders);
 
         /// <summary>
         /// Writes a header.
@@ -156,7 +156,7 @@ namespace System.Net.Http.LowLevel
 
         /// <summary>
         /// Writes a trailing header.
-        /// To use, trailing headers must be enabled when calling <see cref="WriteRequestStart(int, ReadOnlySpan{byte}, ReadOnlySpan{byte}, ReadOnlySpan{byte}, long?, bool)"/>.
+        /// To use, trailing headers must be enabled when calling <see cref="WriteRequestStart(int, HttpPrimitiveMethod, ReadOnlySpan{byte}, ReadOnlySpan{byte}, long?, bool)"/>.
         /// </summary>
         /// <param name="version">The version of the request to operate on. This must be validated by implementations.</param>
         /// <param name="name">The name of the header to write.</param>
@@ -346,6 +346,9 @@ namespace System.Net.Http.LowLevel
         /// </param>
         protected internal virtual void WriteRequestStart(int version, HttpMethod method, Uri uri, long? contentLength, bool hasTrailingHeaders)
         {
+            HttpPrimitiveMethod primitiveMethod = HttpPrimitiveMethod.Lookup(method.Method)
+                ?? new HttpPrimitiveMethod(method.Method);
+
             string host = uri.IdnHost;
             int port = uri.Port;
             string authority =
@@ -357,7 +360,7 @@ namespace System.Net.Http.LowLevel
             byte[] methodBytes = Encoding.ASCII.GetBytes(method.Method);
             byte[] pathAndQueryBytes = Encoding.ASCII.GetBytes(uri.PathAndQuery);
 
-            WriteRequestStart(version, methodBytes, authorityBytes, pathAndQueryBytes, contentLength, hasTrailingHeaders);
+            WriteRequestStart(version, primitiveMethod, authorityBytes, pathAndQueryBytes, contentLength, hasTrailingHeaders);
         }
 
         /// <summary>
@@ -388,7 +391,7 @@ namespace System.Net.Http.LowLevel
 
         /// <summary>
         /// Writes a trailing header.
-        /// To use, trailing headers must be enabled when calling <see cref="WriteRequestStart(int, ReadOnlySpan{byte}, ReadOnlySpan{byte}, ReadOnlySpan{byte}, long?, bool)"/>.
+        /// To use, trailing headers must be enabled when calling <see cref="WriteRequestStart(int, HttpPrimitiveMethod, ReadOnlySpan{byte}, ReadOnlySpan{byte}, long?, bool)"/>.
         /// </summary>
         /// <param name="version">The version of the request to operate on. This must be validated by implementations.</param>
         /// <param name="name">The name of the header to write.</param>
@@ -403,7 +406,7 @@ namespace System.Net.Http.LowLevel
 
         /// <summary>
         /// Writes a trailing header.
-        /// To use, trailing headers must be enabled when calling <see cref="WriteRequestStart(int, ReadOnlySpan{byte}, ReadOnlySpan{byte}, ReadOnlySpan{byte}, long?, bool)"/>.
+        /// To use, trailing headers must be enabled when calling <see cref="WriteRequestStart(int, HttpPrimitiveMethod, ReadOnlySpan{byte}, ReadOnlySpan{byte}, long?, bool)"/>.
         /// </summary>
         /// <param name="version">The version of the request to operate on. This must be validated by implementations.</param>
         /// <param name="name">The name of the header to write.</param>

@@ -68,7 +68,7 @@ namespace System.Net.Http.LowLevel
         /// <para>When using trailing headers, it is recommended to send the "Trailers" header.</para>
         /// <para>HTTP/1.1 or greater is required to use trailing headers. A "Transfer-Encoding: chunked" header will be written.</para>
         /// </param>
-        public void WriteRequestStart(ReadOnlySpan<byte> method, ReadOnlySpan<byte> authority, ReadOnlySpan<byte> pathAndQuery, long? contentLength = null, bool hasTrailingHeaders = false) =>
+        public void WriteRequestStart(HttpPrimitiveMethod method, ReadOnlySpan<byte> authority, ReadOnlySpan<byte> pathAndQuery, long? contentLength = null, bool hasTrailingHeaders = false) =>
             _request.WriteRequestStart(_requestVersion, method, authority, pathAndQuery, contentLength, hasTrailingHeaders);
 
         /// <summary>
@@ -130,7 +130,7 @@ namespace System.Net.Http.LowLevel
 
         /// <summary>
         /// Writes a trailing header.
-        /// To use, trailing headers must be enabled when calling <see cref="WriteRequestStart(ReadOnlySpan{byte}, ReadOnlySpan{byte}, ReadOnlySpan{byte}, long?, bool)"/>.
+        /// To use, trailing headers must be enabled when calling <see cref="WriteRequestStart(HttpPrimitiveMethod, ReadOnlySpan{byte}, ReadOnlySpan{byte}, long?, bool)"/>.
         /// </summary>
         /// <param name="name">The name of the header to write.</param>
         /// <param name="value">The value of the header to write.</param>
@@ -139,7 +139,7 @@ namespace System.Net.Http.LowLevel
 
         /// <summary>
         /// Writes a trailing header.
-        /// To use, trailing headers must be enabled when calling via <see cref="WriteRequestStart(ReadOnlySpan{byte}, ReadOnlySpan{byte}, ReadOnlySpan{byte}, long?, bool)"/>.
+        /// To use, trailing headers must be enabled when calling via <see cref="WriteRequestStart(HttpPrimitiveMethod, ReadOnlySpan{byte}, ReadOnlySpan{byte}, long?, bool)"/>.
         /// </summary>
         /// <param name="name">The name of the header to write.</param>
         /// <param name="value">The value of the header to write.</param>
@@ -148,7 +148,7 @@ namespace System.Net.Http.LowLevel
 
         /// <summary>
         /// Writes a trailing header.
-        /// To use, trailing headers must be enabled when calling via <see cref="WriteRequestStart(ReadOnlySpan{byte}, ReadOnlySpan{byte}, ReadOnlySpan{byte}, long?, bool)"/>.
+        /// To use, trailing headers must be enabled when calling via <see cref="WriteRequestStart(HttpPrimitiveMethod, ReadOnlySpan{byte}, ReadOnlySpan{byte}, long?, bool)"/>.
         /// </summary>
         /// <param name="name">The name of the header to write.</param>
         /// <param name="values">The value of the header to write.</param>

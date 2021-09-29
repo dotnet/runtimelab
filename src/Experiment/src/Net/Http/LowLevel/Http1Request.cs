@@ -90,12 +90,9 @@ namespace System.Net.Http.LowLevel
             _connection.WriteConnectRequest(authority);
         }
 
-        protected internal override void WriteRequestStart(int version, ReadOnlySpan<byte> method, ReadOnlySpan<byte> authority, ReadOnlySpan<byte> pathAndQuery, long? contentLength, bool hasTrailingHeaders)
+        protected internal override void WriteRequestStart(int version, HttpPrimitiveMethod method, ReadOnlySpan<byte> authority, ReadOnlySpan<byte> pathAndQuery, long? contentLength, bool hasTrailingHeaders)
         {
             ThrowIfDisposed(version);
-            // Should we expect response?
-            if (method.Length == 4 && method[0] == (byte)'H')
-                _mustNotHaveResponse = true;
             _connection.WriteRequestStart(method, authority, pathAndQuery, contentLength, hasTrailingHeaders);
         }
 
