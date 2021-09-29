@@ -382,17 +382,11 @@ namespace System.Net.Http.LowLevel
 
         internal void WriteRequestStart(HttpPrimitiveMethod method, ReadOnlySpan<byte> authority, ReadOnlySpan<byte> pathAndQuery, long? contentLength, bool hasTrailingHeaders)
         {
-            if (_writeState != WriteState.Unstarted)
-            {
-                throw new InvalidOperationException();
-            }
-
             if (method is null) throw new ArgumentNullException(nameof(method));
-
-            if (authority.Length == 0 || pathAndQuery.Length == 0)
-            {
-                throw new ArgumentException("All parameters must be specified.");
-            }
+            if (authority.Length == 0) throw new ArgumentException($"{nameof(authority)} must have a non-zero length.", nameof(authority));
+            if (pathAndQuery.Length == 0) throw new ArgumentException($"{nameof(pathAndQuery)} must have a non-zero length.", nameof(pathAndQuery));
+            if (contentLength < 0) throw new ArgumentOutOfRangeException(nameof(contentLength), $"{nameof(contentLength)} must be non-negative.");
+            if (_writeState != WriteState.Unstarted) throw new InvalidOperationException();
 
             bool methodHasContent = method._hasRequestContent;
             if (!methodHasContent && contentLength is not null)
