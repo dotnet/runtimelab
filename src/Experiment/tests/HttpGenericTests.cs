@@ -37,7 +37,6 @@ namespace System.Net.Http.LowLevel.Tests
             await RunSingleStreamTest(
                 async (clientRequest, serverUri) =>
                 {
-                    clientRequest.ConfigureRequest(hasContentLength: true, hasTrailingHeaders: false);
                     clientRequest.WriteRequestStart(HttpMethod.Get, serverUri);
                     await clientRequest.CompleteRequestAsync();
 
@@ -57,6 +56,12 @@ namespace System.Net.Http.LowLevel.Tests
         [MemberData(nameof(ChunkedData))]
         public async Task Send_ChunkedRequest_Success(int testIdx, TestHeadersSink requestHeaders, List<string> requestContent, TestHeadersSink requestTrailingHeaders)
         {
+            if (Version == HttpPrimitiveVersion.Version10)
+            {
+                // Chunked encoding is not supported on HTTP/1.0.
+                return;
+            }
+
             await RunSingleStreamTest(
                 async (client, serverUri) =>
                 {
@@ -86,7 +91,6 @@ namespace System.Net.Http.LowLevel.Tests
             await RunSingleStreamTest(
                 async (client, serverUri) =>
                 {
-                    client.ConfigureRequest(hasContentLength: true, hasTrailingHeaders: false);
                     client.WriteRequestStart(HttpMethod.Get, serverUri);
                     client.WriteHeader("TE", "trailers");
                     await client.CompleteRequestAsync();
@@ -151,10 +155,9 @@ namespace System.Net.Http.LowLevel.Tests
 
         private async Task ClientSendHelperAsync(ValueHttpRequest client, Uri serverUri, int testIdx, TestHeadersSink requestHeaders, List<string> requestContent, TestHeadersSink? requestTrailingHeaders, bool isChunked = false)
         {
-            long contentLength = requestContent.Sum(x => (long)x.Length);
-            client.ConfigureRequest(hasContentLength: !isChunked, hasTrailingHeaders: requestTrailingHeaders != null);
-            client.WriteRequestStart(HttpMethod.Post, serverUri);
-            client.WriteHeader("Content-Length", contentLength.ToString(CultureInfo.InvariantCulture));
+            long? contentLength = isChunked ? requestContent.Sum(x => (long)x.Length) : null;
+
+            client.WriteRequestStart(HttpMethod.Post, serverUri, contentLength, hasTrailingHeaders: requestTrailingHeaders is not null);
             client.WriteHeader("Test-Index", testIdx.ToString(CultureInfo.InvariantCulture));
             client.WriteHeaders(requestHeaders);
 

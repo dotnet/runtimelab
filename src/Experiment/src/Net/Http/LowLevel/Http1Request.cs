@@ -84,25 +84,19 @@ namespace System.Net.Http.LowLevel
             StatusCode = statusCode;
         }
 
-        protected internal override void ConfigureRequest(int version, bool hasContentLength, bool hasTrailingHeaders)
-        {
-            ThrowIfDisposed(version);
-            _connection.ConfigureRequest(hasContentLength, hasTrailingHeaders);
-        }
-
         protected internal override void WriteConnectRequest(int version, ReadOnlySpan<byte> authority)
         {
             ThrowIfDisposed(version);
             _connection.WriteConnectRequest(authority);
         }
 
-        protected internal override void WriteRequestStart(int version, ReadOnlySpan<byte> method, ReadOnlySpan<byte> authority, ReadOnlySpan<byte> pathAndQuery)
+        protected internal override void WriteRequestStart(int version, ReadOnlySpan<byte> method, ReadOnlySpan<byte> authority, ReadOnlySpan<byte> pathAndQuery, long? contentLength, bool hasTrailingHeaders)
         {
             ThrowIfDisposed(version);
             // Should we expect response?
             if (method.Length == 4 && method[0] == (byte)'H')
                 _mustNotHaveResponse = true;
-            _connection.WriteRequestStart(method, authority, pathAndQuery);
+            _connection.WriteRequestStart(method, authority, pathAndQuery, contentLength, hasTrailingHeaders);
         }
 
         protected internal override void WriteHeader(int version, ReadOnlySpan<byte> name, ReadOnlySpan<byte> value)

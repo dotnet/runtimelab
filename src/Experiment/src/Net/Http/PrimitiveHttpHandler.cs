@@ -77,6 +77,9 @@ namespace System.Net.Http
 
             foreach (var (key, values) in request.Content.Headers)
             {
+                if (key.Equals("Content-Length", StringComparison.OrdinalIgnoreCase))
+                    continue;
+
                 var value = GetHeaderValue(values);
                 if (value != null)
                 {
@@ -93,17 +96,11 @@ namespace System.Net.Http
                 throw new HttpRequestException("SR.SOME_MESSAGE_URI_IS_NULL");
             }
 
-            bool hasContentLength = request.Headers.TransferEncodingChunked == false;
-            
-            if (request.Version is {Major:1, Minor:0} && hasContentLength)
-            {
-                throw new HttpRequestException("SR.SOME_MESSAGE_URI_IS_NULL");
-            }
-
-            httpRequest.ConfigureRequest(hasContentLength, false);
             httpRequest.WriteRequestStart(Encoding.ASCII.GetBytes(request.Method.Method),
                 Encoding.ASCII.GetBytes(request.RequestUri.Host),
-                Encoding.ASCII.GetBytes(request.RequestUri.PathAndQuery));
+                Encoding.ASCII.GetBytes(request.RequestUri.PathAndQuery),
+                request.Content?.Headers.ContentLength,
+                hasTrailingHeaders: false);
 
             WriteHeaders(ref httpRequest, request);
 

@@ -332,25 +332,6 @@ namespace System.Net.Http.LowLevel
         public override ValueTask PrunePoolsAsync(long curTicks, TimeSpan lifetimeLimit, TimeSpan idleLimit, CancellationToken cancellationToken = default) =>
             default;
 
-        internal void ConfigureRequest(bool hasContentLength, bool hasTrailingHeaders)
-        {
-            if (_version == HttpPrimitiveVersion.Version11)
-            {
-                _requestIsChunked = !hasContentLength || hasTrailingHeaders;
-            }
-            else
-            {
-                Debug.Assert(_version == HttpPrimitiveVersion.Version10);
-
-                if (hasTrailingHeaders)
-                {
-                    throw new Exception("HTTP/1.0 does not support chunked encoding necessary for trailing headers.");
-                }
-
-                _requestIsChunked = false;
-            }
-        }
-
         internal void WriteConnectRequest(ReadOnlySpan<byte> authority)
         {
             if (_writeState != WriteState.Unstarted)
@@ -399,7 +380,7 @@ namespace System.Net.Http.LowLevel
             Debug.Assert(length == GetEncodeConnectRequestLength(authority));
         }
 
-        internal void WriteRequestStart(ReadOnlySpan<byte> method, ReadOnlySpan<byte> authority, ReadOnlySpan<byte> pathAndQuery)
+        internal void WriteRequestStart(ReadOnlySpan<byte> method, ReadOnlySpan<byte> authority, ReadOnlySpan<byte> pathAndQuery, long? contentLength, bool hasTrailingHeaders)
         {
             if (_writeState != WriteState.Unstarted)
             {
@@ -411,11 +392,61 @@ namespace System.Net.Http.LowLevel
                 throw new ArgumentException("All parameters must be specified.");
             }
 
+            bool methodHasContent = true;
+
+            switch (method.Length)
+            {
+                case 0:
+                    throw new ArgumentException($"{nameof(method)} must have a non-zero length.");
+                case 3 when method.SequenceEqual(HttpRequest.GetMethod):
+                case 4 when method.SequenceEqual(HttpRequest.HeadMethod):
+                case 5 when method.SequenceEqual(HttpRequest.TraceMethod):
+                case 6 when method.SequenceEqual(HttpRequest.DeleteMethod):
+                    methodHasContent = false;
+                    if (contentLength is not null)
+                    {
+                        if (contentLength.GetValueOrDefault() > 0)
+                        {
+                            throw new ArgumentOutOfRangeException(nameof(contentLength), "A Content-Length greater than zero is not supported by this method.");
+                        }
+                        contentLength = null;
+                    }
+                    break;
+            }
+
+            if (_version == HttpPrimitiveVersion.Version11)
+            {
+                _requestIsChunked = (methodHasContent && contentLength is null) || hasTrailingHeaders;
+            }
+            else
+            {
+                Debug.Assert(_version == HttpPrimitiveVersion.Version10);
+
+                if (methodHasContent && contentLength is null)
+                {
+                    throw new Exception("HTTP/1.0 does not support chunked encoding necessary for variable-length content.");
+                }
+
+                if (hasTrailingHeaders)
+                {
+                    throw new Exception("HTTP/1.0 does not support chunked encoding necessary for trailing headers.");
+                }
+
+                _requestIsChunked = false;
+            }
+
             int len = GetEncodeRequestLength(method, authority, pathAndQuery);
             _writeBuffer.EnsureAvailableSpace(len);
             EncodeRequest(method, authority, pathAndQuery, _version, _writeBuffer.AvailableSpan);
             _writeBuffer.Commit(len);
             _writeState = WriteState.RequestWritten;
+
+            if (contentLength is not null)
+            {
+                Span<byte> buffer = stackalloc byte[32];
+                Utf8Formatter.TryFormat(contentLength.GetValueOrDefault(), buffer, out int bytesWritten);
+                WriteHeader(PreparedHeader.ContentLength, buffer.Slice(0, bytesWritten));
+            }
         }
 
         internal int GetEncodeRequestLength(ReadOnlySpan<byte> method, ReadOnlySpan<byte> authority, ReadOnlySpan<byte> pathAndQuery) =>
@@ -526,12 +557,12 @@ namespace System.Net.Http.LowLevel
         {
             if (!_requestIsChunked)
             {
-                throw new InvalidOperationException($"Can not write trailing headers without first enabling them during {nameof(ValueHttpRequest)}.{nameof(ValueHttpRequest.ConfigureRequest)}.");
+                throw new InvalidOperationException($"Can not write trailing headers without first enabling them during {nameof(ValueHttpRequest)}.{nameof(ValueHttpRequest.WriteRequestStart)}.");
             }
 
             if (name.Length == 0)
             {
-                throw new ArgumentException();
+                throw new ArgumentException($"{nameof(name)} must have a non-zero length.", nameof(name));
             }
 
             switch (_writeState)

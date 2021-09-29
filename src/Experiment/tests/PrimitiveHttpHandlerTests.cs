@@ -6,6 +6,7 @@ using Xunit;
 using System.IO;
 using System.Linq;
 using System.Net.Http.Headers;
+using System.Globalization;
 
 namespace System.Net.Http.LowLevel.Tests
 {
@@ -173,7 +174,7 @@ namespace System.Net.Http.LowLevel.Tests
             await RunClientTest(
                 async (client, serverUri) =>
                 {
-                    HttpRequestMessage requestMessage = new(HttpMethod.Get, serverUri)
+                    HttpRequestMessage requestMessage = new(HttpMethod.Post, serverUri)
                     {
                         Content = new StringContent(testContent),
                         Headers = {TransferEncodingChunked = chunked}
@@ -202,15 +203,14 @@ namespace System.Net.Http.LowLevel.Tests
             await RunClientTest(
                 async (client, serverUri) =>
                 {
-                    HttpRequestMessage requestMessage = new(HttpMethod.Get, serverUri)
+                    HttpRequestMessage requestMessage = new(HttpMethod.Post, serverUri)
                     {
                         Content = new StringContent(testContent)
                         {
                             Headers =
                             {
                                 {"X-CONTENT-CUSTOM-HEADER", "CONTENT_CUSTOM_VALUE"},
-                                {"Expires", "Wed, 21 Oct 2015 07:28:00 GMT"},
-                                {"Content-Length", testContent.Length.ToString()}
+                                {"Expires", "Wed, 21 Oct 2015 07:28:00 GMT"}
                             }
                         },
                         Headers = {{"X-CUSTOM-HEADER", "CUSTOM_VALUE"}}
@@ -226,11 +226,10 @@ namespace System.Net.Http.LowLevel.Tests
                 {
                     await using HttpTestStream stream = await server.AcceptStreamAsync();
                     HttpTestFullRequest request = await stream.ReceiveAndSendAsync();
-                    Assert.Equal(7, request.Headers.Count);
                     Assert.NotNull(request.Headers["host"]);
                     Assert.Equal(new[] {"text/plain; charset=utf-8"}, request.Headers["content-type"]);
                     Assert.Equal(new[] {"Wed, 21 Oct 2015 07:28:00 GMT"}, request.Headers["expires"]);
-                    Assert.Equal(new[] {"12"}, request.Headers["Content-Length"]);
+                    Assert.Equal(new[] {testContent.Length.ToString(CultureInfo.InvariantCulture)}, request.Headers["Content-Length"]);
                     Assert.Equal(new[] {"CUSTOM_VALUE"}, request.Headers["X-CUSTOM-HEADER"]);
                     Assert.Equal(new[] {"en, de"}, request.Headers["accept-language"]);
                     Assert.Equal(new[] {"CONTENT_CUSTOM_VALUE"}, request.Headers["X-CONTENT-CUSTOM-HEADER"]);

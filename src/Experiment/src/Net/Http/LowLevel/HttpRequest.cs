@@ -37,6 +37,16 @@ namespace System.Net.Http.LowLevel
         public static ReadOnlySpan<byte> HeadMethod => new byte[] { (byte)'H', (byte)'E', (byte)'A', (byte)'D' };
 
         /// <summary>
+        /// The DELETE method.
+        /// </summary>
+        public static ReadOnlySpan<byte> DeleteMethod => new byte[] { (byte)'D', (byte)'E', (byte)'L', (byte)'E', (byte)'T', (byte)'E' };
+
+        /// <summary>
+        /// The DELETE method.
+        /// </summary>
+        public static ReadOnlySpan<byte> TraceMethod => new byte[] { (byte)'T', (byte)'R', (byte)'A', (byte)'C', (byte)'E' };
+
+        /// <summary>
         /// The CONNECT method.
         /// </summary>
         public static ReadOnlySpan<byte> ConnectMethod => new byte[] { (byte)'C', (byte)'O', (byte)'N', (byte)'N', (byte)'E', (byte)'C', (byte)'T' };
@@ -97,14 +107,6 @@ namespace System.Net.Http.LowLevel
         protected internal abstract ValueTask DisposeAsync(int version);
 
         /// <summary>
-        /// Configures the request.
-        /// </summary>
-        /// <param name="version">The version of the request to operate on. This must be validated by implementations.</param>
-        /// <param name="hasContentLength">If true, the request will contain the Content-Length header.</param>
-        /// <param name="hasTrailingHeaders">If true, the request will send trailing headers.</param>
-        protected internal abstract void ConfigureRequest(int version, bool hasContentLength, bool hasTrailingHeaders);
-
-        /// <summary>
         /// Writes a CONNECT request.
         /// </summary>
         /// <param name="version">The version of the request to operate on. This must be validated by implementations.</param>
@@ -118,7 +120,16 @@ namespace System.Net.Http.LowLevel
         /// <param name="method">The request method to use.</param>
         /// <param name="authority">The authority that should process the request. Ends up in the "Host" or ":authority" header, depending on protocol version.</param>
         /// <param name="pathAndQuery">The path and query of the request.</param>
-        protected internal abstract void WriteRequestStart(int version, ReadOnlySpan<byte> method, ReadOnlySpan<byte> authority, ReadOnlySpan<byte> pathAndQuery);
+        /// <param name="contentLength">
+        /// <para>The value of the Content-Length header, if known.</para>
+        /// <para>If <see langword="null"/> variable-length content will be used. HTTP/1.1 or greater is required. A "Transfer-Encoding: chunked" header will be written.</para>
+        /// </param>
+        /// <param name="hasTrailingHeaders">
+        /// <para>If <see langword="true" />, trailing headers will be used.</para>
+        /// <para>When using trailing headers, it is recommended to send the "Trailers" header.</para>
+        /// <para>HTTP/1.1 or greater is required to use trailing headers. A "Transfer-Encoding: chunked" header will be written.</para>
+        /// </param>
+        protected internal abstract void WriteRequestStart(int version, ReadOnlySpan<byte> method, ReadOnlySpan<byte> authority, ReadOnlySpan<byte> pathAndQuery, long? contentLength, bool hasTrailingHeaders);
 
         /// <summary>
         /// Writes a header.
@@ -145,7 +156,7 @@ namespace System.Net.Http.LowLevel
 
         /// <summary>
         /// Writes a trailing header.
-        /// To use, trailing headers must be enabled via <see cref="ConfigureRequest(int, bool, bool)"/>.
+        /// To use, trailing headers must be enabled when calling <see cref="WriteRequestStart(int, ReadOnlySpan{byte}, ReadOnlySpan{byte}, ReadOnlySpan{byte}, long?, bool)"/>.
         /// </summary>
         /// <param name="version">The version of the request to operate on. This must be validated by implementations.</param>
         /// <param name="name">The name of the header to write.</param>
@@ -201,7 +212,7 @@ namespace System.Net.Http.LowLevel
         /// </summary>
         /// <param name="version">The version of the request to operate on. This must be validated by implementations.</param>
         /// <param name="cancellationToken">A cancellation token for the asynchronous operation.</param>
-        /// <returns>A <see cref="HttpReadType"/> indicating the type of element read from the stream.</returns>
+        /// <returns>A <see cref="ValueTask"/> representing the asynchronous operation.</returns>
         protected internal abstract ValueTask<HttpReadType> ReadAsync(int version, CancellationToken cancellationToken);
 
         /// <summary>
@@ -211,7 +222,7 @@ namespace System.Net.Http.LowLevel
         /// <param name="headersSink">A sink to retrieve headers.</param>
         /// <param name="state">User state to pass to <see cref="IHttpHeadersSink.OnHeader(object?, ReadOnlySpan{byte}, ReadOnlySpan{byte})"/>.</param>
         /// <param name="cancellationToken">A cancellation token for the asynchronous operation.</param>
-        /// <returns>A <see cref="HttpReadType"/> indicating the type of element read from the stream.</returns>
+        /// <returns>A <see cref="ValueTask"/> representing the asynchronous operation.</returns>
         protected internal abstract ValueTask ReadHeadersAsync(int version, IHttpHeadersSink headersSink, object? state, CancellationToken cancellationToken);
 
         /// <summary>
@@ -324,7 +335,16 @@ namespace System.Net.Http.LowLevel
         /// <param name="version">The version of the request to operate on. This must be validated by implementations.</param>
         /// <param name="method">The request method to use.</param>
         /// <param name="uri">The URI to make the request for.</param>
-        protected internal virtual void WriteRequestStart(int version, HttpMethod method, Uri uri)
+        /// <param name="contentLength">
+        /// <para>The value of the Content-Length header, if known.</para>
+        /// <para>If <see langword="null"/> variable-length content will be used. HTTP/1.1 or greater is required. A "Transfer-Encoding: chunked" header will be written.</para>
+        /// </param>
+        /// <param name="hasTrailingHeaders">
+        /// <para>If <see langword="true" />, trailing headers will be used.</para>
+        /// <para>When using trailing headers, it is recommended to send the "Trailers" header.</para>
+        /// <para>HTTP/1.1 or greater is required to use trailing headers. A "Transfer-Encoding: chunked" header will be written.</para>
+        /// </param>
+        protected internal virtual void WriteRequestStart(int version, HttpMethod method, Uri uri, long? contentLength, bool hasTrailingHeaders)
         {
             string host = uri.IdnHost;
             int port = uri.Port;
@@ -337,7 +357,7 @@ namespace System.Net.Http.LowLevel
             byte[] methodBytes = Encoding.ASCII.GetBytes(method.Method);
             byte[] pathAndQueryBytes = Encoding.ASCII.GetBytes(uri.PathAndQuery);
 
-            WriteRequestStart(version, methodBytes, authorityBytes, pathAndQueryBytes);
+            WriteRequestStart(version, methodBytes, authorityBytes, pathAndQueryBytes, contentLength, hasTrailingHeaders);
         }
 
         /// <summary>
@@ -368,7 +388,7 @@ namespace System.Net.Http.LowLevel
 
         /// <summary>
         /// Writes a trailing header.
-        /// To use, trailing headers must be enabled during <see cref="ConfigureRequest(int, bool, bool)"/>.
+        /// To use, trailing headers must be enabled when calling <see cref="WriteRequestStart(int, ReadOnlySpan{byte}, ReadOnlySpan{byte}, ReadOnlySpan{byte}, long?, bool)"/>.
         /// </summary>
         /// <param name="version">The version of the request to operate on. This must be validated by implementations.</param>
         /// <param name="name">The name of the header to write.</param>
@@ -383,7 +403,7 @@ namespace System.Net.Http.LowLevel
 
         /// <summary>
         /// Writes a trailing header.
-        /// To use, trailing headers must be enabled during <see cref="ConfigureRequest(int, bool, bool)"/>.
+        /// To use, trailing headers must be enabled when calling <see cref="WriteRequestStart(int, ReadOnlySpan{byte}, ReadOnlySpan{byte}, ReadOnlySpan{byte}, long?, bool)"/>.
         /// </summary>
         /// <param name="version">The version of the request to operate on. This must be validated by implementations.</param>
         /// <param name="name">The name of the header to write.</param>

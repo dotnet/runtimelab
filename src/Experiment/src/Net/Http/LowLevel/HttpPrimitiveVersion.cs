@@ -6,6 +6,9 @@ namespace System.Net.Http.LowLevel
     /// <summary>
     /// A HTTP version.
     /// </summary>
+    /// <remarks>
+    /// This will become <see cref="HttpVersion"/>.
+    /// </remarks>
     public sealed class HttpPrimitiveVersion
     {
         /// <summary>

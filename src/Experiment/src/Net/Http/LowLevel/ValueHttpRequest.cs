@@ -47,14 +47,6 @@ namespace System.Net.Http.LowLevel
             _request.AltSvc;
 
         /// <summary>
-        /// Configures the request.
-        /// </summary>
-        /// <param name="hasContentLength">If true, the request will contain the Content-Length header.</param>
-        /// <param name="hasTrailingHeaders">If true, the request will send trailing headers.</param>
-        public void ConfigureRequest(bool hasContentLength, bool hasTrailingHeaders) =>
-            _request.ConfigureRequest(_requestVersion, hasContentLength, hasTrailingHeaders);
-
-        /// <summary>
         /// Writes a CONNECT request.
         /// </summary>
         /// <param name="authority">The authority to CONNECT to.</param>
@@ -67,16 +59,34 @@ namespace System.Net.Http.LowLevel
         /// <param name="method">The request method to use.</param>
         /// <param name="authority">The authority that should process the request. Ends up in the "Host" or ":authority" header, depending on protocol version.</param>
         /// <param name="pathAndQuery">The path and query of the request.</param>
-        public void WriteRequestStart(ReadOnlySpan<byte> method, ReadOnlySpan<byte> authority, ReadOnlySpan<byte> pathAndQuery) =>
-            _request.WriteRequestStart(_requestVersion, method, authority, pathAndQuery);
+        /// <param name="contentLength">
+        /// <para>The value of the Content-Length header, if known.</para>
+        /// <para>If <see langword="null"/> variable-length content will be used. HTTP/1.1 or greater is required. A "Transfer-Encoding: chunked" header will be written.</para>
+        /// </param>
+        /// <param name="hasTrailingHeaders">
+        /// <para>If <see langword="true" />, trailing headers will be used.</para>
+        /// <para>When using trailing headers, it is recommended to send the "Trailers" header.</para>
+        /// <para>HTTP/1.1 or greater is required to use trailing headers. A "Transfer-Encoding: chunked" header will be written.</para>
+        /// </param>
+        public void WriteRequestStart(ReadOnlySpan<byte> method, ReadOnlySpan<byte> authority, ReadOnlySpan<byte> pathAndQuery, long? contentLength = null, bool hasTrailingHeaders = false) =>
+            _request.WriteRequestStart(_requestVersion, method, authority, pathAndQuery, contentLength, hasTrailingHeaders);
 
         /// <summary>
         /// Writes a request.
         /// </summary>
         /// <param name="method">The request method to use.</param>
         /// <param name="uri">The URI to make the request for.</param>
-        public void WriteRequestStart(HttpMethod method, Uri uri) =>
-            _request.WriteRequestStart(_requestVersion, method, uri);
+        /// <param name="contentLength">
+        /// <para>The value of the Content-Length header, if known.</para>
+        /// <para>If <see langword="null"/> variable-length content will be used. HTTP/1.1 or greater is required. A "Transfer-Encoding: chunked" header will be written.</para>
+        /// </param>
+        /// <param name="hasTrailingHeaders">
+        /// <para>If <see langword="true" />, trailing headers will be used.</para>
+        /// <para>When using trailing headers, it is recommended to send the "Trailers" header.</para>
+        /// <para>HTTP/1.1 or greater is required to use trailing headers. A "Transfer-Encoding: chunked" header will be written.</para>
+        /// </param>
+        public void WriteRequestStart(HttpMethod method, Uri uri, long? contentLength = null, bool hasTrailingHeaders = false) =>
+            _request.WriteRequestStart(_requestVersion, method, uri, contentLength, hasTrailingHeaders);
 
         /// <summary>
         /// Writes a header.
@@ -120,7 +130,7 @@ namespace System.Net.Http.LowLevel
 
         /// <summary>
         /// Writes a trailing header.
-        /// To use, trailing headers must be enabled via <see cref="ConfigureRequest(bool, bool)"/>.
+        /// To use, trailing headers must be enabled when calling <see cref="WriteRequestStart(ReadOnlySpan{byte}, ReadOnlySpan{byte}, ReadOnlySpan{byte}, long?, bool)"/>.
         /// </summary>
         /// <param name="name">The name of the header to write.</param>
         /// <param name="value">The value of the header to write.</param>
@@ -129,7 +139,7 @@ namespace System.Net.Http.LowLevel
 
         /// <summary>
         /// Writes a trailing header.
-        /// To use, trailing headers must be enabled via <see cref="ConfigureRequest(bool, bool)"/>.
+        /// To use, trailing headers must be enabled when calling via <see cref="WriteRequestStart(ReadOnlySpan{byte}, ReadOnlySpan{byte}, ReadOnlySpan{byte}, long?, bool)"/>.
         /// </summary>
         /// <param name="name">The name of the header to write.</param>
         /// <param name="value">The value of the header to write.</param>
@@ -138,7 +148,7 @@ namespace System.Net.Http.LowLevel
 
         /// <summary>
         /// Writes a trailing header.
-        /// To use, trailing headers must be enabled via <see cref="ConfigureRequest(bool, bool)"/>.
+        /// To use, trailing headers must be enabled when calling via <see cref="WriteRequestStart(ReadOnlySpan{byte}, ReadOnlySpan{byte}, ReadOnlySpan{byte}, long?, bool)"/>.
         /// </summary>
         /// <param name="name">The name of the header to write.</param>
         /// <param name="values">The value of the header to write.</param>

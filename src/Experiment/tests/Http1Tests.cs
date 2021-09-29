@@ -17,7 +17,6 @@ namespace System.Net.Http.LowLevel.Tests
             await RunSingleStreamTest(
                 async (clientRequest, serverUri) =>
                 {
-                    clientRequest.ConfigureRequest(hasContentLength: true, hasTrailingHeaders: false);
                     clientRequest.WriteRequestStart(HttpMethod.Get, serverUri);
                     await clientRequest.CompleteRequestAsync();
 
@@ -48,7 +47,6 @@ namespace System.Net.Http.LowLevel.Tests
                     {
                         ValueTask<ValueHttpRequest?> nextTask = client.CreateNewRequestAsync(Version, HttpVersionPolicy.RequestVersionExact);
 
-                        prev.ConfigureRequest(hasContentLength: true, hasTrailingHeaders: false);
                         prev.WriteRequestStart(HttpMethod.Get, serverUri);
 
                         Assert.False(nextTask.IsCompleted);
@@ -59,7 +57,6 @@ namespace System.Net.Http.LowLevel.Tests
                         prev = (await nextTask).Value;
                     }
 
-                    prev.ConfigureRequest(hasContentLength: true, hasTrailingHeaders: false);
                     prev.WriteRequestStart(HttpMethod.Get, serverUri);
                     await prev.CompleteRequestAsync();
                     await prev.DisposeAsync();
@@ -93,7 +90,6 @@ namespace System.Net.Http.LowLevel.Tests
                 async (client, serverUri) =>
                 {
                     ValueHttpRequest prev = (await client.CreateNewRequestAsync(Version, HttpVersionPolicy.RequestVersionExact)).Value;
-                    prev.ConfigureRequest(hasContentLength: true, hasTrailingHeaders: false);
                     prev.WriteRequestStart(HttpMethod.Get, serverUri);
                     await prev.CompleteRequestAsync();
                     await semaphore.WaitAsync();
@@ -101,7 +97,6 @@ namespace System.Net.Http.LowLevel.Tests
                     for (int i = 1; i < PipelineLength; ++i)
                     {
                         ValueHttpRequest next = (await client.CreateNewRequestAsync(Version, HttpVersionPolicy.RequestVersionExact)).Value;
-                        next.ConfigureRequest(hasContentLength: true, hasTrailingHeaders: false);
                         next.WriteRequestStart(HttpMethod.Get, serverUri);
                         await next.CompleteRequestAsync();
                         await semaphore.WaitAsync();
@@ -161,7 +156,6 @@ namespace System.Net.Http.LowLevel.Tests
                     {
                         await using ValueHttpRequest request = (await client.CreateNewRequestAsync(Version, HttpVersionPolicy.RequestVersionExact)).Value;
 
-                        request.ConfigureRequest(hasContentLength: true, hasTrailingHeaders: false);
                         request.WriteRequestStart(HttpMethod.Get, serverUri);
                         request.WriteHeader("X-Request-No", requestNo.ToString(CultureInfo.InvariantCulture));
                         await request.CompleteRequestAsync();
