@@ -56,7 +56,8 @@ struct SpilledExpressionEntry
 enum class ValueLocation
 {
     LlvmStack,
-    ShadowStack
+    ShadowStack,
+    ForwardReference
 };
 
 // Helper for unifying vars that do and don't need to be on the shadow stack.
@@ -80,6 +81,12 @@ struct LocatedLlvmValue
     {
         return location != ValueLocation::LlvmStack;
     }
+};
+
+struct IncomingPhi
+{
+    llvm::PHINode*    phiNode;
+    llvm::BasicBlock *llvmBasicBlock;
 };
 
 typedef JitHashTable<BasicBlock*, JitPtrKeyFuncs<BasicBlock>, llvm::BasicBlock*> BlkToLlvmBlkVectorMap;
@@ -121,6 +128,7 @@ BlkToLlvmBlkVectorMap*                              _blkToLlvmBlkVectorMap;
 llvm::IRBuilder<>*                                  _builder;
 std::unordered_map<GenTree*, LocatedLlvmValue>*     _sdsuMap;
 std::unordered_map<SsaPair, LocatedLlvmValue, SsaPairHash>* _localsMap;
+std::unordered_map<SsaPair, IncomingPhi, SsaPairHash>*      _forwardReferencingPhis;
 DebugMetadata                                       _debugMetadata;
 
 // DWARF
@@ -228,9 +236,11 @@ LocatedLlvmValue getGenTreeValue(GenTree* op)
 
 LocatedLlvmValue getSsaLocalForPhi(unsigned lclNum, unsigned ssaNum)
 {
-    // when the phi arg is a forward reference this fails, so fail those methods.  TODO-LLVM: would this actually be valid LLVM and if not how would, e.g., DefaultBinder.GetHierarchyDepth be represented in SSA form?
     if (_localsMap->find({lclNum, ssaNum}) == _localsMap->end())
-        failFunctionCompilation();
+    {
+        // phi arg before declaration, these need to be filled in when processing the GT_STORE_LCL_VAR
+        return {ValueLocation::ForwardReference, nullptr};
+    }
 
     return _localsMap->at({lclNum, ssaNum});
 }
@@ -268,6 +278,8 @@ CorInfoType toCorInfoType(var_types varType)
 {
     switch (varType)
     {
+        case TYP_BOOL:
+            return CorInfoType::CORINFO_TYPE_BOOL;
         case TYP_BYREF:
             return CorInfoType::CORINFO_TYPE_BYREF;
         case TYP_LCLBLK: // TODO: outgoing args space - need to get an example compiling, e.g. https://github.com/dotnet/runtimelab/blob/40f9ff64ae80596bcddcec16a7e1a8f57a0b2cff/src/tests/nativeaot/SmokeTests/HelloWasm/HelloWasm.cs#L3492 to see what's
@@ -566,12 +578,19 @@ void emitDoNothingCall(llvm::IRBuilder<>& builder)
 
 void buildAdd(llvm::IRBuilder<>& builder, GenTree* node, Value* op1, Value* op2)
 {
-    if (!op1->getType()->isPointerTy() || !op2->getType()->isIntegerTy())
+    if (op1->getType()->isPointerTy() && op2->getType()->isIntegerTy())
     {
-        //only support gep
+        mapGenTreeToValue(node, builder.CreateGEP(op1, op2));
+    }
+    else if (op1->getType()->isIntegerTy() && op2->getType() == op1->getType())
+    {
+        mapGenTreeToValue(node, builder.CreateAdd(op1, op2));
+    }
+    else
+    {
+        // unsupported add type combination
         failFunctionCompilation();
     }
-    mapGenTreeToValue(node, builder.CreateGEP(op1, op2));
 }
 
 Value* genTreeAsLlvmType(llvm::IRBuilder<>& builder, GenTree* tree, Type* type)
@@ -915,6 +934,7 @@ void buildPhi(llvm::IRBuilder<>& builder, GenTreePhi* phi)
     llvm::PHINode* llvmPhiNode = nullptr;
     unsigned i = 0;
     bool requiresLoad = false;
+    bool requiresLoadSet = false;
     unsigned numChildren  = phi->NumChildren();
     for (GenTreePhi::Use& use : phi->Uses())
     {
@@ -925,27 +945,52 @@ void buildPhi(llvm::IRBuilder<>& builder, GenTreePhi* phi)
         LocatedLlvmValue localPhiArg = getSsaLocalForPhi(lclNum, ssaNum);
         if (i == 0)
         {
-            requiresLoad = localPhiArg.valueRequiresLoad();
             Type* phiType = getLLVMTypeForVarType(phi->TypeGet());
 
             llvmPhiNode = builder.CreatePHI(requiresLoad ? phiType->getPointerTo() : phiType, numChildren);
         }
-        else
+        if (localPhiArg.location != ValueLocation::ForwardReference)
         {
-            // phi args must be all direct, or all indirect
-            assert(requiresLoad == localPhiArg.valueRequiresLoad());
+            if (requiresLoadSet)
+            {
+                // phi args must be all direct, or all indirect
+                assert(requiresLoad == localPhiArg.valueRequiresLoad());
+            }
+            else
+            {
+                requiresLoad    = localPhiArg.valueRequiresLoad();
+                requiresLoadSet = true;
+            }
         }
 
-        // adding a cast as LLVM has GTF_ICON_STR_HDL as i32*, whereas `STORE_LCL_VAR ref` are i8*  This wont work as the cast ends up after the phi.
-        // The methods that come through here must be failing compilation on something else, but this at least allows compilation to continue withouth an LLVM type mismatch assert.
-        // TODO: Fix and possibly make GTF_ICON_STR_HDL i8*?
-        llvmPhiNode->addIncoming(castIfNecessary(builder, localPhiArg.getRawValue(), llvmPhiNode->getType()),
-                                 getLLVMBasicBlockForBlock(phiArg->gtPredBB));
+        if (localPhiArg.location == ValueLocation::ForwardReference)
+        {
+            _forwardReferencingPhis->insert({{lclNum, ssaNum}, {llvmPhiNode, getLLVMBasicBlockForBlock(phiArg->gtPredBB)}});
+        }
+        else
+        {
+            // adding a cast as LLVM has GTF_ICON_STR_HDL as i32*, whereas `STORE_LCL_VAR ref` are i8*  This wont work
+            // as the cast ends up after the phi. The methods that come through here must be failing compilation on
+            // something else, but this at least allows compilation to continue withouth an LLVM type mismatch assert.
+            // TODO: Fix and possibly make GTF_ICON_STR_HDL i8*?
+            llvmPhiNode->addIncoming(castIfNecessary(builder, localPhiArg.getRawValue(), llvmPhiNode->getType()),
+                                     getLLVMBasicBlockForBlock(phiArg->gtPredBB));
+        }
         i++;
     }
+    assert(requiresLoadSet); // TODO-LLVM: If all the phi args are in this or later blocks, then this will be hit, and this load/no load swtich will have to be inserted when finishing the block, or something...
     Value* phiValue = requiresLoad ? (Value*)builder.CreateLoad(llvmPhiNode) : llvmPhiNode;
 
     mapGenTreeToValue(phi, phiValue);
+}
+
+void addForwardPhiArg(SsaPair ssaPair, llvm::Value* phiArg)
+{
+    auto findResult = _forwardReferencingPhis->find(ssaPair);
+    if (findResult == _forwardReferencingPhis->end())
+        return;
+
+    findResult->second.phiNode->addIncoming(phiArg, findResult->second.llvmBasicBlock);
 }
 
 void buildReturn(llvm::IRBuilder<>& builder, GenTree* node)
@@ -1101,17 +1146,22 @@ void storeLocalVar(llvm::IRBuilder<>& builder, GenTreeLclVar* lclVar)
             valueRef = widenIntIfNecessary(builder, valueRef);
         }
 
+        LocatedLlvmValue locatedValue{ValueLocation::LlvmStack, nullptr}; // unused
+
         if (canStoreTypeOnLlvmStack(toCorInfoType(lclVar->TypeGet())))
         {
-            _localsMap->insert({{lclVar->GetLclNum(), lclVar->GetSsaNum()}, LocatedLlvmValue(ValueLocation::LlvmStack, valueRef)});
+            locatedValue = LocatedLlvmValue(ValueLocation::LlvmStack, valueRef);
         }
         else
         {
             Value* localAddress = castIfNecessary(builder, getLocalVarAddress(builder, lclVar), valueRef->getType()->getPointerTo());
             builder.CreateStore(valueRef, localAddress);
 
-            _localsMap->insert({{lclVar->GetLclNum(), lclVar->GetSsaNum()}, LocatedLlvmValue(ValueLocation::ShadowStack, localAddress)});
+            locatedValue = LocatedLlvmValue(ValueLocation::ShadowStack, localAddress);
         }
+        SsaPair ssaPair = {lclVar->GetLclNum(), lclVar->GetSsaNum()};
+        addForwardPhiArg(ssaPair, locatedValue.getRawValue()); // phis that forward referenced this value.
+        _localsMap->insert({ssaPair, locatedValue});
     }
     else
     {
@@ -1292,6 +1342,7 @@ void Llvm::Compile(Compiler* pCompiler)
     std::unordered_map<GenTree*, LocatedLlvmValue> sdsuMap;
     _sdsuMap = &sdsuMap;
     _localsMap = new std::unordered_map<SsaPair, LocatedLlvmValue, SsaPairHash>();
+    _forwardReferencingPhis = new std::unordered_map<SsaPair, IncomingPhi, SsaPairHash>();
     _spilledExpressions.clear();
     const char* mangledName = (*_getMangledMethodName)(_thisPtr, _info.compMethodHnd);
     _function               = _module->getFunction(mangledName);
