@@ -69,7 +69,7 @@ namespace System.Net.Http
                 var value = GetHeaderValue(values);
                 if (value != null)
                 {
-                    httpRequest.WriteHeader(Encoding.ASCII.GetBytes(key), Encoding.ASCII.GetBytes(value));
+                    httpRequest.WriteHeader(key, value);
                 }
             }
 
@@ -83,7 +83,7 @@ namespace System.Net.Http
                 var value = GetHeaderValue(values);
                 if (value != null)
                 {
-                    httpRequest.WriteHeader(Encoding.ASCII.GetBytes(key), Encoding.ASCII.GetBytes(value));
+                    httpRequest.WriteHeader(key, value);
                 }
             }
         }
