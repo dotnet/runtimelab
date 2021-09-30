@@ -312,4 +312,7 @@
   <data name="ExpressionDescription_IfThenElse" xml:space="preserve">
     <value>test conditional (?( test-pattern ) yes-pattern | no-pattern )</value>
   </data>
+  <data name="ExpressionDescription_BalancingGroup" xml:space="preserve">
+    <value>balancing group (?&lt;name1-name2&gt;subexpression) or (?'name1-name2' subexpression)</value>
+  </data>
 </root>

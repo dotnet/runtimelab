@@ -293,8 +293,7 @@ namespace System.Text.RegularExpressions.Tests
 
                 if (!RegexHelpers.IsNonBacktracking(engine))
                 {
-                    // TODO-NONBACKTRACKING: This test fails by successfully matching.
-                    // < in group
+                    // Throws NotSupported with NonBacktracking engine because of the balancing group dog-0
                     yield return new object[] { engine, @"(?<cat>cat)\w+(?<dog-0>dog)", "cat_Hello_World_dog", RegexOptions.None, 0, 19, false, string.Empty };
                 }
 
