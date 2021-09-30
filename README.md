@@ -1,3 +1,9 @@
+# READ FIRST
+
+This branch contains just the experimental LLVM backend.  This is only tested for WebAssembly and should not be used for any platforms served by the main NativeAOT branch.  In the future other targets not served by the main NativeAOT branch, but that are possible with LLVM may work, but there is no work in those areas currently.
+
+The rest of this README is just a fork from the NativeAOT branch and should be read with the above in mind.
+
 # .NET Runtime - Native AOT
 
 This branch contains experimental fork of CoreCLR [.NET runtime](http://github.com/dotnet/runtime) optimized for the [Native AOT Form factor](https://github.com/dotnet/designs/blob/main/accepted/2020/form-factors.md#native-aot-form-factors). The ahead-of-time (AOT) toolchain can compile .NET application into a native (architecture specific) single-file executable. It can also produce standalone dynamic or static libraries that can be consumed by applications written in other programming languages.  This branch contains the experimental feature of compiling to LLVM to target Web Assembly at present and other LLVM targets in the future.
