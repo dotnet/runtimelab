@@ -432,12 +432,7 @@ namespace System.Text.RegularExpressions.Tests
                 yield return new object[] { engine, @"[ab\-\[cd-[-[]]]]", "e]]", RegexOptions.None, 0, 3, false, string.Empty };
                 yield return new object[] { engine, @"[ab\-\[cd-[[]]]]", "']]", RegexOptions.None, 0, 3, false, string.Empty };
                 yield return new object[] { engine, @"[ab\-\[cd-[[]]]]", "e]]", RegexOptions.None, 0, 3, false, string.Empty };
-
-                if (!RegexHelpers.IsNonBacktracking(engine))
-                {
-                    // TODO-NONBACKTRACKING: Triggering an assertion on NonBacktracking
-                    yield return new object[] { engine, @"[a-[a-f]]", "abcdefghijklmnopqrstuvwxyz", RegexOptions.None, 0, 26, false, string.Empty };
-                }
+                yield return new object[] { engine, @"[a-[a-f]]", "abcdefghijklmnopqrstuvwxyz", RegexOptions.None, 0, 26, false, string.Empty };
 
                 // \c
                 if (!PlatformDetection.IsNetFramework) // missing fix for https://github.com/dotnet/runtime/issues/24759
