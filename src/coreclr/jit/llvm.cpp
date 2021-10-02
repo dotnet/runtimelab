@@ -1002,6 +1002,7 @@ void buildPhi(llvm::IRBuilder<>& builder, GenTreePhi* phi)
         i++;
     }
     assert(requiresLoadSet); // TODO-LLVM: If all the phi args are in this or later blocks, then this will be hit, and this load/no load swtich will have to be inserted when finishing the block, or something...
+                             // See also https://github.com/dotnet/runtimelab/pull/1598/files#r720693270
     Value* phiValue = requiresLoad ? (Value*)builder.CreateLoad(llvmPhiNode) : llvmPhiNode;
 
     mapGenTreeToValue(phi, phiValue);
