@@ -532,7 +532,16 @@ namespace System.Text.RegularExpressions
                 {
                     if (RightCharMoveRight() == '$')
                     {
-                        AddUnitNode(ScanDollar());
+                        RegexNode node = ScanDollar();
+                        if ((_options & RegexOptions.NonBacktracking) != 0 && node.Type == RegexNode.Ref &&
+                            !(node.M == 0 ||
+                              node.M == RegexReplacement.LeftPortion ||
+                              node.M == RegexReplacement.RightPortion ||
+                              node.M == RegexReplacement.WholeString))
+                        {
+                            throw new NotSupportedException(SR.NotSupported_NonBacktrackingAndReplacementsWithSubstitutionsOfGroups);
+                        }
+                        AddUnitNode(node);
                     }
 
                     AddConcatenate();
@@ -1432,9 +1441,17 @@ namespace System.Text.RegularExpressions
             else if (angled && RegexCharClass.IsWordChar(ch))
             {
                 string capname = ScanCapname();
-                if (CharsRight() > 0 && RightCharMoveRight() == '}' && IsCaptureName(capname))
+                if (CharsRight() > 0 && RightCharMoveRight() == '}')
                 {
-                    return new RegexNode(RegexNode.Ref, _options, CaptureSlotFromName(capname));
+                    // Throw unconditionally for backtracking, even if not a valid capture name, as those aren't tracked correctly
+                    if ((_options & RegexOptions.NonBacktracking) != 0)
+                    {
+                        throw new NotSupportedException(SR.NotSupported_NonBacktrackingAndReplacementsWithSubstitutionsOfGroups);
+                    }
+                    if (IsCaptureName(capname))
+                    {
+                        return new RegexNode(RegexNode.Ref, _options, CaptureSlotFromName(capname));
+                    }
                 }
             }
             else if (!angled)
