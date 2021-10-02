@@ -820,7 +820,8 @@ void SsaBuilder::RenameDef(GenTreeOp* asgNode, BasicBlock* block)
     {
         isLocal   = asgNode->OperIsLocalStore();
         lclNode   = isLocal ? asgNode->AsLclVarCommon() : nullptr;
-        isFullDef = isLocal && lclNode->OperIs(GT_STORE_LCL_VAR);
+        isFullDef = isLocal && (lclNode->OperIs(GT_STORE_LCL_VAR)
+            || (m_pCompiler->lvaTable[lclNode->GetLclNum()].lvExactSize == genTypeSize(asgNode->gtType)));
     }
     else
     {

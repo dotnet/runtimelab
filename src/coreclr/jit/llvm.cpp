@@ -944,6 +944,20 @@ void buildPhi(llvm::IRBuilder<>& builder, GenTreePhi* phi)
     bool requiresLoad = false;
     bool requiresLoadSet = false;
     unsigned numChildren  = phi->NumChildren();
+
+    /// llvm requires all phis to be groups together so this IR presents a problem due to the STORE_LCL_VAR in the middle of the two phis.
+    /// / -- * t83    ref
+    /// + -- * t81    ref
+    /// *PHI       ref
+    /// / -- * t79    ref
+    /// * STORE_LCL_VAR ref    V13 tmp4         d : 1
+    /// / -- * t84    ref
+    /// + -- * t82    ref
+    /// *PHI       ref
+    // add all phis to the start of the block as per LLVM rules
+    llvm::BasicBlock* block = builder.GetInsertBlock();
+    builder.SetInsertPoint(block, block->begin());
+
     for (GenTreePhi::Use& use : phi->Uses())
     {
         GenTreePhiArg* phiArg = use.GetNode()->AsPhiArg();
@@ -951,12 +965,6 @@ void buildPhi(llvm::IRBuilder<>& builder, GenTreePhi* phi)
         unsigned       ssaNum = phiArg->GetSsaNum();
 
         LocatedLlvmValue localPhiArg = getSsaLocalForPhi(lclNum, ssaNum);
-        if (i == 0)
-        {
-            Type* phiType = getLLVMTypeForVarType(phi->TypeGet());
-
-            llvmPhiNode = builder.CreatePHI(requiresLoad ? phiType->getPointerTo() : phiType, numChildren);
-        }
         if (localPhiArg.location != ValueLocation::ForwardReference)
         {
             if (requiresLoadSet)
@@ -969,6 +977,12 @@ void buildPhi(llvm::IRBuilder<>& builder, GenTreePhi* phi)
                 requiresLoad    = localPhiArg.valueRequiresLoad();
                 requiresLoadSet = true;
             }
+        }
+        if (i == 0)
+        {
+            Type* phiType = getLLVMTypeForVarType(phi->TypeGet());
+
+            llvmPhiNode = builder.CreatePHI(requiresLoad ? phiType->getPointerTo() : phiType, numChildren);
         }
 
         if (localPhiArg.location == ValueLocation::ForwardReference)
@@ -1002,9 +1016,11 @@ void buildPhi(llvm::IRBuilder<>& builder, GenTreePhi* phi)
     }
     assert(requiresLoadSet); // TODO-LLVM: If all the phi args are in this or later blocks, then this will be hit, and this load/no load swtich will have to be inserted when finishing the block, or something...
                              // See also https://github.com/dotnet/runtimelab/pull/1598/files#r720693270
-    Value* phiValue = requiresLoad ? (Value*)builder.CreateLoad(llvmPhiNode) : llvmPhiNode;
 
-    mapGenTreeToValue(phi, phiValue);
+    // reposition builder at end of block
+    builder.SetInsertPoint(block);
+
+    mapGenTreeToValue(phi, requiresLoad ? ValueLocation::ShadowStack : ValueLocation::LlvmStack, llvmPhiNode);
 }
 
 void addForwardPhiArg(SsaPair ssaPair, llvm::Value* phiArg)
@@ -1104,13 +1120,12 @@ N009 ( 30, 14) [000012] ---XG-------        t12 = *  NE        int
                                                   /--*  t12    int
 N011 ( 34, 17) [000016] DA-XG-------              *  STORE_LCL_VAR int    V03 loc1
 */
-Value* widenIntIfNecessary(llvm::IRBuilder<>& builder, Value* intValue)
+Value* zextIntIfNecessary(llvm::IRBuilder<>& builder, Value* intValue)
 {
     llvm::TypeSize intSize = intValue->getType()->getPrimitiveSizeInBits();
     if (intSize < TARGET_POINTER_SIZE * 8)
     {
-        bool isSigned = intSize > 1; // bools are not signed;
-        return builder.CreateIntCast(intValue, Type::getInt32Ty(_llvmContext), isSigned);
+        return builder.CreateIntCast(intValue, Type::getInt32Ty(_llvmContext), false);
     }
     return intValue;
 }
@@ -1166,9 +1181,11 @@ void storeLocalVar(llvm::IRBuilder<>& builder, GenTreeLclVar* lclVar)
         Value* valueRef = getGenTreeValue(lclVar->gtGetOp1()).getValue(builder);
         assert(valueRef != nullptr);
         // This could be done in the NE operator, but sometimes that would be needless, e.g. when followed by JTRUE
+        // TODO-LLVM: As this is a zero extend widening operation, this is only valid if the small int is unsigned.  We don't know that here, so likely it would be better to
+        // delete this and do the cast in the operator.  It seems likely that the cast will be a nop anyway, at least in Wasm, as Wasm does not have any number types smaller than i32
         if (valueRef->getType()->isIntegerTy())
         {
-            valueRef = widenIntIfNecessary(builder, valueRef);
+            valueRef = zextIntIfNecessary(builder, valueRef);
         }
 
         LocatedLlvmValue locatedValue{ValueLocation::LlvmStack, nullptr}; // unused
