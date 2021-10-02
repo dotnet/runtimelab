@@ -2182,6 +2182,7 @@ bool Compiler::fgTryRemoveNonLocal(GenTree* node, LIR::Range* blockRange)
 //
 void Compiler::fgRemoveDeadStoreLIR(GenTree* store, BasicBlock* block)
 {
+    // TODO-LLVM: we should not need this for correctness, investigate removing.
     if (!PreciseRefCountsRequired())
         return;
 

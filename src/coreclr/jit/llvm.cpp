@@ -890,11 +890,10 @@ void buildCnsInt(llvm::IRBuilder<>& builder, GenTree* node)
 
 void buildInd(llvm::IRBuilder<>& builder, GenTree* node, Value* ptr)
 {
-    // TODO: Simplify genActualType(node->TypeGet()) to just genActualType(node) when main is merged
     // first cast the pointer to create the correct load instructions, then cast the result incase we are loading a small int into an int32
     mapGenTreeToValue(node, castIfNecessary(builder, builder.CreateLoad(
                                  castIfNecessary(builder, ptr,
-                                     getLLVMTypeForVarType(node->TypeGet())->getPointerTo())), getLLVMTypeForVarType(genActualType(node->TypeGet()))));
+                                     getLLVMTypeForVarType(node->TypeGet())->getPointerTo())), getLLVMTypeForVarType(genActualType(node))));
 }
 
 Value* buildJTrue(llvm::IRBuilder<>& builder, GenTree* node, Value* opValue)
@@ -931,7 +930,7 @@ void buildCmp(llvm::IRBuilder<>& builder, genTreeOps op, GenTree* node, Value* o
         }
         else
         {
-            // TODO: other valie LIR comparisons
+            // TODO-LLVM: other valid LIR comparisons
             failFunctionCompilation();
         }
     }

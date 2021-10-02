@@ -594,11 +594,10 @@ void SsaBuilder::InsertPhiToRationalIRForm(BasicBlock* block, unsigned lclNum)
 
     var_types type = m_pCompiler->lvaGetDesc(lclNum)->TypeGet();
 
-    // PHIs and all the associated nodes do not generate any code so the costs are always 0
     GenTree* phi      = new (m_pCompiler, GT_PHI) GenTreePhi(type);
-    GenTree* storeLcl = (GenTree*)m_pCompiler->gtNewStoreLclVar(lclNum, phi);
+    GenTree* storeLcl = m_pCompiler->gtNewStoreLclVar(lclNum, phi);
 
-    LIR::Range& lirRange = LIR::AsRange(block);
+    LIR::Range& lirRange  = LIR::AsRange(block);
     GenTree*    firstNode = lirRange.FirstNode();
     lirRange.InsertBefore(firstNode, phi);
     lirRange.InsertAfter(phi, storeLcl);
@@ -820,9 +819,8 @@ void SsaBuilder::RenameDef(GenTreeOp* asgNode, BasicBlock* block)
     if (block->IsLIR())
     {
         isLocal   = asgNode->OperIsLocalStore();
-        lclNode   = asgNode->AsLclVarCommon();
-        isFullDef = lclNode != nullptr && !(lclNode->OperIs(GT_STORE_LCL_FLD) &&
-                     (m_pCompiler->lvaTable[lclNode->GetLclNum()].lvExactSize != genTypeSize(asgNode->gtType)));
+        lclNode   = isLocal ? asgNode->AsLclVarCommon() : nullptr;
+        isFullDef = isLocal && lclNode->OperIs(GT_STORE_LCL_VAR);
     }
     else
     {
@@ -999,7 +997,7 @@ void SsaBuilder::AddDefToHandlerPhis(BasicBlock* block, unsigned lclNum, unsigne
 #ifdef DEBUG
                 bool phiFound = false;
 #endif
-                // TODO: llvm.cpp cant handle fin blocks, but this at least does not assert
+                // TODO-LLVM: llvm.cpp cant handle fin blocks, but this at least does not assert.
 #if defined(TARGET_WASM)
                 if (handler->IsLIR())
                 {
