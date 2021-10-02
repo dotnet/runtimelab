@@ -4188,7 +4188,7 @@ unsigned Compiler::GetSsaNumForLocalVarDef(GenTree* lcl)
     }
 }
 
-bool Compiler::PreciseRefCountsRequired()
+inline bool Compiler::PreciseRefCountsRequired()
 {
 #if defined(TARGET_WASM)
     return opts.OptimizationEnabled() || compRationalIRForm;

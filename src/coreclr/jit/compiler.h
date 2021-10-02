@@ -5115,7 +5115,7 @@ public:
     inline unsigned GetSsaNumForLocalVarDef(GenTree* lcl);
 
     // 
-    inline bool Compiler::PreciseRefCountsRequired();
+    inline bool PreciseRefCountsRequired();
 
     // Performs SSA conversion.
     void fgSsaBuild();
