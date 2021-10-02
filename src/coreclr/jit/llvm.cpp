@@ -461,11 +461,11 @@ Type* getLLVMTypeForVarType(var_types type)
     }
 }
 
-Value* castIfNecessary(llvm::IRBuilder<>& builder, Value* source, Type* targetType)
+llvm::Instruction* getCast(llvm::Value* source, Type* targetType)
 {
     Type* sourceType = source->getType();
     if (sourceType == targetType)
-        return source;
+        return nullptr;
 
     Type::TypeID sourceTypeID = sourceType->getTypeID();
     Type::TypeID targetTypeId = targetType->getTypeID();
@@ -475,21 +475,21 @@ Value* castIfNecessary(llvm::IRBuilder<>& builder, Value* source, Type* targetTy
         switch (sourceTypeID)
         {
             case Type::TypeID::PointerTyID:
-                return builder.CreatePointerCast(source, targetType, "CastPtrToPtr");
+                return new llvm::BitCastInst(source, targetType, "CastPtrToPtr");
             case Type::TypeID::IntegerTyID:
-                return builder.CreateIntToPtr(source, targetType, "CastPtrToInt");
+                return new llvm::IntToPtrInst(source, targetType, "CastPtrToInt");
             default:
                 failFunctionCompilation();
         }
     }
-    if(targetTypeId == Type::TypeID::IntegerTyID)
+    if (targetTypeId == Type::TypeID::IntegerTyID)
     {
         switch (sourceTypeID)
         {
             case Type::TypeID::IntegerTyID:
                 if (sourceType->getPrimitiveSizeInBits() > targetType->getPrimitiveSizeInBits())
                 {
-                    return builder.CreateTrunc(source, targetType, "truncInt");
+                    return new llvm::TruncInst(source, targetType, "TruncInt");
                 }
             default:
                 failFunctionCompilation();
@@ -497,6 +497,15 @@ Value* castIfNecessary(llvm::IRBuilder<>& builder, Value* source, Type* targetTy
     }
 
     failFunctionCompilation();
+}
+
+Value* castIfNecessary(llvm::IRBuilder<>& builder, Value* source, Type* targetType)
+{
+    llvm::Instruction* castInst = getCast(source, targetType);
+    if (castInst == nullptr)
+        return source;
+
+    return builder.Insert(castInst);
 }
 
 Value* castToPointerToLlvmType(llvm::IRBuilder<>& builder, Value* address, llvm::Type* llvmType)
@@ -969,12 +978,26 @@ void buildPhi(llvm::IRBuilder<>& builder, GenTreePhi* phi)
         }
         else
         {
-            // adding a cast as LLVM has GTF_ICON_STR_HDL as i32*, whereas `STORE_LCL_VAR ref` are i8*  This wont work
-            // as the cast ends up after the phi. The methods that come through here must be failing compilation on
-            // something else, but this at least allows compilation to continue withouth an LLVM type mismatch assert.
-            // TODO: Fix and possibly make GTF_ICON_STR_HDL i8*?
-            llvmPhiNode->addIncoming(castIfNecessary(builder, localPhiArg.getRawValue(), llvmPhiNode->getType()),
-                                     getLLVMBasicBlockForBlock(phiArg->gtPredBB));
+            Value*             phiRealArgValue;
+            llvm::Instruction* castRequired = getCast(localPhiArg.getRawValue(), llvmPhiNode->getType());
+            if (castRequired != nullptr)
+            {
+                // This cast is needed when
+                // 1) The phi arg real type is short and the definition is the actual longer type, e.g. for bool/int
+                // 2) There is a pointer difference, e.g. i8* v i32* and perhaps different levels of indirection: i8** and i8*
+                llvm::BasicBlock::iterator phiInsertPoint = builder.GetInsertPoint();
+                llvm::BasicBlock* phiBlock = builder.GetInsertBlock();
+                llvm::Instruction* predBlockTerminator = getLLVMBasicBlockForBlock(phiArg->gtPredBB)->getTerminator();
+
+                builder.SetInsertPoint(predBlockTerminator);
+                phiRealArgValue = builder.Insert(castRequired);
+                builder.SetInsertPoint(phiBlock, phiInsertPoint);
+            }
+            else
+            {
+                phiRealArgValue = localPhiArg.getRawValue();
+            }
+            llvmPhiNode->addIncoming(phiRealArgValue, getLLVMBasicBlockForBlock(phiArg->gtPredBB));
         }
         i++;
     }
@@ -1051,7 +1074,7 @@ Value* localVar(llvm::IRBuilder<>& builder, GenTreeLclVar* lclVar)
                 {
                     // TODO: store argAddress in a map in case multiple IR locals are to the same argument - we only want one gep in the prolog
                     Value* argAddress = _prologBuilder->CreateGEP(_function->getArg(0), builder.getInt32(llvmArgInfo.m_shadowStackOffset), "Argument");
-                    llvmRef = builder.CreateBitCast(argAddress, (Type::getInt8PtrTy(_llvmContext)->getPointerTo()));
+                    llvmRef = _prologBuilder->CreateBitCast(argAddress, (Type::getInt8PtrTy(_llvmContext)->getPointerTo()));
                     valueLocation = ValueLocation::ShadowStack;
                 }
             }
@@ -1083,9 +1106,11 @@ N011 ( 34, 17) [000016] DA-XG-------              *  STORE_LCL_VAR int    V03 lo
 */
 Value* widenIntIfNecessary(llvm::IRBuilder<>& builder, Value* intValue)
 {
-    if (intValue->getType()->getPrimitiveSizeInBits() < TARGET_POINTER_SIZE * 8)
+    llvm::TypeSize intSize = intValue->getType()->getPrimitiveSizeInBits();
+    if (intSize < TARGET_POINTER_SIZE * 8)
     {
-        return builder.CreateIntCast(intValue, Type::getInt32Ty(_llvmContext), true);
+        bool isSigned = intSize > 1; // bools are not signed;
+        return builder.CreateIntCast(intValue, Type::getInt32Ty(_llvmContext), isSigned);
     }
     return intValue;
 }
