@@ -1504,6 +1504,10 @@ namespace System.Text.RegularExpressions.Symbolic
                     // A path didn't have a next set as supported by this algorithm
                     yield break;
                 }
+                if (!_builder._solver.IsSatisfiable(next))
+                {
+                    yield break;
+                }
                 while (paths.Count > 0)
                 {
                     // For all other paths check that they produce the same set
