@@ -1506,7 +1506,7 @@ namespace System.Text.RegularExpressions.Symbolic
                 }
                 if (!_builder._solver.IsSatisfiable(next))
                 {
-                        yield break;
+                    yield break;
                 }
                 while (paths.Count > 0)
                 {
