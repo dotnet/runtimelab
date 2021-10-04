@@ -21,15 +21,13 @@ namespace System.Text.RegularExpressions.Tests
                 yield return new object[] { engine, "a", "aaaaa", "b", RegexOptions.None, 2, 0, "bbaaa" };
                 yield return new object[] { engine, "a", "aaaaa", "b", RegexOptions.None, 2, 3, "aaabb" };
 
-                // Undefined numbered groups
-                yield return new object[] { engine, @"(?<256>cat)\s*(?<512>dog)", "slkfjsdcat dogkljeah", "STARTcat$2048$1024dogEND", RegexOptions.None, 20, 0, "slkfjsdSTARTcat$2048$1024dogENDkljeah" };
-
                 // Stress
                 yield return new object[] { engine, ".", new string('a', 1000), "b", RegexOptions.None, 1000, 0, new string('b', 1000) };
 
                 if (!RegexHelpers.IsNonBacktracking(engine))
                 {
-                    // Undefined named groups
+                    // Undefined groups
+                    yield return new object[] { engine, @"(?<256>cat)\s*(?<512>dog)", "slkfjsdcat dogkljeah", "STARTcat$2048$1024dogEND", RegexOptions.None, 20, 0, "slkfjsdSTARTcat$2048$1024dogENDkljeah" };
                     yield return new object[] { engine, @"(?<cat>cat)\s*(?<dog>dog)", "slkfjsdcat dogkljeah", "START${catTWO}dogcat${dogTWO}END", RegexOptions.None, 20, 0, "slkfjsdSTART${catTWO}dogcat${dogTWO}ENDkljeah" };
 
                     // Replace with group numbers
@@ -63,6 +61,7 @@ namespace System.Text.RegularExpressions.Tests
 
                 // Valid cases that NonBackTracking supports
                 yield return new object[] { engine, @"(hello)\s+(world)", "What the hello world goodby", "$&, how are you?", RegexOptions.None, 27, 0, "What the hello world, how are you? goodby" };
+                yield return new object[] { engine, @"(hello)\s+(world)", "What the hello world goodby", "$0, how are you?", RegexOptions.None, 27, 0, "What the hello world, how are you? goodby" };
                 yield return new object[] { engine, @"(hello)\s+(world)", "What the hello world goodby", "$`cookie are you doing", RegexOptions.None, 27, 0, "What the What the cookie are you doing goodby" };
                 yield return new object[] { engine, @"(cat)\s+(dog)", "before textcat dogafter text", ". This is the $' and ", RegexOptions.None, 28, 0, "before text. This is the after text and after text" };
                 yield return new object[] { engine, @"(cat)\s+(dog)", "before textcat dogafter text", ". The following should be the entire string '$_'. ", RegexOptions.None, 28, 0, "before text. The following should be the entire string 'before textcat dogafter text'. after text" };
