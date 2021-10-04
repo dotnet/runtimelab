@@ -176,9 +176,14 @@ namespace System.Text.RegularExpressions.Tests
                 yield return new object[] { engine, @"((\d{2,3})){2}", "1234", RegexOptions.None, 0, 4, true, "1234" };
                 if (!RegexHelpers.IsNonBacktracking(engine))
                 {
-                    // TODO-NONBACKTRACKING: Produce "1234" rather than "123", which could be considered an alternative valid result given greedy semantics
                     yield return new object[] { engine, @"(\d{2,3})+", "1234", RegexOptions.None, 0, 4, true, "123" };
                     yield return new object[] { engine, @"(\d{2,3})*", "123456", RegexOptions.None, 0, 4, true, "123" };
+                }
+                else
+                {
+                    // Produces "1234" because the alternation in the inner loop allows \d{2}\d{2} in the outer greedy loop
+                    yield return new object[] { engine, @"(\d{2,3})+", "1234", RegexOptions.None, 0, 4, true, "1234" };
+                    yield return new object[] { engine, @"(\d{2,3})*", "123456", RegexOptions.None, 0, 4, true, "1234" };
                 }
                 yield return new object[] { engine, @"(abc\d{2,3}){2}", "abc123abc4567", RegexOptions.None, 0, 12, true, "abc123abc456" };
                 foreach (RegexOptions lineOption in new[] { RegexOptions.None, RegexOptions.Singleline, RegexOptions.Multiline })
@@ -550,10 +555,13 @@ namespace System.Text.RegularExpressions.Tests
             {
                 // Use Match(string) or Match(string, string, RegexOptions)
                 VerifyMatch(r.Match(input));
-                VerifyMatch(Regex.Match(input, pattern, options));
+
+                // Make sure to pass the NonBacktracking option to the static Match method
+                RegexOptions engine_with_options = engine == RegexEngine.NonBacktracking ? options | RegexHelpers.RegexOptionNonBacktracking : options;
+                VerifyMatch(Regex.Match(input, pattern, engine_with_options));
 
                 Assert.Equal(expectedSuccess, r.IsMatch(input));
-                Assert.Equal(expectedSuccess, Regex.IsMatch(input, pattern, options));
+                Assert.Equal(expectedSuccess, Regex.IsMatch(input, pattern, engine_with_options));
             }
 
             if (beginning + length == input.Length && (options & RegexOptions.RightToLeft) == 0)
