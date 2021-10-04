@@ -227,15 +227,8 @@ namespace System.Text.RegularExpressions.Symbolic
                     EnsureNewlinePredicateInitialized();
                     return _builder._bolAnchor;
 
-                case RegexNode.Capture: // treat as non-capturing group (...)
-                    if (node.N == -1)
-                    {
-                        // This is a nonbalancing capture group
-                        return Convert(node.Child(0), topLevel);
-                    }
-
-                    // Balancing groups are not supported
-                    goto default;
+                case RegexNode.Capture when node.N == -1:
+                    return Convert(node.Child(0), topLevel); // treat as non-capturing group (...)
 
                 case RegexNode.Concatenate:
                     {
