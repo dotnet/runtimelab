@@ -1394,6 +1394,11 @@ namespace System.Text.RegularExpressions
             {
                 if (!angled && UseOptionE())
                 {
+                    // Throw unconditionally for non-backtracking, even if not a valid capture number, as information to determine whether a name is valid or not isn't tracked
+                    if ((_options & RegexOptions.NonBacktracking) != 0)
+                    {
+                        throw new NotSupportedException(SR.NotSupported_NonBacktrackingAndReplacementsWithSubstitutionsOfGroups);
+                    }
                     int capnum = -1;
                     int newcapnum = ch - '0';
                     MoveRight();
@@ -1431,6 +1436,11 @@ namespace System.Text.RegularExpressions
                     int capnum = ScanDecimal();
                     if (!angled || CharsRight() > 0 && RightCharMoveRight() == '}')
                     {
+                        // Throw unconditionally for non-backtracking, even if not a valid capture number, as information to determine whether a name is valid or not isn't tracked
+                        if ((_options & RegexOptions.NonBacktracking) != 0)
+                        {
+                            throw new NotSupportedException(SR.NotSupported_NonBacktrackingAndReplacementsWithSubstitutionsOfGroups);
+                        }
                         if (IsCaptureSlot(capnum))
                         {
                             return new RegexNode(RegexNode.Ref, _options, capnum);
