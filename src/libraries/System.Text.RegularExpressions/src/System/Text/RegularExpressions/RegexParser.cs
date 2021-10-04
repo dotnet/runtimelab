@@ -533,6 +533,9 @@ namespace System.Text.RegularExpressions
                     if (RightCharMoveRight() == '$')
                     {
                         RegexNode node = ScanDollar();
+                        // NonBacktracking does not support capture groups, so any replacement patterns that refer to
+                        // groups are unsupported. The replacement patterns that refer to the left/right portion or all
+                        // of the input as well as referring to group 0, i.e. the whole match, are supported.
                         if ((_options & RegexOptions.NonBacktracking) != 0 && node.Type == RegexNode.Ref &&
                             !(node.M == 0 ||
                               node.M == RegexReplacement.LeftPortion ||
