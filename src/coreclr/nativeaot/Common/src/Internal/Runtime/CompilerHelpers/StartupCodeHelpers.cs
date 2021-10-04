@@ -223,7 +223,14 @@ namespace Internal.Runtime.CompilerHelpers
                     var cctorsEnd = (void*)(moduleInitializerSection + length);
                     while (currentCctor < cctorsEnd)
                     {
-                        (*currentCctor++)();
+                        try
+                        {
+                            (*currentCctor++)();
+                        }
+                        catch
+                        {
+                            // Swallow any exceptions from the module initializer
+                        }
                     }
                 }
             }
