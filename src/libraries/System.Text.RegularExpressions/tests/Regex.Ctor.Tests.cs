@@ -145,6 +145,9 @@ namespace System.Text.RegularExpressions.Tests
         /// </summary>
         public static IEnumerable<object[]> Ctor_Invalid_NonBacktracking_Data()
         {
+            yield return new object[] { @"(?<cat-0>cat)", RegexOptions.None, "balancing group" };
+            yield return new object[] { @"(?<cat>cat)\w+(?<dog-0>dog)", RegexOptions.None, "balancing group"};
+            yield return new object[] { @"(?<cat>cat)\w+(?<dog-cat>dog)", RegexOptions.None, "balancing group" };
             yield return new object[] { @"abc", RegexOptions.RightToLeft, "RightToLeft" };
             yield return new object[] { @"abc", RegexOptions.ECMAScript, "ECMAScript" };
             yield return new object[] { @"^(a)?(?(1)a|b)+$", RegexOptions.None, "conditional" };

@@ -227,8 +227,8 @@ namespace System.Text.RegularExpressions.Symbolic
                     EnsureNewlinePredicateInitialized();
                     return _builder._bolAnchor;
 
-                case RegexNode.Capture: // treat as non-capturing group (...)
-                    return Convert(node.Child(0), topLevel);
+                case RegexNode.Capture when node.N == -1:
+                    return Convert(node.Child(0), topLevel); // treat as non-capturing group (...)
 
                 case RegexNode.Concatenate:
                     {
@@ -325,6 +325,7 @@ namespace System.Text.RegularExpressions.Symbolic
                 default:
                     throw new NotSupportedException(SR.Format(SR.NotSupported_NonBacktrackingConflictingExpression, node.Type switch
                     {
+                        RegexNode.Capture => SR.ExpressionDescription_BalancingGroup,
                         RegexNode.Testgroup => SR.ExpressionDescription_IfThenElse,
                         RegexNode.Ref => SR.ExpressionDescription_Backreference,
                         RegexNode.Testref => SR.ExpressionDescription_Conditional,
@@ -386,8 +387,16 @@ namespace System.Text.RegularExpressions.Symbolic
                     }
                     else if (node.Type == RegexNode.Capture)
                     {
-                        // Unwrap captures
-                        todo.Push(node.Child(0));
+                        if (node.N == -1)
+                        {
+                            // Unwrap nonbalancing capture groups
+                            todo.Push(node.Child(0));
+                        }
+                        else
+                        {
+                            // Balancing groups are not supported
+                            throw new NotSupportedException(SR.Format(SR.NotSupported_NonBacktrackingConflictingExpression, SR.ExpressionDescription_BalancingGroup));
+                        }
                     }
                     else
                     {
