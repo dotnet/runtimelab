@@ -873,6 +873,7 @@ void buildCnsInt(llvm::IRBuilder<>& builder, GenTree* node)
         if (node->IsIconHandle(GTF_ICON_STR_HDL))
         {
             const char* symbolName = (*_getMangledSymbolName)(_thisPtr, (void *)(node->AsIntCon()->IconValue()));
+            (*_addCodeReloc)(_thisPtr, (void*)node->AsIntCon()->IconValue());
             mapGenTreeToValue(node, builder.CreateLoad(getOrCreateExternalSymbol(symbolName)));
             return;
         }
@@ -1032,6 +1033,13 @@ void addForwardPhiArg(SsaPair ssaPair, llvm::Value* phiArg)
     findResult->second.phiNode->addIncoming(phiArg, findResult->second.llvmBasicBlock);
 }
 
+void buildReturnRef(llvm::IRBuilder<>& builder, GenTreeOp* node)
+{
+    Value* retSlot = _function->getArg(1);
+    castingStore(builder, getGenTreeValue(node->gtGetOp1()).getValue(builder), retSlot, node->TypeGet());
+    builder.CreateRetVoid();
+}
+
 void buildReturn(llvm::IRBuilder<>& builder, GenTree* node)
 {
     switch (node->gtType)
@@ -1039,7 +1047,10 @@ void buildReturn(llvm::IRBuilder<>& builder, GenTree* node)
         case TYP_INT:
             builder.CreateRet(castIfNecessary(builder, getGenTreeValue(node->gtGetOp1()).getValue(builder), getLlvmTypeForCorInfoType(_sigInfo.retType)));
             return;
-        case TYP_VOID: 
+        case TYP_REF:
+            buildReturnRef(builder, node->AsOp());
+            return;
+        case TYP_VOID:
             builder.CreateRetVoid();
             return;
         default:

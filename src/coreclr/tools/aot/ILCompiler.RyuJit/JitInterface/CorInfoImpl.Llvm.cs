@@ -46,13 +46,23 @@ namespace Internal.JitInterface
                         break;
                     case ReadyToRunHelperId.GetThreadStaticBase:
                         _this._codeRelocs.Add(new Relocation(RelocType.IMAGE_REL_BASED_REL32, 0,
-                            _this._compilation.NodeFactory.TypeThreadStaticsSymbol(target)));
+                            _this._compilation.NodeFactory.TypeThreadStaticIndex(target)));
+                        _this._codeRelocs.Add(new Relocation(RelocType.IMAGE_REL_BASED_REL32, 0,
+                            _this._compilation.NodeFactory.TypeNonGCStaticsSymbol(target)));
                         var nonGcStaticSymbolForGCStaticBase2 = _this._compilation.NodeFactory.TypeNonGCStaticsSymbol(target);
                         _this.AddOrReturnGlobalSymbol(nonGcStaticSymbolForGCStaticBase2, _this._compilation.NameMangler);
                         break;
                     default:
                         throw new NotImplementedException();
                 }
+
+                return;
+            }
+
+            var frozenStringNode = node as FrozenStringNode;
+            if (frozenStringNode != null)
+            {
+                _this.AddOrReturnGlobalSymbol(frozenStringNode, _this._compilation.NameMangler);
             }
         }
 
@@ -183,9 +193,9 @@ namespace Internal.JitInterface
             _debugInformation = _compilation.GetDebugInfo(methodIL);
         }
 
-        void AddOrReturnGlobalSymbol(ISortableSymbolNode gcStaticSymbol, NameMangler nameMangler)
+        void AddOrReturnGlobalSymbol(ISymbolNode symbolNode, NameMangler nameMangler)
         {
-            _compilation.AddOrReturnGlobalSymbol(gcStaticSymbol, nameMangler);
+            _compilation.AddOrReturnGlobalSymbol(symbolNode, nameMangler);
         }
     }
 }

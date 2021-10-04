@@ -247,9 +247,9 @@ namespace ILCompiler
             return TypeSystemContext.GetWellKnownType(wellKnownType);
         }
 
-        public override void AddOrReturnGlobalSymbol(ISortableSymbolNode gcStaticSymbol, NameMangler nameMangler)
+        public override void AddOrReturnGlobalSymbol(ISymbolNode symbolNode, NameMangler nameMangler)
         {
-            LLVMObjectWriter.AddOrReturnGlobalSymbol(Module, gcStaticSymbol, nameMangler);
+            LLVMObjectWriter.AddOrReturnGlobalSymbol(Module, symbolNode, nameMangler);
         }
     }
 }
