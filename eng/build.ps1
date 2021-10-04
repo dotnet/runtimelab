@@ -258,7 +258,7 @@ if ($os -eq "Browser") {
   # override default arch for Browser, we only support wasm
   $arch = "wasm"
 
-  if ($msbuild -eq $True) {
+  if ($msbuild -eq $True -and $runtimeFlavor -ne "CoreCLR") {
     Write-Error "Using the -msbuild option isn't supported when building for Browser on Windows, we need need ninja for Emscripten."
     exit 1
   }

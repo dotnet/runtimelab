@@ -53,26 +53,54 @@ struct SpilledExpressionEntry
     CorInfoType m_CorInfoType;
 };
 
-enum class LocalVarLocation
+enum class ValueLocation
 {
     LlvmStack,
-    ShadowStack
+    ShadowStack,
+    ForwardReference
 };
 
 // Helper for unifying vars that do and don't need to be on the shadow stack.
-struct LocalVar
+struct LocatedLlvmValue
 {
     Value* llvmValue;
-    LocalVarLocation location;
+    ValueLocation location;
 
-    LocalVar(LocalVarLocation location, Value* llvmValue) : llvmValue(llvmValue), location(location) {}
+    LocatedLlvmValue(ValueLocation location, Value* llvmValue) : llvmValue(llvmValue), location(location) {}
     Value* getValue(llvm::IRBuilder<>& builder)
     {
-        return location == LocalVarLocation::LlvmStack ? llvmValue : builder.CreateLoad(llvmValue);
+        return valueRequiresLoad() ? builder.CreateLoad(llvmValue) : llvmValue;
+    }
+
+    Value* getRawValue()
+    {
+        return llvmValue;
+    }
+
+    bool valueRequiresLoad()
+    {
+        return location != ValueLocation::LlvmStack;
     }
 };
 
+struct IncomingPhi
+{
+    llvm::PHINode*    phiNode;
+    llvm::BasicBlock *llvmBasicBlock;
+};
+
 typedef JitHashTable<BasicBlock*, JitPtrKeyFuncs<BasicBlock>, llvm::BasicBlock*> BlkToLlvmBlkVectorMap;
+
+typedef std::pair<unsigned, unsigned> SsaPair;
+
+struct SsaPairHash
+{
+    template <class T1, class T2>
+    std::size_t operator()(const std::pair<T1, T2>& pair) const
+    {
+        return std::hash<T1>()(pair.first) ^ std::hash<T2>()(pair.second);
+    }
+};
 
 static Module*          _module    = nullptr;
 static llvm::DIBuilder* _diBuilder = nullptr;
@@ -93,12 +121,14 @@ Compiler::Info                                      _info;
 Compiler*                                           _compiler;
 Function*                                           _function;
 llvm::DISubprogram*                                 _debugFunction;
+BasicBlock*                                         _currentBlock;
 IL_OFFSETX                                          _currentOffset;
 llvm::DILocation*                                   _currentOffsetDiLocation;
 BlkToLlvmBlkVectorMap*                              _blkToLlvmBlkVectorMap;
 llvm::IRBuilder<>*                                  _builder;
-std::unordered_map<GenTree*, Value*>*               _sdsuMap;
-std::unordered_map<unsigned int, LocalVar>*         _localsMap;
+std::unordered_map<GenTree*, LocatedLlvmValue>*     _sdsuMap;
+std::unordered_map<SsaPair, LocatedLlvmValue, SsaPairHash>* _localsMap;
+std::unordered_map<SsaPair, IncomingPhi, SsaPairHash>*      _forwardReferencingPhis;
 DebugMetadata                                       _debugMetadata;
 
 // DWARF
@@ -184,19 +214,35 @@ void Llvm::llvmShutdown()
     fatal(CORJIT_SKIPPED);
 }
 
-Value* mapGenTreeToValue(GenTree* genTree, Value* valueRef)
+Value* mapGenTreeToValue(GenTree* genTree, ValueLocation valueLocation, Value* valueRef)
 {
     if (_sdsuMap->find(genTree) != _sdsuMap->end())
     {
         fatal(CorJitResult::CORJIT_INTERNALERROR);
     }
-    _sdsuMap->insert({genTree, valueRef});
+    _sdsuMap->insert({genTree, LocatedLlvmValue(valueLocation, valueRef)});
     return valueRef;
 }
 
-Value* getGenTreeValue(GenTree* op)
+void mapGenTreeToValue(GenTree* genTree, Value* valueRef)
+{
+    mapGenTreeToValue(genTree, ValueLocation::LlvmStack, valueRef);
+}
+
+LocatedLlvmValue getGenTreeValue(GenTree* op)
 {
     return _sdsuMap->at(op);
+}
+
+LocatedLlvmValue getSsaLocalForPhi(unsigned lclNum, unsigned ssaNum)
+{
+    if (_localsMap->find({lclNum, ssaNum}) == _localsMap->end())
+    {
+        // phi arg before declaration, these need to be filled in when processing the GT_STORE_LCL_VAR
+        return {ValueLocation::ForwardReference, nullptr};
+    }
+
+    return _localsMap->at({lclNum, ssaNum});
 }
 
 // Copy of logic from ILImporter.GetLLVMTypeForTypeDesc
@@ -232,15 +278,17 @@ CorInfoType toCorInfoType(var_types varType)
 {
     switch (varType)
     {
-        case var_types::TYP_BYREF:
+        case TYP_BOOL:
+            return CorInfoType::CORINFO_TYPE_BOOL;
+        case TYP_BYREF:
             return CorInfoType::CORINFO_TYPE_BYREF;
-        case var_types::TYP_LCLBLK: // TODO: outgoing args space - need to get an example compiling, e.g. https://github.com/dotnet/runtimelab/blob/40f9ff64ae80596bcddcec16a7e1a8f57a0b2cff/src/tests/nativeaot/SmokeTests/HelloWasm/HelloWasm.cs#L3492 to see what's
+        case TYP_LCLBLK: // TODO: outgoing args space - need to get an example compiling, e.g. https://github.com/dotnet/runtimelab/blob/40f9ff64ae80596bcddcec16a7e1a8f57a0b2cff/src/tests/nativeaot/SmokeTests/HelloWasm/HelloWasm.cs#L3492 to see what's
             // going on.  CORINFO_TYPE_VALUECLASS is a better mapping but if that is mapped as of now, then canStoreTypeOnLlvmStack will fail compilation for most methods.
-        case var_types::TYP_INT:
+        case TYP_INT:
             return CorInfoType::CORINFO_TYPE_INT;
-        case var_types::TYP_REF:
+        case TYP_REF:
             return CorInfoType::CORINFO_TYPE_REFANY;
-        case var_types::TYP_UNDEF:
+        case TYP_UNDEF:
             return CorInfoType::CORINFO_TYPE_UNDEF;
         default:
             failFunctionCompilation();
@@ -397,27 +445,27 @@ Type* getLLVMTypeForVarType(var_types type)
     // message
     switch (type)
     {
-        case var_types::TYP_BOOL:
-        case var_types::TYP_BYTE:
-        case var_types::TYP_UBYTE:
+        case TYP_BOOL:
+        case TYP_BYTE:
+        case TYP_UBYTE:
             return Type::getInt8Ty(_llvmContext);
-        case var_types::TYP_SHORT:
-        case var_types::TYP_USHORT:
+        case TYP_SHORT:
+        case TYP_USHORT:
             return Type::getInt16Ty(_llvmContext);
-        case var_types::TYP_INT:
+        case TYP_INT:
             return Type::getInt32Ty(_llvmContext);
-        case var_types::TYP_REF:
+        case TYP_REF:
             return Type::getInt8PtrTy(_llvmContext);
         default:
             failFunctionCompilation();
     }
 }
 
-Value* castIfNecessary(llvm::IRBuilder<>& builder, Value* source, Type* targetType)
+llvm::Instruction* getCast(llvm::Value* source, Type* targetType)
 {
     Type* sourceType = source->getType();
     if (sourceType == targetType)
-        return source;
+        return nullptr;
 
     Type::TypeID sourceTypeID = sourceType->getTypeID();
     Type::TypeID targetTypeId = targetType->getTypeID();
@@ -427,21 +475,21 @@ Value* castIfNecessary(llvm::IRBuilder<>& builder, Value* source, Type* targetTy
         switch (sourceTypeID)
         {
             case Type::TypeID::PointerTyID:
-                return builder.CreatePointerCast(source, targetType, "CastPtrToPtr");
+                return new llvm::BitCastInst(source, targetType, "CastPtrToPtr");
             case Type::TypeID::IntegerTyID:
-                return builder.CreateIntToPtr(source, targetType, "CastPtrToInt");
+                return new llvm::IntToPtrInst(source, targetType, "CastPtrToInt");
             default:
                 failFunctionCompilation();
         }
     }
-    if(targetTypeId == Type::TypeID::IntegerTyID)
+    if (targetTypeId == Type::TypeID::IntegerTyID)
     {
         switch (sourceTypeID)
         {
             case Type::TypeID::IntegerTyID:
                 if (sourceType->getPrimitiveSizeInBits() > targetType->getPrimitiveSizeInBits())
                 {
-                    return builder.CreateTrunc(source, targetType, "truncInt");
+                    return new llvm::TruncInst(source, targetType, "TruncInt");
                 }
             default:
                 failFunctionCompilation();
@@ -449,6 +497,15 @@ Value* castIfNecessary(llvm::IRBuilder<>& builder, Value* source, Type* targetTy
     }
 
     failFunctionCompilation();
+}
+
+Value* castIfNecessary(llvm::IRBuilder<>& builder, Value* source, Type* targetType)
+{
+    llvm::Instruction* castInst = getCast(source, targetType);
+    if (castInst == nullptr)
+        return source;
+
+    return builder.Insert(castInst);
 }
 
 Value* castToPointerToLlvmType(llvm::IRBuilder<>& builder, Value* address, llvm::Type* llvmType)
@@ -528,19 +585,26 @@ void emitDoNothingCall(llvm::IRBuilder<>& builder)
     builder.CreateCall(_doNothingFunction);
 }
 
-Value* buildAdd(llvm::IRBuilder<>& builder, GenTree* node, Value* op1, Value* op2)
+void buildAdd(llvm::IRBuilder<>& builder, GenTree* node, Value* op1, Value* op2)
 {
-    if (!op1->getType()->isPointerTy() || !op2->getType()->isIntegerTy())
+    if (op1->getType()->isPointerTy() && op2->getType()->isIntegerTy())
     {
-        //only support gep
+        mapGenTreeToValue(node, builder.CreateGEP(op1, op2));
+    }
+    else if (op1->getType()->isIntegerTy() && op2->getType() == op1->getType())
+    {
+        mapGenTreeToValue(node, builder.CreateAdd(op1, op2));
+    }
+    else
+    {
+        // unsupported add type combination
         failFunctionCompilation();
     }
-    return mapGenTreeToValue(node, builder.CreateGEP(op1, op2));
 }
 
-Value* genTreeAsLlvmType(GenTree* tree, Type* type)
+Value* genTreeAsLlvmType(llvm::IRBuilder<>& builder, GenTree* tree, Type* type)
 {
-    Value* v = getGenTreeValue(tree);
+    Value* v = getGenTreeValue(tree).getValue(builder);
     if (v->getType() == type)
         return v;
 
@@ -639,6 +703,17 @@ llvm::Value* getShadowStackOffest(Value* shadowStack, unsigned int offset)
     return _builder->CreateGEP(shadowStack, _builder->getInt32(offset));
 }
 
+llvm::BasicBlock* getLLVMBasicBlockForBlock(BasicBlock* block)
+{
+    llvm::BasicBlock* llvmBlock;
+    if (_blkToLlvmBlkVectorMap->Lookup(block, &llvmBlock))
+        return llvmBlock;
+
+    llvmBlock = llvm::BasicBlock::Create(_llvmContext, "", _function);
+    _blkToLlvmBlkVectorMap->Set(block, llvmBlock);
+    return llvmBlock;
+}
+
 bool isThisArg(GenTreeCall* call, GenTree* operand)
 {
     if (call->gtCallThisArg == nullptr)
@@ -651,7 +726,7 @@ bool isThisArg(GenTreeCall* call, GenTree* operand)
 
 void storeOnShadowStack(llvm::IRBuilder<>& builder, GenTree* operand, Value* shadowStackForCallee, unsigned int offset)
 {
-    castingStore(*_builder, genTreeAsLlvmType(operand, Type::getInt8PtrTy(_llvmContext)),
+    castingStore(*_builder, genTreeAsLlvmType(builder, operand, Type::getInt8PtrTy(_llvmContext)),
                  getShadowStackOffest(shadowStackForCallee, offset), Type::getInt8PtrTy(_llvmContext));
 }
 
@@ -727,7 +802,7 @@ llvm::Value* buildUserFuncCall(GenTreeCall* call, llvm::IRBuilder<>& builder)
         if (llvmArgInfo.m_argIx >= 0)
         {
             // pass the parameter on the LLVM stack
-            argVec.push_back(genTreeAsLlvmType(opAndArg.operand, llvmFunc->getArg(llvmArgInfo.m_argIx)->getType()));
+            argVec.push_back(genTreeAsLlvmType(builder, opAndArg.operand, llvmFunc->getArg(llvmArgInfo.m_argIx)->getType()));
         }
         else
         {
@@ -738,11 +813,11 @@ llvm::Value* buildUserFuncCall(GenTreeCall* call, llvm::IRBuilder<>& builder)
         argIx++;
     }
     Value* llvmCall = builder.CreateCall(llvmFunc, ArrayRef<Value*>(argVec));
-    // TODO: creating the load for the return slot here is perhaps not the most efficient and should be done lazily
-    return mapGenTreeToValue(call, returnAddress != nullptr ? builder.CreateLoad(builder.CreateBitCast(returnAddress, Type::getInt8PtrTy(_llvmContext)->getPointerTo())) : llvmCall);
+    ValueLocation location = returnAddress != nullptr ? ValueLocation::ShadowStack : ValueLocation::LlvmStack;
+    return mapGenTreeToValue(call, location, returnAddress != nullptr ? builder.CreateBitCast(returnAddress, Type::getInt8PtrTy(_llvmContext)->getPointerTo()) : llvmCall);
 }
 
-Value* buildCall(llvm::IRBuilder<>& builder, GenTree* node)
+void buildCall(llvm::IRBuilder<>& builder, GenTree* node)
 {
     GenTreeCall* call = node->AsCall();
     if (call->gtCallType == CT_HELPER)
@@ -759,29 +834,47 @@ Value* buildCall(llvm::IRBuilder<>& builder, GenTree* node)
             // replacement for _info.compCompHnd->recordRelocation(nullptr, gtCall->gtEntryPoint.handle, IMAGE_REL_BASED_REL32);
             (*_addCodeReloc)(_thisPtr, call->gtEntryPoint.handle);
 
-            return mapGenTreeToValue(node, builder.CreateCall(llvmFunc, getShadowStackForCallee(builder)));
+            mapGenTreeToValue(node, builder.CreateCall(llvmFunc, getShadowStackForCallee(builder)));
+            return;
         }
     }
     else if (call->gtCallType == CT_USER_FUNC && !call->IsVirtualStub() /* TODO: Virtual stub not implemented */)
     {
-        return buildUserFuncCall(call, builder);
+        buildUserFuncCall(call, builder);
+        return;
     }
     failFunctionCompilation();
 }
 
-Value* buildCnsInt(llvm::IRBuilder<>& builder, GenTree* node)
+void buildCast(llvm::IRBuilder<>& builder, GenTreeCast* cast)
 {
-    if (node->gtType == var_types::TYP_INT)
+    if (cast->CastToType() == TYP_BOOL && cast->TypeIs(TYP_INT) && cast->CastOp()->TypeIs(TYP_INT))
     {
-        return mapGenTreeToValue(node, builder.getInt32(node->AsIntCon()->gtIconVal));
+        Value* intValue = builder.CreateZExt(getGenTreeValue(cast->CastOp()).getValue(builder), getLLVMTypeForVarType(TYP_INT));
+        mapGenTreeToValue(cast, intValue); // nothing to do except map the source value to the destination GenTree
     }
-    if (node->gtType == var_types::TYP_REF)
+    else
+    {
+        // TODO: other casts
+        failFunctionCompilation();
+    }
+}
+
+void buildCnsInt(llvm::IRBuilder<>& builder, GenTree* node)
+{
+    if (node->gtType == TYP_INT)
+    {
+        mapGenTreeToValue(node, builder.getInt32(node->AsIntCon()->IconValue()));
+        return;
+    }
+    if (node->gtType == TYP_REF)
     {
         ssize_t intCon = node->AsIntCon()->gtIconVal;
         if (node->IsIconHandle(GTF_ICON_STR_HDL))
         {
             const char* symbolName = (*_getMangledSymbolName)(_thisPtr, (void *)(node->AsIntCon()->IconValue()));
-            return mapGenTreeToValue(node, builder.CreateLoad(getOrCreateExternalSymbol(symbolName)));
+            mapGenTreeToValue(node, builder.CreateLoad(getOrCreateExternalSymbol(symbolName)));
+            return;
         }
         // TODO: delete this check, just handling string constants and null ptr stores for now, other TYP_REFs not implemented yet
         if (intCon != 0)
@@ -789,34 +882,164 @@ Value* buildCnsInt(llvm::IRBuilder<>& builder, GenTree* node)
             failFunctionCompilation();
         }
 
-        return mapGenTreeToValue(node, builder.CreateIntToPtr(builder.getInt32(intCon), Type::getInt8PtrTy(_llvmContext))); // TODO: wasm64
+        mapGenTreeToValue(node, builder.CreateIntToPtr(builder.getInt32(intCon), Type::getInt8PtrTy(_llvmContext))); // TODO: wasm64
+        return;
     }
     failFunctionCompilation();
 }
 
-Value* buildInd(llvm::IRBuilder<>& builder, GenTree* node, Value* ptr)
+void buildInd(llvm::IRBuilder<>& builder, GenTree* node, Value* ptr)
 {
-    // TODO: Simplify genActualType(node->TypeGet()) to just genActualType(node) when main is merged
     // first cast the pointer to create the correct load instructions, then cast the result incase we are loading a small int into an int32
-    return mapGenTreeToValue(node,
-                             castIfNecessary(builder, builder.CreateLoad(
+    mapGenTreeToValue(node, castIfNecessary(builder, builder.CreateLoad(
                                  castIfNecessary(builder, ptr,
-                                                 getLLVMTypeForVarType(node->TypeGet())->getPointerTo())), getLLVMTypeForVarType(genActualType(node->TypeGet()))));
+                                     getLLVMTypeForVarType(node->TypeGet())->getPointerTo())), getLLVMTypeForVarType(genActualType(node))));
 }
 
-Value* buildNe(llvm::IRBuilder<>& builder, GenTree* node, Value* op1, Value* op2)
+Value* buildJTrue(llvm::IRBuilder<>& builder, GenTree* node, Value* opValue)
 {
-    return mapGenTreeToValue(node, builder.CreateICmpNE(op1, op2));
+    return builder.CreateCondBr(opValue, getLLVMBasicBlockForBlock(_currentBlock->bbJumpDest), getLLVMBasicBlockForBlock(_currentBlock->bbNext));
+}
+
+void buildCmp(llvm::IRBuilder<>& builder, genTreeOps op, GenTree* node, Value* op1, Value* op2)
+{
+    llvm::CmpInst::Predicate llvmPredicate;
+
+    switch (op)
+    {
+        case GT_EQ:
+            llvmPredicate = llvm::CmpInst::Predicate::ICMP_EQ;
+            break;
+        case GT_NE:
+            llvmPredicate = llvm::CmpInst::Predicate::ICMP_NE;
+            break;
+        default:
+            failFunctionCompilation(); // TODO all genTreeOps values
+
+    }
+    // comparing refs and ints is valid LIR, but not LLVM so handle that case by converting the int to a ref
+    if (op1->getType() != op2->getType())
+    {
+        if (op1->getType()->isPointerTy() && op2->getType()->isIntegerTy())
+        {
+            op2 = builder.CreateIntToPtr(op2, op1->getType());
+        }
+        else if (op2->getType()->isPointerTy() && op1->getType()->isIntegerTy())
+        {
+            op1 = builder.CreateIntToPtr(op1, op2->getType());
+        }
+        else
+        {
+            // TODO-LLVM: other valid LIR comparisons
+            failFunctionCompilation();
+        }
+    }
+    mapGenTreeToValue(node, builder.CreateCmp(llvmPredicate, op1, op2));
+}
+
+void buildPhi(llvm::IRBuilder<>& builder, GenTreePhi* phi)
+{
+    llvm::PHINode* llvmPhiNode = nullptr;
+    unsigned i = 0;
+    bool requiresLoad = false;
+    bool requiresLoadSet = false;
+    unsigned numChildren  = phi->NumChildren();
+
+    /// llvm requires all phis to be groups together so this IR presents a problem due to the STORE_LCL_VAR in the middle of the two phis.
+    /// / -- * t83    ref
+    /// + -- * t81    ref
+    /// *PHI       ref
+    /// / -- * t79    ref
+    /// * STORE_LCL_VAR ref    V13 tmp4         d : 1
+    /// / -- * t84    ref
+    /// + -- * t82    ref
+    /// *PHI       ref
+    // add all phis to the start of the block as per LLVM rules
+    llvm::BasicBlock* block = builder.GetInsertBlock();
+    builder.SetInsertPoint(block, block->begin());
+
+    for (GenTreePhi::Use& use : phi->Uses())
+    {
+        GenTreePhiArg* phiArg = use.GetNode()->AsPhiArg();
+        unsigned       lclNum = phiArg->GetLclNum();
+        unsigned       ssaNum = phiArg->GetSsaNum();
+
+        LocatedLlvmValue localPhiArg = getSsaLocalForPhi(lclNum, ssaNum);
+        if (localPhiArg.location != ValueLocation::ForwardReference)
+        {
+            if (requiresLoadSet)
+            {
+                // phi args must be all direct, or all indirect
+                assert(requiresLoad == localPhiArg.valueRequiresLoad());
+            }
+            else
+            {
+                requiresLoad    = localPhiArg.valueRequiresLoad();
+                requiresLoadSet = true;
+            }
+        }
+        if (i == 0)
+        {
+            Type* phiType = getLLVMTypeForVarType(phi->TypeGet());
+
+            llvmPhiNode = builder.CreatePHI(requiresLoad ? phiType->getPointerTo() : phiType, numChildren);
+        }
+
+        if (localPhiArg.location == ValueLocation::ForwardReference)
+        {
+            _forwardReferencingPhis->insert({{lclNum, ssaNum}, {llvmPhiNode, getLLVMBasicBlockForBlock(phiArg->gtPredBB)}});
+        }
+        else
+        {
+            Value*             phiRealArgValue;
+            llvm::Instruction* castRequired = getCast(localPhiArg.getRawValue(), llvmPhiNode->getType());
+            if (castRequired != nullptr)
+            {
+                // This cast is needed when
+                // 1) The phi arg real type is short and the definition is the actual longer type, e.g. for bool/int
+                // 2) There is a pointer difference, e.g. i8* v i32* and perhaps different levels of indirection: i8** and i8*
+                llvm::BasicBlock::iterator phiInsertPoint = builder.GetInsertPoint();
+                llvm::BasicBlock* phiBlock = builder.GetInsertBlock();
+                llvm::Instruction* predBlockTerminator = getLLVMBasicBlockForBlock(phiArg->gtPredBB)->getTerminator();
+
+                builder.SetInsertPoint(predBlockTerminator);
+                phiRealArgValue = builder.Insert(castRequired);
+                builder.SetInsertPoint(phiBlock, phiInsertPoint);
+            }
+            else
+            {
+                phiRealArgValue = localPhiArg.getRawValue();
+            }
+            llvmPhiNode->addIncoming(phiRealArgValue, getLLVMBasicBlockForBlock(phiArg->gtPredBB));
+        }
+        i++;
+    }
+    assert(requiresLoadSet); // TODO-LLVM: If all the phi args are in this or later blocks, then this will be hit, and this load/no load swtich will have to be inserted when finishing the block, or something...
+                             // See also https://github.com/dotnet/runtimelab/pull/1598/files#r720693270
+
+    // reposition builder at end of block
+    builder.SetInsertPoint(block);
+
+    mapGenTreeToValue(phi, requiresLoad ? ValueLocation::ShadowStack : ValueLocation::LlvmStack, llvmPhiNode);
+}
+
+void addForwardPhiArg(SsaPair ssaPair, llvm::Value* phiArg)
+{
+    auto findResult = _forwardReferencingPhis->find(ssaPair);
+    if (findResult == _forwardReferencingPhis->end())
+        return;
+
+    findResult->second.phiNode->addIncoming(phiArg, findResult->second.llvmBasicBlock);
 }
 
 void buildReturn(llvm::IRBuilder<>& builder, GenTree* node)
 {
     switch (node->gtType)
     {
-        case var_types::TYP_INT:
-            builder.CreateRet(castIfNecessary(builder, getGenTreeValue(node->gtGetOp1()), getLlvmTypeForCorInfoType(_sigInfo.retType)));
+        case TYP_INT:
+            builder.CreateRet(castIfNecessary(builder, getGenTreeValue(node->gtGetOp1()).getValue(builder), getLlvmTypeForCorInfoType(_sigInfo.retType)));
             return;
-        case var_types::TYP_VOID: 
+        case TYP_VOID: 
             builder.CreateRetVoid();
             return;
         default:
@@ -826,8 +1049,8 @@ void buildReturn(llvm::IRBuilder<>& builder, GenTree* node)
 
 void importStoreInd(llvm::IRBuilder<>& builder, GenTreeStoreInd* storeIndOp)
 {
-    Value* address = getGenTreeValue(storeIndOp->Addr());
-    Value* toStore = getGenTreeValue(storeIndOp->Data());
+    Value* address = getGenTreeValue(storeIndOp->Addr()).getValue(builder);
+    Value* toStore = getGenTreeValue(storeIndOp->Data()).getValue(builder);
     if (toStore->getType()->isPointerTy())
     {
         // RhpAssignRef will never reverse PInvoke, so do not need to store the shadow stack here
@@ -843,20 +1066,22 @@ Value* localVar(llvm::IRBuilder<>& builder, GenTreeLclVar* lclVar)
 {
     Value*       llvmRef;
     unsigned int lclNum = lclVar->GetLclNum();
-
-    if (_localsMap->find(lclNum) == _localsMap->end())
+    unsigned int ssaNum = lclVar->GetSsaNum();
+    ValueLocation valueLocation = ValueLocation::LlvmStack;
+    if (_localsMap->find({lclNum, ssaNum}) == _localsMap->end())
     {
         if (_compiler->lvaIsParameter(lclNum))
         {
             if (!_info.compIsStatic && _info.compThisArg == lclNum)
             {
-                // this is always the first pointer on the shadowstack (LLVM arg 0).  Dont need the gep in this case
-                llvmRef = builder.CreateLoad(builder.CreateBitCast(_function->getArg(0), (Type::getInt8PtrTy(_llvmContext)->getPointerTo())));
+                // this is always the first pointer on the shadowstack (LLVM arg 0).  Dont need the gep in this case.  Build in the prolog so the load can be used in different blocks
+                llvmRef = _prologBuilder->CreateBitCast(_function->getArg(0), (Type::getInt8PtrTy(_llvmContext)->getPointerTo()));
+                valueLocation = ValueLocation::ShadowStack;
             }
             else
             {
-                unsigned int       argIx       = _info.compIsStatic ? lclNum : lclNum - 1;
-                LlvmArgInfo llvmArgInfo = getLlvmArgInfoForArgIx(_sigInfo, argIx);
+                unsigned int argIx       = _info.compIsStatic ? lclNum : lclNum - 1;
+                LlvmArgInfo  llvmArgInfo = getLlvmArgInfoForArgIx(_sigInfo, argIx);
                 if (llvmArgInfo.m_argIx >= 0)
                 {
                     llvmRef = _function->getArg(llvmArgInfo.m_argIx);
@@ -865,11 +1090,12 @@ Value* localVar(llvm::IRBuilder<>& builder, GenTreeLclVar* lclVar)
                 {
                     // TODO: store argAddress in a map in case multiple IR locals are to the same argument - we only want one gep in the prolog
                     Value* argAddress = _prologBuilder->CreateGEP(_function->getArg(0), builder.getInt32(llvmArgInfo.m_shadowStackOffset), "Argument");
-                    llvmRef = builder.CreateLoad(builder.CreateBitCast(argAddress, (Type::getInt8PtrTy(_llvmContext)->getPointerTo())));
+                    llvmRef = _prologBuilder->CreateBitCast(argAddress, (Type::getInt8PtrTy(_llvmContext)->getPointerTo()));
+                    valueLocation = ValueLocation::ShadowStack;
                 }
             }
 
-            _localsMap->insert({lclNum, LocalVar(LocalVarLocation::LlvmStack, llvmRef)});
+            _localsMap->insert({{lclNum, ssaNum}, LocatedLlvmValue(valueLocation, llvmRef)});
         }
         else
         {
@@ -879,10 +1105,10 @@ Value* localVar(llvm::IRBuilder<>& builder, GenTreeLclVar* lclVar)
     }
     else
     {
-        llvmRef = _localsMap->at(lclNum).getValue(builder);
+        llvmRef = _localsMap->at({lclNum, ssaNum}).getValue(builder);
     }
 
-    mapGenTreeToValue(lclVar, llvmRef);
+    mapGenTreeToValue(lclVar, valueLocation, llvmRef);
     return llvmRef;
 }
 
@@ -894,11 +1120,12 @@ N009 ( 30, 14) [000012] ---XG-------        t12 = *  NE        int
                                                   /--*  t12    int
 N011 ( 34, 17) [000016] DA-XG-------              *  STORE_LCL_VAR int    V03 loc1
 */
-Value* widenIntIfNecessary(llvm::IRBuilder<>& builder, Value* intValue)
+Value* zextIntIfNecessary(llvm::IRBuilder<>& builder, Value* intValue)
 {
-    if (intValue->getType()->getPrimitiveSizeInBits() < TARGET_POINTER_SIZE * 8)
+    llvm::TypeSize intSize = intValue->getType()->getPrimitiveSizeInBits();
+    if (intSize < TARGET_POINTER_SIZE * 8)
     {
-        return builder.CreateIntCast(intValue, Type::getInt32Ty(_llvmContext), true);
+        return builder.CreateIntCast(intValue, Type::getInt32Ty(_llvmContext), false);
     }
     return intValue;
 }
@@ -951,25 +1178,32 @@ void storeLocalVar(llvm::IRBuilder<>& builder, GenTreeLclVar* lclVar)
 {
     if (lclVar->gtFlags & GTF_VAR_DEF)
     {
-        Value* valueRef = getGenTreeValue(lclVar->gtGetOp1());
+        Value* valueRef = getGenTreeValue(lclVar->gtGetOp1()).getValue(builder);
         assert(valueRef != nullptr);
         // This could be done in the NE operator, but sometimes that would be needless, e.g. when followed by JTRUE
+        // TODO-LLVM: As this is a zero extend widening operation, this is only valid if the small int is unsigned.  We don't know that here, so likely it would be better to
+        // delete this and do the cast in the operator.  It seems likely that the cast will be a nop anyway, at least in Wasm, as Wasm does not have any number types smaller than i32
         if (valueRef->getType()->isIntegerTy())
         {
-            valueRef = widenIntIfNecessary(builder, valueRef);
+            valueRef = zextIntIfNecessary(builder, valueRef);
         }
+
+        LocatedLlvmValue locatedValue{ValueLocation::LlvmStack, nullptr}; // unused
 
         if (canStoreTypeOnLlvmStack(toCorInfoType(lclVar->TypeGet())))
         {
-            _localsMap->insert({lclVar->GetLclNum(), LocalVar(LocalVarLocation::LlvmStack, valueRef)});
+            locatedValue = LocatedLlvmValue(ValueLocation::LlvmStack, valueRef);
         }
         else
         {
             Value* localAddress = castIfNecessary(builder, getLocalVarAddress(builder, lclVar), valueRef->getType()->getPointerTo());
             builder.CreateStore(valueRef, localAddress);
 
-            _localsMap->insert({lclVar->GetLclNum(), LocalVar(LocalVarLocation::ShadowStack, localAddress)});
+            locatedValue = LocatedLlvmValue(ValueLocation::ShadowStack, localAddress);
         }
+        SsaPair ssaPair = {lclVar->GetLclNum(), lclVar->GetSsaNum()};
+        addForwardPhiArg(ssaPair, locatedValue.getRawValue()); // phis that forward referenced this value.
+        _localsMap->insert({ssaPair, locatedValue});
     }
     else
     {
@@ -977,28 +1211,47 @@ void storeLocalVar(llvm::IRBuilder<>& builder, GenTreeLclVar* lclVar)
     }
 }
 
-Value* visitNode(llvm::IRBuilder<>& builder, GenTree* node)
+void visitNode(llvm::IRBuilder<>& builder, GenTree* node)
 {
-    switch (node->OperGet())
+    genTreeOps oper = node->OperGet();
+    switch (oper)
     {
         case GT_ADD:
-            return buildAdd(builder, node, getGenTreeValue(node->AsOp()->gtOp1), getGenTreeValue(node->AsOp()->gtOp2));
+            buildAdd(builder, node, getGenTreeValue(node->AsOp()->gtOp1).getValue(builder), getGenTreeValue(node->AsOp()->gtOp2).getValue(builder));
+            break;
         case GT_CALL:
-            return buildCall(builder, node);
+            buildCall(builder, node);
+            break;
+        case GT_CAST:
+            buildCast(builder, node->AsCast());
+            break;
         case GT_CNS_INT:
-            return buildCnsInt(builder, node);
+            buildCnsInt(builder, node);
+            break;
         case GT_IL_OFFSET:
             _currentOffset = node->AsILOffset()->gtStmtILoffsx;
             _currentOffsetDiLocation = nullptr;
             break;
         case GT_IND:
-            return buildInd(builder, node, getGenTreeValue(node->AsOp()->gtOp1));
+            buildInd(builder, node, getGenTreeValue(node->AsOp()->gtOp1).getValue(builder));
+            break;
+        case GT_JTRUE:
+            buildJTrue(builder, node, getGenTreeValue(node->AsOp()->gtOp1).getValue(builder));
+            break;
         case GT_LCL_VAR:
-            return localVar(builder, node->AsLclVar());
+            localVar(builder, node->AsLclVar());
+            break;
+        case GT_EQ:
         case GT_NE:
-            return buildNe(builder, node, getGenTreeValue(node->AsOp()->gtOp1), getGenTreeValue(node->AsOp()->gtOp2));
+            buildCmp(builder, oper, node, getGenTreeValue(node->AsOp()->gtOp1).getValue(builder), getGenTreeValue(node->AsOp()->gtOp2).getValue(builder));
+            break;
         case GT_NO_OP:
             emitDoNothingCall(builder);
+            break;
+        case GT_PHI:
+            buildPhi(builder, node->AsPhi());
+            break;
+        case GT_PHI_ARG:
             break;
         case GT_RETURN:
             buildReturn(builder, node);
@@ -1012,25 +1265,26 @@ Value* visitNode(llvm::IRBuilder<>& builder, GenTree* node)
         default:
             failFunctionCompilation();
     }
-    return nullptr;
 }
 
-llvm::BasicBlock* getLLVMBasicBlockForBlock(BasicBlock* block)
+void startImportingBasicBlock(BasicBlock* block)
 {
-    llvm::BasicBlock* llvmBlock;
-    if (_blkToLlvmBlkVectorMap->Lookup(block, &llvmBlock)) return llvmBlock;
-
-    llvmBlock = llvm::BasicBlock::Create(_llvmContext, "", _function);
-    _blkToLlvmBlkVectorMap->Set(block, llvmBlock);
-    return llvmBlock;
+    _currentBlock = block;
 }
 
 void endImportingBasicBlock(BasicBlock* block)
 {
-    if (block->bbJumpKind == BBjumpKinds::BBJ_NONE && block->bbNext)
+    if ((block->bbJumpKind == BBjumpKinds::BBJ_NONE) && block->bbNext != nullptr)
     {
         _builder->CreateBr(getLLVMBasicBlockForBlock(block->bbNext));
+        return;
     }
+    if ((block->bbJumpKind == BBjumpKinds::BBJ_ALWAYS) && block->bbJumpDest != nullptr)
+    {
+        _builder->CreateBr(getLLVMBasicBlockForBlock(block->bbJumpDest));
+        return;
+    }
+    //TODO: other jump kinds
 }
 
 void generateProlog()
@@ -1127,9 +1381,10 @@ void Llvm::Compile(Compiler* pCompiler)
     CompAllocator allocator = pCompiler->getAllocator();
     BlkToLlvmBlkVectorMap blkToLlvmBlkVectorMap(allocator);
     _blkToLlvmBlkVectorMap = &blkToLlvmBlkVectorMap;
-    std::unordered_map<GenTree*, Value*> sdsuMap;
+    std::unordered_map<GenTree*, LocatedLlvmValue> sdsuMap;
     _sdsuMap = &sdsuMap;
-    _localsMap = new std::unordered_map<unsigned int, LocalVar>();
+    _localsMap = new std::unordered_map<SsaPair, LocatedLlvmValue, SsaPairHash>();
+    _forwardReferencingPhis = new std::unordered_map<SsaPair, IncomingPhi, SsaPairHash>();
     _spilledExpressions.clear();
     const char* mangledName = (*_getMangledMethodName)(_thisPtr, _info.compMethodHnd);
     _function               = _module->getFunction(mangledName);
@@ -1159,14 +1414,11 @@ void Llvm::Compile(Compiler* pCompiler)
 
     for (BasicBlock* block = pCompiler->fgFirstBB; block; block = block->bbNext)
     {
-        if (block->hasTryIndex())
-        {
-            failFunctionCompilation();
-        }
+        startImportingBasicBlock(block);
 
         llvm::BasicBlock* entry = getLLVMBasicBlockForBlock(block);
         builder.SetInsertPoint(entry);
-        for (GenTree* node = block->GetFirstLIRNode(); node; node = node->gtNext)
+        for (GenTree* node : LIR::AsRange(block))
         {
             startImportingNode(builder);
             visitNode(builder, node);

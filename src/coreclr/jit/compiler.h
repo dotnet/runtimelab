@@ -220,7 +220,11 @@ public:
 
     LclSsaVarDsc(BasicBlock* block, GenTreeOp* asg) : m_block(block), m_asg(asg)
     {
+#if defined(TARGET_WASM)
+        assert((asg == nullptr) || asg->OperIs(GT_ASG) || asg->OperIsLocalStore());
+#else
         assert((asg == nullptr) || asg->OperIs(GT_ASG));
+#endif
     }
 
     BasicBlock* GetBlock() const
@@ -240,7 +244,11 @@ public:
 
     void SetAssignment(GenTreeOp* asg)
     {
+#if defined(TARGET_WASM)
+        assert((asg == nullptr) || asg->OperIs(GT_ASG) || asg->OperIsLocalStore());
+#else
         assert((asg == nullptr) || asg->OperIs(GT_ASG));
+#endif
         m_asg = asg;
     }
 
@@ -4980,7 +4988,11 @@ public:
 
     bool backendRequiresLocalVarLifetimes()
     {
+#if defined(TARGET_WASM)
+        return true;
+#else
         return !opts.MinOpts() || m_pLinearScan->willEnregisterLocalVars();
+#endif
     }
 
     void fgLocalVarLiveness();
@@ -5101,6 +5113,9 @@ public:
     // a partial def (GTF_VAR_USEASG), looks up and returns the SSA number for the "def",
     // rather than the "use" SSA number recorded in the tree "lcl".
     inline unsigned GetSsaNumForLocalVarDef(GenTree* lcl);
+
+    // 
+    inline bool PreciseRefCountsRequired();
 
     // Performs SSA conversion.
     void fgSsaBuild();

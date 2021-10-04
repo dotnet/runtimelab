@@ -173,7 +173,7 @@ void Compiler::fgLocalVarLivenessInit()
     JITDUMP("In fgLocalVarLivenessInit\n");
 
     // Sort locals first, if we're optimizing
-    if (opts.OptimizationEnabled())
+    if (PreciseRefCountsRequired())
     {
         lvaSortByRefCount();
     }
@@ -2182,6 +2182,10 @@ bool Compiler::fgTryRemoveNonLocal(GenTree* node, LIR::Range* blockRange)
 //
 void Compiler::fgRemoveDeadStoreLIR(GenTree* store, BasicBlock* block)
 {
+    // TODO-LLVM: we should not need this for correctness, investigate removing.
+    if (!PreciseRefCountsRequired())
+        return;
+
     LIR::Range& blockRange = LIR::AsRange(block);
 
     // If the store is marked as a late argument, it is referenced by a call.
@@ -2541,10 +2545,13 @@ void Compiler::fgInterBlockLocalVarLiveness()
      * reported scope, so that it will be visible over the entire scope
      */
 
-    if (opts.compDbgCode && (info.compVarScopesCount > 0))
-    {
-        fgExtendDbgLifetimes();
-    }
+#if defined(TARGET_WASM)
+    if (!compRationalIRForm) // TODO-LLVM this will break the debugging experience, so investigate what the problem is with conservative liveness for SSA
+#endif
+        if (opts.compDbgCode && (info.compVarScopesCount > 0))
+        {
+            fgExtendDbgLifetimes();
+        }
 
     // Nothing more to be done if the backend does not require accurate local var lifetimes.
     if (!backendRequiresLocalVarLifetimes())

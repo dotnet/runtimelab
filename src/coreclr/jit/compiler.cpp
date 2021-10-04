@@ -5235,6 +5235,11 @@ void Compiler::compCompile(void** methodCodePtr, uint32_t* methodCodeSize, JitFl
     rat.Run();
 
 #if defined(TARGET_WASM)
+    lvaMarkLocalVars();
+
+    fgResetForSsa();
+    DoPhase(this, PHASE_BUILD_SSA, &Compiler::fgSsaBuild);
+
     DoLlvmPhase(this);
 #else
 
