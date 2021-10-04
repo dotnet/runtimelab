@@ -1443,7 +1443,7 @@ namespace System.Text.RegularExpressions
                 string capname = ScanCapname();
                 if (CharsRight() > 0 && RightCharMoveRight() == '}')
                 {
-                    // Throw unconditionally for backtracking, even if not a valid capture name, as those aren't tracked correctly
+                    // Throw unconditionally for non-backtracking, even if not a valid capture name, as information to determine whether a name is valid or not isn't tracked
                     if ((_options & RegexOptions.NonBacktracking) != 0)
                     {
                         throw new NotSupportedException(SR.NotSupported_NonBacktrackingAndReplacementsWithSubstitutionsOfGroups);
