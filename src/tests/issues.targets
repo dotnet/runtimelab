@@ -1175,6 +1175,9 @@
         <ExcludeList Include="$(XunitTestBinBase)/Loader/classloader/regressions/347422/b347422/*">
             <Issue>https://github.com/dotnet/runtimelab/issues/194</Issue>
         </ExcludeList>
+        <ExcludeList Include="$(XunitTestBinBase)/Loader/classloader/regressions/529206/vsw529206ModuleCctor/*">
+            <Issue>https://github.com/dotnet/runtimelab/issues/155: compat for exceptions thrown from module cctor</Issue>
+        </ExcludeList>
         <ExcludeList Include="$(XunitTestBinBase)/Loader/classloader/regressions/asurt150271/test3/*">
             <Issue>https://github.com/dotnet/runtimelab/issues/202</Issue>
         </ExcludeList>
@@ -1229,7 +1232,22 @@
         <ExcludeList Include="$(XunitTestBinBase)/reflection\DefaultInterfaceMethods\GetInterfaceMapConsumer\*">
             <Issue>https://github.com/dotnet/runtimelab/issues/861</Issue>
         </ExcludeList>
+        <ExcludeList Include="$(XunitTestBinBase)/Interop\IDynamicInterfaceCastable\IDynamicInterfaceCastable\*">
+            <Issue>https://github.com/dotnet/runtimelab/issues/1442</Issue>
+        </ExcludeList>
+        <ExcludeList Include="$(XunitTestBinBase)\Interop\PInvoke\Variant\VariantTestBuiltInComDisabled\*">
+            <Issue>https://github.com/dotnet/runtimelab/issues/306</Issue>
+        </ExcludeList>
+        <ExcludeList Include="$(XunitTestBinBase)\Interop\PInvoke\Variant\VariantTestComWrappers\*">
+            <Issue>https://github.com/dotnet/runtimelab/issues/306</Issue>
+        </ExcludeList>
 
+        <!-- Complex constrained calls -->
+        <!-- https://github.com/dotnet/runtimelab/issues/1431 -->
+        <ExcludeList Include="$(XunitTestBinBase)/Regressions\coreclr\16354\notimplemented\*" />
+        <ExcludeList Include="$(XunitTestBinBase)/Loader/classloader\DefaultInterfaceMethods\constrainedcall\constrainedcall\*" />
+        <ExcludeList Include="$(XunitTestBinBase)/Loader/classloader\DefaultInterfaceMethods\constrainedcall\constrained2\*" />
+        <ExcludeList Include="$(XunitTestBinBase)/Loader/classloader\DefaultInterfaceMethods\constrainedcall\constrained2_gm\*" />
 
         <!-- Catch(T) in shared code -->
         <!-- https://github.com/dotnet/runtimelab/issues/204 -->
