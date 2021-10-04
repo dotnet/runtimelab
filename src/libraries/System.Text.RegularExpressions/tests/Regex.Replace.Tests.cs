@@ -370,7 +370,10 @@ namespace System.Text.RegularExpressions.Tests
                 yield return new object[] { "[ab]+", "012aaabb34bba56", "###", 1, "012###34bba56", options };
                 yield return new object[] { @"\b", "Hello World!", "#$$#", -1, "#$#Hello#$# #$#World#$#!", options };
                 yield return new object[] { @"", "hej", "  ", -1, "  h  e  j  ", options };
-                yield return new object[] { @"\bis\b", "this is it", "${2}", -1, "this ${2} it", options };
+                if ((options & RegexHelpers.RegexOptionNonBacktracking) == 0)
+                {
+                    yield return new object[] { @"\bis\b", "this is it", "${2}", -1, "this ${2} it", options };
+                }
             }
         }
         [Theory]
