@@ -59,8 +59,7 @@ namespace Internal.JitInterface
                 return;
             }
 
-            var frozenStringNode = node as FrozenStringNode;
-            if (frozenStringNode != null)
+            if (node is FrozenStringNode frozenStringNode)
             {
                 _this.AddOrReturnGlobalSymbol(frozenStringNode, _this._compilation.NameMangler);
             }
