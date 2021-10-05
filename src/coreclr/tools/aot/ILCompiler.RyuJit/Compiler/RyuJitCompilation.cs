@@ -208,7 +208,7 @@ namespace ILCompiler
             return base.GetMethodIL(method);
         }
 
-        public virtual void AddOrReturnGlobalSymbol(ISortableSymbolNode gcStaticSymbol, NameMangler nameMangler)
+        public virtual void AddOrReturnGlobalSymbol(ISymbolNode symbolNode, NameMangler nameMangler)
         {
             throw new NotImplementedException("only called from clrjit for LLVM, what is a better way to do this?");
         }
