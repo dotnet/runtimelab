@@ -546,24 +546,31 @@ namespace System.Text.RegularExpressions.Tests
 
             Regex r = await RegexHelpers.GetRegexAsync(engine, pattern, options);
 
+            // Test instance method overloads
             if (isDefaultStart && isDefaultCount)
             {
-                // Use Match(string) or Match(string, string, RegexOptions)
                 VerifyMatch(r.Match(input));
-                VerifyMatch(Regex.Match(input, pattern, options));
-
                 Assert.Equal(expectedSuccess, r.IsMatch(input));
-                Assert.Equal(expectedSuccess, Regex.IsMatch(input, pattern, options));
             }
-
             if (beginning + length == input.Length && (options & RegexOptions.RightToLeft) == 0)
             {
-                // Use Match(string, int)
                 VerifyMatch(r.Match(input, beginning));
             }
-
-            // Use Match(string, int, int)
             VerifyMatch(r.Match(input, beginning, length));
+
+            // Test static method overloads
+            if (isDefaultStart && isDefaultCount)
+            {
+                switch (engine)
+                {
+                    case RegexEngine.Interpreter:
+                    case RegexEngine.Compiled:
+                    case RegexEngine.NonBacktracking:
+                        VerifyMatch(Regex.Match(input, pattern, options | RegexHelpers.OptionsFromEngine(engine)));
+                        Assert.Equal(expectedSuccess, Regex.IsMatch(input, pattern, options | RegexHelpers.OptionsFromEngine(engine)));
+                        break;
+                }
+            }
 
             void VerifyMatch(Match match)
             {

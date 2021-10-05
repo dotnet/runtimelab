@@ -105,36 +105,29 @@ namespace System.Text.RegularExpressions.Tests
                 Assert.Null(matchTimeout);
             }
 
-            switch (engine)
+            if (engine == RegexEngine.SourceGenerated)
             {
-                case RegexEngine.Interpreter:
-                    return
-                        options is null ? new Regex(pattern) :
-                        matchTimeout is null ? new Regex(pattern, options.Value) :
-                        new Regex(pattern, options.Value, matchTimeout.Value);
-
-                case RegexEngine.Compiled:
-                    return
-                        options is null ? new Regex(pattern, RegexOptions.Compiled) :
-                        matchTimeout is null ? new Regex(pattern, options.Value | RegexOptions.Compiled) :
-                        new Regex(pattern, options.Value | RegexOptions.Compiled, matchTimeout.Value);
-
-                case RegexEngine.NonBacktracking:
-                    return
-                        options is null ? new Regex(pattern, RegexOptionNonBacktracking) :
-                        matchTimeout is null ? new Regex(pattern, options.Value | RegexOptionNonBacktracking) :
-                        new Regex(pattern, options.Value | RegexOptionNonBacktracking, matchTimeout.Value);
-
-                case RegexEngine.SourceGenerated:
-                    return await RegexGeneratorHelper.SourceGenRegexAsync(pattern, options, matchTimeout);
-
-                // TODO-NONBACKTRACKING:
-                // case RegexEngine.NonBacktrackingSourceGenerated:
-                //     return ...;
+                return await RegexGeneratorHelper.SourceGenRegexAsync(pattern, options, matchTimeout);
             }
 
-            throw new ArgumentException($"Unknown engine: {engine}");
+            return
+                options is null ? new Regex(pattern, RegexOptions.Compiled | OptionsFromEngine(engine)) :
+                matchTimeout is null ? new Regex(pattern, options.Value | OptionsFromEngine(engine)) :
+                new Regex(pattern, options.Value | OptionsFromEngine(engine), matchTimeout.Value);
+
+            // TODO-NONBACKTRACKING
+            // - Handle NonBacktrackingSourceGenerated
         }
+
+        public static RegexOptions OptionsFromEngine(RegexEngine engine) => engine switch
+        {
+            RegexEngine.Interpreter => RegexOptions.None,
+            RegexEngine.Compiled => RegexOptions.Compiled,
+            RegexEngine.SourceGenerated => RegexOptions.Compiled,
+            RegexEngine.NonBacktracking => RegexOptionNonBacktracking,
+            RegexEngine.NonBacktrackingSourceGenerated => RegexOptionNonBacktracking | RegexOptions.Compiled,
+            _ => throw new ArgumentException($"Unknown engine: {engine}"),
+        };
     }
 
     public enum RegexEngine
