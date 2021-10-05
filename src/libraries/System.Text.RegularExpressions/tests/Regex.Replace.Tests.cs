@@ -21,15 +21,15 @@ namespace System.Text.RegularExpressions.Tests
                 yield return new object[] { engine, "a", "aaaaa", "b", RegexOptions.None, 2, 0, "bbaaa" };
                 yield return new object[] { engine, "a", "aaaaa", "b", RegexOptions.None, 2, 3, "aaabb" };
 
-                // Undefined groups
-                yield return new object[] { engine, @"(?<256>cat)\s*(?<512>dog)", "slkfjsdcat dogkljeah", "STARTcat$2048$1024dogEND", RegexOptions.None, 20, 0, "slkfjsdSTARTcat$2048$1024dogENDkljeah" };
-                yield return new object[] { engine, @"(?<cat>cat)\s*(?<dog>dog)", "slkfjsdcat dogkljeah", "START${catTWO}dogcat${dogTWO}END", RegexOptions.None, 20, 0, "slkfjsdSTART${catTWO}dogcat${dogTWO}ENDkljeah" };
-
                 // Stress
                 yield return new object[] { engine, ".", new string('a', 1000), "b", RegexOptions.None, 1000, 0, new string('b', 1000) };
 
                 if (!RegexHelpers.IsNonBacktracking(engine))
                 {
+                    // Undefined groups
+                    yield return new object[] { engine, @"(?<256>cat)\s*(?<512>dog)", "slkfjsdcat dogkljeah", "STARTcat$2048$1024dogEND", RegexOptions.None, 20, 0, "slkfjsdSTARTcat$2048$1024dogENDkljeah" };
+                    yield return new object[] { engine, @"(?<cat>cat)\s*(?<dog>dog)", "slkfjsdcat dogkljeah", "START${catTWO}dogcat${dogTWO}END", RegexOptions.None, 20, 0, "slkfjsdSTART${catTWO}dogcat${dogTWO}ENDkljeah" };
+
                     // Replace with group numbers
                     yield return new object[] { engine, "([a-z]([a-z]([a-z]([a-z]([a-z]([a-z]([a-z]([a-z]([a-z]([a-z]([a-z]([a-z]([a-z]([a-z]([a-z])))))))))))))))", "abcdefghiklmnop", "$15", RegexOptions.None, 15, 0, "p" };
                     yield return new object[] { engine, "([a-z]([a-z]([a-z]([a-z]([a-z]([a-z]([a-z]([a-z]([a-z]([a-z]([a-z]([a-z]([a-z]([a-z]([a-z])))))))))))))))", "abcdefghiklmnop", "$3", RegexOptions.None, 15, 0, "cdefghiklmnop" };
@@ -56,12 +56,18 @@ namespace System.Text.RegularExpressions.Tests
                     yield return new object[] { engine, @"(?<256>cat)\s*(?<512>dog)", "slkfjsdcat dogkljeah", "STARTcat$512$256dogEND", RegexOptions.None, 20, 0, "slkfjsdSTARTcatdogcatdogENDkljeah" };
 
                     yield return new object[] { engine, @"(hello)cat\s+dog(world)", "hellocat dogworld", "$1$$$2", RegexOptions.None, 19, 0, "hello$world" };
-                    yield return new object[] { engine, @"(hello)\s+(world)", "What the hello world goodby", "$&, how are you?", RegexOptions.None, 27, 0, "What the hello world, how are you? goodby" };
-                    yield return new object[] { engine, @"(hello)\s+(world)", "What the hello world goodby", "$`cookie are you doing", RegexOptions.None, 27, 0, "What the What the cookie are you doing goodby" };
-                    yield return new object[] { engine, @"(cat)\s+(dog)", "before textcat dogafter text", ". This is the $' and ", RegexOptions.None, 28, 0, "before text. This is the after text and after text" };
                     yield return new object[] { engine, @"(cat)\s+(dog)", "before textcat dogafter text", ". The following should be dog and it is $+. ", RegexOptions.None, 28, 0, "before text. The following should be dog and it is dog. after text" };
-                    yield return new object[] { engine, @"(cat)\s+(dog)", "before textcat dogafter text", ". The following should be the entire string '$_'. ", RegexOptions.None, 28, 0, "before text. The following should be the entire string 'before textcat dogafter text'. after text" };
+                }
 
+                // Valid cases that NonBackTracking supports
+                yield return new object[] { engine, @"(hello)\s+(world)", "What the hello world goodby", "$&, how are you?", RegexOptions.None, 27, 0, "What the hello world, how are you? goodby" };
+                yield return new object[] { engine, @"(hello)\s+(world)", "What the hello world goodby", "$0, how are you?", RegexOptions.None, 27, 0, "What the hello world, how are you? goodby" };
+                yield return new object[] { engine, @"(hello)\s+(world)", "What the hello world goodby", "$`cookie are you doing", RegexOptions.None, 27, 0, "What the What the cookie are you doing goodby" };
+                yield return new object[] { engine, @"(cat)\s+(dog)", "before textcat dogafter text", ". This is the $' and ", RegexOptions.None, 28, 0, "before text. This is the after text and after text" };
+                yield return new object[] { engine, @"(cat)\s+(dog)", "before textcat dogafter text", ". The following should be the entire string '$_'. ", RegexOptions.None, 28, 0, "before text. The following should be the entire string 'before textcat dogafter text'. after text" };
+
+                if (!RegexHelpers.IsNonBacktracking(engine))
+                {
                     yield return new object[] { engine, @"(hello)\s+(world)", "START hello    world END", "$2 $1 $1 $2 $3$4", RegexOptions.None, 24, 0, "START world hello hello world $3$4 END" };
                     yield return new object[] { engine, @"(hello)\s+(world)", "START hello    world END", "$2 $1 $1 $2 $123$234", RegexOptions.None, 24, 0, "START world hello hello world $123$234 END" };
 
@@ -333,7 +339,7 @@ namespace System.Text.RegularExpressions.Tests
             if (PlatformDetection.IsNetCore)
             {
                 // Substitutions not supported in DFA mode
-                Assert.Throws<NotSupportedException>(() => new Regex("pattern", RegexHelpers.RegexOptionNonBacktracking).Replace("input", "$0", -1));
+                Assert.Throws<NotSupportedException>(() => new Regex("pattern", RegexHelpers.RegexOptionNonBacktracking).Replace("input", "$1", -1));
             }
         }
 
@@ -364,7 +370,10 @@ namespace System.Text.RegularExpressions.Tests
                 yield return new object[] { "[ab]+", "012aaabb34bba56", "###", 1, "012###34bba56", options };
                 yield return new object[] { @"\b", "Hello World!", "#$$#", -1, "#$#Hello#$# #$#World#$#!", options };
                 yield return new object[] { @"", "hej", "  ", -1, "  h  e  j  ", options };
-                yield return new object[] { @"\bis\b", "this is it", "${2}", -1, "this ${2} it", options };
+                if ((options & RegexHelpers.RegexOptionNonBacktracking) == 0)
+                {
+                    yield return new object[] { @"\bis\b", "this is it", "${2}", -1, "this ${2} it", options };
+                }
             }
         }
         [Theory]

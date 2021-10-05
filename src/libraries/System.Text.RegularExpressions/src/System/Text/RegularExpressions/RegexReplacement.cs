@@ -24,9 +24,6 @@ namespace System.Text.RegularExpressions
         private readonly string[] _strings; // table of string constants
         private readonly int[] _rules;      // negative -> group #, positive -> string #
 
-        /// <summary>If true then this replacement contains at least one capture group name.</summary>
-        public bool HasGroups { get; }
-
         /// <summary>
         /// Since RegexReplacement shares the same parser as Regex,
         /// the constructor takes a RegexNode which is a concatenation
@@ -75,7 +72,6 @@ namespace System.Text.RegularExpressions
                         }
 
                         rules.Append(-Specials - 1 - slot);
-                        HasGroups = true;
 
                         break;
 
@@ -118,11 +114,6 @@ namespace System.Text.RegularExpressions
             if (!replRef.TryGetTarget(out RegexReplacement? repl) || !repl.Pattern.Equals(replacement))
             {
                 repl = RegexParser.ParseReplacement(replacement, roptions, caps, capsize, capnames);
-                if (((roptions & RegexOptions.NonBacktracking) != 0) && repl.HasGroups)
-                {
-                    throw new NotSupportedException(SR.NotSupported_NonBacktrackingAndReplacementsWithSubstitutions);
-                }
-
                 replRef.SetTarget(repl);
             }
 

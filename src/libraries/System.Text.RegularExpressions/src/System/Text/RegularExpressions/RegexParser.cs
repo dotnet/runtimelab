@@ -532,7 +532,19 @@ namespace System.Text.RegularExpressions
                 {
                     if (RightCharMoveRight() == '$')
                     {
-                        AddUnitNode(ScanDollar());
+                        RegexNode node = ScanDollar();
+                        // NonBacktracking does not support capture groups, so any replacement patterns that refer to
+                        // groups are unsupported. The replacement patterns that refer to the left/right portion or all
+                        // of the input as well as referring to group 0, i.e. the whole match, are supported.
+                        if ((_options & RegexOptions.NonBacktracking) != 0 && node.Type == RegexNode.Ref &&
+                            !(node.M == 0 ||
+                              node.M == RegexReplacement.LeftPortion ||
+                              node.M == RegexReplacement.RightPortion ||
+                              node.M == RegexReplacement.WholeString))
+                        {
+                            throw new NotSupportedException(SR.NotSupported_NonBacktrackingAndReplacementsWithSubstitutionsOfGroups);
+                        }
+                        AddUnitNode(node);
                     }
 
                     AddConcatenate();
@@ -1388,6 +1400,8 @@ namespace System.Text.RegularExpressions
                     int capnum = -1;
                     int newcapnum = ch - '0';
                     MoveRight();
+
+                    CheckUnsupportedNonBacktrackingNumericRef(newcapnum);
                     if (IsCaptureSlot(newcapnum))
                     {
                         capnum = newcapnum;
@@ -1403,8 +1417,9 @@ namespace System.Text.RegularExpressions
                         }
 
                         newcapnum = newcapnum * 10 + digit;
-
                         MoveRight();
+
+                        CheckUnsupportedNonBacktrackingNumericRef(newcapnum);
                         if (IsCaptureSlot(newcapnum))
                         {
                             capnum = newcapnum;
@@ -1422,6 +1437,7 @@ namespace System.Text.RegularExpressions
                     int capnum = ScanDecimal();
                     if (!angled || CharsRight() > 0 && RightCharMoveRight() == '}')
                     {
+                        CheckUnsupportedNonBacktrackingNumericRef(capnum);
                         if (IsCaptureSlot(capnum))
                         {
                             return new RegexNode(RegexNode.Ref, _options, capnum);
@@ -1432,9 +1448,17 @@ namespace System.Text.RegularExpressions
             else if (angled && RegexCharClass.IsWordChar(ch))
             {
                 string capname = ScanCapname();
-                if (CharsRight() > 0 && RightCharMoveRight() == '}' && IsCaptureName(capname))
+                if (CharsRight() > 0 && RightCharMoveRight() == '}')
                 {
-                    return new RegexNode(RegexNode.Ref, _options, CaptureSlotFromName(capname));
+                    // Throw unconditionally for non-backtracking, even if not a valid capture name, as information to determine whether a name is valid or not isn't tracked
+                    if ((_options & RegexOptions.NonBacktracking) != 0)
+                    {
+                        throw new NotSupportedException(SR.NotSupported_NonBacktrackingAndReplacementsWithSubstitutionsOfGroups);
+                    }
+                    if (IsCaptureName(capname))
+                    {
+                        return new RegexNode(RegexNode.Ref, _options, CaptureSlotFromName(capname));
+                    }
                 }
             }
             else if (!angled)
@@ -1479,6 +1503,18 @@ namespace System.Text.RegularExpressions
 
             Textto(backpos);
             return new RegexNode(RegexNode.One, _options, '$');
+        }
+
+        /*
+         * Throws on unsupported capture references for NonBacktracking in replacement patterns
+         */
+        private void CheckUnsupportedNonBacktrackingNumericRef(int capnum)
+        {
+            // Throw for non-backtracking on non-zero group, even if not a valid capture number, as information to determine whether a name is valid or not isn't tracked
+            if ((_options & RegexOptions.NonBacktracking) != 0 && capnum != 0)
+            {
+                throw new NotSupportedException(SR.NotSupported_NonBacktrackingAndReplacementsWithSubstitutionsOfGroups);
+            }
         }
 
         /*

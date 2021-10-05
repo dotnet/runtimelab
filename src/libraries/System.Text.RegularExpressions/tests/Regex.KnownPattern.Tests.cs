@@ -70,7 +70,6 @@ namespace System.Text.RegularExpressions.Tests
             if (RegexHelpers.IsNonBacktracking(engine))
             {
                 // named group replacements not supported
-                // TODO-NONBACKTRACKING: This is producing an incorrect result... should it throw instead?
                 return;
             }
 

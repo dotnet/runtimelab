@@ -282,8 +282,8 @@
   <data name="UnterminatedComment" xml:space="preserve">
     <value>Unterminated (?#...) comment.</value>
   </data>
-  <data name="NotSupported_NonBacktrackingAndReplacementsWithSubstitutions" xml:space="preserve">
-    <value>Regex replacements with substitutions are not supported with RegexOptions.NonBacktracking.</value>
+  <data name="NotSupported_NonBacktrackingAndReplacementsWithSubstitutionsOfGroups" xml:space="preserve">
+    <value>Regex replacements with substitutions of groups are not supported with RegexOptions.NonBacktracking.</value>
   </data>
   <data name="NotSupported_NonBacktrackingConflictingOption" xml:space="preserve">
     <value>RegexOptions.NonBacktracking is not supported in conjunction with RegexOptions.{0}.</value>
