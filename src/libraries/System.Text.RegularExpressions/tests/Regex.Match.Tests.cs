@@ -1464,6 +1464,7 @@ namespace System.Text.RegularExpressions.Tests
             yield return new object[] { "a.{20}$", "a01234567890123456789", 21 };
             yield return new object[] { "(a.{20}|a.{10})bc$", "a01234567890123456789bc", 23 };
         }
+
         /// <summary>
         /// Causes NonBacktracking engine to switch to Antimirov mode internally.
         /// Antimirov mode is otherwise never triggered by typical cases.
@@ -1546,7 +1547,7 @@ namespace System.Text.RegularExpressions.Tests
                     };
 
                 // Case insensitive cases by using ?i and some non-ASCII characters like Kelvin sign and applying ?i over negated character classes
-                yield return new object[] { engine, "(?i:[a-d’]+k*)", RegexOptions.None, "xyxaBıc\u212AKAyy", new (int, int, string)[] { (3, 6, "aBıc\u212AK"), (9, 1, "A") } };
+                yield return new object[] { engine, "(?i:[a-d√ï]+k*)", RegexOptions.None, "xyxaB√µc\u212AKAyy", new (int, int, string)[] { (3, 6, "aB√µc\u212AK"), (9, 1, "A") } };
                 yield return new object[] { engine, "(?i:[a-d]+)", RegexOptions.None, "xyxaBcyy", new (int, int, string)[] { (3, 3, "aBc") } };
                 yield return new object[] { engine, "(?i:[\0-@B-\uFFFF]+)", RegexOptions.None, "xaAaAy", new (int, int, string)[] { (0, 6, "xaAaAy") } }; // this is the same as .+
                 yield return new object[] { engine, "(?i:[\0-ac-\uFFFF])", RegexOptions.None, "b", new (int, int, string)[] { (0, 1, "b") } };
