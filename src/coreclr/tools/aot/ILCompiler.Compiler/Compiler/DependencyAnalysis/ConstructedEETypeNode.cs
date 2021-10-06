@@ -73,14 +73,6 @@ namespace ILCompiler.DependencyAnalysis
                 }
             }
 
-            // Generated type contains generic virtual methods that will get added to the GVM tables
-            if (TypeGVMEntriesNode.TypeNeedsGVMTableEntries(_type))
-            {
-                dependencyList.Add(new DependencyListEntry(factory.TypeGVMEntries(_type.GetTypeDefinition()), "Type with generic virtual methods"));
-
-                AddDependenciesForUniversalGVMSupport(factory, _type, ref dependencyList);
-            }
-
             // Ask the metadata manager if we have any dependencies due to reflectability.
             factory.MetadataManager.GetDependenciesDueToReflectability(ref dependencyList, factory, _type);
 

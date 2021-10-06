@@ -502,6 +502,18 @@ namespace ILCompiler.DependencyAnalysis
                 // vtable information for things like IEnumerator<List<__Canon>>.
                 foreach (TypeDesc intface in _type.RuntimeInterfaces)
                     dependencies.Add(factory.VTable(intface), "Interface vtable slice");
+
+                // Generated type contains generic virtual methods that will get added to the GVM tables
+                if (TypeGVMEntriesNode.TypeNeedsGVMTableEntries(_type))
+                {
+                    dependencies.Add(new DependencyListEntry(factory.TypeGVMEntries(_type.GetTypeDefinition()), "Type with generic virtual methods"));
+
+                    AddDependenciesForUniversalGVMSupport(factory, _type, ref dependencies);
+
+                    TypeDesc canonicalType = _type.ConvertToCanonForm(CanonicalFormKind.Specific);
+                    if (canonicalType != _type)
+                        dependencies.Add(factory.ConstructedTypeSymbol(canonicalType), "Type with generic virtual methods");
+                }
             }
 
             if (factory.CompilationModuleGroup.PresenceOfEETypeImpliesAllMethodsOnType(_type))

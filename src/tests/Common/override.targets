@@ -14,8 +14,8 @@
   >
 
     <ItemGroup>
-      <ReferencePath Include="$(RepoRoot)\artifacts\bin\coreclr\$(TargetOS).$(TargetArchitecture).$(Configuration)\IL\System.Private.CoreLib.dll" Condition="Exists('$(RepoRoot)\artifacts\bin\coreclr\$(TargetOS).$(TargetArchitecture).$(Configuration)\IL\System.Private.CoreLib.dll')" />
-      <ReferencePath Include="$(RepoRoot)\artifacts\bin\coreclr\$(TargetOS).$(TargetArchitecture).$(Configuration)\aotsdk\System.Private.CoreLib.dll" Condition="Exists('$(RepoRoot)\artifacts\bin\coreclr\$(TargetOS).$(TargetArchitecture).$(Configuration)\aotsdk\System.Private.CoreLib.dll')" />
+      <ReferencePath Include="$(RepoRoot)\artifacts\bin\$(RuntimeFlavor)\$(TargetOS).$(TargetArchitecture).$(Configuration)\IL\System.Private.CoreLib.dll"/>
+      <ReferencePath Include="$(RepoRoot)\artifacts\bin\$(RuntimeFlavor)\$(TargetOS).$(TargetArchitecture).$(Configuration)\aotsdk\System.Private.CoreLib.dll" Condition="Exists('$(RepoRoot)\artifacts\bin\coreclr\$(TargetOS).$(TargetArchitecture).$(Configuration)\aotsdk\System.Private.CoreLib.dll')" />
     </ItemGroup>
   </Target>
 
