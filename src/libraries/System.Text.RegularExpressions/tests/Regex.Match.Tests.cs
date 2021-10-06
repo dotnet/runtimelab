@@ -1396,8 +1396,10 @@ namespace System.Text.RegularExpressions.Tests
             string b1 = @"((?<=\w)(?!\w)|(?<!\w)(?=\w))";
             string b2 = @"((?<=\w)(?=\W)|(?<=\W)(?=\w))";
             // Lookarounds are currently not supported in the NonBacktracking engine
-            foreach (RegexEngine engine in new RegexEngine[] { RegexEngine.Compiled, RegexEngine.Interpreter })
+            foreach (RegexEngine engine in RegexHelpers.AvailableEngines)
             {
+                if (engine == RegexEngine.NonBacktracking) continue;
+
                 // b1 is semantically identical to \b except for \u200c and \u200d
                 yield return new object[] { engine, $@"{b1}\w+{b1}", "one two three", 3 };
                 yield return new object[] { engine, $@"{b1}\w+{b1}", "on\u200ce two three", 4 };
@@ -1687,14 +1689,16 @@ namespace System.Text.RegularExpressions.Tests
 
         public static IEnumerable<object[]> MatchAmbiguousRegexes_TestData()
         {
-            // Different results in NonBacktracking vs Compiled or Interpreter
+            // Different results in NonBacktracking vs backtracking engines
             yield return new object[] { RegexEngine.NonBacktracking, "(a|ab|c|bcd){0,}d*", "ababcd", (0, 6) };
             yield return new object[] { RegexEngine.NonBacktracking, "(a|ab|c|bcd){0,10}d*", "ababcd", (0, 6) };
             yield return new object[] { RegexEngine.NonBacktracking, "(a|ab|c|bcd)*d*", "ababcd", (0, 6) };
             yield return new object[] { RegexEngine.NonBacktracking, @"(the)\s*([12][0-9]|3[01]|0?[1-9])", "it is the 10:00 time", (6, 5) };
 
-            foreach (RegexEngine engine in new RegexEngine[] { RegexEngine.Compiled, RegexEngine.Interpreter })
+            foreach (RegexEngine engine in RegexHelpers.AvailableEngines)
             {
+                if (engine == RegexEngine.NonBacktracking) continue;
+
                 yield return new object[] { engine, "(a|ab|c|bcd){0,}d*", "ababcd", (0, 1) };
                 yield return new object[] { engine, "(a|ab|c|bcd){0,10}d*", "ababcd", (0, 1) };
                 yield return new object[] { engine, "(a|ab|c|bcd)*d*", "ababcd", (0, 1) };
