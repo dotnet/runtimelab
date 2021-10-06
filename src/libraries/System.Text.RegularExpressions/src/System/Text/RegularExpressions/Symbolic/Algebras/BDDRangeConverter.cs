@@ -24,6 +24,8 @@ namespace System.Text.RegularExpressions.Symbolic
         /// </summary>
         public static (uint, uint)[] ToRanges(BDD set, int maxBit)
         {
+            Debug.Assert(0 <= maxBit && maxBit <= 32, "maxBit must be between 0 and 32");
+
             if (set.IsEmpty)
                 return Array.Empty<(uint, uint)>();
 
