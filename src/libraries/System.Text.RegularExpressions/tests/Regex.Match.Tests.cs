@@ -176,9 +176,14 @@ namespace System.Text.RegularExpressions.Tests
                 yield return new object[] { engine, @"((\d{2,3})){2}", "1234", RegexOptions.None, 0, 4, true, "1234" };
                 if (!RegexHelpers.IsNonBacktracking(engine))
                 {
-                    // TODO-NONBACKTRACKING: Produce "1234" rather than "123", which could be considered an alternative valid result given greedy semantics
                     yield return new object[] { engine, @"(\d{2,3})+", "1234", RegexOptions.None, 0, 4, true, "123" };
                     yield return new object[] { engine, @"(\d{2,3})*", "123456", RegexOptions.None, 0, 4, true, "123" };
+                }
+                else
+                {
+                    // In NonBacktracking engine the alternation in the inner loop allows the alternate longer eager match of \d{2}\d{2}
+                    yield return new object[] { engine, @"(\d{2,3})+", "1234", RegexOptions.None, 0, 4, true, "1234" };
+                    yield return new object[] { engine, @"(\d{2,3})*", "123456", RegexOptions.None, 0, 4, true, "1234" };
                 }
                 yield return new object[] { engine, @"(abc\d{2,3}){2}", "abc123abc4567", RegexOptions.None, 0, 12, true, "abc123abc456" };
                 foreach (RegexOptions lineOption in new[] { RegexOptions.None, RegexOptions.Singleline, RegexOptions.Multiline })
@@ -1239,12 +1244,6 @@ namespace System.Text.RegularExpressions.Tests
         [MemberData(nameof(RegexHelpers.AvailableEngines_MemberData), MemberType = typeof(RegexHelpers))]
         public void Match_ExcessPrefix(RegexEngine engine)
         {
-            if (RegexHelpers.IsNonBacktracking(engine))
-            {
-                // TODO-NONBACKTRACKING: Takes too long and sometimes times out with NonBacktracking
-                throw new SkipTestException("Takes too long and sometimes times out with NonBacktracking");
-            }
-
             RemoteExecutor.Invoke(async engineString =>
             {
                 var engine = (RegexEngine)Enum.Parse(typeof(RegexEngine), engineString);
@@ -1261,8 +1260,15 @@ namespace System.Text.RegularExpressions.Tests
                 // Multis
                 foreach (int length in new[] { 50, 51, 50_000, 50_001, char.MaxValue + 1 }) // based on knowledge of cut-offs used in Boyer-Moore
                 {
-                    string s = "bcd" + new string('a', length) + "efg";
-                    Assert.True((await RegexHelpers.GetRegexAsync(engine, @$"a{{{length}}}")).IsMatch(s));
+                    // The large counters are too slow for counting a's in NonBacktracking engine
+                    // They will incur a constant of size length because in .*a{k} after reading n a's the
+                    // state will be .*a{k}|a{k-1}|...|a{k-n} which could be compacted to
+                    // .*a{k}|a{k-n,k-1} but is not currently being compacted
+                    if (!RegexHelpers.IsNonBacktracking(engine) || length < 50_000)
+                    {
+                        string s = "bcd" + new string('a', length) + "efg";
+                        Assert.True((await RegexHelpers.GetRegexAsync(engine, @$"a{{{length}}}")).IsMatch(s));
+                    }
                 }
             }, engine.ToString()).Dispose();
         }
@@ -1371,11 +1377,44 @@ namespace System.Text.RegularExpressions.Tests
         /// </summary>
         [Theory]
         [MemberData(nameof(RegexHelpers.AvailableEngines_MemberData), MemberType = typeof(RegexHelpers))]
-        public async Task Mach_Boundary_DFA(RegexEngine engine)
+        public async Task Match_Boundary(RegexEngine engine)
         {
             Regex r = await RegexHelpers.GetRegexAsync(engine, @"\b\w+\b");
             Assert.False(r.IsMatch(" AB\u200cCD "));
             Assert.False(r.IsMatch(" AB\u200dCD "));
+        }
+
+        public static IEnumerable<object[]> Match_Count_TestData()
+        {
+            foreach (RegexEngine engine in RegexHelpers.AvailableEngines)
+            {
+                yield return new object[] { engine, @"\b\w+\b", "one two three", 3 };
+                yield return new object[] { engine, @"\b\w+\b", "on\u200ce two three", 2 };
+                yield return new object[] { engine, @"\b\w+\b", "one tw\u200do three", 2 };
+            }
+
+            string b1 = @"((?<=\w)(?!\w)|(?<!\w)(?=\w))";
+            string b2 = @"((?<=\w)(?=\W)|(?<=\W)(?=\w))";
+            // Lookarounds are currently not supported in the NonBacktracking engine
+            foreach (RegexEngine engine in RegexHelpers.AvailableEngines)
+            {
+                if (engine == RegexEngine.NonBacktracking) continue;
+
+                // b1 is semantically identical to \b except for \u200c and \u200d
+                yield return new object[] { engine, $@"{b1}\w+{b1}", "one two three", 3 };
+                yield return new object[] { engine, $@"{b1}\w+{b1}", "on\u200ce two three", 4 };
+                // contrast between using \W = [^\w] vs negative lookaround !\w 
+                yield return new object[] { engine, $@"{b2}\w+{b2}", "one two three", 1 };
+                yield return new object[] { engine, $@"{b2}\w+{b2}", "one two", 0 };
+            }
+        }
+
+        [Theory]
+        [MemberData(nameof(Match_Count_TestData))]
+        public async Task Match_Count(RegexEngine engine, string pattern, string input, int expectedCount)
+        {
+            Regex r = await RegexHelpers.GetRegexAsync(engine, pattern);
+            Assert.Equal(expectedCount,r.Matches(input).Count);
         }
 
         public static IEnumerable<object[]> StressTestDeepNestingOfConcat_TestData()
@@ -1420,6 +1459,33 @@ namespace System.Text.RegularExpressions.Tests
             string fullinput = string.Concat(Enumerable.Repeat(input, input_repetition));
             var re = await RegexHelpers.GetRegexAsync(engine, fullpattern, options);
             Assert.True(re.Match(fullinput).Success);
+        }
+
+        public static IEnumerable<object[]> StressTestAntimirovMode_TestData()
+        {
+            yield return new object[] { "a.{20}$", "a01234567890123456789", 21 };
+            yield return new object[] { "(a.{20}|a.{10})bc$", "a01234567890123456789bc", 23 };
+        }
+
+        /// <summary>
+        /// Causes NonBacktracking engine to switch to Antimirov mode internally.
+        /// Antimirov mode is otherwise never triggered by typical cases.
+        /// </summary>
+        [ConditionalTheory(typeof(PlatformDetection), nameof(PlatformDetection.IsNetCore))]
+        [MemberData(nameof(StressTestAntimirovMode_TestData))]
+        public async Task StressTestAntimirovMode(string pattern, string input_suffix, int expected_matchlength)
+        {
+            Random random = new Random(0);
+            byte[] buffer = new byte[50_000];
+            random.NextBytes(buffer);
+            // Consider a random string of 50_000 a's and b's
+            var input = new string(Array.ConvertAll(buffer, b => (b <= 0x7F ? 'a' : 'b')));
+            input += input_suffix;
+            Regex re = await RegexHelpers.GetRegexAsync(RegexEngine.NonBacktracking, pattern, RegexOptions.Singleline);
+            Match m = re.Match(input);
+            Assert.True(m.Success);
+            Assert.Equal(buffer.Length, m.Index);
+            Assert.Equal(expected_matchlength, m.Length);
         }
 
         public static IEnumerable<object[]> AllMatches_TestData()
@@ -1483,7 +1549,7 @@ namespace System.Text.RegularExpressions.Tests
                     };
 
                 // Case insensitive cases by using ?i and some non-ASCII characters like Kelvin sign and applying ?i over negated character classes
-                yield return new object[] { engine, "(?i:[a-d’]+k*)", RegexOptions.None, "xyxaBıc\u212AKAyy", new (int, int, string)[] { (3, 6, "aBıc\u212AK"), (9, 1, "A") } };
+                yield return new object[] { engine, "(?i:[a-d√ï]+k*)", RegexOptions.None, "xyxaB√µc\u212AKAyy", new (int, int, string)[] { (3, 6, "aB√µc\u212AK"), (9, 1, "A") } };
                 yield return new object[] { engine, "(?i:[a-d]+)", RegexOptions.None, "xyxaBcyy", new (int, int, string)[] { (3, 3, "aBc") } };
                 yield return new object[] { engine, "(?i:[\0-@B-\uFFFF]+)", RegexOptions.None, "xaAaAy", new (int, int, string)[] { (0, 6, "xaAaAy") } }; // this is the same as .+
                 yield return new object[] { engine, "(?i:[\0-ac-\uFFFF])", RegexOptions.None, "b", new (int, int, string)[] { (0, 1, "b") } };
@@ -1619,6 +1685,49 @@ namespace System.Text.RegularExpressions.Tests
             Match m = re.Match(input);
             Assert.Equal(success, m.Success);
             Assert.Equal(match, m.Value);
+        }
+
+        public static IEnumerable<object[]> MatchAmbiguousRegexes_TestData()
+        {
+            // Different results in NonBacktracking vs backtracking engines
+            yield return new object[] { RegexEngine.NonBacktracking, "(a|ab|c|bcd){0,}d*", "ababcd", (0, 6) };
+            yield return new object[] { RegexEngine.NonBacktracking, "(a|ab|c|bcd){0,10}d*", "ababcd", (0, 6) };
+            yield return new object[] { RegexEngine.NonBacktracking, "(a|ab|c|bcd)*d*", "ababcd", (0, 6) };
+            yield return new object[] { RegexEngine.NonBacktracking, @"(the)\s*([12][0-9]|3[01]|0?[1-9])", "it is the 10:00 time", (6, 5) };
+
+            foreach (RegexEngine engine in RegexHelpers.AvailableEngines)
+            {
+                if (engine == RegexEngine.NonBacktracking) continue;
+
+                yield return new object[] { engine, "(a|ab|c|bcd){0,}d*", "ababcd", (0, 1) };
+                yield return new object[] { engine, "(a|ab|c|bcd){0,10}d*", "ababcd", (0, 1) };
+                yield return new object[] { engine, "(a|ab|c|bcd)*d*", "ababcd", (0, 1) };
+                yield return new object[] { engine, @"(the)\s*([12][0-9]|3[01]|0?[1-9])", "it is the 10:00 time", (6, 6) };
+            }
+
+            // Same results in all engines after reordering of the alternatives above
+            foreach (RegexEngine engine in RegexHelpers.AvailableEngines)
+            {
+                yield return new object[] { engine, "(ab|a|bcd|c){0,}d*", "ababcd", (0, 6) };
+                yield return new object[] { engine, "(ab|a|bcd|c){0,10}d*", "ababcd", (0, 6) };
+                yield return new object[] { engine, "(ab|a|bcd|c)*d*", "ababcd", (0, 6) };
+                yield return new object[] { engine, @"(the)\s*(0?[1-9]|[12][0-9]|3[01])", "it is the 10:00 time", (6, 5) };
+            }
+        }
+
+        /// <summary>
+        /// NonBacktracking engine ignores the order of alternatives in a union,
+        /// while a backtracking engine takes the order into account.
+        /// This may lead to different matches in ambiguous regexes.
+        /// </summary>
+        [ConditionalTheory(typeof(PlatformDetection), nameof(PlatformDetection.IsNetCore))]
+        [MemberData(nameof(MatchAmbiguousRegexes_TestData))]
+        public async Task MatchAmbiguousRegexes(RegexEngine engine, string pattern, string input, (int,int) expected_match)
+        {
+            Regex r = await RegexHelpers.GetRegexAsync(engine, pattern);
+            var match = r.Match(input);
+            Assert.Equal(expected_match.Item1, match.Index);
+            Assert.Equal(expected_match.Item2, match.Length);
         }
 
         public static IEnumerable<object[]> UseRegexConcurrently_ThreadSafe_Success_MemberData()
