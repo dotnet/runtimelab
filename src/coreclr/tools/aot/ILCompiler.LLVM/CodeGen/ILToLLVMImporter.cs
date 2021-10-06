@@ -2485,7 +2485,8 @@ namespace Internal.IL
                     }
                     break;
                 case "EETypePtrOf":
-                    if (metadataType.Namespace == "System" && metadataType.Name == "EETypePtr" && method.Instantiation.Length == 1)
+                case "MethodTableOf":
+                    if (metadataType.Namespace == "System" && (metadataType.Name == "EETypePtr" || metadataType.Name == "Object") && method.Instantiation.Length == 1)
                     {
                         LLVMValueRef eeTypePtrRef;
                         if (runtimeDeterminedMethod.IsRuntimeDeterminedExactMethod)
