@@ -308,6 +308,8 @@ namespace System.Text.RegularExpressions.Symbolic
         /// <param name="maxBit">bits above maxBit are unspecified</param>
         public BDD CreateSetFromRange(uint lower, uint upper, int maxBit)
         {
+            Debug.Assert(0 <= maxBit && maxBit <= 31, "maxBit must be between 0 and 31");
+
             if (upper < lower)
                 return False;
 
