@@ -110,6 +110,9 @@ namespace ILCompiler
             if (_singleThreaded)
                 options |= RyuJitCompilationOptions.SingleThreadedCompilation;
 
+            if ((_mitigationOptions & SecurityMitigationOptions.ControlFlowGuardAnnotations) != 0)
+                options |= RyuJitCompilationOptions.ControlFlowGuardAnnotations;
+
             var factory = new RyuJitNodeFactory(_context, _compilationGroup, _metadataManager, _interopStubManager, _nameMangler, _vtableSliceProvider, _dictionaryLayoutProvider, GetPreinitializationManager());
 
             JitConfigProvider.Initialize(_context.Target, jitFlagBuilder.ToArray(), _ryujitOptions);

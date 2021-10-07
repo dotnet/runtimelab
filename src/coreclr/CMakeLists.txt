@@ -41,10 +41,6 @@ endif(CORECLR_SET_RPATH)
 
 OPTION(CLR_CMAKE_ENABLE_CODE_COVERAGE "Enable code coverage" OFF)
 
-if(CLR_CMAKE_HOST_ARCH_S390X)
-  add_definitions(-DBIGENDIAN)
-endif(CLR_CMAKE_HOST_ARCH_S390X)
-
 #----------------------------------------------------
 # Cross target Component build specific configuration
 #----------------------------------------------------
@@ -240,10 +236,6 @@ if(CLR_CMAKE_HOST_UNIX)
 
   add_subdirectory(nativeresources)
 endif(CLR_CMAKE_HOST_UNIX)
-
-if ((CMAKE_CXX_COMPILER_ID STREQUAL "GNU") AND (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 10.0))
-    add_compile_options(-Wno-error=stringop-overflow=)
-endif()
 
 message("testing CLR_CMAKE_TARGET_ARCH_WASM")
 if (NOT CLR_CMAKE_TARGET_ARCH_WASM)

@@ -45,6 +45,9 @@ namespace System
             }
         }
 
+        [Runtime.CompilerServices.Intrinsic]
+        internal static extern MethodTable* MethodTableOf<T>();
+
         internal EETypePtr EETypePtr
         {
             get

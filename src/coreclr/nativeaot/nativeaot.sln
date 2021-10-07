@@ -21,8 +21,11 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "System.Private.TypeLoader",
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Test.CoreLib", "Test.CoreLib\src\Test.CoreLib.csproj", "{C3371E09-E8A6-4F9E-B4CB-B1CE3F4FCC51}"
 EndProject
+Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "System.Private.CoreLib.Shared", "..\..\libraries\System.Private.CoreLib\src\System.Private.CoreLib.Shared.shproj", "{977524B8-92D8-4DFC-91E4-11A0582B81BF}"
+EndProject
 Global
 	GlobalSection(SharedMSBuildProjectFiles) = preSolution
+		..\..\libraries\System.Private.CoreLib\src\System.Private.CoreLib.Shared.projitems*{977524b8-92d8-4dfc-91e4-11a0582b81bf}*SharedItemsImports = 13
 		..\..\libraries\System.Private.CoreLib\src\System.Private.CoreLib.Shared.projitems*{e4bc768b-f97d-4a8f-9391-b65df3eb47c6}*SharedItemsImports = 5
 	EndGlobalSection
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

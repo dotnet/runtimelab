@@ -1,6 +1,8 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System;
+
 using Internal.JitInterface;
 
 namespace ILCompiler
@@ -21,6 +23,7 @@ namespace ILCompiler
         protected bool _methodBodyFolding;
         protected bool _singleThreaded;
         protected InstructionSetSupport _instructionSetSupport;
+        protected SecurityMitigationOptions _mitigationOptions;
 
         partial void InitializePartial()
         {
@@ -76,6 +79,12 @@ namespace ILCompiler
             return this;
         }
 
+        public CompilationBuilder UseSecurityMitigationOptions(SecurityMitigationOptions options)
+        {
+            _mitigationOptions = options;
+            return this;
+        }
+
         public CompilationBuilder UseMethodBodyFolding(bool enable)
         {
             _methodBodyFolding = enable;
@@ -105,5 +114,11 @@ namespace ILCompiler
         {
             return new ILScannerBuilder(_context, compilationGroup ?? _compilationGroup, _nameMangler, GetILProvider(), GetPreinitializationManager());
         }
+    }
+
+    [Flags]
+    public enum SecurityMitigationOptions
+    {
+        ControlFlowGuardAnnotations = 0x0001,
     }
 }
