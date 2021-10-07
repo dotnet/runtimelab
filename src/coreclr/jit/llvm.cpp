@@ -258,11 +258,19 @@ llvm::Type* getLlvmTypeForCorInfoType(CorInfoType corInfoType) {
             return Type::getInt8Ty(_llvmContext);
 
         case CorInfoType::CORINFO_TYPE_INT:
+        case CorInfoType::CORINFO_TYPE_UINT:
         case CorInfoType::CORINFO_TYPE_NATIVEINT:  // TODO: Wasm64 - what does NativeInt mean for Wasm64
             return Type::getInt32Ty(_llvmContext);
 
+        case CorInfoType::CORINFO_TYPE_LONG:
         case CorInfoType::CORINFO_TYPE_ULONG:
             return Type::getInt64Ty(_llvmContext);
+
+        case CorInfoType::CORINFO_TYPE_FLOAT:
+            return Type::getFloatTy(_llvmContext);
+
+        case CorInfoType::CORINFO_TYPE_DOUBLE:
+            return Type::getDoubleTy(_llvmContext);
 
         case CorInfoType::CORINFO_TYPE_BYREF:
         case CorInfoType::CORINFO_TYPE_CLASS:
@@ -282,12 +290,30 @@ CorInfoType toCorInfoType(var_types varType)
             return CorInfoType::CORINFO_TYPE_BOOL;
         case TYP_BYREF:
             return CorInfoType::CORINFO_TYPE_BYREF;
+        case TYP_BYTE:
+            return CorInfoType::CORINFO_TYPE_BYTE;
+        case TYP_UBYTE:
+            return CorInfoType::CORINFO_TYPE_UBYTE;
         case TYP_LCLBLK: // TODO: outgoing args space - need to get an example compiling, e.g. https://github.com/dotnet/runtimelab/blob/40f9ff64ae80596bcddcec16a7e1a8f57a0b2cff/src/tests/nativeaot/SmokeTests/HelloWasm/HelloWasm.cs#L3492 to see what's
             // going on.  CORINFO_TYPE_VALUECLASS is a better mapping but if that is mapped as of now, then canStoreTypeOnLlvmStack will fail compilation for most methods.
+        case TYP_DOUBLE:
+            return CorInfoType::CORINFO_TYPE_DOUBLE;
+        case TYP_FLOAT:
+            return CorInfoType::CORINFO_TYPE_FLOAT;
         case TYP_INT:
             return CorInfoType::CORINFO_TYPE_INT;
+        case TYP_UINT:
+            return CorInfoType::CORINFO_TYPE_UINT;
+        case TYP_LONG:
+            return CorInfoType::CORINFO_TYPE_LONG;
+        case TYP_ULONG:
+            return CorInfoType::CORINFO_TYPE_ULONG;
         case TYP_REF:
             return CorInfoType::CORINFO_TYPE_REFANY;
+        case TYP_SHORT:
+            return CorInfoType::CORINFO_TYPE_SHORT;
+        case TYP_USHORT:
+            return CorInfoType::CORINFO_TYPE_USHORT;
         case TYP_UNDEF:
             return CorInfoType::CORINFO_TYPE_UNDEF;
         default:
@@ -454,6 +480,10 @@ Type* getLLVMTypeForVarType(var_types type)
             return Type::getInt16Ty(_llvmContext);
         case TYP_INT:
             return Type::getInt32Ty(_llvmContext);
+        case var_types::TYP_FLOAT:
+            return Type::getFloatTy(_llvmContext);
+        case var_types::TYP_DOUBLE:
+            return Type::getDoubleTy(_llvmContext);
         case TYP_REF:
             return Type::getInt8PtrTy(_llvmContext);
         default:
@@ -853,11 +883,32 @@ void buildCast(llvm::IRBuilder<>& builder, GenTreeCast* cast)
         Value* intValue = builder.CreateZExt(getGenTreeValue(cast->CastOp()).getValue(builder), getLLVMTypeForVarType(TYP_INT));
         mapGenTreeToValue(cast, intValue); // nothing to do except map the source value to the destination GenTree
     }
+    else if (cast->CastToType() == TYP_DOUBLE && cast->CastOp()->TypeIs(TYP_FLOAT))
+    {
+        mapGenTreeToValue(cast, builder.CreateFPCast(getGenTreeValue(cast->CastOp()).getValue(builder), getLLVMTypeForVarType(TYP_DOUBLE)));
+    }
+    else if (cast->CastToType() == TYP_INT && cast->CastOp()->TypeIs(TYP_FLOAT, TYP_DOUBLE))
+    {
+        mapGenTreeToValue(cast,
+            cast->IsUnsigned()
+                ? builder.CreateFPToUI(getGenTreeValue(cast->CastOp()).getValue(builder), getLLVMTypeForVarType(TYP_INT))
+                : builder.CreateFPToSI(getGenTreeValue(cast->CastOp()).getValue(builder), getLLVMTypeForVarType(TYP_INT)));
+    }
     else
     {
         // TODO: other casts
         failFunctionCompilation();
     }
+}
+
+void buildCnsDouble(llvm::IRBuilder<>& builder, GenTree* node)
+{
+    if (node->gtType == var_types::TYP_DOUBLE)
+    {
+        mapGenTreeToValue(node, llvm::ConstantFP::get(Type::getDoubleTy(_llvmContext), node->AsDblCon()->gtDconVal));
+        return;
+    }
+    failFunctionCompilation(); // TODO-LLVM: how are floats and decimals done?
 }
 
 void buildCnsInt(llvm::IRBuilder<>& builder, GenTree* node)
@@ -906,13 +957,30 @@ void buildCmp(llvm::IRBuilder<>& builder, genTreeOps op, GenTree* node, Value* o
 {
     llvm::CmpInst::Predicate llvmPredicate;
 
+    bool isIntOrPtr = op1->getType()->isIntOrPtrTy();
     switch (op)
     {
         case GT_EQ:
-            llvmPredicate = llvm::CmpInst::Predicate::ICMP_EQ;
+            llvmPredicate = isIntOrPtr ? llvm::CmpInst::Predicate::ICMP_EQ : llvm::CmpInst::Predicate::FCMP_OEQ;
             break;
         case GT_NE:
-            llvmPredicate = llvm::CmpInst::Predicate::ICMP_NE;
+            llvmPredicate = isIntOrPtr ? llvm::CmpInst::Predicate::ICMP_NE : llvm::CmpInst::Predicate::FCMP_ONE;
+            break;
+        case GT_LE:
+            llvmPredicate = isIntOrPtr ? (node->IsUnsigned() ? llvm::CmpInst::Predicate::ICMP_ULE : llvm::CmpInst::Predicate::ICMP_SLE)
+                : llvm::CmpInst::Predicate::FCMP_OLE;
+            break;
+        case GT_LT:
+            llvmPredicate = isIntOrPtr ? (node->IsUnsigned() ? llvm::CmpInst::Predicate::ICMP_ULT : llvm::CmpInst::Predicate::ICMP_SLT)
+                : llvm::CmpInst::Predicate::FCMP_OLT;
+            break;
+        case GT_GE:
+            llvmPredicate = isIntOrPtr ? (node->IsUnsigned() ? llvm::CmpInst::Predicate::ICMP_UGE : llvm::CmpInst::Predicate::ICMP_SGE)
+                : llvm::CmpInst::Predicate::FCMP_OGE;
+            break;
+        case GT_GT:
+            llvmPredicate = isIntOrPtr ? (node->IsUnsigned() ? llvm::CmpInst::Predicate::ICMP_UGT : llvm::CmpInst::Predicate::ICMP_SGT)
+                : llvm::CmpInst::Predicate::FCMP_OGT;
             break;
         default:
             failFunctionCompilation(); // TODO all genTreeOps values
@@ -1236,6 +1304,9 @@ void visitNode(llvm::IRBuilder<>& builder, GenTree* node)
         case GT_CAST:
             buildCast(builder, node->AsCast());
             break;
+        case GT_CNS_DBL:
+            buildCnsDouble(builder, node);
+            break;
         case GT_CNS_INT:
             buildCnsInt(builder, node);
             break;
@@ -1254,6 +1325,10 @@ void visitNode(llvm::IRBuilder<>& builder, GenTree* node)
             break;
         case GT_EQ:
         case GT_NE:
+        case GT_LE:
+        case GT_LT:
+        case GT_GE:
+        case GT_GT:
             buildCmp(builder, oper, node, getGenTreeValue(node->AsOp()->gtOp1).getValue(builder), getGenTreeValue(node->AsOp()->gtOp2).getValue(builder));
             break;
         case GT_NO_OP:
