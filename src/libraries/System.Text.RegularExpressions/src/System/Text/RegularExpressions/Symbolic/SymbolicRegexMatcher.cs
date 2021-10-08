@@ -31,6 +31,16 @@ namespace System.Text.RegularExpressions.Symbolic
         /// <param name="maxLabelLength">maximum length of labels in nodes anything over that length is indicated with .. </param>
         /// <param name="asNFA">if true creates NFA instead of DFA</param>
         public abstract void SaveDGML(TextWriter writer, int bound, bool hideStateInfo, bool addDotStar, bool inReverse, bool onlyDFAinfo, int maxLabelLength, bool asNFA);
+
+
+        /// <summary>
+        /// Generates up to k random strings matched by the regex
+        /// </summary>
+        /// <param name="k">upper bound on the number of generated strings</param>
+        /// <param name="randomseed">random seed for the generator, 0 means no random seed</param>
+        /// <param name="negative">if true then generate inputs that do not match</param>
+        /// <returns></returns>
+        public abstract IEnumerable<string> GenerateRandomMembers(int k, int randomseed, bool negative);
 #endif
     }
 
@@ -869,6 +879,9 @@ namespace System.Text.RegularExpressions.Symbolic
             var dgml = new DGML.DgmlWriter(writer, hideStateInfo, maxLabelLength, onlyDFAinfo);
             dgml.Write(graph);
         }
+
+        public override IEnumerable<string> GenerateRandomMembers(int k, int randomseed, bool negative) =>
+            new SymbolicRegexSampler<TSetType>(_pattern, randomseed, negative).GenerateRandomMembers(k);
 #endif
     }
 }
