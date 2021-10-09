@@ -1729,6 +1729,10 @@ namespace Internal.JitInterface
         {
         }
 
+        private void updateEntryPointForTailCall(ref CORINFO_CONST_LOOKUP entryPoint)
+        {
+        }
+
         private int* getAddrOfCaptureThreadGlobal(ref void* ppIndirection)
         {
             ppIndirection = null;
