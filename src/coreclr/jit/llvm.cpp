@@ -901,14 +901,19 @@ void buildCast(llvm::IRBuilder<>& builder, GenTreeCast* cast)
     }
 }
 
-void buildCnsDouble(llvm::IRBuilder<>& builder, GenTree* node)
+void buildCnsDouble(llvm::IRBuilder<>& builder, GenTreeDblCon* node)
 {
     if (node->TypeIs(TYP_DOUBLE))
     {
-        mapGenTreeToValue(node, llvm::ConstantFP::get(Type::getDoubleTy(_llvmContext), node->AsDblCon()->gtDconVal));
+        mapGenTreeToValue(node, llvm::ConstantFP::get(Type::getDoubleTy(_llvmContext), node->gtDconVal));
         return;
     }
-    failFunctionCompilation(); // TODO-LLVM: how are floats and decimals done?
+    if (node->TypeIs(TYP_FLOAT))
+    {
+        mapGenTreeToValue(node, llvm::ConstantFP::get(Type::getFloatTy(_llvmContext), node->gtDconVal));
+        return;
+    }
+    failFunctionCompilation();
 }
 
 void buildCnsInt(llvm::IRBuilder<>& builder, GenTree* node)
@@ -1305,7 +1310,7 @@ void visitNode(llvm::IRBuilder<>& builder, GenTree* node)
             buildCast(builder, node->AsCast());
             break;
         case GT_CNS_DBL:
-            buildCnsDouble(builder, node);
+            buildCnsDouble(builder, node->AsDblCon());
             break;
         case GT_CNS_INT:
             buildCnsInt(builder, node);
