@@ -906,14 +906,12 @@ void buildCnsDouble(llvm::IRBuilder<>& builder, GenTreeDblCon* node)
     if (node->TypeIs(TYP_DOUBLE))
     {
         mapGenTreeToValue(node, llvm::ConstantFP::get(Type::getDoubleTy(_llvmContext), node->gtDconVal));
-        return;
     }
-    if (node->TypeIs(TYP_FLOAT))
+    else
     {
+        assert(node->TypeIs(TYP_FLOAT));
         mapGenTreeToValue(node, llvm::ConstantFP::get(Type::getFloatTy(_llvmContext), node->gtDconVal));
-        return;
     }
-    failFunctionCompilation();
 }
 
 void buildCnsInt(llvm::IRBuilder<>& builder, GenTree* node)
