@@ -8550,14 +8550,11 @@ bool CEEInfo::resolveVirtualMethodHelper(CORINFO_DEVIRTUALIZATION_INFO * info)
         // safely devirtualize.
         if (info->context != nullptr)
         {
-            TypeHandle OwnerClsHnd = GetTypeFromContext(info->context);
-            MethodTable* pOwnerMT = OwnerClsHnd.GetMethodTable();
-
             // If the derived class is a shared class, make sure the
             // owner class is too.
             if (pObjMT->IsSharedByGenericInstantiations())
             {
-                pOwnerMT = pOwnerMT->GetCanonicalMethodTable();
+                MethodTable* pCanonBaseMT = pBaseMT->GetCanonicalMethodTable();
 
                 // Check to see if the derived class implements multiple variants of a matching interface.
                 // If so, we cannot predict exactly which implementation is in use here.
@@ -8565,7 +8562,7 @@ bool CEEInfo::resolveVirtualMethodHelper(CORINFO_DEVIRTUALIZATION_INFO * info)
                 int canonicallyMatchingInterfacesFound = 0;
                 while (it.Next())
                 {
-                    if (it.GetInterface(pObjMT)->GetCanonicalMethodTable() == pOwnerMT)
+                    if (it.GetInterface(pObjMT)->GetCanonicalMethodTable() == pCanonBaseMT)
                     {
                         canonicallyMatchingInterfacesFound++;
                         if (canonicallyMatchingInterfacesFound > 1)
@@ -8578,7 +8575,7 @@ bool CEEInfo::resolveVirtualMethodHelper(CORINFO_DEVIRTUALIZATION_INFO * info)
                 }
             }
 
-            pDevirtMD = pObjMT->GetMethodDescForInterfaceMethod(TypeHandle(pOwnerMT), pBaseMD, FALSE /* throwOnConflict */);
+            pDevirtMD = pObjMT->GetMethodDescForInterfaceMethod(TypeHandle(pBaseMT), pBaseMD, FALSE /* throwOnConflict */);
         }
         else if (!pBaseMD->HasClassOrMethodInstantiation())
         {
@@ -13975,6 +13972,11 @@ bool CEEInfo::getTailCallHelpers(CORINFO_RESOLVED_TOKEN* callToken,
 bool CEEInfo::convertPInvokeCalliToCall(CORINFO_RESOLVED_TOKEN * pResolvedToken, bool fMustConvert)
 {
     return false;
+}
+
+void CEEInfo::updateEntryPointForTailCall(CORINFO_CONST_LOOKUP* entryPoint)
+{
+    // No update necessary, all entry points are tail callable in runtime.
 }
 
 void CEEInfo::allocMem (AllocMemArgs *pArgs)
