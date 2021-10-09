@@ -246,7 +246,8 @@ LocatedLlvmValue getSsaLocalForPhi(unsigned lclNum, unsigned ssaNum)
 }
 
 // Copy of logic from ILImporter.GetLLVMTypeForTypeDesc
-llvm::Type* getLlvmTypeForCorInfoType(CorInfoType corInfoType) {
+llvm::Type* getLlvmTypeForCorInfoType(CorInfoType corInfoType)
+{
     switch (corInfoType)
     {
         case CorInfoType::CORINFO_TYPE_VOID:
@@ -274,6 +275,42 @@ llvm::Type* getLlvmTypeForCorInfoType(CorInfoType corInfoType) {
 
         case CorInfoType::CORINFO_TYPE_BYREF:
         case CorInfoType::CORINFO_TYPE_CLASS:
+            return Type::getInt8PtrTy(_llvmContext);
+
+        default:
+            failFunctionCompilation();
+    }
+}
+
+// LLVM-TODO: rationalise all these conversion functions
+llvm::Type* getLlvmTypeForTyp(unsigned char typ)
+{
+    switch (typ)
+    {
+        case TYP_VOID:
+            return Type::getVoidTy(_llvmContext);
+
+        case TYP_BYTE:
+        case TYP_UBYTE:
+        case TYP_BOOL:
+            return Type::getInt8Ty(_llvmContext);
+
+        case TYP_INT:
+        case TYP_UINT:
+            return Type::getInt32Ty(_llvmContext);
+
+        case TYP_LONG:
+        case TYP_ULONG:
+            return Type::getInt64Ty(_llvmContext);
+
+        case TYP_FLOAT:
+            return Type::getFloatTy(_llvmContext);
+
+        case TYP_DOUBLE:
+            return Type::getDoubleTy(_llvmContext);
+
+        case TYP_BYREF:
+        case TYP_REF:
             return Type::getInt8PtrTy(_llvmContext);
 
         default:
@@ -847,26 +884,137 @@ llvm::Value* buildUserFuncCall(GenTreeCall* call, llvm::IRBuilder<>& builder)
     return mapGenTreeToValue(call, location, returnAddress != nullptr ? builder.CreateBitCast(returnAddress, Type::getInt8PtrTy(_llvmContext)->getPointerTo()) : llvmCall);
 }
 
+llvm::FunctionType* buildHelperLlvmFunctionType(GenTreeCall* call, bool withShadowStack)
+{
+    Type* retLlvmType = getLlvmTypeForTyp(call->gtReturnType);
+    std::vector<llvm::Type*> argVec;
+
+    if (withShadowStack)
+    {
+        argVec.push_back(Type::getInt8PtrTy(_llvmContext));
+    }
+
+    for (GenTreeCall::Use& use : call->Args())
+    {
+        Type* argLlvmType = getLLVMTypeForVarType(use.GetNode()->TypeGet());
+        argVec.push_back(argLlvmType);
+    }
+
+    return FunctionType::get(retLlvmType, ArrayRef<llvm::Type*>(argVec), false);
+}
+
+void buildHelperFuncCall(GenTreeCall* call, llvm::IRBuilder<>& builder)
+{
+    llvm::Instruction::CastOps llvmInstruction = llvm::Instruction::FPToSI; // some default
+    Type* llvmDestCastType = nullptr;
+    bool isCast = false;
+
+    // There are 3 types of helpers implemented here
+    // 1 CORINFO_HELP_DBL2UINT and friends - implemented directly
+    // 2 CORINFO_HELP_READYTORUN_STATIC_BASE - a managed call (with shadow stack)
+    // 3 CORINFO_HELP_CHKCASTCLASS - a call to the RuntimeExport (which is a native method for LLVM and has no shadow stack)
+    // TODO-LLVM: how to identify these types to avoid a large set of if(this or that or ....)
+    if (call->gtCallMethHnd == _compiler->eeFindHelper(CORINFO_HELP_DBL2UINT))
+    {
+        llvmInstruction = llvm::Instruction::FPToUI;
+        llvmDestCastType = Type::getInt32Ty(_llvmContext);
+        isCast = true;
+    }
+    else if (call->gtCallMethHnd == _compiler->eeFindHelper(CORINFO_HELP_DBL2LNG))
+    {
+        llvmInstruction = llvm::Instruction::FPToSI;
+        llvmDestCastType = Type::getInt64Ty(_llvmContext);
+        isCast = true;
+    }
+    else if (call->gtCallMethHnd == _compiler->eeFindHelper(CORINFO_HELP_DBL2ULNG))
+    {
+        llvmInstruction = llvm::Instruction::FPToUI;
+        llvmDestCastType = Type::getInt64Ty(_llvmContext);
+        isCast = true;
+    }
+
+    if(isCast)
+    {
+        fgArgInfo* argInfo = call->fgArgInfo;
+        fgArgTabEntry** argTable = argInfo->ArgTable();
+        fgArgTabEntry* curArgTabEntry = argTable[0];
+        mapGenTreeToValue(call, builder.CreateFPToSI(getGenTreeValue(curArgTabEntry->GetNode()).getValue(builder), llvmDestCastType));
+        return;
+    }
+    if (call->gtCallMethHnd == _compiler->eeFindHelper(CORINFO_HELP_READYTORUN_STATIC_BASE) )
+    {
+        const char* symbolName = (*_getMangledSymbolName)(_thisPtr, call->gtEntryPoint.handle);
+        Function* llvmFunc = _module->getFunction(symbolName);
+        if (llvmFunc == nullptr)
+        {
+            llvmFunc = Function::Create(buildHelperLlvmFunctionType(call, true), Function::ExternalLinkage, 0U, symbolName, _module); // TODO: ExternalLinkage forced as defined in ILC module
+        }
+
+        // replacement for _info.compCompHnd->recordRelocation(nullptr, gtCall->gtEntryPoint.handle, IMAGE_REL_BASED_REL32);
+        (*_addCodeReloc)(_thisPtr, call->gtEntryPoint.handle);
+
+        mapGenTreeToValue(call, builder.CreateCall(llvmFunc, getShadowStackForCallee(builder)));
+        return;
+    }
+    else if (call->gtCallMethHnd == _compiler->eeFindHelper(CORINFO_HELP_CHKCASTCLASS))
+    {
+        fgArgInfo* argInfo = call->fgArgInfo;
+        unsigned int argCount = argInfo->ArgCount();
+        fgArgTabEntry** argTable = argInfo->ArgTable();
+        std::vector<OperandArgNum> sortedArgs = std::vector<OperandArgNum>(argCount);
+        OperandArgNum* sortedData = sortedArgs.data();
+
+        for (unsigned i = 0; i < argCount; i++)
+        {
+            fgArgTabEntry* curArgTabEntry = argTable[i];
+            unsigned int   argNum = curArgTabEntry->argNum;
+            OperandArgNum  opAndArg = { argNum, curArgTabEntry->GetNode() };
+            sortedData[argNum] = opAndArg;
+        }
+
+        void* pAddr = nullptr;
+
+        CorInfoHelpFunc helperNum = _compiler->eeGetHelperNum(call->gtCallMethHnd);
+        void* addr = _compiler->compGetHelperFtn(helperNum, &pAddr);
+        const char* symbolName = (*_getMangledSymbolName)(_thisPtr, addr);
+        Function* llvmFunc = _module->getFunction(symbolName);
+        if (llvmFunc == nullptr)
+        {
+            llvmFunc = Function::Create(buildHelperLlvmFunctionType(call, false /* no shadow stack */), Function::ExternalLinkage, 0U, symbolName, _module);
+        }
+
+        (*_addCodeReloc)(_thisPtr, addr);
+
+        std::vector<llvm::Value*> argVec;
+        unsigned argIx = 0;
+
+        for (OperandArgNum opAndArg : sortedArgs)
+        {
+            if ((opAndArg.operand->gtOper == GT_CNS_INT) && opAndArg.operand->IsIconHandle())
+            {
+                const char* methodTableName = (*_getMangledSymbolName)(_thisPtr, (void*)(opAndArg.operand->AsIntCon()->IconValue()));
+                argVec.push_back(castIfNecessary(builder, getOrCreateExternalSymbol(methodTableName), llvmFunc->getArg(argIx)->getType()));
+            }
+            else
+            {
+                argVec.push_back(genTreeAsLlvmType(builder, opAndArg.operand, llvmFunc->getArg(argIx)->getType()));
+            }
+            argIx++;
+        }
+        // TODO-LLVM: consider setting @t_pShadowStackTop to avoid a malloc in the thunk
+        mapGenTreeToValue(call, builder.CreateCall(llvmFunc, llvm::ArrayRef<Value*>(argVec)));
+        return;
+    }
+    failFunctionCompilation();
+}
+
 void buildCall(llvm::IRBuilder<>& builder, GenTree* node)
 {
     GenTreeCall* call = node->AsCall();
     if (call->gtCallType == CT_HELPER)
     {
-        if (call->gtCallMethHnd == _compiler->eeFindHelper(CORINFO_HELP_READYTORUN_STATIC_BASE))
-        {
-            const char* symbolName = (*_getMangledSymbolName)(_thisPtr, call->gtEntryPoint.handle);
-            Function* llvmFunc = _module->getFunction(symbolName);
-            if (llvmFunc == nullptr)
-            {
-                llvmFunc = Function::Create(FunctionType::get(Type::getInt8PtrTy(_llvmContext), ArrayRef<Type*>(Type::getInt8PtrTy(_llvmContext)), false), Function::ExternalLinkage, 0U, symbolName, _module); // TODO: ExternalLinkage forced as defined in ILC module
-            }
-
-            // replacement for _info.compCompHnd->recordRelocation(nullptr, gtCall->gtEntryPoint.handle, IMAGE_REL_BASED_REL32);
-            (*_addCodeReloc)(_thisPtr, call->gtEntryPoint.handle);
-
-            mapGenTreeToValue(node, builder.CreateCall(llvmFunc, getShadowStackForCallee(builder)));
-            return;
-        }
+        buildHelperFuncCall(call, builder);
+        return;
     }
     else if (call->gtCallType == CT_USER_FUNC && !call->IsVirtualStub() /* TODO: Virtual stub not implemented */)
     {
