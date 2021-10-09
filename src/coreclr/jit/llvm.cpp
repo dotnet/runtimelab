@@ -903,7 +903,7 @@ void buildCast(llvm::IRBuilder<>& builder, GenTreeCast* cast)
 
 void buildCnsDouble(llvm::IRBuilder<>& builder, GenTree* node)
 {
-    if (node->gtType == var_types::TYP_DOUBLE)
+    if (node->TypeIs(TYP_DOUBLE))
     {
         mapGenTreeToValue(node, llvm::ConstantFP::get(Type::getDoubleTy(_llvmContext), node->AsDblCon()->gtDconVal));
         return;
