@@ -196,7 +196,7 @@ namespace System.Text.Json.SourceGeneration
                 _stringType = _metadataLoadContext.Resolve(SpecialType.System_String);
 
                 _dateTimeOffsetType = _metadataLoadContext.Resolve(typeof(DateTimeOffset));
-                _byteArrayType = _metadataLoadContext.Resolve(typeof(byte[]));
+                _byteArrayType = _metadataLoadContext.Resolve(typeof(byte)).MakeArrayType();
                 _guidType = _metadataLoadContext.Resolve(typeof(Guid));
                 _uriType = _metadataLoadContext.Resolve(typeof(Uri));
                 _versionType = _metadataLoadContext.Resolve(typeof(Version));
@@ -645,6 +645,7 @@ namespace System.Text.Json.SourceGeneration
                 bool hasInitOnlyProperties = false;
                 bool hasTypeFactoryConverter = false;
                 bool hasPropertyFactoryConverters = false;
+                bool canContainNullableReferenceAnnotations = type.CanContainNullableReferenceTypeAnnotations();
 
                 IList<CustomAttributeData> attributeDataList = CustomAttributeData.GetCustomAttributes(type);
                 foreach (CustomAttributeData attributeData in attributeDataList)
@@ -1011,6 +1012,7 @@ namespace System.Text.Json.SourceGeneration
                     converterInstatiationLogic,
                     implementsIJsonOnSerialized : implementsIJsonOnSerialized,
                     implementsIJsonOnSerializing : implementsIJsonOnSerializing,
+                    canContainNullableReferenceAnnotations: canContainNullableReferenceAnnotations,
                     hasTypeFactoryConverter : hasTypeFactoryConverter,
                     hasPropertyFactoryConverters : hasPropertyFactoryConverters);
 

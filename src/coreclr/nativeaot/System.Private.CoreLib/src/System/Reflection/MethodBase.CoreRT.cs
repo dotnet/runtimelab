@@ -1,6 +1,7 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Diagnostics.CodeAnalysis;
 using Internal.Reflection.Augments;
 
 namespace System.Reflection
@@ -10,6 +11,7 @@ namespace System.Reflection
         public static MethodBase GetMethodFromHandle(RuntimeMethodHandle handle) => ReflectionAugments.ReflectionCoreCallbacks.GetMethodFromHandle(handle);
         public static MethodBase GetMethodFromHandle(RuntimeMethodHandle handle, RuntimeTypeHandle declaringType) => ReflectionAugments.ReflectionCoreCallbacks.GetMethodFromHandle(handle, declaringType);
 
+        [RequiresUnreferencedCode("Metadata for the method might be incomplete or removed")]
         [System.Runtime.CompilerServices.Intrinsic]
         public static MethodBase GetCurrentMethod() { throw NotImplemented.ByDesign; } //Implemented by toolchain.
 

@@ -127,7 +127,7 @@ COOP_PINVOKE_HELPER(TypeManagerHandle, RhGetModuleFromEEType, (MethodTable * pEE
     return *pEEType->GetTypeManagerPtr();
 }
 
-COOP_PINVOKE_HELPER(Boolean, RhFindBlob, (TypeManagerHandle *pTypeManagerHandle, uint32_t blobId, uint8_t ** ppbBlob, uint32_t * pcbBlob))
+COOP_PINVOKE_HELPER(FC_BOOL_RET, RhFindBlob, (TypeManagerHandle *pTypeManagerHandle, uint32_t blobId, uint8_t ** ppbBlob, uint32_t * pcbBlob))
 {
     TypeManagerHandle typeManagerHandle = *pTypeManagerHandle;
 
@@ -144,7 +144,7 @@ COOP_PINVOKE_HELPER(Boolean, RhFindBlob, (TypeManagerHandle *pTypeManagerHandle,
     *ppbBlob = (uint8_t*)pBlob;
     *pcbBlob = (uint32_t)length;
 
-    return pBlob != NULL;
+    FC_RETURN_BOOL(pBlob != NULL);
 }
 
 COOP_PINVOKE_HELPER(void *, RhGetTargetOfUnboxingAndInstantiatingStub, (void * pUnboxStub))

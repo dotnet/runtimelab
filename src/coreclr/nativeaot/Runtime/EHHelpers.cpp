@@ -28,18 +28,18 @@
 #include "MethodTable.h"
 #include "MethodTable.inl"
 
-COOP_PINVOKE_HELPER(Boolean, RhpEHEnumInitFromStackFrameIterator, (
+COOP_PINVOKE_HELPER(FC_BOOL_RET, RhpEHEnumInitFromStackFrameIterator, (
     StackFrameIterator* pFrameIter, void ** pMethodStartAddressOut, EHEnum* pEHEnum))
 {
     ICodeManager * pCodeManager = pFrameIter->GetCodeManager();
     pEHEnum->m_pCodeManager = pCodeManager;
 
-    return pCodeManager->EHEnumInit(pFrameIter->GetMethodInfo(), pMethodStartAddressOut, &pEHEnum->m_state);
+    FC_RETURN_BOOL(pCodeManager->EHEnumInit(pFrameIter->GetMethodInfo(), pMethodStartAddressOut, &pEHEnum->m_state));
 }
 
-COOP_PINVOKE_HELPER(Boolean, RhpEHEnumNext, (EHEnum* pEHEnum, EHClause* pEHClause))
+COOP_PINVOKE_HELPER(FC_BOOL_RET, RhpEHEnumNext, (EHEnum* pEHEnum, EHClause* pEHClause))
 {
-    return pEHEnum->m_pCodeManager->EHEnumNext(&pEHEnum->m_state, pEHClause);
+    FC_RETURN_BOOL(pEHEnum->m_pCodeManager->EHEnumNext(&pEHEnum->m_state, pEHClause));
 }
 
 // Unmanaged helper to locate one of two classlib-provided functions that the runtime needs to

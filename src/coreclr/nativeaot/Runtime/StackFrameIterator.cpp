@@ -1807,7 +1807,7 @@ bool StackFrameIterator::ShouldSkipRegularGcReporting()
 
 #ifndef DACCESS_COMPILE
 
-COOP_PINVOKE_HELPER(Boolean, RhpSfiInit, (StackFrameIterator* pThis, PAL_LIMITED_CONTEXT* pStackwalkCtx, Boolean instructionFault))
+COOP_PINVOKE_HELPER(FC_BOOL_RET, RhpSfiInit, (StackFrameIterator* pThis, PAL_LIMITED_CONTEXT* pStackwalkCtx, CLR_BOOL instructionFault))
 {
     Thread * pCurThread = ThreadStore::GetCurrentThread();
 
@@ -1826,10 +1826,10 @@ COOP_PINVOKE_HELPER(Boolean, RhpSfiInit, (StackFrameIterator* pThis, PAL_LIMITED
     bool isValid = pThis->IsValid();
     if (isValid)
         pThis->CalculateCurrentMethodState();
-    return isValid ? Boolean_true : Boolean_false;
+    FC_RETURN_BOOL(isValid);
 }
 
-COOP_PINVOKE_HELPER(Boolean, RhpSfiNext, (StackFrameIterator* pThis, uint32_t* puExCollideClauseIdx, Boolean* pfUnwoundReversePInvoke))
+COOP_PINVOKE_HELPER(FC_BOOL_RET, RhpSfiNext, (StackFrameIterator* pThis, uint32_t* puExCollideClauseIdx, CLR_BOOL* pfUnwoundReversePInvoke))
 {
     // The stackwalker is intolerant to hijacked threads, as it is largely expecting to be called from C++
     // where the hijack state of the thread is invariant.  Because we've exposed the iterator out to C#, we
@@ -1861,12 +1861,10 @@ COOP_PINVOKE_HELPER(Boolean, RhpSfiNext, (StackFrameIterator* pThis, uint32_t* p
 
     if (pfUnwoundReversePInvoke != NULL)
     {
-        *pfUnwoundReversePInvoke = (pThis->m_dwFlags & StackFrameIterator::UnwoundReversePInvoke)
-                                        ? Boolean_true
-                                        : Boolean_false;
+        *pfUnwoundReversePInvoke = (pThis->m_dwFlags & StackFrameIterator::UnwoundReversePInvoke) != 0;
     }
 
-    return isValid;
+    FC_RETURN_BOOL(isValid);
 }
 
 #endif // !DACCESS_COMPILE
