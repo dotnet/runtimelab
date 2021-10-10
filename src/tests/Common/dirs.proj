@@ -33,10 +33,6 @@
       <DisabledProjects Include="$(TestRoot)managed\Compilation\Compilation.csproj" />
     </ItemGroup>
 
-    <ItemGroup Condition="'$(SmokeTestsOnly)' == 'true'">
-      <BuildTestTrees Include="nativeaot" />
-    </ItemGroup>
-
     <ItemGroup>
       <BuildTestProjects Include="$(__BuildTestProject.Split(';'))" />
       <BuildTestDirs Include="$(__BuildTestDir.Split(';'))" />

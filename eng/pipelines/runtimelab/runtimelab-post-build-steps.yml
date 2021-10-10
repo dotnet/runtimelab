@@ -7,7 +7,7 @@ parameters:
   pgoType: ''
   runtimeVariant: ''
   uploadTests: false
-  smokeTestsOnly: true
+  testFilter: tree nativeaot
   runSingleFileTests: true
   uploadIntermediateArtifacts: false
 
@@ -22,10 +22,10 @@ steps:
 
   # Build coreclr native test output
   - ${{ if eq(parameters.osGroup, 'windows') }}:
-    - script: $(Build.SourcesDirectory)/src/tests/build$(scriptExt) nativeaot $(buildConfigUpper) ${{ parameters.archType }} /p:NativeAotMultimodule=true /p:SmokeTestsOnly=${{ parameters.smokeTestsOnly }}
+    - script: $(Build.SourcesDirectory)/src/tests/build$(scriptExt) nativeaot $(buildConfigUpper) ${{ parameters.archType }} ${{ parameters.testFilter }} /p:NativeAotMultimodule=true
       displayName: Build tests
   - ${{ if ne(parameters.osGroup, 'windows') }}:
-    - script: $(Build.SourcesDirectory)/src/tests/build$(scriptExt) nativeaot $(buildConfigUpper) ${{ parameters.archType }} /p:SmokeTestsOnly=true
+    - script: $(Build.SourcesDirectory)/src/tests/build$(scriptExt) nativeaot $(buildConfigUpper) ${{ parameters.archType }} 'tree nativeaot'
       displayName: Build tests
 
   - ${{ if eq(parameters.runSingleFileTests, true) }}:
