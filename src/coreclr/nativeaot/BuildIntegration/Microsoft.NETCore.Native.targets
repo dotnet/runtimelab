@@ -27,7 +27,7 @@ The .NET Foundation licenses this file to you under the MIT license.
     <NativeDebugSymbols Condition="$(DebugSymbols) == 'true' or ($(DebugType) != 'none' and $(DebugType) != '')">true</NativeDebugSymbols>
     <!-- Workaround for https://github.com/dotnet/runtimelab/issues/771 -->
     <ErrorOnDuplicatePublishOutputFiles>false</ErrorOnDuplicatePublishOutputFiles>
-    <PublishTrimmed>true</PublishTrimmed>
+    <PublishTrimmed Condition="'$(PublishTrimmed)' == ''">true</PublishTrimmed>
   </PropertyGroup>
 
   <!-- Set up the defaults for the compatibility mode -->
@@ -114,7 +114,9 @@ The .NET Foundation licenses this file to you under the MIT license.
     <DefaultFrameworkAssemblies Include="@(PrivateSdkAssemblies)" />
   </ItemGroup>
 
-  <Target Name="_ComputeManagedAssemblyForILLink" AfterTargets="_ComputeManagedAssemblyToLink">
+  <Target Name="_ComputeManagedAssemblyForILLink"
+          AfterTargets="_ComputeManagedAssemblyToLink"
+          Condition="'$(NativeCompilationDuringPublish)' == 'true'">
     <ItemGroup>
       <ManagedAssemblyToLink Remove="@(ManagedAssemblyToLink)" />
       <ManagedAssemblyToLink Include="@(DefaultFrameworkAssemblies);@(_ManagedResolvedAssembliesToPublish);@(ManagedBinary)" />
