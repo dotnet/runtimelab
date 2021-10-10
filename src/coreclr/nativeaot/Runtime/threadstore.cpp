@@ -359,7 +359,7 @@ COOP_PINVOKE_HELPER(void *, RhpGetCurrentThread, ())
     return ThreadStore::GetCurrentThread();
 }
 
-COOP_PINVOKE_HELPER(void, RhpInitiateThreadAbort, (void* thread, Object * threadAbortException, Boolean doRudeAbort))
+COOP_PINVOKE_HELPER(void, RhpInitiateThreadAbort, (void* thread, Object * threadAbortException, CLR_BOOL doRudeAbort))
 {
     GetThreadStore()->InitiateThreadAbort((Thread*)thread, threadAbortException, doRudeAbort);
 }
@@ -466,12 +466,12 @@ void ThreadStore::SaveCurrentThreadOffsetForDAC()
 #ifndef DACCESS_COMPILE
 
 // internal static extern unsafe bool RhGetExceptionsForCurrentThread(Exception[] outputArray, out int writtenCountOut);
-COOP_PINVOKE_HELPER(Boolean, RhGetExceptionsForCurrentThread, (Array* pOutputArray, int32_t* pWrittenCountOut))
+COOP_PINVOKE_HELPER(FC_BOOL_RET, RhGetExceptionsForCurrentThread, (Array* pOutputArray, int32_t* pWrittenCountOut))
 {
-    return GetThreadStore()->GetExceptionsForCurrentThread(pOutputArray, pWrittenCountOut);
+    FC_RETURN_BOOL(GetThreadStore()->GetExceptionsForCurrentThread(pOutputArray, pWrittenCountOut));
 }
 
-Boolean ThreadStore::GetExceptionsForCurrentThread(Array* pOutputArray, int32_t* pWrittenCountOut)
+bool ThreadStore::GetExceptionsForCurrentThread(Array* pOutputArray, int32_t* pWrittenCountOut)
 {
     int32_t countWritten = 0;
     Object** pArrayElements;
@@ -497,7 +497,7 @@ Boolean ThreadStore::GetExceptionsForCurrentThread(Array* pOutputArray, int32_t*
 
     // Success, but nothing to report.
     if (countWritten == 0)
-        return Boolean_true;
+        return true;
 
     pArrayElements = (Object**)pOutputArray->GetArrayData();
     for (PTR_ExInfo pInfo = pThread->m_pExInfoStackHead; pInfo != NULL; pInfo = pInfo->m_pPrevExInfo)
@@ -510,10 +510,10 @@ Boolean ThreadStore::GetExceptionsForCurrentThread(Array* pOutputArray, int32_t*
     }
 
     RhpBulkWriteBarrier(pArrayElements, countWritten * POINTER_SIZE);
-    return Boolean_true;
+    return true;
 
 Error:
     *pWrittenCountOut = countWritten;
-    return Boolean_false;
+    return false;
 }
 #endif // DACCESS_COMPILE

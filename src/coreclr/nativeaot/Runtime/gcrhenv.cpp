@@ -738,7 +738,7 @@ COOP_PINVOKE_HELPER(void, RhpCopyObjectContents, (Object* pobjDest, Object* pobj
     }
 }
 
-COOP_PINVOKE_HELPER(Boolean, RhCompareObjectContentsAndPadding, (Object* pObj1, Object* pObj2))
+COOP_PINVOKE_HELPER(FC_BOOL_RET, RhCompareObjectContentsAndPadding, (Object* pObj1, Object* pObj2))
 {
     ASSERT(pObj1->get_EEType()->IsEquivalentTo(pObj2->get_EEType()));
     MethodTable * pEEType = pObj1->get_EEType();
@@ -747,7 +747,7 @@ COOP_PINVOKE_HELPER(Boolean, RhCompareObjectContentsAndPadding, (Object* pObj1, 
     uint8_t * pbFields1 = (uint8_t*)pObj1 + sizeof(MethodTable*);
     uint8_t * pbFields2 = (uint8_t*)pObj2 + sizeof(MethodTable*);
 
-    return (memcmp(pbFields1, pbFields2, cbFields) == 0) ? Boolean_true : Boolean_false;
+    FC_RETURN_BOOL(memcmp(pbFields1, pbFields2, cbFields) == 0);
 }
 
 // Thread static representing the last allocation.

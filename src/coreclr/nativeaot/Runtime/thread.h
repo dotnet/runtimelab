@@ -266,7 +266,7 @@ public:
     void SetThreadAbortException(Object *exception);
 
     Object* GetThreadStaticStorageForModule(uint32_t moduleIndex);
-    Boolean SetThreadStaticStorageForModule(Object * pStorage, uint32_t moduleIndex);
+    bool SetThreadStaticStorageForModule(Object* pStorage, uint32_t moduleIndex);
 };
 
 #ifndef __GCENV_BASE_INCLUDED__

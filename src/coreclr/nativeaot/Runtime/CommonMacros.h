@@ -179,6 +179,17 @@ inline bool IS_ALIGNED(T* val, uintptr_t alignment);
 #define COOP_PINVOKE_CDECL_HELPER COOP_PINVOKE_HELPER
 #endif
 
+typedef bool CLR_BOOL;
+
+#if defined(TARGET_X86) || defined(TARGET_AMD64)
+// The return value is artifically widened on x86 and amd64
+typedef int32_t FC_BOOL_RET;
+#else
+typedef bool FC_BOOL_RET;
+#endif
+
+#define FC_RETURN_BOOL(x)   do { return !!(x); } while(0)
+
 #ifndef DACCESS_COMPILE
 #define IN_DAC(x)
 #define NOT_IN_DAC(x) x

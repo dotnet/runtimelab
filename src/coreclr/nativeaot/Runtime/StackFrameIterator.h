@@ -18,8 +18,8 @@ struct EHEnum
     EHEnumState m_state;
 };
 
-EXTERN_C Boolean FASTCALL RhpSfiInit(StackFrameIterator* pThis, PAL_LIMITED_CONTEXT* pStackwalkCtx, Boolean instructionFault);
-EXTERN_C Boolean FASTCALL RhpSfiNext(StackFrameIterator* pThis, uint32_t* puExCollideClauseIdx, Boolean* pfUnwoundReversePInvoke);
+EXTERN_C FC_BOOL_RET FASTCALL RhpSfiInit(StackFrameIterator* pThis, PAL_LIMITED_CONTEXT* pStackwalkCtx, CLR_BOOL instructionFault);
+EXTERN_C FC_BOOL_RET FASTCALL RhpSfiNext(StackFrameIterator* pThis, uint32_t* puExCollideClauseIdx, CLR_BOOL* pfUnwoundReversePInvoke);
 
 struct PInvokeTransitionFrame;
 typedef DPTR(PInvokeTransitionFrame) PTR_PInvokeTransitionFrame;
@@ -28,8 +28,8 @@ typedef DPTR(PAL_LIMITED_CONTEXT) PTR_PAL_LIMITED_CONTEXT;
 class StackFrameIterator
 {
     friend class AsmOffsets;
-    friend Boolean FASTCALL RhpSfiInit(StackFrameIterator* pThis, PAL_LIMITED_CONTEXT* pStackwalkCtx, Boolean instructionFault);
-    friend Boolean FASTCALL RhpSfiNext(StackFrameIterator* pThis, uint32_t* puExCollideClauseIdx, Boolean* pfUnwoundReversePInvoke);
+    friend FC_BOOL_RET FASTCALL RhpSfiInit(StackFrameIterator* pThis, PAL_LIMITED_CONTEXT* pStackwalkCtx, CLR_BOOL instructionFault);
+    friend FC_BOOL_RET FASTCALL RhpSfiNext(StackFrameIterator* pThis, uint32_t* puExCollideClauseIdx, CLR_BOOL* pfUnwoundReversePInvoke);
 
 public:
     StackFrameIterator() {}

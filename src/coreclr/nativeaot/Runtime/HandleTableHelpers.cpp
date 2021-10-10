@@ -52,9 +52,9 @@ COOP_PINVOKE_HELPER(void, RhHandleSet, (OBJECTHANDLE handle, Object *pObject))
     GCHandleUtilities::GetGCHandleManager()->StoreObjectInHandle(handle, pObject);
 }
 
-COOP_PINVOKE_HELPER(Boolean, RhRegisterRefCountedHandleCallback, (void * pCallout, MethodTable * pTypeFilter))
+COOP_PINVOKE_HELPER(FC_BOOL_RET, RhRegisterRefCountedHandleCallback, (void * pCallout, MethodTable * pTypeFilter))
 {
-    return RestrictedCallouts::RegisterRefCountedHandleCallback(pCallout, pTypeFilter);
+    FC_RETURN_BOOL(RestrictedCallouts::RegisterRefCountedHandleCallback(pCallout, pTypeFilter));
 }
 
 COOP_PINVOKE_HELPER(void, RhUnregisterRefCountedHandleCallback, (void * pCallout, MethodTable * pTypeFilter))
