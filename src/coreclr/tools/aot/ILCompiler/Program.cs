@@ -94,6 +94,8 @@ namespace ILCompiler
         private IReadOnlyList<string> _singleWarnDisabledAssemblies = Array.Empty<string>();
         private bool _singleWarn;
 
+        private string _makeReproPath;
+
         private bool _help;
 
         private Program()
@@ -227,6 +229,8 @@ namespace ILCompiler
                 syntax.DefineOption("singlemethodname", ref _singleMethodName, "Single method compilation: name of the method");
                 syntax.DefineOptionList("singlemethodgenericarg", ref _singleMethodGenericArgs, "Single method compilation: generic arguments to the method");
 
+                syntax.DefineOption("make-repro-path", ref _makeReproPath, "Path where to place a repro package");
+
                 syntax.DefineParameterList("in", ref inputFiles, "Input file(s) to compile");
             });
             if (waitForDebugger)
@@ -252,6 +256,16 @@ namespace ILCompiler
 
             foreach (var reference in referenceFiles)
                 Helpers.AppendExpandedPaths(_referenceFilePaths, reference, false);
+
+            if (_makeReproPath != null)
+            {
+                // Create a repro package in the specified path
+                // This package will have the set of input files needed for compilation
+                // + the original command line arguments
+                // + a rsp file that should work to directly run out of the zip file
+
+                Helpers.MakeReproPackage(_makeReproPath, _outputFilePath, args, argSyntax, new[] { "-r", "-m", "--rdxml", "--directpinvokelist" });
+            }
 
             return argSyntax;
         }
