@@ -903,6 +903,11 @@ llvm::FunctionType* buildHelperLlvmFunctionType(GenTreeCall* call, bool withShad
     return FunctionType::get(retLlvmType, ArrayRef<llvm::Type*>(argVec), false);
 }
 
+bool helperRequiresShadowStack(CORINFO_METHOD_HANDLE corinfoMethodHnd)
+{
+    return corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_TYPEHANDLE_TO_RUNTIMETYPEHANDLE);
+}
+
 void buildHelperFuncCall(GenTreeCall* call, llvm::IRBuilder<>& builder)
 {
     llvm::Instruction::CastOps llvmInstruction = llvm::Instruction::FPToSI; // some default
@@ -914,7 +919,13 @@ void buildHelperFuncCall(GenTreeCall* call, llvm::IRBuilder<>& builder)
     // 2 CORINFO_HELP_READYTORUN_STATIC_BASE - a managed call (with shadow stack)
     // 3 CORINFO_HELP_CHKCASTCLASS - a call to the RuntimeExport (which is a native method for LLVM and has no shadow stack)
     // TODO-LLVM: how to identify these types to avoid a large set of if(this or that or ....)
-    if (call->gtCallMethHnd == _compiler->eeFindHelper(CORINFO_HELP_DBL2UINT))
+    if (call->gtCallMethHnd == _compiler->eeFindHelper(CORINFO_HELP_DBL2INT))
+    {
+        llvmInstruction = llvm::Instruction::FPToSI;
+        llvmDestCastType = Type::getInt32Ty(_llvmContext);
+        isCast = true;
+    }
+    else if (call->gtCallMethHnd == _compiler->eeFindHelper(CORINFO_HELP_DBL2UINT))
     {
         llvmInstruction = llvm::Instruction::FPToUI;
         llvmDestCastType = Type::getInt32Ty(_llvmContext);
@@ -932,6 +943,27 @@ void buildHelperFuncCall(GenTreeCall* call, llvm::IRBuilder<>& builder)
         llvmDestCastType = Type::getInt64Ty(_llvmContext);
         isCast = true;
     }
+    else if (call->gtCallMethHnd == _compiler->eeFindHelper(CORINFO_HELP_LNG2DBL))
+    {
+        llvmInstruction = llvm::Instruction::SIToFP;
+        llvmDestCastType = Type::getDoubleTy(_llvmContext);
+        isCast = true;
+    }
+    else if (call->gtCallMethHnd == _compiler->eeFindHelper(CORINFO_HELP_ULNG2DBL))
+    {
+        llvmInstruction = llvm::Instruction::UIToFP;
+        llvmDestCastType = Type::getDoubleTy(_llvmContext);
+        isCast = true;
+    }
+    else if (call->gtCallMethHnd == _compiler->eeFindHelper(CORINFO_HELP_DBL2INT_OVF)
+        || call->gtCallMethHnd == _compiler->eeFindHelper(CORINFO_HELP_DBL2LNG_OVF)
+        || call->gtCallMethHnd == _compiler->eeFindHelper(CORINFO_HELP_DBL2UINT_OVF)
+        || call->gtCallMethHnd == _compiler->eeFindHelper(CORINFO_HELP_DBL2ULNG_OVF)
+        )
+    {
+        // LLVM-TODO
+        failFunctionCompilation();
+    }
 
     if(isCast)
     {
@@ -941,7 +973,8 @@ void buildHelperFuncCall(GenTreeCall* call, llvm::IRBuilder<>& builder)
         mapGenTreeToValue(call, builder.CreateFPToSI(getGenTreeValue(curArgTabEntry->GetNode()).getValue(builder), llvmDestCastType));
         return;
     }
-    if (call->gtCallMethHnd == _compiler->eeFindHelper(CORINFO_HELP_READYTORUN_STATIC_BASE) )
+
+    if (call->gtCallMethHnd == _compiler->eeFindHelper(CORINFO_HELP_READYTORUN_STATIC_BASE))
     {
         const char* symbolName = (*_getMangledSymbolName)(_thisPtr, call->gtEntryPoint.handle);
         Function* llvmFunc = _module->getFunction(symbolName);
@@ -956,7 +989,9 @@ void buildHelperFuncCall(GenTreeCall* call, llvm::IRBuilder<>& builder)
         mapGenTreeToValue(call, builder.CreateCall(llvmFunc, getShadowStackForCallee(builder)));
         return;
     }
-    else if (call->gtCallMethHnd == _compiler->eeFindHelper(CORINFO_HELP_CHKCASTCLASS))
+    else if (call->gtCallMethHnd == _compiler->eeFindHelper(CORINFO_HELP_CHKCASTCLASS)
+        || call->gtCallMethHnd == _compiler->eeFindHelper(CORINFO_HELP_NEWSFAST)
+        || call->gtCallMethHnd == _compiler->eeFindHelper(CORINFO_HELP_THROW))
     {
         fgArgInfo* argInfo = call->fgArgInfo;
         unsigned int argCount = argInfo->ArgCount();
@@ -1002,7 +1037,73 @@ void buildHelperFuncCall(GenTreeCall* call, llvm::IRBuilder<>& builder)
             argIx++;
         }
         // TODO-LLVM: consider setting @t_pShadowStackTop to avoid a malloc in the thunk
+        // TODO-LLVM: If the block has a handler, this will need to be an invoke.  E.g. create a CallOrInvoke as per ILToLLVMImporter
         mapGenTreeToValue(call, builder.CreateCall(llvmFunc, llvm::ArrayRef<Value*>(argVec)));
+        if (call->gtCallMethHnd == _compiler->eeFindHelper(CORINFO_HELP_THROW))
+        {
+            builder.CreateUnreachable();
+        }
+        return;
+    }
+    else if (call->gtCallMethHnd == _compiler->eeFindHelper(CORINFO_HELP_TYPEHANDLE_TO_RUNTIMETYPEHANDLE))
+    {
+        bool requiresShadowStack = helperRequiresShadowStack(call->gtCallMethHnd);
+        fgArgInfo* argInfo = call->fgArgInfo;
+        unsigned int argCount = argInfo->ArgCount();
+        fgArgTabEntry** argTable = argInfo->ArgTable();
+        std::vector<OperandArgNum> sortedArgs = std::vector<OperandArgNum>(argCount);
+        OperandArgNum* sortedData = sortedArgs.data();
+
+        for (unsigned i = 0; i < argCount; i++)
+        {
+            fgArgTabEntry* curArgTabEntry = argTable[i];
+            unsigned int   argNum = curArgTabEntry->argNum;
+            OperandArgNum  opAndArg = { argNum, curArgTabEntry->GetNode() };
+            sortedData[argNum] = opAndArg;
+        }
+
+        void* pAddr = nullptr;
+
+        CorInfoHelpFunc helperNum = _compiler->eeGetHelperNum(call->gtCallMethHnd);
+        void* addr = _compiler->compGetHelperFtn(helperNum, &pAddr);
+        const char* symbolName = (*_getMangledSymbolName)(_thisPtr, addr);
+        Function* llvmFunc = _module->getFunction(symbolName);
+        if (llvmFunc == nullptr)
+        {
+            llvmFunc = Function::Create(buildHelperLlvmFunctionType(call, requiresShadowStack), Function::ExternalLinkage, 0U, symbolName, _module);
+        }
+
+        (*_addCodeReloc)(_thisPtr, addr);
+
+        std::vector<llvm::Value*> argVec;
+        unsigned argIx = 0;
+
+        if (requiresShadowStack)
+        {
+            Value* shadowStackForCallee = getShadowStackForCallee(builder); // TODO: store this in the prolog and calculate once.
+            argVec.push_back(shadowStackForCallee);
+        }
+
+        for (OperandArgNum opAndArg : sortedArgs)
+        {
+            if ((opAndArg.operand->gtOper == GT_CNS_INT) && opAndArg.operand->IsIconHandle())
+            {
+                const char* methodTableName = (*_getMangledSymbolName)(_thisPtr, (void*)(opAndArg.operand->AsIntCon()->IconValue()));
+                argVec.push_back(castIfNecessary(builder, getOrCreateExternalSymbol(methodTableName), llvmFunc->getArg(argIx)->getType()));
+            }
+            else
+            {
+                argVec.push_back(genTreeAsLlvmType(builder, opAndArg.operand, llvmFunc->getArg(argIx)->getType()));
+            }
+            argIx++;
+        }
+        // TODO-LLVM: consider setting @t_pShadowStackTop to avoid a malloc in the thunk
+        // TODO-LLVM: If the block has a handler, this will need to be an invoke.  E.g. create a CallOrInvoke as per ILToLLVMImporter
+        mapGenTreeToValue(call, builder.CreateCall(llvmFunc, llvm::ArrayRef<Value*>(argVec)));
+        if (call->gtCallMethHnd == _compiler->eeFindHelper(CORINFO_HELP_THROW))
+        {
+            builder.CreateUnreachable();
+        }
         return;
     }
     failFunctionCompilation();
