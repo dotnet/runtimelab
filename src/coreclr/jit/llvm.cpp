@@ -455,7 +455,7 @@ llvm::Type* getLlvmTypeForStruct(CORINFO_CLASS_HANDLE structHandle)
 }
 
 // Copy of logic from ILImporter.GetLLVMTypeForTypeDesc
-llvm::Type* getLlvmTypeForCorInfoType(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd) {
+llvm::Type* getLlvmTypeForCorInfoType(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd)
 {
     switch (corInfoType)
     {
@@ -543,8 +543,10 @@ CorInfoType toCorInfoType(var_types varType)
             return CorInfoType::CORINFO_TYPE_BYTE;
         case TYP_UBYTE:
             return CorInfoType::CORINFO_TYPE_UBYTE;
+        case TYP_STRUCT:
         case TYP_LCLBLK: // TODO: outgoing args space - need to get an example compiling, e.g. https://github.com/dotnet/runtimelab/blob/40f9ff64ae80596bcddcec16a7e1a8f57a0b2cff/src/tests/nativeaot/SmokeTests/HelloWasm/HelloWasm.cs#L3492 to see what's
             // going on.  CORINFO_TYPE_VALUECLASS is a better mapping but if that is mapped as of now, then canStoreTypeOnLlvmStack will fail compilation for most methods.
+            return CORINFO_TYPE_VALUECLASS;
         case TYP_DOUBLE:
             return CorInfoType::CORINFO_TYPE_DOUBLE;
         case TYP_FLOAT:
@@ -611,22 +613,23 @@ unsigned int padNextOffset(CorInfoType corInfoType, unsigned int atOffset)
 }
 
 /// <summary>
-/// Returns true if the type can be stored on the LLVM stack
+/// Returns true if the local can be stored on the LLVM stack
 /// instead of the shadow stack in this method.
 /// </summary>
 bool canStoreLocalOnLlvmStack(LclVarDsc* varDsc)
 {
-    CorInfoType corInfoType = toCorInfoType(varDsc->TypeGet());
+    var_types varType = varDsc->TypeGet();
+    if (varType == var_types::TYP_LCLBLK) return false;
+
     // structs with no GC pointers can go on LLVM stack.
-    if (corInfoType == CorInfoType::CORINFO_TYPE_VALUECLASS)
+    if (varTypeIsStruct(varDsc))
     {
         ClassLayout* layout = varDsc->GetLayout();
 
         return !layout->HasGCPtr();
     }
 
-    if (corInfoType == CorInfoType::CORINFO_TYPE_BYREF || corInfoType == CorInfoType::CORINFO_TYPE_CLASS ||
-        corInfoType == CorInfoType::CORINFO_TYPE_REFANY)
+    if (varType == var_types::TYP_BYREF || varType == var_types::TYP_REF)
     {
         return false;
     }
@@ -956,9 +959,9 @@ unsigned int getTotalRealLocalOffset()
         LclVarDsc* varDsc = _compiler->lvaGetDesc(lclNum);
         if (!varDsc->lvIsParam)
         {
-            CorInfoType corInfoType = toCorInfoType(varDsc->TypeGet());
             if (!canStoreLocalOnLlvmStack(varDsc))
             {
+                CorInfoType corInfoType = toCorInfoType(varDsc->TypeGet());
                 offset = padNextOffset(corInfoType, offset);
             }
         }
@@ -1715,9 +1718,9 @@ int getLocalOffsetAtIndex(GenTreeLclVar* lclVar)
             varDsc = _compiler->lvaGetDesc(lclNum);
             if (!varDsc->lvIsParam)
             {
-                CorInfoType corInfoType = toCorInfoType(varDsc->TypeGet());
                 if (!canStoreLocalOnLlvmStack(varDsc))
                 {
+                    CorInfoType corInfoType = toCorInfoType(varDsc->TypeGet());
                     offset = padNextOffset(corInfoType, offset);
                 }
             }
