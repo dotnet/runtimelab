@@ -545,7 +545,8 @@ unsigned int padNextOffset(CorInfoType corInfoType, unsigned int atOffset)
 
 /// <summary>
 /// Returns true if the type can be stored on the LLVM stack
-/// instead of the shadow stack in this method.
+/// instead of the shadow stack in this method. This is the case
+/// if it is a non-ref primitive or a struct without GC fields.
 /// </summary>
 bool canStoreLocalOnLlvmStack(LclVarDsc* varDsc)
 {
