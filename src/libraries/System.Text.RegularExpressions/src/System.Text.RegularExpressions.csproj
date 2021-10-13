@@ -8,6 +8,7 @@
     <Compile Include="System\Collections\HashtableExtensions.cs" />
     <Compile Include="System\Collections\Generic\ValueListBuilder.Pop.cs" />
     <Compile Include="System\Text\RegularExpressions\Symbolic\SymbolicNFA.cs" />
+    <Compile Include="System\Text\RegularExpressions\Symbolic\SymbolicRegexSampler.cs" />
     <Compile Include="System\Text\SegmentStringBuilder.cs" />
     <Compile Include="System\Text\RegularExpressions\Capture.cs" />
     <Compile Include="System\Text\RegularExpressions\CaptureCollection.cs" />

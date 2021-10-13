@@ -41,6 +41,24 @@ namespace System.Text.RegularExpressions
             IgnoreCaseRelationGenerator.Generate("System.Text.RegularExpressions.Symbolic.Unicode", "IgnoreCaseRelation", path);
             UnicodeCategoryRangesGenerator.Generate("System.Text.RegularExpressions.Symbolic.Unicode", "UnicodeCategoryRanges", path);
         }
+
+        /// <summary>
+        /// Generates up to k random strings matched by the regex
+        /// </summary>
+        /// <param name="k">upper bound on the number of generated strings</param>
+        /// <param name="randomseed">random seed for the generator, 0 means no random seed</param>
+        /// <param name="negative">if true then generate inputs that do not match</param>
+        /// <returns></returns>
+        [ExcludeFromCodeCoverage(Justification = "Debug only")]
+        internal Collections.Generic.IEnumerable<string> GenerateRandomMembers(int k, int randomseed, bool negative)
+        {
+            if (factory is not SymbolicRegexRunnerFactory srmFactory)
+            {
+                throw new NotSupportedException();
+            }
+
+            return srmFactory._runner._matcher.GenerateRandomMembers(k, randomseed, negative);
+        }
     }
 }
 #endif

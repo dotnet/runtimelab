@@ -279,7 +279,7 @@ namespace System.Text.RegularExpressions.Symbolic
         IEnumerator IEnumerable.GetEnumerator() => EnumeratePaths(_builder._solver.True).GetEnumerator();
 
         /// <summary>Enumerates all the paths in this transition regex excluding dead-end paths</summary>
-        private IEnumerable<(S, SymbolicRegexNode<S>?, SymbolicRegexNode<S>)> EnumeratePaths(S pathCondition)
+        public IEnumerable<(S, SymbolicRegexNode<S>?, SymbolicRegexNode<S>)> EnumeratePaths(S pathCondition)
         {
             switch (_kind)
             {

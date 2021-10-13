@@ -7,6 +7,7 @@ using System.IO;
 using System.Reflection;
 using Xunit;
 using Xunit.Abstractions;
+using System.Threading.Tasks;
 
 namespace System.Text.RegularExpressions.Tests
 {
@@ -527,6 +528,50 @@ namespace System.Text.RegularExpressions.Tests
             {
                 // In Release build (?( test-pattern ) yes-pattern | no-pattern ) is not supported
                 Assert.Contains("conditional", e.Message);
+            }
+        }
+
+
+        public static IEnumerable<object[]> GenerateRandomMembers_TestData()
+        {
+            string[] patterns = new string[] { @"pa[5\$s]{2}w[o0]rd$", @"\w\d+", @"\d{10}" };
+            foreach (string pattern in patterns)
+            {
+                Regex re = new Regex(pattern, RegexHelpers.RegexOptionNonBacktracking);
+                foreach (bool negative in new bool[] { false, true })
+                {
+                    // Generate 3 positive and 3 negative inputs
+                    List<string> inputs = new(GenerateRandomMembersViaReflection(re, 3, 123, negative));
+                    foreach (RegexEngine engine in RegexHelpers.AvailableEngines)
+                    {
+                        foreach (string input in inputs)
+                        {
+                            yield return new object[] {engine, pattern, input, !negative };
+                        }
+                    }
+                }
+            }
+        }
+
+        /// <summary>Test random input generation correctness</summary>
+        [ConditionalTheory(typeof(PlatformDetection), nameof(PlatformDetection.IsNetCore))]
+        [MemberData(nameof(GenerateRandomMembers_TestData))]
+        public async Task GenerateRandomMembers(RegexEngine engine, string pattern, string input, bool isMatch)
+        {
+            Regex regex = await RegexHelpers.GetRegexAsync(engine, pattern);
+            Assert.Equal(isMatch, regex.IsMatch(input));
+        }
+
+        private static IEnumerable<string> GenerateRandomMembersViaReflection(Regex regex, int how_many_inputs, int randomseed, bool negative)
+        {
+            MethodInfo? gen = regex.GetType().GetMethod("GenerateRandomMembers", BindingFlags.NonPublic | BindingFlags.Instance);
+            if (gen is not null)
+            {
+                return (IEnumerable<string>)gen.Invoke(regex, new object[] { how_many_inputs, randomseed, negative });
+            }
+            else
+            {
+                return new string[] { };
             }
         }
         #endregion
