@@ -161,6 +161,28 @@ namespace Internal.JitInterface
             return (uint)_this.GetSequencePoint(ilOffset).LineNumber;
         }
 
+        [UnmanagedCallersOnly]
+        public static uint structIsWrappedPrimitive(IntPtr thisHandle, CORINFO_CLASS_STRUCT_* structHnd, CorInfoType corInfoPrimitiveType)
+        {
+            var _this = GetThis(thisHandle);
+            TypeDesc typeDesc = _this.HandleToObject(structHnd);
+
+            TypeDesc primitiveTypeDesc;
+             switch (corInfoPrimitiveType)
+             {
+                 case CorInfoType.CORINFO_TYPE_FLOAT:
+                     primitiveTypeDesc = _this._compilation.TypeSystemContext.GetWellKnownType(WellKnownType.Single);
+                     break;
+                 case CorInfoType.CORINFO_TYPE_DOUBLE:
+                     primitiveTypeDesc = _this._compilation.TypeSystemContext.GetWellKnownType(WellKnownType.Double);
+                     break;
+                 default:
+                     return 0u;
+             }
+            
+            return _this._compilation.StructIsWrappedPrimitive(typeDesc, primitiveTypeDesc) ? 1u : 0u;
+        }
+
         [DllImport(JitLibrary)]
         private extern static void registerLlvmCallbacks(IntPtr thisHandle, byte* outputFileName, byte* triple, byte* dataLayout,
             delegate* unmanaged<IntPtr, CORINFO_METHOD_STRUCT_*, byte*> getMangedMethodNamePtr,
@@ -169,8 +191,9 @@ namespace Internal.JitInterface
             delegate* unmanaged<IntPtr, CORINFO_METHOD_STRUCT_*, uint> isRuntimeImport,
             delegate* unmanaged<IntPtr, byte*> getDocumentFileName,
             delegate* unmanaged<IntPtr, uint> firstSequencePointLineNumber,
-            delegate* unmanaged<IntPtr, uint, uint> getOffsetLineNumber
-        );
+            delegate* unmanaged<IntPtr, uint, uint> getOffsetLineNumber,
+            delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, CorInfoType, uint> structIsWrappedPrimitive
+            );
 
         public void RegisterLlvmCallbacks(IntPtr corInfoPtr, string outputFileName, string triple, string dataLayout)
         {
@@ -183,7 +206,8 @@ namespace Internal.JitInterface
                 &isRuntimeImport,
                 &getDocumentFileName,
                 &firstSequencePointLineNumber,
-                &getOffsetLineNumber
+                &getOffsetLineNumber,
+                &structIsWrappedPrimitive
             );
         }
 

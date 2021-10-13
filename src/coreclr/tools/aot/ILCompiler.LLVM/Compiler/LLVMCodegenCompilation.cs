@@ -251,5 +251,10 @@ namespace ILCompiler
         {
             LLVMObjectWriter.AddOrReturnGlobalSymbol(Module, symbolNode, nameMangler);
         }
+
+        public override bool StructIsWrappedPrimitive(TypeDesc method, TypeDesc primitiveTypeDesc)
+        {
+            return ILImporter.StructIsWrappedPrimitive(method, primitiveTypeDesc);
+        }
     }
 }

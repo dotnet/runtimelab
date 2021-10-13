@@ -30,7 +30,8 @@ extern "C" void registerLlvmCallbacks(void*       thisPtr,
                                       const uint32_t (*isRuntimeImport)(void*, CORINFO_METHOD_STRUCT_*),
                                       const char* (*getDocumentFileName)(void*),
                                       const uint32_t (*firstSequencePointLineNumber)(void*),
-                                      const uint32_t (*getOffsetLineNumber)(void*, unsigned int));
+                                      const uint32_t (*getOffsetLineNumber)(void*, unsigned int),
+                                      const uint32_t (*structIsWrappedPrimitive)(void*, CORINFO_CLASS_STRUCT_*, CorInfoType));
 
 class Llvm
 {
