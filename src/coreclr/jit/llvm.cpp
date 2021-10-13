@@ -272,39 +272,9 @@ void addPaddingFields(unsigned paddingSize, std::vector<Type*> llvmFields)
     }
 }
 
-// TODO-LLVM: this is a duplicate of GetWellKnownTypeSize in TargetDetails.  If we could get the CORINFO_CLASS_HANDLE for these types, we could probably delete this and rely on compCompHnd->getClassSize
 unsigned getWellKnownTypeSize(CorInfoType corInfoType)
 {
-    switch (corInfoType)
-    {
-        case CorInfoType::CORINFO_TYPE_BOOL:
-            return 1;
-        case CorInfoType::CORINFO_TYPE_CHAR:
-            return 2;
-        case CorInfoType::CORINFO_TYPE_BYTE:
-        case CorInfoType::CORINFO_TYPE_UBYTE:
-            return 1;
-        case CorInfoType::CORINFO_TYPE_USHORT:
-        case CorInfoType::CORINFO_TYPE_SHORT:
-            return 2;
-        case CorInfoType::CORINFO_TYPE_UINT:
-        case CorInfoType::CORINFO_TYPE_INT:
-            return 4;
-        case CorInfoType::CORINFO_TYPE_ULONG:
-        case CorInfoType::CORINFO_TYPE_LONG:
-            return 8;
-        case CorInfoType::CORINFO_TYPE_FLOAT:
-            return 4;
-        case CorInfoType::CORINFO_TYPE_DOUBLE:
-            return 8;
-        case CorInfoType::CORINFO_TYPE_PTR:
-        case CorInfoType::CORINFO_TYPE_NATIVEINT:
-        case CorInfoType::CORINFO_TYPE_NATIVEUINT:
-            return TARGET_POINTER_SIZE;
-    }
-
-    assert(corInfoType == CorInfoType::CORINFO_TYPE_VOID);
-    return TARGET_POINTER_SIZE;
+    return genTypeSize(JITtype2varType(corInfoType));
 }
 
 unsigned getElementSize(CORINFO_CLASS_HANDLE fieldClassHandle, CorInfoType corInfoType)
@@ -378,16 +348,16 @@ llvm::Type* getLlvmTypeForStruct(CORINFO_CLASS_HANDLE structHandle)
 
                 for (unsigned i = 0; i < structSize; i++) sparseFields[i] = nullptr;
 
-                // TODO-LLVM: Are fields already in offset order?  If so we could probably make this more efficient.
                 for (unsigned i = 0; i < fieldCnt; i++)
                 {
                     CORINFO_FIELD_HANDLE fieldHandle = _info.compCompHnd->getFieldInClass(structHandle, i);
-                    unsigned             fldOffset = _info.compCompHnd->getFieldOffset(fieldHandle);
+                    unsigned fldOffset = _info.compCompHnd->getFieldOffset(fieldHandle);
 
                     assert(fldOffset < structSize);
 
                     // store the biggest field at the offset for unions
-                    if (sparseFields[fldOffset] == nullptr || _info.compCompHnd->getClassSize(_info.compCompHnd->getFieldClass(fieldHandle)) > _info.compCompHnd->getClassSize(_info.compCompHnd->getFieldClass(sparseFields[fldOffset])))
+                    if (sparseFields[fldOffset] == nullptr ||
+                        _info.compCompHnd->getClassSize(_info.compCompHnd->getFieldClass(fieldHandle)) > _info.compCompHnd->getClassSize(_info.compCompHnd->getFieldClass(sparseFields[fldOffset])))
                     {
                         sparseFields[fldOffset] = fieldHandle;
                     }
@@ -579,21 +549,7 @@ unsigned int padNextOffset(CorInfoType corInfoType, unsigned int atOffset)
 /// </summary>
 bool canStoreLocalOnLlvmStack(LclVarDsc* varDsc)
 {
-    CorInfoType corInfoType = toCorInfoType(varDsc->TypeGet());
-    // structs with no GC pointers can go on LLVM stack.
-    if (corInfoType == CorInfoType::CORINFO_TYPE_VALUECLASS)
-    {
-        ClassLayout* layout = varDsc->GetLayout();
-
-        return !layout->HasGCPtr();
-    }
-
-    if (corInfoType == CorInfoType::CORINFO_TYPE_BYREF || corInfoType == CorInfoType::CORINFO_TYPE_CLASS ||
-        corInfoType == CorInfoType::CORINFO_TYPE_REFANY)
-    {
-        return false;
-    }
-    return true;
+    return !varDsc->HasGCPtr();
 }
 
 bool canStoreArgOnLlvmStack(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd)
@@ -638,7 +594,7 @@ FunctionType* getFunctionTypeForSigInfo(CORINFO_SIG_INFO& sigInfo)
     std::vector<llvm::Type*> argVec{Type::getInt8PtrTy(_llvmContext)};
     llvm::Type*              retLlvmType;
 
-    if (needsReturnStackSlot(sigInfo.retType, sigInfo.retTypeClass)) // TODO-LLVM: retTypeClass or retTypeSigClass?
+    if (needsReturnStackSlot(sigInfo.retType, sigInfo.retTypeClass))
     {
         argVec.push_back(Type::getInt8PtrTy(_llvmContext));
         retLlvmType = Type::getVoidTy(_llvmContext);
@@ -1475,6 +1431,7 @@ int getLocalOffsetAtIndex(GenTreeLclVar* lclVar)
         }
         offset = padOffset(toCorInfoType(lclVar->TypeGet()), offset);
     }
+
     return offset;
 }
 
