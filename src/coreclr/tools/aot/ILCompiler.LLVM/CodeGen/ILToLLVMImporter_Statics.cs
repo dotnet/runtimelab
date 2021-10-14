@@ -3,7 +3,8 @@
 
 using System;
 using System.Collections.Generic;
-
+using System.Diagnostics;
+using System.Linq;
 using Internal.TypeSystem;
 using Internal.TypeSystem.Ecma;
 
@@ -392,6 +393,61 @@ namespace Internal.IL
                 }
                 return s_shadowStackTop;
             }
+        }
+
+        /// <summary>
+        /// Returns true if a type is a struct that just wraps a given primitive
+        /// or another struct that does so and can thus be treated as that primitive
+        /// </summary>
+        /// <param name="type">The struct to evaluate</param>
+        /// <param name="primitiveType">The primitive to check for</param>
+        /// <returns>True if the struct is a wrapper of the primitive</returns>
+        public static bool StructIsWrappedPrimitive(TypeDesc type, TypeDesc primitiveType)
+        {
+            Debug.Assert(type.IsValueType);
+            Debug.Assert(primitiveType.IsPrimitive);
+
+            if (type.GetElementSize().AsInt != primitiveType.GetElementSize().AsInt)
+            {
+                return false;
+            }
+
+            FieldDesc[] fields = type.GetFields().ToArray();
+            int instanceFieldCount = 0;
+            bool foundPrimitive = false;
+
+            foreach (FieldDesc field in fields)
+            {
+                if (field.IsStatic)
+                {
+                    continue;
+                }
+
+                instanceFieldCount++;
+
+                // If there's more than one field, figuring out whether this is a primitive gets complicated, so assume it's not
+                if (instanceFieldCount > 1)
+                {
+                    break;
+                }
+
+                TypeDesc fieldType = field.FieldType;
+                if (fieldType == primitiveType)
+                {
+                    foundPrimitive = true;
+                }
+                else if (fieldType.IsValueType && !fieldType.IsPrimitive && StructIsWrappedPrimitive(fieldType, primitiveType))
+                {
+                    foundPrimitive = true;
+                }
+            }
+
+            if (instanceFieldCount == 1 && foundPrimitive)
+            {
+                return true;
+            }
+
+            return false;
         }
     }
 }
