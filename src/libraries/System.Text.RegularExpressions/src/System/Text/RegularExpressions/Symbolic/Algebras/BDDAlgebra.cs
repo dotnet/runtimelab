@@ -7,11 +7,6 @@ using System.Diagnostics;
 
 namespace System.Text.RegularExpressions.Symbolic
 {
-    // types used as keys in caches
-    using BDDKey = ValueTuple<int, BDD?, BDD?>;
-    using BoolOpKey = ValueTuple<BoolOp, BDD, BDD?>;
-    using ShiftOpKey = ValueTuple<BDD, int>;
-
     /// <summary>
     /// Boolean operations over BDDs.
     /// </summary>
@@ -34,7 +29,7 @@ namespace System.Text.RegularExpressions.Symbolic
         /// <summary>
         /// Operation cache for Boolean operations over BDDs.
         /// </summary>
-        private readonly ConcurrentDictionary<BoolOpKey, BDD> _opCache = new();
+        private readonly ConcurrentDictionary<(BoolOp op, BDD a, BDD? b), BDD> _opCache = new();
 
         /// <summary>
         /// Internalize the creation of BDDs so that two BDDs with same ordinal and identical children are the same object.
@@ -42,7 +37,7 @@ namespace System.Text.RegularExpressions.Symbolic
         /// (they could but this would make it difficult (or near impossible) to clear caches.
         /// Allowing distinct but equivalent BDDs is also a tradeoff between efficiency and flexibility.
         /// </summary>
-        private readonly ConcurrentDictionary<BDDKey, BDD> _bddCache = new();
+        private readonly ConcurrentDictionary<(int ordinal, BDD? one, BDD? zero), BDD> _bddCache = new();
 
         /// <summary>
         /// Generator for minterms.
@@ -59,7 +54,7 @@ namespace System.Text.RegularExpressions.Symbolic
         /// Returns the BDD from the cache if it already exists.
         /// </summary>
         public BDD GetOrCreateBDD(int ordinal, BDD? one, BDD? zero) =>
-            _bddCache.GetOrAdd(new BDDKey(ordinal, one, zero), (key, state) => new BDD(state.ordinal, state.one, state.zero), (ordinal, one, zero));
+            _bddCache.GetOrAdd((ordinal, one, zero), static key => new BDD(key.ordinal, key.one, key.zero));
 
         #region IBooleanAlgebra members
 
@@ -79,10 +74,10 @@ namespace System.Text.RegularExpressions.Symbolic
         public BDD Not(BDD a) =>
             a == False ? True :
             a == True ? False :
-            _opCache.GetOrAdd(new(BoolOp.Not, a, null), (key, a) => a.IsLeaf ?
-                GetOrCreateBDD(CombineTerminals(BoolOp.Not, a.Ordinal, 0), null, null) : // multi-terminal case
-                GetOrCreateBDD(a.Ordinal, Not(a.One), Not(a.Zero)),
-                a);
+            _opCache.GetOrAdd((BoolOp.Not, a, null), static (key, algebra) => key.a.IsLeaf ?
+                algebra.GetOrCreateBDD(algebra.CombineTerminals(BoolOp.Not, key.a.Ordinal, 0), null, null) : // multi-terminal case
+                algebra.GetOrCreateBDD(key.a.Ordinal, algebra.Not(key.a.One), algebra.Not(key.a.Zero)),
+                this);
 
         /// <summary>
         /// Applies the binary Boolean operation op and constructs the BDD recursively from a and b.
@@ -146,37 +141,41 @@ namespace System.Text.RegularExpressions.Symbolic
                 b = tmp;
             }
 
-            return _opCache.GetOrAdd(new BoolOpKey(op, a, b), key =>
+            return _opCache.GetOrAdd((op, a, b), static (key, algebra) =>
             {
-                if (a.IsLeaf && b.IsLeaf)
+                Debug.Assert(key.b is not null, "Validated it was non-null prior to calling GetOrAdd");
+
+                if (key.a.IsLeaf && key.b.IsLeaf)
                 {
                     // Multi-terminal case, we know here that a is neither True nor False
-                    int ord = CombineTerminals(op, a.Ordinal, b.Ordinal);
-                    return GetOrCreateBDD(ord, null, null);
+                    int ord = algebra.CombineTerminals(key.op, key.a.Ordinal, key.b.Ordinal);
+                    return algebra.GetOrCreateBDD(ord, null, null);
                 }
-                else if (a.IsLeaf || b.Ordinal > a.Ordinal)
+
+                if (key.a.IsLeaf || key.b!.Ordinal > key.a.Ordinal)
                 {
-                    Debug.Assert(!b.IsLeaf);
-                    BDD t = ApplyBinaryOp(op, a, b.One);
-                    BDD f = ApplyBinaryOp(op, a, b.Zero);
-                    return t == f ? t : GetOrCreateBDD(b.Ordinal, t, f);
+                    Debug.Assert(!key.b.IsLeaf);
+                    BDD t = algebra.ApplyBinaryOp(key.op, key.a, key.b.One);
+                    BDD f = algebra.ApplyBinaryOp(key.op, key.a, key.b.Zero);
+                    return t == f ? t : algebra.GetOrCreateBDD(key.b.Ordinal, t, f);
                 }
-                else if (b.IsLeaf || a.Ordinal > b.Ordinal)
+
+                if (key.b.IsLeaf || key.a.Ordinal > key.b.Ordinal)
                 {
-                    Debug.Assert(!a.IsLeaf);
-                    BDD t = ApplyBinaryOp(op, a.One, b);
-                    BDD f = ApplyBinaryOp(op, a.Zero, b);
-                    return t == f ? t : GetOrCreateBDD(a.Ordinal, t, f);
+                    Debug.Assert(!key.a.IsLeaf);
+                    BDD t = algebra.ApplyBinaryOp(key.op, key.a.One, key.b);
+                    BDD f = algebra.ApplyBinaryOp(key.op, key.a.Zero, key.b);
+                    return t == f ? t : algebra.GetOrCreateBDD(key.a.Ordinal, t, f);
                 }
-                else
+
                 {
-                    Debug.Assert(!a.IsLeaf);
-                    Debug.Assert(!b.IsLeaf);
-                    BDD t = ApplyBinaryOp(op, a.One, b.One);
-                    BDD f = ApplyBinaryOp(op, a.Zero, b.Zero);
-                    return t == f ? t : GetOrCreateBDD(a.Ordinal, t, f);
+                    Debug.Assert(!key.a.IsLeaf);
+                    Debug.Assert(!key.b.IsLeaf);
+                    BDD t = algebra.ApplyBinaryOp(key.op, key.a.One, key.b.One);
+                    BDD f = algebra.ApplyBinaryOp(key.op, key.a.Zero, key.b.Zero);
+                    return t == f ? t : algebra.GetOrCreateBDD(key.a.Ordinal, t, f);
                 }
-            });
+            }, this);
         }
 
         /// <summary>
@@ -242,7 +241,7 @@ namespace System.Text.RegularExpressions.Symbolic
         public BDD ShiftRight(BDD set, int k)
         {
             Debug.Assert(k >= 0);
-            return set.IsLeaf ? set : ShiftLeftImpl(new Dictionary<ShiftOpKey, BDD>(), set, 0 - k);
+            return set.IsLeaf ? set : ShiftLeftImpl(new Dictionary<(BDD set, int k), BDD>(), set, 0 - k);
         }
 
         /// <summary>
@@ -253,13 +252,13 @@ namespace System.Text.RegularExpressions.Symbolic
         public BDD ShiftLeft(BDD set, int k)
         {
             Debug.Assert(k >= 0);
-            return set.IsLeaf ? set : ShiftLeftImpl(new Dictionary<ShiftOpKey, BDD>(), set, k);
+            return set.IsLeaf ? set : ShiftLeftImpl(new Dictionary<(BDD set, int k), BDD>(), set, k);
         }
 
         /// <summary>
         /// Uses shiftCache to avoid recomputations in shared BDDs (which are DAGs).
         /// </summary>
-        private BDD ShiftLeftImpl(Dictionary<ShiftOpKey, BDD> shiftCache, BDD set, int k)
+        private BDD ShiftLeftImpl(Dictionary<(BDD set, int k), BDD> shiftCache, BDD set, int k)
         {
             if (set.IsLeaf || k == 0)
                 return set;
@@ -269,8 +268,7 @@ namespace System.Text.RegularExpressions.Symbolic
             if (ordinal < 0)
                 return True;  //this arises if k is negative
 
-            var key = new ShiftOpKey(set, k);
-            if (!shiftCache.TryGetValue(key, out BDD? res))
+            if (!shiftCache.TryGetValue((set, k), out BDD? res))
             {
                 BDD zero = ShiftLeftImpl(shiftCache, set.Zero, k);
                 BDD one = ShiftLeftImpl(shiftCache, set.One, k);
@@ -278,7 +276,7 @@ namespace System.Text.RegularExpressions.Symbolic
                 res = (zero == one) ?
                     zero :
                     GetOrCreateBDD((ushort)ordinal, one, zero);
-                shiftCache[key] = res;
+                shiftCache[(set, k)] = res;
             }
             return res;
         }

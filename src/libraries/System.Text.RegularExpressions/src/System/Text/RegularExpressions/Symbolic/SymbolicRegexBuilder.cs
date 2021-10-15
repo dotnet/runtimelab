@@ -34,10 +34,8 @@ namespace System.Text.RegularExpressions.Symbolic
         internal TElement _wordLetterPredicateForAnchors;
         internal TElement _newLinePredicate;
 
-        /// <summary>
-        /// Partition of the input space of predicates.
-        /// </summary>
-        internal TElement[]? _atoms;
+        /// <summary>Partition of the input space of predicates.</summary>
+        internal TElement[]? _minterms;
 
         private readonly Dictionary<TElement, SymbolicRegexNode<TElement>> _singletonCache = new();
 
@@ -67,9 +65,9 @@ namespace System.Text.RegularExpressions.Symbolic
         private const int InitialStateLimit = 1024;
 
         /// <summary>
-        /// K is the smallest k s.t. 2^k >= atoms.Length + 1
+        /// <see cref="_mintermsCount"/> is the smallest k s.t. 2^k >= minterms.Length + 1
         /// </summary>
-        internal int _K;
+        internal int _mintermsCount;
 
         /// <summary>
         /// If true then delta is used in a mode where
@@ -95,24 +93,24 @@ namespace System.Text.RegularExpressions.Symbolic
             _fullSet = SymbolicRegexSet<TElement>.CreateFull(this);
             _eagerEmptyLoop = SymbolicRegexNode<TElement>.MkEagerEmptyLoop(this, _epsilon);
 
-            // atoms = null if partition of the solver is undefined and returned as null
-            _atoms = solver.GetPartition();
-            if (_atoms == null)
+            // minterms = null if partition of the solver is undefined and returned as null
+            _minterms = solver.GetMinterms();
+            if (_minterms == null)
             {
-                _K = -1;
+                _mintermsCount = -1;
             }
             else
             {
                 _statearray = new DfaMatchingState<TElement>[InitialStateLimit];
 
-                // the extra slot with id atoms.Length is reserved for \Z (last occurrence of \n)
-                int k = 1;
-                while (_atoms.Length >= (1 << k))
+                // the extra slot with id minterms.Length is reserved for \Z (last occurrence of \n)
+                int mintermsCount = 1;
+                while (_minterms.Length >= (1 << mintermsCount))
                 {
-                    k += 1;
+                    mintermsCount++;
                 }
-                _K = k;
-                _delta = new DfaMatchingState<TElement>[InitialStateLimit << _K];
+                _mintermsCount = mintermsCount;
+                _delta = new DfaMatchingState<TElement>[InitialStateLimit << _mintermsCount];
             }
 
             // initialized to False but updated later to the actual condition ony if \b or \B occurs anywhere in the regex
@@ -410,7 +408,7 @@ namespace System.Text.RegularExpressions.Symbolic
                 {
                     int newsize = _statearray.Length + 1024;
                     Array.Resize(ref _statearray, newsize);
-                    Array.Resize(ref _delta, newsize << _K);
+                    Array.Resize(ref _delta, newsize << _mintermsCount);
                 }
                 _statearray[state.Id] = state;
                 return state;

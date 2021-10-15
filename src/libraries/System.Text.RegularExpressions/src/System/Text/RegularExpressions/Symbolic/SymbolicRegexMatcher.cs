@@ -90,7 +90,24 @@ namespace System.Text.RegularExpressions.Symbolic
         internal readonly SymbolicRegexBuilder<TSetType> _builder;
 
         /// <summary>Maps each character into a partition id in the range 0..K-1.</summary>
-        private readonly PartitionClassifier _partitions;
+        private readonly MintermClassifier _partitions;
+
+        /// <summary><see cref="_pattern"/> prefixed with [0-0xFFFF]*</summary>
+        /// <remarks>
+        /// The matching engine first uses <see cref="_dotStarredPattern"/> to find whether there is a match
+        /// and where that match might end.  Prepending the .* prefix onto the original pattern provides the DFA
+        /// with the ability to continue to process input characters even if those characters aren't part of
+        /// the match. If Regex.IsMatch is used, nothing further is needed beyond this prefixed pattern.  If, however,
+        /// other matching operations are performed that require knowing the exact start and end of the match,
+        /// the engine then needs to process the pattern in reverse to find where the match actually started;
+        /// for that, it uses the <see cref="_reversePattern"/> and walks backwards through the input characters
+        /// from where <see cref="_dotStarredPattern"/> left off.  At this point we know that there was a match,
+        /// where it started, and where it could have ended, but that ending point could be influenced by the
+        /// selection of the starting point.  So, to find the actual ending point, the original <see cref="_pattern"/>
+        /// is then used from that starting point to walk forward through the input characters again to find the
+        /// actual end point used for the match.
+        /// </remarks>
+        internal readonly SymbolicRegexNode<TSetType> _dotStarredPattern;
 
         /// <summary>The original regex pattern.</summary>
         internal readonly SymbolicRegexNode<TSetType> _pattern;
@@ -104,14 +121,13 @@ namespace System.Text.RegularExpressions.Symbolic
         /// </remarks>
         internal readonly SymbolicRegexNode<TSetType> _reversePattern;
 
-        /// <summary>.*<see cref="_pattern"/> start regex</summary>
-        internal readonly SymbolicRegexNode<TSetType> _dotstarredPattern;
-
-        /// <summary>Corresponding timeout in ms.</summary>
-        private readonly int _timeout;
+        /// <summary>true iff timeout checking is enabled.</summary>
         private readonly bool _checkTimeout;
 
-        /// <summary>Set of elements that matter as first element of A.</summary>
+        /// <summary>Timeout in milliseconds. This is only used if <see cref="_checkTimeout"/> is true.</summary>
+        private readonly int _timeout;
+
+        /// <summary>Classifier used to say whether a particular character can start a match for <see cref="_pattern"/>.</summary>
         internal readonly BooleanClassifier _startSetClassifier;
 
         /// <summary>Predicate over characters that make some progress</summary>
@@ -135,7 +151,7 @@ namespace System.Text.RegularExpressions.Symbolic
         /// <summary>If true then the fixed prefix of <see cref="_pattern"/> is idependent of case</summary>
         private readonly bool _isPrefixCaseInsensitive;
 
-        /// <summary>Cached skip states from the initial state of <see cref="_dotstarredPattern"/> for the 5 possible previous character kinds.</summary>
+        /// <summary>Cached skip states from the initial state of <see cref="_dotStarredPattern"/> for the 5 possible previous character kinds.</summary>
         private readonly DfaMatchingState<TSetType>?[] _prefixSkipStates = new DfaMatchingState<TSetType>[CharKind.CharKindCount];
         /// <summary>Cached skip states from the initial state of Ar for the 5 possible previous character kinds.</summary>
         private readonly DfaMatchingState<TSetType>?[] _reversePrefixSkipStates = new DfaMatchingState<TSetType>[CharKind.CharKindCount];
@@ -160,13 +176,13 @@ namespace System.Text.RegularExpressions.Symbolic
             Interlocked.CompareExchange(ref _reversePrefixSkipStates[prevCharKind], DeltaPlus<BrzozowskiTransition>(_reversePrefix, _reverseInitialStates[prevCharKind]), null) ??
             _reversePrefixSkipStates[prevCharKind]!;
 
-        /// <summary>Get the atom of character c</summary>
+        /// <summary>Get the minterm of <paramref name="c"/>.</summary>
         /// <param name="c">character code</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private TSetType GetAtom(int c)
+        private TSetType GetMinterm(int c)
         {
-            Debug.Assert(_builder._atoms is not null);
-            return _builder._atoms[_partitions.Find(c)];
+            Debug.Assert(_builder._minterms is not null);
+            return _builder._minterms[_partitions.GetMintermID(c)];
         }
 
         /// <summary>Constructs matcher for given symbolic regex.</summary>
@@ -184,10 +200,10 @@ namespace System.Text.RegularExpressions.Symbolic
             {
                 BV64Algebra bv64 => bv64._classifier,
                 BVAlgebra bv => bv._classifier,
-                _ => PartitionClassifier.Create((CharSetSolver)(object)_builder._solver, minterms),
+                _ => new MintermClassifier((CharSetSolver)(object)_builder._solver, minterms),
             };
 
-            _dotstarredPattern = _builder.MkConcat(_builder._anyStar, _pattern);
+            _dotStarredPattern = _builder.MkConcat(_builder._anyStar, _pattern);
             _reversePattern = _pattern.Reverse();
             ConfigureRegexes();
 
@@ -210,7 +226,7 @@ namespace System.Text.RegularExpressions.Symbolic
             _startSetSize = (int)_builder._solver.ComputeDomainSize(_startSet);
 
             BDD startbdd = _builder._solver.ConvertToCharSet(css, _startSet);
-            _startSetClassifier = BooleanClassifier.Create(css, startbdd);
+            _startSetClassifier = new BooleanClassifier(css, startbdd);
 
             //store the start characters in the A_startset_array if there are not too many characters
             _startSetArray = _startSetSize <= StartSetArrayMaxSize ?
@@ -240,7 +256,7 @@ namespace System.Text.RegularExpressions.Symbolic
                         charKind = CharKind.WordLetter;
                     }
 
-                    _asciiCharKinds[i] = _builder._solver.And(GetAtom(i), predicate2).Equals(_builder._solver.False) ? 0 : charKind;
+                    _asciiCharKinds[i] = _builder._solver.And(GetMinterm(i), predicate2).Equals(_builder._solver.False) ? 0 : charKind;
                 }
             }
         }
@@ -268,7 +284,7 @@ namespace System.Text.RegularExpressions.Symbolic
                 // but observe that the behavior from the state may ultimately depend on the previous
                 // input char e.g. possibly causing nullability of \b or \B or of a start-of-line anchor,
                 // in that sense there can be several "versions" (not more than StateCount) of the initial state.
-                _dotstarredInitialStates[i] = _builder.MkState(_dotstarredPattern, i);
+                _dotstarredInitialStates[i] = _builder.MkState(_dotStarredPattern, i);
                 _dotstarredInitialStates[i].IsInitialState = true;
 
                 _reverseInitialStates[i] = _builder.MkState(_reversePattern, i);
@@ -306,7 +322,7 @@ namespace System.Text.RegularExpressions.Symbolic
         private interface ITransition
         {
             /// <summary>Find the next state given the current state and next character.</summary>
-            DfaMatchingState<TSetType> TakeTransition(SymbolicRegexMatcher<TSetType> matcher, DfaMatchingState<TSetType> currentState, int atom_id, TSetType atom);
+            DfaMatchingState<TSetType> TakeTransition(SymbolicRegexMatcher<TSetType> matcher, DfaMatchingState<TSetType> currentState, int mintermId, TSetType minterm);
         }
 
         /// <summary>Compute the target state for the source state and input[i] character.</summary>
@@ -316,20 +332,20 @@ namespace System.Text.RegularExpressions.Symbolic
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private DfaMatchingState<TSetType> Delta<TTransition>(string input, int i, DfaMatchingState<TSetType> sourceState) where TTransition : struct, ITransition
         {
-            TSetType[]? atoms = _builder._atoms;
-            Debug.Assert(atoms is not null);
+            TSetType[]? minterms = _builder._minterms;
+            Debug.Assert(minterms is not null);
 
             int c = input[i];
 
-            int atom_id = c == '\n' && i == input.Length - 1 && sourceState.StartsWithLineAnchor ?
-                atoms.Length : // atom_id = atoms.Length represents \Z (last \n)
-                _partitions.Find(c);
+            int mintermId = c == '\n' && i == input.Length - 1 && sourceState.StartsWithLineAnchor ?
+                minterms.Length : // mintermId = minterms.Length represents \Z (last \n)
+                _partitions.GetMintermID(c);
 
-            TSetType atom = (uint)atom_id < atoms.Length ?
-                atoms[atom_id] :
-                _builder._solver.False; // atom=False represents \Z
+            TSetType minterm = (uint)mintermId < minterms.Length ?
+                minterms[mintermId] :
+                _builder._solver.False; // minterm=False represents \Z
 
-            return default(TTransition).TakeTransition(this, sourceState, atom_id, atom);
+            return default(TTransition).TakeTransition(this, sourceState, mintermId, minterm);
         }
 
         /// <summary>Transition for Brzozowski-style derivatives (i.e. a DFA).</summary>
@@ -337,15 +353,15 @@ namespace System.Text.RegularExpressions.Symbolic
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public DfaMatchingState<TSetType> TakeTransition(
-                SymbolicRegexMatcher<TSetType> matcher, DfaMatchingState<TSetType> currentState, int atom_id, TSetType atom)
+                SymbolicRegexMatcher<TSetType> matcher, DfaMatchingState<TSetType> currentState, int mintermId, TSetType minterm)
             {
                 SymbolicRegexBuilder<TSetType> builder = matcher._builder;
                 Debug.Assert(builder._delta is not null);
 
-                int offset = (currentState.Id << builder._K) | atom_id;
+                int offset = (currentState.Id << builder._mintermsCount) | mintermId;
                 return
                     builder._delta[offset] ??
-                    matcher.CreateNewTransition(currentState, atom, offset);
+                    matcher.CreateNewTransition(currentState, minterm, offset);
             }
         }
 
@@ -354,12 +370,12 @@ namespace System.Text.RegularExpressions.Symbolic
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public DfaMatchingState<TSetType> TakeTransition(
-                SymbolicRegexMatcher<TSetType> matcher, DfaMatchingState<TSetType> currentStates, int atom_id, TSetType atom)
+                SymbolicRegexMatcher<TSetType> matcher, DfaMatchingState<TSetType> currentStates, int mintermId, TSetType minterm)
             {
                 if (currentStates.Node.Kind != SymbolicRegexKind.Or)
                 {
                     // Fall back to Brzozowski when the state is not a disjunction.
-                    return default(BrzozowskiTransition).TakeTransition(matcher, currentStates, atom_id, atom);
+                    return default(BrzozowskiTransition).TakeTransition(matcher, currentStates, mintermId, minterm);
                 }
 
                 SymbolicRegexBuilder<TSetType> builder = matcher._builder;
@@ -374,8 +390,8 @@ namespace System.Text.RegularExpressions.Symbolic
                 {
                     DfaMatchingState<TSetType> nextStates = builder.MkState(oneState, currentStates.PrevCharKind);
 
-                    int offset = (nextStates.Id << builder._K) | atom_id;
-                    DfaMatchingState<TSetType> p = builder._delta[offset] ?? matcher.CreateNewTransition(nextStates, atom, offset);
+                    int offset = (nextStates.Id << builder._mintermsCount) | mintermId;
+                    DfaMatchingState<TSetType> p = builder._delta[offset] ?? matcher.CreateNewTransition(nextStates, minterm, offset);
 
                     // Observe that if p.Node is an Or it will be flattened.
                     union = builder.MkOr2(union, p.Node);
@@ -389,7 +405,7 @@ namespace System.Text.RegularExpressions.Symbolic
         }
 
         /// <summary>Critical region for defining a new transition</summary>
-        private DfaMatchingState<TSetType> CreateNewTransition(DfaMatchingState<TSetType> state, TSetType atom, int offset)
+        private DfaMatchingState<TSetType> CreateNewTransition(DfaMatchingState<TSetType> state, TSetType minterm, int offset)
         {
             Debug.Assert(_builder._delta is not null);
             lock (this)
@@ -399,7 +415,7 @@ namespace System.Text.RegularExpressions.Symbolic
                 if (p is null)
                 {
                     // this is the only place in code where the Next method is called in the matcher
-                    _builder._delta[offset] = p = state.Next(atom);
+                    _builder._delta[offset] = p = state.Next(minterm);
 
                     // switch to antimirov mode if the maximum bound has been reached
                     if (p.Id == AntimirovThreshold)
@@ -665,7 +681,7 @@ namespace System.Text.RegularExpressions.Symbolic
         /// <param name="k">input length or bounded input length</param>
         /// <param name="i">start position</param>
         /// <param name="timeoutOccursAt">The time at which timeout occurs, if timeouts are being checked.</param>
-        /// <param name="initialStateIndex">last position the initial state of <see cref="_dotstarredPattern"/> was visited</param>
+        /// <param name="initialStateIndex">last position the initial state of <see cref="_dotStarredPattern"/> was visited</param>
         /// <param name="watchdog">length of match when positive</param>
         private int FindFinalStatePosition(string input, int k, int i, int timeoutOccursAt, out int initialStateIndex, out int watchdog)
         {
@@ -842,7 +858,7 @@ namespace System.Text.RegularExpressions.Symbolic
             uint[] asciiCharKinds = _asciiCharKinds;
             return
                 nextChar < asciiCharKinds.Length ? asciiCharKinds[nextChar] :
-                _builder._solver.And(GetAtom(nextChar), _builder._wordLetterPredicateForAnchors).Equals(_builder._solver.False) ? 0 : //apply the wordletter predicate to compute the kind of the next character
+                _builder._solver.And(GetMinterm(nextChar), _builder._wordLetterPredicateForAnchors).Equals(_builder._solver.False) ? 0 : //apply the wordletter predicate to compute the kind of the next character
                 CharKind.WordLetter;
         }
 
@@ -863,7 +879,7 @@ namespace System.Text.RegularExpressions.Symbolic
 
             for (int j = i; j < input.Length; j++)
             {
-                if (_startSetClassifier.Contains(input[j]))
+                if (_startSetClassifier.IsTrue(input[j]))
                 {
                     return j;
                 }

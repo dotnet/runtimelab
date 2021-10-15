@@ -54,9 +54,9 @@ namespace System.Text.RegularExpressions.Symbolic
         CharSetSolver CharSetProvider { get; }
 
         /// <summary>
-        /// Returns a partition of the full domain.
+        /// Returns the minterms (a partition of the full domain).
         /// </summary>
-        T[]? GetPartition();
+        T[]? GetMinterms();
 
         /// <summary>
         /// Pretty print the character predicate

@@ -16,14 +16,14 @@ namespace System.Text.RegularExpressions.Symbolic
         /// <summary>BDDs for all characters for fast lookup.</summary>
         private readonly BDD[] _charPredTable = new BDD[char.MaxValue + 1];
         private readonly Unicode.IgnoreCaseTransformer _ignoreCase;
-        internal readonly BDD _nonascii;
+        internal readonly BDD _nonAscii;
 
         /// <summary>
         /// Construct the solver.
         /// </summary>
         public CharSetSolver()
         {
-            _nonascii = CreateCharSetFromRange('\x80', '\uFFFF');
+            _nonAscii = CreateCharSetFromRange('\x80', '\uFFFF');
             _ignoreCase = new Unicode.IgnoreCaseTransformer(this);
         }
 
@@ -187,7 +187,7 @@ namespace System.Text.RegularExpressions.Symbolic
 
         public BDD ConvertToCharSet(ICharAlgebra<BDD> _, BDD pred) => pred;
 
-        public BDD[]? GetPartition() => null;
+        public BDD[]? GetMinterms() => null;
 
         public string PrettyPrint(BDD pred)
         {

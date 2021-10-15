@@ -1,9 +1,6 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-using System.Diagnostics;
-using System.Globalization;
-
 namespace System.Text.RegularExpressions.Symbolic.Unicode
 {
     internal sealed class UnicodeCategoryTheory<TPredicate> where TPredicate : class
@@ -16,8 +13,6 @@ namespace System.Text.RegularExpressions.Symbolic.Unicode
         private TPredicate? _wordLetterConditionForAnchors;
 
         public UnicodeCategoryTheory(ICharAlgebra<TPredicate> solver) => _solver = solver;
-
-        public static string UnicodeCategoryPredicateName(int cat) => $"Is{(UnicodeCategory)cat}";
 
         public TPredicate CategoryCondition(int i)
         {
