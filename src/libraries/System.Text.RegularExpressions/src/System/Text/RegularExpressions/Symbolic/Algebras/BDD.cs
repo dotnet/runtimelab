@@ -468,7 +468,7 @@ namespace System.Text.RegularExpressions.Symbolic
         /// All terminals precede all nonterminals. Compares Ordinals for terminals.
         /// Compare non-terminals by comparing their minimal elements.
         /// If minimal elements are the same, compare Ordinals.
-        /// This provides a total order for partitions.
+        /// This provides a total order for terminals.
         /// </summary>
         public int CompareTo(object? obj)
         {
