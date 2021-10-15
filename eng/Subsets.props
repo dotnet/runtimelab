@@ -81,7 +81,7 @@
 
     <!-- Runtime packs fail to build in NativeAOT branch due to incompatible customizations under libraries. See https://github.com/dotnet/runtimelab/issues/106
     <DefaultPacksSubsets>packs.product</DefaultPacksSubsets>
-    <DefaultPacksSubsets Condition="'$(BuildMonoAOTCrossCompilerOnly)' != 'true'">$(DefaultPacksSubsets)+packs.tests</DefaultPacksSubsets>
+    <DefaultPacksSubsets Condition="'$(BuildMonoAOTCrossCompilerOnly)' != 'true' and '$(DotNetBuildFromSource)' != 'true'">$(DefaultPacksSubsets)+packs.tests</DefaultPacksSubsets>
     <DefaultPacksSubsets Condition="'$(DotNetBuildFromSource)' == 'true'">$(DefaultPacksSubsets)+packs.installers</DefaultPacksSubsets>
     -->
   </PropertyGroup>
