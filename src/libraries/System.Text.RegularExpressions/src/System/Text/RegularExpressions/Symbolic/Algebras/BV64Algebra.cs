@@ -36,7 +36,7 @@ namespace System.Text.RegularExpressions.Symbolic
         }
 
         public BV64Algebra(CharSetSolver solver, BDD[] minterms) :
-            base(PartitionClassifier.Create(solver, minterms), solver.ComputeDomainSizes(minterms), minterms)
+            base(new MintermClassifier(solver, minterms), solver.ComputeDomainSizes(minterms), minterms)
         {
             Debug.Assert(minterms.Length <= 64);
             _mintermGenerator = new MintermGenerator<ulong>(this);
@@ -94,7 +94,7 @@ namespace System.Text.RegularExpressions.Symbolic
         public ulong CharConstraint(char c, bool caseInsensitive = false, string? culture = null)
         {
             Debug.Assert(!caseInsensitive);
-            return ((ulong)1) << _classifier.Find(c);
+            return ((ulong)1) << _classifier.GetMintermID(c);
         }
 
         /// <summary>
@@ -146,15 +146,15 @@ namespace System.Text.RegularExpressions.Symbolic
         /// <summary>
         /// Return an array of bitvectors representing each of the minterms.
         /// </summary>
-        public ulong[] GetPartition()
+        public ulong[] GetMinterms()
         {
-            ulong[] atoms = new ulong[_bits];
+            ulong[] minterms = new ulong[_bits];
             for (int i = 0; i < _bits; i++)
             {
-                atoms[i] = (ulong)1 << i;
+                minterms[i] = (ulong)1 << i;
             }
 
-            return atoms;
+            return minterms;
         }
 
         public IEnumerable<char> GenerateAllCharacters(ulong set) => throw new NotSupportedException();

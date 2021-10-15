@@ -27,7 +27,7 @@ namespace System.Text.RegularExpressions.Symbolic.DGML
                 (srm._pattern._info.StartsWithLineAnchor ? CharKind.StartStop : 0);
 
             //inReverse only matters if Ar contains some line anchor
-            _q0 = _builder.MkState(inReverse ? srm._reversePattern : (addDotStar ? srm._dotstarredPattern : srm._pattern), startId);
+            _q0 = _builder.MkState(inReverse ? srm._reversePattern : (addDotStar ? srm._dotStarredPattern : srm._pattern), startId);
 
             if (asNFA)
             {
@@ -47,7 +47,7 @@ namespace System.Text.RegularExpressions.Symbolic.DGML
                 _states.Add(_q0.Id);
                 _stateSet.Add(_q0.Id);
 
-                T[]? partition = _builder._solver.GetPartition();
+                T[]? partition = _builder._solver.GetMinterms();
                 Debug.Assert(partition is not null);
                 //unwind until the stack is empty or the bound has been reached
                 while (stack.Count > 0 && (bound <= 0 || _states.Count < bound))
@@ -83,7 +83,7 @@ namespace System.Text.RegularExpressions.Symbolic.DGML
         {
             get
             {
-                T[]? alphabet = _builder._solver.GetPartition();
+                T[]? alphabet = _builder._solver.GetMinterms();
                 Debug.Assert(alphabet is not null);
                 var results = new (SymbolicRegexNode<T>?, T)[alphabet.Length];
                 for (int i = 0; i < alphabet.Length; i++)

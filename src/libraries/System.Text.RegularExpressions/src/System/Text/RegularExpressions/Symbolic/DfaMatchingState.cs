@@ -55,24 +55,24 @@ namespace System.Text.RegularExpressions.Symbolic
         internal bool StartsWithLineAnchor => Node._info.StartsWithLineAnchor;
 
         /// <summary>
-        /// Compute the target state for the given input atom.
-        /// If atom is False this means that this is \n and it is the last character of the input.
+        /// Compute the target state for the given input minterm.
+        /// If <paramref name="minterm"/> is False this means that this is \n and it is the last character of the input.
         /// </summary>
-        /// <param name="atom">minterm corresponding to some input character or False corresponding to last \n</param>
-        internal DfaMatchingState<T> Next(T atom)
+        /// <param name="minterm">minterm corresponding to some input character or False corresponding to last \n</param>
+        internal DfaMatchingState<T> Next(T minterm)
         {
             ICharAlgebra<T> alg = Node._builder._solver;
             T wordLetterPredicate = Node._builder._wordLetterPredicateForAnchors;
             T newLinePredicate = Node._builder._newLinePredicate;
 
-            // atom == solver.False is used to represent the very last \n
+            // minterm == solver.False is used to represent the very last \n
             uint nextCharKind = 0;
-            if (alg.False.Equals(atom))
+            if (alg.False.Equals(minterm))
             {
                 nextCharKind = CharKind.NewLineS;
-                atom = newLinePredicate;
+                minterm = newLinePredicate;
             }
-            else if (newLinePredicate.Equals(atom))
+            else if (newLinePredicate.Equals(minterm))
             {
                 // If the previous state was the start state, mark this as the very FIRST \n.
                 // Essentially, this looks the same as the very last \n and is used to nullify
@@ -81,7 +81,7 @@ namespace System.Text.RegularExpressions.Symbolic
                     CharKind.NewLineS :
                     CharKind.Newline;
             }
-            else if (alg.IsSatisfiable(alg.And(wordLetterPredicate, atom)))
+            else if (alg.IsSatisfiable(alg.And(wordLetterPredicate, minterm)))
             {
                 nextCharKind = CharKind.WordLetter;
             }
@@ -90,7 +90,7 @@ namespace System.Text.RegularExpressions.Symbolic
             uint context = CharKind.Context(PrevCharKind, nextCharKind);
 
             // Compute the derivative of the node for the given context
-            SymbolicRegexNode<T> derivative = Node.MkDerivative(atom, context);
+            SymbolicRegexNode<T> derivative = Node.MkDerivative(minterm, context);
 
             // nextCharKind will be the PrevCharKind of the target state
             // use an existing state instead if one exists already

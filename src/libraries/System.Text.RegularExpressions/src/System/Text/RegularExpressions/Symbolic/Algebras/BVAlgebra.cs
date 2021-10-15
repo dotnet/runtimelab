@@ -19,12 +19,12 @@ namespace System.Text.RegularExpressions.Symbolic
     /// </summary>
     internal abstract class BVAlgebraBase
     {
-        internal readonly PartitionClassifier _classifier;
+        internal readonly MintermClassifier _classifier;
         protected readonly ulong[] _cardinalities;
         protected readonly int _bits;
         protected readonly BDD[]? _partition;
 
-        internal BVAlgebraBase(PartitionClassifier classifier, ulong[] cardinalities, BDD[]? partition)
+        internal BVAlgebraBase(MintermClassifier classifier, ulong[] cardinalities, BDD[]? partition)
         {
             _classifier = classifier;
             _cardinalities = cardinalities;
@@ -39,7 +39,7 @@ namespace System.Text.RegularExpressions.Symbolic
     internal sealed class BVAlgebra : BVAlgebraBase, ICharAlgebra<BV>
     {
         private readonly MintermGenerator<BV> _mintermGenerator;
-        internal BV[] _atoms;
+        internal BV[] _minterms;
 
         public ulong ComputeDomainSize(BV set)
         {
@@ -57,18 +57,18 @@ namespace System.Text.RegularExpressions.Symbolic
         }
 
         public BVAlgebra(CharSetSolver solver, BDD[] minterms) :
-            base(PartitionClassifier.Create(solver, minterms), solver.ComputeDomainSizes(minterms), minterms)
+            base(new MintermClassifier(solver, minterms), solver.ComputeDomainSizes(minterms), minterms)
         {
             _mintermGenerator = new MintermGenerator<BV>(this);
             False = BV.CreateFalse(_bits);
             True = BV.CreateTrue(_bits);
 
-            var atoms = new BV[_bits];
-            for (int i = 0; i < atoms.Length; i++)
+            var singleBitVectors = new BV[_bits];
+            for (int i = 0; i < singleBitVectors.Length; i++)
             {
-                atoms[i] = BV.CreateSingleBit(_bits, i);
+                singleBitVectors[i] = BV.CreateSingleBit(_bits, i);
             }
-            _atoms = atoms;
+            _minterms = singleBitVectors;
         }
 
         public BV False { get; }
@@ -110,8 +110,8 @@ namespace System.Text.RegularExpressions.Symbolic
         public BV CharConstraint(char c, bool caseInsensitive = false, string? culture = null)
         {
             Debug.Assert(!caseInsensitive);
-            int i = _classifier.Find(c);
-            return _atoms[i];
+            int i = _classifier.GetMintermID(c);
+            return _minterms[i];
         }
 
         /// <summary>
@@ -133,7 +133,7 @@ namespace System.Text.RegularExpressions.Symbolic
                 BDD conj = alg.And(bdd_i, set);
                 if (alg.IsSatisfiable(conj))
                 {
-                    res |= _atoms[i];
+                    res |= _minterms[i];
                 }
             }
 
@@ -161,7 +161,7 @@ namespace System.Text.RegularExpressions.Symbolic
             return res;
         }
 
-        public BV[] GetPartition() => _atoms;
+        public BV[] GetMinterms() => _minterms;
         public IEnumerable<char> GenerateAllCharacters(BV set) => throw new NotSupportedException();
 
         /// <summary>Pretty print the bitvector bv as the character set it represents.</summary>

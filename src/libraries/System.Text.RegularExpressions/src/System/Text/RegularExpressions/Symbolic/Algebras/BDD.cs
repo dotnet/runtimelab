@@ -113,35 +113,6 @@ namespace System.Text.RegularExpressions.Symbolic
         public bool IsEmpty => this == False;
 
         /// <summary>
-        /// Counts the number of nodes (both terminals and nonterminals) in the BDD.
-        /// </summary>
-        public int CountNodes()
-        {
-            if (IsLeaf)
-                return 1;
-
-            HashSet<BDD> visited = new();
-            Stack<BDD> stack = new();
-            stack.Push(this);
-            visited.Add(this);
-
-            while (stack.Count > 0)
-            {
-                BDD a = stack.Pop();
-                if (!a.IsLeaf)
-                {
-                    if (visited.Add(a.One))
-                        stack.Push(a.One);
-
-                    if (visited.Add(a.Zero))
-                        stack.Push(a.Zero);
-                }
-            }
-
-            return visited.Count;
-        }
-
-        /// <summary>
         /// Gets the lexicographically minimum bitvector in this BDD as a ulong.
         /// The BDD must be nonempty.
         /// </summary>

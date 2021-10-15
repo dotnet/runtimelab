@@ -1,62 +1,52 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
 namespace System.Text.RegularExpressions.Symbolic
 {
-    /// <summary>Classifies characters into true or false</summary>
+    /// <summary>Classifies characters as true or false.</summary>
+    /// <remarks>
+    /// The classification is determined entirely by the BDD used to construct the classifier, and in fact
+    /// simply calling Contains on the BDD instead of using the classifier would suffice from a correctness
+    /// perspective. The classifier as a wrapper for the BDD is valuable in order to optimize for ASCII, as
+    /// it precomputes the results for ASCII inputs and stores them in a separate table, only falling back
+    /// to using the BDD for non-ASCII.
+    /// </remarks>
     internal sealed class BooleanClassifier
     {
-        /// <summary>Explicit array for ascii.</summary>
+        /// <summary>Lookup table used for ASCII characters.</summary>
         private readonly bool[] _ascii;
-        /// <summary>Stores the remaining characters in a BDD.</summary>
-        private readonly BDD _nonAsciiBDD;
-
-        private BooleanClassifier(ulong lower, ulong upper, BDD bdd)
-        {
-            var ascii = new bool[128];
-            for (int i = 0; i < ascii.Length; i++)
-            {
-                ascii[i] = (i < 64 ? (lower & ((ulong)1 << i)) : (upper & ((ulong)1 << (i - 64)))) != 0;
-            }
-
-            _ascii = ascii;
-            _nonAsciiBDD = bdd;
-        }
-
-        private BooleanClassifier(bool[] ascii, BDD bdd)
-        {
-            Debug.Assert(ascii.Length == 128);
-            _ascii = ascii;
-            _nonAsciiBDD = bdd;
-        }
+        /// <summary>BDD used for non-ASCII characters.</summary>
+        private readonly BDD _nonAscii;
 
         /// <summary>Create a Boolean classifier.</summary>
-        /// <param name="solver">character algebra (the algebra is not stored in the classifier)</param>
-        /// <param name="domain">elements that map to true</param>
-        internal static BooleanClassifier Create(CharSetSolver solver, BDD domain)
+        /// <param name="solver">Character algebra (the algebra is not stored in the classifier)</param>
+        /// <param name="domain">Elements that map to true.</param>
+        public BooleanClassifier(CharSetSolver solver, BDD domain)
         {
+            // We want to optimize for ASCII, so query the BDD for each ASCII character in
+            // order to precompute a lookup table we'll use at match time.
             var ascii = new bool[128];
             for (int i = 0; i < ascii.Length; i++)
             {
                 ascii[i] = domain.Contains(i);
             }
 
-            // Remove the ASCII characters from the domain if the domain is not everything
-            BDD bdd = domain.IsFull ?
-                domain :
-                solver.And(solver._nonascii, domain);
+            // Now, as an optimization, we can remove the ASCII characters from the BDD
+            // as they'll never be used.
+            domain = solver.And(solver._nonAscii, domain);
 
-            return new BooleanClassifier(ascii, bdd);
+            _ascii = ascii;
+            _nonAscii = domain;
         }
 
+        /// <summary>Gets whether the specified character is classified as true.</summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool Contains(char c)
+        public bool IsTrue(char c)
         {
             bool[] ascii = _ascii;
-            return c < ascii.Length ? ascii[c] : _nonAsciiBDD.Contains(c);
+            return c < ascii.Length ? ascii[c] : _nonAscii.Contains(c);
         }
     }
 }
