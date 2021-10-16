@@ -35,11 +35,17 @@ extern "C" void registerLlvmCallbacks(void*       thisPtr,
 
 class Llvm
 {
+private:
+    bool _sigInfoIsValid;
+
 public:
-    static void Init();
+    Llvm(Compiler* pCompiler);
+
     static void llvmShutdown();
 
-    void Compile(Compiler* pCompiler);
+    void ConvertShadowStackLocals();
+    void PlaceAndConvertShadowStackLocals();
+    void Compile();
 };
 
 #endif

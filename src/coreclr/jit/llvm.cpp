@@ -132,6 +132,7 @@ llvm::IRBuilder<>*                                  _builder;
 std::unordered_map<GenTree*, LocatedLlvmValue>*     _sdsuMap;
 std::unordered_map<SsaPair, LocatedLlvmValue, SsaPairHash>* _localsMap;
 std::unordered_map<SsaPair, IncomingPhi, SsaPairHash>* _forwardReferencingPhis;
+bool                                                _requiresShadowStackAddSubsitution;
 DebugMetadata                                       _debugMetadata;
 
 // DWARF
@@ -140,6 +141,7 @@ std::unordered_map<std::string, struct DebugMetadata> _debugMetadataMap;
 CORINFO_SIG_INFO                                    _sigInfo; // sigInfo of function being compiled
 llvm::IRBuilder<>*                                  _prologBuilder;
 std::vector<SpilledExpressionEntry>                 _spilledExpressions;
+unsigned                                            _shadowStackLocalsSize;
 
 llvm::Type* getLlvmTypeForCorInfoType(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd);
 
@@ -179,37 +181,11 @@ extern "C" DLLEXPORT void registerLlvmCallbacks(void*       thisPtr,
     }
 }
 
-void Llvm::Init()
-{
-}
-
 void emitDebugMetadata(LLVMContext& context)
 {
     _module->addModuleFlag(llvm::Module::Warning, "Dwarf Version", 4);
     _module->addModuleFlag(llvm::Module::Warning, "Debug Info Version", 3);
     _diBuilder->finalize();
-}
-
-void Llvm::llvmShutdown()
-{
-    if (_diBuilder != nullptr)
-    {
-        emitDebugMetadata(_llvmContext);
-    }
-#if DEBUG
-    if (_outputFileName == nullptr) return; // nothing generated
-    std::error_code ec;
-    char* txtFileName = (char *)malloc(strlen(_outputFileName) + 2); // .txt is longer than .bc
-    strcpy(txtFileName, _outputFileName);
-    strcpy(txtFileName + strlen(_outputFileName) - 2, "txt");
-    llvm::raw_fd_ostream textOutputStream(txtFileName, ec);
-    _module->print(textOutputStream, (llvm::AssemblyAnnotationWriter*)NULL);
-    free(txtFileName);
-#endif //DEBUG
-    llvm::raw_fd_ostream OS(_outputFileName, ec);
-    llvm::WriteBitcodeToFile(*_module, OS);
-    delete _module;
-//    Module.Verify(LLVMVerifierFailureAction.LLVMAbortProcessAction);
 }
 
 [[noreturn]] void failFunctionCompilation()
@@ -478,6 +454,7 @@ CorInfoType toCorInfoType(var_types varType)
             return CorInfoType::CORINFO_TYPE_UBYTE;
         case TYP_LCLBLK: // TODO: outgoing args space - need to get an example compiling, e.g. https://github.com/dotnet/runtimelab/blob/40f9ff64ae80596bcddcec16a7e1a8f57a0b2cff/src/tests/nativeaot/SmokeTests/HelloWasm/HelloWasm.cs#L3492 to see what's
             // going on.  CORINFO_TYPE_VALUECLASS is a better mapping but if that is mapped as of now, then canStoreTypeOnLlvmStack will fail compilation for most methods.
+            failFunctionCompilation();
         case TYP_DOUBLE:
             return CorInfoType::CORINFO_TYPE_DOUBLE;
         case TYP_FLOAT:
@@ -496,6 +473,8 @@ CorInfoType toCorInfoType(var_types varType)
             return CorInfoType::CORINFO_TYPE_SHORT;
         case TYP_USHORT:
             return CorInfoType::CORINFO_TYPE_USHORT;
+        case TYP_STRUCT:
+            return CorInfoType::CORINFO_TYPE_VALUECLASS;
         case TYP_UNDEF:
             return CorInfoType::CORINFO_TYPE_UNDEF;
         default:
@@ -558,9 +537,10 @@ bool canStoreArgOnLlvmStack(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classH
     // structs with no GC pointers can go on LLVM stack.
     if (corInfoType == CorInfoType::CORINFO_TYPE_VALUECLASS)
     {
-        ClassLayout* classLayout = _compiler->typGetObjLayout(classHnd);
+        // Use getClassAtribs over typGetObjLayout because EETypePtr has CORINFO_FLG_GENERIC_TYPE_VARIABLE? which fails with typGetObjLayout
+        uint32_t classAttribs = _info.compCompHnd->getClassAttribs(classHnd);
 
-        return !classLayout->HasGCPtr();
+        return (classAttribs & CORINFO_FLG_CONTAINS_GC_PTR) == 0;
     }
 
     if (corInfoType == CorInfoType::CORINFO_TYPE_BYREF || corInfoType == CorInfoType::CORINFO_TYPE_CLASS ||
@@ -869,22 +849,7 @@ int getTotalParameterOffset(CORINFO_SIG_INFO& sigInfo)
 
 unsigned int getTotalRealLocalOffset()
 {
-    unsigned int offset = 0;
-
-    for (unsigned lclNum = 0; lclNum < _compiler->lvaCount; lclNum++)
-    {
-        LclVarDsc* varDsc = _compiler->lvaGetDesc(lclNum);
-        if (!varDsc->lvIsParam)
-        {
-            CorInfoType corInfoType = toCorInfoType(varDsc->TypeGet());
-            if (!canStoreLocalOnLlvmStack(varDsc))
-            {
-                offset = padNextOffset(corInfoType, offset);
-            }
-        }
-    }
-
-    return AlignUp(offset, TARGET_POINTER_SIZE);
+    return _shadowStackLocalsSize;
 }
 
 unsigned int getTotalLocalOffset()
@@ -1322,7 +1287,7 @@ void importStoreInd(llvm::IRBuilder<>& builder, GenTreeStoreInd* storeIndOp)
 {
     Value* address = getGenTreeValue(storeIndOp->Addr()).getValue(builder);
     Value* toStore = getGenTreeValue(storeIndOp->Data()).getValue(builder);
-    if (toStore->getType()->isPointerTy())
+    if (toStore->getType()->isPointerTy() && (storeIndOp->gtFlags & GTF_IND_TGT_NOT_HEAP) == 0)
     {
         // RhpAssignRef will never reverse PInvoke, so do not need to store the shadow stack here
         builder.CreateCall(getOrCreateRhpAssignRef(), ArrayRef<Value*>{address, castIfNecessary(builder, toStore, Type::getInt8PtrTy(_llvmContext))});
@@ -1354,7 +1319,7 @@ Value* localVar(llvm::IRBuilder<>& builder, GenTreeLclVar* lclVar)
                 unsigned int argIx       = _info.compIsStatic ? lclNum : lclNum - 1;
                 if (_info.compRetBuffArg != BAD_VAR_NUM)
                 {
-                    argIx--;
+                    failFunctionCompilation();
                 }
                 LlvmArgInfo  llvmArgInfo = getLlvmArgInfoForArgIx(_sigInfo, argIx);
                 if (llvmArgInfo.m_argIx >= 0)
@@ -1466,16 +1431,16 @@ void storeLocalVar(llvm::IRBuilder<>& builder, GenTreeLclVar* lclVar)
         LocatedLlvmValue locatedValue{ValueLocation::LlvmStack, nullptr}; // unused
 
         LclVarDsc* varDsc = _compiler->lvaGetDesc(lclVar);
-        if (canStoreLocalOnLlvmStack(varDsc))
-        {
-            locatedValue = LocatedLlvmValue(ValueLocation::LlvmStack, valueRef);
-        }
-        else
+        if (varDsc->lvIsParam && !canStoreLocalOnLlvmStack(varDsc))
         {
             Value* localAddress = castIfNecessary(builder, getLocalVarAddress(builder, lclVar), valueRef->getType()->getPointerTo());
             builder.CreateStore(valueRef, localAddress);
 
             locatedValue = LocatedLlvmValue(ValueLocation::ShadowStack, localAddress);
+        }
+        else
+        {
+            locatedValue = LocatedLlvmValue(ValueLocation::LlvmStack, valueRef);
         }
         SsaPair ssaPair = {lclVar->GetLclNum(), lclVar->GetSsaNum()};
         addForwardPhiArg(ssaPair, locatedValue.getRawValue()); // phis that forward referenced this value.
@@ -1487,12 +1452,23 @@ void storeLocalVar(llvm::IRBuilder<>& builder, GenTreeLclVar* lclVar)
     }
 }
 
+void replaceMappedLlvmValueWithShadowStack(GenTree* node)
+{
+    _sdsuMap->at(node) = LocatedLlvmValue(ValueLocation::LlvmStack, _function->getArg(0));
+}
+
 void visitNode(llvm::IRBuilder<>& builder, GenTree* node)
 {
     genTreeOps oper = node->OperGet();
     switch (oper)
     {
         case GT_ADD:
+            // TODO-LLVM: assume the first add is the local shadow stack setup.. must be a better way
+            if (_requiresShadowStackAddSubsitution)
+            {
+                replaceMappedLlvmValueWithShadowStack(node->AsOp()->gtOp1);
+                _requiresShadowStackAddSubsitution = false;
+            }
             buildAdd(builder, node, getGenTreeValue(node->AsOp()->gtOp1).getValue(builder), getGenTreeValue(node->AsOp()->gtOp2).getValue(builder));
             break;
         case GT_CALL:
@@ -1654,14 +1630,190 @@ void startImportingNode(llvm::IRBuilder<>& builder)
     }
 }
 
-//------------------------------------------------------------------------
-// Compile: Compile IR to LLVM, adding to the LLVM Module
-//
-void Llvm::Compile(Compiler* pCompiler)
+
+Llvm::Llvm(Compiler* pCompiler)
 {
     _compiler = pCompiler;
     _info = pCompiler->info;
-    CompAllocator allocator = pCompiler->getAllocator();
+
+    _function = nullptr;
+    _requiresShadowStackAddSubsitution = false;
+    _sigInfoIsValid = false;
+}
+
+void Llvm::llvmShutdown()
+{
+    if (_diBuilder != nullptr)
+    {
+        emitDebugMetadata(_llvmContext);
+    }
+#if DEBUG
+    if (_outputFileName == nullptr) return; // nothing generated
+    std::error_code ec;
+    char* txtFileName = (char*)malloc(strlen(_outputFileName) + 2); // .txt is longer than .bc
+    strcpy(txtFileName, _outputFileName);
+    strcpy(txtFileName + strlen(_outputFileName) - 2, "txt");
+    llvm::raw_fd_ostream textOutputStream(txtFileName, ec);
+    _module->print(textOutputStream, (llvm::AssemblyAnnotationWriter*)NULL);
+    free(txtFileName);
+#endif //DEBUG
+    llvm::raw_fd_ostream OS(_outputFileName, ec);
+    llvm::WriteBitcodeToFile(*_module, OS);
+    delete _module;
+    //    Module.Verify(LLVMVerifierFailureAction.LLVMAbortProcessAction);
+}
+
+GenTree* createAddNodeForShadowStackLocal(LclVarDsc* varDsc, unsigned shadowStackLclNum, GenTreeIntCon*& offset, GenTreeLclVar*& shadowStackVar)
+{
+    // TODO-LLVM: if the offset == 0, just GT_STOREIND at the shadowStack
+    offset = _compiler->gtNewOneConNode(var_types::TYP_INT)->AsIntCon();
+    offset->SetIconValue(varDsc->GetStackOffset());
+    shadowStackVar = _compiler->gtNewLclvNode(shadowStackLclNum, var_types::TYP_REF);
+    return _compiler->gtNewOperNode(genTreeOps::GT_ADD, var_types::TYP_REF, shadowStackVar, offset);
+}
+
+void insertAddWithOperands(LIR::Range& lirRange, GenTree* node, GenTree* addNode, GenTreeIntCon* offset, GenTreeLclVar* shadowStackVar)
+{
+    lirRange.InsertBefore(node, offset);
+    lirRange.InsertAfter(offset, shadowStackVar);
+    lirRange.InsertAfter(shadowStackVar, addNode);
+}
+
+void Llvm::ConvertShadowStackLocals()
+{
+    unsigned shadowStackLclNum = _compiler->lvaGrabTemp(false, "shadowstack"); // TODO-LLVM: create a new local as a temp, is this right?  Copied from lower.cpp
+
+    GenTreeIntCon* shadowStackOffset = _compiler->gtNewOneConNode(var_types::TYP_UINT)->AsIntCon(); // LLVM-TODO: TYP_LONG for Wasm64?
+
+    _compiler->eeGetMethodSig(_compiler->info.compMethodHnd, &_sigInfo);
+    _sigInfoIsValid = true;
+
+    shadowStackOffset->SetIconValue(getTotalParameterOffset(_sigInfo));
+
+    // This is a placeholder that we'll replace at LLVM generation as there is no IR Node or Arg
+    GenTreeIntCon* shadowStackArg = _compiler->gtNewOneConNode(var_types::TYP_UINT)->AsIntCon();
+
+    // TODO-LLVM : is GT_ADD the right way to do pointer arithmetic?
+    GenTree* localShadowStack = _compiler->gtNewOperNode(genTreeOps::GT_ADD, var_types::TYP_REF, shadowStackArg, shadowStackOffset);
+
+    GenTreeLclVar* shadowStack = _compiler->gtNewStoreLclVar(shadowStackLclNum, localShadowStack);
+    LclVarDsc* shadowStackVarDsc = _compiler->lvaGetDesc(shadowStack->GetLclNum());
+    shadowStackVarDsc->lvIsParam = 1;
+    shadowStackVarDsc->lvType = var_types::TYP_REF;
+
+    // insert the local shadowstack offest at the beginning of the first block
+    // This position is well known and replaced at LLVM generation
+    // LLVM-TODO: This is maybe not the best strategy, how else could we identity these IR nodes - a new block?
+    BasicBlock* firstBlock = _compiler->fgFirstBB;
+    LIR::Range& firstRange = LIR::AsRange(firstBlock);
+    firstRange.InsertAtBeginning(shadowStackOffset);
+    firstRange.InsertAfter(shadowStackOffset, shadowStackArg);
+    firstRange.InsertAfter(shadowStackArg, localShadowStack);
+    firstRange.InsertAfter(localShadowStack, shadowStack);
+
+    for (BasicBlock* const block : _compiler->Blocks())
+    {
+        LIR::Range& lirRange = LIR::AsRange(block);
+        for (GenTree* node : LIR::AsRange(block))
+        {
+            genTreeOps oper = node->OperGet();
+            if (oper == GT_STORE_LCL_VAR)
+            {
+                GenTreeLclVarCommon* lclVar = node->AsLclVarCommon();
+                LclVarDsc* varDsc = _compiler->lvaGetDesc(lclVar->GetLclNum());
+                if (!varDsc->lvIsParam && !canStoreLocalOnLlvmStack(varDsc))
+                {
+                    GenTreeIntCon* offset;
+                    GenTreeLclVar* shadowStackVar;
+                    GenTree* addNode = createAddNodeForShadowStackLocal(varDsc, shadowStackLclNum, offset, shadowStackVar);
+
+                    genTreeOps oper = lclVar->TypeGet() == var_types::TYP_STRUCT ? GT_STORE_OBJ : GT_STOREIND;
+
+                    node->ChangeOper(oper);
+                    node->gtFlags |= GTF_IND_TGT_NOT_HEAP;
+                    GenTreeOp* opNode = node->AsOp();
+                    opNode->gtOp2 = opNode->gtGetOp1();
+                    opNode->gtOp1 = addNode;
+
+                    insertAddWithOperands(lirRange, node, addNode, offset, shadowStackVar);
+                }
+            }
+            else if (oper == GT_LCL_VAR)
+            {
+                GenTreeLclVarCommon* lclVar = node->AsLclVarCommon();
+                LclVarDsc* varDsc = _compiler->lvaGetDesc(lclVar->GetLclNum());
+                if (!varDsc->lvIsParam && !canStoreLocalOnLlvmStack(varDsc))
+                {
+                    GenTreeIntCon* offset;
+                    GenTreeLclVar* shadowStackVar;
+                    GenTree* addNode = createAddNodeForShadowStackLocal(varDsc, shadowStackLclNum, offset, shadowStackVar);
+
+                    genTreeOps oper = lclVar->TypeGet() == var_types::TYP_STRUCT ? GT_OBJ : GT_IND;
+
+                    node->ChangeOper(oper);
+                    node->AsOp()->gtOp1 = addNode;
+
+                    insertAddWithOperands(lirRange, node, addNode, offset, shadowStackVar);
+                }
+            }
+        }
+    }
+
+    if (_compiler->verboseTrees)
+    {
+        _compiler->fgDispBasicBlocks(true);
+    }
+}
+
+//------------------------------------------------------------------------
+// Convert GT_STORE_LCL_VAR and GT_LCL_VAR to use the shadow stack when the local needs to be GC tracked
+//
+void Llvm::PlaceAndConvertShadowStackLocals()
+{
+    _shadowStackLocalsSize = 0;
+    if (_compiler->lvaCount == 0) return;
+
+    std::vector<LclVarDsc*> locals;
+
+    unsigned lclNum;
+    LclVarDsc* varDsc;
+    for (lclNum = 0, varDsc = _compiler->lvaTable; lclNum < _compiler->lvaCount; lclNum++, varDsc++)
+    {
+        if (!varDsc->lvIsParam && !canStoreLocalOnLlvmStack(varDsc))
+        {
+            locals.push_back(varDsc);
+        }
+    }
+
+    if (locals.size() == 0) return;
+
+    _requiresShadowStackAddSubsitution = true;
+    if (_compiler->opts.OptimizationEnabled())
+    {
+        auto cmpLambda = [](const LclVarDsc* lhs, const LclVarDsc* rhs) { return lhs->lvRefCntWtd() > rhs->lvRefCntWtd(); };
+        std::sort(locals.begin(), locals.end(), cmpLambda);
+    }
+
+    unsigned int offset = 0;
+    for (unsigned i = 0; i < locals.size(); i++)
+    {
+        LclVarDsc* varDsc = locals.at(i);
+        CorInfoType corInfoType = toCorInfoType(varDsc->TypeGet());
+        offset = padOffset(corInfoType, offset);
+        varDsc->SetStackOffset(offset);
+        offset = padNextOffset(corInfoType, offset);
+    }
+    _shadowStackLocalsSize = offset;
+
+    ConvertShadowStackLocals();
+}
+
+//------------------------------------------------------------------------
+// Compile: Compile IR to LLVM, adding to the LLVM Module
+//
+void Llvm::Compile()
+{
+    CompAllocator allocator = _compiler->getAllocator();
     BlkToLlvmBlkVectorMap blkToLlvmBlkVectorMap(allocator);
     _blkToLlvmBlkVectorMap = &blkToLlvmBlkVectorMap;
     std::unordered_map<GenTree*, LocatedLlvmValue> sdsuMap;
@@ -1670,15 +1822,18 @@ void Llvm::Compile(Compiler* pCompiler)
     _forwardReferencingPhis = new std::unordered_map<SsaPair, IncomingPhi, SsaPairHash>();
     _spilledExpressions.clear();
     const char* mangledName = (*_getMangledMethodName)(_thisPtr, _info.compMethodHnd);
-    _function               = _module->getFunction(mangledName);
-    _debugFunction          = nullptr;
+    _function = _module->getFunction(mangledName);
+    _debugFunction = nullptr;
     _debugMetadata.diCompileUnit = nullptr;
-    _compiler->eeGetMethodSig(_info.compMethodHnd, &_sigInfo);
+    if (!_sigInfoIsValid)
+    {
+        _compiler->eeGetMethodSig(_info.compMethodHnd, &_sigInfo);
+    }
 
     if (_function == nullptr)
     {
         _function = Function::Create(getFunctionTypeForSigInfo(_sigInfo), Function::ExternalLinkage, 0U, mangledName,
-                                     _module); // TODO: ExternalLinkage forced as linked from old module
+            _module); // TODO: ExternalLinkage forced as linked from old module
     }
 
     llvm::IRBuilder<> builder(_llvmContext);
@@ -1695,7 +1850,7 @@ void Llvm::Compile(Compiler* pCompiler)
 
     generateProlog();
 
-    for (BasicBlock* block = pCompiler->fgFirstBB; block; block = block->bbNext)
+    for (BasicBlock* block = _compiler->fgFirstBB; block; block = block->bbNext)
     {
         startImportingBasicBlock(block);
 
