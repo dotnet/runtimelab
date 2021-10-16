@@ -118,12 +118,14 @@
     <Compile Include="FileInfo\GetSetAttributes.cs" />
     <Compile Include="FileInfo\Length.cs" />
     <Compile Include="FileInfo\Open.cs" />
+    <Compile Include="FileStream\DevicesPipesAndSockets.cs" />
     <Compile Include="FileStream\FlushAsync.cs" />
     <Compile Include="FileStream\FileStreamConformanceTests.cs" />
     <Compile Include="FileStream\SafeFileHandle.cs" />
     <Compile Include="FileStream\IsAsync.cs" />
     <Compile Include="FileStream\Name.cs" />
     <Compile Include="FileStream\CopyToAsync.cs" />
+    <Compile Include="FileStream\DeleteOnClose.cs" />
     <Compile Include="FileStream\FileStreamOptions.cs" />
     <Compile Include="FileStream\Flush.cs" />
     <Compile Include="FileStream\Dispose.cs" />
