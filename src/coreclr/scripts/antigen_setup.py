@@ -19,8 +19,7 @@ from os import path
 import os
 from os import listdir
 from coreclr_arguments import *
-from superpmi_setup import run_command, copy_directory, set_pipeline_variable
-from superpmi import ChangeDir, TempDir
+from azdo_pipelines_util import run_command, copy_directory, set_pipeline_variable, ChangeDir, TempDir
 import tempfile
 
 parser = argparse.ArgumentParser(description="description")
@@ -88,16 +87,6 @@ def main(main_args):
 
     helix_source_prefix = "official"
     creator = ""
-    ci = True
-    if is_windows:
-        helix_queue = "Windows.10.Arm64" if arch_name == "arm64" else "Windows.10.Amd64.X86"
-    else:
-        if arch_name == "arm":
-            helix_queue = "(Ubuntu.1804.Arm32)Ubuntu.1804.Armarch@mcr.microsoft.com/dotnet-buildtools/prereqs:ubuntu-18.04-helix-arm32v7-bfcd90a-20200121150440"
-        elif arch_name == "arm64":
-            helix_queue = "(Ubuntu.1804.Arm64)Ubuntu.1804.ArmArch@mcr.microsoft.com/dotnet-buildtools/prereqs:ubuntu-18.04-helix-arm64v8-20210531091519-97d8652"
-        else:
-            helix_queue = "Ubuntu.1804.Amd64"
 
     # create exploratory directory
     print('Copying {} -> {}'.format(scripts_src_directory, coreroot_dst_directory))
@@ -150,7 +139,6 @@ def main(main_args):
     set_pipeline_variable("WorkItemDirectory", workitem_directory)
     set_pipeline_variable("RunConfiguration", run_configuration)
     set_pipeline_variable("Creator", creator)
-    set_pipeline_variable("Queue", helix_queue)
     set_pipeline_variable("HelixSourcePrefix", helix_source_prefix)
 
 if __name__ == "__main__":

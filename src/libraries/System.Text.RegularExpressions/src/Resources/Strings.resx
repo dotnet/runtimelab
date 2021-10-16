@@ -214,7 +214,7 @@
     <value>Collection is read-only.</value>
   </data>
   <data name="PlatformNotSupported_CompileToAssembly" xml:space="preserve">
-    <value>This platform does not support writing compiled regular expressions to an assembly.</value>
+    <value>This platform does not support writing compiled regular expressions to an assembly. Use RegexGeneratorAttribute with the regular expression source generator instead.</value>
   </data>
   <data name="QuantifierAfterNothing" xml:space="preserve">
     <value>Quantifier {x,y} following nothing.</value>

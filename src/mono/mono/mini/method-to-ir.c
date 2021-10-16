@@ -301,7 +301,7 @@ mono_alloc_ireg_copy (MonoCompile *cfg, guint32 vreg)
 guint
 mono_type_to_regmove (MonoCompile *cfg, MonoType *type)
 {
-	if (type->byref)
+	if (m_type_is_byref (type))
 		return OP_MOVE;
 
 	type = mini_get_underlying_type (type);
@@ -806,7 +806,7 @@ mini_type_to_eval_stack_type (MonoCompile *cfg, MonoType *type, MonoInst *inst)
 
 	type = mini_get_underlying_type (type);
 	inst->klass = klass = mono_class_from_mono_type_internal (type);
-	if (type->byref) {
+	if (m_type_is_byref (type)) {
 		inst->type = STACK_MP;
 		return;
 	}
@@ -1307,13 +1307,13 @@ check_values_to_signature (MonoInst *args, MonoType *this_ins, MonoMethodSignatu
 		case STACK_INV:
 			return 0;
 		case STACK_MP:
-			if (!sig->params [i]->byref)
+			if (m_type_is_byref (!sig->params [i]))
 				return 0;
 			continue;
 		case STACK_OBJ:
-			if (sig->params [i]->byref)
+			if (m_type_is_byref (sig->params [i]))
 				return 0;
-			switch (sig->params [i]->type) {
+			switch (m_type_is_byref (sig->params [i])) {
 			case MONO_TYPE_CLASS:
 			case MONO_TYPE_STRING:
 			case MONO_TYPE_OBJECT:
@@ -1325,7 +1325,7 @@ check_values_to_signature (MonoInst *args, MonoType *this_ins, MonoMethodSignatu
 			}
 			continue;
 		case STACK_R8:
-			if (sig->params [i]->byref)
+			if (m_type_is_byref (sig->params [i]))
 				return 0;
 			if (sig->params [i]->type != MONO_TYPE_R4 && sig->params [i]->type != MONO_TYPE_R8)
 				return 0;
@@ -1842,7 +1842,7 @@ target_type_is_incompatible (MonoCompile *cfg, MonoType *target, MonoInst *arg)
 	MonoType *simple_type;
 	MonoClass *klass;
 
-	if (target->byref) {
+	if (m_type_is_byref (target)) {
 		/* FIXME: check that the pointed to types match */
 		if (arg->type == STACK_MP) {
 			/* This is needed to handle gshared types + ldaddr. We lower the types so we can handle enums and other typedef-like types. */
@@ -2025,7 +2025,7 @@ check_call_signature (MonoCompile *cfg, MonoMethodSignature *sig, MonoInst **arg
 		args++;
 	}
 	for (i = 0; i < sig->param_count; ++i) {
-		if (sig->params [i]->byref) {
+		if (m_type_is_byref (sig->params [i])) {
 			if (args [i]->type != STACK_MP && args [i]->type != STACK_PTR)
 				return TRUE;
 			continue;
@@ -2237,7 +2237,7 @@ static MonoInst*
 mono_emit_widen_call_res (MonoCompile *cfg, MonoInst *ins, MonoMethodSignature *fsig)
 {
 	if (!MONO_TYPE_IS_VOID (fsig->ret)) {
-		if ((fsig->pinvoke || LLVM_ENABLED) && !fsig->ret->byref) {
+		if ((fsig->pinvoke || LLVM_ENABLED) && !m_type_is_byref (fsig->ret)) {
 			int widen_op = -1;
 
 			/* 
@@ -3678,7 +3678,7 @@ handle_constrained_gsharedvt_call (MonoCompile *cfg, MonoMethod *cmethod, MonoMe
 		} else {
 			supported = TRUE;
 			for (int i = 0; i < fsig->param_count; ++i) {
-				if (!(fsig->params [i]->byref || MONO_TYPE_IS_PRIMITIVE (fsig->params [i]) || MONO_TYPE_IS_REFERENCE (fsig->params [i]) || MONO_TYPE_ISSTRUCT (fsig->params [i]) || mini_is_gsharedvt_type (fsig->params [i])))
+				if (!(m_type_is_byref (fsig->params [i]) || MONO_TYPE_IS_PRIMITIVE (fsig->params [i]) || MONO_TYPE_IS_REFERENCE (fsig->params [i]) || MONO_TYPE_ISSTRUCT (fsig->params [i]) || mini_is_gsharedvt_type (fsig->params [i])))
 					supported = FALSE;
 			}
 		}
@@ -3998,7 +3998,7 @@ mono_method_check_inlining (MonoCompile *cfg, MonoMethod *method)
 		if (sig->ret && sig->ret->type == MONO_TYPE_R4)
 			return FALSE;
 		for (i = 0; i < sig->param_count; ++i)
-			if (!sig->params [i]->byref && sig->params [i]->type == MONO_TYPE_R4)
+			if (!m_type_is_byref (sig->params [i]) && sig->params [i]->type == MONO_TYPE_R4)
 				return FALSE;
 	}
 #endif
@@ -4469,7 +4469,7 @@ mini_emit_init_rvar (MonoCompile *cfg, int dreg, MonoType *rtype)
 	rtype = mini_get_underlying_type (rtype);
 	t = rtype->type;
 
-	if (rtype->byref) {
+	if (m_type_is_byref (rtype)) {
 		MONO_EMIT_NEW_PCONST (cfg, dreg, NULL);
 	} else if (t >= MONO_TYPE_BOOLEAN && t <= MONO_TYPE_U4) {
 		MONO_EMIT_NEW_ICONST (cfg, dreg, 0);
@@ -4505,7 +4505,7 @@ emit_dummy_init_rvar (MonoCompile *cfg, int dreg, MonoType *rtype)
 	rtype = mini_get_underlying_type (rtype);
 	t = rtype->type;
 
-	if (rtype->byref) {
+	if (m_type_is_byref (rtype)) {
 		MONO_EMIT_NEW_DUMMY_INIT (cfg, dreg, OP_DUMMY_PCONST);
 	} else if (t >= MONO_TYPE_BOOLEAN && t <= MONO_TYPE_U4) {
 		MONO_EMIT_NEW_DUMMY_INIT (cfg, dreg, OP_DUMMY_ICONST);
@@ -5149,7 +5149,7 @@ set_exception_type_from_invalid_il (MonoCompile *cfg, MonoMethod *method, guchar
 guint32
 mono_type_to_stloc_coerce (MonoType *type)
 {
-	if (type->byref)
+	if (m_type_is_byref (type))
 		return 0;
 
 	type = mini_get_underlying_type (type);
@@ -5478,7 +5478,7 @@ is_supported_tailcall (MonoCompile *cfg, const guint8 *ip, MonoMethod *method, M
 	}
 
 	for (int i = 0; i < fsig->param_count; ++i) {
-		if (IS_NOT_SUPPORTED_TAILCALL (fsig->params [i]->byref || fsig->params [i]->type == MONO_TYPE_PTR || fsig->params [i]->type == MONO_TYPE_FNPTR)) {
+		if (IS_NOT_SUPPORTED_TAILCALL (m_type_is_byref (fsig->params [i]) || fsig->params [i]->type == MONO_TYPE_PTR || fsig->params [i]->type == MONO_TYPE_FNPTR)) {
 			tailcall_calli = FALSE;
 			tailcall = FALSE; // These can point to the current method's stack. Emit range check?
 			goto exit;
@@ -5822,7 +5822,7 @@ emit_setret (MonoCompile *cfg, MonoInst *val)
 		}
 	} else {
 #ifdef MONO_ARCH_SOFT_FLOAT_FALLBACK
-		if (COMPILE_SOFT_FLOAT (cfg) && !ret_type->byref && ret_type->type == MONO_TYPE_R4) {
+		if (COMPILE_SOFT_FLOAT (cfg) && !m_type_is_byref (ret_type) && ret_type->type == MONO_TYPE_R4) {
 			MonoInst *conv;
 
 			MonoInst *iargs [ ] = { val };
@@ -6453,7 +6453,7 @@ mono_method_to_ir (MonoCompile *cfg, MonoMethod *method, MonoBasicBlock *start_b
 		mono_debug_init_method (cfg, cfg->cbb, breakpoint_id);
 
 	for (n = 0; n < header->num_locals; ++n) {
-		if (header->locals [n]->type == MONO_TYPE_VOID && !header->locals [n]->byref)
+		if (header->locals [n]->type == MONO_TYPE_VOID && !m_type_is_byref (header->locals [n]))
 			UNVERIFIED;
 	}
 	class_inits = NULL;
@@ -7336,9 +7336,12 @@ mono_method_to_ir (MonoCompile *cfg, MonoMethod *method, MonoBasicBlock *start_b
 				ERROR_DECL (error);
 
 				MonoMethod *new_cmethod = mono_class_get_virtual_method (sp [0]->klass, cmethod, error);
-				mono_error_assert_ok (error);
-				cmethod = new_cmethod;
-				virtual_ = FALSE;
+				if (is_ok (error)) {
+					cmethod = new_cmethod;
+					virtual_ = FALSE;
+				} else {
+					mono_error_cleanup (error);
+				}
 			}
 
 			if (cmethod && method_does_not_return (cmethod)) {
@@ -8744,8 +8747,8 @@ calli_end:
 			 */
 			if (cfg->cbb->out_of_line && m_class_get_image (cmethod->klass) == mono_defaults.corlib &&
 				is_exception_class (cmethod->klass) && n <= 2 &&
-				((n < 1) || (!fsig->params [0]->byref && fsig->params [0]->type == MONO_TYPE_STRING)) && 
-				((n < 2) || (!fsig->params [1]->byref && fsig->params [1]->type == MONO_TYPE_STRING))) {
+			    ((n < 1) || (!m_type_is_byref (fsig->params [0]) && fsig->params [0]->type == MONO_TYPE_STRING)) && 
+			    ((n < 2) || (!m_type_is_byref (fsig->params [1]) && fsig->params [1]->type == MONO_TYPE_STRING))) {
 				MonoInst *iargs [3];
 
 				sp -= n;
@@ -10247,8 +10250,13 @@ field_access_end:
 					}
 
 					if (context_used) {
-						ins = mini_emit_get_rgctx_klass (cfg, context_used,
-							tclass, MONO_RGCTX_INFO_REFLECTION_TYPE);
+						MONO_INST_NEW (cfg, ins, OP_RTTYPE);
+						ins->dreg = alloc_ireg_ref (cfg);
+						ins->inst_p0 = tclass;
+						ins->type = STACK_OBJ;
+						MONO_ADD_INS (cfg->cbb, ins);
+						cfg->flags |= MONO_CFG_NEEDS_DECOMPOSE;
+						cfg->cbb->needs_decompose = TRUE;
 					} else if (cfg->compile_aot) {
 						if (method->wrapper_type) {
 							error_init (error); //got to do it since there are multiple conditionals below
@@ -12008,6 +12016,72 @@ MONO_DISABLE_WARNING(4065) // switch with default but no case
 		return mono_op_to_op_imm (opcode);
 	}
 MONO_RESTORE_WARNING
+}
+
+gboolean
+mono_op_no_side_effects (int opcode)
+{
+	/* FIXME: Add more instructions */
+	/* INEG sets the condition codes, and the OP_LNEG decomposition depends on this on x86 */
+	switch (opcode) {
+	case OP_MOVE:
+	case OP_FMOVE:
+	case OP_VMOVE:
+	case OP_XMOVE:
+	case OP_RMOVE:
+	case OP_VZERO:
+	case OP_XZERO:
+	case OP_ICONST:
+	case OP_I8CONST:
+	case OP_ADD_IMM:
+	case OP_R8CONST:
+	case OP_LADD_IMM:
+	case OP_ISUB_IMM:
+	case OP_IADD_IMM:
+	case OP_LNEG:
+	case OP_ISUB:
+	case OP_CMOV_IGE:
+	case OP_ISHL_IMM:
+	case OP_ISHR_IMM:
+	case OP_ISHR_UN_IMM:
+	case OP_IAND_IMM:
+	case OP_ICONV_TO_U1:
+	case OP_ICONV_TO_I1:
+	case OP_SEXT_I4:
+	case OP_LCONV_TO_U1:
+	case OP_ICONV_TO_U2:
+	case OP_ICONV_TO_I2:
+	case OP_LCONV_TO_I2:
+	case OP_LDADDR:
+	case OP_PHI:
+	case OP_NOP:
+	case OP_ZEXT_I4:
+	case OP_NOT_NULL:
+	case OP_IL_SEQ_POINT:
+	case OP_RTTYPE:
+		return TRUE;
+	default:
+		return FALSE;
+	}
+}
+
+gboolean
+mono_ins_no_side_effects (MonoInst *ins)
+{
+	if (mono_op_no_side_effects (ins->opcode))
+		return TRUE;
+	if (ins->opcode == OP_AOTCONST) {
+		MonoJumpInfoType type = (MonoJumpInfoType)ins->inst_p1;
+		// Some AOTCONSTs have side effects
+		switch (type) {
+		case MONO_PATCH_INFO_TYPE_FROM_HANDLE:
+		case MONO_PATCH_INFO_LDSTR:
+		case MONO_PATCH_INFO_VTABLE:
+		case MONO_PATCH_INFO_METHOD_RGCTX:
+			return TRUE;
+		}
+	}
+	return FALSE;
 }
 
 /**

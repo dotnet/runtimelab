@@ -703,6 +703,11 @@ insGroup* emitter::emitSavIG(bool emitAdd)
     ig = emitCurIG;
     assert(ig);
 
+#ifdef TARGET_ARMARCH
+    // Reset emitLastMemBarrier for new IG
+    emitLastMemBarrier = nullptr;
+#endif
+
     // Compute how much code we've generated
 
     sz = emitCurIGfreeNext - emitCurIGfreeBase;
@@ -1140,6 +1145,10 @@ void emitter::emitBegFN(bool hasFramePtr
 
     emitLastIns = nullptr;
 
+#ifdef TARGET_ARMARCH
+    emitLastMemBarrier = nullptr;
+#endif
+
     ig->igNext = nullptr;
 
 #ifdef DEBUG
@@ -1303,6 +1312,17 @@ void emitter::dispIns(instrDesc* id)
 
 void emitter::appendToCurIG(instrDesc* id)
 {
+#ifdef TARGET_ARMARCH
+    if (id->idIns() == INS_dmb)
+    {
+        emitLastMemBarrier = id;
+    }
+    else if (emitInsIsLoadOrStore(id->idIns()))
+    {
+        // A memory access - reset saved memory barrier
+        emitLastMemBarrier = nullptr;
+    }
+#endif
     emitCurIGsize += id->idCodeSize();
 }
 
@@ -5657,8 +5677,8 @@ unsigned emitter::emitEndCodeGen(Compiler* comp,
     }
 #endif
 
-#ifdef TARGET_XARCH
-    // For x64/x86, align methods that are "optimizations enabled" to 32 byte boundaries if
+#if defined(TARGET_XARCH) || defined(TARGET_ARM64)
+    // For x64/x86/arm64, align methods that are "optimizations enabled" to 32 byte boundaries if
     // they are larger than 16 bytes and contain a loop.
     //
     if (emitComp->opts.OptimizationEnabled() && !emitComp->opts.jitFlags->IsSet(JitFlags::JIT_FLAG_PREJIT) &&
@@ -6389,7 +6409,12 @@ unsigned emitter::emitEndCodeGen(Compiler* comp,
 #endif
 
     unsigned actualCodeSize = emitCurCodeOffs(cp);
+
+#if defined(TARGET_ARM64)
+    assert(emitTotalCodeSize == actualCodeSize);
+#else
     assert(emitTotalCodeSize >= actualCodeSize);
+#endif
 
 #if EMITTER_STATS
     totAllocdSize += emitTotalCodeSize;

@@ -99,6 +99,21 @@ namespace System.Text.RegularExpressions.Tests
             }
         }
 
+        [Theory]
+        [InlineData(RegexOptions.None)]
+        [InlineData(RegexOptions.Compiled)]
+        [InlineData(RegexHelpers.RegexOptionNonBacktracking)]
+        public void CharactersLowercasedOneByOne(RegexOptions options)
+        {
+            using (new ThreadCultureChange("en-US"))
+            {
+                Assert.True(new Regex("\uD801\uDC00", options | RegexOptions.IgnoreCase).IsMatch("\uD801\uDC00"));
+                Assert.True(new Regex("\uD801\uDC00", options | RegexOptions.IgnoreCase).IsMatch("abcdefg\uD801\uDC00"));
+                Assert.True(new Regex("\uD801", options | RegexOptions.IgnoreCase).IsMatch("\uD801\uDC00"));
+                Assert.True(new Regex("\uDC00", options | RegexOptions.IgnoreCase).IsMatch("\uD801\uDC00"));
+            }
+        }
+
         public static IEnumerable<object[]> TurkishI_Is_Differently_LowerUpperCased_In_Turkish_Culture_TestData()
         {
             // this test fails for NonBacktracking, see next test

@@ -1794,7 +1794,7 @@ void CodeGen::genEmitGSCookieCheck(bool pushReg)
     {
         // load the GS cookie constant into a reg
         //
-        genSetRegToIcon(regGSConst, compiler->gsGlobalSecurityCookieVal, TYP_I_IMPL);
+        instGen_Set_Reg_To_Imm(EA_PTRSIZE, regGSConst, compiler->gsGlobalSecurityCookieVal);
     }
     else
     {
@@ -2181,11 +2181,18 @@ void CodeGen::genGenerateMachineCode()
             printf("unknown architecture");
         }
 
-#if defined(TARGET_WINDOWS)
-        printf(" - Windows");
-#elif defined(TARGET_UNIX)
-        printf(" - Unix");
-#endif
+        if (TargetOS::IsWindows)
+        {
+            printf(" - Windows");
+        }
+        else if (TargetOS::IsMacOS)
+        {
+            printf(" - MacOS");
+        }
+        else if (TargetOS::IsUnix)
+        {
+            printf(" - Unix");
+        }
 
         printf("\n");
 
@@ -3393,11 +3400,9 @@ void CodeGen::genFnPrologCalleeRegArgs(regNumber xtraReg, bool* pXtraRegClobbere
             // Check if this is an HFA register arg and return the HFA type
             if (varDsc.lvIsHfaRegArg())
             {
-#if defined(TARGET_WINDOWS)
                 // Cannot have hfa types on windows arm targets
                 // in vararg methods.
-                assert(!compiler->info.compIsVarArgs);
-#endif // defined(TARGET_WINDOWS)
+                assert(!TargetOS::IsWindows || !compiler->info.compIsVarArgs);
                 return varDsc.GetHfaType();
             }
             return compiler->mangleVarArgsType(varDsc.lvType);
@@ -3464,12 +3469,12 @@ void CodeGen::genFnPrologCalleeRegArgs(regNumber xtraReg, bool* pXtraRegClobbere
         // Change regType to the HFA type when we have a HFA argument
         if (varDsc->lvIsHfaRegArg())
         {
-#if defined(TARGET_WINDOWS) && defined(TARGET_ARM64)
-            if (compiler->info.compIsVarArgs)
+#if defined(TARGET_ARM64)
+            if (TargetOS::IsWindows && compiler->info.compIsVarArgs)
             {
                 assert(!"Illegal incoming HFA arg encountered in Vararg method.");
             }
-#endif // defined(TARGET_WINDOWS) && defined(TARGET_ARM64)
+#endif // defined(TARGET_ARM64)
             regType = varDsc->GetHfaType();
         }
 
@@ -6278,6 +6283,15 @@ void CodeGen::genZeroInitFrame(int untrLclHi, int untrLclLo, regNumber initReg, 
                 continue;
             }
 
+            // We currently don't expect to see multi-reg args in OSR methods, as struct
+            // promotion is disabled and so any struct arg just uses the spilled location
+            // on the original frame.
+            //
+            // If we ever enable promotion we'll need to generalize what follows to copy each
+            // field from the original frame to its OSR home.
+            //
+            assert(!varDsc->lvIsMultiRegArg);
+
             if (!VarSetOps::IsMember(compiler, compiler->fgFirstBB->bbLiveIn, varDsc->lvVarIndex))
             {
                 JITDUMP("---OSR--- V%02u (reg) not live at entry\n", varNum);
@@ -6297,7 +6311,8 @@ void CodeGen::genZeroInitFrame(int untrLclHi, int untrLclLo, regNumber initReg, 
             }
 
             // Note we are always reading from the original frame here
-            const var_types lclTyp  = genActualType(varDsc->lvType);
+            //
+            const var_types lclTyp  = varDsc->GetActualRegisterType();
             const emitAttr  size    = emitTypeSize(lclTyp);
             const int       stkOffs = patchpointInfo->Offset(lclNum) + fieldOffset;
 
@@ -7469,14 +7484,8 @@ void CodeGen::genFnProlog()
 
     if (compiler->info.compPublishStubParam)
     {
-#if CPU_LOAD_STORE_ARCH
         GetEmitter()->emitIns_S_R(ins_Store(TYP_I_IMPL), EA_PTRSIZE, REG_SECRET_STUB_PARAM,
                                   compiler->lvaStubArgumentVar, 0);
-#else
-        // mov [lvaStubArgumentVar], EAX
-        GetEmitter()->emitIns_AR_R(ins_Store(TYP_I_IMPL), EA_PTRSIZE, REG_SECRET_STUB_PARAM, genFramePointerReg(),
-                                   compiler->lvaTable[compiler->lvaStubArgumentVar].GetStackOffset());
-#endif
         assert(intRegState.rsCalleeRegArgMaskLiveIn & RBM_SECRET_STUB_PARAM);
 
         // It's no longer live; clear it out so it can be used after this in the prolog
@@ -7791,6 +7800,55 @@ GenTree* CodeGen::getCallTarget(const GenTreeCall* call, CORINFO_METHOD_HANDLE* 
     }
 
     return call->gtControlExpr;
+}
+
+//------------------------------------------------------------------------
+// getCallIndirectionCellReg - Get the register containing the indirection cell for a call
+//
+// Arguments:
+//    call - the node
+//
+// Returns:
+//   The register containing the indirection cell, or REG_NA if this call does not use an indirection cell argument.
+//
+// Notes:
+//   We currently use indirection cells for VSD on all platforms and for R2R calls on ARM architectures.
+//
+regNumber CodeGen::getCallIndirectionCellReg(const GenTreeCall* call)
+{
+    regNumber result = REG_NA;
+    switch (call->GetIndirectionCellArgKind())
+    {
+        case NonStandardArgKind::None:
+            break;
+        case NonStandardArgKind::R2RIndirectionCell:
+            result = REG_R2R_INDIRECT_PARAM;
+            break;
+        case NonStandardArgKind::VirtualStubCell:
+            result = compiler->virtualStubParamInfo->GetReg();
+            break;
+        default:
+            unreached();
+    }
+
+#ifdef DEBUG
+    regNumber       foundReg = REG_NA;
+    unsigned        argCount = call->fgArgInfo->ArgCount();
+    fgArgTabEntry** argTable = call->fgArgInfo->ArgTable();
+    for (unsigned i = 0; i < argCount; i++)
+    {
+        NonStandardArgKind kind = argTable[i]->nonStandardArgKind;
+        if ((kind == NonStandardArgKind::R2RIndirectionCell) || (kind == NonStandardArgKind::VirtualStubCell))
+        {
+            foundReg = argTable[i]->GetRegNum();
+            break;
+        }
+    }
+
+    assert(foundReg == result);
+#endif
+
+    return result;
 }
 
 /*****************************************************************************
@@ -12556,9 +12614,9 @@ void CodeGen::genPoisonFrame(regMaskTP regLiveIn)
         if (!hasPoisonImm)
         {
 #ifdef TARGET_64BIT
-            genSetRegToIcon(REG_SCRATCH, (ssize_t)0xcdcdcdcdcdcdcdcd, TYP_LONG);
+            instGen_Set_Reg_To_Imm(EA_8BYTE, REG_SCRATCH, (ssize_t)0xcdcdcdcdcdcdcdcd);
 #else
-            genSetRegToIcon(REG_SCRATCH, (ssize_t)0xcdcdcdcd, TYP_INT);
+            instGen_Set_Reg_To_Imm(EA_4BYTE, REG_SCRATCH, (ssize_t)0xcdcdcdcd);
 #endif
             hasPoisonImm = true;
         }
