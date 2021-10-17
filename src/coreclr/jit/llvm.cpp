@@ -1632,13 +1632,13 @@ void startImportingNode(llvm::IRBuilder<>& builder)
 
 
 Llvm::Llvm(Compiler* pCompiler)
+    : _sigInfoIsValid(false)
 {
     _compiler = pCompiler;
     _info = pCompiler->info;
 
     _function = nullptr;
     _requiresShadowStackAddSubsitution = false;
-    _sigInfoIsValid = false;
 }
 
 void Llvm::llvmShutdown()
@@ -1663,25 +1663,47 @@ void Llvm::llvmShutdown()
     //    Module.Verify(LLVMVerifierFailureAction.LLVMAbortProcessAction);
 }
 
-GenTree* createAddNodeForShadowStackLocal(LclVarDsc* varDsc, unsigned shadowStackLclNum, GenTreeIntCon*& offset, GenTreeLclVar*& shadowStackVar)
+void Llvm::CreateShadowStackLocalAddress(GenTree* node, unsigned shadowStackLclNum)
 {
-    // TODO-LLVM: if the offset == 0, just GT_STOREIND at the shadowStack
-    offset = _compiler->gtNewOneConNode(var_types::TYP_INT)->AsIntCon();
-    offset->SetIconValue(varDsc->GetStackOffset());
-    shadowStackVar = _compiler->gtNewLclvNode(shadowStackLclNum, var_types::TYP_REF);
-    return _compiler->gtNewOperNode(genTreeOps::GT_ADD, var_types::TYP_REF, shadowStackVar, offset);
-}
+    GenTreeLclVarCommon* lclVar = node->AsLclVarCommon();
+    LclVarDsc* varDsc = _compiler->lvaGetDesc(lclVar->GetLclNum());
+    genTreeOps oper = node->OperGet();
+    if (!varDsc->lvIsParam && !canStoreLocalOnLlvmStack(varDsc))
+    {
+        // TODO-LLVM: if the offset == 0, just GT_STOREIND at the shadowStack
+        GenTreeIntCon* offset = _compiler->gtNewIconNode(varDsc->GetStackOffset(), TYP_I_IMPL);
+        GenTreeLclVar* shadowStackVar = _compiler->gtNewLclvNode(shadowStackLclNum, var_types::TYP_I_IMPL);
+        GenTree* lclAddress = _compiler->gtNewOperNode(genTreeOps::GT_ADD, var_types::TYP_I_IMPL, shadowStackVar, offset);
 
-void insertAddWithOperands(LIR::Range& lirRange, GenTree* node, GenTree* addNode, GenTreeIntCon* offset, GenTreeLclVar* shadowStackVar)
-{
-    lirRange.InsertBefore(node, offset);
-    lirRange.InsertAfter(offset, shadowStackVar);
-    lirRange.InsertAfter(shadowStackVar, addNode);
+        genTreeOps indirOper = GT_NONE;
+        GenTree* storedValue = nullptr;
+        switch (node->OperGet())
+        {
+        case GT_STORE_LCL_VAR:
+            indirOper = lclVar->TypeIs(TYP_STRUCT) ? GT_STORE_OBJ : GT_STOREIND;
+            storedValue = node->AsOp()->gtGetOp1();
+            break;
+        case GT_LCL_VAR:
+            indirOper = lclVar->TypeIs(TYP_STRUCT) ? GT_OBJ : GT_IND;
+            break;
+        }
+        node->ChangeOper(indirOper);
+        node->AsIndir()->SetAddr(lclAddress);
+        if (GenTree::OperIsStore(indirOper))
+        {
+            node->gtFlags |= GTF_IND_TGT_NOT_HEAP;
+            node->AsOp()->gtOp2 = storedValue;
+        }
+
+        CurrentRange().InsertBefore(node, offset);
+        CurrentRange().InsertAfter(offset, shadowStackVar);
+        CurrentRange().InsertAfter(shadowStackVar, lclAddress);
+    }
 }
 
 void Llvm::ConvertShadowStackLocals()
 {
-    unsigned shadowStackLclNum = _compiler->lvaGrabTemp(false, "shadowstack"); // TODO-LLVM: create a new local as a temp, is this right?  Copied from lower.cpp
+    unsigned shadowStackLclNum = _compiler->lvaGrabTemp(false, "shadowstack");
 
     GenTreeIntCon* shadowStackOffset = _compiler->gtNewOneConNode(var_types::TYP_UINT)->AsIntCon(); // LLVM-TODO: TYP_LONG for Wasm64?
 
@@ -1699,7 +1721,7 @@ void Llvm::ConvertShadowStackLocals()
     GenTreeLclVar* shadowStack = _compiler->gtNewStoreLclVar(shadowStackLclNum, localShadowStack);
     LclVarDsc* shadowStackVarDsc = _compiler->lvaGetDesc(shadowStack->GetLclNum());
     shadowStackVarDsc->lvIsParam = 1;
-    shadowStackVarDsc->lvType = var_types::TYP_REF;
+    shadowStackVarDsc->lvType = var_types::TYP_I_IMPL;
 
     // insert the local shadowstack offest at the beginning of the first block
     // This position is well known and replaced at LLVM generation
@@ -1713,55 +1735,15 @@ void Llvm::ConvertShadowStackLocals()
 
     for (BasicBlock* const block : _compiler->Blocks())
     {
-        LIR::Range& lirRange = LIR::AsRange(block);
-        for (GenTree* node : LIR::AsRange(block))
+        LIR::Range& currentRange = LIR::AsRange(block);
+        _currentRange = &LIR::AsRange(block);
+        for (GenTree* node : CurrentRange())
         {
-            genTreeOps oper = node->OperGet();
-            if (oper == GT_STORE_LCL_VAR)
+            if (node->OperIs(GT_STORE_LCL_VAR, GT_LCL_VAR))
             {
-                GenTreeLclVarCommon* lclVar = node->AsLclVarCommon();
-                LclVarDsc* varDsc = _compiler->lvaGetDesc(lclVar->GetLclNum());
-                if (!varDsc->lvIsParam && !canStoreLocalOnLlvmStack(varDsc))
-                {
-                    GenTreeIntCon* offset;
-                    GenTreeLclVar* shadowStackVar;
-                    GenTree* addNode = createAddNodeForShadowStackLocal(varDsc, shadowStackLclNum, offset, shadowStackVar);
-
-                    genTreeOps oper = lclVar->TypeGet() == var_types::TYP_STRUCT ? GT_STORE_OBJ : GT_STOREIND;
-
-                    node->ChangeOper(oper);
-                    node->gtFlags |= GTF_IND_TGT_NOT_HEAP;
-                    GenTreeOp* opNode = node->AsOp();
-                    opNode->gtOp2 = opNode->gtGetOp1();
-                    opNode->gtOp1 = addNode;
-
-                    insertAddWithOperands(lirRange, node, addNode, offset, shadowStackVar);
-                }
-            }
-            else if (oper == GT_LCL_VAR)
-            {
-                GenTreeLclVarCommon* lclVar = node->AsLclVarCommon();
-                LclVarDsc* varDsc = _compiler->lvaGetDesc(lclVar->GetLclNum());
-                if (!varDsc->lvIsParam && !canStoreLocalOnLlvmStack(varDsc))
-                {
-                    GenTreeIntCon* offset;
-                    GenTreeLclVar* shadowStackVar;
-                    GenTree* addNode = createAddNodeForShadowStackLocal(varDsc, shadowStackLclNum, offset, shadowStackVar);
-
-                    genTreeOps oper = lclVar->TypeGet() == var_types::TYP_STRUCT ? GT_OBJ : GT_IND;
-
-                    node->ChangeOper(oper);
-                    node->AsOp()->gtOp1 = addNode;
-
-                    insertAddWithOperands(lirRange, node, addNode, offset, shadowStackVar);
-                }
+                CreateShadowStackLocalAddress(node, shadowStackLclNum);
             }
         }
-    }
-
-    if (_compiler->verboseTrees)
-    {
-        _compiler->fgDispBasicBlocks(true);
     }
 }
 

@@ -37,11 +37,20 @@ class Llvm
 {
 private:
     bool _sigInfoIsValid;
+    LIR::Range* _currentRange;
+
+    inline LIR::Range& CurrentRange()
+    {
+        return *_currentRange;
+    }
+
+    void CreateShadowStackLocalAddress(GenTree* node, unsigned shadowStackLclNum);
 
 public:
     Llvm(Compiler* pCompiler);
 
     static void llvmShutdown();
+
 
     void ConvertShadowStackLocals();
     void PlaceAndConvertShadowStackLocals();

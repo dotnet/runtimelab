@@ -5231,20 +5231,25 @@ void Compiler::compCompile(void** methodCodePtr, uint32_t* methodCodeSize, JitFl
     rat.Run();
 
 #if defined(TARGET_WASM)
-    lvaMarkLocalVars();
-
     if (opts.OptimizationEnabled())
     {
-        DoPhase(this, PHASE_MARK_LOCAL_VARS, &Compiler::lvaMarkLocalVars);
+        lvaMarkLocalVars(); // For optimization only
     }
 
     Llvm* llvm = new Llvm(this);
-    llvm->PlaceAndConvertShadowStackLocals();
+    auto placeAndConvertShadowStackLocalsPhase = [llvm]() {
+        llvm->PlaceAndConvertShadowStackLocals();
+    };
+    DoPhase(this, PHASE_SHDWSTK_SETUP, placeAndConvertShadowStackLocalsPhase);
 
+    lvaMarkLocalVars();  // For SSA i. e. correctness
     fgResetForSsa();
     DoPhase(this, PHASE_BUILD_SSA, &Compiler::fgSsaBuild);
 
-    DoLlvmPhase(llvm);
+    auto buildLlvmPhase = [llvm]() {
+        llvm->Compile();
+    };
+    DoPhase(this, PHASE_BUILD_LLVM, buildLlvmPhase);
     delete llvm;
 #else
 
