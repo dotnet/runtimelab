@@ -80,3 +80,4 @@ stages:
   - template: /eng/pipelines/official/stages/publish.yml
     parameters:
       isOfficialBuild: ${{ variables.isOfficialBuild }}
+      PublishRidAgnosticPackagesFromPlatform: freebsd_x64
