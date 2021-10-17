@@ -1647,7 +1647,7 @@ void Llvm::llvmShutdown()
     {
         emitDebugMetadata(_llvmContext);
     }
-#if DEBUG
+#ifdef DEBUG
     if (_outputFileName == nullptr) return; // nothing generated
     std::error_code ec;
     char* txtFileName = (char*)malloc(strlen(_outputFileName) + 2); // .txt is longer than .bc
@@ -1668,8 +1668,8 @@ GenTree* createAddNodeForShadowStackLocal(LclVarDsc* varDsc, unsigned shadowStac
     // TODO-LLVM: if the offset == 0, just GT_STOREIND at the shadowStack
     offset = _compiler->gtNewOneConNode(var_types::TYP_INT)->AsIntCon();
     offset->SetIconValue(varDsc->GetStackOffset());
-    shadowStackVar = _compiler->gtNewLclvNode(shadowStackLclNum, var_types::TYP_REF);
-    return _compiler->gtNewOperNode(genTreeOps::GT_ADD, var_types::TYP_REF, shadowStackVar, offset);
+    shadowStackVar = _compiler->gtNewLclvNode(shadowStackLclNum, TYP_I_IMPL);
+    return _compiler->gtNewOperNode(GT_ADD, TYP_I_IMPL, shadowStackVar, offset);
 }
 
 void insertAddWithOperands(LIR::Range& lirRange, GenTree* node, GenTree* addNode, GenTreeIntCon* offset, GenTreeLclVar* shadowStackVar)
@@ -1681,7 +1681,7 @@ void insertAddWithOperands(LIR::Range& lirRange, GenTree* node, GenTree* addNode
 
 void Llvm::ConvertShadowStackLocals()
 {
-    unsigned shadowStackLclNum = _compiler->lvaGrabTemp(false, "shadowstack"); // TODO-LLVM: create a new local as a temp, is this right?  Copied from lower.cpp
+    unsigned shadowStackLclNum = _compiler->lvaGrabTemp(true DEBUGARG("shadowstack"));
 
     GenTreeIntCon* shadowStackOffset = _compiler->gtNewOneConNode(var_types::TYP_UINT)->AsIntCon(); // LLVM-TODO: TYP_LONG for Wasm64?
 
@@ -1771,7 +1771,10 @@ void Llvm::ConvertShadowStackLocals()
 void Llvm::PlaceAndConvertShadowStackLocals()
 {
     _shadowStackLocalsSize = 0;
-    if (_compiler->lvaCount == 0) return;
+    if (_compiler->lvaCount == 0)
+    {
+        return;
+    }
 
     std::vector<LclVarDsc*> locals;
 
@@ -1785,7 +1788,10 @@ void Llvm::PlaceAndConvertShadowStackLocals()
         }
     }
 
-    if (locals.size() == 0) return;
+    if (locals.size() == 0)
+    {
+        return;
+    }
 
     _requiresShadowStackAddSubsitution = true;
     if (_compiler->opts.OptimizationEnabled())
