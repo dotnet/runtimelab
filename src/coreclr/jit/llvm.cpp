@@ -1647,7 +1647,7 @@ void Llvm::llvmShutdown()
     {
         emitDebugMetadata(_llvmContext);
     }
-#if DEBUG
+#ifdef DEBUG
     if (_outputFileName == nullptr) return; // nothing generated
     std::error_code ec;
     char* txtFileName = (char*)malloc(strlen(_outputFileName) + 2); // .txt is longer than .bc
@@ -1703,7 +1703,7 @@ void Llvm::CreateShadowStackLocalAddress(GenTree* node, unsigned shadowStackLclN
 
 void Llvm::ConvertShadowStackLocals()
 {
-    unsigned shadowStackLclNum = _compiler->lvaGrabTemp(false, "shadowstack");
+    unsigned shadowStackLclNum = _compiler->lvaGrabTemp(true DEBUGARG("shadowstack"));
 
     GenTreeIntCon* shadowStackOffset = _compiler->gtNewOneConNode(var_types::TYP_UINT)->AsIntCon(); // LLVM-TODO: TYP_LONG for Wasm64?
 
@@ -1753,7 +1753,10 @@ void Llvm::ConvertShadowStackLocals()
 void Llvm::PlaceAndConvertShadowStackLocals()
 {
     _shadowStackLocalsSize = 0;
-    if (_compiler->lvaCount == 0) return;
+    if (_compiler->lvaCount == 0)
+    {
+        return;
+    }
 
     std::vector<LclVarDsc*> locals;
 
@@ -1767,7 +1770,10 @@ void Llvm::PlaceAndConvertShadowStackLocals()
         }
     }
 
-    if (locals.size() == 0) return;
+    if (locals.size() == 0)
+    {
+        return;
+    }
 
     _requiresShadowStackAddSubsitution = true;
     if (_compiler->opts.OptimizationEnabled())
