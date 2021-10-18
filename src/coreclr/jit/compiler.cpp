@@ -5233,7 +5233,8 @@ void Compiler::compCompile(void** methodCodePtr, uint32_t* methodCodeSize, JitFl
 #if defined(TARGET_WASM)
     if (opts.OptimizationEnabled())
     {
-        lvaMarkLocalVars(); // For optimization only
+        // When optimizing, we'll sort the locals on the shadow stack by ref count.
+        lvaMarkLocalVars();
     }
 
     Llvm* llvm = new Llvm(this);
@@ -5242,7 +5243,7 @@ void Compiler::compCompile(void** methodCodePtr, uint32_t* methodCodeSize, JitFl
     };
     DoPhase(this, PHASE_SHDWSTK_SETUP, placeAndConvertShadowStackLocalsPhase);
 
-    lvaMarkLocalVars();  // For SSA i. e. correctness
+    lvaMarkLocalVars();  // For SSA.
     fgResetForSsa();
     DoPhase(this, PHASE_BUILD_SSA, &Compiler::fgSsaBuild);
 
