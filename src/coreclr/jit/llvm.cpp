@@ -1026,61 +1026,28 @@ void Llvm::buildCmp(genTreeOps op, GenTree* node, Value* op1, Value* op2)
     mapGenTreeToValue(node, _builder.CreateCmp(llvmPredicate, op1, op2));
 }
 
-void Llvm::buildPhi(GenTreePhi* phi)
+// in case we haven't seen the phi args yet, create just the phi nodes and fill in the args at the end
+void Llvm::buildEmptyPhi(GenTreePhi* phi)
 {
-    llvm::PHINode* llvmPhiNode = nullptr;
-    unsigned i = 0;
-    bool requiresLoad = false;
-    bool requiresLoadSet = false;
-    unsigned numChildren  = phi->NumChildren();
+    llvm::PHINode* llvmPhiNode = _builder.CreatePHI(getLLVMTypeForVarType(phi->TypeGet()), phi->NumChildren());
+    _phiPairs.push_back({ phi, llvmPhiNode });
+    mapGenTreeToValue(phi, ValueLocation::LlvmStack, llvmPhiNode);
+}
 
-    /// llvm requires all phis to be groups together so this IR presents a problem due to the STORE_LCL_VAR in the middle of the two phis.
-    /// / -- * t83    ref
-    /// + -- * t81    ref
-    /// *PHI       ref
-    /// / -- * t79    ref
-    /// * STORE_LCL_VAR ref    V13 tmp4         d : 1
-    /// / -- * t84    ref
-    /// + -- * t82    ref
-    /// *PHI       ref
-    // add all phis to the start of the block as per LLVM rules
-    llvm::BasicBlock* block = _builder.GetInsertBlock();
-    _builder.SetInsertPoint(block, block->begin());
-
-    for (GenTreePhi::Use& use : phi->Uses())
+void Llvm::fillPhis()
+{
+    for (PhiPair phiPair : _phiPairs)
     {
-        GenTreePhiArg* phiArg = use.GetNode()->AsPhiArg();
-        unsigned       lclNum = phiArg->GetLclNum();
-        unsigned       ssaNum = phiArg->GetSsaNum();
+        llvm::PHINode* llvmPhiNode = phiPair.llvmPhiNode;
 
-        LocatedLlvmValue localPhiArg = getSsaLocalForPhi(lclNum, ssaNum);
-        if (localPhiArg.location != ValueLocation::ForwardReference)
+        for (GenTreePhi::Use& use : phiPair.irPhiNode->Uses())
         {
-            if (requiresLoadSet)
-            {
-                // phi args must be all direct, or all indirect
-                assert(requiresLoad == localPhiArg.valueRequiresLoad());
-            }
-            else
-            {
-                requiresLoad    = localPhiArg.valueRequiresLoad();
-                requiresLoadSet = true;
-            }
-        }
-        if (i == 0)
-        {
-            Type* phiType = getLLVMTypeForVarType(phi->TypeGet());
+            GenTreePhiArg* phiArg = use.GetNode()->AsPhiArg();
+            unsigned       lclNum = phiArg->GetLclNum();
+            unsigned       ssaNum = phiArg->GetSsaNum();
 
-            llvmPhiNode = _builder.CreatePHI(requiresLoad ? phiType->getPointerTo() : phiType, numChildren);
-        }
-
-        if (localPhiArg.location == ValueLocation::ForwardReference)
-        {
-            _forwardReferencingPhis->insert({{lclNum, ssaNum}, {llvmPhiNode, getLLVMBasicBlockForBlock(phiArg->gtPredBB)}});
-        }
-        else
-        {
-            Value*             phiRealArgValue;
+            LocatedLlvmValue localPhiArg = getSsaLocalForPhi(lclNum, ssaNum);
+            Value* phiRealArgValue;
             llvm::Instruction* castRequired = getCast(localPhiArg.getRawValue(), llvmPhiNode->getType());
             if (castRequired != nullptr)
             {
@@ -1101,20 +1068,7 @@ void Llvm::buildPhi(GenTreePhi* phi)
             }
             llvmPhiNode->addIncoming(phiRealArgValue, getLLVMBasicBlockForBlock(phiArg->gtPredBB));
         }
-        i++;
     }
-
-    if (!requiresLoadSet)
-    {
-        // TODO-LLVM: If all the phi args are in this or later blocks, then this will be hit, and this load/no load swtich will have to be inserted when finishing the block, or something...
-        // See also https://github.com/dotnet/runtimelab/pull/1598/files#r720693270
-        failFunctionCompilation();
-    }
-
-    // reposition builder at end of block
-    _builder.SetInsertPoint(block);
-
-    mapGenTreeToValue(phi, requiresLoad ? ValueLocation::ShadowStack : ValueLocation::LlvmStack, llvmPhiNode);
 }
 
 void Llvm::addForwardPhiArg(SsaPair ssaPair, llvm::Value* phiArg)
@@ -1314,7 +1268,6 @@ void Llvm::storeLocalVar(GenTreeLclVar* lclVar)
             locatedValue = LocatedLlvmValue(ValueLocation::LlvmStack, valueRef);
         }
         SsaPair ssaPair = {lclVar->GetLclNum(), lclVar->GetSsaNum()};
-        addForwardPhiArg(ssaPair, locatedValue.getRawValue()); // phis that forward referenced this value.
         _localsMap->insert({ssaPair, locatedValue});
     }
     else
@@ -1368,7 +1321,7 @@ void Llvm::visitNode(GenTree* node)
             emitDoNothingCall();
             break;
         case GT_PHI:
-            buildPhi(node->AsPhi());
+            buildEmptyPhi(node->AsPhi());
             break;
         case GT_PHI_ARG:
             break;
@@ -1596,6 +1549,7 @@ void Llvm::PlaceAndConvertShadowStackLocals()
     }
 
     std::vector<LclVarDsc*> locals;
+    unsigned localsParamCount = 0;
 
     for (unsigned lclNum = 0; lclNum < _compiler->lvaCount; lclNum++)
     {
@@ -1603,6 +1557,10 @@ void Llvm::PlaceAndConvertShadowStackLocals()
         if (!canStoreLocalOnLlvmStack(varDsc))
         {
             locals.push_back(varDsc);
+            if (varDsc->lvIsParam)
+            {
+                localsParamCount++;
+            }
         }
     }
 
@@ -1613,7 +1571,7 @@ void Llvm::PlaceAndConvertShadowStackLocals()
 
     if (_compiler->opts.OptimizationEnabled())
     {
-        std::sort(locals.begin(), locals.end(), [](const LclVarDsc* lhs, const LclVarDsc* rhs) { return lhs->lvRefCntWtd() > rhs->lvRefCntWtd(); });
+        std::sort(locals.begin() + localsParamCount, locals.end(), [](const LclVarDsc* lhs, const LclVarDsc* rhs) { return lhs->lvRefCntWtd() > rhs->lvRefCntWtd(); });
     }
 
     unsigned int offset = 0;
@@ -1641,7 +1599,6 @@ void Llvm::Compile()
     std::unordered_map<GenTree*, LocatedLlvmValue> sdsuMap;
     _sdsuMap = &sdsuMap;
     _localsMap = new std::unordered_map<SsaPair, LocatedLlvmValue, SsaPairHash>();
-    _forwardReferencingPhis = new std::unordered_map<SsaPair, IncomingPhi, SsaPairHash>();
     _spilledExpressions.clear();
     const char* mangledName = (*_getMangledMethodName)(_thisPtr, _info.compMethodHnd);
     _function = _module->getFunction(mangledName);
@@ -1682,6 +1639,9 @@ void Llvm::Compile()
         }
         endImportingBasicBlock(block);
     }
+
+    fillPhis();
+
     if (_debugFunction != nullptr)
     {
         _diBuilder->finalizeSubprogram(_debugFunction);

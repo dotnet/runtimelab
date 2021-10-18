@@ -114,6 +114,12 @@ struct LocatedLlvmValue
     }
 };
 
+struct PhiPair
+{
+    GenTreePhi* irPhiNode;
+    llvm::PHINode* llvmPhiNode;
+};
+
 typedef JitHashTable<BasicBlock*, JitPtrKeyFuncs<BasicBlock>, llvm::BasicBlock*> BlkToLlvmBlkVectorMap;
 
 class Llvm
@@ -133,6 +139,7 @@ private:
     std::unordered_map<GenTree*, LocatedLlvmValue>* _sdsuMap;
     std::unordered_map<SsaPair, LocatedLlvmValue, SsaPairHash>* _localsMap;
     std::unordered_map<SsaPair, IncomingPhi, SsaPairHash>* _forwardReferencingPhis;
+    std::vector<PhiPair> _phiPairs;
 
     // DWARF
     llvm::DILocation* _currentOffsetDiLocation;
@@ -158,7 +165,7 @@ private:
     void buildCnsInt(GenTree* node);
     void buildInd(GenTree* node, Value* ptr);
     Value* buildJTrue(GenTree* node, Value* opValue);
-    void buildPhi(GenTreePhi* phi);
+    void buildEmptyPhi(GenTreePhi* phi);
     void buildReturn(GenTree* node);
     void buildReturnRef(GenTreeOp* node);
     Value* buildUserFuncCall(GenTreeCall* call);
@@ -172,6 +179,7 @@ private:
     void emitDoNothingCall();
     void endImportingBasicBlock(BasicBlock* block);
     void failFunctionCompilation();
+    void fillPhis();
     llvm::Instruction* getCast(llvm::Value* source, Type* targetType);
     void generateProlog();
     CorInfoType getCorInfoTypeForArg(CORINFO_SIG_INFO& sigInfo, CORINFO_ARG_LIST_HANDLE& arg, CORINFO_CLASS_HANDLE* clsHnd);
