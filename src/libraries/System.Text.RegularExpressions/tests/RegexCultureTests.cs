@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Tests;
+using System.Threading.Tasks;
 using Xunit;
 
 namespace System.Text.RegularExpressions.Tests
@@ -99,18 +100,31 @@ namespace System.Text.RegularExpressions.Tests
             }
         }
 
+        public static IEnumerable<object[]> CharactersLowercasedOneByOne_MemberData()
+        {
+            foreach (RegexEngine engine in RegexHelpers.AvailableEngines)
+            {
+                switch (engine)
+                {
+                    case RegexEngine.SourceGenerated:
+                    case RegexEngine.NonBacktrackingSourceGenerated:
+                        continue;
+                }
+
+                yield return new object[] { engine };
+            }
+        }
+
         [Theory]
-        [InlineData(RegexOptions.None)]
-        [InlineData(RegexOptions.Compiled)]
-        [InlineData(RegexHelpers.RegexOptionNonBacktracking)]
-        public void CharactersLowercasedOneByOne(RegexOptions options)
+        [MemberData(nameof(CharactersLowercasedOneByOne_MemberData))]
+        public async Task CharactersLowercasedOneByOne(RegexEngine engine)
         {
             using (new ThreadCultureChange("en-US"))
             {
-                Assert.True(new Regex("\uD801\uDC00", options | RegexOptions.IgnoreCase).IsMatch("\uD801\uDC00"));
-                Assert.True(new Regex("\uD801\uDC00", options | RegexOptions.IgnoreCase).IsMatch("abcdefg\uD801\uDC00"));
-                Assert.True(new Regex("\uD801", options | RegexOptions.IgnoreCase).IsMatch("\uD801\uDC00"));
-                Assert.True(new Regex("\uDC00", options | RegexOptions.IgnoreCase).IsMatch("\uD801\uDC00"));
+                Assert.True((await RegexHelpers.GetRegexAsync(engine, "\uD801\uDC00", RegexOptions.IgnoreCase)).IsMatch("\uD801\uDC00"));
+                Assert.True((await RegexHelpers.GetRegexAsync(engine, "\uD801\uDC00", RegexOptions.IgnoreCase)).IsMatch("abcdefg\uD801\uDC00"));
+                Assert.True((await RegexHelpers.GetRegexAsync(engine, "\uD801", RegexOptions.IgnoreCase)).IsMatch("\uD801\uDC00"));
+                Assert.True((await RegexHelpers.GetRegexAsync(engine, "\uDC00", RegexOptions.IgnoreCase)).IsMatch("\uD801\uDC00"));
             }
         }
 
