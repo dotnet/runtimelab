@@ -54,6 +54,13 @@ namespace System.Text.RegularExpressions
             Debug.Assert(pattern != null, "Pattern must be set");
             Debug.Assert(culture != null, "Culture must be set");
 
+            if ((options & RegexOptions.NonBacktracking) != 0)
+            {
+                // The NonBacktracking engine ignores non-named capture groups.
+                // As such, we needn't pay to represent them.
+                options |= RegexOptions.ExplicitCapture;
+            }
+
             _pattern = pattern;
             _options = options;
             _culture = culture;
