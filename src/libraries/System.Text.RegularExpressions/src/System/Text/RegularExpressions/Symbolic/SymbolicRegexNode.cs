@@ -130,6 +130,14 @@ namespace System.Text.RegularExpressions.Symbolic
 
             static void AppendToList(SymbolicRegexNode<S> concat, List<SymbolicRegexNode<S>> list)
             {
+                if (!RuntimeHelpers.TryEnsureSufficientExecutionStack())
+                {
+                    SymbolicRegexNode<S> localConcat = concat;
+                    List<SymbolicRegexNode<S>> localList = list;
+                    StackHelper.CallOnEmptyStack(() => AppendToList(localConcat, localList));
+                    return;
+                }
+
                 SymbolicRegexNode<S> node = concat;
                 while (node._kind == SymbolicRegexKind.Concat)
                 {
@@ -161,6 +169,13 @@ namespace System.Text.RegularExpressions.Symbolic
 
             if (!_info.CanBeNullable)
                 return false;
+
+            if (!RuntimeHelpers.TryEnsureSufficientExecutionStack())
+            {
+                SymbolicRegexNode<S> localThis = this;
+                uint localContext = context;
+                return StackHelper.CallOnEmptyStack(() => localThis.IsNullableFor(localContext));
+            }
 
             // Initialize the nullability cache for this node.
             _nullabilityCache ??= new Dictionary<uint, bool>();
@@ -554,6 +569,13 @@ namespace System.Text.RegularExpressions.Symbolic
         /// </summary>
         public SymbolicRegexNode<S> Restrict(S pred)
         {
+            if (!RuntimeHelpers.TryEnsureSufficientExecutionStack())
+            {
+                SymbolicRegexNode<S> localThis = this;
+                S localPred = pred;
+                return StackHelper.CallOnEmptyStack(() => localThis.Restrict(localPred));
+            }
+
             switch (_kind)
             {
                 case SymbolicRegexKind.StartAnchor:
@@ -681,6 +703,7 @@ namespace System.Text.RegularExpressions.Symbolic
         }
 
         private Dictionary<(S, uint), SymbolicRegexNode<S>>? _MkDerivative_Cache;
+
         /// <summary>
         /// Takes the derivative of the symbolic regex wrt elem.
         /// Assumes that elem is either a minterm wrt the predicates of the whole regex or a singleton set.
@@ -861,6 +884,11 @@ namespace System.Text.RegularExpressions.Symbolic
                 return _transitionRegex;
             }
 
+            if (!RuntimeHelpers.TryEnsureSufficientExecutionStack())
+            {
+                return StackHelper.CallOnEmptyStack(MkDerivative);
+            }
+
             switch (_kind)
             {
                 case SymbolicRegexKind.Singleton:
@@ -960,6 +988,11 @@ namespace System.Text.RegularExpressions.Symbolic
             if (!CanBeNullable)
             {
                 return _builder._nothing;
+            }
+
+            if (!RuntimeHelpers.TryEnsureSufficientExecutionStack())
+            {
+                return StackHelper.CallOnEmptyStack(ExtractNullabilityTest);
             }
 
             switch (_kind)
@@ -1071,6 +1104,12 @@ namespace System.Text.RegularExpressions.Symbolic
 
                 // Check equality of the sets of regexes
                 Debug.Assert(_alts is not null && that._alts is not null);
+                if (!RuntimeHelpers.TryEnsureSufficientExecutionStack())
+                {
+                    SymbolicRegexSet<S> localThisAlts = _alts;
+                    SymbolicRegexSet<S> localThatAlts = that._alts;
+                    return StackHelper.CallOnEmptyStack(() => localThisAlts.Equals(localThatAlts));
+                }
                 return _alts.Equals(that._alts);
             }
 
@@ -1258,6 +1297,14 @@ namespace System.Text.RegularExpressions.Symbolic
         /// </summary>
         private void CollectPredicates_helper(HashSet<S> predicates)
         {
+            if (!RuntimeHelpers.TryEnsureSufficientExecutionStack())
+            {
+                SymbolicRegexNode<S> localThis = this;
+                HashSet<S> localPredicates = predicates;
+                StackHelper.CallOnEmptyStack(() => localThis.CollectPredicates_helper(localPredicates));
+                return;
+            }
+
             switch (_kind)
             {
                 case SymbolicRegexKind.BOLAnchor:
@@ -1349,6 +1396,11 @@ namespace System.Text.RegularExpressions.Symbolic
         /// </summary>
         public SymbolicRegexNode<S> Reverse()
         {
+            if (!RuntimeHelpers.TryEnsureSufficientExecutionStack())
+            {
+                return StackHelper.CallOnEmptyStack(Reverse);
+            }
+
             switch (_kind)
             {
                 case SymbolicRegexKind.Loop:
@@ -1423,6 +1475,13 @@ namespace System.Text.RegularExpressions.Symbolic
 
         internal bool StartsWithLoop(int upperBoundLowestValue = 1)
         {
+            if (!RuntimeHelpers.TryEnsureSufficientExecutionStack())
+            {
+                SymbolicRegexNode<S> localThis = this;
+                int localUpperBoundLowestValue = upperBoundLowestValue;
+                return StackHelper.CallOnEmptyStack(() => localThis.StartsWithLoop(localUpperBoundLowestValue));
+            }
+
             switch (_kind)
             {
                 case SymbolicRegexKind.Loop:
