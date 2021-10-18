@@ -1531,8 +1531,8 @@ void Llvm::CreateShadowStackLocalAddress(GenTree* node)
     {
         // TODO-LLVM: if the offset == 0, just GT_STOREIND at the shadowStack
         GenTreeIntCon* offset = _compiler->gtNewIconNode(varDsc->GetStackOffset(), TYP_I_IMPL);
-        GenTreeLclVar* shadowStackVar = _compiler->gtNewLclvNode(_shadowStackLclNum, var_types::TYP_I_IMPL);
-        GenTree* lclAddress = _compiler->gtNewOperNode(genTreeOps::GT_ADD, var_types::TYP_I_IMPL, shadowStackVar, offset);
+        GenTreeLclVar* shadowStackVar = _compiler->gtNewLclvNode(_shadowStackLclNum, TYP_I_IMPL);
+        GenTree* lclAddress = _compiler->gtNewOperNode(GT_ADD, TYP_I_IMPL, shadowStackVar, offset);
 
         genTreeOps indirOper = GT_NONE;
         GenTree* storedValue = nullptr;
@@ -1572,7 +1572,6 @@ void Llvm::ConvertShadowStackLocals()
 
     for (BasicBlock* const block : _compiler->Blocks())
     {
-        LIR::Range& currentRange = LIR::AsRange(block);
         _currentRange = &LIR::AsRange(block);
         for (GenTree* node : CurrentRange())
         {
@@ -1597,10 +1596,9 @@ void Llvm::PlaceAndConvertShadowStackLocals()
 
     std::vector<LclVarDsc*> locals;
 
-    unsigned lclNum;
-    LclVarDsc* varDsc;
-    for (lclNum = 0, varDsc = _compiler->lvaTable; lclNum < _compiler->lvaCount; lclNum++, varDsc++)
+    for (unsigned lclNum = 0; lclNum < _compiler->lvaCount; lclNum++)
     {
+        LclVarDsc* varDsc = _compiler->lvaGetDesc(lclNum);
         if (!canStoreLocalOnLlvmStack(varDsc))
         {
             locals.push_back(varDsc);
