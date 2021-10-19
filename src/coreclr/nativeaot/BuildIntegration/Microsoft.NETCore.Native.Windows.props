@@ -43,7 +43,10 @@ The .NET Foundation licenses this file to you under the MIT license.
 
     <ItemGroup>
       <DirectPInvoke Include="@(NetCoreAppNativeLibrary->'%(Identity)')" />
-      <NativeLibrary Include="@(NetCoreAppNativeLibrary->'$(IlcPath)\sdk\%(Identity).Aot$(LibrarySuffix)')" />
+      <NetCoreAppNativeLibrary Include="@(NetCoreAppNativeLibrary->'%(Identity)')">
+        <EscapedPath>$(IlcPath)\sdk\%(Identity).Aot$(LibrarySuffix)</EscapedPath>
+      </NetCoreAppNativeLibrary>
+      <NativeLibrary Include="@(NetCoreAppNativeLibrary->'%(EscapedPath)')" />
     </ItemGroup>
 
     <ItemGroup>
