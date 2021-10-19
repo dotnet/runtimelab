@@ -10,7 +10,6 @@ Currently, this repo contains the following experimental projects:
 - [JsonCodeGen](https://github.com/dotnet/runtimelab/tree/feature/JsonCodeGen) - Code generation for JSON.
 - [NativeAOT](https://github.com/dotnet/runtimelab/tree/feature/NativeAOT) - .NET runtime optimized for ahead of time compilation.
 - [Utf8String](https://github.com/dotnet/runtimelab/tree/feature/Utf8String) - A new UTF-8 String data type in the runtime.
-- [RegexSRM](https://github.com/dotnet/runtimelab/tree/feature/regexsrm) - Incorporating MSR's Symbolic Regex Matcher (SRM) into System.Text.RegularExpressions
 - [FreeBSD](https://github.com/dotnet/runtimelab/tree/feature/FreeBSD) - Port of .NET runtime to FreeBSD
 - [NativeAOT-LLVM](https://github.com/dotnet/runtimelab/tree/feature/NativeAOT-LLVM) - LLVM generation for Native AOT compilation (including Web Assembly)
 - [ManagedQuic](https://github.com/dotnet/runtimelab/tree/feature/ManagedQuic) - Fully managed implementation of QUIC protocol
