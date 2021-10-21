@@ -129,7 +129,7 @@ private:
     Compiler::Info _info;
     llvm::Function* _function;
     CORINFO_SIG_INFO _sigInfo; // sigInfo of function being compiled
-    bool _sigInfoIsValid;
+    bool _functionSigHasReturnAddress;
     LIR::Range* _currentRange;
     BasicBlock* _currentBlock;
     IL_OFFSETX _currentOffset;

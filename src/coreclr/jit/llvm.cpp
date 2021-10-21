@@ -628,16 +628,24 @@ LlvmArgInfo Llvm::getLlvmArgInfoForArgIx(CORINFO_SIG_INFO& sigInfo, unsigned int
     unsigned int llvmArgNum    = 1; // skip shadow stack arg
     bool         returnOnStack = false;
 
+    LlvmArgInfo             llvmArgInfo = {
+        -1 /* default to not an LLVM arg*/, sigInfo.hasThis() ? TARGET_POINTER_SIZE : 0 /* this is the first pointer on
+                                                                                       the shadow stack */
+    };
     if (needsReturnStackSlot(sigInfo.retType, sigInfo.retTypeClass))
     {
+        if (lclNum == 0)
+        {
+            // the first IR arg is the return address, but its not in sigInfo so handle here
+            llvmArgInfo.m_argIx = llvmArgNum;
+            return llvmArgInfo;
+        }
+        lclNum--;  // line up with sigArgs
         llvmArgNum++;
     }
 
     CORINFO_ARG_LIST_HANDLE sigArgs     = sigInfo.args;
-    LlvmArgInfo             llvmArgInfo = {
-        -1 /* default to not an LLVM arg*/, sigInfo.hasThis() ? TARGET_POINTER_SIZE : 0 /* this is the first pointer on
-                                                                                           the shadow stack */
-    };
+
     unsigned int shadowStackOffset = llvmArgInfo.m_shadowStackOffset;
 
     unsigned int i = 0;
@@ -811,20 +819,9 @@ llvm::Value* Llvm::buildUserFuncCall(GenTreeCall* call)
 
     // shadowstack arg first
     Value* shadowStackForCallee = getShadowStackForCallee(); // TODO: store this in the prolog and calculate once.
-    argVec.push_back(shadowStackForCallee);
-
-    Value* returnAddress = nullptr;
-    if (needsReturnStackSlot(sigInfo.retType, sigInfo.retTypeClass))
-    {
-        unsigned int returnIndex = _spilledExpressions.size();
-
-        _spilledExpressions.push_back({sigInfo.retType});
-        unsigned int varOffset = getSpillOffsetAtIndex(returnIndex, getTotalRealLocalOffset());
-        returnAddress = _prologBuilder.CreateGEP(_function->getArg(0), _prologBuilder.getInt32(varOffset), "temp_");
-
-        // TOOD: as per the shadow stack, i8** might be a better type for any spilled return args, as a load normally will follow the call, and then the bitcast can be removed
-        argVec.push_back(returnAddress);
-    }
+    argVec.push_back(shadowStackForCallee); // TODO-LLVM: we are not moving this past any return address args, so the return address is clobbering the first slot in the shadow stack.
+                                            // As the return is the last thing executed this seems ok, but then the question becomes why do we need the return address arg at all
+                                            // apart from compatibility with IL->LLVM?
 
     unsigned int                      shadowStackUseOffest = 0;
     int                               argIx                = 0;
@@ -845,6 +842,10 @@ llvm::Value* Llvm::buildUserFuncCall(GenTreeCall* call)
 
     for (OperandArgNum opAndArg : sortedArgs)
     {
+        if (opAndArg.operand->IsArgPlaceHolderNode())
+        {
+            continue;
+        }
         LlvmArgInfo llvmArgInfo = getLlvmArgInfoForArgIx(sigInfo, argIx);
         if (llvmArgInfo.m_argIx >= 0)
         {
@@ -860,8 +861,8 @@ llvm::Value* Llvm::buildUserFuncCall(GenTreeCall* call)
         argIx++;
     }
     Value* llvmCall = _builder.CreateCall(llvmFunc, ArrayRef<Value*>(argVec));
-    ValueLocation location = returnAddress != nullptr ? ValueLocation::ShadowStack : ValueLocation::LlvmStack;
-    return mapGenTreeToValue(call, location, returnAddress != nullptr ? _builder.CreateBitCast(returnAddress, Type::getInt8PtrTy(_llvmContext)->getPointerTo()) : llvmCall);
+    ValueLocation location = ValueLocation::LlvmStack;
+    return mapGenTreeToValue(call, location, llvmCall);
 }
 
 void Llvm::buildCall(GenTree* node)
@@ -1142,7 +1143,15 @@ Value* Llvm::localVar(GenTreeLclVar* lclVar)
             }
             else
             {
-                unsigned int argIx       = _info.compIsStatic ? lclNum : lclNum - 1;
+                // adjust for "this" (on shadowstack, not an arg)
+                unsigned int argIx = _info.compIsStatic ? lclNum : lclNum - 1;
+
+                // adjust for return address arg, not in siginfo
+                if (_functionSigHasReturnAddress)
+                {
+                    argIx++;
+                }
+
                 if (_info.compRetBuffArg != BAD_VAR_NUM)
                 {
                     failFunctionCompilation();
@@ -1447,11 +1456,12 @@ Llvm::Llvm(Compiler* pCompiler)
     : _compiler(pCompiler),
       _info(pCompiler->info),
       _function(nullptr),
-      _sigInfoIsValid(false),
       _builder(_llvmContext),
       _prologBuilder(_llvmContext),
       _shadowStackLclNum(-1)
 {
+    _compiler->eeGetMethodSig(_info.compMethodHnd, &_sigInfo);
+    _functionSigHasReturnAddress = needsReturnStackSlot(_sigInfo.retType, _sigInfo.retTypeClass);
 }
 
 void Llvm::llvmShutdown()
@@ -1521,9 +1531,6 @@ void Llvm::ConvertShadowStackLocals()
     shadowStackVarDsc->lvIsParam = 1;
     shadowStackVarDsc->lvType = var_types::TYP_I_IMPL;
 
-    _compiler->eeGetMethodSig(_compiler->info.compMethodHnd, &_sigInfo);
-    _sigInfoIsValid = true;
-
     for (BasicBlock* const block : _compiler->Blocks())
     {
         _currentRange = &LIR::AsRange(block);
@@ -1532,6 +1539,104 @@ void Llvm::ConvertShadowStackLocals()
             if (node->OperIs(GT_STORE_LCL_VAR, GT_LCL_VAR))
             {
                 CreateShadowStackLocalAddress(node);
+            }
+            else if (node->IsCall())
+            {
+                GenTreeCall* callNode = node->AsCall();
+
+                if (callNode->gtCallType == CT_HELPER || callNode->gtReturnType == var_types::TYP_VOID)
+                {
+                    // helper calls are built differently
+                    continue;
+                }
+
+                // we can't do these yet
+                if (callNode->gtCallType == CT_INDIRECT || _isRuntimeImport(_thisPtr, callNode->gtCallMethHnd))
+                {
+                    failFunctionCompilation();
+                }
+
+                CORINFO_SIG_INFO calleeSigInfo;
+                _compiler->eeGetMethodSig(callNode->gtCallMethHnd, &calleeSigInfo);
+
+                if (needsReturnStackSlot(calleeSigInfo.retType, calleeSigInfo.retTypeClass))
+                {
+                    // replace the "CALL ref" with a "CALL void" that takes a return address as the first argument
+                    var_types callReturnType = callNode->TypeGet();
+                    GenTreeLclVar* shadowStackVar = _compiler->gtNewLclvNode(_shadowStackLclNum, TYP_I_IMPL);
+                    GenTreeIntCon* offset = _compiler->gtNewIconNode(_shadowStackLocalsSize, TYP_I_IMPL);
+                    GenTree* returnValueAddress = _compiler->gtNewOperNode(GT_ADD, TYP_I_IMPL, shadowStackVar, offset);
+
+                    // create temp for the return address
+                    unsigned returnTempNum = _compiler->lvaGrabTemp(true, "return value address");
+                    LclVarDsc* returnAddrVarDsc = _compiler->lvaGetDesc(returnTempNum);
+                    returnAddrVarDsc->lvIsParam = 0;
+                    returnAddrVarDsc->lvType = var_types::TYP_I_IMPL;
+
+                    GenTree* addrStore = _compiler->gtNewStoreLclVar(returnTempNum, returnValueAddress);
+                    GenTree* returnAddrLcl = _compiler->gtNewLclvNode(returnTempNum, TYP_I_IMPL);
+
+                    if (callNode->gtCallArgs != nullptr)
+                    {
+                        // TODO-LLVM: out args?  E.g.
+                        //    /--*  t398   int    arg4 out+10
+                        //    +--*  t399   int    arg5 out + 14
+                        //    +--*  t908   byref  arg6 out + 18
+                        //    +--*  t397   int    arg3 in r9
+                        //    +--*  t395   ref    arg2 in r8
+                        //    +--*  t392   byref  arg0 in rcx
+                        //    +--*  t393   ref    arg1 in rdx
+                        failFunctionCompilation();
+                    }
+                    GenTreeCall::Use* oldArgs = callNode->gtCallLateArgs;
+                    callNode->ResetArgInfo();
+                    callNode->gtCallArgs = _compiler->gtPrependNewCallArg(returnAddrLcl, oldArgs);
+                    callNode->gtCallLateArgs = nullptr;
+                    _compiler->fgInitArgInfo(callNode);
+
+                    GenTree* returnAddrLcl2 = _compiler->gtNewLclvNode(returnTempNum, TYP_I_IMPL);
+                    GenTree* indirNode = _compiler->gtNewOperNode(callReturnType == var_types::TYP_STRUCT ? GT_OBJ : GT_IND, callReturnType, returnAddrLcl2);
+                    indirNode->gtFlags |= GTF_IND_TGT_NOT_HEAP; // No RhpAssignRef required
+                    LIR::Use callUse;
+                    if (CurrentRange().TryGetUse(callNode, &callUse))
+                    {
+                        callUse.ReplaceWith(_compiler, indirNode);
+                    }
+                    else
+                    {
+                        callNode->ClearUnusedValue();
+                    }
+
+                    callNode->gtReturnType = var_types::TYP_VOID;
+                    callNode->ChangeType(TYP_VOID);
+
+                    CurrentRange().InsertBefore(callNode, shadowStackVar);
+                    CurrentRange().InsertAfter(shadowStackVar, offset);
+                    CurrentRange().InsertAfter(offset, returnValueAddress);
+                    CurrentRange().InsertAfter(returnValueAddress, addrStore);
+                    CurrentRange().InsertAfter(addrStore, returnAddrLcl);
+                    CurrentRange().InsertAfter(callNode, returnAddrLcl2);
+                    CurrentRange().InsertAfter(returnAddrLcl2, indirNode);
+                }
+            }
+            else if (node->OperIs(GT_RETURN) && _functionSigHasReturnAddress)
+            {
+                var_types originalReturnType = node->TypeGet();
+                if(node->TypeIs(TYP_VOID))
+                {
+                    /* TODO-LLVM: retbuf .   compHasRetBuffArg doesn't seem to have an implementation */
+                    failFunctionCompilation();
+                }
+                GenTreeLclVar* spillSlot = _compiler->gtNewLclvNode(0, TYP_I_IMPL);
+                GenTree* storeNode = _compiler->gtNewOperNode(originalReturnType == var_types::TYP_STRUCT ? GT_STORE_OBJ : GT_STOREIND, originalReturnType, spillSlot, node->AsOp()->gtOp1);
+                storeNode->gtFlags |= GTF_IND_TGT_NOT_HEAP; // No RhpAssignRef required
+
+                GenTreeOp* retNode = node->AsOp();
+                retNode->gtOp1 = nullptr;
+                node->ChangeType(TYP_VOID);
+
+                CurrentRange().InsertBefore(node, spillSlot);
+                CurrentRange().InsertAfter(spillSlot, storeNode);
             }
         }
     }
@@ -1604,10 +1709,6 @@ void Llvm::Compile()
     _function = _module->getFunction(mangledName);
     _debugFunction = nullptr;
     _debugMetadata.diCompileUnit = nullptr;
-    if (!_sigInfoIsValid)
-    {
-        _compiler->eeGetMethodSig(_info.compMethodHnd, &_sigInfo);
-    }
 
     if (_function == nullptr)
     {
