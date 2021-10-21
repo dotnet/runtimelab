@@ -150,6 +150,7 @@ private:
     std::vector<SpilledExpressionEntry> _spilledExpressions;
     unsigned _shadowStackLocalsSize;
     unsigned _shadowStackLclNum;
+    unsigned _retAddressLclNum;
 
     inline LIR::Range& CurrentRange()
     {

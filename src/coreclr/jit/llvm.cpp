@@ -111,22 +111,19 @@ void Llvm::mapGenTreeToValue(GenTree* genTree, Value* valueRef)
 
 LocatedLlvmValue Llvm::getGenTreeValue(GenTree* op)
 {
-    if (op->IsLocal() && op->AsLclVar()->GetLclNum() == _shadowStackLclNum)
+    if (op->IsLocal())
     {
-        return { ValueLocation::LlvmStack, _function->getArg(0) };
+        unsigned lclNum = op->AsLclVar()->GetLclNum();
+        if (lclNum == _shadowStackLclNum)
+        {
+            return { ValueLocation::LlvmStack, _function->getArg(0) };
+        }
+        else if (lclNum == _retAddressLclNum)
+        {
+            return { ValueLocation::LlvmStack, _function->getArg(1) };
+        }
     }
     return _sdsuMap->at(op);
-}
-
-LocatedLlvmValue Llvm::getSsaLocalForPhi(unsigned lclNum, unsigned ssaNum)
-{
-    if (_localsMap->find({lclNum, ssaNum}) == _localsMap->end())
-    {
-        // phi arg before declaration, these need to be filled in when processing the GT_STORE_LCL_VAR
-        return {ValueLocation::ForwardReference, nullptr};
-    }
-
-    return _localsMap->at({lclNum, ssaNum});
 }
 
 // maintains compatiblity with the IL->LLVM generation.  TODO-LLVM, when IL generation is no more, see if we can remove this unwrapping
@@ -1047,7 +1044,7 @@ void Llvm::fillPhis()
             unsigned       lclNum = phiArg->GetLclNum();
             unsigned       ssaNum = phiArg->GetSsaNum();
 
-            LocatedLlvmValue localPhiArg = getSsaLocalForPhi(lclNum, ssaNum);
+            LocatedLlvmValue localPhiArg = _localsMap->at({ lclNum, ssaNum });
             Value* phiRealArgValue;
             llvm::Instruction* castRequired = getCast(localPhiArg.getRawValue(), llvmPhiNode->getType());
             if (castRequired != nullptr)
@@ -1134,6 +1131,10 @@ Value* Llvm::localVar(GenTreeLclVar* lclVar)
             if (lclNum == _shadowStackLclNum)
             {
                 llvmRef = _function->getArg(0);
+            }
+            else if (lclNum == _retAddressLclNum)
+            {
+                llvmRef = _function->getArg(1);
             }
             else if (!_info.compIsStatic && _info.compThisArg == lclNum)
             {
@@ -1458,7 +1459,8 @@ Llvm::Llvm(Compiler* pCompiler)
       _function(nullptr),
       _builder(_llvmContext),
       _prologBuilder(_llvmContext),
-      _shadowStackLclNum(-1)
+      _shadowStackLclNum(-1),
+      _retAddressLclNum(-1)
 {
     _compiler->eeGetMethodSig(_info.compMethodHnd, &_sigInfo);
     _functionSigHasReturnAddress = needsReturnStackSlot(_sigInfo.retType, _sigInfo.retTypeClass);
@@ -1627,16 +1629,29 @@ void Llvm::ConvertShadowStackLocals()
                     /* TODO-LLVM: retbuf .   compHasRetBuffArg doesn't seem to have an implementation */
                     failFunctionCompilation();
                 }
-                GenTreeLclVar* spillSlot = _compiler->gtNewLclvNode(0, TYP_I_IMPL);
-                GenTree* storeNode = _compiler->gtNewOperNode(originalReturnType == var_types::TYP_STRUCT ? GT_STORE_OBJ : GT_STOREIND, originalReturnType, spillSlot, node->AsOp()->gtOp1);
+                //TODO-LLVM: how to create a GT_STORE_OBJ node?
+                if (originalReturnType == TYP_STRUCT)
+                {
+                    failFunctionCompilation();
+                }
+
+                assert(_retAddressLclNum == -1);
+                _retAddressLclNum = _compiler->lvaGrabTemp(true DEBUGARG("shadowstack"));
+                LclVarDsc* retAddressVarDsc = _compiler->lvaGetDesc(_retAddressLclNum);
+                retAddressVarDsc->lvIsParam = 1;
+                retAddressVarDsc->lvType = var_types::TYP_I_IMPL;
+
+                GenTreeLclVar* retAddressLocal = _compiler->gtNewLclvNode(_retAddressLclNum, TYP_I_IMPL);
+
+                GenTree* storeNode = _compiler->gtNewOperNode(originalReturnType == TYP_STRUCT ? GT_STORE_OBJ : GT_STOREIND, originalReturnType, retAddressLocal, node->AsOp()->gtOp1);
                 storeNode->gtFlags |= GTF_IND_TGT_NOT_HEAP; // No RhpAssignRef required
 
                 GenTreeOp* retNode = node->AsOp();
                 retNode->gtOp1 = nullptr;
                 node->ChangeType(TYP_VOID);
 
-                CurrentRange().InsertBefore(node, spillSlot);
-                CurrentRange().InsertAfter(spillSlot, storeNode);
+                CurrentRange().InsertBefore(node, retAddressLocal);
+                CurrentRange().InsertAfter(retAddressLocal, storeNode);
             }
         }
     }
