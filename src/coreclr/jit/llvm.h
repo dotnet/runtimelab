@@ -83,37 +83,6 @@ extern "C" void registerLlvmCallbacks(void*       thisPtr,
                                       const uint32_t (*getOffsetLineNumber)(void*, unsigned int),
                                       const uint32_t (*structIsWrappedPrimitive)(void*, CORINFO_CLASS_STRUCT_*, CorInfoType));
 
-
-enum class ValueLocation
-{
-    LlvmStack,
-    ShadowStack,
-    ForwardReference
-};
-
-// Helper for unifying vars that do and don't need to be on the shadow stack.
-struct LocatedLlvmValue
-{
-    Value* llvmValue;
-    ValueLocation location;
-
-    LocatedLlvmValue(ValueLocation location, Value* llvmValue) : llvmValue(llvmValue), location(location) {}
-    Value* getValue(llvm::IRBuilder<>& builder)
-    {
-        return valueRequiresLoad() ? builder.CreateLoad(llvmValue) : llvmValue;
-    }
-
-    Value* getRawValue()
-    {
-        return llvmValue;
-    }
-
-    bool valueRequiresLoad()
-    {
-        return location != ValueLocation::LlvmStack;
-    }
-};
-
 struct PhiPair
 {
     GenTreePhi* irPhiNode;
@@ -136,8 +105,8 @@ private:
     BlkToLlvmBlkVectorMap* _blkToLlvmBlkVectorMap;
     llvm::IRBuilder<> _builder;
     llvm::IRBuilder<> _prologBuilder;
-    std::unordered_map<GenTree*, LocatedLlvmValue>* _sdsuMap;
-    std::unordered_map<SsaPair, LocatedLlvmValue, SsaPairHash>* _localsMap;
+    std::unordered_map<GenTree*, Value*>* _sdsuMap;
+    std::unordered_map<SsaPair, Value*, SsaPairHash>* _localsMap;
     std::unordered_map<SsaPair, IncomingPhi, SsaPairHash>* _forwardReferencingPhis;
     std::vector<PhiPair> _phiPairs;
 
@@ -185,7 +154,7 @@ private:
     void generateProlog();
     CorInfoType getCorInfoTypeForArg(CORINFO_SIG_INFO& sigInfo, CORINFO_ARG_LIST_HANDLE& arg, CORINFO_CLASS_HANDLE* clsHnd);
     llvm::FunctionType* getFunctionTypeForSigInfo(CORINFO_SIG_INFO& sigInfo);
-    LocatedLlvmValue getGenTreeValue(GenTree* node);
+    Value* getGenTreeValue(GenTree* node);
     LlvmArgInfo getLlvmArgInfoForArgIx(CORINFO_SIG_INFO& sigInfo, unsigned int lclNum);
     llvm::BasicBlock* getLLVMBasicBlockForBlock(BasicBlock* block);
     Type* getLlvmTypeForCorInfoType(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd);
@@ -196,7 +165,7 @@ private:
     struct DebugMetadata getOrCreateDebugMetadata(const char* documentFileName);
     Value* getShadowStackForCallee();
     unsigned int getSpillOffsetAtIndex(unsigned int index, unsigned int offset);
-    LocatedLlvmValue getSsaLocalForPhi(unsigned lclNum, unsigned ssaNum);
+    Value* getSsaLocalForPhi(unsigned lclNum, unsigned ssaNum);
     Value* getShadowStackOffest(Value* shadowStack, unsigned int offset);
     unsigned int getTotalRealLocalOffset();
     Value* genTreeAsLlvmType(GenTree* tree, Type* type);
@@ -205,8 +174,7 @@ private:
     void importStoreInd(GenTreeStoreInd* storeIndOp);
     bool isThisArg(GenTreeCall* call, GenTree* operand);
     Value* localVar(GenTreeLclVar* lclVar);
-    Value* mapGenTreeToValue(GenTree* genTree, ValueLocation valueLocation, Value* valueRef);
-    void mapGenTreeToValue(GenTree* genTree, Value* valueRef);
+    Value* mapGenTreeToValue(GenTree* genTree, Value* valueRef);
     bool needsReturnStackSlot(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd);
     unsigned int padNextOffset(CorInfoType corInfoType, unsigned int atOffset);
     unsigned int padOffset(CorInfoType corInfoType, unsigned int atOffset);

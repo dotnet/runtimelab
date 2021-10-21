@@ -126,9 +126,6 @@ namespace ILCompiler
             {
                 if (GetMethodIL(method).GetExceptionRegions().Length == 0)
                 {
-                    var mn = NodeFactory.NameMangler.GetMangledMethodName(method).ToString();
-                    // if (mn.Contains("S_P_CoreLib_System_Collections_Generic_KeyValuePair_2<S_P_CoreLib_System_Collections_Generic_KeyValuePair_2<System___Canon__System___Canon>__System___Canon>__get_Key"))
-                    // {
                     var sig = method.Signature;
                     corInfo.RegisterLlvmCallbacks((IntPtr)Unsafe.AsPointer(ref corInfo), _outputFile,
                         Module.Target,
@@ -145,9 +142,6 @@ namespace ILCompiler
                     ILImporter.GenerateRuntimeExportThunk(this, method, externFunc);
 
                     ryuJitMethodCount++;
-                    // }
-                    // else ILImporter.CompileMethod(this, methodCodeNodeNeedingCode);
-
                 }
                     else ILImporter.CompileMethod(this, methodCodeNodeNeedingCode);
             }
