@@ -1342,6 +1342,18 @@ public:
         LIMITED_METHOD_CONTRACT;
         m_VMFlags |= (DWORD)VMFLAG_HAS_FIELDS_WHICH_MUST_BE_INITED;
     }
+
+    BOOL HasNoPromotionFlagSet()
+    {
+        LIMITED_METHOD_CONTRACT;
+        return (m_VMFlags & VMFLAG_DONT_PROMOTE);
+    }
+    void SetNoPromotionFlag()
+    {
+        LIMITED_METHOD_CONTRACT;
+        m_VMFlags |= (DWORD)VMFLAG_DONT_PROMOTE;
+    }
+
     void SetCannotBeBlittedByObjectCloner()
     {
         /* no op */
@@ -1669,7 +1681,8 @@ public:
         VMFLAG_BESTFITMAPPING                  = 0x00004000, // BestFitMappingAttribute.Value
         VMFLAG_THROWONUNMAPPABLECHAR           = 0x00008000, // BestFitMappingAttribute.ThrowOnUnmappableChar
 
-        // unused                              = 0x00010000,
+        // suppress struct promotion (used by ValueArrays)
+        VMFLAG_DONT_PROMOTE                    = 0x00010000,
         VMFLAG_NO_GUID                         = 0x00020000,
         VMFLAG_HASNONPUBLICFIELDS              = 0x00040000,
         // unused                              = 0x00080000,
@@ -1975,7 +1988,7 @@ class ArrayClass : public EEClass
 private:
 
     DAC_ALIGNAS(EEClass) // Align the first member to the alignment of the base class
-    unsigned char   m_rank;
+    DWORD m_rank;
     CorElementType  m_ElementType;// Cache of element type in m_ElementTypeHnd
 
 public:
@@ -1986,10 +1999,7 @@ public:
     }
     void SetRank (unsigned Rank) {
         LIMITED_METHOD_CONTRACT;
-        // The only code path calling this function is code:ClassLoader::CreateTypeHandleForTypeKey, which has
-        // checked the rank already.  Assert that the rank is less than MAX_RANK and that it fits in one byte.
-        _ASSERTE((Rank <= MAX_RANK) && (Rank <= (unsigned char)(-1)));
-        m_rank = (unsigned char)Rank;
+        m_rank = Rank;
     }
 
     CorElementType GetArrayElementType() {
