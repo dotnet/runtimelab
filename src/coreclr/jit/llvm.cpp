@@ -1063,31 +1063,12 @@ void Llvm::fillPhis()
     }
 }
 
-void Llvm::addForwardPhiArg(SsaPair ssaPair, llvm::Value* phiArg)
-{
-    auto findResult = _forwardReferencingPhis->find(ssaPair);
-    if (findResult == _forwardReferencingPhis->end())
-        return;
-
-    findResult->second.phiNode->addIncoming(phiArg, findResult->second.llvmBasicBlock);
-}
-
-void Llvm::buildReturnRef(GenTreeOp* node)
-{
-    Value* retSlot = _function->getArg(1);
-    castingStore(getGenTreeValue(node->gtGetOp1()), retSlot, node->TypeGet());
-    _builder.CreateRetVoid();
-}
-
 void Llvm::buildReturn(GenTree* node)
 {
     switch (node->gtType)
     {
         case TYP_INT:
             _builder.CreateRet(castIfNecessary(getGenTreeValue(node->gtGetOp1()), getLlvmTypeForCorInfoType(_sigInfo.retType, _sigInfo.retTypeClass)));
-            return;
-        case TYP_REF:
-            buildReturnRef(node->AsOp());
             return;
         case TYP_VOID:
             _builder.CreateRetVoid();
@@ -1486,9 +1467,7 @@ void Llvm::ConvertShadowStackLocalNode(GenTreeLclVarCommon* node)
             node->AsOp()->gtOp2 = storedValue;
         }
 
-        CurrentRange().InsertBefore(node, offset);
-        CurrentRange().InsertAfter(offset, shadowStackVar);
-        CurrentRange().InsertAfter(shadowStackVar, lclAddress);
+        CurrentRange().InsertBefore(node, offset, shadowStackVar, lclAddress);
     }
 }
 
@@ -1562,8 +1541,8 @@ void Llvm::ConvertShadowStackLocals()
                     callNode->gtCallLateArgs = nullptr;
                     _compiler->fgInitArgInfo(callNode);
 
-                    GenTree* returnAddrLcl2 = _compiler->gtNewLclvNode(returnTempNum, TYP_I_IMPL);
-                    GenTree* indirNode = _compiler->gtNewOperNode(callReturnType == var_types::TYP_STRUCT ? GT_OBJ : GT_IND, callReturnType, returnAddrLcl2);
+                    GenTree* returnAddrLclAfterCall = _compiler->gtNewLclvNode(returnTempNum, TYP_I_IMPL);
+                    GenTree* indirNode = _compiler->gtNewOperNode(callReturnType == var_types::TYP_STRUCT ? GT_OBJ : GT_IND, callReturnType, returnAddrLclAfterCall);
                     indirNode->gtFlags |= GTF_IND_TGT_NOT_HEAP; // No RhpAssignRef required
                     LIR::Use callUse;
                     if (CurrentRange().TryGetUse(callNode, &callUse))
@@ -1578,13 +1557,9 @@ void Llvm::ConvertShadowStackLocals()
                     callNode->gtReturnType = var_types::TYP_VOID;
                     callNode->ChangeType(TYP_VOID);
 
-                    CurrentRange().InsertBefore(callNode, shadowStackVar);
-                    CurrentRange().InsertAfter(shadowStackVar, offset);
-                    CurrentRange().InsertAfter(offset, returnValueAddress);
-                    CurrentRange().InsertAfter(returnValueAddress, addrStore);
+                    CurrentRange().InsertBefore(callNode, shadowStackVar, offset, returnValueAddress, addrStore);
                     CurrentRange().InsertAfter(addrStore, returnAddrLcl);
-                    CurrentRange().InsertAfter(callNode, returnAddrLcl2);
-                    CurrentRange().InsertAfter(returnAddrLcl2, indirNode);
+                    CurrentRange().InsertAfter(callNode, returnAddrLclAfterCall, indirNode);
                 }
             }
             else if (node->OperIs(GT_RETURN) && _functionSigHasReturnAddress)
@@ -1595,11 +1570,6 @@ void Llvm::ConvertShadowStackLocals()
                     /* TODO-LLVM: retbuf .   compHasRetBuffArg doesn't seem to have an implementation */
                     failFunctionCompilation();
                 }
-                //TODO-LLVM: how to create a GT_STORE_OBJ node?
-                if (originalReturnType == TYP_STRUCT)
-                {
-                    failFunctionCompilation();
-                }
 
                 assert(_retAddressLclNum == -1);
                 _retAddressLclNum = _compiler->lvaGrabTemp(true DEBUGARG("shadowstack"));
@@ -1608,16 +1578,25 @@ void Llvm::ConvertShadowStackLocals()
                 retAddressVarDsc->lvType = var_types::TYP_I_IMPL;
 
                 GenTreeLclVar* retAddressLocal = _compiler->gtNewLclvNode(_retAddressLclNum, TYP_I_IMPL);
-
-                GenTree* storeNode = _compiler->gtNewOperNode(originalReturnType == TYP_STRUCT ? GT_STORE_OBJ : GT_STOREIND, originalReturnType, retAddressLocal, node->AsOp()->gtOp1);
+                GenTree* storeNode;
+                if (originalReturnType == TYP_STRUCT)
+                {
+                    storeNode = _compiler->gtNewOperNode(GT_STORE_OBJ, originalReturnType, retAddressLocal, node->AsOp()->gtOp1);
+                    storeNode->AsBlk()->SetLayout(_compiler->typGetObjLayout(_sigInfo.retTypeClass));
+                }
+                else
+                {
+                    storeNode = originalReturnType == TYP_STRUCT
+                        ? _compiler->gtNewTempAssign(retAddressLocal->GetLclNum(), node->AsOp()->gtOp1)
+                        : _compiler->gtNewOperNode(GT_STOREIND, originalReturnType, retAddressLocal, node->AsOp()->gtOp1);
+                }
                 storeNode->gtFlags |= GTF_IND_TGT_NOT_HEAP; // No RhpAssignRef required
 
                 GenTreeOp* retNode = node->AsOp();
                 retNode->gtOp1 = nullptr;
                 node->ChangeType(TYP_VOID);
 
-                CurrentRange().InsertBefore(node, retAddressLocal);
-                CurrentRange().InsertAfter(retAddressLocal, storeNode);
+                CurrentRange().InsertBefore(node, retAddressLocal, storeNode);
             }
         }
     }
@@ -1629,10 +1608,6 @@ void Llvm::ConvertShadowStackLocals()
 void Llvm::PlaceAndConvertShadowStackLocals()
 {
     _shadowStackLocalsSize = 0;
-    if (_compiler->lvaCount == 0)
-    {
-        return;
-    }
 
     std::vector<LclVarDsc*> locals;
     unsigned localsParamCount = 0;
@@ -1648,11 +1623,6 @@ void Llvm::PlaceAndConvertShadowStackLocals()
                 localsParamCount++;
             }
         }
-    }
-
-    if (locals.size() == 0)
-    {
-        return;
     }
 
     if (_compiler->opts.OptimizationEnabled())

@@ -107,7 +107,6 @@ private:
     llvm::IRBuilder<> _prologBuilder;
     std::unordered_map<GenTree*, Value*>* _sdsuMap;
     std::unordered_map<SsaPair, Value*, SsaPairHash>* _localsMap;
-    std::unordered_map<SsaPair, IncomingPhi, SsaPairHash>* _forwardReferencingPhis;
     std::vector<PhiPair> _phiPairs;
 
     // DWARF
@@ -126,7 +125,6 @@ private:
         return *_currentRange;
     }
 
-    void addForwardPhiArg(SsaPair ssaPair, llvm::Value* phiArg);
     void buildAdd(GenTree* node, Value* op1, Value* op2);
     void buildCall(GenTree* node);
     void buildCast(GenTreeCast* cast);
