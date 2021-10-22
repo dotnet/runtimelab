@@ -6494,9 +6494,7 @@ GenTree* Compiler::gtNewOperNode(genTreeOps oper, var_types type, GenTree* op1, 
 
     // We should not be allocating nodes that extend GenTreeOp with this;
     // should call the appropriate constructor for the extended type.
-#ifndef TARGET_WASM // hack to allow the creation of a GT_STORE_OBJ
     assert(!GenTree::IsExOp(GenTree::OperKind(oper)));
-#endif
 
     GenTree* node = new (this, oper) GenTreeOp(oper, type, op1, op2);
 

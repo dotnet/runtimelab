@@ -1580,14 +1580,12 @@ void Llvm::ConvertShadowStackLocals()
                 GenTree* storeNode;
                 if (originalReturnType == TYP_STRUCT)
                 {
-                    storeNode = _compiler->gtNewOperNode(GT_STORE_OBJ, originalReturnType, retAddressLocal, node->AsOp()->gtOp1);
-                    storeNode->AsBlk()->SetLayout(_compiler->typGetObjLayout(_sigInfo.retTypeClass));
+                    storeNode = new (_compiler, GT_STORE_OBJ)
+                        GenTreeObj(originalReturnType, retAddressLocal, node->AsOp()->gtGetOp1(), _compiler->typGetObjLayout(_sigInfo.retTypeClass));
                 }
                 else
                 {
-                    storeNode = originalReturnType == TYP_STRUCT
-                        ? _compiler->gtNewTempAssign(retAddressLocal->GetLclNum(), node->AsOp()->gtOp1)
-                        : _compiler->gtNewOperNode(GT_STOREIND, originalReturnType, retAddressLocal, node->AsOp()->gtOp1);
+                    storeNode = _compiler->gtNewOperNode(GT_STOREIND, originalReturnType, retAddressLocal, node->AsOp()->gtOp1);
                 }
                 storeNode->gtFlags |= GTF_IND_TGT_NOT_HEAP; // No RhpAssignRef required
 
