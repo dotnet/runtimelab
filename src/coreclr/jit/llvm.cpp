@@ -1404,8 +1404,8 @@ Llvm::Llvm(Compiler* pCompiler)
       _function(nullptr),
       _builder(_llvmContext),
       _prologBuilder(_llvmContext),
-      _shadowStackLclNum(-1),
-      _retAddressLclNum(-1)
+      _shadowStackLclNum(BAD_VAR_NUM),
+      _retAddressLclNum(BAD_VAR_NUM)
 {
     _compiler->eeGetMethodSig(_info.compMethodHnd, &_sigInfo);
     _functionSigHasReturnAddress = needsReturnStackSlot(_sigInfo.retType, _sigInfo.retTypeClass);
@@ -1476,7 +1476,7 @@ void Llvm::ConvertShadowStackLocals()
     _shadowStackLclNum = _compiler->lvaGrabTemp(true DEBUGARG("shadowstack"));
     LclVarDsc* shadowStackVarDsc = _compiler->lvaGetDesc(_shadowStackLclNum);
     shadowStackVarDsc->lvIsParam = 1;
-    shadowStackVarDsc->lvType = var_types::TYP_I_IMPL;
+    shadowStackVarDsc->lvType = TYP_I_IMPL;
 
     for (BasicBlock* _currentBlock : _compiler->Blocks())
     {
@@ -1491,7 +1491,7 @@ void Llvm::ConvertShadowStackLocals()
             {
                 GenTreeCall* callNode = node->AsCall();
 
-                if (callNode->gtCallType == CT_HELPER || callNode->gtReturnType == var_types::TYP_VOID)
+                if (callNode->IsHelperCall() || callNode->TypeIs(TYP_VOID))
                 {
                     // helper calls are built differently
                     continue;
@@ -1515,10 +1515,9 @@ void Llvm::ConvertShadowStackLocals()
                     GenTree* returnValueAddress = _compiler->gtNewOperNode(GT_ADD, TYP_I_IMPL, shadowStackVar, offset);
 
                     // create temp for the return address
-                    unsigned returnTempNum = _compiler->lvaGrabTemp(true, "return value address");
+                    unsigned returnTempNum = _compiler->lvaGrabTemp(false DEBUGARG("return value address"));
                     LclVarDsc* returnAddrVarDsc = _compiler->lvaGetDesc(returnTempNum);
-                    returnAddrVarDsc->lvIsParam = 0;
-                    returnAddrVarDsc->lvType = var_types::TYP_I_IMPL;
+                    returnAddrVarDsc->lvType = TYP_I_IMPL;
 
                     GenTree* addrStore = _compiler->gtNewStoreLclVar(returnTempNum, returnValueAddress);
                     GenTree* returnAddrLcl = _compiler->gtNewLclvNode(returnTempNum, TYP_I_IMPL);
@@ -1542,7 +1541,7 @@ void Llvm::ConvertShadowStackLocals()
                     _compiler->fgInitArgInfo(callNode);
 
                     GenTree* returnAddrLclAfterCall = _compiler->gtNewLclvNode(returnTempNum, TYP_I_IMPL);
-                    GenTree* indirNode = _compiler->gtNewOperNode(callReturnType == var_types::TYP_STRUCT ? GT_OBJ : GT_IND, callReturnType, returnAddrLclAfterCall);
+                    GenTree* indirNode = _compiler->gtNewOperNode(callReturnType == TYP_STRUCT ? GT_OBJ : GT_IND, callReturnType, returnAddrLclAfterCall);
                     indirNode->gtFlags |= GTF_IND_TGT_NOT_HEAP; // No RhpAssignRef required
                     LIR::Use callUse;
                     if (CurrentRange().TryGetUse(callNode, &callUse))
@@ -1554,7 +1553,7 @@ void Llvm::ConvertShadowStackLocals()
                         callNode->ClearUnusedValue();
                     }
 
-                    callNode->gtReturnType = var_types::TYP_VOID;
+                    callNode->gtReturnType = TYP_VOID;
                     callNode->ChangeType(TYP_VOID);
 
                     CurrentRange().InsertBefore(callNode, shadowStackVar, offset, returnValueAddress, addrStore);
@@ -1571,11 +1570,11 @@ void Llvm::ConvertShadowStackLocals()
                     failFunctionCompilation();
                 }
 
-                assert(_retAddressLclNum == -1);
+                assert(_retAddressLclNum == BAD_VAR_NUM);
                 _retAddressLclNum = _compiler->lvaGrabTemp(true DEBUGARG("shadowstack"));
                 LclVarDsc* retAddressVarDsc = _compiler->lvaGetDesc(_retAddressLclNum);
                 retAddressVarDsc->lvIsParam = 1;
-                retAddressVarDsc->lvType = var_types::TYP_I_IMPL;
+                retAddressVarDsc->lvType = TYP_I_IMPL;
 
                 GenTreeLclVar* retAddressLocal = _compiler->gtNewLclvNode(_retAddressLclNum, TYP_I_IMPL);
                 GenTree* storeNode;
@@ -1603,7 +1602,9 @@ void Llvm::ConvertShadowStackLocals()
 }
 
 //------------------------------------------------------------------------
-// Convert GT_STORE_LCL_VAR and GT_LCL_VAR to use the shadow stack when the local needs to be GC tracked
+// Convert GT_STORE_LCL_VAR and GT_LCL_VAR to use the shadow stack when the local needs to be GC tracked,
+// rewrite calls that returns GC types to do so via a store to a passed in address on the shadow stack.
+// Likewise, store the returned value there if required.
 //
 void Llvm::PlaceAndConvertShadowStackLocals()
 {
