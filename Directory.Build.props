@@ -123,7 +123,7 @@
 
     <!-- _runtimeOS is calculated based on the build system OS, however if building for Browser/iOS/Android we need to let
          the build system to use browser/ios/android as the _runtimeOS for produced package RIDs. -->
-    <_runtimeOS Condition="'$(TargetsMobile)' == 'true'">$(TargetOS.ToLowerInvariant())</_runtimeOS>
+    <_runtimeOS Condition="'$(TargetsMobile)' == 'true' or '$(TargetOS)' == 'Browser'">$(TargetOS.ToLowerInvariant())</_runtimeOS>
 
     <_portableOS>linux</_portableOS>
     <_portableOS Condition="'$(_runtimeOS)' == 'linux-musl'">linux-musl</_portableOS>

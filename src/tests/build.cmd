@@ -245,9 +245,7 @@ if %__Ninja% EQU 1 (
 ) else (
     set __ExtraCmakeArgs="-DCMAKE_SYSTEM_VERSION=10.0"
 )
-if /i "%__BuildArch%" == "wasm" (
-    set __ExtraCmakeArgs="-DCMAKE_SYSTEM_VERSION=10.0 -DCLR_CMAKE_BUILD_SUBSET_JIT=0 -DCLR_CMAKE_BUILD_SUBSET_ALLJITS=0"
-)
+
 call "%__RepoRootDir%\eng\native\gen-buildsys.cmd" "%__ProjectFilesDir%" "%__NativeTestIntermediatesDir%" %__VSVersion% %__BuildArch% !__ExtraCmakeArgs! !__CMakeArgs!
 
 if not !errorlevel! == 0 (

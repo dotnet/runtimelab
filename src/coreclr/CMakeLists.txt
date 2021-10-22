@@ -62,10 +62,12 @@ include(pgosupport.cmake)
 #---------------------------------------------------
 include(components.cmake)
 
+# We only build the nativeaot component for Wasm, so below, everything else is excluded for it.
+
 #---------------------------
 # Build the single file host
 #---------------------------
-if(NOT CLR_CROSS_COMPONENTS_BUILD AND NOT ((RUNTIME_FLAVOR STREQUAL CoreClr AND CLR_CMAKE_TARGET_ARCH STREQUAL wasm) OR BUILD_WASM_JIT))
+if(NOT CLR_CROSS_COMPONENTS_BUILD AND NOT CLR_CMAKE_TARGET_ARCH_WASM)
   set(CLR_SINGLE_FILE_HOST_ONLY 1)
   add_subdirectory(${CLR_SRC_NATIVE_DIR}/corehost/apphost/static Corehost.Static)
   add_dependencies(runtime singlefilehost)
@@ -112,17 +114,17 @@ if(CLR_CMAKE_HOST_UNIX)
     add_subdirectory(pal)
     add_subdirectory(hosts)
 else(CLR_CMAKE_HOST_UNIX)
-    if(CLR_CMAKE_TARGET_UNIX AND NOT CLR_CMAKE_HOST_UNIX_WASM)
+    if(CLR_CMAKE_TARGET_UNIX AND NOT CLR_CMAKE_TARGET_ARCH_WASM)
         add_subdirectory(pal/src/libunwind)
-    endif(CLR_CMAKE_TARGET_UNIX AND NOT CLR_CMAKE_HOST_UNIX_WASM)
+    endif(CLR_CMAKE_TARGET_UNIX AND NOT CLR_CMAKE_TARGET_ARCH_WASM)
 endif(CLR_CMAKE_HOST_UNIX)
 
 # Add this subdir. We install the headers for the jit.
 add_subdirectory(pal/prebuilt/inc)
 
-if(NOT CLR_CMAKE_HOST_UNIX_WASM)
+if(NOT CLR_CMAKE_TARGET_ARCH_WASM)
     add_subdirectory(debug/debug-pal)
-endif(NOT CLR_CMAKE_HOST_UNIX_WASM)
+endif(NOT CLR_CMAKE_TARGET_ARCH_WASM)
 
 add_subdirectory(minipal)
 
@@ -137,13 +139,13 @@ endif()
 include_directories("pal/prebuilt/inc")
 include_directories("../../artifacts/obj/coreclr")
 
-if(NOT CLR_CMAKE_HOST_UNIX_WASM)
+if(NOT CLR_CMAKE_TARGET_ARCH_WASM)
     add_subdirectory(tools/aot/jitinterface)
-endif(NOT CLR_CMAKE_HOST_UNIX_WASM)
+endif(NOT CLR_CMAKE_TARGET_ARCH_WASM)
 
 
 if(NOT CLR_CROSS_COMPONENTS_BUILD)
-  add_subdirectory(nativeaot)
+    add_subdirectory(nativeaot)
 endif(NOT CLR_CROSS_COMPONENTS_BUILD)
 
 # Above projects do not build with these compile options
@@ -160,10 +162,10 @@ endif(CLR_CMAKE_HOST_WIN32)
 #----------------------------------
 include(clrdefinitions.cmake)
 
-if(FEATURE_STANDALONE_GC)
+if(FEATURE_STANDALONE_GC AND NOT CLR_CMAKE_TARGET_ARCH_WASM)
   add_definitions(-DFEATURE_STANDALONE_GC)
   add_subdirectory(gc)
-endif(FEATURE_STANDALONE_GC)
+endif(FEATURE_STANDALONE_GC AND NOT CLR_CMAKE_TARGET_ARCH_WASM)
 
 if (CLR_CMAKE_HOST_UNIX)
   include_directories("pal/inc")
@@ -237,36 +239,30 @@ if(CLR_CMAKE_HOST_UNIX)
   add_subdirectory(nativeresources)
 endif(CLR_CMAKE_HOST_UNIX)
 
-message("testing CLR_CMAKE_TARGET_ARCH_WASM")
 if (NOT CLR_CMAKE_TARGET_ARCH_WASM)
-    message("not wasm target CLR_CMAKE_TARGET_ARCH_WASM")
-    add_subdirectory(utilcode)
-    add_subdirectory(gcinfo)
-    add_subdirectory(jit)
-    add_subdirectory(inc)
+  add_subdirectory(utilcode)
+  add_subdirectory(inc)
 endif(NOT CLR_CMAKE_TARGET_ARCH_WASM)
 
 if(CLR_CMAKE_HOST_UNIX)
-    add_subdirectory(palrt)
+  add_subdirectory(palrt)
 endif(CLR_CMAKE_HOST_UNIX)
 
-message("testing BUILD_WASM_JIT")
 if (NOT CLR_CMAKE_TARGET_ARCH_WASM)
+  add_subdirectory(ilasm)
+  add_subdirectory(ildasm)
+  add_subdirectory(gcinfo)
+  add_subdirectory(jit)
   add_subdirectory(vm)
-  if (NOT BUILD_WASM_JIT)
-message("NOT BUILD_WASM_JIT")
-    add_subdirectory(ilasm)
-    add_subdirectory(ildasm)
-    add_subdirectory(md)
-    add_subdirectory(debug)
-    add_subdirectory(binder)
-    add_subdirectory(classlibnative)
-    add_subdirectory(dlls)
-    add_subdirectory(ToolBox)
-    add_subdirectory(tools)
-    add_subdirectory(unwinder)
-    add_subdirectory(interop)
-  endif(NOT BUILD_WASM_JIT)
+  add_subdirectory(md)
+  add_subdirectory(debug)
+  add_subdirectory(binder)
+  add_subdirectory(classlibnative)
+  add_subdirectory(dlls)
+  add_subdirectory(ToolBox)
+  add_subdirectory(tools)
+  add_subdirectory(unwinder)
+  add_subdirectory(interop)
 endif(NOT CLR_CMAKE_TARGET_ARCH_WASM)
 
 if(CLR_CMAKE_HOST_WIN32)
