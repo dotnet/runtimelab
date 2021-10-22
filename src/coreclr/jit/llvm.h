@@ -145,7 +145,7 @@ private:
     void castingStore(Value* toStore, Value* address, var_types type);
     Value* castToPointerToLlvmType(Value* address, llvm::Type* llvmType);
     llvm::DILocation* createDebugFunctionAndDiLocation(struct DebugMetadata debugMetadata, unsigned int lineNo);
-    void CreateShadowStackLocalAddress(GenTree* node);
+    void ConvertShadowStackLocalNode(GenTreeLclVarCommon* node);
     void emitDoNothingCall();
     void endImportingBasicBlock(BasicBlock* block);
     void failFunctionCompilation();

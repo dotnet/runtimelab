@@ -1452,7 +1452,7 @@ void Llvm::llvmShutdown()
     //    Module.Verify(LLVMVerifierFailureAction.LLVMAbortProcessAction);
 }
 
-void Llvm::CreateShadowStackLocalAddress(GenTree* node)
+void Llvm::ConvertShadowStackLocalNode(GenTreeLclVarCommon* node)
 {
     GenTreeLclVarCommon* lclVar = node->AsLclVarCommon();
     LclVarDsc* varDsc = _compiler->lvaGetDesc(lclVar->GetLclNum());
@@ -1468,13 +1468,15 @@ void Llvm::CreateShadowStackLocalAddress(GenTree* node)
         GenTree* storedValue = nullptr;
         switch (node->OperGet())
         {
-        case GT_STORE_LCL_VAR:
-            indirOper = lclVar->TypeIs(TYP_STRUCT) ? GT_STORE_OBJ : GT_STOREIND;
-            storedValue = node->AsOp()->gtGetOp1();
-            break;
-        case GT_LCL_VAR:
-            indirOper = lclVar->TypeIs(TYP_STRUCT) ? GT_OBJ : GT_IND;
-            break;
+            case GT_STORE_LCL_VAR:
+                indirOper = lclVar->TypeIs(TYP_STRUCT) ? GT_STORE_OBJ : GT_STOREIND;
+                storedValue = node->AsOp()->gtGetOp1();
+                break;
+            case GT_LCL_VAR:
+                indirOper = lclVar->TypeIs(TYP_STRUCT) ? GT_OBJ : GT_IND;
+                break;
+            default:
+                unreached();
         }
         node->ChangeOper(indirOper);
         node->AsIndir()->SetAddr(lclAddress);
@@ -1497,14 +1499,14 @@ void Llvm::ConvertShadowStackLocals()
     shadowStackVarDsc->lvIsParam = 1;
     shadowStackVarDsc->lvType = var_types::TYP_I_IMPL;
 
-    for (BasicBlock* const block : _compiler->Blocks())
+    for (BasicBlock* _currentBlock : _compiler->Blocks())
     {
-        _currentRange = &LIR::AsRange(block);
+        _currentRange = &LIR::AsRange(_currentBlock);
         for (GenTree* node : CurrentRange())
         {
             if (node->OperIs(GT_STORE_LCL_VAR, GT_LCL_VAR))
             {
-                CreateShadowStackLocalAddress(node);
+                ConvertShadowStackLocalNode(node->AsLclVarCommon());
             }
             else if (node->IsCall())
             {
