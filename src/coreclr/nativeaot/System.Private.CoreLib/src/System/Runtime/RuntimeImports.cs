@@ -933,16 +933,6 @@ namespace System.Runtime
 
         [Intrinsic]
         [MethodImplAttribute(MethodImplOptions.InternalCall)]
-        [RuntimeImport(RuntimeLibrary, "ilogb")]
-        internal static extern int ilogb(double x);
-
-        [Intrinsic]
-        [MethodImplAttribute(MethodImplOptions.InternalCall)]
-        [RuntimeImport(RuntimeLibrary, "ilogbf")]
-        internal static extern int ilogbf(float x);
-
-        [Intrinsic]
-        [MethodImplAttribute(MethodImplOptions.InternalCall)]
         [RuntimeImport(RuntimeLibrary, "modf")]
         internal static extern unsafe double modf(double x, double* intptr);
 
