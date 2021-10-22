@@ -101,12 +101,6 @@ namespace System
         }
 
         [Intrinsic]
-        public static int ILogB(float x)
-        {
-            return RuntimeImports.ilogbf(x);
-        }
-
-        [Intrinsic]
         public static float Log(float x)
         {
             return RuntimeImports.logf(x);
