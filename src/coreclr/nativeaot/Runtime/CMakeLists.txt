@@ -164,16 +164,16 @@ else()
   # Compile unwinding only for the current compilation target architecture
   add_definitions(-D_LIBUNWIND_IS_NATIVE_ONLY)
 
+  list(APPEND COMMON_RUNTIME_SOURCES
+    unix/PalRedhawkUnix.cpp
+    ${GC_DIR}/unix/gcenv.unix.cpp
+    ${GC_DIR}/unix/events.cpp
+    ${GC_DIR}/unix/cgroup.cpp
+  )
+
   if(CLR_CMAKE_TARGET_ARCH_WASM)
     list(APPEND COMMON_RUNTIME_SOURCES
       ${GC_DIR}/wasm/gcenv.wasm.cpp
-    )
-  else()
-    list(APPEND COMMON_RUNTIME_SOURCES
-      unix/PalRedhawkUnix.cpp
-      ${GC_DIR}/unix/gcenv.unix.cpp
-      ${GC_DIR}/unix/events.cpp
-      ${GC_DIR}/unix/cgroup.cpp
     )
   endif()
 

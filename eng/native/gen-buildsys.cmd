@@ -46,11 +46,6 @@ if /i "%__Ninja%" == "1" (
 )
 
 if /i "%__Arch%" == "wasm" (
-    if "%EMSDK%" == "" (
-       echo Error: Should set EMSDK environment variable pointing to emsdk root.
-       exit /B 1
-    )
-
     set __ExtraCmakeParams=%__ExtraCmakeParams% "-DCMAKE_TOOLCHAIN_FILE=%EMSDK%/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake"
     set __UseEmcmake=1
 ) else (

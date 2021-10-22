@@ -60,7 +60,10 @@
     <!-- Even on platforms that do not support the CoreCLR runtime, we still want to build ilasm/ildasm. -->
     <DefaultCoreClrSubsets Condition="'$(PrimaryRuntimeFlavor)' != 'CoreCLR'">clr.iltools+clr.packages</DefaultCoreClrSubsets>
 
-    <DefaultNativeAotSubsets>clr.alljits+nativeaot.tools+nativeaot.libs</DefaultNativeAotSubsets>
+    <DefaultNativeAotSubsets>clr.alljits+nativeaot.ilc+nativeaot.build+nativeaot.libs</DefaultNativeAotSubsets>
+
+    <!-- The only NativeAOT components meaningfully buildable for Wasm are the native runtime and build integration. -->
+    <DefaultNativeAotSubsets Condition="'$(TargetArchitecture)' == 'wasm'">nativeaot.build+nativeaot.libs</DefaultNativeAotSubsets>
 
     <DefaultMonoSubsets Condition="'$(MonoEnableLLVM)' == 'true' and '$(MonoLLVMDir)' == ''">mono.llvm+</DefaultMonoSubsets>
     <DefaultMonoSubsets Condition="'$(MonoAOTEnableLLVM)' == 'true' and '$(MonoAOTLLVMDir)' == ''">mono.llvm+</DefaultMonoSubsets>
@@ -106,7 +109,8 @@
     <!-- CoreClr Native AOT -->
     <SubsetName Include="NativeAot" Description="The CoreCLR native AOT runtime, libraries, and tools." />
     <SubsetName Include="NativeAot.Libs" Description="The CoreCLR native AOT CoreLib and other low level class libraries." />
-    <SubsetName Include="NativeAot.Tools" Description="The CoreCLR native AOT compiler." />
+    <SubsetName Include="NativeAot.Build" Description="The CoreCLR native AOT MSBuild toolchain." />
+    <SubsetName Include="NativeAot.Ilc" Description="The CoreCLR native AOT compiler." />
     <SubsetName Include="NativeAot.ObjWriter" Description="Object writer for the CoreCLR native AOT compiler." />
     <SubsetName Include="NativeAot.Packages" Description="The CoreCLR native AOT compiler." />
 
@@ -283,10 +287,13 @@
     <ProjectToBuild Include="$(CoreClrProjectRoot)tools\aot\ObjWriter\objwriter.proj" Category="clr" />
   </ItemGroup>
 
-  <ItemGroup Condition="$(_subset.Contains('+nativeaot.tools+'))">
-    <ProjectToBuild Include="$(CoreClrProjectRoot)tools\aot\ILCompiler.Build.Tasks\ILCompiler.Build.Tasks.csproj" Category="clr" />
+  <ItemGroup Condition="$(_subset.Contains('+nativeaot.ilc+'))">
     <ProjectToBuild Include="$(CoreClrProjectRoot)tools\aot\ILCompiler\ILCompiler.csproj" Category="clr" />
     <ProjectToBuild Include="$(CoreClrProjectRoot)tools\aot\ILCompiler\repro\repro.csproj" Category="clr" />
+  </ItemGroup>
+
+  <ItemGroup Condition="$(_subset.Contains('+nativeaot.build+'))">
+    <ProjectToBuild Include="$(CoreClrProjectRoot)tools\aot\ILCompiler.Build.Tasks\ILCompiler.Build.Tasks.csproj" Category="clr" />
     <ProjectToBuild Include="$(CoreClrProjectRoot)nativeaot\BuildIntegration\BuildIntegration.proj" Category="clr" />
   </ItemGroup>
 

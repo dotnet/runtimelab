@@ -66,10 +66,6 @@ function(create_standalone_jit)
     target_compile_definitions(${TARGETDETAILS_TARGET} PRIVATE USE_STL)
     target_compile_definitions(${TARGETDETAILS_TARGET} PRIVATE PAL_STDCPP_COMPAT)
 
-    if (NOT DEFINED ENV{LLVM_CMAKE_CONFIG})
-      message(FATAL_ERROR "The LLVM_CMAKE_CONFIG environment variable must be set to <llvm-build-dir>/lib/cmake/llvm")
-    endif()
-
     find_package(LLVM REQUIRED CONFIG PATHS $ENV{LLVM_CMAKE_CONFIG})
     target_include_directories(${TARGETDETAILS_TARGET} PRIVATE ${LLVM_INCLUDE_DIRS})
     target_compile_definitions(${TARGETDETAILS_TARGET} PRIVATE ${LLVM_DEFINITIONS})
@@ -543,7 +539,10 @@ target_compile_definitions(clrjit_unix_arm_${ARCH_HOST_NAME} PRIVATE ARM_SOFTFP 
 create_standalone_jit(TARGET clrjit_win_arm_${ARCH_HOST_NAME} OS win ARCH arm DESTINATIONS .)
 create_standalone_jit(TARGET clrjit_win_x86_${ARCH_HOST_NAME} OS win ARCH x86 DESTINATIONS .)
 
-if (NOT CLR_CMAKE_HOST_UNIX)
+# Note that we currently do not support building the LLVM Jit on Unix.
+# Note as well that we need this "CLR_CMAKE_BUILD_LLVM_JIT", defined by the build scripts,
+# because there is no way in CMake to ask "what --target's' am I being asked to configure?".
+if (CLR_CMAKE_BUILD_LLVM_JIT)
     # The LLVM clrjit needs to be the last clrjit to use create_standalone_jit as it modifies some cmake variables.
     # LLVM clrjit has an extra export - registerLlvmCallbacks.
     set(CLRJIT_EXPORTS ${CMAKE_CURRENT_LIST_DIR}/ClrJit.Llvm.exports)
@@ -564,13 +563,16 @@ if (NOT CLR_CMAKE_HOST_UNIX)
     list(FILTER JIT_CORE_SOURCES EXCLUDE REGEX lsrabuild\.cpp)
     list(FILTER JIT_CORE_SOURCES EXCLUDE REGEX regalloc\.cpp)
 
+    # We'll be linking against LLVM built without /guard:ehcont, so disable it.
+    string(REPLACE "/guard:ehcont" "" CMAKE_SHARED_LINKER_FLAGS ${CMAKE_SHARED_LINKER_FLAGS})
+
     create_standalone_jit(TARGET clrjit_browser_wasm32_${ARCH_HOST_NAME} OS browser ARCH wasm32 DESTINATIONS .)
-    install_clr(TARGETS clrjit_browser_wasm32_${ARCH_HOST_NAME} DESTINATIONS . ilc COMPONENT wasmjit)
+    install_clr(TARGETS clrjit_browser_wasm32_${ARCH_HOST_NAME} DESTINATIONS . COMPONENT wasmjit)
 
     # Uncomment to enable 8 byte pointer size version of the wasm clrjit.dll.
     # create_standalone_jit(TARGET clrjit_browser_wasm64_${ARCH_HOST_NAME} OS browser ARCH wasm64 DESTINATIONS .)
     # install_clr(TARGETS clrjit_browser_wasm64_${ARCH_HOST_NAME} DESTINATIONS . ilc COMPONENT wasmjit)
-endif (NOT CLR_CMAKE_HOST_UNIX)
+endif (CLR_CMAKE_BUILD_LLVM_JIT)
 
 if (CLR_CMAKE_TARGET_ARCH_I386 AND CLR_CMAKE_TARGET_UNIX)
   create_standalone_jit(TARGET clrjit_unix_x86_${ARCH_HOST_NAME} OS unix ARCH x86 DESTINATIONS .)

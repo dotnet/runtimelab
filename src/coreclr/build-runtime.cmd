@@ -402,6 +402,12 @@ for /f "delims=" %%a in ("-%__RequestedBuildComponents%-") do (
     )
     if not "!string:-wasmjit-=!"=="!string!" (
         set __CMakeTarget=!__CMakeTarget! wasmjit
+        set __ExtraCmakeArgs=!__ExtraCmakeArgs! "-DCLR_CMAKE_BUILD_LLVM_JIT=1"
+
+        if not defined LLVM_CMAKE_CONFIG (
+            echo %__ErrMsgPrefix%%__MsgPrefix%Error: The LLVM_CMAKE_CONFIG environment variable pointing to llvm-build-dir/lib/cmake/llvm must be set.
+            exit /B 1
+        )
     )
     if not "!string:-alljits-=!"=="!string!" (
         set __CMakeTarget=!__CMakeTarget! alljits
@@ -417,6 +423,13 @@ for /f "delims=" %%a in ("-%__RequestedBuildComponents%-") do (
     )
     if not "!string:-nativeaot-=!"=="!string!" (
         set __CMakeTarget=!__CMakeTarget! nativeaot
+
+        if "%__BuildArch%"=="wasm" (
+            if not defined EMSDK (
+                echo %__ErrMsgPrefix%%__MsgPrefix%Error: The EMSDK environment variable pointing to emsdk root must be set.
+                exit /B 1
+            )
+        )
     )
 )
 if [!__CMakeTarget!] == [] (
@@ -668,7 +681,6 @@ if %__BuildNative% EQU 1 (
         )
     )
 
-    echo running "%CMakePath%" --build %__IntermediatesDir% --target %__CMakeTarget% --config %__BuildType% -- !__CmakeBuildToolArgs!
     "%CMakePath%" --build %__IntermediatesDir% --target %__CMakeTarget% --config %__BuildType% -- !__CmakeBuildToolArgs!
 
     if not !errorlevel! == 0 (

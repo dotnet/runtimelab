@@ -390,7 +390,6 @@ for /l %%G in (1, 1, %__NumberOfTestGroups%) do (
         set __MSBuildBuildArgs=!__MSBuildBuildArgs! /p:BuildTestDir=!__BuildTestDir!
         set __MSBuildBuildArgs=!__MSBuildBuildArgs! /p:BuildTestTree=!__BuildTestTree!
 
-        echo Running: msbuild !__MSBuildBuildArgs!
         !__CommonMSBuildCmdPrefix! !__MSBuildBuildArgs!
 
         if errorlevel 1 (
