@@ -6098,7 +6098,13 @@ private:
     GenTree* fgMorphArrayIndex(GenTree* tree);
     GenTree* fgMorphCast(GenTree* tree);
     GenTreeFieldList* fgMorphLclArgToFieldlist(GenTreeLclVarCommon* lcl);
+#ifdef TARGET_WASM
+public:
+#endif
     void fgInitArgInfo(GenTreeCall* call);
+#ifdef TARGET_WASM
+private:
+#endif
     GenTreeCall* fgMorphArgs(GenTreeCall* call);
     GenTreeArgList* fgMorphArgList(GenTreeArgList* args, MorphAddrContext* mac);
 

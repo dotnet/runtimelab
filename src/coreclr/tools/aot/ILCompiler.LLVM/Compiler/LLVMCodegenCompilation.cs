@@ -143,7 +143,7 @@ namespace ILCompiler
 
                     ryuJitMethodCount++;
                 }
-                else ILImporter.CompileMethod(this, methodCodeNodeNeedingCode);
+                    else ILImporter.CompileMethod(this, methodCodeNodeNeedingCode);
             }
             catch (CodeGenerationFailedException)
             {
@@ -250,6 +250,11 @@ namespace ILCompiler
         public override void AddOrReturnGlobalSymbol(ISymbolNode symbolNode, NameMangler nameMangler)
         {
             LLVMObjectWriter.AddOrReturnGlobalSymbol(Module, symbolNode, nameMangler);
+        }
+
+        public override bool StructIsWrappedPrimitive(TypeDesc method, TypeDesc primitiveTypeDesc)
+        {
+            return ILImporter.StructIsWrappedPrimitive(method, primitiveTypeDesc);
         }
     }
 }

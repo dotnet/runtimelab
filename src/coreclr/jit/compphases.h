@@ -105,6 +105,11 @@ CompPhaseNameMacro(PHASE_EMIT_CODE,              "Emit code",                   
 CompPhaseNameMacro(PHASE_EMIT_GCEH,              "Emit GC+EH tables",              "EMT-GCEH", false, -1, false)
 CompPhaseNameMacro(PHASE_POST_EMIT,              "Post-Emit",                      "POST-EMIT", false, -1, false)
 
+#ifdef TARGET_WASM
+CompPhaseNameMacro(PHASE_SHDWSTK_SETUP,          "LLVM Shadow Stack Setup",        "SHDWSTK-SETUP", false, -1, false)
+CompPhaseNameMacro(PHASE_BUILD_LLVM,             "Build LLVM",                     "BUILD-LLVM", false, -1, false)
+#endif
+
 #if MEASURE_CLRAPI_CALLS
 // The following is a "pseudo-phase" - it aggregates timing info
 // for calls through ICorJitInfo across all "real" phases.

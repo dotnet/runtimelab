@@ -171,7 +171,11 @@ void Phase::PostPhase(PhaseStatus status)
                                    PHASE_MORPH_GLOBAL,     PHASE_INVERT_LOOPS,
                                    PHASE_OPTIMIZE_LAYOUT,  PHASE_FIND_LOOPS,
                                    PHASE_BUILD_SSA,        PHASE_RATIONALIZE,
-                                   PHASE_LOWERING,         PHASE_STACK_LEVEL_SETTER};
+                                   PHASE_LOWERING,         PHASE_STACK_LEVEL_SETTER
+#if TARGET_WASM
+                                   ,PHASE_SHDWSTK_SETUP
+#endif
+    };
 
     if (madeChanges)
     {
