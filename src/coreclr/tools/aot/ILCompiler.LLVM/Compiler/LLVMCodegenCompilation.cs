@@ -143,7 +143,7 @@ namespace ILCompiler
 
                     ryuJitMethodCount++;
                 }
-                else ILImporter.CompileMethod(this, methodCodeNodeNeedingCode);
+                    else ILImporter.CompileMethod(this, methodCodeNodeNeedingCode);
             }
             catch (CodeGenerationFailedException)
             {

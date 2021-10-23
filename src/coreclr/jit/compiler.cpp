@@ -1493,9 +1493,7 @@ void Compiler::compStartup()
 #endif
 
     /* Initialize the emitter */
-#ifdef TARGET_WASM
-    Llvm::Init();
-#else
+#ifndef TARGET_WASM
     emitter::emitInit();
 #endif // !TARGET_WASM
 
@@ -4533,11 +4531,9 @@ void Compiler::EndPhase(Phases phase)
 }
 
 #if defined(TARGET_WASM)
-inline void DoLlvmPhase(Compiler* pCompiler)
+inline void DoLlvmPhase(Llvm* llvm)
 {
-    Llvm* llvm = new Llvm();
-    llvm->Compile(pCompiler);
-    delete llvm;
+    llvm->Compile();
 }
 #endif
 
@@ -5235,12 +5231,27 @@ void Compiler::compCompile(void** methodCodePtr, uint32_t* methodCodeSize, JitFl
     rat.Run();
 
 #if defined(TARGET_WASM)
-    lvaMarkLocalVars();
+    if (opts.OptimizationEnabled())
+    {
+        // When optimizing, we'll sort the locals on the shadow stack by ref count.
+        lvaMarkLocalVars();
+    }
 
+    Llvm* llvm = new Llvm(this);
+    auto placeAndConvertShadowStackLocalsPhase = [llvm]() {
+        llvm->PlaceAndConvertShadowStackLocals();
+    };
+    DoPhase(this, PHASE_SHDWSTK_SETUP, placeAndConvertShadowStackLocalsPhase);
+
+    lvaMarkLocalVars();  // For SSA.
     fgResetForSsa();
     DoPhase(this, PHASE_BUILD_SSA, &Compiler::fgSsaBuild);
 
-    DoLlvmPhase(this);
+    auto buildLlvmPhase = [llvm]() {
+        llvm->Compile();
+    };
+    DoPhase(this, PHASE_BUILD_LLVM, buildLlvmPhase);
+    delete llvm;
 #else
 
     // Here we do "simple lowering".  When the RyuJIT backend works for all
