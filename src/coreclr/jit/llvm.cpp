@@ -390,11 +390,8 @@ unsigned int Llvm::padOffset(CorInfoType corInfoType, CORINFO_CLASS_HANDLE class
     }
     else
     {
-        if (corInfoType == CorInfoType::CORINFO_TYPE_VALUECLASS)
-        {
-            return _padOffset(_thisPtr, classHandle, atOffset);
-        }
-        failFunctionCompilation();
+        assert(corInfoType == CorInfoType::CORINFO_TYPE_VALUECLASS);
+        return _padOffset(_thisPtr, classHandle, atOffset);
     }
     return roundUp(atOffset, alignment);
 }
@@ -409,20 +406,14 @@ unsigned int Llvm::padNextOffset(CorInfoType corInfoType, CORINFO_CLASS_HANDLE c
     }
     else
     {
-        // TODO-LLvm: LCLBLK size
-        if (corInfoType == CorInfoType::CORINFO_TYPE_VALUECLASS)
-        {
-            size = getElementSize(classHandle, corInfoType);
-        }
-        else
-        {
-            size = TARGET_POINTER_SIZE;
-        }
+        // TODO-LLvm: LCLBLK size?
+        assert(corInfoType == CorInfoType::CORINFO_TYPE_VALUECLASS);
+        size = getElementSize(classHandle, corInfoType);
     }
     return padOffset(corInfoType, classHandle, atOffset) + size;
 }
 
-/// <summary>value type field alignmentvalue type field alignment
+/// <summary>
 /// Returns true if the type can be stored on the LLVM stack
 /// instead of the shadow stack in this method. This is the case
 /// if it is a non-ref primitive or a struct without GC fields.
@@ -1476,7 +1467,7 @@ void Llvm::ConvertShadowStackLocalNode(GenTreeLclVarCommon* node)
         if (GenTree::OperIsBlk(indirOper))
         {
             GenTreeBlk* blk = node->AsBlk();
-            CORINFO_CLASS_HANDLE handle = varDsc->GetStructHnd(); // _compiler->gtGetStructHandleIfPresent(node);
+            CORINFO_CLASS_HANDLE handle = varDsc->GetStructHnd();
             blk->SetLayout(_compiler->typGetObjLayout(handle));
             blk->gtBlkOpKind = GenTreeBlk::BlkOpKindHelper; // TODO-LLVM: dumping the tree requires a valid value, is this ok?
         }
@@ -1565,7 +1556,6 @@ void Llvm::ConvertShadowStackLocals()
                     {
                         indirNode = _compiler->gtNewOperNode(GT_IND, callReturnType, returnAddrLclAfterCall);
                     }
-                    //GenTree* indirNode = _compiler->gtNewOperNode(callReturnType == TYP_STRUCT ? GT_OBJ : GT_IND, callReturnType, returnAddrLclAfterCall);
                     indirNode->gtFlags |= GTF_IND_TGT_NOT_HEAP; // No RhpAssignRef required
                     LIR::Use callUse;
                     if (CurrentRange().TryGetUse(callNode, &callUse))
@@ -1594,7 +1584,6 @@ void Llvm::ConvertShadowStackLocals()
                     failFunctionCompilation();
                 }
 
-                // RETURN from multiple blocks is possible
                 if (_retAddressLclNum == BAD_VAR_NUM)
                 {
                     _retAddressLclNum = _compiler->lvaGrabTemp(true DEBUGARG("shadowstack"));
