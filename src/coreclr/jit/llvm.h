@@ -50,7 +50,8 @@ struct DebugMetadata
 // TODO: might need the LLVM Value* in here for exception funclets.
 struct SpilledExpressionEntry
 {
-    CorInfoType m_CorInfoType;
+    CorInfoType corInfoType;
+    CORINFO_CLASS_HANDLE classHandle;
 };
 
 struct IncomingPhi
@@ -81,7 +82,8 @@ extern "C" void registerLlvmCallbacks(void*       thisPtr,
                                       const char* (*getDocumentFileName)(void*),
                                       const uint32_t (*firstSequencePointLineNumber)(void*),
                                       const uint32_t (*getOffsetLineNumber)(void*, unsigned int),
-                                      const uint32_t (*structIsWrappedPrimitive)(void*, CORINFO_CLASS_STRUCT_*, CorInfoType));
+                                      const uint32_t(*structIsWrappedPrimitive)(void*, CORINFO_CLASS_STRUCT_*, CorInfoType),
+                                      const uint32_t(*padOffset)(void*, CORINFO_CLASS_STRUCT_*, unsigned atOffset));
 
 struct PhiPair
 {
@@ -174,8 +176,8 @@ private:
     Value* localVar(GenTreeLclVar* lclVar);
     Value* mapGenTreeToValue(GenTree* genTree, Value* valueRef);
     bool needsReturnStackSlot(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd);
-    unsigned int padNextOffset(CorInfoType corInfoType, unsigned int atOffset);
-    unsigned int padOffset(CorInfoType corInfoType, unsigned int atOffset);
+    unsigned int padNextOffset(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHandle, unsigned int atOffset);
+    unsigned int padOffset(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHandle, unsigned int atOffset);
     void startImportingBasicBlock(BasicBlock* block);
     void startImportingNode();
     void storeOnShadowStack(GenTree* operand, Value* shadowStackForCallee, unsigned int offset);

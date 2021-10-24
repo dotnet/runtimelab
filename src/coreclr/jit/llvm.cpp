@@ -35,6 +35,7 @@ static const char* (*_getDocumentFileName)(void*);
 static const uint32_t (*_firstSequencePointLineNumber)(void*);
 static const uint32_t (*_getOffsetLineNumber)(void*, unsigned int ilOffset);
 static const uint32_t(*_structIsWrappedPrimitive)(void*, CORINFO_CLASS_STRUCT_*, CorInfoType);
+static const uint32_t(*_padOffset)(void*, CORINFO_CLASS_STRUCT_*, unsigned atOffset);
 
 static char*                              _outputFileName;
 static Function*                          _doNothingFunction;
@@ -53,7 +54,8 @@ extern "C" DLLEXPORT void registerLlvmCallbacks(void*       thisPtr,
                                                 const char* (*getDocumentFileName)(void*),
                                                 const uint32_t (*firstSequencePointLineNumber)(void*),
                                                 const uint32_t (*getOffsetLineNumber)(void*, unsigned int),
-                                                const uint32_t(*structIsWrappedPrimitive)(void*, CORINFO_CLASS_STRUCT_*, CorInfoType))
+                                                const uint32_t(*structIsWrappedPrimitive)(void*, CORINFO_CLASS_STRUCT_*, CorInfoType),
+                                                const uint32_t(*padOffset)(void*, CORINFO_CLASS_STRUCT_*, unsigned atOffset))
 {
     _thisPtr = thisPtr;
     _getMangledMethodName         = getMangledMethodNamePtr;
@@ -64,6 +66,7 @@ extern "C" DLLEXPORT void registerLlvmCallbacks(void*       thisPtr,
     _firstSequencePointLineNumber = firstSequencePointLineNumber;
     _getOffsetLineNumber          = getOffsetLineNumber;
     _structIsWrappedPrimitive     = structIsWrappedPrimitive;
+    _padOffset                    = padOffset;
 
     if (_module == nullptr) // registerLlvmCallbacks is called for each method to compile, but must only created the module once.  Better perhaps to split this into 2 calls.
     {
@@ -376,7 +379,7 @@ CorInfoType Llvm::toCorInfoType(var_types varType)
 }
 
 
-unsigned int Llvm::padOffset(CorInfoType corInfoType, unsigned int atOffset)
+unsigned int Llvm::padOffset(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHandle, unsigned int atOffset)
 {
     unsigned int alignment;
     if (corInfoType == CorInfoType::CORINFO_TYPE_BYREF || corInfoType == CorInfoType::CORINFO_TYPE_CLASS ||
@@ -387,17 +390,16 @@ unsigned int Llvm::padOffset(CorInfoType corInfoType, unsigned int atOffset)
     }
     else
     {
-        // TODO: value type field alignment - this is the ILToLLVMImporter logic:
-        //var fieldAlignment = type is DefType && type.IsValueType ? ((DefType)type).InstanceFieldAlignment
-        //                                                         : type.Context.Target.LayoutPointerSize;
-        //var alignment      = LayoutInt.Min(fieldAlignment, new LayoutInt(ComputePackingSize(type))).AsInt;
-        //var padding        = (atOffset + (alignment - 1)) & ~(alignment - 1);
+        if (corInfoType == CorInfoType::CORINFO_TYPE_VALUECLASS)
+        {
+            return _padOffset(_thisPtr, classHandle, atOffset);
+        }
         failFunctionCompilation();
     }
     return roundUp(atOffset, alignment);
 }
 
-unsigned int Llvm::padNextOffset(CorInfoType corInfoType, unsigned int atOffset)
+unsigned int Llvm::padNextOffset(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHandle, unsigned int atOffset)
 {
     unsigned int size;
     if (corInfoType == CorInfoType::CORINFO_TYPE_BYREF || corInfoType == CorInfoType::CORINFO_TYPE_CLASS ||
@@ -407,15 +409,20 @@ unsigned int Llvm::padNextOffset(CorInfoType corInfoType, unsigned int atOffset)
     }
     else
     {
-        // TODO: value type field size - this is the ILToLLVMImporter logic:
-        // var size = type is DefType && type.IsValueType ? ((DefType)type).InstanceFieldSize
-        //                                               : type.Context.Target.LayoutPointerSize;
-        failFunctionCompilation(); // TODO value type sizes and alignment
+        // TODO-LLvm: LCLBLK size
+        if (corInfoType == CorInfoType::CORINFO_TYPE_VALUECLASS)
+        {
+            size = getElementSize(classHandle, corInfoType);
+        }
+        else
+        {
+            size = TARGET_POINTER_SIZE;
+        }
     }
-    return padOffset(corInfoType, atOffset) + size;
+    return padOffset(corInfoType, classHandle, atOffset) + size;
 }
 
-/// <summary>
+/// <summary>value type field alignmentvalue type field alignment
 /// Returns true if the type can be stored on the LLVM stack
 /// instead of the shadow stack in this method. This is the case
 /// if it is a non-ref primitive or a struct without GC fields.
@@ -723,7 +730,7 @@ unsigned int Llvm::getTotalLocalOffset()
     unsigned int offset = getTotalRealLocalOffset();
     for (unsigned int i = 0; i < _spilledExpressions.size(); i++)
     {
-        offset = padNextOffset(_spilledExpressions[i].m_CorInfoType, offset);
+        offset = padNextOffset(_spilledExpressions[i].corInfoType, _spilledExpressions[i].classHandle, offset);
     }
     return AlignUp(offset, TARGET_POINTER_SIZE);
 }
@@ -734,9 +741,9 @@ unsigned int Llvm::getSpillOffsetAtIndex(unsigned int index, unsigned int offset
 
     for (unsigned int i = 0; i < index; i++)
     {
-        offset = padNextOffset(_spilledExpressions[i].m_CorInfoType, offset);
+        offset = padNextOffset(_spilledExpressions[i].corInfoType, _spilledExpressions[i].classHandle, offset);
     }
-    offset = padOffset(spill.m_CorInfoType, offset);
+    offset = padOffset(spill.corInfoType, spill.classHandle, offset);
     return offset;
 }
 
@@ -1185,11 +1192,11 @@ int Llvm::getLocalOffsetAtIndex(GenTreeLclVar* lclVar)
                 CorInfoType corInfoType = toCorInfoType(varDsc->TypeGet());
                 if (!canStoreLocalOnLlvmStack(varDsc))
                 {
-                    offset = padNextOffset(corInfoType, offset);
+                    offset = padNextOffset(corInfoType, varDsc->lvClassHnd, offset);
                 }
             }
         }
-        offset = padOffset(toCorInfoType(lclVar->TypeGet()), offset);
+        offset = padOffset(toCorInfoType(lclVar->TypeGet()), varDsc->lvClassHnd, offset);
     }
 
     return offset;
@@ -1466,7 +1473,13 @@ void Llvm::ConvertShadowStackLocalNode(GenTreeLclVarCommon* node)
             node->gtFlags |= GTF_IND_TGT_NOT_HEAP;
             node->AsOp()->gtOp2 = storedValue;
         }
-
+        if (GenTree::OperIsBlk(indirOper))
+        {
+            GenTreeBlk* blk = node->AsBlk();
+            CORINFO_CLASS_HANDLE handle = varDsc->GetStructHnd(); // _compiler->gtGetStructHandleIfPresent(node);
+            blk->SetLayout(_compiler->typGetObjLayout(handle));
+            blk->gtBlkOpKind = GenTreeBlk::BlkOpKindHelper; // TODO-LLVM: dumping the tree requires a valid value, is this ok?
+        }
         CurrentRange().InsertBefore(node, offset, shadowStackVar, lclAddress);
     }
 }
@@ -1541,7 +1554,18 @@ void Llvm::ConvertShadowStackLocals()
                     _compiler->fgInitArgInfo(callNode);
 
                     GenTree* returnAddrLclAfterCall = _compiler->gtNewLclvNode(returnTempNum, TYP_I_IMPL);
-                    GenTree* indirNode = _compiler->gtNewOperNode(callReturnType == TYP_STRUCT ? GT_OBJ : GT_IND, callReturnType, returnAddrLclAfterCall);
+                    GenTree* indirNode;
+                    if (callReturnType == TYP_STRUCT)
+                    {
+                        indirNode = new (_compiler, GT_OBJ)
+                            GenTreeObj(callReturnType, returnAddrLclAfterCall, _compiler->typGetObjLayout(calleeSigInfo.retTypeClass));
+                        indirNode->AsBlk()->gtBlkOpKind = GenTreeBlk::BlkOpKindHelper;
+                    }
+                    else
+                    {
+                        indirNode = _compiler->gtNewOperNode(GT_IND, callReturnType, returnAddrLclAfterCall);
+                    }
+                    //GenTree* indirNode = _compiler->gtNewOperNode(callReturnType == TYP_STRUCT ? GT_OBJ : GT_IND, callReturnType, returnAddrLclAfterCall);
                     indirNode->gtFlags |= GTF_IND_TGT_NOT_HEAP; // No RhpAssignRef required
                     LIR::Use callUse;
                     if (CurrentRange().TryGetUse(callNode, &callUse))
@@ -1570,8 +1594,11 @@ void Llvm::ConvertShadowStackLocals()
                     failFunctionCompilation();
                 }
 
-                assert(_retAddressLclNum == BAD_VAR_NUM);
-                _retAddressLclNum = _compiler->lvaGrabTemp(true DEBUGARG("shadowstack"));
+                // RETURN from multiple blocks is possible
+                if (_retAddressLclNum == BAD_VAR_NUM)
+                {
+                    _retAddressLclNum = _compiler->lvaGrabTemp(true DEBUGARG("shadowstack"));
+                }
                 LclVarDsc* retAddressVarDsc = _compiler->lvaGetDesc(_retAddressLclNum);
                 retAddressVarDsc->lvIsParam = 1;
                 retAddressVarDsc->lvType = TYP_I_IMPL;
@@ -1582,6 +1609,7 @@ void Llvm::ConvertShadowStackLocals()
                 {
                     storeNode = new (_compiler, GT_STORE_OBJ)
                         GenTreeObj(originalReturnType, retAddressLocal, node->AsOp()->gtGetOp1(), _compiler->typGetObjLayout(_sigInfo.retTypeClass));
+                    storeNode->AsBlk()->gtBlkOpKind = GenTreeBlk::BlkOpKindHelper;
                 }
                 else
                 {
@@ -1634,9 +1662,10 @@ void Llvm::PlaceAndConvertShadowStackLocals()
     {
         LclVarDsc* varDsc = locals.at(i);
         CorInfoType corInfoType = toCorInfoType(varDsc->TypeGet());
-        offset = padOffset(corInfoType, offset);
+        CORINFO_CLASS_HANDLE classHandle = corInfoType == CORINFO_TYPE_VALUECLASS ? varDsc->GetStructHnd() : varDsc->lvClassHnd;
+        offset = padOffset(corInfoType, classHandle, offset);
         varDsc->SetStackOffset(offset);
-        offset = padNextOffset(corInfoType, offset);
+        offset = padNextOffset(corInfoType, classHandle, offset);
     }
     _shadowStackLocalsSize = offset;
 

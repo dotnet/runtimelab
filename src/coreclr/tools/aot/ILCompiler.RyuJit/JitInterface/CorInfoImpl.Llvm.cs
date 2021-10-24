@@ -183,6 +183,15 @@ namespace Internal.JitInterface
             return _this._compilation.StructIsWrappedPrimitive(typeDesc, primitiveTypeDesc) ? 1u : 0u;
         }
 
+        [UnmanagedCallersOnly]
+        public static uint padOffset(IntPtr thisHandle, CORINFO_CLASS_STRUCT_* structHnd, uint ilOffset)
+        {
+            var _this = GetThis(thisHandle);
+            TypeDesc typeDesc = _this.HandleToObject(structHnd);
+
+            return (uint)_this._compilation.PadOffset(typeDesc, ilOffset);
+        }
+
         [DllImport(JitLibrary)]
         private extern static void registerLlvmCallbacks(IntPtr thisHandle, byte* outputFileName, byte* triple, byte* dataLayout,
             delegate* unmanaged<IntPtr, CORINFO_METHOD_STRUCT_*, byte*> getMangedMethodNamePtr,
@@ -192,7 +201,8 @@ namespace Internal.JitInterface
             delegate* unmanaged<IntPtr, byte*> getDocumentFileName,
             delegate* unmanaged<IntPtr, uint> firstSequencePointLineNumber,
             delegate* unmanaged<IntPtr, uint, uint> getOffsetLineNumber,
-            delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, CorInfoType, uint> structIsWrappedPrimitive
+            delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, CorInfoType, uint> structIsWrappedPrimitive,
+            delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, uint, uint> padOffset
             );
 
         public void RegisterLlvmCallbacks(IntPtr corInfoPtr, string outputFileName, string triple, string dataLayout)
@@ -207,7 +217,8 @@ namespace Internal.JitInterface
                 &getDocumentFileName,
                 &firstSequencePointLineNumber,
                 &getOffsetLineNumber,
-                &structIsWrappedPrimitive
+                &structIsWrappedPrimitive,
+                &padOffset
             );
         }
 

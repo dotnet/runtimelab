@@ -7181,7 +7181,7 @@ struct GenTreeCC final : public GenTree
 
 inline bool GenTree::OperIsBlkOp()
 {
-    return ((gtOper == GT_ASG) && varTypeIsStruct(AsOp()->gtOp1)) || (OperIsBlk() && (AsBlk()->Data() != nullptr));
+    return ((gtOper == GT_ASG) && varTypeIsStruct(AsOp()->gtOp1)) || (OperIsBlk() && (OperIs(GT_STORE_DYN_BLK, GT_STORE_BLK, GT_STORE_OBJ)));
 }
 
 inline bool GenTree::OperIsDynBlkOp()
