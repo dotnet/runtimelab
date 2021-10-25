@@ -66,12 +66,12 @@ jobs:
   - powershell: |
       $(dockerfilesFolder)/build-docker-sdk.ps1 -w -t $(sdkBaseImage) -c $(BUILD_CONFIGURATION)
     displayName: Build CLR and Libraries
-
+  
   - powershell: |
       $(sslStressProject)/run-docker-compose.ps1 -w -o -c $(BUILD_CONFIGURATION) -t $(sdkBaseImage)
     displayName: Build SslStress
-
+  
   - powershell: |
       cd '$(sslStressProject)'
       docker-compose up --abort-on-container-exit --no-color
-    displayName: Run SslStress
+    displayName: Run SslStress 
