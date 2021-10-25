@@ -47,12 +47,6 @@ struct DebugMetadata
     llvm::DICompileUnit* diCompileUnit;
 };
 
-// TODO: might need the LLVM Value* in here for exception funclets.
-struct SpilledExpressionEntry
-{
-    CorInfoType m_CorInfoType;
-};
-
 struct IncomingPhi
 {
     llvm::PHINode* phiNode;
@@ -81,7 +75,8 @@ extern "C" void registerLlvmCallbacks(void*       thisPtr,
                                       const char* (*getDocumentFileName)(void*),
                                       const uint32_t (*firstSequencePointLineNumber)(void*),
                                       const uint32_t (*getOffsetLineNumber)(void*, unsigned int),
-                                      const uint32_t (*structIsWrappedPrimitive)(void*, CORINFO_CLASS_STRUCT_*, CorInfoType));
+                                      const uint32_t(*structIsWrappedPrimitive)(void*, CORINFO_CLASS_STRUCT_*, CorInfoType),
+                                      const uint32_t(*padOffset)(void*, CORINFO_CLASS_STRUCT_*, unsigned atOffset));
 
 struct PhiPair
 {
@@ -115,7 +110,6 @@ private:
     DebugMetadata  _debugMetadata;
     std::unordered_map<std::string, struct DebugMetadata> _debugMetadataMap;
 
-    std::vector<SpilledExpressionEntry> _spilledExpressions;
     unsigned _shadowStackLocalsSize;
     unsigned _shadowStackLclNum;
     unsigned _retAddressLclNum;
@@ -174,13 +168,14 @@ private:
     Value* localVar(GenTreeLclVar* lclVar);
     Value* mapGenTreeToValue(GenTree* genTree, Value* valueRef);
     bool needsReturnStackSlot(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd);
-    unsigned int padNextOffset(CorInfoType corInfoType, unsigned int atOffset);
-    unsigned int padOffset(CorInfoType corInfoType, unsigned int atOffset);
+    unsigned int padNextOffset(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHandle, unsigned int atOffset);
+    unsigned int padOffset(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHandle, unsigned int atOffset);
     void startImportingBasicBlock(BasicBlock* block);
     void startImportingNode();
     void storeOnShadowStack(GenTree* operand, Value* shadowStackForCallee, unsigned int offset);
     void storeLocalVar(GenTreeLclVar* lclVar);
     CorInfoType toCorInfoType(var_types varType);
+    CORINFO_CLASS_HANDLE tryGetStructClassHandle(LclVarDsc* varDsc);
     void visitNode(GenTree* node);
     Value* Llvm::zextIntIfNecessary(Value* intValue);
 

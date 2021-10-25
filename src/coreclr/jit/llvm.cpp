@@ -35,6 +35,7 @@ static const char* (*_getDocumentFileName)(void*);
 static const uint32_t (*_firstSequencePointLineNumber)(void*);
 static const uint32_t (*_getOffsetLineNumber)(void*, unsigned int ilOffset);
 static const uint32_t(*_structIsWrappedPrimitive)(void*, CORINFO_CLASS_STRUCT_*, CorInfoType);
+static const uint32_t(*_padOffset)(void*, CORINFO_CLASS_STRUCT_*, unsigned atOffset);
 
 static char*                              _outputFileName;
 static Function*                          _doNothingFunction;
@@ -53,7 +54,8 @@ extern "C" DLLEXPORT void registerLlvmCallbacks(void*       thisPtr,
                                                 const char* (*getDocumentFileName)(void*),
                                                 const uint32_t (*firstSequencePointLineNumber)(void*),
                                                 const uint32_t (*getOffsetLineNumber)(void*, unsigned int),
-                                                const uint32_t(*structIsWrappedPrimitive)(void*, CORINFO_CLASS_STRUCT_*, CorInfoType))
+                                                const uint32_t(*structIsWrappedPrimitive)(void*, CORINFO_CLASS_STRUCT_*, CorInfoType),
+                                                const uint32_t(*padOffset)(void*, CORINFO_CLASS_STRUCT_*, unsigned atOffset))
 {
     _thisPtr = thisPtr;
     _getMangledMethodName         = getMangledMethodNamePtr;
@@ -64,6 +66,7 @@ extern "C" DLLEXPORT void registerLlvmCallbacks(void*       thisPtr,
     _firstSequencePointLineNumber = firstSequencePointLineNumber;
     _getOffsetLineNumber          = getOffsetLineNumber;
     _structIsWrappedPrimitive     = structIsWrappedPrimitive;
+    _padOffset                    = padOffset;
 
     if (_module == nullptr) // registerLlvmCallbacks is called for each method to compile, but must only created the module once.  Better perhaps to split this into 2 calls.
     {
@@ -146,11 +149,11 @@ unsigned getWellKnownTypeSize(CorInfoType corInfoType)
     return genTypeSize(JITtype2varType(corInfoType));
 }
 
-unsigned Llvm::getElementSize(CORINFO_CLASS_HANDLE fieldClassHandle, CorInfoType corInfoType)
+unsigned Llvm::getElementSize(CORINFO_CLASS_HANDLE classHandle, CorInfoType corInfoType)
 {
-    if (fieldClassHandle != NO_CLASS_HANDLE)
+    if (classHandle != NO_CLASS_HANDLE)
     {
-        return _info.compCompHnd->getClassSize(fieldClassHandle);
+        return _info.compCompHnd->getClassSize(classHandle);
     }
     return getWellKnownTypeSize(corInfoType);
 }
@@ -375,8 +378,12 @@ CorInfoType Llvm::toCorInfoType(var_types varType)
     }
 }
 
+CORINFO_CLASS_HANDLE Llvm::tryGetStructClassHandle(LclVarDsc* varDsc)
+{
+    return toCorInfoType(varDsc->TypeGet()) == CorInfoType::CORINFO_TYPE_VALUECLASS ? varDsc->GetStructHnd() : nullptr;
+}
 
-unsigned int Llvm::padOffset(CorInfoType corInfoType, unsigned int atOffset)
+unsigned int Llvm::padOffset(CorInfoType corInfoType, CORINFO_CLASS_HANDLE structClassHandle, unsigned int atOffset)
 {
     unsigned int alignment;
     if (corInfoType == CorInfoType::CORINFO_TYPE_BYREF || corInfoType == CorInfoType::CORINFO_TYPE_CLASS ||
@@ -387,17 +394,13 @@ unsigned int Llvm::padOffset(CorInfoType corInfoType, unsigned int atOffset)
     }
     else
     {
-        // TODO: value type field alignment - this is the ILToLLVMImporter logic:
-        //var fieldAlignment = type is DefType && type.IsValueType ? ((DefType)type).InstanceFieldAlignment
-        //                                                         : type.Context.Target.LayoutPointerSize;
-        //var alignment      = LayoutInt.Min(fieldAlignment, new LayoutInt(ComputePackingSize(type))).AsInt;
-        //var padding        = (atOffset + (alignment - 1)) & ~(alignment - 1);
-        failFunctionCompilation();
+        assert(corInfoType == CorInfoType::CORINFO_TYPE_VALUECLASS);
+        return _padOffset(_thisPtr, structClassHandle, atOffset);
     }
     return roundUp(atOffset, alignment);
 }
 
-unsigned int Llvm::padNextOffset(CorInfoType corInfoType, unsigned int atOffset)
+unsigned int Llvm::padNextOffset(CorInfoType corInfoType, CORINFO_CLASS_HANDLE structClassHandle, unsigned int atOffset)
 {
     unsigned int size;
     if (corInfoType == CorInfoType::CORINFO_TYPE_BYREF || corInfoType == CorInfoType::CORINFO_TYPE_CLASS ||
@@ -407,12 +410,10 @@ unsigned int Llvm::padNextOffset(CorInfoType corInfoType, unsigned int atOffset)
     }
     else
     {
-        // TODO: value type field size - this is the ILToLLVMImporter logic:
-        // var size = type is DefType && type.IsValueType ? ((DefType)type).InstanceFieldSize
-        //                                               : type.Context.Target.LayoutPointerSize;
-        failFunctionCompilation(); // TODO value type sizes and alignment
+        assert(corInfoType == CorInfoType::CORINFO_TYPE_VALUECLASS);
+        size = getElementSize(structClassHandle, corInfoType);
     }
-    return padOffset(corInfoType, atOffset) + size;
+    return padOffset(corInfoType, structClassHandle, atOffset) + size;
 }
 
 /// <summary>
@@ -721,23 +722,7 @@ unsigned int Llvm::getTotalRealLocalOffset()
 unsigned int Llvm::getTotalLocalOffset()
 {
     unsigned int offset = getTotalRealLocalOffset();
-    for (unsigned int i = 0; i < _spilledExpressions.size(); i++)
-    {
-        offset = padNextOffset(_spilledExpressions[i].m_CorInfoType, offset);
-    }
     return AlignUp(offset, TARGET_POINTER_SIZE);
-}
-
-unsigned int Llvm::getSpillOffsetAtIndex(unsigned int index, unsigned int offset)
-{
-    SpilledExpressionEntry spill = _spilledExpressions[index];
-
-    for (unsigned int i = 0; i < index; i++)
-    {
-        offset = padNextOffset(_spilledExpressions[i].m_CorInfoType, offset);
-    }
-    offset = padOffset(spill.m_CorInfoType, offset);
-    return offset;
 }
 
 llvm::Value* Llvm::getShadowStackOffest(Value* shadowStack, unsigned int offset)
@@ -1185,11 +1170,11 @@ int Llvm::getLocalOffsetAtIndex(GenTreeLclVar* lclVar)
                 CorInfoType corInfoType = toCorInfoType(varDsc->TypeGet());
                 if (!canStoreLocalOnLlvmStack(varDsc))
                 {
-                    offset = padNextOffset(corInfoType, offset);
+                    offset = padNextOffset(corInfoType, tryGetStructClassHandle(varDsc), offset);
                 }
             }
         }
-        offset = padOffset(toCorInfoType(lclVar->TypeGet()), offset);
+        offset = padOffset(toCorInfoType(lclVar->TypeGet()), tryGetStructClassHandle(varDsc), offset);
     }
 
     return offset;
@@ -1466,7 +1451,13 @@ void Llvm::ConvertShadowStackLocalNode(GenTreeLclVarCommon* node)
             node->gtFlags |= GTF_IND_TGT_NOT_HEAP;
             node->AsOp()->gtOp2 = storedValue;
         }
-
+        if (GenTree::OperIsBlk(indirOper))
+        {
+            GenTreeBlk* blk = node->AsBlk();
+            CORINFO_CLASS_HANDLE handle = varDsc->GetStructHnd();
+            blk->SetLayout(_compiler->typGetObjLayout(handle));
+            blk->gtBlkOpKind = GenTreeBlk::BlkOpKindInvalid;
+        }
         CurrentRange().InsertBefore(node, offset, shadowStackVar, lclAddress);
     }
 }
@@ -1541,7 +1532,17 @@ void Llvm::ConvertShadowStackLocals()
                     _compiler->fgInitArgInfo(callNode);
 
                     GenTree* returnAddrLclAfterCall = _compiler->gtNewLclvNode(returnTempNum, TYP_I_IMPL);
-                    GenTree* indirNode = _compiler->gtNewOperNode(callReturnType == TYP_STRUCT ? GT_OBJ : GT_IND, callReturnType, returnAddrLclAfterCall);
+                    GenTree* indirNode;
+                    if (callReturnType == TYP_STRUCT)
+                    {
+                        indirNode = new (_compiler, GT_OBJ)
+                            GenTreeObj(callReturnType, returnAddrLclAfterCall, _compiler->typGetObjLayout(calleeSigInfo.retTypeClass));
+                        indirNode->AsBlk()->gtBlkOpKind = GenTreeBlk::BlkOpKindInvalid;
+                    }
+                    else
+                    {
+                        indirNode = _compiler->gtNewOperNode(GT_IND, callReturnType, returnAddrLclAfterCall);
+                    }
                     indirNode->gtFlags |= GTF_IND_TGT_NOT_HEAP; // No RhpAssignRef required
                     LIR::Use callUse;
                     if (CurrentRange().TryGetUse(callNode, &callUse))
@@ -1570,8 +1571,10 @@ void Llvm::ConvertShadowStackLocals()
                     failFunctionCompilation();
                 }
 
-                assert(_retAddressLclNum == BAD_VAR_NUM);
-                _retAddressLclNum = _compiler->lvaGrabTemp(true DEBUGARG("shadowstack"));
+                if (_retAddressLclNum == BAD_VAR_NUM)
+                {
+                    _retAddressLclNum = _compiler->lvaGrabTemp(true DEBUGARG("shadowstack"));
+                }
                 LclVarDsc* retAddressVarDsc = _compiler->lvaGetDesc(_retAddressLclNum);
                 retAddressVarDsc->lvIsParam = 1;
                 retAddressVarDsc->lvType = TYP_I_IMPL;
@@ -1582,6 +1585,7 @@ void Llvm::ConvertShadowStackLocals()
                 {
                     storeNode = new (_compiler, GT_STORE_OBJ)
                         GenTreeObj(originalReturnType, retAddressLocal, node->AsOp()->gtGetOp1(), _compiler->typGetObjLayout(_sigInfo.retTypeClass));
+                    storeNode->AsBlk()->gtBlkOpKind = GenTreeBlk::BlkOpKindInvalid;
                 }
                 else
                 {
@@ -1634,9 +1638,11 @@ void Llvm::PlaceAndConvertShadowStackLocals()
     {
         LclVarDsc* varDsc = locals.at(i);
         CorInfoType corInfoType = toCorInfoType(varDsc->TypeGet());
-        offset = padOffset(corInfoType, offset);
+        CORINFO_CLASS_HANDLE classHandle = tryGetStructClassHandle(varDsc);
+;
+        offset = padOffset(corInfoType, classHandle, offset);
         varDsc->SetStackOffset(offset);
-        offset = padNextOffset(corInfoType, offset);
+        offset = padNextOffset(corInfoType, classHandle, offset);
     }
     _shadowStackLocalsSize = offset;
 
@@ -1654,7 +1660,6 @@ void Llvm::Compile()
     std::unordered_map<GenTree*, Value*> sdsuMap;
     _sdsuMap = &sdsuMap;
     _localsMap = new std::unordered_map<SsaPair, Value*, SsaPairHash>();
-    _spilledExpressions.clear();
     const char* mangledName = (*_getMangledMethodName)(_thisPtr, _info.compMethodHnd);
     _function = _module->getFunction(mangledName);
     _debugFunction = nullptr;
