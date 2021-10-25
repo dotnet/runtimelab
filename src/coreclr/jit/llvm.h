@@ -47,13 +47,6 @@ struct DebugMetadata
     llvm::DICompileUnit* diCompileUnit;
 };
 
-// TODO: might need the LLVM Value* in here for exception funclets.
-struct SpilledExpressionEntry
-{
-    CorInfoType corInfoType;
-    CORINFO_CLASS_HANDLE classHandle;
-};
-
 struct IncomingPhi
 {
     llvm::PHINode* phiNode;
@@ -117,7 +110,6 @@ private:
     DebugMetadata  _debugMetadata;
     std::unordered_map<std::string, struct DebugMetadata> _debugMetadataMap;
 
-    std::vector<SpilledExpressionEntry> _spilledExpressions;
     unsigned _shadowStackLocalsSize;
     unsigned _shadowStackLclNum;
     unsigned _retAddressLclNum;
@@ -183,6 +175,7 @@ private:
     void storeOnShadowStack(GenTree* operand, Value* shadowStackForCallee, unsigned int offset);
     void storeLocalVar(GenTreeLclVar* lclVar);
     CorInfoType toCorInfoType(var_types varType);
+    CORINFO_CLASS_HANDLE tryGetStructClassHandle(LclVarDsc* varDsc);
     void visitNode(GenTree* node);
     Value* Llvm::zextIntIfNecessary(Value* intValue);
 

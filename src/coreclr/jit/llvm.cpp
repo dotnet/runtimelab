@@ -149,11 +149,11 @@ unsigned getWellKnownTypeSize(CorInfoType corInfoType)
     return genTypeSize(JITtype2varType(corInfoType));
 }
 
-unsigned Llvm::getElementSize(CORINFO_CLASS_HANDLE fieldClassHandle, CorInfoType corInfoType)
+unsigned Llvm::getElementSize(CORINFO_CLASS_HANDLE classHandle, CorInfoType corInfoType)
 {
-    if (fieldClassHandle != NO_CLASS_HANDLE)
+    if (classHandle != NO_CLASS_HANDLE)
     {
-        return _info.compCompHnd->getClassSize(fieldClassHandle);
+        return _info.compCompHnd->getClassSize(classHandle);
     }
     return getWellKnownTypeSize(corInfoType);
 }
@@ -378,8 +378,12 @@ CorInfoType Llvm::toCorInfoType(var_types varType)
     }
 }
 
+CORINFO_CLASS_HANDLE Llvm::tryGetStructClassHandle(LclVarDsc* varDsc)
+{
+    return toCorInfoType(varDsc->TypeGet()) == CorInfoType::CORINFO_TYPE_VALUECLASS ? varDsc->GetStructHnd() : nullptr;
+}
 
-unsigned int Llvm::padOffset(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHandle, unsigned int atOffset)
+unsigned int Llvm::padOffset(CorInfoType corInfoType, CORINFO_CLASS_HANDLE structClassHandle, unsigned int atOffset)
 {
     unsigned int alignment;
     if (corInfoType == CorInfoType::CORINFO_TYPE_BYREF || corInfoType == CorInfoType::CORINFO_TYPE_CLASS ||
@@ -391,12 +395,12 @@ unsigned int Llvm::padOffset(CorInfoType corInfoType, CORINFO_CLASS_HANDLE class
     else
     {
         assert(corInfoType == CorInfoType::CORINFO_TYPE_VALUECLASS);
-        return _padOffset(_thisPtr, classHandle, atOffset);
+        return _padOffset(_thisPtr, structClassHandle, atOffset);
     }
     return roundUp(atOffset, alignment);
 }
 
-unsigned int Llvm::padNextOffset(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHandle, unsigned int atOffset)
+unsigned int Llvm::padNextOffset(CorInfoType corInfoType, CORINFO_CLASS_HANDLE structClassHandle, unsigned int atOffset)
 {
     unsigned int size;
     if (corInfoType == CorInfoType::CORINFO_TYPE_BYREF || corInfoType == CorInfoType::CORINFO_TYPE_CLASS ||
@@ -406,11 +410,10 @@ unsigned int Llvm::padNextOffset(CorInfoType corInfoType, CORINFO_CLASS_HANDLE c
     }
     else
     {
-        // TODO-LLvm: LCLBLK size?
         assert(corInfoType == CorInfoType::CORINFO_TYPE_VALUECLASS);
-        size = getElementSize(classHandle, corInfoType);
+        size = getElementSize(structClassHandle, corInfoType);
     }
-    return padOffset(corInfoType, classHandle, atOffset) + size;
+    return padOffset(corInfoType, structClassHandle, atOffset) + size;
 }
 
 /// <summary>
@@ -719,23 +722,7 @@ unsigned int Llvm::getTotalRealLocalOffset()
 unsigned int Llvm::getTotalLocalOffset()
 {
     unsigned int offset = getTotalRealLocalOffset();
-    for (unsigned int i = 0; i < _spilledExpressions.size(); i++)
-    {
-        offset = padNextOffset(_spilledExpressions[i].corInfoType, _spilledExpressions[i].classHandle, offset);
-    }
     return AlignUp(offset, TARGET_POINTER_SIZE);
-}
-
-unsigned int Llvm::getSpillOffsetAtIndex(unsigned int index, unsigned int offset)
-{
-    SpilledExpressionEntry spill = _spilledExpressions[index];
-
-    for (unsigned int i = 0; i < index; i++)
-    {
-        offset = padNextOffset(_spilledExpressions[i].corInfoType, _spilledExpressions[i].classHandle, offset);
-    }
-    offset = padOffset(spill.corInfoType, spill.classHandle, offset);
-    return offset;
 }
 
 llvm::Value* Llvm::getShadowStackOffest(Value* shadowStack, unsigned int offset)
@@ -1183,11 +1170,11 @@ int Llvm::getLocalOffsetAtIndex(GenTreeLclVar* lclVar)
                 CorInfoType corInfoType = toCorInfoType(varDsc->TypeGet());
                 if (!canStoreLocalOnLlvmStack(varDsc))
                 {
-                    offset = padNextOffset(corInfoType, varDsc->lvClassHnd, offset);
+                    offset = padNextOffset(corInfoType, tryGetStructClassHandle(varDsc), offset);
                 }
             }
         }
-        offset = padOffset(toCorInfoType(lclVar->TypeGet()), varDsc->lvClassHnd, offset);
+        offset = padOffset(toCorInfoType(lclVar->TypeGet()), tryGetStructClassHandle(varDsc), offset);
     }
 
     return offset;
@@ -1469,7 +1456,7 @@ void Llvm::ConvertShadowStackLocalNode(GenTreeLclVarCommon* node)
             GenTreeBlk* blk = node->AsBlk();
             CORINFO_CLASS_HANDLE handle = varDsc->GetStructHnd();
             blk->SetLayout(_compiler->typGetObjLayout(handle));
-            blk->gtBlkOpKind = GenTreeBlk::BlkOpKindHelper; // TODO-LLVM: dumping the tree requires a valid value, is this ok?
+            blk->gtBlkOpKind = GenTreeBlk::BlkOpKindInvalid;
         }
         CurrentRange().InsertBefore(node, offset, shadowStackVar, lclAddress);
     }
@@ -1550,7 +1537,7 @@ void Llvm::ConvertShadowStackLocals()
                     {
                         indirNode = new (_compiler, GT_OBJ)
                             GenTreeObj(callReturnType, returnAddrLclAfterCall, _compiler->typGetObjLayout(calleeSigInfo.retTypeClass));
-                        indirNode->AsBlk()->gtBlkOpKind = GenTreeBlk::BlkOpKindHelper;
+                        indirNode->AsBlk()->gtBlkOpKind = GenTreeBlk::BlkOpKindInvalid;
                     }
                     else
                     {
@@ -1598,7 +1585,7 @@ void Llvm::ConvertShadowStackLocals()
                 {
                     storeNode = new (_compiler, GT_STORE_OBJ)
                         GenTreeObj(originalReturnType, retAddressLocal, node->AsOp()->gtGetOp1(), _compiler->typGetObjLayout(_sigInfo.retTypeClass));
-                    storeNode->AsBlk()->gtBlkOpKind = GenTreeBlk::BlkOpKindHelper;
+                    storeNode->AsBlk()->gtBlkOpKind = GenTreeBlk::BlkOpKindInvalid;
                 }
                 else
                 {
@@ -1651,7 +1638,8 @@ void Llvm::PlaceAndConvertShadowStackLocals()
     {
         LclVarDsc* varDsc = locals.at(i);
         CorInfoType corInfoType = toCorInfoType(varDsc->TypeGet());
-        CORINFO_CLASS_HANDLE classHandle = corInfoType == CORINFO_TYPE_VALUECLASS ? varDsc->GetStructHnd() : varDsc->lvClassHnd;
+        CORINFO_CLASS_HANDLE classHandle = tryGetStructClassHandle(varDsc);
+;
         offset = padOffset(corInfoType, classHandle, offset);
         varDsc->SetStackOffset(offset);
         offset = padNextOffset(corInfoType, classHandle, offset);
@@ -1672,7 +1660,6 @@ void Llvm::Compile()
     std::unordered_map<GenTree*, Value*> sdsuMap;
     _sdsuMap = &sdsuMap;
     _localsMap = new std::unordered_map<SsaPair, Value*, SsaPairHash>();
-    _spilledExpressions.clear();
     const char* mangledName = (*_getMangledMethodName)(_thisPtr, _info.compMethodHnd);
     _function = _module->getFunction(mangledName);
     _debugFunction = nullptr;
