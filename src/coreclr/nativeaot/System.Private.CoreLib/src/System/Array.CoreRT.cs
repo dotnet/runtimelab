@@ -964,6 +964,7 @@ namespace System
             // GC.KeepAlive(array) not required. pMT kept alive via `ptr`
         }
 
+        [Intrinsic]
         public int GetLength(int dimension)
         {
             int length = GetUpperBound(dimension) + 1;
@@ -1023,6 +1024,7 @@ namespace System
             return ret;
         }
 
+        [Intrinsic]
         public int GetLowerBound(int dimension)
         {
             if (!IsSzArray)
@@ -1039,6 +1041,7 @@ namespace System
             return 0;
         }
 
+        [Intrinsic]
         public int GetUpperBound(int dimension)
         {
             if (!IsSzArray)
