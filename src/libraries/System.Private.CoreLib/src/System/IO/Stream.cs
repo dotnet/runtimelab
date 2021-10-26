@@ -332,7 +332,7 @@ namespace System.IO
             }
         }
 
-#if CORERT
+#if CORERT // TODO: https://github.com/dotnet/corert/issues/3251
         private bool HasOverriddenBeginEndRead() => true;
 
         private bool HasOverriddenBeginEndWrite() => true;
