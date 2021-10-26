@@ -1,107 +1,214 @@
-﻿namespace Microsoft.Build.ILTasks.Transforms
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
+
+using System.Reflection.Metadata;
+using System.Reflection.Metadata.Ecma335;
+
+using Internal.IL;
+using Internal.TypeSystem;
+using Internal.TypeSystem.Ecma;
+
+namespace ILCompiler
 {
-    using System;
-    using System.IO;
-    using System.Text;
-    using System.Linq;
-    using System.Collections;
-    using System.Diagnostics;
-    using System.Collections.Generic;
-
-    using Microsoft.Cci;
-    using Microsoft.Cci.Extensions;
-
     internal static partial class LazyGenericsSupport
     {
         private sealed partial class GraphBuilder
         {
-            public GraphBuilder(IAssembly assembly, ILTransformLogger logger)
+            public GraphBuilder(EcmaModule assembly)
             {
-                _graph = new Graph<GenericFormal>();
-                foreach (INamedTypeDefinition declaringType in assembly.GetAllTypes())
+                _graph = new Graph<EcmaGenericParameter>();
+                _metadataReader = assembly.MetadataReader;
+                
+                foreach (TypeDefinitionHandle typeHandle in _metadataReader.TypeDefinitions)
                 {
-                    _logger = logger;
-                    _declaringType = declaringType;
-                    WalkAncestorTypes();
-                    WalkFields();
-                    WalkMethods();
-                }
-                return;
-            }
+                    TypeDefinition typeDefinition = _metadataReader.GetTypeDefinition(typeHandle);
 
-            public Graph<GenericFormal> Graph { get { return _graph; } }
-
-            // Base types and interfaces.
-            private void WalkAncestorTypes()
-            {
-                if (!_declaringType.IsGenericTypeDefinition())
-                    return;
-
-                ITypeReference baseType = _declaringType.BaseClasses.Any() ? _declaringType.BaseClasses.First() : null;
-                if (baseType != null)
-                {
-                    ProcessAncestorType(baseType);
-                }
-                foreach (ITypeReference ifcType in _declaringType.Interfaces)
-                {
-                    ProcessAncestorType(ifcType);
-                }
-                return;
-
-            }
-
-            private void ProcessAncestorType(ITypeReference ancestorType)
-            {
-                ForEachEmbeddedGenericFormal(ancestorType);
-            }
-
-            private void WalkFields()
-            {
-                if (!_declaringType.IsGenericTypeDefinition())
-                    return;
-
-                foreach (IFieldDefinition field in _declaringType.Fields)
-                {
-                    ITypeReference fieldType = field.Type;
-                    ProcessTypeReference(fieldType);
-                }
-            }
-
-            private void WalkMethods()
-            {
-                // Do not bail out early just because _declaringType is not generic. There are still generic methods to consider.
-
-                foreach (IMethodDefinition method in _declaringType.Methods)
-                {
-                    ProcessTypeReference(method.Type);
-                    foreach (IParameterDefinition parameter in method.Parameters)
+                    // Only things that deal with some sort of genericness could form cycles.
+                    // Do not look at any types/member where genericness is not involved.
+                    // Do not even bother getting type system entities for those that are not generic.
+                    bool isGenericType = typeDefinition.GetGenericParameters().Count > 0;
+                    if (isGenericType)
                     {
-                        ProcessTypeReference(parameter.Type);
+                        try
+                        {
+                            var ecmaType = (EcmaType)assembly.GetObject(typeHandle);
+                            WalkAncestorTypes(ecmaType);
+                        }
+                        catch (TypeSystemException)
+                        {
+                        }
                     }
 
-                    if (method.IsAbstract || method.Body == null || method.Body.Operations == null)
-                        continue;
-
-                    foreach (IOperation op in method.Body.Operations)
+                    foreach (MethodDefinitionHandle methodHandle in typeDefinition.GetMethods())
                     {
-                        IMethodReference target = op.Value as IMethodReference;
-                        if (target != null)
+                        // We need to look at methods on generic types, or generic methods.
+                        bool needsScanning = isGenericType;
+
+                        if (!needsScanning)
                         {
-                            ProcessTypeReference(target.ContainingType);
-                            ProcessMethodCall(target);
+                            MethodDefinition methodDefinition = _metadataReader.GetMethodDefinition(methodHandle);
+                            BlobReader sigBlob = _metadataReader.GetBlobReader(methodDefinition.Signature);
+                            needsScanning = sigBlob.ReadSignatureHeader().IsGeneric;
                         }
 
-                        IFieldReference field = op.Value as IFieldReference;
-                        if (field != null)
+                        if (needsScanning)
                         {
-                            ProcessTypeReference(field.ContainingType);
+                            try
+                            {
+                                var ecmaMethod = (EcmaMethod)assembly.GetObject(methodHandle);
+                                WalkMethod(ecmaMethod);
+                            }
+                            catch (TypeSystemException)
+                            {
+                            }
                         }
+                    }
+                }
+                return;
+            }
 
-                        ITypeReference typeReference = op.Value as ITypeReference;
-                        if (typeReference != null)
-                        {
-                            ProcessTypeReference(typeReference);
-                        }
+            public Graph<EcmaGenericParameter> Graph { get { return _graph; } }
+
+            // Base types and interfaces.
+            private void WalkAncestorTypes(EcmaType declaringType)
+            {
+                TypeDesc baseType = declaringType.BaseType;
+                Instantiation typeContext = declaringType.Instantiation;
+                if (baseType != null)
+                {
+                    ProcessAncestorType(baseType, typeContext);
+                }
+                foreach (DefType ifcType in declaringType.RuntimeInterfaces)
+                {
+                    ProcessAncestorType(ifcType, typeContext);
+                }
+            }
+
+            private void ProcessAncestorType(TypeDesc ancestorType, Instantiation typeContext)
+            {
+                ForEachEmbeddedGenericFormal(ancestorType, typeContext, Instantiation.Empty);
+            }
+
+            private void WalkMethod(EcmaMethod method)
+            {
+                Instantiation typeContext = method.OwningType.Instantiation;
+                Instantiation methodContext = method.Instantiation;
+
+                MethodSignature methodSig = method.Signature;
+                ProcessTypeReference(methodSig.ReturnType, typeContext, methodContext);
+                foreach (TypeDesc parameterType in methodSig)
+                {
+                    ProcessTypeReference(parameterType, typeContext, methodContext);
+                }
+
+                if (method.IsAbstract)
+                {
+                    return;
+                }
+
+                var methodIL = EcmaMethodIL.Create(method);
+                if (methodIL == null)
+                {
+                    return;
+                }
+
+                // Walk the method body looking at referenced things that have some genericness.
+                // Nongeneric things cannot be forming cycles.
+                // In particular, we don't care about MemberRefs to non-generic things, TypeDefs/MethodDefs/FieldDefs.
+                // Avoid the work to even materialize type system entities for those.
+
+                ILReader reader = new ILReader(methodIL.GetILBytes());
+
+                while (reader.HasNext)
+                {
+                    ILOpcode opcode = reader.ReadILOpcode();
+                    switch (opcode)
+                    {
+                        case ILOpcode.sizeof_:
+                        case ILOpcode.newarr:
+                        case ILOpcode.initobj:
+                        case ILOpcode.stelem:
+                        case ILOpcode.ldelem:
+                        case ILOpcode.ldelema:
+                        case ILOpcode.box:
+                        case ILOpcode.unbox:
+                        case ILOpcode.unbox_any:
+                        case ILOpcode.cpobj:
+                        case ILOpcode.ldobj:
+                        case ILOpcode.castclass:
+                        case ILOpcode.isinst:
+                        case ILOpcode.stobj:
+                        case ILOpcode.refanyval:
+                        case ILOpcode.mkrefany:
+                        case ILOpcode.constrained:
+                            EntityHandle accessedType = MetadataTokens.EntityHandle(reader.ReadILToken());
+                        typeCase:
+                            if (accessedType.Kind == HandleKind.TypeSpecification)
+                            {
+                                var t = methodIL.GetObject(MetadataTokens.GetToken(accessedType), NotFoundBehavior.ReturnNull) as TypeDesc;
+                                if (t != null)
+                                {
+                                    ProcessTypeReference(t, typeContext, methodContext);
+                                }
+                            }
+                            break;
+
+                        case ILOpcode.stsfld:
+                        case ILOpcode.ldsfld:
+                        case ILOpcode.ldsflda:
+                        case ILOpcode.stfld:
+                        case ILOpcode.ldfld:
+                        case ILOpcode.ldflda:
+                            EntityHandle accessedField = MetadataTokens.EntityHandle(reader.ReadILToken());
+                        fieldCase:
+                            if (accessedField.Kind == HandleKind.MemberReference)
+                            {
+                                accessedType = _metadataReader.GetMemberReference((MemberReferenceHandle)accessedField).Parent;
+                                goto typeCase;
+                            }
+                            break;
+
+                        case ILOpcode.call:
+                        case ILOpcode.callvirt:
+                        case ILOpcode.newobj:
+                        case ILOpcode.ldftn:
+                        case ILOpcode.ldvirtftn:
+                        case ILOpcode.jmp:
+                            EntityHandle accessedMethod = MetadataTokens.EntityHandle(reader.ReadILToken());
+                        methodCase:
+                            if (accessedMethod.Kind == HandleKind.MethodSpecification
+                                || (accessedMethod.Kind == HandleKind.MemberReference
+                                     && _metadataReader.GetMemberReference((MemberReferenceHandle)accessedMethod).Parent.Kind == HandleKind.TypeSpecification))
+                            {
+                                var m = methodIL.GetObject(MetadataTokens.GetToken(accessedMethod), NotFoundBehavior.ReturnNull) as MethodDesc;
+                                ProcessTypeReference(m.OwningType, typeContext, methodContext);
+                                ProcessMethodCall(m, typeContext, methodContext);
+                            }
+                            break;
+
+                        case ILOpcode.ldtoken:
+                            EntityHandle accessedEntity = MetadataTokens.EntityHandle(reader.ReadILToken());
+                            if (accessedEntity.Kind == HandleKind.MethodSpecification
+                                || (accessedEntity.Kind == HandleKind.MemberReference && _metadataReader.GetMemberReference((MemberReferenceHandle)accessedEntity).GetKind() == MemberReferenceKind.Method))
+                            {
+                                accessedMethod = accessedEntity;
+                                goto methodCase;
+                            }
+                            else if (accessedEntity.Kind == HandleKind.MemberReference)
+                            {
+                                accessedField = accessedEntity;
+                                goto fieldCase;
+                            }
+                            else if (accessedEntity.Kind == HandleKind.TypeSpecification)
+                            {
+                                accessedType = accessedEntity;
+                                goto typeCase;
+                            }
+                            break;
+
+                        default:
+                            reader.Skip(opcode);
+                            break;
                     }
                 }
             }
@@ -111,16 +218,16 @@
             /// If the type is a generic instance, record any bindings between its formals and the referencer's
             /// formals.
             /// </summary>
-            private void ProcessTypeReference(ITypeReference typeReference)
+            private void ProcessTypeReference(TypeDesc typeReference, Instantiation typeContext, Instantiation methodContext)
             {
-                ForEachEmbeddedGenericFormal(typeReference);
+                ForEachEmbeddedGenericFormal(typeReference, typeContext, methodContext);
             }
 
             /// <summary>
             /// Records the fact that the type formal "receiver" is being bound to a type expression that references
             /// "embedded."
             /// </summary>
-            private void RecordBinding(GenericFormal receiver, GenericFormal embedded, bool isProperEmbedding)
+            private void RecordBinding(EcmaGenericParameter receiver, EcmaGenericParameter embedded, bool isProperEmbedding)
             {
                 bool flagged;
                 if (isProperEmbedding)
@@ -140,15 +247,8 @@
                 return;
             }
 
-            private Graph<GenericFormal> _graph;
-
-            //
-            // Stores the type being analyzed. Kinda sucks for it be an instance field but we have to pass it around in so many
-            // places (including the helper code to transform an IGenericTypeParameter to a GenericFormal), it's just less confusing this way.
-            //
-            private INamedTypeDefinition _declaringType;
-
-            private ILTransformLogger _logger;
+            private Graph<EcmaGenericParameter> _graph;
+            private MetadataReader _metadataReader;
         }
     }
 }

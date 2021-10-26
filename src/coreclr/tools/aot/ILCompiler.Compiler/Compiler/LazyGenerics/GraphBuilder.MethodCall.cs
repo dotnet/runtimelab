@@ -1,16 +1,14 @@
-﻿namespace Microsoft.Build.ILTasks.Transforms
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
+
+using System.Collections.Generic;
+using System.Diagnostics;
+
+using Internal.TypeSystem;
+using Internal.TypeSystem.Ecma;
+
+namespace ILCompiler
 {
-    using System;
-    using System.IO;
-    using System.Text;
-    using System.Linq;
-    using System.Collections;
-    using System.Diagnostics;
-    using System.Collections.Generic;
-
-    using Microsoft.Cci;
-    using Microsoft.Cci.Extensions;
-
     internal static partial class LazyGenericsSupport
     {
         private sealed partial class GraphBuilder
@@ -19,10 +17,9 @@
             /// Found a method call inside a method body. Method calls may bind generic parameters of the target method. If so,
             /// we have to record that fact.
             /// </summary>
-            private void ProcessMethodCall(IMethodReference target)
+            private void ProcessMethodCall(MethodDesc target, Instantiation typeContext, Instantiation methodContext)
             {
-                IGenericMethodInstance resolvedTargetAsGenericMethodInstance = target.ConfirmedResolvedMethod() as IGenericMethodInstance;
-                if (resolvedTargetAsGenericMethodInstance == null)
+                if (!target.HasInstantiation)
                     return;
 
                 //
@@ -35,21 +32,21 @@
                 // any generic method parameters here.
                 //
 
+                Instantiation genericTypeParameters = target.GetTypicalMethodDefinition().Instantiation;
+                Instantiation genericTypeArguments = target.Instantiation;
 
-                IMethodDefinition targetGenericMethod = resolvedTargetAsGenericMethodInstance.GenericMethod.ConfirmedResolvedMethod();
-                IList<GenericMethodFormal> genericTypeParameters = targetGenericMethod.GenericParameters.Select(igmp => igmp.AsGenericMethodFormal()).ToArray();
-                IList<ITypeReference> genericTypeArguments = resolvedTargetAsGenericMethodInstance.GenericArguments.ToArray();
-
-                Debug.Assert(genericTypeParameters.Count == genericTypeArguments.Count);
+                Debug.Assert(genericTypeParameters.Length == genericTypeArguments.Length);
 
                 // We've now collected all the generic parameters for the target and the generic arguments that the caller is binding them to.
                 // Recursively walk each generic argument to see if we're passing along one of the caller's generic parameters, and if so,
                 // are we embedding it into a more complex type.
-                for (int i = 0; i < genericTypeParameters.Count; i++)
+                for (int i = 0; i < genericTypeParameters.Length; i++)
                 {
                     ForEachEmbeddedGenericFormal(
                         genericTypeArguments[i],
-                        delegate(GenericFormal embedded, bool isProperEmbedding)
+                        typeContext,
+                        methodContext,
+                        delegate(EcmaGenericParameter embedded, bool isProperEmbedding)
                         {
                             // If we got here, we found a method with generic arity (either from itself or its declaring type or both)
                             // that invokes a generic method. The caller is binding one of the target's generic formals to a type expression 
@@ -63,7 +60,7 @@
                             //      return;
                             //  }
                             //
-                            RecordBinding(genericTypeParameters[i], embedded, isProperEmbedding);
+                            RecordBinding((EcmaGenericParameter)genericTypeParameters[i], embedded, isProperEmbedding);
                         }
                     );
                 }

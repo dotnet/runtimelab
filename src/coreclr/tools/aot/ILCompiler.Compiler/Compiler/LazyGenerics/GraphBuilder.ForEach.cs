@@ -1,16 +1,15 @@
-﻿namespace Microsoft.Build.ILTasks.Transforms
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
+
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+
+using Internal.TypeSystem;
+using Internal.TypeSystem.Ecma;
+
+namespace ILCompiler
 {
-    using System;
-    using System.IO;
-    using System.Text;
-    using System.Linq;
-    using System.Collections;
-    using System.Diagnostics;
-    using System.Collections.Generic;
-
-    using Microsoft.Cci;
-    using Microsoft.Cci.Extensions;
-
     internal static partial class LazyGenericsSupport
     {
         private sealed partial class GraphBuilder
@@ -26,100 +25,70 @@
             /// This method also records bindings for any generic instances it finds inside the tree expression.
             /// Sometimes, this side-effect is all that's wanted - in such cases, invoke this method with a null collector.
             /// </summary>
-            private void ForEachEmbeddedGenericFormal(ITypeReference typeExpression, System.Action<GenericFormal, bool> collector = null)
+            private void ForEachEmbeddedGenericFormal(TypeDesc typeExpression, Instantiation typeContext, Instantiation methodContext, System.Action<EcmaGenericParameter, bool> collector = null)
             {
-                System.Action<GenericFormal, int> wrappedCollector =
-                    delegate(GenericFormal embedded, int depth)
+                System.Action<EcmaGenericParameter, int> wrappedCollector =
+                    delegate(EcmaGenericParameter embedded, int depth)
                     {
                         bool isProperEmbedding = (depth > 0);
                         if (collector != null)
                             collector(embedded, isProperEmbedding);
                         return;
                     };
-                ForEachEmbeddedGenericFormalWorker(typeExpression, wrappedCollector, depth: 0);
+                ForEachEmbeddedGenericFormalWorker(typeExpression, typeContext, methodContext, wrappedCollector, depth: 0);
             }
 
-            private void ForEachEmbeddedGenericFormalWorker(ITypeReference type, System.Action<GenericFormal, int> collector, int depth)
+            private void ForEachEmbeddedGenericFormalWorker(TypeDesc type, Instantiation typeContext, Instantiation methodContext, System.Action<EcmaGenericParameter, int> collector, int depth)
             {
-                if (type is IArrayTypeReference)
+                switch (type.Category)
                 {
-                    ForEachEmbeddedGenericFormalWorker(((IArrayTypeReference)type).ElementType, collector, depth + 1);
-                    return;
+                    case TypeFlags.Array:
+                    case TypeFlags.SzArray:
+                    case TypeFlags.ByRef:
+                    case TypeFlags.Pointer:
+                        ForEachEmbeddedGenericFormalWorker(((ParameterizedType)type).ParameterType, typeContext, methodContext, collector, depth + 1);
+                        return;
+                    case TypeFlags.FunctionPointer:
+                        return;
+                    case TypeFlags.SignatureMethodVariable:
+                        var methodParam = (EcmaGenericParameter)methodContext[((SignatureMethodVariable)type).Index];
+                        collector(methodParam, depth);
+                        return;
+                    case TypeFlags.SignatureTypeVariable:
+                        var typeParam = (EcmaGenericParameter)typeContext[((SignatureTypeVariable)type).Index];
+                        collector(typeParam, depth);
+                        return;
+                    default:
+                        Debug.Assert(type.IsDefType);
+
+                        // Non-constructed type. End of recursion.
+                        if (!type.HasInstantiation || type.IsGenericDefinition)
+                            return;
+
+                        TypeDesc genericTypeDefinition = type.GetTypeDefinition();
+                        Instantiation genericTypeParameters = genericTypeDefinition.Instantiation;
+                        Instantiation genericTypeArguments = type.Instantiation;
+                        for (int i = 0; i < genericTypeArguments.Length; i++)
+                        {
+                            var genericTypeParameter = (EcmaGenericParameter)genericTypeParameters[i];
+                            TypeDesc genericTypeArgument = genericTypeArguments[i];
+
+                            int newDepth = depth + 1;
+                            ForEachEmbeddedGenericFormalWorker(
+                                genericTypeArgument,
+                                typeContext,
+                                methodContext,
+                                delegate (EcmaGenericParameter embedded, int depth2)
+                                {
+                                    collector(embedded, depth2);
+                                    bool isProperEmbedding = (depth2 > newDepth);
+                                    RecordBinding(genericTypeParameter, embedded, isProperEmbedding);
+                                },
+                                newDepth
+                            );
+                        }
+                        return;
                 }
-
-                if (type is IManagedPointerTypeReference)
-                {
-                    ForEachEmbeddedGenericFormalWorker(((IManagedPointerTypeReference)type).TargetType, collector, depth + 1);
-                    return;
-                }
-
-                if (type is IPointerTypeReference)
-                {
-                    ForEachEmbeddedGenericFormalWorker(((IPointerTypeReference)type).TargetType, collector, depth + 1);
-                    return;
-                }
-
-                if (type.IsConstructedGenericType())
-                {
-                    INamedTypeDefinition genericTypeDefinition = type.GetGenericTypeDefinition().ConfirmedResolvedType<INamedTypeDefinition>();
-                    IList<GenericFormal> genericTypeParameters = genericTypeDefinition.GenericTypeParameters().Select(igtp => igtp.AsGenericTypeFormal(genericTypeDefinition)).ToArray();
-                    IList<ITypeReference> genericTypeArguments = type.GenericTypeArguments().ToArray();
-                    for (int i = 0; i < genericTypeArguments.Count; i++)
-                    {
-                        GenericFormal genericTypeParameter = genericTypeParameters[i];
-                        ITypeReference genericTypeArgument = genericTypeArguments[i];
-
-                        int newDepth = depth + 1;
-                        ForEachEmbeddedGenericFormalWorker(
-                            genericTypeArgument,
-                            delegate(GenericFormal embedded, int depth2)
-                            {
-                                collector(embedded, depth2);
-                                bool isProperEmbedding = (depth2 > newDepth);
-                                RecordBinding(genericTypeParameter, embedded, isProperEmbedding);
-                            },
-                            newDepth
-                        );
-                    }
-                    return;
-                }
-
-                if (type is IGenericParameterReference)
-                {
-                    GenericFormal embedded = ((IGenericParameterReference)type).AsGenericFormal(_declaringType);
-                    collector(embedded, depth);
-                    return;
-                }
-
-                if (type is INamespaceTypeReference || type is INestedTypeReference)
-                {
-                    // Non-constructed type. End of recursion.
-                    return;
-                }
-
-                if (type is IFunctionPointerTypeReference)
-                {
-                    // Function pointer type.
-                    return;
-                }
-
-                // Custom modifiers wrap normal types
-                if (type is IModifiedTypeReference)
-                {
-                    IModifiedTypeReference modifiedType = (IModifiedTypeReference)type;
-                    foreach (ICustomModifier customMod in modifiedType.CustomModifiers)
-                    {
-                        ForEachEmbeddedGenericFormalWorker(customMod.Modifier, collector, depth + 1);
-                    }
-
-                    // Look for generic formals on the unmodified type
-                    ForEachEmbeddedGenericFormalWorker(modifiedType.UnmodifiedType, collector, depth + 1);
-                    return;
-                }
-
-                // Did CCI invent a new kind of Type that we're unaware of?
-                Debug.Fail("Unexpected failure to bucket CCI type: " + type);
-                throw new InvalidOperationException();
             }
         }
     }
