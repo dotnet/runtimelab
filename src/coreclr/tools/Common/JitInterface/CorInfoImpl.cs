@@ -2709,9 +2709,13 @@ namespace Internal.JitInterface
 
         private uint getArrayRank(CORINFO_CLASS_STRUCT_* cls)
         {
+            uint rank = 0;
             var td = HandleToObject(cls) as ArrayType;
-            Debug.Assert(td != null);
-            return (uint)td.Rank;
+            if (td != null)
+            {
+                rank = (uint)td.Rank;
+            }
+            return rank;
         }
 
         private void* getArrayInitializationData(CORINFO_FIELD_STRUCT_* field, uint size)
