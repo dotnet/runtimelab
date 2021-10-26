@@ -93,7 +93,7 @@ if /i "%1" == "-x64"                 (set __BuildArchX64=1&shift&goto Arg_Loop)
 if /i "%1" == "-x86"                 (set __BuildArchX86=1&shift&goto Arg_Loop)
 if /i "%1" == "-arm"                 (set __BuildArchArm=1&shift&goto Arg_Loop)
 if /i "%1" == "-arm64"               (set __BuildArchArm64=1&shift&goto Arg_Loop)
-if /i "%1" == "-wasm"                (set __BuildArchWasm=1&set processedArgs=!processedArgs! %1&shift&goto Arg_Loop)
+if /i "%1" == "-wasm"                (set __BuildArchWasm=1&shift&goto Arg_Loop)
 
 if /i "%1" == "-debug"               (set __BuildTypeDebug=1&shift&goto Arg_Loop)
 if /i "%1" == "-checked"             (set __BuildTypeChecked=1&shift&goto Arg_Loop)
@@ -177,9 +177,12 @@ if defined VCINSTALLDIR (
     set "__VCToolsRoot=%VCINSTALLDIR%Auxiliary\Build"
 )
 
+REM Common cmake configuration in eng/native uses this.
+set __ExtraCmakeArgs="-DRUNTIME_FLAVOR=CoreCLR"
+
 if defined __BuildAll goto BuildAll
 
-set /A __TotalSpecifiedBuildArch=__BuildArchX64 + __BuildArchX86 + __BuildArchArm + __BuildArchArm64
+set /A __TotalSpecifiedBuildArch=__BuildArchX64 + __BuildArchX86 + __BuildArchArm + __BuildArchArm64 + __BuildArchWasm
 if %__TotalSpecifiedBuildArch% GTR 1 (
     echo Error: more than one build architecture specified, but "all" not specified.
     goto Usage
@@ -205,7 +208,6 @@ if %__BuildArchArm64%==1 (
 if %__BuildArchWasm%==1 (
     set __TargetOS=browser
     set __BuildArch=wasm
-    set __BuildJit=0
     set __Ninja=0
 )
 
@@ -260,9 +262,9 @@ set "__IntermediatesDir=%__RootBinDir%\obj\coreclr\%__TargetOS%.%__BuildArch%.%_
 set "__LogsDir=%__RootBinDir%\log\!__BuildType!"
 set "__MsbuildDebugLogsDir=%__LogsDir%\MsbuildDebugLogs"
 set "__ArtifactsIntermediatesDir=%__RepoRootDir%\artifacts\obj\coreclr\"
-REM wasm is using Nmake: dont append ide - TODO: change wasm to Ninja
+REM wasm is using Nmake: dont append ide - TODO-LLVM: change wasm to Ninja
 if "%__Ninja%"=="0" (
-  if NOT %__BuildArch%==wasm (set "__IntermediatesDir=%__IntermediatesDir%\ide")
+  if NOT "%__BuildArch%"=="wasm" (set "__IntermediatesDir=%__IntermediatesDir%\ide")
 )
 set "__PackagesBinDir=%__BinDir%\.nuget"
 set "__CrossComponentBinDir=%__BinDir%"
@@ -398,6 +400,15 @@ for /f "delims=" %%a in ("-%__RequestedBuildComponents%-") do (
     if not "!string:-jit-=!"=="!string!" (
         set __CMakeTarget=!__CMakeTarget! jit
     )
+    if not "!string:-wasmjit-=!"=="!string!" (
+        set __CMakeTarget=!__CMakeTarget! wasmjit
+        set __ExtraCmakeArgs=!__ExtraCmakeArgs! "-DCLR_CMAKE_BUILD_LLVM_JIT=1"
+
+        if not defined LLVM_CMAKE_CONFIG (
+            echo %__ErrMsgPrefix%%__MsgPrefix%Error: The LLVM_CMAKE_CONFIG environment variable pointing to llvm-build-dir/lib/cmake/llvm must be set.
+            exit /B 1
+        )
+    )
     if not "!string:-alljits-=!"=="!string!" (
         set __CMakeTarget=!__CMakeTarget! alljits
     )
@@ -412,6 +423,13 @@ for /f "delims=" %%a in ("-%__RequestedBuildComponents%-") do (
     )
     if not "!string:-nativeaot-=!"=="!string!" (
         set __CMakeTarget=!__CMakeTarget! nativeaot
+
+        if "%__BuildArch%"=="wasm" (
+            if not defined EMSDK (
+                echo %__ErrMsgPrefix%%__MsgPrefix%Error: The EMSDK environment variable pointing to emsdk root must be set.
+                exit /B 1
+            )
+        )
     )
 )
 if [!__CMakeTarget!] == [] (
@@ -445,7 +463,7 @@ if %__BuildCrossArchNative% EQU 1 (
     set "__CMakeBinDir=!__CMakeBinDir:\=/!"
 
     if %__Ninja% EQU 1 (
-        set __ExtraCmakeArgs="-DCMAKE_BUILD_TYPE=!__BuildType!"
+        set __ExtraCmakeArgs=!__ExtraCmakeArgs! "-DCMAKE_BUILD_TYPE=!__BuildType!"
     )
 
     set __ExtraCmakeArgs=!__ExtraCmakeArgs! "-DCLR_CROSS_COMPONENTS_BUILD=1" "-DCLR_CMAKE_TARGET_ARCH=%__BuildArch%" "-DCLR_CMAKE_TARGET_OS=%__TargetOS%" "-DCLR_CMAKE_PGO_INSTRUMENT=0" "-DCLR_CMAKE_OPTDATA_PATH=%__PgoOptDataPath%" "-DCLR_CMAKE_PGO_OPTIMIZE=0" %__CMakeArgs%
@@ -519,7 +537,7 @@ if %__BuildCrossArchNative% EQU 1 (
         set "__CMakeBinDir=!__CMakeBinDir:\=/!"
 
         if %__Ninja% EQU 1 (
-            set __ExtraCmakeArgs="-DCMAKE_BUILD_TYPE=!__BuildType!"
+            set __ExtraCmakeArgs=!__ExtraCmakeArgs! "-DCMAKE_BUILD_TYPE=!__BuildType!"
         )
 
         set __ExtraCmakeArgs=!__ExtraCmakeArgs! "-DCLR_CROSS_COMPONENTS_BUILD=1" "-DCLR_CMAKE_TARGET_ARCH=%__BuildArch%" "-DCLR_CMAKE_TARGET_OS=%__TargetOS%" "-DCLR_CMAKE_PGO_INSTRUMENT=0" "-DCLR_CMAKE_OPTDATA_PATH=%__PgoOptDataPath%" "-DCLR_CMAKE_PGO_OPTIMIZE=0" "-DCMAKE_SYSTEM_VERSION=10.0" %__CMakeArgs%
@@ -611,18 +629,21 @@ if %__BuildNative% EQU 1 (
     echo %__MsgPrefix%Regenerating the Visual Studio solution
 
     if %__Ninja% EQU 1 (
-        set __ExtraCmakeArgs="-DCMAKE_BUILD_TYPE=!__BuildType!"
+        set __ExtraCmakeArgs=!__ExtraCmakeArgs! "-DCMAKE_BUILD_TYPE=!__BuildType!"
     )
     if "%__BuildArch%" == "wasm" (
-        set __ExtraCmakeArgs="-DCMAKE_BUILD_TYPE=!__BuildType!" 
+        set __ExtraCmakeArgs=!__ExtraCmakeArgs! "-DCMAKE_BUILD_TYPE=!__BuildType!"
+
+        REM For the Wasm build, we use the Emscripten toolchain, which is Unix-like in its handling of debug info.
+        if "!__BuildType!" NEQ "release" (
+            set __ExtraCmakeArgs=!__ExtraCmakeArgs! "-DCLR_CMAKE_KEEP_NATIVE_SYMBOLS=1"
+        )
     )
 
     set __ExtraCmakeArgs=!__ExtraCmakeArgs! !___CrossBuildDefine! "-DCLR_CMAKE_PGO_INSTRUMENT=%__PgoInstrument%" "-DCLR_CMAKE_OPTDATA_PATH=%__PgoOptDataPath%" "-DCLR_CMAKE_PGO_OPTIMIZE=%__PgoOptimize%" %__CMakeArgs%
-echo ecmakeargs
-echo !__ExtraCmakeArgs!
+
     call "%__RepoRootDir%\eng\native\gen-buildsys.cmd" "%__ProjectDir%" "%__IntermediatesDir%" %__VSVersion% %__BuildArch% !__ExtraCmakeArgs!
-echo ecmakeargs2
-echo !__ExtraCmakeArgs!
+
     if not !errorlevel! == 0 (
         echo %__ErrMsgPrefix%%__MsgPrefix%Error: failed to generate native component build project!
         goto ExitWithError
@@ -636,9 +657,8 @@ echo !__ExtraCmakeArgs!
         goto ExitWithError
     )
 
-echo checking __ConfigureOnly
     if defined __ConfigureOnly/ goto SkipNativeBuild
-echo after checking __ConfigureOnly
+
     set __BuildLogRootName=CoreCLR
     set "__BuildLog="%__LogsDir%\!__BuildLogRootName!_%__TargetOS%__%__BuildArch%__%__BuildType%.log""
     set "__BuildWrn="%__LogsDir%\!__BuildLogRootName!_%__TargetOS%__%__BuildArch%__%__BuildType%.wrn""
@@ -661,7 +681,6 @@ echo after checking __ConfigureOnly
         )
     )
 
-    echo running "%CMakePath%" --build %__IntermediatesDir% --target %__CMakeTarget% --config %__BuildType% -- !__CmakeBuildToolArgs!
     "%CMakePath%" --build %__IntermediatesDir% --target %__CMakeTarget% --config %__BuildType% -- !__CmakeBuildToolArgs!
 
     if not !errorlevel! == 0 (

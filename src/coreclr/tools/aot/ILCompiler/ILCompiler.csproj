@@ -20,8 +20,6 @@
 
   <PropertyGroup>
     <RuntimeIdentifier>$(__DistroRid)</RuntimeIdentifier>
-    <!-- TODO: get the right platform if building wasm on Linux/OSX is required -->
-    <RuntimeIdentifier Condition="'$(TargetsBrowser)' == 'true'">win-x64</RuntimeIdentifier>
     <SelfContained>true</SelfContained>
     <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
 
@@ -55,19 +53,19 @@
     </Content>
   </ItemGroup>
 
-  <ItemGroup Condition="!Exists('$(ObjWriterArtifactPath)') and '$(TargetArchitecture)' != 'wasm'">
+  <ItemGroup Condition="!Exists('$(ObjWriterArtifactPath)')">
     <PackageReference Include="Microsoft.DotNet.ILCompiler">
       <Version>$(ILCompilerVersion)</Version>
     </PackageReference>
 
-    <Content Include="$(NuGetPackageRoot)runtime.$(RuntimeIdentifier).microsoft.dotnet.ilcompiler\$(ILCompilerVersion)\tools\$(LibPrefix)objwriter$(LibSuffix)" Condition="'$(TargetArchitecture)' != 'wasm'">
+    <Content Include="$(NuGetPackageRoot)runtime.$(RuntimeIdentifier).microsoft.dotnet.ilcompiler\$(ILCompilerVersion)\tools\$(LibPrefix)objwriter$(LibSuffix)">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Visible>false</Visible>
       <Pack>false</Pack>
     </Content>
   </ItemGroup>
 
-  <ItemGroup Condition="'$(TargetArchitecture)' != 'wasm'">
+  <ItemGroup>
     <Content Include="$(RuntimeBinDir)$(LibPrefix)jitinterface_$(TargetArchitecture)$(LibSuffix)">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Visible>false</Visible>

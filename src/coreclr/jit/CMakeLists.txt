@@ -62,25 +62,16 @@ function(create_standalone_jit)
     target_compile_definitions(${TARGETDETAILS_TARGET} PRIVATE FEATURE_HW_INTRINSICS)
   endif ()
 
-  if (TARGETDETAILS_ARCH STREQUAL "wasm64" OR TARGETDETAILS_ARCH STREQUAL "wasm32")
-    set(CLR_CMAKE_TARGET_ARCH_WASM 1)
-    target_compile_definitions(${TARGETDETAILS_TARGET} PRIVATE TARGET_WASM)
-    if (TARGETDETAILS_ARCH STREQUAL "wasm32")
-      target_compile_definitions(${TARGETDETAILS_TARGET} PRIVATE TARGET_WASM32)
-    elseif (TARGETDETAILS_ARCH STREQUAL "wasm64")
-      target_compile_definitions(${TARGETDETAILS_TARGET} PRIVATE TARGET_WASM64)
-    endif()
+  if ((TARGETDETAILS_ARCH STREQUAL "wasm64") OR (TARGETDETAILS_ARCH STREQUAL "wasm32"))
     target_compile_definitions(${TARGETDETAILS_TARGET} PRIVATE USE_STL)
     target_compile_definitions(${TARGETDETAILS_TARGET} PRIVATE PAL_STDCPP_COMPAT)
 
-    message("LLVM_CMAKE_CONFIG:")
-    message($ENV{LLVM_CMAKE_CONFIG})
     find_package(LLVM REQUIRED CONFIG PATHS $ENV{LLVM_CMAKE_CONFIG})
-    include_directories(${LLVM_INCLUDE_DIRS})
-    add_definitions(${LLVM_DEFINITIONS})
+    target_include_directories(${TARGETDETAILS_TARGET} PRIVATE ${LLVM_INCLUDE_DIRS})
+    target_compile_definitions(${TARGETDETAILS_TARGET} PRIVATE ${LLVM_DEFINITIONS})
     llvm_map_components_to_libnames(llvm_libs core bitwriter)
     target_link_libraries(${TARGETDETAILS_TARGET} ${llvm_libs})
-  endif ()
+  endif()
 
 endfunction()
 
@@ -400,20 +391,6 @@ set( JIT_S390X_SOURCES
   # Not supported as JIT target
 )
 
-if(CLR_CMAKE_TARGET_ARCH_AMD64)
-  set(JIT_ARCH_SOURCES ${JIT_AMD64_SOURCES})
-elseif(CLR_CMAKE_TARGET_ARCH_ARM)
-  set(JIT_ARCH_SOURCES ${JIT_ARM_SOURCES})
-elseif(CLR_CMAKE_TARGET_ARCH_I386)
-  set(JIT_ARCH_SOURCES ${JIT_I386_SOURCES})
-elseif(CLR_CMAKE_TARGET_ARCH_ARM64)
-  set(JIT_ARCH_SOURCES ${JIT_ARM64_SOURCES})
-elseif(CLR_CMAKE_TARGET_ARCH_S390X)
-  set(JIT_ARCH_SOURCES ${JIT_S390X_SOURCES})
-else()
-  clr_unknown_arch()
-endif()
-
 set(JIT_CORE_SOURCES
   ${JIT_SOURCES}
   ${JIT_HEADERS}
@@ -561,16 +538,20 @@ create_standalone_jit(TARGET clrjit_unix_arm_${ARCH_HOST_NAME} OS unix ARCH arm 
 target_compile_definitions(clrjit_unix_arm_${ARCH_HOST_NAME} PRIVATE ARM_SOFTFP CONFIGURABLE_ARM_ABI)
 create_standalone_jit(TARGET clrjit_win_arm_${ARCH_HOST_NAME} OS win ARCH arm DESTINATIONS .)
 create_standalone_jit(TARGET clrjit_win_x86_${ARCH_HOST_NAME} OS win ARCH x86 DESTINATIONS .)
-if (NOT CLR_CMAKE_HOST_UNIX AND BUILD_WASM_JIT)
-    # the LLVM clrjit needs to be the last clrjit to use create_standalone_jit as it modifies some cmake variables
-    # LLVM clrjit has an extra export - registerLlvmCallbacks
+
+# Note that we currently do not support building the LLVM Jit on Unix.
+# Note as well that we need this "CLR_CMAKE_BUILD_LLVM_JIT", defined by the build scripts,
+# because there is no way in CMake to ask "what --target's' am I being asked to configure?".
+if (CLR_CMAKE_BUILD_LLVM_JIT)
+    # The LLVM clrjit needs to be the last clrjit to use create_standalone_jit as it modifies some cmake variables.
+    # LLVM clrjit has an extra export - registerLlvmCallbacks.
     set(CLRJIT_EXPORTS ${CMAKE_CURRENT_LIST_DIR}/ClrJit.Llvm.exports)
     set(JIT_EXPORTS_FILE ${CMAKE_CURRENT_BINARY_DIR}/ClrJit.Llvm.exports.def)
     preprocess_file (${CLRJIT_EXPORTS} ${JIT_EXPORTS_FILE})
     set(JIT_DEF_FILE ${JIT_EXPORTS_FILE})
 
-    # exclude cpp files that are not required when not processing beyond rationalized LIR
-    # use REGEX as this list conatins the absolute paths
+    # Exclude cpp files that are not required when not processing beyond rationalized LIR.
+    # Use REGEX as this list contains the absolute paths.
     list(FILTER JIT_CORE_SOURCES EXCLUDE REGEX stacklevelsetter\.cpp)
     list(FILTER JIT_CORE_SOURCES EXCLUDE REGEX codegencommon\.cpp)
     list(FILTER JIT_CORE_SOURCES EXCLUDE REGEX codegenlinear\.cpp)
@@ -582,10 +563,16 @@ if (NOT CLR_CMAKE_HOST_UNIX AND BUILD_WASM_JIT)
     list(FILTER JIT_CORE_SOURCES EXCLUDE REGEX lsrabuild\.cpp)
     list(FILTER JIT_CORE_SOURCES EXCLUDE REGEX regalloc\.cpp)
 
+    # We'll be linking against LLVM built without /guard:ehcont, so disable it.
+    string(REPLACE "/guard:ehcont" "" CMAKE_SHARED_LINKER_FLAGS ${CMAKE_SHARED_LINKER_FLAGS})
+
     create_standalone_jit(TARGET clrjit_browser_wasm32_${ARCH_HOST_NAME} OS browser ARCH wasm32 DESTINATIONS .)
-    # uncomment to enable 8 byte pointer size version of the wasm clrjit.dll
-    #create_standalone_jit(TARGET clrjit_browser_wasm64_${ARCH_HOST_NAME} OS browser ARCH wasm64 DESTINATIONS .)
-endif (NOT CLR_CMAKE_HOST_UNIX AND BUILD_WASM_JIT)
+    install_clr(TARGETS clrjit_browser_wasm32_${ARCH_HOST_NAME} DESTINATIONS . COMPONENT wasmjit)
+
+    # Uncomment to enable 8 byte pointer size version of the wasm clrjit.dll.
+    # create_standalone_jit(TARGET clrjit_browser_wasm64_${ARCH_HOST_NAME} OS browser ARCH wasm64 DESTINATIONS .)
+    # install_clr(TARGETS clrjit_browser_wasm64_${ARCH_HOST_NAME} DESTINATIONS . ilc COMPONENT wasmjit)
+endif (CLR_CMAKE_BUILD_LLVM_JIT)
 
 if (CLR_CMAKE_TARGET_ARCH_I386 AND CLR_CMAKE_TARGET_UNIX)
   create_standalone_jit(TARGET clrjit_unix_x86_${ARCH_HOST_NAME} OS unix ARCH x86 DESTINATIONS .)

@@ -143,10 +143,14 @@ try {
     if (-not $excludeCIBinarylog) {
       $binaryLog = $true
     }
-    if ($properties.Contains('/p:TargetArchitecture=wasm') -and $runtimeFlavor -eq "CoreCLR") {
-      . $PSScriptRoot\..\..\wasm-tools\emsdk\emsdk_env.ps1
-      $Env:LLVM_CMAKE_CONFIG = "$PSScriptRoot\..\..\wasm-tools\llvm-11.0.0.src\build\lib\cmake\llvm"
+
+    # This is a bit of a workaround for the fact that the pipelines do not have a great
+    # way of preserving the environment between scripts. Set by install-emscripten.cmd.
+    if ($env:NATIVEAOT_CI_WASM_BUILD_EMSDK_PATH)
+    {
+        . $env:NATIVEAOT_CI_WASM_BUILD_EMSDK_PATH/emsdk_env.ps1
     }
+
     $nodeReuse = $false
   }
 

@@ -27,6 +27,7 @@ set __VSVersion=%3
 set __Arch=%4
 set __CmakeGenerator=Visual Studio
 set __UseEmcmake=0
+
 if /i "%__Ninja%" == "1" (
     set __CmakeGenerator=Ninja
 ) else (
@@ -43,17 +44,9 @@ if /i "%__Ninja%" == "1" (
         set __CmakeGenerator=NMake Makefiles
     )
 )
-echo gen-buildsys %__Arch% !__repoRoot!
-if /i "%__Arch%" == "wasm" (
-    if "%EMSDK%" == "" (
-       echo Error: Should set EMSDK environment variable pointing to emsdk root.
-       exit /B 1
-    )
 
-    if /i "%CMAKE_BUILD_TYPE%" == "debug" (
-        set __ExtraCmakeParams=%__ExtraCmakeParams% -g -O0
-    )
-    set __ExtraCmakeParams=%__ExtraCmakeParams% "-DCMAKE_BUILD_TYPE=%CMAKE_BUILD_TYPE%" "-DCMAKE_TOOLCHAIN_FILE=%EMSDK%/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake" -DCLR_CMAKE_TARGET_ARCH=wasm -DCLR_CMAKE_TARGET_ARCH_WASM=1 -DCLR_CMAKE_HOST_ARCH=Windows_NT -DCLR_CMAKE_HOST_OS=Emscripten -DRUNTIME_FLAVOR=CoreClr -DCLR_CMAKE_HOST_UNIX_WASM=1 "-DCLR_ENG_NATIVE_DIR=%__repoRoot%\eng\native" "-DCMAKE_REPO_ROOT=%__repoRoot%" -DCLR_CMAKE_KEEP_NATIVE_SYMBOLS=1 -DFEATURE_STANDALONE_GC=0
+if /i "%__Arch%" == "wasm" (
+    set __ExtraCmakeParams=%__ExtraCmakeParams% "-DCMAKE_TOOLCHAIN_FILE=%EMSDK%/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake"
     set __UseEmcmake=1
 ) else (
     set __ExtraCmakeParams=%__ExtraCmakeParams%  "-DCMAKE_SYSTEM_VERSION=10.0"
@@ -91,7 +84,8 @@ if not "%__ConfigureOnly%" == "1" (
 )
 
 if /i "%__UseEmcmake%" == "1" (
-    REM add call in front of emcmake as for some not understood reason, perhaps to do with scopes, by calling emcmake (or any batch script), delayed expansion is getting turned off.  TODO: remove this and see if CI is ok and hence its just my machine.
+    REM Add call in front of emcmake as for some not understood reason, perhaps to do with scopes, by calling emcmake (or any batch script),
+    REM delayed expansion is getting turned off. TODO: remove this and see if CI is ok and hence its just my machine.
     call emcmake "%CMakePath%" %__ExtraCmakeParams% --no-warn-unused-cli -G "%__CmakeGenerator%" -B %__IntermediatesDir% -S %__SourceDir% 
 setlocal EnableDelayedExpansion EnableExtensions
 ) else (

@@ -12,26 +12,30 @@ The Native AOT toolchain can be currently built for Linux, macOS and Windows x64
 - *Optional*. If you want fix ObjWriter, or work on unsupported platform, as additional pre-requiresites you need to run `build[.cmd|.sh] nativeaot.objwriter` before building `nativeaot` subset.
 
 ## Building for Web Assembly
-- This branch contains a version of the WebAssembly compiler that creates LLVM from the clrjit to take advantage of RyuJits optimisations.  It goes from RyuJIT IR -> LLVM instead of the NativeAOT-LLVM branch way of CIL -> LLVM.
-- It does not work, yet or maybe never.
-- Currently only tested on Windows
+
+- This branch contains a version of the WebAssembly compiler that creates LLVM from the clrjit to take advantage of RyuJit's optimizations specific to managed code, and its compiler infrastructure. It goes from RyuJIT IR -> LLVM instead of the older CoreRT way of CIL -> LLVM.
+- The work is of highly experimental nature. Bugs and not-yet-or-ever-to-be-implemented features are to be expected.
+- The build supporting a developer workflow currently only exists on Windows.
+
+There are two kinds of binary artifacts produced by the build and needed for development: the runtime libraries and the cross-targeting compilers, ILC and RyuJit. They are built differently and separately.
+
+For the runtime libraries:
+- Clone the [emsdk](https://github.com/dotnet/emsdk) repository and use the `emsdk.bat` script it comes with to [install](https://emscripten.org/docs/getting_started/downloads.html) (and optionally "activate", i. e. set the relevant environment variables permanently) the Emscripten SDK, which will be used by the native build as a sort of "virtualized" build environment. It is recommended to use the same Emscripten version that [the CI](https://github.com/dotnet/runtimelab/blob/feature/NativeAOT-LLVM/eng/pipelines/runtimelab/install-emscripten.cmd#L14-L18) uses.
+- Run `build nativeaot+libs -c [Debug|Release] -a wasm -os Browser`. This will create the architecture-dependent libraries needed for linking and runtime execution, as well as the managed binaries to be used as input to ILC.
+
+For the compilers:
 - Download the LLVM 11.0.0 source from https://github.com/llvm/llvm-project/releases/download/llvmorg-11.0.0/llvm-11.0.0.src.tar.xz
-- Extract and create a subdirectory in the llvm-11.0.0.src folder called build.  cd to this build folder
-- Configure the LLVM source to use the same runtime as clrjit `cmake -G "Visual Studio 16 2019" -DCMAKE_BUILD_TYPE=Debug -D LLVM_USE_CRT_DEBUG=MTd ..`
-- Build LLVM either from the command line (`build`) or from VS 2019.  You only really need to build the LLVMCore and LLVMBitWriter projects which takes less time than the 400 odd projects when building all.  This will save some time.
-- set the enviroment variable LLVM_CMAKE_CONFIG to locate the LLVM config, e.g.  `set LLVM_CMAKE_CONFIG=E:/llvm11/llvm-11.0.0.src/build/lib/cmake/llvm` .   This location should contain the file `LLVMConfig.cmake`
-- Build the x64 libraries and compiler as per the Building section.
-- Run `build nativeaot+libs+nativeaot.packages -rc [Debug|Release] -lc [Debug|Release] -a wasm -os Browser -runtimeFlavor CoreCLR`
-- The compiler can now be debugged with the Wasm clrjit.  Load the clrjit_browser_wasm32_x64.vcxproj which can be found in artifacts\obj\coreclr\windows.x64.Debug\jit
-- Run Ilc with a .rsp file as normal for Web assembly, e.g. if you build the WebAssembly tests you can use artifacts\tests\coreclr\Browser.wasm.Debug\nativeaot\SmokeTests\HelloWasm\HelloWasm\native\HelloWasm.ilc.rsp
-- Add the package directory to your `nuget.config` as above.
-- Run `dotnet publish -r browser-wasm -c [Debug|Release] /p:Platform=wasm` to publish.
+- Extract it and create a subdirectory in the `llvm-11.0.0.src` folder (`path-to-the-build-directory`).
+- Configure the LLVM source to use the same runtime as the Jit: `cmake -G "Visual Studio 16 2019" -DCMAKE_BUILD_TYPE=Debug -D LLVM_USE_CRT_DEBUG=MTd path-to-the-build-directory`.
+- Build LLVM either from the command line (`cmake --build . --target LLVMCore LLVMBitWriter`) or from VS 2019. Currently the Jit depends only on the output of LLVMCore and LLVMBitWriter projects.
+- Set the enviroment variable `LLVM_CMAKE_CONFIG` to locate the LLVM config: `set LLVM_CMAKE_CONFIG=path-to-the-build-directory/lib/cmake/llvm`. This location should contain the file `LLVMConfig.cmake`.
+- Build the Jits and the ILC: `build clr.jit+clr.wasmjit+nativeaot.ilc -c [Debug|Release]`. Note that `clr.jit` only needs to be built once.
+- You can use the `-msbuild` option, `build clr.wasmjit -msbuild`, to generate a Visual Studio solution for the Jit, to be found in `artifacts/obj/coreclr/windows.x64.Debug/ide/jit`.
 
-- To work on the clr jit for LLVM:
-- Open the Ilc solution and add the clr jit project `clrjit_browser_wasm32_x64.vcxproj` from `artifacts\obj\coreclr\windows.x64.Debug\jit`
-- In the project properties General section, change the output folder to the full path for `artifacts\bin\coreclr\windows.x64.Debug\ilc\net5.0` e.g. `E:\GitHub\runtimelab\artifacts\bin\coreclr\windows.x64.Debug\ilc\net5.0`
-- Build `clrjit_browser_wasm32_x64` project and you should now be able to change and put breakpoints in the c++ code.
+With the above binaries built, the ILC can be run and debugged as normal. The runtime tests can also be built, in bulk: `src/tests/build nativeaot debug wasm skipnative targetsNonWindows /p:SmokeTestsOnly=true`, or individually: `cd <test-directory> && dotnet build TestProjectName.csproj /p:TargetArchitecture=wasm /p:TargetOS=Browser`, and run as described in the sections below. A response file for debugging ILC can also be obtained from the test build, e. g. for `SmokeTests\HelloWasm` it'd be located in `artifacts\tests\coreclr\Browser.wasm.Debug\nativeaot\SmokeTests\HelloWasm\HelloWasm\native\HelloWasm.ilc.rsp`.
 
+Working on the Jit itself, one possible workflow is taking advantage of the generated VS project:
+- Open the Ilc solution and add the aforementioned Jit project, `clrjit_browser_wasm32_x64.vcxproj`. Then in the project properties, General section, change the output folder to the full path for `artifacts\bin\coreclr\windows.x64.Debug\ilc` e.g. `E:\GitHub\runtimelab\artifacts\bin\coreclr\windows.x64.Debug\ilc`. Build `clrjit_browser_wasm32_x64` project and you should now be able to change and put breakpoints in the C++ code.
 
 ## Visual Studio Solutions
 
@@ -68,7 +72,7 @@ The workflow looks like this:
 
 If you haven't built the tests yet, run `src\tests\build[.cmd|.sh] nativeaot [Debug|Release] /p:SmokeTestsOnly=true`. This will build the smoke tests only - they usually suffice to ensure the runtime and compiler is in a workable shape. To build all Pri-0 tests, drop the `SmokeTestsOnly` parameter. The `Debug`/`Release` parameter should match the build configuration you used to build the runtime.
 
-To run all the tests that got built, run `src\tests\run[.cmd|.sh] runnativeaottests [Debug|Release]`. The `Debug`/`Release` flag should match the flag that was passed to `build.cmd` in the previous step.
+To run all the tests that got built, run `src\tests\run[.cmd|.sh] runnativeaottests [Debug|Release] [wasm]`. The `Debug`/`Release` flag should match the flag that was passed to `build.cmd` in the previous step.
 
 To run an individual test (after it was built), navigate to the `artifacts\tests\coreclr\[Windows|Linux|OSX[.x64.[Debug|Release]\$path_to_test` directory. `$path_to_test` matches the subtree of `src\tests`. You should see a `[.cmd|.sh]` file there. This file is a script that will compile and launch the individual test for you. Before invoking the script, set the following environment variables:
 
@@ -77,12 +81,6 @@ To run an individual test (after it was built), navigate to the `artifacts\tests
 * __TestDotNetCmd=$repo_root\dotnet[.cmd|.sh]
 
 `$repo_root` is the root of your clone of the repo.
-
-### Running WebAssembly test
-
-To build the tests targeting WebAssembly run `src\tests\build nativeaot [Debug|Release] wasm targetsNonWindows skipnative /p:SmokeTestsOnly=true /p:runtimeFlavor=CoreCLR`.
-
-To run the tests `src\tests\run runnativeaottests [Debug|Release] wasm`
 
 ## Design Documentation
 
