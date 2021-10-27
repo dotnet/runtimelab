@@ -143,10 +143,19 @@ namespace ILCompiler.DependencyAnalysis
                     break;
             }
 
-            // All generic lookups depend on the thing they point to
-            result.Add(new DependencyListEntry(
-                        _lookupSignature.GetTarget(factory, lookupContext),
-                        "Dictionary dependency"));
+            try
+            {
+                // All generic lookups depend on the thing they point to
+                result.Add(new DependencyListEntry(
+                            _lookupSignature.GetTarget(factory, lookupContext),
+                            "Dictionary dependency"));
+            }
+            catch (TypeSystemException)
+            {
+                // TODO: we need to mark this ReadyToRun helper as "injured". We're now in a situation
+                // when a runtime lookup could produce an error result. The helper should check for that
+                // situation and throw exception if result of the lookup produces an injured result.
+            }
 
             return result.ToArray();
         }
