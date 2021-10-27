@@ -16,6 +16,7 @@ The Native AOT toolchain can be currently built for Linux, macOS and Windows x64
 - This branch contains a version of the WebAssembly compiler that creates LLVM from the clrjit to take advantage of RyuJit's optimizations specific to managed code, and its compiler infrastructure. It goes from RyuJIT IR -> LLVM instead of the older CoreRT way of CIL -> LLVM.
 - The work is of highly experimental nature. Bugs and not-yet-or-ever-to-be-implemented features are to be expected.
 - The build supporting a developer workflow currently only exists on Windows.
+- Do not attempt to build with the emscripten debug environment variable set.  I.e do not `set EMCC_DEBUG=1` as the extra output will confuse the scripts.
 
 There are two kinds of binary artifacts produced by the build and needed for development: the runtime libraries and the cross-targeting compilers, ILC and RyuJit. They are built differently and separately.
 
