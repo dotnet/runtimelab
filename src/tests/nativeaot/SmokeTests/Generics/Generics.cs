@@ -39,6 +39,8 @@ class Program
         TestConstrainedGvmCalls.Run();
         TestConstrainedGvmValueTypeCalls.Run();
         TestDefaultGenericVirtualInterfaceMethods.Run();
+        TestSimpleGenericRecursion.Run();
+        TestGenericRecursionFromNpgsql.Run();
 #if !CODEGEN_CPP
         TestNullableCasting.Run();
         TestVariantCasting.Run();
@@ -2957,6 +2959,93 @@ class Program
                 if (f.Foo<SAtom1>() != "Hello from IBar<SAtom1>.IFoo<T[]>.Foo<SAtom1>")
                     throw new Exception();
             }
+        }
+    }
+
+    class TestSimpleGenericRecursion
+    {
+        struct GenStruct<T> { }
+
+        class GenClass<T> { }
+
+        private static object RecurseOverStruct<T>(int count) where T: new()
+        {
+            if (count > 0)
+                RecurseOverStruct<GenStruct<T>>(count - 1);
+
+            return new T();
+        }
+
+        private static object RecurseOverClass<T>(int count) where T : new()
+        {
+            if (count > 0)
+                RecurseOverClass<GenClass<T>>(count - 1);
+
+            return new T();
+        }
+
+        public static void Run()
+        {
+            RecurseOverStruct<int>(2);
+            RecurseOverClass<int>(2);
+
+            try
+            {
+                RecurseOverStruct<int>(100);
+            }
+            catch (Exception) { }
+
+            // Doesn't currently work in Debug builds because we end up hitting a NullRef
+            // during a dictionary lookup and the runtime cannot deal with that.
+#if false
+            try
+            {
+                RecurseOverClass<int>(100);
+            }
+            catch (Exception) { }
+#endif
+        }
+    }
+
+    class TestGenericRecursionFromNpgsql
+    {
+        [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
+        struct SqlRange<T>
+        {
+            private T Value1;
+            private T Value2;
+        }
+
+        class ChunkingTypeHandler<T> : TypeHandler<T>
+        {
+        }
+
+        class RangeHandler<T> : ChunkingTypeHandler<SqlRange<T>>
+        {
+            public RangeHandler()
+            {
+                new TypeHandler<T>().ToString();
+            }
+        }
+
+        class TypeHandler
+        {
+            public virtual void CreateRangeHandler() { }
+        }
+
+        class TypeHandler<T> : TypeHandler
+        {
+            public override void CreateRangeHandler()
+            {
+                new RangeHandler<T>().ToString();
+            }
+        }
+
+        public static void Run()
+        {
+            // https://github.com/dotnet/corert/issues/6052
+            // There is a generic recursion in the above hierarchy. This just tests that we can compile.
+            new TypeHandler<bool>().CreateRangeHandler();
         }
     }
 }

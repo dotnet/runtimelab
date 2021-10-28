@@ -903,13 +903,20 @@ namespace Internal.JitInterface
             return CorInfoHelpFunc.CORINFO_HELP_NEWARR_1_VC;
         }
 
-        private IMethodNode GetMethodEntrypoint(MethodDesc method)
+        private IMethodNode GetMethodEntrypoint(CORINFO_MODULE_STRUCT_* pScope, MethodDesc method)
         {
             bool isUnboxingThunk = method.IsUnboxingThunk();
             if (isUnboxingThunk)
             {
                 method = method.GetUnboxedMethod();
             }
+
+            if (method.HasInstantiation || method.OwningType.HasInstantiation)
+            {
+                MethodIL methodIL = (MethodIL)HandleToObject((IntPtr)pScope);
+                _compilation.DetectGenericCycles(methodIL.OwningMethod, method);
+            }
+
             return _compilation.NodeFactory.MethodEntrypoint(method, isUnboxingThunk);
         }
 
@@ -1212,7 +1219,7 @@ namespace Internal.JitInterface
 
                     Debug.Assert(!forceUseRuntimeLookup);
                     pResult->codePointerOrStubLookup.constLookup = CreateConstLookupToSymbol(
-                        GetMethodEntrypoint(targetMethod)
+                        GetMethodEntrypoint(pResolvedToken.tokenScope, targetMethod)
                         );
                 }
                 else
@@ -1238,7 +1245,7 @@ namespace Internal.JitInterface
                     }
 
                     pResult->codePointerOrStubLookup.constLookup = CreateConstLookupToSymbol(
-                        GetMethodEntrypoint(targetMethod)
+                        GetMethodEntrypoint(pResolvedToken.tokenScope, targetMethod)
                         );
                 }
 

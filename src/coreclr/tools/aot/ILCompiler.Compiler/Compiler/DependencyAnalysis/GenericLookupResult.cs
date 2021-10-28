@@ -145,8 +145,21 @@ namespace ILCompiler.DependencyAnalysis
 
         public virtual void EmitDictionaryEntry(ref ObjectDataBuilder builder, NodeFactory factory, GenericLookupResultContext dictionary, GenericDictionaryNode dictionaryNode)
         {
-            ISymbolNode target = GetTarget(factory, dictionary);
-            if (LookupResultReferenceType(factory) == GenericLookupResultReferenceType.ConditionalIndirect)
+            ISymbolNode target;
+            try
+            {
+                target = GetTarget(factory, dictionary);
+            }
+            catch (TypeSystemException)
+            {
+                target = null;
+            }
+
+            if (target == null)
+            {
+                builder.EmitZeroPointer();
+            }
+            else if (LookupResultReferenceType(factory) == GenericLookupResultReferenceType.ConditionalIndirect)
             {
                 builder.EmitPointerRelocOrIndirectionReference(target);
             }
@@ -228,6 +241,9 @@ namespace ILCompiler.DependencyAnalysis
         {
             // We are getting a maximally constructable type symbol because this might be something passed to newobj.
             TypeDesc instantiatedType = _type.GetNonRuntimeDeterminedTypeFromRuntimeDeterminedSubtypeViaSubstitution(dictionary.TypeInstantiation, dictionary.MethodInstantiation);
+
+            factory.TypeSystemContext.DetectGenericCycles(dictionary.Context, instantiatedType);
+
             return factory.MaximallyConstructableType(instantiatedType);
         }
 
@@ -619,6 +635,9 @@ namespace ILCompiler.DependencyAnalysis
         public override ISymbolNode GetTarget(NodeFactory factory, GenericLookupResultContext dictionary)
         {
             MethodDesc instantiatedMethod = _method.GetNonRuntimeDeterminedMethodFromRuntimeDeterminedMethodViaSubstitution(dictionary.TypeInstantiation, dictionary.MethodInstantiation);
+
+            factory.TypeSystemContext.DetectGenericCycles(dictionary.Context, instantiatedMethod);
+
             return factory.MethodGenericDictionary(instantiatedMethod);
         }
 

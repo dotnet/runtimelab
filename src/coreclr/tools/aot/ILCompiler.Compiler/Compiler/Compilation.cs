@@ -92,6 +92,11 @@ namespace ILCompiler
 
         protected abstract void CompileInternal(string outputFile, ObjectDumper dumper);
 
+        public void DetectGenericCycles(MethodDesc caller, MethodDesc callee)
+        {
+            _nodeFactory.TypeSystemContext.DetectGenericCycles(caller, callee);
+        }
+
         public bool CanInline(MethodDesc caller, MethodDesc callee)
         {
             return _inliningPolicy.CanInline(caller, callee);

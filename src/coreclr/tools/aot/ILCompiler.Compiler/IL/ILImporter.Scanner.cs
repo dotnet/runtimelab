@@ -245,7 +245,17 @@ namespace Internal.IL
                 _dependencies.Add(_compilation.ComputeConstantLookup(ReadyToRunHelperId.TypeHandleForCasting, type), "IsInst/CastClass");
             }
         }
-        
+
+        private IMethodNode GetMethodEntrypoint(MethodDesc method)
+        {
+            if (method.HasInstantiation || method.OwningType.HasInstantiation)
+            {
+                _compilation.DetectGenericCycles(_canonMethod, method);
+            }
+
+            return _factory.MethodEntrypoint(method);
+        }
+
         private void ImportCall(ILOpcode opcode, int token)
         {
             // We get both the canonical and runtime determined form - JitInterface mostly operates
@@ -620,7 +630,7 @@ namespace Internal.IL
                     else
                     {
                         Debug.Assert(!forceUseRuntimeLookup);
-                        _dependencies.Add(_factory.MethodEntrypoint(targetMethod), reason);
+                        _dependencies.Add(GetMethodEntrypoint(targetMethod), reason);
 
                         if (targetMethod.RequiresInstMethodTableArg() && resolvedConstraint)
                         {
@@ -682,7 +692,7 @@ namespace Internal.IL
                         _dependencies.Add(_compilation.NodeFactory.MaximallyConstructableType(concreteMethod.OwningType), reason + " - inlining protection");
                     }
 
-                    _dependencies.Add(_compilation.NodeFactory.MethodEntrypoint(targetMethod), reason);
+                    _dependencies.Add(GetMethodEntrypoint(targetMethod), reason);
                 }
             }
             else if (method.HasInstantiation)
