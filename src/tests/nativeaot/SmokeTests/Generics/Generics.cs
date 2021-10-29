@@ -41,6 +41,7 @@ class Program
         TestDefaultGenericVirtualInterfaceMethods.Run();
         TestSimpleGenericRecursion.Run();
         TestGenericRecursionFromNpgsql.Run();
+        TestRecursionInGenericVirtualMethods.Run();
 #if !CODEGEN_CPP
         TestNullableCasting.Run();
         TestVariantCasting.Run();
@@ -3046,6 +3047,34 @@ class Program
             // https://github.com/dotnet/corert/issues/6052
             // There is a generic recursion in the above hierarchy. This just tests that we can compile.
             new TypeHandler<bool>().CreateRangeHandler();
+        }
+    }
+
+    class TestRecursionInGenericVirtualMethods
+    {
+        struct Buffer<T> { }
+
+        class Getter<T> { }
+
+        class Base
+        {
+            public virtual Getter<T> Get<T>() => new Getter<T>();
+        }
+
+        class Derived : Base
+        {
+            private Base _b = new Base();
+            public override Getter<T> Get<T>() => Make<T>();
+            private Getter<T> Make<T>() => _b.Get<Buffer<T>>() as Getter<T>;
+        }
+
+        static Base s_derived = new Derived();
+
+        public static void Run()
+        {
+            // There is a generic recursion in the above hierarchy. This just tests that we can compile.
+            // Inspired by https://github.com/dotnet/machinelearning/blob/cc5e6395e0d15e4d3db702b9cb1129e12838b840/src/Microsoft.ML.Transforms/UngroupTransform.cs#L610-L629
+            s_derived.Get<object>();
         }
     }
 }
