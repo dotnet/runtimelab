@@ -2522,14 +2522,19 @@ class Program
 
         public static void Run()
         {
+            bool failed = false;
+
             try
             {
                 DoGenericLookup<object>();
             }
-            catch (Exception ex)
+            catch (TypeLoadException)
             {
-                Console.WriteLine(ex.ToString());
+                failed = true;
             }
+
+            if (!failed)
+                throw new Exception();
         }
     }
 
