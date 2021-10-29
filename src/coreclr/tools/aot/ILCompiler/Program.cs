@@ -788,6 +788,12 @@ namespace ILCompiler
                 // This prevents e.g. devirtualizing and inlining methods on types that were
                 // never actually allocated.
                 builder.UseInliningPolicy(scanResults.GetInliningPolicy());
+
+                // Use an error provider that prevents us from re-importing methods that failed
+                // to import with an exception during scanning phase. We would see the same failure during
+                // compilation, but before RyuJIT gets there, it might ask questions that we don't
+                // have answers for because we didn't scan the entire method.
+                builder.UseMethodImportationErrorProvider(scanResults.GetMethodImportationErrorProvider());
             }
 
             ICompilation compilation = builder.ToCompilation();

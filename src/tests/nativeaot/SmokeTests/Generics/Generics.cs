@@ -32,6 +32,7 @@ class Program
         TestReflectionInvoke.Run();
         TestFieldAccess.Run();
         TestDevirtualization.Run();
+        TestImportFailure.Run();
         TestGenericInlining.Run();
         TestGenericInliningDoesntHappen.Run();
         TestGvmDependenciesFromLazy.Run();
@@ -2499,6 +2500,36 @@ class Program
             DoGenericDevirtBoxed();
             DoGenericDevirtShared<string>();
             DoGenericDevirtBoxedShared<string>();
+        }
+    }
+
+    class TestImportFailure
+    {
+        class Generic<T> { }
+
+        [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Explicit)]
+        class Unloadable<T> { }
+        class Unloadable : Unloadable<object> { }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        static void DoGenericLookup<T>()
+        {
+            // The method body for this will be converted to a throw, but when compiling this,
+            // the code generator might attempt to do generic lookups before realizing this won't work.
+            typeof(Generic<T>).ToString();
+            new Unloadable().ToString();
+        }
+
+        public static void Run()
+        {
+            try
+            {
+                DoGenericLookup<object>();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.ToString());
+            }
         }
     }
 
