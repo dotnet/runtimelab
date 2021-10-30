@@ -701,6 +701,10 @@ namespace Internal.IL
 
                 MethodDesc methodToLookup = _compilation.GetTargetOfGenericVirtualMethodCall(runtimeDeterminedMethod);
 
+                _compilation.DetectGenericCycles(
+                        _canonMethod,
+                        methodToLookup.GetCanonMethodTarget(CanonicalFormKind.Specific));
+
                 if (exactContextNeedsRuntimeLookup)
                 {
                     _dependencies.Add(GetGenericLookupHelper(ReadyToRunHelperId.MethodHandle, methodToLookup), reason);

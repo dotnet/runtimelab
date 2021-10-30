@@ -1260,6 +1260,10 @@ namespace Internal.JitInterface
 
                 MethodDesc targetOfLookup = _compilation.GetTargetOfGenericVirtualMethodCall((MethodDesc)GetRuntimeDeterminedObjectForToken(ref pResolvedToken));
 
+                _compilation.DetectGenericCycles(
+                    ((MethodILScope)HandleToObject((IntPtr)pResolvedToken.tokenScope)).OwningMethod,
+                    targetOfLookup.GetCanonMethodTarget(CanonicalFormKind.Specific));
+
                 ComputeLookup(ref pResolvedToken,
                     targetOfLookup,
                     ReadyToRunHelperId.MethodHandle,

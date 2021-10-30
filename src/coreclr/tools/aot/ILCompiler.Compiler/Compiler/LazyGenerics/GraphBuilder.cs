@@ -112,6 +112,26 @@ namespace ILCompiler
                     return;
                 }
 
+                // If this is a generic virtual method, add an edge from each of the generic parameters
+                // of the implementation to the generic parameters of the declaration - any call to the
+                // declaration will be modeled as if the declaration was calling into the implementation.
+                if (method.IsVirtual && method.HasInstantiation)
+                {
+                    var decl = (EcmaMethod)MetadataVirtualMethodAlgorithm.FindSlotDefiningMethodForVirtualMethod(method).GetTypicalMethodDefinition();
+                    if (decl != method)
+                    {
+                        Instantiation declInstantiation = decl.Instantiation;
+                        Instantiation implInstantiation = method.Instantiation;
+                        for (int i = 0; i < declInstantiation.Length; i++)
+                        {
+                            RecordBinding(
+                                (EcmaGenericParameter)implInstantiation[i],
+                                (EcmaGenericParameter)declInstantiation[i],
+                                isProperEmbedding: false);
+                        }
+                    }
+                }
+
                 // Walk the method body looking at referenced things that have some genericness.
                 // Nongeneric things cannot be forming cycles.
                 // In particular, we don't care about MemberRefs to non-generic things, TypeDefs/MethodDefs/FieldDefs.

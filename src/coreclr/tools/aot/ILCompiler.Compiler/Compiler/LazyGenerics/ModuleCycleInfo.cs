@@ -6,6 +6,8 @@ using System.Collections.Generic;
 using Internal.TypeSystem;
 using Internal.TypeSystem.Ecma;
 
+using Debug = System.Diagnostics.Debug;
+
 namespace ILCompiler
 {
     internal static partial class LazyGenericsSupport
@@ -22,13 +24,11 @@ namespace ILCompiler
                 _entitiesInCycles = entitiesInCycles;
             }
 
-            public bool FormsCycle(TypeSystemEntity owner, TypeSystemEntity referent)
+            public bool FormsCycle(TypeSystemEntity owner)
             {
+                Debug.Assert(owner is EcmaMethod || owner is EcmaType);
                 TypeDesc ownerType = (owner as EcmaMethod)?.OwningType;
-                TypeDesc referentType = (referent as EcmaMethod)?.OwningType;
-
-                return (_entitiesInCycles.Contains(owner) || (ownerType != null && _entitiesInCycles.Contains(ownerType)))
-                    && (_entitiesInCycles.Contains(referent) || (referentType != null && _entitiesInCycles.Contains(referentType)));
+                return _entitiesInCycles.Contains(owner) || (ownerType != null && _entitiesInCycles.Contains(ownerType));
             }
 
             // Chosen rather arbitrarily. For the app that I was looking at, cutoff point of 7 compiled
@@ -165,7 +165,7 @@ namespace ILCompiler
                 EcmaModule ownerModule = (ownerDefinition as EcmaType)?.EcmaModule ?? ((EcmaMethod)ownerDefinition).Module;
 
                 ModuleCycleInfo cycleInfo = _hashtable.GetOrCreateValue(ownerModule);
-                if (cycleInfo.FormsCycle(ownerDefinition, referentDefinition))
+                if (cycleInfo.FormsCycle(ownerDefinition))
                 {
                     // Just the presence of a cycle is not a problem, but once we start getting too deep,
                     // we need to cut our losses.
