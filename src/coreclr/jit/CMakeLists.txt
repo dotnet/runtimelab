@@ -68,6 +68,7 @@ function(create_standalone_jit)
 
     find_package(LLVM REQUIRED CONFIG PATHS $ENV{LLVM_CMAKE_CONFIG})
     target_include_directories(${TARGETDETAILS_TARGET} PRIVATE ${LLVM_INCLUDE_DIRS})
+    separate_arguments(LLVM_DEFINITIONS)
     target_compile_definitions(${TARGETDETAILS_TARGET} PRIVATE ${LLVM_DEFINITIONS})
     llvm_map_components_to_libnames(llvm_libs core bitwriter)
     target_link_libraries(${TARGETDETAILS_TARGET} ${llvm_libs})
