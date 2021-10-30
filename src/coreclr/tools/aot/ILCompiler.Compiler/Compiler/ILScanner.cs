@@ -135,7 +135,7 @@ namespace ILCompiler
                 // Try to compile the method again, but with a throwing method body this time.
                 MethodIL throwingIL = TypeSystemThrowingILEmitter.EmitIL(method, ex);
                 var importer = new ILImporter(this, method, throwingIL);
-                methodCodeNodeNeedingCode.InitializeDependencies(_nodeFactory, importer.Import());
+                methodCodeNodeNeedingCode.InitializeDependencies(_nodeFactory, importer.Import(), ex);
             }
             catch (Exception ex)
             {
@@ -250,6 +250,11 @@ namespace ILCompiler
         public IInliningPolicy GetInliningPolicy()
         {
             return new ScannedInliningPolicy(_factory.CompilationModuleGroup, MarkedNodes);
+        }
+
+        public MethodImportationErrorProvider GetMethodImportationErrorProvider()
+        {
+            return new ScannedMethodImportationErrorProvider(MarkedNodes);
         }
 
         private class ScannedVTableProvider : VTableSliceProvider
@@ -465,6 +470,26 @@ namespace ILCompiler
 
                 return false;
             }
+        }
+
+        private sealed class ScannedMethodImportationErrorProvider : MethodImportationErrorProvider
+        {
+            private readonly Dictionary<MethodDesc, TypeSystemException> _importationErrors = new Dictionary<MethodDesc, TypeSystemException>();
+
+            public ScannedMethodImportationErrorProvider(ImmutableArray<DependencyNodeCore<NodeFactory>> markedNodes)
+            {
+                foreach (var markedNode in markedNodes)
+                {
+                    if (markedNode is ScannedMethodNode scannedMethod
+                        && scannedMethod.Exception != null)
+                    {
+                        _importationErrors.Add(scannedMethod.Method, scannedMethod.Exception);
+                    }
+                }
+            }
+
+            public override TypeSystemException GetCompilationError(MethodDesc method)
+                => _importationErrors.TryGetValue(method, out var exception) ? exception : null;
         }
     }
 }

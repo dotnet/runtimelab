@@ -204,7 +204,7 @@ namespace Internal.IL
                     {
                         TypeDesc catchType = (TypeDesc)_methodIL.GetObject(region.ClassToken);
                         if (catchType.IsRuntimeDeterminedSubtype)
-                            _dependencies.Add(_factory.MethodEntrypoint(_factory.TypeSystemContext.GetHelperEntryPoint("ThrowHelpers", "ThrowInvalidProgramException")), "Unsupported EH");
+                            ThrowHelper.ThrowInvalidProgramException();
                     }
                 }
             }

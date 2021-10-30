@@ -24,6 +24,7 @@ namespace ILCompiler
         private CountdownEvent _compilationCountdown;
         private readonly Dictionary<string, InstructionSet> _instructionSetMap;
         private readonly ProfileDataManager _profileDataManager;
+        private readonly MethodImportationErrorProvider _methodImportationErrorProvider;
 
         public InstructionSetSupport InstructionSetSupport { get; }
 
@@ -38,6 +39,7 @@ namespace ILCompiler
             IInliningPolicy inliningPolicy,
             InstructionSetSupport instructionSetSupport,
             ProfileDataManager profileDataManager,
+            MethodImportationErrorProvider errorProvider,
             RyuJitCompilationOptions options)
             : base(dependencyGraph, nodeFactory, roots, ilProvider, debugInformationProvider, devirtualizationManager, inliningPolicy, logger)
         {
@@ -55,6 +57,8 @@ namespace ILCompiler
             }
 
             _profileDataManager = profileDataManager;
+
+            _methodImportationErrorProvider = errorProvider;
         }
 
         public ProfileDataManager ProfileData => _profileDataManager;
@@ -157,29 +161,44 @@ namespace ILCompiler
 
         private void CompileSingleMethod(CorInfoImpl corInfo, MethodCodeNode methodCodeNodeNeedingCode)
         {
-            MethodDesc method = methodCodeNodeNeedingCode.Method;
-
             try
             {
-                corInfo.CompileMethod(methodCodeNodeNeedingCode);
-            }
-            catch (TypeSystemException ex)
-            {
-                // TODO: fail compilation if a switch was passed
+                MethodDesc method = methodCodeNodeNeedingCode.Method;
 
-                // Try to compile the method again, but with a throwing method body this time.
-                MethodIL throwingIL = TypeSystemThrowingILEmitter.EmitIL(method, ex);
-                corInfo.CompileMethod(methodCodeNodeNeedingCode, throwingIL);
+                TypeSystemException exception = _methodImportationErrorProvider.GetCompilationError(method);
 
-                if (ex is TypeSystemException.InvalidProgramException
-                    && method.OwningType is MetadataType mdOwningType
-                    && mdOwningType.HasCustomAttribute("System.Runtime.InteropServices", "ClassInterfaceAttribute"))
+                // If we previously failed to import the method, do not try to import it again and go
+                // directly to the error path.
+                if (exception == null)
                 {
-                    Logger.LogWarning("COM interop is not supported with full ahead of time compilation", 9701, method, MessageSubCategory.AotAnalysis);
+                    try
+                    {
+                        corInfo.CompileMethod(methodCodeNodeNeedingCode);
+                    }
+                    catch (TypeSystemException ex)
+                    {
+                        exception = ex;
+                    }
                 }
-                else
+
+                if (exception != null)
                 {
-                    Logger.LogWarning($"Method will always throw because: {ex.Message}", 1005, method, MessageSubCategory.AotAnalysis);
+                    // TODO: fail compilation if a switch was passed
+
+                    // Try to compile the method again, but with a throwing method body this time.
+                    MethodIL throwingIL = TypeSystemThrowingILEmitter.EmitIL(method, exception);
+                    corInfo.CompileMethod(methodCodeNodeNeedingCode, throwingIL);
+
+                    if (exception is TypeSystemException.InvalidProgramException
+                        && method.OwningType is MetadataType mdOwningType
+                        && mdOwningType.HasCustomAttribute("System.Runtime.InteropServices", "ClassInterfaceAttribute"))
+                    {
+                        Logger.LogWarning("COM interop is not supported with full ahead of time compilation", 9701, method, MessageSubCategory.AotAnalysis);
+                    }
+                    else
+                    {
+                        Logger.LogWarning($"Method will always throw because: {exception.Message}", 1005, method, MessageSubCategory.AotAnalysis);
+                    }
                 }
             }
             finally
