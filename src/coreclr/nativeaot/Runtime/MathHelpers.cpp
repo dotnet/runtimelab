@@ -77,7 +77,7 @@ EXTERN_C REDHAWK_API float REDHAWK_CALLCONV RhpFltRound(float value)
     return roundf(value);
 }
 
-#ifdef HOST_ARM
+#if defined(HOST_ARM) || defined(TARGET_WASM)
 EXTERN_C REDHAWK_API int32_t REDHAWK_CALLCONV RhpIDiv(int32_t i, int32_t j)
 {
     ASSERT(j && "Divide by zero!");
@@ -176,4 +176,4 @@ EXTERN_C REDHAWK_API double REDHAWK_CALLCONV RhpULng2Dbl(uint64_t val)
     return (double)val;
 }
 
-#endif // HOST_ARM
+#endif // defined(HOST_ARM) || defined(TARGET_WASM)

@@ -63,6 +63,10 @@ namespace Internal.JitInterface
             {
                 _this.AddOrReturnGlobalSymbol(frozenStringNode, _this._compilation.NameMangler);
             }
+            else if (node is EETypeNode eeTypeNode)
+            {
+                _this.AddOrReturnGlobalSymbol(eeTypeNode, _this._compilation.NameMangler);
+            }
         }
 
         // so the char* in cpp is terminated
@@ -92,7 +96,7 @@ namespace Internal.JitInterface
             var node = (ISymbolNode)_this.HandleToObject((IntPtr)handle);
             Utf8StringBuilder sb = new Utf8StringBuilder();
             node.AppendMangledName(_this._compilation.NameMangler, sb);
-            if (node is FrozenStringNode)
+            if (node is FrozenStringNode || node is EETypeNode)
             {
                 sb.Append("___SYMBOL");
             }

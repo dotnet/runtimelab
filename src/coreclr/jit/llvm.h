@@ -125,6 +125,8 @@ private:
     void buildCmp(genTreeOps op, GenTree* node, Value* op1, Value* op2);
     void buildCnsDouble(GenTreeDblCon* node);
     void buildCnsInt(GenTree* node);
+    void buildHelperFuncCall(GenTreeCall* call);
+    llvm::FunctionType* buildHelperLlvmFunctionType(GenTreeCall* call, bool withShadowStack);
     void buildInd(GenTree* node, Value* ptr);
     Value* buildJTrue(GenTree* node, Value* opValue);
     void buildEmptyPhi(GenTreePhi* phi);
@@ -151,7 +153,7 @@ private:
     llvm::BasicBlock* getLLVMBasicBlockForBlock(BasicBlock* block);
     Type* getLlvmTypeForCorInfoType(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd);
     Type* getLlvmTypeForStruct(CORINFO_CLASS_HANDLE structHandle);
-    Type* getLLVMTypeForVarType(var_types type);
+    Type* getLlvmTypeForVarType(var_types type);
     int getLocalOffsetAtIndex(GenTreeLclVar* lclVar);
     Value* getLocalVarAddress(GenTreeLclVar* lclVar);
     struct DebugMetadata getOrCreateDebugMetadata(const char* documentFileName);
@@ -163,6 +165,7 @@ private:
     Value* genTreeAsLlvmType(GenTree* tree, Type* type);
     unsigned getElementSize(CORINFO_CLASS_HANDLE fieldClassHandle, CorInfoType corInfoType);
     unsigned int getTotalLocalOffset();
+    bool helperRequiresShadowStack(CORINFO_METHOD_HANDLE corinfoMethodHnd);
     void importStoreInd(GenTreeStoreInd* storeIndOp);
     bool isThisArg(GenTreeCall* call, GenTree* operand);
     Value* localVar(GenTreeLclVar* lclVar);
