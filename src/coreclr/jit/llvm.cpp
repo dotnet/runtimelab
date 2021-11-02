@@ -302,6 +302,11 @@ llvm::Type* Llvm::getLlvmTypeForStruct(CORINFO_CLASS_HANDLE structHandle)
     return _llvmStructs->at(structHandle);
 }
 
+//------------------------------------------------------------------------
+// Returns the VM defined TypeDesc.GetParameterType() for the given type
+// Intended for pointers to generate the appropriate LLVM pointer type
+// E.g. "[S.P.CoreLib]Internal.Runtime.MethodTable"*
+// 
 llvm::Type* Llvm::getLlvmTypeForParameterType(CORINFO_CLASS_HANDLE classHnd)
 {
     CORINFO_CLASS_HANDLE innerParameterHandle;
@@ -1055,9 +1060,8 @@ void Llvm::fillPhis()
             auto iter = _localsMap->find({ lclNum, ssaNum });
             if (iter == _localsMap->end())
             {
-                //// Function args can be used as phi args without having seen them, and added them to _localsMap via a local.
-                //// But only for non shadow stack args with u:1
-                assert(_compiler->lvaIsParameter(lclNum) && ssaNum == 1);
+                // Arguments are implicitly defined on entry to the method.
+                assert(_compiler->lvaIsParameter(lclNum) && ssaNum == SsaConfig::FIRST_SSA_NUM);
                 LlvmArgInfo  llvmArgInfo = getLlvmArgInfoForArgIx(_sigInfo, lclNum);
                 localPhiArg = _function->getArg(llvmArgInfo.m_argIx);
             }
