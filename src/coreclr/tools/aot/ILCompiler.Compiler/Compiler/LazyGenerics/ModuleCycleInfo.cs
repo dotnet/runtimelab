@@ -148,6 +148,12 @@ namespace ILCompiler
 
             public void DetectCycle(TypeSystemEntity owner, TypeSystemEntity referent)
             {
+                // Not clear if generic recursion through fields is a thing
+                if (referent is FieldDesc)
+                {
+                    return;
+                }
+
                 var ownerType = owner as TypeDesc;
                 var ownerMethod = owner as MethodDesc;
                 var ownerDefinition = ownerType?.GetTypeDefinition() ?? (TypeSystemEntity)ownerMethod.GetTypicalMethodDefinition();

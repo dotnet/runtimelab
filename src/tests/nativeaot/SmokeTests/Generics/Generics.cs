@@ -43,6 +43,7 @@ class Program
         TestSimpleGenericRecursion.Run();
         TestGenericRecursionFromNpgsql.Run();
         TestRecursionInGenericVirtualMethods.Run();
+        TestRecursionThroughGenericLookups.Run();
 #if !CODEGEN_CPP
         TestNullableCasting.Run();
         TestVariantCasting.Run();
@@ -3005,7 +3006,7 @@ class Program
 
         class GenClass<T> { }
 
-        private static object RecurseOverStruct<T>(int count) where T: new()
+        private static object RecurseOverStruct<T>(int count) where T : new()
         {
             if (count > 0)
                 RecurseOverStruct<GenStruct<T>>(count - 1);
@@ -3111,6 +3112,35 @@ class Program
             // There is a generic recursion in the above hierarchy. This just tests that we can compile.
             // Inspired by https://github.com/dotnet/machinelearning/blob/cc5e6395e0d15e4d3db702b9cb1129e12838b840/src/Microsoft.ML.Transforms/UngroupTransform.cs#L610-L629
             s_derived.Get<object>();
+        }
+    }
+
+    class TestRecursionThroughGenericLookups
+    {
+        abstract class Handler<T>
+        {
+            public abstract void Write(object val);
+        }
+
+        class RangeHandler<T> : Handler<Gen<T>>
+        {
+            public override void Write(object val) { if (val is ArrayHandler<Gen<T>> h) h.Write(default); }
+        }
+
+        class ArrayHandler<T>
+        {
+            public virtual void Write(object val) { if (val is RangeHandler<T> h) h.Write(default); }
+        }
+
+        struct Gen<T>
+        {
+        }
+
+        public static void Run()
+        {
+            // There is a generic recursion in the above hierarchy. This just tests that we can compile.
+            new ArrayHandler<object>().Write(null);
+            new RangeHandler<object>().Write(default);
         }
     }
 }

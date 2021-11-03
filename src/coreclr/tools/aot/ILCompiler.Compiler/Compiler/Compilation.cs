@@ -317,6 +317,11 @@ namespace ILCompiler
 
         public GenericDictionaryLookup ComputeGenericLookup(MethodDesc contextMethod, ReadyToRunHelperId lookupKind, object targetOfLookup)
         {
+            if (targetOfLookup is TypeSystemEntity typeSystemEntity)
+            {
+                _nodeFactory.TypeSystemContext.DetectGenericCycles(contextMethod, typeSystemEntity);
+            }
+
             GenericContextSource contextSource;
 
             if (contextMethod.RequiresInstMethodDescArg())
