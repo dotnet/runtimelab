@@ -852,7 +852,7 @@ llvm::Value* Llvm::buildUserFuncCall(GenTreeCall* call)
     return mapGenTreeToValue(call, llvmCall);
 }
 
-llvm::FunctionType* Llvm::buildHelperLlvmFunctionType(GenTreeCall* call, bool withShadowStack)
+FunctionType* Llvm::buildHelperLlvmFunctionType(GenTreeCall* call, bool withShadowStack)
 {
     Type* retLlvmType = getLlvmTypeForVarType(call->TypeGet());
     std::vector<llvm::Type*> argVec;
@@ -910,6 +910,7 @@ void Llvm::buildHelperFuncCall(GenTreeCall* call)
         OperandArgNum* sortedData = sortedArgs.data();
         bool requiresShadowStack = helperRequiresShadowStack(call->gtCallMethHnd);
 
+        //TODO-LLVM: refactor calling code with user calls.
         for (unsigned i = 0; i < argCount; i++)
         {
             fgArgTabEntry* curArgTabEntry = argTable[i];
@@ -976,14 +977,15 @@ void Llvm::buildCall(GenTree* node)
     if (call->gtCallType == CT_HELPER)
     {
         buildHelperFuncCall(call);
-        return;
     }
     else if (call->gtCallType == CT_USER_FUNC && !call->IsVirtualStub() /* TODO: Virtual stub not implemented */)
     {
         buildUserFuncCall(call);
-        return;
     }
-    failFunctionCompilation();
+    else
+    {
+        failFunctionCompilation();
+    }
 }
 
 void Llvm::buildCast(GenTreeCast* cast)
@@ -998,14 +1000,14 @@ void Llvm::buildCast(GenTreeCast* cast)
     {
         mapGenTreeToValue(cast, _builder.CreateFPCast(getGenTreeValue(cast->CastOp()), getLlvmTypeForVarType(TYP_DOUBLE)));
     }
-    else if ((castToType == TYP_LONG || castToType == TYP_ULONG) && cast->CastOp()->TypeIs(TYP_INT, TYP_UINT))
+    else if (cast->TypeIs(TYP_LONG) && genActualTypeIsInt(cast->CastOp()))
     {
         mapGenTreeToValue(cast,
             cast->IsUnsigned()
             ? _builder.CreateZExt(getGenTreeValue(cast->CastOp()), getLlvmTypeForVarType(cast->CastToType()))
             : _builder.CreateSExt(getGenTreeValue(cast->CastOp()), getLlvmTypeForVarType(cast->CastToType())));
     }
-    else if ((castToType == TYP_INT || castToType == TYP_LONG || castToType == TYP_UINT || castToType == TYP_ULONG) && cast->CastOp()->TypeIs(TYP_FLOAT, TYP_DOUBLE))
+    else if (cast->TypeIs(TYP_INT, TYP_LONG) && cast->CastOp()->TypeIs(TYP_FLOAT, TYP_DOUBLE))
     {
         mapGenTreeToValue(cast,
             cast->IsUnsigned()
@@ -1174,7 +1176,7 @@ void Llvm::fillPhis()
 
 void Llvm::buildReturn(GenTree* node)
 {
-    switch (node->gtType)
+    switch (node->TypeGet())
     {
         case TYP_BOOL:
         case TYP_BYTE:
@@ -1260,7 +1262,7 @@ Value* Llvm::localVar(GenTreeLclVar* lclVar)
     }
 
     // implicit truncating from long to int
-    if (llvmRef->getType() == Type::getInt64Ty(_llvmContext) && getLlvmTypeForVarType(lclVar->TypeGet()) == Type::getInt32Ty(_llvmContext))
+    if (llvmRef->getType() == Type::getInt64Ty(_llvmContext) && lclVar->TypeIs(TYP_INT))
     {
         llvmRef = _builder.CreateTrunc(llvmRef, Type::getInt32Ty(_llvmContext));
     }
