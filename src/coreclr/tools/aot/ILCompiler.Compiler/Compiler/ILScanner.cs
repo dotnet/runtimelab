@@ -15,6 +15,7 @@ using Internal.TypeSystem;
 using Internal.ReadyToRunConstants;
 
 using Debug = System.Diagnostics.Debug;
+using Internal.JitInterface;
 
 namespace ILCompiler
 {
@@ -363,6 +364,7 @@ namespace ILCompiler
         {
             private HashSet<TypeDesc> _constructedTypes = new HashSet<TypeDesc>();
             private HashSet<TypeDesc> _unsealedTypes = new HashSet<TypeDesc>();
+            private HashSet<TypeDesc> _abstractButNonabstractlyOverridenTypes = new HashSet<TypeDesc>();
 
             public ScannedDevirtualizationManager(ImmutableArray<DependencyNodeCore<NodeFactory>> markedNodes)
             {
@@ -381,6 +383,10 @@ namespace ILCompiler
                             // 2. What types are the base types of other types
                             //    This is needed for optimizations. We use this information to effectively
                             //    seal types that are not base types for any other type.
+                            // 3. What abstract types got derived by non-abstract types.
+                            //    This is needed for correctness. Abstract types that were never derived
+                            //    by non-abstract types should never be devirtualized into - we probably
+                            //    didn't scan the virtual methods on them.
                             //
 
                             TypeDesc canonType = type.ConvertToCanonForm(CanonicalFormKind.Specific);
@@ -392,16 +398,22 @@ namespace ILCompiler
                             if (canonType.IsArray)
                                 _constructedTypes.Add(canonType.GetClosestDefType());
 
+                            bool hasNonAbstractTypeInHierarchy = canonType is not MetadataType mdType || !mdType.IsAbstract;
                             TypeDesc baseType = canonType.BaseType;
                             bool added = true;
                             while (baseType != null && added)
                             {
                                 baseType = baseType.ConvertToCanonForm(CanonicalFormKind.Specific);
                                 added = _unsealedTypes.Add(baseType);
+
+                                bool currentTypeIsAbstract = ((MetadataType)baseType).IsAbstract;
+                                if (currentTypeIsAbstract && hasNonAbstractTypeInHierarchy)
+                                    added |= _abstractButNonabstractlyOverridenTypes.Add(baseType);
+                                hasNonAbstractTypeInHierarchy |= !currentTypeIsAbstract;
+
                                 baseType = baseType.BaseType;
                             }
                         }
-
                     }
                 }
             }
@@ -429,6 +441,28 @@ namespace ILCompiler
 
                 // Everything else can be considered sealed.
                 return true;
+            }
+
+            protected override MethodDesc ResolveVirtualMethod(MethodDesc declMethod, DefType implType, out CORINFO_DEVIRTUALIZATION_DETAIL devirtualizationDetail)
+            {
+                MethodDesc result = base.ResolveVirtualMethod(declMethod, implType, out devirtualizationDetail);
+                if (result != null && result.IsFinal && result.OwningType is MetadataType mdType && mdType.IsAbstract)
+                {
+                    // If this type is abstract check that we saw a non-abstract type deriving from it.
+                    // We don't look at virtual methods introduced by abstract classes unless there's a non-abstract
+                    // class that needs them (i.e. the non-abstract class doesn't immediately override them).
+                    // This lets us optimize out some unused virtual method implementations.
+                    // Allowing this to devirtualize would cause trouble because we didn't scan the method
+                    // and expected it would be optimized out.
+                    if (!_abstractButNonabstractlyOverridenTypes.Contains(mdType.ConvertToCanonForm(CanonicalFormKind.Specific)))
+                    {
+                        // FAILED_BUBBLE_IMPL_NOT_REFERENCEABLE is close enough...
+                        devirtualizationDetail = CORINFO_DEVIRTUALIZATION_DETAIL.CORINFO_DEVIRTUALIZATION_FAILED_BUBBLE_IMPL_NOT_REFERENCEABLE;
+                        return null;
+                    }
+                }
+
+                return result;
             }
 
             public override bool CanConstructType(TypeDesc type) => _constructedTypes.Contains(type);
