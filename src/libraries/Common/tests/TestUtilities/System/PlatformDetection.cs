@@ -39,8 +39,10 @@ namespace System
         public static bool IsSolaris => RuntimeInformation.IsOSPlatform(OSPlatform.Create("SOLARIS"));
         public static bool IsBrowser => RuntimeInformation.IsOSPlatform(OSPlatform.Create("BROWSER"));
         public static bool IsNotBrowser => !IsBrowser;
-        public static bool IsMobile => IsBrowser || IsMacCatalyst || IsiOS || IstvOS || IsAndroid;
+        public static bool IsMobile => IsBrowser || IsAppleMobile || IsAndroid;
         public static bool IsNotMobile => !IsMobile;
+        public static bool IsAppleMobile => IsMacCatalyst || IsiOS || IstvOS;
+        public static bool IsNotAppleMobile => !IsAppleMobile;
         public static bool IsNotNetFramework => !IsNetFramework;
 
         public static bool IsArmProcess => RuntimeInformation.ProcessArchitecture == Architecture.Arm;
@@ -59,12 +61,13 @@ namespace System
 
         public static bool IsCaseInsensitiveOS => IsWindows || IsOSX || IsMacCatalyst;
         public static bool IsCaseSensitiveOS => !IsCaseInsensitiveOS;
+        public static bool IsSymLinkSupported => !IsiOS && !IstvOS;
 
         public static bool IsThreadingSupported => !IsBrowser;
         public static bool IsBinaryFormatterSupported => IsNotMobile && !IsNativeAot;
 
         public static bool IsSpeedOptimized => !IsSizeOptimized;
-        public static bool IsSizeOptimized => IsBrowser || IsAndroid || IsiOS || IstvOS || IsMacCatalyst;
+        public static bool IsSizeOptimized => IsBrowser || IsAndroid || IsAppleMobile;
 
         public static bool IsBrowserDomSupported => GetIsBrowserDomSupported();
         public static bool IsBrowserDomSupportedOrNotBrowser => IsNotBrowser || GetIsBrowserDomSupported();
@@ -131,6 +134,7 @@ namespace System
 
 #if NETCOREAPP
         public static bool IsReflectionEmitSupported => RuntimeFeature.IsDynamicCodeSupported;
+        public static bool IsNotReflectionEmitSupported => !IsReflectionEmitSupported;
 #else
         public static bool IsReflectionEmitSupported => true;
 #endif
@@ -141,7 +145,7 @@ namespace System
 
         // System.Security.Cryptography.Xml.XmlDsigXsltTransform.GetOutput() relies on XslCompiledTransform which relies
         // heavily on Reflection.Emit
-        public static bool IsXmlDsigXsltTransformSupported => !PlatformDetection.IsInAppContainer;
+        public static bool IsXmlDsigXsltTransformSupported => !PlatformDetection.IsInAppContainer && IsReflectionEmitSupported;
 
         public static bool IsPreciseGcSupported => !IsMonoRuntime;
 
