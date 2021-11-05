@@ -15,7 +15,6 @@ if(CLR_CMAKE_TARGET_UNIX)
 
     if (CLR_CMAKE_TARGET_UNIX_WASM)
         message("including ICU")
-
         # add ICU support to emscripten and workaround https://github.com/emscripten-core/emscripten/issues/9302
         # ucol_setVariableTop is deprecated so disable warnings
         # emscripten ICU source has __xxxx variables so suppress reserved identifiers.
