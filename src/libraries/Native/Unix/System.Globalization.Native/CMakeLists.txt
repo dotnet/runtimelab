@@ -16,11 +16,10 @@ if(CLR_CMAKE_TARGET_UNIX)
     if (CLR_CMAKE_TARGET_UNIX_WASM)
         message("including ICU")
 
-        add_compile_options(-Wno-reserved-identifier)
-
         # add ICU support to emscripten and workaround https://github.com/emscripten-core/emscripten/issues/9302
         # ucol_setVariableTop is deprecated so disable warnings
-        add_compile_options(-s USE_ICU=1 -I$ENV{EMSDK}/upstream/emscripten/cache/ports/icu/icu/source/i18n -Wno-deprecated-declarations)
+        # emscripten ICU source has __xxxx variables so suppress reserved identifiers.
+        add_compile_options(-s USE_ICU=1 -I$ENV{EMSDK}/upstream/emscripten/cache/ports/icu/icu/source/i18n -Wno-deprecated-declarations -Wno-reserved-identifier)
     elseif (NOT CLR_CMAKE_TARGET_ANDROID)
         if (CLR_CMAKE_TARGET_OSX OR CLR_CMAKE_TARGET_MACCATALYST)
             execute_process(COMMAND  brew --prefix OUTPUT_VARIABLE brew_prefix OUTPUT_STRIP_TRAILING_WHITESPACE)
