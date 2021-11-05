@@ -15,6 +15,9 @@ if(CLR_CMAKE_TARGET_UNIX)
 
     if (CLR_CMAKE_TARGET_UNIX_WASM)
         message("including ICU")
+
+        add_compile_options(-Wno-reserved-identifier)
+
         # add ICU support to emscripten and workaround https://github.com/emscripten-core/emscripten/issues/9302
         # ucol_setVariableTop is deprecated so disable warnings
         add_compile_options(-s USE_ICU=1 -I$ENV{EMSDK}/upstream/emscripten/cache/ports/icu/icu/source/i18n -Wno-deprecated-declarations)
