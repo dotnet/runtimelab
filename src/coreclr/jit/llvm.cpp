@@ -35,7 +35,9 @@ static const char* (*_getDocumentFileName)(void*);
 static const uint32_t (*_firstSequencePointLineNumber)(void*);
 static const uint32_t (*_getOffsetLineNumber)(void*, unsigned int ilOffset);
 static const uint32_t(*_structIsWrappedPrimitive)(void*, CORINFO_CLASS_STRUCT_*, CorInfoType);
-static const uint32_t(*_padOffset)(void*, CORINFO_CLASS_STRUCT_*, unsigned atOffset);
+static const uint32_t(*_padOffset)(void*, CORINFO_CLASS_STRUCT_*, unsigned);
+static const CorInfoTypeWithMod(*_getArgTypeIncludingParameterized)(void*, CORINFO_SIG_INFO*, CORINFO_ARG_LIST_HANDLE, CORINFO_CLASS_HANDLE*);
+static const CorInfoTypeWithMod(*_getParameterType)(void*, CORINFO_CLASS_HANDLE, CORINFO_CLASS_HANDLE*);
 
 static char*                              _outputFileName;
 static Function*                          _doNothingFunction;
@@ -55,7 +57,9 @@ extern "C" DLLEXPORT void registerLlvmCallbacks(void*       thisPtr,
                                                 const uint32_t (*firstSequencePointLineNumber)(void*),
                                                 const uint32_t (*getOffsetLineNumber)(void*, unsigned int),
                                                 const uint32_t(*structIsWrappedPrimitive)(void*, CORINFO_CLASS_STRUCT_*, CorInfoType),
-                                                const uint32_t(*padOffset)(void*, CORINFO_CLASS_STRUCT_*, unsigned atOffset))
+                                                const uint32_t(*padOffset)(void*, CORINFO_CLASS_STRUCT_*, unsigned),
+                                                const CorInfoTypeWithMod(*getArgTypeIncludingParameterized)(void*, CORINFO_SIG_INFO*, CORINFO_ARG_LIST_HANDLE, CORINFO_CLASS_HANDLE*),
+                                                const CorInfoTypeWithMod(*getParameterType)(void*, CORINFO_CLASS_HANDLE, CORINFO_CLASS_HANDLE*))
 {
     _thisPtr = thisPtr;
     _getMangledMethodName         = getMangledMethodNamePtr;
@@ -66,7 +70,9 @@ extern "C" DLLEXPORT void registerLlvmCallbacks(void*       thisPtr,
     _firstSequencePointLineNumber = firstSequencePointLineNumber;
     _getOffsetLineNumber          = getOffsetLineNumber;
     _structIsWrappedPrimitive     = structIsWrappedPrimitive;
-    _padOffset                    = padOffset;
+    _padOffset = padOffset;
+    _getArgTypeIncludingParameterized = getArgTypeIncludingParameterized;
+    _getParameterType = getParameterType;
 
     if (_module == nullptr) // registerLlvmCallbacks is called for each method to compile, but must only created the module once.  Better perhaps to split this into 2 calls.
     {
@@ -296,8 +302,25 @@ llvm::Type* Llvm::getLlvmTypeForStruct(CORINFO_CLASS_HANDLE structHandle)
     return _llvmStructs->at(structHandle);
 }
 
+//------------------------------------------------------------------------
+// Returns the VM defined TypeDesc.GetParameterType() for the given type
+// Intended for pointers to generate the appropriate LLVM pointer type
+// E.g. "[S.P.CoreLib]Internal.Runtime.MethodTable"*
+// 
+llvm::Type* Llvm::getLlvmTypeForParameterType(CORINFO_CLASS_HANDLE classHnd)
+{
+    CORINFO_CLASS_HANDLE innerParameterHandle;
+    CorInfoType parameterCorInfoType = strip(_getParameterType(_thisPtr, classHnd, &innerParameterHandle));
+    if (parameterCorInfoType == CorInfoType::CORINFO_TYPE_VOID)
+    {
+        return Type::getInt8Ty(_llvmContext); // LLVM doesn't allow void*
+    }
+    return getLlvmTypeForCorInfoType(parameterCorInfoType, innerParameterHandle);
+}
+
 // Copy of logic from ILImporter.GetLLVMTypeForTypeDesc
-llvm::Type* Llvm::getLlvmTypeForCorInfoType(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd) {
+llvm::Type* Llvm::getLlvmTypeForCorInfoType(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd)
+{
     switch (corInfoType)
     {
         case CorInfoType::CORINFO_TYPE_VOID:
@@ -322,6 +345,16 @@ llvm::Type* Llvm::getLlvmTypeForCorInfoType(CorInfoType corInfoType, CORINFO_CLA
 
         case CorInfoType::CORINFO_TYPE_DOUBLE:
             return Type::getDoubleTy(_llvmContext);
+
+        case CorInfoType::CORINFO_TYPE_PTR:
+        {
+            if (classHnd == NO_CLASS_HANDLE)
+            {
+                return Type::getInt8Ty(_llvmContext)->getPointerTo();
+            }
+
+            return getLlvmTypeForParameterType(classHnd)->getPointerTo();
+        }
 
         case CorInfoType::CORINFO_TYPE_BYREF:
         case CorInfoType::CORINFO_TYPE_CLASS:
@@ -456,7 +489,7 @@ bool Llvm::needsReturnStackSlot(CorInfoType corInfoType, CORINFO_CLASS_HANDLE cl
 
 CorInfoType Llvm::getCorInfoTypeForArg(CORINFO_SIG_INFO& sigInfo, CORINFO_ARG_LIST_HANDLE& arg, CORINFO_CLASS_HANDLE* clsHnd)
 {
-    CorInfoTypeWithMod   corTypeWithMod = _info.compCompHnd->getArgType(&sigInfo, arg, clsHnd);
+    CorInfoTypeWithMod corTypeWithMod = _getArgTypeIncludingParameterized(_thisPtr, &sigInfo, arg, clsHnd);
     return strip(corTypeWithMod);
 }
 
@@ -476,7 +509,7 @@ FunctionType* Llvm::getFunctionTypeForSigInfo(CORINFO_SIG_INFO& sigInfo)
     }
     else
     {
-        retLlvmType   = getLlvmTypeForCorInfoType(sigInfo.retType, sigInfo.retTypeClass);
+        retLlvmType = getLlvmTypeForCorInfoType(sigInfo.retType, sigInfo.retTypeClass);
     }
 
     CORINFO_ARG_LIST_HANDLE  sigArgs = sigInfo.args;
@@ -1023,7 +1056,20 @@ void Llvm::fillPhis()
             unsigned       lclNum = phiArg->GetLclNum();
             unsigned       ssaNum = phiArg->GetSsaNum();
 
-            Value* localPhiArg = _localsMap->at({ lclNum, ssaNum });
+            Value* localPhiArg = nullptr;
+            auto iter = _localsMap->find({ lclNum, ssaNum });
+            if (iter == _localsMap->end())
+            {
+                // Arguments are implicitly defined on entry to the method.
+                assert(_compiler->lvaIsParameter(lclNum) && ssaNum == SsaConfig::FIRST_SSA_NUM);
+                LlvmArgInfo  llvmArgInfo = getLlvmArgInfoForArgIx(_sigInfo, lclNum);
+                localPhiArg = _function->getArg(llvmArgInfo.m_argIx);
+            }
+            else
+            {
+                localPhiArg = iter->second;
+            }
+
             Value* phiRealArgValue;
             llvm::Instruction* castRequired = getCast(localPhiArg, llvmPhiNode->getType());
             if (castRequired != nullptr)
@@ -1669,6 +1715,17 @@ void Llvm::Compile()
     {
         _function = Function::Create(getFunctionTypeForSigInfo(_sigInfo), Function::ExternalLinkage, 0U, mangledName,
             _module); // TODO: ExternalLinkage forced as linked from old module
+    }
+
+    // mono does this via Javascript (pal_random.js), but prefer not to introduce that dependency as it limits the ability to run out of the browser.
+    // Copy the temporary workaround from the IL->LLVM generator for now.
+    if (!strcmp(mangledName, "S_P_CoreLib_Interop__GetRandomBytes"))
+    {
+        // this would normally fill the buffer parameter, but we'll just leave the buffer as is and that will be our "random" data for now
+        llvm::BasicBlock* llvmBlock = llvm::BasicBlock::Create(_llvmContext, "", _function);
+        _builder.SetInsertPoint(llvmBlock);
+        _builder.CreateRetVoid();
+        return;
     }
 
     if (_compiler->opts.compDbgInfo)
