@@ -140,7 +140,12 @@ namespace ILCompiler.DependencyAnalysis
 
             foreach (var module in sortedModules)
             {
-                builder.EmitPointerReloc(factory.MethodEntrypoint(module.GetGlobalModuleType().GetStaticConstructor()));
+                var entryPoint = factory.MethodEntrypoint(module.GetGlobalModuleType().GetStaticConstructor());
+
+                if (factory.Target.SupportsRelativePointers)
+                    builder.EmitReloc(entryPoint, RelocType.IMAGE_REL_BASED_RELPTR32);
+                else
+                    builder.EmitPointerReloc(entryPoint);
             }
 
             var result = builder.ToObjectData();

@@ -218,12 +218,25 @@ namespace Internal.Runtime.CompilerHelpers
                 IntPtr moduleInitializerSection = RuntimeImports.RhGetModuleSection(typeManager, ReadyToRunSectionType.ModuleInitializerList, out int length);
                 if (moduleInitializerSection != IntPtr.Zero)
                 {
-                    Debug.Assert(length % IntPtr.Size == 0);
-                    var currentCctor = (delegate*<void>*)moduleInitializerSection;
-                    var cctorsEnd = (void*)(moduleInitializerSection + length);
-                    while (currentCctor < cctorsEnd)
+                    var current = (byte*)moduleInitializerSection;
+                    var end = current + length;
+                    while (current < end)
                     {
-                        (*currentCctor++)();
+                        void* cctor;
+
+                        if (Internal.Runtime.MethodTable.SupportsRelativePointers)
+                        {
+                            int* pRelPtr32 = (int*)current;
+                            cctor = (byte*)pRelPtr32 + *pRelPtr32;
+                            current += sizeof(int);
+                        }
+                        else
+                        {
+                            cctor = *(void**)current;
+                            current += sizeof(void*);
+                        }
+
+                        ((delegate*<void>)cctor)();
                     }
                 }
             }
