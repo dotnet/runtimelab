@@ -5,13 +5,13 @@ git clone https://github.com/emscripten-core/emsdk.git
 
 cd emsdk
 rem Checkout a known good version to avoid a random break when emscripten changes the top of tree.
-git checkout 5ad9d72
+git checkout 044d620
 
 powershell -NoProfile -NoLogo -ExecutionPolicy ByPass -command "& """%~dp0update-machine-certs.ps1""" %*"
 
-call python emsdk.py install 2.0.12
+call python emsdk.py install 2.0.33
 if %errorlevel% NEQ 0 goto fail
-call emsdk activate 2.0.12
+call emsdk activate 2.0.33
 if %errorlevel% NEQ 0 goto fail
 
 rem We key off of this variable in the common/build.ps1 script.

@@ -84,6 +84,10 @@ if not "%__ConfigureOnly%" == "1" (
 )
 
 if /i "%__UseEmcmake%" == "1" (
+    REM workaround for https://github.com/emscripten-core/emscripten/issues/15440 - emscripten cache lock problems
+    REM build the ports for ICU and ZLIB upfront
+    embuilder build icu zlib
+
     REM Add call in front of emcmake as for some not understood reason, perhaps to do with scopes, by calling emcmake (or any batch script),
     REM delayed expansion is getting turned off. TODO: remove this and see if CI is ok and hence its just my machine.
     call emcmake "%CMakePath%" %__ExtraCmakeParams% --no-warn-unused-cli -G "%__CmakeGenerator%" -B %__IntermediatesDir% -S %__SourceDir% 
