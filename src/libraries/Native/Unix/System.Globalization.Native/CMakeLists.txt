@@ -18,6 +18,8 @@ if(CLR_CMAKE_TARGET_UNIX)
         # add ICU support to emscripten and workaround https://github.com/emscripten-core/emscripten/issues/9302
         # ucol_setVariableTop is deprecated so disable warnings
         # emscripten ICU source has __xxxx variables so suppress reserved identifiers.
+        # TODO-LLVM: remove these suppresession when https://github.com/dotnet/runtime/commit/2265a61565e20fc26ca8ec0632eb14268b99158e is merged
+        # and when emscripten ICU is updated.
         add_compile_options(-s USE_ICU=1 -I$ENV{EMSDK}/upstream/emscripten/cache/ports/icu/icu/source/i18n -Wno-deprecated-declarations -Wno-reserved-identifier -Wno-unused-but-set-variable)
     elseif (NOT CLR_CMAKE_TARGET_ANDROID)
         if (CLR_CMAKE_TARGET_OSX OR CLR_CMAKE_TARGET_MACCATALYST)
