@@ -67,7 +67,7 @@ namespace Internal.Runtime.CompilerHelpers
             // the first class constructor to prevent them calling into another uninitialized module
             for (int i = 0; i < modules.Length; i++)
             {
-                InitializeEagerClassConstructorsForModule(modules[i]);
+                RunInitializers(modules[i], ReadyToRunSectionType.EagerCctor);
             }
         }
 
@@ -185,60 +185,22 @@ namespace Internal.Runtime.CompilerHelpers
             }
         }
 
-        private static unsafe void InitializeEagerClassConstructorsForModule(TypeManagerHandle typeManager)
-        {
-            int length;
-
-            // Run eager class constructors if any are present
-            IntPtr eagerClassConstructorSection = RuntimeImports.RhGetModuleSection(typeManager, ReadyToRunSectionType.EagerCctor, out length);
-            if (eagerClassConstructorSection != IntPtr.Zero)
-            {
-                Debug.Assert(length % IntPtr.Size == 0);
-                RunEagerClassConstructors(eagerClassConstructorSection, length);
-            }
-        }
-
-        private static unsafe void RunEagerClassConstructors(IntPtr cctorTableStart, int length)
-        {
-            IntPtr cctorTableEnd = (IntPtr)((byte*)cctorTableStart + length);
-
-            for (IntPtr* tab = (IntPtr*)cctorTableStart; tab < (IntPtr*)cctorTableEnd; tab++)
-            {
-                ((delegate*<void>)*tab)();
-            }
-        }
-
-        internal static unsafe void RunModuleInitializers()
+        internal static void RunModuleInitializers()
         {
             for (int i = 0; i < s_moduleCount; i++)
             {
-                TypeManagerHandle typeManager = s_modules[i];
+                RunInitializers(s_modules[i], ReadyToRunSectionType.ModuleInitializerList);
+            }
+        }
 
-                // Run module initializers if any are present
-                IntPtr moduleInitializerSection = RuntimeImports.RhGetModuleSection(typeManager, ReadyToRunSectionType.ModuleInitializerList, out int length);
-                if (moduleInitializerSection != IntPtr.Zero)
-                {
-                    var current = (byte*)moduleInitializerSection;
-                    var end = current + length;
-                    while (current < end)
-                    {
-                        void* cctor;
-
-                        if (Internal.Runtime.MethodTable.SupportsRelativePointers)
-                        {
-                            int* pRelPtr32 = (int*)current;
-                            cctor = (byte*)pRelPtr32 + *pRelPtr32;
-                            current += sizeof(int);
-                        }
-                        else
-                        {
-                            cctor = *(void**)current;
-                            current += sizeof(void*);
-                        }
-
-                        ((delegate*<void>)cctor)();
-                    }
-                }
+        private static unsafe void RunInitializers(TypeManagerHandle typeManager, ReadyToRunSectionType section)
+        {
+            var initializers = (delegate*<void>*)RuntimeImports.RhGetModuleSection(typeManager, section, out int length);
+            Debug.Assert(length % IntPtr.Size == 0);
+            int count = length / IntPtr.Size;
+            for (int i = 0; i < count; i++)
+            {
+                initializers[i]();
             }
         }
 
