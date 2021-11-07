@@ -406,7 +406,7 @@ for /f "delims=" %%a in ("-%__RequestedBuildComponents%-") do (
 
         if not defined LLVM_CMAKE_CONFIG (
             echo %__ErrMsgPrefix%%__MsgPrefix%Error: The LLVM_CMAKE_CONFIG environment variable pointing to llvm-build-dir/lib/cmake/llvm must be set.
-            exit /B 1
+            goto ExitWithError
         )
     )
     if not "!string:-alljits-=!"=="!string!" (
@@ -427,7 +427,7 @@ for /f "delims=" %%a in ("-%__RequestedBuildComponents%-") do (
         if "%__BuildArch%"=="wasm" (
             if not defined EMSDK (
                 echo %__ErrMsgPrefix%%__MsgPrefix%Error: The EMSDK environment variable pointing to emsdk root must be set.
-                exit /B 1
+                goto ExitWithError
             )
         )
     )

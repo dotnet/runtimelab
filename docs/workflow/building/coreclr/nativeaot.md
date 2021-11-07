@@ -16,6 +16,7 @@ The Native AOT toolchain can be currently built for Linux, macOS and Windows x64
 - This branch contains a version of the WebAssembly compiler that creates LLVM from the clrjit to take advantage of RyuJit's optimizations specific to managed code, and its compiler infrastructure. It goes from RyuJIT IR -> LLVM instead of the older CoreRT way of CIL -> LLVM.
 - The work is of highly experimental nature. Bugs and not-yet-or-ever-to-be-implemented features are to be expected.
 - The build supporting a developer workflow currently only exists on Windows.
+- Do not attempt to build with the emscripten debug environment variable set.  I.e do not `set EMCC_DEBUG=1` as the extra output will confuse the scripts.
 
 There are two kinds of binary artifacts produced by the build and needed for development: the runtime libraries and the cross-targeting compilers, ILC and RyuJit. They are built differently and separately.
 
@@ -36,6 +37,15 @@ With the above binaries built, the ILC can be run and debugged as normal. The ru
 
 Working on the Jit itself, one possible workflow is taking advantage of the generated VS project:
 - Open the Ilc solution and add the aforementioned Jit project, `clrjit_browser_wasm32_x64.vcxproj`. Then in the project properties, General section, change the output folder to the full path for `artifacts\bin\coreclr\windows.x64.Debug\ilc` e.g. `E:\GitHub\runtimelab\artifacts\bin\coreclr\windows.x64.Debug\ilc`. Build `clrjit_browser_wasm32_x64` project and you should now be able to change and put breakpoints in the C++ code.
+
+It is also possible to publish an ordinary console project for Wasm using packages produced by the build: `build nativeaot.packages && build nativeaot.packages -a wasm -os Browser`, assuming all the binaries mentioned above have been built (note that the order is important - the build always produces an architecture-independent package that has a dependency on an architecture-dependent one, and we want that architecture-dependent package to be built for Wasm). Add the `path-to-repo/artifacts/packages/[Debug|Release]/Shipping` directory to your project's `NuGet.Config`, and the following two references to the project file itself:
+```xml
+<ItemGroup>
+  <PackageReference Include="Microsoft.DotNet.ILCompiler.LLVM" Version="7.0.0-dev" />
+  <PackageReference Include="runtime.win-x64.Microsoft.DotNet.ILCompiler.LLVM" Version="7.0.0-dev" />
+</ItemGroup>
+```
+You should now be able to publish the project for Wasm: `dotnet publish --self-contained -r browser-wasm /p:MSBuildEnableWorkloadResolver=false`. This produces `YourApp.html` and `YourApp.js` files under `bin\<Config>\<TFM>\browser-wasm\native`. The former can be opened in the browser, the latter - run via NodeJS.
 
 ## Visual Studio Solutions
 

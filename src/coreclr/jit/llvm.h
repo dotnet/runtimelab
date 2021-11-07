@@ -76,7 +76,9 @@ extern "C" void registerLlvmCallbacks(void*       thisPtr,
                                       const uint32_t (*firstSequencePointLineNumber)(void*),
                                       const uint32_t (*getOffsetLineNumber)(void*, unsigned int),
                                       const uint32_t(*structIsWrappedPrimitive)(void*, CORINFO_CLASS_STRUCT_*, CorInfoType),
-                                      const uint32_t(*padOffset)(void*, CORINFO_CLASS_STRUCT_*, unsigned atOffset));
+                                      const uint32_t(*padOffset)(void*, CORINFO_CLASS_STRUCT_*, unsigned),
+                                      const CorInfoTypeWithMod(*_getArgTypeIncludingParameterized)(void*, CORINFO_SIG_INFO*, CORINFO_ARG_LIST_HANDLE, CORINFO_CLASS_HANDLE*),
+                                      const CorInfoTypeWithMod(*_getParameterType)(void*, CORINFO_CLASS_HANDLE, CORINFO_CLASS_HANDLE*));
 
 struct PhiPair
 {
@@ -152,6 +154,7 @@ private:
     LlvmArgInfo getLlvmArgInfoForArgIx(CORINFO_SIG_INFO& sigInfo, unsigned int lclNum);
     llvm::BasicBlock* getLLVMBasicBlockForBlock(BasicBlock* block);
     Type* getLlvmTypeForCorInfoType(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd);
+    Type* getLlvmTypeForParameterType(CORINFO_CLASS_HANDLE classHnd);
     Type* getLlvmTypeForStruct(CORINFO_CLASS_HANDLE structHandle);
     Type* getLlvmTypeForVarType(var_types type);
     int getLocalOffsetAtIndex(GenTreeLclVar* lclVar);
