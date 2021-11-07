@@ -1035,10 +1035,13 @@ void Llvm::buildCast(GenTreeCast* cast)
     }
     else if (cast->TypeIs(TYP_LONG) && genActualTypeIsInt(cast->CastOp()))
     {
+        // Cast pointer to int if necessary.  TODO-LLVM: candidate for lowering?
+        Value* sourceValue = castIfNecessary(getGenTreeValue(cast->CastOp()), getLlvmTypeForVarType(cast->CastOp()->TypeGet()));
+
         mapGenTreeToValue(cast,
             cast->IsUnsigned()
-            ? _builder.CreateZExt(getGenTreeValue(cast->CastOp()), getLlvmTypeForVarType(cast->CastToType()))
-            : _builder.CreateSExt(getGenTreeValue(cast->CastOp()), getLlvmTypeForVarType(cast->CastToType())));
+            ? _builder.CreateZExt(sourceValue, getLlvmTypeForVarType(cast->CastToType()))
+            : _builder.CreateSExt(sourceValue, getLlvmTypeForVarType(cast->CastToType())));
     }
     else if (cast->TypeIs(TYP_INT, TYP_LONG) && cast->CastOp()->TypeIs(TYP_FLOAT, TYP_DOUBLE))
     {
