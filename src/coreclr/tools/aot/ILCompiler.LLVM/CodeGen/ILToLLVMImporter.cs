@@ -1494,7 +1494,7 @@ namespace Internal.IL
                     return true;
                 }
             }
-            else if (type is PointerType)
+            else if (type is PointerType || type is FunctionPointerType)
             {
                 return true;
             }

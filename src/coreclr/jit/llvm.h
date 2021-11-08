@@ -132,6 +132,9 @@ private:
     void buildInd(GenTree* node, Value* ptr);
     Value* buildJTrue(GenTree* node, Value* opValue);
     void buildEmptyPhi(GenTreePhi* phi);
+    void buildUnaryOperation(genTreeOps oper, GenTree* node, Value* op1);
+    void buildBinaryOperation(genTreeOps oper, GenTree* node, Value* op1, Value* op2);
+    void buildShift(genTreeOps oper, GenTree* node, Value* op1, Value* op2);
     void buildReturn(GenTree* node);
     void buildReturnRef(GenTreeOp* node);
     Value* buildUserFuncCall(GenTreeCall* call);
