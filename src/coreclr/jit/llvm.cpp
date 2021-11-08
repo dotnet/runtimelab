@@ -1213,7 +1213,6 @@ void Llvm::fillPhis()
                 localPhiArg = iter->second;
             }
 
-
             Value* phiRealArgValue;
             llvm::Instruction* castRequired = getCast(localPhiArg, llvmPhiNode->getType());
             if (castRequired != nullptr)
