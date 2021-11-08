@@ -51,6 +51,7 @@ namespace ILCompiler
             Options = options;
             DIBuilder = Module.CreateDIBuilder();
             DebugMetadataMap = new Dictionary<string, DebugMetadata>();
+            ILImporter.Context = Module.Context;
         }
 
         private static IEnumerable<ICompilationRootProvider> GetCompilationRoots(IEnumerable<ICompilationRootProvider> existingRoots, NodeFactory factory)

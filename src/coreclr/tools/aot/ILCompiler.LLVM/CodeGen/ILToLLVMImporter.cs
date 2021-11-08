@@ -41,7 +41,7 @@ namespace Internal.IL
         }
 
         public LLVMModuleRef Module { get; }
-        public static LLVMContextRef Context { get; private set; }
+        internal static LLVMContextRef Context { get; set; }
         private static Dictionary<TypeDesc, LLVMTypeRef> LlvmStructs { get; } = new Dictionary<TypeDesc, LLVMTypeRef>();
         private readonly MethodDesc _method;
         private readonly MethodIL _methodIL;
@@ -168,7 +168,6 @@ namespace Internal.IL
 
             _debugInformation = _compilation.GetDebugInfo(_methodIL);
 
-            Context = Module.Context;
             _builder = Context.CreateBuilder();
         }
 

@@ -413,7 +413,7 @@ CorInfoType Llvm::toCorInfoType(var_types varType)
 
 CORINFO_CLASS_HANDLE Llvm::tryGetStructClassHandle(LclVarDsc* varDsc)
 {
-    return toCorInfoType(varDsc->TypeGet()) == CorInfoType::CORINFO_TYPE_VALUECLASS ? varDsc->GetStructHnd() : nullptr;
+    return varTypeIsStruct(varDsc) ? varDsc->GetStructHnd() : NO_CLASS_HANDLE;;
 }
 
 unsigned int Llvm::padOffset(CorInfoType corInfoType, CORINFO_CLASS_HANDLE structClassHandle, unsigned int atOffset)
@@ -534,12 +534,17 @@ FunctionType* Llvm::getFunctionTypeForSigInfo(CORINFO_SIG_INFO& sigInfo)
     return FunctionType::get(retLlvmType, ArrayRef<Type*>(argVec), false);
 }
 
-Value* getOrCreateExternalSymbol(const char* symbolName)
+Value* getOrCreateExternalSymbol(const char* symbolName, Type* symbolType = nullptr)
 {
+    if (symbolType == nullptr)
+    {
+        symbolType = Type::getInt32PtrTy(_llvmContext);
+    }
+
     Value* symbol = _module->getGlobalVariable(symbolName);
     if (symbol == nullptr)
     {
-        symbol = new llvm::GlobalVariable(*_module, Type::getInt32PtrTy(_llvmContext), true, llvm::GlobalValue::LinkageTypes::ExternalLinkage, (llvm::Constant*)nullptr, symbolName);
+        symbol = new llvm::GlobalVariable(*_module, symbolType, true, llvm::GlobalValue::LinkageTypes::ExternalLinkage, (llvm::Constant*)nullptr, symbolName);
     }
     return symbol;
 }
@@ -554,7 +559,7 @@ Function* getOrCreateRhpAssignRef()
     return llvmFunc;
 }
 
-Type* Llvm::getLLVMTypeForVarType(var_types type)
+Type* Llvm::getLlvmTypeForVarType(var_types type)
 {
     // TODO: Fill out with missing type mappings and when all code done via clrjit, default should fail with useful
     // message
@@ -568,7 +573,11 @@ Type* Llvm::getLLVMTypeForVarType(var_types type)
         case TYP_USHORT:
             return Type::getInt16Ty(_llvmContext);
         case TYP_INT:
+        case TYP_UINT:
             return Type::getInt32Ty(_llvmContext);
+        case TYP_LONG:
+        case TYP_ULONG:
+            return Type::getInt64Ty(_llvmContext);
         case var_types::TYP_FLOAT:
             return Type::getFloatTy(_llvmContext);
         case var_types::TYP_DOUBLE:
@@ -605,6 +614,8 @@ llvm::Instruction* Llvm::getCast(llvm::Value* source, Type* targetType)
     {
         switch (sourceTypeID)
         {
+            case Type::TypeID::PointerTyID:
+                return new llvm::PtrToIntInst(source, targetType, "CastPtrToInt");
             case Type::TypeID::IntegerTyID:
                 if (sourceType->getPrimitiveSizeInBits() > targetType->getPrimitiveSizeInBits())
                 {
@@ -640,7 +651,7 @@ void Llvm::castingStore(Value* toStore, Value* address, llvm::Type* llvmType)
 
 void Llvm::castingStore(Value* toStore, Value* address, var_types type)
 {
-    castingStore(toStore, address, getLLVMTypeForVarType(type));
+    castingStore(toStore, address, getLlvmTypeForVarType(type));
 }
 
 /// <summary>
@@ -874,52 +885,170 @@ llvm::Value* Llvm::buildUserFuncCall(GenTreeCall* call)
     return mapGenTreeToValue(call, llvmCall);
 }
 
+FunctionType* Llvm::buildHelperLlvmFunctionType(GenTreeCall* call, bool withShadowStack)
+{
+    Type* retLlvmType = getLlvmTypeForVarType(call->TypeGet());
+    std::vector<llvm::Type*> argVec;
+
+    if (withShadowStack)
+    {
+        argVec.push_back(Type::getInt8PtrTy(_llvmContext));
+    }
+
+    for (GenTreeCall::Use& use : call->Args())
+    {
+        Type* argLlvmType = getLlvmTypeForVarType(use.GetNode()->TypeGet());
+        argVec.push_back(argLlvmType);
+    }
+
+    return FunctionType::get(retLlvmType, ArrayRef<llvm::Type*>(argVec), false);
+}
+
+bool Llvm::helperRequiresShadowStack(CORINFO_METHOD_HANDLE corinfoMethodHnd)
+{
+    return corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_TYPEHANDLE_TO_RUNTIMETYPEHANDLE);
+}
+
+void Llvm::buildHelperFuncCall(GenTreeCall* call)
+{
+    if (call->gtCallMethHnd == _compiler->eeFindHelper(CORINFO_HELP_READYTORUN_GENERIC_HANDLE) ||
+        call->gtCallMethHnd == _compiler->eeFindHelper(CORINFO_HELP_READYTORUN_GENERIC_STATIC_BASE) ||
+        call->gtCallMethHnd == _compiler->eeFindHelper(CORINFO_HELP_READYTORUN_DELEGATE_CTOR))
+    {
+        // TODO-LLVM
+        failFunctionCompilation();
+    }
+
+    if (call->gtCallMethHnd == _compiler->eeFindHelper(CORINFO_HELP_READYTORUN_STATIC_BASE))
+    {
+        const char* symbolName = (*_getMangledSymbolName)(_thisPtr, call->gtEntryPoint.handle);
+        Function* llvmFunc = _module->getFunction(symbolName);
+        if (llvmFunc == nullptr)
+        {
+            llvmFunc = Function::Create(buildHelperLlvmFunctionType(call, true), Function::ExternalLinkage, 0U, symbolName, _module); // TODO: ExternalLinkage forced as defined in ILC module
+        }
+
+        // replacement for _info.compCompHnd->recordRelocation(nullptr, gtCall->gtEntryPoint.handle, IMAGE_REL_BASED_REL32);
+        (*_addCodeReloc)(_thisPtr, call->gtEntryPoint.handle);
+
+        mapGenTreeToValue(call, _builder.CreateCall(llvmFunc, getShadowStackForCallee()));
+        return;
+    }
+    else
+    {
+        fgArgInfo* argInfo = call->fgArgInfo;
+        unsigned int argCount = argInfo->ArgCount();
+        fgArgTabEntry** argTable = argInfo->ArgTable();
+        std::vector<OperandArgNum> sortedArgs = std::vector<OperandArgNum>(argCount);
+        OperandArgNum* sortedData = sortedArgs.data();
+        bool requiresShadowStack = helperRequiresShadowStack(call->gtCallMethHnd);
+
+        //TODO-LLVM: refactor calling code with user calls.
+        for (unsigned i = 0; i < argCount; i++)
+        {
+            fgArgTabEntry* curArgTabEntry = argTable[i];
+            unsigned int   argNum = curArgTabEntry->argNum;
+            OperandArgNum  opAndArg = { argNum, curArgTabEntry->GetNode() };
+            sortedData[argNum] = opAndArg;
+        }
+
+        void* pAddr = nullptr;
+
+        CorInfoHelpFunc helperNum = _compiler->eeGetHelperNum(call->gtCallMethHnd);
+        void* addr = _compiler->compGetHelperFtn(helperNum, &pAddr);
+        const char* symbolName = (*_getMangledSymbolName)(_thisPtr, addr);
+        Function* llvmFunc = _module->getFunction(symbolName);
+        if (llvmFunc == nullptr)
+        {
+            llvmFunc = Function::Create(buildHelperLlvmFunctionType(call, requiresShadowStack), Function::ExternalLinkage, 0U, symbolName, _module);
+        }
+
+        (*_addCodeReloc)(_thisPtr, addr);
+
+        std::vector<llvm::Value*> argVec;
+        unsigned argIx = 0;
+
+        Value* shadowStackForCallee = getShadowStackForCallee();
+        if (requiresShadowStack)
+        {
+            argVec.push_back(shadowStackForCallee);
+            argIx++;
+        }
+        else
+        {
+            // we may come back into managed from the unmanaged call so store the shadowstack
+            _builder.CreateStore(shadowStackForCallee, getOrCreateExternalSymbol("t_pShadowStackTop", Type::getInt8PtrTy(_llvmContext)));
+        }
+
+        for (OperandArgNum opAndArg : sortedArgs)
+        {
+            if ((opAndArg.operand->gtOper == GT_CNS_INT) && opAndArg.operand->IsIconHandle())
+            {
+                void* iconValue = (void*)(opAndArg.operand->AsIntCon()->IconValue());
+                const char* methodTableName = (*_getMangledSymbolName)(_thisPtr, iconValue);
+                (*_addCodeReloc)(_thisPtr, iconValue);
+                argVec.push_back(castIfNecessary(_builder.CreateLoad(castIfNecessary(getOrCreateExternalSymbol(methodTableName), Type::getInt32PtrTy(_llvmContext)->getPointerTo())), llvmFunc->getArg(argIx)->getType()));
+            }
+            else
+            {
+                argVec.push_back(genTreeAsLlvmType(opAndArg.operand, llvmFunc->getArg(argIx)->getType()));
+            }
+            argIx++;
+        }
+        // TODO-LLVM: If the block has a handler, this will need to be an invoke.  E.g. create a CallOrInvoke as per ILToLLVMImporter
+        mapGenTreeToValue(call, _builder.CreateCall(llvmFunc, llvm::ArrayRef<Value*>(argVec)));
+        if (call->gtCallMethHnd == _compiler->eeFindHelper(CORINFO_HELP_THROW))
+        {
+            _builder.CreateUnreachable();
+        }
+    }
+}
+
 void Llvm::buildCall(GenTree* node)
 {
     GenTreeCall* call = node->AsCall();
     if (call->gtCallType == CT_HELPER)
     {
-        if (call->gtCallMethHnd == _compiler->eeFindHelper(CORINFO_HELP_READYTORUN_STATIC_BASE))
-        {
-            const char* symbolName = (*_getMangledSymbolName)(_thisPtr, call->gtEntryPoint.handle);
-            Function* llvmFunc = _module->getFunction(symbolName);
-            if (llvmFunc == nullptr)
-            {
-                llvmFunc = Function::Create(FunctionType::get(Type::getInt8PtrTy(_llvmContext), ArrayRef<Type*>(Type::getInt8PtrTy(_llvmContext)), false), Function::ExternalLinkage, 0U, symbolName, _module); // TODO: ExternalLinkage forced as defined in ILC module
-            }
-
-            // replacement for _info.compCompHnd->recordRelocation(nullptr, gtCall->gtEntryPoint.handle, IMAGE_REL_BASED_REL32);
-            (*_addCodeReloc)(_thisPtr, call->gtEntryPoint.handle);
-
-            mapGenTreeToValue(node, _builder.CreateCall(llvmFunc, getShadowStackForCallee()));
-            return;
-        }
+        buildHelperFuncCall(call);
     }
     else if (call->gtCallType == CT_USER_FUNC && !call->IsVirtualStub() /* TODO: Virtual stub not implemented */)
     {
         buildUserFuncCall(call);
-        return;
     }
-    failFunctionCompilation();
+    else
+    {
+        failFunctionCompilation();
+    }
 }
 
 void Llvm::buildCast(GenTreeCast* cast)
 {
-    if (cast->CastToType() == TYP_BOOL && cast->TypeIs(TYP_INT) && cast->CastOp()->TypeIs(TYP_INT))
+    var_types castToType = cast->CastToType();
+    if (castToType == TYP_BOOL && cast->TypeIs(TYP_INT) && cast->CastOp()->TypeIs(TYP_INT))
     {
-        Value* intValue = _builder.CreateZExt(getGenTreeValue(cast->CastOp()), getLLVMTypeForVarType(TYP_INT));
+        Value* intValue = _builder.CreateZExt(getGenTreeValue(cast->CastOp()), getLlvmTypeForVarType(TYP_INT));
         mapGenTreeToValue(cast, intValue); // nothing to do except map the source value to the destination GenTree
     }
-    else if (cast->CastToType() == TYP_DOUBLE && cast->CastOp()->TypeIs(TYP_FLOAT))
+    else if (castToType == TYP_DOUBLE && cast->CastOp()->TypeIs(TYP_FLOAT))
     {
-        mapGenTreeToValue(cast, _builder.CreateFPCast(getGenTreeValue(cast->CastOp()), getLLVMTypeForVarType(TYP_DOUBLE)));
+        mapGenTreeToValue(cast, _builder.CreateFPCast(getGenTreeValue(cast->CastOp()), getLlvmTypeForVarType(TYP_DOUBLE)));
     }
-    else if (cast->CastToType() == TYP_INT && cast->CastOp()->TypeIs(TYP_FLOAT, TYP_DOUBLE))
+    else if (cast->TypeIs(TYP_LONG) && genActualTypeIsInt(cast->CastOp()))
+    {
+        // Cast pointer to int if necessary.  TODO-LLVM: candidate for lowering?
+        Value* sourceValue = castIfNecessary(getGenTreeValue(cast->CastOp()), getLlvmTypeForVarType(cast->CastOp()->TypeGet()));
+
+        mapGenTreeToValue(cast,
+            cast->IsUnsigned()
+            ? _builder.CreateZExt(sourceValue, getLlvmTypeForVarType(cast->CastToType()))
+            : _builder.CreateSExt(sourceValue, getLlvmTypeForVarType(cast->CastToType())));
+    }
+    else if (cast->TypeIs(TYP_INT, TYP_LONG) && cast->CastOp()->TypeIs(TYP_FLOAT, TYP_DOUBLE))
     {
         mapGenTreeToValue(cast,
             cast->IsUnsigned()
-                ? _builder.CreateFPToUI(getGenTreeValue(cast->CastOp()), getLLVMTypeForVarType(TYP_INT))
-                : _builder.CreateFPToSI(getGenTreeValue(cast->CastOp()), getLLVMTypeForVarType(TYP_INT)));
+                ? _builder.CreateFPToUI(getGenTreeValue(cast->CastOp()), getLlvmTypeForVarType(cast->CastToType()))
+                : _builder.CreateFPToSI(getGenTreeValue(cast->CastOp()), getLlvmTypeForVarType(cast->CastToType())));
     }
     else
     {
@@ -975,7 +1104,7 @@ void Llvm::buildInd(GenTree* node, Value* ptr)
     // first cast the pointer to create the correct load instructions, then cast the result incase we are loading a small int into an int32
     mapGenTreeToValue(node, castIfNecessary(_builder.CreateLoad(
                                  castIfNecessary(ptr,
-                                     getLLVMTypeForVarType(node->TypeGet())->getPointerTo())), getLLVMTypeForVarType(genActualType(node))));
+                                     getLlvmTypeForVarType(node->TypeGet())->getPointerTo())), getLlvmTypeForVarType(genActualType(node))));
 }
 
 Value* Llvm::buildJTrue(GenTree* node, Value* opValue)
@@ -1039,7 +1168,7 @@ void Llvm::buildCmp(genTreeOps op, GenTree* node, Value* op1, Value* op2)
 // in case we haven't seen the phi args yet, create just the phi nodes and fill in the args at the end
 void Llvm::buildEmptyPhi(GenTreePhi* phi)
 {
-    llvm::PHINode* llvmPhiNode = _builder.CreatePHI(getLLVMTypeForVarType(phi->TypeGet()), phi->NumChildren());
+    llvm::PHINode* llvmPhiNode = _builder.CreatePHI(getLlvmTypeForVarType(phi->TypeGet()), phi->NumChildren());
     _phiPairs.push_back({ phi, llvmPhiNode });
     mapGenTreeToValue(phi, llvmPhiNode);
 }
@@ -1096,9 +1225,17 @@ void Llvm::fillPhis()
 
 void Llvm::buildReturn(GenTree* node)
 {
-    switch (node->gtType)
+    switch (node->TypeGet())
     {
+        case TYP_BOOL:
+        case TYP_BYTE:
+        case TYP_UBYTE:
+        case TYP_SHORT:
+        case TYP_USHORT:
         case TYP_INT:
+        case TYP_UINT:
+        case TYP_LONG:
+        case TYP_ULONG:
             _builder.CreateRet(castIfNecessary(getGenTreeValue(node->gtGetOp1()), getLlvmTypeForCorInfoType(_sigInfo.retType, _sigInfo.retTypeClass)));
             return;
         case TYP_VOID:
@@ -1171,6 +1308,12 @@ Value* Llvm::localVar(GenTreeLclVar* lclVar)
     else
     {
         llvmRef = _localsMap->at({lclNum, ssaNum});
+    }
+
+    // implicit truncating from long to int
+    if (llvmRef->getType() == Type::getInt64Ty(_llvmContext) && lclVar->TypeIs(TYP_INT))
+    {
+        llvmRef = _builder.CreateTrunc(llvmRef, Type::getInt32Ty(_llvmContext));
     }
 
     mapGenTreeToValue(lclVar, llvmRef);
