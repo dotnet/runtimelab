@@ -3027,21 +3027,25 @@ class Program
             RecurseOverStruct<int>(2);
             RecurseOverClass<int>(2);
 
+            bool caughtException = false;
             try
             {
                 RecurseOverStruct<int>(100);
             }
-            catch (Exception) { }
+            catch (TypeLoadException) { caughtException = true; }
 
-            // Doesn't currently work in Debug builds because we end up hitting a NullRef
-            // during a dictionary lookup and the runtime cannot deal with that.
-#if false
+            if (!caughtException)
+                throw new Exception();
+
+            caughtException = false;
             try
             {
                 RecurseOverClass<int>(100);
             }
-            catch (Exception) { }
-#endif
+            catch (TypeLoadException) { caughtException = true; }
+
+            if (!caughtException)
+                throw new Exception();
         }
     }
 
