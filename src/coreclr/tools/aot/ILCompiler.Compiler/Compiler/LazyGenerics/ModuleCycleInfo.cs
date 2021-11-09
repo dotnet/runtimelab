@@ -1,7 +1,9 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System;
 using System.Collections.Generic;
+using System.Collections.Concurrent;
 
 using Internal.TypeSystem;
 using Internal.TypeSystem.Ecma;
@@ -15,6 +17,8 @@ namespace ILCompiler
         private class ModuleCycleInfo
         {
             private readonly HashSet<TypeSystemEntity> _entitiesInCycles;
+
+            public IEnumerable<TypeSystemEntity> EntitiesInCycles => _entitiesInCycles;
 
             public EcmaModule Module { get; }
 
@@ -146,6 +150,23 @@ namespace ILCompiler
         {
             private readonly CycleInfoHashtable _hashtable = new CycleInfoHashtable();
 
+            private readonly struct EntityPair : IEquatable<EntityPair>
+            {
+                public readonly TypeSystemEntity Owner;
+                public readonly TypeSystemEntity Referent;
+                public EntityPair(TypeSystemEntity owner, TypeSystemEntity referent)
+                    => (Owner, Referent) = (owner, referent);
+                public bool Equals(EntityPair other) => Owner == other.Owner && Referent == other.Referent;
+                public override bool Equals(object obj) => obj is EntityPair p && Equals(p);
+                public override int GetHashCode() => HashCode.Combine(Owner.GetHashCode(), Referent.GetHashCode());
+            }
+
+            // This is a set of entities that had actual problems that caused us to abort compilation
+            // somewhere.
+            // Would prefer this to be a ConcurrentHashSet but there isn't any. ModuleCycleInfo can be looked up
+            // from the key, but since this is a key/value pair, might as well use the value too...
+            private readonly ConcurrentDictionary<EntityPair, ModuleCycleInfo> _actualProblems = new ConcurrentDictionary<EntityPair, ModuleCycleInfo>();
+
             public void DetectCycle(TypeSystemEntity owner, TypeSystemEntity referent)
             {
                 // Not clear if generic recursion through fields is a thing
@@ -177,6 +198,8 @@ namespace ILCompiler
                     // we need to cut our losses.
                     if (cycleInfo.IsDeepPossiblyCyclicInstantiation(referent))
                     {
+                        _actualProblems.TryAdd(new EntityPair(owner, referent), cycleInfo);
+
                         if (referentType != null)
                         {
                             // TODO: better exception string ID?
@@ -188,6 +211,49 @@ namespace ILCompiler
                             ThrowHelper.ThrowTypeLoadException(ExceptionStringID.ClassLoadGeneral, referentMethod);
                         }
                     }
+                }
+            }
+
+            public void LogWarnings(Logger logger)
+            {
+                var problems = new List<KeyValuePair<EntityPair, ModuleCycleInfo>>(_actualProblems);
+
+                // Might need to sort these if we care about warning determinism, but we probably don't.
+
+                var reportedProblems = new HashSet<EntityPair>();
+
+                foreach (var actualProblem in _actualProblems)
+                {
+                    TypeSystemEntity referent = actualProblem.Key.Referent;
+                    TypeSystemEntity owner = actualProblem.Key.Owner;
+
+                    TypeSystemEntity referentDefinition = referent is TypeDesc referentType ? referentType.GetTypeDefinition()
+                        : ((MethodDesc)referent).GetTypicalMethodDefinition();
+                    TypeSystemEntity ownerDefinition = owner is TypeDesc ownerType ? ownerType.GetTypeDefinition()
+                        : ((MethodDesc)owner).GetTypicalMethodDefinition();
+
+                    if (!reportedProblems.Add(new EntityPair(ownerDefinition, referentDefinition)))
+                        continue;
+
+                    string message = $"Generic expansion to '{actualProblem.Key.Referent.GetDisplayName()}' was aborted " +
+                        "due to generic recursion. An exception will be thrown at runtime if this codepath is ever reached. " +
+                        "Generic recursion also negatively affects compilation speed and the size of the compilation output. " +
+                        "It is advisable to remove the source of the generic recursion by restructuring the program around " +
+                        "the source of recursion. The source of generic recursion might include: ";
+
+                    ModuleCycleInfo cycleInfo = actualProblem.Value;
+                    bool first = true;
+                    foreach (TypeSystemEntity cycleEntity in cycleInfo.EntitiesInCycles)
+                    {
+                        if (!first)
+                            message += ", ";
+
+                        first = false;
+
+                        message += $"'{cycleEntity.GetDisplayName()}'";
+                    }
+
+                    logger.LogWarning(message, 9703, actualProblem.Key.Owner, MessageSubCategory.AotAnalysis);
                 }
             }
         }

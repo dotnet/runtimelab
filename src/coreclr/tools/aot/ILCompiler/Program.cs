@@ -813,6 +813,8 @@ namespace ILCompiler
                 defFileWriter.EmitExportedMethods();
             }
 
+            typeSystemContext.LogWarnings(logger);
+
             if (_dgmlLogFileName != null)
                 compilationResults.WriteDependencyLog(_dgmlLogFileName);
 

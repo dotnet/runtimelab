@@ -175,6 +175,11 @@ namespace ILCompiler
         {
             _genericCycleDetector.DetectCycle(owner, referent);
         }
+
+        public void LogWarnings(Logger logger)
+        {
+            _genericCycleDetector.LogWarnings(logger);
+        }
     }
 
     public class SharedGenericsConfiguration

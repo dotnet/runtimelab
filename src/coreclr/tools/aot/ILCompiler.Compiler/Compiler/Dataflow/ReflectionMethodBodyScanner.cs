@@ -3131,6 +3131,7 @@ namespace ILCompiler.Dataflow
                 public const string IL9700 = "Calling '{0}' which has `RequiresDynamicCodeAttribute` can break functionality when compiled fully ahead of time.";
                 // IL9701 - COM
                 // IL9702 - AOT analysis warnings
+                // IL9703 - Generic cycle
             }
         }
     }
