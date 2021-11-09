@@ -198,6 +198,9 @@
   <data name="Arg_DecBitCtor" xml:space="preserve">
     <value>Decimal byte array constructor requires an array of length four containing valid decimal bytes.</value>
   </data>
+  <data name="Arg_UnavailableTypeLoadException" xml:space="preserve">
+    <value>Attempted to load a type that was not created during ahead of time compilation.</value>
+  </data>
   <data name="Arg_DivideByZero" xml:space="preserve">
     <value>Attempted to divide by zero.</value>
   </data>

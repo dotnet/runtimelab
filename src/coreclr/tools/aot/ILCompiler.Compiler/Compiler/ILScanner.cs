@@ -153,6 +153,8 @@ namespace ILCompiler
         {
             _dependencyGraph.ComputeMarkedNodes();
 
+            _nodeFactory.SetMarkingComplete();
+
             return new ILScanResults(_dependencyGraph, _nodeFactory);
         }
 
@@ -240,7 +242,7 @@ namespace ILCompiler
 
         public DictionaryLayoutProvider GetDictionaryLayoutInfo()
         {
-            return new ScannedDictionaryLayoutProvider(MarkedNodes);
+            return new ScannedDictionaryLayoutProvider(_factory, MarkedNodes);
         }
 
         public DevirtualizationManager GetDevirtualizationManager()
@@ -303,16 +305,25 @@ namespace ILCompiler
         private class ScannedDictionaryLayoutProvider : DictionaryLayoutProvider
         {
             private Dictionary<TypeSystemEntity, IEnumerable<GenericLookupResult>> _layouts = new Dictionary<TypeSystemEntity, IEnumerable<GenericLookupResult>>();
+            private HashSet<TypeSystemEntity> _entitiesWithForcedLazyLookups = new HashSet<TypeSystemEntity>();
 
-            public ScannedDictionaryLayoutProvider(ImmutableArray<DependencyNodeCore<NodeFactory>> markedNodes)
+            public ScannedDictionaryLayoutProvider(NodeFactory factory, ImmutableArray<DependencyNodeCore<NodeFactory>> markedNodes)
             {
                 foreach (var node in markedNodes)
                 {
-                    var layoutNode = node as DictionaryLayoutNode;
-                    if (layoutNode != null)
+                    if (node is DictionaryLayoutNode layoutNode)
                     {
                         TypeSystemEntity owningMethodOrType = layoutNode.OwningMethodOrType;
                         _layouts.Add(owningMethodOrType, layoutNode.Entries);
+                    }
+                    else if (node is ReadyToRunGenericHelperNode genericLookup
+                        && genericLookup.HandlesInvalidEntries(factory))
+                    {
+                        // If a dictionary layout has an associated lookup helper that contains handling of broken slots
+                        // (because one of our precomputed dictionaries contained an uncompilable entry)
+                        // we won't hand out a precomputed dictionary and keep using the lookup helpers.
+                        // The inlined lookups using the precomputed dictionary wouldn't handle the broken slots.
+                        _entitiesWithForcedLazyLookups.Add(genericLookup.DictionaryOwner);
                     }
                 }
             }
@@ -336,6 +347,11 @@ namespace ILCompiler
 
             public override DictionaryLayoutNode GetLayout(TypeSystemEntity methodOrType)
             {
+                if (_entitiesWithForcedLazyLookups.Contains(methodOrType))
+                {
+                    return new LazilyBuiltDictionaryLayoutNode(methodOrType);
+                }
+
                 if (methodOrType is TypeDesc type)
                 {
                     // TODO: move ownership of compiler-generated entities to CompilerTypeSystemContext.
