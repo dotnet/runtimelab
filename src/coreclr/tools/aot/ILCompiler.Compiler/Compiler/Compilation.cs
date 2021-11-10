@@ -412,9 +412,18 @@ namespace ILCompiler
             if ((signature.Flags & MethodSignatureFlags.UnmanagedCallingConventionMask) != 0)
                 return false;
 
-            // Everything else except RawCalliHelpers could be a fat pointer
-            var owningType = containingMethod.OwningType as MetadataType;
-            return owningType?.Name != "RawCalliHelper";
+            if (containingMethod.OwningType is MetadataType owningType)
+            {
+                // RawCalliHelper is a way for the class library to opt out of fat calls
+                if (owningType.Name == "RawCalliHelper")
+                    return false;
+
+                // Delegate invocation never needs fat calls
+                if (owningType.IsDelegate && containingMethod.Name == "Invoke")
+                    return false;
+            }
+
+            return true;
         }
 
         /// <summary>
