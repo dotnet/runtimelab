@@ -45,21 +45,15 @@ namespace System.Runtime
         [RuntimeExport("RhTypeCast_IsInstanceOfClass")]
         public static unsafe object IsInstanceOfClass(MethodTable* pTargetType, object obj)
         {
-            if (obj == null)
+            if (obj == null || obj.MethodTable == pTargetType)
             {
-                return null;
+                return obj;
             }
 
             MethodTable* pObjType = obj.MethodTable;
 
             Debug.Assert(!pTargetType->IsParameterizedType, "IsInstanceOfClass called with parameterized MethodTable");
             Debug.Assert(!pTargetType->IsInterface, "IsInstanceOfClass called with interface MethodTable");
-
-            // if the EETypes pointers match, we're done
-            if (pObjType == pTargetType)
-            {
-                return obj;
-            }
 
             // Quick check if both types are good for simple casting: canonical, no related type via IAT, no generic variance
             if (Internal.Runtime.MethodTable.BothSimpleCasting(pObjType, pTargetType))
@@ -82,6 +76,11 @@ namespace System.Runtime
                 while (pObjType->SimpleCasting());
             }
 
+            return IsInstanceOfClass_Helper(pTargetType, obj, pObjType);
+        }
+
+        private static unsafe object IsInstanceOfClass_Helper(MethodTable* pTargetType, object obj, MethodTable* pObjType)
+        {
             if (pTargetType->IsCloned)
             {
                 pTargetType = pTargetType->CanonicalEEType;
