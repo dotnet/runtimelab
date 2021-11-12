@@ -32,6 +32,7 @@ namespace Internal.Runtime
             return GetThreadStaticBaseForTypeSlow(pModuleData, typeTlsIndex);
         }
 
+        [RuntimeExport("RhpGetThreadStaticBaseForTypeSlow")]
         [MethodImpl(MethodImplOptions.NoInlining)]
         internal static unsafe object GetThreadStaticBaseForTypeSlow(TypeManagerSlot* pModuleData, int typeTlsIndex)
         {

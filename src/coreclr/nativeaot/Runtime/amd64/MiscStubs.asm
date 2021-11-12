@@ -7,6 +7,7 @@ EXTERN memcpy                       : PROC
 EXTERN memcpyGCRefs                 : PROC
 EXTERN memcpyGCRefsWithWriteBarrier : PROC
 EXTERN memcpyAnyWithWriteBarrier    : PROC
+EXTERN RhpGetThreadStaticBaseForTypeSlow : PROC
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -179,5 +180,41 @@ ProbeLoop:
         ret
 
 LEAF_END RhpStackProbe, _TEXT
+
+LEAF_ENTRY RhpGetThreadStaticBaseForType, _TEXT
+        ; On entry and thorough the procedure:
+        ;   rcx - TypeManagerSlot*
+        ;   rdx - type index
+        ; On exit:
+        ;   rax - the thread static base for the given type
+
+        ;; rax = GetThread(), TRASHES r8
+        INLINE_GETTHREAD rax, r8
+
+        mov     r8d, [rcx + 8]         ; Get ModuleIndex out of the TypeManagerSlot
+        cmp     r8d, [rax + OFFSETOF__Thread__m_numThreadLocalModuleStatics]
+        jae     RhpGetThreadStaticBaseForType_RarePath
+
+        mov     r9, [rax + OFFSETOF__Thread__m_pThreadLocalModuleStatics]
+        mov     rax, [r9 + r8 * 8]     ; Index into the array of modules
+        test    rax, rax
+        jz      RhpGetThreadStaticBaseForType_RarePath
+
+        mov     r8, [rax]              ; Get the managed array from the handle
+        cmp     edx, [r8 + OFFSETOF__Array__m_Length]
+        jae     RhpGetThreadStaticBaseForType_RarePath
+        mov     rax, [r8 + rdx * 8 + 10h]
+
+        test    rax, rax
+        jz      RhpGetThreadStaticBaseForType_RarePath
+
+        ret
+
+RhpGetThreadStaticBaseForType_RarePath:
+        ;; We kept the arguments in their appropriate registers
+        ;; and we can tailcall right away.
+        jmp     RhpGetThreadStaticBaseForTypeSlow
+
+LEAF_END RhpGetThreadStaticBaseForType, _TEXT
 
 end
