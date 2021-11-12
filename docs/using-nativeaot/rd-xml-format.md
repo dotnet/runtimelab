@@ -19,7 +19,7 @@ You can put multiple `<Assembly>` tags inside the `<Application>` directive to c
 
 ## Assembly directive
 
-There 3 forms how assembly can be configured
+There are 3 forms how assembly can be configured
 - Module metadata only;
 - All types;
 - Module metadata and selected types.
