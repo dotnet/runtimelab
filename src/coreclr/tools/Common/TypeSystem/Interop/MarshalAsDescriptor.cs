@@ -52,13 +52,15 @@ namespace Internal.TypeSystem
         public NativeTypeKind ArraySubType { get; }
         public uint? SizeParamIndex { get; }
         public uint? SizeConst { get; }
+        public string ManagedMarshallerTypeName { get; }
 
-        public MarshalAsDescriptor(NativeTypeKind type, NativeTypeKind arraySubType, uint? sizeParamIndex, uint? sizeConst)
+        public MarshalAsDescriptor(NativeTypeKind type, NativeTypeKind arraySubType, uint? sizeParamIndex, uint? sizeConst, string managedMarshallerTypeName)
         {
             Type = type;
             ArraySubType = arraySubType;
             SizeParamIndex = sizeParamIndex;
             SizeConst = sizeConst;
+            ManagedMarshallerTypeName = managedMarshallerTypeName;
         }
     }
 }

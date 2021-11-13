@@ -55,6 +55,7 @@ namespace Internal.TypeSystem.Interop
         AsAnyW,
         ComInterface,
         BlittableValueClassWithCopyCtor,
+        CustomMarshaler,
         Invalid
     }
     public enum MarshalDirection

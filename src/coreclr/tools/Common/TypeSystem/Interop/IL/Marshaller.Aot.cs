@@ -88,6 +88,8 @@ namespace Internal.TypeSystem.Interop
                     return new OleCurrencyMarshaller();
                 case MarshallerKind.Variant:
                     return new VariantMarshaller();
+                case MarshallerKind.CustomMarshaler:
+                    return new CustomTypeMarshaller();
                 default:
                     // ensures we don't throw during create marshaller. We will throw NSE
                     // during EmitIL which will be handled and an Exception method body
@@ -1123,6 +1125,30 @@ namespace Internal.TypeSystem.Interop
             LoadNativeAddr(codeStream);
             var helper = Context.GetHelperEntryPoint("InteropHelpers", "CleanupVariant");
             codeStream.Emit(ILOpcode.call, emitter.NewToken(helper));
+        }
+    }
+
+    class CustomTypeMarshaller : Marshaller
+    {
+        protected override void AllocManagedToNative(ILCodeStream codeStream)
+        {
+            // Cannot find a way how to resolve type from MarshalAsDescriptor.ManagedMarshallerTypeName
+            throw new NotSupportedException();
+        }
+
+        protected override void TransformManagedToNative(ILCodeStream codeStream)
+        {
+            throw new NotSupportedException();
+        }
+
+        protected override void TransformNativeToManaged(ILCodeStream codeStream)
+        {
+            throw new NotSupportedException();
+        }
+
+        protected override void EmitCleanupManaged(ILCodeStream codeStream)
+        {
+            throw new NotSupportedException();
         }
     }
 }

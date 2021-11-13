@@ -168,6 +168,9 @@ namespace Internal.TypeSystem.Interop
 #if !READYTORUN
                 case MarshallerKind.Variant:
                     return InteropTypes.GetVariant(context);
+
+                case MarshallerKind.CustomMarshaler:
+                    return context.GetWellKnownType(WellKnownType.IntPtr);
 #endif
 
                 case MarshallerKind.OleCurrency:
@@ -569,6 +572,9 @@ namespace Internal.TypeSystem.Interop
                     case NativeTypeKind.AnsiBStr:
                         return MarshallerKind.AnsiBSTRString;
 
+                    case NativeTypeKind.CustomMarshaler:
+                        return MarshallerKind.CustomMarshaler;
+
                     case NativeTypeKind.Default:
                         if (isAnsi)
                             return MarshallerKind.AnsiString;
@@ -583,6 +589,9 @@ namespace Internal.TypeSystem.Interop
             {
                 if (nativeType == NativeTypeKind.AsAny)
                     return isAnsi ? MarshallerKind.AsAnyA : MarshallerKind.AsAnyW;
+                else
+                if (nativeType == NativeTypeKind.CustomMarshaler)
+                    return MarshallerKind.CustomMarshaler;
                 else
                 if (context.Target.IsWindows)
                 {
@@ -650,6 +659,9 @@ namespace Internal.TypeSystem.Interop
             }
             else if (type.IsInterface)
             {
+                if (nativeType == NativeTypeKind.CustomMarshaler)
+                    return MarshallerKind.CustomMarshaler;
+                else
                 if (context.Target.IsWindows)
                     return MarshallerKind.ComInterface;
                 else
