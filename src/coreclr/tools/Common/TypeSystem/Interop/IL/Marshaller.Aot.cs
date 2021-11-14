@@ -1130,25 +1130,64 @@ namespace Internal.TypeSystem.Interop
 
     class CustomTypeMarshaller : Marshaller
     {
-        protected override void AllocManagedToNative(ILCodeStream codeStream)
-        {
-            // Cannot find a way how to resolve type from MarshalAsDescriptor.ManagedMarshallerTypeName
-            throw new NotSupportedException();
-        }
-
         protected override void TransformManagedToNative(ILCodeStream codeStream)
         {
-            throw new NotSupportedException();
+            var marshallerType = MarshalAsDescriptor.CustomMarshallerType;
+            EmitMarshallerCreation(codeStream, marshallerType);
+            var getInstanceMethod = marshallerType.GetKnownMethod(
+                "MarshalManagedToNative",
+                new MethodSignature(MethodSignatureFlags.None, 0, Context.GetWellKnownType(WellKnownType.IntPtr), new[] { Context.GetWellKnownType(WellKnownType.Object) }));
+
+            ILEmitter emitter = _ilCodeStreams.Emitter;
+            LoadManagedValue(codeStream);
+            codeStream.Emit(ILOpcode.callvirt, emitter.NewToken(getInstanceMethod));
+            StoreNativeValue(codeStream);
         }
 
         protected override void TransformNativeToManaged(ILCodeStream codeStream)
         {
-            throw new NotSupportedException();
+            var marshallerType = MarshalAsDescriptor.CustomMarshallerType;
+            EmitMarshallerCreation(codeStream, marshallerType);
+            var getInstanceMethod = marshallerType.GetKnownMethod(
+                "MarshalNativeToManaged",
+                new MethodSignature(MethodSignatureFlags.None, 0, Context.GetWellKnownType(WellKnownType.Object), new[] { Context.GetWellKnownType(WellKnownType.IntPtr) }));
+
+            ILEmitter emitter = _ilCodeStreams.Emitter;
+            LoadManagedValue(codeStream);
+            codeStream.Emit(ILOpcode.callvirt, emitter.NewToken(getInstanceMethod));
+            StoreNativeValue(codeStream);
         }
 
         protected override void EmitCleanupManaged(ILCodeStream codeStream)
         {
             throw new NotSupportedException();
+        }
+
+        private void EmitMarshallerCreation(ILCodeStream codeStream, TypeDesc marshallerType)
+        {
+            TypeDesc customMarshallerType = null;
+            foreach (var interfaceType in marshallerType.RuntimeInterfaces)
+            {
+                if (interfaceType.GetFullName() == "System.Runtime.InteropServices.ICustomMarshaler")
+                {
+                    customMarshallerType = interfaceType;
+                    break;
+                }
+            }
+
+            if (customMarshallerType == null)
+            {
+                throw new InvalidOperationException($"Custom marshaller type {marshallerType.ToString()} does not implements System.Runtime.InteropServices.ICustomMarshaler");
+            }
+
+            var getInstanceMethod = marshallerType.GetKnownMethod(
+                "GetInstance",
+                new MethodSignature(MethodSignatureFlags.Static, 0, customMarshallerType, new[] { Context.GetWellKnownType(WellKnownType.String) }));
+
+            ILEmitter emitter = _ilCodeStreams.Emitter;
+            var cookie = MarshalAsDescriptor.Cookie;
+            codeStream.Emit(ILOpcode.ldstr, emitter.NewToken(cookie));
+            codeStream.Emit(ILOpcode.call, emitter.NewToken(getInstanceMethod));
         }
     }
 }

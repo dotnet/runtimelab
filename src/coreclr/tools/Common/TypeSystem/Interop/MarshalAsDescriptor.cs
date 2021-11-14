@@ -3,6 +3,7 @@
 
 using System.Runtime.CompilerServices;
 using System;
+#nullable enable
 
 namespace Internal.TypeSystem
 {
@@ -52,15 +53,17 @@ namespace Internal.TypeSystem
         public NativeTypeKind ArraySubType { get; }
         public uint? SizeParamIndex { get; }
         public uint? SizeConst { get; }
-        public string ManagedMarshallerTypeName { get; }
+        public TypeDesc? CustomMarshallerType { get; }
+        public string? Cookie { get; }
 
-        public MarshalAsDescriptor(NativeTypeKind type, NativeTypeKind arraySubType, uint? sizeParamIndex, uint? sizeConst, string managedMarshallerTypeName)
+        public MarshalAsDescriptor(NativeTypeKind type, NativeTypeKind arraySubType, uint? sizeParamIndex, uint? sizeConst, TypeDesc? customMarshallerType, string? cookie)
         {
             Type = type;
             ArraySubType = arraySubType;
             SizeParamIndex = sizeParamIndex;
             SizeConst = sizeConst;
-            ManagedMarshallerTypeName = managedMarshallerTypeName;
+            CustomMarshallerType = customMarshallerType;
+            Cookie = cookie;
         }
     }
 }
