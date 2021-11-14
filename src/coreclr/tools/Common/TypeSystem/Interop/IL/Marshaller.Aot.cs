@@ -1133,28 +1133,54 @@ namespace Internal.TypeSystem.Interop
         protected override void TransformManagedToNative(ILCodeStream codeStream)
         {
             var marshallerType = MarshalAsDescriptor.CustomMarshallerType;
-            EmitMarshallerCreation(codeStream, marshallerType);
+            TypeDesc customMarshallerType = Context.SystemModule.GetKnownType("System.Runtime.InteropServices", "ICustomMarshaler");
+            if (!marshallerType.CanCastTo(customMarshallerType))
+            {
+                throw new InvalidOperationException($"Custom marshaller type {marshallerType.ToString()} does not implements System.Runtime.InteropServices.ICustomMarshaler");
+            }
+
             var getInstanceMethod = marshallerType.GetKnownMethod(
+                "GetInstance",
+                new MethodSignature(MethodSignatureFlags.Static, 0, customMarshallerType, new[] { Context.GetWellKnownType(WellKnownType.String) }));
+
+            ILEmitter emitter = _ilCodeStreams.Emitter;
+            var cookie = MarshalAsDescriptor.Cookie;
+            codeStream.Emit(ILOpcode.ldstr, emitter.NewToken(cookie));
+            codeStream.Emit(ILOpcode.call, emitter.NewToken(getInstanceMethod));
+
+            var manageToNativeMethod = customMarshallerType.GetKnownMethod(
                 "MarshalManagedToNative",
                 new MethodSignature(MethodSignatureFlags.None, 0, Context.GetWellKnownType(WellKnownType.IntPtr), new[] { Context.GetWellKnownType(WellKnownType.Object) }));
 
-            ILEmitter emitter = _ilCodeStreams.Emitter;
             LoadManagedValue(codeStream);
-            codeStream.Emit(ILOpcode.callvirt, emitter.NewToken(getInstanceMethod));
+            codeStream.Emit(ILOpcode.callvirt, emitter.NewToken(manageToNativeMethod));
             StoreNativeValue(codeStream);
         }
 
         protected override void TransformNativeToManaged(ILCodeStream codeStream)
         {
             var marshallerType = MarshalAsDescriptor.CustomMarshallerType;
-            EmitMarshallerCreation(codeStream, marshallerType);
+            TypeDesc customMarshallerType = Context.SystemModule.GetKnownType("System.Runtime.InteropServices", "ICustomMarshaler");
+            if (!marshallerType.CanCastTo(customMarshallerType))
+            {
+                throw new InvalidOperationException($"Custom marshaller type {marshallerType.ToString()} does not implements System.Runtime.InteropServices.ICustomMarshaler");
+            }
+
             var getInstanceMethod = marshallerType.GetKnownMethod(
+                "GetInstance",
+                new MethodSignature(MethodSignatureFlags.Static, 0, customMarshallerType, new[] { Context.GetWellKnownType(WellKnownType.String) }));
+
+            ILEmitter emitter = _ilCodeStreams.Emitter;
+            var cookie = MarshalAsDescriptor.Cookie;
+            codeStream.Emit(ILOpcode.ldstr, emitter.NewToken(cookie));
+            codeStream.Emit(ILOpcode.call, emitter.NewToken(getInstanceMethod));
+
+            var marshalNativeToManagedMethod = marshallerType.GetKnownMethod(
                 "MarshalNativeToManaged",
                 new MethodSignature(MethodSignatureFlags.None, 0, Context.GetWellKnownType(WellKnownType.Object), new[] { Context.GetWellKnownType(WellKnownType.IntPtr) }));
 
-            ILEmitter emitter = _ilCodeStreams.Emitter;
             LoadManagedValue(codeStream);
-            codeStream.Emit(ILOpcode.callvirt, emitter.NewToken(getInstanceMethod));
+            codeStream.Emit(ILOpcode.callvirt, emitter.NewToken(marshalNativeToManagedMethod));
             StoreNativeValue(codeStream);
         }
 
@@ -1165,17 +1191,8 @@ namespace Internal.TypeSystem.Interop
 
         private void EmitMarshallerCreation(ILCodeStream codeStream, TypeDesc marshallerType)
         {
-            TypeDesc customMarshallerType = null;
-            foreach (var interfaceType in marshallerType.RuntimeInterfaces)
-            {
-                if (interfaceType.GetFullName() == "System.Runtime.InteropServices.ICustomMarshaler")
-                {
-                    customMarshallerType = interfaceType;
-                    break;
-                }
-            }
-
-            if (customMarshallerType == null)
+            TypeDesc customMarshallerType = Context.SystemModule.GetKnownType("System.Runtime.InteropServices", "ICustomMarshaler");
+            if (!marshallerType.CanCastTo(customMarshallerType))
             {
                 throw new InvalidOperationException($"Custom marshaller type {marshallerType.ToString()} does not implements System.Runtime.InteropServices.ICustomMarshaler");
             }
