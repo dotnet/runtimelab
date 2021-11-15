@@ -373,12 +373,24 @@ internal static class Program
 
         TestBoolCompare();
 
+        TestDifferentSizeIntOperator();
+
         // This test should remain last to get other results before stopping the debugger
         PrintLine("Debugger.Break() test: Ok if debugger is open and breaks.");
         System.Diagnostics.Debugger.Break();
 
         PrintLine("Done");
         return Success ? 100 : -1;
+    }
+
+    private static void TestDifferentSizeIntOperator()
+    {
+        StartTest("Logical and short and int");
+
+        short s = 1;
+        int i = 4;
+
+        EndTest(s & i);
     }
 
     private static void TestGC()
@@ -1163,13 +1175,13 @@ internal static class Program
         EndTest(callbackResult);
     }
 
-    [System.Runtime.InteropServices.UnmanagedCallersOnly(EntryPoint = "CallMe")]
+//    [System.Runtime.InteropServices.UnmanagedCallersOnly(EntryPoint = "CallMe")]
     private static void _CallMe(int x)
     {
-        if (x == 123)
-        {
-            callbackResult = true;
-        }
+        //if (x == 123)
+        //{
+        //    callbackResult = true;
+        //}
     }
 
     [System.Runtime.InteropServices.DllImport("*")]
