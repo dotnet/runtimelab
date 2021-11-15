@@ -1153,9 +1153,12 @@ namespace Internal.TypeSystem.Interop
             }
 
             ILEmitter emitter = _ilCodeStreams.Emitter;
+            ILLocalVariable lMarshaller = emitter.NewLocal(customMarshallerType);
             var cookie = MarshalAsDescriptor.Cookie;
             codeStream.Emit(ILOpcode.ldstr, emitter.NewToken(cookie));
             codeStream.Emit(ILOpcode.call, emitter.NewToken(getInstanceMethod));
+            codeStream.Emit(ILOpcode.dup);
+            codeStream.EmitStLoc(lMarshaller);
 
             var manageToNativeMethod = customMarshallerType.GetKnownMethod(
                 "MarshalManagedToNative",
@@ -1168,6 +1171,19 @@ namespace Internal.TypeSystem.Interop
             LoadManagedValue(codeStream);
             codeStream.Emit(ILOpcode.callvirt, emitter.NewToken(manageToNativeMethod));
             StoreNativeValue(codeStream);
+
+            // Call CleanUpNativeData on cleanup code stream.
+            var cleanupNativeDataMethod = marshallerType.GetKnownMethod(
+                "CleanUpNativeData",
+                new MethodSignature(MethodSignatureFlags.None, 0, Context.GetWellKnownType(WellKnownType.Void), new[] { Context.GetWellKnownType(WellKnownType.IntPtr) }));
+            if (cleanupNativeDataMethod == null)
+            {
+                ThrowHelper.ThrowMarshalDirectiveException();
+            }
+
+            LoadManagedValue(_ilCodeStreams.CleanupCodeStream);
+            codeStream.EmitLdLoc(lMarshaller);
+            codeStream.Emit(ILOpcode.callvirt, emitter.NewToken(cleanupNativeDataMethod));
         }
 
         protected override void TransformNativeToManaged(ILCodeStream codeStream)
@@ -1195,9 +1211,12 @@ namespace Internal.TypeSystem.Interop
             }
 
             ILEmitter emitter = _ilCodeStreams.Emitter;
+            ILLocalVariable lMarshaller = emitter.NewLocal(customMarshallerType);
             var cookie = MarshalAsDescriptor.Cookie;
             codeStream.Emit(ILOpcode.ldstr, emitter.NewToken(cookie));
             codeStream.Emit(ILOpcode.call, emitter.NewToken(getInstanceMethod));
+            codeStream.Emit(ILOpcode.dup);
+            codeStream.EmitStLoc(lMarshaller);
 
             var marshalNativeToManagedMethod = marshallerType.GetKnownMethod(
                 "MarshalNativeToManaged",
@@ -1210,6 +1229,19 @@ namespace Internal.TypeSystem.Interop
             LoadManagedValue(codeStream);
             codeStream.Emit(ILOpcode.callvirt, emitter.NewToken(marshalNativeToManagedMethod));
             StoreNativeValue(codeStream);
+
+            // Call CleanUpManagedData on cleanup code stream.
+            var cleanupManagedDataMethod = marshallerType.GetKnownMethod(
+                "CleanUpManagedData",
+                new MethodSignature(MethodSignatureFlags.None, 0, Context.GetWellKnownType(WellKnownType.Void), new[] { Context.GetWellKnownType(WellKnownType.Object) }));
+            if (cleanupManagedDataMethod == null)
+            {
+                ThrowHelper.ThrowMarshalDirectiveException();
+            }
+
+            LoadManagedValue(_ilCodeStreams.CleanupCodeStream);
+            codeStream.EmitLdLoc(lMarshaller);
+            codeStream.Emit(ILOpcode.callvirt, emitter.NewToken(cleanupManagedDataMethod));
         }
 
         protected override void EmitCleanupManaged(ILCodeStream codeStream)
