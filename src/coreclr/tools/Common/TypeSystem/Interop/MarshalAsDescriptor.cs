@@ -48,12 +48,15 @@ namespace Internal.TypeSystem
 
     public class MarshalAsDescriptor
     {
+        private TypeDesc customMarshallerType;
+        private string cookie;
+
         public NativeTypeKind Type { get; }
         public NativeTypeKind ArraySubType { get; }
         public uint? SizeParamIndex { get; }
         public uint? SizeConst { get; }
-        public TypeDesc CustomMarshallerType { get; }
-        public string Cookie { get; }
+        public TypeDesc CustomMarshallerType => Type == NativeTypeKind.CustomMarshaler ? customMarshallerType : throw new InvalidOperationException("Custom marshaller type can be set only when using for CustomMarshaller");
+        public string Cookie => Type == NativeTypeKind.CustomMarshaler ? cookie : throw new InvalidOperationException("Cookie can be set only when using for CustomMarshaller");
 
         public MarshalAsDescriptor(NativeTypeKind type, NativeTypeKind arraySubType, uint? sizeParamIndex, uint? sizeConst, TypeDesc customMarshallerType, string cookie)
         {
@@ -61,8 +64,8 @@ namespace Internal.TypeSystem
             ArraySubType = arraySubType;
             SizeParamIndex = sizeParamIndex;
             SizeConst = sizeConst;
-            CustomMarshallerType = (type == NativeTypeKind.CustomMarshaler || customMarshallerType == null) ? customMarshallerType : throw new InvalidOperationException("Custom marshaller type can be set only when using for CustomMarshaller");
-            Cookie = (type == NativeTypeKind.CustomMarshaler || cookie == null) ? cookie : throw new InvalidOperationException("Cookie can be set only when using for CustomMarshaller");
+            this.customMarshallerType = customMarshallerType;
+            this.cookie = cookie;
         }
     }
 }
