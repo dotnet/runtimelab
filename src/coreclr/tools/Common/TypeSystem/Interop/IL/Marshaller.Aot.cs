@@ -1133,15 +1133,24 @@ namespace Internal.TypeSystem.Interop
         protected override void TransformManagedToNative(ILCodeStream codeStream)
         {
             var marshallerType = MarshalAsDescriptor.CustomMarshallerType;
+            if (marshallerType.IsGenericDefinition)
+            {
+                ThrowHelper.ThrowMarshalDirectiveException();
+            }
+
             TypeDesc customMarshallerType = Context.SystemModule.GetKnownType("System.Runtime.InteropServices", "ICustomMarshaler");
             if (!marshallerType.CanCastTo(customMarshallerType))
             {
-                throw new InvalidOperationException($"Custom marshaller type {marshallerType.ToString()} does not implements System.Runtime.InteropServices.ICustomMarshaler");
+                ThrowHelper.ThrowMarshalDirectiveException();
             }
 
-            var getInstanceMethod = marshallerType.GetKnownMethod(
+            var getInstanceMethod = marshallerType.GetMethod(
                 "GetInstance",
                 new MethodSignature(MethodSignatureFlags.Static, 0, customMarshallerType, new[] { Context.GetWellKnownType(WellKnownType.String) }));
+            if (getInstanceMethod == null)
+            {
+                ThrowHelper.ThrowMarshalDirectiveException();
+            }
 
             ILEmitter emitter = _ilCodeStreams.Emitter;
             var cookie = MarshalAsDescriptor.Cookie;
@@ -1151,6 +1160,10 @@ namespace Internal.TypeSystem.Interop
             var manageToNativeMethod = customMarshallerType.GetKnownMethod(
                 "MarshalManagedToNative",
                 new MethodSignature(MethodSignatureFlags.None, 0, Context.GetWellKnownType(WellKnownType.IntPtr), new[] { Context.GetWellKnownType(WellKnownType.Object) }));
+            if (manageToNativeMethod == null)
+            {
+                ThrowHelper.ThrowMarshalDirectiveException();
+            }
 
             LoadManagedValue(codeStream);
             codeStream.Emit(ILOpcode.callvirt, emitter.NewToken(manageToNativeMethod));
@@ -1160,15 +1173,26 @@ namespace Internal.TypeSystem.Interop
         protected override void TransformNativeToManaged(ILCodeStream codeStream)
         {
             var marshallerType = MarshalAsDescriptor.CustomMarshallerType;
+            if (marshallerType.IsGenericDefinition)
+            {
+                ThrowHelper.ThrowMarshalDirectiveException();
+                return;
+            }
+
             TypeDesc customMarshallerType = Context.SystemModule.GetKnownType("System.Runtime.InteropServices", "ICustomMarshaler");
             if (!marshallerType.CanCastTo(customMarshallerType))
             {
-                throw new InvalidOperationException($"Custom marshaller type {marshallerType.ToString()} does not implements System.Runtime.InteropServices.ICustomMarshaler");
+                ThrowHelper.ThrowMarshalDirectiveException();
+                return;
             }
 
             var getInstanceMethod = marshallerType.GetKnownMethod(
                 "GetInstance",
                 new MethodSignature(MethodSignatureFlags.Static, 0, customMarshallerType, new[] { Context.GetWellKnownType(WellKnownType.String) }));
+            if (getInstanceMethod == null)
+            {
+                ThrowHelper.ThrowMarshalDirectiveException();
+            }
 
             ILEmitter emitter = _ilCodeStreams.Emitter;
             var cookie = MarshalAsDescriptor.Cookie;
@@ -1178,6 +1202,10 @@ namespace Internal.TypeSystem.Interop
             var marshalNativeToManagedMethod = marshallerType.GetKnownMethod(
                 "MarshalNativeToManaged",
                 new MethodSignature(MethodSignatureFlags.None, 0, Context.GetWellKnownType(WellKnownType.Object), new[] { Context.GetWellKnownType(WellKnownType.IntPtr) }));
+            if (marshalNativeToManagedMethod == null)
+            {
+                ThrowHelper.ThrowMarshalDirectiveException();
+            }
 
             LoadManagedValue(codeStream);
             codeStream.Emit(ILOpcode.callvirt, emitter.NewToken(marshalNativeToManagedMethod));

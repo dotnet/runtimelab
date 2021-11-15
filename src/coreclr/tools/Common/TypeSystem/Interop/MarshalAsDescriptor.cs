@@ -3,7 +3,6 @@
 
 using System.Runtime.CompilerServices;
 using System;
-#nullable enable
 
 namespace Internal.TypeSystem
 {
@@ -53,17 +52,17 @@ namespace Internal.TypeSystem
         public NativeTypeKind ArraySubType { get; }
         public uint? SizeParamIndex { get; }
         public uint? SizeConst { get; }
-        public TypeDesc? CustomMarshallerType { get; }
-        public string? Cookie { get; }
+        public TypeDesc CustomMarshallerType { get; }
+        public string Cookie { get; }
 
-        public MarshalAsDescriptor(NativeTypeKind type, NativeTypeKind arraySubType, uint? sizeParamIndex, uint? sizeConst, TypeDesc? customMarshallerType, string? cookie)
+        public MarshalAsDescriptor(NativeTypeKind type, NativeTypeKind arraySubType, uint? sizeParamIndex, uint? sizeConst, TypeDesc customMarshallerType, string cookie)
         {
             Type = type;
             ArraySubType = arraySubType;
             SizeParamIndex = sizeParamIndex;
             SizeConst = sizeConst;
-            CustomMarshallerType = customMarshallerType;
-            Cookie = cookie;
+            CustomMarshallerType = (type == NativeTypeKind.CustomMarshaler || customMarshallerType == null) ? customMarshallerType : throw new InvalidOperationException("Custom marshaller type can be set only when using for CustomMarshaller");
+            Cookie = (type == NativeTypeKind.CustomMarshaler || cookie == null) ? cookie : throw new InvalidOperationException("Cookie can be set only when using for CustomMarshaller");
         }
     }
 }
