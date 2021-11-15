@@ -200,7 +200,7 @@ handle_arguments_local() {
             ;;
 
         nativeaot|-nativeaot)
-            __UnprocessedBuildArgs+=("/p:TestBuildMode=nativeaot")
+            __TestBuildMode=nativeaot
             ;;
 
         perfmap|-perfmap)
