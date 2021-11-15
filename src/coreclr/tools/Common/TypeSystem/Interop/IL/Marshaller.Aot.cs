@@ -1188,23 +1188,5 @@ namespace Internal.TypeSystem.Interop
         {
             throw new NotSupportedException();
         }
-
-        private void EmitMarshallerCreation(ILCodeStream codeStream, TypeDesc marshallerType)
-        {
-            TypeDesc customMarshallerType = Context.SystemModule.GetKnownType("System.Runtime.InteropServices", "ICustomMarshaler");
-            if (!marshallerType.CanCastTo(customMarshallerType))
-            {
-                throw new InvalidOperationException($"Custom marshaller type {marshallerType.ToString()} does not implements System.Runtime.InteropServices.ICustomMarshaler");
-            }
-
-            var getInstanceMethod = marshallerType.GetKnownMethod(
-                "GetInstance",
-                new MethodSignature(MethodSignatureFlags.Static, 0, customMarshallerType, new[] { Context.GetWellKnownType(WellKnownType.String) }));
-
-            ILEmitter emitter = _ilCodeStreams.Emitter;
-            var cookie = MarshalAsDescriptor.Cookie;
-            codeStream.Emit(ILOpcode.ldstr, emitter.NewToken(cookie));
-            codeStream.Emit(ILOpcode.call, emitter.NewToken(getInstanceMethod));
-        }
     }
 }
