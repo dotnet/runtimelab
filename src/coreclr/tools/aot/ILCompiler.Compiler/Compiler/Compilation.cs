@@ -115,6 +115,9 @@ namespace ILCompiler
             if (followVirtualDispatch && (target.IsFinal || target.OwningType.IsSealed()))
                 followVirtualDispatch = false;
 
+            if (followVirtualDispatch)
+                target = MetadataVirtualMethodAlgorithm.FindSlotDefiningMethodForVirtualMethod(target);
+
             return DelegateCreationInfo.Create(delegateType, target, NodeFactory, followVirtualDispatch);
         }
 
