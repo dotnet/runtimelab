@@ -960,7 +960,10 @@ namespace Internal.IL
 
                 if (field.HasRva)
                 {
-                    // We could add a dependency to the data node, but we don't really need it.
+                    // We don't care about field RVA data for the usual cases, but if this is one of the
+                    // magic fields the compiler synthetized, the data blob might bring more dependencies
+                    // and we need to scan those.
+                    _dependencies.Add(_compilation.GetFieldRvaData(field), reason);
                     // TODO: lazy cctor dependency
                     return;
                 }
