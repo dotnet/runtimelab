@@ -828,6 +828,40 @@ llvm::Value* Llvm::getShadowStackForCallee()
     return offset == 0 ? _function->getArg(0) : _builder.CreateGEP(_function->getArg(0), _builder.getInt32(offset));
 }
 
+Value* Llvm::consumeValue(GenTree* node, Type* targetLlvmType)
+{
+    Value* nodeValue = getGenTreeValue(node);
+    Value* finalValue = nodeValue;
+
+    if (nodeValue->getType() != targetLlvmType)
+    {
+        assert(targetLlvmType->isIntegerTy() && nodeValue->getType()->isIntegerTy() &&
+               nodeValue->getType()->getPrimitiveSizeInBits() <= 64 && targetLlvmType->getPrimitiveSizeInBits() <= 64);
+        if (nodeValue->getType()->getPrimitiveSizeInBits() < targetLlvmType->getPrimitiveSizeInBits())
+        {
+            // Upcast.
+            if (varTypeIsSmall(node) || targetLlvmType == Type::getInt64Ty(_llvmContext))
+            {
+                finalValue = varTypeIsSigned(node) ? _builder.CreateSExt(nodeValue, targetLlvmType)
+                                                   : _builder.CreateZExt(nodeValue, targetLlvmType);
+            }
+            else
+            {
+                // This is the special case for relops. Ordinary codegen "just knows" they need zero-extension.
+                assert(nodeValue->getType() == Type::getInt1Ty(_llvmContext));
+                finalValue = _builder.CreateZExt(nodeValue, Type::getInt32Ty(_llvmContext));
+            }
+        }
+        else
+        {
+            // Truncate.
+            finalValue = _builder.CreateTrunc(nodeValue, targetLlvmType);
+        }
+    }
+
+    return finalValue;
+}
+
 llvm::Value* Llvm::buildUserFuncCall(GenTreeCall* call)
 {
     const char* symbolName = (*_getMangledSymbolName)(_thisPtr, call->gtEntryPoint.handle);
@@ -1115,10 +1149,10 @@ void Llvm::buildCnsInt(GenTree* node)
 
 void Llvm::buildInd(GenTree* node, Value* ptr)
 {
-    // first cast the pointer to create the correct load instructions, then cast the result incase we are loading a small int into an int32
-    mapGenTreeToValue(node, castIfNecessary(_builder.CreateLoad(
+    // cast the pointer to create the correct load instructions
+    mapGenTreeToValue(node, _builder.CreateLoad(
                                  castIfNecessary(ptr,
-                                     getLlvmTypeForVarType(node->TypeGet())->getPointerTo())), getLlvmTypeForVarType(genActualType(node))));
+                                     getLlvmTypeForVarType(node->TypeGet())->getPointerTo())));
 }
 
 Value* Llvm::buildJTrue(GenTree* node, Value* opValue)
@@ -1126,12 +1160,12 @@ Value* Llvm::buildJTrue(GenTree* node, Value* opValue)
     return _builder.CreateCondBr(opValue, getLLVMBasicBlockForBlock(_currentBlock->bbJumpDest), getLLVMBasicBlockForBlock(_currentBlock->bbNext));
 }
 
-void Llvm::buildCmp(genTreeOps op, GenTree* node, Value* op1, Value* op2)
+void Llvm::buildCmp(GenTree* node, Value* op1, Value* op2)
 {
     llvm::CmpInst::Predicate llvmPredicate;
 
     bool isIntOrPtr = op1->getType()->isIntOrPtrTy();
-    switch (op)
+    switch (node->OperGet())
     {
         case GT_EQ:
             llvmPredicate = isIntOrPtr ? llvm::CmpInst::Predicate::ICMP_EQ : llvm::CmpInst::Predicate::FCMP_OEQ;
@@ -1237,10 +1271,10 @@ void Llvm::fillPhis()
     }
 }
 
-void Llvm::buildUnaryOperation(genTreeOps oper, GenTree* node, Value* op1)
+void Llvm::buildUnaryOperation(GenTree* node, Value* op1)
 {
     Value* result;
-    switch (oper)
+    switch (node->OperGet())
     {
         case GT_NEG:
             if (op1->getType()->isFloatingPointTy())
@@ -1261,13 +1295,14 @@ void Llvm::buildUnaryOperation(genTreeOps oper, GenTree* node, Value* op1)
     mapGenTreeToValue(node, result);
 }
 
-void Llvm::buildBinaryOperation(genTreeOps oper, GenTree* node, Value* op1, Value* op2)
+void Llvm::buildBinaryOperation(GenTree* node)
 {
     Value* result;
-    // widen short ints as required
-    op1 = zextIntIfNecessary(op1);
-    op2 = zextIntIfNecessary(op2);
-    switch (oper)
+    Type*  targetType = getLlvmTypeForVarType(node->TypeGet());
+    Value* op1 = consumeValue(node->gtGetOp1(), targetType);
+    Value* op2 = consumeValue(node->gtGetOp2(), targetType);
+
+    switch (node->OperGet())
     {
         case GT_AND:
             result = _builder.CreateAnd(op1, op2, "and");
@@ -1279,34 +1314,31 @@ void Llvm::buildBinaryOperation(genTreeOps oper, GenTree* node, Value* op1, Valu
             result = _builder.CreateXor(op1, op2, "xor");
             break;
         default:
-            failFunctionCompilation();  // TODO-LLVM: other shift types
+            failFunctionCompilation();  // TODO-LLVM: other binary operaions
     }
     mapGenTreeToValue(node, result);
 }
 
-void Llvm::buildShift(genTreeOps oper, GenTree* node, Value* op1, Value* op2)
+void Llvm::buildShift(GenTreeOp* node)
 {
-    // while it seems excessive that the bits to shift should need to be 64 bits, the LLVM docs say that both operands must be the same type and a compilation failure results if this is not the case.
-    Value* numBitsToShift;
-    if (op2->getType() == op1->getType())
-    {
-        numBitsToShift = op2;
-    }
-    else
-    {
-        numBitsToShift = _builder.CreateZExt(op2, op1->getType());
-    }
+    Type*  llvmTargetType = getLlvmTypeForVarType(node->TypeGet());
+
+    // the LLVM docs say that both operands must be the same type and a compilation failure results if this is not the case.
+    Value* numBitsToShift = consumeValue(node->gtOp2, llvmTargetType);
+
+    Value* op1Value       = consumeValue(node->gtOp1, llvmTargetType);
     Value* result;
-    switch (oper)
+
+    switch (node->OperGet())
     {
         case GT_LSH:
-            result = _builder.CreateShl(op1, numBitsToShift, "lsh");
+            result = _builder.CreateShl(op1Value, numBitsToShift, "lsh");
             break;
         case GT_RSH:
-            result = _builder.CreateAShr(op1, numBitsToShift, "rsh");
+            result = _builder.CreateAShr(op1Value, numBitsToShift, "rsh");
             break;
         case GT_RSZ:
-            result = _builder.CreateLShr(op1, numBitsToShift, "rsz");
+            result = _builder.CreateLShr(op1Value, numBitsToShift, "rsz");
             break;
         default:
             failFunctionCompilation();  // TODO-LLVM: other shift types
@@ -1407,11 +1439,6 @@ Value* Llvm::localVar(GenTreeLclVar* lclVar)
         llvmRef = _builder.CreateTrunc(llvmRef, Type::getInt32Ty(_llvmContext));
     }
 
-    // implicit truncating from long to int
-    if (llvmRef->getType() == Type::getInt64Ty(_llvmContext) && lclVar->TypeIs(TYP_INT))
-    {
-        llvmRef = _builder.CreateTrunc(llvmRef, Type::getInt32Ty(_llvmContext));
-    }
     // implicit casting from * to int
     else if (llvmRef->getType()->isPointerTy() && getLlvmTypeForVarType(lclVar->TypeGet()) == Type::getInt32Ty(_llvmContext))
     {
@@ -1543,7 +1570,7 @@ void Llvm::visitNode(GenTree* node)
         case GT_LSH:
         case GT_RSH:
         case GT_RSZ:
-            buildShift(oper, node, getGenTreeValue(node->AsOp()->gtOp1), getGenTreeValue(node->AsOp()->gtOp2));
+            buildShift(node->AsOp());
             break;
         case GT_EQ:
         case GT_NE:
@@ -1551,11 +1578,11 @@ void Llvm::visitNode(GenTree* node)
         case GT_LT:
         case GT_GE:
         case GT_GT:
-            buildCmp(oper, node, getGenTreeValue(node->AsOp()->gtOp1), getGenTreeValue(node->AsOp()->gtOp2));
+            buildCmp(node, getGenTreeValue(node->AsOp()->gtOp1), getGenTreeValue(node->AsOp()->gtOp2));
             break;
         case GT_NEG:
         case GT_NOT:
-            buildUnaryOperation(oper, node, getGenTreeValue(node->AsOp()->gtOp1));
+            buildUnaryOperation(node, getGenTreeValue(node->AsOp()->gtOp1));
             break;
         case GT_NO_OP:
             emitDoNothingCall();
@@ -1577,7 +1604,7 @@ void Llvm::visitNode(GenTree* node)
         case GT_AND:
         case GT_OR:
         case GT_XOR:
-            buildBinaryOperation(oper, node, getGenTreeValue(node->AsOp()->gtOp1), getGenTreeValue(node->AsOp()->gtOp2));
+            buildBinaryOperation(node);
             break;
         default:
             failFunctionCompilation();

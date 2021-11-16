@@ -383,14 +383,18 @@ internal static class Program
         return Success ? 100 : -1;
     }
 
+    class ShortAndByte { internal short aShort; internal byte aByte; }
     private static void TestDifferentSizeIntOperator()
     {
         StartTest("Logical and short and int");
 
-        short s = 1;
-        int i = 4;
+        var o = new ShortAndByte
+        {
+            aShort = 3,
+            aByte = 2,
+        };
 
-        EndTest(s & i);
+        EndTest((o.aShort & o.aByte) == 2);
     }
 
     private static void TestGC()
@@ -1175,13 +1179,13 @@ internal static class Program
         EndTest(callbackResult);
     }
 
-//    [System.Runtime.InteropServices.UnmanagedCallersOnly(EntryPoint = "CallMe")]
+    [System.Runtime.InteropServices.UnmanagedCallersOnly(EntryPoint = "CallMe")]
     private static void _CallMe(int x)
     {
-        //if (x == 123)
-        //{
-        //    callbackResult = true;
-        //}
+        if (x == 123)
+        {
+            callbackResult = true;
+        }
     }
 
     [System.Runtime.InteropServices.DllImport("*")]
