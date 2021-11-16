@@ -147,6 +147,8 @@ namespace ILCompiler
 
         private DelegateCreationInfo(IMethodNode constructor, MethodDesc targetMethod, TargetKind targetKind, IMethodNode thunk = null)
         {
+            Debug.Assert(targetKind != TargetKind.VTableLookup
+                || MetadataVirtualMethodAlgorithm.FindSlotDefiningMethodForVirtualMethod(targetMethod) == targetMethod);
             Constructor = constructor;
             TargetMethod = targetMethod;
             _targetKind = targetKind;

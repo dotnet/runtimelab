@@ -190,7 +190,7 @@ if %__Ninja% == 0 (
     set __CommonMSBuildArgs=%__CommonMSBuildArgs% /p:UseVisualStudioNativeBinariesLayout=true
 )
 
-set __msbuildArgs=%__CommonMSBuildArgs% /nologo /verbosity:minimal /clp:Summary /maxcpucount %__UnprocessedBuildArgs% /p:TestBuildMode=%__TestBuildMode%
+set __msbuildArgs=%__CommonMSBuildArgs% /nologo /verbosity:minimal /clp:Summary /maxcpucount %__UnprocessedBuildArgs%
 
 echo Common MSBuild args: %__msbuildArgs%
 

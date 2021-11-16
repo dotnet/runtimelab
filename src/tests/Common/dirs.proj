@@ -19,20 +19,6 @@
       <DisabledProjects Include="$(TestRoot)TestWrappers*\**\*.csproj" />
     </ItemGroup>
 
-    <!-- These rely on implementation details of CoreCLR CoreLib -->
-    <ItemGroup Condition="'$(TestBuildMode)' == 'nativeaot'">
-      <DisabledProjects Include="$(TestRoot)Interop\COM\Activator\Activator.csproj" />
-      <DisabledProjects Include="$(TestRoot)Interop\COM\Activator\ActivatorBuiltInComDisabled.csproj" />
-      <DisabledProjects Include="$(TestRoot)Interop\ICastable\Castable.csproj" />
-      <DisabledProjects Include="$(TestRoot)Interop\IJW\LoadIjwFromModuleHandle\LoadIjwFromModuleHandle.csproj" />
-    </ItemGroup>
-
-    <!-- Temporarily don't build because we don't restore Microsoft.CodeAnalysis in external.csproj - DO NOT BRING THIS HACK OVER to dotnet/runtime -->
-    <ItemGroup>
-      <DisabledProjects Include="$(TestRoot)JIT\Performance\CodeQuality\Roslyn\CscBench.csproj" />
-      <DisabledProjects Include="$(TestRoot)managed\Compilation\Compilation.csproj" />
-    </ItemGroup>
-
     <ItemGroup>
       <BuildTestProjects Include="$(__BuildTestProject.Split(';'))" />
       <BuildTestDirs Include="$(__BuildTestDir.Split(';'))" />
