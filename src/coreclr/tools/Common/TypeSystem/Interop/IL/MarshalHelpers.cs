@@ -839,6 +839,8 @@ namespace Internal.TypeSystem.Interop
                         return MarshallerKind.BSTRString;
                     case NativeTypeKind.AnsiBStr:
                         return MarshallerKind.AnsiBSTRString;
+                    case NativeTypeKind.CustomMarshaler:
+                        return MarshallerKind.CustomMarshaler;
                     default:
                         return MarshallerKind.Invalid;
                 }

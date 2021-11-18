@@ -608,9 +608,6 @@ namespace Internal.TypeSystem.Ecma
                     break;
                 case NativeTypeKind.CustomMarshaler:
                     {
-                        // There's nobody to consume CustomMarshaller, so let's just parse the data
-                        // to avoid asserting later.
-
                         // Read typelib guid
                         _reader.ReadSerializedString();
 

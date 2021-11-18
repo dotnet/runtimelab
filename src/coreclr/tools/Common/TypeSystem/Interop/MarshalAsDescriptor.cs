@@ -3,6 +3,7 @@
 
 using System.Runtime.CompilerServices;
 using System;
+using System.Diagnostics;
 
 namespace Internal.TypeSystem
 {
@@ -48,15 +49,30 @@ namespace Internal.TypeSystem
 
     public class MarshalAsDescriptor
     {
-        private TypeDesc customMarshallerType;
-        private string cookie;
+        private TypeDesc _customMarshallerType;
+        private string _cookie;
 
         public NativeTypeKind Type { get; }
         public NativeTypeKind ArraySubType { get; }
         public uint? SizeParamIndex { get; }
         public uint? SizeConst { get; }
-        public TypeDesc CustomMarshallerType => Type == NativeTypeKind.CustomMarshaler ? customMarshallerType : throw new InvalidOperationException("Custom marshaller type can be set only when using for CustomMarshaller");
-        public string Cookie => Type == NativeTypeKind.CustomMarshaler ? cookie : throw new InvalidOperationException("Cookie can be set only when using for CustomMarshaller");
+        public TypeDesc CustomMarshallerType
+        {
+            get
+            {
+                Debug.Assert(Type == NativeTypeKind.CustomMarshaler, "Custom marshaller type can be set only when using for CustomMarshaller");
+                return _customMarshallerType;
+            }
+        }
+
+        public string Cookie
+        {
+            get
+            {
+                Debug.Assert(Type == NativeTypeKind.CustomMarshaler, "Cookie can be set only when using for CustomMarshaller");
+                return _cookie;
+            }
+        }
 
         public MarshalAsDescriptor(NativeTypeKind type, NativeTypeKind arraySubType, uint? sizeParamIndex, uint? sizeConst, TypeDesc customMarshallerType, string cookie)
         {
@@ -64,8 +80,8 @@ namespace Internal.TypeSystem
             ArraySubType = arraySubType;
             SizeParamIndex = sizeParamIndex;
             SizeConst = sizeConst;
-            this.customMarshallerType = customMarshallerType;
-            this.cookie = cookie;
+            _customMarshallerType = customMarshallerType;
+            _cookie = cookie;
         }
     }
 }
