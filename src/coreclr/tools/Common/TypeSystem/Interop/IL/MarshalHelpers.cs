@@ -497,6 +497,8 @@ namespace Internal.TypeSystem.Interop
                             else
                                 return MarshallerKind.ByValArray;
                         }
+                    case NativeTypeKind.CustomMarshaler:
+                        return MarshallerKind.CustomMarshaler;
 
                     default:
                         return MarshallerKind.Invalid;
@@ -668,7 +670,12 @@ namespace Internal.TypeSystem.Interop
                     return MarshallerKind.Invalid;
             }
             else
-                return MarshallerKind.Invalid;
+            {
+                if (nativeType == NativeTypeKind.CustomMarshaler)
+                    return MarshallerKind.CustomMarshaler;
+                else
+                    return MarshallerKind.Invalid;
+            }
         }
 
         private static MarshallerKind GetArrayElementMarshallerKind(
