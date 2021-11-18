@@ -397,6 +397,10 @@ namespace ILCompiler.DependencyAnalysis
                         if (interfaceMethod.HasInstantiation)
                             continue;
 
+                        // Static virtual methods are resolved at compile time
+                        if (interfaceMethod.Signature.IsStatic)
+                            continue;
+
                         MethodDesc implMethod = defType.ResolveInterfaceMethodToVirtualMethodOnType(interfaceMethod);
                         if (implMethod != null)
                         {

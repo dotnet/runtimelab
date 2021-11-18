@@ -32,6 +32,10 @@ namespace ILCompiler.DependencyAnalysis
         {
             Debug.Assert(!factory.MetadataManager.IsReflectionBlocked(_method.GetTypicalMethodDefinition()));
 
+            // Depends on static virtual method support. Turning off reflection for now.
+            if (_method.IsVirtual && _method.Signature.IsStatic)
+                return null;
+
             DependencyList dependencies = new DependencyList();
             factory.MetadataManager.GetDependenciesDueToReflectability(ref dependencies, factory, _method);
 

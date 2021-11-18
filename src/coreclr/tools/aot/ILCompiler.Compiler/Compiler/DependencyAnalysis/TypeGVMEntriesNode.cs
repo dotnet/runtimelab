@@ -102,9 +102,7 @@ namespace ILCompiler.DependencyAnalysis
             {
                 foreach (var method in iface.GetVirtualMethods())
                 {
-                    Debug.Assert(!method.Signature.IsStatic);
-
-                    if (!method.HasInstantiation)
+                    if (!method.HasInstantiation || method.Signature.IsStatic)
                         continue;
 
                     MethodDesc slotDecl = type.ResolveInterfaceMethodTarget(method);
