@@ -55,6 +55,8 @@ To run an individual test (after it was built), navigate to the `artifacts\tests
 
 `$repo_root` is the root of your clone of the repo.
 
+For more advanced scenarios, look for at [Building Test Subsets](../../testing/coreclr/windows-test-instructions.md#building-test-subsets) and [Generating Core_Root](../../testing/coreclr/windows-test-instructions.md#generating-core_root)
+
 ## Design Documentation
 
 - [ILC Compiler Architecture](../../../design/coreclr/botr/ilc-architecture.md)
