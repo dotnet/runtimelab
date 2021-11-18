@@ -1,6 +1,7 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
 using System.Security;
 
@@ -90,5 +91,68 @@ namespace System.Runtime.InteropServices
             return Interop.Kernel32.MultiByteToWideChar(Interop.Kernel32.CP_ACP, 0, multiByteStr, multiByteLen, default(char*), 0);
         }
         #endregion
+
+        public static unsafe object InitializeCustomMarshaller(RuntimeTypeHandle pParameterType, RuntimeTypeHandle pMarshallerType, string cookie, delegate*<string, object> getInstanceMethod)
+        {
+            if (getInstanceMethod == null)
+            {
+                throw new ApplicationException();
+            }
+
+            var marshaller = s_customMarshallersTable.GetOrAdd(new CustomMarshallerKey(pParameterType, pMarshallerType, cookie, getInstanceMethod));
+            if (marshaller == null)
+            {
+                throw new ApplicationException();
+            }
+
+            return marshaller;
+        }
+
+        private static CustomMarshallerTable s_customMarshallersTable = new CustomMarshallerTable();
+
+        private unsafe struct CustomMarshallerKey : IEquatable<CustomMarshallerKey>
+        {
+            public CustomMarshallerKey(RuntimeTypeHandle pParameterType, RuntimeTypeHandle pMarshallerType, string cookie, delegate*<string, object> getInstanceMethod)
+            {
+                ParameterType = pParameterType;
+                MarshallerType = pMarshallerType;
+                Cookie = cookie;
+                GetInstanceMethod = getInstanceMethod;
+            }
+
+            public RuntimeTypeHandle ParameterType { get; }
+            public RuntimeTypeHandle MarshallerType { get; }
+            public string Cookie { get; }
+            public delegate*<string, object> GetInstanceMethod { get; }
+
+            public override bool Equals(object obj)
+            {
+                if (!(obj is CustomMarshallerKey other))
+                    return false;
+                return Equals(other);
+            }
+
+            public bool Equals(CustomMarshallerKey other)
+            {
+                return ParameterType.Equals(other.ParameterType)
+                    && MarshallerType.Equals(other.MarshallerType)
+                    && Cookie.Equals(other.Cookie);
+            }
+
+            public override int GetHashCode()
+            {
+                return ParameterType.GetHashCode()
+                    ^ MarshallerType.GetHashCode()
+                    ^ Cookie.GetHashCode();
+            }
+        }
+
+        private sealed class CustomMarshallerTable : ConcurrentUnifier<CustomMarshallerKey, object>
+        {
+            protected unsafe override object Factory(CustomMarshallerKey key)
+            {
+                return key.GetInstanceMethod(key.Cookie);
+            }
+        }
     }
 }

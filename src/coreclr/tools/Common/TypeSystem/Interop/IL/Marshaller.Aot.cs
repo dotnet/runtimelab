@@ -1166,13 +1166,31 @@ namespace Internal.TypeSystem.Interop
                 ThrowHelper.ThrowMarshalDirectiveException();
             }
 
+            var getInstanceMethodType = Context.GetFunctionPointerType(
+                new MethodSignature(MethodSignatureFlags.Static, 0, Context.GetWellKnownType(WellKnownType.Object),
+                    new TypeDesc[] { Context.GetWellKnownType(WellKnownType.String) }));
+            var initializeCustomMarshallerMethod = InteropTypes.GetPInvokeMarshal(Context).GetKnownMethod("InitializeCustomMarshaller",
+                new MethodSignature(MethodSignatureFlags.Static, 0, Context.GetWellKnownType(WellKnownType.Object),
+                    new TypeDesc[] {
+                        Context.GetWellKnownType(WellKnownType.RuntimeTypeHandle),
+                        Context.GetWellKnownType(WellKnownType.RuntimeTypeHandle),
+                        Context.GetWellKnownType(WellKnownType.String),
+                        getInstanceMethodType,
+                    }
+                ));
+
             ILEmitter emitter = _ilCodeStreams.Emitter;
             var lMarshaller = emitter.NewLocal(customMarshallerType);
             var cookie = MarshalAsDescriptor.Cookie;
-            codeStream.Emit(ILOpcode.ldstr, emitter.NewToken(cookie));
-            codeStream.Emit(ILOpcode.call, emitter.NewToken(getInstanceMethod));
-            codeStream.Emit(ILOpcode.dup);
-            codeStream.EmitStLoc(lMarshaller);
+
+            // Custom marshaller initialization should not be catched, so initialize early
+            ILCodeStream fnptrLoadStream = _ilCodeStreams.FunctionPointerLoadStream;
+            fnptrLoadStream.Emit(ILOpcode.ldtoken, emitter.NewToken(ManagedParameterType));
+            fnptrLoadStream.Emit(ILOpcode.ldtoken, emitter.NewToken(marshallerType));
+            fnptrLoadStream.Emit(ILOpcode.ldstr, emitter.NewToken(cookie));
+            fnptrLoadStream.Emit(ILOpcode.ldftn, emitter.NewToken(getInstanceMethod));
+            fnptrLoadStream.Emit(ILOpcode.call, emitter.NewToken(initializeCustomMarshallerMethod));
+            fnptrLoadStream.EmitStLoc(lMarshaller);
 
             var manageToNativeMethod = customMarshallerType.GetMethod(
                 "MarshalManagedToNative",
@@ -1182,6 +1200,7 @@ namespace Internal.TypeSystem.Interop
                 ThrowHelper.ThrowMarshalDirectiveException();
             }
 
+            codeStream.EmitLdLoc(lMarshaller);
             LoadManagedValue(codeStream);
             codeStream.Emit(ILOpcode.callvirt, emitter.NewToken(manageToNativeMethod));
             StoreNativeValue(codeStream);
@@ -1236,13 +1255,31 @@ namespace Internal.TypeSystem.Interop
                 ThrowHelper.ThrowMarshalDirectiveException();
             }
 
+            var getInstanceMethodType = Context.GetFunctionPointerType(
+                new MethodSignature(MethodSignatureFlags.Static, 0, Context.GetWellKnownType(WellKnownType.Object),
+                    new TypeDesc[] { Context.GetWellKnownType(WellKnownType.String) }));
+            var initializeCustomMarshallerMethod = InteropTypes.GetPInvokeMarshal(Context).GetKnownMethod("InitializeCustomMarshaller",
+                new MethodSignature(MethodSignatureFlags.Static, 0, Context.GetWellKnownType(WellKnownType.Object),
+                    new TypeDesc[] {
+                        Context.GetWellKnownType(WellKnownType.RuntimeTypeHandle),
+                        Context.GetWellKnownType(WellKnownType.RuntimeTypeHandle),
+                        Context.GetWellKnownType(WellKnownType.String),
+                        getInstanceMethodType,
+                    }
+                ));
+
             ILEmitter emitter = _ilCodeStreams.Emitter;
             var lMarshaller = emitter.NewLocal(customMarshallerType);
             var cookie = MarshalAsDescriptor.Cookie;
-            codeStream.Emit(ILOpcode.ldstr, emitter.NewToken(cookie));
-            codeStream.Emit(ILOpcode.call, emitter.NewToken(getInstanceMethod));
-            codeStream.Emit(ILOpcode.dup);
-            codeStream.EmitStLoc(lMarshaller);
+
+            // Custom marshaller initialization should not be catched, so initialize early
+            ILCodeStream fnptrLoadStream = _ilCodeStreams.FunctionPointerLoadStream;
+            fnptrLoadStream.Emit(ILOpcode.ldtoken, emitter.NewToken(ManagedParameterType));
+            fnptrLoadStream.Emit(ILOpcode.ldtoken, emitter.NewToken(marshallerType));
+            fnptrLoadStream.Emit(ILOpcode.ldstr, emitter.NewToken(cookie));
+            fnptrLoadStream.Emit(ILOpcode.ldftn, emitter.NewToken(getInstanceMethod));
+            fnptrLoadStream.Emit(ILOpcode.call, emitter.NewToken(initializeCustomMarshallerMethod));
+            fnptrLoadStream.EmitStLoc(lMarshaller);
 
             var marshalNativeToManagedMethod = marshallerType.GetMethod(
                 "MarshalNativeToManaged",
@@ -1252,22 +1289,10 @@ namespace Internal.TypeSystem.Interop
                 ThrowHelper.ThrowMarshalDirectiveException();
             }
 
+            codeStream.EmitLdLoc(lMarshaller);
             LoadNativeValue(codeStream);
             codeStream.Emit(ILOpcode.callvirt, emitter.NewToken(marshalNativeToManagedMethod));
             StoreManagedValue(codeStream);
-
-            // Call CleanUpManagedData on cleanup code stream.
-            var cleanupManagedDataMethod = customMarshallerType.GetMethod(
-                "CleanUpManagedData",
-                new MethodSignature(MethodSignatureFlags.None, 0, Context.GetWellKnownType(WellKnownType.Void), new[] { Context.GetWellKnownType(WellKnownType.Object) }));
-            if (cleanupManagedDataMethod == null)
-            {
-                ThrowHelper.ThrowMarshalDirectiveException();
-            }
-
-            _ilCodeStreams.CleanupCodeStream.EmitLdLoc(lMarshaller);
-            LoadManagedValue(_ilCodeStreams.CleanupCodeStream);
-            _ilCodeStreams.CleanupCodeStream.Emit(ILOpcode.callvirt, emitter.NewToken(cleanupManagedDataMethod));
         }
     }
 }
