@@ -599,16 +599,26 @@ namespace Internal.Runtime.CompilerHelpers
 #endif
         }
 
-        public static unsafe object InitializeCustomMarshaller(RuntimeTypeHandle pParameterType, RuntimeTypeHandle pMarshallerType, string cookie, delegate*<string, object> getInstanceMethod)
+        public static unsafe ICustomMarshaler InitializeCustomMarshaller(RuntimeTypeHandle pParameterType, Type pMarshallerType, string cookie, delegate*<string, object> getInstanceMethod)
         {
-            if (pMarshallerType.IsNull)
+            if (pMarshallerType == null)
             {
                 throw new TypeLoadException();
             }
 
-            if (pMarshallerType.IsGenericTypeDefinition())
+            if (pMarshallerType.IsGenericTypeDefinition)
             {
                 throw new TypeLoadException();
+            }
+
+            if (!pMarshallerType.IsAssignableTo(typeof(ICustomMarshaler)))
+            {
+                throw new ApplicationException();
+            }
+
+            if (pParameterType.ToEETypePtr().IsPointer || pParameterType.IsValueType())
+            {
+                throw new MarshalDirectiveException();
             }
 
             if (getInstanceMethod == null)
@@ -616,13 +626,14 @@ namespace Internal.Runtime.CompilerHelpers
                 throw new ApplicationException();
             }
 
-            var marshaller = CustomMarshallerTable.s_customMarshallersTable.GetOrAdd(new CustomMarshallerKey(pParameterType, pMarshallerType.Value, cookie, getInstanceMethod));
+            var marshaller = CustomMarshallerTable.s_customMarshallersTable.GetOrAdd(
+                new CustomMarshallerKey(pParameterType, pMarshallerType.TypeHandle, cookie, getInstanceMethod));
             if (marshaller == null)
             {
                 throw new ApplicationException();
             }
 
-            return marshaller;
+            return (ICustomMarshaler)marshaller;
         }
 
         [StructLayout(LayoutKind.Sequential)]
@@ -645,7 +656,7 @@ namespace Internal.Runtime.CompilerHelpers
 
         internal unsafe struct CustomMarshallerKey : IEquatable<CustomMarshallerKey>
         {
-            public CustomMarshallerKey(RuntimeTypeHandle pParameterType, IntPtr pMarshallerType, string cookie, delegate*<string, object> getInstanceMethod)
+            public CustomMarshallerKey(RuntimeTypeHandle pParameterType, RuntimeTypeHandle pMarshallerType, string cookie, delegate*<string, object> getInstanceMethod)
             {
                 ParameterType = pParameterType;
                 MarshallerType = pMarshallerType;
@@ -654,7 +665,7 @@ namespace Internal.Runtime.CompilerHelpers
             }
 
             public RuntimeTypeHandle ParameterType { get; }
-            public IntPtr MarshallerType { get; }
+            public RuntimeTypeHandle MarshallerType { get; }
             public string Cookie { get; }
             public delegate*<string, object> GetInstanceMethod { get; }
 

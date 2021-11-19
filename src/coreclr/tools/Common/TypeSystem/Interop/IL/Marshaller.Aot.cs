@@ -1133,27 +1133,14 @@ namespace Internal.TypeSystem.Interop
         protected override void TransformManagedToNative(ILCodeStream codeStream)
         {
             var marshallerType = MarshalAsDescriptor.CustomMarshallerType;
-            if (marshallerType == null)
-            {
-                // TypeLoadException throw here.
-                ThrowHelper.ThrowMarshalDirectiveException();
-            }
-
-            if (marshallerType.IsGenericDefinition)
-            {
-                // TypeLoadException throw here.
-                ThrowHelper.ThrowTypeLoadException(marshallerType);
-            }
-
             var customMarshallerType = Context.SystemModule.GetKnownType("System.Runtime.InteropServices", "ICustomMarshaler");
             if (customMarshallerType == null)
             {
                 ThrowHelper.ThrowMarshalDirectiveException();
             }
 
-            if (!marshallerType.CanCastTo(customMarshallerType))
+            if (ManagedParameterType.IsPointer || ManagedParameterType.IsValueType)
             {
-                // ApplicationException throw here.
                 ThrowHelper.ThrowMarshalDirectiveException();
             }
 
@@ -1170,9 +1157,17 @@ namespace Internal.TypeSystem.Interop
             // Custom marshaller initialization should not be catched, so initialize early
             ILCodeStream fnptrLoadStream = _ilCodeStreams.FunctionPointerLoadStream;
             fnptrLoadStream.Emit(ILOpcode.ldtoken, emitter.NewToken(ManagedParameterType));
-            fnptrLoadStream.Emit(ILOpcode.ldtoken, emitter.NewToken(marshallerType));
+            if (marshallerType != null && !marshallerType.IsGenericDefinition)
+            {
+                fnptrLoadStream.Emit(ILOpcode.ldtoken, emitter.NewToken(marshallerType));
+                fnptrLoadStream.Emit(ILOpcode.call, emitter.NewToken(Context.SystemModule.GetKnownType("System", "Type").GetKnownMethod("GetTypeFromHandle", null)));
+            }
+            else
+            {
+                fnptrLoadStream.Emit(ILOpcode.ldnull);
+            }
             fnptrLoadStream.Emit(ILOpcode.ldstr, emitter.NewToken(cookie));
-            if (getInstanceMethod != null)
+            if (getInstanceMethod != null && marshallerType != null && !marshallerType.IsGenericDefinition)
             {
                 fnptrLoadStream.Emit(ILOpcode.ldftn, emitter.NewToken(getInstanceMethod));
             }
@@ -1207,17 +1202,6 @@ namespace Internal.TypeSystem.Interop
         protected override void TransformNativeToManaged(ILCodeStream codeStream)
         {
             var marshallerType = MarshalAsDescriptor.CustomMarshallerType;
-            if (marshallerType == null)
-            {
-                // TypeLoadException throw here.
-                ThrowHelper.ThrowMarshalDirectiveException();
-            }
-
-            if (marshallerType.IsGenericDefinition)
-            {
-                // TypeLoadException throw here.
-                ThrowHelper.ThrowTypeLoadException(marshallerType);
-            }
 
             var customMarshallerType = Context.SystemModule.GetKnownType("System.Runtime.InteropServices", "ICustomMarshaler");
             if (customMarshallerType == null)
@@ -1225,9 +1209,8 @@ namespace Internal.TypeSystem.Interop
                 ThrowHelper.ThrowMarshalDirectiveException();
             }
 
-            if (!marshallerType.CanCastTo(customMarshallerType))
+            if (ManagedParameterType.IsPointer || ManagedParameterType.IsValueType)
             {
-                // ApplicationException throw here.
                 ThrowHelper.ThrowMarshalDirectiveException();
             }
 
@@ -1244,9 +1227,17 @@ namespace Internal.TypeSystem.Interop
             // Custom marshaller initialization should not be catched, so initialize early
             ILCodeStream fnptrLoadStream = _ilCodeStreams.FunctionPointerLoadStream;
             fnptrLoadStream.Emit(ILOpcode.ldtoken, emitter.NewToken(ManagedParameterType));
-            fnptrLoadStream.Emit(ILOpcode.ldtoken, emitter.NewToken(marshallerType));
+            if (marshallerType != null && !marshallerType.IsGenericDefinition)
+            {
+                fnptrLoadStream.Emit(ILOpcode.ldtoken, emitter.NewToken(marshallerType));
+                fnptrLoadStream.Emit(ILOpcode.call, emitter.NewToken(Context.SystemModule.GetKnownType("System", "Type").GetKnownMethod("GetTypeFromHandle", null)));
+            }
+            else
+            {
+                fnptrLoadStream.Emit(ILOpcode.ldnull);
+            }
             fnptrLoadStream.Emit(ILOpcode.ldstr, emitter.NewToken(cookie));
-            if (getInstanceMethod != null)
+            if (getInstanceMethod != null && marshallerType != null && !marshallerType.IsGenericDefinition)
             {
                 fnptrLoadStream.Emit(ILOpcode.ldftn, emitter.NewToken(getInstanceMethod));
             }

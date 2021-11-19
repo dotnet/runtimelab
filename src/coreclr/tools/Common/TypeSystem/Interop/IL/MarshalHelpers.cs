@@ -252,6 +252,9 @@ namespace Internal.TypeSystem.Interop
             //
             if (type.IsPrimitive)
             {
+                if (nativeType == NativeTypeKind.CustomMarshaler)
+                    return MarshallerKind.CustomMarshaler;
+
                 switch (type.Category)
                 {
                     case TypeFlags.Void:
@@ -353,6 +356,9 @@ namespace Internal.TypeSystem.Interop
             {
                 if (type.IsEnum)
                     return MarshallerKind.Enum;
+
+                if (nativeType == NativeTypeKind.CustomMarshaler)
+                    return MarshallerKind.CustomMarshaler;
 
                 if (InteropTypes.IsSystemDateTime(context, type))
                 {
@@ -516,6 +522,8 @@ namespace Internal.TypeSystem.Interop
                     }
                     return MarshallerKind.BlittableValue;
                 }
+                else if (nativeType == NativeTypeKind.CustomMarshaler)
+                    return MarshallerKind.CustomMarshaler;
                 else
                     return MarshallerKind.Invalid;
             }
@@ -651,6 +659,9 @@ namespace Internal.TypeSystem.Interop
                     // Generic types cannot be marshaled.
                     return MarshallerKind.Invalid;
                 }
+
+                if (nativeType == NativeTypeKind.CustomMarshaler)
+                    return MarshallerKind.CustomMarshaler;
 
                 if (!isField && nativeType == NativeTypeKind.Default || nativeType == NativeTypeKind.LPStruct)
                     return MarshallerKind.LayoutClassPtr;
