@@ -99,7 +99,7 @@ namespace System.Runtime.InteropServices
                 throw new ApplicationException();
             }
 
-            var marshaller = s_customMarshallersTable.GetOrAdd(new CustomMarshallerKey(pParameterType, pMarshallerType, cookie, getInstanceMethod));
+            var marshaller = CustomMarshallerTable.s_customMarshallersTable.GetOrAdd(new CustomMarshallerKey(pParameterType, pMarshallerType, cookie, getInstanceMethod));
             if (marshaller == null)
             {
                 throw new ApplicationException();
@@ -107,8 +107,6 @@ namespace System.Runtime.InteropServices
 
             return marshaller;
         }
-
-        private static CustomMarshallerTable s_customMarshallersTable = new CustomMarshallerTable();
 
         private unsafe struct CustomMarshallerKey : IEquatable<CustomMarshallerKey>
         {
@@ -149,6 +147,8 @@ namespace System.Runtime.InteropServices
 
         private sealed class CustomMarshallerTable : ConcurrentUnifier<CustomMarshallerKey, object>
         {
+            internal static CustomMarshallerTable s_customMarshallersTable = new CustomMarshallerTable();
+
             protected unsafe override object Factory(CustomMarshallerKey key)
             {
                 return key.GetInstanceMethod(key.Cookie);

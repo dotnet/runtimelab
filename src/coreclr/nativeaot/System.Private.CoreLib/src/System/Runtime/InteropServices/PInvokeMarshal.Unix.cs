@@ -60,10 +60,5 @@ namespace System.Runtime.InteropServices
             return System.Text.Encoding.UTF8.GetCharCount(multiByteStr, multiByteLen);
         }
         #endregion
-
-        public static unsafe object InitializeCustomMarshaller(RuntimeTypeHandle pParameterType, RuntimeTypeHandle pMarshallerType, string cookie, delegate*<string, object> getInstanceMethod)
-        {
-            throw new PlatformNotSupportedException();
-        }
     }
 }
