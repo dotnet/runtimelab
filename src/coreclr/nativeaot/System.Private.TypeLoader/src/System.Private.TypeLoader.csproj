@@ -1,5 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
+    <NoWarn>$(NoWarn),CS1574</NoWarn>
     <DefineConstants>TYPE_LOADER_IMPLEMENTATION;$(DefineConstants)</DefineConstants>
     <DefineConstants Condition="'$(TYPE_LOADER_TRACE)' != ''">TYPE_LOADER_TRACE;$(DefineConstants)</DefineConstants>
     <DefineConstants Condition="'$(GVM_RESOLUTION_TRACE)' != ''">GVM_RESOLUTION_TRACE;$(DefineConstants)</DefineConstants>
@@ -37,9 +38,6 @@
     </Compile>
     <Compile Include="$(AotCommonPath)\Internal\Runtime\TransitionBlock.cs">
       <Link>TransitionBlock.cs</Link>
-    </Compile>
-    <Compile Include="$(AotCommonPath)\Internal\Runtime\UniversalGenericParameterLayout.cs">
-      <Link>UniversalGenericParameterLayout.cs</Link>
     </Compile>
     <Compile Include="$(AotCommonPath)\System\Collections\Generic\LowLevelList.cs">
       <Link>LowLevelList.cs</Link>
@@ -180,14 +178,8 @@
     <Compile Include="$(CompilerCommonPath)\TypeSystem\Common\LayoutInt.cs">
       <Link>Internal\TypeSystem\LayoutInt.cs</Link>
     </Compile>
-    <Compile Include="$(CompilerCommonPath)\TypeSystem\Common\MetadataFieldLayoutAlgorithm.cs">
-      <Link>Internal\TypeSystem\MetadataFieldLayoutAlgorithm.cs</Link>
-    </Compile>
     <Compile Include="$(CompilerCommonPath)\TypeSystem\Common\ExplicitLayoutValidator.cs">
       <Link>Internal\TypeSystem\Common\ExplicitLayoutValidator.cs</Link>
-    </Compile>
-    <Compile Include="$(CompilerCommonPath)\TypeSystem\Common\MetadataRuntimeInterfacesAlgorithm.cs">
-      <Link>Internal\TypeSystem\MetadataRuntimeInterfacesAlgorithm.cs</Link>
     </Compile>
     <Compile Include="$(CompilerCommonPath)\TypeSystem\Common\MetadataType.cs">
       <Link>Internal\TypeSystem\MetadataType.cs</Link>
@@ -197,9 +189,6 @@
     </Compile>
     <Compile Include="$(CompilerCommonPath)\TypeSystem\Common\MetadataType.MethodImpls.cs">
       <Link>Internal\TypeSystem\MetadataType.MethodImpls.cs</Link>
-    </Compile>
-    <Compile Include="$(CompilerCommonPath)\TypeSystem\Common\MetadataVirtualMethodAlgorithm.cs">
-      <Link>Internal\TypeSystem\MetadataVirtualMethodAlgorithm.cs</Link>
     </Compile>
     <Compile Include="$(CompilerCommonPath)\TypeSystem\Common\MethodDesc.cs">
       <Link>Internal\TypeSystem\MethodDesc.cs</Link>
