@@ -4,6 +4,7 @@
 using System.Reflection;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Runtime.InteropServices;
 using CultureInfo = System.Globalization.CultureInfo;
 
 namespace System
@@ -230,7 +231,7 @@ namespace System
 
                         if (!pCls.IsAssignableFrom(argTypes[paramOrder[i][j]]))
                         {
-                            if (argTypes[paramOrder[i][j]].IsCOMObject)
+                            if (Marshal.IsBuiltInComSupported && argTypes[paramOrder[i][j]].IsCOMObject)
                             {
                                 if (pCls.IsInstanceOfType(args[paramOrder[i][j]]))
                                     continue;
@@ -258,7 +259,7 @@ namespace System
 
                             if (!paramArrayType.IsAssignableFrom(argTypes[j]))
                             {
-                                if (argTypes[j].IsCOMObject)
+                                if (Marshal.IsBuiltInComSupported && argTypes[j].IsCOMObject)
                                 {
                                     if (paramArrayType.IsInstanceOfType(args[j]))
                                         continue;
