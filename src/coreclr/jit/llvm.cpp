@@ -1373,7 +1373,8 @@ void Llvm::buildShift(GenTreeOp* node)
     Type*  llvmTargetType = getLlvmTypeForVarType(node->TypeGet());
     Value* numBitsToShift = consumeValue(node->gtOp2, getLlvmTypeForVarType(node->gtOp2->TypeGet()));
 
-    // the LLVM docs say that both operands must be the same type and a compilation failure results if this is not the case.
+    // LLVM requires the operands be the same type as the shift itself.
+    // Shift counts are assumed to never be negative, so we zero extend.
     if (numBitsToShift->getType()->getPrimitiveSizeInBits() < llvmTargetType->getPrimitiveSizeInBits())
     {
         numBitsToShift = _builder.CreateZExt(numBitsToShift, llvmTargetType);
