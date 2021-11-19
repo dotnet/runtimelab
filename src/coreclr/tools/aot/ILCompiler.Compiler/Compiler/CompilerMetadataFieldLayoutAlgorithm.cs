@@ -41,5 +41,23 @@ namespace ILCompiler
             // are typically rare.
             Debug.Assert(layout.ThreadNonGcStatics.Size == LayoutInt.Zero);
         }
+
+        protected override ComputedInstanceFieldLayout ComputeInstanceFieldLayout(MetadataType type, int numInstanceFields)
+        {
+            if (type.IsExplicitLayout)
+            {
+                return ComputeExplicitFieldLayout(type, numInstanceFields);
+            }
+            // Sequential layout has to be respected for blittable types only. We use approximation and respect it for
+            // all types without GC references (ie C# unmanaged types).
+            else if (type.IsSequentialLayout && !type.ContainsGCPointers)
+            {
+                return ComputeSequentialFieldLayout(type, numInstanceFields);
+            }
+            else
+            {
+                return ComputeAutoFieldLayout(type, numInstanceFields);
+            }
+        }
     }
 }

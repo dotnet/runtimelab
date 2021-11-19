@@ -22,9 +22,11 @@ namespace Internal.Runtime.TypeLoader
     /// </summary>
     public partial class TypeLoaderTypeSystemContext : TypeSystemContext
     {
+#if SUPPORTS_NATIVE_METADATA_TYPE_LOADING
         private static readonly MetadataFieldLayoutAlgorithm s_metadataFieldLayoutAlgorithm = new MetadataFieldLayoutAlgorithm();
-        private static readonly MetadataRuntimeInterfacesAlgorithm s_metadataRuntimeInterfacesAlgorithm = new MetadataRuntimeInterfacesAlgorithm();
         private static readonly MetadataVirtualMethodAlgorithm s_metadataVirtualMethodAlgorithm = new MetadataVirtualMethodAlgorithm();
+        private static readonly MetadataRuntimeInterfacesAlgorithm s_metadataRuntimeInterfacesAlgorithm = new MetadataRuntimeInterfacesAlgorithm();
+#endif
         private static readonly NoMetadataFieldLayoutAlgorithm s_noMetadataFieldLayoutAlgorithm = new NoMetadataFieldLayoutAlgorithm();
         private static readonly NoMetadataRuntimeInterfacesAlgorithm s_noMetadataRuntimeInterfacesAlgorithm = new NoMetadataRuntimeInterfacesAlgorithm();
         private static readonly NativeLayoutFieldAlgorithm s_nativeLayoutFieldAlgorithm = new NativeLayoutFieldAlgorithm();
@@ -68,7 +70,12 @@ namespace Internal.Runtime.TypeLoader
             }
             else
             {
+#if SUPPORTS_NATIVE_METADATA_TYPE_LOADING
                 return s_metadataFieldLayoutAlgorithm;
+#else
+                Debug.Assert(false);
+                return null;
+#endif
             }
         }
 
@@ -88,10 +95,12 @@ namespace Internal.Runtime.TypeLoader
             {
                 return s_noMetadataRuntimeInterfacesAlgorithm;
             }
+#if SUPPORTS_NATIVE_METADATA_TYPE_LOADING
             else if (type is MetadataType)
             {
                 return s_metadataRuntimeInterfacesAlgorithm;
             }
+#endif
             else
             {
                 Debug.Assert(false);
@@ -240,9 +249,14 @@ namespace Internal.Runtime.TypeLoader
 
         public override VirtualMethodAlgorithm GetVirtualMethodAlgorithmForType(TypeDesc type)
         {
+#if SUPPORTS_NATIVE_METADATA_TYPE_LOADING
             Debug.Assert(!type.IsArray, "Wanted to call GetClosestMetadataType?");
 
             return s_metadataVirtualMethodAlgorithm;
+#else
+            Debug.Assert(false);
+            return null;
+#endif
         }
 
         protected internal override Instantiation ConvertInstantiationToCanonForm(Instantiation instantiation, CanonicalFormKind kind, out bool changed)
