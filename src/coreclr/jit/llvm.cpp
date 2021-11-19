@@ -798,6 +798,27 @@ llvm::Value* Llvm::getShadowStackForCallee()
     return offset == 0 ? _function->getArg(0) : _builder.CreateGEP(_function->getArg(0), _builder.getInt32(offset));
 }
 
+//------------------------------------------------------------------------
+// consumeValue: Get the Value* "node" produces when consumed as "targetLlvmType".
+//
+// During codegen, we follow the "normalize on demand" convention, i. e.
+// the IR nodes produce "raw" values that have exactly the types of nodes,
+// preserving small types, pointers, etc. However, the user in the IR
+// consumes "actual" types, and this is the method where we normalize
+// to those types. We could have followed the reverse convention and
+// normalized on production of "Value*"s, but we presume the "on demand"
+// convention is more efficient LLVM-IR-size-wise. It allows us to avoid
+// situations where we'd be upcasting only to immediately truncate, which
+// would be the case for small typed arguments and relops feeding jumps,
+// to name a few examples.
+//
+// Arguments:
+//    node           - the node for which to obtain the normalized value of
+//    targetLlvmType - the LLVM type through which the user uses "node"
+//
+// Return Value:
+//    The normalized value, of "targetLlvmType" type.
+//
 Value* Llvm::consumeValue(GenTree* node, Type* targetLlvmType)
 {
     Value* nodeValue = getGenTreeValue(node);
