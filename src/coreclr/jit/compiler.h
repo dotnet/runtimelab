@@ -377,7 +377,12 @@ public:
     // Initialize the ArgRegs to REG_STK.
     // Morph will update if this local is passed in a register.
     LclVarDsc()
-        : _lvArgReg(REG_STK)
+        :
+#if defined(TARGET_WASM)
+        lvLlvmArgNum(BAD_LLVM_ARG_NUM)
+        ,
+#endif // TARGET_WASM
+        _lvArgReg(REG_STK)
         ,
 #if FEATURE_MULTIREG_ARGS
         _lvOtherArgReg(REG_STK)
@@ -390,7 +395,6 @@ public:
         ,
 #endif // ASSERTION_PROP
         lvPerSsaData()
-
     {
     }
 
@@ -566,6 +570,10 @@ public:
     unsigned char lvFieldCnt; //  Number of fields in the promoted VarDsc.
     unsigned char lvFldOffset;
     unsigned char lvFldOrdinal;
+
+#if defined(TARGET_WASM)
+    unsigned int lvLlvmArgNum;
+#endif
 
 #ifdef DEBUG
     unsigned char lvSingleDefDisqualifyReason = 'H';

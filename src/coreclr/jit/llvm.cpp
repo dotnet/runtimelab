@@ -115,18 +115,6 @@ Value* Llvm::mapGenTreeToValue(GenTree* genTree, Value* valueRef)
 
 Value* Llvm::getGenTreeValue(GenTree* op)
 {
-    if (op->IsLocal())
-    {
-        unsigned lclNum = op->AsLclVar()->GetLclNum();
-        if (lclNum == _shadowStackLclNum)
-        {
-            return _function->getArg(0);
-        }
-        else if (lclNum == _retAddressLclNum)
-        {
-            return _function->getArg(1);
-        }
-    }
     return _sdsuMap->at(op);
 }
 
@@ -491,6 +479,35 @@ CorInfoType Llvm::getCorInfoTypeForArg(CORINFO_SIG_INFO& sigInfo, CORINFO_ARG_LI
 {
     CorInfoTypeWithMod corTypeWithMod = _getArgTypeIncludingParameterized(_thisPtr, &sigInfo, arg, clsHnd);
     return strip(corTypeWithMod);
+}
+
+FunctionType* Llvm::getFunctionType()
+{
+    // TODO-LLVM: delete this when these signatures implemented
+    if (_sigInfo.hasExplicitThis() || _sigInfo.hasTypeArg())
+        failFunctionCompilation();
+
+    std::vector<llvm::Type*> argVec(_llvmArgCount);
+    llvm::Type*              retLlvmType;
+
+    for (unsigned i = 0; i < _compiler->lvaTableCnt; i++)
+    {
+        LclVarDsc varDsc = _compiler->lvaTable[i];
+        if (varDsc.lvIsParam)
+        {
+            assert(varDsc.lvLlvmArgNum != BAD_LLVM_ARG_NUM);
+
+            CorInfoType          corInfoType = toCorInfoType(varDsc.TypeGet());
+            CORINFO_CLASS_HANDLE classHandle = tryGetStructClassHandle(&varDsc);
+            argVec[varDsc.lvLlvmArgNum]      = getLlvmTypeForCorInfoType(corInfoType, classHandle);
+        }
+    }
+
+    retLlvmType = _retAddressLclNum == BAD_VAR_NUM
+        ? getLlvmTypeForCorInfoType(_sigInfo.retType, _sigInfo.retTypeClass)
+        : Type::getVoidTy(_llvmContext);
+
+    return FunctionType::get(retLlvmType, ArrayRef<Type*>(argVec), false);
 }
 
 FunctionType* Llvm::getFunctionTypeForSigInfo(CORINFO_SIG_INFO& sigInfo)
@@ -1445,35 +1462,17 @@ Value* Llvm::localVar(GenTreeLclVar* lclVar)
     unsigned int ssaNum = lclVar->GetSsaNum();
     if (_localsMap->find({lclNum, ssaNum}) == _localsMap->end())
     {
-        if (_compiler->lvaIsParameter(lclNum))
+        LclVarDsc* varDsc = _compiler->lvaGetDesc(lclVar);
+
+        if (varDsc->lvLlvmArgNum != BAD_LLVM_ARG_NUM)
         {
-            if (lclNum == _shadowStackLclNum)
+            // TODO-LLVM: we dont handle this yet
+            if (_info.compRetBuffArg != BAD_VAR_NUM)
             {
-                llvmRef = _function->getArg(0);
-            }
-            else if (lclNum == _retAddressLclNum)
-            {
-                llvmRef = _function->getArg(1);
-            }
-            else
-            {
-                // adjust for "this" (on shadowstack, not an arg)
-                unsigned int argIx = _info.compIsStatic ? lclNum : lclNum - 1;
-
-                // adjust for return address arg, not in siginfo
-                if (_functionSigHasReturnAddress)
-                {
-                    argIx++;
-                }
-
-                if (_info.compRetBuffArg != BAD_VAR_NUM)
-                {
-                    failFunctionCompilation();
-                }
-                LlvmArgInfo  llvmArgInfo = getLlvmArgInfoForArgIx(_sigInfo, argIx);
-                llvmRef = _function->getArg(llvmArgInfo.m_argIx);
+                failFunctionCompilation();
             }
 
+            llvmRef = _function->getArg(varDsc->lvLlvmArgNum);
             _localsMap->insert({{lclNum, ssaNum}, llvmRef});
         }
         else
@@ -1773,7 +1772,6 @@ Llvm::Llvm(Compiler* pCompiler)
       _retAddressLclNum(BAD_VAR_NUM)
 {
     _compiler->eeGetMethodSig(_info.compMethodHnd, &_sigInfo);
-    _functionSigHasReturnAddress = needsReturnStackSlot(_sigInfo.retType, _sigInfo.retTypeClass);
 }
 
 void Llvm::llvmShutdown()
@@ -1798,6 +1796,51 @@ void Llvm::llvmShutdown()
     //    Module.Verify(LLVMVerifierFailureAction.LLVMAbortProcessAction);
 }
 
+void Llvm::populateLlvmArgNums()
+{
+    _shadowStackLclNum = _compiler->lvaGrabTemp(true DEBUGARG("shadowstack"));
+    LclVarDsc* shadowStackVarDsc = _compiler->lvaGetDesc(_shadowStackLclNum);
+    unsigned   nextLlvmArgNum    = 0;
+
+    shadowStackVarDsc->lvLlvmArgNum = nextLlvmArgNum++;
+    shadowStackVarDsc->lvType    = TYP_I_IMPL;
+    shadowStackVarDsc->lvIsParam = true;
+
+    if (_sigInfo.retType == CorInfoType::CORINFO_TYPE_VOID && _info.compRetType != TYP_VOID)
+    {
+        needsReturnStackSlot(_sigInfo.retType, _sigInfo.retTypeClass);
+    }
+    if (needsReturnStackSlot(_sigInfo.retType, _sigInfo.retTypeClass))
+    {
+        _retAddressLclNum = _compiler->lvaGrabTemp(true DEBUGARG("returnslot"));
+        LclVarDsc* retAddressVarDsc  = _compiler->lvaGetDesc(_retAddressLclNum);
+        retAddressVarDsc->lvLlvmArgNum = nextLlvmArgNum++;
+        retAddressVarDsc->lvType       = TYP_I_IMPL;
+        retAddressVarDsc->lvIsParam    = true;
+    }
+
+    // TODO-LLVM: other non-standard args, generic context, outs
+
+    CORINFO_ARG_LIST_HANDLE sigArgs = _sigInfo.args;
+    unsigned firstCorInfoArgLocalNum = 0;
+    if (_sigInfo.hasThis())
+    {
+        firstCorInfoArgLocalNum++;
+    }
+    for (unsigned int i = 0; i < _sigInfo.numArgs; i++, sigArgs = _info.compCompHnd->getArgNext(sigArgs))
+    {
+        CORINFO_CLASS_HANDLE classHnd;
+        CorInfoType          corInfoType = getCorInfoTypeForArg(_sigInfo, sigArgs, &classHnd);
+        LclVarDsc*           varDsc      = _compiler->lvaGetDesc(i + firstCorInfoArgLocalNum);
+        if (canStoreArgOnLlvmStack(corInfoType, classHnd))
+        {
+            varDsc->lvLlvmArgNum = nextLlvmArgNum++;
+        }
+    }
+
+    _llvmArgCount = nextLlvmArgNum;
+}
+
 void Llvm::ConvertShadowStackLocalNode(GenTreeLclVarCommon* node)
 {
     GenTreeLclVarCommon* lclVar = node->AsLclVarCommon();
@@ -1807,8 +1850,8 @@ void Llvm::ConvertShadowStackLocalNode(GenTreeLclVarCommon* node)
     {
         // TODO-LLVM: if the offset == 0, just GT_STOREIND at the shadowStack
         GenTreeIntCon* offset = _compiler->gtNewIconNode(varDsc->GetStackOffset(), TYP_I_IMPL);
-        GenTreeLclVar* shadowStackVar = _compiler->gtNewLclvNode(_shadowStackLclNum, TYP_I_IMPL);
-        GenTree* lclAddress = _compiler->gtNewOperNode(GT_ADD, TYP_I_IMPL, shadowStackVar, offset);
+        GenTreeLclVar* shadowStackLocal = _compiler->gtNewLclvNode(_shadowStackLclNum, TYP_I_IMPL);
+        GenTree* lclAddress = _compiler->gtNewOperNode(GT_ADD, TYP_I_IMPL, shadowStackLocal, offset);
 
         genTreeOps indirOper = GT_NONE;
         GenTree* storedValue = nullptr;
@@ -1838,17 +1881,12 @@ void Llvm::ConvertShadowStackLocalNode(GenTreeLclVarCommon* node)
             blk->SetLayout(_compiler->typGetObjLayout(handle));
             blk->gtBlkOpKind = GenTreeBlk::BlkOpKindInvalid;
         }
-        CurrentRange().InsertBefore(node, offset, shadowStackVar, lclAddress);
+        CurrentRange().InsertBefore(node, offset, shadowStackLocal, lclAddress);
     }
 }
 
 void Llvm::ConvertShadowStackLocals()
 {
-    _shadowStackLclNum = _compiler->lvaGrabTemp(true DEBUGARG("shadowstack"));
-    LclVarDsc* shadowStackVarDsc = _compiler->lvaGetDesc(_shadowStackLclNum);
-    shadowStackVarDsc->lvIsParam = 1;
-    shadowStackVarDsc->lvType = TYP_I_IMPL;
-
     for (BasicBlock* _currentBlock : _compiler->Blocks())
     {
         _currentRange = &LIR::AsRange(_currentBlock);
@@ -1948,7 +1986,7 @@ void Llvm::ConvertShadowStackLocals()
                     CurrentRange().InsertAfter(callNode, returnAddrLclAfterCall, indirNode);
                 }
             }
-            else if (node->OperIs(GT_RETURN) && _functionSigHasReturnAddress)
+            else if (node->OperIs(GT_RETURN) && _retAddressLclNum != BAD_VAR_NUM)
             {
                 var_types originalReturnType = node->TypeGet();
                 if(node->TypeIs(TYP_VOID))
@@ -1957,10 +1995,6 @@ void Llvm::ConvertShadowStackLocals()
                     failFunctionCompilation();
                 }
 
-                if (_retAddressLclNum == BAD_VAR_NUM)
-                {
-                    _retAddressLclNum = _compiler->lvaGrabTemp(true DEBUGARG("shadowstack"));
-                }
                 LclVarDsc* retAddressVarDsc = _compiler->lvaGetDesc(_retAddressLclNum);
                 retAddressVarDsc->lvIsParam = 1;
                 retAddressVarDsc->lvType = TYP_I_IMPL;
@@ -1996,6 +2030,8 @@ void Llvm::ConvertShadowStackLocals()
 //
 void Llvm::PlaceAndConvertShadowStackLocals()
 {
+    populateLlvmArgNums();
+
     _shadowStackLocalsSize = 0;
 
     std::vector<LclVarDsc*> locals;
@@ -2010,6 +2046,7 @@ void Llvm::PlaceAndConvertShadowStackLocals()
             if (varDsc->lvIsParam)
             {
                 localsParamCount++;
+                varDsc->lvIsParam = false;
             }
         }
     }
@@ -2025,7 +2062,7 @@ void Llvm::PlaceAndConvertShadowStackLocals()
         LclVarDsc* varDsc = locals.at(i);
         CorInfoType corInfoType = toCorInfoType(varDsc->TypeGet());
         CORINFO_CLASS_HANDLE classHandle = tryGetStructClassHandle(varDsc);
-;
+
         offset = padOffset(corInfoType, classHandle, offset);
         varDsc->SetStackOffset(offset);
         offset = padNextOffset(corInfoType, classHandle, offset);

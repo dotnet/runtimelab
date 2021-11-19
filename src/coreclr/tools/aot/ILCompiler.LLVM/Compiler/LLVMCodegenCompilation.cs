@@ -128,6 +128,8 @@ namespace ILCompiler
                 if (GetMethodIL(method).GetExceptionRegions().Length == 0)
                 {
                     var sig = method.Signature;
+                    // this could be inlined, by the local makes debugging easier
+                    var mangledName = NodeFactory.NameMangler.GetMangledMethodName(method).ToString();
                     corInfo.RegisterLlvmCallbacks((IntPtr)Unsafe.AsPointer(ref corInfo), _outputFile,
                         Module.Target,
                         Module.DataLayout);
@@ -135,8 +137,7 @@ namespace ILCompiler
                     corInfo.CompileMethod(methodCodeNodeNeedingCode);
                     methodCodeNodeNeedingCode.CompilationCompleted = true;
                     // TODO: delete this external function when old module is gone
-                    LLVMValueRef externFunc = Module.AddFunction(
-                        NodeFactory.NameMangler.GetMangledMethodName(method).ToString(),
+                    LLVMValueRef externFunc = Module.AddFunction(mangledName,
                         GetLLVMSignatureForMethod(sig, method.RequiresInstArg()));
                     externFunc.Linkage = LLVMLinkage.LLVMExternalLinkage;
 
