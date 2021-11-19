@@ -124,7 +124,7 @@ private:
     void buildAdd(GenTree* node, Value* op1, Value* op2);
     void buildCall(GenTree* node);
     void buildCast(GenTreeCast* cast);
-    void buildCmp(genTreeOps op, GenTree* node, Value* op1, Value* op2);
+    void buildCmp(GenTree* node, Value* op1, Value* op2);
     void buildCnsDouble(GenTreeDblCon* node);
     void buildCnsInt(GenTree* node);
     void buildHelperFuncCall(GenTreeCall* call);
@@ -132,6 +132,9 @@ private:
     void buildInd(GenTree* node, Value* ptr);
     Value* buildJTrue(GenTree* node, Value* opValue);
     void buildEmptyPhi(GenTreePhi* phi);
+    void buildUnaryOperation(GenTree* node);
+    void buildBinaryOperation(GenTree* node);
+    void buildShift(GenTreeOp* node);
     void buildReturn(GenTree* node);
     void buildReturnRef(GenTreeOp* node);
     Value* buildUserFuncCall(GenTreeCall* call);
@@ -140,6 +143,7 @@ private:
     void castingStore(Value* toStore, Value* address, llvm::Type* llvmType);
     void castingStore(Value* toStore, Value* address, var_types type);
     Value* castToPointerToLlvmType(Value* address, llvm::Type* llvmType);
+    Value* consumeValue(GenTree* node, llvm::Type* targetLlvmType);
     llvm::DILocation* createDebugFunctionAndDiLocation(struct DebugMetadata debugMetadata, unsigned int lineNo);
     void ConvertShadowStackLocalNode(GenTreeLclVarCommon* node);
     void emitDoNothingCall();
@@ -165,7 +169,6 @@ private:
     Value* getSsaLocalForPhi(unsigned lclNum, unsigned ssaNum);
     Value* getShadowStackOffest(Value* shadowStack, unsigned int offset);
     unsigned int getTotalRealLocalOffset();
-    Value* genTreeAsLlvmType(GenTree* tree, Type* type);
     unsigned getElementSize(CORINFO_CLASS_HANDLE fieldClassHandle, CorInfoType corInfoType);
     unsigned int getTotalLocalOffset();
     bool helperRequiresShadowStack(CORINFO_METHOD_HANDLE corinfoMethodHnd);

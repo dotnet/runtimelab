@@ -582,6 +582,7 @@ Type* Llvm::getLlvmTypeForVarType(var_types type)
             return Type::getFloatTy(_llvmContext);
         case var_types::TYP_DOUBLE:
             return Type::getDoubleTy(_llvmContext);
+        case TYP_BYREF:
         case TYP_REF:
             return Type::getInt8PtrTy(_llvmContext);
         default:
@@ -741,23 +742,6 @@ void Llvm::buildAdd(GenTree* node, Value* op1, Value* op2)
     }
 }
 
-Value* Llvm::genTreeAsLlvmType(GenTree* tree, Type* type)
-{
-    Value* v = getGenTreeValue(tree);
-    if (v->getType() == type)
-        return v;
-
-    if (tree->IsIntegralConst() && tree->TypeIs(TYP_INT))
-    {
-        if (type->isPointerTy())
-        {
-            return _builder.CreateIntToPtr(v, type);
-        }
-        return _builder.getInt({(unsigned int)type->getPrimitiveSizeInBits().getFixedSize(), (uint64_t)tree->AsIntCon()->IconValue(), true});
-    }
-    failFunctionCompilation();
-}
-
 unsigned int Llvm::getTotalRealLocalOffset()
 {
     return _shadowStackLocalsSize;
@@ -802,7 +786,7 @@ bool Llvm::isThisArg(GenTreeCall* call, GenTree* operand)
 
 void Llvm::storeOnShadowStack(GenTree* operand, Value* shadowStackForCallee, unsigned int offset)
 {
-    castingStore(genTreeAsLlvmType(operand, Type::getInt8PtrTy(_llvmContext)),
+    castingStore(consumeValue(operand, Type::getInt8PtrTy(_llvmContext)),
                  getShadowStackOffest(shadowStackForCallee, offset), Type::getInt8PtrTy(_llvmContext));
 }
 
@@ -812,6 +796,80 @@ llvm::Value* Llvm::getShadowStackForCallee()
     unsigned int offset = getTotalLocalOffset();
 
     return offset == 0 ? _function->getArg(0) : _builder.CreateGEP(_function->getArg(0), _builder.getInt32(offset));
+}
+
+//------------------------------------------------------------------------
+// consumeValue: Get the Value* "node" produces when consumed as "targetLlvmType".
+//
+// During codegen, we follow the "normalize on demand" convention, i. e.
+// the IR nodes produce "raw" values that have exactly the types of nodes,
+// preserving small types, pointers, etc. However, the user in the IR
+// consumes "actual" types, and this is the method where we normalize
+// to those types. We could have followed the reverse convention and
+// normalized on production of "Value*"s, but we presume the "on demand"
+// convention is more efficient LLVM-IR-size-wise. It allows us to avoid
+// situations where we'd be upcasting only to immediately truncate, which
+// would be the case for small typed arguments and relops feeding jumps,
+// to name a few examples.
+//
+// Arguments:
+//    node           - the node for which to obtain the normalized value of
+//    targetLlvmType - the LLVM type through which the user uses "node"
+//
+// Return Value:
+//    The normalized value, of "targetLlvmType" type.
+//
+Value* Llvm::consumeValue(GenTree* node, Type* targetLlvmType)
+{
+    Value* nodeValue = getGenTreeValue(node);
+    Value* finalValue = nodeValue;
+
+    if (nodeValue->getType() != targetLlvmType)
+    {
+        // int to pointer type
+        if (node->TypeIs(TYP_INT) && targetLlvmType->isPointerTy())
+        {
+            return _builder.CreateIntToPtr(nodeValue, targetLlvmType);
+        }
+
+        // pointer to ints
+        if (nodeValue->getType()->isPointerTy() && targetLlvmType == Type::getInt32Ty(_llvmContext))
+        {
+            return _builder.CreatePtrToInt(nodeValue, Type::getInt32Ty(_llvmContext));
+        }
+
+        // i32* e.g symbols, to i8*
+        if (nodeValue->getType()->isPointerTy() && targetLlvmType->isPointerTy())
+        {
+            return _builder.CreateBitCast(nodeValue, targetLlvmType);
+        }
+
+        // int and smaller int conversions
+        assert(targetLlvmType->isIntegerTy() && nodeValue->getType()->isIntegerTy() &&
+               nodeValue->getType()->getPrimitiveSizeInBits() <= 32 && targetLlvmType->getPrimitiveSizeInBits() <= 32);
+        if (nodeValue->getType()->getPrimitiveSizeInBits() < targetLlvmType->getPrimitiveSizeInBits())
+        {
+            // Upcast.
+            if (varTypeIsSmall(node))
+            {
+                finalValue = varTypeIsSigned(node) ? _builder.CreateSExt(nodeValue, targetLlvmType)
+                                                   : _builder.CreateZExt(nodeValue, targetLlvmType);
+            }
+            else
+            {
+                // This is the special case for relops. Ordinary codegen "just knows" they need zero-extension.
+                assert(nodeValue->getType() == Type::getInt1Ty(_llvmContext));
+                finalValue = _builder.CreateZExt(nodeValue, targetLlvmType);
+            }
+        }
+        else
+        {
+            // Truncate.
+            finalValue = _builder.CreateTrunc(nodeValue, targetLlvmType);
+        }
+    }
+
+    return finalValue;
 }
 
 llvm::Value* Llvm::buildUserFuncCall(GenTreeCall* call)
@@ -852,6 +910,17 @@ llvm::Value* Llvm::buildUserFuncCall(GenTreeCall* call)
     fgArgTabEntry**                   argTable             = argInfo->ArgTable();
     std::vector<OperandArgNum>        sortedArgs           = std::vector<OperandArgNum>(argCount);
     OperandArgNum*                    sortedData           = sortedArgs.data();
+    unsigned int                      thisArgNum;
+    unsigned int                      returnAddressArgNum  = -1;
+
+    // TODO-LLVM: delete this when PUT_ARG inserted for the return address
+    thisArgNum          = 0;
+    if (needsReturnStackSlot(sigInfo.retType, sigInfo.retTypeClass))
+    {
+        // return slot before this
+        thisArgNum++;
+        returnAddressArgNum = 0;
+    }
 
     for (unsigned i = 0; i < argCount; i++)
     {
@@ -865,13 +934,32 @@ llvm::Value* Llvm::buildUserFuncCall(GenTreeCall* call)
     {
         if (opAndArg.operand->IsArgPlaceHolderNode())
         {
+            // TODO-LLVM: delete place holder args when rewriting the signature
+            thisArgNum++;
+            returnAddressArgNum++;
             continue;
         }
+
+        // "this" not in sigInfo arg list, dont increment argIx.  TODO-LLVM look to remove when PUTARG is inserted
+        if (opAndArg.argNum == thisArgNum && sigInfo.hasThis())
+        {
+            storeOnShadowStack(opAndArg.operand, shadowStackForCallee, shadowStackUseOffest);
+            shadowStackUseOffest += TARGET_POINTER_SIZE;
+            continue;
+        }
+
+        // Return address arg not in sigInfo, but needs to be added to LLVM args. TODO-LLVM delete when PUT_ARG is inserted
+        if (returnAddressArgNum == opAndArg.argNum)
+        {
+            argVec.push_back(consumeValue(opAndArg.operand, Type::getInt8PtrTy(_llvmContext)));
+            continue;
+        }
+
         LlvmArgInfo llvmArgInfo = getLlvmArgInfoForArgIx(sigInfo, argIx);
         if (llvmArgInfo.m_argIx >= 0)
         {
             // pass the parameter on the LLVM stack
-            argVec.push_back(genTreeAsLlvmType(opAndArg.operand, llvmFunc->getArg(llvmArgInfo.m_argIx)->getType()));
+            argVec.push_back(consumeValue(opAndArg.operand, llvmFunc->getArg(llvmArgInfo.m_argIx)->getType()));
         }
         else
         {
@@ -906,7 +994,14 @@ FunctionType* Llvm::buildHelperLlvmFunctionType(GenTreeCall* call, bool withShad
 
 bool Llvm::helperRequiresShadowStack(CORINFO_METHOD_HANDLE corinfoMethodHnd)
 {
-    return corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_TYPEHANDLE_TO_RUNTIMETYPEHANDLE);
+    //TODO-LLVM: is there a better way to identify managed helpers?
+    //Probably want to lower the math helpers to ordinary GT_CASTs and
+    //handle in the LLVM (as does ILToLLVMImporter) to avoid this overhead
+    return corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_TYPEHANDLE_TO_RUNTIMETYPEHANDLE) ||
+           corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_DBL2INT_OVF) ||
+           corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_DBL2LNG_OVF) ||
+           corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_DBL2UINT_OVF) ||
+           corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_DBL2ULNG_OVF);
 }
 
 void Llvm::buildHelperFuncCall(GenTreeCall* call)
@@ -991,7 +1086,7 @@ void Llvm::buildHelperFuncCall(GenTreeCall* call)
             }
             else
             {
-                argVec.push_back(genTreeAsLlvmType(opAndArg.operand, llvmFunc->getArg(argIx)->getType()));
+                argVec.push_back(consumeValue(opAndArg.operand, llvmFunc->getArg(argIx)->getType()));
             }
             argIx++;
         }
@@ -1101,10 +1196,10 @@ void Llvm::buildCnsInt(GenTree* node)
 
 void Llvm::buildInd(GenTree* node, Value* ptr)
 {
-    // first cast the pointer to create the correct load instructions, then cast the result incase we are loading a small int into an int32
-    mapGenTreeToValue(node, castIfNecessary(_builder.CreateLoad(
+    // cast the pointer to create the correct load instructions
+    mapGenTreeToValue(node, _builder.CreateLoad(
                                  castIfNecessary(ptr,
-                                     getLlvmTypeForVarType(node->TypeGet())->getPointerTo())), getLlvmTypeForVarType(genActualType(node))));
+                                     getLlvmTypeForVarType(node->TypeGet())->getPointerTo())));
 }
 
 Value* Llvm::buildJTrue(GenTree* node, Value* opValue)
@@ -1112,12 +1207,12 @@ Value* Llvm::buildJTrue(GenTree* node, Value* opValue)
     return _builder.CreateCondBr(opValue, getLLVMBasicBlockForBlock(_currentBlock->bbJumpDest), getLLVMBasicBlockForBlock(_currentBlock->bbNext));
 }
 
-void Llvm::buildCmp(genTreeOps op, GenTree* node, Value* op1, Value* op2)
+void Llvm::buildCmp(GenTree* node, Value* op1, Value* op2)
 {
     llvm::CmpInst::Predicate llvmPredicate;
 
     bool isIntOrPtr = op1->getType()->isIntOrPtrTy();
-    switch (op)
+    switch (node->OperGet())
     {
         case GT_EQ:
             llvmPredicate = isIntOrPtr ? llvm::CmpInst::Predicate::ICMP_EQ : llvm::CmpInst::Predicate::FCMP_OEQ;
@@ -1221,6 +1316,88 @@ void Llvm::fillPhis()
             llvmPhiNode->addIncoming(phiRealArgValue, getLLVMBasicBlockForBlock(phiArg->gtPredBB));
         }
     }
+}
+
+void Llvm::buildUnaryOperation(GenTree* node)
+{
+    Value* result;
+    Value* op1Value = consumeValue(node->gtGetOp1(), getLlvmTypeForVarType(node->TypeGet()));
+
+    switch (node->OperGet())
+    {
+        case GT_NEG:
+            if (op1Value->getType()->isFloatingPointTy())
+            {
+                result = _builder.CreateFNeg(op1Value, "fneg");
+            }
+            else
+            {
+                result = _builder.CreateNeg(op1Value, "neg");
+            }
+            break;
+        case GT_NOT:
+            result = _builder.CreateNot(op1Value, "not");
+            break;
+        default:
+            failFunctionCompilation();  // TODO-LLVM: other binary operators
+    }
+    mapGenTreeToValue(node, result);
+}
+
+void Llvm::buildBinaryOperation(GenTree* node)
+{
+    Value* result;
+    Type*  targetType = getLlvmTypeForVarType(node->TypeGet());
+    Value* op1 = consumeValue(node->gtGetOp1(), targetType);
+    Value* op2 = consumeValue(node->gtGetOp2(), targetType);
+
+    switch (node->OperGet())
+    {
+        case GT_AND:
+            result = _builder.CreateAnd(op1, op2, "and");
+            break;
+        case GT_OR:
+            result = _builder.CreateOr(op1, op2, "or");
+            break;
+        case GT_XOR:
+            result = _builder.CreateXor(op1, op2, "xor");
+            break;
+        default:
+            failFunctionCompilation();  // TODO-LLVM: other binary operaions
+    }
+    mapGenTreeToValue(node, result);
+}
+
+void Llvm::buildShift(GenTreeOp* node)
+{
+    Type*  llvmTargetType = getLlvmTypeForVarType(node->TypeGet());
+    Value* numBitsToShift = consumeValue(node->gtOp2, getLlvmTypeForVarType(node->gtOp2->TypeGet()));
+
+    // LLVM requires the operands be the same type as the shift itself.
+    // Shift counts are assumed to never be negative, so we zero extend.
+    if (numBitsToShift->getType()->getPrimitiveSizeInBits() < llvmTargetType->getPrimitiveSizeInBits())
+    {
+        numBitsToShift = _builder.CreateZExt(numBitsToShift, llvmTargetType);
+    }
+
+    Value* op1Value = consumeValue(node->gtOp1, llvmTargetType);
+    Value* result;
+
+    switch (node->OperGet())
+    {
+        case GT_LSH:
+            result = _builder.CreateShl(op1Value, numBitsToShift, "lsh");
+            break;
+        case GT_RSH:
+            result = _builder.CreateAShr(op1Value, numBitsToShift, "rsh");
+            break;
+        case GT_RSZ:
+            result = _builder.CreateLShr(op1Value, numBitsToShift, "rsz");
+            break;
+        default:
+            failFunctionCompilation();  // TODO-LLVM: other shift types
+    }
+    mapGenTreeToValue(node, result);
 }
 
 void Llvm::buildReturn(GenTree* node)
@@ -1438,13 +1615,22 @@ void Llvm::visitNode(GenTree* node)
         case GT_LCL_VAR:
             localVar(node->AsLclVar());
             break;
+        case GT_LSH:
+        case GT_RSH:
+        case GT_RSZ:
+            buildShift(node->AsOp());
+            break;
         case GT_EQ:
         case GT_NE:
         case GT_LE:
         case GT_LT:
         case GT_GE:
         case GT_GT:
-            buildCmp(oper, node, getGenTreeValue(node->AsOp()->gtOp1), getGenTreeValue(node->AsOp()->gtOp2));
+            buildCmp(node, getGenTreeValue(node->AsOp()->gtOp1), getGenTreeValue(node->AsOp()->gtOp2));
+            break;
+        case GT_NEG:
+        case GT_NOT:
+            buildUnaryOperation(node);
             break;
         case GT_NO_OP:
             emitDoNothingCall();
@@ -1462,6 +1648,11 @@ void Llvm::visitNode(GenTree* node)
             break;
         case GT_STOREIND:
             importStoreInd((GenTreeStoreInd*)node);
+            break;
+        case GT_AND:
+        case GT_OR:
+        case GT_XOR:
+            buildBinaryOperation(node);
             break;
         default:
             failFunctionCompilation();
@@ -1686,10 +1877,29 @@ void Llvm::ConvertShadowStackLocals()
                 CORINFO_SIG_INFO calleeSigInfo;
                 _compiler->eeGetMethodSig(callNode->gtCallMethHnd, &calleeSigInfo);
 
-                if (needsReturnStackSlot(calleeSigInfo.retType, calleeSigInfo.retTypeClass))
+                if (callNode->gtCallArgs != nullptr)
+                {
+                    // TODO-LLVM: out args?  E.g.
+                    //    /--*  t398   int    arg4 out+10
+                    //    +--*  t399   int    arg5 out + 14
+                    //    +--*  t908   byref  arg6 out + 18
+                    //    +--*  t397   int    arg3 in r9
+                    //    +--*  t395   ref    arg2 in r8
+                    //    +--*  t392   byref  arg0 in rcx
+                    //    +--*  t393   ref    arg1 in rdx
+
+                    // We come here also for ctors like the following
+                    //                                         /--*  t18    int    arg0 in rcx
+                    // N003(17, 5)[000019]-- CXG-- -----t19 = *CALL ref System.String..ctor
+                    failFunctionCompilation();
+                }
+
+                var_types callReturnType = callNode->TypeGet();
+                // Some ctors, e.g. strings (and maybe only strings), have a return type in IR so
+                // pass the call return type instead of the CORINFO_SIG_INFO return type, which is void in these cases
+                if (needsReturnStackSlot(toCorInfoType(callReturnType), calleeSigInfo.retTypeClass))
                 {
                     // replace the "CALL ref" with a "CALL void" that takes a return address as the first argument
-                    var_types callReturnType = callNode->TypeGet();
                     GenTreeLclVar* shadowStackVar = _compiler->gtNewLclvNode(_shadowStackLclNum, TYP_I_IMPL);
                     GenTreeIntCon* offset = _compiler->gtNewIconNode(_shadowStackLocalsSize, TYP_I_IMPL);
                     GenTree* returnValueAddress = _compiler->gtNewOperNode(GT_ADD, TYP_I_IMPL, shadowStackVar, offset);
@@ -1701,19 +1911,6 @@ void Llvm::ConvertShadowStackLocals()
 
                     GenTree* addrStore = _compiler->gtNewStoreLclVar(returnTempNum, returnValueAddress);
                     GenTree* returnAddrLcl = _compiler->gtNewLclvNode(returnTempNum, TYP_I_IMPL);
-
-                    if (callNode->gtCallArgs != nullptr)
-                    {
-                        // TODO-LLVM: out args?  E.g.
-                        //    /--*  t398   int    arg4 out+10
-                        //    +--*  t399   int    arg5 out + 14
-                        //    +--*  t908   byref  arg6 out + 18
-                        //    +--*  t397   int    arg3 in r9
-                        //    +--*  t395   ref    arg2 in r8
-                        //    +--*  t392   byref  arg0 in rcx
-                        //    +--*  t393   ref    arg1 in rdx
-                        failFunctionCompilation();
-                    }
                     GenTreeCall::Use* oldArgs = callNode->gtCallLateArgs;
                     callNode->ResetArgInfo();
                     callNode->gtCallArgs = _compiler->gtPrependNewCallArg(returnAddrLcl, oldArgs);
