@@ -619,13 +619,21 @@ void SsaBuilder::InsertPhiToRationalIRForm(BasicBlock* block, unsigned lclNum)
 void SsaBuilder::AddPhiArg(
     BasicBlock* block, Statement* stmt, GenTreePhi* phi, unsigned lclNum, unsigned ssaNum, BasicBlock* pred)
 {
-#if defined(DEBUG) && !defined(TARGET_WASM)
-    // Make sure it isn't already present: we should only add each definition once.
-    // Except for Wasm/LLVM where every predecessor must have its own phi arg
-    for (GenTreePhi::Use& use : phi->Uses())
+#if DEBUG
+#if defined(TARGET_WASM)
+    // For LLVM backed, every predecessor must have its own phi arg
+    if (!block->IsLIR())
     {
-        assert(use.GetNode()->AsPhiArg()->GetSsaNum() != ssaNum);
+#endif // TARGET_WASM
+        // Make sure it isn't already present: we should only add each definition once.
+        for (GenTreePhi::Use& use : phi->Uses())
+        {
+            assert(use.GetNode()->AsPhiArg()->GetSsaNum() != ssaNum);
+        }
+#if defined(TARGET_WASM)
     }
+#endif // TARGET_WASM
+
 #endif // DEBUG
 
     var_types type = m_pCompiler->lvaGetDesc(lclNum)->TypeGet();

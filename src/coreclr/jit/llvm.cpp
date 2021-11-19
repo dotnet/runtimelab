@@ -995,6 +995,8 @@ FunctionType* Llvm::buildHelperLlvmFunctionType(GenTreeCall* call, bool withShad
 bool Llvm::helperRequiresShadowStack(CORINFO_METHOD_HANDLE corinfoMethodHnd)
 {
     //TODO-LLVM: is there a better way to identify managed helpers?
+    //Probably want to lower the math helpers to ordinary GT_CASTs and
+    //handle in the LLVM (as does ILToLLVMImporter) to avoid this overhead
     return corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_TYPEHANDLE_TO_RUNTIMETYPEHANDLE) ||
            corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_DBL2INT_OVF) ||
            corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_DBL2LNG_OVF) ||
@@ -1892,9 +1894,9 @@ void Llvm::ConvertShadowStackLocals()
                 }
 
                 var_types callReturnType = callNode->TypeGet();
-                // ctors in CORINFO_SIG_INFO are void, but in IR are TYP_REF.  ILtoLLVMImporter does not have this problem as it uses MethodSignature
-                // which has the return type.  TODO-LLVM: is it better to create a new EE callback that matches IR/MethodSignature regards return types for ctors?
-                if (callReturnType == TYP_REF || needsReturnStackSlot(calleeSigInfo.retType, calleeSigInfo.retTypeClass))
+                // Some ctors, e.g. strings (and maybe only strings), have a return type in IR so
+                // pass the call return type instead of the CORINFO_SIG_INFO return type, which is void in these cases
+                if (needsReturnStackSlot(toCorInfoType(callReturnType), calleeSigInfo.retTypeClass))
                 {
                     // replace the "CALL ref" with a "CALL void" that takes a return address as the first argument
                     GenTreeLclVar* shadowStackVar = _compiler->gtNewLclvNode(_shadowStackLclNum, TYP_I_IMPL);
