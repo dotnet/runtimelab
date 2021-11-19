@@ -132,7 +132,7 @@ private:
     void buildInd(GenTree* node, Value* ptr);
     Value* buildJTrue(GenTree* node, Value* opValue);
     void buildEmptyPhi(GenTreePhi* phi);
-    void buildUnaryOperation(GenTree* node, Value* op1);
+    void buildUnaryOperation(GenTree* node);
     void buildBinaryOperation(GenTree* node);
     void buildShift(GenTreeOp* node);
     void buildReturn(GenTree* node);
@@ -169,7 +169,6 @@ private:
     Value* getSsaLocalForPhi(unsigned lclNum, unsigned ssaNum);
     Value* getShadowStackOffest(Value* shadowStack, unsigned int offset);
     unsigned int getTotalRealLocalOffset();
-    Value* genTreeAsLlvmType(GenTree* tree, Type* type);
     unsigned getElementSize(CORINFO_CLASS_HANDLE fieldClassHandle, CorInfoType corInfoType);
     unsigned int getTotalLocalOffset();
     bool helperRequiresShadowStack(CORINFO_METHOD_HANDLE corinfoMethodHnd);

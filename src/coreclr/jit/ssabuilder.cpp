@@ -619,8 +619,9 @@ void SsaBuilder::InsertPhiToRationalIRForm(BasicBlock* block, unsigned lclNum)
 void SsaBuilder::AddPhiArg(
     BasicBlock* block, Statement* stmt, GenTreePhi* phi, unsigned lclNum, unsigned ssaNum, BasicBlock* pred)
 {
-#ifdef DEBUG
+#if defined(DEBUG) && !defined(TARGET_WASM)
     // Make sure it isn't already present: we should only add each definition once.
+    // Except for Wasm/LLVM where every predecessor must have its own phi arg
     for (GenTreePhi::Use& use : phi->Uses())
     {
         assert(use.GetNode()->AsPhiArg()->GetSsaNum() != ssaNum);
@@ -1290,19 +1291,7 @@ void SsaBuilder::AddPhiArgsToSuccessors(BasicBlock* block)
                 GenTreePhi* phi    = tree->gtGetOp1()->AsPhi();
                 unsigned    ssaNum = m_renameStack.Top(lclNum);
 
-                bool found = false;
-                for (GenTreePhi::Use& use : phi->Uses())
-                {
-                    if (use.GetNode()->AsPhiArg()->GetSsaNum() == ssaNum)
-                    {
-                        found = true;
-                        break;
-                    }
-                }
-                if (!found)
-                {
-                    AddPhiArg(succ, nullptr /* no statements in LIR form */, phi, lclNum, ssaNum, block);
-                }
+                AddPhiArg(succ, nullptr /* no statements in LIR form */, phi, lclNum, ssaNum, block);
             }
         }
         else
