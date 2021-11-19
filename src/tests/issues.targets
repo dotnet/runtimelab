@@ -936,7 +936,7 @@
             <Issue>https://github.com/dotnet/runtimelab/issues/173</Issue>
         </ExcludeList>
         <ExcludeList Include="$(XunitTestBinBase)/Interop/PInvoke/CustomMarshalers/CustomMarshalersTest/*">
-            <Issue>https://github.com/dotnet/runtimelab/issues/160</Issue>
+            <Issue>Specific to CoreCLR</Issue>
         </ExcludeList>
         <ExcludeList Include="$(XunitTestBinBase)/Interop/PInvoke/Decimal/DecimalTest/*">
             <Issue>https://github.com/dotnet/runtimelab/issues/175</Issue>
