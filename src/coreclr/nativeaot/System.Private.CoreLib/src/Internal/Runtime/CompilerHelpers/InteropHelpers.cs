@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System;
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Reflection;
 using System.Runtime.CompilerServices;
@@ -600,12 +601,22 @@ namespace Internal.Runtime.CompilerHelpers
 
         public static unsafe object InitializeCustomMarshaller(RuntimeTypeHandle pParameterType, RuntimeTypeHandle pMarshallerType, string cookie, delegate*<string, object> getInstanceMethod)
         {
+            if (pMarshallerType.IsNull)
+            {
+                throw new TypeLoadException();
+            }
+
+            if (pMarshallerType.IsGenericTypeDefinition())
+            {
+                throw new TypeLoadException();
+            }
+
             if (getInstanceMethod == null)
             {
                 throw new ApplicationException();
             }
 
-            var marshaller = CustomMarshallerTable.s_customMarshallersTable.GetOrAdd(new CustomMarshallerKey(pParameterType, pMarshallerType, cookie, getInstanceMethod));
+            var marshaller = CustomMarshallerTable.s_customMarshallersTable.GetOrAdd(new CustomMarshallerKey(pParameterType, pMarshallerType.Value, cookie, getInstanceMethod));
             if (marshaller == null)
             {
                 throw new ApplicationException();
@@ -634,7 +645,7 @@ namespace Internal.Runtime.CompilerHelpers
 
         internal unsafe struct CustomMarshallerKey : IEquatable<CustomMarshallerKey>
         {
-            public CustomMarshallerKey(RuntimeTypeHandle pParameterType, RuntimeTypeHandle pMarshallerType, string cookie, delegate*<string, object> getInstanceMethod)
+            public CustomMarshallerKey(RuntimeTypeHandle pParameterType, IntPtr pMarshallerType, string cookie, delegate*<string, object> getInstanceMethod)
             {
                 ParameterType = pParameterType;
                 MarshallerType = pMarshallerType;
@@ -643,7 +654,7 @@ namespace Internal.Runtime.CompilerHelpers
             }
 
             public RuntimeTypeHandle ParameterType { get; }
-            public RuntimeTypeHandle MarshallerType { get; }
+            public IntPtr MarshallerType { get; }
             public string Cookie { get; }
             public delegate*<string, object> GetInstanceMethod { get; }
 

@@ -1157,14 +1157,9 @@ namespace Internal.TypeSystem.Interop
                 ThrowHelper.ThrowMarshalDirectiveException();
             }
 
-            var getInstanceMethod = marshallerType.GetMethod(
+            var getInstanceMethod = marshallerType?.GetMethod(
                 "GetInstance",
                 new MethodSignature(MethodSignatureFlags.Static, 0, customMarshallerType, new[] { Context.GetWellKnownType(WellKnownType.String) }));
-            if (getInstanceMethod == null)
-            {
-                // ApplicationException throw here.
-                ThrowHelper.ThrowMarshalDirectiveException();
-            }
 
             var initializeCustomMarshallerMethod = Context.GetHelperEntryPoint("InteropHelpers", "InitializeCustomMarshaller");
 
