@@ -395,6 +395,7 @@ public:
         ,
 #endif // ASSERTION_PROP
         lvPerSsaData()
+
     {
     }
 
