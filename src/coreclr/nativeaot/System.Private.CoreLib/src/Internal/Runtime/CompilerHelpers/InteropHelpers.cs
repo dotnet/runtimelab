@@ -287,6 +287,8 @@ namespace Internal.Runtime.CompilerHelpers
         [MethodImpl(MethodImplOptions.NoInlining)]
         internal static unsafe IntPtr ResolvePInvokeSlow(MethodFixupCell* pCell)
         {
+            int lastSystemError = Marshal.GetLastSystemError();
+
             ModuleFixupCell* pModuleCell = pCell->Module;
             IntPtr hModule = pModuleCell->Handle;
             if (hModule == IntPtr.Zero)
@@ -296,6 +298,9 @@ namespace Internal.Runtime.CompilerHelpers
             }
 
             FixupMethodCell(hModule, pCell);
+
+            Marshal.SetLastSystemError(lastSystemError);
+
             return pCell->Target;
         }
 
