@@ -490,7 +490,7 @@ FunctionType* Llvm::getFunctionType()
     std::vector<llvm::Type*> argVec(_llvmArgCount);
     llvm::Type*              retLlvmType;
 
-    for (unsigned i = 0; i < _compiler->lvaTableCnt; i++)
+    for (unsigned i = 0; i < _compiler->lvaCount; i++)
     {
         LclVarDsc* varDsc = _compiler->lvaGetDesc(i);
         if (varDsc.lvIsParam)
