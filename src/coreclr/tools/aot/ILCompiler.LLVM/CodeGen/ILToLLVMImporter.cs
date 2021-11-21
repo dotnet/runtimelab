@@ -1489,7 +1489,7 @@ namespace Internal.IL
         {
             if (type is DefType defType)
             {
-                if (!defType.IsGCPointer && !defType.ContainsGCPointers)
+                if (!defType.IsGCPointer && !defType.ContainsGCPointers && !type.IsByRefLike)
                 {
                     return true;
                 }
