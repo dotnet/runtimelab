@@ -42,6 +42,7 @@ namespace System.Tests
         }
 
         [Fact]
+        [ActiveIssue("https://github.com/dotnet/linker/issues/2078" /* NativeAot */)]
         public void IsDefined_PropertyInfo()
         {
             PropertyInfo pi = typeof(TestBase).GetProperty("PropBase3");

@@ -22,7 +22,9 @@ namespace System.Reflection
 
             AssemblyNameFlags flags = assemblyName.Flags;
             AssemblyContentType contentType = assemblyName.ContentType;
+#pragma warning disable SYSLIB0037 // AssemblyName.ProcessorArchitecture is obsolete
             ProcessorArchitecture processorArchitecture = assemblyName.ProcessorArchitecture;
+#pragma warning restore SYSLIB0037
             AssemblyNameFlags combinedFlags = CombineAssemblyNameFlags(flags, contentType, processorArchitecture);
             byte[]? pkOriginal;
             if (0 != (flags & AssemblyNameFlags.PublicKey))
