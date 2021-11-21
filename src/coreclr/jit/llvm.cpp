@@ -459,6 +459,7 @@ bool canStoreLocalOnLlvmStack(LclVarDsc* varDsc)
     return !varDsc->HasGCPtr();
 }
 
+//TODO-LLVM: delete this function when we lower the args, its confusing with canStoreLocalOnLlvmStack regards: is the logic exactly the same?
 bool Llvm::canStoreArgOnLlvmStack(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd)
 {
     // structs with no GC pointers can go on LLVM stack.
@@ -467,7 +468,7 @@ bool Llvm::canStoreArgOnLlvmStack(CorInfoType corInfoType, CORINFO_CLASS_HANDLE 
         // Use getClassAtribs over typGetObjLayout because EETypePtr has CORINFO_FLG_GENERIC_TYPE_VARIABLE? which fails with typGetObjLayout
         uint32_t classAttribs = _info.compCompHnd->getClassAttribs(classHnd);
 
-        return (classAttribs & CORINFO_FLG_CONTAINS_GC_PTR) == 0;
+        return (classAttribs & (CORINFO_FLG_CONTAINS_GC_PTR | CORINFO_FLG_CONTAINS_STACK_PTR)) == 0;
     }
 
     if (corInfoType == CorInfoType::CORINFO_TYPE_BYREF || corInfoType == CorInfoType::CORINFO_TYPE_CLASS ||
