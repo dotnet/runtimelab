@@ -497,9 +497,8 @@ FunctionType* Llvm::getFunctionType()
         {
             assert(varDsc.lvLlvmArgNum != BAD_LLVM_ARG_NUM);
 
-            CorInfoType          corInfoType = toCorInfoType(varDsc.TypeGet());
             CORINFO_CLASS_HANDLE classHandle = tryGetStructClassHandle(&varDsc);
-            argVec[varDsc.lvLlvmArgNum]      = getLlvmTypeForCorInfoType(corInfoType, classHandle);
+            argVec[varDsc.lvLlvmArgNum]      = getLlvmTypeForCorInfoType(varDsc.lvCorInfoType, classHandle);
         }
     }
 
@@ -843,8 +842,8 @@ Value* Llvm::consumeValue(GenTree* node, Type* targetLlvmType)
 
     if (nodeValue->getType() != targetLlvmType)
     {
-        // int to pointer type
-        if (node->TypeIs(TYP_INT) && targetLlvmType->isPointerTy())
+        // int to pointer type (TODO-LLVM: WASM64: use POINTER_BITs when set correctly, also below for getInt32Ty)
+        if (nodeValue->getType() == Type::getInt32Ty(_llvmContext) && targetLlvmType->isPointerTy())
         {
             return _builder.CreateIntToPtr(nodeValue, targetLlvmType);
         }
@@ -1804,18 +1803,16 @@ void Llvm::populateLlvmArgNums()
 
     shadowStackVarDsc->lvLlvmArgNum = nextLlvmArgNum++;
     shadowStackVarDsc->lvType    = TYP_I_IMPL;
+    shadowStackVarDsc->lvCorInfoType = CORINFO_TYPE_PTR;
     shadowStackVarDsc->lvIsParam = true;
 
-    if (_sigInfo.retType == CorInfoType::CORINFO_TYPE_VOID && _info.compRetType != TYP_VOID)
-    {
-        needsReturnStackSlot(_sigInfo.retType, _sigInfo.retTypeClass);
-    }
     if (needsReturnStackSlot(_sigInfo.retType, _sigInfo.retTypeClass))
     {
         _retAddressLclNum = _compiler->lvaGrabTemp(true DEBUGARG("returnslot"));
         LclVarDsc* retAddressVarDsc  = _compiler->lvaGetDesc(_retAddressLclNum);
         retAddressVarDsc->lvLlvmArgNum = nextLlvmArgNum++;
         retAddressVarDsc->lvType       = TYP_I_IMPL;
+        retAddressVarDsc->lvCorInfoType = CORINFO_TYPE_PTR;
         retAddressVarDsc->lvIsParam    = true;
     }
 
@@ -1827,14 +1824,21 @@ void Llvm::populateLlvmArgNums()
     {
         firstCorInfoArgLocalNum++;
     }
+
+    if (_info.compRetBuffArg != BAD_VAR_NUM)
+    {
+        firstCorInfoArgLocalNum++;
+    }
+
     for (unsigned int i = 0; i < _sigInfo.numArgs; i++, sigArgs = _info.compCompHnd->getArgNext(sigArgs))
     {
         CORINFO_CLASS_HANDLE classHnd;
         CorInfoType          corInfoType = getCorInfoTypeForArg(_sigInfo, sigArgs, &classHnd);
         LclVarDsc*           varDsc      = _compiler->lvaGetDesc(i + firstCorInfoArgLocalNum);
-        if (canStoreArgOnLlvmStack(corInfoType, classHnd))
+        if (canStoreLocalOnLlvmStack(varDsc))
         {
-            varDsc->lvLlvmArgNum = nextLlvmArgNum++;
+            varDsc->lvLlvmArgNum  = nextLlvmArgNum++;
+            varDsc->lvCorInfoType = corInfoType;
         }
     }
 
@@ -2090,7 +2094,7 @@ void Llvm::Compile()
 
     if (_function == nullptr)
     {
-        _function = Function::Create(getFunctionTypeForSigInfo(_sigInfo), Function::ExternalLinkage, 0U, mangledName,
+        _function = Function::Create(getFunctionType(), Function::ExternalLinkage, 0U, mangledName,
             _module); // TODO: ExternalLinkage forced as linked from old module
     }
 

@@ -379,7 +379,8 @@ public:
     LclVarDsc()
         :
 #if defined(TARGET_WASM)
-        lvLlvmArgNum(BAD_LLVM_ARG_NUM)
+        lvLlvmArgNum(BAD_LLVM_ARG_NUM),
+        lvCorInfoType(CORINFO_TYPE_UNDEF)
         ,
 #endif // TARGET_WASM
         _lvArgReg(REG_STK)
@@ -574,6 +575,7 @@ public:
 
 #if defined(TARGET_WASM)
     unsigned int lvLlvmArgNum;
+    CorInfoType  lvCorInfoType;
 #endif
 
 #ifdef DEBUG
