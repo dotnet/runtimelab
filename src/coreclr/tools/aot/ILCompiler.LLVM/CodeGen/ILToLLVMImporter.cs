@@ -1481,36 +1481,6 @@ namespace Internal.IL
             return false;
         }
 
-        // TODO-LLVM: this is a copy of some of the logic in GatherClassGCLayout so we get the same logic as clrjit for
-        // determining if a struct should be passed on the shadow stack.  Span<char/T> is an example.
-        private static bool ContainsIsByReferenceOfT(TypeDesc type)
-        {
-            if (type.IsByReferenceOfT)
-            {
-                return true;
-            }
-
-            foreach (var field in type.GetFields())
-            {
-                if (field.IsStatic)
-                    continue;
-
-                var fieldType = field.FieldType;
-                if (fieldType.IsValueType)
-                {
-                    var fieldDefType = (DefType)fieldType;
-                    if (!fieldDefType.ContainsGCPointers && !fieldDefType.IsByRefLike)
-                        continue;
-
-                    if (ContainsIsByReferenceOfT(fieldType))
-                    {
-                        return true;
-                    }
-                }
-            }
-            return false;
-        }
-
         /// <summary>
         /// Returns true if the type can be stored on the local stack
         /// instead of the shadow stack in this method.
@@ -1519,7 +1489,7 @@ namespace Internal.IL
         {
             if (type is DefType defType)
             {
-                if (!defType.IsGCPointer && !defType.ContainsGCPointers && !ContainsIsByReferenceOfT(type))
+                if (!defType.IsGCPointer && !defType.ContainsGCPointers && !type.IsByRefLike)
                 {
                     return true;
                 }
