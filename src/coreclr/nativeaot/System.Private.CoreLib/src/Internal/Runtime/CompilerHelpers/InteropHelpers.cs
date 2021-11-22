@@ -108,20 +108,7 @@ namespace Internal.Runtime.CompilerHelpers
 
         internal static unsafe char* StringToUnicodeBuffer(string str)
         {
-            if (str == null)
-                return null;
-
-            int stringLength = str.Length;
-
-            char* buffer = (char*)Marshal.AllocCoTaskMem(sizeof(char) * (stringLength + 1));
-
-            fixed (char* pStr = str)
-            {
-                int size = stringLength * sizeof(char);
-                Buffer.MemoryCopy(pStr, buffer, size, size);
-                *(buffer + stringLength) = '\0';
-            }
-            return buffer;
+            return (char*)Marshal.StringToCoTaskMemUni(str);
         }
 
         public static unsafe byte* AllocMemoryForAnsiStringBuilder(StringBuilder sb)

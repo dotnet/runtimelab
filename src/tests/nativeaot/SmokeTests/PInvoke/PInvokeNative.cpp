@@ -572,7 +572,8 @@ DLL_EXPORT bool __stdcall InlineArrayTest(inlineStruct* p, inlineUnicodeStruct *
     if (CompareAnsiString(p->inlineString, "Hello") != 1)
        return false;
 
-    if (!VerifyUnicodeString(q->inlineString))
+    unsigned short expected[] = { 'H', 'e', 'l', 'l', 'o', ' ', 'W', 'o', 'r', 'l', 0 };
+    if (CompareUnicodeString(q->inlineString, expected) != 1)
         return false;
 
     q->inlineString[5] = p->inlineString[5] = ' ';
