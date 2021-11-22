@@ -599,21 +599,11 @@ namespace Internal.Runtime.CompilerHelpers
 #endif
         }
 
-        public static unsafe ICustomMarshaler InitializeCustomMarshaller(RuntimeTypeHandle pParameterType, Type pMarshallerType, string cookie, delegate*<string, object> getInstanceMethod)
+        public static unsafe ICustomMarshaler InitializeCustomMarshaller(RuntimeTypeHandle pParameterType, RuntimeTypeHandle pMarshallerType, string cookie, delegate*<string, object> getInstanceMethod)
         {
-            if (pMarshallerType == null)
+            if (pMarshallerType.IsGenericTypeDefinition())
             {
                 throw new TypeLoadException();
-            }
-
-            if (pMarshallerType.IsGenericTypeDefinition)
-            {
-                throw new TypeLoadException();
-            }
-
-            if (!pMarshallerType.IsAssignableTo(typeof(ICustomMarshaler)))
-            {
-                throw new ApplicationException();
             }
 
             if (pParameterType.ToEETypePtr().IsPointer || pParameterType.IsValueType())
@@ -627,7 +617,7 @@ namespace Internal.Runtime.CompilerHelpers
             }
 
             var marshaller = CustomMarshallerTable.s_customMarshallersTable.GetOrAdd(
-                new CustomMarshallerKey(pParameterType, pMarshallerType.TypeHandle, cookie, getInstanceMethod));
+                new CustomMarshallerKey(pParameterType, pMarshallerType, cookie, getInstanceMethod));
             if (marshaller == null)
             {
                 throw new ApplicationException();
