@@ -5,11 +5,11 @@
 
 //Set this value accordingly to your workspace settings
 #if defined(_WIN32)
-#define PathToLibrary "bin\\Debug\\net5.0\\win-x64\\native\\NativeLibrary.dll"
+#define PathToLibrary "bin\\Debug\\net6.0\\win-x64\\native\\NativeLibrary.dll"
 #elif defined(__APPLE__)
-#define PathToLibrary "./bin/Debug/net5.0/osx-x64/native/NativeLibrary.dylib"
+#define PathToLibrary "./bin/Debug/net6.0/osx-x64/native/NativeLibrary.dylib"
 #else
-#define PathToLibrary "./bin/Debug/net5.0/linux-x64/native/NativeLibrary.so"
+#define PathToLibrary "./bin/Debug/net6.0/linux-x64/native/NativeLibrary.so"
 #endif
 
 #ifdef _WIN32
