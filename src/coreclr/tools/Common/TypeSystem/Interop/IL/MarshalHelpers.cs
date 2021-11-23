@@ -247,6 +247,9 @@ namespace Internal.TypeSystem.Interop
             if (marshalAs != null)
                 nativeType = marshalAs.Type;
 
+            if (isField && nativeType == NativeTypeKind.CustomMarshaler)
+                return MarshallerKind.Invalid;
+
             //
             // Determine MarshalerKind
             //

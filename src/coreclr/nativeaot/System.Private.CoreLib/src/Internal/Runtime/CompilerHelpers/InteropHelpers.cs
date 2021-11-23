@@ -601,21 +601,6 @@ namespace Internal.Runtime.CompilerHelpers
 
         public static unsafe ICustomMarshaler InitializeCustomMarshaller(RuntimeTypeHandle pParameterType, RuntimeTypeHandle pMarshallerType, string cookie, delegate*<string, object> getInstanceMethod)
         {
-            if (pMarshallerType.IsGenericTypeDefinition())
-            {
-                throw new TypeLoadException();
-            }
-
-            if (pParameterType.ToEETypePtr().IsPointer || pParameterType.IsValueType())
-            {
-                throw new MarshalDirectiveException();
-            }
-
-            if (getInstanceMethod == null)
-            {
-                throw new ApplicationException();
-            }
-
             var marshaller = CustomMarshallerTable.s_customMarshallersTable.GetOrAdd(
                 new CustomMarshallerKey(pParameterType, pMarshallerType, cookie, getInstanceMethod));
             if (marshaller == null)
