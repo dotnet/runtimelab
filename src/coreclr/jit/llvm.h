@@ -95,7 +95,6 @@ private:
     Compiler::Info _info;
     llvm::Function* _function;
     CORINFO_SIG_INFO _sigInfo; // sigInfo of function being compiled
-    bool _functionSigHasReturnAddress;
     LIR::Range* _currentRange;
     BasicBlock* _currentBlock;
     IL_OFFSETX _currentOffset;
@@ -115,12 +114,14 @@ private:
     unsigned _shadowStackLocalsSize;
     unsigned _shadowStackLclNum;
     unsigned _retAddressLclNum;
+    unsigned _llvmArgCount;
 
     inline LIR::Range& CurrentRange()
     {
         return *_currentRange;
     }
 
+    void populateLlvmArgNums();
     void buildAdd(GenTree* node, Value* op1, Value* op2);
     void buildCall(GenTree* node);
     void buildCast(GenTreeCast* cast);
@@ -148,11 +149,12 @@ private:
     void ConvertShadowStackLocalNode(GenTreeLclVarCommon* node);
     void emitDoNothingCall();
     void endImportingBasicBlock(BasicBlock* block);
-    void failFunctionCompilation();
+    [[noreturn]] void   failFunctionCompilation();
     void fillPhis();
     llvm::Instruction* getCast(llvm::Value* source, Type* targetType);
     void generateProlog();
     CorInfoType getCorInfoTypeForArg(CORINFO_SIG_INFO& sigInfo, CORINFO_ARG_LIST_HANDLE& arg, CORINFO_CLASS_HANDLE* clsHnd);
+    llvm::FunctionType* Llvm::getFunctionType();
     llvm::FunctionType* getFunctionTypeForSigInfo(CORINFO_SIG_INFO& sigInfo);
     Value* getGenTreeValue(GenTree* node);
     LlvmArgInfo getLlvmArgInfoForArgIx(CORINFO_SIG_INFO& sigInfo, unsigned int lclNum);
