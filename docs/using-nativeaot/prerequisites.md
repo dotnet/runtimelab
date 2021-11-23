@@ -1,7 +1,7 @@
 If you're new to .NET, make sure to visit the [official starting page](http://dotnet.github.io). It will guide you through installing pre-requisites and building your first app.
-If you're already familiar with .NET, make sure you've [downloaded and installed the .NET 5 SDK](https://www.microsoft.com/net/download/core).
+If you're already familiar with .NET, make sure you've [downloaded and installed the .NET 6 SDK](https://www.microsoft.com/net/download/core).
 
-The following pre-requisites need to be installed for building .NET 5 projects with CoreRT.
+The following pre-requisites need to be installed for building .NET 6 projects with Native AOT.
 
 # Windows
 
