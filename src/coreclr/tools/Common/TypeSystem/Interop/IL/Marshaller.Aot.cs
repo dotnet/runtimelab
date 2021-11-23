@@ -1145,7 +1145,7 @@ namespace Internal.TypeSystem.Interop
 
             var customMarshallerType = Context.SystemModule.GetKnownType("System.Runtime.InteropServices", "ICustomMarshaler");
 
-            if (marshallerType.CanCastTo(customMarshallerType))
+            if (!marshallerType.CanCastTo(customMarshallerType))
             {
                 ThrowHelper.ThrowMarshalDirectiveException();
             }
@@ -1212,7 +1212,7 @@ namespace Internal.TypeSystem.Interop
 
             var customMarshallerType = Context.SystemModule.GetKnownType("System.Runtime.InteropServices", "ICustomMarshaler");
 
-            if (marshallerType.CanCastTo(customMarshallerType))
+            if (!marshallerType.CanCastTo(customMarshallerType))
             {
                 ThrowHelper.ThrowMarshalDirectiveException();
             }
