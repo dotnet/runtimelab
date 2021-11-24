@@ -6,7 +6,6 @@ This repo is for experimentation and exploring new ideas that may or may not mak
 
 Currently, this repo contains the following experimental projects:
 
-- [DllImportGenerator](https://github.com/dotnet/runtimelab/tree/feature/DllImportGenerator) - Roslyn Source Generator used for generating P/Invoke IL stubs.
 - [JsonCodeGen](https://github.com/dotnet/runtimelab/tree/feature/JsonCodeGen) - Code generation for JSON.
 - [NativeAOT](https://github.com/dotnet/runtimelab/tree/feature/NativeAOT) - .NET runtime optimized for ahead of time compilation.
 - [Utf8String](https://github.com/dotnet/runtimelab/tree/feature/Utf8String) - A new UTF-8 String data type in the runtime.
@@ -21,6 +20,7 @@ You can create your own experiment, learn more [here](CreateAnExperiment.md)!
 ## Completed Projects
 
 - [s390x](https://github.com/dotnet/runtimelab/tree/feature/s390x) - Port of .NET runtime (Mono) to the s390x architecture. The changes were upstreamed to [dotnet/runtime](https://github.com/dotnet/runtime).
+- [DllImportGenerator](https://github.com/dotnet/runtimelab/tree/feature/DllImportGenerator) - Roslyn Source Generator used for generating P/Invoke IL stubs.
 
 ## Filing issues
 
