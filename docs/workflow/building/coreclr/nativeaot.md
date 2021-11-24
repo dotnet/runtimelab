@@ -55,6 +55,10 @@ To run an individual test (after it was built), navigate to the `artifacts\tests
 
 `$repo_root` is the root of your clone of the repo.
 
+By default the test suite will delete the build artifacts (Native AOT images and response files) if the test compiled successfully. If you want to keep these files instead of deleting them after test run, set the following environment variables and make sure you'll have enough disk space (tens of MB per test):
+
+* CLRTestNoCleanup=1
+
 For more advanced scenarios, look for at [Building Test Subsets](../../testing/coreclr/windows-test-instructions.md#building-test-subsets) and [Generating Core_Root](../../testing/coreclr/windows-test-instructions.md#generating-core_root)
 
 ## Design Documentation
