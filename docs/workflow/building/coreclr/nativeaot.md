@@ -55,7 +55,7 @@ To run an individual test (after it was built), navigate to the `artifacts\tests
 
 `$repo_root` is the root of your clone of the repo.
 
-By default test suite running, cleanup built Native AOT images and response files if ILC does not crashed. If you want to keep these files after test run, set the following environment variables:
+By default the test suite will delete the build artifacts (Native AOT images and response files) if the test compiled successfully. If you want to keep these files instead of deleting them after test run, set the following environment variables and make sure you'll have enough disk space (tens of MB per test):
 
 * CLRTestNoCleanup=1
 
