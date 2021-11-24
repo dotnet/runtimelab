@@ -247,17 +247,19 @@ namespace Internal.TypeSystem.Interop
             if (marshalAs != null)
                 nativeType = marshalAs.Type;
 
-            if (isField && nativeType == NativeTypeKind.CustomMarshaler)
-                return MarshallerKind.Invalid;
+            if (nativeType == NativeTypeKind.CustomMarshaler)
+            {
+                if (isField)
+                    return MarshallerKind.Invalid;
+                else
+                    return MarshallerKind.CustomMarshaler;
+            }
 
             //
             // Determine MarshalerKind
             //
             if (type.IsPrimitive)
             {
-                if (nativeType == NativeTypeKind.CustomMarshaler)
-                    return MarshallerKind.CustomMarshaler;
-
                 switch (type.Category)
                 {
                     case TypeFlags.Void:
@@ -359,9 +361,6 @@ namespace Internal.TypeSystem.Interop
             {
                 if (type.IsEnum)
                     return MarshallerKind.Enum;
-
-                if (nativeType == NativeTypeKind.CustomMarshaler)
-                    return MarshallerKind.CustomMarshaler;
 
                 if (InteropTypes.IsSystemDateTime(context, type))
                 {
@@ -506,8 +505,6 @@ namespace Internal.TypeSystem.Interop
                             else
                                 return MarshallerKind.ByValArray;
                         }
-                    case NativeTypeKind.CustomMarshaler:
-                        return MarshallerKind.CustomMarshaler;
 
                     default:
                         return MarshallerKind.Invalid;
@@ -525,8 +522,6 @@ namespace Internal.TypeSystem.Interop
                     }
                     return MarshallerKind.BlittableValue;
                 }
-                else if (nativeType == NativeTypeKind.CustomMarshaler)
-                    return MarshallerKind.CustomMarshaler;
                 else
                     return MarshallerKind.Invalid;
             }
@@ -585,9 +580,6 @@ namespace Internal.TypeSystem.Interop
                     case NativeTypeKind.AnsiBStr:
                         return MarshallerKind.AnsiBSTRString;
 
-                    case NativeTypeKind.CustomMarshaler:
-                        return MarshallerKind.CustomMarshaler;
-
                     case NativeTypeKind.Default:
                         if (isAnsi)
                             return MarshallerKind.AnsiString;
@@ -602,9 +594,6 @@ namespace Internal.TypeSystem.Interop
             {
                 if (nativeType == NativeTypeKind.AsAny)
                     return isAnsi ? MarshallerKind.AsAnyA : MarshallerKind.AsAnyW;
-                else
-                if (nativeType == NativeTypeKind.CustomMarshaler)
-                    return MarshallerKind.CustomMarshaler;
                 else
                 if (context.Target.IsWindows)
                 {
@@ -663,9 +652,6 @@ namespace Internal.TypeSystem.Interop
                     return MarshallerKind.Invalid;
                 }
 
-                if (nativeType == NativeTypeKind.CustomMarshaler)
-                    return MarshallerKind.CustomMarshaler;
-
                 if (!isField && nativeType == NativeTypeKind.Default || nativeType == NativeTypeKind.LPStruct)
                     return MarshallerKind.LayoutClassPtr;
                 else if (isField && (nativeType == NativeTypeKind.Default || nativeType == NativeTypeKind.Struct))
@@ -675,9 +661,6 @@ namespace Internal.TypeSystem.Interop
             }
             else if (type.IsInterface)
             {
-                if (nativeType == NativeTypeKind.CustomMarshaler)
-                    return MarshallerKind.CustomMarshaler;
-                else
                 if (context.Target.IsWindows)
                     return MarshallerKind.ComInterface;
                 else
@@ -685,10 +668,7 @@ namespace Internal.TypeSystem.Interop
             }
             else
             {
-                if (nativeType == NativeTypeKind.CustomMarshaler)
-                    return MarshallerKind.CustomMarshaler;
-                else
-                    return MarshallerKind.Invalid;
+                return MarshallerKind.Invalid;
             }
         }
 
