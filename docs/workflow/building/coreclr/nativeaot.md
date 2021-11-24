@@ -55,6 +55,10 @@ To run an individual test (after it was built), navigate to the `artifacts\tests
 
 `$repo_root` is the root of your clone of the repo.
 
+By default test suite running, cleanup built Native AOT images and response files if ILC does not crashed. If you want to keep these files after test run, set the following environment variables:
+
+* CLRTestNoCleanup=1
+
 For more advanced scenarios, look for at [Building Test Subsets](../../testing/coreclr/windows-test-instructions.md#building-test-subsets) and [Generating Core_Root](../../testing/coreclr/windows-test-instructions.md#generating-core_root)
 
 ## Design Documentation
