@@ -346,6 +346,10 @@ void GenTree::InitNodeSize()
 #endif // FEATURE_ARG_SPLIT
 #endif // FEATURE_PUT_STRUCT_ARG_STK
 
+#if defined TARGET_WASM
+    static_assert_no_msg(sizeof(GenTreePutArgType)   <= TREE_NODE_SZ_SMALL);
+#endif
+
 #ifdef FEATURE_SIMD
     static_assert_no_msg(sizeof(GenTreeSIMD)         <= TREE_NODE_SZ_SMALL);
 #endif // FEATURE_SIMD

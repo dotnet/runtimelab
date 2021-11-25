@@ -4743,6 +4743,10 @@ struct GenTreeCall final : public GenTree
     unsigned char gtCallType : 3;   // value from the gtCallTypes enumeration
     unsigned char gtReturnType : 5; // exact return type
 
+#if defined(TARGET_WASM)
+    CorInfoType gtCallIrReturnType; // to help construct the LLVM signature for string ctors
+#endif
+
     CORINFO_CLASS_HANDLE gtRetClsHnd; // The return type handle of the call if it is a struct; always available
 
     union {
@@ -6686,6 +6690,14 @@ struct GenTreePutArgSplit : public GenTreePutArgStk
 #endif
 };
 #endif // FEATURE_ARG_SPLIT
+
+#if defined(TARGET_WASM)
+struct GenTreePutArgType : public GenTreeOp
+{
+    CorInfoType          gtCorInfoType;
+    CORINFO_CLASS_HANDLE gtClsHnd;
+};
+#endif // TARGET_WASM
 
 // Represents GT_COPY or GT_RELOAD node
 //
