@@ -561,33 +561,6 @@ FunctionType* Llvm::getFunctionTypeForSigInfo(CorInfoType returnType, CORINFO_SI
     return FunctionType::get(retLlvmType, ArrayRef<Type*>(argVec), false);
 }
 
-//FunctionType* Llvm::getFunctionTypeForCall(GenTreeCall* call)
-//{
-//    fgArgInfo*               argInfo = call->fgArgInfo;
-//    unsigned int             argCount = argInfo->ArgCount();
-//    std::vector<llvm::Type*> argVec      = std::vector<llvm::Type*>(argCount);
-//    llvm::Type*              retLlvmType = getLlvmTypeForVarType(call->TypeGet());
-//
-//    fgArgTabEntry**            argTable             = argInfo->ArgTable();
-//
-//    for (unsigned i = 0; i < argCount; i++)
-//    {
-//        fgArgTabEntry* curArgTabEntry = argTable[i];
-//        GenTreePutArgType* putArg        = curArgTabEntry->GetNode()->AsPutArgType();
-//        CORINFO_CLASS_HANDLE clsHnd         = nullptr;
-//        GenTree*             argOp          = putArg->gtGetOp1();
-//        if (argOp->OperIsLocal()) // args that are shadowstack, return slots, wont have class handles
-//        {
-//            LclVarDsc* varDsc = _compiler->lvaGetDesc(putArg->gtGetOp1()->AsLclVarCommon());
-//            clsHnd            = tryGetStructClassHandle(varDsc);
-//        }
-//
-//        argVec[curArgTabEntry->argNum] = getLlvmTypeForCorInfoType(putArg->gtCorInfoType, clsHnd);
-//    }
-//
-//    return FunctionType::get(retLlvmType, ArrayRef<Type*>(argVec), false);
-//}
-
 Value* getOrCreateExternalSymbol(const char* symbolName, Type* symbolType = nullptr)
 {
     if (symbolType == nullptr)
