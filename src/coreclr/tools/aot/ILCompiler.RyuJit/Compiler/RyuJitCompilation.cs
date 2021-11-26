@@ -63,6 +63,23 @@ namespace ILCompiler
 
         public ProfileDataManager ProfileData => _profileDataManager;
 
+        public override IEETypeNode NecessaryTypeSymbolIfPossible(TypeDesc type)
+        {
+            // RyuJIT makes assumptions around the value of these symbols - in particular, it assumes
+            // that type handles and type symbols have a 1:1 relationship. We therefore need to
+            // make sure RyuJIT never sees a constructed and unconstructed type symbol for the
+            // same type. If the type is constructable and we don't have whole progam view
+            // information proving that it isn't, give RyuJIT the constructed symbol even
+            // though we just need the unconstructed one.
+            // https://github.com/dotnet/runtimelab/issues/1128
+            bool canConstructPerWholeProgramAnalysis = _devirtualizationManager == null
+                ? true : _devirtualizationManager.CanConstructType(type);
+            if (canConstructPerWholeProgramAnalysis)
+                return _nodeFactory.MaximallyConstructableType(type);
+
+            return _nodeFactory.NecessaryTypeSymbol(type);
+        }
+
         protected override void CompileInternal(string outputFile, ObjectDumper dumper)
         {
             _dependencyGraph.ComputeMarkedNodes();

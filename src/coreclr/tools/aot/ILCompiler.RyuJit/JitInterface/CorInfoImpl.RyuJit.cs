@@ -63,8 +63,23 @@ namespace Internal.JitInterface
             }
             finally
             {
+#if DEBUG
+                // RyuJIT makes assumptions around the value of type symbols - in particular, it assumes
+                // that type handles and type symbols have a 1:1 relationship. We therefore need to
+                // make sure RyuJIT never sees a constructed and unconstructed type symbol for the
+                // same type. This check makes sure we didn't accidentally hand out a necessary type symbol
+                // that the compilation class didn't agree to handing out.
+                // https://github.com/dotnet/runtimelab/issues/1128
+                for (int i = 0; i < _codeRelocs.Count; i++)
+                {
+                    Debug.Assert(_codeRelocs[i].Target.GetType() != typeof(EETypeNode)
+                        || _compilation.NecessaryTypeSymbolIfPossible(((EETypeNode)_codeRelocs[i].Target).Type) == _codeRelocs[i].Target);
+                }
+#endif
+
                 CompileMethodCleanup();
             }
+
         }
 
         private CORINFO_RUNTIME_LOOKUP_KIND GetLookupKindFromContextSource(GenericContextSource contextSource)
@@ -689,7 +704,7 @@ namespace Internal.JitInterface
                             if (type.IsCanonicalSubtype(CanonicalFormKind.Any))
                                 ThrowHelper.ThrowInvalidProgramException();
 
-                            var typeSymbol = _compilation.NodeFactory.NecessaryTypeSymbol(type);
+                            var typeSymbol = _compilation.NecessaryTypeSymbolIfPossible(type);
 
                             RelocType rel = (_compilation.NodeFactory.Target.IsWindows) ?
                                 RelocType.IMAGE_REL_BASED_ABSOLUTE :
@@ -1398,7 +1413,7 @@ namespace Internal.JitInterface
         private CORINFO_CLASS_STRUCT_* embedClassHandle(CORINFO_CLASS_STRUCT_* handle, ref void* ppIndirection)
         {
             TypeDesc type = HandleToObject(handle);
-            ISymbolNode typeHandleSymbol = _compilation.NodeFactory.NecessaryTypeSymbol(type);
+            ISymbolNode typeHandleSymbol = _compilation.NecessaryTypeSymbolIfPossible(type);
             CORINFO_CLASS_STRUCT_* result = (CORINFO_CLASS_STRUCT_*)ObjectToHandle(typeHandleSymbol);
 
             if (typeHandleSymbol.RepresentsIndirectionCell)
@@ -1578,7 +1593,7 @@ namespace Internal.JitInterface
         {
             MethodDesc method = HandleToObject(ftn);
             TypeDesc type = method.OwningType;
-            ISymbolNode methodSync = _compilation.NodeFactory.NecessaryTypeSymbol(type);
+            ISymbolNode methodSync = _compilation.NecessaryTypeSymbolIfPossible(type);
 
             void* result = (void*)ObjectToHandle(methodSync);
 

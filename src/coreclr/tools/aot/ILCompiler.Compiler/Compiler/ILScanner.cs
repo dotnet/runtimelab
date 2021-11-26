@@ -405,14 +405,9 @@ namespace ILCompiler
                             //    didn't scan the virtual methods on them.
                             //
 
+                            _constructedTypes.Add(type);
+
                             TypeDesc canonType = type.ConvertToCanonForm(CanonicalFormKind.Specific);
-
-                            _constructedTypes.Add(canonType);
-
-                            // Since this is used for the purposes of devirtualization, it's really convenient
-                            // to also have Array<T> for each T[].
-                            if (canonType.IsArray)
-                                _constructedTypes.Add(canonType.GetClosestDefType());
 
                             bool hasNonAbstractTypeInHierarchy = canonType is not MetadataType mdType || !mdType.IsAbstract;
                             TypeDesc baseType = canonType.BaseType;
