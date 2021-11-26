@@ -3015,7 +3015,7 @@ void Compiler::fgInitArgInfo(GenTreeCall* call)
     SYSTEMV_AMD64_CORINFO_STRUCT_REG_PASSING_DESCRIPTOR structDesc;
 #endif // UNIX_AMD64_ABI
 
-#if defined(DEBUG) && !defined(TARGET_WASM) /* For LLVM some args are lowered to the shadow stack so we can't compare arg counts */
+#if defined(DEBUG) && !defined(TARGET_WASM) // For LLVM some args are lowered to the shadow stack so we can't compare arg counts.
     // Check that we have valid information about call's argument types.
     // For example:
     // load byte; call(int) -> CALL(PUTARG_TYPE byte(IND byte));
