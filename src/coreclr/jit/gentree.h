@@ -6707,7 +6707,9 @@ private:
 
 public:
     GenTreePutArgType(GenTree* op, CorInfoType corInfoType, CORINFO_CLASS_HANDLE clsHnd)
-        : GenTreeOp(GT_PUTARG_TYPE, JITtype2varType(corInfoType), op, nullptr), m_CorInfoType(corInfoType), m_ClsHnd(clsHnd)
+        : GenTreeUnOp(GT_PUTARG_TYPE, JITtype2varType(corInfoType), op)
+        , m_CorInfoType(corInfoType)
+        , m_ClsHnd(clsHnd)
     {
     }
 
