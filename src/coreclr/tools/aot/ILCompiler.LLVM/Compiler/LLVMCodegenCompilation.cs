@@ -127,30 +127,25 @@ namespace ILCompiler
             {
                 if (GetMethodIL(method).GetExceptionRegions().Length == 0)
                 {
-                    var mangledName = NodeFactory.NameMangler.GetMangledMethodName(method).ToString();
-                    // if (mangledName == "IntPtr__CompareTo")
-                    // {
-
                     var sig = method.Signature;
-                        corInfo.RegisterLlvmCallbacks((IntPtr)Unsafe.AsPointer(ref corInfo), _outputFile,
-                            Module.Target,
-                            Module.DataLayout);
-                        corInfo.InitialiseDebugInfo(method, GetMethodIL(method));
-                        corInfo.CompileMethod(methodCodeNodeNeedingCode);
-                        methodCodeNodeNeedingCode.CompilationCompleted = true;
-                        // TODO: delete this external function when old module is gone
-                        LLVMValueRef externFunc = Module.AddFunction(
-                            mangledName,
-                            GetLLVMSignatureForMethod(sig, method.RequiresInstArg()));
-                        externFunc.Linkage = LLVMLinkage.LLVMExternalLinkage;
+                    // this could be inlined, by the local makes debugging easier
+                    var mangledName = NodeFactory.NameMangler.GetMangledMethodName(method).ToString();
+                    corInfo.RegisterLlvmCallbacks((IntPtr)Unsafe.AsPointer(ref corInfo), _outputFile,
+                        Module.Target,
+                        Module.DataLayout);
+                    corInfo.InitialiseDebugInfo(method, GetMethodIL(method));
+                    corInfo.CompileMethod(methodCodeNodeNeedingCode);
+                    methodCodeNodeNeedingCode.CompilationCompleted = true;
+                    // TODO: delete this external function when old module is gone
+                    LLVMValueRef externFunc = Module.AddFunction(mangledName,
+                        GetLLVMSignatureForMethod(sig, method.RequiresInstArg()));
+                    externFunc.Linkage = LLVMLinkage.LLVMExternalLinkage;
 
-                        ILImporter.GenerateRuntimeExportThunk(this, method, externFunc);
+                    ILImporter.GenerateRuntimeExportThunk(this, method, externFunc);
 
-                        ryuJitMethodCount++;
-                    // }
-                    // else ILImporter.CompileMethod(this, methodCodeNodeNeedingCode);
+                    ryuJitMethodCount++;
                 }
-                else ILImporter.CompileMethod(this, methodCodeNodeNeedingCode);
+                    else ILImporter.CompileMethod(this, methodCodeNodeNeedingCode);
             }
             catch (CodeGenerationFailedException)
             {
