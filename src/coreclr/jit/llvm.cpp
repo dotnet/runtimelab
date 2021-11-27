@@ -1946,7 +1946,6 @@ GenTree* Llvm::createStoreNode(var_types nodeType, GenTree* addr, GenTree* nodeT
     {
         storeNode = new (_compiler, GT_STORE_OBJ)
             GenTreeObj(nodeType, addr, nodeToStore, structClassLayout);
-        storeNode->AsBlk()->gtBlkOpKind = GenTreeBlk::BlkOpKindInvalid;
     }
     else
     {
