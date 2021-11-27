@@ -1967,7 +1967,6 @@ void Llvm::lowerCallToShadowStack(GenTreeCall* callNode, CORINFO_SIG_INFO& calle
     std::vector<OperandArgNum> sortedArgs = std::vector<OperandArgNum>(argCount);
     OperandArgNum*             sortedData = sortedArgs.data();
 
-    GenTreeCall::Use* oldArgs = callNode->gtCallLateArgs;
     GenTreeCall::Use* lastArg;
     GenTreeCall::Use* insertReturnAfter;
     GenTreeCall::Use* callThisArg = callNode->gtCallThisArg;
