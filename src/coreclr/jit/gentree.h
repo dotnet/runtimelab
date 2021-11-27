@@ -6692,24 +6692,24 @@ struct GenTreePutArgSplit : public GenTreePutArgStk
 #endif // FEATURE_ARG_SPLIT
 
 #if defined(TARGET_WASM)
-struct GenTreePutArgType : public GenTreeOp
+struct GenTreePutArgType : public GenTreeUnOp
 {
 private:
     CorInfoType          m_CorInfoType;
-    CORINFO_CLASS_HANDLE m_ClsHnd;
+    CORINFO_CLASS_HANDLE m_ClsHnd; // The struct handle if this is a struct, the pointee type if this is a pointer.
 
 public:
     GenTreePutArgType(var_types type, GenTree* op, CorInfoType corInfoType, CORINFO_CLASS_HANDLE clsHnd)
-        : GenTreeOp(GT_PUTARG_TYPE, type, op, nullptr), m_CorInfoType(corInfoType), m_ClsHnd(clsHnd)
+        : GenTreeUnOp(GT_PUTARG_TYPE, type, op), m_CorInfoType(corInfoType), m_ClsHnd(clsHnd)
     {
     }
 
-    CorInfoType GetCorInfoType()
+    CorInfoType GetCorInfoType() const
     {
         return m_CorInfoType;
     }
 
-    CORINFO_CLASS_HANDLE GetClsHnd()
+    CORINFO_CLASS_HANDLE GetClsHnd() const
     {
         return m_ClsHnd;
     }

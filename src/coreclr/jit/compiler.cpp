@@ -756,7 +756,7 @@ var_types Compiler::getArgTypeForStruct(CORINFO_CLASS_HANDLE clsHnd,
 #if defined(TARGET_WASM)
     *wbPassStruct = SPK_ByValue;
     return TYP_STRUCT;
-#else
+#else // !TARGET_WASM
     var_types         useType         = TYP_UNKNOWN;
     structPassingKind howToPassStruct = SPK_Unknown; // We must change this before we return
 
@@ -1055,7 +1055,7 @@ var_types Compiler::getReturnTypeForStruct(CORINFO_CLASS_HANDLE     clsHnd,
 #if defined(TARGET_WASM)
     *wbReturnStruct = SPK_ByValue;
     return TYP_STRUCT;
-#else // TARGET_WASM
+#else // !TARGET_WASM
     var_types         useType             = TYP_UNKNOWN;
     structPassingKind howToReturnStruct   = SPK_Unknown; // We must change this before we return
     bool              canReturnInRegister = true;

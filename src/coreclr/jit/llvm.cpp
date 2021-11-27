@@ -1967,9 +1967,8 @@ void Llvm::lowerCallToShadowStack(GenTreeCall* callNode, CORINFO_SIG_INFO& calle
 
     // set up the callee shadowstack, creating a temp and the PUTARG
     GenTreeLclVar* shadowStackVar = _compiler->gtNewLclvNode(_shadowStackLclNum, TYP_I_IMPL);
-    GenTreeIntCon* offset         = _compiler->gtNewIconNode(_shadowStackLocalsSize,
-                                                     TYP_I_IMPL); // TODO-LLVM: possible performance benefit: when
-                                                                  // _shadowStackLocalsSize == 0, then omit the GT_ADD
+    GenTreeIntCon* offset         = _compiler->gtNewIconNode(_shadowStackLocalsSize, TYP_I_IMPL);
+    // TODO-LLVM: possible performance benefit: when _shadowStackLocalsSize == 0, then omit the GT_ADD.
     GenTree* calleeShadowStack = _compiler->gtNewOperNode(GT_ADD, TYP_I_IMPL, shadowStackVar, offset);
 
     GenTreePutArgType* putArg = _compiler->gtNewPutArgType(TYP_I_IMPL, calleeShadowStack, CORINFO_TYPE_PTR, NO_CLASS_HANDLE);
@@ -2015,7 +2014,7 @@ void Llvm::lowerCallToShadowStack(GenTreeCall* callNode, CORINFO_SIG_INFO& calle
                 shadowStackUseOffest = padOffset(corInfoType, clsHnd, shadowStackUseOffest);
             }
 
-            GenTreeIntCon* offset    = _compiler->gtNewIconNode(shadowStackUseOffest + _shadowStackLocalsSize, TYP_I_IMPL);
+            GenTreeIntCon* offset    = _compiler->gtNewIconNode(_shadowStackLocalsSize + shadowStackUseOffest, TYP_I_IMPL);
             GenTree*       slotAddr  = _compiler->gtNewOperNode(GT_ADD, TYP_I_IMPL, lclShadowStack, offset);
             GenTree*       storeNode =
                 createStoreNode(opAndArg.operand->TypeGet(), slotAddr, opAndArg.operand,
