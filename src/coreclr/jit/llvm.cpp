@@ -1865,6 +1865,7 @@ GenTreeCall::Use* Llvm::lowerCallReturn(GenTreeCall*      callNode,
     {
         callNode->gtCorInfoType = calleeSigInfo.retType;
     }
+
     return lastArg;
 }
 
