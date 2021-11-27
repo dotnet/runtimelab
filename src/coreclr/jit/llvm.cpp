@@ -1833,7 +1833,6 @@ GenTreeCall::Use* Llvm::lowerCallReturn(GenTreeCall*      callNode,
         if (callReturnType == TYP_STRUCT)
         {
             indirNode    = _compiler->gtNewObjNode(calleeSigInfo.retTypeClass, returnAddrLclAfterCall);
-            indirNode->AsBlk()->gtBlkOpKind = GenTreeBlk::BlkOpKindInvalid;
         }
         else
         {
