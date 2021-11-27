@@ -1923,7 +1923,6 @@ GenTree* Llvm::createStoreNode(var_types nodeType, GenTree* addr, GenTree* nodeT
     {
         storeNode = new (_compiler, GT_STORE_OBJ)
             GenTreeObj(nodeType, addr, nodeToStore, structClassLayout);
-        storeNode->AsBlk()->gtBlkOpKind = GenTreeBlk::BlkOpKindInvalid;
     }
     else
     {
@@ -2030,7 +2029,7 @@ void Llvm::lowerCallToShadowStack(GenTreeCall* callNode, CORINFO_SIG_INFO& calle
             GenTree*       slotAddr = _compiler->gtNewOperNode(GT_ADD, TYP_I_IMPL, lclShadowStack, offset);
             GenTree*       storeNode =
                 createStoreNode(opAndArg.operand->TypeGet(), slotAddr, opAndArg.operand,
-                                corInfoType == CORINFO_TYPE_VALUECLASS ? _compiler->typGetObjLayout(clsHnd) : nullptr);
+                                corInfoType == CORINFO_TYPE_VALUECLASS ? _compiler->typGetObjLayout(clsHnd) : NO_CLASS_HANDLE);
 
             if (corInfoType == CORINFO_TYPE_VALUECLASS)
             {
