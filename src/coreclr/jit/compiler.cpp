@@ -939,7 +939,7 @@ var_types Compiler::getArgTypeForStruct(CORINFO_CLASS_HANDLE clsHnd,
     }
 
     return useType;
-#endif // TARGET_WASM
+#endif // !TARGET_WASM
 }
 
 #ifdef TARGET_WASM
@@ -1276,7 +1276,7 @@ var_types Compiler::getReturnTypeForStruct(CORINFO_CLASS_HANDLE     clsHnd,
     }
 
     return useType;
-#endif  // TARGET_WASM
+#endif  // !TARGET_WASM
 }
 
 ///////////////////////////////////////////////////////////////////////////////
