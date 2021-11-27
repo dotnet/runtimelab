@@ -1833,7 +1833,6 @@ GenTreeCall::Use* Llvm::lowerCallReturn(GenTreeCall*      callNode,
         if (callReturnType == TYP_STRUCT)
         {
             indirNode    = _compiler->gtNewObjNode(calleeSigInfo.retTypeClass, returnAddrLclAfterCall);
-            indirNode->AsBlk()->gtBlkOpKind = GenTreeBlk::BlkOpKindInvalid;
         }
         else
         {
@@ -1868,6 +1867,7 @@ GenTreeCall::Use* Llvm::lowerCallReturn(GenTreeCall*      callNode,
     {
         callNode->gtCorInfoType = calleeSigInfo.retType;
     }
+
     return lastArg;
 }
 
@@ -1967,9 +1967,8 @@ void Llvm::lowerCallToShadowStack(GenTreeCall* callNode, CORINFO_SIG_INFO& calle
 
     // set up the callee shadowstack, creating a temp and the PUTARG
     GenTreeLclVar* shadowStackVar = _compiler->gtNewLclvNode(_shadowStackLclNum, TYP_I_IMPL);
-    GenTreeIntCon* offset         = _compiler->gtNewIconNode(_shadowStackLocalsSize,
-                                                     TYP_I_IMPL); // TODO-LLVM: possible performance benefit: when
-                                                                  // _shadowStackLocalsSize == 0, then omit the GT_ADD
+    GenTreeIntCon* offset         = _compiler->gtNewIconNode(_shadowStackLocalsSize, TYP_I_IMPL);
+    // TODO-LLVM: possible performance benefit: when _shadowStackLocalsSize == 0, then omit the GT_ADD.
     GenTree* calleeShadowStack = _compiler->gtNewOperNode(GT_ADD, TYP_I_IMPL, shadowStackVar, offset);
 
     GenTreePutArgType* calleeShadowStackPutArg =
@@ -2019,7 +2018,7 @@ void Llvm::lowerCallToShadowStack(GenTreeCall* callNode, CORINFO_SIG_INFO& calle
                 shadowStackUseOffest = padOffset(corInfoType, clsHnd, shadowStackUseOffest);
             }
 
-            GenTreeIntCon* offset    = _compiler->gtNewIconNode(shadowStackUseOffest + _shadowStackLocalsSize, TYP_I_IMPL);
+            GenTreeIntCon* offset    = _compiler->gtNewIconNode(_shadowStackLocalsSize + shadowStackUseOffest, TYP_I_IMPL);
             GenTree*       slotAddr  = _compiler->gtNewOperNode(GT_ADD, TYP_I_IMPL, lclShadowStack, offset);
             GenTree*       storeNode =
                 createStoreNode(opAndArg.operand->TypeGet(), slotAddr, opAndArg.operand,
