@@ -1850,7 +1850,10 @@ GenTreeCall::Use* Llvm::lowerCallReturn(GenTreeCall*      callNode,
             callNode->ClearUnusedValue();
         }
 
-        GenTreePutArgType* putArg = _compiler->gtNewPutArgType(TYP_I_IMPL, returnAddrLcl, CORINFO_TYPE_PTR, nullptr);
+        GenTreePutArgType* putArg = _compiler->gtNewPutArgType(returnAddrLcl, CORINFO_TYPE_PTR, nullptr);
+#if DEBUG
+        putArg->SetArgNum(-2);  // -2 will represent the return arg for LLVM
+#endif
         lastArg = _compiler->gtInsertNewCallArgAfter(putArg, insertAfterArg);
 
         callNode->gtReturnType = TYP_VOID;
@@ -1916,17 +1919,16 @@ void Llvm::failUnsupportedCalls(GenTreeCall* callNode, CORINFO_SIG_INFO &calleeS
     }
 }
 
-GenTree* Llvm::createStoreNode(var_types nodeType, GenTree* addr, GenTree* nodeToStore, ClassLayout* structClassLayout)
+GenTree* Llvm::createStoreNode(var_types nodeType, GenTree* addr, GenTree* data, ClassLayout* structClassLayout)
 {
     GenTree* storeNode;
     if (nodeType == TYP_STRUCT)
     {
-        storeNode = new (_compiler, GT_STORE_OBJ)
-            GenTreeObj(nodeType, addr, nodeToStore, structClassLayout);
+        storeNode = new (_compiler, GT_STORE_OBJ) GenTreeObj(nodeType, addr, data, structClassLayout);
     }
     else
     {
-        storeNode = new (_compiler, GT_STOREIND) GenTreeStoreInd(nodeType, addr, nodeToStore);
+        storeNode = new (_compiler, GT_STOREIND) GenTreeStoreInd(nodeType, addr, data);
     }
     return storeNode;
 }
@@ -1962,8 +1964,6 @@ void Llvm::lowerCallToShadowStack(GenTreeCall* callNode, CORINFO_SIG_INFO& calle
 
     callNode->ResetArgInfo();
     callNode->gtCallThisArg = nullptr;
-    argCount                = argInfo->ArgCount();
-    argTable                = argInfo->ArgTable();
 
     // set up the callee shadowstack, creating a temp and the PUTARG
     GenTreeLclVar* shadowStackVar = _compiler->gtNewLclvNode(_shadowStackLclNum, TYP_I_IMPL);
@@ -1972,14 +1972,18 @@ void Llvm::lowerCallToShadowStack(GenTreeCall* callNode, CORINFO_SIG_INFO& calle
                                                                   // _shadowStackLocalsSize == 0, then omit the GT_ADD
     GenTree* calleeShadowStack = _compiler->gtNewOperNode(GT_ADD, TYP_I_IMPL, shadowStackVar, offset);
 
-    GenTreePutArgType* putArg = _compiler->gtNewPutArgType(TYP_I_IMPL, calleeShadowStack, CORINFO_TYPE_PTR, NO_CLASS_HANDLE);
+    GenTreePutArgType* calleeShadowStackPutArg =
+        _compiler->gtNewPutArgType(calleeShadowStack, CORINFO_TYPE_PTR, NO_CLASS_HANDLE);
+#ifdef DEBUG
+    calleeShadowStackPutArg->SetArgNum(-1); // -1 will represent the shadowstack  arg for LLVM
+#endif
 
-    callNode->gtCallArgs     = _compiler->gtNewCallArgs(putArg);
+    callNode->gtCallArgs     = _compiler->gtNewCallArgs(calleeShadowStackPutArg);
     lastArg                  = callNode->gtCallArgs;
     insertReturnAfter        = lastArg; // add the return slot after the shadow stack arg
     callNode->gtCallLateArgs = nullptr;
 
-    CurrentRange().InsertBefore(callNode, shadowStackVar, offset, calleeShadowStack, putArg);
+    CurrentRange().InsertBefore(callNode, shadowStackVar, offset, calleeShadowStack, calleeShadowStackPutArg);
 
     lastArg = lowerCallReturn(callNode, calleeSigInfo, insertReturnAfter);
 
@@ -2035,7 +2039,10 @@ void Llvm::lowerCallToShadowStack(GenTreeCall* callNode, CORINFO_SIG_INFO& calle
         else
         {
             // arg on LLVM stack
-            GenTreePutArgType* putArg = _compiler->gtNewPutArgType(opAndArg.operand->TypeGet(), opAndArg.operand, corInfoType, clsHnd);
+            GenTreePutArgType* putArg = _compiler->gtNewPutArgType(opAndArg.operand, corInfoType, clsHnd);
+#if DEBUG
+            putArg->SetArgNum(opAndArg.argNum);
+#endif 
             lastArg = _compiler->gtInsertNewCallArgAfter(putArg, lastArg);
 
             CurrentRange().InsertBefore(callNode, putArg);

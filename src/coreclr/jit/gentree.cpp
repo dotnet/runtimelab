@@ -284,6 +284,10 @@ void GenTree::InitNodeSize()
 #endif // FEATURE_ARG_SPLIT
 #endif // FEATURE_PUT_STRUCT_ARG_STK
 
+#if defined(TARGET_WASM) && defined(DEBUG)
+    GenTree::s_gtNodeSizes[GT_PUTARG_TYPE]      = TREE_NODE_SZ_LARGE;
+#endif
+
     assert(GenTree::s_gtNodeSizes[GT_RETURN] == GenTree::s_gtNodeSizes[GT_ASG]);
 
     // This list of assertions should come to contain all GenTree subtypes that are declared
@@ -347,8 +351,12 @@ void GenTree::InitNodeSize()
 #endif // FEATURE_PUT_STRUCT_ARG_STK
 
 #if defined TARGET_WASM
+#ifdef DEBUG
+    static_assert_no_msg(sizeof(GenTreePutArgType)   <= TREE_NODE_SZ_LARGE);
+#else
     static_assert_no_msg(sizeof(GenTreePutArgType)   <= TREE_NODE_SZ_SMALL);
-#endif
+#endif // DEBUG
+#endif // TARGET_WASM
 
 #ifdef FEATURE_SIMD
     static_assert_no_msg(sizeof(GenTreeSIMD)         <= TREE_NODE_SZ_SMALL);
@@ -6876,9 +6884,9 @@ GenTreeLclVar* Compiler::gtNewStoreLclVar(unsigned dstLclNum, GenTree* src)
 }
 
 #ifdef TARGET_WASM
-GenTreePutArgType* Compiler::gtNewPutArgType(var_types type, GenTree* op, CorInfoType corInfoType, CORINFO_CLASS_HANDLE clsHnd)
+GenTreePutArgType* Compiler::gtNewPutArgType(GenTree* op, CorInfoType corInfoType, CORINFO_CLASS_HANDLE clsHnd)
 {
-    return new (this, GT_PUTARG_TYPE) GenTreePutArgType(type, op, corInfoType, clsHnd);
+    return new (this, GT_PUTARG_TYPE) GenTreePutArgType(op, corInfoType, clsHnd);
 }
 #endif
 
@@ -13089,24 +13097,32 @@ void Compiler::gtDispLIRNode(GenTree* node, const char* prefixMsg /* = nullptr *
             }
             else
             {
-    #ifdef TARGET_WASM
-                displayOperand(operand, "wasm arg" /* TODO-LLVM */, operandArc, indentStack, prefixIndent);
-    #else
-                fgArgTabEntry* curArgTabEntry = gtArgEntryByNode(call, operand);
-                assert(curArgTabEntry);
-                assert(operand->OperGet() != GT_LIST);
-
-                if (!curArgTabEntry->isLateArg())
+#ifdef TARGET_WASM
+                // LLVM rewrites the call args, but does not reinitialise the arg infos
+                if(operand->OperIs(GT_PUTARG_TYPE))
                 {
-                    gtGetArgMsg(call, operand, curArgTabEntry->argNum, buf, sizeof(buf));
+                    GenTreePutArgType* putAarg = operand->AsPutArgType();
+                    gtGetArgMsg(call, operand, putAarg->GetArgNum(), buf, sizeof(buf));
                 }
                 else
                 {
-                    gtGetLateArgMsg(call, operand, curArgTabEntry->GetLateArgInx(), buf, sizeof(buf));
-                }
+#endif // TARGET_WASM
+                    fgArgTabEntry* curArgTabEntry = gtArgEntryByNode(call, operand);
+                    assert(curArgTabEntry);
+                    assert(operand->OperGet() != GT_LIST);
 
+                    if (!curArgTabEntry->isLateArg())
+                    {
+                        gtGetArgMsg(call, operand, curArgTabEntry->argNum, buf, sizeof(buf));
+                    }
+                    else
+                    {
+                        gtGetLateArgMsg(call, operand, curArgTabEntry->GetLateArgInx(), buf, sizeof(buf));
+                    }
+#ifdef TARGET_WASM
+                }
+#endif // TARGET_WASM
                 displayOperand(operand, buf, operandArc, indentStack, prefixIndent);
-#endif
             }
         }
         else if (node->OperIsDynBlkOp())

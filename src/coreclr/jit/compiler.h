@@ -2906,8 +2906,7 @@ public:
     GenTreeLclVar* gtNewStoreLclVar(unsigned dstLclNum, GenTree* src);
 
 #ifdef TARGET_WASM
-    GenTreePutArgType* Compiler::gtNewPutArgType(var_types            type,
-                                                 GenTree*             op,
+    GenTreePutArgType* Compiler::gtNewPutArgType(GenTree*             op,
                                                  CorInfoType          corInfoType,
                                                  CORINFO_CLASS_HANDLE clsHnd);
 #endif
