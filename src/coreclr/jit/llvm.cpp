@@ -480,23 +480,7 @@ bool Llvm::needsReturnStackSlot(CorInfoType corInfoType, CORINFO_CLASS_HANDLE cl
 CorInfoType Llvm::getCorInfoTypeForArg(CORINFO_SIG_INFO& sigInfo, CORINFO_ARG_LIST_HANDLE& arg, CORINFO_CLASS_HANDLE* clsHnd)
 {
     CorInfoTypeWithMod corTypeWithMod = _getArgTypeIncludingParameterized(_thisPtr, &sigInfo, arg, clsHnd);
-    CorInfoType stripped = strip(corTypeWithMod);
-    if (stripped == CORINFO_TYPE_NATIVEINT)
-    {
-        // this is actually mapped from IntPtr, and we want i8* not i32 so force back
-        // see TypeFlags.cs and CorInfoTypes.cs:
-
-        // IntPtr = 0x0C,
-        // UIntPtr = 0x0D,
-
-        // CORINFO_TYPE_NATIVEINT = 0xc,
-        // CORINFO_TYPE_NATIVEUINT = 0xd,
-
-        // alternative in canStoreArgOnLlvmStack map nativeint to true
-
-        stripped = CORINFO_TYPE_PTR;
-    }
-    return stripped;
+    return strip(corTypeWithMod);
 }
 
 FunctionType* Llvm::getFunctionType()
@@ -1211,11 +1195,8 @@ void Llvm::fillPhis()
             auto iter = _localsMap->find({ lclNum, ssaNum });
             if (iter == _localsMap->end())
             {
-                //TODO-LLVM: if a phi arg is an arg that is not in the LLVM args, then we may not have a local for it
-                // For now as this PR is already big, just fail these functions.
-                // For a fix, we could do another lowering pass after SSA, copying
-                // those args into locals.  We may have to do that anyway to get the address of locals, although that might
-                // be ok to do before SSA
+                //TODO-LLVM: Uninitialised locals are caught here as they would fail on the equivalent assert below.
+                // See https://github.com/dotnet/runtimelab/pull/1744#discussion_r757791229
                 if (!(_compiler->lvaIsParameter(lclNum) && ssaNum == SsaConfig::FIRST_SSA_NUM))
                 {
                     failFunctionCompilation();
@@ -1847,15 +1828,11 @@ GenTreeCall::Use* Llvm::lowerCallReturn(GenTreeCall*      callNode,
         GenTree*          addrStore     = _compiler->gtNewStoreLclVar(returnTempNum, returnValueAddress);
         GenTree*          returnAddrLcl = _compiler->gtNewLclvNode(returnTempNum, TYP_I_IMPL);
 
-        CORINFO_CLASS_HANDLE putArgClsHnd = nullptr; // i8* for everything other than structs
-
         GenTree* returnAddrLclAfterCall = _compiler->gtNewLclvNode(returnTempNum, TYP_I_IMPL);
         GenTree* indirNode;
         if (callReturnType == TYP_STRUCT)
         {
-            putArgClsHnd = calleeSigInfo.retTypeClass;
-            indirNode    = new (_compiler, GT_OBJ) GenTreeObj(callReturnType, returnAddrLclAfterCall,
-                                                           _compiler->typGetObjLayout(calleeSigInfo.retTypeClass));
+            indirNode    = _compiler->gtNewObjNode(calleeSigInfo.retTypeClass, returnAddrLclAfterCall);
             indirNode->AsBlk()->gtBlkOpKind = GenTreeBlk::BlkOpKindInvalid;
         }
         else
@@ -1873,7 +1850,7 @@ GenTreeCall::Use* Llvm::lowerCallReturn(GenTreeCall*      callNode,
             callNode->ClearUnusedValue();
         }
 
-        GenTreePutArgType* putArg = _compiler->gtNewPutArgType(TYP_I_IMPL, returnAddrLcl, CORINFO_TYPE_PTR, putArgClsHnd);
+        GenTreePutArgType* putArg = _compiler->gtNewPutArgType(TYP_I_IMPL, returnAddrLcl, CORINFO_TYPE_PTR, nullptr);
         lastArg = _compiler->gtInsertNewCallArgAfter(putArg, insertAfterArg);
 
         callNode->gtReturnType = TYP_VOID;
@@ -1950,15 +1927,28 @@ GenTree* Llvm::createStoreNode(var_types nodeType, GenTree* addr, GenTree* nodeT
     }
     else
     {
-        storeNode = _compiler->gtNewOperNode(GT_STOREIND, nodeType, addr, nodeToStore);
+        storeNode = new (_compiler, GT_STOREIND) GenTreeStoreInd(nodeType, addr, nodeToStore);
     }
     return storeNode;
 }
 
+//------------------------------------------------------------------------
+// lowerCallToShadowStack: Lower the call, rewriting its arguments.
+//
+// This method has two primary objectives:
+//  1) Transfer the information about the arguments from arg info to explicit
+//     PutArgType nodes, to make it easy for codegen to consume it. Also, get
+//     rid of the late/non-late argument distinction, by sorting the inserted nodes
+//     in the original evaluation order, matching that of them in the signature.
+//  2) Rewrite arguments and the return to be stored on the shadow stack. We take
+//     the arguments which need to be on the shadow stack, remove them from the call
+//     arguments list, store their values on the shadow stack, at offsets calculated
+//     in a simple increasing order, matching the signature. We also rewrite returns
+//     that must be on the shadow stack, see "lowerCallReturn".
+//
 void Llvm::lowerCallToShadowStack(GenTreeCall* callNode, CORINFO_SIG_INFO& calleeSigInfo)
 {
     // rewrite the args, adding shadow stack, and moving gc tracked args to the shadow stack
-    unsigned thisArgNum           = 0;
     unsigned shadowStackUseOffest = 0;
 
     fgArgInfo*                 argInfo    = callNode->fgArgInfo;
@@ -1967,7 +1957,6 @@ void Llvm::lowerCallToShadowStack(GenTreeCall* callNode, CORINFO_SIG_INFO& calle
     std::vector<OperandArgNum> sortedArgs = std::vector<OperandArgNum>(argCount);
     OperandArgNum*             sortedData = sortedArgs.data();
 
-    GenTreeCall::Use* oldArgs = callNode->gtCallLateArgs;
     GenTreeCall::Use* lastArg;
     GenTreeCall::Use* insertReturnAfter;
     GenTreeCall::Use* callThisArg = callNode->gtCallThisArg;
@@ -2017,19 +2006,11 @@ void Llvm::lowerCallToShadowStack(GenTreeCall* callNode, CORINFO_SIG_INFO& calle
 
     for (OperandArgNum opAndArg : sortedArgs)
     {
-        if (opAndArg.operand->IsArgPlaceHolderNode())
-        {
-            thisArgNum++;
-            continue;
-        }
-
         CORINFO_CLASS_HANDLE clsHnd      = NO_CLASS_HANDLE;
         CorInfoType          corInfoType = CORINFO_TYPE_UNDEF;
 
-        // "this" not in sigInfo arg list - for compatbility with the IL->LLVM backend, this is always on the
-        // shadowstack A performance benefit could be to move it to the LLVM stack when it has no GC ptrs, but its not
-        // clear how to get the class handle if it is a struct.
-        bool isThis = callThisArg != nullptr && opAndArg.argNum == thisArgNum && calleeSigInfo.hasThis();
+        // "this" not in sigInfo arg list
+        bool isThis = callThisArg != nullptr && opAndArg.argNum == 0 && calleeSigInfo.hasThis();
         if (!isThis)
         {
             corInfoType = getCorInfoTypeForArg(calleeSigInfo, sigArgs, &clsHnd);
@@ -2043,12 +2024,6 @@ void Llvm::lowerCallToShadowStack(GenTreeCall* callNode, CORINFO_SIG_INFO& calle
             if (corInfoType == CORINFO_TYPE_VALUECLASS)
             {
                 shadowStackUseOffest = padOffset(corInfoType, clsHnd, shadowStackUseOffest);
-                // TODO-LLVM: needs padding.  DONT FORGET: the GT_STORE_OBJ and "argType.GetElementSize().AsInt"
-                // commented out below
-                // failFunctionCompilation();
-                // from the IL->LLVM backed:
-                // The previous argument might have left this type unaligned, so pad if necessary
-                // shadowStackUseOffest = PadOffset(argType, shadowStackUseOffest);
             }
 
             GenTreeIntCon* offset   = _compiler->gtNewIconNode(shadowStackUseOffest, TYP_I_IMPL);
@@ -2190,6 +2165,7 @@ void Llvm::PlaceAndConvertShadowStackLocals()
 //------------------------------------------------------------------------
 // Compile: Compile IR to LLVM, adding to the LLVM Module
 //
+// TODO-LLVM: A legal optimization here is to not GC-report things if we know they're not on the heap (say this is actually a local). 
 void Llvm::Compile()
 {
     CompAllocator allocator = _compiler->getAllocator();
