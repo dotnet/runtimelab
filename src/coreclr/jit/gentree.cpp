@@ -6875,6 +6875,13 @@ GenTreeLclVar* Compiler::gtNewStoreLclVar(unsigned dstLclNum, GenTree* src)
     return store;
 }
 
+#ifdef TARGET_WASM
+GenTreePutArgType* Compiler::gtNewPutArgType(var_types type, GenTree* op, CorInfoType corInfoType, CORINFO_CLASS_HANDLE clsHnd)
+{
+    return new (this, GT_PUTARG_TYPE) GenTreePutArgType(type, op, corInfoType, clsHnd);
+}
+#endif
+
 #ifdef FEATURE_SIMD
 //---------------------------------------------------------------------
 // gtNewSIMDVectorZero: create a GT_SIMD node for Vector<T>.Zero
@@ -13082,6 +13089,9 @@ void Compiler::gtDispLIRNode(GenTree* node, const char* prefixMsg /* = nullptr *
             }
             else
             {
+    #ifdef TARGET_WASM
+                displayOperand(operand, "wasm arg" /* TODO-LLVM */, operandArc, indentStack, prefixIndent);
+    #else
                 fgArgTabEntry* curArgTabEntry = gtArgEntryByNode(call, operand);
                 assert(curArgTabEntry);
                 assert(operand->OperGet() != GT_LIST);
@@ -13096,6 +13106,7 @@ void Compiler::gtDispLIRNode(GenTree* node, const char* prefixMsg /* = nullptr *
                 }
 
                 displayOperand(operand, buf, operandArc, indentStack, prefixIndent);
+#endif
             }
         }
         else if (node->OperIsDynBlkOp())

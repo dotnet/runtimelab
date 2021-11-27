@@ -4744,7 +4744,7 @@ struct GenTreeCall final : public GenTree
     unsigned char gtReturnType : 5; // exact return type
 
 #if defined(TARGET_WASM)
-    CorInfoType gtCallIrReturnType; // to help construct the LLVM signature for string ctors
+    CorInfoType gtCorInfoType; // original type from CORINFO_SIG_INFO used to construct signature
 #endif
 
     CORINFO_CLASS_HANDLE gtRetClsHnd; // The return type handle of the call if it is a struct; always available
@@ -6694,8 +6694,25 @@ struct GenTreePutArgSplit : public GenTreePutArgStk
 #if defined(TARGET_WASM)
 struct GenTreePutArgType : public GenTreeOp
 {
-    CorInfoType          gtCorInfoType;
-    CORINFO_CLASS_HANDLE gtClsHnd;
+private:
+    CorInfoType          m_CorInfoType;
+    CORINFO_CLASS_HANDLE m_ClsHnd;
+
+public:
+    GenTreePutArgType(var_types type, GenTree* op, CorInfoType corInfoType, CORINFO_CLASS_HANDLE clsHnd)
+        : GenTreeOp(GT_PUTARG_TYPE, type, op, nullptr), m_CorInfoType(corInfoType), m_ClsHnd(clsHnd)
+    {
+    }
+
+    CorInfoType GetCorInfoType()
+    {
+        return m_CorInfoType;
+    }
+
+    CORINFO_CLASS_HANDLE GetClsHnd()
+    {
+        return m_ClsHnd;
+    }
 };
 #endif // TARGET_WASM
 

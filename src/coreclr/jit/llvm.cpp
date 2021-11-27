@@ -527,35 +527,16 @@ FunctionType* Llvm::getFunctionType()
     return FunctionType::get(retLlvmType, ArrayRef<Type*>(argVec), false);
 }
 
-FunctionType* Llvm::getFunctionTypeForSigInfo(CorInfoType returnType, CORINFO_SIG_INFO& sigInfo)
+FunctionType* Llvm::getFunctionTypeForCall(GenTreeCall* call)
 {
-    if (sigInfo.hasExplicitThis() || sigInfo.hasTypeArg())
-        failFunctionCompilation();
+    llvm::Type* retLlvmType = getLlvmTypeForCorInfoType(call->gtCorInfoType, call->gtRetClsHnd);
 
-    // start vector with shadow stack arg, this might reduce the number of bitcasts as a i8**, TODO: try it and check LLVM bitcode size
-    std::vector<llvm::Type*> argVec{Type::getInt8PtrTy(_llvmContext)};
-    llvm::Type*              retLlvmType;
+    std::vector<llvm::Type*> argVec = std::vector<llvm::Type*>();
 
-    if (needsReturnStackSlot(returnType, sigInfo.retTypeClass))
+    for (GenTreeCall::Use& use : call->Args())
     {
-        argVec.push_back(Type::getInt8PtrTy(_llvmContext));
-        retLlvmType = Type::getVoidTy(_llvmContext);
-    }
-    else
-    {
-        retLlvmType = getLlvmTypeForCorInfoType(sigInfo.retType, sigInfo.retTypeClass);
-    }
-
-    CORINFO_ARG_LIST_HANDLE  sigArgs = sigInfo.args;
-
-    for (unsigned int i = 0; i < sigInfo.numArgs; i++, sigArgs = _info.compCompHnd->getArgNext(sigArgs))
-    {
-        CORINFO_CLASS_HANDLE classHnd;
-        CorInfoType corInfoType = getCorInfoTypeForArg(sigInfo, sigArgs, &classHnd);
-        if (canStoreArgOnLlvmStack(corInfoType, classHnd))
-        {
-            argVec.push_back(getLlvmTypeForCorInfoType(corInfoType, classHnd));
-        }
+        GenTreePutArgType* putArg = use.GetNode()->AsPutArgType();
+        argVec.push_back(getLlvmTypeForCorInfoType(putArg->GetCorInfoType(), putArg->GetClsHnd()));
     }
 
     return FunctionType::get(retLlvmType, ArrayRef<Type*>(argVec), false);
@@ -897,37 +878,20 @@ llvm::Value* Llvm::buildUserFuncCall(GenTreeCall* call)
 
     (*_addCodeReloc)(_thisPtr, call->gtEntryPoint.handle);
     Function* llvmFunc = _module->getFunction(symbolName);
-    CORINFO_SIG_INFO sigInfo;
-    _compiler->eeGetMethodSig(call->gtCallMethHnd, &sigInfo);
-
-    fgArgInfo*                        argInfo              = call->fgArgInfo;
-    unsigned int                      argCount             = argInfo->ArgCount();
-    fgArgTabEntry**                   argTable             = argInfo->ArgTable();
 
     std::vector<llvm::Value*> argVec = std::vector<llvm::Value*>();
 
-    for (unsigned i = 0; i < argCount; i++)
+    for (GenTreeCall::Use& use : call->Args())
     {
-        fgArgTabEntry* curArgTabEntry = argTable[i];
-        if (curArgTabEntry->GetNode()->IsArgPlaceHolderNode())
-        {
-            continue;
-        }
-
-        unsigned int argNum = curArgTabEntry->argNum;
-
-        assert(curArgTabEntry->GetNode()->OperIs(GT_PUTARG_TYPE));
-        GenTreePutArgType* putArg = curArgTabEntry->GetNode()->AsPutArgType();
-        argVec.push_back(consumeValue(putArg->gtGetOp1(), getLlvmTypeForCorInfoType(putArg->gtCorInfoType, putArg->gtClsHnd)));
+        GenTreePutArgType* putArg = use.GetNode()->AsPutArgType();
+        argVec.push_back(consumeValue(putArg->gtGetOp1(), getLlvmTypeForCorInfoType(putArg->GetCorInfoType(), putArg->GetClsHnd())));
     }
 
     if (llvmFunc == nullptr)
     {
-        CORINFO_ARG_LIST_HANDLE sigArgs = sigInfo.args;
-
         // assume ExternalLinkage, if the function is defined in the clrjit module, then it is replaced and an extern
         // added to the Ilc module
-        llvmFunc = Function::Create(getFunctionTypeForSigInfo(call->gtCallIrReturnType, sigInfo),
+        llvmFunc = Function::Create(getFunctionTypeForCall(call),
                                     Function::ExternalLinkage, 0U,
                                     symbolName, _module);
     }
@@ -1865,7 +1829,6 @@ GenTreeCall::Use* Llvm::lowerCallReturn(GenTreeCall*      callNode,
 {
     GenTreeCall::Use* lastArg = insertAfterArg;
     var_types callReturnType = callNode->TypeGet();
-    callNode->gtCallIrReturnType = toCorInfoType(callReturnType);
 
     // Some ctors, e.g. strings (and maybe only strings), have a return type in IR so
     // pass the call return type instead of the CORINFO_SIG_INFO return type, which is void in these cases
@@ -1883,24 +1846,21 @@ GenTreeCall::Use* Llvm::lowerCallReturn(GenTreeCall*      callNode,
 
         GenTree*          addrStore     = _compiler->gtNewStoreLclVar(returnTempNum, returnValueAddress);
         GenTree*          returnAddrLcl = _compiler->gtNewLclvNode(returnTempNum, TYP_I_IMPL);
-        GenTreePutArgType* putArg = _compiler->gtNewOperNode(GT_PUTARG_TYPE, TYP_I_IMPL, returnAddrLcl)->AsPutArgType();
 
-        putArg->gtCorInfoType = CORINFO_TYPE_PTR;
-        lastArg               = _compiler->gtInsertNewCallArgAfter(putArg, insertAfterArg);
+        CORINFO_CLASS_HANDLE putArgClsHnd = nullptr; // i8* for everything other than structs
 
         GenTree* returnAddrLclAfterCall = _compiler->gtNewLclvNode(returnTempNum, TYP_I_IMPL);
         GenTree* indirNode;
         if (callReturnType == TYP_STRUCT)
         {
-            putArg->gtClsHnd                = calleeSigInfo.retTypeClass;
-            indirNode                       = new (_compiler, GT_OBJ) GenTreeObj(callReturnType, returnAddrLclAfterCall,
+            putArgClsHnd = calleeSigInfo.retTypeClass;
+            indirNode    = new (_compiler, GT_OBJ) GenTreeObj(callReturnType, returnAddrLclAfterCall,
                                                            _compiler->typGetObjLayout(calleeSigInfo.retTypeClass));
             indirNode->AsBlk()->gtBlkOpKind = GenTreeBlk::BlkOpKindInvalid;
         }
         else
         {
-            putArg->gtClsHnd = nullptr; // i8* for everything other than structs
-            indirNode        = _compiler->gtNewOperNode(GT_IND, callReturnType, returnAddrLclAfterCall);
+            indirNode = _compiler->gtNewOperNode(GT_IND, callReturnType, returnAddrLclAfterCall);
         }
         indirNode->gtFlags |= GTF_IND_TGT_NOT_HEAP; // No RhpAssignRef required
         LIR::Use callUse;
@@ -1913,14 +1873,21 @@ GenTreeCall::Use* Llvm::lowerCallReturn(GenTreeCall*      callNode,
             callNode->ClearUnusedValue();
         }
 
+        GenTreePutArgType* putArg = _compiler->gtNewPutArgType(TYP_I_IMPL, returnAddrLcl, CORINFO_TYPE_PTR, putArgClsHnd);
+        lastArg = _compiler->gtInsertNewCallArgAfter(putArg, insertAfterArg);
+
         callNode->gtReturnType = TYP_VOID;
+        callNode->gtCorInfoType = CORINFO_TYPE_VOID;
         callNode->ChangeType(TYP_VOID);
 
         CurrentRange().InsertBefore(callNode, shadowStackVar, offset, returnValueAddress, addrStore);
         CurrentRange().InsertAfter(addrStore, returnAddrLcl, putArg);
         CurrentRange().InsertAfter(callNode, returnAddrLclAfterCall, indirNode);
     }
-
+    else
+    {
+        callNode->gtCorInfoType = calleeSigInfo.retType;
+    }
     return lastArg;
 }
 
@@ -1938,6 +1905,7 @@ void Llvm::failUnsupportedCalls(GenTreeCall* callNode, CORINFO_SIG_INFO &calleeS
         failFunctionCompilation();
     }
 
+    // TODO-LLVM: VSD calls 
     // this call has 3 args, but only the struct RuntimeTypeHandle in the siginfo
     //             RuntimeTypeHandle handle = instance.GetInterfaceImplementation(new RuntimeTypeHandle(new
     //             EETypePtr(interfaceType)));
@@ -1948,8 +1916,7 @@ void Llvm::failUnsupportedCalls(GenTreeCall* callNode, CORINFO_SIG_INFO &calleeS
     // *CALLV stub struct System.Runtime.InteropServices.IDynamicInterfaceCastable.GetInterfaceImplementation
     if (callNode->IsVirtual())
     {
-        // TODO-LLVM: what is the 3rd argument in this example and how can we get its type?
-        // looks like an interface call that in IL would be done with a call to FindInterfaceMethodImplementationTarget
+        // The 3rd argument in this example is the address hidden argument VSD uses and always TYP_I_IMPL
         failFunctionCompilation();
     }
 
@@ -2026,10 +1993,7 @@ void Llvm::lowerCallToShadowStack(GenTreeCall* callNode, CORINFO_SIG_INFO& calle
 
     // create the PUTARG
     GenTree*           lclCalleeShadowStack = _compiler->gtNewLclvNode(calleeShadowStackTemp, TYP_I_IMPL);
-    GenTreePutArgType* putArg =
-        _compiler->gtNewOperNode(GT_PUTARG_TYPE, TYP_I_IMPL, lclCalleeShadowStack)->AsPutArgType();
-    putArg->gtCorInfoType = CORINFO_TYPE_PTR;
-    putArg->gtClsHnd      = nullptr;
+    GenTreePutArgType* putArg = _compiler->gtNewPutArgType(TYP_I_IMPL, lclCalleeShadowStack, CORINFO_TYPE_PTR, nullptr);
 
     callNode->gtCallArgs     = _compiler->gtNewCallArgs(putArg);
     lastArg                  = callNode->gtCallArgs;
@@ -2107,14 +2071,8 @@ void Llvm::lowerCallToShadowStack(GenTreeCall* callNode, CORINFO_SIG_INFO& calle
         else
         {
             // arg on LLVM stack
-            // unsigned           putArgTempNum = _compiler->lvaGrabTemp(false DEBUGARG("putarg temp"));
-            // LclVarDsc*         argTempVarDsc = _compiler->lvaGetDesc(putArgTempNum);
-            // GenTree* argTemp = _compiler->gtNewLclvNode(putArgTempNum, opAndArg.operand->TypeGet());
-            GenTreePutArgType* putArg =
-                _compiler->gtNewOperNode(GT_PUTARG_TYPE, opAndArg.operand->TypeGet(), opAndArg.operand)->AsPutArgType();
-            putArg->gtCorInfoType = corInfoType;
-            putArg->gtClsHnd      = clsHnd;
-            lastArg               = _compiler->gtInsertNewCallArgAfter(putArg, lastArg);
+            GenTreePutArgType* putArg = _compiler->gtNewPutArgType(opAndArg.operand->TypeGet(), opAndArg.operand, corInfoType, clsHnd);
+            lastArg = _compiler->gtInsertNewCallArgAfter(putArg, lastArg);
 
             CurrentRange().InsertBefore(callNode, putArg);
         }
@@ -2123,8 +2081,6 @@ void Llvm::lowerCallToShadowStack(GenTreeCall* callNode, CORINFO_SIG_INFO& calle
             sigArgs = _info.compCompHnd->getArgNext(sigArgs);
         }
     }
-
-    _compiler->fgInitArgInfo(callNode);
 }
 
 void Llvm::lowerToShadowStack()

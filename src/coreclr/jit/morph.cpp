@@ -3015,7 +3015,7 @@ void Compiler::fgInitArgInfo(GenTreeCall* call)
     SYSTEMV_AMD64_CORINFO_STRUCT_REG_PASSING_DESCRIPTOR structDesc;
 #endif // UNIX_AMD64_ABI
 
-#if defined(DEBUG) && !defined(TARGET_WASM) /* For LLVM some args are lowered to the shadow stack so we can't compare arg counts */
+#if defined(DEBUG)
     // Check that we have valid information about call's argument types.
     // For example:
     // load byte; call(int) -> CALL(PUTARG_TYPE byte(IND byte));
@@ -3292,16 +3292,7 @@ void Compiler::fgInitArgInfo(GenTreeCall* call)
 
         if (isStructArg)
         {
-#if defined TARGET_WASM
-            // LLVM/Wasm wraps all args in a PUTARG when lowering, but not in morphing so have to handle both ways
-            // .. or exclude the assert for LLVM 
-            if(args->GetNode()->OperIs(GT_PUTARG_TYPE))
-            {
-                assert(argx == args->GetNode()->AsPutArgType()->gtGetOp1());
-            }
-            else
-#endif
-                assert(argx == args->GetNode());
+            assert(argx == args->GetNode());
             assert(structSize != 0);
 
             structPassingKind howToPassStruct;
@@ -3340,15 +3331,7 @@ void Compiler::fgInitArgInfo(GenTreeCall* call)
         const var_types argType = args->GetNode()->TypeGet();
         if (args->GetNode()->OperIs(GT_PUTARG_TYPE))
         {
-#if defined(TARGET_WASM)
-            if (isStructArg)
-            {
-                // byteSize is used when creating stk args, LLVM/Wasm does not use it so anything nonzero is ok?
-                byteSize = TARGET_POINTER_SIZE;
-            }
-            else
-#endif
-                byteSize = genTypeSize(argType);
+            byteSize = genTypeSize(argType);
         }
 
         // The 'size' value has now must have been set. (the original value of zero is an invalid value)

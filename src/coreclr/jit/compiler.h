@@ -2905,6 +2905,13 @@ public:
 
     GenTreeLclVar* gtNewStoreLclVar(unsigned dstLclNum, GenTree* src);
 
+#ifdef TARGET_WASM
+    GenTreePutArgType* Compiler::gtNewPutArgType(var_types            type,
+                                                 GenTree*             op,
+                                                 CorInfoType          corInfoType,
+                                                 CORINFO_CLASS_HANDLE clsHnd);
+#endif
+
 #ifdef FEATURE_SIMD
     GenTree* gtNewSIMDVectorZero(var_types simdType, CorInfoType simdBaseJitType, unsigned simdSize);
 #endif
