@@ -17536,7 +17536,7 @@ bool Compiler::impReturnInstruction(int prefixFlags, OPCODE& opcode)
     }
     else if (varTypeIsStruct(info.compRetType))
     {
-#if !FEATURE_MULTIREG_RET
+#if !defined(FEATURE_MULTIREG_RET) && !defined(TARGET_WASM)
         // For both ARM architectures the HFA native types are maintained as structs.
         // Also on System V AMD64 the multireg structs returns are also left as structs.
         noway_assert(info.compRetNativeType != TYP_STRUCT);

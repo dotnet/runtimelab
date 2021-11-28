@@ -752,6 +752,11 @@ var_types Compiler::getArgTypeForStruct(CORINFO_CLASS_HANDLE clsHnd,
                                         bool                 isVarArg,
                                         unsigned             structSize)
 {
+// For LLVM/Wasm, always pass by value and let the lowering decide
+#if defined(TARGET_WASM)
+    *wbPassStruct = SPK_ByValue;
+    return TYP_STRUCT;
+#else // !TARGET_WASM
     var_types         useType         = TYP_UNKNOWN;
     structPassingKind howToPassStruct = SPK_Unknown; // We must change this before we return
 
@@ -934,6 +939,7 @@ var_types Compiler::getArgTypeForStruct(CORINFO_CLASS_HANDLE clsHnd,
     }
 
     return useType;
+#endif // !TARGET_WASM
 }
 
 #ifdef TARGET_WASM
@@ -1046,6 +1052,10 @@ var_types Compiler::getReturnTypeForStruct(CORINFO_CLASS_HANDLE     clsHnd,
                                            structPassingKind*       wbReturnStruct /* = nullptr */,
                                            unsigned                 structSize /* = 0 */)
 {
+#if defined(TARGET_WASM)
+    *wbReturnStruct = SPK_ByValue;
+    return TYP_STRUCT;
+#else // !TARGET_WASM
     var_types         useType             = TYP_UNKNOWN;
     structPassingKind howToReturnStruct   = SPK_Unknown; // We must change this before we return
     bool              canReturnInRegister = true;
@@ -1266,6 +1276,7 @@ var_types Compiler::getReturnTypeForStruct(CORINFO_CLASS_HANDLE     clsHnd,
     }
 
     return useType;
+#endif  // !TARGET_WASM
 }
 
 ///////////////////////////////////////////////////////////////////////////////

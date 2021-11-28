@@ -146,16 +146,18 @@ private:
     Value* castToPointerToLlvmType(Value* address, llvm::Type* llvmType);
     Value* consumeValue(GenTree* node, llvm::Type* targetLlvmType);
     llvm::DILocation* createDebugFunctionAndDiLocation(struct DebugMetadata debugMetadata, unsigned int lineNo);
+    GenTree* createStoreNode(var_types nodeType, GenTree* addr, GenTree* data, ClassLayout* structClassLayout = nullptr);
     void ConvertShadowStackLocalNode(GenTreeLclVarCommon* node);
     void emitDoNothingCall();
     void endImportingBasicBlock(BasicBlock* block);
     [[noreturn]] void   failFunctionCompilation();
+    void failUnsupportedCalls(GenTreeCall* callNode, CORINFO_SIG_INFO &calleeSigInfo);
     void fillPhis();
     llvm::Instruction* getCast(llvm::Value* source, Type* targetType);
     void generateProlog();
     CorInfoType getCorInfoTypeForArg(CORINFO_SIG_INFO& sigInfo, CORINFO_ARG_LIST_HANDLE& arg, CORINFO_CLASS_HANDLE* clsHnd);
-    llvm::FunctionType* Llvm::getFunctionType();
-    llvm::FunctionType* getFunctionTypeForSigInfo(CORINFO_SIG_INFO& sigInfo);
+    llvm::FunctionType* getFunctionType();
+    llvm::FunctionType* getFunctionTypeForCall(GenTreeCall* callNode);
     Value* getGenTreeValue(GenTree* node);
     LlvmArgInfo getLlvmArgInfoForArgIx(CORINFO_SIG_INFO& sigInfo, unsigned int lclNum);
     llvm::BasicBlock* getLLVMBasicBlockForBlock(BasicBlock* block);
@@ -175,8 +177,12 @@ private:
     unsigned int getTotalLocalOffset();
     bool helperRequiresShadowStack(CORINFO_METHOD_HANDLE corinfoMethodHnd);
     void importStoreInd(GenTreeStoreInd* storeIndOp);
-    bool isThisArg(GenTreeCall* call, GenTree* operand);
     Value* localVar(GenTreeLclVar* lclVar);
+
+    GenTreeCall::Use* lowerCallReturn(GenTreeCall* callNode, CORINFO_SIG_INFO& calleeSigInfo, GenTreeCall::Use* lastArg);
+    void lowerCallToShadowStack(GenTreeCall* callNode, CORINFO_SIG_INFO& calleeSigInfo);
+    void lowerToShadowStack();
+
     Value* mapGenTreeToValue(GenTree* genTree, Value* valueRef);
     bool needsReturnStackSlot(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd);
     unsigned int padNextOffset(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHandle, unsigned int atOffset);
@@ -195,8 +201,6 @@ public:
 
     static void llvmShutdown();
 
-
-    void ConvertShadowStackLocals();
     void PlaceAndConvertShadowStackLocals();
     void Compile();
 };
