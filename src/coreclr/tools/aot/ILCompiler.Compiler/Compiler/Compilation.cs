@@ -26,7 +26,7 @@ namespace ILCompiler
         protected readonly NodeFactory _nodeFactory;
         protected readonly Logger _logger;
         protected readonly DebugInformationProvider _debugInformationProvider;
-        private readonly DevirtualizationManager _devirtualizationManager;
+        protected readonly DevirtualizationManager _devirtualizationManager;
         private readonly IInliningPolicy _inliningPolicy;
 
         public NameMangler NameMangler => _nodeFactory.NameMangler;
@@ -95,6 +95,11 @@ namespace ILCompiler
         public void DetectGenericCycles(MethodDesc caller, MethodDesc callee)
         {
             _nodeFactory.TypeSystemContext.DetectGenericCycles(caller, callee);
+        }
+
+        public virtual IEETypeNode NecessaryTypeSymbolIfPossible(TypeDesc type)
+        {
+            return _nodeFactory.NecessaryTypeSymbol(type);
         }
 
         public bool CanInline(MethodDesc caller, MethodDesc callee)
@@ -285,13 +290,13 @@ namespace ILCompiler
                 case ReadyToRunHelperId.TypeHandle:
                     return NodeFactory.ConstructedTypeSymbol((TypeDesc)targetOfLookup);
                 case ReadyToRunHelperId.NecessaryTypeHandle:
-                    return NodeFactory.NecessaryTypeSymbol((TypeDesc)targetOfLookup);
+                    return NecessaryTypeSymbolIfPossible((TypeDesc)targetOfLookup);
                 case ReadyToRunHelperId.TypeHandleForCasting:
                     {
                         var type = (TypeDesc)targetOfLookup;
                         if (type.IsNullable)
                             targetOfLookup = type.Instantiation[0];
-                        return NodeFactory.NecessaryTypeSymbol((TypeDesc)targetOfLookup);
+                        return NecessaryTypeSymbolIfPossible((TypeDesc)targetOfLookup);
                     }
                 case ReadyToRunHelperId.MethodDictionary:
                     return NodeFactory.MethodGenericDictionary((MethodDesc)targetOfLookup);
