@@ -319,6 +319,10 @@ llvm::Type* Llvm::getLlvmTypeForCorInfoType(CorInfoType corInfoType, CORINFO_CLA
         case CorInfoType::CORINFO_TYPE_BYTE:
             return Type::getInt8Ty(_llvmContext);
 
+        case CorInfoType::CORINFO_TYPE_SHORT:
+        case CorInfoType::CORINFO_TYPE_USHORT:
+            return Type::getInt16Ty(_llvmContext);
+
         case CorInfoType::CORINFO_TYPE_INT:
         case CorInfoType::CORINFO_TYPE_UINT:
         case CorInfoType::CORINFO_TYPE_NATIVEINT:  // TODO: Wasm64 - what does NativeInt mean for Wasm64
@@ -499,7 +503,7 @@ FunctionType* Llvm::getFunctionType()
         {
             assert(varDsc->lvLlvmArgNum != BAD_LLVM_ARG_NUM);
 
-            CORINFO_CLASS_HANDLE classHandle = tryGetStructClassHandle(varDsc);
+            CORINFO_CLASS_HANDLE classHandle = varTypeIsStruct(varDsc) ? tryGetStructClassHandle(varDsc) : varDsc->lvClassHnd;
             argVec[varDsc->lvLlvmArgNum]      = getLlvmTypeForCorInfoType(varDsc->lvCorInfoType, classHandle);
         }
     }
@@ -1752,6 +1756,10 @@ void Llvm::populateLlvmArgNums()
         {
             varDsc->lvLlvmArgNum  = nextLlvmArgNum++;
             varDsc->lvCorInfoType = corInfoType;
+            if (classHnd != NO_CLASS_HANDLE && !varTypeIsStruct(varDsc))
+            {
+                varDsc->lvClassHnd = classHnd;
+            }
         }
     }
 
@@ -2157,6 +2165,7 @@ void Llvm::PlaceAndConvertShadowStackLocals()
     lowerToShadowStack();
 }
 
+int ix;
 //------------------------------------------------------------------------
 // Compile: Compile IR to LLVM, adding to the LLVM Module
 //
@@ -2176,6 +2185,10 @@ void Llvm::Compile()
 
     if (_function == nullptr)
     {
+        if (!strcmp("S_P_CoreLib_System_Runtime_TypeCast__AreTypesEquivalent", mangledName))
+        {
+            ix = 1;
+        }
         _function = Function::Create(getFunctionType(), Function::ExternalLinkage, 0U, mangledName,
             _module); // TODO: ExternalLinkage forced as linked from old module
     }
