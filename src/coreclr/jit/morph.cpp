@@ -2704,7 +2704,11 @@ void Compiler::fgInitArgInfo(GenTreeCall* call)
         GenTreeCall::Use* nodeArgs = call->gtCallArgs;
         // It could include many arguments not included in `sig->numArgs`, for example, `this`, runtime lookup, cookie
         // etc.
-        unsigned nodeArgsCount = call->NumChildren();
+        unsigned nodeArgsCount = 0;
+        call->VisitOperands([&nodeArgsCount](GenTree* operand) -> GenTree::VisitResult {
+            nodeArgsCount++;
+            return GenTree::VisitResult::Continue;
+        });
 
         if (call->gtCallThisArg != nullptr)
         {
@@ -9212,7 +9216,7 @@ GenTree* Compiler::fgMorphCall(GenTreeCall* call)
         //
         call->gtControlExpr = fgMorphTree(call->gtControlExpr);
 
-        // Propogate any gtFlags into the call
+        // Propagate any gtFlags into the call
         call->gtFlags |= call->gtControlExpr->gtFlags;
     }
 
@@ -10529,7 +10533,7 @@ GenTree* Compiler::fgMorphBlockOperand(GenTree* tree, var_types asgType, unsigne
 //    false otherwise.
 //
 // Notes:
-//   This check is needed to avoid accesing LCL_VARs with incorrect
+//   This check is needed to avoid accessing LCL_VARs with incorrect
 //   CORINFO_FIELD_HANDLE that would confuse VN optimizations.
 //
 bool Compiler::fgMorphCanUseLclFldForCopy(unsigned lclNum1, unsigned lclNum2)
