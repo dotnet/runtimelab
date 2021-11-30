@@ -2,11 +2,11 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 
-#ifndef __CGROUP_H__
-#define __CGROUP_H__
+#ifndef __CGROUPCPU_H__
+#define __CGROUPCPU_H__
 
-void InitializeCGroup();
-void CleanupCGroup();
+void InitializeCpuCGroup();
+void CleanupCpuCGroup();
 
-#endif // __CGROUP_H__
+#endif // __CGROUPCPU_H__
 
