@@ -362,7 +362,7 @@ namespace Internal.IL
 
             if (method.IsIntrinsic)
             {
-                if (IsRuntimeHelpersInitializeArray(method))
+                if (IsRuntimeHelpersInitializeArrayOrCreateSpan(method))
                 {
                     if (_previousInstructionOffset >= 0 && _ilBytes[_previousInstructionOffset] == (byte)ILOpcode.ldtoken)
                         return;
@@ -891,7 +891,7 @@ namespace Internal.IL
             {
                 Debug.Assert(obj is FieldDesc);
 
-                // First check if this is a ldtoken Field / InitializeArray sequence.
+                // First check if this is a ldtoken Field followed by InitializeArray or CreateSpan.
                 BasicBlock nextBasicBlock = _basicBlocks[_currentOffset];
                 if (nextBasicBlock == null)
                 {
@@ -899,7 +899,7 @@ namespace Internal.IL
                     {
                         int methodToken = ReadILTokenAt(_currentOffset + 1);
                         var method = (MethodDesc)_methodIL.GetObject(methodToken);
-                        if (IsRuntimeHelpersInitializeArray(method))
+                        if (IsRuntimeHelpersInitializeArrayOrCreateSpan(method))
                         {
                             // Codegen expands this and doesn't do the normal ldtoken.
                             return;
@@ -1185,14 +1185,18 @@ namespace Internal.IL
             ThrowHelper.ThrowInvalidProgramException();
         }
 
-        private bool IsRuntimeHelpersInitializeArray(MethodDesc method)
+        private bool IsRuntimeHelpersInitializeArrayOrCreateSpan(MethodDesc method)
         {
-            if (method.IsIntrinsic && method.Name == "InitializeArray")
+            if (method.IsIntrinsic)
             {
-                MetadataType owningType = method.OwningType as MetadataType;
-                if (owningType != null)
+                string name = method.Name;
+                if (name == "InitializeArray" || name == "CreateSpan")
                 {
-                    return owningType.Name == "RuntimeHelpers" && owningType.Namespace == "System.Runtime.CompilerServices";
+                    MetadataType owningType = method.OwningType as MetadataType;
+                    if (owningType != null)
+                    {
+                        return owningType.Name == "RuntimeHelpers" && owningType.Namespace == "System.Runtime.CompilerServices";
+                    }
                 }
             }
 
