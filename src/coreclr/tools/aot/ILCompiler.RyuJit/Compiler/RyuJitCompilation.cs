@@ -72,9 +72,9 @@ namespace ILCompiler
             // information proving that it isn't, give RyuJIT the constructed symbol even
             // though we just need the unconstructed one.
             // https://github.com/dotnet/runtimelab/issues/1128
-            bool canConstructPerWholeProgramAnalysis = _devirtualizationManager == null
+            bool canPotentiallyConstruct = _devirtualizationManager == null
                 ? true : _devirtualizationManager.CanConstructType(type);
-            if (canConstructPerWholeProgramAnalysis)
+            if (canPotentiallyConstruct)
                 return _nodeFactory.MaximallyConstructableType(type);
 
             return _nodeFactory.NecessaryTypeSymbol(type);

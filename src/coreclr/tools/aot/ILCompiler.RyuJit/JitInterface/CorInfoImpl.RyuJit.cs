@@ -79,7 +79,6 @@ namespace Internal.JitInterface
 
                 CompileMethodCleanup();
             }
-
         }
 
         private CORINFO_RUNTIME_LOOKUP_KIND GetLookupKindFromContextSource(GenericContextSource contextSource)
