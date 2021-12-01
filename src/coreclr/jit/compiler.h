@@ -3628,7 +3628,7 @@ public:
     void gtDispBlockStmts(BasicBlock* block);
     void gtGetArgMsg(GenTreeCall* call, GenTree* arg, unsigned argNum, char* bufp, unsigned bufLength);
     void gtGetLateArgMsg(GenTreeCall* call, GenTree* arg, int argNum, char* bufp, unsigned bufLength);
-    void gtDispArgList(GenTreeCall* call, IndentStack* indentStack);
+    void gtDispArgList(GenTreeCall* call, GenTree* lastCallOperand, IndentStack* indentStack);
     void gtDispFieldSeq(FieldSeqNode* pfsn);
 
     void gtDispRange(LIR::ReadOnlyRange const& range);
@@ -4483,6 +4483,7 @@ protected:
                                      bool                 readonlyCall,
                                      CorInfoIntrinsics    intrinsicID);
     GenTree* impInitializeArrayIntrinsic(CORINFO_SIG_INFO* sig);
+    GenTree* impCreateSpanIntrinsic(CORINFO_SIG_INFO* sig);
 
     GenTree* impKeepAliveIntrinsic(GenTree* objToKeepAlive);
 
@@ -9061,7 +9062,7 @@ private:
         else
         {
             // Verify and record that AVX2 isn't supported
-            compVerifyInstructionSetUnuseable(InstructionSet_AVX2);
+            compVerifyInstructionSetUnusable(InstructionSet_AVX2);
             assert(getSIMDSupportLevel() >= SIMD_SSE2_Supported);
             return TYP_SIMD16;
         }
@@ -9104,7 +9105,7 @@ private:
             assert(getSIMDSupportLevel() >= SIMD_SSE2_Supported);
 
             // Verify and record that AVX2 isn't supported
-            compVerifyInstructionSetUnuseable(InstructionSet_AVX2);
+            compVerifyInstructionSetUnusable(InstructionSet_AVX2);
             return XMM_REGSIZE_BYTES;
         }
 #elif defined(TARGET_ARM64)
@@ -9338,15 +9339,15 @@ private:
 #endif
     }
 
-    // Ensure that code will not execute if an instruction set is useable. Call only
-    // if the instruction set has previously reported as unuseable, but when
+    // Ensure that code will not execute if an instruction set is usable. Call only
+    // if the instruction set has previously reported as unusable, but when
     // that that status has not yet been recorded to the AOT compiler
-    void compVerifyInstructionSetUnuseable(CORINFO_InstructionSet isa)
+    void compVerifyInstructionSetUnusable(CORINFO_InstructionSet isa)
     {
         // use compExactlyDependsOn to capture are record the use of the isa
-        bool isaUseable = compExactlyDependsOn(isa);
-        // Assert that the is unuseable. If true, this function should never be called.
-        assert(!isaUseable);
+        bool isaUsable = compExactlyDependsOn(isa);
+        // Assert that the is unusable. If true, this function should never be called.
+        assert(!isaUsable);
     }
 
     // Answer the question: Is a particular ISA allowed to be used implicitly by optimizations?
