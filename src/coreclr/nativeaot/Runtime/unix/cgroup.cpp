@@ -8,13 +8,14 @@ Module Name:
     cgroup.cpp
 
 Abstract:
-    Read the memory limit for the current process
+    Read cpu limits for the current process
 --*/
 #ifdef __FreeBSD__
 #define _WITH_GETLINE
 #endif
 
 #include <cstdint>
+#include <cstddef>
 #include <cassert>
 #include <unistd.h>
 #include <stdlib.h>
@@ -32,90 +33,45 @@ Abstract:
 
 #include "config.gc.h"
 
-#include "cgroup.h"
-
-#ifndef SIZE_T_MAX
-#define SIZE_T_MAX (~(size_t)0)
-#endif
+#include "cgroupcpu.h"
 
 #define CGROUP2_SUPER_MAGIC 0x63677270
 #define TMPFS_MAGIC 0x01021994
 
+#define BASE_TEN 10
+
 #define PROC_MOUNTINFO_FILENAME "/proc/self/mountinfo"
 #define PROC_CGROUP_FILENAME "/proc/self/cgroup"
-#define PROC_STATM_FILENAME "/proc/self/statm"
-#define CGROUP1_MEMORY_LIMIT_FILENAME "/memory.limit_in_bytes"
-#define CGROUP2_MEMORY_LIMIT_FILENAME "/memory.max"
-#define CGROUP_MEMORY_STAT_FILENAME "/memory.stat"
+#define CGROUP1_CFS_QUOTA_FILENAME "/cpu.cfs_quota_us"
+#define CGROUP1_CFS_PERIOD_FILENAME "/cpu.cfs_period_us"
+#define CGROUP2_CPU_MAX_FILENAME "/cpu.max"
 
-extern bool ReadMemoryValueFromFile(const char* filename, uint64_t* val);
+// the cgroup version number or 0 to indicate cgroups are not found or not enabled
+static int s_cgroup_version = 0;
+static char *s_cpu_cgroup_path = nullptr;
 
 class CGroup
 {
-    // the cgroup version number or 0 to indicate cgroups are not found or not enabled
-    static int s_cgroup_version;
-
-    static char *s_memory_cgroup_path;
-
-    static const char *s_mem_stat_key_names[];
-    static size_t s_mem_stat_key_lengths[];
-    static size_t s_mem_stat_n_keys;
 public:
     static void Initialize()
     {
         s_cgroup_version = FindCGroupVersion();
-        s_memory_cgroup_path = FindCGroupPath(s_cgroup_version == 1 ? &IsCGroup1MemorySubsystem : nullptr);
-
-        if (s_cgroup_version == 1)
-        {
-            s_mem_stat_n_keys = 4;
-            s_mem_stat_key_names[0] = "total_inactive_anon ";
-            s_mem_stat_key_names[1] = "total_active_anon ";
-            s_mem_stat_key_names[2] = "total_dirty ";
-            s_mem_stat_key_names[3] = "total_unevictable ";
-        }
-        else
-        {
-            s_mem_stat_n_keys = 3;
-            s_mem_stat_key_names[0] = "anon ";
-            s_mem_stat_key_names[1] = "file_dirty ";
-            s_mem_stat_key_names[2] = "unevictable ";
-        }
-
-        for (size_t i = 0; i < s_mem_stat_n_keys; i++)
-        {
-            s_mem_stat_key_lengths[i] = strlen(s_mem_stat_key_names[i]);
-        }
+        s_cpu_cgroup_path = FindCGroupPath(s_cgroup_version == 1 ? &IsCGroup1CpuSubsystem : nullptr);
     }
 
     static void Cleanup()
     {
-        free(s_memory_cgroup_path);
+        free(s_cpu_cgroup_path);
     }
 
-    static bool GetPhysicalMemoryLimit(uint64_t *val)
+    static bool GetCpuLimit(uint32_t *val)
     {
         if (s_cgroup_version == 0)
             return false;
         else if (s_cgroup_version == 1)
-            return GetCGroupMemoryLimit(val, CGROUP1_MEMORY_LIMIT_FILENAME);
+            return GetCGroup1CpuLimit(val);
         else if (s_cgroup_version == 2)
-            return GetCGroupMemoryLimit(val, CGROUP2_MEMORY_LIMIT_FILENAME);
-        else
-        {
-            assert(!"Unknown cgroup version.");
-            return false;
-        }
-    }
-
-    static bool GetPhysicalMemoryUsage(size_t *val)
-    {
-        if (s_cgroup_version == 0)
-            return false;
-        else if (s_cgroup_version == 1)
-            return GetCGroupMemoryUsage(val);
-        else if (s_cgroup_version == 2)
-            return GetCGroupMemoryUsage(val);
+            return GetCGroup2CpuLimit(val);
         else
         {
             assert(!"Unknown cgroup version.");
@@ -155,8 +111,8 @@ private:
 #endif
     }
 
-    static bool IsCGroup1MemorySubsystem(const char *strTok){
-        return strcmp("memory", strTok) == 0;
+    static bool IsCGroup1CpuSubsystem(const char *strTok){
+        return strcmp("cpu", strTok) == 0;
     }
 
     static char* FindCGroupPath(bool (*is_subsystem)(const char *)){
@@ -387,169 +343,173 @@ private:
         return cgroup_path;
     }
 
-    static bool GetCGroupMemoryLimit(uint64_t *val, const char *filename)
+    static bool GetCGroup1CpuLimit(uint32_t *val)
     {
-        if (s_memory_cgroup_path == nullptr)
+        long long quota;
+        long long period;
+
+        quota = ReadCpuCGroupValue(CGROUP1_CFS_QUOTA_FILENAME);
+        if (quota <= 0)
             return false;
 
-        char* mem_limit_filename = nullptr;
-        if (asprintf(&mem_limit_filename, "%s%s", s_memory_cgroup_path, filename) < 0)
+        period = ReadCpuCGroupValue(CGROUP1_CFS_PERIOD_FILENAME);
+        if (period <= 0)
             return false;
 
-        bool result = ReadMemoryValueFromFile(mem_limit_filename, val);
-        free(mem_limit_filename);
+        ComputeCpuLimit(period, quota, val);
+
+        return true;
+    }
+
+    static bool GetCGroup2CpuLimit(uint32_t *val)
+    {
+        char *filename = nullptr;
+        FILE *file = nullptr;
+        char *endptr = nullptr;
+        char *max_quota_string = nullptr;
+        char *period_string = nullptr;
+        char *context = nullptr;
+        char *line = nullptr;
+        size_t lineLen = 0;
+
+        long long quota = 0;
+        long long period = 0;
+
+        bool result = false;
+
+        if (s_cpu_cgroup_path == nullptr)
+            return false;
+
+        if (asprintf(&filename, "%s%s", s_cpu_cgroup_path, CGROUP2_CPU_MAX_FILENAME) < 0)
+            return false;
+
+        file = fopen(filename, "r");
+        if (file == nullptr)
+            goto done;
+
+        if (getline(&line, &lineLen, file) == -1)
+            goto done;
+
+        // The expected format is:
+        //     $MAX $PERIOD
+        // Where "$MAX" may be the string literal "max"
+
+        max_quota_string = strtok_r(line, " ", &context);
+        if (max_quota_string == nullptr)
+        {
+            assert(!"Unable to parse " CGROUP2_CPU_MAX_FILENAME " file contents.");
+            goto done;
+        }
+        period_string = strtok_r(nullptr, " ", &context);
+        if (period_string == nullptr)
+        {
+            assert(!"Unable to parse " CGROUP2_CPU_MAX_FILENAME " file contents.");
+            goto done;
+        }
+
+        // "max" means no cpu limit
+        if (strcmp("max", max_quota_string) == 0)
+            goto done;
+
+        errno = 0;
+        quota = strtoll(max_quota_string, &endptr, BASE_TEN);
+        if (max_quota_string == endptr || errno != 0)
+            goto done;
+
+        period = strtoll(period_string, &endptr, BASE_TEN);
+        if (period_string == endptr || errno != 0)
+            goto done;
+
+        ComputeCpuLimit(period, quota, val);
+        result = true;
+
+    done:
+        if (file)
+            fclose(file);
+        free(filename);
+        free(line);
+
         return result;
     }
 
-    static bool GetCGroupMemoryUsage(size_t *val)
+    static void ComputeCpuLimit(long long period, long long quota, uint32_t *val)
     {
-        if (s_memory_cgroup_path == nullptr)
-            return false;
-
-        char* stat_filename = nullptr;
-        if (asprintf(&stat_filename, "%s%s", s_memory_cgroup_path, CGROUP_MEMORY_STAT_FILENAME) < 0)
-            return false;
-
-        FILE *stat_file = fopen(stat_filename, "r");
-        free(stat_filename);
-        if (stat_file == nullptr)
-            return false;
-
-        char *line = nullptr;
-        size_t lineLen = 0;
-        size_t readValues = 0;
-        char* endptr;
-
-        *val = 0;
-        while (getline(&line, &lineLen, stat_file) != -1 && readValues < s_mem_stat_n_keys)
+        // Cannot have less than 1 CPU
+        if (quota <= period)
         {
-            for (size_t i = 0; i < s_mem_stat_n_keys; i++)
-            {
-                if (strncmp(line, s_mem_stat_key_names[i], s_mem_stat_key_lengths[i]) == 0)
-                {
-                    errno = 0;
-                    const char* startptr = line + s_mem_stat_key_lengths[i];
-                    *val += strtoll(startptr, &endptr, 10);
-                    if (endptr != startptr && errno == 0)
-                        readValues++;
-
-                    break;
-                }
-            }
+            *val = 1;
+            return;
         }
 
-        fclose(stat_file);
+        // Calculate cpu count based on quota and round it up
+        double cpu_count = (double) quota / period  + 0.999999999;
+        *val = (cpu_count < UINT32_MAX) ? (uint32_t)cpu_count : UINT32_MAX;
+    }
+
+    static long long ReadCpuCGroupValue(const char* subsystemFilename){
+        char *filename = nullptr;
+        bool result = false;
+        long long val;
+
+        if (s_cpu_cgroup_path == nullptr)
+            return -1;
+
+        if (asprintf(&filename, "%s%s", s_cpu_cgroup_path, subsystemFilename) < 0)
+            return -1;
+
+        result = ReadLongLongValueFromFile(filename, &val);
+        free(filename);
+        if (!result)
+             return -1;
+
+        return val;
+    }
+
+    static bool ReadLongLongValueFromFile(const char* filename, long long* val)
+    {
+        bool result = false;
+        char *line = nullptr;
+        size_t lineLen = 0;
+        char *endptr = nullptr;
+
+        if (val == nullptr)
+            return false;
+
+        FILE* file = fopen(filename, "r");
+        if (file == nullptr)
+            goto done;
+
+        if (getline(&line, &lineLen, file) == -1)
+            goto done;
+
+        errno = 0;
+        *val = strtoll(line, &endptr, BASE_TEN);
+        if (line == endptr || errno != 0)
+            goto done;
+
+        result = true;
+    done:
+        if (file)
+            fclose(file);
         free(line);
-
-        if (readValues == s_mem_stat_n_keys)
-            return true;
-
-        return false;
+        return result;
     }
 };
 
-int CGroup::s_cgroup_version = 0;
-char *CGroup::s_memory_cgroup_path = nullptr;
-
-const char *CGroup::s_mem_stat_key_names[4] = {};
-size_t CGroup::s_mem_stat_key_lengths[4] = {};
-size_t CGroup::s_mem_stat_n_keys = 0;
-
-void InitializeCGroup()
+void InitializeCpuCGroup()
 {
     CGroup::Initialize();
 }
 
-void CleanupCGroup()
+void CleanupCpuCGroup()
 {
     CGroup::Cleanup();
 }
 
-size_t GetRestrictedPhysicalMemoryLimit()
+bool GetCpuLimit(uint32_t* val)
 {
-    uint64_t physical_memory_limit = 0;
-
-    if (!CGroup::GetPhysicalMemoryLimit(&physical_memory_limit))
-         return 0;
-
-    // If there's no memory limit specified on the container this
-    // actually returns 0x7FFFFFFFFFFFF000 (2^63-1 rounded down to
-    // 4k which is a common page size). So we know we are not
-    // running in a memory restricted environment.
-    if (physical_memory_limit > 0x7FFFFFFF00000000)
-    {
-        return 0;
-    }
-
-    struct rlimit curr_rlimit;
-    size_t rlimit_soft_limit = (size_t)RLIM_INFINITY;
-    if (getrlimit(RLIMIT_AS, &curr_rlimit) == 0)
-    {
-        rlimit_soft_limit = curr_rlimit.rlim_cur;
-    }
-    physical_memory_limit = (physical_memory_limit < rlimit_soft_limit) ?
-                            physical_memory_limit : rlimit_soft_limit;
-
-    // Ensure that limit is not greater than real memory size
-    long pages = sysconf(_SC_PHYS_PAGES);
-    if (pages != -1)
-    {
-        long pageSize = sysconf(_SC_PAGE_SIZE);
-        if (pageSize != -1)
-        {
-            physical_memory_limit = (physical_memory_limit < (size_t)pages * pageSize)?
-                                    physical_memory_limit : (size_t)pages * pageSize;
-        }
-    }
-
-    if (physical_memory_limit > std::numeric_limits<size_t>::max())
-    {
-        // It is observed in practice when the memory is unrestricted, Linux control
-        // group returns a physical limit that is bigger than the address space
-        return std::numeric_limits<size_t>::max();
-    }
-    else
-    {
-        return (size_t)physical_memory_limit;
-    }
-}
-
-bool GetPhysicalMemoryUsed(size_t* val)
-{
-    bool result = false;
-    size_t linelen;
-    char* line = nullptr;
-
     if (val == nullptr)
         return false;
 
-    // Linux uses cgroup usage to trigger oom kills.
-    if (CGroup::GetPhysicalMemoryUsage(val))
-        return true;
-
-    // process resident set size.
-    FILE* file = fopen(PROC_STATM_FILENAME, "r");
-    if (file != nullptr && getline(&line, &linelen, file) != -1)
-    {
-        char* context = nullptr;
-        char* strTok = strtok_r(line, " ", &context);
-        strTok = strtok_r(nullptr, " ", &context);
-
-        errno = 0;
-        *val = strtoull(strTok, nullptr, 0);
-        if (errno == 0)
-        {
-            long pageSize = sysconf(_SC_PAGE_SIZE);
-            if (pageSize != -1)
-            {
-                *val = *val * pageSize;
-                result = true;
-            }
-        }
-    }
-
-    if (file)
-        fclose(file);
-    free(line);
-    return result;
+    return CGroup::GetCpuLimit(val);
 }

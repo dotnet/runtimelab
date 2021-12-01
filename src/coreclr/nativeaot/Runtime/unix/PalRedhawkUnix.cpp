@@ -15,6 +15,7 @@
 #include "gcenv.h"
 #include "holder.h"
 #include "HardwareExceptions.h"
+#include "cgroupcpu.h"
 
 #define _T(s) s
 #include "RhConfig.h"
@@ -429,6 +430,8 @@ REDHAWK_PALEXPORT bool REDHAWK_PALAPI PalInit()
     {
         return false;
     }
+
+    InitializeCpuCGroup();
 
     InitializeCurrentProcessCpuCount();
 
