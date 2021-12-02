@@ -494,7 +494,7 @@ namespace ILCompiler.Dataflow
                 "OffsetOf" when calledMethod.IsDeclaredOnType("System.Runtime.InteropServices", "Marshal")
                     && calledMethod.HasParameterOfType(0, "System", "Type")
                     && calledMethod.Signature.Length == 2
-                    => IntrinsicId.Marshal_SizeOf,
+                    => IntrinsicId.Marshal_OffsetOf,
 
                 // static object System.Runtime.InteropServices.Marshal.PtrToStructure (IntPtr, Type)
                 "PtrToStructure" when calledMethod.IsDeclaredOnType("System.Runtime.InteropServices", "Marshal")
