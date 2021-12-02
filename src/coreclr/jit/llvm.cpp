@@ -29,6 +29,7 @@ static LLVMContext _llvmContext;
 static void* _thisPtr; // TODO: workaround for not changing the JIT/EE interface.  As this is static, it will probably fail if multithreaded compilation is attempted
 static const char* (*_getMangledMethodName)(void*, CORINFO_METHOD_STRUCT_*);
 static const char* (*_getMangledSymbolName)(void*, void*);
+static const char* (*_getTypeName)(void*, CORINFO_CLASS_HANDLE);
 static const char* (*_addCodeReloc)(void*, void*);
 static const uint32_t (*_isRuntimeImport)(void*, CORINFO_METHOD_STRUCT_*);
 static const char* (*_getDocumentFileName)(void*);
@@ -51,6 +52,7 @@ extern "C" DLLEXPORT void registerLlvmCallbacks(void*       thisPtr,
                                                 const char* dataLayout,
                                                 const char* (*getMangledMethodNamePtr)(void*, CORINFO_METHOD_STRUCT_*),
                                                 const char* (*getMangledSymbolNamePtr)(void*, void*),
+                                                const char* (*getTypeName)(void*, CORINFO_CLASS_HANDLE),
                                                 const char* (*addCodeRelocPtr)(void*, void*),
                                                 const uint32_t (*isRuntimeImport)(void*, CORINFO_METHOD_STRUCT_*),
                                                 const char* (*getDocumentFileName)(void*),
@@ -64,6 +66,7 @@ extern "C" DLLEXPORT void registerLlvmCallbacks(void*       thisPtr,
     _thisPtr = thisPtr;
     _getMangledMethodName         = getMangledMethodNamePtr;
     _getMangledSymbolName         = getMangledSymbolNamePtr;
+    _getTypeName                  = getTypeName;
     _addCodeReloc                 = addCodeRelocPtr;
     _isRuntimeImport              = isRuntimeImport;
     _getDocumentFileName          = getDocumentFileName;
@@ -204,8 +207,8 @@ llvm::Type* Llvm::getLlvmTypeForStruct(CORINFO_CLASS_HANDLE structHandle)
             default:
                 // Forward-declare the struct in case there's a reference to it in the fields.
                 // This must be a named struct or LLVM hits a stack overflow
-                const char* name = _info.compCompHnd->getClassName(structHandle);
-                llvm::StructType* llvmStructType = llvm::StructType::create(_llvmContext, _info.compCompHnd->getClassName(structHandle));
+                const char* name = _getTypeName(_thisPtr, structHandle);
+                llvm::StructType* llvmStructType = llvm::StructType::create(_llvmContext, name);
                 llvmType = llvmStructType;
                 unsigned fieldCnt = _info.compCompHnd->getClassNumInstanceFields(structHandle);
 
@@ -318,6 +321,10 @@ llvm::Type* Llvm::getLlvmTypeForCorInfoType(CorInfoType corInfoType, CORINFO_CLA
         case CorInfoType::CORINFO_TYPE_UBYTE:
         case CorInfoType::CORINFO_TYPE_BYTE:
             return Type::getInt8Ty(_llvmContext);
+
+        case CorInfoType::CORINFO_TYPE_SHORT:
+        case CorInfoType::CORINFO_TYPE_USHORT:
+            return Type::getInt16Ty(_llvmContext);
 
         case CorInfoType::CORINFO_TYPE_INT:
         case CorInfoType::CORINFO_TYPE_UINT:
@@ -499,7 +506,7 @@ FunctionType* Llvm::getFunctionType()
         {
             assert(varDsc->lvLlvmArgNum != BAD_LLVM_ARG_NUM);
 
-            CORINFO_CLASS_HANDLE classHandle = tryGetStructClassHandle(varDsc);
+            CORINFO_CLASS_HANDLE classHandle = varTypeIsStruct(varDsc) ? tryGetStructClassHandle(varDsc) : varDsc->lvClassHnd;
             argVec[varDsc->lvLlvmArgNum]      = getLlvmTypeForCorInfoType(varDsc->lvCorInfoType, classHandle);
         }
     }
@@ -721,11 +728,18 @@ void Llvm::emitDoNothingCall()
 
 void Llvm::buildAdd(GenTree* node, Value* op1, Value* op2)
 {
-    if (op1->getType()->isPointerTy() && op2->getType()->isIntegerTy())
+    Type* op1Type = op1->getType();
+    if (op1Type->isPointerTy() && op2->getType()->isIntegerTy())
     {
-        mapGenTreeToValue(node, _builder.CreateGEP(op1, op2));
+        // the second operator to gep is effectively the number of pointer contained types to add.
+        // For i8*, this is the same as the llvm add operator, but for i32* it would be 4 * add
+        // E.g.
+        // %27 = getelementptr %"[S.P.CoreLib]Internal.Runtime.MethodTable", %"[S.P.CoreLib]Internal.Runtime.MethodTable"* %1, i32 %3
+        // Does not add %3 to the *MethodTable, but adds %3 * sizeof(MethodTable)
+        // Force all pointers to i8* to get the IR GT_ADD semantics
+        mapGenTreeToValue(node, _builder.CreateGEP(castIfNecessary(op1, Type::getInt8PtrTy(_llvmContext)), op2));
     }
-    else if (op1->getType()->isIntegerTy() && op2->getType() == op1->getType())
+    else if (op1Type->isIntegerTy() && op2->getType() == op1Type)
     {
         mapGenTreeToValue(node, _builder.CreateAdd(op1, op2));
     }
@@ -1752,6 +1766,10 @@ void Llvm::populateLlvmArgNums()
         {
             varDsc->lvLlvmArgNum  = nextLlvmArgNum++;
             varDsc->lvCorInfoType = corInfoType;
+            if (classHnd != NO_CLASS_HANDLE && !varTypeIsStruct(varDsc))
+            {
+                varDsc->lvClassHnd = classHnd;
+            }
         }
     }
 
@@ -1929,6 +1947,7 @@ GenTree* Llvm::createStoreNode(var_types nodeType, GenTree* addr, GenTree* data,
     else
     {
         storeNode = new (_compiler, GT_STOREIND) GenTreeStoreInd(nodeType, addr, data);
+        storeNode->gtFlags |= GTF_IND_TGT_NOT_HEAP;
     }
     return storeNode;
 }
