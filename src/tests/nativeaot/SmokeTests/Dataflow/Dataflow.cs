@@ -4,6 +4,7 @@
 using System;
 using System.Reflection;
 using System.Diagnostics.CodeAnalysis;
+using System.Runtime.InteropServices;
 
 #pragma warning disable 649 // 'blah' is never assgined to
 #pragma warning disable 169 // 'blah' is never used
@@ -25,6 +26,7 @@ class Program
         TestDynamicDependency.Run();
         TestDynamicDependencyWithGenerics.Run();
         TestObjectGetTypeDataflow.Run();
+        TestMarshalIntrinsics.Run();
 
         return 100;
     }
@@ -553,6 +555,52 @@ class Program
             Assert.Equal(1, s_baseWithMixKept.GetType().CountPublicMethods());
             Assert.Equal(2, s_baseWithMixKept.GetType().CountPublicConstructors());
             Assert.Equal(2, s_baseWithMixKept.GetType().CountConstructors());
+        }
+    }
+
+    class TestMarshalIntrinsics
+    {
+        [StructLayout(LayoutKind.Sequential)]
+        class ClassWithLayout1 { public int Field; }
+        [StructLayout(LayoutKind.Sequential)]
+        class ClassWithLayout2 { public int Field; }
+        [StructLayout(LayoutKind.Sequential)]
+        class ClassWithLayout3 { public int Field; }
+        [StructLayout(LayoutKind.Sequential)]
+        class ClassWithLayout4 { public int Field; }
+        [StructLayout(LayoutKind.Sequential)]
+        class ClassWithLayout5 { public int Field; }
+
+        static Type s_secretType = typeof(ClassWithLayout5);
+
+        public static void Run()
+        {
+            // Check we detect these as intrinsics
+            IntPtr pBytes = Marshal.AllocHGlobal(Marshal.SizeOf(typeof(ClassWithLayout1)));
+            object o = Marshal.PtrToStructure(pBytes, typeof(ClassWithLayout2));
+            Marshal.DestroyStructure(pBytes, typeof(ClassWithLayout3));
+            Marshal.OffsetOf(typeof(ClassWithLayout4), "Field");
+
+            SanityTest();
+
+            [UnconditionalSuppressMessage("AotAnalysis", "IL9700:UnrecognizedAotPattern",
+                Justification = "That's the point")]
+            static void SanityTest()
+            {
+                // Sanity check that instrinsic detection is necessary
+                bool thrown = false;
+                try
+                {
+                    Marshal.OffsetOf(s_secretType, "Field");
+                }
+                catch (Exception)
+                {
+                    thrown = true;
+                }
+
+                if (!thrown)
+                    throw new Exception();
+            }
         }
     }
 }

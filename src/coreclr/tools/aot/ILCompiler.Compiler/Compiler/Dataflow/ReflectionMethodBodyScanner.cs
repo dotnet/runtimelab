@@ -382,6 +382,7 @@ namespace ILCompiler.Dataflow
             Expression_New,
             Enum_GetValues,
             Marshal_SizeOf,
+            Marshal_OffsetOf,
             Marshal_PtrToStructure,
             Marshal_DestroyStructure,
             Marshal_GetDelegateForFunctionPointer,
@@ -487,6 +488,12 @@ namespace ILCompiler.Dataflow
                 "SizeOf" when calledMethod.IsDeclaredOnType("System.Runtime.InteropServices", "Marshal")
                     && calledMethod.HasParameterOfType(0, "System", "Type")
                     && calledMethod.Signature.Length == 1
+                    => IntrinsicId.Marshal_SizeOf,
+
+                // static int System.Runtime.InteropServices.Marshal.OffsetOf (Type, string)
+                "OffsetOf" when calledMethod.IsDeclaredOnType("System.Runtime.InteropServices", "Marshal")
+                    && calledMethod.HasParameterOfType(0, "System", "Type")
+                    && calledMethod.Signature.Length == 2
                     => IntrinsicId.Marshal_SizeOf,
 
                 // static object System.Runtime.InteropServices.Marshal.PtrToStructure (IntPtr, Type)
@@ -1201,12 +1208,16 @@ namespace ILCompiler.Dataflow
                     // static SizeOf (Type)
                     // static PtrToStructure (IntPtr, Type)
                     // static DestroyStructure (IntPtr, Type)
+                    // static OffsetOf (Type, string)
                     //
                     case IntrinsicId.Marshal_SizeOf:
                     case IntrinsicId.Marshal_PtrToStructure:
                     case IntrinsicId.Marshal_DestroyStructure:
+                    case IntrinsicId.Marshal_OffsetOf:
                         {
-                            int paramIndex = intrinsicId == IntrinsicId.Marshal_SizeOf ? 0 : 1;
+                            int paramIndex = intrinsicId == IntrinsicId.Marshal_SizeOf
+                                || intrinsicId == IntrinsicId.Marshal_OffsetOf
+                                ? 0 : 1;
 
                             // We need the data to do struct marshalling.
                             foreach (var value in methodParams[paramIndex].UniqueValues())
