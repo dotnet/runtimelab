@@ -2176,7 +2176,6 @@ void Llvm::PlaceAndConvertShadowStackLocals()
     lowerToShadowStack();
 }
 
-int ix;
 //------------------------------------------------------------------------
 // Compile: Compile IR to LLVM, adding to the LLVM Module
 //
@@ -2196,10 +2195,6 @@ void Llvm::Compile()
 
     if (_function == nullptr)
     {
-        if (!strcmp("S_P_CoreLib_System_Runtime_TypeCast__AreTypesEquivalent", mangledName))
-        {
-            ix = 1;
-        }
         _function = Function::Create(getFunctionType(), Function::ExternalLinkage, 0U, mangledName,
             _module); // TODO: ExternalLinkage forced as linked from old module
     }
