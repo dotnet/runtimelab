@@ -275,6 +275,11 @@ The .NET Foundation licenses this file to you under the MIT license.
       <!-- The Emit-based XmlSerializer won't work -->
       <IlcArg Include="--feature:System.Xml.Serialization.XmlSerializer.IsReflectionOnly=true" />
 
+      <!-- Configure LINQ expressions - disable Emit everywhere -->
+      <IlcArg Include="--feature:System.Linq.Expressions.CanCompileToIL=false" />
+      <IlcArg Include="--feature:System.Linq.Expressions.CanEmitObjectArrayDelegate=false" />
+      <IlcArg Include="--feature:System.Linq.Expressions.CanCreateArbitraryDelegates=false" />
+
       <!-- 6.0 SDK introduces a way to control this through the CustomResourceTypesSupport property, defaulting to false when trimming -->
       <IlcArg Condition="$([MSBuild]::VersionLessThan('$(NETCoreSdkVersion)', '6.0.0')) and $(CustomResourceTypesSupport) != 'true'" Include="--feature:System.Resources.ResourceManager.AllowCustomResourceTypes=false" />
     </ItemGroup>
