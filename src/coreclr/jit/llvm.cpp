@@ -506,8 +506,7 @@ FunctionType* Llvm::getFunctionType()
         {
             assert(varDsc->lvLlvmArgNum != BAD_LLVM_ARG_NUM);
 
-            CORINFO_CLASS_HANDLE classHandle = varTypeIsStruct(varDsc) ? tryGetStructClassHandle(varDsc) : varDsc->lvClassHnd;
-            argVec[varDsc->lvLlvmArgNum]      = getLlvmTypeForCorInfoType(varDsc->lvCorInfoType, classHandle);
+            argVec[varDsc->lvLlvmArgNum] = getLlvmTypeForCorInfoType(varDsc->lvCorInfoType, varDsc->lvClassHnd);
         }
     }
 
@@ -731,12 +730,7 @@ void Llvm::buildAdd(GenTree* node, Value* op1, Value* op2)
     Type* op1Type = op1->getType();
     if (op1Type->isPointerTy() && op2->getType()->isIntegerTy())
     {
-        // the second operator to gep is effectively the number of pointer contained types to add.
-        // For i8*, this is the same as the llvm add operator, but for i32* it would be 4 * add
-        // E.g.
-        // %27 = getelementptr %"[S.P.CoreLib]Internal.Runtime.MethodTable", %"[S.P.CoreLib]Internal.Runtime.MethodTable"* %1, i32 %3
-        // Does not add %3 to the *MethodTable, but adds %3 * sizeof(MethodTable)
-        // Force all pointers to i8* to get the IR GT_ADD semantics
+        // GEPs scale indices, bitcasting to i8* makes them equivalent to the raw offsets we have in IR
         mapGenTreeToValue(node, _builder.CreateGEP(castIfNecessary(op1, Type::getInt8PtrTy(_llvmContext)), op2));
     }
     else if (op1Type->isIntegerTy() && op2->getType() == op1Type)
@@ -1766,10 +1760,7 @@ void Llvm::populateLlvmArgNums()
         {
             varDsc->lvLlvmArgNum  = nextLlvmArgNum++;
             varDsc->lvCorInfoType = corInfoType;
-            if (classHnd != NO_CLASS_HANDLE && !varTypeIsStruct(varDsc))
-            {
-                varDsc->lvClassHnd = classHnd;
-            }
+            varDsc->lvClassHnd = classHnd;
         }
     }
 
@@ -1947,8 +1938,15 @@ GenTree* Llvm::createStoreNode(var_types nodeType, GenTree* addr, GenTree* data,
     else
     {
         storeNode = new (_compiler, GT_STOREIND) GenTreeStoreInd(nodeType, addr, data);
-        storeNode->gtFlags |= GTF_IND_TGT_NOT_HEAP;
     }
+    return storeNode;
+}
+
+GenTree* Llvm::createShadowStackStoreNode(var_types nodeType, GenTree* addr, GenTree* data, ClassLayout* structClassLayout)
+{
+    GenTree* storeNode = createStoreNode(nodeType, addr, data, structClassLayout);
+    storeNode->gtFlags |= GTF_IND_TGT_NOT_HEAP;
+
     return storeNode;
 }
 
@@ -2040,7 +2038,7 @@ void Llvm::lowerCallToShadowStack(GenTreeCall* callNode, CORINFO_SIG_INFO& calle
             GenTreeIntCon* offset    = _compiler->gtNewIconNode(_shadowStackLocalsSize + shadowStackUseOffest, TYP_I_IMPL);
             GenTree*       slotAddr  = _compiler->gtNewOperNode(GT_ADD, TYP_I_IMPL, lclShadowStack, offset);
             GenTree*       storeNode =
-                createStoreNode(opAndArg.operand->TypeGet(), slotAddr, opAndArg.operand,
+                createShadowStackStoreNode(opAndArg.operand->TypeGet(), slotAddr, opAndArg.operand,
                                 corInfoType == CORINFO_TYPE_VALUECLASS ? _compiler->typGetObjLayout(clsHnd) : nullptr);
 
             if (corInfoType == CORINFO_TYPE_VALUECLASS)
@@ -2114,7 +2112,7 @@ void Llvm::lowerToShadowStack()
                 retAddressVarDsc->lvType = TYP_I_IMPL;
 
                 GenTreeLclVar* retAddressLocal = _compiler->gtNewLclvNode(_retAddressLclNum, TYP_I_IMPL);
-                GenTree* storeNode = createStoreNode(originalReturnType, retAddressLocal, node->AsOp()->gtGetOp1(),
+                GenTree* storeNode = createShadowStackStoreNode(originalReturnType, retAddressLocal, node->AsOp()->gtGetOp1(),
                                     originalReturnType == TYP_STRUCT ? _compiler->typGetObjLayout(_sigInfo.retTypeClass) : nullptr);
 
                 GenTreeOp* retNode = node->AsOp();
