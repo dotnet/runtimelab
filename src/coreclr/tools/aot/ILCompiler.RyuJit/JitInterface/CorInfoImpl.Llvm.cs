@@ -105,6 +105,22 @@ namespace Internal.JitInterface
             return (byte*)_this.GetPin(sb.UnderlyingArray);
         }
 
+        // IL backend does not use the mangled name.  The unmangled name is easier to read.
+        [UnmanagedCallersOnly]
+        public static byte* getTypeName(IntPtr thisHandle, CORINFO_CLASS_STRUCT_* structHnd)
+        {
+            var _this = GetThis(thisHandle);
+
+            TypeDesc typeDesc = _this.HandleToObject(structHnd);
+
+            Utf8StringBuilder sb = new Utf8StringBuilder();
+            sb.Append(typeDesc.ToString());
+
+            sb.Append("\0");
+            return (byte*)_this.GetPin(sb.UnderlyingArray);
+        }
+
+
         [UnmanagedCallersOnly]
         public static uint isRuntimeImport(IntPtr thisHandle, CORINFO_METHOD_STRUCT_* ftn)
         {
@@ -251,6 +267,7 @@ namespace Internal.JitInterface
         private extern static void registerLlvmCallbacks(IntPtr thisHandle, byte* outputFileName, byte* triple, byte* dataLayout,
             delegate* unmanaged<IntPtr, CORINFO_METHOD_STRUCT_*, byte*> getMangedMethodNamePtr,
             delegate* unmanaged<IntPtr, void*, byte*> getSymbolMangledName,
+            delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, byte*> getTypeName,
             delegate* unmanaged<IntPtr, void*, void> addCodeReloc,
             delegate* unmanaged<IntPtr, CORINFO_METHOD_STRUCT_*, uint> isRuntimeImport,
             delegate* unmanaged<IntPtr, byte*> getDocumentFileName,
@@ -269,6 +286,7 @@ namespace Internal.JitInterface
                 (byte*)GetPin(StringToUTF8(dataLayout)),
                 &getMangledMethodName,
                 &getSymbolMangledName,
+                &getTypeName,
                 &addCodeReloc,
                 &isRuntimeImport,
                 &getDocumentFileName,

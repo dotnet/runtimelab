@@ -69,7 +69,8 @@ extern "C" void registerLlvmCallbacks(void*       thisPtr,
                                       const char* triple,
                                       const char* dataLayout,
                                       const char* (*getMangledMethodNamePtr)(void*, CORINFO_METHOD_STRUCT_*),
-                                      const char* (*_getMangledSymbolNamePtr)(void*, void*),
+                                      const char* (*getMangledSymbolNamePtr)(void*, void*),
+                                      const char* (*getTypeName)(void*, CORINFO_CLASS_HANDLE),
                                       const char* (*addCodeReloc)(void*, void*),
                                       const uint32_t (*isRuntimeImport)(void*, CORINFO_METHOD_STRUCT_*),
                                       const char* (*getDocumentFileName)(void*),
@@ -147,6 +148,7 @@ private:
     Value* consumeValue(GenTree* node, llvm::Type* targetLlvmType);
     llvm::DILocation* createDebugFunctionAndDiLocation(struct DebugMetadata debugMetadata, unsigned int lineNo);
     GenTree* createStoreNode(var_types nodeType, GenTree* addr, GenTree* data, ClassLayout* structClassLayout = nullptr);
+    GenTree* createShadowStackStoreNode(var_types nodeType, GenTree* addr, GenTree* data, ClassLayout* structClassLayout);
     void ConvertShadowStackLocalNode(GenTreeLclVarCommon* node);
     void emitDoNothingCall();
     void endImportingBasicBlock(BasicBlock* block);

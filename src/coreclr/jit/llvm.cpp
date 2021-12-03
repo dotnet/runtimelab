@@ -29,6 +29,7 @@ static LLVMContext _llvmContext;
 static void* _thisPtr; // TODO: workaround for not changing the JIT/EE interface.  As this is static, it will probably fail if multithreaded compilation is attempted
 static const char* (*_getMangledMethodName)(void*, CORINFO_METHOD_STRUCT_*);
 static const char* (*_getMangledSymbolName)(void*, void*);
+static const char* (*_getTypeName)(void*, CORINFO_CLASS_HANDLE);
 static const char* (*_addCodeReloc)(void*, void*);
 static const uint32_t (*_isRuntimeImport)(void*, CORINFO_METHOD_STRUCT_*);
 static const char* (*_getDocumentFileName)(void*);
@@ -51,6 +52,7 @@ extern "C" DLLEXPORT void registerLlvmCallbacks(void*       thisPtr,
                                                 const char* dataLayout,
                                                 const char* (*getMangledMethodNamePtr)(void*, CORINFO_METHOD_STRUCT_*),
                                                 const char* (*getMangledSymbolNamePtr)(void*, void*),
+                                                const char* (*getTypeName)(void*, CORINFO_CLASS_HANDLE),
                                                 const char* (*addCodeRelocPtr)(void*, void*),
                                                 const uint32_t (*isRuntimeImport)(void*, CORINFO_METHOD_STRUCT_*),
                                                 const char* (*getDocumentFileName)(void*),
@@ -64,6 +66,7 @@ extern "C" DLLEXPORT void registerLlvmCallbacks(void*       thisPtr,
     _thisPtr = thisPtr;
     _getMangledMethodName         = getMangledMethodNamePtr;
     _getMangledSymbolName         = getMangledSymbolNamePtr;
+    _getTypeName                  = getTypeName;
     _addCodeReloc                 = addCodeRelocPtr;
     _isRuntimeImport              = isRuntimeImport;
     _getDocumentFileName          = getDocumentFileName;
@@ -204,8 +207,8 @@ llvm::Type* Llvm::getLlvmTypeForStruct(CORINFO_CLASS_HANDLE structHandle)
             default:
                 // Forward-declare the struct in case there's a reference to it in the fields.
                 // This must be a named struct or LLVM hits a stack overflow
-                const char* name = _info.compCompHnd->getClassName(structHandle);
-                llvm::StructType* llvmStructType = llvm::StructType::create(_llvmContext, _info.compCompHnd->getClassName(structHandle));
+                const char* name = _getTypeName(_thisPtr, structHandle);
+                llvm::StructType* llvmStructType = llvm::StructType::create(_llvmContext, name);
                 llvmType = llvmStructType;
                 unsigned fieldCnt = _info.compCompHnd->getClassNumInstanceFields(structHandle);
 
@@ -318,6 +321,10 @@ llvm::Type* Llvm::getLlvmTypeForCorInfoType(CorInfoType corInfoType, CORINFO_CLA
         case CorInfoType::CORINFO_TYPE_UBYTE:
         case CorInfoType::CORINFO_TYPE_BYTE:
             return Type::getInt8Ty(_llvmContext);
+
+        case CorInfoType::CORINFO_TYPE_SHORT:
+        case CorInfoType::CORINFO_TYPE_USHORT:
+            return Type::getInt16Ty(_llvmContext);
 
         case CorInfoType::CORINFO_TYPE_INT:
         case CorInfoType::CORINFO_TYPE_UINT:
@@ -499,8 +506,7 @@ FunctionType* Llvm::getFunctionType()
         {
             assert(varDsc->lvLlvmArgNum != BAD_LLVM_ARG_NUM);
 
-            CORINFO_CLASS_HANDLE classHandle = tryGetStructClassHandle(varDsc);
-            argVec[varDsc->lvLlvmArgNum]      = getLlvmTypeForCorInfoType(varDsc->lvCorInfoType, classHandle);
+            argVec[varDsc->lvLlvmArgNum] = getLlvmTypeForCorInfoType(varDsc->lvCorInfoType, varDsc->lvClassHnd);
         }
     }
 
@@ -721,11 +727,13 @@ void Llvm::emitDoNothingCall()
 
 void Llvm::buildAdd(GenTree* node, Value* op1, Value* op2)
 {
-    if (op1->getType()->isPointerTy() && op2->getType()->isIntegerTy())
+    Type* op1Type = op1->getType();
+    if (op1Type->isPointerTy() && op2->getType()->isIntegerTy())
     {
-        mapGenTreeToValue(node, _builder.CreateGEP(op1, op2));
+        // GEPs scale indices, bitcasting to i8* makes them equivalent to the raw offsets we have in IR
+        mapGenTreeToValue(node, _builder.CreateGEP(castIfNecessary(op1, Type::getInt8PtrTy(_llvmContext)), op2));
     }
-    else if (op1->getType()->isIntegerTy() && op2->getType() == op1->getType())
+    else if (op1Type->isIntegerTy() && op2->getType() == op1Type)
     {
         mapGenTreeToValue(node, _builder.CreateAdd(op1, op2));
     }
@@ -1752,6 +1760,7 @@ void Llvm::populateLlvmArgNums()
         {
             varDsc->lvLlvmArgNum  = nextLlvmArgNum++;
             varDsc->lvCorInfoType = corInfoType;
+            varDsc->lvClassHnd = classHnd;
         }
     }
 
@@ -1933,6 +1942,14 @@ GenTree* Llvm::createStoreNode(var_types nodeType, GenTree* addr, GenTree* data,
     return storeNode;
 }
 
+GenTree* Llvm::createShadowStackStoreNode(var_types nodeType, GenTree* addr, GenTree* data, ClassLayout* structClassLayout)
+{
+    GenTree* storeNode = createStoreNode(nodeType, addr, data, structClassLayout);
+    storeNode->gtFlags |= GTF_IND_TGT_NOT_HEAP;
+
+    return storeNode;
+}
+
 //------------------------------------------------------------------------
 // lowerCallToShadowStack: Lower the call, rewriting its arguments.
 //
@@ -2021,7 +2038,7 @@ void Llvm::lowerCallToShadowStack(GenTreeCall* callNode, CORINFO_SIG_INFO& calle
             GenTreeIntCon* offset    = _compiler->gtNewIconNode(_shadowStackLocalsSize + shadowStackUseOffest, TYP_I_IMPL);
             GenTree*       slotAddr  = _compiler->gtNewOperNode(GT_ADD, TYP_I_IMPL, lclShadowStack, offset);
             GenTree*       storeNode =
-                createStoreNode(opAndArg.operand->TypeGet(), slotAddr, opAndArg.operand,
+                createShadowStackStoreNode(opAndArg.operand->TypeGet(), slotAddr, opAndArg.operand,
                                 corInfoType == CORINFO_TYPE_VALUECLASS ? _compiler->typGetObjLayout(clsHnd) : nullptr);
 
             if (corInfoType == CORINFO_TYPE_VALUECLASS)
@@ -2095,7 +2112,7 @@ void Llvm::lowerToShadowStack()
                 retAddressVarDsc->lvType = TYP_I_IMPL;
 
                 GenTreeLclVar* retAddressLocal = _compiler->gtNewLclvNode(_retAddressLclNum, TYP_I_IMPL);
-                GenTree* storeNode = createStoreNode(originalReturnType, retAddressLocal, node->AsOp()->gtGetOp1(),
+                GenTree* storeNode = createShadowStackStoreNode(originalReturnType, retAddressLocal, node->AsOp()->gtGetOp1(),
                                     originalReturnType == TYP_STRUCT ? _compiler->typGetObjLayout(_sigInfo.retTypeClass) : nullptr);
 
                 GenTreeOp* retNode = node->AsOp();
