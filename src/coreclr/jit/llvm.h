@@ -70,6 +70,7 @@ extern "C" void registerLlvmCallbacks(void*       thisPtr,
                                       const char* dataLayout,
                                       const char* (*getMangledMethodNamePtr)(void*, CORINFO_METHOD_STRUCT_*),
                                       const char* (*getMangledSymbolNamePtr)(void*, void*),
+                                      const char* (*getMangledSymbolNameFromHelperTargetPtr)(void*, void*),
                                       const char* (*getTypeName)(void*, CORINFO_CLASS_HANDLE),
                                       const char* (*addCodeReloc)(void*, void*),
                                       const uint32_t (*isRuntimeImport)(void*, CORINFO_METHOD_STRUCT_*),
@@ -153,15 +154,15 @@ private:
     void emitDoNothingCall();
     void endImportingBasicBlock(BasicBlock* block);
     [[noreturn]] void   failFunctionCompilation();
-    void failUnsupportedCalls(GenTreeCall* callNode, CORINFO_SIG_INFO &calleeSigInfo);
+    void failUnsupportedCalls(GenTreeCall* callNode, CORINFO_SIG_INFO* calleeSigInfo);
     void fillPhis();
     llvm::Instruction* getCast(llvm::Value* source, Type* targetType);
     void generateProlog();
-    CorInfoType getCorInfoTypeForArg(CORINFO_SIG_INFO& sigInfo, CORINFO_ARG_LIST_HANDLE& arg, CORINFO_CLASS_HANDLE* clsHnd);
+    CorInfoType getCorInfoTypeForArg(CORINFO_SIG_INFO* sigInfo, CORINFO_ARG_LIST_HANDLE& arg, CORINFO_CLASS_HANDLE* clsHnd);
     llvm::FunctionType* getFunctionType();
-    llvm::FunctionType* getFunctionTypeForCall(GenTreeCall* callNode);
+    llvm::FunctionType* getFunctionTypeForCall(GenTreeCall* call);
     Value* getGenTreeValue(GenTree* node);
-    LlvmArgInfo getLlvmArgInfoForArgIx(CORINFO_SIG_INFO& sigInfo, unsigned int lclNum);
+    LlvmArgInfo getLlvmArgInfoForArgIx(unsigned int lclNum);
     llvm::BasicBlock* getLLVMBasicBlockForBlock(BasicBlock* block);
     Type* getLlvmTypeForCorInfoType(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd);
     Type* getLlvmTypeForParameterType(CORINFO_CLASS_HANDLE classHnd);
@@ -170,6 +171,7 @@ private:
     int getLocalOffsetAtIndex(GenTreeLclVar* lclVar);
     Value* getLocalVarAddress(GenTreeLclVar* lclVar);
     struct DebugMetadata getOrCreateDebugMetadata(const char* documentFileName);
+    llvm::Function* getOrCreateLlvmFunction(const char* symbolName, GenTreeCall* call);
     Value* getShadowStackForCallee();
     unsigned int getSpillOffsetAtIndex(unsigned int index, unsigned int offset);
     Value* getSsaLocalForPhi(unsigned lclNum, unsigned ssaNum);
@@ -181,8 +183,8 @@ private:
     void importStoreInd(GenTreeStoreInd* storeIndOp);
     Value* localVar(GenTreeLclVar* lclVar);
 
-    GenTreeCall::Use* lowerCallReturn(GenTreeCall* callNode, CORINFO_SIG_INFO& calleeSigInfo, GenTreeCall::Use* lastArg);
-    void lowerCallToShadowStack(GenTreeCall* callNode, CORINFO_SIG_INFO& calleeSigInfo);
+    GenTreeCall::Use* lowerCallReturn(GenTreeCall* callNode, CORINFO_SIG_INFO* calleeSigInfo, GenTreeCall::Use* lastArg);
+    void lowerCallToShadowStack(GenTreeCall* callNode, CORINFO_SIG_INFO* calleeSigInfo);
     void lowerToShadowStack();
 
     Value* mapGenTreeToValue(GenTree* genTree, Value* valueRef);

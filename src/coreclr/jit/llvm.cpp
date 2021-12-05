@@ -29,6 +29,7 @@ static LLVMContext _llvmContext;
 static void* _thisPtr; // TODO: workaround for not changing the JIT/EE interface.  As this is static, it will probably fail if multithreaded compilation is attempted
 static const char* (*_getMangledMethodName)(void*, CORINFO_METHOD_STRUCT_*);
 static const char* (*_getMangledSymbolName)(void*, void*);
+static const char* (*_getMangledSymbolNameFromHelperTarget)(void*, void*);
 static const char* (*_getTypeName)(void*, CORINFO_CLASS_HANDLE);
 static const char* (*_addCodeReloc)(void*, void*);
 static const uint32_t (*_isRuntimeImport)(void*, CORINFO_METHOD_STRUCT_*);
@@ -52,6 +53,7 @@ extern "C" DLLEXPORT void registerLlvmCallbacks(void*       thisPtr,
                                                 const char* dataLayout,
                                                 const char* (*getMangledMethodNamePtr)(void*, CORINFO_METHOD_STRUCT_*),
                                                 const char* (*getMangledSymbolNamePtr)(void*, void*),
+                                                const char* (*getMangledSymbolNameFromHelperTargetPtr)(void*, void*),
                                                 const char* (*getTypeName)(void*, CORINFO_CLASS_HANDLE),
                                                 const char* (*addCodeRelocPtr)(void*, void*),
                                                 const uint32_t (*isRuntimeImport)(void*, CORINFO_METHOD_STRUCT_*),
@@ -66,6 +68,7 @@ extern "C" DLLEXPORT void registerLlvmCallbacks(void*       thisPtr,
     _thisPtr = thisPtr;
     _getMangledMethodName         = getMangledMethodNamePtr;
     _getMangledSymbolName         = getMangledSymbolNamePtr;
+    _getMangledSymbolNameFromHelperTarget = getMangledSymbolNameFromHelperTargetPtr;
     _getTypeName                  = getTypeName;
     _addCodeReloc                 = addCodeRelocPtr;
     _isRuntimeImport              = isRuntimeImport;
@@ -484,9 +487,9 @@ bool Llvm::needsReturnStackSlot(CorInfoType corInfoType, CORINFO_CLASS_HANDLE cl
     return corInfoType != CorInfoType::CORINFO_TYPE_VOID && !canStoreArgOnLlvmStack(corInfoType, classHnd);
 }
 
-CorInfoType Llvm::getCorInfoTypeForArg(CORINFO_SIG_INFO& sigInfo, CORINFO_ARG_LIST_HANDLE& arg, CORINFO_CLASS_HANDLE* clsHnd)
+CorInfoType Llvm::getCorInfoTypeForArg(CORINFO_SIG_INFO* sigInfo, CORINFO_ARG_LIST_HANDLE& arg, CORINFO_CLASS_HANDLE* clsHnd)
 {
-    CorInfoTypeWithMod corTypeWithMod = _getArgTypeIncludingParameterized(_thisPtr, &sigInfo, arg, clsHnd);
+    CorInfoTypeWithMod corTypeWithMod = _getArgTypeIncludingParameterized(_thisPtr, sigInfo, arg, clsHnd);
     return strip(corTypeWithMod);
 }
 
@@ -658,19 +661,19 @@ void Llvm::castingStore(Value* toStore, Value* address, var_types type)
 /// <summary>
 /// Returns the llvm arg number or shadow stack offset for the corresponding local which must be loaded from an argument
 /// </summary>
-LlvmArgInfo Llvm::getLlvmArgInfoForArgIx(CORINFO_SIG_INFO& sigInfo, unsigned int lclNum)
+LlvmArgInfo Llvm::getLlvmArgInfoForArgIx(unsigned int lclNum)
 {
-    if (sigInfo.hasExplicitThis() || sigInfo.hasTypeArg())
+    if (_sigInfo.hasExplicitThis() || _sigInfo.hasTypeArg())
         failFunctionCompilation();
 
     unsigned int llvmArgNum    = 1; // skip shadow stack arg
     bool         returnOnStack = false;
 
     LlvmArgInfo             llvmArgInfo = {
-        -1 /* default to not an LLVM arg*/, sigInfo.hasThis() ? TARGET_POINTER_SIZE : 0 /* this is the first pointer on
+        -1 /* default to not an LLVM arg*/, _sigInfo.hasThis() ? TARGET_POINTER_SIZE : 0 /* this is the first pointer on
                                                                                        the shadow stack */
     };
-    if (needsReturnStackSlot(sigInfo.retType, sigInfo.retTypeClass))
+    if (needsReturnStackSlot(_sigInfo.retType, _sigInfo.retTypeClass))
     {
         if (lclNum == 0)
         {
@@ -682,15 +685,15 @@ LlvmArgInfo Llvm::getLlvmArgInfoForArgIx(CORINFO_SIG_INFO& sigInfo, unsigned int
         llvmArgNum++;
     }
 
-    CORINFO_ARG_LIST_HANDLE sigArgs     = sigInfo.args;
+    CORINFO_ARG_LIST_HANDLE sigArgs = _sigInfo.args;
 
     unsigned int shadowStackOffset = llvmArgInfo.m_shadowStackOffset;
 
     unsigned int i = 0;
-    for (; i < sigInfo.numArgs; i++, sigArgs = _info.compCompHnd->getArgNext(sigArgs))
+    for (; i < _sigInfo.numArgs; i++, sigArgs = _info.compCompHnd->getArgNext(sigArgs))
     {
         CORINFO_CLASS_HANDLE clsHnd;
-        CorInfoType corInfoType = getCorInfoTypeForArg(sigInfo, sigArgs, &clsHnd);
+        CorInfoType corInfoType = getCorInfoTypeForArg(&_sigInfo, sigArgs, &clsHnd);
         if (canStoreArgOnLlvmStack(corInfoType, clsHnd))
         {
             if (lclNum == i)
@@ -864,31 +867,82 @@ Value* Llvm::consumeValue(GenTree* node, Type* targetLlvmType)
     return finalValue;
 }
 
-llvm::Value* Llvm::buildUserFuncCall(GenTreeCall* call)
+Function* Llvm::getOrCreateLlvmFunction(const char* symbolName, GenTreeCall* call)
 {
-    const char* symbolName = (*_getMangledSymbolName)(_thisPtr, call->gtEntryPoint.handle);
-
-    (*_addCodeReloc)(_thisPtr, call->gtEntryPoint.handle);
     Function* llvmFunc = _module->getFunction(symbolName);
-
-    std::vector<llvm::Value*> argVec = std::vector<llvm::Value*>();
-
-    for (GenTreeCall::Use& use : call->Args())
-    {
-        GenTreePutArgType* putArg = use.GetNode()->AsPutArgType();
-        argVec.push_back(consumeValue(putArg->gtGetOp1(), getLlvmTypeForCorInfoType(putArg->GetCorInfoType(), putArg->GetClsHnd())));
-    }
 
     if (llvmFunc == nullptr)
     {
-        // assume ExternalLinkage, if the function is defined in the clrjit module, then it is replaced and an extern
-        // added to the Ilc module
-        llvmFunc = Function::Create(getFunctionTypeForCall(call),
-                                    Function::ExternalLinkage, 0U,
-                                    symbolName, _module);
+        // assume ExternalLinkage, if the function is defined in the clrjit module, then it is replaced and an
+        // extern added to the Ilc module
+        llvmFunc =
+            Function::Create(getFunctionTypeForCall(call), Function::ExternalLinkage, 0U, symbolName, _module);
+    }
+    return llvmFunc;
+}
+
+llvm::Value* Llvm::buildUserFuncCall(GenTreeCall* call)
+{
+    llvm::FunctionCallee llvmFuncCallee;
+
+    if (call->gtCallType == CT_USER_FUNC)
+    {
+        const char* symbolName = (*_getMangledSymbolName)(_thisPtr, call->gtEntryPoint.handle);
+
+        (*_addCodeReloc)(_thisPtr, call->gtEntryPoint.handle);
+        Function* llvmFunc = getOrCreateLlvmFunction(symbolName, call);
+        llvmFuncCallee = llvmFunc;
+    }
+    else if (call->gtCallType == CT_INDIRECT)
+    {
+        Value* funcValue = getGenTreeValue(call->gtCallAddr);
+        if (call->gtEntryPoint.accessType == IAT_VALUE)
+        {
+            FunctionType* functionType = getFunctionTypeForCall(call);
+
+            //TODO-LLVM: how best to detect there is no runtime lookup required when the target is a constant and not abstract or virtual
+            if (llvm::ConstantInt* llvmConstantInt = llvm::dyn_cast<llvm::ConstantInt>(funcValue)) {
+                void* methodHandle = (void*)(llvmConstantInt->getZExtValue());
+
+                const char* methodName = _getMangledSymbolNameFromHelperTarget(_thisPtr, methodHandle);
+                if (methodName == nullptr) // TODO-LLVM: abstract or virtual call
+                {
+                    failFunctionCompilation();
+                }
+
+                (*_addCodeReloc)(_thisPtr, methodHandle);
+
+                llvmFuncCallee = { functionType, getOrCreateLlvmFunction(methodName, call) };
+            }
+            else
+            {
+                Value* funcPtr = castIfNecessary(funcValue, functionType->getPointerTo());
+
+                llvmFuncCallee = { functionType, funcPtr };
+            }
+        }
+        else
+        {
+            // unsupported calli type
+            failFunctionCompilation();
+        }
+    }
+    else
+    {
+        // unsupported call type
+        failFunctionCompilation();
     }
 
-    Value* llvmCall = _builder.CreateCall(llvmFunc, ArrayRef<Value*>(argVec));
+    std::vector<llvm::Value*> argVec = std::vector<llvm::Value*>();
+
+    GenTreePutArgType* lastArg = nullptr;
+    for (GenTreeCall::Use& use : call->Args())
+    {
+        lastArg = use.GetNode()->AsPutArgType();
+        argVec.push_back(consumeValue(lastArg->gtGetOp1(), getLlvmTypeForCorInfoType(lastArg->GetCorInfoType(), lastArg->GetClsHnd())));
+    }
+
+    Value* llvmCall = _builder.CreateCall(llvmFuncCallee, ArrayRef<Value*>(argVec));
     return mapGenTreeToValue(call, llvmCall);
 }
 
@@ -917,6 +971,7 @@ bool Llvm::helperRequiresShadowStack(CORINFO_METHOD_HANDLE corinfoMethodHnd)
     //Probably want to lower the math helpers to ordinary GT_CASTs and
     //handle in the LLVM (as does ILToLLVMImporter) to avoid this overhead
     return corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_TYPEHANDLE_TO_RUNTIMETYPEHANDLE) ||
+           corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_GVMLOOKUP_FOR_SLOT) ||
            corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_DBL2INT_OVF) ||
            corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_DBL2LNG_OVF) ||
            corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_DBL2UINT_OVF) ||
@@ -927,6 +982,7 @@ void Llvm::buildHelperFuncCall(GenTreeCall* call)
 {
     if (call->gtCallMethHnd == _compiler->eeFindHelper(CORINFO_HELP_READYTORUN_GENERIC_HANDLE) ||
         call->gtCallMethHnd == _compiler->eeFindHelper(CORINFO_HELP_READYTORUN_GENERIC_STATIC_BASE) ||
+        call->gtCallMethHnd == _compiler->eeFindHelper(CORINFO_HELP_GVMLOOKUP_FOR_SLOT) || /* generates an extra parameter in the signature */
         call->gtCallMethHnd == _compiler->eeFindHelper(CORINFO_HELP_READYTORUN_DELEGATE_CTOR))
     {
         // TODO-LLVM
@@ -1025,7 +1081,7 @@ void Llvm::buildCall(GenTree* node)
     {
         buildHelperFuncCall(call);
     }
-    else if (call->gtCallType == CT_USER_FUNC && !call->IsVirtualStub() /* TODO: Virtual stub not implemented */)
+    else if ((call->gtCallType == CT_USER_FUNC || call->gtCallType == CT_INDIRECT) && !call->IsVirtualStub() /* TODO: Virtual stub not implemented */)
     {
         buildUserFuncCall(call);
     }
@@ -1211,7 +1267,7 @@ void Llvm::fillPhis()
                 }
                 // Arguments are implicitly defined on entry to the method.
                 assert(_compiler->lvaIsParameter(lclNum) && ssaNum == SsaConfig::FIRST_SSA_NUM);
-                LlvmArgInfo  llvmArgInfo = getLlvmArgInfoForArgIx(_sigInfo, lclNum);
+                LlvmArgInfo  llvmArgInfo = getLlvmArgInfoForArgIx(lclNum);
                 localPhiArg = _function->getArg(llvmArgInfo.m_argIx);
             }
             else
@@ -1754,7 +1810,7 @@ void Llvm::populateLlvmArgNums()
     for (unsigned int i = 0; i < _sigInfo.numArgs; i++, sigArgs = _info.compCompHnd->getArgNext(sigArgs))
     {
         CORINFO_CLASS_HANDLE classHnd;
-        CorInfoType          corInfoType = getCorInfoTypeForArg(_sigInfo, sigArgs, &classHnd);
+        CorInfoType          corInfoType = getCorInfoTypeForArg(&_sigInfo, sigArgs, &classHnd);
         LclVarDsc*           varDsc      = _compiler->lvaGetDesc(i + firstCorInfoArgLocalNum);
         if (canStoreLocalOnLlvmStack(varDsc))
         {
@@ -1814,7 +1870,7 @@ void Llvm::ConvertShadowStackLocalNode(GenTreeLclVarCommon* node)
 // If the return type must be GC tracked, removes the return type
 // and converts to a return slot arg, modifying the call args, and building the necessary IR
 GenTreeCall::Use* Llvm::lowerCallReturn(GenTreeCall*      callNode,
-                                        CORINFO_SIG_INFO& calleeSigInfo,
+                                        CORINFO_SIG_INFO* calleeSigInfo,
                                         GenTreeCall::Use* insertAfterArg)
 {
     GenTreeCall::Use* lastArg = insertAfterArg;
@@ -1822,7 +1878,7 @@ GenTreeCall::Use* Llvm::lowerCallReturn(GenTreeCall*      callNode,
 
     // Some ctors, e.g. strings (and maybe only strings), have a return type in IR so
     // pass the call return type instead of the CORINFO_SIG_INFO return type, which is void in these cases
-    if (needsReturnStackSlot(toCorInfoType(callReturnType), calleeSigInfo.retTypeClass))
+    if (needsReturnStackSlot(toCorInfoType(callReturnType), calleeSigInfo->retTypeClass))
     {
         // replace the "CALL ref" with a "CALL void" that takes a return address as the first argument
         GenTreeLclVar* shadowStackVar     = _compiler->gtNewLclvNode(_shadowStackLclNum, TYP_I_IMPL);
@@ -1841,7 +1897,7 @@ GenTreeCall::Use* Llvm::lowerCallReturn(GenTreeCall*      callNode,
         GenTree* indirNode;
         if (callReturnType == TYP_STRUCT)
         {
-            indirNode    = _compiler->gtNewObjNode(calleeSigInfo.retTypeClass, returnAddrLclAfterCall);
+            indirNode    = _compiler->gtNewObjNode(calleeSigInfo->retTypeClass, returnAddrLclAfterCall);
         }
         else
         {
@@ -1874,22 +1930,22 @@ GenTreeCall::Use* Llvm::lowerCallReturn(GenTreeCall*      callNode,
     }
     else
     {
-        callNode->gtCorInfoType = calleeSigInfo.retType;
+        callNode->gtCorInfoType = calleeSigInfo->retType;
     }
 
     return lastArg;
 }
 
-void Llvm::failUnsupportedCalls(GenTreeCall* callNode, CORINFO_SIG_INFO &calleeSigInfo)
+void Llvm::failUnsupportedCalls(GenTreeCall* callNode, CORINFO_SIG_INFO* calleeSigInfo)
 {
     // we can't do these yet
-    if (callNode->gtCallType == CT_INDIRECT || _isRuntimeImport(_thisPtr, callNode->gtCallMethHnd))
+    if (_isRuntimeImport(_thisPtr, callNode->gtCallMethHnd))
     {
         failFunctionCompilation();
     }
 
     // TODO-LLVM: not attempting to compile generic signatures with context arg via clrjit yet
-    if (calleeSigInfo.hasTypeArg())
+    if (calleeSigInfo->hasTypeArg())
     {
         failFunctionCompilation();
     }
@@ -1964,7 +2020,7 @@ GenTree* Llvm::createShadowStackStoreNode(var_types nodeType, GenTree* addr, Gen
 //     in a simple increasing order, matching the signature. We also rewrite returns
 //     that must be on the shadow stack, see "lowerCallReturn".
 //
-void Llvm::lowerCallToShadowStack(GenTreeCall* callNode, CORINFO_SIG_INFO& calleeSigInfo)
+void Llvm::lowerCallToShadowStack(GenTreeCall* callNode, CORINFO_SIG_INFO* calleeSigInfo)
 {
     // rewrite the args, adding shadow stack, and moving gc tracked args to the shadow stack
     unsigned shadowStackUseOffest = 0;
@@ -2006,12 +2062,30 @@ void Llvm::lowerCallToShadowStack(GenTreeCall* callNode, CORINFO_SIG_INFO& calle
     for (unsigned i = 0; i < argCount; i++)
     {
         fgArgTabEntry* curArgTabEntry = argTable[i];
+        if (curArgTabEntry->nonStandardArgKind == NonStandardArgKind::VirtualStubCell)
+        {
+            failFunctionCompilation();
+        }
         unsigned int   argNum         = curArgTabEntry->argNum;
         OperandArgNum  opAndArg       = {argNum, curArgTabEntry->GetNode()};
         sortedData[argNum]            = opAndArg;
     }
 
-    CORINFO_ARG_LIST_HANDLE sigArgs = calleeSigInfo.args;
+    // calculate hiddenArg number if present
+    unsigned hiddenArgNum = 0;
+    if (callNode->gtHasHiddenArgument)
+    {
+        if (callThisArg != nullptr)
+        {
+            hiddenArgNum++;
+        }
+        if (callNode->HasRetBufArg())
+        {
+            hiddenArgNum++;
+        }
+    }
+
+    CORINFO_ARG_LIST_HANDLE sigArgs = calleeSigInfo->args;
 
     for (OperandArgNum opAndArg : sortedArgs)
     {
@@ -2019,13 +2093,18 @@ void Llvm::lowerCallToShadowStack(GenTreeCall* callNode, CORINFO_SIG_INFO& calle
         CorInfoType          corInfoType = CORINFO_TYPE_UNDEF;
 
         // "this" not in sigInfo arg list
-        bool isThis = callThisArg != nullptr && opAndArg.argNum == 0 && calleeSigInfo.hasThis();
-        if (!isThis)
+        bool isThis = callThisArg != nullptr && opAndArg.argNum == 0 && calleeSigInfo->hasThis();
+        bool isHiddenArg = callNode->gtHasHiddenArgument && opAndArg.argNum == hiddenArgNum;
+        if (isHiddenArg)
+        {
+            corInfoType = toCorInfoType(opAndArg.operand->TypeGet());
+        }
+        else if (!isThis)
         {
             corInfoType = getCorInfoTypeForArg(calleeSigInfo, sigArgs, &clsHnd);
         }
 
-        bool argOnShadowStack = isThis || !canStoreArgOnLlvmStack(corInfoType, clsHnd);
+        bool argOnShadowStack = !isHiddenArg && (isThis || !canStoreArgOnLlvmStack(corInfoType, clsHnd));
         if (argOnShadowStack)
         {
             GenTree* lclShadowStack = _compiler->gtNewLclvNode(_shadowStackLclNum, TYP_I_IMPL);
@@ -2058,12 +2137,12 @@ void Llvm::lowerCallToShadowStack(GenTreeCall* callNode, CORINFO_SIG_INFO& calle
             GenTreePutArgType* putArg = _compiler->gtNewPutArgType(opAndArg.operand, corInfoType, clsHnd);
 #if DEBUG
             putArg->SetArgNum(opAndArg.argNum);
-#endif 
+#endif
             lastArg = _compiler->gtInsertNewCallArgAfter(putArg, lastArg);
 
             CurrentRange().InsertBefore(callNode, putArg);
         }
-        if (!isThis)
+        if (!isThis && !isHiddenArg)
         {
             sigArgs = _info.compCompHnd->getArgNext(sigArgs);
         }
@@ -2091,10 +2170,26 @@ void Llvm::lowerToShadowStack()
                     continue;
                 }
 
-                CORINFO_SIG_INFO calleeSigInfo;
-                _compiler->eeGetMethodSig(callNode->gtCallMethHnd, &calleeSigInfo);
-
-                failUnsupportedCalls(callNode, calleeSigInfo);
+                // For CT_INDIRECT calls, the callNode->callSig is present,
+                // other times it's not, so get the siginfo from the GenTree call node if possible, else from eeGetMethodSig
+                CORINFO_SIG_INFO* calleeSigInfo = callNode->callSig;
+                if (calleeSigInfo == nullptr)
+                {
+                    CORINFO_SIG_INFO eeCalleeSigInfo;
+                    _compiler->eeGetMethodSig(callNode->gtCallMethHnd, &eeCalleeSigInfo);
+                    calleeSigInfo = &eeCalleeSigInfo;
+                }
+                if (callNode->gtCallType == CT_INDIRECT)
+                {
+                    if (calleeSigInfo->hasTypeArg())
+                    {
+                        failFunctionCompilation(); // LLVM-TODO
+                    }
+                }
+                else
+                {
+                    failUnsupportedCalls(callNode, calleeSigInfo);
+                }
 
                 lowerCallToShadowStack(callNode, calleeSigInfo);
             }
