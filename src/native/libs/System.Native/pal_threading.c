@@ -12,6 +12,9 @@
 #include <errno.h>
 #include <time.h>
 #include <sys/time.h>
+#if HAVE_SCHED_GETCPU
+#include <sched.h>
+#endif
 
 #if defined(TARGET_OSX)
 // So we can use the declaration of pthread_cond_timedwait_relative_np
@@ -260,4 +263,25 @@ CreateThreadExit:
     assert(error == 0);
 
     return result;
+}
+
+int32_t SystemNative_SchedGetCpu()
+{
+#if HAVE_SCHED_GETCPU
+    return sched_getcpu();
+#else
+    return -1;
+#endif
+}
+
+__attribute__((noreturn))
+void SystemNative_Exit(int32_t exitCode)
+{
+    exit(exitCode);
+}
+
+__attribute__((noreturn))
+void SystemNative_Abort()
+{
+    abort();
 }
