@@ -2252,14 +2252,14 @@ namespace ILCompiler.Dataflow
                             if (attributeMessage != null && attributeMessage.Length > 0 && !attributeMessage.EndsWith('.'))
                                 attributeMessage += '.';
 
-                            string message = $"{String.Format(Resources.Strings.IL9700, calledMethod.GetDisplayName())} {attributeMessage}";
+                            string message = $"{String.Format(Resources.Strings.IL3050, calledMethod.GetDisplayName())} {attributeMessage}";
 
                             //if (requiresUnreferencedCode.Url != null)
                             //{
                             //    message += " " + requiresUnreferencedCode.Url;
                             //}
 
-                            logger.LogWarning(message, 9700, callingMethodBody, offset, MessageSubCategory.AotAnalysis);
+                            logger.LogWarning(message, 3050, callingMethodBody, offset, MessageSubCategory.AotAnalysis);
                         }
 
                         // To get good reporting of errors we need to track the origin of the value for all method calls
@@ -3138,11 +3138,13 @@ namespace ILCompiler.Dataflow
 
                 // Error codes > 6000 are reserved for custom steps and illink doesn't claim ownership of them
 
+
+                public const string IL3050 = "Using member '{0}' which has 'RequiresDynamicCodeAttribute' can break functionality when AOT compiling.";
+                // IL3051 - mismatched RequiresDynamicCode on virtuals
                 // TODO: these are all unique to NativeAOT - mono/linker repo is not aware this error code is used.
-                public const string IL9700 = "Calling '{0}' which has `RequiresDynamicCodeAttribute` can break functionality when compiled fully ahead of time.";
-                // IL9701 - COM
-                // IL9702 - AOT analysis warnings
-                // IL9703 - Generic cycle
+                // IL3052 - COM
+                // IL3053 - AOT analysis warnings
+                // IL3054 - Generic cycle
             }
         }
     }

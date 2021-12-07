@@ -72,7 +72,7 @@ namespace System
             return CreateSzArray(elementType, length);
         }
 
-        [UnconditionalSuppressMessage("AotAnalysis", "IL9700:RequiresDynamicCode",
+        [UnconditionalSuppressMessage("AotAnalysis", "IL3050:RequiresDynamicCode",
             Justification = "MDArrays of Rank != 1 can be created because they don't implement generic interfaces.")]
         public static unsafe Array CreateInstance(Type elementType, int length1, int length2)
         {
@@ -90,7 +90,7 @@ namespace System
             return NewMultiDimArray(arrayType.TypeHandle.ToEETypePtr(), pLengths, 2);
         }
 
-        [UnconditionalSuppressMessage("AotAnalysis", "IL9700:RequiresDynamicCode",
+        [UnconditionalSuppressMessage("AotAnalysis", "IL3050:RequiresDynamicCode",
             Justification = "MDArrays of Rank != 1 can be created because they don't implement generic interfaces.")]
         public static unsafe Array CreateInstance(Type elementType, int length1, int length2, int length3)
         {

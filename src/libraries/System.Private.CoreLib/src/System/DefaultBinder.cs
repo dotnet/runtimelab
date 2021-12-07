@@ -29,7 +29,7 @@ namespace System
         //
         // The most specific match will be selected.
         //
-        [UnconditionalSuppressMessage("AotAnalysis", "IL9700:RequiresDynamicCode",
+        [UnconditionalSuppressMessage("AotAnalysis", "IL3050:RequiresDynamicCode",
             Justification = "Known corner case bug https://github.com/dotnet/runtimelab/issues/1079.")]
         public sealed override MethodBase BindToMethod(
             BindingFlags bindingAttr, MethodBase[] match, ref object?[] args,

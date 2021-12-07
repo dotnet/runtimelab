@@ -112,7 +112,7 @@ namespace System.Reflection
 
         [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2026:RequiresUnreferencedCode",
             Justification = "Used to find matching method overloads. Only used for assignability checks.")]
-        [UnconditionalSuppressMessage("AotAnalysis", "IL9700:AotUnfriendlyApi",
+        [UnconditionalSuppressMessage("AotAnalysis", "IL3050:AotUnfriendlyApi",
             Justification = "Used to find matching method overloads. Only used for assignability checks.")]
         private static Type? TryResolve(this SignatureType signatureType, Type[] genericMethodParameters)
         {
@@ -166,7 +166,7 @@ namespace System.Reflection
             }
         }
 
-        [UnconditionalSuppressMessage("AotAnalysis", "IL9700:AotUnfriendlyApi",
+        [UnconditionalSuppressMessage("AotAnalysis", "IL3050:AotUnfriendlyApi",
             Justification = "Used to find matching method overloads. Only used for assignability checks.")]
         private static Type? TryMakeArrayType(this Type type)
         {
@@ -180,7 +180,7 @@ namespace System.Reflection
             }
         }
 
-        [UnconditionalSuppressMessage("AotAnalysis", "IL9700:AotUnfriendlyApi",
+        [UnconditionalSuppressMessage("AotAnalysis", "IL3050:AotUnfriendlyApi",
             Justification = "Used to find matching method overloads. Only used for assignability checks.")]
         private static Type? TryMakeArrayType(this Type type, int rank)
         {

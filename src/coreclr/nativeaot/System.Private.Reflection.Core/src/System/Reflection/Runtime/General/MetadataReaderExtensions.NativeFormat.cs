@@ -794,7 +794,7 @@ namespace System.Reflection.Runtime.General
             return result;
         }
 
-        [UnconditionalSuppressMessage("AotAnalysis", "IL9700:RequiresDynamicCode",
+        [UnconditionalSuppressMessage("AotAnalysis", "IL3050:RequiresDynamicCode",
             Justification = "The compiler ensures we have array types referenced from custom attribute blobs")]
         public static byte[] ToArray(this ByteCollection collection, Type enumType = null)
         {
@@ -818,7 +818,7 @@ namespace System.Reflection.Runtime.General
             return result;
         }
 
-        [UnconditionalSuppressMessage("AotAnalysis", "IL9700:RequiresDynamicCode",
+        [UnconditionalSuppressMessage("AotAnalysis", "IL3050:RequiresDynamicCode",
             Justification = "The compiler ensures we have array types referenced from custom attribute blobs")]
         public static sbyte[] ToArray(this SByteCollection collection, Type enumType = null)
         {
@@ -842,7 +842,7 @@ namespace System.Reflection.Runtime.General
             return result;
         }
 
-        [UnconditionalSuppressMessage("AotAnalysis", "IL9700:RequiresDynamicCode",
+        [UnconditionalSuppressMessage("AotAnalysis", "IL3050:RequiresDynamicCode",
             Justification = "The compiler ensures we have array types referenced from custom attribute blobs")]
         public static ushort[] ToArray(this UInt16Collection collection, Type enumType = null)
         {
@@ -866,7 +866,7 @@ namespace System.Reflection.Runtime.General
             return result;
         }
 
-        [UnconditionalSuppressMessage("AotAnalysis", "IL9700:RequiresDynamicCode",
+        [UnconditionalSuppressMessage("AotAnalysis", "IL3050:RequiresDynamicCode",
             Justification = "The compiler ensures we have array types referenced from custom attribute blobs")]
         public static short[] ToArray(this Int16Collection collection, Type enumType = null)
         {
@@ -890,7 +890,7 @@ namespace System.Reflection.Runtime.General
             return result;
         }
 
-        [UnconditionalSuppressMessage("AotAnalysis", "IL9700:RequiresDynamicCode",
+        [UnconditionalSuppressMessage("AotAnalysis", "IL3050:RequiresDynamicCode",
             Justification = "The compiler ensures we have array types referenced from custom attribute blobs")]
         public static uint[] ToArray(this UInt32Collection collection, Type enumType = null)
         {
@@ -914,7 +914,7 @@ namespace System.Reflection.Runtime.General
             return result;
         }
 
-        [UnconditionalSuppressMessage("AotAnalysis", "IL9700:RequiresDynamicCode",
+        [UnconditionalSuppressMessage("AotAnalysis", "IL3050:RequiresDynamicCode",
             Justification = "The compiler ensures we have array types referenced from custom attribute blobs")]
         public static int[] ToArray(this Int32Collection collection, Type enumType = null)
         {
@@ -938,7 +938,7 @@ namespace System.Reflection.Runtime.General
             return result;
         }
 
-        [UnconditionalSuppressMessage("AotAnalysis", "IL9700:RequiresDynamicCode",
+        [UnconditionalSuppressMessage("AotAnalysis", "IL3050:RequiresDynamicCode",
             Justification = "The compiler ensures we have array types referenced from custom attribute blobs")]
         public static ulong[] ToArray(this UInt64Collection collection, Type enumType = null)
         {
@@ -962,7 +962,7 @@ namespace System.Reflection.Runtime.General
             return result;
         }
 
-        [UnconditionalSuppressMessage("AotAnalysis", "IL9700:RequiresDynamicCode",
+        [UnconditionalSuppressMessage("AotAnalysis", "IL3050:RequiresDynamicCode",
             Justification = "The compiler ensures we have array types referenced from custom attribute blobs")]
         public static long[] ToArray(this Int64Collection collection, Type enumType = null)
         {
