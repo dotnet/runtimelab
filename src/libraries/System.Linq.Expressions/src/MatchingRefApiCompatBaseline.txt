@@ -16,4 +16,6 @@ TypesMustExist : Type 'System.Runtime.CompilerServices.CallSiteOps' does not exi
 TypesMustExist : Type 'System.Runtime.CompilerServices.Closure' does not exist in the reference but it does exist in the implementation.
 TypesMustExist : Type 'System.Runtime.CompilerServices.RuntimeOps' does not exist in the reference but it does exist in the implementation.
 TypesMustExist : Type 'System.Linq.Expressions.ExpressionCreator<TDelegate>' does not exist in the reference but it does exist in the implementation.
-Total Issues: 17
+MembersMustExist : Member 'public System.Boolean System.Linq.Expressions.LambdaExpression.CanCompileToIL.get()' does not exist in the reference but it does exist in the implementation.
+MembersMustExist : Member 'public System.Boolean System.Linq.Expressions.LambdaExpression.CanInterpret.get()' does not exist in the reference but it does exist in the implementation.
+Total Issues: 19
