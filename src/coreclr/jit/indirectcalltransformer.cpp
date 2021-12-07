@@ -494,7 +494,7 @@ private:
         }
 
     private:
-        // Wasm stores function pointers as indicies in a function table
+        // Wasm stores function pointers as indices in a function table
 #if defined(TARGET_WASM32)
         const int FAT_POINTER_MASK = 0x80000000;
 #elif defined(TARGET_WASM64)

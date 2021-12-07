@@ -520,7 +520,7 @@ FunctionType* Llvm::getFunctionType()
     return FunctionType::get(retLlvmType, ArrayRef<Type*>(argVec), false);
 }
 
-FunctionType* Llvm::getFunctionTypeForCall(GenTreeCall* call)
+FunctionType* Llvm::createFunctionTypeForCall(GenTreeCall* call)
 {
     llvm::Type* retLlvmType = getLlvmTypeForCorInfoType(call->gtCorInfoType, call->gtRetClsHnd);
 
@@ -876,7 +876,7 @@ Function* Llvm::getOrCreateLlvmFunction(const char* symbolName, GenTreeCall* cal
         // assume ExternalLinkage, if the function is defined in the clrjit module, then it is replaced and an
         // extern added to the Ilc module
         llvmFunc =
-            Function::Create(getFunctionTypeForCall(call), Function::ExternalLinkage, 0U, symbolName, _module);
+            Function::Create(createFunctionTypeForCall(call), Function::ExternalLinkage, 0U, symbolName, _module);
     }
     return llvmFunc;
 }
@@ -893,12 +893,14 @@ llvm::Value* Llvm::buildUserFuncCall(GenTreeCall* call)
         Function* llvmFunc = getOrCreateLlvmFunction(symbolName, call);
         llvmFuncCallee = llvmFunc;
     }
-    else if (call->gtCallType == CT_INDIRECT)
+    else
     {
+        assert(call->gtCallType == CT_INDIRECT);
+
         Value* funcValue = getGenTreeValue(call->gtCallAddr);
         if (call->gtEntryPoint.accessType == IAT_VALUE)
         {
-            FunctionType* functionType = getFunctionTypeForCall(call);
+            FunctionType* functionType = createFunctionTypeForCall(call);
 
             //TODO-LLVM: how best to detect there is no runtime lookup required when the target is a constant and not abstract or virtual
             if (llvm::ConstantInt* llvmConstantInt = llvm::dyn_cast<llvm::ConstantInt>(funcValue)) {
@@ -909,8 +911,6 @@ llvm::Value* Llvm::buildUserFuncCall(GenTreeCall* call)
                 {
                     failFunctionCompilation();
                 }
-
-                (*_addCodeReloc)(_thisPtr, methodHandle);
 
                 llvmFuncCallee = { functionType, getOrCreateLlvmFunction(methodName, call) };
             }
@@ -926,11 +926,6 @@ llvm::Value* Llvm::buildUserFuncCall(GenTreeCall* call)
             // unsupported calli type
             failFunctionCompilation();
         }
-    }
-    else
-    {
-        // unsupported call type
-        failFunctionCompilation();
     }
 
     std::vector<llvm::Value*> argVec = std::vector<llvm::Value*>();

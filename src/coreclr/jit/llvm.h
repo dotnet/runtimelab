@@ -160,7 +160,7 @@ private:
     void generateProlog();
     CorInfoType getCorInfoTypeForArg(CORINFO_SIG_INFO* sigInfo, CORINFO_ARG_LIST_HANDLE& arg, CORINFO_CLASS_HANDLE* clsHnd);
     llvm::FunctionType* getFunctionType();
-    llvm::FunctionType* getFunctionTypeForCall(GenTreeCall* call);
+    llvm::FunctionType* createFunctionTypeForCall(GenTreeCall* call);
     Value* getGenTreeValue(GenTree* node);
     LlvmArgInfo getLlvmArgInfoForArgIx(unsigned int lclNum);
     llvm::BasicBlock* getLLVMBasicBlockForBlock(BasicBlock* block);
