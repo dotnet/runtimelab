@@ -167,3 +167,19 @@ The above code would throw a "System.Runtime.InteropServices.MissingInteropDataE
   </Application>
 </Directives>
 ```
+
+## Rooting delegate marshalling data
+
+Similarly to the structure marshalling data above, the `Type` directive also supports a `MarshalDelegate` attribute. The only supported value for `MarshalDelegate` is `Required All`. Specifying `MarshalDelegate="Required All"` will ensure delegate marshalling data structures get pregenerated.
+
+```xml
+<Directives>
+  <Application>
+    <Assembly Name="repro">
+      <Type Name="MyDelegate" MarshalDelegate="Required All" />
+    </Assembly>
+  </Application>
+</Directives>
+```
+
+The above XML will force generation of delegate marshalling data for delegate type `MyDelegate` in assembly `repro`.
