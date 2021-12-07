@@ -9,9 +9,6 @@
 #if HAVE_NSGETENVIRON
 #include <crt_externs.h>
 #endif
-#if HAVE_SCHED_GETCPU
-#include <sched.h>
-#endif
 
 char* SystemNative_GetEnv(const char* variable)
 {
@@ -32,25 +29,4 @@ void SystemNative_FreeEnviron(char** environ)
 {
     // no op
     (void)environ;
-}
-
-int32_t SystemNative_SchedGetCpu()
-{
-#if HAVE_SCHED_GETCPU
-    return sched_getcpu();
-#else
-    return -1;
-#endif
-}
-
-__attribute__((noreturn))
-void SystemNative_Exit(int32_t exitCode)
-{
-    exit(exitCode);
-}
-
-__attribute__((noreturn))
-void SystemNative_Abort()
-{
-    abort();
 }

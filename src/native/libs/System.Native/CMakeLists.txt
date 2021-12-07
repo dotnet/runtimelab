@@ -15,7 +15,6 @@ if (CLR_CMAKE_TARGET_OSX)
 endif ()
 
 set(NATIVE_SOURCES
-    pal_environment.c
     pal_dynamicload.c
     pal_errno.c
     pal_interfaceaddresses.c
