@@ -115,6 +115,15 @@ namespace ILCompiler
                 rootProvider.RootStructMarshallingData(defType, "RD.XML root");
             }
 
+            var marshalDelegateDegreeAttribute = typeElement.Attribute("MarshalDelegate");
+            if (marshalDelegateDegreeAttribute != null && type.IsDelegate)
+            {
+                if (marshalDelegateDegreeAttribute.Value != "Required All")
+                    throw new NotSupportedException($"\"{marshalDelegateDegreeAttribute.Value}\" is not a supported value for the \"MarshalDelegate\" attribute of the \"Type\" Runtime Directive. Supported values are \"Required All\".");
+
+                rootProvider.RootDelegateMarshallingData((DefType)type, "RD.XML root");
+            }
+
             foreach (var element in typeElement.Elements())
             {
                 switch (element.Name.LocalName)
