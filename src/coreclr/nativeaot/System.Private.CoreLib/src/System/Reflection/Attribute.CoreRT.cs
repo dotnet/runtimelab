@@ -130,7 +130,7 @@ namespace System
         // we return a freshly allocated array of the specific attribute type even though the api's return type promises only an Attribute[].
         // There are known store apps that cast the results of apis and expect the cast to work.
         //==============================================================================================================================
-        [UnconditionalSuppressMessage("AotAnalysis", "IL9700:RequiresDynamicCode",
+        [UnconditionalSuppressMessage("AotAnalysis", "IL3050:RequiresDynamicCode",
             Justification = "Arrays of reference types are safe to create.")]
         private static Attribute[] Instantiate(IEnumerable<CustomAttributeData> cads, Type actualElementType)
         {

@@ -583,7 +583,7 @@ class Program
 
             SanityTest();
 
-            [UnconditionalSuppressMessage("AotAnalysis", "IL9700:UnrecognizedAotPattern",
+            [UnconditionalSuppressMessage("AotAnalysis", "IL3050:UnrecognizedAotPattern",
                 Justification = "That's the point")]
             static void SanityTest()
             {

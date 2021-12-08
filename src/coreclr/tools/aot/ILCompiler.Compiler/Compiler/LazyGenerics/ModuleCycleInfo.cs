@@ -253,7 +253,7 @@ namespace ILCompiler
                         message += $"'{cycleEntity.GetDisplayName()}'";
                     }
 
-                    logger.LogWarning(message, 9703, actualProblem.Key.Owner, MessageSubCategory.AotAnalysis);
+                    logger.LogWarning(message, 3054, actualProblem.Key.Owner, MessageSubCategory.AotAnalysis);
                 }
             }
         }

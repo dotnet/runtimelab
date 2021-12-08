@@ -190,7 +190,7 @@ namespace System.Reflection.Runtime.TypeParsing
             return ElementTypeName + "[]";
         }
 
-        [UnconditionalSuppressMessage("AotAnalysis", "IL9700:AotUnfriendlyApi",
+        [UnconditionalSuppressMessage("AotAnalysis", "IL3050:AotUnfriendlyApi",
             Justification = "Used to implement resolving types from strings.")]
         public sealed override Type ResolveType(Assembly containingAssemblyIfAny, GetTypeOptions getTypeOptions)
         {
@@ -214,7 +214,7 @@ namespace System.Reflection.Runtime.TypeParsing
             return ElementTypeName + "[" + (_rank == 1 ? "*" : new string(',', _rank - 1)) + "]";
         }
 
-        [UnconditionalSuppressMessage("AotAnalysis", "IL9700:AotUnfriendlyApi",
+        [UnconditionalSuppressMessage("AotAnalysis", "IL3050:AotUnfriendlyApi",
             Justification = "Used to implement resolving types from strings.")]
         public sealed override Type ResolveType(Assembly containingAssemblyIfAny, GetTypeOptions getTypeOptions)
         {
@@ -297,7 +297,7 @@ namespace System.Reflection.Runtime.TypeParsing
 
         [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2055:RequiresUnreferencedCode",
             Justification = "Used to implement resolving types from strings.")]
-        [UnconditionalSuppressMessage("AotAnalysis", "IL9700:AotUnfriendlyApi",
+        [UnconditionalSuppressMessage("AotAnalysis", "IL3050:AotUnfriendlyApi",
             Justification = "Used to implement resolving types from strings.")]
         public sealed override Type ResolveType(Assembly containingAssemblyIfAny, GetTypeOptions getTypeOptions)
         {

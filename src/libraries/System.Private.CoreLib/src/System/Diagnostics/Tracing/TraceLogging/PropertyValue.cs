@@ -203,7 +203,7 @@ namespace System.Diagnostics.Tracing
         /// <param name="property"></param>
         /// <returns></returns>
 #if !ES_BUILD_STANDALONE
-        [UnconditionalSuppressMessage("AotAnalysis", "IL9700:AotUnfriendlyApi",
+        [UnconditionalSuppressMessage("AotAnalysis", "IL3050:AotUnfriendlyApi",
             Justification = "Instantiation over a reference type. See comments above.")]
 #endif
         private static Func<PropertyValue, PropertyValue> GetReferenceTypePropertyGetter(PropertyInfo property)
@@ -222,7 +222,7 @@ namespace System.Diagnostics.Tracing
             public abstract Func<PropertyValue, PropertyValue> GetPropertyGetter(PropertyInfo property);
 
 #if !ES_BUILD_STANDALONE
-            [UnconditionalSuppressMessage("AotAnalysis", "IL9700:AotUnfriendlyApi",
+            [UnconditionalSuppressMessage("AotAnalysis", "IL3050:AotUnfriendlyApi",
                 Justification = "Instantiation over a reference type. See comments above.")]
 #endif
             protected static Delegate GetGetMethod(PropertyInfo property, Type propertyType)
