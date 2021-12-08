@@ -6,9 +6,6 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
-    <ILLinkSubstitutionsXmls Include="ILLink\ILLink.Substitutions.xml" />
-  </ItemGroup>
-  <ItemGroup>
     <Compile Include="$(CommonPath)System\Text\StringBuilderCache.cs" Link="Common\System\StringBuilderCache.cs" />
     <Compile Include="$(CommonPath)System\HexConverter.cs" Link="Common\System\HexConverter.cs" />
     <Compile Include="System\Xml\BinaryXml\XmlBinaryReader.cs" />

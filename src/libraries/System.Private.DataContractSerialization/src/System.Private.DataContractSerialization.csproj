@@ -14,9 +14,6 @@
     <TextSources>System\Text</TextSources>
   </PropertyGroup>
   <ItemGroup>
-    <ILLinkSubstitutionsXmls Include="ILLink\ILLink.Substitutions.xml" />
-  </ItemGroup>
-  <ItemGroup>
     <Compile Include="$(CommonPath)System\NotImplemented.cs"
              Link="Common\System\NotImplemented.cs" />
     <Compile Include="$(CommonPath)System\HexConverter.cs"
