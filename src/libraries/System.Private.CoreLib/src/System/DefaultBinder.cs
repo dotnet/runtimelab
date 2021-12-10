@@ -30,7 +30,7 @@ namespace System
         // The most specific match will be selected.
         //
         [UnconditionalSuppressMessage("AotAnalysis", "IL3050:RequiresDynamicCode",
-            Justification = "Known corner case bug https://github.com/dotnet/runtimelab/issues/1079.")]
+            Justification = "AOT compiler ensures params arrays are created for reflection-invokable methods")]
         public sealed override MethodBase BindToMethod(
             BindingFlags bindingAttr, MethodBase[] match, ref object?[] args,
             ParameterModifier[]? modifiers, CultureInfo? cultureInfo, string[]? names, out object? state)
