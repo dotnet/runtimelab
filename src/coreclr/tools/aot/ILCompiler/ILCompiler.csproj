@@ -21,7 +21,7 @@
   <PropertyGroup>
     <SelfContained>true</SelfContained>
     <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
-    <RuntimeIdentifier>$(__DistroRid)</RuntimeIdentifier>
+    <RuntimeIdentifier>$(OutputRid)</RuntimeIdentifier>
 
     <!-- DistroRid is injected through environment variables in build scripts. Provide reasonable default
          when the build is invoked directly, e.g. building inside Visual Studio -->
