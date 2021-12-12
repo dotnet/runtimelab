@@ -21,7 +21,7 @@
   <PropertyGroup>
     <SelfContained>true</SelfContained>
     <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
-    <RuntimeIdentifier>$(OutputRid)</RuntimeIdentifier>
+    <RuntimeIdentifier>$(__DistroRid)</RuntimeIdentifier>
 
     <!-- DistroRid is injected through environment variables in build scripts. Provide reasonable default
          when the build is invoked directly, e.g. building inside Visual Studio -->
@@ -53,7 +53,7 @@
     </Content>
   </ItemGroup>
 
-  <ItemGroup Condition="!Exists('$(ObjWriterArtifactPath)') and '$(__DistroRid)' != 'linux-musl-arm64'">
+  <ItemGroup Condition="!Exists('$(ObjWriterArtifactPath)')">
     <PackageReference Include="Microsoft.DotNet.ILCompiler">
       <Version>$(ILCompilerVersion)</Version>
     </PackageReference>
