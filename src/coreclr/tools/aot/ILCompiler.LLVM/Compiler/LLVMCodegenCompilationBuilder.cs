@@ -19,35 +19,17 @@ namespace ILCompiler
         LLVMCodegenConfigProvider _config = new LLVMCodegenConfigProvider(Array.Empty<string>());
         private ILProvider _ilProvider = new CoreRTILProvider();
         private KeyValuePair<string, string>[] _ryujitOptions = Array.Empty<KeyValuePair<string, string>>();
+        private bool nativeLib;
 
-        public LLVMCodegenCompilationBuilder(CompilerTypeSystemContext context, CompilationModuleGroup group)
+        public LLVMCodegenCompilationBuilder(CompilerTypeSystemContext context, CompilationModuleGroup group, bool nativeLib)
             : base(context, group, new CoreRTNameMangler(new LLVMNodeMangler(), false))
         {
+            this.nativeLib = nativeLib;
         }
 
         public override CompilationBuilder UseBackendOptions(IEnumerable<string> options)
         {
             _config = new LLVMCodegenConfigProvider(options);
-            var builder = new ArrayBuilder<KeyValuePair<string, string>>();
-
-            foreach (string param in options)
-            {
-                int indexOfEquals = param.IndexOf('=');
-
-                // We're skipping bad parameters without reporting.
-                // This is not a mainstream feature that would need to be friendly.
-                // Besides, to really validate this, we would also need to check that the config name is known.
-                if (indexOfEquals < 1)
-                    continue;
-
-                string name = param.Substring(0, indexOfEquals);
-                string value = param.Substring(indexOfEquals + 1);
-
-                builder.Add(new KeyValuePair<string, string>(name, value));
-            }
-
-            _ryujitOptions = builder.ToArray();
-
             return this;
         }
 
@@ -89,19 +71,35 @@ namespace ILCompiler
             LLVMCodegenNodeFactory factory = new LLVMCodegenNodeFactory(_context, _compilationGroup, _metadataManager, _interopStubManager, _nameMangler, _vtableSliceProvider, _dictionaryLayoutProvider, GetPreinitializationManager());
             JitConfigProvider.Initialize(_context.Target, jitFlagBuilder.ToArray(), _ryujitOptions);
             DependencyAnalyzerBase<NodeFactory> graph = CreateDependencyGraph(factory, new ObjectNode.ObjectNodeComparer(new CompilerComparer()));
-            return new LLVMCodegenCompilation(graph, factory, _compilationRoots, _ilProvider, _debugInformationProvider, _logger, _config, _inliningPolicy, _devirtualizationManager, _instructionSetSupport);
+            return new LLVMCodegenCompilation(graph, factory, _compilationRoots, _ilProvider, _debugInformationProvider, _logger, _config, _inliningPolicy, _devirtualizationManager, _instructionSetSupport, nativeLib);
         }
     }
 
     internal class LLVMCodegenConfigProvider
     {
-        private readonly HashSet<string> _options;
+        private readonly Dictionary<string, string> _options;
         
         public const string NoLineNumbersString = "NoLineNumbers";
 
         public LLVMCodegenConfigProvider(IEnumerable<string> options)
         {
-            _options = new HashSet<string>(options, StringComparer.OrdinalIgnoreCase);
+            _options = new Dictionary<string, string>();
+
+            foreach (string param in options)
+            {
+                int indexOfEquals = param.IndexOf('=');
+
+                // We're skipping bad parameters without reporting.
+                // This is not a mainstream feature that would need to be friendly.
+                // Besides, to really validate this, we would also need to check that the config name is known.
+                if (indexOfEquals < 1)
+                    continue;
+
+                string name = param.Substring(0, indexOfEquals);
+                string value = param.Substring(indexOfEquals + 1);
+
+                _options[name] = value;
+            }
         }
 
         public string Target => ValueOrDefault("Target", "wasm32-unknown-emscripten");
@@ -124,11 +122,6 @@ namespace ILCompiler
             }
 
             return defaultValue;
-        }
-
-        public bool HasOption(string optionName)
-        {
-            return _options.Contains(optionName);
         }
     }
 }

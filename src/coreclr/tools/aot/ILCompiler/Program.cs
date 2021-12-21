@@ -621,7 +621,7 @@ namespace ILCompiler
 
             CompilationBuilder builder;
             if (_isLlvmCodegen)
-                builder = new LLVMCodegenCompilationBuilder(typeSystemContext, compilationGroup);
+                builder = new LLVMCodegenCompilationBuilder(typeSystemContext, compilationGroup, _nativeLib);
             else
                 builder = new RyuJitCompilationBuilder(typeSystemContext, compilationGroup);
 

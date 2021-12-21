@@ -3118,8 +3118,9 @@ namespace Internal.IL
                 llvmArguments[i] = arguments[i].ValueAsType(GetLLVMTypeForTypeDesc(signatureType), _builder);
             }
 
-            // Save the top of the shadow stack in case the callee reverse P/Invokes
+            // Save the top of the shadow stack in case the callee reverse P/Invokes.  Restore ShadowStackTop after invoke
             LLVMValueRef stackFrameSize = BuildConstInt32(GetTotalParameterOffset() + GetTotalLocalOffset());
+            LLVMValueRef shadowStackToRestore = _builder.BuildLoad(ShadowStackTop);
             _builder.BuildStore(_builder.BuildGEP(_currentFunclet.GetParam(0), new LLVMValueRef[] {stackFrameSize}, "shadowStackTop"), ShadowStackTop);
 
             LLVMValueRef pInvokeTransitionFrame = default;
@@ -3143,6 +3144,10 @@ namespace Internal.IL
                 LLVMValueRef RhpPInvokeReturn2 = GetOrCreateLLVMFunction("RhpPInvokeReturn2", pInvokeFunctionType);
                 _builder.BuildCall(RhpPInvokeReturn2, new LLVMValueRef[] { pInvokeTransitionFrame }, "");
             }
+
+            // If the callee originates from an UnmanagedCallersOnly function then we need to restore the thread local for the shadow stack
+            // or else it will have the value stored for this invoke and grow until memory is exceeded.  
+            _builder.BuildStore(shadowStackToRestore, ShadowStackTop);
 
             if (!method.Signature.ReturnType.IsVoid)
                 return new ExpressionEntry(GetStackValueKind(method.Signature.ReturnType), "retval", returnValue, forcedReturnType ?? method.Signature.ReturnType);
