@@ -185,7 +185,7 @@ namespace ILCompiler.DependencyAnalysis
                 nodeData.Fill(Module, _nodeFactory);
             }
 
-            if (!nativeLib)
+            if (!_nativeLib)
             {
                 EmitNativeMain(context);
             }
@@ -695,14 +695,14 @@ namespace ILCompiler.DependencyAnalysis
 
         //System.IO.FileStream _file;
         string _objectFilePath;
-        bool nativeLib;
+        bool _nativeLib;
         public LLVMObjectWriter(string objectFilePath, NodeFactory factory, LLVMCodegenCompilation compilation)
         {
             _nodeFactory = factory;
             _objectFilePath = objectFilePath;
             Module = LLVMCodegenCompilation.Module;
             DIBuilder = compilation.DIBuilder;
-            nativeLib = compilation.NativeLib;
+            _nativeLib = compilation.NativeLib;
         }
 
         public void Dispose()
