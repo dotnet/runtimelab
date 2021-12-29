@@ -2222,8 +2222,9 @@ namespace ILCompiler.Dataflow
                         if (shouldEnableReflectionWarnings &&
                             calledMethod.HasCustomAttribute("System.Diagnostics.CodeAnalysis", "RequiresUnreferencedCodeAttribute"))
                         {
-                            string arg1 = MessageFormat.FormatRequiresAttributeMessageArg(DiagnosticUtilities.GetRequiresUnreferencedCodeAttributeMessage(calledMethod));
-                            string message = new DiagnosticString(DiagnosticId.RequiresUnreferencedCode).GetMessage(calledMethod.GetDisplayName(), arg1, "");
+                            string arg1 = MessageFormat.FormatRequiresAttributeMessageArg(DiagnosticUtilities.GetRequiresAttributeMessage(calledMethod, "RequiresUnreferencedCodeAttribute"));
+                            string arg2 = MessageFormat.FormatRequiresAttributeUrlArg(DiagnosticUtilities.GetRequiresAttributeUrl(calledMethod, "RequiresUnreferencedCodeAttribute"));
+                            string message = new DiagnosticString(DiagnosticId.RequiresUnreferencedCode).GetMessage(calledMethod.GetDisplayName(), arg1, arg2);
 
                             _logger.LogWarning(message, (int)DiagnosticId.RequiresUnreferencedCode, callingMethodBody, offset, MessageSubCategory.TrimAnalysis);
                         }
@@ -2236,8 +2237,9 @@ namespace ILCompiler.Dataflow
 
                         static void LogDynamicCodeWarning(Logger logger, MethodIL callingMethodBody, int offset, MethodDesc calledMethod)
                         {
-                            string arg1 = MessageFormat.FormatRequiresAttributeMessageArg(DiagnosticUtilities.GetRequiresDynamicCodeAttributeMessage(calledMethod));
-                            string message = new DiagnosticString(DiagnosticId.RequiresDynamicCode).GetMessage(calledMethod.GetDisplayName(), arg1, "");
+                            string arg1 = MessageFormat.FormatRequiresAttributeMessageArg(DiagnosticUtilities.GetRequiresAttributeMessage(calledMethod, "RequiresDynamicCodeAttribute"));
+                            string arg2 = MessageFormat.FormatRequiresAttributeUrlArg(DiagnosticUtilities.GetRequiresAttributeUrl(calledMethod, "RequiresDynamicCodeAttribute"));
+                            string message = new DiagnosticString(DiagnosticId.RequiresDynamicCode).GetMessage(calledMethod.GetDisplayName(), arg1, arg2);
 
                             logger.LogWarning(message, (int)DiagnosticId.RequiresDynamicCode, callingMethodBody, offset, MessageSubCategory.AotAnalysis);
                         }
