@@ -135,7 +135,10 @@ add_subdirectory(tools/aot/jitinterface)
 
 
 if(NOT CLR_CROSS_COMPONENTS_BUILD)
-  add_subdirectory(nativeaot)
+  # NativeAOT only buildable for a subset of CoreCLR-supported configurations
+  if((CLR_CMAKE_HOST_LINUX OR CLR_CMAKE_HOST_OSX OR CLR_CMAKE_HOST_WIN32) AND (CLR_CMAKE_HOST_ARCH_ARM64 OR CLR_CMAKE_HOST_ARCH_AMD64) AND NOT (CLR_CMAKE_HOST_OSX AND CLR_CMAKE_HOST_ARCH_ARM64))
+    add_subdirectory(nativeaot)
+  endif()
 endif(NOT CLR_CROSS_COMPONENTS_BUILD)
 
 # Above projects do not build with these compile options
