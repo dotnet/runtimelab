@@ -19,12 +19,12 @@ namespace ILCompiler
         LLVMCodegenConfigProvider _config = new LLVMCodegenConfigProvider(Array.Empty<string>());
         private ILProvider _ilProvider = new CoreRTILProvider();
         private KeyValuePair<string, string>[] _ryujitOptions = Array.Empty<KeyValuePair<string, string>>();
-        private bool nativeLib;
+        private bool _nativeLib;
 
         public LLVMCodegenCompilationBuilder(CompilerTypeSystemContext context, CompilationModuleGroup group, bool nativeLib)
             : base(context, group, new CoreRTNameMangler(new LLVMNodeMangler(), false))
         {
-            this.nativeLib = nativeLib;
+            _nativeLib = nativeLib;
         }
 
         public override CompilationBuilder UseBackendOptions(IEnumerable<string> options)
@@ -71,7 +71,7 @@ namespace ILCompiler
             LLVMCodegenNodeFactory factory = new LLVMCodegenNodeFactory(_context, _compilationGroup, _metadataManager, _interopStubManager, _nameMangler, _vtableSliceProvider, _dictionaryLayoutProvider, GetPreinitializationManager());
             JitConfigProvider.Initialize(_context.Target, jitFlagBuilder.ToArray(), _ryujitOptions);
             DependencyAnalyzerBase<NodeFactory> graph = CreateDependencyGraph(factory, new ObjectNode.ObjectNodeComparer(new CompilerComparer()));
-            return new LLVMCodegenCompilation(graph, factory, _compilationRoots, _ilProvider, _debugInformationProvider, _logger, _config, _inliningPolicy, _devirtualizationManager, _instructionSetSupport, nativeLib);
+            return new LLVMCodegenCompilation(graph, factory, _compilationRoots, _ilProvider, _debugInformationProvider, _logger, _config, _inliningPolicy, _devirtualizationManager, _instructionSetSupport, _nativeLib);
         }
     }
 
