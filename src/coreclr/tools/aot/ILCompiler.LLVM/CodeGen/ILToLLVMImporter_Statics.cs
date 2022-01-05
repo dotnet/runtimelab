@@ -269,6 +269,7 @@ namespace Internal.IL
 
             LLVMValueRef newShadowStack = builder.BuildArrayMalloc(LLVMTypeRef.Int8, BuildConstInt32(1000000), "NewShadowStack");
             builder.BuildStore(newShadowStack, shadowStackPtr);
+            builder.BuildStore(newShadowStack, ShadowStackTop);
             builder.BuildBr(managedCallBlock);
 
             builder.PositionAtEnd(managedCallBlock);
