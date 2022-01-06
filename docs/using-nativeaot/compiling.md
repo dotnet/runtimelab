@@ -47,13 +47,29 @@ If the compilation succeeds, the native executable will be placed under the `bin
 
 Native AOT toolchain allows targeting ARM64 on an x64 host and vice versa for both Windows and Linux. Cross-OS compilation, such as targeting Linux on a Windows host, is not supported. To target win-arm64 on a Windows x64 host, in addition to the `Microsoft.DotNet.ILCompiler` package reference, also add the `runtime.win-x64.Microsoft.DotNet.ILCompiler` package reference to get the x64-hosted compiler:
 ```xml
-<PackageReference Include="Microsoft.DotNet.ILCompiler; runtime.win-x64.Microsoft.DotNet.ILCompiler" Version="7.0.0-alpha.1.21423.2" />
+<PackageReference Include="Microsoft.DotNet.ILCompiler.LLVM; runtime.win-x64.Microsoft.DotNet.ILCompiler.LLVM" Version="7.0.0-alpha.1.21423.2" />
 ```
 
 Note that it is important to use _the same version_ for both packages to avoid potential hard-to-debug issues (use the latest version from the [dotnet-experimental feed](https://dev.azure.com/dnceng/public/_packaging?_a=package&feed=dotnet-experimental&package=Microsoft.DotNet.ILCompiler&protocolType=NuGet)). After adding the package reference, you may publish for win-arm64 as usual:
 ```bash
 > dotnet publish -r win-arm64 -c Release
 ```
+### WebAssembly
+
+For WebAssembly, it is always a cross-architecture scenario as the compiler runs on Windows/Linux/MacOS and the runtime is for WebAssembly.  The required package reference is
+```xml
+<PackageReference Include="Microsoft.DotNet.ILCompiler.LLVM; runtime.browser-wasm.Microsoft.DotNet.ILCompiler.LLVM" Version="7.0.0-*" />
+```
+and the publish command (there is no Release build currently)
+```bash
+> dotnet publish -r browser-wasm -c Debug /p:TargetArchitecture=wasm
+```
+
+Note that the wasm-tools workload is required even though its not used.
+```bash
+> dotnet workload install wasm-tools
+```
+
 
 Similarly, to target linux-arm64 on a Linux x64 host, in addition to the `Microsoft.DotNet.ILCompiler` package reference, also add the `runtime.linux-x64.Microsoft.DotNet.ILCompiler` package reference to get the x64-hosted compiler:
 ```xml
