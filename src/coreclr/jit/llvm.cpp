@@ -1376,12 +1376,14 @@ llvm::DILocation* Llvm::createDebugFunctionAndDiLocation(struct DebugMetadata de
         llvm::DISubroutineType* functionMetaType = _diBuilder->createSubroutineType({} /* TODO - function parameter types*/, llvm::DINode::DIFlags::FlagZero);
         uint32_t lineNumber = _firstSequencePointLineNumber(_thisPtr);
 
+#ifdef DEBUG // TODO-LLVM: there is no compMethodName in Release configuration
         _debugFunction = _diBuilder->createFunction(debugMetadata.fileMetadata, _info.compMethodName,
                                                     _info.compMethodName, debugMetadata.fileMetadata, lineNumber,
                                                     functionMetaType, lineNumber, llvm::DINode::DIFlags::FlagZero,
                                                     llvm::DISubprogram::DISPFlags::SPFlagDefinition |
                                                         llvm::DISubprogram::DISPFlags::SPFlagLocalToUnit);
         _function->setSubprogram(_debugFunction);
+#endif // DEBUG
     }
     return llvm::DILocation::get(_llvmContext, lineNo, 0, _debugFunction);
 }
@@ -1417,9 +1419,11 @@ void Llvm::llvmShutdown()
     {
         emitDebugMetadata(_llvmContext);
     }
+
+    std::error_code ec;
+
 #ifdef DEBUG
     if (_outputFileName == nullptr) return; // nothing generated
-    std::error_code ec;
     char* txtFileName = (char*)malloc(strlen(_outputFileName) + 2); // .txt is longer than .bc
     strcpy(txtFileName, _outputFileName);
     strcpy(txtFileName + strlen(_outputFileName) - 2, "txt");
@@ -1427,6 +1431,7 @@ void Llvm::llvmShutdown()
     _module->print(textOutputStream, (llvm::AssemblyAnnotationWriter*)NULL);
     free(txtFileName);
 #endif //DEBUG
+
     llvm::raw_fd_ostream OS(_outputFileName, ec);
     llvm::WriteBitcodeToFile(*_module, OS);
     delete _module;

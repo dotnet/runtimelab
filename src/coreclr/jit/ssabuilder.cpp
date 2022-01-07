@@ -1020,7 +1020,9 @@ void SsaBuilder::AddDefToHandlerPhis(BasicBlock* block, unsigned lclNum, unsigne
                         {
                             AddPhiArg(handler, nullptr, tree->gtGetOp1()->AsPhi(), lclNum, ssaNum, block);
 
+#ifdef DEBUG
                             phiFound = true;
+#endif
                         }
                     }
                 }

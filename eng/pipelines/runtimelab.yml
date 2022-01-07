@@ -116,6 +116,7 @@ stages:
       - windows_x64
       - windows_arm64
       - OSX_x64
+      - Browser_wasm
       jobParameters:
         timeoutInMinutes: 100
         isOfficialBuild: ${{ variables.isOfficialBuild }}

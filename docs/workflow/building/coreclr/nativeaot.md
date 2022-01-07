@@ -17,8 +17,8 @@ The Native AOT toolchain can be currently built for Linux, macOS and Windows x64
 - Currently only tested on Windows
 - Download the LLVM 11.0.0 source from https://github.com/llvm/llvm-project/releases/download/llvmorg-11.0.0/llvm-11.0.0.src.tar.xz
 - Extract and create a subdirectory in the llvm-11.0.0.src folder called build.  cd to this build folder
-- Configure the LLVM source to use the same runtime as clrjit `cmake -G "Visual Studio 16 2019" -DCMAKE_BUILD_TYPE=Debug -D LLVM_USE_CRT_DEBUG=MTd ..`
-- Build LLVM either from the command line (`build`) or from VS 2019.  You only really need to build the LLVMCore and LLVMBitWriter projects which takes less time than the 400 odd projects when building all.  This will save some time.
+- Configure the LLVM source to use the same runtime as clrjit `cmake -G "Visual Studio 16 2019" -DCMAKE_BUILD_TYPE=Debug -D LLVM_USE_CRT_DEBUG=MTd ..` or if building for the Release configuration `cmake -G "Visual Studio 16 2019" -DCMAKE_BUILD_TYPE=Release -D LLVM_USE_CRT_RELEASE=MT ..`
+- Build LLVM either from the command line (`build`) or from VS 2019.  You only really need to build the LLVMCore and LLVMBitWriter projects which takes less time than the 400 odd projects when building all.  This will save some time.  For the Release configuration, `cmake --build . --config Release  --target LLVMCore LLVMBitWriter`
 - set the enviroment variable LLVM_CMAKE_CONFIG to locate the LLVM config, e.g.  `set LLVM_CMAKE_CONFIG=E:/llvm11/llvm-11.0.0.src/build/lib/cmake/llvm` .   This location should contain the file `LLVMConfig.cmake`
 - Build the x64 libraries and compiler as per the Building section.
 - Run `build nativeaot+libs+nativeaot.packages -rc [Debug|Release] -lc [Debug|Release] -a wasm -os Browser -runtimeFlavor CoreCLR`
