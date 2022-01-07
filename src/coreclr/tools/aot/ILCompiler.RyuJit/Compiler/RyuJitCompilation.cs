@@ -220,6 +220,11 @@ namespace ILCompiler
         {
             throw new NotImplementedException();
         }
+
+        public virtual int PadOffset(TypeDesc type, uint atOffset)
+        {
+            throw new NotImplementedException();
+        }
     }
 
     [Flags]

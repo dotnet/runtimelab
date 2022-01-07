@@ -5,18 +5,12 @@ copy bin_i686\xz.exe . # get it in the path for tar
 
 Invoke-WebRequest -Uri https://github.com/llvm/llvm-project/releases/download/llvmorg-11.0.0/llvm-11.0.0.src.tar.xz -OutFile llvm-11.0.0.src.tar.xz
 
-dir
-
 ./xz -d --force llvm-11.0.0.src.tar.xz
-
 tar -xf llvm-11.0.0.src.tar
-
 
 cd llvm-11.0.0.src
 mkdir build
-dir
 cd build
-
 
 # TODO Release build
 & "$env:CMakePath" -G "Visual Studio 16 2019" -DCMAKE_BUILD_TYPE=Debug -DLLVM_USE_CRT_DEBUG=MTd -Thost=x64 ..
@@ -24,8 +18,3 @@ cd build
 & "$env:CMakePath" --build . --target LLVMCore
 & "$env:CMakePath" --build . --target LLVMBitWriter
 #& "$env:CMakePath" --build . --target LLVMDebugInfoDwarf
-
-dir
-
-
-

@@ -63,6 +63,10 @@ namespace Internal.JitInterface
             {
                 _this.AddOrReturnGlobalSymbol(frozenStringNode, _this._compilation.NameMangler);
             }
+            else if (node is EETypeNode eeTypeNode)
+            {
+                _this.AddOrReturnGlobalSymbol(eeTypeNode, _this._compilation.NameMangler);
+            }
         }
 
         // so the char* in cpp is terminated
@@ -92,7 +96,7 @@ namespace Internal.JitInterface
             var node = (ISymbolNode)_this.HandleToObject((IntPtr)handle);
             Utf8StringBuilder sb = new Utf8StringBuilder();
             node.AppendMangledName(_this._compilation.NameMangler, sb);
-            if (node is FrozenStringNode)
+            if (node is FrozenStringNode || node is EETypeNode)
             {
                 sb.Append("___SYMBOL");
             }
@@ -100,6 +104,22 @@ namespace Internal.JitInterface
             sb.Append("\0");
             return (byte*)_this.GetPin(sb.UnderlyingArray);
         }
+
+        // IL backend does not use the mangled name.  The unmangled name is easier to read.
+        [UnmanagedCallersOnly]
+        public static byte* getTypeName(IntPtr thisHandle, CORINFO_CLASS_STRUCT_* structHnd)
+        {
+            var _this = GetThis(thisHandle);
+
+            TypeDesc typeDesc = _this.HandleToObject(structHnd);
+
+            Utf8StringBuilder sb = new Utf8StringBuilder();
+            sb.Append(typeDesc.ToString());
+
+            sb.Append("\0");
+            return (byte*)_this.GetPin(sb.UnderlyingArray);
+        }
+
 
         [UnmanagedCallersOnly]
         public static uint isRuntimeImport(IntPtr thisHandle, CORINFO_METHOD_STRUCT_* ftn)
@@ -183,16 +203,80 @@ namespace Internal.JitInterface
             return _this._compilation.StructIsWrappedPrimitive(typeDesc, primitiveTypeDesc) ? 1u : 0u;
         }
 
+        [UnmanagedCallersOnly]
+        public static uint padOffset(IntPtr thisHandle, CORINFO_CLASS_STRUCT_* structHnd, uint ilOffset)
+        {
+            var _this = GetThis(thisHandle);
+            TypeDesc typeDesc = _this.HandleToObject(structHnd);
+
+            return (uint)_this._compilation.PadOffset(typeDesc, ilOffset);
+        }
+
+        [UnmanagedCallersOnly]
+        public static CorInfoTypeWithMod getArgTypeIncludingParameterized(IntPtr thisHandle, CORINFO_SIG_INFO* sig, CORINFO_ARG_LIST_STRUCT_* args, CORINFO_CLASS_STRUCT_** vcTypeRet)
+        {
+            var _this = GetThis(thisHandle);
+
+            int index = (int)args;
+            Object sigObj = _this.HandleToObject((IntPtr)sig->methodSignature);
+
+            MethodSignature methodSig = sigObj as MethodSignature;
+            if (methodSig != null)
+            {
+                TypeDesc type = methodSig[index];
+
+                CorInfoType corInfoType = _this.asCorInfoType(type, vcTypeRet);
+                if (type.IsParameterizedType)
+                {
+                    *vcTypeRet = _this.ObjectToHandle(type);
+                }
+
+                return (CorInfoTypeWithMod)corInfoType;
+            }
+            else
+            {
+                LocalVariableDefinition[] locals = (LocalVariableDefinition[])sigObj;
+                TypeDesc type = locals[index].Type;
+
+                CorInfoType corInfoType = _this.asCorInfoType(type, vcTypeRet);
+
+                return (CorInfoTypeWithMod)corInfoType | (locals[index].IsPinned ? CorInfoTypeWithMod.CORINFO_TYPE_MOD_PINNED : 0);
+            }
+        }
+
+        [UnmanagedCallersOnly]
+        public static CorInfoTypeWithMod getParameterType(IntPtr thisHandle, CORINFO_CLASS_STRUCT_* inputType, CORINFO_CLASS_STRUCT_** vcTypeParameter)
+        {
+            var _this = GetThis(thisHandle);
+
+            TypeDesc type = _this.HandleToObject(inputType);
+
+            *vcTypeParameter = null;
+            CorInfoType corInfoType = CorInfoType.CORINFO_TYPE_VOID;
+            if (type.IsParameterizedType)
+            {
+                TypeDesc parameterType = type.GetParameterType();
+                *vcTypeParameter = _this.ObjectToHandle(parameterType);
+                corInfoType = _this.asCorInfoType(parameterType, vcTypeParameter);
+            }
+
+            return (CorInfoTypeWithMod)corInfoType;
+        }
+
         [DllImport(JitLibrary)]
         private extern static void registerLlvmCallbacks(IntPtr thisHandle, byte* outputFileName, byte* triple, byte* dataLayout,
             delegate* unmanaged<IntPtr, CORINFO_METHOD_STRUCT_*, byte*> getMangedMethodNamePtr,
             delegate* unmanaged<IntPtr, void*, byte*> getSymbolMangledName,
+            delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, byte*> getTypeName,
             delegate* unmanaged<IntPtr, void*, void> addCodeReloc,
             delegate* unmanaged<IntPtr, CORINFO_METHOD_STRUCT_*, uint> isRuntimeImport,
             delegate* unmanaged<IntPtr, byte*> getDocumentFileName,
             delegate* unmanaged<IntPtr, uint> firstSequencePointLineNumber,
             delegate* unmanaged<IntPtr, uint, uint> getOffsetLineNumber,
-            delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, CorInfoType, uint> structIsWrappedPrimitive
+            delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, CorInfoType, uint> structIsWrappedPrimitive,
+            delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, uint, uint> padOffset,
+            delegate* unmanaged<IntPtr, CORINFO_SIG_INFO*, CORINFO_ARG_LIST_STRUCT_*, CORINFO_CLASS_STRUCT_**, CorInfoTypeWithMod> getArgTypeIncludingParameterized,
+            delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, CORINFO_CLASS_STRUCT_**, CorInfoTypeWithMod> getParameterType
             );
 
         public void RegisterLlvmCallbacks(IntPtr corInfoPtr, string outputFileName, string triple, string dataLayout)
@@ -202,12 +286,16 @@ namespace Internal.JitInterface
                 (byte*)GetPin(StringToUTF8(dataLayout)),
                 &getMangledMethodName,
                 &getSymbolMangledName,
+                &getTypeName,
                 &addCodeReloc,
                 &isRuntimeImport,
                 &getDocumentFileName,
                 &firstSequencePointLineNumber,
                 &getOffsetLineNumber,
-                &structIsWrappedPrimitive
+                &structIsWrappedPrimitive,
+                &padOffset,
+                &getArgTypeIncludingParameterized,
+                &getParameterType
             );
         }
 

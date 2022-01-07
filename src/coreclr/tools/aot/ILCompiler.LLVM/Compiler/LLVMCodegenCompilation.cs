@@ -30,6 +30,8 @@ namespace ILCompiler
         public new LLVMCodegenNodeFactory NodeFactory { get; }
         internal LLVMDIBuilderRef DIBuilder { get; }
         internal Dictionary<string, DebugMetadata> DebugMetadataMap { get; }
+        internal bool NativeLib { get; }
+
         internal LLVMCodegenCompilation(DependencyAnalyzerBase<NodeFactory> dependencyGraph,
             LLVMCodegenNodeFactory nodeFactory,
             IEnumerable<ICompilationRootProvider> roots,
@@ -39,7 +41,8 @@ namespace ILCompiler
             LLVMCodegenConfigProvider options,
             IInliningPolicy inliningPolicy,
             DevirtualizationManager devirtualizationManager,
-            InstructionSetSupport instructionSetSupport)
+            InstructionSetSupport instructionSetSupport,
+            bool nativeLib)
             : base(dependencyGraph, nodeFactory, GetCompilationRoots(roots, nodeFactory), ilProvider, debugInformationProvider, logger, devirtualizationManager, inliningPolicy, instructionSetSupport, null /* ProfileDataManager */, RyuJitCompilationOptions.SingleThreadedCompilation)
         {
             NodeFactory = nodeFactory;
@@ -51,6 +54,8 @@ namespace ILCompiler
             Options = options;
             DIBuilder = Module.CreateDIBuilder();
             DebugMetadataMap = new Dictionary<string, DebugMetadata>();
+            ILImporter.Context = Module.Context;
+            NativeLib = nativeLib;
         }
 
         private static IEnumerable<ICompilationRootProvider> GetCompilationRoots(IEnumerable<ICompilationRootProvider> existingRoots, NodeFactory factory)
@@ -127,6 +132,8 @@ namespace ILCompiler
                 if (GetMethodIL(method).GetExceptionRegions().Length == 0)
                 {
                     var sig = method.Signature;
+                    // this could be inlined, by the local makes debugging easier
+                    var mangledName = NodeFactory.NameMangler.GetMangledMethodName(method).ToString();
                     corInfo.RegisterLlvmCallbacks((IntPtr)Unsafe.AsPointer(ref corInfo), _outputFile,
                         Module.Target,
                         Module.DataLayout);
@@ -134,8 +141,7 @@ namespace ILCompiler
                     corInfo.CompileMethod(methodCodeNodeNeedingCode);
                     methodCodeNodeNeedingCode.CompilationCompleted = true;
                     // TODO: delete this external function when old module is gone
-                    LLVMValueRef externFunc = Module.AddFunction(
-                        NodeFactory.NameMangler.GetMangledMethodName(method).ToString(),
+                    LLVMValueRef externFunc = Module.AddFunction(mangledName,
                         GetLLVMSignatureForMethod(sig, method.RequiresInstArg()));
                     externFunc.Linkage = LLVMLinkage.LLVMExternalLinkage;
 
@@ -255,6 +261,11 @@ namespace ILCompiler
         public override bool StructIsWrappedPrimitive(TypeDesc method, TypeDesc primitiveTypeDesc)
         {
             return ILImporter.StructIsWrappedPrimitive(method, primitiveTypeDesc);
+        }
+
+        public override int PadOffset(TypeDesc type, uint atOffset)
+        {
+            return ILImporter.PadOffset(type, (int)atOffset);
         }
     }
 }

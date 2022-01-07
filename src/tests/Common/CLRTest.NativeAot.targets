@@ -79,7 +79,6 @@ fi
 
   <Target Name="GetNativeAotBatchScript">
     <PropertyGroup>
-      <PlatformOverride Condition="'$(TargetArchitecture)' == 'wasm'">/p:Platform=wasm</PlatformOverride>
       <ExeRunner Condition="'$(TargetArchitecture)' == 'wasm'">%EMSDK_NODE% </ExeRunner>
       <ExeExtension Condition="'$(TargetArchitecture)' == 'wasm'">.js</ExeExtension>
       <NativeAotMultimoduleIncompatibleScript Condition="'$(NativeAotMultimoduleIncompatible)' == 'true'">
@@ -111,7 +110,7 @@ if defined RunNativeAot (
         set __Command=!__Command! "dotnet"
     )
 
-    set __Command=!__Command! msbuild /p:IlcPath=!CORE_ROOT!\nativeaot nativebuild.proj $(PlatformOverride)
+    set __Command=!__Command! msbuild /p:IlcPath=!CORE_ROOT!\nativeaot nativebuild.proj
 
     if defined NativeAotMultimodule (
         set __Command=!__Command! /p:IlcMultiModule=true /p:DisableFrameworkLibGeneration=true /p:FrameworkLibPath=!CORE_ROOT!\nativeaot\sdk

@@ -32,6 +32,7 @@
     <ItemGroup Condition="'$(ClrFullNativeBuild)' != 'true'">
       <_CoreClrBuildArg Condition="'$(ClrRuntimeSubset)' == 'true'" Include="-component runtime" />
       <_CoreClrBuildArg Condition="'$(ClrJitSubset)' == 'true'" Include="-component jit" />
+      <_CoreClrBuildArg Condition="'$(ClrWasmJitSubset)' == 'true'" Include="-component wasmjit" />
       <_CoreClrBuildArg Condition="'$(ClrPalTestsSubset)' == 'true'" Include="-component paltests" />
       <_CoreClrBuildArg Condition="'$(ClrAllJitsSubset)' == 'true'" Include="-component alljits" />
       <_CoreClrBuildArg Condition="'$(ClrILToolsSubset)' == 'true'" Include="-component iltools" />
@@ -48,62 +49,4 @@
           IgnoreStandardErrorWarningFormat="true" />
   </Target>
 
-  <Target Name="BuildRuntimeWasmClrJit"
-        AfterTargets="BuildRuntime" Condition="'$(TargetArchitecture)' == 'wasm'">
-    <PropertyGroup>
-      <CMakeArgs Condition="'$(CMakeArgs)' != ''">$(CMakeArgs) -DBUILD_WASM_JIT=1</CMakeArgs>
-      <CMakeArgs Condition="'$(CMakeArgs)' == ''">-DBUILD_WASM_JIT=1</CMakeArgs>
-    </PropertyGroup>
-    <ItemGroup>
-      <_CoreClrBuildArg Remove="@(_CoreClrBuildArg)"/>
-
-      <_CoreClrBuildArg Include="-x64" />
-      <_CoreClrBuildArg Condition="!$([MSBuild]::IsOsPlatform(Windows)) and '$(CMakeArgs)' != ''" Include="$(CMakeArgs)" />
-      <_CoreClrBuildArg Condition="$([MSBuild]::IsOsPlatform(Windows)) and '$(CMakeArgs)' != ''" Include="-cmakeargs &quot;$(CMakeArgs)&quot;" />
-      <_CoreClrBuildArg Include="-$(Configuration.ToLower())" />
-      <_CoreClrBuildArg Include="$(Compiler)" />
-      <_CoreClrBuildArg Condition="'$(ContinuousIntegrationBuild)' == 'true'" Include="-ci" />
-      <_CoreClrBuildArg Condition="'$(CrossBuild)' == 'true'" Include="-cross" />
-      <_CoreClrBuildArg Condition="'$(PortableBuild)' != 'true'" Include="-portablebuild=false" />
-      <_CoreClrBuildArg Condition="'$(KeepNativeSymbols)' != 'false'" Include="-keepnativesymbols" />
-      <_CoreClrBuildArg Condition="!$([MSBuild]::IsOsPlatform(Windows))" Include="-os $(TargetOS)" />
-
-      <_CoreClrBuildArg Condition="$([MSBuild]::IsOsPlatform(Windows)) and
-                                   ('$(TargetArchitecture)' == 'x86' or '$(TargetArchitecture)' == 'x64') and
-                                   '$(Configuration)' == 'Release' and
-                                   '$(ClrRuntimeSubset)' == 'true' and
-                                   '$(NoPgoOptimize)' != 'true' and
-                                   '$(PgoInstrument)' != 'true'"
-                                   Include="-enforcepgo" />
-      <_CoreClrBuildArg Condition="$([MSBuild]::IsOsPlatform(Windows)) and '$(CrossDac)' != ''" Include="-$(CrossDac)dac" />
-      <_CoreClrBuildArg Condition="'$(Ninja)' == 'true' and !$([MSBuild]::IsOsPlatform(Windows))" Include="-ninja" />
-      <_CoreClrBuildArg Condition="'$(Ninja)' == 'false' and $([MSBuild]::IsOsPlatform(Windows))" Include="-msbuild" />
-      <_CoreClrBuildArg Condition="'$(ClrRuntimeSubset)' != 'true'" Include="-skipruntime" />
-      <_CoreClrBuildArg Condition="'$(ClrPalTestsSubset)' == 'true'" Include="-paltests" />
-      <_CoreClrBuildArg Condition="'$(ClrAllJitsSubset)' != 'true'" Include="-skipalljits" />
-      <_CoreClrBuildArg Condition="'$(PgoInstrument)' == 'true'" Include="-pgoinstrument" />
-      <_CoreClrBuildArg Condition="'$(NoPgoOptimize)' == 'true' or '$(PgoInstrument)' == 'true'" Include="-nopgooptimize" />
-      <_CoreClrBuildArg Condition="'$(OfficialBuildId)' != ''" Include="/p:OfficialBuildId=$(OfficialBuildId)" />
-    </ItemGroup>
-
-    <PropertyGroup>
-      <_CoreClrBuildScript Condition="$([MSBuild]::IsOsPlatform(Windows))">build-runtime.cmd</_CoreClrBuildScript>
-      <_CoreClrBuildScript Condition="!$([MSBuild]::IsOsPlatform(Windows))">build-runtime.sh</_CoreClrBuildScript>
-    </PropertyGroup>
-
-    <!-- Use IgnoreStandardErrorWarningFormat because Arcade sets WarnAsError and there's an existing warning in the native build. -->
-    <Exec Command="&quot;$(MSBuildThisFileDirectory)$(_CoreClrBuildScript)&quot; @(_CoreClrBuildArg->'%(Identity)',' ')"
-          IgnoreStandardErrorWarningFormat="true" />
-
-    <!-- TODO: make this less fragile -->
-    <ItemGroup>
-        <ClrJitFiles Include="$(RepoRoot)artifacts\bin\coreclr\windows.x64.$(Configuration)\*.dll"/>
-    </ItemGroup>
-    <Copy
-      SourceFiles="@(ClrJitFiles)"
-      DestinationFolder="$(RepoRoot)artifacts\bin\coreclr\$(TargetOS).$(TargetArchitecture).$(Configuration)\ilc"
-      OverwriteReadOnlyFiles="True"
-      >
-    </Copy>
-  </Target>
 </Project>

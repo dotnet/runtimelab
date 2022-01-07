@@ -47,12 +47,6 @@ struct DebugMetadata
     llvm::DICompileUnit* diCompileUnit;
 };
 
-// TODO: might need the LLVM Value* in here for exception funclets.
-struct SpilledExpressionEntry
-{
-    CorInfoType m_CorInfoType;
-};
-
 struct IncomingPhi
 {
     llvm::PHINode* phiNode;
@@ -75,13 +69,17 @@ extern "C" void registerLlvmCallbacks(void*       thisPtr,
                                       const char* triple,
                                       const char* dataLayout,
                                       const char* (*getMangledMethodNamePtr)(void*, CORINFO_METHOD_STRUCT_*),
-                                      const char* (*_getMangledSymbolNamePtr)(void*, void*),
+                                      const char* (*getMangledSymbolNamePtr)(void*, void*),
+                                      const char* (*getTypeName)(void*, CORINFO_CLASS_HANDLE),
                                       const char* (*addCodeReloc)(void*, void*),
                                       const uint32_t (*isRuntimeImport)(void*, CORINFO_METHOD_STRUCT_*),
                                       const char* (*getDocumentFileName)(void*),
                                       const uint32_t (*firstSequencePointLineNumber)(void*),
                                       const uint32_t (*getOffsetLineNumber)(void*, unsigned int),
-                                      const uint32_t (*structIsWrappedPrimitive)(void*, CORINFO_CLASS_STRUCT_*, CorInfoType));
+                                      const uint32_t(*structIsWrappedPrimitive)(void*, CORINFO_CLASS_STRUCT_*, CorInfoType),
+                                      const uint32_t(*padOffset)(void*, CORINFO_CLASS_STRUCT_*, unsigned),
+                                      const CorInfoTypeWithMod(*_getArgTypeIncludingParameterized)(void*, CORINFO_SIG_INFO*, CORINFO_ARG_LIST_HANDLE, CORINFO_CLASS_HANDLE*),
+                                      const CorInfoTypeWithMod(*_getParameterType)(void*, CORINFO_CLASS_HANDLE, CORINFO_CLASS_HANDLE*));
 
 struct PhiPair
 {
@@ -98,7 +96,6 @@ private:
     Compiler::Info _info;
     llvm::Function* _function;
     CORINFO_SIG_INFO _sigInfo; // sigInfo of function being compiled
-    bool _functionSigHasReturnAddress;
     LIR::Range* _currentRange;
     BasicBlock* _currentBlock;
     IL_OFFSETX _currentOffset;
@@ -115,25 +112,31 @@ private:
     DebugMetadata  _debugMetadata;
     std::unordered_map<std::string, struct DebugMetadata> _debugMetadataMap;
 
-    std::vector<SpilledExpressionEntry> _spilledExpressions;
     unsigned _shadowStackLocalsSize;
     unsigned _shadowStackLclNum;
     unsigned _retAddressLclNum;
+    unsigned _llvmArgCount;
 
     inline LIR::Range& CurrentRange()
     {
         return *_currentRange;
     }
 
+    void populateLlvmArgNums();
     void buildAdd(GenTree* node, Value* op1, Value* op2);
     void buildCall(GenTree* node);
     void buildCast(GenTreeCast* cast);
-    void buildCmp(genTreeOps op, GenTree* node, Value* op1, Value* op2);
+    void buildCmp(GenTree* node, Value* op1, Value* op2);
     void buildCnsDouble(GenTreeDblCon* node);
     void buildCnsInt(GenTree* node);
+    void buildHelperFuncCall(GenTreeCall* call);
+    llvm::FunctionType* buildHelperLlvmFunctionType(GenTreeCall* call, bool withShadowStack);
     void buildInd(GenTree* node, Value* ptr);
     Value* buildJTrue(GenTree* node, Value* opValue);
     void buildEmptyPhi(GenTreePhi* phi);
+    void buildUnaryOperation(GenTree* node);
+    void buildBinaryOperation(GenTree* node);
+    void buildShift(GenTreeOp* node);
     void buildReturn(GenTree* node);
     void buildReturnRef(GenTreeOp* node);
     Value* buildUserFuncCall(GenTreeCall* call);
@@ -142,22 +145,28 @@ private:
     void castingStore(Value* toStore, Value* address, llvm::Type* llvmType);
     void castingStore(Value* toStore, Value* address, var_types type);
     Value* castToPointerToLlvmType(Value* address, llvm::Type* llvmType);
+    Value* consumeValue(GenTree* node, llvm::Type* targetLlvmType);
     llvm::DILocation* createDebugFunctionAndDiLocation(struct DebugMetadata debugMetadata, unsigned int lineNo);
+    GenTree* createStoreNode(var_types nodeType, GenTree* addr, GenTree* data, ClassLayout* structClassLayout = nullptr);
+    GenTree* createShadowStackStoreNode(var_types nodeType, GenTree* addr, GenTree* data, ClassLayout* structClassLayout);
     void ConvertShadowStackLocalNode(GenTreeLclVarCommon* node);
     void emitDoNothingCall();
     void endImportingBasicBlock(BasicBlock* block);
-    void failFunctionCompilation();
+    [[noreturn]] void   failFunctionCompilation();
+    void failUnsupportedCalls(GenTreeCall* callNode, CORINFO_SIG_INFO &calleeSigInfo);
     void fillPhis();
     llvm::Instruction* getCast(llvm::Value* source, Type* targetType);
     void generateProlog();
     CorInfoType getCorInfoTypeForArg(CORINFO_SIG_INFO& sigInfo, CORINFO_ARG_LIST_HANDLE& arg, CORINFO_CLASS_HANDLE* clsHnd);
-    llvm::FunctionType* getFunctionTypeForSigInfo(CORINFO_SIG_INFO& sigInfo);
+    llvm::FunctionType* getFunctionType();
+    llvm::FunctionType* getFunctionTypeForCall(GenTreeCall* callNode);
     Value* getGenTreeValue(GenTree* node);
     LlvmArgInfo getLlvmArgInfoForArgIx(CORINFO_SIG_INFO& sigInfo, unsigned int lclNum);
     llvm::BasicBlock* getLLVMBasicBlockForBlock(BasicBlock* block);
     Type* getLlvmTypeForCorInfoType(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd);
+    Type* getLlvmTypeForParameterType(CORINFO_CLASS_HANDLE classHnd);
     Type* getLlvmTypeForStruct(CORINFO_CLASS_HANDLE structHandle);
-    Type* getLLVMTypeForVarType(var_types type);
+    Type* getLlvmTypeForVarType(var_types type);
     int getLocalOffsetAtIndex(GenTreeLclVar* lclVar);
     Value* getLocalVarAddress(GenTreeLclVar* lclVar);
     struct DebugMetadata getOrCreateDebugMetadata(const char* documentFileName);
@@ -166,21 +175,26 @@ private:
     Value* getSsaLocalForPhi(unsigned lclNum, unsigned ssaNum);
     Value* getShadowStackOffest(Value* shadowStack, unsigned int offset);
     unsigned int getTotalRealLocalOffset();
-    Value* genTreeAsLlvmType(GenTree* tree, Type* type);
     unsigned getElementSize(CORINFO_CLASS_HANDLE fieldClassHandle, CorInfoType corInfoType);
     unsigned int getTotalLocalOffset();
+    bool helperRequiresShadowStack(CORINFO_METHOD_HANDLE corinfoMethodHnd);
     void importStoreInd(GenTreeStoreInd* storeIndOp);
-    bool isThisArg(GenTreeCall* call, GenTree* operand);
     Value* localVar(GenTreeLclVar* lclVar);
+
+    GenTreeCall::Use* lowerCallReturn(GenTreeCall* callNode, CORINFO_SIG_INFO& calleeSigInfo, GenTreeCall::Use* lastArg);
+    void lowerCallToShadowStack(GenTreeCall* callNode, CORINFO_SIG_INFO& calleeSigInfo);
+    void lowerToShadowStack();
+
     Value* mapGenTreeToValue(GenTree* genTree, Value* valueRef);
     bool needsReturnStackSlot(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd);
-    unsigned int padNextOffset(CorInfoType corInfoType, unsigned int atOffset);
-    unsigned int padOffset(CorInfoType corInfoType, unsigned int atOffset);
+    unsigned int padNextOffset(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHandle, unsigned int atOffset);
+    unsigned int padOffset(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHandle, unsigned int atOffset);
     void startImportingBasicBlock(BasicBlock* block);
     void startImportingNode();
     void storeOnShadowStack(GenTree* operand, Value* shadowStackForCallee, unsigned int offset);
     void storeLocalVar(GenTreeLclVar* lclVar);
     CorInfoType toCorInfoType(var_types varType);
+    CORINFO_CLASS_HANDLE tryGetStructClassHandle(LclVarDsc* varDsc);
     void visitNode(GenTree* node);
     Value* Llvm::zextIntIfNecessary(Value* intValue);
 
@@ -189,8 +203,6 @@ public:
 
     static void llvmShutdown();
 
-
-    void ConvertShadowStackLocals();
     void PlaceAndConvertShadowStackLocals();
     void Compile();
 };

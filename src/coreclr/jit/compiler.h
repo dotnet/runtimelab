@@ -377,7 +377,13 @@ public:
     // Initialize the ArgRegs to REG_STK.
     // Morph will update if this local is passed in a register.
     LclVarDsc()
-        : _lvArgReg(REG_STK)
+        :
+#if defined(TARGET_WASM)
+        lvLlvmArgNum(BAD_LLVM_ARG_NUM),
+        lvCorInfoType(CORINFO_TYPE_UNDEF)
+        ,
+#endif // TARGET_WASM
+        _lvArgReg(REG_STK)
         ,
 #if FEATURE_MULTIREG_ARGS
         _lvOtherArgReg(REG_STK)
@@ -566,6 +572,11 @@ public:
     unsigned char lvFieldCnt; //  Number of fields in the promoted VarDsc.
     unsigned char lvFldOffset;
     unsigned char lvFldOrdinal;
+
+#if defined(TARGET_WASM)
+    unsigned int lvLlvmArgNum;
+    CorInfoType  lvCorInfoType;
+#endif
 
 #ifdef DEBUG
     unsigned char lvSingleDefDisqualifyReason = 'H';
@@ -2893,6 +2904,12 @@ public:
     GenTree* gtNewOneConNode(var_types type);
 
     GenTreeLclVar* gtNewStoreLclVar(unsigned dstLclNum, GenTree* src);
+
+#ifdef TARGET_WASM
+    GenTreePutArgType* Compiler::gtNewPutArgType(GenTree*             op,
+                                                 CorInfoType          corInfoType,
+                                                 CORINFO_CLASS_HANDLE clsHnd);
+#endif
 
 #ifdef FEATURE_SIMD
     GenTree* gtNewSIMDVectorZero(var_types simdType, CorInfoType simdBaseJitType, unsigned simdSize);

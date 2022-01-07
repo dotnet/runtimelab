@@ -167,8 +167,21 @@
       <RunTimeDependencyCopyLocal Include="$(CoreDisToolsLibrary)" Condition="$(CopyCoreDisToolsToCoreRoot)" />
     </ItemGroup>
 
+    <PropertyGroup>
+      <IlcDir>$(CoreCLRArtifactsPath)ilc</IlcDir>
+    </PropertyGroup>
+
+    <!-- When cross-compiling tests (such as is the case for Wasm), we depends on the host's ILC being built. -->
+    <!-- This is a workaround for ILC's project not supporting cross-targeting. Remove once that's implemented. -->
+    <PropertyGroup Condition="'$(TargetArchitecture)' != '$(BuildArchitecture)'">
+      <IlcDir>$([MSBuild]::NormalizeDirectory('$(RepoRoot)', 'artifacts', 'bin', 'coreclr', '$(BuildOS).$(BuildArchitecture).$(CoreCLRConfiguration)'))ilc</IlcDir>
+    </PropertyGroup>
+
+    <Error Condition="!Exists('$(IlcDir)')"
+           Text="'$(IlcDir)' does not exist. Subsets clr.jit, clr.wasmjit and nativeaot.ilc for $(BuildOS) $(BuildArchitecture) in $(CoreCLRConfiguration) configuration must be built before building this project." />
+
     <ItemGroup>
-      <RunTimeDependencyCopyLocal Include="$(CoreCLRArtifactsPath)ilc/**/*" TargetDir="nativeaot/tools/" />
+      <RunTimeDependencyCopyLocal Include="$(IlcDir)/**/*" TargetDir="nativeaot/tools/" />
       <RunTimeDependencyCopyLocal Include="$(CoreCLRArtifactsPath)aotsdk/**/*" TargetDir="nativeaot/sdk/" />
       <RunTimeDependencyCopyLocal Include="$(CoreCLRArtifactsPath)build/**/*" TargetDir="nativeaot/build/" />
       <RunTimeDependencyCopyLocal Include="$(TargetingPackPath)/*" TargetDir="nativeaot/framework/" />

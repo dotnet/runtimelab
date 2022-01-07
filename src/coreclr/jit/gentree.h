@@ -29,6 +29,10 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 #include "namedintrinsiclist.h"
 #include "layout.h"
 
+#ifdef TARGET_WASM
+extern var_types JITtype2varType(CorInfoType type);
+#endif // TARGET_WASM
+
 // Debugging GenTree is much easier if we add a magic virtual function to make the debugger able to figure out what type
 // it's got. This is enabled by default in DEBUG. To enable it in RET builds (temporarily!), you need to change the
 // build to define DEBUGGABLE_GENTREE=1, as well as pass /OPT:NOICF to the linker (or else all the vtables get merged,
@@ -4743,6 +4747,10 @@ struct GenTreeCall final : public GenTree
     unsigned char gtCallType : 3;   // value from the gtCallTypes enumeration
     unsigned char gtReturnType : 5; // exact return type
 
+#if defined(TARGET_WASM)
+    CorInfoType gtCorInfoType; // the precise return type used to construct the signature
+#endif
+
     CORINFO_CLASS_HANDLE gtRetClsHnd; // The return type handle of the call if it is a struct; always available
 
     union {
@@ -6687,6 +6695,48 @@ struct GenTreePutArgSplit : public GenTreePutArgStk
 };
 #endif // FEATURE_ARG_SPLIT
 
+#if defined(TARGET_WASM)
+struct GenTreePutArgType : public GenTreeUnOp
+{
+private:
+    CorInfoType          m_CorInfoType;
+    CORINFO_CLASS_HANDLE m_ClsHnd; // The struct handle if this is a struct, the pointee type if this is a pointer.
+#if DEBUG
+    unsigned m_argNum;
+#endif 
+
+public:
+    GenTreePutArgType(GenTree* op, CorInfoType corInfoType, CORINFO_CLASS_HANDLE clsHnd)
+        : GenTreeUnOp(GT_PUTARG_TYPE, JITtype2varType(corInfoType), op)
+        , m_CorInfoType(corInfoType)
+        , m_ClsHnd(clsHnd)
+    {
+    }
+
+    CorInfoType GetCorInfoType() const
+    {
+        return m_CorInfoType;
+    }
+
+    CORINFO_CLASS_HANDLE GetClsHnd() const
+    {
+        return m_ClsHnd;
+    }
+
+#if DEBUG
+    unsigned GetArgNum()
+    {
+        return m_argNum;
+    }
+
+    void SetArgNum(unsigned argNum)
+    {
+        m_argNum = argNum;
+    }
+#endif // DEBUG
+};
+#endif // TARGET_WASM
+
 // Represents GT_COPY or GT_RELOAD node
 //
 // As it turns out, these are only needed on targets that happen to have multi-reg returns.
@@ -7181,7 +7231,7 @@ struct GenTreeCC final : public GenTree
 
 inline bool GenTree::OperIsBlkOp()
 {
-    return ((gtOper == GT_ASG) && varTypeIsStruct(AsOp()->gtOp1)) || (OperIsBlk() && (AsBlk()->Data() != nullptr));
+    return ((gtOper == GT_ASG) && varTypeIsStruct(AsOp()->gtOp1)) || OperIs(GT_STORE_DYN_BLK, GT_STORE_BLK, GT_STORE_OBJ);
 }
 
 inline bool GenTree::OperIsDynBlkOp()

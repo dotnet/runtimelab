@@ -331,6 +331,10 @@ bool jitIsCallInstruction(IL_OFFSETX offsx);
 
 const unsigned BAD_VAR_NUM = UINT_MAX;
 
+#if defined(TARGET_WASM)
+const unsigned BAD_LLVM_ARG_NUM = UINT_MAX;
+#endif
+
 // Code can't be more than 2^31 in any direction.  This is signed, so it should be used for anything that is
 // relative to something else.
 typedef int NATIVE_OFFSET;

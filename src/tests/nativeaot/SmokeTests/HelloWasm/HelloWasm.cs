@@ -373,12 +373,28 @@ internal static class Program
 
         TestBoolCompare();
 
+        TestDifferentSizeIntOperator();
+
         // This test should remain last to get other results before stopping the debugger
         PrintLine("Debugger.Break() test: Ok if debugger is open and breaks.");
         System.Diagnostics.Debugger.Break();
 
         PrintLine("Done");
         return Success ? 100 : -1;
+    }
+
+    class ShortAndByte { internal short aShort; internal byte aByte; }
+    private static void TestDifferentSizeIntOperator()
+    {
+        StartTest("Logical and short and int");
+
+        var o = new ShortAndByte
+        {
+            aShort = 3,
+            aByte = 2,
+        };
+
+        EndTest((o.aShort & o.aByte) == 2);
     }
 
     private static void TestGC()

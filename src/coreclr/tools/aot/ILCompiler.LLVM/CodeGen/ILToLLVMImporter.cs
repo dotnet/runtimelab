@@ -41,7 +41,7 @@ namespace Internal.IL
         }
 
         public LLVMModuleRef Module { get; }
-        public static LLVMContextRef Context { get; private set; }
+        internal static LLVMContextRef Context { get; set; }
         private static Dictionary<TypeDesc, LLVMTypeRef> LlvmStructs { get; } = new Dictionary<TypeDesc, LLVMTypeRef>();
         private readonly MethodDesc _method;
         private readonly MethodIL _methodIL;
@@ -168,7 +168,6 @@ namespace Internal.IL
 
             _debugInformation = _compilation.GetDebugInfo(_methodIL);
 
-            Context = Module.Context;
             _builder = Context.CreateBuilder();
         }
 
@@ -1482,6 +1481,36 @@ namespace Internal.IL
             return false;
         }
 
+        // TODO-LLVM: this is a copy of some of the logic in GatherClassGCLayout so we get the same logic as clrjit for
+        // determining if a struct should be passed on the shadow stack.  Span<char/T> is an example.
+        private static bool ContainsIsByReferenceOfT(TypeDesc type)
+        {
+            if (type.IsByReferenceOfT)
+            {
+                return true;
+            }
+
+            foreach (var field in type.GetFields())
+            {
+                if (field.IsStatic)
+                    continue;
+
+                var fieldType = field.FieldType;
+                if (fieldType.IsValueType)
+                {
+                    var fieldDefType = (DefType)fieldType;
+                    if (!fieldDefType.ContainsGCPointers && !fieldDefType.IsByRefLike)
+                        continue;
+
+                    if (ContainsIsByReferenceOfT(fieldType))
+                    {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
         /// <summary>
         /// Returns true if the type can be stored on the local stack
         /// instead of the shadow stack in this method.
@@ -1490,12 +1519,12 @@ namespace Internal.IL
         {
             if (type is DefType defType)
             {
-                if (!defType.IsGCPointer && !defType.ContainsGCPointers)
+                if (!defType.IsGCPointer && !defType.ContainsGCPointers && !ContainsIsByReferenceOfT(type))
                 {
                     return true;
                 }
             }
-            else if (type is PointerType)
+            else if (type is PointerType || type is FunctionPointerType)
             {
                 return true;
             }
@@ -3089,8 +3118,9 @@ namespace Internal.IL
                 llvmArguments[i] = arguments[i].ValueAsType(GetLLVMTypeForTypeDesc(signatureType), _builder);
             }
 
-            // Save the top of the shadow stack in case the callee reverse P/Invokes
+            // Save the top of the shadow stack in case the callee reverse P/Invokes.  Restore ShadowStackTop after invoke
             LLVMValueRef stackFrameSize = BuildConstInt32(GetTotalParameterOffset() + GetTotalLocalOffset());
+            LLVMValueRef shadowStackToRestore = _builder.BuildLoad(ShadowStackTop);
             _builder.BuildStore(_builder.BuildGEP(_currentFunclet.GetParam(0), new LLVMValueRef[] {stackFrameSize}, "shadowStackTop"), ShadowStackTop);
 
             LLVMValueRef pInvokeTransitionFrame = default;
@@ -3114,6 +3144,10 @@ namespace Internal.IL
                 LLVMValueRef RhpPInvokeReturn2 = GetOrCreateLLVMFunction("RhpPInvokeReturn2", pInvokeFunctionType);
                 _builder.BuildCall(RhpPInvokeReturn2, new LLVMValueRef[] { pInvokeTransitionFrame }, "");
             }
+
+            // If the callee originates from an UnmanagedCallersOnly function then we need to restore the thread local for the shadow stack
+            // or else it will have the value stored for this invoke and grow until memory is exceeded.  
+            _builder.BuildStore(shadowStackToRestore, ShadowStackTop);
 
             if (!method.Signature.ReturnType.IsVoid)
                 return new ExpressionEntry(GetStackValueKind(method.Signature.ReturnType), "retval", returnValue, forcedReturnType ?? method.Signature.ReturnType);
