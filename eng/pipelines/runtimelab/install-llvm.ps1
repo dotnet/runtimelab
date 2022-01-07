@@ -18,11 +18,11 @@ cd build
 
 if($buildConfig -eq "Release")
 {
-    & "$env:CMakePath" -G "Visual Studio 16 2019" -DCMAKE_BUILD_TYPE=Release -DLLVM_USE_CRT_DEBUG=MTd -Thost=x64 ..
+    & "$env:CMakePath" -G "Visual Studio 16 2019" -DCMAKE_BUILD_TYPE=Release -LLVM_USE_CRT_RELEASE=MT -Thost=x64 ..
 }
 else
 {
-    & "$env:CMakePath" -G "Visual Studio 16 2019" -DCMAKE_BUILD_TYPE=Debug -LLVM_USE_CRT_RELEASE=MT -Thost=x64 ..
+    & "$env:CMakePath" -G "Visual Studio 16 2019" -DCMAKE_BUILD_TYPE=Debug -DLLVM_USE_CRT_DEBUG=MTd -Thost=x64 ..
 }
 
 & "$env:CMakePath" --build . --config $buildConfig --target LLVMCore
