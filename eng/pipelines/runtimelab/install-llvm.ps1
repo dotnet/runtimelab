@@ -1,5 +1,5 @@
 param (
-    [string]$buildConfig = "Release"
+    [string]$buildConfig
 )
 
 # LLVM is supplied in a gz file which Windows doesn't native understand, so we need gz to unpack it - TODO this is liable to fail randomly when a new version comes out and the version number changes
