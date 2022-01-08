@@ -4,7 +4,7 @@ cd /D "%1"
 set RepoRoot=%2\
 
 set buildConfig=%3
-echo Building LLVM with config %buildConfig%
+echo Building LLVM with config: %buildConfig%
 
 set
 :: Set CMakePath by evaluating the output from set-cmake-path.ps1
