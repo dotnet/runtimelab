@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Threading;
+using ILCompiler.Compiler;
 using Internal.TypeSystem;
 using Internal.IL;
 
@@ -43,7 +44,7 @@ namespace ILCompiler
             DevirtualizationManager devirtualizationManager,
             InstructionSetSupport instructionSetSupport,
             bool nativeLib)
-            : base(dependencyGraph, nodeFactory, GetCompilationRoots(roots, nodeFactory), ilProvider, debugInformationProvider, logger, devirtualizationManager, inliningPolicy, instructionSetSupport, null /* ProfileDataManager */, RyuJitCompilationOptions.SingleThreadedCompilation)
+            : base(dependencyGraph, nodeFactory, GetCompilationRoots(roots, nodeFactory), ilProvider, debugInformationProvider, logger, devirtualizationManager, inliningPolicy ?? new LLVMNoInLiningPolicy(), instructionSetSupport, null /* ProfileDataManager */, RyuJitCompilationOptions.SingleThreadedCompilation)
         {
             NodeFactory = nodeFactory;
             LLVMModuleRef m = LLVMModuleRef.CreateWithName(options.ModuleName);
@@ -149,7 +150,7 @@ namespace ILCompiler
 
                     ryuJitMethodCount++;
                 }
-                    else ILImporter.CompileMethod(this, methodCodeNodeNeedingCode);
+                else ILImporter.CompileMethod(this, methodCodeNodeNeedingCode);
             }
             catch (CodeGenerationFailedException)
             {

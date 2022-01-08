@@ -15,6 +15,7 @@
 #include "llvm/Bitcode/BitcodeWriter.h"
 #include "llvm/IR/DIBuilder.h"
 #include "llvm/BinaryFormat/Dwarf.h"
+#include "llvm/IR/Verifier.h"
 #pragma warning (error: 4702)
 
 using llvm::Function;
@@ -1655,14 +1656,13 @@ llvm::DILocation* Llvm::createDebugFunctionAndDiLocation(struct DebugMetadata de
         llvm::DISubroutineType* functionMetaType = _diBuilder->createSubroutineType({} /* TODO - function parameter types*/, llvm::DINode::DIFlags::FlagZero);
         uint32_t lineNumber = _firstSequencePointLineNumber(_thisPtr);
 
-#ifdef DEBUG // TODO-LLVM: there is no compMethodName in Release configuration
-        _debugFunction = _diBuilder->createFunction(debugMetadata.fileMetadata, _info.compMethodName,
-                                                    _info.compMethodName, debugMetadata.fileMetadata, lineNumber,
+        const char* methodName = _info.compCompHnd->getMethodName(_info.compMethodHnd, nullptr);
+        _debugFunction = _diBuilder->createFunction(debugMetadata.fileMetadata, methodName,
+                                                    methodName, debugMetadata.fileMetadata, lineNumber,
                                                     functionMetaType, lineNumber, llvm::DINode::DIFlags::FlagZero,
                                                     llvm::DISubprogram::DISPFlags::SPFlagDefinition |
                                                         llvm::DISubprogram::DISPFlags::SPFlagLocalToUnit);
         _function->setSubprogram(_debugFunction);
-#endif // DEBUG
     }
     return llvm::DILocation::get(_llvmContext, lineNo, 0, _debugFunction);
 }
@@ -1700,20 +1700,22 @@ void Llvm::llvmShutdown()
 
     std::error_code ec;
 
-#ifdef DEBUG
     if (_outputFileName == nullptr) return; // nothing generated
+
+#ifdef DEBUG
     char* txtFileName = (char*)malloc(strlen(_outputFileName) + 2); // .txt is longer than .bc
     strcpy(txtFileName, _outputFileName);
     strcpy(txtFileName + strlen(_outputFileName) - 2, "txt");
     llvm::raw_fd_ostream textOutputStream(txtFileName, ec);
     _module->print(textOutputStream, (llvm::AssemblyAnnotationWriter*)NULL);
     free(txtFileName);
+
+    assert(llvm::verifyModule(*_module, &llvm::errs()));
 #endif //DEBUG
 
     llvm::raw_fd_ostream OS(_outputFileName, ec);
     llvm::WriteBitcodeToFile(*_module, OS);
     delete _module;
-    //    Module.Verify(LLVMVerifierFailureAction.LLVMAbortProcessAction);
 }
 
 void Llvm::populateLlvmArgNums()

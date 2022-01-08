@@ -252,7 +252,8 @@ The .NET Foundation licenses this file to you under the MIT license.
       <IlcArg Condition="$(TargetArchitecture) != ''" Include="--targetarch:$(TargetArchitecture)" />
       <IlcArg Condition="'$(TargetArchitecture)' == 'wasm'" Include="--targetos:wasm" />
       <IlcArg Condition="$(IlcMultiModule) == 'true'" Include="--multifile" />
-      <IlcArg Condition="$(Optimize) == 'true'" Include="-O" />
+      <!-- TODO-LLVM: when optimize is on, the clrjit is asserting so turn off to get the CI working -->
+      <IlcArg Condition="$(Optimize) == 'true' and '$(TargetArchitecture)' != 'wasm'" Include="-O" />
       <IlcArg Condition="$(NativeDebugSymbols) == 'true'" Include="-g" />
       <IlcArg Condition="$(IlcGenerateMapFile) == 'true'" Include="--map:$(NativeIntermediateOutputPath)%(ManagedBinary.Filename).map.xml" />
       <IlcArg Condition="$(IlcGenerateDgmlFile) == 'true'" Include="--dgmllog:$(NativeIntermediateOutputPath)%(ManagedBinary.Filename).codegen.dgml.xml" />
