@@ -1710,7 +1710,8 @@ void Llvm::llvmShutdown()
     _module->print(textOutputStream, (llvm::AssemblyAnnotationWriter*)NULL);
     free(txtFileName);
 
-    assert(llvm::verifyModule(*_module, &llvm::errs()));
+    // verifyModule returns true when its broken, so invert
+    assert(!llvm::verifyModule(*_module, &llvm::errs()));
 #endif //DEBUG
 
     llvm::raw_fd_ostream OS(_outputFileName, ec);
