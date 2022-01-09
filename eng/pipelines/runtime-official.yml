@@ -78,6 +78,7 @@ stages:
       - windows_x64
       - windows_arm
       - windows_arm64
+      - Browser_wasm_win
       jobParameters:
         isOfficialBuild: ${{ variables.isOfficialBuild }}
         signBinaries: ${{ variables.isOfficialBuild }}
@@ -131,7 +132,7 @@ stages:
       - Linux_arm
       - Linux_arm64
       - Linux_musl_x64
-      - Browser_wasm
+      # - Browser_wasm
       # - Linux_musl_arm
       # - Linux_musl_arm64
       - windows_x64
@@ -154,7 +155,7 @@ stages:
       buildConfig: release
       platforms:
       - Android_x64
-      - Browser_wasm
+      # - Browser_wasm
       - tvOS_arm64
       - iOS_arm64
       - MacCatalyst_x64
@@ -179,7 +180,7 @@ stages:
         - mono_browser_offsets
         monoCrossAOTTargetOS:
         - Android
-        - Browser
+        # - Browser
         isOfficialBuild: ${{ variables.isOfficialBuild }}
         extraStepsTemplate: /eng/pipelines/common/upload-intermediate-artifacts-step.yml
         extraStepsParameters:
@@ -202,7 +203,7 @@ stages:
         - mono_browser_offsets
         monoCrossAOTTargetOS:
         - Android
-        - Browser
+        # - Browser
         isOfficialBuild: ${{ variables.isOfficialBuild }}
         extraStepsTemplate: /eng/pipelines/common/upload-intermediate-artifacts-step.yml
         extraStepsParameters:
@@ -228,7 +229,7 @@ stages:
         - mono_maccatalyst_offsets
         monoCrossAOTTargetOS:
         - Android
-        - Browser
+        # - Browser
         - tvOS
         - iOS
         - MacCatalyst
@@ -301,6 +302,7 @@ stages:
       - windows_x64
       - windows_arm
       - windows_arm64
+      - Browser_wasm_win
       jobParameters:
         isOfficialBuild: ${{ variables.isOfficialBuild }}
         liveRuntimeBuildConfig: release
@@ -342,6 +344,7 @@ stages:
       - windows_x64
       - windows_arm
       - windows_arm64
+      - Browser_wasm_win
 
   #
   # Build PGO CoreCLR release
@@ -391,7 +394,7 @@ stages:
         - Build_Android_arm64_release_AllSubsets_Mono
         - Build_Android_x86_release_AllSubsets_Mono
         - Build_Android_x64_release_AllSubsets_Mono
-        - Build_Browser_wasm_release_AllSubsets_Mono
+        # - Build_Browser_wasm_release_AllSubsets_Mono
         - Build_iOS_arm_release_AllSubsets_Mono
         - Build_iOS_arm64_release_AllSubsets_Mono
         - Build_iOSSimulator_x64_release_AllSubsets_Mono
