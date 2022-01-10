@@ -58,17 +58,29 @@ Note that it is important to use _the same version_ for both packages to avoid p
 
 For WebAssembly, it is always a cross-architecture scenario as the compiler runs on Windows/Linux/MacOS and the runtime is for WebAssembly.  The required package reference is
 ```xml
-<PackageReference Include="Microsoft.DotNet.ILCompiler.LLVM; runtime.browser-wasm.Microsoft.DotNet.ILCompiler.LLVM" Version="7.0.0-*" />
+<PackageReference Include="Microsoft.DotNet.ILCompiler.LLVM; runtime.win-x64.Microsoft.DotNet.ILCompiler.LLVM" Version="7.0.0-*" />
 ```
 and the publish command (there is no Release build currently)
 ```bash
-> dotnet publish -r browser-wasm -c Debug /p:TargetArchitecture=wasm
+> dotnet publish -r browser-wasm -c Debug /p:TargetArchitecture=wasm /p:PlatformTarget=AnyCPU
+```
+To compile a WebAssembly native library that exports a function `Answer` :
+```cs
+    [System.Runtime.InteropServices.UnmanagedCallersOnly(EntryPoint = "Answer")]
+    public static int Answer()
+    {
+        return 42;
+    }
+```
+```bash
+>dotnet publish /p:NativeLib=Static /p:SelfContained=true -r browser-wasm -c Debug /p:TargetArchitecture=wasm /p:PlatformTarget=AnyCPU /p:MSBuildEnableWorkloadResolver=false /p:EmccExtraArgs="-s EXPORTED_FUNCTIONS=_Answer -s EXPORTED_RUNTIME_METHODS=cwrap" --self-contained
 ```
 
-Note that the wasm-tools workload is required even though its not used.
+Note that the wasm-tools workload is identified as a dependency even though its not used, either
 ```bash
 > dotnet workload install wasm-tools
 ```
+or add `/p:MSBuildEnableWorkloadResolver=false` to the `dotnet publish` command
 
 
 Similarly, to target linux-arm64 on a Linux x64 host, in addition to the `Microsoft.DotNet.ILCompiler` package reference, also add the `runtime.linux-x64.Microsoft.DotNet.ILCompiler` package reference to get the x64-hosted compiler:
