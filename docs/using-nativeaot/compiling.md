@@ -64,16 +64,16 @@ and the publish command (there is no Release build currently)
 ```bash
 > dotnet publish -r browser-wasm -c Debug /p:TargetArchitecture=wasm /p:PlatformTarget=AnyCPU
 ```
-To compile a WebAssembly native library that exports a function `Answer` :
+To compile a WebAssembly native library that exports a function `Answer`:
 ```cs
-    [System.Runtime.InteropServices.UnmanagedCallersOnly(EntryPoint = "Answer")]
-    public static int Answer()
-    {
-        return 42;
-    }
+[System.Runtime.InteropServices.UnmanagedCallersOnly(EntryPoint = "Answer")]
+public static int Answer()
+{
+    return 42;
+}
 ```
 ```bash
->dotnet publish /p:NativeLib=Static /p:SelfContained=true -r browser-wasm -c Debug /p:TargetArchitecture=wasm /p:PlatformTarget=AnyCPU /p:MSBuildEnableWorkloadResolver=false /p:EmccExtraArgs="-s EXPORTED_FUNCTIONS=_Answer -s EXPORTED_RUNTIME_METHODS=cwrap" --self-contained
+> dotnet publish /p:NativeLib=Static /p:SelfContained=true -r browser-wasm -c Debug /p:TargetArchitecture=wasm /p:PlatformTarget=AnyCPU /p:MSBuildEnableWorkloadResolver=false /p:EmccExtraArgs="-s EXPORTED_FUNCTIONS=_Answer -s EXPORTED_RUNTIME_METHODS=cwrap" --self-contained
 ```
 
 Note that the wasm-tools workload is identified as a dependency even though its not used, either
