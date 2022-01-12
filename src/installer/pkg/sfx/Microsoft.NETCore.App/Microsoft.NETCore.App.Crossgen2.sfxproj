@@ -39,6 +39,7 @@
     <NativeRuntimeAsset Include="$(CoreCLRCrossgen2Dir)$(LibPrefix)clrjit_win_x86_$(TargetArchitecture)$(LibSuffix)" TargetPath="tools/"  />
     <NativeRuntimeAsset Include="$(CoreCLRCrossgen2Dir)$(LibPrefix)clrjit_win_arm_$(TargetArchitecture)$(LibSuffix)" TargetPath="tools/"  />
     <NativeRuntimeAsset Include="$(CoreCLRCrossgen2Dir)$(LibPrefix)clrjit_unix_arm_$(TargetArchitecture)$(LibSuffix)" TargetPath="tools/"  />
+    <NativeRuntimeAsset Condition="'$(TargetArchitecture)' == 'x64'" Include="$(CoreCLRCrossgen2Dir)$(LibPrefix)clrjit_browser_wasm32_$(TargetArchitecture)$(LibSuffix)"  TargetPath="tools/" />
     <NativeRuntimeAsset Condition="'$(TargetArchitecture)' == 'arm64' or  '$(TargetArchitecture)' == 'x64'" Include="$(CoreCLRCrossgen2Dir)$(LibPrefix)clrjit_win_x64_$(TargetArchitecture)$(LibSuffix)"  TargetPath="tools/" />
     <NativeRuntimeAsset Condition="'$(TargetArchitecture)' == 'arm64' or  '$(TargetArchitecture)' == 'x64'" Include="$(CoreCLRCrossgen2Dir)$(LibPrefix)clrjit_win_arm64_$(TargetArchitecture)$(LibSuffix)" TargetPath="tools/"  />
     <NativeRuntimeAsset Condition="'$(TargetArchitecture)' == 'arm64' or  '$(TargetArchitecture)' == 'x64'" Include="$(CoreCLRCrossgen2Dir)$(LibPrefix)clrjit_unix_x64_$(TargetArchitecture)$(LibSuffix)" TargetPath="tools/" />
