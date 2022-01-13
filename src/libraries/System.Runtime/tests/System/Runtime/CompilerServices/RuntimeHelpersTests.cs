@@ -154,7 +154,6 @@ namespace System.Runtime.CompilerServices.Tests
 
             if (RuntimeFeature.IsDynamicCodeSupported)
             {
-
                 // Generic definition without instantiation is invalid
                 Assert.Throws<ArgumentException>(() => RuntimeHelpers.PrepareMethod(typeof(Array).GetMethod("Resize").MethodHandle,
                     null));
@@ -284,7 +283,7 @@ namespace System.Runtime.CompilerServices.Tests
             }
         }
 
-        [ActiveIssue("https://github.com/dotnet/runtimelab/issues/155" /* NativeAot */)]
+        [ActiveIssue("https://github.com/dotnet/runtimelab/issues/155", typeof(PlatformDetection), nameof(PlatformDetection.IsNativeAot))]
         [Fact]
         public static void GetUninitalizedObject_DoesNotRunBeforeFieldInitCctors()
         {

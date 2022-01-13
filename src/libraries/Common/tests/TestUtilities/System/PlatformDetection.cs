@@ -28,7 +28,7 @@ namespace System
         public static bool IsMonoInterpreter => GetIsRunningOnMonoInterpreter();
         public static bool IsMonoAOT => Environment.GetEnvironmentVariable("MONO_AOT_MODE") == "aot";
         public static bool IsNotMonoAOT => Environment.GetEnvironmentVariable("MONO_AOT_MODE") != "aot";
-        public static bool IsNativeAot => !IsReflectionEmitSupported;
+        public static bool IsNativeAot => IsNotMonoRuntime && !IsReflectionEmitSupported;
         public static bool IsFreeBSD => RuntimeInformation.IsOSPlatform(OSPlatform.Create("FREEBSD"));
         public static bool IsNetBSD => RuntimeInformation.IsOSPlatform(OSPlatform.Create("NETBSD"));
         public static bool IsAndroid => RuntimeInformation.IsOSPlatform(OSPlatform.Create("ANDROID"));
@@ -61,10 +61,10 @@ namespace System
 
         public static bool IsCaseInsensitiveOS => IsWindows || IsOSX || IsMacCatalyst;
         public static bool IsCaseSensitiveOS => !IsCaseInsensitiveOS;
-        public static bool IsSymLinkSupported => !IsiOS && !IstvOS;
 
         public static bool IsThreadingSupported => !IsBrowser;
         public static bool IsBinaryFormatterSupported => IsNotMobile && !IsNativeAot;
+        public static bool IsSymLinkSupported => !IsiOS && !IstvOS;
 
         public static bool IsSpeedOptimized => !IsSizeOptimized;
         public static bool IsSizeOptimized => IsBrowser || IsAndroid || IsAppleMobile;
