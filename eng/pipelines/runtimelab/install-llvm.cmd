@@ -13,8 +13,8 @@ echo Using CMake at "%CMakePath%"
 
 set
 
-REM There is no [C/c]hecked LLVM config, so change to Release
-if /I %buildConfig% EQU checked set buildConfig=Release
+REM There is no [C/c]hecked LLVM config, so change to Debug
+if /I %buildConfig% EQU checked set buildConfig=Debug
 
 powershell -NoProfile -NoLogo -ExecutionPolicy ByPass -File "%~dp0install-llvm.ps1" -buildConfig %buildConfig%
 if %errorlevel% NEQ 0 goto fail
