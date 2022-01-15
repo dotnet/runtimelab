@@ -4618,7 +4618,7 @@ namespace Internal.IL
                             {
                                 node = _compilation.NodeFactory.TypeGCStaticsSymbol(owningType);
                                 LLVMValueRef basePtrPtr = LoadAddressOfSymbolNode(node);
-                                staticBase = _builder.BuildLoad(_builder.BuildPointerCast(basePtrPtr, LLVMTypeRef.CreatePointer(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), 0), "castBasePtr"), "base");
+                                staticBase = _builder.BuildPointerCast(basePtrPtr, LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), "castBase");
                             }
                         }
                         else
