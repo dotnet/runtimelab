@@ -4843,6 +4843,11 @@ namespace Internal.IL
             LLVMValueRef eeType;
             TypeDesc type = (TypeDesc)_methodIL.GetObject(token);
 
+            if (!type.IsValueType)
+            {
+                return; // Boxing reference types is a noop for the IL->LLVM compiler
+            }
+
             StackEntry eeTypeEntry;
             bool truncDouble = type.Equals(GetWellKnownType(WellKnownType.Single));
             if (type.IsRuntimeDeterminedSubtype)
