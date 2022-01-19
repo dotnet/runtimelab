@@ -23,7 +23,7 @@
   <PropertyGroup Condition="'$(ClrNativeAot)' == 'true'">
     <IlcPath>$(TestNativeAotCompilerRootPath)</IlcPath>
     <SelfContained>true</SelfContained>
-    <NoWarn>$(NoWarn);IL3050;IL3052;IL1005</NoWarn>
+    <NoWarn>$(NoWarn);IL3050;IL3052;IL3055;IL1005</NoWarn>
   </PropertyGroup>
 
   <Import Project="$(IlcPath)\build\Microsoft.DotNet.ILCompiler.targets" Condition="'$(ClrNativeAot)' == 'true'" />
