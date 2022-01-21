@@ -39,7 +39,7 @@ namespace ILCompiler.DependencyAnalysis
 
         protected override string GetName(NodeFactory context)
         {
-            throw new NotImplementedException();
+            return mangledName;
         }
 
         public void AppendMangledName(NameMangler nameMangler, Utf8StringBuilder sb)
