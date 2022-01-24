@@ -27,6 +27,7 @@
     <IlcFrameworkPath>$(NetCoreAppCurrentTestHostSharedFrameworkPath)</IlcFrameworkPath>
     <NoWarn>$(NoWarn);IL3050;IL3052;IL3055;IL1005</NoWarn>
     <TrimmerSingleWarn>false</TrimmerSingleWarn>
+    <SuppressTrimAnalysisWarnings>true</SuppressTrimAnalysisWarnings>
 
     <!-- Forced by ILLink targets; we should fix the SDK -->
     <SelfContained>true</SelfContained>
