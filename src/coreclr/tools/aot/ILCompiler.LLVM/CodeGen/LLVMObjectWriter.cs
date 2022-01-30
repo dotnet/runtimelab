@@ -689,9 +689,7 @@ namespace ILCompiler.DependencyAnalysis
 
             if (dummyFunc.Handle != IntPtr.Zero) return;
 
-            var startupFunc = Module.AddFunction("RhpInitialDynamicInterfaceDispatch", LLVMTypeRef.CreateFunction(LLVMTypeRef.Void, new LLVMTypeRef[] {}));
-
-            //LLVMBuilderRef builder = Module.CreateBuilder();
+            Module.AddFunction("RhpInitialDynamicInterfaceDispatch", LLVMTypeRef.CreateFunction(LLVMTypeRef.Void, new LLVMTypeRef[] {}));
         }
 
         public void EmitBlobWithRelocs(byte[] blob, Relocation[] relocs)
