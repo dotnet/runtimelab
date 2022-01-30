@@ -12,7 +12,7 @@ To use Native AOT with your project, you need to add a reference to the ILCompil
 
 If your project has no `nuget.config` file, it may be created by running
 ```bash
-> dotnet new nuget
+> dotnet new nugetconfig
 ```
 
 from the project's root directory. New package sources must be added after the `<clear />` element if you decide to keep it.
@@ -56,7 +56,15 @@ Note that it is important to use _the same version_ for both packages to avoid p
 ```
 ### WebAssembly
 
-For WebAssembly, it is always a cross-architecture scenario as the compiler runs on Windows/Linux/MacOS and the runtime is for WebAssembly.  The required package reference is
+Install and activate Emscripten. See [Install Emscripten](https://emscripten.org/docs/getting_started/downloads.html#installation-instructions-using-the-emsdk-recommended)
+
+For WebAssembly, it is always a cross-architecture scenario as the compiler runs on Windows/Linux/MacOS and the runtime is for WebAssembly.  WebAssembly is not integrated into the main ILCompiler so first remove (if you added it from above)
+
+```xml
+<PackageReference Include="Microsoft.DotNet.ILCompiler" Version="7.0.0-*" />
+```
+
+Then, the required package reference is
 ```xml
 <PackageReference Include="Microsoft.DotNet.ILCompiler.LLVM; runtime.win-x64.Microsoft.DotNet.ILCompiler.LLVM" Version="7.0.0-*" />
 ```
@@ -64,6 +72,14 @@ and the publish command (there is no Release build currently)
 ```bash
 > dotnet publish -r browser-wasm -c Debug /p:TargetArchitecture=wasm /p:PlatformTarget=AnyCPU
 ```
+
+Note that the wasm-tools workload is identified as a dependency even though its not used, either
+```bash
+> dotnet workload install wasm-tools
+```
+or add `/p:MSBuildEnableWorkloadResolver=false` to the `dotnet publish` command
+
+#### WebAssembly native libraries
 To compile a WebAssembly native library that exports a function `Answer`:
 ```cs
 [System.Runtime.InteropServices.UnmanagedCallersOnly(EntryPoint = "Answer")]
@@ -75,13 +91,6 @@ public static int Answer()
 ```bash
 > dotnet publish /p:NativeLib=Static /p:SelfContained=true -r browser-wasm -c Debug /p:TargetArchitecture=wasm /p:PlatformTarget=AnyCPU /p:MSBuildEnableWorkloadResolver=false /p:EmccExtraArgs="-s EXPORTED_FUNCTIONS=_Answer -s EXPORTED_RUNTIME_METHODS=cwrap" --self-contained
 ```
-
-Note that the wasm-tools workload is identified as a dependency even though its not used, either
-```bash
-> dotnet workload install wasm-tools
-```
-or add `/p:MSBuildEnableWorkloadResolver=false` to the `dotnet publish` command
-
 
 Similarly, to target linux-arm64 on a Linux x64 host, in addition to the `Microsoft.DotNet.ILCompiler` package reference, also add the `runtime.linux-x64.Microsoft.DotNet.ILCompiler` package reference to get the x64-hosted compiler:
 ```xml
