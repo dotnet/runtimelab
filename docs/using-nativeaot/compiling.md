@@ -70,7 +70,7 @@ Then, the required package reference is
 ```
 and the publish command (there is no Release build currently)
 ```bash
-> dotnet publish -r browser-wasm -c Debug /p:TargetArchitecture=wasm /p:PlatformTarget=AnyCPU
+> dotnet publish -r browser-wasm -c Debug /p:TargetArchitecture=wasm /p:PlatformTarget=AnyCPU --self-contained
 ```
 
 Note that the wasm-tools workload is identified as a dependency even though its not used, either
