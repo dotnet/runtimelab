@@ -370,7 +370,7 @@ namespace Internal.IL
                             TypeDesc canonDelegateType = method.OwningType.ConvertToCanonForm(CanonicalFormKind.Specific);
                             DelegateCreationInfo info = _compilation.GetDelegateCtor(canonDelegateType, delTargetMethod, previousOpcode == ILOpcode.ldvirtftn);
 
-                            if (info.NeedsRuntimeLookup)    
+                            if (info.NeedsRuntimeLookup)
                             {
                                 // TODO-LLVM: delete when IL->LLVM module is gone
                                 if (_compilation.TargetArchIsWasm())
@@ -651,14 +651,7 @@ namespace Internal.IL
                         }
                         else
                         {
-                            if (targetMethod.RequiresInstMethodTableArg())
-                            {
-                                _dependencies.Add(GetGenericLookupHelper(ReadyToRunHelperId.TypeHandle, _constrained), reason);
-                            }
-                            else
-                            {
-                                _dependencies.Add(GetGenericLookupHelper(ReadyToRunHelperId.MethodDictionary, targetOfLookup), reason);
-                            }
+                            _dependencies.Add(GetGenericLookupHelper(ReadyToRunHelperId.MethodDictionary, targetOfLookup), reason);
                         }
                     }
                 }
