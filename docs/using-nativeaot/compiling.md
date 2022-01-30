@@ -92,6 +92,7 @@ public static int Answer()
 > dotnet publish /p:NativeLib=Static /p:SelfContained=true -r browser-wasm -c Debug /p:TargetArchitecture=wasm /p:PlatformTarget=AnyCPU /p:MSBuildEnableWorkloadResolver=false /p:EmccExtraArgs="-s EXPORTED_FUNCTIONS=_Answer -s EXPORTED_RUNTIME_METHODS=cwrap" --self-contained
 ```
 
+### Cross-compiling on Linux
 Similarly, to target linux-arm64 on a Linux x64 host, in addition to the `Microsoft.DotNet.ILCompiler` package reference, also add the `runtime.linux-x64.Microsoft.DotNet.ILCompiler` package reference to get the x64-hosted compiler:
 ```xml
 <PackageReference Include="Microsoft.DotNet.ILCompiler; runtime.linux-x64.Microsoft.DotNet.ILCompiler" Version="7.0.0-alpha.1.21423.2" />
