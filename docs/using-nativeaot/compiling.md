@@ -70,14 +70,10 @@ Then, the required package reference is
 ```
 and the publish command (there is no Release build currently)
 ```bash
-> dotnet publish -r browser-wasm -c Debug /p:TargetArchitecture=wasm /p:PlatformTarget=AnyCPU --self-contained
+> dotnet publish -r browser-wasm -c Debug /p:TargetArchitecture=wasm /p:PlatformTarget=AnyCPU /p:MSBuildEnableWorkloadResolver=false --self-contained
 ```
 
-Note that the wasm-tools workload is identified as a dependency even though its not used, either
-```bash
-> dotnet workload install wasm-tools
-```
-or add `/p:MSBuildEnableWorkloadResolver=false` to the `dotnet publish` command
+Note that the wasm-tools workload is identified as a dependency even though its not used, and this confuses the toolchain, hence `/p:MSBuildEnableWorkloadResolver=false`
 
 #### WebAssembly native libraries
 To compile a WebAssembly native library that exports a function `Answer`:
