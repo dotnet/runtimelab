@@ -26,7 +26,6 @@ namespace ILCompiler
         protected SecurityMitigationOptions _mitigationOptions;
         protected ConfigurableWasmImportPolicy _wasmImportPolicy;
 
-
         partial void InitializePartial()
         {
             _metadataManager = new AnalysisBasedMetadataManager(_context);
