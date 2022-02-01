@@ -32,6 +32,7 @@ namespace ILCompiler
         internal LLVMDIBuilderRef DIBuilder { get; }
         internal Dictionary<string, DebugMetadata> DebugMetadataMap { get; }
         internal bool NativeLib { get; }
+        internal ConfigurableWasmImportPolicy ConfigurableWasmImportPolicy { get; }
 
         internal LLVMCodegenCompilation(DependencyAnalyzerBase<NodeFactory> dependencyGraph,
             LLVMCodegenNodeFactory nodeFactory,
@@ -43,7 +44,8 @@ namespace ILCompiler
             IInliningPolicy inliningPolicy,
             DevirtualizationManager devirtualizationManager,
             InstructionSetSupport instructionSetSupport,
-            bool nativeLib)
+            bool nativeLib,
+            ConfigurableWasmImportPolicy configurableWasmImportPolicy)
             : base(dependencyGraph, nodeFactory, GetCompilationRoots(roots, nodeFactory), ilProvider, debugInformationProvider, logger, devirtualizationManager, inliningPolicy ?? new LLVMNoInLiningPolicy(), instructionSetSupport, null /* ProfileDataManager */, RyuJitCompilationOptions.SingleThreadedCompilation)
         {
             NodeFactory = nodeFactory;
@@ -57,6 +59,7 @@ namespace ILCompiler
             DebugMetadataMap = new Dictionary<string, DebugMetadata>();
             ILImporter.Context = Module.Context;
             NativeLib = nativeLib;
+            ConfigurableWasmImportPolicy = configurableWasmImportPolicy;
         }
 
         private static IEnumerable<ICompilationRootProvider> GetCompilationRoots(IEnumerable<ICompilationRootProvider> existingRoots, NodeFactory factory)

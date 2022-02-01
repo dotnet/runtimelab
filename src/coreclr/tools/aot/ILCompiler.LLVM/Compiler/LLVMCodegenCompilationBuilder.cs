@@ -91,7 +91,7 @@ namespace ILCompiler
             LLVMCodegenNodeFactory factory = new LLVMCodegenNodeFactory(_context, _compilationGroup, _metadataManager, _interopStubManager, _nameMangler, _vtableSliceProvider, _dictionaryLayoutProvider, GetPreinitializationManager());
             JitConfigProvider.Initialize(_context.Target, jitFlagBuilder.ToArray(), _ryujitOptions);
             DependencyAnalyzerBase<NodeFactory> graph = CreateDependencyGraph(factory, new ObjectNode.ObjectNodeComparer(new CompilerComparer()));
-            return new LLVMCodegenCompilation(graph, factory, _compilationRoots, _ilProvider, _debugInformationProvider, _logger, _config, _inliningPolicy, _devirtualizationManager, _instructionSetSupport, _nativeLib);
+            return new LLVMCodegenCompilation(graph, factory, _compilationRoots, _ilProvider, _debugInformationProvider, _logger, _config, _inliningPolicy, _devirtualizationManager, _instructionSetSupport, _nativeLib, _wasmImportPolicy);
         }
     }
 

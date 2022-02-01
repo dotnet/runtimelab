@@ -3155,6 +3155,11 @@ namespace Internal.IL
                 return null;
         }
 
+        private static LLVMAttributeRef CreateImportAttr(LLVMContextRef context, string name, string value)
+        {
+            return LLVMSharpInterop.CreateAttribute(context, name, value);
+        }
+
         private LLVMValueRef MakeExternFunction(MethodDesc method, string realMethodName, LLVMValueRef realFunction = default(LLVMValueRef))
         {
             LLVMValueRef nativeFunc;
@@ -3171,6 +3176,14 @@ namespace Internal.IL
             {
                 nativeFunc = Module.AddFunction(realMethodName, nativeFuncType);
                 nativeFunc.Linkage = LLVMLinkage.LLVMDLLImportLinkage;
+                if (_compilation.ConfigurableWasmImportPolicy.TryGetWasmModule(realMethodName, out string wasmModuleName))
+                {
+                    unsafe
+                    {
+                        LLVM.AddAttributeAtIndex(nativeFunc, ~0u, CreateImportAttr(Context, "wasm-import-module", wasmModuleName));
+                        LLVM.AddAttributeAtIndex(nativeFunc, ~0u, CreateImportAttr(Context, "wasm-import-name", realMethodName));
+                    }
+                }
             }
             else
             {

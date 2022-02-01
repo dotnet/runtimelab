@@ -84,6 +84,10 @@ namespace ILCompiler
 
         private IReadOnlyList<string> _directPInvokeLists = Array.Empty<string>();
 
+        private IReadOnlyList<string> _wasmImports = Array.Empty<string>();
+
+        private IReadOnlyList<string> _wasmImportsLists = Array.Empty<string>();
+
         private IReadOnlyList<string> _rootedAssemblies = Array.Empty<string>();
         private IReadOnlyList<string> _conditionallyRootedAssemblies = Array.Empty<string>();
 
@@ -215,6 +219,8 @@ namespace ILCompiler
                 syntax.DefineOptionList("nosinglewarnassembly", ref _singleWarnDisabledAssemblies, "Expand AOT/trimming warnings for given assembly");
                 syntax.DefineOptionList("directpinvoke", ref _directPInvokes, "PInvoke to call directly");
                 syntax.DefineOptionList("directpinvokelist", ref _directPInvokeLists, "File with list of PInvokes to call directly");
+                syntax.DefineOptionList("wasmimport", ref _wasmImports, "WebAssembly import module names for PInvoke functions");
+                syntax.DefineOptionList("wasmimportlist", ref _wasmImportsLists, "File with list of WebAssembly import module names for PInvoke functions");
 
                 syntax.DefineOptionList("root", ref _rootedAssemblies, "Fully generate given assembly");
                 syntax.DefineOptionList("conditionalroot", ref _conditionallyRootedAssemblies, "Fully generate given assembly if it's used");
@@ -640,6 +646,8 @@ namespace ILCompiler
             else
                 pinvokePolicy = new ConfigurablePInvokePolicy(typeSystemContext.Target, _directPInvokes, _directPInvokeLists);
 
+            ConfigurableWasmImportPolicy wasmImportPolicy = new ConfigurableWasmImportPolicy(_wasmImports, _wasmImportsLists);
+
             ILProvider ilProvider = new CoreRTILProvider();
 
             List<KeyValuePair<string, bool>> featureSwitches = new List<KeyValuePair<string, bool>>();
@@ -766,7 +774,8 @@ namespace ILCompiler
                 .UseCompilationRoots(compilationRoots)
                 .UseOptimizationMode(_optimizationMode)
                 .UseSecurityMitigationOptions(securityMitigationOptions)
-                .UseDebugInfoProvider(debugInfoProvider);
+                .UseDebugInfoProvider(debugInfoProvider)
+                .UseWasmImportPolicy(wasmImportPolicy);
 
             if (scanResults != null)
             {
