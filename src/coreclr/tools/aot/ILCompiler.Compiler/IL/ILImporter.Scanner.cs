@@ -429,14 +429,13 @@ namespace Internal.IL
                 }
             }
 
-
             // TODO-LLVM: delete when IL->LLVM module is gone
             if (_compilation.TargetArchIsWasm())
             {
                 if (!method.IsRuntimeDeterminedExactMethod && method.IsVirtual && !method.HasInstantiation &&
                     MetadataVirtualMethodAlgorithm.FindSlotDefiningMethodForVirtualMethod(method) == method)
                 {
-                    _dependencies.Add(_factory.VirtualMethodUse(method), "LLVM delegate Invoke");
+                    _dependencies.Add(_factory.VirtualMethodUse(method), "LLVM VTable slot");
                 }
             }
 

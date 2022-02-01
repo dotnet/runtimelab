@@ -4,6 +4,7 @@
 using System;
 using System.Diagnostics;
 using ILCompiler.DependencyAnalysis.Wasm;
+using Internal.IL;
 using Internal.TypeSystem;
 
 namespace ILCompiler.DependencyAnalysis
@@ -71,7 +72,6 @@ namespace ILCompiler.DependencyAnalysis
                     }
                     break;
 
-                // These are all simple: do dependencies
                 case ReadyToRunHelperId.TypeHandle:
                 case ReadyToRunHelperId.MethodHandle:
                 case ReadyToRunHelperId.FieldHandle:
@@ -81,6 +81,7 @@ namespace ILCompiler.DependencyAnalysis
                 case ReadyToRunHelperId.DefaultConstructor:
                 case ReadyToRunHelperId.ObjectAllocator:
                 case ReadyToRunHelperId.TypeHandleForCasting:
+                    // TODO-LLVM: should use GetBadSlotHelper/ThrowUnavailableType in base class when merged
                     break;
                 default:
                     throw new NotImplementedException();
