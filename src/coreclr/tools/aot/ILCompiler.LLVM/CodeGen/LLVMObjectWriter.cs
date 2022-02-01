@@ -370,7 +370,7 @@ namespace ILCompiler.DependencyAnalysis
             public LLVMValueRef ToLLVMValueRef(LLVMModuleRef module)
             {
                 // Dont know if symbol is for an extern function or a variable, so check both
-                LLVMValueRef valRef = module.GetNamedGlobal(SymbolName); 
+                LLVMValueRef valRef = module.GetNamedGlobal(SymbolName);
                 if (valRef.Handle == IntPtr.Zero) valRef = module.GetNamedFunction(SymbolName);
 
                 if (Offset != 0 && valRef.Handle != IntPtr.Zero)
@@ -673,8 +673,23 @@ namespace ILCompiler.DependencyAnalysis
                 EmitBlob(new byte[pointerSize]);
                 return pointerSize;
             }
+
+            if (realSymbolName == "RhpInitialDynamicInterfaceDispatch")
+            {
+                CreateDummyRhpInitialDynamicInterfaceDispatch();
+            }
+
             int offsetFromBase = GetNumericOffsetFromBaseSymbolValue(target) + target.Offset;
             return EmitSymbolRef(realSymbolName, offsetFromBase, relocType, delta);
+        }
+
+        private void CreateDummyRhpInitialDynamicInterfaceDispatch()
+        {
+            LLVMValueRef dummyFunc = Module.GetNamedFunction("RhpInitialDynamicInterfaceDispatch");
+
+            if (dummyFunc.Handle != IntPtr.Zero) return;
+
+            Module.AddFunction("RhpInitialDynamicInterfaceDispatch", LLVMTypeRef.CreateFunction(LLVMTypeRef.Void, new LLVMTypeRef[] {}));
         }
 
         public void EmitBlobWithRelocs(byte[] blob, Relocation[] relocs)
