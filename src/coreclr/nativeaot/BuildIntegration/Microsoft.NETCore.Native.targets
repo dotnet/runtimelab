@@ -431,7 +431,7 @@ The .NET Foundation licenses this file to you under the MIT license.
     <Exec Command="&quot;$(EMSDK)/upstream/emscripten/emcc.bat&quot; $(EmccArgs)" Condition="'$(TargetOS)' == 'browser' and '$(EMSDK)' != '' and '$(OS)' == 'Windows_NT'" />
     <Exec Command="&quot;$(EMSDK)/upstream/emscripten/emcc&quot; $(EmccArgs)" Condition="'$(TargetOS)' == 'browser' and '$(EMSDK)' != '' and '$(OS)' != 'Windows_NT'" />
     <Message Text="Emscripten not found, not linking WebAssembly. To enable WebAssembly linking, install Emscripten and ensure the EMSDK environment variable points to the directory containing upstream/emscripten/emcc.bat"
-             Condition="'$(NativeCodeGen)' == 'llvm' and '$(EMSDK)' == ''" />
+             Condition="'$(NativeCodeGen)' == 'llvm' and '$(EMSDK)' == ''" Importance="High" />
   </Target>
   
   <Target Name="LinkNative"
