@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Threading;
+using ILCompiler.Compiler;
 using Internal.TypeSystem;
 using Internal.IL;
 
@@ -30,6 +31,8 @@ namespace ILCompiler
         public new LLVMCodegenNodeFactory NodeFactory { get; }
         internal LLVMDIBuilderRef DIBuilder { get; }
         internal Dictionary<string, DebugMetadata> DebugMetadataMap { get; }
+        internal bool NativeLib { get; }
+
         internal LLVMCodegenCompilation(DependencyAnalyzerBase<NodeFactory> dependencyGraph,
             LLVMCodegenNodeFactory nodeFactory,
             IEnumerable<ICompilationRootProvider> roots,
@@ -39,8 +42,9 @@ namespace ILCompiler
             LLVMCodegenConfigProvider options,
             IInliningPolicy inliningPolicy,
             DevirtualizationManager devirtualizationManager,
-            InstructionSetSupport instructionSetSupport)
-            : base(dependencyGraph, nodeFactory, GetCompilationRoots(roots, nodeFactory), ilProvider, debugInformationProvider, logger, devirtualizationManager, inliningPolicy, instructionSetSupport, null /* ProfileDataManager */, RyuJitCompilationOptions.SingleThreadedCompilation)
+            InstructionSetSupport instructionSetSupport,
+            bool nativeLib)
+            : base(dependencyGraph, nodeFactory, GetCompilationRoots(roots, nodeFactory), ilProvider, debugInformationProvider, logger, devirtualizationManager, inliningPolicy ?? new LLVMNoInLiningPolicy(), instructionSetSupport, null /* ProfileDataManager */, RyuJitCompilationOptions.SingleThreadedCompilation)
         {
             NodeFactory = nodeFactory;
             LLVMModuleRef m = LLVMModuleRef.CreateWithName(options.ModuleName);
@@ -52,6 +56,7 @@ namespace ILCompiler
             DIBuilder = Module.CreateDIBuilder();
             DebugMetadataMap = new Dictionary<string, DebugMetadata>();
             ILImporter.Context = Module.Context;
+            NativeLib = nativeLib;
         }
 
         private static IEnumerable<ICompilationRootProvider> GetCompilationRoots(IEnumerable<ICompilationRootProvider> existingRoots, NodeFactory factory)

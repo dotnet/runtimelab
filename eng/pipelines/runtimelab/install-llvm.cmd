@@ -3,6 +3,9 @@ cd /D "%1"
 
 set RepoRoot=%2\
 
+set buildConfig=%3
+echo Building LLVM with config: %buildConfig%
+
 set
 :: Set CMakePath by evaluating the output from set-cmake-path.ps1
 call "%RepoRoot%eng\native\init-vs-env.cmd" wasm || exit /b 1
@@ -10,7 +13,10 @@ echo Using CMake at "%CMakePath%"
 
 set
 
-powershell -NoProfile -NoLogo -ExecutionPolicy ByPass -command "& """%~dp0install-llvm.ps1""" %*"
+REM There is no [C/c]hecked LLVM config, so change to Debug
+if /I %buildConfig% EQU checked set buildConfig=Debug
+
+powershell -NoProfile -NoLogo -ExecutionPolicy ByPass -File "%~dp0install-llvm.ps1" -buildConfig %buildConfig%
 if %errorlevel% NEQ 0 goto fail
 
 echo Setting LLVM_CMAKE_CONFIG to %1\llvm-11.0.0.src\build

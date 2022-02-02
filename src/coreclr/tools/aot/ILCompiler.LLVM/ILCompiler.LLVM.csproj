@@ -63,6 +63,7 @@
     <Compile Include="CodeGen\EvaluationStack.cs" />
     <Compile Include="CodeGen\NodeDataSection.cs" />
     <Compile Include="CodeGen\ILToLLVMImporter.cs" />
+    <Compile Include="Compiler\LLVMNoInLiningPolicy.cs" />
   </ItemGroup>
 
   <ItemGroup>

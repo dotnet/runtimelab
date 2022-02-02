@@ -21,14 +21,23 @@ The Native AOT toolchain can be currently built for Linux, macOS and Windows x64
 There are two kinds of binary artifacts produced by the build and needed for development: the runtime libraries and the cross-targeting compilers, ILC and RyuJit. They are built differently and separately.
 
 For the runtime libraries:
-- Clone the [emsdk](https://github.com/dotnet/emsdk) repository and use the `emsdk.bat` script it comes with to [install](https://emscripten.org/docs/getting_started/downloads.html) (and optionally "activate", i. e. set the relevant environment variables permanently) the Emscripten SDK, which will be used by the native build as a sort of "virtualized" build environment. It is recommended to use the same Emscripten version that [the CI](https://github.com/dotnet/runtimelab/blob/feature/NativeAOT-LLVM/eng/pipelines/runtimelab/install-emscripten.cmd#L14-L18) uses.
+- Clone the [emsdk](https://github.com/emscripten-core/emsdk) repository and use the `emsdk.bat` script it comes with to [install](https://emscripten.org/docs/getting_started/downloads.html) (and optionally "activate", i. e. set the relevant environment variables permanently) the Emscripten SDK, which will be used by the native build as a sort of "virtualized" build environment. It is recommended to use the same Emscripten version that [the CI](https://github.com/dotnet/runtimelab/blob/feature/NativeAOT-LLVM/eng/pipelines/runtimelab/install-emscripten.cmd#L14-L18) uses.
+  ```
+  git clone https://github.com/emscripten-core/emsdk
+  cd emsdk
+  # Consult with https://github.com/dotnet/runtimelab/blob/feature/NativeAOT-LLVM/eng/pipelines/runtimelab/install-emscripten.cmd#L14-L18
+  # for actual commit. That may change without change here.
+  git checkout 044d620
+  ./emsdk install 2.0.33
+  ./emsdk activate 2.0.33
+  ```
 - Run `build nativeaot+libs -c [Debug|Release] -a wasm -os Browser`. This will create the architecture-dependent libraries needed for linking and runtime execution, as well as the managed binaries to be used as input to ILC.
 
 For the compilers:
 - Download the LLVM 11.0.0 source from https://github.com/llvm/llvm-project/releases/download/llvmorg-11.0.0/llvm-11.0.0.src.tar.xz
 - Extract it and create a subdirectory in the `llvm-11.0.0.src` folder (`path-to-the-build-directory`).
-- Configure the LLVM source to use the same runtime as the Jit: `cmake -G "Visual Studio 16 2019" -DCMAKE_BUILD_TYPE=Debug -D LLVM_USE_CRT_DEBUG=MTd path-to-the-build-directory`.
-- Build LLVM either from the command line (`cmake --build . --target LLVMCore LLVMBitWriter`) or from VS 2019. Currently the Jit depends only on the output of LLVMCore and LLVMBitWriter projects.
+- Configure the LLVM source to use the same runtime as the Jit: `cmake -G "Visual Studio 16 2019" -DCMAKE_BUILD_TYPE=Debug -D LLVM_USE_CRT_DEBUG=MTd path-to-the-build-directory` or if building for the Release configuration `cmake -G "Visual Studio 16 2019" -DCMAKE_BUILD_TYPE=Release -D LLVM_USE_CRT_RELEASE=MT path-to-the-build-directory`
+- Build LLVM either from the command line (`cmake --build . --target LLVMCore LLVMBitWriter`) or from VS 2019. Currently the Jit depends only on the output of LLVMCore and LLVMBitWriter projects.  For the Release configuration, `cmake --build . --config Release  --target LLVMCore LLVMBitWriter`
 - Set the enviroment variable `LLVM_CMAKE_CONFIG` to locate the LLVM config: `set LLVM_CMAKE_CONFIG=path-to-the-build-directory/lib/cmake/llvm`. This location should contain the file `LLVMConfig.cmake`.
 - Build the Jits and the ILC: `build clr.jit+clr.wasmjit+nativeaot.ilc -c [Debug|Release]`. Note that `clr.jit` only needs to be built once.
 - You can use the `-msbuild` option, `build clr.wasmjit -msbuild`, to generate a Visual Studio solution for the Jit, to be found in `artifacts/obj/coreclr/windows.x64.Debug/ide/jit`.
