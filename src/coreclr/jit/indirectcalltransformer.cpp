@@ -461,9 +461,6 @@ private:
             {
                 fatCall->gtCallArgs = compiler->gtPrependNewCallArg(hiddenArgument, fatCall->gtCallArgs);
             }
-#ifdef TARGET_WASM
-            fatCall->gtHasHiddenArgument = true;
-#endif // TARGET_WASM
 #else
             if (fatCall->gtCallArgs == nullptr)
             {

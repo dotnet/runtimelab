@@ -4749,7 +4749,6 @@ struct GenTreeCall final : public GenTree
 
 #if defined(TARGET_WASM)
     CorInfoType gtCorInfoType; // the precise return type used to construct the signature
-    bool gtHasHiddenArgument;
 #endif
 
     CORINFO_CLASS_HANDLE gtRetClsHnd; // The return type handle of the call if it is a struct; always available
@@ -4814,16 +4813,10 @@ struct GenTreeCall final : public GenTree
     GenTreeCall(var_types type) : GenTree(GT_CALL, type)
     {
         fgArgInfo = nullptr;
-#ifdef TARGET_WASM
-        gtHasHiddenArgument = false;
-#endif // TARGET_WAS<
     }
 #if DEBUGGABLE_GENTREE
     GenTreeCall() : GenTree()
     {
-#ifdef TARGET_WASM
-        gtHasHiddenArgument = false;
-#endif // TARGET_WAS<
     }
 #endif
 };
