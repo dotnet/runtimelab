@@ -3085,47 +3085,7 @@ namespace Internal.IL
 
         private ExpressionEntry ImportRawPInvoke(MethodDesc method, StackEntry[] arguments, LLVMBuilderRef builder, TypeDesc forcedReturnType = null)
         {
-            string realMethodName = method.Name;
-
-            if (method.IsPInvoke)
-            {
-                string entrypointName = method.GetPInvokeMethodMetadata().Name;
-                if (!String.IsNullOrEmpty(entrypointName))
-                {
-                    realMethodName = entrypointName;
-                }
-            }
-            else if (!method.IsPInvoke && method is TypeSystem.Ecma.EcmaMethod)
-            {
-                realMethodName = ((TypeSystem.Ecma.EcmaMethod)method).GetRuntimeImportName() ?? method.Name;
-            }
-            MethodDesc existantDesc;
-            LLVMValueRef nativeFunc;
-            LLVMValueRef realNativeFunc = Module.GetNamedFunction(realMethodName);
-            if (_pinvokeMap.TryGetValue(realMethodName, out existantDesc))
-            {
-                if (existantDesc != method)
-                {
-                    // Set up native parameter types
-                    nativeFunc = MakeExternFunction(method, realMethodName, realNativeFunc);
-                }
-                else
-                {
-                    nativeFunc = realNativeFunc;
-                }
-            }
-            else
-            {
-                _pinvokeMap.Add(realMethodName, method);
-                nativeFunc = realNativeFunc;
-            }
-
-            // Create an import if we haven't already
-            if (nativeFunc.Handle == IntPtr.Zero)
-            {
-                // Set up native parameter types
-                nativeFunc = MakeExternFunction(method, realMethodName);
-            }
+            LLVMValueRef nativeFunc = GetInternalNativeFunction(method);
 
             LLVMValueRef[] llvmArguments = new LLVMValueRef[method.Signature.Length];
             for (int i = 0; i < arguments.Length; i++)
@@ -3319,7 +3279,13 @@ namespace Internal.IL
             }
             else
             {
-                if (canonMethod.IsSharedByGenericInstantiations && (canonMethod.HasInstantiation || canonMethod.Signature.IsStatic))
+                if (IsInternalRuntimeImport(method) && method is EcmaMethod)
+                {
+                    // TODO-LLVM: Suspect this is going to crash if its ever called as we've lost the information that it's an unmanaged call
+                    // Can we live with this for the IL->LLVM compilation and address it in RyuJIT?
+                    targetLLVMFunction = GetInternalNativeFunction(method);
+                }
+                else if (canonMethod.IsSharedByGenericInstantiations && (canonMethod.HasInstantiation || canonMethod.Signature.IsStatic))
                 {
                     var exactContextNeedsRuntimeLookup = method.HasInstantiation
                         ? method.IsSharedByGenericInstantiations
@@ -3376,6 +3342,54 @@ namespace Internal.IL
 
             var entry = new FunctionPointerEntry("ldftn", runtimeDeterminedMethod, targetLLVMFunction, GetWellKnownType(WellKnownType.IntPtr), opCode == ILOpcode.ldvirtftn);
             _stack.Push(entry);
+        }
+
+        LLVMValueRef GetInternalNativeFunction(MethodDesc method)
+        {
+            string realMethodName = method.Name;
+
+            if (method.IsPInvoke)
+            {
+                string entrypointName = method.GetPInvokeMethodMetadata().Name;
+                if (!String.IsNullOrEmpty(entrypointName))
+                {
+                    realMethodName = entrypointName;
+                }
+            }
+            else if (!method.IsPInvoke && method is TypeSystem.Ecma.EcmaMethod)
+            {
+                realMethodName = ((TypeSystem.Ecma.EcmaMethod)method).GetRuntimeImportName() ?? method.Name;
+            }
+
+            MethodDesc existantDesc;
+            LLVMValueRef nativeFunc;
+            LLVMValueRef realNativeFunc = Module.GetNamedFunction(realMethodName);
+            if (_pinvokeMap.TryGetValue(realMethodName, out existantDesc))
+            {
+                if (existantDesc != method)
+                {
+                    // Set up native parameter types
+                    nativeFunc = MakeExternFunction(method, realMethodName, realNativeFunc);
+                }
+                else
+                {
+                    nativeFunc = realNativeFunc;
+                }
+            }
+            else
+            {
+                _pinvokeMap.Add(realMethodName, method);
+                nativeFunc = realNativeFunc;
+            }
+
+            // Create an import if we haven't already
+            if (nativeFunc.Handle == IntPtr.Zero)
+            {
+                // Set up native parameter types
+                nativeFunc = MakeExternFunction(method, realMethodName);
+            }
+
+            return nativeFunc;
         }
 
         ISymbolNode GetAndAddFatFunctionPointer(MethodDesc method, bool isUnboxingStub = false)
