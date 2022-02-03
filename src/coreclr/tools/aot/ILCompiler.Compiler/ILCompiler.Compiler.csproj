@@ -180,6 +180,7 @@
     <Compile Include="Compiler\CompilerTypeSystemContext.Mangling.cs" />
     <Compile Include="Compiler\CompilerTypeSystemContext.Sorting.cs" />
     <Compile Include="Compiler\CompilerGeneratedInteropStubManager.cs" />
+    <Compile Include="Compiler\ConfigurableWasmImportPolicy.cs" />
     <Compile Include="Compiler\Dataflow\DynamicallyAccessedMembersBinder.cs" />
     <Compile Include="Compiler\Dataflow\EcmaExtensions.cs" />
     <Compile Include="Compiler\Dataflow\FlowAnnotations.cs" />
