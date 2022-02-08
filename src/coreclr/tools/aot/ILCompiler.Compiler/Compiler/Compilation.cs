@@ -356,8 +356,9 @@ namespace ILCompiler
 
             // Can we do a fixed lookup? Start by checking if we can get to the dictionary.
             // Context source having a vtable with fixed slots is a prerequisite.
-            if (contextSource == GenericContextSource.MethodParameter
-                || HasFixedSlotVTable(contextMethod.OwningType))
+            // TODO-LLVM: Is this going to prevent CT_INDIRECT being implemented for LLVM clrjit?
+            if (!TargetArchIsWasm() && (contextSource == GenericContextSource.MethodParameter
+                || HasFixedSlotVTable(contextMethod.OwningType)))
             {
                 DictionaryLayoutNode dictionaryLayout;
                 if (contextSource == GenericContextSource.MethodParameter)
@@ -508,6 +509,13 @@ namespace ILCompiler
             }
 
             return new CompilationResults(_dependencyGraph, _nodeFactory);
+        }
+
+        // TODO-LLVM: delete when IL->LLVM module has gone
+        public bool TargetArchIsWasm()
+        {
+            return TypeSystemContext.Target.Architecture == TargetArchitecture.Wasm32 ||
+                   TypeSystemContext.Target.Architecture == TargetArchitecture.Wasm64;
         }
 
         private sealed class ILCache : LockFreeReaderHashtable<MethodDesc, ILCache.MethodILData>

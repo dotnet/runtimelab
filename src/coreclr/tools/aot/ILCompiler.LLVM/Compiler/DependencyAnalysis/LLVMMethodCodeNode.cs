@@ -118,6 +118,7 @@ namespace ILCompiler.DependencyAnalysis
         public LlvmMethodBodyNode(MethodDesc method)
             : base(method)
         {
+            Debug.Assert(!method.IsAbstract);
         }
 
         protected override string GetName(NodeFactory factory) => this.GetMangledName(factory.NameMangler);
