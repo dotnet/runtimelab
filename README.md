@@ -6,7 +6,6 @@ This repo is for experimentation and exploring new ideas that may or may not mak
 
 Currently, this repo contains the following experimental projects:
 
-- [JsonCodeGen](https://github.com/dotnet/runtimelab/tree/feature/JsonCodeGen) - Code generation for JSON.
 - [Utf8String](https://github.com/dotnet/runtimelab/tree/feature/Utf8String) - A new UTF-8 String data type in the runtime.
 - [FreeBSD](https://github.com/dotnet/runtimelab/tree/feature/FreeBSD) - Port of .NET runtime to FreeBSD
 - [NativeAOT-LLVM](https://github.com/dotnet/runtimelab/tree/feature/NativeAOT-LLVM) - LLVM generation for Native AOT compilation (including Web Assembly)
@@ -21,6 +20,7 @@ You can create your own experiment, learn more [here](CreateAnExperiment.md)!
 - [s390x](https://github.com/dotnet/runtimelab/tree/feature/s390x) - Port of .NET runtime (Mono) to the s390x architecture. The changes were upstreamed to [dotnet/runtime](https://github.com/dotnet/runtime).
 - [DllImportGenerator](https://github.com/dotnet/runtimelab/tree/feature/DllImportGenerator) - Roslyn Source Generator used for generating P/Invoke IL stubs.
 - [NativeAOT](https://github.com/dotnet/runtimelab/tree/feature/NativeAOT) - .NET runtime optimized for ahead of time compilation.
+- [JsonCodeGen](https://github.com/dotnet/runtimelab/tree/feature/JsonCodeGen) - Code generation for JSON.
 
 ## Filing issues
 
