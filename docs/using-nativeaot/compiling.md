@@ -88,6 +88,25 @@ public static int Answer()
 > dotnet publish /p:NativeLib=Static /p:SelfContained=true -r browser-wasm -c Debug /p:TargetArchitecture=wasm /p:PlatformTarget=AnyCPU /p:MSBuildEnableWorkloadResolver=false /p:EmccExtraArgs="-s EXPORTED_FUNCTIONS=_Answer -s EXPORTED_RUNTIME_METHODS=cwrap" --self-contained
 ```
 
+#### WebAssembly module imports
+Functions in other WebAssembly modules can be imported and invoked using `DllImport` e.g.
+```cs
+[DllImport("*")]
+static extern int random_get(byte* buf, uint size);
+```
+Be default emscripten will create a WebAssembly import for this function, importing from the `env` module.  This can be controlled with `WasmImport` items in the project file.  For example
+```xml
+<ItemGroup>
+    <WasmImport Include="wasi_snapshot_preview1!random_get" />
+</ItemGroup>
+```
+Will cause the above `random_get` to create this WebAssembly:
+```
+(import "wasi_snapshot_preview1" "random_get" (func $random_get (type 3)))
+```
+
+This can be used to import WASI functions that are in other modules, either as the above, in WASI, `wasi_snapshot_preview1`, or in other WebAssembly modules that may be linked with [WebAssembly module linking](https://github.com/WebAssembly/module-linking)
+
 ### Cross-compiling on Linux
 Similarly, to target linux-arm64 on a Linux x64 host, in addition to the `Microsoft.DotNet.ILCompiler` package reference, also add the `runtime.linux-x64.Microsoft.DotNet.ILCompiler` package reference to get the x64-hosted compiler:
 ```xml

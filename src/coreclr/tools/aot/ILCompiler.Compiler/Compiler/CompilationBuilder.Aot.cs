@@ -24,6 +24,7 @@ namespace ILCompiler
         protected bool _singleThreaded;
         protected InstructionSetSupport _instructionSetSupport;
         protected SecurityMitigationOptions _mitigationOptions;
+        protected ConfigurableWasmImportPolicy _wasmImportPolicy;
 
         partial void InitializePartial()
         {
@@ -100,6 +101,12 @@ namespace ILCompiler
         public CompilationBuilder UsePreinitializationManager(PreinitializationManager manager)
         {
             _preinitializationManager = manager;
+            return this;
+        }
+
+        public CompilationBuilder UseWasmImportPolicy(ConfigurableWasmImportPolicy wasmImportPolicy)
+        {
+            _wasmImportPolicy = wasmImportPolicy;
             return this;
         }
 
