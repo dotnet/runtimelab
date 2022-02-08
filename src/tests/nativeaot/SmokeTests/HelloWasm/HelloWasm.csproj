@@ -27,7 +27,7 @@
     <NativeAotProjectLines>
       <![CDATA[
   <PropertyGroup>
-    <EmccExtraArgs>--js-library $(MSBuildProjectDirectory)\dotnet_support.js --pre-js $(MSBuildProjectDirectory)\Microsoft.JSInterop.js --post-js $(MSBuildProjectDirectory)\HelloWasm.js</EmccExtraArgs>
+    <WasmExtraLinkerArgs>--js-library $(MSBuildProjectDirectory)\dotnet_support.js --pre-js $(MSBuildProjectDirectory)\Microsoft.JSInterop.js --post-js $(MSBuildProjectDirectory)\HelloWasm.js</WasmExtraLinkerArgs>
   </PropertyGroup>
       ]]>
     </NativeAotProjectLines>

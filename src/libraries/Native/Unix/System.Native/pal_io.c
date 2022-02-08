@@ -233,6 +233,60 @@ int32_t SystemNative_LStat(const char* path, FileStatus* output)
 static int32_t ConvertOpenFlags(int32_t flags)
 {
     int32_t ret;
+#if TARGET_WASM
+    // Workaround to get the flag constants that WASI SDK expects which are different to emscripten
+    if ((flags & PAL_O_WASI_SDK) == PAL_O_WASI_SDK)
+    {
+        switch (flags & PAL_O_ACCESS_MODE_MASK)
+        {
+            case PAL_O_RDONLY:
+                ret = O_WASI_RDONLY;
+                break;
+            case PAL_O_RDWR:
+                ret = O_WASI_RDWR;
+                break;
+            case PAL_O_WRONLY:
+                ret = O_WASI_WRONLY;
+                break;
+            default:
+                assert_msg(false, "Unknown Open access mode", (int)flags);
+                return -1;
+        }
+        if (flags & ~(PAL_O_ACCESS_MODE_MASK | PAL_O_CLOEXEC | PAL_O_CREAT | PAL_O_EXCL | PAL_O_TRUNC | PAL_O_SYNC |
+                      PAL_O_WASI_SDK))
+        {
+            assert_msg(false, "Unknown Open flag", (int)flags);
+            return -1;
+        }
+
+#if HAVE_O_CLOEXEC
+        if (flags & PAL_O_CLOEXEC)
+        {
+            ret |= O_WASI_CLOEXEC;
+        }
+#endif // HAVE_O_CLOEXEC
+        if (flags & PAL_O_CREAT)
+        {
+            ret |= O_WASI_CREAT;
+        }
+        if (flags & PAL_O_EXCL)
+        {
+            ret |= O_WASI_EXCL;
+        }
+        if (flags & PAL_O_TRUNC)
+        {
+            ret |= O_WASI_TRUNC;
+        }
+        if (flags & PAL_O_SYNC)
+        {
+            ret |= O_WASI_SYNC;
+        }
+
+        assert(ret != -1);
+        return ret;
+    }
+#endif // TARGET_WASM
+
     switch (flags & PAL_O_ACCESS_MODE_MASK)
     {
         case PAL_O_RDONLY:

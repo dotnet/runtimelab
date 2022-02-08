@@ -99,7 +99,12 @@ inline static int ToFileDescriptorUnchecked(intptr_t fd)
 */
 inline static int ToFileDescriptor(intptr_t fd)
 {
+#if TARGET_WASM
+    // WASI has no _SC_OPEN_MAX : it returns -1
+    assert(0 <= fd);
+#else
     assert(0 <= fd && fd < sysconf(_SC_OPEN_MAX));
+#endif
 
     return ToFileDescriptorUnchecked(fd);
 }

@@ -21,6 +21,11 @@ internal static partial class Interop
             O_EXCL    = 0x0040,
             O_TRUNC   = 0x0080,
             O_SYNC    = 0x0100,
+
+#if TARGET_WASM
+            // Indicates that open calls should use WASI-SDK constants, not Emscripten's
+            O_WASI_SDK = 0x40000000
+#endif
         }
     }
 }

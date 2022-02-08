@@ -6,6 +6,7 @@ using System.Diagnostics;
 using System.IO;
 using System.IO.Strategies;
 using System.Threading;
+using System.Runtime.InteropServices;
 
 namespace Microsoft.Win32.SafeHandles
 {
@@ -267,6 +268,13 @@ namespace Microsoft.Win32.SafeHandles
             {
                 flags |= Interop.Sys.OpenFlags.O_SYNC;
             }
+
+#if TARGET_WASM
+            if (((int)options & unchecked((int)0x20000000)) == unchecked((int)0x20000000))
+            {
+                flags |= Interop.Sys.OpenFlags.O_WASI_SDK;  // propogate the WASI SDK flag constants workaround into pal_io.c
+            }
+#endif // TARGET_WASM
 
             return flags;
         }

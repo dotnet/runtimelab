@@ -154,7 +154,38 @@ enum
     PAL_O_EXCL = 0x0040,    // When combined with CREAT, fails if file already exists
     PAL_O_TRUNC = 0x0080,   // Truncate file to length 0 if it already exists
     PAL_O_SYNC = 0x0100,    // Block writes call will block until physically written
+
+#if TARGET_WASM
+    // Temporary flag to allow switching between Emscripten and WASI-SDK flags
+    PAL_O_WASI_SDK = 0x40000000
+#endif // TARGET_WASM
 };
+
+#if TARGET_WASM
+/**
+ * WASI-SDK Open flags
+ * Required because the runtime is built with Emscripten's fcntl.h header and
+ * those constants differ from WASI-SDK
+ * Copied from wasi-sdk __header_fcntl.h and api.h
+ */
+#define O_WASI_RDONLY (0x04000000)
+#define O_WASI_WRONLY (0x10000000)
+#define O_WASI_RDWR (O_WASI_RDONLY | O_WASI_WRONLY)
+
+typedef uint16_t __wasi_oflags_t;
+typedef uint16_t __wasi_fdflags_t;
+
+#define WASI_OFLAGS_CREAT ((__wasi_oflags_t)(1 << 0))
+#define WASI_OFLAGS_EXCL ((__wasi_oflags_t)(1 << 2))
+#define WASI_OFLAGS_TRUNC ((__wasi_oflags_t)(1 << 3))
+#define WASI_FDFLAGS_SYNC ((__wasi_fdflags_t)(1 << 4))
+
+#define O_WASI_CREAT (WASI_OFLAGS_CREAT << 12)
+#define O_WASI_EXCL (WASI_OFLAGS_EXCL << 12)
+#define O_WASI_TRUNC (WASI_OFLAGS_TRUNC << 12)
+#define O_WASI_SYNC WASI_FDFLAGS_SYNC
+#define O_WASI_CLOEXEC 0
+#endif // TARGET_WASM
 
 /**
  * Constants for interpreting FileStatus.Flags.
