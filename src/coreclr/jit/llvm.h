@@ -132,7 +132,6 @@ private:
     void buildHelperFuncCall(GenTreeCall* call);
     llvm::FunctionType* buildHelperLlvmFunctionType(GenTreeCall* call, bool withShadowStack);
     void buildInd(GenTree* node, Value* ptr);
-    void buildIndexAddr(GenTreeIndexAddr* indexAddr);
     Value* buildJTrue(GenTree* node, Value* opValue);
     void buildEmptyPhi(GenTreePhi* phi);
     void buildUnaryOperation(GenTree* node);

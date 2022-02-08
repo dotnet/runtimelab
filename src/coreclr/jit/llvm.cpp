@@ -1122,15 +1122,6 @@ void Llvm::buildInd(GenTree* node, Value* ptr)
                                      getLlvmTypeForVarType(node->TypeGet())->getPointerTo())));
 }
 
-void Llvm::buildIndexAddr(GenTreeIndexAddr* indexAddr)
-{
-    Value* firstElementAddr =
-        _builder.CreateGEP(getGenTreeValue(indexAddr->gtGetOp1()), _builder.getInt32(indexAddr->gtElemOffset));
-    Value* offset = _builder.CreateMul(_builder.getInt32(indexAddr->gtElemSize), getGenTreeValue(indexAddr->Index()));
-
-    mapGenTreeToValue(indexAddr, _builder.CreateGEP(firstElementAddr, offset));
-}
-
 Value* Llvm::buildJTrue(GenTree* node, Value* opValue)
 {
     return _builder.CreateCondBr(opValue, getLLVMBasicBlockForBlock(_currentBlock->bbJumpDest), getLLVMBasicBlockForBlock(_currentBlock->bbNext));
@@ -1531,9 +1522,6 @@ void Llvm::visitNode(GenTree* node)
             break;
         case GT_IND:
             buildInd(node, getGenTreeValue(node->AsOp()->gtOp1));
-            break;
-        case GT_INDEX_ADDR:
-            buildIndexAddr(node->AsIndexAddr());
             break;
         case GT_JTRUE:
             buildJTrue(node, getGenTreeValue(node->AsOp()->gtOp1));
