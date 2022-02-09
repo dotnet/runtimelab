@@ -2049,7 +2049,7 @@ void Llvm::lowerCallToShadowStack(GenTreeCall* callNode, CORINFO_SIG_INFO* calle
         sortedData[argNum]            = opAndArg;
     }
 
-    // calculate hiddenArg number if present
+    // Relies on the fact all arguments not in the signature come before those that are.
     unsigned firstSigArgIx = argCount - calleeSigInfo->numArgs;
 
     CORINFO_ARG_LIST_HANDLE sigArgs = calleeSigInfo->args;
