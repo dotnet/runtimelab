@@ -5,6 +5,7 @@ using ILCompiler.DependencyAnalysis;
 using Internal.IL;
 using Internal.Text;
 using Internal.TypeSystem;
+using Internal.TypeSystem.Ecma;
 
 namespace Internal.JitInterface
 {
@@ -25,6 +26,15 @@ namespace Internal.JitInterface
             var helperNode = node as ReadyToRunHelperNode;
             if (helperNode != null)
             {
+                if (helperNode.Id == ReadyToRunHelperId.VirtualCall)
+                {
+                    MethodDesc virtualCallTarget = (MethodDesc)helperNode.Target;
+                    _this._codeRelocs.Add(new Relocation(RelocType.IMAGE_REL_BASED_REL32, 0,
+                        _this._compilation.NodeFactory.MethodEntrypoint(virtualCallTarget)));
+
+                    return;
+                }
+
                 MetadataType target = (MetadataType)helperNode.Target;
                 switch (helperNode.Id)
                 {
@@ -105,6 +115,21 @@ namespace Internal.JitInterface
             return (byte*)_this.GetPin(sb.UnderlyingArray);
         }
 
+        [UnmanagedCallersOnly]
+        public static byte* getSymbolMangledNameFromHelperTarget(IntPtr thisHandle, void* handle)
+        {
+            var _this = GetThis(thisHandle);
+
+            var node = (ReadyToRunHelperNode)_this.HandleToObject((IntPtr)handle);
+            var method = node.Target as MethodDesc;
+
+            // Abstract methods must require a lookup so no point passing the abstract name back
+            if (method.IsAbstract || method.IsVirtual) return null;
+
+            Utf8StringBuilder sb = new Utf8StringBuilder();
+            return (byte*)_this.GetPin(AppendNullByte(_this._compilation.NameMangler.GetMangledMethodName(method).UnderlyingArray));
+        }
+
         // IL backend does not use the mangled name.  The unmangled name is easier to read.
         [UnmanagedCallersOnly]
         public static byte* getTypeName(IntPtr thisHandle, CORINFO_CLASS_STRUCT_* structHnd)
@@ -119,7 +144,6 @@ namespace Internal.JitInterface
             sb.Append("\0");
             return (byte*)_this.GetPin(sb.UnderlyingArray);
         }
-
 
         [UnmanagedCallersOnly]
         public static uint isRuntimeImport(IntPtr thisHandle, CORINFO_METHOD_STRUCT_* ftn)
@@ -267,6 +291,7 @@ namespace Internal.JitInterface
         private extern static void registerLlvmCallbacks(IntPtr thisHandle, byte* outputFileName, byte* triple, byte* dataLayout,
             delegate* unmanaged<IntPtr, CORINFO_METHOD_STRUCT_*, byte*> getMangedMethodNamePtr,
             delegate* unmanaged<IntPtr, void*, byte*> getSymbolMangledName,
+            delegate* unmanaged<IntPtr, void*, byte*> getSymbolMangledNameFromHelperTarget,
             delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, byte*> getTypeName,
             delegate* unmanaged<IntPtr, void*, void> addCodeReloc,
             delegate* unmanaged<IntPtr, CORINFO_METHOD_STRUCT_*, uint> isRuntimeImport,
@@ -286,6 +311,7 @@ namespace Internal.JitInterface
                 (byte*)GetPin(StringToUTF8(dataLayout)),
                 &getMangledMethodName,
                 &getSymbolMangledName,
+                &getSymbolMangledNameFromHelperTarget,
                 &getTypeName,
                 &addCodeReloc,
                 &isRuntimeImport,

@@ -135,9 +135,8 @@ namespace ILCompiler
             {
                 if (GetMethodIL(method).GetExceptionRegions().Length == 0)
                 {
-                    var sig = method.Signature;
-                    // this could be inlined, by the local makes debugging easier
                     var mangledName = NodeFactory.NameMangler.GetMangledMethodName(method).ToString();
+                    var sig = method.Signature;
                     corInfo.RegisterLlvmCallbacks((IntPtr)Unsafe.AsPointer(ref corInfo), _outputFile,
                         Module.Target,
                         Module.DataLayout);
