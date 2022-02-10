@@ -529,9 +529,6 @@ FunctionType* Llvm::createFunctionTypeForCall(GenTreeCall* call)
 
     for (GenTreeCall::Use& use : call->Args())
     {
-        if (use.GetNode() == call->gtControlExpr)
-            continue;
-
         GenTreePutArgType* putArg = use.GetNode()->AsPutArgType();
         argVec.push_back(getLlvmTypeForCorInfoType(putArg->GetCorInfoType(), putArg->GetClsHnd()));
     }
@@ -1058,7 +1055,7 @@ void Llvm::buildCall(GenTree* node)
     {
         buildHelperFuncCall(call);
     }
-    else if ((call->gtCallType == CT_USER_FUNC || call->gtCallType == CT_INDIRECT) && !call->IsVirtualStub() /* TODO: Virtual stub not implemented */)
+    else if ((call->gtCallType == CT_USER_FUNC) && !call->IsVirtualStub() /* TODO: Virtual stub not implemented */)
     {
         buildUserFuncCall(call);
     }
@@ -1961,6 +1958,10 @@ void Llvm::failUnsupportedCalls(GenTreeCall* callNode, CORINFO_SIG_INFO* calleeS
             {
                 failFunctionCompilation();
             }
+            if (curArgTabEntry->nonStandardArgKind == NonStandardArgKind::VirtualStubCell)
+            {
+                failFunctionCompilation();
+            }
         }
     }
 }
@@ -2017,7 +2018,7 @@ void Llvm::lowerCallToShadowStack(GenTreeCall* callNode, CORINFO_SIG_INFO* calle
     GenTreeCall::Use* callThisArg = callNode->gtCallThisArg;
 
     callNode->ResetArgInfo();
-    //callNode->gtCallThisArg = nullptr;
+    callNode->gtCallThisArg = nullptr;
 
     // set up the callee shadowstack, creating a temp and the PUTARG
     GenTreeLclVar* shadowStackVar = _compiler->gtNewLclvNode(_shadowStackLclNum, TYP_I_IMPL);
@@ -2043,16 +2044,12 @@ void Llvm::lowerCallToShadowStack(GenTreeCall* callNode, CORINFO_SIG_INFO* calle
     for (unsigned i = 0; i < argCount; i++)
     {
         fgArgTabEntry* curArgTabEntry = argTable[i];
-        if (curArgTabEntry->nonStandardArgKind == NonStandardArgKind::VirtualStubCell)
-        {
-            failFunctionCompilation();
-        }
         unsigned int   argNum         = curArgTabEntry->argNum;
         OperandArgNum  opAndArg       = {argNum, curArgTabEntry->GetNode()};
         sortedData[argNum]            = opAndArg;
     }
 
-    // calculate hiddenArg number if present
+    // Relies on the fact all arguments not in the signature come before those that are.
     unsigned firstSigArgIx = argCount - calleeSigInfo->numArgs;
 
     CORINFO_ARG_LIST_HANDLE sigArgs = calleeSigInfo->args;

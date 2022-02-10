@@ -5554,6 +5554,7 @@ GenTree* Compiler::fgMorphArrayIndex(GenTree* tree)
         elemOffs = OFFSETOF__CORINFO_Array__data;
     }
 
+#if !defined(TARGET_WASM)
     // In minopts, we expand GT_INDEX to GT_IND(GT_INDEX_ADDR) in order to minimize the size of the IR. As minopts
     // compilation time is roughly proportional to the size of the IR, this helps keep compilation times down.
     // Furthermore, this representation typically saves on code size in minopts w.r.t. the complete expansion
@@ -5612,6 +5613,7 @@ GenTree* Compiler::fgMorphArrayIndex(GenTree* tree)
 
         return indir;
     }
+#endif // TARGET_WASM
 
     GenTree* arrRef = asIndex->Arr();
     GenTree* index  = asIndex->Index();
