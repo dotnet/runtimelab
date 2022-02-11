@@ -1391,7 +1391,7 @@ void Llvm::buildReturn(GenTree* node)
     }
 }
 
-void Llvm::importStoreInd(GenTreeStoreInd* storeIndOp)
+void Llvm::buildStoreInd(GenTreeStoreInd* storeIndOp)
 {
     Value* address = getGenTreeValue(storeIndOp->Addr());
     Value* toStore = getGenTreeValue(storeIndOp->Data());
@@ -1442,7 +1442,7 @@ void Llvm::storeObjAtAddress(Value* baseAddress, Value* data, unsigned startIx, 
     }
 }
 
-void Llvm::importStoreObj(GenTreeStoreInd* storeIndOp)
+void Llvm::buildStoreObj(GenTreeStoreInd* storeIndOp)
 {
     unsigned gcFieldCount;
     Value* baseAddress = getGenTreeValue(storeIndOp->Addr());
@@ -1675,10 +1675,10 @@ void Llvm::visitNode(GenTree* node)
             storeLocalVar(node->AsLclVar());
             break;
         case GT_STOREIND:
-            importStoreInd((GenTreeStoreInd*)node);
+            buildStoreInd(node->AsStoreInd());
             break;
         case GT_STORE_OBJ:
-            importStoreObj((GenTreeStoreInd*)node);
+            buildStoreObj(node->AsStoreInd());
             break;
         case GT_AND:
         case GT_OR:
