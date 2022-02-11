@@ -4814,16 +4814,10 @@ struct GenTreeCall final : public GenTree
     GenTreeCall(var_types type) : GenTree(GT_CALL, type)
     {
         fgArgInfo = nullptr;
-#ifdef TARGET_WASM
-        gtHasHiddenArgument = false;
-#endif // TARGET_WAS<
     }
 #if DEBUGGABLE_GENTREE
     GenTreeCall() : GenTree()
     {
-#ifdef TARGET_WASM
-        gtHasHiddenArgument = false;
-#endif // TARGET_WAS<
     }
 #endif
 };
