@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using ILCompiler;
 using ILCompiler.DependencyAnalysis;
@@ -287,6 +288,31 @@ namespace Internal.JitInterface
             return (CorInfoTypeWithMod)corInfoType;
         }
 
+        [UnmanagedCallersOnly]
+        public static uint getObjectLayout(IntPtr thisHandle, CORINFO_CLASS_STRUCT_* inputType, void** layoutPtrPtr)
+        {
+            var _this = GetThis(thisHandle);
+
+            TypeDesc type = _this.HandleToObject(inputType);
+
+            List<FieldStoreLayout> layout = new();
+
+            _this._compilation.GetObjectLayoutInstructions(type, layout);
+
+            uint fieldCount = (uint)layout.Count;
+
+            // TODO-LLVM: release?  Is there a smarter way of doing this
+            var layoutPtr = Marshal.AllocHGlobal((int)(sizeof(FieldStoreLayout) * fieldCount));
+            *layoutPtrPtr = (void*)layoutPtr;
+
+            for (int i = 0; i < fieldCount; i++)
+            {
+                Marshal.StructureToPtr(layout[i], layoutPtr + sizeof(FieldStoreLayout) * i, false);
+            }
+
+            return fieldCount;
+        }
+
         [DllImport(JitLibrary)]
         private extern static void registerLlvmCallbacks(IntPtr thisHandle, byte* outputFileName, byte* triple, byte* dataLayout,
             delegate* unmanaged<IntPtr, CORINFO_METHOD_STRUCT_*, byte*> getMangedMethodNamePtr,
@@ -301,7 +327,8 @@ namespace Internal.JitInterface
             delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, CorInfoType, uint> structIsWrappedPrimitive,
             delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, uint, uint> padOffset,
             delegate* unmanaged<IntPtr, CORINFO_SIG_INFO*, CORINFO_ARG_LIST_STRUCT_*, CORINFO_CLASS_STRUCT_**, CorInfoTypeWithMod> getArgTypeIncludingParameterized,
-            delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, CORINFO_CLASS_STRUCT_**, CorInfoTypeWithMod> getParameterType
+            delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, CORINFO_CLASS_STRUCT_**, CorInfoTypeWithMod> getParameterType,
+            delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, void**, uint> getObjectLayout
             );
 
         public void RegisterLlvmCallbacks(IntPtr corInfoPtr, string outputFileName, string triple, string dataLayout)
@@ -321,7 +348,8 @@ namespace Internal.JitInterface
                 &structIsWrappedPrimitive,
                 &padOffset,
                 &getArgTypeIncludingParameterized,
-                &getParameterType
+                &getParameterType,
+                &getObjectLayout
             );
         }
 

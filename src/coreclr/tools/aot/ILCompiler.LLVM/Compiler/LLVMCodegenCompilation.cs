@@ -269,5 +269,10 @@ namespace ILCompiler
         {
             return ILImporter.PadOffset(type, (int)atOffset);
         }
+
+        public override void GetObjectLayoutInstructions(TypeDesc type, List<FieldStoreLayout> layout)
+        {
+            ILImporter.GetObjectLayoutInstructions(type, layout, 0);
+        }
     }
 }

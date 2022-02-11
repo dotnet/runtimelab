@@ -379,6 +379,40 @@ namespace Internal.IL
             return padding;
         }
 
+        public static void GetObjectLayoutInstructions(TypeDesc type, List<FieldStoreLayout> layout, int startOffset)
+        {
+            foreach (FieldDesc f in type.GetFields())
+            {
+                if (f.IsStatic) continue;
+                if (IsStruct(f.FieldType))
+                {
+                    int fieldAbsoluteOffset = startOffset + f.Offset.AsInt;
+                    layout.Add(new FieldStoreLayout
+                    {
+                        IsStartStruct = 1,
+                        AbsoluteOffset = fieldAbsoluteOffset,
+                        FieldOffset = f.Offset.AsInt
+                    });
+
+                    //recurse into struct
+                    GetObjectLayoutInstructions(f.FieldType, layout, fieldAbsoluteOffset);
+                }
+                else if (f.FieldType.IsGCPointer)
+                {
+                    int fieldAbsoluteOffset = startOffset + f.Offset.AsInt;
+                    layout.Add(new FieldStoreLayout
+                    {
+                        AbsoluteOffset = fieldAbsoluteOffset,
+                        FieldOffset = f.Offset.AsInt
+                    });
+                }
+            }
+            layout.Add(new FieldStoreLayout
+            {
+                IsEndStruct = 1,
+            });
+        }
+
         static LLVMValueRef s_shadowStackTop = default(LLVMValueRef);
 
         static LLVMValueRef ShadowStackTop

@@ -64,6 +64,14 @@ struct SsaPairHash
     }
 };
 
+struct FieldStoreLayout
+{
+    unsigned AbsoluteOffset;
+    unsigned FieldOffset;
+    unsigned IsStartStruct;
+    unsigned IsEndStruct;
+};
+
 extern "C" void registerLlvmCallbacks(void*       thisPtr,
                                       const char* outputFileName,
                                       const char* triple,
@@ -80,7 +88,8 @@ extern "C" void registerLlvmCallbacks(void*       thisPtr,
                                       const uint32_t(*structIsWrappedPrimitive)(void*, CORINFO_CLASS_STRUCT_*, CorInfoType),
                                       const uint32_t(*padOffset)(void*, CORINFO_CLASS_STRUCT_*, unsigned),
                                       const CorInfoTypeWithMod(*_getArgTypeIncludingParameterized)(void*, CORINFO_SIG_INFO*, CORINFO_ARG_LIST_HANDLE, CORINFO_CLASS_HANDLE*),
-                                      const CorInfoTypeWithMod(*_getParameterType)(void*, CORINFO_CLASS_HANDLE, CORINFO_CLASS_HANDLE*));
+                                      const CorInfoTypeWithMod(*_getParameterType)(void*, CORINFO_CLASS_HANDLE, CORINFO_CLASS_HANDLE*),
+                                      const uint32_t (*getObjectLayout)(void*, CORINFO_CLASS_HANDLE, FieldStoreLayout**));
 
 struct PhiPair
 {
@@ -133,6 +142,7 @@ private:
     void buildHelperFuncCall(GenTreeCall* call);
     llvm::FunctionType* buildHelperLlvmFunctionType(GenTreeCall* call, bool withShadowStack);
     void buildInd(GenTree* node, Value* ptr);
+    void buildObj(GenTreeObj* node, Value* ptr);
     Value* buildJTrue(GenTree* node, Value* opValue);
     void buildEmptyPhi(GenTreePhi* phi);
     void buildUnaryOperation(GenTree* node);
@@ -181,7 +191,9 @@ private:
     unsigned int getTotalLocalOffset();
     bool helperRequiresShadowStack(CORINFO_METHOD_HANDLE corinfoMethodHnd);
     void importStoreInd(GenTreeStoreInd* storeIndOp);
+    void importStoreObj(GenTreeStoreInd* storeIndOp);
     Value* localVar(GenTreeLclVar* lclVar);
+    void storeObjAtAddress(Value* baseAddress, Value* data, unsigned startIx, unsigned gcFieldCount, FieldStoreLayout* gcFieldLayout);
 
     GenTreeCall::Use* lowerCallReturn(GenTreeCall* callNode, CORINFO_SIG_INFO* calleeSigInfo, GenTreeCall::Use* lastArg);
     void lowerCallToShadowStack(GenTreeCall* callNode, CORINFO_SIG_INFO* calleeSigInfo);

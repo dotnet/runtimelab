@@ -41,6 +41,7 @@ static const uint32_t(*_structIsWrappedPrimitive)(void*, CORINFO_CLASS_STRUCT_*,
 static const uint32_t(*_padOffset)(void*, CORINFO_CLASS_STRUCT_*, unsigned);
 static const CorInfoTypeWithMod(*_getArgTypeIncludingParameterized)(void*, CORINFO_SIG_INFO*, CORINFO_ARG_LIST_HANDLE, CORINFO_CLASS_HANDLE*);
 static const CorInfoTypeWithMod(*_getParameterType)(void*, CORINFO_CLASS_HANDLE, CORINFO_CLASS_HANDLE*);
+static const uint32_t (*_getObjectLayout)(void*, CORINFO_CLASS_HANDLE, FieldStoreLayout**);
 
 static char*                              _outputFileName;
 static Function*                          _doNothingFunction;
@@ -64,7 +65,9 @@ extern "C" DLLEXPORT void registerLlvmCallbacks(void*       thisPtr,
                                                 const uint32_t(*structIsWrappedPrimitive)(void*, CORINFO_CLASS_STRUCT_*, CorInfoType),
                                                 const uint32_t(*padOffset)(void*, CORINFO_CLASS_STRUCT_*, unsigned),
                                                 const CorInfoTypeWithMod(*getArgTypeIncludingParameterized)(void*, CORINFO_SIG_INFO*, CORINFO_ARG_LIST_HANDLE, CORINFO_CLASS_HANDLE*),
-                                                const CorInfoTypeWithMod(*getParameterType)(void*, CORINFO_CLASS_HANDLE, CORINFO_CLASS_HANDLE*))
+                                                const CorInfoTypeWithMod(*getParameterType)(void*, CORINFO_CLASS_HANDLE, CORINFO_CLASS_HANDLE*),
+                                                const uint32_t (*getObjectLayout)(void*, CORINFO_CLASS_HANDLE, FieldStoreLayout**)
+)
 {
     _thisPtr = thisPtr;
     _getMangledMethodName         = getMangledMethodNamePtr;
@@ -80,6 +83,7 @@ extern "C" DLLEXPORT void registerLlvmCallbacks(void*       thisPtr,
     _padOffset = padOffset;
     _getArgTypeIncludingParameterized = getArgTypeIncludingParameterized;
     _getParameterType = getParameterType;
+    _getObjectLayout = getObjectLayout;
 
     if (_module == nullptr) // registerLlvmCallbacks is called for each method to compile, but must only created the module once.  Better perhaps to split this into 2 calls.
     {
@@ -131,7 +135,7 @@ bool structIsWrappedPrimitive(CORINFO_CLASS_HANDLE classHnd, CorInfoType primiti
     return (*_structIsWrappedPrimitive)(_thisPtr, classHnd, primitiveType);
 }
 
-void addPaddingFields(unsigned paddingSize, std::vector<Type*> llvmFields)
+void addPaddingFields(unsigned paddingSize, std::vector<Type*>& llvmFields)
 {
     unsigned numInts = paddingSize / 4;
     unsigned numBytes = paddingSize - numInts * 4;
@@ -949,7 +953,9 @@ bool Llvm::helperRequiresShadowStack(CORINFO_METHOD_HANDLE corinfoMethodHnd)
            corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_DBL2INT_OVF) ||
            corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_DBL2LNG_OVF) ||
            corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_DBL2UINT_OVF) ||
-           corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_DBL2ULNG_OVF);
+           corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_DBL2ULNG_OVF) ||
+           corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_LMUL_OVF) ||
+           corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_ULMUL_OVF);
 }
 
 void Llvm::buildHelperFuncCall(GenTreeCall* call)
@@ -1149,6 +1155,13 @@ void Llvm::buildInd(GenTree* node, Value* ptr)
     mapGenTreeToValue(node, _builder.CreateLoad(
                                  castIfNecessary(ptr,
                                      getLlvmTypeForVarType(node->TypeGet())->getPointerTo())));
+}
+
+void Llvm::buildObj(GenTreeObj* node, Value* ptr)
+{
+    // cast the pointer to create the correct load instructions
+    mapGenTreeToValue(node, _builder.CreateLoad(
+                                castIfNecessary(ptr, getLlvmTypeForStruct(node->GetLayout()->GetClassHandle())->getPointerTo())));
 }
 
 Value* Llvm::buildJTrue(GenTree* node, Value* opValue)
@@ -1393,6 +1406,74 @@ void Llvm::importStoreInd(GenTreeStoreInd* storeIndOp)
     }
 }
 
+void Llvm::storeObjAtAddress(Value* baseAddress, Value* data, unsigned startIx, unsigned gcFieldCount, FieldStoreLayout* gcFieldLayout)
+{
+    unsigned i = startIx;
+    while (!gcFieldLayout[i].IsEndStruct)
+    {
+        Value* address = _builder.CreateGEP(baseAddress, _builder.getInt32(gcFieldLayout[i].FieldOffset));
+
+        // get the data if this instruction has data
+        Value* fieldData = nullptr;
+        if (!gcFieldLayout[i].IsEndStruct)
+        {
+            if (data->getType()->isStructTy())
+            {
+                unsigned index = _module->getDataLayout().getStructLayout((llvm::StructType*)(data->getType()))->getElementContainingOffset(gcFieldLayout[i].FieldOffset);
+                fieldData = _builder.CreateExtractValue(data, index);
+            }
+            else
+            {
+                // single field IL structs are not LLVM structs
+                fieldData = data;
+            }
+        }
+
+        if (gcFieldLayout[i].IsStartStruct)
+        {
+            storeObjAtAddress(address, fieldData, i + 1, gcFieldCount, gcFieldLayout);
+        }
+        else
+        {
+            _builder.CreateCall(getOrCreateRhpAssignRef(),
+                                ArrayRef<Value*>{address, castIfNecessary(fieldData, Type::getInt8PtrTy(_llvmContext))});
+        }
+        i++;
+    }
+}
+
+void Llvm::importStoreObj(GenTreeStoreInd* storeIndOp)
+{
+    unsigned gcFieldCount;
+    Value* baseAddress = getGenTreeValue(storeIndOp->Addr());
+
+    if (!storeIndOp->OperIsBlk())
+    {
+        failFunctionCompilation(); // cant get struct handle. TODO-LLVM: try as an assert
+    }
+
+    ClassLayout* structLayout = storeIndOp->AsBlk()->GetLayout();
+
+    // zero initialization  check
+    GenTree* dataOp = storeIndOp->Data();
+    if (dataOp->OperIs(GT_CNS_INT) && dataOp->AsIntCon()->IconValue() == 0)
+    {
+        _builder.CreateMemSet(baseAddress, _builder.getInt8(0), _builder.getInt32(structLayout->GetSize()), {});
+        return;
+    }
+
+    CORINFO_CLASS_HANDLE structClsHnd = structLayout->GetClassHandle();
+    FieldStoreLayout* gcFieldLayout;
+    gcFieldCount = _getObjectLayout(_thisPtr, structClsHnd, &gcFieldLayout);
+
+    storeObjAtAddress(baseAddress, getGenTreeValue(storeIndOp->Data()), 0, gcFieldCount, gcFieldLayout);
+
+    // just copy all the fields again for simplicity,
+    // if all the fields were set using RhpAssignRef then a possible optimisation would be to skip this line
+    Value* toStore = getGenTreeValue(storeIndOp->Data());
+    _builder.CreateStore(toStore, castIfNecessary(baseAddress, toStore->getType()->getPointerTo()));
+}
+
 Value* Llvm::localVar(GenTreeLclVar* lclVar)
 {
     Value*       llvmRef;
@@ -1578,6 +1659,9 @@ void Llvm::visitNode(GenTree* node)
         case GT_NO_OP:
             emitDoNothingCall();
             break;
+        case GT_OBJ:
+            buildObj(node->AsObj(), getGenTreeValue(node->AsOp()->gtOp1));
+            break;
         case GT_PHI:
             buildEmptyPhi(node->AsPhi());
             break;
@@ -1592,6 +1676,9 @@ void Llvm::visitNode(GenTree* node)
             break;
         case GT_STOREIND:
             importStoreInd((GenTreeStoreInd*)node);
+            break;
+        case GT_STORE_OBJ:
+            importStoreObj((GenTreeStoreInd*)node);
             break;
         case GT_AND:
         case GT_OR:
