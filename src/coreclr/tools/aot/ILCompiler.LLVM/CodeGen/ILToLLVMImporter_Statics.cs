@@ -383,7 +383,11 @@ namespace Internal.IL
         {
             foreach (FieldDesc f in type.GetFields())
             {
-                if (f.IsStatic) continue;
+                if (f.IsStatic)
+                {
+                    continue;
+                }
+
                 if (IsStruct(f.FieldType))
                 {
                     int fieldAbsoluteOffset = startOffset + f.Offset.AsInt;

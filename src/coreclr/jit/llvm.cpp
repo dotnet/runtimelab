@@ -163,6 +163,11 @@ unsigned Llvm::getElementSize(CORINFO_CLASS_HANDLE classHandle, CorInfoType corI
     return getWellKnownTypeSize(corInfoType);
 }
 
+llvm::Type* Llvm::getLlvmTypeForStruct(ClassLayout* classLayout)
+{
+    return getLlvmTypeForStruct(classLayout->GetClassHandle());
+}
+
 llvm::Type* Llvm::getLlvmTypeForStruct(CORINFO_CLASS_HANDLE structHandle)
 {
     if (_llvmStructs->find(structHandle) == _llvmStructs->end())
@@ -1157,11 +1162,12 @@ void Llvm::buildInd(GenTree* node, Value* ptr)
                                      getLlvmTypeForVarType(node->TypeGet())->getPointerTo())));
 }
 
-void Llvm::buildObj(GenTreeObj* node, Value* ptr)
+void Llvm::buildObj(GenTreeObj* node)
 {
     // cast the pointer to create the correct load instructions
     mapGenTreeToValue(node, _builder.CreateLoad(
-                                castIfNecessary(ptr, getLlvmTypeForStruct(node->GetLayout()->GetClassHandle())->getPointerTo())));
+                          castIfNecessary(getGenTreeValue(node->AsOp()->gtOp1),
+                                          getLlvmTypeForStruct(node->GetLayout())->getPointerTo())));
 }
 
 Value* Llvm::buildJTrue(GenTree* node, Value* opValue)
@@ -1419,8 +1425,10 @@ void Llvm::storeObjAtAddress(Value* baseAddress, Value* data, unsigned startIx, 
         {
             if (data->getType()->isStructTy())
             {
-                unsigned index = _module->getDataLayout().getStructLayout((llvm::StructType*)(data->getType()))->getElementContainingOffset(gcFieldLayout[i].FieldOffset);
-                fieldData = _builder.CreateExtractValue(data, index);
+                const llvm::StructLayout* structLayout = _module->getDataLayout().getStructLayout((llvm::StructType*)(data->getType()));
+
+                unsigned llvmFieldIndex = structLayout->getElementContainingOffset(gcFieldLayout[i].FieldOffset);
+                fieldData               = _builder.CreateExtractValue(data, llvmFieldIndex);
             }
             else
             {
@@ -1456,7 +1464,7 @@ void Llvm::buildStoreObj(GenTreeStoreInd* storeIndOp)
 
     // zero initialization  check
     GenTree* dataOp = storeIndOp->Data();
-    if (dataOp->OperIs(GT_CNS_INT) && dataOp->AsIntCon()->IconValue() == 0)
+    if (dataOp->IsIntegralConst(0))
     {
         _builder.CreateMemSet(baseAddress, _builder.getInt8(0), _builder.getInt32(structLayout->GetSize()), {});
         return;
@@ -1660,7 +1668,7 @@ void Llvm::visitNode(GenTree* node)
             emitDoNothingCall();
             break;
         case GT_OBJ:
-            buildObj(node->AsObj(), getGenTreeValue(node->AsOp()->gtOp1));
+            buildObj(node->AsObj());
             break;
         case GT_PHI:
             buildEmptyPhi(node->AsPhi());

@@ -227,7 +227,7 @@ namespace ILCompiler
             throw new NotImplementedException();
         }
 
-        public virtual void GetObjectLayoutInstructions(TypeDesc type, List<FieldStoreLayout> layout)
+        public virtual List<FieldStoreLayout> GetObjectLayoutInstructions(TypeDesc type)
         {
             throw new NotImplementedException();
         }

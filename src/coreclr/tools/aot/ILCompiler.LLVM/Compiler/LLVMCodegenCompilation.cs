@@ -76,6 +76,7 @@ namespace ILCompiler
             var nodes = _dependencyGraph.MarkedNodeList;
 
             CorInfoImpl.Shutdown(); // writes the LLVM bitcode
+            CorInfoImpl.FreeUnmanagedResources(); // writes the LLVM bitcode
 
             LLVMObjectWriter.EmitObject(outputFile, nodes, NodeFactory, this, dumper);
 
@@ -270,9 +271,13 @@ namespace ILCompiler
             return ILImporter.PadOffset(type, (int)atOffset);
         }
 
-        public override void GetObjectLayoutInstructions(TypeDesc type, List<FieldStoreLayout> layout)
+        public override List<FieldStoreLayout> GetObjectLayoutInstructions(TypeDesc type)
         {
+            List<FieldStoreLayout> layout = new();
+
             ILImporter.GetObjectLayoutInstructions(type, layout, 0);
+
+            return layout;
         }
     }
 }
