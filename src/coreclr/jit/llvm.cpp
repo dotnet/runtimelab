@@ -37,15 +37,17 @@ static const uint32_t (*_isRuntimeImport)(void*, CORINFO_METHOD_STRUCT_*);
 static const char* (*_getDocumentFileName)(void*);
 static const uint32_t (*_firstSequencePointLineNumber)(void*);
 static const uint32_t (*_getOffsetLineNumber)(void*, unsigned int ilOffset);
-static const uint32_t(*_structIsWrappedPrimitive)(void*, CORINFO_CLASS_STRUCT_*, CorInfoType);
-static const uint32_t(*_padOffset)(void*, CORINFO_CLASS_STRUCT_*, unsigned);
-static const CorInfoTypeWithMod(*_getArgTypeIncludingParameterized)(void*, CORINFO_SIG_INFO*, CORINFO_ARG_LIST_HANDLE, CORINFO_CLASS_HANDLE*);
-static const CorInfoTypeWithMod(*_getParameterType)(void*, CORINFO_CLASS_HANDLE, CORINFO_CLASS_HANDLE*);
+static const uint32_t (*_structIsWrappedPrimitive)(void*, CORINFO_CLASS_STRUCT_*, CorInfoType);
+static const uint32_t (*_padOffset)(void*, CORINFO_CLASS_STRUCT_*, unsigned);
+static const CorInfoTypeWithMod (*_getArgTypeIncludingParameterized)(void*, CORINFO_SIG_INFO*, CORINFO_ARG_LIST_HANDLE, CORINFO_CLASS_HANDLE*);
+static const CorInfoTypeWithMod (*_getParameterType)(void*, CORINFO_CLASS_HANDLE, CORINFO_CLASS_HANDLE*);
+static const TypeDescriptor (*_getTypeDescriptor)(void*, CORINFO_CLASS_HANDLE);
 
 static char*                              _outputFileName;
 static Function*                          _doNothingFunction;
 
 static std::unordered_map<CORINFO_CLASS_HANDLE, Type*>* _llvmStructs = new std::unordered_map<CORINFO_CLASS_HANDLE, Type*>();
+static std::unordered_map<CORINFO_CLASS_HANDLE, StructDesc*>* _structDescMap = new std::unordered_map<CORINFO_CLASS_HANDLE, StructDesc*>();
 
 
 extern "C" DLLEXPORT void registerLlvmCallbacks(void*       thisPtr,
@@ -64,7 +66,8 @@ extern "C" DLLEXPORT void registerLlvmCallbacks(void*       thisPtr,
                                                 const uint32_t(*structIsWrappedPrimitive)(void*, CORINFO_CLASS_STRUCT_*, CorInfoType),
                                                 const uint32_t(*padOffset)(void*, CORINFO_CLASS_STRUCT_*, unsigned),
                                                 const CorInfoTypeWithMod(*getArgTypeIncludingParameterized)(void*, CORINFO_SIG_INFO*, CORINFO_ARG_LIST_HANDLE, CORINFO_CLASS_HANDLE*),
-                                                const CorInfoTypeWithMod(*getParameterType)(void*, CORINFO_CLASS_HANDLE, CORINFO_CLASS_HANDLE*))
+                                                const CorInfoTypeWithMod(*getParameterType)(void*, CORINFO_CLASS_HANDLE, CORINFO_CLASS_HANDLE*),
+                                                const TypeDescriptor(*getTypeDescriptor)(void*, CORINFO_CLASS_HANDLE))
 {
     _thisPtr = thisPtr;
     _getMangledMethodName         = getMangledMethodNamePtr;
@@ -79,7 +82,8 @@ extern "C" DLLEXPORT void registerLlvmCallbacks(void*       thisPtr,
     _structIsWrappedPrimitive     = structIsWrappedPrimitive;
     _padOffset = padOffset;
     _getArgTypeIncludingParameterized = getArgTypeIncludingParameterized;
-    _getParameterType = getParameterType;
+    _getParameterType             = getParameterType;
+    _getTypeDescriptor            = getTypeDescriptor;
 
     if (_module == nullptr) // registerLlvmCallbacks is called for each method to compile, but must only created the module once.  Better perhaps to split this into 2 calls.
     {
@@ -125,6 +129,16 @@ Value* Llvm::getGenTreeValue(GenTree* op)
     return _sdsuMap->at(op);
 }
 
+TypeDescriptor Llvm::getTypeDescriptor(CORINFO_CLASS_HANDLE structHandle)
+{
+    if (_typeDescriptorsMap->find(structHandle) == _typeDescriptorsMap->end())
+    {
+        _typeDescriptorsMap->insert({structHandle, _getTypeDescriptor(_thisPtr, structHandle)});
+    }
+
+    return _typeDescriptorsMap->at(structHandle);
+}
+
 // maintains compatiblity with the IL->LLVM generation.  TODO-LLVM, when IL generation is no more, see if we can remove this unwrapping
 bool structIsWrappedPrimitive(CORINFO_CLASS_HANDLE classHnd, CorInfoType primitiveType)
 {
@@ -157,6 +171,75 @@ unsigned Llvm::getElementSize(CORINFO_CLASS_HANDLE classHandle, CorInfoType corI
         return _info.compCompHnd->getClassSize(classHandle);
     }
     return getWellKnownTypeSize(corInfoType);
+}
+
+StructDesc* Llvm::getStructDesc(CORINFO_CLASS_HANDLE structHandle)
+{
+    if (_structDescMap->find(structHandle) == _structDescMap->end())
+    {
+        StructDesc* structDesc = new StructDesc();
+
+        TypeDescriptor structTypeDescriptor = _getTypeDescriptor(_thisPtr, structHandle);
+        unsigned structSize                 = _info.compCompHnd->getClassSize(structHandle); // TODO-LLVM: add to TypeDescriptor?
+
+        std::vector<CORINFO_FIELD_HANDLE> sparseFields = std::vector<CORINFO_FIELD_HANDLE>(structSize);
+
+        for (unsigned i = 0; i < structSize; i++)
+            sparseFields[i] = nullptr;
+
+        // determine the largest field for unions, and get fields in order of offset
+        for (unsigned i = 0; i < structTypeDescriptor.fieldCount; i++)
+        {
+            CORINFO_FIELD_HANDLE fieldHandle = structTypeDescriptor.fields[i];
+            unsigned fldOffset               = _info.compCompHnd->getFieldOffset(structTypeDescriptor.fields[i]);
+
+            assert(fldOffset < structSize);
+
+            unsigned fieldSize = _info.compCompHnd->getClassSize(_info.compCompHnd->getFieldClass(fieldHandle));
+            // store the biggest field at the offset for unions
+            if (sparseFields[fldOffset] == nullptr ||
+                fieldSize > _info.compCompHnd->getClassSize(_info.compCompHnd->getFieldClass(sparseFields[fldOffset])))
+            {
+                sparseFields[fldOffset] = fieldHandle;
+            }
+        }
+
+        // count the struct fields after replacing fields with equal offsets
+        unsigned fieldCount = 0;
+        for (unsigned i = 0; i < structSize; i++)
+        {
+            if (sparseFields[i] != nullptr)
+            {
+                fieldCount++;
+            }
+        }
+
+        structDesc->fieldCount = fieldCount;
+        structDesc->fieldDesc  = new FieldDesc[fieldCount];
+
+        unsigned fieldIx = 0;
+        for (unsigned fldOffset = 0; fldOffset < structSize; fldOffset++)
+        {
+            if (sparseFields[fldOffset] == nullptr)
+            {
+                continue;
+            }
+
+            FieldDesc* fieldDesc = &(structDesc->fieldDesc[fieldIx]);
+
+            CORINFO_FIELD_HANDLE fieldHandle = structTypeDescriptor.fields[fieldIx];
+            CORINFO_CLASS_HANDLE fieldClassHandle = NO_CLASS_HANDLE;
+
+            fieldDesc->fieldOffset           = _info.compCompHnd->getFieldOffset(fieldHandle);
+            fieldDesc->corType               = _info.compCompHnd->getFieldType(fieldHandle, &fieldClassHandle);
+            fieldDesc->classHandle           = fieldClassHandle;
+
+            fieldIx++;
+        }
+
+        _structDescMap->insert({structHandle, structDesc});
+    }
+    return _structDescMap->at(structHandle);
 }
 
 llvm::Type* Llvm::getLlvmTypeForStruct(CORINFO_CLASS_HANDLE structHandle)
@@ -214,73 +297,36 @@ llvm::Type* Llvm::getLlvmTypeForStruct(CORINFO_CLASS_HANDLE structHandle)
                 const char* name = _getTypeName(_thisPtr, structHandle);
                 llvm::StructType* llvmStructType = llvm::StructType::create(_llvmContext, name);
                 llvmType = llvmStructType;
-                unsigned fieldCnt = _info.compCompHnd->getClassNumInstanceFields(structHandle);
+                StructDesc* structDesc = getStructDesc(structHandle) ;
+                unsigned    fieldCnt   = structDesc->fieldCount;
 
-                std::vector<CORINFO_FIELD_HANDLE> sparseFields = std::vector<CORINFO_FIELD_HANDLE>(structSize);
-                std::vector<Type*> llvmFields = std::vector<Type*>();
 
-                for (unsigned i = 0; i < structSize; i++) sparseFields[i] = nullptr;
-
-                for (unsigned i = 0; i < fieldCnt; i++)
-                {
-                    CORINFO_FIELD_HANDLE fieldHandle = _info.compCompHnd->getFieldInClass(structHandle, i);
-                    unsigned fldOffset = _info.compCompHnd->getFieldOffset(fieldHandle);
-
-                    assert(fldOffset < structSize);
-
-                    // store the biggest field at the offset for unions
-                    if (sparseFields[fldOffset] == nullptr ||
-                        _info.compCompHnd->getClassSize(_info.compCompHnd->getFieldClass(fieldHandle)) > _info.compCompHnd->getClassSize(_info.compCompHnd->getFieldClass(sparseFields[fldOffset])))
-                    {
-                        sparseFields[fldOffset] = fieldHandle;
-                    }
-                }
-                unsigned lastOffset = -1;
-                CORINFO_CLASS_HANDLE prevClass = nullptr;
-                CorInfoType prevCorInfoType = CorInfoType::CORINFO_TYPE_UNDEF;
+                unsigned lastOffset = 0;
                 unsigned totalSize = 0;
+                std::vector<Type*> llvmFields = std::vector<Type*>();
+                int prevElementSize = 0;
 
-                for (unsigned curOffset = 0; curOffset < structSize;)
+                for (unsigned fieldIx = 0; fieldIx < fieldCnt; fieldIx++)
                 {
-                    CORINFO_FIELD_HANDLE fieldHandle = sparseFields[curOffset];
-                    if (fieldHandle == nullptr)
-                    {
-                        curOffset++;
-                        continue;
-                    }
-
-                    int prevElementSize;
-                    if (prevCorInfoType == CorInfoType::CORINFO_TYPE_UNDEF)
-                    {
-                        lastOffset = 0;
-                        prevElementSize = 0;
-                    }
-                    else
-                    {
-                        prevElementSize = getElementSize(prevClass, prevCorInfoType);
-                    }
+                    FieldDesc* fieldDesc = &(structDesc->fieldDesc[fieldIx]);
 
                     // Pad to this field if necessary
-                    unsigned paddingSize = curOffset - lastOffset - prevElementSize;
+                    unsigned paddingSize = fieldDesc->fieldOffset - lastOffset - prevElementSize;
                     if (paddingSize > 0)
                     {
                         addPaddingFields(paddingSize, llvmFields);
                         totalSize += paddingSize;
                     }
 
-                    CORINFO_CLASS_HANDLE fieldClassHandle = NO_CLASS_HANDLE;
-                    CorInfoType fieldCorType = _info.compCompHnd->getFieldType(fieldHandle, &fieldClassHandle);
+                    CorInfoType fieldCorType = fieldDesc->corType;
                     
-                    int fieldSize = getElementSize(fieldClassHandle, fieldCorType);
+                    int fieldSize = getElementSize(fieldDesc->classHandle, fieldCorType);
 
-                    llvmFields.push_back(getLlvmTypeForCorInfoType(fieldCorType, fieldClassHandle));
+                    llvmFields.push_back(getLlvmTypeForCorInfoType(fieldCorType, fieldDesc->classHandle));
 
                     totalSize += fieldSize;
-                    lastOffset = curOffset;
-                    prevClass = fieldClassHandle;
-                    prevCorInfoType = fieldCorType;
-
-                    curOffset += fieldSize;
+                    lastOffset = fieldDesc->fieldOffset;
+                    prevElementSize = fieldSize;
                 }
 
                 // If explicit layout is greater than the sum of fields, add padding
@@ -1745,6 +1791,13 @@ void Llvm::llvmShutdown()
 
     llvm::raw_fd_ostream OS(_outputFileName, ec);
     llvm::WriteBitcodeToFile(*_module, OS);
+
+    for (const auto &structDesc : *_structDescMap)
+    {
+        delete[] structDesc.second->fieldDesc;
+        delete structDesc.second;
+    }
+
     delete _module;
 }
 
@@ -2235,6 +2288,7 @@ void Llvm::Compile()
     std::unordered_map<GenTree*, Value*> sdsuMap;
     _sdsuMap = &sdsuMap;
     _localsMap = new std::unordered_map<SsaPair, Value*, SsaPairHash>();
+    _typeDescriptorsMap = new std::unordered_map<CORINFO_CLASS_HANDLE, TypeDescriptor>();
     const char* mangledName = (*_getMangledMethodName)(_thisPtr, _info.compMethodHnd);
     _function = _module->getFunction(mangledName);
     _debugFunction = nullptr;

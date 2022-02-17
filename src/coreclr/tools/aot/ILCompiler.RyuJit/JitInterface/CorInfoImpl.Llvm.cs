@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using ILCompiler;
 using ILCompiler.DependencyAnalysis;
@@ -11,7 +12,10 @@ namespace Internal.JitInterface
 {
     public unsafe sealed partial class CorInfoImpl
     {
+        static List<IntPtr> _allocedMemory = new List<IntPtr>();
+
         private MethodDebugInformation _debugInformation;
+        private Dictionary<IntPtr, TypeDescriptor> typeDescriptorDict = new Dictionary<IntPtr, TypeDescriptor>();
 
         [DllImport(JitLibrary)]
         private extern static void jitShutdown([MarshalAs(UnmanagedType.I1)] bool processIsTerminating);
@@ -287,6 +291,58 @@ namespace Internal.JitInterface
             return (CorInfoTypeWithMod)corInfoType;
         }
 
+        public struct TypeDescriptor
+        {
+            public uint FieldCount;
+            public CORINFO_FIELD_STRUCT_** Fields; // array of CORINFO_FIELD_STRUCT_*
+        }
+
+        [UnmanagedCallersOnly]
+        public static TypeDescriptor getTypeDescriptor(IntPtr thisHandle, CORINFO_CLASS_STRUCT_* inputType)
+        {
+            var _this = GetThis(thisHandle);
+
+            if (_this.typeDescriptorDict.TryGetValue((IntPtr)inputType, out var typeDescriptor))
+            {
+                return typeDescriptor;
+            }
+
+            TypeDesc type = _this.HandleToObject(inputType);
+
+            uint fieldCount = 0;
+            foreach (var field in type.GetFields())
+            {
+                if (!field.IsStatic)
+                {
+                    fieldCount++;
+                }
+            }
+
+            //TODO-LLVM: change to NativeMemory.Alloc when upgrade to .net6
+            IntPtr allocedMemory = Marshal.AllocHGlobal((int)(sizeof(CORINFO_FIELD_STRUCT_*) * fieldCount));
+            _allocedMemory.Add(allocedMemory);
+
+            typeDescriptor = new TypeDescriptor
+            {
+                FieldCount = fieldCount,
+                Fields = (CORINFO_FIELD_STRUCT_**)allocedMemory
+            };
+
+            fieldCount = 0;
+            foreach (var field in type.GetFields())
+            {
+                if (!field.IsStatic)
+                {
+                    typeDescriptor.Fields[fieldCount] = _this.ObjectToHandle(field);
+                    fieldCount++;
+                }
+            }
+
+            _this.typeDescriptorDict.Add((IntPtr)inputType, typeDescriptor);
+
+            return typeDescriptor;
+        }
+
         [DllImport(JitLibrary)]
         private extern static void registerLlvmCallbacks(IntPtr thisHandle, byte* outputFileName, byte* triple, byte* dataLayout,
             delegate* unmanaged<IntPtr, CORINFO_METHOD_STRUCT_*, byte*> getMangedMethodNamePtr,
@@ -301,7 +357,8 @@ namespace Internal.JitInterface
             delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, CorInfoType, uint> structIsWrappedPrimitive,
             delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, uint, uint> padOffset,
             delegate* unmanaged<IntPtr, CORINFO_SIG_INFO*, CORINFO_ARG_LIST_STRUCT_*, CORINFO_CLASS_STRUCT_**, CorInfoTypeWithMod> getArgTypeIncludingParameterized,
-            delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, CORINFO_CLASS_STRUCT_**, CorInfoTypeWithMod> getParameterType
+            delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, CORINFO_CLASS_STRUCT_**, CorInfoTypeWithMod> getParameterType,
+            delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, TypeDescriptor> getTypeDescriptor
             );
 
         public void RegisterLlvmCallbacks(IntPtr corInfoPtr, string outputFileName, string triple, string dataLayout)
@@ -321,7 +378,8 @@ namespace Internal.JitInterface
                 &structIsWrappedPrimitive,
                 &padOffset,
                 &getArgTypeIncludingParameterized,
-                &getParameterType
+                &getParameterType,
+                &getTypeDescriptor
             );
         }
 
@@ -333,6 +391,16 @@ namespace Internal.JitInterface
         void AddOrReturnGlobalSymbol(ISymbolNode symbolNode, NameMangler nameMangler)
         {
             _compilation.AddOrReturnGlobalSymbol(symbolNode, nameMangler);
+        }
+
+        public static void FreeUnmanagedResources()
+        {
+            foreach (var ptr in _allocedMemory)
+            {
+                Marshal.FreeHGlobal(ptr);
+            }
+
+            _allocedMemory.Clear();
         }
     }
 }

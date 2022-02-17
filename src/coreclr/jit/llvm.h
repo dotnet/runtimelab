@@ -64,6 +64,27 @@ struct SsaPairHash
     }
 };
 
+struct TypeDescriptor
+{
+    size_t                fieldCount;
+    CORINFO_FIELD_HANDLE* fields;
+};
+
+struct StructDesc;
+
+struct FieldDesc
+{
+    int                  fieldOffset;
+    CORINFO_CLASS_HANDLE classHandle;
+    CorInfoType          corType;
+};
+
+struct StructDesc
+{
+    size_t     fieldCount;
+    FieldDesc* fieldDesc;
+};
+
 extern "C" void registerLlvmCallbacks(void*       thisPtr,
                                       const char* outputFileName,
                                       const char* triple,
@@ -80,7 +101,8 @@ extern "C" void registerLlvmCallbacks(void*       thisPtr,
                                       const uint32_t(*structIsWrappedPrimitive)(void*, CORINFO_CLASS_STRUCT_*, CorInfoType),
                                       const uint32_t(*padOffset)(void*, CORINFO_CLASS_STRUCT_*, unsigned),
                                       const CorInfoTypeWithMod(*_getArgTypeIncludingParameterized)(void*, CORINFO_SIG_INFO*, CORINFO_ARG_LIST_HANDLE, CORINFO_CLASS_HANDLE*),
-                                      const CorInfoTypeWithMod(*_getParameterType)(void*, CORINFO_CLASS_HANDLE, CORINFO_CLASS_HANDLE*));
+                                      const CorInfoTypeWithMod(*_getParameterType)(void*, CORINFO_CLASS_HANDLE, CORINFO_CLASS_HANDLE*),
+                                      const TypeDescriptor(*getTypeDescriptor)(void*, CORINFO_CLASS_HANDLE));
 
 struct PhiPair
 {
@@ -105,6 +127,7 @@ private:
     llvm::IRBuilder<> _prologBuilder;
     std::unordered_map<GenTree*, Value*>* _sdsuMap;
     std::unordered_map<SsaPair, Value*, SsaPairHash>* _localsMap;
+    std::unordered_map<CORINFO_CLASS_HANDLE, TypeDescriptor>* _typeDescriptorsMap;
     std::vector<PhiPair> _phiPairs;
 
     // DWARF
@@ -198,7 +221,9 @@ private:
     CorInfoType toCorInfoType(var_types varType);
     CORINFO_CLASS_HANDLE tryGetStructClassHandle(LclVarDsc* varDsc);
     void visitNode(GenTree* node);
-    Value* Llvm::zextIntIfNecessary(Value* intValue);
+    Value* zextIntIfNecessary(Value* intValue);
+    TypeDescriptor getTypeDescriptor(CORINFO_CLASS_HANDLE structHandle);
+    StructDesc* getStructDesc(CORINFO_CLASS_HANDLE structHandle);
 
 public:
     Llvm(Compiler* pCompiler);
