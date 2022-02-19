@@ -44,7 +44,8 @@ steps:
     - ${{ if eq(parameters.platform, 'Browser_wasm_win') }}:
       - script: |
           call $(Build.SourcesDirectory)\wasm-tools\emsdk\emsdk_env
-          $(Build.SourcesDirectory)/src/tests/run$(scriptExt) runnativeaottests $(buildConfigUpper) ${{ parameters.archType }}
+          # Run sequential as we are getting Out of Memory errors
+          $(Build.SourcesDirectory)/src/tests/run$(scriptExt) runnativeaottests $(buildConfigUpper) ${{ parameters.archType }} sequential
         displayName: Run WebAssembly tests in single file mode
     - ${{ elseif eq(parameters.osGroup, 'windows') }}:
       - script: $(Build.SourcesDirectory)/src/tests/run$(scriptExt) runnativeaottests $(buildConfigUpper) ${{ parameters.archType }}
