@@ -8,6 +8,7 @@
 
 #include "alloc.h"
 #include "jitpch.h"
+#include "llvm_types.h"
 #include <new>
 
 // these break std::min/max in LLVM's headers
@@ -64,27 +65,6 @@ struct SsaPairHash
     }
 };
 
-struct TypeDescriptor
-{
-    size_t                fieldCount;
-    CORINFO_FIELD_HANDLE* fields;
-};
-
-struct StructDesc;
-
-struct FieldDesc
-{
-    int                  fieldOffset;
-    CORINFO_CLASS_HANDLE classHandle;
-    CorInfoType          corType;
-};
-
-struct StructDesc
-{
-    size_t     fieldCount;
-    FieldDesc* fieldDesc;
-};
-
 extern "C" void registerLlvmCallbacks(void*       thisPtr,
                                       const char* outputFileName,
                                       const char* triple,
@@ -127,7 +107,6 @@ private:
     llvm::IRBuilder<> _prologBuilder;
     std::unordered_map<GenTree*, Value*>* _sdsuMap;
     std::unordered_map<SsaPair, Value*, SsaPairHash>* _localsMap;
-    std::unordered_map<CORINFO_CLASS_HANDLE, TypeDescriptor>* _typeDescriptorsMap;
     std::vector<PhiPair> _phiPairs;
 
     // DWARF

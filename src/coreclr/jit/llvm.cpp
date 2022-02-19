@@ -129,16 +129,6 @@ Value* Llvm::getGenTreeValue(GenTree* op)
     return _sdsuMap->at(op);
 }
 
-TypeDescriptor Llvm::getTypeDescriptor(CORINFO_CLASS_HANDLE structHandle)
-{
-    if (_typeDescriptorsMap->find(structHandle) == _typeDescriptorsMap->end())
-    {
-        _typeDescriptorsMap->insert({structHandle, _getTypeDescriptor(_thisPtr, structHandle)});
-    }
-
-    return _typeDescriptorsMap->at(structHandle);
-}
-
 // maintains compatiblity with the IL->LLVM generation.  TODO-LLVM, when IL generation is no more, see if we can remove this unwrapping
 bool structIsWrappedPrimitive(CORINFO_CLASS_HANDLE classHnd, CorInfoType primitiveType)
 {
@@ -177,8 +167,6 @@ StructDesc* Llvm::getStructDesc(CORINFO_CLASS_HANDLE structHandle)
 {
     if (_structDescMap->find(structHandle) == _structDescMap->end())
     {
-        StructDesc* structDesc = new StructDesc();
-
         TypeDescriptor structTypeDescriptor = _getTypeDescriptor(_thisPtr, structHandle);
         unsigned structSize                 = _info.compCompHnd->getClassSize(structHandle); // TODO-LLVM: add to TypeDescriptor?
 
@@ -214,8 +202,7 @@ StructDesc* Llvm::getStructDesc(CORINFO_CLASS_HANDLE structHandle)
             }
         }
 
-        structDesc->fieldCount = fieldCount;
-        structDesc->fieldDesc  = new FieldDesc[fieldCount];
+        StructDesc* structDesc = new StructDesc(fieldCount, new FieldDesc[fieldCount]);
 
         unsigned fieldIx = 0;
         for (unsigned fldOffset = 0; fldOffset < structSize; fldOffset++)
@@ -225,15 +212,13 @@ StructDesc* Llvm::getStructDesc(CORINFO_CLASS_HANDLE structHandle)
                 continue;
             }
 
-            FieldDesc* fieldDesc = &(structDesc->fieldDesc[fieldIx]);
+            FieldDesc* fieldDesc = structDesc->getFieldDesc(fieldIx);
 
             CORINFO_FIELD_HANDLE fieldHandle = structTypeDescriptor.fields[fieldIx];
             CORINFO_CLASS_HANDLE fieldClassHandle = NO_CLASS_HANDLE;
 
-            fieldDesc->fieldOffset           = _info.compCompHnd->getFieldOffset(fieldHandle);
-            fieldDesc->corType               = _info.compCompHnd->getFieldType(fieldHandle, &fieldClassHandle);
-            fieldDesc->classHandle           = fieldClassHandle;
-
+            fieldDesc->setFieldData(_info.compCompHnd->getFieldOffset(fieldHandle),
+                                    _info.compCompHnd->getFieldType(fieldHandle, &fieldClassHandle), fieldClassHandle);
             fieldIx++;
         }
 
@@ -298,7 +283,7 @@ llvm::Type* Llvm::getLlvmTypeForStruct(CORINFO_CLASS_HANDLE structHandle)
                 llvm::StructType* llvmStructType = llvm::StructType::create(_llvmContext, name);
                 llvmType = llvmStructType;
                 StructDesc* structDesc = getStructDesc(structHandle) ;
-                unsigned    fieldCnt   = structDesc->fieldCount;
+                unsigned    fieldCnt   = structDesc->getFieldCount();
 
 
                 unsigned lastOffset = 0;
@@ -308,24 +293,24 @@ llvm::Type* Llvm::getLlvmTypeForStruct(CORINFO_CLASS_HANDLE structHandle)
 
                 for (unsigned fieldIx = 0; fieldIx < fieldCnt; fieldIx++)
                 {
-                    FieldDesc* fieldDesc = &(structDesc->fieldDesc[fieldIx]);
+                    FieldDesc* fieldDesc = structDesc->getFieldDesc(fieldIx);
 
                     // Pad to this field if necessary
-                    unsigned paddingSize = fieldDesc->fieldOffset - lastOffset - prevElementSize;
+                    unsigned paddingSize = fieldDesc->getFieldOffset() - lastOffset - prevElementSize;
                     if (paddingSize > 0)
                     {
                         addPaddingFields(paddingSize, llvmFields);
                         totalSize += paddingSize;
                     }
 
-                    CorInfoType fieldCorType = fieldDesc->corType;
+                    CorInfoType fieldCorType = fieldDesc->getCorType();
                     
-                    int fieldSize = getElementSize(fieldDesc->classHandle, fieldCorType);
+                    int fieldSize = getElementSize(fieldDesc->getClassHandle(), fieldCorType);
 
-                    llvmFields.push_back(getLlvmTypeForCorInfoType(fieldCorType, fieldDesc->classHandle));
+                    llvmFields.push_back(getLlvmTypeForCorInfoType(fieldCorType, fieldDesc->getClassHandle()));
 
                     totalSize += fieldSize;
-                    lastOffset = fieldDesc->fieldOffset;
+                    lastOffset = fieldDesc->getFieldOffset();
                     prevElementSize = fieldSize;
                 }
 
@@ -717,7 +702,7 @@ LlvmArgInfo Llvm::getLlvmArgInfoForArgIx(unsigned int lclNum)
     bool         returnOnStack = false;
 
     LlvmArgInfo             llvmArgInfo = {
-        -1 /* default to not an LLVM arg*/, _sigInfo.hasThis() ? TARGET_POINTER_SIZE : 0 /* this is the first pointer on
+        -1 /* default to not an LLVM arg*/, _sigInfo.hasThis() ? TARGET_POINTER_SIZE : 0U /* this is the first pointer on
                                                                                        the shadow stack */
     };
     if (needsReturnStackSlot(_sigInfo.retType, _sigInfo.retTypeClass))
@@ -1794,7 +1779,6 @@ void Llvm::llvmShutdown()
 
     for (const auto &structDesc : *_structDescMap)
     {
-        delete[] structDesc.second->fieldDesc;
         delete structDesc.second;
     }
 
@@ -2288,7 +2272,6 @@ void Llvm::Compile()
     std::unordered_map<GenTree*, Value*> sdsuMap;
     _sdsuMap = &sdsuMap;
     _localsMap = new std::unordered_map<SsaPair, Value*, SsaPairHash>();
-    _typeDescriptorsMap = new std::unordered_map<CORINFO_CLASS_HANDLE, TypeDescriptor>();
     const char* mangledName = (*_getMangledMethodName)(_thisPtr, _info.compMethodHnd);
     _function = _module->getFunction(mangledName);
     _debugFunction = nullptr;
