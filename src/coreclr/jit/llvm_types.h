@@ -1,9 +1,9 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-/*
- * Types used in LLVM compilation that are abstractions of the VM types
-*/
+//
+// Types used in LLVM compilation that are abstractions of the VM types.
+//
 
 #ifndef _LLVM_TYPES_H_
 #define _LLVM_TYPES_H_
@@ -56,7 +56,7 @@ private:
     FieldDesc* m_fields;
 
 public:
-    // deleting the StructDesc will also delete the fieldDesc array
+    // This constructor takes the ownership of the passed in array of field descriptors.
     StructDesc(size_t fieldCount, FieldDesc* fieldDesc)
         : m_fieldCount(fieldCount), m_fields(fieldDesc)
     {

@@ -201,7 +201,6 @@ private:
     CORINFO_CLASS_HANDLE tryGetStructClassHandle(LclVarDsc* varDsc);
     void visitNode(GenTree* node);
     Value* zextIntIfNecessary(Value* intValue);
-    TypeDescriptor getTypeDescriptor(CORINFO_CLASS_HANDLE structHandle);
     StructDesc* getStructDesc(CORINFO_CLASS_HANDLE structHandle);
 
 public:
