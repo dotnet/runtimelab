@@ -58,7 +58,7 @@ private:
     FieldDesc* _fieldDesc;
 
 public:
-    // deleting the StructDesc will also delete the fieldDesc array
+    // This constructor takes the ownership of the passed in array of field descriptors.
     StructDesc(size_t fieldCount, FieldDesc* fieldDesc)
         : _fieldCount(fieldCount), _fieldDesc(fieldDesc)
     {
