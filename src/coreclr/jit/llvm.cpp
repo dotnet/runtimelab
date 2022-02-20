@@ -202,7 +202,8 @@ StructDesc* Llvm::getStructDesc(CORINFO_CLASS_HANDLE structHandle)
             }
         }
 
-        StructDesc* structDesc = new StructDesc(fieldCount, new FieldDesc[fieldCount]);
+        FieldDesc*  fields     = new FieldDesc[fieldCount];
+        StructDesc* structDesc = new StructDesc(fieldCount, fields);
 
         unsigned fieldIx = 0;
         for (unsigned fldOffset = 0; fldOffset < structSize; fldOffset++)
@@ -212,13 +213,11 @@ StructDesc* Llvm::getStructDesc(CORINFO_CLASS_HANDLE structHandle)
                 continue;
             }
 
-            FieldDesc* fieldDesc = structDesc->getFieldDesc(fieldIx);
-
-            CORINFO_FIELD_HANDLE fieldHandle = structTypeDescriptor.fields[fieldIx];
+            CORINFO_FIELD_HANDLE fieldHandle = sparseFields[fldOffset];
             CORINFO_CLASS_HANDLE fieldClassHandle = NO_CLASS_HANDLE;
 
-            fieldDesc->setFieldData(_info.compCompHnd->getFieldOffset(fieldHandle),
-                                    _info.compCompHnd->getFieldType(fieldHandle, &fieldClassHandle), fieldClassHandle);
+            const CorInfoType corInfoType = _info.compCompHnd->getFieldType(fieldHandle, &fieldClassHandle);
+            fields[fieldIx] = FieldDesc(fldOffset, corInfoType, fieldClassHandle);
             fieldIx++;
         }
 

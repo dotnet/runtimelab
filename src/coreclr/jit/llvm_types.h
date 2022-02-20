@@ -8,7 +8,7 @@
 #ifndef _LLVM_TYPES_H_
 #define _LLVM_TYPES_H_
 
-#include "corinfo.h"
+#include "jitpch.h"
 
 struct TypeDescriptor
 {
@@ -19,64 +19,62 @@ struct TypeDescriptor
 struct FieldDesc
 {
 private:
-    int                  _fieldOffset;
-    CORINFO_CLASS_HANDLE _classHandle;
-    CorInfoType          _corType;
+    unsigned             m_fieldOffset;
+    CorInfoType          m_corType;
+    CORINFO_CLASS_HANDLE m_classHandle;
 
 public:
     FieldDesc()
     {
     }
 
+    FieldDesc(unsigned fieldOffset, CorInfoType corType, CORINFO_CLASS_HANDLE classHandle)
+        : m_fieldOffset(fieldOffset), m_corType(corType), m_classHandle(classHandle)
+    {
+    }
+
     int getFieldOffset()
     {
-        return _fieldOffset;
+        return m_fieldOffset;
     }
 
     CORINFO_CLASS_HANDLE getClassHandle()
     {
-        return _classHandle;
+        return m_classHandle;
     }
 
     CorInfoType getCorType()
     {
-        return _corType;
-    }
-
-    void setFieldData(int fieldOffset, CorInfoType corType, CORINFO_CLASS_HANDLE classHandle)
-    {
-        _fieldOffset = fieldOffset;
-        _corType     = corType;
-        _classHandle = classHandle;
+        return m_corType;
     }
 };
 
 struct StructDesc
 {
 private:
-    size_t     _fieldCount;
-    FieldDesc* _fieldDesc;
+    size_t     m_fieldCount;
+    FieldDesc* m_fields;
 
 public:
     // deleting the StructDesc will also delete the fieldDesc array
     StructDesc(size_t fieldCount, FieldDesc* fieldDesc)
-        : _fieldCount(fieldCount), _fieldDesc(fieldDesc)
+        : m_fieldCount(fieldCount), m_fields(fieldDesc)
     {
     }
 
     ~StructDesc()
     {
-        delete[] _fieldDesc;
+        delete[] m_fields;
     }
 
     size_t getFieldCount()
     {
-        return _fieldCount;
+        return m_fieldCount;
     }
 
     FieldDesc* getFieldDesc(unsigned index)
     {
-        return &_fieldDesc[index];
+        return &m_fields[index];
     }
 };
 
