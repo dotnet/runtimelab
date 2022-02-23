@@ -12,7 +12,7 @@
 
 struct TypeDescriptor
 {
-    size_t                fieldCount;
+    unsigned              fieldCount;
     CORINFO_FIELD_HANDLE* fields;
 };
 

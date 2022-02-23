@@ -281,14 +281,15 @@ llvm::Type* Llvm::getLlvmTypeForStruct(CORINFO_CLASS_HANDLE structHandle)
                 const char* name = _getTypeName(_thisPtr, structHandle);
                 llvm::StructType* llvmStructType = llvm::StructType::create(_llvmContext, name);
                 llvmType = llvmStructType;
-                StructDesc* structDesc = getStructDesc(structHandle) ;
+                StructDesc* structDesc = getStructDesc(structHandle);
                 unsigned    fieldCnt   = structDesc->getFieldCount();
 
 
                 unsigned lastOffset = 0;
                 unsigned totalSize = 0;
                 std::vector<Type*> llvmFields = std::vector<Type*>();
-                int prevElementSize = 0;
+                unsigned prevElementSize = 0;
+
 
                 for (unsigned fieldIx = 0; fieldIx < fieldCnt; fieldIx++)
                 {
@@ -304,7 +305,7 @@ llvm::Type* Llvm::getLlvmTypeForStruct(CORINFO_CLASS_HANDLE structHandle)
 
                     CorInfoType fieldCorType = fieldDesc->getCorType();
                     
-                    int fieldSize = getElementSize(fieldDesc->getClassHandle(), fieldCorType);
+                    unsigned fieldSize = getElementSize(fieldDesc->getClassHandle(), fieldCorType);
 
                     llvmFields.push_back(getLlvmTypeForCorInfoType(fieldCorType, fieldDesc->getClassHandle()));
 
