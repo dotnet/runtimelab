@@ -12,8 +12,10 @@ namespace Internal.JitInterface
 {
     public unsafe sealed partial class CorInfoImpl
     {
+        static List<IntPtr> _allocedMemory = new List<IntPtr>();
+
         private MethodDebugInformation _debugInformation;
-        static readonly List<IntPtr> _allocedStructs = new ();
+        private Dictionary<IntPtr, TypeDescriptor> typeDescriptorDict = new Dictionary<IntPtr, TypeDescriptor>();
 
         [DllImport(JitLibrary)]
         private extern static void jitShutdown([MarshalAs(UnmanagedType.I1)] bool processIsTerminating);
@@ -289,29 +291,56 @@ namespace Internal.JitInterface
             return (CorInfoTypeWithMod)corInfoType;
         }
 
+        public struct TypeDescriptor
+        {
+            public uint FieldCount;
+            public CORINFO_FIELD_STRUCT_** Fields; // array of CORINFO_FIELD_STRUCT_*
+        }
+
         [UnmanagedCallersOnly]
-        public static uint getObjectLayout(IntPtr thisHandle, CORINFO_CLASS_STRUCT_* inputType, FieldStoreLayout** layoutPtrPtr)
+        public static TypeDescriptor getTypeDescriptor(IntPtr thisHandle, CORINFO_CLASS_STRUCT_* inputType)
         {
             var _this = GetThis(thisHandle);
 
-            TypeDesc type = _this.HandleToObject(inputType);
-
-            List<FieldStoreLayout> layout = _this._compilation.GetObjectLayoutInstructions(type);
-
-            uint fieldCount = (uint)layout.Count;
-
-            // TODO-LLVM: when we go to .net6, change to NativeMemory.Alloc
-            FieldStoreLayout* layoutPtr = (FieldStoreLayout*)Marshal.AllocHGlobal((int)(sizeof(FieldStoreLayout) * fieldCount));
-            _allocedStructs.Add((IntPtr)layoutPtr);
-
-            *layoutPtrPtr = layoutPtr;
-
-            for (int i = 0; i < fieldCount; i++)
+            if (_this.typeDescriptorDict.TryGetValue((IntPtr)inputType, out var typeDescriptor))
             {
-                layoutPtr[i] = layout[i];
+                return typeDescriptor;
             }
 
-            return fieldCount;
+            TypeDesc type = _this.HandleToObject(inputType);
+
+            uint fieldCount = 0;
+            foreach (var field in type.GetFields())
+            {
+                if (!field.IsStatic)
+                {
+                    fieldCount++;
+                }
+            }
+
+            //TODO-LLVM: change to NativeMemory.Alloc when upgraded to .net6
+            IntPtr fieldArray = Marshal.AllocHGlobal((int)(sizeof(CORINFO_FIELD_STRUCT_*) * fieldCount));
+            _allocedMemory.Add(fieldArray);
+
+            typeDescriptor = new TypeDescriptor
+            {
+                FieldCount = fieldCount,
+                Fields = (CORINFO_FIELD_STRUCT_**)fieldArray
+            };
+
+            fieldCount = 0;
+            foreach (var field in type.GetFields())
+            {
+                if (!field.IsStatic)
+                {
+                    typeDescriptor.Fields[fieldCount] = _this.ObjectToHandle(field);
+                    fieldCount++;
+                }
+            }
+
+            _this.typeDescriptorDict.Add((IntPtr)inputType, typeDescriptor);
+
+            return typeDescriptor;
         }
 
         [DllImport(JitLibrary)]
@@ -329,7 +358,7 @@ namespace Internal.JitInterface
             delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, uint, uint> padOffset,
             delegate* unmanaged<IntPtr, CORINFO_SIG_INFO*, CORINFO_ARG_LIST_STRUCT_*, CORINFO_CLASS_STRUCT_**, CorInfoTypeWithMod> getArgTypeIncludingParameterized,
             delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, CORINFO_CLASS_STRUCT_**, CorInfoTypeWithMod> getParameterType,
-            delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, FieldStoreLayout**, uint> getObjectLayout
+            delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, TypeDescriptor> getTypeDescriptor
             );
 
         public void RegisterLlvmCallbacks(IntPtr corInfoPtr, string outputFileName, string triple, string dataLayout)
@@ -350,7 +379,7 @@ namespace Internal.JitInterface
                 &padOffset,
                 &getArgTypeIncludingParameterized,
                 &getParameterType,
-                &getObjectLayout
+                &getTypeDescriptor
             );
         }
 
@@ -366,12 +395,12 @@ namespace Internal.JitInterface
 
         public static void FreeUnmanagedResources()
         {
-            foreach (var ptr in _allocedStructs)
+            foreach (var ptr in _allocedMemory)
             {
                 Marshal.FreeHGlobal(ptr);
             }
 
-            _allocedStructs.Clear();
+            _allocedMemory.Clear();
         }
     }
 }

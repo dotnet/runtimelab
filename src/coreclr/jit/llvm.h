@@ -8,6 +8,7 @@
 
 #include "alloc.h"
 #include "jitpch.h"
+#include "llvm_types.h"
 #include <new>
 
 // these break std::min/max in LLVM's headers
@@ -89,7 +90,7 @@ extern "C" void registerLlvmCallbacks(void*       thisPtr,
                                       const uint32_t(*padOffset)(void*, CORINFO_CLASS_STRUCT_*, unsigned),
                                       const CorInfoTypeWithMod(*_getArgTypeIncludingParameterized)(void*, CORINFO_SIG_INFO*, CORINFO_ARG_LIST_HANDLE, CORINFO_CLASS_HANDLE*),
                                       const CorInfoTypeWithMod(*_getParameterType)(void*, CORINFO_CLASS_HANDLE, CORINFO_CLASS_HANDLE*),
-                                      const uint32_t (*getObjectLayout)(void*, CORINFO_CLASS_HANDLE, FieldStoreLayout**));
+                                      const TypeDescriptor(*getTypeDescriptor)(void*, CORINFO_CLASS_HANDLE));
 
 struct PhiPair
 {
@@ -213,7 +214,8 @@ private:
     CorInfoType toCorInfoType(var_types varType);
     CORINFO_CLASS_HANDLE tryGetStructClassHandle(LclVarDsc* varDsc);
     void visitNode(GenTree* node);
-    Value* Llvm::zextIntIfNecessary(Value* intValue);
+    Value* zextIntIfNecessary(Value* intValue);
+    StructDesc* getStructDesc(CORINFO_CLASS_HANDLE structHandle);
 
 public:
     Llvm(Compiler* pCompiler);
