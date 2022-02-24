@@ -220,7 +220,7 @@ StructDesc* Llvm::getStructDesc(CORINFO_CLASS_HANDLE structHandle)
             bool              isGcPtr    = false;
             if (fieldClassHandle != NO_CLASS_HANDLE)
             {
-                isGcPtr = corInfoType == CORINFO_TYPE_CLASS;  //TODO-LLVM: how to tell if the field needs an RhpAssignRef - does _getTypeDescriptor have to do that?
+                isGcPtr = corInfoType == CORINFO_TYPE_CLASS || corInfoType == CORINFO_TYPE_BYREF;
             }
             fields[fieldIx] = FieldDesc(fldOffset, corInfoType, fieldClassHandle, isGcPtr);
             fieldIx++;
@@ -1444,7 +1444,7 @@ void Llvm::buildStoreInd(GenTreeStoreInd* storeIndOp)
     }
 }
 
-void Llvm::storeObjAtAddress(Value* baseAddress, Value* data, StructDesc* structDesc)
+void Llvm::storeObjAtAddress(Value* baseAddress, Value* data, StructDesc* structDesc, bool targetNotHeap)
 {
     unsigned fieldCount = structDesc->getFieldCount();
 
@@ -1473,11 +1473,11 @@ void Llvm::storeObjAtAddress(Value* baseAddress, Value* data, StructDesc* struct
             assert(fieldDesc->getClassHandle() != NO_CLASS_HANDLE);
 
             // recurse into struct
-            storeObjAtAddress(address, fieldData, getStructDesc(fieldDesc->getClassHandle()));
+            storeObjAtAddress(address, fieldData, getStructDesc(fieldDesc->getClassHandle()), targetNotHeap);
         }
         else
         {
-            if (fieldDesc->isGcPointer())
+            if (!targetNotHeap && fieldDesc->isGcPointer())
             {
                 _builder.CreateCall(getOrCreateRhpAssignRef(),
                                     ArrayRef<Value*>{address,
@@ -1511,9 +1511,11 @@ void Llvm::buildStoreObj(GenTreeIndir* indirOp)
         return;
     }
 
-    CORINFO_CLASS_HANDLE structClsHnd = structLayout->GetClassHandle();
-    StructDesc*          structDesc   = getStructDesc(structClsHnd);
-    storeObjAtAddress(baseAddress, getGenTreeValue(genTreeObj->Data()), structDesc);
+    CORINFO_CLASS_HANDLE structClsHnd  = structLayout->GetClassHandle();
+    StructDesc*          structDesc    = getStructDesc(structClsHnd);
+    bool                 targetNotHeap = (indirOp->gtFlags & GTF_IND_TGT_NOT_HEAP) == 0;
+
+    storeObjAtAddress(baseAddress, getGenTreeValue(genTreeObj->Data()), structDesc, targetNotHeap);
 }
 
 Value* Llvm::localVar(GenTreeLclVar* lclVar)
