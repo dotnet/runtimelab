@@ -68,7 +68,6 @@ extern "C" DLLEXPORT void registerLlvmCallbacks(void*       thisPtr,
                                                 const CorInfoTypeWithMod(*getArgTypeIncludingParameterized)(void*, CORINFO_SIG_INFO*, CORINFO_ARG_LIST_HANDLE, CORINFO_CLASS_HANDLE*),
                                                 const CorInfoTypeWithMod(*getParameterType)(void*, CORINFO_CLASS_HANDLE, CORINFO_CLASS_HANDLE*),
                                                 const TypeDescriptor(*getTypeDescriptor)(void*, CORINFO_CLASS_HANDLE))
-)
 {
     _thisPtr = thisPtr;
     _getMangledMethodName         = getMangledMethodNamePtr;
@@ -218,13 +217,23 @@ StructDesc* Llvm::getStructDesc(CORINFO_CLASS_HANDLE structHandle)
             CORINFO_CLASS_HANDLE fieldClassHandle = NO_CLASS_HANDLE;
 
             const CorInfoType corInfoType = _info.compCompHnd->getFieldType(fieldHandle, &fieldClassHandle);
-            fields[fieldIx] = FieldDesc(fldOffset, corInfoType, fieldClassHandle);
+            bool              isGcPtr    = false;
+            if (fieldClassHandle != NO_CLASS_HANDLE)
+            {
+                isGcPtr = corInfoType == CORINFO_TYPE_CLASS;  //TODO-LLVM: how to tell if the field needs an RhpAssignRef - does _getTypeDescriptor have to do that?
+            }
+            fields[fieldIx] = FieldDesc(fldOffset, corInfoType, fieldClassHandle, isGcPtr);
             fieldIx++;
         }
 
         _structDescMap->insert({structHandle, structDesc});
     }
     return _structDescMap->at(structHandle);
+}
+
+llvm::Type* Llvm::getLlvmTypeForStruct(ClassLayout* classLayout)
+{
+    return getLlvmTypeForStruct(classLayout->GetClassHandle());
 }
 
 llvm::Type* Llvm::getLlvmTypeForStruct(CORINFO_CLASS_HANDLE structHandle)
@@ -1435,58 +1444,67 @@ void Llvm::buildStoreInd(GenTreeStoreInd* storeIndOp)
     }
 }
 
-void Llvm::storeObjAtAddress(Value* baseAddress, Value* data, unsigned startIx, unsigned gcFieldCount, FieldStoreLayout* gcFieldLayout)
+void Llvm::storeObjAtAddress(Value* baseAddress, Value* data, StructDesc* structDesc)
 {
-    unsigned i = startIx;
-    while (!gcFieldLayout[i].IsEndStruct)
+    unsigned fieldCount = structDesc->getFieldCount();
+
+    for (unsigned i = 0; i < fieldCount; i++)
     {
-        Value* address = _builder.CreateGEP(baseAddress, _builder.getInt32(gcFieldLayout[i].FieldOffset));
+        FieldDesc* fieldDesc = structDesc->getFieldDesc(i);
+        unsigned   fieldOffset = fieldDesc->getFieldOffset();
+        Value*     address     = _builder.CreateGEP(baseAddress, _builder.getInt32(fieldOffset));
 
-        // get the data if this instruction has data
         Value* fieldData = nullptr;
-        if (!gcFieldLayout[i].IsEndStruct)
+        if (data->getType()->isStructTy())
         {
-            if (data->getType()->isStructTy())
-            {
-                const llvm::StructLayout* structLayout = _module->getDataLayout().getStructLayout((llvm::StructType*)(data->getType()));
+            const llvm::StructLayout* structLayout = _module->getDataLayout().getStructLayout(static_cast<llvm::StructType*>(data->getType()));
 
-                unsigned llvmFieldIndex = structLayout->getElementContainingOffset(gcFieldLayout[i].FieldOffset);
-                fieldData               = _builder.CreateExtractValue(data, llvmFieldIndex);
-            }
-            else
-            {
-                // single field IL structs are not LLVM structs
-                fieldData = data;
-            }
-        }
-
-        if (gcFieldLayout[i].IsStartStruct)
-        {
-            storeObjAtAddress(address, fieldData, i + 1, gcFieldCount, gcFieldLayout);
+            unsigned llvmFieldIndex = structLayout->getElementContainingOffset(fieldOffset);
+            fieldData               = _builder.CreateExtractValue(data, llvmFieldIndex);
         }
         else
         {
-            _builder.CreateCall(getOrCreateRhpAssignRef(),
-                                ArrayRef<Value*>{address, castIfNecessary(fieldData, Type::getInt8PtrTy(_llvmContext))});
+            // single field IL structs are not LLVM structs
+            fieldData = data;
         }
-        i++;
+
+        if (fieldData->getType()->isStructTy())
+        {
+            assert(fieldDesc->getClassHandle() != NO_CLASS_HANDLE);
+
+            // recurse into struct
+            storeObjAtAddress(address, fieldData, getStructDesc(fieldDesc->getClassHandle()));
+        }
+        else
+        {
+            if (fieldDesc->isGcPointer())
+            {
+                _builder.CreateCall(getOrCreateRhpAssignRef(),
+                                    ArrayRef<Value*>{address,
+                                                     castIfNecessary(fieldData, Type::getInt8PtrTy(_llvmContext))});
+            }
+            else
+            {
+                _builder.CreateStore(fieldData, castIfNecessary(address, fieldData->getType()->getPointerTo()));
+            }
+        }
     }
 }
 
-void Llvm::buildStoreObj(GenTreeStoreInd* storeIndOp)
+void Llvm::buildStoreObj(GenTreeIndir* indirOp)
 {
-    unsigned gcFieldCount;
-    Value* baseAddress = getGenTreeValue(storeIndOp->Addr());
+    Value* baseAddress = getGenTreeValue(indirOp->Addr());
 
-    if (!storeIndOp->OperIsBlk())
+    if (!indirOp->OperIsBlk())
     {
         failFunctionCompilation(); // cant get struct handle. TODO-LLVM: try as an assert
     }
 
-    ClassLayout* structLayout = storeIndOp->AsBlk()->GetLayout();
+    ClassLayout* structLayout = indirOp->AsBlk()->GetLayout();
 
     // zero initialization  check
-    GenTree* dataOp = storeIndOp->Data();
+    GenTreeObj* genTreeObj = indirOp->AsObj();
+    GenTree*    dataOp     = genTreeObj->Data();
     if (dataOp->IsIntegralConst(0))
     {
         _builder.CreateMemSet(baseAddress, _builder.getInt8(0), _builder.getInt32(structLayout->GetSize()), {});
@@ -1494,15 +1512,8 @@ void Llvm::buildStoreObj(GenTreeStoreInd* storeIndOp)
     }
 
     CORINFO_CLASS_HANDLE structClsHnd = structLayout->GetClassHandle();
-    FieldStoreLayout* gcFieldLayout;
-    gcFieldCount = _getObjectLayout(_thisPtr, structClsHnd, &gcFieldLayout);
-
-    storeObjAtAddress(baseAddress, getGenTreeValue(storeIndOp->Data()), 0, gcFieldCount, gcFieldLayout);
-
-    // just copy all the fields again for simplicity,
-    // if all the fields were set using RhpAssignRef then a possible optimisation would be to skip this line
-    Value* toStore = getGenTreeValue(storeIndOp->Data());
-    _builder.CreateStore(toStore, castIfNecessary(baseAddress, toStore->getType()->getPointerTo()));
+    StructDesc*          structDesc   = getStructDesc(structClsHnd);
+    storeObjAtAddress(baseAddress, getGenTreeValue(genTreeObj->Data()), structDesc);
 }
 
 Value* Llvm::localVar(GenTreeLclVar* lclVar)
@@ -1709,7 +1720,7 @@ void Llvm::visitNode(GenTree* node)
             buildStoreInd(node->AsStoreInd());
             break;
         case GT_STORE_OBJ:
-            buildStoreObj(node->AsStoreInd());
+            buildStoreObj(node->AsIndir());
             break;
         case GT_AND:
         case GT_OR:

@@ -22,14 +22,15 @@ private:
     unsigned             m_fieldOffset;
     CorInfoType          m_corType;
     CORINFO_CLASS_HANDLE m_classHandle;
+    bool                 m_isGcPointer;
 
 public:
     FieldDesc()
     {
     }
 
-    FieldDesc(unsigned fieldOffset, CorInfoType corType, CORINFO_CLASS_HANDLE classHandle)
-        : m_fieldOffset(fieldOffset), m_corType(corType), m_classHandle(classHandle)
+    FieldDesc(unsigned fieldOffset, CorInfoType corType, CORINFO_CLASS_HANDLE classHandle, bool isGcPointer)
+        : m_fieldOffset(fieldOffset), m_corType(corType), m_classHandle(classHandle), m_isGcPointer(isGcPointer)
     {
     }
 
@@ -46,6 +47,11 @@ public:
     CorInfoType getCorType()
     {
         return m_corType;
+    }
+
+    bool isGcPointer()
+    {
+        return m_isGcPointer;
     }
 };
 

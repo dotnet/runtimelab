@@ -65,14 +65,6 @@ struct SsaPairHash
     }
 };
 
-struct FieldStoreLayout
-{
-    unsigned AbsoluteOffset;
-    unsigned FieldOffset;
-    unsigned IsStartStruct;
-    unsigned IsEndStruct;
-};
-
 extern "C" void registerLlvmCallbacks(void*       thisPtr,
                                       const char* outputFileName,
                                       const char* triple,
@@ -195,9 +187,9 @@ private:
     unsigned int getTotalLocalOffset();
     bool helperRequiresShadowStack(CORINFO_METHOD_HANDLE corinfoMethodHnd);
     void buildStoreInd(GenTreeStoreInd* storeIndOp);
-    void buildStoreObj(GenTreeStoreInd* storeIndOp);
+    void buildStoreObj(GenTreeIndir* indirOp);
     Value* localVar(GenTreeLclVar* lclVar);
-    void storeObjAtAddress(Value* baseAddress, Value* data, unsigned startIx, unsigned gcFieldCount, FieldStoreLayout* gcFieldLayout);
+    void storeObjAtAddress(Value* baseAddress, Value* data, StructDesc* structDesc);
 
     GenTreeCall::Use* lowerCallReturn(GenTreeCall* callNode, CORINFO_SIG_INFO* calleeSigInfo, GenTreeCall::Use* lastArg);
     void lowerCallToShadowStack(GenTreeCall* callNode, CORINFO_SIG_INFO* calleeSigInfo);
