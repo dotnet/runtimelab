@@ -1502,7 +1502,7 @@ void Llvm::storeObjAtAddress(Value* baseAddress, Value* data, StructDesc* struct
             {
                 _builder.CreateStore(fieldData, castIfNecessary(address, fieldData->getType()->getPointerTo()));
 
-                bytesStored += fieldData->getType()->getPrimitiveSizeInBits() / 8;
+                bytesStored += fieldData->getType()->getPrimitiveSizeInBits() / BITS_PER_BYTE;
             }
         }
     }
