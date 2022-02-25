@@ -1492,7 +1492,7 @@ void Llvm::storeObjAtAddress(Value* baseAddress, Value* data, StructDesc* struct
             // recurse into struct
             storeObjAtAddress(address, fieldData, getStructDesc(fieldDesc->getClassHandle()));
 
-            bytesStored += fieldData->getType()->getPrimitiveSizeInBits() / 8;
+            bytesStored += fieldData->getType()->getPrimitiveSizeInBits() / BITS_PER_BYTE;
         }
         else
         {
