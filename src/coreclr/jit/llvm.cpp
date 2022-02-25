@@ -1518,14 +1518,14 @@ void Llvm::storeObjAtAddress(Value* baseAddress, Value* data, StructDesc* struct
 
 void Llvm::buildStoreObj(GenTreeObj* storeOp)
 {
-    Value* baseAddressValue = getGenTreeValue(storeOp->Addr());
-
     if (!storeOp->OperIsBlk())
     {
         failFunctionCompilation(); // cant get struct handle. TODO-LLVM: try as an assert
     }
 
     ClassLayout* structLayout = storeOp->GetLayout();
+
+    Value* baseAddressValue = getGenTreeValue(storeOp->Addr());
 
     // zero initialization  check
     GenTree* dataOp = storeOp->Data();
