@@ -12,8 +12,30 @@
 
 struct TypeDescriptor
 {
-    unsigned              fieldCount;
-    CORINFO_FIELD_HANDLE* fields;
+private:
+    unsigned              m_fieldCount;
+    CORINFO_FIELD_HANDLE* m_fields;
+    unsigned              m_isExplicitLayout;
+
+    TypeDescriptor()
+    {
+    }
+
+public:
+    unsigned getFieldCount()
+    {
+        return m_fieldCount;
+    }
+
+    CORINFO_FIELD_HANDLE getField(unsigned index)
+    {
+        return m_fields[index];
+    }
+
+    unsigned getIsExplicitLayout()
+    {
+        return m_isExplicitLayout;
+    }
 };
 
 struct FieldDesc
@@ -60,11 +82,12 @@ struct StructDesc
 private:
     size_t     m_fieldCount;
     FieldDesc* m_fields;
+    unsigned   m_isExplicitLayout;
 
 public:
     // This constructor takes the ownership of the passed in array of field descriptors.
-    StructDesc(size_t fieldCount, FieldDesc* fieldDesc)
-        : m_fieldCount(fieldCount), m_fields(fieldDesc)
+    StructDesc(size_t fieldCount, FieldDesc* fieldDesc, bool isExplicitLayout)
+        : m_fieldCount(fieldCount), m_fields(fieldDesc), m_isExplicitLayout(isExplicitLayout)
     {
     }
 
@@ -81,6 +104,11 @@ public:
     FieldDesc* getFieldDesc(unsigned index)
     {
         return &m_fields[index];
+    }
+
+    unsigned isExplicitLayout()
+    {
+        return m_isExplicitLayout;
     }
 };
 

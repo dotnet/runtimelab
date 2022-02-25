@@ -189,7 +189,7 @@ private:
     void buildStoreInd(GenTreeStoreInd* storeIndOp);
     void buildStoreObj(GenTreeIndir* indirOp);
     Value* localVar(GenTreeLclVar* lclVar);
-    void storeObjAtAddress(Value* baseAddress, Value* data, StructDesc* structDesc, bool targetNotHeap);
+    void storeObjAtAddress(Value* baseAddress, Value* data, StructDesc* structDesc);
 
     GenTreeCall::Use* lowerCallReturn(GenTreeCall* callNode, CORINFO_SIG_INFO* calleeSigInfo, GenTreeCall::Use* lastArg);
     void lowerCallToShadowStack(GenTreeCall* callNode, CORINFO_SIG_INFO* calleeSigInfo);
@@ -208,6 +208,7 @@ private:
     void visitNode(GenTree* node);
     Value* zextIntIfNecessary(Value* intValue);
     StructDesc* getStructDesc(CORINFO_CLASS_HANDLE structHandle);
+    unsigned buildMemCpy(Value* baseAddress, unsigned startOffset, unsigned endOffset, Value* srcAddress);
 
 public:
     Llvm(Compiler* pCompiler);

@@ -375,6 +375,8 @@ internal static class Program
 
         TestDifferentSizeIntOperator();
 
+        TestExplicitLayoutStore();
+
         // This test should remain last to get other results before stopping the debugger
         PrintLine("Debugger.Break() test: Ok if debugger is open and breaks.");
         System.Diagnostics.Debugger.Break();
@@ -395,6 +397,30 @@ internal static class Program
         };
 
         EndTest((o.aShort & o.aByte) == 2);
+    }
+
+    [StructLayout(LayoutKind.Explicit, Size = 8)]
+    struct ExplicitStructNoGCPtr
+    {
+        [FieldOffset(0)]
+        public int A;
+    }
+
+    private static unsafe void TestExplicitLayoutStore()
+    {
+        StartTest("Explicit struct store");
+
+        ExplicitStructNoGCPtr aStruct;
+        int* ptrStruct = (int*)&(aStruct);
+        ptrStruct = ptrStruct + 1;
+        // store something in space not used by any field
+        *ptrStruct = 2;
+
+        var copy1 = aStruct;
+        int* ptrStruct2 = (int*)&copy1;
+        ptrStruct2 = ptrStruct2 + 1;
+
+        EndTest(*ptrStruct2 == 2);
     }
 
     private static void TestGC()

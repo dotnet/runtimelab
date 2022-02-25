@@ -176,10 +176,10 @@ StructDesc* Llvm::getStructDesc(CORINFO_CLASS_HANDLE structHandle)
             sparseFields[i] = nullptr;
 
         // determine the largest field for unions, and get fields in order of offset
-        for (unsigned i = 0; i < structTypeDescriptor.fieldCount; i++)
+        for (unsigned i = 0; i < structTypeDescriptor.getFieldCount(); i++)
         {
-            CORINFO_FIELD_HANDLE fieldHandle = structTypeDescriptor.fields[i];
-            unsigned fldOffset               = _info.compCompHnd->getFieldOffset(structTypeDescriptor.fields[i]);
+            CORINFO_FIELD_HANDLE fieldHandle = structTypeDescriptor.getField(i);
+            unsigned             fldOffset   = _info.compCompHnd->getFieldOffset(structTypeDescriptor.getField(i));
 
             assert(fldOffset < structSize);
 
@@ -203,7 +203,7 @@ StructDesc* Llvm::getStructDesc(CORINFO_CLASS_HANDLE structHandle)
         }
 
         FieldDesc*  fields     = new FieldDesc[fieldCount];
-        StructDesc* structDesc = new StructDesc(fieldCount, fields);
+        StructDesc* structDesc = new StructDesc(fieldCount, fields, structTypeDescriptor.getIsExplicitLayout());
 
         unsigned fieldIx = 0;
         for (unsigned fldOffset = 0; fldOffset < structSize; fldOffset++)
@@ -1444,15 +1444,33 @@ void Llvm::buildStoreInd(GenTreeStoreInd* storeIndOp)
     }
 }
 
-void Llvm::storeObjAtAddress(Value* baseAddress, Value* data, StructDesc* structDesc, bool targetNotHeap)
+// Copies endOffset - startOffset bytes, endOffset is exclusive.
+unsigned Llvm::buildMemCpy(Value* baseAddress, unsigned startOffset, unsigned endOffset, Value* srcAddress)
+{
+    Value* paddingDestAddress = _builder.CreateGEP(baseAddress, _builder.getInt32(startOffset));
+
+    const unsigned paddingSize = endOffset - startOffset;
+    // copy the bytes in the padding
+    _builder.CreateMemCpy(paddingDestAddress, llvm::Align(), srcAddress, llvm::Align(), paddingSize);
+
+    return paddingSize;
+}
+
+void Llvm::storeObjAtAddress(Value* baseAddress, Value* data, StructDesc* structDesc)
 {
     unsigned fieldCount = structDesc->getFieldCount();
+    unsigned bytesStored = 0;
 
     for (unsigned i = 0; i < fieldCount; i++)
     {
         FieldDesc* fieldDesc = structDesc->getFieldDesc(i);
         unsigned   fieldOffset = fieldDesc->getFieldOffset();
         Value*     address     = _builder.CreateGEP(baseAddress, _builder.getInt32(fieldOffset));
+
+        if (structDesc->isExplicitLayout() && fieldOffset > bytesStored)
+        {
+            bytesStored += buildMemCpy(baseAddress, bytesStored, fieldOffset, address);
+        }
 
         Value* fieldData = nullptr;
         if (data->getType()->isStructTy())
@@ -1473,21 +1491,34 @@ void Llvm::storeObjAtAddress(Value* baseAddress, Value* data, StructDesc* struct
             assert(fieldDesc->getClassHandle() != NO_CLASS_HANDLE);
 
             // recurse into struct
-            storeObjAtAddress(address, fieldData, getStructDesc(fieldDesc->getClassHandle()), targetNotHeap);
+            storeObjAtAddress(address, fieldData, getStructDesc(fieldDesc->getClassHandle()));
+
+            bytesStored += fieldData->getType()->getPrimitiveSizeInBits() / 8;
         }
         else
         {
-            if (!targetNotHeap && fieldDesc->isGcPointer())
+            if (fieldDesc->isGcPointer())
             {
                 _builder.CreateCall(getOrCreateRhpAssignRef(),
                                     ArrayRef<Value*>{address,
                                                      castIfNecessary(fieldData, Type::getInt8PtrTy(_llvmContext))});
+                bytesStored += TARGET_POINTER_SIZE;
             }
             else
             {
                 _builder.CreateStore(fieldData, castIfNecessary(address, fieldData->getType()->getPointerTo()));
+
+                bytesStored += fieldData->getType()->getPrimitiveSizeInBits() / 8;
             }
         }
+    }
+
+    unsigned llvmStructSize = data->getType()->getPrimitiveSizeInBits() / 8;
+    if (structDesc->isExplicitLayout() && llvmStructSize > bytesStored)
+    {
+        Value* srcAddress = _builder.CreateGEP(baseAddress, _builder.getInt32(bytesStored));
+
+        buildMemCpy(baseAddress, bytesStored, llvmStructSize, srcAddress);
     }
 }
 
@@ -1515,7 +1546,15 @@ void Llvm::buildStoreObj(GenTreeIndir* indirOp)
     StructDesc*          structDesc    = getStructDesc(structClsHnd);
     bool                 targetNotHeap = (indirOp->gtFlags & GTF_IND_TGT_NOT_HEAP) == 0;
 
-    storeObjAtAddress(baseAddress, getGenTreeValue(genTreeObj->Data()), structDesc, targetNotHeap);
+    Value* toStore = getGenTreeValue(genTreeObj->Data());
+    if (targetNotHeap)
+    {
+        _builder.CreateStore(toStore, castIfNecessary(baseAddress, toStore->getType()->getPointerTo())); 
+    }
+    else
+    {
+        storeObjAtAddress(baseAddress, toStore, structDesc);
+    }
 }
 
 Value* Llvm::localVar(GenTreeLclVar* lclVar)
