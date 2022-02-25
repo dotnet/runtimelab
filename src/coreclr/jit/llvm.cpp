@@ -1516,38 +1516,37 @@ void Llvm::storeObjAtAddress(Value* baseAddress, Value* data, StructDesc* struct
     }
 }
 
-void Llvm::buildStoreObj(GenTreeIndir* indirOp)
+void Llvm::buildStoreObj(GenTreeObj* storeOp)
 {
-    Value* baseAddress = getGenTreeValue(indirOp->Addr());
+    Value* baseAddressValue = getGenTreeValue(storeOp->Addr());
 
-    if (!indirOp->OperIsBlk())
+    if (!storeOp->OperIsBlk())
     {
         failFunctionCompilation(); // cant get struct handle. TODO-LLVM: try as an assert
     }
 
-    ClassLayout* structLayout = indirOp->AsBlk()->GetLayout();
+    ClassLayout* structLayout = storeOp->GetLayout();
 
     // zero initialization  check
-    GenTreeObj* genTreeObj = indirOp->AsObj();
-    GenTree*    dataOp     = genTreeObj->Data();
+    GenTree* dataOp = storeOp->Data();
     if (dataOp->IsIntegralConst(0))
     {
-        _builder.CreateMemSet(baseAddress, _builder.getInt8(0), _builder.getInt32(structLayout->GetSize()), {});
+        _builder.CreateMemSet(baseAddressValue, _builder.getInt8(0), _builder.getInt32(structLayout->GetSize()), {});
         return;
     }
 
     CORINFO_CLASS_HANDLE structClsHnd  = structLayout->GetClassHandle();
     StructDesc*          structDesc    = getStructDesc(structClsHnd);
-    bool                 targetNotHeap = ((indirOp->gtFlags & GTF_IND_TGT_NOT_HEAP) != 0) || genTreeObj->Addr()->OperIsLocalAddr();
+    bool targetNotHeap = ((storeOp->gtFlags & GTF_IND_TGT_NOT_HEAP) != 0) || storeOp->Addr()->OperIsLocalAddr();
 
-    Value* dataValue = getGenTreeValue(genTreeObj->Data());
+    Value* dataValue = getGenTreeValue(storeOp->Data());
     if (targetNotHeap)
     {
-        _builder.CreateStore(dataValue, castIfNecessary(baseAddress, dataValue->getType()->getPointerTo())); 
+        _builder.CreateStore(dataValue, castIfNecessary(baseAddressValue, dataValue->getType()->getPointerTo())); 
     }
     else
     {
-        storeObjAtAddress(baseAddress, dataValue, structDesc);
+        storeObjAtAddress(baseAddressValue, dataValue, structDesc);
     }
 }
 
@@ -1755,7 +1754,7 @@ void Llvm::visitNode(GenTree* node)
             buildStoreInd(node->AsStoreInd());
             break;
         case GT_STORE_OBJ:
-            buildStoreObj(node->AsIndir());
+            buildStoreObj(node->AsObj());
             break;
         case GT_AND:
         case GT_OR:
