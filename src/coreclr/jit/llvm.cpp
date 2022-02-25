@@ -217,12 +217,7 @@ StructDesc* Llvm::getStructDesc(CORINFO_CLASS_HANDLE structHandle)
             CORINFO_CLASS_HANDLE fieldClassHandle = NO_CLASS_HANDLE;
 
             const CorInfoType corInfoType = _info.compCompHnd->getFieldType(fieldHandle, &fieldClassHandle);
-            bool              isGcPtr    = false;
-            if (fieldClassHandle != NO_CLASS_HANDLE)
-            {
-                isGcPtr = corInfoType == CORINFO_TYPE_CLASS || corInfoType == CORINFO_TYPE_BYREF;
-            }
-            fields[fieldIx] = FieldDesc(fldOffset, corInfoType, fieldClassHandle, isGcPtr);
+            fields[fieldIx] = FieldDesc(fldOffset, corInfoType, fieldClassHandle);
             fieldIx++;
         }
 
@@ -1546,14 +1541,14 @@ void Llvm::buildStoreObj(GenTreeIndir* indirOp)
     StructDesc*          structDesc    = getStructDesc(structClsHnd);
     bool                 targetNotHeap = (indirOp->gtFlags & GTF_IND_TGT_NOT_HEAP) == 0;
 
-    Value* toStore = getGenTreeValue(genTreeObj->Data());
+    Value* dataValue = getGenTreeValue(genTreeObj->Data());
     if (targetNotHeap)
     {
-        _builder.CreateStore(toStore, castIfNecessary(baseAddress, toStore->getType()->getPointerTo())); 
+        _builder.CreateStore(dataValue, castIfNecessary(baseAddress, dataValue->getType()->getPointerTo())); 
     }
     else
     {
-        storeObjAtAddress(baseAddress, toStore, structDesc);
+        storeObjAtAddress(baseAddress, dataValue, structDesc);
     }
 }
 

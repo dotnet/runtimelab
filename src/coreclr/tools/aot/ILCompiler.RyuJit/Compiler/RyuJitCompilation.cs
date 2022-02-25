@@ -226,11 +226,6 @@ namespace ILCompiler
         {
             throw new NotImplementedException();
         }
-
-        public virtual List<FieldStoreLayout> GetObjectLayoutInstructions(TypeDesc type)
-        {
-            throw new NotImplementedException();
-        }
     }
 
     [Flags]
@@ -239,14 +234,5 @@ namespace ILCompiler
         MethodBodyFolding = 0x1,
         SingleThreadedCompilation = 0x2,
         ControlFlowGuardAnnotations = 0x4,
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    public struct FieldStoreLayout
-    {
-        public int AbsoluteOffset;
-        public int FieldOffset;
-        public int IsStartStruct;
-        public int IsEndStruct;
     }
 }

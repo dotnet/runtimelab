@@ -295,7 +295,7 @@ namespace Internal.JitInterface
         {
             public uint FieldCount;
             public CORINFO_FIELD_STRUCT_** Fields; // array of CORINFO_FIELD_STRUCT_*
-            public uint IsExplicitLayout;
+            public uint IsExplicitLayout; // Change to a uint flags if we need more bools
         }
 
         [UnmanagedCallersOnly]

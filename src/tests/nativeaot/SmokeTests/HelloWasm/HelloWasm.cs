@@ -375,7 +375,7 @@ internal static class Program
 
         TestDifferentSizeIntOperator();
 
-        TestExplicitLayoutStore();
+        TestStructStoreWithSignificantPadding();
 
         // This test should remain last to get other results before stopping the debugger
         PrintLine("Debugger.Break() test: Ok if debugger is open and breaks.");
@@ -406,9 +406,15 @@ internal static class Program
         public int A;
     }
 
-    private static unsafe void TestExplicitLayoutStore()
+    [StructLayout(LayoutKind.Sequential, Size = 8)]
+    struct SizedStructNoGCPtr
     {
-        StartTest("Explicit struct store");
+        public int A;
+    }
+
+    private static unsafe void TestStructStoreWithSignificantPadding()
+    {
+        StartTest("Significant padding struct store");
 
         ExplicitStructNoGCPtr aStruct;
         int* ptrStruct = (int*)&(aStruct);
@@ -420,7 +426,22 @@ internal static class Program
         int* ptrStruct2 = (int*)&copy1;
         ptrStruct2 = ptrStruct2 + 1;
 
-        EndTest(*ptrStruct2 == 2);
+        if(*ptrStruct2 != 2)
+        {
+            FailTest("Explicit store failed");
+        }
+
+        SizedStructNoGCPtr sizedStruct;
+        int* ptrSizedStruct = (int*)&(sizedStruct);
+        ptrSizedStruct = ptrSizedStruct + 1;
+        // store something in space not used by any field
+        *ptrSizedStruct = 2;
+
+        var copySized = sizedStruct;
+        int* ptrCopySized = (int*)&copySized;
+        ptrCopySized = ptrCopySized + 1;
+
+        EndTest(*ptrCopySized == 2);
     }
 
     private static void TestGC()
