@@ -1442,13 +1442,12 @@ void Llvm::buildStoreInd(GenTreeStoreInd* storeIndOp)
 // Copies endOffset - startOffset bytes, endOffset is exclusive.
 unsigned Llvm::buildMemCpy(Value* baseAddress, unsigned startOffset, unsigned endOffset, Value* srcAddress)
 {
-    Value* paddingDestAddress = _builder.CreateGEP(baseAddress, _builder.getInt32(startOffset));
+    Value* destAddress = _builder.CreateGEP(baseAddress, _builder.getInt32(startOffset));
+    unsigned size = endOffset - startOffset;
 
-    const unsigned paddingSize = endOffset - startOffset;
-    // copy the bytes in the padding
-    _builder.CreateMemCpy(paddingDestAddress, llvm::Align(), srcAddress, llvm::Align(), paddingSize);
+    _builder.CreateMemCpy(destAddress, llvm::Align(), srcAddress, llvm::Align(), size);
 
-    return paddingSize;
+    return size;
 }
 
 void Llvm::storeObjAtAddress(Value* baseAddress, Value* data, StructDesc* structDesc)
@@ -1488,7 +1487,7 @@ void Llvm::storeObjAtAddress(Value* baseAddress, Value* data, StructDesc* struct
             // recurse into struct
             storeObjAtAddress(address, fieldData, getStructDesc(fieldDesc->getClassHandle()));
 
-            bytesStored += fieldData->getType()->getPrimitiveSizeInBits() / 8;
+            bytesStored += fieldData->getType()->getPrimitiveSizeInBits() / BITS_PER_BYTE;
         }
         else
         {
@@ -1508,7 +1507,7 @@ void Llvm::storeObjAtAddress(Value* baseAddress, Value* data, StructDesc* struct
         }
     }
 
-    unsigned llvmStructSize = data->getType()->getPrimitiveSizeInBits() / 8;
+    unsigned llvmStructSize = data->getType()->getPrimitiveSizeInBits() / BITS_PER_BYTE;
     if (structDesc->isExplicitLayout() && llvmStructSize > bytesStored)
     {
         Value* srcAddress = _builder.CreateGEP(baseAddress, _builder.getInt32(bytesStored));
@@ -1539,7 +1538,7 @@ void Llvm::buildStoreObj(GenTreeIndir* indirOp)
 
     CORINFO_CLASS_HANDLE structClsHnd  = structLayout->GetClassHandle();
     StructDesc*          structDesc    = getStructDesc(structClsHnd);
-    bool                 targetNotHeap = (indirOp->gtFlags & GTF_IND_TGT_NOT_HEAP) == 0;
+    bool                 targetNotHeap = ((indirOp->gtFlags & GTF_IND_TGT_NOT_HEAP) != 0) || genTreeObj->Addr()->OperIsLocalAddr();
 
     Value* dataValue = getGenTreeValue(genTreeObj->Data());
     if (targetNotHeap)
