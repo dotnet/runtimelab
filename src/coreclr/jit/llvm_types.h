@@ -73,7 +73,7 @@ public:
 
     bool isGcPointer()
     {
-        return m_isGcPointer;
+        return m_corType == CORINFO_TYPE_CLASS || m_corType == CORINFO_TYPE_BYREF;
     }
 };
 

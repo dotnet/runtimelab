@@ -1512,7 +1512,7 @@ void Llvm::storeObjAtAddress(Value* baseAddress, Value* data, StructDesc* struct
         }
     }
 
-    unsigned llvmStructSize = data->getType()->getPrimitiveSizeInBits() / 8;
+    unsigned llvmStructSize = data->getType()->getPrimitiveSizeInBits() / BITS_PER_BYTE;
     if (structDesc->isExplicitLayout() && llvmStructSize > bytesStored)
     {
         Value* srcAddress = _builder.CreateGEP(baseAddress, _builder.getInt32(bytesStored));
@@ -1543,7 +1543,7 @@ void Llvm::buildStoreObj(GenTreeIndir* indirOp)
 
     CORINFO_CLASS_HANDLE structClsHnd  = structLayout->GetClassHandle();
     StructDesc*          structDesc    = getStructDesc(structClsHnd);
-    bool                 targetNotHeap = (indirOp->gtFlags & GTF_IND_TGT_NOT_HEAP) == 0;
+    bool                 targetNotHeap = ((indirOp->gtFlags & GTF_IND_TGT_NOT_HEAP) != 0) || genTreeObj->Addr()->OperIsLocalAddr();
 
     Value* toStore = getGenTreeValue(genTreeObj->Data());
     if (targetNotHeap)
