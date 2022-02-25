@@ -295,7 +295,7 @@ namespace Internal.JitInterface
         {
             public uint FieldCount;
             public CORINFO_FIELD_STRUCT_** Fields; // array of CORINFO_FIELD_STRUCT_*
-            public uint IsExplicitLayout; // Change to a uint flags if we need more bools
+            public uint HasSignificantPadding; // Change to a uint flags if we need more bools
         }
 
         [UnmanagedCallersOnly]
@@ -310,7 +310,11 @@ namespace Internal.JitInterface
 
             TypeDesc type = _this.HandleToObject(inputType);
 
-            bool isExplicitLayout = type is EcmaType {IsExplicitLayout: true};
+            bool hasSignificantPadding = false;
+            if (type is EcmaType ecmaType)
+            {
+                hasSignificantPadding = ecmaType.IsExplicitLayout || ecmaType.GetClassLayout().Size > 0;
+            };
 
             uint fieldCount = 0;
             foreach (var field in type.GetFields())
@@ -329,7 +333,7 @@ namespace Internal.JitInterface
             {
                 FieldCount = fieldCount,
                 Fields = (CORINFO_FIELD_STRUCT_**)fieldArray,
-                IsExplicitLayout = isExplicitLayout ? 1u : 0
+                HasSignificantPadding = hasSignificantPadding ? 1u : 0
             };
 
             fieldCount = 0;

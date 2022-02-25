@@ -203,7 +203,7 @@ StructDesc* Llvm::getStructDesc(CORINFO_CLASS_HANDLE structHandle)
         }
 
         FieldDesc*  fields     = new FieldDesc[fieldCount];
-        StructDesc* structDesc = new StructDesc(fieldCount, fields, structTypeDescriptor.getIsExplicitLayout());
+        StructDesc* structDesc = new StructDesc(fieldCount, fields, structTypeDescriptor.hasSignificantPadding());
 
         unsigned fieldIx = 0;
         for (unsigned fldOffset = 0; fldOffset < structSize; fldOffset++)
@@ -1461,7 +1461,7 @@ void Llvm::storeObjAtAddress(Value* baseAddress, Value* data, StructDesc* struct
         unsigned   fieldOffset = fieldDesc->getFieldOffset();
         Value*     address     = _builder.CreateGEP(baseAddress, _builder.getInt32(fieldOffset));
 
-        if (structDesc->isExplicitLayout() && fieldOffset > bytesStored)
+        if (structDesc->hasSignificantPadding() && fieldOffset > bytesStored)
         {
             bytesStored += buildMemCpy(baseAddress, bytesStored, fieldOffset, address);
         }
@@ -1508,7 +1508,7 @@ void Llvm::storeObjAtAddress(Value* baseAddress, Value* data, StructDesc* struct
     }
 
     unsigned llvmStructSize = data->getType()->getPrimitiveSizeInBits() / BITS_PER_BYTE;
-    if (structDesc->isExplicitLayout() && llvmStructSize > bytesStored)
+    if (structDesc->hasSignificantPadding() && llvmStructSize > bytesStored)
     {
         Value* srcAddress = _builder.CreateGEP(baseAddress, _builder.getInt32(bytesStored));
 
