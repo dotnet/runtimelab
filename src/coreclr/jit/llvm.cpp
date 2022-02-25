@@ -1447,13 +1447,12 @@ void Llvm::buildStoreInd(GenTreeStoreInd* storeIndOp)
 // Copies endOffset - startOffset bytes, endOffset is exclusive.
 unsigned Llvm::buildMemCpy(Value* baseAddress, unsigned startOffset, unsigned endOffset, Value* srcAddress)
 {
-    Value* paddingDestAddress = _builder.CreateGEP(baseAddress, _builder.getInt32(startOffset));
+    Value* destAddress = _builder.CreateGEP(baseAddress, _builder.getInt32(startOffset));
+    unsigned size = endOffset - startOffset;
 
-    const unsigned paddingSize = endOffset - startOffset;
-    // copy the bytes in the padding
-    _builder.CreateMemCpy(paddingDestAddress, llvm::Align(), srcAddress, llvm::Align(), paddingSize);
+    _builder.CreateMemCpy(destAddress, llvm::Align(), srcAddress, llvm::Align(), size);
 
-    return paddingSize;
+    return size;
 }
 
 void Llvm::storeObjAtAddress(Value* baseAddress, Value* data, StructDesc* structDesc)
