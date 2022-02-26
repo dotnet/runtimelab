@@ -135,6 +135,7 @@ private:
     void buildHelperFuncCall(GenTreeCall* call);
     llvm::FunctionType* buildHelperLlvmFunctionType(GenTreeCall* call, bool withShadowStack);
     void buildInd(GenTree* node, Value* ptr);
+    void buildObj(GenTreeObj* node);
     Value* buildJTrue(GenTree* node, Value* opValue);
     void buildEmptyPhi(GenTreePhi* phi);
     void buildUnaryOperation(GenTree* node);
@@ -168,7 +169,10 @@ private:
     llvm::BasicBlock* getLLVMBasicBlockForBlock(BasicBlock* block);
     Type* getLlvmTypeForCorInfoType(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd);
     Type* getLlvmTypeForParameterType(CORINFO_CLASS_HANDLE classHnd);
+
+    Type* getLlvmTypeForStruct(ClassLayout* classLayout);
     Type* getLlvmTypeForStruct(CORINFO_CLASS_HANDLE structHandle);
+
     Type* getLlvmTypeForVarType(var_types type);
     int getLocalOffsetAtIndex(GenTreeLclVar* lclVar);
     Value* getLocalVarAddress(GenTreeLclVar* lclVar);
@@ -182,8 +186,10 @@ private:
     unsigned getElementSize(CORINFO_CLASS_HANDLE fieldClassHandle, CorInfoType corInfoType);
     unsigned int getTotalLocalOffset();
     bool helperRequiresShadowStack(CORINFO_METHOD_HANDLE corinfoMethodHnd);
-    void importStoreInd(GenTreeStoreInd* storeIndOp);
+    void buildStoreInd(GenTreeStoreInd* storeIndOp);
+    void buildStoreObj(GenTreeObj* indirOp);
     Value* localVar(GenTreeLclVar* lclVar);
+    void storeObjAtAddress(Value* baseAddress, Value* data, StructDesc* structDesc);
 
     GenTreeCall::Use* lowerCallReturn(GenTreeCall* callNode, CORINFO_SIG_INFO* calleeSigInfo, GenTreeCall::Use* lastArg);
     void lowerCallToShadowStack(GenTreeCall* callNode, CORINFO_SIG_INFO* calleeSigInfo);
@@ -202,6 +208,7 @@ private:
     void visitNode(GenTree* node);
     Value* zextIntIfNecessary(Value* intValue);
     StructDesc* getStructDesc(CORINFO_CLASS_HANDLE structHandle);
+    unsigned buildMemCpy(Value* baseAddress, unsigned startOffset, unsigned endOffset, Value* srcAddress);
 
 public:
     Llvm(Compiler* pCompiler);

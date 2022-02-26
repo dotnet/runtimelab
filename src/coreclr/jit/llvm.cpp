@@ -135,7 +135,7 @@ bool structIsWrappedPrimitive(CORINFO_CLASS_HANDLE classHnd, CorInfoType primiti
     return (*_structIsWrappedPrimitive)(_thisPtr, classHnd, primitiveType);
 }
 
-void addPaddingFields(unsigned paddingSize, std::vector<Type*> llvmFields)
+void addPaddingFields(unsigned paddingSize, std::vector<Type*>& llvmFields)
 {
     unsigned numInts = paddingSize / 4;
     unsigned numBytes = paddingSize - numInts * 4;
@@ -176,10 +176,10 @@ StructDesc* Llvm::getStructDesc(CORINFO_CLASS_HANDLE structHandle)
             sparseFields[i] = nullptr;
 
         // determine the largest field for unions, and get fields in order of offset
-        for (unsigned i = 0; i < structTypeDescriptor.fieldCount; i++)
+        for (unsigned i = 0; i < structTypeDescriptor.getFieldCount(); i++)
         {
-            CORINFO_FIELD_HANDLE fieldHandle = structTypeDescriptor.fields[i];
-            unsigned fldOffset               = _info.compCompHnd->getFieldOffset(structTypeDescriptor.fields[i]);
+            CORINFO_FIELD_HANDLE fieldHandle = structTypeDescriptor.getField(i);
+            unsigned             fldOffset   = _info.compCompHnd->getFieldOffset(structTypeDescriptor.getField(i));
 
             assert(fldOffset < structSize);
 
@@ -203,7 +203,7 @@ StructDesc* Llvm::getStructDesc(CORINFO_CLASS_HANDLE structHandle)
         }
 
         FieldDesc*  fields     = new FieldDesc[fieldCount];
-        StructDesc* structDesc = new StructDesc(fieldCount, fields);
+        StructDesc* structDesc = new StructDesc(fieldCount, fields, structTypeDescriptor.hasSignificantPadding());
 
         unsigned fieldIx = 0;
         for (unsigned fldOffset = 0; fldOffset < structSize; fldOffset++)
@@ -224,6 +224,11 @@ StructDesc* Llvm::getStructDesc(CORINFO_CLASS_HANDLE structHandle)
         _structDescMap->insert({structHandle, structDesc});
     }
     return _structDescMap->at(structHandle);
+}
+
+llvm::Type* Llvm::getLlvmTypeForStruct(ClassLayout* classLayout)
+{
+    return getLlvmTypeForStruct(classLayout->GetClassHandle());
 }
 
 llvm::Type* Llvm::getLlvmTypeForStruct(CORINFO_CLASS_HANDLE structHandle)
@@ -980,7 +985,9 @@ bool Llvm::helperRequiresShadowStack(CORINFO_METHOD_HANDLE corinfoMethodHnd)
            corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_DBL2INT_OVF) ||
            corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_DBL2LNG_OVF) ||
            corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_DBL2UINT_OVF) ||
-           corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_DBL2ULNG_OVF);
+           corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_DBL2ULNG_OVF) ||
+           corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_LMUL_OVF) ||
+           corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_ULMUL_OVF);
 }
 
 void Llvm::buildHelperFuncCall(GenTreeCall* call)
@@ -1180,6 +1187,14 @@ void Llvm::buildInd(GenTree* node, Value* ptr)
     mapGenTreeToValue(node, _builder.CreateLoad(
                                  castIfNecessary(ptr,
                                      getLlvmTypeForVarType(node->TypeGet())->getPointerTo())));
+}
+
+void Llvm::buildObj(GenTreeObj* node)
+{
+    // cast the pointer to create the correct load instructions
+    mapGenTreeToValue(node, _builder.CreateLoad(
+                          castIfNecessary(getGenTreeValue(node->AsOp()->gtOp1),
+                                          getLlvmTypeForStruct(node->GetLayout())->getPointerTo())));
 }
 
 Value* Llvm::buildJTrue(GenTree* node, Value* opValue)
@@ -1409,7 +1424,7 @@ void Llvm::buildReturn(GenTree* node)
     }
 }
 
-void Llvm::importStoreInd(GenTreeStoreInd* storeIndOp)
+void Llvm::buildStoreInd(GenTreeStoreInd* storeIndOp)
 {
     Value* address = getGenTreeValue(storeIndOp->Addr());
     Value* toStore = getGenTreeValue(storeIndOp->Data());
@@ -1421,6 +1436,117 @@ void Llvm::importStoreInd(GenTreeStoreInd* storeIndOp)
     else
     {
         castingStore(toStore, address, storeIndOp->gtType);
+    }
+}
+
+// Copies endOffset - startOffset bytes, endOffset is exclusive.
+unsigned Llvm::buildMemCpy(Value* baseAddress, unsigned startOffset, unsigned endOffset, Value* srcAddress)
+{
+    Value* destAddress = _builder.CreateGEP(baseAddress, _builder.getInt32(startOffset));
+    unsigned size = endOffset - startOffset;
+
+    _builder.CreateMemCpy(destAddress, llvm::Align(), srcAddress, llvm::Align(), size);
+
+    return size;
+}
+
+void Llvm::storeObjAtAddress(Value* baseAddress, Value* data, StructDesc* structDesc)
+{
+    unsigned fieldCount = structDesc->getFieldCount();
+    unsigned bytesStored = 0;
+
+    for (unsigned i = 0; i < fieldCount; i++)
+    {
+        FieldDesc* fieldDesc = structDesc->getFieldDesc(i);
+        unsigned   fieldOffset = fieldDesc->getFieldOffset();
+        Value*     address     = _builder.CreateGEP(baseAddress, _builder.getInt32(fieldOffset));
+
+        if (structDesc->hasSignificantPadding() && fieldOffset > bytesStored)
+        {
+            bytesStored += buildMemCpy(baseAddress, bytesStored, fieldOffset, address);
+        }
+
+        Value* fieldData = nullptr;
+        if (data->getType()->isStructTy())
+        {
+            const llvm::StructLayout* structLayout = _module->getDataLayout().getStructLayout(static_cast<llvm::StructType*>(data->getType()));
+
+            unsigned llvmFieldIndex = structLayout->getElementContainingOffset(fieldOffset);
+            fieldData               = _builder.CreateExtractValue(data, llvmFieldIndex);
+        }
+        else
+        {
+            // single field IL structs are not LLVM structs
+            fieldData = data;
+        }
+
+        if (fieldData->getType()->isStructTy())
+        {
+            assert(fieldDesc->getClassHandle() != NO_CLASS_HANDLE);
+
+            // recurse into struct
+            storeObjAtAddress(address, fieldData, getStructDesc(fieldDesc->getClassHandle()));
+
+            bytesStored += fieldData->getType()->getPrimitiveSizeInBits() / BITS_PER_BYTE;
+        }
+        else
+        {
+            if (fieldDesc->isGcPointer())
+            {
+                _builder.CreateCall(getOrCreateRhpAssignRef(),
+                                    ArrayRef<Value*>{address,
+                                                     castIfNecessary(fieldData, Type::getInt8PtrTy(_llvmContext))});
+                bytesStored += TARGET_POINTER_SIZE;
+            }
+            else
+            {
+                _builder.CreateStore(fieldData, castIfNecessary(address, fieldData->getType()->getPointerTo()));
+
+                bytesStored += fieldData->getType()->getPrimitiveSizeInBits() / BITS_PER_BYTE;
+            }
+        }
+    }
+
+    unsigned llvmStructSize = data->getType()->getPrimitiveSizeInBits() / BITS_PER_BYTE;
+    if (structDesc->hasSignificantPadding() && llvmStructSize > bytesStored)
+    {
+        Value* srcAddress = _builder.CreateGEP(baseAddress, _builder.getInt32(bytesStored));
+
+        buildMemCpy(baseAddress, bytesStored, llvmStructSize, srcAddress);
+    }
+}
+
+void Llvm::buildStoreObj(GenTreeObj* storeOp)
+{
+    if (!storeOp->OperIsBlk())
+    {
+        failFunctionCompilation(); // cant get struct handle. TODO-LLVM: try as an assert
+    }
+
+    ClassLayout* structLayout = storeOp->GetLayout();
+
+    Value* baseAddressValue = getGenTreeValue(storeOp->Addr());
+
+    // zero initialization  check
+    GenTree* dataOp = storeOp->Data();
+    if (dataOp->IsIntegralConst(0))
+    {
+        _builder.CreateMemSet(baseAddressValue, _builder.getInt8(0), _builder.getInt32(structLayout->GetSize()), {});
+        return;
+    }
+
+    CORINFO_CLASS_HANDLE structClsHnd  = structLayout->GetClassHandle();
+    StructDesc*          structDesc    = getStructDesc(structClsHnd);
+    bool targetNotHeap = ((storeOp->gtFlags & GTF_IND_TGT_NOT_HEAP) != 0) || storeOp->Addr()->OperIsLocalAddr();
+
+    Value* dataValue = getGenTreeValue(storeOp->Data());
+    if (targetNotHeap)
+    {
+        _builder.CreateStore(dataValue, castIfNecessary(baseAddressValue, dataValue->getType()->getPointerTo())); 
+    }
+    else
+    {
+        storeObjAtAddress(baseAddressValue, dataValue, structDesc);
     }
 }
 
@@ -1609,6 +1735,9 @@ void Llvm::visitNode(GenTree* node)
         case GT_NO_OP:
             emitDoNothingCall();
             break;
+        case GT_OBJ:
+            buildObj(node->AsObj());
+            break;
         case GT_PHI:
             buildEmptyPhi(node->AsPhi());
             break;
@@ -1622,7 +1751,10 @@ void Llvm::visitNode(GenTree* node)
             storeLocalVar(node->AsLclVar());
             break;
         case GT_STOREIND:
-            importStoreInd((GenTreeStoreInd*)node);
+            buildStoreInd(node->AsStoreInd());
+            break;
+        case GT_STORE_OBJ:
+            buildStoreObj(node->AsObj());
             break;
         case GT_AND:
         case GT_OR:

@@ -12,8 +12,30 @@
 
 struct TypeDescriptor
 {
-    unsigned              fieldCount;
-    CORINFO_FIELD_HANDLE* fields;
+private:
+    unsigned              m_fieldCount;
+    CORINFO_FIELD_HANDLE* m_fields;
+    unsigned              m_hasSignificantPadding;
+
+    TypeDescriptor()
+    {
+    }
+
+public:
+    unsigned getFieldCount()
+    {
+        return m_fieldCount;
+    }
+
+    CORINFO_FIELD_HANDLE getField(unsigned index)
+    {
+        return m_fields[index];
+    }
+
+    unsigned hasSignificantPadding()
+    {
+        return m_hasSignificantPadding;
+    }
 };
 
 struct FieldDesc
@@ -47,6 +69,11 @@ public:
     {
         return m_corType;
     }
+
+    bool isGcPointer()
+    {
+        return m_corType == CORINFO_TYPE_CLASS || m_corType == CORINFO_TYPE_BYREF;
+    }
 };
 
 struct StructDesc
@@ -54,11 +81,12 @@ struct StructDesc
 private:
     size_t     m_fieldCount;
     FieldDesc* m_fields;
+    unsigned   m_hasSignificantPadding;
 
 public:
     // This constructor takes the ownership of the passed in array of field descriptors.
-    StructDesc(size_t fieldCount, FieldDesc* fieldDesc)
-        : m_fieldCount(fieldCount), m_fields(fieldDesc)
+    StructDesc(size_t fieldCount, FieldDesc* fieldDesc, bool hasSignificantPadding)
+        : m_fieldCount(fieldCount), m_fields(fieldDesc), m_hasSignificantPadding(hasSignificantPadding)
     {
     }
 
@@ -75,6 +103,11 @@ public:
     FieldDesc* getFieldDesc(unsigned index)
     {
         return &m_fields[index];
+    }
+
+    unsigned hasSignificantPadding()
+    {
+        return m_hasSignificantPadding;
     }
 };
 
