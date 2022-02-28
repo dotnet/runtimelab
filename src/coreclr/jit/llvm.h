@@ -108,6 +108,7 @@ private:
     std::unordered_map<GenTree*, Value*>* _sdsuMap;
     std::unordered_map<SsaPair, Value*, SsaPairHash>* _localsMap;
     std::vector<PhiPair> _phiPairs;
+    std::vector<Value*>* m_allocas;
 
     // DWARF
     llvm::DILocation* _currentOffsetDiLocation;
@@ -194,6 +195,7 @@ private:
     GenTreeCall::Use* lowerCallReturn(GenTreeCall* callNode, CORINFO_SIG_INFO* calleeSigInfo, GenTreeCall::Use* lastArg);
     void lowerCallToShadowStack(GenTreeCall* callNode, CORINFO_SIG_INFO* calleeSigInfo);
     void lowerToShadowStack();
+    void createAllocasForLocalsWithAddrOp();
 
     Value* mapGenTreeToValue(GenTree* genTree, Value* valueRef);
     bool needsReturnStackSlot(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd);
@@ -209,6 +211,7 @@ private:
     Value* zextIntIfNecessary(Value* intValue);
     StructDesc* getStructDesc(CORINFO_CLASS_HANDLE structHandle);
     unsigned buildMemCpy(Value* baseAddress, unsigned startOffset, unsigned endOffset, Value* srcAddress);
+    void buildLocalVarAddr(GenTreeLclVar* lclVar);
 
 public:
     Llvm(Compiler* pCompiler);

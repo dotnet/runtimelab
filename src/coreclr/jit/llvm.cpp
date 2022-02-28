@@ -453,35 +453,41 @@ CORINFO_CLASS_HANDLE Llvm::tryGetStructClassHandle(LclVarDsc* varDsc)
     return varTypeIsStruct(varDsc) ? varDsc->GetStructHnd() : NO_CLASS_HANDLE;;
 }
 
+unsigned corInfoTypeAligment(CorInfoType corInfoType)
+{
+    unsigned size = TARGET_POINTER_SIZE; // TODO Wasm64 aligns pointers at 4 or 8?
+    switch (corInfoType)
+    {
+        case CORINFO_TYPE_LONG:
+        case CORINFO_TYPE_ULONG:
+        case CORINFO_TYPE_DOUBLE:
+            size = 8;
+    }
+    return size;
+}
+
 unsigned int Llvm::padOffset(CorInfoType corInfoType, CORINFO_CLASS_HANDLE structClassHandle, unsigned int atOffset)
 {
     unsigned int alignment;
-    if (corInfoType == CorInfoType::CORINFO_TYPE_BYREF || corInfoType == CorInfoType::CORINFO_TYPE_CLASS ||
-        corInfoType == CorInfoType::CORINFO_TYPE_REFANY)
+    if (corInfoType == CORINFO_TYPE_VALUECLASS)
     {
-        // simplified for just pointers
-        alignment = TARGET_POINTER_SIZE; // TODO Wasm64 aligns pointers at 4 or 8?
-    }
-    else
-    {
-        assert(corInfoType == CorInfoType::CORINFO_TYPE_VALUECLASS);
         return _padOffset(_thisPtr, structClassHandle, atOffset);
     }
+
+    alignment = corInfoTypeAligment(corInfoType);
     return roundUp(atOffset, alignment);
 }
 
 unsigned int Llvm::padNextOffset(CorInfoType corInfoType, CORINFO_CLASS_HANDLE structClassHandle, unsigned int atOffset)
 {
     unsigned int size;
-    if (corInfoType == CorInfoType::CORINFO_TYPE_BYREF || corInfoType == CorInfoType::CORINFO_TYPE_CLASS ||
-        corInfoType == CorInfoType::CORINFO_TYPE_REFANY)
+    if (corInfoType == CORINFO_TYPE_VALUECLASS)
     {
-        size = TARGET_POINTER_SIZE;
+        size = getElementSize(structClassHandle, corInfoType);
     }
     else
     {
-        assert(corInfoType == CorInfoType::CORINFO_TYPE_VALUECLASS);
-        size = getElementSize(structClassHandle, corInfoType);
+        size = corInfoTypeAligment(corInfoType);
     }
     return padOffset(corInfoType, structClassHandle, atOffset) + size;
 }
@@ -1555,7 +1561,11 @@ Value* Llvm::localVar(GenTreeLclVar* lclVar)
     Value*       llvmRef;
     unsigned int lclNum = lclVar->GetLclNum();
     unsigned int ssaNum = lclVar->GetSsaNum();
-    if (_localsMap->find({lclNum, ssaNum}) == _localsMap->end())
+    if ((*m_allocas)[lclNum] != nullptr)
+    {
+        llvmRef = _builder.CreateLoad((*m_allocas)[lclNum]);
+    }
+    else if (_localsMap->find({lclNum, ssaNum}) == _localsMap->end())
     {
         LclVarDsc* varDsc = _compiler->lvaGetDesc(lclVar);
 
@@ -1589,6 +1599,18 @@ Value* Llvm::localVar(GenTreeLclVar* lclVar)
 
     mapGenTreeToValue(lclVar, llvmRef);
     return llvmRef;
+}
+
+void Llvm::buildLocalVarAddr(GenTreeLclVar* lclVar)
+{
+    LclVarDsc* varDsc = _compiler->lvaGetDesc(lclVar->GetLclNum());
+    if (varDsc->lvIsParam)
+    {
+        failFunctionCompilation(); // TOOD-LLVM: args can have their address used when passing to calls
+    }
+
+    unsigned int lclNum = lclVar->GetLclNum();
+    mapGenTreeToValue(lclVar, (*m_allocas)[lclNum]);
 }
 
 // LLVM operations like ICmpNE return an i1, but in the IR it is expected to be an Int (i32).
@@ -1656,25 +1678,32 @@ void Llvm::storeLocalVar(GenTreeLclVar* lclVar)
 {
     if (lclVar->gtFlags & GTF_VAR_DEF)
     {
-        Value* valueRef = getGenTreeValue(lclVar->gtGetOp1());
-        assert(valueRef != nullptr);
+        Value* localValue = getGenTreeValue(lclVar->gtGetOp1());
+        assert(localValue != nullptr);
+
+        unsigned lclNum = lclVar->GetLclNum();
+        Value* allocaValue = (*m_allocas)[lclNum];
+        if (allocaValue != nullptr)
+        {
+            _builder.CreateStore(localValue, castIfNecessary(allocaValue, localValue->getType()->getPointerTo()));
+        }
+
         // This could be done in the NE operator, but sometimes that would be needless, e.g. when followed by JTRUE
         // TODO-LLVM: As this is a zero extend widening operation, this is only valid if the small int is unsigned.  We don't know that here, so likely it would be better to
         // delete this and do the cast in the operator.  It seems likely that the cast will be a nop anyway, at least in Wasm, as Wasm does not have any number types smaller than i32
-        if (valueRef->getType()->isIntegerTy())
+        if (localValue->getType()->isIntegerTy())
         {
-            valueRef = zextIntIfNecessary(valueRef);
+            localValue = zextIntIfNecessary(localValue);
         }
 
         LclVarDsc* varDsc = _compiler->lvaGetDesc(lclVar);
-
-        if (varDsc->lvIsParam)
+        if (varDsc->lvIsParam) //TODO-LLVM: not doing params yet
         {
             failFunctionCompilation();
         }
 
-        SsaPair ssaPair = {lclVar->GetLclNum(), lclVar->GetSsaNum()};
-        _localsMap->insert({ssaPair, valueRef });
+        SsaPair ssaPair = {lclNum, lclVar->GetSsaNum()};
+        _localsMap->insert({ssaPair, localValue });
     }
     else
     {
@@ -1714,6 +1743,9 @@ void Llvm::visitNode(GenTree* node)
             break;
         case GT_LCL_VAR:
             localVar(node->AsLclVar());
+            break;
+        case GT_LCL_VAR_ADDR:
+            buildLocalVarAddr(node->AsLclVar());
             break;
         case GT_LSH:
         case GT_RSH:
@@ -1791,6 +1823,8 @@ void Llvm::generateProlog()
     // create a prolog block to store arguments passed on shadow stack, TODO: other things from ILToLLVMImporter to come
     llvm::BasicBlock* prologBlock = llvm::BasicBlock::Create(_llvmContext, "Prolog", _function);
     _prologBuilder.SetInsertPoint(prologBlock);
+
+    createAllocasForLocalsWithAddrOp();
 
     llvm::BasicBlock* block0 = getLLVMBasicBlockForBlock(_compiler->fgFirstBB);
     _prologBuilder.SetInsertPoint(_prologBuilder.CreateBr(block0)); // position _prologBuilder to add locals and arguments
@@ -2339,6 +2373,27 @@ void Llvm::lowerToShadowStack()
 
                 CurrentRange().InsertBefore(node, retAddressLocal, storeNode);
             }
+            else if (node->OperIsLocalAddr())
+            {
+                GenTreeLclVarCommon* localAddrNode  = node->AsLclVarCommon();
+
+                // replace with shadowstack + local offset, if on the shadow stack
+                LclVarDsc* localVarDsc = _compiler->lvaGetDesc(localAddrNode->GetLclNum());
+                int        stackOffset = localVarDsc->GetStackOffset();
+                localVarDsc->lvHasLocalAddr = 1; // TODO-LLVM: GT_LCL_FLD_ADDR will also get set to 1 here, is that a problem?
+                if (stackOffset != BAD_STK_OFFS)
+                {
+                    GenTreeLclVar* shadowStackVar = _compiler->gtNewLclvNode(_shadowStackLclNum, TYP_I_IMPL);
+                    GenTree*       localOffset    = _compiler->gtNewIconNode(stackOffset);
+
+                    CurrentRange().InsertBefore(node, shadowStackVar, localOffset);
+
+                    node->ChangeOper(GT_ADD);
+                    GenTreeOp* binOpNode = node->AsOp();
+                    binOpNode->gtOp1     = shadowStackVar;
+                    binOpNode->gtOp2     = localOffset;
+                }
+            }
         }
     }
 }
@@ -2360,7 +2415,11 @@ void Llvm::PlaceAndConvertShadowStackLocals()
     for (unsigned lclNum = 0; lclNum < _compiler->lvaCount; lclNum++)
     {
         LclVarDsc* varDsc = _compiler->lvaGetDesc(lclNum);
-        if (!canStoreLocalOnLlvmStack(varDsc))
+        if (canStoreLocalOnLlvmStack(varDsc))
+        {
+            varDsc->SetStackOffset(BAD_STK_OFFS);
+        }
+        else
         {
             locals.push_back(varDsc);
             if (varDsc->lvIsParam)
@@ -2390,6 +2449,38 @@ void Llvm::PlaceAndConvertShadowStackLocals()
     _shadowStackLocalsSize = offset;
 
     lowerToShadowStack();
+}
+
+void Llvm::createAllocasForLocalsWithAddrOp()
+{
+    m_allocas = new std::vector<Value*>(_compiler->lvaCount, nullptr);
+
+    for (unsigned lclNum = 0; lclNum < _compiler->lvaCount; lclNum++)
+    {
+        LclVarDsc* varDsc = _compiler->lvaGetDesc(lclNum);
+        if (varDsc->lvIsParam && varDsc->lvHasLocalAddr)
+        {
+            // TODO-LLVM : copy param to alloca storage
+            // see S_P_CoreLib_System_Diagnostics_Tracing_EventSource__InitializeIsSupported
+            failFunctionCompilation();
+        }
+
+        if (canStoreLocalOnLlvmStack(varDsc) && varDsc->lvHasLocalAddr)
+        {
+            CORINFO_CLASS_HANDLE classHandle = NO_CLASS_HANDLE;
+            if (varDsc->lvType == TYP_STRUCT)
+            {
+                ClassLayout* layout = varDsc->GetLayout();
+                classHandle         = layout->GetClassHandle();
+            }
+            Type* llvmType = getLlvmTypeForCorInfoType(toCorInfoType(varDsc->lvType), classHandle);
+            if (llvmType->isIntegerTy() && llvmType->getIntegerBitWidth() < 32)
+            {
+                llvmType = Type::getInt32Ty(_llvmContext);
+            }
+            (*m_allocas)[lclNum] = _prologBuilder.CreateAlloca(llvmType);
+        }
+    }
 }
 
 //------------------------------------------------------------------------
@@ -2439,6 +2530,12 @@ void Llvm::Compile()
 
     for (BasicBlock* block = _compiler->fgFirstBB; block; block = block->bbNext)
     {
+        // TODO-LLVM: finret basic blocks
+        if (block->bbJumpKind == BBJ_EHFINALLYRET)
+        {
+            failFunctionCompilation();
+        }
+
         startImportingBasicBlock(block);
 
         llvm::BasicBlock* entry = getLLVMBasicBlockForBlock(block);
