@@ -127,7 +127,7 @@ unsigned ReinterpretHexAsDecimal(unsigned in);
 
 const unsigned FLG_CCTOR = (CORINFO_FLG_CONSTRUCTOR | CORINFO_FLG_STATIC);
 
-#ifdef DEBUG
+#if defined(DEBUG) || defined(TARGET_WASM)
 const int BAD_STK_OFFS = 0xBAADF00D; // for LclVarDsc::lvStkOffs
 #endif
 
