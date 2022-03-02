@@ -219,6 +219,7 @@ public:
     static void llvmShutdown();
 
     void PlaceAndConvertShadowStackLocals();
+    void DontTrackLocalsWithAddress();
     void Compile();
 };
 

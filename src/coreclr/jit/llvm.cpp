@@ -2451,6 +2451,11 @@ void Llvm::PlaceAndConvertShadowStackLocals()
     lowerToShadowStack();
 }
 
+static bool placeLocalInAlloca(LclVarDsc* varDsc)
+{
+    return !varDsc->lvTracked || varDsc->lvHasLocalAddr;
+}
+
 void Llvm::createAllocasForLocalsWithAddrOp()
 {
     m_allocas = new std::vector<Value*>(_compiler->lvaCount, nullptr);
@@ -2458,14 +2463,15 @@ void Llvm::createAllocasForLocalsWithAddrOp()
     for (unsigned lclNum = 0; lclNum < _compiler->lvaCount; lclNum++)
     {
         LclVarDsc* varDsc = _compiler->lvaGetDesc(lclNum);
-        if (varDsc->lvIsParam && varDsc->lvHasLocalAddr)
+        if (varDsc->lvIsParam && placeLocalInAlloca(varDsc))
         {
             // TODO-LLVM : copy param to alloca storage
             // see S_P_CoreLib_System_Diagnostics_Tracing_EventSource__InitializeIsSupported
             failFunctionCompilation();
         }
 
-        if (canStoreLocalOnLlvmStack(varDsc) && varDsc->lvHasLocalAddr)
+        // TODO-LLVM LCLBLK - outgoing arg space
+        if (varDsc->lvType != TYP_LCLBLK && canStoreLocalOnLlvmStack(varDsc) && placeLocalInAlloca(varDsc))
         {
             CORINFO_CLASS_HANDLE classHandle = NO_CLASS_HANDLE;
             if (varDsc->lvType == TYP_STRUCT)
@@ -2479,6 +2485,26 @@ void Llvm::createAllocasForLocalsWithAddrOp()
                 llvmType = Type::getInt32Ty(_llvmContext);
             }
             (*m_allocas)[lclNum] = _prologBuilder.CreateAlloca(llvmType);
+        }
+    }
+}
+
+void Llvm::DontTrackLocalsWithAddress()
+{
+    for (BasicBlock* _currentBlock : _compiler->Blocks())
+    {
+        _currentRange = &LIR::AsRange(_currentBlock);
+        for (GenTree* node : CurrentRange())
+        {
+            if (node->OperIsLocalAddr())
+            {
+                LclVarDsc* localVarDsc = _compiler->lvaGetDesc(node->AsLclVarCommon()->GetLclNum());
+                if (localVarDsc->lvTracked)
+                {
+                    assert(false);// TODO-LLVM this is never hit?
+                    // localVarDsc->lvTracked = 0;
+                }
+            }
         }
     }
 }

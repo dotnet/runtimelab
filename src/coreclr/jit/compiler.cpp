@@ -5255,6 +5255,9 @@ void Compiler::compCompile(void** methodCodePtr, uint32_t* methodCodeSize, JitFl
     DoPhase(this, PHASE_SHDWSTK_SETUP, placeAndConvertShadowStackLocalsPhase);
 
     lvaMarkLocalVars();  // For SSA.
+
+    llvm->DontTrackLocalsWithAddress();
+
     fgResetForSsa();
     DoPhase(this, PHASE_BUILD_SSA, &Compiler::fgSsaBuild);
 
