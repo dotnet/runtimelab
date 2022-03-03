@@ -5256,8 +5256,6 @@ void Compiler::compCompile(void** methodCodePtr, uint32_t* methodCodeSize, JitFl
 
     lvaMarkLocalVars();  // For SSA.
 
-    llvm->DontTrackLocalsWithAddress();
-
     fgResetForSsa();
     DoPhase(this, PHASE_BUILD_SSA, &Compiler::fgSsaBuild);
 

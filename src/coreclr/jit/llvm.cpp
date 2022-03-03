@@ -676,13 +676,18 @@ llvm::Instruction* Llvm::getCast(llvm::Value* source, Type* targetType)
     failFunctionCompilation();
 }
 
-Value* Llvm::castIfNecessary(Value* source, Type* targetType)
+Value* Llvm::castIfNecessary(Value* source, Type* targetType, llvm::IRBuilder<>* builder)
 {
+    if (builder == nullptr)
+    {
+        builder = &_builder;
+    }
+
     llvm::Instruction* castInst = getCast(source, targetType);
     if (castInst == nullptr)
         return source;
 
-    return _builder.Insert(castInst);
+    return builder->Insert(castInst);
 }
 
 Value* Llvm::castToPointerToLlvmType(Value* address, llvm::Type* llvmType)
@@ -716,7 +721,8 @@ LlvmArgInfo Llvm::getLlvmArgInfoForArgIx(unsigned int lclNum)
         -1 /* default to not an LLVM arg*/, _sigInfo.hasThis() ? TARGET_POINTER_SIZE : 0U /* this is the first pointer on
                                                                                        the shadow stack */
     };
-    if (needsReturnStackSlot(_sigInfo.retType, _sigInfo.retTypeClass))
+
+    if (_compiler->info.compRetBuffArg != BAD_VAR_NUM)
     {
         if (lclNum == 0)
         {
@@ -724,9 +730,16 @@ LlvmArgInfo Llvm::getLlvmArgInfoForArgIx(unsigned int lclNum)
             llvmArgInfo.m_argIx = llvmArgNum;
             return llvmArgInfo;
         }
-        lclNum--;  // line up with sigArgs
+        lclNum--; // line up with sigArgs
+    }
+
+    if (needsReturnStackSlot(_sigInfo.retType, _sigInfo.retTypeClass))
+    {
         llvmArgNum++;
     }
+
+    // adjust lclNum for this which is not in _sigInfo.args
+    unsigned thisAdjustedLclNum = _sigInfo.hasThis() ? lclNum - 1 : lclNum;
 
     CORINFO_ARG_LIST_HANDLE sigArgs = _sigInfo.args;
 
@@ -739,7 +752,7 @@ LlvmArgInfo Llvm::getLlvmArgInfoForArgIx(unsigned int lclNum)
         CorInfoType corInfoType = getCorInfoTypeForArg(&_sigInfo, sigArgs, &clsHnd);
         if (canStoreArgOnLlvmStack(corInfoType, clsHnd))
         {
-            if (lclNum == i)
+            if (thisAdjustedLclNum == i)
             {
                 llvmArgInfo.m_argIx = llvmArgNum;
                 break;
@@ -749,7 +762,7 @@ LlvmArgInfo Llvm::getLlvmArgInfoForArgIx(unsigned int lclNum)
         }
         else
         {
-            if (lclNum == i)
+            if (thisAdjustedLclNum == i)
             {
                 llvmArgInfo.m_shadowStackOffset = shadowStackOffset;
                 break;
@@ -758,7 +771,6 @@ LlvmArgInfo Llvm::getLlvmArgInfoForArgIx(unsigned int lclNum)
             shadowStackOffset += TARGET_POINTER_SIZE; // TODO size of arg, for now only handles byrefs and class types
         }
     }
-    assert(lclNum == i); // lclNum not an argument
     return llvmArgInfo;
 }
 
@@ -1604,11 +1616,6 @@ Value* Llvm::localVar(GenTreeLclVar* lclVar)
 void Llvm::buildLocalVarAddr(GenTreeLclVar* lclVar)
 {
     LclVarDsc* varDsc = _compiler->lvaGetDesc(lclVar->GetLclNum());
-    if (varDsc->lvIsParam)
-    {
-        failFunctionCompilation(); // TOOD-LLVM: args can have their address used when passing to calls
-    }
-
     unsigned int lclNum = lclVar->GetLclNum();
     mapGenTreeToValue(lclVar, (*m_allocas)[lclNum]);
 }
@@ -2453,7 +2460,7 @@ void Llvm::PlaceAndConvertShadowStackLocals()
 
 static bool placeLocalInAlloca(LclVarDsc* varDsc)
 {
-    return !varDsc->lvTracked || varDsc->lvHasLocalAddr;
+    return !varDsc->lvInSsa;
 }
 
 void Llvm::createAllocasForLocalsWithAddrOp()
@@ -2463,12 +2470,6 @@ void Llvm::createAllocasForLocalsWithAddrOp()
     for (unsigned lclNum = 0; lclNum < _compiler->lvaCount; lclNum++)
     {
         LclVarDsc* varDsc = _compiler->lvaGetDesc(lclNum);
-        if (varDsc->lvIsParam && placeLocalInAlloca(varDsc))
-        {
-            // TODO-LLVM : copy param to alloca storage
-            // see S_P_CoreLib_System_Diagnostics_Tracing_EventSource__InitializeIsSupported
-            failFunctionCompilation();
-        }
 
         // TODO-LLVM LCLBLK - outgoing arg space
         if (varDsc->lvType != TYP_LCLBLK && canStoreLocalOnLlvmStack(varDsc) && placeLocalInAlloca(varDsc))
@@ -2484,26 +2485,16 @@ void Llvm::createAllocasForLocalsWithAddrOp()
             {
                 llvmType = Type::getInt32Ty(_llvmContext);
             }
-            (*m_allocas)[lclNum] = _prologBuilder.CreateAlloca(llvmType);
-        }
-    }
-}
+            Value* allocaValue = _prologBuilder.CreateAlloca(llvmType);
+            (*m_allocas)[lclNum] = allocaValue;
 
-void Llvm::DontTrackLocalsWithAddress()
-{
-    for (BasicBlock* _currentBlock : _compiler->Blocks())
-    {
-        _currentRange = &LIR::AsRange(_currentBlock);
-        for (GenTree* node : CurrentRange())
-        {
-            if (node->OperIsLocalAddr())
+            if (varDsc->lvIsParam)
             {
-                LclVarDsc* localVarDsc = _compiler->lvaGetDesc(node->AsLclVarCommon()->GetLclNum());
-                if (localVarDsc->lvTracked)
-                {
-                    assert(false);// TODO-LLVM this is never hit?
-                    // localVarDsc->lvTracked = 0;
-                }
+                LlvmArgInfo argInfo = getLlvmArgInfoForArgIx(lclNum);
+                assert(argInfo.m_argIx >= 0); // check this arg is not on the shadow stack
+                Value* dataValue = _function->getArg(argInfo.m_argIx);
+                _prologBuilder.CreateStore(dataValue, castIfNecessary(allocaValue, dataValue->getType()->getPointerTo(),
+                                                                      &_prologBuilder));
             }
         }
     }

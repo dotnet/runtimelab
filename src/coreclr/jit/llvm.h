@@ -146,7 +146,7 @@ private:
     void buildReturnRef(GenTreeOp* node);
     Value* buildUserFuncCall(GenTreeCall* call);
     bool canStoreArgOnLlvmStack(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd);
-    Value* castIfNecessary(Value* source, Type* targetType);
+    Value* castIfNecessary(Value* source, Type* targetType, llvm::IRBuilder<>* builder = nullptr);
     void castingStore(Value* toStore, Value* address, llvm::Type* llvmType);
     void castingStore(Value* toStore, Value* address, var_types type);
     Value* castToPointerToLlvmType(Value* address, llvm::Type* llvmType);
@@ -219,7 +219,6 @@ public:
     static void llvmShutdown();
 
     void PlaceAndConvertShadowStackLocals();
-    void DontTrackLocalsWithAddress();
     void Compile();
 };
 
