@@ -333,8 +333,8 @@ namespace Internal.JitInterface
                 {
                     int offset = field.Offset.AsInt;
 
-                    if (sparseFieldLayout[offset].Field == null || field.FieldType.GetElementSize().AsInt >
-                        sparseFieldLayout[offset].Field.FieldType.GetElementSize().AsInt)
+                    if (!sparseFieldLayout[offset].IsValid ||
+                        field.FieldType.GetElementSize().AsInt > sparseFieldLayout[offset].Field.FieldType.GetElementSize().AsInt)
                     {
                         sparseFieldLayout[offset] = new FieldAndOffset(field, field.Offset);
                     }
