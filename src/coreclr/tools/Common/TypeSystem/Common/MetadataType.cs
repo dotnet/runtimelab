@@ -103,6 +103,8 @@ namespace Internal.TypeSystem
     {
         public static readonly LayoutInt InvalidOffset = new LayoutInt(int.MaxValue);
 
+        public static FieldAndOffset Invalid = new FieldAndOffset(null, InvalidOffset);
+
         public readonly FieldDesc Field;
 
         public readonly LayoutInt Offset;
@@ -111,6 +113,11 @@ namespace Internal.TypeSystem
         {
             Field = field;
             Offset = offset;
+        }
+
+        public bool IsValid
+        {
+            get { return Offset != InvalidOffset; }
         }
     }
 }
