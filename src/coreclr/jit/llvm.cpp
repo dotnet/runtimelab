@@ -2460,6 +2460,7 @@ void Llvm::PlaceAndConvertShadowStackLocals()
 
 static bool placeLocalInAlloca(LclVarDsc* varDsc)
 {
+    assert(canStoreLocalOnLlvmStack(varDsc) && (_compiler->fgSsaPassesCompleted >= 1));
     return !varDsc->lvInSsa;
 }
 
@@ -2474,13 +2475,8 @@ void Llvm::createAllocasForLocalsWithAddrOp()
         // TODO-LLVM LCLBLK - outgoing arg space
         if (varDsc->lvType != TYP_LCLBLK && canStoreLocalOnLlvmStack(varDsc) && placeLocalInAlloca(varDsc))
         {
-            CORINFO_CLASS_HANDLE classHandle = NO_CLASS_HANDLE;
-            if (varDsc->lvType == TYP_STRUCT)
-            {
-                ClassLayout* layout = varDsc->GetLayout();
-                classHandle         = layout->GetClassHandle();
-            }
-            Type* llvmType = getLlvmTypeForCorInfoType(toCorInfoType(varDsc->lvType), classHandle);
+            CORINFO_CLASS_HANDLE classHandle = tryGetStructClassHandle(varDsc);
+            Type* llvmType = getLlvmTypeForCorInfoType(toCorInfoType(varDsc->TypeGet()), classHandle);
             if (llvmType->isIntegerTy() && llvmType->getIntegerBitWidth() < 32)
             {
                 llvmType = Type::getInt32Ty(_llvmContext);
