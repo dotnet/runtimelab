@@ -451,7 +451,6 @@ internal static class Program
         internal int i1, i2;
     }
 
-    // dont want this inlined as it wi the `LCL_VAR_ADDR`
     [MethodImpl(MethodImplOptions.NoInlining)]
     static int FuncWithStructArg(LlvmStruct s)
     {

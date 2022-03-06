@@ -35,6 +35,7 @@ public:
 
     unsigned getFieldSize(unsigned index)
     {
+        assert(index < m_fieldCount);
         return m_fieldSizes[index];
     }
 

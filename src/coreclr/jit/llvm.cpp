@@ -300,10 +300,6 @@ llvm::Type* Llvm::getLlvmTypeForStruct(CORINFO_CLASS_HANDLE structHandle)
                 // Forward-declare the struct in case there's a reference to it in the fields.
                 // This must be a named struct or LLVM hits a stack overflow
                 const char* name = _getTypeName(_thisPtr, structHandle);
-                if (strstr(name, "Register"))
-                {
-                    unsigned i = 0;
-                }
                 llvm::StructType* llvmStructType = llvm::StructType::create(_llvmContext, name);
                 llvmType = llvmStructType;
                 StructDesc* structDesc = getStructDesc(structHandle);
@@ -1719,12 +1715,12 @@ void Llvm::storeLocalVar(GenTreeLclVar* lclVar)
     Value* localValue = getGenTreeValue(lclVar->gtGetOp1());
 
     unsigned lclNum = lclVar->GetLclNum();
-    Value* allocaValue = m_allocas[lclNum];
-    LclVarDsc* varDsc  = _compiler->lvaGetDesc(lclVar);
+    LclVarDsc* varDsc = _compiler->lvaGetDesc(lclVar);
 
     if (isLlvmFrameLocal(varDsc))
     {
-        _builder.CreateStore(localValue, castIfNecessary(allocaValue, localValue->getType()->getPointerTo()));
+        Value* lclAddressValue = m_allocas[lclNum];
+        _builder.CreateStore(localValue, castIfNecessary(lclAddressValue, localValue->getType()->getPointerTo()));
     }
     else
     {
@@ -2092,18 +2088,16 @@ void Llvm::ConvertShadowStackLocalNode(GenTreeLclVarCommon* node)
             blk->gtBlkOpKind = GenTreeBlk::BlkOpKindInvalid;
         }
 
+        CurrentRange().InsertBefore(node, shadowStackLocal, offset);
 
         if (indirOper == GT_NONE)
         {
-            // for GT_LCL_VAR_ADDR, the GT_ADD the result of the conversion,
-            // so replace node with the GT_ADD
+            // Local address nodes are directly replaced with the ADD.
             node->ReplaceWith(lclAddress, _compiler);
-
-            CurrentRange().InsertBefore(node, offset, shadowStackLocal);
         }
         else
         {
-            CurrentRange().InsertBefore(node, offset, shadowStackLocal, lclAddress);
+            CurrentRange().InsertBefore(node, lclAddress);
         }
     }
 }
