@@ -295,7 +295,6 @@ namespace Internal.JitInterface
         {
             public uint FieldCount;
             public CORINFO_FIELD_STRUCT_** Fields; // array of CORINFO_FIELD_STRUCT_*
-            public uint* FieldSizes; // array of field sizes
             public uint HasSignificantPadding; // Change to a uint flags if we need more bools
         }
 
@@ -336,7 +335,6 @@ namespace Internal.JitInterface
             {
                 FieldCount = fieldCount,
                 Fields = (CORINFO_FIELD_STRUCT_**)fieldArray,
-                FieldSizes = (uint*)fieldSizes,
                 HasSignificantPadding = hasSignificantPadding ? 1u : 0
             };
 
@@ -346,7 +344,6 @@ namespace Internal.JitInterface
                 if (!field.IsStatic)
                 {
                     typeDescriptor.Fields[fieldCount] = _this.ObjectToHandle(field);
-                    typeDescriptor.FieldSizes[fieldCount] = (uint)field.FieldType.GetElementSize().AsInt;
                     fieldCount++;
                 }
             }

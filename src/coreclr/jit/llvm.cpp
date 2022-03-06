@@ -188,7 +188,11 @@ StructDesc* Llvm::getStructDesc(CORINFO_CLASS_HANDLE structHandle)
 
             assert(fldOffset < structSize);
 
-            unsigned fieldSize = structTypeDescriptor.getFieldSize(i);
+            CORINFO_CLASS_HANDLE fieldClass;
+            _info.compCompHnd->getFieldType(fieldHandle, &fieldClass);
+
+            unsigned fieldSize = _info.compCompHnd->getClassSize(fieldClass);
+
             // store the biggest field at the offset for unions
             if (sparseFields[fldOffset] == nullptr || fieldSize > sparseFieldSizes[fldOffset])
             {
@@ -919,6 +923,16 @@ Value* Llvm::consumeValue(GenTree* node, Type* targetLlvmType)
             if (varTypeIsSmall(node))
             {
                 finalValue = varTypeIsSigned(node) ? _builder.CreateSExt(nodeValue, targetLlvmType)
+                                                   : _builder.CreateZExt(nodeValue, targetLlvmType);
+            }
+            else if (node->OperIs(GT_LCL_VAR))
+            {
+                // implicit upcast i8 -> i32
+                assert(nodeValue->getType() == Type::getInt8Ty(_llvmContext));
+
+                GenTreeLclVarCommon* lclNode = node->AsLclVarCommon();
+                LclVarDsc* varDsc = _compiler->lvaGetDesc(lclNode->GetLclNum());
+                finalValue = varTypeIsSigned(varDsc->TypeGet()) ? _builder.CreateSExt(nodeValue, targetLlvmType)
                                                    : _builder.CreateZExt(nodeValue, targetLlvmType);
             }
             else
@@ -2042,7 +2056,9 @@ void Llvm::ConvertShadowStackLocalNode(GenTreeLclVarCommon* node)
     if (!canStoreLocalOnLlvmStack(varDsc))
     {
         // TODO-LLVM: if the offset == 0, just GT_STOREIND at the shadowStack
-        GenTreeIntCon* offset = _compiler->gtNewIconNode(varDsc->GetStackOffset(), TYP_I_IMPL);
+        unsigned offsetVal = varDsc->GetStackOffset() + node->GetLclOffs();
+        GenTreeIntCon* offset = _compiler->gtNewIconNode(offsetVal, TYP_I_IMPL);
+
         GenTreeLclVar* shadowStackLocal = _compiler->gtNewLclvNode(_shadowStackLclNum, TYP_I_IMPL);
         GenTree* lclAddress = _compiler->gtNewOperNode(GT_ADD, TYP_I_IMPL, shadowStackLocal, offset);
 
@@ -2062,7 +2078,6 @@ void Llvm::ConvertShadowStackLocalNode(GenTreeLclVarCommon* node)
                 break;
             case GT_LCL_FLD_ADDR:
                 indirOper = GT_NONE;
-                offset = _compiler->gtNewIconNode(varDsc->GetStackOffset() + node->AsLclFld()->GetLclOffs(), TYP_I_IMPL);
                 break;
             default:
                 unreached();

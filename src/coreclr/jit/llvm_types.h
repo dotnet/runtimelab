@@ -15,7 +15,6 @@ struct TypeDescriptor
 private:
     unsigned              m_fieldCount;
     CORINFO_FIELD_HANDLE* m_fields;
-    unsigned*             m_fieldSizes;
     unsigned              m_hasSignificantPadding;
 
     TypeDescriptor()
@@ -31,12 +30,6 @@ public:
     CORINFO_FIELD_HANDLE getField(unsigned index)
     {
         return m_fields[index];
-    }
-
-    unsigned getFieldSize(unsigned index)
-    {
-        assert(index < m_fieldCount);
-        return m_fieldSizes[index];
     }
 
     unsigned hasSignificantPadding()
