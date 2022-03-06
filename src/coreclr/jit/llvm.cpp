@@ -2481,6 +2481,7 @@ void Llvm::PlaceAndConvertShadowStackLocals()
     lowerToShadowStack();
 }
 
+    assert(canStoreLocalOnLlvmStack(varDsc) && (_compiler->fgSsaPassesCompleted >= 1));
 void Llvm::createAllocasForLocalsWithAddrOp()
 {
     m_allocas = std::vector<Value*>(_compiler->lvaCount, nullptr);
@@ -2492,13 +2493,8 @@ void Llvm::createAllocasForLocalsWithAddrOp()
         // TODO-LLVM LCLBLK - outgoing arg space.  Consider turning off FEATURE_FIXED_OUT_ARGS 
         if (varDsc->lvType != TYP_LCLBLK && canStoreLocalOnLlvmStack(varDsc) && isLlvmFrameLocal(varDsc))
         {
-            CORINFO_CLASS_HANDLE classHandle = NO_CLASS_HANDLE;
-            if (varDsc->lvType == TYP_STRUCT)
-            {
-                ClassLayout* layout = varDsc->GetLayout();
-                classHandle         = layout->GetClassHandle();
-            }
-            Type* llvmType = getLlvmTypeForCorInfoType(toCorInfoType(varDsc->lvType), classHandle);
+            CORINFO_CLASS_HANDLE classHandle = tryGetStructClassHandle(varDsc);
+            Type* llvmType = getLlvmTypeForCorInfoType(toCorInfoType(varDsc->TypeGet()), classHandle);
             if (llvmType->isIntegerTy() && llvmType->getIntegerBitWidth() < 32)
             {
                 llvmType = Type::getInt32Ty(_llvmContext);
