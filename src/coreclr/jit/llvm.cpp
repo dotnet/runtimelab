@@ -1722,9 +1722,8 @@ void Llvm::storeLocalVar(GenTreeLclVar* lclVar)
 
     if (isLlvmFrameLocal(varDsc))
     {
-        _builder.CreateStore(localValue, castIfNecessary(allocaValue, destLlvmType->getPointerTo()));
         Value* lclAddressValue = m_allocas[lclNum];
-        _builder.CreateStore(localValue, castIfNecessary(lclAddressValue, localValue->getType()->getPointerTo()));
+        _builder.CreateStore(localValue, castIfNecessary(lclAddressValue, destLlvmType->getPointerTo()));
     }
     else
     {
