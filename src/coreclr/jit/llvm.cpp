@@ -1629,10 +1629,18 @@ Value* Llvm::localVar(GenTreeLclVar* lclVar)
     return llvmRef;
 }
 
-void Llvm::buildLocalVarAddr(GenTreeLclVar* lclAddr)
+void Llvm::buildLocalVarAddr(GenTreeLclVarCommon* lclAddr)
 {
     unsigned int lclNum = lclAddr->GetLclNum();
-    mapGenTreeToValue(lclAddr, m_allocas[lclNum]);
+    if (lclAddr->isLclField())
+    {
+        GenTreeLclFld* lclFldAddr = lclAddr->AsLclFld();
+        mapGenTreeToValue(lclAddr, _builder.CreateGEP(m_allocas[lclNum], _builder.getInt16(lclFldAddr->GetLclOffs())));
+    }
+    else
+    {
+        mapGenTreeToValue(lclAddr, m_allocas[lclNum]);
+    }
 }
 
 // LLVM operations like ICmpNE return an i1, but in the IR it is expected to be an Int (i32).
@@ -1696,8 +1704,9 @@ Value* Llvm::getLocalVarAddress(GenTreeLclVar* lclVar) {
     return _builder.CreateGEP(_function->getArg(0), _builder.getInt32(varOffset), "lclVar");
 }
 
-static bool isLlvmFrameLocal(LclVarDsc* varDsc)
+bool Llvm::isLlvmFrameLocal(LclVarDsc* varDsc)
 {
+    assert(canStoreLocalOnLlvmStack(varDsc) && (_compiler->fgSsaPassesCompleted >= 1));
     return !varDsc->lvInSsa;
 }
 
@@ -1770,7 +1779,8 @@ void Llvm::visitNode(GenTree* node)
             localVar(node->AsLclVar());
             break;
         case GT_LCL_VAR_ADDR:
-            buildLocalVarAddr(node->AsLclVar());
+        case GT_LCL_FLD_ADDR:
+            buildLocalVarAddr(node->AsLclVarCommon());
             break;
         case GT_LSH:
         case GT_RSH:
@@ -2373,10 +2383,6 @@ void Llvm::lowerToShadowStack()
         _currentRange = &LIR::AsRange(_currentBlock);
         for (GenTree* node : CurrentRange())
         {
-            if (node->OperIs(GT_LCL_FLD_ADDR))
-            {
-                unsigned i = 0;
-            }
             if (node->OperIs(GT_STORE_LCL_VAR, GT_LCL_VAR, GT_LCL_VAR_ADDR))
             {
                 ConvertShadowStackLocalNode(node->AsLclVarCommon());
@@ -2481,7 +2487,6 @@ void Llvm::PlaceAndConvertShadowStackLocals()
     lowerToShadowStack();
 }
 
-    assert(canStoreLocalOnLlvmStack(varDsc) && (_compiler->fgSsaPassesCompleted >= 1));
 void Llvm::createAllocasForLocalsWithAddrOp()
 {
     m_allocas = std::vector<Value*>(_compiler->lvaCount, nullptr);

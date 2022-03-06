@@ -216,7 +216,8 @@ private:
     Value* zextIntIfNecessary(Value* intValue);
     StructDesc* getStructDesc(CORINFO_CLASS_HANDLE structHandle);
     unsigned buildMemCpy(Value* baseAddress, unsigned startOffset, unsigned endOffset, Value* srcAddress);
-    void buildLocalVarAddr(GenTreeLclVar* lclVar);
+    void buildLocalVarAddr(GenTreeLclVarCommon* lclVar);
+    bool isLlvmFrameLocal(LclVarDsc* varDsc);
 
 public:
     Llvm(Compiler* pCompiler);
