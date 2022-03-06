@@ -150,6 +150,7 @@ private:
     void buildReturn(GenTree* node);
     void buildReturnRef(GenTreeOp* node);
     Value* buildUserFuncCall(GenTreeCall* call);
+    void createAllocasForLocalsWithAddrOp();
     bool canStoreArgOnLlvmStack(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd);
     Value* castIfNecessary(Value* source, Type* targetType, llvm::IRBuilder<>* builder = nullptr);
     void castingStore(Value* toStore, Value* address, llvm::Type* llvmType);
@@ -200,7 +201,6 @@ private:
     GenTreeCall::Use* lowerCallReturn(GenTreeCall* callNode, CORINFO_SIG_INFO* calleeSigInfo, GenTreeCall::Use* lastArg);
     void lowerCallToShadowStack(GenTreeCall* callNode, CORINFO_SIG_INFO* calleeSigInfo);
     void lowerToShadowStack();
-    void createAllocasForLocalsWithAddrOp();
 
     Value* mapGenTreeToValue(GenTree* genTree, Value* valueRef);
     bool needsReturnStackSlot(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd);

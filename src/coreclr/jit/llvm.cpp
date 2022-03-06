@@ -175,7 +175,7 @@ StructDesc* Llvm::getStructDesc(CORINFO_CLASS_HANDLE structHandle)
         unsigned structSize                 = _info.compCompHnd->getClassSize(structHandle); // TODO-LLVM: add to TypeDescriptor?
 
         std::vector<CORINFO_FIELD_HANDLE> sparseFields = std::vector<CORINFO_FIELD_HANDLE>(structSize);
-        std::vector<unsigned> sparseFieldSizess = std::vector<unsigned>(structSize);
+        std::vector<unsigned> sparseFieldSizes = std::vector<unsigned>(structSize);
 
         for (unsigned i = 0; i < structSize; i++)
             sparseFields[i] = nullptr;
@@ -190,10 +190,10 @@ StructDesc* Llvm::getStructDesc(CORINFO_CLASS_HANDLE structHandle)
 
             unsigned fieldSize = structTypeDescriptor.getFieldSize(i);
             // store the biggest field at the offset for unions
-            if (sparseFields[fldOffset] == nullptr || fieldSize > sparseFieldSizess[fldOffset])
+            if (sparseFields[fldOffset] == nullptr || fieldSize > sparseFieldSizes[fldOffset])
             {
                 sparseFields[fldOffset] = fieldHandle;
-                sparseFieldSizess[fldOffset] = fieldSize;
+                sparseFieldSizes[fldOffset] = fieldSize;
             }
         }
 
@@ -202,19 +202,19 @@ StructDesc* Llvm::getStructDesc(CORINFO_CLASS_HANDLE structHandle)
         unsigned i          = 0;
         while(i < structSize)
         {
-            if (sparseFields[i] == nullptr)
-            {
-                i++;
-            }
-            else
+            if (sparseFields[i] != nullptr)
             {
                 fieldCount++;
                 // clear out any fields that are covered by this field
-                for (unsigned j = 1; j < sparseFieldSizess[i]; j++)
+                for (unsigned j = 1; j < sparseFieldSizes[i]; j++)
                 {
                     sparseFields[i + j] = nullptr;
                 }
-                i += sparseFieldSizess[i];
+                i += sparseFieldSizes[i];
+            }
+            else
+            {
+                i++;
             }
         }
 
@@ -1593,14 +1593,14 @@ Value* Llvm::localVar(GenTreeLclVar* lclVar)
     Value*       llvmRef;
     unsigned int lclNum = lclVar->GetLclNum();
     unsigned int ssaNum = lclVar->GetSsaNum();
-    if (m_allocas[lclNum] != nullptr)
+    LclVarDsc*   varDsc = _compiler->lvaGetDesc(lclVar);
+
+    if (isLlvmFrameLocal(varDsc))
     {
         llvmRef = _builder.CreateLoad(m_allocas[lclNum]);
     }
     else if (_localsMap->find({lclNum, ssaNum}) == _localsMap->end())
     {
-        LclVarDsc* varDsc = _compiler->lvaGetDesc(lclVar);
-
         if (varDsc->lvLlvmArgNum != BAD_LLVM_ARG_NUM)
         {
             // TODO-LLVM: we dont handle this yet
@@ -1639,7 +1639,9 @@ void Llvm::buildLocalVarAddr(GenTreeLclVarCommon* lclAddr)
     if (lclAddr->isLclField())
     {
         GenTreeLclFld* lclFldAddr = lclAddr->AsLclFld();
-        mapGenTreeToValue(lclAddr, _builder.CreateGEP(m_allocas[lclNum], _builder.getInt16(lclFldAddr->GetLclOffs())));
+
+        Value* bytePtr = castIfNecessary(m_allocas[lclNum], Type::getInt8PtrTy(_llvmContext));
+        mapGenTreeToValue(lclAddr, _builder.CreateGEP(bytePtr, _builder.getInt16(lclFldAddr->GetLclOffs())));
     }
     else
     {
@@ -1716,7 +1718,8 @@ bool Llvm::isLlvmFrameLocal(LclVarDsc* varDsc)
 
 void Llvm::storeLocalVar(GenTreeLclVar* lclVar)
 {
-    Value* localValue = getGenTreeValue(lclVar->gtGetOp1());
+    Type* destLlvmType = getLlvmTypeForVarType(lclVar->TypeGet());
+    Value* localValue = consumeValue(lclVar->gtGetOp1(), destLlvmType);
 
     unsigned lclNum = lclVar->GetLclNum();
     Value* allocaValue = m_allocas[lclNum];
@@ -1724,20 +1727,10 @@ void Llvm::storeLocalVar(GenTreeLclVar* lclVar)
 
     if (isLlvmFrameLocal(varDsc))
     {
-        _builder.CreateStore(localValue, castIfNecessary(allocaValue, localValue->getType()->getPointerTo()));
+        _builder.CreateStore(localValue, castIfNecessary(allocaValue, destLlvmType->getPointerTo()));
     }
     else
     {
-        // This could be done in the NE operator, but sometimes that would be needless, e.g. when followed by JTRUE
-        // TODO-LLVM: As this is a zero extend widening operation, this is only valid if the small int is unsigned.  We
-        // don't know that here, so likely it would be better to delete this and do the cast in the operator.  It seems
-        // likely that the cast will be a nop anyway, at least in Wasm, as Wasm does not have any number types smaller
-        // than i32
-        if (localValue->getType()->isIntegerTy())
-        {
-            localValue = zextIntIfNecessary(localValue);
-        }
-
         if (varDsc->lvIsParam) // TODO-LLVM: not doing params yet
         {
             failFunctionCompilation();
@@ -2071,6 +2064,10 @@ void Llvm::ConvertShadowStackLocalNode(GenTreeLclVarCommon* node)
             case GT_LCL_VAR_ADDR:
                 indirOper = GT_NONE;
                 break;
+            case GT_LCL_FLD_ADDR:
+                indirOper = GT_NONE;
+                offset = _compiler->gtNewIconNode(varDsc->GetStackOffset() + node->AsLclFld()->GetLclOffs(), TYP_I_IMPL);
+                break;
             default:
                 unreached();
         }
@@ -2086,12 +2083,9 @@ void Llvm::ConvertShadowStackLocalNode(GenTreeLclVarCommon* node)
         }
         if (GenTree::OperIsBlk(indirOper))
         {
-            GenTreeBlk* blk = node->AsBlk();
-            CORINFO_CLASS_HANDLE handle = varDsc->GetStructHnd();
-            blk->SetLayout(_compiler->typGetObjLayout(handle));
-            blk->gtBlkOpKind = GenTreeBlk::BlkOpKindInvalid;
+            node->AsBlk()->SetLayout(varDsc->GetLayout());
+            node->AsBlk()->gtBlkOpKind = GenTreeBlk::BlkOpKindInvalid;
         }
-
 
         if (indirOper == GT_NONE)
         {
