@@ -126,7 +126,11 @@ Value* Llvm::mapGenTreeToValue(GenTree* genTree, Value* valueRef)
 
 Value* Llvm::getGenTreeValue(GenTree* op)
 {
-    return _sdsuMap->at(op);
+    Value* mapValue = _sdsuMap->at(op);
+
+    assert(mapValue != nullptr);
+
+    return mapValue;
 }
 
 // maintains compatiblity with the IL->LLVM generation.  TODO-LLVM, when IL generation is no more, see if we can remove this unwrapping
@@ -1713,7 +1717,6 @@ bool Llvm::isLlvmFrameLocal(LclVarDsc* varDsc)
 void Llvm::storeLocalVar(GenTreeLclVar* lclVar)
 {
     Value* localValue = getGenTreeValue(lclVar->gtGetOp1());
-    assert(localValue != nullptr);
 
     unsigned lclNum = lclVar->GetLclNum();
     Value* allocaValue = m_allocas[lclNum];
