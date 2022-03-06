@@ -2432,10 +2432,8 @@ void Llvm::lowerToShadowStack()
             }
             if (node->OperIsLocalAddr())
             {
-                GenTreeLclVarCommon* localAddrNode  = node->AsLclVarCommon();
-                LclVarDsc* localVarDsc = _compiler->lvaGetDesc(localAddrNode->GetLclNum());
-
-                localVarDsc->lvHasLocalAddr = 1; // TODO-LLVM: GT_LCL_FLD_ADDR will also get set to 1 here, is that a problem?
+                // Indicates that this local is to live on the LLVM frame, and will not participate in SSA.
+                _compiler->lvaGetDesc(node->AsLclVarCommon())->lvHasLocalAddr = 1;
             }
         }
     }
