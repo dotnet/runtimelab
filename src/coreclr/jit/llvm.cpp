@@ -300,10 +300,6 @@ llvm::Type* Llvm::getLlvmTypeForStruct(CORINFO_CLASS_HANDLE structHandle)
                 // Forward-declare the struct in case there's a reference to it in the fields.
                 // This must be a named struct or LLVM hits a stack overflow
                 const char* name = _getTypeName(_thisPtr, structHandle);
-                if (strstr(name, "Register"))
-                {
-                    unsigned i = 0;
-                }
                 llvm::StructType* llvmStructType = llvm::StructType::create(_llvmContext, name);
                 llvmType = llvmStructType;
                 StructDesc* structDesc = getStructDesc(structHandle);
@@ -1722,12 +1718,13 @@ void Llvm::storeLocalVar(GenTreeLclVar* lclVar)
     Value* localValue = consumeValue(lclVar->gtGetOp1(), destLlvmType);
 
     unsigned lclNum = lclVar->GetLclNum();
-    Value* allocaValue = m_allocas[lclNum];
-    LclVarDsc* varDsc  = _compiler->lvaGetDesc(lclVar);
+    LclVarDsc* varDsc = _compiler->lvaGetDesc(lclVar);
 
     if (isLlvmFrameLocal(varDsc))
     {
         _builder.CreateStore(localValue, castIfNecessary(allocaValue, destLlvmType->getPointerTo()));
+        Value* lclAddressValue = m_allocas[lclNum];
+        _builder.CreateStore(localValue, castIfNecessary(lclAddressValue, localValue->getType()->getPointerTo()));
     }
     else
     {
@@ -2087,17 +2084,15 @@ void Llvm::ConvertShadowStackLocalNode(GenTreeLclVarCommon* node)
             node->AsBlk()->gtBlkOpKind = GenTreeBlk::BlkOpKindInvalid;
         }
 
+        CurrentRange().InsertBefore(node, shadowStackLocal, offset);
         if (indirOper == GT_NONE)
         {
-            // for GT_LCL_VAR_ADDR, the GT_ADD the result of the conversion,
-            // so replace node with the GT_ADD
+            // Local address nodes are directly replaced with the ADD.
             node->ReplaceWith(lclAddress, _compiler);
-
-            CurrentRange().InsertBefore(node, offset, shadowStackLocal);
         }
         else
         {
-            CurrentRange().InsertBefore(node, offset, shadowStackLocal, lclAddress);
+            CurrentRange().InsertBefore(node, lclAddress);
         }
     }
 }
@@ -2426,10 +2421,8 @@ void Llvm::lowerToShadowStack()
             }
             if (node->OperIsLocalAddr())
             {
-                GenTreeLclVarCommon* localAddrNode  = node->AsLclVarCommon();
-                LclVarDsc* localVarDsc = _compiler->lvaGetDesc(localAddrNode->GetLclNum());
-
-                localVarDsc->lvHasLocalAddr = 1; // TODO-LLVM: GT_LCL_FLD_ADDR will also get set to 1 here, is that a problem?
+                // Indicates that this local is to live on the LLVM frame, and will not participate in SSA.
+                _compiler->lvaGetDesc(node->AsLclVarCommon())->lvHasLocalAddr = 1;
             }
         }
     }
@@ -2507,7 +2500,7 @@ void Llvm::createAllocasForLocalsWithAddrOp()
             if (varDsc->lvIsParam)
             {
                 LlvmArgInfo argInfo = getLlvmArgInfoForArgIx(lclNum);
-                assert(argInfo.IsLlvmArg()); // check this arg is not on the shadow stack
+                assert(argInfo.IsLlvmArg());
                 Value* dataValue = _function->getArg(argInfo.m_argIx);
                 _prologBuilder.CreateStore(dataValue, castIfNecessary(allocaValue, dataValue->getType()->getPointerTo(),
                                                                       &_prologBuilder));

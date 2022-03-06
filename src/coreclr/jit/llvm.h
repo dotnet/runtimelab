@@ -41,7 +41,7 @@ struct LlvmArgInfo
     int          m_argIx; // -1 indicates not in the LLVM arg list, but on the shadow stack
     unsigned int m_shadowStackOffset;
 
-    bool         IsLlvmArg()
+    bool IsLlvmArg()
     {
         return m_argIx >= 0;
     }
