@@ -2513,7 +2513,7 @@ void Llvm::createAllocasForLocalsWithAddrOp()
             if (varDsc->lvIsParam)
             {
                 LlvmArgInfo argInfo = getLlvmArgInfoForArgIx(lclNum);
-                assert(argInfo.IsLlvmArg()); // check this arg is not on the shadow stack
+                assert(argInfo.IsLlvmArg());
                 Value* dataValue = _function->getArg(argInfo.m_argIx);
                 _prologBuilder.CreateStore(dataValue, castIfNecessary(allocaValue, dataValue->getType()->getPointerTo(),
                                                                       &_prologBuilder));
