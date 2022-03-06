@@ -38,8 +38,13 @@ struct OperandArgNum
 
 struct LlvmArgInfo
 {
-    int m_argIx; // -1 indicates not in the LLVM arg list, but on the shadow stack
+    int          m_argIx; // -1 indicates not in the LLVM arg list, but on the shadow stack
     unsigned int m_shadowStackOffset;
+
+    bool         IsLlvmArg()
+    {
+        return m_argIx >= 0;
+    }
 };
 
 struct DebugMetadata
@@ -108,7 +113,7 @@ private:
     std::unordered_map<GenTree*, Value*>* _sdsuMap;
     std::unordered_map<SsaPair, Value*, SsaPairHash>* _localsMap;
     std::vector<PhiPair> _phiPairs;
-    std::vector<Value*>* m_allocas;
+    std::vector<Value*> m_allocas;
 
     // DWARF
     llvm::DILocation* _currentOffsetDiLocation;

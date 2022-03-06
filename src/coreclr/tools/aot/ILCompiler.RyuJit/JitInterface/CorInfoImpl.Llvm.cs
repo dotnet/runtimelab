@@ -295,6 +295,7 @@ namespace Internal.JitInterface
         {
             public uint FieldCount;
             public CORINFO_FIELD_STRUCT_** Fields; // array of CORINFO_FIELD_STRUCT_*
+            public uint* FieldSizes; // array of field sizes
             public uint HasSignificantPadding; // Change to a uint flags if we need more bools
         }
 
@@ -316,51 +317,10 @@ namespace Internal.JitInterface
                 hasSignificantPadding = ecmaType.IsExplicitLayout || ecmaType.GetClassLayout().Size > 0;
             };
 
-            // Replicate the logic in \ILToLLVMImporter.cs GetLLVMTypeForTypeDesc but without Linq
-            // Build the TypeDescriptor with the largest fields at each offset,
-            // removing overlapping fields - i.e. union or explicit layouts
-            int typeSize = type.GetElementSize().AsInt;
-            FieldAndOffset[] sparseFieldLayout = new FieldAndOffset[typeSize];
-            for (int i = 0; i < typeSize; i++)
-            {
-                sparseFieldLayout[i] = FieldAndOffset.Invalid;
-            }
-
-            // Fill the sparse array with the type fields, when a larger field is found, overwrite that slot
+            uint fieldCount = 0;
             foreach (var field in type.GetFields())
             {
                 if (!field.IsStatic)
-                {
-                    int offset = field.Offset.AsInt;
-
-                    if (!sparseFieldLayout[offset].IsValid ||
-                        field.FieldType.GetElementSize().AsInt > sparseFieldLayout[offset].Field.FieldType.GetElementSize().AsInt)
-                    {
-                        sparseFieldLayout[offset] = new FieldAndOffset(field, field.Offset);
-                    }
-                }
-            }
-
-            // Walk the sparseFieldLayout, clearing out any fields that are overlapped by a preceding field
-            int currentFieldEndExclusive = -1;
-            for (int i = 0; i < typeSize; i++)
-            {
-                if (i < currentFieldEndExclusive)
-                {
-                    sparseFieldLayout[i] = FieldAndOffset.Invalid;
-                }
-                else if (sparseFieldLayout[i].IsValid)
-                {
-                    currentFieldEndExclusive = i + sparseFieldLayout[i].Field.FieldType.GetElementSize().AsInt;
-                }
-            }
-
-            // sparseFieldLayout should now contain just the fields from unions or overlapping explicit layouts,
-            // that we want in the LLVM struct
-            uint fieldCount = 0;
-            foreach (var sparseField in sparseFieldLayout)
-            {
-                if (sparseField.IsValid)
                 {
                     fieldCount++;
                 }
@@ -368,22 +328,26 @@ namespace Internal.JitInterface
 
             //TODO-LLVM: change to NativeMemory.Alloc when upgraded to .net6
             IntPtr fieldArray = Marshal.AllocHGlobal((int)(sizeof(CORINFO_FIELD_STRUCT_*) * fieldCount));
+            IntPtr fieldSizes = Marshal.AllocHGlobal((int)(sizeof(uint) * fieldCount));
             _allocedMemory.Add(fieldArray);
+            _allocedMemory.Add(fieldSizes);
 
             typeDescriptor = new TypeDescriptor
             {
                 FieldCount = fieldCount,
                 Fields = (CORINFO_FIELD_STRUCT_**)fieldArray,
+                FieldSizes = (uint*)fieldSizes,
                 HasSignificantPadding = hasSignificantPadding ? 1u : 0
             };
 
-            uint fieldIx = 0;
-            foreach (FieldAndOffset sparseField in sparseFieldLayout)
+            fieldCount = 0;
+            foreach (var field in type.GetFields())
             {
-                if (sparseField.IsValid)
+                if (!field.IsStatic)
                 {
-                    typeDescriptor.Fields[fieldIx] = _this.ObjectToHandle(sparseField.Field);
-                    fieldIx++;
+                    typeDescriptor.Fields[fieldCount] = _this.ObjectToHandle(field);
+                    typeDescriptor.FieldSizes[fieldCount] = (uint)field.FieldType.GetElementSize().AsInt;
+                    fieldCount++;
                 }
             }
 
