@@ -327,9 +327,7 @@ namespace Internal.JitInterface
 
             //TODO-LLVM: change to NativeMemory.Alloc when upgraded to .net6
             IntPtr fieldArray = Marshal.AllocHGlobal((int)(sizeof(CORINFO_FIELD_STRUCT_*) * fieldCount));
-            IntPtr fieldSizes = Marshal.AllocHGlobal((int)(sizeof(uint) * fieldCount));
             _allocedMemory.Add(fieldArray);
-            _allocedMemory.Add(fieldSizes);
 
             typeDescriptor = new TypeDescriptor
             {

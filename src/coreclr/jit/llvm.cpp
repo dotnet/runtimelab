@@ -1648,10 +1648,8 @@ void Llvm::buildLocalVarAddr(GenTreeLclVarCommon* lclAddr)
     unsigned int lclNum = lclAddr->GetLclNum();
     if (lclAddr->isLclField())
     {
-        GenTreeLclFld* lclFldAddr = lclAddr->AsLclFld();
-
         Value* bytePtr = castIfNecessary(m_allocas[lclNum], Type::getInt8PtrTy(_llvmContext));
-        mapGenTreeToValue(lclAddr, _builder.CreateGEP(bytePtr, _builder.getInt16(lclFldAddr->GetLclOffs())));
+        mapGenTreeToValue(lclAddr, _builder.CreateGEP(bytePtr, _builder.getInt16(lclAddr->GetLclOffs())));
     }
     else
     {
@@ -2074,8 +2072,6 @@ void Llvm::ConvertShadowStackLocalNode(GenTreeLclVarCommon* node)
                 indirOper = lclVar->TypeIs(TYP_STRUCT) ? GT_OBJ : GT_IND;
                 break;
             case GT_LCL_VAR_ADDR:
-                indirOper = GT_NONE;
-                break;
             case GT_LCL_FLD_ADDR:
                 indirOper = GT_NONE;
                 break;
@@ -2389,7 +2385,7 @@ void Llvm::lowerToShadowStack()
         _currentRange = &LIR::AsRange(_currentBlock);
         for (GenTree* node : CurrentRange())
         {
-            if (node->OperIs(GT_STORE_LCL_VAR, GT_LCL_VAR, GT_LCL_VAR_ADDR))
+            if (node->OperIs(GT_STORE_LCL_VAR, GT_LCL_VAR, GT_LCL_VAR_ADDR, GT_LCL_FLD_ADDR))
             {
                 ConvertShadowStackLocalNode(node->AsLclVarCommon());
             }
@@ -2500,7 +2496,7 @@ void Llvm::createAllocasForLocalsWithAddrOp()
         LclVarDsc* varDsc = _compiler->lvaGetDesc(lclNum);
 
         // TODO-LLVM LCLBLK - outgoing arg space.  Consider turning off FEATURE_FIXED_OUT_ARGS 
-        if (varDsc->lvType != TYP_LCLBLK && canStoreLocalOnLlvmStack(varDsc) && isLlvmFrameLocal(varDsc))
+        if ((varDsc->TypeGet() != TYP_LCLBLK) && canStoreLocalOnLlvmStack(varDsc) && isLlvmFrameLocal(varDsc))
         {
             CORINFO_CLASS_HANDLE classHandle = tryGetStructClassHandle(varDsc);
             Type* llvmType = getLlvmTypeForCorInfoType(toCorInfoType(varDsc->TypeGet()), classHandle);
