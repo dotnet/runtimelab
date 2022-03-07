@@ -38,8 +38,13 @@ struct OperandArgNum
 
 struct LlvmArgInfo
 {
-    int m_argIx; // -1 indicates not in the LLVM arg list, but on the shadow stack
+    int          m_argIx; // -1 indicates not in the LLVM arg list, but on the shadow stack
     unsigned int m_shadowStackOffset;
+
+    bool IsLlvmArg()
+    {
+        return m_argIx >= 0;
+    }
 };
 
 struct DebugMetadata
@@ -108,6 +113,7 @@ private:
     std::unordered_map<GenTree*, Value*>* _sdsuMap;
     std::unordered_map<SsaPair, Value*, SsaPairHash>* _localsMap;
     std::vector<PhiPair> _phiPairs;
+    std::vector<Value*> m_allocas;
 
     // DWARF
     llvm::DILocation* _currentOffsetDiLocation;
@@ -144,8 +150,9 @@ private:
     void buildReturn(GenTree* node);
     void buildReturnRef(GenTreeOp* node);
     Value* buildUserFuncCall(GenTreeCall* call);
+    void createAllocasForLocalsWithAddrOp();
     bool canStoreArgOnLlvmStack(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd);
-    Value* castIfNecessary(Value* source, Type* targetType);
+    Value* castIfNecessary(Value* source, Type* targetType, llvm::IRBuilder<>* builder = nullptr);
     void castingStore(Value* toStore, Value* address, llvm::Type* llvmType);
     void castingStore(Value* toStore, Value* address, var_types type);
     Value* castToPointerToLlvmType(Value* address, llvm::Type* llvmType);
@@ -209,6 +216,8 @@ private:
     Value* zextIntIfNecessary(Value* intValue);
     StructDesc* getStructDesc(CORINFO_CLASS_HANDLE structHandle);
     unsigned buildMemCpy(Value* baseAddress, unsigned startOffset, unsigned endOffset, Value* srcAddress);
+    void buildLocalVarAddr(GenTreeLclVarCommon* lclVar);
+    bool isLlvmFrameLocal(LclVarDsc* varDsc);
 
 public:
     Llvm(Compiler* pCompiler);

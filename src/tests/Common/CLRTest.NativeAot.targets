@@ -79,7 +79,7 @@ fi
 
   <Target Name="GetNativeAotBatchScript">
     <PropertyGroup>
-      <ExeRunner Condition="'$(TargetArchitecture)' == 'wasm'">%EMSDK_NODE% </ExeRunner>
+      <ExeRunner Condition="'$(TargetArchitecture)' == 'wasm'">%EMSDK_NODE% --stack-trace-limit=100 </ExeRunner>
       <ExeExtension Condition="'$(TargetArchitecture)' == 'wasm'">.js</ExeExtension>
       <NativeAotMultimoduleIncompatibleScript Condition="'$(NativeAotMultimoduleIncompatible)' == 'true'">
         <![CDATA[

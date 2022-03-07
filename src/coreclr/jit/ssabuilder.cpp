@@ -1848,6 +1848,13 @@ bool SsaBuilder::IncludeInSsa(unsigned lclNum)
     {
         return false; // SSA is only done for tracked variables
     }
+#if TARGET_WASM
+    if (varDsc->lvHasLocalAddr)
+    {
+        return false; // For LLVM these will be in an alloca
+    }
+#endif //TARGET_WASM
+
     // lvPromoted structs are never tracked...
     assert(!varDsc->lvPromoted);
 

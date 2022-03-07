@@ -377,6 +377,8 @@ internal static class Program
 
         TestStructStoreWithSignificantPadding();
 
+        TestLclVarAddr(new LlvmStruct { i1 = 1, i2 = 2 });
+
         // This test should remain last to get other results before stopping the debugger
         PrintLine("Debugger.Break() test: Ok if debugger is open and breaks.");
         System.Diagnostics.Debugger.Break();
@@ -442,6 +444,24 @@ internal static class Program
         ptrCopySized = ptrCopySized + 1;
 
         EndTest(*ptrCopySized == 2);
+    }
+
+    struct LlvmStruct
+    {
+        internal int i1, i2;
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    static int FuncWithStructArg(LlvmStruct s)
+    {
+        return s.i2;
+    }
+
+    private static void TestLclVarAddr(LlvmStruct s)
+    {
+        StartTest("Test passing struct arg");
+        
+        EndTest(FuncWithStructArg(s) == 2);
     }
 
     private static void TestGC()

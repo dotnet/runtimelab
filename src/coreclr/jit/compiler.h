@@ -380,7 +380,8 @@ public:
         :
 #if defined(TARGET_WASM)
         lvLlvmArgNum(BAD_LLVM_ARG_NUM),
-        lvCorInfoType(CORINFO_TYPE_UNDEF)
+        lvCorInfoType(CORINFO_TYPE_UNDEF),
+        lvHasLocalAddr(0)
         ,
 #endif // TARGET_WASM
         _lvArgReg(REG_STK)
@@ -576,6 +577,7 @@ public:
 #if defined(TARGET_WASM)
     unsigned int lvLlvmArgNum;
     CorInfoType  lvCorInfoType;
+    unsigned char lvHasLocalAddr : 1;
 #endif
 
 #ifdef DEBUG
