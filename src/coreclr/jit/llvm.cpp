@@ -2504,10 +2504,6 @@ void Llvm::createAllocasForLocalsWithAddrOp()
         {
             CORINFO_CLASS_HANDLE classHandle = tryGetStructClassHandle(varDsc);
             Type* llvmType = getLlvmTypeForCorInfoType(toCorInfoType(varDsc->TypeGet()), classHandle);
-            if (llvmType->isIntegerTy() && llvmType->getIntegerBitWidth() < 32)
-            {
-                llvmType = Type::getInt32Ty(_llvmContext);
-            }
             Value* allocaValue = _prologBuilder.CreateAlloca(llvmType);
             m_allocas[lclNum] = allocaValue;
 
