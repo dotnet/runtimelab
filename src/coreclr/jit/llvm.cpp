@@ -189,9 +189,9 @@ StructDesc* Llvm::getStructDesc(CORINFO_CLASS_HANDLE structHandle)
             assert(fldOffset < structSize);
 
             CORINFO_CLASS_HANDLE fieldClass;
-            _info.compCompHnd->getFieldType(fieldHandle, &fieldClass);
+            CorInfoType corInfoType = _info.compCompHnd->getFieldType(fieldHandle, &fieldClass);
 
-            unsigned fieldSize = _info.compCompHnd->getClassSize(fieldClass);
+            unsigned fieldSize = getElementSize(fieldClass, corInfoType);
 
             // store the biggest field at the offset for unions
             if (sparseFields[fldOffset] == nullptr || fieldSize > sparseFieldSizes[fldOffset])
