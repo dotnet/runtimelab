@@ -233,7 +233,7 @@ int32_t SystemNative_LStat(const char* path, FileStatus* output)
 static int32_t ConvertOpenFlags(int32_t flags)
 {
     int32_t ret;
-#if TARGET_WASM
+#ifdef TARGET_WASM
     // Workaround to get the flag constants that WASI SDK expects which are different to emscripten
     if ((flags & PAL_O_WASI_SDK) == PAL_O_WASI_SDK)
     {
