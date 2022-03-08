@@ -37,15 +37,17 @@ static const uint32_t (*_isRuntimeImport)(void*, CORINFO_METHOD_STRUCT_*);
 static const char* (*_getDocumentFileName)(void*);
 static const uint32_t (*_firstSequencePointLineNumber)(void*);
 static const uint32_t (*_getOffsetLineNumber)(void*, unsigned int ilOffset);
-static const uint32_t(*_structIsWrappedPrimitive)(void*, CORINFO_CLASS_STRUCT_*, CorInfoType);
-static const uint32_t(*_padOffset)(void*, CORINFO_CLASS_STRUCT_*, unsigned);
-static const CorInfoTypeWithMod(*_getArgTypeIncludingParameterized)(void*, CORINFO_SIG_INFO*, CORINFO_ARG_LIST_HANDLE, CORINFO_CLASS_HANDLE*);
-static const CorInfoTypeWithMod(*_getParameterType)(void*, CORINFO_CLASS_HANDLE, CORINFO_CLASS_HANDLE*);
+static const uint32_t (*_structIsWrappedPrimitive)(void*, CORINFO_CLASS_STRUCT_*, CorInfoType);
+static const uint32_t (*_padOffset)(void*, CORINFO_CLASS_STRUCT_*, unsigned);
+static const CorInfoTypeWithMod (*_getArgTypeIncludingParameterized)(void*, CORINFO_SIG_INFO*, CORINFO_ARG_LIST_HANDLE, CORINFO_CLASS_HANDLE*);
+static const CorInfoTypeWithMod (*_getParameterType)(void*, CORINFO_CLASS_HANDLE, CORINFO_CLASS_HANDLE*);
+static const TypeDescriptor (*_getTypeDescriptor)(void*, CORINFO_CLASS_HANDLE);
 
 static char*                              _outputFileName;
 static Function*                          _doNothingFunction;
 
 static std::unordered_map<CORINFO_CLASS_HANDLE, Type*>* _llvmStructs = new std::unordered_map<CORINFO_CLASS_HANDLE, Type*>();
+static std::unordered_map<CORINFO_CLASS_HANDLE, StructDesc*>* _structDescMap = new std::unordered_map<CORINFO_CLASS_HANDLE, StructDesc*>();
 
 
 extern "C" DLLEXPORT void registerLlvmCallbacks(void*       thisPtr,
@@ -64,7 +66,8 @@ extern "C" DLLEXPORT void registerLlvmCallbacks(void*       thisPtr,
                                                 const uint32_t(*structIsWrappedPrimitive)(void*, CORINFO_CLASS_STRUCT_*, CorInfoType),
                                                 const uint32_t(*padOffset)(void*, CORINFO_CLASS_STRUCT_*, unsigned),
                                                 const CorInfoTypeWithMod(*getArgTypeIncludingParameterized)(void*, CORINFO_SIG_INFO*, CORINFO_ARG_LIST_HANDLE, CORINFO_CLASS_HANDLE*),
-                                                const CorInfoTypeWithMod(*getParameterType)(void*, CORINFO_CLASS_HANDLE, CORINFO_CLASS_HANDLE*))
+                                                const CorInfoTypeWithMod(*getParameterType)(void*, CORINFO_CLASS_HANDLE, CORINFO_CLASS_HANDLE*),
+                                                const TypeDescriptor(*getTypeDescriptor)(void*, CORINFO_CLASS_HANDLE))
 {
     _thisPtr = thisPtr;
     _getMangledMethodName         = getMangledMethodNamePtr;
@@ -79,7 +82,8 @@ extern "C" DLLEXPORT void registerLlvmCallbacks(void*       thisPtr,
     _structIsWrappedPrimitive     = structIsWrappedPrimitive;
     _padOffset = padOffset;
     _getArgTypeIncludingParameterized = getArgTypeIncludingParameterized;
-    _getParameterType = getParameterType;
+    _getParameterType             = getParameterType;
+    _getTypeDescriptor            = getTypeDescriptor;
 
     if (_module == nullptr) // registerLlvmCallbacks is called for each method to compile, but must only created the module once.  Better perhaps to split this into 2 calls.
     {
@@ -122,7 +126,11 @@ Value* Llvm::mapGenTreeToValue(GenTree* genTree, Value* valueRef)
 
 Value* Llvm::getGenTreeValue(GenTree* op)
 {
-    return _sdsuMap->at(op);
+    Value* mapValue = _sdsuMap->at(op);
+
+    assert(mapValue != nullptr);
+
+    return mapValue;
 }
 
 // maintains compatiblity with the IL->LLVM generation.  TODO-LLVM, when IL generation is no more, see if we can remove this unwrapping
@@ -131,7 +139,7 @@ bool structIsWrappedPrimitive(CORINFO_CLASS_HANDLE classHnd, CorInfoType primiti
     return (*_structIsWrappedPrimitive)(_thisPtr, classHnd, primitiveType);
 }
 
-void addPaddingFields(unsigned paddingSize, std::vector<Type*> llvmFields)
+void addPaddingFields(unsigned paddingSize, std::vector<Type*>& llvmFields)
 {
     unsigned numInts = paddingSize / 4;
     unsigned numBytes = paddingSize - numInts * 4;
@@ -157,6 +165,90 @@ unsigned Llvm::getElementSize(CORINFO_CLASS_HANDLE classHandle, CorInfoType corI
         return _info.compCompHnd->getClassSize(classHandle);
     }
     return getWellKnownTypeSize(corInfoType);
+}
+
+StructDesc* Llvm::getStructDesc(CORINFO_CLASS_HANDLE structHandle)
+{
+    if (_structDescMap->find(structHandle) == _structDescMap->end())
+    {
+        TypeDescriptor structTypeDescriptor = _getTypeDescriptor(_thisPtr, structHandle);
+        unsigned structSize                 = _info.compCompHnd->getClassSize(structHandle); // TODO-LLVM: add to TypeDescriptor?
+
+        std::vector<CORINFO_FIELD_HANDLE> sparseFields = std::vector<CORINFO_FIELD_HANDLE>(structSize);
+        std::vector<unsigned> sparseFieldSizes = std::vector<unsigned>(structSize);
+
+        for (unsigned i = 0; i < structSize; i++)
+            sparseFields[i] = nullptr;
+
+        // determine the largest field for unions, and get fields in order of offset
+        for (unsigned i = 0; i < structTypeDescriptor.getFieldCount(); i++)
+        {
+            CORINFO_FIELD_HANDLE fieldHandle = structTypeDescriptor.getField(i);
+            unsigned             fldOffset   = _info.compCompHnd->getFieldOffset(fieldHandle);
+
+            assert(fldOffset < structSize);
+
+            CORINFO_CLASS_HANDLE fieldClass;
+            CorInfoType corInfoType = _info.compCompHnd->getFieldType(fieldHandle, &fieldClass);
+
+            unsigned fieldSize = getElementSize(fieldClass, corInfoType);
+
+            // store the biggest field at the offset for unions
+            if (sparseFields[fldOffset] == nullptr || fieldSize > sparseFieldSizes[fldOffset])
+            {
+                sparseFields[fldOffset] = fieldHandle;
+                sparseFieldSizes[fldOffset] = fieldSize;
+            }
+        }
+
+        // count the struct fields after replacing fields with equal offsets
+        unsigned fieldCount = 0;
+        unsigned i          = 0;
+        while(i < structSize)
+        {
+            if (sparseFields[i] != nullptr)
+            {
+                fieldCount++;
+                // clear out any fields that are covered by this field
+                for (unsigned j = 1; j < sparseFieldSizes[i]; j++)
+                {
+                    sparseFields[i + j] = nullptr;
+                }
+                i += sparseFieldSizes[i];
+            }
+            else
+            {
+                i++;
+            }
+        }
+
+        FieldDesc*  fields     = new FieldDesc[fieldCount];
+        StructDesc* structDesc = new StructDesc(fieldCount, fields, structTypeDescriptor.hasSignificantPadding());
+
+        unsigned fieldIx = 0;
+        for (unsigned fldOffset = 0; fldOffset < structSize; fldOffset++)
+        {
+            if (sparseFields[fldOffset] == nullptr)
+            {
+                continue;
+            }
+
+            CORINFO_FIELD_HANDLE fieldHandle = sparseFields[fldOffset];
+            CORINFO_CLASS_HANDLE fieldClassHandle = NO_CLASS_HANDLE;
+
+            const CorInfoType corInfoType = _info.compCompHnd->getFieldType(fieldHandle, &fieldClassHandle);
+            fields[fieldIx] = FieldDesc(fldOffset, corInfoType, fieldClassHandle);
+            fieldIx++;
+        }
+
+        _structDescMap->insert({structHandle, structDesc});
+    }
+    return _structDescMap->at(structHandle);
+}
+
+llvm::Type* Llvm::getLlvmTypeForStruct(ClassLayout* classLayout)
+{
+    return getLlvmTypeForStruct(classLayout->GetClassHandle());
 }
 
 llvm::Type* Llvm::getLlvmTypeForStruct(CORINFO_CLASS_HANDLE structHandle)
@@ -214,73 +306,37 @@ llvm::Type* Llvm::getLlvmTypeForStruct(CORINFO_CLASS_HANDLE structHandle)
                 const char* name = _getTypeName(_thisPtr, structHandle);
                 llvm::StructType* llvmStructType = llvm::StructType::create(_llvmContext, name);
                 llvmType = llvmStructType;
-                unsigned fieldCnt = _info.compCompHnd->getClassNumInstanceFields(structHandle);
+                StructDesc* structDesc = getStructDesc(structHandle);
+                unsigned    fieldCnt   = structDesc->getFieldCount();
 
-                std::vector<CORINFO_FIELD_HANDLE> sparseFields = std::vector<CORINFO_FIELD_HANDLE>(structSize);
-                std::vector<Type*> llvmFields = std::vector<Type*>();
 
-                for (unsigned i = 0; i < structSize; i++) sparseFields[i] = nullptr;
-
-                for (unsigned i = 0; i < fieldCnt; i++)
-                {
-                    CORINFO_FIELD_HANDLE fieldHandle = _info.compCompHnd->getFieldInClass(structHandle, i);
-                    unsigned fldOffset = _info.compCompHnd->getFieldOffset(fieldHandle);
-
-                    assert(fldOffset < structSize);
-
-                    // store the biggest field at the offset for unions
-                    if (sparseFields[fldOffset] == nullptr ||
-                        _info.compCompHnd->getClassSize(_info.compCompHnd->getFieldClass(fieldHandle)) > _info.compCompHnd->getClassSize(_info.compCompHnd->getFieldClass(sparseFields[fldOffset])))
-                    {
-                        sparseFields[fldOffset] = fieldHandle;
-                    }
-                }
-                unsigned lastOffset = -1;
-                CORINFO_CLASS_HANDLE prevClass = nullptr;
-                CorInfoType prevCorInfoType = CorInfoType::CORINFO_TYPE_UNDEF;
+                unsigned lastOffset = 0;
                 unsigned totalSize = 0;
+                std::vector<Type*> llvmFields = std::vector<Type*>();
+                unsigned prevElementSize = 0;
 
-                for (unsigned curOffset = 0; curOffset < structSize;)
+
+                for (unsigned fieldIx = 0; fieldIx < fieldCnt; fieldIx++)
                 {
-                    CORINFO_FIELD_HANDLE fieldHandle = sparseFields[curOffset];
-                    if (fieldHandle == nullptr)
-                    {
-                        curOffset++;
-                        continue;
-                    }
-
-                    int prevElementSize;
-                    if (prevCorInfoType == CorInfoType::CORINFO_TYPE_UNDEF)
-                    {
-                        lastOffset = 0;
-                        prevElementSize = 0;
-                    }
-                    else
-                    {
-                        prevElementSize = getElementSize(prevClass, prevCorInfoType);
-                    }
+                    FieldDesc* fieldDesc = structDesc->getFieldDesc(fieldIx);
 
                     // Pad to this field if necessary
-                    unsigned paddingSize = curOffset - lastOffset - prevElementSize;
+                    unsigned paddingSize = fieldDesc->getFieldOffset() - lastOffset - prevElementSize;
                     if (paddingSize > 0)
                     {
                         addPaddingFields(paddingSize, llvmFields);
                         totalSize += paddingSize;
                     }
 
-                    CORINFO_CLASS_HANDLE fieldClassHandle = NO_CLASS_HANDLE;
-                    CorInfoType fieldCorType = _info.compCompHnd->getFieldType(fieldHandle, &fieldClassHandle);
+                    CorInfoType fieldCorType = fieldDesc->getCorType();
                     
-                    int fieldSize = getElementSize(fieldClassHandle, fieldCorType);
+                    unsigned fieldSize = getElementSize(fieldDesc->getClassHandle(), fieldCorType);
 
-                    llvmFields.push_back(getLlvmTypeForCorInfoType(fieldCorType, fieldClassHandle));
+                    llvmFields.push_back(getLlvmTypeForCorInfoType(fieldCorType, fieldDesc->getClassHandle()));
 
                     totalSize += fieldSize;
-                    lastOffset = curOffset;
-                    prevClass = fieldClassHandle;
-                    prevCorInfoType = fieldCorType;
-
-                    curOffset += fieldSize;
+                    lastOffset = fieldDesc->getFieldOffset();
+                    prevElementSize = fieldSize;
                 }
 
                 // If explicit layout is greater than the sum of fields, add padding
@@ -417,35 +473,41 @@ CORINFO_CLASS_HANDLE Llvm::tryGetStructClassHandle(LclVarDsc* varDsc)
     return varTypeIsStruct(varDsc) ? varDsc->GetStructHnd() : NO_CLASS_HANDLE;;
 }
 
+unsigned corInfoTypeAligment(CorInfoType corInfoType)
+{
+    unsigned size = TARGET_POINTER_SIZE; // TODO Wasm64 aligns pointers at 4 or 8?
+    switch (corInfoType)
+    {
+        case CORINFO_TYPE_LONG:
+        case CORINFO_TYPE_ULONG:
+        case CORINFO_TYPE_DOUBLE:
+            size = 8;
+    }
+    return size;
+}
+
 unsigned int Llvm::padOffset(CorInfoType corInfoType, CORINFO_CLASS_HANDLE structClassHandle, unsigned int atOffset)
 {
     unsigned int alignment;
-    if (corInfoType == CorInfoType::CORINFO_TYPE_BYREF || corInfoType == CorInfoType::CORINFO_TYPE_CLASS ||
-        corInfoType == CorInfoType::CORINFO_TYPE_REFANY)
+    if (corInfoType == CORINFO_TYPE_VALUECLASS)
     {
-        // simplified for just pointers
-        alignment = TARGET_POINTER_SIZE; // TODO Wasm64 aligns pointers at 4 or 8?
-    }
-    else
-    {
-        assert(corInfoType == CorInfoType::CORINFO_TYPE_VALUECLASS);
         return _padOffset(_thisPtr, structClassHandle, atOffset);
     }
+
+    alignment = corInfoTypeAligment(corInfoType);
     return roundUp(atOffset, alignment);
 }
 
 unsigned int Llvm::padNextOffset(CorInfoType corInfoType, CORINFO_CLASS_HANDLE structClassHandle, unsigned int atOffset)
 {
     unsigned int size;
-    if (corInfoType == CorInfoType::CORINFO_TYPE_BYREF || corInfoType == CorInfoType::CORINFO_TYPE_CLASS ||
-        corInfoType == CorInfoType::CORINFO_TYPE_REFANY)
+    if (corInfoType == CORINFO_TYPE_VALUECLASS)
     {
-        size = TARGET_POINTER_SIZE;
+        size = getElementSize(structClassHandle, corInfoType);
     }
     else
     {
-        assert(corInfoType == CorInfoType::CORINFO_TYPE_VALUECLASS);
-        size = getElementSize(structClassHandle, corInfoType);
+        size = corInfoTypeAligment(corInfoType);
     }
     return padOffset(corInfoType, structClassHandle, atOffset) + size;
 }
@@ -634,13 +696,18 @@ llvm::Instruction* Llvm::getCast(llvm::Value* source, Type* targetType)
     failFunctionCompilation();
 }
 
-Value* Llvm::castIfNecessary(Value* source, Type* targetType)
+Value* Llvm::castIfNecessary(Value* source, Type* targetType, llvm::IRBuilder<>* builder)
 {
+    if (builder == nullptr)
+    {
+        builder = &_builder;
+    }
+
     llvm::Instruction* castInst = getCast(source, targetType);
     if (castInst == nullptr)
         return source;
 
-    return _builder.Insert(castInst);
+    return builder->Insert(castInst);
 }
 
 Value* Llvm::castToPointerToLlvmType(Value* address, llvm::Type* llvmType)
@@ -671,10 +738,11 @@ LlvmArgInfo Llvm::getLlvmArgInfoForArgIx(unsigned int lclNum)
     bool         returnOnStack = false;
 
     LlvmArgInfo             llvmArgInfo = {
-        -1 /* default to not an LLVM arg*/, _sigInfo.hasThis() ? TARGET_POINTER_SIZE : 0 /* this is the first pointer on
+        -1 /* default to not an LLVM arg*/, _sigInfo.hasThis() ? TARGET_POINTER_SIZE : 0U /* this is the first pointer on
                                                                                        the shadow stack */
     };
-    if (needsReturnStackSlot(_sigInfo.retType, _sigInfo.retTypeClass))
+
+    if (_compiler->info.compRetBuffArg != BAD_VAR_NUM)
     {
         if (lclNum == 0)
         {
@@ -682,9 +750,16 @@ LlvmArgInfo Llvm::getLlvmArgInfoForArgIx(unsigned int lclNum)
             llvmArgInfo.m_argIx = llvmArgNum;
             return llvmArgInfo;
         }
-        lclNum--;  // line up with sigArgs
+        lclNum--; // line up with sigArgs
+    }
+
+    if (needsReturnStackSlot(_sigInfo.retType, _sigInfo.retTypeClass))
+    {
         llvmArgNum++;
     }
+
+    // adjust lclNum for this which is not in _sigInfo.args
+    unsigned thisAdjustedLclNum = _sigInfo.hasThis() ? lclNum - 1 : lclNum;
 
     CORINFO_ARG_LIST_HANDLE sigArgs = _sigInfo.args;
 
@@ -697,7 +772,7 @@ LlvmArgInfo Llvm::getLlvmArgInfoForArgIx(unsigned int lclNum)
         CorInfoType corInfoType = getCorInfoTypeForArg(&_sigInfo, sigArgs, &clsHnd);
         if (canStoreArgOnLlvmStack(corInfoType, clsHnd))
         {
-            if (lclNum == i)
+            if (thisAdjustedLclNum == i)
             {
                 llvmArgInfo.m_argIx = llvmArgNum;
                 break;
@@ -707,7 +782,7 @@ LlvmArgInfo Llvm::getLlvmArgInfoForArgIx(unsigned int lclNum)
         }
         else
         {
-            if (lclNum == i)
+            if (thisAdjustedLclNum == i)
             {
                 llvmArgInfo.m_shadowStackOffset = shadowStackOffset;
                 break;
@@ -716,7 +791,6 @@ LlvmArgInfo Llvm::getLlvmArgInfoForArgIx(unsigned int lclNum)
             shadowStackOffset += TARGET_POINTER_SIZE; // TODO size of arg, for now only handles byrefs and class types
         }
     }
-    assert(lclNum == i); // lclNum not an argument
     return llvmArgInfo;
 }
 
@@ -851,6 +925,16 @@ Value* Llvm::consumeValue(GenTree* node, Type* targetLlvmType)
                 finalValue = varTypeIsSigned(node) ? _builder.CreateSExt(nodeValue, targetLlvmType)
                                                    : _builder.CreateZExt(nodeValue, targetLlvmType);
             }
+            else if (node->OperIs(GT_LCL_VAR))
+            {
+                // In IR, small locals are usually typed as INTs, while in LLVM registers we store them
+                // with their "true" type. So here we must re-extend them (as the user requests we do so).
+                LclVarDsc* varDsc = _compiler->lvaGetDesc(node->AsLclVarCommon());
+                assert(varTypeIsSmall(varDsc));
+                
+                finalValue = varTypeIsSigned(varDsc) ? _builder.CreateSExt(nodeValue, targetLlvmType)
+                                                     : _builder.CreateZExt(nodeValue, targetLlvmType);
+            }
             else
             {
                 // This is the special case for relops. Ordinary codegen "just knows" they need zero-extension.
@@ -949,7 +1033,9 @@ bool Llvm::helperRequiresShadowStack(CORINFO_METHOD_HANDLE corinfoMethodHnd)
            corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_DBL2INT_OVF) ||
            corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_DBL2LNG_OVF) ||
            corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_DBL2UINT_OVF) ||
-           corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_DBL2ULNG_OVF);
+           corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_DBL2ULNG_OVF) ||
+           corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_LMUL_OVF) ||
+           corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_ULMUL_OVF);
 }
 
 void Llvm::buildHelperFuncCall(GenTreeCall* call)
@@ -1149,6 +1235,14 @@ void Llvm::buildInd(GenTree* node, Value* ptr)
     mapGenTreeToValue(node, _builder.CreateLoad(
                                  castIfNecessary(ptr,
                                      getLlvmTypeForVarType(node->TypeGet())->getPointerTo())));
+}
+
+void Llvm::buildObj(GenTreeObj* node)
+{
+    // cast the pointer to create the correct load instructions
+    mapGenTreeToValue(node, _builder.CreateLoad(
+                          castIfNecessary(getGenTreeValue(node->AsOp()->gtOp1),
+                                          getLlvmTypeForStruct(node->GetLayout())->getPointerTo())));
 }
 
 Value* Llvm::buildJTrue(GenTree* node, Value* opValue)
@@ -1378,7 +1472,7 @@ void Llvm::buildReturn(GenTree* node)
     }
 }
 
-void Llvm::importStoreInd(GenTreeStoreInd* storeIndOp)
+void Llvm::buildStoreInd(GenTreeStoreInd* storeIndOp)
 {
     Value* address = getGenTreeValue(storeIndOp->Addr());
     Value* toStore = getGenTreeValue(storeIndOp->Data());
@@ -1393,15 +1487,130 @@ void Llvm::importStoreInd(GenTreeStoreInd* storeIndOp)
     }
 }
 
+// Copies endOffset - startOffset bytes, endOffset is exclusive.
+unsigned Llvm::buildMemCpy(Value* baseAddress, unsigned startOffset, unsigned endOffset, Value* srcAddress)
+{
+    Value* destAddress = _builder.CreateGEP(baseAddress, _builder.getInt32(startOffset));
+    unsigned size = endOffset - startOffset;
+
+    _builder.CreateMemCpy(destAddress, llvm::Align(), srcAddress, llvm::Align(), size);
+
+    return size;
+}
+
+void Llvm::storeObjAtAddress(Value* baseAddress, Value* data, StructDesc* structDesc)
+{
+    unsigned fieldCount = structDesc->getFieldCount();
+    unsigned bytesStored = 0;
+
+    for (unsigned i = 0; i < fieldCount; i++)
+    {
+        FieldDesc* fieldDesc = structDesc->getFieldDesc(i);
+        unsigned   fieldOffset = fieldDesc->getFieldOffset();
+        Value*     address     = _builder.CreateGEP(baseAddress, _builder.getInt32(fieldOffset));
+
+        if (structDesc->hasSignificantPadding() && fieldOffset > bytesStored)
+        {
+            bytesStored += buildMemCpy(baseAddress, bytesStored, fieldOffset, address);
+        }
+
+        Value* fieldData = nullptr;
+        if (data->getType()->isStructTy())
+        {
+            const llvm::StructLayout* structLayout = _module->getDataLayout().getStructLayout(static_cast<llvm::StructType*>(data->getType()));
+
+            unsigned llvmFieldIndex = structLayout->getElementContainingOffset(fieldOffset);
+            fieldData               = _builder.CreateExtractValue(data, llvmFieldIndex);
+        }
+        else
+        {
+            // single field IL structs are not LLVM structs
+            fieldData = data;
+        }
+
+        if (fieldData->getType()->isStructTy())
+        {
+            assert(fieldDesc->getClassHandle() != NO_CLASS_HANDLE);
+
+            // recurse into struct
+            storeObjAtAddress(address, fieldData, getStructDesc(fieldDesc->getClassHandle()));
+
+            bytesStored += fieldData->getType()->getPrimitiveSizeInBits() / BITS_PER_BYTE;
+        }
+        else
+        {
+            if (fieldDesc->isGcPointer())
+            {
+                _builder.CreateCall(getOrCreateRhpAssignRef(),
+                                    ArrayRef<Value*>{address,
+                                                     castIfNecessary(fieldData, Type::getInt8PtrTy(_llvmContext))});
+                bytesStored += TARGET_POINTER_SIZE;
+            }
+            else
+            {
+                _builder.CreateStore(fieldData, castIfNecessary(address, fieldData->getType()->getPointerTo()));
+
+                bytesStored += fieldData->getType()->getPrimitiveSizeInBits() / BITS_PER_BYTE;
+            }
+        }
+    }
+
+    unsigned llvmStructSize = data->getType()->getPrimitiveSizeInBits() / BITS_PER_BYTE;
+    if (structDesc->hasSignificantPadding() && llvmStructSize > bytesStored)
+    {
+        Value* srcAddress = _builder.CreateGEP(baseAddress, _builder.getInt32(bytesStored));
+
+        buildMemCpy(baseAddress, bytesStored, llvmStructSize, srcAddress);
+    }
+}
+
+void Llvm::buildStoreObj(GenTreeObj* storeOp)
+{
+    if (!storeOp->OperIsBlk())
+    {
+        failFunctionCompilation(); // cant get struct handle. TODO-LLVM: try as an assert
+    }
+
+    ClassLayout* structLayout = storeOp->GetLayout();
+
+    Value* baseAddressValue = getGenTreeValue(storeOp->Addr());
+
+    // zero initialization  check
+    GenTree* dataOp = storeOp->Data();
+    if (dataOp->IsIntegralConst(0))
+    {
+        _builder.CreateMemSet(baseAddressValue, _builder.getInt8(0), _builder.getInt32(structLayout->GetSize()), {});
+        return;
+    }
+
+    CORINFO_CLASS_HANDLE structClsHnd  = structLayout->GetClassHandle();
+    StructDesc*          structDesc    = getStructDesc(structClsHnd);
+    bool targetNotHeap = ((storeOp->gtFlags & GTF_IND_TGT_NOT_HEAP) != 0) || storeOp->Addr()->OperIsLocalAddr();
+
+    Value* dataValue = getGenTreeValue(storeOp->Data());
+    if (targetNotHeap)
+    {
+        _builder.CreateStore(dataValue, castIfNecessary(baseAddressValue, dataValue->getType()->getPointerTo())); 
+    }
+    else
+    {
+        storeObjAtAddress(baseAddressValue, dataValue, structDesc);
+    }
+}
+
 Value* Llvm::localVar(GenTreeLclVar* lclVar)
 {
     Value*       llvmRef;
     unsigned int lclNum = lclVar->GetLclNum();
     unsigned int ssaNum = lclVar->GetSsaNum();
-    if (_localsMap->find({lclNum, ssaNum}) == _localsMap->end())
-    {
-        LclVarDsc* varDsc = _compiler->lvaGetDesc(lclVar);
+    LclVarDsc*   varDsc = _compiler->lvaGetDesc(lclVar);
 
+    if (isLlvmFrameLocal(varDsc))
+    {
+        llvmRef = _builder.CreateLoad(m_allocas[lclNum]);
+    }
+    else if (_localsMap->find({lclNum, ssaNum}) == _localsMap->end())
+    {
         if (varDsc->lvLlvmArgNum != BAD_LLVM_ARG_NUM)
         {
             // TODO-LLVM: we dont handle this yet
@@ -1432,6 +1641,20 @@ Value* Llvm::localVar(GenTreeLclVar* lclVar)
 
     mapGenTreeToValue(lclVar, llvmRef);
     return llvmRef;
+}
+
+void Llvm::buildLocalVarAddr(GenTreeLclVarCommon* lclAddr)
+{
+    unsigned int lclNum = lclAddr->GetLclNum();
+    if (lclAddr->isLclField())
+    {
+        Value* bytePtr = castIfNecessary(m_allocas[lclNum], Type::getInt8PtrTy(_llvmContext));
+        mapGenTreeToValue(lclAddr, _builder.CreateGEP(bytePtr, _builder.getInt16(lclAddr->GetLclOffs())));
+    }
+    else
+    {
+        mapGenTreeToValue(lclAddr, m_allocas[lclNum]);
+    }
 }
 
 // LLVM operations like ICmpNE return an i1, but in the IR it is expected to be an Int (i32).
@@ -1495,33 +1718,34 @@ Value* Llvm::getLocalVarAddress(GenTreeLclVar* lclVar) {
     return _builder.CreateGEP(_function->getArg(0), _builder.getInt32(varOffset), "lclVar");
 }
 
+bool Llvm::isLlvmFrameLocal(LclVarDsc* varDsc)
+{
+    assert(canStoreLocalOnLlvmStack(varDsc) && (_compiler->fgSsaPassesCompleted >= 1));
+    return !varDsc->lvInSsa;
+}
+
 void Llvm::storeLocalVar(GenTreeLclVar* lclVar)
 {
-    if (lclVar->gtFlags & GTF_VAR_DEF)
+    Type* destLlvmType = getLlvmTypeForVarType(lclVar->TypeGet());
+    Value* localValue = consumeValue(lclVar->gtGetOp1(), destLlvmType);
+
+    unsigned lclNum = lclVar->GetLclNum();
+    LclVarDsc* varDsc = _compiler->lvaGetDesc(lclVar);
+
+    if (isLlvmFrameLocal(varDsc))
     {
-        Value* valueRef = getGenTreeValue(lclVar->gtGetOp1());
-        assert(valueRef != nullptr);
-        // This could be done in the NE operator, but sometimes that would be needless, e.g. when followed by JTRUE
-        // TODO-LLVM: As this is a zero extend widening operation, this is only valid if the small int is unsigned.  We don't know that here, so likely it would be better to
-        // delete this and do the cast in the operator.  It seems likely that the cast will be a nop anyway, at least in Wasm, as Wasm does not have any number types smaller than i32
-        if (valueRef->getType()->isIntegerTy())
-        {
-            valueRef = zextIntIfNecessary(valueRef);
-        }
-
-        LclVarDsc* varDsc = _compiler->lvaGetDesc(lclVar);
-
-        if (varDsc->lvIsParam)
+        Value* lclAddressValue = m_allocas[lclNum];
+        _builder.CreateStore(localValue, castIfNecessary(lclAddressValue, destLlvmType->getPointerTo()));
+    }
+    else
+    {
+        if (varDsc->lvIsParam) // TODO-LLVM: not doing params yet
         {
             failFunctionCompilation();
         }
 
-        SsaPair ssaPair = {lclVar->GetLclNum(), lclVar->GetSsaNum()};
-        _localsMap->insert({ssaPair, valueRef });
-    }
-    else
-    {
-        failFunctionCompilation();
+        SsaPair ssaPair = {lclNum, lclVar->GetSsaNum()};
+        _localsMap->insert({ssaPair, localValue});
     }
 }
 
@@ -1558,6 +1782,10 @@ void Llvm::visitNode(GenTree* node)
         case GT_LCL_VAR:
             localVar(node->AsLclVar());
             break;
+        case GT_LCL_VAR_ADDR:
+        case GT_LCL_FLD_ADDR:
+            buildLocalVarAddr(node->AsLclVarCommon());
+            break;
         case GT_LSH:
         case GT_RSH:
         case GT_RSZ:
@@ -1578,6 +1806,9 @@ void Llvm::visitNode(GenTree* node)
         case GT_NO_OP:
             emitDoNothingCall();
             break;
+        case GT_OBJ:
+            buildObj(node->AsObj());
+            break;
         case GT_PHI:
             buildEmptyPhi(node->AsPhi());
             break;
@@ -1591,7 +1822,10 @@ void Llvm::visitNode(GenTree* node)
             storeLocalVar(node->AsLclVar());
             break;
         case GT_STOREIND:
-            importStoreInd((GenTreeStoreInd*)node);
+            buildStoreInd(node->AsStoreInd());
+            break;
+        case GT_STORE_OBJ:
+            buildStoreObj(node->AsObj());
             break;
         case GT_AND:
         case GT_OR:
@@ -1628,6 +1862,8 @@ void Llvm::generateProlog()
     // create a prolog block to store arguments passed on shadow stack, TODO: other things from ILToLLVMImporter to come
     llvm::BasicBlock* prologBlock = llvm::BasicBlock::Create(_llvmContext, "Prolog", _function);
     _prologBuilder.SetInsertPoint(prologBlock);
+
+    createAllocasForLocalsWithAddrOp();
 
     llvm::BasicBlock* block0 = getLLVMBasicBlockForBlock(_compiler->fgFirstBB);
     _prologBuilder.SetInsertPoint(_prologBuilder.CreateBr(block0)); // position _prologBuilder to add locals and arguments
@@ -1745,6 +1981,12 @@ void Llvm::llvmShutdown()
 
     llvm::raw_fd_ostream OS(_outputFileName, ec);
     llvm::WriteBitcodeToFile(*_module, OS);
+
+    for (const auto &structDesc : *_structDescMap)
+    {
+        delete structDesc.second;
+    }
+
     delete _module;
 }
 
@@ -1812,11 +2054,13 @@ void Llvm::ConvertShadowStackLocalNode(GenTreeLclVarCommon* node)
     if (!canStoreLocalOnLlvmStack(varDsc))
     {
         // TODO-LLVM: if the offset == 0, just GT_STOREIND at the shadowStack
-        GenTreeIntCon* offset = _compiler->gtNewIconNode(varDsc->GetStackOffset(), TYP_I_IMPL);
+        unsigned offsetVal = varDsc->GetStackOffset() + node->GetLclOffs();
+        GenTreeIntCon* offset = _compiler->gtNewIconNode(offsetVal, TYP_I_IMPL);
+
         GenTreeLclVar* shadowStackLocal = _compiler->gtNewLclvNode(_shadowStackLclNum, TYP_I_IMPL);
         GenTree* lclAddress = _compiler->gtNewOperNode(GT_ADD, TYP_I_IMPL, shadowStackLocal, offset);
 
-        genTreeOps indirOper = GT_NONE;
+        genTreeOps indirOper;
         GenTree* storedValue = nullptr;
         switch (node->OperGet())
         {
@@ -1827,11 +2071,18 @@ void Llvm::ConvertShadowStackLocalNode(GenTreeLclVarCommon* node)
             case GT_LCL_VAR:
                 indirOper = lclVar->TypeIs(TYP_STRUCT) ? GT_OBJ : GT_IND;
                 break;
+            case GT_LCL_VAR_ADDR:
+            case GT_LCL_FLD_ADDR:
+                indirOper = GT_NONE;
+                break;
             default:
                 unreached();
         }
-        node->ChangeOper(indirOper);
-        node->AsIndir()->SetAddr(lclAddress);
+        if (GenTree::OperIsIndir(indirOper))
+        {
+            node->ChangeOper(indirOper);
+            node->AsIndir()->SetAddr(lclAddress);
+        }
         if (GenTree::OperIsStore(indirOper))
         {
             node->gtFlags |= GTF_IND_TGT_NOT_HEAP;
@@ -1839,12 +2090,20 @@ void Llvm::ConvertShadowStackLocalNode(GenTreeLclVarCommon* node)
         }
         if (GenTree::OperIsBlk(indirOper))
         {
-            GenTreeBlk* blk = node->AsBlk();
-            CORINFO_CLASS_HANDLE handle = varDsc->GetStructHnd();
-            blk->SetLayout(_compiler->typGetObjLayout(handle));
-            blk->gtBlkOpKind = GenTreeBlk::BlkOpKindInvalid;
+            node->AsBlk()->SetLayout(varDsc->GetLayout());
+            node->AsBlk()->gtBlkOpKind = GenTreeBlk::BlkOpKindInvalid;
         }
-        CurrentRange().InsertBefore(node, offset, shadowStackLocal, lclAddress);
+
+        CurrentRange().InsertBefore(node, shadowStackLocal, offset);
+        if (indirOper == GT_NONE)
+        {
+            // Local address nodes are directly replaced with the ADD.
+            node->ReplaceWith(lclAddress, _compiler);
+        }
+        else
+        {
+            CurrentRange().InsertBefore(node, lclAddress);
+        }
     }
 }
 
@@ -2126,7 +2385,7 @@ void Llvm::lowerToShadowStack()
         _currentRange = &LIR::AsRange(_currentBlock);
         for (GenTree* node : CurrentRange())
         {
-            if (node->OperIs(GT_STORE_LCL_VAR, GT_LCL_VAR))
+            if (node->OperIs(GT_STORE_LCL_VAR, GT_LCL_VAR, GT_LCL_VAR_ADDR, GT_LCL_FLD_ADDR))
             {
                 ConvertShadowStackLocalNode(node->AsLclVarCommon());
             }
@@ -2169,6 +2428,11 @@ void Llvm::lowerToShadowStack()
                 node->ChangeType(TYP_VOID);
 
                 CurrentRange().InsertBefore(node, retAddressLocal, storeNode);
+            }
+            if (node->OperIsLocalAddr())
+            {
+                // Indicates that this local is to live on the LLVM frame, and will not participate in SSA.
+                _compiler->lvaGetDesc(node->AsLclVarCommon())->lvHasLocalAddr = 1;
             }
         }
     }
@@ -2223,6 +2487,34 @@ void Llvm::PlaceAndConvertShadowStackLocals()
     lowerToShadowStack();
 }
 
+void Llvm::createAllocasForLocalsWithAddrOp()
+{
+    m_allocas = std::vector<Value*>(_compiler->lvaCount, nullptr);
+
+    for (unsigned lclNum = 0; lclNum < _compiler->lvaCount; lclNum++)
+    {
+        LclVarDsc* varDsc = _compiler->lvaGetDesc(lclNum);
+
+        // TODO-LLVM LCLBLK - outgoing arg space.  Consider turning off FEATURE_FIXED_OUT_ARGS 
+        if ((varDsc->TypeGet() != TYP_LCLBLK) && canStoreLocalOnLlvmStack(varDsc) && isLlvmFrameLocal(varDsc))
+        {
+            CORINFO_CLASS_HANDLE classHandle = tryGetStructClassHandle(varDsc);
+            Type* llvmType = getLlvmTypeForCorInfoType(toCorInfoType(varDsc->TypeGet()), classHandle);
+            Value* allocaValue = _prologBuilder.CreateAlloca(llvmType);
+            m_allocas[lclNum] = allocaValue;
+
+            if (varDsc->lvIsParam)
+            {
+                LlvmArgInfo argInfo = getLlvmArgInfoForArgIx(lclNum);
+                assert(argInfo.IsLlvmArg());
+                Value* dataValue = _function->getArg(argInfo.m_argIx);
+                _prologBuilder.CreateStore(dataValue, castIfNecessary(allocaValue, dataValue->getType()->getPointerTo(),
+                                                                      &_prologBuilder));
+            }
+        }
+    }
+}
+
 //------------------------------------------------------------------------
 // Compile: Compile IR to LLVM, adding to the LLVM Module
 //
@@ -2270,6 +2562,12 @@ void Llvm::Compile()
 
     for (BasicBlock* block = _compiler->fgFirstBB; block; block = block->bbNext)
     {
+        // TODO-LLVM: finret basic blocks
+        if (block->bbJumpKind == BBJ_EHFINALLYRET)
+        {
+            failFunctionCompilation();
+        }
+
         startImportingBasicBlock(block);
 
         llvm::BasicBlock* entry = getLLVMBasicBlockForBlock(block);

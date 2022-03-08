@@ -76,6 +76,7 @@ namespace ILCompiler
             var nodes = _dependencyGraph.MarkedNodeList;
 
             CorInfoImpl.Shutdown(); // writes the LLVM bitcode
+            CorInfoImpl.FreeUnmanagedResources();
 
             LLVMObjectWriter.EmitObject(outputFile, nodes, NodeFactory, this, dumper);
 
