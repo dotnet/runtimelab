@@ -161,7 +161,7 @@ enum
 #endif // TARGET_WASM
 };
 
-#if TARGET_WASM
+#ifdef TARGET_WASM
 /**
  * WASI-SDK Open flags
  * Required because the runtime is built with Emscripten's fcntl.h header and
