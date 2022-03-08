@@ -155,7 +155,7 @@ enum
     PAL_O_TRUNC = 0x0080,   // Truncate file to length 0 if it already exists
     PAL_O_SYNC = 0x0100,    // Block writes call will block until physically written
 
-#if TARGET_WASM
+#ifdef TARGET_WASM
     // Temporary flag to allow switching between Emscripten and WASI-SDK flags
     PAL_O_WASI_SDK = 0x40000000
 #endif // TARGET_WASM
