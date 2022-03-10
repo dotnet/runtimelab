@@ -924,29 +924,27 @@ Value* Llvm::consumeValue(GenTree* node, Type* targetLlvmType)
             switch (node->OperGet())
             {
                 case GT_CALL:
-                {
                     trueNodeType = static_cast<var_types>(node->AsCall()->gtReturnType);
                     break;
-                }
+
                 case GT_LCL_VAR:
-                {
-                    LclVarDsc* varDsc = _compiler->lvaGetDesc(node->AsLclVarCommon());
-                    trueNodeType = varDsc->TypeGet();
+                    trueNodeType = _compiler->lvaGetDesc(node->AsLclVarCommon())->TypeGet();
                     break;
-                }
-                default :
-                {
-                    if (node->OperIsRelop())
-                    {
-                        // This is the special case for relops. Ordinary codegen "just knows" they need zero-extension.
-                        assert(nodeValue->getType() == Type::getInt1Ty(_llvmContext));
-                        trueNodeType = TYP_BOOL;
-                    }
-                    else
-                    {
-                        trueNodeType = node->TypeGet();
-                    }
-                }
+
+                case GT_EQ:
+                case GT_NE:
+                case GT_LT:
+                case GT_LE:
+                case GT_GE:
+                case GT_GT:
+                    // This is the special case for relops. Ordinary codegen "just knows" they need zero-extension.
+                    assert(nodeValue->getType() == Type::getInt1Ty(_llvmContext));
+                    trueNodeType = TYP_UBYTE;
+                    break;
+
+                default:
+                    trueNodeType = node->TypeGet();
+                    break;
             }
 
             assert(varTypeIsSmall(trueNodeType));
