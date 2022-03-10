@@ -515,10 +515,10 @@ bool GCToOSInterface::CanGetCurrentProcessorNumber()
     return HAVE_SCHED_GETCPU;
 }
 
+#if !TARGET_WASM
 // Flush write buffers of processors that are executing threads of the current process
 void GCToOSInterface::FlushProcessWriteBuffers()
 {
-#if !defined(TARGET_WASM)
     if (s_flushUsingMemBarrier)
     {
         int status = membarrier(MEMBARRIER_CMD_PRIVATE_EXPEDITED, 0);
@@ -572,8 +572,8 @@ void GCToOSInterface::FlushProcessWriteBuffers()
         CHECK_MACH("vm_deallocate()", machret);
     }
 #endif // defined(TARGET_OSX) && defined(HOST_ARM64)
-#endif // !defined(TARGET_WASM)
 }
+#endif // !TARGET_WASM
 
 // Break into a debugger. Uses a compiler intrinsic if one is available,
 // otherwise raises a SIGTRAP.
