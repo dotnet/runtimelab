@@ -8645,8 +8645,9 @@ var_types Compiler::impImportCall(OPCODE                  opcode,
                 assert((sig->callConv & CORINFO_CALLCONV_MASK) != CORINFO_CALLCONV_VARARG &&
                        (sig->callConv & CORINFO_CALLCONV_MASK) != CORINFO_CALLCONV_NATIVEVARARG);
 
+#if TARGET_WASM
                 call->AsCall()->callSig = new (this, CMK_Generic) CORINFO_SIG_INFO(*sig);
-
+#endif
                 goto DONE;
             }
 
