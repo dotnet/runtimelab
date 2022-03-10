@@ -515,6 +515,7 @@ bool GCToOSInterface::CanGetCurrentProcessorNumber()
     return HAVE_SCHED_GETCPU;
 }
 
+#if !TARGET_WASM
 // Flush write buffers of processors that are executing threads of the current process
 void GCToOSInterface::FlushProcessWriteBuffers()
 {
@@ -572,6 +573,7 @@ void GCToOSInterface::FlushProcessWriteBuffers()
     }
 #endif // defined(TARGET_OSX) && defined(HOST_ARM64)
 }
+#endif // !TARGET_WASM
 
 // Break into a debugger. Uses a compiler intrinsic if one is available,
 // otherwise raises a SIGTRAP.
