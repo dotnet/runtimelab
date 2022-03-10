@@ -8645,10 +8645,8 @@ var_types Compiler::impImportCall(OPCODE                  opcode,
                 assert((sig->callConv & CORINFO_CALLCONV_MASK) != CORINFO_CALLCONV_VARARG &&
                        (sig->callConv & CORINFO_CALLCONV_MASK) != CORINFO_CALLCONV_NATIVEVARARG);
 
-#if TARGET_WASM // TODO-LLVM
-                call->AsCall()->callSig  = new (this, CMK_Generic) CORINFO_SIG_INFO;
-                *call->AsCall()->callSig = *sig;
-#endif 
+                call->AsCall()->callSig = new (this, CMK_Generic) CORINFO_SIG_INFO(*sig);
+
                 goto DONE;
             }
 
@@ -8744,8 +8742,7 @@ var_types Compiler::impImportCall(OPCODE                  opcode,
 
 #if TARGET_WASM
     assert(call->AsCall()->callSig == nullptr);
-    call->AsCall()->callSig  = new (this, CMK_Generic) CORINFO_SIG_INFO;
-    *call->AsCall()->callSig = *sig;
+    call->AsCall()->callSig = new (this, CMK_Generic) CORINFO_SIG_INFO(*sig);
 #endif
 
     /*-------------------------------------------------------------------------
