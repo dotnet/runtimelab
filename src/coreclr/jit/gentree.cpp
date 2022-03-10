@@ -8799,7 +8799,11 @@ GenTreeCall* Compiler::gtCloneExprCallHelper(GenTreeCall* tree,
     // we only really need one physical copy of it. Therefore a shallow pointer copy will suffice.
     // (Note that this still holds even if the tree we are cloning was created by an inlinee compiler,
     // because the inlinee still uses the inliner's memory allocator anyway.)
+#if TARGET_WASM
+    copy->callSig = tree->callSig;
+#else
     INDEBUG(copy->callSig = tree->callSig;)
+#endif // TARGET_WASM
 
     // The tail call info does not change after it is allocated, so for the same reasons as above
     // a shallow copy suffices.

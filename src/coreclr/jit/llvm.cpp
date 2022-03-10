@@ -919,30 +919,40 @@ Value* Llvm::consumeValue(GenTree* node, Type* targetLlvmType)
                nodeValue->getType()->getPrimitiveSizeInBits() <= 32 && targetLlvmType->getPrimitiveSizeInBits() <= 32);
         if (nodeValue->getType()->getPrimitiveSizeInBits() < targetLlvmType->getPrimitiveSizeInBits())
         {
-            var_types trueNodeType = node->OperIs(GT_CALL) ? static_cast<var_types>(node->AsCall()->gtReturnType) : node->TypeGet();
+            var_types trueNodeType = TYP_UNDEF;
 
-            // Upcast.
-            if (varTypeIsSmall(trueNodeType))
+            switch (node->OperGet())
             {
-                finalValue = varTypeIsSigned(node) ? _builder.CreateSExt(nodeValue, targetLlvmType)
-                                                   : _builder.CreateZExt(nodeValue, targetLlvmType);
+                case GT_CALL:
+                {
+                    trueNodeType = static_cast<var_types>(node->AsCall()->gtReturnType);
+                    break;
+                }
+                case GT_LCL_VAR:
+                {
+                    LclVarDsc* varDsc = _compiler->lvaGetDesc(node->AsLclVarCommon());
+                    trueNodeType = varDsc->TypeGet();
+                    break;
+                }
+                default :
+                {
+                    if (node->OperIsRelop())
+                    {
+                        // This is the special case for relops. Ordinary codegen "just knows" they need zero-extension.
+                        assert(nodeValue->getType() == Type::getInt1Ty(_llvmContext));
+                        trueNodeType = TYP_BOOL;
+                    }
+                    else
+                    {
+                        trueNodeType = node->TypeGet();
+                    }
+                }
             }
-            else if (node->OperIs(GT_LCL_VAR))
-            {
-                // In IR, small locals are usually typed as INTs, while in LLVM registers we store them
-                // with their "true" type. So here we must re-extend them (as the user requests we do so).
-                LclVarDsc* varDsc = _compiler->lvaGetDesc(node->AsLclVarCommon());
-                assert(varTypeIsSmall(varDsc));
-                
-                finalValue = varTypeIsSigned(varDsc) ? _builder.CreateSExt(nodeValue, targetLlvmType)
-                                                     : _builder.CreateZExt(nodeValue, targetLlvmType);
-            }
-            else
-            {
-                // This is the special case for relops. Ordinary codegen "just knows" they need zero-extension.
-                assert(nodeValue->getType() == Type::getInt1Ty(_llvmContext));
-                finalValue = _builder.CreateZExt(nodeValue, targetLlvmType);
-            }
+
+            assert(varTypeIsSmall(trueNodeType));
+
+            finalValue = varTypeIsSigned(trueNodeType) ? _builder.CreateSExt(nodeValue, targetLlvmType)
+                                                       : _builder.CreateZExt(nodeValue, targetLlvmType);
         }
         else
         {
@@ -2400,10 +2410,6 @@ void Llvm::lowerToShadowStack()
                     continue;
                 }
 
-                if (callNode->gtCallType == CT_INDIRECT)
-                {
-                    unsigned i = 1;
-                }
                 failUnsupportedCalls(callNode);
 
                 lowerCallToShadowStack(callNode);

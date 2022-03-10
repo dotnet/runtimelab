@@ -8644,6 +8644,11 @@ var_types Compiler::impImportCall(OPCODE                  opcode,
                 // Sine we are jumping over some code, check that its OK to skip that code
                 assert((sig->callConv & CORINFO_CALLCONV_MASK) != CORINFO_CALLCONV_VARARG &&
                        (sig->callConv & CORINFO_CALLCONV_MASK) != CORINFO_CALLCONV_NATIVEVARARG);
+
+#if TARGET_WASM // TODO-LLVM
+                call->AsCall()->callSig  = new (this, CMK_Generic) CORINFO_SIG_INFO;
+                *call->AsCall()->callSig = *sig;
+#endif 
                 goto DONE;
             }
 
