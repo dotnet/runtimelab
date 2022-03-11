@@ -656,6 +656,17 @@ Type* Llvm::getLlvmTypeForVarType(var_types type)
     }
 }
 
+Type* Llvm::getLlvmTypeForLclVar(GenTreeLclVarCommon* lclVar)
+{
+    var_types varType = lclVar->TypeGet();
+
+    if (varType == TYP_STRUCT)
+    {
+        return getLlvmTypeForStruct(_compiler->lvaGetDesc(lclVar)->GetLayout());
+    }
+    return getLlvmTypeForVarType(varType);
+}
+
 llvm::Instruction* Llvm::getCast(llvm::Value* source, Type* targetType)
 {
     Type* sourceType = source->getType();
@@ -912,6 +923,17 @@ Value* Llvm::consumeValue(GenTree* node, Type* targetLlvmType)
         if (nodeValue->getType()->isPointerTy() && targetLlvmType->isPointerTy())
         {
             return _builder.CreateBitCast(nodeValue, targetLlvmType);
+        }
+
+        // implicit struct cast from alloca
+        if (nodeValue->getType()->isStructTy())
+        {
+            GenTreeLclVarCommon* lclVar = node->AsLclVarCommon();
+            if (isLlvmFrameLocal(_compiler->lvaGetDesc(lclVar)))
+            {
+                return _builder.CreateLoad(
+                    _builder.CreateBitCast(m_allocas[lclVar->GetLclNum()], targetLlvmType->getPointerTo()));
+            }
         }
 
         // int and smaller int conversions
@@ -1738,8 +1760,19 @@ bool Llvm::isLlvmFrameLocal(LclVarDsc* varDsc)
 
 void Llvm::storeLocalVar(GenTreeLclVar* lclVar)
 {
-    Type* destLlvmType = getLlvmTypeForVarType(lclVar->TypeGet());
-    Value* localValue = consumeValue(lclVar->gtGetOp1(), destLlvmType);
+    Type* destLlvmType = getLlvmTypeForLclVar(lclVar);
+
+    Value*   localValue;
+
+    // zero initialization check
+    if (lclVar->TypeGet() == TYP_STRUCT && lclVar->gtGetOp1()->IsIntegralConst(0))
+    {
+        localValue = llvm::Constant::getNullValue(getLlvmTypeForStruct(_compiler->lvaGetDesc(lclVar)->GetLayout()));
+    }
+    else
+    {
+        localValue = consumeValue(lclVar->gtGetOp1(), destLlvmType);
+    }
 
     unsigned lclNum = lclVar->GetLclNum();
     LclVarDsc* varDsc = _compiler->lvaGetDesc(lclVar);
@@ -2435,11 +2468,34 @@ void Llvm::lowerToShadowStack()
 
                 CurrentRange().InsertBefore(node, retAddressLocal, storeNode);
             }
+
             if (node->OperIsLocalAddr())
             {
                 // Indicates that this local is to live on the LLVM frame, and will not participate in SSA.
                 _compiler->lvaGetDesc(node->AsLclVarCommon())->lvHasLocalAddr = 1;
             }
+            // check for implicit struct cast
+            else if (node->OperIsLocalStore())
+            {
+                GenTreeLclVarCommon* addrLcl = node->AsLclVarCommon();
+                GenTree* dataOp  = addrLcl->gtGetOp1();
+                if (dataOp->IsLocal())
+                {
+                    GenTreeLclVarCommon* dataLcl = dataOp->AsLclVarCommon();
+                    if (addrLcl->TypeGet() == TYP_STRUCT && dataLcl->TypeGet() == TYP_STRUCT)
+                    {
+                        LclVarDsc* addrVarDsc = _compiler->lvaGetDesc(addrLcl->GetLclNum());
+                        LclVarDsc* dataVarDsc = _compiler->lvaGetDesc(dataLcl->GetLclNum());
+
+                        if (tryGetStructClassHandle(addrVarDsc) != tryGetStructClassHandle(dataVarDsc))
+                        {
+                            // mark both as requiring lvHasLocalAddr as we will be doing a bitcast on the pointers
+                            addrVarDsc->lvHasLocalAddr = 1;
+                            dataVarDsc->lvHasLocalAddr = 1;
+                        }
+                    }
+                }
+            }   
         }
     }
 }

@@ -174,13 +174,15 @@ private:
     Value* getGenTreeValue(GenTree* node);
     LlvmArgInfo getLlvmArgInfoForArgIx(unsigned int lclNum);
     llvm::BasicBlock* getLLVMBasicBlockForBlock(BasicBlock* block);
-    Type* getLlvmTypeForCorInfoType(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd);
-    Type* getLlvmTypeForParameterType(CORINFO_CLASS_HANDLE classHnd);
 
     Type* getLlvmTypeForStruct(ClassLayout* classLayout);
     Type* getLlvmTypeForStruct(CORINFO_CLASS_HANDLE structHandle);
 
     Type* getLlvmTypeForVarType(var_types type);
+    Type* getLlvmTypeForLclVar(GenTreeLclVarCommon* lclVar);
+    Type* getLlvmTypeForCorInfoType(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd);
+    Type* getLlvmTypeForParameterType(CORINFO_CLASS_HANDLE classHnd);
+
     int getLocalOffsetAtIndex(GenTreeLclVar* lclVar);
     Value* getLocalVarAddress(GenTreeLclVar* lclVar);
     struct DebugMetadata getOrCreateDebugMetadata(const char* documentFileName);
