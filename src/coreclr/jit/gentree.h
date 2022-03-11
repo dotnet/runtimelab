@@ -4211,10 +4211,10 @@ struct GenTreeCall final : public GenTree
     regList regArgList;
 #endif
 
-#ifdef DEBUG
+#if defined(DEBUG) || defined(TARGET_WASM)
     // Used to register callsites with the EE
     CORINFO_SIG_INFO* callSig;
-#endif
+#endif // defined(DEBUG) || defined(TARGET_WASM)
 
     union {
         TailCallSiteInfo* tailCallInfo;
@@ -4749,7 +4749,7 @@ struct GenTreeCall final : public GenTree
 
 #if defined(TARGET_WASM)
     CorInfoType gtCorInfoType; // the precise return type used to construct the signature
-#endif
+#endif // defined(TARGET_WASM)
 
     CORINFO_CLASS_HANDLE gtRetClsHnd; // The return type handle of the call if it is a struct; always available
 

@@ -164,7 +164,7 @@ private:
     void emitDoNothingCall();
     void endImportingBasicBlock(BasicBlock* block);
     [[noreturn]] void   failFunctionCompilation();
-    void failUnsupportedCalls(GenTreeCall* callNode, CORINFO_SIG_INFO* calleeSigInfo);
+    void failUnsupportedCalls(GenTreeCall* callNode);
     void fillPhis();
     llvm::Instruction* getCast(llvm::Value* source, Type* targetType);
     void generateProlog();
@@ -198,8 +198,8 @@ private:
     Value* localVar(GenTreeLclVar* lclVar);
     void storeObjAtAddress(Value* baseAddress, Value* data, StructDesc* structDesc);
 
-    GenTreeCall::Use* lowerCallReturn(GenTreeCall* callNode, CORINFO_SIG_INFO* calleeSigInfo, GenTreeCall::Use* lastArg);
-    void lowerCallToShadowStack(GenTreeCall* callNode, CORINFO_SIG_INFO* calleeSigInfo);
+    GenTreeCall::Use* lowerCallReturn(GenTreeCall* callNode, GenTreeCall::Use* lastArg);
+    void lowerCallToShadowStack(GenTreeCall* callNode);
     void lowerToShadowStack();
 
     Value* mapGenTreeToValue(GenTree* genTree, Value* valueRef);

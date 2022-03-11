@@ -919,28 +919,38 @@ Value* Llvm::consumeValue(GenTree* node, Type* targetLlvmType)
                nodeValue->getType()->getPrimitiveSizeInBits() <= 32 && targetLlvmType->getPrimitiveSizeInBits() <= 32);
         if (nodeValue->getType()->getPrimitiveSizeInBits() < targetLlvmType->getPrimitiveSizeInBits())
         {
-            // Upcast.
-            if (varTypeIsSmall(node))
+            var_types trueNodeType = TYP_UNDEF;
+
+            switch (node->OperGet())
             {
-                finalValue = varTypeIsSigned(node) ? _builder.CreateSExt(nodeValue, targetLlvmType)
-                                                   : _builder.CreateZExt(nodeValue, targetLlvmType);
+                case GT_CALL:
+                    trueNodeType = static_cast<var_types>(node->AsCall()->gtReturnType);
+                    break;
+
+                case GT_LCL_VAR:
+                    trueNodeType = _compiler->lvaGetDesc(node->AsLclVarCommon())->TypeGet();
+                    break;
+
+                case GT_EQ:
+                case GT_NE:
+                case GT_LT:
+                case GT_LE:
+                case GT_GE:
+                case GT_GT:
+                    // This is the special case for relops. Ordinary codegen "just knows" they need zero-extension.
+                    assert(nodeValue->getType() == Type::getInt1Ty(_llvmContext));
+                    trueNodeType = TYP_UBYTE;
+                    break;
+
+                default:
+                    trueNodeType = node->TypeGet();
+                    break;
             }
-            else if (node->OperIs(GT_LCL_VAR))
-            {
-                // In IR, small locals are usually typed as INTs, while in LLVM registers we store them
-                // with their "true" type. So here we must re-extend them (as the user requests we do so).
-                LclVarDsc* varDsc = _compiler->lvaGetDesc(node->AsLclVarCommon());
-                assert(varTypeIsSmall(varDsc));
-                
-                finalValue = varTypeIsSigned(varDsc) ? _builder.CreateSExt(nodeValue, targetLlvmType)
-                                                     : _builder.CreateZExt(nodeValue, targetLlvmType);
-            }
-            else
-            {
-                // This is the special case for relops. Ordinary codegen "just knows" they need zero-extension.
-                assert(nodeValue->getType() == Type::getInt1Ty(_llvmContext));
-                finalValue = _builder.CreateZExt(nodeValue, targetLlvmType);
-            }
+
+            assert(varTypeIsSmall(trueNodeType));
+
+            finalValue = varTypeIsSigned(trueNodeType) ? _builder.CreateSExt(nodeValue, targetLlvmType)
+                                                       : _builder.CreateZExt(nodeValue, targetLlvmType);
         }
         else
         {
@@ -970,13 +980,14 @@ llvm::Value* Llvm::buildUserFuncCall(GenTreeCall* call)
 {
     llvm::FunctionCallee llvmFuncCallee;
 
-    if (call->gtCallType == CT_USER_FUNC)
+    if (call->gtCallType == CT_USER_FUNC || call->gtCallType == CT_INDIRECT)
     {
-        if (call->IsVirtualVtable())
+        if (call->IsVirtualVtable() || call->gtCallType == CT_INDIRECT)
         {
             FunctionType* functionType = createFunctionTypeForCall(call);
+            GenTree* calleeNode = call->IsVirtualVtable() ? call->gtControlExpr : call->gtCallAddr;
 
-            Value* funcPtr = castIfNecessary(getGenTreeValue(call->gtControlExpr), functionType->getPointerTo());
+            Value* funcPtr = castIfNecessary(getGenTreeValue(calleeNode), functionType->getPointerTo());
 
             llvmFuncCallee = {functionType, funcPtr};
         }
@@ -1141,7 +1152,8 @@ void Llvm::buildCall(GenTree* node)
     {
         buildHelperFuncCall(call);
     }
-    else if ((call->gtCallType == CT_USER_FUNC) && !call->IsVirtualStub() /* TODO: Virtual stub not implemented */)
+    else if ((call->gtCallType == CT_USER_FUNC || call->gtCallType == CT_INDIRECT) &&
+             !call->IsVirtualStub() /* TODO: Virtual stub not implemented */)
     {
         buildUserFuncCall(call);
     }
@@ -2110,11 +2122,11 @@ void Llvm::ConvertShadowStackLocalNode(GenTreeLclVarCommon* node)
 // If the return type must be GC tracked, removes the return type
 // and converts to a return slot arg, modifying the call args, and building the necessary IR
 GenTreeCall::Use* Llvm::lowerCallReturn(GenTreeCall*      callNode,
-                                        CORINFO_SIG_INFO* calleeSigInfo,
                                         GenTreeCall::Use* insertAfterArg)
 {
     GenTreeCall::Use* lastArg = insertAfterArg;
     var_types callReturnType = callNode->TypeGet();
+    CORINFO_SIG_INFO* calleeSigInfo = callNode->callSig;
 
     // Some ctors, e.g. strings (and maybe only strings), have a return type in IR so
     // pass the call return type instead of the CORINFO_SIG_INFO return type, which is void in these cases
@@ -2176,22 +2188,18 @@ GenTreeCall::Use* Llvm::lowerCallReturn(GenTreeCall*      callNode,
     return lastArg;
 }
 
-void Llvm::failUnsupportedCalls(GenTreeCall* callNode, CORINFO_SIG_INFO* calleeSigInfo)
+void Llvm::failUnsupportedCalls(GenTreeCall* callNode)
 {
     // we can't do these yet
-    if (_isRuntimeImport(_thisPtr, callNode->gtCallMethHnd))
+    if (callNode->gtCallType != CT_INDIRECT && _isRuntimeImport(_thisPtr, callNode->gtCallMethHnd))
     {
         failFunctionCompilation();
     }
 
+    CORINFO_SIG_INFO* calleeSigInfo = callNode->callSig;
     // TODO-LLVM: not attempting to compile generic signatures with context arg via clrjit yet
-    if (calleeSigInfo->hasTypeArg())
-    {
-        failFunctionCompilation();
-    }
-
-    // TODO-LLVM: Can we get these now we have the scanner enabled?
-    if (callNode->gtCallType == CT_INDIRECT)
+    // Investigate which methods do not get callSig set - happens currently with the Generics test
+    if (calleeSigInfo == nullptr || calleeSigInfo->hasTypeArg())
     {
         failFunctionCompilation();
     }
@@ -2205,9 +2213,9 @@ void Llvm::failUnsupportedCalls(GenTreeCall* callNode, CORINFO_SIG_INFO* calleeS
                 // Either of these situations may happen with calls.
                 continue;
             }
-            if (operand == callNode->gtControlExpr)
+            if (operand == callNode->gtControlExpr || operand == callNode->gtCallAddr)
             {
-                // vtable target
+                // vtable target or indirect target
                 continue;
             }
 
@@ -2261,7 +2269,7 @@ GenTree* Llvm::createShadowStackStoreNode(var_types nodeType, GenTree* addr, Gen
 //     in a simple increasing order, matching the signature. We also rewrite returns
 //     that must be on the shadow stack, see "lowerCallReturn".
 //
-void Llvm::lowerCallToShadowStack(GenTreeCall* callNode, CORINFO_SIG_INFO* calleeSigInfo)
+void Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
 {
     // rewrite the args, adding shadow stack, and moving gc tracked args to the shadow stack
     unsigned shadowStackUseOffest = 0;
@@ -2298,7 +2306,7 @@ void Llvm::lowerCallToShadowStack(GenTreeCall* callNode, CORINFO_SIG_INFO* calle
 
     CurrentRange().InsertBefore(callNode, shadowStackVar, offset, calleeShadowStack, calleeShadowStackPutArg);
 
-    lastArg = lowerCallReturn(callNode, calleeSigInfo, insertReturnAfter);
+    lastArg = lowerCallReturn(callNode, insertReturnAfter);
 
     for (unsigned i = 0; i < argCount; i++)
     {
@@ -2308,6 +2316,7 @@ void Llvm::lowerCallToShadowStack(GenTreeCall* callNode, CORINFO_SIG_INFO* calle
         sortedData[argNum]            = opAndArg;
     }
 
+    CORINFO_SIG_INFO* calleeSigInfo = callNode->callSig;
     // Relies on the fact all arguments not in the signature come before those that are.
     unsigned firstSigArgIx = argCount - calleeSigInfo->numArgs;
 
@@ -2399,12 +2408,9 @@ void Llvm::lowerToShadowStack()
                     continue;
                 }
 
-                CORINFO_SIG_INFO calleeSigInfo;
-                _compiler->eeGetMethodSig(callNode->gtCallMethHnd, &calleeSigInfo);
+                failUnsupportedCalls(callNode);
 
-                failUnsupportedCalls(callNode, &calleeSigInfo);
-
-                lowerCallToShadowStack(callNode, &calleeSigInfo);
+                lowerCallToShadowStack(callNode);
             }
             else if (node->OperIs(GT_RETURN) && _retAddressLclNum != BAD_VAR_NUM)
             {
