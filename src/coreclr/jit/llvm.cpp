@@ -925,17 +925,6 @@ Value* Llvm::consumeValue(GenTree* node, Type* targetLlvmType)
             return _builder.CreateBitCast(nodeValue, targetLlvmType);
         }
 
-        // implicit struct cast from alloca
-        if (nodeValue->getType()->isStructTy())
-        {
-            GenTreeLclVarCommon* lclVar = node->AsLclVarCommon();
-            if (isLlvmFrameLocal(_compiler->lvaGetDesc(lclVar)))
-            {
-                return _builder.CreateLoad(
-                    _builder.CreateBitCast(m_allocas[lclVar->GetLclNum()], targetLlvmType->getPointerTo()));
-            }
-        }
-
         // int and smaller int conversions
         assert(targetLlvmType->isIntegerTy() && nodeValue->getType()->isIntegerTy() &&
                nodeValue->getType()->getPrimitiveSizeInBits() <= 32 && targetLlvmType->getPrimitiveSizeInBits() <= 32);
@@ -2420,6 +2409,17 @@ void Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
     }
 }
 
+void Llvm::convertLclStructToLoad(GenTreeLclVarCommon* lclNode, ClassLayout* clsLayout)
+{
+    GenTree* lclAddr = _compiler->gtNewLclVarAddrNode(lclNode->GetLclNum(), TYP_STRUCT);
+
+    lclNode->ChangeOper(GT_OBJ);
+    lclNode->gtOp1 = lclAddr;
+    lclNode->AsObj()->SetLayout(clsLayout);
+
+    _currentRange->InsertBefore(lclNode, lclAddr);
+}
+
 void Llvm::lowerToShadowStack()
 {
     for (BasicBlock* _currentBlock : _compiler->Blocks())
@@ -2475,7 +2475,7 @@ void Llvm::lowerToShadowStack()
                 _compiler->lvaGetDesc(node->AsLclVarCommon())->lvHasLocalAddr = 1;
             }
             // check for implicit struct cast
-            else if (node->OperIsLocalStore())
+            else if (node->OperIs(GT_STORE_LCL_VAR))
             {
                 GenTreeLclVarCommon* addrLcl = node->AsLclVarCommon();
                 GenTree* dataOp  = addrLcl->gtGetOp1();
@@ -2492,6 +2492,8 @@ void Llvm::lowerToShadowStack()
                             // mark both as requiring lvHasLocalAddr as we will be doing a bitcast on the pointers
                             addrVarDsc->lvHasLocalAddr = 1;
                             dataVarDsc->lvHasLocalAddr = 1;
+
+                            convertLclStructToLoad(dataLcl, addrVarDsc->GetLayout());
                         }
                     }
                 }
