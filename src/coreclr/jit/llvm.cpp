@@ -2497,7 +2497,7 @@ void Llvm::lowerToShadowStack()
                         }
                     }
                 }
-                else if (dataOp->OperIs(GT_IND))
+                else if (dataOp->OperIs(GT_IND) && addrLcl->TypeGet() == TYP_STRUCT && dataOp->TypeGet() == TYP_STRUCT)
                 {
                     dataOp->ChangeOper(GT_OBJ);
                     LclVarDsc* addrVarDsc = _compiler->lvaGetDesc(addrLcl->GetLclNum());
