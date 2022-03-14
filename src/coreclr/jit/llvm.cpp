@@ -2497,6 +2497,12 @@ void Llvm::lowerToShadowStack()
                         }
                     }
                 }
+                else if (dataOp->OperIs(GT_IND))
+                {
+                    dataOp->ChangeOper(GT_OBJ);
+                    LclVarDsc* addrVarDsc = _compiler->lvaGetDesc(addrLcl->GetLclNum());
+                    dataOp->AsObj()->SetLayout(addrVarDsc->GetLayout());
+                }
             }   
         }
     }
