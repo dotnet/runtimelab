@@ -2411,7 +2411,7 @@ void Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
 
 void Llvm::convertLclStructToLoad(GenTreeLclVarCommon* lclNode, ClassLayout* clsLayout)
 {
-    GenTree* lclAddr = _compiler->gtNewLclVarAddrNode(lclNode->GetLclNum(), TYP_STRUCT);
+    GenTree* lclAddr = _compiler->gtNewLclVarAddrNode(lclNode->GetLclNum());
 
     lclNode->ChangeOper(GT_OBJ);
     lclNode->gtOp1 = lclAddr;
