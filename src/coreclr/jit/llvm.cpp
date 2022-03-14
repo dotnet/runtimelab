@@ -27,6 +27,9 @@ using llvm::Module;
 static Module*          _module    = nullptr;
 static llvm::DIBuilder* _diBuilder = nullptr;
 static LLVMContext _llvmContext;
+
+static Function* _nullCheckFunction = nullptr;
+
 static void* _thisPtr; // TODO: workaround for not changing the JIT/EE interface.  As this is static, it will probably fail if multithreaded compilation is attempted
 static const char* (*_getMangledMethodName)(void*, CORINFO_METHOD_STRUCT_*);
 static const char* (*_getMangledSymbolName)(void*, void*);
@@ -42,6 +45,7 @@ static const uint32_t (*_padOffset)(void*, CORINFO_CLASS_STRUCT_*, unsigned);
 static const CorInfoTypeWithMod (*_getArgTypeIncludingParameterized)(void*, CORINFO_SIG_INFO*, CORINFO_ARG_LIST_HANDLE, CORINFO_CLASS_HANDLE*);
 static const CorInfoTypeWithMod (*_getParameterType)(void*, CORINFO_CLASS_HANDLE, CORINFO_CLASS_HANDLE*);
 static const TypeDescriptor (*_getTypeDescriptor)(void*, CORINFO_CLASS_HANDLE);
+static CORINFO_METHOD_HANDLE (*_getCompilerHelpersMethodHandle)(void*, const char*, unsigned, const char*, unsigned);
 
 static char*                              _outputFileName;
 static Function*                          _doNothingFunction;
@@ -67,7 +71,8 @@ extern "C" DLLEXPORT void registerLlvmCallbacks(void*       thisPtr,
                                                 const uint32_t(*padOffset)(void*, CORINFO_CLASS_STRUCT_*, unsigned),
                                                 const CorInfoTypeWithMod(*getArgTypeIncludingParameterized)(void*, CORINFO_SIG_INFO*, CORINFO_ARG_LIST_HANDLE, CORINFO_CLASS_HANDLE*),
                                                 const CorInfoTypeWithMod(*getParameterType)(void*, CORINFO_CLASS_HANDLE, CORINFO_CLASS_HANDLE*),
-                                                const TypeDescriptor(*getTypeDescriptor)(void*, CORINFO_CLASS_HANDLE))
+                                                const TypeDescriptor(*getTypeDescriptor)(void*, CORINFO_CLASS_HANDLE),
+                                                CORINFO_METHOD_HANDLE (*getCompilerHelpersMethodHandle)(void*, const char*, unsigned, const char*, unsigned))
 {
     _thisPtr = thisPtr;
     _getMangledMethodName         = getMangledMethodNamePtr;
@@ -84,6 +89,7 @@ extern "C" DLLEXPORT void registerLlvmCallbacks(void*       thisPtr,
     _getArgTypeIncludingParameterized = getArgTypeIncludingParameterized;
     _getParameterType             = getParameterType;
     _getTypeDescriptor            = getTypeDescriptor;
+    _getCompilerHelpersMethodHandle = getCompilerHelpersMethodHandle;
 
     if (_module == nullptr) // registerLlvmCallbacks is called for each method to compile, but must only created the module once.  Better perhaps to split this into 2 calls.
     {
@@ -1510,6 +1516,65 @@ unsigned Llvm::buildMemCpy(Value* baseAddress, unsigned startOffset, unsigned en
     return size;
 }
 
+void Llvm::buildThrowException(llvm::IRBuilder<>& builder, const char* helperClass, const char * helperMethodName, Value* shadowStack)
+{
+    CORINFO_METHOD_HANDLE methodHandle = _getCompilerHelpersMethodHandle(_thisPtr, helperClass, strlen(helperClass),
+                                                                         helperMethodName, strlen(helperMethodName));
+    const char* mangledName = (*_getMangledMethodName)(_thisPtr, methodHandle);
+
+    Function* llvmFunc = _module->getFunction(mangledName);
+
+    if (llvmFunc == nullptr)
+    {
+        // assume ExternalLinkage, if the function is defined in the clrjit module, then it is replaced and an
+        // extern added to the Ilc module
+        llvmFunc = Function::Create(FunctionType::get(Type::getVoidTy(_llvmContext), {Type::getInt8PtrTy(_llvmContext)},
+                                                      false),
+                                    Function::ExternalLinkage, 0U, mangledName, _module);
+        _addCodeReloc(_thisPtr, methodHandle);
+    }
+
+    builder.CreateCall(llvmFunc, {shadowStack});
+    builder.CreateUnreachable();
+}
+
+void Llvm::buildLlvmCallOrInvoke(Function* callee, ArrayRef<Value*> args)
+{
+    // TODO-LLVM: invoke if callsite has exception handler
+    _builder.CreateCall(callee, args);
+}
+
+void Llvm::buildNullCheck(GenTreeUnOp* nullCheckNode)
+{
+    if (_nullCheckFunction == nullptr)
+    {
+        _nullCheckFunction =
+            Function::Create(FunctionType::get(Type::getVoidTy(_llvmContext),
+                                               {Type::getInt8PtrTy(_llvmContext), Type::getInt8PtrTy(_llvmContext)},
+                                               false),
+                                              Function::InternalLinkage, 0U, "nativeaot.throwifnull", _module);
+
+        llvm::IRBuilder<> builder(_llvmContext);
+        llvm::BasicBlock* block = llvm::BasicBlock::Create(_llvmContext, "Block", _nullCheckFunction);
+        llvm::BasicBlock* throwBlock = llvm::BasicBlock::Create(_llvmContext, "ThrowBlock", _nullCheckFunction);
+        llvm::BasicBlock* retBlock = llvm::BasicBlock::Create(_llvmContext, "RetBlock", _nullCheckFunction);
+
+        builder.SetInsertPoint(block);
+
+        builder.CreateCondBr(builder.CreateICmp(llvm::CmpInst::Predicate::ICMP_EQ, _nullCheckFunction->getArg(1),
+                                                llvm::ConstantPointerNull::get(Type::getInt8PtrTy(_llvmContext)),
+                                                "nullCheck"), throwBlock, retBlock);
+        builder.SetInsertPoint(throwBlock);
+
+        buildThrowException(builder, u8"ThrowHelpers", u8"ThrowNullReferenceException", _nullCheckFunction->getArg(0));
+
+        builder.SetInsertPoint(retBlock);
+        builder.CreateRetVoid();
+    }
+
+    buildLlvmCallOrInvoke(_nullCheckFunction, {getShadowStackForCallee(), getGenTreeValue(nullCheckNode->gtGetOp1())});
+}
+
 void Llvm::storeObjAtAddress(Value* baseAddress, Value* data, StructDesc* structDesc)
 {
     unsigned fieldCount = structDesc->getFieldCount();
@@ -1817,6 +1882,9 @@ void Llvm::visitNode(GenTree* node)
             break;
         case GT_NO_OP:
             emitDoNothingCall();
+            break;
+        case GT_NULLCHECK:
+            buildNullCheck(node->AsUnOp());
             break;
         case GT_OBJ:
             buildObj(node->AsObj());

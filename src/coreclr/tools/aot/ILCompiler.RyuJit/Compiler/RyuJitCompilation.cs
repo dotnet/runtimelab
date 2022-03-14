@@ -226,6 +226,11 @@ namespace ILCompiler
         {
             throw new NotImplementedException();
         }
+
+        public virtual MethodDesc GetCompilerHelpersMethodDesc(string className, string methodName)
+        {
+            throw new NotImplementedException();
+        }
     }
 
     [Flags]

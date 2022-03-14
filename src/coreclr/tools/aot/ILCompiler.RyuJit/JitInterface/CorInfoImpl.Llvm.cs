@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
+using System.Text;
 using ILCompiler;
 using ILCompiler.DependencyAnalysis;
 using Internal.IL;
@@ -25,7 +26,17 @@ namespace Internal.JitInterface
         {
             var _this = GetThis(thisHandle);
 
-            var node = (ISymbolNode)_this.HandleToObject((IntPtr)handle);
+            var obj = _this.HandleToObject((IntPtr)handle);
+            ISymbolNode node;
+            if (obj is ISymbolNode symbolNode)
+            {
+                node = symbolNode;
+            }
+            else
+            {
+                node = _this._compilation.NodeFactory.MethodEntrypoint((MethodDesc)obj);
+            }
+
             _this._codeRelocs.Add(new Relocation(RelocType.IMAGE_REL_BASED_REL32, 0, node));
             var helperNode = node as ReadyToRunHelperNode;
             if (helperNode != null)
@@ -351,6 +362,14 @@ namespace Internal.JitInterface
             return typeDescriptor;
         }
 
+        [UnmanagedCallersOnly]
+        public static CORINFO_METHOD_STRUCT_* getCompilerHelpersMethodHandle(IntPtr thisHandle, byte* className, uint classNameLength, byte* methodName, uint methodNameLength)
+        {
+            var _this = GetThis(thisHandle);
+
+            return _this.ObjectToHandle(_this._compilation.GetCompilerHelpersMethodDesc(Encoding.UTF8.GetString(className, (int)classNameLength), Encoding.UTF8.GetString(methodName, (int)methodNameLength)));
+        }
+
         [DllImport(JitLibrary)]
         private extern static void registerLlvmCallbacks(IntPtr thisHandle, byte* outputFileName, byte* triple, byte* dataLayout,
             delegate* unmanaged<IntPtr, CORINFO_METHOD_STRUCT_*, byte*> getMangedMethodNamePtr,
@@ -366,7 +385,8 @@ namespace Internal.JitInterface
             delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, uint, uint> padOffset,
             delegate* unmanaged<IntPtr, CORINFO_SIG_INFO*, CORINFO_ARG_LIST_STRUCT_*, CORINFO_CLASS_STRUCT_**, CorInfoTypeWithMod> getArgTypeIncludingParameterized,
             delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, CORINFO_CLASS_STRUCT_**, CorInfoTypeWithMod> getParameterType,
-            delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, TypeDescriptor> getTypeDescriptor
+            delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, TypeDescriptor> getTypeDescriptor,
+            delegate* unmanaged<IntPtr, byte*, uint, byte*, uint, CORINFO_METHOD_STRUCT_*> getCompilerHelpersMethodHandle
             );
 
         public void RegisterLlvmCallbacks(IntPtr corInfoPtr, string outputFileName, string triple, string dataLayout)
@@ -387,7 +407,8 @@ namespace Internal.JitInterface
                 &padOffset,
                 &getArgTypeIncludingParameterized,
                 &getParameterType,
-                &getTypeDescriptor
+                &getTypeDescriptor,
+                &getCompilerHelpersMethodHandle
             );
         }
 

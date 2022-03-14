@@ -87,7 +87,8 @@ extern "C" void registerLlvmCallbacks(void*       thisPtr,
                                       const uint32_t(*padOffset)(void*, CORINFO_CLASS_STRUCT_*, unsigned),
                                       const CorInfoTypeWithMod(*_getArgTypeIncludingParameterized)(void*, CORINFO_SIG_INFO*, CORINFO_ARG_LIST_HANDLE, CORINFO_CLASS_HANDLE*),
                                       const CorInfoTypeWithMod(*_getParameterType)(void*, CORINFO_CLASS_HANDLE, CORINFO_CLASS_HANDLE*),
-                                      const TypeDescriptor(*getTypeDescriptor)(void*, CORINFO_CLASS_HANDLE));
+                                      const TypeDescriptor(*getTypeDescriptor)(void*, CORINFO_CLASS_HANDLE),
+                                      CORINFO_METHOD_HANDLE (*_getCompilerHelpersMethodHandle)(void*, const char*, unsigned, const char*, unsigned));
 
 struct PhiPair
 {
@@ -216,6 +217,10 @@ private:
     Value* zextIntIfNecessary(Value* intValue);
     StructDesc* getStructDesc(CORINFO_CLASS_HANDLE structHandle);
     unsigned buildMemCpy(Value* baseAddress, unsigned startOffset, unsigned endOffset, Value* srcAddress);
+    void buildNullCheck(GenTreeUnOp* nullCheckNode);
+    void buildThrowException(llvm::IRBuilder<>& builder, const char*        helperClass, const char*        helperMethodName, Value* shadowStack);
+    void buildLlvmCallOrInvoke(llvm::Function* callee, llvm::ArrayRef<Value*> args);
+
     void buildLocalVarAddr(GenTreeLclVarCommon* lclVar);
     bool isLlvmFrameLocal(LclVarDsc* varDsc);
 
