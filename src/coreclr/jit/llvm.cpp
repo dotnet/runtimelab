@@ -1227,7 +1227,24 @@ void Llvm::buildCnsInt(GenTree* node)
 {
     if (node->gtType == TYP_INT)
     {
-        mapGenTreeToValue(node, _builder.getInt32(node->AsIntCon()->IconValue()));
+        if (node->IsIconHandle())
+        {
+            if (node->IsIconHandle(GTF_ICON_TOKEN_HDL))
+            {
+                const char* symbolName = (*_getMangledSymbolName)(_thisPtr, (void*)(node->AsIntCon()->IconValue()));
+                (*_addCodeReloc)(_thisPtr, (void*)node->AsIntCon()->IconValue());
+                mapGenTreeToValue(node, _builder.CreateLoad(getOrCreateExternalSymbol(symbolName)));
+            }
+            else
+            {
+                //TODO-LLVML: other ICON handle types
+                failFunctionCompilation();
+            }
+        }
+        else
+        {
+            mapGenTreeToValue(node, _builder.getInt32(node->AsIntCon()->IconValue()));
+        }
         return;
     }
     if (node->gtType == TYP_REF)
