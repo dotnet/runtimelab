@@ -179,7 +179,7 @@ private:
     Type* getLlvmTypeForStruct(CORINFO_CLASS_HANDLE structHandle);
 
     Type* getLlvmTypeForVarType(var_types type);
-    Type* getLlvmTypeForLclVar(GenTreeLclVarCommon* lclVar);
+    Type* getLlvmTypeForLclVar(GenTreeLclVar* lclVar);
     Type* getLlvmTypeForCorInfoType(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd);
     Type* getLlvmTypeForParameterType(CORINFO_CLASS_HANDLE classHnd);
 
@@ -204,6 +204,7 @@ private:
     void lowerCallToShadowStack(GenTreeCall* callNode);
     void lowerToShadowStack();
     void convertLclStructToLoad(GenTreeLclVarCommon* lclNode, ClassLayout* clsLayout);
+    void lowerStoreLcl(GenTreeLclVarCommon* storeLclNode);
 
     Value* mapGenTreeToValue(GenTree* genTree, Value* valueRef);
     bool needsReturnStackSlot(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd);
