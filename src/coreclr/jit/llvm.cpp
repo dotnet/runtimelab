@@ -1766,14 +1766,13 @@ bool Llvm::isLlvmFrameLocal(LclVarDsc* varDsc)
 
 void Llvm::storeLocalVar(GenTreeLclVar* lclVar)
 {
-    Type* destLlvmType = getLlvmTypeForLclVar(lclVar);
-
-    Value*   localValue;
+    Type*  destLlvmType = getLlvmTypeForLclVar(lclVar);
+    Value* localValue   = nullptr;
 
     // zero initialization check
-    if (lclVar->TypeGet() == TYP_STRUCT && lclVar->gtGetOp1()->IsIntegralConst(0))
+    if (lclVar->TypeIs(TYP_STRUCT) && lclVar->gtGetOp1()->IsIntegralConst(0))
     {
-        localValue = llvm::Constant::getNullValue(getLlvmTypeForStruct(_compiler->lvaGetDesc(lclVar)->GetLayout()));
+        localValue = llvm::Constant::getNullValue(destLlvmType);
     }
     else
     {
@@ -2431,7 +2430,7 @@ void Llvm::convertLclStructToLoad(GenTreeLclVarCommon* lclNode, ClassLayout* cls
     GenTree* lclAddr = _compiler->gtNewLclVarAddrNode(lclNode->GetLclNum());
 
     lclNode->ChangeOper(GT_OBJ);
-    lclNode->gtOp1 = lclAddr;
+    lclNode->AsObj()->SetAddr(lclAddr);
     lclNode->AsObj()->SetLayout(clsLayout);
 
     _currentRange->InsertBefore(lclNode, lclAddr);
