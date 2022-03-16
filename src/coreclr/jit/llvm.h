@@ -203,7 +203,6 @@ private:
     GenTreeCall::Use* lowerCallReturn(GenTreeCall* callNode, GenTreeCall::Use* lastArg);
     void lowerCallToShadowStack(GenTreeCall* callNode);
     void lowerToShadowStack();
-    void convertLclStructToLoad(GenTreeLclVarCommon* lclNode, ClassLayout* clsLayout);
     void lowerStoreLcl(GenTreeLclVarCommon* storeLclNode);
 
     Value* mapGenTreeToValue(GenTree* genTree, Value* valueRef);

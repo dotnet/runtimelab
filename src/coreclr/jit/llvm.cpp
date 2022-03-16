@@ -2427,49 +2427,44 @@ void Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
     }
 }
 
-void Llvm::convertLclStructToLoad(GenTreeLclVarCommon* lclNode, ClassLayout* clsLayout)
-{
-    GenTree* lclAddr = _compiler->gtNewLclVarAddrNode(lclNode->GetLclNum());
-
-    lclNode->ChangeOper(GT_OBJ);
-    lclNode->AsObj()->SetAddr(lclAddr);
-    lclNode->AsObj()->SetLayout(clsLayout);
-
-    _currentRange->InsertBefore(lclNode, lclAddr);
-}
-
 void Llvm::lowerStoreLcl(GenTreeLclVarCommon* storeLclNode)
 {
-    GenTree* dataOp = storeLclNode->gtGetOp1();
-    CORINFO_CLASS_HANDLE dataHandle = _compiler->gtGetStructHandleIfPresent(dataOp);
-    if (dataOp->OperIs(GT_IND))
-    {
-        // Special case: "gtGetStructHandleIfPresent" sometimes guesses the handle from
-        // field sequences, but we will always need to transform TYP_STRUCT INDs into OBJs.
-        dataHandle = NO_CLASS_HANDLE;
-    }
-
     LclVarDsc* addrVarDsc = _compiler->lvaGetDesc(storeLclNode->GetLclNum());
 
-    if (storeLclNode->TypeIs(TYP_STRUCT) && addrVarDsc->GetStructHnd() != dataHandle)
+    if (storeLclNode->TypeIs(TYP_STRUCT))
     {
-        if (dataOp->OperIsIndir())
+        GenTree* dataOp = storeLclNode->gtGetOp1();
+        CORINFO_CLASS_HANDLE dataHandle = _compiler->gtGetStructHandleIfPresent(dataOp);
+        if (dataOp->OperIs(GT_IND))
         {
-            dataOp->SetOper(GT_OBJ);
-            dataOp->AsObj()->SetLayout(addrVarDsc->GetLayout());
+            // Special case: "gtGetStructHandleIfPresent" sometimes guesses the handle from
+            // field sequences, but we will always need to transform TYP_STRUCT INDs into OBJs.
+            dataHandle = NO_CLASS_HANDLE;
         }
-        else if (dataOp->OperIs(GT_LCL_VAR)) // can get icon 0 here
-        {
-            GenTreeLclVarCommon* dataLcl = dataOp->AsLclVarCommon();
-            if (storeLclNode->TypeGet() == TYP_STRUCT && dataLcl->TypeGet() == TYP_STRUCT)
-            {
-                LclVarDsc* dataVarDsc = _compiler->lvaGetDesc(dataLcl->GetLclNum());
 
-                if (tryGetStructClassHandle(addrVarDsc) != tryGetStructClassHandle(dataVarDsc))
+        if (addrVarDsc->GetStructHnd() != dataHandle)
+        {
+            if (dataOp->OperIsIndir())
+            {
+                dataOp->SetOper(GT_OBJ);
+                dataOp->AsObj()->SetLayout(addrVarDsc->GetLayout());
+            }
+            else if (dataOp->OperIs(GT_LCL_VAR)) // can get icon 0 here
+            {
+                GenTreeLclVarCommon* dataLcl = dataOp->AsLclVarCommon();
+                if (dataLcl->TypeGet() == TYP_STRUCT)
                 {
+                    LclVarDsc* dataVarDsc = _compiler->lvaGetDesc(dataLcl->GetLclNum());
+
                     dataVarDsc->lvHasLocalAddr = 1;
 
-                    convertLclStructToLoad(dataLcl, addrVarDsc->GetLayout());
+                    GenTree* dataAddrNode = _compiler->gtNewLclVarAddrNode(dataLcl->GetLclNum());
+
+                    dataLcl->ChangeOper(GT_OBJ);
+                    dataLcl->AsObj()->SetAddr(dataAddrNode);
+                    dataLcl->AsObj()->SetLayout(addrVarDsc->GetLayout());
+
+                    _currentRange->InsertBefore(dataLcl, dataAddrNode);
                 }
             }
         }
@@ -2530,7 +2525,6 @@ void Llvm::lowerToShadowStack()
                 // Indicates that this local is to live on the LLVM frame, and will not participate in SSA.
                 _compiler->lvaGetDesc(node->AsLclVarCommon())->lvHasLocalAddr = 1;
             }
-            // check for implicit struct cast
             else if (node->OperIs(GT_STORE_LCL_VAR))
             {
                 lowerStoreLcl(node->AsLclVarCommon());
