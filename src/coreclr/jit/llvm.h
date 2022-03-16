@@ -180,7 +180,7 @@ private:
     Type* getLlvmTypeForStruct(ClassLayout* classLayout);
     Type* getLlvmTypeForStruct(CORINFO_CLASS_HANDLE structHandle);
 
-    Type* getLlvmTypeForVarType(var_types type);
+    Type* getLlvmTypeForVarType(var_types type, CORINFO_CLASS_HANDLE classHandle = nullptr);
     int getLocalOffsetAtIndex(GenTreeLclVar* lclVar);
     Value* getLocalVarAddress(GenTreeLclVar* lclVar);
     struct DebugMetadata getOrCreateDebugMetadata(const char* documentFileName);

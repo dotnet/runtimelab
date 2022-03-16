@@ -623,7 +623,7 @@ Function* getOrCreateRhpAssignRef()
     return llvmFunc;
 }
 
-Type* Llvm::getLlvmTypeForVarType(var_types type)
+Type* Llvm::getLlvmTypeForVarType(var_types type, CORINFO_CLASS_HANDLE classHandle)
 {
     // TODO: Fill out with missing type mappings and when all code done via clrjit, default should fail with useful
     // message
@@ -651,6 +651,9 @@ Type* Llvm::getLlvmTypeForVarType(var_types type)
             return Type::getInt8PtrTy(_llvmContext);
         case TYP_VOID:
             return Type::getVoidTy(_llvmContext);
+        case TYP_STRUCT:
+            assert(classHandle);
+            return getLlvmTypeForStruct(classHandle);
         default:
             failFunctionCompilation();
     }
@@ -1017,7 +1020,7 @@ llvm::Value* Llvm::buildUserFuncCall(GenTreeCall* call)
 
 FunctionType* Llvm::buildHelperLlvmFunctionType(GenTreeCall* call, bool withShadowStack)
 {
-    Type* retLlvmType = getLlvmTypeForVarType(call->TypeGet());
+    Type* retLlvmType = getLlvmTypeForVarType(call->TypeGet(), call->gtRetClsHnd);
     std::vector<llvm::Type*> argVec;
 
     if (withShadowStack)
