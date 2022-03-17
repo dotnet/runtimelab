@@ -436,9 +436,8 @@ CorInfoType Llvm::toCorInfoType(var_types varType)
             return CorInfoType::CORINFO_TYPE_BYTE;
         case TYP_UBYTE:
             return CorInfoType::CORINFO_TYPE_UBYTE;
-        case TYP_LCLBLK: // TODO: outgoing args space - need to get an example compiling, e.g. https://github.com/dotnet/runtimelab/blob/40f9ff64ae80596bcddcec16a7e1a8f57a0b2cff/src/tests/nativeaot/SmokeTests/HelloWasm/HelloWasm.cs#L3492 to see what's
-            // going on.  CORINFO_TYPE_VALUECLASS is a better mapping but if that is mapped as of now, then canStoreTypeOnLlvmStack will fail compilation for most methods.
-            failFunctionCompilation();
+        case TYP_LCLBLK:
+            return CorInfoType::CORINFO_TYPE_VALUECLASS;
         case TYP_DOUBLE:
             return CorInfoType::CORINFO_TYPE_DOUBLE;
         case TYP_FLOAT:
@@ -1685,6 +1684,43 @@ Value* Llvm::localVar(GenTreeLclVar* lclVar)
     return llvmRef;
 }
 
+void Llvm::buildLocalField(GenTreeLclFld* lclFld)
+{
+    unsigned int lclNum = lclFld->GetLclNum();
+
+    Value*     structAddrValue;
+    LclVarDsc* varDsc = _compiler->lvaGetDesc(lclNum);
+
+    if (canStoreLocalOnLlvmStack(varDsc))
+    {
+        assert(m_allocas[lclNum] != nullptr);
+
+        structAddrValue = m_allocas[lclNum];
+    }
+    else
+    {
+        structAddrValue = getLocalVarAddress(lclFld);
+    }
+
+    // TODO-LLVM: if this is an only value type field, or at offset 0, we can optimize
+    Value* structAddrInt8Ptr = castIfNecessary(structAddrValue, Type::getInt8PtrTy(_llvmContext));
+    Value* fieldAddressValue = _builder.CreateGEP(structAddrInt8Ptr, _builder.getInt16(lclFld->GetLclOffs()));
+
+    Type* fieldType;
+    if (lclFld->TypeGet() == TYP_STRUCT)
+    {
+        fieldType = getLlvmTypeForStruct(_compiler->lvaGetDesc(lclFld)->GetLayout());
+    }
+    else
+    {
+        fieldType = getLlvmTypeForVarType(lclFld->TypeGet());
+    }
+
+    Value* fieldAddressTypedValue = _builder.CreateBitCast(fieldAddressValue, fieldType->getPointerTo());
+
+    mapGenTreeToValue(lclFld, _builder.CreateLoad(fieldAddressTypedValue));
+}
+
 void Llvm::buildLocalVarAddr(GenTreeLclVarCommon* lclAddr)
 {
     unsigned int lclNum = lclAddr->GetLclNum();
@@ -1717,7 +1753,7 @@ Value* Llvm::zextIntIfNecessary(Value* intValue)
     return intValue;
 }
 
-int Llvm::getLocalOffsetAtIndex(GenTreeLclVar* lclVar)
+int Llvm::getLocalOffsetAtIndex(GenTreeLclVarCommon* lclVar)
 {
     int        offset;
 
@@ -1748,7 +1784,7 @@ int Llvm::getLocalOffsetAtIndex(GenTreeLclVar* lclVar)
     return offset;
 }
 
-Value* Llvm::getLocalVarAddress(GenTreeLclVar* lclVar) {
+Value* Llvm::getLocalVarAddress(GenTreeLclVarCommon* lclVar) {
     //// TODO: 1 - need the address context logic from ILToLLVMImporter when exception blocks are implemented
     ////       2 - ILToLLVMImporter caches the gep in the prolog, this creates the gep each time which is wasteful - look to copy more of the logic from ILToLLVMImporter.LoadVarAddress
     unsigned int varOffset = getLocalOffsetAtIndex(lclVar);
@@ -1830,6 +1866,9 @@ void Llvm::visitNode(GenTree* node)
             break;
         case GT_JTRUE:
             buildJTrue(node, getGenTreeValue(node->AsOp()->gtOp1));
+            break;
+        case GT_LCL_FLD:
+            buildLocalField(node->AsLclFld());
             break;
         case GT_LCL_VAR:
             localVar(node->AsLclVar());
@@ -2517,7 +2556,7 @@ void Llvm::lowerToShadowStack()
                 CurrentRange().InsertBefore(node, retAddressLocal, storeNode);
             }
 
-            if (node->OperIsLocalAddr())
+            if (node->OperIsLocalAddr() || node->OperIsLocalField())
             {
                 // Indicates that this local is to live on the LLVM frame, and will not participate in SSA.
                 _compiler->lvaGetDesc(node->AsLclVarCommon())->lvHasLocalAddr = 1;
@@ -2527,6 +2566,7 @@ void Llvm::lowerToShadowStack()
                 lowerStoreLcl(node->AsLclVarCommon());
             }   
         }
+
     }
 }
 
@@ -2587,8 +2627,7 @@ void Llvm::createAllocasForLocalsWithAddrOp()
     {
         LclVarDsc* varDsc = _compiler->lvaGetDesc(lclNum);
 
-        // TODO-LLVM LCLBLK - outgoing arg space.  Consider turning off FEATURE_FIXED_OUT_ARGS 
-        if ((varDsc->TypeGet() != TYP_LCLBLK) && canStoreLocalOnLlvmStack(varDsc) && isLlvmFrameLocal(varDsc))
+        if (canStoreLocalOnLlvmStack(varDsc) && isLlvmFrameLocal(varDsc))
         {
             CORINFO_CLASS_HANDLE classHandle = tryGetStructClassHandle(varDsc);
             Type* llvmType = getLlvmTypeForCorInfoType(toCorInfoType(varDsc->TypeGet()), classHandle);
