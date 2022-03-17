@@ -2452,20 +2452,17 @@ void Llvm::lowerStoreLcl(GenTreeLclVarCommon* storeLclNode)
             else if (dataOp->OperIs(GT_LCL_VAR)) // can get icon 0 here
             {
                 GenTreeLclVarCommon* dataLcl = dataOp->AsLclVarCommon();
-                if (dataLcl->TypeGet() == TYP_STRUCT)
-                {
-                    LclVarDsc* dataVarDsc = _compiler->lvaGetDesc(dataLcl->GetLclNum());
+                LclVarDsc* dataVarDsc = _compiler->lvaGetDesc(dataLcl->GetLclNum());
 
-                    dataVarDsc->lvHasLocalAddr = 1;
+                dataVarDsc->lvHasLocalAddr = 1;
 
-                    GenTree* dataAddrNode = _compiler->gtNewLclVarAddrNode(dataLcl->GetLclNum());
+                GenTree* dataAddrNode = _compiler->gtNewLclVarAddrNode(dataLcl->GetLclNum());
 
-                    dataLcl->ChangeOper(GT_OBJ);
-                    dataLcl->AsObj()->SetAddr(dataAddrNode);
-                    dataLcl->AsObj()->SetLayout(addrVarDsc->GetLayout());
+                dataLcl->ChangeOper(GT_OBJ);
+                dataLcl->AsObj()->SetAddr(dataAddrNode);
+                dataLcl->AsObj()->SetLayout(addrVarDsc->GetLayout());
 
-                    _currentRange->InsertBefore(dataLcl, dataAddrNode);
-                }
+                CurrentRange().InsertBefore(dataLcl, dataAddrNode);
             }
         }
     }
