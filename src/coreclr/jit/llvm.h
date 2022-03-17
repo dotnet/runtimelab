@@ -174,13 +174,15 @@ private:
     Value* getGenTreeValue(GenTree* node);
     LlvmArgInfo getLlvmArgInfoForArgIx(unsigned int lclNum);
     llvm::BasicBlock* getLLVMBasicBlockForBlock(BasicBlock* block);
-    Type* getLlvmTypeForCorInfoType(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd);
-    Type* getLlvmTypeForParameterType(CORINFO_CLASS_HANDLE classHnd);
 
     Type* getLlvmTypeForStruct(ClassLayout* classLayout);
     Type* getLlvmTypeForStruct(CORINFO_CLASS_HANDLE structHandle);
 
     Type* getLlvmTypeForVarType(var_types type);
+    Type* getLlvmTypeForLclVar(GenTreeLclVar* lclVar);
+    Type* getLlvmTypeForCorInfoType(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd);
+    Type* getLlvmTypeForParameterType(CORINFO_CLASS_HANDLE classHnd);
+
     int getLocalOffsetAtIndex(GenTreeLclVar* lclVar);
     Value* getLocalVarAddress(GenTreeLclVar* lclVar);
     struct DebugMetadata getOrCreateDebugMetadata(const char* documentFileName);
@@ -201,6 +203,7 @@ private:
     GenTreeCall::Use* lowerCallReturn(GenTreeCall* callNode, GenTreeCall::Use* lastArg);
     void lowerCallToShadowStack(GenTreeCall* callNode);
     void lowerToShadowStack();
+    void lowerStoreLcl(GenTreeLclVarCommon* storeLclNode);
 
     Value* mapGenTreeToValue(GenTree* genTree, Value* valueRef);
     bool needsReturnStackSlot(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd);
