@@ -8,7 +8,7 @@
 #include "tinyarray.h"
 
 // The "regList" type is a small set of registerse
-#if defined(TARGET_X86) || defined(TARGET_WASM)
+#ifdef TARGET_X86
 typedef TinyArray<unsigned short, regNumber, REGNUM_BITS> regList;
 #else
 // The regList is unused for all other targets.

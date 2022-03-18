@@ -2625,6 +2625,11 @@ void Llvm::createAllocasForLocalsWithAddrOp()
 
     for (unsigned lclNum = 0; lclNum < _compiler->lvaCount; lclNum++)
     {
+        if(_compiler->lvaOutgoingArgSpaceVar == lclNum)
+        {
+            continue;
+        }
+
         LclVarDsc* varDsc = _compiler->lvaGetDesc(lclNum);
 
         if (canStoreLocalOnLlvmStack(varDsc) && isLlvmFrameLocal(varDsc))

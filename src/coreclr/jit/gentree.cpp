@@ -12837,7 +12837,7 @@ void Compiler::gtGetLateArgMsg(GenTreeCall* call, GenTree* argx, int lateArgInde
     assert(curArgTabEntry);
     regNumber argReg = curArgTabEntry->GetRegNum();
 
-#if !defined(FEATURE_FIXED_OUT_ARGS) && !defined(TARGET_WASM)
+#if !FEATURE_FIXED_OUT_ARGS
     assert(lateArgIndex < call->regArgListCount);
     assert(argReg == call->regArgList[lateArgIndex]);
 #else
@@ -12846,7 +12846,7 @@ void Compiler::gtGetLateArgMsg(GenTreeCall* call, GenTree* argx, int lateArgInde
         sprintf_s(bufp, bufLength, "arg%d in out+%02x%c", curArgTabEntry->argNum, curArgTabEntry->GetByteOffset(), 0);
     }
     else
-#endif // !defined(FEATURE_FIXED_OUT_ARGS) && !defined(TARGET_WASM)
+#endif
     {
         if (curArgTabEntry->use == call->gtCallThisArg)
         {

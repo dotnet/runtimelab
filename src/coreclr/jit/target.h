@@ -276,9 +276,7 @@ typedef unsigned char   regNumberSmall;
 #define FEATURE_PARTIAL_SIMD_CALLEE_SAVE 1 // Whether SIMD registers are partially saved at calls
 #endif // !UNIX_AMD64_ABI
 #endif
-#ifndef TARGET_WASM
 #define FEATURE_FIXED_OUT_ARGS   1       // Preallocate the outgoing arg area in the prolog
-#endif // TARGET_WASM
 #define FEATURE_STRUCTPROMOTE    1       // JIT Optimization to promote fields of structs into registers
 #define FEATURE_FASTTAILCALL     1       // Tail calls made as epilog+jmp
 #define FEATURE_TAILCALL_OPT     1       // opportunistic Tail calls (i.e. without ".tail" prefix) made as fast tail calls.
