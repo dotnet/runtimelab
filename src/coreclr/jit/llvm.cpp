@@ -1686,37 +1686,23 @@ Value* Llvm::localVar(GenTreeLclVar* lclVar)
 
 void Llvm::buildLocalField(GenTreeLclFld* lclFld)
 {
+    assert(!lclFld->TypeIs(TYP_STRUCT));
+
     unsigned int lclNum = lclFld->GetLclNum();
 
     Value*     structAddrValue;
     LclVarDsc* varDsc = _compiler->lvaGetDesc(lclNum);
 
-    if (canStoreLocalOnLlvmStack(varDsc))
-    {
-        assert(m_allocas[lclNum] != nullptr);
+    assert(canStoreLocalOnLlvmStack(varDsc));
+    assert(m_allocas[lclNum] != nullptr);
 
-        structAddrValue = m_allocas[lclNum];
-    }
-    else
-    {
-        structAddrValue = getLocalVarAddress(lclFld);
-    }
+    structAddrValue = m_allocas[lclNum];
 
     // TODO-LLVM: if this is an only value type field, or at offset 0, we can optimize
     Value* structAddrInt8Ptr = castIfNecessary(structAddrValue, Type::getInt8PtrTy(_llvmContext));
     Value* fieldAddressValue = _builder.CreateGEP(structAddrInt8Ptr, _builder.getInt16(lclFld->GetLclOffs()));
-
-    Type* fieldType;
-    if (lclFld->TypeGet() == TYP_STRUCT)
-    {
-        fieldType = getLlvmTypeForStruct(_compiler->lvaGetDesc(lclFld)->GetLayout());
-    }
-    else
-    {
-        fieldType = getLlvmTypeForVarType(lclFld->TypeGet());
-    }
-
-    Value* fieldAddressTypedValue = _builder.CreateBitCast(fieldAddressValue, fieldType->getPointerTo());
+    Value* fieldAddressTypedValue =
+        castIfNecessary(fieldAddressValue, getLlvmTypeForVarType(lclFld->TypeGet())->getPointerTo());
 
     mapGenTreeToValue(lclFld, _builder.CreateLoad(fieldAddressTypedValue));
 }
@@ -1751,49 +1737,6 @@ Value* Llvm::zextIntIfNecessary(Value* intValue)
         return _builder.CreateIntCast(intValue, Type::getInt32Ty(_llvmContext), false);
     }
     return intValue;
-}
-
-int Llvm::getLocalOffsetAtIndex(GenTreeLclVarCommon* lclVar)
-{
-    int        offset;
-
-    LclVarDsc* varDsc = _compiler->lvaGetDesc(lclVar);
-    if (canStoreLocalOnLlvmStack(varDsc))
-    {
-        offset = -1;
-    }
-    else
-    {
-        offset = 0;
-
-        for (unsigned lclNum = 0; lclNum < lclVar->GetLclNum(); lclNum++)
-        {
-            varDsc = _compiler->lvaGetDesc(lclNum);
-            if (!varDsc->lvIsParam)
-            {
-                CorInfoType corInfoType = toCorInfoType(varDsc->TypeGet());
-                if (!canStoreLocalOnLlvmStack(varDsc))
-                {
-                    offset = padNextOffset(corInfoType, tryGetStructClassHandle(varDsc), offset);
-                }
-            }
-        }
-        offset = padOffset(toCorInfoType(lclVar->TypeGet()), tryGetStructClassHandle(varDsc), offset);
-    }
-
-    return offset;
-}
-
-Value* Llvm::getLocalVarAddress(GenTreeLclVarCommon* lclVar) {
-    //// TODO: 1 - need the address context logic from ILToLLVMImporter when exception blocks are implemented
-    ////       2 - ILToLLVMImporter caches the gep in the prolog, this creates the gep each time which is wasteful - look to copy more of the logic from ILToLLVMImporter.LoadVarAddress
-    unsigned int varOffset = getLocalOffsetAtIndex(lclVar);
-    if (varOffset == -1)
-    {
-        // if these are used in exception handlers, then they need to be stored, for now just fail
-        failFunctionCompilation();
-    }
-    return _builder.CreateGEP(_function->getArg(0), _builder.getInt32(varOffset), "lclVar");
 }
 
 bool Llvm::isLlvmFrameLocal(LclVarDsc* varDsc)
@@ -2162,6 +2105,15 @@ void Llvm::ConvertShadowStackLocalNode(GenTreeLclVarCommon* node)
             case GT_LCL_VAR:
                 indirOper = lclVar->TypeIs(TYP_STRUCT) ? GT_OBJ : GT_IND;
                 break;
+            case GT_LCL_FLD:
+                // TODO-LLVM: TYP_STRUCT
+                if (lclVar->TypeIs(TYP_STRUCT))
+                {
+                    failFunctionCompilation();
+                }
+
+                indirOper = GT_IND;
+                break;
             case GT_LCL_VAR_ADDR:
             case GT_LCL_FLD_ADDR:
                 indirOper = GT_NONE;
@@ -2514,7 +2466,7 @@ void Llvm::lowerToShadowStack()
         _currentRange = &LIR::AsRange(_currentBlock);
         for (GenTree* node : CurrentRange())
         {
-            if (node->OperIs(GT_STORE_LCL_VAR, GT_LCL_VAR, GT_LCL_VAR_ADDR, GT_LCL_FLD_ADDR))
+            if (node->OperIs(GT_STORE_LCL_VAR, GT_LCL_VAR, GT_LCL_VAR_ADDR, GT_LCL_FLD_ADDR, GT_LCL_FLD))
             {
                 ConvertShadowStackLocalNode(node->AsLclVarCommon());
             }
@@ -2564,9 +2516,8 @@ void Llvm::lowerToShadowStack()
             else if (node->OperIs(GT_STORE_LCL_VAR))
             {
                 lowerStoreLcl(node->AsLclVarCommon());
-            }   
+            }
         }
-
     }
 }
 

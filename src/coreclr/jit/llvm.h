@@ -183,8 +183,6 @@ private:
     Type* getLlvmTypeForCorInfoType(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd);
     Type* getLlvmTypeForParameterType(CORINFO_CLASS_HANDLE classHnd);
 
-    int getLocalOffsetAtIndex(GenTreeLclVarCommon* lclVar);
-    Value* getLocalVarAddress(GenTreeLclVarCommon* lclVar);
     struct DebugMetadata getOrCreateDebugMetadata(const char* documentFileName);
     llvm::Function* getOrCreateLlvmFunction(const char* symbolName, GenTreeCall* call);
     Value* getShadowStackForCallee();
