@@ -183,8 +183,6 @@ private:
     Type* getLlvmTypeForCorInfoType(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd);
     Type* getLlvmTypeForParameterType(CORINFO_CLASS_HANDLE classHnd);
 
-    int getLocalOffsetAtIndex(GenTreeLclVar* lclVar);
-    Value* getLocalVarAddress(GenTreeLclVar* lclVar);
     struct DebugMetadata getOrCreateDebugMetadata(const char* documentFileName);
     llvm::Function* getOrCreateLlvmFunction(const char* symbolName, GenTreeCall* call);
     Value* getShadowStackForCallee();
@@ -219,6 +217,7 @@ private:
     Value* zextIntIfNecessary(Value* intValue);
     StructDesc* getStructDesc(CORINFO_CLASS_HANDLE structHandle);
     unsigned buildMemCpy(Value* baseAddress, unsigned startOffset, unsigned endOffset, Value* srcAddress);
+    void buildLocalField(GenTreeLclFld* lclFld);
     void buildLocalVarAddr(GenTreeLclVarCommon* lclVar);
     bool isLlvmFrameLocal(LclVarDsc* varDsc);
 
