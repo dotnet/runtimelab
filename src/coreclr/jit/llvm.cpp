@@ -1688,17 +1688,12 @@ void Llvm::buildLocalField(GenTreeLclFld* lclFld)
 {
     assert(!lclFld->TypeIs(TYP_STRUCT));
 
-    unsigned int lclNum = lclFld->GetLclNum();
-
-    Value*     structAddrValue;
+    unsigned   lclNum = lclFld->GetLclNum();
     LclVarDsc* varDsc = _compiler->lvaGetDesc(lclNum);
+    assert(isLlvmFrameLocal(varDsc));
 
-    assert(canStoreLocalOnLlvmStack(varDsc));
-    assert(m_allocas[lclNum] != nullptr);
-
-    structAddrValue = m_allocas[lclNum];
-
-    // TODO-LLVM: if this is an only value type field, or at offset 0, we can optimize
+    // TODO-LLVM: if this is an only value type field, or at offset 0, we can optimize.
+    Value* structAddrValue = m_allocas[lclNum];
     Value* structAddrInt8Ptr = castIfNecessary(structAddrValue, Type::getInt8PtrTy(_llvmContext));
     Value* fieldAddressValue = _builder.CreateGEP(structAddrInt8Ptr, _builder.getInt16(lclFld->GetLclOffs()));
     Value* fieldAddressTypedValue =
@@ -2106,12 +2101,7 @@ void Llvm::ConvertShadowStackLocalNode(GenTreeLclVarCommon* node)
                 indirOper = lclVar->TypeIs(TYP_STRUCT) ? GT_OBJ : GT_IND;
                 break;
             case GT_LCL_FLD:
-                // TODO-LLVM: TYP_STRUCT
-                if (lclVar->TypeIs(TYP_STRUCT))
-                {
-                    failFunctionCompilation();
-                }
-
+                assert(!lclVar->TypeIs(TYP_STRUCT));
                 indirOper = GT_IND;
                 break;
             case GT_LCL_VAR_ADDR:
@@ -2466,7 +2456,7 @@ void Llvm::lowerToShadowStack()
         _currentRange = &LIR::AsRange(_currentBlock);
         for (GenTree* node : CurrentRange())
         {
-            if (node->OperIs(GT_STORE_LCL_VAR, GT_LCL_VAR, GT_LCL_VAR_ADDR, GT_LCL_FLD_ADDR, GT_LCL_FLD))
+            if (node->OperIs(GT_STORE_LCL_VAR, GT_LCL_VAR, GT_LCL_FLD, GT_LCL_VAR_ADDR, GT_LCL_FLD_ADDR))
             {
                 ConvertShadowStackLocalNode(node->AsLclVarCommon());
             }
@@ -2576,6 +2566,7 @@ void Llvm::createAllocasForLocalsWithAddrOp()
 
     for (unsigned lclNum = 0; lclNum < _compiler->lvaCount; lclNum++)
     {
+        // TODO-LLVM: Consider turning off FEATURE_FIXED_OUT_ARGS.
         if(_compiler->lvaOutgoingArgSpaceVar == lclNum)
         {
             continue;
