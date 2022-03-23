@@ -834,14 +834,12 @@ void Llvm::buildAdd(GenTree* node, Value* op1, Value* op2)
 
 void Llvm::buildDiv(GenTree* node, Value* op1, Value* op2)
 {
-    switch(node->TypeGet())
+    switch (node->TypeGet())
     {
         case TYP_FLOAT:
         case TYP_DOUBLE:
-            {
                 mapGenTreeToValue(node, _builder.CreateFDiv(op1, op2));
                 break;
-            }
         default:
             {
                 if (varTypeIsSigned(node->TypeGet()))
