@@ -840,7 +840,7 @@ void Llvm::buildDiv(GenTree* node)
 
     Value* resultValue;
     // TODO-LLVM: exception handling.  Div by 0 and INT32/64_MIN / -1
-    switch(node->TypeGet())
+    switch (node->TypeGet())
     {
         case TYP_FLOAT:
         case TYP_DOUBLE:
