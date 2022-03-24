@@ -134,7 +134,7 @@ private:
     void populateLlvmArgNums();
 
     void buildAdd(GenTree* node, Value* op1, Value* op2);
-    void buildDiv(GenTree* node, Value* op1, Value* op2);
+    void buildDiv(GenTree* node);
 
     void buildCall(GenTree* node);
     void buildCast(GenTreeCast* cast);

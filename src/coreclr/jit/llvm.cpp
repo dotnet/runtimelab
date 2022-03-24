@@ -832,28 +832,29 @@ void Llvm::buildAdd(GenTree* node, Value* op1, Value* op2)
     }
 }
 
-void Llvm::buildDiv(GenTree* node, Value* op1, Value* op2)
+void Llvm::buildDiv(GenTree* node)
 {
+    Type* targetType = getLlvmTypeForVarType(node->TypeGet());
+    Value* dividendValue = consumeValue(node->gtGetOp1(), targetType);
+    Value* divisorValue  = consumeValue(node->gtGetOp2(), targetType);
+
+    Value* resultValue;
+    // TODO-LLVM: exception handling.  Div by 0 and INT32/64_MIN / -1
     switch(node->TypeGet())
     {
         case TYP_FLOAT:
         case TYP_DOUBLE:
             {
-                mapGenTreeToValue(node, _builder.CreateFDiv(op1, op2));
+                resultValue = _builder.CreateFDiv(dividendValue, divisorValue);
                 break;
             }
         default:
             {
-                if (varTypeIsSigned(node->TypeGet()))
-                {
-                    mapGenTreeToValue(node, _builder.CreateSDiv(op1, op2));
-                }
-                else
-                {
-                    mapGenTreeToValue(node, _builder.CreateUDiv(op1, op2));
-                }
+                resultValue = _builder.CreateSDiv(dividendValue, divisorValue);
             }
     }
+
+    mapGenTreeToValue(node, resultValue);
 }
 
 unsigned int Llvm::getTotalRealLocalOffset()
@@ -1200,56 +1201,76 @@ void Llvm::buildCall(GenTree* node)
 
 void Llvm::buildCast(GenTreeCast* cast)
 {
-    var_types castToType = cast->CastToType();
-    if (castToType == TYP_BOOL && cast->TypeIs(TYP_INT) && cast->CastOp()->TypeIs(TYP_INT))
-    {
-        Value* intValue = _builder.CreateZExt(getGenTreeValue(cast->CastOp()), getLlvmTypeForVarType(TYP_INT));
-        mapGenTreeToValue(cast, intValue); // nothing to do except map the source value to the destination GenTree
-    }
-    else if (castToType == TYP_DOUBLE)
-    {
-        switch(cast->CastOp()->TypeGet())
-        {
-            case TYP_FLOAT:
-                {
-                    mapGenTreeToValue(cast, _builder.CreateFPCast(getGenTreeValue(cast->CastOp()),
-                                                                  getLlvmTypeForVarType(TYP_DOUBLE)));
-                    break;
-                }
-            case TYP_INT:
-            case TYP_LONG:
-                {
-                    mapGenTreeToValue(cast, cast->IsUnsigned()
-                        ? _builder.CreateUIToFP(getGenTreeValue(cast->CastOp()), getLlvmTypeForVarType(TYP_DOUBLE))
-                        : _builder.CreateSIToFP(getGenTreeValue(cast->CastOp()), getLlvmTypeForVarType(TYP_DOUBLE)));
-                    break;
-                }
-            default:
-                failFunctionCompilation();
-        }
-    }
-    else if (cast->TypeIs(TYP_LONG) && genActualTypeIsInt(cast->CastOp()))
-    {
-        // Cast pointer to int if necessary.  TODO-LLVM: candidate for lowering?
-        Value* sourceValue = castIfNecessary(getGenTreeValue(cast->CastOp()), getLlvmTypeForVarType(cast->CastOp()->TypeGet()));
+    var_types castFromType  = genActualType(cast->CastOp());
+    var_types castToType    = cast->CastToType();
+    Value*    castFromValue = consumeValue(cast->CastOp(), getLlvmTypeForVarType(castFromType));
+    Value*    castValue     = nullptr;
 
-        mapGenTreeToValue(cast,
-            cast->IsUnsigned()
-            ? _builder.CreateZExt(sourceValue, getLlvmTypeForVarType(castToType))
-            : _builder.CreateSExt(sourceValue, getLlvmTypeForVarType(castToType)));
-    }
-    else if (cast->TypeIs(TYP_INT, TYP_LONG) && cast->CastOp()->TypeIs(TYP_FLOAT, TYP_DOUBLE))
+    switch (castFromType)
     {
-        mapGenTreeToValue(cast,
-            cast->IsUnsigned()
-                ? _builder.CreateFPToUI(getGenTreeValue(cast->CastOp()), getLlvmTypeForVarType(castToType))
-                : _builder.CreateFPToSI(getGenTreeValue(cast->CastOp()), getLlvmTypeForVarType(castToType)));
+        case TYP_BOOL:
+        case TYP_BYTE:
+        case TYP_UBYTE:
+        case TYP_SHORT:
+        case TYP_USHORT:
+        case TYP_INT:
+        case TYP_UINT:
+        case TYP_LONG:
+        case TYP_ULONG:
+            switch (castToType)
+            {
+                case TYP_BOOL:
+                {
+                    // nothing to do except map the source value to the destination GenTree
+                    castValue = _builder.CreateZExt(castFromValue, getLlvmTypeForVarType(TYP_INT));
+                    break;
+                }
+                case TYP_LONG:
+                {
+                    castValue = cast->IsUnsigned()
+                                    ? _builder.CreateZExt(castFromValue, getLlvmTypeForVarType(castToType))
+                                    : _builder.CreateSExt(castFromValue, getLlvmTypeForVarType(castToType));
+                    break;
+                }
+                case TYP_DOUBLE:
+                {
+                    castValue = cast->IsUnsigned()
+                                    ? _builder.CreateUIToFP(castFromValue, getLlvmTypeForVarType(castToType))
+                                    : _builder.CreateSIToFP(castFromValue, getLlvmTypeForVarType(castToType));
+                    break;
+                }
+                default:
+                    failFunctionCompilation(); // NYI
+            }
+            break;
+
+        case TYP_FLOAT:
+        case TYP_DOUBLE:
+            switch (castToType)
+            {
+                case TYP_DOUBLE:
+                {
+                    castValue = _builder.CreateFPCast(castFromValue, getLlvmTypeForVarType(TYP_DOUBLE));
+                    break;
+                }
+                case TYP_INT:
+                case TYP_LONG:
+                {
+                    castValue = cast->IsUnsigned()
+                                    ? _builder.CreateFPToUI(castFromValue, getLlvmTypeForVarType(castToType))
+                                    : _builder.CreateFPToSI(castFromValue, getLlvmTypeForVarType(castToType));
+                    break;
+                }
+                default:
+                    failFunctionCompilation(); // NYI
+            }
+            break;
+
+        default:
+            failFunctionCompilation(); // NYI
     }
-    else
-    {
-        // TODO: other casts
-        failFunctionCompilation();
-    }
+
+    mapGenTreeToValue(cast, castValue);
 }
 
 void Llvm::buildCnsDouble(GenTreeDblCon* node)
@@ -1827,7 +1848,7 @@ void Llvm::visitNode(GenTree* node)
             buildAdd(node, getGenTreeValue(node->AsOp()->gtOp1), getGenTreeValue(node->AsOp()->gtOp2));
             break;
         case GT_DIV:
-            buildDiv(node, getGenTreeValue(node->AsOp()->gtOp1), getGenTreeValue(node->AsOp()->gtOp2));
+            buildDiv(node);
             break;
         case GT_CALL:
             buildCall(node);
