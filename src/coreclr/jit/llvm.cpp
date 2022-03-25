@@ -1249,16 +1249,23 @@ void Llvm::buildCast(GenTreeCast* cast)
                 case TYP_DOUBLE:
                     castValue = _builder.CreateFPCast(castFromValue, getLlvmTypeForVarType(TYP_DOUBLE));
                     break;
+                case TYP_BYTE:
+                case TYP_SHORT:
                 case TYP_INT:
                 case TYP_LONG:
-                {
-                    castValue = cast->IsUnsigned()
-                                    ? _builder.CreateFPToUI(castFromValue, getLlvmTypeForVarType(castToType))
-                                    : _builder.CreateFPToSI(castFromValue, getLlvmTypeForVarType(castToType));
+                    castValue = _builder.CreateFPToSI(castFromValue, getLlvmTypeForVarType(castToType));
                     break;
-                }
+
+                case TYP_BOOL:
+                case TYP_UBYTE:
+                case TYP_USHORT:
+                case TYP_UINT:
+                case TYP_ULONG:
+                    castValue = _builder.CreateFPToUI(castFromValue, getLlvmTypeForVarType(castToType));
+                    break;
+
                 default:
-                    failFunctionCompilation(); // NYI
+                    unreached();
             }
             break;
 
