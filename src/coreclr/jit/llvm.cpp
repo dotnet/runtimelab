@@ -837,8 +837,7 @@ void Llvm::buildDiv(GenTree* node)
     Type* targetType = getLlvmTypeForVarType(node->TypeGet());
     Value* dividendValue = consumeValue(node->gtGetOp1(), targetType);
     Value* divisorValue  = consumeValue(node->gtGetOp2(), targetType);
-
-    Value* resultValue;
+    Value* resultValue   = nullptr;
     // TODO-LLVM: exception handling.  Div by 0 and INT32/64_MIN / -1
     switch (node->TypeGet())
     {
