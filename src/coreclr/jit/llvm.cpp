@@ -1247,11 +1247,10 @@ void Llvm::buildCast(GenTreeCast* cast)
         case TYP_DOUBLE:
             switch (castToType)
             {
+                case TYP_FLOAT:
                 case TYP_DOUBLE:
-                {
                     castValue = _builder.CreateFPCast(castFromValue, getLlvmTypeForVarType(TYP_DOUBLE));
                     break;
-                }
                 case TYP_INT:
                 case TYP_LONG:
                 {
