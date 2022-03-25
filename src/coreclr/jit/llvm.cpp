@@ -1213,11 +1213,17 @@ void Llvm::buildCast(GenTreeCast* cast)
             switch (castToType)
             {
                 case TYP_BOOL:
-                {
-                    // nothing to do except map the source value to the destination GenTree
-                    castValue = _builder.CreateZExt(castFromValue, getLlvmTypeForVarType(TYP_INT));
+                case TYP_BYTE:
+                case TYP_UBYTE:
+                case TYP_SHORT:
+                case TYP_USHORT:
+                case TYP_INT:
+                case TYP_UINT:
+                    // "Cast(integer -> small type)" is "s/zext<int>(truncate<small type>)".
+                    // Here we will truncate and leave the extension for the user to consume.
+                    castValue = _builder.CreateTrunc(castFromValue, getLlvmTypeForVarType(castToType));
                     break;
-                }
+
                 case TYP_LONG:
                 {
                     castValue = cast->IsUnsigned()
