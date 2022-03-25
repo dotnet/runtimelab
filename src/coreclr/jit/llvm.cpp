@@ -1225,19 +1225,17 @@ void Llvm::buildCast(GenTreeCast* cast)
                     break;
 
                 case TYP_LONG:
-                {
                     castValue = cast->IsUnsigned()
                                     ? _builder.CreateZExt(castFromValue, getLlvmTypeForVarType(castToType))
                                     : _builder.CreateSExt(castFromValue, getLlvmTypeForVarType(castToType));
                     break;
-                }
+
                 case TYP_DOUBLE:
-                {
                     castValue = cast->IsUnsigned()
                                     ? _builder.CreateUIToFP(castFromValue, getLlvmTypeForVarType(castToType))
                                     : _builder.CreateSIToFP(castFromValue, getLlvmTypeForVarType(castToType));
                     break;
-                }
+
                 default:
                     failFunctionCompilation(); // NYI
             }
