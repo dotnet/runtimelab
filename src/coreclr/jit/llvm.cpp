@@ -1204,6 +1204,7 @@ void Llvm::buildCast(GenTreeCast* cast)
     Value*    castFromValue = consumeValue(cast->CastOp(), getLlvmTypeForVarType(castFromType));
     Value*    castValue     = nullptr;
 
+    // TODO-LLVM: handle checked ("gtOverflow") casts.
     switch (castFromType)
     {
         case TYP_INT:
