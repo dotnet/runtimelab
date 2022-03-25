@@ -844,14 +844,12 @@ void Llvm::buildDiv(GenTree* node)
     {
         case TYP_FLOAT:
         case TYP_DOUBLE:
-            {
-                resultValue = _builder.CreateFDiv(dividendValue, divisorValue);
-                break;
-            }
+            resultValue = _builder.CreateFDiv(dividendValue, divisorValue);
+            break;
+
         default:
-            {
-                resultValue = _builder.CreateSDiv(dividendValue, divisorValue);
-            }
+            resultValue = _builder.CreateSDiv(dividendValue, divisorValue);
+            break;
     }
 
     mapGenTreeToValue(node, resultValue);
