@@ -1202,9 +1202,10 @@ void Llvm::buildCall(GenTree* node)
 void Llvm::buildCast(GenTreeCast* cast)
 {
     var_types castFromType  = genActualType(cast->CastOp());
-    var_types castToType    = cast->CastToType();
-    Value*    castFromValue = consumeValue(cast->CastOp(), getLlvmTypeForVarType(castFromType));
-    Value*    castValue     = nullptr;
+    var_types castToType = cast->CastToType();
+    Value* castFromValue = consumeValue(cast->CastOp(), getLlvmTypeForVarType(castFromType));
+    Value* castValue = nullptr;
+    Type* castToLlvmType = getLlvmTypeForVarType(castToType);
 
     switch (castFromType)
     {
@@ -1228,15 +1229,15 @@ void Llvm::buildCast(GenTreeCast* cast)
                 case TYP_LONG:
                 {
                     castValue = cast->IsUnsigned()
-                                    ? _builder.CreateZExt(castFromValue, getLlvmTypeForVarType(castToType))
-                                    : _builder.CreateSExt(castFromValue, getLlvmTypeForVarType(castToType));
+                                    ? _builder.CreateZExt(castFromValue, castToLlvmType)
+                                    : _builder.CreateSExt(castFromValue, castToLlvmType);
                     break;
                 }
                 case TYP_DOUBLE:
                 {
                     castValue = cast->IsUnsigned()
-                                    ? _builder.CreateUIToFP(castFromValue, getLlvmTypeForVarType(castToType))
-                                    : _builder.CreateSIToFP(castFromValue, getLlvmTypeForVarType(castToType));
+                                    ? _builder.CreateUIToFP(castFromValue, castToLlvmType)
+                                    : _builder.CreateSIToFP(castFromValue, castToLlvmType);
                     break;
                 }
                 default:
@@ -1257,8 +1258,8 @@ void Llvm::buildCast(GenTreeCast* cast)
                 case TYP_LONG:
                 {
                     castValue = cast->IsUnsigned()
-                                    ? _builder.CreateFPToUI(castFromValue, getLlvmTypeForVarType(castToType))
-                                    : _builder.CreateFPToSI(castFromValue, getLlvmTypeForVarType(castToType));
+                                    ? _builder.CreateFPToUI(castFromValue, castToLlvmType)
+                                    : _builder.CreateFPToSI(castFromValue, castToLlvmType);
                     break;
                 }
                 default:
