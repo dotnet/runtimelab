@@ -837,21 +837,18 @@ void Llvm::buildDiv(GenTree* node)
     Type* targetType = getLlvmTypeForVarType(node->TypeGet());
     Value* dividendValue = consumeValue(node->gtGetOp1(), targetType);
     Value* divisorValue  = consumeValue(node->gtGetOp2(), targetType);
-
-    Value* resultValue;
+    Value* resultValue   = nullptr;
     // TODO-LLVM: exception handling.  Div by 0 and INT32/64_MIN / -1
     switch (node->TypeGet())
     {
         case TYP_FLOAT:
         case TYP_DOUBLE:
-            {
-                resultValue = _builder.CreateFDiv(dividendValue, divisorValue);
-                break;
-            }
+            resultValue = _builder.CreateFDiv(dividendValue, divisorValue);
+            break;
+
         default:
-            {
-                resultValue = _builder.CreateSDiv(dividendValue, divisorValue);
-            }
+            resultValue = _builder.CreateSDiv(dividendValue, divisorValue);
+            break;
     }
 
     mapGenTreeToValue(node, resultValue);
@@ -1207,39 +1204,37 @@ void Llvm::buildCast(GenTreeCast* cast)
     Value* castValue = nullptr;
     Type* castToLlvmType = getLlvmTypeForVarType(castToType);
 
+    // TODO-LLVM: handle checked ("gtOverflow") casts.
     switch (castFromType)
     {
-        case TYP_BOOL:
-        case TYP_BYTE:
-        case TYP_UBYTE:
-        case TYP_SHORT:
-        case TYP_USHORT:
         case TYP_INT:
-        case TYP_UINT:
         case TYP_LONG:
-        case TYP_ULONG:
             switch (castToType)
             {
                 case TYP_BOOL:
-                {
-                    // nothing to do except map the source value to the destination GenTree
-                    castValue = _builder.CreateZExt(castFromValue, getLlvmTypeForVarType(TYP_INT));
+                case TYP_BYTE:
+                case TYP_UBYTE:
+                case TYP_SHORT:
+                case TYP_USHORT:
+                case TYP_INT:
+                case TYP_UINT:
+                    // "Cast(integer -> small type)" is "s/zext<int>(truncate<small type>)".
+                    // Here we will truncate and leave the extension for the user to consume.
+                    castValue = _builder.CreateTrunc(castFromValue, getLlvmTypeForVarType(castToType));
                     break;
-                }
+
                 case TYP_LONG:
-                {
                     castValue = cast->IsUnsigned()
                                     ? _builder.CreateZExt(castFromValue, castToLlvmType)
                                     : _builder.CreateSExt(castFromValue, castToLlvmType);
                     break;
-                }
+
                 case TYP_DOUBLE:
-                {
                     castValue = cast->IsUnsigned()
                                     ? _builder.CreateUIToFP(castFromValue, castToLlvmType)
                                     : _builder.CreateSIToFP(castFromValue, castToLlvmType);
                     break;
-                }
+
                 default:
                     failFunctionCompilation(); // NYI
             }
@@ -1249,21 +1244,27 @@ void Llvm::buildCast(GenTreeCast* cast)
         case TYP_DOUBLE:
             switch (castToType)
             {
+                case TYP_FLOAT:
                 case TYP_DOUBLE:
-                {
                     castValue = _builder.CreateFPCast(castFromValue, getLlvmTypeForVarType(TYP_DOUBLE));
                     break;
-                }
+                case TYP_BYTE:
+                case TYP_SHORT:
                 case TYP_INT:
                 case TYP_LONG:
-                {
-                    castValue = cast->IsUnsigned()
-                                    ? _builder.CreateFPToUI(castFromValue, castToLlvmType)
-                                    : _builder.CreateFPToSI(castFromValue, castToLlvmType);
+                    castValue = _builder.CreateFPToSI(castFromValue, getLlvmTypeForVarType(castToType));
                     break;
-                }
+
+                case TYP_BOOL:
+                case TYP_UBYTE:
+                case TYP_USHORT:
+                case TYP_UINT:
+                case TYP_ULONG:
+                    castValue = _builder.CreateFPToUI(castFromValue, getLlvmTypeForVarType(castToType));
+                    break;
+
                 default:
-                    failFunctionCompilation(); // NYI
+                    unreached();
             }
             break;
 
