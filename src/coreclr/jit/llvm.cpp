@@ -947,8 +947,10 @@ Value* Llvm::consumeValue(GenTree* node, Type* targetLlvmType)
         }
 
         // int and smaller int conversions
-        assert(targetLlvmType->isIntegerTy() && nodeValue->getType()->isIntegerTy() &&
-               nodeValue->getType()->getPrimitiveSizeInBits() <= 32 && targetLlvmType->getPrimitiveSizeInBits() <= 32);
+        assert((node->OperIs(GT_CAST) && targetLlvmType->isFloatingPointTy())
+            || (targetLlvmType->isIntegerTy() &&
+               nodeValue->getType()->isIntegerTy() &&
+               nodeValue->getType()->getPrimitiveSizeInBits() <= 32 && targetLlvmType->getPrimitiveSizeInBits() <= 32));
         if (nodeValue->getType()->getPrimitiveSizeInBits() < targetLlvmType->getPrimitiveSizeInBits())
         {
             var_types trueNodeType = TYP_UNDEF;
@@ -974,6 +976,29 @@ Value* Llvm::consumeValue(GenTree* node, Type* targetLlvmType)
                     trueNodeType = TYP_UBYTE;
                     break;
 
+                case GT_CAST:
+                    switch (node->TypeGet())
+                    {
+                        case TYP_FLOAT:
+                            trueNodeType = TYP_DOUBLE;
+                            break;
+
+                        default:
+                            switch (nodeValue->getType()->getPrimitiveSizeInBits())
+                            {
+                                case 8:
+                                    trueNodeType = varTypeIsSigned(node->TypeGet()) ? TYP_BYTE : TYP_UBYTE;
+                                    break;
+                                case 16:
+                                    trueNodeType = varTypeIsSigned(node->TypeGet()) ? TYP_SHORT : TYP_USHORT;
+                                    break;
+                                default:
+                                    assert("unreachable");
+                                    break;
+                            }
+                            break;
+                    }
+                    break;
                 default:
                     trueNodeType = node->TypeGet();
                     break;
@@ -981,13 +1006,31 @@ Value* Llvm::consumeValue(GenTree* node, Type* targetLlvmType)
 
             assert(varTypeIsSmall(trueNodeType));
 
-            finalValue = varTypeIsSigned(trueNodeType) ? _builder.CreateSExt(nodeValue, targetLlvmType)
-                                                       : _builder.CreateZExt(nodeValue, targetLlvmType);
+            if (targetLlvmType->isIntegerTy())
+            {
+                finalValue = varTypeIsSigned(trueNodeType) ? _builder.CreateSExt(nodeValue, targetLlvmType)
+                                                           : _builder.CreateZExt(nodeValue, targetLlvmType);
+            }
+            else
+            {
+                assert(targetLlvmType->isFloatingPointTy());
+
+                finalValue = _builder.CreateFPExt(nodeValue, targetLlvmType);
+            }
         }
         else
         {
             // Truncate.
-            finalValue = _builder.CreateTrunc(nodeValue, targetLlvmType);
+            if (targetLlvmType->isIntegerTy())
+            {
+                finalValue = _builder.CreateTrunc(nodeValue, targetLlvmType);
+            }
+            else
+            {
+                assert(targetLlvmType->isFloatingPointTy());
+
+                finalValue = _builder.CreateFPTrunc(nodeValue, targetLlvmType);
+            }
         }
     }
 
@@ -1077,9 +1120,12 @@ bool Llvm::helperRequiresShadowStack(CORINFO_METHOD_HANDLE corinfoMethodHnd)
            corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_DBL2LNG_OVF) ||
            corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_DBL2UINT_OVF) ||
            corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_DBL2ULNG_OVF) ||
+           corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_LMOD) ||
            corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_LDIV) ||
            corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_LMUL_OVF) ||
-           corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_ULMUL_OVF);
+           corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_ULMUL_OVF) ||
+           corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_ULDIV) ||
+           corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_ULMOD);
 }
 
 void Llvm::buildHelperFuncCall(GenTreeCall* call)
