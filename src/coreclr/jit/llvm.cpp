@@ -947,10 +947,8 @@ Value* Llvm::consumeValue(GenTree* node, Type* targetLlvmType)
         }
 
         // int and smaller int conversions
-        assert((node->OperIs(GT_CAST) && targetLlvmType->isFloatingPointTy())
-            || (targetLlvmType->isIntegerTy() &&
-               nodeValue->getType()->isIntegerTy() &&
-               nodeValue->getType()->getPrimitiveSizeInBits() <= 32 && targetLlvmType->getPrimitiveSizeInBits() <= 32));
+        assert(targetLlvmType->isIntegerTy() && nodeValue->getType()->isIntegerTy() &&
+               nodeValue->getType()->getPrimitiveSizeInBits() <= 32 && targetLlvmType->getPrimitiveSizeInBits() <= 32);
         if (nodeValue->getType()->getPrimitiveSizeInBits() < targetLlvmType->getPrimitiveSizeInBits())
         {
             var_types trueNodeType = TYP_UNDEF;
@@ -980,10 +978,10 @@ Value* Llvm::consumeValue(GenTree* node, Type* targetLlvmType)
                     switch (nodeValue->getType()->getPrimitiveSizeInBits())
                     {
                         case 8:
-                            trueNodeType = varTypeIsSigned(node->AsCast()->gtCastType) ? TYP_BYTE : TYP_UBYTE;
+                            trueNodeType = varTypeIsSigned(node->AsCast()->CastToType()) ? TYP_BYTE : TYP_UBYTE;
                             break;
                         case 16:
-                            trueNodeType = varTypeIsSigned(node->AsCast()->gtCastType) ? TYP_SHORT : TYP_USHORT;
+                            trueNodeType = varTypeIsSigned(node->AsCast()->CastToType()) ? TYP_SHORT : TYP_USHORT;
                             break;
                         default:
                             assert("unreachable");
