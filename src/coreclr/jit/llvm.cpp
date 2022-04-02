@@ -977,25 +977,16 @@ Value* Llvm::consumeValue(GenTree* node, Type* targetLlvmType)
                     break;
 
                 case GT_CAST:
-                    switch (node->TypeGet())
+                    switch (nodeValue->getType()->getPrimitiveSizeInBits())
                     {
-                        case TYP_FLOAT:
-                            trueNodeType = TYP_DOUBLE;
+                        case 8:
+                            trueNodeType = varTypeIsSigned(node->TypeGet()) ? TYP_BYTE : TYP_UBYTE;
                             break;
-
+                        case 16:
+                            trueNodeType = varTypeIsSigned(node->TypeGet()) ? TYP_SHORT : TYP_USHORT;
+                            break;
                         default:
-                            switch (nodeValue->getType()->getPrimitiveSizeInBits())
-                            {
-                                case 8:
-                                    trueNodeType = varTypeIsSigned(node->TypeGet()) ? TYP_BYTE : TYP_UBYTE;
-                                    break;
-                                case 16:
-                                    trueNodeType = varTypeIsSigned(node->TypeGet()) ? TYP_SHORT : TYP_USHORT;
-                                    break;
-                                default:
-                                    assert("unreachable");
-                                    break;
-                            }
+                            assert("unreachable");
                             break;
                     }
                     break;
@@ -1006,31 +997,13 @@ Value* Llvm::consumeValue(GenTree* node, Type* targetLlvmType)
 
             assert(varTypeIsSmall(trueNodeType));
 
-            if (targetLlvmType->isIntegerTy())
-            {
-                finalValue = varTypeIsSigned(trueNodeType) ? _builder.CreateSExt(nodeValue, targetLlvmType)
-                                                           : _builder.CreateZExt(nodeValue, targetLlvmType);
-            }
-            else
-            {
-                assert(targetLlvmType->isFloatingPointTy());
-
-                finalValue = _builder.CreateFPExt(nodeValue, targetLlvmType);
-            }
+            finalValue = varTypeIsSigned(trueNodeType) ? _builder.CreateSExt(nodeValue, targetLlvmType)
+                                                       : _builder.CreateZExt(nodeValue, targetLlvmType);
         }
         else
         {
             // Truncate.
-            if (targetLlvmType->isIntegerTy())
-            {
-                finalValue = _builder.CreateTrunc(nodeValue, targetLlvmType);
-            }
-            else
-            {
-                assert(targetLlvmType->isFloatingPointTy());
-
-                finalValue = _builder.CreateFPTrunc(nodeValue, targetLlvmType);
-            }
+            finalValue = _builder.CreateTrunc(nodeValue, targetLlvmType);
         }
     }
 
@@ -1266,7 +1239,7 @@ void Llvm::buildCast(GenTreeCast* cast)
                 case TYP_UINT:
                     // "Cast(integer -> small type)" is "s/zext<int>(truncate<small type>)".
                     // Here we will truncate and leave the extension for the user to consume.
-                    castValue = _builder.CreateTrunc(castFromValue, getLlvmTypeForVarType(castToType));
+                    castValue = _builder.CreateTrunc(castFromValue, castToLlvmType);
                     break;
 
                 case TYP_LONG:
@@ -1292,13 +1265,13 @@ void Llvm::buildCast(GenTreeCast* cast)
             {
                 case TYP_FLOAT:
                 case TYP_DOUBLE:
-                    castValue = _builder.CreateFPCast(castFromValue, getLlvmTypeForVarType(TYP_DOUBLE));
+                    castValue = _builder.CreateFPCast(castFromValue, castToLlvmType);
                     break;
                 case TYP_BYTE:
                 case TYP_SHORT:
                 case TYP_INT:
                 case TYP_LONG:
-                    castValue = _builder.CreateFPToSI(castFromValue, getLlvmTypeForVarType(castToType));
+                    castValue = _builder.CreateFPToSI(castFromValue, castToLlvmType);
                     break;
 
                 case TYP_BOOL:
@@ -1306,7 +1279,7 @@ void Llvm::buildCast(GenTreeCast* cast)
                 case TYP_USHORT:
                 case TYP_UINT:
                 case TYP_ULONG:
-                    castValue = _builder.CreateFPToUI(castFromValue, getLlvmTypeForVarType(castToType));
+                    castValue = _builder.CreateFPToUI(castFromValue, castToLlvmType);
                     break;
 
                 default:
