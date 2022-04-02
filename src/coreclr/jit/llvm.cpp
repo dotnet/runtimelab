@@ -980,10 +980,10 @@ Value* Llvm::consumeValue(GenTree* node, Type* targetLlvmType)
                     switch (nodeValue->getType()->getPrimitiveSizeInBits())
                     {
                         case 8:
-                            trueNodeType = varTypeIsSigned(node->TypeGet()) ? TYP_BYTE : TYP_UBYTE;
+                            trueNodeType = varTypeIsSigned(node->AsCast()->gtCastType) ? TYP_BYTE : TYP_UBYTE;
                             break;
                         case 16:
-                            trueNodeType = varTypeIsSigned(node->TypeGet()) ? TYP_SHORT : TYP_USHORT;
+                            trueNodeType = varTypeIsSigned(node->AsCast()->gtCastType) ? TYP_SHORT : TYP_USHORT;
                             break;
                         default:
                             assert("unreachable");
