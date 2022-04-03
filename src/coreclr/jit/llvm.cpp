@@ -977,7 +977,6 @@ Value* Llvm::consumeValue(GenTree* node, Type* targetLlvmType)
                 case GT_CAST:
                     trueNodeType = node->AsCast()->CastToType();
                     break;
-                    break;
                 default:
                     trueNodeType = node->TypeGet();
                     break;
