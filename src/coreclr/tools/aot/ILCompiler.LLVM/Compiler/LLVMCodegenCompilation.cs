@@ -138,6 +138,7 @@ namespace ILCompiler
 
                 if (methodIL == null)
                 {
+                    methodCodeNodeNeedingCode.CompilationCompleted = true; //set to true here (*)
                     return;
                 }
 
