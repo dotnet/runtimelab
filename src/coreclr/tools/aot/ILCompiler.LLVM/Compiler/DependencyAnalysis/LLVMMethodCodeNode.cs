@@ -127,9 +127,14 @@ namespace ILCompiler.DependencyAnalysis
         {
             var dependencies = new DependencyList();
 
-            foreach (DependencyListEntry node in _dependencies)
-                dependencies.Add(node);
-
+            if (_dependencies != null)
+            {
+                foreach (DependencyListEntry node in _dependencies)
+                {
+                    dependencies.Add(node);
+                }                
+            }
+           
             return dependencies;
         }
 
