@@ -134,7 +134,14 @@ namespace ILCompiler
 
             try
             {
-                if (GetMethodIL(method).GetExceptionRegions().Length == 0)
+                var methodIL = GetMethodIL(method);
+
+                if (methodIL == null)
+                {
+                    return;
+                }
+
+                if (methodIL.GetExceptionRegions().Length == 0)
                 {
                     var mangledName = NodeFactory.NameMangler.GetMangledMethodName(method).ToString();
                     var sig = method.Signature;
