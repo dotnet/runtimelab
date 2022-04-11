@@ -4100,6 +4100,7 @@ namespace Internal.IL
                     maxValue = uint.MaxValue;
                     break;
                 case WellKnownType.Int32:
+                case WellKnownType.IntPtr:  // TODO : 64bit.
                     maxValue = int.MaxValue;
                     minValue = int.MinValue;
                     break;

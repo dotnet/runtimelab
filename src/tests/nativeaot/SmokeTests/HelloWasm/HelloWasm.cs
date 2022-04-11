@@ -2949,6 +2949,15 @@ internal static class Program
         {
             thrown++;
         }
+        try
+        {
+            byte[] bytes = new byte[1];
+            var b = bytes[i];
+        }
+        catch (OverflowException)
+        {
+            EndTest(false, "implicit convertion of long to int should not throw when long has value == 1");
+        }
         if (thrown != 3) FailTest("Test I8 Conv_Ovf not all cases were thrown  " + thrown.ToString()); ;
         EndTest(true);
     }
