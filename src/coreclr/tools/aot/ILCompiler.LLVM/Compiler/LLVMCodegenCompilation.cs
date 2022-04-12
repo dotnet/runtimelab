@@ -142,7 +142,7 @@ namespace ILCompiler
                     return;
                 }
 
-                if (methodIL.GetExceptionRegions().Length == 0)
+                if (methodIL.GetExceptionRegions().Length == -1)
                 {
                     var mangledName = NodeFactory.NameMangler.GetMangledMethodName(method).ToString();
                     var sig = method.Signature;
