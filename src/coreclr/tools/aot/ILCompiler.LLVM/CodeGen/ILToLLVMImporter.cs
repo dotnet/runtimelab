@@ -71,6 +71,8 @@ namespace Internal.IL
         private readonly Dictionary<IntPtr, LLVMBasicBlockRef> _funcletResumeBlocks = new Dictionary<IntPtr, LLVMBasicBlockRef>();
         private readonly EHInfoNode _ehInfoNode;
         private AddressCacheContext _funcletAddrCacheCtx;
+        private readonly List<AddressCacheContext> _addressCachesToBackFill = new List<AddressCacheContext>();
+
 
         /// <summary>
         /// Stack of values pushed onto the IL stack: locals, arguments, values, function pointer, ...
@@ -171,7 +173,12 @@ namespace Internal.IL
             try
             {
                 ImportBasicBlocks();
-                
+
+                for (var i = 0; i < _addressCachesToBackFill.Count; i++)
+                {
+                    BackFillProlog(_addressCachesToBackFill[i]);
+                }
+
                 CodeBasedDependencyAlgorithm.AddDependenciesDueToMethodCodePresence(ref _dependencies, _compilation.NodeFactory, _method, _canonMethodIL);
             }
             catch
@@ -213,6 +220,19 @@ namespace Internal.IL
             }
         }
 
+        private void BackFillProlog(AddressCacheContext addressCacheContext)
+        {
+            // TODO: can this be done without an alloca/store/load.  https://github.com/microsoft/LLVMSharp/issues/148 ?
+            addressCacheContext.PrologBuilder.PositionBefore(addressCacheContext.EndOfUsedShadowStackPtr.NextInstruction);
+            // Add 24 bytes if there are exception regions to cover the space needed by the greater of InvokeSecondPassWasm and FindFirstPassHandlerWasm.
+            // This is taken by args, locals and temps and can be read from the usedSS value in the prologs: %endOfUsedShadowStack = getelementptr i8, i8* %0, i32 24 <--This is the space required
+            // An alternative approach could be to calculate this space in RhpCallFilterFunclet/RhpCallFinallyFunclet and pass it through
+            LLVMValueRef stackFrameSize = BuildConstInt32(GetTotalParameterOffset() + GetTotalLocalOffset() + (addressCacheContext.NeedsPadding ? 24 : 0));
+            addressCacheContext.PrologBuilder.BuildStore(
+                addressCacheContext.PrologBuilder.BuildGEP(addressCacheContext.Funclet.GetParam(0), new LLVMValueRef[] { stackFrameSize }, "endOfUsedShadowStack"),
+                addressCacheContext.EndOfUsedShadowStackPtr);
+        }
+
         private void GenerateProlog()
         {
             // Avoid appearing to be in any exception regions
@@ -228,14 +248,10 @@ namespace Internal.IL
             {
                 thisOffset = 1;
             }
-            _funcletAddrCacheCtx = new AddressCacheContext
-            {
-                // sparsely populated, args on LLVM stack not in here
-                ArgAddresses = new LLVMValueRef[thisOffset + _signature.Length],
-                LocalAddresses = new LLVMValueRef[_locals.Length],
-                TempAddresses = new List<LLVMValueRef>(),
-                PrologBuilder = prologBuilder
-            };
+
+            _funcletAddrCacheCtx = new AddressCacheContext(_currentFunclet, prologBuilder, new LLVMValueRef[thisOffset + _signature.Length], new LLVMValueRef[_locals.Length], new List<LLVMValueRef>());
+            _addressCachesToBackFill.Add(_funcletAddrCacheCtx);
+
             // Allocate slots to store exception being dispatched and generic context if present
             if (_exceptionRegions.Length > 0)
             {
@@ -392,6 +408,10 @@ namespace Internal.IL
                     }
                 }
             }
+
+            // The prologBuilder will be used as the method is compiled to add locals and temps (in spill slots)
+            // Additionally, the (shadowStack + all offsets) will be stored at the end of ImportBasicBlocks
+            _funcletAddrCacheCtx.SetEndOfUsedShadowStackPtr(prologBuilder.BuildAlloca(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), "usedSS"));
 
             if (_thisType is MetadataType metadataType && !metadataType.IsBeforeFieldInit
                 && (!_method.IsStaticConstructor && _method.Signature.IsStatic || _method.IsConstructor || (_thisType.IsValueType && !_method.Signature.IsStatic))
@@ -639,7 +659,21 @@ namespace Internal.IL
             // Push an exception object for catch and filter
             if (basicBlock.HandlerStart || basicBlock.FilterStart)
             {
-                _funcletAddrCacheCtx = null;
+                //TODO only write the prolog if used
+                LLVMBuilderRef prologBuilder = Context.CreateBuilder();
+                prologBuilder.PositionAtEnd(Context.InsertBasicBlock(_curBasicBlock, "prolog"));
+                _funcletAddrCacheCtx = new AddressCacheContext(_currentFunclet, prologBuilder,
+                    new LLVMValueRef[_funcletAddrCacheCtx.ArgAddresses.Length],  // handlers/filters have access to the same number of args and locals as main funclet, just not the same LLVMValueRef s
+                    new LLVMValueRef[_funcletAddrCacheCtx.LocalAddresses.Length],
+                    new List<LLVMValueRef>(),
+                    true /* needs padding for FindFirstPassHandlerWasm/InvokeSecondPassWasm */);
+                _addressCachesToBackFill.Add(_funcletAddrCacheCtx);
+                prologBuilder.PositionBefore(prologBuilder.BuildBr(_curBasicBlock));
+                _funcletAddrCacheCtx.SetEndOfUsedShadowStackPtr(prologBuilder.BuildAlloca(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), "usedSS"));
+                // The prologBuilder will be used as the method is compiled to add locals and temps (in spill slots)
+                // Additionally, the (shadowStack + all offsets) will be stored at the end of ImportBasicBlocks
+                _builder.PositionAtEnd(_curBasicBlock);
+
                 foreach (ExceptionRegion ehRegion in _exceptionRegions)
                 {
                     if (ehRegion.ILRegion.HandlerOffset == basicBlock.StartOffset ||
@@ -653,6 +687,10 @@ namespace Internal.IL
                         break;
                     }
                 }
+            }
+            else
+            {
+                _funcletAddrCacheCtx = GetAddressCacheForFunclet(_currentFunclet);
             }
 
             if (basicBlock.TryStart)
@@ -671,6 +709,16 @@ namespace Internal.IL
             }
 
            _builder.PositionAtEnd(_curBasicBlock);
+        }
+
+
+        private AddressCacheContext GetAddressCacheForFunclet(LLVMValueRef currentFunclet)
+        {
+            for (var i = 0; i < _addressCachesToBackFill.Count; i++)
+            {
+                if (_addressCachesToBackFill[i].Funclet == _currentFunclet) return _addressCachesToBackFill[i];
+            }
+            return null;
         }
 
         private void EndImportingBasicBlock(BasicBlock basicBlock)
@@ -5517,10 +5565,29 @@ namespace Internal.IL
 
         class AddressCacheContext
         {
+            internal AddressCacheContext(LLVMValueRef funclet, LLVMBuilderRef prologBuilder, LLVMValueRef[] argAddresses, LLVMValueRef[] localAddresses, List<LLVMValueRef> tempAddresses, bool needsPadding = false)
+            {
+                Funclet = funclet;
+                PrologBuilder = prologBuilder;
+                ArgAddresses = argAddresses;
+                LocalAddresses = localAddresses;
+                TempAddresses = tempAddresses;
+                NeedsPadding = needsPadding;
+            }
+
+            internal void SetEndOfUsedShadowStackPtr(LLVMValueRef ptr)
+            {
+                Debug.Assert(EndOfUsedShadowStackPtr == default, "End of used shadow stack pointer already set");
+                EndOfUsedShadowStackPtr = ptr;
+            }
+
+            internal readonly LLVMValueRef Funclet;
             internal LLVMBuilderRef PrologBuilder;
             internal LLVMValueRef[] ArgAddresses;
             internal LLVMValueRef[] LocalAddresses;
             internal List<LLVMValueRef> TempAddresses;
+            internal LLVMValueRef EndOfUsedShadowStackPtr;
+            internal readonly bool NeedsPadding;
         }
     }
 }
