@@ -379,12 +379,50 @@ internal static class Program
 
         TestLclVarAddr(new LlvmStruct { i1 = 1, i2 = 2 });
 
+        TestJitUseStruct();
+
         // This test should remain last to get other results before stopping the debugger
         PrintLine("Debugger.Break() test: Ok if debugger is open and breaks.");
         System.Diagnostics.Debugger.Break();
 
         PrintLine("Done");
         return Success ? 100 : -1;
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private unsafe static StructWithIndex JitUseStructProblem(StructWithStructWithIndex* p, StructWithIndex b)
+    {
+        b = p->StructWithIndex;
+        JitUse(&b);
+
+        return b;
+    }
+
+    struct StructWithIndex
+    {
+        public int Index;
+        public int Value;
+    }
+
+    struct StructWithStructWithIndex
+    {
+        public StructWithIndex StructWithIndex;
+        public int AnotherIndex;
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public unsafe static void JitUse<T>(T* arg) where T : unmanaged { }
+
+    private unsafe static void TestJitUseStruct()
+    {
+        StartTest("TestJitUseStruct (Jit compilation struct test)");
+        StructWithIndex structWithIndex = new StructWithIndex() { Index = 1, Value = 2};
+        StructWithStructWithIndex structWithStruct =
+            new StructWithStructWithIndex() { StructWithIndex = structWithIndex, AnotherIndex = 3};
+
+        var res = JitUseStructProblem(&structWithStruct, structWithIndex);
+
+        EndTest(res.Index == structWithIndex.Index && res.Value == structWithIndex.Value);
     }
 
     class ShortAndByte { internal short aShort; internal byte aByte; }

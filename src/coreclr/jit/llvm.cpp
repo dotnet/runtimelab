@@ -436,9 +436,8 @@ CorInfoType Llvm::toCorInfoType(var_types varType)
             return CorInfoType::CORINFO_TYPE_BYTE;
         case TYP_UBYTE:
             return CorInfoType::CORINFO_TYPE_UBYTE;
-        case TYP_LCLBLK: // TODO: outgoing args space - need to get an example compiling, e.g. https://github.com/dotnet/runtimelab/blob/40f9ff64ae80596bcddcec16a7e1a8f57a0b2cff/src/tests/nativeaot/SmokeTests/HelloWasm/HelloWasm.cs#L3492 to see what's
-            // going on.  CORINFO_TYPE_VALUECLASS is a better mapping but if that is mapped as of now, then canStoreTypeOnLlvmStack will fail compilation for most methods.
-            failFunctionCompilation();
+        case TYP_LCLBLK:
+            return CorInfoType::CORINFO_TYPE_VALUECLASS;
         case TYP_DOUBLE:
             return CorInfoType::CORINFO_TYPE_DOUBLE;
         case TYP_FLOAT:
@@ -659,6 +658,17 @@ Type* Llvm::getLlvmTypeForVarType(var_types type, CORINFO_CLASS_HANDLE classHand
     }
 }
 
+Type* Llvm::getLlvmTypeForLclVar(GenTreeLclVar* lclVar)
+{
+    var_types nodeType = lclVar->TypeGet();
+
+    if (nodeType == TYP_STRUCT)
+    {
+        return getLlvmTypeForStruct(_compiler->lvaGetDesc(lclVar)->GetLayout());
+    }
+    return getLlvmTypeForVarType(nodeType);
+}
+
 llvm::Instruction* Llvm::getCast(llvm::Value* source, Type* targetType)
 {
     Type* sourceType = source->getType();
@@ -825,6 +835,28 @@ void Llvm::buildAdd(GenTree* node, Value* op1, Value* op2)
     }
 }
 
+void Llvm::buildDiv(GenTree* node)
+{
+    Type* targetType = getLlvmTypeForVarType(node->TypeGet());
+    Value* dividendValue = consumeValue(node->gtGetOp1(), targetType);
+    Value* divisorValue  = consumeValue(node->gtGetOp2(), targetType);
+    Value* resultValue   = nullptr;
+    // TODO-LLVM: exception handling.  Div by 0 and INT32/64_MIN / -1
+    switch (node->TypeGet())
+    {
+        case TYP_FLOAT:
+        case TYP_DOUBLE:
+            resultValue = _builder.CreateFDiv(dividendValue, divisorValue);
+            break;
+
+        default:
+            resultValue = _builder.CreateSDiv(dividendValue, divisorValue);
+            break;
+    }
+
+    mapGenTreeToValue(node, resultValue);
+}
+
 unsigned int Llvm::getTotalRealLocalOffset()
 {
     return _shadowStackLocalsSize;
@@ -945,6 +977,9 @@ Value* Llvm::consumeValue(GenTree* node, Type* targetLlvmType)
                     trueNodeType = TYP_UBYTE;
                     break;
 
+                case GT_CAST:
+                    trueNodeType = node->AsCast()->CastToType();
+                    break;
                 default:
                     trueNodeType = node->TypeGet();
                     break;
@@ -1048,8 +1083,12 @@ bool Llvm::helperRequiresShadowStack(CORINFO_METHOD_HANDLE corinfoMethodHnd)
            corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_DBL2LNG_OVF) ||
            corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_DBL2UINT_OVF) ||
            corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_DBL2ULNG_OVF) ||
+           corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_LMOD) ||
+           corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_LDIV) ||
            corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_LMUL_OVF) ||
-           corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_ULMUL_OVF);
+           corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_ULMUL_OVF) ||
+           corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_ULDIV) ||
+           corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_ULMOD);
 }
 
 void Llvm::buildHelperFuncCall(GenTreeCall* call)
@@ -1168,38 +1207,81 @@ void Llvm::buildCall(GenTree* node)
 
 void Llvm::buildCast(GenTreeCast* cast)
 {
+    var_types castFromType  = genActualType(cast->CastOp());
     var_types castToType = cast->CastToType();
-    if (castToType == TYP_BOOL && cast->TypeIs(TYP_INT) && cast->CastOp()->TypeIs(TYP_INT))
-    {
-        Value* intValue = _builder.CreateZExt(getGenTreeValue(cast->CastOp()), getLlvmTypeForVarType(TYP_INT));
-        mapGenTreeToValue(cast, intValue); // nothing to do except map the source value to the destination GenTree
-    }
-    else if (castToType == TYP_DOUBLE && cast->CastOp()->TypeIs(TYP_FLOAT))
-    {
-        mapGenTreeToValue(cast, _builder.CreateFPCast(getGenTreeValue(cast->CastOp()), getLlvmTypeForVarType(TYP_DOUBLE)));
-    }
-    else if (cast->TypeIs(TYP_LONG) && genActualTypeIsInt(cast->CastOp()))
-    {
-        // Cast pointer to int if necessary.  TODO-LLVM: candidate for lowering?
-        Value* sourceValue = castIfNecessary(getGenTreeValue(cast->CastOp()), getLlvmTypeForVarType(cast->CastOp()->TypeGet()));
+    Value* castFromValue = consumeValue(cast->CastOp(), getLlvmTypeForVarType(castFromType));
+    Value* castValue = nullptr;
+    Type* castToLlvmType = getLlvmTypeForVarType(castToType);
 
-        mapGenTreeToValue(cast,
-            cast->IsUnsigned()
-            ? _builder.CreateZExt(sourceValue, getLlvmTypeForVarType(cast->CastToType()))
-            : _builder.CreateSExt(sourceValue, getLlvmTypeForVarType(cast->CastToType())));
-    }
-    else if (cast->TypeIs(TYP_INT, TYP_LONG) && cast->CastOp()->TypeIs(TYP_FLOAT, TYP_DOUBLE))
+    // TODO-LLVM: handle checked ("gtOverflow") casts.
+    switch (castFromType)
     {
-        mapGenTreeToValue(cast,
-            cast->IsUnsigned()
-                ? _builder.CreateFPToUI(getGenTreeValue(cast->CastOp()), getLlvmTypeForVarType(cast->CastToType()))
-                : _builder.CreateFPToSI(getGenTreeValue(cast->CastOp()), getLlvmTypeForVarType(cast->CastToType())));
+        case TYP_INT:
+        case TYP_LONG:
+            switch (castToType)
+            {
+                case TYP_BOOL:
+                case TYP_BYTE:
+                case TYP_UBYTE:
+                case TYP_SHORT:
+                case TYP_USHORT:
+                case TYP_INT:
+                case TYP_UINT:
+                    // "Cast(integer -> small type)" is "s/zext<int>(truncate<small type>)".
+                    // Here we will truncate and leave the extension for the user to consume.
+                    castValue = _builder.CreateTrunc(castFromValue, castToLlvmType);
+                    break;
+
+                case TYP_LONG:
+                    castValue = cast->IsUnsigned()
+                                    ? _builder.CreateZExt(castFromValue, castToLlvmType)
+                                    : _builder.CreateSExt(castFromValue, castToLlvmType);
+                    break;
+
+                case TYP_DOUBLE:
+                    castValue = cast->IsUnsigned()
+                                    ? _builder.CreateUIToFP(castFromValue, castToLlvmType)
+                                    : _builder.CreateSIToFP(castFromValue, castToLlvmType);
+                    break;
+
+                default:
+                    failFunctionCompilation(); // NYI
+            }
+            break;
+
+        case TYP_FLOAT:
+        case TYP_DOUBLE:
+            switch (castToType)
+            {
+                case TYP_FLOAT:
+                case TYP_DOUBLE:
+                    castValue = _builder.CreateFPCast(castFromValue, castToLlvmType);
+                    break;
+                case TYP_BYTE:
+                case TYP_SHORT:
+                case TYP_INT:
+                case TYP_LONG:
+                    castValue = _builder.CreateFPToSI(castFromValue, castToLlvmType);
+                    break;
+
+                case TYP_BOOL:
+                case TYP_UBYTE:
+                case TYP_USHORT:
+                case TYP_UINT:
+                case TYP_ULONG:
+                    castValue = _builder.CreateFPToUI(castFromValue, castToLlvmType);
+                    break;
+
+                default:
+                    unreached();
+            }
+            break;
+
+        default:
+            failFunctionCompilation(); // NYI
     }
-    else
-    {
-        // TODO: other casts
-        failFunctionCompilation();
-    }
+
+    mapGenTreeToValue(cast, castValue);
 }
 
 void Llvm::buildCnsDouble(GenTreeDblCon* node)
@@ -1219,7 +1301,26 @@ void Llvm::buildCnsInt(GenTree* node)
 {
     if (node->gtType == TYP_INT)
     {
-        mapGenTreeToValue(node, _builder.getInt32(node->AsIntCon()->IconValue()));
+        if (node->IsIconHandle())
+        {
+            // TODO-LLVM : consider lowering these to "IND(CLS_VAR_ADDR)"
+            if (node->IsIconHandle(GTF_ICON_TOKEN_HDL) || node->IsIconHandle(GTF_ICON_CLASS_HDL) ||
+                node->IsIconHandle(GTF_ICON_METHOD_HDL) || node->IsIconHandle(GTF_ICON_FIELD_HDL))
+            {
+                const char* symbolName = (*_getMangledSymbolName)(_thisPtr, (void*)(node->AsIntCon()->IconValue()));
+                (*_addCodeReloc)(_thisPtr, (void*)node->AsIntCon()->IconValue());
+                mapGenTreeToValue(node, _builder.CreateLoad(getOrCreateExternalSymbol(symbolName)));
+            }
+            else
+            {
+                //TODO-LLVML: other ICON handle types
+                failFunctionCompilation();
+            }
+        }
+        else
+        {
+            mapGenTreeToValue(node, _builder.getInt32(node->AsIntCon()->IconValue()));
+        }
         return;
     }
     if (node->gtType == TYP_REF)
@@ -1658,6 +1759,24 @@ Value* Llvm::localVar(GenTreeLclVar* lclVar)
     return llvmRef;
 }
 
+void Llvm::buildLocalField(GenTreeLclFld* lclFld)
+{
+    assert(!lclFld->TypeIs(TYP_STRUCT));
+
+    unsigned   lclNum = lclFld->GetLclNum();
+    LclVarDsc* varDsc = _compiler->lvaGetDesc(lclNum);
+    assert(isLlvmFrameLocal(varDsc));
+
+    // TODO-LLVM: if this is an only value type field, or at offset 0, we can optimize.
+    Value* structAddrValue = m_allocas[lclNum];
+    Value* structAddrInt8Ptr = castIfNecessary(structAddrValue, Type::getInt8PtrTy(_llvmContext));
+    Value* fieldAddressValue = _builder.CreateGEP(structAddrInt8Ptr, _builder.getInt16(lclFld->GetLclOffs()));
+    Value* fieldAddressTypedValue =
+        castIfNecessary(fieldAddressValue, getLlvmTypeForVarType(lclFld->TypeGet())->getPointerTo());
+
+    mapGenTreeToValue(lclFld, _builder.CreateLoad(fieldAddressTypedValue));
+}
+
 void Llvm::buildLocalVarAddr(GenTreeLclVarCommon* lclAddr)
 {
     unsigned int lclNum = lclAddr->GetLclNum();
@@ -1690,49 +1809,6 @@ Value* Llvm::zextIntIfNecessary(Value* intValue)
     return intValue;
 }
 
-int Llvm::getLocalOffsetAtIndex(GenTreeLclVar* lclVar)
-{
-    int        offset;
-
-    LclVarDsc* varDsc = _compiler->lvaGetDesc(lclVar);
-    if (canStoreLocalOnLlvmStack(varDsc))
-    {
-        offset = -1;
-    }
-    else
-    {
-        offset = 0;
-
-        for (unsigned lclNum = 0; lclNum < lclVar->GetLclNum(); lclNum++)
-        {
-            varDsc = _compiler->lvaGetDesc(lclNum);
-            if (!varDsc->lvIsParam)
-            {
-                CorInfoType corInfoType = toCorInfoType(varDsc->TypeGet());
-                if (!canStoreLocalOnLlvmStack(varDsc))
-                {
-                    offset = padNextOffset(corInfoType, tryGetStructClassHandle(varDsc), offset);
-                }
-            }
-        }
-        offset = padOffset(toCorInfoType(lclVar->TypeGet()), tryGetStructClassHandle(varDsc), offset);
-    }
-
-    return offset;
-}
-
-Value* Llvm::getLocalVarAddress(GenTreeLclVar* lclVar) {
-    //// TODO: 1 - need the address context logic from ILToLLVMImporter when exception blocks are implemented
-    ////       2 - ILToLLVMImporter caches the gep in the prolog, this creates the gep each time which is wasteful - look to copy more of the logic from ILToLLVMImporter.LoadVarAddress
-    unsigned int varOffset = getLocalOffsetAtIndex(lclVar);
-    if (varOffset == -1)
-    {
-        // if these are used in exception handlers, then they need to be stored, for now just fail
-        failFunctionCompilation();
-    }
-    return _builder.CreateGEP(_function->getArg(0), _builder.getInt32(varOffset), "lclVar");
-}
-
 bool Llvm::isLlvmFrameLocal(LclVarDsc* varDsc)
 {
     assert(canStoreLocalOnLlvmStack(varDsc) && (_compiler->fgSsaPassesCompleted >= 1));
@@ -1741,8 +1817,18 @@ bool Llvm::isLlvmFrameLocal(LclVarDsc* varDsc)
 
 void Llvm::storeLocalVar(GenTreeLclVar* lclVar)
 {
-    Type* destLlvmType = getLlvmTypeForVarType(lclVar->TypeGet());
-    Value* localValue = consumeValue(lclVar->gtGetOp1(), destLlvmType);
+    Type*  destLlvmType = getLlvmTypeForLclVar(lclVar);
+    Value* localValue   = nullptr;
+
+    // zero initialization check
+    if (lclVar->TypeIs(TYP_STRUCT) && lclVar->gtGetOp1()->IsIntegralConst(0))
+    {
+        localValue = llvm::Constant::getNullValue(destLlvmType);
+    }
+    else
+    {
+        localValue = consumeValue(lclVar->gtGetOp1(), destLlvmType);
+    }
 
     unsigned lclNum = lclVar->GetLclNum();
     LclVarDsc* varDsc = _compiler->lvaGetDesc(lclVar);
@@ -1772,6 +1858,9 @@ void Llvm::visitNode(GenTree* node)
         case GT_ADD:
             buildAdd(node, getGenTreeValue(node->AsOp()->gtOp1), getGenTreeValue(node->AsOp()->gtOp2));
             break;
+        case GT_DIV:
+            buildDiv(node);
+            break;
         case GT_CALL:
             buildCall(node);
             break;
@@ -1793,6 +1882,9 @@ void Llvm::visitNode(GenTree* node)
             break;
         case GT_JTRUE:
             buildJTrue(node, getGenTreeValue(node->AsOp()->gtOp1));
+            break;
+        case GT_LCL_FLD:
+            buildLocalField(node->AsLclFld());
             break;
         case GT_LCL_VAR:
             localVar(node->AsLclVar());
@@ -2085,6 +2177,10 @@ void Llvm::ConvertShadowStackLocalNode(GenTreeLclVarCommon* node)
                 break;
             case GT_LCL_VAR:
                 indirOper = lclVar->TypeIs(TYP_STRUCT) ? GT_OBJ : GT_IND;
+                break;
+            case GT_LCL_FLD:
+                assert(!lclVar->TypeIs(TYP_STRUCT));
+                indirOper = GT_IND;
                 break;
             case GT_LCL_VAR_ADDR:
             case GT_LCL_FLD_ADDR:
@@ -2390,6 +2486,47 @@ void Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
     }
 }
 
+void Llvm::lowerStoreLcl(GenTreeLclVarCommon* storeLclNode)
+{
+    LclVarDsc* addrVarDsc = _compiler->lvaGetDesc(storeLclNode->GetLclNum());
+
+    if (storeLclNode->TypeIs(TYP_STRUCT))
+    {
+        GenTree* dataOp = storeLclNode->gtGetOp1();
+        CORINFO_CLASS_HANDLE dataHandle = _compiler->gtGetStructHandleIfPresent(dataOp);
+        if (dataOp->OperIs(GT_IND))
+        {
+            // Special case: "gtGetStructHandleIfPresent" sometimes guesses the handle from
+            // field sequences, but we will always need to transform TYP_STRUCT INDs into OBJs.
+            dataHandle = NO_CLASS_HANDLE;
+        }
+
+        if (addrVarDsc->GetStructHnd() != dataHandle)
+        {
+            if (dataOp->OperIsIndir())
+            {
+                dataOp->SetOper(GT_OBJ);
+                dataOp->AsObj()->SetLayout(addrVarDsc->GetLayout());
+            }
+            else if (dataOp->OperIs(GT_LCL_VAR)) // can get icon 0 here
+            {
+                GenTreeLclVarCommon* dataLcl = dataOp->AsLclVarCommon();
+                LclVarDsc* dataVarDsc = _compiler->lvaGetDesc(dataLcl->GetLclNum());
+
+                dataVarDsc->lvHasLocalAddr = 1;
+
+                GenTree* dataAddrNode = _compiler->gtNewLclVarAddrNode(dataLcl->GetLclNum());
+
+                dataLcl->ChangeOper(GT_OBJ);
+                dataLcl->AsObj()->SetAddr(dataAddrNode);
+                dataLcl->AsObj()->SetLayout(addrVarDsc->GetLayout());
+
+                CurrentRange().InsertBefore(dataLcl, dataAddrNode);
+            }
+        }
+    }
+}
+
 void Llvm::lowerToShadowStack()
 {
     for (BasicBlock* _currentBlock : _compiler->Blocks())
@@ -2397,7 +2534,7 @@ void Llvm::lowerToShadowStack()
         _currentRange = &LIR::AsRange(_currentBlock);
         for (GenTree* node : CurrentRange())
         {
-            if (node->OperIs(GT_STORE_LCL_VAR, GT_LCL_VAR, GT_LCL_VAR_ADDR, GT_LCL_FLD_ADDR))
+            if (node->OperIs(GT_STORE_LCL_VAR, GT_LCL_VAR, GT_LCL_FLD, GT_LCL_VAR_ADDR, GT_LCL_FLD_ADDR))
             {
                 ConvertShadowStackLocalNode(node->AsLclVarCommon());
             }
@@ -2438,10 +2575,15 @@ void Llvm::lowerToShadowStack()
 
                 CurrentRange().InsertBefore(node, retAddressLocal, storeNode);
             }
-            if (node->OperIsLocalAddr())
+
+            if (node->OperIsLocalAddr() || node->OperIsLocalField())
             {
                 // Indicates that this local is to live on the LLVM frame, and will not participate in SSA.
                 _compiler->lvaGetDesc(node->AsLclVarCommon())->lvHasLocalAddr = 1;
+            }
+            else if (node->OperIs(GT_STORE_LCL_VAR))
+            {
+                lowerStoreLcl(node->AsLclVarCommon());
             }
         }
     }
@@ -2502,10 +2644,15 @@ void Llvm::createAllocasForLocalsWithAddrOp()
 
     for (unsigned lclNum = 0; lclNum < _compiler->lvaCount; lclNum++)
     {
+        // TODO-LLVM: Consider turning off FEATURE_FIXED_OUT_ARGS.
+        if(_compiler->lvaOutgoingArgSpaceVar == lclNum)
+        {
+            continue;
+        }
+
         LclVarDsc* varDsc = _compiler->lvaGetDesc(lclNum);
 
-        // TODO-LLVM LCLBLK - outgoing arg space.  Consider turning off FEATURE_FIXED_OUT_ARGS 
-        if ((varDsc->TypeGet() != TYP_LCLBLK) && canStoreLocalOnLlvmStack(varDsc) && isLlvmFrameLocal(varDsc))
+        if (canStoreLocalOnLlvmStack(varDsc) && isLlvmFrameLocal(varDsc))
         {
             CORINFO_CLASS_HANDLE classHandle = tryGetStructClassHandle(varDsc);
             Type* llvmType = getLlvmTypeForCorInfoType(toCorInfoType(varDsc->TypeGet()), classHandle);
