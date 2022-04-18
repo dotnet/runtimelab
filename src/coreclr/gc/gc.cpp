@@ -11547,7 +11547,6 @@ void gc_heap::decommit_heap_segment_pages (heap_segment* seg,
     if (use_large_pages_p)
         return;
     uint8_t*  page_start = align_on_page (heap_segment_allocated(seg));
-    //if (page_start > heap_segment_committed(seg)) return;
     size_t size = heap_segment_committed (seg) - page_start;
     extra_space = align_on_page (extra_space);
     if (size >= max ((extra_space + 2*OS_PAGE_SIZE), MIN_DECOMMIT_SIZE))
@@ -35586,42 +35585,6 @@ uint8_t* gc_heap::find_first_object (uint8_t* start, uint8_t* first_object)
             prev_brick = (brick_entry + prev_brick);
 
         }
-		      /*
-	if(prev_brick < min_brick){
-            o = first_object;
-        }
-        else
-        {
-                      o = brick_address (prev_brick) + brick_entry - 1;
-                      if(((int)o & 3) != 0)
-                      {
-                          printf("caclulated address not aligned %p prev_brick %td, brick_address %p brick_entry %d\n", o, prev_brick, brick_address(prev_brick), brick_entry);
-
-                          min_brick = (ptrdiff_t)brick_of(first_object);
-                          prev_brick = (ptrdiff_t)brick - 1;
-                          brick_entry = 0;
-                          printf("min brick %td prev_brick %td\n", min_brick, prev_brick);
-                          while (1)
-                          {
-                              if (prev_brick < min_brick)
-                              {
-                                  printf("prev_brick < min_brick\n");
-                                  break;
-                              }
-                              if ((brick_entry = get_brick_entry(prev_brick)) >= 0)
-                              {
-                                  printf("brick_entry = get_brick_entry(prev_brick)  brick_entry %d get_brick_entry(prev_brick) %d\n", brick_entry, get_brick_entry(prev_brick));
-                                  break;
-                              }
-                              assert(!((brick_entry == 0)));
-                              prev_brick = (brick_entry + prev_brick);
-                              printf("brick_entry %d prev_brick now %td\n", brick_entry, prev_brick);
-                          }
-                      }
-
-        }
-
-		      */
         o = ((prev_brick < min_brick) ? first_object :
                       brick_address (prev_brick) + brick_entry - 1);
         assert (o <= start);
