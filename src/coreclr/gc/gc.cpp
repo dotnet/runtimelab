@@ -11547,7 +11547,7 @@ void gc_heap::decommit_heap_segment_pages (heap_segment* seg,
     if (use_large_pages_p)
         return;
     uint8_t*  page_start = align_on_page (heap_segment_allocated(seg));
-    if (page_start > heap_segment_committed(seg)) return;
+    //if (page_start > heap_segment_committed(seg)) return;
     size_t size = heap_segment_committed (seg) - page_start;
     extra_space = align_on_page (extra_space);
     if (size >= max ((extra_space + 2*OS_PAGE_SIZE), MIN_DECOMMIT_SIZE))
@@ -24658,7 +24658,6 @@ void gc_heap::record_mark_time (uint64_t& mark_time,
 
 void gc_heap::mark_phase (int condemned_gen_number, BOOL mark_only_p)
 {
-	printf("mark_phase\n");
     assert (settings.concurrent == FALSE);
 
     ScanContext sc;
@@ -42551,7 +42550,7 @@ void gc_heap::verify_heap (BOOL begin_gc_p)
     if (current_join->joined())
 #endif //MULTIPLE_HEAPS
     {
-//        GCToEEInterface::VerifySyncTableEntry();
+        GCToEEInterface::VerifySyncTableEntry();
 #ifdef MULTIPLE_HEAPS
         current_join->restart();
 #endif //MULTIPLE_HEAPS
@@ -45706,7 +45705,7 @@ bool CFinalize::Initialize()
 
 CFinalize::~CFinalize()
 {
-    delete [] m_Array;
+    delete m_Array;
 }
 
 size_t CFinalize::GetPromotedCount ()
