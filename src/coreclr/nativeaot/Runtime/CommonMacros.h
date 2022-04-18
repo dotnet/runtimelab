@@ -155,7 +155,7 @@ inline bool IS_ALIGNED(T* val, uintptr_t alignment);
 
 #define DATA_ALIGNMENT  4
 #ifndef OS_PAGE_SIZE
-#define OS_PAGE_SIZE    0x4
+#define OS_PAGE_SIZE    0x1000
 #endif
 
 #else

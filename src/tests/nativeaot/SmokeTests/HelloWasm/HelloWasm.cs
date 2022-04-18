@@ -416,9 +416,9 @@ internal static class Program
     private unsafe static void TestJitUseStruct()
     {
         StartTest("TestJitUseStruct (Jit compilation struct test)");
-        StructWithIndex structWithIndex = new StructWithIndex() { Index = 1, Value = 2};
+        StructWithIndex structWithIndex = new StructWithIndex() { Index = 1, Value = 2 };
         StructWithStructWithIndex structWithStruct =
-            new StructWithStructWithIndex() { StructWithIndex = structWithIndex, AnotherIndex = 3};
+            new StructWithStructWithIndex() { StructWithIndex = structWithIndex, AnotherIndex = 3 };
 
         var res = JitUseStructProblem(&structWithStruct, structWithIndex);
 
@@ -466,7 +466,7 @@ internal static class Program
         int* ptrStruct2 = (int*)&copy1;
         ptrStruct2 = ptrStruct2 + 1;
 
-        if(*ptrStruct2 != 2)
+        if (*ptrStruct2 != 2)
         {
             FailTest("Explicit store failed");
         }
@@ -498,7 +498,7 @@ internal static class Program
     private static void TestLclVarAddr(LlvmStruct s)
     {
         StartTest("Test passing struct arg");
-        
+
         EndTest(FuncWithStructArg(s) == 2);
     }
 
@@ -570,20 +570,68 @@ internal static class Program
         }
     }
 
+    private static void HitTest(int x, int y, ref object obj, ref int iterations)
+    {
+        if (iterations++ > 100)
+        {
+            return;
+        }
+        obj = new object();
+    }
+
     class F4 { internal int i; }
     class F8 { internal long l; }
     class F2Plus8 { internal short s; internal long l; }
     class CDisp : IDisposable { public void Dispose() { } }
     struct StructF48 { internal int i1; internal long l2; }
+    interface IDrawable { }
+
+    class GameTime
+    {
+    }
+
+    class Game
+    {
+        private List<IDrawable> drawableComponents = new List<IDrawable>();
+        private List<IDrawable> currentlyDrawingComponents;
+
+        public Game()
+        {
+            currentlyDrawingComponents = new List<IDrawable>();
+        }
+
+        internal virtual void Draw(GameTime gameTime)
+        {
+            lock (drawableComponents)
+            {
+                // for (int i = 0; i < drawableComponents.Count; i += 1)
+                // {
+                // 	currentlyDrawingComponents.Add(drawableComponents[i]);
+                // }
+            }
+            // foreach (IDrawable drawable in currentlyDrawingComponents)
+            // {
+            // 	if (drawable.Visible)
+            // 	{
+            // 		drawable.Draw(gameTime);
+            // 	}
+            // }
+            currentlyDrawingComponents.Clear();
+        }
+    }
+
     private static bool TestCreateDifferentObjects()
     {
+        var ra = new Random();
+        var game = new Game();
+
         var mr = new MiniRandom(257);
         var keptObjects = new object[100];
-        for (var i = 0; i < 1000000; i++)
+        for (var i = 0; i < 4000000; i++)
         {
             var r = mr.Next();
             object o;
-            switch (r % 8)
+            switch (r % 10)
             {
                 case 0:
                     o = new F4 { i = 1, };
@@ -608,6 +656,14 @@ internal static class Program
                     break;
                 case 7:
                     o = new CDisp();
+                    break;
+                case 8:
+                    int res = 0, x = 1, y = 2;
+                    o = $"SDL_GetMouseState -> res={res}, x={x}, y={y}";
+                    break;
+                case 9:
+                    game.Draw(new GameTime());
+                    o = null;
                     break;
                 default:
                     o = null;

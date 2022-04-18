@@ -1325,6 +1325,9 @@ void GCToOSInterface::GetMemoryStatus(uint64_t restricted_limit, uint32_t* memor
         {
             available = GetAvailablePhysicalMemory();
 
+#if TARGET_WASM
+            load = 50;
+#else
             if (memory_load != NULL)
             {
                 bool isRestricted;
@@ -1336,6 +1339,7 @@ void GCToOSInterface::GetMemoryStatus(uint64_t restricted_limit, uint32_t* memor
                     load = (uint32_t)(((float)used * 100) / (float)total);
                 }
             }
+#endif
         }
     }
 

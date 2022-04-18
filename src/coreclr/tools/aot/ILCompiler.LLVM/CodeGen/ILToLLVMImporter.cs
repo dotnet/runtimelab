@@ -1781,7 +1781,7 @@ namespace Internal.IL
             {
                 _dependencies.Add(helperSymbol,
                     "LLVM generic helper");
-                return _builder.BuildCall(helper, new LLVMValueRef[] { GetShadowStack(), genericContext },
+                return _builder.BuildCall(helper, new LLVMValueRef[] { GetEndOfUsedShadowStack(_builder), genericContext },
                     "getHelper");
             }
 
@@ -1962,7 +1962,7 @@ namespace Internal.IL
                 {
                     LLVMValueRef helper;
                     List<LLVMTypeRef> additionalTypes = new List<LLVMTypeRef>();
-                    var shadowStack = GetShadowStack();
+                    var shadowStack = GetEndOfUsedShadowStack(_builder);
                     if (delegateInfo.Thunk != null)
                     {
                         MethodDesc thunkMethod = delegateInfo.Thunk.Method;
@@ -2233,7 +2233,7 @@ namespace Internal.IL
                 _dependencies.Add(node, "LLVM GM helper");
                 runtimeMethodHandle = _builder.BuildCall(helper, new LLVMValueRef[]
                 {
-                    GetShadowStack(),
+                    GetEndOfUsedShadowStack(_builder),
                     GetGenericContext()
                 }, "getHelper");
             }
@@ -2644,14 +2644,10 @@ namespace Internal.IL
                 fn = LLVMFunctionForMethod(callee, canonMethod, signature.IsStatic ? null : argumentValues[0], opcode == ILOpcode.callvirt, constrainedType, runtimeDeterminedMethod, out hasHiddenParam, out dictPtrPtrStore, out fatFunctionPtr);
             }
 
-            int offset = GetTotalParameterOffset() + GetTotalLocalOffset();
-            LLVMValueRef shadowStack = builder.BuildGEP(_currentFunclet.GetParam(0),
-                new LLVMValueRef[] { LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, (uint)offset, false) },
-                String.Empty);
-            var castShadowStack = builder.BuildPointerCast(shadowStack, LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), "castshadowstack");
+            LLVMValueRef shadowStack = GetEndOfUsedShadowStack(builder);
             List<LLVMValueRef> llvmArgs = new List<LLVMValueRef>
             {
-                castShadowStack
+                shadowStack
             };
 
             TypeDesc returnType = signature.ReturnType;
@@ -2799,7 +2795,7 @@ namespace Internal.IL
                     // The previous argument might have left this type unaligned, so pad if necessary
                     argOffset = PadOffset(argType, argOffset);
 
-                    ImportStoreHelper(argValue, valueType, castShadowStack, (uint)argOffset, builder: builder);
+                    ImportStoreHelper(argValue, valueType, shadowStack, (uint)argOffset, builder: builder);
 
                     argOffset += argType.GetElementSize().AsInt;
                 }
@@ -2865,6 +2861,21 @@ namespace Internal.IL
             {
                 return (null, default(LLVMBasicBlockRef));
             }
+        }
+
+        LLVMValueRef GetEndOfUsedShadowStack(LLVMBuilderRef builder)
+        {
+            if (_funcletAddrCacheCtx != null)
+            {
+                Debug.Assert(_funcletAddrCacheCtx.EndOfUsedShadowStackPtr != default, "End of used shadow stack ptr not set");
+                return builder.BuildLoad(_funcletAddrCacheCtx.EndOfUsedShadowStackPtr);
+            }
+            // some funclets, e.g. generic context helpers, dont have the _endOfUsedShadowStack
+            int offset = GetTotalParameterOffset() + GetTotalLocalOffset();
+            LLVMValueRef shadowStack = builder.BuildGEP(_currentFunclet.GetParam(0),
+                new LLVMValueRef[] { LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, (uint)offset, false) },
+                String.Empty);
+            return builder.BuildPointerCast(shadowStack, LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), "castshadowstack");
         }
 
         LLVMValueRef CallOrInvoke(bool fromLandingPad, LLVMBuilderRef builder, ExceptionRegion currentTryRegion,
@@ -3143,9 +3154,8 @@ namespace Internal.IL
             }
 
             // Save the top of the shadow stack in case the callee reverse P/Invokes.  Restore ShadowStackTop after invoke
-            LLVMValueRef stackFrameSize = BuildConstInt32(GetTotalParameterOffset() + GetTotalLocalOffset());
             LLVMValueRef shadowStackToRestore = _builder.BuildLoad(ShadowStackTop);
-            _builder.BuildStore(_builder.BuildGEP(_currentFunclet.GetParam(0), new LLVMValueRef[] {stackFrameSize}, "shadowStackTop"), ShadowStackTop);
+            _builder.BuildStore(GetEndOfUsedShadowStack(_builder), ShadowStackTop);
 
             LLVMValueRef pInvokeTransitionFrame = default;
             LLVMTypeRef pInvokeFunctionType = default;
@@ -4338,7 +4348,7 @@ namespace Internal.IL
                     var hiddenParam = CallGenericHelper(ReadyToRunHelperId.TypeHandle, typeDesc);
                     var handleRef = _builder.BuildCall( fn, new LLVMValueRef[]
                     {
-                        GetShadowStack(),
+                        GetEndOfUsedShadowStack(_builder),
                         hiddenParam
                     }, "getHelper");
                     _stack.Push(new LdTokenEntry<TypeDesc>(StackValueKind.ValueType, "ldtoken", typeDesc, handleRef, runtimeTypeHandleTypeDesc));
@@ -4549,7 +4559,7 @@ namespace Internal.IL
             }
 
             LLVMBasicBlockRef nextInstrBlock = default;
-            CallOrInvoke(false, _builder, GetCurrentTryRegion(), NullRefFunction, new LLVMValueRef[] { GetShadowStack(), entry }, ref nextInstrBlock);
+            CallOrInvoke(false, _builder, GetCurrentTryRegion(), NullRefFunction, new LLVMValueRef[] { GetEndOfUsedShadowStack(_builder), entry }, ref nextInstrBlock);
         }
 
         private void ThrowCkFinite(LLVMValueRef value, int size, ref LLVMValueRef llvmCheckFunction)
@@ -4592,7 +4602,7 @@ namespace Internal.IL
             }
 
             LLVMBasicBlockRef nextInstrBlock = default;
-            CallOrInvoke(false, _builder, GetCurrentTryRegion(), llvmCheckFunction, new LLVMValueRef[] { GetShadowStack(), value }, ref nextInstrBlock);
+            CallOrInvoke(false, _builder, GetCurrentTryRegion(), llvmCheckFunction, new LLVMValueRef[] { GetEndOfUsedShadowStack(_builder), value }, ref nextInstrBlock);
         }
 
         private void ThrowException(LLVMBuilderRef builder, string helperClass, string helperMethodName, LLVMValueRef throwingFunction)
@@ -4609,7 +4619,7 @@ namespace Internal.IL
         {
             LLVMValueRef fn = GetHelperLlvmMethod(helperClass, helperMethodName);
             LLVMBasicBlockRef nextInstrBlock = default;
-            CallOrInvoke(false, builder, GetCurrentTryRegion(), fn, new LLVMValueRef[] {GetShadowStack()},  ref nextInstrBlock);
+            CallOrInvoke(false, builder, GetCurrentTryRegion(), fn, new LLVMValueRef[] { GetEndOfUsedShadowStack(_builder) },  ref nextInstrBlock);
             builder.BuildUnreachable();
         }
 

@@ -35587,6 +35587,7 @@ uint8_t* gc_heap::find_first_object (uint8_t* start, uint8_t* first_object)
             prev_brick = (brick_entry + prev_brick);
 
         }
+		      /*
 	if(prev_brick < min_brick){
             o = first_object;
         }
@@ -35621,10 +35622,9 @@ uint8_t* gc_heap::find_first_object (uint8_t* start, uint8_t* first_object)
 
         }
 
-        /*
+		      */
         o = ((prev_brick < min_brick) ? first_object :
                       brick_address (prev_brick) + brick_entry - 1);
-                      */
         assert (o <= start);
     }
 
@@ -42551,7 +42551,7 @@ void gc_heap::verify_heap (BOOL begin_gc_p)
     if (current_join->joined())
 #endif //MULTIPLE_HEAPS
     {
-        GCToEEInterface::VerifySyncTableEntry();
+//        GCToEEInterface::VerifySyncTableEntry();
 #ifdef MULTIPLE_HEAPS
         current_join->restart();
 #endif //MULTIPLE_HEAPS
@@ -45706,7 +45706,7 @@ bool CFinalize::Initialize()
 
 CFinalize::~CFinalize()
 {
-    delete m_Array;
+    delete [] m_Array;
 }
 
 size_t CFinalize::GetPromotedCount ()
