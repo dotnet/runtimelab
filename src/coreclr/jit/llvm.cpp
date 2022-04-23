@@ -1589,7 +1589,7 @@ void Llvm::buildStoreInd(GenTreeStoreInd* storeIndOp)
 {
     Value* address = getGenTreeValue(storeIndOp->Addr());
     Value* toStore = getGenTreeValue(storeIndOp->Data());
-    if (toStore->getType()->isPointerTy() && (storeIndOp->gtFlags & GTF_IND_TGT_NOT_HEAP) == 0)
+    if (toStore->getType()->isPointerTy() && (storeIndOp->gtFlags & GTF_IND_TGT_NOT_HEAP) == 0 && address->getType()->isPointerTy())
     {
         // RhpAssignRef will never reverse PInvoke, so do not need to store the shadow stack here
         _builder.CreateCall(getOrCreateRhpAssignRef(), ArrayRef<Value*>{address, castIfNecessary(toStore, Type::getInt8PtrTy(_llvmContext))});
@@ -2317,7 +2317,7 @@ void Llvm::failUnsupportedCalls(GenTreeCall* callNode)
 
             fgArgTabEntry* curArgTabEntry = _compiler->gtArgEntryByNode(callNode, operand);
             regNumber      argReg         = curArgTabEntry->GetRegNum();
-            if (argReg == REG_STK || curArgTabEntry->argType == TYP_BYREF) // TODO-LLVM: out and ref args
+            if (argReg == REG_STK) // TODO-LLVM: out args
             {
                 failFunctionCompilation();
             }
@@ -2641,12 +2641,6 @@ void Llvm::createAllocasForLocalsWithAddrOp()
 
     for (unsigned lclNum = 0; lclNum < _compiler->lvaCount; lclNum++)
     {
-        // TODO-LLVM: Consider turning off FEATURE_FIXED_OUT_ARGS.
-        if(_compiler->lvaOutgoingArgSpaceVar == lclNum)
-        {
-            continue;
-        }
-
         LclVarDsc* varDsc = _compiler->lvaGetDesc(lclNum);
 
         if (canStoreLocalOnLlvmStack(varDsc) && isLlvmFrameLocal(varDsc))
