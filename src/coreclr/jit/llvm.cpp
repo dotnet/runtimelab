@@ -617,7 +617,27 @@ Function* getOrCreateRhpAssignRef()
     Function* llvmFunc = _module->getFunction("RhpAssignRef");
     if (llvmFunc == nullptr)
     {
-        llvmFunc = Function::Create(FunctionType::get(Type::getVoidTy(_llvmContext), ArrayRef<Type*>{Type::getInt8PtrTy(_llvmContext), Type::getInt8PtrTy(_llvmContext)}, false), Function::ExternalLinkage, 0U, "RhpAssignRef", _module); // TODO: ExternalLinkage forced as linked from old module
+        llvmFunc = Function::Create(FunctionType::get(Type::getVoidTy(_llvmContext),
+                                                      ArrayRef<Type*>{Type::getInt8PtrTy(_llvmContext),
+                                                                      Type::getInt8PtrTy(_llvmContext)},
+                                                      false),
+                                    Function::ExternalLinkage, 0U, "RhpAssignRef",
+                                    _module); // TODO: ExternalLinkage forced as linked from old module
+    }
+    return llvmFunc;
+}
+
+Function* getOrCreateRhpCheckedAssignRef()
+{
+    Function* llvmFunc = _module->getFunction("RhpCheckedAssignRef");
+    if (llvmFunc == nullptr)
+    {
+        llvmFunc = Function::Create(FunctionType::get(Type::getVoidTy(_llvmContext),
+                                                      ArrayRef<Type*>{Type::getInt8PtrTy(_llvmContext),
+                                                                      Type::getInt8PtrTy(_llvmContext)},
+                                                      false),
+                                    Function::ExternalLinkage, 0U, "RhpCheckedAssignRef",
+                                    _module); // TODO: ExternalLinkage forced as linked from old module
     }
     return llvmFunc;
 }
@@ -1587,16 +1607,28 @@ void Llvm::buildReturn(GenTree* node)
 
 void Llvm::buildStoreInd(GenTreeStoreInd* storeIndOp)
 {
-    Value* address = getGenTreeValue(storeIndOp->Addr());
-    Value* toStore = getGenTreeValue(storeIndOp->Data());
-    if (toStore->getType()->isPointerTy() && (storeIndOp->gtFlags & GTF_IND_TGT_NOT_HEAP) == 0 && address->getType()->isPointerTy())
+    GenTree* data = storeIndOp->Data();
+    Value* toStore = getGenTreeValue(data);
+    Value* address = consumeValue(storeIndOp->Addr(), toStore->getType()->getPointerTo());
+
+    GCInfo gcInfo(_compiler);
+    GCInfo::WriteBarrierForm writeBarrierForm = gcInfo.gcIsWriteBarrierCandidate(storeIndOp, data);
+    switch (writeBarrierForm)
     {
-        // RhpAssignRef will never reverse PInvoke, so do not need to store the shadow stack here
-        _builder.CreateCall(getOrCreateRhpAssignRef(), ArrayRef<Value*>{address, castIfNecessary(toStore, Type::getInt8PtrTy(_llvmContext))});
-    }
-    else
-    {
-        castingStore(toStore, address, storeIndOp->gtType);
+        case GCInfo::WriteBarrierForm::WBF_BarrierUnchecked:
+            _builder.CreateCall(getOrCreateRhpAssignRef(),
+                                ArrayRef<Value*>{castIfNecessary(address, Type::getInt8PtrTy(_llvmContext)),
+                                                 castIfNecessary(toStore, Type::getInt8PtrTy(_llvmContext))});
+            break;
+        case GCInfo::WriteBarrierForm::WBF_BarrierChecked:
+        case GCInfo::WriteBarrierForm::WBF_BarrierUnknown:
+            _builder.CreateCall(getOrCreateRhpCheckedAssignRef(),
+                                ArrayRef<Value*>{castIfNecessary(address, Type::getInt8PtrTy(_llvmContext)),
+                                                 castIfNecessary(toStore, Type::getInt8PtrTy(_llvmContext))});
+            break;
+        default:
+            castingStore(toStore, address, storeIndOp->gtType);
+            break;
     }
 }
 
