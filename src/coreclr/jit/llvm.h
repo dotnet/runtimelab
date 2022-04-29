@@ -103,6 +103,8 @@ class Llvm
 private:
     Compiler* _compiler;
     Compiler::Info _info;
+    GCInfo* _gcInfo = nullptr;
+
     llvm::Function* _function;
     CORINFO_SIG_INFO _sigInfo; // sigInfo of function being compiled
     LIR::Range* _currentRange;
