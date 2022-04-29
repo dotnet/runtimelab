@@ -48,7 +48,7 @@ static Function*                          _doNothingFunction;
 
 static std::unordered_map<CORINFO_CLASS_HANDLE, Type*>* _llvmStructs = new std::unordered_map<CORINFO_CLASS_HANDLE, Type*>();
 static std::unordered_map<CORINFO_CLASS_HANDLE, StructDesc*>* _structDescMap = new std::unordered_map<CORINFO_CLASS_HANDLE, StructDesc*>();
-
+static GCInfo* _gcInfo = nullptr;
 
 extern "C" DLLEXPORT void registerLlvmCallbacks(void*       thisPtr,
                                                 const char* outputFileName,
@@ -96,6 +96,15 @@ extern "C" DLLEXPORT void registerLlvmCallbacks(void*       thisPtr,
         strcpy(_outputFileName + strlen(_outputFileName) - 3, "clrjit"); // use different module output name for now, TODO: delete if old LLVM gen does not create a module
         strcat(_outputFileName, ".bc");
     }
+}
+
+GCInfo* Llvm::getGCInfo()
+{
+    if (_gcInfo == nullptr)
+    {
+        _gcInfo = new GCInfo(_compiler);
+    }
+    return _gcInfo;
 }
 
 void emitDebugMetadata(LLVMContext& context)
@@ -745,17 +754,6 @@ Value* Llvm::castToPointerToLlvmType(Value* address, llvm::Type* llvmType)
     return castIfNecessary(address, llvmType->getPointerTo());
 }
 
-void Llvm::castingStore(Value* toStore, Value* address, llvm::Type* llvmType)
-{
-    _builder.CreateStore(castIfNecessary(toStore, llvmType),
-        castToPointerToLlvmType(address, llvmType));
-}
-
-void Llvm::castingStore(Value* toStore, Value* address, var_types type)
-{
-    castingStore(toStore, address, getLlvmTypeForVarType(type));
-}
-
 /// <summary>
 /// Returns the llvm arg number or shadow stack offset for the corresponding local which must be loaded from an argument
 /// </summary>
@@ -904,12 +902,6 @@ llvm::BasicBlock* Llvm::getLLVMBasicBlockForBlock(BasicBlock* block)
     llvmBlock = llvm::BasicBlock::Create(_llvmContext, "", _function);
     _blkToLlvmBlkVectorMap->Set(block, llvmBlock);
     return llvmBlock;
-}
-
-void Llvm::storeOnShadowStack(GenTree* operand, Value* shadowStackForCallee, unsigned int offset)
-{
-    castingStore(consumeValue(operand, Type::getInt8PtrTy(_llvmContext)),
-                 getShadowStackOffest(shadowStackForCallee, offset), Type::getInt8PtrTy(_llvmContext));
 }
 
 // shadow stack moved up to avoid overwriting anything on the stack in the compiling method
@@ -1608,11 +1600,11 @@ void Llvm::buildReturn(GenTree* node)
 void Llvm::buildStoreInd(GenTreeStoreInd* storeIndOp)
 {
     GenTree* data = storeIndOp->Data();
-    Value* toStore = getGenTreeValue(data);
-    Value* address = consumeValue(storeIndOp->Addr(), toStore->getType()->getPointerTo());
+    Type* toStoreLlvmType = getLlvmTypeForVarType(storeIndOp->TypeGet());
+    Value* toStore = consumeValue(data, toStoreLlvmType);
+    Value* address = consumeValue(storeIndOp->Addr(), toStoreLlvmType->getPointerTo());
 
-    GCInfo gcInfo(_compiler);
-    GCInfo::WriteBarrierForm writeBarrierForm = gcInfo.gcIsWriteBarrierCandidate(storeIndOp, data);
+    GCInfo::WriteBarrierForm writeBarrierForm = getGCInfo()->gcIsWriteBarrierCandidate(storeIndOp, data);
     switch (writeBarrierForm)
     {
         case GCInfo::WriteBarrierForm::WBF_BarrierUnchecked:
@@ -1626,9 +1618,14 @@ void Llvm::buildStoreInd(GenTreeStoreInd* storeIndOp)
                                 ArrayRef<Value*>{castIfNecessary(address, Type::getInt8PtrTy(_llvmContext)),
                                                  castIfNecessary(toStore, Type::getInt8PtrTy(_llvmContext))});
             break;
-        default:
-            castingStore(toStore, address, storeIndOp->gtType);
+
+        case GCInfo::WriteBarrierForm::WBF_NoBarrier:
+        case GCInfo::WriteBarrierForm::WBF_NoBarrier_CheckNotHeapInDebug:
+            _builder.CreateStore(toStore, address);
             break;
+
+        default:
+            unreached();
     }
 }
 

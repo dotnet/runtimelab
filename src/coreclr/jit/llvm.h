@@ -8,6 +8,7 @@
 
 #include "alloc.h"
 #include "jitpch.h"
+#include "jitgcinfo.h"
 #include "llvm_types.h"
 #include <new>
 
@@ -131,6 +132,8 @@ private:
         return *_currentRange;
     }
 
+    GCInfo* getGCInfo();
+
     void populateLlvmArgNums();
 
     void buildAdd(GenTree* node, Value* op1, Value* op2);
@@ -156,8 +159,6 @@ private:
     void createAllocasForLocalsWithAddrOp();
     bool canStoreArgOnLlvmStack(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd);
     Value* castIfNecessary(Value* source, Type* targetType, llvm::IRBuilder<>* builder = nullptr);
-    void castingStore(Value* toStore, Value* address, llvm::Type* llvmType);
-    void castingStore(Value* toStore, Value* address, var_types type);
     Value* castToPointerToLlvmType(Value* address, llvm::Type* llvmType);
     Value* consumeValue(GenTree* node, llvm::Type* targetLlvmType);
     llvm::DILocation* createDebugFunctionAndDiLocation(struct DebugMetadata debugMetadata, unsigned int lineNo);
@@ -212,7 +213,6 @@ private:
     unsigned int padOffset(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHandle, unsigned int atOffset);
     void startImportingBasicBlock(BasicBlock* block);
     void startImportingNode();
-    void storeOnShadowStack(GenTree* operand, Value* shadowStackForCallee, unsigned int offset);
     void storeLocalVar(GenTreeLclVar* lclVar);
     CorInfoType toCorInfoType(var_types varType);
     CORINFO_CLASS_HANDLE tryGetStructClassHandle(LclVarDsc* varDsc);
