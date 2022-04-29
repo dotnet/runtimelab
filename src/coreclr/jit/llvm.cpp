@@ -101,7 +101,7 @@ GCInfo* Llvm::getGCInfo()
 {
     if (_gcInfo == nullptr)
     {
-        _gcInfo = new GCInfo(_compiler);
+        _gcInfo = new (_compiler->getAllocator(CMK_GC)) GCInfo(_compiler);
     }
     return _gcInfo;
 }
