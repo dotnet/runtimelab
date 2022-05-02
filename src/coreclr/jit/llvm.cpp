@@ -49,7 +49,6 @@ static Function*                          _doNothingFunction;
 static std::unordered_map<CORINFO_CLASS_HANDLE, Type*>* _llvmStructs = new std::unordered_map<CORINFO_CLASS_HANDLE, Type*>();
 static std::unordered_map<CORINFO_CLASS_HANDLE, StructDesc*>* _structDescMap = new std::unordered_map<CORINFO_CLASS_HANDLE, StructDesc*>();
 
-
 extern "C" DLLEXPORT void registerLlvmCallbacks(void*       thisPtr,
                                                 const char* outputFileName,
                                                 const char* triple,
@@ -96,6 +95,15 @@ extern "C" DLLEXPORT void registerLlvmCallbacks(void*       thisPtr,
         strcpy(_outputFileName + strlen(_outputFileName) - 3, "clrjit"); // use different module output name for now, TODO: delete if old LLVM gen does not create a module
         strcat(_outputFileName, ".bc");
     }
+}
+
+GCInfo* Llvm::getGCInfo()
+{
+    if (_gcInfo == nullptr)
+    {
+        _gcInfo = new (_compiler->getAllocator(CMK_GC)) GCInfo(_compiler);
+    }
+    return _gcInfo;
 }
 
 void emitDebugMetadata(LLVMContext& context)
@@ -617,7 +625,27 @@ Function* getOrCreateRhpAssignRef()
     Function* llvmFunc = _module->getFunction("RhpAssignRef");
     if (llvmFunc == nullptr)
     {
-        llvmFunc = Function::Create(FunctionType::get(Type::getVoidTy(_llvmContext), ArrayRef<Type*>{Type::getInt8PtrTy(_llvmContext), Type::getInt8PtrTy(_llvmContext)}, false), Function::ExternalLinkage, 0U, "RhpAssignRef", _module); // TODO: ExternalLinkage forced as linked from old module
+        llvmFunc = Function::Create(FunctionType::get(Type::getVoidTy(_llvmContext),
+                                                      ArrayRef<Type*>{Type::getInt8PtrTy(_llvmContext),
+                                                                      Type::getInt8PtrTy(_llvmContext)},
+                                                      false),
+                                    Function::ExternalLinkage, 0U, "RhpAssignRef",
+                                    _module); // TODO: ExternalLinkage forced as linked from old module
+    }
+    return llvmFunc;
+}
+
+Function* getOrCreateRhpCheckedAssignRef()
+{
+    Function* llvmFunc = _module->getFunction("RhpCheckedAssignRef");
+    if (llvmFunc == nullptr)
+    {
+        llvmFunc = Function::Create(FunctionType::get(Type::getVoidTy(_llvmContext),
+                                                      ArrayRef<Type*>{Type::getInt8PtrTy(_llvmContext),
+                                                                      Type::getInt8PtrTy(_llvmContext)},
+                                                      false),
+                                    Function::ExternalLinkage, 0U, "RhpCheckedAssignRef",
+                                    _module); // TODO: ExternalLinkage forced as linked from old module
     }
     return llvmFunc;
 }
@@ -723,17 +751,6 @@ Value* Llvm::castIfNecessary(Value* source, Type* targetType, llvm::IRBuilder<>*
 Value* Llvm::castToPointerToLlvmType(Value* address, llvm::Type* llvmType)
 {
     return castIfNecessary(address, llvmType->getPointerTo());
-}
-
-void Llvm::castingStore(Value* toStore, Value* address, llvm::Type* llvmType)
-{
-    _builder.CreateStore(castIfNecessary(toStore, llvmType),
-        castToPointerToLlvmType(address, llvmType));
-}
-
-void Llvm::castingStore(Value* toStore, Value* address, var_types type)
-{
-    castingStore(toStore, address, getLlvmTypeForVarType(type));
 }
 
 /// <summary>
@@ -884,12 +901,6 @@ llvm::BasicBlock* Llvm::getLLVMBasicBlockForBlock(BasicBlock* block)
     llvmBlock = llvm::BasicBlock::Create(_llvmContext, "", _function);
     _blkToLlvmBlkVectorMap->Set(block, llvmBlock);
     return llvmBlock;
-}
-
-void Llvm::storeOnShadowStack(GenTree* operand, Value* shadowStackForCallee, unsigned int offset)
-{
-    castingStore(consumeValue(operand, Type::getInt8PtrTy(_llvmContext)),
-                 getShadowStackOffest(shadowStackForCallee, offset), Type::getInt8PtrTy(_llvmContext));
 }
 
 // shadow stack moved up to avoid overwriting anything on the stack in the compiling method
@@ -1587,16 +1598,33 @@ void Llvm::buildReturn(GenTree* node)
 
 void Llvm::buildStoreInd(GenTreeStoreInd* storeIndOp)
 {
-    Value* address = getGenTreeValue(storeIndOp->Addr());
-    Value* toStore = getGenTreeValue(storeIndOp->Data());
-    if (toStore->getType()->isPointerTy() && (storeIndOp->gtFlags & GTF_IND_TGT_NOT_HEAP) == 0)
+    GenTree* data = storeIndOp->Data();
+    Type* toStoreLlvmType = getLlvmTypeForVarType(storeIndOp->TypeGet());
+    Value* toStore = consumeValue(data, toStoreLlvmType);
+    Value* address = consumeValue(storeIndOp->Addr(), toStoreLlvmType->getPointerTo());
+
+    GCInfo::WriteBarrierForm writeBarrierForm = getGCInfo()->gcIsWriteBarrierCandidate(storeIndOp, data);
+    switch (writeBarrierForm)
     {
-        // RhpAssignRef will never reverse PInvoke, so do not need to store the shadow stack here
-        _builder.CreateCall(getOrCreateRhpAssignRef(), ArrayRef<Value*>{address, castIfNecessary(toStore, Type::getInt8PtrTy(_llvmContext))});
-    }
-    else
-    {
-        castingStore(toStore, address, storeIndOp->gtType);
+        case GCInfo::WriteBarrierForm::WBF_BarrierUnchecked:
+            _builder.CreateCall(getOrCreateRhpAssignRef(),
+                                ArrayRef<Value*>{castIfNecessary(address, Type::getInt8PtrTy(_llvmContext)),
+                                                 castIfNecessary(toStore, Type::getInt8PtrTy(_llvmContext))});
+            break;
+        case GCInfo::WriteBarrierForm::WBF_BarrierChecked:
+        case GCInfo::WriteBarrierForm::WBF_BarrierUnknown:
+            _builder.CreateCall(getOrCreateRhpCheckedAssignRef(),
+                                ArrayRef<Value*>{castIfNecessary(address, Type::getInt8PtrTy(_llvmContext)),
+                                                 castIfNecessary(toStore, Type::getInt8PtrTy(_llvmContext))});
+            break;
+
+        case GCInfo::WriteBarrierForm::WBF_NoBarrier:
+        case GCInfo::WriteBarrierForm::WBF_NoBarrier_CheckNotHeapInDebug:
+            _builder.CreateStore(toStore, address);
+            break;
+
+        default:
+            unreached();
     }
 }
 
@@ -2317,7 +2345,7 @@ void Llvm::failUnsupportedCalls(GenTreeCall* callNode)
 
             fgArgTabEntry* curArgTabEntry = _compiler->gtArgEntryByNode(callNode, operand);
             regNumber      argReg         = curArgTabEntry->GetRegNum();
-            if (argReg == REG_STK || curArgTabEntry->argType == TYP_BYREF) // TODO-LLVM: out and ref args
+            if (argReg == REG_STK) // TODO-LLVM: out args
             {
                 failFunctionCompilation();
             }
@@ -2641,12 +2669,6 @@ void Llvm::createAllocasForLocalsWithAddrOp()
 
     for (unsigned lclNum = 0; lclNum < _compiler->lvaCount; lclNum++)
     {
-        // TODO-LLVM: Consider turning off FEATURE_FIXED_OUT_ARGS.
-        if(_compiler->lvaOutgoingArgSpaceVar == lclNum)
-        {
-            continue;
-        }
-
         LclVarDsc* varDsc = _compiler->lvaGetDesc(lclNum);
 
         if (canStoreLocalOnLlvmStack(varDsc) && isLlvmFrameLocal(varDsc))
