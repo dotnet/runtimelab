@@ -12,7 +12,7 @@ Currently, this repo contains the following experimental projects:
 - [ManagedQuic](https://github.com/dotnet/runtimelab/tree/feature/ManagedQuic) - Fully managed implementation of QUIC protocol
 - [LLHTTP](https://github.com/dotnet/runtimelab/tree/feature/LLHTTP2) - a  set of flexible, lower-level HTTP APIs.
 - [CompatibilityPackages](https://github.com/dotnet/runtimelab/tree/feature/CompatibilityPackages) - a set of packages which help satisfy binary dependencies of .NETFramework assemblies on .NET.
-- [AssemblyBuilder.Save()](https://github.com/dotnet/runtimelab/tree/feature/assembly-builder-save) - Prototyping the implementation of AssemblyBuilder.Save() functionality for .NET 7.
+- [AssemblyBuilder.Save()](https://github.com/dotnet/runtimelab/tree/feature/assembly-builder-save) - Prototyping the implementation of AssemblyBuilder.Save() functionality.
 
 You can create your own experiment, learn more [here](CreateAnExperiment.md)!
 
