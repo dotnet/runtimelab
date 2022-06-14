@@ -147,6 +147,26 @@ namespace System.Reflection.Emit.Experimental
             BlobContentId contentId = peBuilder.Serialize(peBlob);
             peBlob.WriteContentTo(peStream);
         }
+
+        private static void WritePEImage(Stream peStream, MetadataBuilder metadataBuilder, BlobBuilder ilBuilder) // MethodDefinitionHandle entryPointHandle when we have main method.
+        {
+            // Create executable with the managed metadata from the specified MetadataBuilder.
+            var peHeaderBuilder = new PEHeaderBuilder(
+                imageCharacteristics: Characteristics.Dll //Start off with a simple DLL
+                );
+
+            var peBuilder = new ManagedPEBuilder(
+                peHeaderBuilder,
+                new MetadataRootBuilder(metadataBuilder),
+                ilBuilder,
+                flags: CorFlags.ILOnly,
+                deterministicIdProvider: content => _s_contentId);
+
+            // Write executable into the specified stream.
+            var peBlob = new BlobBuilder();
+            BlobContentId contentId = peBuilder.Serialize(peBlob);
+            peBlob.WriteContentTo(peStream);
+        }
     }
 }
 
