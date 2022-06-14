@@ -5,10 +5,12 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Reflection;
 
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
 
 namespace System.Reflection.Emit.Experimental
 {
-    class AssemblyBuilder: System.Reflection.Assembly
+   public class AssemblyBuilder: System.Reflection.Assembly
     {
         internal AssemblyBuilder() { }
 
@@ -17,13 +19,25 @@ namespace System.Reflection.Emit.Experimental
 //New method
         }
 
-        public static System.Reflection.Emit.AssemblyBuilder DefineDynamicAssembly(System.Reflection.AssemblyName name, System.Reflection.Emit.AssemblyBuilderAccess access) { throw new NotImplementedException("Under construction"); }// code forthecoming
+        public static System.Reflection.Emit.AssemblyBuilder DefineDynamicAssembly(System.Reflection.AssemblyName name, System.Reflection.Emit.AssemblyBuilderAccess access) 
+        { 
+            throw new NotImplementedException(); 
+        }// code forthecoming
+
         [System.Diagnostics.CodeAnalysis.RequiresDynamicCode("Defining a dynamic assembly requires dynamic code.")]
+        public static System.Reflection.Emit.AssemblyBuilder DefineDynamicAssembly(System.Reflection.AssemblyName name, System.Reflection.Emit.AssemblyBuilderAccess access, System.Collections.Generic.IEnumerable<System.Reflection.Emit.CustomAttributeBuilder>? assemblyAttributes) 
+        { 
+            throw new NotImplementedException(); 
+        }
+        public System.Reflection.Emit.ModuleBuilder DefineDynamicModule(string name) 
+        { 
+            throw new NotImplementedException(); 
+        }
 
-        public static System.Reflection.Emit.AssemblyBuilder DefineDynamicAssembly(System.Reflection.AssemblyName name, System.Reflection.Emit.AssemblyBuilderAccess access, System.Collections.Generic.IEnumerable<System.Reflection.Emit.CustomAttributeBuilder>? assemblyAttributes) { throw new NotImplementedException("Under construction"); }
-        public System.Reflection.Emit.ModuleBuilder DefineDynamicModule(string name) { throw new NotImplementedException("Under construction"); }
-
-        public System.Reflection.Emit.ModuleBuilder? GetDynamicModule(string name) { throw new NotImplementedException("Under construction"); }
+        public System.Reflection.Emit.ModuleBuilder? GetDynamicModule(string name) 
+        { 
+            throw new NotImplementedException(); 
+        }
     }
 }
 
