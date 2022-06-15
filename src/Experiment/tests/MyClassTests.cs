@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 using System.Reflection.Emit.Experimental;
@@ -11,18 +12,18 @@ namespace Experiment.Tests
 {
     public class MyClassTests
     {
-        AssemblyName name = new AssemblyName("MyBlankAssembly");
+        private readonly AssemblyName _name = new AssemblyName("MyBlankAssembly");
         [Fact]
-        public void Test1()
+        public void GenerateBlankAssemblyReadToDisk()
         {
-            String fileName = "BlankAssembly.dll";
-            System.Console.WriteLine("Something is happening");
-            AssemblyBuilder assemblyBuilder = AssemblyBuilder.DefineDynamicAssembly(name, System.Reflection.Emit.AssemblyBuilderAccess.Run);
-            assemblyBuilder.Save(fileName);
-            reader(fileName);//If an error is thrown, we have a malformed DLL.
+            const String _fileName = "BlankAssembly.dll";
+            AssemblyBuilder assemblyBuilder = AssemblyBuilder.DefineDynamicAssembly(_name, System.Reflection.Emit.AssemblyBuilderAccess.Run);
+            assemblyBuilder.Save(_fileName);
+            Reader(_fileName);//It seems that sometimes ILSpy will point out a DLL is malformed but MetadataReader doesn't throw an error (MetadataLoadContext rather?) .
         }
+       
 
-        private void reader(String fileName)
+        private void Reader(String fileName)
         {
             int i = 0;
             try
@@ -31,10 +32,14 @@ namespace Experiment.Tests
                 using var peReader = new PEReader(fs);
                 MetadataReader mr = peReader.GetMetadataReader();
                 var asssemblyData = mr.GetAssemblyDefinition();
-                Assert.Equal(name.Name, mr.GetString(asssemblyData.Name));
+                var moduleData = mr.GetModuleDefinition();
+                Debug.WriteLine("Assembly name is: " + mr.GetString(asssemblyData.Name));
+                Assert.Equal(_name.Name, mr.GetString(asssemblyData.Name));
+                Debug.WriteLine("Module name is: " + mr.GetString(moduleData.Name));
+                Assert.Equal(_name.Name, mr.GetString(moduleData.Name));
                 fs.Dispose();
             }
-            catch
+            catch//can be delay in FileWriter releasing rescource
             {
                 if (i < 5)
                 {
@@ -55,7 +60,7 @@ namespace Experiment.Tests
                 }
                 else
                 {
-                    Console.WriteLine("File does not exist.");
+                    Debug.WriteLine("File does not exist.");
                 }
             }
         }
