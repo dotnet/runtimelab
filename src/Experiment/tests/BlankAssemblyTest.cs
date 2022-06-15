@@ -10,7 +10,7 @@ using Xunit;
 
 namespace Experiment.Tests
 {
-    public class MyClassTests
+    public class BlankAssemblyTest
     {
         private readonly AssemblyName _name = new AssemblyName("MyBlankAssembly");
         [Fact]

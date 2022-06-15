@@ -1,29 +1,23 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Reflection;
-using System.Reflection.Metadata.Ecma335;
-using System.Reflection.Metadata;
 using System.IO;
+using System.Reflection.Metadata;
+using System.Reflection.Metadata.Ecma335;
 using System.Reflection.PortableExecutable;
-using System.Runtime.CompilerServices;
 
 namespace System.Reflection.Emit.Experimental
 {
 
     public class AssemblyBuilder: System.Reflection.Assembly
     {
-        private static readonly Guid _s_guid = new Guid("87D4DBE1-1143-4FAD-AAB3-1001F92068E6");//Some random ID, Need to look into how these should be generated.
-        private static readonly BlobContentId _s_contentId = new BlobContentId(_s_guid, 0x04030201);
+        private static readonly Guid s_guid = Guid.NewGuid();//Some random ID, Need to look into how these should be generated.
+        private static readonly BlobContentId s_contentId = new BlobContentId(s_guid, 0x04030201);
         private BlobBuilder _emptyBlob = new BlobBuilder();
         public override string? FullName { get; }
-        private static MetadataBuilder _metadata = new MetadataBuilder();
-        private static IDictionary<string,ModuleBuilder> moduleStorage = new Dictionary<string, ModuleBuilder>();
+        private MetadataBuilder _metadata = new MetadataBuilder();
+        private IDictionary<string,ModuleBuilder> _moduleStorage = new Dictionary<string, ModuleBuilder>();
         public AssemblyBuilder() { }
         private AssemblyBuilder(string name) 
         {
@@ -49,7 +43,7 @@ namespace System.Reflection.Emit.Experimental
                flags: 0,
                hashAlgorithm: AssemblyHashAlgorithm.None);
             //Add each module's medata
-            foreach (KeyValuePair<string, ModuleBuilder> entry in moduleStorage)
+            foreach (KeyValuePair<string, ModuleBuilder> entry in _moduleStorage)
             {
                 entry.Value.AppendMetadata(_metadata);
             }
@@ -81,13 +75,13 @@ namespace System.Reflection.Emit.Experimental
         public System.Reflection.Emit.Experimental.ModuleBuilder DefineDynamicModule(string name) 
         {
             ModuleBuilder moduleBuilder = new ModuleBuilder(name,this);
-            moduleStorage.Add(name, moduleBuilder);
+            _moduleStorage.Add(name, moduleBuilder);
             return moduleBuilder;
         }
 
         public System.Reflection.Emit.Experimental.ModuleBuilder? GetDynamicModule(string name) 
         {
-            return moduleStorage[name];
+            return _moduleStorage[name];
         }
 
         private static void WritePEImage(Stream peStream, MetadataBuilder metadataBuilder, BlobBuilder ilBuilder) // MethodDefinitionHandle entryPointHandle when we have main method.
@@ -102,7 +96,7 @@ namespace System.Reflection.Emit.Experimental
                 new MetadataRootBuilder(metadataBuilder),
                 ilBuilder,
                 flags: CorFlags.ILOnly,
-                deterministicIdProvider: content => _s_contentId);
+                deterministicIdProvider: content => s_contentId);
 
             // Write executable into the specified stream.
             var peBlob = new BlobBuilder();
