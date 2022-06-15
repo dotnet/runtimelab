@@ -2,8 +2,11 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection.Metadata;
 using System.Reflection.Metadata.Ecma335;
+using System.Text;
+using System.Threading.Tasks;
 
 namespace System.Reflection.Emit.Experimental
 {
@@ -26,7 +29,9 @@ namespace System.Reflection.Emit.Experimental
 
         internal ModuleBuilder(string name, Assembly assembly)
         {
-            ScopeName = name;
+         //Example random GUID - I still need to understand when, how and why to generate them.
+        _s_guid= Guid.NewGuid();
+        ScopeName = name;
             Assembly = assembly;
         }
 
@@ -83,7 +88,7 @@ namespace System.Reflection.Emit.Experimental
            => throw new NotImplementedException();
 
         // For all these methods, return type will be changed to "System.Reflection.Emit.Experiment.x" once non-empty modules/assemblies are supported.
-        public System.Reflection.Emit.EnumBuilder DefineEnum(string name, System.Reflection.TypeAttributes visibility, System.Type underlyingType)
+        public System.Reflection.Emit.EnumBuilder DefineEnum(string name, System.Reflection.TypeAttributes visibility, System.Type underlyingType) 
             => throw new NotImplementedException();
 
         public System.Reflection.Emit.MethodBuilder DefineGlobalMethod(string name, System.Reflection.MethodAttributes attributes, System.Reflection.CallingConventions callingConvention, System.Type? returnType, System.Type[]? parameterTypes)
