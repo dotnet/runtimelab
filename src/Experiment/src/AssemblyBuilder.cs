@@ -160,7 +160,7 @@ namespace System.Reflection.Emit.Experimental
                 new MetadataRootBuilder(metadataBuilder),
                 ilBuilder,
                 flags: CorFlags.ILOnly,
-                deterministicIdProvider: content => _s_contentId);
+                deterministicIdProvider: content => s_contentId);
 
             // Write executable into the specified stream.
             var peBlob = new BlobBuilder();
