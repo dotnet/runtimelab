@@ -12,16 +12,16 @@ namespace System.Reflection.Emit.Experimental
 
     public class AssemblyBuilder: System.Reflection.Assembly
     {
-        private static readonly Guid s_guid = Guid.NewGuid();//Some random ID, Need to look into how these should be generated.
-        private static readonly BlobContentId s_contentId = new BlobContentId(s_guid, 0x04030201);
-        private BlobBuilder _emptyBlob = new BlobBuilder();
-        public override string? FullName { get; }
+        private static readonly Guid s_guid = Guid.NewGuid();
+        private BlobBuilder _emptyBlob = new BlobBuilder();//For later
+        private AssemblyName? _assemblyName;
         private MetadataBuilder _metadata = new MetadataBuilder();
         private IDictionary<string,ModuleBuilder> _moduleStorage = new Dictionary<string, ModuleBuilder>();
+
         public AssemblyBuilder() { }
-        private AssemblyBuilder(string name) 
+        private AssemblyBuilder(AssemblyName name) 
         {
-            FullName = name;
+            _assemblyName = name;
         }
 
         public void Save(string assemblyFileName)
@@ -30,18 +30,18 @@ namespace System.Reflection.Emit.Experimental
             {
                 throw new ArgumentNullException();
             }
-            if (FullName == null)
+            if (_assemblyName==null||_assemblyName.Name==null)
             {
                 throw new ArgumentNullException();
             }
             //Add assembly metadata
             _metadata.AddAssembly(//Metadata is added for the new assembly - Current design - metdata generated only when Save method is called.
-               _metadata.GetOrAddString(value: FullName),//FullName, CultureName?
-               version: new Version(1, 0, 0, 0),
-               culture: default(StringHandle),
-               publicKey: default(BlobHandle),
-               flags: 0,
-               hashAlgorithm: AssemblyHashAlgorithm.None);
+               _metadata.GetOrAddString(value: _assemblyName.Name),
+               version: _assemblyName.Version ?? new Version(1, 0, 0, 0),
+               culture: (_assemblyName.CultureName==null) ?  default : _metadata.GetOrAddString(value: _assemblyName.CultureName),
+               publicKey: (_assemblyName.GetPublicKey() is byte[] publicKey) ? _metadata.GetOrAddBlob(value: publicKey) : default,
+               flags: (AssemblyFlags) _assemblyName.Flags,
+               hashAlgorithm: AssemblyHashAlgorithm.None);//It seems AssemblyName.HashAlgorithm is obslete so default value used.
             //Add each module's medata
             foreach (KeyValuePair<string, ModuleBuilder> entry in _moduleStorage)
             {
@@ -50,7 +50,6 @@ namespace System.Reflection.Emit.Experimental
             using var peStream = new FileStream(assemblyFileName, FileMode.OpenOrCreate, FileAccess.ReadWrite);
             var ilBuilder = new BlobBuilder();
             WritePEImage(peStream, _metadata, ilBuilder);
-            peStream.Dispose();//close or dispose?
         }
 
         public static System.Reflection.Emit.Experimental.AssemblyBuilder DefineDynamicAssembly(System.Reflection.AssemblyName name, System.Reflection.Emit.AssemblyBuilderAccess access)
@@ -60,8 +59,8 @@ namespace System.Reflection.Emit.Experimental
                 throw new ArgumentNullException();
             }
             //AssemblyBuilderAccess affects runtime managment only and is not relevant for saving to disk.
-            AssemblyBuilder currentAssembly = new AssemblyBuilder(name.Name);
-            //We need to create module becaue even a blank assembly has one module.
+            AssemblyBuilder currentAssembly = new AssemblyBuilder(name);
+            //We need to create module because even a blank assembly has one module.
             currentAssembly.DefineDynamicModule(name.Name);
             return currentAssembly;
         }
@@ -90,13 +89,13 @@ namespace System.Reflection.Emit.Experimental
             var peHeaderBuilder = new PEHeaderBuilder(
                 imageCharacteristics: Characteristics.Dll //Start off with a simple DLL
                 );
-
+        
             var peBuilder = new ManagedPEBuilder(
                 peHeaderBuilder,
                 new MetadataRootBuilder(metadataBuilder),
                 ilBuilder,
                 flags: CorFlags.ILOnly,
-                deterministicIdProvider: content => s_contentId);
+                deterministicIdProvider: content => new BlobContentId(s_guid, 0x04030201));//Const ID, will reexamine as project progresses. 
 
             // Write executable into the specified stream.
             var peBlob = new BlobBuilder();
