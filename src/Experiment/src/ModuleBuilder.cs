@@ -29,9 +29,7 @@ namespace System.Reflection.Emit.Experimental
 
         internal ModuleBuilder(string name, Assembly assembly)
         {
-         //Example random GUID - I still need to understand when, how and why to generate them.
-        _s_guid= Guid.NewGuid();
-        ScopeName = name;
+            ScopeName = name;
             Assembly = assembly;
         }
 

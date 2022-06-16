@@ -154,13 +154,13 @@ namespace System.Reflection.Emit.Experimental
             var peHeaderBuilder = new PEHeaderBuilder(
                 imageCharacteristics: Characteristics.Dll //Start off with a simple DLL
                 );
-
+        
             var peBuilder = new ManagedPEBuilder(
                 peHeaderBuilder,
                 new MetadataRootBuilder(metadataBuilder),
                 ilBuilder,
                 flags: CorFlags.ILOnly,
-                deterministicIdProvider: content => s_contentId);
+                deterministicIdProvider: content => new BlobContentId(s_guid, 0x04030201));//Const ID, will reexamine as project progresses. 
 
             // Write executable into the specified stream.
             var peBlob = new BlobBuilder();
