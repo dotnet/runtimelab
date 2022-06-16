@@ -24,7 +24,7 @@ namespace System.Reflection.Emit.Experimental
             metadataBuilder.AddModule(
                 generation: 0,
                 metadataBuilder.GetOrAddString(ScopeName),
-                metadataBuilder.GetOrAddGuid(Guid.NewGuid()),//See above comment on GUID
+                metadataBuilder.GetOrAddGuid(Guid.NewGuid()),
                 default(GuidHandle),
                 default(GuidHandle));
         }

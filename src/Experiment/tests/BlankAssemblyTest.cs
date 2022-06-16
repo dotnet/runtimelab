@@ -57,14 +57,7 @@ namespace Experiment.Tests
             }
             finally
             {
-                if (File.Exists(filePath))
-                {
-                   File.Delete(filePath);
-                }
-                else
-                {
-                    Debug.WriteLine("File does not exist.");
-                }
+                //   File.Delete(filePath);
             }
         }
     }

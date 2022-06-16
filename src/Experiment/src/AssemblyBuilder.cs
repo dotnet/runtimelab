@@ -13,7 +13,6 @@ namespace System.Reflection.Emit.Experimental
     public class AssemblyBuilder: System.Reflection.Assembly
     {
         private static readonly Guid s_guid = Guid.NewGuid();
-        private BlobBuilder _emptyBlob = new BlobBuilder();//For later
         private AssemblyName? _assemblyName;
         private MetadataBuilder _metadata = new MetadataBuilder();
         private IDictionary<string,ModuleBuilder> _moduleStorage = new Dictionary<string, ModuleBuilder>();
@@ -28,11 +27,11 @@ namespace System.Reflection.Emit.Experimental
         {
             if (assemblyFileName == null)
             {
-                throw new ArgumentNullException();
+                throw new ArgumentNullException(nameof(assemblyFileName));
             }
             if (_assemblyName==null||_assemblyName.Name==null)
             {
-                throw new ArgumentNullException();
+                throw new ArgumentNullException(nameof(_assemblyName));
             }
             //Add assembly metadata
             _metadata.AddAssembly(//Metadata is added for the new assembly - Current design - metdata generated only when Save method is called.
@@ -85,7 +84,7 @@ namespace System.Reflection.Emit.Experimental
 
         private static void WritePEImage(Stream peStream, MetadataBuilder metadataBuilder, BlobBuilder ilBuilder) // MethodDefinitionHandle entryPointHandle when we have main method.
         {
-            // Create executable with the managed metadata from the specified MetadataBuilder.
+            //Create executable with the managed metadata from the specified MetadataBuilder.
             var peHeaderBuilder = new PEHeaderBuilder(
                 imageCharacteristics: Characteristics.Dll //Start off with a simple DLL
                 );
