@@ -58,7 +58,7 @@ namespace Experiment.Tests
             }
             finally
             {
-                //   File.Delete(filePath);
+                  File.Delete(filePath);
             }
         }
     }
