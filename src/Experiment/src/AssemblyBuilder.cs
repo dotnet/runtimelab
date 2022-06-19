@@ -12,12 +12,11 @@ namespace System.Reflection.Emit.Experimental
 
     public class AssemblyBuilder: System.Reflection.Assembly
     {
-        private static readonly Guid s_guid = Guid.NewGuid();
+        private static readonly Guid _guid = Guid.NewGuid();
         private AssemblyName? _assemblyName;
         private MetadataBuilder _metadata = new MetadataBuilder();
         private IDictionary<string,ModuleBuilder> _moduleStorage = new Dictionary<string, ModuleBuilder>();
 
-        public AssemblyBuilder() { }
         private AssemblyBuilder(AssemblyName name) 
         {
             _assemblyName = name;
@@ -33,15 +32,19 @@ namespace System.Reflection.Emit.Experimental
             {
                 throw new ArgumentNullException(nameof(_assemblyName));
             }
+            if(_moduleStorage.Count==0)
+            {
+                throw new InvalidOperationException("Assembly needs at least one module defined");
+            }
             //Add assembly metadata
             _metadata.AddAssembly(//Metadata is added for the new assembly - Current design - metdata generated only when Save method is called.
                _metadata.GetOrAddString(value: _assemblyName.Name),
-               version: _assemblyName.Version ?? new Version(1, 0, 0, 0),
+               version: _assemblyName.Version ?? new Version(0, 0, 0, 0),
                culture: (_assemblyName.CultureName==null) ?  default : _metadata.GetOrAddString(value: _assemblyName.CultureName),
                publicKey: (_assemblyName.GetPublicKey() is byte[] publicKey) ? _metadata.GetOrAddBlob(value: publicKey) : default,
                flags: (AssemblyFlags) _assemblyName.Flags,
                hashAlgorithm: AssemblyHashAlgorithm.None);//It seems AssemblyName.HashAlgorithm is obslete so default value used.
-            //Add each module's medata
+            //Add each module's metadata
             foreach (KeyValuePair<string, ModuleBuilder> entry in _moduleStorage)
             {
                 entry.Value.AppendMetadata(_metadata);
@@ -59,8 +62,6 @@ namespace System.Reflection.Emit.Experimental
             }
             //AssemblyBuilderAccess affects runtime managment only and is not relevant for saving to disk.
             AssemblyBuilder currentAssembly = new AssemblyBuilder(name);
-            //We need to create module because even a blank assembly has one module.
-            currentAssembly.DefineDynamicModule(name.Name);
             return currentAssembly;
         }
 
@@ -94,7 +95,7 @@ namespace System.Reflection.Emit.Experimental
                 new MetadataRootBuilder(metadataBuilder),
                 ilBuilder,
                 flags: CorFlags.ILOnly,
-                deterministicIdProvider: content => new BlobContentId(s_guid, 0x04030201));//Const ID, will reexamine as project progresses. 
+                deterministicIdProvider: content => new BlobContentId(_guid, 0x04030201));//Const ID, will reexamine as project progresses. 
 
             // Write executable into the specified stream.
             var peBlob = new BlobBuilder();
