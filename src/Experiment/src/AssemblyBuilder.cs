@@ -12,7 +12,7 @@ namespace System.Reflection.Emit.Experimental
 
     public class AssemblyBuilder: System.Reflection.Assembly
     {
-        private static readonly Guid _guid = Guid.NewGuid();
+        private readonly Guid _guid = Guid.NewGuid();
         private AssemblyName? _assemblyName;
         private MetadataBuilder _metadata = new MetadataBuilder();
         private IDictionary<string,ModuleBuilder> _moduleStorage = new Dictionary<string, ModuleBuilder>();
