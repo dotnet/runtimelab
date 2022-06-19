@@ -2,8 +2,11 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection.Metadata;
 using System.Reflection.Metadata.Ecma335;
+using System.Text;
+using System.Threading.Tasks;
 
 namespace System.Reflection.Emit.Experimental
 {
@@ -23,7 +26,7 @@ namespace System.Reflection.Emit.Experimental
             Module = module;
             Assembly = assembly;
             TypeAttribute = typeAttributes;
-
+            
             //Extract namespace from name
             int idx = Name.LastIndexOf('.');
             if (idx != -1)
@@ -64,7 +67,7 @@ namespace System.Reflection.Emit.Experimental
         internal void AppendMetadata(MetadataBuilder _metadata)
         {
             MethodDefinitionHandle? _nearestHandle = null;
-
+            
             // Check if I have methods.
             if(_first!=null)
             {
@@ -151,18 +154,24 @@ namespace System.Reflection.Emit.Experimental
         public System.Reflection.Emit.FieldBuilder DefineInitializedData(string name, byte[] data, System.Reflection.FieldAttributes attributes)
             => throw new NotImplementedException();
 
+        public System.Reflection.Emit.MethodBuilder DefineMethod(string name, System.Reflection.MethodAttributes attributes)
+            => throw new NotImplementedException();
+
         public System.Reflection.Emit.MethodBuilder DefineMethod(string name, System.Reflection.MethodAttributes attributes, System.Reflection.CallingConventions callingConvention)
             => throw new NotImplementedException();
 
+        public System.Reflection.Emit.MethodBuilder DefineMethod(string name, System.Reflection.MethodAttributes attributes, System.Reflection.CallingConventions callingConvention, System.Type? returnType, System.Type[]? parameterTypes)
+            => throw new NotImplementedException();
         public System.Reflection.Emit.MethodBuilder DefineMethod(string name, System.Reflection.MethodAttributes attributes, System.Reflection.CallingConventions callingConvention, System.Type? returnType, System.Type[]? returnTypeRequiredCustomModifiers, System.Type[]? returnTypeOptionalCustomModifiers, System.Type[]? parameterTypes, System.Type[][]? parameterTypeRequiredCustomModifiers, System.Type[][]? parameterTypeOptionalCustomModifiers)  
             => throw new NotImplementedException();
 
         public System.Reflection.Emit.MethodBuilder DefineMethod(string name, System.Reflection.MethodAttributes attributes, System.Type? returnType, System.Type[]? parameterTypes)
             => throw new NotImplementedException();
 
-        public void DefineMethodOverride(System.Reflection.MethodInfo methodInfoBody, System.Reflection.MethodInfo methodInfoDeclaration)
+        public void DefineMethodOverride(System.Reflection.MethodInfo methodInfoBody, System.Reflection.MethodInfo methodInfoDeclaration) 
             => throw new NotImplementedException();
-
+        
+        }
         public System.Reflection.Emit.TypeBuilder DefineNestedType(string name)
             => throw new NotImplementedException();
 
@@ -380,5 +389,6 @@ namespace System.Reflection.Emit.Experimental
 
         public override string ToString()
             => throw new NotImplementedException();
+
     }
 }
