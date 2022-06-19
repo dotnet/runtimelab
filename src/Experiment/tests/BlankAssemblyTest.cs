@@ -21,6 +21,8 @@ namespace Experiment.Tests
             _name.Version = new Version("4.3");
             const String _fileName = "BlankAssembly.dll";
             AssemblyBuilder assemblyBuilder = AssemblyBuilder.DefineDynamicAssembly(_name, System.Reflection.Emit.AssemblyBuilderAccess.Run);
+            //We need to create module because even a blank assembly has one module.
+            assemblyBuilder.DefineDynamicModule(_name.Name);
             assemblyBuilder.Save(_fileName);
             TryLoadAssembly(_fileName,_name);//It seems that sometimes ILSpy will point out a DLL is malformed but MetadataReader doesn't throw an error (MetadataLoadContext rather?) .
         }
@@ -40,7 +42,6 @@ namespace Experiment.Tests
                 Debug.WriteLine("Assembly version is: " + asssemblyData.Version);
                 Debug.WriteLine("Module name is: " + mr.GetString(moduleData.Name));
                 Assert.Equal(_name.Name, mr.GetString(moduleData.Name));
-                fs.Dispose();
             }
             catch//can be delay in FileWriter releasing rescource
             {

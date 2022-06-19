@@ -1,17 +1,17 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
+﻿using System.Collections.Generic;
 using System.Reflection.Metadata;
 using System.Reflection.Metadata.Ecma335;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace System.Reflection.Emit.Experimental
 {
     public class ModuleBuilder : System.Reflection.Module
     {
+        private IDictionary<string, TypeBuilder> _typeStorage = new Dictionary<string, TypeBuilder>();
         public override System.Reflection.Assembly Assembly { get; }
-        public override string ScopeName { get; }
+        public override string ScopeName
+        {
+            get;
+        }
 
         internal ModuleBuilder(string name, Assembly assembly)
         {
@@ -19,14 +19,29 @@ namespace System.Reflection.Emit.Experimental
             Assembly = assembly;
         }
 
-        internal void AppendMetadata(MetadataBuilder metadataBuilder)
+        internal void AppendMetadata(MetadataBuilder _metadata)
         {
-            metadataBuilder.AddModule(
+
+            //Add module metadata
+            _metadata.AddModule(
                 generation: 0,
-                metadataBuilder.GetOrAddString(ScopeName),
-                metadataBuilder.GetOrAddGuid(Guid.NewGuid()),
+                _metadata.GetOrAddString(ScopeName),
+                _metadata.GetOrAddGuid(Guid.NewGuid()),
                 default(GuidHandle),
                 default(GuidHandle));
+
+            //Add each type's metadata
+            foreach (KeyValuePair<string, TypeBuilder> entry in _typeStorage)
+            {
+                entry.Value.AppendMetadata(_metadata);
+            }
+        }
+
+        public System.Reflection.Emit.Experimental.TypeBuilder DefineType(string name, System.Reflection.TypeAttributes attr)
+        {
+            TypeBuilder _type = new TypeBuilder(name,this,Assembly,attr);
+            _typeStorage.Add(name, _type);  
+            return _type;
         }
 
         public void CreateGlobalFunctions()
@@ -57,9 +72,6 @@ namespace System.Reflection.Emit.Experimental
             => throw new NotImplementedException();
 
         public System.Reflection.Emit.TypeBuilder DefineType(string name)
-            => throw new NotImplementedException();
-
-        public System.Reflection.Emit.TypeBuilder DefineType(string name, System.Reflection.TypeAttributes attr)
             => throw new NotImplementedException();
 
         public System.Reflection.Emit.TypeBuilder DefineType(string name, System.Reflection.TypeAttributes attr, [System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembersAttribute(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.All)] System.Type? parent)
