@@ -747,6 +747,7 @@ namespace ILCompiler
                         .UseInstructionSetSupport(instructionSetSupport)
                         .UseCustomPESectionAlignment(_commandLineOptions.CustomPESectionAlignment)
                         .UseVerifyTypeAndFieldLayout(_commandLineOptions.VerifyTypeAndFieldLayout)
+                        .UseHotColdSplitting(_commandLineOptions.HotColdSplitting)
                         .GenerateOutputFile(outFile)
                         .UseImageBase(_imageBase)
                         .UseILProvider(ilProvider)

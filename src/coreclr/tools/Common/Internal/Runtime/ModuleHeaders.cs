@@ -67,6 +67,7 @@ namespace Internal.Runtime
         OwnerCompositeExecutable = 116, // Added in 4.1
         PgoInstrumentationData = 117, // Added in 5.2
         ManifestAssemblyMvids = 118, // Added in 5.3
+        Scratch = 119, // This is meant to be a scratch area for prototyping only
 
         //
         // NativeAOT ReadyToRun sections

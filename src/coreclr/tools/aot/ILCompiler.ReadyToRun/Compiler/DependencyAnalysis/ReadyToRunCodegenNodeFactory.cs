@@ -319,6 +319,8 @@ namespace ILCompiler.DependencyAnalysis
 
         public RuntimeFunctionsTableNode RuntimeFunctionsTable;
 
+        public ScratchNode Scratch;
+
         public RuntimeFunctionsGCInfoNode RuntimeFunctionsGCInfo;
 
         public DelayLoadMethodCallThunkNodeRange DelayLoadMethodCallThunks;
@@ -608,6 +610,11 @@ namespace ILCompiler.DependencyAnalysis
 
             RuntimeFunctionsTable = new RuntimeFunctionsTableNode(this);
             Header.Add(Internal.Runtime.ReadyToRunSectionType.RuntimeFunctions, RuntimeFunctionsTable, RuntimeFunctionsTable);
+
+            Scratch = new ScratchNode(this);
+            Header.Add(Internal.Runtime.ReadyToRunSectionType.Scratch, Scratch, Scratch);
+            // TODO, this should be dependent on the existence of cold code blocks.
+            graph.AddRoot(Scratch, "Scratch is always there!");
 
             RuntimeFunctionsGCInfo = new RuntimeFunctionsGCInfoNode();
             graph.AddRoot(RuntimeFunctionsGCInfo, "GC info is always generated");

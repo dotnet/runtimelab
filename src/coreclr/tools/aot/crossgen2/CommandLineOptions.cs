@@ -63,6 +63,7 @@ namespace ILCompiler
         public string MethodLayout;
         public string FileLayout;
         public bool VerifyTypeAndFieldLayout;
+        public bool HotColdSplitting;
         public string CallChainProfileFile;
         public string ImageBase;
 
@@ -167,6 +168,7 @@ namespace ILCompiler
                 syntax.DefineOption("method-layout", ref MethodLayout, SR.MethodLayoutOption);
                 syntax.DefineOption("file-layout", ref FileLayout, SR.FileLayoutOption);
                 syntax.DefineOption("verify-type-and-field-layout", ref VerifyTypeAndFieldLayout, SR.VerifyTypeAndFieldLayoutOption);
+                syntax.DefineOption("hot-cold-splitting", ref HotColdSplitting, SR.HotColdSplittingOption);
                 syntax.DefineOption("callchain-profile", ref CallChainProfileFile, SR.CallChainProfileFile);
 
                 syntax.DefineOption("make-repro-path", ref MakeReproPath, SR.MakeReproPathHelp);
