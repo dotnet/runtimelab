@@ -2,6 +2,10 @@
   <PropertyGroup>
     <TargetFramework>net7.0</TargetFramework>
   </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="System.CodeDom" Version="6.0.0" />
+    <PackageReference Include="System.Reflection.MetadataLoadContext" Version="6.0.0" />
+  </ItemGroup>
   
   <ItemGroup>
     <ProjectReference Include="..\src\System.Reflection.Emit.Experimental.csproj" />

@@ -6,7 +6,7 @@ namespace System.Reflection.Emit.Experimental
 {
     public class ModuleBuilder : System.Reflection.Module
     {
-        private IDictionary<string, TypeBuilder> _typeStorage = new Dictionary<string, TypeBuilder>();
+        internal LinkedList<TypeBuilder> _typeStorage = new LinkedList<TypeBuilder>(); // LinkedList because each type needs to need know what methods are in the next type.
         public override System.Reflection.Assembly Assembly { get; }
         public override string ScopeName
         {
@@ -21,7 +21,34 @@ namespace System.Reflection.Emit.Experimental
 
         internal void AppendMetadata(MetadataBuilder _metadata)
         {
-
+            MethodDefinitionHandle? _handle = null;
+            //Generate underlying metadata
+            foreach (TypeBuilder entry in _typeStorage)
+            {
+                entry.GenerateComponentMetadata(_metadata);
+            }
+            //Get first method handle
+            foreach (TypeBuilder entry in _typeStorage)
+            {
+                if(entry._first!=null)
+                {
+                    _handle= entry._first;
+                    break;
+                }
+            }
+            // Create type definition for the special <Module> type that holds global functions
+            _metadata.AddTypeDefinition(
+                default(TypeAttributes),
+                default(StringHandle),
+                _metadata.GetOrAddString("<Module>"),
+                baseType: default(EntityHandle),
+                fieldList: MetadataTokens.FieldDefinitionHandle(1),
+                methodList: (MethodDefinitionHandle)((_handle != null) ? _handle : MetadataTokens.MethodDefinitionHandle(1)));
+            //Add each type's metadata
+            foreach (TypeBuilder entry in _typeStorage)
+            {
+                entry.AppendMetadata(_metadata);
+            }
             //Add module metadata
             _metadata.AddModule(
                 generation: 0,
@@ -29,18 +56,12 @@ namespace System.Reflection.Emit.Experimental
                 _metadata.GetOrAddGuid(Guid.NewGuid()),
                 default(GuidHandle),
                 default(GuidHandle));
-
-            //Add each type's metadata
-            foreach (KeyValuePair<string, TypeBuilder> entry in _typeStorage)
-            {
-                entry.Value.AppendMetadata(_metadata);
-            }
         }
 
         public System.Reflection.Emit.Experimental.TypeBuilder DefineType(string name, System.Reflection.TypeAttributes attr)
         {
             TypeBuilder _type = new TypeBuilder(name,this,Assembly,attr);
-            _typeStorage.Add(name, _type);  
+            _typeStorage.AddLast(_type);  
             return _type;
         }
 
