@@ -1,5 +1,7 @@
 <Project>
   <PropertyGroup>
+    <!-- Disable package creation in experiment branch. -->
+    <IsPackable>false</IsPackable>
     <SkipInferTargetOSName>true</SkipInferTargetOSName>
     <DisableArcadeTestFramework>true</DisableArcadeTestFramework>
 
