@@ -1,3 +1,17 @@
+# .NET Runtime - Hot/Cold Splitting
+This branch contains an experimental fork of the CoreCLR [.NET runtime](https://github.com/dotnet/runtime) with hot/cold code splitting enabled for Crossgen2. By separating frequently-run (or "hot") code sections from infrequently-run (or "cold") sections, we can increase hot code density, thus improving cache locality and reducing page faults. This feature is currently a collaboration between 2022 summer interns on the .NET JIT and runtime teams. Current efforts are focused specifically on supporting x64 end-to-end.
+
+## Documentation
+* While somewhat JIT-specific, the [Summer 2022 Intern Project Proposal](https://microsoft.sharepoint.com/:w:/t/netfx/CLR/JIT/EWLYVNr08DVLq8tvGeajBz4BVO0abH5bc6UI_X6qjjiU8g?e=6XNRXS) explains the background and motivations for hot/cold splitting.
+* Andrew Au's [initial PR](https://github.com/dotnet/runtimelab/pull/1900) documents remaining work items and issues known from the experiment's start.
+
+## How to Engage
+We welcome your feedback. Relevant issues tagged `area-hot-cold-splitting` are a good place to start the conversation. Feel free to reach out to us:
+* [Andrew Au](https://github.com/cshung) owns this experiment.
+* [Eugenio Peña](https://github.com/EugenioPena) and [Aman Khalid](https://github.com/amanasifkhalid) are interns on the runtime and JIT teams, respectively.
+
+---
+
 # .NET Runtime
 [![Build Status](https://dnceng.visualstudio.com/public/_apis/build/status/dotnet/runtime/runtime?branchName=main)](https://dnceng.visualstudio.com/public/_build/latest?definitionId=686&branchName=main)
 [![Help Wanted](https://img.shields.io/github/issues/dotnet/runtime/up-for-grabs?style=flat-square&color=%232EA043&label=help%20wanted)](https://github.com/dotnet/runtime/issues?q=is%3Aissue+is%3Aopen+label%3A%22up-for-grabs%22)
