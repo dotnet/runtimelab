@@ -13,6 +13,7 @@ Currently, this repo contains the following experimental projects:
 - [LLHTTP](https://github.com/dotnet/runtimelab/tree/feature/LLHTTP2) - a  set of flexible, lower-level HTTP APIs.
 - [CompatibilityPackages](https://github.com/dotnet/runtimelab/tree/feature/CompatibilityPackages) - a set of packages which help satisfy binary dependencies of .NETFramework assemblies on .NET.
 - [AssemblyBuilder.Save()](https://github.com/dotnet/runtimelab/tree/feature/assembly-builder-save) - Prototyping the implementation of AssemblyBuilder.Save() functionality.
+- [Hot-Cold Splitting](https://github.com/dotnet/runtimelab/tree/feature/hot-cold-splitting) - Support the hot-cold splitting optimization in crossgen2.
 
 You can create your own experiment, learn more [here](CreateAnExperiment.md)!
 
