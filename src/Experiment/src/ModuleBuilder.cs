@@ -70,18 +70,12 @@ namespace System.Reflection.Emit.Experimental
                 _metadata.GetOrAddGuid(Guid.NewGuid()),
                 default(GuidHandle),
                 default(GuidHandle));
-
-            //Add each type's metadata
-            foreach (KeyValuePair<string, TypeBuilder> entry in _typeStorage)
-            {
-                entry.Value.AppendMetadata(_metadata);
-            }
         }
 
         public System.Reflection.Emit.Experimental.TypeBuilder DefineType(string name, System.Reflection.TypeAttributes attr)
         {
             TypeBuilder _type = new TypeBuilder(name,this,Assembly,attr);
-            _typeStorage.Add(name, _type);  
+            _typeStorage.AddLast(_type);  
             return _type;
         }
 
