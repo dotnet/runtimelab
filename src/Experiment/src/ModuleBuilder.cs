@@ -6,7 +6,15 @@ namespace System.Reflection.Emit.Experimental
 {
     public class ModuleBuilder : System.Reflection.Module
     {
-        internal LinkedList<TypeBuilder> _typeStorage = new LinkedList<TypeBuilder>(); // LinkedList because each type needs to need know what methods are in the next type.
+        /* According to ECMA-335, (II.22.37), a TypeDef refrences the row of its first method in the MethodDef table. It owns all methods that lie between 
+         * that row and the row refrenced by the next TypeDef.
+         * For a TypeA that has no methods followed by a TypeB that has methods, MetaDataBuilder indicates this by having TypeA refrence the row of the first method of TypeB. Since TypeB
+         * has the same row refrence, TypeA will have no methods. (Why it needs to do this is unclear to me, since according to ECMA, ibid. 18, MethodList can be null).
+         * See https://docs.microsoft.com/en-us/dotnet/api/system.reflection.metadata.ecma335.metadatabuilder.addtypedefinition?view=net-6.0#system-reflection-metadata-ecma335-metadatabuilder-addtypedefinition(system-reflection-typeattributes-system-reflection-metadata-stringhandle-system-reflection-metadata-stringhandle-system-reflection-metadata-entityhandle-system-reflection-metadata-fielddefinitionhandle-system-reflection-metadata-methoddefinitionhandle)
+         * Using a LinkedList allows Types to inspect later Types when needed. 
+         * Identical issue for fields when implemented.
+         */
+        internal LinkedList<TypeBuilder> _typeStorage = new LinkedList<TypeBuilder>(); 
         public override System.Reflection.Assembly Assembly { get; }
         public override string ScopeName
         {
@@ -27,6 +35,7 @@ namespace System.Reflection.Emit.Experimental
             {
                 entry.GenerateComponentMetadata(_metadata);
             }
+
             //Get first method handle
             foreach (TypeBuilder entry in _typeStorage)
             {
@@ -44,11 +53,13 @@ namespace System.Reflection.Emit.Experimental
                 baseType: default(EntityHandle),
                 fieldList: MetadataTokens.FieldDefinitionHandle(1),
                 methodList: (MethodDefinitionHandle)((_handle != null) ? _handle : MetadataTokens.MethodDefinitionHandle(1)));
+            
             //Add each type's metadata
             foreach (TypeBuilder entry in _typeStorage)
             {
                 entry.AppendMetadata(_metadata);
             }
+
             //Add module metadata
             _metadata.AddModule(
                 generation: 0,

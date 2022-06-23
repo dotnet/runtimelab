@@ -23,6 +23,7 @@ namespace System.Reflection.Emit.Experimental
             Module = module;
             Assembly = assembly;
             TypeAttribute = typeAttributes;
+
             //Extract namespace from name
             int idx = Name.LastIndexOf('.');
             if (idx != -1)

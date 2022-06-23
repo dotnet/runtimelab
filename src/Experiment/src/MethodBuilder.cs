@@ -38,7 +38,7 @@ namespace System.Reflection.Emit.Experimental
                 MethodSignature(). // Need to add in calling conventions. 
                 Parameters((_parameters==null)? 0 :_parameters.Length, out _retEncoder, out _parEncoder);
 
-            if (_returnType != null && _returnType!=typeof(void)) 
+            if (_returnType != null && _returnType != typeof(void)) 
             {
                 MapReflectionTypeToSignatureType(_retEncoder.Type(), _returnType);
             }
@@ -46,6 +46,7 @@ namespace System.Reflection.Emit.Experimental
             {
                 _retEncoder.Void();
             }
+
             if (_parameters != null) // If parameters null, just keep empty ParametersEncoder empty
             {
                 foreach (var parameter in _parameters)
@@ -108,14 +109,17 @@ namespace System.Reflection.Emit.Experimental
         {
             throw new NotImplementedException();
         }
+
         public void SetParameters(params System.Type[] parameterTypes)
         {
             throw new NotImplementedException();
         }
+
         public void SetReturnType(System.Type? returnType)
         {
             throw new NotImplementedException();
         }
+
         public void SetSignature(System.Type? returnType, System.Type[]? returnTypeRequiredCustomModifiers, System.Type[]? returnTypeOptionalCustomModifiers, System.Type[]? parameterTypes, System.Type[][]? parameterTypeRequiredCustomModifiers, System.Type[][]? parameterTypeOptionalCustomModifiers)
         {
             throw new NotImplementedException();

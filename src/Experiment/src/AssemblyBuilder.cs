@@ -12,29 +12,39 @@ namespace System.Reflection.Emit.Experimental
 
     public class AssemblyBuilder: System.Reflection.Assembly
     {
+        private bool _previouslySaved=false;
         private AssemblyName? _assemblyName;
-        private MetadataBuilder _metadata = new MetadataBuilder();
-        private IDictionary<string,ModuleBuilder> _moduleStorage = new Dictionary<string, ModuleBuilder>();
+        private MetadataBuilder _metadata;
+        private ModuleBuilder? _module;
 
         private AssemblyBuilder(AssemblyName name) 
         {
             _assemblyName = name;
+            _metadata = new MetadataBuilder();
         }
 
         public void Save(string assemblyFileName)
         {
+            if(_previouslySaved) // You cannot save an assembly multiple times. This is consistent with Save() in .Net Framework.
+            {
+                throw new InvalidOperationException("Cannot save an assembly multiple times");
+            }
+
             if (assemblyFileName == null)
             {
                 throw new ArgumentNullException(nameof(assemblyFileName));
             }
-            if (_assemblyName==null||_assemblyName.Name==null)
+
+            if (_assemblyName == null || _assemblyName.Name == null)
             {
                 throw new ArgumentNullException(nameof(_assemblyName));
             }
-            if(_moduleStorage.Count==0)
+
+            if(_module == null)
             {
                 throw new InvalidOperationException("Assembly needs at least one module defined");
             }
+
             //Add assembly metadata
             _metadata.AddAssembly(//Metadata is added for the new assembly - Current design - metdata generated only when Save method is called.
                _metadata.GetOrAddString(value: _assemblyName.Name),
@@ -43,14 +53,14 @@ namespace System.Reflection.Emit.Experimental
                publicKey: (_assemblyName.GetPublicKey() is byte[] publicKey) ? _metadata.GetOrAddBlob(value: publicKey) : default,
                flags: (AssemblyFlags) _assemblyName.Flags,
                hashAlgorithm: AssemblyHashAlgorithm.None);//It seems AssemblyName.HashAlgorithm is obslete so default value used.
-            //Add each module's metadata
-            foreach (KeyValuePair<string, ModuleBuilder> entry in _moduleStorage)
-            {
-                entry.Value.AppendMetadata(_metadata);
-            }
+
+            //Add module's metadata
+            _module.AppendMetadata(_metadata);
+
             using var peStream = new FileStream(assemblyFileName, FileMode.OpenOrCreate, FileAccess.ReadWrite);
             var ilBuilder = new BlobBuilder();
             WritePEImage(peStream, _metadata, ilBuilder);
+            _previouslySaved = true;
         }
 
         public static System.Reflection.Emit.Experimental.AssemblyBuilder DefineDynamicAssembly(System.Reflection.AssemblyName name, System.Reflection.Emit.AssemblyBuilderAccess access)
@@ -59,6 +69,7 @@ namespace System.Reflection.Emit.Experimental
             {
                 throw new ArgumentNullException();
             }
+
             //AssemblyBuilderAccess affects runtime managment only and is not relevant for saving to disk.
             AssemblyBuilder currentAssembly = new AssemblyBuilder(name);
             return currentAssembly;
@@ -72,14 +83,49 @@ namespace System.Reflection.Emit.Experimental
 
         public System.Reflection.Emit.Experimental.ModuleBuilder DefineDynamicModule(string name) 
         {
+            if (name == null)
+            {
+                throw new ArgumentNullException(nameof(name));
+            }
+
+            if (name.Length == 0)
+            {
+                throw new ArgumentException(nameof(name));
+            }
+
+            if (_module != null)
+            {
+                throw new InvalidOperationException("Multi-module assemblies are not supported");
+            }
+
             ModuleBuilder moduleBuilder = new ModuleBuilder(name,this);
-            _moduleStorage.Add(name, moduleBuilder);
+            _module = moduleBuilder;
             return moduleBuilder;
         }
 
         public System.Reflection.Emit.Experimental.ModuleBuilder? GetDynamicModule(string name) 
         {
-            return _moduleStorage[name];
+            if(name == null)
+            {
+                throw new ArgumentNullException(nameof(name));
+            }
+
+            if (name.Length == 0)
+            {
+                throw new ArgumentException(nameof(name));
+            }
+
+            if(_module == null)
+            {
+                return null;
+            }
+
+            else if(_module.Name.Equals(name))
+            {
+                return _module;
+            }
+
+            return null;
         }
 
         private static void WritePEImage(Stream peStream, MetadataBuilder metadataBuilder, BlobBuilder ilBuilder) // MethodDefinitionHandle entryPointHandle when we have main method.
