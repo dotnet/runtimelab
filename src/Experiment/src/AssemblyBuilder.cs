@@ -13,13 +13,11 @@ namespace System.Reflection.Emit.Experimental
     {
         private bool _previouslySaved = false;
         private AssemblyName? _assemblyName;
-        private MetadataBuilder metadata;
         private ModuleBuilder? _module;
 
         private AssemblyBuilder(AssemblyName name)
         {
             _assemblyName = name;
-            metadata = new MetadataBuilder();
         }
 
         public void Save(string assemblyFileName)
@@ -44,16 +42,17 @@ namespace System.Reflection.Emit.Experimental
                 throw new InvalidOperationException("Assembly needs at least one module defined");
             }
 
-            //Add assembly metadata
-            metadata.AddAssembly(//Metadata is added for the new assembly - Current design - metdata generated only when Save method is called.
+            // Add assembly metadata
+            var metadata = new MetadataBuilder();
+            metadata.AddAssembly( // Metadata is added for the new assembly - Current design - metadata generated only when Save method is called.
                metadata.GetOrAddString(value: _assemblyName.Name),
                version: _assemblyName.Version ?? new Version(0, 0, 0, 0),
                culture: (_assemblyName.CultureName == null) ? default : metadata.GetOrAddString(value: _assemblyName.CultureName),
                publicKey: (_assemblyName.GetPublicKey() is byte[] publicKey) ? metadata.GetOrAddBlob(value: publicKey) : default,
                flags: (AssemblyFlags)_assemblyName.Flags,
-               hashAlgorithm: AssemblyHashAlgorithm.None);//It seems AssemblyName.HashAlgorithm is obslete so default value used.
+               hashAlgorithm: AssemblyHashAlgorithm.None); // AssemblyName.HashAlgorithm is obsolete so default value used.
 
-            //Add module's metadata
+            // Add module's metadata
             _module.AppendMetadata(metadata);
 
             using var peStream = new FileStream(assemblyFileName, FileMode.OpenOrCreate, FileAccess.ReadWrite);
@@ -111,7 +110,7 @@ namespace System.Reflection.Emit.Experimental
 
             if (name.Length == 0)
             {
-                throw new ArgumentException($"{nameof(name)} cannot have zero charachters.");
+                throw new ArgumentException($"{nameof(name)} cannot have zero characters.");
             }
 
             if (_module == null)
