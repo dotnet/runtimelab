@@ -9,15 +9,8 @@ namespace System.Reflection.Emit.Experimental
 {
     public class ModuleBuilder : System.Reflection.Module
     {
-        /* According to ECMA-335, (II.22.37), a TypeDef refrences the row of its first method in the MethodDef table. It owns all methods that lie between 
-         * that row and the row refrenced by the next TypeDef.
-         * For a TypeA that has no methods followed by a TypeB that has methods, MetaDataBuilder indicates this by having TypeA refrence the row of the first method of TypeB. Since TypeB
-         * has the same row refrence, TypeA will have no methods. (Why it needs to do this is unclear to me, since according to ECMA, ibid. 18, MethodList can be null).
-         * See https://docs.microsoft.com/en-us/dotnet/api/system.reflection.metadata.ecma335.metadatabuilder.addtypedefinition?view=net-6.0#system-reflection-metadata-ecma335-metadatabuilder-addtypedefinition(system-reflection-typeattributes-system-reflection-metadata-stringhandle-system-reflection-metadata-stringhandle-system-reflection-metadata-entityhandle-system-reflection-metadata-fielddefinitionhandle-system-reflection-metadata-methoddefinitionhandle)
-         * Using a LinkedList allows Types to inspect later Types when needed. 
-         * Identical issue for fields when implemented.
-         */
-        internal LinkedList<TypeBuilder> _typeStorage = new LinkedList<TypeBuilder>(); 
+        internal List<TypeBuilder> _typeStorage = new List<TypeBuilder>();
+        internal int _nextMethodDefRowId = 1; // Store method count for use in Type defintion.
         public override System.Reflection.Assembly Assembly { get; }
         public override string ScopeName
         {
@@ -30,52 +23,36 @@ namespace System.Reflection.Emit.Experimental
             Assembly = assembly;
         }
 
-        internal void AppendMetadata(MetadataBuilder _metadata)
+        internal void AppendMetadata(MetadataBuilder metadata)
         {
-            MethodDefinitionHandle? _handle = null;
-            //Generate underlying metadata
-            foreach (TypeBuilder entry in _typeStorage)
-            {
-                entry.GenerateComponentMetadata(_metadata);
-            }
-
-            //Get first method handle
-            foreach (TypeBuilder entry in _typeStorage)
-            {
-                if(entry._first!=null)
-                {
-                    _handle= entry._first;
-                    break;
-                }
-            }
             // Create type definition for the special <Module> type that holds global functions
-            _metadata.AddTypeDefinition(
+            metadata.AddTypeDefinition(
                 default(TypeAttributes),
                 default(StringHandle),
-                _metadata.GetOrAddString("<Module>"),
+                metadata.GetOrAddString("<Module>"),
                 baseType: default(EntityHandle),
                 fieldList: MetadataTokens.FieldDefinitionHandle(1),
-                methodList: (MethodDefinitionHandle)((_handle != null) ? _handle : MetadataTokens.MethodDefinitionHandle(1)));
-            
+                methodList: MetadataTokens.MethodDefinitionHandle(1));
+
             //Add each type's metadata
             foreach (TypeBuilder entry in _typeStorage)
             {
-                entry.AppendMetadata(_metadata);
+                entry.AppendMetadata(metadata);
             }
 
             //Add module metadata
-            _metadata.AddModule(
+            metadata.AddModule(
                 generation: 0,
-                _metadata.GetOrAddString(ScopeName),
-                _metadata.GetOrAddGuid(Guid.NewGuid()),
+                metadata.GetOrAddString(ScopeName),
+                metadata.GetOrAddGuid(Guid.NewGuid()),
                 default(GuidHandle),
                 default(GuidHandle));
         }
 
         public System.Reflection.Emit.Experimental.TypeBuilder DefineType(string name, System.Reflection.TypeAttributes attr)
         {
-            TypeBuilder _type = new TypeBuilder(name,this,Assembly,attr);
-            _typeStorage.AddLast(_type);  
+            TypeBuilder _type = new TypeBuilder(name, this, Assembly, attr);
+            _typeStorage.Add(_type); // Type needs to know where it is in the LinkedList, see note above. 
             return _type;
         }
 
