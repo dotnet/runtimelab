@@ -21,7 +21,7 @@ namespace System.Reflection.Emit.Experimental
             Module = module;
             Assembly = assembly;
             TypeAttribute = typeAttributes;
-            
+
             //Extract namespace from name
             int idx = Name.LastIndexOf('.');
             if (idx != -1)
@@ -129,10 +129,9 @@ namespace System.Reflection.Emit.Experimental
         public System.Reflection.Emit.MethodBuilder DefineMethod(string name, System.Reflection.MethodAttributes attributes, System.Type? returnType, System.Type[]? parameterTypes)
             => throw new NotImplementedException();
 
-        public void DefineMethodOverride(System.Reflection.MethodInfo methodInfoBody, System.Reflection.MethodInfo methodInfoDeclaration) 
+        public void DefineMethodOverride(System.Reflection.MethodInfo methodInfoBody, System.Reflection.MethodInfo methodInfoDeclaration)
             => throw new NotImplementedException();
-        
-        }
+
         public System.Reflection.Emit.TypeBuilder DefineNestedType(string name)
             => throw new NotImplementedException();
 

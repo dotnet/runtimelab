@@ -17,7 +17,7 @@ namespace System.Reflection.Emit.Experimental
         private Type? _returnType;
         private Type[]? _parameters;
 
-        internal MethodBuilder(string name, System.Reflection.MethodAttributes attributes, CallingConventions callingConventions, Type? returnType, Type[]? mthdParams, TypeBuilder declaringType)
+        internal MethodBuilder(string name, System.Reflection.MethodAttributes attributes, CallingConventions callingConventions, Type? returnType, Type[]? parameters, TypeBuilder declaringType)
         {
             Name = name;
             Attributes = attributes;

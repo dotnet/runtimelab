@@ -52,14 +52,7 @@ namespace System.Reflection.Emit.Experimental
         public System.Reflection.Emit.Experimental.TypeBuilder DefineType(string name, System.Reflection.TypeAttributes attr)
         {
             TypeBuilder _type = new TypeBuilder(name, this, Assembly, attr);
-            _typeStorage.Add(_type); // Type needs to know where it is in the LinkedList, see note above. 
-            return _type;
-        }
-
-        public System.Reflection.Emit.Experimental.TypeBuilder DefineType(string name, System.Reflection.TypeAttributes attr)
-        {
-            TypeBuilder _type = new TypeBuilder(name,this,Assembly,attr);
-            _typeStorage.AddLast(_type);  
+            _typeStorage.Add(_type);
             return _type;
         }
 
@@ -67,7 +60,7 @@ namespace System.Reflection.Emit.Experimental
            => throw new NotImplementedException();
 
         // For all these methods, return type will be changed to "System.Reflection.Emit.Experiment.x" once non-empty modules/assemblies are supported.
-        public System.Reflection.Emit.EnumBuilder DefineEnum(string name, System.Reflection.TypeAttributes visibility, System.Type underlyingType) 
+        public System.Reflection.Emit.EnumBuilder DefineEnum(string name, System.Reflection.TypeAttributes visibility, System.Type underlyingType)
             => throw new NotImplementedException();
 
         public System.Reflection.Emit.MethodBuilder DefineGlobalMethod(string name, System.Reflection.MethodAttributes attributes, System.Reflection.CallingConventions callingConvention, System.Type? returnType, System.Type[]? parameterTypes)
