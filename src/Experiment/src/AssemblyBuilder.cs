@@ -13,7 +13,7 @@ namespace System.Reflection.Emit.Experimental
     public class AssemblyBuilder: System.Reflection.Assembly
     {
         private bool _previouslySaved=false;
-        private AssemblyName? _assemblyName;
+        private AssemblyName _assemblyName;
         private MetadataBuilder _metadata;
         private ModuleBuilder? _module;
 
@@ -35,24 +35,19 @@ namespace System.Reflection.Emit.Experimental
                 throw new ArgumentNullException(nameof(assemblyFileName));
             }
 
-            if (_assemblyName == null || _assemblyName.Name == null)
-            {
-                throw new ArgumentNullException(nameof(_assemblyName));
-            }
-
             if(_module == null)
             {
                 throw new InvalidOperationException("Assembly needs at least one module defined");
             }
 
             //Add assembly metadata
-            _metadata.AddAssembly(//Metadata is added for the new assembly - Current design - metdata generated only when Save method is called.
+            _metadata.AddAssembly(//Metadata is added for the new assembly - Current design - metadata generated only when Save method is called.
                _metadata.GetOrAddString(value: _assemblyName.Name),
                version: _assemblyName.Version ?? new Version(0, 0, 0, 0),
                culture: (_assemblyName.CultureName==null) ?  default : _metadata.GetOrAddString(value: _assemblyName.CultureName),
                publicKey: (_assemblyName.GetPublicKey() is byte[] publicKey) ? _metadata.GetOrAddBlob(value: publicKey) : default,
                flags: (AssemblyFlags) _assemblyName.Flags,
-               hashAlgorithm: AssemblyHashAlgorithm.None);//It seems AssemblyName.HashAlgorithm is obslete so default value used.
+               hashAlgorithm: AssemblyHashAlgorithm.None);//AssemblyName.HashAlgorithm is obsolete so default value used.
 
             //Add module's metadata
             _module.AppendMetadata(_metadata);
