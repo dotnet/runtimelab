@@ -35,6 +35,11 @@ namespace System.Reflection.Emit.Experimental
                 throw new ArgumentNullException(nameof(assemblyFileName));
             }
 
+            if (_assemblyName == null || _assemblyName.Name == null)
+            {
+                throw new ArgumentNullException(nameof(_assemblyName));
+            }
+            
             if(_module == null)
             {
                 throw new InvalidOperationException("Assembly needs at least one module defined");
