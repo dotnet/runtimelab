@@ -24,7 +24,8 @@ namespace ILCompiler.DependencyAnalysis.ReadyToRun
         {
             get
             {
-                return _method.Context.Target.IsWindows ? ObjectNodeSection.ManagedCodeWindowsContentSection : ObjectNodeSection.ManagedCodeUnixContentSection;
+                return _owningMethod.Context.Target.IsWindows ? ObjectNodeSection.ManagedCodeWindowsContentSection : ObjectNodeSection.ManagedCodeUnixContentSection;            
+                
             }
         }
 
