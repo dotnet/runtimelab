@@ -3247,6 +3247,9 @@ void Compiler::compInitOptions(JitFlags* jitFlags)
 #endif
     }
 
+    // TODO: Implement support for EH splitting in Crossgen2.
+    opts.compProcedureSplittingEH = false;
+
 #ifdef DEBUG
 
     // Now, set compMaxUncheckedOffsetForNullObject for STRESS_NULL_OBJECT_CHECK
