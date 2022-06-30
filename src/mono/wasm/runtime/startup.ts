@@ -17,6 +17,7 @@ import { DotnetPublicAPI } from "./exports";
 import { mono_on_abort } from "./run";
 import { mono_wasm_new_root } from "./roots";
 import { init_crypto } from "./crypto-worker";
+import { init_polyfills } from "./polyfills";
 
 export let runtime_is_initialized_resolve: () => void;
 export let runtime_is_initialized_reject: (reason?: any) => void;
@@ -118,9 +119,10 @@ async function mono_wasm_pre_init(): Promise<void> {
 
     // wait for locateFile setup on NodeJs
     if (ENVIRONMENT_IS_NODE && ENVIRONMENT_IS_ESM) {
-        await requirePromise;
+        INTERNAL.require = await requirePromise;
     }
 
+    init_polyfills();
     init_crypto();
 
     if (moduleExt.configSrc) {
@@ -156,6 +158,9 @@ async function mono_wasm_pre_init(): Promise<void> {
             throw err;
         }
     }
+    if (!moduleExt.configSrc && !moduleExt.config) {
+        Module.print("MONO_WASM: configSrc nor config was specified");
+    }
 
     Module.removeRunDependency("mono_wasm_pre_init");
 }
@@ -166,6 +171,9 @@ function mono_wasm_after_runtime_initialized(): void {
     }
     finalize_assets(Module.config);
     finalize_startup(Module.config);
+    if (!ctx || !ctx.loaded_files || ctx.loaded_files.length == 0) {
+        Module.print("MONO_WASM: no files were loaded into runtime");
+    }
 }
 
 function _print_error(message: string, err: any): void {
@@ -394,7 +402,7 @@ export function bindings_lazy_init(): void {
         return;
     runtimeHelpers.mono_wasm_bindings_is_ready = true;
 
-    // please keep System.Runtime.InteropServices.JavaScript.Runtime.MappedType in sync
+    // please keep System.Runtime.InteropServices.JavaScript.JSHostImplementation.MappedType in sync
     (<any>Object.prototype)[wasm_type_symbol] = 0;
     (<any>Array.prototype)[wasm_type_symbol] = 1;
     (<any>ArrayBuffer.prototype)[wasm_type_symbol] = 2;
@@ -422,16 +430,16 @@ export function bindings_lazy_init(): void {
         throw "Can't find bindings module assembly: " + binding_fqn_asm;
 
     if (binding_fqn_class && binding_fqn_class.length) {
-        runtimeHelpers.runtime_classname = binding_fqn_class;
+        runtimeHelpers.runtime_interop_exports_classname = binding_fqn_class;
         if (binding_fqn_class.indexOf(".") != -1) {
             const idx = binding_fqn_class.lastIndexOf(".");
-            runtimeHelpers.runtime_namespace = binding_fqn_class.substring(0, idx);
-            runtimeHelpers.runtime_classname = binding_fqn_class.substring(idx + 1);
+            runtimeHelpers.runtime_interop_namespace = binding_fqn_class.substring(0, idx);
+            runtimeHelpers.runtime_interop_exports_classname = binding_fqn_class.substring(idx + 1);
         }
     }
 
-    runtimeHelpers.wasm_runtime_class = cwraps.mono_wasm_assembly_find_class(binding_module, runtimeHelpers.runtime_namespace, runtimeHelpers.runtime_classname);
-    if (!runtimeHelpers.wasm_runtime_class)
+    runtimeHelpers.runtime_interop_exports_class = cwraps.mono_wasm_assembly_find_class(binding_module, runtimeHelpers.runtime_interop_namespace, runtimeHelpers.runtime_interop_exports_classname);
+    if (!runtimeHelpers.runtime_interop_exports_class)
         throw "Can't find " + binding_fqn_class + " class";
 
     runtimeHelpers.get_call_sig_ref = get_method("GetCallSignatureRef");
@@ -679,19 +687,20 @@ export async function mono_wasm_load_config(configFilePath: string): Promise<voi
     try {
         module.addRunDependency(configFilePath);
 
-        const configRaw = await runtimeHelpers.fetch(configFilePath);
-        const config = await configRaw.json();
+        const configResponse = await runtimeHelpers.fetch(configFilePath);
+        const config = (await configResponse.json()) || {};
 
-        runtimeHelpers.config = config;
         config.environment_variables = config.environment_variables || {};
         config.assets = config.assets || [];
         config.runtime_options = config.runtime_options || [];
         config.globalization_mode = config.globalization_mode || GlobalizationMode.AUTO;
+
+        runtimeHelpers.config = config;
         Module.removeRunDependency(configFilePath);
     } catch (err) {
         const errMessage = `Failed to load config file ${configFilePath} ${err}`;
         Module.printErr(errMessage);
-        runtimeHelpers.config = { message: errMessage, error: err, isError: true };
+        runtimeHelpers.config = <any>{ message: errMessage, error: err, isError: true };
         runtime_is_initialized_reject(err);
         throw err;
     }
