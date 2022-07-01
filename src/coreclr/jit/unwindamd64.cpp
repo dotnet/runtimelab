@@ -796,7 +796,32 @@ void Compiler::unwindEmitFuncHelper(FuncInfoDsc* func, void* pHotCode, void* pCo
         {
             endOffset = func->endLoc->CodeOffset(GetEmitter());
         }
+    }
+    else
+    {
+        assert(fgFirstColdBlock != nullptr);
 
+        if (func->coldStartLoc == nullptr)
+        {
+            startOffset = 0;
+        }
+        else
+        {
+            startOffset = func->coldStartLoc->CodeOffset(GetEmitter());
+        }
+
+        if (func->coldEndLoc == nullptr)
+        {
+            endOffset = info.compNativeCodeSize;
+        }
+        else
+        {
+            endOffset = func->coldEndLoc->CodeOffset(GetEmitter());
+        }
+    }
+
+    if (isHotCode || (func->funKind != FUNC_ROOT))
+    {
 #ifdef UNIX_AMD64_ABI
         if (generateCFIUnwindCodes())
         {
@@ -822,28 +847,6 @@ void Compiler::unwindEmitFuncHelper(FuncInfoDsc* func, void* pHotCode, void* pCo
 #endif // DEBUG
 
             pUnwindBlock = &func->unwindCodes[func->unwindCodeSlot];
-        }
-    }
-    else
-    {
-        assert(fgFirstColdBlock != nullptr);
-
-        if (func->coldStartLoc == nullptr)
-        {
-            startOffset = 0;
-        }
-        else
-        {
-            startOffset = func->coldStartLoc->CodeOffset(GetEmitter());
-        }
-
-        if (func->coldEndLoc == nullptr)
-        {
-            endOffset = info.compNativeCodeSize;
-        }
-        else
-        {
-            endOffset = func->coldEndLoc->CodeOffset(GetEmitter());
         }
     }
 
