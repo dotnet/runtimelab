@@ -472,6 +472,9 @@ namespace Internal.JitInterface
 #endif
 
             _methodCodeNode.InitializeFrameInfos(_frameInfos);
+#if READYTORUN
+            _methodCodeNode.InitializeColdFrameInfos(_coldFrameInfos);
+#endif
             _methodCodeNode.InitializeDebugEHClauseInfos(debugEHClauseInfos);
             _methodCodeNode.InitializeGCInfo(_gcInfo);
             _methodCodeNode.InitializeEHInfo(ehInfo);
@@ -3438,6 +3441,12 @@ namespace Internal.JitInterface
         private int _usedFrameInfos;
         private FrameInfo[] _frameInfos;
 
+#if READYTORUN
+        private int _numColdFrameInfos;
+        private int _usedColdFrameInfos;
+        private FrameInfo[] _coldFrameInfos;
+#endif
+
         private byte[] _gcInfo;
         private CORINFO_EH_CLAUSE[] _ehClauses;
 
@@ -3495,11 +3504,24 @@ namespace Internal.JitInterface
             {
                 _frameInfos = new FrameInfo[_numFrameInfos];
             }
+
+#if READYTORUN
+            if (_numColdFrameInfos > 0)
+            {
+                _coldFrameInfos = new FrameInfo[_numColdFrameInfos];
+            }
+#endif
         }
 
         private void reserveUnwindInfo(bool isFunclet, bool isColdCode, uint unwindSize)
         {
-            if (!isColdCode)
+#if READYTORUN
+            if (isColdCode)
+            {
+                _numColdFrameInfos++;
+            }
+            else
+#endif
             {
                 _numFrameInfos++;
             }
@@ -3518,11 +3540,15 @@ namespace Internal.JitInterface
                     flags |= FrameInfoFlags.ReversePInvoke;
             }
 
-            byte[] blobData = new byte[unwindSize];
+            byte[] blobData = null;
 
-            for (uint i = 0; i < unwindSize; i++)
+            if (pUnwindBlock != null)
             {
-                blobData[i] = pUnwindBlock[i];
+                blobData = new byte[unwindSize];
+                for (uint i = 0; i < unwindSize; i++)
+                {
+                    blobData[i] = pUnwindBlock[i];
+                }
             }
 
 #if !READYTORUN
@@ -3534,11 +3560,17 @@ namespace Internal.JitInterface
             }
 #endif
 #if READYTORUN
-            if (blobData.Length > 0)
+            if (pColdCode == null)
 #endif
             {
                 _frameInfos[_usedFrameInfos++] = new FrameInfo(flags, (int)startOffset, (int)endOffset, blobData);
             }
+#if READYTORUN
+            else
+            {
+                _coldFrameInfos[_usedColdFrameInfos++] = new FrameInfo(flags, (int)startOffset, (int)endOffset, blobData);
+            }
+#endif
         }
 
         private void* allocGCInfo(UIntPtr size)

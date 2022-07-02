@@ -3247,10 +3247,10 @@ void Compiler::compInitOptions(JitFlags* jitFlags)
 #endif
     }
 
-#ifdef DEBUG
-    // TODO: Implement support for EH splitting in Crossgen2.
-    opts.compProcedureSplittingEH = false;
-#endif
+// #ifdef DEBUG
+//     // TODO: Implement support for EH splitting in Crossgen2.
+//     opts.compProcedureSplittingEH = false;
+// #endif
 
 #ifdef DEBUG
 
