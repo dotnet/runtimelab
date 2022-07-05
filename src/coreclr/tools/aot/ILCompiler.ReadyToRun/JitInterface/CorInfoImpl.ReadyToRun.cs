@@ -405,11 +405,6 @@ namespace Internal.JitInterface
 
         public static bool ShouldSkipCompilation(MethodDesc methodNeedingCode)
         {
-/*            if (!methodNeedingCode.ToString().Equals("[S.P.CoreLib]System.Convert.FromHexString(string)"))
-            {
-                return true;
-            }
-*/
             if (methodNeedingCode.IsAggressiveOptimization)
             {
                 return true;

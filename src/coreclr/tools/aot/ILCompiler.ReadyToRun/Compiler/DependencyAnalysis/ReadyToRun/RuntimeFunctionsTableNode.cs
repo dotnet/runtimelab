@@ -95,8 +95,9 @@ namespace ILCompiler.DependencyAnalysis.ReadyToRun
                     }
                     else
                     {
+                        Debug.Assert((method.FrameInfos.Length + method.ColdFrameInfos.Length) == funcletOffsets.Length);
                         startIndex = method.FrameInfos.Length;
-                        endIndex = method.ColdFrameInfos.Length;
+                        endIndex = funcletOffsets.Length;
                     }
 
                     for (int frameIndex = startIndex; frameIndex < endIndex; frameIndex++)

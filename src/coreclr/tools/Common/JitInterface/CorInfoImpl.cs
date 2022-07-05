@@ -632,6 +632,12 @@ namespace Internal.JitInterface
             _usedFrameInfos = 0;
             _frameInfos = null;
 
+#if READYTORUN
+            _numColdFrameInfos = 0;
+            _usedColdFrameInfos = 0;
+            _coldFrameInfos = null;
+#endif
+
             _gcInfo = null;
             _ehClauses = null;
 
