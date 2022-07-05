@@ -3542,9 +3542,7 @@ namespace Internal.JitInterface
 
             byte[] blobData = null;
 
-#if READYTORUN
-            if (pUnwindBlock != null)
-#endif
+            if (pUnwindBlock != null || pColdCode == null)
             {
                 blobData = new byte[unwindSize];
                 for (uint i = 0; i < unwindSize; i++)
