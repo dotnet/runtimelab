@@ -12,7 +12,7 @@ namespace System.Reflection.Emit.Experimental
     public class AssemblyBuilder : System.Reflection.Assembly
     {
         private bool _previouslySaved = false;
-        private AssemblyName? _assemblyName;
+        private AssemblyName _assemblyName;
         private ModuleBuilder? _module;
 
         private AssemblyBuilder(AssemblyName name)

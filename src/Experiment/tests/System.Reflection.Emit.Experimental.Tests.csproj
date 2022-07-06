@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net7.0</TargetFramework>
   </PropertyGroup>
@@ -10,4 +10,11 @@
   <ItemGroup>
     <ProjectReference Include="..\src\System.Reflection.Emit.Experimental.csproj" />
   </ItemGroup>
+  
+  <ItemGroup>
+    <Reference Include="CustAttrLibrary">
+      <HintPath>..\..\..\..\Documents\ScratchPad\CustAttrLibrary\CustAttrLibrary\bin\Debug\net4.8\CustAttrLibrary.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
 </Project>

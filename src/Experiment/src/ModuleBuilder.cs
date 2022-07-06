@@ -112,6 +112,5 @@ namespace System.Reflection.Emit.Experimental
 
         public void SetCustomAttribute(System.Reflection.Emit.CustomAttributeBuilder customBuilder)
             => throw new NotImplementedException();
-
     }
 }

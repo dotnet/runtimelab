@@ -4,6 +4,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Reflection;
 using System.Reflection.Metadata;
 using System.Reflection.PortableExecutable;
 using System.Runtime.InteropServices;
@@ -15,12 +16,13 @@ namespace System.Reflection.Emit.Experimental.Tests
 
         internal static Assembly TryLoadAssembly(string filePath)
         {
-            // filePath = "C:\\Users\\t-mwolberg\\Documents\\Convert.dll";
             // Get the array of runtime assemblies.
             string[] runtimeAssemblies = Directory.GetFiles(RuntimeEnvironment.GetRuntimeDirectory(), "*.dll");
             // Create the list of assembly paths consisting of runtime assemblies and the inspected assembly.
+            string custAttPath = "C:\\Users\\t-mwolberg\\Documents\\ScratchPad\\CustAttrLibrary\\CustAttrLibrary\\bin\\Release\\net4.8\\CustAttrLibrary.dll";
             var paths = new List<string>(runtimeAssemblies);
             paths.Add(filePath);
+            paths.Add(custAttPath);
             // Create PathAssemblyResolver that can resolve assemblies using the created list.
             var resolver = new PathAssemblyResolver(paths);
             var mlc = new MetadataLoadContext(resolver);
