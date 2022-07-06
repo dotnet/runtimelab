@@ -23,6 +23,9 @@ namespace ILCompiler.DependencyAnalysis.ReadyToRun
         private MethodColdCodeNode _methodColdCodeNode;
 #endif
         private FrameInfo[] _frameInfos;
+#if READYTORUN
+        private FrameInfo[] _coldFrameInfos;
+#endif
         private byte[] _gcInfo;
         private ObjectData _ehInfo;
         private byte[] _debugLocInfos;
@@ -47,6 +50,9 @@ namespace ILCompiler.DependencyAnalysis.ReadyToRun
             {
                 SetCode(new ObjectNode.ObjectData(Array.Empty<byte>(), null, 1, Array.Empty<ISymbolDefinitionNode>()));
                 InitializeFrameInfos(Array.Empty<FrameInfo>());
+#if READYTORUN
+                InitializeColdFrameInfos(Array.Empty<FrameInfo>());
+#endif
             }
             _lateTriggeredCompilation = context.CompilationCurrentPhase != 0;
             RegisterInlineeModuleIndices(context);
@@ -264,6 +270,11 @@ namespace ILCompiler.DependencyAnalysis.ReadyToRun
         {
             DependencyList dependencyList = new DependencyList(new DependencyListEntry[] { new DependencyListEntry(GCInfoNode, "Unwind & GC info") });
 
+            if (this.GetColdCodeNode() != null)
+            {
+                dependencyList.Add(this.GetColdCodeNode(), "cold");
+            }
+
             foreach (ISymbolNode node in _fixups)
             {
                 dependencyList.Add(node, "classMustBeLoadedBeforeCodeIsRun");
@@ -299,6 +310,11 @@ namespace ILCompiler.DependencyAnalysis.ReadyToRun
         }
 
         public FrameInfo[] FrameInfos => _frameInfos;
+
+#if READYTORUN
+        public FrameInfo[] ColdFrameInfos => _coldFrameInfos;
+#endif
+
         public byte[] GCInfo => _gcInfo;
         public ObjectData EHInfo => _ehInfo;
         public MethodDesc[] InlinedMethods => _inlinedMethods;
@@ -319,6 +335,15 @@ namespace ILCompiler.DependencyAnalysis.ReadyToRun
                 };
             }
         }
+
+#if READYTORUN
+        public void InitializeColdFrameInfos(FrameInfo[] coldFrameInfos)
+        {
+            Debug.Assert(_coldFrameInfos == null);
+            _coldFrameInfos = coldFrameInfos;
+            // TODO: x86 (see InitializeFrameInfos())
+        }
+#endif
 
         public void InitializeGCInfo(byte[] gcInfo)
         {

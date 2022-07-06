@@ -1160,6 +1160,9 @@ namespace Internal.JitInterface
         {
             _methodCodeNode.SetCode(new ObjectNode.ObjectData(Array.Empty<byte>(), null, 1, Array.Empty<ISymbolDefinitionNode>()));
             _methodCodeNode.InitializeFrameInfos(Array.Empty<FrameInfo>());
+#if READYTORUN
+            _methodCodeNode.InitializeColdFrameInfos(Array.Empty<FrameInfo>());
+#endif
         }
 
         private CorInfoHelpFunc getCastingHelper(ref CORINFO_RESOLVED_TOKEN pResolvedToken, bool fThrowing)
