@@ -28,50 +28,6 @@ namespace System.Reflection.Emit.Experimental
             Module = declaringType.Module;
         }
 
-        internal MethodDefinitionHandle AppendMetadata(MetadataBuilder metadata)
-        {
-            // Encoding return type and parameters.
-            var methodSignature = new BlobBuilder();
-            ParametersEncoder _parEncoder;
-            ReturnTypeEncoder _retEncoder;
-            new BlobEncoder(methodSignature).
-                MethodSignature(). // Need to add in calling conventions. 
-                Parameters((_parameters == null) ? 0 : _parameters.Length, out _retEncoder, out _parEncoder);
-
-            if (_returnType != null && _returnType != typeof(void))
-            {
-                ReferenceTool.MapReflectionTypeToSignatureType(_retEncoder.Type(), _returnType);
-            }
-            else // If null mark ReturnTypeEncoder as void
-            {
-                _retEncoder.Void();
-            }
-
-            if (_parameters != null) // If parameters null, just keep empty ParametersEncoder empty
-            {
-                foreach (var parameter in _parameters)
-                {
-                    ReferenceTool.MapReflectionTypeToSignatureType(_parEncoder.AddParameter().Type(), parameter);
-                }
-            }
-
-            // Create the method
-            _handle = metadata.AddMethodDefinition(
-                Attributes,
-                MethodImplAttributes.IL,
-               metadata.GetOrAddString(Name),
-               metadata.GetOrAddBlob(methodSignature),
-               -1, //No body with interfaces
-               parameterList: default);
-
-            // Iterate module's method count.
-            DeclaringType.Module._nextMethodDefRowId++;
-
-            return _handle;
-        }
-
-
-
         // These methods seems like they should be implemented next.
         public System.Reflection.Emit.ParameterBuilder DefineParameter(int position, System.Reflection.ParameterAttributes attributes, string? strParamName)
         {

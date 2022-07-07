@@ -27,17 +27,18 @@ namespace System.Reflection.Emit.Experimental
         public override Assembly Assembly { get; }
         public override ModuleBuilder Module { get; }
         public override string? Namespace { get; }
-        private List<MethodBuilder> _methods = new();
-        private TypeAttributes UserTypeAttribute { get; set; }
-        private List<CAttribute> _customAttributes = new();
-        private TypeDefinitionHandle? _selfReferenceHandle;
+        internal List<MethodBuilder> _methods = new();
+        internal TypeAttributes UserTypeAttribute { get; set; }
+        internal List<CAttribute> _customAttributes = new();
+        internal int _typeDefToken;
 
-        internal TypeBuilder(string name, ModuleBuilder module, Assembly assembly, TypeAttributes typeAttributes)
+        internal TypeBuilder(string name, ModuleBuilder module, Assembly assembly, TypeAttributes typeAttributes, int typeDefToken)
         {
             Name = name;
             Module = module;
             Assembly = assembly;
             UserTypeAttribute = typeAttributes;
+            _typeDefToken = typeDefToken;
 
             //Extract namespace from name
             int idx = Name.LastIndexOf('.');
@@ -47,6 +48,12 @@ namespace System.Reflection.Emit.Experimental
                 Name = Name[(idx + 1)..];
             }
         }
+
+        internal static void DefineCustomAttribute(ModuleBuilder mod, int tkOwner, object value, byte[] m_blob)
+        {
+            throw new NotImplementedException();
+        }
+
 
         public System.Reflection.Emit.Experimental.MethodBuilder DefineMethod(string name, System.Reflection.MethodAttributes attributes, System.Reflection.CallingConventions callingConvention, System.Type? returnType, System.Type[]? parameterTypes)
         {
@@ -87,8 +94,10 @@ namespace System.Reflection.Emit.Experimental
             }
         }
 
-        public void SetCustomAttribute(System.Reflection.Emit.CustomAttributeBuilder customBuilder)
-            => throw new NotImplementedException();
+        public void SetCustomAttribute(System.Reflection.Emit.Experimental.CustomAttributeBuilder customBuilder)
+        {
+            customBuilder.
+        }
 
         internal void AppendMetadata(MetadataBuilder metadata)
         {
@@ -117,25 +126,25 @@ namespace System.Reflection.Emit.Experimental
             foreach(CAttribute _customAttribute in _customAttributes)
             {       
                 ConstructorInfo constructorInfo = _customAttribute.con;
-                Type ? constructorType = constructorInfo.DeclaringType;
-                Module constructorModule = constructorInfo.Module;
-                Assembly constructorAssembly = constructorModule.Assembly;
+                Type ? constructorTypeRef = constructorInfo.DeclaringType;
+                Module constructorModuleRef = constructorInfo.Module;
+                Assembly constructorAssemblyref = constructorModuleRef.Assembly;
 
                 // Get assembly reference
-                AssemblyReferenceHandle assemblyReference = ReferenceTool.AddAssemblyReference(metadata, constructorAssembly);
+                AssemblyReferenceHandle assemblyReference = SignatureHelper.AddAssemblyReference(metadata, constructorAssemblyref);
 
                 // Get type reference
-                if (constructorType == null)
+                if (constructorTypeRef == null)
                 {
                     throw new Exception("Need a base type for custom attribute");
                 }
-                TypeReferenceHandle typeReference = ReferenceTool.AddTypeReference(metadata, constructorType, assemblyReference);
+                TypeReferenceHandle typeReference = SignatureHelper.AddTypeReference(metadata, constructorTypeRef, assemblyReference);
 
                 // Get ctor signature handle
-                BlobHandle signatureHandle = ReferenceTool.ConstructorSignatureEnconder(metadata, constructorInfo);
+                BlobHandle signatureHandle = SignatureHelper.ConstructorSignatureEnconder(metadata, constructorInfo);
 
                 // Get ctor Method reference
-                MemberReferenceHandle memberReference = ReferenceTool.AddMethodReference(metadata, typeReference, constructorInfo.Name, signatureHandle);
+                MemberReferenceHandle memberReference = SignatureHelper.AddMethodReference(metadata, typeReference, constructorInfo.Name, signatureHandle);
 
                 // Add entry to custom attribute table
                 if(_selfReferenceHandle == null)
@@ -325,6 +334,7 @@ namespace System.Reflection.Emit.Experimental
         public override System.Type? GetInterface(string name, bool ignoreCase)
             => throw new NotImplementedException();
 
+        
         public override System.Reflection.InterfaceMapping GetInterfaceMap([System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembers(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.NonPublicMethods | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicMethods)] System.Type interfaceType)
             => throw new NotImplementedException();
 

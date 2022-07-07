@@ -9,8 +9,13 @@ namespace System.Reflection.Emit.Experimental
 {
     public class ModuleBuilder : System.Reflection.Module
     {
-        internal List<TypeBuilder> _typeStorage = new List<TypeBuilder>();
-        internal int _nextMethodDefRowId = 1; // Store method count for use in Type defintion.
+        internal List<Assembly> _assemblyRefStore = new List<Assembly>(); //No duplicate assembly references
+        internal List<TypeBuilder> _typeDefStore = new List<TypeBuilder>();
+        internal List<Type> _typeRefStore = new List<Type>();//No duplicate type references
+        internal int _nextAssemblyRefRowId = 1;
+        internal int _nextTypeRefRowID = 1;
+        internal int _nextMethodDefRowId = 1;
+        internal int _nextConstructorRefRowID = 1;
         public override System.Reflection.Assembly Assembly { get; }
         public override string ScopeName
         {
@@ -34,10 +39,22 @@ namespace System.Reflection.Emit.Experimental
                 fieldList: MetadataTokens.FieldDefinitionHandle(1),
                 methodList: MetadataTokens.MethodDefinitionHandle(1));
 
-            //Add each type's metadata
-            foreach (TypeBuilder entry in _typeStorage)
+            //Add each assembly reference to metadata table.
+            foreach (Assembly assembly in _assemblyRefStore)
             {
-                entry.AppendMetadata(metadata);
+                MetadataHelper.AddAssemblyReference(assembly, metadata);
+            }
+
+            //Add each type defintion to metadata table.
+            foreach (TypeBuilder entry in _typeDefStore)
+            {
+                MetadataHelper.addTypeDef(entry,metadata);
+            }
+
+            //Add each assembly reference to metadata table.
+            foreach (Assembly assembly in _assemblyRefStore)
+            {
+                MetadataHelper.AddAssemblyReference(assembly, metadata);
             }
 
             //Add module metadata
