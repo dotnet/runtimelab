@@ -6116,12 +6116,32 @@ BOOL ReadyToRunJitManager::JitCodeToMethodInfo(RangeSection * pRangeSection,
     // Save the raw entry
     PTR_RUNTIME_FUNCTION RawFunctionEntry = pRuntimeFunctions + MethodIndex;
 
+    const ULONG UMethodIndex = (ULONG)MethodIndex;
+
     // If the MethodIndex happen to be the cold code block, turn it into the associated hot code block
     for (DWORD i = 0; i < pInfo->m_nScratch; i++)
     {
-        if ((ULONG)MethodIndex == pInfo->m_pScratch[i])
+        const bool isColdCode = ((i % 2) == 0);
+
+        if (UMethodIndex == pInfo->m_pScratch[i])
         {
-            if (i % 2 == 0)
+            if (isColdCode)
+            {
+                MethodIndex = pInfo->m_pScratch[i + 1];
+            }
+
+            break;
+        }
+        else if (isColdCode && (UMethodIndex > pInfo->m_pScratch[i]))
+        {
+            // If MethodIndex is a cold funclet from a cold block, the above search will fail.
+            // To get its corresponding hot block, find the cold block containing the funclet,
+            // then use the Scratch table.
+            // The cold funclet's MethodIndex will be greater than its cold block's MethodIndex,
+            // but less than the next cold block's MethodIndex in the Scratch table.
+            const bool isFuncletIndex = (i + 2 == pInfo->m_nScratch) || (UMethodIndex < pInfo->m_pScratch[i + 2]);
+
+            if (isFuncletIndex)
             {
                 MethodIndex = pInfo->m_pScratch[i + 1];
                 break;
@@ -6250,11 +6270,25 @@ BOOL ReadyToRunJitManager::IsFunclet(EECodeInfo* pCodeInfo)
 
     ULONG methodIndex = (ULONG)(pCodeInfo->GetFunctionEntry() - pRuntimeFunctions);
 
-    // If it is either the main hot-code or the cold code, then it is not a funclet
+    // If it is the hot or cold part of the main function, then it is not a funclet
     for (DWORD i = 0; i < pInfo->m_nScratch; i++)
     {
         if (methodIndex == pInfo->m_pScratch[i])
         {
+            // Even indices of Scratch table are cold
+            if ((i % 2) == 0)
+            {
+                SIZE_T unwindSize;
+                PTR_VOID pUnwindData = GetUnwindDataBlob(pCodeInfo->GetModuleBase(), pCodeInfo->GetFunctionEntry(), &unwindSize);
+                _ASSERTE(pUnwindData != NULL);
+
+                // Chained unwind info is used only for cold part of the main code
+                const UCHAR chainedUnwindFlag = (((PTR_UNWIND_INFO)pUnwindData)->Flags & UNW_FLAG_CHAININFO);
+                return (chainedUnwindFlag == 0);
+            }
+
+            // If the function is split, all funclets are cold,
+            // and all functions in Scratch are split.
             return FALSE;
         }
     }
