@@ -78,14 +78,17 @@ namespace ILCompiler.DependencyAnalysis.ReadyToRun
                     if (blobData != null)
                     {
                         offset += blobData.Length;
+                        offset += (-offset & 3); // 4-alignment for the personality routine
+                        if (factory.Target.Architecture != TargetArchitecture.X86)
+                        {
+                            offset += sizeof(uint); // personality routine
+                        }
                     }
                     else
                     {
                         // TODO: Update/Verify this amount
                         offset += 16;
                     }
-
-                    offset += (-offset & 3); // 4-alignment for the personality routine
                 }
             }
 
@@ -234,6 +237,19 @@ namespace ILCompiler.DependencyAnalysis.ReadyToRun
                         }
 
                         yield return new GCInfoComponent(unwindInfo);
+
+                        if (targetArch != TargetArchitecture.X86)
+                        {
+                            bool isFilterFunclet = (_methodNode.ColdFrameInfos[frameInfoIndex].Flags & FrameInfoFlags.Filter) != 0;
+                            ISymbolNode personalityRoutine = (isFilterFunclet ? factory.FilterFuncletPersonalityRoutine : factory.PersonalityRoutine);
+                            int codeDelta = 0;
+                            if (targetArch == TargetArchitecture.ARM)
+                            {
+                                // THUMB_CODE
+                                codeDelta = 1;
+                            }
+                            yield return new GCInfoComponent(personalityRoutine, codeDelta);
+                        }
                     }
                 }
             }
