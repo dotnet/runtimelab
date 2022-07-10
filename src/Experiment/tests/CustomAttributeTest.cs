@@ -56,16 +56,16 @@ namespace System.Reflection.Emit.Experimental.Tests
                 if (attr == 0)
                 {
                     //Add in CustomAttribute
-                    byte[] array = new byte[] { 0,1,0,0, 0,0 ,0,0, 0,0 ,0,0 ,0,0 ,0,0 ,1,4 ,4,0 ,0,0 ,0,0 };
-                    tb.SetCustomAttribute(typeof(CustAttrLibrary.AuthorAttribute).GetConstructor(new Type[] { typeof(double) }),array);
+                    CustomAttributeBuilder customAttributeBuilder = new CustomAttributeBuilder(typeof(CustAttrLibrary.AuthorAttribute).GetConstructor(new Type[] { typeof(double) }), new object[] {5.0});
+                    tb.SetCustomAttribute(customAttributeBuilder);
                     attr++;
                 }
-                else
-                {
-                    tb.SetCustomAttribute(typeof(CustAttrLibrary.AuthorAttribute).GetConstructor(new Type[] { }), null);
-                    tb.SetCustomAttribute(typeof(ComImportAttribute).GetConstructor(new Type[] { }), null);
-                    tb.SetCustomAttribute(typeof(GuidAttribute).GetConstructor(new Type[] { typeof(string) }), new byte[] { });
-                }
+                //else
+                //{
+                //    tb.SetCustomAttribute(typeof(CustAttrLibrary.AuthorAttribute).GetConstructor(new Type[] { }), null);
+                //    tb.SetCustomAttribute(typeof(ComImportAttribute).GetConstructor(new Type[] { }), null);
+                //    tb.SetCustomAttribute(typeof(GuidAttribute).GetConstructor(new Type[] { typeof(string) }), new byte[] { });
+                //}
             }
             string fileLocation = Setup();
             assemblyBuilder.Save(fileLocation);

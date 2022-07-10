@@ -66,9 +66,9 @@ namespace System.Reflection.Emit.Experimental
 
             Type[] paramTypes;
             int i;
-
+            ParameterInfo[] parameters = con.GetParameters();
             // Get the types of the constructor's formal parameters.
-            paramTypes = Array.ConvertAll(con.GetParameters(), parameter => parameter.GetType());
+            paramTypes = Array.ConvertAll(parameters,  parameter => parameter.ParameterType);
 
             // Since we're guaranteed a non-var calling convention, the number of arguments must equal the number of parameters.
             if (paramTypes.Length != constructorArgs.Length)
@@ -502,11 +502,11 @@ namespace System.Reflection.Emit.Experimental
             }
         }
 
-        // return the byte interpretation of the custom attribute
-        internal void CreateCustomAttribute(ModuleBuilder mod, int tkOwner)
-        {
-            TypeBuilder.DefineCustomAttribute(mod, tkOwner, mod.GetConstructorToken(m_con), m_blob);
-        }
+        //// return the byte interpretation of the custom attribute
+        //internal void CreateCustomAttribute(ModuleBuilder mod, int tkOwner)
+        //{
+        //    TypeBuilder.DefineCustomAttribute(mod, tkOwner, mod.GetConstructorToken(m_con), m_blob);
+        //}
 
         internal enum CustomAttributeEncoding : int
         {

@@ -11,34 +11,23 @@ namespace System.Reflection.Emit.Experimental
 {
     public class TypeBuilder : System.Reflection.TypeInfo
     {
-        internal class CAttribute
-        {
-            internal ConstructorInfo con;
-            internal byte[]? binaryAttribute; // null if custom attribute has no parameters.
-
-            public CAttribute(ConstructorInfo con, byte[] binaryAttribute)
-            {
-                this.con = con;
-                this.binaryAttribute = binaryAttribute;
-            }   
-        }
+        
 
         public override string Name { get; }
         public override Assembly Assembly { get; }
         public override ModuleBuilder Module { get; }
         public override string? Namespace { get; }
-        internal List<MethodBuilder> _methods = new();
         internal TypeAttributes UserTypeAttribute { get; set; }
-        internal List<CAttribute> _customAttributes = new();
-        internal int _typeDefToken;
+        internal List<MethodBuilder> _methodDefStore = new List<MethodBuilder>();
+        internal List<CustomAttribute> _customAttributes = new();
 
-        internal TypeBuilder(string name, ModuleBuilder module, Assembly assembly, TypeAttributes typeAttributes, int typeDefToken)
+        internal TypeBuilder(string name, ModuleBuilder module, Assembly assembly, TypeAttributes typeAttributes)
         {
             Name = name;
             Module = module;
             Assembly = assembly;
             UserTypeAttribute = typeAttributes;
-            _typeDefToken = typeDefToken;
+   
 
             //Extract namespace from name
             int idx = Name.LastIndexOf('.');
@@ -58,7 +47,7 @@ namespace System.Reflection.Emit.Experimental
         public System.Reflection.Emit.Experimental.MethodBuilder DefineMethod(string name, System.Reflection.MethodAttributes attributes, System.Reflection.CallingConventions callingConvention, System.Type? returnType, System.Type[]? parameterTypes)
         {
             MethodBuilder methodBuilder = new(name, attributes, callingConvention, returnType, parameterTypes, this);
-            _methods.Add(methodBuilder);
+            _methodDefStore.Add(methodBuilder);
             return methodBuilder;
         }
 
@@ -74,14 +63,26 @@ namespace System.Reflection.Emit.Experimental
             {
                 throw new ArgumentNullException(nameof(con));
             }
-            //We check whether the custom attribute is actually a pseudo-custom attribute. 
-            //(We have only done ComImport for the prototype, eventually all pseudo-custom attributes will need to be hardcoded.
-            //If it is, simply alter the TypeAttributes.
-            //We want to handle this before the type metadata is created.
+
+            if (binaryAttribute == null)
+            {
+                throw new ArgumentNullException(nameof(binaryAttribute)); // This is incorrect
+            }
+
             if (con.DeclaringType == null)
             {
-                throw new ArgumentException("Attribute constructor has no type");
+                throw new ArgumentException("Attribute constructor has no type.");
             }
+
+            if(Module._methodRefStore.Contains(con))
+            {
+                throw new ArgumentException("Duplicate Attribute.");
+            }
+            //We check whether the custom attribute is actually a pseudo-custom attribute. 
+            //(We have only done ComImport for the prototype, eventually all pseudo-custom attributes will be hardcoded.)
+            //If it is, simply alter the TypeAttributes.
+            //We want to handle this before the type metadata is created.
+
 
             if (con.DeclaringType.Name.Equals("ComImportAttribute"))
             {
@@ -90,70 +91,29 @@ namespace System.Reflection.Emit.Experimental
             }
             else
             {
-                _customAttributes.Add(new CAttribute(con, binaryAttribute));
+                
+                Type constructorTypeRef = con.DeclaringType;
+                Assembly constructorAssemblyref = constructorTypeRef.Assembly;
+
+                if(!Module._assemblyRefStore.Contains(constructorAssemblyref)) // Avoid add the same assembly twice
+                {
+                    Module._assemblyRefStore.Add(constructorAssemblyref);
+                }
+
+                if (!Module._typeRefStore.Contains(constructorTypeRef)) // Avoid add the same type twice
+                {
+                    Module._typeRefStore.Add(constructorTypeRef);
+                }
+                Module._methodRefStore.Add(con);
+                _customAttributes.Add(new CustomAttribute(con, binaryAttribute));
             }
         }
 
         public void SetCustomAttribute(System.Reflection.Emit.Experimental.CustomAttributeBuilder customBuilder)
         {
-            customBuilder.
+            SetCustomAttribute(customBuilder.m_con, customBuilder.m_blob);
         }
 
-        internal void AppendMetadata(MetadataBuilder metadata)
-        {
-            //Add type metadata
-            _selfReferenceHandle = metadata.AddTypeDefinition(
-                attributes: UserTypeAttribute,
-                (Namespace == null) ? default : metadata.GetOrAddString(Namespace),
-                name: metadata.GetOrAddString(Name),
-                baseType: default,//Inheritance to be added
-                fieldList: MetadataTokens.FieldDefinitionHandle(1),//Update once we support fields.
-                methodList: MetadataTokens.MethodDefinitionHandle(Module._nextMethodDefRowId)); // Manuallly add handle to correct row
-
-            // Add Method metadata
-            foreach (MethodBuilder method in _methods)
-            {
-                method.AppendMetadata(metadata);
-            }
-
-            AppendCustomAttributes(metadata);
-        }
-
-        private void AppendCustomAttributes(MetadataBuilder metadata)
-        {
-            //Already checked for pseudo-custom attributes at creation time.
-            //These genuine custom attributes will be stored in metadata.
-            foreach(CAttribute _customAttribute in _customAttributes)
-            {       
-                ConstructorInfo constructorInfo = _customAttribute.con;
-                Type ? constructorTypeRef = constructorInfo.DeclaringType;
-                Module constructorModuleRef = constructorInfo.Module;
-                Assembly constructorAssemblyref = constructorModuleRef.Assembly;
-
-                // Get assembly reference
-                AssemblyReferenceHandle assemblyReference = SignatureHelper.AddAssemblyReference(metadata, constructorAssemblyref);
-
-                // Get type reference
-                if (constructorTypeRef == null)
-                {
-                    throw new Exception("Need a base type for custom attribute");
-                }
-                TypeReferenceHandle typeReference = SignatureHelper.AddTypeReference(metadata, constructorTypeRef, assemblyReference);
-
-                // Get ctor signature handle
-                BlobHandle signatureHandle = SignatureHelper.ConstructorSignatureEnconder(metadata, constructorInfo);
-
-                // Get ctor Method reference
-                MemberReferenceHandle memberReference = SignatureHelper.AddMethodReference(metadata, typeReference, constructorInfo.Name, signatureHandle);
-
-                // Add entry to custom attribute table
-                if(_selfReferenceHandle == null)
-                {
-                    throw new Exception("This should never happen");
-                }
-                metadata.AddCustomAttribute((TypeDefinitionHandle)_selfReferenceHandle, memberReference,  (_customAttribute.binaryAttribute==null)? default : metadata.GetOrAddBlob( _customAttribute.binaryAttribute));
-            }
-        }
 
         public const int UnspecifiedTypeSize = 0;
         public override string? AssemblyQualifiedName { get => throw new NotImplementedException(); }

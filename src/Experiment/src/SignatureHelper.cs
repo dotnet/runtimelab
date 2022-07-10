@@ -10,7 +10,24 @@ namespace System.Reflection.Emit.Experimental
     internal class SignatureHelper
     {
 
-        internal static BlobBuilder MethodSignatureEnconder(ParameterInfo[] parameters, Type? returnType, bool isInstance)
+        internal static BlobBuilder MethodSignatureEnconder(ParameterInfo[]? parameters, ParameterInfo? returnType, bool isInstance)
+        {
+            Type[]? _typeParameters = null;
+            Type? typeReturn = null;
+
+            if (parameters != null)
+            {
+                 _typeParameters = Array.ConvertAll(parameters, parameter => parameter.ParameterType);
+            }
+
+            if(returnType!=null)
+            {
+                 typeReturn = returnType.ParameterType;
+            }
+
+            return MethodSignatureEnconder(_typeParameters, typeReturn, isInstance);
+        }
+            internal static BlobBuilder MethodSignatureEnconder(Type[]? parameters, Type? returnType, bool isInstance)
         {
             // Encoding return type and parameters.
             var methodSignature = new BlobBuilder();
@@ -35,7 +52,7 @@ namespace System.Reflection.Emit.Experimental
             {
                 foreach (var parameter in parameters)
                 {
-                    MapReflectionTypeToSignatureType(_parEncoder.AddParameter().Type(), parameter.ParameterType);
+                    MapReflectionTypeToSignatureType(_parEncoder.AddParameter().Type(), parameter);
                 }
             }
             return methodSignature;

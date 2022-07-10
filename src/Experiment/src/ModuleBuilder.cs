@@ -1,21 +1,29 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Collections;
 using System.Collections.Generic;
 using System.Reflection.Metadata;
 using System.Reflection.Metadata.Ecma335;
+using static System.Reflection.Emit.Experimental.EntityWrappers;
 
 namespace System.Reflection.Emit.Experimental
 {
     public class ModuleBuilder : System.Reflection.Module
     {
-        internal List<Assembly> _assemblyRefStore = new List<Assembly>(); //No duplicate assembly references
-        internal List<TypeBuilder> _typeDefStore = new List<TypeBuilder>();
-        internal List<Type> _typeRefStore = new List<Type>();//No duplicate type references
+        internal List<AssemmblyReferenceWrapper> _assemblyRefStore = new List<AssemmblyReferenceWrapper>();
         internal int _nextAssemblyRefRowId = 1;
-        internal int _nextTypeRefRowID = 1;
+
+        internal List<TypeReferenceWrapper> _typeRefStore = new List<TypeReferenceWrapper>();
+        internal int _nextTypeRefRowId = 1;
+
+        internal List<MethodReferenceWrapper> _methodRefStore = new List<MethodReferenceWrapper>();
+        internal int _nextMethodRefRowId = 1;
+        
+
+        internal List<TypeBuilder> _typeDefStore = new List<TypeBuilder>();
         internal int _nextMethodDefRowId = 1;
-        internal int _nextConstructorRefRowID = 1;
+
         public override System.Reflection.Assembly Assembly { get; }
         public override string ScopeName
         {
@@ -30,6 +38,14 @@ namespace System.Reflection.Emit.Experimental
 
         internal void AppendMetadata(MetadataBuilder metadata)
         {
+            //Add module metadata
+            metadata.AddModule(
+                generation: 0,
+                metadata.GetOrAddString(ScopeName),
+                metadata.GetOrAddGuid(Guid.NewGuid()),
+                default(GuidHandle),
+                default(GuidHandle));
+
             // Create type definition for the special <Module> type that holds global functions
             metadata.AddTypeDefinition(
                 default(TypeAttributes),
@@ -39,37 +55,50 @@ namespace System.Reflection.Emit.Experimental
                 fieldList: MetadataTokens.FieldDefinitionHandle(1),
                 methodList: MetadataTokens.MethodDefinitionHandle(1));
 
-            //Add each assembly reference to metadata table.
-            foreach (Assembly assembly in _assemblyRefStore)
+            // Add each assembly reference to metadata table.
+            foreach (var assemblyRef in _assemblyRefStore)
             {
-                MetadataHelper.AddAssemblyReference(assembly, metadata);
+                MetadataHelper.AddAssemblyReference(assemblyRef.assembly, metadata);
+            }
+
+            // Add each type reference to metadata table.
+            foreach (var typeReference in _typeRefStore)
+            {
+                AssemblyReferenceHandle parent = MetadataTokens.AssemblyReferenceHandle(typeReference.parentToken);
+                MetadataHelper.AddTypeReference(metadata, typeReference.type, parent);
+            }
+
+            // Add each method reference to metadta table.
+            foreach (var methodRef in _methodRefStore)
+            {
+                TypeReferenceHandle parent = MetadataTokens.TypeReferenceHandle(methodRef.parentToken);
+                MetadataHelper.AddConstructorReference(metadata, parent, methodRef.method);
             }
 
             //Add each type defintion to metadata table.
-            foreach (TypeBuilder entry in _typeDefStore)
+            foreach (TypeBuilder typeBuilder in _typeDefStore)
             {
-                MetadataHelper.addTypeDef(entry,metadata);
-            }
+                TypeDefinitionHandle typeDefintionHandle =  MetadataHelper.addTypeDef(typeBuilder,metadata, _nextMethodDefRowId);
+                //Add each method defintion to metadata table.
+                foreach (MethodBuilder method in typeBuilder._methodDefStore)
+                {
+                    MetadataHelper.AddMethodDefintion(metadata, method);
+                    _nextMethodDefRowId++;
+                }
 
-            //Add each assembly reference to metadata table.
-            foreach (Assembly assembly in _assemblyRefStore)
-            {
-                MetadataHelper.AddAssemblyReference(assembly, metadata);
+                //Add each custom attribute to metadata table.
+                foreach (EntityWrappers.CustomAttribute customAttribute in typeBuilder._customAttributes )
+                {
+                    MemberReferenceHandle constructorHandle = MetadataTokens.MemberReferenceHandle(customAttribute.conToken);
+                    metadata.AddCustomAttribute(typeDefintionHandle, constructorHandle, metadata.GetOrAddBlob(customAttribute.binaryAttribute));
+                }
             }
-
-            //Add module metadata
-            metadata.AddModule(
-                generation: 0,
-                metadata.GetOrAddString(ScopeName),
-                metadata.GetOrAddGuid(Guid.NewGuid()),
-                default(GuidHandle),
-                default(GuidHandle));
         }
 
         public System.Reflection.Emit.Experimental.TypeBuilder DefineType(string name, System.Reflection.TypeAttributes attr)
         {
             TypeBuilder _type = new TypeBuilder(name, this, Assembly, attr);
-            _typeStorage.Add(_type);
+            _typeDefStore.Add(_type);
             return _type;
         }
 
@@ -129,5 +158,7 @@ namespace System.Reflection.Emit.Experimental
 
         public void SetCustomAttribute(System.Reflection.Emit.CustomAttributeBuilder customBuilder)
             => throw new NotImplementedException();
+
+        
     }
 }

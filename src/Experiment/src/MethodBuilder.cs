@@ -13,9 +13,8 @@ namespace System.Reflection.Emit.Experimental
         public override System.Reflection.CallingConventions CallingConvention { get; }
         public override TypeBuilder DeclaringType { get; }
         public override System.Reflection.Module Module { get; }
-        internal MethodDefinitionHandle _handle;
-        private Type? _returnType;
-        private Type[]? _parameters;
+        internal Type? _returnType;
+        internal Type[]? _parameters;
 
         internal MethodBuilder(string name, System.Reflection.MethodAttributes attributes, CallingConventions callingConventions, Type? returnType, Type[]? parameters, TypeBuilder declaringType)
         {
