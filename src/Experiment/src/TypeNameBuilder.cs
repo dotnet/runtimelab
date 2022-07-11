@@ -1,17 +1,12 @@
-﻿
-
-// Licensed to the .NET Foundation under one or more agreements.
+﻿// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
 // This TypeNameBuilder is ported from CoreCLR's original.
 // It replaces the C++ bits of the implementation with a faithful C# port.
 
 using System.Collections.Generic;
-using System.Collections;
-using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
-using System.Text;
 using System.Diagnostics;
+using System.Text;
 
 namespace System.Reflection.Emit.Experimental
 {

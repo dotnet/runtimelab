@@ -1,5 +1,6 @@
-﻿
-using System.Reflection.Metadata;
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
+
 using System.Buffers.Binary;
 using System.Diagnostics;
 using System.IO;
@@ -12,6 +13,8 @@ namespace System.Reflection.Emit.Experimental
         internal ConstructorInfo m_con;
         private object?[] m_constructorArgs;
         internal byte[] m_blob;
+
+        public ConstructorInfo Con { get => m_con;  }
 
         // public constructor to form the custom attribute with constructor and constructor
         // parameters.
@@ -49,7 +52,7 @@ namespace System.Reflection.Emit.Experimental
             if (namedProperties.Length != propertyValues.Length)
                 throw new ArgumentException("namedProperties, propertyValues differ");
             if (namedFields.Length != fieldValues.Length)
-                throw new ArgumentException( "namedFields, fieldValues differ");
+                throw new ArgumentException("namedFields, fieldValues differ");
 #pragma warning restore CA2208
 
             if ((con.Attributes & MethodAttributes.Static) == MethodAttributes.Static ||
@@ -68,7 +71,7 @@ namespace System.Reflection.Emit.Experimental
             int i;
             ParameterInfo[] parameters = con.GetParameters();
             // Get the types of the constructor's formal parameters.
-            paramTypes = Array.ConvertAll(parameters,  parameter => parameter.ParameterType);
+            paramTypes = Array.ConvertAll(parameters, parameter => parameter.ParameterType);
 
             // Since we're guaranteed a non-var calling convention, the number of arguments must equal the number of parameters.
             if (paramTypes.Length != constructorArgs.Length)
@@ -130,7 +133,7 @@ namespace System.Reflection.Emit.Experimental
                 if (!property.CanWrite)
                     throw new ArgumentException("Not A Writable Property");
 
-                //// Property has to be from the same class or base class as ConstructorInfo.
+                //// Property has to be from the same class or base class as ConstructorInfo. Note: This edge case is currently difficult to port and needs to be added into prototype.
                 //if (property.DeclaringType != con.DeclaringType
                 //    && (!(con.DeclaringType is TypeBuilderInstantiation))
                 //    && !con.DeclaringType!.IsSubclassOf(property.DeclaringType!))
@@ -184,7 +187,7 @@ namespace System.Reflection.Emit.Experimental
                 if (!ValidateType(fldType))
                     throw new ArgumentException("Bad Type In Custom Attribute");
 
-                // Field has to be from the same class or base class as ConstructorInfo.
+                // Field has to be from the same class or base class as ConstructorInfo. Note: This edge case is currently difficult to port and needs to be added into prototype.
                 //if (namedField.DeclaringType != con.DeclaringType
                 //    && (!(con.DeclaringType is TypeBuilderInstantiation))
                 //    && !con.DeclaringType!.IsSubclassOf(namedField.DeclaringType!))
@@ -501,12 +504,6 @@ namespace System.Reflection.Emit.Experimental
                 throw new ArgumentException("Bad Parameter Type For CAB");
             }
         }
-
-        //// return the byte interpretation of the custom attribute
-        //internal void CreateCustomAttribute(ModuleBuilder mod, int tkOwner)
-        //{
-        //    TypeBuilder.DefineCustomAttribute(mod, tkOwner, mod.GetConstructorToken(m_con), m_blob);
-        //}
 
         internal enum CustomAttributeEncoding : int
         {

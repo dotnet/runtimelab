@@ -1,28 +1,34 @@
-﻿namespace System.Reflection.Emit.Experimental
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
+
+using System.Collections.Generic;
+
+namespace System.Reflection.Emit.Experimental
 {
+ /* The purpose of  this class is to provide wrappers for entities that are referenced in metadata.
+ *  The wrappers allows for convenient access to the parent token of an entity.
+ *  They override default equality for Assemblies, Types, Methods etc. to make sure identical writes to metadata aren't made even if the objects are different.
+ * */
     internal class EntityWrappers
     {
-        internal class AssemmblyReferenceWrapper
+        internal class AssemblyReferenceWrapper
         {
             internal readonly Assembly assembly;
-            public AssemmblyReferenceWrapper(Assembly assembly)
+
+            public AssemblyReferenceWrapper(Assembly assembly)
             {
                 this.assembly = assembly;
             }
+
             public override bool Equals(object? obj)
             {
-                var item = obj as AssemmblyReferenceWrapper;
-
-                if (item == null)
-                {
-                    return false;
-                }
-
-                return assembly.GetName().Equals(item.assembly.GetName());
+                return obj is AssemblyReferenceWrapper wrapper &&
+                       EqualityComparer<string>.Default.Equals(assembly.GetName().FullName, wrapper.assembly.GetName().FullName);
             }
+
             public override int GetHashCode()
             {
-                return assembly.GetName().GetHashCode();
+                return HashCode.Combine(assembly.GetName().FullName);
             }
         }
 
@@ -30,71 +36,63 @@
         {
             internal readonly Type type;
             internal int parentToken = 0;
+
             public TypeReferenceWrapper(Type type)
             {
                 this.type = type;
             }
+
             public override bool Equals(object? obj)
             {
-                var item = obj as TypeReferenceWrapper;
-
-                if (item == null)
-                {
-                    return false;
-                }
-                bool equality = type.Name.Equals(item.type.Name) && parentToken== item.parentToken;
-                if(type.Namespace!=null)
-                {
-                    equality &= type.Namespace.Equals(item.type.Namespace);
-                }
-                return equality;
+                return obj is TypeReferenceWrapper wrapper
+                    && EqualityComparer<string>.Default.Equals(type.Name, wrapper.type.Name)
+                    && EqualityComparer<string>.Default.Equals(type.Namespace, wrapper.type.Namespace)
+                    && parentToken == wrapper.parentToken;
             }
+
             public override int GetHashCode()
             {
-                return type.GetHashCode();
+                return HashCode.Combine(type.Name, type.Namespace, parentToken);
             }
+
         }
 
         internal class MethodReferenceWrapper
         {
             internal readonly MethodBase method;
             internal int parentToken = 0;
+
             public MethodReferenceWrapper(MethodBase method)
             {
                 this.method = method;
             }
+
             public override bool Equals(object? obj)
             {
-                var item = obj as MethodReferenceWrapper;
-
-                if (item == null)
-                {
-                    return false;
-                }
-                bool equality = method.Name.Equals(item.method.Name) && parentToken == item.parentToken;
-                return equality;
+                return obj is MethodReferenceWrapper wrapper
+                    && EqualityComparer<string>.Default.Equals(method.Name, wrapper.method.Name)
+                    && EqualityComparer<string>.Default.Equals(method.ToString(), wrapper.method.ToString())
+                    && parentToken == wrapper.parentToken;
             }
+
             public override int GetHashCode()
             {
-                return method.GetHashCode();
+                return HashCode.Combine(method.Name, method.ToString(), parentToken);
             }
         }
 
-        internal class CustomAttribute
+        internal class CustomAttributeWrapper
         {
             internal ConstructorInfo con;
             internal byte[] binaryAttribute;
             internal int conToken = 0;
 
-
-            public CustomAttribute(ConstructorInfo con, byte[] binaryAttribute)
+            public CustomAttributeWrapper(ConstructorInfo con, byte[] binaryAttribute)
             {
                 this.con = con;
                 this.binaryAttribute = binaryAttribute;
             }
+             
         }
-
-
-
     }
 }

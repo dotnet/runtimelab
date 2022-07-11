@@ -1,8 +1,8 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-using CustAttrLibrary;
 using System.CodeDom.Compiler;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -11,23 +11,25 @@ using Xunit;
 
 namespace System.Reflection.Emit.Experimental.Tests
 {
-    [Author(5.0)]
     public interface IMultipleMethod
     {
-        
+
         string Func(int a, string b);
         bool MoreFunc(int a, string b, bool c);
         bool DoIExist();
         void BuildAPerpetualMotionMachine();
     }
-    [Author]
+
     public interface INoMethod
     {
 
     }
+
+    //Currently hard-coding in Custom Attributes using the CustomAttributeBuilder.
     public class CustomAttributeTest
     {
-        const bool _keepFiles = true; // keep files after testing for inspection
+        List<CustomAttributeBuilder> customAttributes = new List<CustomAttributeBuilder>();
+        const bool _keepFiles = true;
         TempFileCollection _tfc;
 
         [Fact]
@@ -39,42 +41,40 @@ namespace System.Reflection.Emit.Experimental.Tests
         }
         private string WriteAssemblyToDisk(AssemblyName assemblyName, Type[] types)
         {
-            int attr = 0;
+            customAttributes.Add(new CustomAttributeBuilder(typeof(ComImportAttribute).GetConstructor(new Type[] { }), new object[] { }));
+            customAttributes.Add(new CustomAttributeBuilder(typeof(ComVisibleAttribute).GetConstructor(new Type[] { typeof(bool) }), new object[] { true }));
+            customAttributes.Add(new CustomAttributeBuilder(typeof(GuidAttribute).GetConstructor(new Type[] { typeof(string) }), new object[] { "9ED54F84-A89D-4fcd-A854-44251E925F09" }));
+
             AssemblyBuilder assemblyBuilder = AssemblyBuilder.DefineDynamicAssembly(assemblyName, System.Reflection.Emit.AssemblyBuilderAccess.Run);
 
             ModuleBuilder mb = assemblyBuilder.DefineDynamicModule(assemblyName.Name);
 
             foreach (Type type in types)
             {
-
                 TypeBuilder tb = mb.DefineType(type.FullName, type.Attributes);
                 foreach (var method in type.GetMethods())
                 {
                     var paramTypes = Array.ConvertAll(method.GetParameters(), item => item.ParameterType);
                     tb.DefineMethod(method.Name, method.Attributes, method.CallingConvention, method.ReturnType, paramTypes);
                 }
-                if (attr == 0)
+
+                //Add in these customAttributes
+                foreach (CustomAttributeBuilder customAttribute in customAttributes)
                 {
-                    //Add in CustomAttribute
-                    CustomAttributeBuilder customAttributeBuilder = new CustomAttributeBuilder(typeof(CustAttrLibrary.AuthorAttribute).GetConstructor(new Type[] { typeof(double) }), new object[] {5.0});
-                    tb.SetCustomAttribute(customAttributeBuilder);
-                    attr++;
+                    tb.SetCustomAttribute(customAttribute);
                 }
-                //else
-                //{
-                //    tb.SetCustomAttribute(typeof(CustAttrLibrary.AuthorAttribute).GetConstructor(new Type[] { }), null);
-                //    tb.SetCustomAttribute(typeof(ComImportAttribute).GetConstructor(new Type[] { }), null);
-                //    tb.SetCustomAttribute(typeof(GuidAttribute).GetConstructor(new Type[] { typeof(string) }), new byte[] { });
-                //}
             }
+
             string fileLocation = Setup();
             assemblyBuilder.Save(fileLocation);
 
             return fileLocation;
         }
 
+        // Add three custom attributes to two types. One is pseudo custom attribute.
+        // This also tests that Save doesn't have unnecessary duplicate references to same assembly, type etc.
         [Fact]
-        public void OneInterfaceWithMethods()
+        public void TwoInterfaceCustomAttribute()
         {
             // Construct an assembly name.
             AssemblyName assemblyName = new AssemblyName("MyDynamicAssembly");
@@ -107,28 +107,19 @@ namespace System.Reflection.Emit.Experimental.Tests
 
                 Assert.Equal(sourceType.Name, typeFromDisk.Name);
                 Assert.Equal(sourceType.Namespace, typeFromDisk.Namespace);
-                Assert.Equal(sourceType.Attributes, typeFromDisk.Attributes);
+                Assert.Equal(sourceType.Attributes | TypeAttributes.Import, typeFromDisk.Attributes); // Pseudo-custom attributes are added to core TypeAttributes.
 
-                foreach (var custom in sourceType.CustomAttributes)
-                {
-                    Debug.WriteLine("source");
-                    Debug.WriteLine($"Custom attribute with name {custom.AttributeType.FullName}");
-                    Debug.WriteLine($"Custom attribute constructor {custom.Constructor.Name}");
-                    foreach (var argument in custom.Constructor.GetParameters())
-                    {
-                        Debug.WriteLine($" An argument: {argument.Name}");
-                    }
-                }
+                // Ordering of custom attributes is not preserved in metadata so we sort before comparing.
+                List<CustomAttributeData> attributesFromDisk = typeFromDisk.GetCustomAttributesData().ToList();
+                attributesFromDisk.Sort((x, y) => x.AttributeType.ToString().CompareTo(y.AttributeType.ToString()));
+                customAttributes.Sort((x, y) => x.Con.DeclaringType.ToString().CompareTo(y.Con.DeclaringType.ToString()));
 
-                foreach (var custom in typeFromDisk.CustomAttributes)
+                for (int j = 0; j < customAttributes.Count; j++)
                 {
-                    Debug.WriteLine("disk");
-                    Debug.WriteLine($"Custom attribute with name {custom.AttributeType.FullName}");
-                    Debug.WriteLine($"Custom attribute constructor {custom.Constructor.Name}");
-                    foreach(var argument in custom.Constructor.GetParameters())
-                    {
-                        Debug.WriteLine($" An argument: {argument.Name}");
-                    }
+                    CustomAttributeBuilder sourceAttribute = customAttributes[j];
+                    CustomAttributeData attributeFromDisk = attributesFromDisk[j];
+                    Debug.WriteLine(attributeFromDisk.AttributeType.ToString());
+                    Assert.Equal(sourceAttribute.Con.DeclaringType.ToString(), attributeFromDisk.AttributeType.ToString());
                 }
 
                 // Method comparison
@@ -140,7 +131,7 @@ namespace System.Reflection.Emit.Experimental.Tests
                     Assert.Equal(sourceMethod.Name, methodFromDisk.Name);
                     Assert.Equal(sourceMethod.Attributes, methodFromDisk.Attributes);
                     Assert.Equal(sourceMethod.ReturnType.FullName, methodFromDisk.ReturnType.FullName);
-                    // Paramter comparison
+                    // Parameter comparison
                     for (int k = 0; k < sourceMethod.GetParameters().Length; k++)
                     {
                         ParameterInfo sourceParamter = sourceMethod.GetParameters()[k];

@@ -1,15 +1,15 @@
-﻿
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
+
 using System.Reflection.Metadata;
 using System.Reflection.Metadata.Ecma335;
 
-
-//This is prototype code, to generate simple signatures.
-//For more complex signatures, port System.Reflection.Emit's SignatureHelper.
 namespace System.Reflection.Emit.Experimental
 {
-    internal class SignatureHelper
+    //This is prototype code, to generate simple signatures.
+    //For more complex signatures, port System.Reflection.Emit's SignatureHelper.
+    internal static class SignatureHelper
     {
-
         internal static BlobBuilder MethodSignatureEnconder(ParameterInfo[]? parameters, ParameterInfo? returnType, bool isInstance)
         {
             Type[]? _typeParameters = null;
@@ -17,17 +17,17 @@ namespace System.Reflection.Emit.Experimental
 
             if (parameters != null)
             {
-                 _typeParameters = Array.ConvertAll(parameters, parameter => parameter.ParameterType);
+                _typeParameters = Array.ConvertAll(parameters, parameter => parameter.ParameterType);
             }
 
-            if(returnType!=null)
+            if (returnType != null)
             {
-                 typeReturn = returnType.ParameterType;
+                typeReturn = returnType.ParameterType;
             }
 
             return MethodSignatureEnconder(_typeParameters, typeReturn, isInstance);
         }
-            internal static BlobBuilder MethodSignatureEnconder(Type[]? parameters, Type? returnType, bool isInstance)
+        internal static BlobBuilder MethodSignatureEnconder(Type[]? parameters, Type? returnType, bool isInstance)
         {
             // Encoding return type and parameters.
             var methodSignature = new BlobBuilder();
@@ -36,7 +36,7 @@ namespace System.Reflection.Emit.Experimental
             ReturnTypeEncoder _retEncoder;
 
             new BlobEncoder(methodSignature).
-                MethodSignature(isInstanceMethod:isInstance). 
+                MethodSignature(isInstanceMethod: isInstance).
                 Parameters((parameters == null) ? 0 : parameters.Length, out _retEncoder, out _parEncoder);
 
             if (returnType != null && returnType != typeof(void))

@@ -1,7 +1,6 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-using System.Collections;
 using System.Collections.Generic;
 using System.Reflection.Metadata;
 using System.Reflection.Metadata.Ecma335;
@@ -11,7 +10,7 @@ namespace System.Reflection.Emit.Experimental
 {
     public class ModuleBuilder : System.Reflection.Module
     {
-        internal List<AssemmblyReferenceWrapper> _assemblyRefStore = new List<AssemmblyReferenceWrapper>();
+        internal List<AssemblyReferenceWrapper> _assemblyRefStore = new List<AssemblyReferenceWrapper>();
         internal int _nextAssemblyRefRowId = 1;
 
         internal List<TypeReferenceWrapper> _typeRefStore = new List<TypeReferenceWrapper>();
@@ -19,7 +18,7 @@ namespace System.Reflection.Emit.Experimental
 
         internal List<MethodReferenceWrapper> _methodRefStore = new List<MethodReferenceWrapper>();
         internal int _nextMethodRefRowId = 1;
-        
+
 
         internal List<TypeBuilder> _typeDefStore = new List<TypeBuilder>();
         internal int _nextMethodDefRowId = 1;
@@ -36,9 +35,10 @@ namespace System.Reflection.Emit.Experimental
             Assembly = assembly;
         }
 
+        // Wherever possible metadata construction is done in module. 
         internal void AppendMetadata(MetadataBuilder metadata)
         {
-            //Add module metadata
+            // Add module metadata
             metadata.AddModule(
                 generation: 0,
                 metadata.GetOrAddString(ScopeName),
@@ -68,26 +68,27 @@ namespace System.Reflection.Emit.Experimental
                 MetadataHelper.AddTypeReference(metadata, typeReference.type, parent);
             }
 
-            // Add each method reference to metadta table.
+            // Add each method reference to metadata table.
             foreach (var methodRef in _methodRefStore)
             {
                 TypeReferenceHandle parent = MetadataTokens.TypeReferenceHandle(methodRef.parentToken);
                 MetadataHelper.AddConstructorReference(metadata, parent, methodRef.method);
             }
 
-            //Add each type defintion to metadata table.
+            // Add each type definition to metadata table.
             foreach (TypeBuilder typeBuilder in _typeDefStore)
             {
-                TypeDefinitionHandle typeDefintionHandle =  MetadataHelper.addTypeDef(typeBuilder,metadata, _nextMethodDefRowId);
-                //Add each method defintion to metadata table.
+                TypeDefinitionHandle typeDefintionHandle = MetadataHelper.addTypeDef(typeBuilder, metadata, _nextMethodDefRowId);
+
+                // Add each method definition to metadata table.
                 foreach (MethodBuilder method in typeBuilder._methodDefStore)
                 {
                     MetadataHelper.AddMethodDefintion(metadata, method);
                     _nextMethodDefRowId++;
                 }
 
-                //Add each custom attribute to metadata table.
-                foreach (EntityWrappers.CustomAttribute customAttribute in typeBuilder._customAttributes )
+                // Add each custom attribute to metadata table.
+                foreach (CustomAttributeWrapper customAttribute in typeBuilder._customAttributes)
                 {
                     MemberReferenceHandle constructorHandle = MetadataTokens.MemberReferenceHandle(customAttribute.conToken);
                     metadata.AddCustomAttribute(typeDefintionHandle, constructorHandle, metadata.GetOrAddBlob(customAttribute.binaryAttribute));
@@ -158,7 +159,5 @@ namespace System.Reflection.Emit.Experimental
 
         public void SetCustomAttribute(System.Reflection.Emit.CustomAttributeBuilder customBuilder)
             => throw new NotImplementedException();
-
-        
     }
 }

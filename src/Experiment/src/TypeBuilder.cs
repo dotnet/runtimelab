@@ -3,15 +3,12 @@
 
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Reflection.Metadata;
-using System.Reflection.Metadata.Ecma335;
-using System.Runtime.InteropServices;
+using static System.Reflection.Emit.Experimental.EntityWrappers;
 
 namespace System.Reflection.Emit.Experimental
 {
     public class TypeBuilder : System.Reflection.TypeInfo
     {
-        
 
         public override string Name { get; }
         public override Assembly Assembly { get; }
@@ -19,7 +16,7 @@ namespace System.Reflection.Emit.Experimental
         public override string? Namespace { get; }
         internal TypeAttributes UserTypeAttribute { get; set; }
         internal List<MethodBuilder> _methodDefStore = new List<MethodBuilder>();
-        internal List<CustomAttribute> _customAttributes = new();
+        internal List<CustomAttributeWrapper> _customAttributes = new();
 
         internal TypeBuilder(string name, ModuleBuilder module, Assembly assembly, TypeAttributes typeAttributes)
         {
@@ -27,7 +24,7 @@ namespace System.Reflection.Emit.Experimental
             Module = module;
             Assembly = assembly;
             UserTypeAttribute = typeAttributes;
-   
+
 
             //Extract namespace from name
             int idx = Name.LastIndexOf('.');
@@ -59,7 +56,7 @@ namespace System.Reflection.Emit.Experimental
 
         public void SetCustomAttribute(System.Reflection.ConstructorInfo con, byte[] binaryAttribute)
         {
-            if(con == null)
+            if (con == null)
             {
                 throw new ArgumentNullException(nameof(con));
             }
@@ -74,15 +71,10 @@ namespace System.Reflection.Emit.Experimental
                 throw new ArgumentException("Attribute constructor has no type.");
             }
 
-            if(Module._methodRefStore.Contains(con))
-            {
-                throw new ArgumentException("Duplicate Attribute.");
-            }
             //We check whether the custom attribute is actually a pseudo-custom attribute. 
-            //(We have only done ComImport for the prototype, eventually all pseudo-custom attributes will be hardcoded.)
+            //(We have only done ComImport for the prototype, eventually all pseudo-custom attributes will be hard-coded.)
             //If it is, simply alter the TypeAttributes.
-            //We want to handle this before the type metadata is created.
-
+            //We want to handle this before the type metadata is generated.
 
             if (con.DeclaringType.Name.Equals("ComImportAttribute"))
             {
@@ -91,21 +83,42 @@ namespace System.Reflection.Emit.Experimental
             }
             else
             {
-                
-                Type constructorTypeRef = con.DeclaringType;
-                Assembly constructorAssemblyref = constructorTypeRef.Assembly;
+                AssemblyReferenceWrapper assemblyReference = new AssemblyReferenceWrapper(con.DeclaringType.Assembly);
+                TypeReferenceWrapper typeReference = new TypeReferenceWrapper(con.DeclaringType);
+                MethodReferenceWrapper methodReference = new MethodReferenceWrapper(con);
+                CustomAttributeWrapper customAttribute = new CustomAttributeWrapper(con, binaryAttribute);
 
-                if(!Module._assemblyRefStore.Contains(constructorAssemblyref)) // Avoid add the same assembly twice
+                if (!Module._assemblyRefStore.Contains(assemblyReference)) // Avoid adding the same assembly twice
                 {
-                    Module._assemblyRefStore.Add(constructorAssemblyref);
+                    Module._assemblyRefStore.Add(assemblyReference);
+                    typeReference.parentToken = Module._nextAssemblyRefRowId++;
+                }
+                else
+                {
+                    typeReference.parentToken = Module._assemblyRefStore.IndexOf(assemblyReference)+1; // Add 1 to account for zero based indexing
                 }
 
-                if (!Module._typeRefStore.Contains(constructorTypeRef)) // Avoid add the same type twice
+                if (!Module._typeRefStore.Contains(typeReference)) // Avoid adding the same type twice
                 {
-                    Module._typeRefStore.Add(constructorTypeRef);
+                    Module._typeRefStore.Add(typeReference);
+                    methodReference.parentToken = Module._nextTypeRefRowId++;
                 }
-                Module._methodRefStore.Add(con);
-                _customAttributes.Add(new CustomAttribute(con, binaryAttribute));
+                else
+                {
+                    methodReference.parentToken = Module._typeRefStore.IndexOf(typeReference)+1;
+                }
+
+                if (!Module._methodRefStore.Contains(methodReference)) // Avoid add the same method twice
+                {
+                    Module._methodRefStore.Add(methodReference);
+                    customAttribute.conToken = Module._nextMethodRefRowId++;
+                }
+                else
+                {
+                    customAttribute.conToken = Module._methodRefStore.IndexOf(methodReference) + 1;
+                }
+
+                _customAttributes.Add(customAttribute);
             }
         }
 
@@ -294,7 +307,7 @@ namespace System.Reflection.Emit.Experimental
         public override System.Type? GetInterface(string name, bool ignoreCase)
             => throw new NotImplementedException();
 
-        
+
         public override System.Reflection.InterfaceMapping GetInterfaceMap([System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembers(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.NonPublicMethods | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicMethods)] System.Type interfaceType)
             => throw new NotImplementedException();
 
