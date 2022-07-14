@@ -582,6 +582,13 @@ namespace ILCompiler
                             // This allows SuperPMI to rely on non-reuse of handles in ObjectToHandle
                             CorInfoImpl corInfoImpl = _corInfoImpls.GetValue(Thread.CurrentThread, thread => new CorInfoImpl(this));
                             corInfoImpl.CompileMethod(methodCodeNodeNeedingCode, Logger);
+
+                            // If we generated cold code, we will need Scratch
+                            if ((_nodeFactory.Scratch == null) && corInfoImpl.HasColdCode())
+                            {
+                                _nodeFactory.GenerateScratch();
+                                _dependencyGraph.AddRoot(_nodeFactory.Scratch, "Scratch is generated because there is cold code");
+                            }
                         }
                     }
                     catch (TypeSystemException ex)

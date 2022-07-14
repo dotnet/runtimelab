@@ -365,6 +365,12 @@ namespace Internal.JitInterface
         private HashSet<MethodDesc> _inlinedMethods;
         private UnboxingMethodDescFactory _unboxingThunkFactory = new UnboxingMethodDescFactory();
         private List<ISymbolNode> _precodeFixups;
+        private bool _hasColdCode;
+
+        public bool HasColdCode()
+        {
+            return _hasColdCode;
+        }
 
         public CorInfoImpl(ReadyToRunCodegenCompilation compilation)
             : this()
@@ -502,6 +508,8 @@ namespace Internal.JitInterface
                 {
                     PublishEmptyCode();
                 }
+
+                _hasColdCode = (_methodColdCodeNode != null);
                 CompileMethodCleanup();
             }
         }
