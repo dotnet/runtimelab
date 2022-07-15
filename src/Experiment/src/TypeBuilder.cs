@@ -66,7 +66,7 @@ namespace System.Reflection.Emit.Experimental
                 throw new ArgumentNullException(nameof(binaryAttribute)); // This is incorrect
             }
 
-            if (con.DeclaringType == null)
+            if (constructorInfo.DeclaringType == null)
             {
                 throw new ArgumentException("Attribute constructor has no type.");
             }
@@ -76,7 +76,7 @@ namespace System.Reflection.Emit.Experimental
             //If it is, simply alter the TypeAttributes.
             //We want to handle this before the type metadata is generated.
 
-            if (con.DeclaringType.Name.Equals("ComImportAttribute"))
+            if (constructorInfo.DeclaringType.Name.Equals("ComImportAttribute"))
             {
                 Debug.WriteLine("Modifying internal flags");
                 UserTypeAttribute |= TypeAttributes.Import;

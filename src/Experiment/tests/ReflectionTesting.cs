@@ -10,85 +10,38 @@ using System.Reflection.Emit.Experimental;
 using System.Reflection.Emit.Experimental.Tests;
 using Xunit;
 
-namespace Experiment.Tests
+namespace Experiment.Tests.Basic
 {
-    //interfaces for testing
-    public interface INoMethod
+
+    public class ReflectionTesting : IDisposable
     {
-
-    }
-
-    public interface INoMethod2
-    {
-
-    }
-
-    public interface IMultipleMethod
-    {
-        string Func(int a, string b);
-        bool MoreFunc(int a, string b, bool c);
-        bool DoIExist();
-        void BuildAPerpetualMotionMachine();
-    }
-
-    internal interface IAccess
-    {
-        public void BuildAI();
-        public int DisableRogueAI();
-    }
-
-    public interface IOneMethod
-    {
-        string Func(int a, string b);
-    }
-
-    public class ReflectionTesting
-    {
-        const bool _keepFiles = true; // keep files after testing for inspection
-        TempFileCollection _tfc;
-
-        [Fact]
-        private string Setup()
+        internal string fileLocation;
+        public ReflectionTesting()
         {
+            const bool _keepFiles = true; 
+            TempFileCollection _tfc;
             Directory.CreateDirectory("testDir");
             _tfc = new TempFileCollection("testDir", false);
-            return _tfc.AddExtension("dll", _keepFiles);
-        }
-        private string WriteAssemblyToDisk(AssemblyName assemblyName, Type[] types)
-        {
-            AssemblyBuilder assemblyBuilder = AssemblyBuilder.DefineDynamicAssembly(assemblyName, System.Reflection.Emit.AssemblyBuilderAccess.Run);
-
-            ModuleBuilder mb = assemblyBuilder.DefineDynamicModule(assemblyName.Name);
-
-            foreach (Type type in types)
-            {
-                TypeBuilder tb = mb.DefineType(type.FullName, type.Attributes);
-                foreach (var method in type.GetMethods())
-                {
-                    var paramTypes = Array.ConvertAll(method.GetParameters(), item => item.ParameterType);
-                    tb.DefineMethod(method.Name, method.Attributes, method.CallingConvention, method.ReturnType, paramTypes);
-                }
-            }
-
-            string fileLocation = Setup();
-            assemblyBuilder.Save(fileLocation);
-
-            return fileLocation;
+            fileLocation = _tfc.AddExtension("dll", _keepFiles);
         }
 
+        public void Dispose()
+        {}
+    
         [Fact]
         public void OneInterfaceWithMethods()
         {
             // Construct an assembly name.
             AssemblyName assemblyName = new AssemblyName("MyDynamicAssembly");
+
             //Construct its types via reflection.
             Type[] types = new Type[] { typeof(IMultipleMethod) };
 
             // Generate DLL from these and save it to Disk.
-            string fileLocation = WriteAssemblyToDisk(assemblyName, types);
+            AssemblyTools.WriteAssemblyToDisk(assemblyName, types, fileLocation);
 
             // Read said assembly back from Disk using MetadataLoadContext
-            Assembly assemblyFromDisk = AssemblyLoadTools.TryLoadAssembly(fileLocation);
+            Assembly assemblyFromDisk = AssemblyTools.TryLoadAssembly(fileLocation);
 
             // Now compare them:
 
@@ -119,7 +72,7 @@ namespace Experiment.Tests
                     Assert.Equal(sourceMethod.Name, methodFromDisk.Name);
                     Assert.Equal(sourceMethod.Attributes, methodFromDisk.Attributes);
                     Assert.Equal(sourceMethod.ReturnType.FullName, methodFromDisk.ReturnType.FullName);
-                    // Paramter comparison
+                    // Parameter comparison
                     for (int k = 0; k < sourceMethod.GetParameters().Length; k++)
                     {
                         ParameterInfo sourceParamter = sourceMethod.GetParameters()[k];
@@ -135,14 +88,15 @@ namespace Experiment.Tests
         {
             // Construct an assembly name.
             AssemblyName assemblyName = new AssemblyName("MyDynamicAssembly");
+
             //Construct its types via reflection.
             Type[] types = new Type[] { typeof(INoMethod) };
 
             // Generate DLL from these and save it to Disk.
-            string fileLocation = WriteAssemblyToDisk(assemblyName, types);
+            AssemblyTools.WriteAssemblyToDisk(assemblyName, types, fileLocation,null);
 
             // Read said assembly back from Disk using MetadataLoadContext
-            Assembly assemblyFromDisk = AssemblyLoadTools.TryLoadAssembly(fileLocation);
+            Assembly assemblyFromDisk = AssemblyTools.TryLoadAssembly(fileLocation);
 
             // Now compare them:
 
@@ -173,7 +127,7 @@ namespace Experiment.Tests
                     Assert.Equal(sourceMethod.Name, methodFromDisk.Name);
                     Assert.Equal(sourceMethod.Attributes, methodFromDisk.Attributes);
                     Assert.Equal(sourceMethod.ReturnType.FullName, methodFromDisk.ReturnType.FullName);
-                    // Paramter comparison
+                    // Parameter comparison
                     for (int k = 0; k < sourceMethod.GetParameters().Length; k++)
                     {
                         ParameterInfo sourceParamter = sourceMethod.GetParameters()[k];
@@ -190,14 +144,15 @@ namespace Experiment.Tests
         {
             // Construct an assembly name.
             AssemblyName assemblyName = new AssemblyName("MyDynamicAssembly");
+
             //Construct its types via reflection.
             Type[] types = new Type[] { typeof(IAccess), typeof(INoMethod), typeof(INoMethod2), typeof(IMultipleMethod) };
 
             // Generate DLL from these and save it to Disk.
-            string fileLocation = WriteAssemblyToDisk(assemblyName, types);
+            AssemblyTools.WriteAssemblyToDisk(assemblyName, types, fileLocation);
 
             // Read said assembly back from Disk using MetadataLoadContext
-            Assembly assemblyFromDisk = AssemblyLoadTools.TryLoadAssembly(fileLocation);
+            Assembly assemblyFromDisk = AssemblyTools.TryLoadAssembly(fileLocation);
 
             // Now compare them:
 
@@ -228,7 +183,7 @@ namespace Experiment.Tests
                     Assert.Equal(sourceMethod.Name, methodFromDisk.Name);
                     Assert.Equal(sourceMethod.Attributes, methodFromDisk.Attributes);
                     Assert.Equal(sourceMethod.ReturnType.FullName, methodFromDisk.ReturnType.FullName);
-                    // Paramter comparison
+                    // Parameter comparison
                     for (int k = 0; k < sourceMethod.GetParameters().Length; k++)
                     {
                         ParameterInfo sourceParamter = sourceMethod.GetParameters()[k];
@@ -244,14 +199,15 @@ namespace Experiment.Tests
         {
             // Construct an assembly name.
             AssemblyName assemblyName = new AssemblyName("MyDynamicAssembly");
+
             //Construct its types via reflection.
             Type[] types = new Type[] { typeof(INoMethod), typeof(INoMethod2) };
 
             // Generate DLL from these and save it to Disk.
-            string fileLocation = WriteAssemblyToDisk(assemblyName, types);
+            AssemblyTools.WriteAssemblyToDisk(assemblyName, types, fileLocation);
 
             // Read said assembly back from Disk using MetadataLoadContext
-            Assembly assemblyFromDisk = AssemblyLoadTools.TryLoadAssembly(fileLocation);
+            Assembly assemblyFromDisk = AssemblyTools.TryLoadAssembly(fileLocation);
 
             // Now compare them:
 
@@ -282,7 +238,7 @@ namespace Experiment.Tests
                     Assert.Equal(sourceMethod.Name, methodFromDisk.Name);
                     Assert.Equal(sourceMethod.Attributes, methodFromDisk.Attributes);
                     Assert.Equal(sourceMethod.ReturnType.FullName, methodFromDisk.ReturnType.FullName);
-                    // Paramter comparison
+                    // Parameter comparison
                     for (int k = 0; k < sourceMethod.GetParameters().Length; k++)
                     {
                         ParameterInfo sourceParamter = sourceMethod.GetParameters()[k];
@@ -298,14 +254,15 @@ namespace Experiment.Tests
         {
             // Construct an assembly name.
             AssemblyName assemblyName = new AssemblyName("MyDynamicAssembly");
+
             //Construct its types via reflection.
             Type[] types = new Type[] { typeof(INoMethod), typeof(IOneMethod) };
 
             // Generate DLL from these and save it to Disk.
-            string fileLocation = WriteAssemblyToDisk(assemblyName, types);
+            AssemblyTools.WriteAssemblyToDisk(assemblyName, types, fileLocation);
 
             // Read said assembly back from Disk using MetadataLoadContext
-            Assembly assemblyFromDisk = AssemblyLoadTools.TryLoadAssembly(fileLocation);
+            Assembly assemblyFromDisk = AssemblyTools.TryLoadAssembly(fileLocation);
 
             // Now compare them:
 
@@ -336,7 +293,7 @@ namespace Experiment.Tests
                     Assert.Equal(sourceMethod.Name, methodFromDisk.Name);
                     Assert.Equal(sourceMethod.Attributes, methodFromDisk.Attributes);
                     Assert.Equal(sourceMethod.ReturnType.FullName, methodFromDisk.ReturnType.FullName);
-                    // Paramter comparison
+                    // Parameter comparison
                     for (int k = 0; k < sourceMethod.GetParameters().Length; k++)
                     {
                         ParameterInfo sourceParamter = sourceMethod.GetParameters()[k];
@@ -354,14 +311,15 @@ namespace Experiment.Tests
         {
             // Construct an assembly name.
             AssemblyName assemblyName = new AssemblyName("MyDynamicAssembly");
+
             //Construct its types via reflection.
             Type[] types = new Type[] { typeof(IMultipleMethod), typeof(INoMethod2) };
 
             // Generate DLL from these and save it to Disk.
-            string fileLocation = WriteAssemblyToDisk(assemblyName, types);
+            AssemblyTools.WriteAssemblyToDisk(assemblyName, types, fileLocation);
 
             // Read said assembly back from Disk using MetadataLoadContext
-            Assembly assemblyFromDisk = AssemblyLoadTools.TryLoadAssembly(fileLocation);
+            Assembly assemblyFromDisk = AssemblyTools.TryLoadAssembly(fileLocation);
 
             // Now compare them:
 
@@ -395,7 +353,7 @@ namespace Experiment.Tests
                     Assert.Equal(sourceMethod.Attributes, methodFromDisk.Attributes);
                     Assert.Equal(sourceMethod.ReturnType.FullName, methodFromDisk.ReturnType.FullName);
 
-                    // Paramter comparison
+                    // Parameter comparison
                     for (int k = 0; k < sourceMethod.GetParameters().Length; k++)
                     {
                         ParameterInfo sourceParamter = sourceMethod.GetParameters()[k];
@@ -411,14 +369,15 @@ namespace Experiment.Tests
         {
             // Construct an assembly name.
             AssemblyName assemblyName = new AssemblyName("MyDynamicAssembly");
+
             //Construct its types via reflection.
             Type[] types = new Type[] { typeof(IMultipleMethod), typeof(INoMethod2), typeof(IAccess), typeof(IOneMethod), typeof(INoMethod) };
 
             // Generate DLL from these and save it to Disk.
-            string fileLocation = WriteAssemblyToDisk(assemblyName, types);
+            AssemblyTools.WriteAssemblyToDisk(assemblyName, types, fileLocation);
 
             // Read said assembly back from Disk using MetadataLoadContext
-            Assembly assemblyFromDisk = AssemblyLoadTools.TryLoadAssembly(fileLocation);
+            Assembly assemblyFromDisk = AssemblyTools.TryLoadAssembly(fileLocation);
 
             // Now compare them:
 
@@ -451,7 +410,7 @@ namespace Experiment.Tests
                     Assert.Equal(sourceMethod.Name, methodFromDisk.Name);
                     Assert.Equal(sourceMethod.Attributes, methodFromDisk.Attributes);
                     Assert.Equal(sourceMethod.ReturnType.FullName, methodFromDisk.ReturnType.FullName);
-                    // Paramter comparison
+                    // Parameter comparison
                     for (int k = 0; k < sourceMethod.GetParameters().Length; k++)
                     {
                         ParameterInfo sourceParamter = sourceMethod.GetParameters()[k];
@@ -461,5 +420,35 @@ namespace Experiment.Tests
                 }
             }
         }
+    }
+
+    //  Test Interfaces
+    public interface INoMethod
+    {
+
+    }
+
+    public interface INoMethod2
+    {
+
+    }
+
+    public interface IMultipleMethod
+    {
+        string[] Func(int a, string b);
+        bool MoreFunc(int[] a, string b, bool c);
+        BinaryWriter DoIExist();
+        void BuildAPerpetualMotionMachine();
+    }
+
+    internal interface IAccess
+    {
+        public TypeAttributes BuildAI(FieldAttributes field);
+        public int DisableRogueAI();
+    }
+
+    public interface IOneMethod
+    {
+        string Func(int a, string b);
     }
 }

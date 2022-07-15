@@ -10,11 +10,14 @@ namespace System.Reflection.Emit.Experimental
 {
     public class CustomAttributeBuilder
     {
-        internal ConstructorInfo m_con;
-        private object?[] m_constructorArgs;
-        internal byte[] m_blob;
+        /// <summary>
+        /// Stores the constructor of the custom attribute's type. Custom attribute's are identified by their constructor in ECMA.
+        /// </summary>
+        private ConstructorInfo _constructorInfo;
+        private object?[] _constructorArgs;
+        internal byte[] _blob;
 
-        public ConstructorInfo Con { get => m_con;  }
+        public ConstructorInfo Constructor { get => _constructorInfo;  }
 
         // public constructor to form the custom attribute with constructor and constructor
         // parameters.
@@ -50,22 +53,26 @@ namespace System.Reflection.Emit.Experimental
 
 #pragma warning disable CA2208 // Instantiate argument exceptions correctly, combination of arguments used
             if (namedProperties.Length != propertyValues.Length)
-                throw new ArgumentException("namedProperties, propertyValues differ");
+            {
+                throw new ArgumentException($"{nameof(namedProperties)} and {nameof(propertyValues)} should have the same length.");
+            }
             if (namedFields.Length != fieldValues.Length)
-                throw new ArgumentException("namedFields, fieldValues differ");
+            {
+                throw new ArgumentException($"{nameof(namedFields)} and {nameof(fieldValues)} should have the same length.");
+            }
 #pragma warning restore CA2208
 
             if ((con.Attributes & MethodAttributes.Static) == MethodAttributes.Static ||
                 (con.Attributes & MethodAttributes.MemberAccessMask) == MethodAttributes.Private)
-                throw new ArgumentException("Bad Constructor");
+                throw new ArgumentException("The passed-in constructor is either static or private");
 
             if ((con.CallingConvention & CallingConventions.Standard) != CallingConventions.Standard)
-                throw new ArgumentException("Bad Constructor Call Conv ");
+                throw new ArgumentException("Non standard calling convention for constructor.");
 
             // Cache information used elsewhere.
-            m_con = con;
-            m_constructorArgs = new object?[constructorArgs.Length];
-            Array.Copy(constructorArgs, m_constructorArgs, constructorArgs.Length);
+            _constructorInfo = con;
+            _constructorArgs = new object?[constructorArgs.Length];
+            Array.Copy(constructorArgs, _constructorArgs, constructorArgs.Length);
 
             Type[] paramTypes;
             int i;
@@ -80,7 +87,7 @@ namespace System.Reflection.Emit.Experimental
             // Verify that the constructor has a valid signature (custom attributes only support a subset of our type system).
             for (i = 0; i < paramTypes.Length; i++)
                 if (!ValidateType(paramTypes[i]))
-                    throw new ArgumentException("Bad Type In Custom Attribute");
+                    throw new ArgumentException("Bad Type In Custom Attribute: " + paramTypes[i]);
 
             // Now verify that the types of the actual parameters are compatible with the types of the formal parameters.
             for (i = 0; i < paramTypes.Length; i++)
@@ -133,25 +140,6 @@ namespace System.Reflection.Emit.Experimental
                 if (!property.CanWrite)
                     throw new ArgumentException("Not A Writable Property");
 
-                //// Property has to be from the same class or base class as ConstructorInfo. Note: This edge case is currently difficult to port and needs to be added into prototype.
-                //if (property.DeclaringType != con.DeclaringType
-                //    && (!(con.DeclaringType is TypeBuilderInstantiation))
-                //    && !con.DeclaringType!.IsSubclassOf(property.DeclaringType!))
-                //{
-                //    // Might have failed check because one type is a XXXBuilder
-                //    // and the other is not. Deal with these special cases
-                //    // separately.
-                //    if (!TypeBuilder.IsTypeEqual(property.DeclaringType, con.DeclaringType))
-                //    {
-                //        // IsSubclassOf is overloaded to do the right thing if
-                //        // the constructor is a TypeBuilder, but we still need
-                //        // to deal with the case where the property's declaring
-                //        // type is one.
-                //        if (!(property.DeclaringType is TypeBuilder) ||
-                //            !con.DeclaringType.IsSubclassOf(((TypeBuilder)property.DeclaringType).BakedRuntimeType))
-                //            throw new ArgumentException(SR.Argument_BadPropertyForConstructorBuilder);
-                //    }
-                //}
 
                 // Make sure the property's type can take the given value.
                 // Note that there will be no coercion.
@@ -187,25 +175,6 @@ namespace System.Reflection.Emit.Experimental
                 if (!ValidateType(fldType))
                     throw new ArgumentException("Bad Type In Custom Attribute");
 
-                // Field has to be from the same class or base class as ConstructorInfo. Note: This edge case is currently difficult to port and needs to be added into prototype.
-                //if (namedField.DeclaringType != con.DeclaringType
-                //    && (!(con.DeclaringType is TypeBuilderInstantiation))
-                //    && !con.DeclaringType!.IsSubclassOf(namedField.DeclaringType!))
-                //{
-                //    // Might have failed check because one type is a XXXBuilder
-                //    // and the other is not. Deal with these special cases
-                //    // separately.
-                //    if (!TypeBuilder.IsTypeEqual(namedField.DeclaringType, con.DeclaringType))
-                //    {
-                //        // IsSubclassOf is overloaded to do the right thing if
-                //        // the constructor is a TypeBuilder, but we still need
-                //        // to deal with the case where the field's declaring
-                //        // type is one.
-                //        if (!(namedField.DeclaringType is TypeBuilder) ||
-                //            !con.DeclaringType.IsSubclassOf(((TypeBuilder)namedFields[i].DeclaringType!).BakedRuntimeType))
-                //            throw new ArgumentException(SR.Argument_BadFieldForConstructorBuilder);
-                //    }
-                //}
 
                 // Make sure the field's type can take the given value.
                 // Note that there will be no coercion.
@@ -224,7 +193,7 @@ namespace System.Reflection.Emit.Experimental
             }
 
             // Create the blob array.
-            m_blob = ((MemoryStream)writer.BaseStream).ToArray();
+            _blob = ((MemoryStream)writer.BaseStream).ToArray();
         }
 
         // Check that a type is suitable for use in a custom attribute.
@@ -529,7 +498,7 @@ namespace System.Reflection.Emit.Experimental
             Enum = 0x55
         }
 
-        internal enum CorElementType : byte
+        public enum CorElementType : byte
         {
             Invalid = 0x0,
 

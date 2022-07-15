@@ -10,8 +10,47 @@ using System.Runtime.InteropServices;
 
 namespace System.Reflection.Emit.Experimental.Tests
 {
-    internal class AssemblyLoadTools
+    internal class AssemblyTools
     {
+        internal static void WriteAssemblyToDisk(AssemblyName assemblyName, Type[] types, string fileLocation)
+        {
+            WriteAssemblyToDisk(assemblyName, types, fileLocation, null);
+        }
+        internal static void WriteAssemblyToDisk(AssemblyName assemblyName, Type[] types, string fileLocation, List<CustomAttributeBuilder> customAttributes)
+        {
+            AssemblyBuilder assemblyBuilder = AssemblyBuilder.DefineDynamicAssembly(assemblyName, System.Reflection.Emit.AssemblyBuilderAccess.Run);
+
+            ModuleBuilder mb = assemblyBuilder.DefineDynamicModule(assemblyName.Name);
+
+            foreach (Type type in types)
+            {
+                TypeBuilder tb = mb.DefineType(type.FullName, type.Attributes,type.BaseType);
+
+                if (customAttributes != null)
+                {
+                    foreach (CustomAttributeBuilder customAttribute in customAttributes)
+                    {
+                        tb.SetCustomAttribute(customAttribute);
+                    }
+                }
+
+                foreach (var method in type.GetMethods())
+                {
+                    var paramTypes = Array.ConvertAll(method.GetParameters(), item => item.ParameterType);
+                    tb.DefineMethod(method.Name, method.Attributes, method.CallingConvention, method.ReturnType, paramTypes);
+                }
+
+                foreach (var field in type.GetFields(
+                    BindingFlags.Instance |
+                    BindingFlags.Static |
+                    BindingFlags.NonPublic |
+                    BindingFlags.Public))
+                {
+                    tb.DefineField(field.Name, field.FieldType, field.Attributes);
+                }
+            }
+            assemblyBuilder.Save(fileLocation);
+        }
 
         internal static Assembly TryLoadAssembly(string filePath)
         {
@@ -54,8 +93,9 @@ namespace System.Reflection.Emit.Experimental.Tests
                 var owner = mr.GetTypeDefinition(mdef.GetDeclaringType());
                 Debug.WriteLine($"Method name: {mname} is owned by {mr.GetString(owner.Name)}.");
             }
-
             Debug.WriteLine("Ended MetadataReader class");
         }
     }
+
+
 }

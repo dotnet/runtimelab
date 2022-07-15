@@ -83,13 +83,13 @@ namespace System.Reflection.Emit.Experimental
 
         internal class CustomAttributeWrapper
         {
-            internal ConstructorInfo con;
+            internal ConstructorInfo constructorInfo;
             internal byte[] binaryAttribute;
             internal int conToken = 0;
 
-            public CustomAttributeWrapper(ConstructorInfo con, byte[] binaryAttribute)
+            public CustomAttributeWrapper(ConstructorInfo constructorInfo, byte[] binaryAttribute)
             {
-                this.con = con;
+                this.constructorInfo = constructorInfo;
                 this.binaryAttribute = binaryAttribute;
             }
              
