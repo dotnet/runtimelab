@@ -54,11 +54,11 @@ namespace System.Reflection.Emit.Experimental
             throw new NotImplementedException();
         }
 
-        public void SetCustomAttribute(System.Reflection.ConstructorInfo con, byte[] binaryAttribute)
+        public void SetCustomAttribute(System.Reflection.ConstructorInfo constructorInfo, byte[] binaryAttribute)
         {
-            if (con == null)
+            if (constructorInfo == null)
             {
-                throw new ArgumentNullException(nameof(con));
+                throw new ArgumentNullException(nameof(constructorInfo));
             }
 
             if (binaryAttribute == null)
@@ -83,10 +83,10 @@ namespace System.Reflection.Emit.Experimental
             }
             else
             {
-                AssemblyReferenceWrapper assemblyReference = new AssemblyReferenceWrapper(con.DeclaringType.Assembly);
-                TypeReferenceWrapper typeReference = new TypeReferenceWrapper(con.DeclaringType);
-                MethodReferenceWrapper methodReference = new MethodReferenceWrapper(con);
-                CustomAttributeWrapper customAttribute = new CustomAttributeWrapper(con, binaryAttribute);
+                AssemblyReferenceWrapper assemblyReference = new AssemblyReferenceWrapper(constructorInfo.DeclaringType.Assembly);
+                TypeReferenceWrapper typeReference = new TypeReferenceWrapper(constructorInfo.DeclaringType);
+                MethodReferenceWrapper methodReference = new MethodReferenceWrapper(constructorInfo);
+                CustomAttributeWrapper customAttribute = new CustomAttributeWrapper(constructorInfo, binaryAttribute);
 
                 if (!Module._assemblyRefStore.Contains(assemblyReference)) // Avoid adding the same assembly twice
                 {
@@ -124,7 +124,7 @@ namespace System.Reflection.Emit.Experimental
 
         public void SetCustomAttribute(System.Reflection.Emit.Experimental.CustomAttributeBuilder customBuilder)
         {
-            SetCustomAttribute(customBuilder.m_con, customBuilder.m_blob);
+            SetCustomAttribute(customBuilder.Constructor, customBuilder._blob);
         }
 
 

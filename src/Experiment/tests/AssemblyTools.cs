@@ -24,7 +24,7 @@ namespace System.Reflection.Emit.Experimental.Tests
 
             foreach (Type type in types)
             {
-                TypeBuilder tb = mb.DefineType(type.FullName, type.Attributes,type.BaseType);
+                TypeBuilder tb = mb.DefineType(type.FullName, type.Attributes);
 
                 if (customAttributes != null)
                 {
@@ -38,15 +38,6 @@ namespace System.Reflection.Emit.Experimental.Tests
                 {
                     var paramTypes = Array.ConvertAll(method.GetParameters(), item => item.ParameterType);
                     tb.DefineMethod(method.Name, method.Attributes, method.CallingConvention, method.ReturnType, paramTypes);
-                }
-
-                foreach (var field in type.GetFields(
-                    BindingFlags.Instance |
-                    BindingFlags.Static |
-                    BindingFlags.NonPublic |
-                    BindingFlags.Public))
-                {
-                    tb.DefineField(field.Name, field.FieldType, field.Attributes);
                 }
             }
             assemblyBuilder.Save(fileLocation);

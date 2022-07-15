@@ -435,15 +435,15 @@ namespace Experiment.Tests.Basic
 
     public interface IMultipleMethod
     {
-        string[] Func(int a, string b);
-        bool MoreFunc(int[] a, string b, bool c);
-        BinaryWriter DoIExist();
+        string Func(int a, string b);
+        bool MoreFunc(int a, string b, bool c);
+        double DoIExist();
         void BuildAPerpetualMotionMachine();
     }
 
     internal interface IAccess
     {
-        public TypeAttributes BuildAI(FieldAttributes field);
+        public int BuildAI(double field);
         public int DisableRogueAI();
     }
 
