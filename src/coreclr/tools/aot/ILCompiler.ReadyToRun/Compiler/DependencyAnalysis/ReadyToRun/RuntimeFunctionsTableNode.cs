@@ -59,8 +59,6 @@ namespace ILCompiler.DependencyAnalysis.ReadyToRun
 
         public override ObjectData GetData(NodeFactory factory, bool relocsOnly = false)
         {
-            // This node does not trigger generation of other nodes.
-            // TODO: Make this generate the generation of the Scratch node
             if (relocsOnly)
                 return new ObjectData(Array.Empty<byte>(), Array.Empty<Relocation>(), 1, new ISymbolDefinitionNode[] { this });
 
@@ -143,7 +141,15 @@ namespace ILCompiler.DependencyAnalysis.ReadyToRun
                 }
             }
 
-            _nodeFactory.Scratch.mapping = mapping.ToArray();
+            // Scratch should not be null if there is cold code
+            if (_nodeFactory.Scratch != null)
+            {
+                _nodeFactory.Scratch.mapping = mapping.ToArray();
+            }
+            else
+            {
+                Debug.Assert((mapping.Count == 0), "Scratch is null, but mapping is not empty");
+            }
 
             // Emit sentinel entry
             runtimeFunctionsBuilder.EmitUInt(~0u);
