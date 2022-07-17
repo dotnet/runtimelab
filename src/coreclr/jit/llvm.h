@@ -8,6 +8,7 @@
 
 #include "alloc.h"
 #include "jitpch.h"
+#include "jitgcinfo.h"
 #include "llvm_types.h"
 #include <new>
 
@@ -103,6 +104,8 @@ class Llvm
 private:
     Compiler* _compiler;
     Compiler::Info _info;
+    GCInfo* _gcInfo = nullptr;
+
     llvm::Function* _function;
     CORINFO_SIG_INFO _sigInfo; // sigInfo of function being compiled
     LIR::Range* _currentRange;
@@ -132,8 +135,13 @@ private:
         return *_currentRange;
     }
 
+    GCInfo* getGCInfo();
+
     void populateLlvmArgNums();
+
     void buildAdd(GenTree* node, Value* op1, Value* op2);
+    void buildDiv(GenTree* node);
+
     void buildCall(GenTree* node);
     void buildCast(GenTreeCast* cast);
     void buildCmp(GenTree* node, Value* op1, Value* op2);
@@ -154,8 +162,6 @@ private:
     void createAllocasForLocalsWithAddrOp();
     bool canStoreArgOnLlvmStack(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd);
     Value* castIfNecessary(Value* source, Type* targetType, llvm::IRBuilder<>* builder = nullptr);
-    void castingStore(Value* toStore, Value* address, llvm::Type* llvmType);
-    void castingStore(Value* toStore, Value* address, var_types type);
     Value* castToPointerToLlvmType(Value* address, llvm::Type* llvmType);
     Value* consumeValue(GenTree* node, llvm::Type* targetLlvmType);
     llvm::DILocation* createDebugFunctionAndDiLocation(struct DebugMetadata debugMetadata, unsigned int lineNo);
@@ -175,15 +181,15 @@ private:
     Value* getGenTreeValue(GenTree* node);
     LlvmArgInfo getLlvmArgInfoForArgIx(unsigned int lclNum);
     llvm::BasicBlock* getLLVMBasicBlockForBlock(BasicBlock* block);
-    Type* getLlvmTypeForCorInfoType(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd);
-    Type* getLlvmTypeForParameterType(CORINFO_CLASS_HANDLE classHnd);
 
     Type* getLlvmTypeForStruct(ClassLayout* classLayout);
     Type* getLlvmTypeForStruct(CORINFO_CLASS_HANDLE structHandle);
 
     Type* getLlvmTypeForVarType(var_types type);
-    int getLocalOffsetAtIndex(GenTreeLclVar* lclVar);
-    Value* getLocalVarAddress(GenTreeLclVar* lclVar);
+    Type* getLlvmTypeForLclVar(GenTreeLclVar* lclVar);
+    Type* getLlvmTypeForCorInfoType(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd);
+    Type* getLlvmTypeForParameterType(CORINFO_CLASS_HANDLE classHnd);
+
     struct DebugMetadata getOrCreateDebugMetadata(const char* documentFileName);
     llvm::Function* getOrCreateLlvmFunction(const char* symbolName, GenTreeCall* call);
     Value* getShadowStackForCallee();
@@ -202,6 +208,7 @@ private:
     GenTreeCall::Use* lowerCallReturn(GenTreeCall* callNode, GenTreeCall::Use* lastArg);
     void lowerCallToShadowStack(GenTreeCall* callNode);
     void lowerToShadowStack();
+    void lowerStoreLcl(GenTreeLclVarCommon* storeLclNode);
 
     Value* mapGenTreeToValue(GenTree* genTree, Value* valueRef);
     bool needsReturnStackSlot(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd);
@@ -209,7 +216,6 @@ private:
     unsigned int padOffset(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHandle, unsigned int atOffset);
     void startImportingBasicBlock(BasicBlock* block);
     void startImportingNode();
-    void storeOnShadowStack(GenTree* operand, Value* shadowStackForCallee, unsigned int offset);
     void storeLocalVar(GenTreeLclVar* lclVar);
     CorInfoType toCorInfoType(var_types varType);
     CORINFO_CLASS_HANDLE tryGetStructClassHandle(LclVarDsc* varDsc);
@@ -217,6 +223,7 @@ private:
     Value* zextIntIfNecessary(Value* intValue);
     StructDesc* getStructDesc(CORINFO_CLASS_HANDLE structHandle);
     unsigned buildMemCpy(Value* baseAddress, unsigned startOffset, unsigned endOffset, Value* srcAddress);
+    void buildLocalField(GenTreeLclFld* lclFld);
     void buildNullCheck(GenTreeUnOp* nullCheckNode);
     void buildThrowException(llvm::IRBuilder<>& builder, const char*        helperClass, const char*        helperMethodName, Value* shadowStack);
     void buildLlvmCallOrInvoke(llvm::Function* callee, llvm::ArrayRef<Value*> args);

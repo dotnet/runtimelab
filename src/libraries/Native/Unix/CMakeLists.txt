@@ -40,8 +40,8 @@ else()
 endif()
 
 if(CLR_CMAKE_TARGET_BROWSER)
-    # NativeAOT-LLVM needs to suppress these warnings, mono doesn't somehow.
-    add_compile_options(-Wno-unused-parameter)
+    # NativeAOT-LLVM enables -Weverything but these will cause failures so disable individually
+    add_compile_options(-Wno-unused-parameter -Wno-declaration-after-statement)
     set(GEN_SHARED_LIB 0)
     set(STATIC_LIB_DESTINATION .)
 endif()

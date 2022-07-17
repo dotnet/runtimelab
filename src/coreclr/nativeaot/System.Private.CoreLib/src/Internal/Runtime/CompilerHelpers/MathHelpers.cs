@@ -286,7 +286,7 @@ namespace Internal.Runtime.CompilerHelpers
             return ThrowIntOvf();
         }
 
-#if TARGET_ARM
+#if TARGET_ARM || TARGET_WASM // TODO-LLVM: include TARGET_WASM at least until we copy over the implementations from IL to RyuJit
         [RuntimeImport(RuntimeLibrary, "RhpIDiv")]
         [MethodImplAttribute(MethodImplOptions.InternalCall)]
         private static extern int RhpIDiv(int i, int j);
@@ -336,7 +336,7 @@ namespace Internal.Runtime.CompilerHelpers
             else
                 return RhpUMod(i, j);
         }
-#endif // TARGET_ARM
+#endif // TARGET_ARM || TARGET_WASM
 
         //
         // Matching return types of throw helpers enables tailcalling them. It improves performance
@@ -367,7 +367,7 @@ namespace Internal.Runtime.CompilerHelpers
             throw new OverflowException();
         }
 
-#if TARGET_ARM
+#if TARGET_ARM || TARGET_WASM // TODO-LLVM: include TARGET_WASM at least until we copy over the implementations from IL to RyuJit
         [MethodImpl(MethodImplOptions.NoInlining)]
         private static int ThrowIntDivByZero()
         {
@@ -385,6 +385,6 @@ namespace Internal.Runtime.CompilerHelpers
         {
             throw new ArithmeticException();
         }
-#endif // TARGET_ARM
+#endif // TARGET_ARM || TARGET_WASM
     }
 }

@@ -125,11 +125,17 @@ namespace ILCompiler.DependencyAnalysis
 
         public override IEnumerable<DependencyListEntry> GetStaticDependencies(NodeFactory factory)
         {
-            var dependencies = new DependencyList();
+            DependencyList dependencies = null;
 
-            foreach (DependencyListEntry node in _dependencies)
-                dependencies.Add(node);
-
+            if (_dependencies != null)
+            {
+                dependencies = new DependencyList();
+                foreach (DependencyListEntry node in _dependencies)
+                {
+                    dependencies.Add(node);
+                }                
+            }
+           
             return dependencies;
         }
 

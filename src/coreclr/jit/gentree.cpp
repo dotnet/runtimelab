@@ -12837,7 +12837,7 @@ void Compiler::gtGetLateArgMsg(GenTreeCall* call, GenTree* argx, int lateArgInde
     assert(curArgTabEntry);
     regNumber argReg = curArgTabEntry->GetRegNum();
 
-#if !FEATURE_FIXED_OUT_ARGS
+#if !defined(FEATURE_FIXED_OUT_ARGS) && !defined(TARGET_WASM)
     assert(lateArgIndex < call->regArgListCount);
     assert(argReg == call->regArgList[lateArgIndex]);
 #else
