@@ -12,25 +12,27 @@ namespace System.Reflection.Emit.Experimental
         internal static AssemblyReferenceHandle AddAssemblyReference(Assembly assembly, MetadataBuilder metadata)
         {
             AssemblyName assemblyName = assembly.GetName();
+
             if (assemblyName == null || assemblyName.Name == null)
             {
                 throw new ArgumentNullException(nameof(assemblyName));
             }
+
             return AddAssemblyReference(metadata, assemblyName.Name, assemblyName.Version, assemblyName.CultureName, assemblyName.GetPublicKey(), (AssemblyFlags)assemblyName.Flags);
         }
 
         internal static AssemblyReferenceHandle AddAssemblyReference(MetadataBuilder metadata, string name, Version? version, string? culture, byte[]? publicKey, AssemblyFlags flags)
         {
             return metadata.AddAssemblyReference(
-            name: metadata.GetOrAddString(name),
-            version: version ?? new Version(0, 0, 0, 0),
-            culture: (culture == null) ? default : metadata.GetOrAddString(value: culture),
-            publicKeyOrToken: (publicKey == null) ? default : metadata.GetOrAddBlob(publicKey),
-            flags: flags,
-            hashValue: default); // not sure where to find hashValue.
+                name: metadata.GetOrAddString(name),
+                version: version ?? new Version(0, 0, 0, 0),
+                culture: (culture == null) ? default : metadata.GetOrAddString(value: culture),
+                publicKeyOrToken: (publicKey == null) ? default : metadata.GetOrAddBlob(publicKey),
+                flags: flags,
+                hashValue: default); // not sure where to find hashValue.
         }
 
-        internal static TypeDefinitionHandle addTypeDef(TypeBuilder typeBuilder, MetadataBuilder metadata, int methodToken)
+        internal static TypeDefinitionHandle AddTypeDef(TypeBuilder typeBuilder, MetadataBuilder metadata, int methodToken)
         {
             //Add type metadata
             return metadata.AddTypeDefinition(

@@ -11,13 +11,13 @@ namespace System.Reflection.Emit.Experimental
     public class CustomAttributeBuilder
     {
         /// <summary>
-        /// Stores the constructor of the custom attribute's type. Custom attribute's are identified by their constructor in ECMA.
+        /// Stores the relevant constructor of the custom attribute's type. Custom attribute's are identified primarily through their constructor in the ECMA spec.
         /// </summary>
         private ConstructorInfo _constructorInfo;
         private object?[] _constructorArgs;
         internal byte[] _blob;
 
-        public ConstructorInfo Constructor { get => _constructorInfo;  }
+        public ConstructorInfo Constructor { get => _constructorInfo; }
 
         // public constructor to form the custom attribute with constructor and constructor
         // parameters.

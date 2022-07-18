@@ -5,10 +5,10 @@ using System.Collections.Generic;
 
 namespace System.Reflection.Emit.Experimental
 {
- /* The purpose of  this class is to provide wrappers for entities that are referenced in metadata.
- *  The wrappers allows for convenient access to the parent token of an entity.
- *  They override default equality for Assemblies, Types, Methods etc. to make sure identical writes to metadata aren't made even if the objects are different.
- * */
+    /* The purpose of  this class is to provide wrappers for entities that are referenced in metadata.
+    *  The wrappers allows for convenient access to the parent token of an entity.
+    *  They override default equality for Assemblies, Types, Methods etc. to make sure identical writes to metadata aren't made for different objects.
+    * */
     internal class EntityWrappers
     {
         internal class AssemblyReferenceWrapper
@@ -54,7 +54,6 @@ namespace System.Reflection.Emit.Experimental
             {
                 return HashCode.Combine(type.Name, type.Namespace, parentToken);
             }
-
         }
 
         internal class MethodReferenceWrapper
@@ -92,7 +91,6 @@ namespace System.Reflection.Emit.Experimental
                 this.constructorInfo = constructorInfo;
                 this.binaryAttribute = binaryAttribute;
             }
-             
         }
     }
 }

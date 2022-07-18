@@ -8,7 +8,6 @@ using System.Reflection.PortableExecutable;
 
 namespace System.Reflection.Emit.Experimental
 {
-
     public class AssemblyBuilder : System.Reflection.Assembly
     {
         private bool _previouslySaved = false;
@@ -68,7 +67,7 @@ namespace System.Reflection.Emit.Experimental
                 throw new ArgumentNullException();
             }
 
-            //AssemblyBuilderAccess affects runtime managment only and is not relevant for saving to disk.
+            //AssemblyBuilderAccess affects runtime management only and is not relevant for saving to disk.
             AssemblyBuilder currentAssembly = new AssemblyBuilder(name);
             return currentAssembly;
         }

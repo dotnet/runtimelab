@@ -25,9 +25,9 @@ namespace System.Reflection.Emit.Experimental
             Assembly = assembly;
             UserTypeAttribute = typeAttributes;
 
-
             //Extract namespace from name
             int idx = Name.LastIndexOf('.');
+
             if (idx != -1)
             {
                 Namespace = Name[..idx];
@@ -95,7 +95,7 @@ namespace System.Reflection.Emit.Experimental
                 }
                 else
                 {
-                    typeReference.parentToken = Module._assemblyRefStore.IndexOf(assemblyReference)+1; // Add 1 to account for zero based indexing
+                    typeReference.parentToken = Module._assemblyRefStore.IndexOf(assemblyReference) + 1; // Add 1 to account for zero based indexing
                 }
 
                 if (!Module._typeRefStore.Contains(typeReference)) // Avoid adding the same type twice
@@ -105,7 +105,7 @@ namespace System.Reflection.Emit.Experimental
                 }
                 else
                 {
-                    methodReference.parentToken = Module._typeRefStore.IndexOf(typeReference)+1;
+                    methodReference.parentToken = Module._typeRefStore.IndexOf(typeReference) + 1;
                 }
 
                 if (!Module._methodRefStore.Contains(methodReference)) // Avoid add the same method twice

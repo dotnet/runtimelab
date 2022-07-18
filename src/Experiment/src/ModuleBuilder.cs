@@ -24,10 +24,8 @@ namespace System.Reflection.Emit.Experimental
         internal int _nextMethodDefRowId = 1;
 
         public override System.Reflection.Assembly Assembly { get; }
-        public override string ScopeName
-        {
-            get;
-        }
+
+        public override string ScopeName { get; }
 
         internal ModuleBuilder(string name, Assembly assembly)
         {
@@ -78,7 +76,7 @@ namespace System.Reflection.Emit.Experimental
             // Add each type definition to metadata table.
             foreach (TypeBuilder typeBuilder in _typeDefStore)
             {
-                TypeDefinitionHandle typeDefintionHandle = MetadataHelper.addTypeDef(typeBuilder, metadata, _nextMethodDefRowId);
+                TypeDefinitionHandle typeDefintionHandle = MetadataHelper.AddTypeDef(typeBuilder, metadata, _nextMethodDefRowId);
 
                 // Add each method definition to metadata table.
                 foreach (MethodBuilder method in typeBuilder._methodDefStore)

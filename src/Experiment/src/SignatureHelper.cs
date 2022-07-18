@@ -7,17 +7,17 @@ using System.Reflection.Metadata.Ecma335;
 namespace System.Reflection.Emit.Experimental
 {
     //This is prototype code, to generate simple signatures.
-    //For more complex signatures, port System.Reflection.Emit's SignatureHelper.
+    //For more complex signatures, will port System.Reflection.Emit's SignatureHelper.
     internal static class SignatureHelper
     {
         internal static BlobBuilder MethodSignatureEnconder(ParameterInfo[]? parameters, ParameterInfo? returnType, bool isInstance)
         {
-            Type[]? _typeParameters = null;
+            Type[]? typeParameters = null;
             Type? typeReturn = null;
 
             if (parameters != null)
             {
-                _typeParameters = Array.ConvertAll(parameters, parameter => parameter.ParameterType);
+                typeParameters = Array.ConvertAll(parameters, parameter => parameter.ParameterType);
             }
 
             if (returnType != null)
@@ -25,7 +25,7 @@ namespace System.Reflection.Emit.Experimental
                 typeReturn = returnType.ParameterType;
             }
 
-            return MethodSignatureEnconder(_typeParameters, typeReturn, isInstance);
+            return MethodSignatureEnconder(typeParameters, typeReturn, isInstance);
         }
         internal static BlobBuilder MethodSignatureEnconder(Type[]? parameters, Type? returnType, bool isInstance)
         {

@@ -9,14 +9,14 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using Xunit;
 
-namespace System.Reflection.Emit.Experimental.Tests.Custom
+namespace System.Reflection.Emit.Experimental.Tests
 {
     //Currently hard-coding in Custom Attributes using the CustomAttributeBuilder.
-    public class CustomAttributeTest :IDisposable
+    public class CustomAttributeTesting : IDisposable
     {
         List<CustomAttributeBuilder> customAttributes = new List<CustomAttributeBuilder>();
         internal string fileLocation;
-        public CustomAttributeTest()
+        public CustomAttributeTesting()
         {
             const bool _keepFiles = true;
             TempFileCollection _tfc;
@@ -99,22 +99,9 @@ namespace System.Reflection.Emit.Experimental.Tests.Custom
                 }
             }
         }
+
         public void Dispose()
         {
         }
-    }
-
-    public interface IMultipleMethod
-    {
-
-        string Func(int a, string b);
-        bool MoreFunc(int a, string b, bool c);
-        bool DoIExist();
-        void BuildAPerpetualMotionMachine();
-    }
-
-    public interface INoMethod
-    {
-
     }
 }

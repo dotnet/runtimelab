@@ -1,24 +1,19 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-using System;
 using System.CodeDom.Compiler;
 using System.IO;
 using System.Linq;
-using System.Reflection;
-using System.Reflection.Emit.Experimental;
-using System.Reflection.Emit.Experimental.Tests;
 using Xunit;
 
-namespace Experiment.Tests.Basic
+namespace System.Reflection.Emit.Experimental.Tests
 {
-
     public class ReflectionTesting : IDisposable
     {
         internal string fileLocation;
         public ReflectionTesting()
         {
-            const bool _keepFiles = true; 
+            const bool _keepFiles = true;
             TempFileCollection _tfc;
             Directory.CreateDirectory("testDir");
             _tfc = new TempFileCollection("testDir", false);
@@ -26,8 +21,8 @@ namespace Experiment.Tests.Basic
         }
 
         public void Dispose()
-        {}
-    
+        { }
+
         [Fact]
         public void OneInterfaceWithMethods()
         {
@@ -93,7 +88,7 @@ namespace Experiment.Tests.Basic
             Type[] types = new Type[] { typeof(INoMethod) };
 
             // Generate DLL from these and save it to Disk.
-            AssemblyTools.WriteAssemblyToDisk(assemblyName, types, fileLocation,null);
+            AssemblyTools.WriteAssemblyToDisk(assemblyName, types, fileLocation, null);
 
             // Read said assembly back from Disk using MetadataLoadContext
             Assembly assemblyFromDisk = AssemblyTools.TryLoadAssembly(fileLocation);
@@ -425,12 +420,10 @@ namespace Experiment.Tests.Basic
     //  Test Interfaces
     public interface INoMethod
     {
-
     }
 
     public interface INoMethod2
     {
-
     }
 
     public interface IMultipleMethod
