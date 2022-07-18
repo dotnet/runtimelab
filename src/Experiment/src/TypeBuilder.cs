@@ -2,123 +2,159 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Collections.Generic;
-using System.Reflection.Metadata;
-using System.Reflection.Metadata.Ecma335;
+using System.Diagnostics;
+using static System.Reflection.Emit.Experimental.EntityWrappers;
 
 namespace System.Reflection.Emit.Experimental
 {
     public class TypeBuilder : System.Reflection.TypeInfo
     {
+
         public override string Name { get; }
         public override Assembly Assembly { get; }
         public override ModuleBuilder Module { get; }
         public override string? Namespace { get; }
-        private  LinkedList<MethodBuilder> _methods = new();
-        internal MethodDefinitionHandle? _first = null;
-        public TypeAttributes TypeAttribute { get; }
+        internal TypeAttributes UserTypeAttribute { get; set; }
+        internal List<MethodBuilder> _methodDefStore = new List<MethodBuilder>();
+        internal List<CustomAttributeWrapper> _customAttributes = new();
 
-        internal TypeBuilder(string name, ModuleBuilder module, Assembly assembly, TypeAttributes typeAttributes) 
+        internal TypeBuilder(string name, ModuleBuilder module, Assembly assembly, TypeAttributes typeAttributes)
         {
-            Name = name; 
+            Name = name;
             Module = module;
             Assembly = assembly;
-            TypeAttribute = typeAttributes;
+            UserTypeAttribute = typeAttributes;
 
             //Extract namespace from name
             int idx = Name.LastIndexOf('.');
+
             if (idx != -1)
             {
-                Namespace = Name.Substring(0, idx);
-                Name  = Name.Substring(idx + 1);
+                Namespace = Name[..idx];
+                Name = Name[(idx + 1)..];
             }
         }
+
+        internal static void DefineCustomAttribute(ModuleBuilder mod, int tkOwner, object value, byte[] m_blob)
+        {
+            throw new NotImplementedException();
+        }
+
 
         public System.Reflection.Emit.Experimental.MethodBuilder DefineMethod(string name, System.Reflection.MethodAttributes attributes, System.Reflection.CallingConventions callingConvention, System.Type? returnType, System.Type[]? parameterTypes)
         {
             MethodBuilder methodBuilder = new(name, attributes, callingConvention, returnType, parameterTypes, this);
-            _methods.AddLast(methodBuilder);
+            _methodDefStore.Add(methodBuilder);
             return methodBuilder;
         }
 
         //Implement next
         public System.Reflection.Emit.Experimental.MethodBuilder DefineMethod(string name, System.Reflection.MethodAttributes attributes)
         {
-             throw new NotImplementedException();
+            throw new NotImplementedException();
         }
 
-        //Generate underlying metadata of e.g. methods and fields, before constructing type metadata.
-        internal void GenerateComponentMetadata(MetadataBuilder _metadata)
+        public void SetCustomAttribute(System.Reflection.ConstructorInfo constructorInfo, byte[] binaryAttribute)
         {
-            int i = 0;
-            foreach (MethodBuilder m in _methods)
+            if (constructorInfo == null)
             {
-                MethodDefinitionHandle handle = m.AppendMetadata(_metadata);
-                if(i==0)
+                throw new ArgumentNullException(nameof(constructorInfo));
+            }
+
+            if (binaryAttribute == null)
+            {
+                throw new ArgumentNullException(nameof(binaryAttribute)); // This is incorrect
+            }
+
+            if (constructorInfo.DeclaringType == null)
+            {
+                throw new ArgumentException("Attribute constructor has no type.");
+            }
+
+            //We check whether the custom attribute is actually a pseudo-custom attribute. 
+            //(We have only done ComImport for the prototype, eventually all pseudo-custom attributes will be hard-coded.)
+            //If it is, simply alter the TypeAttributes.
+            //We want to handle this before the type metadata is generated.
+
+            if (constructorInfo.DeclaringType.Name.Equals("ComImportAttribute"))
+            {
+                Debug.WriteLine("Modifying internal flags");
+                UserTypeAttribute |= TypeAttributes.Import;
+            }
+            else
+            {
+                AssemblyReferenceWrapper assemblyReference = new AssemblyReferenceWrapper(constructorInfo.DeclaringType.Assembly);
+                TypeReferenceWrapper typeReference = new TypeReferenceWrapper(constructorInfo.DeclaringType);
+                MethodReferenceWrapper methodReference = new MethodReferenceWrapper(constructorInfo);
+                CustomAttributeWrapper customAttribute = new CustomAttributeWrapper(constructorInfo, binaryAttribute);
+
+                if (!Module._assemblyRefStore.Contains(assemblyReference)) // Avoid adding the same assembly twice
                 {
-                    _first = handle;
+                    Module._assemblyRefStore.Add(assemblyReference);
+                    typeReference.parentToken = Module._nextAssemblyRefRowId++;
                 }
-                i++;
+                else
+                {
+                    typeReference.parentToken = Module._assemblyRefStore.IndexOf(assemblyReference) + 1; // Add 1 to account for zero based indexing
+                }
+
+                if (!Module._typeRefStore.Contains(typeReference)) // Avoid adding the same type twice
+                {
+                    Module._typeRefStore.Add(typeReference);
+                    methodReference.parentToken = Module._nextTypeRefRowId++;
+                }
+                else
+                {
+                    methodReference.parentToken = Module._typeRefStore.IndexOf(typeReference) + 1;
+                }
+
+                if (!Module._methodRefStore.Contains(methodReference)) // Avoid add the same method twice
+                {
+                    Module._methodRefStore.Add(methodReference);
+                    customAttribute.conToken = Module._nextMethodRefRowId++;
+                }
+                else
+                {
+                    customAttribute.conToken = Module._methodRefStore.IndexOf(methodReference) + 1;
+                }
+
+                _customAttributes.Add(customAttribute);
             }
         }
 
-        internal void AppendMetadata(MetadataBuilder _metadata)
+        public void SetCustomAttribute(System.Reflection.Emit.Experimental.CustomAttributeBuilder customBuilder)
         {
-            MethodDefinitionHandle? _nearestHandle = null;
-
-            // Check if I have methods.
-            if(_first!=null)
-            {
-                _nearestHandle = _first;
-            }
-            else // If not, find the next method in the module.
-            {
-                foreach(TypeBuilder t in Module._typeStorage)
-                {
-                    if(t._first!=null)
-                    {
-                        _nearestHandle = t._first;
-                        break;
-                    }
-                }
-            }
-
-            //Add type metadata
-            _metadata.AddTypeDefinition(
-                attributes: TypeAttribute,
-                (Namespace == null) ? default : _metadata.GetOrAddString(Namespace),
-                name: _metadata.GetOrAddString(Name),
-                baseType: default,//Inheritance to be added
-                fieldList: MetadataTokens.FieldDefinitionHandle(1),//Update once we support fields.
-                methodList: (MethodDefinitionHandle)((_nearestHandle!=null)? _nearestHandle : MetadataTokens.MethodDefinitionHandle(1))); // if null, no methods in module.
+            SetCustomAttribute(customBuilder.Constructor, customBuilder._blob);
         }
+
 
         public const int UnspecifiedTypeSize = 0;
-        public override string? AssemblyQualifiedName { get  => throw new NotImplementedException(); }
-        public override System.Type? BaseType { get  => throw new NotImplementedException(); }
-        public override System.Reflection.MethodBase? DeclaringMethod { get  => throw new NotImplementedException(); }
-        public override System.Type? DeclaringType { get  => throw new NotImplementedException(); }
-        public override string? FullName { get  => throw new NotImplementedException(); }
-        public override System.Reflection.GenericParameterAttributes GenericParameterAttributes { get  => throw new NotImplementedException(); }
-        public override int GenericParameterPosition { get  => throw new NotImplementedException(); }
-        public override System.Guid GUID { get  => throw new NotImplementedException(); }
-        public override bool IsByRefLike { get  => throw new NotImplementedException(); }
-        public override bool IsConstructedGenericType { get  => throw new NotImplementedException(); }
-        public override bool IsGenericParameter { get  => throw new NotImplementedException(); }
-        public override bool IsGenericType { get  => throw new NotImplementedException(); }
-        public override bool IsGenericTypeDefinition { get  => throw new NotImplementedException(); }
-        public override bool IsSecurityCritical { get  => throw new NotImplementedException(); }
-        public override bool IsSecuritySafeCritical { get  => throw new NotImplementedException(); }
-        public override bool IsSecurityTransparent { get  => throw new NotImplementedException(); }
-        public override bool IsSZArray { get  => throw new NotImplementedException(); }
-        public override bool IsTypeDefinition { get  => throw new NotImplementedException(); }
-        public override int MetadataToken { get  => throw new NotImplementedException(); }
-        public System.Reflection.Emit.PackingSize PackingSize { get  => throw new NotImplementedException(); }
-        public override System.Type? ReflectedType { get  => throw new NotImplementedException(); }
-        public int Size { get  => throw new NotImplementedException(); }
-        public override System.RuntimeTypeHandle TypeHandle { get  => throw new NotImplementedException(); }
-        public override System.Type UnderlyingSystemType { get  => throw new NotImplementedException(); }
+        public override string? AssemblyQualifiedName { get => throw new NotImplementedException(); }
+        public override System.Type? BaseType { get => throw new NotImplementedException(); }
+        public override System.Reflection.MethodBase? DeclaringMethod { get => throw new NotImplementedException(); }
+        public override System.Type? DeclaringType { get => throw new NotImplementedException(); }
+        public override string? FullName { get => throw new NotImplementedException(); }
+        public override System.Reflection.GenericParameterAttributes GenericParameterAttributes { get => throw new NotImplementedException(); }
+        public override int GenericParameterPosition { get => throw new NotImplementedException(); }
+        public override System.Guid GUID { get => throw new NotImplementedException(); }
+        public override bool IsByRefLike { get => throw new NotImplementedException(); }
+        public override bool IsConstructedGenericType { get => throw new NotImplementedException(); }
+        public override bool IsGenericParameter { get => throw new NotImplementedException(); }
+        public override bool IsGenericType { get => throw new NotImplementedException(); }
+        public override bool IsGenericTypeDefinition { get => throw new NotImplementedException(); }
+        public override bool IsSecurityCritical { get => throw new NotImplementedException(); }
+        public override bool IsSecuritySafeCritical { get => throw new NotImplementedException(); }
+        public override bool IsSecurityTransparent { get => throw new NotImplementedException(); }
+        public override bool IsSZArray { get => throw new NotImplementedException(); }
+        public override bool IsTypeDefinition { get => throw new NotImplementedException(); }
+        public override int MetadataToken { get => throw new NotImplementedException(); }
+        public System.Reflection.Emit.PackingSize PackingSize { get => throw new NotImplementedException(); }
+        public override System.Type? ReflectedType { get => throw new NotImplementedException(); }
+        public int Size { get => throw new NotImplementedException(); }
+        public override System.RuntimeTypeHandle TypeHandle { get => throw new NotImplementedException(); }
+        public override System.Type UnderlyingSystemType { get => throw new NotImplementedException(); }
 
-        public void AddInterfaceImplementation([System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembersAttribute(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.All)] System.Type interfaceType) 
+        public void AddInterfaceImplementation([System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembersAttribute(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.All)] System.Type interfaceType)
             => throw new NotImplementedException();
 
         [return: System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembersAttribute(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.All)]
@@ -132,8 +168,8 @@ namespace System.Reflection.Emit.Experimental
         public System.Reflection.Emit.ConstructorBuilder DefineConstructor(System.Reflection.MethodAttributes attributes, System.Reflection.CallingConventions callingConvention, System.Type[]? parameterTypes)
             => throw new NotImplementedException();
 
-        public System.Reflection.Emit.ConstructorBuilder DefineConstructor(System.Reflection.MethodAttributes attributes, System.Reflection.CallingConventions callingConvention, System.Type[]? parameterTypes, System.Type[][]? requiredCustomModifiers, System.Type[][]? optionalCustomModifiers)  => throw new NotImplementedException();
-        
+        public System.Reflection.Emit.ConstructorBuilder DefineConstructor(System.Reflection.MethodAttributes attributes, System.Reflection.CallingConventions callingConvention, System.Type[]? parameterTypes, System.Type[][]? requiredCustomModifiers, System.Type[][]? optionalCustomModifiers) => throw new NotImplementedException();
+
         public System.Reflection.Emit.ConstructorBuilder DefineDefaultConstructor(System.Reflection.MethodAttributes attributes)
             => throw new NotImplementedException();
 
@@ -143,8 +179,8 @@ namespace System.Reflection.Emit.Experimental
         public System.Reflection.Emit.FieldBuilder DefineField(string fieldName, System.Type type, System.Reflection.FieldAttributes attributes)
             => throw new NotImplementedException();
 
-        public System.Reflection.Emit.FieldBuilder DefineField(string fieldName, System.Type type, System.Type[]? requiredCustomModifiers, System.Type[]? optionalCustomModifiers, System.Reflection.FieldAttributes attributes)  => throw new NotImplementedException();
-        
+        public System.Reflection.Emit.FieldBuilder DefineField(string fieldName, System.Type type, System.Type[]? requiredCustomModifiers, System.Type[]? optionalCustomModifiers, System.Reflection.FieldAttributes attributes) => throw new NotImplementedException();
+
         public System.Reflection.Emit.GenericTypeParameterBuilder[] DefineGenericParameters(params string[] names)
             => throw new NotImplementedException();
 
@@ -154,7 +190,7 @@ namespace System.Reflection.Emit.Experimental
         public System.Reflection.Emit.MethodBuilder DefineMethod(string name, System.Reflection.MethodAttributes attributes, System.Reflection.CallingConventions callingConvention)
             => throw new NotImplementedException();
 
-        public System.Reflection.Emit.MethodBuilder DefineMethod(string name, System.Reflection.MethodAttributes attributes, System.Reflection.CallingConventions callingConvention, System.Type? returnType, System.Type[]? returnTypeRequiredCustomModifiers, System.Type[]? returnTypeOptionalCustomModifiers, System.Type[]? parameterTypes, System.Type[][]? parameterTypeRequiredCustomModifiers, System.Type[][]? parameterTypeOptionalCustomModifiers)  
+        public System.Reflection.Emit.MethodBuilder DefineMethod(string name, System.Reflection.MethodAttributes attributes, System.Reflection.CallingConventions callingConvention, System.Type? returnType, System.Type[]? returnTypeRequiredCustomModifiers, System.Type[]? returnTypeOptionalCustomModifiers, System.Type[]? parameterTypes, System.Type[][]? parameterTypeRequiredCustomModifiers, System.Type[][]? parameterTypeOptionalCustomModifiers)
             => throw new NotImplementedException();
 
         public System.Reflection.Emit.MethodBuilder DefineMethod(string name, System.Reflection.MethodAttributes attributes, System.Type? returnType, System.Type[]? parameterTypes)
@@ -199,13 +235,13 @@ namespace System.Reflection.Emit.Experimental
         public System.Reflection.Emit.PropertyBuilder DefineProperty(string name, System.Reflection.PropertyAttributes attributes, System.Reflection.CallingConventions callingConvention, System.Type returnType, System.Type[]? parameterTypes)
             => throw new NotImplementedException();
 
-        public System.Reflection.Emit.PropertyBuilder DefineProperty(string name, System.Reflection.PropertyAttributes attributes, System.Reflection.CallingConventions callingConvention, System.Type returnType, System.Type[]? returnTypeRequiredCustomModifiers, System.Type[]? returnTypeOptionalCustomModifiers, System.Type[]? parameterTypes, System.Type[][]? parameterTypeRequiredCustomModifiers, System.Type[][]? parameterTypeOptionalCustomModifiers) 
+        public System.Reflection.Emit.PropertyBuilder DefineProperty(string name, System.Reflection.PropertyAttributes attributes, System.Reflection.CallingConventions callingConvention, System.Type returnType, System.Type[]? returnTypeRequiredCustomModifiers, System.Type[]? returnTypeOptionalCustomModifiers, System.Type[]? parameterTypes, System.Type[][]? parameterTypeRequiredCustomModifiers, System.Type[][]? parameterTypeOptionalCustomModifiers)
             => throw new NotImplementedException();
 
         public System.Reflection.Emit.PropertyBuilder DefineProperty(string name, System.Reflection.PropertyAttributes attributes, System.Type returnType, System.Type[]? parameterTypes)
             => throw new NotImplementedException();
 
-        public System.Reflection.Emit.PropertyBuilder DefineProperty(string name, System.Reflection.PropertyAttributes attributes, System.Type returnType, System.Type[]? returnTypeRequiredCustomModifiers, System.Type[]? returnTypeOptionalCustomModifiers, System.Type[]? parameterTypes, System.Type[][]? parameterTypeRequiredCustomModifiers, System.Type[][]? parameterTypeOptionalCustomModifiers) 
+        public System.Reflection.Emit.PropertyBuilder DefineProperty(string name, System.Reflection.PropertyAttributes attributes, System.Type returnType, System.Type[]? returnTypeRequiredCustomModifiers, System.Type[]? returnTypeOptionalCustomModifiers, System.Type[]? parameterTypes, System.Type[][]? parameterTypeRequiredCustomModifiers, System.Type[][]? parameterTypeOptionalCustomModifiers)
             => throw new NotImplementedException();
 
         public System.Reflection.Emit.ConstructorBuilder DefineTypeInitializer()
@@ -225,84 +261,85 @@ namespace System.Reflection.Emit.Experimental
             => throw new NotImplementedException();
 
         [System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembersAttribute(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.NonPublicConstructors | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicConstructors)]
-        public override System.Reflection.ConstructorInfo[] GetConstructors(System.Reflection.BindingFlags bindingAttr)  
+        public override System.Reflection.ConstructorInfo[] GetConstructors(System.Reflection.BindingFlags bindingAttr)
             => throw new NotImplementedException();
 
-        public override object[] GetCustomAttributes(bool inherit)  
+        public override object[] GetCustomAttributes(bool inherit)
             => throw new NotImplementedException();
 
-        public override object[] GetCustomAttributes(System.Type attributeType, bool inherit)  
+        public override object[] GetCustomAttributes(System.Type attributeType, bool inherit)
             => throw new NotImplementedException();
 
-        public override System.Type GetElementType()  
+        public override System.Type GetElementType()
             => throw new NotImplementedException();
 
         [System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembersAttribute(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.NonPublicEvents | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicEvents)]
-        public override System.Reflection.EventInfo? GetEvent(string name, System.Reflection.BindingFlags bindingAttr)  
+        public override System.Reflection.EventInfo? GetEvent(string name, System.Reflection.BindingFlags bindingAttr)
             => throw new NotImplementedException();
 
         [System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembersAttribute(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicEvents)]
-        public override System.Reflection.EventInfo[] GetEvents()  
+        public override System.Reflection.EventInfo[] GetEvents()
             => throw new NotImplementedException();
-        
+
         [System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembersAttribute(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.NonPublicEvents | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicEvents)]
-        public override System.Reflection.EventInfo[] GetEvents(System.Reflection.BindingFlags bindingAttr)  
-            => throw new NotImplementedException();
-        
-        [System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembersAttribute(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.NonPublicFields | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicFields)]
-        public override System.Reflection.FieldInfo? GetField(string name, System.Reflection.BindingFlags bindingAttr)  
-            => throw new NotImplementedException();
-
-        public static System.Reflection.FieldInfo GetField(System.Type type, System.Reflection.FieldInfo field)  
+        public override System.Reflection.EventInfo[] GetEvents(System.Reflection.BindingFlags bindingAttr)
             => throw new NotImplementedException();
 
         [System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembersAttribute(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.NonPublicFields | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicFields)]
-        public override System.Reflection.FieldInfo[] GetFields(System.Reflection.BindingFlags bindingAttr)  
-            => throw new NotImplementedException();
-        
-        public override System.Type[] GetGenericArguments()  
+        public override System.Reflection.FieldInfo? GetField(string name, System.Reflection.BindingFlags bindingAttr)
             => throw new NotImplementedException();
 
-        public override System.Type GetGenericTypeDefinition()  
+        public static System.Reflection.FieldInfo GetField(System.Type type, System.Reflection.FieldInfo field)
+            => throw new NotImplementedException();
+
+        [System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembersAttribute(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.NonPublicFields | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicFields)]
+        public override System.Reflection.FieldInfo[] GetFields(System.Reflection.BindingFlags bindingAttr)
+            => throw new NotImplementedException();
+
+        public override System.Type[] GetGenericArguments()
+            => throw new NotImplementedException();
+
+        public override System.Type GetGenericTypeDefinition()
             => throw new NotImplementedException();
 
         [System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembersAttribute(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.Interfaces)]
         [return: System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembers(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.Interfaces)]
-        public override System.Type? GetInterface(string name, bool ignoreCase)  
+        public override System.Type? GetInterface(string name, bool ignoreCase)
             => throw new NotImplementedException();
 
-        public override System.Reflection.InterfaceMapping GetInterfaceMap([System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembers(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.NonPublicMethods | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicMethods)] System.Type interfaceType) 
+
+        public override System.Reflection.InterfaceMapping GetInterfaceMap([System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembers(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.NonPublicMethods | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicMethods)] System.Type interfaceType)
             => throw new NotImplementedException();
 
         [System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembersAttribute(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.Interfaces)]
-        public override System.Type[] GetInterfaces()  
+        public override System.Type[] GetInterfaces()
             => throw new NotImplementedException();
 
         [System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembersAttribute(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.NonPublicConstructors | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.NonPublicEvents | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.NonPublicFields | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.NonPublicMethods | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.NonPublicNestedTypes | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.NonPublicProperties | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicConstructors | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicEvents | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicFields | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicMethods | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicNestedTypes | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicProperties)]
-        public override System.Reflection.MemberInfo[] GetMember(string name, System.Reflection.MemberTypes type, System.Reflection.BindingFlags bindingAttr)  
+        public override System.Reflection.MemberInfo[] GetMember(string name, System.Reflection.MemberTypes type, System.Reflection.BindingFlags bindingAttr)
             => throw new NotImplementedException();
 
         [System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembersAttribute(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.NonPublicConstructors | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.NonPublicEvents | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.NonPublicFields | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.NonPublicMethods | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.NonPublicNestedTypes | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.NonPublicProperties | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicConstructors | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicEvents | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicFields | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicMethods | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicNestedTypes | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicProperties)]
-        public override System.Reflection.MemberInfo[] GetMembers(System.Reflection.BindingFlags bindingAttr)  
+        public override System.Reflection.MemberInfo[] GetMembers(System.Reflection.BindingFlags bindingAttr)
             => throw new NotImplementedException();
-        
-        public static System.Reflection.MethodInfo GetMethod(System.Type type, System.Reflection.MethodInfo method)  
+
+        public static System.Reflection.MethodInfo GetMethod(System.Type type, System.Reflection.MethodInfo method)
             => throw new NotImplementedException();
-        
+
         [System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembersAttribute(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.NonPublicMethods | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicMethods)]
-        protected override System.Reflection.MethodInfo? GetMethodImpl(string name, System.Reflection.BindingFlags bindingAttr, System.Reflection.Binder? binder, System.Reflection.CallingConventions callConvention, System.Type[]? types, System.Reflection.ParameterModifier[]? modifiers)  
+        protected override System.Reflection.MethodInfo? GetMethodImpl(string name, System.Reflection.BindingFlags bindingAttr, System.Reflection.Binder? binder, System.Reflection.CallingConventions callConvention, System.Type[]? types, System.Reflection.ParameterModifier[]? modifiers)
             => throw new NotImplementedException();
-        
+
         [System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembersAttribute(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.NonPublicMethods | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicMethods)]
-        public override System.Reflection.MethodInfo[] GetMethods(System.Reflection.BindingFlags bindingAttr)  
+        public override System.Reflection.MethodInfo[] GetMethods(System.Reflection.BindingFlags bindingAttr)
             => throw new NotImplementedException();
-        
+
         [System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembersAttribute(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.NonPublicNestedTypes | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicNestedTypes)]
-        public override System.Type? GetNestedType(string name, System.Reflection.BindingFlags bindingAttr)  
+        public override System.Type? GetNestedType(string name, System.Reflection.BindingFlags bindingAttr)
             => throw new NotImplementedException();
-        
+
         [System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembersAttribute(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.NonPublicNestedTypes | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicNestedTypes)]
-        public override System.Type[] GetNestedTypes(System.Reflection.BindingFlags bindingAttr)  
+        public override System.Type[] GetNestedTypes(System.Reflection.BindingFlags bindingAttr)
             => throw new NotImplementedException();
 
         [System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembersAttribute(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.NonPublicProperties | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicProperties)]
@@ -369,13 +406,7 @@ namespace System.Reflection.Emit.Experimental
         public override System.Type MakePointerType()
             => throw new NotImplementedException();
 
-        public void SetCustomAttribute(System.Reflection.ConstructorInfo con, byte[] binaryAttribute) 
-            => throw new NotImplementedException();
-
-        public void SetCustomAttribute(System.Reflection.Emit.CustomAttributeBuilder customBuilder) 
-            => throw new NotImplementedException();
-        
-        public void SetParent([System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembersAttribute(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.All)] System.Type? parent) 
+        public void SetParent([System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembersAttribute(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.All)] System.Type? parent)
             => throw new NotImplementedException();
 
         public override string ToString()
