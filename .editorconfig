@@ -1,0 +1,4 @@
+﻿[*.cs]
+
+# SA1011: Closing square brackets should be spaced correctly
+dotnet_diagnostic.SA1011.severity = suggestion

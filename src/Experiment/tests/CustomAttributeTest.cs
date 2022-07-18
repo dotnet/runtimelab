@@ -9,24 +9,24 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using Xunit;
 
-namespace System.Reflection.Emit.Experimental.Tests
+namespace System.Reflection.Emit.Experimental.Tests.Custom
 {
-    //Currently hard-coding in Custom Attributes using the CustomAttributeBuilder.
-    public class CustomAttributeTesting : IDisposable
+    // Currently hard-coding in Custom Attributes using the CustomAttributeBuilder.
+    public class CustomAttributeTest : IDisposable
     {
-        List<CustomAttributeBuilder> customAttributes = new List<CustomAttributeBuilder>();
-        internal string fileLocation;
-        public CustomAttributeTesting()
+        private List<CustomAttributeBuilder> _customAttributes = new List<CustomAttributeBuilder>();
+        private string _fileLocation;
+        public CustomAttributeTest()
         {
             const bool _keepFiles = true;
-            TempFileCollection _tfc;
+            TempFileCollection tfc;
             Directory.CreateDirectory("testDir");
-            _tfc = new TempFileCollection("testDir", false);
-            fileLocation = _tfc.AddExtension("dll", _keepFiles);
+            tfc = new TempFileCollection("testDir", false);
+            _fileLocation = tfc.AddExtension("dll", _keepFiles);
 
-            customAttributes.Add(new CustomAttributeBuilder(typeof(ComImportAttribute).GetConstructor(new Type[] { }), new object[] { }));
-            customAttributes.Add(new CustomAttributeBuilder(typeof(ComVisibleAttribute).GetConstructor(new Type[] { typeof(bool) }), new object[] { true }));
-            customAttributes.Add(new CustomAttributeBuilder(typeof(GuidAttribute).GetConstructor(new Type[] { typeof(string) }), new object[] { "9ED54F84-A89D-4fcd-A854-44251E925F09" }));
+            _customAttributes.Add(new CustomAttributeBuilder(typeof(ComImportAttribute).GetConstructor(new Type[] { }), new object[] { }));
+            _customAttributes.Add(new CustomAttributeBuilder(typeof(ComVisibleAttribute).GetConstructor(new Type[] { typeof(bool) }), new object[] { true }));
+            _customAttributes.Add(new CustomAttributeBuilder(typeof(GuidAttribute).GetConstructor(new Type[] { typeof(string) }), new object[] { "9ED54F84-A89D-4fcd-A854-44251E925F09" }));
         }
 
         // Add three custom attributes to two types. One is pseudo custom attribute.
@@ -38,14 +38,14 @@ namespace System.Reflection.Emit.Experimental.Tests
             AssemblyName assemblyName = new AssemblyName("MyDynamicAssembly");
             assemblyName.Version = new Version("7.0");
 
-            //Construct its types via reflection.
+            // Construct its types via reflection.
             Type[] types = new Type[] { typeof(IMultipleMethod), typeof(INoMethod) };
 
             // Generate DLL from these and save it to Disk.
-            AssemblyTools.WriteAssemblyToDisk(assemblyName, types, fileLocation, customAttributes);
+            AssemblyTools.WriteAssemblyToDisk(assemblyName, types, _fileLocation, _customAttributes);
 
             // Read said assembly back from Disk using MetadataLoadContext
-            Assembly assemblyFromDisk = AssemblyTools.TryLoadAssembly(fileLocation);
+            Assembly assemblyFromDisk = AssemblyTools.TryLoadAssembly(_fileLocation);
 
             // Now compare them:
 
@@ -70,11 +70,11 @@ namespace System.Reflection.Emit.Experimental.Tests
                 // Ordering of custom attributes is not preserved in metadata so we sort before comparing.
                 List<CustomAttributeData> attributesFromDisk = typeFromDisk.GetCustomAttributesData().ToList();
                 attributesFromDisk.Sort((x, y) => x.AttributeType.ToString().CompareTo(y.AttributeType.ToString()));
-                customAttributes.Sort((x, y) => x.Constructor.DeclaringType.ToString().CompareTo(y.Constructor.DeclaringType.ToString()));
+                _customAttributes.Sort((x, y) => x.Constructor.DeclaringType.ToString().CompareTo(y.Constructor.DeclaringType.ToString()));
 
-                for (int j = 0; j < customAttributes.Count; j++)
+                for (int j = 0; j < _customAttributes.Count; j++)
                 {
-                    CustomAttributeBuilder sourceAttribute = customAttributes[j];
+                    CustomAttributeBuilder sourceAttribute = _customAttributes[j];
                     CustomAttributeData attributeFromDisk = attributesFromDisk[j];
                     Debug.WriteLine(attributeFromDisk.AttributeType.ToString());
                     Assert.Equal(sourceAttribute.Constructor.DeclaringType.ToString(), attributeFromDisk.AttributeType.ToString());
@@ -103,5 +103,17 @@ namespace System.Reflection.Emit.Experimental.Tests
         public void Dispose()
         {
         }
+    }
+
+    public interface IMultipleMethod
+    {
+        string Func(int a, string b);
+        bool MoreFunc(int a, string b, bool c);
+        bool DoIExist();
+        void BuildAPerpetualMotionMachine();
+    }
+
+    public interface INoMethod
+    {
     }
 }

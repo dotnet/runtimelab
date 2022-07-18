@@ -1,4 +1,4 @@
-// Licensed to the .NET Foundation under one or more agreements.
+﻿// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Collections.Generic;
@@ -11,21 +11,21 @@ namespace System.Reflection.Emit.Experimental
     public class ModuleBuilder : System.Reflection.Module
     {
         internal List<AssemblyReferenceWrapper> _assemblyRefStore = new List<AssemblyReferenceWrapper>();
-        internal int _nextAssemblyRefRowId = 1;
 
         internal List<TypeReferenceWrapper> _typeRefStore = new List<TypeReferenceWrapper>();
-        internal int _nextTypeRefRowId = 1;
 
         internal List<MethodReferenceWrapper> _methodRefStore = new List<MethodReferenceWrapper>();
-        internal int _nextMethodRefRowId = 1;
-
 
         internal List<TypeBuilder> _typeDefStore = new List<TypeBuilder>();
-        internal int _nextMethodDefRowId = 1;
+
+        internal int _methodDefCount = 0;
+        internal int _fieldDefCount = 0;
 
         public override System.Reflection.Assembly Assembly { get; }
-
-        public override string ScopeName { get; }
+        public override string ScopeName
+        {
+            get;
+        }
 
         internal ModuleBuilder(string name, Assembly assembly)
         {
@@ -33,7 +33,7 @@ namespace System.Reflection.Emit.Experimental
             Assembly = assembly;
         }
 
-        // Wherever possible metadata construction is done in module. 
+        // Wherever possible metadata construction is done in module.
         internal void AppendMetadata(MetadataBuilder metadata)
         {
             // Add module metadata
@@ -53,52 +53,131 @@ namespace System.Reflection.Emit.Experimental
                 fieldList: MetadataTokens.FieldDefinitionHandle(1),
                 methodList: MetadataTokens.MethodDefinitionHandle(1));
 
-            // Add each assembly reference to metadata table.
-            foreach (var assemblyRef in _assemblyRefStore)
-            {
-                MetadataHelper.AddAssemblyReference(assemblyRef.assembly, metadata);
-            }
-
-            // Add each type reference to metadata table.
-            foreach (var typeReference in _typeRefStore)
-            {
-                AssemblyReferenceHandle parent = MetadataTokens.AssemblyReferenceHandle(typeReference.parentToken);
-                MetadataHelper.AddTypeReference(metadata, typeReference.type, parent);
-            }
-
-            // Add each method reference to metadata table.
-            foreach (var methodRef in _methodRefStore)
-            {
-                TypeReferenceHandle parent = MetadataTokens.TypeReferenceHandle(methodRef.parentToken);
-                MetadataHelper.AddConstructorReference(metadata, parent, methodRef.method);
-            }
-
+            int fieldTempCounter = 1;
+            int methodTempCounter = 1;
             // Add each type definition to metadata table.
             foreach (TypeBuilder typeBuilder in _typeDefStore)
             {
-                TypeDefinitionHandle typeDefintionHandle = MetadataHelper.AddTypeDef(typeBuilder, metadata, _nextMethodDefRowId);
+                TypeDefinitionHandle typeDefintionHandle = MetadataHelper.AddTypeDef(typeBuilder, metadata, methodTempCounter, fieldTempCounter, typeBuilder._baseToken);
 
                 // Add each method definition to metadata table.
                 foreach (MethodBuilder method in typeBuilder._methodDefStore)
                 {
-                    MetadataHelper.AddMethodDefintion(metadata, method);
-                    _nextMethodDefRowId++;
+                    MetadataHelper.AddMethodDefintion(metadata, method, this);
+                    methodTempCounter++;
+                }
+
+                // Add each field definition to metadata table.
+                foreach (FieldBuilder field in typeBuilder._fieldDefStore)
+                {
+                    MetadataHelper.AddFieldDefinition(metadata, field);
+                    fieldTempCounter++;
                 }
 
                 // Add each custom attribute to metadata table.
                 foreach (CustomAttributeWrapper customAttribute in typeBuilder._customAttributes)
                 {
-                    MemberReferenceHandle constructorHandle = MetadataTokens.MemberReferenceHandle(customAttribute.conToken);
-                    metadata.AddCustomAttribute(typeDefintionHandle, constructorHandle, metadata.GetOrAddBlob(customAttribute.binaryAttribute));
+                    metadata.AddCustomAttribute(typeDefintionHandle, customAttribute.ConToken, metadata.GetOrAddBlob(customAttribute.BinaryAttribute));
                 }
             }
+
+            // Add references last because in creating type and member definitions, more references can be added to metadata.
+
+            // Add each assembly reference to metadata table.
+            foreach (var assemblyRef in _assemblyRefStore)
+            {
+                MetadataHelper.AddAssemblyReference(assemblyRef.Assembly, metadata);
+            }
+
+            // Add each type reference to metadata table.
+            foreach (var typeReference in _typeRefStore)
+            {
+                MetadataHelper.AddTypeReference(metadata, typeReference.Type, typeReference.ParentToken);
+            }
+
+            // Add each method reference to metadata table.
+            foreach (var methodRef in _methodRefStore)
+            {
+                MetadataHelper.AddConstructorReference(metadata, methodRef.ParentToken, methodRef.Method, this);
+            }
+
         }
 
         public System.Reflection.Emit.Experimental.TypeBuilder DefineType(string name, System.Reflection.TypeAttributes attr)
         {
-            TypeBuilder _type = new TypeBuilder(name, this, Assembly, attr);
-            _typeDefStore.Add(_type);
-            return _type;
+            return DefineType(name, attr, null);
+        }
+
+        internal EntityHandle AddorGetMethodReference(MethodBase method)
+        {
+            // Check if MethodBuilder
+            var methodBuilder = method as MethodBuilder;
+            if (methodBuilder != null)
+            {
+                throw new ArgumentException("MethodBuilder should not be used as reference " + nameof(method));
+            }
+
+            MethodReferenceWrapper methodReferenceWrapper = new MethodReferenceWrapper(method);
+
+            if ((method.DeclaringType == null))
+            {
+                throw new ArgumentException("Could not find parent type of method " + nameof(method));
+            }
+
+            methodReferenceWrapper.ParentToken = AddorGetTypeReference(method.DeclaringType);
+
+            if (_methodRefStore.Contains(methodReferenceWrapper))
+            {
+                return MetadataTokens.MemberReferenceHandle(_methodRefStore.IndexOf(methodReferenceWrapper) + 1);
+            }
+            else
+            {
+                _methodRefStore.Add(methodReferenceWrapper);
+                return MetadataTokens.MemberReferenceHandle(_methodRefStore.Count);
+            }
+        }
+
+        internal EntityHandle AddorGetTypeReference(Type type)
+        {
+            // Check if Type Builder
+            var typeBuilder = type as TypeBuilder;
+            if (typeBuilder != null)
+            {
+                int token = _typeDefStore.IndexOf(typeBuilder);
+                if (token == -1)
+                {
+                    throw new ArgumentException("This TypeBuilder was created in another module");
+                }
+
+                return MetadataTokens.TypeDefinitionHandle(token + 1);
+            }
+
+            TypeReferenceWrapper typeReferenceWrapper = new TypeReferenceWrapper(type);
+            typeReferenceWrapper.ParentToken = AddorGetAssemblyReference(type.Assembly);
+
+            if (_typeRefStore.Contains(typeReferenceWrapper))
+            {
+                return MetadataTokens.TypeReferenceHandle(_typeRefStore.IndexOf(typeReferenceWrapper) + 1);
+            }
+            else
+            {
+                _typeRefStore.Add(typeReferenceWrapper);
+                return MetadataTokens.TypeReferenceHandle(_typeRefStore.Count);
+            }
+        }
+
+        internal EntityHandle AddorGetAssemblyReference(Assembly assembly)
+        {
+            AssemblyReferenceWrapper assemblyReference = new AssemblyReferenceWrapper(assembly);
+            if (_assemblyRefStore.Contains(assemblyReference))
+            {
+                return MetadataTokens.AssemblyReferenceHandle(_assemblyRefStore.IndexOf(assemblyReference) + 1);
+            }
+            else
+            {
+                _assemblyRefStore.Add(assemblyReference);
+                return MetadataTokens.AssemblyReferenceHandle(_assemblyRefStore.Count);
+            }
         }
 
         public void CreateGlobalFunctions()
@@ -120,19 +199,26 @@ namespace System.Reflection.Emit.Experimental
         public System.Reflection.Emit.FieldBuilder DefineInitializedData(string name, byte[] data, System.Reflection.FieldAttributes attributes)
             => throw new NotImplementedException();
 
-        [System.Diagnostics.CodeAnalysis.RequiresUnreferencedCodeAttribute("P/Invoke marshalling may dynamically access members that could be trimmed.")]
+        [System.Diagnostics.CodeAnalysis.RequiresUnreferencedCodeAttribute("P/Invoke marshaling may dynamically access members that could be trimmed.")]
         public System.Reflection.Emit.MethodBuilder DefinePInvokeMethod(string name, string dllName, System.Reflection.MethodAttributes attributes, System.Reflection.CallingConventions callingConvention, System.Type? returnType, System.Type[]? parameterTypes, System.Runtime.InteropServices.CallingConvention nativeCallConv, System.Runtime.InteropServices.CharSet nativeCharSet)
             => throw new NotImplementedException();
 
-        [System.Diagnostics.CodeAnalysis.RequiresUnreferencedCodeAttribute("P/Invoke marshalling may dynamically access members that could be trimmed.")]
+        [System.Diagnostics.CodeAnalysis.RequiresUnreferencedCodeAttribute("P/Invoke marshaling may dynamically access members that could be trimmed.")]
         public System.Reflection.Emit.MethodBuilder DefinePInvokeMethod(string name, string dllName, string entryName, System.Reflection.MethodAttributes attributes, System.Reflection.CallingConventions callingConvention, System.Type? returnType, System.Type[]? parameterTypes, System.Runtime.InteropServices.CallingConvention nativeCallConv, System.Runtime.InteropServices.CharSet nativeCharSet)
             => throw new NotImplementedException();
 
-        public System.Reflection.Emit.TypeBuilder DefineType(string name)
-            => throw new NotImplementedException();
+        public System.Reflection.Emit.Experimental.TypeBuilder DefineType(string name)
+        {
+            return DefineType(name, default, null);
+        }
 
-        public System.Reflection.Emit.TypeBuilder DefineType(string name, System.Reflection.TypeAttributes attr, [System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembersAttribute(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.All)] System.Type? parent)
-            => throw new NotImplementedException();
+        public System.Reflection.Emit.Experimental.TypeBuilder DefineType(string name, System.Reflection.TypeAttributes attr, [System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembersAttribute(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.All)] System.Type? parent)
+        {
+            TypeBuilder type = new TypeBuilder(name, this, Assembly, attr,
+                MetadataTokens.TypeDefinitionHandle(_typeDefStore.Count + 1), parent);
+            _typeDefStore.Add(type);
+            return type;
+        }
 
         public System.Reflection.Emit.TypeBuilder DefineType(string name, System.Reflection.TypeAttributes attr, [System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembersAttribute(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.All)] System.Type? parent, int typesize)
             => throw new NotImplementedException();

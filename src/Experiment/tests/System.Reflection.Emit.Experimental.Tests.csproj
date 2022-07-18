@@ -1,8 +1,13 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net7.0</TargetFramework>
+	<CodeAnalysisRuleSet>StyleCop.Analyzers.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <ItemGroup>
+    <PackageReference Include="StyleCop.Analyzers" Version="1.1.118">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
     <PackageReference Include="System.CodeDom" Version="6.0.0" />
     <PackageReference Include="System.Reflection.MetadataLoadContext" Version="6.0.0" />
   </ItemGroup>
@@ -10,6 +15,10 @@
   <ItemGroup>
     <ProjectReference Include="..\src\System.Reflection.Emit.Experimental.csproj" />
   </ItemGroup>
+
+	<ItemGroup>
+		<AdditionalFiles Include="stylecop.json" />
+	</ItemGroup>	
 
 
 </Project>

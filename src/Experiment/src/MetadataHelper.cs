@@ -6,7 +6,7 @@ using System.Reflection.Metadata.Ecma335;
 
 namespace System.Reflection.Emit.Experimental
 {
-    //This static helper class adds common entities to a Metadata Builder.
+    // This static helper class adds common entities to a Metadata Builder.
     internal static class MetadataHelper
     {
         internal static AssemblyReferenceHandle AddAssemblyReference(Assembly assembly, MetadataBuilder metadata)
@@ -15,69 +15,73 @@ namespace System.Reflection.Emit.Experimental
 
             if (assemblyName == null || assemblyName.Name == null)
             {
-                throw new ArgumentNullException(nameof(assemblyName));
+                throw new ArgumentException(nameof(assemblyName));
             }
 
             return AddAssemblyReference(metadata, assemblyName.Name, assemblyName.Version, assemblyName.CultureName, assemblyName.GetPublicKey(), (AssemblyFlags)assemblyName.Flags);
         }
 
+#pragma warning disable SA1011 // Closing square brackets should be spaced correctly
         internal static AssemblyReferenceHandle AddAssemblyReference(MetadataBuilder metadata, string name, Version? version, string? culture, byte[]? publicKey, AssemblyFlags flags)
+#pragma warning restore SA1011 // Closing square brackets should be spaced correctly
         {
             return metadata.AddAssemblyReference(
-                name: metadata.GetOrAddString(name),
-                version: version ?? new Version(0, 0, 0, 0),
-                culture: (culture == null) ? default : metadata.GetOrAddString(value: culture),
-                publicKeyOrToken: (publicKey == null) ? default : metadata.GetOrAddBlob(publicKey),
-                flags: flags,
-                hashValue: default); // not sure where to find hashValue.
+            name: metadata.GetOrAddString(name),
+            version: version ?? new Version(0, 0, 0, 0),
+            culture: (culture == null) ? default : metadata.GetOrAddString(value: culture),
+            publicKeyOrToken: (publicKey == null) ? default : metadata.GetOrAddBlob(publicKey),
+            flags: flags,
+            hashValue: default); // not sure where to find hashValue.
         }
 
-        internal static TypeDefinitionHandle AddTypeDef(TypeBuilder typeBuilder, MetadataBuilder metadata, int methodToken)
+        internal static TypeDefinitionHandle AddTypeDef(TypeBuilder typeBuilder, MetadataBuilder metadata, int methodToken, int fieldToken, EntityHandle? baseType)
         {
-            //Add type metadata
+            // Add type metadata
             return metadata.AddTypeDefinition(
                 attributes: typeBuilder.UserTypeAttribute,
                 (typeBuilder.Namespace == null) ? default : metadata.GetOrAddString(typeBuilder.Namespace),
                 name: metadata.GetOrAddString(typeBuilder.Name),
-                baseType: default,//Inheritance to be added
-                fieldList: MetadataTokens.FieldDefinitionHandle(1),//Update once we support fields.
+                baseType: baseType == null ? default : (EntityHandle)baseType,
+                fieldList: MetadataTokens.FieldDefinitionHandle(fieldToken),
                 methodList: MetadataTokens.MethodDefinitionHandle(methodToken));
         }
 
-        internal static TypeReferenceHandle AddTypeReference(MetadataBuilder metadata, Type type, AssemblyReferenceHandle parent)
+        internal static TypeReferenceHandle AddTypeReference(MetadataBuilder metadata, Type type, EntityHandle parent)
         {
             return AddTypeReference(metadata, parent, type.Name, type.Namespace);
         }
 
-        internal static TypeReferenceHandle AddTypeReference(MetadataBuilder metadata, AssemblyReferenceHandle parent, string name, string? nameSpace)
+        internal static TypeReferenceHandle AddTypeReference(MetadataBuilder metadata, EntityHandle parent, string name, string? nameSpace)
         {
             return metadata.AddTypeReference(
                 parent,
                 (nameSpace == null) ? default : metadata.GetOrAddString(nameSpace),
-                metadata.GetOrAddString(name)
-                );
+                metadata.GetOrAddString(name));
         }
 
-        internal static MemberReferenceHandle AddConstructorReference(MetadataBuilder metadata, TypeReferenceHandle parent, MethodBase method)
+        internal static MemberReferenceHandle AddConstructorReference(MetadataBuilder metadata, EntityHandle parent, MethodBase method, ModuleBuilder module)
         {
-            var blob = SignatureHelper.MethodSignatureEnconder(method.GetParameters(), null, true);
+            var blob = SignatureHelper.MethodSignatureEncoder(method.GetParameters(), null, true, module);
             return metadata.AddMemberReference(
                 parent,
                 metadata.GetOrAddString(method.Name),
-                metadata.GetOrAddBlob(blob)
-                );
+                metadata.GetOrAddBlob(blob));
         }
 
-        internal static MethodDefinitionHandle AddMethodDefintion(MetadataBuilder metadata, MethodBuilder methodBuilder)
+        internal static MethodDefinitionHandle AddMethodDefintion(MetadataBuilder metadata, MethodBuilder methodBuilder, ModuleBuilder module)
         {
             return metadata.AddMethodDefinition(
                 methodBuilder.Attributes,
                 MethodImplAttributes.IL,
                 metadata.GetOrAddString(methodBuilder.Name),
-                metadata.GetOrAddBlob(SignatureHelper.MethodSignatureEnconder(methodBuilder._parameters, methodBuilder._returnType, !methodBuilder.IsStatic)),
-                -1, //No body supported
-                parameterList: default
-                );
+                metadata.GetOrAddBlob(SignatureHelper.MethodSignatureEncoder(methodBuilder._parameters, methodBuilder._returnType, !methodBuilder.IsStatic, module)),
+                -1,
+                parameterList: default);
+        }
+
+        internal static FieldDefinitionHandle AddFieldDefinition(MetadataBuilder metadata, FieldBuilder fieldBuilder)
+        {
+            return metadata.AddFieldDefinition(fieldBuilder.Attributes, metadata.GetOrAddString(fieldBuilder.Name), metadata.GetOrAddBlob(fieldBuilder.FieldSignature));
         }
     }
 }

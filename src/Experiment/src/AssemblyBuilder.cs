@@ -1,4 +1,4 @@
-// Licensed to the .NET Foundation under one or more agreements.
+﻿// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.IO;
@@ -19,6 +19,24 @@ namespace System.Reflection.Emit.Experimental
             _assemblyName = name;
         }
 
+        public static System.Reflection.Emit.Experimental.AssemblyBuilder DefineDynamicAssembly(System.Reflection.AssemblyName name, System.Reflection.Emit.AssemblyBuilderAccess access)
+        {
+            if (name == null || name.Name == null)
+            {
+                throw new ArgumentNullException(nameof(name));
+            }
+
+            // AssemblyBuilderAccess affects runtime management only and is not relevant for saving to disk.
+            AssemblyBuilder currentAssembly = new AssemblyBuilder(name);
+            return currentAssembly;
+        }
+
+        [System.Diagnostics.CodeAnalysis.RequiresDynamicCode("Defining a dynamic assembly requires dynamic code.")]
+        public static System.Reflection.Emit.AssemblyBuilder DefineDynamicAssembly(System.Reflection.AssemblyName name, System.Reflection.Emit.AssemblyBuilderAccess access, System.Collections.Generic.IEnumerable<System.Reflection.Emit.CustomAttributeBuilder>? assemblyAttributes)
+        {
+            throw new NotImplementedException();
+        }
+
         public void Save(string assemblyFileName)
         {
             if (_previouslySaved) // You cannot save an assembly multiple times. This is consistent with Save() in .Net Framework.
@@ -33,7 +51,7 @@ namespace System.Reflection.Emit.Experimental
 
             if (_assemblyName == null || _assemblyName.Name == null)
             {
-                throw new ArgumentNullException(nameof(_assemblyName));
+                throw new ArgumentException(nameof(_assemblyName));
             }
 
             if (_module == null)
@@ -60,24 +78,6 @@ namespace System.Reflection.Emit.Experimental
             _previouslySaved = true;
         }
 
-        public static System.Reflection.Emit.Experimental.AssemblyBuilder DefineDynamicAssembly(System.Reflection.AssemblyName name, System.Reflection.Emit.AssemblyBuilderAccess access)
-        {
-            if (name == null || name.Name == null)
-            {
-                throw new ArgumentNullException();
-            }
-
-            //AssemblyBuilderAccess affects runtime management only and is not relevant for saving to disk.
-            AssemblyBuilder currentAssembly = new AssemblyBuilder(name);
-            return currentAssembly;
-        }
-
-        [System.Diagnostics.CodeAnalysis.RequiresDynamicCode("Defining a dynamic assembly requires dynamic code.")]
-        public static System.Reflection.Emit.AssemblyBuilder DefineDynamicAssembly(System.Reflection.AssemblyName name, System.Reflection.Emit.AssemblyBuilderAccess access, System.Collections.Generic.IEnumerable<System.Reflection.Emit.CustomAttributeBuilder>? assemblyAttributes)
-        {
-            throw new NotImplementedException();
-        }
-
         public System.Reflection.Emit.Experimental.ModuleBuilder DefineDynamicModule(string name)
         {
             if (name == null)
@@ -87,7 +87,7 @@ namespace System.Reflection.Emit.Experimental
 
             if (name.Length == 0)
             {
-                throw new ArgumentException(nameof(name));
+                throw new ArgumentException(nameof(name) + " is empty.");
             }
 
             if (_module != null)
@@ -116,7 +116,6 @@ namespace System.Reflection.Emit.Experimental
             {
                 return null;
             }
-
             else if (_module.Name.Equals(name))
             {
                 return _module;
@@ -127,17 +126,16 @@ namespace System.Reflection.Emit.Experimental
 
         private static void WritePEImage(Stream peStream, MetadataBuilder metadataBuilder, BlobBuilder ilBuilder) // MethodDefinitionHandle entryPointHandle when we have main method.
         {
-            //Create executable with the managed metadata from the specified MetadataBuilder.
+            // Create executable with the managed metadata from the specified MetadataBuilder.
             var peHeaderBuilder = new PEHeaderBuilder(
-                imageCharacteristics: Characteristics.Dll //Start off with a simple DLL
-                );
+                imageCharacteristics: Characteristics.Dll);
 
             var peBuilder = new ManagedPEBuilder(
                 peHeaderBuilder,
                 new MetadataRootBuilder(metadataBuilder),
                 ilBuilder,
                 flags: CorFlags.ILOnly,
-                deterministicIdProvider: content => new BlobContentId(Guid.NewGuid(), 0x04030201));//Const ID, will reexamine as project progresses. 
+                deterministicIdProvider: content => new BlobContentId(Guid.NewGuid(), 0x04030201));
 
             // Write executable into the specified stream.
             var peBlob = new BlobBuilder();
@@ -146,4 +144,3 @@ namespace System.Reflection.Emit.Experimental
         }
     }
 }
-

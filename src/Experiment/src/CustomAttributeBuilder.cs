@@ -11,32 +11,32 @@ namespace System.Reflection.Emit.Experimental
     public class CustomAttributeBuilder
     {
         /// <summary>
-        /// Stores the relevant constructor of the custom attribute's type. Custom attribute's are identified primarily through their constructor in the ECMA spec.
+        /// Stores the constructor of the custom attribute's type. Custom attribute's are identified by their constructor in ECMA.
         /// </summary>
         private ConstructorInfo _constructorInfo;
         private object?[] _constructorArgs;
         internal byte[] _blob;
 
-        public ConstructorInfo Constructor { get => _constructorInfo; }
+        public ConstructorInfo Constructor { get => _constructorInfo;  }
 
         // public constructor to form the custom attribute with constructor and constructor
         // parameters.
-        public CustomAttributeBuilder(ConstructorInfo con, object?[] constructorArgs) :
-            this(con, constructorArgs, Array.Empty<PropertyInfo>(), Array.Empty<object>(), Array.Empty<FieldInfo>(), Array.Empty<object>())
+        public CustomAttributeBuilder(ConstructorInfo con, object?[] constructorArgs)
+            : this(con, constructorArgs, Array.Empty<PropertyInfo>(), Array.Empty<object>(), Array.Empty<FieldInfo>(), Array.Empty<object>())
         {
         }
 
         // public constructor to form the custom attribute with constructor, constructor
         // parameters and named properties.
-        public CustomAttributeBuilder(ConstructorInfo con, object?[] constructorArgs, PropertyInfo[] namedProperties, object?[] propertyValues) :
-            this(con, constructorArgs, namedProperties, propertyValues, Array.Empty<FieldInfo>(), Array.Empty<object>())
+        public CustomAttributeBuilder(ConstructorInfo con, object?[] constructorArgs, PropertyInfo[] namedProperties, object?[] propertyValues)
+            : this(con, constructorArgs, namedProperties, propertyValues, Array.Empty<FieldInfo>(), Array.Empty<object>())
         {
         }
 
         // public constructor to form the custom attribute with constructor and constructor
         // parameters.
-        public CustomAttributeBuilder(ConstructorInfo con, object?[] constructorArgs, FieldInfo[] namedFields, object?[] fieldValues) :
-            this(con, constructorArgs, Array.Empty<PropertyInfo>(), Array.Empty<object>(), namedFields, fieldValues)
+        public CustomAttributeBuilder(ConstructorInfo con, object?[] constructorArgs, FieldInfo[] namedFields, object?[] fieldValues)
+            : this(con, constructorArgs, Array.Empty<PropertyInfo>(), Array.Empty<object>(), namedFields, fieldValues)
         {
         }
 
@@ -56,6 +56,7 @@ namespace System.Reflection.Emit.Experimental
             {
                 throw new ArgumentException($"{nameof(namedProperties)} and {nameof(propertyValues)} should have the same length.");
             }
+
             if (namedFields.Length != fieldValues.Length)
             {
                 throw new ArgumentException($"{nameof(namedFields)} and {nameof(fieldValues)} should have the same length.");
@@ -64,10 +65,14 @@ namespace System.Reflection.Emit.Experimental
 
             if ((con.Attributes & MethodAttributes.Static) == MethodAttributes.Static ||
                 (con.Attributes & MethodAttributes.MemberAccessMask) == MethodAttributes.Private)
+            {
                 throw new ArgumentException("The passed-in constructor is either static or private");
+            }
 
             if ((con.CallingConvention & CallingConventions.Standard) != CallingConventions.Standard)
+            {
                 throw new ArgumentException("Non standard calling convention for constructor.");
+            }
 
             // Cache information used elsewhere.
             _constructorInfo = con;
@@ -82,12 +87,18 @@ namespace System.Reflection.Emit.Experimental
 
             // Since we're guaranteed a non-var calling convention, the number of arguments must equal the number of parameters.
             if (paramTypes.Length != constructorArgs.Length)
+            {
                 throw new ArgumentException("Bad Parameter Count For Constructor");
+            }
 
             // Verify that the constructor has a valid signature (custom attributes only support a subset of our type system).
             for (i = 0; i < paramTypes.Length; i++)
+            {
                 if (!ValidateType(paramTypes[i]))
+                {
                     throw new ArgumentException("Bad Type In Custom Attribute: " + paramTypes[i]);
+                }
+            }
 
             // Now verify that the types of the actual parameters are compatible with the types of the formal parameters.
             for (i = 0; i < paramTypes.Length; i++)
@@ -99,8 +110,10 @@ namespace System.Reflection.Emit.Experimental
                     {
                         throw new ArgumentNullException($"{nameof(constructorArgs)}[{i}]");
                     }
+
                     continue;
                 }
+
                 VerifyTypeAndPassedObjectType(paramTypes[i], constructorArg.GetType(), $"{nameof(constructorArgs)}[{i}]");
             }
 
@@ -113,7 +126,9 @@ namespace System.Reflection.Emit.Experimental
 
             // Now emit the constructor argument values (no need for types, they're inferred from the constructor signature).
             for (i = 0; i < constructorArgs.Length; i++)
+            {
                 EmitValue(writer, paramTypes[i], constructorArgs[i]);
+            }
 
             // Next a short with the count of properties and fields.
             writer.Write((ushort)(namedProperties.Length + namedFields.Length));
@@ -124,22 +139,29 @@ namespace System.Reflection.Emit.Experimental
                 // Validate the property.
                 PropertyInfo property = namedProperties[i];
                 if (property == null)
+                {
                     throw new ArgumentNullException("namedProperties[" + i + "]");
+                }
 
                 // Allow null for non-primitive types only.
                 Type propType = property.PropertyType;
                 object? propertyValue = propertyValues[i];
                 if (propertyValue == null && propType.IsValueType)
+                {
                     throw new ArgumentNullException("propertyValues[" + i + "]");
+                }
 
                 // Validate property type.
                 if (!ValidateType(propType))
+                {
                     throw new ArgumentException("Bad Type In Custom Attribute");
+                }
 
                 // Property has to be writable.
                 if (!property.CanWrite)
+                {
                     throw new ArgumentException("Not A Writable Property");
-
+                }
 
                 // Make sure the property's type can take the given value.
                 // Note that there will be no coercion.
@@ -163,18 +185,23 @@ namespace System.Reflection.Emit.Experimental
                 // Validate the field.
                 FieldInfo namedField = namedFields[i];
                 if (namedField == null)
+                {
                     throw new ArgumentNullException("namedFields[" + i + "]");
+                }
 
                 // Allow null for non-primitive types only.
                 Type fldType = namedField.FieldType;
                 object? fieldValue = fieldValues[i];
                 if (fieldValue == null && fldType.IsValueType)
+                {
                     throw new ArgumentNullException("fieldValues[" + i + "]");
+                }
 
                 // Validate field type.
                 if (!ValidateType(fldType))
+                {
                     throw new ArgumentException("Bad Type In Custom Attribute");
-
+                }
 
                 // Make sure the field's type can take the given value.
                 // Note that there will be no coercion.
@@ -203,10 +230,12 @@ namespace System.Reflection.Emit.Experimental
             {
                 return t != typeof(IntPtr) && t != typeof(UIntPtr);
             }
+
             if (t == typeof(string) || t == typeof(Type))
             {
                 return true;
             }
+
             if (t.IsEnum)
             {
                 switch (Type.GetTypeCode(Enum.GetUnderlyingType(t)))
@@ -224,10 +253,12 @@ namespace System.Reflection.Emit.Experimental
                         return false;
                 }
             }
+
             if (t.IsArray)
             {
-                return t.GetArrayRank() == 1 && ValidateType(t.GetElementType()!);
+                return t.GetArrayRank() == 1 && ValidateType(t.GetElementType() !);
             }
+
             return t == typeof(object);
         }
 
@@ -235,11 +266,12 @@ namespace System.Reflection.Emit.Experimental
         {
             if (type != typeof(object) && Type.GetTypeCode(passedType) != Type.GetTypeCode(type))
             {
-                throw new ArgumentException("Constant Doesnt Match");
+                throw new ArgumentException("Constant Doesn't Match");
             }
+
             if (passedType == typeof(IntPtr) || passedType == typeof(UIntPtr))
             {
-                throw new ArgumentException("Bad arugment for custom attribute builder");
+                throw new ArgumentException("Bad argument for custom attribute builder");
             }
         }
 
@@ -306,7 +338,7 @@ namespace System.Reflection.Emit.Experimental
             else if (type.IsArray)
             {
                 writer.Write((byte)CustomAttributeEncoding.Array);
-                EmitType(writer, type.GetElementType()!);
+                EmitType(writer, type.GetElementType() !);
             }
             else
             {
@@ -332,6 +364,7 @@ namespace System.Reflection.Emit.Experimental
             {
                 writer.Write(BinaryPrimitives.ReverseEndianness(length | 0xC0_00_00_00));
             }
+
             writer.Write(utf8Str);
         }
 
@@ -373,33 +406,46 @@ namespace System.Reflection.Emit.Experimental
             else if (type == typeof(string))
             {
                 if (value == null)
+                {
                     writer.Write((byte)0xff);
+                }
                 else
+                {
                     EmitString(writer, (string)value);
+                }
             }
             else if (type == typeof(Type))
             {
                 if (value == null)
+                {
                     writer.Write((byte)0xff);
+                }
                 else
                 {
                     string? typeName = TypeNameBuilder.ToString((Type)value, TypeNameBuilder.Format.AssemblyQualifiedName);
                     if (typeName == null)
+                    {
                         throw new ArgumentException("Invalid Type For CA");
+                    }
+
                     EmitString(writer, typeName);
                 }
             }
             else if (type.IsArray)
             {
                 if (value == null)
-                    writer.Write((uint)0xffffffff);
+                {
+                    writer.Write(0xffffffff);
+                }
                 else
                 {
                     Array a = (Array)value;
-                    Type et = type.GetElementType()!;
+                    Type et = type.GetElementType() !;
                     writer.Write(a.Length);
                     for (int i = 0; i < a.Length; i++)
+                    {
                         EmitValue(writer, et, a.GetValue(i));
+                    }
                 }
             }
             else if (type.IsPrimitive)
@@ -458,7 +504,9 @@ namespace System.Reflection.Emit.Experimental
                 // value cannot be a "System.Object" object.
                 // If we allow this we will get into an infinite recursion
                 if (ot == typeof(object))
+                {
                     throw new ArgumentException("Bad Parameter Type For CAB");
+                }
 
                 EmitType(writer, ot);
                 EmitValue(writer, ot, value);
@@ -468,7 +516,9 @@ namespace System.Reflection.Emit.Experimental
                 string typename = "null";
 
                 if (value != null)
+                {
                     typename = value.GetType().ToString();
+                }
 
                 throw new ArgumentException("Bad Parameter Type For CAB");
             }

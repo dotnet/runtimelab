@@ -1,4 +1,4 @@
-﻿// Licensed to the .NET Foundation under one or more agreements.
+﻿ // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
 namespace System.Reflection.Emit.Experimental
@@ -11,7 +11,9 @@ namespace System.Reflection.Emit.Experimental
         public override TypeBuilder DeclaringType { get; }
         public override System.Reflection.Module Module { get; }
         internal Type? _returnType;
+#pragma warning disable SA1011 // Closing square brackets should be spaced correctly
         internal Type[]? _parameters;
+#pragma warning restore SA1011 // Closing square brackets should be spaced correctly
 
         internal MethodBuilder(string name, System.Reflection.MethodAttributes attributes, CallingConventions callingConventions, Type? returnType, Type[]? parameters, TypeBuilder declaringType)
         {
@@ -45,13 +47,19 @@ namespace System.Reflection.Emit.Experimental
             throw new NotImplementedException();
         }
 
+#pragma warning disable SA1011 // Closing square brackets should be spaced correctly
         public void SetSignature(System.Type? returnType, System.Type[]? returnTypeRequiredCustomModifiers, System.Type[]? returnTypeOptionalCustomModifiers, System.Type[]? parameterTypes, System.Type[][]? parameterTypeRequiredCustomModifiers, System.Type[][]? parameterTypeOptionalCustomModifiers)
+#pragma warning restore SA1011 // Closing square brackets should be spaced correctly
         {
             throw new NotImplementedException();
         }
 
         public override bool ContainsGenericParameters { get => throw new NotImplementedException(); }
-        public bool InitLocals { get => throw new NotImplementedException(); set { } }
+        public bool InitLocals
+        {
+            get => throw new NotImplementedException(); set { }
+        }
+
         public override bool IsGenericMethod { get => throw new NotImplementedException(); }
         public override bool IsGenericMethodDefinition { get => throw new NotImplementedException(); }
         public override bool IsSecurityCritical { get => throw new NotImplementedException(); }

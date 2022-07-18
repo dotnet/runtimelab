@@ -1,4 +1,4 @@
-﻿// Licensed to the .NET Foundation under one or more agreements.
+﻿ // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Collections.Generic;
@@ -16,6 +16,7 @@ namespace System.Reflection.Emit.Experimental.Tests
         {
             WriteAssemblyToDisk(assemblyName, types, fileLocation, null);
         }
+
         internal static void WriteAssemblyToDisk(AssemblyName assemblyName, Type[] types, string fileLocation, List<CustomAttributeBuilder> customAttributes)
         {
             AssemblyBuilder assemblyBuilder = AssemblyBuilder.DefineDynamicAssembly(assemblyName, System.Reflection.Emit.AssemblyBuilderAccess.Run);
@@ -24,7 +25,7 @@ namespace System.Reflection.Emit.Experimental.Tests
 
             foreach (Type type in types)
             {
-                TypeBuilder tb = mb.DefineType(type.FullName, type.Attributes);
+                TypeBuilder tb = mb.DefineType(type.FullName, type.Attributes, type.BaseType);
 
                 if (customAttributes != null)
                 {
@@ -39,6 +40,15 @@ namespace System.Reflection.Emit.Experimental.Tests
                     var paramTypes = Array.ConvertAll(method.GetParameters(), item => item.ParameterType);
                     tb.DefineMethod(method.Name, method.Attributes, method.CallingConvention, method.ReturnType, paramTypes);
                 }
+
+                foreach (var field in type.GetFields(
+                    BindingFlags.Instance |
+                    BindingFlags.Static |
+                    BindingFlags.NonPublic |
+                    BindingFlags.Public))
+                {
+                    tb.DefineField(field.Name, field.FieldType, field.Attributes);
+                }
             }
 
             assemblyBuilder.Save(fileLocation);
@@ -48,15 +58,12 @@ namespace System.Reflection.Emit.Experimental.Tests
         {
             // Get the array of runtime assemblies.
             string[] runtimeAssemblies = Directory.GetFiles(RuntimeEnvironment.GetRuntimeDirectory(), "*.dll");
-
             // Create the list of assembly paths consisting of runtime assemblies and the inspected assembly.
             var paths = new List<string>(runtimeAssemblies);
             paths.Add(filePath);
-
             // Create PathAssemblyResolver that can resolve assemblies using the created list.
             var resolver = new PathAssemblyResolver(paths);
             var mlc = new MetadataLoadContext(resolver);
-
             // Load assembly into MetadataLoadContext.
             Assembly assembly = mlc.LoadFromAssemblyPath(filePath);
             return assembly;
@@ -72,7 +79,6 @@ namespace System.Reflection.Emit.Experimental.Tests
             MetadataReader mr = peReader.GetMetadataReader();
 
             Debug.WriteLine("Number of types is " + mr.TypeDefinitions.Count);
-
             foreach (TypeDefinitionHandle tdefh in mr.TypeDefinitions)
             {
                 TypeDefinition tdef = mr.GetTypeDefinition(tdefh);
@@ -82,7 +88,6 @@ namespace System.Reflection.Emit.Experimental.Tests
             }
 
             Debug.WriteLine("Number of methods is " + mr.MethodDefinitions.Count);
-
             foreach (MethodDefinitionHandle mdefh in mr.MethodDefinitions)
             {
                 MethodDefinition mdef = mr.GetMethodDefinition(mdefh);

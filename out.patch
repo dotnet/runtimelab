@@ -1,0 +1,3097 @@
+diff --git a/.editorconfig b/.editorconfig
+new file mode 100644
+index 00000000000..8d9d2dbf528
+--- /dev/null
++++ b/.editorconfig
+@@ -0,0 +1,4 @@
++﻿[*.cs]
++
++# SA1011: Closing square brackets should be spaced correctly
++dotnet_diagnostic.SA1011.severity = suggestion
+diff --git a/System.Reflection.Emit.Experimental.sln b/System.Reflection.Emit.Experimental.sln
+index 22102ff2c76..c44824c8393 100644
+--- a/System.Reflection.Emit.Experimental.sln
++++ b/System.Reflection.Emit.Experimental.sln
+@@ -7,6 +7,11 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "System.Reflection.Emit.Expe
+ EndProject
+ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "System.Reflection.Emit.Experimental.Tests", "src\Experiment\tests\System.Reflection.Emit.Experimental.Tests.csproj", "{CE81B6BD-CCCC-4223-9069-B28435A4A5C1}"
+ EndProject
++Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{B4C2170E-3C68-4E98-9F63-EC62ABF08159}"
++	ProjectSection(SolutionItems) = preProject
++		.editorconfig = .editorconfig
++	EndProjectSection
++EndProject
+ Global
+ 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+ 		Debug|Any CPU = Debug|Any CPU
+diff --git a/src/Experiment/src/AssemblyBuilder.cs b/src/Experiment/src/AssemblyBuilder.cs
+index 0df0fd7e9e0..a7275f82e03 100644
+--- a/src/Experiment/src/AssemblyBuilder.cs
++++ b/src/Experiment/src/AssemblyBuilder.cs
+@@ -1,4 +1,4 @@
+-// Licensed to the .NET Foundation under one or more agreements.
++﻿// Licensed to the .NET Foundation under one or more agreements.
+ // The .NET Foundation licenses this file to you under the MIT license.
+ 
+ using System.IO;
+@@ -19,6 +19,24 @@ namespace System.Reflection.Emit.Experimental
+             _assemblyName = name;
+         }
+ 
++        public static System.Reflection.Emit.Experimental.AssemblyBuilder DefineDynamicAssembly(System.Reflection.AssemblyName name, System.Reflection.Emit.AssemblyBuilderAccess access)
++        {
++            if (name == null || name.Name == null)
++            {
++                throw new ArgumentNullException(nameof(name));
++            }
++
++            // AssemblyBuilderAccess affects runtime management only and is not relevant for saving to disk.
++            AssemblyBuilder currentAssembly = new AssemblyBuilder(name);
++            return currentAssembly;
++        }
++
++        [System.Diagnostics.CodeAnalysis.RequiresDynamicCode("Defining a dynamic assembly requires dynamic code.")]
++        public static System.Reflection.Emit.AssemblyBuilder DefineDynamicAssembly(System.Reflection.AssemblyName name, System.Reflection.Emit.AssemblyBuilderAccess access, System.Collections.Generic.IEnumerable<System.Reflection.Emit.CustomAttributeBuilder>? assemblyAttributes)
++        {
++            throw new NotImplementedException();
++        }
++
+         public void Save(string assemblyFileName)
+         {
+             if (_previouslySaved) // You cannot save an assembly multiple times. This is consistent with Save() in .Net Framework.
+@@ -33,7 +51,7 @@ namespace System.Reflection.Emit.Experimental
+ 
+             if (_assemblyName == null || _assemblyName.Name == null)
+             {
+-                throw new ArgumentNullException(nameof(_assemblyName));
++                throw new ArgumentException(nameof(_assemblyName));
+             }
+ 
+             if (_module == null)
+@@ -60,24 +78,6 @@ namespace System.Reflection.Emit.Experimental
+             _previouslySaved = true;
+         }
+ 
+-        public static System.Reflection.Emit.Experimental.AssemblyBuilder DefineDynamicAssembly(System.Reflection.AssemblyName name, System.Reflection.Emit.AssemblyBuilderAccess access)
+-        {
+-            if (name == null || name.Name == null)
+-            {
+-                throw new ArgumentNullException();
+-            }
+-
+-            //AssemblyBuilderAccess affects runtime management only and is not relevant for saving to disk.
+-            AssemblyBuilder currentAssembly = new AssemblyBuilder(name);
+-            return currentAssembly;
+-        }
+-
+-        [System.Diagnostics.CodeAnalysis.RequiresDynamicCode("Defining a dynamic assembly requires dynamic code.")]
+-        public static System.Reflection.Emit.AssemblyBuilder DefineDynamicAssembly(System.Reflection.AssemblyName name, System.Reflection.Emit.AssemblyBuilderAccess access, System.Collections.Generic.IEnumerable<System.Reflection.Emit.CustomAttributeBuilder>? assemblyAttributes)
+-        {
+-            throw new NotImplementedException();
+-        }
+-
+         public System.Reflection.Emit.Experimental.ModuleBuilder DefineDynamicModule(string name)
+         {
+             if (name == null)
+@@ -87,7 +87,7 @@ namespace System.Reflection.Emit.Experimental
+ 
+             if (name.Length == 0)
+             {
+-                throw new ArgumentException(nameof(name));
++                throw new ArgumentException(nameof(name) + " is empty.");
+             }
+ 
+             if (_module != null)
+@@ -116,7 +116,6 @@ namespace System.Reflection.Emit.Experimental
+             {
+                 return null;
+             }
+-
+             else if (_module.Name.Equals(name))
+             {
+                 return _module;
+@@ -127,17 +126,16 @@ namespace System.Reflection.Emit.Experimental
+ 
+         private static void WritePEImage(Stream peStream, MetadataBuilder metadataBuilder, BlobBuilder ilBuilder) // MethodDefinitionHandle entryPointHandle when we have main method.
+         {
+-            //Create executable with the managed metadata from the specified MetadataBuilder.
++            // Create executable with the managed metadata from the specified MetadataBuilder.
+             var peHeaderBuilder = new PEHeaderBuilder(
+-                imageCharacteristics: Characteristics.Dll //Start off with a simple DLL
+-                );
++                imageCharacteristics: Characteristics.Dll);
+ 
+             var peBuilder = new ManagedPEBuilder(
+                 peHeaderBuilder,
+                 new MetadataRootBuilder(metadataBuilder),
+                 ilBuilder,
+                 flags: CorFlags.ILOnly,
+-                deterministicIdProvider: content => new BlobContentId(Guid.NewGuid(), 0x04030201));//Const ID, will reexamine as project progresses. 
++                deterministicIdProvider: content => new BlobContentId(Guid.NewGuid(), 0x04030201));
+ 
+             // Write executable into the specified stream.
+             var peBlob = new BlobBuilder();
+@@ -145,5 +143,4 @@ namespace System.Reflection.Emit.Experimental
+             peBlob.WriteContentTo(peStream);
+         }
+     }
+-}
+-
++}
+\ No newline at end of file
+diff --git a/src/Experiment/src/CustomAttributeBuilder.cs b/src/Experiment/src/CustomAttributeBuilder.cs
+index c3c7d2f94d8..e108584e6bd 100644
+--- a/src/Experiment/src/CustomAttributeBuilder.cs
++++ b/src/Experiment/src/CustomAttributeBuilder.cs
+@@ -11,32 +11,32 @@ namespace System.Reflection.Emit.Experimental
+     public class CustomAttributeBuilder
+     {
+         /// <summary>
+-        /// Stores the relevant constructor of the custom attribute's type. Custom attribute's are identified primarily through their constructor in the ECMA spec.
++        /// Stores the constructor of the custom attribute's type. Custom attribute's are identified by their constructor in ECMA.
+         /// </summary>
+         private ConstructorInfo _constructorInfo;
+         private object?[] _constructorArgs;
+         internal byte[] _blob;
+ 
+-        public ConstructorInfo Constructor { get => _constructorInfo; }
++        public ConstructorInfo Constructor { get => _constructorInfo;  }
+ 
+         // public constructor to form the custom attribute with constructor and constructor
+         // parameters.
+-        public CustomAttributeBuilder(ConstructorInfo con, object?[] constructorArgs) :
+-            this(con, constructorArgs, Array.Empty<PropertyInfo>(), Array.Empty<object>(), Array.Empty<FieldInfo>(), Array.Empty<object>())
++        public CustomAttributeBuilder(ConstructorInfo con, object?[] constructorArgs)
++            : this(con, constructorArgs, Array.Empty<PropertyInfo>(), Array.Empty<object>(), Array.Empty<FieldInfo>(), Array.Empty<object>())
+         {
+         }
+ 
+         // public constructor to form the custom attribute with constructor, constructor
+         // parameters and named properties.
+-        public CustomAttributeBuilder(ConstructorInfo con, object?[] constructorArgs, PropertyInfo[] namedProperties, object?[] propertyValues) :
+-            this(con, constructorArgs, namedProperties, propertyValues, Array.Empty<FieldInfo>(), Array.Empty<object>())
++        public CustomAttributeBuilder(ConstructorInfo con, object?[] constructorArgs, PropertyInfo[] namedProperties, object?[] propertyValues)
++            : this(con, constructorArgs, namedProperties, propertyValues, Array.Empty<FieldInfo>(), Array.Empty<object>())
+         {
+         }
+ 
+         // public constructor to form the custom attribute with constructor and constructor
+         // parameters.
+-        public CustomAttributeBuilder(ConstructorInfo con, object?[] constructorArgs, FieldInfo[] namedFields, object?[] fieldValues) :
+-            this(con, constructorArgs, Array.Empty<PropertyInfo>(), Array.Empty<object>(), namedFields, fieldValues)
++        public CustomAttributeBuilder(ConstructorInfo con, object?[] constructorArgs, FieldInfo[] namedFields, object?[] fieldValues)
++            : this(con, constructorArgs, Array.Empty<PropertyInfo>(), Array.Empty<object>(), namedFields, fieldValues)
+         {
+         }
+ 
+@@ -56,6 +56,7 @@ namespace System.Reflection.Emit.Experimental
+             {
+                 throw new ArgumentException($"{nameof(namedProperties)} and {nameof(propertyValues)} should have the same length.");
+             }
++
+             if (namedFields.Length != fieldValues.Length)
+             {
+                 throw new ArgumentException($"{nameof(namedFields)} and {nameof(fieldValues)} should have the same length.");
+@@ -64,10 +65,14 @@ namespace System.Reflection.Emit.Experimental
+ 
+             if ((con.Attributes & MethodAttributes.Static) == MethodAttributes.Static ||
+                 (con.Attributes & MethodAttributes.MemberAccessMask) == MethodAttributes.Private)
++            {
+                 throw new ArgumentException("The passed-in constructor is either static or private");
++            }
+ 
+             if ((con.CallingConvention & CallingConventions.Standard) != CallingConventions.Standard)
++            {
+                 throw new ArgumentException("Non standard calling convention for constructor.");
++            }
+ 
+             // Cache information used elsewhere.
+             _constructorInfo = con;
+@@ -82,12 +87,18 @@ namespace System.Reflection.Emit.Experimental
+ 
+             // Since we're guaranteed a non-var calling convention, the number of arguments must equal the number of parameters.
+             if (paramTypes.Length != constructorArgs.Length)
++            {
+                 throw new ArgumentException("Bad Parameter Count For Constructor");
++            }
+ 
+             // Verify that the constructor has a valid signature (custom attributes only support a subset of our type system).
+             for (i = 0; i < paramTypes.Length; i++)
++            {
+                 if (!ValidateType(paramTypes[i]))
++                {
+                     throw new ArgumentException("Bad Type In Custom Attribute: " + paramTypes[i]);
++                }
++            }
+ 
+             // Now verify that the types of the actual parameters are compatible with the types of the formal parameters.
+             for (i = 0; i < paramTypes.Length; i++)
+@@ -99,8 +110,10 @@ namespace System.Reflection.Emit.Experimental
+                     {
+                         throw new ArgumentNullException($"{nameof(constructorArgs)}[{i}]");
+                     }
++
+                     continue;
+                 }
++
+                 VerifyTypeAndPassedObjectType(paramTypes[i], constructorArg.GetType(), $"{nameof(constructorArgs)}[{i}]");
+             }
+ 
+@@ -113,7 +126,9 @@ namespace System.Reflection.Emit.Experimental
+ 
+             // Now emit the constructor argument values (no need for types, they're inferred from the constructor signature).
+             for (i = 0; i < constructorArgs.Length; i++)
++            {
+                 EmitValue(writer, paramTypes[i], constructorArgs[i]);
++            }
+ 
+             // Next a short with the count of properties and fields.
+             writer.Write((ushort)(namedProperties.Length + namedFields.Length));
+@@ -124,22 +139,29 @@ namespace System.Reflection.Emit.Experimental
+                 // Validate the property.
+                 PropertyInfo property = namedProperties[i];
+                 if (property == null)
++                {
+                     throw new ArgumentNullException("namedProperties[" + i + "]");
++                }
+ 
+                 // Allow null for non-primitive types only.
+                 Type propType = property.PropertyType;
+                 object? propertyValue = propertyValues[i];
+                 if (propertyValue == null && propType.IsValueType)
++                {
+                     throw new ArgumentNullException("propertyValues[" + i + "]");
++                }
+ 
+                 // Validate property type.
+                 if (!ValidateType(propType))
++                {
+                     throw new ArgumentException("Bad Type In Custom Attribute");
++                }
+ 
+                 // Property has to be writable.
+                 if (!property.CanWrite)
++                {
+                     throw new ArgumentException("Not A Writable Property");
+-
++                }
+ 
+                 // Make sure the property's type can take the given value.
+                 // Note that there will be no coercion.
+@@ -163,18 +185,23 @@ namespace System.Reflection.Emit.Experimental
+                 // Validate the field.
+                 FieldInfo namedField = namedFields[i];
+                 if (namedField == null)
++                {
+                     throw new ArgumentNullException("namedFields[" + i + "]");
++                }
+ 
+                 // Allow null for non-primitive types only.
+                 Type fldType = namedField.FieldType;
+                 object? fieldValue = fieldValues[i];
+                 if (fieldValue == null && fldType.IsValueType)
++                {
+                     throw new ArgumentNullException("fieldValues[" + i + "]");
++                }
+ 
+                 // Validate field type.
+                 if (!ValidateType(fldType))
++                {
+                     throw new ArgumentException("Bad Type In Custom Attribute");
+-
++                }
+ 
+                 // Make sure the field's type can take the given value.
+                 // Note that there will be no coercion.
+@@ -203,10 +230,12 @@ namespace System.Reflection.Emit.Experimental
+             {
+                 return t != typeof(IntPtr) && t != typeof(UIntPtr);
+             }
++
+             if (t == typeof(string) || t == typeof(Type))
+             {
+                 return true;
+             }
++
+             if (t.IsEnum)
+             {
+                 switch (Type.GetTypeCode(Enum.GetUnderlyingType(t)))
+@@ -224,10 +253,12 @@ namespace System.Reflection.Emit.Experimental
+                         return false;
+                 }
+             }
++
+             if (t.IsArray)
+             {
+-                return t.GetArrayRank() == 1 && ValidateType(t.GetElementType()!);
++                return t.GetArrayRank() == 1 && ValidateType(t.GetElementType() !);
+             }
++
+             return t == typeof(object);
+         }
+ 
+@@ -235,11 +266,12 @@ namespace System.Reflection.Emit.Experimental
+         {
+             if (type != typeof(object) && Type.GetTypeCode(passedType) != Type.GetTypeCode(type))
+             {
+-                throw new ArgumentException("Constant Doesnt Match");
++                throw new ArgumentException("Constant Doesn't Match");
+             }
++
+             if (passedType == typeof(IntPtr) || passedType == typeof(UIntPtr))
+             {
+-                throw new ArgumentException("Bad arugment for custom attribute builder");
++                throw new ArgumentException("Bad argument for custom attribute builder");
+             }
+         }
+ 
+@@ -306,7 +338,7 @@ namespace System.Reflection.Emit.Experimental
+             else if (type.IsArray)
+             {
+                 writer.Write((byte)CustomAttributeEncoding.Array);
+-                EmitType(writer, type.GetElementType()!);
++                EmitType(writer, type.GetElementType() !);
+             }
+             else
+             {
+@@ -332,6 +364,7 @@ namespace System.Reflection.Emit.Experimental
+             {
+                 writer.Write(BinaryPrimitives.ReverseEndianness(length | 0xC0_00_00_00));
+             }
++
+             writer.Write(utf8Str);
+         }
+ 
+@@ -373,33 +406,46 @@ namespace System.Reflection.Emit.Experimental
+             else if (type == typeof(string))
+             {
+                 if (value == null)
++                {
+                     writer.Write((byte)0xff);
++                }
+                 else
++                {
+                     EmitString(writer, (string)value);
++                }
+             }
+             else if (type == typeof(Type))
+             {
+                 if (value == null)
++                {
+                     writer.Write((byte)0xff);
++                }
+                 else
+                 {
+                     string? typeName = TypeNameBuilder.ToString((Type)value, TypeNameBuilder.Format.AssemblyQualifiedName);
+                     if (typeName == null)
++                    {
+                         throw new ArgumentException("Invalid Type For CA");
++                    }
++
+                     EmitString(writer, typeName);
+                 }
+             }
+             else if (type.IsArray)
+             {
+                 if (value == null)
+-                    writer.Write((uint)0xffffffff);
++                {
++                    writer.Write(0xffffffff);
++                }
+                 else
+                 {
+                     Array a = (Array)value;
+-                    Type et = type.GetElementType()!;
++                    Type et = type.GetElementType() !;
+                     writer.Write(a.Length);
+                     for (int i = 0; i < a.Length; i++)
++                    {
+                         EmitValue(writer, et, a.GetValue(i));
++                    }
+                 }
+             }
+             else if (type.IsPrimitive)
+@@ -458,7 +504,9 @@ namespace System.Reflection.Emit.Experimental
+                 // value cannot be a "System.Object" object.
+                 // If we allow this we will get into an infinite recursion
+                 if (ot == typeof(object))
++                {
+                     throw new ArgumentException("Bad Parameter Type For CAB");
++                }
+ 
+                 EmitType(writer, ot);
+                 EmitValue(writer, ot, value);
+@@ -468,7 +516,9 @@ namespace System.Reflection.Emit.Experimental
+                 string typename = "null";
+ 
+                 if (value != null)
++                {
+                     typename = value.GetType().ToString();
++                }
+ 
+                 throw new ArgumentException("Bad Parameter Type For CAB");
+             }
+diff --git a/src/Experiment/src/EntityWrappers.cs b/src/Experiment/src/EntityWrappers.cs
+index 2e64d4b37ae..5a9147ff6c3 100644
+--- a/src/Experiment/src/EntityWrappers.cs
++++ b/src/Experiment/src/EntityWrappers.cs
+@@ -2,94 +2,95 @@
+ // The .NET Foundation licenses this file to you under the MIT license.
+ 
+ using System.Collections.Generic;
++using System.Reflection.Metadata;
+ 
+ namespace System.Reflection.Emit.Experimental
+ {
+-    /* The purpose of  this class is to provide wrappers for entities that are referenced in metadata.
+-    *  The wrappers allows for convenient access to the parent token of an entity.
+-    *  They override default equality for Assemblies, Types, Methods etc. to make sure identical writes to metadata aren't made for different objects.
+-    * */
++ /* The purpose of  this class is to provide wrappers for entities that are referenced in metadata.
++ *  The wrappers allows for convenient access to the parent token of an entity.
++ *  They override default equality for Assemblies, Types, Methods etc. to make sure identical writes to metadata aren't made even if the objects are different.
++ * */
+     internal class EntityWrappers
+     {
+         internal class AssemblyReferenceWrapper
+         {
+-            internal readonly Assembly assembly;
++            internal readonly Assembly Assembly;
+ 
+             public AssemblyReferenceWrapper(Assembly assembly)
+             {
+-                this.assembly = assembly;
++                Assembly = assembly;
+             }
+ 
+             public override bool Equals(object? obj)
+             {
+                 return obj is AssemblyReferenceWrapper wrapper &&
+-                       EqualityComparer<string>.Default.Equals(assembly.GetName().FullName, wrapper.assembly.GetName().FullName);
++                       EqualityComparer<string>.Default.Equals(Assembly.GetName().FullName, wrapper.Assembly.GetName().FullName);
+             }
+ 
+             public override int GetHashCode()
+             {
+-                return HashCode.Combine(assembly.GetName().FullName);
++                return HashCode.Combine(Assembly.GetName().FullName);
+             }
+         }
+ 
+         internal class TypeReferenceWrapper
+         {
+-            internal readonly Type type;
+-            internal int parentToken = 0;
++            internal readonly Type Type;
++            internal EntityHandle ParentToken;
+ 
+             public TypeReferenceWrapper(Type type)
+             {
+-                this.type = type;
++                Type = type;
+             }
+ 
+             public override bool Equals(object? obj)
+             {
+                 return obj is TypeReferenceWrapper wrapper
+-                    && EqualityComparer<string>.Default.Equals(type.Name, wrapper.type.Name)
+-                    && EqualityComparer<string>.Default.Equals(type.Namespace, wrapper.type.Namespace)
+-                    && parentToken == wrapper.parentToken;
++                    && EqualityComparer<string>.Default.Equals(Type.Name, wrapper.Type.Name)
++                    && EqualityComparer<string>.Default.Equals(Type.Namespace, wrapper.Type.Namespace)
++                    && EqualityComparer<EntityHandle>.Default.Equals(ParentToken, wrapper.ParentToken);
+             }
+ 
+             public override int GetHashCode()
+             {
+-                return HashCode.Combine(type.Name, type.Namespace, parentToken);
++                return HashCode.Combine(Type.Name, Type.Namespace, ParentToken);
+             }
+         }
+ 
+         internal class MethodReferenceWrapper
+         {
+-            internal readonly MethodBase method;
+-            internal int parentToken = 0;
++            internal readonly MethodBase Method;
++            internal EntityHandle ParentToken;
+ 
+             public MethodReferenceWrapper(MethodBase method)
+             {
+-                this.method = method;
++                Method = method;
+             }
+ 
+             public override bool Equals(object? obj)
+             {
+                 return obj is MethodReferenceWrapper wrapper
+-                    && EqualityComparer<string>.Default.Equals(method.Name, wrapper.method.Name)
+-                    && EqualityComparer<string>.Default.Equals(method.ToString(), wrapper.method.ToString())
+-                    && parentToken == wrapper.parentToken;
++                    && EqualityComparer<string>.Default.Equals(Method.Name, wrapper.Method.Name)
++                    && EqualityComparer<string>.Default.Equals(Method.ToString(), wrapper.Method.ToString())
++                    && EqualityComparer<EntityHandle>.Default.Equals(ParentToken, wrapper.ParentToken);
+             }
+ 
+             public override int GetHashCode()
+             {
+-                return HashCode.Combine(method.Name, method.ToString(), parentToken);
++                return HashCode.Combine(Method.Name, Method.ToString(), ParentToken);
+             }
+         }
+ 
+         internal class CustomAttributeWrapper
+         {
+-            internal ConstructorInfo constructorInfo;
+-            internal byte[] binaryAttribute;
+-            internal int conToken = 0;
++            internal ConstructorInfo ConstructorInfo;
++            internal byte[] BinaryAttribute;
++            internal EntityHandle ConToken;
+ 
+             public CustomAttributeWrapper(ConstructorInfo constructorInfo, byte[] binaryAttribute)
+             {
+-                this.constructorInfo = constructorInfo;
+-                this.binaryAttribute = binaryAttribute;
++                ConstructorInfo = constructorInfo;
++                BinaryAttribute = binaryAttribute;
+             }
+         }
+     }
+diff --git a/src/Experiment/src/FieldBuilder.cs b/src/Experiment/src/FieldBuilder.cs
+new file mode 100644
+index 00000000000..f776095b85a
+--- /dev/null
++++ b/src/Experiment/src/FieldBuilder.cs
+@@ -0,0 +1,309 @@
++﻿// Licensed to the .NET Foundation under one or more agreements.
++// The .NET Foundation licenses this file to you under the MIT license.
++
++using System.Globalization;
++using System.Reflection.Metadata;
++
++namespace System.Reflection.Emit.Experimental
++{
++    // Summary:
++    //     Defines and represents a field. This class cannot be inherited.
++    public sealed class FieldBuilder : FieldInfo
++    {
++        #region Private Data Members
++        internal TypeBuilder _typeBuilder;
++        internal ModuleBuilder _moduleBuilder;
++        private string _fieldName;
++        private FieldAttributes _attributes;
++        private Type _fieldType;
++        private BlobBuilder _fieldSignature;
++        #endregion
++
++        internal EntityHandle _fieldTok;
++
++        #region Constructor
++        internal FieldBuilder(TypeBuilder typeBuilder, string fieldName, Type type,
++#pragma warning disable SA1011 // Closing square brackets should be spaced correctly
++            Type[]? requiredCustomModifiers, FieldAttributes attributes, EntityHandle fieldTok)
++#pragma warning restore SA1011 // Closing square brackets should be spaced correctly
++        {
++            ArgumentException.ThrowIfNullOrEmpty(fieldName);
++
++            if (fieldName[0] == '\0')
++            {
++                throw new ArgumentException("Illegal field name: " + nameof(fieldName));
++            }
++
++            ArgumentNullException.ThrowIfNull(type);
++
++            if (type == typeof(void))
++            {
++                throw new ArgumentException("Field cannot be type void");
++            }
++
++            _fieldName = fieldName;
++            _typeBuilder = typeBuilder;
++            _moduleBuilder = typeBuilder.Module;
++            _fieldType = type;
++            _attributes = attributes & ~FieldAttributes.ReservedMask;
++            _fieldSignature = SignatureHelper.FieldSignatureEncoder(FieldType, _moduleBuilder);
++            _fieldTok = fieldTok;
++        }
++
++        public BlobBuilder FieldSignature
++        {
++            get { return _fieldSignature; }
++        }
++        #endregion
++        //
++        // Summary:
++        //     Indicates the reference to the System.Type object from which this object was
++        //     obtained. This property is read-only.
++        //
++        // Returns:
++        //     A reference to the System.Type object from which this instance was obtained.
++        public override Type? ReflectedType
++        {
++            get { return _typeBuilder; }
++        }
++
++        // Summary:
++        //     Gets the module in which the type that contains this field is being defined.
++        //
++        // Returns:
++        //     A System.Reflection.Module that represents the dynamic module in which this field
++        //     is being defined.
++        public override Module Module => _typeBuilder.Module;
++
++        // Summary:
++        //     Gets a token that identifies the current dynamic module in metadata.
++        //
++        // Returns:
++        //     An integer token that identifies the current module in metadata.
++       // public override int MetadataToken => _fieldTok.;
++
++        //
++        // Summary:
++        //     Indicates the System.Type object that represents the type of this field. This
++        //     property is read-only.
++        //
++        // Returns:
++        //     The System.Type object that represents the type of this field.
++        public override Type FieldType => _fieldType;
++
++        // Summary:
++        //     Indicates the internal metadata handle for this field. This property is read-only.
++        //
++        // Returns:
++        //     The internal metadata handle for this field.
++        //
++        // Exceptions:
++        //   T:System.NotSupportedException:
++        //     This method is not supported.
++        public override RuntimeFieldHandle FieldHandle
++            => throw new NotSupportedException("Not supported for dynamic modules");
++
++        // Summary:
++        //     Indicates a reference to the System.Type object for the type that declares this
++        //     field. This property is read-only.
++        //
++        // Returns:
++        //     A reference to the System.Type object for the type that declares this field.
++        public override Type? DeclaringType
++        {
++            get { return _typeBuilder; }
++        }
++
++        // Summary:
++        //     Indicates the attributes of this field. This property is read-only.
++        //
++        // Returns:
++        //     The attributes of this field.
++        public override FieldAttributes Attributes
++            => _attributes;
++
++        // Summary:
++        //     Indicates the name of this field. This property is read-only.
++        //
++        // Returns:
++        //     A System.String containing the name of this field.
++        public override string Name
++            => _fieldName;
++
++        // Summary:
++        //     Returns all the custom attributes defined for this field.
++        //
++        // Parameters:
++        //   inherit:
++        //     Controls inheritance of custom attributes from base classes.
++        //
++        // Returns:
++        //     An array of type System.Object representing all the custom attributes of the
++        //     constructor represented by this System.Reflection.Emit.FieldBuilder instance.
++        //
++        // Exceptions:
++        //   T:System.NotSupportedException:
++        //     This method is not supported.
++        public override object[] GetCustomAttributes(bool inherit)
++            => throw new NotSupportedException("Not supported for dynamic modules");
++
++        // Summary:
++        //     Returns all the custom attributes defined for this field identified by the given
++        //     type.
++        //
++        // Parameters:
++        //   attributeType:
++        //     The custom attribute type.
++        //
++        //   inherit:
++        //     Controls inheritance of custom attributes from base classes.
++        //
++        // Returns:
++        //     An array of type System.Object representing all the custom attributes of the
++        //     constructor represented by this System.Reflection.Emit.FieldBuilder instance.
++        //
++        // Exceptions:
++        //   T:System.NotSupportedException:
++        //     This method is not supported.
++        public override object[] GetCustomAttributes(Type attributeType, bool inherit)
++            => throw new NotSupportedException("Not supported for dynamic modules");
++
++        // Summary:
++        //     Retrieves the value of the field supported by the given object.
++        //
++        // Parameters:
++        //   obj:
++        //     The object on which to access the field.
++        //
++        // Returns:
++        //     An System.Object containing the value of the field reflected by this instance.
++        //
++        // Exceptions:
++        //   T:System.NotSupportedException:
++        //     This method is not supported.
++        public override object? GetValue(object? obj)
++            => throw new NotSupportedException("Not supported for dynamic modules");
++
++        // Summary:
++        //     Indicates whether an attribute having the specified type is defined on a field.
++        //
++        // Parameters:
++        //   attributeType:
++        //     The type of the attribute.
++        //
++        //   inherit:
++        //     Controls inheritance of custom attributes from base classes.
++        //
++        // Returns:
++        //     true if one or more instance of attributeType is defined on this field; otherwise,
++        //     false.
++        //
++        // Exceptions:
++        //   T:System.NotSupportedException:
++        //     This method is not currently supported. Retrieve the field using System.Type.GetField(System.String,System.Reflection.BindingFlags)
++        //     and call System.Reflection.MemberInfo.IsDefined(System.Type,System.Boolean) on
++        //     the returned System.Reflection.FieldInfo.
++        public override bool IsDefined(Type attributeType, bool inherit)
++            => throw new NotSupportedException("Not supported for dynamic modules");
++
++        // Summary:
++        //     Sets the default value of this field.
++        //
++        // Parameters:
++        //   defaultValue:
++        //     The new default value for this field.
++        //
++        // Exceptions:
++        //   T:System.InvalidOperationException:
++        //     The containing type has been created using System.Reflection.Emit.TypeBuilder.CreateType.
++        //
++        //   T:System.ArgumentException:
++        //     The field is not one of the supported types. -or- The type of defaultValue does
++        //     not match the type of the field. -or- The field is of type System.Object or other
++        //     reference type, defaultValue is not null, and the value cannot be assigned to
++        //     the reference type.
++        public void SetConstant(object? defaultValue)
++            => throw new NotImplementedException();
++
++        // Summary:
++        //     Sets a custom attribute using a custom attribute builder.
++        //
++        // Parameters:
++        //   customBuilder:
++        //     An instance of a helper class to define the custom attribute.
++        //
++        // Exceptions:
++        //   T:System.ArgumentNullException:
++        //     con is null.
++        //
++        //   T:System.InvalidOperationException:
++        //     The parent type of this field is complete.
++        public void SetCustomAttribute(CustomAttributeBuilder customBuilder)
++            => throw new NotImplementedException();
++
++        // Summary:
++        //     Sets a custom attribute using a specified custom attribute blob.
++        //
++        // Parameters:
++        //   con:
++        //     The constructor for the custom attribute.
++        //
++        //   binaryAttribute:
++        //     A byte blob representing the attributes.
++        //
++        // Exceptions:
++        //   T:System.ArgumentNullException:
++        //     con or binaryAttribute is null.
++        //
++        //   T:System.InvalidOperationException:
++        //     The parent type of this field is complete.
++        public void SetCustomAttribute(ConstructorInfo con, byte[] binaryAttribute)
++            => throw new NotImplementedException();
++
++        // Summary:
++        //     Specifies the field layout.
++        //
++        // Parameters:
++        //   iOffset:
++        //     The offset of the field within the type containing this field.
++        //
++        // Exceptions:
++        //   T:System.InvalidOperationException:
++        //     The containing type has been created using System.Reflection.Emit.TypeBuilder.CreateType.
++        //
++        //   T:System.ArgumentException:
++        //     iOffset is less than zero.
++        public void SetOffset(int iOffset)
++            => throw new NotImplementedException();
++
++        // Summary:
++        //     Sets the value of the field supported by the given object.
++        //
++        // Parameters:
++        //   obj:
++        //     The object on which to access the field.
++        //
++        //   val:
++        //     The value to assign to the field.
++        //
++        //   invokeAttr:
++        //     A member of IBinder that specifies the type of binding that is desired (for example,
++        //     IBinder.CreateInstance, IBinder.ExactBinding).
++        //
++        //   binder:
++        //     A set of properties and enabling for binding, coercion of argument types, and
++        //     invocation of members using reflection. If binder is null, then IBinder.DefaultBinding
++        //     is used.
++        //
++        //   culture:
++        //     The software preferences of a particular culture.
++        //
++        // Exceptions:
++        //   T:System.NotSupportedException:
++        //     This method is not supported.
++        public override void SetValue(object? obj, object? val, BindingFlags invokeAttr, Binder? binder, CultureInfo? culture)
++        {
++            throw new NotSupportedException("Not supported for dynamic modules");
++        }
++    }
++}
+diff --git a/src/Experiment/src/MetadataHelper.cs b/src/Experiment/src/MetadataHelper.cs
+index b21ebfb3ec8..18c9543b905 100644
+--- a/src/Experiment/src/MetadataHelper.cs
++++ b/src/Experiment/src/MetadataHelper.cs
+@@ -6,7 +6,7 @@ using System.Reflection.Metadata.Ecma335;
+ 
+ namespace System.Reflection.Emit.Experimental
+ {
+-    //This static helper class adds common entities to a Metadata Builder.
++    // This static helper class adds common entities to a Metadata Builder.
+     internal static class MetadataHelper
+     {
+         internal static AssemblyReferenceHandle AddAssemblyReference(Assembly assembly, MetadataBuilder metadata)
+@@ -15,69 +15,73 @@ namespace System.Reflection.Emit.Experimental
+ 
+             if (assemblyName == null || assemblyName.Name == null)
+             {
+-                throw new ArgumentNullException(nameof(assemblyName));
++                throw new ArgumentException(nameof(assemblyName));
+             }
+ 
+             return AddAssemblyReference(metadata, assemblyName.Name, assemblyName.Version, assemblyName.CultureName, assemblyName.GetPublicKey(), (AssemblyFlags)assemblyName.Flags);
+         }
+ 
++#pragma warning disable SA1011 // Closing square brackets should be spaced correctly
+         internal static AssemblyReferenceHandle AddAssemblyReference(MetadataBuilder metadata, string name, Version? version, string? culture, byte[]? publicKey, AssemblyFlags flags)
++#pragma warning restore SA1011 // Closing square brackets should be spaced correctly
+         {
+             return metadata.AddAssemblyReference(
+-                name: metadata.GetOrAddString(name),
+-                version: version ?? new Version(0, 0, 0, 0),
+-                culture: (culture == null) ? default : metadata.GetOrAddString(value: culture),
+-                publicKeyOrToken: (publicKey == null) ? default : metadata.GetOrAddBlob(publicKey),
+-                flags: flags,
+-                hashValue: default); // not sure where to find hashValue.
++            name: metadata.GetOrAddString(name),
++            version: version ?? new Version(0, 0, 0, 0),
++            culture: (culture == null) ? default : metadata.GetOrAddString(value: culture),
++            publicKeyOrToken: (publicKey == null) ? default : metadata.GetOrAddBlob(publicKey),
++            flags: flags,
++            hashValue: default); // not sure where to find hashValue.
+         }
+ 
+-        internal static TypeDefinitionHandle AddTypeDef(TypeBuilder typeBuilder, MetadataBuilder metadata, int methodToken)
++        internal static TypeDefinitionHandle AddTypeDef(TypeBuilder typeBuilder, MetadataBuilder metadata, int methodToken, int fieldToken, EntityHandle? baseType)
+         {
+-            //Add type metadata
++            // Add type metadata
+             return metadata.AddTypeDefinition(
+                 attributes: typeBuilder.UserTypeAttribute,
+                 (typeBuilder.Namespace == null) ? default : metadata.GetOrAddString(typeBuilder.Namespace),
+                 name: metadata.GetOrAddString(typeBuilder.Name),
+-                baseType: default,//Inheritance to be added
+-                fieldList: MetadataTokens.FieldDefinitionHandle(1),//Update once we support fields.
++                baseType: baseType == null ? default : (EntityHandle)baseType,
++                fieldList: MetadataTokens.FieldDefinitionHandle(fieldToken),
+                 methodList: MetadataTokens.MethodDefinitionHandle(methodToken));
+         }
+ 
+-        internal static TypeReferenceHandle AddTypeReference(MetadataBuilder metadata, Type type, AssemblyReferenceHandle parent)
++        internal static TypeReferenceHandle AddTypeReference(MetadataBuilder metadata, Type type, EntityHandle parent)
+         {
+             return AddTypeReference(metadata, parent, type.Name, type.Namespace);
+         }
+ 
+-        internal static TypeReferenceHandle AddTypeReference(MetadataBuilder metadata, AssemblyReferenceHandle parent, string name, string? nameSpace)
++        internal static TypeReferenceHandle AddTypeReference(MetadataBuilder metadata, EntityHandle parent, string name, string? nameSpace)
+         {
+             return metadata.AddTypeReference(
+                 parent,
+                 (nameSpace == null) ? default : metadata.GetOrAddString(nameSpace),
+-                metadata.GetOrAddString(name)
+-                );
++                metadata.GetOrAddString(name));
+         }
+ 
+-        internal static MemberReferenceHandle AddConstructorReference(MetadataBuilder metadata, TypeReferenceHandle parent, MethodBase method)
++        internal static MemberReferenceHandle AddConstructorReference(MetadataBuilder metadata, EntityHandle parent, MethodBase method, ModuleBuilder module)
+         {
+-            var blob = SignatureHelper.MethodSignatureEnconder(method.GetParameters(), null, true);
++            var blob = SignatureHelper.MethodSignatureEncoder(method.GetParameters(), null, true, module);
+             return metadata.AddMemberReference(
+                 parent,
+                 metadata.GetOrAddString(method.Name),
+-                metadata.GetOrAddBlob(blob)
+-                );
++                metadata.GetOrAddBlob(blob));
+         }
+ 
+-        internal static MethodDefinitionHandle AddMethodDefintion(MetadataBuilder metadata, MethodBuilder methodBuilder)
++        internal static MethodDefinitionHandle AddMethodDefintion(MetadataBuilder metadata, MethodBuilder methodBuilder, ModuleBuilder module)
+         {
+             return metadata.AddMethodDefinition(
+                 methodBuilder.Attributes,
+                 MethodImplAttributes.IL,
+                 metadata.GetOrAddString(methodBuilder.Name),
+-                metadata.GetOrAddBlob(SignatureHelper.MethodSignatureEnconder(methodBuilder._parameters, methodBuilder._returnType, !methodBuilder.IsStatic)),
+-                -1, //No body supported
+-                parameterList: default
+-                );
++                metadata.GetOrAddBlob(SignatureHelper.MethodSignatureEncoder(methodBuilder._parameters, methodBuilder._returnType, !methodBuilder.IsStatic, module)),
++                -1,
++                parameterList: default);
++        }
++
++        internal static FieldDefinitionHandle AddFieldDefinition(MetadataBuilder metadata, FieldBuilder fieldBuilder)
++        {
++            return metadata.AddFieldDefinition(fieldBuilder.Attributes, metadata.GetOrAddString(fieldBuilder.Name), metadata.GetOrAddBlob(fieldBuilder.FieldSignature));
+         }
+     }
+ }
+diff --git a/src/Experiment/src/MethodBuilder.cs b/src/Experiment/src/MethodBuilder.cs
+index e88c223a5e2..ca90c7758e0 100644
+--- a/src/Experiment/src/MethodBuilder.cs
++++ b/src/Experiment/src/MethodBuilder.cs
+@@ -1,4 +1,4 @@
+-﻿// Licensed to the .NET Foundation under one or more agreements.
++﻿ // Licensed to the .NET Foundation under one or more agreements.
+ // The .NET Foundation licenses this file to you under the MIT license.
+ 
+ namespace System.Reflection.Emit.Experimental
+@@ -11,7 +11,9 @@ namespace System.Reflection.Emit.Experimental
+         public override TypeBuilder DeclaringType { get; }
+         public override System.Reflection.Module Module { get; }
+         internal Type? _returnType;
++#pragma warning disable SA1011 // Closing square brackets should be spaced correctly
+         internal Type[]? _parameters;
++#pragma warning restore SA1011 // Closing square brackets should be spaced correctly
+ 
+         internal MethodBuilder(string name, System.Reflection.MethodAttributes attributes, CallingConventions callingConventions, Type? returnType, Type[]? parameters, TypeBuilder declaringType)
+         {
+@@ -45,13 +47,19 @@ namespace System.Reflection.Emit.Experimental
+             throw new NotImplementedException();
+         }
+ 
++#pragma warning disable SA1011 // Closing square brackets should be spaced correctly
+         public void SetSignature(System.Type? returnType, System.Type[]? returnTypeRequiredCustomModifiers, System.Type[]? returnTypeOptionalCustomModifiers, System.Type[]? parameterTypes, System.Type[][]? parameterTypeRequiredCustomModifiers, System.Type[][]? parameterTypeOptionalCustomModifiers)
++#pragma warning restore SA1011 // Closing square brackets should be spaced correctly
+         {
+             throw new NotImplementedException();
+         }
+ 
+         public override bool ContainsGenericParameters { get => throw new NotImplementedException(); }
+-        public bool InitLocals { get => throw new NotImplementedException(); set { } }
++        public bool InitLocals
++        {
++            get => throw new NotImplementedException(); set { }
++        }
++
+         public override bool IsGenericMethod { get => throw new NotImplementedException(); }
+         public override bool IsGenericMethodDefinition { get => throw new NotImplementedException(); }
+         public override bool IsSecurityCritical { get => throw new NotImplementedException(); }
+diff --git a/src/Experiment/src/ModuleBuilder.cs b/src/Experiment/src/ModuleBuilder.cs
+index 6c1b76a2f7e..f3b8cb0ddfc 100644
+--- a/src/Experiment/src/ModuleBuilder.cs
++++ b/src/Experiment/src/ModuleBuilder.cs
+@@ -1,4 +1,4 @@
+-// Licensed to the .NET Foundation under one or more agreements.
++﻿// Licensed to the .NET Foundation under one or more agreements.
+ // The .NET Foundation licenses this file to you under the MIT license.
+ 
+ using System.Collections.Generic;
+@@ -11,21 +11,21 @@ namespace System.Reflection.Emit.Experimental
+     public class ModuleBuilder : System.Reflection.Module
+     {
+         internal List<AssemblyReferenceWrapper> _assemblyRefStore = new List<AssemblyReferenceWrapper>();
+-        internal int _nextAssemblyRefRowId = 1;
+ 
+         internal List<TypeReferenceWrapper> _typeRefStore = new List<TypeReferenceWrapper>();
+-        internal int _nextTypeRefRowId = 1;
+ 
+         internal List<MethodReferenceWrapper> _methodRefStore = new List<MethodReferenceWrapper>();
+-        internal int _nextMethodRefRowId = 1;
+-
+ 
+         internal List<TypeBuilder> _typeDefStore = new List<TypeBuilder>();
+-        internal int _nextMethodDefRowId = 1;
+ 
+-        public override System.Reflection.Assembly Assembly { get; }
++        internal int _methodDefCount = 0;
++        internal int _fieldDefCount = 0;
+ 
+-        public override string ScopeName { get; }
++        public override System.Reflection.Assembly Assembly { get; }
++        public override string ScopeName
++        {
++            get;
++        }
+ 
+         internal ModuleBuilder(string name, Assembly assembly)
+         {
+@@ -33,7 +33,7 @@ namespace System.Reflection.Emit.Experimental
+             Assembly = assembly;
+         }
+ 
+-        // Wherever possible metadata construction is done in module. 
++        // Wherever possible metadata construction is done in module.
+         internal void AppendMetadata(MetadataBuilder metadata)
+         {
+             // Add module metadata
+@@ -53,52 +53,131 @@ namespace System.Reflection.Emit.Experimental
+                 fieldList: MetadataTokens.FieldDefinitionHandle(1),
+                 methodList: MetadataTokens.MethodDefinitionHandle(1));
+ 
++            int fieldTempCounter = 1;
++            int methodTempCounter = 1;
++            // Add each type definition to metadata table.
++            foreach (TypeBuilder typeBuilder in _typeDefStore)
++            {
++                TypeDefinitionHandle typeDefintionHandle = MetadataHelper.AddTypeDef(typeBuilder, metadata, methodTempCounter, fieldTempCounter, typeBuilder._baseToken);
++
++                // Add each method definition to metadata table.
++                foreach (MethodBuilder method in typeBuilder._methodDefStore)
++                {
++                    MetadataHelper.AddMethodDefintion(metadata, method, this);
++                    methodTempCounter++;
++                }
++
++                // Add each field definition to metadata table.
++                foreach (FieldBuilder field in typeBuilder._fieldDefStore)
++                {
++                    MetadataHelper.AddFieldDefinition(metadata, field);
++                    fieldTempCounter++;
++                }
++
++                // Add each custom attribute to metadata table.
++                foreach (CustomAttributeWrapper customAttribute in typeBuilder._customAttributes)
++                {
++                    metadata.AddCustomAttribute(typeDefintionHandle, customAttribute.ConToken, metadata.GetOrAddBlob(customAttribute.BinaryAttribute));
++                }
++            }
++
++            // Add references last because in creating type and member definitions, more references can be added to metadata.
++
+             // Add each assembly reference to metadata table.
+             foreach (var assemblyRef in _assemblyRefStore)
+             {
+-                MetadataHelper.AddAssemblyReference(assemblyRef.assembly, metadata);
++                MetadataHelper.AddAssemblyReference(assemblyRef.Assembly, metadata);
+             }
+ 
+             // Add each type reference to metadata table.
+             foreach (var typeReference in _typeRefStore)
+             {
+-                AssemblyReferenceHandle parent = MetadataTokens.AssemblyReferenceHandle(typeReference.parentToken);
+-                MetadataHelper.AddTypeReference(metadata, typeReference.type, parent);
++                MetadataHelper.AddTypeReference(metadata, typeReference.Type, typeReference.ParentToken);
+             }
+ 
+             // Add each method reference to metadata table.
+             foreach (var methodRef in _methodRefStore)
+             {
+-                TypeReferenceHandle parent = MetadataTokens.TypeReferenceHandle(methodRef.parentToken);
+-                MetadataHelper.AddConstructorReference(metadata, parent, methodRef.method);
++                MetadataHelper.AddConstructorReference(metadata, methodRef.ParentToken, methodRef.Method, this);
+             }
+ 
+-            // Add each type definition to metadata table.
+-            foreach (TypeBuilder typeBuilder in _typeDefStore)
++        }
++
++        public System.Reflection.Emit.Experimental.TypeBuilder DefineType(string name, System.Reflection.TypeAttributes attr)
++        {
++            return DefineType(name, attr, null);
++        }
++
++        internal EntityHandle AddorGetMethodReference(MethodBase method)
++        {
++            // Check if MethodBuilder
++            var methodBuilder = method as MethodBuilder;
++            if (methodBuilder != null)
+             {
+-                TypeDefinitionHandle typeDefintionHandle = MetadataHelper.AddTypeDef(typeBuilder, metadata, _nextMethodDefRowId);
++                throw new ArgumentException("MethodBuilder should not be used as reference " + nameof(method));
++            }
+ 
+-                // Add each method definition to metadata table.
+-                foreach (MethodBuilder method in typeBuilder._methodDefStore)
+-                {
+-                    MetadataHelper.AddMethodDefintion(metadata, method);
+-                    _nextMethodDefRowId++;
+-                }
++            MethodReferenceWrapper methodReferenceWrapper = new MethodReferenceWrapper(method);
+ 
+-                // Add each custom attribute to metadata table.
+-                foreach (CustomAttributeWrapper customAttribute in typeBuilder._customAttributes)
++            if ((method.DeclaringType == null))
++            {
++                throw new ArgumentException("Could not find parent type of method " + nameof(method));
++            }
++
++            methodReferenceWrapper.ParentToken = AddorGetTypeReference(method.DeclaringType);
++
++            if (_methodRefStore.Contains(methodReferenceWrapper))
++            {
++                return MetadataTokens.MemberReferenceHandle(_methodRefStore.IndexOf(methodReferenceWrapper) + 1);
++            }
++            else
++            {
++                _methodRefStore.Add(methodReferenceWrapper);
++                return MetadataTokens.MemberReferenceHandle(_methodRefStore.Count);
++            }
++        }
++
++        internal EntityHandle AddorGetTypeReference(Type type)
++        {
++            // Check if Type Builder
++            var typeBuilder = type as TypeBuilder;
++            if (typeBuilder != null)
++            {
++                int token = _typeDefStore.IndexOf(typeBuilder);
++                if (token == -1)
+                 {
+-                    MemberReferenceHandle constructorHandle = MetadataTokens.MemberReferenceHandle(customAttribute.conToken);
+-                    metadata.AddCustomAttribute(typeDefintionHandle, constructorHandle, metadata.GetOrAddBlob(customAttribute.binaryAttribute));
++                    throw new ArgumentException("This TypeBuilder was created in another module");
+                 }
++
++                return MetadataTokens.TypeDefinitionHandle(token + 1);
++            }
++
++            TypeReferenceWrapper typeReferenceWrapper = new TypeReferenceWrapper(type);
++            typeReferenceWrapper.ParentToken = AddorGetAssemblyReference(type.Assembly);
++
++            if (_typeRefStore.Contains(typeReferenceWrapper))
++            {
++                return MetadataTokens.TypeReferenceHandle(_typeRefStore.IndexOf(typeReferenceWrapper) + 1);
++            }
++            else
++            {
++                _typeRefStore.Add(typeReferenceWrapper);
++                return MetadataTokens.TypeReferenceHandle(_typeRefStore.Count);
+             }
+         }
+ 
+-        public System.Reflection.Emit.Experimental.TypeBuilder DefineType(string name, System.Reflection.TypeAttributes attr)
++        internal EntityHandle AddorGetAssemblyReference(Assembly assembly)
+         {
+-            TypeBuilder _type = new TypeBuilder(name, this, Assembly, attr);
+-            _typeDefStore.Add(_type);
+-            return _type;
++            AssemblyReferenceWrapper assemblyReference = new AssemblyReferenceWrapper(assembly);
++            if (_assemblyRefStore.Contains(assemblyReference))
++            {
++                return MetadataTokens.AssemblyReferenceHandle(_assemblyRefStore.IndexOf(assemblyReference) + 1);
++            }
++            else
++            {
++                _assemblyRefStore.Add(assemblyReference);
++                return MetadataTokens.AssemblyReferenceHandle(_assemblyRefStore.Count);
++            }
+         }
+ 
+         public void CreateGlobalFunctions()
+@@ -120,19 +199,26 @@ namespace System.Reflection.Emit.Experimental
+         public System.Reflection.Emit.FieldBuilder DefineInitializedData(string name, byte[] data, System.Reflection.FieldAttributes attributes)
+             => throw new NotImplementedException();
+ 
+-        [System.Diagnostics.CodeAnalysis.RequiresUnreferencedCodeAttribute("P/Invoke marshalling may dynamically access members that could be trimmed.")]
++        [System.Diagnostics.CodeAnalysis.RequiresUnreferencedCodeAttribute("P/Invoke marshaling may dynamically access members that could be trimmed.")]
+         public System.Reflection.Emit.MethodBuilder DefinePInvokeMethod(string name, string dllName, System.Reflection.MethodAttributes attributes, System.Reflection.CallingConventions callingConvention, System.Type? returnType, System.Type[]? parameterTypes, System.Runtime.InteropServices.CallingConvention nativeCallConv, System.Runtime.InteropServices.CharSet nativeCharSet)
+             => throw new NotImplementedException();
+ 
+-        [System.Diagnostics.CodeAnalysis.RequiresUnreferencedCodeAttribute("P/Invoke marshalling may dynamically access members that could be trimmed.")]
++        [System.Diagnostics.CodeAnalysis.RequiresUnreferencedCodeAttribute("P/Invoke marshaling may dynamically access members that could be trimmed.")]
+         public System.Reflection.Emit.MethodBuilder DefinePInvokeMethod(string name, string dllName, string entryName, System.Reflection.MethodAttributes attributes, System.Reflection.CallingConventions callingConvention, System.Type? returnType, System.Type[]? parameterTypes, System.Runtime.InteropServices.CallingConvention nativeCallConv, System.Runtime.InteropServices.CharSet nativeCharSet)
+             => throw new NotImplementedException();
+ 
+-        public System.Reflection.Emit.TypeBuilder DefineType(string name)
+-            => throw new NotImplementedException();
++        public System.Reflection.Emit.Experimental.TypeBuilder DefineType(string name)
++        {
++            return DefineType(name, default, null);
++        }
+ 
+-        public System.Reflection.Emit.TypeBuilder DefineType(string name, System.Reflection.TypeAttributes attr, [System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembersAttribute(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.All)] System.Type? parent)
+-            => throw new NotImplementedException();
++        public System.Reflection.Emit.Experimental.TypeBuilder DefineType(string name, System.Reflection.TypeAttributes attr, [System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembersAttribute(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.All)] System.Type? parent)
++        {
++            TypeBuilder type = new TypeBuilder(name, this, Assembly, attr,
++                MetadataTokens.TypeDefinitionHandle(_typeDefStore.Count + 1), parent);
++            _typeDefStore.Add(type);
++            return type;
++        }
+ 
+         public System.Reflection.Emit.TypeBuilder DefineType(string name, System.Reflection.TypeAttributes attr, [System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembersAttribute(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.All)] System.Type? parent, int typesize)
+             => throw new NotImplementedException();
+diff --git a/src/Experiment/src/SignatureHelper.cs b/src/Experiment/src/SignatureHelper.cs
+index 5ed5d4367ab..54e995c102b 100644
+--- a/src/Experiment/src/SignatureHelper.cs
++++ b/src/Experiment/src/SignatureHelper.cs
+@@ -6,11 +6,20 @@ using System.Reflection.Metadata.Ecma335;
+ 
+ namespace System.Reflection.Emit.Experimental
+ {
+-    //This is prototype code, to generate simple signatures.
+-    //For more complex signatures, will port System.Reflection.Emit's SignatureHelper.
+     internal static class SignatureHelper
+     {
+-        internal static BlobBuilder MethodSignatureEnconder(ParameterInfo[]? parameters, ParameterInfo? returnType, bool isInstance)
++        internal static BlobBuilder FieldSignatureEncoder(Type fieldType, ModuleBuilder moduleBuilder)
++        {
++            var fieldSignature = new BlobBuilder();
++
++            var encoder = new BlobEncoder(fieldSignature).FieldSignature();
++
++            MapReflectionTypeToSignatureType(encoder, fieldType, moduleBuilder);
++
++            return fieldSignature;
++        }
++
++        internal static BlobBuilder MethodSignatureEncoder(ParameterInfo[]? parameters, ParameterInfo? returnType, bool isInstance, ModuleBuilder moduleBuilder)
+         {
+             Type[]? typeParameters = null;
+             Type? typeReturn = null;
+@@ -25,42 +34,58 @@ namespace System.Reflection.Emit.Experimental
+                 typeReturn = returnType.ParameterType;
+             }
+ 
+-            return MethodSignatureEnconder(typeParameters, typeReturn, isInstance);
++            return MethodSignatureEncoder(typeParameters, typeReturn, isInstance, moduleBuilder);
+         }
+-        internal static BlobBuilder MethodSignatureEnconder(Type[]? parameters, Type? returnType, bool isInstance)
++
++        internal static BlobBuilder MethodSignatureEncoder(Type[]? parameters, Type? returnType, bool isInstance, ModuleBuilder moduleBuilder)
+         {
+             // Encoding return type and parameters.
+             var methodSignature = new BlobBuilder();
+ 
+-            ParametersEncoder _parEncoder;
+-            ReturnTypeEncoder _retEncoder;
++            ParametersEncoder parEncoder;
++            ReturnTypeEncoder retEncoder;
+ 
+-            new BlobEncoder(methodSignature).
+-                MethodSignature(isInstanceMethod: isInstance).
+-                Parameters((parameters == null) ? 0 : parameters.Length, out _retEncoder, out _parEncoder);
++            new BlobEncoder(methodSignature)
++                .MethodSignature(isInstanceMethod: isInstance).
++                Parameters((parameters == null) ? 0 : parameters.Length, out retEncoder, out parEncoder);
+ 
+             if (returnType != null && returnType != typeof(void))
+             {
+-                MapReflectionTypeToSignatureType(_retEncoder.Type(), returnType);
++                MapReflectionTypeToSignatureType(retEncoder.Type(), returnType, moduleBuilder);
+             }
+             else // If null mark ReturnTypeEncoder as void
+             {
+-                _retEncoder.Void();
++                retEncoder.Void();
+             }
+ 
+             if (parameters != null) // If parameters null, just keep empty ParametersEncoder empty
+             {
+                 foreach (var parameter in parameters)
+                 {
+-                    MapReflectionTypeToSignatureType(_parEncoder.AddParameter().Type(), parameter);
++                    MapReflectionTypeToSignatureType(parEncoder.AddParameter().Type(), parameter, moduleBuilder);
+                 }
+             }
++
+             return methodSignature;
+         }
+ 
+-        private static void MapReflectionTypeToSignatureType(SignatureTypeEncoder signature, Type type)
++        private static void MapReflectionTypeToSignatureType(SignatureTypeEncoder signature, Type type, ModuleBuilder module)
+         {
+-            // We need to translate from Reflection.Type to SignatureTypeEncoder. Most common types for proof of concept. More types will be added.
++            bool standardType = true;
++
++            if (type.IsArray) // Currently assuming SZ arrays
++            {
++                signature.SZArray();
++                var type1 = type.GetElementType();
++                if (type1 == null)
++                {
++                    throw new ArgumentException("Array has no type");
++                }
++
++                type = type1;
++            }
++
++            // We need to translate from Reflection.Type to SignatureTypeEncoder.
+             switch (type.FullName)
+             {
+                 case "System.Boolean":
+@@ -72,23 +97,51 @@ namespace System.Reflection.Emit.Experimental
+                 case "System.Char":
+                     signature.Char();
+                     break;
++                case "System.Single":
++                    signature.Single();
++                    break;
+                 case "System.Double":
+                     signature.Double();
+                     break;
+                 case "System.Int32":
+                     signature.Int32();
+                     break;
++                case "System.UInt32":
++                    signature.UInt32();
++                    break;
++                case "System.IntPtr":
++                    signature.IntPtr();
++                    break;
++                case "System.UIntPtr":
++                    signature.UIntPtr();
++                    break;
+                 case "System.Int64":
+                     signature.Int64();
+                     break;
++                case "System.UInt64":
++                    signature.UInt64();
++                    break;
++                case "System.Int16":
++                    signature.Int16();
++                    break;
++                case "System.UInt16":
++                    signature.UInt16();
++                    break;
+                 case "System.Object":
+                     signature.Object();
+                     break;
+                 case "System.String":
+                     signature.String();
+                     break;
+-                default: throw new NotImplementedException("This parameter type is not yet supported: " + type.FullName);
++                default: standardType = false;
++                    break;
++            }
++
++            if (!standardType)
++            {
++                signature.Type(module.AddorGetTypeReference(type), type.IsValueType);
+             }
++
+         }
+     }
+ }
+diff --git a/src/Experiment/src/StyleCop.Analyzers.ruleset b/src/Experiment/src/StyleCop.Analyzers.ruleset
+new file mode 100644
+index 00000000000..cf0f88fc9db
+--- /dev/null
++++ b/src/Experiment/src/StyleCop.Analyzers.ruleset
+@@ -0,0 +1,185 @@
++﻿<?xml version="1.0" encoding="utf-8"?>
++<RuleSet Name="SyleCop Rules" ToolsVersion="17.0">
++  <Rules AnalyzerId="Microsoft.Analyzers.ManagedCodeAnalysis" RuleNamespace="Microsoft.Rules.Managed">
++    <Rule Id="CA2208" Action="Error" />
++  </Rules>
++  <Rules AnalyzerId="StyleCop.Analyzers" RuleNamespace="StyleCop.Analyzers">
++    <Rule Id="SA0000" Action="Error" />
++    <Rule Id="SA0001" Action="None" />
++    <Rule Id="SA1000" Action="Error" />
++    <Rule Id="SA1001" Action="Error" />
++    <Rule Id="SA1002" Action="Error" />
++    <Rule Id="SA1003" Action="Error" />
++    <Rule Id="SA1004" Action="Error" />
++    <Rule Id="SA1005" Action="Error" />
++    <Rule Id="SA1006" Action="Error" />
++    <Rule Id="SA1007" Action="Error" />
++    <Rule Id="SA1008" Action="Error" />
++    <Rule Id="SA1009" Action="Error" />
++    <Rule Id="SA1010" Action="Error" />
++    <Rule Id="SA1011" Action="None" />
++    <Rule Id="SA1012" Action="Error" />
++    <Rule Id="SA1013" Action="Error" />
++    <Rule Id="SA1014" Action="Error" />
++    <Rule Id="SA1015" Action="Error" />
++    <Rule Id="SA1016" Action="Error" />
++    <Rule Id="SA1017" Action="Error" />
++    <Rule Id="SA1018" Action="Error" />
++    <Rule Id="SA1019" Action="Error" />
++    <Rule Id="SA1020" Action="Error" />
++    <Rule Id="SA1021" Action="Error" />
++    <Rule Id="SA1022" Action="Error" />
++    <Rule Id="SA1023" Action="Error" />
++    <Rule Id="SA1024" Action="Error" />
++    <Rule Id="SA1025" Action="Error" />
++    <Rule Id="SA1026" Action="Error" />
++    <Rule Id="SA1027" Action="Error" />
++    <Rule Id="SA1028" Action="Error" />
++    <Rule Id="SA1100" Action="Error" />
++    <Rule Id="SA1101" Action="None" />
++    <Rule Id="SA1102" Action="Error" />
++    <Rule Id="SA1103" Action="Error" />
++    <Rule Id="SA1104" Action="Error" />
++    <Rule Id="SA1105" Action="Error" />
++    <Rule Id="SA1106" Action="Error" />
++    <Rule Id="SA1107" Action="Error" />
++    <Rule Id="SA1108" Action="None" />
++    <Rule Id="SA1110" Action="Error" />
++    <Rule Id="SA1111" Action="Error" />
++    <Rule Id="SA1112" Action="Error" />
++    <Rule Id="SA1113" Action="Error" />
++    <Rule Id="SA1114" Action="Error" />
++    <Rule Id="SA1115" Action="Error" />
++    <Rule Id="SA1116" Action="None" />
++    <Rule Id="SA1117" Action="None" />
++    <Rule Id="SA1118" Action="None" />
++    <Rule Id="SA1119" Action="None" />
++    <Rule Id="SA1120" Action="Error" />
++    <Rule Id="SA1121" Action="None" />
++    <Rule Id="SA1122" Action="Error" />
++    <Rule Id="SA1123" Action="Error" />
++    <Rule Id="SA1124" Action="None" />
++    <Rule Id="SA1125" Action="None" />
++    <Rule Id="SA1127" Action="Error" />
++    <Rule Id="SA1128" Action="Error" />
++    <Rule Id="SA1129" Action="None" />
++    <Rule Id="SA1130" Action="Error" />
++    <Rule Id="SA1131" Action="None" />
++    <Rule Id="SA1132" Action="Error" />
++    <Rule Id="SA1133" Action="Error" />
++    <Rule Id="SA1134" Action="Error" />
++    <Rule Id="SA1135" Action="Error" />
++    <Rule Id="SA1136" Action="Error" />
++    <Rule Id="SA1137" Action="Error" />
++    <Rule Id="SA1139" Action="Error" />
++    <Rule Id="SA1167" Action="Error" />
++    <Rule Id="SA1200" Action="Error" />
++    <Rule Id="SA1201" Action="None" />
++    <Rule Id="SA1202" Action="None" />
++    <Rule Id="SA1203" Action="Error" />
++    <Rule Id="SA1204" Action="None" />
++    <Rule Id="SA1205" Action="Error" />
++    <Rule Id="SA1206" Action="Error" />
++    <Rule Id="SA1207" Action="Error" />
++    <Rule Id="SA1208" Action="Error" />
++    <Rule Id="SA1209" Action="Error" />
++    <Rule Id="SA1210" Action="None" />
++    <Rule Id="SA1211" Action="None" />
++    <Rule Id="SA1212" Action="Error" />
++    <Rule Id="SA1213" Action="Error" />
++    <Rule Id="SA1214" Action="Error" />
++    <Rule Id="SA1215" Action="Error" />
++    <Rule Id="SA1216" Action="Error" />
++    <Rule Id="SA1217" Action="Error" />
++    <Rule Id="SA1300" Action="Error" />
++    <Rule Id="SA1302" Action="Error" />
++    <Rule Id="SA1303" Action="Error" />
++    <Rule Id="SA1304" Action="None" />
++    <Rule Id="SA1306" Action="Error" />
++    <Rule Id="SA1307" Action="Error" />
++    <Rule Id="SA1308" Action="None" />
++    <Rule Id="SA1309" Action="None" />
++    <Rule Id="SA1310" Action="None" />
++    <Rule Id="SA1311" Action="None" />
++    <Rule Id="SA1312" Action="Error" />
++    <Rule Id="SA1313" Action="None" />
++    <Rule Id="SA1314" Action="Error" />
++    <Rule Id="SA1400" Action="Error" />
++    <Rule Id="SA1401" Action="None" />
++    <Rule Id="SA1402" Action="None" />
++    <Rule Id="SA1403" Action="Error" />
++    <Rule Id="SA1404" Action="Error" />
++    <Rule Id="SA1405" Action="Error" />
++    <Rule Id="SA1406" Action="Error" />
++    <Rule Id="SA1407" Action="None" />
++    <Rule Id="SA1408" Action="Error" />
++    <Rule Id="SA1410" Action="Error" />
++    <Rule Id="SA1411" Action="Error" />
++    <Rule Id="SA1412" Action="Error" />
++    <Rule Id="SA1413" Action="None" />
++    <Rule Id="SA1500" Action="Error" />
++    <Rule Id="SA1501" Action="Error" />
++    <Rule Id="SA1502" Action="Error" />
++    <Rule Id="SA1503" Action="Error" />
++    <Rule Id="SA1504" Action="Error" />
++    <Rule Id="SA1505" Action="Error" />
++    <Rule Id="SA1506" Action="Error" />
++    <Rule Id="SA1507" Action="Error" />
++    <Rule Id="SA1508" Action="None" />
++    <Rule Id="SA1509" Action="Error" />
++    <Rule Id="SA1510" Action="Error" />
++    <Rule Id="SA1511" Action="Error" />
++    <Rule Id="SA1512" Action="Error" />
++    <Rule Id="SA1513" Action="Error" />
++    <Rule Id="SA1514" Action="Error" />
++    <Rule Id="SA1515" Action="None" />
++    <Rule Id="SA1516" Action="None" />
++    <Rule Id="SA1517" Action="Error" />
++    <Rule Id="SA1518" Action="Error" />
++    <Rule Id="SA1519" Action="Error" />
++    <Rule Id="SA1520" Action="Error" />
++    <Rule Id="SA1600" Action="None" />
++    <Rule Id="SA1601" Action="None" />
++    <Rule Id="SA1602" Action="None" />
++    <Rule Id="SA1604" Action="None" />
++    <Rule Id="SA1605" Action="Error" />
++    <Rule Id="SA1606" Action="Error" />
++    <Rule Id="SA1607" Action="Error" />
++    <Rule Id="SA1608" Action="Error" />
++    <Rule Id="SA1610" Action="None" />
++    <Rule Id="SA1611" Action="None" />
++    <Rule Id="SA1612" Action="Error" />
++    <Rule Id="SA1613" Action="Error" />
++    <Rule Id="SA1614" Action="Error" />
++    <Rule Id="SA1615" Action="None" />
++    <Rule Id="SA1616" Action="None" />
++    <Rule Id="SA1617" Action="Error" />
++    <Rule Id="SA1618" Action="None" />
++    <Rule Id="SA1619" Action="None" />
++    <Rule Id="SA1620" Action="Error" />
++    <Rule Id="SA1621" Action="Error" />
++    <Rule Id="SA1622" Action="Error" />
++    <Rule Id="SA1623" Action="None" />
++    <Rule Id="SA1624" Action="None" />
++    <Rule Id="SA1625" Action="None" />
++    <Rule Id="SA1626" Action="None" />
++    <Rule Id="SA1627" Action="None" />
++    <Rule Id="SA1629" Action="None" />
++    <Rule Id="SA1633" Action="Error" />
++    <Rule Id="SA1634" Action="None" />
++    <Rule Id="SA1635" Action="Error" />
++    <Rule Id="SA1636" Action="Error" />
++    <Rule Id="SA1637" Action="None" />
++    <Rule Id="SA1638" Action="Error" />
++    <Rule Id="SA1640" Action="None" />
++    <Rule Id="SA1641" Action="Error" />
++    <Rule Id="SA1642" Action="None" />
++    <Rule Id="SA1643" Action="None" />
++    <Rule Id="SA1648" Action="Error" />
++    <Rule Id="SA1649" Action="None" />
++    <Rule Id="SA1651" Action="Error" />
++    <Rule Id="SA1652" Action="Error" />
++    <Rule Id="SX1101" Action="Error" />
++    <Rule Id="SX1309" Action="Error" />
++  </Rules>
++</RuleSet>
+\ No newline at end of file
+diff --git a/src/Experiment/src/System.Reflection.Emit.Experimental.csproj b/src/Experiment/src/System.Reflection.Emit.Experimental.csproj
+index c880099f9f2..b3ac6392843 100644
+--- a/src/Experiment/src/System.Reflection.Emit.Experimental.csproj
++++ b/src/Experiment/src/System.Reflection.Emit.Experimental.csproj
+@@ -2,7 +2,23 @@
+ 
+   <PropertyGroup>
+        <TargetFramework>net7.0</TargetFramework>
+-       <Nullable>enable</Nullable>  
++       <Nullable>enable</Nullable>
++	  <CodeAnalysisRuleSet>StyleCop.Analyzers.ruleset</CodeAnalysisRuleSet>
+   </PropertyGroup>
+ 
++  <ItemGroup>
++    <PackageReference Include="StyleCop.Analyzers" Version="1.1.118">
++      <PrivateAssets>all</PrivateAssets>
++      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
++    </PackageReference>
++  </ItemGroup>
++
++	<ItemGroup>
++		<AdditionalFiles Include="stylecop.json" />
++	</ItemGroup>
++
++	<ItemGroup>
++	  <None Include="..\..\..\.editorconfig" Link=".editorconfig" />
++	</ItemGroup>
++
+ </Project>
+diff --git a/src/Experiment/src/TypeBuilder.cs b/src/Experiment/src/TypeBuilder.cs
+index 7addcd2f42d..7320628621b 100644
+--- a/src/Experiment/src/TypeBuilder.cs
++++ b/src/Experiment/src/TypeBuilder.cs
+@@ -3,35 +3,46 @@
+ 
+ using System.Collections.Generic;
+ using System.Diagnostics;
++using System.Reflection.Metadata;
++using System.Reflection.Metadata.Ecma335;
++using System.Security.Principal;
+ using static System.Reflection.Emit.Experimental.EntityWrappers;
+ 
+ namespace System.Reflection.Emit.Experimental
+ {
+     public class TypeBuilder : System.Reflection.TypeInfo
+     {
+-
+         public override string Name { get; }
+         public override Assembly Assembly { get; }
+         public override ModuleBuilder Module { get; }
+         public override string? Namespace { get; }
+         internal TypeAttributes UserTypeAttribute { get; set; }
+         internal List<MethodBuilder> _methodDefStore = new List<MethodBuilder>();
+-        internal List<CustomAttributeWrapper> _customAttributes = new();
++        internal List<FieldBuilder> _fieldDefStore = new List<FieldBuilder>();
++        internal List<CustomAttributeWrapper> _customAttributes = new ();
++        internal EntityHandle _selfToken;
++        internal EntityHandle? _baseToken;
+ 
+-        internal TypeBuilder(string name, ModuleBuilder module, Assembly assembly, TypeAttributes typeAttributes)
++        internal TypeBuilder(string name, ModuleBuilder module, Assembly assembly, TypeAttributes typeAttributes, EntityHandle token, Type? baseType)
+         {
+             Name = name;
+             Module = module;
+             Assembly = assembly;
+             UserTypeAttribute = typeAttributes;
++            _selfToken = token;
+ 
+-            //Extract namespace from name
++            // Extract namespace from name
+             int idx = Name.LastIndexOf('.');
+-
+             if (idx != -1)
+             {
+                 Namespace = Name[..idx];
+-                Name = Name[(idx + 1)..];
++                Name = Name[(idx + 1) ..];
++            }
++
++            // Get references to baseType
++            if (baseType != null)
++            {
++                _baseToken = Module.AddorGetTypeReference(baseType);
+             }
+         }
+ 
+@@ -40,15 +51,15 @@ namespace System.Reflection.Emit.Experimental
+             throw new NotImplementedException();
+         }
+ 
+-
+         public System.Reflection.Emit.Experimental.MethodBuilder DefineMethod(string name, System.Reflection.MethodAttributes attributes, System.Reflection.CallingConventions callingConvention, System.Type? returnType, System.Type[]? parameterTypes)
+         {
+-            MethodBuilder methodBuilder = new(name, attributes, callingConvention, returnType, parameterTypes, this);
++            MethodBuilder methodBuilder = new (name, attributes, callingConvention, returnType, parameterTypes, this);
+             _methodDefStore.Add(methodBuilder);
++            Module._methodDefCount++;
+             return methodBuilder;
+         }
+ 
+-        //Implement next
++        // Implement next
+         public System.Reflection.Emit.Experimental.MethodBuilder DefineMethod(string name, System.Reflection.MethodAttributes attributes)
+         {
+             throw new NotImplementedException();
+@@ -71,11 +82,10 @@ namespace System.Reflection.Emit.Experimental
+                 throw new ArgumentException("Attribute constructor has no type.");
+             }
+ 
+-            //We check whether the custom attribute is actually a pseudo-custom attribute. 
+-            //(We have only done ComImport for the prototype, eventually all pseudo-custom attributes will be hard-coded.)
+-            //If it is, simply alter the TypeAttributes.
+-            //We want to handle this before the type metadata is generated.
+-
++            // We check whether the custom attribute is actually a pseudo-custom attribute.
++            // (We have only done ComImport for the prototype, eventually all pseudo-custom attributes will be hard-coded.)
++            // If it is, simply alter the TypeAttributes.
++            // We want to handle this before the type metadata is generated.
+             if (constructorInfo.DeclaringType.Name.Equals("ComImportAttribute"))
+             {
+                 Debug.WriteLine("Modifying internal flags");
+@@ -83,41 +93,9 @@ namespace System.Reflection.Emit.Experimental
+             }
+             else
+             {
+-                AssemblyReferenceWrapper assemblyReference = new AssemblyReferenceWrapper(constructorInfo.DeclaringType.Assembly);
+-                TypeReferenceWrapper typeReference = new TypeReferenceWrapper(constructorInfo.DeclaringType);
+-                MethodReferenceWrapper methodReference = new MethodReferenceWrapper(constructorInfo);
+                 CustomAttributeWrapper customAttribute = new CustomAttributeWrapper(constructorInfo, binaryAttribute);
+-
+-                if (!Module._assemblyRefStore.Contains(assemblyReference)) // Avoid adding the same assembly twice
+-                {
+-                    Module._assemblyRefStore.Add(assemblyReference);
+-                    typeReference.parentToken = Module._nextAssemblyRefRowId++;
+-                }
+-                else
+-                {
+-                    typeReference.parentToken = Module._assemblyRefStore.IndexOf(assemblyReference) + 1; // Add 1 to account for zero based indexing
+-                }
+-
+-                if (!Module._typeRefStore.Contains(typeReference)) // Avoid adding the same type twice
+-                {
+-                    Module._typeRefStore.Add(typeReference);
+-                    methodReference.parentToken = Module._nextTypeRefRowId++;
+-                }
+-                else
+-                {
+-                    methodReference.parentToken = Module._typeRefStore.IndexOf(typeReference) + 1;
+-                }
+-
+-                if (!Module._methodRefStore.Contains(methodReference)) // Avoid add the same method twice
+-                {
+-                    Module._methodRefStore.Add(methodReference);
+-                    customAttribute.conToken = Module._nextMethodRefRowId++;
+-                }
+-                else
+-                {
+-                    customAttribute.conToken = Module._methodRefStore.IndexOf(methodReference) + 1;
+-                }
+-
++                EntityHandle constructorHandle = Module.AddorGetMethodReference(constructorInfo);
++                customAttribute.ConToken = constructorHandle;
+                 _customAttributes.Add(customAttribute);
+             }
+         }
+@@ -127,7 +105,6 @@ namespace System.Reflection.Emit.Experimental
+             SetCustomAttribute(customBuilder.Constructor, customBuilder._blob);
+         }
+ 
+-
+         public const int UnspecifiedTypeSize = 0;
+         public override string? AssemblyQualifiedName { get => throw new NotImplementedException(); }
+         public override System.Type? BaseType { get => throw new NotImplementedException(); }
+@@ -176,8 +153,13 @@ namespace System.Reflection.Emit.Experimental
+         public System.Reflection.Emit.EventBuilder DefineEvent(string name, System.Reflection.EventAttributes attributes, System.Type eventtype)
+             => throw new NotImplementedException();
+ 
+-        public System.Reflection.Emit.FieldBuilder DefineField(string fieldName, System.Type type, System.Reflection.FieldAttributes attributes)
+-            => throw new NotImplementedException();
++        public System.Reflection.Emit.Experimental.FieldBuilder DefineField(string fieldName, System.Type type, System.Reflection.FieldAttributes attributes)
++        {
++            FieldBuilder fieldBuilder = new FieldBuilder(this, fieldName, type, null, attributes, MetadataTokens.EntityHandle(Module._fieldDefCount + 1));
++            _fieldDefStore.Add(fieldBuilder);
++            Module._fieldDefCount++;
++            return fieldBuilder;
++        }
+ 
+         public System.Reflection.Emit.FieldBuilder DefineField(string fieldName, System.Type type, System.Type[]? requiredCustomModifiers, System.Type[]? optionalCustomModifiers, System.Reflection.FieldAttributes attributes) => throw new NotImplementedException();
+ 
+@@ -220,15 +202,15 @@ namespace System.Reflection.Emit.Experimental
+         public System.Reflection.Emit.TypeBuilder DefineNestedType(string name, System.Reflection.TypeAttributes attr, [System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembersAttribute(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.All)] System.Type? parent, System.Type[]? interfaces)
+             => throw new NotImplementedException();
+ 
+-        [System.Diagnostics.CodeAnalysis.RequiresUnreferencedCodeAttribute("P/Invoke marshalling may dynamically access members that could be trimmed.")]
++        [System.Diagnostics.CodeAnalysis.RequiresUnreferencedCodeAttribute("P/Invoke marshaling may dynamically access members that could be trimmed.")]
+         public System.Reflection.Emit.MethodBuilder DefinePInvokeMethod(string name, string dllName, System.Reflection.MethodAttributes attributes, System.Reflection.CallingConventions callingConvention, System.Type? returnType, System.Type[]? parameterTypes, System.Runtime.InteropServices.CallingConvention nativeCallConv, System.Runtime.InteropServices.CharSet nativeCharSet)
+             => throw new NotImplementedException();
+ 
+-        [System.Diagnostics.CodeAnalysis.RequiresUnreferencedCodeAttribute("P/Invoke marshalling may dynamically access members that could be trimmed.")]
++        [System.Diagnostics.CodeAnalysis.RequiresUnreferencedCodeAttribute("P/Invoke marshaling may dynamically access members that could be trimmed.")]
+         public System.Reflection.Emit.MethodBuilder DefinePInvokeMethod(string name, string dllName, string entryName, System.Reflection.MethodAttributes attributes, System.Reflection.CallingConventions callingConvention, System.Type? returnType, System.Type[]? parameterTypes, System.Runtime.InteropServices.CallingConvention nativeCallConv, System.Runtime.InteropServices.CharSet nativeCharSet)
+             => throw new NotImplementedException();
+ 
+-        [System.Diagnostics.CodeAnalysis.RequiresUnreferencedCodeAttribute("P/Invoke marshalling may dynamically access members that could be trimmed.")]
++        [System.Diagnostics.CodeAnalysis.RequiresUnreferencedCodeAttribute("P/Invoke marshaling may dynamically access members that could be trimmed.")]
+         public System.Reflection.Emit.MethodBuilder DefinePInvokeMethod(string name, string dllName, string entryName, System.Reflection.MethodAttributes attributes, System.Reflection.CallingConventions callingConvention, System.Type? returnType, System.Type[]? returnTypeRequiredCustomModifiers, System.Type[]? returnTypeOptionalCustomModifiers, System.Type[]? parameterTypes, System.Type[][]? parameterTypeRequiredCustomModifiers, System.Type[][]? parameterTypeOptionalCustomModifiers, System.Runtime.InteropServices.CallingConvention nativeCallConv, System.Runtime.InteropServices.CharSet nativeCharSet)
+             => throw new NotImplementedException();
+ 
+@@ -307,7 +289,6 @@ namespace System.Reflection.Emit.Experimental
+         public override System.Type? GetInterface(string name, bool ignoreCase)
+             => throw new NotImplementedException();
+ 
+-
+         public override System.Reflection.InterfaceMapping GetInterfaceMap([System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembers(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.NonPublicMethods | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicMethods)] System.Type interfaceType)
+             => throw new NotImplementedException();
+ 
+diff --git a/src/Experiment/src/TypeNameBuilder.cs b/src/Experiment/src/TypeNameBuilder.cs
+index e56de61ba4e..28a6c6d21c6 100644
+--- a/src/Experiment/src/TypeNameBuilder.cs
++++ b/src/Experiment/src/TypeNameBuilder.cs
+@@ -4,6 +4,9 @@
+ // This TypeNameBuilder is ported from CoreCLR's original.
+ // It replaces the C++ bits of the implementation with a faithful C# port.
+ 
++// Tell StyleCop this file is ported.
++// <auto-generated/>
++
+ using System.Collections.Generic;
+ using System.Diagnostics;
+ using System.Text;
+@@ -31,9 +34,13 @@ namespace System.Reflection.Emit.Experimental
+             _firstInstArg = true;
+ 
+             if (_useAngleBracketsForGenerics)
++            {
+                 Append('<');
++            }
+             else
++            {
+                 Append('[');
++            }
+         }
+ 
+         private void CloseGenericArguments()
+@@ -266,7 +273,9 @@ namespace System.Reflection.Emit.Experimental
+             AssemblyQualifiedName,
+         }
+ 
++#pragma warning disable CS8669 // The annotation for nullable reference types should only be used in code within a '#nullable' annotations context. Auto-generated code requires an explicit '#nullable' directive in source.
+         internal static string? ToString(Type type, Format format)
++#pragma warning restore CS8669 // The annotation for nullable reference types should only be used in code within a '#nullable' annotations context. Auto-generated code requires an explicit '#nullable' directive in source.
+         {
+             if (format == Format.FullName || format == Format.AssemblyQualifiedName)
+             {
+@@ -305,8 +314,10 @@ namespace System.Reflection.Emit.Experimental
+ 
+             // Append namespace + nesting + name
+             var nestings = new List<Type>();
++#pragma warning disable CS8669 // The annotation for nullable reference types should only be used in code within a '#nullable' annotations context. Auto-generated code requires an explicit '#nullable' directive in source.
+             for (Type? t = rootType; t != null; t = t.IsGenericParameter ? null : t.DeclaringType)
+                 nestings.Add(t);
++#pragma warning restore CS8669 // The annotation for nullable reference types should only be used in code within a '#nullable' annotations context. Auto-generated code requires an explicit '#nullable' directive in source.
+ 
+             for (int i = nestings.Count - 1; i >= 0; i--)
+             {
+diff --git a/src/Experiment/src/stylecop.json b/src/Experiment/src/stylecop.json
+new file mode 100644
+index 00000000000..47760030b0d
+--- /dev/null
++++ b/src/Experiment/src/stylecop.json
+@@ -0,0 +1,20 @@
++﻿{
++  "$schema": "https://raw.githubusercontent.com/DotNetAnalyzers/StyleCopAnalyzers/master/StyleCop.Analyzers/StyleCop.Analyzers/Settings/stylecop.schema.json",
++  "settings": {
++    "indentation": {
++      "indentationSize": 4,
++      "tabSize": 4,
++      "useTabs": false
++    },
++    "orderingRules": {
++      "usingDirectivesPlacement": "outsideNamespace",
++      "blankLinesBetweenUsingGroups": "omit"
++    },
++    "documentationRules": {
++      "documentInterfaces": true,
++      "documentInternalElements": false,
++      "copyrightText": "Licensed to the .NET Foundation under one or more agreements.\nThe .NET Foundation licenses this file to you under the MIT license.",
++      "xmlHeader": false
++    }
++  }
++}
+diff --git a/src/Experiment/tests/AssemblyTools.cs b/src/Experiment/tests/AssemblyTools.cs
+index 26a6455be2e..6aae0f2afc3 100644
+--- a/src/Experiment/tests/AssemblyTools.cs
++++ b/src/Experiment/tests/AssemblyTools.cs
+@@ -1,4 +1,4 @@
+-﻿// Licensed to the .NET Foundation under one or more agreements.
++﻿ // Licensed to the .NET Foundation under one or more agreements.
+ // The .NET Foundation licenses this file to you under the MIT license.
+ 
+ using System.Collections.Generic;
+@@ -16,6 +16,7 @@ namespace System.Reflection.Emit.Experimental.Tests
+         {
+             WriteAssemblyToDisk(assemblyName, types, fileLocation, null);
+         }
++
+         internal static void WriteAssemblyToDisk(AssemblyName assemblyName, Type[] types, string fileLocation, List<CustomAttributeBuilder> customAttributes)
+         {
+             AssemblyBuilder assemblyBuilder = AssemblyBuilder.DefineDynamicAssembly(assemblyName, System.Reflection.Emit.AssemblyBuilderAccess.Run);
+@@ -24,7 +25,7 @@ namespace System.Reflection.Emit.Experimental.Tests
+ 
+             foreach (Type type in types)
+             {
+-                TypeBuilder tb = mb.DefineType(type.FullName, type.Attributes);
++                TypeBuilder tb = mb.DefineType(type.FullName, type.Attributes, type.BaseType);
+ 
+                 if (customAttributes != null)
+                 {
+@@ -39,6 +40,15 @@ namespace System.Reflection.Emit.Experimental.Tests
+                     var paramTypes = Array.ConvertAll(method.GetParameters(), item => item.ParameterType);
+                     tb.DefineMethod(method.Name, method.Attributes, method.CallingConvention, method.ReturnType, paramTypes);
+                 }
++
++                foreach (var field in type.GetFields(
++                    BindingFlags.Instance |
++                    BindingFlags.Static |
++                    BindingFlags.NonPublic |
++                    BindingFlags.Public))
++                {
++                    tb.DefineField(field.Name, field.FieldType, field.Attributes);
++                }
+             }
+ 
+             assemblyBuilder.Save(fileLocation);
+@@ -48,15 +58,12 @@ namespace System.Reflection.Emit.Experimental.Tests
+         {
+             // Get the array of runtime assemblies.
+             string[] runtimeAssemblies = Directory.GetFiles(RuntimeEnvironment.GetRuntimeDirectory(), "*.dll");
+-
+             // Create the list of assembly paths consisting of runtime assemblies and the inspected assembly.
+             var paths = new List<string>(runtimeAssemblies);
+             paths.Add(filePath);
+-
+             // Create PathAssemblyResolver that can resolve assemblies using the created list.
+             var resolver = new PathAssemblyResolver(paths);
+             var mlc = new MetadataLoadContext(resolver);
+-
+             // Load assembly into MetadataLoadContext.
+             Assembly assembly = mlc.LoadFromAssemblyPath(filePath);
+             return assembly;
+@@ -72,7 +79,6 @@ namespace System.Reflection.Emit.Experimental.Tests
+             MetadataReader mr = peReader.GetMetadataReader();
+ 
+             Debug.WriteLine("Number of types is " + mr.TypeDefinitions.Count);
+-
+             foreach (TypeDefinitionHandle tdefh in mr.TypeDefinitions)
+             {
+                 TypeDefinition tdef = mr.GetTypeDefinition(tdefh);
+@@ -82,7 +88,6 @@ namespace System.Reflection.Emit.Experimental.Tests
+             }
+ 
+             Debug.WriteLine("Number of methods is " + mr.MethodDefinitions.Count);
+-
+             foreach (MethodDefinitionHandle mdefh in mr.MethodDefinitions)
+             {
+                 MethodDefinition mdef = mr.GetMethodDefinition(mdefh);
+@@ -94,4 +99,4 @@ namespace System.Reflection.Emit.Experimental.Tests
+             Debug.WriteLine("Ended MetadataReader class");
+         }
+     }
+-}
+\ No newline at end of file
++}
+diff --git a/src/Experiment/tests/CustomAttributeTesting.cs b/src/Experiment/tests/CustomAttributeTest.cs
+similarity index 70%
+rename from src/Experiment/tests/CustomAttributeTesting.cs
+rename to src/Experiment/tests/CustomAttributeTest.cs
+index adc7d0c368a..c410aaa0fb4 100644
+--- a/src/Experiment/tests/CustomAttributeTesting.cs
++++ b/src/Experiment/tests/CustomAttributeTest.cs
+@@ -9,24 +9,24 @@ using System.Linq;
+ using System.Runtime.InteropServices;
+ using Xunit;
+ 
+-namespace System.Reflection.Emit.Experimental.Tests
++namespace System.Reflection.Emit.Experimental.Tests.Custom
+ {
+-    //Currently hard-coding in Custom Attributes using the CustomAttributeBuilder.
+-    public class CustomAttributeTesting : IDisposable
++    // Currently hard-coding in Custom Attributes using the CustomAttributeBuilder.
++    public class CustomAttributeTest : IDisposable
+     {
+-        List<CustomAttributeBuilder> customAttributes = new List<CustomAttributeBuilder>();
+-        internal string fileLocation;
+-        public CustomAttributeTesting()
++        private List<CustomAttributeBuilder> _customAttributes = new List<CustomAttributeBuilder>();
++        private string _fileLocation;
++        public CustomAttributeTest()
+         {
+             const bool _keepFiles = true;
+-            TempFileCollection _tfc;
++            TempFileCollection tfc;
+             Directory.CreateDirectory("testDir");
+-            _tfc = new TempFileCollection("testDir", false);
+-            fileLocation = _tfc.AddExtension("dll", _keepFiles);
++            tfc = new TempFileCollection("testDir", false);
++            _fileLocation = tfc.AddExtension("dll", _keepFiles);
+ 
+-            customAttributes.Add(new CustomAttributeBuilder(typeof(ComImportAttribute).GetConstructor(new Type[] { }), new object[] { }));
+-            customAttributes.Add(new CustomAttributeBuilder(typeof(ComVisibleAttribute).GetConstructor(new Type[] { typeof(bool) }), new object[] { true }));
+-            customAttributes.Add(new CustomAttributeBuilder(typeof(GuidAttribute).GetConstructor(new Type[] { typeof(string) }), new object[] { "9ED54F84-A89D-4fcd-A854-44251E925F09" }));
++            _customAttributes.Add(new CustomAttributeBuilder(typeof(ComImportAttribute).GetConstructor(new Type[] { }), new object[] { }));
++            _customAttributes.Add(new CustomAttributeBuilder(typeof(ComVisibleAttribute).GetConstructor(new Type[] { typeof(bool) }), new object[] { true }));
++            _customAttributes.Add(new CustomAttributeBuilder(typeof(GuidAttribute).GetConstructor(new Type[] { typeof(string) }), new object[] { "9ED54F84-A89D-4fcd-A854-44251E925F09" }));
+         }
+ 
+         // Add three custom attributes to two types. One is pseudo custom attribute.
+@@ -38,14 +38,14 @@ namespace System.Reflection.Emit.Experimental.Tests
+             AssemblyName assemblyName = new AssemblyName("MyDynamicAssembly");
+             assemblyName.Version = new Version("7.0");
+ 
+-            //Construct its types via reflection.
++            // Construct its types via reflection.
+             Type[] types = new Type[] { typeof(IMultipleMethod), typeof(INoMethod) };
+ 
+             // Generate DLL from these and save it to Disk.
+-            AssemblyTools.WriteAssemblyToDisk(assemblyName, types, fileLocation, customAttributes);
++            AssemblyTools.WriteAssemblyToDisk(assemblyName, types, _fileLocation, _customAttributes);
+ 
+             // Read said assembly back from Disk using MetadataLoadContext
+-            Assembly assemblyFromDisk = AssemblyTools.TryLoadAssembly(fileLocation);
++            Assembly assemblyFromDisk = AssemblyTools.TryLoadAssembly(_fileLocation);
+ 
+             // Now compare them:
+ 
+@@ -70,11 +70,11 @@ namespace System.Reflection.Emit.Experimental.Tests
+                 // Ordering of custom attributes is not preserved in metadata so we sort before comparing.
+                 List<CustomAttributeData> attributesFromDisk = typeFromDisk.GetCustomAttributesData().ToList();
+                 attributesFromDisk.Sort((x, y) => x.AttributeType.ToString().CompareTo(y.AttributeType.ToString()));
+-                customAttributes.Sort((x, y) => x.Constructor.DeclaringType.ToString().CompareTo(y.Constructor.DeclaringType.ToString()));
++                _customAttributes.Sort((x, y) => x.Constructor.DeclaringType.ToString().CompareTo(y.Constructor.DeclaringType.ToString()));
+ 
+-                for (int j = 0; j < customAttributes.Count; j++)
++                for (int j = 0; j < _customAttributes.Count; j++)
+                 {
+-                    CustomAttributeBuilder sourceAttribute = customAttributes[j];
++                    CustomAttributeBuilder sourceAttribute = _customAttributes[j];
+                     CustomAttributeData attributeFromDisk = attributesFromDisk[j];
+                     Debug.WriteLine(attributeFromDisk.AttributeType.ToString());
+                     Assert.Equal(sourceAttribute.Constructor.DeclaringType.ToString(), attributeFromDisk.AttributeType.ToString());
+@@ -104,4 +104,16 @@ namespace System.Reflection.Emit.Experimental.Tests
+         {
+         }
+     }
++
++    public interface IMultipleMethod
++    {
++        string Func(int a, string b);
++        bool MoreFunc(int a, string b, bool c);
++        bool DoIExist();
++        void BuildAPerpetualMotionMachine();
++    }
++
++    public interface INoMethod
++    {
++    }
+ }
+diff --git a/src/Experiment/tests/FieldTesting.cs b/src/Experiment/tests/FieldTesting.cs
+new file mode 100644
+index 00000000000..3ed5df0f11e
+--- /dev/null
++++ b/src/Experiment/tests/FieldTesting.cs
+@@ -0,0 +1,556 @@
++﻿// Licensed to the .NET Foundation under one or more agreements.
++// The .NET Foundation licenses this file to you under the MIT license.
++
++using System;
++using System.CodeDom.Compiler;
++using System.Collections.Generic;
++using System.IO;
++using System.Linq;
++using System.Numerics;
++using System.Reflection;
++using System.Reflection.Emit.Experimental.Tests;
++using Xunit;
++
++namespace Experiment.Tests.Fields
++{
++    public class FieldTesting : IDisposable
++    {
++        private string _fileLocation;
++        public FieldTesting()
++        {
++            const bool _keepFiles = true;
++            TempFileCollection tfc;
++            Directory.CreateDirectory("testDir");
++            tfc = new TempFileCollection("testDir", false);
++            _fileLocation = tfc.AddExtension("dll", _keepFiles);
++        }
++
++        public void Dispose()
++        {
++        }
++
++        [Fact]
++        public void OneInterfaceWithMethods()
++        {
++            // Construct an assembly name.
++            AssemblyName assemblyName = new AssemblyName("MyDynamicAssembly");
++
++            // Construct its types via reflection.
++            Type[] types = new Type[] { typeof(IMultipleMethod) };
++
++            // Generate DLL from these and save it to Disk.
++            AssemblyTools.WriteAssemblyToDisk(assemblyName, types, _fileLocation, null);
++
++            // Read said assembly back from Disk using MetadataLoadContext
++            Assembly assemblyFromDisk = AssemblyTools.TryLoadAssembly(_fileLocation);
++
++            // Now compare them:
++
++            // AssemblyName
++            Assert.NotNull(assemblyFromDisk);
++            Assert.Equal(assemblyName.Name, assemblyFromDisk.GetName().Name);
++
++            // Module Name
++            Module moduleFromDisk = assemblyFromDisk.Modules.First();
++            Assert.Equal(assemblyName.Name, moduleFromDisk.ScopeName);
++
++            // Type comparisons
++            for (int i = 0; i < types.Length; i++)
++            {
++                Type sourceType = types[i];
++                Type typeFromDisk = moduleFromDisk.GetTypes()[i];
++
++                Assert.Equal(sourceType.Name, typeFromDisk.Name);
++                Assert.Equal(sourceType.Namespace, typeFromDisk.Namespace);
++                Assert.Equal(sourceType.Attributes, typeFromDisk.Attributes);
++
++                // Method comparison
++                for (int j = 0; j < sourceType.GetMethods().Length; j++)
++                {
++                    MethodInfo sourceMethod = sourceType.GetMethods()[j];
++                    MethodInfo methodFromDisk = typeFromDisk.GetMethods()[j];
++
++                    Assert.Equal(sourceMethod.Name, methodFromDisk.Name);
++                    Assert.Equal(sourceMethod.Attributes, methodFromDisk.Attributes);
++                    Assert.Equal(sourceMethod.ReturnType.FullName, methodFromDisk.ReturnType.FullName);
++                    // Parameter comparison
++                    for (int k = 0; k < sourceMethod.GetParameters().Length; k++)
++                    {
++                        ParameterInfo sourceParamter = sourceMethod.GetParameters()[k];
++                        ParameterInfo paramterFromDisk = methodFromDisk.GetParameters()[k];
++                        Assert.Equal(sourceParamter.ParameterType.FullName, paramterFromDisk.ParameterType.FullName);
++                    }
++                }
++
++                // Field Comparison
++                for (int j = 0; j < sourceType.GetFields().Length; j++)
++                {
++                    FieldInfo sourceField = sourceType.GetFields()[j];
++                    FieldInfo fieldFromDisk = typeFromDisk.GetFields()[j];
++
++                    Assert.Equal(sourceField.Name, fieldFromDisk.Name);
++                    Assert.Equal(sourceField.Attributes, fieldFromDisk.Attributes);
++                    Assert.Equal(sourceField.FieldType.FullName, fieldFromDisk.FieldType.FullName);
++                }
++            }
++        }
++
++        [Fact]
++        public void OneInterfaceWithoutMethods()
++        {
++            // Construct an assembly name.
++            AssemblyName assemblyName = new AssemblyName("MyDynamicAssembly");
++
++            // Construct its types via reflection.
++            Type[] types = new Type[] { typeof(INoMethod) };
++
++            // Generate DLL from these and save it to Disk.
++            AssemblyTools.WriteAssemblyToDisk(assemblyName, types, _fileLocation);
++
++            // Read said assembly back from Disk using MetadataLoadContext
++            Assembly assemblyFromDisk = AssemblyTools.TryLoadAssembly(_fileLocation);
++
++            // Now compare them:
++
++            // AssemblyName
++            Assert.NotNull(assemblyFromDisk);
++            Assert.Equal(assemblyName.Name, assemblyFromDisk.GetName().Name);
++
++            // Module Name
++            Module moduleFromDisk = assemblyFromDisk.Modules.First();
++            Assert.Equal(assemblyName.Name, moduleFromDisk.ScopeName);
++
++            // Type comparisons
++            for (int i = 0; i < types.Length; i++)
++            {
++                Type sourceType = types[i];
++                Type typeFromDisk = moduleFromDisk.GetTypes()[i];
++
++                Assert.Equal(sourceType.Name, typeFromDisk.Name);
++                Assert.Equal(sourceType.Namespace, typeFromDisk.Namespace);
++                Assert.Equal(sourceType.Attributes, typeFromDisk.Attributes);
++
++                // Method comparison
++                for (int j = 0; j < sourceType.GetMethods().Length; j++)
++                {
++                    MethodInfo sourceMethod = sourceType.GetMethods()[j];
++                    MethodInfo methodFromDisk = typeFromDisk.GetMethods()[j];
++
++                    Assert.Equal(sourceMethod.Name, methodFromDisk.Name);
++                    Assert.Equal(sourceMethod.Attributes, methodFromDisk.Attributes);
++                    Assert.Equal(sourceMethod.ReturnType.FullName, methodFromDisk.ReturnType.FullName);
++                    // Parameter comparison
++                    for (int k = 0; k < sourceMethod.GetParameters().Length; k++)
++                    {
++                        ParameterInfo sourceParamter = sourceMethod.GetParameters()[k];
++                        ParameterInfo paramterFromDisk = methodFromDisk.GetParameters()[k];
++                        Assert.Equal(sourceParamter.ParameterType.FullName, paramterFromDisk.ParameterType.FullName);
++                    }
++                }
++
++                // Field Comparison
++                for (int j = 0; j < sourceType.GetFields().Length; j++)
++                {
++                    FieldInfo sourceField = sourceType.GetFields()[j];
++                    FieldInfo fieldFromDisk = typeFromDisk.GetFields()[j];
++
++                    Assert.Equal(sourceField.Name, fieldFromDisk.Name);
++                    Assert.Equal(sourceField.Attributes, fieldFromDisk.Attributes);
++                    Assert.Equal(sourceField.FieldType.FullName, fieldFromDisk.FieldType.FullName);
++                }
++            }
++        }
++
++        [Fact]
++        public void EmptyInterfacesBetweenNonEmpty()
++        {
++            // Construct an assembly name.
++            AssemblyName assemblyName = new AssemblyName("MyDynamicAssembly");
++
++            // Construct its types via reflection.
++            Type[] types = new Type[] { typeof(IAccess), typeof(INoMethod), typeof(INoMethod2), typeof(IMultipleMethod) };
++
++            // Generate DLL from these and save it to Disk.
++            AssemblyTools.WriteAssemblyToDisk(assemblyName, types, _fileLocation);
++
++            // Read said assembly back from Disk using MetadataLoadContext
++            Assembly assemblyFromDisk = AssemblyTools.TryLoadAssembly(_fileLocation);
++
++            // Now compare them:
++
++            // AssemblyName
++            Assert.NotNull(assemblyFromDisk);
++            Assert.Equal(assemblyName.Name, assemblyFromDisk.GetName().Name);
++
++            // Module Name
++            Module moduleFromDisk = assemblyFromDisk.Modules.First();
++            Assert.Equal(assemblyName.Name, moduleFromDisk.ScopeName);
++
++            // Type comparisons
++            for (int i = 0; i < types.Length; i++)
++            {
++                Type sourceType = types[i];
++                Type typeFromDisk = moduleFromDisk.GetTypes()[i];
++
++                Assert.Equal(sourceType.Name, typeFromDisk.Name);
++                Assert.Equal(sourceType.Namespace, typeFromDisk.Namespace);
++                Assert.Equal(sourceType.Attributes, typeFromDisk.Attributes);
++
++                // Method comparison
++                for (int j = 0; j < sourceType.GetMethods().Length; j++)
++                {
++                    MethodInfo sourceMethod = sourceType.GetMethods()[j];
++                    MethodInfo methodFromDisk = typeFromDisk.GetMethods()[j];
++
++                    Assert.Equal(sourceMethod.Name, methodFromDisk.Name);
++                    Assert.Equal(sourceMethod.Attributes, methodFromDisk.Attributes);
++                    Assert.Equal(sourceMethod.ReturnType.FullName, methodFromDisk.ReturnType.FullName);
++                    // Parameter comparison
++                    for (int k = 0; k < sourceMethod.GetParameters().Length; k++)
++                    {
++                        ParameterInfo sourceParamter = sourceMethod.GetParameters()[k];
++                        ParameterInfo paramterFromDisk = methodFromDisk.GetParameters()[k];
++                        Assert.Equal(sourceParamter.ParameterType.FullName, paramterFromDisk.ParameterType.FullName);
++                    }
++                }
++
++                // Field Comparison
++                for (int j = 0; j < sourceType.GetFields().Length; j++)
++                {
++                    FieldInfo sourceField = sourceType.GetFields()[j];
++                    FieldInfo fieldFromDisk = typeFromDisk.GetFields()[j];
++
++                    Assert.Equal(sourceField.Name, fieldFromDisk.Name);
++                    Assert.Equal(sourceField.Attributes, fieldFromDisk.Attributes);
++                    Assert.Equal(sourceField.FieldType.FullName, fieldFromDisk.FieldType.FullName);
++                }
++            }
++        }
++
++        [Fact]
++        public void TwoEmptyInterfacesANdEnum()
++        {
++            // Construct an assembly name.
++            AssemblyName assemblyName = new AssemblyName("MyDynamicAssembly");
++
++            // Construct its types via reflection.
++            Type[] types = new Type[] { typeof(INoMethod), typeof(INoMethod2) };
++
++            // Generate DLL from these and save it to Disk.
++            AssemblyTools.WriteAssemblyToDisk(assemblyName, types, _fileLocation);
++
++            // Read said assembly back from Disk using MetadataLoadContext
++            Assembly assemblyFromDisk = AssemblyTools.TryLoadAssembly(_fileLocation);
++
++            // Now compare them:
++
++            // AssemblyName
++            Assert.NotNull(assemblyFromDisk);
++            Assert.Equal(assemblyName.Name, assemblyFromDisk.GetName().Name);
++
++            // Module Name
++            Module moduleFromDisk = assemblyFromDisk.Modules.First();
++            Assert.Equal(assemblyName.Name, moduleFromDisk.ScopeName);
++
++            // Type comparisons
++            for (int i = 0; i < types.Length; i++)
++            {
++                Type sourceType = types[i];
++                Type typeFromDisk = moduleFromDisk.GetTypes()[i];
++
++                Assert.Equal(sourceType.Name, typeFromDisk.Name);
++                Assert.Equal(sourceType.Namespace, typeFromDisk.Namespace);
++                Assert.Equal(sourceType.Attributes, typeFromDisk.Attributes);
++
++                // Method comparison
++                for (int j = 0; j < sourceType.GetMethods().Length; j++)
++                {
++                    MethodInfo sourceMethod = sourceType.GetMethods()[j];
++                    MethodInfo methodFromDisk = typeFromDisk.GetMethods()[j];
++
++                    Assert.Equal(sourceMethod.Name, methodFromDisk.Name);
++                    Assert.Equal(sourceMethod.Attributes, methodFromDisk.Attributes);
++                    Assert.Equal(sourceMethod.ReturnType.FullName, methodFromDisk.ReturnType.FullName);
++                    // Parameter comparison
++                    for (int k = 0; k < sourceMethod.GetParameters().Length; k++)
++                    {
++                        ParameterInfo sourceParamter = sourceMethod.GetParameters()[k];
++                        ParameterInfo paramterFromDisk = methodFromDisk.GetParameters()[k];
++                        Assert.Equal(sourceParamter.ParameterType.FullName, paramterFromDisk.ParameterType.FullName);
++                    }
++                }
++
++                // Field Comparison
++                for (int j = 0; j < sourceType.GetFields().Length; j++)
++                {
++                    FieldInfo sourceField = sourceType.GetFields()[j];
++                    FieldInfo fieldFromDisk = typeFromDisk.GetFields()[j];
++
++                    Assert.Equal(sourceField.Name, fieldFromDisk.Name);
++                    Assert.Equal(sourceField.Attributes, fieldFromDisk.Attributes);
++                    Assert.Equal(sourceField.FieldType.FullName, fieldFromDisk.FieldType.FullName);
++                }
++            }
++        }
++
++        [Fact]
++        public void TwoInterfaceOneMethod()
++        {
++            // Construct an assembly name.
++            AssemblyName assemblyName = new AssemblyName("MyDynamicAssembly");
++
++            // Construct its types via reflection.
++            Type[] types = new Type[] { typeof(INoMethod), typeof(IOneMethod) };
++
++            // Generate DLL from these and save it to Disk.
++            AssemblyTools.WriteAssemblyToDisk(assemblyName, types, _fileLocation);
++
++            // Read said assembly back from Disk using MetadataLoadContext
++            Assembly assemblyFromDisk = AssemblyTools.TryLoadAssembly(_fileLocation);
++
++            // Now compare them:
++
++            // AssemblyName
++            Assert.NotNull(assemblyFromDisk);
++            Assert.Equal(assemblyName.Name, assemblyFromDisk.GetName().Name);
++
++            // Module Name
++            Module moduleFromDisk = assemblyFromDisk.Modules.First();
++            Assert.Equal(assemblyName.Name, moduleFromDisk.ScopeName);
++
++            // Type comparisons
++            for (int i = 0; i < types.Length; i++)
++            {
++                Type sourceType = types[i];
++                Type typeFromDisk = moduleFromDisk.GetTypes()[i];
++
++                Assert.Equal(sourceType.Name, typeFromDisk.Name);
++                Assert.Equal(sourceType.Namespace, typeFromDisk.Namespace);
++                Assert.Equal(sourceType.Attributes, typeFromDisk.Attributes);
++
++                // Method comparison
++                for (int j = 0; j < sourceType.GetMethods().Length; j++)
++                {
++                    MethodInfo sourceMethod = sourceType.GetMethods()[j];
++                    MethodInfo methodFromDisk = typeFromDisk.GetMethods()[j];
++
++                    Assert.Equal(sourceMethod.Name, methodFromDisk.Name);
++                    Assert.Equal(sourceMethod.Attributes, methodFromDisk.Attributes);
++                    Assert.Equal(sourceMethod.ReturnType.FullName, methodFromDisk.ReturnType.FullName);
++                    // Parameter comparison
++                    for (int k = 0; k < sourceMethod.GetParameters().Length; k++)
++                    {
++                        ParameterInfo sourceParamter = sourceMethod.GetParameters()[k];
++                        ParameterInfo paramterFromDisk = methodFromDisk.GetParameters()[k];
++                        Assert.Equal(sourceParamter.ParameterType.FullName, paramterFromDisk.ParameterType.FullName);
++                    }
++                }
++
++                // Field Comparison
++                for (int j = 0; j < sourceType.GetFields().Length; j++)
++                {
++                    FieldInfo sourceField = sourceType.GetFields()[j];
++                    FieldInfo fieldFromDisk = typeFromDisk.GetFields()[j];
++
++                    Assert.Equal(sourceField.Name, fieldFromDisk.Name);
++                    Assert.Equal(sourceField.Attributes, fieldFromDisk.Attributes);
++                    Assert.Equal(sourceField.FieldType.FullName, fieldFromDisk.FieldType.FullName);
++                }
++            }
++        }
++
++        [Fact]
++        public void TwoIntefaceManyMethodsThenNone()
++        {
++            // Construct an assembly name.
++            AssemblyName assemblyName = new AssemblyName("MyDynamicAssembly");
++
++            // Construct its types via reflection.
++            Type[] types = new Type[] { typeof(IMultipleMethod), typeof(INoMethod2) };
++
++            // Generate DLL from these and save it to Disk.
++            AssemblyTools.WriteAssemblyToDisk(assemblyName, types, _fileLocation);
++
++            // Read said assembly back from Disk using MetadataLoadContext
++            Assembly assemblyFromDisk = AssemblyTools.TryLoadAssembly(_fileLocation);
++
++            // Now compare them:
++
++            // AssemblyName
++            Assert.NotNull(assemblyFromDisk);
++            Assert.Equal(assemblyName.Name, assemblyFromDisk.GetName().Name);
++
++            // Module Name
++            Module moduleFromDisk = assemblyFromDisk.Modules.First();
++            Assert.Equal(assemblyName.Name, moduleFromDisk.ScopeName);
++
++            // Type comparisons
++            for (int i = 0; i < types.Length; i++)
++            {
++                Type sourceType = types[i];
++                Type typeFromDisk = moduleFromDisk.GetTypes()[i];
++
++                Assert.Equal(sourceType.Name, typeFromDisk.Name);
++                Assert.Equal(sourceType.Namespace, typeFromDisk.Namespace);
++                Assert.Equal(sourceType.Attributes, typeFromDisk.Attributes);
++
++                // Method comparison
++                for (int j = 0; j < sourceType.GetMethods().Length; j++)
++                {
++                    MethodInfo[] sourceMethods = sourceType.GetMethods();
++                    MethodInfo[] methodsFromDisk = typeFromDisk.GetMethods();
++                    MethodInfo sourceMethod = sourceType.GetMethods()[j];
++                    MethodInfo methodFromDisk = typeFromDisk.GetMethods()[j];
++
++                    Assert.Equal(sourceMethod.Name, methodFromDisk.Name);
++                    Assert.Equal(sourceMethod.Attributes, methodFromDisk.Attributes);
++                    Assert.Equal(sourceMethod.ReturnType.FullName, methodFromDisk.ReturnType.FullName);
++
++                    // Parameter comparison
++                    for (int k = 0; k < sourceMethod.GetParameters().Length; k++)
++                    {
++                        ParameterInfo sourceParamter = sourceMethod.GetParameters()[k];
++                        ParameterInfo paramterFromDisk = methodFromDisk.GetParameters()[k];
++                        Assert.Equal(sourceParamter.ParameterType.FullName, paramterFromDisk.ParameterType.FullName);
++                    }
++                }
++
++                // Field Comparison
++                for (int j = 0; j < sourceType.GetFields().Length; j++)
++                {
++                    FieldInfo sourceField = sourceType.GetFields()[j];
++                    FieldInfo fieldFromDisk = typeFromDisk.GetFields()[j];
++
++                    Assert.Equal(sourceField.Name, fieldFromDisk.Name);
++                    Assert.Equal(sourceField.Attributes, fieldFromDisk.Attributes);
++                    Assert.Equal(sourceField.FieldType.FullName, fieldFromDisk.FieldType.FullName);
++                }
++            }
++        }
++
++        [Fact]
++        public void VariousInterfaces()
++        {
++            // Construct an assembly name.
++            AssemblyName assemblyName = new AssemblyName("MyDynamicAssembly");
++
++            // Construct its types via reflection.
++            Type[] types = new Type[] { typeof(IMultipleMethod), typeof(INoMethod2), typeof(IAccess), typeof(IOneMethod), typeof(INoMethod) };
++
++            // Generate DLL from these and save it to Disk.
++            AssemblyTools.WriteAssemblyToDisk(assemblyName, types, _fileLocation);
++
++            // Read said assembly back from Disk using MetadataLoadContext
++            Assembly assemblyFromDisk = AssemblyTools.TryLoadAssembly(_fileLocation);
++
++            // Now compare them:
++
++            // AssemblyName
++            Assert.NotNull(assemblyFromDisk);
++            Assert.Equal(assemblyName.Name, assemblyFromDisk.GetName().Name);
++
++            // Module Name
++            Module moduleFromDisk = assemblyFromDisk.Modules.First();
++            Assert.Equal(assemblyName.Name, moduleFromDisk.ScopeName);
++
++            // Type comparisons
++            for (int i = 0; i < types.Length; i++)
++            {
++                Type sourceType = types[i];
++                Type typeFromDisk = moduleFromDisk.GetTypes()[i];
++
++                Assert.Equal(sourceType.Name, typeFromDisk.Name);
++                Assert.Equal(sourceType.Namespace, typeFromDisk.Namespace);
++                Assert.Equal(sourceType.Attributes, typeFromDisk.Attributes);
++
++                // Method comparison
++                for (int j = 0; j < sourceType.GetMethods().Length; j++)
++                {
++                    MethodInfo[] sourceMethods = sourceType.GetMethods();
++                    MethodInfo[] methodsFromDisk = typeFromDisk.GetMethods();
++                    MethodInfo sourceMethod = sourceType.GetMethods()[j];
++                    MethodInfo methodFromDisk = typeFromDisk.GetMethods()[j];
++
++                    Assert.Equal(sourceMethod.Name, methodFromDisk.Name);
++                    Assert.Equal(sourceMethod.Attributes, methodFromDisk.Attributes);
++                    Assert.Equal(sourceMethod.ReturnType.FullName, methodFromDisk.ReturnType.FullName);
++                    // Parameter comparison
++                    for (int k = 0; k < sourceMethod.GetParameters().Length; k++)
++                    {
++                        ParameterInfo sourceParamter = sourceMethod.GetParameters()[k];
++                        ParameterInfo paramterFromDisk = methodFromDisk.GetParameters()[k];
++                        Assert.Equal(sourceParamter.ParameterType.FullName, paramterFromDisk.ParameterType.FullName);
++                    }
++                }
++
++                // Field Comparison
++                for (int j = 0; j < sourceType.GetFields().Length; j++)
++                {
++                    FieldInfo sourceField = sourceType.GetFields()[j];
++                    FieldInfo fieldFromDisk = typeFromDisk.GetFields()[j];
++
++                    Assert.Equal(sourceField.Name, fieldFromDisk.Name);
++                    Assert.Equal(sourceField.Attributes, fieldFromDisk.Attributes);
++                    Assert.Equal(sourceField.FieldType.FullName, fieldFromDisk.FieldType.FullName);
++                }
++            }
++        }
++    }
++
++    // Test Interfaces
++    public struct INoMethod
++    {
++        public System.Int32 I;
++        private struct Bye
++        {
++        }
++
++        public int Getter()
++        {
++            I = 5;
++            return I;
++        }
++    }
++
++    public class INoMethod2
++    {
++        private string _j;
++        internal int[] _numbers = new int[5];
++        public string Getter()
++        {
++            _j = "hello";
++            return _j;
++        }
++
++    }
++
++    public interface IMultipleMethod
++    {
++        string[] Func(int a, string b);
++        bool MoreFunc(int[] a, string b, bool c);
++        BinaryWriter DoIExist();
++        void BuildAPerpetualMotionMachine();
++    }
++
++    internal interface IAccess
++    {
++        public TypeAttributes BuildAI(FieldAttributes field);
++        public int DisableRogueAI();
++    }
++
++    public class IOneMethod
++    {
++        private static string hello = "hello";
++        public BigInteger[] Stuff = new BigInteger[7];
++
++        private struct Bye
++        {
++        }
++
++        internal static string Func(int a, string b)
++        {
++            return hello;
++        }
++    }
++
++}
+diff --git a/src/Experiment/tests/ReflectionTesting.cs b/src/Experiment/tests/ReflectionTesting.cs
+index 622553216d7..ea61afcc5c3 100644
+--- a/src/Experiment/tests/ReflectionTesting.cs
++++ b/src/Experiment/tests/ReflectionTesting.cs
+@@ -1,27 +1,32 @@
+-// Licensed to the .NET Foundation under one or more agreements.
++﻿// Licensed to the .NET Foundation under one or more agreements.
+ // The .NET Foundation licenses this file to you under the MIT license.
+ 
++using System;
+ using System.CodeDom.Compiler;
+ using System.IO;
+ using System.Linq;
++using System.Reflection;
++using System.Reflection.Emit.Experimental;
++using System.Reflection.Emit.Experimental.Tests;
+ using Xunit;
+ 
+-namespace System.Reflection.Emit.Experimental.Tests
++namespace Experiment.Tests.Basic
+ {
+     public class ReflectionTesting : IDisposable
+     {
+-        internal string fileLocation;
++        private string _fileLocation;
+         public ReflectionTesting()
+         {
+             const bool _keepFiles = true;
+-            TempFileCollection _tfc;
++            TempFileCollection tfc;
+             Directory.CreateDirectory("testDir");
+-            _tfc = new TempFileCollection("testDir", false);
+-            fileLocation = _tfc.AddExtension("dll", _keepFiles);
++            tfc = new TempFileCollection("testDir", false);
++            _fileLocation = tfc.AddExtension("dll", _keepFiles);
+         }
+ 
+         public void Dispose()
+-        { }
++        {
++        }
+ 
+         [Fact]
+         public void OneInterfaceWithMethods()
+@@ -29,14 +34,14 @@ namespace System.Reflection.Emit.Experimental.Tests
+             // Construct an assembly name.
+             AssemblyName assemblyName = new AssemblyName("MyDynamicAssembly");
+ 
+-            //Construct its types via reflection.
++            // Construct its types via reflection.
+             Type[] types = new Type[] { typeof(IMultipleMethod) };
+ 
+             // Generate DLL from these and save it to Disk.
+-            AssemblyTools.WriteAssemblyToDisk(assemblyName, types, fileLocation);
++            AssemblyTools.WriteAssemblyToDisk(assemblyName, types, _fileLocation);
+ 
+             // Read said assembly back from Disk using MetadataLoadContext
+-            Assembly assemblyFromDisk = AssemblyTools.TryLoadAssembly(fileLocation);
++            Assembly assemblyFromDisk = AssemblyTools.TryLoadAssembly(_fileLocation);
+ 
+             // Now compare them:
+ 
+@@ -84,14 +89,14 @@ namespace System.Reflection.Emit.Experimental.Tests
+             // Construct an assembly name.
+             AssemblyName assemblyName = new AssemblyName("MyDynamicAssembly");
+ 
+-            //Construct its types via reflection.
++            // Construct its types via reflection.
+             Type[] types = new Type[] { typeof(INoMethod) };
+ 
+             // Generate DLL from these and save it to Disk.
+-            AssemblyTools.WriteAssemblyToDisk(assemblyName, types, fileLocation, null);
++            AssemblyTools.WriteAssemblyToDisk(assemblyName, types, _fileLocation, null);
+ 
+             // Read said assembly back from Disk using MetadataLoadContext
+-            Assembly assemblyFromDisk = AssemblyTools.TryLoadAssembly(fileLocation);
++            Assembly assemblyFromDisk = AssemblyTools.TryLoadAssembly(_fileLocation);
+ 
+             // Now compare them:
+ 
+@@ -133,21 +138,20 @@ namespace System.Reflection.Emit.Experimental.Tests
+             }
+         }
+ 
+-
+         [Fact]
+         public void EmptyInterfacesBetweenNonEmpty()
+         {
+             // Construct an assembly name.
+             AssemblyName assemblyName = new AssemblyName("MyDynamicAssembly");
+ 
+-            //Construct its types via reflection.
++            // Construct its types via reflection.
+             Type[] types = new Type[] { typeof(IAccess), typeof(INoMethod), typeof(INoMethod2), typeof(IMultipleMethod) };
+ 
+             // Generate DLL from these and save it to Disk.
+-            AssemblyTools.WriteAssemblyToDisk(assemblyName, types, fileLocation);
++            AssemblyTools.WriteAssemblyToDisk(assemblyName, types, _fileLocation);
+ 
+             // Read said assembly back from Disk using MetadataLoadContext
+-            Assembly assemblyFromDisk = AssemblyTools.TryLoadAssembly(fileLocation);
++            Assembly assemblyFromDisk = AssemblyTools.TryLoadAssembly(_fileLocation);
+ 
+             // Now compare them:
+ 
+@@ -195,14 +199,14 @@ namespace System.Reflection.Emit.Experimental.Tests
+             // Construct an assembly name.
+             AssemblyName assemblyName = new AssemblyName("MyDynamicAssembly");
+ 
+-            //Construct its types via reflection.
++            // Construct its types via reflection.
+             Type[] types = new Type[] { typeof(INoMethod), typeof(INoMethod2) };
+ 
+             // Generate DLL from these and save it to Disk.
+-            AssemblyTools.WriteAssemblyToDisk(assemblyName, types, fileLocation);
++            AssemblyTools.WriteAssemblyToDisk(assemblyName, types, _fileLocation);
+ 
+             // Read said assembly back from Disk using MetadataLoadContext
+-            Assembly assemblyFromDisk = AssemblyTools.TryLoadAssembly(fileLocation);
++            Assembly assemblyFromDisk = AssemblyTools.TryLoadAssembly(_fileLocation);
+ 
+             // Now compare them:
+ 
+@@ -250,14 +254,14 @@ namespace System.Reflection.Emit.Experimental.Tests
+             // Construct an assembly name.
+             AssemblyName assemblyName = new AssemblyName("MyDynamicAssembly");
+ 
+-            //Construct its types via reflection.
++            // Construct its types via reflection.
+             Type[] types = new Type[] { typeof(INoMethod), typeof(IOneMethod) };
+ 
+             // Generate DLL from these and save it to Disk.
+-            AssemblyTools.WriteAssemblyToDisk(assemblyName, types, fileLocation);
++            AssemblyTools.WriteAssemblyToDisk(assemblyName, types, _fileLocation);
+ 
+             // Read said assembly back from Disk using MetadataLoadContext
+-            Assembly assemblyFromDisk = AssemblyTools.TryLoadAssembly(fileLocation);
++            Assembly assemblyFromDisk = AssemblyTools.TryLoadAssembly(_fileLocation);
+ 
+             // Now compare them:
+ 
+@@ -299,22 +303,20 @@ namespace System.Reflection.Emit.Experimental.Tests
+             }
+         }
+ 
+-
+-
+         [Fact]
+         public void TwoIntefaceManyMethodsThenNone()
+         {
+             // Construct an assembly name.
+             AssemblyName assemblyName = new AssemblyName("MyDynamicAssembly");
+ 
+-            //Construct its types via reflection.
++            // Construct its types via reflection.
+             Type[] types = new Type[] { typeof(IMultipleMethod), typeof(INoMethod2) };
+ 
+             // Generate DLL from these and save it to Disk.
+-            AssemblyTools.WriteAssemblyToDisk(assemblyName, types, fileLocation);
++            AssemblyTools.WriteAssemblyToDisk(assemblyName, types, _fileLocation);
+ 
+             // Read said assembly back from Disk using MetadataLoadContext
+-            Assembly assemblyFromDisk = AssemblyTools.TryLoadAssembly(fileLocation);
++            Assembly assemblyFromDisk = AssemblyTools.TryLoadAssembly(_fileLocation);
+ 
+             // Now compare them:
+ 
+@@ -365,14 +367,14 @@ namespace System.Reflection.Emit.Experimental.Tests
+             // Construct an assembly name.
+             AssemblyName assemblyName = new AssemblyName("MyDynamicAssembly");
+ 
+-            //Construct its types via reflection.
++            // Construct its types via reflection.
+             Type[] types = new Type[] { typeof(IMultipleMethod), typeof(INoMethod2), typeof(IAccess), typeof(IOneMethod), typeof(INoMethod) };
+ 
+             // Generate DLL from these and save it to Disk.
+-            AssemblyTools.WriteAssemblyToDisk(assemblyName, types, fileLocation);
++            AssemblyTools.WriteAssemblyToDisk(assemblyName, types, _fileLocation);
+ 
+             // Read said assembly back from Disk using MetadataLoadContext
+-            Assembly assemblyFromDisk = AssemblyTools.TryLoadAssembly(fileLocation);
++            Assembly assemblyFromDisk = AssemblyTools.TryLoadAssembly(_fileLocation);
+ 
+             // Now compare them:
+ 
+@@ -417,7 +419,7 @@ namespace System.Reflection.Emit.Experimental.Tests
+         }
+     }
+ 
+-    //  Test Interfaces
++    // Test Interfaces
+     public interface INoMethod
+     {
+     }
+@@ -428,15 +430,15 @@ namespace System.Reflection.Emit.Experimental.Tests
+ 
+     public interface IMultipleMethod
+     {
+-        string Func(int a, string b);
+-        bool MoreFunc(int a, string b, bool c);
+-        double DoIExist();
++        string[] Func(int a, string b);
++        bool MoreFunc(int[] a, string b, bool c);
++        BinaryWriter DoIExist();
+         void BuildAPerpetualMotionMachine();
+     }
+ 
+     internal interface IAccess
+     {
+-        public int BuildAI(double field);
++        public TypeAttributes BuildAI(FieldAttributes field);
+         public int DisableRogueAI();
+     }
+ 
+diff --git a/src/Experiment/tests/StyleCop.Analyzers.ruleset b/src/Experiment/tests/StyleCop.Analyzers.ruleset
+new file mode 100644
+index 00000000000..1ba88b6d937
+--- /dev/null
++++ b/src/Experiment/tests/StyleCop.Analyzers.ruleset
+@@ -0,0 +1,185 @@
++﻿<?xml version="1.0" encoding="utf-8"?>
++<RuleSet Name="SyleCop Rules" ToolsVersion="17.0">
++  <Rules AnalyzerId="Microsoft.Analyzers.ManagedCodeAnalysis" RuleNamespace="Microsoft.Rules.Managed">
++    <Rule Id="CA2208" Action="Error" />
++  </Rules>
++  <Rules AnalyzerId="StyleCop.Analyzers" RuleNamespace="StyleCop.Analyzers">
++    <Rule Id="SA0000" Action="Error" />
++    <Rule Id="SA0001" Action="None" />
++    <Rule Id="SA1000" Action="Error" />
++    <Rule Id="SA1001" Action="Error" />
++    <Rule Id="SA1002" Action="Error" />
++    <Rule Id="SA1003" Action="Error" />
++    <Rule Id="SA1004" Action="Error" />
++    <Rule Id="SA1005" Action="Error" />
++    <Rule Id="SA1006" Action="Error" />
++    <Rule Id="SA1007" Action="Error" />
++    <Rule Id="SA1008" Action="Error" />
++    <Rule Id="SA1009" Action="Error" />
++    <Rule Id="SA1010" Action="Error" />
++    <Rule Id="SA1011" Action="None" />
++    <Rule Id="SA1012" Action="Error" />
++    <Rule Id="SA1013" Action="None" />
++    <Rule Id="SA1014" Action="Error" />
++    <Rule Id="SA1015" Action="Error" />
++    <Rule Id="SA1016" Action="Error" />
++    <Rule Id="SA1017" Action="Error" />
++    <Rule Id="SA1018" Action="Error" />
++    <Rule Id="SA1019" Action="Error" />
++    <Rule Id="SA1020" Action="Error" />
++    <Rule Id="SA1021" Action="Error" />
++    <Rule Id="SA1022" Action="Error" />
++    <Rule Id="SA1023" Action="Error" />
++    <Rule Id="SA1024" Action="Error" />
++    <Rule Id="SA1025" Action="Error" />
++    <Rule Id="SA1026" Action="Error" />
++    <Rule Id="SA1027" Action="Error" />
++    <Rule Id="SA1028" Action="Error" />
++    <Rule Id="SA1100" Action="Error" />
++    <Rule Id="SA1101" Action="None" />
++    <Rule Id="SA1102" Action="Error" />
++    <Rule Id="SA1103" Action="Error" />
++    <Rule Id="SA1104" Action="Error" />
++    <Rule Id="SA1105" Action="Error" />
++    <Rule Id="SA1106" Action="Error" />
++    <Rule Id="SA1107" Action="Error" />
++    <Rule Id="SA1108" Action="None" />
++    <Rule Id="SA1110" Action="Error" />
++    <Rule Id="SA1111" Action="Error" />
++    <Rule Id="SA1112" Action="Error" />
++    <Rule Id="SA1113" Action="Error" />
++    <Rule Id="SA1114" Action="Error" />
++    <Rule Id="SA1115" Action="Error" />
++    <Rule Id="SA1116" Action="None" />
++    <Rule Id="SA1117" Action="None" />
++    <Rule Id="SA1118" Action="None" />
++    <Rule Id="SA1119" Action="None" />
++    <Rule Id="SA1120" Action="Error" />
++    <Rule Id="SA1121" Action="None" />
++    <Rule Id="SA1122" Action="Error" />
++    <Rule Id="SA1123" Action="Error" />
++    <Rule Id="SA1124" Action="None" />
++    <Rule Id="SA1125" Action="None" />
++    <Rule Id="SA1127" Action="Error" />
++    <Rule Id="SA1128" Action="Error" />
++    <Rule Id="SA1129" Action="None" />
++    <Rule Id="SA1130" Action="Error" />
++    <Rule Id="SA1131" Action="None" />
++    <Rule Id="SA1132" Action="Error" />
++    <Rule Id="SA1133" Action="Error" />
++    <Rule Id="SA1134" Action="Error" />
++    <Rule Id="SA1135" Action="Error" />
++    <Rule Id="SA1136" Action="Error" />
++    <Rule Id="SA1137" Action="Error" />
++    <Rule Id="SA1139" Action="Error" />
++    <Rule Id="SA1167" Action="Error" />
++    <Rule Id="SA1200" Action="Error" />
++    <Rule Id="SA1201" Action="None" />
++    <Rule Id="SA1202" Action="None" />
++    <Rule Id="SA1203" Action="Error" />
++    <Rule Id="SA1204" Action="Error" />
++    <Rule Id="SA1205" Action="Error" />
++    <Rule Id="SA1206" Action="Error" />
++    <Rule Id="SA1207" Action="Error" />
++    <Rule Id="SA1208" Action="Error" />
++    <Rule Id="SA1209" Action="Error" />
++    <Rule Id="SA1210" Action="None" />
++    <Rule Id="SA1211" Action="None" />
++    <Rule Id="SA1212" Action="Error" />
++    <Rule Id="SA1213" Action="Error" />
++    <Rule Id="SA1214" Action="Error" />
++    <Rule Id="SA1215" Action="Error" />
++    <Rule Id="SA1216" Action="Error" />
++    <Rule Id="SA1217" Action="Error" />
++    <Rule Id="SA1300" Action="Error" />
++    <Rule Id="SA1302" Action="Error" />
++    <Rule Id="SA1303" Action="Error" />
++    <Rule Id="SA1304" Action="None" />
++    <Rule Id="SA1306" Action="Error" />
++    <Rule Id="SA1307" Action="Error" />
++    <Rule Id="SA1308" Action="None" />
++    <Rule Id="SA1309" Action="None" />
++    <Rule Id="SA1310" Action="None" />
++    <Rule Id="SA1311" Action="None" />
++    <Rule Id="SA1312" Action="Error" />
++    <Rule Id="SA1313" Action="None" />
++    <Rule Id="SA1314" Action="Error" />
++    <Rule Id="SA1400" Action="Error" />
++    <Rule Id="SA1401" Action="None" />
++    <Rule Id="SA1402" Action="None" />
++    <Rule Id="SA1403" Action="Error" />
++    <Rule Id="SA1404" Action="Error" />
++    <Rule Id="SA1405" Action="Error" />
++    <Rule Id="SA1406" Action="Error" />
++    <Rule Id="SA1407" Action="None" />
++    <Rule Id="SA1408" Action="Error" />
++    <Rule Id="SA1410" Action="Error" />
++    <Rule Id="SA1411" Action="Error" />
++    <Rule Id="SA1412" Action="Error" />
++    <Rule Id="SA1413" Action="None" />
++    <Rule Id="SA1500" Action="Error" />
++    <Rule Id="SA1501" Action="Error" />
++    <Rule Id="SA1502" Action="Error" />
++    <Rule Id="SA1503" Action="Error" />
++    <Rule Id="SA1504" Action="Error" />
++    <Rule Id="SA1505" Action="Error" />
++    <Rule Id="SA1506" Action="Error" />
++    <Rule Id="SA1507" Action="Error" />
++    <Rule Id="SA1508" Action="None" />
++    <Rule Id="SA1509" Action="Error" />
++    <Rule Id="SA1510" Action="Error" />
++    <Rule Id="SA1511" Action="Error" />
++    <Rule Id="SA1512" Action="Error" />
++    <Rule Id="SA1513" Action="Error" />
++    <Rule Id="SA1514" Action="Error" />
++    <Rule Id="SA1515" Action="None" />
++    <Rule Id="SA1516" Action="None" />
++    <Rule Id="SA1517" Action="Error" />
++    <Rule Id="SA1518" Action="Error" />
++    <Rule Id="SA1519" Action="Error" />
++    <Rule Id="SA1520" Action="Error" />
++    <Rule Id="SA1600" Action="None" />
++    <Rule Id="SA1601" Action="None" />
++    <Rule Id="SA1602" Action="None" />
++    <Rule Id="SA1604" Action="None" />
++    <Rule Id="SA1605" Action="Error" />
++    <Rule Id="SA1606" Action="Error" />
++    <Rule Id="SA1607" Action="Error" />
++    <Rule Id="SA1608" Action="Error" />
++    <Rule Id="SA1610" Action="None" />
++    <Rule Id="SA1611" Action="None" />
++    <Rule Id="SA1612" Action="Error" />
++    <Rule Id="SA1613" Action="Error" />
++    <Rule Id="SA1614" Action="Error" />
++    <Rule Id="SA1615" Action="None" />
++    <Rule Id="SA1616" Action="None" />
++    <Rule Id="SA1617" Action="Error" />
++    <Rule Id="SA1618" Action="None" />
++    <Rule Id="SA1619" Action="None" />
++    <Rule Id="SA1620" Action="Error" />
++    <Rule Id="SA1621" Action="Error" />
++    <Rule Id="SA1622" Action="Error" />
++    <Rule Id="SA1623" Action="None" />
++    <Rule Id="SA1624" Action="None" />
++    <Rule Id="SA1625" Action="None" />
++    <Rule Id="SA1626" Action="None" />
++    <Rule Id="SA1627" Action="None" />
++    <Rule Id="SA1629" Action="None" />
++    <Rule Id="SA1633" Action="Error" />
++    <Rule Id="SA1634" Action="None" />
++    <Rule Id="SA1635" Action="Error" />
++    <Rule Id="SA1636" Action="Error" />
++    <Rule Id="SA1637" Action="None" />
++    <Rule Id="SA1638" Action="Error" />
++    <Rule Id="SA1640" Action="None" />
++    <Rule Id="SA1641" Action="Error" />
++    <Rule Id="SA1642" Action="None" />
++    <Rule Id="SA1643" Action="None" />
++    <Rule Id="SA1648" Action="Error" />
++    <Rule Id="SA1649" Action="None" />
++    <Rule Id="SA1651" Action="Error" />
++    <Rule Id="SA1652" Action="Error" />
++    <Rule Id="SX1101" Action="Error" />
++    <Rule Id="SX1309" Action="Error" />
++  </Rules>
++</RuleSet>
+\ No newline at end of file
+diff --git a/src/Experiment/tests/System.Reflection.Emit.Experimental.Tests.csproj b/src/Experiment/tests/System.Reflection.Emit.Experimental.Tests.csproj
+index 0adecce7501..250a9818174 100644
+--- a/src/Experiment/tests/System.Reflection.Emit.Experimental.Tests.csproj
++++ b/src/Experiment/tests/System.Reflection.Emit.Experimental.Tests.csproj
+@@ -1,8 +1,13 @@
+ ﻿<Project Sdk="Microsoft.NET.Sdk">
+   <PropertyGroup>
+     <TargetFramework>net7.0</TargetFramework>
++	<CodeAnalysisRuleSet>StyleCop.Analyzers.ruleset</CodeAnalysisRuleSet>
+   </PropertyGroup>
+   <ItemGroup>
++    <PackageReference Include="StyleCop.Analyzers" Version="1.1.118">
++      <PrivateAssets>all</PrivateAssets>
++      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
++    </PackageReference>
+     <PackageReference Include="System.CodeDom" Version="6.0.0" />
+     <PackageReference Include="System.Reflection.MetadataLoadContext" Version="6.0.0" />
+   </ItemGroup>
+@@ -11,5 +16,9 @@
+     <ProjectReference Include="..\src\System.Reflection.Emit.Experimental.csproj" />
+   </ItemGroup>
+ 
++	<ItemGroup>
++		<AdditionalFiles Include="stylecop.json" />
++	</ItemGroup>	
++
+ 
+ </Project>
+diff --git a/src/Experiment/tests/stylecop.json b/src/Experiment/tests/stylecop.json
+new file mode 100644
+index 00000000000..02d7ad13792
+--- /dev/null
++++ b/src/Experiment/tests/stylecop.json
+@@ -0,0 +1,21 @@
++﻿{
++  "$schema": "https://raw.githubusercontent.com/DotNetAnalyzers/StyleCopAnalyzers/master/StyleCop.Analyzers/StyleCop.Analyzers/Settings/stylecop.schema.json",
++  "settings": {
++    "indentation": {
++      "indentationSize": 4,
++      "tabSize": 4,
++      "useTabs": false
++    },
++    "orderingRules": {
++      "usingDirectivesPlacement": "outsideNamespace",
++      "blankLinesBetweenUsingGroups": "omit"
++    },
++    "documentationRules": {
++      "documentInterfaces": true,
++      "documentInternalElements": false,
++      "copyrightText": "Licensed to the .NET Foundation under one or more agreements.\nThe .NET Foundation licenses this file to you under the MIT license.",
++      "xmlHeader": false
++    }
++  }
++}
++  
+\ No newline at end of file
