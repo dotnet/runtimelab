@@ -2656,7 +2656,7 @@ unsigned Compiler::fgMakeBasicBlocks(const BYTE* codeAddr, IL_OFFSET codeSize, F
                 jmpKind     = BBJ_SWITCH;
                 fgHasSwitch = true;
 
-                if (opts.compProcedureSplitting)
+                if (impInlineRoot()->opts.compProcedureSplitting)
                 {
                     // TODO-CQ: We might need to create a switch table; we won't know for sure until much later.
                     // However, switch tables don't work with hot/cold splitting, currently. The switch table data needs
@@ -2667,7 +2667,9 @@ unsigned Compiler::fgMakeBasicBlocks(const BYTE* codeAddr, IL_OFFSET codeSize, F
                     // JIT64: put the table in the code section, in the same hot/cold section as the switch jump itself
                     // (maybe immediately after the switch jump), and make the "base" address be also in that section,
                     // probably the address after the switch jump.
-                    opts.compProcedureSplitting = false;
+
+                    // In case this function is being inlined, disable splitting in root compiler.
+                    impInlineRoot()->opts.compProcedureSplitting = false;
                     JITDUMP("Turning off procedure splitting for this method, as it might need switch tables; "
                             "implementation limitation.\n");
                 }
