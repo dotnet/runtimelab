@@ -31,7 +31,6 @@ namespace ILCompiler.DependencyAnalysis.ReadyToRun
 
         public override bool IsShareable => false;
 
-        // This ClassCode must be larger than that of MethodCodeNode to ensure it got sorted at the end of the code
         public override int ClassCode => 788492408;
 
         public override bool StaticDependenciesAreComputed => _methodColdCode != null;
