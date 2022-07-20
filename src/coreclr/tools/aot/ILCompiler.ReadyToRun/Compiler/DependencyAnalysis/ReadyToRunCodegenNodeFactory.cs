@@ -67,10 +67,14 @@ namespace ILCompiler.DependencyAnalysis
 
         public bool MarkingComplete => _markingComplete;
 
-        public void GenerateScratch()
+        public void GenerateScratch(DependencyAnalyzerBase<NodeFactory> dependencyGraph)
         {
-            Scratch = new ScratchNode(this);
-            Header.Add(Internal.Runtime.ReadyToRunSectionType.Scratch, Scratch, Scratch);
+            if (Scratch == null)
+            {
+                Scratch = new ScratchNode(this);
+                Header.Add(Internal.Runtime.ReadyToRunSectionType.Scratch, Scratch, Scratch);
+                dependencyGraph.AddRoot(Scratch, "Scratch is generated because there is cold code");
+            }
         }
 
         public void SetMarkingComplete()

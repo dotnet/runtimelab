@@ -543,6 +543,8 @@ namespace ILCompiler
 
         protected override void ComputeDependencyNodeDependencies(List<DependencyNodeCore<NodeFactory>> obj)
         {
+            bool generatedColdCode = false;
+
             using (PerfEventSource.StartStopEvents.JitEvents())
             {
                 Action<DependencyNodeCore<NodeFactory>> compileOneMethod = (DependencyNodeCore<NodeFactory> dependency) =>
@@ -583,11 +585,9 @@ namespace ILCompiler
                             CorInfoImpl corInfoImpl = _corInfoImpls.GetValue(Thread.CurrentThread, thread => new CorInfoImpl(this));
                             corInfoImpl.CompileMethod(methodCodeNodeNeedingCode, Logger);
 
-                            // If we generated cold code, we will need Scratch
-                            if ((_nodeFactory.Scratch == null) && corInfoImpl.HasColdCode())
+                            if (corInfoImpl.HasColdCode())
                             {
-                                _nodeFactory.GenerateScratch();
-                                _dependencyGraph.AddRoot(_nodeFactory.Scratch, "Scratch is generated because there is cold code");
+                                generatedColdCode = true;
                             }
                         }
                     }
@@ -636,6 +636,12 @@ namespace ILCompiler
             if (_nodeFactory.CompilationCurrentPhase == 2)
             {
                 _finishedFirstCompilationRunInPhase2 = true;
+            }
+
+            // If we generated cold code, we will need Scratch
+            if (generatedColdCode)
+            {
+                _nodeFactory.GenerateScratch(_dependencyGraph);
             }
         }
 
