@@ -49,6 +49,9 @@ class ReadyToRunInfo
 {
     friend class ReadyToRunJitManager;
 
+    // HotColdMappingLookupTable::LookupMappingForMethod searches m_pScratch, and thus needs access.
+    friend class HotColdMappingLookupTable;
+
     PTR_Module                      m_pModule;
     PTR_READYTORUN_HEADER           m_pHeader;
     bool                            m_isComponentAssembly;
