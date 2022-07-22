@@ -14561,8 +14561,17 @@ void EECodeInfo::GetOffsetsFromUnwindInfo(ULONG* pRSPOffset, ULONG* pRBPOffset)
 
     _ASSERTE((pRSPOffset != NULL) && (pRBPOffset != NULL));
 
-    UNWIND_INFO * pInfo = GetUnwindInfo();
+    // moduleBase is a target address.
+    TADDR moduleBase = GetModuleBase();
 
+    DWORD unwindInfo = RUNTIME_FUNCTION__GetUnwindInfoAddress(GetFunctionEntry());
+
+    if ((unwindInfo & RUNTIME_FUNCTION_INDIRECT) != 0)
+    {
+        unwindInfo = RUNTIME_FUNCTION__GetUnwindInfoAddress(PTR_RUNTIME_FUNCTION(moduleBase + (unwindInfo & ~RUNTIME_FUNCTION_INDIRECT)));
+    }
+
+    UNWIND_INFO * pInfo = GetUnwindInfoHelper(unwindInfo);
     if (pInfo->Flags & UNW_FLAG_CHAININFO)
     {
         _ASSERTE(!"GetRbpOffset() - chained unwind info used, violating assumptions of the security stackwalk cache");
@@ -14641,33 +14650,6 @@ void EECodeInfo::GetOffsetsFromUnwindInfo(ULONG* pRSPOffset, ULONG* pRBPOffset)
     *pRBPOffset = StackOffset;
 }
 #undef kRBP
-
-// ----------------------------------------------------------------------------
-// EECodeInfo::GetUnwindInfo
-//
-// Description:
-//    Determines the current unwind info offset, passes this to GetUnwindInfoHelper, and returns the
-//    corresponding UNWIND_INFO pointer.
-//
-// Return Value:
-//    Return a pointer to the UNWIND_INFO.  On DAC builds, this function will create a host copy of the
-//    UNWIND_INFO and return a host pointer.  It will correctly read all of the memory for the variable-sized
-//    unwind info.
-//
-UNWIND_INFO * EECodeInfo::GetUnwindInfo()
-{
-    DWORD unwindInfo = RUNTIME_FUNCTION__GetUnwindInfoAddress(GetFunctionEntry());
-
-    if ((unwindInfo & RUNTIME_FUNCTION_INDIRECT) != 0)
-    {
-        // moduleBase is a target address.
-        const TADDR moduleBase = GetModuleBase();
-        unwindInfo             = RUNTIME_FUNCTION__GetUnwindInfoAddress(
-            PTR_RUNTIME_FUNCTION(moduleBase + (unwindInfo & ~RUNTIME_FUNCTION_INDIRECT)));
-    }
-
-    return GetUnwindInfoHelper(unwindInfo);
-}
 
 
 #if defined(_DEBUG) && defined(HAVE_GCCOVER)

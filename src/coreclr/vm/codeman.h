@@ -1698,10 +1698,7 @@ public:
 #endif // FEATURE_EH_FUNCLETS
 
 #if defined(TARGET_AMD64)
-    void          GetOffsetsFromUnwindInfo(ULONG* pRSPOffset, ULONG* pRBPOffset);
-
-    // Wrapper that determines unwindInfoOffset and calls GetUnwindInfoHelper().
-    UNWIND_INFO * GetUnwindInfo();
+    void         GetOffsetsFromUnwindInfo(ULONG* pRSPOffset, ULONG* pRBPOffset);
 
 #if defined(_DEBUG) && defined(HAVE_GCCOVER)
     // Find first funclet inside (pvFuncletStart, pvFuncletStart + cbCode)

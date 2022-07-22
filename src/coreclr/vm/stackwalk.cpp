@@ -2455,13 +2455,6 @@ StackWalkAction StackFrameIterator::NextRaw(void)
             if(isCollectableMethod)
                 fInsertCacheEntry = FALSE;
 
-            // Security stackwalk cache assumes it will not contain chained unwind info, so do not insert it.
-            UNWIND_INFO * pUnwindInfo = m_crawl.GetCodeInfo()->GetUnwindInfo();
-            if (pUnwindInfo->Flags & UNW_FLAG_CHAININFO)
-            {
-                fInsertCacheEntry = FALSE;
-            }
-
             StackwalkCacheUnwindInfo unwindInfo;
 
             if (!m_crawl.GetCodeManager()->UnwindStackFrame(
