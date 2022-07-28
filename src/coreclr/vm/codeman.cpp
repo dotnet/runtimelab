@@ -5756,6 +5756,86 @@ int NativeUnwindInfoLookupTable::LookupUnwindInfoForMethod(DWORD RelativePc,
     return -1;
 }
 
+int HotColdMappingLookupTable::LookupMappingForMethod(ReadyToRunInfo* pInfo, ULONG MethodIndex)
+{
+    CONTRACTL {
+        NOTHROW;
+        GC_NOTRIGGER;
+        SUPPORTS_DAC;
+    } CONTRACTL_END;
+
+    if (pInfo->m_nScratch == 0)
+    {
+        return -1;
+    }
+
+    // Casting the lookup table's size to an int is safe:
+    // We index the RUNTIME_FUNCTION table with ints, and the lookup table
+    // contains a subset of the indices in the RUNTIME_FUNCTION table.
+    // Thus, |lookup table| <= |RUNTIME_FUNCTION table|.
+    _ASSERTE(pInfo->m_nScratch <= pInfo->m_nRuntimeFunctions);
+    const int nLookupTable = (int)(pInfo->m_nScratch);
+
+    // The lookup table contains pairs of hot/cold indices, and thus should have an even size.
+    _ASSERTE((nLookupTable % 2) == 0);
+    int high = ((nLookupTable - 1) / 2);
+    int low  = 0;
+
+    const int indexCorrection = (int)(MethodIndex < pInfo->m_pScratch[0]);
+
+    // Binary search the lookup table.
+    // Use linear search once we get down to a small number of elements
+    // to avoid binary search overhead.
+    while (high - low > 10)
+    {
+        const int middle = low + (high - low) / 2;
+        const int index = (middle * 2) + indexCorrection;
+
+        if (MethodIndex < pInfo->m_pScratch[index])
+        {
+            high = middle - 1;
+        }
+        else
+        {
+            low = middle;
+        }
+    }
+
+    // In each pair of indices in lookup table, the first index is of the cold fragment.
+    const bool isColdCode = (indexCorrection == 0);
+
+    for (int i = low; i <= high; ++i)
+    {
+        const int index = (i * 2);
+
+        if (pInfo->m_pScratch[index + indexCorrection] == MethodIndex)
+        {
+            if (isColdCode)
+            {
+                return index + 1;
+            }
+
+            return index;
+        }
+        else if (isColdCode && (MethodIndex > pInfo->m_pScratch[index]))
+        {
+            // If MethodIndex is a cold funclet from a cold block, the above search will fail.
+            // To get its corresponding hot block, find the cold block containing the funclet,
+            // then use the lookup table.
+            // The cold funclet's MethodIndex will be greater than its cold block's MethodIndex,
+            // but less than the next cold block's MethodIndex in the lookup table.
+            const bool isFuncletIndex = ((index + 2) == nLookupTable) || (MethodIndex < pInfo->m_pScratch[index + 2]);
+
+            if (isFuncletIndex)
+            {
+                return index + 1;
+            }
+        }
+    }
+
+    return -1;
+}
+
 
 //***************************************************************************************
 //***************************************************************************************
@@ -6118,35 +6198,13 @@ BOOL ReadyToRunJitManager::JitCodeToMethodInfo(RangeSection * pRangeSection,
 
     ULONG UMethodIndex = (ULONG)MethodIndex;
 
-    // If the MethodIndex happen to be the cold code block, turn it into the associated hot code block
-    for (DWORD i = 0; i < pInfo->m_nScratch; i++)
+    // If the MethodIndex happens to be the cold code block, turn it into the associated hot code block
+    const int lookupIndex = HotColdMappingLookupTable::LookupMappingForMethod(pInfo, (ULONG)MethodIndex);
+
+    // If indexLookup is odd, then MethodIndex has a corresponding hot block in the lookup table.
+    if ((lookupIndex % 2) == 1)
     {
-        const bool isColdCode = ((i % 2) == 0);
-
-        if (UMethodIndex == pInfo->m_pScratch[i])
-        {
-            if (isColdCode)
-            {
-                MethodIndex = pInfo->m_pScratch[i + 1];
-            }
-
-            break;
-        }
-        else if (isColdCode && (UMethodIndex > pInfo->m_pScratch[i]))
-        {
-            // If MethodIndex is a cold funclet from a cold block, the above search will fail.
-            // To get its corresponding hot block, find the cold block containing the funclet,
-            // then use the Scratch table.
-            // The cold funclet's MethodIndex will be greater than its cold block's MethodIndex,
-            // but less than the next cold block's MethodIndex in the Scratch table.
-            const bool isFuncletIndex = (i + 2 == pInfo->m_nScratch) || (UMethodIndex < pInfo->m_pScratch[i + 2]);
-
-            if (isFuncletIndex)
-            {
-                MethodIndex = pInfo->m_pScratch[i + 1];
-                break;
-            }
-        }
+        MethodIndex = pInfo->m_pScratch[lookupIndex];
     }
 
     MethodDesc *pMethodDesc;
@@ -6276,27 +6334,23 @@ BOOL ReadyToRunJitManager::IsFunclet(EECodeInfo* pCodeInfo)
 
     ULONG methodIndex = (ULONG)(pCodeInfo->GetFunctionEntry() - pRuntimeFunctions);
 
-    // If it is the hot or cold part of the main function, then it is not a funclet
-    for (DWORD i = 0; i < pInfo->m_nScratch; i++)
+    const int lookupIndex = HotColdMappingLookupTable::LookupMappingForMethod(pInfo, methodIndex);
+
+    if ((lookupIndex % 2) == 1)
     {
-        if (methodIndex == pInfo->m_pScratch[i])
-        {
-            // Even indices of Scratch table are cold
-            if ((i % 2) == 0)
-            {
-                SIZE_T unwindSize;
-                PTR_VOID pUnwindData = GetUnwindDataBlob(pCodeInfo->GetModuleBase(), pCodeInfo->GetFunctionEntry(), &unwindSize);
-                _ASSERTE(pUnwindData != NULL);
+        // This maps to a hot entry in the lookup table, so check its unwind info
+        SIZE_T unwindSize;
+        PTR_VOID pUnwindData = GetUnwindDataBlob(pCodeInfo->GetModuleBase(), pCodeInfo->GetFunctionEntry(), &unwindSize);
+        _ASSERTE(pUnwindData != NULL);
 
-                // Chained unwind info is used only for cold part of the main code
-                const UCHAR chainedUnwindFlag = (((PTR_UNWIND_INFO)pUnwindData)->Flags & UNW_FLAG_CHAININFO);
-                return (chainedUnwindFlag == 0);
-            }
-
-            // If the function is split, all funclets are cold,
-            // and all functions in Scratch are split.
-            return FALSE;
-        }
+        // Chained unwind info is used only for cold part of the main code
+        const UCHAR chainedUnwindFlag = (((PTR_UNWIND_INFO)pUnwindData)->Flags & UNW_FLAG_CHAININFO);
+        return (chainedUnwindFlag == 0);
+    }
+    else if (lookupIndex != -1)
+    {
+        // No funclet can be hot in a split function, so this is not a funclet
+        return FALSE;
     }
 
     // It could be a funclet, or it could be a function that is not split
@@ -6372,35 +6426,34 @@ void ReadyToRunJitManager::JitTokenToMethodRegionInfo(const METHODTOKEN& MethodT
 
     ULONG methodIndex = (ULONG)(pRuntimeFunction - pRuntimeFunctions);
 
-    for (DWORD i = 0; i < pInfo->m_nScratch; i++)
+    const int lookupIndex = HotColdMappingLookupTable::LookupMappingForMethod(pInfo, methodIndex);
+
+    // If true, this method has no cold code
+    if (lookupIndex == -1)
     {
-        if (methodIndex == pInfo->m_pScratch[i])
-        {
-            
-            _ASSERTE((i % 2) == 1);
-            ULONG coldMethodIndex = pInfo->m_pScratch[i - 1];
-            PTR_RUNTIME_FUNCTION pColdRuntimeFunction = pRuntimeFunctions + coldMethodIndex;
-            methodRegionInfo->coldStartAddress = JitTokenToModuleBase(MethodToken) 
-                + RUNTIME_FUNCTION__BeginAddress(pColdRuntimeFunction);
-            ULONG coldMethodIndexNext;
-
-            if (i == (pInfo->m_nScratch - 1))
-            {
-                coldMethodIndexNext = nRuntimeFunctions - 1;
-            }
-            else
-            {
-                coldMethodIndexNext = pInfo->m_pScratch[i + 1] - 1;
-            }
-
-            PTR_RUNTIME_FUNCTION pLastRuntimeFunction = pRuntimeFunctions + coldMethodIndexNext;
-            methodRegionInfo->coldSize = RUNTIME_FUNCTION__EndAddress(pLastRuntimeFunction, 0)
-                - RUNTIME_FUNCTION__BeginAddress(pColdRuntimeFunction);
-            methodRegionInfo->hotSize -= methodRegionInfo->coldSize;
-
-            break;
-        }
+        return;
     }
+
+    _ASSERTE((lookupIndex % 2) == 0);
+    ULONG coldMethodIndex = pInfo->m_pScratch[lookupIndex];
+    PTR_RUNTIME_FUNCTION pColdRuntimeFunction = pRuntimeFunctions + coldMethodIndex;
+    methodRegionInfo->coldStartAddress = JitTokenToModuleBase(MethodToken)
+        + RUNTIME_FUNCTION__BeginAddress(pColdRuntimeFunction);
+    
+    ULONG coldMethodIndexNext;
+    if ((ULONG)(lookupIndex) == (pInfo->m_nScratch - 2))
+    {
+        coldMethodIndexNext = nRuntimeFunctions - 1;
+    }
+    else
+    {
+        coldMethodIndexNext = pInfo->m_pScratch[lookupIndex + 2] - 1;
+    }
+
+    PTR_RUNTIME_FUNCTION pLastRuntimeFunction = pRuntimeFunctions + coldMethodIndexNext;
+    methodRegionInfo->coldSize = RUNTIME_FUNCTION__EndAddress(pLastRuntimeFunction, 0)
+        - RUNTIME_FUNCTION__BeginAddress(pColdRuntimeFunction);
+    methodRegionInfo->hotSize -= methodRegionInfo->coldSize;
 }
 
 #ifdef DACCESS_COMPILE
