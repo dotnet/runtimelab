@@ -313,7 +313,7 @@ namespace ILCompiler.Reflection.ReadyToRun
         /// The id of the entrypoint runtime function
         /// </summary>
         public int EntryPointRuntimeFunctionId { get; set; }
-
+        public int ColdRuntimeFunctionId { get; set; }
         public int GcInfoRva { get; set; }
 
         public BaseGcInfo GcInfo
@@ -357,6 +357,7 @@ namespace ILCompiler.Reflection.ReadyToRun
         public string[] InstanceArgs { get; set; }
 
         public int RuntimeFunctionCount { get; set; }
+        public int ColdRuntimeFunctionCount { get; set; }
 
         /// <summary>
         /// Extracts the method signature from the metadata by rid
@@ -554,13 +555,20 @@ namespace ILCompiler.Reflection.ReadyToRun
         private void ParseRuntimeFunctions(bool partial)
         {
             int runtimeFunctionId = EntryPointRuntimeFunctionId;
+            int coldRuntimeFunctionId = ColdRuntimeFunctionId;
             int runtimeFunctionSize = _readyToRunReader.CalculateRuntimeFunctionSize();
             int runtimeFunctionOffset = _readyToRunReader.CompositeReader.GetOffset(_readyToRunReader.ReadyToRunHeader.Sections[ReadyToRunSectionType.RuntimeFunctions].RelativeVirtualAddress);
             int curOffset = runtimeFunctionOffset + runtimeFunctionId * runtimeFunctionSize;
+            int coldOffset = runtimeFunctionOffset + coldRuntimeFunctionId * runtimeFunctionSize;
             int codeOffset = 0;
-
+            
             for (int i = 0; i < RuntimeFunctionCount; i++)
             {
+                if (i == (RuntimeFunctionCount - ColdRuntimeFunctionCount))
+                {
+                    curOffset = coldOffset;
+                    runtimeFunctionId = coldRuntimeFunctionId;
+                }
                 int startRva = NativeReader.ReadInt32(_readyToRunReader.Image, ref curOffset);
                 if (_readyToRunReader.Machine == Machine.ArmThumb2)
                 {
@@ -625,7 +633,6 @@ namespace ILCompiler.Reflection.ReadyToRun
                 runtimeFunctionId++;
                 codeOffset += rtf.Size;
             }
-
             _size = codeOffset;
         }
     }
