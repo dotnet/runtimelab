@@ -467,7 +467,8 @@ namespace ILCompiler.Reflection.ReadyToRun
                 int runtimeFunctionSize = CalculateRuntimeFunctionSize();
                 int nRuntimeFunctions = runtimeFunctionSection.Size / runtimeFunctionSize;
                 bool[] isEntryPoint = new bool[nRuntimeFunctions];
-                SortedDictionary<int, int[]> dScratch = new SortedDictionary<int, int[]>();
+                IDictionary<int, int[]> dScratch = new Dictionary<int, int[]>();
+                int firstColdRuntimeFunction = -1;
                 
                 if (ReadyToRunHeader.Sections.TryGetValue(ReadyToRunSectionType.Scratch, out ReadyToRunSection scratchSection))
                 {
@@ -478,7 +479,7 @@ namespace ILCompiler.Reflection.ReadyToRun
                     for (int i = 0; i < count; i++)
                     {
                         mScratch.Add(new List<int> {NativeReader.ReadInt32(Image, ref scratchOffset), NativeReader.ReadInt32(Image, ref scratchOffset)});
-
+    
                     }
 
                     for (int i = 0; i < count - 1; i++)
@@ -486,11 +487,13 @@ namespace ILCompiler.Reflection.ReadyToRun
                         dScratch.Add(mScratch[i][1], Enumerable.Range(mScratch[i][0], (mScratch[i + 1][0] - mScratch[i][0])).ToArray());
                     } 
                     dScratch.Add(mScratch[count - 1][1], Enumerable.Range(mScratch[count - 1][0], (nRuntimeFunctions - mScratch[count - 1][0])).ToArray());
+
+                    firstColdRuntimeFunction = mScratch[0][0];
                 }
                 //initialize R2RMethods
                 ParseMethodDefEntrypoints((section, reader) => ParseMethodDefEntrypointsSection(section, reader, isEntryPoint));
                 ParseInstanceMethodEntrypoints(isEntryPoint);
-                CountRuntimeFunctions(isEntryPoint, dScratch);
+                CountRuntimeFunctions(isEntryPoint, dScratch, firstColdRuntimeFunction);
             }
         }
 
@@ -1070,28 +1073,28 @@ namespace ILCompiler.Reflection.ReadyToRun
             }
         }
 
-        private void CountRuntimeFunctions(bool[] isEntryPoint, SortedDictionary<int, int[]> dScratch)
+        private void CountRuntimeFunctions(bool[] isEntryPoint, IDictionary<int, int[]> dScratch, int firstColdRuntimeFunction)
         {
-            int iMethod = 0;
             foreach (ReadyToRunMethod method in Methods)
             {
                 int runtimeFunctionId = method.EntryPointRuntimeFunctionId;
                 if (dScratch.ContainsKey(runtimeFunctionId))
                 {
-                    int coldSize = dScratch[iMethod].Length;
-                    int hotSize; 
-                    if (iMethod == (dScratch.Count - 1))
+                    int coldSize = dScratch[runtimeFunctionId].Length;
+                    if (runtimeFunctionId == -1)
+                    continue;
+
+                    int count = 0;
+                    int i = runtimeFunctionId;
+                    do
                     {
-                        hotSize = dScratch[0][0] - dScratch.ElementAt(iMethod).Key;
-                    }
-                    else
-                    {
-                        hotSize = dScratch.ElementAt(iMethod + 1).Key - dScratch.ElementAt(iMethod).Key;
-                    }
-                    method.RuntimeFunctionCount = hotSize + coldSize;
+                        count++;
+                        i++;
+                    } while (i < isEntryPoint.Length && !isEntryPoint[i] && i < firstColdRuntimeFunction);
+                    
+                    method.ColdRuntimeFunctionId = dScratch[runtimeFunctionId][0];
+                    method.RuntimeFunctionCount = count + coldSize;
                     method.ColdRuntimeFunctionCount = coldSize;
-                    method.ColdRuntimeFunctionId = dScratch[iMethod][0];
-                    iMethod++;
                 }
                 else
                 {
@@ -1105,6 +1108,7 @@ namespace ILCompiler.Reflection.ReadyToRun
                         count++;
                         i++;
                     } while (i < isEntryPoint.Length && !isEntryPoint[i]);
+                    method.RuntimeFunctionCount = count;
                 }
             }
         }
