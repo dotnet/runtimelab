@@ -478,7 +478,7 @@ namespace ILCompiler.Reflection.ReadyToRun
                     for (int i = 0; i < count; i++)
                     {
                         mScratch.Add(new List<int> {NativeReader.ReadInt32(Image, ref scratchOffset), NativeReader.ReadInt32(Image, ref scratchOffset)});
-
+    
                     }
 
                     for (int i = 0; i < count - 1; i++)
@@ -1072,26 +1072,26 @@ namespace ILCompiler.Reflection.ReadyToRun
 
         private void CountRuntimeFunctions(bool[] isEntryPoint, SortedDictionary<int, int[]> dScratch)
         {
-            int iMethod = 0;
             foreach (ReadyToRunMethod method in Methods)
             {
                 int runtimeFunctionId = method.EntryPointRuntimeFunctionId;
                 if (dScratch.ContainsKey(runtimeFunctionId))
                 {
-                    int coldSize = dScratch[iMethod].Length;
-                    int hotSize; 
-                    if (iMethod == (dScratch.Count - 1))
+                    int coldSize = dScratch[runtimeFunctionId].Length;
+                    if (runtimeFunctionId == -1)
+                    continue;
+
+                    int count = 0;
+                    int i = runtimeFunctionId;
+                    do
                     {
-                        hotSize = dScratch[0][0] - dScratch.ElementAt(iMethod).Key;
-                    }
-                    else
-                    {
-                        hotSize = dScratch.ElementAt(iMethod + 1).Key - dScratch.ElementAt(iMethod).Key;
-                    }
-                    method.RuntimeFunctionCount = hotSize + coldSize;
+                        count++;
+                        i++;
+                    } while (i < isEntryPoint.Length && !isEntryPoint[i] && i < dScratch.ElementAt(0).Value[0]);
+                    
+                    method.ColdRuntimeFunctionId = dScratch[runtimeFunctionId][0];
+                    method.RuntimeFunctionCount = count + coldSize;
                     method.ColdRuntimeFunctionCount = coldSize;
-                    method.ColdRuntimeFunctionId = dScratch[iMethod][0];
-                    iMethod++;
                 }
                 else
                 {
@@ -1105,6 +1105,7 @@ namespace ILCompiler.Reflection.ReadyToRun
                         count++;
                         i++;
                     } while (i < isEntryPoint.Length && !isEntryPoint[i]);
+                    method.RuntimeFunctionCount = count;
                 }
             }
         }
