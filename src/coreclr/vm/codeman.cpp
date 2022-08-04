@@ -6199,12 +6199,14 @@ BOOL ReadyToRunJitManager::JitCodeToMethodInfo(RangeSection * pRangeSection,
     ULONG UMethodIndex = (ULONG)MethodIndex;
 
     // If the MethodIndex happens to be the cold code block, turn it into the associated hot code block
-    const int lookupIndex = HotColdMappingLookupTable::LookupMappingForMethod(pInfo, (ULONG)MethodIndex);
-
-    // If indexLookup is odd, then MethodIndex has a corresponding hot block in the lookup table.
-    if ((lookupIndex % 2) == 1)
+    if (pInfo->m_nScratch != 0)
     {
-        MethodIndex = pInfo->m_pScratch[lookupIndex];
+        const int lookupIndex = HotColdMappingLookupTable::LookupMappingForMethod(pInfo, (ULONG)MethodIndex);
+        // If indexLookup is odd, then MethodIndex has a corresponding hot block in the lookup table.
+        if ((lookupIndex % 2) == 1)
+        {
+            MethodIndex = pInfo->m_pScratch[lookupIndex];
+        }
     }
 
     MethodDesc *pMethodDesc;
