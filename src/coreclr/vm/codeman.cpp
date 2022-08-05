@@ -5764,7 +5764,10 @@ int HotColdMappingLookupTable::LookupMappingForMethod(ReadyToRunInfo* pInfo, ULO
         SUPPORTS_DAC;
     } CONTRACTL_END;
 
-    _ASSERTE(pInfo->m_nScratch != 0);
+    if (pInfo->m_nScratch == 0)
+    {
+        return -1;
+    }
 
     // Casting the lookup table's size to an int is safe:
     // We index the RUNTIME_FUNCTION table with ints, and the lookup table
@@ -6195,15 +6198,11 @@ BOOL ReadyToRunJitManager::JitCodeToMethodInfo(RangeSection * pRangeSection,
 
     ULONG UMethodIndex = (ULONG)MethodIndex;
 
-    // If the MethodIndex happens to be the cold code block, turn it into the associated hot code block
-    if (pInfo->m_nScratch != 0)
+    const int lookupIndex = HotColdMappingLookupTable::LookupMappingForMethod(pInfo, (ULONG)MethodIndex);
+    if ((lookupIndex != -1) && ((lookupIndex % 2) == 1))
     {
-        const int lookupIndex = HotColdMappingLookupTable::LookupMappingForMethod(pInfo, (ULONG)MethodIndex);
-        // If indexLookup is odd, then MethodIndex has a corresponding hot block in the lookup table.
-        if ((lookupIndex % 2) == 1)
-        {
-            MethodIndex = pInfo->m_pScratch[lookupIndex];
-        }
+        // If the MethodIndex happens to be the cold code block, turn it into the associated hot code block
+        MethodIndex = pInfo->m_pScratch[lookupIndex];
     }
 
     MethodDesc *pMethodDesc;
@@ -6335,7 +6334,7 @@ BOOL ReadyToRunJitManager::IsFunclet(EECodeInfo* pCodeInfo)
 
     const int lookupIndex = HotColdMappingLookupTable::LookupMappingForMethod(pInfo, methodIndex);
 
-    if ((lookupIndex % 2) == 1)
+    if ((lookupIndex != -1) && ((lookupIndex % 2) == 1))
     {
         // This maps to a hot entry in the lookup table, so check its unwind info
         SIZE_T unwindSize;
@@ -6346,14 +6345,8 @@ BOOL ReadyToRunJitManager::IsFunclet(EECodeInfo* pCodeInfo)
         const UCHAR chainedUnwindFlag = (((PTR_UNWIND_INFO)pUnwindData)->Flags & UNW_FLAG_CHAININFO);
         return (chainedUnwindFlag == 0);
     }
-    else if (lookupIndex != -1)
-    {
-        // No funclet can be hot in a split function, so this is not a funclet
-        return FALSE;
-    }
 
-    // It could be a funclet, or it could be a function that is not split
-    // so fall back to existing logic
+    // Fall back to existing logic if it is not cold
 
     TADDR funcletStartAddress = GetFuncletStartAddress(pCodeInfo);
     TADDR methodStartAddress = pCodeInfo->GetStartAddress();
