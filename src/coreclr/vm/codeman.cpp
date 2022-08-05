@@ -6198,12 +6198,10 @@ BOOL ReadyToRunJitManager::JitCodeToMethodInfo(RangeSection * pRangeSection,
 
     ULONG UMethodIndex = (ULONG)MethodIndex;
 
-    // If the MethodIndex happens to be the cold code block, turn it into the associated hot code block
     const int lookupIndex = HotColdMappingLookupTable::LookupMappingForMethod(pInfo, (ULONG)MethodIndex);
-
-    // If indexLookup is odd, then MethodIndex has a corresponding hot block in the lookup table.
-    if ((lookupIndex % 2) == 1)
+    if ((lookupIndex != -1) && ((lookupIndex % 2) == 1))
     {
+        // If the MethodIndex happens to be the cold code block, turn it into the associated hot code block
         MethodIndex = pInfo->m_pScratch[lookupIndex];
     }
 
@@ -6336,7 +6334,7 @@ BOOL ReadyToRunJitManager::IsFunclet(EECodeInfo* pCodeInfo)
 
     const int lookupIndex = HotColdMappingLookupTable::LookupMappingForMethod(pInfo, methodIndex);
 
-    if ((lookupIndex % 2) == 1)
+    if ((lookupIndex != -1) && ((lookupIndex % 2) == 1))
     {
         // This maps to a hot entry in the lookup table, so check its unwind info
         SIZE_T unwindSize;
@@ -6347,14 +6345,8 @@ BOOL ReadyToRunJitManager::IsFunclet(EECodeInfo* pCodeInfo)
         const UCHAR chainedUnwindFlag = (((PTR_UNWIND_INFO)pUnwindData)->Flags & UNW_FLAG_CHAININFO);
         return (chainedUnwindFlag == 0);
     }
-    else if (lookupIndex != -1)
-    {
-        // No funclet can be hot in a split function, so this is not a funclet
-        return FALSE;
-    }
 
-    // It could be a funclet, or it could be a function that is not split
-    // so fall back to existing logic
+    // Fall back to existing logic if it is not cold
 
     TADDR funcletStartAddress = GetFuncletStartAddress(pCodeInfo);
     TADDR methodStartAddress = pCodeInfo->GetStartAddress();
