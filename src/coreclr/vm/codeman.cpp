@@ -5764,10 +5764,7 @@ int HotColdMappingLookupTable::LookupMappingForMethod(ReadyToRunInfo* pInfo, ULO
         SUPPORTS_DAC;
     } CONTRACTL_END;
 
-    if (pInfo->m_nScratch == 0)
-    {
-        return -1;
-    }
+    _ASSERTE(pInfo->m_nScratch != 0);
 
     // Casting the lookup table's size to an int is safe:
     // We index the RUNTIME_FUNCTION table with ints, and the lookup table
