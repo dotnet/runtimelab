@@ -339,7 +339,7 @@ namespace ILCompiler
             _dependencyGraph.ComputeMarkedNodes();
             var nodes = _dependencyGraph.MarkedNodeList;
 
-            nodes = _fileLayoutOptimizer.ApplyProfilerGuidedMethodSort(nodes);
+            // nodes = _fileLayoutOptimizer.ApplyProfilerGuidedMethodSort(nodes);
 
             using (PerfEventSource.StartStopEvents.EmittingEvents())
             {
