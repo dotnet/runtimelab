@@ -211,7 +211,7 @@ namespace ILCompiler.DependencyAnalysis.ReadyToRun
                         header[i++] = 1 + (4 << 3); // Version = 1, UNW_FLAG_CHAININFO
                         header[i++] = 0; // SizeOfProlog = 0
                         header[i++] = 0; // CountOfCode = 0
-                        header[i++] = 0; // Frame = 0
+                        header[i++] = _methodNode.FrameInfos[0].BlobData[3]; // Copying frame and frame offset from main function
                         yield return new GCInfoComponent(header);
                         yield return new GCInfoComponent(_methodNode, 0);
                         yield return new GCInfoComponent(_methodNode, _methodNode.Size);
