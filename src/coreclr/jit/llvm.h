@@ -225,7 +225,7 @@ private:
     unsigned buildMemCpy(Value* baseAddress, unsigned startOffset, unsigned endOffset, Value* srcAddress);
     void buildLocalField(GenTreeLclFld* lclFld);
     void buildNullCheck(GenTreeUnOp* nullCheckNode);
-    void buildThrowException(llvm::IRBuilder<>& builder, const char*        helperClass, const char*        helperMethodName, Value* shadowStack);
+    void buildThrowException(llvm::IRBuilder<>& builder, const char* helperClass, const char* helperMethodName, Value* shadowStack);
     void buildLlvmCallOrInvoke(llvm::Function* callee, llvm::ArrayRef<Value*> args);
 
     void buildLocalVarAddr(GenTreeLclVarCommon* lclVar);
