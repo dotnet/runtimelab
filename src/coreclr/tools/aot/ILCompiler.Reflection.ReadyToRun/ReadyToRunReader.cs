@@ -1119,6 +1119,11 @@ namespace ILCompiler.Reflection.ReadyToRun
             RuntimeFunction firstRuntimeFunction = runtimeFunctions[0];
             BaseUnwindInfo firstUnwindInfo = firstRuntimeFunction.UnwindInfo;
             var x64UnwindInfo = firstUnwindInfo as Amd64.UnwindInfo;
+            System.Collections.Generic.HashSet<uint> hashPersonalityRoutines = new System.Collections.Generic.HashSet<uint>();
+            if (x64UnwindInfo != null)
+            {
+                hashPersonalityRoutines.Add(x64UnwindInfo.PersonalityRoutineRVA);
+            }
 
             for (int i = 1; i < runtimeFunctions.Count; i++)
             {
@@ -1128,12 +1133,12 @@ namespace ILCompiler.Reflection.ReadyToRun
                 if (x64UnwindInfo != null && ((x64UnwindInfo.Flags & (int)ILCompiler.Reflection.ReadyToRun.Amd64.UnwindFlags.UNW_FLAG_CHAININFO) == 0))
                 {
                     Amd64.UnwindInfo x64UnwindInfoCurr = (Amd64.UnwindInfo) runtimeFunctions[i].UnwindInfo;
-                    uint firstPersonalityRoutineRVA = x64UnwindInfo.PersonalityRoutineRVA;
-                    uint currPersonalityRoutineRVA = x64UnwindInfoCurr.PersonalityRoutineRVA;
                 
                     if ((x64UnwindInfoCurr.Flags & (int)ILCompiler.Reflection.ReadyToRun.Amd64.UnwindFlags.UNW_FLAG_CHAININFO) == 0)
                     {
-                        Debug.Assert(firstPersonalityRoutineRVA == currPersonalityRoutineRVA, "RuntimeFunctions don't share the same PersonalityRoutineRVA");
+                        uint currPersonalityRoutineRVA = x64UnwindInfoCurr.PersonalityRoutineRVA;
+                        hashPersonalityRoutines.Add(currPersonalityRoutineRVA);
+                        Debug.Assert(hashPersonalityRoutines.Count < 3, "There are more than two different runtimefunctions PersonalityRVAs");
                     }
                 }
             } 
