@@ -306,6 +306,7 @@ namespace ILCompiler.Reflection.ReadyToRun
             {
                 this._runtimeFunctions = new List<RuntimeFunction>();
                 this.ParseRuntimeFunctions(false);
+                _readyToRunReader.ValidateRuntimeFunctions(_runtimeFunctions);
             }
         }
 
