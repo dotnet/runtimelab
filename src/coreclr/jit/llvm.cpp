@@ -24,6 +24,8 @@ using llvm::LLVMContext;
 using llvm::ArrayRef;
 using llvm::Module;
 
+
+// TODO: We should create a Static... class to manage the statics and their lifetimes
 static Module*          _module    = nullptr;
 static llvm::DIBuilder* _diBuilder = nullptr;
 static LLVMContext _llvmContext;
