@@ -45,7 +45,7 @@ static const uint32_t (*_padOffset)(void*, CORINFO_CLASS_STRUCT_*, unsigned);
 static const CorInfoTypeWithMod (*_getArgTypeIncludingParameterized)(void*, CORINFO_SIG_INFO*, CORINFO_ARG_LIST_HANDLE, CORINFO_CLASS_HANDLE*);
 static const CorInfoTypeWithMod (*_getParameterType)(void*, CORINFO_CLASS_HANDLE, CORINFO_CLASS_HANDLE*);
 static const TypeDescriptor (*_getTypeDescriptor)(void*, CORINFO_CLASS_HANDLE);
-static CORINFO_METHOD_HANDLE (*_getCompilerHelpersMethodHandle)(void*, const char*, unsigned, const char*, unsigned);
+static CORINFO_METHOD_HANDLE (*_getCompilerHelpersMethodHandle)(void*, const char*, const char*);
 
 static char*                              _outputFileName;
 static Function*                          _doNothingFunction;
@@ -71,7 +71,7 @@ extern "C" DLLEXPORT void registerLlvmCallbacks(void*       thisPtr,
                                                 const CorInfoTypeWithMod(*getArgTypeIncludingParameterized)(void*, CORINFO_SIG_INFO*, CORINFO_ARG_LIST_HANDLE, CORINFO_CLASS_HANDLE*),
                                                 const CorInfoTypeWithMod(*getParameterType)(void*, CORINFO_CLASS_HANDLE, CORINFO_CLASS_HANDLE*),
                                                 const TypeDescriptor(*getTypeDescriptor)(void*, CORINFO_CLASS_HANDLE),
-                                                CORINFO_METHOD_HANDLE (*getCompilerHelpersMethodHandle)(void*, const char*, unsigned, const char*, unsigned))
+                                                CORINFO_METHOD_HANDLE (*getCompilerHelpersMethodHandle)(void*, const char*, const char*))
 {
     _thisPtr = thisPtr;
     _getMangledMethodName         = getMangledMethodNamePtr;
@@ -1647,8 +1647,7 @@ unsigned Llvm::buildMemCpy(Value* baseAddress, unsigned startOffset, unsigned en
 
 void Llvm::buildThrowException(llvm::IRBuilder<>& builder, const char* helperClass, const char * helperMethodName, Value* shadowStack)
 {
-    CORINFO_METHOD_HANDLE methodHandle = _getCompilerHelpersMethodHandle(_thisPtr, helperClass, strlen(helperClass),
-                                                                         helperMethodName, strlen(helperMethodName));
+    CORINFO_METHOD_HANDLE methodHandle = _getCompilerHelpersMethodHandle(_thisPtr, helperClass, helperMethodName);
     const char* mangledName = (*_getMangledMethodName)(_thisPtr, methodHandle);
 
     Function* llvmFunc = _module->getFunction(mangledName);

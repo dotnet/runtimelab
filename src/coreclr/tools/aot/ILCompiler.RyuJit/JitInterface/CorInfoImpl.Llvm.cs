@@ -363,11 +363,11 @@ namespace Internal.JitInterface
         }
 
         [UnmanagedCallersOnly]
-        public static CORINFO_METHOD_STRUCT_* getCompilerHelpersMethodHandle(IntPtr thisHandle, byte* className, uint classNameLength, byte* methodName, uint methodNameLength)
+        public static CORINFO_METHOD_STRUCT_* getCompilerHelpersMethodHandle(IntPtr thisHandle, byte* className, byte* methodName)
         {
             var _this = GetThis(thisHandle);
 
-            return _this.ObjectToHandle(_this._compilation.GetCompilerHelpersMethodDesc(Encoding.UTF8.GetString(className, (int)classNameLength), Encoding.UTF8.GetString(methodName, (int)methodNameLength)));
+            return _this.ObjectToHandle(_this._compilation.GetCompilerHelpersMethodDesc(Marshal.PtrToStringAnsi((IntPtr)className), Marshal.PtrToStringAnsi((IntPtr)methodName)));
         }
 
         [DllImport(JitLibrary)]
@@ -386,7 +386,7 @@ namespace Internal.JitInterface
             delegate* unmanaged<IntPtr, CORINFO_SIG_INFO*, CORINFO_ARG_LIST_STRUCT_*, CORINFO_CLASS_STRUCT_**, CorInfoTypeWithMod> getArgTypeIncludingParameterized,
             delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, CORINFO_CLASS_STRUCT_**, CorInfoTypeWithMod> getParameterType,
             delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, TypeDescriptor> getTypeDescriptor,
-            delegate* unmanaged<IntPtr, byte*, uint, byte*, uint, CORINFO_METHOD_STRUCT_*> getCompilerHelpersMethodHandle
+            delegate* unmanaged<IntPtr, byte*, byte*, CORINFO_METHOD_STRUCT_*> getCompilerHelpersMethodHandle
             );
 
         public void RegisterLlvmCallbacks(IntPtr corInfoPtr, string outputFileName, string triple, string dataLayout)
