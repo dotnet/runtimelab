@@ -43,7 +43,7 @@ if [ ! -d llvm-project ]; then
     cd llvm-project || exit 1
     # Purposefuly ignoring exit codes of sparse-checkout so that this works with git lower than 2.26
     git sparse-checkout init
-    git sparse-checkout set /llvm/\* !/llvm/test/\*
+    git sparse-checkout set llvm/\* !llvm/test/\*
     git checkout $LLVMBranch || exit 1
     cd llvm || exit 1
 else
