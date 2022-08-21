@@ -367,7 +367,7 @@ namespace Internal.JitInterface
         {
             var _this = GetThis(thisHandle);
 
-            return _this.ObjectToHandle(_this._compilation.GetCompilerHelpersMethodDesc(Marshal.PtrToStringAnsi((IntPtr)className), Marshal.PtrToStringAnsi((IntPtr)methodName)));
+            return _this.ObjectToHandle(_this._compilation.GetCompilerHelpersMethodDesc(Marshal.PtrToStringUTF8((IntPtr)className), Marshal.PtrToStringUTF8((IntPtr)methodName)));
         }
 
         [DllImport(JitLibrary)]
