@@ -41,6 +41,7 @@ namespace ILCompiler
         private bool _hotColdSplitting;
         private CompositeImageSettings _compositeImageSettings;
         private ulong _imageBase;
+        private NodeFactoryOptimizationFlags _nodeFactoryOptimizationFlags = new NodeFactoryOptimizationFlags();
 
         private string _jitPath;
         private string _outputFile;
@@ -48,7 +49,7 @@ namespace ILCompiler
         // These need to provide reasonable defaults so that the user can optionally skip
         // calling the Use/Configure methods and still get something reasonable back.
         private KeyValuePair<string, string>[] _ryujitOptions = Array.Empty<KeyValuePair<string, string>>();
-        private ILProvider _ilProvider = new ReadyToRunILProvider();
+        private ILProvider _ilProvider;
 
         public ReadyToRunCodegenCompilationBuilder(
             CompilerTypeSystemContext context,
@@ -57,6 +58,7 @@ namespace ILCompiler
             string compositeRootPath)
             : base(context, group, new NativeAotNameMangler())
         {
+            _ilProvider = new ReadyToRunILProvider(group);
             _inputFiles = inputFiles;
             _compositeRootPath = compositeRootPath;
 
@@ -205,6 +207,12 @@ namespace ILCompiler
             return this;
         }
 
+        public ReadyToRunCodegenCompilationBuilder UseNodeFactoryOptimizationFlags(NodeFactoryOptimizationFlags flags)
+        {
+            _nodeFactoryOptimizationFlags = flags;
+            return this;
+        }
+
         public override ICompilation ToCompilation()
         {
             // TODO: only copy COR headers for single-assembly build and for composite build with embedded MSIL
@@ -248,6 +256,7 @@ namespace ILCompiler
                 debugDirectoryNode,
                 win32Resources,
                 flags,
+                _nodeFactoryOptimizationFlags,
                 _imageBase
                 );
 
