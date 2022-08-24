@@ -584,6 +584,11 @@ namespace Internal.JitInterface
                     // to mean "I want to always see this method in stacktrace")
                     result = false;
                 }
+
+                if (!_compilation.CanTailCall(caller))
+                {
+                    result = false;
+                }
             }
 
             return result;

@@ -159,9 +159,9 @@ namespace ILCompiler
                     ILImporter.GenerateRuntimeExportThunk(this, method, externFunc);
 
                     ryuJitMethodCount++;
+                    }
+                    else ILImporter.CompileMethod(this, methodCodeNodeNeedingCode);
                 }
-                else ILImporter.CompileMethod(this, methodCodeNodeNeedingCode);
-            }
             catch (CodeGenerationFailedException)
             {
                 ILImporter.CompileMethod(this, methodCodeNodeNeedingCode);
@@ -283,6 +283,11 @@ namespace ILCompiler
         {
             MetadataType helperType = TypeSystemContext.SystemModule.GetKnownType("Internal.Runtime.CompilerHelpers", className);
             return helperType.GetKnownMethod(helperMethodName, null);
+        }
+
+        public override bool CanTailCall(MethodDesc caller)
+        {
+            return !NeedsReturnStackSlot(caller.Signature);
         }
     }
 }
