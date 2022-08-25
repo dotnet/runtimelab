@@ -537,13 +537,13 @@ bool canStoreLocalOnLlvmStack(LclVarDsc* varDsc)
     return !varDsc->HasGCPtr();
 }
 
-bool Llvm::canStoreArgOnLlvmStack(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd)
+static bool canStoreArgOnLlvmStack(Compiler::Info &info, CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd)
 {
     // structs with no GC pointers can go on LLVM stack.
     if (corInfoType == CorInfoType::CORINFO_TYPE_VALUECLASS)
     {
         // Use getClassAtribs over typGetObjLayout because EETypePtr has CORINFO_FLG_GENERIC_TYPE_VARIABLE? which fails with typGetObjLayout
-        uint32_t classAttribs = _info.compCompHnd->getClassAttribs(classHnd);
+        uint32_t classAttribs = info.compCompHnd->getClassAttribs(classHnd);
 
         return (classAttribs & (CORINFO_FLG_CONTAINS_GC_PTR | CORINFO_FLG_CONTAINS_STACK_PTR)) == 0;
     }
@@ -560,9 +560,23 @@ bool Llvm::canStoreArgOnLlvmStack(CorInfoType corInfoType, CORINFO_CLASS_HANDLE 
 /// Returns true if the method returns a type that must be kept
 /// on the shadow stack
 /// </summary>
+bool Llvm::needsReturnStackSlot(Compiler::Info& info, CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd)
+{
+    return corInfoType != CorInfoType::CORINFO_TYPE_VOID && !canStoreArgOnLlvmStack(info, corInfoType, classHnd);
+}
+
+bool Llvm::needsReturnStackSlot(Compiler* compiler, GenTreeCall* callee)
+{
+    CORINFO_SIG_INFO sigInfo;
+
+    compiler->eeGetMethodSig(compiler->info.compMethodHnd, &sigInfo);
+
+    return Llvm::needsReturnStackSlot(compiler->info, sigInfo.retType, sigInfo.retTypeClass);
+}
+
 bool Llvm::needsReturnStackSlot(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd)
 {
-    return corInfoType != CorInfoType::CORINFO_TYPE_VOID && !canStoreArgOnLlvmStack(corInfoType, classHnd);
+    return Llvm::needsReturnStackSlot(_info, corInfoType, classHnd);
 }
 
 CorInfoType Llvm::getCorInfoTypeForArg(CORINFO_SIG_INFO* sigInfo, CORINFO_ARG_LIST_HANDLE& arg, CORINFO_CLASS_HANDLE* clsHnd)
@@ -805,7 +819,7 @@ LlvmArgInfo Llvm::getLlvmArgInfoForArgIx(unsigned int lclNum)
     {
         CORINFO_CLASS_HANDLE clsHnd;
         CorInfoType corInfoType = getCorInfoTypeForArg(&_sigInfo, sigArgs, &clsHnd);
-        if (canStoreArgOnLlvmStack(corInfoType, clsHnd))
+        if (canStoreArgOnLlvmStack(_info, corInfoType, clsHnd))
         {
             if (thisAdjustedLclNum == i)
             {
@@ -2533,7 +2547,7 @@ void Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
             corInfoType = toCorInfoType(opAndArg.operand->TypeGet());
         }
 
-        bool argOnShadowStack = isThis || (isSigArg && !canStoreArgOnLlvmStack(corInfoType, clsHnd));
+        bool argOnShadowStack = isThis || (isSigArg && !canStoreArgOnLlvmStack(_info, corInfoType, clsHnd));
         if (argOnShadowStack)
         {
             GenTree* lclShadowStack = _compiler->gtNewLclvNode(_shadowStackLclNum, TYP_I_IMPL);

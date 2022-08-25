@@ -231,11 +231,6 @@ namespace ILCompiler
         {
             throw new NotImplementedException();
         }
-
-        public virtual bool CanTailCall(MethodDesc caller)
-        {
-            return true;
-        }
     }
 
     [Flags]

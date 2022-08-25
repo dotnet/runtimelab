@@ -137,6 +137,8 @@ private:
 
     GCInfo* getGCInfo();
 
+    static bool needsReturnStackSlot(Compiler::Info& info, CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd);
+
     void populateLlvmArgNums();
 
     void buildAdd(GenTree* node, Value* op1, Value* op2);
@@ -160,7 +162,6 @@ private:
     void buildReturnRef(GenTreeOp* node);
     Value* buildUserFuncCall(GenTreeCall* call);
     void createAllocasForLocalsWithAddrOp();
-    bool canStoreArgOnLlvmStack(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd);
     Value* castIfNecessary(Value* source, Type* targetType, llvm::IRBuilder<>* builder = nullptr);
     Value* castToPointerToLlvmType(Value* address, llvm::Type* llvmType);
     Value* consumeValue(GenTree* node, llvm::Type* targetLlvmType);
@@ -235,6 +236,7 @@ public:
     Llvm(Compiler* pCompiler);
 
     static void llvmShutdown();
+    static bool needsReturnStackSlot(Compiler* compiler, GenTreeCall* callee);
 
     void PlaceAndConvertShadowStackLocals();
     void Compile();
