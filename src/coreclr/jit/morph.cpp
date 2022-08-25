@@ -17,10 +17,10 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
 #include "allocacheck.h" // for alloca
 
-#if TARGET_WASM
 #undef min
 #undef max
 
+#if TARGET_WASM
 #include "llvm.h"
 #endif // TARGET_WASM
 
@@ -4286,7 +4286,7 @@ GenTreeCall* Compiler::fgMorphArgs(GenTreeCall* call)
         unsigned preallocatedArgCount = call->fgArgInfo->GetNextSlotNum();
         assert(outgoingArgSpaceSize == preallocatedArgCount * REGSIZE_BYTES);
 #endif
-        call->fgArgInfo->SetOutArgSize(max(outgoingArgSpaceSize, MIN_ARG_AREA_FOR_CALL));
+        call->fgArgInfo->SetOutArgSize(std::max(outgoingArgSpaceSize, (const unsigned)MIN_ARG_AREA_FOR_CALL));
 
 #ifdef DEBUG
         if (verbose)
