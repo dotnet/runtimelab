@@ -7892,14 +7892,14 @@ void CompTimeSummaryInfo::AddInfo(CompTimeInfo& info, bool includePhases)
                 m_filtered.m_CLRcyclesByPhase[i] += info.m_CLRcyclesByPhase[i];
 #endif
             }
-            m_maximum.m_cyclesByPhase[i] = std::max(m_maximum.m_cyclesByPhase[i], info.m_cyclesByPhase[i]);
+            m_maximum.m_cyclesByPhase[i] = max(m_maximum.m_cyclesByPhase[i], info.m_cyclesByPhase[i]);
 
 #if MEASURE_CLRAPI_CALLS
             m_maximum.m_CLRcyclesByPhase[i] = max(m_maximum.m_CLRcyclesByPhase[i], info.m_CLRcyclesByPhase[i]);
 #endif
         }
         m_total.m_parentPhaseEndSlop += info.m_parentPhaseEndSlop;
-        m_maximum.m_parentPhaseEndSlop = std::max(m_maximum.m_parentPhaseEndSlop, info.m_parentPhaseEndSlop);
+        m_maximum.m_parentPhaseEndSlop = max(m_maximum.m_parentPhaseEndSlop, info.m_parentPhaseEndSlop);
     }
 #if MEASURE_CLRAPI_CALLS
     else
