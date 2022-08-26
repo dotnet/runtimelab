@@ -26,12 +26,26 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
 extern ICorJitHost* g_jitHost;
 
+#if TARGET_WASM
 #undef min
 #undef max
 
-#if defined(TARGET_WASM)
 #include "llvm.h"
-#endif
+
+template <class T>
+constexpr const T&(min)(const T& _Left, const T& _Right)
+{
+    // return smaller of _Left and _Right
+    return _Right < _Left ? _Right : _Left;
+}
+
+template <class T>
+constexpr const T&(max)(const T& _Left, const T& _Right)
+{
+    // return larger of _Left and _Right
+    return _Left < _Right ? _Right : _Left;
+}
+#endif // TARGET_WASM
 
 #if defined(DEBUG)
 // Column settings for COMPlus_JitDumpIR.  We could(should) make these programmable.
@@ -6722,7 +6736,7 @@ void Compiler::compInitVarScopeMap()
     compVarScopeMap = new (getAllocator()) VarNumToScopeDscMap(getAllocator());
 
     // 599 prime to limit huge allocations; for ex: duplicated scopes on single var.
-    compVarScopeMap->Reallocate(std::min(info.compVarScopesCount, 599U));
+    compVarScopeMap->Reallocate(min(info.compVarScopesCount, 599U));
 
     for (unsigned i = 0; i < info.compVarScopesCount; ++i)
     {
@@ -7839,9 +7853,9 @@ void CompTimeSummaryInfo::AddInfo(CompTimeInfo& info, bool includePhases)
 
         // Update the totals and maxima.
         m_total.m_byteCodeBytes += info.m_byteCodeBytes;
-        m_maximum.m_byteCodeBytes = std::max(m_maximum.m_byteCodeBytes, info.m_byteCodeBytes);
+        m_maximum.m_byteCodeBytes = max(m_maximum.m_byteCodeBytes, info.m_byteCodeBytes);
         m_total.m_totalCycles += info.m_totalCycles;
-        m_maximum.m_totalCycles = std::max(m_maximum.m_totalCycles, info.m_totalCycles);
+        m_maximum.m_totalCycles = max(m_maximum.m_totalCycles, info.m_totalCycles);
 
 #if MEASURE_CLRAPI_CALLS
         // Update the CLR-API values.
