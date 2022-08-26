@@ -10,7 +10,7 @@ The benefits of direct PInvoke calls are:
 - Direct PInvoke calls have *better steady state performance*
 - Direct PInvoke calls make it possible to *link the unmanaged dependencies statically*
 
-The direct PInvoke generation can be configured using `<DirectPInvoke>` elements in the .csproj file. The item name can be either `modulename`,
+The direct PInvoke generation can be configured using `<DirectPInvoke>` items in the .csproj file. The item name can be either `modulename`,
 which enables direct calls for all module entry points, or `modulename!entrypointname`, which enables a direct call for specific module and entry
 point only.
 
