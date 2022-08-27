@@ -17,6 +17,17 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
 #include "allocacheck.h" // for alloca
 
+#if TARGET_WASM
+#undef min
+#undef max
+
+#include "llvm.h"
+
+#define max(a, b) (((a) > (b)) ? (a) : (b))
+#define min(a, b) (((a) < (b)) ? (a) : (b))
+
+#endif // TARGET_WASM
+
 // Convert the given node into a call to the specified helper passing
 // the given argument list.
 //
@@ -6902,6 +6913,9 @@ void Compiler::fgMorphCallInlineHelper(GenTreeCall* call, InlineResult* result)
 //    -- Caller requires stack space and nCalleeArgs > nCallerArgs (Bug) --
 //    caller({ double, double, double, double, double, double }) // 48 byte stack
 //    callee(int, int) -- 2 int registers
+//
+// LLVM Wasm:
+//    Fast tail calls cannot be made if the return type is going to be lowered into the shadow stack
 
 bool Compiler::fgCanFastTailCall(GenTreeCall* callee, const char** failReason)
 {
@@ -7077,6 +7091,14 @@ bool Compiler::fgCanFastTailCall(GenTreeCall* callee, const char** failReason)
         reportFastTailCallDecision("Callee has a byref parameter");
         return false;
     }
+
+#if TARGET_WASM
+    if (Llvm::needsReturnStackSlot(this, callee))
+    {
+        reportFastTailCallDecision("Callee has a return type that must be passed on the LLVM shadow stack");
+        return false;
+    }
+#endif // TARGET_WASM
 
     reportFastTailCallDecision(nullptr);
     return true;
