@@ -618,6 +618,9 @@ Compiler::fgWalkResult Compiler::fgUpdateInlineReturnExpressionPlaceHolder(GenTr
 
 #endif // FEATURE_MULTIREG_RET
 
+#ifdef TARGET_WASM
+            case SPK_ByValue:
+#endif // TARGET_WASM
             case SPK_EnclosingType:
             case SPK_PrimitiveType:
                 // No work needs to be done, the call has struct type and should keep it.
