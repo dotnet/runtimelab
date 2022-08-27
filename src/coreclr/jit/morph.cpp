@@ -23,19 +23,9 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
 #include "llvm.h"
 
-template <class T>
-constexpr const T&(min)(const T& _Left, const T& _Right)
-{
-    // return smaller of _Left and _Right
-    return _Right < _Left ? _Right : _Left;
-}
+#define max(a, b) (((a) > (b)) ? (a) : (b))
+#define min(a, b) (((a) < (b)) ? (a) : (b))
 
-template <class T>
-constexpr const T&(max)(const T& _Left, const T& _Right)
-{
-    // return larger of _Left and _Right
-    return _Left < _Right ? _Right : _Left;
-}
 #endif // TARGET_WASM
 
 // Convert the given node into a call to the specified helper passing
@@ -3655,7 +3645,7 @@ void Compiler::fgInitArgInfo(GenTreeCall* call)
 #ifdef WINDOWS_AMD64_ABI
                             // Whenever we pass an integer register argument
                             // we skip the corresponding floating point register argument
-                            intArgRegNum = min(intArgRegNum + size, (unsigned int)MAX_REG_ARG);
+                            intArgRegNum = min(intArgRegNum + size, MAX_REG_ARG);
 #endif // WINDOWS_AMD64_ABI
                             // No supported architecture supports partial structs using float registers.
                             assert(fltArgRegNum <= MAX_FLOAT_REG_ARG);
@@ -3666,7 +3656,7 @@ void Compiler::fgInitArgInfo(GenTreeCall* call)
                             intArgRegNum += size;
 
 #ifdef WINDOWS_AMD64_ABI
-                            fltArgRegNum = min(fltArgRegNum + size, (unsigned int)MAX_FLOAT_REG_ARG);
+                            fltArgRegNum = min(fltArgRegNum + size, MAX_FLOAT_REG_ARG);
 #endif // WINDOWS_AMD64_ABI
                         }
                     }
@@ -4300,7 +4290,7 @@ GenTreeCall* Compiler::fgMorphArgs(GenTreeCall* call)
         unsigned preallocatedArgCount = call->fgArgInfo->GetNextSlotNum();
         assert(outgoingArgSpaceSize == preallocatedArgCount * REGSIZE_BYTES);
 #endif
-        call->fgArgInfo->SetOutArgSize(max(outgoingArgSpaceSize, (const unsigned)MIN_ARG_AREA_FOR_CALL));
+        call->fgArgInfo->SetOutArgSize(max(outgoingArgSpaceSize, MIN_ARG_AREA_FOR_CALL));
 
 #ifdef DEBUG
         if (verbose)

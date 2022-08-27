@@ -32,19 +32,9 @@ extern ICorJitHost* g_jitHost;
 
 #include "llvm.h"
 
-template <class T>
-constexpr const T&(min)(const T& _Left, const T& _Right)
-{
-    // return smaller of _Left and _Right
-    return _Right < _Left ? _Right : _Left;
-}
+#define max(a, b) (((a) > (b)) ? (a) : (b))
+#define min(a, b) (((a) < (b)) ? (a) : (b))
 
-template <class T>
-constexpr const T&(max)(const T& _Left, const T& _Right)
-{
-    // return larger of _Left and _Right
-    return _Left < _Right ? _Right : _Left;
-}
 #endif // TARGET_WASM
 
 #if defined(DEBUG)
