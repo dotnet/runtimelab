@@ -791,6 +791,13 @@ LlvmArgInfo Llvm::getLlvmArgInfoForArgIx(unsigned int lclNum)
                                                                                        the shadow stack */
     };
 
+    if (lclNum == _shadowStackLclNum)
+    {
+        llvmArgInfo.m_argIx             = 0;
+        llvmArgInfo.m_shadowStackOffset = 0;
+        return llvmArgInfo;
+    }
+
     if (_compiler->info.compRetBuffArg != BAD_VAR_NUM)
     {
         if (lclNum == 0)
@@ -1917,7 +1924,7 @@ Value* Llvm::zextIntIfNecessary(Value* intValue)
 bool Llvm::isLlvmFrameLocal(LclVarDsc* varDsc)
 {
     assert(canStoreLocalOnLlvmStack(varDsc) && (_compiler->fgSsaPassesCompleted >= 1));
-    return !varDsc->lvInSsa;
+    return !varDsc->lvInSsa && varDsc->lvRefCnt() > 0;
 }
 
 void Llvm::storeLocalVar(GenTreeLclVar* lclVar)
