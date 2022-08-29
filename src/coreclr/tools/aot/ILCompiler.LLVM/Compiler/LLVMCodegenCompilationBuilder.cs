@@ -124,6 +124,7 @@ namespace ILCompiler
 
         public string Target => ValueOrDefault("Target", "wasm32-unknown-emscripten");
         public string ModuleName => ValueOrDefault("ModuleName", "netscripten");
+        public string DisableRyuJit => ValueOrDefault("DisableRyuJit", "0");
 
         // https://llvm.org/docs/LangRef.html#langref-datalayout
         // e litte endian, mangled names
