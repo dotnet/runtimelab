@@ -23,6 +23,7 @@ namespace ILCompiler
     {
         private readonly ConditionalWeakTable<Thread, CorInfoImpl> _corinfos = new ConditionalWeakTable<Thread, CorInfoImpl>();
         private string _outputFile;
+        private readonly bool _disableRyuJit;
 
         internal LLVMCodegenConfigProvider Options { get; }
         // the LLVM Module generated from IL, can only be one.
@@ -60,6 +61,7 @@ namespace ILCompiler
             ILImporter.Context = Module.Context;
             NativeLib = nativeLib;
             ConfigurableWasmImportPolicy = configurableWasmImportPolicy;
+            _disableRyuJit = Options.DisableRyuJit == "1"; // TODO-LLVM: delete when all code is compiled via RyuJIT
         }
 
         private static IEnumerable<ICompilationRootProvider> GetCompilationRoots(IEnumerable<ICompilationRootProvider> existingRoots, NodeFactory factory)
@@ -142,7 +144,7 @@ namespace ILCompiler
                     return;
                 }
 
-                if (methodIL.GetExceptionRegions().Length == 0)
+                if (methodIL.GetExceptionRegions().Length == 0 && !_disableRyuJit)
                 {
                     var mangledName = NodeFactory.NameMangler.GetMangledMethodName(method).ToString();
                     var sig = method.Signature;
