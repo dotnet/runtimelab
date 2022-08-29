@@ -23,7 +23,7 @@ namespace ILCompiler
     {
         private readonly ConditionalWeakTable<Thread, CorInfoImpl> _corinfos = new ConditionalWeakTable<Thread, CorInfoImpl>();
         private string _outputFile;
-        bool _disableRyuJit;
+        private readonly bool _disableRyuJit;
 
         internal LLVMCodegenConfigProvider Options { get; }
         // the LLVM Module generated from IL, can only be one.
