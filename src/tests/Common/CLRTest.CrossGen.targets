@@ -120,6 +120,7 @@ if [ ! -z ${RunCrossGen2+x} ]%3B then
 
         echo "Running R2RDump: $__R2RDumpCommand"
         $__R2RDumpCommand
+        __r2rDumpExitCode=$?
 
         export COMPlus_GCName COMPlus_GCStress COMPlus_HeapVerify COMPlus_ReadyToRun COMPlus_TC_OnStackReplacement COMPlus_TC_PartialCompilation
         date +%H:%M:%S
@@ -144,6 +145,11 @@ if [ ! -z ${RunCrossGen2+x} ]%3B then
       echo "Crossgen2 compilation finished, exit code $__cg2ExitCode" >> $compilationDoneFlagFile
       if [ $__cg2ExitCode -ne 0 ]; then
         echo Crossgen2 failed with exitcode: $__cg2ExitCode
+        ReleaseLock
+        exit 1
+      fi
+      if [ $__r2rDumpExitCode -ne 0 ]; then
+        echo R2RDump failed with exitcode: $__r2rDumpExitCode
         ReleaseLock
         exit 1
       fi
@@ -266,11 +272,15 @@ if defined RunCrossGen2 (
     echo "!__Command!"
     call !__Command!
 
+    set CrossGen2Status=!ERRORLEVEL!
+
     echo "!__R2RDumpCommand!"
     call !__R2RDumpCommand!
 
-    endlocal
-    set CrossGen2Status=!ERRORLEVEL!
+    set R2RDumpStatus=!ERRORLEVEL!
+
+    endlocal & set "R2RDumpStatus=%R2RDumpStatus%" &set "CrossGen2Status=%CrossGen2Status%"
+
     echo %time%
     Exit /b 0
 
@@ -280,6 +290,10 @@ if defined RunCrossGen2 (
 :DoneCrossgen2OperationsNoRelease
     IF NOT !CrossGen2Status!==0 (
         ECHO Crossgen2 failed with exitcode - !CrossGen2Status!
+        Exit /b 1
+    )
+    IF NOT !R2RDumpStatus!==0 (
+        ECHO R2RDump failed with exitcode - !R2RDumpStatus!
         Exit /b 1
     )
 
