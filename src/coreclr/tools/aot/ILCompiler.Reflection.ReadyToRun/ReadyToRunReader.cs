@@ -510,8 +510,8 @@ namespace ILCompiler.Reflection.ReadyToRun
                 int nRuntimeFunctions = runtimeFunctionSection.Size / runtimeFunctionSize;
                 bool[] isEntryPoint = new bool[nRuntimeFunctions];
                 IDictionary<int, int[]> dScratch = new Dictionary<int, int[]>();
-                int firstColdRuntimeFunction = -1;
-                
+                int firstColdRuntimeFunction = nRuntimeFunctions;
+
                 if (ReadyToRunHeader.Sections.TryGetValue(ReadyToRunSectionType.Scratch, out ReadyToRunSection scratchSection))
                 {
                     int count = scratchSection.Size / 8;
@@ -520,14 +520,14 @@ namespace ILCompiler.Reflection.ReadyToRun
 
                     for (int i = 0; i < count; i++)
                     {
-                        mScratch.Add(new List<int> {NativeReader.ReadInt32(Image, ref scratchOffset), NativeReader.ReadInt32(Image, ref scratchOffset)});
-    
+                        mScratch.Add(new List<int> { NativeReader.ReadInt32(Image, ref scratchOffset), NativeReader.ReadInt32(Image, ref scratchOffset) });
+
                     }
 
                     for (int i = 0; i < count - 1; i++)
                     {
                         dScratch.Add(mScratch[i][1], Enumerable.Range(mScratch[i][0], (mScratch[i + 1][0] - mScratch[i][0])).ToArray());
-                    } 
+                    }
                     dScratch.Add(mScratch[count - 1][1], Enumerable.Range(mScratch[count - 1][0], (nRuntimeFunctions - mScratch[count - 1][0])).ToArray());
 
                     firstColdRuntimeFunction = mScratch[0][0];
@@ -647,8 +647,8 @@ namespace ILCompiler.Reflection.ReadyToRun
                     _pointerSize = 8;
                     break;
 
-                case (Machine) 0x6264: /* LoongArch64 */
-                    _architecture = (Architecture) 6; /* LoongArch64 */
+                case (Machine)0x6264: /* LoongArch64 */
+                    _architecture = (Architecture)6; /* LoongArch64 */
                     _pointerSize = 8;
                     break;
 
@@ -1147,7 +1147,9 @@ namespace ILCompiler.Reflection.ReadyToRun
                 {
                     int coldSize = dScratch[runtimeFunctionId].Length;
                     if (runtimeFunctionId == -1)
-                    continue;
+                    {
+                        continue;
+                    }
 
                     int count = 0;
                     int i = runtimeFunctionId;
@@ -1156,15 +1158,16 @@ namespace ILCompiler.Reflection.ReadyToRun
                         count++;
                         i++;
                     } while (i < isEntryPoint.Length && !isEntryPoint[i] && i < firstColdRuntimeFunction);
-                    
+
                     method.ColdRuntimeFunctionId = dScratch[runtimeFunctionId][0];
                     method.RuntimeFunctionCount = count + coldSize;
                     method.ColdRuntimeFunctionCount = coldSize;
                 }
                 else
                 {
+                    Debug.Assert(runtimeFunctionId < firstColdRuntimeFunction);
                     if (runtimeFunctionId == -1)
-                    continue;
+                        continue;
 
                     int count = 0;
                     int i = runtimeFunctionId;
@@ -1172,7 +1175,7 @@ namespace ILCompiler.Reflection.ReadyToRun
                     {
                         count++;
                         i++;
-                    } while (i < isEntryPoint.Length && !isEntryPoint[i]);
+                    } while (i < isEntryPoint.Length && !isEntryPoint[i] && i < firstColdRuntimeFunction);
                     method.RuntimeFunctionCount = count;
                 }
             }
@@ -1180,7 +1183,7 @@ namespace ILCompiler.Reflection.ReadyToRun
 
         public void ValidateRuntimeFunctions(List<RuntimeFunction> runtimeFunctionList)
         {
-            List<RuntimeFunction> runtimeFunctions = (List<RuntimeFunction>) runtimeFunctionList;
+            List<RuntimeFunction> runtimeFunctions = (List<RuntimeFunction>)runtimeFunctionList;
             RuntimeFunction firstRuntimeFunction = runtimeFunctions[0];
             BaseUnwindInfo firstUnwindInfo = firstRuntimeFunction.UnwindInfo;
             var x64UnwindInfo = firstUnwindInfo as Amd64.UnwindInfo;
@@ -1197,8 +1200,8 @@ namespace ILCompiler.Reflection.ReadyToRun
 
                 if (x64UnwindInfo != null && ((x64UnwindInfo.Flags & (int)ILCompiler.Reflection.ReadyToRun.Amd64.UnwindFlags.UNW_FLAG_CHAININFO) == 0))
                 {
-                    Amd64.UnwindInfo x64UnwindInfoCurr = (Amd64.UnwindInfo) runtimeFunctions[i].UnwindInfo;
-                
+                    Amd64.UnwindInfo x64UnwindInfoCurr = (Amd64.UnwindInfo)runtimeFunctions[i].UnwindInfo;
+
                     if ((x64UnwindInfoCurr.Flags & (int)ILCompiler.Reflection.ReadyToRun.Amd64.UnwindFlags.UNW_FLAG_CHAININFO) == 0)
                     {
                         uint currPersonalityRoutineRVA = x64UnwindInfoCurr.PersonalityRoutineRVA;
@@ -1206,9 +1209,9 @@ namespace ILCompiler.Reflection.ReadyToRun
                         Debug.Assert(hashPersonalityRoutines.Count < 3, "There are more than two different runtimefunctions PersonalityRVAs");
                     }
                 }
-            } 
+            }
         }
-        
+
         public int GetAssemblyIndex(ReadyToRunSection section)
         {
             EnsureHeader();
@@ -1536,7 +1539,7 @@ namespace ILCompiler.Reflection.ReadyToRun
                     metadataReader = ManifestReader;
                     assemblyReferenceHandle = ManifestReferences[index - 1];
                 }
-             }
+            }
 
             return assemblyReferenceHandle;
         }

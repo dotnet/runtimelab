@@ -105,7 +105,7 @@ namespace ILCompiler.Reflection.ReadyToRun
         /// <summary>
         /// The relative virtual address to the end of the code block
         /// </summary>
-        public int EndAddress { get;  }
+        public int EndAddress { get; }
 
         /// <summary>
         /// The size of the code block in bytes
@@ -227,7 +227,7 @@ namespace ILCompiler.Reflection.ReadyToRun
             }
             else if (Method.GcInfo != null)
             {
-                return Method.GcInfo.CodeLength; 
+                return Method.GcInfo.CodeLength;
             }
             else
             {
@@ -562,7 +562,7 @@ namespace ILCompiler.Reflection.ReadyToRun
             int curOffset = runtimeFunctionOffset + runtimeFunctionId * runtimeFunctionSize;
             int coldOffset = runtimeFunctionOffset + coldRuntimeFunctionId * runtimeFunctionSize;
             int codeOffset = 0;
-            
+
             for (int i = 0; i < RuntimeFunctionCount; i++)
             {
                 if (i == (RuntimeFunctionCount - ColdRuntimeFunctionCount))
