@@ -146,7 +146,7 @@ namespace ILCompiler
                     methodCodeNodeNeedingCode.CompilationCompleted = true;
                     return;
                 }
-                
+
                 if (methodIL.GetExceptionRegions().Length == 0 && !_disableRyuJit)
                 {
                     var mangledName = NodeFactory.NameMangler.GetMangledMethodName(method).ToString();
@@ -157,9 +157,9 @@ namespace ILCompiler
                     // TODO: delete this external function when old module is gone
                     LLVMValueRef externFunc = ILImporter.GetOrCreateLLVMFunction(Module, mangledName, GetLLVMSignatureForMethod(sig, method.RequiresInstArg()));
                     externFunc.Linkage = LLVMLinkage.LLVMExternalLinkage;
-                
+
                     ILImporter.GenerateRuntimeExportThunk(this, method, externFunc);
-                
+
                     ryuJitMethodCount++;
                 }
                 else ILImporter.CompileMethod(this, methodCodeNodeNeedingCode);
