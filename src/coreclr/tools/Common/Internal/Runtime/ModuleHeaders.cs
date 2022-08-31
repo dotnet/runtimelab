@@ -68,7 +68,7 @@ namespace Internal.Runtime
         PgoInstrumentationData = 117, // Added in 5.2
         ManifestAssemblyMvids = 118, // Added in 5.3
         CrossModuleInlineInfo = 119, // Added in 6.3
-        Scratch = 120, // This is meant to be a scratch area for prototyping only
+        HotColdMap = 120, // Added in 6.3
 
         //
         // NativeAOT ReadyToRun sections

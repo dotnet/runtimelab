@@ -670,7 +670,7 @@ namespace ILCompiler
 
             if (generatedColdCode)
             {
-                _nodeFactory.GenerateScratch(_dependencyGraph);
+                _nodeFactory.GenerateHotColdMap(_dependencyGraph);
             }
 
             void ProcessMutableMethodBodiesList()

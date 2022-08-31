@@ -512,14 +512,14 @@ namespace R2RDump
                         _writer.WriteLine("MVID[{0}] = {1:b}", mvidIndex, _r2r.GetAssemblyMvid(mvidIndex));
                     }
                     break;
-                case ReadyToRunSectionType.Scratch:
+                case ReadyToRunSectionType.HotColdMap:
                     int count = section.Size / 8;
-                    int scratchOffset = _r2r.GetOffset(section.RelativeVirtualAddress);
+                    int hotColdMapOffset = _r2r.GetOffset(section.RelativeVirtualAddress);
                     for (int i = 0; i < count; i++)
                     {
-                        _writer.Write(NativeReader.ReadInt32(_r2r.Image, ref scratchOffset));
+                        _writer.Write(NativeReader.ReadInt32(_r2r.Image, ref hotColdMapOffset));
                         _writer.Write(",");
-                        _writer.WriteLine(NativeReader.ReadInt32(_r2r.Image, ref scratchOffset));
+                        _writer.WriteLine(NativeReader.ReadInt32(_r2r.Image, ref hotColdMapOffset));
                     }
                     break;
                 default:

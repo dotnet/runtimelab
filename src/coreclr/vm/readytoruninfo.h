@@ -52,7 +52,7 @@ class ReadyToRunInfo
 {
     friend class ReadyToRunJitManager;
 
-    // HotColdMappingLookupTable::LookupMappingForMethod searches m_pScratch, and thus needs access.
+    // HotColdMappingLookupTable::LookupMappingForMethod searches m_pHotColdMap, and thus needs access.
     friend class HotColdMappingLookupTable;
 
     PTR_Module                      m_pModule;
@@ -68,8 +68,8 @@ class ReadyToRunInfo
     PTR_RUNTIME_FUNCTION            m_pRuntimeFunctions;
     DWORD                           m_nRuntimeFunctions;
 
-    PTR_ULONG                       m_pScratch;
-    DWORD                           m_nScratch;
+    PTR_ULONG                       m_pHotColdMap;
+    DWORD                           m_nHotColdMap;
 
     PTR_IMAGE_DATA_DIRECTORY        m_pSectionDelayLoadMethodCallThunks;
 

@@ -5783,7 +5783,7 @@ int HotColdMappingLookupTable::LookupMappingForMethod(ReadyToRunInfo* pInfo, ULO
         SUPPORTS_DAC;
     } CONTRACTL_END;
 
-    if (pInfo->m_nScratch == 0)
+    if (pInfo->m_nHotColdMap == 0)
     {
         return -1;
     }
@@ -5792,15 +5792,15 @@ int HotColdMappingLookupTable::LookupMappingForMethod(ReadyToRunInfo* pInfo, ULO
     // We index the RUNTIME_FUNCTION table with ints, and the lookup table
     // contains a subset of the indices in the RUNTIME_FUNCTION table.
     // Thus, |lookup table| <= |RUNTIME_FUNCTION table|.
-    _ASSERTE(pInfo->m_nScratch <= pInfo->m_nRuntimeFunctions);
-    const int nLookupTable = (int)(pInfo->m_nScratch);
+    _ASSERTE(pInfo->m_nHotColdMap <= pInfo->m_nRuntimeFunctions);
+    const int nLookupTable = (int)(pInfo->m_nHotColdMap);
 
     // The lookup table contains pairs of hot/cold indices, and thus should have an even size.
     _ASSERTE((nLookupTable % 2) == 0);
     int high = ((nLookupTable - 1) / 2);
     int low  = 0;
 
-    const int indexCorrection = (int)(MethodIndex < pInfo->m_pScratch[0]);
+    const int indexCorrection = (int)(MethodIndex < pInfo->m_pHotColdMap[0]);
 
     // Binary search the lookup table.
     // Use linear search once we get down to a small number of elements
@@ -5810,7 +5810,7 @@ int HotColdMappingLookupTable::LookupMappingForMethod(ReadyToRunInfo* pInfo, ULO
         const int middle = low + (high - low) / 2;
         const int index = (middle * 2) + indexCorrection;
 
-        if (MethodIndex < pInfo->m_pScratch[index])
+        if (MethodIndex < pInfo->m_pHotColdMap[index])
         {
             high = middle - 1;
         }
@@ -5827,7 +5827,7 @@ int HotColdMappingLookupTable::LookupMappingForMethod(ReadyToRunInfo* pInfo, ULO
     {
         const int index = (i * 2);
 
-        if (pInfo->m_pScratch[index + indexCorrection] == MethodIndex)
+        if (pInfo->m_pHotColdMap[index + indexCorrection] == MethodIndex)
         {
             if (isColdCode)
             {
@@ -5836,14 +5836,14 @@ int HotColdMappingLookupTable::LookupMappingForMethod(ReadyToRunInfo* pInfo, ULO
 
             return index;
         }
-        else if (isColdCode && (MethodIndex > pInfo->m_pScratch[index]))
+        else if (isColdCode && (MethodIndex > pInfo->m_pHotColdMap[index]))
         {
             // If MethodIndex is a cold funclet from a cold block, the above search will fail.
             // To get its corresponding hot block, find the cold block containing the funclet,
             // then use the lookup table.
             // The cold funclet's MethodIndex will be greater than its cold block's MethodIndex,
             // but less than the next cold block's MethodIndex in the lookup table.
-            const bool isFuncletIndex = ((index + 2) == nLookupTable) || (MethodIndex < pInfo->m_pScratch[index + 2]);
+            const bool isFuncletIndex = ((index + 2) == nLookupTable) || (MethodIndex < pInfo->m_pHotColdMap[index + 2]);
 
             if (isFuncletIndex)
             {
@@ -6201,7 +6201,7 @@ BOOL ReadyToRunJitManager::JitCodeToMethodInfo(RangeSection * pRangeSection,
     if ((lookupIndex != -1) && ((lookupIndex % 2) == 1))
     {
         // If the MethodIndex happens to be the cold code block, turn it into the associated hot code block
-        MethodIndex = pInfo->m_pScratch[lookupIndex];
+        MethodIndex = pInfo->m_pHotColdMap[lookupIndex];
     }
 
     MethodDesc *pMethodDesc;
@@ -6426,19 +6426,19 @@ void ReadyToRunJitManager::JitTokenToMethodRegionInfo(const METHODTOKEN& MethodT
     }
 
     _ASSERTE((lookupIndex % 2) == 0);
-    ULONG coldMethodIndex = pInfo->m_pScratch[lookupIndex];
+    ULONG coldMethodIndex = pInfo->m_pHotColdMap[lookupIndex];
     PTR_RUNTIME_FUNCTION pColdRuntimeFunction = pRuntimeFunctions + coldMethodIndex;
     methodRegionInfo->coldStartAddress = JitTokenToModuleBase(MethodToken)
         + RUNTIME_FUNCTION__BeginAddress(pColdRuntimeFunction);
     
     ULONG coldMethodIndexNext;
-    if ((ULONG)(lookupIndex) == (pInfo->m_nScratch - 2))
+    if ((ULONG)(lookupIndex) == (pInfo->m_nHotColdMap - 2))
     {
         coldMethodIndexNext = nRuntimeFunctions - 1;
     }
     else
     {
-        coldMethodIndexNext = pInfo->m_pScratch[lookupIndex + 2] - 1;
+        coldMethodIndexNext = pInfo->m_pHotColdMap[lookupIndex + 2] - 1;
     }
 
     PTR_RUNTIME_FUNCTION pLastRuntimeFunction = pRuntimeFunctions + coldMethodIndexNext;

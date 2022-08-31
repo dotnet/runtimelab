@@ -1529,11 +1529,11 @@ class HotColdMappingLookupTable
 {
 public:
     // ***************************************************************************
-    // Binary searches pInfo->m_pScratch for the given hot/cold MethodIndex, and
-    // returns the index in pInfo->m_pScratch of its corresponding cold/hot MethodIndex.
+    // Binary searches pInfo->m_pHotColdMap for the given hot/cold MethodIndex, and
+    // returns the index in pInfo->m_pHotColdMap of its corresponding cold/hot MethodIndex.
     // If MethodIndex is cold and at index i, returns i + 1.
     // If MethodIndex is hot and at index i, returns i - 1.
-    // If MethodIndex is not in pInfo->m_pScratch, returns -1.
+    // If MethodIndex is not in pInfo->m_pHotColdMap, returns -1.
     //
     static int LookupMappingForMethod(ReadyToRunInfo* pInfo, ULONG MethodIndex);
 };

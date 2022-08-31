@@ -509,33 +509,33 @@ namespace ILCompiler.Reflection.ReadyToRun
                 int runtimeFunctionSize = CalculateRuntimeFunctionSize();
                 int nRuntimeFunctions = runtimeFunctionSection.Size / runtimeFunctionSize;
                 bool[] isEntryPoint = new bool[nRuntimeFunctions];
-                IDictionary<int, int[]> dScratch = new Dictionary<int, int[]>();
+                IDictionary<int, int[]> dHotColdMap = new Dictionary<int, int[]>();
                 int firstColdRuntimeFunction = nRuntimeFunctions;
 
-                if (ReadyToRunHeader.Sections.TryGetValue(ReadyToRunSectionType.Scratch, out ReadyToRunSection scratchSection))
+                if (ReadyToRunHeader.Sections.TryGetValue(ReadyToRunSectionType.HotColdMap, out ReadyToRunSection hotColdMapSection))
                 {
-                    int count = scratchSection.Size / 8;
-                    int scratchOffset = GetOffset(scratchSection.RelativeVirtualAddress);
-                    List<List<int>> mScratch = new List<List<int>>();
+                    int count = hotColdMapSection.Size / 8;
+                    int hotColdMapOffset = GetOffset(hotColdMapSection.RelativeVirtualAddress);
+                    List<List<int>> mHotColdMap = new List<List<int>>();
 
                     for (int i = 0; i < count; i++)
                     {
-                        mScratch.Add(new List<int> { NativeReader.ReadInt32(Image, ref scratchOffset), NativeReader.ReadInt32(Image, ref scratchOffset) });
+                        mHotColdMap.Add(new List<int> { NativeReader.ReadInt32(Image, ref hotColdMapOffset), NativeReader.ReadInt32(Image, ref hotColdMapOffset) });
 
                     }
 
                     for (int i = 0; i < count - 1; i++)
                     {
-                        dScratch.Add(mScratch[i][1], Enumerable.Range(mScratch[i][0], (mScratch[i + 1][0] - mScratch[i][0])).ToArray());
+                        dHotColdMap.Add(mHotColdMap[i][1], Enumerable.Range(mHotColdMap[i][0], (mHotColdMap[i + 1][0] - mHotColdMap[i][0])).ToArray());
                     }
-                    dScratch.Add(mScratch[count - 1][1], Enumerable.Range(mScratch[count - 1][0], (nRuntimeFunctions - mScratch[count - 1][0])).ToArray());
+                    dHotColdMap.Add(mHotColdMap[count - 1][1], Enumerable.Range(mHotColdMap[count - 1][0], (nRuntimeFunctions - mHotColdMap[count - 1][0])).ToArray());
 
-                    firstColdRuntimeFunction = mScratch[0][0];
+                    firstColdRuntimeFunction = mHotColdMap[0][0];
                 }
                 //initialize R2RMethods
                 ParseMethodDefEntrypoints((section, reader) => ParseMethodDefEntrypointsSection(section, reader, isEntryPoint));
                 ParseInstanceMethodEntrypoints(isEntryPoint);
-                CountRuntimeFunctions(isEntryPoint, dScratch, firstColdRuntimeFunction);
+                CountRuntimeFunctions(isEntryPoint, dHotColdMap, firstColdRuntimeFunction);
             }
         }
 
@@ -1138,14 +1138,14 @@ namespace ILCompiler.Reflection.ReadyToRun
             }
         }
 
-        private void CountRuntimeFunctions(bool[] isEntryPoint, IDictionary<int, int[]> dScratch, int firstColdRuntimeFunction)
+        private void CountRuntimeFunctions(bool[] isEntryPoint, IDictionary<int, int[]> dHotColdMap, int firstColdRuntimeFunction)
         {
             foreach (ReadyToRunMethod method in Methods)
             {
                 int runtimeFunctionId = method.EntryPointRuntimeFunctionId;
-                if (dScratch.ContainsKey(runtimeFunctionId))
+                if (dHotColdMap.ContainsKey(runtimeFunctionId))
                 {
-                    int coldSize = dScratch[runtimeFunctionId].Length;
+                    int coldSize = dHotColdMap[runtimeFunctionId].Length;
                     if (runtimeFunctionId == -1)
                     {
                         continue;
@@ -1159,7 +1159,7 @@ namespace ILCompiler.Reflection.ReadyToRun
                         i++;
                     } while (i < isEntryPoint.Length && !isEntryPoint[i] && i < firstColdRuntimeFunction);
 
-                    method.ColdRuntimeFunctionId = dScratch[runtimeFunctionId][0];
+                    method.ColdRuntimeFunctionId = dHotColdMap[runtimeFunctionId][0];
                     method.RuntimeFunctionCount = count + coldSize;
                     method.ColdRuntimeFunctionCount = coldSize;
                 }

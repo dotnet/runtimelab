@@ -7,11 +7,11 @@ using Internal.Text;
 
 namespace ILCompiler.DependencyAnalysis.ReadyToRun
 {
-    public class ScratchNode : HeaderTableNode
+    public class HotColdMapNode : HeaderTableNode
     {
         public uint[] mapping;
 
-        public ScratchNode(NodeFactory nodeFactory)
+        public HotColdMapNode(NodeFactory nodeFactory)
             : base(nodeFactory.Target)
         {
         }
@@ -21,7 +21,7 @@ namespace ILCompiler.DependencyAnalysis.ReadyToRun
         public override void AppendMangledName(NameMangler nameMangler, Utf8StringBuilder sb)
         {
             sb.Append(nameMangler.CompilationUnitPrefix);
-            sb.Append("__Scratch");
+            sb.Append("__HotColdMap");
         }
 
         public override ObjectData GetData(NodeFactory factory, bool relocsOnly = false)

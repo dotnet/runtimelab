@@ -77,13 +77,13 @@ namespace ILCompiler.DependencyAnalysis
 
         public bool MarkingComplete => _markingComplete;
 
-        public void GenerateScratch(DependencyAnalyzerBase<NodeFactory> dependencyGraph)
+        public void GenerateHotColdMap(DependencyAnalyzerBase<NodeFactory> dependencyGraph)
         {
-            if (Scratch == null)
+            if (HotColdMap == null)
             {
-                Scratch = new ScratchNode(this);
-                Header.Add(Internal.Runtime.ReadyToRunSectionType.Scratch, Scratch, Scratch);
-                dependencyGraph.AddRoot(Scratch, "Scratch is generated because there is cold code");
+                HotColdMap = new HotColdMapNode(this);
+                Header.Add(Internal.Runtime.ReadyToRunSectionType.HotColdMap, HotColdMap, HotColdMap);
+                dependencyGraph.AddRoot(HotColdMap, "HotColdMap is generated because there is cold code");
             }
         }
 
@@ -348,7 +348,7 @@ namespace ILCompiler.DependencyAnalysis
 
         public RuntimeFunctionsTableNode RuntimeFunctionsTable;
 
-        public ScratchNode Scratch;
+        public HotColdMapNode HotColdMap;
 
         public RuntimeFunctionsGCInfoNode RuntimeFunctionsGCInfo;
 

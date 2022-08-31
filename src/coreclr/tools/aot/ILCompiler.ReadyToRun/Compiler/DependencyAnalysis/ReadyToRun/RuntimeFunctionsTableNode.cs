@@ -141,14 +141,14 @@ namespace ILCompiler.DependencyAnalysis.ReadyToRun
                 }
             }
 
-            // Scratch should not be null if there is cold code
-            if (_nodeFactory.Scratch != null)
+            // HotColdMap should not be null if there is cold code
+            if (_nodeFactory.HotColdMap != null)
             {
-                _nodeFactory.Scratch.mapping = mapping.ToArray();
+                _nodeFactory.HotColdMap.mapping = mapping.ToArray();
             }
             else
             {
-                Debug.Assert((mapping.Count == 0), "Scratch is null, but mapping is not empty");
+                Debug.Assert((mapping.Count == 0), "HotColdMap is null, but mapping is not empty");
             }
 
             // Emit sentinel entry
