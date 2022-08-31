@@ -110,9 +110,12 @@ namespace ILCompiler
             CompileSingleThreaded(methodsToCompile);
         }
 
-        private void CompileSingleThreaded(List<LLVMMethodCodeNode> methodsToCompile)
+        private unsafe void CompileSingleThreaded(List<LLVMMethodCodeNode> methodsToCompile)
         {
             CorInfoImpl corInfo = _corinfos.GetValue(Thread.CurrentThread, thread => new CorInfoImpl(this));
+            corInfo.RegisterLlvmCallbacks((IntPtr)Unsafe.AsPointer(ref corInfo), _outputFile,
+                Module.Target,
+                Module.DataLayout);
 
             foreach (LLVMMethodCodeNode methodCodeNodeNeedingCode in methodsToCompile)
             {
@@ -143,23 +146,20 @@ namespace ILCompiler
                     methodCodeNodeNeedingCode.CompilationCompleted = true;
                     return;
                 }
-
+                
                 if (methodIL.GetExceptionRegions().Length == 0 && !_disableRyuJit)
                 {
                     var mangledName = NodeFactory.NameMangler.GetMangledMethodName(method).ToString();
                     var sig = method.Signature;
-                    corInfo.RegisterLlvmCallbacks((IntPtr)Unsafe.AsPointer(ref corInfo), _outputFile,
-                        Module.Target,
-                        Module.DataLayout);
                     corInfo.InitialiseDebugInfo(method, GetMethodIL(method));
                     corInfo.CompileMethod(methodCodeNodeNeedingCode);
                     methodCodeNodeNeedingCode.CompilationCompleted = true;
                     // TODO: delete this external function when old module is gone
                     LLVMValueRef externFunc = ILImporter.GetOrCreateLLVMFunction(Module, mangledName, GetLLVMSignatureForMethod(sig, method.RequiresInstArg()));
                     externFunc.Linkage = LLVMLinkage.LLVMExternalLinkage;
-
+                
                     ILImporter.GenerateRuntimeExportThunk(this, method, externFunc);
-
+                
                     ryuJitMethodCount++;
                 }
                 else ILImporter.CompileMethod(this, methodCodeNodeNeedingCode);
@@ -174,6 +174,7 @@ namespace ILCompiler
 
                 // Try to compile the method again, but with a throwing method body this time.
                 MethodIL throwingIL = TypeSystemThrowingILEmitter.EmitIL(method, ex);
+                corInfo.InitialiseDebugInfo(method, GetMethodIL(method));
                 corInfo.CompileMethod(methodCodeNodeNeedingCode, throwingIL);
 
                 // TODO: Log as a warning. For now, just log to the logger; but this needs to
