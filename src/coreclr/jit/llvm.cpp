@@ -1393,7 +1393,7 @@ void Llvm::buildCnsLng(GenTree* node)
     if (node->gtType == TYP_REF)
     {
         ssize_t longCon = node->AsLngCon()->LngValue();
-        // TODO: delete this check, just handling string constants and null ptr stores for now, other TYP_REFs not
+        // TODO: delete this check, just null ptr stores for now, other TYP_REFs not
         // implemented yet
         if (longCon != 0)
         {
