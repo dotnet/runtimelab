@@ -1384,27 +1384,7 @@ void Llvm::buildCnsInt(GenTree* node)
 
 void Llvm::buildCnsLng(GenTree* node)
 {
-    if (node->gtType == TYP_LONG)
-    {
-        mapGenTreeToValue(node, _builder.getInt64(node->AsLngCon()->LngValue()));
-        return;
-    }
-    // TODO-LLVM: TYP_REF does not occur, but will it for Wasm64?
-    if (node->gtType == TYP_REF)
-    {
-        ssize_t longCon = node->AsLngCon()->LngValue();
-        // TODO: delete this check, just null ptr stores for now, other TYP_REFs not
-        // implemented yet
-        if (longCon != 0)
-        {
-            failFunctionCompilation();
-        }
-
-        mapGenTreeToValue(node, _builder.CreateIntToPtr(_builder.getInt64(longCon),
-                                                        Type::getInt8PtrTy(_llvmContext))); // TODO: wasm64
-        return;
-    }
-    failFunctionCompilation();
+    mapGenTreeToValue(node, _builder.getInt64(node->AsLngCon()->LngValue()));
 }
 
 void Llvm::buildInd(GenTree* node, Value* ptr)
