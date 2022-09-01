@@ -1382,6 +1382,31 @@ void Llvm::buildCnsInt(GenTree* node)
     failFunctionCompilation();
 }
 
+void Llvm::buildCnsLng(GenTree* node)
+{
+    if (node->gtType == TYP_LONG)
+    {
+        mapGenTreeToValue(node, _builder.getInt64(node->AsLngCon()->LngValue()));
+        return;
+    }
+    // TODO-LLVM: TYP_REF does not occur, but will it for Wasm64?
+    if (node->gtType == TYP_REF)
+    {
+        ssize_t longCon = node->AsLngCon()->LngValue();
+        // TODO: delete this check, just handling string constants and null ptr stores for now, other TYP_REFs not
+        // implemented yet
+        if (longCon != 0)
+        {
+            failFunctionCompilation();
+        }
+
+        mapGenTreeToValue(node, _builder.CreateIntToPtr(_builder.getInt64(longCon),
+                                                        Type::getInt8PtrTy(_llvmContext))); // TODO: wasm64
+        return;
+    }
+    failFunctionCompilation();
+}
+
 void Llvm::buildInd(GenTree* node, Value* ptr)
 {
     // cast the pointer to create the correct load instructions
@@ -1984,6 +2009,9 @@ void Llvm::visitNode(GenTree* node)
             break;
         case GT_CNS_INT:
             buildCnsInt(node);
+            break;
+        case GT_CNS_LNG:
+            buildCnsLng(node);
             break;
         case GT_IL_OFFSET:
             _currentOffset = node->AsILOffset()->gtStmtILoffsx;

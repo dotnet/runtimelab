@@ -149,6 +149,7 @@ private:
     void buildCmp(GenTree* node, Value* op1, Value* op2);
     void buildCnsDouble(GenTreeDblCon* node);
     void buildCnsInt(GenTree* node);
+    void buildCnsLng(GenTree* node);
     void buildHelperFuncCall(GenTreeCall* call);
     llvm::FunctionType* buildHelperLlvmFunctionType(GenTreeCall* call, bool withShadowStack);
     void buildInd(GenTree* node, Value* ptr);
