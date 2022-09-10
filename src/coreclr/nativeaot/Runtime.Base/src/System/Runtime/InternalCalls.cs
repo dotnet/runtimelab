@@ -150,6 +150,13 @@ namespace System.Runtime
         [MethodImpl(MethodImplOptions.InternalCall)]
         internal static extern unsafe void RhpAssignRef(ref object address, object obj);
 
+#if TARGET_WASM
+        // TODO-LLVM: the IL backend needs this for store indirect, when all code is through the RyuJIT backend, remove it
+        [RuntimeImport(Redhawk.BaseName, "RhpCheckedAssignRef")]
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        internal static extern unsafe void RhpCheckedAssignRef(ref object address, object obj);
+#endif
+
         [MethodImplAttribute(MethodImplOptions.InternalCall)]
         [RuntimeImport(Redhawk.BaseName, "RhpInitMultibyte")]
         internal static extern unsafe ref byte RhpInitMultibyte(ref byte dmem, int c, nuint size);

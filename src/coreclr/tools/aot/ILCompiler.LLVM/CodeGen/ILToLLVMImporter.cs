@@ -1082,7 +1082,7 @@ namespace Internal.IL
         {
             if (withGCBarrier && targetType.IsGCPointer)
             {
-                CallRuntime(_method.Context, "InternalCalls", "RhpAssignRef", new StackEntry[]
+                CallRuntime(_method.Context, "InternalCalls", "RhpCheckedAssignRef", new StackEntry[]
                 {
                     new ExpressionEntry(StackValueKind.Int32, "address", address), value
                 });
@@ -1136,7 +1136,7 @@ namespace Internal.IL
                         // single field IL structs are not LLVM structs
                         fieldValue = llvmValue;
                     }
-                    CallRuntime(_method.Context, "InternalCalls", "RhpAssignRef",
+                    CallRuntime(_method.Context, "InternalCalls", "RhpCheckedAssignRef",
                         new StackEntry[]
                         {
                             new ExpressionEntry(StackValueKind.Int32, "targetAddress", targetAddress),
@@ -1146,7 +1146,7 @@ namespace Internal.IL
             }
             if (!childStruct)
             {
-                _builder.BuildStore(llvmValue, typedStoreLocation); // just copy all the fields again for simplicity, if all the fields were set using RhpAssignRef then a possible optimisation would be to skip this line
+                _builder.BuildStore(llvmValue, typedStoreLocation); // just copy all the fields again for simplicity, if all the fields were set using RhpCheckedAssignRef then a possible optimisation would be to skip this line
             }
         }
 
@@ -3629,7 +3629,7 @@ namespace Internal.IL
             }
             if (requireWriteBarrier)
             {
-                CallRuntime(_method.Context, "InternalCalls", "RhpAssignRef", new StackEntry[]
+                CallRuntime(_method.Context, "InternalCalls", "RhpCheckedAssignRef", new StackEntry[]
                 {
                     new ExpressionEntry(StackValueKind.Int32, "typedPointer", typedPointer), value
                 });
