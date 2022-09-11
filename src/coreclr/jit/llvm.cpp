@@ -1769,7 +1769,8 @@ void Llvm::storeObjAtAddress(Value* baseAddress, Value* data, StructDesc* struct
         {
             if (fieldDesc->isGcPointer())
             {
-                _builder.CreateCall(getOrCreateRhpAssignRef(),
+                // we can't be sure the address is on the heap, it could be the result of pointer arithmetic on a local var
+                _builder.CreateCall(getOrCreateRhpCheckedAssignRef(),
                                     ArrayRef<Value*>{address,
                                                      castIfNecessary(fieldData, Type::getInt8PtrTy(_llvmContext))});
                 bytesStored += TARGET_POINTER_SIZE;

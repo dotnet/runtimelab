@@ -156,6 +156,10 @@ static const uint32_t INVALIDGCVALUE = 0xcccccccd;
 
 FORCEINLINE void InlineWriteBarrier(void * dst, void * ref)
 {
+#ifdef TARGET_WASM
+    ASSERT(((uint8_t*)dst >= g_lowest_address) && ((uint8_t*)dst < g_highest_address))
+#endif // TARGET_WASM
+
     if (((uint8_t*)ref >= g_ephemeral_low) && ((uint8_t*)ref < g_ephemeral_high))
     {
         // volatile is used here to prevent fetch of g_card_table from being reordered
