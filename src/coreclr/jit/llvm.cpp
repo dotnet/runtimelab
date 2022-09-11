@@ -1382,6 +1382,11 @@ void Llvm::buildCnsInt(GenTree* node)
     failFunctionCompilation();
 }
 
+void Llvm::buildCnsLng(GenTree* node)
+{
+    mapGenTreeToValue(node, _builder.getInt64(node->AsLngCon()->LngValue()));
+}
+
 void Llvm::buildInd(GenTree* node, Value* ptr)
 {
     // cast the pointer to create the correct load instructions
@@ -1985,6 +1990,9 @@ void Llvm::visitNode(GenTree* node)
             break;
         case GT_CNS_INT:
             buildCnsInt(node);
+            break;
+        case GT_CNS_LNG:
+            buildCnsLng(node);
             break;
         case GT_IL_OFFSET:
             _currentOffset = node->AsILOffset()->gtStmtILoffsx;
