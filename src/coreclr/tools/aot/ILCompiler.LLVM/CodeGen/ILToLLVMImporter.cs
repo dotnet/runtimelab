@@ -32,6 +32,7 @@ namespace Internal.IL
         private class ExceptionRegion
         {
             public ILExceptionRegion ILRegion;
+            public bool Marked;
         }
 
         DependencyNodeCore<NodeFactory>.DependencyList _dependencies = new DependencyNodeCore<NodeFactory>.DependencyList();
@@ -104,6 +105,7 @@ namespace Internal.IL
         }
 
         private ExceptionRegion[] _exceptionRegions;
+        private ExceptionRegion[] _handlerRegionsForOffsetLookup;
         public ILImporter(LLVMCodegenCompilation compilation, MethodDesc method, MethodIL methodIL, string mangledName, bool isUnboxingThunk)
         {
             Module = LLVMCodegenCompilation.Module;
@@ -136,6 +138,7 @@ namespace Internal.IL
             _thisType = method.OwningType;
             var ilExceptionRegions = methodIL.GetExceptionRegions();
             _exceptionRegions = new ExceptionRegion[ilExceptionRegions.Length];
+            _handlerRegionsForOffsetLookup = new ExceptionRegion[ilExceptionRegions.Length];
             if (ilExceptionRegions.Length != 0)
             {
                 _exceptionFunclets = new List<LLVMValueRef>(_exceptionRegions.Length);
@@ -147,10 +150,18 @@ namespace Internal.IL
                 .ThenByDescending(region => region.TryLength)  // outer regions with the same try offset as inner region first - they will have longer lengths, // WASMTODO, except maybe an inner of try {} catch {} which could still be a problem
                 .ThenBy(region => region.HandlerOffset))
             {
-                _exceptionRegions[curRegion++] = new ExceptionRegion
+                _handlerRegionsForOffsetLookup[curRegion++] = new ExceptionRegion
                                                  {
                                                      ILRegion = region
                                                  };
+            }
+
+            for(curRegion = 0; curRegion < ilExceptionRegions.Length; curRegion++)
+            {
+                _exceptionRegions[curRegion] = new ExceptionRegion
+                {
+                    ILRegion = ilExceptionRegions[curRegion]
+                };
             }
 
             _llvmFunction = GetOrCreateLLVMFunction(mangledName, method.Signature, method.RequiresInstArg());
@@ -569,12 +580,12 @@ namespace Internal.IL
         private ExceptionRegion GetTryRegion(int offset)
         {
             // Iterate backwards to find the most nested region
-            for (int i = _exceptionRegions.Length - 1; i >= 0; i--)
+            for (int i = _handlerRegionsForOffsetLookup.Length - 1; i >= 0; i--)
             {
-                ILExceptionRegion region = _exceptionRegions[i].ILRegion;
+                ILExceptionRegion region = _handlerRegionsForOffsetLookup[i].ILRegion;
                 if (IsOffsetContained(offset - 1, region.TryOffset, region.TryLength))
                 {
-                    return _exceptionRegions[i];
+                    return _handlerRegionsForOffsetLookup[i];
                 }
             }
 
@@ -588,13 +599,13 @@ namespace Internal.IL
         private ExceptionRegion GetHandlerRegion(int offset)
         {
             // Iterate backwards to find the most nested region
-            for (int i = _exceptionRegions.Length - 1; i >= 0; i--)
+            for (int i = _handlerRegionsForOffsetLookup.Length - 1; i >= 0; i--)
             {
-                ExceptionRegion exceptionRegion = _exceptionRegions[i];
+                ExceptionRegion exceptionRegion = _handlerRegionsForOffsetLookup[i];
                 if (IsOffsetContained(offset, exceptionRegion.ILRegion.HandlerOffset, exceptionRegion.ILRegion.HandlerLength) ||
                     (exceptionRegion.ILRegion.Kind == ILExceptionRegionKind.Filter && IsOffsetContained(offset, exceptionRegion.ILRegion.FilterOffset, exceptionRegion.ILRegion.HandlerOffset - exceptionRegion.ILRegion.FilterOffset)))
                 {
-                    return _exceptionRegions[i];
+                    return _handlerRegionsForOffsetLookup[i];
                 }
             }
 
@@ -640,7 +651,7 @@ namespace Internal.IL
             if (basicBlock.HandlerStart || basicBlock.FilterStart)
             {
                 _funcletAddrCacheCtx = null;
-                foreach (ExceptionRegion ehRegion in _exceptionRegions)
+                foreach (ExceptionRegion ehRegion in _handlerRegionsForOffsetLookup)
                 {
                     if (ehRegion.ILRegion.HandlerOffset == basicBlock.StartOffset ||
                         ehRegion.ILRegion.FilterOffset == basicBlock.StartOffset)
@@ -657,7 +668,7 @@ namespace Internal.IL
 
             if (basicBlock.TryStart)
             {
-                foreach (ExceptionRegion ehRegion in _exceptionRegions)
+                foreach (ExceptionRegion ehRegion in _handlerRegionsForOffsetLookup)
                 {
                     if(ehRegion.ILRegion.TryOffset == basicBlock.StartOffset)
                     {
@@ -2960,12 +2971,26 @@ namespace Internal.IL
 
             var leaveDestination = landingPadBuilder.BuildAlloca(LLVMTypeRef.Int32, "leaveDest"); // create a variable to store the operand of the leave as we can't use the result of the call directly due to domination/branches
             landingPadBuilder.BuildStore(LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, 0, false), leaveDestination);
+
+            // second pass -
+            // TODO-LLVM: note that we will call the finally blocks even if there is no catch, whereas really we should fail fast
+            // reinitialise the iterator
+            CallRuntime(_compilation.TypeSystemContext, "EHClauseIterator", "InitFromEhInfo", iteratorInitArgs, null, fromLandingPad: true, builder: landingPadBuilder);
+
+            var secondPassArgs = new StackEntry[] { new ExpressionEntry(StackValueKind.Int32, "idxStart", landingPadBuilder.BuildLoad(tryRegionIdx)),
+                new ExpressionEntry(StackValueKind.Int32, "idxTryLandingStart", LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, (ulong)tryRegion.ILRegion.TryOffset, false)),
+                new ExpressionEntry(StackValueKind.ByRef, "refFrameIter", ehInfoIterator),
+                new ExpressionEntry(StackValueKind.Int32, "idxLimit", LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, 0xFFFFFFFFu, false)),
+                new ExpressionEntry(StackValueKind.NativeInt, "shadowStack", _currentFunclet.GetParam(0))
+            };
+            CallRuntime(_compilation.TypeSystemContext, "EH", "InvokeSecondPassWasm", secondPassArgs, null, true, builder: landingPadBuilder);
+
             var foundCatchBlock = _currentFunclet.AppendBasicBlock("LPFoundCatch");
             // If it didn't find a catch block, we can rethrow (resume in LLVM) the C++ exception to continue the stack walk.
             var noCatch = landingPadBuilder.BuildICmp(LLVMIntPredicate.LLVMIntEQ, LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, 0, false),
                 handler.ValueAsInt32(landingPadBuilder, false), "testCatch");
-            var secondPassBlock = _currentFunclet.AppendBasicBlock("SecondPass");
-            landingPadBuilder.BuildCondBr(noCatch, secondPassBlock, foundCatchBlock);
+            var resumeBlock = GetOrCreateResumeBlock(pad, tryRegion.ILRegion.TryOffset.ToString());
+            landingPadBuilder.BuildCondBr(noCatch, resumeBlock, foundCatchBlock);
 
             landingPadBuilder.PositionAtEnd(foundCatchBlock);
             // finished with the c++ exception
@@ -2981,23 +3006,9 @@ namespace Internal.IL
             LLVMValueRef leaveReturnValue = landingPadBuilder.BuildCall(RhpCallCatchFunclet, callCatchArgs, "");
 
             landingPadBuilder.BuildStore(leaveReturnValue, leaveDestination);
-            landingPadBuilder.BuildBr(secondPassBlock);
-
-            landingPadBuilder.PositionAtEnd(secondPassBlock);
-
-            // reinitialise the iterator
-            CallRuntime(_compilation.TypeSystemContext, "EHClauseIterator", "InitFromEhInfo", iteratorInitArgs, null, fromLandingPad: true, builder: landingPadBuilder);
-
-            var secondPassArgs = new StackEntry[] { new ExpressionEntry(StackValueKind.Int32, "idxStart", LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, 0xFFFFFFFFu, false)),
-                                                      new ExpressionEntry(StackValueKind.Int32, "idxTryLandingStart", LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, (ulong)tryRegion.ILRegion.TryOffset, false)),
-                                                      new ExpressionEntry(StackValueKind.ByRef, "refFrameIter", ehInfoIterator),
-                                                      new ExpressionEntry(StackValueKind.Int32, "idxLimit", LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, 0xFFFFFFFFu, false)),
-                                                      new ExpressionEntry(StackValueKind.NativeInt, "shadowStack", _currentFunclet.GetParam(0))
-                                                  };
-            CallRuntime(_compilation.TypeSystemContext, "EH", "InvokeSecondPassWasm", secondPassArgs, null, true, builder: landingPadBuilder);
 
             var catchLeaveBlock = _currentFunclet.AppendBasicBlock("CatchLeave");
-            landingPadBuilder.BuildCondBr(noCatch, GetOrCreateResumeBlock(pad, tryRegion.ILRegion.TryOffset.ToString()), catchLeaveBlock);
+            landingPadBuilder.BuildCondBr(noCatch, resumeBlock, catchLeaveBlock);
             landingPadBuilder.PositionAtEnd(catchLeaveBlock);
 
             // Use the else as the path for no exception handler found for this exception
@@ -4435,9 +4446,9 @@ namespace Internal.IL
                 _builder.BuildInvoke(RhpThrowEx, args, GetOrCreateUnreachableBlock(), GetOrCreateLandingPad(currentExceptionRegion), "");
             }
 
-            for (int i = 0; i < _exceptionRegions.Length; i++)
+            for (int i = 0; i < _handlerRegionsForOffsetLookup.Length; i++)
             {
-                var r = _exceptionRegions[i];
+                var r = _handlerRegionsForOffsetLookup[i];
 
                 if (IsOffsetContained(_currentOffset - 1, r.ILRegion.TryOffset, r.ILRegion.TryLength))
                 {
@@ -4943,9 +4954,9 @@ namespace Internal.IL
 
         private void ImportLeave(BasicBlock target)
         {
-            for (int i = _exceptionRegions.Length - 1; i >= 0; i--)
+            for (int i = _handlerRegionsForOffsetLookup.Length - 1; i >= 0; i--)
             {
-                var r = _exceptionRegions[i];
+                var r = _handlerRegionsForOffsetLookup[i];
 
                 if (r.ILRegion.Kind == ILExceptionRegionKind.Finally &&
                     IsOffsetContained(_currentOffset - 1, r.ILRegion.TryOffset, r.ILRegion.TryLength) &&
@@ -5382,35 +5393,21 @@ namespace Internal.IL
             builder.RequireInitialAlignment(1);
             int totalClauses = _exceptionRegions.Length;
 
-            // Count the number of special markers that will be needed
-//            for (int i = 1; i < _exceptionRegions.Length; i++)
-//            {
-//                ExceptionRegion clause = _exceptionRegions[i];
-//                ExceptionRegion previousClause = _exceptionRegions[i - 1];
-
-                // WASMTODO : do we need these special markers and if so how do we detect and set CORINFO_EH_CLAUSE_SAMETRY?
-//                if ((previousClause.ILRegion.TryOffset == clause.ILRegion.TryOffset) &&
-//                    (previousClause.ILRegion.TryLength == clause.ILRegion.TryLength) &&
-//                    ((clause.Flags & CORINFO_EH_CLAUSE_FLAGS.CORINFO_EH_CLAUSE_SAMETRY) == 0))
-//                {
-//                    totalClauses++;
-//                }
-//            }
-
             builder.EmitCompressedUInt((uint)totalClauses);
-            // Iterate backwards to emit the innermost first, but within a try region go forwards to get the first matching catch type
-            int i = _exceptionRegions.Length - 1;
-            while (i >= 0)
+
+            // Iterate forwards to emit the innermost first (as they appear in the IL), but within a try region go forwards to get the first matching catch type
+            for(int i = 0; i <  _exceptionRegions.Length; i++)
             {
-                int tryStart = _exceptionRegions[i].ILRegion.TryOffset;
-                int tryLength = _exceptionRegions[i].ILRegion.TryLength;
+                ExceptionRegion tryRegion = _exceptionRegions[i];
+
+                if (tryRegion.Marked) continue;
+
+                int tryStart = tryRegion.ILRegion.TryOffset;
+                int tryLength = tryRegion.ILRegion.TryLength;
                 for (var j = 0; j < _exceptionRegions.Length; j++)
                 {
                     ExceptionRegion exceptionRegion = _exceptionRegions[j];
                     if (exceptionRegion.ILRegion.TryOffset != tryStart || exceptionRegion.ILRegion.TryLength != tryLength) continue;
-                    //                if (i > 0)
-                    //                {
-                    //                    ExceptionRegion previousClause = _exceptionRegions[i - 1];
 
                     // If the previous clause has same try offset and length as the current clause,
                     // but belongs to a different try block (CORINFO_EH_CLAUSE_SAMETRY is not set),
@@ -5476,11 +5473,19 @@ namespace Internal.IL
                             builder.EmitReloc(new LLVMBlockRefNode(filterFuncletName), rel);
                             break;
                     }
-                    i--;
+
+                    exceptionRegion.Marked = true;
                 }
             }
 
-            return builder.ToObjectData();
+#if DEBUG
+            for (int i = 0; i < _exceptionRegions.Length; i++)
+            {
+                Debug.Assert(_exceptionRegions[i].Marked);
+            }
+#endif
+
+                return builder.ToObjectData();
         }
 
         private string GetFuncletName(ExceptionRegion exceptionRegion, int regionOffset, ILExceptionRegionKind ilExceptionRegionKind)
