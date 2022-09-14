@@ -92,7 +92,6 @@ namespace System.Runtime
                 }
                 else
                 {
-                    tryRegionIdx = MaxTryRegionIdx;
                     bool shouldInvokeHandler = InternalCalls.RhpCallFilterFunclet(exception, ehClause._filterAddress, shadowStack);
                     if (shouldInvokeHandler)
                     {
