@@ -105,7 +105,6 @@ U_CAPI int32_t U_EXPORT2 ucal_getWindowsTimeZoneID(const UChar* id, int32_t len,
     PER_FUNCTION_BLOCK(ucol_open, libicui18n, true) \
     PER_FUNCTION_BLOCK(ucol_openElements, libicui18n, true) \
     PER_FUNCTION_BLOCK(ucol_openRules, libicui18n, true) \
-    PER_FUNCTION_BLOCK(ucol_safeClone, libicui18n, true) \
     PER_FUNCTION_BLOCK(ucol_setAttribute, libicui18n, true) \
     PER_FUNCTION_BLOCK(ucol_strcoll, libicui18n, true) \
     PER_FUNCTION_BLOCK(udat_close, libicui18n, true) \
