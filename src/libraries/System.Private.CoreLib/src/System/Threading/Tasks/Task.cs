@@ -5382,6 +5382,29 @@ namespace System.Threading.Tasks
                 TaskCreationOptions.DenyChildAttach, InternalTaskOptions.None);
         }
 
+        public static Task RunAsGreenThread(Action action, CancellationToken cancellationToken)
+        {
+            Task greenThreadTask = new Task(action, cancellationToken);
+            new Thread(()=>
+            {
+                Thread.t_IsGreenThread = true;
+                // TODO? Do something like register the cancellation token as an AsyncLocal or something.
+                greenThreadTask.RunSynchronously();
+            }).Start();
+            return greenThreadTask;
+        }
+
+        public static Task RunAsGreenThread(Action action)
+        {
+            Task greenThreadTask = new Task(action);
+            new Thread(()=>
+            {
+                Thread.t_IsGreenThread = true;
+                greenThreadTask.RunSynchronously();
+            }).Start();
+            return greenThreadTask;
+        }
+
         /// <summary>
         /// Queues the specified work to run on the ThreadPool and returns a Task(TResult) handle for that work.
         /// </summary>

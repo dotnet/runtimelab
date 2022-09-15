@@ -19,6 +19,9 @@ namespace System.Threading
         [ThreadStatic]
         private static Thread? t_currentThread;
 
+        [ThreadStatic]
+        internal static bool t_IsGreenThread;
+
         // State associated with starting new thread
         private sealed class StartHelper
         {
@@ -586,6 +589,8 @@ namespace System.Threading
         public static void VolatileWrite(ref ulong address, ulong value) => Volatile.Write(ref address, value);
         [CLSCompliant(false)]
         public static void VolatileWrite(ref UIntPtr address, UIntPtr value) => Volatile.Write(ref address, value);
+
+        public static bool IsGreenThread => t_IsGreenThread;
 
         /// <summary>
         /// Manages functionality required to support members of <see cref="Thread"/> dealing with thread-local data
