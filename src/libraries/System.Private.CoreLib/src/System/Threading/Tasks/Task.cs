@@ -5405,6 +5405,29 @@ namespace System.Threading.Tasks
             return greenThreadTask;
         }
 
+        public static Task<TResult> RunAsGreenThread<TResult>(Func<TResult> function)
+        {
+            Task<TResult> greenThreadTask = new Task<TResult>(function);
+            new Thread(()=>
+            {
+                Thread.t_IsGreenThread = true;
+                greenThreadTask.RunSynchronously();
+            }).Start();
+            return greenThreadTask;
+        }
+
+        public static Task<TResult> RunAsGreenThread<TResult>(Func<TResult> function, CancellationToken cancellationToken)
+        {
+            Task<TResult> greenThreadTask = new Task<TResult>(function, cancellationToken);
+            new Thread(()=>
+            {
+                Thread.t_IsGreenThread = true;
+                // TODO? Do something like register the cancellation token as an AsyncLocal or something.
+                greenThreadTask.RunSynchronously();
+            }).Start();
+            return greenThreadTask;
+        }
+
         /// <summary>
         /// Queues the specified work to run on the ThreadPool and returns a Task(TResult) handle for that work.
         /// </summary>
