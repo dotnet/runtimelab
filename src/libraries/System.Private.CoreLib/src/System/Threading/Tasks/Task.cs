@@ -5382,6 +5382,7 @@ namespace System.Threading.Tasks
                 TaskCreationOptions.DenyChildAttach, InternalTaskOptions.None);
         }
 
+        [UnsupportedOSPlatform("browser")]
         public static Task RunAsGreenThread(Action action, CancellationToken cancellationToken)
         {
             if (cancellationToken.IsCancellationRequested)
@@ -5409,6 +5410,7 @@ namespace System.Threading.Tasks
             return tcs.Task;
         }
 
+        [UnsupportedOSPlatform("browser")]
         public static Task RunAsGreenThread(Action action)
         {
             var tcs = new TaskCompletionSource();
@@ -5428,6 +5430,7 @@ namespace System.Threading.Tasks
             return tcs.Task;
         }
 
+        [UnsupportedOSPlatform("browser")]
         public static Task<TResult> RunAsGreenThread<TResult>(Func<TResult> function)
         {
             var tcs = new TaskCompletionSource<TResult>();
@@ -5446,6 +5449,7 @@ namespace System.Threading.Tasks
             return tcs.Task;
         }
 
+        [UnsupportedOSPlatform("browser")]
         public static Task<TResult> RunAsGreenThread<TResult>(Func<TResult> function, CancellationToken cancellationToken)
         {
             if (cancellationToken.IsCancellationRequested)
