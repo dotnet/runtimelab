@@ -5384,48 +5384,92 @@ namespace System.Threading.Tasks
 
         public static Task RunAsGreenThread(Action action, CancellationToken cancellationToken)
         {
-            Task greenThreadTask = new Task(action, cancellationToken);
+            if (cancellationToken.IsCancellationRequested)
+                return Task.FromCanceled(cancellationToken);
+
+            var tcs = new TaskCompletionSource();
             new Thread(()=>
             {
                 Thread.t_IsGreenThread = true;
-                // TODO? Do something like register the cancellation token as an AsyncLocal or something.
-                greenThreadTask.RunSynchronously();
-            }).Start();
-            return greenThreadTask;
+                try
+                {
+                    if (cancellationToken.IsCancellationRequested)
+                    {
+                        tcs.SetCanceled(cancellationToken);
+                    }
+
+                    action();
+                    tcs.SetResult();
+                }
+                catch (Exception e)
+                {
+                    tcs.SetException(e);
+                }
+            }) { IsBackground = true }.Start();
+            return tcs.Task;
         }
 
         public static Task RunAsGreenThread(Action action)
         {
-            Task greenThreadTask = new Task(action);
+            var tcs = new TaskCompletionSource();
             new Thread(()=>
             {
                 Thread.t_IsGreenThread = true;
-                greenThreadTask.RunSynchronously();
-            }).Start();
-            return greenThreadTask;
+                try
+                {
+                    action();
+                    tcs.SetResult();
+                }
+                catch (Exception e)
+                {
+                    tcs.SetException(e);
+                }
+            }) { IsBackground = true }.Start();
+            return tcs.Task;
         }
 
         public static Task<TResult> RunAsGreenThread<TResult>(Func<TResult> function)
         {
-            Task<TResult> greenThreadTask = new Task<TResult>(function);
+            var tcs = new TaskCompletionSource<TResult>();
             new Thread(()=>
             {
                 Thread.t_IsGreenThread = true;
-                greenThreadTask.RunSynchronously();
-            }).Start();
-            return greenThreadTask;
+                try
+                {
+                    tcs.SetResult(function());
+                }
+                catch (Exception e)
+                {
+                    tcs.SetException(e);
+                }
+            }) { IsBackground = true }.Start();
+            return tcs.Task;
         }
 
         public static Task<TResult> RunAsGreenThread<TResult>(Func<TResult> function, CancellationToken cancellationToken)
         {
-            Task<TResult> greenThreadTask = new Task<TResult>(function, cancellationToken);
+            if (cancellationToken.IsCancellationRequested)
+                return Task.FromCanceled<TResult>(cancellationToken);
+
+            var tcs = new TaskCompletionSource<TResult>();
             new Thread(()=>
             {
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    tcs.SetCanceled(cancellationToken);
+                }
+
                 Thread.t_IsGreenThread = true;
-                // TODO? Do something like register the cancellation token as an AsyncLocal or something.
-                greenThreadTask.RunSynchronously();
-            }).Start();
-            return greenThreadTask;
+                try
+                {
+                    tcs.SetResult(function());
+                }
+                catch (Exception e)
+                {
+                    tcs.SetException(e);
+                }
+            }) { IsBackground = true }.Start();
+            return tcs.Task;
         }
 
         /// <summary>
