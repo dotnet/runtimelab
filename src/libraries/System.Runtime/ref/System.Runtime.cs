@@ -14479,6 +14479,14 @@ namespace System.Threading.Tasks
         public static System.Threading.Tasks.Task Run(System.Action action, System.Threading.CancellationToken cancellationToken) { throw null; }
         public static System.Threading.Tasks.Task Run(System.Func<System.Threading.Tasks.Task?> function) { throw null; }
         public static System.Threading.Tasks.Task Run(System.Func<System.Threading.Tasks.Task?> function, System.Threading.CancellationToken cancellationToken) { throw null; }
+        [System.Runtime.Versioning.UnsupportedOSPlatform("browser")]
+        public static System.Threading.Tasks.Task RunAsGreenThread(System.Action action) { throw null; }
+        [System.Runtime.Versioning.UnsupportedOSPlatform("browser")]
+        public static System.Threading.Tasks.Task RunAsGreenThread(System.Action action, System.Threading.CancellationToken cancellationToken) { throw null; }
+        [System.Runtime.Versioning.UnsupportedOSPlatform("browser")]
+        public static System.Threading.Tasks.Task<TResult> RunAsGreenThread<TResult>(System.Func<TResult> function) { throw null; }
+        [System.Runtime.Versioning.UnsupportedOSPlatform("browser")]
+        public static System.Threading.Tasks.Task<TResult> RunAsGreenThread<TResult>(System.Func<TResult> function, System.Threading.CancellationToken cancellationToken) { throw null; }
         public void RunSynchronously() { }
         public void RunSynchronously(System.Threading.Tasks.TaskScheduler scheduler) { }
         public static System.Threading.Tasks.Task<TResult> Run<TResult>(System.Func<System.Threading.Tasks.Task<TResult>?> function) { throw null; }

@@ -46,6 +46,7 @@ namespace System.Threading
         public bool IsAlive { get { throw null; } }
         public bool IsBackground { get { throw null; } set { } }
         public bool IsThreadPoolThread { get { throw null; } }
+        public static bool IsGreenThread { get { throw null; } }
         public int ManagedThreadId { get { throw null; } }
         public string? Name { get { throw null; } set { } }
         public System.Threading.ThreadPriority Priority { get { throw null; } set { } }

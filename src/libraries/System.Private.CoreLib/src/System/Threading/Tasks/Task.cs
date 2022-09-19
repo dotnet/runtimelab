@@ -5382,6 +5382,100 @@ namespace System.Threading.Tasks
                 TaskCreationOptions.DenyChildAttach, InternalTaskOptions.None);
         }
 
+        [UnsupportedOSPlatform("browser")]
+        public static Task RunAsGreenThread(Action action, CancellationToken cancellationToken)
+        {
+            if (cancellationToken.IsCancellationRequested)
+                return Task.FromCanceled(cancellationToken);
+
+            var tcs = new TaskCompletionSource();
+            new Thread(()=>
+            {
+                Thread.t_IsGreenThread = true;
+                try
+                {
+                    if (cancellationToken.IsCancellationRequested)
+                    {
+                        tcs.SetCanceled(cancellationToken);
+                    }
+
+                    action();
+                    tcs.SetResult();
+                }
+                catch (Exception e)
+                {
+                    tcs.SetException(e);
+                }
+            }) { IsBackground = true }.Start();
+            return tcs.Task;
+        }
+
+        [UnsupportedOSPlatform("browser")]
+        public static Task RunAsGreenThread(Action action)
+        {
+            var tcs = new TaskCompletionSource();
+            new Thread(()=>
+            {
+                Thread.t_IsGreenThread = true;
+                try
+                {
+                    action();
+                    tcs.SetResult();
+                }
+                catch (Exception e)
+                {
+                    tcs.SetException(e);
+                }
+            }) { IsBackground = true }.Start();
+            return tcs.Task;
+        }
+
+        [UnsupportedOSPlatform("browser")]
+        public static Task<TResult> RunAsGreenThread<TResult>(Func<TResult> function)
+        {
+            var tcs = new TaskCompletionSource<TResult>();
+            new Thread(()=>
+            {
+                Thread.t_IsGreenThread = true;
+                try
+                {
+                    tcs.SetResult(function());
+                }
+                catch (Exception e)
+                {
+                    tcs.SetException(e);
+                }
+            }) { IsBackground = true }.Start();
+            return tcs.Task;
+        }
+
+        [UnsupportedOSPlatform("browser")]
+        public static Task<TResult> RunAsGreenThread<TResult>(Func<TResult> function, CancellationToken cancellationToken)
+        {
+            if (cancellationToken.IsCancellationRequested)
+                return Task.FromCanceled<TResult>(cancellationToken);
+
+            var tcs = new TaskCompletionSource<TResult>();
+            new Thread(()=>
+            {
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    tcs.SetCanceled(cancellationToken);
+                }
+
+                Thread.t_IsGreenThread = true;
+                try
+                {
+                    tcs.SetResult(function());
+                }
+                catch (Exception e)
+                {
+                    tcs.SetException(e);
+                }
+            }) { IsBackground = true }.Start();
+            return tcs.Task;
+        }
+
         /// <summary>
         /// Queues the specified work to run on the ThreadPool and returns a Task(TResult) handle for that work.
         /// </summary>
