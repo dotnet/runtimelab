@@ -698,5 +698,110 @@ NESTED_END OnCallCountThresholdReachedStub, _TEXT
 
 endif ; FEATURE_TIERED_COMPILATION
 
+ifdef FEATURE_GREENTHREADS
+
+extern AllocateMoreStackHelper:proc
+
+;
+; Called from a function prolog (with argument registers holding current state)
+; RAX holds the size of the calling stack frame
+; Provides a guarantee of at least 2KB of stack
+; TODO Make another helper for cases where lots of stack are needed
+;
+NESTED_ENTRY _more_stack, _TEXT
+        ;
+        ; Allocate space for XMM parameter registers and callee scratch area.
+        ;
+        alloc_stack     0f0h ;; TODO This is overly large
+
+        mov             r10, rbp
+
+        ;
+        ; Save integer parameter registers.
+        ;
+        save_reg_postrsp    rcx, 70h
+        save_reg_postrsp    rdx, 78h
+        save_reg_postrsp    r8,  80h
+        save_reg_postrsp    r9,  88h
+
+        save_reg_postrsp    rbp, 90h
+        save_reg_postrsp    rbx, 98h
+
+        save_xmm128_postrsp xmm0, 20h
+        save_xmm128_postrsp xmm1, 30h
+        save_xmm128_postrsp xmm2, 40h
+        save_xmm128_postrsp xmm3, 50h
+
+        set_frame       rbp, 0f0h
+    END_PROLOGUE
+        ; Store the old stack limit and base
+        mov             rdx, gs:[10h]  
+        mov             [rbp - 020h], rdx ; Store the old stack limit
+        mov             rdx, gs:[8h]   
+        mov             [rbp - 018h], rdx ; Store the old stack base
+
+        ; Allocate new stack and initialize it
+        mov rcx, rax
+        mov rdx, rbp  ; Specify the address of where the rsp pointed at entering the function
+                      ; This provides both the place to copy the old arguments to the new space
+                      ; as well as where to stash the stack_limit and stack_base data
+        call AllocateMoreStackHelper
+    
+        ;
+        ; Restore parameter registers
+        ;
+        mov             rcx, [rsp + 70h]
+        mov             rdx, [rsp + 78h]
+        mov             r8,  [rsp + 80h]
+        mov             r9,  [rsp + 88h]
+        movdqa          xmm0, [rsp + 20h]
+        movdqa          xmm1, [rsp + 30h]
+        movdqa          xmm2, [rsp + 40h]
+        movdqa          xmm3, [rsp + 50h]
+
+        ; Swap to new stack
+        mov             rbx, rsp ; Stash old stack pointer into rbx (saved register)
+        mov             rsp, rax
+
+        mov             rax, [rbp - 10h] ; Pull the new stack limit
+        mov             gs:[10h], rax ; Change stack limit to new value
+        mov             rax, [rbp - 8h] ; Pull the new stack base
+        mov             gs:[8h], rax ; Change stack base to new value
+
+        mov             r10, [rbp] ; Get address that we are going to eventually return to
+
+        add             r10, 1 ; Skip the ret opcode
+        call            r10 ; Call the core of the function with the new larger stack
+
+        mov             rsp, rbx ; Bring back the old stack pointer
+
+        mov             rax, [rbp - 020h] ; Pull the old stack limit
+        mov             gs:[10h], rax ; Change stack limit to new value
+        mov             rax, [rbp - 018h] ; Pull the old stack base
+        mov             gs:[8h], rax ; Change stack base to new value
+
+        ; Restore registers
+        mov             rbx, [rbp - 58h]
+        mov             rbp, [rbp - 60h]
+        add rsp, 0f0h
+        ret
+NESTED_END _more_stack, _TEXT
+
+
+; This transitions into a green thread, assuming that there are no stack arguments
+; and the first argument (rcx) is the address of the first function to use in the 
+; green thread
+NESTED_ENTRY TransitionToGreenThreadHelper, _TEXT
+    END_PROLOGUE
+        mov eax, 0
+        call _more_stack
+        ret
+        jmp rcx
+NESTED_END TransitionToGreenThreadHelper, _TEXT
+
+
+
+endif ; FEATURE_GREENTHREADS
+
         end
 
