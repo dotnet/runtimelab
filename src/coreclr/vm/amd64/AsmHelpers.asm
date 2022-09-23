@@ -701,12 +701,14 @@ endif ; FEATURE_TIERED_COMPILATION
 ifdef FEATURE_GREENTHREADS
 
 extern AllocateMoreStackHelper:proc
+extern End_More_Thread_Bookeeping:proc
 
 ;
 ; Called from a function prolog (with argument registers holding current state)
 ; RAX holds the size of the calling stack frame
 ; Provides a guarantee of at least 2KB of stack
 ; TODO Make another helper for cases where lots of stack are needed
+; The prologue of this function is duplicated for the ResumeSuspendedThreadHelper2 function
 ;
 NESTED_ENTRY _more_stack, _TEXT
         ;
@@ -735,10 +737,12 @@ NESTED_ENTRY _more_stack, _TEXT
         set_frame       rbp, 0f0h
     END_PROLOGUE
         ; Store the old stack limit and base
-        mov             rdx, gs:[10h]  
-        mov             [rbp - 020h], rdx ; Store the old stack limit
-        mov             rdx, gs:[8h]   
-        mov             [rbp - 018h], rdx ; Store the old stack base
+        mov             r11, gs:[10h]  
+        mov             [rbp - 020h], r11 ; Store the old stack limit
+        mov             r11, gs:[8h]   
+        mov             [rbp - 018h], r11 ; Store the old stack base
+
+        ;;;;;;;;;;;;;;;;; EVERYTHING ABOVE THIS MUST BE IDENTICAL between _more_stack and ResumeSuspendedThreadHelper2
 
         ; Allocate new stack and initialize it
         mov rcx, rax
@@ -775,10 +779,22 @@ NESTED_ENTRY _more_stack, _TEXT
 
         mov             rsp, rbx ; Bring back the old stack pointer
 
-        mov             rax, [rbp - 020h] ; Pull the old stack limit
-        mov             gs:[10h], rax ; Change stack limit to new value
-        mov             rax, [rbp - 018h] ; Pull the old stack base
-        mov             gs:[8h], rax ; Change stack base to new value
+        mov             r10, [rbp - 020h] ; Pull the old stack limit
+        mov             gs:[10h], r10 ; Change stack limit to new value
+        mov             r10, [rbp - 018h] ; Pull the old stack base
+        mov             gs:[8h], r10 ; Change stack base to new value
+
+        ; Save return value registers
+        mov             [rsp + 70h], rax
+        movdqa          [rsp + 20h], xmm0
+        
+        call            End_More_Thread_Bookeeping
+
+        ; Restore return value registers
+        mov             rax, [rsp + 70h]
+        movdqa          xmm0, [rsp + 20h]
+
+
 
         ; Restore registers
         mov             rbx, [rbp - 58h]
@@ -791,15 +807,143 @@ NESTED_END _more_stack, _TEXT
 ; This transitions into a green thread, assuming that there are no stack arguments
 ; and the first argument (rcx) is the address of the first function to use in the 
 ; green thread
-NESTED_ENTRY TransitionToGreenThreadHelper, _TEXT
+NESTED_ENTRY TransitionToGreenThreadHelper2, _TEXT
     END_PROLOGUE
         mov eax, 0
         call _more_stack
         ret
         jmp rcx
+NESTED_END TransitionToGreenThreadHelper2, _TEXT
+
+NESTED_ENTRY TransitionToGreenThreadHelper, _TEXT
+        PROLOG_WITH_TRANSITION_BLOCK
+        call TransitionToGreenThreadHelper2
+        EPILOG_WITH_TRANSITION_BLOCK_RETURN
 NESTED_END TransitionToGreenThreadHelper, _TEXT
 
 
+extern FirstFrameInGreenThreadCpp:proc
+NESTED_ENTRY FirstFrameInGreenThread, _TEXT
+    alloc_stack     38h ;; TODO This is overly large
+    save_reg_postrsp    rbp, 20h ; Save off the rbp and rbx in well known locations, as those need to be updated when the thread resumes
+    save_reg_postrsp    rbx, 28h
+    END_PROLOGUE
+    call FirstFrameInGreenThreadCpp
+    mov             rbx, [rsp + 28h]
+    mov             rbp, [rsp + 20h]
+    add rsp, 38h
+    ret
+NESTED_END FirstFrameInGreenThread, _TEXT
+
+; This transitions into an OS thread, assuming that there are no stack arguments
+; and the first argument (rcx) is the address of the first function to use in the 
+; green thread
+NESTED_ENTRY TransitionToOSThreadHelper, _TEXT
+    END_PROLOGUE
+        mov eax, 0
+        sub eax, 1
+        call _more_stack
+        ret
+        jmp rcx
+NESTED_END TransitionToOSThreadHelper, _TEXT
+
+
+; extern "C" void YieldOutOfGreenThreadHelper(StackRange *pOSStackRange, uint8_t* osStackCurrent, uint8_t** greenThreadStackCurrent);
+; This function is supposed to hop back to the OS thread, with the original OS thread stack in place, and 
+NESTED_ENTRY YieldOutOfGreenThreadHelper, _TEXT
+    PROLOG_WITH_TRANSITION_BLOCK
+    sub rdx, 0f0h ; This should be the RSP before we did the transition to the OS thread
+    mov rbp, rdx  ; Set RBP to what it was before we transitioned to the green thread
+    mov [r8], rsp ; Capture current rsp into the greenTheadStackCurrent variable
+    lea rsp, [rbp-0f0h]
+    jmp yield_point
+ALTERNATE_ENTRY resume_point
+    EPILOG_WITH_TRANSITION_BLOCK_RETURN
+NESTED_END YieldOutOfGreenThreadHelper, _TEXT
+
+extern GetResumptionStackPointerAndSaveOSStackPointer:proc
+
+; This is a paired function with the _more_stack function to allow for 
+NESTED_ENTRY ResumeSuspendedThreadHelper2, _TEXT
+        ;
+        ; Allocate space for XMM parameter registers and callee scratch area.
+        ;
+        alloc_stack     0f0h ;; TODO This is overly large
+
+        mov             r10, rbp
+
+        ;
+        ; Save integer parameter registers.
+        ;
+        save_reg_postrsp    rcx, 70h
+        save_reg_postrsp    rdx, 78h
+        save_reg_postrsp    r8,  80h
+        save_reg_postrsp    r9,  88h
+
+        save_reg_postrsp    rbp, 90h
+        save_reg_postrsp    rbx, 98h
+
+        save_xmm128_postrsp xmm0, 20h
+        save_xmm128_postrsp xmm1, 30h
+        save_xmm128_postrsp xmm2, 40h
+        save_xmm128_postrsp xmm3, 50h
+
+        set_frame       rbp, 0f0h
+    END_PROLOGUE
+        ; Store the old stack limit and base
+        mov             r11, gs:[10h]  
+        mov             [rbp - 020h], r11 ; Store the old stack limit
+        mov             r11, gs:[8h]   
+        mov             [rbp - 018h], r11 ; Store the old stack base
+
+        ;;;;;;;;;;;;;;;;; EVERYTHING ABOVE THIS MUST BE IDENTICAL between _more_stack and ResumeSuspendedThreadHelper2
+        lea rcx, [rbp - 020h]
+        mov rdx, rbp  ; Specify the address of where the rsp pointed at entering the function
+                      ; This provides both the place to copy the old arguments to the new space
+                      ; as well as where to stash the stack_limit and stack_base data
+        call GetResumptionStackPointerAndSaveOSStackPointer
+
+        mov rsp, rax ; Set stack pointer to back into the green thread
+        jmp resume_point  ; Now that the stack is in position, 
+
+    ALTERNATE_ENTRY yield_point ; When yielding, we will jmp back to this location with the registers back in their original config
+        ; We need to restore the stack limits, and registers such that we can effectively return from a _more_stack function without popping the stack segment stack
+        mov             r10, [rbp - 020h] ; Pull the old stack limit
+        mov             gs:[10h], r10 ; Change stack limit to new value
+        mov             r10, [rbp - 018h] ; Pull the old stack base
+        mov             gs:[8h], r10 ; Change stack base to new value
+
+        ; Restore registers
+        mov             rbx, [rbp - 58h]
+        mov             rbp, [rbp - 60h]
+        add rsp, 0f0h
+        ret
+NESTED_END ResumeSuspendedThreadHelper2, _TEXT
+
+NESTED_ENTRY ResumeSuspendedThreadHelper, _TEXT
+    PROLOG_WITH_TRANSITION_BLOCK
+    ; Wrap actual resumption with a full preservation of all saved registers, so that they aren't mangled
+    call ResumeSuspendedThreadHelper2
+    EPILOG_WITH_TRANSITION_BLOCK_RETURN
+NESTED_END ResumeSuspendedThreadHelper, _TEXT
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;; TEST code
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+extern NestedFuncWithStackArgsActual:proc    
+; Handwritten prolog for function to test growing the stack
+NESTED_ENTRY NestedFuncWithStackArgs, _TEXT
+    END_PROLOGUE
+        lea rax, [rsp-1000h] ; Allow for a red-zone of 1KB
+        mov r10, gs:[10h]
+        cmp rax, r10
+        jg jmp_to_actual_function
+        mov eax, 4
+        call _more_stack
+        ret
+    jmp_to_actual_function:
+        jmp NestedFuncWithStackArgsActual
+NESTED_END NestedFuncWithStackArgs, _TEXT
 
 endif ; FEATURE_GREENTHREADS
 
