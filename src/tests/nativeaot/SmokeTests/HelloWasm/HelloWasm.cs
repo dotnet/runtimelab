@@ -229,6 +229,8 @@ internal static class Program
         PrintLine(((BoxStubTest[])arrayCastingTest)[2].Value);
         EndTest(!(arrayCastingTest is CastingTestClass[]));
 
+        CastByteToFloat();
+
         ldindTest();
 
         InterfaceDispatchTest();
@@ -1077,6 +1079,14 @@ internal static class Program
         string intString = 42.ToString();
         PrintLine(intString);
         EndTest(intString == "42");
+    }
+
+    private static void CastByteToFloat()
+    {
+        StartTest("Implicit casting of byte to float");
+        byte alpha = 0xFF;
+        float f = alpha / 255f;
+        EndTest(f == 1f, "Expected 1f but didn't get it");
     }
 
     private unsafe static void ldindTest()

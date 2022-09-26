@@ -1217,7 +1217,9 @@ namespace Internal.IL
             else if (toStoreKind == LLVMTypeKind.LLVMIntegerTypeKind && (valueTypeKind == LLVMTypeKind.LLVMDoubleTypeKind || valueTypeKind == LLVMTypeKind.LLVMFloatTypeKind))
             {
                 //TODO: keep track of the TypeDesc so we can call BuildUIToFP when the integer is unsigned
-                typedToStore = builder.BuildSIToFP(source, valueType, "CastSIToFloat" + (name ?? ""));
+                typedToStore = unsigned
+                    ? builder.BuildUIToFP(source, valueType, "CastUIToFloat" + (name ?? ""))
+                    : builder.BuildSIToFP(source, valueType, "CastSIToFloat" + (name ?? ""));
             }
             else if ((toStoreKind == LLVMTypeKind.LLVMDoubleTypeKind || toStoreKind == LLVMTypeKind.LLVMFloatTypeKind) &&
                 valueTypeKind == LLVMTypeKind.LLVMIntegerTypeKind)
@@ -4035,7 +4037,15 @@ namespace Internal.IL
             }
             else
             {
-                LLVMValueRef converted = CastIfNecessary(loadedValue, GetLLVMTypeForTypeDesc(destType), value.Name(), wellKnownType == WellKnownType.UInt64 /* unsigned is always false, so check for the type explicitly */);
+                TypeDesc sourceType = value.Type;
+
+                LLVMValueRef converted = CastIfNecessary(loadedValue, GetLLVMTypeForTypeDesc(destType), value.Name(),
+                    wellKnownType == WellKnownType.UInt64 /* unsigned is always false, so check for the type explicitly */
+                    || sourceType.IsWellKnownType(WellKnownType.Byte)
+                    || sourceType.IsWellKnownType(WellKnownType.UInt16)
+                    || sourceType.IsWellKnownType(WellKnownType.UInt32)
+                    || sourceType.IsWellKnownType(WellKnownType.UInt64)
+                    );
                 expressionEntry = new ExpressionEntry(GetStackValueKind(destType), "conv", converted, destType);
             }
             _stack.Push(expressionEntry);
