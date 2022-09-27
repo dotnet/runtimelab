@@ -1728,7 +1728,7 @@ void Llvm::buildNullCheck(GenTreeUnOp* nullCheckNode)
         builder.CreateRetVoid();
     }
 
-    buildLlvmCallOrInvoke(_nullCheckFunction, {getShadowStackForCallee(), getGenTreeValue(nullCheckNode->gtGetOp1())});
+    buildLlvmCallOrInvoke(_nullCheckFunction, {getShadowStackForCallee(), consumeValue(nullCheckNode->gtGetOp1(),  Type::getInt8PtrTy(_llvmContext))});
 }
 
 void Llvm::storeObjAtAddress(Value* baseAddress, Value* data, StructDesc* structDesc)
