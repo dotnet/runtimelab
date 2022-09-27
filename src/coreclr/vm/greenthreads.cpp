@@ -28,12 +28,12 @@ uint8_t* AlignDown(uint8_t* address, size_t alignValue)
     return (uint8_t*)addressAsUInt;
 }
 
-static const int stackSizeOfMoreStackFunction = 0xf0;
+static const int stackSizeOfMoreStackFunction = 0xe8;
 extern "C" uintptr_t AllocateMoreStackHelper(int argumentStackSize, void* stackPointer)
 {
-    const int offsetToReturnAddress = 0;
+    const int offsetToReturnAddress = 8;
     const int sizeOfShadowStore = 0x20; // Windows X64 calling convention has a 32 byte shadow store
-    uint8_t *baseAddressOfStackArgs =  ((uint8_t*)stackPointer) + offsetToReturnAddress + sizeof(void*) * 2; // for return address to be used for finding memory to call, and for return address to actual calling function;
+    uint8_t *baseAddressOfStackArgs =  ((uint8_t*)stackPointer) + offsetToReturnAddress + 2 * sizeOfShadowStore + sizeof(void*) * 3; // for return address to be used for finding memory to call, and for return address to actual calling function;
     uint8_t *addressOfReturnAddress = ((uint8_t*)stackPointer) + offsetToReturnAddress;
     StackRange* pNewStackRange = (StackRange*)(((uint8_t*)stackPointer) - 0x10);
     StackRange* pOldStackRange = (StackRange*)(((uint8_t*)stackPointer) - 0x20);
@@ -98,7 +98,7 @@ extern "C" uintptr_t AllocateMoreStackHelper(int argumentStackSize, void* stackP
         newArgsLocation = AlignDown(pNewStackSegment->stackRange.stackBase - (argumentStackSize + sizeOfShadowStore), 16);
         *pNewStackRange = pNewStackSegment->stackRange;
     }
-    memcpy(newArgsLocation + sizeOfShadowStore, baseAddressOfStackArgs + sizeOfShadowStore, argumentStackSize);
+    memcpy(newArgsLocation + sizeOfShadowStore, baseAddressOfStackArgs, argumentStackSize);
     return (uintptr_t)newArgsLocation;
 }
 
@@ -226,10 +226,10 @@ bool YieldOutOfGreenThread() // Attempt to yield out of green thread. If the yie
     return true;
 }
 
-extern "C" uint8_t* GetResumptionStackPointerAndSaveOSStackPointer(StackRange* pOSStackRange, uint8_t* rspFromOSThreadBeforeResume)
+extern "C" uint8_t* GetResumptionStackPointerAndSaveOSStackPointer(StackRange* pOSStackRange, uint8_t* rbpFromOSThreadBeforeResume)
 {
-    uint8_t* savedRBPValue = rspFromOSThreadBeforeResume + stackSizeOfMoreStackFunction;
-    uint8_t* savedRBXValue = rspFromOSThreadBeforeResume;
+    uint8_t* savedRBPValue = rbpFromOSThreadBeforeResume;
+    uint8_t* savedRBXValue = rbpFromOSThreadBeforeResume - (stackSizeOfMoreStackFunction - sizeof(void*)) /*return address */;
 
     GreenThreadStackList* pStackRange = t_greenThread.pStackListCurrent;
     while (pStackRange->prev != NULL)
@@ -238,14 +238,14 @@ extern "C" uint8_t* GetResumptionStackPointerAndSaveOSStackPointer(StackRange* p
     // pStackRange is now set to the first stack range used in the green thread
 
     // Compute the address of the saved RBP/RBX values in the initial FirstFrameInGreenThread frame
-    uint8_t**savedRBPValueAddress = (uint8_t**)(pStackRange->stackRange.stackBase + 0x30);
+    uint8_t**savedRBPValueAddress = (uint8_t**)(pStackRange->stackRange.stackBase - 0x40);
     uint8_t**savedRBXValueAddress = savedRBPValueAddress + 1;
     *savedRBPValueAddress = savedRBPValue;
     *savedRBXValueAddress = savedRBXValue;
 
     t_greenThread.inGreenThread = true;
     t_greenThread.osStackRange = *pOSStackRange;
-    t_greenThread.osStackCurrent = ((uint8_t*)rspFromOSThreadBeforeResume) + stackSizeOfMoreStackFunction;
+    t_greenThread.osStackCurrent = savedRBXValue;
 
     return t_greenThread.greenThreadStackCurrent;
 }

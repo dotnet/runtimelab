@@ -714,7 +714,7 @@ NESTED_ENTRY _more_stack, _TEXT
         ;
         ; Allocate space for XMM parameter registers and callee scratch area.
         ;
-        alloc_stack     0f0h ;; TODO This is overly large
+        alloc_stack     0e8h ;; TODO This is overly large
 
         mov             r10, rbp
 
@@ -734,7 +734,7 @@ NESTED_ENTRY _more_stack, _TEXT
         save_xmm128_postrsp xmm2, 40h
         save_xmm128_postrsp xmm3, 50h
 
-        set_frame       rbp, 0f0h
+        set_frame       rbp, 0e0h
     END_PROLOGUE
         ; Store the old stack limit and base
         mov             r11, gs:[10h]  
@@ -772,9 +772,9 @@ NESTED_ENTRY _more_stack, _TEXT
         mov             rax, [rbp - 8h] ; Pull the new stack base
         mov             gs:[8h], rax ; Change stack base to new value
 
-        mov             r10, [rbp] ; Get address that we are going to eventually return to
+        mov             r10, [rbp + 8] ; Get address that we are going to eventually return to
 
-        add             r10, 1 ; Skip the ret opcode
+        add             r10, 5 ; Skip the ret opcode and stack adjustment
         call            r10 ; Call the core of the function with the new larger stack
 
         mov             rsp, rbx ; Bring back the old stack pointer
@@ -797,9 +797,9 @@ NESTED_ENTRY _more_stack, _TEXT
 
 
         ; Restore registers
-        mov             rbx, [rbp - 58h]
-        mov             rbp, [rbp - 60h]
-        add rsp, 0f0h
+        mov             rbx, [rbp - 48h]
+        mov             rbp, [rbp - 50h]
+        add rsp, 0e8h
         ret
 NESTED_END _more_stack, _TEXT
 
@@ -808,9 +808,11 @@ NESTED_END _more_stack, _TEXT
 ; and the first argument (rcx) is the address of the first function to use in the 
 ; green thread
 NESTED_ENTRY TransitionToGreenThreadHelper2, _TEXT
+    alloc_stack     28h
     END_PROLOGUE
         mov eax, 0
         call _more_stack
+        add rsp, 28h
         ret
         jmp rcx
 NESTED_END TransitionToGreenThreadHelper2, _TEXT
@@ -839,10 +841,12 @@ NESTED_END FirstFrameInGreenThread, _TEXT
 ; and the first argument (rcx) is the address of the first function to use in the 
 ; green thread
 NESTED_ENTRY TransitionToOSThreadHelper, _TEXT
+    alloc_stack     28h
     END_PROLOGUE
         mov eax, 0
         sub eax, 1
         call _more_stack
+        add rsp, 28h
         ret
         jmp rcx
 NESTED_END TransitionToOSThreadHelper, _TEXT
@@ -852,10 +856,10 @@ NESTED_END TransitionToOSThreadHelper, _TEXT
 ; This function is supposed to hop back to the OS thread, with the original OS thread stack in place, and 
 NESTED_ENTRY YieldOutOfGreenThreadHelper, _TEXT
     PROLOG_WITH_TRANSITION_BLOCK
-    sub rdx, 0f0h ; This should be the RSP before we did the transition to the OS thread
+    sub rdx, 0e8h ; This should be the RSP before we did the transition to the OS thread
     mov rbp, rdx  ; Set RBP to what it was before we transitioned to the green thread
     mov [r8], rsp ; Capture current rsp into the greenTheadStackCurrent variable
-    lea rsp, [rbp-0f0h]
+    lea rsp, [rbp-0e0h]
     jmp yield_point
 ALTERNATE_ENTRY resume_point
     EPILOG_WITH_TRANSITION_BLOCK_RETURN
@@ -868,7 +872,7 @@ NESTED_ENTRY ResumeSuspendedThreadHelper2, _TEXT
         ;
         ; Allocate space for XMM parameter registers and callee scratch area.
         ;
-        alloc_stack     0f0h ;; TODO This is overly large
+        alloc_stack     0e8h ;; TODO This is overly large
 
         mov             r10, rbp
 
@@ -888,7 +892,7 @@ NESTED_ENTRY ResumeSuspendedThreadHelper2, _TEXT
         save_xmm128_postrsp xmm2, 40h
         save_xmm128_postrsp xmm3, 50h
 
-        set_frame       rbp, 0f0h
+        set_frame       rbp, 0e0h
     END_PROLOGUE
         ; Store the old stack limit and base
         mov             r11, gs:[10h]  
@@ -914,9 +918,9 @@ NESTED_ENTRY ResumeSuspendedThreadHelper2, _TEXT
         mov             gs:[8h], r10 ; Change stack base to new value
 
         ; Restore registers
-        mov             rbx, [rbp - 58h]
-        mov             rbp, [rbp - 60h]
-        add rsp, 0f0h
+        mov             rbx, [rbp - 48h]
+        mov             rbp, [rbp - 50h]
+        add rsp, 0e8h
         ret
 NESTED_END ResumeSuspendedThreadHelper2, _TEXT
 
@@ -933,6 +937,7 @@ NESTED_END ResumeSuspendedThreadHelper, _TEXT
 extern NestedFuncWithStackArgsActual:proc    
 ; Handwritten prolog for function to test growing the stack
 NESTED_ENTRY NestedFuncWithStackArgs, _TEXT
+        alloc_stack     28h
     END_PROLOGUE
         lea rax, [rsp-1000h] ; Allow for a red-zone of 1KB
         mov r10, gs:[10h]
@@ -940,8 +945,11 @@ NESTED_ENTRY NestedFuncWithStackArgs, _TEXT
         jg jmp_to_actual_function
         mov eax, 4
         call _more_stack
+        add rsp, 28h
         ret
+        jmp NestedFuncWithStackArgsActual
     jmp_to_actual_function:
+        add rsp, 28h
         jmp NestedFuncWithStackArgsActual
 NESTED_END NestedFuncWithStackArgs, _TEXT
 
