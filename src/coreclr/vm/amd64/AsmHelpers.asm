@@ -807,7 +807,7 @@ NESTED_END _more_stack, _TEXT
 ; This transitions into a green thread, assuming that there are no stack arguments
 ; and the first argument (rcx) is the address of the first function to use in the 
 ; green thread
-NESTED_ENTRY TransitionToGreenThreadHelper2, _TEXT
+NESTED_ENTRY GreenThread_StartThreadHelper2, _TEXT
     alloc_stack     28h
     END_PROLOGUE
         mov eax, 0
@@ -815,13 +815,13 @@ NESTED_ENTRY TransitionToGreenThreadHelper2, _TEXT
         add rsp, 28h
         ret
         jmp rcx
-NESTED_END TransitionToGreenThreadHelper2, _TEXT
+NESTED_END GreenThread_StartThreadHelper2, _TEXT
 
-NESTED_ENTRY TransitionToGreenThreadHelper, _TEXT
+NESTED_ENTRY GreenThread_StartThreadHelper, _TEXT
         PROLOG_WITH_TRANSITION_BLOCK
-        call TransitionToGreenThreadHelper2
+        call GreenThread_StartThreadHelper2
         EPILOG_WITH_TRANSITION_BLOCK_RETURN
-NESTED_END TransitionToGreenThreadHelper, _TEXT
+NESTED_END GreenThread_StartThreadHelper, _TEXT
 
 
 extern FirstFrameInGreenThreadCpp:proc
@@ -930,28 +930,6 @@ NESTED_ENTRY ResumeSuspendedThreadHelper, _TEXT
     call ResumeSuspendedThreadHelper2
     EPILOG_WITH_TRANSITION_BLOCK_RETURN
 NESTED_END ResumeSuspendedThreadHelper, _TEXT
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;;;;;;;;; TEST code
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-extern NestedFuncWithStackArgsActual:proc    
-; Handwritten prolog for function to test growing the stack
-NESTED_ENTRY NestedFuncWithStackArgs, _TEXT
-        alloc_stack     28h
-    END_PROLOGUE
-        lea rax, [rsp-1000h] ; Allow for a red-zone of 1KB
-        mov r10, gs:[10h]
-        cmp rax, r10
-        jg jmp_to_actual_function
-        mov eax, 4
-        call _more_stack
-        add rsp, 28h
-        ret
-        jmp NestedFuncWithStackArgsActual
-    jmp_to_actual_function:
-        add rsp, 28h
-        jmp NestedFuncWithStackArgsActual
-NESTED_END NestedFuncWithStackArgs, _TEXT
 
 endif ; FEATURE_GREENTHREADS
 

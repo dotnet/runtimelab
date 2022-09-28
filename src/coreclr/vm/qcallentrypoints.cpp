@@ -70,6 +70,8 @@
 #include "nativeeventsource.h"
 #endif //FEATURE_PERFTRACING
 
+#include "greenthreads.h"
+
 #include "tailcallhelp.h"
 
 #include <minipal/entrypoints.h>
@@ -317,6 +319,8 @@ static const Entry s_QCall[] =
 #if defined(FEATURE_COMINTEROP)
     DllImportEntry(InterfaceMarshaler__ClearNative)
 #endif
+    DllImportEntry(GreenThread_ResumeThread)
+    DllImportEntry(GreenThread_StartThread)
 };
 
 const void* QCallResolveDllImport(const char* name)

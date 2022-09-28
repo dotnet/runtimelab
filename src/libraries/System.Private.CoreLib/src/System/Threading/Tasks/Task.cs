@@ -112,7 +112,7 @@ namespace System.Threading.Tasks
     /// </remarks>
     [DebuggerTypeProxy(typeof(SystemThreadingTasks_TaskDebugView))]
     [DebuggerDisplay("Id = {Id}, Status = {Status}, Method = {DebuggerDisplayMethodDescription}")]
-    public class Task : IAsyncResult, IDisposable
+    public partial class Task : IAsyncResult, IDisposable
     {
         [ThreadStatic]
         internal static Task? t_currentTask;  // The currently executing task.
@@ -3015,16 +3015,24 @@ namespace System.Threading.Tasks
 #pragma warning disable CA1416 // Validate platform compatibility, issue: https://github.com/dotnet/runtime/issues/44622
                     if (infiniteWait)
                     {
-                        bool notifyWhenUnblocked = ThreadPool.NotifyThreadBlocked();
-                        try
+                        if (YieldGreenThread(this))
                         {
-                            returnValue = mres.Wait(Timeout.Infinite, cancellationToken);
+                            // If we yielded, then resumed, clearly we completed the task.
+                            returnValue = true;
                         }
-                        finally
+                        else
                         {
-                            if (notifyWhenUnblocked)
+                            bool notifyWhenUnblocked = ThreadPool.NotifyThreadBlocked();
+                            try
                             {
-                                ThreadPool.NotifyThreadUnblocked();
+                                returnValue = mres.Wait(Timeout.Infinite, cancellationToken);
+                            }
+                            finally
+                            {
+                                if (notifyWhenUnblocked)
+                                {
+                                    ThreadPool.NotifyThreadUnblocked();
+                                }
                             }
                         }
                     }
@@ -5382,6 +5390,35 @@ namespace System.Threading.Tasks
                 TaskCreationOptions.DenyChildAttach, InternalTaskOptions.None);
         }
 
+        static partial void RunOnActualGreenThread(Action action, ref bool ranAsActualGreenThread);
+        private static void RunOnNormalThread(Action action)
+        {
+            new Thread(()=>
+            {
+                Thread.t_IsGreenThread = true;
+                action();
+            }) { IsBackground = true }.Start();
+        }
+
+        private static void RunOnGreenThread(Action action)
+        {
+            bool greenThreadUsed = false;
+            RunOnActualGreenThread(action, ref greenThreadUsed);
+            if (!greenThreadUsed)
+            {
+                RunOnNormalThread(action);
+            }
+        }
+
+        static partial void YieldGreenThread(Task taskToWaitForCompletion, ref bool yielded);
+
+        internal static bool YieldGreenThread(Task taskToWaitForCompletion)
+        {
+            bool yielded = false;
+            YieldGreenThread(taskToWaitForCompletion, ref yielded);
+            return yielded;
+        }
+
         [UnsupportedOSPlatform("browser")]
         public static Task RunAsGreenThread(Action action, CancellationToken cancellationToken)
         {
@@ -5389,7 +5426,7 @@ namespace System.Threading.Tasks
                 return Task.FromCanceled(cancellationToken);
 
             var tcs = new TaskCompletionSource();
-            new Thread(()=>
+            RunOnGreenThread(()=>
             {
                 Thread.t_IsGreenThread = true;
                 try
@@ -5406,7 +5443,7 @@ namespace System.Threading.Tasks
                 {
                     tcs.SetException(e);
                 }
-            }) { IsBackground = true }.Start();
+            });
             return tcs.Task;
         }
 
@@ -5414,7 +5451,7 @@ namespace System.Threading.Tasks
         public static Task RunAsGreenThread(Action action)
         {
             var tcs = new TaskCompletionSource();
-            new Thread(()=>
+            RunOnGreenThread(()=>
             {
                 Thread.t_IsGreenThread = true;
                 try
@@ -5426,7 +5463,7 @@ namespace System.Threading.Tasks
                 {
                     tcs.SetException(e);
                 }
-            }) { IsBackground = true }.Start();
+            });
             return tcs.Task;
         }
 
@@ -5434,7 +5471,7 @@ namespace System.Threading.Tasks
         public static Task<TResult> RunAsGreenThread<TResult>(Func<TResult> function)
         {
             var tcs = new TaskCompletionSource<TResult>();
-            new Thread(()=>
+            RunOnGreenThread(()=>
             {
                 Thread.t_IsGreenThread = true;
                 try
@@ -5445,7 +5482,7 @@ namespace System.Threading.Tasks
                 {
                     tcs.SetException(e);
                 }
-            }) { IsBackground = true }.Start();
+            });
             return tcs.Task;
         }
 
@@ -5456,7 +5493,7 @@ namespace System.Threading.Tasks
                 return Task.FromCanceled<TResult>(cancellationToken);
 
             var tcs = new TaskCompletionSource<TResult>();
-            new Thread(()=>
+            RunOnGreenThread(()=>
             {
                 if (cancellationToken.IsCancellationRequested)
                 {
@@ -5472,7 +5509,7 @@ namespace System.Threading.Tasks
                 {
                     tcs.SetException(e);
                 }
-            }) { IsBackground = true }.Start();
+            });
             return tcs.Task;
         }
 

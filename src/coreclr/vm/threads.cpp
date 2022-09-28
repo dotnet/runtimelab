@@ -47,6 +47,15 @@
 #include "asmconstants.h"
 #endif
 
+#include "greenthreads.h"
+
+DWORD Thread::IsExecutingOnAltStack()
+{
+    LIMITED_METHOD_CONTRACT;
+    return (m_State & TS_ExecutingOnAltStack);
+}
+
+
 static const PortableTailCallFrame g_sentinelTailCallFrame = { NULL, NULL };
 
 TailCallTls::TailCallTls()

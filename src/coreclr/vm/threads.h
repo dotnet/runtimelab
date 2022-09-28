@@ -1245,11 +1245,7 @@ public:
     }
 #endif // DACCESS_COMPILE
 
-    DWORD IsExecutingOnAltStack()
-    {
-        LIMITED_METHOD_CONTRACT;
-        return (m_State & TS_ExecutingOnAltStack);
-    }
+    DWORD IsExecutingOnAltStack();
 
     void SetExecutingOnAltStack()
     {
@@ -1674,7 +1670,7 @@ public:
         {
             void* curSP;
             curSP = (void *)GetCurrentSP();
-            _ASSERTE((m_pGCFrame == NULL) || (curSP <= m_pGCFrame && m_pGCFrame < m_CacheStackBase));
+            _ASSERTE((m_pGCFrame == NULL) || (curSP <= m_pGCFrame && m_pGCFrame < m_CacheStackBase) || IsExecutingOnAltStack());
         }
 #endif
 
