@@ -78,61 +78,10 @@ HRESULT EEConfig::Setup()
     return S_OK;
 }
 
-#include "greenthreads.h"
-
-extern "C" uintptr_t NestedFuncWithStackArgs(uintptr_t param1, uintptr_t param2, uintptr_t param3, uintptr_t param4, uintptr_t param5);
-
-extern "C" uintptr_t NestedFuncWithStackArgsActual(uintptr_t param1, uintptr_t param2, uintptr_t param3, uintptr_t param4, uintptr_t param5)
-{
-    if (param1 != param2)
-        __debugbreak();
-    if (param1 != param3)
-        __debugbreak();
-    if (param1 != param4)
-        __debugbreak();
-    if (param1 != param5)
-        __debugbreak();
-
-    if (param1 == 1005)
-    {
-        // Don't actually loop to 0, finish earlier to make this less painful.
-        YieldOutOfGreenThread();
-        param1 = 5;
-    }
-
-    if (param1 > 0)
-    {
-        param1--;
-        return NestedFuncWithStackArgs(param1, param1,  param1,  param1,  param1);
-    }
-    return 0;
-}
-
-uintptr_t NestedFunc(uintptr_t param)
-{
-    return NestedFuncWithStackArgs(param, param, param, param, param);
-}
-
-
-
 /**************************************************************/
 HRESULT EEConfig::Init()
 {
     STANDARD_VM_CONTRACT;
-
-/*    auto suspendedThread = GreenThread_StartThread(NestedFunc, 200);
-    _ASSERTE(suspendedThread == NULL);
-
-    suspendedThread = GreenThread_StartThread(NestedFunc, 1007);
-    _ASSERTE(suspendedThread != NULL);
-
-    GreenThread_ResumeThread(suspendedThread);
-
-    suspendedThread = GreenThread_StartThread(NestedFunc, 1087); // Push more on the stack, so we have multiple stack segments in the resume
-    _ASSERTE(suspendedThread != NULL);
-
-    GreenThread_ResumeThread(suspendedThread);
-*/
 
     fInited = false;
 

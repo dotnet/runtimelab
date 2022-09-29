@@ -23,6 +23,7 @@ struct SuspendedGreenThread
 {
     uint8_t* currentStackPointer;
     GreenThreadStackList *currentThreadStackSegment;
+    Frame* greenThreadFrame;
 };
 
 typedef uintptr_t (*TakesOneParam)(uintptr_t param);
@@ -30,15 +31,13 @@ SuspendedGreenThread* GreenThread_StartThread(TakesOneParam functionToExecute, u
 uintptr_t TransitionToOSThread(TakesOneParam functionToExecute, uintptr_t param);
 
 // Must be called from within a green thread.
-bool YieldOutOfGreenThread(); // Attempt to yield out of green thread. If the yield fails, return false, else return true once the thread is resumed.
+bool GreenThread_Yield(); // Attempt to yield out of green thread. If the yield fails, return false, else return true once the thread is resumed.
 
 // Resume execution 
 SuspendedGreenThread* GreenThread_ResumeThread(SuspendedGreenThread* pSuspendedThread); // Resume suspended green thread, and destroy SuspendedGreenThread structure, or return a new one if the thread suspends again ... Note this is permitted to return the old one.
 
 // Destroy suspended green thread
 void DestroyGreenThread(SuspendedGreenThread* pSuspendedThread); // 
-
-EXTERN_C FCDECL0(FC_BOOL_RET, GreenThread_Yield);
 
 bool GreenThread_IsGreenThread();
 

@@ -687,10 +687,6 @@ FCFuncStart(gWeakReferenceOfTFuncs)
     FCFuncElement("IsTrackResurrection", WeakReferenceOfTNative::IsTrackResurrection)
 FCFuncEnd()
 
-FCFuncStart(gTask)
-    FCFuncElement("GreenThread_Yield", GreenThread_Yield)
-FCFuncEnd()
-
 #ifdef FEATURE_COMINTEROP
 
 //
@@ -782,7 +778,6 @@ FCClassElement("StackTrace", "System.Diagnostics", gDiagnosticsStackTrace)
 FCClassElement("Stream", "System.IO", gStreamFuncs)
 FCClassElement("String", "System", gStringFuncs)
 FCClassElement("StubHelpers", "System.StubHelpers", gStubHelperFuncs)
-FCClassElement("Task", "System.Threading.Tasks", gTask)
 FCClassElement("Thread", "System.Threading", gThreadFuncs)
 FCClassElement("ThreadPool", "System.Threading", gThreadPoolFuncs)
 FCClassElement("Type", "System", gSystem_Type)

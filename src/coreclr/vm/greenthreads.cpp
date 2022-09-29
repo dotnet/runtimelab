@@ -11,6 +11,8 @@ struct GreenThreadData
     StackRange osStackRange;
     uint8_t* osStackCurrent;
     uint8_t* greenThreadStackCurrent;
+    Frame* pFrameInGreenThread;
+    Frame* pFrameInOSThread;
     GreenThreadStackList *pStackListCurrent;
     bool inGreenThread;
     bool transitionedToOSThreadOnGreenThread;
@@ -161,6 +163,7 @@ SuspendedGreenThread* ProduceSuspendedGreenThreadStruct()
         SuspendedGreenThread *pNewSuspendedThread = (SuspendedGreenThread*)malloc(sizeof(SuspendedGreenThread));
         pNewSuspendedThread->currentStackPointer = t_greenThread.greenThreadStackCurrent;
         pNewSuspendedThread->currentThreadStackSegment = t_greenThread.pStackListCurrent;
+        pNewSuspendedThread->greenThreadFrame = t_greenThread.pFrameInGreenThread;
 
         CleanGreenThreadState();
         return pNewSuspendedThread;
@@ -175,6 +178,10 @@ SuspendedGreenThread* ProduceSuspendedGreenThreadStruct()
 
 SuspendedGreenThread* GreenThread_StartThread(TakesOneParam functionToExecute, uintptr_t param)
 {
+    {
+        GCX_COOP();
+        t_greenThread.pFrameInOSThread = GetThread()->m_pFrame;
+    }
     TransitionHelperStruct detailsAboutWhatToCall;
     detailsAboutWhatToCall.function = functionToExecute;
     detailsAboutWhatToCall.param = param;
@@ -219,12 +226,34 @@ void *TransitionToOSThreadAndCallMalloc(size_t memoryToAllocate)
 
 extern "C" void YieldOutOfGreenThreadHelper(StackRange *pOSStackRange, uint8_t* osStackCurrent, uint8_t** greenThreadStackCurrent);
 
-bool YieldOutOfGreenThread() // Attempt to yield out of green thread. If the yield fails, return false, else return true once the thread is resumed.
+bool GreenThread_Yield() // Attempt to yield out of green thread. If the yield fails, return false, else return true once the thread is resumed.
 {
     if (!t_greenThread.inGreenThread || t_greenThread.transitionedToOSThreadOnGreenThread)
         return false;
     
+    {
+        GCX_COOP();
+        t_greenThread.pFrameInGreenThread = GetThread()->m_pFrame;
+        if (t_greenThread.pFrameInGreenThread->PtrNextFrame() != t_greenThread.pFrameInOSThread)
+        {
+            return false;
+        }
+        GetThread()->m_pFrame = t_greenThread.pFrameInGreenThread->PtrNextFrame();
+
+        // TODO! Enable GC Tracking of green thread at this point.
+    }
+
     YieldOutOfGreenThreadHelper(&t_greenThread.osStackRange, t_greenThread.osStackCurrent, &t_greenThread.greenThreadStackCurrent);
+
+    {
+        GCX_COOP();
+        // At this point we've resumed, and the stack is now in the new state way, but the Frame chain is not hooked up.
+
+        // TODO! Disable separate GC tracking of green thread at this point
+
+        t_greenThread.pFrameInGreenThread->UNSAFE_SetNextFrame(t_greenThread.pFrameInOSThread);
+        GetThread()->m_pFrame = t_greenThread.pFrameInGreenThread;
+    }
     return true;
 }
 
@@ -232,14 +261,6 @@ bool GreenThread_IsGreenThread()
 {
     return t_greenThread.inGreenThread;
 }
-
-FCIMPL0(FC_BOOL_RET, GreenThread_Yield)
-{
-    FCALL_CONTRACT;
-
-    FC_RETURN_BOOL(YieldOutOfGreenThread());
-}
-FCIMPLEND
 
 extern "C" uint8_t* GetResumptionStackPointerAndSaveOSStackPointer(StackRange* pOSStackRange, uint8_t* rbpFromOSThreadBeforeResume)
 {
@@ -276,6 +297,11 @@ SuspendedGreenThread* GreenThread_ResumeThread(SuspendedGreenThread* pSuspendedT
     
     if (t_greenThread.transitionedToOSThreadOnGreenThread)
         __debugbreak();
+
+    {
+        t_greenThread.pFrameInOSThread = GetThread()->m_pFrame;
+        t_greenThread.pFrameInGreenThread = pSuspendedThread->greenThreadFrame;
+    }
 
     t_greenThread.pStackListCurrent = pSuspendedThread->currentThreadStackSegment;
     t_greenThread.greenThreadStackCurrent = pSuspendedThread->currentStackPointer;

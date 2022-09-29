@@ -708,6 +708,7 @@ protected:
 
 public:
     PTR_Frame PtrNextFrame() { return m_Next; }
+    void UNSAFE_SetNextFrame(PTR_Frame next) { m_Next = next; }
 
 private:
     // Because JIT-method activations cannot be expressed as Frames,

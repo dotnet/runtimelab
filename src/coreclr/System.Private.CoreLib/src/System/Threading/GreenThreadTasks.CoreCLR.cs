@@ -18,8 +18,9 @@ namespace System.Threading.Tasks
         [LibraryImport(RuntimeHelpers.QCall, EntryPoint = "GreenThread_ResumeThread")]
         private static unsafe partial SuspendedThread* GreenThread_ResumeThread(SuspendedThread* suspendedThread);
 
-        [MethodImpl(MethodImplOptions.InternalCall)]
-        internal static extern unsafe bool GreenThread_Yield();
+        [LibraryImport(RuntimeHelpers.QCall, EntryPoint = "GreenThread_Yield")]
+        [return: MarshalAs(UnmanagedType.I1)]
+        private static unsafe partial bool GreenThread_Yield();
 
         [UnmanagedCallersOnly]
         private static unsafe void GreenThreadStartFunc(void* argument)

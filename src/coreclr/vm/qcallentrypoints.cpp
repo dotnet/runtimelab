@@ -321,6 +321,7 @@ static const Entry s_QCall[] =
 #endif
     DllImportEntry(GreenThread_ResumeThread)
     DllImportEntry(GreenThread_StartThread)
+    DllImportEntry(GreenThread_Yield)
 };
 
 const void* QCallResolveDllImport(const char* name)
