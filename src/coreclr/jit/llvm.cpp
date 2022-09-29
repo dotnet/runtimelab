@@ -637,7 +637,7 @@ Value* getOrCreateExternalSymbol(const char* symbolName, Type* symbolType = null
     Value* symbol = _module->getGlobalVariable(symbolName);
     if (symbol == nullptr)
     {
-        symbol = new llvm::GlobalVariable(*_module, symbolType, true, llvm::GlobalValue::LinkageTypes::ExternalLinkage, (llvm::Constant*)nullptr, symbolName);
+        symbol = new llvm::GlobalVariable(*_module, symbolType, false, llvm::GlobalValue::LinkageTypes::ExternalLinkage, (llvm::Constant*)nullptr, symbolName);
     }
     return symbol;
 }
@@ -1798,6 +1798,12 @@ void Llvm::storeObjAtAddress(Value* baseAddress, Value* data, StructDesc* struct
     }
 }
 
+void Llvm::buildStoreBlk(GenTreeBlk* blockOp)
+{
+    Value* dataValue = getGenTreeValue(blockOp->Data());
+    _builder.CreateStore(dataValue, consumeValue(blockOp->Addr(), dataValue->getType()->getPointerTo()));
+}
+
 void Llvm::buildStoreObj(GenTreeObj* storeOp)
 {
     if (!storeOp->OperIsBlk())
@@ -2054,6 +2060,9 @@ void Llvm::visitNode(GenTree* node)
             break;
         case GT_STOREIND:
             buildStoreInd(node->AsStoreInd());
+            break;
+        case GT_STORE_BLK:
+            buildStoreBlk(node->AsBlk());
             break;
         case GT_STORE_OBJ:
             buildStoreObj(node->AsObj());

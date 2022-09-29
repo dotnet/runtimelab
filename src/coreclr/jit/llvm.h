@@ -206,6 +206,7 @@ private:
     void buildStoreObj(GenTreeObj* indirOp);
     Value* localVar(GenTreeLclVar* lclVar);
     void storeObjAtAddress(Value* baseAddress, Value* data, StructDesc* structDesc);
+    void buildStoreBlk(GenTreeBlk* blockOp);
 
     GenTreeCall::Use* lowerCallReturn(GenTreeCall* callNode, GenTreeCall::Use* lastArg);
     void lowerCallToShadowStack(GenTreeCall* callNode);
