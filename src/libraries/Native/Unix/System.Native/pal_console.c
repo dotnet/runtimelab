@@ -46,7 +46,7 @@ int32_t SystemNative_IsATty(intptr_t fd)
 
 static char* g_keypadXmit = NULL; // string used to enable application mode, from terminfo
 
-static void WriteKeypadXmit()
+static void WriteKeypadXmit(void)
 {
     // If a terminfo "application mode" keypad_xmit string has been supplied,
     // write it out to the terminal to enter the mode.
@@ -97,7 +97,7 @@ static bool g_hasTty = false;                  // cache we are not a tty
 
 static volatile bool g_receivedSigTtou = false;
 
-static void ttou_handler()
+static void ttou_handler(void)
 {
     g_receivedSigTtou = true;
 }
@@ -190,7 +190,7 @@ static bool ConfigureTerminal(bool signalForBreak, bool forChild, uint8_t minCha
     return TcSetAttr(&termios, blockIfBackground);
 }
 
-void UninitializeTerminal()
+void UninitializeTerminal(void)
 {
     // This method is called on SIGQUIT/SIGINT from the signal dispatching thread
     // and on atexit.
@@ -224,7 +224,7 @@ void SystemNative_InitializeConsoleBeforeRead(uint8_t minChars, uint8_t deciseco
     }
 }
 
-void SystemNative_UninitializeConsoleAfterRead()
+void SystemNative_UninitializeConsoleAfterRead(void)
 {
     if (pthread_mutex_lock(&g_lock) == 0)
     {
@@ -364,7 +364,7 @@ void SystemNative_GetControlCharacters(
     }
 }
 
-int32_t SystemNative_StdinReady()
+int32_t SystemNative_StdinReady(void)
 {
     SystemNative_InitializeConsoleBeforeRead(/* minChars */ 1, /* decisecondsTimeout */ 0);
     struct pollfd fd = { .fd = STDIN_FILENO, .events = POLLIN };
@@ -389,7 +389,7 @@ int32_t SystemNative_ReadStdin(void* buffer, int32_t bufferSize)
     return (int32_t)count;
 }
 
-int32_t SystemNative_GetSignalForBreak()
+int32_t SystemNative_GetSignalForBreak(void)
 {
     return g_signalForBreak;
 }
@@ -414,7 +414,7 @@ int32_t SystemNative_SetSignalForBreak(int32_t signalForBreak)
     return rv;
 }
 
-void ReinitializeTerminal()
+void ReinitializeTerminal(void)
 {
     // Restores the state of the terminal after being suspended.
     // pal_signal.cpp calls this on SIGCONT from the signal handling thread.
@@ -435,7 +435,7 @@ void ReinitializeTerminal()
     }
 }
 
-static void InitializeTerminalCore()
+static void InitializeTerminalCore(void)
 {
     bool haveInitTermios = tcgetattr(STDIN_FILENO, &g_initTermios) >= 0;
 
@@ -454,7 +454,7 @@ static void InitializeTerminalCore()
     }
 }
 
-int32_t SystemNative_InitializeTerminalAndSignalHandling()
+int32_t SystemNative_InitializeTerminalAndSignalHandling(void)
 {
     static int32_t initialized = 0;
 

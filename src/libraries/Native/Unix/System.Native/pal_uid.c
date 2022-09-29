@@ -87,12 +87,12 @@ int32_t SystemNative_GetPwNamR(const char* name, Passwd* pwd, char* buf, int32_t
     return ConvertNativePasswdToPalPasswd(error, &nativePwd, result, pwd);
 }
 
-uint32_t SystemNative_GetEUid()
+uint32_t SystemNative_GetEUid(void)
 {
     return geteuid();
 }
 
-uint32_t SystemNative_GetEGid()
+uint32_t SystemNative_GetEGid(void)
 {
     return getegid();
 }
@@ -102,7 +102,7 @@ int32_t SystemNative_SetEUid(uint32_t euid)
     return seteuid(euid);
 }
 
-uint32_t SystemNative_GetUid()
+uint32_t SystemNative_GetUid(void)
 {
     return getuid();
 }

@@ -132,7 +132,7 @@ int32_t FixupLocaleName(UChar* value, int32_t valueLength)
 // We use whatever ICU give us as the default locale except if it is en_US_POSIX. We'll map
 // this POSIX locale to Invariant instead. The reason is POSIX locale collation behavior
 // is not desirable at all because it doesn't support case insensitive string comparisons.
-const char* DetectDefaultLocaleName()
+const char* DetectDefaultLocaleName(void)
 {
     const char* icuLocale = uloc_getDefault();
     if (strcmp(icuLocale, "en_US_POSIX") == 0)

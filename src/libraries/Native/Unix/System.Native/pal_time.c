@@ -47,7 +47,7 @@ int32_t SystemNative_UTimensat(const char* path, TimeSpec* times)
     return result;
 }
 
-uint64_t SystemNative_GetTimestamp()
+uint64_t SystemNative_GetTimestamp(void)
 {
 #if HAVE_CLOCK_GETTIME_NSEC_NP
     return clock_gettime_nsec_np(CLOCK_UPTIME_RAW);

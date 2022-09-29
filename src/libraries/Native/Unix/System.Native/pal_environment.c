@@ -18,7 +18,7 @@ char* SystemNative_GetEnv(const char* variable)
     return getenv(variable);
 }
 
-char** SystemNative_GetEnviron()
+char** SystemNative_GetEnviron(void)
 {
 #if HAVE_NSGETENVIRON
     return *(_NSGetEnviron());
@@ -34,7 +34,7 @@ void SystemNative_FreeEnviron(char** environ)
     (void)environ;
 }
 
-int32_t SystemNative_SchedGetCpu()
+int32_t SystemNative_SchedGetCpu(void)
 {
 #if HAVE_SCHED_GETCPU
     return sched_getcpu();
@@ -50,7 +50,7 @@ void SystemNative_Exit(int32_t exitCode)
 }
 
 __attribute__((noreturn))
-void SystemNative_Abort()
+void SystemNative_Abort(void)
 {
     abort();
 }
