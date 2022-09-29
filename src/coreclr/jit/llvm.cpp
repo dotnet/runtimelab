@@ -637,7 +637,7 @@ Value* getOrCreateExternalSymbol(const char* symbolName, Type* symbolType = null
     Value* symbol = _module->getGlobalVariable(symbolName);
     if (symbol == nullptr)
     {
-        symbol = new llvm::GlobalVariable(*_module, symbolType, true, llvm::GlobalValue::LinkageTypes::ExternalLinkage, (llvm::Constant*)nullptr, symbolName);
+        symbol = new llvm::GlobalVariable(*_module, symbolType, false, llvm::GlobalValue::LinkageTypes::ExternalLinkage, (llvm::Constant*)nullptr, symbolName);
     }
     return symbol;
 }
