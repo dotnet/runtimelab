@@ -119,7 +119,6 @@
 
   <!-- Sources -->
   <ItemGroup>
-    <Compile Include="$(BclSourcesRoot)\System\Threading\GreenThreadTasks.CoreCLR.cs" />
     <Compile Include="$(BclSourcesRoot)\Internal\Runtime\InteropServices\ComActivationContextInternal.cs" />
     <Compile Include="$(BclSourcesRoot)\Internal\Runtime\InteropServices\ComponentActivator.CoreCLR.cs" />
     <Compile Include="$(BclSourcesRoot)\System\__Canon.cs" />
@@ -298,6 +297,10 @@
   </ItemGroup>
   <ItemGroup Condition="'$(FeatureObjCMarshal)' == 'true'">
     <Compile Include="$(BclSourcesRoot)\System\Runtime\InteropServices\ObjectiveCMarshal.CoreCLR.cs" />
+  </ItemGroup>
+  <!-- Enable green threads prototype only on Windows X64 -->
+  <ItemGroup Condition="'$(TargetsWindows)' == 'true' and '$(Platform)' == 'x64'">
+    <Compile Include="$(BclSourcesRoot)\System\Threading\GreenThreadTasks.CoreCLR.cs" />
   </ItemGroup>
   <!-- Include additional sources shared files in the compilation -->
   <Import Project="$(LibrariesProjectRoot)\System.Private.CoreLib\src\System.Private.CoreLib.Shared.projitems" Label="Shared" />

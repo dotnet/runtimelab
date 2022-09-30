@@ -6,6 +6,7 @@
 #include "common.h"
 #include "greenthreads.h"
 
+#ifdef FEATURE_GREENTHREADS
 struct GreenThreadData
 {
     StackRange osStackRange;
@@ -321,3 +322,5 @@ extern "C" void End_More_Thread_Bookeeping()
         t_greenThread.pStackListCurrent = t_greenThread.pStackListCurrent->prev;
     }
 }
+
+#endif // FEATURE_GREENTHREADS
