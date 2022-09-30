@@ -708,7 +708,9 @@ protected:
 
 public:
     PTR_Frame PtrNextFrame() { return m_Next; }
+#ifdef FEATURE_GREENTHREADS
     void UNSAFE_SetNextFrame(PTR_Frame next) { m_Next = next; }
+#endif // FEATURE_GREENTHREADS
 
 private:
     // Because JIT-method activations cannot be expressed as Frames,

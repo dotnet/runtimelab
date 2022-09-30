@@ -319,9 +319,11 @@ static const Entry s_QCall[] =
 #if defined(FEATURE_COMINTEROP)
     DllImportEntry(InterfaceMarshaler__ClearNative)
 #endif
+#if defined(FEATURE_GREENTHREADS)
     DllImportEntry(GreenThread_ResumeThread)
     DllImportEntry(GreenThread_StartThread)
     DllImportEntry(GreenThread_Yield)
+#endif
 };
 
 const void* QCallResolveDllImport(const char* name)

@@ -1245,7 +1245,11 @@ public:
     }
 #endif // DACCESS_COMPILE
 
-    DWORD IsExecutingOnAltStack();
+    DWORD IsExecutingOnAltStack()
+    {
+        LIMITED_METHOD_CONTRACT;
+        return (m_State & TS_ExecutingOnAltStack);
+    }
 
     void SetExecutingOnAltStack()
     {
@@ -1670,7 +1674,12 @@ public:
         {
             void* curSP;
             curSP = (void *)GetCurrentSP();
+#ifdef FEATURE_GREENTHREADS
+            // The AltStack flag is not the right thing to set for green threads, but it will work for now.
             _ASSERTE((m_pGCFrame == NULL) || (curSP <= m_pGCFrame && m_pGCFrame < m_CacheStackBase) || IsExecutingOnAltStack());
+#else
+            _ASSERTE((m_pGCFrame == NULL) || (curSP <= m_pGCFrame && m_pGCFrame < m_CacheStackBase));
+#endif
         }
 #endif
 

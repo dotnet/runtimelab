@@ -853,7 +853,8 @@ NESTED_END TransitionToOSThreadHelper, _TEXT
 
 
 ; extern "C" void YieldOutOfGreenThreadHelper(StackRange *pOSStackRange, uint8_t* osStackCurrent, uint8_t** greenThreadStackCurrent);
-; This function is supposed to hop back to the OS thread, with the original OS thread stack in place, and 
+; This function is supposed to hop back to the OS thread, with the original OS thread stack in place, and let that thread continue
+; onwards in execution with the green thread suspended. When the thread is resumed, it will jump to resume_point.
 NESTED_ENTRY YieldOutOfGreenThreadHelper, _TEXT
     PROLOG_WITH_TRANSITION_BLOCK
     sub rdx, 0e8h ; This should be the RSP before we did the transition to the OS thread
@@ -867,7 +868,12 @@ NESTED_END YieldOutOfGreenThreadHelper, _TEXT
 
 extern GetResumptionStackPointerAndSaveOSStackPointer:proc
 
-; This is a paired function with the _more_stack function to allow for 
+; This is a paired function with the _more_stack and YieldOutOfGreenThreadHelper functions to manage the suspension/resumption process
+; In particular, the stack layout of the function is identical to that of _more_stack, which allows a green thread to finish
+; by returning through the _more_stack function even though if it is a thread resume it will have entered through this function
+; In addition, the process of yielding a green thread will return through this function if the green thread was entered into on 
+; this OS thread with either a _more_stack call, or a call through ResumtSuspendedThreadHelper2. This function is used
+; when a green thread is resumed after being suspended.
 NESTED_ENTRY ResumeSuspendedThreadHelper2, _TEXT
         ;
         ; Allocate space for XMM parameter registers and callee scratch area.
