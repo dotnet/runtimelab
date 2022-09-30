@@ -231,6 +231,8 @@ internal static class Program
 
         ConvUTest();
 
+        CastByteForIndex();
+
         ldindTest();
 
         InterfaceDispatchTest();
@@ -1096,6 +1098,15 @@ internal static class Program
         EndTest(nativeUnsigned == 0xff, $"Expected 0xff but got {nativeUnsigned}");
     }
 
+    private static void CastByteForIndex()
+    {
+        StartTest("Implicit casting of byte for an index");
+        int[] someInts = new int[0xff];
+        byte byteIndex = 0xFF;
+        someInts[byteIndex] = 123;
+        EndTest(someInts[0xff] == 123, "Expected 123 at index 0xff but didn't get it");
+    }
+
     private unsafe static void ldindTest()
     {
         StartTest("ldind test");
@@ -1842,6 +1853,10 @@ internal static class Program
 
         TestTryFinallyThrowException();
 
+        TestTryFinallyCatchException();
+
+        TestInnerTryFinallyOrder();
+
         TestTryCatchWithCallInIf();
 
         TestThrowInCatch();
@@ -1893,10 +1908,10 @@ internal static class Program
         EndTest(caught);
     }
 
-    static bool finallyCalled;
+    static string clauseExceution;
     private static void TestTryFinallyThrowException()
     {
-        finallyCalled = false;
+        clauseExceution = "";
         StartTest("Try/Finally calls finally when exception thrown test");
         try
         {
@@ -1904,9 +1919,17 @@ internal static class Program
         }
         catch (Exception)
         {
-
+            clauseExceution += "COuter";
         }
-        EndTest(finallyCalled);
+
+        if (clauseExceution != "CInnerFCOuter")
+        {
+            FailTest("Expected CInnerFCOuter, but was " + clauseExceution);
+        }
+        else
+        {
+            PassTest();
+        }
     }
 
     private static void TryFinally()
@@ -1915,9 +1938,95 @@ internal static class Program
         {
             throw new Exception();
         }
+        catch
+        {
+            clauseExceution += "CInner";
+            throw;
+        }
         finally
         {
-            finallyCalled = true;
+            clauseExceution += "F";
+        }
+    }
+
+
+    private static void TestTryFinallyCatchException()
+    {
+        clauseExceution = "";
+        StartTest("Try/Finally calls finally once when exception thrown and caught test");
+
+        TryFinallyWithCatch();
+
+        if (clauseExceution != "CF")
+        {
+            FailTest("Expected CF, but was " + clauseExceution);
+        }
+        else
+        {
+            PassTest();
+        }
+    }
+
+    private static void TryFinallyWithCatch()
+    {
+        try
+        {
+            throw new Exception();
+        }
+        catch
+        {
+            clauseExceution += "C";
+        }
+        finally
+        {
+            clauseExceution += "F";
+        }
+    }
+
+    private static void TestInnerTryFinallyOrder()
+    {
+        clauseExceution = "";
+        StartTest("Inner try finally called before outer catch");
+
+        try
+        {
+            try
+            {
+                try
+                {
+                    throw new Exception();
+                }
+                finally
+                {
+                    clauseExceution += "F1";
+                }
+            }
+            finally
+            {
+                clauseExceution += "F2";
+            }
+
+            // not reached
+            try
+            {
+            }
+            finally
+            {
+                clauseExceution += "F3";
+            }
+        }
+        catch
+        {
+            clauseExceution += "C";
+        }
+
+        if (clauseExceution != "F1F2C")
+        {
+            FailTest("Expected F1F2C, but was " + clauseExceution);
+        }
+        else
+        {
+            PassTest();
         }
     }
 

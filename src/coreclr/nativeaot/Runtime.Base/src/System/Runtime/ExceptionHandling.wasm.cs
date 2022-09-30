@@ -92,7 +92,6 @@ namespace System.Runtime
                 }
                 else
                 {
-                    tryRegionIdx = 0;
                     bool shouldInvokeHandler = InternalCalls.RhpCallFilterFunclet(exception, ehClause._filterAddress, shadowStack);
                     if (shouldInvokeHandler)
                     {
@@ -106,40 +105,22 @@ namespace System.Runtime
             return false;
         }
 
-        private static void InvokeSecondPassWasm(uint idxStart, uint idxTryLandingStart, ref EHClauseIterator clauseIter, uint idxLimit, void* shadowStack)
+        private static void InvokeSecondPassWasm(uint idxStart, uint idxTryLandingStart /* we do dont have the PC, so use the start of the block */, ref EHClauseIterator clauseIter, uint idxLimit, void* shadowStack)
         {
-            uint lastTryStart = 0, lastTryEnd = 0;
             // Search the clauses for one that contains the current offset.
             RhEHClauseWasm ehClause = new RhEHClauseWasm();
             for (uint curIdx = 0; clauseIter.Next(ref ehClause) && curIdx < idxLimit; curIdx++)
             {
-                //
-                // Skip to the starting try region.  This is used by collided unwinds and rethrows to pickup where
-                // the previous dispatch left off.
-                //
-                if (idxStart != MaxTryRegionIdx)
+
+                if (curIdx > idxStart)
                 {
-                    if (curIdx <= idxStart)
-                    {
-                        lastTryStart = ehClause._tryStartOffset;
-                        lastTryEnd = ehClause._tryEndOffset;
-                        continue;
-                    }
-
-                    // Now, we continue skipping while the try region is identical to the one that invoked the
-                    // previous dispatch.
-                    if ((ehClause._tryStartOffset == lastTryStart) && (ehClause._tryEndOffset == lastTryEnd))
-                        continue;
-
-                    // We are done skipping. This is required to handle empty finally block markers that are used
-                    // to separate runs of different try blocks with same native code offsets.
-                    idxStart = MaxTryRegionIdx;
+                    break; // these blocks are after the catch
                 }
 
                 EHClauseIterator.RhEHClauseKindWasm clauseKind = ehClause._clauseKind;
 
                 if ((clauseKind != EHClauseIterator.RhEHClauseKindWasm.RH_EH_CLAUSE_FAULT)
-                    || !ehClause.TryStartsAt(idxTryLandingStart))
+                    || !ehClause.ContainsCodeOffset(idxTryLandingStart))
                 {
                     continue;
                 }
