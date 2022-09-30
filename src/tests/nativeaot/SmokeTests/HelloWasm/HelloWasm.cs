@@ -229,7 +229,7 @@ internal static class Program
         PrintLine(((BoxStubTest[])arrayCastingTest)[2].Value);
         EndTest(!(arrayCastingTest is CastingTestClass[]));
 
-        CastByteToFloat();
+        ConvUTest();
 
         ldindTest();
 
@@ -1081,12 +1081,19 @@ internal static class Program
         EndTest(intString == "42");
     }
 
-    private static void CastByteToFloat()
+    private static void ConvUTest()
     {
-        StartTest("Implicit casting of byte to float");
+        StartTest("Implicit casting using ConvU");
         byte alpha = 0xFF;
         float f = alpha / 255f;
-        EndTest(f == 1f, "Expected 1f but didn't get it");
+        if (f != 1f)
+        {
+            FailTest("Expected 1f but didn't get it"); // TODO: float.ToString() is failing in DiyFP
+        }
+
+        byte msbByte = 0xff;
+        nuint nativeUnsigned = msbByte;
+        EndTest(nativeUnsigned == 0xff, $"Expected 0xff but got {nativeUnsigned}");
     }
 
     private unsafe static void ldindTest()
