@@ -748,11 +748,6 @@ llvm::Instruction* Llvm::getCast(llvm::Value* source, Type* targetType)
                 {
                     return new llvm::TruncInst(source, targetType, "TruncInt");
                 }
-                // allow just the specific case of bools being represented in LLVM as i8
-                else if (sourceType == Type::getInt1Ty(_llvmContext) && targetType == Type::getInt8Ty(_llvmContext))
-                {
-                    return new llvm::ZExtInst(source, targetType, "BitToByte");
-                }
             default:
                 failFunctionCompilation();
         }
