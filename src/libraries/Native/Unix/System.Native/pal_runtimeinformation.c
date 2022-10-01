@@ -11,12 +11,12 @@
 #include <sys/system_properties.h>
 #endif
 
-const char* SystemNative_GetUnixName(void)
+const char* SystemNative_GetUnixName()
 {
     return PAL_UNIX_NAME;
 }
 
-char* SystemNative_GetUnixRelease(void)
+char* SystemNative_GetUnixRelease()
 {
 #if defined(TARGET_ANDROID)
     // get the Android API level
@@ -59,7 +59,7 @@ int32_t SystemNative_GetUnixVersion(char* version, int* capacity)
  2 - ARM
  3 - ARM64
  4 - WASM */
-int32_t SystemNative_GetOSArchitecture(void)
+int32_t SystemNative_GetOSArchitecture()
 {
 #if defined(TARGET_ARM)
     return ARCH_ARM;
@@ -84,7 +84,7 @@ int32_t SystemNative_GetOSArchitecture(void)
 2 - ARM
 3 - ARM64
 4 - WASM */
-int32_t SystemNative_GetProcessArchitecture(void)
+int32_t SystemNative_GetProcessArchitecture()
 {
 #if defined(TARGET_ARM)
     return ARCH_ARM;
