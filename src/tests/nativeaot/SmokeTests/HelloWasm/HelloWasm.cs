@@ -1093,9 +1093,25 @@ internal static class Program
             FailTest("Expected 1f but didn't get it"); // TODO: float.ToString() is failing in DiyFP
         }
 
+        bool trueBool = true;
+        nuint nativeUnsignedFromBool = trueBool;
+        if (nativeUnsignedFromBool != 1)
+        {
+            FailTest($"Expected 1 but got {nativeUnsignedFromBool}");
+            return;
+        }
+
         byte msbByte = 0xff;
-        nuint nativeUnsigned = msbByte;
-        EndTest(nativeUnsigned == 0xff, $"Expected 0xff but got {nativeUnsigned}");
+        nuint nativeUnsignedFromByte = msbByte;
+        if (nativeUnsignedFromByte != 0xff)
+        {
+            FailTest($"Expected 0xff but got {nativeUnsignedFromByte}");
+            return;
+        }
+
+        ushort msbUshort = 0x8000;
+        nuint nativeUnsignedFromUshort = msbUshort;
+        EndTest(nativeUnsignedFromUshort == 0x8000, $"Expected 0x8000 but got {nativeUnsignedFromUshort}");
     }
 
     private static void CastByteForIndex()

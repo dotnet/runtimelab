@@ -4034,6 +4034,7 @@ namespace Internal.IL
             // Load the value and then convert it instead of using ValueAsType to avoid loading the incorrect size
             LLVMValueRef loadedValue = value.ValueAsType(value.Type, _builder);
             LLVMValueRef widenedStackValue = CastIfNecessary(loadedValue, GetLLVMTypeForTypeDesc(WidenBytesAndShorts(value.Type)), value.Name(),
+                stackType.IsWellKnownType(WellKnownType.Boolean) ||
                 stackType.IsWellKnownType(WellKnownType.Byte) ||
                 stackType.IsWellKnownType(WellKnownType.UInt16) ||
                 stackType.IsWellKnownType(WellKnownType.UInt32)
