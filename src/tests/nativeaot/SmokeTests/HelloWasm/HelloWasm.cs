@@ -1093,14 +1093,6 @@ internal static class Program
             FailTest("Expected 1f but didn't get it"); // TODO: float.ToString() is failing in DiyFP
         }
 
-        bool trueBool = true;
-        nuint nativeUnsignedFromBool = trueBool;
-        if (nativeUnsignedFromBool != 1)
-        {
-            FailTest($"Expected 1 but got {nativeUnsignedFromBool}");
-            return;
-        }
-
         byte msbByte = 0xff;
         nuint nativeUnsignedFromByte = msbByte;
         if (nativeUnsignedFromByte != 0xff)
