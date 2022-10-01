@@ -1227,8 +1227,9 @@ namespace Internal.IL
             }
             else if (toStoreKind == LLVMTypeKind.LLVMIntegerTypeKind && (valueTypeKind == LLVMTypeKind.LLVMDoubleTypeKind || valueTypeKind == LLVMTypeKind.LLVMFloatTypeKind))
             {
-                //TODO: keep track of the TypeDesc so we can call BuildUIToFP when the integer is unsigned
-                typedToStore = builder.BuildSIToFP(source, valueType, "CastSIToFloat" + (name ?? ""));
+                typedToStore = unsigned
+                    ? builder.BuildUIToFP(source, valueType, "CastUIToFloat" + (name ?? ""))
+                    : builder.BuildSIToFP(source, valueType, "CastSIToFloat" + (name ?? ""));
             }
             else if ((toStoreKind == LLVMTypeKind.LLVMDoubleTypeKind || toStoreKind == LLVMTypeKind.LLVMFloatTypeKind) &&
                 valueTypeKind == LLVMTypeKind.LLVMIntegerTypeKind)
@@ -4026,10 +4027,18 @@ namespace Internal.IL
         {
             //TODO checkOverflow - r_un & r_4, i & i_un
             StackEntry value = _stack.Pop();
+            TypeDesc stackType = value.Type;
+
             TypeDesc destType = GetWellKnownType(wellKnownType);
 
             // Load the value and then convert it instead of using ValueAsType to avoid loading the incorrect size
             LLVMValueRef loadedValue = value.ValueAsType(value.Type, _builder);
+            LLVMValueRef widenedStackValue = CastIfNecessary(loadedValue, GetLLVMTypeForTypeDesc(WidenBytesAndShorts(value.Type)), value.Name(),
+                stackType.IsWellKnownType(WellKnownType.Boolean) ||
+                stackType.IsWellKnownType(WellKnownType.Byte) ||
+                stackType.IsWellKnownType(WellKnownType.UInt16) ||
+                stackType.IsWellKnownType(WellKnownType.UInt32)
+                );
 
             ExpressionEntry expressionEntry;
             if (checkOverflow)
@@ -4037,16 +4046,16 @@ namespace Internal.IL
                 Debug.Assert(destType is EcmaType);
                 if (IsLlvmReal(loadedValue.TypeOf))
                 {
-                    expressionEntry = BuildConvOverflowFromReal(value, loadedValue, (EcmaType)destType, wellKnownType, unsigned, value.Type);
+                    expressionEntry = BuildConvOverflowFromReal(value, widenedStackValue, (EcmaType)destType, wellKnownType, unsigned, value.Type);
                 }
                 else
                 {
-                    expressionEntry = BuildConvOverflow(value.Name(), loadedValue, (EcmaType)destType, wellKnownType, unsigned, value.Type);
+                    expressionEntry = BuildConvOverflow(value.Name(), widenedStackValue, (EcmaType)destType, wellKnownType, unsigned, value.Type);
                 }
             }
             else
             {
-                LLVMValueRef converted = CastIfNecessary(loadedValue, GetLLVMTypeForTypeDesc(destType), value.Name(), wellKnownType == WellKnownType.UInt64 /* unsigned is always false, so check for the type explicitly */);
+                LLVMValueRef converted = CastIfNecessary(widenedStackValue, GetLLVMTypeForTypeDesc(destType), value.Name(), unsigned);
                 expressionEntry = new ExpressionEntry(GetStackValueKind(destType), "conv", converted, destType);
             }
             _stack.Push(expressionEntry);
