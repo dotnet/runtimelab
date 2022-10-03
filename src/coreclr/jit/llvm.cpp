@@ -1620,6 +1620,12 @@ void Llvm::buildReturn(GenTree* node)
         case TYP_UINT:
         case TYP_LONG:
         case TYP_ULONG:
+            if (node->gtGetOp1()->TypeIs(TYP_FLOAT))
+            {
+                // TODO-LLVM: remove this case by lowering see
+                // https://github.com/dotnet/runtimelab/pull/2007#issuecomment-1264715441
+                failFunctionCompilation();
+            }
             _builder.CreateRet(consumeValue(node->gtGetOp1(), getLlvmTypeForCorInfoType(_sigInfo.retType, _sigInfo.retTypeClass)));
             return;
         case TYP_VOID:
