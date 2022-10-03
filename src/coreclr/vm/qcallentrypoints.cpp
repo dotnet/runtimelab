@@ -70,6 +70,8 @@
 #include "nativeeventsource.h"
 #endif //FEATURE_PERFTRACING
 
+#include "greenthreads.h"
+
 #include "tailcallhelp.h"
 
 #include <minipal/entrypoints.h>
@@ -316,6 +318,11 @@ static const Entry s_QCall[] =
 #endif
 #if defined(FEATURE_COMINTEROP)
     DllImportEntry(InterfaceMarshaler__ClearNative)
+#endif
+#if defined(FEATURE_GREENTHREADS)
+    DllImportEntry(GreenThread_ResumeThread)
+    DllImportEntry(GreenThread_StartThread)
+    DllImportEntry(GreenThread_Yield)
 #endif
 };
 

@@ -371,6 +371,7 @@ set(VM_SOURCES_WKS
     typeparse.cpp
     weakreferencenative.cpp
     yieldprocessornormalized.cpp
+    greenthreads.cpp
     ${VM_SOURCES_GDBJIT}
 )
 
@@ -469,6 +470,7 @@ set(VM_HEADERS_WKS
     threadsuspend.h
     typeparse.h
     weakreferencenative.h
+    greenthreads.h
     ${VM_HEADERS_GDBJIT}
 )
 
