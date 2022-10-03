@@ -140,6 +140,14 @@ namespace ILCompiler
 
                 if (methodIL == null)
                 {
+                    if (method.IsInternalCall)
+                    {
+                        // this might have been the subject of a call in the clrjit module.  We need the function here so we can populate the symbol
+                        var mangledName = NodeFactory.NameMangler.GetMangledMethodName(method).ToString();
+                        var sig = method.Signature;
+                        ILImporter.GetOrCreateLLVMFunction(Module, mangledName, GetLLVMSignatureForMethod(sig, method.RequiresInstArg()));
+                    }
+
                     methodCodeNodeNeedingCode.CompilationCompleted = true;
                     return;
                 }

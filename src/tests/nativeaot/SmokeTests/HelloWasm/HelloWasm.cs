@@ -229,6 +229,10 @@ internal static class Program
         PrintLine(((BoxStubTest[])arrayCastingTest)[2].Value);
         EndTest(!(arrayCastingTest is CastingTestClass[]));
 
+        ConvUTest();
+
+        CastByteForIndex();
+
         ldindTest();
 
         InterfaceDispatchTest();
@@ -1077,6 +1081,38 @@ internal static class Program
         string intString = 42.ToString();
         PrintLine(intString);
         EndTest(intString == "42");
+    }
+
+    private static void ConvUTest()
+    {
+        StartTest("Implicit casting using ConvU");
+        byte alpha = 0xFF;
+        float f = alpha / 255f;
+        if (f != 1f)
+        {
+            FailTest("Expected 1f but didn't get it"); // TODO: float.ToString() is failing in DiyFP
+        }
+
+        byte msbByte = 0xff;
+        nuint nativeUnsignedFromByte = msbByte;
+        if (nativeUnsignedFromByte != 0xff)
+        {
+            FailTest($"Expected 0xff but got {nativeUnsignedFromByte}");
+            return;
+        }
+
+        ushort msbUshort = 0x8000;
+        nuint nativeUnsignedFromUshort = msbUshort;
+        EndTest(nativeUnsignedFromUshort == 0x8000, $"Expected 0x8000 but got {nativeUnsignedFromUshort}");
+    }
+
+    private static void CastByteForIndex()
+    {
+        StartTest("Implicit casting of byte for an index");
+        int[] someInts = new int[0xff];
+        byte byteIndex = 0xFF;
+        someInts[byteIndex] = 123;
+        EndTest(someInts[0xff] == 123, "Expected 123 at index 0xff but didn't get it");
     }
 
     private unsafe static void ldindTest()
