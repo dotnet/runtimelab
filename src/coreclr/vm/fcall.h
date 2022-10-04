@@ -219,6 +219,7 @@
 #include "gms.h"
 #include "runtimeexceptionkind.h"
 #include "debugreturn.h"
+#include "greenthreads.h"
 
 //==============================================================================================
 // These macros defeat compiler optimizations that might mix nonvolatile
@@ -623,34 +624,20 @@ struct PairOfPointers
 #define HELPER_METHOD_FRAME_END_EX(gcpoll,allowGC)                          \
             UNINSTALL_UNWIND_AND_CONTINUE_HANDLER;                          \
             };                                                              \
-            auto helperLambdaFunctionPointer = &decltype(helperFrameLambda)::operator(); \
-            {struct { \
-                decltype(helperFrameLambda)* innerLambda;     \
-                decltype(helperLambdaFunctionPointer) innerLambdaFunctionPointer; \
-             } pointers; \
-            pointers.innerLambda = &helperFrameLambda; \
-            pointers.innerLambdaFunctionPointer = helperLambdaFunctionPointer; \
-            auto nonCapturingLambda = [](decltype(pointers)* pointersImp) { \
-                ((pointersImp->innerLambda)->*(pointersImp->innerLambdaFunctionPointer))(); \
+            auto nonCapturingLambda = [](uintptr_t pointerToLambda) { \
+                (*(decltype(helperFrameLambda)*)pointerToLambda)(); \
             }; \
-            nonCapturingLambda(&pointers);} \
+            CallOnOSThread(nonCapturingLambda, (uintptr_t)&helperFrameLambda); \
             __helperframe.Pop();                                            \
             UNINSTALL_MANAGED_EXCEPTION_DISPATCHER;                         \
         HELPER_METHOD_FRAME_END_EX_BODY(gcpoll,allowGC);
 
 #define HELPER_METHOD_FRAME_END_EX_NOTHROW(gcpoll,allowGC)                  \
             };                                                              \
-            auto helperLambdaFunctionPointer = &decltype(helperFrameLambda)::operator(); \
-            {struct { \
-                decltype(helperFrameLambda)* innerLambda;     \
-                decltype(helperLambdaFunctionPointer) innerLambdaFunctionPointer; \
-             } pointers; \
-            pointers.innerLambda = &helperFrameLambda; \
-            pointers.innerLambdaFunctionPointer = helperLambdaFunctionPointer; \
-            auto nonCapturingLambda = [](decltype(pointers)* pointersImp) { \
-                ((pointersImp->innerLambda)->*(pointersImp->innerLambdaFunctionPointer))(); \
+            auto nonCapturingLambda = [](uintptr_t pointerToLambda) { \
+                (*(decltype(helperFrameLambda)*)pointerToLambda)(); \
             }; \
-            nonCapturingLambda(&pointers);} \
+            CallOnOSThread(nonCapturingLambda, (uintptr_t)&helperFrameLambda); \
             __helperframe.Pop();                                            \
         HELPER_METHOD_FRAME_END_EX_BODY(gcpoll,allowGC);
 

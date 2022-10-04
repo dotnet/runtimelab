@@ -6,7 +6,12 @@
 #include "common.h"
 #include "greenthreads.h"
 
-#ifdef FEATURE_GREENTHREADS
+#ifndef FEATURE_GREENTHREADS
+void CallOnOSThread(TakesOneParamNoReturn functionToExecute, uintptr_t param)
+{
+    functionToExecute(param);
+}
+#else // FEATURE_GREENTHREADS
 struct GreenThreadData
 {
     StackRange osStackRange;
@@ -218,6 +223,32 @@ uintptr_t TransitionToOSThread(TakesOneParam functionToExecute, uintptr_t param)
     t_greenThread.inGreenThread = true;
 
     return result;
+}
+
+uintptr_t TransitionToOSThread(TakesOneParamNoReturn functionToExecute, uintptr_t param)
+{
+    TransitionHelperStruct detailsAboutWhatToCall;
+    detailsAboutWhatToCall.function = (TakesOneParam)functionToExecute;
+    detailsAboutWhatToCall.param = param;
+    if (!t_greenThread.inGreenThread)
+        __debugbreak();
+
+    t_greenThread.inGreenThread = false;
+    bool oldtransitionedToOSThreadOnGreenThread = t_greenThread.transitionedToOSThreadOnGreenThread;
+    t_greenThread.transitionedToOSThreadOnGreenThread = true;
+
+    TransitionToOSThreadHelper((uintptr_t)FirstFrameInOSThread, &detailsAboutWhatToCall);
+    t_greenThread.transitionedToOSThreadOnGreenThread = oldtransitionedToOSThreadOnGreenThread;
+    t_greenThread.inGreenThread = true;
+
+    return result;
+}
+
+uintptr_t CallOnOSThread(TakesOneParamNoReturn functionToExecute, uintptr_t param)
+{
+    if (!t_greenThread.inGreenThread)
+        functionToExecute(param);
+    TransitionToOSThread(functionToExecute, param);
 }
 
 void *TransitionToOSThreadAndCallMalloc(size_t memoryToAllocate)
