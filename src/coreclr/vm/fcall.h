@@ -559,7 +559,11 @@ LPVOID __FCThrowArgument(LPVOID me, enum RuntimeExceptionKind reKind, LPCWSTR ar
 
 // END: after gcpoll
 //__fcallGcCanTrigger.Leave(__FUNCTION__, __FILE__, __LINE__);
-
+struct PairOfPointers
+{
+    void *innerLambda;
+    void *innerLambdaFunctionPointer;
+};
 // We have to put DEBUG_OK_TO_RETURN_BEGIN around the FORLAZYMACHSTATE
 // to allow the HELPER_FRAME to be installed inside an SO_INTOLERANT region
 // which does not allow a return.  The return is used by FORLAZYMACHSTATE
@@ -584,12 +588,14 @@ LPVOID __FCThrowArgument(LPVOID me, enum RuntimeExceptionKind reKind, LPCWSTR ar
             /* gcpoll; */                                                       \
             INSTALL_MANAGED_EXCEPTION_DISPATCHER;                               \
             __helperframe.Push();                                               \
+            auto helperFrameLambda = [&](){                                     \
             MAKE_CURRENT_THREAD_AVAILABLE_EX(__helperframe.GetThread()); \
             INSTALL_UNWIND_AND_CONTINUE_HANDLER_FOR_HMF(&__helperframe);
 
 #define HELPER_METHOD_FRAME_BEGIN_EX_NOTHROW(ret, helperFrame, gcpoll, allowGC, probeFailExpr) \
         HELPER_METHOD_FRAME_BEGIN_EX_BODY(ret, helperFrame, gcpoll, allowGC)    \
             __helperframe.Push();                                         \
+            auto helperFrameLambda = [&](){                                     \
             MAKE_CURRENT_THREAD_AVAILABLE_EX(__helperframe.GetThread()); \
             /* <TODO>TODO TURN THIS ON!!!   </TODO> */                    \
             /* gcpoll; */
@@ -616,11 +622,35 @@ LPVOID __FCThrowArgument(LPVOID me, enum RuntimeExceptionKind reKind, LPCWSTR ar
 
 #define HELPER_METHOD_FRAME_END_EX(gcpoll,allowGC)                          \
             UNINSTALL_UNWIND_AND_CONTINUE_HANDLER;                          \
+            };                                                              \
+            void (decltype(helperFrameLambda)::*helperLambdaFunctionPointer)()const = &decltype(helperFrameLambda)::operator(); \
+            {struct { \
+                decltype(helperFrameLambda)* innerLambda;     \
+                decltype(helperLambdaFunctionPointer) innerLambdaFunctionPointer; \
+             } pointers; \
+            pointers.innerLambda = &helperFrameLambda; \
+            pointers.innerLambdaFunctionPointer = helperLambdaFunctionPointer; \
+            auto nonCapturingLambda = [](decltype(pointers)* pointersImp) { \
+                ((pointersImp->innerLambda)->*(pointersImp->innerLambdaFunctionPointer))(); \
+            }; \
+            nonCapturingLambda(&pointers);} \
             __helperframe.Pop();                                            \
             UNINSTALL_MANAGED_EXCEPTION_DISPATCHER;                         \
         HELPER_METHOD_FRAME_END_EX_BODY(gcpoll,allowGC);
 
 #define HELPER_METHOD_FRAME_END_EX_NOTHROW(gcpoll,allowGC)                  \
+            };                                                              \
+            void (decltype(helperFrameLambda)::*helperLambdaFunctionPointer)()const = &decltype(helperFrameLambda)::operator(); \
+            {struct { \
+                decltype(helperFrameLambda)* innerLambda;     \
+                decltype(helperLambdaFunctionPointer) innerLambdaFunctionPointer; \
+             } pointers; \
+            pointers.innerLambda = &helperFrameLambda; \
+            pointers.innerLambdaFunctionPointer = helperLambdaFunctionPointer; \
+            auto nonCapturingLambda = [](decltype(pointers)* pointersImp) { \
+                ((pointersImp->innerLambda)->*(pointersImp->innerLambdaFunctionPointer))(); \
+            }; \
+            nonCapturingLambda(&pointers);} \
             __helperframe.Pop();                                            \
         HELPER_METHOD_FRAME_END_EX_BODY(gcpoll,allowGC);
 
