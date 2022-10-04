@@ -623,7 +623,7 @@ struct PairOfPointers
 #define HELPER_METHOD_FRAME_END_EX(gcpoll,allowGC)                          \
             UNINSTALL_UNWIND_AND_CONTINUE_HANDLER;                          \
             };                                                              \
-            void (decltype(helperFrameLambda)::*helperLambdaFunctionPointer)()const = &decltype(helperFrameLambda)::operator(); \
+            auto helperLambdaFunctionPointer = &decltype(helperFrameLambda)::operator(); \
             {struct { \
                 decltype(helperFrameLambda)* innerLambda;     \
                 decltype(helperLambdaFunctionPointer) innerLambdaFunctionPointer; \
@@ -640,7 +640,7 @@ struct PairOfPointers
 
 #define HELPER_METHOD_FRAME_END_EX_NOTHROW(gcpoll,allowGC)                  \
             };                                                              \
-            void (decltype(helperFrameLambda)::*helperLambdaFunctionPointer)()const = &decltype(helperFrameLambda)::operator(); \
+            auto helperLambdaFunctionPointer = &decltype(helperFrameLambda)::operator(); \
             {struct { \
                 decltype(helperFrameLambda)* innerLambda;     \
                 decltype(helperLambdaFunctionPointer) innerLambdaFunctionPointer; \
