@@ -225,7 +225,7 @@ uintptr_t TransitionToOSThread(TakesOneParam functionToExecute, uintptr_t param)
     return result;
 }
 
-uintptr_t TransitionToOSThread(TakesOneParamNoReturn functionToExecute, uintptr_t param)
+void TransitionToOSThread(TakesOneParamNoReturn functionToExecute, uintptr_t param)
 {
     TransitionHelperStruct detailsAboutWhatToCall;
     detailsAboutWhatToCall.function = (TakesOneParam)functionToExecute;
@@ -240,11 +240,9 @@ uintptr_t TransitionToOSThread(TakesOneParamNoReturn functionToExecute, uintptr_
     TransitionToOSThreadHelper((uintptr_t)FirstFrameInOSThread, &detailsAboutWhatToCall);
     t_greenThread.transitionedToOSThreadOnGreenThread = oldtransitionedToOSThreadOnGreenThread;
     t_greenThread.inGreenThread = true;
-
-    return result;
 }
 
-uintptr_t CallOnOSThread(TakesOneParamNoReturn functionToExecute, uintptr_t param)
+void CallOnOSThread(TakesOneParamNoReturn functionToExecute, uintptr_t param)
 {
     if (!t_greenThread.inGreenThread)
         functionToExecute(param);

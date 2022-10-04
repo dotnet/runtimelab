@@ -30,7 +30,7 @@ typedef uintptr_t (*TakesOneParam)(uintptr_t param);
 typedef void (*TakesOneParamNoReturn)(uintptr_t param);
 SuspendedGreenThread* GreenThread_StartThread(TakesOneParam functionToExecute, uintptr_t param);
 uintptr_t TransitionToOSThread(TakesOneParam functionToExecute, uintptr_t param);
-uintptr_t TransitionToOSThread(TakesOneParamNoReturn functionToExecute, uintptr_t param);
+void TransitionToOSThread(TakesOneParamNoReturn functionToExecute, uintptr_t param);
 
 // Must be called from within a green thread.
 bool GreenThread_Yield(); // Attempt to yield out of green thread. If the yield fails, return false, else return true once the thread is resumed.
