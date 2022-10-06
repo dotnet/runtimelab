@@ -336,6 +336,9 @@ FCIMPL1(INT32, ThreadNative::GetPriority, ThreadBaseObject* pThisUNSAFE)
     if (pThisUNSAFE==NULL)
         FCThrowRes(kNullReferenceException, W("NullReference_This"));
 
+    if (pThisUNSAFE->IsGreenThread())
+        FCThrowRes(kThreadStateException, W("ThreadState_GreenThread"));
+
     // validate the handle
     if (ThreadIsDead(pThisUNSAFE->GetInternal()))
         FCThrowRes(kThreadStateException, W("ThreadState_Dead_Priority"));
@@ -358,6 +361,9 @@ FCIMPL2(void, ThreadNative::SetPriority, ThreadBaseObject* pThisUNSAFE, INT32 iP
     {
         COMPlusThrow(kNullReferenceException, W("NullReference_This"));
     }
+
+    if (pThis->IsGreenThread())
+        COMPlusThrow(kThreadStateException, W("ThreadState_GreenThread"));
 
     // translate the priority (validating as well)
     priority = MapToNTPriority(iPriority);  // can throw; needs a frame
@@ -397,6 +403,9 @@ FCIMPL1(void, ThreadNative::Interrupt, ThreadBaseObject* pThisUNSAFE)
 
     Thread  *thread = pThisUNSAFE->GetInternal();
 
+    if (pThisUNSAFE->IsGreenThread())
+        FCThrowResVoid(kThreadStateException, W("ThreadState_GreenThread"));
+
     if (thread == 0)
         FCThrowExVoid(kThreadStateException, IDS_EE_THREAD_CANNOT_GET, NULL, NULL, NULL);
 
@@ -424,6 +433,9 @@ FCIMPL1(FC_BOOL_RET, ThreadNative::IsAlive, ThreadBaseObject* pThisUNSAFE)
     // consider both protecting thisRef and setting the managed object's
     // Thread* to NULL in the GC's ScanForFinalization method.
     HELPER_METHOD_FRAME_BEGIN_RET_1(thisRef);
+
+    if (thisRef->IsGreenThread())
+        COMPlusThrow(kThreadStateException, W("ThreadState_GreenThread"));
 
     Thread  *thread = thisRef->GetInternal();
 
@@ -588,6 +600,9 @@ FCIMPL2(void, ThreadNative::SetBackground, ThreadBaseObject* pThisUNSAFE, CLR_BO
     if (pThisUNSAFE==NULL)
         FCThrowResVoid(kNullReferenceException, W("NullReference_This"));
 
+    if (pThisUNSAFE->IsGreenThread())
+        FCThrowResVoid(kThreadStateException, W("ThreadState_GreenThread"));
+
     // validate the thread
     Thread  *thread = pThisUNSAFE->GetInternal();
 
@@ -609,6 +624,9 @@ FCIMPL1(FC_BOOL_RET, ThreadNative::IsBackground, ThreadBaseObject* pThisUNSAFE)
 
     if (pThisUNSAFE==NULL)
         FCThrowRes(kNullReferenceException, W("NullReference_This"));
+
+    if (pThisUNSAFE->IsGreenThread())
+        FC_RETURN_BOOL(TRUE);
 
     // validate the thread
     Thread  *thread = pThisUNSAFE->GetInternal();
@@ -634,6 +652,9 @@ FCIMPL1(INT32, ThreadNative::GetThreadState, ThreadBaseObject* pThisUNSAFE)
 
     if (pThisUNSAFE==NULL)
         FCThrowRes(kNullReferenceException, W("NullReference_This"));
+
+    if (pThisUNSAFE->IsGreenThread())
+        FCThrowRes(kThreadStateException, W("ThreadState_GreenThread"));
 
     // validate the thread.  Failure here implies that the thread was finalized
     // and then resurrected.
@@ -690,6 +711,9 @@ FCIMPL2(INT32, ThreadNative::SetApartmentState, ThreadBaseObject* pThisUNSAFE, I
     THREADBASEREF   pThis   = (THREADBASEREF) pThisUNSAFE;
 
     HELPER_METHOD_FRAME_BEGIN_RET_1(pThis);
+
+    if (pThis->IsGreenThread())
+        COMPlusThrow(kThreadStateException, W("ThreadState_GreenThread"));
 
     Thread  *thread = pThis->GetInternal();
     if (!thread)
@@ -748,6 +772,9 @@ FCIMPL1(INT32, ThreadNative::GetApartmentState, ThreadBaseObject* pThisUNSAFE)
         COMPlusThrow(kNullReferenceException, W("NullReference_This"));
     }
 
+    if (refThis->IsGreenThread())
+        COMPlusThrow(kThreadStateException, W("ThreadState_GreenThread"));
+
     Thread* thread = refThis->GetInternal();
 
     if (ThreadIsDead(thread))
@@ -799,6 +826,9 @@ BOOL ThreadNative::DoJoin(THREADBASEREF DyingThread, INT32 timeout)
         PRECONDITION((timeout >= 0) || (timeout == INFINITE_TIMEOUT));
     }
     CONTRACTL_END;
+
+    if (DyingThread->IsGreenThread())
+        COMPlusThrow(kThreadStateException, W("ThreadState_GreenThread"));
 
     Thread * DyingInternal = DyingThread->GetInternal();
 
@@ -934,6 +964,10 @@ FCIMPL1(void, ThreadNative::DisableComObjectEagerCleanup, ThreadBaseObject* pThi
 
     _ASSERTE(pThisUNSAFE != NULL);
     VALIDATEOBJECT(pThisUNSAFE);
+
+    if (pThisUNSAFE->IsGreenThread())
+        FCThrowResVoid(kThreadStateException, W("ThreadState_GreenThread"));
+
     Thread *pThread = pThisUNSAFE->GetInternal();
 
     HELPER_METHOD_FRAME_BEGIN_0();
@@ -1020,6 +1054,9 @@ FCIMPL1(FC_BOOL_RET, ThreadNative::IsThreadpoolThread, ThreadBaseObject* thread)
     if (thread==NULL)
         FCThrowRes(kNullReferenceException, W("NullReference_This"));
 
+    if (thread->IsGreenThread())
+        FC_RETURN_BOOL(TRUE);
+
     Thread *pThread = thread->GetInternal();
 
     if (pThread == NULL)
@@ -1039,6 +1076,9 @@ FCIMPL1(void, ThreadNative::SetIsThreadpoolThread, ThreadBaseObject* thread)
 
     if (thread == NULL)
         FCThrowResVoid(kNullReferenceException, W("NullReference_This"));
+
+    if (thread->IsGreenThread())
+        FCThrowResVoid(kThreadStateException, W("ThreadState_GreenThread"));
 
     Thread *pThread = thread->GetInternal();
 
