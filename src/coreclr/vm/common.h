@@ -136,6 +136,7 @@ typedef DPTR(class CoreLibBinder)      PTR_CoreLibBinder;
 typedef VPTR(class Module)              PTR_Module;
 typedef DPTR(class NDirectMethodDesc)   PTR_NDirectMethodDesc;
 typedef DPTR(class Thread)              PTR_Thread;
+typedef DPTR(class ThreadBase)          PTR_ThreadBase;
 typedef DPTR(class Object)              PTR_Object;
 typedef DPTR(PTR_Object)                PTR_PTR_Object;
 typedef DPTR(class DelegateObject)      PTR_DelegateObject;

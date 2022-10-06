@@ -1383,6 +1383,16 @@ void Dbg_TrackSyncStack::LeaveSync(UINT_PTR caller, void *pAwareLock)
 
 static  DWORD dwHashCodeSeed = 123456789;
 
+GreenThread::GreenThread()
+{
+    g_pThinLockThreadIdDispenser->NewId(this, this->m_ThreadId);
+}
+
+GreenThread::~GreenThread()
+{
+    g_pThinLockThreadIdDispenser->DisposeId(this->m_ThreadId);
+}
+
 //--------------------------------------------------------------------
 // Thread construction
 //--------------------------------------------------------------------

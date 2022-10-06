@@ -285,13 +285,13 @@ class Object
 
     bool TryEnterObjMonitorSpinHelper();
 
-    FORCEINLINE AwareLock::EnterHelperResult EnterObjMonitorHelper(Thread* pCurThread)
+    FORCEINLINE AwareLock::EnterHelperResult EnterObjMonitorHelper(ThreadBase* pCurThread)
     {
         WRAPPER_NO_CONTRACT;
         return GetHeader()->EnterObjMonitorHelper(pCurThread);
     }
 
-    FORCEINLINE AwareLock::EnterHelperResult EnterObjMonitorHelperSpin(Thread* pCurThread)
+    FORCEINLINE AwareLock::EnterHelperResult EnterObjMonitorHelperSpin(ThreadBase* pCurThread)
     {
         WRAPPER_NO_CONTRACT;
         return GetHeader()->EnterObjMonitorHelperSpin(pCurThread);
@@ -312,7 +312,7 @@ class Object
         return GetHeader()->LeaveObjMonitorAtException();
     }
 
-    FORCEINLINE AwareLock::LeaveHelperAction LeaveObjMonitorHelper(Thread* pCurThread)
+    FORCEINLINE AwareLock::LeaveHelperAction LeaveObjMonitorHelper(ThreadBase* pCurThread)
     {
         WRAPPER_NO_CONTRACT;
         return GetHeader()->LeaveObjMonitorHelper(pCurThread);
@@ -1351,6 +1351,9 @@ private:
     // Only used by managed code, see comment there
     bool          m_MayNeedResetForThreadPool;
 
+    // Does this thread object represent a Green Thread?
+    uint8_t       m_isGreenThread;
+
 protected:
     // the ctor and dtor can do no useful work.
     ThreadBaseObject() {LIMITED_METHOD_CONTRACT;};
@@ -1365,6 +1368,11 @@ public:
 
     void SetInternal(Thread *it);
     void ClearInternal();
+
+    bool IsGreenThread()
+    {
+        return !!m_isGreenThread;
+    }
 
     INT32 GetManagedThreadId()
     {

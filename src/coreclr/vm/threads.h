@@ -802,11 +802,35 @@ public:
     const PortableTailCallFrame* GetFrame() { return m_frame; }
 };
 
+class ThreadBase
+{
+protected:
+    // Unique thread id used for thin locks - kept as small as possible, as we have limited space
+    // in the object header to store it.
+    DWORD                m_ThreadId;
+
+public:
+    DWORD       GetThreadId()
+    {
+        LIMITED_METHOD_DAC_CONTRACT;
+        _ASSERTE(m_ThreadId != UNINITIALIZED_THREADID);
+        return m_ThreadId;
+    }
+
+    Thread* GetThreadObj();
+};
+
+class GreenThread : public ThreadBase
+{
+    GreenThread();
+    ~GreenThread();
+};
+
 // #ThreadClass
 //
 // A code:Thread contains all the per-thread information needed by the runtime.  We can get this
 // structure through the OS TLS slot see code:#RuntimeThreadLocals for more information.
-class Thread
+class Thread : public ThreadBase
 {
     friend struct ThreadQueue;  // used to enqueue & dequeue threads onto SyncBlocks
     friend class  ThreadStore;
@@ -877,6 +901,9 @@ public:
     }
 
 public:
+
+    ThreadBase* GetActiveThreadBase();
+
     // Allocator used during marshaling for temporary buffers, much faster than
     // heap allocation.
     //
@@ -1313,11 +1340,6 @@ public:
     // its Domain.
     //-----------------------------------------------------------
     PTR_AppDomain       m_pDomain;
-
-    // Unique thread id used for thin locks - kept as small as possible, as we have limited space
-    // in the object header to store it.
-    DWORD                m_ThreadId;
-
 
     // RWLock state
     LockEntry           *m_pHead;
@@ -2262,13 +2284,6 @@ public:
     {
         WRAPPER_NO_CONTRACT;
         return GetThreadHandle() != INVALID_HANDLE_VALUE;
-    }
-
-    DWORD       GetThreadId()
-    {
-        LIMITED_METHOD_DAC_CONTRACT;
-        _ASSERTE(m_ThreadId != UNINITIALIZED_THREADID);
-        return m_ThreadId;
     }
 
     // The actual OS thread ID may be 64 bit on some platforms but
@@ -4754,7 +4769,7 @@ private:
     DWORD       m_highestId;          // highest id given out so far
     SIZE_T      m_recycleBin;         // link list to chain all ids returning to us
     Crst        m_Crst;               // lock to protect our data structures
-    DPTR(PTR_Thread)    m_idToThread;         // map thread ids to threads
+    DPTR(PTR_ThreadBase)    m_idToThread;         // map thread ids to threads
     DWORD       m_idToThreadCapacity; // capacity of the map
 
 #ifndef DACCESS_COMPILE
@@ -4769,7 +4784,7 @@ private:
         CONTRACTL_END;
 
         DWORD newCapacity = m_idToThreadCapacity == 0 ? 16 : m_idToThreadCapacity*2;
-        Thread **newIdToThread = new Thread*[newCapacity];
+        ThreadBase **newIdToThread = new ThreadBase*[newCapacity];
 
         newIdToThread[0] = NULL;
 
@@ -4816,7 +4831,7 @@ public:
     }
 
 #ifndef DACCESS_COMPILE
-    void NewId(Thread *pThread, DWORD & newId)
+    void NewId(ThreadBase *pThread, DWORD & newId)
     {
         WRAPPER_NO_CONTRACT;
         DWORD result;
@@ -4866,7 +4881,7 @@ public:
         }
         else
         {
-            m_idToThread[id] = reinterpret_cast<PTR_Thread>(m_recycleBin);
+            m_idToThread[id] = reinterpret_cast<PTR_ThreadBase>(m_recycleBin);
             m_recycleBin = id;
 #ifdef _DEBUG
             size_t index = (size_t)m_idToThread[id];
@@ -4880,12 +4895,12 @@ public:
     }
 #endif // !DACCESS_COMPILE
 
-    Thread *IdToThread(DWORD id)
+    ThreadBase *IdToThread(DWORD id)
     {
         LIMITED_METHOD_CONTRACT;
         CrstHolder ch(&m_Crst);
 
-        Thread *result = NULL;
+        ThreadBase *result = NULL;
         if (id <= m_highestId)
             result = m_idToThread[id];
         // m_idToThread may have Thread*, or the next free slot
@@ -4894,19 +4909,19 @@ public:
         return result;
     }
 
-    Thread *IdToThreadWithValidation(DWORD id)
+    ThreadBase *IdToThreadWithValidation(DWORD id)
     {
         WRAPPER_NO_CONTRACT;
 
         CrstHolder ch(&m_Crst);
 
-        Thread *result = NULL;
+        ThreadBase *result = NULL;
         if (id <= m_highestId)
             result = m_idToThread[id];
         // m_idToThread may have Thread*, or the next free slot
         if ((size_t)result <= m_idToThreadCapacity)
             result = NULL;
-        _ASSERTE(result == NULL || ((size_t)result & 0x3) == 0 || ((Thread*)result)->GetThreadId() == id);
+        _ASSERTE(result == NULL || ((size_t)result & 0x3) == 0 || ((ThreadBase*)result)->GetThreadId() == id);
         return result;
     }
 };

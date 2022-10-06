@@ -644,7 +644,7 @@ ClrDataAccess::GetThreadFromThinlockID(UINT thinLockId, CLRDATA_ADDRESS *pThread
 
     SOSDacEnter();
 
-    Thread *thread = g_pThinLockThreadIdDispenser->IdToThread(thinLockId);
+    ThreadBase *thread = g_pThinLockThreadIdDispenser->IdToThread(thinLockId);
     *pThread = PTR_HOST_TO_TADDR(thread);
 
     SOSDacLeave();

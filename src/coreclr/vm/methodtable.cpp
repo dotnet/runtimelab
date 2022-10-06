@@ -4061,6 +4061,10 @@ void CallFinalizerOnThreadObject(Object *obj)
     STATIC_CONTRACT_MODE_COOPERATIVE;
 
     THREADBASEREF   refThis = (THREADBASEREF)ObjectToOBJECTREF(obj);
+
+    if (refThis->IsGreenThread())
+        return; // Green thread objects don't get finalized
+
     Thread*         thread  = refThis->GetInternal();
 
     // Prevent multiple calls to Finalize

@@ -108,12 +108,12 @@ ASMCONSTANTS_C_ASSERT(OFFSETOF__ComPlusCallInfo__m_pILStub
 
 #endif // FEATURE_COMINTEROP
 
-#define               OFFSETOF__Thread__m_fPreemptiveGCDisabled     0x0C
+#define               OFFSETOF__Thread__m_fPreemptiveGCDisabled     0x14
 ASMCONSTANTS_C_ASSERT(OFFSETOF__Thread__m_fPreemptiveGCDisabled
                     == offsetof(Thread, m_fPreemptiveGCDisabled));
 #define Thread_m_fPreemptiveGCDisabled OFFSETOF__Thread__m_fPreemptiveGCDisabled
 
-#define               OFFSETOF__Thread__m_pFrame                    0x10
+#define               OFFSETOF__Thread__m_pFrame                    0x18
 ASMCONSTANTS_C_ASSERT(OFFSETOF__Thread__m_pFrame
                     == offsetof(Thread, m_pFrame));
 #define Thread_m_pFrame OFFSETOF__Thread__m_pFrame
