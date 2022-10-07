@@ -5594,7 +5594,7 @@ ClrDataAccess::FindClrThreadByTaskId(ULONG64 taskId)
 
     while ((thread = ThreadStore::GetAllThreadList(thread, 0, 0)))
     {
-        if (thread->GetThreadId() == (DWORD)taskId)
+        if (thread->GetPermanentManagedThreadId() == (DWORD)taskId)
         {
             return thread;
         }

@@ -752,7 +752,7 @@ Thread* SetupThread()
     }
     else
     {
-        LOG((LF_CORDB, LL_INFO10000, "ThreadCreated() not called due to CORDebuggerAttached() being FALSE for thread 0x%x\n", pThread->GetThreadId()));
+        LOG((LF_CORDB, LL_INFO10000, "ThreadCreated() not called due to CORDebuggerAttached() being FALSE for thread 0x%x\n", pThread->GetPermanentManagedThreadId()));
     }
 #endif // DEBUGGING_SUPPORTED
 
@@ -1386,11 +1386,22 @@ static  DWORD dwHashCodeSeed = 123456789;
 GreenThread::GreenThread()
 {
     g_pThinLockThreadIdDispenser->NewId(this, this->m_ThreadId);
+
+    // TODO Initialize m_EventWait
+    //      _ASSERTE(!m_EventWait.IsValid());
+
 }
 
 GreenThread::~GreenThread()
 {
     g_pThinLockThreadIdDispenser->DisposeId(this->m_ThreadId);
+}
+
+ThreadBase::ThreadBase()
+{
+    m_WaitEventLink.m_Next = NULL;
+    m_WaitEventLink.m_LinkSB.m_pNext = NULL;
+    m_ThreadId = UNINITIALIZED_THREADID;
 }
 
 //--------------------------------------------------------------------
@@ -1441,16 +1452,10 @@ Thread::Thread()
     m_thAllocContextObj = 0;
 
     m_UserInterrupt = 0;
-    m_WaitEventLink.m_Next = NULL;
-    m_WaitEventLink.m_LinkSB.m_pNext = NULL;
     m_ThreadHandle = INVALID_HANDLE_VALUE;
     m_ThreadHandleForClose = INVALID_HANDLE_VALUE;
     m_ThreadHandleForResume = INVALID_HANDLE_VALUE;
     m_WeOwnThreadHandle = FALSE;
-
-#ifdef _DEBUG
-    m_ThreadId = UNINITIALIZED_THREADID;
-#endif //_DEBUG
 
     // Initialize this variable to a very different start value for each thread
     // Using linear congruential generator from Knuth Vol. 2, p. 102, line 24
@@ -1607,7 +1612,7 @@ Thread::Thread()
     m_pDomain = SystemDomain::System()->DefaultDomain();
 
     // Do not expose thread until it is fully constructed
-    g_pThinLockThreadIdDispenser->NewId(this, this->m_ThreadId);
+    g_pThinLockThreadIdDispenser->NewId(&this->m_coreThreadData, this->m_coreThreadData.m_ThreadId);
 
     //
     // DO NOT ADD ADDITIONAL CONSTRUCTION AFTER THIS POINT.
@@ -1672,7 +1677,7 @@ void Thread::InitThread()
         // at arbitrary locations (including when holding a lock that NT uses to serialize
         // all memory allocations).  By sending a message now, we insure that the stress
         // log will not allocate memory at these critical times an avoid deadlock.
-    STRESS_LOG2(LF_ALWAYS, LL_ALWAYS, "SetupThread  managed Thread %p Thread Id = %x\n", this, GetThreadId());
+    STRESS_LOG2(LF_ALWAYS, LL_ALWAYS, "SetupThread  managed Thread %p Thread Id = %x\n", this, GetPermanentManagedThreadId());
 
 #ifndef TARGET_UNIX
     // workaround: Remove this when we flow impersonation token to host.
@@ -1785,13 +1790,13 @@ BOOL Thread::AllocHandles()
     WRAPPER_NO_CONTRACT;
 
     _ASSERTE(!m_DebugSuspendEvent.IsValid());
-    _ASSERTE(!m_EventWait.IsValid());
+    _ASSERTE(!m_coreThreadData.m_EventWait.IsValid());
 
     BOOL fOK = TRUE;
     EX_TRY {
         // create a manual reset event for getting the thread to a safe point
         m_DebugSuspendEvent.CreateManualEvent(FALSE);
-        m_EventWait.CreateManualEvent(TRUE);
+        m_coreThreadData.m_EventWait.CreateManualEvent(TRUE);
     }
     EX_CATCH {
         fOK = FALSE;
@@ -1800,8 +1805,8 @@ BOOL Thread::AllocHandles()
             m_DebugSuspendEvent.CloseEvent();
         }
 
-        if (!m_EventWait.IsValid()) {
-            m_EventWait.CloseEvent();
+        if (!m_coreThreadData.m_EventWait.IsValid()) {
+            m_coreThreadData.m_EventWait.CloseEvent();
         }
     }
     EX_END_CATCH(RethrowTerminalExceptions);
@@ -1902,7 +1907,7 @@ BOOL Thread::HasStarted()
     }
     else
     {
-        LOG((LF_CORDB, LL_INFO10000, "ThreadCreated() not called due to CORDebuggerAttached() being FALSE for thread 0x%x\n", GetThreadId()));
+        LOG((LF_CORDB, LL_INFO10000, "ThreadCreated() not called due to CORDebuggerAttached() being FALSE for thread 0x%x\n", GetPermanentManagedThreadId()));
     }
 
 #endif // DEBUGGING_SUPPORTED
@@ -2607,15 +2612,7 @@ Thread::~Thread()
 
     _ASSERTE(IsDead() || IsUnstarted() || IsAtProcessExit());
 
-    if (m_WaitEventLink.m_Next != NULL && !IsAtProcessExit())
-    {
-        WaitEventLink *walk = &m_WaitEventLink;
-        while (walk->m_Next) {
-            ThreadQueue::RemoveThread(this, (SyncBlock*)((DWORD_PTR)walk->m_Next->m_WaitSB & ~1));
-            StoreEventToEventStore (walk->m_Next->m_EventWait);
-        }
-        m_WaitEventLink.m_Next = NULL;
-    }
+    m_coreThreadData.CleanupWaitEventLink();
 
     if (m_StateNC & TSNC_ExistInThreadStore) {
         BOOL ret;
@@ -2639,10 +2636,7 @@ Thread::~Thread()
     {
         m_DebugSuspendEvent.CloseEvent();
     }
-    if (m_EventWait.IsValid())
-    {
-        m_EventWait.CloseEvent();
-    }
+    m_coreThreadData.CleanupEventWait();
 
     if (m_OSContext)
         delete m_OSContext;
@@ -2681,7 +2675,7 @@ Thread::~Thread()
         DestroyStrongHandle(m_StrongHndToExposedObject);
     }
 
-    g_pThinLockThreadIdDispenser->DisposeId(GetThreadId());
+    g_pThinLockThreadIdDispenser->DisposeId(GetPermanentManagedThreadId());
 
     m_tailCallTls.FreeArgBuffer();
 
@@ -2925,8 +2919,8 @@ void Thread::OnThreadTerminate(BOOL holdingLock)
     // OSThreadId may change for the current thread is the thread is blocked and rescheduled
     // by host.
     Thread *pCurrentThread = GetThreadNULLOk();
-    DWORD CurrentThreadID = pCurrentThread?pCurrentThread->GetThreadId():0;
-    DWORD ThisThreadID = GetThreadId();
+    DWORD CurrentThreadID = pCurrentThread?pCurrentThread->GetPermanentManagedThreadId():0;
+    DWORD ThisThreadID = GetPermanentManagedThreadId();
 
 #ifdef FEATURE_COMINTEROP_APARTMENT_SUPPORT
     // If the currently running thread is the thread that died and it is an STA thread, then we
@@ -3964,30 +3958,6 @@ DWORD Thread::Wait(CLREvent *pEvent, INT32 timeOut, PendingSync *syncInfo)
     return dwResult;
 }
 
-void Thread::Wake(SyncBlock *psb)
-{
-    WRAPPER_NO_CONTRACT;
-
-    CLREvent* hEvent = NULL;
-    WaitEventLink *walk = &m_WaitEventLink;
-    while (walk->m_Next) {
-        if (walk->m_Next->m_WaitSB == psb) {
-            hEvent = walk->m_Next->m_EventWait;
-            // We are guaranteed that only one thread can change walk->m_Next->m_WaitSB
-            // since the thread is helding the syncblock.
-            walk->m_Next->m_WaitSB = (SyncBlock*)((DWORD_PTR)walk->m_Next->m_WaitSB | 1);
-            break;
-        }
-#ifdef _DEBUG
-        else if ((SyncBlock*)((DWORD_PTR)walk->m_Next & ~1) == psb) {
-            _ASSERTE (!"Can not wake a thread on the same SyncBlock more than once");
-        }
-#endif
-    }
-    PREFIX_ASSUME (hEvent != NULL);
-    hEvent->Set();
-}
-
 #define WAIT_INTERRUPT_THREADABORT 0x1
 #define WAIT_INTERRUPT_INTERRUPT 0x2
 #define WAIT_INTERRUPT_OTHEREXCEPTION 0x4
@@ -4054,9 +4024,9 @@ void PendingSync::Restore(BOOL bRemoveFromSB)
     if (pRealWaitEventLink->m_RefCount == 0)
     {
         if (bRemoveFromSB) {
-            ThreadQueue::RemoveThread(pCurThread, pRealWaitEventLink->m_WaitSB);
+            ThreadQueue::RemoveThread(pCurThread->GetActiveThreadBase(), pRealWaitEventLink->m_WaitSB);
         }
-        if (pRealWaitEventLink->m_EventWait != &pCurThread->m_EventWait) {
+        if (pRealWaitEventLink->m_EventWait != &pCurThread->GetActiveThreadBase()->m_EventWait) {
             // Put the event back to the pool.
             StoreEventToEventStore(pRealWaitEventLink->m_EventWait);
         }
@@ -4296,7 +4266,7 @@ OBJECTREF Thread::GetExposedObject()
             ObjectInHandleHolder strongHolder(m_StrongHndToExposedObject);
 
 
-            attempt->SetManagedThreadId(GetThreadId());
+            attempt->SetManagedThreadId(GetPermanentManagedThreadId());
 
 
             // Note that we are NOT calling the constructor on the Thread.  That's

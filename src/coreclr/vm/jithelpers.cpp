@@ -3681,7 +3681,7 @@ HCIMPL3(void, JIT_MonTryEnter_Portable, Object* obj, INT32 timeOut, BYTE* pbLock
         goto FramedLockHelper;
     }
 
-    result = obj->EnterObjMonitorHelper(pCurThread);
+    result = obj->EnterObjMonitorHelper(pCurThread->GetActiveThreadBase());
     if (result == AwareLock::EnterHelperResult_Entered)
     {
         *pbLockTaken = 1;
@@ -3694,7 +3694,7 @@ HCIMPL3(void, JIT_MonTryEnter_Portable, Object* obj, INT32 timeOut, BYTE* pbLock
             return;
         }
 
-        result = obj->EnterObjMonitorHelperSpin(pCurThread);
+        result = obj->EnterObjMonitorHelperSpin(pCurThread->GetActiveThreadBase());
         if (result == AwareLock::EnterHelperResult_Entered)
         {
             *pbLockTaken = 1;
@@ -3771,7 +3771,7 @@ FCIMPL1(void, JIT_MonExit_Portable, Object* obj)
     }
 
     // Handle the simple case without erecting helper frame
-    action = obj->LeaveObjMonitorHelper(GetThread());
+    action = obj->LeaveObjMonitorHelper(GetThread()->GetActiveThreadBase());
     if (action == AwareLock::LeaveHelperAction_None)
     {
         return;
@@ -3801,7 +3801,7 @@ HCIMPL_MONHELPER(JIT_MonExitWorker_Portable, Object* obj)
     }
 
     // Handle the simple case without erecting helper frame
-    action = obj->LeaveObjMonitorHelper(GetThread());
+    action = obj->LeaveObjMonitorHelper(GetThread()->GetActiveThreadBase());
     if (action == AwareLock::LeaveHelperAction_None)
     {
         MONHELPER_STATE(*pbLockTaken = 0;)
@@ -3853,7 +3853,7 @@ HCIMPL_MONHELPER(JIT_MonEnterStatic_Portable, AwareLock *lock)
         goto FramedLockHelper;
     }
 
-    if (lock->TryEnterHelper(pCurThread))
+    if (lock->TryEnterHelper(pCurThread->GetActiveThreadBase()))
     {
 #if defined(_DEBUG) && defined(TRACK_SYNC)
         // The best place to grab this is from the ECall frame
@@ -3921,7 +3921,7 @@ HCIMPL_MONHELPER(JIT_MonExitStatic_Portable, AwareLock *lock)
     MONHELPER_STATE(if (*pbLockTaken == 0) return;)
 
     // Handle the simple case without erecting helper frame
-    AwareLock::LeaveHelperAction action = lock->LeaveHelper(GetThread());
+    AwareLock::LeaveHelperAction action = lock->LeaveHelper(GetThread()->GetActiveThreadBase());
     if (action == AwareLock::LeaveHelperAction_None)
     {
         MONHELPER_STATE(*pbLockTaken = 0;)
@@ -4783,7 +4783,7 @@ FCIMPL0(INT32, JIT_GetCurrentManagedThreadId)
     FC_GC_POLL_NOT_NEEDED();
 
     Thread * pThread = GetThread();
-    return pThread->GetThreadId();
+    return pThread->GetActiveManagedThreadId();
 }
 FCIMPLEND
 

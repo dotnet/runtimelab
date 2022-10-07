@@ -183,7 +183,7 @@ ClrDataTask::GetUniqueID(
 
     EX_TRY
     {
-        *id = m_thread->GetThreadId();
+        *id = m_thread->GetPermanentManagedThreadId();
         status = S_OK;
     }
     EX_CATCH

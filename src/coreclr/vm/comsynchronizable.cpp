@@ -581,7 +581,7 @@ FCIMPL1(void, ThreadNative::Initialize, ThreadBaseObject* pThisUNSAFE)
     }
 
     pThis->SetInternal(unstarted);
-    pThis->SetManagedThreadId(unstarted->GetThreadId());
+    pThis->SetManagedThreadId(unstarted->GetPermanentManagedThreadId());
     unstarted->SetExposedObject(pThis);
 
     // Initialize the thread priority to normal.

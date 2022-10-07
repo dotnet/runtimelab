@@ -804,12 +804,13 @@ public:
 
 class ThreadBase
 {
-protected:
+public:
+    ThreadBase();
+
     // Unique thread id used for thin locks - kept as small as possible, as we have limited space
     // in the object header to store it.
     DWORD                m_ThreadId;
 
-public:
     DWORD       GetThreadId()
     {
         LIMITED_METHOD_DAC_CONTRACT;
@@ -817,7 +818,47 @@ public:
         return m_ThreadId;
     }
 
-    Thread* GetThreadObj();
+    Thread* GetThreadObj() { return (Thread*)this; }
+
+    // For Object::Wait, Notify and NotifyAll, we use an Event inside the
+    // thread and we queue the threads onto the SyncBlock of the object they
+    // are waiting for.
+    CLREvent        m_EventWait;
+    WaitEventLink   m_WaitEventLink;
+    WaitEventLink* WaitEventLinkForSyncBlock (SyncBlock *psb)
+    {
+        LIMITED_METHOD_CONTRACT;
+        WaitEventLink *walk = &m_WaitEventLink;
+        while (walk->m_Next) {
+            _ASSERTE (walk->m_Next->m_Thread == this);
+            if ((SyncBlock*)(((DWORD_PTR)walk->m_Next->m_WaitSB) & ~1)== psb) {
+                break;
+            }
+            walk = walk->m_Next;
+        }
+        return walk;
+    }
+
+    void CleanupWaitEventLink()
+    {
+        if (m_WaitEventLink.m_Next != NULL && !IsAtProcessExit())
+        {
+            WaitEventLink *walk = &m_WaitEventLink;
+            while (walk->m_Next) {
+                ThreadQueue::RemoveThread(this, (SyncBlock*)((DWORD_PTR)walk->m_Next->m_WaitSB & ~1));
+                StoreEventToEventStore (walk->m_Next->m_EventWait);
+            }
+            m_WaitEventLink.m_Next = NULL;
+        }
+    }
+
+    void CleanupEventWait()
+    {
+        if (m_EventWait.IsValid())
+        {
+            m_EventWait.CloseEvent();
+        }
+    }
 };
 
 class GreenThread : public ThreadBase
@@ -830,7 +871,7 @@ class GreenThread : public ThreadBase
 //
 // A code:Thread contains all the per-thread information needed by the runtime.  We can get this
 // structure through the OS TLS slot see code:#RuntimeThreadLocals for more information.
-class Thread : public ThreadBase
+class Thread
 {
     friend struct ThreadQueue;  // used to enqueue & dequeue threads onto SyncBlocks
     friend class  ThreadStore;
@@ -902,7 +943,11 @@ public:
 
 public:
 
-    ThreadBase* GetActiveThreadBase();
+    DWORD dummyDword;
+
+    ThreadBase* GetActiveThreadBase() { return &m_coreThreadData; }
+    DWORD GetPermanentManagedThreadId() { return m_coreThreadData.GetThreadId(); }
+    DWORD GetActiveManagedThreadId() { return GetActiveThreadBase()->GetThreadId(); }
 
     // Allocator used during marshaling for temporary buffers, much faster than
     // heap allocation.
@@ -1434,6 +1479,9 @@ public:
     // we fire the AllocationTick event. It's only for tooling purpose.
     TypeHandle m_thAllocContextObj;
 
+    // Place after the alloc context to avoid having to move around the async constants a lot
+    ThreadBase m_coreThreadData;
+
 #ifndef TARGET_UNIX
 private:
     _NT_TIB *m_pTEB;
@@ -1557,7 +1605,7 @@ public:
         // Every thread has its own generator for hash codes so that we won't get into a situation
         // where two threads consistently give out the same hash codes.
         // Choice of multiplier guarantees period of 2**32 - see Knuth Vol 2 p16 (3.2.1.2 Theorem A).
-        DWORD multiplier = GetThreadId()*4 + 5;
+        DWORD multiplier = GetPermanentManagedThreadId()*4 + 5;
         m_dwHashCodeSeed = m_dwHashCodeSeed*multiplier + 1;
         return m_dwHashCodeSeed;
     }
@@ -3190,7 +3238,6 @@ private:
 
     // Support for Wait/Notify
     BOOL        Block(INT32 timeOut, PendingSync *syncInfo);
-    void        Wake(SyncBlock *psb);
     DWORD       Wait(HANDLE *objs, int cntObjs, INT32 timeOut, PendingSync *syncInfo);
     DWORD       Wait(CLREvent* pEvent, INT32 timeOut, PendingSync *syncInfo);
 
@@ -3228,25 +3275,6 @@ private:
 private:
     // For suspends:
     CLREvent        m_DebugSuspendEvent;
-
-    // For Object::Wait, Notify and NotifyAll, we use an Event inside the
-    // thread and we queue the threads onto the SyncBlock of the object they
-    // are waiting for.
-    CLREvent        m_EventWait;
-    WaitEventLink   m_WaitEventLink;
-    WaitEventLink* WaitEventLinkForSyncBlock (SyncBlock *psb)
-    {
-        LIMITED_METHOD_CONTRACT;
-        WaitEventLink *walk = &m_WaitEventLink;
-        while (walk->m_Next) {
-            _ASSERTE (walk->m_Next->m_Thread == this);
-            if ((SyncBlock*)(((DWORD_PTR)walk->m_Next->m_WaitSB) & ~1)== psb) {
-                break;
-            }
-            walk = walk->m_Next;
-        }
-        return walk;
-    }
 
     // Access to thread handle and ThreadId.
     HANDLE      GetThreadHandle()

@@ -1668,7 +1668,7 @@ typedef DPTR(class ObjHeader) PTR_ObjHeader;
 
 #ifdef DACCESS_COMPILE
 // A visitor function used to enumerate threads in the ThreadQueue below
-typedef void (*FP_TQ_THREAD_ENUMERATION_CALLBACK)(PTR_Thread pThread, VOID* pUserData);
+typedef void (*FP_TQ_THREAD_ENUMERATION_CALLBACK)(PTR_ThreadBase pThread, VOID* pUserData);
 #endif
 
 // A SyncBlock contains an m_Link field that is used for two purposes.  One
