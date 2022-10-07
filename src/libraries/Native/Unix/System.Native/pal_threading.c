@@ -45,7 +45,7 @@ static void SetIsLocked(LowLevelMonitor* monitor, bool isLocked)
 #endif
 }
 
-LowLevelMonitor* SystemNative_LowLevelMonitor_Create(void)
+LowLevelMonitor* SystemNative_LowLevelMonitor_Create()
 {
     LowLevelMonitor* monitor = (LowLevelMonitor *)malloc(sizeof(LowLevelMonitor));
     if (monitor == NULL)

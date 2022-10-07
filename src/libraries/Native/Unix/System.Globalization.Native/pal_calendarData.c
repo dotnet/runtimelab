@@ -549,7 +549,7 @@ GetLatestJapaneseEra
 
 Gets the latest era in the Japanese calendar.
 */
-int32_t GlobalizationNative_GetLatestJapaneseEra(void)
+int32_t GlobalizationNative_GetLatestJapaneseEra()
 {
     UErrorCode err = U_ZERO_ERROR;
     UCalendar* pCal = ucal_open(NULL, 0, JAPANESE_LOCALE_AND_CALENDAR, UCAL_TRADITIONAL, &err);
