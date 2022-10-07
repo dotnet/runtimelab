@@ -1620,7 +1620,13 @@ void Llvm::buildReturn(GenTree* node)
         case TYP_UINT:
         case TYP_LONG:
         case TYP_ULONG:
-            _builder.CreateRet(castIfNecessary(getGenTreeValue(node->gtGetOp1()), getLlvmTypeForCorInfoType(_sigInfo.retType, _sigInfo.retTypeClass)));
+            if (node->gtGetOp1()->TypeIs(TYP_FLOAT))
+            {
+                // TODO-LLVM: remove this case by lowering see
+                // https://github.com/dotnet/runtimelab/pull/2007#issuecomment-1264715441
+                failFunctionCompilation();
+            }
+            _builder.CreateRet(consumeValue(node->gtGetOp1(), getLlvmTypeForCorInfoType(_sigInfo.retType, _sigInfo.retTypeClass)));
             return;
         case TYP_VOID:
             _builder.CreateRetVoid();
@@ -1913,24 +1919,6 @@ void Llvm::buildLocalVarAddr(GenTreeLclVarCommon* lclAddr)
     {
         mapGenTreeToValue(lclAddr, m_allocas[lclNum]);
     }
-}
-
-// LLVM operations like ICmpNE return an i1, but in the IR it is expected to be an Int (i32).
-/* E.g.
-*                                                 /--*  t10    int
-                                                  +--*  t11    int
-N009 ( 30, 14) [000012] ---XG-------        t12 = *  NE        int
-                                                  /--*  t12    int
-N011 ( 34, 17) [000016] DA-XG-------              *  STORE_LCL_VAR int    V03 loc1
-*/
-Value* Llvm::zextIntIfNecessary(Value* intValue)
-{
-    llvm::TypeSize intSize = intValue->getType()->getPrimitiveSizeInBits();
-    if (intSize < TARGET_POINTER_SIZE * 8)
-    {
-        return _builder.CreateIntCast(intValue, Type::getInt32Ty(_llvmContext), false);
-    }
-    return intValue;
 }
 
 bool Llvm::isLlvmFrameLocal(LclVarDsc* varDsc)
