@@ -10083,8 +10083,12 @@ public:
     // Returns true if the method being compiled returns a value
     bool compMethodHasRetVal()
     {
+#if defined(TARGET_WASM)
+        return info.compRetType != TYP_VOID;
+#else
         return compMethodReturnsNativeScalarType() || compMethodReturnsRetBufAddr() ||
                compMethodReturnsMultiRegRetType();
+#endif // TARGET_WASM
     }
 
     // Returns true if the method requires a PInvoke prolog and epilog

@@ -1375,9 +1375,11 @@ void SsaBuilder::AddPhiArgsToSuccessors(BasicBlock* block)
                     // but still need to update bbMemorySsaPhiFunc to be in sync between GcHeap and ByrefExposed.
                     assert(memoryKind > ByrefExposed);
                     assert(block->bbMemorySsaNumOut[memoryKind] == block->bbMemorySsaNumOut[ByrefExposed]);
+#if !defined(TARGET_WASM)
                     assert((succ->bbMemorySsaPhiFunc[ByrefExposed] == succMemoryPhi) ||
                            (succ->bbMemorySsaPhiFunc[ByrefExposed]->m_nextArg ==
                             (succMemoryPhi == BasicBlock::EmptyMemoryPhiDef ? nullptr : succMemoryPhi)));
+#endif // TARGET_WASM
                     succMemoryPhi = succ->bbMemorySsaPhiFunc[ByrefExposed];
 
                     continue;

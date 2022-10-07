@@ -2304,8 +2304,9 @@ private:
             unsigned returnLocalNum   = comp->lvaGrabTemp(true DEBUGARG("Single return block return value"));
             comp->genReturnLocal      = returnLocalNum;
             LclVarDsc& returnLocalDsc = comp->lvaTable[returnLocalNum];
-
+#ifndef TARGET_WASM
             if (comp->compMethodReturnsNativeScalarType())
+#endif // !TARGET_WASM
             {
                 returnLocalDsc.lvType = genActualType(comp->info.compRetType);
                 if (varTypeIsStruct(returnLocalDsc.lvType))
@@ -2313,6 +2314,7 @@ private:
                     comp->lvaSetStruct(returnLocalNum, comp->info.compMethodInfo->args.retTypeClass, false);
                 }
             }
+#ifndef TARGET_WASM
             else if (comp->compMethodReturnsRetBufAddr())
             {
                 returnLocalDsc.lvType = TYP_BYREF;
@@ -2327,6 +2329,7 @@ private:
             {
                 assert(!"unreached");
             }
+#endif // !TARGET_WASM
 
             if (varTypeIsFloating(returnLocalDsc.lvType))
             {

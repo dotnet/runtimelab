@@ -150,6 +150,7 @@ private:
     void buildCnsDouble(GenTreeDblCon* node);
     void buildCnsInt(GenTree* node);
     void buildCnsLng(GenTree* node);
+    void buildFieldList(GenTreeFieldList* fieldList);
     void buildHelperFuncCall(GenTreeCall* call);
     llvm::FunctionType* buildHelperLlvmFunctionType(GenTreeCall* call, bool withShadowStack);
     void buildInd(GenTree* node, Value* ptr);
@@ -206,6 +207,7 @@ private:
     void buildStoreObj(GenTreeObj* indirOp);
     Value* localVar(GenTreeLclVar* lclVar);
     void storeObjAtAddress(Value* baseAddress, Value* data, StructDesc* structDesc);
+    void buildStoreBlk(GenTreeBlk* blockOp);
 
     GenTreeCall::Use* lowerCallReturn(GenTreeCall* callNode, GenTreeCall::Use* lastArg);
     void lowerCallToShadowStack(GenTreeCall* callNode);
@@ -238,7 +240,7 @@ public:
     static void llvmShutdown();
     static bool needsReturnStackSlot(Compiler* compiler, GenTreeCall* callee);
 
-    void PlaceAndConvertShadowStackLocals();
+    void Lower();
     void Compile();
 };
 
