@@ -463,7 +463,8 @@ BOOL Thread::SetThreadPriority(
     if (fRet)
     {
         GCX_COOP();
-        THREADBASEREF pObject = (THREADBASEREF)ObjectFromHandle(m_ExposedObject);
+        _ASSERTE(GetActiveThreadBase() == &m_coreThreadData);
+        THREADBASEREF pObject = (THREADBASEREF)ObjectFromHandle(m_coreThreadData.m_ExposedObject);
         if (pObject != NULL)
         {
             // TODO: managed ThreadPriority only supports up to 4.
@@ -1473,9 +1474,9 @@ Thread::Thread()
     // It can't be a LongWeakHandle because we zero stuff out of the exposed
     // object as it is finalized.  At that point, calls to GetCurrentThread()
     // had better get a new one,!
-    m_ExposedObject = CreateGlobalShortWeakHandle(NULL);
+    m_coreThreadData.m_ExposedObject = CreateGlobalShortWeakHandle(NULL);
 
-    GlobalShortWeakHandleHolder exposedObjectHolder(m_ExposedObject);
+    GlobalShortWeakHandleHolder exposedObjectHolder(m_coreThreadData.m_ExposedObject);
 
     m_StrongHndToExposedObject = CreateGlobalStrongHandle(NULL);
     GlobalStrongHandleHolder strongHndToExposedObjectHolder(m_StrongHndToExposedObject);
@@ -2397,7 +2398,7 @@ int Thread::IncExternalCount()
     // If we have an exposed object and the refcount is greater than one
     // we must make sure to keep a strong handle to the exposed object
     // so that we keep it alive even if nobody has a reference to it.
-    if (pCurThread && ((*((void**)m_ExposedObject)) != NULL))
+    if (pCurThread && ((*((void**)m_coreThreadData.m_ExposedObject)) != NULL))
     {
         // The exposed object exists and needs a strong handle so check
         // to see if it has one.
@@ -2406,7 +2407,7 @@ int Thread::IncExternalCount()
         {
             GCX_COOP();
             // Store the object in the strong handle.
-            StoreObjectInHandle(m_StrongHndToExposedObject, ObjectFromHandle(m_ExposedObject));
+            StoreObjectInHandle(m_StrongHndToExposedObject, ObjectFromHandle(m_coreThreadData.m_ExposedObject));
         }
     }
 
@@ -2671,7 +2672,7 @@ Thread::~Thread()
         // Destroy any handles that we're using to hold onto exception objects
         SafeSetThrowables(NULL);
 
-        DestroyShortWeakHandle(m_ExposedObject);
+        DestroyShortWeakHandle(m_coreThreadData.m_ExposedObject);
         DestroyStrongHandle(m_StrongHndToExposedObject);
     }
 
@@ -2990,7 +2991,7 @@ void Thread::OnThreadTerminate(BOOL holdingLock)
 
         _ASSERTE(IsAtProcessExit());
         ClearContext();
-        if (m_ExposedObject != NULL)
+        if (m_coreThreadData.m_ExposedObject != NULL)
             DecExternalCount(holdingLock);             // may destruct now
     }
     else
@@ -4232,8 +4233,10 @@ OBJECTREF Thread::GetExposedObject()
 
     _ASSERTE(pCurThread->PreemptiveGCDisabled());
 
-    if (ObjectFromHandle(m_ExposedObject) == NULL)
+    if (ObjectFromHandle(GetActiveThreadBase()->m_ExposedObject) == NULL)
     {
+        _ASSERTE(GetActiveThreadBase() == &m_coreThreadData);
+
         // Allocate the exposed thread object.
         THREADBASEREF attempt = (THREADBASEREF) AllocateObject(g_pThreadClass);
         GCPROTECT_BEGIN(attempt);
@@ -4248,12 +4251,12 @@ OBJECTREF Thread::GetExposedObject()
         ThreadStoreLockHolder tsHolder(fNeedThreadStore);
 
         // Check to see if another thread has not already created the exposed object.
-        if (ObjectFromHandle(m_ExposedObject) == NULL)
+        if (ObjectFromHandle(m_coreThreadData.m_ExposedObject) == NULL)
         {
             // Keep a weak reference to the exposed object.
-            StoreObjectInHandle(m_ExposedObject, (OBJECTREF) attempt);
+            StoreObjectInHandle(m_coreThreadData.m_ExposedObject, (OBJECTREF) attempt);
 
-            ObjectInHandleHolder exposedHolder(m_ExposedObject);
+            ObjectInHandleHolder exposedHolder(m_coreThreadData.m_ExposedObject);
 
             // Increase the external ref count. We can't call IncExternalCount because we
             // already hold the thread lock and IncExternalCount won't be able to take it.
@@ -4286,7 +4289,7 @@ OBJECTREF Thread::GetExposedObject()
 
         GCPROTECT_END();
     }
-    return ObjectFromHandle(m_ExposedObject);
+    return ObjectFromHandle(GetActiveThreadBase()->m_ExposedObject);
 }
 
 
@@ -4300,14 +4303,16 @@ void Thread::SetExposedObject(OBJECTREF exposed)
     }
     CONTRACTL_END;
 
+    _ASSERTE(GetActiveThreadBase() == &m_coreThreadData);
+
     if (exposed != NULL)
     {
         _ASSERTE (GetThreadNULLOk() != this);
         _ASSERTE(IsUnstarted());
-        _ASSERTE(ObjectFromHandle(m_ExposedObject) == NULL);
+        _ASSERTE(ObjectFromHandle(m_coreThreadData.m_ExposedObject) == NULL);
         // The exposed object keeps us alive until it is GC'ed.  This doesn't mean the
         // physical thread continues to run, of course.
-        StoreObjectInHandle(m_ExposedObject, exposed);
+        StoreObjectInHandle(m_coreThreadData.m_ExposedObject, exposed);
         // This makes sure the contexts on the backing thread
         // and the managed thread start off in sync with each other.
         // BEWARE: the IncExternalCount call below may cause GC to happen.
@@ -4322,7 +4327,7 @@ void Thread::SetExposedObject(OBJECTREF exposed)
     {
         // Simply set both of the handles to NULL. The GC of the old exposed thread
         // object will take care of decrementing the external ref count.
-        StoreObjectInHandle(m_ExposedObject, NULL);
+        StoreObjectInHandle(m_coreThreadData.m_ExposedObject, NULL);
         StoreObjectInHandle(m_StrongHndToExposedObject, NULL);
     }
 }
@@ -7848,7 +7853,9 @@ INT32 Thread::ResetManagedThreadObjectInCoopMode(INT32 nPriority)
     }
     CONTRACTL_END;
 
-    THREADBASEREF pObject = (THREADBASEREF)ObjectFromHandle(m_ExposedObject);
+    _ASSERTE(GetActiveThreadBase() == &m_coreThreadData);
+
+    THREADBASEREF pObject = (THREADBASEREF)ObjectFromHandle(m_coreThreadData.m_ExposedObject);
     if (pObject != NULL)
     {
         pObject->ResetName();
@@ -7871,7 +7878,8 @@ BOOL Thread::IsRealThreadPoolResetNeeded()
     if(!IsBackground())
         return TRUE;
 
-    THREADBASEREF pObject = (THREADBASEREF)ObjectFromHandle(m_ExposedObject);
+    _ASSERT(GetActiveThreadBase() == &m_coreThreadData);
+    THREADBASEREF pObject = (THREADBASEREF)ObjectFromHandle(m_coreThreadData.m_ExposedObject);
 
     if(pObject != NULL)
     {

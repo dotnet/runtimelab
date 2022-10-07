@@ -859,6 +859,9 @@ public:
             m_EventWait.CloseEvent();
         }
     }
+
+    // Exposed object for Thread object
+    OBJECTHANDLE    m_ExposedObject;
 };
 
 class GreenThread : public ThreadBase
@@ -2202,7 +2205,7 @@ public:
     OBJECTHANDLE GetExposedObjectHandleForDebugger()
     {
         LIMITED_METHOD_CONTRACT;
-        return m_ExposedObject;
+        return m_coreThreadData.m_ExposedObject;
     }
 
     // Query whether the exposed object exists
@@ -2215,7 +2218,7 @@ public:
             MODE_COOPERATIVE;
         }
         CONTRACTL_END;
-        return (ObjectFromHandle(m_ExposedObject) != NULL) ;
+        return (ObjectFromHandle(m_coreThreadData.m_ExposedObject) != NULL) ;
     }
 
     void GetSynchronizationContext(OBJECTREF *pSyncContextObj)
@@ -3323,7 +3326,6 @@ private:
 
     BOOL CreateNewOSThread(SIZE_T stackSize, LPTHREAD_START_ROUTINE start, void *args);
 
-    OBJECTHANDLE    m_ExposedObject;
     OBJECTHANDLE    m_StrongHndToExposedObject;
 
     DWORD           m_Priority;     // initialized to INVALID_THREAD_PRIORITY, set to actual priority when a

@@ -526,7 +526,7 @@ NOINLINE static Object* GetCurrentThreadHelper()
 FCIMPL0(Object*, ThreadNative::GetCurrentThread)
 {
     FCALL_CONTRACT;
-    OBJECTHANDLE ExposedObject = GetThread()->m_ExposedObject;
+    OBJECTHANDLE ExposedObject = GetThread()->GetActiveThreadBase()->m_ExposedObject;
     _ASSERTE(ExposedObject != 0); //Thread's constructor always initializes its GCHandle
     Object* result = *((Object**) ExposedObject);
     if (result != 0)
