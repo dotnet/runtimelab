@@ -1,6 +1,7 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Buffers;
 using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -798,6 +799,12 @@ namespace System.Net.Sockets
         // Establishes a connection to a remote system.
         public void Connect(EndPoint remoteEP)
         {
+            if (Thread.IsGreenThread)
+            {
+                GreenThreadWait(ConnectAsync(remoteEP, default));
+                return;
+            }
+
             ThrowIfDisposed();
             ArgumentNullException.ThrowIfNull(remoteEP);
 
@@ -845,6 +852,12 @@ namespace System.Net.Sockets
 
         public void Connect(IPAddress address, int port)
         {
+            if (Thread.IsGreenThread)
+            {
+                GreenThreadWait(ConnectAsync(address, port, default));
+                return;
+            }
+
             ThrowIfDisposed();
             ArgumentNullException.ThrowIfNull(address);
 
@@ -871,6 +884,12 @@ namespace System.Net.Sockets
 
         public void Connect(string host, int port)
         {
+            if (Thread.IsGreenThread)
+            {
+                GreenThreadWait(ConnectAsync(host, port, default));
+                return;
+            }
+
             ThrowIfDisposed();
             ArgumentNullException.ThrowIfNull(host);
 
@@ -900,6 +919,12 @@ namespace System.Net.Sockets
 
         public void Connect(IPAddress[] addresses, int port)
         {
+            if (Thread.IsGreenThread)
+            {
+                GreenThreadWait(ConnectAsync(addresses, port, default));
+                return;
+            }
+
             ThrowIfDisposed();
             ArgumentNullException.ThrowIfNull(addresses);
 
@@ -1001,6 +1026,11 @@ namespace System.Net.Sockets
         // Creates a new Sockets.Socket instance to handle an incoming connection.
         public Socket Accept()
         {
+            if (Thread.IsGreenThread)
+            {
+                return GreenThreadWait(AcceptAsync(default(CancellationToken)));
+            }
+
             ThrowIfDisposed();
 
             if (_rightEndPoint == null)
@@ -1100,6 +1130,20 @@ namespace System.Net.Sockets
 
         public int Send(IList<ArraySegment<byte>> buffers, SocketFlags socketFlags, out SocketError errorCode)
         {
+            if (Thread.IsGreenThread)
+            {
+                try
+                {
+                    errorCode = SocketError.Success;
+                    return GreenThreadWait(SendAsync(buffers, socketFlags));
+                }
+                catch (SocketException e)
+                {
+                    errorCode = e.SocketErrorCode;
+                    return 0;
+                }
+            }
+
             ThrowIfDisposed();
             ArgumentNullException.ThrowIfNull(buffers);
 
@@ -1147,6 +1191,20 @@ namespace System.Net.Sockets
 
         public int Send(byte[] buffer, int offset, int size, SocketFlags socketFlags, out SocketError errorCode)
         {
+            if (Thread.IsGreenThread)
+            {
+                try
+                {
+                    errorCode = SocketError.Success;
+                    return GreenThreadWait(SendAsync(buffer.AsMemory(offset, size), socketFlags));
+                }
+                catch (SocketException e)
+                {
+                    errorCode = e.SocketErrorCode;
+                    return 0;
+                }
+            }
+
             ThrowIfDisposed();
 
             ValidateBufferArguments(buffer, offset, size);
@@ -1194,6 +1252,26 @@ namespace System.Net.Sockets
 
         public int Send(ReadOnlySpan<byte> buffer, SocketFlags socketFlags, out SocketError errorCode)
         {
+            if (Thread.IsGreenThread)
+            {
+                byte[] tmp = ArrayPool<byte>.Shared.Rent(buffer.Length);
+                try
+                {
+                    buffer.CopyTo(tmp);
+                    errorCode = SocketError.Success;
+                    return GreenThreadWait(SendAsync(tmp.AsMemory(0, buffer.Length), socketFlags));
+                }
+                catch (SocketException e)
+                {
+                    errorCode = e.SocketErrorCode;
+                    return 0;
+                }
+                finally
+                {
+                    ArrayPool<byte>.Shared.Return(tmp);
+                }
+            }
+
             ThrowIfDisposed();
             ValidateBlockingMode();
 
@@ -1271,6 +1349,16 @@ namespace System.Net.Sockets
         /// <exception cref="SocketException">An error occurred when attempting to access the socket.</exception>
         public void SendFile(string? fileName, ReadOnlySpan<byte> preBuffer, ReadOnlySpan<byte> postBuffer, TransmitFileOptions flags)
         {
+            if (Thread.IsGreenThread)
+            {
+                byte[] tmp = ArrayPool<byte>.Shared.Rent(preBuffer.Length + postBuffer.Length);
+                preBuffer.CopyTo(tmp);
+                postBuffer.CopyTo(tmp.AsSpan(preBuffer.Length));
+                GreenThreadWait(SendFileAsync(fileName, tmp.AsMemory(0, preBuffer.Length), tmp.AsMemory(preBuffer.Length, postBuffer.Length), flags));
+                ArrayPool<byte>.Shared.Return(tmp);
+                return;
+            }
+
             ThrowIfDisposed();
 
             if (!Connected)
@@ -1288,6 +1376,11 @@ namespace System.Net.Sockets
         // Sends data to a specific end point, starting at the indicated location in the buffer.
         public int SendTo(byte[] buffer, int offset, int size, SocketFlags socketFlags, EndPoint remoteEP)
         {
+            if (Thread.IsGreenThread)
+            {
+                return GreenThreadWait(SendToAsync(buffer.AsMemory(offset, size), socketFlags, remoteEP));
+            }
+
             ThrowIfDisposed();
 
             ValidateBufferArguments(buffer, offset, size);
@@ -1363,6 +1456,20 @@ namespace System.Net.Sockets
         /// <exception cref="ObjectDisposedException">The <see cref="Socket"/> has been closed.</exception>
         public int SendTo(ReadOnlySpan<byte> buffer, SocketFlags socketFlags, EndPoint remoteEP)
         {
+            if (Thread.IsGreenThread)
+            {
+                byte[] tmp = ArrayPool<byte>.Shared.Rent(buffer.Length);
+                try
+                {
+                    buffer.CopyTo(tmp);
+                    return GreenThreadWait(SendToAsync(tmp.AsMemory(0, buffer.Length), socketFlags, remoteEP));
+                }
+                finally
+                {
+                    ArrayPool<byte>.Shared.Return(tmp);
+                }
+            }
+
             ThrowIfDisposed();
             ArgumentNullException.ThrowIfNull(remoteEP);
 
@@ -1422,6 +1529,20 @@ namespace System.Net.Sockets
 
         public int Receive(byte[] buffer, int offset, int size, SocketFlags socketFlags, out SocketError errorCode)
         {
+            if (Thread.IsGreenThread)
+            {
+                try
+                {
+                    errorCode = SocketError.Success;
+                    return GreenThreadWait(ReceiveAsync(buffer.AsMemory(offset, size), socketFlags));
+                }
+                catch (SocketException e)
+                {
+                    errorCode = e.SocketErrorCode;
+                    return 0;
+                }
+            }
+
             ThrowIfDisposed();
             ValidateBufferArguments(buffer, offset, size);
             ValidateBlockingMode();
@@ -1462,6 +1583,27 @@ namespace System.Net.Sockets
 
         public int Receive(Span<byte> buffer, SocketFlags socketFlags, out SocketError errorCode)
         {
+            if (Thread.IsGreenThread)
+            {
+                byte[] tmp = ArrayPool<byte>.Shared.Rent(buffer.Length);
+                try
+                {
+                    errorCode = SocketError.Success;
+                    int bytesRead = GreenThreadWait(ReceiveAsync(tmp.AsMemory(0, buffer.Length), socketFlags));
+                    tmp.AsSpan(0, bytesRead).CopyTo(buffer);
+                    return bytesRead;
+                }
+                catch (SocketException e)
+                {
+                    errorCode = e.SocketErrorCode;
+                    return 0;
+                }
+                finally
+                {
+                    ArrayPool<byte>.Shared.Return(tmp);
+                }
+            }
+
             ThrowIfDisposed();
             ValidateBlockingMode();
 
@@ -1503,6 +1645,20 @@ namespace System.Net.Sockets
 
         public int Receive(IList<ArraySegment<byte>> buffers, SocketFlags socketFlags, out SocketError errorCode)
         {
+            if (Thread.IsGreenThread)
+            {
+                try
+                {
+                    errorCode = SocketError.Success;
+                    return GreenThreadWait(ReceiveAsync(buffers, socketFlags));
+                }
+                catch (SocketException e)
+                {
+                    errorCode = e.SocketErrorCode;
+                    return 0;
+                }
+            }
+
             ThrowIfDisposed();
             ArgumentNullException.ThrowIfNull(buffers);
 
@@ -1540,6 +1696,15 @@ namespace System.Net.Sockets
         // the end point.
         public int ReceiveMessageFrom(byte[] buffer, int offset, int size, ref SocketFlags socketFlags, ref EndPoint remoteEP, out IPPacketInformation ipPacketInformation)
         {
+            if (Thread.IsGreenThread)
+            {
+                SocketReceiveMessageFromResult result = GreenThreadWait(ReceiveMessageFromAsync(buffer.AsMemory(offset, size), socketFlags, remoteEP));
+                remoteEP = result.RemoteEndPoint;
+                socketFlags = result.SocketFlags;
+                ipPacketInformation = result.PacketInformation;
+                return result.ReceivedBytes;
+            }
+
             ThrowIfDisposed();
             ValidateBufferArguments(buffer, offset, size);
             ValidateReceiveFromEndpointAndState(remoteEP, nameof(remoteEP));
@@ -1620,6 +1785,18 @@ namespace System.Net.Sockets
         /// <para>You must call the Bind method before performing this operation.</para></exception>
         public int ReceiveMessageFrom(Span<byte> buffer, ref SocketFlags socketFlags, ref EndPoint remoteEP, out IPPacketInformation ipPacketInformation)
         {
+            if (Thread.IsGreenThread)
+            {
+                byte[] tmp = ArrayPool<byte>.Shared.Rent(buffer.Length);
+                SocketReceiveMessageFromResult result = GreenThreadWait(ReceiveMessageFromAsync(tmp.AsMemory(0, buffer.Length), socketFlags, remoteEP));
+                tmp.AsSpan(0, result.ReceivedBytes).CopyTo(buffer);
+                remoteEP = result.RemoteEndPoint;
+                socketFlags = result.SocketFlags;
+                ipPacketInformation = result.PacketInformation;
+                ArrayPool<byte>.Shared.Return(tmp);
+                return result.ReceivedBytes;
+            }
+
             ThrowIfDisposed();
             ArgumentNullException.ThrowIfNull(remoteEP);
 
@@ -1683,6 +1860,13 @@ namespace System.Net.Sockets
         // the end point.
         public int ReceiveFrom(byte[] buffer, int offset, int size, SocketFlags socketFlags, ref EndPoint remoteEP)
         {
+            if (Thread.IsGreenThread)
+            {
+                SocketReceiveFromResult result = GreenThreadWait(ReceiveFromAsync(buffer.AsMemory(offset, size), socketFlags, remoteEP));
+                remoteEP = result.RemoteEndPoint;
+                return result.ReceivedBytes;
+            }
+
             ThrowIfDisposed();
             ValidateBufferArguments(buffer, offset, size);
             ValidateReceiveFromEndpointAndState(remoteEP, nameof(remoteEP));
@@ -1786,6 +1970,16 @@ namespace System.Net.Sockets
         /// <exception cref="ObjectDisposedException">The <see cref="Socket"/> has been closed.</exception>
         public int ReceiveFrom(Span<byte> buffer, SocketFlags socketFlags, ref EndPoint remoteEP)
         {
+            if (Thread.IsGreenThread)
+            {
+                byte[] tmp = ArrayPool<byte>.Shared.Rent(buffer.Length);
+                SocketReceiveFromResult result = GreenThreadWait(ReceiveFromAsync(tmp.AsMemory(0, buffer.Length), socketFlags, remoteEP));
+                tmp.AsSpan(0, result.ReceivedBytes).CopyTo(buffer);
+                remoteEP = result.RemoteEndPoint;
+                ArrayPool<byte>.Shared.Return(tmp);
+                return result.ReceivedBytes;
+            }
+
             ThrowIfDisposed();
             ValidateReceiveFromEndpointAndState(remoteEP, nameof(remoteEP));
 
@@ -2265,6 +2459,12 @@ namespace System.Net.Sockets
 
         public void Disconnect(bool reuseSocket)
         {
+            if (Thread.IsGreenThread)
+            {
+                GreenThreadWait(DisconnectAsync(reuseSocket));
+                return;
+            }
+
             ThrowIfDisposed();
 
             SocketError errorCode;
@@ -3808,5 +4008,27 @@ namespace System.Net.Sockets
                 }
             }
         }
+
+        private static void GreenThreadWait(ValueTask task)
+        {
+            if (task.IsCompleted)
+            {
+                task.GetAwaiter().GetResult();
+            }
+            else
+            {
+                task.AsTask().GetAwaiter().GetResult();
+            }
+        }
+
+        private static TResult GreenThreadWait<TResult>(ValueTask<TResult> task) =>
+            task.IsCompleted ?
+                task.GetAwaiter().GetResult() :
+                task.AsTask().GetAwaiter().GetResult();
+
+        private static void GreenThreadWait(Task task) => task.GetAwaiter().GetResult();
+
+        private static TResult GreenThreadWait<TResult>(Task<TResult> task) => task.GetAwaiter().GetResult();
+
     }
 }
