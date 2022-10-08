@@ -1374,6 +1374,11 @@ public:
         return !!m_isGreenThread;
     }
 
+    void SetIsGreenThread()
+    {
+        m_isGreenThread = 1;
+    }
+
     INT32 GetManagedThreadId()
     {
         LIMITED_METHOD_CONTRACT;

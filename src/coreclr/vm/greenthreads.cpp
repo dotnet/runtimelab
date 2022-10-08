@@ -156,7 +156,7 @@ void FreeGreenThreadStackList(GreenThreadStackList* pStackList)
     }
 }
 
-SuspendedGreenThread* ProduceSuspendedGreenThreadStruct()
+SuspendedGreenThread* ProduceSuspendedGreenThreadStruct(GreenThread* pGreenThread)
 {
     if (t_greenThread.inGreenThread)
     {
@@ -165,6 +165,7 @@ SuspendedGreenThread* ProduceSuspendedGreenThreadStruct()
         pNewSuspendedThread->currentStackPointer = t_greenThread.greenThreadStackCurrent;
         pNewSuspendedThread->currentThreadStackSegment = t_greenThread.pStackListCurrent;
         pNewSuspendedThread->greenThreadFrame = t_greenThread.pFrameInGreenThread;
+        pNewSuspendedThread->pGreenThread = pGreenThread;
 
         CleanGreenThreadState();
         return pNewSuspendedThread;
@@ -172,6 +173,7 @@ SuspendedGreenThread* ProduceSuspendedGreenThreadStruct()
     else
     {
         FreeGreenThreadStackList(t_greenThread.pStackListCurrent);
+        delete pGreenThread;
         CleanGreenThreadState();
         return NULL;
     }
@@ -179,17 +181,34 @@ SuspendedGreenThread* ProduceSuspendedGreenThreadStruct()
 
 SuspendedGreenThread* GreenThread_StartThread(TakesOneParam functionToExecute, uintptr_t param)
 {
+    OBJECTHANDLE threadObjectHandle;
+
+    GreenThread* pGreenThread = new GreenThread();
     {
         GCX_COOP();
         t_greenThread.pFrameInOSThread = GetThread()->m_pFrame;
+
+        THREADBASEREF attempt = (THREADBASEREF) AllocateObject(g_pThreadClass);
+        GCPROTECT_BEGIN(attempt);
+        attempt->SetIsGreenThread();
+        threadObjectHandle = GetAppDomain()->CreateStrongHandle(attempt);
+        
+        pGreenThread->m_ExposedObject = threadObjectHandle;
+        attempt->SetManagedThreadId(pGreenThread->m_ThreadId);
+        GCPROTECT_END();
     }
+
     TransitionHelperStruct detailsAboutWhatToCall;
     detailsAboutWhatToCall.function = functionToExecute;
     detailsAboutWhatToCall.param = param;
 
+    ThreadBase* pOldThreadBase = GetThread()->GetActiveThreadBase();
+    GetThread()->SetActiveThreadBase(pGreenThread);
+
     GreenThread_StartThreadHelper((uintptr_t)FirstFrameInGreenThread, &detailsAboutWhatToCall);
 
-    return ProduceSuspendedGreenThreadStruct();
+    GetThread()->SetActiveThreadBase(pOldThreadBase);
+    return ProduceSuspendedGreenThreadStruct(pGreenThread);
 }
 
 uintptr_t FirstFrameInOSThread(TransitionHelperFunction functionToExecute, TransitionHelperStruct* param)
@@ -307,10 +326,17 @@ SuspendedGreenThread* GreenThread_ResumeThread(SuspendedGreenThread* pSuspendedT
     t_greenThread.pStackListCurrent = pSuspendedThread->currentThreadStackSegment;
     t_greenThread.greenThreadStackCurrent = pSuspendedThread->currentStackPointer;
 
+    GreenThread* pGreenThread = pSuspendedThread->pGreenThread;
+
     free(pSuspendedThread);
 
+    ThreadBase* pOldThreadBase = GetThread()->GetActiveThreadBase();
+    GetThread()->SetActiveThreadBase(pGreenThread);
+
     ResumeSuspendedThreadHelper();
-    return ProduceSuspendedGreenThreadStruct();
+
+    GetThread()->SetActiveThreadBase(pOldThreadBase);
+    return ProduceSuspendedGreenThreadStruct(pGreenThread);
 }
 
 extern "C" void End_More_Thread_Bookeeping()

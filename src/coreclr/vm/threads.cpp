@@ -1388,14 +1388,17 @@ GreenThread::GreenThread()
 {
     g_pThinLockThreadIdDispenser->NewId(this, this->m_ThreadId);
 
-    // TODO Initialize m_EventWait
-    //      _ASSERTE(!m_EventWait.IsValid());
-
+    m_EventWait.CreateManualEvent(TRUE);
+    m_ExposedObject = NULL;
 }
 
 GreenThread::~GreenThread()
 {
+    this->CleanupWaitEventLink();
+    this->CleanupEventWait();
     g_pThinLockThreadIdDispenser->DisposeId(this->m_ThreadId);
+    if (m_ExposedObject != NULL)
+        DestroyStrongHandle(m_ExposedObject);
 }
 
 ThreadBase::ThreadBase()

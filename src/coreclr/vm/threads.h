@@ -866,6 +866,7 @@ public:
 
 class GreenThread : public ThreadBase
 {
+public:
     GreenThread();
     ~GreenThread();
 };
@@ -946,9 +947,10 @@ public:
 
 public:
 
-    DWORD dummyDword;
+    ThreadBase* m_curThreadBase = &m_coreThreadData;
 
-    ThreadBase* GetActiveThreadBase() { return &m_coreThreadData; }
+    ThreadBase* GetActiveThreadBase() { return m_curThreadBase; }
+    void SetActiveThreadBase(ThreadBase* threadBase) { m_curThreadBase = threadBase; }
     DWORD GetPermanentManagedThreadId() { return m_coreThreadData.GetThreadId(); }
     DWORD GetActiveManagedThreadId() { return GetActiveThreadBase()->GetThreadId(); }
 
