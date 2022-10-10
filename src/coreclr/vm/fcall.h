@@ -560,11 +560,7 @@ LPVOID __FCThrowArgument(LPVOID me, enum RuntimeExceptionKind reKind, LPCWSTR ar
 
 // END: after gcpoll
 //__fcallGcCanTrigger.Leave(__FUNCTION__, __FILE__, __LINE__);
-struct PairOfPointers
-{
-    void *innerLambda;
-    void *innerLambdaFunctionPointer;
-};
+
 // We have to put DEBUG_OK_TO_RETURN_BEGIN around the FORLAZYMACHSTATE
 // to allow the HELPER_FRAME to be installed inside an SO_INTOLERANT region
 // which does not allow a return.  The return is used by FORLAZYMACHSTATE
@@ -589,17 +585,17 @@ struct PairOfPointers
             /* gcpoll; */                                                       \
             INSTALL_MANAGED_EXCEPTION_DISPATCHER;                               \
             __helperframe.Push();                                               \
-            auto helperFrameLambda = [&](){                                     \
             MAKE_CURRENT_THREAD_AVAILABLE_EX(__helperframe.GetThread()); \
-            INSTALL_UNWIND_AND_CONTINUE_HANDLER_FOR_HMF(&__helperframe);
+            INSTALL_UNWIND_AND_CONTINUE_HANDLER_FOR_HMF(&__helperframe); \
+            auto helperFrameLambda = [&](){
 
 #define HELPER_METHOD_FRAME_BEGIN_EX_NOTHROW(ret, helperFrame, gcpoll, allowGC, probeFailExpr) \
         HELPER_METHOD_FRAME_BEGIN_EX_BODY(ret, helperFrame, gcpoll, allowGC)    \
             __helperframe.Push();                                         \
-            auto helperFrameLambda = [&](){                                     \
             MAKE_CURRENT_THREAD_AVAILABLE_EX(__helperframe.GetThread()); \
-            /* <TODO>TODO TURN THIS ON!!!   </TODO> */                    \
-            /* gcpoll; */
+            auto helperFrameLambda = [&](){                                     \
+                /* <TODO>TODO TURN THIS ON!!!   </TODO> */                    \
+                /* gcpoll; */
 
 // The while(__helperframe.RestoreState() needs a bit of explanation.
 // The issue is insuring that the same machine state (which registers saved)
@@ -622,12 +618,12 @@ struct PairOfPointers
         } FORLAZYMACHSTATE_ENDLOOP(alwaysZero);
 
 #define HELPER_METHOD_FRAME_END_EX(gcpoll,allowGC)                          \
-            UNINSTALL_UNWIND_AND_CONTINUE_HANDLER;                          \
             };                                                              \
             auto nonCapturingLambda = [](uintptr_t pointerToLambda) { \
                 (*(decltype(helperFrameLambda)*)pointerToLambda)(); \
             }; \
             CallOnOSThread(nonCapturingLambda, (uintptr_t)&helperFrameLambda); \
+            UNINSTALL_UNWIND_AND_CONTINUE_HANDLER;                      \
             __helperframe.Pop();                                            \
             UNINSTALL_MANAGED_EXCEPTION_DISPATCHER;                         \
         HELPER_METHOD_FRAME_END_EX_BODY(gcpoll,allowGC);

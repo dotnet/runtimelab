@@ -246,7 +246,8 @@ void CallOnOSThread(TakesOneParamNoReturn functionToExecute, uintptr_t param)
 {
     if (!t_greenThread.inGreenThread)
         functionToExecute(param);
-    TransitionToOSThread(functionToExecute, param);
+    else
+        TransitionToOSThread(functionToExecute, param);
 }
 
 void *TransitionToOSThreadAndCallMalloc(size_t memoryToAllocate)
