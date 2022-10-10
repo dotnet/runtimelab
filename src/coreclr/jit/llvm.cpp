@@ -1806,10 +1806,6 @@ void Llvm::storeObjAtAddress(Value* baseAddress, Value* data, StructDesc* struct
 
 void Llvm::buildStoreBlk(GenTreeBlk* blockOp)
 {
-    if (!blockOp->OperIsBlk())
-    {
-        failFunctionCompilation(); // cant get struct handle. TODO-LLVM: try as an assert
-    }
 
     ClassLayout* structLayout = blockOp->GetLayout();
 
