@@ -1825,16 +1825,16 @@ void Llvm::buildStoreBlk(GenTreeBlk* blockOp)
 
     CORINFO_CLASS_HANDLE structClsHnd  = structLayout->GetClassHandle();
     StructDesc*          structDesc    = getStructDesc(structClsHnd);
-    bool targetNotHeap = blockOp->OperIsBlk() || ((blockOp->gtFlags & GTF_IND_TGT_NOT_HEAP) != 0) || blockOp->Addr()->OperIsLocalAddr();
 
     Value* dataValue = getGenTreeValue(blockOp->Data());
-    if (targetNotHeap)
+    if (structLayout->HasGCPtr() && ((blockOp->gtFlags & GTF_IND_TGT_NOT_HEAP) == 0) &&
+        !blockOp->Addr()->OperIsLocalAddr())
     {
-        _builder.CreateStore(dataValue, castIfNecessary(baseAddressValue, dataValue->getType()->getPointerTo())); 
+            storeObjAtAddress(baseAddressValue, dataValue, structDesc);
     }
     else
     {
-        storeObjAtAddress(baseAddressValue, dataValue, structDesc);
+        _builder.CreateStore(dataValue, castIfNecessary(baseAddressValue, dataValue->getType()->getPointerTo()));
     }
 }
 
