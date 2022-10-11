@@ -204,7 +204,7 @@ private:
     unsigned int getTotalLocalOffset();
     bool helperRequiresShadowStack(CORINFO_METHOD_HANDLE corinfoMethodHnd);
     void buildStoreInd(GenTreeStoreInd* storeIndOp);
-    void buildStoreObj(GenTreeObj* indirOp);
+    void buildStoreBlk(GenTreeBlk* indirOp);
     Value* localVar(GenTreeLclVar* lclVar);
     void storeObjAtAddress(Value* baseAddress, Value* data, StructDesc* structDesc);
     void buildStoreBlk(GenTreeBlk* blockOp);

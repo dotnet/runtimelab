@@ -748,11 +748,6 @@ llvm::Instruction* Llvm::getCast(llvm::Value* source, Type* targetType)
                 {
                     return new llvm::TruncInst(source, targetType, "TruncInt");
                 }
-                // allow just the specific case of bools being represented in LLVM as i8
-                else if (sourceType == Type::getInt1Ty(_llvmContext) && targetType == Type::getInt8Ty(_llvmContext))
-                {
-                    return new llvm::ZExtInst(source, targetType, "BitToByte");
-                }
             default:
                 failFunctionCompilation();
         }
@@ -1847,19 +1842,14 @@ void Llvm::buildStoreBlk(GenTreeBlk* blockOp)
     _builder.CreateStore(dataValue, consumeValue(blockOp->Addr(), dataValue->getType()->getPointerTo()));
 }
 
-void Llvm::buildStoreObj(GenTreeObj* storeOp)
 {
-    if (!storeOp->OperIsBlk())
-    {
-        failFunctionCompilation(); // cant get struct handle. TODO-LLVM: try as an assert
-    }
 
-    ClassLayout* structLayout = storeOp->GetLayout();
+    ClassLayout* structLayout = blockOp->GetLayout();
 
-    Value* baseAddressValue = getGenTreeValue(storeOp->Addr());
+    Value* baseAddressValue = getGenTreeValue(blockOp->Addr());
 
     // zero initialization  check
-    GenTree* dataOp = storeOp->Data();
+    GenTree* dataOp = blockOp->Data();
     if (dataOp->IsIntegralConst(0))
     {
         _builder.CreateMemSet(baseAddressValue, _builder.getInt8(0), _builder.getInt32(structLayout->GetSize()), {});
@@ -1868,16 +1858,16 @@ void Llvm::buildStoreObj(GenTreeObj* storeOp)
 
     CORINFO_CLASS_HANDLE structClsHnd  = structLayout->GetClassHandle();
     StructDesc*          structDesc    = getStructDesc(structClsHnd);
-    bool targetNotHeap = ((storeOp->gtFlags & GTF_IND_TGT_NOT_HEAP) != 0) || storeOp->Addr()->OperIsLocalAddr();
 
-    Value* dataValue = getGenTreeValue(storeOp->Data());
-    if (targetNotHeap)
+    Value* dataValue = getGenTreeValue(blockOp->Data());
+    if (structLayout->HasGCPtr() && ((blockOp->gtFlags & GTF_IND_TGT_NOT_HEAP) == 0) &&
+        !blockOp->Addr()->OperIsLocalAddr())
     {
-        _builder.CreateStore(dataValue, castIfNecessary(baseAddressValue, dataValue->getType()->getPointerTo())); 
+            storeObjAtAddress(baseAddressValue, dataValue, structDesc);
     }
     else
     {
-        storeObjAtAddress(baseAddressValue, dataValue, structDesc);
+        _builder.CreateStore(dataValue, castIfNecessary(baseAddressValue, dataValue->getType()->getPointerTo()));
     }
 }
 
@@ -2093,7 +2083,7 @@ void Llvm::visitNode(GenTree* node)
             buildStoreBlk(node->AsBlk());
             break;
         case GT_STORE_OBJ:
-            buildStoreObj(node->AsObj());
+            buildStoreBlk(node->AsBlk());
             break;
         case GT_AND:
         case GT_OR:
