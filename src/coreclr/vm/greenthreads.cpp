@@ -166,6 +166,7 @@ SuspendedGreenThread* ProduceSuspendedGreenThreadStruct(GreenThread* pGreenThrea
         pNewSuspendedThread->currentThreadStackSegment = t_greenThread.pStackListCurrent;
         pNewSuspendedThread->greenThreadFrame = t_greenThread.pFrameInGreenThread;
         pNewSuspendedThread->pGreenThread = pGreenThread;
+        pGreenThread->m_currentThreadObj = NULL;
 
         CleanGreenThreadState();
         return pNewSuspendedThread;
@@ -204,6 +205,7 @@ SuspendedGreenThread* GreenThread_StartThread(TakesOneParam functionToExecute, u
 
     ThreadBase* pOldThreadBase = GetThread()->GetActiveThreadBase();
     GetThread()->SetActiveThreadBase(pGreenThread);
+    pGreenThread->m_currentThreadObj = GetThread();
 
     GreenThread_StartThreadHelper((uintptr_t)FirstFrameInGreenThread, &detailsAboutWhatToCall);
 
@@ -327,6 +329,7 @@ SuspendedGreenThread* GreenThread_ResumeThread(SuspendedGreenThread* pSuspendedT
     t_greenThread.greenThreadStackCurrent = pSuspendedThread->currentStackPointer;
 
     GreenThread* pGreenThread = pSuspendedThread->pGreenThread;
+    pGreenThread->m_currentThreadObj = GetThread();
 
     free(pSuspendedThread);
 

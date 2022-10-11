@@ -41,6 +41,7 @@ namespace System.Threading.Tasks
             try
             {
                 var action = (Action?)obj;
+                Thread.t_currentThread = null; // TODO Once we have Thread statics working we probably don't need to do this.
                 var suspendedThread = GreenThread_StartThread(&GreenThreadStartFunc, Unsafe.AsPointer(ref action));
                 Debug.Assert((GreenThreadStatics.t_TaskToWaitFor != null) == (suspendedThread != null));
                 if (suspendedThread != null)
@@ -54,6 +55,7 @@ namespace System.Threading.Tasks
             {
                 GreenThreadStatics.t_TaskToWaitFor = null;
                 Thread.t_IsGreenThread = false;
+                Thread.t_currentThread = null; // TODO Once we have Thread statics working we probably don't need to do this.
             }
         }
 
@@ -70,6 +72,7 @@ namespace System.Threading.Tasks
                 Thread.t_IsGreenThread = true;
                 try
                 {
+                    Thread.t_currentThread = null; // TODO Once we have Thread statics working we probably don't need to do this.
                     _suspendedThread = GreenThread_ResumeThread(_suspendedThread);
                     Debug.Assert((GreenThreadStatics.t_TaskToWaitFor != null) == (_suspendedThread != null));
                     if (_suspendedThread != null)
@@ -82,6 +85,7 @@ namespace System.Threading.Tasks
                 {
                     GreenThreadStatics.t_TaskToWaitFor = null;
                     Thread.t_IsGreenThread = false;
+                    Thread.t_currentThread = null; // TODO Once we have Thread statics working we probably don't need to do this.
                 }
             }
         }

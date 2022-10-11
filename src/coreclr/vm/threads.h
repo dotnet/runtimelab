@@ -810,6 +810,7 @@ public:
     // Unique thread id used for thin locks - kept as small as possible, as we have limited space
     // in the object header to store it.
     DWORD                m_ThreadId;
+    Thread*              m_currentThreadObj;
 
     DWORD       GetThreadId()
     {
@@ -818,7 +819,7 @@ public:
         return m_ThreadId;
     }
 
-    Thread* GetThreadObj() { return (Thread*)this; }
+    Thread* GetThreadObj() { return m_currentThreadObj; }
 
     // For Object::Wait, Notify and NotifyAll, we use an Event inside the
     // thread and we queue the threads onto the SyncBlock of the object they

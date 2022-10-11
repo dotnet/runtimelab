@@ -1390,6 +1390,7 @@ GreenThread::GreenThread()
 
     m_EventWait.CreateManualEvent(TRUE);
     m_ExposedObject = NULL;
+    m_currentThreadObj = NULL;
 }
 
 GreenThread::~GreenThread()
@@ -1418,6 +1419,8 @@ Thread::Thread()
         if (GetThreadNULLOk()) {GC_TRIGGERS;} else {DISABLED(GC_NOTRIGGER);}
     }
     CONTRACTL_END;
+
+    m_coreThreadData.m_currentThreadObj = this;
 
     m_pFrame                = FRAME_TOP;
     m_pGCFrame              = NULL;
