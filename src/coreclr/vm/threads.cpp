@@ -1406,7 +1406,9 @@ ThreadBase::ThreadBase()
 {
     m_WaitEventLink.m_Next = NULL;
     m_WaitEventLink.m_LinkSB.m_pNext = NULL;
+#ifdef _DEBUG
     m_ThreadId = UNINITIALIZED_THREADID;
+#endif // _DEBUG
 }
 
 //--------------------------------------------------------------------
