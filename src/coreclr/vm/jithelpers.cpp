@@ -5925,6 +5925,11 @@ HCIMPLEND_RAW
 HCIMPL1_RAW(void, JIT_ReversePInvokeExitTrackTransitions, ReversePInvokeFrame* frame)
 {
     _ASSERTE(frame != NULL);
+
+#ifdef FEATURE_GREENTHREADS
+    // Updating the ReversePInvokeFrame on green thread suspend/resume needs to be done, but its tricky to implement, so instead, just update it here.
+    frame->currentThread = GetThreadNULLOk();
+#endif
     _ASSERTE(frame->currentThread == GetThread());
 
     // Manually inline the fast path in Thread::EnablePreemptiveGC().
@@ -5948,6 +5953,12 @@ HCIMPLEND_RAW
 HCIMPL1_RAW(void, JIT_ReversePInvokeExit, ReversePInvokeFrame* frame)
 {
     _ASSERTE(frame != NULL);
+
+#ifdef FEATURE_GREENTHREADS
+    // Updating the ReversePInvokeFrame on green thread suspend/resume needs to be done, but its tricky to implement, so instead, just update it here.
+    frame->currentThread = GetThreadNULLOk();
+#endif
+
     _ASSERTE(frame->currentThread == GetThread());
 
     // Manually inline the fast path in Thread::EnablePreemptiveGC().
