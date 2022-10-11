@@ -11,7 +11,7 @@ public class Test_greenthread_delay
     [DllImport("kernel32.dll")]
     static extern uint GetCurrentThreadId();
 
-    static extern uint GetOSThreadID()
+    static uint GetOSThreadID()
     {
          if (OperatingSystem.IsWindows())
             return GetCurrentThreadId();
@@ -21,10 +21,10 @@ public class Test_greenthread_delay
 
     public static void TestFunction()
     {
-        Console.WriteLine($"In GreenThread {Thread.IsGreenThread} with ThreadID {Thread.CurrentThread.ManagedThreadId} on OS thread {GetCurrentThreadId()}");
+        Console.WriteLine($"In GreenThread {Thread.IsGreenThread} with ThreadID {Thread.CurrentThread.ManagedThreadId} on OS thread {GetOSThreadID()}");
         int oldId = Thread.CurrentThread.ManagedThreadId;
         Task.Delay(2000).Wait();
-        Console.WriteLine($"In GreenThread {Thread.IsGreenThread} with ThreadID {Thread.CurrentThread.ManagedThreadId} on OS thread {GetCurrentThreadId()} after wait");
+        Console.WriteLine($"In GreenThread {Thread.IsGreenThread} with ThreadID {Thread.CurrentThread.ManagedThreadId} on OS thread {GetOSThreadID()} after wait");
         if (oldId != Thread.CurrentThread.ManagedThreadId) throw new Exception();
     }
 
