@@ -1804,19 +1804,15 @@ void Llvm::storeObjAtAddress(Value* baseAddress, Value* data, StructDesc* struct
     }
 }
 
-void Llvm::buildStoreObj(GenTreeObj* storeOp)
+void Llvm::buildStoreBlk(GenTreeBlk* blockOp)
 {
-    if (!storeOp->OperIsBlk())
-    {
-        failFunctionCompilation(); // cant get struct handle. TODO-LLVM: try as an assert
-    }
 
-    ClassLayout* structLayout = storeOp->GetLayout();
+    ClassLayout* structLayout = blockOp->GetLayout();
 
-    Value* baseAddressValue = getGenTreeValue(storeOp->Addr());
+    Value* baseAddressValue = getGenTreeValue(blockOp->Addr());
 
     // zero initialization  check
-    GenTree* dataOp = storeOp->Data();
+    GenTree* dataOp = blockOp->Data();
     if (dataOp->IsIntegralConst(0))
     {
         _builder.CreateMemSet(baseAddressValue, _builder.getInt8(0), _builder.getInt32(structLayout->GetSize()), {});
@@ -1825,16 +1821,16 @@ void Llvm::buildStoreObj(GenTreeObj* storeOp)
 
     CORINFO_CLASS_HANDLE structClsHnd  = structLayout->GetClassHandle();
     StructDesc*          structDesc    = getStructDesc(structClsHnd);
-    bool targetNotHeap = ((storeOp->gtFlags & GTF_IND_TGT_NOT_HEAP) != 0) || storeOp->Addr()->OperIsLocalAddr();
 
-    Value* dataValue = getGenTreeValue(storeOp->Data());
-    if (targetNotHeap)
+    Value* dataValue = getGenTreeValue(blockOp->Data());
+    if (structLayout->HasGCPtr() && ((blockOp->gtFlags & GTF_IND_TGT_NOT_HEAP) == 0) &&
+        !blockOp->Addr()->OperIsLocalAddr())
     {
-        _builder.CreateStore(dataValue, castIfNecessary(baseAddressValue, dataValue->getType()->getPointerTo())); 
+        storeObjAtAddress(baseAddressValue, dataValue, structDesc);
     }
     else
     {
-        storeObjAtAddress(baseAddressValue, dataValue, structDesc);
+        _builder.CreateStore(dataValue, castIfNecessary(baseAddressValue, dataValue->getType()->getPointerTo()));
     }
 }
 
@@ -2043,8 +2039,9 @@ void Llvm::visitNode(GenTree* node)
         case GT_STOREIND:
             buildStoreInd(node->AsStoreInd());
             break;
+        case GT_STORE_BLK:
         case GT_STORE_OBJ:
-            buildStoreObj(node->AsObj());
+            buildStoreBlk(node->AsBlk());
             break;
         case GT_AND:
         case GT_OR:
