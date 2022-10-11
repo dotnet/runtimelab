@@ -1826,7 +1826,7 @@ void Llvm::buildStoreBlk(GenTreeBlk* blockOp)
     if (structLayout->HasGCPtr() && ((blockOp->gtFlags & GTF_IND_TGT_NOT_HEAP) == 0) &&
         !blockOp->Addr()->OperIsLocalAddr())
     {
-            storeObjAtAddress(baseAddressValue, dataValue, structDesc);
+        storeObjAtAddress(baseAddressValue, dataValue, structDesc);
     }
     else
     {
