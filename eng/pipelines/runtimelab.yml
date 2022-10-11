@@ -91,27 +91,6 @@ stages:
         ${{ if eq(variables.isOfficialBuild, true) }}:
           buildArgs: -s clr+libs -c $(_BuildConfig)
 
-  #
-  # Build with Release allConfigurations to produce packages
-  #
-  - template: /eng/pipelines/common/platform-matrix.yml
-    parameters:
-      jobTemplate: /eng/pipelines/common/global-build-job.yml
-      buildConfig: Release
-      platforms:
-      - windows_x64
-      jobParameters:
-        isOfficialBuild: ${{ variables.isOfficialBuild }}
-        testGroup: innerloop
-        nameSuffix: AllConfigurations
-        buildArgs: -s libs -c $(_BuildConfig) -allConfigurations
-        ${{ if eq(variables.isOfficialBuild, true) }}:
-          extraStepsTemplate: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
-          extraStepsParameters:
-            uploadIntermediateArtifacts: true
-            isOfficialBuild: true
-            librariesBinArtifactName: libraries_bin_official_allconfigurations
-
   - ${{ if ne(variables.isOfficialBuild, true) }}:
     #
     # CoreCLR Test builds using live libraries release build
