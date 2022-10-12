@@ -12462,6 +12462,22 @@ CorJitResult invokeCompileMethod(EEJitManager *jitMgr,
         }
     }
 
+#ifdef FEATURE_GREENTHREADS
+// Without this tweak the compiler will hold onto a pointer into the Thread* object across a transition between OS threads. This does not work well.
+// As a prototype for the green thread experiment, use the pinvoke helper based code gen which does not have this issue.
+    LPCUTF8 namespaceName;
+    LPCUTF8 className = ftn->GetMethodTable()->GetFullyQualifiedNameInfo(&namespaceName);
+    if (className != NULL && strcmp(className, "Task") == 0)
+    {
+        LPCUTF8 name = ftn->GetName();
+        if ((strcmp(name, "YieldGreenThread") == 0) ||
+            (strcmp(name, "GreenThread_Yield") == 0))
+        {
+            flags.Set(CORJIT_FLAGS::CORJIT_FLAG_USE_PINVOKE_HELPERS);
+        }
+    }
+#endif //FEATURE_GREENTHREADS
+
     return flags;
 }
 

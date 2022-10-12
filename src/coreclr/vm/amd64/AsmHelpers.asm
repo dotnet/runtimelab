@@ -913,6 +913,13 @@ NESTED_ENTRY ResumeSuspendedThreadHelper2, _TEXT
                       ; as well as where to stash the stack_limit and stack_base data
         call GetResumptionStackPointerAndSaveOSStackPointer
 
+        ; Update stack limit and base to be in the green thread
+        mov             r11, [rbp - 030h] ; Load the new stack limit
+        mov             gs:[10h], r11
+        mov             r11, [rbp - 028h] ; Load the old stack base
+        mov             gs:[8h], r11
+        
+
         mov rsp, rax ; Set stack pointer to back into the green thread
         jmp resume_point  ; Now that the stack is in position, 
 
