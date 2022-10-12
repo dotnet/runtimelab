@@ -1184,8 +1184,10 @@ void SsaBuilder::BlockRenameVariables(BasicBlock* block)
     {
         if ((memoryKind == GcHeap) && m_pCompiler->byrefStatesMatchGcHeapStates)
         {
+#if !defined(TARGET_WASM)
             // ByrefExposed and GcHeap share any phi this block may have,
             assert(block->bbMemorySsaPhiFunc[memoryKind] == block->bbMemorySsaPhiFunc[ByrefExposed]);
+#endif // !defined(TARGET_WASM)
             // so we will have already allocated a defnum for it if needed.
             assert(memoryKind > ByrefExposed);
 

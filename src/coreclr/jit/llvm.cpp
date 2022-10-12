@@ -2732,6 +2732,12 @@ void Llvm::lowerToShadowStack()
                 failUnsupportedCalls(callNode);
 
                 lowerCallToShadowStack(callNode);
+
+                if ((_compiler->fgIsThrow(callNode) || callNode->IsNoReturn()) && callNode->gtNext != nullptr)
+                {
+                    // If there is a no return, or always throw call, delete the dead code so we can add the unreachable statment immediately, and not after any dead RET
+                    CurrentRange().Remove(callNode->gtNext, _currentBlock->lastNode());
+                }
             }
             else if (node->OperIs(GT_RETURN) && _retAddressLclNum != BAD_VAR_NUM)
             {
@@ -2960,5 +2966,12 @@ void Llvm::Compile()
     {
         _diBuilder->finalizeSubprogram(_debugFunction);
     }
+
+#if DEBUG
+    if (llvm::verifyFunction(*_function, &llvm::errs()))
+    {
+        printf("function failed %s\n", mangledName);
+    }
+#endif
 }
 #endif

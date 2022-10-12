@@ -6045,6 +6045,10 @@ public:
 
     bool compCanEncodePtrArgCntMax();
 
+#if defined(TARGET_WASM)
+    bool fgIsThrow(GenTree* tree);
+#endif // defined(TARGET_WASM)
+
 private:
     hashBv* fgOutgoingArgTemps;
     hashBv* fgCurrentlyInUseArgTemps;
@@ -6059,7 +6063,9 @@ private:
 
     bool fgIsCommaThrow(GenTree* tree, bool forFolding = false);
 
+#if !defined(TARGET_WASM)
     bool fgIsThrow(GenTree* tree);
+#endif // !defined(TARGET_WASM)
 
     bool fgInDifferentRegions(BasicBlock* blk1, BasicBlock* blk2);
     bool fgIsBlockCold(BasicBlock* block);
