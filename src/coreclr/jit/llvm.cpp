@@ -1838,12 +1838,6 @@ void Llvm::storeObjAtAddress(Value* baseAddress, Value* data, StructDesc* struct
 
 void Llvm::buildStoreBlk(GenTreeBlk* blockOp)
 {
-    Value* dataValue = getGenTreeValue(blockOp->Data());
-    _builder.CreateStore(dataValue, consumeValue(blockOp->Addr(), dataValue->getType()->getPointerTo()));
-}
-
-{
-
     ClassLayout* structLayout = blockOp->GetLayout();
 
     Value* baseAddressValue = getGenTreeValue(blockOp->Addr());
