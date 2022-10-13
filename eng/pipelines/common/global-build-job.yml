@@ -182,6 +182,7 @@ jobs:
           buildConfig: ${{ parameters.buildConfig }}
           runtimeFlavor: ${{ parameters.runtimeFlavor }}
           runtimeVariant: ${{ parameters.runtimeVariant }}
+          isOfficialBuild: ${{ parameters.isOfficialBuild}}
           helixQueues: ${{ parameters.helixQueues }}
           targetRid: ${{ parameters.targetRid }}
           nameSuffix: ${{ parameters.nameSuffix }}
