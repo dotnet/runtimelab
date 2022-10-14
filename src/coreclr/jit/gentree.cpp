@@ -6759,6 +6759,12 @@ GenTree* Compiler::gtNewStringLiteralNode(InfoAccessType iat, void* pValue)
 //
 GenTreeIntCon* Compiler::gtNewStringLiteralLength(GenTreeStrCon* node)
 {
+    if (node->IsStringEmptyField())
+    {
+        JITDUMP("Folded String.Empty.Length to 0\n");
+        return gtNewIconNode(0);
+    }
+
     int             length = -1;
     const char16_t* str    = info.compCompHnd->getStringLiteral(node->gtScpHnd, node->gtSconCPX, &length);
     if (length >= 0)
@@ -6768,11 +6774,11 @@ GenTreeIntCon* Compiler::gtNewStringLiteralLength(GenTreeStrCon* node)
         // str can be NULL for dynamic context
         if (str != nullptr)
         {
-            JITDUMP("String '\"%ws\".Length' is '%d'\n", str, length)
+            JITDUMP("Folded '\"%ws\".Length' to '%d'\n", str, length)
         }
         else
         {
-            JITDUMP("String 'CNS_STR.Length' is '%d'\n", length)
+            JITDUMP("Folded 'CNS_STR.Length' to '%d'\n", length)
         }
         return iconNode;
     }
