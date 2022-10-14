@@ -12476,6 +12476,10 @@ CorJitResult invokeCompileMethod(EEJitManager *jitMgr,
             flags.Set(CORJIT_FLAGS::CORJIT_FLAG_USE_PINVOKE_HELPERS);
         }
     }
+
+    // HACK - No use of fully inlined pinvokes is acceptable right now
+    // Disable them in all cases for now.
+    flags.Set(CORJIT_FLAGS::CORJIT_FLAG_USE_PINVOKE_HELPERS);
 #endif //FEATURE_GREENTHREADS
 
     return flags;

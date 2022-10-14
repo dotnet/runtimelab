@@ -96,6 +96,10 @@ namespace System.Threading.Tasks
             ThreadPool.QueueUserWorkItem(GreenThreadExecutorFunc, action);
         }
 
+        // No-inlining is used here and on ClearTaskToWaitFor, to avoid the problem
+        // of the t_TaskToWaitFor variable not being correctly handled. As we fix
+        // thread static for Green threads, the need for this tweak should disappear.
+        [MethodImpl(MethodImplOptions.NoInlining)]
         static partial void YieldGreenThread(Task taskToWaitForCompletion, ref bool yielded)
         {
             if (Thread.t_IsGreenThread)
@@ -107,9 +111,15 @@ namespace System.Threading.Tasks
                 }
                 finally
                 {
-                    GreenThreadStatics.t_TaskToWaitFor = null;
+                    ClearTaskToWaitFor();
                 }
             }
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private static void ClearTaskToWaitFor()
+        {
+            GreenThreadStatics.t_TaskToWaitFor = null;
         }
     }
 }

@@ -807,11 +807,13 @@ HRESULT ClrDataAccess::EnumMemWalkStackHelper(CLRDataEnumMemoryFlags flags,
                             break;
                         }
 
+#ifndef FEATURE_GREENTHREADS
                         if (!pThread->IsAddressInStack(currentSP))
                         {
                             _ASSERTE(!"Target stack has been corrupted, SP must in the stack range.");
                             break;
                         }
+#endif // FEATURE_GREENTHREADS
                     }
                 }
                 else

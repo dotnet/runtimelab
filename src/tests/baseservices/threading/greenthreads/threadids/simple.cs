@@ -36,7 +36,7 @@ public class Test_greenthread_delay
         Task t1 = Task.RunAsGreenThread(TestFunction);
         t1.Wait();
 
-        Task[] greenThreads = new Task[10];
+        Task[] greenThreads = new Task[100];
 
         Console.WriteLine("Launch a bunch of green threads. Some of these should share OS thread ID but have different managed thread ids. With luck, we will observe that some green threads have moved from one OS thread to another upon resume.");
         for (int i = 0; i < greenThreads.Length; i++)
