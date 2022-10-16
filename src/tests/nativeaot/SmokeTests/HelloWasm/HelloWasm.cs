@@ -385,6 +385,8 @@ internal static class Program
 
         TestJitUseStruct();
 
+        TestReadByteArray();
+
         // This test should remain last to get other results before stopping the debugger
         PrintLine("Debugger.Break() test: Ok if debugger is open and breaks.");
         System.Diagnostics.Debugger.Break();
@@ -3728,6 +3730,16 @@ internal static class Program
         bool expected = true;
         bool actual = true;
         EndTest(expected.Equals(actual));
+    }
+
+    private static byte[] bytes = { 0xff };
+
+    static void TestReadByteArray()
+    {
+        StartTest("Test ldelemt from byte arry");
+
+        int i = (int)bytes[0];
+        EndTest(i == 0xff);
     }
 
     static ushort ReadUInt16()
