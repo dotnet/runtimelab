@@ -1184,6 +1184,8 @@ void SsaBuilder::BlockRenameVariables(BasicBlock* block)
     {
         if ((memoryKind == GcHeap) && m_pCompiler->byrefStatesMatchGcHeapStates)
         {
+            // memory liveness for LIR has upstream problems, causing TARGET_WASM to trigger this assert.
+            // TODO-LLVM: reinstate when fixed.
 #if !defined(TARGET_WASM)
             // ByrefExposed and GcHeap share any phi this block may have,
             assert(block->bbMemorySsaPhiFunc[memoryKind] == block->bbMemorySsaPhiFunc[ByrefExposed]);

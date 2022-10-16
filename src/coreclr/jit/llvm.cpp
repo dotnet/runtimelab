@@ -1840,7 +1840,7 @@ void Llvm::buildStoreBlk(GenTreeBlk* blockOp)
 {
     ClassLayout* structLayout = blockOp->GetLayout();
 
-    Value* baseAddressValue = getGenTreeValue(blockOp->Addr());
+    Value* baseAddressValue = consumeValue(blockOp->Addr(), Type::getInt8Ty(_llvmContext)->getPointerTo());
 
     // zero initialization  check
     GenTree* dataOp = blockOp->Data();
@@ -1857,7 +1857,7 @@ void Llvm::buildStoreBlk(GenTreeBlk* blockOp)
     if (structLayout->HasGCPtr() && ((blockOp->gtFlags & GTF_IND_TGT_NOT_HEAP) == 0) &&
         !blockOp->Addr()->OperIsLocalAddr())
     {
-            storeObjAtAddress(baseAddressValue, dataValue, structDesc);
+        storeObjAtAddress(baseAddressValue, dataValue, structDesc);
     }
     else
     {
@@ -2074,8 +2074,6 @@ void Llvm::visitNode(GenTree* node)
             buildStoreInd(node->AsStoreInd());
             break;
         case GT_STORE_BLK:
-            buildStoreBlk(node->AsBlk());
-            break;
         case GT_STORE_OBJ:
             buildStoreBlk(node->AsBlk());
             break;
