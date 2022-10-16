@@ -5113,9 +5113,10 @@ namespace Internal.IL
             StackEntry arrayReference = _stack.Pop();
             var nullSafeElementType = elementType ?? GetWellKnownType(WellKnownType.Object);
 
+            // ldelem pushes ints to the evaluation stack, so widen small ints
             LLVMValueRef elementValue = LoadValue(_builder, GetElementAddress(index.ValueAsInt32(_builder, false), arrayReference.ValueAsType(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), _builder), nullSafeElementType),
                 nullSafeElementType,
-                GetLLVMTypeForTypeDesc(nullSafeElementType), SignExtendTypeDesc(nullSafeElementType), $"load{arrayReference.Name()}Element");
+                GetLLVMTypeForTypeDesc(WidenBytesAndShorts(nullSafeElementType)), SignExtendTypeDesc(nullSafeElementType), $"load{arrayReference.Name()}Element");
 
             _stack.Push(new ExpressionEntry(GetStackValueKind(nullSafeElementType), $"{arrayReference.Name()}Element", elementValue, nullSafeElementType));
         }
