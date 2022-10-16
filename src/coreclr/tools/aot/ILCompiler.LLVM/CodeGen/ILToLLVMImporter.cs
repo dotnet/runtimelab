@@ -471,6 +471,7 @@ namespace Internal.IL
             return typeDesc.IsWellKnownType(WellKnownType.SByte) ||
                    typeDesc.IsWellKnownType(WellKnownType.Int16);
         }
+
         private void PushLoadExpression(StackValueKind kind, string name, LLVMValueRef rawLLVMValue, TypeDesc type)
         {
             Debug.Assert(kind != StackValueKind.Unknown, "Unknown stack kind");
@@ -3618,6 +3619,7 @@ namespace Internal.IL
 
             LLVMValueRef loadValue = LoadValue(_builder, pointerElementType, type,
                 GetLLVMTypeForTypeDesc(type), SignExtendTypeDesc(type), $"loadIndirect{pointer.Name()}");
+
             _stack.Push(new ExpressionEntry(pointerStackValueKind, $"Indirect{pointer.Name()}", loadValue, type));
         }
 
@@ -5114,6 +5116,7 @@ namespace Internal.IL
             LLVMValueRef elementValue = LoadValue(_builder, GetElementAddress(index.ValueAsInt32(_builder, false), arrayReference.ValueAsType(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), _builder), nullSafeElementType),
                 nullSafeElementType,
                 GetLLVMTypeForTypeDesc(nullSafeElementType), SignExtendTypeDesc(nullSafeElementType), $"load{arrayReference.Name()}Element");
+
             _stack.Push(new ExpressionEntry(GetStackValueKind(nullSafeElementType), $"{arrayReference.Name()}Element", elementValue, nullSafeElementType));
         }
 
