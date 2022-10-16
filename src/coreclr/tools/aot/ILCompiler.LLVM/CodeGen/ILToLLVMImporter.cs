@@ -466,10 +466,19 @@ namespace Internal.IL
             return funclet;
         }
 
+        private static bool SignExtendTypeDesc(TypeDesc typeDesc)
+        {
+            return typeDesc.IsWellKnownType(WellKnownType.SByte) ||
+                   typeDesc.IsWellKnownType(WellKnownType.Int16);
+        }
         private void PushLoadExpression(StackValueKind kind, string name, LLVMValueRef rawLLVMValue, TypeDesc type)
         {
             Debug.Assert(kind != StackValueKind.Unknown, "Unknown stack kind");
-            _stack.Push(new LoadExpressionEntry(kind, name, rawLLVMValue, type));
+
+            LLVMValueRef loadValue = LoadValue(_builder, rawLLVMValue, type,
+                GetLLVMTypeForTypeDesc(type), SignExtendTypeDesc(type), $"load_{name}");
+
+            _stack.Push(new ExpressionEntry(kind, name, loadValue, type));
         }
 
         /// <summary>
@@ -3604,9 +3613,12 @@ namespace Internal.IL
                 type = GetWellKnownType(WellKnownType.Object);
             }
 
+            StackValueKind pointerStackValueKind = type != null ? GetStackValueKind(type) : StackValueKind.ByRef;
             LLVMValueRef pointerElementType = pointer.ValueAsType(type.MakePointerType(), _builder);
-            _stack.Push(new LoadExpressionEntry(type != null ? GetStackValueKind(type) : StackValueKind.ByRef, $"Indirect{pointer.Name()}",
-                pointerElementType, type));
+
+            LLVMValueRef loadValue = LoadValue(_builder, pointerElementType, type,
+                GetLLVMTypeForTypeDesc(type), SignExtendTypeDesc(type), $"loadIndirect{pointer.Name()}");
+            _stack.Push(new ExpressionEntry(pointerStackValueKind, $"Indirect{pointer.Name()}", loadValue, type));
         }
 
         private void ImportStoreIndirect(int token)
@@ -4258,7 +4270,7 @@ namespace Internal.IL
                     eeTypeExp
                 };
                 CallRuntime(_compilation.TypeSystemContext, RuntimeExport, "RhUnboxAny", arguments);
-                PushLoadExpression(GetStackValueKind(methodType), "unboxed", untypedObjectValue, methodType);
+                PushLoadExpression(GetStackValueKind(type), "unboxed", untypedObjectValue, type);
             }
         }
 
@@ -4850,8 +4862,11 @@ namespace Internal.IL
             FieldDesc field = (FieldDesc)_methodIL.GetObject(token);
             FieldDesc canonFieldDesc = (FieldDesc)_canonMethodIL.GetObject(token);
             LLVMValueRef fieldAddress = GetFieldAddress(field, canonFieldDesc, isStatic);
+            TypeDesc fieldTypeDesc = canonFieldDesc.FieldType;
+            LLVMValueRef fieldValue = LoadValue(_builder, fieldAddress, fieldTypeDesc,
+                GetLLVMTypeForTypeDesc(fieldTypeDesc), SignExtendTypeDesc(fieldTypeDesc), $"loadField_{field.Name}");
 
-            PushLoadExpression(GetStackValueKind(canonFieldDesc.FieldType), $"Field_{field.Name}", fieldAddress, canonFieldDesc.FieldType);
+            _stack.Push(new ExpressionEntry(GetStackValueKind(fieldTypeDesc), $"Field_{field.Name}", fieldValue, fieldTypeDesc));
         }
 
         private void ImportAddressOfField(int token, bool isStatic)
@@ -5095,7 +5110,11 @@ namespace Internal.IL
             StackEntry index = _stack.Pop();
             StackEntry arrayReference = _stack.Pop();
             var nullSafeElementType = elementType ?? GetWellKnownType(WellKnownType.Object);
-            PushLoadExpression(GetStackValueKind(nullSafeElementType), $"{arrayReference.Name()}Element", GetElementAddress(index.ValueAsInt32(_builder, true), arrayReference.ValueAsType(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), _builder), nullSafeElementType), nullSafeElementType);
+
+            LLVMValueRef elementValue = LoadValue(_builder, GetElementAddress(index.ValueAsInt32(_builder, false), arrayReference.ValueAsType(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), _builder), nullSafeElementType),
+                nullSafeElementType,
+                GetLLVMTypeForTypeDesc(nullSafeElementType), SignExtendTypeDesc(nullSafeElementType), $"load{arrayReference.Name()}Element");
+            _stack.Push(new ExpressionEntry(GetStackValueKind(nullSafeElementType), $"{arrayReference.Name()}Element", elementValue, nullSafeElementType));
         }
 
         private void ImportStoreElement(int token)
