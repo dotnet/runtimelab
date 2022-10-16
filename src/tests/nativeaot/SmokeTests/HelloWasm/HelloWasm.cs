@@ -475,7 +475,7 @@ internal static class Program
         var xxx = System.Runtime.CompilerServices.Unsafe.AsPointer(ref MemoryMarshal.GetReference(s));
     }
 
-class ShortAndByte { internal short aShort; internal byte aByte; }
+    class ShortAndByte { internal short aShort; internal byte aByte; }
     private static void TestDifferentSizeIntOperator()
     {
         StartTest("Logical and short and int");
