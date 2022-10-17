@@ -274,6 +274,36 @@ void GCToEEInterface::GcScanRoots(promote_func* fn, int condemned, int max_gen, 
         STRESS_LOG2(LF_GC | LF_GCROOTS, LL_INFO100, "Ending scan of Thread %p ID = 0x%x }\n", pThread, pThread->GetPermanentManagedThreadId());
     }
 
+#ifdef FEATURE_GREENTHREADS
+    {
+        if (sc->promotion && green_head.next)
+        {
+            SuspendedGreenThread* current_green_thread = green_head.next;
+            while (current_green_thread != &green_tail)
+            {
+                GreenThreadStackList* current_thread_stack_segment = current_green_thread->currentThreadStackSegment;
+                while (current_thread_stack_segment->prev != nullptr)
+                {
+                    current_thread_stack_segment = current_thread_stack_segment->prev;
+                }
+                while (current_thread_stack_segment != nullptr)
+                {
+                    PTR_PTR_Object green_object_base = (PTR_PTR_Object)current_thread_stack_segment->stackRange.stackBase;
+                    PTR_PTR_Object green_object_limit = (PTR_PTR_Object)current_thread_stack_segment->stackRange.stackLimit;
+                    PTR_PTR_Object green_current = green_object_base;
+                    while (green_current > green_object_limit)
+                    {
+                        fn(green_current, sc, GC_CALL_INTERIOR|GC_CALL_PINNED);
+                        green_current--;
+                    }
+                    current_thread_stack_segment = current_thread_stack_segment->next;
+                }
+                current_green_thread = current_green_thread->next;
+            }
+        }
+    }
+#endif //FEATURE_GREENTHREADS
+
     // In server GC, we should be competing for marking the statics
     // It's better to do this *after* stack scanning, because this way
     // we can make up for imbalances in stack scanning

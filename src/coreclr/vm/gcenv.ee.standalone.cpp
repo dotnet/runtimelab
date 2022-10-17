@@ -17,6 +17,8 @@
 #include "genanalysis.h"
 #include "eventpipeadapter.h"
 
+#include "greenthreads.h"
+
 // the method table for the WeakReference class
 extern MethodTable* pWeakReferenceMT;
 

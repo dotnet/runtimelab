@@ -10,7 +10,7 @@ variables:
   value: 1000
 
 - name: isOfficialBuild
-  value: ${{ and(eq(variables['System.TeamProject'], 'internal'), eq(variables['Build.DefinitionName'], 'dotnet-runtime-official')) }}
+  value: ${{ and(eq(variables['System.TeamProject'], 'internal'), eq(variables['Build.DefinitionName'], 'dotnet.runtimelab-official')) }}
 - name: isRollingBuild
   value: ${{ ne(variables['Build.Reason'], 'PullRequest') }}
 - name: isExtraPlatformsBuild

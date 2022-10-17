@@ -17,8 +17,11 @@ struct GreenThreadData
     GreenThreadStackList *pStackListCurrent;
     bool inGreenThread;
     bool transitionedToOSThreadOnGreenThread;
+    SuspendedGreenThread* suspendedGreenThread;
 };
 
+extern SuspendedGreenThread green_head = {};
+extern SuspendedGreenThread green_tail = {};
 
 thread_local GreenThreadData t_greenThread;
 
@@ -165,9 +168,8 @@ SuspendedGreenThread* ProduceSuspendedGreenThreadStruct(GreenThread* pGreenThrea
     if (t_greenThread.inGreenThread)
     {
         // This is a suspension scenario
-        SuspendedGreenThread *pNewSuspendedThread = (SuspendedGreenThread*)malloc(sizeof(SuspendedGreenThread));
+        SuspendedGreenThread* pNewSuspendedThread = t_greenThread.suspendedGreenThread;
         pNewSuspendedThread->currentStackPointer = t_greenThread.greenThreadStackCurrent;
-        pNewSuspendedThread->currentThreadStackSegment = t_greenThread.pStackListCurrent;
         pNewSuspendedThread->greenThreadFrame = t_greenThread.pFrameInGreenThread;
         pNewSuspendedThread->pGreenThread = pGreenThread;
         pGreenThread->m_currentThreadObj = NULL;
@@ -269,7 +271,19 @@ bool GreenThread_Yield() // Attempt to yield out of green thread. If the yield f
         }
         GetThread()->m_pFrame = t_greenThread.pFrameInGreenThread->PtrNextFrame();
 
-        // TODO! Enable GC Tracking of green thread at this point.
+        // TODO: AndrewAu: What if we don't have sufficient memory for this?
+        SuspendedGreenThread *pNewSuspendedThread = (SuspendedGreenThread*)malloc(sizeof(SuspendedGreenThread));
+        pNewSuspendedThread->currentThreadStackSegment = t_greenThread.pStackListCurrent;        
+        t_greenThread.suspendedGreenThread = pNewSuspendedThread;
+
+        // TODO: AndrewAu: Synchronization in case multiple threads yield/resume at the same time.
+        if (green_head.next == nullptr) { green_head.next = &green_tail; }
+        if (green_tail.next == nullptr) { green_tail.prev = &green_head; }
+
+        pNewSuspendedThread->prev = green_tail.prev;
+        green_tail.prev->next = pNewSuspendedThread;
+        green_tail.prev = pNewSuspendedThread;
+        pNewSuspendedThread->next = &green_tail;
     }
 
     YieldOutOfGreenThreadHelper(&t_greenThread.osStackRange, t_greenThread.osStackCurrent, &t_greenThread.greenThreadStackCurrent);
@@ -278,7 +292,12 @@ bool GreenThread_Yield() // Attempt to yield out of green thread. If the yield f
         GCX_COOP();
         // At this point we've resumed, and the stack is now in the new state way, but the Frame chain is not hooked up.
 
-        // TODO! Disable separate GC tracking of green thread at this point
+        SuspendedGreenThread* pNewSuspendedThread = t_greenThread.suspendedGreenThread;
+        t_greenThread.suspendedGreenThread = nullptr;
+
+        pNewSuspendedThread->next->prev = pNewSuspendedThread->prev;
+        pNewSuspendedThread->prev->next = pNewSuspendedThread->next;
+        free(pNewSuspendedThread);
 
         t_greenThread.pFrameInGreenThread->UNSAFE_SetNextFrame(t_greenThread.pFrameInOSThread);
         ((InlinedCallFrame*)t_greenThread.pFrameInGreenThread)->UNSAFE_UpdateThreadPointer(GetThread());
@@ -339,11 +358,10 @@ SuspendedGreenThread* GreenThread_ResumeThread(SuspendedGreenThread* pSuspendedT
 
     t_greenThread.pStackListCurrent = pSuspendedThread->currentThreadStackSegment;
     t_greenThread.greenThreadStackCurrent = pSuspendedThread->currentStackPointer;
-
     GreenThread* pGreenThread = pSuspendedThread->pGreenThread;
     pGreenThread->m_currentThreadObj = GetThread();
 
-    free(pSuspendedThread);
+    t_greenThread.suspendedGreenThread = pSuspendedThread;
 
     ThreadBase* pOldThreadBase = GetThread()->GetActiveThreadBase();
     GetThread()->SetActiveThreadBase(pGreenThread);
