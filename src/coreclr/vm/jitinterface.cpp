@@ -12478,8 +12478,9 @@ CorJitResult invokeCompileMethod(EEJitManager *jitMgr,
     }
 
     // HACK - No use of fully inlined pinvokes is acceptable right now
-    // Disable them in all cases for now.
-    flags.Set(CORJIT_FLAGS::CORJIT_FLAG_USE_PINVOKE_HELPERS);
+    // Disable them in all cases except for IL Stubs which need handling in StackFrameIterator::CheckForSkippedFrames and ExceptionTracker::InitializeCrawlFrameForExplicitFrame where computing GetActualInteropMethodDesc does not work correctly. See ExceptionTracker::InitializeCrawlFrameForExplicitFrame for the better comment as to what needs to be fixed
+    if (!ftn->IsILStub())
+        flags.Set(CORJIT_FLAGS::CORJIT_FLAG_USE_PINVOKE_HELPERS);
 #endif //FEATURE_GREENTHREADS
 
     return flags;
