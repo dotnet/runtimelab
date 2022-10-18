@@ -19,6 +19,8 @@ struct GreenThreadStackList
     int size;
 };
 
+class GreenThread;
+
 struct SuspendedGreenThread
 {
     uint8_t* currentStackPointer;
