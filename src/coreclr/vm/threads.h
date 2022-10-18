@@ -863,6 +863,16 @@ public:
 
     // Exposed object for Thread object
     OBJECTHANDLE    m_ExposedObject;
+
+    ThreadLocalBlock m_ThreadLocalBlock;
+
+    // Called during AssemblyLoadContext teardown to clean up all structures
+    // associated with thread statics for the specific Module
+    void DeleteThreadStaticData(ModuleIndex index);
+
+    // Called during Thread death to clean up all structures
+    // associated with thread statics
+    void DeleteThreadStaticData();
 };
 
 class GreenThread : public ThreadBase
@@ -948,10 +958,12 @@ public:
 
 public:
 
-    ThreadBase* m_curThreadBase = &m_coreThreadData;
+    PTR_ThreadBase m_curThreadBase;
 
-    ThreadBase* GetActiveThreadBase() { return m_curThreadBase; }
+    PTR_ThreadBase GetActiveThreadBase() { return m_curThreadBase; }
+#ifndef DACCESS_COMPILE
     void SetActiveThreadBase(ThreadBase* threadBase) { m_curThreadBase = threadBase; }
+#endif
     DWORD GetPermanentManagedThreadId() { return m_coreThreadData.GetThreadId(); }
     DWORD GetActiveManagedThreadId() { return GetActiveThreadBase()->GetThreadId(); }
 
@@ -3868,18 +3880,6 @@ public:
         return (pCtx == m_pSavedRedirectContext);
     }
 #endif //DACCESS_COMPILE
-
-    ThreadLocalBlock m_ThreadLocalBlock;
-
-    // Called during AssemblyLoadContext teardown to clean up all structures
-    // associated with thread statics for the specific Module
-    void DeleteThreadStaticData(ModuleIndex index);
-
-private:
-
-    // Called during Thread death to clean up all structures
-    // associated with thread statics
-    void DeleteThreadStaticData();
 
 private:
     TailCallTls m_tailCallTls;

@@ -542,7 +542,7 @@ class ThreadStatics
     {
         SUPPORTS_DAC;
 
-        return dac_cast<PTR_ThreadLocalBlock>(PTR_TO_MEMBER_TADDR(Thread, pThread, m_ThreadLocalBlock));
+        return dac_cast<PTR_ThreadLocalBlock>(PTR_TO_MEMBER_TADDR(ThreadBase, pThread->GetActiveThreadBase(), m_ThreadLocalBlock));
     }
 
 #ifndef DACCESS_COMPILE
@@ -550,7 +550,7 @@ class ThreadStatics
     {
         // Get the current thread
         Thread * pThread = GetThread();
-        return &pThread->m_ThreadLocalBlock;
+        return &pThread->GetActiveThreadBase()->m_ThreadLocalBlock;
     }
 
     FORCEINLINE static ThreadLocalModule* GetTLMIfExists(ModuleIndex index)

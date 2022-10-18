@@ -1395,8 +1395,15 @@ GreenThread::GreenThread()
 
 GreenThread::~GreenThread()
 {
+    {
+        // Free all structures related to thread statics for this thread
+        GCX_COOP();
+        this->DeleteThreadStaticData();
+    }
+
     this->CleanupWaitEventLink();
     this->CleanupEventWait();
+
     g_pThinLockThreadIdDispenser->DisposeId(this->m_ThreadId);
     if (m_ExposedObject != NULL)
         DestroyStrongHandle(m_ExposedObject);
@@ -1422,6 +1429,7 @@ Thread::Thread()
     }
     CONTRACTL_END;
 
+    m_curThreadBase = &m_coreThreadData;
     m_coreThreadData.m_currentThreadObj = this;
 
     m_pFrame                = FRAME_TOP;
@@ -2969,7 +2977,7 @@ void Thread::OnThreadTerminate(BOOL holdingLock)
         SafeSetThrowables(NULL);
 
         // Free all structures related to thread statics for this thread
-        DeleteThreadStaticData();
+        m_coreThreadData.DeleteThreadStaticData();
 
     }
 
@@ -7712,7 +7720,7 @@ Frame * Thread::NotifyFrameChainOfExceptionUnwind(Frame* pStartFrame, LPVOID pvL
 //
 //+----------------------------------------------------------------------------
 
-void Thread::DeleteThreadStaticData()
+void ThreadBase::DeleteThreadStaticData()
 {
     CONTRACTL {
         NOTHROW;
@@ -7733,7 +7741,7 @@ void Thread::DeleteThreadStaticData()
 //
 //+----------------------------------------------------------------------------
 
-void Thread::DeleteThreadStaticData(ModuleIndex index)
+void ThreadBase::DeleteThreadStaticData(ModuleIndex index)
 {
     m_ThreadLocalBlock.FreeTLM(index.m_dwIndex, FALSE /* isThreadShuttingDown */);
 }
@@ -8305,7 +8313,7 @@ Thread::EnumMemoryRegions(CLRDataEnumMemoryFlags flags)
 
     m_ExceptionState.EnumChainMemoryRegions(flags);
 
-    m_ThreadLocalBlock.EnumMemoryRegions(flags);
+    m_coreThreadData.m_ThreadLocalBlock.EnumMemoryRegions(flags); // TODO This is not complete in the presence of GreenThreads. We probably also want the various ThreadLocal variables from green threads, at least the active one.
 
     if (flags != CLRDATA_ENUM_MEM_MINI && flags != CLRDATA_ENUM_MEM_TRIAGE)
     {
