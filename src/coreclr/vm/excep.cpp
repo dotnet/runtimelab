@@ -4856,7 +4856,7 @@ lDone: ;
 #ifdef _DEBUG
         char buffer[200];
         sprintf_s(buffer, 200, "\nInternal error: Uncaught exception was thrown from IP = %p in UnhandledExceptionFilter_Worker on thread 0x%08x\n",
-                param.ExceptionEIP, ((GetThreadNULLOk() == NULL) ? NULL : GetThread()->GetThreadId()));
+                param.ExceptionEIP, ((GetThreadNULLOk() == NULL) ? NULL : GetThread()->GetPermanentManagedThreadId()));
         PrintToStdErrA(buffer);
         _ASSERTE(!"Unexpected exception in UnhandledExceptionFilter_Worker");
 #endif

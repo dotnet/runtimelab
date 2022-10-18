@@ -256,7 +256,7 @@ void GCToEEInterface::GcScanRoots(promote_func* fn, int condemned, int max_gen, 
     Thread* pThread = NULL;
     while ((pThread = ThreadStore::GetThreadList(pThread)) != NULL)
     {
-        STRESS_LOG2(LF_GC | LF_GCROOTS, LL_INFO100, "{ Starting scan of Thread %p ID = %x\n", pThread, pThread->GetThreadId());
+        STRESS_LOG2(LF_GC | LF_GCROOTS, LL_INFO100, "{ Starting scan of Thread %p ID = %x\n", pThread, pThread->GetPermanentManagedThreadId());
 
         if (GCHeapUtilities::GetGCHeap()->IsThreadUsingAllocationContextHeap(
             pThread->GetAllocContext(), sc->thread_number))
@@ -271,7 +271,7 @@ void GCToEEInterface::GcScanRoots(promote_func* fn, int condemned, int max_gen, 
             sc->dwEtwRootKind = kEtwGCRootKindOther;
 #endif // FEATURE_EVENT_TRACE
         }
-        STRESS_LOG2(LF_GC | LF_GCROOTS, LL_INFO100, "Ending scan of Thread %p ID = 0x%x }\n", pThread, pThread->GetThreadId());
+        STRESS_LOG2(LF_GC | LF_GCROOTS, LL_INFO100, "Ending scan of Thread %p ID = 0x%x }\n", pThread, pThread->GetPermanentManagedThreadId());
     }
 
 #ifdef FEATURE_GREENTHREADS

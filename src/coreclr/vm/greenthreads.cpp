@@ -120,6 +120,9 @@ extern "C" uintptr_t GreenThread_StartThreadHelper(uintptr_t functionToExecute, 
 
 extern "C" uintptr_t FirstFrameInGreenThread(TransitionHelperFunction functionToExecute, TransitionHelperStruct* param);
 
+#pragma optimize( "", off ) // Disable optimizations on this function as it is involved in thread transitions, and the use of thread statics across
+                            // across a potential OS transition does not work correctly. (The TLS variable access implicit in GetThread() stored 
+                            // across the OS thread transition. Naturally this causes interesting failures.)
 extern "C" uintptr_t FirstFrameInGreenThreadCpp(TransitionHelperFunction functionToExecute, TransitionHelperStruct* param)
 {
     if (t_greenThread.inGreenThread)
@@ -134,6 +137,7 @@ extern "C" uintptr_t FirstFrameInGreenThreadCpp(TransitionHelperFunction functio
 
     return result;
 }
+#pragma optimize( "", on )
 
 void CleanGreenThreadState()
 {
@@ -159,7 +163,7 @@ void FreeGreenThreadStackList(GreenThreadStackList* pStackList)
     }
 }
 
-SuspendedGreenThread* ProduceSuspendedGreenThreadStruct()
+SuspendedGreenThread* ProduceSuspendedGreenThreadStruct(GreenThread* pGreenThread)
 {
     if (t_greenThread.inGreenThread)
     {
@@ -167,6 +171,8 @@ SuspendedGreenThread* ProduceSuspendedGreenThreadStruct()
         SuspendedGreenThread* pNewSuspendedThread = t_greenThread.suspendedGreenThread;
         pNewSuspendedThread->currentStackPointer = t_greenThread.greenThreadStackCurrent;
         pNewSuspendedThread->greenThreadFrame = t_greenThread.pFrameInGreenThread;
+        pNewSuspendedThread->pGreenThread = pGreenThread;
+        pGreenThread->m_currentThreadObj = NULL;
 
         CleanGreenThreadState();
         return pNewSuspendedThread;
@@ -174,6 +180,7 @@ SuspendedGreenThread* ProduceSuspendedGreenThreadStruct()
     else
     {
         FreeGreenThreadStackList(t_greenThread.pStackListCurrent);
+        delete pGreenThread;
         CleanGreenThreadState();
         return NULL;
     }
@@ -181,17 +188,35 @@ SuspendedGreenThread* ProduceSuspendedGreenThreadStruct()
 
 SuspendedGreenThread* GreenThread_StartThread(TakesOneParam functionToExecute, uintptr_t param)
 {
+    OBJECTHANDLE threadObjectHandle;
+
+    GreenThread* pGreenThread = new GreenThread();
     {
         GCX_COOP();
         t_greenThread.pFrameInOSThread = GetThread()->m_pFrame;
+
+        THREADBASEREF attempt = (THREADBASEREF) AllocateObject(g_pThreadClass);
+        GCPROTECT_BEGIN(attempt);
+        attempt->SetIsGreenThread();
+        threadObjectHandle = GetAppDomain()->CreateStrongHandle(attempt);
+        
+        pGreenThread->m_ExposedObject = threadObjectHandle;
+        attempt->SetManagedThreadId(pGreenThread->m_ThreadId);
+        GCPROTECT_END();
     }
+
     TransitionHelperStruct detailsAboutWhatToCall;
     detailsAboutWhatToCall.function = functionToExecute;
     detailsAboutWhatToCall.param = param;
 
+    ThreadBase* pOldThreadBase = GetThread()->GetActiveThreadBase();
+    GetThread()->SetActiveThreadBase(pGreenThread);
+    pGreenThread->m_currentThreadObj = GetThread();
+
     GreenThread_StartThreadHelper((uintptr_t)FirstFrameInGreenThread, &detailsAboutWhatToCall);
 
-    return ProduceSuspendedGreenThreadStruct();
+    GetThread()->SetActiveThreadBase(pOldThreadBase);
+    return ProduceSuspendedGreenThreadStruct(pGreenThread);
 }
 
 uintptr_t FirstFrameInOSThread(TransitionHelperFunction functionToExecute, TransitionHelperStruct* param)
@@ -229,6 +254,9 @@ void *TransitionToOSThreadAndCallMalloc(size_t memoryToAllocate)
 
 extern "C" void YieldOutOfGreenThreadHelper(StackRange *pOSStackRange, uint8_t* osStackCurrent, uint8_t** greenThreadStackCurrent);
 
+#pragma optimize( "", off ) // Disable optimizations on this function as it is involved in thread transitions, and the use of thread statics across
+                            // across a potential OS transition does not work correctly. (The TLS variable access implicit in GetThread() stored 
+                            // across the OS thread transition. Naturally this causes interesting failures.)
 bool GreenThread_Yield() // Attempt to yield out of green thread. If the yield fails, return false, else return true once the thread is resumed.
 {
     if (!t_greenThread.inGreenThread || t_greenThread.transitionedToOSThreadOnGreenThread)
@@ -272,10 +300,13 @@ bool GreenThread_Yield() // Attempt to yield out of green thread. If the yield f
         free(pNewSuspendedThread);
 
         t_greenThread.pFrameInGreenThread->UNSAFE_SetNextFrame(t_greenThread.pFrameInOSThread);
+        ((InlinedCallFrame*)t_greenThread.pFrameInGreenThread)->UNSAFE_UpdateThreadPointer(GetThread());
         GetThread()->m_pFrame = t_greenThread.pFrameInGreenThread;
     }
     return true;
 }
+
+#pragma optimize( "", on ) // Re-enable optimizations
 
 bool GreenThread_IsGreenThread()
 {
@@ -305,6 +336,8 @@ extern "C" uint8_t* GetResumptionStackPointerAndSaveOSStackPointer(StackRange* p
     t_greenThread.osStackRange = *pOSStackRange;
     t_greenThread.osStackCurrent = savedRBXValue;
 
+    *(StackRange*)(rbpFromOSThreadBeforeResume - 0x30) = t_greenThread.pStackListCurrent->stackRange;
+
     return t_greenThread.greenThreadStackCurrent;
 }
 
@@ -325,10 +358,18 @@ SuspendedGreenThread* GreenThread_ResumeThread(SuspendedGreenThread* pSuspendedT
 
     t_greenThread.pStackListCurrent = pSuspendedThread->currentThreadStackSegment;
     t_greenThread.greenThreadStackCurrent = pSuspendedThread->currentStackPointer;
+    GreenThread* pGreenThread = pSuspendedThread->pGreenThread;
+    pGreenThread->m_currentThreadObj = GetThread();
+
     t_greenThread.suspendedGreenThread = pSuspendedThread;
 
+    ThreadBase* pOldThreadBase = GetThread()->GetActiveThreadBase();
+    GetThread()->SetActiveThreadBase(pGreenThread);
+
     ResumeSuspendedThreadHelper();
-    return ProduceSuspendedGreenThreadStruct();
+
+    GetThread()->SetActiveThreadBase(pOldThreadBase);
+    return ProduceSuspendedGreenThreadStruct(pGreenThread);
 }
 
 extern "C" void End_More_Thread_Bookeeping()

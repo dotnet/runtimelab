@@ -1123,7 +1123,7 @@ HRESULT MulticoreJitProfilePlayer::PlayProfile()
 
     {
         // 1 marks background thread
-        FireEtwThreadCreated((ULONGLONG) pThread, (ULONGLONG) GetAppDomain(), 1, pThread->GetThreadId(), pThread->GetOSThreadId(), GetClrInstanceId());
+        FireEtwThreadCreated((ULONGLONG) pThread, (ULONGLONG) GetAppDomain(), 1, pThread->GetPermanentManagedThreadId(), pThread->GetOSThreadId(), GetClrInstanceId());
     }
 
     const BYTE * pBuffer = m_pFileBuffer;

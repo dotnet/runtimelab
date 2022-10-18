@@ -17,7 +17,7 @@ namespace System.Threading
         private static AsyncLocal<IPrincipal?>? s_asyncLocalPrincipal;
 
         [ThreadStatic]
-        private static Thread? t_currentThread;
+        internal static Thread? t_currentThread;
 
         [ThreadStatic]
         internal static bool t_IsGreenThread;

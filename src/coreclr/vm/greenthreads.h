@@ -24,6 +24,7 @@ struct SuspendedGreenThread
     uint8_t* currentStackPointer;
     GreenThreadStackList* currentThreadStackSegment;
     Frame* greenThreadFrame;
+    GreenThread* pGreenThread;
     SuspendedGreenThread* prev;
     SuspendedGreenThread* next;
 };

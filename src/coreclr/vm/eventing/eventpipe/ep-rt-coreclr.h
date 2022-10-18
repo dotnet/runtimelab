@@ -2023,7 +2023,7 @@ ep_rt_thread_create (
 					thread_params->thread_params.thread->SetBackground (TRUE);
 					thread_params->thread_params.thread->StartThread ();
 					if (id)
-						*reinterpret_cast<DWORD *>(id) = thread_params->thread_params.thread->GetThreadId ();
+						*reinterpret_cast<DWORD *>(id) = thread_params->thread_params.thread->GetPermanentManagedThreadId ();
 					result = true;
 				}
 			} else if (thread_type == EP_THREAD_TYPE_SERVER) {
