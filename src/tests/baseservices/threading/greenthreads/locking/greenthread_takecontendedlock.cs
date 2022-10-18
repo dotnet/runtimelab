@@ -27,7 +27,6 @@ public class Test_greenthread_takecontendedlock {
         lock(s_lock)
         {
             Thread.Sleep(3000);
-            Console.ReadLine(); // Remove before checkin, but it should serve to keep things alive for now
         }
 
         t.Wait();
