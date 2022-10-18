@@ -439,7 +439,7 @@ private:
     LockState m_lockState;
 
     ULONG           m_Recursion;
-    PTR_Thread      m_HoldingThread;
+    PTR_ThreadBase  m_HoldingThread;
 
     LONG            m_TransientPrecious;
 
@@ -458,7 +458,7 @@ private:
     AwareLock(DWORD indx)
         : m_Recursion(0),
 #ifndef DACCESS_COMPILE
-// PreFAST has trouble with initializing a NULL PTR_Thread.
+// PreFAST has trouble with initializing a NULL PTR_ThreadBase.
           m_HoldingThread(NULL),
 #endif // DACCESS_COMPILE
           m_TransientPrecious(0),
@@ -517,7 +517,7 @@ public:
         return m_Recursion;
     }
 
-    PTR_Thread GetHoldingThread() const
+    PTR_ThreadBase GetHoldingThread() const
     {
         LIMITED_METHOD_CONTRACT;
         return m_HoldingThread;
@@ -529,7 +529,7 @@ private:
     bool ShouldStopPreemptingWaiters() const;
 
 private: // friend access is required for this unsafe function
-    void InitializeToLockedWithNoWaiters(ULONG recursionLevel, PTR_Thread holdingThread)
+    void InitializeToLockedWithNoWaiters(ULONG recursionLevel, PTR_ThreadBase holdingThread)
     {
         WRAPPER_NO_CONTRACT;
 
@@ -542,20 +542,20 @@ public:
     static void SpinWait(const YieldProcessorNormalizationInfo &normalizationInfo, DWORD spinIteration);
 
     // Helper encapsulating the fast path entering monitor. Returns what kind of result was achieved.
-    bool TryEnterHelper(Thread* pCurThread);
+    bool TryEnterHelper(ThreadBase* pCurThread);
 
-    EnterHelperResult TryEnterBeforeSpinLoopHelper(Thread *pCurThread);
-    EnterHelperResult TryEnterInsideSpinLoopHelper(Thread *pCurThread);
-    bool TryEnterAfterSpinLoopHelper(Thread *pCurThread);
+    EnterHelperResult TryEnterBeforeSpinLoopHelper(ThreadBase *pCurThread);
+    EnterHelperResult TryEnterInsideSpinLoopHelper(ThreadBase *pCurThread);
+    bool TryEnterAfterSpinLoopHelper(ThreadBase *pCurThread);
 
     // Helper encapsulating the core logic for leaving monitor. Returns what kind of
     // follow up action is necessary
-    AwareLock::LeaveHelperAction LeaveHelper(Thread* pCurThread);
+    AwareLock::LeaveHelperAction LeaveHelper(ThreadBase* pCurThread);
 
     void    Enter();
     BOOL    TryEnter(INT32 timeOut = 0);
-    BOOL    EnterEpilog(Thread *pCurThread, INT32 timeOut = INFINITE);
-    BOOL    EnterEpilogHelper(Thread *pCurThread, INT32 timeOut);
+    BOOL    EnterEpilog(ThreadBase *pCurThread, INT32 timeOut = INFINITE);
+    BOOL    EnterEpilogHelper(ThreadBase *pCurThread, INT32 timeOut);
     BOOL    Leave();
 
     void    Signal()
@@ -596,7 +596,7 @@ public:
 
     // Provide access to the Thread object that owns this awarelock.  This is used
     // to provide a host to find out owner of a lock.
-    inline PTR_Thread GetOwningThread()
+    inline PTR_ThreadBase GetOwningThread()
     {
         LIMITED_METHOD_CONTRACT;
         return m_HoldingThread;
@@ -1248,7 +1248,7 @@ class SyncBlock
     // This should ONLY be called when initializing a SyncBlock (i.e. ONLY from
     // ObjHeader::GetSyncBlock()), otherwise we'll have a race condition.
     // </NOTE>
-    void InitState(ULONG recursionLevel, PTR_Thread holdingThread)
+    void InitState(ULONG recursionLevel, PTR_ThreadBase holdingThread)
     {
         WRAPPER_NO_CONTRACT;
         m_Monitor.InitializeToLockedWithNoWaiters(recursionLevel, holdingThread);
@@ -1617,11 +1617,11 @@ class ObjHeader
     BOOL TryEnterObjMonitor(INT32 timeOut = 0);
 
     // Inlineable fast path of EnterObjMonitor/TryEnterObjMonitor. Must be called before EnterObjMonitorHelperSpin.
-    AwareLock::EnterHelperResult EnterObjMonitorHelper(Thread* pCurThread);
+    AwareLock::EnterHelperResult EnterObjMonitorHelper(ThreadBase* pCurThread);
 
     // Typically non-inlined spin loop for some fast paths of EnterObjMonitor/TryEnterObjMonitor. EnterObjMonitorHelper must be
     // called before this function.
-    AwareLock::EnterHelperResult EnterObjMonitorHelperSpin(Thread* pCurThread);
+    AwareLock::EnterHelperResult EnterObjMonitorHelperSpin(ThreadBase* pCurThread);
 
     // leaves the monitor of an object
     BOOL LeaveObjMonitor();
@@ -1631,7 +1631,7 @@ class ObjHeader
 
     // Helper encapsulating the core logic for releasing monitor. Returns what kind of
     // follow up action is necessary
-    AwareLock::LeaveHelperAction LeaveObjMonitorHelper(Thread* pCurThread);
+    AwareLock::LeaveHelperAction LeaveObjMonitorHelper(ThreadBase* pCurThread);
 
     // Returns TRUE if the lock is owned and FALSE otherwise
     // threadId is set to the ID (Thread::GetThreadId()) of the thread which owns the lock
@@ -1668,7 +1668,7 @@ typedef DPTR(class ObjHeader) PTR_ObjHeader;
 
 #ifdef DACCESS_COMPILE
 // A visitor function used to enumerate threads in the ThreadQueue below
-typedef void (*FP_TQ_THREAD_ENUMERATION_CALLBACK)(PTR_Thread pThread, VOID* pUserData);
+typedef void (*FP_TQ_THREAD_ENUMERATION_CALLBACK)(PTR_ThreadBase pThread, VOID* pUserData);
 #endif
 
 // A SyncBlock contains an m_Link field that is used for two purposes.  One
@@ -1703,7 +1703,7 @@ struct ThreadQueue
 
     // Wade through the SyncBlock's list of waiting threads and remove the
     // specified thread.
-    static BOOL          RemoveThread (Thread *pThread, SyncBlock *psb);
+    static BOOL          RemoveThread (ThreadBase *pThread, SyncBlock *psb);
 
 #ifdef DACCESS_COMPILE
     // Enumerates the threads in the queue from front to back by calling

@@ -9015,7 +9015,7 @@ void Debugger::ThreadCreated(Thread* pRuntimeThread)
 
     // Sanity check the thread.
     _ASSERTE(pRuntimeThread != NULL);
-    _ASSERTE(pRuntimeThread->GetThreadId() != 0);
+    _ASSERTE(pRuntimeThread->GetPermanentManagedThreadId() != 0);
 
 
     // Create a thread starter and enable its WillEnterManaged code

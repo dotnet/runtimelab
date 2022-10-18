@@ -315,7 +315,7 @@ inline void ThreadQueue::EnqueueThread(WaitEventLink *pWaitEventLink, SyncBlock 
 // Wade through the SyncBlock's list of waiting threads and remove the
 // specified thread.
 /* static */
-BOOL ThreadQueue::RemoveThread (Thread *pThread, SyncBlock *psb)
+BOOL ThreadQueue::RemoveThread (ThreadBase *pThread, SyncBlock *psb)
 {
     CONTRACTL
     {
@@ -1565,7 +1565,7 @@ BOOL ObjHeader::TryEnterObjMonitor(INT32 timeOut)
     return GetSyncBlock()->TryEnterMonitor(timeOut);
 }
 
-AwareLock::EnterHelperResult ObjHeader::EnterObjMonitorHelperSpin(Thread* pCurThread)
+AwareLock::EnterHelperResult ObjHeader::EnterObjMonitorHelperSpin(ThreadBase* pCurThread)
 {
     CONTRACTL{
         NOTHROW;
@@ -1696,7 +1696,7 @@ BOOL ObjHeader::LeaveObjMonitor()
 
     for (;;)
     {
-        AwareLock::LeaveHelperAction action = thisObj->GetHeader()->LeaveObjMonitorHelper(GetThread());
+        AwareLock::LeaveHelperAction action = thisObj->GetHeader()->LeaveObjMonitorHelper(GetThread()->GetActiveThreadBase());
 
         switch(action)
         {
@@ -1748,7 +1748,7 @@ BOOL ObjHeader::LeaveObjMonitorAtException()
 
     for (;;)
     {
-        AwareLock::LeaveHelperAction action = LeaveObjMonitorHelper(GetThread());
+        AwareLock::LeaveHelperAction action = LeaveObjMonitorHelper(GetThread()->GetActiveThreadBase());
 
         switch(action)
         {
@@ -1827,7 +1827,7 @@ BOOL ObjHeader::GetThreadOwningMonitorLock(DWORD *pThreadId, DWORD *pAcquisition
             SyncBlock* psb = g_pSyncTable[(int)index].m_SyncBlock;
 
             _ASSERTE(psb->GetMonitor() != NULL);
-            Thread* pThread = psb->GetMonitor()->GetHoldingThread();
+            ThreadBase* pThread = psb->GetMonitor()->GetHoldingThread();
             if(pThread == NULL)
             {
                 *pThreadId = 0;
@@ -2201,12 +2201,12 @@ SyncBlock *ObjHeader::GetSyncBlock()
                             // recursionLevel can't be non-zero if thread id is 0
                             _ASSERTE(lockThreadId != 0);
 
-                            Thread *pThread = g_pThinLockThreadIdDispenser->IdToThreadWithValidation(lockThreadId);
+                            ThreadBase *pThread = g_pThinLockThreadIdDispenser->IdToThreadWithValidation(lockThreadId);
 
                             if (pThread == NULL)
                             {
                                 // The lock is orphaned.
-                                pThread = (Thread*) -1;
+                                pThread = (ThreadBase*) -1;
                             }
                             syncBlock->InitState(recursionLevel + 1, pThread);
                         }
@@ -2364,7 +2364,7 @@ void AwareLock::Enter()
     }
     CONTRACTL_END;
 
-    Thread *pCurThread = GetThread();
+    ThreadBase *pCurThread = GetThread()->GetActiveThreadBase();
     LockState state = m_lockState.VolatileLoadWithoutBarrier();
     if (!state.IsLocked() || m_HoldingThread != pCurThread)
     {
@@ -2418,11 +2418,13 @@ BOOL AwareLock::TryEnter(INT32 timeOut)
     }
     CONTRACTL_END;
 
-    Thread  *pCurThread = GetThread();
+    Thread* pCurOSThread = GetThread();
+    ThreadBase  *pCurThread = pCurOSThread->GetActiveThreadBase();
 
-    if (pCurThread->IsAbortRequested())
+
+    if (pCurOSThread->IsAbortRequested())
     {
-        pCurThread->HandleThreadAbort();
+        pCurOSThread->HandleThreadAbort();
     }
 
     LockState state = m_lockState.VolatileLoadWithoutBarrier();
@@ -2471,7 +2473,7 @@ BOOL AwareLock::TryEnter(INT32 timeOut)
     return true;
 }
 
-BOOL AwareLock::EnterEpilog(Thread* pCurThread, INT32 timeOut)
+BOOL AwareLock::EnterEpilog(ThreadBase* pCurThread, INT32 timeOut)
 {
     STATIC_CONTRACT_THROWS;
     STATIC_CONTRACT_MODE_COOPERATIVE;
@@ -2484,7 +2486,7 @@ BOOL AwareLock::EnterEpilog(Thread* pCurThread, INT32 timeOut)
     blockingMonitorInfo.pMonitor = this;
     blockingMonitorInfo.pAppDomain = SystemDomain::GetCurrentDomain();
     blockingMonitorInfo.type = DebugBlock_MonitorCriticalSection;
-    DebugBlockingItemHolder holder(pCurThread, &blockingMonitorInfo);
+    DebugBlockingItemHolder holder(pCurThread->GetThreadObj(), &blockingMonitorInfo);
 
     // We need a separate helper because it uses SEH and the holder has a
     // destructor
@@ -2524,7 +2526,7 @@ double ComputeElapsedTimeInNanosecond(LARGE_INTEGER startTicks, LARGE_INTEGER en
     return (elapsedTicks * NsPerSecond) / freq.QuadPart;
 }
 
-BOOL AwareLock::EnterEpilogHelper(Thread* pCurThread, INT32 timeOut)
+BOOL AwareLock::EnterEpilogHelper(ThreadBase* pCurThread, INT32 timeOut)
 {
     STATIC_CONTRACT_THROWS;
     STATIC_CONTRACT_MODE_COOPERATIVE;
@@ -2539,7 +2541,7 @@ BOOL AwareLock::EnterEpilogHelper(Thread* pCurThread, INT32 timeOut)
     // Require all callers to be in cooperative mode.  If they have switched to preemptive
     // mode temporarily before calling here, then they are responsible for protecting
     // the object associated with this lock.
-    _ASSERTE(pCurThread->PreemptiveGCDisabled());
+    _ASSERTE(pCurThread->GetThreadObj()->PreemptiveGCDisabled());
 
     BOOLEAN IsContentionKeywordEnabled = ETW_TRACING_CATEGORY_ENABLED(MICROSOFT_WINDOWS_DOTNETRUNTIME_PROVIDER_DOTNET_Context, TRACE_LEVEL_INFORMATION, CLR_CONTENTION_KEYWORD);
     LARGE_INTEGER startTicks = { {0} };
@@ -2553,7 +2555,7 @@ BOOL AwareLock::EnterEpilogHelper(Thread* pCurThread, INT32 timeOut)
     }
 
     LogContention();
-    Thread::IncrementMonitorLockContentionCount(pCurThread);
+    Thread::IncrementMonitorLockContentionCount(pCurThread->GetThreadObj());
 
     OBJECTREF obj = GetOwningObject();
 
@@ -2569,7 +2571,7 @@ BOOL AwareLock::EnterEpilogHelper(Thread* pCurThread, INT32 timeOut)
         }
         _ASSERTE(m_SemEvent.IsMonitorEventAllocated());
 
-        pCurThread->EnablePreemptiveGC();
+        pCurThread->GetThreadObj()->EnablePreemptiveGC();
 
         for (;;)
         {
@@ -2679,7 +2681,7 @@ BOOL AwareLock::EnterEpilogHelper(Thread* pCurThread, INT32 timeOut)
             }
         }
 
-        pCurThread->DisablePreemptiveGC();
+        pCurThread->GetThreadObj()->DisablePreemptiveGC();
     }
     GCPROTECT_END();
     DecrementTransientPrecious();
@@ -2725,7 +2727,7 @@ BOOL AwareLock::Leave()
     }
     CONTRACTL_END;
 
-    Thread* pThread = GetThread();
+    ThreadBase* pThread = GetThread()->GetActiveThreadBase();
 
     AwareLock::LeaveHelperAction action = LeaveHelper(pThread);
 
@@ -2762,7 +2764,7 @@ LONG AwareLock::LeaveCompletely()
 BOOL AwareLock::OwnedByCurrentThread()
 {
     WRAPPER_NO_CONTRACT;
-    return (GetThread() == m_HoldingThread);
+    return (GetThread()->GetActiveThreadBase() == m_HoldingThread);
 }
 
 
@@ -2791,7 +2793,7 @@ BOOL SyncBlock::Wait(INT32 timeOut)
     }
     CONTRACTL_END;
 
-    Thread  *pCurThread = GetThread();
+    ThreadBase *pCurThread = GetThread()->GetActiveThreadBase();
     BOOL     isTimedOut = FALSE;
     BOOL     isEnqueued = FALSE;
     WaitEventLink waitEventLink;
@@ -2799,7 +2801,7 @@ BOOL SyncBlock::Wait(INT32 timeOut)
 
     // As soon as we flip the switch, we are in a race with the GC, which could clean
     // up the SyncBlock underneath us -- unless we report the object.
-    _ASSERTE(pCurThread->PreemptiveGCDisabled());
+    _ASSERTE(pCurThread->GetThreadObj()->PreemptiveGCDisabled());
 
     // Does this thread already wait for this SyncBlock?
     WaitEventLink *walk = pCurThread->WaitEventLinkForSyncBlock(this);
@@ -2857,7 +2859,7 @@ BOOL SyncBlock::Wait(INT32 timeOut)
     blockingMonitorInfo.pMonitor = &m_Monitor;
     blockingMonitorInfo.pAppDomain = SystemDomain::GetCurrentDomain();
     blockingMonitorInfo.type = DebugBlock_MonitorEvent;
-    DebugBlockingItemHolder holder(pCurThread, &blockingMonitorInfo);
+    DebugBlockingItemHolder holder(pCurThread->GetThreadObj(), &blockingMonitorInfo);
 
     GCPROTECT_BEGIN(obj);
     {
@@ -2867,7 +2869,7 @@ BOOL SyncBlock::Wait(INT32 timeOut)
         syncState.m_EnterCount = LeaveMonitorCompletely();
         _ASSERTE(syncState.m_EnterCount > 0);
 
-        isTimedOut = pCurThread->Block(timeOut, &syncState);
+        isTimedOut = pCurThread->GetThreadObj()->Block(timeOut, &syncState);
     }
     GCPROTECT_END();
     m_Monitor.DecrementTransientPrecious();

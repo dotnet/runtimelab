@@ -1133,7 +1133,7 @@ BOOL Thread::IsContextSafeToRedirect(const CONTEXT* pContext)
         if (pContext->ContextFlags & (CONTEXT_SERVICE_ACTIVE|CONTEXT_EXCEPTION_ACTIVE))
         {
             // cannot process exception
-            LOG((LF_ALWAYS, LL_WARNING, "thread [os id=0x08%x id=0x08%x] redirect failed due to ContextFlags of 0x%08x\n", (DWORD)m_OSThreadId, m_ThreadId, pContext->ContextFlags));
+            LOG((LF_ALWAYS, LL_WARNING, "thread [os id=0x08%x id=0x08%x] redirect failed due to ContextFlags of 0x%08x\n", (DWORD)m_OSThreadId, GetPermanentManagedThreadId(), pContext->ContextFlags));
             isSafeToRedirect = FALSE;
         }
     }
@@ -1190,7 +1190,7 @@ Thread::UserAbort(EEPolicy::ThreadAbortTypes abortType, DWORD timeout)
     }
     CONTRACTL_END;
 
-    STRESS_LOG2(LF_SYNC | LF_APPDOMAIN, LL_INFO100, "UserAbort Thread %p Thread Id = %x\n", this, GetThreadId());
+    STRESS_LOG2(LF_SYNC | LF_APPDOMAIN, LL_INFO100, "UserAbort Thread %p Thread Id = %x\n", this, GetPermanentManagedThreadId());
 
     BOOL fHoldingThreadStoreLock = ThreadStore::HoldingThreadStore();
 
@@ -1749,7 +1749,7 @@ void Thread::MarkThreadForAbort(EEPolicy::ThreadAbortTypes abortType)
         // The thread is asked for abort the first time
         SetAbortRequestBit();
     }
-    STRESS_LOG3(LF_APPDOMAIN, LL_ALWAYS, "Mark Thread %p Thread Id = %x for abort (type %d)\n", this, GetThreadId(), abortType);
+    STRESS_LOG3(LF_APPDOMAIN, LL_ALWAYS, "Mark Thread %p Thread Id = %x for abort (type %d)\n", this, GetPermanentManagedThreadId(), abortType);
 }
 
 void Thread::SetAbortRequestBit()
@@ -1831,7 +1831,7 @@ void Thread::UnmarkThreadForAbort(EEPolicy::ThreadAbortTypes abortType /* = EEPo
         ResetUserInterrupted();
     }
 
-    STRESS_LOG2(LF_APPDOMAIN, LL_ALWAYS, "Unmark Thread %p Thread Id = %x for abort \n", this, GetThreadId());
+    STRESS_LOG2(LF_APPDOMAIN, LL_ALWAYS, "Unmark Thread %p Thread Id = %x for abort \n", this, GetPermanentManagedThreadId());
 }
 
 void Thread::ResetAbort()
@@ -2227,7 +2227,7 @@ void Thread::HandleThreadAbort ()
         InterlockedExchange (&m_UserInterrupt, 0);
 
         // generate either a ThreadAbort exception
-        STRESS_LOG1(LF_APPDOMAIN, LL_INFO100, "Thread::HandleThreadAbort throwing abort for %x\n", GetThreadId());
+        STRESS_LOG1(LF_APPDOMAIN, LL_INFO100, "Thread::HandleThreadAbort throwing abort for %x\n", GetPermanentManagedThreadId());
 
         GCX_COOP_NO_DTOR();
 
@@ -2396,7 +2396,7 @@ void Thread::RareEnablePreemptiveGC()
 
 #ifdef LOGGING
             {
-                LOG((LF_CORDB, LL_INFO1000, "[0x%x] SUSPEND: suspended while enabling gc.\n", GetThreadId()));
+                LOG((LF_CORDB, LL_INFO1000, "[0x%x] SUSPEND: suspended while enabling gc.\n", GetPermanentManagedThreadId()));
             }
 #endif
 
@@ -2929,7 +2929,7 @@ BOOL Thread::RedirectThreadAtHandledJITCase(PFN_REDIRECTTARGET pTgt)
 
 
     STRESS_LOG4(LF_SYNC, LL_INFO10000, "Redirecting thread %p(tid=%x) from address 0x%p to address 0x%p\n",
-        this, this->GetThreadId(), dwOrigEip, pTgt);
+        this, this->GetPermanentManagedThreadId(), dwOrigEip, pTgt);
 
     bRes = EESetThreadContext(this, pCtx);
     if (!bRes)
@@ -3108,7 +3108,7 @@ BOOL Thread::CheckForAndDoRedirectForGC()
     }
     CONTRACTL_END;
 
-    LOG((LF_GC, LL_INFO1000, "Redirecting thread %08x for GCThreadSuspension", GetThreadId()));
+    LOG((LF_GC, LL_INFO1000, "Redirecting thread %08x for GCThreadSuspension", GetPermanentManagedThreadId()));
     return CheckForAndDoRedirect(GetRedirectHandlerForGCThreadControl());
 }
 
@@ -3124,7 +3124,7 @@ BOOL Thread::CheckForAndDoRedirectForDbg()
     }
     CONTRACTL_END;
 
-    LOG((LF_CORDB, LL_INFO1000, "Redirecting thread %08x for DebugSuspension", GetThreadId()));
+    LOG((LF_CORDB, LL_INFO1000, "Redirecting thread %08x for DebugSuspension", GetPermanentManagedThreadId()));
     return CheckForAndDoRedirect(GetRedirectHandlerForDbgThreadControl());
 }
 
@@ -3140,7 +3140,7 @@ BOOL Thread::CheckForAndDoRedirectForUserSuspend()
     }
     CONTRACTL_END;
 
-    LOG((LF_SYNC, LL_INFO1000, "Redirecting thread %08x for UserSuspension", GetThreadId()));
+    LOG((LF_SYNC, LL_INFO1000, "Redirecting thread %08x for UserSuspension", GetPermanentManagedThreadId()));
     return CheckForAndDoRedirect(GetRedirectHandlerForUserSuspend());
 }
 
@@ -3153,7 +3153,7 @@ BOOL Thread::CheckForAndDoRedirectForGCStress (CONTEXT *pCurrentThreadCtx)
 
     _ASSERTE(Thread::UseRedirectForGcStress());
 
-    LOG((LF_CORDB, LL_INFO1000, "Redirecting thread %08x for GCStress", GetThreadId()));
+    LOG((LF_CORDB, LL_INFO1000, "Redirecting thread %08x for GCStress", GetPermanentManagedThreadId()));
 
     m_fPreemptiveGCDisabledForGCStress = !PreemptiveGCDisabled();
     GCX_COOP_NO_DTOR();
@@ -3352,7 +3352,7 @@ void ThreadSuspend::SuspendRuntime(ThreadSuspend::SUSPEND_REASON reason)
             if (previousCount == 0)
             {
                 STRESS_LOG3(LF_SYNC, LL_INFO10000, "    Inspecting thread 0x%x ID 0x%x coop mode = %d\n",
-                    thread, thread->GetThreadId(), thread->m_fPreemptiveGCDisabled.LoadWithoutBarrier());
+                    thread, thread->GetPermanentManagedThreadId(), thread->m_fPreemptiveGCDisabled.LoadWithoutBarrier());
 
 
                 // ::FlushProcessWriteBuffers above guarantees that the state that we see here
@@ -3615,7 +3615,7 @@ void ThreadSuspend::SuspendRuntime(ThreadSuspend::SUSPEND_REASON reason)
                         if (id == 0xbaadf00d)
                         {
                             sprintf_s (message, ARRAY_SIZE(message), "Thread CLR ID=%x cannot be suspended",
-                                        thread->GetThreadId());
+                                        thread->GetPermanentManagedThreadId());
                         }
                         else
                         {
@@ -4018,7 +4018,7 @@ BOOL Thread::ResumeUnderControl(CONTEXT *pCtx)
 
     BOOL fSuccess = FALSE;
 
-    LOG((LF_APPDOMAIN, LL_INFO100, "ResumeUnderControl %x\n", GetThreadId()));
+    LOG((LF_APPDOMAIN, LL_INFO100, "ResumeUnderControl %x\n", GetPermanentManagedThreadId()));
 
     BOOL fSucceeded;
 
@@ -4122,7 +4122,7 @@ bool Thread::SysStartSuspendForDebug(AppDomain *pAppDomain)
     }
 
     LOG((LF_CORDB, LL_INFO1000, "[0x%x] SUSPEND: starting suspend.  Trap count: %d\n",
-         pCurThread ? pCurThread->GetThreadId() : (DWORD) -1, g_TrapReturningThreads.Load()));
+         pCurThread ? pCurThread->GetPermanentManagedThreadId() : (DWORD) -1, g_TrapReturningThreads.Load()));
 
     // Caller is expected to be holding the ThreadStore lock
     _ASSERTE(ThreadStore::HoldingThreadStore() || IsAtProcessExit());
@@ -4161,7 +4161,7 @@ bool Thread::SysStartSuspendForDebug(AppDomain *pAppDomain)
         {
             LOG((LF_CORDB, LL_INFO1000,
                  "[0x%x] SUSPEND: marking current thread.\n",
-                 thread->GetThreadId()));
+                 thread->GetPermanentManagedThreadId()));
 
             _ASSERTE(!thread->m_fPreemptiveGCDisabled);
 
@@ -4268,7 +4268,7 @@ bool Thread::SysStartSuspendForDebug(AppDomain *pAppDomain)
 
             LOG((LF_CORDB, LL_INFO1000,
                  "[0x%x] SUSPEND: gc disabled - will sync.\n",
-                 thread->GetThreadId()));
+                 thread->GetPermanentManagedThreadId()));
         }
         else if (!thread->m_fPreemptiveGCDisabled)
         {
@@ -4303,7 +4303,7 @@ bool Thread::SysStartSuspendForDebug(AppDomain *pAppDomain)
 #endif // !DISABLE_THREADSUSPEND
 
             LOG((LF_CORDB, LL_INFO1000,
-                 "[0x%x] SUSPEND: gc enabled.\n", thread->GetThreadId()));
+                 "[0x%x] SUSPEND: gc enabled.\n", thread->GetPermanentManagedThreadId()));
         }
     }
 
@@ -4554,7 +4554,7 @@ void Thread::SysResumeFromDebug(AppDomain *pAppDomain)
             {
                 LOG((LF_CORDB, LL_INFO1000,
                      "[0x%x] RESUME: TS_DebugSuspendPending was set, but will be removed\n",
-                     thread->GetThreadId()));
+                     thread->GetPermanentManagedThreadId()));
 
 #ifdef FEATURE_EMULATE_SINGLESTEP
                 if (thread->IsSingleStepEnabled())
@@ -4573,7 +4573,7 @@ void Thread::SysResumeFromDebug(AppDomain *pAppDomain)
             // Thread will remain suspended due to a request from the debugger.
 
             LOG((LF_CORDB,LL_INFO10000,"Didn't unsuspend thread 0x%x"
-                "(ID:0x%x)\n", thread, thread->GetThreadId()));
+                "(ID:0x%x)\n", thread, thread->GetPermanentManagedThreadId()));
             LOG((LF_CORDB,LL_INFO10000,"Suspending:0x%x\n",
                 thread->m_State & TS_DebugSuspendPending));
             _ASSERTE((thread->m_State & TS_DebugWillSync) == 0);

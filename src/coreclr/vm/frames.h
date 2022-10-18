@@ -2929,6 +2929,15 @@ public:
             dac_cast<TADDR>(dac_cast<PTR_InlinedCallFrame>(pFrame)->m_pCallerReturnAddress) != NULL;
     }
 
+#ifdef FEATURE_GREENTHREADS
+#ifndef DACCESS_COMPILE
+    void UNSAFE_UpdateThreadPointer(Thread* pThread)
+    {
+        m_pThread = (PVOID)pThread;
+    }
+#endif // !DACCESS_COMPILE
+#endif // FEATURE_GREENTHREADS
+
     // Marks the frame as inactive.
     void Reset()
     {

@@ -119,14 +119,14 @@ FORCEINLINE bool Object::TryEnterObjMonitorSpinHelper()
         return false;
     }
 
-    AwareLock::EnterHelperResult result = EnterObjMonitorHelper(pCurThread);
+    AwareLock::EnterHelperResult result = EnterObjMonitorHelper(pCurThread->GetActiveThreadBase());
     if (result == AwareLock::EnterHelperResult_Entered)
     {
         return true;
     }
     if (result == AwareLock::EnterHelperResult_Contention)
     {
-        result = EnterObjMonitorHelperSpin(pCurThread);
+        result = EnterObjMonitorHelperSpin(pCurThread->GetActiveThreadBase());
         if (result == AwareLock::EnterHelperResult_Entered)
         {
             return true;

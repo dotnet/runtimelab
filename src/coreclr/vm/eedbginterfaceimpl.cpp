@@ -1408,7 +1408,7 @@ void EEDbgInterfaceImpl::SetDebugState(Thread *pThread,
 
     _ASSERTE(state == THREAD_SUSPEND || state == THREAD_RUN);
 
-    LOG((LF_CORDB,LL_INFO10000,"EEDbg:Setting thread 0x%x (ID:0x%x) to 0x%x\n", pThread, pThread->GetThreadId(), state));
+    LOG((LF_CORDB,LL_INFO10000,"EEDbg:Setting thread 0x%x (ID:0x%x) to 0x%x\n", pThread, pThread->GetPermanentManagedThreadId(), state));
 
     if (state == THREAD_SUSPEND)
     {
@@ -1480,7 +1480,7 @@ CorDebugUserState EEDbgInterfaceImpl::GetPartialUserState(Thread *pThread)
     }
 
     LOG((LF_CORDB,LL_INFO1000, "EEDbgII::GUS: thread 0x%x (id:0x%x)"
-        " userThreadState is 0x%x\n", pThread, pThread->GetThreadId(), ret));
+        " userThreadState is 0x%x\n", pThread, pThread->GetPermanentManagedThreadId(), ret));
 
     return (CorDebugUserState)ret;
 }

@@ -463,7 +463,8 @@ BOOL Thread::SetThreadPriority(
     if (fRet)
     {
         GCX_COOP();
-        THREADBASEREF pObject = (THREADBASEREF)ObjectFromHandle(m_ExposedObject);
+        _ASSERTE(GetActiveThreadBase() == &m_coreThreadData);
+        THREADBASEREF pObject = (THREADBASEREF)ObjectFromHandle(m_coreThreadData.m_ExposedObject);
         if (pObject != NULL)
         {
             // TODO: managed ThreadPriority only supports up to 4.
@@ -752,7 +753,7 @@ Thread* SetupThread()
     }
     else
     {
-        LOG((LF_CORDB, LL_INFO10000, "ThreadCreated() not called due to CORDebuggerAttached() being FALSE for thread 0x%x\n", pThread->GetThreadId()));
+        LOG((LF_CORDB, LL_INFO10000, "ThreadCreated() not called due to CORDebuggerAttached() being FALSE for thread 0x%x\n", pThread->GetPermanentManagedThreadId()));
     }
 #endif // DEBUGGING_SUPPORTED
 
@@ -1383,6 +1384,33 @@ void Dbg_TrackSyncStack::LeaveSync(UINT_PTR caller, void *pAwareLock)
 
 static  DWORD dwHashCodeSeed = 123456789;
 
+GreenThread::GreenThread()
+{
+    g_pThinLockThreadIdDispenser->NewId(this, this->m_ThreadId);
+
+    m_EventWait.CreateManualEvent(TRUE);
+    m_ExposedObject = NULL;
+    m_currentThreadObj = NULL;
+}
+
+GreenThread::~GreenThread()
+{
+    this->CleanupWaitEventLink();
+    this->CleanupEventWait();
+    g_pThinLockThreadIdDispenser->DisposeId(this->m_ThreadId);
+    if (m_ExposedObject != NULL)
+        DestroyStrongHandle(m_ExposedObject);
+}
+
+ThreadBase::ThreadBase()
+{
+    m_WaitEventLink.m_Next = NULL;
+    m_WaitEventLink.m_LinkSB.m_pNext = NULL;
+#ifdef _DEBUG
+    m_ThreadId = UNINITIALIZED_THREADID;
+#endif // _DEBUG
+}
+
 //--------------------------------------------------------------------
 // Thread construction
 //--------------------------------------------------------------------
@@ -1393,6 +1421,8 @@ Thread::Thread()
         if (GetThreadNULLOk()) {GC_TRIGGERS;} else {DISABLED(GC_NOTRIGGER);}
     }
     CONTRACTL_END;
+
+    m_coreThreadData.m_currentThreadObj = this;
 
     m_pFrame                = FRAME_TOP;
     m_pGCFrame              = NULL;
@@ -1431,16 +1461,10 @@ Thread::Thread()
     m_thAllocContextObj = 0;
 
     m_UserInterrupt = 0;
-    m_WaitEventLink.m_Next = NULL;
-    m_WaitEventLink.m_LinkSB.m_pNext = NULL;
     m_ThreadHandle = INVALID_HANDLE_VALUE;
     m_ThreadHandleForClose = INVALID_HANDLE_VALUE;
     m_ThreadHandleForResume = INVALID_HANDLE_VALUE;
     m_WeOwnThreadHandle = FALSE;
-
-#ifdef _DEBUG
-    m_ThreadId = UNINITIALIZED_THREADID;
-#endif //_DEBUG
 
     // Initialize this variable to a very different start value for each thread
     // Using linear congruential generator from Knuth Vol. 2, p. 102, line 24
@@ -1458,9 +1482,9 @@ Thread::Thread()
     // It can't be a LongWeakHandle because we zero stuff out of the exposed
     // object as it is finalized.  At that point, calls to GetCurrentThread()
     // had better get a new one,!
-    m_ExposedObject = CreateGlobalShortWeakHandle(NULL);
+    m_coreThreadData.m_ExposedObject = CreateGlobalShortWeakHandle(NULL);
 
-    GlobalShortWeakHandleHolder exposedObjectHolder(m_ExposedObject);
+    GlobalShortWeakHandleHolder exposedObjectHolder(m_coreThreadData.m_ExposedObject);
 
     m_StrongHndToExposedObject = CreateGlobalStrongHandle(NULL);
     GlobalStrongHandleHolder strongHndToExposedObjectHolder(m_StrongHndToExposedObject);
@@ -1597,7 +1621,7 @@ Thread::Thread()
     m_pDomain = SystemDomain::System()->DefaultDomain();
 
     // Do not expose thread until it is fully constructed
-    g_pThinLockThreadIdDispenser->NewId(this, this->m_ThreadId);
+    g_pThinLockThreadIdDispenser->NewId(&this->m_coreThreadData, this->m_coreThreadData.m_ThreadId);
 
     //
     // DO NOT ADD ADDITIONAL CONSTRUCTION AFTER THIS POINT.
@@ -1662,7 +1686,7 @@ void Thread::InitThread()
         // at arbitrary locations (including when holding a lock that NT uses to serialize
         // all memory allocations).  By sending a message now, we insure that the stress
         // log will not allocate memory at these critical times an avoid deadlock.
-    STRESS_LOG2(LF_ALWAYS, LL_ALWAYS, "SetupThread  managed Thread %p Thread Id = %x\n", this, GetThreadId());
+    STRESS_LOG2(LF_ALWAYS, LL_ALWAYS, "SetupThread  managed Thread %p Thread Id = %x\n", this, GetPermanentManagedThreadId());
 
 #ifndef TARGET_UNIX
     // workaround: Remove this when we flow impersonation token to host.
@@ -1775,13 +1799,13 @@ BOOL Thread::AllocHandles()
     WRAPPER_NO_CONTRACT;
 
     _ASSERTE(!m_DebugSuspendEvent.IsValid());
-    _ASSERTE(!m_EventWait.IsValid());
+    _ASSERTE(!m_coreThreadData.m_EventWait.IsValid());
 
     BOOL fOK = TRUE;
     EX_TRY {
         // create a manual reset event for getting the thread to a safe point
         m_DebugSuspendEvent.CreateManualEvent(FALSE);
-        m_EventWait.CreateManualEvent(TRUE);
+        m_coreThreadData.m_EventWait.CreateManualEvent(TRUE);
     }
     EX_CATCH {
         fOK = FALSE;
@@ -1790,8 +1814,8 @@ BOOL Thread::AllocHandles()
             m_DebugSuspendEvent.CloseEvent();
         }
 
-        if (!m_EventWait.IsValid()) {
-            m_EventWait.CloseEvent();
+        if (!m_coreThreadData.m_EventWait.IsValid()) {
+            m_coreThreadData.m_EventWait.CloseEvent();
         }
     }
     EX_END_CATCH(RethrowTerminalExceptions);
@@ -1892,7 +1916,7 @@ BOOL Thread::HasStarted()
     }
     else
     {
-        LOG((LF_CORDB, LL_INFO10000, "ThreadCreated() not called due to CORDebuggerAttached() being FALSE for thread 0x%x\n", GetThreadId()));
+        LOG((LF_CORDB, LL_INFO10000, "ThreadCreated() not called due to CORDebuggerAttached() being FALSE for thread 0x%x\n", GetPermanentManagedThreadId()));
     }
 
 #endif // DEBUGGING_SUPPORTED
@@ -2382,7 +2406,7 @@ int Thread::IncExternalCount()
     // If we have an exposed object and the refcount is greater than one
     // we must make sure to keep a strong handle to the exposed object
     // so that we keep it alive even if nobody has a reference to it.
-    if (pCurThread && ((*((void**)m_ExposedObject)) != NULL))
+    if (pCurThread && ((*((void**)m_coreThreadData.m_ExposedObject)) != NULL))
     {
         // The exposed object exists and needs a strong handle so check
         // to see if it has one.
@@ -2391,7 +2415,7 @@ int Thread::IncExternalCount()
         {
             GCX_COOP();
             // Store the object in the strong handle.
-            StoreObjectInHandle(m_StrongHndToExposedObject, ObjectFromHandle(m_ExposedObject));
+            StoreObjectInHandle(m_StrongHndToExposedObject, ObjectFromHandle(m_coreThreadData.m_ExposedObject));
         }
     }
 
@@ -2597,15 +2621,7 @@ Thread::~Thread()
 
     _ASSERTE(IsDead() || IsUnstarted() || IsAtProcessExit());
 
-    if (m_WaitEventLink.m_Next != NULL && !IsAtProcessExit())
-    {
-        WaitEventLink *walk = &m_WaitEventLink;
-        while (walk->m_Next) {
-            ThreadQueue::RemoveThread(this, (SyncBlock*)((DWORD_PTR)walk->m_Next->m_WaitSB & ~1));
-            StoreEventToEventStore (walk->m_Next->m_EventWait);
-        }
-        m_WaitEventLink.m_Next = NULL;
-    }
+    m_coreThreadData.CleanupWaitEventLink();
 
     if (m_StateNC & TSNC_ExistInThreadStore) {
         BOOL ret;
@@ -2629,10 +2645,7 @@ Thread::~Thread()
     {
         m_DebugSuspendEvent.CloseEvent();
     }
-    if (m_EventWait.IsValid())
-    {
-        m_EventWait.CloseEvent();
-    }
+    m_coreThreadData.CleanupEventWait();
 
     if (m_OSContext)
         delete m_OSContext;
@@ -2667,11 +2680,11 @@ Thread::~Thread()
         // Destroy any handles that we're using to hold onto exception objects
         SafeSetThrowables(NULL);
 
-        DestroyShortWeakHandle(m_ExposedObject);
+        DestroyShortWeakHandle(m_coreThreadData.m_ExposedObject);
         DestroyStrongHandle(m_StrongHndToExposedObject);
     }
 
-    g_pThinLockThreadIdDispenser->DisposeId(GetThreadId());
+    g_pThinLockThreadIdDispenser->DisposeId(GetPermanentManagedThreadId());
 
     m_tailCallTls.FreeArgBuffer();
 
@@ -2915,8 +2928,8 @@ void Thread::OnThreadTerminate(BOOL holdingLock)
     // OSThreadId may change for the current thread is the thread is blocked and rescheduled
     // by host.
     Thread *pCurrentThread = GetThreadNULLOk();
-    DWORD CurrentThreadID = pCurrentThread?pCurrentThread->GetThreadId():0;
-    DWORD ThisThreadID = GetThreadId();
+    DWORD CurrentThreadID = pCurrentThread?pCurrentThread->GetPermanentManagedThreadId():0;
+    DWORD ThisThreadID = GetPermanentManagedThreadId();
 
 #ifdef FEATURE_COMINTEROP_APARTMENT_SUPPORT
     // If the currently running thread is the thread that died and it is an STA thread, then we
@@ -2986,7 +2999,7 @@ void Thread::OnThreadTerminate(BOOL holdingLock)
 
         _ASSERTE(IsAtProcessExit());
         ClearContext();
-        if (m_ExposedObject != NULL)
+        if (m_coreThreadData.m_ExposedObject != NULL)
             DecExternalCount(holdingLock);             // may destruct now
     }
     else
@@ -3954,30 +3967,6 @@ DWORD Thread::Wait(CLREvent *pEvent, INT32 timeOut, PendingSync *syncInfo)
     return dwResult;
 }
 
-void Thread::Wake(SyncBlock *psb)
-{
-    WRAPPER_NO_CONTRACT;
-
-    CLREvent* hEvent = NULL;
-    WaitEventLink *walk = &m_WaitEventLink;
-    while (walk->m_Next) {
-        if (walk->m_Next->m_WaitSB == psb) {
-            hEvent = walk->m_Next->m_EventWait;
-            // We are guaranteed that only one thread can change walk->m_Next->m_WaitSB
-            // since the thread is helding the syncblock.
-            walk->m_Next->m_WaitSB = (SyncBlock*)((DWORD_PTR)walk->m_Next->m_WaitSB | 1);
-            break;
-        }
-#ifdef _DEBUG
-        else if ((SyncBlock*)((DWORD_PTR)walk->m_Next & ~1) == psb) {
-            _ASSERTE (!"Can not wake a thread on the same SyncBlock more than once");
-        }
-#endif
-    }
-    PREFIX_ASSUME (hEvent != NULL);
-    hEvent->Set();
-}
-
 #define WAIT_INTERRUPT_THREADABORT 0x1
 #define WAIT_INTERRUPT_INTERRUPT 0x2
 #define WAIT_INTERRUPT_OTHEREXCEPTION 0x4
@@ -4044,9 +4033,9 @@ void PendingSync::Restore(BOOL bRemoveFromSB)
     if (pRealWaitEventLink->m_RefCount == 0)
     {
         if (bRemoveFromSB) {
-            ThreadQueue::RemoveThread(pCurThread, pRealWaitEventLink->m_WaitSB);
+            ThreadQueue::RemoveThread(pCurThread->GetActiveThreadBase(), pRealWaitEventLink->m_WaitSB);
         }
-        if (pRealWaitEventLink->m_EventWait != &pCurThread->m_EventWait) {
+        if (pRealWaitEventLink->m_EventWait != &pCurThread->GetActiveThreadBase()->m_EventWait) {
             // Put the event back to the pool.
             StoreEventToEventStore(pRealWaitEventLink->m_EventWait);
         }
@@ -4252,8 +4241,10 @@ OBJECTREF Thread::GetExposedObject()
 
     _ASSERTE(pCurThread->PreemptiveGCDisabled());
 
-    if (ObjectFromHandle(m_ExposedObject) == NULL)
+    if (ObjectFromHandle(GetActiveThreadBase()->m_ExposedObject) == NULL)
     {
+        _ASSERTE(GetActiveThreadBase() == &m_coreThreadData);
+
         // Allocate the exposed thread object.
         THREADBASEREF attempt = (THREADBASEREF) AllocateObject(g_pThreadClass);
         GCPROTECT_BEGIN(attempt);
@@ -4268,12 +4259,12 @@ OBJECTREF Thread::GetExposedObject()
         ThreadStoreLockHolder tsHolder(fNeedThreadStore);
 
         // Check to see if another thread has not already created the exposed object.
-        if (ObjectFromHandle(m_ExposedObject) == NULL)
+        if (ObjectFromHandle(m_coreThreadData.m_ExposedObject) == NULL)
         {
             // Keep a weak reference to the exposed object.
-            StoreObjectInHandle(m_ExposedObject, (OBJECTREF) attempt);
+            StoreObjectInHandle(m_coreThreadData.m_ExposedObject, (OBJECTREF) attempt);
 
-            ObjectInHandleHolder exposedHolder(m_ExposedObject);
+            ObjectInHandleHolder exposedHolder(m_coreThreadData.m_ExposedObject);
 
             // Increase the external ref count. We can't call IncExternalCount because we
             // already hold the thread lock and IncExternalCount won't be able to take it.
@@ -4286,7 +4277,7 @@ OBJECTREF Thread::GetExposedObject()
             ObjectInHandleHolder strongHolder(m_StrongHndToExposedObject);
 
 
-            attempt->SetManagedThreadId(GetThreadId());
+            attempt->SetManagedThreadId(GetPermanentManagedThreadId());
 
 
             // Note that we are NOT calling the constructor on the Thread.  That's
@@ -4306,7 +4297,7 @@ OBJECTREF Thread::GetExposedObject()
 
         GCPROTECT_END();
     }
-    return ObjectFromHandle(m_ExposedObject);
+    return ObjectFromHandle(GetActiveThreadBase()->m_ExposedObject);
 }
 
 
@@ -4320,14 +4311,16 @@ void Thread::SetExposedObject(OBJECTREF exposed)
     }
     CONTRACTL_END;
 
+    _ASSERTE(GetActiveThreadBase() == &m_coreThreadData);
+
     if (exposed != NULL)
     {
         _ASSERTE (GetThreadNULLOk() != this);
         _ASSERTE(IsUnstarted());
-        _ASSERTE(ObjectFromHandle(m_ExposedObject) == NULL);
+        _ASSERTE(ObjectFromHandle(m_coreThreadData.m_ExposedObject) == NULL);
         // The exposed object keeps us alive until it is GC'ed.  This doesn't mean the
         // physical thread continues to run, of course.
-        StoreObjectInHandle(m_ExposedObject, exposed);
+        StoreObjectInHandle(m_coreThreadData.m_ExposedObject, exposed);
         // This makes sure the contexts on the backing thread
         // and the managed thread start off in sync with each other.
         // BEWARE: the IncExternalCount call below may cause GC to happen.
@@ -4342,7 +4335,7 @@ void Thread::SetExposedObject(OBJECTREF exposed)
     {
         // Simply set both of the handles to NULL. The GC of the old exposed thread
         // object will take care of decrementing the external ref count.
-        StoreObjectInHandle(m_ExposedObject, NULL);
+        StoreObjectInHandle(m_coreThreadData.m_ExposedObject, NULL);
         StoreObjectInHandle(m_StrongHndToExposedObject, NULL);
     }
 }
@@ -7868,7 +7861,9 @@ INT32 Thread::ResetManagedThreadObjectInCoopMode(INT32 nPriority)
     }
     CONTRACTL_END;
 
-    THREADBASEREF pObject = (THREADBASEREF)ObjectFromHandle(m_ExposedObject);
+    _ASSERTE(GetActiveThreadBase() == &m_coreThreadData);
+
+    THREADBASEREF pObject = (THREADBASEREF)ObjectFromHandle(m_coreThreadData.m_ExposedObject);
     if (pObject != NULL)
     {
         pObject->ResetName();
@@ -7891,7 +7886,8 @@ BOOL Thread::IsRealThreadPoolResetNeeded()
     if(!IsBackground())
         return TRUE;
 
-    THREADBASEREF pObject = (THREADBASEREF)ObjectFromHandle(m_ExposedObject);
+    _ASSERT(GetActiveThreadBase() == &m_coreThreadData);
+    THREADBASEREF pObject = (THREADBASEREF)ObjectFromHandle(m_coreThreadData.m_ExposedObject);
 
     if(pObject != NULL)
     {

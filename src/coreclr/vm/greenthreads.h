@@ -22,8 +22,11 @@ struct GreenThreadStackList
 struct SuspendedGreenThread
 {
     uint8_t* currentStackPointer;
-    GreenThreadStackList *currentThreadStackSegment;
+    GreenThreadStackList* currentThreadStackSegment;
     Frame* greenThreadFrame;
+    GreenThread* pGreenThread;
+    SuspendedGreenThread* prev;
+    SuspendedGreenThread* next;
 };
 
 typedef uintptr_t (*TakesOneParam)(uintptr_t param);
@@ -44,5 +47,9 @@ void DestroyGreenThread(SuspendedGreenThread* pSuspendedThread); //
 bool GreenThread_IsGreenThread();
 
 void CallOnOSThread(TakesOneParamNoReturn functionToExecute, uintptr_t param);
+
+// TODO: AndrewAu: Better naming
+extern SuspendedGreenThread green_head;
+extern SuspendedGreenThread green_tail;
 
 #endif // GREENTHREADS_H

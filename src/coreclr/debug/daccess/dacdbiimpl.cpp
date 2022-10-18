@@ -6265,7 +6265,7 @@ MonitorLockInfo DacDbiInterfaceImpl::GetThreadOwningMonitorLock(VMPTR_Object vmO
     Thread *pThread = ThreadStore::GetThreadList(NULL);
     while (pThread != NULL)
     {
-        if(pThread->GetThreadId() == threadId)
+        if(pThread->GetPermanentManagedThreadId() == threadId) // TODO This doesn't work for green threads
         {
             info.lockOwner.SetDacTargetPtr(PTR_HOST_TO_TADDR(pThread));
             info.acquisitionCount = acquisitionCount;

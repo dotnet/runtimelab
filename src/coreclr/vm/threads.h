@@ -802,6 +802,76 @@ public:
     const PortableTailCallFrame* GetFrame() { return m_frame; }
 };
 
+class ThreadBase
+{
+public:
+    ThreadBase();
+
+    // Unique thread id used for thin locks - kept as small as possible, as we have limited space
+    // in the object header to store it.
+    DWORD                m_ThreadId;
+    Thread*              m_currentThreadObj;
+
+    DWORD       GetThreadId()
+    {
+        LIMITED_METHOD_DAC_CONTRACT;
+        _ASSERTE(m_ThreadId != UNINITIALIZED_THREADID);
+        return m_ThreadId;
+    }
+
+    Thread* GetThreadObj() { return m_currentThreadObj; }
+
+    // For Object::Wait, Notify and NotifyAll, we use an Event inside the
+    // thread and we queue the threads onto the SyncBlock of the object they
+    // are waiting for.
+    CLREvent        m_EventWait;
+    WaitEventLink   m_WaitEventLink;
+    WaitEventLink* WaitEventLinkForSyncBlock (SyncBlock *psb)
+    {
+        LIMITED_METHOD_CONTRACT;
+        WaitEventLink *walk = &m_WaitEventLink;
+        while (walk->m_Next) {
+            _ASSERTE (walk->m_Next->m_Thread == this);
+            if ((SyncBlock*)(((DWORD_PTR)walk->m_Next->m_WaitSB) & ~1)== psb) {
+                break;
+            }
+            walk = walk->m_Next;
+        }
+        return walk;
+    }
+
+    void CleanupWaitEventLink()
+    {
+        if (m_WaitEventLink.m_Next != NULL && !IsAtProcessExit())
+        {
+            WaitEventLink *walk = &m_WaitEventLink;
+            while (walk->m_Next) {
+                ThreadQueue::RemoveThread(this, (SyncBlock*)((DWORD_PTR)walk->m_Next->m_WaitSB & ~1));
+                StoreEventToEventStore (walk->m_Next->m_EventWait);
+            }
+            m_WaitEventLink.m_Next = NULL;
+        }
+    }
+
+    void CleanupEventWait()
+    {
+        if (m_EventWait.IsValid())
+        {
+            m_EventWait.CloseEvent();
+        }
+    }
+
+    // Exposed object for Thread object
+    OBJECTHANDLE    m_ExposedObject;
+};
+
+class GreenThread : public ThreadBase
+{
+public:
+    GreenThread();
+    ~GreenThread();
+};
+
 // #ThreadClass
 //
 // A code:Thread contains all the per-thread information needed by the runtime.  We can get this
@@ -877,6 +947,14 @@ public:
     }
 
 public:
+
+    ThreadBase* m_curThreadBase = &m_coreThreadData;
+
+    ThreadBase* GetActiveThreadBase() { return m_curThreadBase; }
+    void SetActiveThreadBase(ThreadBase* threadBase) { m_curThreadBase = threadBase; }
+    DWORD GetPermanentManagedThreadId() { return m_coreThreadData.GetThreadId(); }
+    DWORD GetActiveManagedThreadId() { return GetActiveThreadBase()->GetThreadId(); }
+
     // Allocator used during marshaling for temporary buffers, much faster than
     // heap allocation.
     //
@@ -1314,11 +1392,6 @@ public:
     //-----------------------------------------------------------
     PTR_AppDomain       m_pDomain;
 
-    // Unique thread id used for thin locks - kept as small as possible, as we have limited space
-    // in the object header to store it.
-    DWORD                m_ThreadId;
-
-
     // RWLock state
     LockEntry           *m_pHead;
     LockEntry            m_embeddedEntry;
@@ -1411,6 +1484,9 @@ public:
     // This is the type handle of the first object in the alloc context at the time
     // we fire the AllocationTick event. It's only for tooling purpose.
     TypeHandle m_thAllocContextObj;
+
+    // Place after the alloc context to avoid having to move around the async constants a lot
+    ThreadBase m_coreThreadData;
 
 #ifndef TARGET_UNIX
 private:
@@ -1535,7 +1611,7 @@ public:
         // Every thread has its own generator for hash codes so that we won't get into a situation
         // where two threads consistently give out the same hash codes.
         // Choice of multiplier guarantees period of 2**32 - see Knuth Vol 2 p16 (3.2.1.2 Theorem A).
-        DWORD multiplier = GetThreadId()*4 + 5;
+        DWORD multiplier = GetPermanentManagedThreadId()*4 + 5;
         m_dwHashCodeSeed = m_dwHashCodeSeed*multiplier + 1;
         return m_dwHashCodeSeed;
     }
@@ -2132,7 +2208,7 @@ public:
     OBJECTHANDLE GetExposedObjectHandleForDebugger()
     {
         LIMITED_METHOD_CONTRACT;
-        return m_ExposedObject;
+        return m_coreThreadData.m_ExposedObject;
     }
 
     // Query whether the exposed object exists
@@ -2145,7 +2221,7 @@ public:
             MODE_COOPERATIVE;
         }
         CONTRACTL_END;
-        return (ObjectFromHandle(m_ExposedObject) != NULL) ;
+        return (ObjectFromHandle(m_coreThreadData.m_ExposedObject) != NULL) ;
     }
 
     void GetSynchronizationContext(OBJECTREF *pSyncContextObj)
@@ -2262,13 +2338,6 @@ public:
     {
         WRAPPER_NO_CONTRACT;
         return GetThreadHandle() != INVALID_HANDLE_VALUE;
-    }
-
-    DWORD       GetThreadId()
-    {
-        LIMITED_METHOD_DAC_CONTRACT;
-        _ASSERTE(m_ThreadId != UNINITIALIZED_THREADID);
-        return m_ThreadId;
     }
 
     // The actual OS thread ID may be 64 bit on some platforms but
@@ -3175,7 +3244,6 @@ private:
 
     // Support for Wait/Notify
     BOOL        Block(INT32 timeOut, PendingSync *syncInfo);
-    void        Wake(SyncBlock *psb);
     DWORD       Wait(HANDLE *objs, int cntObjs, INT32 timeOut, PendingSync *syncInfo);
     DWORD       Wait(CLREvent* pEvent, INT32 timeOut, PendingSync *syncInfo);
 
@@ -3213,25 +3281,6 @@ private:
 private:
     // For suspends:
     CLREvent        m_DebugSuspendEvent;
-
-    // For Object::Wait, Notify and NotifyAll, we use an Event inside the
-    // thread and we queue the threads onto the SyncBlock of the object they
-    // are waiting for.
-    CLREvent        m_EventWait;
-    WaitEventLink   m_WaitEventLink;
-    WaitEventLink* WaitEventLinkForSyncBlock (SyncBlock *psb)
-    {
-        LIMITED_METHOD_CONTRACT;
-        WaitEventLink *walk = &m_WaitEventLink;
-        while (walk->m_Next) {
-            _ASSERTE (walk->m_Next->m_Thread == this);
-            if ((SyncBlock*)(((DWORD_PTR)walk->m_Next->m_WaitSB) & ~1)== psb) {
-                break;
-            }
-            walk = walk->m_Next;
-        }
-        return walk;
-    }
 
     // Access to thread handle and ThreadId.
     HANDLE      GetThreadHandle()
@@ -3280,7 +3329,6 @@ private:
 
     BOOL CreateNewOSThread(SIZE_T stackSize, LPTHREAD_START_ROUTINE start, void *args);
 
-    OBJECTHANDLE    m_ExposedObject;
     OBJECTHANDLE    m_StrongHndToExposedObject;
 
     DWORD           m_Priority;     // initialized to INVALID_THREAD_PRIORITY, set to actual priority when a
@@ -4754,7 +4802,7 @@ private:
     DWORD       m_highestId;          // highest id given out so far
     SIZE_T      m_recycleBin;         // link list to chain all ids returning to us
     Crst        m_Crst;               // lock to protect our data structures
-    DPTR(PTR_Thread)    m_idToThread;         // map thread ids to threads
+    DPTR(PTR_ThreadBase)    m_idToThread;         // map thread ids to threads
     DWORD       m_idToThreadCapacity; // capacity of the map
 
 #ifndef DACCESS_COMPILE
@@ -4769,7 +4817,7 @@ private:
         CONTRACTL_END;
 
         DWORD newCapacity = m_idToThreadCapacity == 0 ? 16 : m_idToThreadCapacity*2;
-        Thread **newIdToThread = new Thread*[newCapacity];
+        ThreadBase **newIdToThread = new ThreadBase*[newCapacity];
 
         newIdToThread[0] = NULL;
 
@@ -4816,7 +4864,7 @@ public:
     }
 
 #ifndef DACCESS_COMPILE
-    void NewId(Thread *pThread, DWORD & newId)
+    void NewId(ThreadBase *pThread, DWORD & newId)
     {
         WRAPPER_NO_CONTRACT;
         DWORD result;
@@ -4866,7 +4914,7 @@ public:
         }
         else
         {
-            m_idToThread[id] = reinterpret_cast<PTR_Thread>(m_recycleBin);
+            m_idToThread[id] = reinterpret_cast<PTR_ThreadBase>(m_recycleBin);
             m_recycleBin = id;
 #ifdef _DEBUG
             size_t index = (size_t)m_idToThread[id];
@@ -4880,12 +4928,12 @@ public:
     }
 #endif // !DACCESS_COMPILE
 
-    Thread *IdToThread(DWORD id)
+    ThreadBase *IdToThread(DWORD id)
     {
         LIMITED_METHOD_CONTRACT;
         CrstHolder ch(&m_Crst);
 
-        Thread *result = NULL;
+        ThreadBase *result = NULL;
         if (id <= m_highestId)
             result = m_idToThread[id];
         // m_idToThread may have Thread*, or the next free slot
@@ -4894,19 +4942,19 @@ public:
         return result;
     }
 
-    Thread *IdToThreadWithValidation(DWORD id)
+    ThreadBase *IdToThreadWithValidation(DWORD id)
     {
         WRAPPER_NO_CONTRACT;
 
         CrstHolder ch(&m_Crst);
 
-        Thread *result = NULL;
+        ThreadBase *result = NULL;
         if (id <= m_highestId)
             result = m_idToThread[id];
         // m_idToThread may have Thread*, or the next free slot
         if ((size_t)result <= m_idToThreadCapacity)
             result = NULL;
-        _ASSERTE(result == NULL || ((size_t)result & 0x3) == 0 || ((Thread*)result)->GetThreadId() == id);
+        _ASSERTE(result == NULL || ((size_t)result & 0x3) == 0 || ((ThreadBase*)result)->GetThreadId() == id);
         return result;
     }
 };

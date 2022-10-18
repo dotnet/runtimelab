@@ -644,7 +644,7 @@ ClrDataAccess::GetThreadFromThinlockID(UINT thinLockId, CLRDATA_ADDRESS *pThread
 
     SOSDacEnter();
 
-    Thread *thread = g_pThinLockThreadIdDispenser->IdToThread(thinLockId);
+    ThreadBase *thread = g_pThinLockThreadIdDispenser->IdToThread(thinLockId);
     *pThread = PTR_HOST_TO_TADDR(thread);
 
     SOSDacLeave();
@@ -713,7 +713,7 @@ ClrDataAccess::GetThreadData(CLRDATA_ADDRESS threadAddr, struct DacpThreadData *
 
     // initialize our local copy from the marshaled target Thread instance
     ZeroMemory (threadData, sizeof(DacpThreadData));
-    threadData->corThreadId = thread->m_ThreadId;
+    threadData->corThreadId = thread->GetPermanentManagedThreadId();
     threadData->osThreadId = (DWORD)thread->m_OSThreadId;
     threadData->state = thread->m_State;
     threadData->preemptiveGCDisabled = thread->m_fPreemptiveGCDisabled;

@@ -121,7 +121,7 @@ inline OBJECTREF Thread::GetExposedObjectRaw()
     }
     CONTRACTL_END;
 
-    return ObjectFromHandle(m_ExposedObject);
+    return ObjectFromHandle(GetActiveThreadBase()->m_ExposedObject);
 }
 
 #ifdef FEATURE_COMINTEROP

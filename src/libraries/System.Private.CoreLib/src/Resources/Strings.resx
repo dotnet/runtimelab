@@ -3842,6 +3842,9 @@
   <data name="ThreadState_Dead_Priority" xml:space="preserve">
     <value>Thread is dead; priority cannot be accessed.</value>
   </data>
+  <data name="ThreadState_GreenThread" xml:space="preserve">
+    <value>Thread is a green thread. This api cannot be used.</value>
+  </data>
   <data name="ThreadState_Dead_State" xml:space="preserve">
     <value>Thread is dead; state cannot be accessed.</value>
   </data>

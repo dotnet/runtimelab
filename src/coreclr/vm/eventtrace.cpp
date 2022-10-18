@@ -2593,7 +2593,7 @@ VOID ETW::ThreadLog::FireThreadCreated(Thread * pThread)
         (ULONGLONG)pThread,
         (ULONGLONG)pThread->GetDomain(),
         GetEtwThreadFlags(pThread),
-        pThread->GetThreadId(),
+        pThread->GetPermanentManagedThreadId(),
         pThread->GetOSThreadId(),
         GetClrInstanceId());
 }
@@ -2606,7 +2606,7 @@ VOID ETW::ThreadLog::FireThreadDC(Thread * pThread)
         (ULONGLONG)pThread,
         (ULONGLONG)pThread->GetDomain(),
         GetEtwThreadFlags(pThread),
-        pThread->GetThreadId(),
+        pThread->GetPermanentManagedThreadId(),
         pThread->GetOSThreadId(),
         GetClrInstanceId());
 }

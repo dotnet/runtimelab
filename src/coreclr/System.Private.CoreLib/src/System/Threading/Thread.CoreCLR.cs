@@ -58,6 +58,11 @@ namespace System.Threading
         // but those types of changes may race with the reset anyway, so this field doesn't need to be synchronized.
         private bool _mayNeedResetForThreadPool;
 
+#pragma warning disable CA1823, 169 // These fields are not used from managed.
+        // Used to indicate if this thread is a green thread
+        private bool _isGreenThread;
+#pragma warning restore CA1823, 169
+
         private Thread() { }
 
         public extern int ManagedThreadId

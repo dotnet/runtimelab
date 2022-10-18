@@ -17,7 +17,7 @@ typedef DPTR(WaitEventLink) PTR_WaitEventLink;
 struct WaitEventLink {
     SyncBlock         *m_WaitSB;
     CLREvent          *m_EventWait;
-    PTR_Thread         m_Thread;       // Owner of this WaitEventLink.
+    PTR_ThreadBase     m_Thread;       // Owner of this WaitEventLink.
     PTR_WaitEventLink  m_Next;         // Chain to the next waited SyncBlock.
     SLink              m_LinkSB;       // Chain to the next thread waiting on the same SyncBlock.
     DWORD              m_RefCount;     // How many times Object::Wait is called on the same SyncBlock.
