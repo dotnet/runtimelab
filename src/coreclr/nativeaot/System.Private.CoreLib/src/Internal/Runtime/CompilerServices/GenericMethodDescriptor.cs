@@ -6,24 +6,12 @@ using System;
 namespace Internal.Runtime.CompilerServices
 {
     [System.Runtime.CompilerServices.ReflectionBlocked]
-    public unsafe struct GenericMethodDescriptor
+    public struct GenericMethodDescriptor
     {
-        internal IntPtr _MethodFunctionPointer;
-        internal IntPtr* _MethodDictionaryPointerPointer;
+        public readonly IntPtr MethodFunctionPointer;
+        public readonly IntPtr InstantiationArgument;
 
-        public IntPtr MethodFunctionPointer
-        {
-            get
-            {
-                return _MethodFunctionPointer;
-            }
-        }
-        public IntPtr InstantiationArgument
-        {
-            get
-            {
-                return *_MethodDictionaryPointerPointer;
-            }
-        }
+        public GenericMethodDescriptor(IntPtr methodFunctionPointer, IntPtr instantiationArgument)
+            => (MethodFunctionPointer, InstantiationArgument) = (methodFunctionPointer, instantiationArgument);
     }
 }

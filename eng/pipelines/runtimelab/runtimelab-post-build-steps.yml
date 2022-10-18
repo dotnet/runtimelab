@@ -12,7 +12,7 @@ parameters:
   uploadIntermediateArtifacts: false
 
 steps:
-- ${{ if ne(parameters.archType, 'arm64') }}:
+- ${{ if and(ne(parameters.archType, 'arm'), ne(parameters.archType, 'arm64')) }}:
 
   # For NativeAOT-LLVM, we have just built the Wasm-targeting native artifacts (the runtime and libraries).
   # Now we need to build the cross-targeting compilers, RyuJit and ILC.

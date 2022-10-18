@@ -428,6 +428,7 @@ int ObjectWriter::EmitSymbolRef(const char *SymbolName,
   MCSymbolRefExpr::VariantKind Kind = MCSymbolRefExpr::VK_None;
 
   MCSymbol* Symbol = OutContext->getOrCreateSymbol(SymbolName);
+  Assembler->registerSymbol(*Symbol);
 
   if ((int)Flags & (int)SymbolRefFlags::SymbolRefFlags_AddressTakenFunction) {
     AddressTakenFunctions.insert(Symbol);

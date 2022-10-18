@@ -51,24 +51,23 @@ namespace ILCompiler.DependencyAnalysis
             {
                 MetadataType metadataType = (MetadataType)type;
 
-                // NOTE: The StaticsInfoHashtable entries need to reference the gc and non-gc static nodes through an indirection cell.
                 // The StaticsInfoHashtable entries only exist for static fields on generic types.
 
                 if (metadataType.GCStaticFieldSize.AsInt > 0)
                 {
-                    dependencies.Add(factory.Indirection(factory.TypeGCStaticsSymbol(metadataType)), "GC statics indirection for StaticsInfoHashtable");
+                    dependencies.Add(factory.TypeGCStaticsSymbol(metadataType), "GC statics indirection for StaticsInfoHashtable");
                 }
 
                 if (metadataType.NonGCStaticFieldSize.AsInt > 0 || factory.PreinitializationManager.HasLazyStaticConstructor(type))
                 {
                     // The entry in the StaticsInfoHashtable points at the beginning of the static fields data, rather than the cctor 
                     // context offset.
-                    dependencies.Add(factory.Indirection(factory.TypeNonGCStaticsSymbol(metadataType)), "Non-GC statics indirection for StaticsInfoHashtable");
+                    dependencies.Add(factory.TypeNonGCStaticsSymbol(metadataType), "Non-GC statics indirection for StaticsInfoHashtable");
                 }
 
                 if (metadataType.ThreadGcStaticFieldSize.AsInt > 0)
                 {
-                    dependencies.Add(factory.Indirection(factory.TypeThreadStaticIndex(metadataType)), "Threadstatics indirection for StaticsInfoHashtable");
+                    dependencies.Add(factory.TypeThreadStaticIndex(metadataType), "Threadstatics indirection for StaticsInfoHashtable");
                 }
             }
         }
@@ -98,18 +97,15 @@ namespace ILCompiler.DependencyAnalysis
 
                 if (metadataType.GCStaticFieldSize.AsInt > 0)
                 {
-                    ISymbolNode gcStaticIndirection = factory.Indirection(factory.TypeGCStaticsSymbol(metadataType));
-                    bag.AppendUnsigned(BagElementKind.GcStaticData, _nativeStaticsReferences.GetIndex(gcStaticIndirection));
+                    bag.AppendUnsigned(BagElementKind.GcStaticData, _nativeStaticsReferences.GetIndex(factory.TypeGCStaticsSymbol(metadataType)));
                 }
                 if (metadataType.NonGCStaticFieldSize.AsInt > 0 || factory.PreinitializationManager.HasLazyStaticConstructor(type))
                 {
-                    ISymbolNode nonGCStaticIndirection = factory.Indirection(factory.TypeNonGCStaticsSymbol(metadataType));
-                    bag.AppendUnsigned(BagElementKind.NonGcStaticData, _nativeStaticsReferences.GetIndex(nonGCStaticIndirection));
+                    bag.AppendUnsigned(BagElementKind.NonGcStaticData, _nativeStaticsReferences.GetIndex(factory.TypeNonGCStaticsSymbol(metadataType)));
                 }
                 if (metadataType.ThreadGcStaticFieldSize.AsInt > 0)
                 {
-                    ISymbolNode threadStaticsIndirection = factory.Indirection(factory.TypeThreadStaticIndex(metadataType));
-                    bag.AppendUnsigned(BagElementKind.ThreadStaticIndex, _nativeStaticsReferences.GetIndex(threadStaticsIndirection));
+                    bag.AppendUnsigned(BagElementKind.ThreadStaticIndex, _nativeStaticsReferences.GetIndex(factory.TypeThreadStaticIndex(metadataType)));
                 }
 
                 if (bag.ElementsCount > 0)
