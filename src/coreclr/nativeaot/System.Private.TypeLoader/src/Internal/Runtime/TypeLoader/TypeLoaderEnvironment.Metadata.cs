@@ -413,7 +413,7 @@ namespace Internal.Runtime.TypeLoader
                 if (RuntimeAugments.IsDynamicType(typeHandle))
                 {
                     // For dynamic types, its always possible to get the non-gc static data section directly.
-                    byte* ptr = (byte*)Instance.TryGetNonGcStaticFieldDataDirect(typeHandle);
+                    byte* ptr = (byte*)Instance.TryGetNonGcStaticFieldData(typeHandle);
 
                     // what we have now is the base address of the non-gc statics of the type
                     // what we need is the cctor context, which is just before that

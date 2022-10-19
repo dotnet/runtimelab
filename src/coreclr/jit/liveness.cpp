@@ -47,7 +47,7 @@ void Compiler::fgMarkUseDef(GenTreeLclVarCommon* tree)
         // We don't treat stores to tracked locals as modifications of ByrefExposed memory;
         // Make sure no tracked local is addr-exposed, to make sure we don't incorrectly CSE byref
         // loads aliasing it across a store to it.
-        assert(!varDsc->lvAddrExposed);
+        assert(!varDsc->IsAddressExposed());
 
         if (compRationalIRForm && (varDsc->lvType != TYP_STRUCT) && !varTypeIsMultiReg(varDsc))
         {
@@ -70,7 +70,7 @@ void Compiler::fgMarkUseDef(GenTreeLclVarCommon* tree)
     }
     else
     {
-        if (varDsc->lvAddrExposed)
+        if (varDsc->IsAddressExposed())
         {
             // Reflect the effect on ByrefExposed memory
 
@@ -1617,7 +1617,8 @@ bool Compiler::fgComputeLifeTrackedLocalDef(VARSET_TP&           life,
             // of the variable has been exposed. Improved alias analysis could allow
             // stores to these sorts of variables to be removed at the cost of compile
             // time.
-            return !varDsc.lvAddrExposed && !(varDsc.lvIsStructField && lvaTable[varDsc.lvParentLcl].lvAddrExposed);
+            return !varDsc.IsAddressExposed() &&
+                   !(varDsc.lvIsStructField && lvaTable[varDsc.lvParentLcl].IsAddressExposed());
         }
     }
 
@@ -1731,7 +1732,7 @@ bool Compiler::fgComputeLifeUntrackedLocal(VARSET_TP&           life,
 
                 // Do not consider this store dead if the parent local variable is an address exposed local or
                 // if the struct has a custom layout and holes.
-                return !(varDsc.lvAddrExposed || (varDsc.lvCustomLayout && varDsc.lvContainsHoles));
+                return !(varDsc.IsAddressExposed() || (varDsc.lvCustomLayout && varDsc.lvContainsHoles));
             }
         }
         return false;
@@ -2229,8 +2230,8 @@ bool Compiler::fgRemoveDeadStore(GenTree**        pTree,
     assert(!compRationalIRForm);
 
     // Vars should have already been checked for address exposure by this point.
-    assert(!varDsc->lvIsStructField || !lvaTable[varDsc->lvParentLcl].lvAddrExposed);
-    assert(!varDsc->lvAddrExposed);
+    assert(!varDsc->lvIsStructField || !lvaTable[varDsc->lvParentLcl].IsAddressExposed());
+    assert(!varDsc->IsAddressExposed());
 
     GenTree*       asgNode  = nullptr;
     GenTree*       rhsNode  = nullptr;
@@ -2328,13 +2329,13 @@ bool Compiler::fgRemoveDeadStore(GenTree**        pTree,
 
         // Do not remove if this local variable represents
         // a promoted struct field of an address exposed local.
-        if (varDsc->lvIsStructField && lvaTable[varDsc->lvParentLcl].lvAddrExposed)
+        if (varDsc->lvIsStructField && lvaTable[varDsc->lvParentLcl].IsAddressExposed())
         {
             return false;
         }
 
         // Do not remove if the address of the variable has been exposed.
-        if (varDsc->lvAddrExposed)
+        if (varDsc->IsAddressExposed())
         {
             return false;
         }

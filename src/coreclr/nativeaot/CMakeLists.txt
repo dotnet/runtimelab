@@ -46,5 +46,9 @@ if(CLR_CMAKE_TARGET_ARCH_WASM)
   add_definitions(-DFEATURE_64BIT_ALIGNMENT)
 endif(CLR_CMAKE_TARGET_ARCH_WASM)
 
+if(CLR_CMAKE_TARGET_ANDROID)
+    add_definitions(-DFEATURE_EMULATED_TLS)
+endif()
+
 add_subdirectory(Bootstrap)
 add_subdirectory(Runtime)

@@ -107,12 +107,16 @@ namespace ILCompiler.DependencyAnalysis
 
         protected override DependencyList ComputeNonRelocationBasedDependencies(NodeFactory factory)
         {
-            DependencyList dependencyList = null;
+            DependencyList dependencyList = new DependencyList();
 
             if (factory.PreinitializationManager.HasEagerStaticConstructor(_type))
             {
-                dependencyList = new DependencyList();
                 dependencyList.Add(factory.EagerCctorIndirection(_type.GetStaticConstructor()), "Eager .cctor");
+            }
+
+            if (_type.Module.GetGlobalModuleType().GetStaticConstructor() is MethodDesc moduleCctor)
+            {
+                dependencyList.Add(factory.MethodEntrypoint(moduleCctor), "Static base in a module with initializer");
             }
 
             EETypeNode.AddDependenciesForStaticsNode(factory, _type, ref dependencyList);

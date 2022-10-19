@@ -2032,11 +2032,11 @@ namespace Internal.IL
 
         private LLVMValueRef LLVMFunctionForMethod(MethodDesc callee, MethodDesc canonMethod, StackEntry thisPointer, bool isCallVirt,
             TypeDesc constrainedType, MethodDesc runtimeDeterminedMethod, out bool hasHiddenParam, 
-            out LLVMValueRef dictPtrPtrStore,
+            out LLVMValueRef dictPtrStore,
             out LLVMValueRef fatFunctionPtr)
         {
             hasHiddenParam = false;
-            dictPtrPtrStore = default(LLVMValueRef);
+            dictPtrStore = default(LLVMValueRef);
             fatFunctionPtr = default(LLVMValueRef);
 
             TypeDesc owningType = callee.OwningType;
@@ -2114,7 +2114,7 @@ namespace Internal.IL
                 }
                 if (canonMethod.HasInstantiation && !canonMethod.IsFinal && !canonMethod.OwningType.IsSealed())
                 {
-                    return GetCallableGenericVirtualMethod(thisPointer, canonMethod, callee, runtimeDeterminedMethod, out dictPtrPtrStore, out fatFunctionPtr);
+                    return GetCallableGenericVirtualMethod(thisPointer, canonMethod, callee, runtimeDeterminedMethod, out dictPtrStore, out fatFunctionPtr);
                 }
                 return GetCallableVirtualMethod(thisRef, callee, runtimeDeterminedMethod);
             }
@@ -2182,12 +2182,12 @@ namespace Internal.IL
             return functionPtr;
         }
 
-        private LLVMValueRef GetCallableGenericVirtualMethod(StackEntry objectPtr, MethodDesc canonMethod, MethodDesc callee, MethodDesc runtimeDeterminedMethod, out LLVMValueRef dictPtrPtrStore,
+        private LLVMValueRef GetCallableGenericVirtualMethod(StackEntry objectPtr, MethodDesc canonMethod, MethodDesc callee, MethodDesc runtimeDeterminedMethod, out LLVMValueRef dictPtrStore,
             out LLVMValueRef slotRef)
         {
-            // this will only have a non-zero pointer the the GVM ptr is fat.
-            dictPtrPtrStore = _builder.BuildAlloca(LLVMTypeRef.CreatePointer(LLVMTypeRef.CreatePointer(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), 0), 0),
-                "dictPtrPtrStore");
+            // this will only have a non-zero pointer if the GVM ptr is fat.
+            dictPtrStore = _builder.BuildAlloca(LLVMTypeRef.CreatePointer(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), 0),
+                "dictPtrStore");
 
             _dependencies.Add(_compilation.NodeFactory.GVMDependencies(canonMethod), "LLVM GVM dependency");
             bool exactContextNeedsRuntimeLookup;
@@ -2239,16 +2239,16 @@ namespace Internal.IL
             var gep = RemoveFatOffset(_builder, slotRef);
             var loadFuncPtr = _builder.BuildLoad(CastIfNecessary(_builder, gep, LLVMTypeRef.CreatePointer(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), 0)),
                 "loadFuncPtr");
-            var dictPtrPtr = _builder.BuildGEP(CastIfNecessary(_builder, gep,
-                    LLVMTypeRef.CreatePointer(LLVMTypeRef.CreatePointer(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), 0), 0), "castDictPtrPtr"),
-                new [] {BuildConstInt32(1)}, "dictPtrPtr");
-            _builder.BuildStore(dictPtrPtr, dictPtrPtrStore);
+            var dictPtr = _builder.BuildGEP(CastIfNecessary(_builder, gep,
+                    LLVMTypeRef.CreatePointer(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), 0), "castDictPtr"),
+                new [] {BuildConstInt32(1)}, "dictPtr");
+            _builder.BuildStore(dictPtr, dictPtrStore);
             _builder.BuildBr(endifBlock);
 
             // not fat
             _builder.PositionAtEnd(notFatBranch);
             // store null to indicate the GVM call needs no hidden param at run time
-            _builder.BuildStore(LLVMValueRef.CreateConstPointerNull(LLVMTypeRef.CreatePointer(LLVMTypeRef.CreatePointer(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), 0), 0)), dictPtrPtrStore);
+            _builder.BuildStore(LLVMValueRef.CreateConstPointerNull(LLVMTypeRef.CreatePointer(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), 0)), dictPtrStore);
             _builder.BuildBr(endifBlock);
 
             // end if
@@ -2606,7 +2606,7 @@ namespace Internal.IL
             LLVMValueRef fn;
             bool hasHiddenParam = false;
             LLVMValueRef hiddenParam = default;
-            LLVMValueRef dictPtrPtrStore = default;
+            LLVMValueRef dictPtrStore = default;
             LLVMValueRef fatFunctionPtr = default;
             if (opcode == ILOpcode.calli)
             {
@@ -2615,7 +2615,7 @@ namespace Internal.IL
             }
             else
             {
-                fn = LLVMFunctionForMethod(callee, canonMethod, signature.IsStatic ? null : argumentValues[0], opcode == ILOpcode.callvirt, constrainedType, runtimeDeterminedMethod, out hasHiddenParam, out dictPtrPtrStore, out fatFunctionPtr);
+                fn = LLVMFunctionForMethod(callee, canonMethod, signature.IsStatic ? null : argumentValues[0], opcode == ILOpcode.callvirt, constrainedType, runtimeDeterminedMethod, out hasHiddenParam, out dictPtrStore, out fatFunctionPtr);
             }
 
             int offset = GetTotalParameterOffset() + GetTotalLocalOffset();
@@ -2784,7 +2784,7 @@ namespace Internal.IL
             {
                 // conditional call depending on if the function was fat/the dict hidden param is needed
                 // TODO: not sure this is always conditional, maybe there is some optimisation that can be done to not inject this conditional logic depending on the caller/callee
-                LLVMValueRef dict = builder.BuildLoad( dictPtrPtrStore, "dictPtrPtr");
+                LLVMValueRef dict = builder.BuildLoad(dictPtrStore, "dictPtr");
                 LLVMValueRef dictAsInt = builder.BuildPtrToInt(dict, LLVMTypeRef.Int32, "toInt");
                 LLVMValueRef eqZ = builder.BuildICmp(LLVMIntPredicate.LLVMIntEQ, dictAsInt, BuildConstInt32(0), "eqz");
                 var notFatBranch = _currentFunclet.AppendBasicBlock("notFat");
@@ -2801,7 +2801,7 @@ namespace Internal.IL
                 // else
                 builder.PositionAtEnd(fatBranch);
                 var fnWithDict = builder.BuildCast(LLVMOpcode.LLVMBitCast, fn, LLVMTypeRef.CreatePointer(LLVMCodegenCompilation.GetLLVMSignatureForMethod(runtimeDeterminedMethod.Signature, true), 0), "fnWithDict");
-                var dictDereffed = builder.BuildLoad(builder.BuildLoad( dict, "l1"), "l2");
+                var dictDereffed = builder.BuildLoad( dict, "l1");
                 llvmArgs.Insert(needsReturnSlot ? 2 : 1, dictDereffed);
                 LLVMValueRef fatReturn = CallOrInvoke(fromLandingPad, builder, currentTryRegion, fnWithDict, llvmArgs.ToArray(), ref nextInstrBlock);
                 builder.BuildBr(endifBlock);
@@ -3235,8 +3235,8 @@ namespace Internal.IL
             var minusOffsetPtr = _builder.BuildIntToPtr(minusOffset,
                 LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), "ptr");
             var hiddenRefAddr = _builder.BuildGEP(minusOffsetPtr, new[] { BuildConstInt32(_pointerSize) }, "fatArgPtr");
-            var hiddenRefPtrPtr = _builder.BuildPointerCast(hiddenRefAddr, LLVMTypeRef.CreatePointer(LLVMTypeRef.CreatePointer(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), 0), 0), "hiddenRefPtr");
-            var hiddenRef = _builder.BuildLoad(_builder.BuildLoad(hiddenRefPtrPtr, "hiddenRefPtr"), "hiddenRef");
+            var hiddenRefPtr = _builder.BuildPointerCast(hiddenRefAddr, LLVMTypeRef.CreatePointer(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), 0), "hiddenRefPtr");
+            var hiddenRef = _builder.BuildLoad(hiddenRefPtr, "hiddenRef");
 
             for (int i = 0; i < stackCopy.Length; i++)
             {

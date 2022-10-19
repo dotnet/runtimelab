@@ -49,25 +49,6 @@ namespace Internal.Runtime.CompilerServices
             public IntPtr InstantiationArgument;
         }
 
-        private unsafe struct RuntimeGeneratedGenericMethodDescriptor
-        {
-            public GenericMethodDescriptor Descriptor;
-            private IntPtr _MethodDictionaryPointer;
-
-            public void Set(IntPtr methodFunctionPointer, IntPtr methodDictionaryPointer)
-            {
-                _MethodDictionaryPointer = methodDictionaryPointer;
-                Descriptor._MethodFunctionPointer = methodFunctionPointer;
-
-                // This is ONLY safe if this structure is never moved. Do not box this struct.
-                fixed (IntPtr* pointerPointer = &_MethodDictionaryPointer)
-                {
-                    Descriptor._MethodDictionaryPointerPointer = pointerPointer;
-                }
-            }
-        }
-
-
         private static uint s_genericFunctionPointerNextIndex;
         private const uint c_genericDictionaryChunkSize = 1024;
         private static LowLevelList<IntPtr> s_genericFunctionPointerCollection = new LowLevelList<IntPtr>();
@@ -80,9 +61,11 @@ namespace Internal.Runtime.CompilerServices
 
             lock (s_genericFunctionPointerDictionary)
             {
-                GenericMethodDescriptorInfo key;
-                key.MethodFunctionPointer = canonFunctionPointer;
-                key.InstantiationArgument = instantiationArgument;
+                var key = new GenericMethodDescriptorInfo
+                {
+                    MethodFunctionPointer = canonFunctionPointer,
+                    InstantiationArgument = instantiationArgument
+                };
 
                 uint index = 0;
                 if (!s_genericFunctionPointerDictionary.TryGetValue(key, out index))
@@ -99,13 +82,12 @@ namespace Internal.Runtime.CompilerServices
                         System.Diagnostics.Debug.Assert(newSubChunkIndex == 0);
 
                         // New generic descriptors are allocated on the native heap and not tracked in the GC.
-                        IntPtr pNewMem = Marshal.AllocHGlobal((int)(c_genericDictionaryChunkSize * sizeof(RuntimeGeneratedGenericMethodDescriptor)));
+                        IntPtr pNewMem = Marshal.AllocHGlobal((int)(c_genericDictionaryChunkSize * sizeof(GenericMethodDescriptor)));
                         s_genericFunctionPointerCollection.Add(pNewMem);
                     }
 
-                    RuntimeGeneratedGenericMethodDescriptor* newDescriptor = &((RuntimeGeneratedGenericMethodDescriptor*)s_genericFunctionPointerCollection[newChunkIndex])[newSubChunkIndex];
-
-                    newDescriptor->Set(canonFunctionPointer, instantiationArgument);
+                    ((GenericMethodDescriptor*)s_genericFunctionPointerCollection[newChunkIndex])[newSubChunkIndex] =
+                        new GenericMethodDescriptor(canonFunctionPointer, instantiationArgument);
 
                     s_genericFunctionPointerDictionary.LookupOrAdd(key, index);
 
@@ -116,9 +98,8 @@ namespace Internal.Runtime.CompilerServices
                 // Lookup within list
                 int chunkIndex = (int)(index / c_genericDictionaryChunkSize);
                 uint subChunkIndex = index % c_genericDictionaryChunkSize;
-                RuntimeGeneratedGenericMethodDescriptor* genericRuntimeFunctionPointer = &((RuntimeGeneratedGenericMethodDescriptor*)s_genericFunctionPointerCollection[chunkIndex])[subChunkIndex];
+                GenericMethodDescriptor* genericFunctionPointer = &((GenericMethodDescriptor*)s_genericFunctionPointerCollection[chunkIndex])[subChunkIndex];
 
-                GenericMethodDescriptor* genericFunctionPointer = &genericRuntimeFunctionPointer->Descriptor;
                 System.Diagnostics.Debug.Assert(canonFunctionPointer == genericFunctionPointer->MethodFunctionPointer);
                 System.Diagnostics.Debug.Assert(instantiationArgument == genericFunctionPointer->InstantiationArgument);
 
