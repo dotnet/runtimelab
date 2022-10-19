@@ -16,46 +16,45 @@ namespace System.Threading.Tasks
         private static unsafe partial SuspendedThread* GreenThread_StartThread(delegate* unmanaged<void*, void> startFrame, void* parameter);
 
         [LibraryImport(RuntimeHelpers.QCall, EntryPoint = "GreenThread_ResumeThread")]
-        private static unsafe partial SuspendedThread* GreenThread_ResumeThread(SuspendedThread* suspendedThread);
+        private static unsafe partial SuspendedThread* GreenThread_ResumeThread(SuspendedThread* suspendedThread, void* yieldReturnValue);
 
         [LibraryImport(RuntimeHelpers.QCall, EntryPoint = "GreenThread_Yield")]
-        [return: MarshalAs(UnmanagedType.I1)]
-        private static unsafe partial bool GreenThread_Yield();
+        private static unsafe partial void* GreenThread_Yield();
 
         [UnmanagedCallersOnly]
         private static unsafe void GreenThreadStartFunc(void* argument)
         {
-            Action action = Unsafe.AsRef<Action>(argument);
-            action();
+            Thread.t_IsGreenThread = true;
+            GreenThreadExecutorObject executorObj = Unsafe.AsRef<GreenThreadExecutorObject>(argument);
+            GreenThreadStatics.t_RefToTaskToWaitFor = executorObj.refToTaskToWaitFor;
+            executorObj!.action!();
         }
 
         private static class GreenThreadStatics
         {
             [ThreadStatic]
-            public static Task? t_TaskToWaitFor;
+            public static unsafe void* t_RefToTaskToWaitFor;
+        }
+
+        private sealed class GreenThreadExecutorObject
+        {
+            public Action? action;
+            public unsafe void* refToTaskToWaitFor;
         }
 
         internal static unsafe void GreenThreadExecutorFunc(object? obj)
         {
-            Thread.t_IsGreenThread = true;
-            try
+            GreenThreadExecutorObject executorObj = new GreenThreadExecutorObject();
+            Task? taskToWaitFor = null;
+
+            executorObj.action = (Action?)obj;
+            executorObj.refToTaskToWaitFor = Unsafe.AsPointer(ref taskToWaitFor);
+            var suspendedThread = GreenThread_StartThread(&GreenThreadStartFunc, Unsafe.AsPointer(ref executorObj));
+            if (suspendedThread != null)
             {
-                var action = (Action?)obj;
-                Thread.t_currentThread = null; // TODO Once we have Thread statics working we probably don't need to do this.
-                var suspendedThread = GreenThread_StartThread(&GreenThreadStartFunc, Unsafe.AsPointer(ref action));
-                Debug.Assert((GreenThreadStatics.t_TaskToWaitFor != null) == (suspendedThread != null));
-                if (suspendedThread != null)
-                {
-                    Debug.Assert(GreenThreadStatics.t_TaskToWaitFor != null);
-                    var suspendedThreadObj = new ResumeSuspendedThread(suspendedThread);
-                    GreenThreadStatics.t_TaskToWaitFor.GetAwaiter().OnCompleted(suspendedThreadObj.Resume);
-                }
-            }
-            finally
-            {
-                GreenThreadStatics.t_TaskToWaitFor = null;
-                Thread.t_IsGreenThread = false;
-                Thread.t_currentThread = null; // TODO Once we have Thread statics working we probably don't need to do this.
+                Debug.Assert(taskToWaitFor != null);
+                var suspendedThreadObj = new ResumeSuspendedThread(suspendedThread);
+                taskToWaitFor.GetAwaiter().OnCompleted(suspendedThreadObj.Resume);
             }
         }
 
@@ -69,23 +68,14 @@ namespace System.Threading.Tasks
 
             public void Resume()
             {
-                Thread.t_IsGreenThread = true;
-                try
+                Task? taskToWaitFor = null;
+
+                _suspendedThread = GreenThread_ResumeThread(_suspendedThread, Unsafe.AsPointer(ref taskToWaitFor));
+                Debug.Assert((taskToWaitFor != null) == (_suspendedThread != null));
+                if (_suspendedThread != null)
                 {
-                    Thread.t_currentThread = null; // TODO Once we have Thread statics working we probably don't need to do this.
-                    _suspendedThread = GreenThread_ResumeThread(_suspendedThread);
-                    Debug.Assert((GreenThreadStatics.t_TaskToWaitFor != null) == (_suspendedThread != null));
-                    if (_suspendedThread != null)
-                    {
-                        Debug.Assert(GreenThreadStatics.t_TaskToWaitFor != null);
-                        GreenThreadStatics.t_TaskToWaitFor.GetAwaiter().OnCompleted(Resume);
-                    }
-                }
-                finally
-                {
-                    GreenThreadStatics.t_TaskToWaitFor = null;
-                    Thread.t_IsGreenThread = false;
-                    Thread.t_currentThread = null; // TODO Once we have Thread statics working we probably don't need to do this.
+                    Debug.Assert(taskToWaitFor != null);
+                    taskToWaitFor.GetAwaiter().OnCompleted(Resume);
                 }
             }
         }
@@ -104,22 +94,18 @@ namespace System.Threading.Tasks
         {
             if (Thread.t_IsGreenThread)
             {
-                try
+                unsafe
                 {
-                    GreenThreadStatics.t_TaskToWaitFor = taskToWaitForCompletion;
-                    yielded = GreenThread_Yield();
-                }
-                finally
-                {
-                    ClearTaskToWaitFor();
+                    Unsafe.AsRef<Task>(GreenThreadStatics.t_RefToTaskToWaitFor) = taskToWaitForCompletion;
+                    void* yieldReturn = GreenThread_Yield();
+
+                    if (yieldReturn != null)
+                    {
+                        yielded = true;
+                        GreenThreadStatics.t_RefToTaskToWaitFor = yieldReturn;
+                    }
                 }
             }
-        }
-
-        [MethodImpl(MethodImplOptions.NoInlining)]
-        private static void ClearTaskToWaitFor()
-        {
-            GreenThreadStatics.t_TaskToWaitFor = null;
         }
     }
 }
