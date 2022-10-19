@@ -225,6 +225,8 @@ EXTERN_C FCDECL0(void, JIT_FailFast);
 
 FCDECL0(int, JIT_GetCurrentManagedThreadId);
 
+FCDECL2(void*, JIT_GreenThreadTransition, void* fptr, uintptr_t stackSize);
+
 #if !defined(FEATURE_USE_ASM_GC_WRITE_BARRIERS) && defined(FEATURE_COUNT_GC_WRITE_BARRIERS)
 // Extra argument for the classification of the checked barriers.
 extern "C" FCDECL3(VOID, JIT_CheckedWriteBarrier, Object **dst, Object *ref, CheckedWriteBarrierKinds kind);

@@ -9859,6 +9859,10 @@ var_types Compiler::impImportCall(OPCODE                  opcode,
                     call->AsCall()->setEntryPoint(callInfo->codePointerLookup.constLookup);
                 }
 #endif
+#ifdef FEATURE_GREENTHREADS
+                // Straight calls to p/invoke not supported with green threads. We need to go through the helper.
+                assert(!(call->gtFlags & GTF_CALL_UNMANAGED));
+#endif
                 break;
             }
 
@@ -9880,6 +9884,23 @@ var_types Compiler::impImportCall(OPCODE                  opcode,
                 {
                     return TYP_UNDEF;
                 }
+
+#ifdef FEATURE_GREENTHREADS
+                if (call->gtFlags & GTF_CALL_UNMANAGED)
+                {
+                    // Green thread calls may need to transition to the OS thread. Use a helper to potentially
+                    // rewrite the address of the function pointer, and stash the needed data.
+
+                    // Calculate the amount of stack space needed for the thread transition. Since we're
+                    // building a prototype for Windows X64 only right now, this is very easy.
+                    int stackArgSize = 0;
+                    if (sig->totalILArgs() > 4)
+                        stackArgSize = sig->totalILArgs() - 4 * 8;
+
+                    GenTree* stackSizeOfSavedArguments = gtNewIconNode(stackArgSize, TYP_I_IMPL);
+                    fptr = gtNewHelperCallNode(CORINFO_HELP_COMPUTE_GREEN_THREAD_TRANSITION, TYP_I_IMPL, fptr, stackSizeOfSavedArguments);
+                }
+#endif
 
                 // Now make an indirect call through the function pointer
 

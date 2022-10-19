@@ -4787,6 +4787,20 @@ FCIMPL0(INT32, JIT_GetCurrentManagedThreadId)
 }
 FCIMPLEND
 
+extern thread_local
+FCIMPL2(void*, JIT_GreenThreadTransition, void* fptr, uintptr_t stackSize)
+{
+    FCALL_CONTRACT;
+
+    FC_GC_POLL_NOT_NEEDED();
+#ifdef FEATURE_GREENTHREADS
+
+#else
+    // TODO: Actually implement this thing
+    return fptr;
+#endif
+}
+FCIMPLEND
 
 /*********************************************************************/
 /* we don't use HCIMPL macros because we don't want the overhead even in debug mode */
