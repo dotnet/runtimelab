@@ -55,7 +55,7 @@ namespace Internal.TypeSystem
                 return new AssemblyName("System.Private.CompilerGenerated");
             }
 
-            public override MetadataType GetType(string nameSpace, string name, NotFoundBehavior notFoundBehavior)
+            public override object GetType(string nameSpace, string name, NotFoundBehavior notFoundBehavior)
             {
                 Debug.Fail("Resolving a TypeRef in the compiler generated assembly?");
                 throw new NotImplementedException();

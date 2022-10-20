@@ -33,7 +33,7 @@ namespace Internal.IL.Stubs
 
         internal static bool SupportsDynamicInvoke(TypeSystemContext context)
         {
-            return context.SystemModule.GetType("System", "InvokeUtils", NotFoundBehavior.ReturnNull) != null;
+            return context.SystemModule.GetType("System", "InvokeUtils", throwIfNotFound: false) != null;
         }
 
         private static TypeDesc UnwrapByRef(TypeDesc type)
