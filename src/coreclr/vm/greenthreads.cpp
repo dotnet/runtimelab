@@ -40,6 +40,7 @@ uint8_t* AlignDown(uint8_t* address, size_t alignValue)
 }
 
 static const int stackSizeOfMoreStackFunction = 0xe8;
+static const int frameOffsetMoreStackFunction = 0xe0;
 extern "C" uintptr_t AllocateMoreStackHelper(int argumentStackSize, void* stackPointer)
 {
     const int offsetToReturnAddress = 8;
@@ -54,7 +55,7 @@ extern "C" uintptr_t AllocateMoreStackHelper(int argumentStackSize, void* stackP
     if (argumentStackSize < 0)
     {
         argumentStackSize = -(argumentStackSize + 1);
-        newArgsLocation = AlignDown(t_greenThread.osStackCurrent - (stackSizeOfMoreStackFunction + sizeOfShadowStore + sizeof(void*) + argumentStackSize), 16);
+        newArgsLocation = AlignDown(t_greenThread.osStackCurrent - (stackSizeOfMoreStackFunction + frameOffsetMoreStackFunction + sizeOfShadowStore + sizeof(void*) + argumentStackSize), 16);
         *pNewStackRange = t_greenThread.osStackRange;
     }
     else
