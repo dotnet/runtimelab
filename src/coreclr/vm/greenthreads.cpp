@@ -6,7 +6,12 @@
 #include "common.h"
 #include "greenthreads.h"
 
-#ifdef FEATURE_GREENTHREADS
+#ifndef FEATURE_GREENTHREADS
+void CallOnOSThread(TakesOneParamNoReturn functionToExecute, uintptr_t param)
+{
+    functionToExecute(param);
+}
+#else // FEATURE_GREENTHREADS
 struct GreenThreadData
 {
     StackRange osStackRange;
@@ -35,6 +40,7 @@ uint8_t* AlignDown(uint8_t* address, size_t alignValue)
 }
 
 static const int stackSizeOfMoreStackFunction = 0xe8;
+static const int frameOffsetMoreStackFunction = 0xe0;
 extern "C" uintptr_t AllocateMoreStackHelper(int argumentStackSize, void* stackPointer)
 {
     const int offsetToReturnAddress = 8;
@@ -49,7 +55,7 @@ extern "C" uintptr_t AllocateMoreStackHelper(int argumentStackSize, void* stackP
     if (argumentStackSize < 0)
     {
         argumentStackSize = -(argumentStackSize + 1);
-        newArgsLocation = AlignDown(t_greenThread.osStackCurrent - (stackSizeOfMoreStackFunction + sizeOfShadowStore + sizeof(void*) + argumentStackSize), 16);
+        newArgsLocation = AlignDown(t_greenThread.osStackCurrent - (stackSizeOfMoreStackFunction + frameOffsetMoreStackFunction + sizeOfShadowStore + sizeof(void*) + argumentStackSize), 16);
         *pNewStackRange = t_greenThread.osStackRange;
     }
     else
@@ -245,6 +251,31 @@ uintptr_t TransitionToOSThread(TakesOneParam functionToExecute, uintptr_t param)
     t_greenThread.inGreenThread = true;
 
     return result;
+}
+
+void TransitionToOSThread(TakesOneParamNoReturn functionToExecute, uintptr_t param)
+{
+    TransitionHelperStruct detailsAboutWhatToCall;
+    detailsAboutWhatToCall.function = (TakesOneParam)functionToExecute;
+    detailsAboutWhatToCall.param = param;
+    if (!t_greenThread.inGreenThread)
+        __debugbreak();
+
+    t_greenThread.inGreenThread = false;
+    bool oldtransitionedToOSThreadOnGreenThread = t_greenThread.transitionedToOSThreadOnGreenThread;
+    t_greenThread.transitionedToOSThreadOnGreenThread = true;
+
+    TransitionToOSThreadHelper((uintptr_t)FirstFrameInOSThread, &detailsAboutWhatToCall);
+    t_greenThread.transitionedToOSThreadOnGreenThread = oldtransitionedToOSThreadOnGreenThread;
+    t_greenThread.inGreenThread = true;
+}
+
+void CallOnOSThread(TakesOneParamNoReturn functionToExecute, uintptr_t param)
+{
+    if (!t_greenThread.inGreenThread)
+        functionToExecute(param);
+    else
+        TransitionToOSThread(functionToExecute, param);
 }
 
 void *TransitionToOSThreadAndCallMalloc(size_t memoryToAllocate)
