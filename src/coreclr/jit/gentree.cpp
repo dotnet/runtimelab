@@ -6925,7 +6925,8 @@ GenTreeCall* Compiler::gtNewCallNode(
 
     node->gtFlags |= (GTF_CALL | GTF_GLOB_REF);
 #ifdef UNIX_X86_ABI
-    node->gtFlags |= GTF_CALL_POP_ARGS;
+    if (callType == CT_INDIRECT || callType == CT_HELPER)
+        node->gtFlags |= GTF_CALL_POP_ARGS;
 #endif // UNIX_X86_ABI
     for (GenTreeCall::Use& use : GenTreeCall::UseList(args))
     {
@@ -10514,6 +10515,33 @@ void GenTree::SetIndirExceptionFlags(Compiler* comp)
     return charsDisplayed;
 }
 
+#ifdef TARGET_X86
+inline const char* GetCallConvName(CorInfoCallConvExtension callConv)
+{
+    switch (callConv)
+    {
+        case CorInfoCallConvExtension::Managed:
+            return "Managed";
+        case CorInfoCallConvExtension::C:
+            return "C";
+        case CorInfoCallConvExtension::Stdcall:
+            return "Stdcall";
+        case CorInfoCallConvExtension::Thiscall:
+            return "Thiscall";
+        case CorInfoCallConvExtension::Fastcall:
+            return "Fastcall";
+        case CorInfoCallConvExtension::CMemberFunction:
+            return "CMemberFunction";
+        case CorInfoCallConvExtension::StdcallMemberFunction:
+            return "StdcallMemberFunction";
+        case CorInfoCallConvExtension::FastcallMemberFunction:
+            return "FastcallMemberFunction";
+        default:
+            return "UnknownCallConv";
+    }
+}
+#endif // TARGET_X86
+
 /*****************************************************************************/
 
 void Compiler::gtDispNodeName(GenTree* tree)
@@ -10599,6 +10627,10 @@ void Compiler::gtDispNodeName(GenTree* tree)
             {
                 gtfTypeBufWalk += SimpleSprintf_s(gtfTypeBufWalk, gtfTypeBuf, sizeof(gtfTypeBuf), " thiscall");
             }
+#ifdef TARGET_X86
+            gtfTypeBufWalk += SimpleSprintf_s(gtfTypeBufWalk, gtfTypeBuf, sizeof(gtfTypeBuf), " %s",
+                                              GetCallConvName(tree->AsCall()->GetUnmanagedCallConv()));
+#endif // TARGET_X86
             gtfType = gtfTypeBuf;
         }
 
@@ -15428,6 +15460,7 @@ GenTree* Compiler::gtFoldExprConst(GenTree* tree)
             // has TYP_INT the result needs to be sign extended rather than zero extended.
             tree->BashToConst(static_cast<int>(i1));
             tree->AsIntCon()->gtFieldSeq = fieldSeq;
+
             if (vnStore != nullptr)
             {
                 fgValueNumberTreeConst(tree);
@@ -15525,6 +15558,9 @@ GenTree* Compiler::gtFoldExprConst(GenTree* tree)
                         goto INTEGRAL_OVF;
                     }
                     lval1 = ltemp;
+#ifdef TARGET_64BIT
+                    fieldSeq = GetFieldSeqStore()->Append(op1->AsIntCon()->gtFieldSeq, op2->AsIntCon()->gtFieldSeq);
+#endif
                     break;
 
                 case GT_SUB:
@@ -15630,11 +15666,13 @@ GenTree* Compiler::gtFoldExprConst(GenTree* tree)
             }
 
         CNS_LONG:
-
+#if !defined(TARGET_64BIT)
             if (fieldSeq != FieldSeqStore::NotAField())
             {
+                assert(!"Field sequences on CNS_LNG nodes!?");
                 return tree;
             }
+#endif // !defined(TARGET_64BIT)
 
             JITDUMP("\nFolding long operator with constant nodes into a constant:\n");
             DISPTREE(tree);
@@ -15643,6 +15681,9 @@ GenTree* Compiler::gtFoldExprConst(GenTree* tree)
                    (tree->gtDebugFlags & GTF_DEBUG_NODE_LARGE));
 
             tree->BashToConst(lval1);
+#ifdef TARGET_64BIT
+            tree->AsIntCon()->gtFieldSeq = fieldSeq;
+#endif
             if (vnStore != nullptr)
             {
                 fgValueNumberTreeConst(tree);

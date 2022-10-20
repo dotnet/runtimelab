@@ -9,7 +9,7 @@
 
 // The "regList" type is a small set of registerse
 #if defined(TARGET_X86) || defined(TARGET_WASM)
-typedef TinyArray<unsigned short, regNumber, REGNUM_BITS> regList;
+typedef TinyArray<unsigned int, regNumber, REGNUM_BITS> regList;
 #else
 // The regList is unused for all other targets.
 #endif // TARGET*

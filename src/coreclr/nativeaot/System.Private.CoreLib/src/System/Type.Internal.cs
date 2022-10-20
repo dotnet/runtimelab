@@ -22,7 +22,7 @@ namespace System
         {
             get
             {
-                Type ignore = null;
+                Type? ignore = null;
                 return InternalGetNameIfAvailable(ref ignore);
             }
         }

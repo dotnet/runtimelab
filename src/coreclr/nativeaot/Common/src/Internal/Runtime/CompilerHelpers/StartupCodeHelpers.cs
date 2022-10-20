@@ -248,7 +248,7 @@ namespace Internal.Runtime.CompilerHelpers
                 nint blockAddr = *pBlock;
                 if ((blockAddr & GCStaticRegionConstants.Uninitialized) == GCStaticRegionConstants.Uninitialized)
                 {
-                    object obj = null;
+                    object? obj = null;
                     RuntimeImports.RhAllocateNewObject(
                         new IntPtr(blockAddr & ~GCStaticRegionConstants.Mask),
                         (uint)GC_ALLOC_FLAGS.GC_ALLOC_PINNED_OBJECT_HEAP,

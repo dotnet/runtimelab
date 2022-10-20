@@ -109,7 +109,7 @@ namespace System.Threading
 
             if (iocb != null)
             {
-                ExecutionContext ec = ExecutionContext.Capture();
+                ExecutionContext? ec = ExecutionContext.Capture();
                 _callback = (ec != null && !ec.IsDefault) ? new _IOCompletionCallback(iocb, ec) : (object)iocb;
             }
             else
