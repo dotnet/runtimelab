@@ -18232,7 +18232,6 @@ bool Compiler::fgCheckStmtAfterTailCall()
     return nextMorphStmt == nullptr;
 }
 
-#ifdef TARGET_X86
 //------------------------------------------------------------------------
 // fgCanTailCallViaJitHelper: check whether we can use the faster tailcall
 // JIT helper on x86.
@@ -18242,20 +18241,17 @@ bool Compiler::fgCheckStmtAfterTailCall()
 //
 bool Compiler::fgCanTailCallViaJitHelper()
 {
-<<<<<<< HEAD
-=======
 #if !defined(TARGET_X86) || defined(UNIX_X86_ABI)
     // On anything except windows X86 we have no faster mechanism available.
     return false;
 #else
->>>>>>> 80f6b8afa7abf639a441f01561e8c9af1de0d497
     // The JIT helper does not properly handle the case where localloc was used.
     if (compLocallocUsed)
         return false;
 
     return true;
-}
 #endif
+}
 
 static const int          numberOfTrackedFlags               = 5;
 static const GenTreeFlags trackedFlags[numberOfTrackedFlags] = {GTF_ASG, GTF_CALL, GTF_EXCEPT, GTF_GLOB_REF,
