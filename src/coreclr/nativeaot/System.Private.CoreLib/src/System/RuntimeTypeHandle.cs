@@ -92,7 +92,7 @@ namespace System
 
         public ModuleHandle GetModuleHandle()
         {
-            Type type = Type.GetTypeFromHandle(this);
+            Type? type = Type.GetTypeFromHandle(this);
             if (type == null)
                 return default(ModuleHandle);
 

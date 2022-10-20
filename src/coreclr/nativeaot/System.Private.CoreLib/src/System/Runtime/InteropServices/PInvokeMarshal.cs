@@ -48,7 +48,7 @@ namespace System.Runtime.InteropServices
             if (del == null)
                 return IntPtr.Zero;
 
-            NativeFunctionPointerWrapper fpWrapper = del.Target as NativeFunctionPointerWrapper;
+            NativeFunctionPointerWrapper? fpWrapper = del.Target as NativeFunctionPointerWrapper;
             if (fpWrapper != null)
             {
                 //

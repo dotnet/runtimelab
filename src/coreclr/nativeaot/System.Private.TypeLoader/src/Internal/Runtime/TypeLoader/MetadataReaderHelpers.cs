@@ -74,7 +74,7 @@ namespace Internal.Runtime.TypeLoader
             if (srData1.BuildNumber != srData2.BuildNumber)
                 return false;
 
-            return ComparePublicKeyOrTokens(srData1.PublicKeyOrToken, srData1.Flags.HasFlag(AssemblyFlags.PublicKey), srData2.PublicKeyOrToken, srData2.Flags.HasFlag(AssemblyFlags.PublicKey));
+            return true;
         }
 
         public static bool CompareTypeReferenceToDefinition(TypeReferenceHandle tr1, MetadataReader mr1, TypeDefinitionHandle td2, MetadataReader mr2)
@@ -160,61 +160,8 @@ namespace Internal.Runtime.TypeLoader
             if (srData1.BuildNumber != sdData2.BuildNumber)
                 return false;
 
-            return ComparePublicKeyOrTokens(srData1.PublicKeyOrToken, srData1.Flags.HasFlag(AssemblyFlags.PublicKey), sdData2.PublicKey, sdData2.Flags.HasFlag(AssemblyFlags.PublicKey));
-        }
-
-        public static bool ComparePublicKeyOrTokens(ByteCollection keyOrToken1, bool isKey1, ByteCollection keyOrToken2, bool isKey2)
-        {
-            if (isKey1 != isKey2)
-            {
-                // Convert both to PublicKeyToken byte[] and compare
-
-                byte[] token1 = ConvertByteCollectionKeyOrTokenToPublicKeyTokenByteArray(keyOrToken1, isKey1);
-                byte[] token2 = ConvertByteCollectionKeyOrTokenToPublicKeyTokenByteArray(keyOrToken2, isKey2);
-
-                if (token1.Length != token2.Length)
-                    return false;
-
-                for (int i = 0; i < token1.Length; i++)
-                {
-                    if (token1[i] != token2[i])
-                        return false;
-                }
-
-                return true;
-            }
-
-            var enum1 = keyOrToken1.GetEnumerator();
-            var enum2 = keyOrToken1.GetEnumerator();
-
-            while (true)
-            {
-                bool moveNext1 = enum1.MoveNext();
-                if (enum2.MoveNext() != moveNext1)
-                    return false;
-
-                if (moveNext1 == false)
-                    break;
-
-                if (enum1.Current != enum2.Current)
-                    return false;
-            }
-
             return true;
         }
 
-        private static byte[] ConvertByteCollectionOfPublicKeyToByteArrayOfPublicKeyToken(ByteCollection publicKeyCollection)
-        {
-            byte[] publicKey = Internal.TypeSystem.NativeFormat.MetadataExtensions.ConvertByteCollectionToArray(publicKeyCollection);
-            return AssemblyNameHelpers.ComputePublicKeyToken(publicKey);
-        }
-
-        private static byte[] ConvertByteCollectionKeyOrTokenToPublicKeyTokenByteArray(ByteCollection publicKeyOrToken, bool isKey)
-        {
-            if (isKey)
-                return ConvertByteCollectionOfPublicKeyToByteArrayOfPublicKeyToken(publicKeyOrToken);
-            else
-                return Internal.TypeSystem.NativeFormat.MetadataExtensions.ConvertByteCollectionToArray(publicKeyOrToken);
-        }
     }
 }

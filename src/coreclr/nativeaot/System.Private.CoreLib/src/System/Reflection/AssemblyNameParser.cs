@@ -46,9 +46,9 @@ namespace System.Reflection
             if (name == string.Empty || name.IndexOfAny(s_illegalCharactersInSimpleName) != -1)
                 throw new FileLoadException(SR.InvalidAssemblyName);
 
-            Version version = null;
-            string cultureName = null;
-            byte[] pkt = null;
+            Version? version = null;
+            string? cultureName = null;
+            byte[]? pkt = null;
             AssemblyNameFlags flags = 0;
 
             LowLevelList<string> alreadySeen = new LowLevelList<string>();
