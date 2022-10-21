@@ -4320,7 +4320,6 @@ enum class WellKnownArg
     ValidateIndirectCallTarget,
     DispatchIndirectCallTarget,
     StackSizeArg,
-    TargetAddressArg,
 };
 
 #ifdef DEBUG
