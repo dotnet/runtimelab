@@ -1546,6 +1546,12 @@ void Lowering::LowerCall(GenTree* node)
     bool     callWasExpandedEarly = false;
 
     // for x86, this is where we record ESP for checking later to make sure stack is balanced
+#if defined(WINDOWS_AMD64_ABI)
+bool green_threads = true;
+#else
+bool green_threads = false;
+#endif
+bool lowerControlExpr = false;
 
     // Check for Delegate.Invoke(). If so, we inline it. We get the
     // target-object and target-function from the delegate-object, and do
@@ -1581,6 +1587,8 @@ void Lowering::LowerCall(GenTree* node)
                 if (call->IsUnmanaged())
                 {
                     controlExpr = LowerNonvirtPinvokeCall(call);
+                    if (green_threads)
+                        lowerControlExpr = true;
                 }
                 else if (call->gtCallType == CT_INDIRECT)
                 {
@@ -1627,6 +1635,10 @@ void Lowering::LowerCall(GenTree* node)
         ContainCheckRange(controlExprRange);
 
         BlockRange().InsertBefore(call, std::move(controlExprRange));
+        if (lowerControlExpr)
+        {
+            LowerNode(controlExpr);
+        }
         call->gtControlExpr = controlExpr;
     }
 
@@ -4815,6 +4827,12 @@ GenTree* Lowering::LowerNonvirtPinvokeCall(GenTreeCall* call)
         InsertPInvokeCallProlog(call);
     }
 
+#if defined(WINDOWS_AMD64_ABI)
+bool green_threads = true;
+#else
+bool green_threads = false;
+#endif
+
     if (call->gtCallType != CT_INDIRECT)
     {
         noway_assert(call->gtCallType == CT_USER_FUNC);
@@ -4832,7 +4850,7 @@ GenTree* Lowering::LowerNonvirtPinvokeCall(GenTreeCall* call)
                 // for this call. Unfortunately, in case of pinvokes (+suppressgctransition) to external libs
                 // (e.g. kernel32.dll) the relative offset is unlikely to fit into int32 and we will have to
                 // turn fAllowRel32 off globally.
-                if ((call->IsSuppressGCTransition() && !comp->opts.jitFlags->IsSet(JitFlags::JIT_FLAG_PREJIT)) ||
+                if (green_threads || (call->IsSuppressGCTransition() && !comp->opts.jitFlags->IsSet(JitFlags::JIT_FLAG_PREJIT)) ||
                     !IsCallTargetInRange(addr))
                 {
                     result = AddrGen(addr);
@@ -4878,6 +4896,17 @@ GenTree* Lowering::LowerNonvirtPinvokeCall(GenTreeCall* call)
             case IAT_RELPVALUE:
                 unreached();
         }
+    }
+
+    if (green_threads)
+    {
+        // Green thread calls may need to transition to the OS thread. Use a helper to potentially
+        // rewrite the address of the function pointer, and stash the needed data.
+
+        GenTree* stackSizeOfSavedArguments = comp->gtNewIconNode(call->gtArgs.OutgoingArgsStackSize(), TYP_I_IMPL);
+        GenTree* addressToPinvokeTo = call->gtCallType == CT_INDIRECT ? call->gtCallAddr : result;
+        result = comp->gtNewHelperCallNode(CORINFO_HELP_COMPUTE_GREEN_THREAD_TRANSITION, TYP_I_IMPL, addressToPinvokeTo, addressToPinvokeTo);
+        comp->fgMorphTree(result);
     }
 
     if (addPInvokePrologEpilog)

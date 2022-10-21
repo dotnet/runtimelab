@@ -382,4 +382,40 @@ extern "C" void End_More_Thread_Bookeeping()
     }
 }
 
+struct ThreadTransitionData
+{
+    void* fptr;
+    uintptr_t stacksize;
+};
+
+extern "C"
+{
+    thread_local ThreadTransitionData t_greenThreadTransitionData;
+}
+
+extern "C" void TransitionToOSThreadHelper2();
+
 #endif // FEATURE_GREENTHREADS
+
+HCIMPL2(void*, JIT_GreenThreadTransition, void* fptr, uintptr_t stackSize)
+{
+    FCALL_CONTRACT;
+
+    FC_GC_POLL_NOT_NEEDED();
+#ifdef FEATURE_GREENTHREADS
+    if (t_greenThread.inGreenThread)
+    {
+        t_greenThreadTransitionData.fptr = fptr;
+        t_greenThreadTransitionData.stacksize = (uintptr_t)((-(intptr_t)stackSize) - 1);
+        return TransitionToOSThreadHelper2;
+    }
+    else
+    {
+        return fptr;
+    }
+#else
+    // TODO: Actually implement this thing
+    return fptr;
+#endif
+}
+HCIMPLEND
