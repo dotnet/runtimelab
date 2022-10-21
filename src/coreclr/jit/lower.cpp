@@ -2296,7 +2296,7 @@ void Lowering::LowerGreenThreadTransitionCall(GenTreeCall* call)
             NewCallArg   stackSizeArg = NewCallArg::Primitive(stackSizeOfSavedArguments, TYP_I_IMPL).WellKnown(WellKnownArg::StackSizeArg);
             validate->gtArgs.PushFront(comp, stackSizeArg);
             NewCallArg   newArg =
-                NewCallArg::Primitive(targetPlaceholder).WellKnown(WellKnownArg::PInvokeTarget);
+                NewCallArg::Primitive(targetPlaceholder);
             validate->gtArgs.PushFront(comp, newArg);
 
             comp->fgMorphTree(validate);
@@ -5027,42 +5027,6 @@ bool green_threads = false;
                 unreached();
         }
     }
-
-#if 0
-    if (green_threads)
-    {
-        // Green thread calls may need to transition to the OS thread. Use a helper to potentially
-        // rewrite the address of the function pointer, and stash the needed data.
-
-        GenTree* stackSizeOfSavedArguments = comp->gtNewIconNode(call->gtArgs.OutgoingArgsStackSize(), TYP_I_IMPL);
-        GenTree* addressToPinvokeTo = call->gtCallType == CT_INDIRECT ? call->gtCallAddr : result;
-        result = comp->gtNewHelperCallNode(CORINFO_HELP_COMPUTE_GREEN_THREAD_TRANSITION, TYP_I_IMPL, addressToPinvokeTo, stackSizeOfSavedArguments);
-        comp->fgMorphTree(result);
-
-        if (call->gtCallType == CT_INDIRECT)
-        {
-            LIR::Range controlExprRange = LIR::SeqTree(comp, result);
-
-            JITDUMP("results of lowering green thread transition call:\n");
-            DISPRANGE(controlExprRange);
-
-            ContainCheckRange(controlExprRange);
-
-            GenTree* insertBefore = call;
-            if (call->gtCallType == CT_INDIRECT)
-            {
-                bool isClosed;
-                insertBefore = BlockRange().GetTreeRange(call->gtCallAddr, &isClosed).FirstNode();
-                assert(isClosed);
-            }
-
-            BlockRange().InsertBefore(insertBefore, std::move(controlExprRange));
-            LowerNode(result); // helper call is inserted before current node and should be lowered here.
-            call->gtCallAddr = result;
-            result = nullptr;
-        }
-    }
-#endif
 
     if (addPInvokePrologEpilog)
     {
