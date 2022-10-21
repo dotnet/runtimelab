@@ -1551,7 +1551,7 @@ bool green_threads = true;
 #else
 bool green_threads = false;
 #endif
-bool lowerControlExpr = false;
+bool green_thread_pinvoke = false;
 
     // Check for Delegate.Invoke(). If so, we inline it. We get the
     // target-object and target-function from the delegate-object, and do
@@ -1588,7 +1588,7 @@ bool lowerControlExpr = false;
                 {
                     controlExpr = LowerNonvirtPinvokeCall(call);
                     if (green_threads)
-                        lowerControlExpr = true;
+                        green_thread_pinvoke = true;
                 }
                 else if (call->gtCallType == CT_INDIRECT)
                 {
@@ -1635,14 +1635,14 @@ bool lowerControlExpr = false;
         ContainCheckRange(controlExprRange);
 
         BlockRange().InsertBefore(call, std::move(controlExprRange));
-        if (lowerControlExpr)
-        {
-            LowerNode(controlExpr);
-        }
         call->gtControlExpr = controlExpr;
     }
 
-    if (comp->opts.IsCFGEnabled())
+    if (green_thread_pinvoke)
+    {
+        LowerGreenThreadTransitionCall(call);
+    }
+    else if (comp->opts.IsCFGEnabled())
     {
         LowerCFGCall(call);
     }
@@ -1666,6 +1666,11 @@ bool lowerControlExpr = false;
 
     ContainCheckCallOperands(call);
     JITDUMP("lowering call (after):\n");
+/*    if (green_thread_pinvoke)
+    {
+        printf("Print it ALL\n");
+        comp->fgDispBasicBlocks(true);
+    }*/
     DISPTREERANGE(BlockRange(), call);
     JITDUMP("\n");
 }
@@ -2209,6 +2214,131 @@ GenTree* Lowering::LowerTailCallViaJitHelper(GenTreeCall* call, GenTree* callTar
 
     return result;
 }
+
+
+//------------------------------------------------------------------------
+// LowerCFGCall: Potentially lower a call to use control-flow guard. This
+// expands indirect calls into either a validate+call sequence or to a dispatch
+// helper taking the original target in a special register.
+//
+// Arguments:
+//    call         -  The call node
+//
+void Lowering::LowerGreenThreadTransitionCall(GenTreeCall* call)
+{
+    if (call->IsHelperCall(comp, CORINFO_HELP_COMPUTE_GREEN_THREAD_TRANSITION))
+    {
+        return;
+    }
+
+    GenTree* callTarget = call->gtCallType == CT_INDIRECT ? call->gtCallAddr : call->gtControlExpr;
+    if (callTarget == nullptr)
+    {
+        assert(false); // This should never happen for a p/invoke
+    }
+    else
+    {
+        // Unlike CFG we need to handle integral constants
+#if 0
+        if (callTarget->IsIntegralConst())
+        {
+            // This is a direct call, no CFG check is necessary.
+            return;
+        }
+#endif
+    }
+
+            // To safely apply CFG we need to generate a very specific pattern:
+            // in particular, it is a safety issue to allow the JIT to reload
+            // the call target from memory between calling
+            // CORINFO_HELP_VALIDATE_INDIRECT_CALL and the target. This is
+            // something that would easily occur in debug codegen if we
+            // produced high-level IR. Instead we will use a GT_PHYSREG node
+            // to get the target back from the register that contains the target.
+            //
+            // Additionally, the validator does not preserve all arg registers,
+            // so we have to move all GT_PUTARG_REG nodes that would otherwise
+            // be trashed ahead. The JIT also has an internal invariant that
+            // once GT_PUTARG nodes start to appear in LIR, the call is coming
+            // up. To avoid breaking this invariant we move _all_ GT_PUTARG
+            // nodes (in particular, GC info reporting relies on this).
+            //
+            // To sum up, we end up transforming
+            //
+            // ta... = <early args>
+            // tb... = <late args>
+            // tc = callTarget
+            // GT_CALL tc, ta..., tb...
+            //
+            // into
+            //
+            // ta... = <early args> (without GT_PUTARG_* nodes)
+            // tb = callTarget
+            // GT_CALL CORINFO_HELP_VALIDATE_INDIRECT_CALL, tb
+            // tc = GT_PHYSREG REG_VALIDATE_INDIRECT_CALL_ADDR (preserved by helper)
+            // td = <moved GT_PUTARG_* nodes>
+            // GT_CALL tb, ta..., td..
+            //
+
+            GenTree* regNode = PhysReg(REG_INTRET, TYP_I_IMPL);
+            LIR::Use useOfTar;
+            bool     gotUse = BlockRange().TryGetUse(callTarget, &useOfTar);
+            assert(gotUse);
+            useOfTar.ReplaceWith(regNode);
+
+            // Add the call to the validator. Use a placeholder for the target while we
+            // morph, sequence and lower, to avoid redoing that for the actual target.
+            GenTree*     targetPlaceholder = comp->gtNewZeroConNode(callTarget->TypeGet());
+            GenTree* stackSizeOfSavedArguments = comp->gtNewIconNode(call->gtArgs.OutgoingArgsStackSize(), TYP_I_IMPL);
+
+            GenTreeCall* validate          = comp->gtNewHelperCallNode(CORINFO_HELP_COMPUTE_GREEN_THREAD_TRANSITION, TYP_VOID);
+
+            NewCallArg   stackSizeArg = NewCallArg::Primitive(stackSizeOfSavedArguments, TYP_I_IMPL).WellKnown(WellKnownArg::StackSizeArg);
+            validate->gtArgs.PushFront(comp, stackSizeArg);
+            NewCallArg   newArg =
+                NewCallArg::Primitive(targetPlaceholder).WellKnown(WellKnownArg::PInvokeTarget);
+            validate->gtArgs.PushFront(comp, newArg);
+
+            comp->fgMorphTree(validate);
+
+            LIR::Range validateRange = LIR::SeqTree(comp, validate);
+            GenTree*   validateFirst = validateRange.FirstNode();
+            GenTree*   validateLast  = validateRange.LastNode();
+            // Insert the validator with the call target before the late args.
+            BlockRange().InsertBefore(call, std::move(validateRange));
+
+            // Swap out the target
+            gotUse = BlockRange().TryGetUse(targetPlaceholder, &useOfTar);
+            assert(gotUse);
+            useOfTar.ReplaceWith(callTarget);
+            targetPlaceholder->SetUnusedValue();
+
+            LowerRange(validateFirst, validateLast);
+
+            // Insert the PHYSREG node that we must load right after validation.
+            BlockRange().InsertAfter(validate, regNode);
+            LowerNode(regNode);
+
+            // Finally move all GT_PUTARG_* nodes
+            for (CallArg& arg : call->gtArgs.EarlyArgs())
+            {
+                GenTree* node = arg.GetEarlyNode();
+                // Non-value nodes in early args are setup nodes for late args.
+                if (node->IsValue())
+                {
+                    assert(node->OperIsPutArg() || node->OperIsFieldList());
+                    MoveCFGCallArg(call, node);
+                }
+            }
+
+            for (CallArg& arg : call->gtArgs.LateArgs())
+            {
+                GenTree* node = arg.GetLateNode();
+                assert(node->OperIsPutArg() || node->OperIsFieldList());
+                MoveCFGCallArg(call, node);
+            }
+}
+
 
 //------------------------------------------------------------------------
 // LowerCFGCall: Potentially lower a call to use control-flow guard. This
@@ -4898,6 +5028,7 @@ bool green_threads = false;
         }
     }
 
+#if 0
     if (green_threads)
     {
         // Green thread calls may need to transition to the OS thread. Use a helper to potentially
@@ -4905,9 +5036,33 @@ bool green_threads = false;
 
         GenTree* stackSizeOfSavedArguments = comp->gtNewIconNode(call->gtArgs.OutgoingArgsStackSize(), TYP_I_IMPL);
         GenTree* addressToPinvokeTo = call->gtCallType == CT_INDIRECT ? call->gtCallAddr : result;
-        result = comp->gtNewHelperCallNode(CORINFO_HELP_COMPUTE_GREEN_THREAD_TRANSITION, TYP_I_IMPL, addressToPinvokeTo, addressToPinvokeTo);
+        result = comp->gtNewHelperCallNode(CORINFO_HELP_COMPUTE_GREEN_THREAD_TRANSITION, TYP_I_IMPL, addressToPinvokeTo, stackSizeOfSavedArguments);
         comp->fgMorphTree(result);
+
+        if (call->gtCallType == CT_INDIRECT)
+        {
+            LIR::Range controlExprRange = LIR::SeqTree(comp, result);
+
+            JITDUMP("results of lowering green thread transition call:\n");
+            DISPRANGE(controlExprRange);
+
+            ContainCheckRange(controlExprRange);
+
+            GenTree* insertBefore = call;
+            if (call->gtCallType == CT_INDIRECT)
+            {
+                bool isClosed;
+                insertBefore = BlockRange().GetTreeRange(call->gtCallAddr, &isClosed).FirstNode();
+                assert(isClosed);
+            }
+
+            BlockRange().InsertBefore(insertBefore, std::move(controlExprRange));
+            LowerNode(result); // helper call is inserted before current node and should be lowered here.
+            call->gtCallAddr = result;
+            result = nullptr;
+        }
     }
+#endif
 
     if (addPInvokePrologEpilog)
     {
