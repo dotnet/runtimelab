@@ -5397,7 +5397,7 @@ namespace System.Threading.Tasks
             {
                 Thread.t_IsGreenThread = true;
                 action();
-            }) { IsBackground = true }.Start();
+            }) { IsBackground = true }.UnsafeStart();
         }
 
         private static void RunOnGreenThread(Action action)
@@ -5425,15 +5425,22 @@ namespace System.Threading.Tasks
             if (cancellationToken.IsCancellationRequested)
                 return Task.FromCanceled(cancellationToken);
 
+            var executionContext = ExecutionContext.Capture();
             var tcs = new TaskCompletionSource();
             RunOnGreenThread(()=>
             {
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    tcs.SetCanceled(cancellationToken);
+                    return;
+                }
+
                 Thread.t_IsGreenThread = true;
                 try
                 {
-                    if (cancellationToken.IsCancellationRequested)
+                    if (executionContext is not null && !executionContext.IsDefault)
                     {
-                        tcs.SetCanceled(cancellationToken);
+                        ExecutionContext.SetCurrentExecutionContextUnsafe(executionContext);
                     }
 
                     action();
@@ -5450,12 +5457,18 @@ namespace System.Threading.Tasks
         [UnsupportedOSPlatform("browser")]
         public static Task RunAsGreenThread(Action action)
         {
+            var executionContext = ExecutionContext.Capture();
             var tcs = new TaskCompletionSource();
             RunOnGreenThread(()=>
             {
                 Thread.t_IsGreenThread = true;
                 try
                 {
+                    if (executionContext is not null && !executionContext.IsDefault)
+                    {
+                        ExecutionContext.SetCurrentExecutionContextUnsafe(executionContext);
+                    }
+
                     action();
                     tcs.SetResult();
                 }
@@ -5470,12 +5483,18 @@ namespace System.Threading.Tasks
         [UnsupportedOSPlatform("browser")]
         public static Task<TResult> RunAsGreenThread<TResult>(Func<TResult> function)
         {
+            var executionContext = ExecutionContext.Capture();
             var tcs = new TaskCompletionSource<TResult>();
             RunOnGreenThread(()=>
             {
                 Thread.t_IsGreenThread = true;
                 try
                 {
+                    if (executionContext is not null && !executionContext.IsDefault)
+                    {
+                        ExecutionContext.SetCurrentExecutionContextUnsafe(executionContext);
+                    }
+
                     tcs.SetResult(function());
                 }
                 catch (Exception e)
@@ -5492,17 +5511,24 @@ namespace System.Threading.Tasks
             if (cancellationToken.IsCancellationRequested)
                 return Task.FromCanceled<TResult>(cancellationToken);
 
+            var executionContext = ExecutionContext.Capture();
             var tcs = new TaskCompletionSource<TResult>();
             RunOnGreenThread(()=>
             {
                 if (cancellationToken.IsCancellationRequested)
                 {
                     tcs.SetCanceled(cancellationToken);
+                    return;
                 }
 
                 Thread.t_IsGreenThread = true;
                 try
                 {
+                    if (executionContext is not null && !executionContext.IsDefault)
+                    {
+                        ExecutionContext.SetCurrentExecutionContextUnsafe(executionContext);
+                    }
+
                     tcs.SetResult(function());
                 }
                 catch (Exception e)

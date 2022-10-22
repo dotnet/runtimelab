@@ -293,12 +293,10 @@ namespace System.Threading
             edi?.Throw();
         }
 
-        internal static void RunForThreadPoolUnsafe<TState>(ExecutionContext executionContext, Action<TState> callback, in TState state)
+        internal static void SetCurrentExecutionContextUnsafe(ExecutionContext executionContext)
         {
-            // We aren't running in try/catch as if an exception is directly thrown on the ThreadPool either process
-            // will crash or its a ThreadAbortException.
-
-            CheckThreadPoolAndContextsAreDefault();
+            Debug.Assert(Thread.CurrentThread._executionContext == null, "ThreadPool thread not on Default ExecutionContext.");
+            Debug.Assert(Thread.CurrentThread._synchronizationContext == null, "ThreadPool thread not on Default SynchronizationContext.");
             Debug.Assert(executionContext != null && !executionContext.m_isDefault, "ExecutionContext argument is Default.");
 
             // Restore Non-Default context
@@ -308,6 +306,16 @@ namespace System.Threading
                 OnValuesChanged(previousExecutionCtx: null, executionContext);
             }
 
+            // The caller is expected to handle notifications and reset EC and SyncCtx back to default if necessary
+        }
+
+        internal static void RunForThreadPoolUnsafe<TState>(ExecutionContext executionContext, Action<TState> callback, in TState state)
+        {
+            CheckThreadPoolAndContextsAreDefault();
+            SetCurrentExecutionContextUnsafe(executionContext);
+
+            // We aren't running in try/catch as if an exception is directly thrown on the ThreadPool either process
+            // will crash or its a ThreadAbortException.
             callback.Invoke(state);
 
             // ThreadPoolWorkQueue.Dispatch will handle notifications and reset EC and SyncCtx back to default
