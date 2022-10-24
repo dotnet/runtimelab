@@ -8511,6 +8511,20 @@ void Compiler::impCheckForPInvokeCall(
         }
 
         unmanagedCallConv = info.compCompHnd->getUnmanagedCallConv(methHnd, nullptr, &suppressGCTransition);
+#ifdef FEATURE_GREENTHREADS
+        {
+            const char* className          = nullptr;
+            const char* namespaceName      = nullptr;
+            const char* enclosingClassName = nullptr;
+            const char* methodName =
+            info.compCompHnd->getMethodNameFromMetadata(methHnd, &className, &namespaceName, &enclosingClassName);
+
+            if (strcmp(methodName, "GreenThread_Yield") == 0)
+            {
+                call->gtCallMoreFlags |= GTF_CALL_M_SUPPRESS_GREENTHREAD;
+            }
+        }
+#endif // FEATURE_GREENTHREADS
     }
     else
     {

@@ -1547,7 +1547,7 @@ void Lowering::LowerCall(GenTree* node)
 
     // for x86, this is where we record ESP for checking later to make sure stack is balanced
 #if defined(WINDOWS_AMD64_ABI)
-bool green_threads = !comp->IsTargetAbi(CORINFO_NATIVEAOT_ABI);
+bool green_threads = !comp->IsTargetAbi(CORINFO_NATIVEAOT_ABI) && !call->IsSuppressGreenThreadTransition();
 #else
 bool green_threads = false;
 #endif
@@ -4958,7 +4958,7 @@ GenTree* Lowering::LowerNonvirtPinvokeCall(GenTreeCall* call)
     }
 
 #if defined(WINDOWS_AMD64_ABI)
-bool green_threads = !comp->IsTargetAbi(CORINFO_NATIVEAOT_ABI);
+bool green_threads = !comp->IsTargetAbi(CORINFO_NATIVEAOT_ABI) && !call->IsSuppressGreenThreadTransition();
 #else
 bool green_threads = false;
 #endif
