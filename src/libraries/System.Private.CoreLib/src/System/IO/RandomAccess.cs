@@ -1,6 +1,7 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Buffers;
 using System.Collections.Generic;
 using System.IO.Strategies;
 using System.Threading;
@@ -68,6 +69,20 @@ namespace System.IO
         {
             ValidateInput(handle, fileOffset);
 
+            if (Thread.IsGreenThread)
+            {
+                byte[] tmp = ArrayPool<byte>.Shared.Rent(buffer.Length);
+
+                ValueTask<int> vt = ReadAsync(handle, tmp.AsMemory(0, buffer.Length), fileOffset);
+                int bytesRead = vt.IsCompleted ?
+                    vt.GetAwaiter().GetResult() :
+                    vt.AsTask().GetAwaiter().GetResult();
+                tmp.AsSpan(0, bytesRead).CopyTo(buffer);
+
+                ArrayPool<byte>.Shared.Return(tmp);
+                return bytesRead;
+            }
+
             return ReadAtOffset(handle, buffer, fileOffset);
         }
 
@@ -90,6 +105,14 @@ namespace System.IO
         {
             ValidateInput(handle, fileOffset);
             ValidateBuffers(buffers);
+
+            if (Thread.IsGreenThread)
+            {
+                ValueTask<long> vt = ReadAsync(handle, buffers, fileOffset);
+                return vt.IsCompleted ?
+                    vt.GetAwaiter().GetResult() :
+                    vt.AsTask().GetAwaiter().GetResult();
+            }
 
             return ReadScatterAtOffset(handle, buffers, fileOffset);
         }
@@ -169,6 +192,25 @@ namespace System.IO
         {
             ValidateInput(handle, fileOffset);
 
+            if (Thread.IsGreenThread)
+            {
+                byte[] tmp = ArrayPool<byte>.Shared.Rent(buffer.Length);
+                buffer.CopyTo(tmp);
+
+                ValueTask vt = WriteAsync(handle, tmp.AsMemory(0, buffer.Length), fileOffset);
+                if (vt.IsCompleted)
+                {
+                    vt.GetAwaiter().GetResult();
+                }
+                else
+                {
+                    vt.AsTask().GetAwaiter().GetResult();
+                }
+
+                ArrayPool<byte>.Shared.Return(tmp);
+                return;
+            }
+
             WriteAtOffset(handle, buffer, fileOffset);
         }
 
@@ -190,6 +232,20 @@ namespace System.IO
         {
             ValidateInput(handle, fileOffset);
             ValidateBuffers(buffers);
+
+            if (Thread.IsGreenThread)
+            {
+                ValueTask vt = WriteAsync(handle, buffers, fileOffset);
+                if (vt.IsCompleted)
+                {
+                    vt.GetAwaiter().GetResult();
+                }
+                else
+                {
+                    vt.AsTask().GetAwaiter().GetResult();
+                }
+                return;
+            }
 
             WriteGatherAtOffset(handle, buffers, fileOffset);
         }
