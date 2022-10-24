@@ -397,11 +397,9 @@ extern "C" void TransitionToOSThreadHelper2();
 
 #endif // FEATURE_GREENTHREADS
 
-HCIMPL2(void*, JIT_GreenThreadTransition, void* fptr, uintptr_t stackSize)
+// This helper uses a _RAW helper as it is called after the GC transition part of a P/Invoke
+HCIMPL2_RAW(void*, JIT_GreenThreadTransition, void* fptr, uintptr_t stackSize)
 {
-    FCALL_CONTRACT;
-
-    FC_GC_POLL_NOT_NEEDED();
 #ifdef FEATURE_GREENTHREADS
     if (t_greenThread.inGreenThread)
     {
@@ -418,4 +416,4 @@ HCIMPL2(void*, JIT_GreenThreadTransition, void* fptr, uintptr_t stackSize)
     return fptr;
 #endif
 }
-HCIMPLEND
+HCIMPLEND_RAW
