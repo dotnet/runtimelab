@@ -1666,11 +1666,6 @@ bool green_thread_pinvoke = false;
 
     ContainCheckCallOperands(call);
     JITDUMP("lowering call (after):\n");
-/*    if (green_thread_pinvoke)
-    {
-        printf("Print it ALL\n");
-        comp->fgDispBasicBlocks(true);
-    }*/
     DISPTREERANGE(BlockRange(), call);
     JITDUMP("\n");
 }
