@@ -6,7 +6,12 @@
 #include "common.h"
 #include "greenthreads.h"
 
-#ifdef FEATURE_GREENTHREADS
+#ifndef FEATURE_GREENTHREADS
+void CallOnOSThread(TakesOneParamNoReturn functionToExecute, uintptr_t param)
+{
+    functionToExecute(param);
+}
+#else // FEATURE_GREENTHREADS
 struct GreenThreadData
 {
     StackRange osStackRange;
@@ -35,6 +40,7 @@ uint8_t* AlignDown(uint8_t* address, size_t alignValue)
 }
 
 static const int stackSizeOfMoreStackFunction = 0xe8;
+static const int frameOffsetMoreStackFunction = 0xe0;
 extern "C" uintptr_t AllocateMoreStackHelper(int argumentStackSize, void* stackPointer)
 {
     const int offsetToReturnAddress = 8;
@@ -49,7 +55,7 @@ extern "C" uintptr_t AllocateMoreStackHelper(int argumentStackSize, void* stackP
     if (argumentStackSize < 0)
     {
         argumentStackSize = -(argumentStackSize + 1);
-        newArgsLocation = AlignDown(t_greenThread.osStackCurrent - (stackSizeOfMoreStackFunction + sizeOfShadowStore + sizeof(void*) + argumentStackSize), 16);
+        newArgsLocation = AlignDown(t_greenThread.osStackCurrent - (stackSizeOfMoreStackFunction + frameOffsetMoreStackFunction + sizeOfShadowStore + sizeof(void*) + argumentStackSize), 16);
         *pNewStackRange = t_greenThread.osStackRange;
     }
     else
@@ -247,6 +253,31 @@ uintptr_t TransitionToOSThread(TakesOneParam functionToExecute, uintptr_t param)
     return result;
 }
 
+void TransitionToOSThread(TakesOneParamNoReturn functionToExecute, uintptr_t param)
+{
+    TransitionHelperStruct detailsAboutWhatToCall;
+    detailsAboutWhatToCall.function = (TakesOneParam)functionToExecute;
+    detailsAboutWhatToCall.param = param;
+    if (!t_greenThread.inGreenThread)
+        __debugbreak();
+
+    t_greenThread.inGreenThread = false;
+    bool oldtransitionedToOSThreadOnGreenThread = t_greenThread.transitionedToOSThreadOnGreenThread;
+    t_greenThread.transitionedToOSThreadOnGreenThread = true;
+
+    TransitionToOSThreadHelper((uintptr_t)FirstFrameInOSThread, &detailsAboutWhatToCall);
+    t_greenThread.transitionedToOSThreadOnGreenThread = oldtransitionedToOSThreadOnGreenThread;
+    t_greenThread.inGreenThread = true;
+}
+
+void CallOnOSThread(TakesOneParamNoReturn functionToExecute, uintptr_t param)
+{
+    if (!t_greenThread.inGreenThread)
+        functionToExecute(param);
+    else
+        TransitionToOSThread(functionToExecute, param);
+}
+
 void *TransitionToOSThreadAndCallMalloc(size_t memoryToAllocate)
 {
     return (void*)TransitionToOSThread((TakesOneParam)malloc, memoryToAllocate);
@@ -254,13 +285,15 @@ void *TransitionToOSThreadAndCallMalloc(size_t memoryToAllocate)
 
 extern "C" void YieldOutOfGreenThreadHelper(StackRange *pOSStackRange, uint8_t* osStackCurrent, uint8_t** greenThreadStackCurrent);
 
+thread_local uintptr_t green_thread_yield_return_value;
+
 #pragma optimize( "", off ) // Disable optimizations on this function as it is involved in thread transitions, and the use of thread statics across
                             // across a potential OS transition does not work correctly. (The TLS variable access implicit in GetThread() stored 
                             // across the OS thread transition. Naturally this causes interesting failures.)
-bool GreenThread_Yield() // Attempt to yield out of green thread. If the yield fails, return false, else return true once the thread is resumed.
+uintptr_t GreenThread_Yield() // Attempt to yield out of green thread. If the yield fails, return 0, else return true once the thread is resumed.
 {
     if (!t_greenThread.inGreenThread || t_greenThread.transitionedToOSThreadOnGreenThread)
-        return false;
+        return 0;
     
     {
         GCX_COOP();
@@ -303,7 +336,7 @@ bool GreenThread_Yield() // Attempt to yield out of green thread. If the yield f
         ((InlinedCallFrame*)t_greenThread.pFrameInGreenThread)->UNSAFE_UpdateThreadPointer(GetThread());
         GetThread()->m_pFrame = t_greenThread.pFrameInGreenThread;
     }
-    return true;
+    return green_thread_yield_return_value;
 }
 
 #pragma optimize( "", on ) // Re-enable optimizations
@@ -343,8 +376,10 @@ extern "C" uint8_t* GetResumptionStackPointerAndSaveOSStackPointer(StackRange* p
 
 extern "C" void ResumeSuspendedThreadHelper();
 
-SuspendedGreenThread* GreenThread_ResumeThread(SuspendedGreenThread* pSuspendedThread)
+SuspendedGreenThread* GreenThread_ResumeThread(SuspendedGreenThread* pSuspendedThread, uintptr_t yieldReturnValue)
 {
+    green_thread_yield_return_value = yieldReturnValue;
+
     if (t_greenThread.inGreenThread)
         __debugbreak();
     

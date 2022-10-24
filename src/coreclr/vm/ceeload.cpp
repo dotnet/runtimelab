@@ -1640,9 +1640,9 @@ void Module::FreeModuleIndex()
         {
             ThreadStoreLockHolder tsLock;
             Thread *pThread = NULL;
-            while ((pThread = ThreadStore::GetThreadList(pThread)) != NULL)
+            while ((pThread = ThreadStore::GetThreadList(pThread)) != NULL) // TODO! This does not work for collectible assemblies today in the presence of Green Threads
             {
-                pThread->DeleteThreadStaticData(m_ModuleIndex);
+                pThread->GetActiveThreadBase()->DeleteThreadStaticData(m_ModuleIndex);
             }
         }
 

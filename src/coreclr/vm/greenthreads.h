@@ -19,6 +19,8 @@ struct GreenThreadStackList
     int size;
 };
 
+class GreenThread;
+
 struct SuspendedGreenThread
 {
     uint8_t* currentStackPointer;
@@ -30,19 +32,23 @@ struct SuspendedGreenThread
 };
 
 typedef uintptr_t (*TakesOneParam)(uintptr_t param);
+typedef void (*TakesOneParamNoReturn)(uintptr_t param);
 SuspendedGreenThread* GreenThread_StartThread(TakesOneParam functionToExecute, uintptr_t param);
 uintptr_t TransitionToOSThread(TakesOneParam functionToExecute, uintptr_t param);
+void TransitionToOSThread(TakesOneParamNoReturn functionToExecute, uintptr_t param);
 
 // Must be called from within a green thread.
-bool GreenThread_Yield(); // Attempt to yield out of green thread. If the yield fails, return false, else return true once the thread is resumed.
+uintptr_t GreenThread_Yield(); // Attempt to yield out of green thread. If the yield fails, return false, else return true once the thread is resumed.
 
 // Resume execution 
-SuspendedGreenThread* GreenThread_ResumeThread(SuspendedGreenThread* pSuspendedThread); // Resume suspended green thread, and destroy SuspendedGreenThread structure, or return a new one if the thread suspends again ... Note this is permitted to return the old one.
+SuspendedGreenThread* GreenThread_ResumeThread(SuspendedGreenThread* pSuspendedThread, uintptr_t yieldReturnValue); // Resume suspended green thread, and destroy SuspendedGreenThread structure, or return a new one if the thread suspends again ... Note this is permitted to return the old one.
 
 // Destroy suspended green thread
 void DestroyGreenThread(SuspendedGreenThread* pSuspendedThread); // 
 
 bool GreenThread_IsGreenThread();
+
+void CallOnOSThread(TakesOneParamNoReturn functionToExecute, uintptr_t param);
 
 // TODO: AndrewAu: Better naming
 extern SuspendedGreenThread green_head;

@@ -778,6 +778,7 @@ NESTED_ENTRY _more_stack, _TEXT
         call            r10 ; Call the core of the function with the new larger stack
 
         mov             rsp, rbx ; Bring back the old stack pointer
+        lea             rbp, [rsp + 0e0h]
 
         mov             r10, [rbp - 020h] ; Pull the old stack limit
         mov             gs:[10h], r10 ; Change stack limit to new value
@@ -924,6 +925,7 @@ NESTED_ENTRY ResumeSuspendedThreadHelper2, _TEXT
         jmp resume_point  ; Now that the stack is in position, 
 
     ALTERNATE_ENTRY yield_point ; When yielding, we will jmp back to this location with the registers back in their original config
+        lea             rbp, [rsp + 0e0h]
         ; We need to restore the stack limits, and registers such that we can effectively return from a _more_stack function without popping the stack segment stack
         mov             r10, [rbp - 020h] ; Pull the old stack limit
         mov             gs:[10h], r10 ; Change stack limit to new value
