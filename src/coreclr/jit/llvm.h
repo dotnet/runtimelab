@@ -89,7 +89,8 @@ extern "C" void registerLlvmCallbacks(void*       thisPtr,
                                       const CorInfoTypeWithMod(*_getArgTypeIncludingParameterized)(void*, CORINFO_SIG_INFO*, CORINFO_ARG_LIST_HANDLE, CORINFO_CLASS_HANDLE*),
                                       const CorInfoTypeWithMod(*_getParameterType)(void*, CORINFO_CLASS_HANDLE, CORINFO_CLASS_HANDLE*),
                                       const TypeDescriptor(*getTypeDescriptor)(void*, CORINFO_CLASS_HANDLE),
-                                      CORINFO_METHOD_HANDLE (*_getCompilerHelpersMethodHandle)(void*, const char*, const char*));
+                                      CORINFO_METHOD_HANDLE (*_getCompilerHelpersMethodHandle)(void*, const char*, const char*),
+                                      const uint32_t (*getInstanceFieldAlignment)(void*, CORINFO_CLASS_HANDLE));
 
 struct PhiPair
 {
@@ -150,7 +151,7 @@ private:
     void buildCnsDouble(GenTreeDblCon* node);
     void buildCnsInt(GenTree* node);
     void buildCnsLng(GenTree* node);
-    void buildFieldList(GenTreeFieldList* fieldList);
+    Value* buildFieldList(GenTreeFieldList* fieldList, Type* llvmType);
     void buildHelperFuncCall(GenTreeCall* call);
     llvm::FunctionType* buildHelperLlvmFunctionType(GenTreeCall* call, bool withShadowStack);
     void buildInd(GenTree* node, Value* ptr);
