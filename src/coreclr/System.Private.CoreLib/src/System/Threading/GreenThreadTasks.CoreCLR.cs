@@ -83,7 +83,7 @@ namespace System.Threading.Tasks
         static partial void RunOnActualGreenThread(Action action, ref bool ranAsActualGreenThread)
         {
             ranAsActualGreenThread = true;
-            ThreadPool.QueueUserWorkItem(GreenThreadExecutorFunc, action);
+            ThreadPool.UnsafeQueueUserWorkItem(GreenThreadExecutorFunc, action);
         }
 
         // No-inlining is used here and on ClearTaskToWaitFor, to avoid the problem
