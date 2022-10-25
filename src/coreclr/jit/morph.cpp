@@ -720,8 +720,6 @@ const char* getWellKnownArgName(WellKnownArg arg)
             return "ValidateIndirectCallTarget";
         case WellKnownArg::DispatchIndirectCallTarget:
             return "DispatchIndirectCallTarget";
-        case WellKnownArg::StackSizeArg:
-            return "StackSizeArg";
     }
 
     return "N/A";
