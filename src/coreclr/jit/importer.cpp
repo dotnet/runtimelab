@@ -8517,7 +8517,7 @@ void Compiler::impCheckForPInvokeCall(
             const char* namespaceName      = nullptr;
             const char* enclosingClassName = nullptr;
             const char* methodName =
-            info.compCompHnd->getMethodNameFromMetadata(methHnd, &className, &namespaceName, &enclosingClassName);
+                info.compCompHnd->getMethodNameFromMetadata(methHnd, &className, &namespaceName, &enclosingClassName);
 
             if (strcmp(methodName, "GreenThread_Yield") == 0)
             {
