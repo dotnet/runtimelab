@@ -4320,7 +4320,6 @@ enum class WellKnownArg
     R2RIndirectionCell,
     ValidateIndirectCallTarget,
     DispatchIndirectCallTarget,
-    StackSizeArg,
 };
 
 #ifdef DEBUG

@@ -2275,20 +2275,15 @@ void Lowering::LowerGreenThreadTransitionCall(GenTreeCall* call)
             // GT_CALL tb, ta..., td..
             //
 
-            GenTree* regNode = PhysReg(REG_INTRET, TYP_I_IMPL);
-            LIR::Use useOfTar;
-            bool     gotUse = BlockRange().TryGetUse(callTarget, &useOfTar);
-            assert(gotUse);
-            useOfTar.ReplaceWith(regNode);
 
             // Add the call to the validator. Use a placeholder for the target while we
             // morph, sequence and lower, to avoid redoing that for the actual target.
             GenTree*     targetPlaceholder = comp->gtNewZeroConNode(callTarget->TypeGet());
             GenTree* stackSizeOfSavedArguments = comp->gtNewIconNode(call->gtArgs.OutgoingArgsStackSize(), TYP_I_IMPL);
 
-            GenTreeCall* validate          = comp->gtNewHelperCallNode(CORINFO_HELP_COMPUTE_GREEN_THREAD_TRANSITION, TYP_VOID);
+            GenTreeCall* validate          = comp->gtNewHelperCallNode(CORINFO_HELP_COMPUTE_GREEN_THREAD_TRANSITION, TYP_I_IMPL);
 
-            NewCallArg   stackSizeArg = NewCallArg::Primitive(stackSizeOfSavedArguments, TYP_I_IMPL).WellKnown(WellKnownArg::StackSizeArg);
+            NewCallArg   stackSizeArg = NewCallArg::Primitive(stackSizeOfSavedArguments, TYP_I_IMPL);
             validate->gtArgs.PushFront(comp, stackSizeArg);
             NewCallArg   newArg =
                 NewCallArg::Primitive(targetPlaceholder);
@@ -2302,6 +2297,12 @@ void Lowering::LowerGreenThreadTransitionCall(GenTreeCall* call)
             // Insert the validator with the call target before the late args.
             BlockRange().InsertBefore(call, std::move(validateRange));
 
+            // Swap out the calltarget for the call
+            LIR::Use useOfTar;
+            bool     gotUse = BlockRange().TryGetUse(callTarget, &useOfTar);
+            assert(gotUse);
+            useOfTar.ReplaceWith(validate);
+
             // Swap out the target
             gotUse = BlockRange().TryGetUse(targetPlaceholder, &useOfTar);
             assert(gotUse);
@@ -2309,10 +2310,6 @@ void Lowering::LowerGreenThreadTransitionCall(GenTreeCall* call)
             targetPlaceholder->SetUnusedValue();
 
             LowerRange(validateFirst, validateLast);
-
-            // Insert the PHYSREG node that we must load right after validation.
-            BlockRange().InsertAfter(validate, regNode);
-            LowerNode(regNode);
 
             // Finally move all GT_PUTARG_* nodes
             for (CallArg& arg : call->gtArgs.EarlyArgs())
