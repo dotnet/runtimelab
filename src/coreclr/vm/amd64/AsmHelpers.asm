@@ -946,6 +946,11 @@ NESTED_ENTRY ResumeSuspendedThreadHelper, _TEXT
     EPILOG_WITH_TRANSITION_BLOCK_RETURN
 NESTED_END ResumeSuspendedThreadHelper, _TEXT
 
+; This function is called with a misaligned stack, and the amount of needed stack space in the RAX register
+LEAF_ENTRY JIT_GreenThreadMoreStack, _TEXT
+    ret
+LEAF_END JIT_GreenThreadMoreStack, _TEXT
+
 endif ; FEATURE_GREENTHREADS
 
         end

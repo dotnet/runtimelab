@@ -11,6 +11,11 @@ void CallOnOSThread(TakesOneParamNoReturn functionToExecute, uintptr_t param)
 {
     functionToExecute(param);
 }
+
+FCIMPL0(void, JIT_GreenThreadMoreStack)
+{
+}
+FCIMPLEND
 #else // FEATURE_GREENTHREADS
 struct GreenThreadData
 {

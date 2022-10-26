@@ -1978,6 +1978,10 @@ namespace ILCompiler.Reflection.ReadyToRun
                     builder.Append("STACK_PROBE");
                     break;
 
+                case ReadyToRunHelper.GreenThreadMoreStack:
+                    builder.Append("GREEN_THREAD_MORE_STACK");
+                    break;
+
                 default:
                     throw new BadImageFormatException();
             }

@@ -407,6 +407,9 @@ enum ReadyToRunHelper
     // Array helpers for use with native ints
     READYTORUN_HELPER_Stelem_Ref_I                = 0x113,
     READYTORUN_HELPER_Ldelema_Ref_I               = 0x114,
+
+    // Helper for getting more stack on a green thread
+    READYTORUN_HELPER_GreenThreadMoreStack        = 0x116,
 };
 
 #include "readytoruninstructionset.h"

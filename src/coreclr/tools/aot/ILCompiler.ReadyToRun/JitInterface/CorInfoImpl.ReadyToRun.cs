@@ -1075,6 +1075,10 @@ namespace Internal.JitInterface
                 case CorInfoHelpFunc.CORINFO_HELP_TAILCALL:
                     throw new RequiresRuntimeJitException(ftnNum.ToString());
 
+                case CorInfoHelpFunc.CORINFO_HELP_GREEN_THREAD_MORE_STACK:
+                    id = ReadyToRunHelper.GreenThreadMoreStack;
+                    break;
+
                 default:
                     throw new NotImplementedException(ftnNum.ToString());
             }
