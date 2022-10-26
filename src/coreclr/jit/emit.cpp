@@ -1164,10 +1164,18 @@ void emitter::emitBegFN(bool hasFramePtr
 #endif // PSEUDORANDOM_NOP_INSERTION
 
     /* Create the first IG, it will be used for the prolog */
+    // or preprolog?
 
     emitNxtIGnum = 1;
 
-    emitPrologIG = emitIGlist = emitIGlast = emitCurIG = ig = emitAllocIG();
+    emitIGlist = emitIGlast = emitCurIG = ig = emitAllocIG();
+
+#if defined(TARGET_AMD64)
+    emitPrePrologIG = ig;
+    emitPrologIG = ig = emitAllocAndLinkIG();
+#else // !defined(TARGET_AMD64)
+    emitPrologIG = ig;
+#endif // !defined(TARGET_AMD64)
 
     emitLastIns = nullptr;
 
@@ -1623,6 +1631,32 @@ void emitter::emitCheckIGoffsets()
 }
 
 #endif // DEBUG
+
+#if defined(TARGET_AMD64)
+
+void emitter::emitBegPreProlog()
+{
+    emitNoGCRequestCount = 1;
+    emitNoGCIG           = true;
+    emitForceNewIG       = false;
+
+    /* Switch to the pre-allocated preprolog IG */
+
+    emitGenIG(emitPrePrologIG);
+
+    /* Nothing is live on entry to the prolog */
+
+    // These were initialized to Empty at the start of compilation.
+    VarSetOps::ClearD(emitComp, emitInitGCrefVars);
+    VarSetOps::ClearD(emitComp, emitPrevGCrefVars);
+    emitInitGCrefRegs = RBM_NONE;
+    emitPrevGCrefRegs = RBM_NONE;
+    emitInitByrefRegs = RBM_NONE;
+    emitPrevByrefRegs = RBM_NONE;
+}
+
+#endif // defined(TARGET_AMD64)
+
 
 /*****************************************************************************
  *

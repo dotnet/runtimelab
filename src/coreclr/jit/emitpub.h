@@ -43,6 +43,9 @@ unsigned emitGetEpilogCnt();
 template <typename Callback>
 bool emitGenNoGCLst(Callback& cb);
 
+#if defined(TARGET_AMD64)
+void     emitBegPreProlog();
+#endif // defined(TARGET_AMD64)
 void     emitBegProlog();
 unsigned emitGetPrologOffsetEstimate();
 void     emitMarkPrologEnd();

@@ -2024,7 +2024,10 @@ private:
     insGroup* emitIGlast; // last   instruction group
     insGroup* emitIGthis; // issued instruction group
 
-    insGroup* emitPrologIG; // prolog instruction group
+#if defined(TARGET_AMD64)
+    insGroup* emitPrePrologIG; // preprolog instruction group
+#endif // defined(TARGET_AMD64)
+    insGroup* emitPrologIG;    // prolog instruction group
 
     instrDescJmp* emitJumpList;       // list of local jumps in method
     instrDescJmp* emitJumpLast;       // last of local jumps in method

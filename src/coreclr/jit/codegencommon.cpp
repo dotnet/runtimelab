@@ -5467,6 +5467,60 @@ void CodeGen::genFinalizeFrame()
 #endif
 }
 
+#if defined(TARGET_AMD64)
+void CodeGen::genFnPreProlog()
+{
+    ScopedSetVariable<bool> _setGeneratingPreProlog(&compiler->compGeneratingPreProlog, true);
+
+    compiler->funSetCurrentFunc(0);
+
+#ifdef DEBUG
+    if (verbose)
+    {
+        printf("*************** In genFnPreProlog()\n");
+    }
+#endif
+
+    GetEmitter()->emitBegPreProlog();
+    // may need to mess with a unwindBegPreProlog
+
+    // Do this so we can put the preprolog instruction group ahead of
+    // other instruction groups - even the prolog since genFnPreProlog
+    //! is called after genFnProlog...
+    genIPmappingAddToFront(IPmappingDscKind::Prolog, DebugInfo(), true);
+
+#ifdef DEBUG
+    if (compiler->opts.dspCode)
+    {
+        printf("\n__preprolog:\n");
+    }
+#endif
+
+    unsigned frameSize = compiler->compLclFrameSize; // what about extraFrameSize?
+
+    // look at all the "first" stuff in prolog - OSR, JitHaltMethod, etc.
+
+    emitter* emit = GetEmitter();
+
+    // put this in codegenamd64?  or remove specific registers?
+    emit->emitIns_R_AR(INS_lea, EA_PTRSIZE, REG_RAX, REG_RSP, -0x250);
+    // cmp rax, qword ptr gs:[0]
+    // 65 GS:
+    // 48 REX.W
+    // 3B cmp r,r/m
+    // modrm -> sib
+    // sib -> [*] -> disp32
+    // should be GS
+    emit->emitIns_R_C(INS_cmp, EA_PTRSIZE, REG_RAX, FLD_GLOBAL_FS, 0);
+    //BasicBlock* pass = genCreateTempLabel();
+    emit->emitIns_J(INS_ja, nullptr, 2);
+    emit->emitIns_R_I(INS_mov, EA_4BYTE, REG_RAX, 0x1000);
+    // wrong helper
+    genEmitHelperCall(CORINFO_HELP_STACK_PROBE, 0, EA_UNKNOWN);
+    //genDefineTempLabel(pass);
+}
+#endif // defined(TARGET_AMD64)
+
 /*****************************************************************************
  *
  *  Generates code for a function prolog.
@@ -6490,6 +6544,9 @@ void CodeGen::genGeneratePrologsAndEpilogs()
 
     gcInfo.gcResetForBB();
     genFnProlog();
+#if defined(TARGET_AMD64)
+    genFnPreProlog();
+#endif // defined(TARGET_AMD64)
 
     // Generate all the prologs and epilogs.
     CLANG_FORMAT_COMMENT_ANCHOR;

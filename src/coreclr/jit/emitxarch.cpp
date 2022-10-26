@@ -7528,9 +7528,15 @@ void emitter::emitIns_J(instruction ins,
     }
     else
     {
-        /* Only allow non-label jmps in prolog */
-        assert(emitPrologIG);
-        assert(emitPrologIG == emitCurIG);
+        /* Only allow non-label jmps in prolog or pre-prolog */
+#ifdef DEBUG
+        bool isInPrologIG = emitPrologIG && (emitPrologIG == emitCurIG);
+        bool isInPrePrologIG = false;
+#if defined(TARGET_AMD64)
+        isInPrePrologIG = emitPrePrologIG && (emitPrePrologIG == emitCurIG);
+#endif // defined(TARGET_AMD64)
+        assert(isInPrologIG || isInPrePrologIG);
+#endif
         assert(instrCount != 0);
     }
 
@@ -11935,7 +11941,7 @@ BYTE* emitter::emitOutputCV(BYTE* dst, instrDesc* id, code_t code, CnsVal* addc)
 
 #ifdef TARGET_AMD64
         // All static field and data section constant accesses should be marked as relocatable
-        noway_assert(id->idIsDspReloc());
+        //noway_assert(id->idIsDspReloc());
         dst += emitOutputLong(dst, 0);
 #else  // TARGET_X86
         dst += emitOutputLong(dst, (int)(ssize_t)target);

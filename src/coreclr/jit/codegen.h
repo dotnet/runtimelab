@@ -522,6 +522,9 @@ protected:
 
     void genReserveProlog(BasicBlock* block); // currently unused
     void genReserveEpilog(BasicBlock* block);
+#if defined(TARGET_AMD64)
+    void genFnPreProlog();
+#endif // defined(TARGET_AMD64)
     void genFnProlog();
     void genFnEpilog(BasicBlock* block);
 
