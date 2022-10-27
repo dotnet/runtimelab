@@ -1682,6 +1682,7 @@ void Llvm::buildReturn(GenTree* node)
         case TYP_UINT:
         case TYP_LONG:
         case TYP_ULONG:
+        case TYP_STRUCT:
             if (node->gtGetOp1()->TypeIs(TYP_FLOAT))
             {
                 // TODO-LLVM: remove this case by lowering see
@@ -2746,7 +2747,7 @@ void Llvm::lowerToShadowStack()
                     //                 int V01._length(offs = 0x04)->V06 tmp5 $81
                     //    - --t6 =   LCL_VAR_ADDR byref V02 tmp0
                     //             *   int V02._value(offs = 0x00)->V04 tmp2
-                    failFunctionCompilation();
+                    // failFunctionCompilation();
                 }
             }
 
@@ -2844,39 +2845,46 @@ void Llvm::Lower()
             }
         }
 
-        if (varDsc->lvIsParam &&
-            (_compiler->lvaGetPromotionType(varDsc) == Compiler::lvaPromotionType::PROMOTION_TYPE_DEPENDENT))
+        if (varDsc->lvIsParam)
         {
-            failFunctionCompilation(); // TODO-LLVM
-        }
-
-        if (varDsc->lvIsParam && (_compiler->lvaGetPromotionType(varDsc) == Compiler::lvaPromotionType::PROMOTION_TYPE_INDEPENDENT))
-        {
-            for (unsigned index = 0; index < varDsc->lvFieldCnt; index++)
+            if (_compiler->lvaGetPromotionType(varDsc) == Compiler::lvaPromotionType::PROMOTION_TYPE_INDEPENDENT)
             {
-                unsigned   fieldLclNum = varDsc->lvFieldLclStart + index;
-                LclVarDsc* fieldVarDsc = _compiler->lvaGetDesc(fieldLclNum);
-                if (fieldVarDsc->lvRefCnt(RCS_NORMAL) != 0)
+                for (unsigned index = 0; index < varDsc->lvFieldCnt; index++)
                 {
-                    _compiler->fgEnsureFirstBBisScratch();
-                    LIR::Range& firstBlockRange = LIR::AsRange(_compiler->fgFirstBB);
+                    unsigned   fieldLclNum = varDsc->lvFieldLclStart + index;
+                    LclVarDsc* fieldVarDsc = _compiler->lvaGetDesc(fieldLclNum);
+                    if (fieldVarDsc->lvRefCnt(RCS_NORMAL) != 0)
+                    {
+                        _compiler->fgEnsureFirstBBisScratch();
+                        LIR::Range& firstBlockRange = LIR::AsRange(_compiler->fgFirstBB);
 
-                    GenTree* fieldValue =
-                        _compiler->gtNewLclFldNode(lclNum, fieldVarDsc->TypeGet(), fieldVarDsc->lvFldOffset);
+                        GenTree* fieldValue =
+                            _compiler->gtNewLclFldNode(lclNum, fieldVarDsc->TypeGet(), fieldVarDsc->lvFldOffset);
 
-                    GenTree* fieldStore = _compiler->gtNewStoreLclVar(fieldLclNum, fieldValue);
-                    firstBlockRange.InsertAtBeginning(fieldStore);
-                    firstBlockRange.InsertAtBeginning(fieldValue);
+                        GenTree* fieldStore = _compiler->gtNewStoreLclVar(fieldLclNum, fieldValue);
+                        firstBlockRange.InsertAtBeginning(fieldStore);
+                        firstBlockRange.InsertAtBeginning(fieldValue);
+                    }
+
+                    fieldVarDsc->lvIsStructField = false;
+                    fieldVarDsc->lvParentLcl     = BAD_VAR_NUM;
+                    fieldVarDsc->lvIsParam       = false;
                 }
 
-                fieldVarDsc->lvIsStructField = false;
-                fieldVarDsc->lvParentLcl     = BAD_VAR_NUM;
-                fieldVarDsc->lvIsParam       = false;
+                varDsc->lvPromoted      = false;
+                varDsc->lvFieldLclStart = BAD_VAR_NUM;
+                varDsc->lvFieldCnt      = 0;
             }
-
-            varDsc->lvPromoted   = false;
-            varDsc->lvFieldLclStart = BAD_VAR_NUM;
-            varDsc->lvFieldCnt   = 0;
+            else
+            {
+                /* dependent promotion, just mark fields as not lvIsParam */
+                for (unsigned index = 0; index < varDsc->lvFieldCnt; index++)
+                {
+                    unsigned   fieldLclNum = varDsc->lvFieldLclStart + index;
+                    LclVarDsc* fieldVarDsc = _compiler->lvaGetDesc(fieldLclNum);
+                    fieldVarDsc->lvIsParam       = false;
+                }
+            }
         }
     }
 
