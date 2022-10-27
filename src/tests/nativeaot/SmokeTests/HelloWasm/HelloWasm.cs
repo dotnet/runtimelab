@@ -387,6 +387,8 @@ internal static class Program
 
         TestReadByteArray();
 
+        TestDoublePrint();
+
         // This test should remain last to get other results before stopping the debugger
         PrintLine("Debugger.Break() test: Ok if debugger is open and breaks.");
         System.Diagnostics.Debugger.Break();
@@ -3740,6 +3742,14 @@ internal static class Program
 
         int i = (int)bytes[0];
         EndTest(i == 0xff);
+    }
+
+    // This test was generated to test DiyFp return values.
+    static void TestDoublePrint()
+    {
+        StartTest("Test Double ToString");
+
+        EndTest(1d.ToString() == "1");
     }
 
     static ushort ReadUInt16()
