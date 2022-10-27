@@ -151,7 +151,6 @@ extern "C" uintptr_t FirstFrameInGreenThreadCpp(TransitionHelperFunction functio
 
 void CleanGreenThreadState()
 {
-    t_greenThread.inGreenThread = false;
     t_greenThread.osStackCurrent = NULL;
     t_greenThread.greenThreadStackCurrent = NULL;
     memset(&t_greenThread.osStackRange, 0, sizeof(StackRange));
@@ -182,6 +181,7 @@ SuspendedGreenThread* ProduceSuspendedGreenThreadStruct(GreenThread* pGreenThrea
         pNewSuspendedThread->greenThreadFrame = t_greenThread.pFrameInGreenThread;
         pNewSuspendedThread->pGreenThread = pGreenThread;
         pGreenThread->m_currentThreadObj = NULL;
+        t_greenThread.inGreenThread = false;
 
         CleanGreenThreadState();
         return pNewSuspendedThread;
@@ -228,8 +228,10 @@ SuspendedGreenThread* GreenThread_StartThread(TakesOneParam functionToExecute, u
     GetThread()->SetActiveThreadBase(pGreenThread);
     pGreenThread->m_currentThreadObj = GetThread();
 
+    assert(t_greenThread.inGreenThread == false);
     t_greenThread.greenThreadOnStack = true;
     GreenThread_StartThreadHelper((uintptr_t)FirstFrameInGreenThread, &detailsAboutWhatToCall);
+    assert(t_greenThread.inGreenThread == true);
     t_greenThread.greenThreadOnStack = false;
 
     GetThread()->SetActiveThreadBase(pOldThreadBase);
@@ -366,6 +368,7 @@ extern "C" uint8_t* GetResumptionStackPointerAndSaveOSStackPointer(StackRange* p
     *savedRBPValueAddress = savedRBPValue;
     *savedRBXValueAddress = savedRBXValue;
 
+    assert(t_greenThread.inGreenThread == false);
     t_greenThread.inGreenThread = true;
 
     GetThread()->SetExecutingOnAltStack();
