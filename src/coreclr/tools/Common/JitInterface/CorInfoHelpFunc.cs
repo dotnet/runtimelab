@@ -300,6 +300,8 @@ namespace Internal.JitInterface
         CORINFO_HELP_VALIDATE_INDIRECT_CALL,    // CFG: Validate function pointer
         CORINFO_HELP_DISPATCH_INDIRECT_CALL,    // CFG: Validate and dispatch to pointer
 
+        CORINFO_HELP_COMPUTE_GREEN_THREAD_TRANSITION, // Adjust function pointer for green thread transition
+
         CORINFO_HELP_COUNT,
     }
 }

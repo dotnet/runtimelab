@@ -946,6 +946,34 @@ NESTED_ENTRY ResumeSuspendedThreadHelper, _TEXT
     EPILOG_WITH_TRANSITION_BLOCK_RETURN
 NESTED_END ResumeSuspendedThreadHelper, _TEXT
 
+EXTERN _tls_index : DWORD
+EXTERN t_greenThreadTransitionData:DWORD
+_tls_array     equ 58h     ;; offsetof(TEB, ThreadLocalStoragePointer)
+
+NESTED_ENTRY TransitionToOSThreadHelper2, _TEXT
+    alloc_stack     28h
+    END_PROLOGUE
+
+    ; Get Address of t_greenThreadTransitionData
+    mov r11d, [_tls_index]
+    mov r10, gs:[_tls_array]
+    mov r10, [r10 + r11 * 8]
+    mov r11d, SECTIONREL t_greenThreadTransitionData
+    add r10, r11
+    mov rax, [r10+8h] ; load stack size...
+    call _more_stack
+    add rsp, 28h
+    ret
+    ; Jump to function pointer held in tls data
+    mov r11d, [_tls_index]
+    mov r10, gs:[_tls_array]
+    mov r10, [r10 + r11 * 8]
+    mov r11d, SECTIONREL t_greenThreadTransitionData
+    add r10, r11
+    mov rax, [r10] ; load function pointer
+    jmp rax
+NESTED_END TransitionToOSThreadHelper2, _TEXT
+
 endif ; FEATURE_GREENTHREADS
 
         end
