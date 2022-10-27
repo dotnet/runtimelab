@@ -1421,10 +1421,7 @@ void Llvm::buildCnsLng(GenTree* node)
 llvm::Value* Llvm::buildFieldList(GenTreeFieldList* fieldList,
                                   Type*             llvmType)
 {
-    if (!fieldList->TypeIs(TYP_STRUCT))
-    {
-        failFunctionCompilation();
-    }
+    assert(fieldList->TypeIs(TYP_STRUCT));
 
     if (llvmType->isStructTy())
     {
