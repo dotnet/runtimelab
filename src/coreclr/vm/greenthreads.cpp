@@ -231,7 +231,6 @@ SuspendedGreenThread* GreenThread_StartThread(TakesOneParam functionToExecute, u
     assert(t_greenThread.inGreenThread == false);
     t_greenThread.greenThreadOnStack = true;
     GreenThread_StartThreadHelper((uintptr_t)FirstFrameInGreenThread, &detailsAboutWhatToCall);
-    assert(t_greenThread.inGreenThread == true);
     t_greenThread.greenThreadOnStack = false;
 
     GetThread()->SetActiveThreadBase(pOldThreadBase);
