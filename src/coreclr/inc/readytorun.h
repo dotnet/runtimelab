@@ -408,6 +408,8 @@ enum ReadyToRunHelper
     READYTORUN_HELPER_Stelem_Ref_I                = 0x113,
     READYTORUN_HELPER_Ldelema_Ref_I               = 0x114,
 
+    // Helper for unmanaged calls to transition off of the green thread onto an OS thread
+    READYTORUN_HELPER_GreenThreadTransition       = 0x115,
     // Helper for getting more stack on a green thread
     READYTORUN_HELPER_GreenThreadMoreStack        = 0x116,
 };

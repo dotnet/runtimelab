@@ -322,7 +322,7 @@ namespace Internal.ReadyToRunConstants
 
         GetCurrentManagedThreadId   = 0x112,
 
-
+        GreenThreadTransition       = 0x115,
         GreenThreadMoreStack        = 0x116,
 
         // **********************************************************************************************

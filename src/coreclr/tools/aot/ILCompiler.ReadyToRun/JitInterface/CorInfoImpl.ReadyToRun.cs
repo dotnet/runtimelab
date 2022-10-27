@@ -1061,6 +1061,10 @@ namespace Internal.JitInterface
                     id = ReadyToRunHelper.ReversePInvokeExit;
                     break;
 
+                case CorInfoHelpFunc.CORINFO_HELP_COMPUTE_GREEN_THREAD_TRANSITION:
+                    id = ReadyToRunHelper.GreenThreadTransition;
+                    break;
+
                 case CorInfoHelpFunc.CORINFO_HELP_INITCLASS:
                 case CorInfoHelpFunc.CORINFO_HELP_INITINSTCLASS:
                 case CorInfoHelpFunc.CORINFO_HELP_THROW_ARGUMENTEXCEPTION:

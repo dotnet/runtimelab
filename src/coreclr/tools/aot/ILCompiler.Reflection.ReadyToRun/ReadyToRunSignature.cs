@@ -1978,6 +1978,9 @@ namespace ILCompiler.Reflection.ReadyToRun
                     builder.Append("STACK_PROBE");
                     break;
 
+                case ReadyToRunHelper.GreenThreadTransition:
+                    builder.Append("COMPUTE_GREEN_THREAD_TRANSITION");
+                    break;
                 case ReadyToRunHelper.GreenThreadMoreStack:
                     builder.Append("GREEN_THREAD_MORE_STACK");
                     break;
