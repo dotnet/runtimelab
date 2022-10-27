@@ -1620,11 +1620,22 @@ void Llvm::buildReturn(GenTree* node)
         case TYP_UINT:
         case TYP_LONG:
         case TYP_ULONG:
+        case TYP_STRUCT:
             if (node->gtGetOp1()->TypeIs(TYP_FLOAT))
             {
                 // TODO-LLVM: remove this case by lowering see
                 // https://github.com/dotnet/runtimelab/pull/2007#issuecomment-1264715441
                 failFunctionCompilation();
+            }
+            if (node->gtGetOp1()->IsIntegralConst(0))
+            {
+                // special case returning 0 initialized structs
+                Type* structLlvmType = getLlvmTypeForCorInfoType(_sigInfo.retType, _sigInfo.retTypeClass);
+                Value* structAddrValue = _builder.CreateAlloca(structLlvmType, 0U);
+                _builder.CreateMemSet(structAddrValue, _builder.getInt8(0), _builder.getInt32(structLlvmType->getScalarSizeInBits() >> 3), {});
+                _builder.CreateRet(_builder.CreateLoad(structAddrValue));
+
+                return;
             }
             _builder.CreateRet(consumeValue(node->gtGetOp1(), getLlvmTypeForCorInfoType(_sigInfo.retType, _sigInfo.retTypeClass)));
             return;
