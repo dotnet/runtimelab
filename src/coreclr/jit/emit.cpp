@@ -7069,17 +7069,33 @@ unsigned emitter::emitEndCodeGen(Compiler* comp,
 #ifdef TARGET_XARCH
             assert(jmp->idInsFmt() == IF_LABEL || jmp->idInsFmt() == IF_RWR_LABEL || jmp->idInsFmt() == IF_SWR_LABEL);
 #endif
-            insGroup* tgt = jmp->idAddr()->iiaIGlabel;
+            UNATIVE_OFFSET tgtOffs;
 
-            if (jmp->idjTemp.idjAddr == nullptr)
+            if (jmp->idAddr()->iiaHasInstrCount())
             {
-                continue;
+                int instrCount = jmp->idAddr()->iiaGetInstrCount();
+                assert(instrCount > 0);
+
+                insGroup* jmpIG = jmp->idjIG;
+                unsigned jmpNum = emitFindInsNum(jmpIG, jmp);
+                tgtOffs = jmpIG->igOffs + emitFindOffset(jmpIG, (jmpNum + 1 + instrCount));
+            }
+            else
+            {
+                insGroup* tgt = jmp->idAddr()->iiaIGlabel;
+
+                if (jmp->idjTemp.idjAddr == nullptr)
+                {
+                    continue;
+                }
+
+                tgtOffs = tgt->igOffs;
             }
 
-            if (jmp->idjOffs != tgt->igOffs)
+            if (jmp->idjOffs != tgtOffs)
             {
                 BYTE* adr = jmp->idjTemp.idjAddr;
-                int   adj = jmp->idjOffs - tgt->igOffs;
+                int   adj = jmp->idjOffs - tgtOffs;
 #ifdef TARGET_ARM
                 // On Arm, the offset is encoded in unit of 2 bytes.
                 adj >>= 1;
