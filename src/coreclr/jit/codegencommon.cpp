@@ -5467,6 +5467,24 @@ void CodeGen::genFinalizeFrame()
 #endif
 }
 
+/*****************************************************************************
+ *
+ *  Generates code for a function pre-prolog. This is code that explicitly
+ *  checks the size of available stack space and potentially calls a helper
+ *  to grow it. This is intended to be otherwise transparent to the function,
+ *  so the prolog may execute normally after it.
+ *
+ *  There are lots of details remaining such as unwinding and debugging.
+ *  Scanning through genFnProlog (and other prolog) code will help enumerate
+ *  them.
+ *
+ *  The current implementation is hacky. Currently genFnPreProlog is called
+ *  *after* genFnProlog because genFnProlog does a lot of setup and
+ *  genFnPreProlog is optional (currently only on for x64 but eventually
+ *  some frames will likely skip it).
+ *
+ */
+
 #if defined(TARGET_AMD64)
 void CodeGen::genFnPreProlog()
 {
@@ -5481,13 +5499,9 @@ void CodeGen::genFnPreProlog()
     }
 #endif
 
-    GetEmitter()->emitBegPreProlog();
-    // may need to mess with a unwindBegPreProlog
+    emitter* emit = GetEmitter();
 
-    // Do this so we can put the preprolog instruction group ahead of
-    // other instruction groups - even the prolog since genFnPreProlog
-    //! is called after genFnProlog...
-    genIPmappingAddToFront(IPmappingDscKind::Prolog, DebugInfo(), true);
+    emit->emitBegPreProlog();
 
 #ifdef DEBUG
     if (compiler->opts.dspCode)
@@ -5499,8 +5513,6 @@ void CodeGen::genFnPreProlog()
     unsigned frameSize = compiler->compLclFrameSize; // what about extraFrameSize?
 
     // look at all the "first" stuff in prolog - OSR, JitHaltMethod, etc.
-
-    emitter* emit = GetEmitter();
 
     // put this in codegenamd64?  or remove specific registers?
     emit->emitIns_R_AR(INS_lea, EA_PTRSIZE, REG_RAX, REG_RSP, -0x250);
@@ -6545,6 +6557,7 @@ void CodeGen::genGeneratePrologsAndEpilogs()
     gcInfo.gcResetForBB();
     genFnProlog();
 #if defined(TARGET_AMD64)
+    // See comment on genFnPreProlog for why this is after genFnProlog
     genFnPreProlog();
 #endif // defined(TARGET_AMD64)
 

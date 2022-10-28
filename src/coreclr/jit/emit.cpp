@@ -982,7 +982,11 @@ insGroup* emitter::emitSavIG(bool emitAdd)
         if (last != nullptr)
         {
             // Append the jump(s) from this IG to the global list
-            bool prologJump = (ig == emitPrologIG);
+            bool prologJump = (ig == emitPrologIG)
+#if defined(TARGET_AMD64)
+                || (ig == emitPrePrologIG)
+#endif
+                ;
             if ((emitJumpList == nullptr) || prologJump)
             {
                 last->idjNext = emitJumpList;
@@ -4479,6 +4483,9 @@ void emitter::emitJumpDistBind()
     insGroup*      lstIG;
 #ifdef DEBUG
     insGroup* prologIG = emitPrologIG;
+#if defined(TARGET_AMD64)
+    insGroup* prePrologIG = emitPrePrologIG;
+#endif // defined(TARGET_AMD64)
 #endif // DEBUG
 
     int jmp_iteration = 1;
@@ -4642,8 +4649,13 @@ AGAIN:
         assert(lastLJ == nullptr || lastIG != jmp->idjIG || lastLJ->idjOffs < jmp->idjOffs);
         lastLJ = (lastIG == jmp->idjIG) ? jmp : nullptr;
 
+        bool isPrePrologIG = false;
+#if defined(TARGET_AMD64)
+        isPrePrologIG = prePrologIG && (jmp->idjIG == prePrologIG);
+#endif // defined(TARGET_AMD64)
+
         assert(lastIG == nullptr || lastIG->igNum <= jmp->idjIG->igNum || jmp->idjIG == prologIG ||
-               emitNxtIGnum > unsigned(0xFFFF)); // igNum might overflow
+               isPrePrologIG || emitNxtIGnum > unsigned(0xFFFF)); // igNum might overflow
         lastIG = jmp->idjIG;
 #endif // DEBUG
 
@@ -7074,7 +7086,10 @@ unsigned emitter::emitEndCodeGen(Compiler* comp,
             if (jmp->idAddr()->iiaHasInstrCount())
             {
                 int instrCount = jmp->idAddr()->iiaGetInstrCount();
-                assert(instrCount > 0);
+                if (instrCount < 0)
+                {
+                    continue;
+                }
 
                 insGroup* jmpIG = jmp->idjIG;
                 unsigned jmpNum = emitFindInsNum(jmpIG, jmp);
