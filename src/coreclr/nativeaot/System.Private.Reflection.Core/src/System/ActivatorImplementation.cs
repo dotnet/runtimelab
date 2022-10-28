@@ -25,17 +25,17 @@ namespace System
             type = type.UnderlyingSystemType;
             CreateInstanceCheckType(type);
 
-            // This short-circuit depends on the fact that the toolchain prohibits valuetypes with nullary constructors. Unfortunately, we can't check for the presence of nullary
-            // constructors without risking a MissingMetadataException, and we can't regress the prior N behavior that allowed CreateInstance on valuetypes to work regardless of metadata.
-            if (type.IsValueType)
-                return RuntimeAugments.NewObject(type.TypeHandle);
-
             BindingFlags bindingFlags = BindingFlags.Public | BindingFlags.Instance;
             if (nonPublic)
                 bindingFlags |= BindingFlags.NonPublic;
             ConstructorInfo constructor = type.GetConstructor(bindingFlags, null, CallingConventions.Any, Array.Empty<Type>(), null);
             if (constructor == null)
+            {
+                if (type.IsValueType)
+                    return RuntimeAugments.NewObject(type.TypeHandle);
+
                 throw new MissingMethodException(SR.Arg_NoDefCTor);
+            }
             object result = constructor.Invoke(Array.Empty<object>());
             System.Diagnostics.DebugAnnotations.PreviousCallContainsDebuggerStepInCode();
             return result;
@@ -64,11 +64,6 @@ namespace System
                 args = Array.Empty<object>();
             int numArgs = args.Length;
 
-            // This short-circuit depends on the fact that the toolchain prohibits valuetypes with nullary constructors. Unfortunately, we can't check for the presence of nullary
-            // constructors without risking a MissingMetadataException, and we can't regress the prior N behavior that allowed CreateInstance on valuetypes to work regardless of metadata.
-            if (numArgs == 0 && type.IsValueType)
-                return RuntimeAugments.NewObject(type.TypeHandle);
-
             Type[] argTypes = new Type[numArgs];
             for (int i = 0; i < numArgs; i++)
             {
@@ -83,7 +78,12 @@ namespace System
                     matches.Add(candidates[i]);
             }
             if (matches.Count == 0)
+            {
+                if (numArgs == 0 && type.IsValueType)
+                    return RuntimeAugments.NewObject(type.TypeHandle);
+
                 throw new MissingMethodException(SR.Arg_NoDefCTor);
+            }
 
             if (binder == null)
                 binder = Type.DefaultBinder;

@@ -244,11 +244,11 @@ namespace ILCompiler.DependencyAnalysis
         private void EmitReversePInvokesAndShadowStackBottom()
         {
             LLVMTypeRef reversePInvokeFrameType = LLVMTypeRef.CreateStruct(new LLVMTypeRef[] { LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0) }, false);
-            LLVMValueRef rhpReversePInvoke2 = Module.GetNamedFunction("RhpReversePInvoke2");
+            LLVMValueRef rhpReversePInvoke = Module.GetNamedFunction("RhpReversePInvoke");
 
-            if (rhpReversePInvoke2.Handle == IntPtr.Zero)
+            if (rhpReversePInvoke.Handle == IntPtr.Zero)
             {
-                Module.AddFunction("RhpReversePInvoke2", LLVMTypeRef.CreateFunction(LLVMTypeRef.Void, new LLVMTypeRef[] { LLVMTypeRef.CreatePointer(reversePInvokeFrameType, 0) }, false));
+                Module.AddFunction("RhpReversePInvoke", LLVMTypeRef.CreateFunction(LLVMTypeRef.Void, new LLVMTypeRef[] { LLVMTypeRef.CreatePointer(reversePInvokeFrameType, 0) }, false));
             }
 
             var shadowStackBottom = Module.AddGlobal(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), "t_pShadowStackBottom");
@@ -256,11 +256,11 @@ namespace ILCompiler.DependencyAnalysis
             shadowStackBottom.Initializer = LLVMValueRef.CreateConstPointerNull(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0));
             shadowStackBottom.ThreadLocalMode = LLVMThreadLocalMode.LLVMLocalDynamicTLSModel;
 
-            LLVMValueRef rhpReversePInvokeReturn2 = Module.GetNamedFunction("RhpReversePInvokeReturn2");
-            if (rhpReversePInvokeReturn2.Handle == IntPtr.Zero)
+            LLVMValueRef rhpReversePInvokeReturn = Module.GetNamedFunction("RhpReversePInvokeReturn");
+            if (rhpReversePInvokeReturn.Handle == IntPtr.Zero)
             {
                 LLVMTypeRef reversePInvokeFunctionType = LLVMTypeRef.CreateFunction(LLVMTypeRef.Void, new LLVMTypeRef[] { LLVMTypeRef.CreatePointer(reversePInvokeFrameType, 0) }, false);
-                Module.AddFunction("RhpReversePInvokeReturn2", reversePInvokeFunctionType);
+                Module.AddFunction("RhpReversePInvokeReturn", reversePInvokeFunctionType);
             }
         }
 
@@ -281,9 +281,9 @@ namespace ILCompiler.DependencyAnalysis
 
             LLVMTypeRef reversePInvokeFrameType = LLVMTypeRef.CreateStruct(new LLVMTypeRef[] { LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0) }, false);
             LLVMValueRef reversePinvokeFrame = builder.BuildAlloca(reversePInvokeFrameType, "ReversePInvokeFrame");
-            LLVMValueRef rhpReversePInvoke2 = Module.GetNamedFunction("RhpReversePInvoke2");
+            LLVMValueRef rhpReversePInvoke = Module.GetNamedFunction("RhpReversePInvoke");
 
-            builder.BuildCall(rhpReversePInvoke2, new LLVMValueRef[] { reversePinvokeFrame }, "");
+            builder.BuildCall(rhpReversePInvoke, new LLVMValueRef[] { reversePinvokeFrame }, "");
 
             var shadowStack = builder.BuildMalloc(LLVMTypeRef.CreateArray(LLVMTypeRef.Int8, 1000000), String.Empty);
             var castShadowStack = builder.BuildPointerCast(shadowStack, LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), String.Empty);
@@ -304,9 +304,9 @@ namespace ILCompiler.DependencyAnalysis
             },
             "returnValue");
 
-            LLVMValueRef rhpReversePInvokeReturn2 = Module.GetNamedFunction("RhpReversePInvokeReturn2");
+            LLVMValueRef rhpReversePInvokeReturn = Module.GetNamedFunction("RhpReversePInvokeReturn");
             LLVMTypeRef reversePInvokeFunctionType = LLVMTypeRef.CreateFunction(LLVMTypeRef.Void, new LLVMTypeRef[] { LLVMTypeRef.CreatePointer(reversePInvokeFrameType, 0) }, false);
-            builder.BuildCall(rhpReversePInvokeReturn2, new LLVMValueRef[] { reversePinvokeFrame }, "");
+            builder.BuildCall(rhpReversePInvokeReturn, new LLVMValueRef[] { reversePinvokeFrame }, "");
 
             builder.BuildRet(mainReturn);
             mainFunc.Linkage = LLVMLinkage.LLVMExternalLinkage;
@@ -329,9 +329,9 @@ namespace ILCompiler.DependencyAnalysis
 
             LLVMTypeRef reversePInvokeFrameType = LLVMTypeRef.CreateStruct(new LLVMTypeRef[] { LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0) }, false);
             LLVMValueRef reversePinvokeFrame = builder.BuildAlloca(reversePInvokeFrameType, "ReversePInvokeFrame");
-            LLVMValueRef rhpReversePInvoke2 = Module.GetNamedFunction("RhpReversePInvoke2");
+            LLVMValueRef rhpReversePInvoke = Module.GetNamedFunction("RhpReversePInvoke");
 
-            builder.BuildCall(rhpReversePInvoke2, new LLVMValueRef[] { reversePinvokeFrame }, "");
+            builder.BuildCall(rhpReversePInvoke, new LLVMValueRef[] { reversePinvokeFrame }, "");
 
             var shadowStack = builder.BuildMalloc(LLVMTypeRef.CreateArray(LLVMTypeRef.Int8, 1000000), String.Empty);
             var castShadowStack = builder.BuildPointerCast(shadowStack, LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), String.Empty);
@@ -346,9 +346,8 @@ namespace ILCompiler.DependencyAnalysis
                 castShadowStack,
             });
 
-            LLVMValueRef rhpReversePInvokeReturn2 = Module.GetNamedFunction("RhpReversePInvokeReturn2");
-            LLVMTypeRef reversePInvokeFunctionType = LLVMTypeRef.CreateFunction(LLVMTypeRef.Void, new LLVMTypeRef[] { LLVMTypeRef.CreatePointer(reversePInvokeFrameType, 0) }, false);
-            builder.BuildCall(rhpReversePInvokeReturn2, new LLVMValueRef[] { reversePinvokeFrame }, "");
+            LLVMValueRef rhpReversePInvokeReturn = Module.GetNamedFunction("RhpReversePInvokeReturn");
+            builder.BuildCall(rhpReversePInvokeReturn, new LLVMValueRef[] { reversePinvokeFrame }, "");
 
             builder.BuildRetVoid();
             startupFunc.Linkage = LLVMLinkage.LLVMExternalLinkage;
@@ -461,7 +460,7 @@ namespace ILCompiler.DependencyAnalysis
 
             // Indirections to RhpNew* unmanaged functions are made using delegate*s so get a shadow stack first argument which is not present in the function.
             // This IsRhpUnmanagedIndirection condition identifies those indirections and replaces the destination with a thunk which removes the shadow stack argument.
-            if (_currentObjectNode is IndirectionNode && IsRhpUnmanagedIndirection(realName))
+            if (IsRhpUnmanagedIndirection(realName))
             {
                 _dataToFill.Add(new ObjectNodeDataEmission(arrayglobal, _currentObjectData.ToArray(), ReplaceIndirectionSymbolsWithThunks(_currentObjectSymbolRefs)));
             }

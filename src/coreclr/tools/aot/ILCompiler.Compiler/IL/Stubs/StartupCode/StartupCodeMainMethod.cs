@@ -109,6 +109,13 @@ namespace Internal.IL.Stubs.StartupCode
                 }
             }
 
+            // Run module initializers
+            MethodDesc runModuleInitializers = startup?.GetMethod("RunModuleInitializers", null);
+            if (runModuleInitializers != null)
+            {
+                codeStream.Emit(ILOpcode.call, emitter.NewToken(runModuleInitializers));
+            }
+
             // Call program Main
             if (_mainMethod.Signature.Length > 0)
             {

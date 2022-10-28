@@ -1665,7 +1665,7 @@ namespace Internal.JitInterface
                 pResolvedToken.hClass = ObjectToHandle(owningClass);
 
 #if !SUPPORT_JIT
-                _compilation.TypeSystemContext.EnsureLoadableType(owningClass);
+                _compilation.TypeSystemContext.EnsureLoadableMethod(method);
 #endif
 
 #if READYTORUN

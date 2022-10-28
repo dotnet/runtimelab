@@ -279,8 +279,8 @@ namespace Internal.IL
             if (method.IsUnmanagedCallersOnly)
             {
                 reversePInvokeFrame = builder.BuildAlloca(reversePInvokeFrameType, "ReversePInvokeFrame");
-                LLVMValueRef RhpReversePInvoke2 = GetOrCreateLLVMFunction(LLVMCodegenCompilation.Module, "RhpReversePInvoke2", reversePInvokeFunctionType);
-                builder.BuildCall(RhpReversePInvoke2, new LLVMValueRef[] { reversePInvokeFrame }, "");
+                LLVMValueRef RhpReversePInvoke = GetOrCreateLLVMFunction(LLVMCodegenCompilation.Module, "RhpReversePInvoke", reversePInvokeFunctionType);
+                builder.BuildCall(RhpReversePInvoke, new LLVMValueRef[] { reversePInvokeFrame }, "");
             }
 
             LLVMValueRef shadowStack = builder.BuildLoad(shadowStackPtr, "ShadowStack");
@@ -321,8 +321,8 @@ namespace Internal.IL
 
             if (method.IsUnmanagedCallersOnly)
             {
-                LLVMValueRef RhpReversePInvokeReturn2 = GetOrCreateLLVMFunction(LLVMCodegenCompilation.Module, "RhpReversePInvokeReturn2", reversePInvokeFunctionType);
-                builder.BuildCall(RhpReversePInvokeReturn2, new LLVMValueRef[] { reversePInvokeFrame }, "");
+                LLVMValueRef RhpReversePInvokeReturn = GetOrCreateLLVMFunction(LLVMCodegenCompilation.Module, "RhpReversePInvokeReturn", reversePInvokeFunctionType);
+                builder.BuildCall(RhpReversePInvokeReturn, new LLVMValueRef[] { reversePInvokeFrame }, "");
             }
 
             if (!method.Signature.ReturnType.IsVoid)

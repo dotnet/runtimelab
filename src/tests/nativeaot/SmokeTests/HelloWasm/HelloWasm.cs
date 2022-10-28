@@ -389,6 +389,8 @@ internal static class Program
 
         TestReadByteArray();
 
+        TestDoublePrint();
+
         // This test should remain last to get other results before stopping the debugger
         PrintLine("Debugger.Break() test: Ok if debugger is open and breaks.");
         System.Diagnostics.Debugger.Break();
@@ -1437,9 +1439,9 @@ internal static class Program
 
         var genericType = typeof(List<object>);
         StartTest("type of generic");
-        if (genericType.FullName.Substring(0, genericType.FullName.LastIndexOf(",")) != "System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=6.0.0.0, Culture=neutral")
+        if (genericType.FullName.Substring(0, genericType.FullName.LastIndexOf(",")) != "System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=7.0.0.0, Culture=neutral")
         {
-            FailTest("expected System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=6.0.0.0, Culture=neutral... but was " + genericType.FullName);
+            FailTest("expected System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=7.0.0.0, Culture=neutral  but was " + genericType.FullName);
         }
         else
         {
@@ -3786,6 +3788,14 @@ internal static class Program
 
         int i = (int)bytes[0];
         EndTest(i == 0xff);
+    }
+
+    // This test was generated to test DiyFp return values.
+    static void TestDoublePrint()
+    {
+        StartTest("Test Double ToString");
+
+        EndTest(1d.ToString() == "1");
     }
 
     static ushort ReadUInt16()

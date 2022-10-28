@@ -138,7 +138,7 @@ private:
 
     GCInfo* getGCInfo();
 
-    static bool needsReturnStackSlot(Compiler::Info& info, CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd);
+    static bool needsReturnStackSlot(Compiler* compiler, CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd);
 
     void populateLlvmArgNums();
 

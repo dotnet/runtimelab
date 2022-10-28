@@ -48,7 +48,7 @@ namespace ILCompiler
 
             foreach (var assembly in _librariesWithInitializers)
             {
-                TypeDesc containingType = assembly.GetType(LibraryInitializerContainerNamespaceName, LibraryInitializerContainerTypeName, NotFoundBehavior.ReturnNull);
+                TypeDesc containingType = assembly.GetType(LibraryInitializerContainerNamespaceName, LibraryInitializerContainerTypeName, throwIfNotFound: false);
                 if (containingType == null)
                     continue;
 

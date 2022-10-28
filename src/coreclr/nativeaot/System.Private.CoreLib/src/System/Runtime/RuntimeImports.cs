@@ -364,8 +364,8 @@ namespace System.Runtime
         internal static extern object RhMemberwiseClone(object obj);
 
         // Busy spin for the given number of iterations.
-        [MethodImpl(MethodImplOptions.InternalCall)]
-        [RuntimeImport(RuntimeLibrary, "RhSpinWait")]
+        [DllImport(RuntimeLibrary, EntryPoint = "RhSpinWait", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        [SuppressGCTransition]
         internal static extern void RhSpinWait(int iterations);
 
         // Yield the cpu to another thread ready to process, if one is available.
@@ -521,10 +521,6 @@ namespace System.Runtime
         [MethodImplAttribute(MethodImplOptions.InternalCall)]
         [RuntimeImport(RuntimeLibrary, "RhGetOSModuleFromEEType")]
         internal static extern IntPtr RhGetOSModuleFromEEType(IntPtr pEEType);
-
-        [MethodImplAttribute(MethodImplOptions.InternalCall)]
-        [RuntimeImport(RuntimeLibrary, "RhGetOSModuleForMrt")]
-        internal static extern IntPtr RhGetOSModuleForMrt();
 
         [MethodImplAttribute(MethodImplOptions.InternalCall)]
         [RuntimeImport(RuntimeLibrary, "RhGetThreadStaticStorageForModule")]

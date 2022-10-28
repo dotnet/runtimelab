@@ -20,7 +20,7 @@ For the compiler to work, it first needs to be added to your project.
 In your shell/command prompt navigate to the root directory of your project and run the command:
 
 ```bash
-> dotnet new nuget
+> dotnet new nugetconfig
 ```
 
 This will add a nuget.config file to your application. Open the file and in the ``<packageSources> `` element under ``<clear/>`` add the following:

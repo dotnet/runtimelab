@@ -18,7 +18,7 @@ namespace System
 
         private static Dictionary<string, string> s_environment;
 
-        private static string GetEnvironmentVariableCore(string variable)
+        private static string? GetEnvironmentVariableCore(string variable)
         {
             Debug.Assert(variable != null);
 
@@ -30,12 +30,12 @@ namespace System
             lock (s_environment)
             {
                 variable = TrimStringOnFirstZero(variable);
-                s_environment.TryGetValue(variable, out string value);
+                s_environment.TryGetValue(variable, out string? value);
                 return value;
             }
         }
 
-        private static void SetEnvironmentVariableCore(string variable, string value)
+        private static void SetEnvironmentVariableCore(string variable, string? value)
         {
             Debug.Assert(variable != null);
 
