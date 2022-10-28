@@ -1627,7 +1627,7 @@ void Llvm::buildReturn(GenTree* node)
                 // https://github.com/dotnet/runtimelab/pull/2007#issuecomment-1264715441
                 failFunctionCompilation();
             }
-            if (node->gtGetOp1()->IsIntegralConst(0))
+            if (node->TypeGet() == TYP_STRUCT && node->gtGetOp1()->IsIntegralConst(0))
             {
                 // special case returning 0 initialized structs
                 Type* structLlvmType = getLlvmTypeForCorInfoType(_sigInfo.retType, _sigInfo.retTypeClass);
