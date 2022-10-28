@@ -554,6 +554,17 @@ LPVOID __FCThrowArgument(LPVOID me, enum RuntimeExceptionKind reKind, LPCWSTR ar
   #define FORLAZYMACHSTATE_DEBUG_OK_TO_RETURN_END    DEBUG_OK_TO_RETURN_END(LAZYMACHSTATE)
 #endif
 
+#define ENSURE_ON_OS_THREAD() \
+    auto osThreadLambda = [&]() -> void {                                     \
+    do { ; } while(0)
+
+#define END_ENSURE_ON_OS_THREAD() \
+    };                                                              \
+    auto nonCapturingLambda = [](uintptr_t pointerToLambda) {       \
+        (*(decltype(osThreadLambda)*)pointerToLambda)();            \
+    };                                                              \
+    CallOnOSThread(nonCapturingLambda, (uintptr_t)&osThreadLambda)
+
 // BEGIN: before gcpoll
 //FCallGCCanTriggerNoDtor __fcallGcCanTrigger;
 //__fcallGcCanTrigger.Enter();
@@ -587,13 +598,13 @@ LPVOID __FCThrowArgument(LPVOID me, enum RuntimeExceptionKind reKind, LPCWSTR ar
             __helperframe.Push();                                               \
             MAKE_CURRENT_THREAD_AVAILABLE_EX(__helperframe.GetThread()); \
             INSTALL_UNWIND_AND_CONTINUE_HANDLER_FOR_HMF(&__helperframe); \
-            auto helperFrameLambda = [&](){
+            ENSURE_ON_OS_THREAD();
 
 #define HELPER_METHOD_FRAME_BEGIN_EX_NOTHROW(ret, helperFrame, gcpoll, allowGC, probeFailExpr) \
         HELPER_METHOD_FRAME_BEGIN_EX_BODY(ret, helperFrame, gcpoll, allowGC)    \
             __helperframe.Push();                                         \
             MAKE_CURRENT_THREAD_AVAILABLE_EX(__helperframe.GetThread()); \
-            auto helperFrameLambda = [&](){                                     \
+            ENSURE_ON_OS_THREAD();                                     \
                 /* <TODO>TODO TURN THIS ON!!!   </TODO> */                    \
                 /* gcpoll; */
 
@@ -618,22 +629,14 @@ LPVOID __FCThrowArgument(LPVOID me, enum RuntimeExceptionKind reKind, LPCWSTR ar
         } FORLAZYMACHSTATE_ENDLOOP(alwaysZero);
 
 #define HELPER_METHOD_FRAME_END_EX(gcpoll,allowGC)                          \
-            };                                                              \
-            auto nonCapturingLambda = [](uintptr_t pointerToLambda) { \
-                (*(decltype(helperFrameLambda)*)pointerToLambda)(); \
-            }; \
-            CallOnOSThread(nonCapturingLambda, (uintptr_t)&helperFrameLambda); \
+            END_ENSURE_ON_OS_THREAD(); \
             UNINSTALL_UNWIND_AND_CONTINUE_HANDLER;                      \
             __helperframe.Pop();                                            \
             UNINSTALL_MANAGED_EXCEPTION_DISPATCHER;                         \
         HELPER_METHOD_FRAME_END_EX_BODY(gcpoll,allowGC);
 
 #define HELPER_METHOD_FRAME_END_EX_NOTHROW(gcpoll,allowGC)                  \
-            };                                                              \
-            auto nonCapturingLambda = [](uintptr_t pointerToLambda) { \
-                (*(decltype(helperFrameLambda)*)pointerToLambda)(); \
-            }; \
-            CallOnOSThread(nonCapturingLambda, (uintptr_t)&helperFrameLambda); \
+            END_ENSURE_ON_OS_THREAD(); \
             __helperframe.Pop();                                            \
         HELPER_METHOD_FRAME_END_EX_BODY(gcpoll,allowGC);
 

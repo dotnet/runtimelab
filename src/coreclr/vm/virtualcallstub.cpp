@@ -1412,6 +1412,8 @@ PCODE VSD_ResolveWorker(TransitionBlock * pTransitionBlock,
 #endif
                         )
 {
+    PCODE target = NULL;
+    ENSURE_ON_OS_THREAD();
     CONTRACTL {
         THROWS;
         GC_TRIGGERS;
@@ -1436,8 +1438,6 @@ PCODE VSD_ResolveWorker(TransitionBlock * pTransitionBlock,
     OBJECTREF *protectedObj = pSDFrame->GetThisPtr();
     _ASSERTE(protectedObj != NULL);
     OBJECTREF pObj = *protectedObj;
-
-    PCODE target = NULL;
 
     if (pObj == NULL) {
         pSDFrame->SetForNullReferenceException();
@@ -1465,7 +1465,7 @@ PCODE VSD_ResolveWorker(TransitionBlock * pTransitionBlock,
             pMgr->BackPatchWorker(&callSite);
         }
 
-        return target;
+        return;
     }
 #endif
 
@@ -1521,6 +1521,7 @@ PCODE VSD_ResolveWorker(TransitionBlock * pTransitionBlock,
     UNINSTALL_UNWIND_AND_CONTINUE_HANDLER;
     UNINSTALL_MANAGED_EXCEPTION_DISPATCHER;
     pSDFrame->Pop(CURRENT_THREAD);
+    END_ENSURE_ON_OS_THREAD();
 
     return target;
 }

@@ -743,8 +743,13 @@ bool CallCountingManager::SetCodeEntryPoint(
 
 extern "C" PCODE STDCALL OnCallCountThresholdReached(TransitionBlock *transitionBlock, TADDR stubIdentifyingToken)
 {
+    PCODE result = NULL;
     WRAPPER_NO_CONTRACT;
-    return CallCountingManager::OnCallCountThresholdReached(transitionBlock, stubIdentifyingToken);
+    ENSURE_ON_OS_THREAD();
+    result = CallCountingManager::OnCallCountThresholdReached(transitionBlock, stubIdentifyingToken);
+    END_ENSURE_ON_OS_THREAD();
+
+    return result;
 }
 
 PCODE CallCountingManager::OnCallCountThresholdReached(TransitionBlock *transitionBlock, TADDR stubIdentifyingToken)
