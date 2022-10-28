@@ -1628,6 +1628,16 @@ void Llvm::buildReturn(GenTree* node)
                 // https://github.com/dotnet/runtimelab/pull/2007#issuecomment-1264715441
                 failFunctionCompilation();
             }
+            if (node->TypeGet() == TYP_STRUCT && node->gtGetOp1()->IsIntegralConst(0))
+            {
+                // Special-case returning zero-initialized structs.
+                Type* structLlvmType = getLlvmTypeForCorInfoType(_sigInfo.retType, _sigInfo.retTypeClass);
+                Value* structAddrValue = _builder.CreateAlloca(structLlvmType, 0U);
+                Value* structSizeValue = _builder.getInt32(structLlvmType->getScalarSizeInBits() / BITS_PER_BYTE);
+                _builder.CreateMemSet(structAddrValue, _builder.getInt8(0), structSizeValue, {});
+                _builder.CreateRet(_builder.CreateLoad(structAddrValue));
+                return;
+            }
             _builder.CreateRet(consumeValue(node->gtGetOp1(), getLlvmTypeForCorInfoType(_sigInfo.retType, _sigInfo.retTypeClass)));
             return;
         case TYP_VOID:
