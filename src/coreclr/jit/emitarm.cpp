@@ -4001,7 +4001,7 @@ void emitter::emitIns_R_C(instruction ins, emitAttr attr, regNumber reg, CORINFO
     {
         NYI_ARM("JitDataOffset static fields");
     }
-    else if (fldHnd == FLD_GLOBAL_FS)
+    else if ((fldHnd == FLD_GLOBAL_FS) || (fldHnd == FLD_GLOBAL_GS))
     {
         NYI_ARM("Thread-Local-Storage static fields");
     }
