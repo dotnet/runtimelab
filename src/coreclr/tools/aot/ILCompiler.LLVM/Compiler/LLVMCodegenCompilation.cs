@@ -155,8 +155,6 @@ namespace ILCompiler
                 if (methodIL.GetExceptionRegions().Length == 0 && !_disableRyuJit)
                 {
                     var mangledName = NodeFactory.NameMangler.GetMangledMethodName(method).ToString();
-                    // if (mangledName == "<Boxed>FNA_Microsoft_Xna_Framework_Graphics_SpriteBatch_VertexPositionColorTexture4__<unbox>FNA_Microsoft_Xna_Framework_Graphics_SpriteBatch_VertexPositionColorTexture4__Microsoft_Xna_Framework_Graphics_IVertexType_get_VertexDeclaration")
-                    // {
                     var sig = method.Signature;
                     corInfo.RegisterLlvmCallbacks((IntPtr)Unsafe.AsPointer(ref corInfo), _outputFile,
                         Module.Target,
@@ -171,8 +169,6 @@ namespace ILCompiler
                     ILImporter.GenerateRuntimeExportThunk(this, method, externFunc);
 
                     ryuJitMethodCount++;
-                    // }
-                    // else ILImporter.CompileMethod(this, methodCodeNodeNeedingCode);
                 }
                 else ILImporter.CompileMethod(this, methodCodeNodeNeedingCode);
             }

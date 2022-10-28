@@ -917,12 +917,7 @@ unsigned int Llvm::getTotalLocalOffset()
 
 llvm::Value* Llvm::getShadowStackOffest(Value* shadowStack, unsigned int offset)
 {
-    if (offset == 0)
-    {
-        return shadowStack;
-    }
-
-    return _builder.CreateGEP(shadowStack, _builder.getInt32(offset));
+    return gepOrAddr(shadowStack, offset);
 }
 
 llvm::BasicBlock* Llvm::getLLVMBasicBlockForBlock(BasicBlock* block)
@@ -941,7 +936,7 @@ llvm::Value* Llvm::getShadowStackForCallee()
 {
     unsigned int offset = getTotalLocalOffset();
 
-    return offset == 0 ? _function->getArg(0) : _builder.CreateGEP(_function->getArg(0), _builder.getInt32(offset));
+    return gepOrAddr(_function->getArg(0), offset);
 }
 
 //------------------------------------------------------------------------
@@ -1417,6 +1412,16 @@ void Llvm::buildCnsLng(GenTree* node)
     mapGenTreeToValue(node, _builder.getInt64(node->AsLngCon()->LngValue()));
 }
 
+llvm::Value* Llvm::gepOrAddr(Value* addr, unsigned int offset)
+{
+    if (offset == 0)
+    {
+        return addr;
+    }
+
+    return _builder.CreateGEP(addr, _builder.getInt32(offset));
+}
+
 llvm::Value* Llvm::buildFieldList(GenTreeFieldList* fieldList,
                                   Type*             llvmType)
 {
@@ -1424,19 +1429,18 @@ llvm::Value* Llvm::buildFieldList(GenTreeFieldList* fieldList,
 
     if (llvmType->isStructTy())
     {
-        Value*   alloca     = _builder.CreateAlloca(llvmType);
-        Value*   llvmStruct = _builder.CreateLoad(alloca);
-        unsigned i          = 0;
-
-        assert(fieldList->Uses().IsSorted());
+        Value* alloca = _builder.CreateAlloca(llvmType);
+        Value* allocaAsBytePtr = _builder.CreatePointerCast(alloca, Type::getInt8PtrTy(_llvmContext));
 
         for (GenTreeFieldList::Use& use : fieldList->Uses())
         {
-            _builder.CreateInsertValue(llvmStruct, consumeValue(use.GetNode(), llvmType->getStructElementType(i)), i);
-            i++;
+            Value* fieldAddr = gepOrAddr(allocaAsBytePtr, use.GetOffset());
+            Type*  fieldType = getLlvmTypeForVarType(use.GetType());
+            fieldAddr        = castIfNecessary(fieldAddr, fieldType->getPointerTo());
+            _builder.CreateStore(consumeValue(use.GetNode(), fieldType), fieldAddr);
         }
 
-        return llvmStruct;
+        return _builder.CreateLoad(alloca);
     }
 
     // single primitive type wrapped in struct
@@ -1740,7 +1744,7 @@ void Llvm::buildStoreInd(GenTreeStoreInd* storeIndOp)
 // Copies endOffset - startOffset bytes, endOffset is exclusive.
 unsigned Llvm::buildMemCpy(Value* baseAddress, unsigned startOffset, unsigned endOffset, Value* srcAddress)
 {
-    Value* destAddress = _builder.CreateGEP(baseAddress, _builder.getInt32(startOffset));
+    Value* destAddress = gepOrAddr(baseAddress, startOffset);
     unsigned size = endOffset - startOffset;
 
     _builder.CreateMemCpy(destAddress, llvm::Align(), srcAddress, llvm::Align(), size);
@@ -1815,7 +1819,7 @@ void Llvm::storeObjAtAddress(Value* baseAddress, Value* data, StructDesc* struct
     {
         FieldDesc* fieldDesc = structDesc->getFieldDesc(i);
         unsigned   fieldOffset = fieldDesc->getFieldOffset();
-        Value*     address     = _builder.CreateGEP(baseAddress, _builder.getInt32(fieldOffset));
+        Value*     address     = gepOrAddr(baseAddress, fieldOffset);
 
         if (structDesc->hasSignificantPadding() && fieldOffset > bytesStored)
         {
@@ -1964,7 +1968,7 @@ void Llvm::buildLocalField(GenTreeLclFld* lclFld)
     // TODO-LLVM: if this is an only value type field, or at offset 0, we can optimize.
     Value* structAddrValue = m_allocas[lclNum];
     Value* structAddrInt8Ptr = castIfNecessary(structAddrValue, Type::getInt8PtrTy(_llvmContext));
-    Value* fieldAddressValue = _builder.CreateGEP(structAddrInt8Ptr, _builder.getInt16(lclFld->GetLclOffs()));
+    Value* fieldAddressValue = gepOrAddr(structAddrInt8Ptr, lclFld->GetLclOffs());
     Value* fieldAddressTypedValue =
         castIfNecessary(fieldAddressValue, getLlvmTypeForVarType(lclFld->TypeGet())->getPointerTo());
 
@@ -1977,7 +1981,7 @@ void Llvm::buildLocalVarAddr(GenTreeLclVarCommon* lclAddr)
     if (lclAddr->isLclField())
     {
         Value* bytePtr = castIfNecessary(m_allocas[lclNum], Type::getInt8PtrTy(_llvmContext));
-        mapGenTreeToValue(lclAddr, _builder.CreateGEP(bytePtr, _builder.getInt16(lclAddr->GetLclOffs())));
+        mapGenTreeToValue(lclAddr, gepOrAddr(bytePtr, lclAddr->GetLclOffs()));
     }
     else
     {
@@ -2753,7 +2757,7 @@ void Llvm::lowerToShadowStack()
                     //                 int V01._length(offs = 0x04)->V06 tmp5 $81
                     //    - --t6 =   LCL_VAR_ADDR byref V02 tmp0
                     //             *   int V02._value(offs = 0x00)->V04 tmp2
-                    // failFunctionCompilation();
+                    failFunctionCompilation();
                 }
             }
 
@@ -2881,14 +2885,14 @@ void Llvm::Lower()
                 varDsc->lvFieldLclStart = BAD_VAR_NUM;
                 varDsc->lvFieldCnt      = 0;
             }
-            else
+            else if (_compiler->lvaGetPromotionType(varDsc) == Compiler::lvaPromotionType::PROMOTION_TYPE_DEPENDENT)
             {
                 /* dependent promotion, just mark fields as not lvIsParam */
                 for (unsigned index = 0; index < varDsc->lvFieldCnt; index++)
                 {
                     unsigned   fieldLclNum = varDsc->lvFieldLclStart + index;
                     LclVarDsc* fieldVarDsc = _compiler->lvaGetDesc(fieldLclNum);
-                    fieldVarDsc->lvIsParam       = false;
+                    fieldVarDsc->lvIsParam = false;
                 }
             }
         }

@@ -233,6 +233,7 @@ private:
 
     void buildLocalVarAddr(GenTreeLclVarCommon* lclVar);
     bool isLlvmFrameLocal(LclVarDsc* varDsc);
+    Value* gepOrAddr(Value* addr, uint32_t offset);
 
 public:
     Llvm(Compiler* pCompiler);
