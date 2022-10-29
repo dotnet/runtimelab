@@ -2642,7 +2642,7 @@ void Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
                 shadowStackUseOffest = padOffset(corInfoType, clsHnd, shadowStackUseOffest);
             }
 
-            if (opAndArg.operand->opAndArg.operand->OperIs(GT_FIELD_LIST))
+            if (opAndArg.operand->OperIs(GT_FIELD_LIST))
             {
                 for (GenTreeFieldList::Use& use : opAndArg.operand->AsFieldList()->Uses())
                 {
@@ -2656,7 +2656,7 @@ void Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
                         _compiler->gtNewOperNode(GT_ADD, TYP_I_IMPL, lclShadowStack, fieldOffset);
                     GenTree* fieldStoreNode = createShadowStackStoreNode(use.GetType(), fieldSlotAddr, use.GetNode(), nullptr);
 
-                    CurrentRange().InsertBefore(callNode, lclFieldShadowStack, fieldOffset, fieldSlotAddr,
+                    CurrentRange().InsertBefore(callNode, lclShadowStack, fieldOffset, fieldSlotAddr,
                                                 fieldStoreNode);
                 }
 
