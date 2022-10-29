@@ -166,7 +166,6 @@ private:
     Value* buildUserFuncCall(GenTreeCall* call);
     void createAllocasForLocalsWithAddrOp();
     Value* castIfNecessary(Value* source, Type* targetType, llvm::IRBuilder<>* builder = nullptr);
-    Value* castToPointerToLlvmType(Value* address, llvm::Type* llvmType);
     Value* consumeValue(GenTree* node, llvm::Type* targetLlvmType);
     llvm::DILocation* createDebugFunctionAndDiLocation(struct DebugMetadata debugMetadata, unsigned int lineNo);
     GenTree* createStoreNode(var_types nodeType, GenTree* addr, GenTree* data, ClassLayout* structClassLayout = nullptr);
@@ -199,7 +198,6 @@ private:
     Value* getShadowStackForCallee();
     unsigned int getSpillOffsetAtIndex(unsigned int index, unsigned int offset);
     Value* getSsaLocalForPhi(unsigned lclNum, unsigned ssaNum);
-    Value* getShadowStackOffest(Value* shadowStack, unsigned int offset);
     unsigned int getTotalRealLocalOffset();
     unsigned getElementSize(CORINFO_CLASS_HANDLE fieldClassHandle, CorInfoType corInfoType);
     unsigned int getTotalLocalOffset();

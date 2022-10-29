@@ -774,11 +774,6 @@ Value* Llvm::castIfNecessary(Value* source, Type* targetType, llvm::IRBuilder<>*
     return builder->Insert(castInst);
 }
 
-Value* Llvm::castToPointerToLlvmType(Value* address, llvm::Type* llvmType)
-{
-    return castIfNecessary(address, llvmType->getPointerTo());
-}
-
 /// <summary>
 /// Returns the llvm arg number or shadow stack offset for the corresponding local which must be loaded from an argument
 /// </summary>
@@ -913,11 +908,6 @@ unsigned int Llvm::getTotalLocalOffset()
 {
     unsigned int offset = getTotalRealLocalOffset();
     return AlignUp(offset, TARGET_POINTER_SIZE);
-}
-
-llvm::Value* Llvm::getShadowStackOffest(Value* shadowStack, unsigned int offset)
-{
-    return gepOrAddr(shadowStack, offset);
 }
 
 llvm::BasicBlock* Llvm::getLLVMBasicBlockForBlock(BasicBlock* block)
