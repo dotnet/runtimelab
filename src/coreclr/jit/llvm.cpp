@@ -2771,7 +2771,17 @@ void Llvm::lowerToShadowStack()
                     //                 int V01._length(offs = 0x04)->V06 tmp5 $81
                     //    - --t6 =   LCL_VAR_ADDR byref V02 tmp0
                     //             *   int V02._value(offs = 0x00)->V04 tmp2
-                    failFunctionCompilation();
+                    printf("hello");
+                }
+                if (varDsc->lvIsStructField && node->OperIs(GT_LCL_VAR))
+                {
+                    LclVarDsc* parentVarDsc = _compiler->lvaGetDesc(varDsc->lvParentLcl);
+                    if (parentVarDsc->lvPromoted && _compiler->lvaGetPromotionType(parentVarDsc) ==
+                                                        Compiler::lvaPromotionType::PROMOTION_TYPE_DEPENDENT)
+                    {
+                        lclVar->ChangeOper(GT_LCL_FLD);
+                        lclVar->AsLclFld()->SetLclOffs(varDsc->lvFldOffset);
+                    }
                 }
             }
 
