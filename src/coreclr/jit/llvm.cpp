@@ -2642,25 +2642,19 @@ void Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
                 shadowStackUseOffest = padOffset(corInfoType, clsHnd, shadowStackUseOffest);
             }
 
-            if (opAndArg.operand->TypeGet() == TYP_STRUCT && opAndArg.operand->OperIs(GT_FIELD_LIST))
+            if (opAndArg.operand->opAndArg.operand->OperIs(GT_FIELD_LIST))
             {
                 for (GenTreeFieldList::Use& use : opAndArg.operand->AsFieldList()->Uses())
                 {
-                    CorInfoType fieldCorInfoType = toCorInfoType(use.GetType());
+                    assert(use.GetType() != TYP_STRUCT);
 
-                    // TODO-LLVM: can this happen?
-                    if (fieldCorInfoType == CORINFO_TYPE_VALUECLASS)
-                    {
-                        failFunctionCompilation();
-                    }
-
-                    GenTree*       lclFieldShadowStack = _compiler->gtNewLclvNode(_shadowStackLclNum, TYP_I_IMPL);
+                    GenTree*       lclShadowStack = _compiler->gtNewLclvNode(_shadowStackLclNum, TYP_I_IMPL);
                     GenTreeIntCon* fieldOffset =
                         _compiler->gtNewIconNode(_shadowStackLocalsSize + shadowStackUseOffest + use.GetOffset(),
                                                  TYP_I_IMPL);
                     GenTree* fieldSlotAddr =
-                        _compiler->gtNewOperNode(GT_ADD, TYP_I_IMPL, lclFieldShadowStack, fieldOffset);
-                    GenTree* fieldStoreNode = createShadowStackStoreNode(use.GetType(), fieldSlotAddr, use.GetNode(), nullptr /* assumes use.GetType() is never CORINFO_TYPE_VALUECLASS* see check above */);
+                        _compiler->gtNewOperNode(GT_ADD, TYP_I_IMPL, lclShadowStack, fieldOffset);
+                    GenTree* fieldStoreNode = createShadowStackStoreNode(use.GetType(), fieldSlotAddr, use.GetNode(), nullptr);
 
                     CurrentRange().InsertBefore(callNode, lclFieldShadowStack, fieldOffset, fieldSlotAddr,
                                                 fieldStoreNode);
