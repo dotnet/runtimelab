@@ -2637,18 +2637,50 @@ void Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
         bool argOnShadowStack = isThis || (isSigArg && !canStoreArgOnLlvmStack(_compiler, corInfoType, clsHnd));
         if (argOnShadowStack)
         {
-            GenTree* lclShadowStack = _compiler->gtNewLclvNode(_shadowStackLclNum, TYP_I_IMPL);
-
             if (corInfoType == CORINFO_TYPE_VALUECLASS)
             {
                 shadowStackUseOffest = padOffset(corInfoType, clsHnd, shadowStackUseOffest);
             }
 
-            GenTreeIntCon* offset    = _compiler->gtNewIconNode(_shadowStackLocalsSize + shadowStackUseOffest, TYP_I_IMPL);
-            GenTree*       slotAddr  = _compiler->gtNewOperNode(GT_ADD, TYP_I_IMPL, lclShadowStack, offset);
-            GenTree*       storeNode =
-                createShadowStackStoreNode(opAndArg.operand->TypeGet(), slotAddr, opAndArg.operand,
-                                corInfoType == CORINFO_TYPE_VALUECLASS ? _compiler->typGetObjLayout(clsHnd) : nullptr);
+            if (opAndArg.operand->TypeGet() == TYP_STRUCT && opAndArg.operand->OperIs(GT_FIELD_LIST))
+            {
+                for (GenTreeFieldList::Use& use : opAndArg.operand->AsFieldList()->Uses())
+                {
+                    CorInfoType fieldCorInfoType = toCorInfoType(use.GetType());
+
+                    // TODO-LLVM: can this happen?
+                    if (fieldCorInfoType == CORINFO_TYPE_VALUECLASS)
+                    {
+                        failFunctionCompilation();
+                    }
+
+                    GenTree*       lclFieldShadowStack = _compiler->gtNewLclvNode(_shadowStackLclNum, TYP_I_IMPL);
+                    GenTreeIntCon* fieldOffset =
+                        _compiler->gtNewIconNode(_shadowStackLocalsSize + shadowStackUseOffest + use.GetOffset(),
+                                                 TYP_I_IMPL);
+                    GenTree* fieldSlotAddr =
+                        _compiler->gtNewOperNode(GT_ADD, TYP_I_IMPL, lclFieldShadowStack, fieldOffset);
+                    GenTree* fieldStoreNode = createShadowStackStoreNode(use.GetType(), fieldSlotAddr, use.GetNode(), nullptr /* assumes use.GetType() is never CORINFO_TYPE_VALUECLASS* see check above */);
+
+                    CurrentRange().InsertBefore(callNode, lclFieldShadowStack, fieldOffset, fieldSlotAddr,
+                                                fieldStoreNode);
+                }
+
+                CurrentRange().Remove(opAndArg.operand);
+            }
+            else
+            {
+                GenTree*       lclShadowStack = _compiler->gtNewLclvNode(_shadowStackLclNum, TYP_I_IMPL);
+                GenTreeIntCon* offset =
+                    _compiler->gtNewIconNode(_shadowStackLocalsSize + shadowStackUseOffest, TYP_I_IMPL);
+                GenTree* slotAddr  = _compiler->gtNewOperNode(GT_ADD, TYP_I_IMPL, lclShadowStack, offset);
+
+                GenTree* storeNode = createShadowStackStoreNode(opAndArg.operand->TypeGet(), slotAddr, opAndArg.operand,
+                                                                corInfoType == CORINFO_TYPE_VALUECLASS
+                                                                    ? _compiler->typGetObjLayout(clsHnd)
+                                                                    : nullptr);
+                CurrentRange().InsertBefore(callNode, lclShadowStack, offset, slotAddr, storeNode);
+            }
 
             if (corInfoType == CORINFO_TYPE_VALUECLASS)
             {
@@ -2658,8 +2690,6 @@ void Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
             {
                 shadowStackUseOffest += TARGET_POINTER_SIZE;
             }
-
-            CurrentRange().InsertBefore(callNode, lclShadowStack, offset, slotAddr, storeNode);
         }
         else
         {
