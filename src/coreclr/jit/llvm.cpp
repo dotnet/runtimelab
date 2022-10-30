@@ -1073,31 +1073,21 @@ llvm::Value* Llvm::buildUserFuncCall(GenTreeCall* call)
     {
         lastArg = use.GetNode()->AsPutArgType();
 
-        if (lastArg->gtGetOp1()->OperIs(GT_FIELD_LIST))
+        GenTree* argNode     = lastArg->gtGetOp1();
+        Type*    argLlvmType = getLlvmTypeForCorInfoType(lastArg->GetCorInfoType(), lastArg->GetClsHnd());
+        Value*   argValue;
+
+        if (argNode->OperIs(GT_FIELD_LIST))
         {
-            assert(lastArg->GetCorInfoType() == CorInfoType::CORINFO_TYPE_VALUECLASS);
-
-            // alloca a type using the lastArg type
-            Type* argLlvmType = getLlvmTypeForCorInfoType(lastArg->GetCorInfoType(), lastArg->GetClsHnd());
-
-            GenTree* argNode = lastArg->gtGetOp1();
-            Value*   argValue;
-            if (lastArg->gtGetOp1()->OperIs(GT_FIELD_LIST))
-            {
-                argValue = buildFieldList(argNode->AsFieldList(), argLlvmType);
-            }
-            else
-            {
-                argValue = consumeValue(argNode, argLlvmType);
-            }
-
-            argVec.push_back(argValue);
+            assert(lastArg->GetCorInfoType() == CORINFO_TYPE_VALUECLASS);
+            argValue = buildFieldList(argNode->AsFieldList(), argLlvmType);
         }
         else
         {
-            argVec.push_back(consumeValue(lastArg->gtGetOp1(),
-                                          getLlvmTypeForCorInfoType(lastArg->GetCorInfoType(), lastArg->GetClsHnd())));
+            argValue = consumeValue(argNode, argLlvmType);
         }
+
+        argVec.push_back(argValue);
     }
 
     Value* llvmCall = _builder.CreateCall(llvmFuncCallee, ArrayRef<Value*>(argVec));
@@ -1883,12 +1873,6 @@ void Llvm::buildStoreBlk(GenTreeBlk* blockOp)
 
     CORINFO_CLASS_HANDLE structClsHnd  = structLayout->GetClassHandle();
     StructDesc*          structDesc    = getStructDesc(structClsHnd);
-
-    if (dataOp->OperIs(GT_FIELD_LIST))
-    {
-        // TODO-LLVM: should be lowered https://github.com/dotnet/runtimelab/pull/2007#discussion_r1003747626
-        failFunctionCompilation();
-    }
 
     Value* dataValue = getGenTreeValue(blockOp->Data());
     if (structLayout->HasGCPtr() && ((blockOp->gtFlags & GTF_IND_TGT_NOT_HEAP) == 0) &&
@@ -2746,6 +2730,50 @@ void Llvm::lowerStoreLcl(GenTreeLclVarCommon* storeLclNode)
     }
 }
 
+void Llvm::lowerFieldOfDependentlyPromotedStruct(GenTree* node)
+{
+    if (node->OperIs(GT_STORE_LCL_VAR, GT_LCL_VAR, GT_LCL_VAR_ADDR))
+    {
+        // fail unsupported promoted structs
+        GenTreeLclVarCommon* lclVar = node->AsLclVarCommon();
+        LclVarDsc*           varDsc = _compiler->lvaGetDesc(lclVar->GetLclNum());
+
+        if (_compiler->lvaIsFieldOfDependentlyPromotedStruct(varDsc))
+        {
+            switch (node->OperGet())
+            {
+                case GT_LCL_VAR:
+                    lclVar->SetOper(GT_LCL_FLD);
+                    break;
+
+                case GT_STORE_LCL_VAR:
+                    lclVar->SetOper(GT_STORE_LCL_FLD);
+                    break;
+#
+                case GT_LCL_VAR_ADDR:
+                    lclVar->SetOper(GT_LCL_FLD_ADDR);
+                    break;
+            }
+
+            lclVar->AsLclFld()->SetLclOffs(varDsc->lvFldOffset);
+            lclVar->SetLclNum(varDsc->lvParentLcl);
+
+            if (node->OperIs(GT_STORE_LCL_FLD, GT_LCL_FLD_ADDR) &&
+                node->IsPartialLclFld(_compiler) &&
+                node->gtFlags & GTF_VAR_DEF)
+            {
+                node->gtFlags |= GTF_VAR_USEASG;
+            }
+        }
+        else if (varDsc->lvPromoted)
+        {
+            // TODO-LLVM: hopefully can delete this if Independent Promotion from point 1 at
+            // https://github.com/dotnet/runtimelab/pull/2007#discussion_r1002493254 is done.
+            failFunctionCompilation();
+        }
+    }
+}
+
 void Llvm::lowerToShadowStack()
 {
     for (BasicBlock* _currentBlock : _compiler->Blocks())
@@ -2753,36 +2781,7 @@ void Llvm::lowerToShadowStack()
         _currentRange = &LIR::AsRange(_currentBlock);
         for (GenTree* node : CurrentRange())
         {
-            if (node->OperIs(GT_STORE_LCL_VAR, GT_LCL_VAR, GT_LCL_VAR_ADDR))
-            {
-                // fail unsupported promoted structs
-                GenTreeLclVarCommon* lclVar = node->AsLclVarCommon();
-                LclVarDsc*           varDsc = _compiler->lvaGetDesc(lclVar->GetLclNum());
-
-                if (_compiler->lvaIsFieldOfDependentlyPromotedStruct(varDsc))
-                {
-                    switch(node->OperGet())
-                    {
-                        case GT_LCL_VAR:
-                            lclVar->ChangeOper(GT_LCL_FLD);
-                            break;
-
-                        case GT_STORE_LCL_VAR:
-                            lclVar->ChangeOper(GT_STORE_LCL_FLD);
-                            break;
-#
-                        case GT_LCL_VAR_ADDR:
-                            lclVar->ChangeOper(GT_LCL_FLD_ADDR);
-                            break;
-                    }
-                    lclVar->AsLclFld()->SetLclOffs(varDsc->lvFldOffset);
-                }
-                else if (varDsc->lvPromoted)
-                {
-                    //TODO-LLVM: hopefully can delete this if Independent Promotion from point 1 at  https://github.com/dotnet/runtimelab/pull/2007#discussion_r1002493254 is done.
-                    failFunctionCompilation();
-                }
-            }
+            lowerFieldOfDependentlyPromotedStruct(node);
 
             if (node->OperIsLocal() || node->OperIsLocalAddr())
             {

@@ -211,6 +211,7 @@ private:
     void lowerCallToShadowStack(GenTreeCall* callNode);
     void lowerToShadowStack();
     void lowerStoreLcl(GenTreeLclVarCommon* storeLclNode);
+    void lowerFieldOfDependentlyPromotedStruct(GenTree* node);
 
     Value* mapGenTreeToValue(GenTree* genTree, Value* valueRef);
     bool needsReturnStackSlot(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd);
