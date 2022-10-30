@@ -2753,35 +2753,34 @@ void Llvm::lowerToShadowStack()
         _currentRange = &LIR::AsRange(_currentBlock);
         for (GenTree* node : CurrentRange())
         {
-            if (node->OperIs(GT_STORE_LCL_VAR, GT_LCL_VAR, GT_STORE_LCL_FLD, GT_LCL_FLD_ADDR, GT_LCL_VAR_ADDR))
+            if (node->OperIs(GT_STORE_LCL_VAR, GT_LCL_VAR, GT_LCL_VAR_ADDR))
             {
                 // fail unsupported promoted structs
                 GenTreeLclVarCommon* lclVar = node->AsLclVarCommon();
                 LclVarDsc*           varDsc = _compiler->lvaGetDesc(lclVar->GetLclNum());
-                if (varDsc->lvPromoted)
+
+                if (_compiler->lvaIsFieldOfDependentlyPromotedStruct(varDsc))
                 {
-                    // TODO-LLVM: stores to promoted structs e.g.:
-                    //               *  t2 struct
-                    //  XG-- -- ---* STORE_LCL_VAR struct<System.ReadOnlySpan`1 [System.Byte], 8>(P) V01 tmp0
-                    //             *   byref     V01._pointer(offs = 0x00) ->V08 tmp7
-                    //             *   int V01._length(offs = 0x04) ->V09 tmp8
-                    // or
-                    //     - --t14 = LCL_VAR struct<System.ReadOnlySpan`1 [System.Int32], 8>(P) V01 tmp0
-                    //                 byref V01._pointer(offs = 0x00)->V05 tmp4
-                    //                 int V01._length(offs = 0x04)->V06 tmp5 $81
-                    //    - --t6 =   LCL_VAR_ADDR byref V02 tmp0
-                    //             *   int V02._value(offs = 0x00)->V04 tmp2
-                    printf("hello");
-                }
-                if (varDsc->lvIsStructField && node->OperIs(GT_LCL_VAR))
-                {
-                    LclVarDsc* parentVarDsc = _compiler->lvaGetDesc(varDsc->lvParentLcl);
-                    if (parentVarDsc->lvPromoted && _compiler->lvaGetPromotionType(parentVarDsc) ==
-                                                        Compiler::lvaPromotionType::PROMOTION_TYPE_DEPENDENT)
+                    switch(node->OperGet())
                     {
-                        lclVar->ChangeOper(GT_LCL_FLD);
-                        lclVar->AsLclFld()->SetLclOffs(varDsc->lvFldOffset);
+                        case GT_LCL_VAR:
+                            lclVar->ChangeOper(GT_LCL_FLD);
+                            break;
+
+                        case GT_STORE_LCL_VAR:
+                            lclVar->ChangeOper(GT_STORE_LCL_FLD);
+                            break;
+#
+                        case GT_LCL_VAR_ADDR:
+                            lclVar->ChangeOper(GT_LCL_FLD_ADDR);
+                            break;
                     }
+                    lclVar->AsLclFld()->SetLclOffs(varDsc->lvFldOffset);
+                }
+                else if (varDsc->lvPromoted)
+                {
+                    //TODO-LLVM: hopefully can delete this if Independent Promotion from point 1 at  https://github.com/dotnet/runtimelab/pull/2007#discussion_r1002493254 is done.
+                    failFunctionCompilation();
                 }
             }
 
