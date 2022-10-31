@@ -2732,11 +2732,11 @@ void Llvm::lowerStoreLcl(GenTreeLclVarCommon* storeLclNode)
 
 void Llvm::lowerFieldOfDependentlyPromotedStruct(GenTree* node)
 {
-    if (node->OperIs(GT_STORE_LCL_VAR, GT_LCL_VAR, GT_LCL_VAR_ADDR))
+    if (node->OperIsLocal() || node->OperIsLocalAddr())
     {
-        // fail unsupported promoted structs
         GenTreeLclVarCommon* lclVar = node->AsLclVarCommon();
-        LclVarDsc*           varDsc = _compiler->lvaGetDesc(lclVar->GetLclNum());
+        uint16_t             offset = lclVar->GetLclOffs();
+        LclVarDsc*           varDsc = _compiler->lvaGetDesc(lclVar->GetLclNum());        
 
         if (_compiler->lvaIsFieldOfDependentlyPromotedStruct(varDsc))
         {
@@ -2749,19 +2749,19 @@ void Llvm::lowerFieldOfDependentlyPromotedStruct(GenTree* node)
                 case GT_STORE_LCL_VAR:
                     lclVar->SetOper(GT_STORE_LCL_FLD);
                     break;
-#
+
                 case GT_LCL_VAR_ADDR:
                     lclVar->SetOper(GT_LCL_FLD_ADDR);
                     break;
             }
 
-            lclVar->AsLclFld()->SetLclOffs(varDsc->lvFldOffset);
             lclVar->SetLclNum(varDsc->lvParentLcl);
+            lclVar->AsLclFld()->SetLclOffs(varDsc->lvFldOffset + offset );
 
-            if (node->OperIs(GT_STORE_LCL_FLD, GT_LCL_FLD_ADDR) &&
-                node->IsPartialLclFld(_compiler) &&
-                node->gtFlags & GTF_VAR_DEF)
+            if ((node->gtFlags & GTF_VAR_DEF) != 0)
             {
+                // Conservatively assume these become partial.
+                // TODO-ADDR: only apply to stores be precise.
                 node->gtFlags |= GTF_VAR_USEASG;
             }
         }
