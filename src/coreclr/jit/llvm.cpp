@@ -2867,13 +2867,7 @@ void Llvm::Lower()
             locals.push_back(varDsc);
             if (varDsc->lvIsParam)
             {
-                if (varDsc->lvPromoted)
-                {
-                    // TODO-LLVM: the offsets for promoted structs on the shadow stack is calculated incorrectly below in the call to SetStackOffset
-                    failFunctionCompilation();
-                }
                 localsParamCount++;
-                varDsc->lvIsParam = false;
             }
         }
 
@@ -2916,6 +2910,11 @@ void Llvm::Lower()
                     LclVarDsc* fieldVarDsc = _compiler->lvaGetDesc(fieldLclNum);
                     fieldVarDsc->lvIsParam = false;
                 }
+            }
+
+            if (!canStoreLocalOnLlvmStack(varDsc))
+            {
+                varDsc->lvIsParam = false;
             }
         }
     }
