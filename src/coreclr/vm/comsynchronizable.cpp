@@ -509,6 +509,15 @@ FCIMPL1(INT32, ThreadNative::GetManagedThreadId, ThreadBaseObject* th) {
 }
 FCIMPLEND
 
+static Object* TryGetCurrentThread(PTR_ThreadBase pThreadBase)
+{
+    WRAPPER_NO_CONTRACT;
+
+    OBJECTHANDLE ExposedObject = pThreadBase->m_ExposedObject;
+    _ASSERTE(ExposedObject != 0); //Thread's constructor always initializes its GCHandle
+    return *((Object**)ExposedObject);
+}
+
 NOINLINE static Object* GetCurrentThreadHelper()
 {
     FCALL_CONTRACT;
@@ -526,13 +535,36 @@ NOINLINE static Object* GetCurrentThreadHelper()
 FCIMPL0(Object*, ThreadNative::GetCurrentThread)
 {
     FCALL_CONTRACT;
-    OBJECTHANDLE ExposedObject = GetThread()->GetActiveThreadBase()->m_ExposedObject;
-    _ASSERTE(ExposedObject != 0); //Thread's constructor always initializes its GCHandle
-    Object* result = *((Object**) ExposedObject);
-    if (result != 0)
+    Object* result = TryGetCurrentThread(GetThread()->GetActiveThreadBase());
+    if (result != NULL)
         return result;
 
     FC_INNER_RETURN(Object*, GetCurrentThreadHelper());
+}
+FCIMPLEND
+
+NOINLINE static Object* GetCurrentOSThreadHelper()
+{
+    FCALL_CONTRACT;
+    FC_INNER_PROLOG(ThreadNative::GetCurrentOSThread);
+    OBJECTREF   refRetVal  = NULL;
+
+    HELPER_METHOD_FRAME_BEGIN_RET_ATTRIB_1(Frame::FRAME_ATTR_EXACT_DEPTH|Frame::FRAME_ATTR_CAPTURE_DEPTH_2, refRetVal);
+    refRetVal = GetThread()->GetExposedObject();
+    HELPER_METHOD_FRAME_END();
+
+    FC_INNER_EPILOG();
+    return OBJECTREFToObject(refRetVal);
+}
+
+FCIMPL0(Object*, ThreadNative::GetCurrentOSThread)
+{
+    FCALL_CONTRACT;
+    Object* result = TryGetCurrentThread(GetThread()->GetCoreThreadBase());
+    if (result != NULL)
+        return result;
+
+    FC_INNER_RETURN(Object*, GetCurrentOSThreadHelper());
 }
 FCIMPLEND
 

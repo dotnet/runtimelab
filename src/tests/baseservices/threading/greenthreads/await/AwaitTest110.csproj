@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="AwaitTest110.cs" />
+    <Compile Include="AwaitTestCommon.cs" />
+  </ItemGroup>
+</Project>

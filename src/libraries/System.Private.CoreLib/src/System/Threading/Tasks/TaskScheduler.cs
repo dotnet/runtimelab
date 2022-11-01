@@ -317,9 +317,15 @@ namespace System.Threading.Tasks
             get
             {
                 Task? currentTask = Task.InternalCurrent;
-                return ((currentTask != null)
+                TaskScheduler? scheduler = ((currentTask != null)
                     && ((currentTask.CreationOptions & TaskCreationOptions.HideScheduler) == 0)
                     ) ? currentTask.ExecutingTaskScheduler : null;
+                if (Thread.IsGreenThread && (scheduler == null || scheduler == Default))
+                {
+                    scheduler = GreenThreadTaskScheduler.Instance;
+                }
+
+                return scheduler;
             }
         }
 

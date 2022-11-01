@@ -960,6 +960,7 @@ public:
 
     PTR_ThreadBase m_curThreadBase;
 
+    PTR_ThreadBase GetCoreThreadBase() { return PTR_ThreadBase(&m_coreThreadData); }
     PTR_ThreadBase GetActiveThreadBase() { return m_curThreadBase; }
 #ifndef DACCESS_COMPILE
     void SetActiveThreadBase(ThreadBase* threadBase) { m_curThreadBase = threadBase; }

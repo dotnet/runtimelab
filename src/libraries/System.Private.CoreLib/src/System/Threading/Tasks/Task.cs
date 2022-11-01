@@ -2502,14 +2502,26 @@ namespace System.Threading.Tasks
                 }
             }
 
-            if (tc == null && flowExecutionContext)
+            if (tc == null)
             {
-                // We're targeting the default scheduler, so we can use the faster path
-                // that assumes the default, and thus we don't need to store it.  If we're flowing
-                // ExecutionContext, we need to capture it and wrap it in an AwaitTaskContinuation.
-                // Otherwise, we're targeting the default scheduler and we don't need to flow ExecutionContext, so
-                // we don't actually need a continuation object.  We can just store/queue the action itself.
-                tc = new AwaitTaskContinuation(continuationAction, flowExecutionContext: true);
+                if (Thread.IsGreenThread)
+                {
+                    // Use the green thread task scheduler to have the continuation also run as a green thread.
+                    tc =
+                        new TaskSchedulerAwaitTaskContinuation(
+                            GreenThreadTaskScheduler.Instance,
+                            continuationAction,
+                            flowExecutionContext);
+                }
+                else if (flowExecutionContext)
+                {
+                    // We're targeting the default scheduler, so we can use the faster path
+                    // that assumes the default, and thus we don't need to store it.  If we're flowing
+                    // ExecutionContext, we need to capture it and wrap it in an AwaitTaskContinuation.
+                    // Otherwise, we're targeting the default scheduler and we don't need to flow ExecutionContext, so
+                    // we don't actually need a continuation object.  We can just store/queue the action itself.
+                    tc = new AwaitTaskContinuation(continuationAction, flowExecutionContext: true);
+                }
             }
 
             // Now register the continuation, and if we couldn't register it because the task is already completing,
@@ -2576,6 +2588,21 @@ namespace System.Threading.Tasks
                         return;
                     }
                 }
+            }
+
+            if (Thread.IsGreenThread)
+            {
+                // Use the green thread task scheduler to have the continuation also run as a green thread.
+                var tc =
+                    new TaskSchedulerAwaitTaskContinuation(
+                        GreenThreadTaskScheduler.Instance,
+                        stateMachineBox.MoveNextAction,
+                        flowExecutionContext: false);
+                if (!AddTaskContinuation(tc, addBeforeOthers: false))
+                {
+                    tc.Run(this, canInlineContinuationTask: false);
+                }
+                return;
             }
 
             // Otherwise, add the state machine box directly as the continuation.
@@ -5390,7 +5417,9 @@ namespace System.Threading.Tasks
                 TaskCreationOptions.DenyChildAttach, InternalTaskOptions.None);
         }
 
-        static partial void RunOnActualGreenThread(Action action, ref bool ranAsActualGreenThread);
+        static partial void RunOnActualGreenThread(Action action, bool preferLocal, ref bool ranAsActualGreenThread);
+        static partial void TryRunOnActualGreenThreadInline(Action action, ref bool success);
+
         private static void RunOnNormalThread(Action action)
         {
             new Thread(()=>
@@ -5400,10 +5429,10 @@ namespace System.Threading.Tasks
             }) { IsBackground = true }.UnsafeStart();
         }
 
-        private static void RunOnGreenThread(Action action)
+        private static void RunOnGreenThread(Action action, bool preferLocal = false)
         {
             bool greenThreadUsed = false;
-            RunOnActualGreenThread(action, ref greenThreadUsed);
+            RunOnActualGreenThread(action, preferLocal, ref greenThreadUsed);
             if (!greenThreadUsed)
             {
                 RunOnNormalThread(action);
@@ -5436,13 +5465,14 @@ namespace System.Threading.Tasks
                 }
 
                 Thread.t_IsGreenThread = true;
+
+                if (executionContext is not null && !executionContext.IsDefault)
+                {
+                    ExecutionContext.SetCurrentExecutionContextUnsafe(executionContext);
+                }
+
                 try
                 {
-                    if (executionContext is not null && !executionContext.IsDefault)
-                    {
-                        ExecutionContext.SetCurrentExecutionContextUnsafe(executionContext);
-                    }
-
                     action();
                     tcs.SetResult();
                 }
@@ -5462,13 +5492,14 @@ namespace System.Threading.Tasks
             RunOnGreenThread(()=>
             {
                 Thread.t_IsGreenThread = true;
+
+                if (executionContext is not null && !executionContext.IsDefault)
+                {
+                    ExecutionContext.SetCurrentExecutionContextUnsafe(executionContext);
+                }
+
                 try
                 {
-                    if (executionContext is not null && !executionContext.IsDefault)
-                    {
-                        ExecutionContext.SetCurrentExecutionContextUnsafe(executionContext);
-                    }
-
                     action();
                     tcs.SetResult();
                 }
@@ -5488,13 +5519,14 @@ namespace System.Threading.Tasks
             RunOnGreenThread(()=>
             {
                 Thread.t_IsGreenThread = true;
+
+                if (executionContext is not null && !executionContext.IsDefault)
+                {
+                    ExecutionContext.SetCurrentExecutionContextUnsafe(executionContext);
+                }
+
                 try
                 {
-                    if (executionContext is not null && !executionContext.IsDefault)
-                    {
-                        ExecutionContext.SetCurrentExecutionContextUnsafe(executionContext);
-                    }
-
                     tcs.SetResult(function());
                 }
                 catch (Exception e)
@@ -5522,13 +5554,14 @@ namespace System.Threading.Tasks
                 }
 
                 Thread.t_IsGreenThread = true;
+
+                if (executionContext is not null && !executionContext.IsDefault)
+                {
+                    ExecutionContext.SetCurrentExecutionContextUnsafe(executionContext);
+                }
+
                 try
                 {
-                    if (executionContext is not null && !executionContext.IsDefault)
-                    {
-                        ExecutionContext.SetCurrentExecutionContextUnsafe(executionContext);
-                    }
-
                     tcs.SetResult(function());
                 }
                 catch (Exception e)
@@ -5537,6 +5570,28 @@ namespace System.Threading.Tasks
                 }
             });
             return tcs.Task;
+        }
+
+        [UnsupportedOSPlatform("browser")]
+        internal static void UnsafeRunAsGreenThread(Task task, bool preferLocal)
+        {
+            RunOnGreenThread(() =>
+            {
+                Thread.t_IsGreenThread = true;
+                task.ExecuteFromThreadPool(Thread.CurrentThread);
+            }, preferLocal);
+        }
+
+        [UnsupportedOSPlatform("browser")]
+        internal static bool UnsafeTryRunAsGreenThreadInline(Task task)
+        {
+            bool success = false;
+            TryRunOnActualGreenThreadInline(() =>
+            {
+                Thread.t_IsGreenThread = true;
+                task.ExecuteFromThreadPool(Thread.CurrentThread);
+            }, ref success);
+            return success;
         }
 
         /// <summary>
