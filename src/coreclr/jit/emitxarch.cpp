@@ -5739,7 +5739,7 @@ void emitter::emitIns_R_C(instruction ins, emitAttr attr, regNumber reg, CORINFO
         // Special case: mov reg, fs:[ddd]
         if ((fldHnd == FLD_GLOBAL_FS) || fldHnd == FLD_GLOBAL_GS)
         {
-            sz += 1;
+            sz += 1+1; // hack
         }
     }
 
@@ -11869,7 +11869,23 @@ BYTE* emitter::emitOutputCV(BYTE* dst, instrDesc* id, code_t code, CnsVal* addc)
         }
         else
         {
+            if (jitStaticFldIsGlobAddr(fldh))
+            {
+                // This is beyond a hack...
+
+                // Change the 0x05 (disp32) encoding to 0x04 (SIB)
+                assert((code & 0xFF00) == 0x0500);
+                code = 0x0400 | (code & 0xFF);
+            }
             dst += emitOutputWord(dst, code);
+
+            if (jitStaticFldIsGlobAddr(fldh))
+            {
+                // So is this...
+
+                // SIB 0x25 means disp32
+                dst += emitOutputByte(dst, 0x25);
+            }
         }
     }
 
@@ -11950,9 +11966,10 @@ BYTE* emitter::emitOutputCV(BYTE* dst, instrDesc* id, code_t code, CnsVal* addc)
         }
 
 #ifdef TARGET_AMD64
-        // All static field and data section constant accesses should be marked as relocatable
-        //noway_assert(id->idIsDspReloc()); //?????
-        dst += emitOutputLong(dst, 0);
+        // All static field and data section constant accesses should be marked as relocatable except
+        // those through segment registers.
+        noway_assert(id->idIsDspReloc() || jitStaticFldIsGlobAddr(fldh));
+        dst += emitOutputLong(dst, jitStaticFldIsGlobAddr(fldh) ? (int)(ssize_t)target : 0);
 #else  // TARGET_X86
         dst += emitOutputLong(dst, (int)(ssize_t)target);
 #endif // TARGET_X86

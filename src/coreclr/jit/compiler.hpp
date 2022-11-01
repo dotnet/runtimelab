@@ -3702,7 +3702,7 @@ inline bool Compiler::IsGcSafePoint(GenTreeCall* call)
 }
 
 //
-// Note that we want to have two special FIELD_HANDLES that will both
+// Note that we want to have three special FIELD_HANDLES that will all
 // be considered non-Data Offset handles
 //
 // The special values that we use are FLD_GLOBAL_DS, FLD_GLOBAL_FS, and FLD_GLOBAL_GS
