@@ -5538,12 +5538,10 @@ void CodeGen::genFnPreProlog()
     emit->emitIns_R_AR(INS_lea, EA_PTRSIZE, REG_SCRATCH, REG_RSP, -checkSize);
     const int gsOffsetForStackLimit = 0x10;
     emit->emitIns_R_C(INS_cmp, EA_PTRSIZE, REG_SCRATCH, FLD_GLOBAL_GS, gsOffsetForStackLimit);
-    //BasicBlock* pass = genCreateTempLabel();
     emit->emitIns_J(INS_ja, nullptr, 2);
     emit->emitIns_R_I(INS_mov, EA_4BYTE, REG_SCRATCH, encodedSizes);
     // wrong helper
     genEmitHelperCall(CORINFO_HELP_STACK_PROBE, 0, EA_UNKNOWN);
-    //genDefineTempLabel(pass);
 }
 #endif // defined(TARGET_AMD64)
 
