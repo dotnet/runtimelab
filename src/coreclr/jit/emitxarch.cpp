@@ -11871,7 +11871,11 @@ BYTE* emitter::emitOutputCV(BYTE* dst, instrDesc* id, code_t code, CnsVal* addc)
         {
             if (jitStaticFldIsGlobAddr(fldh))
             {
-                // This is beyond a hack...
+                // This is a big hack.  This function doesn't accept a 3 byte code
+                // (for opcode / regr/m / sib).  If code has 3 used bytes, then the
+                // order is 0x113322 (and 22 might be patched with register numbers).
+                // We need 11 to be patched (or the order changed, or the overall
+                // interface changed, etc.)
 
                 // Change the 0x05 (disp32) encoding to 0x04 (SIB)
                 assert((code & 0xFF00) == 0x0500);
@@ -11883,7 +11887,7 @@ BYTE* emitter::emitOutputCV(BYTE* dst, instrDesc* id, code_t code, CnsVal* addc)
             {
                 // So is this...
 
-                // SIB 0x25 means disp32
+                // And add the SIB (0x25 means disp32)
                 dst += emitOutputByte(dst, 0x25);
             }
         }
