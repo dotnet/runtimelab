@@ -1164,8 +1164,8 @@ void emitter::emitBegFN(bool hasFramePtr
     emitInInstrumentation = false;
 #endif // PSEUDORANDOM_NOP_INSERTION
 
-    /* Create the first IG, it will be used for the prolog */
-    // or preprolog?
+    // Create the first IG, it will be used for the preprolog if it exists.
+    // Otherwise it will be the prolog.
 
     emitNxtIGnum = 1;
 
