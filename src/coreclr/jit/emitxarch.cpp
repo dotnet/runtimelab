@@ -5811,7 +5811,7 @@ void emitter::emitIns_C_R(instruction ins, emitAttr attr, CORINFO_FIELD_HANDLE f
     // Special case: mov reg, fs:[ddd]
     if ((fldHnd == FLD_GLOBAL_FS) || (fldHnd == FLD_GLOBAL_GS))
     {
-        sz += 1;
+        sz += 1+1; // hack
     }
 
     id->idCodeSize(sz);

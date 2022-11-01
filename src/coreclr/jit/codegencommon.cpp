@@ -6570,9 +6570,13 @@ void CodeGen::genGeneratePrologsAndEpilogs()
     gcInfo.gcResetForBB();
     genFnProlog();
 #if defined(TARGET_AMD64)
-    // See comment on genFnPreProlog for why this is after genFnProlog.
-    // (Perhaps genFnProlog could call GenFnPreProlog to clean this up a bit?)
-    genFnPreProlog();
+    bool greenThreads = !compiler->IsTargetAbi(CORINFO_NATIVEAOT_ABI);
+    if (greenThreads)
+    {
+        // See comment on genFnPreProlog for why this is after genFnProlog.
+        // (Perhaps genFnProlog could call GenFnPreProlog to clean this up a bit?)
+        genFnPreProlog();
+    }
 #endif // defined(TARGET_AMD64)
 
     // Generate all the prologs and epilogs.
