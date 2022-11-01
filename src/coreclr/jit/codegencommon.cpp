@@ -5483,6 +5483,8 @@ void CodeGen::genFinalizeFrame()
  *  genFnPreProlog is optional (currently only on for x64 but eventually
  *  some frames will likely skip it).
  *
+ *  Although currently only being used for TARGET_AMD64, this is eventually
+ *  intended for all architectures, so it is not in codegenxarch.cpp.
  */
 
 #if defined(TARGET_AMD64)
