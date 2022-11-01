@@ -5534,8 +5534,7 @@ void CodeGen::genFnPreProlog()
 
     int encodedSizes = (checkSizePower2 << bitsForArgSize) | argSize;
 
-    // put this in codegenamd64?  or remove specific registers?
-    emit->emitIns_R_AR(INS_lea, EA_PTRSIZE, REG_SCRATCH, REG_RSP, -checkSize);
+    emit->emitIns_R_AR(INS_lea, EA_PTRSIZE, REG_SCRATCH, REG_SPBASE, -checkSize);
     const int gsOffsetForStackLimit = 0x10;
     emit->emitIns_R_C(INS_cmp, EA_PTRSIZE, REG_SCRATCH, FLD_GLOBAL_GS, gsOffsetForStackLimit);
     emit->emitIns_J(INS_ja, nullptr, 2);
