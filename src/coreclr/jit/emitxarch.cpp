@@ -7531,10 +7531,7 @@ void emitter::emitIns_J(instruction ins,
         /* Only allow non-label jmps in prolog or pre-prolog */
 #ifdef DEBUG
         bool isInPrologIG = emitPrologIG && (emitPrologIG == emitCurIG);
-        bool isInPrePrologIG = false;
-#if defined(TARGET_AMD64)
-        isInPrePrologIG = emitPrePrologIG && (emitPrePrologIG == emitCurIG);
-#endif // defined(TARGET_AMD64)
+        bool isInPrePrologIG = emitPrePrologIG && (emitPrePrologIG == emitCurIG);
         assert(isInPrologIG || isInPrePrologIG);
 #endif
         assert(instrCount != 0);
