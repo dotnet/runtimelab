@@ -6570,7 +6570,8 @@ void CodeGen::genGeneratePrologsAndEpilogs()
     gcInfo.gcResetForBB();
     genFnProlog();
 #if defined(TARGET_AMD64)
-    // See comment on genFnPreProlog for why this is after genFnProlog
+    // See comment on genFnPreProlog for why this is after genFnProlog.
+    // (Perhaps genFnProlog could call GenFnPreProlog to clean this up a bit?)
     genFnPreProlog();
 #endif // defined(TARGET_AMD64)
 
