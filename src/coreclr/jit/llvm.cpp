@@ -2765,11 +2765,36 @@ void Llvm::lowerFieldOfDependentlyPromotedStruct(GenTree* node)
                 node->gtFlags |= GTF_VAR_USEASG;
             }
         }
-        else if (varDsc->lvPromoted)
+        else if (varDsc->lvPromoted && _compiler->lvaGetPromotionType(varDsc) == Compiler::PROMOTION_TYPE_INDEPENDENT)
         {
-            // TODO-LLVM: hopefully can delete this if Independent Promotion from point 1 at
-            // https://github.com/dotnet/runtimelab/pull/2007#discussion_r1002493254 is done.
-            failFunctionCompilation();
+            for (unsigned index = 0; index < varDsc->lvFieldCnt; index++)
+            {
+                if (index > 0)
+                {
+                    // TODO-LLVM: doesn't look like this can happen or makes sense, assert?
+                    failFunctionCompilation();
+                }
+
+                unsigned   fieldLclNum = varDsc->lvFieldLclStart + index;
+                LclVarDsc* fieldVarDsc = _compiler->lvaGetDesc(fieldLclNum);
+
+                if (canStoreLocalOnLlvmStack(fieldVarDsc))
+                {
+                    if (varDsc->lvFldOffset + offset != 0)
+                    {
+                        // TODO-LLVM: GT_ADD, etc. ?  But we never seem to come here, what happens if the promoted struct/field is not the first field?
+                        failFunctionCompilation();
+                    }
+
+                    lclVar->SetLclNum(fieldLclNum);
+                    node->ChangeType(fieldVarDsc->TypeGet());
+                }
+                else
+                {
+                    // TODO-LLVM: place on shadow stack
+                    failFunctionCompilation();
+                }
+            }
         }
     }
 }
@@ -2916,6 +2941,10 @@ void Llvm::Lower()
             {
                 varDsc->lvIsParam = false;
             }
+        }
+        else if (varDsc->lvPromoted && _compiler->lvaGetPromotionType(varDsc) == Compiler::PROMOTION_TYPE_INDEPENDENT)
+        {
+            
         }
     }
 
