@@ -895,6 +895,7 @@ NESTED_ENTRY ResumeSuspendedThreadHelper2, _TEXT
         ;
         ; Save integer parameter registers.
         ;
+        save_reg_postrsp    r11, 68h
         save_reg_postrsp    rcx, 70h
         save_reg_postrsp    rdx, 78h
         save_reg_postrsp    r8,  80h
@@ -985,7 +986,7 @@ NESTED_END TransitionToOSThreadHelper2, _TEXT
 
 ; This function is called with a misaligned stack, and the amount of needed stack space in the RAX register  
 NESTED_ENTRY JIT_GreenThreadMoreStack, _TEXT
-    pop r11
+    pop r11  ; explicitly passing the return address as a continuation in r11
     alloc_stack     28h
     END_PROLOGUE
     call _more_stack
