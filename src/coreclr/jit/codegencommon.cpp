@@ -5510,17 +5510,37 @@ void CodeGen::genFnPreProlog()
     }
 #endif
 
-    unsigned frameSize = compiler->compLclFrameSize; // what about extraFrameSize?
+    // See src/coreclr/vm/amd64/AsmHelpers.asm
 
-    // look at all the "first" stuff in prolog - OSR, JitHaltMethod, etc.
+    // TODO: Verify this
+    int frameSize = compiler->compLclFrameSize;
+    const int redZoneSize = 0x1000;
+    const int slopSize = 0x100;
+    int checkSize = frameSize + redZoneSize + slopSize;
+    int checkSizePower2 = 0;
+    for (int checkSizeBits = checkSize; checkSizeBits > 0; checkSizeBits >>= 1)
+    {
+        checkSizePower2++;
+    }
+
+    // "including register args" - verify that this is correct (x64 shadow space)
+    // add return address
+    int argSize = compiler->compArgSize + REGSIZE_BYTES;
+
+    const unsigned bitsForCheckSize = 5;
+    assert(checkSizePower2 < (1 << bitsForCheckSize));
+    const unsigned bitsForArgSize = 26;
+    assert(argSize < (1 << bitsForArgSize));
+
+    int encodedSizes = (checkSizePower2 << bitsForArgSize) | argSize;
 
     // put this in codegenamd64?  or remove specific registers?
-    emit->emitIns_R_AR(INS_lea, EA_PTRSIZE, REG_RAX, REG_RSP, -0x250);
+    emit->emitIns_R_AR(INS_lea, EA_PTRSIZE, REG_RAX, REG_RSP, -checkSize);
     const int gsOffsetForStackLimit = 0x10;
     emit->emitIns_R_C(INS_cmp, EA_PTRSIZE, REG_RAX, FLD_GLOBAL_GS, gsOffsetForStackLimit);
     //BasicBlock* pass = genCreateTempLabel();
     emit->emitIns_J(INS_ja, nullptr, 2);
-    emit->emitIns_R_I(INS_mov, EA_4BYTE, REG_RAX, 0x1000);
+    emit->emitIns_R_I(INS_mov, EA_4BYTE, REG_RAX, encodedSizes);
     // wrong helper
     genEmitHelperCall(CORINFO_HELP_STACK_PROBE, 0, EA_UNKNOWN);
     //genDefineTempLabel(pass);
