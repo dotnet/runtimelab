@@ -5535,12 +5535,12 @@ void CodeGen::genFnPreProlog()
     int encodedSizes = (checkSizePower2 << bitsForArgSize) | argSize;
 
     // put this in codegenamd64?  or remove specific registers?
-    emit->emitIns_R_AR(INS_lea, EA_PTRSIZE, REG_RAX, REG_RSP, -checkSize);
+    emit->emitIns_R_AR(INS_lea, EA_PTRSIZE, REG_SCRATCH, REG_RSP, -checkSize);
     const int gsOffsetForStackLimit = 0x10;
-    emit->emitIns_R_C(INS_cmp, EA_PTRSIZE, REG_RAX, FLD_GLOBAL_GS, gsOffsetForStackLimit);
+    emit->emitIns_R_C(INS_cmp, EA_PTRSIZE, REG_SCRATCH, FLD_GLOBAL_GS, gsOffsetForStackLimit);
     //BasicBlock* pass = genCreateTempLabel();
     emit->emitIns_J(INS_ja, nullptr, 2);
-    emit->emitIns_R_I(INS_mov, EA_4BYTE, REG_RAX, encodedSizes);
+    emit->emitIns_R_I(INS_mov, EA_4BYTE, REG_SCRATCH, encodedSizes);
     // wrong helper
     genEmitHelperCall(CORINFO_HELP_STACK_PROBE, 0, EA_UNKNOWN);
     //genDefineTempLabel(pass);
