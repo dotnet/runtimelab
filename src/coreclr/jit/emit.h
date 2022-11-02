@@ -493,6 +493,12 @@ protected:
     static emitter::opSize emitEncodeSize(emitAttr size);
     static emitAttr emitDecodeSize(emitter::opSize ensz);
 
+    // Currently, we only allow one IG for the pre-prolog
+    bool emitIGisInPreProlog(const insGroup* ig)
+    {
+        return ig == emitPrePrologIG;
+    }
+
     // Currently, we only allow one IG for the prolog
     bool emitIGisInProlog(const insGroup* ig)
     {

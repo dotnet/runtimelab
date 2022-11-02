@@ -1441,7 +1441,7 @@ void* emitter::emitAllocAnyInstr(size_t sz, emitAttr opsz)
 
 #ifdef DEBUG
     // Under STRESS_EMITTER, put every instruction in its own instruction group.
-    // We can't do this for a prolog, epilog, funclet prolog, or funclet epilog,
+    // We can't do this for a preprolog, prolog, epilog, funclet prolog, or funclet epilog,
     // because those are generated out of order. We currently have a limitation
     // where the jump shortening pass uses the instruction group number to determine
     // if something is earlier or later in the code stream. This implies that
@@ -1449,7 +1449,7 @@ void* emitter::emitAllocAnyInstr(size_t sz, emitAttr opsz)
     // the prolog/epilog placeholder groups ARE generated in order, and are
     // re-used. But generating additional groups would not work.
     if (emitComp->compStressCompile(Compiler::STRESS_EMITTER, 1) && emitCurIGinsCnt && !emitIGisInProlog(emitCurIG) &&
-        !emitIGisInEpilog(emitCurIG) && !emitCurIG->endsWithAlignInstr()
+        !emitIGisInPreProlog(emitCurIG) && !emitIGisInEpilog(emitCurIG) && !emitCurIG->endsWithAlignInstr()
 #if defined(FEATURE_EH_FUNCLETS)
         && !emitIGisInFuncletProlog(emitCurIG) && !emitIGisInFuncletEpilog(emitCurIG)
 #endif // FEATURE_EH_FUNCLETS
@@ -1465,7 +1465,8 @@ void* emitter::emitAllocAnyInstr(size_t sz, emitAttr opsz)
     //     When nopSize is odd we misalign emitCurIGsize
     //
     if (!emitComp->opts.jitFlags->IsSet(JitFlags::JIT_FLAG_PREJIT) && !emitInInstrumentation &&
-        !emitIGisInProlog(emitCurIG) && // don't do this in prolog or epilog
+        !emitIGisInPreProlog(emitCurIG) && // don't do this in prolog or epilog
+        !emitIGisInProlog(emitCurIG) &&
         !emitIGisInEpilog(emitCurIG) &&
         emitRandomNops // sometimes we turn off where exact codegen is needed (pinvoke inline)
         )
