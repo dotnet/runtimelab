@@ -395,7 +395,10 @@ bool IsOleAutDispImplRequiredForClass(MethodTable *pClass)
 //--------------------------------------------------------------------------
 extern "C" PCODE ComPreStubWorker(ComPrestubMethodFrame *pPFrame, UINT64 *pErrorReturn)
 {
-    CONTRACT (PCODE)
+    PCODE retAddr = NULL;
+    ENSURE_ON_OS_THREAD();
+
+    CONTRACT_VOID
     {
         NOTHROW;
         GC_TRIGGERS;
@@ -407,7 +410,6 @@ extern "C" PCODE ComPreStubWorker(ComPrestubMethodFrame *pPFrame, UINT64 *pError
     CONTRACT_END;
 
     HRESULT hr = S_OK;
-    PCODE retAddr = NULL;
 
     BEGIN_ENTRYPOINT_VOIDRET;
 
@@ -602,8 +604,9 @@ extern "C" PCODE ComPreStubWorker(ComPrestubMethodFrame *pPFrame, UINT64 *pError
 Exit:
 
     END_ENTRYPOINT_VOIDRET;
-
-    RETURN retAddr;
+    RETURN;
+    END_ENSURE_ON_OS_THREAD();
+    return retAddr;
 }
 
 FORCEINLINE void CPListRelease(CQuickArray<ConnectionPoint*>* value)

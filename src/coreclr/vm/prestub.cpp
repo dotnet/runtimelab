@@ -1855,6 +1855,7 @@ static PCODE PreStubWorker_Preemptive(
 extern "C" PCODE STDCALL PreStubWorker(TransitionBlock* pTransitionBlock, MethodDesc* pMD)
 {
     PCODE pbRetVal = NULL;
+    ENSURE_ON_OS_THREAD();
 
     BEGIN_PRESERVE_LAST_ERROR;
 
@@ -1955,6 +1956,7 @@ extern "C" PCODE STDCALL PreStubWorker(TransitionBlock* pTransitionBlock, Method
 
     END_PRESERVE_LAST_ERROR;
 
+    END_ENSURE_ON_OS_THREAD();
     return pbRetVal;
 }
 
@@ -2364,6 +2366,7 @@ EXTERN_C PCODE STDCALL ExternalMethodFixupWorker(TransitionBlock * pTransitionBl
     //
 
     PCODE         pCode   = NULL;
+    ENSURE_ON_OS_THREAD();
 
     BEGIN_PRESERVE_LAST_ERROR;
 
@@ -2647,7 +2650,7 @@ EXTERN_C PCODE STDCALL ExternalMethodFixupWorker(TransitionBlock * pTransitionBl
     pEMFrame->Pop(CURRENT_THREAD);          // Pop the ExternalMethodFrame from the frame stack
 
     END_PRESERVE_LAST_ERROR;
-
+    END_ENSURE_ON_OS_THREAD();
     return pCode;
 }
 
@@ -3296,6 +3299,7 @@ PCODE DynamicHelperFixup(TransitionBlock * pTransitionBlock, TADDR * pCell, DWOR
 extern "C" SIZE_T STDCALL DynamicHelperWorker(TransitionBlock * pTransitionBlock, TADDR * pCell, DWORD sectionIndex, Module * pModule, INT frameFlags)
 {
     PCODE pHelper = NULL;
+    ENSURE_ON_OS_THREAD();
     SIZE_T result = NULL;
 
     STATIC_CONTRACT_THROWS;
@@ -3419,6 +3423,8 @@ extern "C" SIZE_T STDCALL DynamicHelperWorker(TransitionBlock * pTransitionBlock
 
     if (pHelper == NULL)
         *(SIZE_T *)((TADDR)pTransitionBlock + TransitionBlock::GetOffsetOfArgumentRegisters()) = result;
+
+    END_ENSURE_ON_OS_THREAD();
     return pHelper;
 }
 
