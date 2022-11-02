@@ -5823,6 +5823,7 @@ void MarshalStructViaILStubCode(PCODE pStubCode, void* pManagedData, void* pNati
 EXTERN_C LPVOID STDCALL NDirectImportWorker(NDirectMethodDesc* pMD)
 {
     LPVOID ret = NULL;
+    ENSURE_ON_OS_THREAD();
 
     BEGIN_PRESERVE_LAST_ERROR;
 
@@ -5876,6 +5877,7 @@ EXTERN_C LPVOID STDCALL NDirectImportWorker(NDirectMethodDesc* pMD)
     UNINSTALL_MANAGED_EXCEPTION_DISPATCHER;
 
     END_PRESERVE_LAST_ERROR;
+    END_ENSURE_ON_OS_THREAD();
 
     return ret;
 }
@@ -5887,6 +5889,7 @@ EXTERN_C LPVOID STDCALL NDirectImportWorker(NDirectMethodDesc* pMD)
 
 EXTERN_C void STDCALL VarargPInvokeStubWorker(TransitionBlock * pTransitionBlock, VASigCookie *pVASigCookie, MethodDesc *pMD)
 {
+    ENSURE_ON_OS_THREAD();
     BEGIN_PRESERVE_LAST_ERROR;
 
     STATIC_CONTRACT_THROWS;
@@ -5913,10 +5916,12 @@ EXTERN_C void STDCALL VarargPInvokeStubWorker(TransitionBlock * pTransitionBlock
     pFrame->Pop(CURRENT_THREAD);
 
     END_PRESERVE_LAST_ERROR;
+    END_ENSURE_ON_OS_THREAD();
 }
 
 EXTERN_C void STDCALL GenericPInvokeCalliStubWorker(TransitionBlock * pTransitionBlock, VASigCookie * pVASigCookie, PCODE pUnmanagedTarget)
 {
+    ENSURE_ON_OS_THREAD();
     BEGIN_PRESERVE_LAST_ERROR;
 
     STATIC_CONTRACT_THROWS;
@@ -5942,6 +5947,7 @@ EXTERN_C void STDCALL GenericPInvokeCalliStubWorker(TransitionBlock * pTransitio
     pFrame->Pop(CURRENT_THREAD);
 
     END_PRESERVE_LAST_ERROR;
+    END_ENSURE_ON_OS_THREAD();
 }
 
 PCODE GetILStubForCalli(VASigCookie *pVASigCookie, MethodDesc *pMD)
