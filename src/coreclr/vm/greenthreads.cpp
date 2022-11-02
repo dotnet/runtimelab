@@ -25,7 +25,6 @@ struct GreenThreadData
     Frame* pFrameInGreenThread;
     Frame* pFrameInOSThread;
     GreenThreadStackList *pStackListCurrent;
-    bool inGreenThread;
     bool greenThreadOnStack;
     SuspendedGreenThread* suspendedGreenThread;
 };
@@ -36,6 +35,11 @@ extern SuspendedGreenThread green_tail = {};
 thread_local GreenThreadData t_greenThread;
 
 void *TransitionToOSThreadAndCallMalloc(size_t memoryToAllocate);
+
+extern "C"
+{
+    thread_local bool t_inGreenThread;
+}
 
 uint8_t* AlignDown(uint8_t* address, size_t alignValue)
 {
@@ -59,8 +63,8 @@ extern "C" uintptr_t AllocateMoreStackHelper(int argumentStackSize, void* stackP
     uint8_t *newArgsLocation;
     if (argumentStackSize < 0)
     {
-        assert(t_greenThread.inGreenThread);
-        t_greenThread.inGreenThread = false;
+        assert(t_inGreenThread);
+        t_inGreenThread = false;
 
         argumentStackSize = -(argumentStackSize + 1);
         newArgsLocation = AlignDown(t_greenThread.osStackCurrent - (stackSizeOfMoreStackFunction + frameOffsetMoreStackFunction + sizeOfShadowStore + sizeof(void*) + argumentStackSize), 16);
@@ -85,11 +89,11 @@ extern "C" uintptr_t AllocateMoreStackHelper(int argumentStackSize, void* stackP
         if (pCurrentStackSegment != NULL)
         {
             pNewStackSegment = pCurrentStackSegment->next;
-            assert(t_greenThread.inGreenThread);
+            assert(t_inGreenThread);
         }
         else
         {
-            t_greenThread.inGreenThread = true;
+            t_inGreenThread = true;
         }
 
         if (pNewStackSegment == NULL)
@@ -152,7 +156,7 @@ extern "C" uintptr_t FirstFrameInGreenThread(TransitionHelperFunction functionTo
 extern "C" uintptr_t FirstFrameInGreenThreadCpp(TransitionHelperFunction functionToExecute, TransitionHelperStruct* param)
 {
     GetThread()->SetExecutingOnAltStack();
-    assert(t_greenThread.inGreenThread);
+    assert(t_inGreenThread);
 
     uintptr_t result = param->function(param->param);
     t_greenThread.greenThreadStackCurrent = NULL;
@@ -185,7 +189,7 @@ void FreeGreenThreadStackList(GreenThreadStackList* pStackList)
 
 SuspendedGreenThread* ProduceSuspendedGreenThreadStruct(GreenThread* pGreenThread)
 {
-    if (t_greenThread.inGreenThread)
+    if (t_inGreenThread)
     {
         // This is a suspension scenario
         SuspendedGreenThread* pNewSuspendedThread = t_greenThread.suspendedGreenThread;
@@ -193,7 +197,7 @@ SuspendedGreenThread* ProduceSuspendedGreenThreadStruct(GreenThread* pGreenThrea
         pNewSuspendedThread->greenThreadFrame = t_greenThread.pFrameInGreenThread;
         pNewSuspendedThread->pGreenThread = pGreenThread;
         pGreenThread->m_currentThreadObj = NULL;
-        t_greenThread.inGreenThread = false;
+        t_inGreenThread = false;
 
         CleanGreenThreadState();
         return pNewSuspendedThread;
@@ -214,7 +218,7 @@ SuspendedGreenThread* GreenThread_StartThread(TakesOneParam functionToExecute, u
     if (t_greenThread.greenThreadOnStack)
         __debugbreak();
 
-    if (t_greenThread.inGreenThread)
+    if (t_inGreenThread)
         __debugbreak();
 
     GreenThread* pGreenThread = new GreenThread();
@@ -240,7 +244,7 @@ SuspendedGreenThread* GreenThread_StartThread(TakesOneParam functionToExecute, u
     GetThread()->SetActiveThreadBase(pGreenThread);
     pGreenThread->m_currentThreadObj = GetThread();
 
-    assert(t_greenThread.inGreenThread == false);
+    assert(t_inGreenThread == false);
     t_greenThread.greenThreadOnStack = true;
     GreenThread_StartThreadHelper((uintptr_t)FirstFrameInGreenThread, &detailsAboutWhatToCall);
     t_greenThread.greenThreadOnStack = false;
@@ -263,7 +267,7 @@ uintptr_t TransitionToOSThread(TakesOneParam functionToExecute, uintptr_t param)
     TransitionHelperStruct detailsAboutWhatToCall;
     detailsAboutWhatToCall.function = functionToExecute;
     detailsAboutWhatToCall.param = param;
-    if (!t_greenThread.inGreenThread)
+    if (!t_inGreenThread)
         __debugbreak();
 
     uintptr_t result = TransitionToOSThreadHelper((uintptr_t)FirstFrameInOSThread, &detailsAboutWhatToCall);
@@ -276,7 +280,7 @@ void TransitionToOSThread(TakesOneParamNoReturn functionToExecute, uintptr_t par
     TransitionHelperStruct detailsAboutWhatToCall;
     detailsAboutWhatToCall.function = (TakesOneParam)functionToExecute;
     detailsAboutWhatToCall.param = param;
-    if (!t_greenThread.inGreenThread)
+    if (!t_inGreenThread)
         __debugbreak();
 
 
@@ -285,7 +289,7 @@ void TransitionToOSThread(TakesOneParamNoReturn functionToExecute, uintptr_t par
 
 void CallOnOSThread(TakesOneParamNoReturn functionToExecute, uintptr_t param)
 {
-    if (!t_greenThread.inGreenThread)
+    if (!t_inGreenThread)
         functionToExecute(param);
     else
         TransitionToOSThread(functionToExecute, param);
@@ -308,7 +312,7 @@ uintptr_t GreenThread_Yield() // Attempt to yield out of green thread. If the yi
     if (!t_greenThread.greenThreadOnStack)
         __debugbreak();
 
-    if (!t_greenThread.inGreenThread)
+    if (!t_inGreenThread)
         return 0;
     
     {
@@ -359,7 +363,7 @@ uintptr_t GreenThread_Yield() // Attempt to yield out of green thread. If the yi
 
 bool GreenThread_IsGreenThread()
 {
-    return t_greenThread.inGreenThread;
+    return t_inGreenThread;
 }
 
 extern "C" uint8_t* GetResumptionStackPointerAndSaveOSStackPointer(StackRange* pOSStackRange, uint8_t* rbpFromOSThreadBeforeResume)
@@ -379,8 +383,8 @@ extern "C" uint8_t* GetResumptionStackPointerAndSaveOSStackPointer(StackRange* p
     *savedRBPValueAddress = savedRBPValue;
     *savedRBXValueAddress = savedRBXValue;
 
-    assert(t_greenThread.inGreenThread == false);
-    t_greenThread.inGreenThread = true;
+    assert(t_inGreenThread == false);
+    t_inGreenThread = true;
 
     GetThread()->SetExecutingOnAltStack();
     t_greenThread.osStackRange = *pOSStackRange;
@@ -397,7 +401,7 @@ SuspendedGreenThread* GreenThread_ResumeThread(SuspendedGreenThread* pSuspendedT
 {
     green_thread_yield_return_value = yieldReturnValue;
 
-    if (t_greenThread.inGreenThread)
+    if (t_inGreenThread)
         __debugbreak();
     
     if (t_greenThread.greenThreadOnStack)
@@ -429,12 +433,12 @@ SuspendedGreenThread* GreenThread_ResumeThread(SuspendedGreenThread* pSuspendedT
 
 extern "C" void End_More_Thread_Bookeeping()
 {
-    if (t_greenThread.inGreenThread)
+    if (t_inGreenThread)
     {
         if (t_greenThread.pStackListCurrent->prev == NULL)
         {
             // We should only hit this path when a green thread is finishing
-            t_greenThread.inGreenThread = false;
+            t_inGreenThread = false;
         }
         else
         {
@@ -445,7 +449,7 @@ extern "C" void End_More_Thread_Bookeeping()
     else
     {
         // This is the return from a transition to an OS thread.
-        t_greenThread.inGreenThread = true;
+        t_inGreenThread = true;
     }
 }
 
@@ -468,7 +472,7 @@ extern "C" void TransitionToOSThreadHelper2();
 HCIMPL2_RAW(void*, JIT_GreenThreadTransition, void* fptr, uintptr_t stackSize)
 {
 #ifdef FEATURE_GREENTHREADS
-    if (t_greenThread.inGreenThread)
+    if (t_inGreenThread)
     {
         t_greenThreadTransitionData.fptr = fptr;
         t_greenThreadTransitionData.stacksize = (uintptr_t)((-(intptr_t)stackSize) - 1);
