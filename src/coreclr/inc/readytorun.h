@@ -410,6 +410,8 @@ enum ReadyToRunHelper
 
     // Helper for unmanaged calls to transition off of the green thread onto an OS thread
     READYTORUN_HELPER_GreenThreadTransition       = 0x115,
+    // Helper for getting more stack on a green thread
+    READYTORUN_HELPER_GreenThreadMoreStack        = 0x116,
 };
 
 #include "readytoruninstructionset.h"

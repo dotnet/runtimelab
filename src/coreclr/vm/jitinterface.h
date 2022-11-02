@@ -250,6 +250,8 @@ extern "C" FCDECL2(VOID, JIT_WriteBarrier_Callable, Object **dst, Object *ref);
 extern "C" FCDECL1(void, JIT_InternalThrow, unsigned exceptNum);
 extern "C" FCDECL1(void*, JIT_InternalThrowFromHelper, unsigned exceptNum);
 
+extern "C" FCDECL0(void, JIT_GreenThreadMoreStack);
+
 #ifdef TARGET_AMD64
 
 
