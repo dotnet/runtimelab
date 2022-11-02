@@ -996,8 +996,7 @@ NESTED_ENTRY JIT_GreenThreadMoreStack, _TEXT
     mov r10, [r10 + r11 * 8]
     mov r11d, SECTIONREL t_inGreenThread
     add r10, r11
-    mov r10b, [rax]
-    cmp r10, 0
+    cmp byte ptr[r10], 0
     jne JumpToMoreStack
     ret
 JumpToMoreStack:
