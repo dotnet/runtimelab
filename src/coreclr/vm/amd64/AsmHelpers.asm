@@ -984,8 +984,23 @@ NESTED_ENTRY TransitionToOSThreadHelper2, _TEXT
     jmp rax
 NESTED_END TransitionToOSThreadHelper2, _TEXT
 
+
+EXTERN t_inGreenThread:DWORD
+
 ; This function is called with a misaligned stack, and the amount of needed stack space in the RAX register  
+; If not running on a green thread, we shouldn't actually do anything
 NESTED_ENTRY JIT_GreenThreadMoreStack, _TEXT
+    ; Get Address of t_inGreenThread
+    mov r11d, [_tls_index]
+    mov r10, gs:[_tls_array]
+    mov r10, [r10 + r11 * 8]
+    mov r11d, SECTIONREL t_inGreenThread
+    add r10, r11
+    mov r10b, [rax]
+    cmp r10, 0
+    jne JumpToMoreStack
+    ret
+JumpToMoreStack:
     pop r11  ; explicitly passing the return address as a continuation in r11
     alloc_stack     28h
     END_PROLOGUE
