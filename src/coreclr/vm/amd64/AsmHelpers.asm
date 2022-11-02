@@ -705,9 +705,16 @@ extern End_More_Thread_Bookeeping:proc
 
 ;
 ; Called from a function prolog (with argument registers holding current state)
-; RAX holds the size of the calling stack frame
+; RAX holds the size of the calling stack frame (argument stack size)
+; Argument needed stack size register means...  
+;    If negative, then this is a transfer to the native stack, and the argument stack to copy is computed by (-argStackSize + 1)
+;    OR this is a request for more stack size on the green thread.
+;        Lower 26 bits is argument size
+;        The 5 bits are minimum stack size for the new stack which repesent a power of 2 for the new stack size)
+;        The minimum stack size allocated will be 2KB today
+;
+; R11 will be preserved like an argument register into the call with more stack
 ; Provides a guarantee of at least 2KB of stack
-; TODO Make another helper for cases where lots of stack are needed
 ; The prologue of this function is duplicated for the ResumeSuspendedThreadHelper2 function
 ;
 NESTED_ENTRY _more_stack, _TEXT
@@ -721,6 +728,7 @@ NESTED_ENTRY _more_stack, _TEXT
         ;
         ; Save integer parameter registers.
         ;
+        save_reg_postrsp    r11, 68h
         save_reg_postrsp    rcx, 70h
         save_reg_postrsp    rdx, 78h
         save_reg_postrsp    r8,  80h
@@ -754,6 +762,7 @@ NESTED_ENTRY _more_stack, _TEXT
         ;
         ; Restore parameter registers
         ;
+        mov             r11, [rsp + 68h]
         mov             rcx, [rsp + 70h]
         mov             rdx, [rsp + 78h]
         mov             r8,  [rsp + 80h]
@@ -886,6 +895,7 @@ NESTED_ENTRY ResumeSuspendedThreadHelper2, _TEXT
         ;
         ; Save integer parameter registers.
         ;
+        save_reg_postrsp    r11, 68h
         save_reg_postrsp    rcx, 70h
         save_reg_postrsp    rdx, 78h
         save_reg_postrsp    r8,  80h
@@ -973,6 +983,18 @@ NESTED_ENTRY TransitionToOSThreadHelper2, _TEXT
     mov rax, [r10] ; load function pointer
     jmp rax
 NESTED_END TransitionToOSThreadHelper2, _TEXT
+
+; This function is called with a misaligned stack, and the amount of needed stack space in the RAX register  
+NESTED_ENTRY JIT_GreenThreadMoreStack, _TEXT
+    pop r11  ; explicitly passing the return address as a continuation in r11
+    alloc_stack     28h
+    END_PROLOGUE
+    call _more_stack
+    add rsp, 28h
+    ret
+    jmp r11
+NESTED_END JIT_GreenThreadMoreStack, _TEXT
+
 
 endif ; FEATURE_GREENTHREADS
 

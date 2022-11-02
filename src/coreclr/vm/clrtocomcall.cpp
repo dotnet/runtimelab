@@ -686,6 +686,9 @@ UINT32 CLRToCOMLateBoundWorker(
 /*static*/
 UINT32 STDCALL CLRToCOMWorker(TransitionBlock * pTransitionBlock, ComPlusCallMethodDesc * pMD)
 {
+    UINT32 returnValue = 0;
+
+    ENSURE_ON_OS_THREAD();
     CONTRACTL
     {
         THROWS;
@@ -696,7 +699,6 @@ UINT32 STDCALL CLRToCOMWorker(TransitionBlock * pTransitionBlock, ComPlusCallMet
     }
     CONTRACTL_END;
 
-    UINT32 returnValue = 0;
 
     // This must happen before the UnC handler is setup.  Otherwise, an exception will
     // cause the UnC handler to pop this frame, leaving a GC hole a mile wide.
@@ -748,6 +750,7 @@ UINT32 STDCALL CLRToCOMWorker(TransitionBlock * pTransitionBlock, ComPlusCallMet
 
     pFrame->Pop(CURRENT_THREAD);
 
+    END_ENSURE_ON_OS_THREAD();
     return returnValue;
 }
 

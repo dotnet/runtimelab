@@ -11,6 +11,11 @@ void CallOnOSThread(TakesOneParamNoReturn functionToExecute, uintptr_t param)
 {
     functionToExecute(param);
 }
+
+FCIMPL0(void, JIT_GreenThreadMoreStack)
+{
+}
+FCIMPLEND
 #else // FEATURE_GREENTHREADS
 struct GreenThreadData
 {
@@ -63,7 +68,14 @@ extern "C" uintptr_t AllocateMoreStackHelper(int argumentStackSize, void* stackP
     }
     else
     {
-        int stackSizeNeeded = 0x200000; // Hard code to 800KB for now. ... avoids dealing with actual segment overflows and GC stack walks and such.
+        // Top 6 bits of argumentStackSize is used to compute the stackSizeNeeded
+        int stackSizeNeededSelector = argumentStackSize >> 26;
+
+        argumentStackSize = argumentStackSize & 0x3FFFFFF; // Lower 26 bits are the argument stack size
+                                                           // NOTE: This is putting a 64MB limit on argument size. I think this is OK.
+        int stackSizeNeeded = 1 << stackSizeNeededSelector;
+
+        stackSizeNeeded = max(stackSizeNeeded, 0x200000);  // Hard code to 800KB for now. ... avoids dealing with actual segment overflows and GC stack walks and such.
 
         int sizeOfRedZone = 0x1000;
 
