@@ -91,6 +91,9 @@ VPTR_CLASS(ExceptionFilterFrame)
 #ifdef _DEBUG
 VPTR_CLASS(AssumeByrefFromJITStack)
 #endif
+#ifdef FEATURE_GREENTHREADS
+VPTR_CLASS(GreenThreadFrame)
+#endif
 
 #ifdef DEBUGGING_SUPPORTED
 VPTR_CLASS(Debugger)
