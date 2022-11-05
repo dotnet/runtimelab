@@ -2765,35 +2765,11 @@ void Llvm::lowerFieldOfDependentlyPromotedStruct(GenTree* node)
                 node->gtFlags |= GTF_VAR_USEASG;
             }
         }
-        else if (varDsc->lvPromoted && _compiler->lvaGetPromotionType(varDsc) == Compiler::PROMOTION_TYPE_INDEPENDENT)
+        else if (_compiler->lvaGetPromotionType(varDsc) == Compiler::PROMOTION_TYPE_INDEPENDENT)
         {
-            for (unsigned index = 0; index < varDsc->lvFieldCnt; index++)
+            if (varDsc->CanBeReplacedWithItsField(_compiler))
             {
-                if (index > 0)
-                {
-                    // TODO-LLVM: doesn't look like this can happen or makes sense, assert?
-                    failFunctionCompilation();
-                }
-
-                unsigned   fieldLclNum = varDsc->lvFieldLclStart + index;
-                LclVarDsc* fieldVarDsc = _compiler->lvaGetDesc(fieldLclNum);
-
-                if (canStoreLocalOnLlvmStack(fieldVarDsc))
-                {
-                    if (varDsc->lvFldOffset + offset != 0)
-                    {
-                        // TODO-LLVM: GT_ADD, etc. ?  But we never seem to come here, what happens if the promoted struct/field is not the first field?
-                        failFunctionCompilation();
-                    }
-
-                    lclVar->SetLclNum(fieldLclNum);
-                    node->ChangeType(fieldVarDsc->TypeGet());
-                }
-                else
-                {
-                    // TODO-LLVM: place on shadow stack
-                    failFunctionCompilation();
-                }
+                failFunctionCompilation();
             }
         }
     }
@@ -2887,18 +2863,10 @@ void Llvm::Lower()
     for (unsigned lclNum = 0; lclNum < _compiler->lvaCount; lclNum++)
     {
         LclVarDsc* varDsc = _compiler->lvaGetDesc(lclNum);
-        if (!canStoreLocalOnLlvmStack(varDsc))
-        {
-            locals.push_back(varDsc);
-            if (varDsc->lvIsParam)
-            {
-                localsParamCount++;
-            }
-        }
 
         if (varDsc->lvIsParam)
         {
-            if (_compiler->lvaGetPromotionType(varDsc) == Compiler::lvaPromotionType::PROMOTION_TYPE_INDEPENDENT)
+            if (_compiler->lvaGetPromotionType(varDsc) == Compiler::PROMOTION_TYPE_INDEPENDENT)
             {
                 for (unsigned index = 0; index < varDsc->lvFieldCnt; index++)
                 {
@@ -2926,7 +2894,7 @@ void Llvm::Lower()
                 varDsc->lvFieldLclStart = BAD_VAR_NUM;
                 varDsc->lvFieldCnt      = 0;
             }
-            else if (_compiler->lvaGetPromotionType(varDsc) == Compiler::lvaPromotionType::PROMOTION_TYPE_DEPENDENT)
+            else if (_compiler->lvaGetPromotionType(varDsc) == Compiler::PROMOTION_TYPE_DEPENDENT)
             {
                 /* dependent promotion, just mark fields as not lvIsParam */
                 for (unsigned index = 0; index < varDsc->lvFieldCnt; index++)
@@ -2936,15 +2904,27 @@ void Llvm::Lower()
                     fieldVarDsc->lvIsParam = false;
                 }
             }
+        }
 
-            if (!canStoreLocalOnLlvmStack(varDsc))
+        if (!canStoreLocalOnLlvmStack(varDsc))
+        {
+            if (_compiler->lvaGetPromotionType(varDsc) == Compiler::PROMOTION_TYPE_INDEPENDENT)
             {
+                // The individual fields will placed on the shadow stack.
+                continue;
+            }
+            if (_compiler->lvaIsFieldOfDependentlyPromotedStruct(varDsc))
+            {
+                // The fields will be referenced through the parent.
+                continue;
+            }
+
+            locals.push_back(varDsc);
+            if (varDsc->lvIsParam)
+            {
+                localsParamCount++;
                 varDsc->lvIsParam = false;
             }
-        }
-        else if (varDsc->lvPromoted && _compiler->lvaGetPromotionType(varDsc) == Compiler::PROMOTION_TYPE_INDEPENDENT)
-        {
-            
         }
     }
 
