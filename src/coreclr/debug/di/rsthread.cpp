@@ -2264,6 +2264,10 @@ HRESULT CordbThread::CreateStackWalk(ICorDebugStackWalk ** ppStackWalk)
     FAIL_IF_NEUTERED(this);
     ATT_REQUIRE_STOPPED_MAY_FAIL(GetProcess());
 
+    // TODO: AndrewAu, It is observed that sometimes a thread was cached with the wrong
+    // Frame, but why?
+    GetProcess()->ForceDacFlush();
+
     VALIDATE_POINTER_TO_OBJECT(ppStackWalk, ICorDebugStackWalk **);
 
     HRESULT hr = S_OK;
