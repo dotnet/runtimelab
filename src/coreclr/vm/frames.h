@@ -234,6 +234,9 @@ FRAME_TYPE_NAME(ExceptionFilterFrame)
 #if defined(_DEBUG)
 FRAME_TYPE_NAME(AssumeByrefFromJITStack)
 #endif // _DEBUG
+#ifdef FEATURE_GREENTHREADS
+FRAME_TYPE_NAME(GreenThreadFrame)
+#endif // FEATURE_GREENTHREADS
 
 #undef FRAME_ABSTRACT_TYPE_NAME
 #undef FRAME_TYPE_NAME
@@ -3121,6 +3124,20 @@ private:
 }; //AssumeByrefFromJITStack
 
 #endif //_DEBUG
+
+#ifdef FEATURE_GREENTHREADS
+class GreenThreadFrame : public Frame
+{
+    VPTR_VTABLE_CLASS(GreenThreadFrame, Frame)
+public:
+    GreenThreadFrame()
+    {
+    }
+
+    // Keep as last entry in class
+    DEFINE_VTABLE_GETTER_AND_DTOR(GreenThreadFrame)
+};
+#endif
 
 //-----------------------------------------------------------------------------
 // FrameWithCookie is used to declare a Frame in source code with a cookie

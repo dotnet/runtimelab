@@ -302,6 +302,10 @@ HRESULT DacDbiInterfaceImpl::CheckContext(VMPTR_Thread       vmThread,
         return S_OK;
     }
 
+#ifndef FEATURE_GREENTHREADS
+
+    // TODO, AndrewAu, ideally, we should skip this check only if we knew this is currently
+    // a green thread, but disabling it always will suffice, it is currently only used in asserts
     if (!g_fSkipStackCheckInit)
     {
         g_fSkipStackCheck = (CLRConfig::GetConfigValue(CLRConfig::UNSUPPORTED_DbgSkipStackCheck) != 0);
@@ -324,6 +328,8 @@ HRESULT DacDbiInterfaceImpl::CheckContext(VMPTR_Thread       vmThread,
             return CORDBG_E_NON_MATCHING_CONTEXT;
         }
     }
+
+#endif //FEATURE_GREENTHREADS
 
     return S_OK;
 }
