@@ -2329,7 +2329,7 @@ void Llvm::ConvertShadowStackLocalNode(GenTreeLclVarCommon* node)
     LclVarDsc* varDsc = _compiler->lvaGetDesc(lclVar->GetLclNum());
     genTreeOps oper = node->OperGet();
 
-    if (!canStoreLocalOnLlvmStack(varDsc))
+    if (!canStoreLocalOnLlvmStack(varDsc) && !independentCanBeReplacedWithItsField(varDsc))
     {
         // TODO-LLVM: if the offset == 0, just GT_STOREIND at the shadowStack
         unsigned offsetVal = varDsc->GetStackOffset() + node->GetLclOffs();
@@ -2689,9 +2689,30 @@ void Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
     }
 }
 
+bool Llvm::independentCanBeReplacedWithItsField(LclVarDsc* addrVarDsc)
+{
+    return _compiler->lvaGetPromotionType(addrVarDsc) == Compiler::PROMOTION_TYPE_INDEPENDENT &&
+           addrVarDsc->CanBeReplacedWithItsField(_compiler);
+}
+
 void Llvm::lowerStoreLcl(GenTreeLclVarCommon* storeLclNode)
 {
     LclVarDsc* addrVarDsc = _compiler->lvaGetDesc(storeLclNode->GetLclNum());
+
+    if (independentCanBeReplacedWithItsField(addrVarDsc))
+    {
+        ClassLayout* layout      = addrVarDsc->GetLayout();
+        GenTree*     data        = storeLclNode->gtGetOp1();
+        var_types    addrVarType = addrVarDsc->TypeGet();
+
+        storeLclNode->SetOper(GT_LCL_VAR_ADDR);
+        storeLclNode->ChangeType(TYP_I_IMPL);
+        storeLclNode->SetLclNum(addrVarDsc->lvFieldLclStart + 0);
+
+        GenTree* storeObjNode = new (_compiler, GT_STORE_OBJ) GenTreeObj(addrVarType, storeLclNode, data, layout);
+
+        CurrentRange().InsertAfter(storeLclNode, storeObjNode);
+    }
 
     if (storeLclNode->TypeIs(TYP_STRUCT))
     {
@@ -2756,20 +2777,13 @@ void Llvm::lowerFieldOfDependentlyPromotedStruct(GenTree* node)
             }
 
             lclVar->SetLclNum(varDsc->lvParentLcl);
-            lclVar->AsLclFld()->SetLclOffs(varDsc->lvFldOffset + offset );
+            lclVar->AsLclFld()->SetLclOffs(varDsc->lvFldOffset + offset);
 
             if ((node->gtFlags & GTF_VAR_DEF) != 0)
             {
                 // Conservatively assume these become partial.
                 // TODO-ADDR: only apply to stores be precise.
                 node->gtFlags |= GTF_VAR_USEASG;
-            }
-        }
-        else if (_compiler->lvaGetPromotionType(varDsc) == Compiler::PROMOTION_TYPE_INDEPENDENT)
-        {
-            if (varDsc->CanBeReplacedWithItsField(_compiler))
-            {
-                failFunctionCompilation();
             }
         }
     }
@@ -2783,6 +2797,11 @@ void Llvm::lowerToShadowStack()
         for (GenTree* node : CurrentRange())
         {
             lowerFieldOfDependentlyPromotedStruct(node);
+
+            if (node->OperIs(GT_STORE_LCL_VAR))
+            {
+                lowerStoreLcl(node->AsLclVarCommon());
+            }
 
             if (node->OperIsLocal() || node->OperIsLocalAddr())
             {
@@ -2836,10 +2855,6 @@ void Llvm::lowerToShadowStack()
             {
                 // Indicates that this local is to live on the LLVM frame, and will not participate in SSA.
                 _compiler->lvaGetDesc(node->AsLclVarCommon())->lvHasLocalAddr = 1;
-            }
-            else if (node->OperIs(GT_STORE_LCL_VAR))
-            {
-                lowerStoreLcl(node->AsLclVarCommon());
             }
         }
     }
