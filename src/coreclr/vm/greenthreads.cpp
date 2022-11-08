@@ -438,7 +438,7 @@ SuspendedGreenThread* GreenThread_ResumeThread(SuspendedGreenThread* pSuspendedT
     return ProduceSuspendedGreenThreadStruct(pGreenThread);
 }
 
-extern "C" void End_More_Thread_Bookeeping()
+extern "C" void End_More_Thread_Bookeeping(uint8_t* pStackLimitTransitioningFrom)
 {
     if (t_greenThread.inGreenThread)
     {
@@ -446,6 +446,11 @@ extern "C" void End_More_Thread_Bookeeping()
         {
             // We should only hit this path when a green thread is finishing
             t_greenThread.inGreenThread = false;
+
+            // The OS stack range may be inaccurate when handled as a normally restored value, as the OS can change it during chkstk or normal execution. Restore it to the last value found on return from an OS thread.
+            // This is a bit of a hack, as a few assembly instructions before this code is executed, we restore it to something that was set up on entrance to the morestack function.
+            _ASSERTE(pStackLimitTransitioningFrom >= t_greenThread.osStackRange.stackLimit);
+            ((uint8_t**)NtCurrentTeb())[2] = t_greenThread.osStackRange.stackLimit;
         }
         else
         {
@@ -457,6 +462,9 @@ extern "C" void End_More_Thread_Bookeeping()
     {
         // This is the return from a transition to an OS thread.
         t_greenThread.inGreenThread = true;
+
+        // The saved stack limit may be inaccurate due to OS stack changes(during chkstck and such). Replace the saved value
+        t_greenThread.osStackRange.stackLimit = pStackLimitTransitioningFrom;
     }
 }
 
