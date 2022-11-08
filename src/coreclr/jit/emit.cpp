@@ -1171,7 +1171,7 @@ void emitter::emitBegFN(bool hasFramePtr
 
     emitIGlist = emitIGlast = emitCurIG = ig = emitAllocIG();
 
-#if defined(TARGET_AMD64)
+#if defined(WINDOWS_AMD64_ABI)
     bool greenThreads = !emitComp->IsTargetAbi(CORINFO_NATIVEAOT_ABI);
     if (greenThreads)
     {
@@ -1179,7 +1179,7 @@ void emitter::emitBegFN(bool hasFramePtr
         emitPrologIG = ig = emitAllocAndLinkIG();
     }
     else
-#endif // !defined(TARGET_AMD64) || !greenThreads
+#endif // !defined(WINDOWS_AMD64_ABI) || !greenThreads
     {
         emitPrePrologIG = nullptr;
         emitPrologIG = ig;

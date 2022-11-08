@@ -6568,7 +6568,7 @@ void CodeGen::genGeneratePrologsAndEpilogs()
 
     gcInfo.gcResetForBB();
     genFnProlog();
-#if defined(TARGET_AMD64)
+#if defined(WINDOWS_AMD64_ABI)
     bool greenThreads = !compiler->IsTargetAbi(CORINFO_NATIVEAOT_ABI);
     if (greenThreads)
     {
@@ -6576,7 +6576,7 @@ void CodeGen::genGeneratePrologsAndEpilogs()
         // (Perhaps genFnProlog could call GenFnPreProlog to clean this up a bit?)
         genFnPreProlog();
     }
-#endif // defined(TARGET_AMD64)
+#endif // defined(WINDOWS_AMD64_ABI)
 
     // Generate all the prologs and epilogs.
     CLANG_FORMAT_COMMENT_ANCHOR;
