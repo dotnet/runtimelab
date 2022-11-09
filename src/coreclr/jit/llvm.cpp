@@ -2689,17 +2689,11 @@ void Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
     }
 }
 
-bool Llvm::independentCanBeReplacedWithItsField(LclVarDsc* addrVarDsc)
-{
-    return _compiler->lvaGetPromotionType(addrVarDsc) == Compiler::PROMOTION_TYPE_INDEPENDENT &&
-           addrVarDsc->CanBeReplacedWithItsField(_compiler);
-}
-
 void Llvm::lowerStoreLcl(GenTreeLclVarCommon* storeLclNode)
 {
     LclVarDsc* addrVarDsc = _compiler->lvaGetDesc(storeLclNode->GetLclNum());
 
-    if (independentCanBeReplacedWithItsField(addrVarDsc))
+    if (addrVarDsc->CanBeReplacedWithItsField(_compiler))
     {
         ClassLayout* layout      = addrVarDsc->GetLayout();
         GenTree*     data        = storeLclNode->gtGetOp1();

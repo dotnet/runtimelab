@@ -210,7 +210,6 @@ private:
     GenTreeCall::Use* lowerCallReturn(GenTreeCall* callNode, GenTreeCall::Use* lastArg);
     void lowerCallToShadowStack(GenTreeCall* callNode);
     void lowerToShadowStack();
-    bool independentCanBeReplacedWithItsField(LclVarDsc* addrVarDsc);
     void lowerStoreLcl(GenTreeLclVarCommon* storeLclNode);
     void lowerFieldOfDependentlyPromotedStruct(GenTree* node);
 
