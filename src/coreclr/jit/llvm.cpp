@@ -2329,7 +2329,7 @@ void Llvm::ConvertShadowStackLocalNode(GenTreeLclVarCommon* node)
     LclVarDsc* varDsc = _compiler->lvaGetDesc(lclVar->GetLclNum());
     genTreeOps oper = node->OperGet();
 
-    if (!canStoreLocalOnLlvmStack(varDsc) && !independentCanBeReplacedWithItsField(varDsc))
+    if (!canStoreLocalOnLlvmStack(varDsc))
     {
         // TODO-LLVM: if the offset == 0, just GT_STOREIND at the shadowStack
         unsigned offsetVal = varDsc->GetStackOffset() + node->GetLclOffs();
