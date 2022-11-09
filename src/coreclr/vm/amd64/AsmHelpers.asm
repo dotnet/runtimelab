@@ -723,11 +723,11 @@ NESTED_ENTRY _more_stack, _TEXT
         ;
         alloc_stack     0e8h ;; TODO This is overly large
 
-        mov             r10, rbp
 
         ;
         ; Save integer parameter registers.
         ;
+        save_reg_postrsp    r10, 60h
         save_reg_postrsp    r11, 68h
         save_reg_postrsp    rcx, 70h
         save_reg_postrsp    rdx, 78h
@@ -762,6 +762,7 @@ NESTED_ENTRY _more_stack, _TEXT
         ;
         ; Restore parameter registers
         ;
+        mov             r10, [rsp + 68h]
         mov             r11, [rsp + 68h]
         mov             rcx, [rsp + 70h]
         mov             rdx, [rsp + 78h]
@@ -781,10 +782,10 @@ NESTED_ENTRY _more_stack, _TEXT
         mov             rax, [rbp - 8h] ; Pull the new stack base
         mov             gs:[8h], rax ; Change stack base to new value
 
-        mov             r10, [rbp + 8] ; Get address that we are going to eventually return to
+        mov             rax, [rbp + 8] ; Get address that we are going to eventually return to
 
-        add             r10, 5 ; Skip the ret opcode and stack adjustment
-        call            r10 ; Call the core of the function with the new larger stack
+        add             rax, 5 ; Skip the ret opcode and stack adjustment
+        call            rax ; Call the core of the function with the new larger stack
 
         mov             rsp, rbx ; Bring back the old stack pointer
         lea             rbp, [rsp + 0e0h]
@@ -893,11 +894,10 @@ NESTED_ENTRY ResumeSuspendedThreadHelper2, _TEXT
         ;
         alloc_stack     0e8h ;; TODO This is overly large
 
-        mov             r10, rbp
-
         ;
         ; Save integer parameter registers.
         ;
+        save_reg_postrsp    r10, 60h
         save_reg_postrsp    r11, 68h
         save_reg_postrsp    rcx, 70h
         save_reg_postrsp    rdx, 78h
@@ -994,12 +994,16 @@ EXTERN t_inGreenThread:DWORD
 ; If not running on a green thread, we shouldn't actually do anything
 NESTED_ENTRY JIT_GreenThreadMoreStack, _TEXT
     ; Get Address of t_inGreenThread
+    push r10
+    push r11
     mov r11d, [_tls_index]
     mov r10, gs:[_tls_array]
     mov r10, [r10 + r11 * 8]
     mov r11d, SECTIONREL t_inGreenThread
     add r10, r11
     cmp byte ptr[r10], 0
+    pop r11
+    pop r10
     jne JumpToMoreStack
     ret
 JumpToMoreStack:
