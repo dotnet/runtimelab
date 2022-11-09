@@ -2710,6 +2710,7 @@ void Llvm::lowerStoreLcl(GenTreeLclVarCommon* storeLclNode)
         storeLclNode->SetLclNum(addrVarDsc->lvFieldLclStart);
 
         GenTree* storeObjNode = new (_compiler, GT_STORE_OBJ) GenTreeObj(addrVarType, storeLclNode, data, layout);
+        storeObjNode->gtFlags |= GTF_ASG;
 
         CurrentRange().InsertAfter(storeLclNode, storeObjNode);
     }
