@@ -89,7 +89,8 @@ extern "C" void registerLlvmCallbacks(void*       thisPtr,
                                       const CorInfoTypeWithMod(*_getArgTypeIncludingParameterized)(void*, CORINFO_SIG_INFO*, CORINFO_ARG_LIST_HANDLE, CORINFO_CLASS_HANDLE*),
                                       const CorInfoTypeWithMod(*_getParameterType)(void*, CORINFO_CLASS_HANDLE, CORINFO_CLASS_HANDLE*),
                                       const TypeDescriptor(*getTypeDescriptor)(void*, CORINFO_CLASS_HANDLE),
-                                      CORINFO_METHOD_HANDLE (*_getCompilerHelpersMethodHandle)(void*, const char*, const char*));
+                                      CORINFO_METHOD_HANDLE (*_getCompilerHelpersMethodHandle)(void*, const char*, const char*),
+                                      const uint32_t (*getInstanceFieldAlignment)(void*, CORINFO_CLASS_HANDLE));
 
 struct PhiPair
 {
@@ -150,6 +151,7 @@ private:
     void buildCnsDouble(GenTreeDblCon* node);
     void buildCnsInt(GenTree* node);
     void buildCnsLng(GenTree* node);
+    Value* buildFieldList(GenTreeFieldList* fieldList, Type* llvmType);
     void buildHelperFuncCall(GenTreeCall* call);
     llvm::FunctionType* buildHelperLlvmFunctionType(GenTreeCall* call, bool withShadowStack);
     void buildInd(GenTree* node, Value* ptr);
@@ -164,7 +166,6 @@ private:
     Value* buildUserFuncCall(GenTreeCall* call);
     void createAllocasForLocalsWithAddrOp();
     Value* castIfNecessary(Value* source, Type* targetType, llvm::IRBuilder<>* builder = nullptr);
-    Value* castToPointerToLlvmType(Value* address, llvm::Type* llvmType);
     Value* consumeValue(GenTree* node, llvm::Type* targetLlvmType);
     llvm::DILocation* createDebugFunctionAndDiLocation(struct DebugMetadata debugMetadata, unsigned int lineNo);
     GenTree* createStoreNode(var_types nodeType, GenTree* addr, GenTree* data, ClassLayout* structClassLayout = nullptr);
@@ -197,7 +198,6 @@ private:
     Value* getShadowStackForCallee();
     unsigned int getSpillOffsetAtIndex(unsigned int index, unsigned int offset);
     Value* getSsaLocalForPhi(unsigned lclNum, unsigned ssaNum);
-    Value* getShadowStackOffest(Value* shadowStack, unsigned int offset);
     unsigned int getTotalRealLocalOffset();
     unsigned getElementSize(CORINFO_CLASS_HANDLE fieldClassHandle, CorInfoType corInfoType);
     unsigned int getTotalLocalOffset();
@@ -211,6 +211,7 @@ private:
     void lowerCallToShadowStack(GenTreeCall* callNode);
     void lowerToShadowStack();
     void lowerStoreLcl(GenTreeLclVarCommon* storeLclNode);
+    void lowerFieldOfDependentlyPromotedStruct(GenTree* node);
 
     Value* mapGenTreeToValue(GenTree* genTree, Value* valueRef);
     bool needsReturnStackSlot(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd);
@@ -231,6 +232,7 @@ private:
 
     void buildLocalVarAddr(GenTreeLclVarCommon* lclVar);
     bool isLlvmFrameLocal(LclVarDsc* varDsc);
+    Value* gepOrAddr(Value* addr, uint32_t offset);
 
 public:
     Llvm(Compiler* pCompiler);
@@ -238,7 +240,7 @@ public:
     static void llvmShutdown();
     static bool needsReturnStackSlot(Compiler* compiler, GenTreeCall* callee);
 
-    void PlaceAndConvertShadowStackLocals();
+    void Lower();
     void Compile();
 };
 

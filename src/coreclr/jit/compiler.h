@@ -6088,6 +6088,7 @@ public:
     }
 
     bool compCanEncodePtrArgCntMax();
+    bool fgIsThrow(GenTree* tree);
 
 private:
     hashBv* fgOutgoingArgTemps;
@@ -6102,9 +6103,6 @@ private:
 #endif
 
     bool fgIsCommaThrow(GenTree* tree, bool forFolding = false);
-
-    bool fgIsThrow(GenTree* tree);
-
     bool fgInDifferentRegions(BasicBlock* blk1, BasicBlock* blk2);
     bool fgIsBlockCold(BasicBlock* block);
 
@@ -10121,8 +10119,12 @@ public:
     // Returns true if the method being compiled returns a value
     bool compMethodHasRetVal()
     {
+#if defined(TARGET_WASM)
+        return info.compRetType != TYP_VOID;
+#else
         return compMethodReturnsNativeScalarType() || compMethodReturnsRetBufAddr() ||
                compMethodReturnsMultiRegRetType();
+#endif // TARGET_WASM
     }
 
     // Returns true if the method requires a PInvoke prolog and epilog

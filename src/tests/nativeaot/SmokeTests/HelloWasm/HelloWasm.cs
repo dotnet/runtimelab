@@ -385,6 +385,8 @@ internal static class Program
 
         TestJitUseStruct();
 
+        TestUnsafe();
+
         TestReadByteArray();
 
         TestDoublePrint();
@@ -431,6 +433,50 @@ internal static class Program
         var res = JitUseStructProblem(&structWithStruct, structWithIndex);
 
         EndTest(res.Index == structWithIndex.Index && res.Value == structWithIndex.Value);
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private unsafe struct LandPatchData
+    {
+        public uint Index;
+        public uint Pointer;
+        public LandPatchData* Next;
+
+        public LandPatchData(uint index, uint ptr)
+        {
+            Index = index;
+            Pointer = ptr;
+            Next = null;
+        }
+    }
+
+    private static Dictionary<uint, LandPatchData> _landPatchPtrs;
+
+    private unsafe static void TestUnsafe()
+    {
+        StartTest("TestUnsafe");
+
+        uint key = 1;
+        _landPatchPtrs = new Dictionary<uint, LandPatchData>();
+        ref var data = ref CollectionsMarshal.GetValueRefOrNullRef(_landPatchPtrs, key);
+
+        if (Unsafe.IsNullRef(ref data))
+        {
+            
+        }
+
+        something();
+        // just testing if the compilation succeeds
+        EndTest(true);
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    struct Test { public uint A, B; }
+
+    unsafe static void something()
+    {
+        Span<byte> s = stackalloc byte[System.Runtime.CompilerServices.Unsafe.SizeOf<Test>()];
+        var xxx = System.Runtime.CompilerServices.Unsafe.AsPointer(ref MemoryMarshal.GetReference(s));
     }
 
     class ShortAndByte { internal short aShort; internal byte aByte; }

@@ -4202,7 +4202,7 @@ GenTreeCall* Compiler::fgMorphArgs(GenTreeCall* call)
         }
 #endif
 
-#if defined(TARGET_X86)
+#if defined(TARGET_X86) || defined(TARGET_WASM)
         if (isStructArg)
         {
             GenTree* lclNode = argx->OperIs(GT_LCL_VAR) ? argx : fgIsIndirOfAddrOfLocal(argx);

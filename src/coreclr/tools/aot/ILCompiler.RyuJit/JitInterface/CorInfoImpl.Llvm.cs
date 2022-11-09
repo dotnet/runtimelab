@@ -302,6 +302,15 @@ namespace Internal.JitInterface
             return (CorInfoTypeWithMod)corInfoType;
         }
 
+        [UnmanagedCallersOnly]
+        public static uint getInstanceFieldAlignment(IntPtr thisHandle, CORINFO_CLASS_STRUCT_* cls)
+        {
+            var _this = GetThis(thisHandle);
+            DefType type = (DefType)_this.HandleToObject(cls);
+
+            return (uint)type.InstanceFieldAlignment.AsInt;
+        }
+
         public struct TypeDescriptor
         {
             public uint FieldCount;
@@ -386,7 +395,8 @@ namespace Internal.JitInterface
             delegate* unmanaged<IntPtr, CORINFO_SIG_INFO*, CORINFO_ARG_LIST_STRUCT_*, CORINFO_CLASS_STRUCT_**, CorInfoTypeWithMod> getArgTypeIncludingParameterized,
             delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, CORINFO_CLASS_STRUCT_**, CorInfoTypeWithMod> getParameterType,
             delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, TypeDescriptor> getTypeDescriptor,
-            delegate* unmanaged<IntPtr, byte*, byte*, CORINFO_METHOD_STRUCT_*> getCompilerHelpersMethodHandle
+            delegate* unmanaged<IntPtr, byte*, byte*, CORINFO_METHOD_STRUCT_*> getCompilerHelpersMethodHandle,
+            delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, uint> getInstanceFieldAlignment
             );
 
         public void RegisterLlvmCallbacks(IntPtr corInfoPtr, string outputFileName, string triple, string dataLayout)
@@ -408,7 +418,8 @@ namespace Internal.JitInterface
                 &getArgTypeIncludingParameterized,
                 &getParameterType,
                 &getTypeDescriptor,
-                &getCompilerHelpersMethodHandle
+                &getCompilerHelpersMethodHandle,
+                &getInstanceFieldAlignment
             );
         }
 

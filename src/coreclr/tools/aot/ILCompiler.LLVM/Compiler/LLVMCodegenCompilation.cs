@@ -15,7 +15,6 @@ using LLVMSharp.Interop;
 using ILCompiler.LLVM;
 using Internal.JitInterface;
 using Internal.IL.Stubs;
-using Internal.TypeSystem.Ecma;
 
 namespace ILCompiler
 {
@@ -152,6 +151,7 @@ namespace ILCompiler
                     return;
                 }
 
+                
                 if (methodIL.GetExceptionRegions().Length == 0 && !_disableRyuJit)
                 {
                     var mangledName = NodeFactory.NameMangler.GetMangledMethodName(method).ToString();
@@ -163,7 +163,8 @@ namespace ILCompiler
                     corInfo.CompileMethod(methodCodeNodeNeedingCode);
                     methodCodeNodeNeedingCode.CompilationCompleted = true;
                     // TODO: delete this external function when old module is gone
-                    LLVMValueRef externFunc = ILImporter.GetOrCreateLLVMFunction(Module, mangledName, GetLLVMSignatureForMethod(sig, method.RequiresInstArg()));
+                    LLVMValueRef externFunc = ILImporter.GetOrCreateLLVMFunction(Module, mangledName,
+                        GetLLVMSignatureForMethod(sig, method.RequiresInstArg()));
                     externFunc.Linkage = LLVMLinkage.LLVMExternalLinkage;
 
                     ILImporter.GenerateRuntimeExportThunk(this, method, externFunc);

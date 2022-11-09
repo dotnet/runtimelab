@@ -106,7 +106,7 @@ CompPhaseNameMacro(PHASE_EMIT_GCEH,              "Emit GC+EH tables",           
 CompPhaseNameMacro(PHASE_POST_EMIT,              "Post-Emit",                      "POST-EMIT", false, -1, false)
 
 #ifdef TARGET_WASM
-CompPhaseNameMacro(PHASE_SHDWSTK_SETUP,          "LLVM Shadow Stack Setup",        "SHDWSTK-SETUP", false, -1, false)
+CompPhaseNameMacro(PHASE_LOWER_LLVM,             "LLVM Lowering",                  "LOWER-LLVM", false, -1, false)
 CompPhaseNameMacro(PHASE_BUILD_LLVM,             "Build LLVM",                     "BUILD-LLVM", false, -1, false)
 #endif
 

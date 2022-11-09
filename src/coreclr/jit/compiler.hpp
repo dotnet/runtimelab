@@ -597,6 +597,8 @@ inline bool isRegParamType(var_types type)
 {
 #if defined(TARGET_X86)
     return (type <= TYP_INT || type == TYP_REF || type == TYP_BYREF);
+#elif defined(TARGET_WASM)
+    return false;
 #else  // !TARGET_X86
     return true;
 #endif // !TARGET_X86
