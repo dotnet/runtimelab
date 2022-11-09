@@ -789,6 +789,9 @@ NESTED_ENTRY _more_stack, _TEXT
         mov             rsp, rbx ; Bring back the old stack pointer
         lea             rbp, [rsp + 0e0h]
 
+        mov             rcx, gs:[10h] ; Capture what the stack limit is (On transition to OS thread, this can change unexpectedly, really 
+                                      ;                                  we shouldn't need to capture this for the call to End_More_Thread_Bookeeping,
+                                      ;                                  but that is a bit tricky and not needed for this experiment)
         mov             r10, [rbp - 020h] ; Pull the old stack limit
         mov             gs:[10h], r10 ; Change stack limit to new value
         mov             r10, [rbp - 018h] ; Pull the old stack base
