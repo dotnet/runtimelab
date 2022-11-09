@@ -5542,6 +5542,8 @@ void CodeGen::genFnPreProlog()
     emit->emitIns_J(INS_ja, nullptr, 2);
     emit->emitIns_R_I(INS_mov, EA_4BYTE, REG_SCRATCH, encodedSizes);
     genEmitHelperCall(CORINFO_HELP_GREEN_THREAD_MORE_STACK, 0, EA_UNKNOWN);
+
+    emit->emitEndPreProlog();
 }
 #endif // defined(TARGET_AMD64)
 

@@ -15,6 +15,8 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 #pragma hdrstop
 #endif
 
+#pragma optimize("", off)
+
 #if defined(TARGET_AMD64)
 #ifdef UNIX_AMD64_ABI
 short Compiler::mapRegNumToDwarfReg(regNumber reg)
@@ -701,7 +703,7 @@ void Compiler::unwindReserveFuncHelper(FuncInfoDsc* func, bool isHotCode)
             }
             else
             {
-                func->unwindHeader.SizeOfProlog = 0;
+                func->unwindHeader.SizeOfProlog = 0; // GREEN THREADS This is probably wrong if there is a pre-prolog, but I don't have evidence that it breaks anything yet.
             }
             func->unwindHeader.CountOfUnwindCodes =
                 (BYTE)((sizeof(func->unwindCodes) - func->unwindCodeSlot) / sizeof(UNWIND_CODE));

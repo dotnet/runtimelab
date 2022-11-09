@@ -45,6 +45,7 @@ bool emitGenNoGCLst(Callback& cb);
 
 #if defined(TARGET_AMD64)
 void     emitBegPreProlog();
+void     emitEndPreProlog();
 #endif // defined(TARGET_AMD64)
 void     emitBegProlog();
 unsigned emitGetPrologOffsetEstimate();

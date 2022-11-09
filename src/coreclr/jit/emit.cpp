@@ -1664,6 +1664,52 @@ void emitter::emitBegPreProlog()
     emitPrevByrefRegs = RBM_NONE;
 }
 
+int UnwindCodeNodeSize(UNWIND_CODE code)
+{
+    int unwindCodeNodeSize = 1;
+    switch (code.UnwindOp)
+    {
+        case UWOP_ALLOC_LARGE:
+            if (code.OpInfo == 0)
+                unwindCodeNodeSize = 2;
+            else
+                unwindCodeNodeSize = 3;
+            break;
+
+        case UWOP_SAVE_XMM128:
+        case UWOP_SAVE_NONVOL:
+            unwindCodeNodeSize = 2;
+            break;
+
+        case UWOP_SAVE_NONVOL_FAR:
+        case UWOP_SAVE_XMM128_FAR:
+            unwindCodeNodeSize = 3;
+            break;
+    }
+    return unwindCodeNodeSize;
+}
+
+void emitter::emitEndPreProlog()
+{
+    auto prePrologSize = emitCurIGsize;
+    // Since the prolog was already created, we now need to update the unwind codes to account for the size of the preprolog
+
+    FuncInfoDsc* func = emitComp->funCurrentFunc();
+    assert(func->unwindHeader.CountOfUnwindCodes == 0); // Can't call this after unwindReserve
+
+    auto unwindCodeStart = (UNWIND_CODE*)&func->unwindCodes[func->unwindCodeSlot];
+    auto unwindCodeEnd = (UNWIND_CODE*)&func->unwindCodes[sizeof(func->unwindCodes)];
+
+    int unwindCodeNodeSize = 1;
+    for (auto unwindCodeCurrent = unwindCodeStart; unwindCodeCurrent != unwindCodeEnd; unwindCodeCurrent += UnwindCodeNodeSize(*unwindCodeCurrent))
+    {
+        uint8_t oldCodeOffset = unwindCodeCurrent->CodeOffset;
+        uint8_t newCodeOffset = (uint8_t)(oldCodeOffset + prePrologSize);
+        assert(newCodeOffset > oldCodeOffset); // I'm not sure if we can overflow here, but an assert should help
+        unwindCodeCurrent->CodeOffset = newCodeOffset;
+    }
+}
+
 #endif // defined(TARGET_AMD64)
 
 
