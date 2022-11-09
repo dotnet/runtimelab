@@ -167,7 +167,8 @@ extern "C" uintptr_t FirstFrameInGreenThreadCpp(TransitionHelperFunction functio
     uintptr_t result = param->function(param->param);
 
     {
-        // TODO: Pop()
+        GCX_COOP();
+        f.Pop(GetThread());
     }
 
     t_greenThread.greenThreadStackCurrent = NULL;
