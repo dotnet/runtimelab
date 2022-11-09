@@ -15,8 +15,6 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 #pragma hdrstop
 #endif
 
-#pragma optimize("", off)
-
 #if defined(TARGET_AMD64)
 #ifdef UNIX_AMD64_ABI
 short Compiler::mapRegNumToDwarfReg(regNumber reg)
