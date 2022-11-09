@@ -2701,9 +2701,10 @@ void Llvm::lowerStoreLcl(GenTreeLclVarCommon* storeLclNode)
 
         storeLclNode->SetOper(GT_LCL_VAR_ADDR);
         storeLclNode->ChangeType(TYP_I_IMPL);
-        storeLclNode->SetLclNum(addrVarDsc->lvFieldLclStart + 0);
+        storeLclNode->SetLclNum(addrVarDsc->lvFieldLclStart);
 
         GenTree* storeObjNode = new (_compiler, GT_STORE_OBJ) GenTreeObj(addrVarType, storeLclNode, data, layout);
+        storeObjNode->gtFlags |= GTF_ASG;
 
         CurrentRange().InsertAfter(storeLclNode, storeObjNode);
     }
