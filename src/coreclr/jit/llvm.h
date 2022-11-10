@@ -191,6 +191,10 @@ private:
     // |                                                   Lowering                                                   |
     // ================================================================================================================
 
+public:
+    void Lower();
+
+private:
     void populateLlvmArgNums();
     void lowerToShadowStack();
 
@@ -286,8 +290,6 @@ private:
 
 public:
     Llvm(Compiler* pCompiler);
-
-    void Lower();
 
     static void llvmShutdown();
     static bool needsReturnStackSlot(Compiler* compiler, GenTreeCall* callee);
