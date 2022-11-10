@@ -4249,7 +4249,7 @@ namespace Internal.IL
             }
             else
             {
-                eeType = GetEETypePointerForTypeDesc(methodType, true);
+                eeType = GetEETypePointerForTypeDesc(methodType, false);
                 eeTypeExp = new LoadExpressionEntry(StackValueKind.ByRef, "eeType", eeType, GetWellKnownType(WellKnownType.IntPtr));
             }
             StackEntry boxedObject = _stack.Pop();
