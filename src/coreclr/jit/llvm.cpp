@@ -1392,7 +1392,7 @@ void Llvm::buildCnsLng(GenTree* node)
     mapGenTreeToValue(node, _builder.getInt64(node->AsLngCon()->LngValue()));
 }
 
-llvm::Value* Llvm::gepOrAddr(Value* addr, unsigned int offset)
+llvm::Value* Llvm::gepOrAddr(Value* addr, unsigned offset)
 {
     if (offset == 0)
     {
