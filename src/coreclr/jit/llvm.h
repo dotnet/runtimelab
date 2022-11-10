@@ -20,12 +20,19 @@
 #ifdef TARGET_WASM
 
 #include "llvm/IR/IRBuilder.h"
+#include "llvm/IR/DIBuilder.h"
 #include "llvm/IR/Function.h"
 
 #include <unordered_map>
 
+using llvm::LLVMContext;
+using llvm::Module;
+using llvm::Function;
+using llvm::FunctionType;
 using llvm::Value;
 using llvm::Type;
+
+using llvm::ArrayRef;
 
 #define IMAGE_FILE_MACHINE_WASM32             0xFFFF
 #define IMAGE_FILE_MACHINE_WASM64             0xFFFE // TODO: appropriate values for this?  Used to check compilation is for intended target
@@ -99,6 +106,13 @@ struct PhiPair
 
 typedef JitHashTable<BasicBlock*, JitPtrKeyFuncs<BasicBlock>, llvm::BasicBlock*> BlkToLlvmBlkVectorMap;
 
+// TODO: We should create a Static... class to manage the globals and their lifetimes.
+//
+extern Module*          _module;
+extern llvm::DIBuilder* _diBuilder;
+extern LLVMContext      _llvmContext;
+extern Function*        _nullCheckFunction;
+
 class Llvm
 {
 private:
@@ -148,8 +162,17 @@ private:
     static bool needsReturnStackSlot(Compiler* compiler, CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd);
     bool needsReturnStackSlot(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd);
 
+    bool canStoreLocalOnLlvmStack(LclVarDsc* varDsc);
+    static bool canStoreArgOnLlvmStack(Compiler* compiler, CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd);
+
+    // Jit-EE interface functions.
+    //
     unsigned int padNextOffset(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHandle, unsigned int atOffset);
     unsigned int padOffset(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHandle, unsigned int atOffset);
+
+    const char* GetMangledMethodName(CORINFO_METHOD_HANDLE methodHandle);
+    const char* GetMangledSymbolName(void* symbol);
+    const char* GetTypeName(CORINFO_CLASS_HANDLE typeHandle);
 
     [[noreturn]] void failFunctionCompilation();
 
@@ -190,6 +213,10 @@ private:
     // |                                                   Codegen                                                    |
     // ================================================================================================================
 
+public:
+    void Compile();
+
+private:
     void generateProlog();
     void createAllocasForLocalsWithAddrOp();
     void startImportingBasicBlock(BasicBlock* block);
@@ -216,30 +243,25 @@ private:
     void buildCnsInt(GenTree* node);
     void buildCnsLng(GenTree* node);
     void buildCall(GenTree* node);
+    void buildHelperFuncCall(GenTreeCall* call);
+    void buildUserFuncCall(GenTreeCall* call);
+    Value* buildFieldList(GenTreeFieldList* fieldList, Type* llvmType);
     void buildInd(GenTree* node, Value* ptr);
     void buildObj(GenTreeObj* node);
+    void buildStoreInd(GenTreeStoreInd* storeIndOp);
+    void buildStoreBlk(GenTreeBlk* blockOp);
     void buildUnaryOperation(GenTree* node);
     void buildBinaryOperation(GenTree* node);
     void buildShift(GenTreeOp* node);
     void buildReturn(GenTree* node);
-    Value* buildJTrue(GenTree* node, Value* opValue);
-    void buildStoreInd(GenTreeStoreInd* storeIndOp);
-    void buildStoreBlk(GenTreeBlk* blockOp);
+    void buildJTrue(GenTree* node, Value* opValue);    
     void buildNullCheck(GenTreeUnOp* nullCheckNode);
 
-    void buildHelperFuncCall(GenTreeCall* call);
-    Value* buildUserFuncCall(GenTreeCall* call);
-    Value* buildFieldList(GenTreeFieldList* fieldList, Type* llvmType);
     void storeObjAtAddress(Value* baseAddress, Value* data, StructDesc* structDesc);
     unsigned buildMemCpy(Value* baseAddress, unsigned startOffset, unsigned endOffset, Value* srcAddress);
     void emitDoNothingCall();
     void buildThrowException(llvm::IRBuilder<>& builder, const char* helperClass, const char* helperMethodName, Value* shadowStack);
     void buildLlvmCallOrInvoke(llvm::Function* callee, llvm::ArrayRef<Value*> args);
-
-    llvm::Instruction* getCast(llvm::Value* source, Type* targetType);
-    Value* castIfNecessary(Value* source, Type* targetType, llvm::IRBuilder<>* builder = nullptr);
-    Value* gepOrAddr(Value* addr, unsigned offset);
-    Value* getShadowStackForCallee();
 
     llvm::FunctionType* getFunctionType();
     llvm::Function* getOrCreateLlvmFunction(const char* symbolName, GenTreeCall* call);
@@ -247,21 +269,29 @@ private:
     llvm::FunctionType* buildHelperLlvmFunctionType(GenTreeCall* call, bool withShadowStack);
     bool helperRequiresShadowStack(CORINFO_METHOD_HANDLE corinfoMethodHnd);
 
-    llvm::BasicBlock* getLLVMBasicBlockForBlock(BasicBlock* block);
+    Value* getOrCreateExternalSymbol(const char* symbolName, Type* symbolType = nullptr);
+    Function* getOrCreateRhpAssignRef();
+    Function* getOrCreateRhpCheckedAssignRef();
+
+    llvm::Instruction* getCast(llvm::Value* source, Type* targetType);
+    Value* castIfNecessary(Value* source, Type* targetType, llvm::IRBuilder<>* builder = nullptr);
+    Value* gepOrAddr(Value* addr, unsigned offset);
+    Value* getShadowStackForCallee();
 
     DebugMetadata getOrCreateDebugMetadata(const char* documentFileName);
     llvm::DILocation* createDebugFunctionAndDiLocation(struct DebugMetadata debugMetadata, unsigned int lineNo);
 
+    llvm::BasicBlock* getLLVMBasicBlockForBlock(BasicBlock* block);
+
     bool isLlvmFrameLocal(LclVarDsc* varDsc);
     unsigned int getTotalRealLocalOffset();
     unsigned int getTotalLocalOffset();
-    LlvmArgInfo getLlvmArgInfoForArgIx(unsigned int lclNum);
+    LlvmArgInfo getLlvmArgInfoForArgIx(unsigned lclNum);
 
 public:
     Llvm(Compiler* pCompiler);
 
     void Lower();
-    void Compile();
 
     static void llvmShutdown();
     static bool needsReturnStackSlot(Compiler* compiler, GenTreeCall* callee);
