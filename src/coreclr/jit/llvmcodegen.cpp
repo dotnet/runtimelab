@@ -15,7 +15,7 @@ void Llvm::Compile()
     std::unordered_map<GenTree*, Value*> sdsuMap;
     _sdsuMap = &sdsuMap;
     _localsMap = new std::unordered_map<SsaPair, Value*, SsaPairHash>();
-    const char* mangledName = (*_getMangledMethodName)(_thisPtr, _info.compMethodHnd);
+    const char* mangledName = GetMangledMethodName(_info.compMethodHnd);
     _function = _module->getFunction(mangledName);
     _debugFunction = nullptr;
     _debugMetadata.diCompileUnit = nullptr;
@@ -39,7 +39,7 @@ void Llvm::Compile()
 
     if (_compiler->opts.compDbgInfo)
     {
-        const char* documentFileName = _getDocumentFileName(_thisPtr);
+        const char* documentFileName = GetDocumentFileName();
         if (documentFileName && *documentFileName != '\0')
         {
             _debugMetadata = getOrCreateDebugMetadata(documentFileName);
@@ -324,7 +324,7 @@ void Llvm::startImportingNode()
 {
     if (_debugMetadata.diCompileUnit != nullptr && _currentOffsetDiLocation == nullptr)
     {
-        unsigned int lineNo = _getOffsetLineNumber(_thisPtr, _currentOffset);
+        unsigned int lineNo = GetOffsetLineNumber(_currentOffset);
 
         _currentOffsetDiLocation = createDebugFunctionAndDiLocation(_debugMetadata, lineNo);
         _builder.SetCurrentDebugLocation(_currentOffsetDiLocation);
@@ -751,8 +751,8 @@ void Llvm::buildCnsInt(GenTree* node)
             if (node->IsIconHandle(GTF_ICON_TOKEN_HDL) || node->IsIconHandle(GTF_ICON_CLASS_HDL) ||
                 node->IsIconHandle(GTF_ICON_METHOD_HDL) || node->IsIconHandle(GTF_ICON_FIELD_HDL))
             {
-                const char* symbolName = (*_getMangledSymbolName)(_thisPtr, (void*)(node->AsIntCon()->IconValue()));
-                (*_addCodeReloc)(_thisPtr, (void*)node->AsIntCon()->IconValue());
+                const char* symbolName = GetMangledSymbolName((void*)(node->AsIntCon()->IconValue()));
+                AddCodeReloc((void*)node->AsIntCon()->IconValue());
                 mapGenTreeToValue(node, _builder.CreateLoad(getOrCreateExternalSymbol(symbolName)));
             }
             else
@@ -772,8 +772,8 @@ void Llvm::buildCnsInt(GenTree* node)
         ssize_t intCon = node->AsIntCon()->gtIconVal;
         if (node->IsIconHandle(GTF_ICON_STR_HDL))
         {
-            const char* symbolName = (*_getMangledSymbolName)(_thisPtr, (void *)(node->AsIntCon()->IconValue()));
-            (*_addCodeReloc)(_thisPtr, (void*)node->AsIntCon()->IconValue());
+            const char* symbolName = GetMangledSymbolName((void *)(node->AsIntCon()->IconValue()));
+            AddCodeReloc((void*)node->AsIntCon()->IconValue());
             mapGenTreeToValue(node, _builder.CreateLoad(getOrCreateExternalSymbol(symbolName)));
             return;
         }
@@ -827,15 +827,15 @@ void Llvm::buildHelperFuncCall(GenTreeCall* call)
 
     if (call->gtCallMethHnd == _compiler->eeFindHelper(CORINFO_HELP_READYTORUN_STATIC_BASE))
     {
-        const char* symbolName = GetMangledMethodName(call->gtEntryPoint.handle);
+        const char* symbolName = GetMangledSymbolName(CORINFO_METHOD_HANDLE(call->gtEntryPoint.handle));
         Function* llvmFunc = _module->getFunction(symbolName);
         if (llvmFunc == nullptr)
         {
             llvmFunc = Function::Create(buildHelperLlvmFunctionType(call, true), Function::ExternalLinkage, 0U, symbolName, _module); // TODO: ExternalLinkage forced as defined in ILC module
         }
 
-        // replacement for _info.compCompHnd->recordRelocation(nullptr, gtCall->gtEntryPoint.handle, IMAGE_REL_BASED_REL32);
-        (*_addCodeReloc)(_thisPtr, call->gtEntryPoint.handle);
+        // Replacement for _info.compCompHnd->recordRelocation(nullptr, gtCall->gtEntryPoint.handle, IMAGE_REL_BASED_REL32);
+        AddCodeReloc(call->gtEntryPoint.handle);
 
         mapGenTreeToValue(call, _builder.CreateCall(llvmFunc, getShadowStackForCallee()));
         return;
@@ -862,14 +862,14 @@ void Llvm::buildHelperFuncCall(GenTreeCall* call)
 
         CorInfoHelpFunc helperNum = _compiler->eeGetHelperNum(call->gtCallMethHnd);
         void* addr = _compiler->compGetHelperFtn(helperNum, &pAddr);
-        const char* symbolName = (*_getMangledSymbolName)(_thisPtr, addr);
+        const char* symbolName = GetMangledSymbolName(addr);
         Function* llvmFunc = _module->getFunction(symbolName);
         if (llvmFunc == nullptr)
         {
             llvmFunc = Function::Create(buildHelperLlvmFunctionType(call, requiresShadowStack), Function::ExternalLinkage, 0U, symbolName, _module);
         }
 
-        (*_addCodeReloc)(_thisPtr, addr);
+        AddCodeReloc(addr);
 
         std::vector<llvm::Value*> argVec;
         unsigned argIx = 0;
@@ -891,8 +891,8 @@ void Llvm::buildHelperFuncCall(GenTreeCall* call)
             if ((opAndArg.operand->gtOper == GT_CNS_INT) && opAndArg.operand->IsIconHandle())
             {
                 void* iconValue = (void*)(opAndArg.operand->AsIntCon()->IconValue());
-                const char* methodTableName = (*_getMangledSymbolName)(_thisPtr, iconValue);
-                (*_addCodeReloc)(_thisPtr, iconValue);
+                const char* methodTableName = GetMangledSymbolName(iconValue);
+                AddCodeReloc(iconValue);
                 argVec.push_back(castIfNecessary(_builder.CreateLoad(castIfNecessary(getOrCreateExternalSymbol(methodTableName), Type::getInt32PtrTy(_llvmContext)->getPointerTo())), llvmFunc->getArg(argIx)->getType()));
             }
             else
@@ -923,9 +923,9 @@ void Llvm::buildUserFuncCall(GenTreeCall* call)
         }
         else
         {
-            const char* symbolName = (*_getMangledSymbolName)(_thisPtr, call->gtEntryPoint.handle);
+            const char* symbolName = GetMangledSymbolName(call->gtEntryPoint.handle);
 
-            (*_addCodeReloc)(_thisPtr, call->gtEntryPoint.handle);
+            AddCodeReloc(call->gtEntryPoint.handle);
             Function* llvmFunc = getOrCreateLlvmFunction(symbolName, call);
 
             llvmFuncCallee = llvmFunc;
@@ -1311,8 +1311,8 @@ void Llvm::emitDoNothingCall()
 
 void Llvm::buildThrowException(llvm::IRBuilder<>& builder, const char* helperClass, const char * helperMethodName, Value* shadowStack)
 {
-    CORINFO_METHOD_HANDLE methodHandle = _getCompilerHelpersMethodHandle(_thisPtr, helperClass, helperMethodName);
-    const char* mangledName = (*_getMangledMethodName)(_thisPtr, methodHandle);
+    CORINFO_METHOD_HANDLE methodHandle = GetCompilerHelpersMethodHandle(helperClass, helperMethodName);
+    const char* mangledName = GetMangledMethodName(methodHandle);
 
     Function* llvmFunc = _module->getFunction(mangledName);
 
@@ -1323,7 +1323,7 @@ void Llvm::buildThrowException(llvm::IRBuilder<>& builder, const char* helperCla
         llvmFunc = Function::Create(FunctionType::get(Type::getVoidTy(_llvmContext), {Type::getInt8PtrTy(_llvmContext)},
                                                       false),
                                     Function::ExternalLinkage, 0U, mangledName, _module);
-        _addCodeReloc(_thisPtr, methodHandle);
+       AddCodeReloc(methodHandle);
     }
 
     builder.CreateCall(llvmFunc, {shadowStack});
@@ -1599,7 +1599,7 @@ llvm::DILocation* Llvm::createDebugFunctionAndDiLocation(struct DebugMetadata de
     if (_debugFunction == nullptr)
     {
         llvm::DISubroutineType* functionMetaType = _diBuilder->createSubroutineType({} /* TODO - function parameter types*/, llvm::DINode::DIFlags::FlagZero);
-        uint32_t lineNumber = _firstSequencePointLineNumber(_thisPtr);
+        uint32_t lineNumber = FirstSequencePointLineNumber();
 
         const char* methodName = _info.compCompHnd->getMethodName(_info.compMethodHnd, nullptr);
         _debugFunction = _diBuilder->createFunction(debugMetadata.fileMetadata, methodName,

@@ -1,71 +1,61 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-#ifdef TARGET_WASM
-#include <string.h>
-#include "alloc.h"
-#include "compiler.h"
-#include "block.h"
-#include "gentree.h"
-#pragma warning (disable: 4702)
+#include "jitpch.h"
 #include "llvm.h"
-#include "llvm/ADT/StringRef.h"
-#include "llvm/IR/LLVMContext.h"
-#include "llvm/IR/Module.h"
+
+#pragma warning (disable: 4459)
 #include "llvm/Bitcode/BitcodeWriter.h"
-#include "llvm/BinaryFormat/Dwarf.h"
-#include "llvm/IR/Verifier.h"
-#pragma warning (error: 4702)
+#pragma warning (error: 4459)
 
 LLVMContext      _llvmContext;
 Module*          _module            = nullptr;
 llvm::DIBuilder* _diBuilder         = nullptr;
 Function*        _nullCheckFunction = nullptr;
+char*            _outputFileName;
+Function*        _doNothingFunction;
+
+std::unordered_map<CORINFO_CLASS_HANDLE, Type*>* _llvmStructs = new std::unordered_map<CORINFO_CLASS_HANDLE, Type*>();
+std::unordered_map<CORINFO_CLASS_HANDLE, StructDesc*>* _structDescMap = new std::unordered_map<CORINFO_CLASS_HANDLE, StructDesc*>();
 
 void* _thisPtr; // TODO: workaround for not changing the JIT/EE interface.  As this is static, it will probably fail if multithreaded compilation is attempted
 const char* (*_getMangledMethodName)(void*, CORINFO_METHOD_STRUCT_*);
 const char* (*_getMangledSymbolName)(void*, void*);
 const char* (*_getMangledSymbolNameFromHelperTarget)(void*, void*); // TODO-LLVM: unused, delete.
 const char* (*_getTypeName)(void*, CORINFO_CLASS_HANDLE);
-const char* (*_addCodeReloc)(void*, void*);
-const uint32_t (*_isRuntimeImport)(void*, CORINFO_METHOD_STRUCT_*);
+const char* (*_addCodeReloc)(void*, void*); // TODO-LLVM: does this really return a string?
+uint32_t (*_isRuntimeImport)(void*, CORINFO_METHOD_STRUCT_*);
 const char* (*_getDocumentFileName)(void*);
-const uint32_t (*_firstSequencePointLineNumber)(void*);
-const uint32_t (*_getOffsetLineNumber)(void*, unsigned int ilOffset);
-const uint32_t (*_structIsWrappedPrimitive)(void*, CORINFO_CLASS_STRUCT_*, CorInfoType);
-const uint32_t (*_padOffset)(void*, CORINFO_CLASS_STRUCT_*, unsigned);
-const CorInfoTypeWithMod (*_getArgTypeIncludingParameterized)(void*, CORINFO_SIG_INFO*, CORINFO_ARG_LIST_HANDLE, CORINFO_CLASS_HANDLE*);
-const CorInfoTypeWithMod (*_getParameterType)(void*, CORINFO_CLASS_HANDLE, CORINFO_CLASS_HANDLE*);
-const TypeDescriptor (*_getTypeDescriptor)(void*, CORINFO_CLASS_HANDLE);
+uint32_t (*_firstSequencePointLineNumber)(void*);
+uint32_t (*_getOffsetLineNumber)(void*, unsigned ilOffset);
+uint32_t (*_structIsWrappedPrimitive)(void*, CORINFO_CLASS_STRUCT_*, CorInfoType);
+uint32_t (*_padOffset)(void*, CORINFO_CLASS_STRUCT_*, unsigned);
+CorInfoTypeWithMod (*_getArgTypeIncludingParameterized)(void*, CORINFO_SIG_INFO*, CORINFO_ARG_LIST_HANDLE, CORINFO_CLASS_HANDLE*);
+CorInfoTypeWithMod (*_getParameterType)(void*, CORINFO_CLASS_HANDLE, CORINFO_CLASS_HANDLE*);
+TypeDescriptor (*_getTypeDescriptor)(void*, CORINFO_CLASS_HANDLE);
 CORINFO_METHOD_HANDLE (*_getCompilerHelpersMethodHandle)(void*, const char*, const char*);
-const uint32_t (*_getInstanceFieldAlignment)(void*, CORINFO_CLASS_HANDLE);
-
-char*                              _outputFileName;
-Function*                          _doNothingFunction;
-
-std::unordered_map<CORINFO_CLASS_HANDLE, Type*>* _llvmStructs = new std::unordered_map<CORINFO_CLASS_HANDLE, Type*>();
-std::unordered_map<CORINFO_CLASS_HANDLE, StructDesc*>* _structDescMap = new std::unordered_map<CORINFO_CLASS_HANDLE, StructDesc*>();
+uint32_t (*_getInstanceFieldAlignment)(void*, CORINFO_CLASS_HANDLE);
 
 extern "C" DLLEXPORT void registerLlvmCallbacks(void*       thisPtr,
                                                 const char* outputFileName,
                                                 const char* triple,
                                                 const char* dataLayout,
-                                                const char* (*getMangledMethodNamePtr)(void*, CORINFO_METHOD_STRUCT_*),
+                                                const char* (*getMangledMethodNamePtr)(void*, CORINFO_METHOD_HANDLE),
                                                 const char* (*getMangledSymbolNamePtr)(void*, void*),
                                                 const char* (*getMangledSymbolNameFromHelperTargetPtr)(void*, void*),
                                                 const char* (*getTypeName)(void*, CORINFO_CLASS_HANDLE),
                                                 const char* (*addCodeRelocPtr)(void*, void*),
-                                                const uint32_t (*isRuntimeImport)(void*, CORINFO_METHOD_STRUCT_*),
+                                                uint32_t (*isRuntimeImport)(void*, CORINFO_METHOD_HANDLE),
                                                 const char* (*getDocumentFileName)(void*),
-                                                const uint32_t (*firstSequencePointLineNumber)(void*),
-                                                const uint32_t (*getOffsetLineNumber)(void*, unsigned int),
-                                                const uint32_t(*structIsWrappedPrimitive)(void*, CORINFO_CLASS_STRUCT_*, CorInfoType),
-                                                const uint32_t(*padOffset)(void*, CORINFO_CLASS_STRUCT_*, unsigned),
-                                                const CorInfoTypeWithMod(*getArgTypeIncludingParameterized)(void*, CORINFO_SIG_INFO*, CORINFO_ARG_LIST_HANDLE, CORINFO_CLASS_HANDLE*),
-                                                const CorInfoTypeWithMod(*getParameterType)(void*, CORINFO_CLASS_HANDLE, CORINFO_CLASS_HANDLE*),
-                                                const TypeDescriptor(*getTypeDescriptor)(void*, CORINFO_CLASS_HANDLE),
+                                                uint32_t (*firstSequencePointLineNumber)(void*),
+                                                uint32_t (*getOffsetLineNumber)(void*, unsigned),
+                                                uint32_t(*structIsWrappedPrimitive)(void*, CORINFO_CLASS_HANDLE, CorInfoType),
+                                                uint32_t(*padOffset)(void*, CORINFO_CLASS_HANDLE, unsigned),
+                                                CorInfoTypeWithMod(*getArgTypeIncludingParameterized)(void*, CORINFO_SIG_INFO*, CORINFO_ARG_LIST_HANDLE, CORINFO_CLASS_HANDLE*),
+                                                CorInfoTypeWithMod(*getParameterType)(void*, CORINFO_CLASS_HANDLE, CORINFO_CLASS_HANDLE*),
+                                                TypeDescriptor(*getTypeDescriptor)(void*, CORINFO_CLASS_HANDLE),
                                                 CORINFO_METHOD_HANDLE (*getCompilerHelpersMethodHandle)(void*, const char*, const char*),
-                                                const uint32_t (*getInstanceFieldAlignment)(void*, CORINFO_CLASS_HANDLE))
+                                                uint32_t (*getInstanceFieldAlignment)(void*, CORINFO_CLASS_HANDLE))
 {
     _thisPtr = thisPtr;
     _getMangledMethodName         = getMangledMethodNamePtr;
@@ -123,12 +113,6 @@ void emitDebugMetadata(LLVMContext& context)
     fatal(CORJIT_SKIPPED);
 }
 
-// maintains compatiblity with the IL->LLVM generation.  TODO-LLVM, when IL generation is no more, see if we can remove this unwrapping
-bool structIsWrappedPrimitive(CORINFO_CLASS_HANDLE classHnd, CorInfoType primitiveType)
-{
-    return (*_structIsWrappedPrimitive)(_thisPtr, classHnd, primitiveType);
-}
-
 void addPaddingFields(unsigned paddingSize, std::vector<Type*>& llvmFields)
 {
     unsigned numInts = paddingSize / 4;
@@ -161,7 +145,7 @@ StructDesc* Llvm::getStructDesc(CORINFO_CLASS_HANDLE structHandle)
 {
     if (_structDescMap->find(structHandle) == _structDescMap->end())
     {
-        TypeDescriptor structTypeDescriptor = _getTypeDescriptor(_thisPtr, structHandle);
+        TypeDescriptor structTypeDescriptor = GetTypeDescriptor(structHandle);
         unsigned structSize                 = _info.compCompHnd->getClassSize(structHandle); // TODO-LLVM: add to TypeDescriptor?
 
         std::vector<CORINFO_FIELD_HANDLE> sparseFields = std::vector<CORINFO_FIELD_HANDLE>(structSize);
@@ -258,17 +242,17 @@ llvm::Type* Llvm::getLlvmTypeForStruct(CORINFO_CLASS_HANDLE structHandle)
                 llvmType = Type::getInt8Ty(_llvmContext);
                 break;
             case 2:
-                fieldAlignment = _getInstanceFieldAlignment(_thisPtr, structHandle);
+                fieldAlignment = GetInstanceFieldAlignment(structHandle);
                 if (fieldAlignment == 2)
                 {
                     llvmType = Type::getInt16Ty(_llvmContext);
                     break;
                 }
             case 4:
-                fieldAlignment = _getInstanceFieldAlignment(_thisPtr, structHandle);
+                fieldAlignment = GetInstanceFieldAlignment(structHandle);
                 if (fieldAlignment == 4)
                 {
-                    if (structIsWrappedPrimitive(structHandle, CORINFO_TYPE_FLOAT))
+                    if (StructIsWrappedPrimitive(structHandle, CORINFO_TYPE_FLOAT))
                     {
                         llvmType = Type::getFloatTy(_llvmContext);
                     }
@@ -279,10 +263,10 @@ llvm::Type* Llvm::getLlvmTypeForStruct(CORINFO_CLASS_HANDLE structHandle)
                     break;
                 }
             case 8:
-                fieldAlignment = _getInstanceFieldAlignment(_thisPtr, structHandle);
+                fieldAlignment = GetInstanceFieldAlignment(structHandle);
                 if (fieldAlignment == 8)
                 {
-                    if (structIsWrappedPrimitive(structHandle, CORINFO_TYPE_DOUBLE))
+                    if (StructIsWrappedPrimitive(structHandle, CORINFO_TYPE_DOUBLE))
                     {
                         llvmType = Type::getDoubleTy(_llvmContext);
                     }
@@ -296,7 +280,7 @@ llvm::Type* Llvm::getLlvmTypeForStruct(CORINFO_CLASS_HANDLE structHandle)
             default:
                 // Forward-declare the struct in case there's a reference to it in the fields.
                 // This must be a named struct or LLVM hits a stack overflow
-                const char* name = _getTypeName(_thisPtr, structHandle);
+                const char* name = GetTypeName(structHandle);
                 llvm::StructType* llvmStructType = llvm::StructType::create(_llvmContext, name);
                 llvmType = llvmStructType;
                 StructDesc* structDesc = getStructDesc(structHandle);
@@ -354,7 +338,7 @@ llvm::Type* Llvm::getLlvmTypeForStruct(CORINFO_CLASS_HANDLE structHandle)
 llvm::Type* Llvm::getLlvmTypeForParameterType(CORINFO_CLASS_HANDLE classHnd)
 {
     CORINFO_CLASS_HANDLE innerParameterHandle;
-    CorInfoType parameterCorInfoType = strip(_getParameterType(_thisPtr, classHnd, &innerParameterHandle));
+    CorInfoType parameterCorInfoType = strip(GetParameterType(classHnd, &innerParameterHandle));
     if (parameterCorInfoType == CorInfoType::CORINFO_TYPE_VOID)
     {
         return Type::getInt8Ty(_llvmContext); // LLVM doesn't allow void*
@@ -483,7 +467,7 @@ unsigned int Llvm::padOffset(CorInfoType corInfoType, CORINFO_CLASS_HANDLE struc
     unsigned int alignment;
     if (corInfoType == CORINFO_TYPE_VALUECLASS)
     {
-        return _padOffset(_thisPtr, structClassHandle, atOffset);
+        return PadOffset(structClassHandle, atOffset);
     }
 
     alignment = corInfoTypeAligment(corInfoType);
@@ -505,7 +489,67 @@ const char* Llvm::GetTypeName(CORINFO_CLASS_HANDLE typeHandle)
     return _getTypeName(_thisPtr, typeHandle);
 }
 
+const char* Llvm::AddCodeReloc(void* handle)
+{
+    return _addCodeReloc(_thisPtr, handle);
+}
 
+bool Llvm::IsRuntimeImport(CORINFO_METHOD_HANDLE methodHandle)
+{
+    return _isRuntimeImport(_thisPtr, methodHandle) != 0;
+}
+
+const char* Llvm::GetDocumentFileName()
+{
+    return _getDocumentFileName(_thisPtr);
+}
+
+uint32_t Llvm::FirstSequencePointLineNumber()
+{
+    return _firstSequencePointLineNumber(_thisPtr);
+}
+
+uint32_t Llvm::GetOffsetLineNumber(unsigned ilOffset)
+{
+    return _getOffsetLineNumber(_thisPtr, ilOffset);
+}
+
+bool Llvm::StructIsWrappedPrimitive(CORINFO_CLASS_HANDLE typeHandle, CorInfoType corInfoType)
+{
+    // Maintains compatiblity with the IL->LLVM generation.
+    // TODO-LLVM, when IL generation is no more, see if we can remove this unwrapping.
+    return _structIsWrappedPrimitive(_thisPtr, typeHandle, corInfoType) != 0;
+}
+
+uint32_t Llvm::PadOffset(CORINFO_CLASS_HANDLE typeHandle, unsigned atOffset)
+{
+    return _padOffset(_thisPtr, typeHandle, atOffset);
+}
+
+CorInfoTypeWithMod Llvm::GetArgTypeIncludingParameterized(CORINFO_SIG_INFO* sigInfo, CORINFO_ARG_LIST_HANDLE arg, CORINFO_CLASS_HANDLE* pTypeHandle)
+{
+    return _getArgTypeIncludingParameterized(_thisPtr, sigInfo, arg, pTypeHandle);
+}
+
+CorInfoTypeWithMod Llvm::GetParameterType(CORINFO_CLASS_HANDLE typeHandle, CORINFO_CLASS_HANDLE* pInnerParameterTypeHandle)
+{
+    return _getParameterType(_thisPtr, typeHandle, pInnerParameterTypeHandle);
+}
+
+TypeDescriptor Llvm::GetTypeDescriptor(CORINFO_CLASS_HANDLE typeHandle)
+{
+    return _getTypeDescriptor(_thisPtr, typeHandle);
+}
+
+CORINFO_METHOD_HANDLE Llvm::GetCompilerHelpersMethodHandle(const char* helperClassTypeName, const char* helperMethodName)
+{
+    return _getCompilerHelpersMethodHandle(_thisPtr, helperClassTypeName, helperMethodName);
+}
+
+uint32_t Llvm::GetInstanceFieldAlignment(CORINFO_CLASS_HANDLE fieldTypeHandle)
+{
+    return _getInstanceFieldAlignment(_thisPtr, fieldTypeHandle);
+}
 
 unsigned int Llvm::padNextOffset(CorInfoType corInfoType, CORINFO_CLASS_HANDLE structClassHandle, unsigned int atOffset)
 {
@@ -518,14 +562,14 @@ unsigned int Llvm::padNextOffset(CorInfoType corInfoType, CORINFO_CLASS_HANDLE s
     {
         size = corInfoTypeAligment(corInfoType);
     }
+
     return padOffset(corInfoType, structClassHandle, atOffset) + size;
 }
 
-/// <summary>
-/// Returns true if the type can be stored on the LLVM stack
-/// instead of the shadow stack in this method. This is the case
-/// if it is a non-ref primitive or a struct without GC fields.
-/// </summary>
+// Returns true if the type can be stored on the LLVM stack
+// instead of the shadow stack in this method. This is the case
+// if it is a non-ref primitive or a struct without GC fields.
+//
 bool Llvm::canStoreLocalOnLlvmStack(LclVarDsc* varDsc)
 {
     return !varDsc->HasGCPtr();
@@ -573,7 +617,7 @@ bool Llvm::needsReturnStackSlot(CorInfoType corInfoType, CORINFO_CLASS_HANDLE cl
 
 CorInfoType Llvm::getCorInfoTypeForArg(CORINFO_SIG_INFO* sigInfo, CORINFO_ARG_LIST_HANDLE& arg, CORINFO_CLASS_HANDLE* clsHnd)
 {
-    CorInfoTypeWithMod corTypeWithMod = _getArgTypeIncludingParameterized(_thisPtr, sigInfo, arg, clsHnd);
+    CorInfoTypeWithMod corTypeWithMod = GetArgTypeIncludingParameterized(sigInfo, arg, clsHnd);
     return strip(corTypeWithMod);
 }
 
@@ -875,7 +919,7 @@ GenTreeCall::Use* Llvm::lowerCallReturn(GenTreeCall*      callNode,
 void Llvm::failUnsupportedCalls(GenTreeCall* callNode)
 {
     // we can't do these yet
-    if ((callNode->gtCallType != CT_INDIRECT && _isRuntimeImport(_thisPtr, callNode->gtCallMethHnd)) || callNode->IsTailCall())
+    if ((callNode->gtCallType != CT_INDIRECT && IsRuntimeImport(callNode->gtCallMethHnd)) || callNode->IsTailCall())
     {
         failFunctionCompilation();
     }
@@ -1359,4 +1403,3 @@ void Llvm::Lower()
 
     lowerToShadowStack();
 }
-#endif

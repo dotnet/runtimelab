@@ -17,11 +17,13 @@
 #undef max
 // this breaks StringMap.h
 #undef NumItems
-#ifdef TARGET_WASM
 
+#pragma warning (disable: 4702)
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/DIBuilder.h"
 #include "llvm/IR/Function.h"
+#include "llvm/IR/Verifier.h"
+#pragma warning (error: 4702)
 
 #include <unordered_map>
 
@@ -77,27 +79,6 @@ struct SsaPairHash
     }
 };
 
-extern "C" void registerLlvmCallbacks(void*       thisPtr,
-                                      const char* outputFileName,
-                                      const char* triple,
-                                      const char* dataLayout,
-                                      const char* (*getMangledMethodNamePtr)(void*, CORINFO_METHOD_STRUCT_*),
-                                      const char* (*getMangledSymbolNamePtr)(void*, void*),
-                                      const char* (*getMangledSymbolNameFromHelperTargetPtr)(void*, void*),
-                                      const char* (*getTypeName)(void*, CORINFO_CLASS_HANDLE),
-                                      const char* (*addCodeReloc)(void*, void*),
-                                      const uint32_t (*isRuntimeImport)(void*, CORINFO_METHOD_STRUCT_*),
-                                      const char* (*getDocumentFileName)(void*),
-                                      const uint32_t (*firstSequencePointLineNumber)(void*),
-                                      const uint32_t (*getOffsetLineNumber)(void*, unsigned int),
-                                      const uint32_t(*structIsWrappedPrimitive)(void*, CORINFO_CLASS_STRUCT_*, CorInfoType),
-                                      const uint32_t(*padOffset)(void*, CORINFO_CLASS_STRUCT_*, unsigned),
-                                      const CorInfoTypeWithMod(*_getArgTypeIncludingParameterized)(void*, CORINFO_SIG_INFO*, CORINFO_ARG_LIST_HANDLE, CORINFO_CLASS_HANDLE*),
-                                      const CorInfoTypeWithMod(*_getParameterType)(void*, CORINFO_CLASS_HANDLE, CORINFO_CLASS_HANDLE*),
-                                      const TypeDescriptor(*getTypeDescriptor)(void*, CORINFO_CLASS_HANDLE),
-                                      CORINFO_METHOD_HANDLE (*_getCompilerHelpersMethodHandle)(void*, const char*, const char*),
-                                      const uint32_t (*getInstanceFieldAlignment)(void*, CORINFO_CLASS_HANDLE));
-
 struct PhiPair
 {
     GenTreePhi* irPhiNode;
@@ -107,11 +88,14 @@ struct PhiPair
 typedef JitHashTable<BasicBlock*, JitPtrKeyFuncs<BasicBlock>, llvm::BasicBlock*> BlkToLlvmBlkVectorMap;
 
 // TODO: We should create a Static... class to manage the globals and their lifetimes.
+// Note we declare all statics here, and define them in llvm.cpp, for documentation and
+// visibility purposes even as some are only needed in other compilation units.
 //
 extern Module*          _module;
 extern llvm::DIBuilder* _diBuilder;
 extern LLVMContext      _llvmContext;
 extern Function*        _nullCheckFunction;
+extern Function*        _doNothingFunction;
 
 class Llvm
 {
@@ -165,14 +149,26 @@ private:
     bool canStoreLocalOnLlvmStack(LclVarDsc* varDsc);
     static bool canStoreArgOnLlvmStack(Compiler* compiler, CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd);
 
-    // Jit-EE interface functions.
+    // Raw Jit-EE interface functions.
     //
-    unsigned int padNextOffset(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHandle, unsigned int atOffset);
-    unsigned int padOffset(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHandle, unsigned int atOffset);
-
     const char* GetMangledMethodName(CORINFO_METHOD_HANDLE methodHandle);
     const char* GetMangledSymbolName(void* symbol);
     const char* GetTypeName(CORINFO_CLASS_HANDLE typeHandle);
+    const char* AddCodeReloc(void* handle);
+    bool IsRuntimeImport(CORINFO_METHOD_HANDLE methodHandle);
+    const char* GetDocumentFileName();
+    uint32_t FirstSequencePointLineNumber();
+    uint32_t GetOffsetLineNumber(unsigned ilOffset);
+    bool StructIsWrappedPrimitive(CORINFO_CLASS_HANDLE typeHandle, CorInfoType corInfoType);
+    uint32_t PadOffset(CORINFO_CLASS_HANDLE typeHandle, unsigned atOffset);
+    CorInfoTypeWithMod GetArgTypeIncludingParameterized(CORINFO_SIG_INFO* sigInfo, CORINFO_ARG_LIST_HANDLE arg, CORINFO_CLASS_HANDLE* pTypeHandle);
+    CorInfoTypeWithMod GetParameterType(CORINFO_CLASS_HANDLE typeHandle, CORINFO_CLASS_HANDLE* pInnerParameterTypeHandle);
+    TypeDescriptor GetTypeDescriptor(CORINFO_CLASS_HANDLE typeHandle);
+    CORINFO_METHOD_HANDLE GetCompilerHelpersMethodHandle(const char* helperClassTypeName, const char* helperMethodName);
+    uint32_t GetInstanceFieldAlignment(CORINFO_CLASS_HANDLE fieldTypeHandle);
+
+    unsigned int padNextOffset(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHandle, unsigned int atOffset);
+    unsigned int padOffset(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHandle, unsigned int atOffset);
 
     [[noreturn]] void failFunctionCompilation();
 
@@ -263,10 +259,10 @@ private:
     void buildThrowException(llvm::IRBuilder<>& builder, const char* helperClass, const char* helperMethodName, Value* shadowStack);
     void buildLlvmCallOrInvoke(llvm::Function* callee, llvm::ArrayRef<Value*> args);
 
-    llvm::FunctionType* getFunctionType();
-    llvm::Function* getOrCreateLlvmFunction(const char* symbolName, GenTreeCall* call);
-    llvm::FunctionType* createFunctionTypeForCall(GenTreeCall* call);
-    llvm::FunctionType* buildHelperLlvmFunctionType(GenTreeCall* call, bool withShadowStack);
+    FunctionType* getFunctionType();
+    Function* getOrCreateLlvmFunction(const char* symbolName, GenTreeCall* call);
+    FunctionType* createFunctionTypeForCall(GenTreeCall* call);
+    FunctionType* buildHelperLlvmFunctionType(GenTreeCall* call, bool withShadowStack);
     bool helperRequiresShadowStack(CORINFO_METHOD_HANDLE corinfoMethodHnd);
 
     Value* getOrCreateExternalSymbol(const char* symbolName, Type* symbolType = nullptr);
@@ -297,6 +293,5 @@ public:
     static bool needsReturnStackSlot(Compiler* compiler, GenTreeCall* callee);
 };
 
-#endif
 
 #endif /* End of _LLVM_H_ */
