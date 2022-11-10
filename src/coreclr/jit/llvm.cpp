@@ -88,6 +88,65 @@ extern "C" DLLEXPORT void registerLlvmCallbacks(void*       thisPtr,
     }
 }
 
+Llvm::Llvm(Compiler* compiler)
+    : _compiler(compiler),
+    _info(compiler->info),
+    _function(nullptr),
+    _builder(_llvmContext),
+    _prologBuilder(_llvmContext),
+    _shadowStackLclNum(BAD_VAR_NUM),
+    _retAddressLclNum(BAD_VAR_NUM)
+{
+    _compiler->eeGetMethodSig(_info.compMethodHnd, &_sigInfo);
+}
+
+void Llvm::llvmShutdown()
+{
+    if (_diBuilder != nullptr)
+    {
+        _module->addModuleFlag(llvm::Module::Warning, "Dwarf Version", 4);
+        _module->addModuleFlag(llvm::Module::Warning, "Debug Info Version", 3);
+        _diBuilder->finalize();
+    }
+
+    std::error_code ec;
+
+    if (_outputFileName == nullptr) return; // nothing generated
+
+                                            //TODO-LLVM: when the release build is more stable, reinstate the #ifdef.  For now the text output is useful for debugging
+                                            //#ifdef DEBUG
+    char* txtFileName = (char*)malloc(strlen(_outputFileName) + 2); // .txt is longer than .bc
+    strcpy(txtFileName, _outputFileName);
+    strcpy(txtFileName + strlen(_outputFileName) - 2, "txt");
+    llvm::raw_fd_ostream textOutputStream(txtFileName, ec);
+    _module->print(textOutputStream, (llvm::AssemblyAnnotationWriter*)NULL);
+    free(txtFileName);
+
+    // verifyModule returns true when its broken, so invert
+    assert(!llvm::verifyModule(*_module, &llvm::errs()));
+    //#endif //DEBUG
+
+    llvm::raw_fd_ostream OS(_outputFileName, ec);
+    llvm::WriteBitcodeToFile(*_module, OS);
+
+    for (const auto &structDesc : *_structDescMap)
+    {
+        delete structDesc.second;
+    }
+
+    delete _module;
+}
+
+bool Llvm::needsReturnStackSlot(Compiler* compiler, GenTreeCall* callee)
+{
+    CORINFO_SIG_INFO sigInfo;
+
+    // TODO-LLVM: this is expensive. Why not just check call->TypeGet() / call->gtRetClsHnd?
+    compiler->eeGetMethodSig(compiler->info.compMethodHnd, &sigInfo);
+
+    return Llvm::needsReturnStackSlot(compiler, sigInfo.retType, sigInfo.retTypeClass);
+}
+
 GCInfo* Llvm::getGCInfo()
 {
     if (_gcInfo == nullptr)
@@ -97,11 +156,138 @@ GCInfo* Llvm::getGCInfo()
     return _gcInfo;
 }
 
-void emitDebugMetadata(LLVMContext& context)
+CORINFO_CLASS_HANDLE Llvm::tryGetStructClassHandle(LclVarDsc* varDsc)
 {
-    _module->addModuleFlag(llvm::Module::Warning, "Dwarf Version", 4);
-    _module->addModuleFlag(llvm::Module::Warning, "Debug Info Version", 3);
-    _diBuilder->finalize();
+    return varTypeIsStruct(varDsc) ? varDsc->GetStructHnd() : NO_CLASS_HANDLE;
+}
+
+CorInfoType Llvm::getCorInfoTypeForArg(CORINFO_SIG_INFO* sigInfo, CORINFO_ARG_LIST_HANDLE& arg, CORINFO_CLASS_HANDLE* clsHnd)
+{
+    CorInfoTypeWithMod corTypeWithMod = GetArgTypeIncludingParameterized(sigInfo, arg, clsHnd);
+    return strip(corTypeWithMod);
+}
+
+// When looking at a sigInfo from eeGetMethodSig we have CorInfoType(s) but when looking at lclVars we have LclVarDsc or var_type(s),
+// This method exists to allow both to map to LLVM types.
+CorInfoType Llvm::toCorInfoType(var_types varType)
+{
+    switch (varType)
+    {
+        case TYP_BOOL:
+            return CORINFO_TYPE_BOOL;
+        case TYP_BYREF:
+            return CORINFO_TYPE_BYREF;
+        case TYP_BYTE:
+            return CORINFO_TYPE_BYTE;
+        case TYP_UBYTE:
+            return CORINFO_TYPE_UBYTE;
+        case TYP_LCLBLK:
+            return CORINFO_TYPE_VALUECLASS;
+        case TYP_DOUBLE:
+            return CORINFO_TYPE_DOUBLE;
+        case TYP_FLOAT:
+            return CORINFO_TYPE_FLOAT;
+        case TYP_INT:
+            return CORINFO_TYPE_INT;
+        case TYP_UINT:
+            return CORINFO_TYPE_UINT;
+        case TYP_LONG:
+            return CORINFO_TYPE_LONG;
+        case TYP_ULONG:
+            return CORINFO_TYPE_ULONG;
+        case TYP_REF:
+            return CORINFO_TYPE_REFANY;
+        case TYP_SHORT:
+            return CORINFO_TYPE_SHORT;
+        case TYP_USHORT:
+            return CORINFO_TYPE_USHORT;
+        case TYP_STRUCT:
+            return CORINFO_TYPE_VALUECLASS;
+        case TYP_UNDEF:
+            return CORINFO_TYPE_UNDEF;
+        case TYP_VOID:
+            return CORINFO_TYPE_VOID;
+        default:
+            failFunctionCompilation();
+    }
+}
+
+// Returns true if the method returns a type that must be kept on the shadow stack
+//
+bool Llvm::needsReturnStackSlot(Compiler* compiler, CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd)
+{
+    return corInfoType != CorInfoType::CORINFO_TYPE_VOID && !canStoreArgOnLlvmStack(compiler, corInfoType, classHnd);
+}
+
+bool Llvm::needsReturnStackSlot(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd)
+{
+    return Llvm::needsReturnStackSlot(_compiler, corInfoType, classHnd);
+}
+
+// Returns true if the type can be stored on the LLVM stack
+// instead of the shadow stack in this method. This is the case
+// if it is a non-ref primitive or a struct without GC fields.
+//
+bool Llvm::canStoreLocalOnLlvmStack(LclVarDsc* varDsc)
+{
+    return !varDsc->HasGCPtr();
+}
+
+bool Llvm::canStoreArgOnLlvmStack(Compiler* compiler, CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd)
+{
+    // structs with no GC pointers can go on LLVM stack.
+    if (corInfoType == CorInfoType::CORINFO_TYPE_VALUECLASS)
+    {
+        ClassLayout* classLayout = compiler->typGetObjLayout(classHnd);
+        return !classLayout->HasGCPtr();
+    }
+
+    if (corInfoType == CorInfoType::CORINFO_TYPE_BYREF || corInfoType == CorInfoType::CORINFO_TYPE_CLASS ||
+        corInfoType == CorInfoType::CORINFO_TYPE_REFANY)
+    {
+        return false;
+    }
+    return true;
+}
+
+static unsigned corInfoTypeAligment(CorInfoType corInfoType)
+{
+    unsigned size = TARGET_POINTER_SIZE; // TODO Wasm64 aligns pointers at 4 or 8?
+    switch (corInfoType)
+    {
+        case CORINFO_TYPE_LONG:
+        case CORINFO_TYPE_ULONG:
+        case CORINFO_TYPE_DOUBLE:
+            size = 8;
+    }
+    return size;
+}
+
+unsigned int Llvm::padOffset(CorInfoType corInfoType, CORINFO_CLASS_HANDLE structClassHandle, unsigned int atOffset)
+{
+    unsigned int alignment;
+    if (corInfoType == CORINFO_TYPE_VALUECLASS)
+    {
+        return PadOffset(structClassHandle, atOffset);
+    }
+
+    alignment = corInfoTypeAligment(corInfoType);
+    return roundUp(atOffset, alignment);
+}
+
+unsigned int Llvm::padNextOffset(CorInfoType corInfoType, CORINFO_CLASS_HANDLE structClassHandle, unsigned int atOffset)
+{
+    unsigned int size;
+    if (corInfoType == CORINFO_TYPE_VALUECLASS)
+    {
+        size = getElementSize(structClassHandle, corInfoType);
+    }
+    else
+    {
+        size = corInfoTypeAligment(corInfoType);
+    }
+
+    return padOffset(corInfoType, structClassHandle, atOffset) + size;
 }
 
 [[noreturn]] void Llvm::failFunctionCompilation()
@@ -111,55 +297,6 @@ void emitDebugMetadata(LLVMContext& context)
         _function->deleteBody();
     }
     fatal(CORJIT_SKIPPED);
-}
-
-// When looking at a sigInfo from eeGetMethodSig we have CorInfoType(s) but when looking at lclVars we have LclVarDsc or var_type(s), This method exists to allow both to map to LLVM types.
-CorInfoType Llvm::toCorInfoType(var_types varType)
-{
-    switch (varType)
-    {
-        case TYP_BOOL:
-            return CorInfoType::CORINFO_TYPE_BOOL;
-        case TYP_BYREF:
-            return CorInfoType::CORINFO_TYPE_BYREF;
-        case TYP_BYTE:
-            return CorInfoType::CORINFO_TYPE_BYTE;
-        case TYP_UBYTE:
-            return CorInfoType::CORINFO_TYPE_UBYTE;
-        case TYP_LCLBLK:
-            return CorInfoType::CORINFO_TYPE_VALUECLASS;
-        case TYP_DOUBLE:
-            return CorInfoType::CORINFO_TYPE_DOUBLE;
-        case TYP_FLOAT:
-            return CorInfoType::CORINFO_TYPE_FLOAT;
-        case TYP_INT:
-            return CorInfoType::CORINFO_TYPE_INT;
-        case TYP_UINT:
-            return CorInfoType::CORINFO_TYPE_UINT;
-        case TYP_LONG:
-            return CorInfoType::CORINFO_TYPE_LONG;
-        case TYP_ULONG:
-            return CorInfoType::CORINFO_TYPE_ULONG;
-        case TYP_REF:
-            return CorInfoType::CORINFO_TYPE_REFANY;
-        case TYP_SHORT:
-            return CorInfoType::CORINFO_TYPE_SHORT;
-        case TYP_USHORT:
-            return CorInfoType::CORINFO_TYPE_USHORT;
-        case TYP_STRUCT:
-            return CorInfoType::CORINFO_TYPE_VALUECLASS;
-        case TYP_UNDEF:
-            return CorInfoType::CORINFO_TYPE_UNDEF;
-        case TYP_VOID:
-            return CorInfoType::CORINFO_TYPE_VOID;
-        default:
-            failFunctionCompilation();
-    }
-}
-
-CORINFO_CLASS_HANDLE Llvm::tryGetStructClassHandle(LclVarDsc* varDsc)
-{
-    return varTypeIsStruct(varDsc) ? varDsc->GetStructHnd() : NO_CLASS_HANDLE;;
 }
 
 const char* Llvm::GetMangledMethodName(CORINFO_METHOD_HANDLE methodHandle)
@@ -237,147 +374,4 @@ CORINFO_METHOD_HANDLE Llvm::GetCompilerHelpersMethodHandle(const char* helperCla
 uint32_t Llvm::GetInstanceFieldAlignment(CORINFO_CLASS_HANDLE fieldTypeHandle)
 {
     return _getInstanceFieldAlignment(_thisPtr, fieldTypeHandle);
-}
-
-static unsigned corInfoTypeAligment(CorInfoType corInfoType)
-{
-    unsigned size = TARGET_POINTER_SIZE; // TODO Wasm64 aligns pointers at 4 or 8?
-    switch (corInfoType)
-    {
-        case CORINFO_TYPE_LONG:
-        case CORINFO_TYPE_ULONG:
-        case CORINFO_TYPE_DOUBLE:
-            size = 8;
-    }
-    return size;
-}
-
-unsigned int Llvm::padOffset(CorInfoType corInfoType, CORINFO_CLASS_HANDLE structClassHandle, unsigned int atOffset)
-{
-    unsigned int alignment;
-    if (corInfoType == CORINFO_TYPE_VALUECLASS)
-    {
-        return PadOffset(structClassHandle, atOffset);
-    }
-
-    alignment = corInfoTypeAligment(corInfoType);
-    return roundUp(atOffset, alignment);
-}
-
-unsigned int Llvm::padNextOffset(CorInfoType corInfoType, CORINFO_CLASS_HANDLE structClassHandle, unsigned int atOffset)
-{
-    unsigned int size;
-    if (corInfoType == CORINFO_TYPE_VALUECLASS)
-    {
-        size = getElementSize(structClassHandle, corInfoType);
-    }
-    else
-    {
-        size = corInfoTypeAligment(corInfoType);
-    }
-
-    return padOffset(corInfoType, structClassHandle, atOffset) + size;
-}
-
-// Returns true if the type can be stored on the LLVM stack
-// instead of the shadow stack in this method. This is the case
-// if it is a non-ref primitive or a struct without GC fields.
-//
-bool Llvm::canStoreLocalOnLlvmStack(LclVarDsc* varDsc)
-{
-    return !varDsc->HasGCPtr();
-}
-
-bool Llvm::canStoreArgOnLlvmStack(Compiler* compiler, CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd)
-{
-    // structs with no GC pointers can go on LLVM stack.
-    if (corInfoType == CorInfoType::CORINFO_TYPE_VALUECLASS)
-    {
-        ClassLayout* classLayout = compiler->typGetObjLayout(classHnd);
-        return !classLayout->HasGCPtr();
-    }
-
-    if (corInfoType == CorInfoType::CORINFO_TYPE_BYREF || corInfoType == CorInfoType::CORINFO_TYPE_CLASS ||
-        corInfoType == CorInfoType::CORINFO_TYPE_REFANY)
-    {
-        return false;
-    }
-    return true;
-}
-
-/// <summary>
-/// Returns true if the method returns a type that must be kept
-/// on the shadow stack
-/// </summary>
-bool Llvm::needsReturnStackSlot(Compiler* compiler, CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd)
-{
-    return corInfoType != CorInfoType::CORINFO_TYPE_VOID && !canStoreArgOnLlvmStack(compiler, corInfoType, classHnd);
-}
-
-bool Llvm::needsReturnStackSlot(Compiler* compiler, GenTreeCall* callee)
-{
-    CORINFO_SIG_INFO sigInfo;
-
-    compiler->eeGetMethodSig(compiler->info.compMethodHnd, &sigInfo);
-
-    return Llvm::needsReturnStackSlot(compiler, sigInfo.retType, sigInfo.retTypeClass);
-}
-
-bool Llvm::needsReturnStackSlot(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd)
-{
-    return Llvm::needsReturnStackSlot(_compiler, corInfoType, classHnd);
-}
-
-CorInfoType Llvm::getCorInfoTypeForArg(CORINFO_SIG_INFO* sigInfo, CORINFO_ARG_LIST_HANDLE& arg, CORINFO_CLASS_HANDLE* clsHnd)
-{
-    CorInfoTypeWithMod corTypeWithMod = GetArgTypeIncludingParameterized(sigInfo, arg, clsHnd);
-    return strip(corTypeWithMod);
-}
-
-
-Llvm::Llvm(Compiler* pCompiler)
-    : _compiler(pCompiler),
-      _info(pCompiler->info),
-      _function(nullptr),
-      _builder(_llvmContext),
-      _prologBuilder(_llvmContext),
-      _shadowStackLclNum(BAD_VAR_NUM),
-      _retAddressLclNum(BAD_VAR_NUM)
-{
-    _compiler->eeGetMethodSig(_info.compMethodHnd, &_sigInfo);
-}
-
-void Llvm::llvmShutdown()
-{
-    if (_diBuilder != nullptr)
-    {
-        emitDebugMetadata(_llvmContext);
-    }
-
-    std::error_code ec;
-
-    if (_outputFileName == nullptr) return; // nothing generated
-
-    //TODO-LLVM: when the release build is more stable, reinstate the #ifdef.  For now the text output is useful for debugging
-//#ifdef DEBUG
-    char* txtFileName = (char*)malloc(strlen(_outputFileName) + 2); // .txt is longer than .bc
-    strcpy(txtFileName, _outputFileName);
-    strcpy(txtFileName + strlen(_outputFileName) - 2, "txt");
-    llvm::raw_fd_ostream textOutputStream(txtFileName, ec);
-    _module->print(textOutputStream, (llvm::AssemblyAnnotationWriter*)NULL);
-    free(txtFileName);
-
-    // verifyModule returns true when its broken, so invert
-    assert(!llvm::verifyModule(*_module, &llvm::errs()));
-//#endif //DEBUG
-
-    llvm::raw_fd_ostream OS(_outputFileName, ec);
-    llvm::WriteBitcodeToFile(*_module, OS);
-
-    for (const auto &structDesc : *_structDescMap)
-    {
-        delete structDesc.second;
-    }
-
-    delete _module;
 }

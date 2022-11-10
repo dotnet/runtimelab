@@ -134,6 +134,13 @@ private:
     // |                                                   General                                                    |
     // ================================================================================================================
 
+public:
+    Llvm(Compiler* compiler);
+
+    static void llvmShutdown();
+    static bool needsReturnStackSlot(Compiler* compiler, GenTreeCall* callee);
+
+private:
     LIR::Range& CurrentRange()
     {
         return *_currentRange;
@@ -150,6 +157,11 @@ private:
 
     bool canStoreLocalOnLlvmStack(LclVarDsc* varDsc);
     static bool canStoreArgOnLlvmStack(Compiler* compiler, CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd);
+
+    unsigned int padOffset(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHandle, unsigned int atOffset);
+    unsigned int padNextOffset(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHandle, unsigned int atOffset);
+
+    [[noreturn]] void failFunctionCompilation();
 
     // Raw Jit-EE interface functions.
     //
@@ -168,11 +180,6 @@ private:
     TypeDescriptor GetTypeDescriptor(CORINFO_CLASS_HANDLE typeHandle);
     CORINFO_METHOD_HANDLE GetCompilerHelpersMethodHandle(const char* helperClassTypeName, const char* helperMethodName);
     uint32_t GetInstanceFieldAlignment(CORINFO_CLASS_HANDLE fieldTypeHandle);
-
-    unsigned int padOffset(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHandle, unsigned int atOffset);
-    unsigned int padNextOffset(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHandle, unsigned int atOffset);
-
-    [[noreturn]] void failFunctionCompilation();
 
     // ================================================================================================================
     // |                                                 Type system                                                  |
@@ -290,12 +297,6 @@ private:
     unsigned int getTotalRealLocalOffset();
     unsigned int getTotalLocalOffset();
     LlvmArgInfo getLlvmArgInfoForArgIx(unsigned lclNum);
-
-public:
-    Llvm(Compiler* pCompiler);
-
-    static void llvmShutdown();
-    static bool needsReturnStackSlot(Compiler* compiler, GenTreeCall* callee);
 };
 
 
