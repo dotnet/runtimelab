@@ -91,11 +91,13 @@ typedef JitHashTable<BasicBlock*, JitPtrKeyFuncs<BasicBlock>, llvm::BasicBlock*>
 // Note we declare all statics here, and define them in llvm.cpp, for documentation and
 // visibility purposes even as some are only needed in other compilation units.
 //
-extern Module*          _module;
-extern llvm::DIBuilder* _diBuilder;
-extern LLVMContext      _llvmContext;
-extern Function*        _nullCheckFunction;
-extern Function*        _doNothingFunction;
+extern Module*                                                _module;
+extern llvm::DIBuilder*                                       _diBuilder;
+extern LLVMContext                                            _llvmContext;
+extern Function*                                              _nullCheckFunction;
+extern Function*                                              _doNothingFunction;
+extern std::unordered_map<CORINFO_CLASS_HANDLE, Type*>*       _llvmStructs;
+extern std::unordered_map<CORINFO_CLASS_HANDLE, StructDesc*>* _structDescMap;
 
 class Llvm
 {
@@ -167,8 +169,8 @@ private:
     CORINFO_METHOD_HANDLE GetCompilerHelpersMethodHandle(const char* helperClassTypeName, const char* helperMethodName);
     uint32_t GetInstanceFieldAlignment(CORINFO_CLASS_HANDLE fieldTypeHandle);
 
-    unsigned int padNextOffset(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHandle, unsigned int atOffset);
     unsigned int padOffset(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHandle, unsigned int atOffset);
+    unsigned int padNextOffset(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHandle, unsigned int atOffset);
 
     [[noreturn]] void failFunctionCompilation();
 
@@ -186,6 +188,7 @@ private:
     Type* getLlvmTypeForParameterType(CORINFO_CLASS_HANDLE classHnd);
 
     unsigned getElementSize(CORINFO_CLASS_HANDLE fieldClassHandle, CorInfoType corInfoType);
+    void addPaddingFields(unsigned paddingSize, std::vector<Type*>& llvmFields);
 
     // ================================================================================================================
     // |                                                   Lowering                                                   |
