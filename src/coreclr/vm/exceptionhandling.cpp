@@ -432,6 +432,13 @@ bool ExceptionTracker::FindNonvolatileRegisterPointers(Thread* pThread, UINT_PTR
     }
 
     CONSISTENCY_CHECK(state.nFrames);
+
+#ifdef _DEBUG
+    if (!state.fFound)
+    {
+        DoJITFailFast();
+    }
+#endif
     CONSISTENCY_CHECK(state.fFound);
     CONSISTENCY_CHECK(NULL != pHighestFrameWithRegisters);
 
