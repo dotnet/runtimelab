@@ -62,12 +62,6 @@ struct DebugMetadata
     llvm::DICompileUnit* diCompileUnit;
 };
 
-struct IncomingPhi
-{
-    llvm::PHINode* phiNode;
-    llvm::BasicBlock* llvmBasicBlock;
-};
-
 typedef std::pair<unsigned, unsigned> SsaPair;
 
 struct SsaPairHash
