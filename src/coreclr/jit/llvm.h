@@ -9,7 +9,7 @@
 #include "alloc.h"
 #include "jitpch.h"
 #include "jitgcinfo.h"
-#include "llvm_types.h"
+#include "llvmtypes.h"
 #include <new>
 
 // these break std::min/max in LLVM's headers

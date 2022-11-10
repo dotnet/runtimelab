@@ -233,7 +233,7 @@ if (CLR_CMAKE_TARGET_WIN32)
     jitstd.h
     jittelemetry.h
     lir.h
-    llvm_types.h
+    llvmtypes.h
     llvm.h
     loopcloning.h
     loopcloningopts.h
