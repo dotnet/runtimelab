@@ -329,24 +329,19 @@ set( JIT_AMD64_SOURCES
   hwintrinsiccodegenxarch.cpp
 )
 
-# TODO this is just a copy of AMD64_SOURCES to get started - e.g. simd,hwintrinsics doesn't make sense for wasm
 set( JIT_WASM64_SOURCES
-  simd.cpp
-  simdashwintrinsic.cpp
-  simdcodegenxarch.cpp
   targetwasm.cpp
-  hwintrinsicxarch.cpp
-  hwintrinsiccodegenxarch.cpp
   llvm.cpp
+  llvmtypes.cpp
+  llvmlower.cpp
+  llvmcodegen.cpp
 )
 set( JIT_WASM32_SOURCES
-  simd.cpp
-  simdashwintrinsic.cpp
-  simdcodegenxarch.cpp
   targetwasm.cpp
-  hwintrinsicxarch.cpp
-  hwintrinsiccodegenxarch.cpp
   llvm.cpp
+  llvmtypes.cpp
+  llvmlower.cpp
+  llvmcodegen.cpp
 )
 
 set( JIT_ARM_SOURCES
