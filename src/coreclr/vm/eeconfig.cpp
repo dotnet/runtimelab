@@ -167,7 +167,7 @@ HRESULT EEConfig::Init()
 
 #ifdef _DEBUG
     m_fAssertOnBadImageFormat = false;
-    m_fAssertOnFailFast = true;
+    m_fAssertOnFailFast = false;
 
     fSuppressChecks = false;
     fConditionalContracts = false;
@@ -588,7 +588,6 @@ HRESULT EEConfig::sync()
     pszBreakOnStructMarshalSetup = NarrowWideChar((LPWSTR)pszBreakOnStructMarshalSetup);
 
     m_fAssertOnBadImageFormat = (CLRConfig::GetConfigValue(CLRConfig::INTERNAL_AssertOnBadImageFormat) != 0);
-    m_fAssertOnFailFast = (CLRConfig::GetConfigValue(CLRConfig::INTERNAL_AssertOnFailFast) != 0);
 
     fSuppressChecks = (CLRConfig::GetConfigValue(CLRConfig::INTERNAL_SuppressChecks) != 0);
     CHECK::SetAssertEnforcement(!fSuppressChecks);
