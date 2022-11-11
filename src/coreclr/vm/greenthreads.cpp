@@ -153,19 +153,19 @@ extern "C" uintptr_t FirstFrameInGreenThreadCpp(TransitionHelperFunction functio
 {
     GetThread()->SetExecutingOnAltStack();
     assert(t_greenThread.inGreenThread);
-    FrameWithCookie<GreenThreadFrame> f;
+    //FrameWithCookie<GreenThreadFrame> f;
 
-    {
-        GCX_COOP();
-        f.Push(GetThread());
-    }
+    //{
+    //    GCX_COOP();
+    //    f.Push(GetThread());
+    //}
 
     uintptr_t result = param->function(param->param);
 
-    {
-        GCX_COOP();
-        f.Pop(GetThread());
-    }
+    //{
+    //    GCX_COOP();
+    //    f.Pop(GetThread());
+    //}
 
     t_greenThread.greenThreadStackCurrent = NULL;
 
