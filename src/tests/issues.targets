@@ -2,20 +2,8 @@
 <Project DefaultTargets = "GetListOfTestCmds" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
     <!-- All OS/Arch/Runtime excludes for green thread tests -->
     <ItemGroup Condition="'$(XunitTestBinBase)' != ''">
-      <ExcludeList Include="$(XunitTestBinBase)/baseservices/threading/greenthreads/await/AwaitTest000/*">
-        <Issue>Crash due to various reasons</Issue>
-      </ExcludeList>
-      <ExcludeList Include="$(XunitTestBinBase)/baseservices/threading/greenthreads/await/AwaitTest001/*">
-        <Issue>Crash due to various reasons</Issue>
-      </ExcludeList>
-      <ExcludeList Include="$(XunitTestBinBase)/baseservices/threading/greenthreads/await/AwaitTest010/*">
-        <Issue>Crash due to various reasons</Issue>
-      </ExcludeList>
-      <ExcludeList Include="$(XunitTestBinBase)/baseservices/threading/greenthreads/await/AwaitTest011/*">
-        <Issue>Crash due to various reasons</Issue>
-      </ExcludeList>
       <ExcludeList Include="$(XunitTestBinBase)/baseservices/threading/greenthreads/executioncontext/FlowTest/*">
-        <Issue>Crash due to various reasons</Issue>
+        <Issue>Crash</Issue>
       </ExcludeList>
     </ItemGroup>
 
