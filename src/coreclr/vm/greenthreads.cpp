@@ -153,19 +153,19 @@ extern "C" uintptr_t FirstFrameInGreenThreadCpp(TransitionHelperFunction functio
 {
     GetThread()->SetExecutingOnAltStack();
     assert(t_greenThread.inGreenThread);
-    //FrameWithCookie<GreenThreadFrame> f;
+    FrameWithCookie<GreenThreadFrame> f;
 
-    //{
-    //    GCX_COOP();
-    //    f.Push(GetThread());
-    //}
+    {
+        GCX_COOP();
+        f.Push(GetThread());
+    }
 
     uintptr_t result = param->function(param->param);
 
-    //{
-    //    GCX_COOP();
-    //    f.Pop(GetThread());
-    //}
+    {
+        GCX_COOP();
+        f.Pop(GetThread());
+    }
 
     t_greenThread.greenThreadStackCurrent = NULL;
 
@@ -326,11 +326,11 @@ uintptr_t GreenThread_Yield() // Attempt to yield out of green thread. If the yi
     {
         GCX_COOP();
         t_greenThread.pFrameInGreenThread = GetThread()->m_pFrame;
-        if (t_greenThread.pFrameInGreenThread->PtrNextFrame() != t_greenThread.pFrameInOSThread)
+        if (t_greenThread.pFrameInGreenThread->PtrNextFrame()->PtrNextFrame() != t_greenThread.pFrameInOSThread)
         {
             return false;
         }
-        GetThread()->m_pFrame = t_greenThread.pFrameInGreenThread->PtrNextFrame();
+        GetThread()->m_pFrame = t_greenThread.pFrameInGreenThread->PtrNextFrame()->PtrNextFrame();
 
         // TODO: AndrewAu: What if we don't have sufficient memory for this?
         SuspendedGreenThread *pNewSuspendedThread = (SuspendedGreenThread*)malloc(sizeof(SuspendedGreenThread));
