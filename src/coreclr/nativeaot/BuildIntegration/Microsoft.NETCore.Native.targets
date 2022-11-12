@@ -29,8 +29,8 @@ The .NET Foundation licenses this file to you under the MIT license.
     <IlcFrameworkPath Condition="'$(IlcPath)' != '' and '$(IlcFrameworkPath)' == ''">$(IlcPath)\framework\</IlcFrameworkPath>
     <IlcMibcPath Condition="'$(IlcPath)' != '' and '$(IlcMibcPath)' == ''">$(IlcPath)\mibc\</IlcMibcPath>
     <TargetOS Condition="'$(TargetOS)' == '' and '$(TargetArchitecture)' == 'wasm'">Browser</TargetOS>
-    <TargetOS Condition="'$([MSBuild]::IsOSPlatform(Windows))' == 'true'">windows</TargetOS>
-    <TargetOS Condition="'$([MSBuild]::IsOSPlatform(OSX))' == 'true'">OSX</TargetOS>
+    <TargetOS Condition="'$(TargetOS)' == '' and '$([MSBuild]::IsOSPlatform(Windows))' == 'true'">windows</TargetOS>
+    <TargetOS Condition="'$(TargetOS)' == '' and '$([MSBuild]::IsOSPlatform(OSX))' == 'true'">OSX</TargetOS>
     <TargetOS Condition="'$(TargetOS)' == ''">$(OS)</TargetOS>
     <NativeDebugSymbols Condition="$(DebugSymbols) == 'true' or ($(DebugType) != 'none' and $(DebugType) != '')">true</NativeDebugSymbols>
     <!-- Workaround for https://github.com/dotnet/runtimelab/issues/771 -->
