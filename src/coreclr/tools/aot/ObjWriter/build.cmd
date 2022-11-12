@@ -25,7 +25,7 @@ if not exist llvm-project (
     cd llvm-project || goto Error
     :: Purposefuly ignoring exit codes of sparse-checkout so that this works with git lower than 2.26
     git sparse-checkout init
-    git sparse-checkout set llvm/* !llvm/test/*
+    git sparse-checkout set --no-cone /llvm/* !/llvm/test/*
     git checkout %LLVMBranch% || goto Error
     cd llvm || goto Error
     goto ApplyPatch
