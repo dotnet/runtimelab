@@ -870,11 +870,16 @@ NESTED_END TransitionToOSThreadHelper, _TEXT
 ; onwards in execution with the green thread suspended. When the thread is resumed, it will jump to resume_point.
 NESTED_ENTRY YieldOutOfGreenThreadHelper, _TEXT
     PROLOG_WITH_TRANSITION_BLOCK
-    sub rdx, 0e8h ; This should be the RSP before we did the transition to the OS thread
-    mov rbp, rdx  ; Set RBP to what it was before we transitioned to the green thread
-    mov [r8], rsp ; Capture current rsp into the greenTheadStackCurrent variable
+    sub rdx, 0e8h         ; This should be the RSP before we did the transition to the OS thread
+    mov rbp, rdx          ; Set RBP to what it was before we transitioned to the green thread
+
+    mov rdx, [rcx]        ; Get the latest OS thread stack limit from t_greenThread.osStackRange
+    mov [rbp - 020h], rdx ; Update the stack limit stored in the stack frame, which will be restored
+
+    mov [r8], rsp         ; Capture current rsp into the greenTheadStackCurrent variable
     lea rsp, [rbp-0e0h]
     jmp yield_point
+
 ALTERNATE_ENTRY resume_point
     EPILOG_WITH_TRANSITION_BLOCK_RETURN
 NESTED_END YieldOutOfGreenThreadHelper, _TEXT
@@ -885,7 +890,7 @@ extern GetResumptionStackPointerAndSaveOSStackPointer:proc
 ; In particular, the stack layout of the function is identical to that of _more_stack, which allows a green thread to finish
 ; by returning through the _more_stack function even though if it is a thread resume it will have entered through this function
 ; In addition, the process of yielding a green thread will return through this function if the green thread was entered into on 
-; this OS thread with either a _more_stack call, or a call through ResumtSuspendedThreadHelper2. This function is used
+; this OS thread with either a _more_stack call, or a call through ResumeSuspendedThreadHelper2. This function is used
 ; when a green thread is resumed after being suspended.
 NESTED_ENTRY ResumeSuspendedThreadHelper2, _TEXT
         ;

@@ -347,6 +347,12 @@ uintptr_t GreenThread_Yield() // Attempt to yield out of green thread. If the yi
         pNewSuspendedThread->next = &green_tail;
     }
 
+    // Verify that the stack base stored in the stack frame hasn't changed (we're yielding back to the OS thread's stack), and
+    // that the latest stack limit from t_greenThread.osStackRange may only have caused the stack size to grow compared to the
+    // stack limit stored in the stack frame
+    _ASSERTE(t_greenThread.osStackRange.stackBase == *(void **)(t_greenThread.osStackCurrent - (0xe8 + 0x18)));
+    _ASSERTE(t_greenThread.osStackRange.stackLimit <= *(void **)(t_greenThread.osStackCurrent - (0xe8 + 0x20)));
+
     YieldOutOfGreenThreadHelper(&t_greenThread.osStackRange, t_greenThread.osStackCurrent, &t_greenThread.greenThreadStackCurrent);
 
     {
