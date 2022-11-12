@@ -33,6 +33,8 @@ namespace System.Threading
         private string? _name;
         private StartHelper? _startHelper;
 
+        internal ThreadPoolWorkQueueThreadLocals? _threadPoolWorkQueueThreadLocals;
+
         /*=========================================================================
         ** The base implementation of Thread is all native.  The following fields
         ** should never be used in the C# code.  They are here to define the proper
@@ -147,6 +149,12 @@ namespace System.Threading
 
         [MethodImpl(MethodImplOptions.InternalCall)]
         private static extern Thread GetCurrentThreadNative();
+
+        internal static extern Thread CurrentOSThread
+        {
+            [MethodImpl(MethodImplOptions.InternalCall)]
+            get;
+        }
 
         [MethodImpl(MethodImplOptions.InternalCall)]
         private extern void Initialize();

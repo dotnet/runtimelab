@@ -28,6 +28,7 @@ namespace System.Threading.Tasks
             GreenThreadExecutorObject executorObj = Unsafe.AsRef<GreenThreadExecutorObject>(argument);
             GreenThreadStatics.t_RefToTaskToWaitFor = executorObj.refToTaskToWaitFor;
             executorObj!.action!();
+            ExecutionContext.SendValueChangeNotificationsForResetToDefaultUnsafe();
         }
 
         private static class GreenThreadStatics
@@ -42,12 +43,16 @@ namespace System.Threading.Tasks
             public unsafe void* refToTaskToWaitFor;
         }
 
-        internal static unsafe void GreenThreadExecutorFunc(object? obj)
+        private static readonly Action<Action> s_greenThreadExecutorFuncDelegate = GreenThreadExecutorFunc;
+
+        internal static unsafe void GreenThreadExecutorFunc(Action action)
         {
+            Debug.Assert(Thread.CurrentThread._executionContext == null);
+
             GreenThreadExecutorObject executorObj = new GreenThreadExecutorObject();
             Task? taskToWaitFor = null;
 
-            executorObj.action = (Action?)obj;
+            executorObj.action = action;
             executorObj.refToTaskToWaitFor = Unsafe.AsPointer(ref taskToWaitFor);
             var suspendedThread = GreenThread_StartThread(&GreenThreadStartFunc, Unsafe.AsPointer(ref executorObj));
             if (suspendedThread != null)
@@ -70,7 +75,9 @@ namespace System.Threading.Tasks
             {
                 Task? taskToWaitFor = null;
 
+                ExecutionContext.SendValueChangeNotificationsForResetToDefaultUnsafe();
                 _suspendedThread = GreenThread_ResumeThread(_suspendedThread, Unsafe.AsPointer(ref taskToWaitFor));
+                ExecutionContext.SendValueChangeNotificationsForRestoreFromDefaultUnsafe();
                 Debug.Assert((taskToWaitFor != null) == (_suspendedThread != null));
                 if (_suspendedThread != null)
                 {
@@ -80,10 +87,18 @@ namespace System.Threading.Tasks
             }
         }
 
-        static partial void RunOnActualGreenThread(Action action, ref bool ranAsActualGreenThread)
+        static partial void RunOnActualGreenThread(Action action, bool preferLocal, ref bool ranAsActualGreenThread)
         {
             ranAsActualGreenThread = true;
-            ThreadPool.UnsafeQueueUserWorkItem(GreenThreadExecutorFunc, action);
+            ThreadPool.UnsafeQueueUserWorkItem(s_greenThreadExecutorFuncDelegate, action, preferLocal);
+        }
+
+        static partial void TryRunOnActualGreenThreadInline(Action action, ref bool success)
+        {
+            success = true;
+            ExecutionContext.SendValueChangeNotificationsForResetToDefaultUnsafe();
+            GreenThreadExecutorFunc(action);
+            ExecutionContext.SendValueChangeNotificationsForRestoreFromDefaultUnsafe();
         }
 
         // No-inlining is used here and on ClearTaskToWaitFor, to avoid the problem
@@ -97,7 +112,9 @@ namespace System.Threading.Tasks
                 unsafe
                 {
                     Unsafe.AsRef<Task>(GreenThreadStatics.t_RefToTaskToWaitFor) = taskToWaitForCompletion;
+                    ExecutionContext.SendValueChangeNotificationsForResetToDefaultUnsafe();
                     void* yieldReturn = GreenThread_Yield();
+                    ExecutionContext.SendValueChangeNotificationsForRestoreFromDefaultUnsafe();
 
                     if (yieldReturn != null)
                     {

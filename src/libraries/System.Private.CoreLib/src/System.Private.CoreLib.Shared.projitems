@@ -1109,6 +1109,7 @@
     <Compile Include="$(MSBuildThisFileDirectory)System\Threading\Tasks\ConcurrentExclusiveSchedulerPair.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\Threading\Tasks\Future.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\Threading\Tasks\FutureFactory.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)System\Threading\Tasks\GreenThreadTaskScheduler.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\Threading\Tasks\ProducerConsumerQueues.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\Threading\Tasks\Sources\IValueTaskSource.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\Threading\Tasks\Sources\ManualResetValueTaskSourceCore.cs" />

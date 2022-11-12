@@ -18,7 +18,7 @@ namespace System.Threading.Tasks
     /// <summary>
     /// An implementation of TaskScheduler that uses the ThreadPool scheduler
     /// </summary>
-    internal sealed class ThreadPoolTaskScheduler : TaskScheduler
+    internal class ThreadPoolTaskScheduler : TaskScheduler
     {
         /// <summary>
         /// Constructs a new ThreadPool task scheduler object
@@ -26,6 +26,13 @@ namespace System.Threading.Tasks
         internal ThreadPoolTaskScheduler()
         {
             _ = base.Id; // force ID creation of the default scheduler
+        }
+
+        /// <summary>
+        /// Intended for derived types that don't need the behavior of the default constructor
+        /// </summary>
+        protected ThreadPoolTaskScheduler(bool _)
+        {
         }
 
         // static delegate for threads allocated to handle LongRunning tasks.

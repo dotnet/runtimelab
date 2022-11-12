@@ -295,8 +295,7 @@ namespace System.Threading
 
         internal static void SetCurrentExecutionContextUnsafe(ExecutionContext executionContext)
         {
-            Debug.Assert(Thread.CurrentThread._executionContext == null, "ThreadPool thread not on Default ExecutionContext.");
-            Debug.Assert(Thread.CurrentThread._synchronizationContext == null, "ThreadPool thread not on Default SynchronizationContext.");
+            CheckThreadPoolAndContextsAreDefault();
             Debug.Assert(executionContext != null && !executionContext.m_isDefault, "ExecutionContext argument is Default.");
 
             // Restore Non-Default context
@@ -309,9 +308,34 @@ namespace System.Threading
             // The caller is expected to handle notifications and reset EC and SyncCtx back to default if necessary
         }
 
+        // Used by green threads before transitioning out of it by yielding or exiting. Some AsyncLocal value change
+        // notifications may take effect at the OS thread level, such as impersonation. So for now any transition out of a green
+        // thread sends value change notifications as though the execution context is being reset to the default, and any
+        // transition into a green thread (resuming a green thread) sends value change notifications as though the execution
+        // context is being restored. A green thread starts with a default execution context on a thread that is already using a
+        // default execution context, so value change notifications are not necessary on that transition.
+        internal static void SendValueChangeNotificationsForResetToDefaultUnsafe()
+        {
+            ExecutionContext? currentExecutionCtx = Thread.CurrentThread._executionContext;
+            if (currentExecutionCtx is not null && currentExecutionCtx.HasChangeNotifications)
+            {
+                OnValuesChanged(currentExecutionCtx, nextExecutionCtx: null);
+            }
+        }
+
+        // Used by green threads upon transitioning into it by resuming. See
+        // GreenThread_SendValueChangeNotificationsForResetToDefaultUnsafe() for more information.
+        internal static void SendValueChangeNotificationsForRestoreFromDefaultUnsafe()
+        {
+            ExecutionContext? currentExecutionCtx = Thread.CurrentThread._executionContext;
+            if (currentExecutionCtx is not null && currentExecutionCtx.HasChangeNotifications)
+            {
+                OnValuesChanged(previousExecutionCtx: null, currentExecutionCtx);
+            }
+        }
+
         internal static void RunForThreadPoolUnsafe<TState>(ExecutionContext executionContext, Action<TState> callback, in TState state)
         {
-            CheckThreadPoolAndContextsAreDefault();
             SetCurrentExecutionContextUnsafe(executionContext);
 
             // We aren't running in try/catch as if an exception is directly thrown on the ThreadPool either process

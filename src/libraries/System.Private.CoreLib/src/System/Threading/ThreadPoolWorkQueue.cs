@@ -545,15 +545,7 @@ namespace System.Threading
         }
 
         public ThreadPoolWorkQueueThreadLocals GetOrCreateThreadLocals() =>
-            ThreadPoolWorkQueueThreadLocals.threadLocals ?? CreateThreadLocals();
-
-        [MethodImpl(MethodImplOptions.NoInlining)]
-        private ThreadPoolWorkQueueThreadLocals CreateThreadLocals()
-        {
-            Debug.Assert(ThreadPoolWorkQueueThreadLocals.threadLocals == null);
-
-            return ThreadPoolWorkQueueThreadLocals.threadLocals = new ThreadPoolWorkQueueThreadLocals(this);
-        }
+            ThreadPoolWorkQueueThreadLocals.Current ?? ThreadPoolWorkQueueThreadLocals.CreateCurrent(this);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void RefreshLoggingEnabled()
@@ -605,14 +597,14 @@ namespace System.Threading
                 FrameworkEventSource.Log.ThreadPoolEnqueueWorkObject(callback);
 
             ThreadPoolWorkQueueThreadLocals? tl;
-            if (!forceGlobal && (tl = ThreadPoolWorkQueueThreadLocals.threadLocals) != null)
+            if (!forceGlobal && (tl = ThreadPoolWorkQueueThreadLocals.Current) != null)
             {
                 tl.workStealingQueue.LocalPush(callback);
             }
             else
             {
                 ConcurrentQueue<object> queue =
-                    s_assignableWorkItemQueueCount > 0 && (tl = ThreadPoolWorkQueueThreadLocals.threadLocals) != null
+                    s_assignableWorkItemQueueCount > 0 && (tl = ThreadPoolWorkQueueThreadLocals.Current) != null
                         ? tl.assignedGlobalWorkItemQueue
                         : workItems;
                 queue.Enqueue(callback);
@@ -638,7 +630,7 @@ namespace System.Threading
 
         internal static bool LocalFindAndPop(object callback)
         {
-            ThreadPoolWorkQueueThreadLocals? tl = ThreadPoolWorkQueueThreadLocals.threadLocals;
+            ThreadPoolWorkQueueThreadLocals? tl = ThreadPoolWorkQueueThreadLocals.Current;
             return tl != null && tl.workStealingQueue.LocalFindAndPop(callback);
         }
 
@@ -1023,9 +1015,6 @@ namespace System.Threading
     // Holds a WorkStealingQueue, and removes it from the list when this object is no longer referenced.
     internal sealed class ThreadPoolWorkQueueThreadLocals
     {
-        [ThreadStatic]
-        public static ThreadPoolWorkQueueThreadLocals? threadLocals;
-
         public bool isProcessingHighPriorityWorkItems;
         public int queueIndex;
         public ConcurrentQueue<object> assignedGlobalWorkItemQueue;
@@ -1035,7 +1024,7 @@ namespace System.Threading
         public readonly object? threadLocalCompletionCountObject;
         public readonly Random.XoshiroImpl random = new Random.XoshiroImpl();
 
-        public ThreadPoolWorkQueueThreadLocals(ThreadPoolWorkQueue tpq)
+        private ThreadPoolWorkQueueThreadLocals(ThreadPoolWorkQueue tpq)
         {
             assignedGlobalWorkItemQueue = tpq.workItems;
             workQueue = tpq;
@@ -1043,6 +1032,16 @@ namespace System.Threading
             ThreadPoolWorkQueue.WorkStealingQueueList.Add(workStealingQueue);
             currentThread = Thread.CurrentThread;
             threadLocalCompletionCountObject = ThreadPool.GetOrCreateThreadLocalCompletionCountObject();
+        }
+
+        public static ThreadPoolWorkQueueThreadLocals? Current => Thread.CurrentOSThread._threadPoolWorkQueueThreadLocals;
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static ThreadPoolWorkQueueThreadLocals CreateCurrent(ThreadPoolWorkQueue tpq)
+        {
+            Thread currentOSThread = Thread.CurrentOSThread;
+            Debug.Assert(currentOSThread._threadPoolWorkQueueThreadLocals == null);
+            return currentOSThread._threadPoolWorkQueueThreadLocals = new ThreadPoolWorkQueueThreadLocals(tpq);
         }
 
         public void TransferLocalWork()
@@ -1123,7 +1122,7 @@ namespace System.Threading
             // dependency on other queued work items.
             ScheduleForProcessing();
 
-            ThreadPoolWorkQueueThreadLocals tl = ThreadPoolWorkQueueThreadLocals.threadLocals!;
+            ThreadPoolWorkQueueThreadLocals tl = ThreadPoolWorkQueueThreadLocals.Current!;
             Debug.Assert(tl != null);
             Thread currentThread = tl.currentThread;
             Debug.Assert(currentThread == Thread.CurrentThread);

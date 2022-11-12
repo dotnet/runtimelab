@@ -73,6 +73,7 @@ public:
     static FCDECL0(INT32,   GetOptimalMaxSpinWaitsPerSpinIteration);
     static FCDECL1(void,    SpinWait,                       int iterations);
     static FCDECL0(Object*, GetCurrentThread);
+    static FCDECL0(Object*, GetCurrentOSThread);
     static FCDECL1(void,    Finalize,                       ThreadBaseObject* pThis);
 #ifdef FEATURE_COMINTEROP
     static FCDECL1(void,    DisableComObjectEagerCleanup,   ThreadBaseObject* pThis);

@@ -28,6 +28,7 @@ namespace System.Threading
         private string? _name;
         private StartHelper? _startHelper;
         private Exception? _startException;
+        internal ThreadPoolWorkQueueThreadLocals? _threadPoolWorkQueueThreadLocals;
 
         // Protects starting the thread and setting its priority
         private Lock _lock = new Lock();
@@ -73,6 +74,8 @@ namespace System.Threading
                 return RuntimeImports.RhCurrentOSThreadId();
             }
         }
+
+        internal static Thread CurrentOSThread => CurrentThread;
 
         // Slow path executed once per thread
         [MethodImpl(MethodImplOptions.NoInlining)]

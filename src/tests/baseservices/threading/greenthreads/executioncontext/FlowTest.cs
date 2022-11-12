@@ -6,9 +6,10 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 
-public class Test_greenthread_delay {
-
-    public static int Main() {
+public class Test_greenthread_executioncontext_FlowTest
+{
+    public static int Main()
+    {
         int result = 100;
         var defaultExecutionContext = ExecutionContext.Capture();
 
