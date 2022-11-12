@@ -40,7 +40,7 @@ namespace System
         // needs to throw an exception back to a method in a non-runtime module. The classlib is expected
         // to convert every code in the ExceptionIDs enum to an exception object.
         [RuntimeExport("GetRuntimeException")]
-        public static Exception GetRuntimeException(ExceptionIDs id)
+        public static Exception? GetRuntimeException(ExceptionIDs id)
         {
             if (!SafeToPerformRichExceptionSupport)
                 return null;
@@ -162,7 +162,7 @@ namespace System
         }
 
         [DoesNotReturn]
-        public static unsafe void FailFast(string message, Exception exception)
+        public static unsafe void FailFast(string message, Exception? exception)
         {
             FailFast(message, exception, RhFailFastReason.Unknown, IntPtr.Zero, IntPtr.Zero);
         }
@@ -192,7 +192,7 @@ namespace System
         // needs to cause the process to exit. It is the classlib's opprotunity to customize the
         // termination behavior in whatever way necessary.
         [RuntimeExport("FailFast")]
-        public static void RuntimeFailFast(RhFailFastReason reason, Exception exception, IntPtr pExAddress, IntPtr pExContext)
+        public static void RuntimeFailFast(RhFailFastReason reason, Exception? exception, IntPtr pExAddress, IntPtr pExContext)
         {
             if (!SafeToPerformRichExceptionSupport)
                 return;
@@ -230,7 +230,7 @@ namespace System
         }
 
         [DoesNotReturn]
-        internal static void FailFast(string message, Exception exception, RhFailFastReason reason, IntPtr pExAddress, IntPtr pExContext)
+        internal static void FailFast(string message, Exception? exception, RhFailFastReason reason, IntPtr pExAddress, IntPtr pExContext)
         {
             // If this a recursive call to FailFast, avoid all unnecessary and complex activity the second time around to avoid the recursion
             // that got us here the first time (Some judgement is required as to what activity is "unnecessary and complex".)

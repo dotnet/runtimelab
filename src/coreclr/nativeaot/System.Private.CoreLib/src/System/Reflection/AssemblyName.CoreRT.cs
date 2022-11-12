@@ -26,7 +26,7 @@ namespace System.Reflection
             return AssemblyNameHelpers.ComputePublicKeyToken(_publicKey);
         }
 
-        public static AssemblyName GetFileInformationCore(string assemblyFile)
+        private static AssemblyName GetFileInformationCore(string assemblyFile)
         {
             throw new PlatformNotSupportedException(SR.Arg_PlatformNotSupported_AssemblyName_GetAssemblyName);
         }

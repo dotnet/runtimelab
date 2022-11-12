@@ -815,13 +815,14 @@ namespace Internal.Metadata.NativeFormat.Writer
         }
     }
 
+    /* COMPLETENESS
     public partial class MethodImpl
     {
         public override string ToString()
         {
             return this.MethodDeclaration.ToString();
         }
-    }
+    }*/
 
     public partial class MethodInstantiation
     {
@@ -852,38 +853,6 @@ namespace Internal.Metadata.NativeFormat.Writer
                 + String.Join(", ", NamedArguments.Select(na => na.ToString())) + ")";
             str += "(ctor: " + Constructor.Handle.ToString();
             return str;
-        }
-    }
-
-    public partial class FixedArgument
-    {
-        private static bool IsConstantArray(MetadataRecord rec)
-        {
-            switch (rec.HandleType)
-            {
-                case HandleType.ConstantBooleanArray:
-                case HandleType.ConstantCharArray:
-                case HandleType.ConstantStringArray:
-                case HandleType.ConstantByteArray:
-                case HandleType.ConstantSByteArray:
-                case HandleType.ConstantInt16Array:
-                case HandleType.ConstantUInt16Array:
-                case HandleType.ConstantInt32Array:
-                case HandleType.ConstantUInt32Array:
-                case HandleType.ConstantInt64Array:
-                case HandleType.ConstantUInt64Array:
-                case HandleType.ConstantSingleArray:
-                case HandleType.ConstantDoubleArray:
-                    return true;
-                default:
-                    return false;
-            }
-        }
-        public override string ToString()
-        {
-            return Flags.FlagsToString()
-                + (Type != null ? " (" + Type.ToString() + ")" : "")
-                + (Value != null ? " " + Value.ToString() : "");
         }
     }
 

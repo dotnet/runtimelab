@@ -126,16 +126,16 @@ namespace System
                                                   string typeName,
                                                   bool ignoreCase,
                                                   BindingFlags bindingAttr,
-                                                  Binder binder,
-                                                  object[] args,
-                                                  CultureInfo culture,
-                                                  object[] activationAttributes)
+                                                  Binder? binder,
+                                                  object[]? args,
+                                                  CultureInfo? culture,
+                                                  object[]? activationAttributes)
         {
             throw new PlatformNotSupportedException(); // https://github.com/dotnet/corefx/issues/30845
         }
 
         [RequiresUnreferencedCode("Type and its constructor could be removed")]
-        public static ObjectHandle CreateInstance(string assemblyName, string typeName, object[] activationAttributes)
+        public static ObjectHandle CreateInstance(string assemblyName, string typeName, object[]? activationAttributes)
         {
             throw new PlatformNotSupportedException(); // https://github.com/dotnet/corefx/issues/30845
         }

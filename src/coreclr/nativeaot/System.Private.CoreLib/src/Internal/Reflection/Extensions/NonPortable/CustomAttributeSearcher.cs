@@ -143,7 +143,7 @@ namespace Internal.Reflection.Extensions.NonPortable
                     for (int i = 0; i < immediateResults.Count; i++)
                     {
                         Type attributeType = immediateResults[i].AttributeType;
-                        AttributeUsageAttribute usage;
+                        AttributeUsageAttribute? usage;
                         TypeUnificationKey attributeTypeKey = new TypeUnificationKey(attributeType);
                         if (!encounteredTypes.TryGetValue(attributeTypeKey, out usage))
                             encounteredTypes.Add(attributeTypeKey, null);
@@ -156,7 +156,7 @@ namespace Internal.Reflection.Extensions.NonPortable
                             Type attributeType = cad.AttributeType;
                             if (!passesFilter(attributeType))
                                 continue;
-                            AttributeUsageAttribute usage;
+                            AttributeUsageAttribute? usage;
                             TypeUnificationKey attributeTypeKey = new TypeUnificationKey(attributeType);
                             if (!encounteredTypes.TryGetValue(attributeTypeKey, out usage))
                             {

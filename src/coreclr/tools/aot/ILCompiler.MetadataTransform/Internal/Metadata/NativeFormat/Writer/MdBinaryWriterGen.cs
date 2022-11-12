@@ -210,11 +210,6 @@ namespace Internal.Metadata.NativeFormat.Writer
             writer.WriteUnsigned((uint)value);
         } // Write
 
-        public static void Write(this NativeWriter writer, FixedArgumentAttributes value)
-        {
-            writer.WriteUnsigned((uint)value);
-        } // Write
-
         public static void Write(this NativeWriter writer, GenericParameterAttributes value)
         {
             writer.WriteUnsigned((uint)value);
@@ -1071,28 +1066,6 @@ namespace Internal.Metadata.NativeFormat.Writer
             }
         } // Write
 
-        public static void Write(this NativeWriter writer, FixedArgument record)
-        {
-            if (record != null)
-                writer.WriteUnsigned((uint)record.Handle.Offset);
-            else
-                writer.WriteUnsigned(0);
-        } // Write
-
-        public static void Write(this NativeWriter writer, List<FixedArgument> values)
-        {
-            if (values == null)
-            {
-                writer.WriteUnsigned(0);
-                return;
-            }
-            writer.WriteUnsigned((uint)values.Count);
-            foreach (FixedArgument value in values)
-            {
-                writer.Write(value);
-            }
-        } // Write
-
         public static void Write(this NativeWriter writer, FunctionPointerSignature record)
         {
             if (record != null)
@@ -1176,28 +1149,6 @@ namespace Internal.Metadata.NativeFormat.Writer
             }
             writer.WriteUnsigned((uint)values.Count);
             foreach (Method value in values)
-            {
-                writer.Write(value);
-            }
-        } // Write
-
-        public static void Write(this NativeWriter writer, MethodImpl record)
-        {
-            if (record != null)
-                writer.WriteUnsigned((uint)record.Handle.Offset);
-            else
-                writer.WriteUnsigned(0);
-        } // Write
-
-        public static void Write(this NativeWriter writer, List<MethodImpl> values)
-        {
-            if (values == null)
-            {
-                writer.WriteUnsigned(0);
-                return;
-            }
-            writer.WriteUnsigned((uint)values.Count);
-            foreach (MethodImpl value in values)
             {
                 writer.Write(value);
             }

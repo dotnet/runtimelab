@@ -322,6 +322,7 @@ namespace ILCompiler.Metadata
                     record.CustomAttributes = HandleCustomAttributes(ecmaEntity.EcmaModule, customAttributes);
                 }
 
+                /* COMPLETENESS
                 foreach (var miHandle in ecmaRecord.GetMethodImplementations())
                 {
                     Ecma.MetadataReader reader = ecmaEntity.EcmaModule.MetadataReader;
@@ -343,7 +344,7 @@ namespace ILCompiler.Metadata
                     };
 
                     record.MethodImpls.Add(methodImplRecord);
-                }
+                }*/
             }
         }
 

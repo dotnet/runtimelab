@@ -125,7 +125,7 @@ namespace Internal.Runtime.Augments
         //
         [UnconditionalSuppressMessage("AotAnalysis", "IL9700:RequiresDynamicCode",
             Justification = "The compiler ensures that if we have a TypeHandle of a Rank-1 MdArray, we also generated the SzArray.")]
-        public static unsafe Array NewMultiDimArray(RuntimeTypeHandle typeHandleForArrayType, int[] lengths, int[] lowerBounds)
+        public static unsafe Array NewMultiDimArray(RuntimeTypeHandle typeHandleForArrayType, int[] lengths, int[]? lowerBounds)
         {
             Debug.Assert(lengths != null);
             Debug.Assert(lowerBounds == null || lowerBounds.Length == lengths.Length);

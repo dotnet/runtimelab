@@ -48,7 +48,7 @@ namespace System.Runtime.InteropServices
             {
                 if (cad.AttributeType == typeof(DefaultDllImportSearchPathsAttribute))
                 {
-                    searchPath = (DllImportSearchPath)cad.ConstructorArguments[0].Value;
+                    searchPath = (DllImportSearchPath)cad.ConstructorArguments[0].Value!;
                 }
             }
 

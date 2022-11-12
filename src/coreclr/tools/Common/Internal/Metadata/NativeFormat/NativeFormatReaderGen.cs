@@ -3506,8 +3506,9 @@ namespace Internal.Metadata.NativeFormat
         } // Constructor
 
         internal Handle _constructor;
+        /// One of: TypeDefinition, TypeReference, TypeSpecification, ConstantBooleanArray, ConstantBooleanValue, ConstantByteArray, ConstantByteValue, ConstantCharArray, ConstantCharValue, ConstantDoubleArray, ConstantDoubleValue, ConstantEnumArray, ConstantHandleArray, ConstantInt16Array, ConstantInt16Value, ConstantInt32Array, ConstantInt32Value, ConstantInt64Array, ConstantInt64Value, ConstantReferenceValue, ConstantSByteArray, ConstantSByteValue, ConstantSingleArray, ConstantSingleValue, ConstantStringArray, ConstantStringValue, ConstantUInt16Array, ConstantUInt16Value, ConstantUInt32Array, ConstantUInt32Value, ConstantUInt64Array, ConstantUInt64Value
 
-        public FixedArgumentHandleCollection FixedArguments
+        public HandleCollection FixedArguments
         {
             get
             {
@@ -3515,7 +3516,7 @@ namespace Internal.Metadata.NativeFormat
             }
         } // FixedArguments
 
-        internal FixedArgumentHandleCollection _fixedArguments;
+        internal HandleCollection _fixedArguments;
 
         public NamedArgumentHandleCollection NamedArguments
         {
@@ -4025,135 +4026,6 @@ namespace Internal.Metadata.NativeFormat
         } // ToString
     } // FieldSignatureHandle
 
-    public partial struct FixedArgument
-    {
-        internal MetadataReader _reader;
-        internal FixedArgumentHandle _handle;
-
-        public FixedArgumentHandle Handle
-        {
-            get
-            {
-                return _handle;
-            }
-        } // Handle
-
-        public FixedArgumentAttributes Flags
-        {
-            get
-            {
-                return _flags;
-            }
-        } // Flags
-
-        internal FixedArgumentAttributes _flags;
-        /// One of: TypeDefinition, TypeReference, TypeSpecification
-
-        public Handle Type
-        {
-            get
-            {
-                return _type;
-            }
-        } // Type
-
-        internal Handle _type;
-        /// One of: TypeDefinition, TypeReference, TypeSpecification, ConstantBooleanArray, ConstantBooleanValue, ConstantByteArray, ConstantByteValue, ConstantCharArray, ConstantCharValue, ConstantDoubleArray, ConstantDoubleValue, ConstantEnumArray, ConstantHandleArray, ConstantInt16Array, ConstantInt16Value, ConstantInt32Array, ConstantInt32Value, ConstantInt64Array, ConstantInt64Value, ConstantReferenceValue, ConstantSByteArray, ConstantSByteValue, ConstantSingleArray, ConstantSingleValue, ConstantStringArray, ConstantStringValue, ConstantUInt16Array, ConstantUInt16Value, ConstantUInt32Array, ConstantUInt32Value, ConstantUInt64Array, ConstantUInt64Value
-
-        public Handle Value
-        {
-            get
-            {
-                return _value;
-            }
-        } // Value
-
-        internal Handle _value;
-    } // FixedArgument
-
-    public partial struct FixedArgumentHandle
-    {
-        public override bool Equals(object obj)
-        {
-            if (obj is FixedArgumentHandle)
-                return _value == ((FixedArgumentHandle)obj)._value;
-            else if (obj is Handle)
-                return _value == ((Handle)obj)._value;
-            else
-                return false;
-        } // Equals
-
-        public bool Equals(FixedArgumentHandle handle)
-        {
-            return _value == handle._value;
-        } // Equals
-
-        public bool Equals(Handle handle)
-        {
-            return _value == handle._value;
-        } // Equals
-
-        public override int GetHashCode()
-        {
-            return (int)_value;
-        } // GetHashCode
-
-        internal int _value;
-
-        internal FixedArgumentHandle(Handle handle) : this(handle._value)
-        {
-        }
-
-        internal FixedArgumentHandle(int value)
-        {
-            HandleType hType = (HandleType)(value >> 24);
-            if (!(hType == 0 || hType == HandleType.FixedArgument || hType == HandleType.Null))
-                throw new ArgumentException();
-            _value = (value & 0x00FFFFFF) | (((int)HandleType.FixedArgument) << 24);
-            _Validate();
-        }
-
-        public static implicit operator  Handle(FixedArgumentHandle handle)
-        {
-            return new Handle(handle._value);
-        } // Handle
-
-        internal int Offset
-        {
-            get
-            {
-                return (this._value & 0x00FFFFFF);
-            }
-        } // Offset
-
-        public FixedArgument GetFixedArgument(MetadataReader reader)
-        {
-            return reader.GetFixedArgument(this);
-        } // GetFixedArgument
-
-        public bool IsNull(MetadataReader reader)
-        {
-            return reader.IsNull(this);
-        } // IsNull
-
-        public Handle ToHandle(MetadataReader reader)
-        {
-            return reader.ToHandle(this);
-        } // ToHandle
-
-        [System.Diagnostics.Conditional("DEBUG")]
-        internal void _Validate()
-        {
-            if ((HandleType)((_value & 0xFF000000) >> 24) != HandleType.FixedArgument)
-                throw new ArgumentException();
-        } // _Validate
-
-        public override string ToString()
-        {
-            return string.Format("{0:X8}", _value);
-        } // ToString
-    } // FixedArgumentHandle
-
     public partial struct FunctionPointerSignature
     {
         internal MetadataReader _reader;
@@ -4463,16 +4335,6 @@ namespace Internal.Metadata.NativeFormat
         } // Signature
 
         internal Handle _signature;
-
-        public CustomAttributeHandleCollection CustomAttributes
-        {
-            get
-            {
-                return _customAttributes;
-            }
-        } // CustomAttributes
-
-        internal CustomAttributeHandleCollection _customAttributes;
     } // MemberReference
 
     public partial struct MemberReferenceHandle
@@ -4725,125 +4587,6 @@ namespace Internal.Metadata.NativeFormat
         } // ToString
     } // MethodHandle
 
-    public partial struct MethodImpl
-    {
-        internal MetadataReader _reader;
-        internal MethodImplHandle _handle;
-
-        public MethodImplHandle Handle
-        {
-            get
-            {
-                return _handle;
-            }
-        } // Handle
-        /// One of: QualifiedMethod, MemberReference
-
-        public Handle MethodBody
-        {
-            get
-            {
-                return _methodBody;
-            }
-        } // MethodBody
-
-        internal Handle _methodBody;
-        /// One of: QualifiedMethod, MemberReference
-
-        public Handle MethodDeclaration
-        {
-            get
-            {
-                return _methodDeclaration;
-            }
-        } // MethodDeclaration
-
-        internal Handle _methodDeclaration;
-    } // MethodImpl
-
-    public partial struct MethodImplHandle
-    {
-        public override bool Equals(object obj)
-        {
-            if (obj is MethodImplHandle)
-                return _value == ((MethodImplHandle)obj)._value;
-            else if (obj is Handle)
-                return _value == ((Handle)obj)._value;
-            else
-                return false;
-        } // Equals
-
-        public bool Equals(MethodImplHandle handle)
-        {
-            return _value == handle._value;
-        } // Equals
-
-        public bool Equals(Handle handle)
-        {
-            return _value == handle._value;
-        } // Equals
-
-        public override int GetHashCode()
-        {
-            return (int)_value;
-        } // GetHashCode
-
-        internal int _value;
-
-        internal MethodImplHandle(Handle handle) : this(handle._value)
-        {
-        }
-
-        internal MethodImplHandle(int value)
-        {
-            HandleType hType = (HandleType)(value >> 24);
-            if (!(hType == 0 || hType == HandleType.MethodImpl || hType == HandleType.Null))
-                throw new ArgumentException();
-            _value = (value & 0x00FFFFFF) | (((int)HandleType.MethodImpl) << 24);
-            _Validate();
-        }
-
-        public static implicit operator  Handle(MethodImplHandle handle)
-        {
-            return new Handle(handle._value);
-        } // Handle
-
-        internal int Offset
-        {
-            get
-            {
-                return (this._value & 0x00FFFFFF);
-            }
-        } // Offset
-
-        public MethodImpl GetMethodImpl(MetadataReader reader)
-        {
-            return reader.GetMethodImpl(this);
-        } // GetMethodImpl
-
-        public bool IsNull(MetadataReader reader)
-        {
-            return reader.IsNull(this);
-        } // IsNull
-
-        public Handle ToHandle(MetadataReader reader)
-        {
-            return reader.ToHandle(this);
-        } // ToHandle
-
-        [System.Diagnostics.Conditional("DEBUG")]
-        internal void _Validate()
-        {
-            if ((HandleType)((_value & 0xFF000000) >> 24) != HandleType.MethodImpl)
-                throw new ArgumentException();
-        } // _Validate
-
-        public override string ToString()
-        {
-            return string.Format("{0:X8}", _value);
-        } // ToString
-    } // MethodImplHandle
-
     public partial struct MethodInstantiation
     {
         internal MetadataReader _reader;
@@ -4878,16 +4621,6 @@ namespace Internal.Metadata.NativeFormat
         } // GenericTypeArguments
 
         internal HandleCollection _genericTypeArguments;
-
-        public CustomAttributeHandleCollection CustomAttributes
-        {
-            get
-            {
-                return _customAttributes;
-            }
-        } // CustomAttributes
-
-        internal CustomAttributeHandleCollection _customAttributes;
     } // MethodInstantiation
 
     public partial struct MethodInstantiationHandle
@@ -5508,8 +5241,20 @@ namespace Internal.Metadata.NativeFormat
         } // Name
 
         internal ConstantStringValueHandle _name;
+        /// One of: TypeDefinition, TypeReference, TypeSpecification
 
-        public FixedArgumentHandle Value
+        public Handle Type
+        {
+            get
+            {
+                return _type;
+            }
+        } // Type
+
+        internal Handle _type;
+        /// One of: TypeDefinition, TypeReference, TypeSpecification, ConstantBooleanArray, ConstantBooleanValue, ConstantByteArray, ConstantByteValue, ConstantCharArray, ConstantCharValue, ConstantDoubleArray, ConstantDoubleValue, ConstantEnumArray, ConstantHandleArray, ConstantInt16Array, ConstantInt16Value, ConstantInt32Array, ConstantInt32Value, ConstantInt64Array, ConstantInt64Value, ConstantReferenceValue, ConstantSByteArray, ConstantSByteValue, ConstantSingleArray, ConstantSingleValue, ConstantStringArray, ConstantStringValue, ConstantUInt16Array, ConstantUInt16Value, ConstantUInt32Array, ConstantUInt32Value, ConstantUInt64Array, ConstantUInt64Value
+
+        public Handle Value
         {
             get
             {
@@ -5517,7 +5262,7 @@ namespace Internal.Metadata.NativeFormat
             }
         } // Value
 
-        internal FixedArgumentHandle _value;
+        internal Handle _value;
     } // NamedArgument
 
     public partial struct NamedArgumentHandle
@@ -7103,16 +6848,6 @@ namespace Internal.Metadata.NativeFormat
         } // Culture
 
         internal ConstantStringValueHandle _culture;
-
-        public CustomAttributeHandleCollection CustomAttributes
-        {
-            get
-            {
-                return _customAttributes;
-            }
-        } // CustomAttributes
-
-        internal CustomAttributeHandleCollection _customAttributes;
     } // ScopeReference
 
     public partial struct ScopeReferenceHandle
@@ -7353,16 +7088,6 @@ namespace Internal.Metadata.NativeFormat
 
         internal HandleCollection _interfaces;
 
-        public MethodImplHandleCollection MethodImpls
-        {
-            get
-            {
-                return _methodImpls;
-            }
-        } // MethodImpls
-
-        internal MethodImplHandleCollection _methodImpls;
-
         public CustomAttributeHandleCollection CustomAttributes
         {
             get
@@ -7499,16 +7224,6 @@ namespace Internal.Metadata.NativeFormat
         } // NestedTypes
 
         internal TypeForwarderHandleCollection _nestedTypes;
-
-        public CustomAttributeHandleCollection CustomAttributes
-        {
-            get
-            {
-                return _customAttributes;
-            }
-        } // CustomAttributes
-
-        internal CustomAttributeHandleCollection _customAttributes;
     } // TypeForwarder
 
     public partial struct TypeForwarderHandle
@@ -7746,16 +7461,6 @@ namespace Internal.Metadata.NativeFormat
         } // TypeName
 
         internal ConstantStringValueHandle _typeName;
-
-        public CustomAttributeHandleCollection CustomAttributes
-        {
-            get
-            {
-                return _customAttributes;
-            }
-        } // CustomAttributes
-
-        internal CustomAttributeHandleCollection _customAttributes;
     } // TypeReference
 
     public partial struct TypeReferenceHandle
@@ -7864,16 +7569,6 @@ namespace Internal.Metadata.NativeFormat
         } // Signature
 
         internal Handle _signature;
-
-        public CustomAttributeHandleCollection CustomAttributes
-        {
-            get
-            {
-                return _customAttributes;
-            }
-        } // CustomAttributes
-
-        internal CustomAttributeHandleCollection _customAttributes;
     } // TypeSpecification
 
     public partial struct TypeSpecificationHandle
@@ -8065,69 +7760,6 @@ namespace Internal.Metadata.NativeFormat
             return string.Format("{0:X8}", _value);
         } // ToString
     } // TypeVariableSignatureHandle
-
-    public partial struct FixedArgumentHandleCollection
-    {
-        private NativeReader _reader;
-        private uint _offset;
-
-        internal FixedArgumentHandleCollection(NativeReader reader, uint offset)
-        {
-            _offset = offset;
-            _reader = reader;
-        }
-
-        public int Count
-        {
-            get
-            {
-                uint count;
-                _reader.DecodeUnsigned(_offset, out count);
-                return (int)count;
-            }
-        } // Count
-
-        public Enumerator GetEnumerator()
-        {
-            return new Enumerator(_reader, _offset);
-        } // GetEnumerator
-
-        public struct Enumerator
-        {
-            private NativeReader _reader;
-            private uint _offset;
-            private uint _remaining;
-            private FixedArgumentHandle _current;
-
-            internal Enumerator(NativeReader reader, uint offset)
-            {
-                _reader = reader;
-                _offset = reader.DecodeUnsigned(offset, out _remaining);
-                _current = default(FixedArgumentHandle);
-            }
-
-            public FixedArgumentHandle Current
-            {
-                get
-                {
-                    return _current;
-                }
-            } // Current
-
-            public bool MoveNext()
-            {
-                if (_remaining == 0)
-                    return false;
-                _remaining--;
-                _offset = _reader.Read(_offset, out _current);
-                return true;
-            } // MoveNext
-
-            public void Dispose()
-            {
-            } // Dispose
-        } // Enumerator
-    } // FixedArgumentHandleCollection
 
     public partial struct NamedArgumentHandleCollection
     {
@@ -8884,69 +8516,6 @@ namespace Internal.Metadata.NativeFormat
             } // Dispose
         } // Enumerator
     } // EventHandleCollection
-
-    public partial struct MethodImplHandleCollection
-    {
-        private NativeReader _reader;
-        private uint _offset;
-
-        internal MethodImplHandleCollection(NativeReader reader, uint offset)
-        {
-            _offset = offset;
-            _reader = reader;
-        }
-
-        public int Count
-        {
-            get
-            {
-                uint count;
-                _reader.DecodeUnsigned(_offset, out count);
-                return (int)count;
-            }
-        } // Count
-
-        public Enumerator GetEnumerator()
-        {
-            return new Enumerator(_reader, _offset);
-        } // GetEnumerator
-
-        public struct Enumerator
-        {
-            private NativeReader _reader;
-            private uint _offset;
-            private uint _remaining;
-            private MethodImplHandle _current;
-
-            internal Enumerator(NativeReader reader, uint offset)
-            {
-                _reader = reader;
-                _offset = reader.DecodeUnsigned(offset, out _remaining);
-                _current = default(MethodImplHandle);
-            }
-
-            public MethodImplHandle Current
-            {
-                get
-                {
-                    return _current;
-                }
-            } // Current
-
-            public bool MoveNext()
-            {
-                if (_remaining == 0)
-                    return false;
-                _remaining--;
-                _offset = _reader.Read(_offset, out _current);
-                return true;
-            } // MoveNext
-
-            public void Dispose()
-            {
-            } // Dispose
-        } // Enumerator
-    } // MethodImplHandleCollection
 
     public partial struct ScopeDefinitionHandleCollection
     {
@@ -9949,11 +9518,6 @@ namespace Internal.Metadata.NativeFormat
             return new FieldSignatureHandle(this);
         } // ToFieldSignatureHandle
 
-        public FixedArgumentHandle ToFixedArgumentHandle(MetadataReader reader)
-        {
-            return new FixedArgumentHandle(this);
-        } // ToFixedArgumentHandle
-
         public FunctionPointerSignatureHandle ToFunctionPointerSignatureHandle(MetadataReader reader)
         {
             return new FunctionPointerSignatureHandle(this);
@@ -9973,11 +9537,6 @@ namespace Internal.Metadata.NativeFormat
         {
             return new MethodHandle(this);
         } // ToMethodHandle
-
-        public MethodImplHandle ToMethodImplHandle(MetadataReader reader)
-        {
-            return new MethodImplHandle(this);
-        } // ToMethodImplHandle
 
         public MethodInstantiationHandle ToMethodInstantiationHandle(MetadataReader reader)
         {
@@ -10417,7 +9976,7 @@ namespace Internal.Metadata.NativeFormat
         public ConstantStringValue GetConstantStringValue(ConstantStringValueHandle handle)
         {
             if (IsNull(handle))
-                return default;
+                return new ConstantStringValue();
             ConstantStringValue record;
             record._reader = this;
             record._handle = handle;
@@ -10537,18 +10096,6 @@ namespace Internal.Metadata.NativeFormat
             return record;
         } // GetFieldSignature
 
-        public FixedArgument GetFixedArgument(FixedArgumentHandle handle)
-        {
-            FixedArgument record;
-            record._reader = this;
-            record._handle = handle;
-            var offset = (uint)handle.Offset;
-            offset = _streamReader.Read(offset, out record._flags);
-            offset = _streamReader.Read(offset, out record._type);
-            offset = _streamReader.Read(offset, out record._value);
-            return record;
-        } // GetFixedArgument
-
         public FunctionPointerSignature GetFunctionPointerSignature(FunctionPointerSignatureHandle handle)
         {
             FunctionPointerSignature record;
@@ -10583,7 +10130,6 @@ namespace Internal.Metadata.NativeFormat
             offset = _streamReader.Read(offset, out record._parent);
             offset = _streamReader.Read(offset, out record._name);
             offset = _streamReader.Read(offset, out record._signature);
-            offset = _streamReader.Read(offset, out record._customAttributes);
             return record;
         } // GetMemberReference
 
@@ -10603,17 +10149,6 @@ namespace Internal.Metadata.NativeFormat
             return record;
         } // GetMethod
 
-        public MethodImpl GetMethodImpl(MethodImplHandle handle)
-        {
-            MethodImpl record;
-            record._reader = this;
-            record._handle = handle;
-            var offset = (uint)handle.Offset;
-            offset = _streamReader.Read(offset, out record._methodBody);
-            offset = _streamReader.Read(offset, out record._methodDeclaration);
-            return record;
-        } // GetMethodImpl
-
         public MethodInstantiation GetMethodInstantiation(MethodInstantiationHandle handle)
         {
             MethodInstantiation record;
@@ -10622,7 +10157,6 @@ namespace Internal.Metadata.NativeFormat
             var offset = (uint)handle.Offset;
             offset = _streamReader.Read(offset, out record._method);
             offset = _streamReader.Read(offset, out record._genericTypeArguments);
-            offset = _streamReader.Read(offset, out record._customAttributes);
             return record;
         } // GetMethodInstantiation
 
@@ -10681,6 +10215,7 @@ namespace Internal.Metadata.NativeFormat
             var offset = (uint)handle.Offset;
             offset = _streamReader.Read(offset, out record._flags);
             offset = _streamReader.Read(offset, out record._name);
+            offset = _streamReader.Read(offset, out record._type);
             offset = _streamReader.Read(offset, out record._value);
             return record;
         } // GetNamedArgument
@@ -10832,7 +10367,6 @@ namespace Internal.Metadata.NativeFormat
             offset = _streamReader.Read(offset, out record._revisionNumber);
             offset = _streamReader.Read(offset, out record._publicKeyOrToken);
             offset = _streamReader.Read(offset, out record._culture);
-            offset = _streamReader.Read(offset, out record._customAttributes);
             return record;
         } // GetScopeReference
 
@@ -10856,7 +10390,6 @@ namespace Internal.Metadata.NativeFormat
             offset = _streamReader.Read(offset, out record._events);
             offset = _streamReader.Read(offset, out record._genericParameters);
             offset = _streamReader.Read(offset, out record._interfaces);
-            offset = _streamReader.Read(offset, out record._methodImpls);
             offset = _streamReader.Read(offset, out record._customAttributes);
             return record;
         } // GetTypeDefinition
@@ -10870,7 +10403,6 @@ namespace Internal.Metadata.NativeFormat
             offset = _streamReader.Read(offset, out record._scope);
             offset = _streamReader.Read(offset, out record._name);
             offset = _streamReader.Read(offset, out record._nestedTypes);
-            offset = _streamReader.Read(offset, out record._customAttributes);
             return record;
         } // GetTypeForwarder
 
@@ -10893,7 +10425,6 @@ namespace Internal.Metadata.NativeFormat
             var offset = (uint)handle.Offset;
             offset = _streamReader.Read(offset, out record._parentNamespaceOrType);
             offset = _streamReader.Read(offset, out record._typeName);
-            offset = _streamReader.Read(offset, out record._customAttributes);
             return record;
         } // GetTypeReference
 
@@ -10904,7 +10435,6 @@ namespace Internal.Metadata.NativeFormat
             record._handle = handle;
             var offset = (uint)handle.Offset;
             offset = _streamReader.Read(offset, out record._signature);
-            offset = _streamReader.Read(offset, out record._customAttributes);
             return record;
         } // GetTypeSpecification
 
@@ -11098,11 +10628,6 @@ namespace Internal.Metadata.NativeFormat
             return new Handle(handle._value);
         } // ToHandle
 
-        internal Handle ToHandle(FixedArgumentHandle handle)
-        {
-            return new Handle(handle._value);
-        } // ToHandle
-
         internal Handle ToHandle(FunctionPointerSignatureHandle handle)
         {
             return new Handle(handle._value);
@@ -11119,11 +10644,6 @@ namespace Internal.Metadata.NativeFormat
         } // ToHandle
 
         internal Handle ToHandle(MethodHandle handle)
-        {
-            return new Handle(handle._value);
-        } // ToHandle
-
-        internal Handle ToHandle(MethodImplHandle handle)
         {
             return new Handle(handle._value);
         } // ToHandle
@@ -11423,11 +10943,6 @@ namespace Internal.Metadata.NativeFormat
             return new FieldSignatureHandle(handle._value);
         } // ToFieldSignatureHandle
 
-        internal FixedArgumentHandle ToFixedArgumentHandle(Handle handle)
-        {
-            return new FixedArgumentHandle(handle._value);
-        } // ToFixedArgumentHandle
-
         internal FunctionPointerSignatureHandle ToFunctionPointerSignatureHandle(Handle handle)
         {
             return new FunctionPointerSignatureHandle(handle._value);
@@ -11447,11 +10962,6 @@ namespace Internal.Metadata.NativeFormat
         {
             return new MethodHandle(handle._value);
         } // ToMethodHandle
-
-        internal MethodImplHandle ToMethodImplHandle(Handle handle)
-        {
-            return new MethodImplHandle(handle._value);
-        } // ToMethodImplHandle
 
         internal MethodInstantiationHandle ToMethodInstantiationHandle(Handle handle)
         {
@@ -11748,11 +11258,6 @@ namespace Internal.Metadata.NativeFormat
             return (handle._value & 0x00FFFFFF) == 0;
         } // IsNull
 
-        internal bool IsNull(FixedArgumentHandle handle)
-        {
-            return (handle._value & 0x00FFFFFF) == 0;
-        } // IsNull
-
         internal bool IsNull(FunctionPointerSignatureHandle handle)
         {
             return (handle._value & 0x00FFFFFF) == 0;
@@ -11769,11 +11274,6 @@ namespace Internal.Metadata.NativeFormat
         } // IsNull
 
         internal bool IsNull(MethodHandle handle)
-        {
-            return (handle._value & 0x00FFFFFF) == 0;
-        } // IsNull
-
-        internal bool IsNull(MethodImplHandle handle)
         {
             return (handle._value & 0x00FFFFFF) == 0;
         } // IsNull

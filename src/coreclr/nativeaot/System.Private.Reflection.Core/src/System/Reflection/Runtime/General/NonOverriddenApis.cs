@@ -29,7 +29,7 @@ using System.Collections.Generic;
 
 namespace System.Reflection.Runtime.Assemblies
 {
-    internal partial class RuntimeAssembly
+    internal partial class RuntimeAssemblyInfo
     {
 #if DEBUG
         [RequiresUnreferencedCode("Assembly.CreateInstance is not supported with trimming. Use Type.GetType instead.")]

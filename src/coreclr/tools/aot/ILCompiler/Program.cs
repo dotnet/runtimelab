@@ -90,6 +90,8 @@ namespace ILCompiler
 
         private IReadOnlyList<string> _rootedAssemblies = Array.Empty<string>();
         private IReadOnlyList<string> _conditionallyRootedAssemblies = Array.Empty<string>();
+        private IReadOnlyList<string> _trimmedAssemblies = Array.Empty<string>();
+        private bool _rootDefaultAssemblies;
 
         public IReadOnlyList<string> _mibcFilePaths = Array.Empty<string>();
 
@@ -224,6 +226,8 @@ namespace ILCompiler
 
                 syntax.DefineOptionList("root", ref _rootedAssemblies, "Fully generate given assembly");
                 syntax.DefineOptionList("conditionalroot", ref _conditionallyRootedAssemblies, "Fully generate given assembly if it's used");
+                syntax.DefineOptionList("trim", ref _trimmedAssemblies, "Trim the specified assembly");
+                syntax.DefineOption("defaultrooting", ref _rootDefaultAssemblies, "Root assemblies that are not marked [IsTrimmable]");
 
                 syntax.DefineOption("targetarch", ref _targetArchitectureStr, "Target architecture for cross compilation");
                 syntax.DefineOption("targetos", ref _targetOSStr, "Target OS for cross compilation");
@@ -598,6 +602,7 @@ namespace ILCompiler
 
             _rootedAssemblies = new List<string>(_rootedAssemblies.Select(a => ILLinkify(a)));
             _conditionallyRootedAssemblies = new List<string>(_conditionallyRootedAssemblies.Select(a => ILLinkify(a)));
+            _trimmedAssemblies = new List<string>(_trimmedAssemblies.Select(a => ILLinkify(a)));
 
             static string ILLinkify(string rootedAssembly)
             {
@@ -684,6 +689,8 @@ namespace ILCompiler
                     metadataGenerationOptions |= UsageBasedMetadataGenerationOptions.ReflectionILScanning;
                 if (_reflectedOnly)
                     metadataGenerationOptions |= UsageBasedMetadataGenerationOptions.ReflectedMembersOnly;
+                if (_rootDefaultAssemblies)
+                    metadataGenerationOptions |= UsageBasedMetadataGenerationOptions.RootDefaultAssemblies;
             }
             else
             {
@@ -707,7 +714,8 @@ namespace ILCompiler
                     metadataGenerationOptions,
                     logger,
                     featureSwitches,
-                    _conditionallyRootedAssemblies.Concat(_rootedAssemblies));
+                    _conditionallyRootedAssemblies.Concat(_rootedAssemblies),
+                    _trimmedAssemblies);
 
             InteropStateManager interopStateManager = new InteropStateManager(typeSystemContext.GeneratedAssembly);
             InteropStubManager interopStubManager = new UsageBasedInteropStubManager(interopStateManager, pinvokePolicy);

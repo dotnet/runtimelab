@@ -15,7 +15,7 @@ class Program
             writer.EmitSource();
         }
 
-        using (var writer = new WriterGen(@"..\..\..\..\..\ILCompiler.MetadataTransform\src\Internal\Metadata\NativeFormat\Writer\NativeFormatWriterGen.cs"))
+        using (var writer = new WriterGen(@"..\..\..\..\aot\ILCompiler.MetadataTransform\Internal\Metadata\NativeFormat\Writer\NativeFormatWriterGen.cs"))
         {
             writer.EmitSource();
         }
@@ -25,7 +25,7 @@ class Program
             writer.EmitSource();
         }
 
-        using (var writer = new MdBinaryWriterGen(@"..\..\..\..\..\ILCompiler.MetadataTransform\src\Internal\Metadata\NativeFormat\Writer\MdBinaryWriterGen.cs"))
+        using (var writer = new MdBinaryWriterGen(@"..\..\..\..\aot\ILCompiler.MetadataTransform\Internal\Metadata\NativeFormat\Writer\MdBinaryWriterGen.cs"))
         {
             writer.EmitSource();
         }

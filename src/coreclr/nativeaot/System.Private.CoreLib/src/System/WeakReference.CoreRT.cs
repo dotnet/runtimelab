@@ -21,7 +21,7 @@ namespace System
         internal volatile IntPtr m_handle;
         internal bool m_IsLongReference;
 
-        private void Create(object target, bool trackResurrection)
+        private void Create(object? target, bool trackResurrection)
         {
             m_IsLongReference = trackResurrection;
             m_handle = GCHandle.ToIntPtr(GCHandle.Alloc(target, trackResurrection ? GCHandleType.WeakTrackResurrection : GCHandleType.Weak));
@@ -70,7 +70,7 @@ namespace System
         //Gets the Object stored in the handle if it's accessible.
         // Or sets it.
         //
-        public virtual object Target
+        public virtual object? Target
         {
             get
             {
@@ -153,7 +153,7 @@ namespace System
         /// and gets\create a new RCW in case it is alive.
         /// </summary>
         /// <returns></returns>
-        private object TryGetComTarget()
+        private object? TryGetComTarget()
         {
 #if ENABLE_WINRT
             WinRTInteropCallbacks callbacks = WinRTInterop.UnsafeCallbacks;
@@ -174,7 +174,7 @@ namespace System
         /// go from the managed weak reference to the actual native object even though the managed counterpart might have been collected.
         /// </summary>
         /// <param name="target"></param>
-        private void TrySetComTarget(object target)
+        private void TrySetComTarget(object? target)
         {
 #if ENABLE_WINRT
             WinRTInteropCallbacks callbacks = WinRTInterop.UnsafeCallbacks;

@@ -44,12 +44,12 @@ namespace System
                 {
                     StringInternTable internTable = new StringInternTable();
                     internTable.AddOrGetExisting(string.Empty);
-                    Interlocked.CompareExchange<StringInternTable>(ref s_lazyInternTable, internTable, null);
+                    Interlocked.CompareExchange<StringInternTable?>(ref s_lazyInternTable, internTable, null);
                 }
                 return s_lazyInternTable;
             }
         }
 
-        private static volatile StringInternTable s_lazyInternTable;
+        private static volatile StringInternTable? s_lazyInternTable;
     }
 }
