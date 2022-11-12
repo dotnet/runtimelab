@@ -33,7 +33,7 @@ class MdBinaryReaderGen : CsWriter
 
         foreach (var primitiveType in SchemaDef.PrimitiveTypes)
         {
-            EmitReadPrimitiveCollection(primitiveType.TypeName);
+            EmitReadPrimitiveCollection(primitiveType.TypeName, primitiveType.Name);
         }
 
         foreach (var enumType in SchemaDef.EnumTypes)
@@ -73,7 +73,7 @@ class MdBinaryReaderGen : CsWriter
         CloseScope("Read");
     }
 
-    private void EmitReadPrimitiveCollection(string typeName)
+    private void EmitReadPrimitiveCollection(string typeName, string shortName)
     {
         string collectionTypeName = $"{typeName}Collection";
 
@@ -81,7 +81,7 @@ class MdBinaryReaderGen : CsWriter
         WriteLine($"values = new {collectionTypeName}(reader, offset);");
         WriteLine("uint count;");
         WriteLine("offset = reader.DecodeUnsigned(offset, out count);");
-        WriteLine($"offset = checked(offset + count * sizeof({typeName}));");
+        WriteLine($"offset = checked(offset + count * sizeof({shortName}));");
         WriteLine("return offset;");
         CloseScope("Read");
     }

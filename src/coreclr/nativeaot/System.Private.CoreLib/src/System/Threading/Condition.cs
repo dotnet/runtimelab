@@ -13,8 +13,8 @@ namespace System.Threading
     {
         internal class Waiter
         {
-            public Waiter next;
-            public Waiter prev;
+            public Waiter? next;
+            public Waiter? prev;
             public AutoResetEvent ev = new AutoResetEvent(false);
             public bool signalled;
         }
@@ -41,7 +41,7 @@ namespace System.Threading
             Debug.Assert((_waitersHead == waiter) == (waiter.prev == null));
             Debug.Assert((_waitersTail == waiter) == (waiter.next == null));
 
-            for (Waiter current = _waitersHead; current != null; current = current.next)
+            for (Waiter? current = _waitersHead; current != null; current = current.next)
                 if (current == waiter)
                     return;
             Debug.Fail("Waiter is not in the waiter list");

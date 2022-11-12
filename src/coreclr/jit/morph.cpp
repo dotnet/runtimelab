@@ -2441,29 +2441,6 @@ void fgArgInfo::EvalArgsToTemps()
 #endif
 }
 
-// Return a conservative estimate of the stack size in bytes.
-// It will be used only on the intercepted-for-host code path to copy the arguments.
-int Compiler::fgEstimateCallStackSize(GenTreeCall* call)
-{
-    int numArgs = 0;
-    for (GenTreeCall::Use& use : call->Args())
-    {
-        numArgs++;
-    }
-
-    int numStkArgs;
-    if (numArgs > MAX_REG_ARG)
-    {
-        numStkArgs = numArgs - MAX_REG_ARG;
-    }
-    else
-    {
-        numStkArgs = 0;
-    }
-
-    return numStkArgs * REGSIZE_BYTES;
-}
-
 //------------------------------------------------------------------------------
 // fgMakeMultiUse : If the node is a local, clone it, otherwise insert a comma form temp
 //
@@ -6029,11 +6006,21 @@ GenTree* Compiler::fgMorphLocalVar(GenTree* tree, bool forceRemorph)
 
     noway_assert(!(tree->gtFlags & GTF_VAR_DEF) || varAddr); // GTF_VAR_DEF should always imply varAddr
 
-    if (!varAddr && varTypeIsSmall(varDsc->TypeGet()) && varDsc->lvNormalizeOnLoad())
+    if (!varAddr && varDsc->lvNormalizeOnLoad())
     {
 #if LOCAL_ASSERTION_PROP
-        // Assertion prop can tell us to omit adding a cast here
-        if (optLocalAssertionProp && optAssertionIsSubrange(tree, TYP_INT, varType, apFull) != NO_ASSERTION_INDEX)
+        // TYP_BOOL quirk: previously, the code in optAssertionIsSubrange did not handle TYP_BOOL.
+        // Now it does, but this leads to some regressions because we lose the uniform VNs for trees
+        // that represent the "reduced" normalize-on-load locals, i. e. LCL_VAR(small type V00), created
+        // here with local assertions, and "expanded", i. e. CAST(small type <- LCL_VAR(int V00)).
+        // This is a pretty fundamental problem with how normalize-on-load locals appear to the optimizer.
+        // This quirk preserves the previous behavior.
+        // TODO-CQ: fix the VNs for normalize-on-load locals and remove this quirk.
+        bool isBoolQuirk = varType == TYP_BOOL;
+
+        // Assertion prop can tell us to omit adding a cast here.
+        if (optLocalAssertionProp && !isBoolQuirk &&
+            optAssertionIsSubrange(tree, IntegralRange::ForType(varType), apFull) != NO_ASSERTION_INDEX)
         {
             // The previous assertion can guarantee us that if this node gets
             // assigned a register, it will be normalized already. It is still
@@ -15741,11 +15728,9 @@ bool Compiler::fgMorphBlockStmt(BasicBlock* block, Statement* stmt DEBUGARG(cons
  *  for reentrant calls.
  */
 
-void Compiler::fgMorphStmts(BasicBlock* block, bool* lnot, bool* loadw)
+void Compiler::fgMorphStmts(BasicBlock* block)
 {
     fgRemoveRestOfBlock = false;
-
-    *lnot = *loadw = false;
 
     fgCurrentlyInUseArgTemps = hashBv::Create(this);
 
@@ -16003,12 +15988,6 @@ void Compiler::fgMorphBlocks()
 
     do
     {
-#if OPT_BOOL_OPS
-        bool lnot = false;
-#endif
-
-        bool loadw = false;
-
 #ifdef DEBUG
         if (verbose)
         {
@@ -16031,7 +16010,7 @@ void Compiler::fgMorphBlocks()
         compCurBB = block;
 
         // Process all statement trees in the basic block.
-        fgMorphStmts(block, &lnot, &loadw);
+        fgMorphStmts(block);
 
         // Do we need to merge the result of this block into a single return block?
         if ((block->bbJumpKind == BBJ_RETURN) && ((block->bbFlags & BBF_HAS_JMP) == 0))
@@ -17050,20 +17029,6 @@ void Compiler::fgPromoteStructs()
             varDsc->lvRegStruct = true;
         }
     }
-
-#ifdef TARGET_ARM
-    if (structPromotionHelper->GetRequiresScratchVar())
-    {
-        // Ensure that the scratch variable is allocated, in case we
-        // pass a promoted struct as an argument.
-        if (lvaPromotedStructAssemblyScratchVar == BAD_VAR_NUM)
-        {
-            lvaPromotedStructAssemblyScratchVar =
-                lvaGrabTempWithImplicitUse(false DEBUGARG("promoted struct assembly scratch var."));
-            lvaTable[lvaPromotedStructAssemblyScratchVar].lvType = TYP_I_IMPL;
-        }
-    }
-#endif // TARGET_ARM
 
 #ifdef DEBUG
     if (verbose)

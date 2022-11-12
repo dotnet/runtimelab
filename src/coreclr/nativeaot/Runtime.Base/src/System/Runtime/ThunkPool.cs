@@ -114,7 +114,7 @@ namespace System.Runtime
             }
         }
 
-        public static unsafe ThunksHeap CreateThunksHeap(IntPtr commonStubAddress)
+        public static unsafe ThunksHeap? CreateThunksHeap(IntPtr commonStubAddress)
         {
             try
             {

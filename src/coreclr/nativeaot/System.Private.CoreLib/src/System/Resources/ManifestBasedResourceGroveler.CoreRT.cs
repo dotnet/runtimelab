@@ -16,7 +16,7 @@ namespace System.Resources
         // Internal version of GetSatelliteAssembly that avoids throwing FileNotFoundException
         private static Assembly? InternalGetSatelliteAssembly(Assembly mainAssembly,
                                                              CultureInfo culture,
-                                                             Version version)
+                                                             Version? version)
         {
             AssemblyName mainAssemblyAn = mainAssembly.GetName();
             AssemblyName an = new AssemblyName();

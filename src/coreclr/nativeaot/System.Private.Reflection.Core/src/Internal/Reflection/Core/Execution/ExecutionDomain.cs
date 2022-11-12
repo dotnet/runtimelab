@@ -62,7 +62,7 @@ namespace Internal.Reflection.Core.Execution
         {
             if (assemblyResolver == null)
             {
-                return RuntimeAssembly.GetRuntimeAssemblyIfExists;
+                return RuntimeAssemblyInfo.GetRuntimeAssemblyIfExists;
             }
             else
             {
@@ -90,7 +90,7 @@ namespace Internal.Reflection.Core.Execution
                         foreach (string defaultAssemblyName in defaultAssemblyNames)
                         {
                             RuntimeAssemblyName runtimeAssemblyName = AssemblyNameParser.Parse(defaultAssemblyName);
-                            RuntimeAssembly defaultAssembly = RuntimeAssembly.GetRuntimeAssemblyIfExists(runtimeAssemblyName);
+                            RuntimeAssemblyInfo defaultAssembly = RuntimeAssemblyInfo.GetRuntimeAssemblyIfExists(runtimeAssemblyName);
                             if (defaultAssembly == null)
                                 continue;
                             Type resolvedType = defaultAssembly.GetTypeCore(coreTypeName, ignoreCase: ignoreCase);
@@ -319,7 +319,7 @@ namespace Internal.Reflection.Core.Execution
         //=======================================================================================
         public RuntimeTypeHandle GetTypeHandleIfAvailable(Type type)
         {
-            if (!type.IsRuntimeImplemented())
+            if (type is not RuntimeType)
                 return default(RuntimeTypeHandle);
 
             RuntimeTypeInfo runtimeType = type.CastToRuntimeTypeInfo();
@@ -330,7 +330,7 @@ namespace Internal.Reflection.Core.Execution
 
         public bool SupportsReflection(Type type)
         {
-            if (!type.IsRuntimeImplemented())
+            if (type is not RuntimeType)
                 return false;
 
             RuntimeTypeInfo runtimeType = type.CastToRuntimeTypeInfo();

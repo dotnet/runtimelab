@@ -9,18 +9,18 @@ using Internal.Reflection.Core.NonPortable;
 
 namespace Internal.Reflection
 {
-    internal sealed class RuntimeAssembly : Assembly, IRuntimeImplemented
+    internal sealed class RuntimeAssemblyInfo : RuntimeAssembly
     {
         private readonly RuntimeTypeHandle _moduleType;
 
-        public RuntimeAssembly(RuntimeTypeHandle moduleType)
+        public RuntimeAssemblyInfo(RuntimeTypeHandle moduleType)
         {
             _moduleType = moduleType;
         }
 
         public override bool Equals(object? o)
         {
-            return o is RuntimeAssembly other && other._moduleType.Equals(_moduleType);
+            return o is RuntimeAssemblyInfo other && other._moduleType.Equals(_moduleType);
         }
 
         public override int GetHashCode()

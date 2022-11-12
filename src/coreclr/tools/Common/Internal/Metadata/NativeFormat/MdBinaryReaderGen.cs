@@ -164,14 +164,6 @@ namespace Internal.Metadata.NativeFormat
             return offset;
         } // Read
 
-        public static uint Read(this NativeReader reader, uint offset, out FixedArgumentAttributes value)
-        {
-            uint ivalue;
-            offset = reader.DecodeUnsigned(offset, out ivalue);
-            value = (FixedArgumentAttributes)ivalue;
-            return offset;
-        } // Read
-
         public static uint Read(this NativeReader reader, uint offset, out GenericParameterAttributes value)
         {
             uint ivalue;
@@ -588,15 +580,6 @@ namespace Internal.Metadata.NativeFormat
             return offset;
         } // Read
 
-        public static uint Read(this NativeReader reader, uint offset, out FixedArgumentHandle handle)
-        {
-            uint value;
-            offset = reader.DecodeUnsigned(offset, out value);
-            handle = new FixedArgumentHandle((int)value);
-            handle._Validate();
-            return offset;
-        } // Read
-
         public static uint Read(this NativeReader reader, uint offset, out FunctionPointerSignatureHandle handle)
         {
             uint value;
@@ -629,15 +612,6 @@ namespace Internal.Metadata.NativeFormat
             uint value;
             offset = reader.DecodeUnsigned(offset, out value);
             handle = new MethodHandle((int)value);
-            handle._Validate();
-            return offset;
-        } // Read
-
-        public static uint Read(this NativeReader reader, uint offset, out MethodImplHandle handle)
-        {
-            uint value;
-            offset = reader.DecodeUnsigned(offset, out value);
-            handle = new MethodImplHandle((int)value);
             handle._Validate();
             return offset;
         } // Read
@@ -849,18 +823,6 @@ namespace Internal.Metadata.NativeFormat
             return offset;
         } // Read
 
-        public static uint Read(this NativeReader reader, uint offset, out FixedArgumentHandleCollection values)
-        {
-            values = new FixedArgumentHandleCollection(reader, offset);
-            uint count;
-            offset = reader.DecodeUnsigned(offset, out count);
-            for (uint i = 0; i < count; ++i)
-            {
-                offset = reader.SkipInteger(offset);
-            }
-            return offset;
-        } // Read
-
         public static uint Read(this NativeReader reader, uint offset, out NamedArgumentHandleCollection values)
         {
             values = new NamedArgumentHandleCollection(reader, offset);
@@ -996,18 +958,6 @@ namespace Internal.Metadata.NativeFormat
         public static uint Read(this NativeReader reader, uint offset, out EventHandleCollection values)
         {
             values = new EventHandleCollection(reader, offset);
-            uint count;
-            offset = reader.DecodeUnsigned(offset, out count);
-            for (uint i = 0; i < count; ++i)
-            {
-                offset = reader.SkipInteger(offset);
-            }
-            return offset;
-        } // Read
-
-        public static uint Read(this NativeReader reader, uint offset, out MethodImplHandleCollection values)
-        {
-            values = new MethodImplHandleCollection(reader, offset);
             uint count;
             offset = reader.DecodeUnsigned(offset, out count);
             for (uint i = 0; i < count; ++i)

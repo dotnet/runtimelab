@@ -28,9 +28,9 @@ namespace System.Reflection.Runtime.Assemblies
     //
     // The runtime's implementation of an Assembly.
     //
-    internal abstract partial class RuntimeAssembly : Assembly, IEquatable<RuntimeAssembly>, IRuntimeImplemented
+    internal abstract partial class RuntimeAssemblyInfo : RuntimeAssembly, IEquatable<RuntimeAssemblyInfo>
     {
-        public bool Equals(RuntimeAssembly other)
+        public bool Equals(RuntimeAssemblyInfo other)
         {
             if (other == null)
                 return false;
@@ -90,7 +90,7 @@ namespace System.Reflection.Runtime.Assemblies
                     return null;
             }
 
-            CoreAssemblyResolver coreAssemblyResolver = RuntimeAssembly.GetRuntimeAssemblyIfExists;
+            CoreAssemblyResolver coreAssemblyResolver = GetRuntimeAssemblyIfExists;
             CoreTypeResolver coreTypeResolver =
                 delegate (Assembly containingAssemblyIfAny, string coreTypeName)
                 {
@@ -135,8 +135,8 @@ namespace System.Reflection.Runtime.Assemblies
                 RuntimeAssemblyName redirectedAssemblyName = typeForwardInfo.RedirectedAssemblyName;
 
                 Type type = null;
-                RuntimeAssembly redirectedAssembly;
-                Exception exception = RuntimeAssembly.TryGetRuntimeAssembly(redirectedAssemblyName, out redirectedAssembly);
+                RuntimeAssemblyInfo redirectedAssembly;
+                Exception exception = TryGetRuntimeAssembly(redirectedAssemblyName, out redirectedAssembly);
                 if (exception == null)
                 {
                     type = redirectedAssembly.GetTypeCore(fullTypeName, ignoreCase: false); // GetTypeCore() will follow any further type-forwards if needed.
@@ -326,7 +326,7 @@ namespace System.Reflection.Runtime.Assemblies
 
         private sealed class CaseSensitiveTypeCache : ConcurrentUnifier<string, RuntimeTypeInfo>
         {
-            public CaseSensitiveTypeCache(RuntimeAssembly runtimeAssembly)
+            public CaseSensitiveTypeCache(RuntimeAssemblyInfo runtimeAssembly)
             {
                 _runtimeAssembly = runtimeAssembly;
             }
@@ -336,7 +336,7 @@ namespace System.Reflection.Runtime.Assemblies
                 return _runtimeAssembly.UncachedGetTypeCoreCaseSensitive(key);
             }
 
-            private readonly RuntimeAssembly _runtimeAssembly;
+            private readonly RuntimeAssemblyInfo _runtimeAssembly;
         }
     }
 }

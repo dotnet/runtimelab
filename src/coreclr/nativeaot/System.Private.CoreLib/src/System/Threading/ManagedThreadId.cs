@@ -20,8 +20,8 @@ namespace System.Threading
         //
         private class ImmutableIdDispenser
         {
-            private readonly ImmutableIdDispenser _left; // Child nodes
-            private readonly ImmutableIdDispenser _right;
+            private readonly ImmutableIdDispenser? _left; // Child nodes
+            private readonly ImmutableIdDispenser? _right;
 
             private readonly int _used; // Number of ids tracked by this node and all its childs
             private readonly int _size; // Maximum number of ids that can be tracked by this node and all its childs
@@ -30,7 +30,7 @@ namespace System.Threading
 
             private const int BitsPerNode = 32;
 
-            private ImmutableIdDispenser(ImmutableIdDispenser left, ImmutableIdDispenser right, int used, int size, uint bitmap)
+            private ImmutableIdDispenser(ImmutableIdDispenser? left, ImmutableIdDispenser? right, int used, int size, uint bitmap)
             {
                 _left = left;
                 _right = right;
@@ -141,7 +141,7 @@ namespace System.Threading
                 return new ImmutableIdDispenser(left, right, _used + 1, _size, bitmap);
             }
 
-            public ImmutableIdDispenser RecycleId(int id)
+            public ImmutableIdDispenser? RecycleId(int id)
             {
                 Debug.Assert(id < _size);
 
@@ -198,7 +198,7 @@ namespace System.Threading
         //      System::Threading::ManagedThreadId.get_Current
         //      System::Environment.get_CurrentManagedThreadId
 
-        private static ImmutableIdDispenser s_idDispenser;
+        private static ImmutableIdDispenser? s_idDispenser;
 
         private int _managedThreadId;
 

@@ -215,8 +215,9 @@ namespace System.Threading
             ExecutionContext.Run(data._executionContext, callback, args);
         }
 
-        private static unsafe void OnExecutionContextCallback(object state)
+        private static unsafe void OnExecutionContextCallback(object? state)
         {
+            Debug.Assert(state != null);
             ExecutionContextCallbackArgs args = (ExecutionContextCallbackArgs)state;
 
             uint errorCode = args._errorCode;

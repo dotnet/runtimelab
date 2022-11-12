@@ -54,7 +54,5 @@ namespace System.Reflection
                 return null;
             }
         }
-
-        public bool IsRuntimeImplemented() => this is IRuntimeImplemented; // Not an api but needs to be public because of Reflection.Core/CoreLib divide.
-    }
+   }
 }

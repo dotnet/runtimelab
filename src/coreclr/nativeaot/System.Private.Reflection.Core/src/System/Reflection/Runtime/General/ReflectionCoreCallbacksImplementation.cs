@@ -35,9 +35,9 @@ namespace System.Reflection.Runtime.General
             if (assemblyRef == null)
                 throw new ArgumentNullException(nameof(assemblyRef));
             if (throwOnFileNotFound)
-                return RuntimeAssembly.GetRuntimeAssembly(assemblyRef.ToRuntimeAssemblyName());
+                return RuntimeAssemblyInfo.GetRuntimeAssembly(assemblyRef.ToRuntimeAssemblyName());
             else
-                return RuntimeAssembly.GetRuntimeAssemblyIfExists(assemblyRef.ToRuntimeAssemblyName());
+                return RuntimeAssemblyInfo.GetRuntimeAssemblyIfExists(assemblyRef.ToRuntimeAssemblyName());
         }
 
         public sealed override Assembly Load(byte[] rawAssembly, byte[] pdbSymbolStore)
@@ -45,7 +45,7 @@ namespace System.Reflection.Runtime.General
             if (rawAssembly == null)
                 throw new ArgumentNullException(nameof(rawAssembly));
 
-            return RuntimeAssembly.GetRuntimeAssemblyFromByteArray(rawAssembly, pdbSymbolStore);
+            return RuntimeAssemblyInfo.GetRuntimeAssemblyFromByteArray(rawAssembly, pdbSymbolStore);
         }
 
         public sealed override Assembly Load(string assemblyPath)
@@ -53,7 +53,7 @@ namespace System.Reflection.Runtime.General
             if (assemblyPath == null)
                 throw new ArgumentNullException(nameof(assemblyPath));
 
-            return RuntimeAssembly.GetRuntimeAssemblyFromPath(assemblyPath);
+            return RuntimeAssemblyInfo.GetRuntimeAssemblyFromPath(assemblyPath);
         }
 
         //
@@ -184,7 +184,7 @@ namespace System.Reflection.Runtime.General
         [DebuggerStepThrough]
         public sealed override object ActivatorCreateInstance(
             [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.NonPublicConstructors)]
-            Type type, BindingFlags bindingAttr, Binder binder, object[] args, CultureInfo culture, object[] activationAttributes)
+            Type type, BindingFlags bindingAttr, Binder? binder, object[]? args, CultureInfo? culture, object[]? activationAttributes)
         {
             return ActivatorImplementation.CreateInstance(type, bindingAttr, binder, args, culture, activationAttributes);
         }
@@ -360,7 +360,7 @@ namespace System.Reflection.Runtime.General
 
         public sealed override void RunModuleConstructor(Module module)
         {
-            RuntimeAssembly assembly = (RuntimeAssembly)module.Assembly;
+            RuntimeAssemblyInfo assembly = (RuntimeAssemblyInfo)module.Assembly;
             assembly.RunModuleConstructor();
         }
 
@@ -401,7 +401,7 @@ namespace System.Reflection.Runtime.General
             type = targetType;
         }
 
-        public sealed override Assembly[] GetLoadedAssemblies() => RuntimeAssembly.GetLoadedAssemblies();
+        public sealed override Assembly[] GetLoadedAssemblies() => RuntimeAssemblyInfo.GetLoadedAssemblies();
 
         public sealed override EnumInfo GetEnumInfo(Type type) => type.CastToRuntimeTypeInfo().EnumInfo;
     }

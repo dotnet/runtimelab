@@ -179,7 +179,6 @@ class SchemaDef
         new EnumType("CallingConventions", "ushort"),
         new EnumType("EventAttributes", "ushort"),
         new EnumType("FieldAttributes", "ushort"),
-        new EnumType("FixedArgumentAttributes", "byte"),
         new EnumType("GenericParameterAttributes", "ushort"),
         new EnumType("GenericParameterKind", "byte"),
         new EnumType("MethodAttributes", "ushort"),
@@ -232,17 +231,6 @@ class SchemaDef
                 new MemberDef(name: "None", value: "0x0"),
                 new MemberDef(name: "Reserved", value: "0x8003"),
                 new MemberDef(name: "SHA1", value: "0x8004"),
-            }
-        ),
-        // FixedArgumentAttributes - used to indicate if an argument for a custom attribute instantiation
-        // should be boxed.
-        new RecordDef(
-            name: "FixedArgumentAttributes",
-            baseTypeName: "byte",
-            flags: RecordDefFlags.Enum | RecordDefFlags.Flags,
-            members: new MemberDef[] {
-                new MemberDef(name: "None", value: "0x0"),
-                new MemberDef(name: "Boxed", value: "0x1", comment: "Values should be boxed as Object"),
             }
         ),
         // NamedArgumentMemberKind - used to disambiguate the referenced members of the named
@@ -456,7 +444,7 @@ class SchemaDef
                 new MemberDef("Events", "Event", MemberDefFlags.Map | MemberDefFlags.RecordRef | MemberDefFlags.Child),
                 new MemberDef("GenericParameters", "GenericParameter", MemberDefFlags.List | MemberDefFlags.RecordRef | MemberDefFlags.Child),
                 new MemberDef("Interfaces", TypeDefOrRefOrSpec, MemberDefFlags.List | MemberDefFlags.RecordRef),
-                new MemberDef("MethodImpls", "MethodImpl", MemberDefFlags.List | MemberDefFlags.RecordRef | MemberDefFlags.Child),
+                // COMPLETENESS: new MemberDef("MethodImpls", "MethodImpl", MemberDefFlags.List | MemberDefFlags.RecordRef | MemberDefFlags.Child),
                 new MemberDef("CustomAttributes", "CustomAttribute", MemberDefFlags.List | MemberDefFlags.RecordRef | MemberDefFlags.Child),
             }
         ),
@@ -465,14 +453,14 @@ class SchemaDef
             members: new MemberDef[] {
                 new MemberDef("ParentNamespaceOrType", new string[] { "NamespaceReference", "TypeReference" }, MemberDefFlags.RecordRef),
                 new MemberDef("TypeName", "ConstantStringValue", MemberDefFlags.RecordRef | MemberDefFlags.Child | MemberDefFlags.Name),
-                new MemberDef("CustomAttributes", "CustomAttribute", MemberDefFlags.List | MemberDefFlags.RecordRef | MemberDefFlags.Child),
+                // COMPLETENESS: new MemberDef("CustomAttributes", "CustomAttribute", MemberDefFlags.List | MemberDefFlags.RecordRef | MemberDefFlags.Child),
             }
         ),
         new RecordDef(
             name: "TypeSpecification",
             members: new MemberDef[] {
                 new MemberDef("Signature", TypeDefOrRef.Concat(TypeSig).ToArray(), MemberDefFlags.RecordRef | MemberDefFlags.Child),
-                new MemberDef("CustomAttributes", "CustomAttribute", MemberDefFlags.List | MemberDefFlags.RecordRef | MemberDefFlags.Child),
+                // COMPLETENESS: new MemberDef("CustomAttributes", "CustomAttribute", MemberDefFlags.List | MemberDefFlags.RecordRef | MemberDefFlags.Child),
             }
         ),
         new RecordDef(
@@ -508,7 +496,7 @@ class SchemaDef
                 new MemberDef("RevisionNumber", "ushort"),
                 new MemberDef("PublicKeyOrToken", "Byte", MemberDefFlags.Array),
                 new MemberDef("Culture", "ConstantStringValue", MemberDefFlags.RecordRef | MemberDefFlags.Child),
-                new MemberDef("CustomAttributes", "CustomAttribute", MemberDefFlags.List | MemberDefFlags.RecordRef | MemberDefFlags.Child),
+                // COMPLETENESS: new MemberDef("CustomAttributes", "CustomAttribute", MemberDefFlags.List | MemberDefFlags.RecordRef | MemberDefFlags.Child),
             }
         ),
         new RecordDef(
@@ -553,7 +541,7 @@ class SchemaDef
             members: new MemberDef[] {
                 new MemberDef("Method", MethodDefOrRef, MemberDefFlags.RecordRef),
                 new MemberDef("GenericTypeArguments", TypeDefOrRefOrSpec, MemberDefFlags.List | MemberDefFlags.RecordRef),
-                new MemberDef("CustomAttributes", "CustomAttribute", MemberDefFlags.List | MemberDefFlags.RecordRef | MemberDefFlags.Child),
+                // COMPLETENESS: new MemberDef("CustomAttributes", "CustomAttribute", MemberDefFlags.List | MemberDefFlags.RecordRef | MemberDefFlags.Child),
             }
         ),
         new RecordDef(
@@ -562,7 +550,7 @@ class SchemaDef
                 new MemberDef("Parent", TypeDefOrRefOrSpec, MemberDefFlags.RecordRef),
                 new MemberDef("Name", "ConstantStringValue", MemberDefFlags.RecordRef | MemberDefFlags.Child),
                 new MemberDef("Signature", new string[] { "MethodSignature", "FieldSignature" }, MemberDefFlags.RecordRef | MemberDefFlags.Child),
-                new MemberDef("CustomAttributes", "CustomAttribute", MemberDefFlags.List | MemberDefFlags.RecordRef | MemberDefFlags.Child),
+                // COMPLETENESS: new MemberDef("CustomAttributes", "CustomAttribute", MemberDefFlags.List | MemberDefFlags.RecordRef | MemberDefFlags.Child),
             }
         ),
         new RecordDef(
@@ -609,16 +597,8 @@ class SchemaDef
             flags: RecordDefFlags.ReentrantEquals,
             members: new MemberDef[] {
                 new MemberDef("Constructor", MethodDefOrRef, MemberDefFlags.RecordRef),
-                new MemberDef("FixedArguments", "FixedArgument", MemberDefFlags.List | MemberDefFlags.RecordRef | MemberDefFlags.Child | MemberDefFlags.EnumerateForHashCode),
+                new MemberDef("FixedArguments", TypeDefOrRefOrSpecOrConstant, MemberDefFlags.List | MemberDefFlags.RecordRef | MemberDefFlags.EnumerateForHashCode),
                 new MemberDef("NamedArguments", "NamedArgument", MemberDefFlags.List | MemberDefFlags.RecordRef | MemberDefFlags.Child | MemberDefFlags.EnumerateForHashCode),
-            }
-        ),
-        new RecordDef(
-            name: "FixedArgument",
-            members: new MemberDef[] {
-                new MemberDef("Flags", "FixedArgumentAttributes"),
-                new MemberDef("Type", TypeDefOrRefOrSpec, MemberDefFlags.RecordRef),
-                new MemberDef("Value", TypeDefOrRefOrSpecOrConstant, MemberDefFlags.RecordRef),
             }
         ),
         new RecordDef(
@@ -626,7 +606,8 @@ class SchemaDef
             members: new MemberDef[] {
                 new MemberDef("Flags", "NamedArgumentMemberKind"),
                 new MemberDef("Name", "ConstantStringValue", MemberDefFlags.RecordRef | MemberDefFlags.Child),
-                new MemberDef("Value", "FixedArgument", MemberDefFlags.RecordRef | MemberDefFlags.Child),
+                new MemberDef("Type", TypeDefOrRefOrSpec, MemberDefFlags.RecordRef),
+                new MemberDef("Value", TypeDefOrRefOrSpecOrConstant, MemberDefFlags.RecordRef),
             }
         ),
         new RecordDef(
@@ -647,13 +628,13 @@ class SchemaDef
                 new MemberDef("CustomAttributes", "CustomAttribute", MemberDefFlags.List | MemberDefFlags.RecordRef | MemberDefFlags.Child),
             }
         ),
-        new RecordDef(
+        /* COMPLETENESS new RecordDef(
             name: "MethodImpl",
             members: new MemberDef[] {
                 new MemberDef("MethodBody", MethodDefOrRef, MemberDefFlags.RecordRef),
                 new MemberDef("MethodDeclaration", MethodDefOrRef, MemberDefFlags.RecordRef),
             }
-        ),
+        ),*/
         new RecordDef(
             name: "Parameter",
             members: new MemberDef[] {
@@ -753,7 +734,7 @@ class SchemaDef
                 new MemberDef("Scope", "ScopeReference", MemberDefFlags.RecordRef),
                 new MemberDef("Name", "ConstantStringValue", MemberDefFlags.RecordRef | MemberDefFlags.Child | MemberDefFlags.Name),
                 new MemberDef("NestedTypes", "TypeForwarder", MemberDefFlags.List | MemberDefFlags.RecordRef | MemberDefFlags.Child),
-                new MemberDef("CustomAttributes", "CustomAttribute", MemberDefFlags.List | MemberDefFlags.RecordRef | MemberDefFlags.Child),
+                // COMPLETENESS: new MemberDef("CustomAttributes", "CustomAttribute", MemberDefFlags.List | MemberDefFlags.RecordRef | MemberDefFlags.Child),
             }
         ),
         new RecordDef(

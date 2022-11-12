@@ -69,7 +69,7 @@ namespace Internal.Reflection.Extensions.NonPortable
             // Found the right constructor. Instantiate the Attribute.
             //
             int arity = matchingParameters.Length;
-            object[] invokeArguments = new object[arity];
+            object?[] invokeArguments = new object[arity];
             for (int i = 0; i < arity; i++)
             {
                 invokeArguments[i] = constructorArguments[i].Convert();
@@ -136,7 +136,7 @@ namespace Internal.Reflection.Extensions.NonPortable
                 bool isEnum = argumentType.IsEnum;
                 object? argumentValue = typedArgument.Value;
                 if (isEnum)
-                    argumentValue = Enum.ToObject(argumentType, argumentValue);
+                    argumentValue = Enum.ToObject(argumentType, argumentValue!);
                 return argumentValue;
             }
             else

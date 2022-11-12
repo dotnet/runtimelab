@@ -2247,6 +2247,39 @@ namespace Internal.Metadata.NativeFormat.Writer
                 Constructor.HandleType == HandleType.QualifiedMethod ||
                 Constructor.HandleType == HandleType.MemberReference);
             writer.Write(Constructor);
+            Debug.Assert(FixedArguments.TrueForAll(handle => handle == null ||
+                handle.HandleType == HandleType.TypeDefinition ||
+                handle.HandleType == HandleType.TypeReference ||
+                handle.HandleType == HandleType.TypeSpecification ||
+                handle.HandleType == HandleType.ConstantBooleanArray ||
+                handle.HandleType == HandleType.ConstantBooleanValue ||
+                handle.HandleType == HandleType.ConstantByteArray ||
+                handle.HandleType == HandleType.ConstantByteValue ||
+                handle.HandleType == HandleType.ConstantCharArray ||
+                handle.HandleType == HandleType.ConstantCharValue ||
+                handle.HandleType == HandleType.ConstantDoubleArray ||
+                handle.HandleType == HandleType.ConstantDoubleValue ||
+                handle.HandleType == HandleType.ConstantEnumArray ||
+                handle.HandleType == HandleType.ConstantHandleArray ||
+                handle.HandleType == HandleType.ConstantInt16Array ||
+                handle.HandleType == HandleType.ConstantInt16Value ||
+                handle.HandleType == HandleType.ConstantInt32Array ||
+                handle.HandleType == HandleType.ConstantInt32Value ||
+                handle.HandleType == HandleType.ConstantInt64Array ||
+                handle.HandleType == HandleType.ConstantInt64Value ||
+                handle.HandleType == HandleType.ConstantReferenceValue ||
+                handle.HandleType == HandleType.ConstantSByteArray ||
+                handle.HandleType == HandleType.ConstantSByteValue ||
+                handle.HandleType == HandleType.ConstantSingleArray ||
+                handle.HandleType == HandleType.ConstantSingleValue ||
+                handle.HandleType == HandleType.ConstantStringArray ||
+                handle.HandleType == HandleType.ConstantStringValue ||
+                handle.HandleType == HandleType.ConstantUInt16Array ||
+                handle.HandleType == HandleType.ConstantUInt16Value ||
+                handle.HandleType == HandleType.ConstantUInt32Array ||
+                handle.HandleType == HandleType.ConstantUInt32Value ||
+                handle.HandleType == HandleType.ConstantUInt64Array ||
+                handle.HandleType == HandleType.ConstantUInt64Value));
             writer.Write(FixedArguments);
             writer.Write(NamedArguments);
         } // Save
@@ -2272,7 +2305,7 @@ namespace Internal.Metadata.NativeFormat.Writer
         } // Handle
 
         public MetadataRecord Constructor;
-        public List<FixedArgument> FixedArguments = new List<FixedArgument>();
+        public List<MetadataRecord> FixedArguments = new List<MetadataRecord>();
         public List<NamedArgument> NamedArguments = new List<NamedArgument>();
     } // CustomAttribute
 
@@ -2570,116 +2603,6 @@ namespace Internal.Metadata.NativeFormat.Writer
         public MetadataRecord Type;
     } // FieldSignature
 
-    public partial class FixedArgument : MetadataRecord
-    {
-        public override HandleType HandleType
-        {
-            get
-            {
-                return HandleType.FixedArgument;
-            }
-        } // HandleType
-
-        internal override void Visit(IRecordVisitor visitor)
-        {
-            Type = visitor.Visit(this, Type);
-            Value = visitor.Visit(this, Value);
-        } // Visit
-
-        public override sealed bool Equals(Object obj)
-        {
-            if (Object.ReferenceEquals(this, obj)) return true;
-            var other = obj as FixedArgument;
-            if (other == null) return false;
-            if (Flags != other.Flags) return false;
-            if (!Object.Equals(Type, other.Type)) return false;
-            if (!Object.Equals(Value, other.Value)) return false;
-            return true;
-        } // Equals
-
-        public override sealed int GetHashCode()
-        {
-            if (_hash != 0)
-                return _hash;
-            EnterGetHashCode();
-            int hash = -1598595313;
-            hash = ((hash << 13) - (hash >> 19)) ^ Flags.GetHashCode();
-            hash = ((hash << 13) - (hash >> 19)) ^ (Type == null ? 0 : Type.GetHashCode());
-            hash = ((hash << 13) - (hash >> 19)) ^ (Value == null ? 0 : Value.GetHashCode());
-            LeaveGetHashCode();
-            _hash = hash;
-            return _hash;
-        } // GetHashCode
-
-        internal override void Save(NativeWriter writer)
-        {
-            writer.Write(Flags);
-            Debug.Assert(Type == null ||
-                Type.HandleType == HandleType.TypeDefinition ||
-                Type.HandleType == HandleType.TypeReference ||
-                Type.HandleType == HandleType.TypeSpecification);
-            writer.Write(Type);
-            Debug.Assert(Value == null ||
-                Value.HandleType == HandleType.TypeDefinition ||
-                Value.HandleType == HandleType.TypeReference ||
-                Value.HandleType == HandleType.TypeSpecification ||
-                Value.HandleType == HandleType.ConstantBooleanArray ||
-                Value.HandleType == HandleType.ConstantBooleanValue ||
-                Value.HandleType == HandleType.ConstantByteArray ||
-                Value.HandleType == HandleType.ConstantByteValue ||
-                Value.HandleType == HandleType.ConstantCharArray ||
-                Value.HandleType == HandleType.ConstantCharValue ||
-                Value.HandleType == HandleType.ConstantDoubleArray ||
-                Value.HandleType == HandleType.ConstantDoubleValue ||
-                Value.HandleType == HandleType.ConstantEnumArray ||
-                Value.HandleType == HandleType.ConstantHandleArray ||
-                Value.HandleType == HandleType.ConstantInt16Array ||
-                Value.HandleType == HandleType.ConstantInt16Value ||
-                Value.HandleType == HandleType.ConstantInt32Array ||
-                Value.HandleType == HandleType.ConstantInt32Value ||
-                Value.HandleType == HandleType.ConstantInt64Array ||
-                Value.HandleType == HandleType.ConstantInt64Value ||
-                Value.HandleType == HandleType.ConstantReferenceValue ||
-                Value.HandleType == HandleType.ConstantSByteArray ||
-                Value.HandleType == HandleType.ConstantSByteValue ||
-                Value.HandleType == HandleType.ConstantSingleArray ||
-                Value.HandleType == HandleType.ConstantSingleValue ||
-                Value.HandleType == HandleType.ConstantStringArray ||
-                Value.HandleType == HandleType.ConstantStringValue ||
-                Value.HandleType == HandleType.ConstantUInt16Array ||
-                Value.HandleType == HandleType.ConstantUInt16Value ||
-                Value.HandleType == HandleType.ConstantUInt32Array ||
-                Value.HandleType == HandleType.ConstantUInt32Value ||
-                Value.HandleType == HandleType.ConstantUInt64Array ||
-                Value.HandleType == HandleType.ConstantUInt64Value);
-            writer.Write(Value);
-        } // Save
-
-        internal static FixedArgumentHandle AsHandle(FixedArgument record)
-        {
-            if (record == null)
-            {
-                return new FixedArgumentHandle(0);
-            }
-            else
-            {
-                return record.Handle;
-            }
-        } // AsHandle
-
-        internal new FixedArgumentHandle Handle
-        {
-            get
-            {
-                return new FixedArgumentHandle(HandleOffset);
-            }
-        } // Handle
-
-        public FixedArgumentAttributes Flags;
-        public MetadataRecord Type;
-        public MetadataRecord Value;
-    } // FixedArgument
-
     public partial class FunctionPointerSignature : MetadataRecord
     {
         public override HandleType HandleType
@@ -2855,7 +2778,6 @@ namespace Internal.Metadata.NativeFormat.Writer
             Parent = visitor.Visit(this, Parent);
             Name = visitor.Visit(this, Name);
             Signature = visitor.Visit(this, Signature);
-            CustomAttributes = visitor.Visit(this, CustomAttributes);
         } // Visit
 
         public override sealed bool Equals(Object obj)
@@ -2866,7 +2788,6 @@ namespace Internal.Metadata.NativeFormat.Writer
             if (!Object.Equals(Parent, other.Parent)) return false;
             if (!Object.Equals(Name, other.Name)) return false;
             if (!Object.Equals(Signature, other.Signature)) return false;
-            if (!CustomAttributes.SequenceEqual(other.CustomAttributes)) return false;
             return true;
         } // Equals
 
@@ -2896,7 +2817,6 @@ namespace Internal.Metadata.NativeFormat.Writer
                 Signature.HandleType == HandleType.MethodSignature ||
                 Signature.HandleType == HandleType.FieldSignature);
             writer.Write(Signature);
-            writer.Write(CustomAttributes);
         } // Save
 
         internal static MemberReferenceHandle AsHandle(MemberReference record)
@@ -2922,7 +2842,6 @@ namespace Internal.Metadata.NativeFormat.Writer
         public MetadataRecord Parent;
         public ConstantStringValue Name;
         public MetadataRecord Signature;
-        public List<CustomAttribute> CustomAttributes = new List<CustomAttribute>();
     } // MemberReference
 
     public partial class Method : MetadataRecord
@@ -3028,81 +2947,6 @@ namespace Internal.Metadata.NativeFormat.Writer
         public List<CustomAttribute> CustomAttributes = new List<CustomAttribute>();
     } // Method
 
-    public partial class MethodImpl : MetadataRecord
-    {
-        public override HandleType HandleType
-        {
-            get
-            {
-                return HandleType.MethodImpl;
-            }
-        } // HandleType
-
-        internal override void Visit(IRecordVisitor visitor)
-        {
-            MethodBody = visitor.Visit(this, MethodBody);
-            MethodDeclaration = visitor.Visit(this, MethodDeclaration);
-        } // Visit
-
-        public override sealed bool Equals(Object obj)
-        {
-            if (Object.ReferenceEquals(this, obj)) return true;
-            var other = obj as MethodImpl;
-            if (other == null) return false;
-            if (!Object.Equals(MethodBody, other.MethodBody)) return false;
-            if (!Object.Equals(MethodDeclaration, other.MethodDeclaration)) return false;
-            return true;
-        } // Equals
-
-        public override sealed int GetHashCode()
-        {
-            if (_hash != 0)
-                return _hash;
-            EnterGetHashCode();
-            int hash = 284143683;
-            hash = ((hash << 13) - (hash >> 19)) ^ (MethodBody == null ? 0 : MethodBody.GetHashCode());
-            hash = ((hash << 13) - (hash >> 19)) ^ (MethodDeclaration == null ? 0 : MethodDeclaration.GetHashCode());
-            LeaveGetHashCode();
-            _hash = hash;
-            return _hash;
-        } // GetHashCode
-
-        internal override void Save(NativeWriter writer)
-        {
-            Debug.Assert(MethodBody == null ||
-                MethodBody.HandleType == HandleType.QualifiedMethod ||
-                MethodBody.HandleType == HandleType.MemberReference);
-            writer.Write(MethodBody);
-            Debug.Assert(MethodDeclaration == null ||
-                MethodDeclaration.HandleType == HandleType.QualifiedMethod ||
-                MethodDeclaration.HandleType == HandleType.MemberReference);
-            writer.Write(MethodDeclaration);
-        } // Save
-
-        internal static MethodImplHandle AsHandle(MethodImpl record)
-        {
-            if (record == null)
-            {
-                return new MethodImplHandle(0);
-            }
-            else
-            {
-                return record.Handle;
-            }
-        } // AsHandle
-
-        internal new MethodImplHandle Handle
-        {
-            get
-            {
-                return new MethodImplHandle(HandleOffset);
-            }
-        } // Handle
-
-        public MetadataRecord MethodBody;
-        public MetadataRecord MethodDeclaration;
-    } // MethodImpl
-
     public partial class MethodInstantiation : MetadataRecord
     {
         public override HandleType HandleType
@@ -3117,7 +2961,6 @@ namespace Internal.Metadata.NativeFormat.Writer
         {
             Method = visitor.Visit(this, Method);
             GenericTypeArguments = visitor.Visit(this, GenericTypeArguments);
-            CustomAttributes = visitor.Visit(this, CustomAttributes);
         } // Visit
 
         public override sealed bool Equals(Object obj)
@@ -3127,7 +2970,6 @@ namespace Internal.Metadata.NativeFormat.Writer
             if (other == null) return false;
             if (!Object.Equals(Method, other.Method)) return false;
             if (!GenericTypeArguments.SequenceEqual(other.GenericTypeArguments)) return false;
-            if (!CustomAttributes.SequenceEqual(other.CustomAttributes)) return false;
             return true;
         } // Equals
 
@@ -3154,7 +2996,6 @@ namespace Internal.Metadata.NativeFormat.Writer
                 handle.HandleType == HandleType.TypeReference ||
                 handle.HandleType == HandleType.TypeSpecification));
             writer.Write(GenericTypeArguments);
-            writer.Write(CustomAttributes);
         } // Save
 
         internal static MethodInstantiationHandle AsHandle(MethodInstantiation record)
@@ -3179,7 +3020,6 @@ namespace Internal.Metadata.NativeFormat.Writer
 
         public MetadataRecord Method;
         public List<MetadataRecord> GenericTypeArguments = new List<MetadataRecord>();
-        public List<CustomAttribute> CustomAttributes = new List<CustomAttribute>();
     } // MethodInstantiation
 
     public partial class MethodSemantics : MetadataRecord
@@ -3517,6 +3357,7 @@ namespace Internal.Metadata.NativeFormat.Writer
         internal override void Visit(IRecordVisitor visitor)
         {
             Name = visitor.Visit(this, Name);
+            Type = visitor.Visit(this, Type);
             Value = visitor.Visit(this, Value);
         } // Visit
 
@@ -3527,6 +3368,7 @@ namespace Internal.Metadata.NativeFormat.Writer
             if (other == null) return false;
             if (Flags != other.Flags) return false;
             if (!Object.Equals(Name, other.Name)) return false;
+            if (!Object.Equals(Type, other.Type)) return false;
             if (!Object.Equals(Value, other.Value)) return false;
             return true;
         } // Equals
@@ -3539,6 +3381,7 @@ namespace Internal.Metadata.NativeFormat.Writer
             int hash = -469180039;
             hash = ((hash << 13) - (hash >> 19)) ^ Flags.GetHashCode();
             hash = ((hash << 13) - (hash >> 19)) ^ (Name == null ? 0 : Name.GetHashCode());
+            hash = ((hash << 13) - (hash >> 19)) ^ (Type == null ? 0 : Type.GetHashCode());
             hash = ((hash << 13) - (hash >> 19)) ^ (Value == null ? 0 : Value.GetHashCode());
             LeaveGetHashCode();
             _hash = hash;
@@ -3549,6 +3392,44 @@ namespace Internal.Metadata.NativeFormat.Writer
         {
             writer.Write(Flags);
             writer.Write(Name);
+            Debug.Assert(Type == null ||
+                Type.HandleType == HandleType.TypeDefinition ||
+                Type.HandleType == HandleType.TypeReference ||
+                Type.HandleType == HandleType.TypeSpecification);
+            writer.Write(Type);
+            Debug.Assert(Value == null ||
+                Value.HandleType == HandleType.TypeDefinition ||
+                Value.HandleType == HandleType.TypeReference ||
+                Value.HandleType == HandleType.TypeSpecification ||
+                Value.HandleType == HandleType.ConstantBooleanArray ||
+                Value.HandleType == HandleType.ConstantBooleanValue ||
+                Value.HandleType == HandleType.ConstantByteArray ||
+                Value.HandleType == HandleType.ConstantByteValue ||
+                Value.HandleType == HandleType.ConstantCharArray ||
+                Value.HandleType == HandleType.ConstantCharValue ||
+                Value.HandleType == HandleType.ConstantDoubleArray ||
+                Value.HandleType == HandleType.ConstantDoubleValue ||
+                Value.HandleType == HandleType.ConstantEnumArray ||
+                Value.HandleType == HandleType.ConstantHandleArray ||
+                Value.HandleType == HandleType.ConstantInt16Array ||
+                Value.HandleType == HandleType.ConstantInt16Value ||
+                Value.HandleType == HandleType.ConstantInt32Array ||
+                Value.HandleType == HandleType.ConstantInt32Value ||
+                Value.HandleType == HandleType.ConstantInt64Array ||
+                Value.HandleType == HandleType.ConstantInt64Value ||
+                Value.HandleType == HandleType.ConstantReferenceValue ||
+                Value.HandleType == HandleType.ConstantSByteArray ||
+                Value.HandleType == HandleType.ConstantSByteValue ||
+                Value.HandleType == HandleType.ConstantSingleArray ||
+                Value.HandleType == HandleType.ConstantSingleValue ||
+                Value.HandleType == HandleType.ConstantStringArray ||
+                Value.HandleType == HandleType.ConstantStringValue ||
+                Value.HandleType == HandleType.ConstantUInt16Array ||
+                Value.HandleType == HandleType.ConstantUInt16Value ||
+                Value.HandleType == HandleType.ConstantUInt32Array ||
+                Value.HandleType == HandleType.ConstantUInt32Value ||
+                Value.HandleType == HandleType.ConstantUInt64Array ||
+                Value.HandleType == HandleType.ConstantUInt64Value);
             writer.Write(Value);
         } // Save
 
@@ -3574,7 +3455,8 @@ namespace Internal.Metadata.NativeFormat.Writer
 
         public NamedArgumentMemberKind Flags;
         public ConstantStringValue Name;
-        public FixedArgument Value;
+        public MetadataRecord Type;
+        public MetadataRecord Value;
     } // NamedArgument
 
     public partial class NamespaceDefinition : MetadataRecord
@@ -4489,7 +4371,6 @@ namespace Internal.Metadata.NativeFormat.Writer
         {
             Name = visitor.Visit(this, Name);
             Culture = visitor.Visit(this, Culture);
-            CustomAttributes = visitor.Visit(this, CustomAttributes);
         } // Visit
 
         public override sealed bool Equals(Object obj)
@@ -4505,7 +4386,6 @@ namespace Internal.Metadata.NativeFormat.Writer
             if (RevisionNumber != other.RevisionNumber) return false;
             if (!PublicKeyOrToken.SequenceEqual(other.PublicKeyOrToken)) return false;
             if (!Object.Equals(Culture, other.Culture)) return false;
-            if (!CustomAttributes.SequenceEqual(other.CustomAttributes)) return false;
             return true;
         } // Equals
 
@@ -4544,7 +4424,6 @@ namespace Internal.Metadata.NativeFormat.Writer
             writer.Write(RevisionNumber);
             writer.Write(PublicKeyOrToken);
             writer.Write(Culture);
-            writer.Write(CustomAttributes);
         } // Save
 
         internal static ScopeReferenceHandle AsHandle(ScopeReference record)
@@ -4575,7 +4454,6 @@ namespace Internal.Metadata.NativeFormat.Writer
         public ushort RevisionNumber;
         public Byte[] PublicKeyOrToken;
         public ConstantStringValue Culture;
-        public List<CustomAttribute> CustomAttributes = new List<CustomAttribute>();
     } // ScopeReference
 
     public partial class TypeDefinition : MetadataRecord
@@ -4601,7 +4479,6 @@ namespace Internal.Metadata.NativeFormat.Writer
             Events = visitor.Visit(this, Events);
             GenericParameters = visitor.Visit(this, GenericParameters);
             Interfaces = visitor.Visit(this, Interfaces);
-            MethodImpls = visitor.Visit(this, MethodImpls);
             CustomAttributes = visitor.Visit(this, CustomAttributes);
         } // Visit
 
@@ -4654,7 +4531,6 @@ namespace Internal.Metadata.NativeFormat.Writer
                 handle.HandleType == HandleType.TypeReference ||
                 handle.HandleType == HandleType.TypeSpecification));
             writer.Write(Interfaces);
-            writer.Write(MethodImpls);
             writer.Write(CustomAttributes);
         } // Save
 
@@ -4692,7 +4568,6 @@ namespace Internal.Metadata.NativeFormat.Writer
         public List<Event> Events = new List<Event>();
         public List<GenericParameter> GenericParameters = new List<GenericParameter>();
         public List<MetadataRecord> Interfaces = new List<MetadataRecord>();
-        public List<MethodImpl> MethodImpls = new List<MethodImpl>();
         public List<CustomAttribute> CustomAttributes = new List<CustomAttribute>();
     } // TypeDefinition
 
@@ -4711,7 +4586,6 @@ namespace Internal.Metadata.NativeFormat.Writer
             Scope = visitor.Visit(this, Scope);
             Name = visitor.Visit(this, Name);
             NestedTypes = visitor.Visit(this, NestedTypes);
-            CustomAttributes = visitor.Visit(this, CustomAttributes);
         } // Visit
 
         public override sealed bool Equals(Object obj)
@@ -4722,7 +4596,6 @@ namespace Internal.Metadata.NativeFormat.Writer
             if (!Object.Equals(Scope, other.Scope)) return false;
             if (!Object.Equals(Name, other.Name)) return false;
             if (!NestedTypes.SequenceEqual(other.NestedTypes)) return false;
-            if (!CustomAttributes.SequenceEqual(other.CustomAttributes)) return false;
             return true;
         } // Equals
 
@@ -4744,7 +4617,6 @@ namespace Internal.Metadata.NativeFormat.Writer
             writer.Write(Scope);
             writer.Write(Name);
             writer.Write(NestedTypes);
-            writer.Write(CustomAttributes);
         } // Save
 
         internal static TypeForwarderHandle AsHandle(TypeForwarder record)
@@ -4770,7 +4642,6 @@ namespace Internal.Metadata.NativeFormat.Writer
         public ScopeReference Scope;
         public ConstantStringValue Name;
         public List<TypeForwarder> NestedTypes = new List<TypeForwarder>();
-        public List<CustomAttribute> CustomAttributes = new List<CustomAttribute>();
     } // TypeForwarder
 
     public partial class TypeInstantiationSignature : MetadataRecord
@@ -4863,7 +4734,6 @@ namespace Internal.Metadata.NativeFormat.Writer
         {
             ParentNamespaceOrType = visitor.Visit(this, ParentNamespaceOrType);
             TypeName = visitor.Visit(this, TypeName);
-            CustomAttributes = visitor.Visit(this, CustomAttributes);
         } // Visit
 
         public override sealed bool Equals(Object obj)
@@ -4873,7 +4743,6 @@ namespace Internal.Metadata.NativeFormat.Writer
             if (other == null) return false;
             if (!Object.Equals(ParentNamespaceOrType, other.ParentNamespaceOrType)) return false;
             if (!Object.Equals(TypeName, other.TypeName)) return false;
-            if (!CustomAttributes.SequenceEqual(other.CustomAttributes)) return false;
             return true;
         } // Equals
 
@@ -4897,7 +4766,6 @@ namespace Internal.Metadata.NativeFormat.Writer
                 ParentNamespaceOrType.HandleType == HandleType.TypeReference);
             writer.Write(ParentNamespaceOrType);
             writer.Write(TypeName);
-            writer.Write(CustomAttributes);
         } // Save
 
         internal static TypeReferenceHandle AsHandle(TypeReference record)
@@ -4922,7 +4790,6 @@ namespace Internal.Metadata.NativeFormat.Writer
 
         public MetadataRecord ParentNamespaceOrType;
         public ConstantStringValue TypeName;
-        public List<CustomAttribute> CustomAttributes = new List<CustomAttribute>();
     } // TypeReference
 
     public partial class TypeSpecification : MetadataRecord
@@ -4938,7 +4805,6 @@ namespace Internal.Metadata.NativeFormat.Writer
         internal override void Visit(IRecordVisitor visitor)
         {
             Signature = visitor.Visit(this, Signature);
-            CustomAttributes = visitor.Visit(this, CustomAttributes);
         } // Visit
 
         public override sealed bool Equals(Object obj)
@@ -4947,7 +4813,6 @@ namespace Internal.Metadata.NativeFormat.Writer
             var other = obj as TypeSpecification;
             if (other == null) return false;
             if (!Object.Equals(Signature, other.Signature)) return false;
-            if (!CustomAttributes.SequenceEqual(other.CustomAttributes)) return false;
             return true;
         } // Equals
 
@@ -4977,7 +4842,6 @@ namespace Internal.Metadata.NativeFormat.Writer
                 Signature.HandleType == HandleType.TypeVariableSignature ||
                 Signature.HandleType == HandleType.MethodTypeVariableSignature);
             writer.Write(Signature);
-            writer.Write(CustomAttributes);
         } // Save
 
         internal static TypeSpecificationHandle AsHandle(TypeSpecification record)
@@ -5001,7 +4865,6 @@ namespace Internal.Metadata.NativeFormat.Writer
         } // Handle
 
         public MetadataRecord Signature;
-        public List<CustomAttribute> CustomAttributes = new List<CustomAttribute>();
     } // TypeSpecification
 
     public partial class TypeVariableSignature : MetadataRecord

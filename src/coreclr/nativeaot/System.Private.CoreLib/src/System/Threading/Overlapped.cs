@@ -43,10 +43,10 @@ namespace System.Threading
 
         // Context callback: same sig for SendOrPostCallback and ContextCallback
         internal static ContextCallback s_ccb = new ContextCallback(IOCompletionCallback_Context);
-        private static void IOCompletionCallback_Context(object state)
+        private static void IOCompletionCallback_Context(object? state)
         {
+            Debug.Assert(state != null, "_IOCompletionCallback cannot be null");
             _IOCompletionCallback helper = (_IOCompletionCallback)state;
-            Debug.Assert(helper != null, "_IOCompletionCallback cannot be null");
             helper._ioCompletionCallback(helper._errorCode, helper._numBytes, helper._pNativeOverlapped);
         }
 

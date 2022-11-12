@@ -13,7 +13,7 @@ namespace System
 {
     public partial class Exception
     {
-        public MethodBase TargetSite
+        public MethodBase? TargetSite
         {
             get
             {
@@ -26,19 +26,19 @@ namespace System
 
         private IDictionary CreateDataContainer() => new ListDictionaryInternal();
 
-        private string SerializationWatsonBuckets => null;
+        private string? SerializationWatsonBuckets => null;
 
-        private string CreateSourceName() => HasBeenThrown ? "<unknown>" : null;
+        private string? CreateSourceName() => HasBeenThrown ? "<unknown>" : null;
 
         // WARNING: We allow diagnostic tools to directly inspect these three members (_message, _innerException and _HResult)
         // See https://github.com/dotnet/corert/blob/master/Documentation/design-docs/diagnostics/diagnostics-tools-contract.md for more details.
         // Please do not change the type, the name, or the semantic usage of this member without understanding the implication for tools.
         // Get in touch with the diagnostics team if you have questions.
-        internal string _message;
-        private IDictionary _data;
-        private Exception _innerException;
-        private string _helpURL;
-        private string _source;         // Mainly used by VB.
+        internal string? _message;
+        private IDictionary? _data;
+        private Exception? _innerException;
+        private string? _helpURL;
+        private string? _source;         // Mainly used by VB.
         private int _HResult;     // HResult
 
         // To maintain compatibility across runtimes, if this object was deserialized, it will store its stack trace as a string
@@ -62,7 +62,7 @@ namespace System
 
         // _corDbgStackTrace: Do not rename: This is for the use of the CorDbg interface. Contains the stack trace as an array of EIP's (ordered from
         // most nested call to least.) May also include a few "special" IP's from the SpecialIP class:
-        private IntPtr[] _corDbgStackTrace;
+        private IntPtr[]? _corDbgStackTrace;
         private int _idxFirstFreeStackTraceEntry;
 
         internal static IntPtr EdiSeparator => (IntPtr)1;  // Marks a boundary where an ExceptionDispatchInfo rethrew an exception.
@@ -166,7 +166,7 @@ namespace System
 
         internal DispatchState CaptureDispatchState()
         {
-            IntPtr[] stackTrace = _corDbgStackTrace;
+            IntPtr[]? stackTrace = _corDbgStackTrace;
             if (stackTrace != null)
             {
                 IntPtr[] newStackTrace = new IntPtr[stackTrace.Length];
@@ -201,9 +201,9 @@ namespace System
 
         internal readonly struct DispatchState
         {
-            public readonly IntPtr[] StackTrace;
+            public readonly IntPtr[]? StackTrace;
 
-            public DispatchState(IntPtr[] stackTrace)
+            public DispatchState(IntPtr[]? stackTrace)
             {
                 StackTrace = stackTrace;
             }
