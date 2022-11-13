@@ -223,7 +223,6 @@ void Llvm::lowerToShadowStack()
     }
 }
 
-
 void Llvm::lowerStoreLcl(GenTreeLclVarCommon* storeLclNode)
 {
     LclVarDsc* addrVarDsc = _compiler->lvaGetDesc(storeLclNode->GetLclNum());
@@ -348,9 +347,7 @@ void Llvm::ConvertShadowStackLocalNode(GenTreeLclVarCommon* node)
             case GT_LCL_FLD:
                 if (lclVar->TypeIs(TYP_STRUCT))
                 {
-                    //TODO-LLVM: eg. S_P_CoreLib_System_DateTimeParse__Parse
-                    // a struct in a struct?
-                    //[000026]-- -- -- -- -- --t26 = LCL_FLD struct V03 loc0[+72] Fseq[parsedDate] $83
+                    // TODO-LLVM: handle once we merge enough of upstream to have "GenTreeLclFld::GetLayout".
                     failFunctionCompilation();
                 }
                 indirOper = GT_IND;
