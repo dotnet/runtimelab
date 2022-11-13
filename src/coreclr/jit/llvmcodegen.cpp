@@ -589,7 +589,7 @@ void Llvm::buildDiv(GenTree* node)
 
 void Llvm::buildCast(GenTreeCast* cast)
 {
-    var_types castFromType  = genActualType(cast->CastOp());
+    var_types castFromType = genActualType(cast->CastOp());
     var_types castToType = cast->CastToType();
     Value* castFromValue = consumeValue(cast->CastOp(), getLlvmTypeForVarType(castFromType));
     Value* castValue = nullptr;
@@ -620,6 +620,7 @@ void Llvm::buildCast(GenTreeCast* cast)
                         : _builder.CreateSExt(castFromValue, castToLlvmType);
                     break;
 
+                case TYP_FLOAT:
                 case TYP_DOUBLE:
                     castValue = cast->IsUnsigned()
                         ? _builder.CreateUIToFP(castFromValue, castToLlvmType)
@@ -1139,35 +1140,31 @@ void Llvm::buildShift(GenTreeOp* node)
 
 void Llvm::buildReturn(GenTree* node)
 {
-    switch (node->TypeGet())
+    if (node->TypeIs(TYP_VOID))
     {
-        case TYP_INT:
-        case TYP_LONG:
-        case TYP_STRUCT:
-            if (node->gtGetOp1()->TypeIs(TYP_FLOAT))
-            {
-                // TODO-LLVM: remove this case by lowering see
-                // https://github.com/dotnet/runtimelab/pull/2007#issuecomment-1264715441
-                failFunctionCompilation();
-            }
-            if (node->TypeGet() == TYP_STRUCT && node->gtGetOp1()->IsIntegralConst(0))
-            {
-                // Special-case returning zero-initialized structs.
-                Type* structLlvmType = getLlvmTypeForCorInfoType(_sigInfo.retType, _sigInfo.retTypeClass);
-                Value* structAddrValue = _builder.CreateAlloca(structLlvmType, 0U);
-                Value* structSizeValue = _builder.getInt32(structLlvmType->getScalarSizeInBits() / BITS_PER_BYTE);
-                _builder.CreateMemSet(structAddrValue, _builder.getInt8(0), structSizeValue, {});
-                _builder.CreateRet(_builder.CreateLoad(structAddrValue));
-                return;
-            }
-            _builder.CreateRet(consumeValue(node->gtGetOp1(), getLlvmTypeForCorInfoType(_sigInfo.retType, _sigInfo.retTypeClass)));
-            return;
-        case TYP_VOID:
-            _builder.CreateRetVoid();
-            return;
-        default:
-            failFunctionCompilation();
+        _builder.CreateRetVoid();
+        return;
     }
+
+    GenTree* retValNode = node->gtGetOp1();
+    Type* retLlvmType = getLlvmTypeForCorInfoType(_sigInfo.retType, _sigInfo.retTypeClass);
+    Value* retValValue;
+    // Special-case returning zero-initialized structs.
+    if (node->TypeIs(TYP_STRUCT) && retValNode->IsIntegralConst(0))
+    {
+        retValValue = llvm::Constant::getNullValue(retLlvmType);
+    }
+    else if (genActualType(node) != genActualType(retValNode))
+    {
+        // TODO-LLVM: remove these cases in lowering.
+        failFunctionCompilation();
+    }
+    else
+    {
+        retValValue = consumeValue(retValNode, retLlvmType);
+    }
+
+    _builder.CreateRet(retValValue);
 }
 
 void Llvm::buildJTrue(GenTree* node, Value* opValue)
