@@ -142,11 +142,6 @@ void Llvm::populateLlvmArgNums()
         firstCorInfoArgLocalNum++;
     }
 
-    if (_info.compRetBuffArg != BAD_VAR_NUM)
-    {
-        firstCorInfoArgLocalNum++;
-    }
-
     for (unsigned int i = 0; i < _sigInfo.numArgs; i++, sigArgs = _info.compCompHnd->getArgNext(sigArgs))
     {
         CORINFO_CLASS_HANDLE classHnd;
@@ -201,15 +196,9 @@ void Llvm::lowerToShadowStack()
                     CurrentRange().Remove(callNode->gtNext, _currentBlock->lastNode());
                 }
             }
-            else if (node->OperIs(GT_RETURN) && _retAddressLclNum != BAD_VAR_NUM)
+            else if (node->OperIs(GT_RETURN) && (_retAddressLclNum != BAD_VAR_NUM))
             {
                 var_types originalReturnType = node->TypeGet();
-                if(node->TypeIs(TYP_VOID))
-                {
-                    /* TODO-LLVM: retbuf .   compHasRetBuffArg doesn't seem to have an implementation */
-                    failFunctionCompilation();
-                }
-
                 LclVarDsc* retAddressVarDsc = _compiler->lvaGetDesc(_retAddressLclNum);
                 retAddressVarDsc->lvIsParam = 1;
                 retAddressVarDsc->lvType = TYP_I_IMPL;

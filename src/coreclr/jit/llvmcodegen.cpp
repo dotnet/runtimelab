@@ -471,12 +471,6 @@ Value* Llvm::localVar(GenTreeLclVar* lclVar)
     {
         if (varDsc->lvLlvmArgNum != BAD_LLVM_ARG_NUM)
         {
-            // TODO-LLVM: we dont handle this yet
-            if (_info.compRetBuffArg != BAD_VAR_NUM)
-            {
-                failFunctionCompilation();
-            }
-
             llvmRef = _function->getArg(varDsc->lvLlvmArgNum);
             _localsMap->insert({{lclNum, ssaNum}, llvmRef});
         }
@@ -1667,12 +1661,10 @@ LlvmArgInfo Llvm::getLlvmArgInfoForArgIx(unsigned lclNum)
     if (_sigInfo.hasExplicitThis() || _sigInfo.hasTypeArg())
         failFunctionCompilation();
 
-    unsigned int llvmArgNum    = 1; // skip shadow stack arg
-    bool         returnOnStack = false;
-
-    LlvmArgInfo             llvmArgInfo = {
-        -1 /* default to not an LLVM arg*/, _sigInfo.hasThis() ? TARGET_POINTER_SIZE : 0U /* this is the first pointer on
-                                                                                          the shadow stack */
+    unsigned int llvmArgNum = 1; // skip shadow stack arg
+    LlvmArgInfo llvmArgInfo = {
+        -1, // Default to not an LLVM arg.
+        _sigInfo.hasThis() ? TARGET_POINTER_SIZE : 0U // "this" is the first pointer on the shadow stack.
     };
 
     if (lclNum == _shadowStackLclNum)
@@ -1680,17 +1672,6 @@ LlvmArgInfo Llvm::getLlvmArgInfoForArgIx(unsigned lclNum)
         llvmArgInfo.m_argIx             = 0;
         llvmArgInfo.m_shadowStackOffset = 0;
         return llvmArgInfo;
-    }
-
-    if (_compiler->info.compRetBuffArg != BAD_VAR_NUM)
-    {
-        if (lclNum == 0)
-        {
-            // the first IR arg is the return address, but its not in sigInfo so handle here
-            llvmArgInfo.m_argIx = llvmArgNum;
-            return llvmArgInfo;
-        }
-        lclNum--; // line up with sigArgs
     }
 
     if (needsReturnStackSlot(_sigInfo.retType, _sigInfo.retTypeClass))
