@@ -192,10 +192,13 @@ void Llvm::lowerBlocks()
 
                 lowerCallToShadowStack(callNode);
 
-                if ((_compiler->fgIsThrow(callNode) || callNode->IsNoReturn()) && (callNode->gtNext != nullptr))
+                // If there is a no return, or always throw call, delete the dead code so we can add unreachable statment immediately, and not after any dead RET.
+                if (_compiler->fgIsThrow(callNode) || callNode->IsNoReturn())
                 {
-                    // If there is a no return, or always throw call, delete the dead code so we can add the unreachable statment immediately, and not after any dead RET
-                    CurrentRange().Remove(callNode->gtNext, _currentBlock->lastNode());
+                    while (CurrentRange().LastNode() != callNode)
+                    {
+                        CurrentRange().Remove(CurrentRange().LastNode(), /* markOperandsUnused */ true);
+                    }
                 }
             }
             else if (node->OperIs(GT_RETURN) && (_retAddressLclNum != BAD_VAR_NUM))
@@ -222,6 +225,8 @@ void Llvm::lowerBlocks()
                 _compiler->lvaGetDesc(node->AsLclVarCommon())->lvHasLocalAddr = 1;
             }
         }
+
+        INDEBUG(CurrentRange().CheckLIR(_compiler, /* checkUnusedValues */ true));
     }
 }
 
@@ -620,11 +625,11 @@ GenTreeCall::Use* Llvm::lowerCallReturn(GenTreeCall*      callNode,
         GenTree* indirNode;
         if (callReturnType == TYP_STRUCT)
         {
-            indirNode    = _compiler->gtNewObjNode(calleeSigInfo->retTypeClass, returnAddrLclAfterCall);
+            indirNode = _compiler->gtNewObjNode(calleeSigInfo->retTypeClass, returnAddrLclAfterCall);
         }
         else
         {
-            indirNode = _compiler->gtNewOperNode(GT_IND, callReturnType, returnAddrLclAfterCall);
+            indirNode = _compiler->gtNewIndir(callReturnType, returnAddrLclAfterCall);
         }
         indirNode->gtFlags |= GTF_IND_TGT_NOT_HEAP; // No RhpAssignRef required
         LIR::Use callUse;
@@ -634,6 +639,7 @@ GenTreeCall::Use* Llvm::lowerCallReturn(GenTreeCall*      callNode,
         }
         else
         {
+            indirNode->SetUnusedValue();
             callNode->ClearUnusedValue();
         }
 
