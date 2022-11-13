@@ -92,6 +92,7 @@ Llvm::Llvm(Compiler* compiler)
     : _compiler(compiler),
     _info(compiler->info),
     _function(nullptr),
+    _sigInfo(compiler->info.compMethodInfo->args),
     _builder(_llvmContext),
     _prologBuilder(_llvmContext),
     _blkToLlvmBlkVectorMap(compiler->getAllocator(CMK_Codegen)),
@@ -101,7 +102,6 @@ Llvm::Llvm(Compiler* compiler)
     _shadowStackLclNum(BAD_VAR_NUM),
     _retAddressLclNum(BAD_VAR_NUM)
 {
-    _compiler->eeGetMethodSig(_info.compMethodHnd, &_sigInfo);
 }
 
 void Llvm::llvmShutdown()
