@@ -201,7 +201,7 @@ public:
 
 private:
     void populateLlvmArgNums();
-    void lowerToShadowStack();
+    void lowerBlocks();
 
     void lowerStoreLcl(GenTreeLclVarCommon* storeLclNode);
     void lowerFieldOfDependentlyPromotedStruct(GenTree* node);

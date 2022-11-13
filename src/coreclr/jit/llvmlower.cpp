@@ -32,6 +32,8 @@ void Llvm::Lower()
                     LclVarDsc* fieldVarDsc = _compiler->lvaGetDesc(fieldLclNum);
                     if (fieldVarDsc->lvRefCnt(RCS_NORMAL) != 0)
                     {
+                        JITDUMP("Adding initialization for %s:\n", fieldVarDsc->lvReason)
+
                         _compiler->fgEnsureFirstBBisScratch();
                         LIR::Range& firstBlockRange = LIR::AsRange(_compiler->fgFirstBB);
 
@@ -41,6 +43,8 @@ void Llvm::Lower()
                         GenTree* fieldStore = _compiler->gtNewStoreLclVar(fieldLclNum, fieldValue);
                         firstBlockRange.InsertAtBeginning(fieldStore);
                         firstBlockRange.InsertAtBeginning(fieldValue);
+
+                        DISPTREERANGE(firstBlockRange, fieldStore);
                     }
 
                     fieldVarDsc->lvIsStructField = false;
@@ -104,7 +108,7 @@ void Llvm::Lower()
     }
     _shadowStackLocalsSize = offset;
 
-    lowerToShadowStack();
+    lowerBlocks();
 }
 
 void Llvm::populateLlvmArgNums()
@@ -133,8 +137,6 @@ void Llvm::populateLlvmArgNums()
         retAddressVarDsc->lvIsParam    = true;
     }
 
-    // TODO-LLVM: other non-standard args, generic context, outs
-
     CORINFO_ARG_LIST_HANDLE sigArgs = _sigInfo.args;
     unsigned firstCorInfoArgLocalNum = 0;
     if (_sigInfo.hasThis())
@@ -158,7 +160,7 @@ void Llvm::populateLlvmArgNums()
     _llvmArgCount = nextLlvmArgNum;
 }
 
-void Llvm::lowerToShadowStack()
+void Llvm::lowerBlocks()
 {
     for (BasicBlock* _currentBlock : _compiler->Blocks())
     {
