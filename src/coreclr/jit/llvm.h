@@ -34,8 +34,9 @@ using llvm::FunctionType;
 using llvm::Value;
 using llvm::Type;
 using llvm::Instruction;
-
 using llvm::ArrayRef;
+
+using SSAName = Compiler::SSAName;
 
 #define IMAGE_FILE_MACHINE_WASM32             0xFFFF
 #define IMAGE_FILE_MACHINE_WASM64             0xFFFE // TODO: appropriate values for this?  Used to check compilation is for intended target
@@ -57,21 +58,18 @@ struct LlvmArgInfo
     }
 };
 
+struct JitStdStringKeyFuncs : JitKeyFuncsDefEquals<std::string>
+{
+    static unsigned GetHashCode(const std::string& val)
+    {
+        return static_cast<unsigned>(std::hash<std::string>()(val));
+    }
+};
+
 struct DebugMetadata
 {
     llvm::DIFile* fileMetadata;
     llvm::DICompileUnit* diCompileUnit;
-};
-
-typedef std::pair<unsigned, unsigned> SsaPair;
-
-struct SsaPairHash
-{
-    template <class T1, class T2>
-    std::size_t operator()(const std::pair<T1, T2>& pair) const
-    {
-        return std::hash<T1>()(pair.first) ^ std::hash<T2>()(pair.second);
-    }
 };
 
 struct PhiPair
@@ -79,8 +77,6 @@ struct PhiPair
     GenTreePhi* irPhiNode;
     llvm::PHINode* llvmPhiNode;
 };
-
-typedef JitHashTable<BasicBlock*, JitPtrKeyFuncs<BasicBlock>, llvm::BasicBlock*> BlkToLlvmBlkVectorMap;
 
 // TODO: We should create a Static... class to manage the globals and their lifetimes.
 // Note we declare all statics here, and define them in llvm.cpp, for documentation and
@@ -101,16 +97,16 @@ private:
     Compiler::Info _info;
     GCInfo* _gcInfo = nullptr;
 
-    llvm::Function* _function;
+    Function* _function;
     CORINFO_SIG_INFO _sigInfo; // sigInfo of function being compiled
     LIR::Range* _currentRange;
     BasicBlock* _currentBlock;
     IL_OFFSETX _currentOffset;
-    BlkToLlvmBlkVectorMap* _blkToLlvmBlkVectorMap;
     llvm::IRBuilder<> _builder;
     llvm::IRBuilder<> _prologBuilder;
-    std::unordered_map<GenTree*, Value*>* _sdsuMap;
-    std::unordered_map<SsaPair, Value*, SsaPairHash>* _localsMap;
+    JitHashTable<BasicBlock*, JitPtrKeyFuncs<BasicBlock>, llvm::BasicBlock*> _blkToLlvmBlkVectorMap;
+    JitHashTable<GenTree*, JitPtrKeyFuncs<GenTree>, Value*> _sdsuMap;
+    JitHashTable<SSAName, SSAName, Value*> _localsMap;
     std::vector<PhiPair> _phiPairs;
     std::vector<Value*> m_allocas;
 
@@ -118,7 +114,7 @@ private:
     llvm::DILocation* _currentOffsetDiLocation;
     llvm::DISubprogram* _debugFunction;
     DebugMetadata  _debugMetadata;
-    std::unordered_map<std::string, struct DebugMetadata> _debugMetadataMap;
+    JitHashTable<std::string, JitStdStringKeyFuncs, DebugMetadata> _debugMetadataMap;
 
     unsigned _shadowStackLocalsSize;
     unsigned _shadowStackLclNum;
@@ -230,7 +226,7 @@ private:
 
     Value* getGenTreeValue(GenTree* node);
     Value* consumeValue(GenTree* node, Type* targetLlvmType);
-    Value* mapGenTreeToValue(GenTree* node, Value* nodeValue);
+    void mapGenTreeToValue(GenTree* node, Value* nodeValue);
 
     void startImportingNode();
     void visitNode(GenTree* node);

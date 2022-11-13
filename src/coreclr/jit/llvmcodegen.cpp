@@ -9,12 +9,6 @@
 //
 void Llvm::Compile()
 {
-    CompAllocator allocator = _compiler->getAllocator();
-    BlkToLlvmBlkVectorMap blkToLlvmBlkVectorMap(allocator);
-    _blkToLlvmBlkVectorMap = &blkToLlvmBlkVectorMap;
-    std::unordered_map<GenTree*, Value*> sdsuMap;
-    _sdsuMap = &sdsuMap;
-    _localsMap = new std::unordered_map<SsaPair, Value*, SsaPairHash>();
     const char* mangledName = GetMangledMethodName(_info.compMethodHnd);
     _function = _module->getFunction(mangledName);
     _debugFunction = nullptr;
@@ -169,8 +163,7 @@ void Llvm::fillPhis()
             unsigned       ssaNum = phiArg->GetSsaNum();
 
             Value* localPhiArg = nullptr;
-            auto iter = _localsMap->find({ lclNum, ssaNum });
-            if (iter == _localsMap->end())
+            if (!_localsMap.Lookup({lclNum, ssaNum}, &localPhiArg))
             {
                 //TODO-LLVM: Uninitialised locals are caught here as they would fail on the equivalent assert below.
                 // See https://github.com/dotnet/runtimelab/pull/1744#discussion_r757791229
@@ -180,16 +173,12 @@ void Llvm::fillPhis()
                 }
                 // Arguments are implicitly defined on entry to the method.
                 assert(_compiler->lvaIsParameter(lclNum) && ssaNum == SsaConfig::FIRST_SSA_NUM);
-                LlvmArgInfo  llvmArgInfo = getLlvmArgInfoForArgIx(lclNum);
+                LlvmArgInfo llvmArgInfo = getLlvmArgInfoForArgIx(lclNum);
                 localPhiArg = _function->getArg(llvmArgInfo.m_argIx);
-            }
-            else
-            {
-                localPhiArg = iter->second;
             }
 
             Value* phiRealArgValue;
-            llvm::Instruction* castRequired = getCast(localPhiArg, llvmPhiNode->getType());
+            Instruction* castRequired = getCast(localPhiArg, llvmPhiNode->getType());
             if (castRequired != nullptr)
             {
                 // This cast is needed when
@@ -197,7 +186,7 @@ void Llvm::fillPhis()
                 // 2) There is a pointer difference, e.g. i8* v i32* and perhaps different levels of indirection: i8** and i8*
                 llvm::BasicBlock::iterator phiInsertPoint = _builder.GetInsertPoint();
                 llvm::BasicBlock* phiBlock = _builder.GetInsertBlock();
-                llvm::Instruction* predBlockTerminator = getLLVMBasicBlockForBlock(phiArg->gtPredBB)->getTerminator();
+                Instruction* predBlockTerminator = getLLVMBasicBlockForBlock(phiArg->gtPredBB)->getTerminator();
 
                 _builder.SetInsertPoint(predBlockTerminator);
                 phiRealArgValue = _builder.Insert(castRequired);
@@ -214,11 +203,7 @@ void Llvm::fillPhis()
 
 Value* Llvm::getGenTreeValue(GenTree* op)
 {
-    Value* mapValue = _sdsuMap->at(op);
-
-    assert(mapValue != nullptr);
-
-    return mapValue;
+    return _sdsuMap[op];
 }
 
 //------------------------------------------------------------------------
@@ -318,13 +303,9 @@ Value* Llvm::consumeValue(GenTree* node, Type* targetLlvmType)
     return finalValue;
 }
 
-Value* Llvm::mapGenTreeToValue(GenTree* node, Value* nodeValue)
+void Llvm::mapGenTreeToValue(GenTree* node, Value* nodeValue)
 {
-    // No double-producing of values.
-    assert(_sdsuMap->find(node) == _sdsuMap->end());
-
-    _sdsuMap->insert({node, nodeValue});
-    return nodeValue;
+    _sdsuMap.Set(node, nodeValue);
 }
 
 void Llvm::startImportingNode()
@@ -467,26 +448,22 @@ Value* Llvm::localVar(GenTreeLclVar* lclVar)
     {
         llvmRef = _builder.CreateLoad(m_allocas[lclNum]);
     }
-    else if (_localsMap->find({lclNum, ssaNum}) == _localsMap->end())
+    else if (!_localsMap.Lookup({lclNum, ssaNum}, &llvmRef))
     {
         if (varDsc->lvLlvmArgNum != BAD_LLVM_ARG_NUM)
         {
             llvmRef = _function->getArg(varDsc->lvLlvmArgNum);
-            _localsMap->insert({{lclNum, ssaNum}, llvmRef});
+            _localsMap.Set({lclNum, ssaNum}, llvmRef);
         }
         else
         {
-            // unhandled scenario, local is not defined already, and is not a parameter
+            // Unhandled scenario, local is not defined already, and is not a parameter.
             failFunctionCompilation();
         }
     }
-    else
-    {
-        llvmRef = _localsMap->at({lclNum, ssaNum});
-    }
 
-    // implicit truncating from long to int
-    if (llvmRef->getType() == Type::getInt64Ty(_llvmContext) && lclVar->TypeIs(TYP_INT))
+    // Implicit truncating from long to int.
+    if ((varDsc->TypeGet() == TYP_LONG) && lclVar->TypeIs(TYP_INT))
     {
         llvmRef = _builder.CreateTrunc(llvmRef, Type::getInt32Ty(_llvmContext));
     }
@@ -525,8 +502,7 @@ void Llvm::storeLocalVar(GenTreeLclVar* lclVar)
             failFunctionCompilation();
         }
 
-        SsaPair ssaPair = {lclNum, lclVar->GetSsaNum()};
-        _localsMap->insert({ssaPair, localValue});
+        _localsMap.Set({lclNum, lclVar->GetSsaNum()}, localValue);
     }
 }
 
@@ -1568,10 +1544,8 @@ llvm::Value* Llvm::getShadowStackForCallee()
 DebugMetadata Llvm::getOrCreateDebugMetadata(const char* documentFileName)
 {
     std::string fullPath = documentFileName;
-
-    struct DebugMetadata debugMetadata;
-    auto findResult = _debugMetadataMap.find(fullPath);
-    if (findResult == _debugMetadataMap.end())
+    DebugMetadata debugMetadata;
+    if (!_debugMetadataMap.Lookup(fullPath, &debugMetadata))
     {
         // check Unix and Windows path styles
         std::size_t botDirPos = fullPath.find_last_of("/");
@@ -1594,22 +1568,20 @@ DebugMetadata Llvm::getOrCreateDebugMetadata(const char* documentFileName)
         _diBuilder                 = new llvm::DIBuilder(*_module);
         llvm::DIFile* fileMetadata = _diBuilder->createFile(fileName, directory);
 
-        // TODO: get the right value for isOptimized
         llvm::DICompileUnit* compileUnit =
             _diBuilder->createCompileUnit(llvm::dwarf::DW_LANG_C /* no dotnet choices in the enum */, fileMetadata,
-                                          "ILC",
-                                          0 /* Optimized */, "", 1, "", llvm::DICompileUnit::DebugEmissionKind::FullDebug,
-                                          0, 0, 0, llvm::DICompileUnit::DebugNameTableKind::Default, false, "");
+                                          "ILC", _compiler->opts.OptimizationEnabled(), "", 1, "",
+                                          llvm::DICompileUnit::DebugEmissionKind::FullDebug, 0, 0, 0,
+                                          llvm::DICompileUnit::DebugNameTableKind::Default, false, "");
 
         debugMetadata = {fileMetadata, compileUnit};
-        _debugMetadataMap.insert({fullPath, debugMetadata});
+        _debugMetadataMap.Set(fullPath, debugMetadata);
     }
-    else debugMetadata = findResult->second;
 
     return debugMetadata;
 }
 
-llvm::DILocation* Llvm::createDebugFunctionAndDiLocation(struct DebugMetadata debugMetadata, unsigned int lineNo)
+llvm::DILocation* Llvm::createDebugFunctionAndDiLocation(DebugMetadata debugMetadata, unsigned int lineNo)
 {
     if (_debugFunction == nullptr)
     {
@@ -1630,11 +1602,14 @@ llvm::DILocation* Llvm::createDebugFunctionAndDiLocation(struct DebugMetadata de
 llvm::BasicBlock* Llvm::getLLVMBasicBlockForBlock(BasicBlock* block)
 {
     llvm::BasicBlock* llvmBlock;
-    if (_blkToLlvmBlkVectorMap->Lookup(block, &llvmBlock))
-        return llvmBlock;
+    if (!_blkToLlvmBlkVectorMap.Lookup(block, &llvmBlock))
+    {
+        unsigned bbNum = block->bbNum;
+        llvmBlock = llvm::BasicBlock::Create(_llvmContext, (bbNum >= 10) ? ("BB" + llvm::Twine(bbNum))
+                                                                         : ("BB0" + llvm::Twine(bbNum)), _function);
+        _blkToLlvmBlkVectorMap.Set(block, llvmBlock);
+    }
 
-    llvmBlock = llvm::BasicBlock::Create(_llvmContext, "", _function);
-    _blkToLlvmBlkVectorMap->Set(block, llvmBlock);
     return llvmBlock;
 }
 

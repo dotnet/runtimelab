@@ -94,6 +94,10 @@ Llvm::Llvm(Compiler* compiler)
     _function(nullptr),
     _builder(_llvmContext),
     _prologBuilder(_llvmContext),
+    _blkToLlvmBlkVectorMap(compiler->getAllocator(CMK_Codegen)),
+    _sdsuMap(compiler->getAllocator(CMK_Codegen)),
+    _localsMap(compiler->getAllocator(CMK_Codegen)),
+    _debugMetadataMap(compiler->getAllocator(CMK_Codegen)),
     _shadowStackLclNum(BAD_VAR_NUM),
     _retAddressLclNum(BAD_VAR_NUM)
 {
