@@ -33,6 +33,7 @@ using llvm::Function;
 using llvm::FunctionType;
 using llvm::Value;
 using llvm::Type;
+using llvm::Instruction;
 
 using llvm::ArrayRef;
 
@@ -229,7 +230,7 @@ private:
 
     Value* getGenTreeValue(GenTree* node);
     Value* consumeValue(GenTree* node, Type* targetLlvmType);
-    Value* mapGenTreeToValue(GenTree* genTree, Value* valueRef);
+    Value* mapGenTreeToValue(GenTree* node, Value* nodeValue);
 
     void startImportingNode();
     void visitNode(GenTree* node);
