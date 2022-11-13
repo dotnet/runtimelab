@@ -1908,6 +1908,9 @@ namespace Internal.IL
                         else
                         {
                             typeToAlloc = callee.OwningType;
+
+                            _dependencies.Add(_compilation.NodeFactory.ConstructedTypeSymbol(runtimeDeterminedRetType), "LLVM newobj");
+
                             MetadataType metadataType = (MetadataType)typeToAlloc;
 
                             var helperId = _compilation.GetLdTokenHelperForType(metadataType);
