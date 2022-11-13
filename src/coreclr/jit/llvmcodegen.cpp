@@ -1141,15 +1141,8 @@ void Llvm::buildReturn(GenTree* node)
 {
     switch (node->TypeGet())
     {
-        case TYP_BOOL:
-        case TYP_BYTE:
-        case TYP_UBYTE:
-        case TYP_SHORT:
-        case TYP_USHORT:
         case TYP_INT:
-        case TYP_UINT:
         case TYP_LONG:
-        case TYP_ULONG:
         case TYP_STRUCT:
             if (node->gtGetOp1()->TypeIs(TYP_FLOAT))
             {
