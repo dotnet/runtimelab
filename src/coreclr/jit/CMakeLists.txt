@@ -270,6 +270,7 @@ if (CLR_CMAKE_TARGET_WIN32)
     targetamd64.h
     targetarm.h
     targetarm64.h
+    targetwasm.h
     tinyarray.h
     titypes.h
     treelifeupdater.h
