@@ -1909,16 +1909,9 @@ namespace Internal.IL
                         {
                             typeToAlloc = callee.OwningType;
 
-                            _dependencies.Add(_compilation.NodeFactory.ConstructedTypeSymbol(runtimeDeterminedRetType), "LLVM newobj");
+                            LLVMValueRef constructedEETypeValueRef = GetEETypePointerForTypeDesc(runtimeDeterminedRetType, true);
 
-                            MetadataType metadataType = (MetadataType)typeToAlloc;
-
-                            var helperId = _compilation.GetLdTokenHelperForType(metadataType);
-
-                            ISymbolNode node = _compilation.ComputeConstantLookup(helperId, metadataType);
-                            _dependencies.Add(node, "LLVM Type ptr");
-
-                            newObjResult = AllocateObject(new LoadExpressionEntry(StackValueKind.ValueType, "eeType", LLVMObjectWriter.GetSymbolValuePointer(Module, node, _compilation.NameMangler), GetWellKnownType(WellKnownType.IntPtr)), typeToAlloc);
+                            newObjResult = AllocateObject(new LoadExpressionEntry(StackValueKind.ValueType, "eeType", constructedEETypeValueRef, GetWellKnownType(WellKnownType.IntPtr)), typeToAlloc);
                         }
 
                         //one for the real result and one to be consumed by ctor
