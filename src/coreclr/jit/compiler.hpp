@@ -2935,22 +2935,19 @@ inline regNumber genMapIntRegArgNumToRegNum(unsigned argNum)
         return theFixedRetBuffReg();
     }
 
-#if MAX_ARG_REG != 0
     assert(argNum < ArrLen(intArgRegs));
+
     return intArgRegs[argNum];
-#else
-    assert(!"no integer arg regs\n");
-    return REG_NA;
-#endif
 }
 
 inline regNumber genMapFloatRegArgNumToRegNum(unsigned argNum)
 {
-#if MAX_FLOAT_REG_ARG != 0
+#ifndef TARGET_X86
     assert(argNum < ArrLen(fltArgRegs));
+
     return fltArgRegs[argNum];
 #else
-    assert(!"no float arg regs\n");
+    assert(!"no x86 float arg regs\n");
     return REG_NA;
 #endif
 }
@@ -2975,22 +2972,19 @@ __forceinline regNumber genMapRegArgNumToRegNum(unsigned argNum, var_types type)
 
 inline regMaskTP genMapIntRegArgNumToRegMask(unsigned argNum)
 {
-#if MAX_REG_ARG != 0
     assert(argNum < ArrLen(intArgMasks));
+
     return intArgMasks[argNum];
-#else
-    assert(!"no integer arg regs\n");
-    return RBM_NONE;
-#endif // MAX_REG_ARG != 0
 }
 
 inline regMaskTP genMapFloatRegArgNumToRegMask(unsigned argNum)
 {
-#if MAX_FLOAT_REG_ARG != 0
+#ifndef TARGET_X86
     assert(argNum < ArrLen(fltArgMasks));
+
     return fltArgMasks[argNum];
 #else
-    assert(!"no float arg regs\n");
+    assert(!"no x86 float arg regs\n");
     return RBM_NONE;
 #endif
 }
@@ -3027,7 +3021,6 @@ inline unsigned genMapIntRegNumToRegArgNum(regNumber regNum)
 
     switch (regNum)
     {
-#if MAX_REG_ARG >= 1
         case REG_ARG_0:
             return 0;
 #if MAX_REG_ARG >= 2
@@ -3051,7 +3044,6 @@ inline unsigned genMapIntRegNumToRegArgNum(regNumber regNum)
 #if MAX_REG_ARG >= 8
         case REG_ARG_7:
             return 7;
-#endif
 #endif
 #endif
 #endif
@@ -3085,9 +3077,9 @@ inline unsigned genMapFloatRegNumToRegArgNum(regNumber regNum)
     return regNum - REG_FLTARG_0;
 #else
 
+#if MAX_FLOAT_REG_ARG >= 1
     switch (regNum)
     {
-#if MAX_FLOAT_REG_ARG >= 1
         case REG_FLTARG_0:
             return 0;
 #if MAX_REG_ARG >= 2
@@ -3106,11 +3098,14 @@ inline unsigned genMapFloatRegNumToRegArgNum(regNumber regNum)
 #endif
 #endif
 #endif
-#endif
         default:
             assert(!"invalid register arg register");
             return BAD_VAR_NUM;
     }
+#else
+    assert(!"flt reg args not allowed");
+    return BAD_VAR_NUM;
+#endif
 #endif // !arm
 }
 
@@ -3132,7 +3127,6 @@ inline unsigned genMapRegNumToRegArgNum(regNumber regNum, var_types type)
 
 inline regMaskTP genIntAllRegArgMask(unsigned numRegs)
 {
-#if MAX_REG_ARG != 0
     assert(numRegs <= MAX_REG_ARG);
 
     regMaskTP result = RBM_NONE;
@@ -3141,15 +3135,11 @@ inline regMaskTP genIntAllRegArgMask(unsigned numRegs)
         result |= intArgMasks[i];
     }
     return result;
-#else
-    assert(!"no integer arg regs\n");
-    return RBM_NONE;
-#endif
 }
 
 inline regMaskTP genFltAllRegArgMask(unsigned numRegs)
 {
-#if MAX_FLOAT_REG_ARG != 0
+#ifndef TARGET_X86
     assert(numRegs <= MAX_FLOAT_REG_ARG);
 
     regMaskTP result = RBM_NONE;
@@ -3159,7 +3149,7 @@ inline regMaskTP genFltAllRegArgMask(unsigned numRegs)
     }
     return result;
 #else
-    assert(!"no float arg regs\n");
+    assert(!"no x86 float arg regs\n");
     return RBM_NONE;
 #endif
 }
