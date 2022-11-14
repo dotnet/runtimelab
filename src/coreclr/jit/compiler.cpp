@@ -827,7 +827,7 @@ var_types Compiler::getArgTypeForStruct(CORINFO_CLASS_HANDLE clsHnd,
             // Arm64 Windows VarArg methods arguments will not classify HFA/HVA types, they will need to be treated
             // as if they are not HFA/HVA types.
             var_types hfaType;
-#if defined(TARGET_WINDOWS) && defined(TARGET_ARM64) || defined(TARGET_WASM)
+#if defined(TARGET_WINDOWS) && defined(TARGET_ARM64)
             if (isVarArg)
             {
                 hfaType = TYP_UNDEF;
@@ -920,7 +920,7 @@ var_types Compiler::getArgTypeForStruct(CORINFO_CLASS_HANDLE clsHnd,
             howToPassStruct = SPK_ByValue;
             useType         = TYP_STRUCT;
 
-#elif defined(TARGET_AMD64) || defined(TARGET_ARM64) || defined(TARGET_WASM) // TODO: WASM can in theory pass any size struct as an arg.
+#elif defined(TARGET_AMD64) || defined(TARGET_ARM64)
 
             // Otherwise we pass this struct by reference to a copy
             // setup wbPassType and useType indicate that this is passed using one register (by reference to a copy)

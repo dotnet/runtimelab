@@ -283,7 +283,6 @@ if (CLR_CMAKE_TARGET_WIN32)
     varset.h
     vartype.h
     vartypesdef.h
-    wasm.h
   )
 
   # Append clrjit.natvis file

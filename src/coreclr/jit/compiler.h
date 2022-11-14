@@ -10257,7 +10257,7 @@ public:
     // In case of Amd64 this doesn't include float regs saved on stack.
     unsigned compCalleeRegsPushed;
 
-#if defined(TARGET_XARCH) || defined(TARGET_WASM) // TODO Wasm
+#if defined(TARGET_XARCH)
     // Mask of callee saved float regs on stack.
     regMaskTP compCalleeFPRegsSavedMask;
 #endif
