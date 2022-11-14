@@ -8761,7 +8761,6 @@ void cEH(Compiler* comp)
     comp->fgDispHandlerTab();
 }
 
-#ifndef TARGET_WASM
 void cVar(Compiler* comp, unsigned lclNum)
 {
     static unsigned sequenceNumber = 0; // separate calls with a number to indicate this function has been called
@@ -8790,7 +8789,6 @@ void cVarsFinal(Compiler* comp)
     printf("===================================================================== *Vars %u\n", sequenceNumber++);
     comp->lvaTableDump(Compiler::FINAL_FRAME_LAYOUT);
 }
-#endif // !TARGET_WASM
 
 void cBlockCheapPreds(Compiler* comp, BasicBlock* block)
 {
@@ -8904,7 +8902,6 @@ void dEH()
     cEH(JitTls::GetCompiler());
 }
 
-#ifndef TARGET_WASM
 void dVar(unsigned lclNum)
 {
     cVar(JitTls::GetCompiler(), lclNum);
@@ -8924,7 +8921,6 @@ void dVarsFinal()
 {
     cVarsFinal(JitTls::GetCompiler());
 }
-#endif // !TARGET_WASM
 
 void dBlockPreds(BasicBlock* block)
 {

@@ -12,8 +12,7 @@
 #define REGALIAS(alias, realname)
 #endif
 
-// TODO: WASM doesn't have these but can't compile without them
-#if defined(TARGET_XARCH) || defined(TARGET_WASM)
+#if defined(TARGET_XARCH)
 
 #if defined(TARGET_X86)
 /*
@@ -108,6 +107,9 @@ REGDEF(STK,    16+XMMBASE,  0x0000,       "STK"  )
  #include "registerarm64.h"
 
 #elif defined(TARGET_WASM)
+
+REGDEF(STK, 0, 0x00, "SS")
+
 #else
   #error Unsupported or unset target architecture
 #endif // target type

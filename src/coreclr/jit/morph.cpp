@@ -16974,9 +16974,7 @@ void Compiler::fgPromoteStructs()
     if (verbose)
     {
         printf("\nlvaTable before fgPromoteStructs\n");
-#ifndef TARGET_WASM
         lvaTableDump();
-#endif //!TARGET_WASM
     }
 #endif // DEBUG
 
@@ -17034,9 +17032,7 @@ void Compiler::fgPromoteStructs()
     if (verbose)
     {
         printf("\nlvaTable after fgPromoteStructs\n");
-#ifndef TARGET_WASM
         lvaTableDump();
-#endif //!TARGET_WASM
     }
 #endif // DEBUG
 }

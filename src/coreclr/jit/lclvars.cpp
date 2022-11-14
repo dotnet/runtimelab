@@ -347,14 +347,12 @@ void Compiler::lvaInitTypeRef()
     // emitter when the varNum is greater that 32767 (see emitLclVarAddr::initLclVarAddr)
     lvaAllocOutgoingArgSpaceVar();
 
-#ifndef TARGET_WASM
 #ifdef DEBUG
     if (verbose)
     {
         lvaTableDump(INITIAL_FRAME_LAYOUT);
     }
 #endif
-#endif //!TARGET_WASM
 }
 
 /*****************************************************************************/
@@ -2449,8 +2447,6 @@ void Compiler::StructPromotionHelper::PromoteStructVar(unsigned lclNum)
     }
 }
 
-#ifndef TARGET_WASM
-#endif //!TARGET_WASM
 //--------------------------------------------------------------------------------------------
 // lvaGetFieldLocal - returns the local var index for a promoted field in a promoted struct var.
 //
@@ -7248,6 +7244,7 @@ int Compiler::lvaAllocateTemps(int stkOffs, bool mustDoubleAlign)
 
     return stkOffs;
 }
+#endif // !TARGET_WASM
 
 #ifdef DEBUG
 
@@ -7286,7 +7283,10 @@ void Compiler::lvaDumpFrameLocation(unsigned lclNum)
     int       offset;
     regNumber baseReg;
 
-#ifdef TARGET_ARM
+#ifdef TARGET_WASM
+    offset  = lvaGetDesc(lclNum)->GetStackOffset();
+    baseReg = REG_STK;
+#elif TARGET_ARM
     offset = lvaFrameAddress(lclNum, compLocallocUsed, &baseReg, 0, /* isFloatUsage */ false);
 #else
     bool EBPbased;
@@ -7622,6 +7622,7 @@ void Compiler::lvaTableDump(FrameLayoutState curState)
         lvaDumpEntry(lclNum, curState, refCntWtdWidth);
     }
 
+#ifndef TARGET_WASM
     //-------------------------------------------------------------------------
     // Display the code-gen temps
 
@@ -7640,9 +7641,11 @@ void Compiler::lvaTableDump(FrameLayoutState curState)
         printf(";\n");
         printf("; Lcl frame size = %d\n", compLclFrameSize);
     }
+#endif // !TARGET_WASM
 }
 #endif // DEBUG
 
+#ifndef TARGET_WASM
 /*****************************************************************************
  *
  *  Conservatively estimate the layout of the stack frame.
