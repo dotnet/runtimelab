@@ -1708,6 +1708,10 @@ void emitter::emitEndPreProlog()
         assert(newCodeOffset > oldCodeOffset); // I'm not sure if we can overflow here, but an assert should help
         unwindCodeCurrent->CodeOffset = newCodeOffset;
     }
+
+    // Ensure the pre-prolog is actually emitted into the instruction group
+    emitSavIG();
+    assert(!emitCurIGnonEmpty());
 }
 
 #endif // defined(TARGET_AMD64)
@@ -3887,6 +3891,10 @@ void emitter::emitDispIG(insGroup* ig, insGroup* igPrev, bool verbose)
         if (ig == emitPrologIG)
         {
             printf(" <-- Prolog IG");
+        }
+        if (ig == emitPrePrologIG)
+        {
+            printf(" <-- PreProlog IG");
         }
         printf("\n");
 
