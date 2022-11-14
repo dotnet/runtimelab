@@ -39,8 +39,8 @@ namespace Internal.Reflection.Extensions.NonPortable
             //
             // Find the public constructor that matches the supplied arguments.
             //
-            ConstructorInfo matchingCtor = null;
-            ParameterInfo[] matchingParameters = null;
+            ConstructorInfo? matchingCtor = null;
+            ParameterInfo[]? matchingParameters = null;
             IList<CustomAttributeTypedArgument> constructorArguments = cad.ConstructorArguments;
             foreach (ConstructorInfo ctor in attributeType.GetConstructors(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.DeclaredOnly))
             {
@@ -69,7 +69,7 @@ namespace Internal.Reflection.Extensions.NonPortable
             // Found the right constructor. Instantiate the Attribute.
             //
             int arity = matchingParameters.Length;
-            object[] invokeArguments = new object[arity];
+            object?[] invokeArguments = new object[arity];
             for (int i = 0; i < arity; i++)
             {
                 invokeArguments[i] = constructorArguments[i].Convert();
@@ -81,7 +81,7 @@ namespace Internal.Reflection.Extensions.NonPortable
             //
             foreach (CustomAttributeNamedArgument namedArgument in cad.NamedArguments)
             {
-                object argumentValue = namedArgument.TypedValue.Convert();
+                object? argumentValue = namedArgument.TypedValue.Convert();
                 Type walk = attributeType;
                 string name = namedArgument.MemberName;
                 if (namedArgument.IsField)
@@ -89,13 +89,13 @@ namespace Internal.Reflection.Extensions.NonPortable
                     // Field
                     for (;;)
                     {
-                        FieldInfo fieldInfo = walk.GetField(name, BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static | BindingFlags.DeclaredOnly);
+                        FieldInfo? fieldInfo = walk.GetField(name, BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static | BindingFlags.DeclaredOnly);
                         if (fieldInfo != null)
                         {
                             fieldInfo.SetValue(newAttribute, argumentValue);
                             break;
                         }
-                        Type baseType = walk.BaseType;
+                        Type? baseType = walk.BaseType;
                         if (baseType == null)
                             throw new CustomAttributeFormatException(SR.Format(SR.CustomAttributeFormat_InvalidFieldFail, name));
                         walk = baseType;
@@ -106,13 +106,13 @@ namespace Internal.Reflection.Extensions.NonPortable
                     // Property
                     for (;;)
                     {
-                        PropertyInfo propertyInfo = walk.GetProperty(name, BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static | BindingFlags.DeclaredOnly);
+                        PropertyInfo? propertyInfo = walk.GetProperty(name, BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static | BindingFlags.DeclaredOnly);
                         if (propertyInfo != null)
                         {
                             propertyInfo.SetValue(newAttribute, argumentValue);
                             break;
                         }
-                        Type baseType = walk.BaseType;
+                        Type? baseType = walk.BaseType;
                         if (baseType == null)
                             throw new CustomAttributeFormatException(SR.Format(SR.CustomAttributeFormat_InvalidPropertyFail, name));
                         walk = baseType;
@@ -128,27 +128,27 @@ namespace Internal.Reflection.Extensions.NonPortable
         //
         [UnconditionalSuppressMessage("AotAnalysis", "IL9700:RequiresDynamicCode",
             Justification = "The AOT compiler ensures array types required by custom attribute blobs are generated.")]
-        private static object Convert(this CustomAttributeTypedArgument typedArgument)
+        private static object? Convert(this CustomAttributeTypedArgument typedArgument)
         {
             Type argumentType = typedArgument.ArgumentType;
             if (!argumentType.IsArray)
             {
                 bool isEnum = argumentType.IsEnum;
-                object argumentValue = typedArgument.Value;
+                object? argumentValue = typedArgument.Value;
                 if (isEnum)
-                    argumentValue = Enum.ToObject(argumentType, argumentValue);
+                    argumentValue = Enum.ToObject(argumentType, argumentValue!);
                 return argumentValue;
             }
             else
             {
-                IList<CustomAttributeTypedArgument> typedElements = (IList<CustomAttributeTypedArgument>)(typedArgument.Value);
+                IList<CustomAttributeTypedArgument>? typedElements = (IList<CustomAttributeTypedArgument>?)(typedArgument.Value);
                 if (typedElements == null)
                     return null;
-                Type elementType = argumentType.GetElementType();
+                Type? elementType = argumentType.GetElementType();
                 Array array = Array.CreateInstance(elementType, typedElements.Count);
                 for (int i = 0; i < typedElements.Count; i++)
                 {
-                    object elementValue = typedElements[i].Convert();
+                    object? elementValue = typedElements[i].Convert();
                     array.SetValue(elementValue, i);
                 }
                 return array;
@@ -171,8 +171,8 @@ namespace Internal.Reflection.Extensions.NonPortable
         //
         private static bool IsValidNamedArgumentTarget(this PropertyInfo propertyInfo)
         {
-            MethodInfo getter = propertyInfo.GetMethod;
-            MethodInfo setter = propertyInfo.SetMethod;
+            MethodInfo? getter = propertyInfo.GetMethod;
+            MethodInfo? setter = propertyInfo.SetMethod;
             if (getter == null)
                 return false;
             if ((getter.Attributes & (MethodAttributes.Static | MethodAttributes.MemberAccessMask)) != MethodAttributes.Public)

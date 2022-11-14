@@ -40,7 +40,7 @@ namespace System.Collections.Generic
     {
         private const int _defaultCapacity = 4;
 
-        protected T[] _items;
+        protected T?[] _items;
         protected int _size;
         protected int _version;
 
@@ -79,7 +79,7 @@ namespace System.Collections.Generic
             if (collection == null)
                 throw new ArgumentNullException(nameof(collection));
 
-            ICollection<T> c = collection as ICollection<T>;
+            ICollection<T>? c = collection as ICollection<T>;
             if (c != null)
             {
                 int count = c.Count;
@@ -235,10 +235,10 @@ namespace System.Collections.Generic
         //
         public bool Contains(T item)
         {
-            if ((object)item == null)
+            if ((object?)item == null)
             {
                 for (int i = 0; i < _size; i++)
-                    if ((object)_items[i] == null)
+                    if ((object?)_items[i] == null)
                         return true;
                 return false;
             }
@@ -341,7 +341,7 @@ namespace System.Collections.Generic
                 throw new ArgumentOutOfRangeException(nameof(index));
             }
 
-            ICollection<T> c = collection as ICollection<T>;
+            ICollection<T>? c = collection as ICollection<T>;
             if (c != null)
             {    // if collection is ICollection<T>
                 int count = c.Count;
@@ -410,14 +410,14 @@ namespace System.Collections.Generic
             int freeIndex = 0;   // the first free slot in items array
 
             // Find the first item which needs to be removed.
-            while (freeIndex < _size && !match(_items[freeIndex])) freeIndex++;
+            while (freeIndex < _size && !match(_items[freeIndex]!)) freeIndex++;
             if (freeIndex >= _size) return 0;
 
             int current = freeIndex + 1;
             while (current < _size)
             {
                 // Find the first item which needs to be kept.
-                while (current < _size && match(_items[current])) current++;
+                while (current < _size && match(_items[current]!)) current++;
 
                 if (current < _size)
                 {
@@ -502,7 +502,7 @@ namespace System.Collections.Generic
             private LowLevelListWithIList<T> _list;
             private int _index;
             private int _version;
-            private T _current;
+            private T? _current;
 
             internal Enumerator(LowLevelListWithIList<T> list)
             {
@@ -545,7 +545,7 @@ namespace System.Collections.Generic
             {
                 get
                 {
-                    return _current;
+                    return _current!;
                 }
             }
 

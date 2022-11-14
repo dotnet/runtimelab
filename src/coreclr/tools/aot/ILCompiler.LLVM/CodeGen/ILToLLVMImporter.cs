@@ -466,10 +466,20 @@ namespace Internal.IL
             return funclet;
         }
 
+        private static bool SignExtendTypeDesc(TypeDesc typeDesc)
+        {
+            return typeDesc.IsWellKnownType(WellKnownType.SByte) ||
+                   typeDesc.IsWellKnownType(WellKnownType.Int16);
+        }
+
         private void PushLoadExpression(StackValueKind kind, string name, LLVMValueRef rawLLVMValue, TypeDesc type)
         {
             Debug.Assert(kind != StackValueKind.Unknown, "Unknown stack kind");
-            _stack.Push(new LoadExpressionEntry(kind, name, rawLLVMValue, type));
+
+            LLVMValueRef loadValue = LoadValue(_builder, rawLLVMValue, type,
+                GetLLVMTypeForTypeDesc(type), SignExtendTypeDesc(type), $"load_{name}");
+
+            _stack.Push(new ExpressionEntry(kind, name, loadValue, type));
         }
 
         /// <summary>
@@ -1898,14 +1908,10 @@ namespace Internal.IL
                         else
                         {
                             typeToAlloc = callee.OwningType;
-                            MetadataType metadataType = (MetadataType)typeToAlloc;
 
-                            var helperId = _compilation.GetLdTokenHelperForType(metadataType);
+                            LLVMValueRef constructedEETypeValueRef = GetEETypePointerForTypeDesc(runtimeDeterminedRetType, true);
 
-                            ISymbolNode node = _compilation.ComputeConstantLookup(helperId, metadataType);
-                            _dependencies.Add(node, "LLVM Type ptr");
-
-                            newObjResult = AllocateObject(new LoadExpressionEntry(StackValueKind.ValueType, "eeType", LLVMObjectWriter.GetSymbolValuePointer(Module, node, _compilation.NameMangler), GetWellKnownType(WellKnownType.IntPtr)), typeToAlloc);
+                            newObjResult = AllocateObject(new LoadExpressionEntry(StackValueKind.ValueType, "eeType", constructedEETypeValueRef, GetWellKnownType(WellKnownType.IntPtr)), typeToAlloc);
                         }
 
                         //one for the real result and one to be consumed by ctor
@@ -2022,11 +2028,11 @@ namespace Internal.IL
 
         private LLVMValueRef LLVMFunctionForMethod(MethodDesc callee, MethodDesc canonMethod, StackEntry thisPointer, bool isCallVirt,
             TypeDesc constrainedType, MethodDesc runtimeDeterminedMethod, out bool hasHiddenParam, 
-            out LLVMValueRef dictPtrPtrStore,
+            out LLVMValueRef dictPtrStore,
             out LLVMValueRef fatFunctionPtr)
         {
             hasHiddenParam = false;
-            dictPtrPtrStore = default(LLVMValueRef);
+            dictPtrStore = default(LLVMValueRef);
             fatFunctionPtr = default(LLVMValueRef);
 
             TypeDesc owningType = callee.OwningType;
@@ -2104,7 +2110,7 @@ namespace Internal.IL
                 }
                 if (canonMethod.HasInstantiation && !canonMethod.IsFinal && !canonMethod.OwningType.IsSealed())
                 {
-                    return GetCallableGenericVirtualMethod(thisPointer, canonMethod, callee, runtimeDeterminedMethod, out dictPtrPtrStore, out fatFunctionPtr);
+                    return GetCallableGenericVirtualMethod(thisPointer, canonMethod, callee, runtimeDeterminedMethod, out dictPtrStore, out fatFunctionPtr);
                 }
                 return GetCallableVirtualMethod(thisRef, callee, runtimeDeterminedMethod);
             }
@@ -2172,12 +2178,12 @@ namespace Internal.IL
             return functionPtr;
         }
 
-        private LLVMValueRef GetCallableGenericVirtualMethod(StackEntry objectPtr, MethodDesc canonMethod, MethodDesc callee, MethodDesc runtimeDeterminedMethod, out LLVMValueRef dictPtrPtrStore,
+        private LLVMValueRef GetCallableGenericVirtualMethod(StackEntry objectPtr, MethodDesc canonMethod, MethodDesc callee, MethodDesc runtimeDeterminedMethod, out LLVMValueRef dictPtrStore,
             out LLVMValueRef slotRef)
         {
-            // this will only have a non-zero pointer the the GVM ptr is fat.
-            dictPtrPtrStore = _builder.BuildAlloca(LLVMTypeRef.CreatePointer(LLVMTypeRef.CreatePointer(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), 0), 0),
-                "dictPtrPtrStore");
+            // this will only have a non-zero pointer if the GVM ptr is fat.
+            dictPtrStore = _builder.BuildAlloca(LLVMTypeRef.CreatePointer(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), 0),
+                "dictPtrStore");
 
             _dependencies.Add(_compilation.NodeFactory.GVMDependencies(canonMethod), "LLVM GVM dependency");
             bool exactContextNeedsRuntimeLookup;
@@ -2229,16 +2235,16 @@ namespace Internal.IL
             var gep = RemoveFatOffset(_builder, slotRef);
             var loadFuncPtr = _builder.BuildLoad(CastIfNecessary(_builder, gep, LLVMTypeRef.CreatePointer(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), 0)),
                 "loadFuncPtr");
-            var dictPtrPtr = _builder.BuildGEP(CastIfNecessary(_builder, gep,
-                    LLVMTypeRef.CreatePointer(LLVMTypeRef.CreatePointer(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), 0), 0), "castDictPtrPtr"),
-                new [] {BuildConstInt32(1)}, "dictPtrPtr");
-            _builder.BuildStore(dictPtrPtr, dictPtrPtrStore);
+            var dictPtr = _builder.BuildGEP(CastIfNecessary(_builder, gep,
+                    LLVMTypeRef.CreatePointer(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), 0), "castDictPtr"),
+                new [] {BuildConstInt32(1)}, "dictPtr");
+            _builder.BuildStore(dictPtr, dictPtrStore);
             _builder.BuildBr(endifBlock);
 
             // not fat
             _builder.PositionAtEnd(notFatBranch);
             // store null to indicate the GVM call needs no hidden param at run time
-            _builder.BuildStore(LLVMValueRef.CreateConstPointerNull(LLVMTypeRef.CreatePointer(LLVMTypeRef.CreatePointer(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), 0), 0)), dictPtrPtrStore);
+            _builder.BuildStore(LLVMValueRef.CreateConstPointerNull(LLVMTypeRef.CreatePointer(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), 0)), dictPtrStore);
             _builder.BuildBr(endifBlock);
 
             // end if
@@ -2596,7 +2602,7 @@ namespace Internal.IL
             LLVMValueRef fn;
             bool hasHiddenParam = false;
             LLVMValueRef hiddenParam = default;
-            LLVMValueRef dictPtrPtrStore = default;
+            LLVMValueRef dictPtrStore = default;
             LLVMValueRef fatFunctionPtr = default;
             if (opcode == ILOpcode.calli)
             {
@@ -2605,7 +2611,7 @@ namespace Internal.IL
             }
             else
             {
-                fn = LLVMFunctionForMethod(callee, canonMethod, signature.IsStatic ? null : argumentValues[0], opcode == ILOpcode.callvirt, constrainedType, runtimeDeterminedMethod, out hasHiddenParam, out dictPtrPtrStore, out fatFunctionPtr);
+                fn = LLVMFunctionForMethod(callee, canonMethod, signature.IsStatic ? null : argumentValues[0], opcode == ILOpcode.callvirt, constrainedType, runtimeDeterminedMethod, out hasHiddenParam, out dictPtrStore, out fatFunctionPtr);
             }
 
             int offset = GetTotalParameterOffset() + GetTotalLocalOffset();
@@ -2774,7 +2780,7 @@ namespace Internal.IL
             {
                 // conditional call depending on if the function was fat/the dict hidden param is needed
                 // TODO: not sure this is always conditional, maybe there is some optimisation that can be done to not inject this conditional logic depending on the caller/callee
-                LLVMValueRef dict = builder.BuildLoad( dictPtrPtrStore, "dictPtrPtr");
+                LLVMValueRef dict = builder.BuildLoad(dictPtrStore, "dictPtr");
                 LLVMValueRef dictAsInt = builder.BuildPtrToInt(dict, LLVMTypeRef.Int32, "toInt");
                 LLVMValueRef eqZ = builder.BuildICmp(LLVMIntPredicate.LLVMIntEQ, dictAsInt, BuildConstInt32(0), "eqz");
                 var notFatBranch = _currentFunclet.AppendBasicBlock("notFat");
@@ -2791,7 +2797,7 @@ namespace Internal.IL
                 // else
                 builder.PositionAtEnd(fatBranch);
                 var fnWithDict = builder.BuildCast(LLVMOpcode.LLVMBitCast, fn, LLVMTypeRef.CreatePointer(LLVMCodegenCompilation.GetLLVMSignatureForMethod(runtimeDeterminedMethod.Signature, true), 0), "fnWithDict");
-                var dictDereffed = builder.BuildLoad(builder.BuildLoad( dict, "l1"), "l2");
+                var dictDereffed = builder.BuildLoad( dict, "l1");
                 llvmArgs.Insert(needsReturnSlot ? 2 : 1, dictDereffed);
                 LLVMValueRef fatReturn = CallOrInvoke(fromLandingPad, builder, currentTryRegion, fnWithDict, llvmArgs.ToArray(), ref nextInstrBlock);
                 builder.BuildBr(endifBlock);
@@ -3225,8 +3231,8 @@ namespace Internal.IL
             var minusOffsetPtr = _builder.BuildIntToPtr(minusOffset,
                 LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), "ptr");
             var hiddenRefAddr = _builder.BuildGEP(minusOffsetPtr, new[] { BuildConstInt32(_pointerSize) }, "fatArgPtr");
-            var hiddenRefPtrPtr = _builder.BuildPointerCast(hiddenRefAddr, LLVMTypeRef.CreatePointer(LLVMTypeRef.CreatePointer(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), 0), 0), "hiddenRefPtr");
-            var hiddenRef = _builder.BuildLoad(_builder.BuildLoad(hiddenRefPtrPtr, "hiddenRefPtr"), "hiddenRef");
+            var hiddenRefPtr = _builder.BuildPointerCast(hiddenRefAddr, LLVMTypeRef.CreatePointer(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), 0), "hiddenRefPtr");
+            var hiddenRef = _builder.BuildLoad(hiddenRefPtr, "hiddenRef");
 
             for (int i = 0; i < stackCopy.Length; i++)
             {
@@ -3604,9 +3610,13 @@ namespace Internal.IL
                 type = GetWellKnownType(WellKnownType.Object);
             }
 
+            StackValueKind pointerStackValueKind = type != null ? GetStackValueKind(type) : StackValueKind.ByRef;
             LLVMValueRef pointerElementType = pointer.ValueAsType(type.MakePointerType(), _builder);
-            _stack.Push(new LoadExpressionEntry(type != null ? GetStackValueKind(type) : StackValueKind.ByRef, $"Indirect{pointer.Name()}",
-                pointerElementType, type));
+
+            LLVMValueRef loadValue = LoadValue(_builder, pointerElementType, type,
+                GetLLVMTypeForTypeDesc(type), SignExtendTypeDesc(type), $"loadIndirect{pointer.Name()}");
+
+            _stack.Push(new ExpressionEntry(pointerStackValueKind, $"Indirect{pointer.Name()}", loadValue, type));
         }
 
         private void ImportStoreIndirect(int token)
@@ -4235,7 +4245,7 @@ namespace Internal.IL
             }
             else
             {
-                eeType = GetEETypePointerForTypeDesc(methodType, true);
+                eeType = GetEETypePointerForTypeDesc(methodType, false);
                 eeTypeExp = new LoadExpressionEntry(StackValueKind.ByRef, "eeType", eeType, GetWellKnownType(WellKnownType.IntPtr));
             }
             StackEntry boxedObject = _stack.Pop();
@@ -4258,7 +4268,7 @@ namespace Internal.IL
                     eeTypeExp
                 };
                 CallRuntime(_compilation.TypeSystemContext, RuntimeExport, "RhUnboxAny", arguments);
-                PushLoadExpression(GetStackValueKind(methodType), "unboxed", untypedObjectValue, methodType);
+                PushLoadExpression(GetStackValueKind(type), "unboxed", untypedObjectValue, type);
             }
         }
 
@@ -4850,8 +4860,11 @@ namespace Internal.IL
             FieldDesc field = (FieldDesc)_methodIL.GetObject(token);
             FieldDesc canonFieldDesc = (FieldDesc)_canonMethodIL.GetObject(token);
             LLVMValueRef fieldAddress = GetFieldAddress(field, canonFieldDesc, isStatic);
+            TypeDesc fieldTypeDesc = canonFieldDesc.FieldType;
+            LLVMValueRef fieldValue = LoadValue(_builder, fieldAddress, fieldTypeDesc,
+                GetLLVMTypeForTypeDesc(fieldTypeDesc), SignExtendTypeDesc(fieldTypeDesc), $"loadField_{field.Name}");
 
-            PushLoadExpression(GetStackValueKind(canonFieldDesc.FieldType), $"Field_{field.Name}", fieldAddress, canonFieldDesc.FieldType);
+            _stack.Push(new ExpressionEntry(GetStackValueKind(fieldTypeDesc), $"Field_{field.Name}", fieldValue, fieldTypeDesc));
         }
 
         private void ImportAddressOfField(int token, bool isStatic)
@@ -5095,7 +5108,13 @@ namespace Internal.IL
             StackEntry index = _stack.Pop();
             StackEntry arrayReference = _stack.Pop();
             var nullSafeElementType = elementType ?? GetWellKnownType(WellKnownType.Object);
-            PushLoadExpression(GetStackValueKind(nullSafeElementType), $"{arrayReference.Name()}Element", GetElementAddress(index.ValueAsInt32(_builder, true), arrayReference.ValueAsType(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), _builder), nullSafeElementType), nullSafeElementType);
+
+            // ldelem pushes ints to the evaluation stack, so widen small ints
+            LLVMValueRef elementValue = LoadValue(_builder, GetElementAddress(index.ValueAsInt32(_builder, false), arrayReference.ValueAsType(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), _builder), nullSafeElementType),
+                nullSafeElementType,
+                GetLLVMTypeForTypeDesc(WidenBytesAndShorts(nullSafeElementType)), SignExtendTypeDesc(nullSafeElementType), $"load{arrayReference.Name()}Element");
+
+            _stack.Push(new ExpressionEntry(GetStackValueKind(nullSafeElementType), $"{arrayReference.Name()}Element", elementValue, nullSafeElementType));
         }
 
         private void ImportStoreElement(int token)

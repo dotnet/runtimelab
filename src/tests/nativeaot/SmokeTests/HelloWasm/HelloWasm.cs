@@ -385,6 +385,12 @@ internal static class Program
 
         TestJitUseStruct();
 
+        TestUnsafe();
+
+        TestReadByteArray();
+
+        TestDoublePrint();
+
         // This test should remain last to get other results before stopping the debugger
         PrintLine("Debugger.Break() test: Ok if debugger is open and breaks.");
         System.Diagnostics.Debugger.Break();
@@ -427,6 +433,50 @@ internal static class Program
         var res = JitUseStructProblem(&structWithStruct, structWithIndex);
 
         EndTest(res.Index == structWithIndex.Index && res.Value == structWithIndex.Value);
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private unsafe struct LandPatchData
+    {
+        public uint Index;
+        public uint Pointer;
+        public LandPatchData* Next;
+
+        public LandPatchData(uint index, uint ptr)
+        {
+            Index = index;
+            Pointer = ptr;
+            Next = null;
+        }
+    }
+
+    private static Dictionary<uint, LandPatchData> _landPatchPtrs;
+
+    private unsafe static void TestUnsafe()
+    {
+        StartTest("TestUnsafe");
+
+        uint key = 1;
+        _landPatchPtrs = new Dictionary<uint, LandPatchData>();
+        ref var data = ref CollectionsMarshal.GetValueRefOrNullRef(_landPatchPtrs, key);
+
+        if (Unsafe.IsNullRef(ref data))
+        {
+            
+        }
+
+        something();
+        // just testing if the compilation succeeds
+        EndTest(true);
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    struct Test { public uint A, B; }
+
+    unsafe static void something()
+    {
+        Span<byte> s = stackalloc byte[System.Runtime.CompilerServices.Unsafe.SizeOf<Test>()];
+        var xxx = System.Runtime.CompilerServices.Unsafe.AsPointer(ref MemoryMarshal.GetReference(s));
     }
 
     class ShortAndByte { internal short aShort; internal byte aByte; }
@@ -1389,9 +1439,9 @@ internal static class Program
 
         var genericType = typeof(List<object>);
         StartTest("type of generic");
-        if (genericType.FullName.Substring(0, genericType.FullName.LastIndexOf(",")) != "System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=6.0.0.0, Culture=neutral")
+        if (genericType.FullName.Substring(0, genericType.FullName.LastIndexOf(",")) != "System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=7.0.0.0, Culture=neutral")
         {
-            FailTest("expected System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=6.0.0.0, Culture=neutral... but was " + genericType.FullName);
+            FailTest("expected System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=7.0.0.0, Culture=neutral  but was " + genericType.FullName);
         }
         else
         {
@@ -3728,6 +3778,24 @@ internal static class Program
         bool expected = true;
         bool actual = true;
         EndTest(expected.Equals(actual));
+    }
+
+    private static byte[] bytes = { 0xff };
+
+    static void TestReadByteArray()
+    {
+        StartTest("Test ldelemt from byte arry");
+
+        int i = (int)bytes[0];
+        EndTest(i == 0xff);
+    }
+
+    // This test was generated to test DiyFp return values.
+    static void TestDoublePrint()
+    {
+        StartTest("Test Double ToString");
+
+        EndTest(1d.ToString() == "1");
     }
 
     static ushort ReadUInt16()

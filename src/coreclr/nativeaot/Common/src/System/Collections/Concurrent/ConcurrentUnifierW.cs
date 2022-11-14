@@ -92,11 +92,11 @@ namespace System.Collections.Concurrent
             Debug.Assert(!_lock.IsAcquired, "GetOrAdd called while lock already acquired. A possible cause of this is an Equals or GetHashCode method that causes reentrancy in the table.");
 
             int hashCode = key.GetHashCode();
-            V value;
+            V? value;
             bool found = _container.TryGetValue(key, hashCode, out value);
 #if DEBUG
             {
-                V checkedValue;
+                V? checkedValue;
                 bool checkedFound;
                 // In debug builds, always exercise a locked TryGet (this is a good way to detect deadlock/reentrancy through Equals/GetHashCode()).
                 using (LockHolder.Hold(_lock))
@@ -139,7 +139,7 @@ namespace System.Collections.Concurrent
 
             using (LockHolder.Hold(_lock))
             {
-                V heyIWasHereFirst;
+                V? heyIWasHereFirst;
                 if (_container.TryGetValue(key, hashCode, out heyIWasHereFirst))
                     return heyIWasHereFirst;
                 if (!_container.HasCapacity)
@@ -176,7 +176,7 @@ namespace System.Collections.Concurrent
                 _owner = owner;
             }
 
-            public bool TryGetValue(K key, int hashCode, out V value)
+            public bool TryGetValue(K key, int hashCode, out V? value)
             {
                 // Lock acquistion NOT required.
 
@@ -217,7 +217,7 @@ namespace System.Collections.Concurrent
                     {
 #if DEBUG
                         {
-                            V heyYoureSupposedToBeDead;
+                            V? heyYoureSupposedToBeDead;
                             if (_entries[idx]._weakValue.TryGetTarget(out heyYoureSupposedToBeDead))
                                 Debug.Fail("Add: You were supposed to verify inside the lock that this entry's weak reference had already expired!");
                         }
@@ -268,7 +268,7 @@ namespace System.Collections.Concurrent
                     for (int entry = _buckets[bucket]; entry != -1; entry = _entries[entry]._next)
                     {
                         // Check if the weakreference has expired.
-                        V value;
+                        V? value;
                         if (_entries[entry]._weakValue.TryGetTarget(out value))
                             estimatedNumLiveEntries++;
                     }
@@ -302,7 +302,7 @@ namespace System.Collections.Concurrent
                     for (int entry = _buckets[bucket]; entry != -1; entry = _entries[entry]._next)
                     {
                         // Check if the weakreference has expired. If so, this is where we drop the entry altogether.
-                        V value;
+                        V? value;
                         if (_entries[entry]._weakValue.TryGetTarget(out value))
                         {
                             newEntries[newNextFreeEntry]._key = _entries[entry]._key;

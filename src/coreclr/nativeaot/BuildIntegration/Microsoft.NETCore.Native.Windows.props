@@ -17,9 +17,12 @@ The .NET Foundation licenses this file to you under the MIT license.
     <CppCompiler>cl</CppCompiler>
     <CppLinker>link</CppLinker>
     <CppLibCreator>lib</CppLibCreator>
+    <LibrarySuffix>.lib</LibrarySuffix>
+    <LibrarySuffix Condition="'$(ControlFlowGuard)' == 'Guard'">.GuardCF.lib</LibrarySuffix>
     <FullRuntimeName>Runtime.WorkstationGC</FullRuntimeName>
-    <FullRuntimeName Condition="'$(ServerGarbageCollection)' != ''">Runtime.ServerGC</FullRuntimeName>
-    <FullRuntimeName Condition="'$(ControlFlowGuard)' == 'Guard'">Runtime.ServerGC.GuardCF</FullRuntimeName>
+    <FullRuntimeName Condition="'$(ServerGarbageCollection)' == 'true' or '$(ControlFlowGuard)' == 'Guard'">Runtime.ServerGC</FullRuntimeName>
+    <BootstrapperName>bootstrapper</BootstrapperName>
+    <BootstrapperName Condition="$(NativeLib) != ''">bootstrapperdll</BootstrapperName>
     <EntryPointSymbol Condition="'$(EntryPointSymbol)' == ''">wmainCRTStartup</EntryPointSymbol>
     <LinkerSubsystem Condition="'$(OutputType)' == 'WinExe' and '$(LinkerSubsystem)' == ''">WINDOWS</LinkerSubsystem>
     <LinkerSubsystem Condition="'$(OutputType)' == 'Exe' and '$(LinkerSubsystem)' == ''">CONSOLE</LinkerSubsystem>
@@ -29,9 +32,8 @@ The .NET Foundation licenses this file to you under the MIT license.
   <Target Name="SetupOSSpecificProps" DependsOnTargets="$(IlcDynamicBuildPropertyDependencies)">
 
     <ItemGroup>
-      <NativeLibrary Condition="$(NativeLib) == ''" Include="$(IlcPath)\sdk\bootstrapper.lib" />
-      <NativeLibrary Condition="$(NativeLib) != ''" Include="$(IlcPath)\sdk\bootstrapperdll.lib" />
-      <NativeLibrary Include="$(IlcPath)\sdk\$(FullRuntimeName).lib" />
+      <NativeLibrary Include="$(IlcSdkPath)$(BootstrapperName)$(LibrarySuffix)" />
+      <NativeLibrary Include="$(IlcSdkPath)$(FullRuntimeName)$(LibrarySuffix)" />
       <NativeLibrary Condition="'$(IlcMultiModule)' == 'true'" Include="$(SharedLibrary)" />
     </ItemGroup>
 
@@ -41,7 +43,10 @@ The .NET Foundation licenses this file to you under the MIT license.
 
     <ItemGroup>
       <DirectPInvoke Include="@(NetCoreAppNativeLibrary->'%(Identity)')" />
-      <NativeLibrary Include="@(NetCoreAppNativeLibrary->'$(IlcPath)\framework\%(Identity)-Static.lib')" />
+      <NetCoreAppNativeLibrary Include="@(NetCoreAppNativeLibrary->'%(Identity)')">
+        <EscapedPath>$(IlcSdkPath)%(Identity).Aot$(LibrarySuffix)</EscapedPath>
+      </NetCoreAppNativeLibrary>
+      <NativeLibrary Include="@(NetCoreAppNativeLibrary->'%(EscapedPath)')" />
     </ItemGroup>
 
     <ItemGroup>
@@ -85,13 +90,7 @@ The .NET Foundation licenses this file to you under the MIT license.
       <LinkerArg Include="/OPT:ICF" />
     </ItemGroup>
 
-    <Exec Command="where /Q $(CppCompiler) &amp;&amp; where /Q $(CppLinker)" IgnoreExitCode="true">
-      <Output TaskParameter="ExitCode" PropertyName="_WhereCppTools" />
-    </Exec>
-
-    <Message Condition="'$(_WhereCppTools)' != '0'" Text="Tools '$(CppCompiler)' and '$(CppLinker)' not found on PATH. Attempting to autodetect." />
-
-    <Exec Condition="'$(_WhereCppTools)' != '0'" Command="&quot;$(MSBuildThisFileDirectory)findvcvarsall.bat&quot; $(TargetArchitecture)"
+    <Exec Condition="'$(IlcUseEnvironmentalTools)' != 'true'" Command="&quot;$(MSBuildThisFileDirectory)findvcvarsall.bat&quot; $(TargetArchitecture)"
       IgnoreExitCode="true" ConsoleToMSBuild="true" StandardOutputImportance="Low">
       <Output TaskParameter="ConsoleOutput" PropertyName="_FindVCVarsallOutput" />
       <Output TaskParameter="ExitCode" PropertyName="_VCVarsAllFound" />
@@ -108,6 +107,6 @@ The .NET Foundation licenses this file to you under the MIT license.
       <CppLibCreator>"$(_CppToolsDirectory)lib.exe"</CppLibCreator>
     </PropertyGroup>
 
-    <Error Condition="'$(_WhereCppTools)' != '0' AND '$(_VCVarsAllFound)' == '1'" Text="Platform linker not found. To fix this problem, download and install Visual Studio 2019 from http://visualstudio.com. Make sure to install the Desktop Development for C++ workload. For ARM64 development also install C++ ARM64 build tools." />
+    <Error Condition="'$(_VCVarsAllFound)' == '1'" Text="Platform linker not found. To fix this problem, download and install Visual Studio 2022 from http://visualstudio.com. Make sure to install the Desktop Development for C++ workload. For ARM64 development also install C++ ARM64 build tools." />
   </Target>
 </Project>

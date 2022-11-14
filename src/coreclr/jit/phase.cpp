@@ -173,7 +173,7 @@ void Phase::PostPhase(PhaseStatus status)
                                    PHASE_BUILD_SSA,        PHASE_RATIONALIZE,
                                    PHASE_LOWERING,         PHASE_STACK_LEVEL_SETTER
 #if TARGET_WASM
-                                   ,PHASE_SHDWSTK_SETUP
+                                   ,PHASE_LOWER_LLVM
 #endif
     };
 

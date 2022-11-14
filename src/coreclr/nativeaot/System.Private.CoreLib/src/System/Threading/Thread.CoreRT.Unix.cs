@@ -41,7 +41,7 @@ namespace System.Threading
         [UnmanagedCallersOnly]
         private static void OnThreadExit()
         {
-            Thread currentThread = t_currentThread;
+            Thread? currentThread = t_currentThread;
             if (currentThread != null)
             {
                 // Inform the wait subsystem that the thread is exiting. For instance, this would abandon any mutexes locked by
@@ -91,7 +91,7 @@ namespace System.Threading
             // This also avoids OOM after creating the thread.
             _stopped = new ManualResetEvent(false);
 
-            if (!Interop.Sys.RuntimeThread_CreateThread((IntPtr)_startHelper._maxStackSize, &ThreadEntryPoint, (IntPtr)thisThreadHandle))
+            if (!Interop.Sys.RuntimeThread_CreateThread((IntPtr)_startHelper!._maxStackSize, &ThreadEntryPoint, (IntPtr)thisThreadHandle))
             {
                 return false;
             }

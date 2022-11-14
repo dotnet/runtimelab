@@ -57,7 +57,7 @@ namespace System.Reflection.Runtime.Assemblies.NativeFormat
                     if (typeForwarder.Name.StringEquals(name, reader))
                     {
                         RuntimeAssemblyName redirectedAssemblyName = typeForwarder.Scope.ToRuntimeAssemblyName(reader);
-                        RuntimeAssembly redirectedAssembly = RuntimeAssembly.GetRuntimeAssemblyIfExists(redirectedAssemblyName);
+                        RuntimeAssemblyInfo redirectedAssembly = RuntimeAssemblyInfo.GetRuntimeAssemblyIfExists(redirectedAssemblyName);
                         if (redirectedAssembly == null)
                             return null;
                         return redirectedAssembly.GetTypeCoreCaseSensitive(fullName);

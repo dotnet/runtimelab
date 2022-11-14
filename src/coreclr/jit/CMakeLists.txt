@@ -3,9 +3,12 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 include_directories("./jitstd")
 include_directories("../inc")
 
-
-if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-  add_compile_options(-Wno-error) # tracked by https://github.com/dotnet/runtime/issues/33541
+# gcc 10 and lower versions are too sensitive to bit fields width and warn from core compiler.
+# Since there is no better / specific suppression available for these core warnings, we disable
+# warn-as-error (-Werror) for JIT in this case. This issue has been fixed in gcc 11.
+# See https://github.com/dotnet/runtime/issues/33541
+if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 11.0)
+  add_compile_options(-Wno-error)
 endif()
 
 function(create_standalone_jit)
@@ -230,7 +233,7 @@ if (CLR_CMAKE_TARGET_WIN32)
     jitstd.h
     jittelemetry.h
     lir.h
-    llvm_types.h
+    llvmtypes.h
     llvm.h
     loopcloning.h
     loopcloningopts.h
@@ -326,24 +329,19 @@ set( JIT_AMD64_SOURCES
   hwintrinsiccodegenxarch.cpp
 )
 
-# TODO this is just a copy of AMD64_SOURCES to get started - e.g. simd,hwintrinsics doesn't make sense for wasm
 set( JIT_WASM64_SOURCES
-  simd.cpp
-  simdashwintrinsic.cpp
-  simdcodegenxarch.cpp
   targetwasm.cpp
-  hwintrinsicxarch.cpp
-  hwintrinsiccodegenxarch.cpp
   llvm.cpp
+  llvmtypes.cpp
+  llvmlower.cpp
+  llvmcodegen.cpp
 )
 set( JIT_WASM32_SOURCES
-  simd.cpp
-  simdashwintrinsic.cpp
-  simdcodegenxarch.cpp
   targetwasm.cpp
-  hwintrinsicxarch.cpp
-  hwintrinsiccodegenxarch.cpp
   llvm.cpp
+  llvmtypes.cpp
+  llvmlower.cpp
+  llvmcodegen.cpp
 )
 
 set( JIT_ARM_SOURCES

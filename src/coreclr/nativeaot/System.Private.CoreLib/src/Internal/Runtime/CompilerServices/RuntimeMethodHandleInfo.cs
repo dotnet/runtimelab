@@ -25,7 +25,7 @@ namespace Internal.Runtime.CompilerServices
             if (compare == null)
                 return false;
 
-            MethodNameAndSignature other = compare as MethodNameAndSignature;
+            MethodNameAndSignature? other = compare as MethodNameAndSignature;
             if (other == null)
                 return false;
 

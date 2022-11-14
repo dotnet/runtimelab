@@ -13,8 +13,8 @@ namespace System.Threading
     {
         internal class Waiter
         {
-            public Waiter next;
-            public Waiter prev;
+            public Waiter? next;
+            public Waiter? prev;
             public AutoResetEvent ev = new AutoResetEvent(false);
             public bool signalled;
         }
@@ -32,8 +32,8 @@ namespace System.Threading
         }
 
         private readonly Lock _lock;
-        private Waiter _waitersHead;
-        private Waiter _waitersTail;
+        private Waiter? _waitersHead;
+        private Waiter? _waitersTail;
 
         private unsafe void AssertIsInList(Waiter waiter)
         {
@@ -41,7 +41,7 @@ namespace System.Threading
             Debug.Assert((_waitersHead == waiter) == (waiter.prev == null));
             Debug.Assert((_waitersTail == waiter) == (waiter.next == null));
 
-            for (Waiter current = _waitersHead; current != null; current = current.next)
+            for (Waiter? current = _waitersHead; current != null; current = current.next)
                 if (current == waiter)
                     return;
             Debug.Fail("Waiter is not in the waiter list");
@@ -52,7 +52,7 @@ namespace System.Threading
             Debug.Assert(waiter.next == null && waiter.prev == null);
             Debug.Assert((_waitersHead == null) == (_waitersTail == null));
 
-            for (Waiter current = _waitersHead; current != null; current = current.next)
+            for (Waiter? current = _waitersHead; current != null; current = current.next)
                 if (current == waiter)
                     Debug.Fail("Waiter is in the waiter list, but should not be");
         }
@@ -158,7 +158,7 @@ namespace System.Threading
             if (!_lock.IsAcquired)
                 throw new SynchronizationLockException();
 
-            Waiter waiter = _waitersHead;
+            Waiter? waiter = _waitersHead;
             if (waiter != null)
             {
                 RemoveWaiter(waiter);

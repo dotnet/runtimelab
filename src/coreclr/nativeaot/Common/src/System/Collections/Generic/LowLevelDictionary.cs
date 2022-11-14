@@ -71,7 +71,7 @@ namespace System.Collections.Generic
             }
         }
 
-        public bool TryGetValue(TKey key, out TValue value)
+        public bool TryGetValue(TKey key, out TValue? value)
         {
             value = default(TValue);
             if (key == null)
@@ -108,8 +108,8 @@ namespace System.Collections.Generic
             if (key == null)
                 throw new ArgumentNullException(nameof(key));
             int bucket = GetBucket(key);
-            Entry prev = null;
-            Entry entry = _buckets[bucket];
+            Entry? prev = null;
+            Entry? entry = _buckets[bucket];
             while (entry != null)
             {
                 if (key.Equals(entry.m_key))
@@ -145,7 +145,7 @@ namespace System.Collections.Generic
         private Entry Find(TKey key)
         {
             int bucket = GetBucket(key);
-            Entry entry = _buckets[bucket];
+            Entry? entry = _buckets[bucket];
             while (entry != null)
             {
                 if (key.Equals(entry.m_key))
@@ -182,10 +182,10 @@ namespace System.Collections.Generic
                 Entry[] newBuckets = new Entry[newNumBuckets];
                 for (int i = 0; i < _buckets.Length; i++)
                 {
-                    Entry entry = _buckets[i];
+                    Entry? entry = _buckets[i];
                     while (entry != null)
                     {
-                        Entry nextEntry = entry.m_next;
+                        Entry? nextEntry = entry.m_next;
 
                         int bucket = GetBucket(entry.m_key, newNumBuckets);
                         entry.m_next = newBuckets[bucket];
@@ -216,10 +216,10 @@ namespace System.Collections.Generic
         {
             public TKey m_key;
             public TValue m_value;
-            public Entry m_next;
+            public Entry? m_next;
         }
 
-        private Entry[] _buckets;
+        private Entry?[] _buckets;
         private int _numEntries;
         private int _version;
 
@@ -236,7 +236,7 @@ namespace System.Collections.Generic
                 int dst = 0;
                 for (int bucket = 0; bucket < _dict._buckets.Length; bucket++)
                 {
-                    Entry entry = _dict._buckets[bucket];
+                    Entry? entry = _dict._buckets[bucket];
                     while (entry != null)
                     {
                         entries[dst++] = entry;

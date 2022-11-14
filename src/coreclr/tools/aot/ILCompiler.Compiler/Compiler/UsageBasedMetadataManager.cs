@@ -10,6 +10,7 @@ using System.Xml;
 
 using Internal.IL;
 using Internal.TypeSystem;
+using Internal.TypeSystem.Ecma;
 
 using ILCompiler.Metadata;
 using ILCompiler.DependencyAnalysis;
@@ -50,6 +51,7 @@ namespace ILCompiler
         private readonly HashSet<ModuleDesc> _rootEntireAssembliesExaminedModules = new HashSet<ModuleDesc>();
 
         private readonly HashSet<string> _rootEntireAssembliesModules;
+        private readonly HashSet<string> _trimmedAssemblies;
 
         internal FlowAnnotations FlowAnnotations { get; }
 
@@ -67,7 +69,8 @@ namespace ILCompiler
             UsageBasedMetadataGenerationOptions generationOptions,
             Logger logger,
             IEnumerable<KeyValuePair<string, bool>> featureSwitchValues,
-            IEnumerable<string> rootEntireAssembliesModules)
+            IEnumerable<string> rootEntireAssembliesModules,
+            IEnumerable<string> trimmedAssemblies)
             : base(typeSystemContext, blockingPolicy, resourceBlockingPolicy, logFile, stackTracePolicy, invokeThunkGenerationPolicy)
         {
             // We use this to mark places that would behave differently if we tracked exact fields used. 
@@ -81,6 +84,7 @@ namespace ILCompiler
             _featureSwitchHashtable = new FeatureSwitchHashtable(new Dictionary<string, bool>(featureSwitchValues));
 
             _rootEntireAssembliesModules = new HashSet<string>(rootEntireAssembliesModules);
+            _trimmedAssemblies = new HashSet<string>(trimmedAssemblies);
         }
 
         protected override void Graph_NewMarkedNode(DependencyNodeCore<NodeFactory> obj)
@@ -236,13 +240,38 @@ namespace ILCompiler
                 // If the owning assembly needs to be fully compiled, do that.
                 _rootEntireAssembliesExaminedModules.Add(module);
 
-                if (_rootEntireAssembliesModules.Contains(module.Assembly.GetName().Name))
+                string assemblyName = module.Assembly.GetName().Name;
+
+                bool fullyRoot;
+                string reason;
+
+                if (_rootEntireAssembliesModules.Contains(assemblyName))
+                {
+                    // If the assembly was specified as a root on the command line, root it
+                    fullyRoot = true;
+                    reason = "Rooted from command line";
+                }
+                else if (_trimmedAssemblies.Contains(assemblyName) || IsTrimmableAssembly(module))
+                {
+                    // If the assembly was specified as trimmed on the command line, do not root
+                    // If the assembly is marked trimmable via an attribute, do not root
+                    fullyRoot = false;
+                    reason = null;
+                }
+                else
+                {
+                    // If rooting default assemblies was requested, root
+                    fullyRoot = (_generationOptions & UsageBasedMetadataGenerationOptions.RootDefaultAssemblies) != 0;
+                    reason = "Assemblies rooted from command line";
+                }
+
+                if (fullyRoot)
                 {
                     dependencies = dependencies ?? new DependencyList();
                     var rootProvider = new RootingServiceProvider(factory, dependencies.Add);
                     foreach (TypeDesc t in mdType.Module.GetAllTypes())
                     {
-                        RootingHelpers.TryRootType(rootProvider, t, "RD.XML root");
+                        RootingHelpers.TryRootType(rootProvider, t, reason);
                     }
                 }
             }
@@ -269,6 +298,34 @@ namespace ILCompiler
                     }
                 }
             }
+        }
+
+        private static bool IsTrimmableAssembly(ModuleDesc assembly)
+        {
+            if (assembly is EcmaAssembly ecmaAssembly)
+            {
+                foreach (var attribute in ecmaAssembly.GetDecodedCustomAttributes("System.Reflection", "AssemblyMetadataAttribute"))
+                {
+                    if (attribute.FixedArguments.Length != 2)
+                        continue;
+
+                    if (!attribute.FixedArguments[0].Type.IsString
+                        || ((string)(attribute.FixedArguments[0].Value)).Equals("IsTrimmable", StringComparison.Ordinal))
+                        continue;
+
+                    if (!attribute.FixedArguments[1].Type.IsString)
+                        continue;
+
+                    string value = (string)attribute.FixedArguments[1].Value;
+
+                    if (value.Equals("True", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
         }
 
         protected override void GetRuntimeMappingDependenciesDueToReflectability(ref DependencyList dependencies, NodeFactory factory, TypeDesc type)
@@ -952,5 +1009,10 @@ namespace ILCompiler
         /// Only members that were seen as reflected on will be reflectable.
         /// </summary>
         ReflectedMembersOnly = 8,
+
+        /// <summary>
+        /// Fully root used assemblies that are not marked IsTrimmable in metadata.
+        /// </summary>
+        RootDefaultAssemblies = 16,
     }
 }

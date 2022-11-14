@@ -578,7 +578,7 @@ namespace System
 
         [Intrinsic]
         [MethodImplAttribute(MethodImplOptions.NoInlining)] // disable optimizations
-        public static void KeepAlive(object obj)
+        public static void KeepAlive(object? obj)
         {
         }
 
@@ -884,7 +884,7 @@ namespace System
                 if (length < 0)
                     throw new OverflowException();
 
-                T[] array = null;
+                T[]? array = null;
                 RuntimeImports.RhAllocateNewArray(EETypePtr.EETypePtrOf<T[]>().RawValue, (uint)length, (uint)flags, Unsafe.AsPointer(ref array));
                 if (array == null)
                     throw new OutOfMemoryException();
@@ -917,7 +917,7 @@ namespace System
             if (length < 0)
                 throw new OverflowException();
 
-            T[] array = null;
+            T[]? array = null;
             RuntimeImports.RhAllocateNewArray(EETypePtr.EETypePtrOf<T[]>().RawValue, (uint)length, (uint)flags, Unsafe.AsPointer(ref array));
             if (array == null)
                 throw new OutOfMemoryException();

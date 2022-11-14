@@ -201,7 +201,7 @@ namespace System.Collections.Concurrent
                 int i = Volatile.Read(ref _buckets[bucket]);
                 while (i != -1)
                 {
-                    V actualValue;
+                    V? actualValue;
                     if (hashCode == _entries[i]._hashCode && _entries[i]._weakValue.TryGetTarget(out actualValue))
                     {
                         K actualKey = actualValue.Key;
@@ -258,7 +258,7 @@ namespace System.Collections.Concurrent
                     for (int entry = _buckets[bucket]; entry != -1; entry = _entries[entry]._next)
                     {
                         // Check if the weakreference has expired.
-                        V value;
+                        V? value;
                         if (_entries[entry]._weakValue.TryGetTarget(out value))
                             estimatedNumLiveEntries++;
                     }
@@ -292,7 +292,7 @@ namespace System.Collections.Concurrent
                     for (int entry = _buckets[bucket]; entry != -1; entry = _entries[entry]._next)
                     {
                         // Check if the weakreference has expired. If so, this is where we drop the entry altogether.
-                        V value;
+                        V? value;
                         if (_entries[entry]._weakValue.TryGetTarget(out value))
                         {
                             newEntries[newNextFreeEntry]._weakValue = _entries[entry]._weakValue;
@@ -344,7 +344,7 @@ namespace System.Collections.Concurrent
                         Debug.Assert(walk1 >= 0 && walk1 < _nextFreeEntry);
                         Debug.Assert(walk2 >= -1 && walk2 < _nextFreeEntry);
                         Debug.Assert(_entries[walk1]._weakValue != null);
-                        V value;
+                        V? value;
                         if (_entries[walk1]._weakValue.TryGetTarget(out value))
                         {
                             K key = value.Key;

@@ -209,8 +209,8 @@ namespace System.Reflection.Runtime.General
                 ScopeReferenceHandle scopeReferenceHandle = parentHandleToSearch.ToScopeReferenceHandle(reader);
 
                 RuntimeAssemblyName assemblyName = scopeReferenceHandle.ToRuntimeAssemblyName(reader);
-                RuntimeAssembly runtimeAssembly;
-                exception = RuntimeAssembly.TryGetRuntimeAssembly(assemblyName, out runtimeAssembly);
+                RuntimeAssemblyInfo runtimeAssembly;
+                exception = RuntimeAssemblyInfo.TryGetRuntimeAssembly(assemblyName, out runtimeAssembly);
                 if (exception != null)
                     return null;
                 RuntimeTypeInfo runtimeType = runtimeAssembly.GetTypeCore(fullName, ignoreCase: false);

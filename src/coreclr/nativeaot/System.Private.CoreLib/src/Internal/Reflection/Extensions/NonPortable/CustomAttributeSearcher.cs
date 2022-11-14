@@ -143,7 +143,7 @@ namespace Internal.Reflection.Extensions.NonPortable
                     for (int i = 0; i < immediateResults.Count; i++)
                     {
                         Type attributeType = immediateResults[i].AttributeType;
-                        AttributeUsageAttribute usage;
+                        AttributeUsageAttribute? usage;
                         TypeUnificationKey attributeTypeKey = new TypeUnificationKey(attributeType);
                         if (!encounteredTypes.TryGetValue(attributeTypeKey, out usage))
                             encounteredTypes.Add(attributeTypeKey, null);
@@ -156,7 +156,7 @@ namespace Internal.Reflection.Extensions.NonPortable
                             Type attributeType = cad.AttributeType;
                             if (!passesFilter(attributeType))
                                 continue;
-                            AttributeUsageAttribute usage;
+                            AttributeUsageAttribute? usage;
                             TypeUnificationKey attributeTypeKey = new TypeUnificationKey(attributeType);
                             if (!encounteredTypes.TryGetValue(attributeTypeKey, out usage))
                             {
@@ -195,7 +195,7 @@ namespace Internal.Reflection.Extensions.NonPortable
             // This behavior goes all the way back to at least 3.5 (and perhaps earlier). For compat reasons,
             // we won't-fixed this in 4.5 and we won't-fix this in Project N.
             //
-            AttributeUsageAttribute usage = attributeType.GetCustomAttribute<AttributeUsageAttribute>(inherit: false);
+            AttributeUsageAttribute? usage = attributeType.GetCustomAttribute<AttributeUsageAttribute>(inherit: false);
             if (usage == null)
                 return new AttributeUsageAttribute(AttributeTargets.All) { AllowMultiple = false, Inherited = true };
             return usage;

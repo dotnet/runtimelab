@@ -164,8 +164,8 @@ class ReaderGen : CsWriter
         WriteLine("    throw new ArgumentException();");
         CloseScope("_Validate");
 
-        OpenScope("public override String ToString()");
-        WriteLine("return String.Format(\"{0:X8}\", _value);");
+        OpenScope("public override string ToString()");
+        WriteLine("return string.Format(\"{0:X8}\", _value);");
         CloseScope("ToString");
 
         CloseScope(handleName);

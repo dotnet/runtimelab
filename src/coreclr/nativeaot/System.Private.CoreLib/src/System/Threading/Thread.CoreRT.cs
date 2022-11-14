@@ -19,8 +19,8 @@ namespace System.Threading
         // Bits of _threadState that are returned by the ThreadState property
         private const ThreadState PublicThreadStateMask = (ThreadState)0x1FF;
 
-        internal ExecutionContext _executionContext;
-        internal SynchronizationContext _synchronizationContext;
+        internal ExecutionContext? _executionContext;
+        internal SynchronizationContext? _synchronizationContext;
 
         private volatile int _threadState = (int)ThreadState.Unstarted;
         private ThreadPriority _priority;
@@ -196,7 +196,7 @@ namespace System.Threading
             get => _managedThreadId.Id;
         }
 
-        partial void ThreadNameChanged(string value)
+        partial void ThreadNameChanged(string? value)
         {
             // TODO: Inform the debugger and the profiler
         }
@@ -391,7 +391,7 @@ namespace System.Threading
 #if TARGET_UNIX
                 // This should go away once OnThreadExit stops using t_currentThread to signal
                 // shutdown of the thread on Unix.
-                thread._stopped.Set();
+                thread._stopped!.Set();
 #endif
                 // Terminate the current thread. The creator thread will throw a ThreadStartException.
                 return;

@@ -146,7 +146,7 @@ namespace System.Threading
                     handle = default;
 
                     collector.Activate(syncIndex);
-                    collector = default;
+                    collector = default!;
 
                     // Finally, store the entry index in the object header
                     ObjectHeader.SetSyncEntryIndex(pHeader, syncIndex);
@@ -285,7 +285,7 @@ namespace System.Threading
                 if (_index == 0)
                     return;
 
-                Lock lockToDispose = default;
+                Lock? lockToDispose = default;
                 DependentHandle dependentHadleToDispose = default;
 
                 using (LockHolder.Hold(s_lock))

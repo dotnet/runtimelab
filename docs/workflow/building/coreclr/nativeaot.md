@@ -36,8 +36,8 @@ For the runtime libraries:
 For the compilers:
 - Download the LLVM 11.0.0 source from https://github.com/llvm/llvm-project/releases/download/llvmorg-11.0.0/llvm-11.0.0.src.tar.xz
 - Extract it and create a subdirectory in the `llvm-11.0.0.src` folder (`path-to-the-build-directory`).
-- Configure the LLVM source to use the same runtime as the Jit: `cmake -G "Visual Studio 16 2019" -DCMAKE_BUILD_TYPE=Debug -D LLVM_USE_CRT_DEBUG=MTd path-to-the-build-directory` or if building for the Release configuration `cmake -G "Visual Studio 16 2019" -DCMAKE_BUILD_TYPE=Release -D LLVM_USE_CRT_RELEASE=MT path-to-the-build-directory`
-- Build LLVM either from the command line (`cmake --build . --target LLVMCore LLVMBitWriter`) or from VS 2019. Currently the Jit depends only on the output of LLVMCore and LLVMBitWriter projects.  For the Release configuration, `cmake --build . --config Release  --target LLVMCore LLVMBitWriter`
+- Configure the LLVM source to use the same runtime as the Jit: `cmake -G "Visual Studio 17 2022" -DCMAKE_BUILD_TYPE=Debug -D LLVM_USE_CRT_DEBUG=MTd path-to-the-build-directory` or if building for the Release configuration `cmake -G "Visual Studio 17 2022" -DCMAKE_BUILD_TYPE=Release -D LLVM_USE_CRT_RELEASE=MT path-to-the-build-directory`
+- Build LLVM either from the command line (`cmake --build . --target LLVMCore LLVMBitWriter`) or from VS 2022. Currently the Jit depends only on the output of LLVMCore and LLVMBitWriter projects.  For the Release configuration, `cmake --build . --config Release  --target LLVMCore LLVMBitWriter`
 - Set the enviroment variable `LLVM_CMAKE_CONFIG` to locate the LLVM config: `set LLVM_CMAKE_CONFIG=path-to-the-build-directory/lib/cmake/llvm`. This location should contain the file `LLVMConfig.cmake`.
 - Build the Jits and the ILC: `build clr.jit+clr.wasmjit+nativeaot.ilc -c [Debug|Release]`. Note that `clr.jit` only needs to be built once.
 - You can use the `-msbuild` option, `build clr.wasmjit -msbuild`, to generate a Visual Studio solution for the Jit, to be found in `artifacts/obj/coreclr/windows.x64.Debug/ide/jit`.
@@ -91,7 +91,7 @@ The workflow looks like this:
 
 If you haven't built the tests yet, run `src\tests\build[.cmd|.sh] nativeaot [Debug|Release] /p:SmokeTestsOnly=true`. This will build the smoke tests only - they usually suffice to ensure the runtime and compiler is in a workable shape. To build all Pri-0 tests, drop the `SmokeTestsOnly` parameter. The `Debug`/`Release` parameter should match the build configuration you used to build the runtime.
 
-To run all the tests that got built, run `src\tests\run[.cmd|.sh] runnativeaottests [Debug|Release] [wasm]`. The `Debug`/`Release` flag should match the flag that was passed to `build.cmd` in the previous step.
+To run all the tests that got built, run `src\tests\run.cmd runnativeaottests [Debug|Release] [wasm]` on Windows, or `src/tests/run.sh --runnativeaottests [Debug|Release] [wasm]` on Linux. The `Debug`/`Release` flag should match the flag that was passed to `build.cmd` in the previous step.
 
 To run an individual test (after it was built), navigate to the `artifacts\tests\coreclr\[Windows|Linux|OSX[.x64.[Debug|Release]\$path_to_test` directory. `$path_to_test` matches the subtree of `src\tests`. You should see a `[.cmd|.sh]` file there. This file is a script that will compile and launch the individual test for you. Before invoking the script, set the following environment variables:
 

@@ -180,12 +180,12 @@ namespace System.Threading
             GC.SuppressFinalize(this);
         }
 
-        private void FinishUnregisteringAsync(object waitObject)
+        private void FinishUnregisteringAsync(object? waitObject)
         {
             FinishUnregistering();
 
             // Signal the provided wait object
-            SafeWaitHandle safeWaitHandle = (SafeWaitHandle)waitObject;
+            SafeWaitHandle? safeWaitHandle = (SafeWaitHandle?)waitObject;
 
             if ((safeWaitHandle != null) && !safeWaitHandle.IsInvalid)
             {

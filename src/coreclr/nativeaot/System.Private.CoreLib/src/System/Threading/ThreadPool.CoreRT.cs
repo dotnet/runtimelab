@@ -12,6 +12,7 @@
 
 #pragma warning disable 0420
 
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 
@@ -23,8 +24,9 @@ namespace System.Threading
         {
         }
 
-        private static unsafe void NativeOverlappedCallback(object obj)
+        private static unsafe void NativeOverlappedCallback(object? obj)
         {
+            Debug.Assert(obj != null);
             NativeOverlapped* overlapped = (NativeOverlapped*)(IntPtr)obj;
             _IOCompletionCallback.PerformIOCompletionCallback(0, 0, overlapped);
         }

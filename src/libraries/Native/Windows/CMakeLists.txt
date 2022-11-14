@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.16)
 cmake_policy(SET CMP0091 NEW)
 
 # C Compiler flags
-SET (CMAKE_C_FLAGS_INIT                     "/FC")
+SET (CMAKE_C_FLAGS_INIT                     "/W3 /FC")
 SET (CMAKE_C_FLAGS_DEBUG_INIT               "/Od /Zi")
 SET (CMAKE_C_FLAGS_RELEASE_INIT             "/Ox")
 SET (CMAKE_C_FLAGS_RELWITHDEBINFO_INIT      "/O2 /Zi")
@@ -61,12 +61,9 @@ if (${CLR_CMAKE_HOST_ARCH} STREQUAL "x86")
     add_compile_options(/Gz)
 endif ()
 
-# TODO Unification debt https://github.com/dotnet/runtimelab/issues/106
-# CFG runtime checks in C++ code are unnecessary overhead unless Native AOT compiler
-# produces CFG compliant code as well and CFG is enabled in the linker
 # enable control-flow-guard support for native components
-# add_compile_options(/guard:cf)
-# list(APPEND __SharedLinkArgs /GUARD:CF)
+add_compile_options(/guard:cf)
+list(APPEND __SharedLinkArgs /guard:cf)
 
 if (${CLR_CMAKE_HOST_ARCH} STREQUAL "x86_64" OR ${CLR_CMAKE_HOST_ARCH} STREQUAL "amd64" OR ${CLR_CMAKE_HOST_ARCH} STREQUAL "x64")
     # Enable EH continuation table and CETCOMPAT for native components
@@ -84,9 +81,7 @@ endif ()
 
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
-# TODO Unification debt https://github.com/dotnet/runtimelab/issues/106
-# Link Time Code Generation requires exact C++ compiler and linker version match
-# add_compile_options($<$<CONFIG:RELEASE>:/GL>)
+add_compile_options($<$<CONFIG:RELEASE>:/GL>)
 
 list(APPEND __LinkLibraries $<$<CONFIG:DEBUG>:libcmtd.lib>)
 list(APPEND __LinkLibraries $<$<CONFIG:RELEASE>:libcmt.lib>)

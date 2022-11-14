@@ -16,9 +16,9 @@ namespace Internal.Runtime.CompilerHelpers
             s_entryAssemblyType = entryAssemblyType;
         }
 
-        internal static Assembly GetEntryAssembly()
+        internal static Assembly? GetEntryAssembly()
         {
-            return Type.GetTypeFromHandle(s_entryAssemblyType).Assembly;
+            return Type.GetTypeFromHandle(s_entryAssemblyType)?.Assembly;
         }
     }
 }

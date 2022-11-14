@@ -258,7 +258,7 @@ namespace System.Runtime
                 (IntPtr)InternalCalls.RhpGetClasslibFunctionFromCodeAddress(address, ClassLibFunctionId.GetRuntimeException);
 
             // Return the exception object we get from the classlib.
-            Exception e = null;
+            Exception? e = null;
             try
             {
                 e = ((delegate*<ExceptionIDs, Exception>)pGetRuntimeExceptionFunction)(id);
@@ -294,7 +294,7 @@ namespace System.Runtime
             }
 
             // Return the exception object we get from the classlib.
-            Exception e = null;
+            Exception? e = null;
             try
             {
                 e = ((delegate*<ExceptionIDs, Exception>)pGetRuntimeExceptionFunction)(id);
@@ -496,7 +496,7 @@ namespace System.Runtime
             IntPtr faultingCodeAddress = exInfo._pExContext->IP;
             bool instructionFault = true;
             ExceptionIDs exceptionId = default(ExceptionIDs);
-            Exception exceptionToThrow = null;
+            Exception? exceptionToThrow = null;
 
             switch (exceptionCode)
             {
@@ -547,7 +547,7 @@ namespace System.Runtime
                 exceptionToThrow = GetClasslibException(exceptionId, faultingCodeAddress);
             }
 
-            exInfo.Init(exceptionToThrow, instructionFault);
+            exInfo.Init(exceptionToThrow!, instructionFault);
             DispatchEx(ref exInfo._frameIter, ref exInfo, MaxTryRegionIdx);
             FallbackFailFast(RhFailFastReason.InternalError, null);
         }

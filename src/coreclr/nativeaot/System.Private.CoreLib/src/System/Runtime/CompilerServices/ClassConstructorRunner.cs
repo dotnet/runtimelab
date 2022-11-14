@@ -285,7 +285,7 @@ namespace System.Runtime.CompilerServices
 
                 using (LockHolder.Hold(s_cctorGlobalLock))
                 {
-                    Cctor[] resultArray = null;
+                    Cctor[]? resultArray = null;
                     int resultIndex = -1;
 
                     if (s_count != 0)

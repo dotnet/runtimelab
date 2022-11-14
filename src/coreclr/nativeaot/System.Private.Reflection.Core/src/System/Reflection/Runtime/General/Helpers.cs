@@ -99,7 +99,7 @@ namespace System.Reflection.Runtime.General
             Justification = "Calling Assembly.GetType on a third-party Assembly class.")]
         public static Type GetTypeCore(this Assembly assembly, string name, bool ignoreCase)
         {
-            if (assembly is RuntimeAssembly runtimeAssembly)
+            if (assembly is RuntimeAssemblyInfo runtimeAssembly)
             {
                 // Not a recursion - this one goes to the actual instance method on RuntimeAssembly.
                 return runtimeAssembly.GetTypeCore(name, ignoreCase: ignoreCase);

@@ -163,7 +163,7 @@ namespace System.Runtime
         }
 
         [RuntimeExport("RhUnboxAny")]
-        public static unsafe void RhUnboxAny(object o, ref byte data, EETypePtr pUnboxToEEType)
+        public static unsafe void RhUnboxAny(object? o, ref byte data, EETypePtr pUnboxToEEType)
         {
             MethodTable* ptrUnboxToEEType = (MethodTable*)pUnboxToEEType.ToPointer();
             if (ptrUnboxToEEType->IsValueType)
@@ -198,7 +198,7 @@ namespace System.Runtime
                     throw ptrUnboxToEEType->GetClasslibException(ExceptionIDs.InvalidCast);
                 }
 
-                Unsafe.As<byte, object>(ref data) = o;
+                Unsafe.As<byte, object?>(ref data) = o;
             }
         }
 
@@ -227,7 +227,7 @@ namespace System.Runtime
         }
 
         [RuntimeExport("RhUnbox")]
-        public static unsafe void RhUnbox(object obj, ref byte data, MethodTable* pUnboxToEEType)
+        public static unsafe void RhUnbox(object? obj, ref byte data, MethodTable* pUnboxToEEType)
         {
             // When unboxing to a Nullable the input object may be null.
             if (obj == null)
