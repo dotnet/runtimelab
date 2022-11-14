@@ -92,12 +92,16 @@ Llvm::Llvm(Compiler* compiler)
     : _compiler(compiler),
     _info(compiler->info),
     _function(nullptr),
+    _sigInfo(compiler->info.compMethodInfo->args),
     _builder(_llvmContext),
     _prologBuilder(_llvmContext),
+    _blkToLlvmBlkVectorMap(compiler->getAllocator(CMK_Codegen)),
+    _sdsuMap(compiler->getAllocator(CMK_Codegen)),
+    _localsMap(compiler->getAllocator(CMK_Codegen)),
+    _debugMetadataMap(compiler->getAllocator(CMK_Codegen)),
     _shadowStackLclNum(BAD_VAR_NUM),
     _retAddressLclNum(BAD_VAR_NUM)
 {
-    _compiler->eeGetMethodSig(_info.compMethodHnd, &_sigInfo);
 }
 
 void Llvm::llvmShutdown()
@@ -111,10 +115,13 @@ void Llvm::llvmShutdown()
 
     std::error_code ec;
 
-    if (_outputFileName == nullptr) return; // nothing generated
+    if (_outputFileName == nullptr)
+    {
+        return; // Nothing generated.
+    }
 
-                                            //TODO-LLVM: when the release build is more stable, reinstate the #ifdef.  For now the text output is useful for debugging
-                                            //#ifdef DEBUG
+    // TODO-LLVM: when the release build is more stable, put under #ifdef DEBUG.
+    // For now the text output is useful for debugging
     char* txtFileName = (char*)malloc(strlen(_outputFileName) + 2); // .txt is longer than .bc
     strcpy(txtFileName, _outputFileName);
     strcpy(txtFileName + strlen(_outputFileName) - 2, "txt");
@@ -122,9 +129,8 @@ void Llvm::llvmShutdown()
     _module->print(textOutputStream, (llvm::AssemblyAnnotationWriter*)NULL);
     free(txtFileName);
 
-    // verifyModule returns true when its broken, so invert
+    // verifyModule returns true when its broken, so invert.
     assert(!llvm::verifyModule(*_module, &llvm::errs()));
-    //#endif //DEBUG
 
     llvm::raw_fd_ostream OS(_outputFileName, ec);
     llvm::WriteBitcodeToFile(*_module, OS);

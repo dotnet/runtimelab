@@ -32,6 +32,8 @@ void Llvm::Lower()
                     LclVarDsc* fieldVarDsc = _compiler->lvaGetDesc(fieldLclNum);
                     if (fieldVarDsc->lvRefCnt(RCS_NORMAL) != 0)
                     {
+                        JITDUMP("Adding initialization for %s:\n", fieldVarDsc->lvReason)
+
                         _compiler->fgEnsureFirstBBisScratch();
                         LIR::Range& firstBlockRange = LIR::AsRange(_compiler->fgFirstBB);
 
@@ -41,6 +43,8 @@ void Llvm::Lower()
                         GenTree* fieldStore = _compiler->gtNewStoreLclVar(fieldLclNum, fieldValue);
                         firstBlockRange.InsertAtBeginning(fieldStore);
                         firstBlockRange.InsertAtBeginning(fieldValue);
+
+                        DISPTREERANGE(firstBlockRange, fieldStore);
                     }
 
                     fieldVarDsc->lvIsStructField = false;
@@ -104,7 +108,7 @@ void Llvm::Lower()
     }
     _shadowStackLocalsSize = offset;
 
-    lowerToShadowStack();
+    lowerBlocks();
 }
 
 void Llvm::populateLlvmArgNums()
@@ -133,16 +137,9 @@ void Llvm::populateLlvmArgNums()
         retAddressVarDsc->lvIsParam    = true;
     }
 
-    // TODO-LLVM: other non-standard args, generic context, outs
-
     CORINFO_ARG_LIST_HANDLE sigArgs = _sigInfo.args;
     unsigned firstCorInfoArgLocalNum = 0;
     if (_sigInfo.hasThis())
-    {
-        firstCorInfoArgLocalNum++;
-    }
-
-    if (_info.compRetBuffArg != BAD_VAR_NUM)
     {
         firstCorInfoArgLocalNum++;
     }
@@ -163,7 +160,7 @@ void Llvm::populateLlvmArgNums()
     _llvmArgCount = nextLlvmArgNum;
 }
 
-void Llvm::lowerToShadowStack()
+void Llvm::lowerBlocks()
 {
     for (BasicBlock* _currentBlock : _compiler->Blocks())
     {
@@ -195,21 +192,18 @@ void Llvm::lowerToShadowStack()
 
                 lowerCallToShadowStack(callNode);
 
-                if ((_compiler->fgIsThrow(callNode) || callNode->IsNoReturn()) && (callNode->gtNext != nullptr))
+                // If there is a no return, or always throw call, delete the dead code so we can add unreachable statment immediately, and not after any dead RET.
+                if (_compiler->fgIsThrow(callNode) || callNode->IsNoReturn())
                 {
-                    // If there is a no return, or always throw call, delete the dead code so we can add the unreachable statment immediately, and not after any dead RET
-                    CurrentRange().Remove(callNode->gtNext, _currentBlock->lastNode());
+                    while (CurrentRange().LastNode() != callNode)
+                    {
+                        CurrentRange().Remove(CurrentRange().LastNode(), /* markOperandsUnused */ true);
+                    }
                 }
             }
-            else if (node->OperIs(GT_RETURN) && _retAddressLclNum != BAD_VAR_NUM)
+            else if (node->OperIs(GT_RETURN) && (_retAddressLclNum != BAD_VAR_NUM))
             {
                 var_types originalReturnType = node->TypeGet();
-                if(node->TypeIs(TYP_VOID))
-                {
-                    /* TODO-LLVM: retbuf .   compHasRetBuffArg doesn't seem to have an implementation */
-                    failFunctionCompilation();
-                }
-
                 LclVarDsc* retAddressVarDsc = _compiler->lvaGetDesc(_retAddressLclNum);
                 retAddressVarDsc->lvIsParam = 1;
                 retAddressVarDsc->lvType = TYP_I_IMPL;
@@ -231,9 +225,10 @@ void Llvm::lowerToShadowStack()
                 _compiler->lvaGetDesc(node->AsLclVarCommon())->lvHasLocalAddr = 1;
             }
         }
+
+        INDEBUG(CurrentRange().CheckLIR(_compiler, /* checkUnusedValues */ true));
     }
 }
-
 
 void Llvm::lowerStoreLcl(GenTreeLclVarCommon* storeLclNode)
 {
@@ -359,9 +354,7 @@ void Llvm::ConvertShadowStackLocalNode(GenTreeLclVarCommon* node)
             case GT_LCL_FLD:
                 if (lclVar->TypeIs(TYP_STRUCT))
                 {
-                    //TODO-LLVM: eg. S_P_CoreLib_System_DateTimeParse__Parse
-                    // a struct in a struct?
-                    //[000026]-- -- -- -- -- --t26 = LCL_FLD struct V03 loc0[+72] Fseq[parsedDate] $83
+                    // TODO-LLVM: handle once we merge enough of upstream to have "GenTreeLclFld::GetLayout".
                     failFunctionCompilation();
                 }
                 indirOper = GT_IND;
@@ -632,11 +625,11 @@ GenTreeCall::Use* Llvm::lowerCallReturn(GenTreeCall*      callNode,
         GenTree* indirNode;
         if (callReturnType == TYP_STRUCT)
         {
-            indirNode    = _compiler->gtNewObjNode(calleeSigInfo->retTypeClass, returnAddrLclAfterCall);
+            indirNode = _compiler->gtNewObjNode(calleeSigInfo->retTypeClass, returnAddrLclAfterCall);
         }
         else
         {
-            indirNode = _compiler->gtNewOperNode(GT_IND, callReturnType, returnAddrLclAfterCall);
+            indirNode = _compiler->gtNewIndir(callReturnType, returnAddrLclAfterCall);
         }
         indirNode->gtFlags |= GTF_IND_TGT_NOT_HEAP; // No RhpAssignRef required
         LIR::Use callUse;
@@ -646,6 +639,7 @@ GenTreeCall::Use* Llvm::lowerCallReturn(GenTreeCall*      callNode,
         }
         else
         {
+            indirNode->SetUnusedValue();
             callNode->ClearUnusedValue();
         }
 
