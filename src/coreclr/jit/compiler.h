@@ -8068,6 +8068,8 @@ public:
             reg     = REG_R11;
             regMask = RBM_R11;
 #elif defined(TARGET_WASM)
+            reg     = REG_R0;
+            regMask = RBM_R0;
 #else
 #error Unsupported or unset target architecture
 #endif
