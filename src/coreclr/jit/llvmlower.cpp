@@ -108,6 +108,10 @@ void Llvm::Lower()
     }
     _shadowStackLocalsSize = offset;
 
+    JITDUMP("\nLocals after shadow stack layout:\n");
+    JITDUMPEXEC(_compiler->lvaDoneFrameLayout = Compiler::TENTATIVE_FRAME_LAYOUT);
+    JITDUMPEXEC(_compiler->lvaTableDump());
+
     lowerBlocks();
 }
 

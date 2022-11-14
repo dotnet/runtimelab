@@ -827,7 +827,7 @@ var_types Compiler::getArgTypeForStruct(CORINFO_CLASS_HANDLE clsHnd,
             // Arm64 Windows VarArg methods arguments will not classify HFA/HVA types, they will need to be treated
             // as if they are not HFA/HVA types.
             var_types hfaType;
-#if defined(TARGET_WINDOWS) && defined(TARGET_ARM64) || defined(TARGET_WASM)
+#if defined(TARGET_WINDOWS) && defined(TARGET_ARM64)
             if (isVarArg)
             {
                 hfaType = TYP_UNDEF;
@@ -920,7 +920,7 @@ var_types Compiler::getArgTypeForStruct(CORINFO_CLASS_HANDLE clsHnd,
             howToPassStruct = SPK_ByValue;
             useType         = TYP_STRUCT;
 
-#elif defined(TARGET_AMD64) || defined(TARGET_ARM64) || defined(TARGET_WASM) // TODO: WASM can in theory pass any size struct as an arg.
+#elif defined(TARGET_AMD64) || defined(TARGET_ARM64)
 
             // Otherwise we pass this struct by reference to a copy
             // setup wbPassType and useType indicate that this is passed using one register (by reference to a copy)
@@ -8761,7 +8761,6 @@ void cEH(Compiler* comp)
     comp->fgDispHandlerTab();
 }
 
-#ifndef TARGET_WASM
 void cVar(Compiler* comp, unsigned lclNum)
 {
     static unsigned sequenceNumber = 0; // separate calls with a number to indicate this function has been called
@@ -8790,7 +8789,6 @@ void cVarsFinal(Compiler* comp)
     printf("===================================================================== *Vars %u\n", sequenceNumber++);
     comp->lvaTableDump(Compiler::FINAL_FRAME_LAYOUT);
 }
-#endif // !TARGET_WASM
 
 void cBlockCheapPreds(Compiler* comp, BasicBlock* block)
 {
@@ -8904,7 +8902,6 @@ void dEH()
     cEH(JitTls::GetCompiler());
 }
 
-#ifndef TARGET_WASM
 void dVar(unsigned lclNum)
 {
     cVar(JitTls::GetCompiler(), lclNum);
@@ -8924,7 +8921,6 @@ void dVarsFinal()
 {
     cVarsFinal(JitTls::GetCompiler());
 }
-#endif // !TARGET_WASM
 
 void dBlockPreds(BasicBlock* block)
 {

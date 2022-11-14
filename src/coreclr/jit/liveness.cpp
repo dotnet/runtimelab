@@ -135,12 +135,10 @@ void Compiler::fgLocalVarLiveness()
     {
         printf("*************** In fgLocalVarLiveness()\n");
 
-#ifndef TARGET_WASM
         if (compRationalIRForm)
         {
             lvaTableDump();
         }
-#endif //!TARGET_WASM
     }
 #endif // DEBUG
 

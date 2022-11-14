@@ -3818,10 +3818,8 @@ public:
     void lvaDumpRegLocation(unsigned lclNum);
     void lvaDumpFrameLocation(unsigned lclNum);
     void lvaDumpEntry(unsigned lclNum, FrameLayoutState curState, size_t refCntWtdWidth = 6);
-#ifndef TARGET_WASM
     void lvaTableDump(FrameLayoutState curState = NO_FRAME_LAYOUT); // NO_FRAME_LAYOUT means use the current frame
                                                                     // layout state defined by lvaDoneFrameLayout
-#endif //!TARGET_WASM
 #endif
 
 // Limit frames size to 1GB. The maximum is 2GB in theory - make it intentionally smaller
@@ -8069,17 +8067,9 @@ public:
 #elif defined(TARGET_ARM64)
             reg     = REG_R11;
             regMask = RBM_R11;
-#elif defined(TARGET_WASM)  //TODO: empty better?
-            if (isCoreRTABI)
-            {
-                reg = REG_R10;
-                regMask = RBM_R10;
-            }
-            else
-            {
-                reg = REG_R11;
-                regMask = RBM_R11;
-            }
+#elif defined(TARGET_WASM)
+            reg     = REG_R0;
+            regMask = RBM_R0;
 #else
 #error Unsupported or unset target architecture
 #endif
@@ -10269,7 +10259,7 @@ public:
     // In case of Amd64 this doesn't include float regs saved on stack.
     unsigned compCalleeRegsPushed;
 
-#if defined(TARGET_XARCH) || defined(TARGET_WASM) // TODO Wasm
+#if defined(TARGET_XARCH)
     // Mask of callee saved float regs on stack.
     regMaskTP compCalleeFPRegsSavedMask;
 #endif

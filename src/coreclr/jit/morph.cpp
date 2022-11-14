@@ -3137,16 +3137,13 @@ void Compiler::fgInitArgInfo(GenTreeCall* call)
         assert(!callIsVararg || !isHfaArg);
         passUsingFloatRegs = !callIsVararg && (isHfaArg || varTypeUsesFloatReg(argx));
 
-#elif defined(TARGET_AMD64)
+#elif defined(TARGET_AMD64) || defined(TARGET_WASM)
 
         passUsingFloatRegs = varTypeIsFloating(argx);
 
 #elif defined(TARGET_X86)
 
         passUsingFloatRegs = false;
-#elif defined(TARGET_WASM)
-
-        passUsingFloatRegs = varTypeIsFloating(argx);
 
 #else
 #error Unsupported or unset target architecture
@@ -3197,7 +3194,7 @@ void Compiler::fgInitArgInfo(GenTreeCall* call)
                 assert(structSize == info.compCompHnd->getClassSize(objClass));
             }
         }
-#if defined(TARGET_AMD64) || defined(TARGET_WASM) // TODO Wasm
+#if defined(TARGET_AMD64)
 #ifdef UNIX_AMD64_ABI
         if (!isStructArg)
         {
@@ -3251,7 +3248,7 @@ void Compiler::fgInitArgInfo(GenTreeCall* call)
             size     = 1; // Otherwise, all primitive types fit in a single (64-bit) 'slot'
             byteSize = genTypeSize(argx);
         }
-#elif defined(TARGET_ARM) || defined(TARGET_X86)
+#elif defined(TARGET_ARM) || defined(TARGET_X86) || defined(TARGET_WASM)
         if (isStructArg)
         {
             size     = (unsigned)(roundUp(structSize, TARGET_POINTER_SIZE)) / TARGET_POINTER_SIZE;
@@ -16974,9 +16971,7 @@ void Compiler::fgPromoteStructs()
     if (verbose)
     {
         printf("\nlvaTable before fgPromoteStructs\n");
-#ifndef TARGET_WASM
         lvaTableDump();
-#endif //!TARGET_WASM
     }
 #endif // DEBUG
 
@@ -17034,9 +17029,7 @@ void Compiler::fgPromoteStructs()
     if (verbose)
     {
         printf("\nlvaTable after fgPromoteStructs\n");
-#ifndef TARGET_WASM
         lvaTableDump();
-#endif //!TARGET_WASM
     }
 #endif // DEBUG
 }
