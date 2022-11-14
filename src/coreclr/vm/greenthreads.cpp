@@ -360,7 +360,7 @@ uintptr_t GreenThread_Yield() // Attempt to yield out of green thread. If the yi
         pNewSuspendedThread->prev->next = pNewSuspendedThread->next;
         free(pNewSuspendedThread);
 
-        t_greenThread.pFrameInGreenThread->UNSAFE_SetNextFrame(t_greenThread.pFrameInOSThread);
+        t_greenThread.pFrameInGreenThread->PtrNextFrame()->UNSAFE_SetNextFrame(t_greenThread.pFrameInOSThread);
         ((InlinedCallFrame*)t_greenThread.pFrameInGreenThread)->UNSAFE_UpdateThreadPointer(GetThread());
         GetThread()->m_pFrame = t_greenThread.pFrameInGreenThread;
     }
