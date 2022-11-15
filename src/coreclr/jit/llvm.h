@@ -171,7 +171,6 @@ private:
     Type* getLlvmTypeForStruct(CORINFO_CLASS_HANDLE structHandle);
     Type* getLlvmTypeForVarType(var_types type);
     Type* getLlvmTypeForLclVar(LclVarDsc* varDsc);
-    Type* getLlvmTypeForLclVar(GenTreeLclVar* lclVar);
     Type* getLlvmTypeForCorInfoType(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd);
     Type* getLlvmTypeForParameterType(CORINFO_CLASS_HANDLE classHnd);
 

@@ -544,8 +544,10 @@ void Llvm::buildLocalVar(GenTreeLclVar* lclVar)
 
 void Llvm::buildStoreLocalVar(GenTreeLclVar* lclVar)
 {
-    Type*  destLlvmType = getLlvmTypeForLclVar(lclVar);
-    Value* localValue   = nullptr;
+    unsigned lclNum = lclVar->GetLclNum();
+    LclVarDsc* varDsc = _compiler->lvaGetDesc(lclVar);
+    Type* destLlvmType = getLlvmTypeForLclVar(varDsc);
+    Value* localValue = nullptr;
 
     // zero initialization check
     if (lclVar->TypeIs(TYP_STRUCT) && lclVar->gtGetOp1()->IsIntegralConst(0))
@@ -557,12 +559,9 @@ void Llvm::buildStoreLocalVar(GenTreeLclVar* lclVar)
         localValue = consumeValue(lclVar->gtGetOp1(), destLlvmType);
     }
 
-    unsigned lclNum = lclVar->GetLclNum();
-    LclVarDsc* varDsc = _compiler->lvaGetDesc(lclVar);
-
     if (isLlvmFrameLocal(varDsc))
     {
-        _builder.CreateStore(localValue, castIfNecessary(m_allocas[lclNum], localValue->getType()->getPointerTo()));
+        _builder.CreateStore(localValue, m_allocas[lclNum]);
     }
     else
     {
@@ -1396,8 +1395,7 @@ FunctionType* Llvm::getFunctionType()
         if (varDsc->lvIsParam)
         {
             assert(varDsc->lvLlvmArgNum != BAD_LLVM_ARG_NUM);
-
-            argVec[varDsc->lvLlvmArgNum] = getLlvmTypeForCorInfoType(varDsc->lvCorInfoType, varDsc->lvClassHnd);
+            argVec[varDsc->lvLlvmArgNum] = getLlvmTypeForLclVar(varDsc);
         }
     }
 
