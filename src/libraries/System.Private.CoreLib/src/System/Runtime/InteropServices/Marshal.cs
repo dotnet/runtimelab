@@ -568,7 +568,7 @@ namespace System.Runtime.InteropServices
             }
         }
 
-        [UnconditionalSuppressMessage("AotAnalysis", "IL9700:AotUnfriendlyApi",
+        [UnconditionalSuppressMessage("AotAnalysis", "IL3050:AotUnfriendlyApi",
             Justification = "AOT compilers can see the T.")]
         public static void StructureToPtr<T>([DisallowNull] T structure, IntPtr ptr, bool fDeleteOld)
         {
@@ -642,7 +642,7 @@ namespace System.Runtime.InteropServices
             return (T)structure;
         }
 
-        [UnconditionalSuppressMessage("AotAnalysis", "IL9700:AotUnfriendlyApi",
+        [UnconditionalSuppressMessage("AotAnalysis", "IL3050:AotUnfriendlyApi",
             Justification = "AOT compilers can see the T.")]
         public static void DestroyStructure<T>(IntPtr ptr) => DestroyStructure(ptr, typeof(T));
 
@@ -1228,7 +1228,7 @@ namespace System.Runtime.InteropServices
             return GetFunctionPointerForDelegateInternal(d);
         }
 
-        [UnconditionalSuppressMessage("AotAnalysis", "IL9700:AotUnfriendlyApi",
+        [UnconditionalSuppressMessage("AotAnalysis", "IL3050:AotUnfriendlyApi",
             Justification = "AOT compilers can see the T.")]
         public static IntPtr GetFunctionPointerForDelegate<TDelegate>(TDelegate d) where TDelegate : notnull
         {

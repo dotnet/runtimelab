@@ -72,7 +72,7 @@ namespace ILCompiler.DependencyAnalysis
         {
             get
             {
-                if (_nodeFactory.Target.IsWindows)
+                if (_nodeFactory.Target.IsWindows || _nodeFactory.Target.SupportsRelativePointers)
                     return ObjectNodeSection.ReadOnlyDataSection;
                 else
                     return ObjectNodeSection.DataSection;

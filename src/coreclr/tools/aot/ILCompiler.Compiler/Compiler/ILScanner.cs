@@ -15,6 +15,7 @@ using Internal.TypeSystem;
 using Internal.ReadyToRunConstants;
 
 using Debug = System.Diagnostics.Debug;
+using Internal.JitInterface;
 
 namespace ILCompiler
 {
@@ -135,7 +136,7 @@ namespace ILCompiler
                 // Try to compile the method again, but with a throwing method body this time.
                 MethodIL throwingIL = TypeSystemThrowingILEmitter.EmitIL(method, ex);
                 var importer = new ILImporter(this, method, throwingIL);
-                methodCodeNodeNeedingCode.InitializeDependencies(_nodeFactory, importer.Import());
+                methodCodeNodeNeedingCode.InitializeDependencies(_nodeFactory, importer.Import(), ex);
             }
             catch (Exception ex)
             {
@@ -151,6 +152,8 @@ namespace ILCompiler
         ILScanResults IILScanner.Scan()
         {
             _dependencyGraph.ComputeMarkedNodes();
+
+            _nodeFactory.SetMarkingComplete();
 
             return new ILScanResults(_dependencyGraph, _nodeFactory);
         }
@@ -239,7 +242,7 @@ namespace ILCompiler
 
         public DictionaryLayoutProvider GetDictionaryLayoutInfo()
         {
-            return new ScannedDictionaryLayoutProvider(MarkedNodes);
+            return new ScannedDictionaryLayoutProvider(_factory, MarkedNodes);
         }
 
         public DevirtualizationManager GetDevirtualizationManager()
@@ -250,6 +253,11 @@ namespace ILCompiler
         public IInliningPolicy GetInliningPolicy()
         {
             return new ScannedInliningPolicy(_factory.CompilationModuleGroup, MarkedNodes);
+        }
+
+        public MethodImportationErrorProvider GetMethodImportationErrorProvider()
+        {
+            return new ScannedMethodImportationErrorProvider(MarkedNodes);
         }
 
         private class ScannedVTableProvider : VTableSliceProvider
@@ -297,16 +305,25 @@ namespace ILCompiler
         private class ScannedDictionaryLayoutProvider : DictionaryLayoutProvider
         {
             private Dictionary<TypeSystemEntity, IEnumerable<GenericLookupResult>> _layouts = new Dictionary<TypeSystemEntity, IEnumerable<GenericLookupResult>>();
+            private HashSet<TypeSystemEntity> _entitiesWithForcedLazyLookups = new HashSet<TypeSystemEntity>();
 
-            public ScannedDictionaryLayoutProvider(ImmutableArray<DependencyNodeCore<NodeFactory>> markedNodes)
+            public ScannedDictionaryLayoutProvider(NodeFactory factory, ImmutableArray<DependencyNodeCore<NodeFactory>> markedNodes)
             {
                 foreach (var node in markedNodes)
                 {
-                    var layoutNode = node as DictionaryLayoutNode;
-                    if (layoutNode != null)
+                    if (node is DictionaryLayoutNode layoutNode)
                     {
                         TypeSystemEntity owningMethodOrType = layoutNode.OwningMethodOrType;
                         _layouts.Add(owningMethodOrType, layoutNode.Entries);
+                    }
+                    else if (node is ReadyToRunGenericHelperNode genericLookup
+                        && genericLookup.HandlesInvalidEntries(factory))
+                    {
+                        // If a dictionary layout has an associated lookup helper that contains handling of broken slots
+                        // (because one of our precomputed dictionaries contained an uncompilable entry)
+                        // we won't hand out a precomputed dictionary and keep using the lookup helpers.
+                        // The inlined lookups using the precomputed dictionary wouldn't handle the broken slots.
+                        _entitiesWithForcedLazyLookups.Add(genericLookup.DictionaryOwner);
                     }
                 }
             }
@@ -330,6 +347,11 @@ namespace ILCompiler
 
             public override DictionaryLayoutNode GetLayout(TypeSystemEntity methodOrType)
             {
+                if (_entitiesWithForcedLazyLookups.Contains(methodOrType))
+                {
+                    return new LazilyBuiltDictionaryLayoutNode(methodOrType);
+                }
+
                 if (methodOrType is TypeDesc type)
                 {
                     // TODO: move ownership of compiler-generated entities to CompilerTypeSystemContext.
@@ -358,6 +380,7 @@ namespace ILCompiler
         {
             private HashSet<TypeDesc> _constructedTypes = new HashSet<TypeDesc>();
             private HashSet<TypeDesc> _unsealedTypes = new HashSet<TypeDesc>();
+            private HashSet<TypeDesc> _abstractButNonabstractlyOverridenTypes = new HashSet<TypeDesc>();
 
             public ScannedDevirtualizationManager(ImmutableArray<DependencyNodeCore<NodeFactory>> markedNodes)
             {
@@ -376,27 +399,32 @@ namespace ILCompiler
                             // 2. What types are the base types of other types
                             //    This is needed for optimizations. We use this information to effectively
                             //    seal types that are not base types for any other type.
+                            // 3. What abstract types got derived by non-abstract types.
+                            //    This is needed for correctness. Abstract types that were never derived
+                            //    by non-abstract types should never be devirtualized into - we probably
+                            //    didn't scan the virtual methods on them.
                             //
+
+                            _constructedTypes.Add(type);
 
                             TypeDesc canonType = type.ConvertToCanonForm(CanonicalFormKind.Specific);
 
-                            _constructedTypes.Add(canonType);
-
-                            // Since this is used for the purposes of devirtualization, it's really convenient
-                            // to also have Array<T> for each T[].
-                            if (canonType.IsArray)
-                                _constructedTypes.Add(canonType.GetClosestDefType());
-
+                            bool hasNonAbstractTypeInHierarchy = canonType is not MetadataType mdType || !mdType.IsAbstract;
                             TypeDesc baseType = canonType.BaseType;
                             bool added = true;
                             while (baseType != null && added)
                             {
                                 baseType = baseType.ConvertToCanonForm(CanonicalFormKind.Specific);
                                 added = _unsealedTypes.Add(baseType);
+
+                                bool currentTypeIsAbstract = ((MetadataType)baseType).IsAbstract;
+                                if (currentTypeIsAbstract && hasNonAbstractTypeInHierarchy)
+                                    added |= _abstractButNonabstractlyOverridenTypes.Add(baseType);
+                                hasNonAbstractTypeInHierarchy |= !currentTypeIsAbstract;
+
                                 baseType = baseType.BaseType;
                             }
                         }
-
                     }
                 }
             }
@@ -424,6 +452,28 @@ namespace ILCompiler
 
                 // Everything else can be considered sealed.
                 return true;
+            }
+
+            protected override MethodDesc ResolveVirtualMethod(MethodDesc declMethod, DefType implType, out CORINFO_DEVIRTUALIZATION_DETAIL devirtualizationDetail)
+            {
+                MethodDesc result = base.ResolveVirtualMethod(declMethod, implType, out devirtualizationDetail);
+                if (result != null && result.IsFinal && result.OwningType is MetadataType mdType && mdType.IsAbstract)
+                {
+                    // If this type is abstract check that we saw a non-abstract type deriving from it.
+                    // We don't look at virtual methods introduced by abstract classes unless there's a non-abstract
+                    // class that needs them (i.e. the non-abstract class doesn't immediately override them).
+                    // This lets us optimize out some unused virtual method implementations.
+                    // Allowing this to devirtualize would cause trouble because we didn't scan the method
+                    // and expected it would be optimized out.
+                    if (!_abstractButNonabstractlyOverridenTypes.Contains(mdType.ConvertToCanonForm(CanonicalFormKind.Specific)))
+                    {
+                        // FAILED_BUBBLE_IMPL_NOT_REFERENCEABLE is close enough...
+                        devirtualizationDetail = CORINFO_DEVIRTUALIZATION_DETAIL.CORINFO_DEVIRTUALIZATION_FAILED_BUBBLE_IMPL_NOT_REFERENCEABLE;
+                        return null;
+                    }
+                }
+
+                return result;
             }
 
             public override bool CanConstructType(TypeDesc type) => _constructedTypes.Contains(type);
@@ -465,6 +515,26 @@ namespace ILCompiler
 
                 return false;
             }
+        }
+
+        private sealed class ScannedMethodImportationErrorProvider : MethodImportationErrorProvider
+        {
+            private readonly Dictionary<MethodDesc, TypeSystemException> _importationErrors = new Dictionary<MethodDesc, TypeSystemException>();
+
+            public ScannedMethodImportationErrorProvider(ImmutableArray<DependencyNodeCore<NodeFactory>> markedNodes)
+            {
+                foreach (var markedNode in markedNodes)
+                {
+                    if (markedNode is ScannedMethodNode scannedMethod
+                        && scannedMethod.Exception != null)
+                    {
+                        _importationErrors.Add(scannedMethod.Method, scannedMethod.Exception);
+                    }
+                }
+            }
+
+            public override TypeSystemException GetCompilationError(MethodDesc method)
+                => _importationErrors.TryGetValue(method, out var exception) ? exception : null;
         }
     }
 }

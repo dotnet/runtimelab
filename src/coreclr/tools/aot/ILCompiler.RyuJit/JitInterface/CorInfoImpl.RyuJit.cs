@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Runtime.InteropServices;
 
 using Internal.IL;
@@ -63,7 +64,162 @@ namespace Internal.JitInterface
             }
             finally
             {
+#if DEBUG
+                // RyuJIT makes assumptions around the value of type symbols - in particular, it assumes
+                // that type handles and type symbols have a 1:1 relationship. We therefore need to
+                // make sure RyuJIT never sees a constructed and unconstructed type symbol for the
+                // same type. This check makes sure we didn't accidentally hand out a necessary type symbol
+                // that the compilation class didn't agree to handing out.
+                // https://github.com/dotnet/runtimelab/issues/1128
+                for (int i = 0; i < _codeRelocs.Count; i++)
+                {
+                    Debug.Assert(_codeRelocs[i].Target.GetType() != typeof(EETypeNode)
+                        || _compilation.NecessaryTypeSymbolIfPossible(((EETypeNode)_codeRelocs[i].Target).Type) == _codeRelocs[i].Target);
+                }
+#endif
+
                 CompileMethodCleanup();
+            }
+        }
+
+        private enum CFI_OPCODE
+        {
+            CFI_ADJUST_CFA_OFFSET,    // Offset is adjusted relative to the current one.
+            CFI_DEF_CFA_REGISTER,     // New register is used to compute CFA
+            CFI_REL_OFFSET,           // Register is saved at offset from the current CFA
+            CFI_DEF_CFA               // Take address from register and add offset to it.
+        }
+
+        // Get the CFI data in the same shape as clang/LLVM generated one. This improves the compatibility with libunwind and other unwind solutions
+        // - Combine in one single block for the whole prolog instead of one CFI block per assembler instruction
+        // - Store CFA definition first
+        // - Store all used registers in ascending order
+        private byte[] CompressARM64CFI(byte[] blobData)
+        {
+            if (blobData == null || blobData.Length == 0)
+            {
+                return blobData;
+            }
+
+            Debug.Assert(blobData.Length % 8 == 0);
+
+            short spReg = -1;
+
+            int codeOffset = 0;
+            short cfaRegister = spReg;
+            int cfaOffset = 0;
+            int spOffset = 0;
+
+            int[] registerOffset = new int[96];
+
+            for (int i = 0; i < registerOffset.Length; i++)
+            {
+                registerOffset[i] = int.MinValue;
+            }
+
+            int offset = 0;
+            while (offset < blobData.Length)
+            {
+                codeOffset = Math.Max(codeOffset, blobData[offset++]);
+                CFI_OPCODE opcode = (CFI_OPCODE)blobData[offset++];
+                short dwarfReg = BitConverter.ToInt16(blobData, offset);
+                offset += sizeof(short);
+                int cfiOffset = BitConverter.ToInt32(blobData, offset);
+                offset += sizeof(int);
+
+                switch (opcode)
+                {
+                    case CFI_OPCODE.CFI_DEF_CFA_REGISTER:
+                        cfaRegister = dwarfReg;
+
+                        if (spOffset != 0)
+                        {
+                            for (int i = 0; i < registerOffset.Length; i++)
+                            {
+                                if (registerOffset[i] != int.MinValue)
+                                {
+                                    registerOffset[i] -= spOffset;
+                                }
+                            }
+
+                            cfaOffset += spOffset;
+                            spOffset = 0;
+                        }
+
+                        break;
+
+                    case CFI_OPCODE.CFI_REL_OFFSET:
+                        Debug.Assert(cfaRegister == spReg);
+                        registerOffset[dwarfReg] = cfiOffset;
+                        break;
+
+                    case CFI_OPCODE.CFI_ADJUST_CFA_OFFSET:
+                        if (cfaRegister != spReg)
+                        {
+                            cfaOffset += cfiOffset;
+                        }
+                        else
+                        {
+                            spOffset += cfiOffset;
+
+                            for (int i = 0; i < registerOffset.Length; i++)
+                            {
+                                if (registerOffset[i] != int.MinValue)
+                                {
+                                    registerOffset[i] += cfiOffset;
+                                }
+                            }
+                        }
+                        break;
+                }
+            }
+
+            using (MemoryStream cfiStream = new MemoryStream())
+            {
+                int storeOffset = 0;
+
+                using (BinaryWriter cfiWriter = new BinaryWriter(cfiStream))
+                {
+                    if (cfaRegister != -1)
+                    {
+                        cfiWriter.Write((byte)codeOffset);
+                        cfiWriter.Write(cfaOffset != 0 ? (byte)CFI_OPCODE.CFI_DEF_CFA : (byte)CFI_OPCODE.CFI_DEF_CFA_REGISTER);
+                        cfiWriter.Write(cfaRegister);
+                        cfiWriter.Write(cfaOffset);
+                        storeOffset = cfaOffset;
+                    }
+                    else
+                    {
+                        if (cfaOffset != 0)
+                        {
+                            cfiWriter.Write((byte)codeOffset);
+                            cfiWriter.Write((byte)CFI_OPCODE.CFI_ADJUST_CFA_OFFSET);
+                            cfiWriter.Write((short)-1);
+                            cfiWriter.Write(cfaOffset);
+                        }
+
+                        if (spOffset != 0)
+                        {
+                            cfiWriter.Write((byte)codeOffset);
+                            cfiWriter.Write((byte)CFI_OPCODE.CFI_DEF_CFA);
+                            cfiWriter.Write((short)31);
+                            cfiWriter.Write(spOffset);
+                        }
+                    }
+
+                    for (int i = registerOffset.Length - 1; i >= 0; i--)
+                    {
+                        if (registerOffset[i] != int.MinValue)
+                        {
+                            cfiWriter.Write((byte)codeOffset);
+                            cfiWriter.Write((byte)CFI_OPCODE.CFI_REL_OFFSET);
+                            cfiWriter.Write((short)i);
+                            cfiWriter.Write(registerOffset[i] + storeOffset);
+                        }
+                    }
+                }
+
+                return cfiStream.ToArray();
             }
         }
 
@@ -698,7 +854,7 @@ namespace Internal.JitInterface
                             if (type.IsCanonicalSubtype(CanonicalFormKind.Any))
                                 ThrowHelper.ThrowInvalidProgramException();
 
-                            var typeSymbol = _compilation.NodeFactory.NecessaryTypeSymbol(type);
+                            var typeSymbol = _compilation.NecessaryTypeSymbolIfPossible(type);
 
                             RelocType rel = (_compilation.NodeFactory.Target.IsWindows) ?
                                 RelocType.IMAGE_REL_BASED_ABSOLUTE :
@@ -912,13 +1068,20 @@ namespace Internal.JitInterface
             return CorInfoHelpFunc.CORINFO_HELP_NEWARR_1_VC;
         }
 
-        private IMethodNode GetMethodEntrypoint(MethodDesc method)
+        private IMethodNode GetMethodEntrypoint(CORINFO_MODULE_STRUCT_* pScope, MethodDesc method)
         {
             bool isUnboxingThunk = method.IsUnboxingThunk();
             if (isUnboxingThunk)
             {
                 method = method.GetUnboxedMethod();
             }
+
+            if (method.HasInstantiation || method.OwningType.HasInstantiation)
+            {
+                MethodIL methodIL = (MethodIL)HandleToObject((IntPtr)pScope);
+                _compilation.DetectGenericCycles(methodIL.OwningMethod, method);
+            }
+
             return _compilation.NodeFactory.MethodEntrypoint(method, isUnboxingThunk);
         }
 
@@ -1221,7 +1384,7 @@ namespace Internal.JitInterface
 
                     Debug.Assert(!forceUseRuntimeLookup);
                     pResult->codePointerOrStubLookup.constLookup = CreateConstLookupToSymbol(
-                        GetMethodEntrypoint(targetMethod)
+                        GetMethodEntrypoint(pResolvedToken.tokenScope, targetMethod)
                         );
                 }
                 else
@@ -1247,7 +1410,7 @@ namespace Internal.JitInterface
                     }
 
                     pResult->codePointerOrStubLookup.constLookup = CreateConstLookupToSymbol(
-                        GetMethodEntrypoint(targetMethod)
+                        GetMethodEntrypoint(pResolvedToken.tokenScope, targetMethod)
                         );
                 }
 
@@ -1261,6 +1424,10 @@ namespace Internal.JitInterface
                 pResult->nullInstanceCheck = true;
 
                 MethodDesc targetOfLookup = _compilation.GetTargetOfGenericVirtualMethodCall((MethodDesc)GetRuntimeDeterminedObjectForToken(ref pResolvedToken));
+
+                _compilation.DetectGenericCycles(
+                    ((MethodILScope)HandleToObject((IntPtr)pResolvedToken.tokenScope)).OwningMethod,
+                    targetOfLookup.GetCanonMethodTarget(CanonicalFormKind.Specific));
 
                 ComputeLookup(ref pResolvedToken,
                     targetOfLookup,
@@ -1396,7 +1563,7 @@ namespace Internal.JitInterface
         private CORINFO_CLASS_STRUCT_* embedClassHandle(CORINFO_CLASS_STRUCT_* handle, ref void* ppIndirection)
         {
             TypeDesc type = HandleToObject(handle);
-            ISymbolNode typeHandleSymbol = _compilation.NodeFactory.NecessaryTypeSymbol(type);
+            ISymbolNode typeHandleSymbol = _compilation.NecessaryTypeSymbolIfPossible(type);
             CORINFO_CLASS_STRUCT_* result = (CORINFO_CLASS_STRUCT_*)ObjectToHandle(typeHandleSymbol);
 
             if (typeHandleSymbol.RepresentsIndirectionCell)
@@ -1576,7 +1743,7 @@ namespace Internal.JitInterface
         {
             MethodDesc method = HandleToObject(ftn);
             TypeDesc type = method.OwningType;
-            ISymbolNode methodSync = _compilation.NodeFactory.NecessaryTypeSymbol(type);
+            ISymbolNode methodSync = _compilation.NecessaryTypeSymbolIfPossible(type);
 
             void* result = (void*)ObjectToHandle(methodSync);
 
@@ -1735,6 +1902,10 @@ namespace Internal.JitInterface
         }
 
         private void reportInliningDecision(CORINFO_METHOD_STRUCT_* inlinerHnd, CORINFO_METHOD_STRUCT_* inlineeHnd, CorInfoInline inlineResult, byte* reason)
+        {
+        }
+
+        private void updateEntryPointForTailCall(ref CORINFO_CONST_LOOKUP entryPoint)
         {
         }
 

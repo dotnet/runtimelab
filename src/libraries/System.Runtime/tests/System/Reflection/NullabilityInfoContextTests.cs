@@ -496,7 +496,6 @@ namespace System.Reflection.Tests
 
         [Theory]
         [MemberData(nameof(GenericStructConstraintPropertiesTestData))]
-        [ActiveIssue("https://github.com/dotnet/runtimelab/issues/1563" /* NativeAot */)]
         public void GenericStructConstraintPropertiesTest(string propertyName, NullabilityState readState, NullabilityState writeState, Type type)
         {
             PropertyInfo property = typeof(GenericTestConstrainedStruct<int>).GetProperty(propertyName, flags)!;

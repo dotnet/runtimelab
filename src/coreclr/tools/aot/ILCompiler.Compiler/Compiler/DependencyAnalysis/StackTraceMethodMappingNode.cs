@@ -53,12 +53,9 @@ namespace ILCompiler.DependencyAnalysis
             objData.AddSymbol(this);
             objData.AddSymbol(_endSymbol);
 
-            RelocType reloc = factory.Target.Abi == TargetAbi.CoreRT ?
-                RelocType.IMAGE_REL_BASED_RELPTR32 : RelocType.IMAGE_REL_BASED_ADDR32NB;
-
             foreach (var mappingEntry in factory.MetadataManager.GetStackTraceMapping(factory))
             {
-                objData.EmitReloc(factory.MethodEntrypoint(mappingEntry.Entity), reloc);
+                objData.EmitReloc(factory.MethodEntrypoint(mappingEntry.Entity), RelocType.IMAGE_REL_BASED_RELPTR32);
                 objData.EmitInt(mappingEntry.MetadataHandle);
             }
 

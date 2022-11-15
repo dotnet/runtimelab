@@ -138,7 +138,9 @@ namespace System.Reflection
             // these. The setters for these properties quietly mask out any bits intended for the other one, so we needn't do that ourselves..
             blank.Flags = this.Flags.ExtractAssemblyNameFlags();
             blank.ContentType = this.Flags.ExtractAssemblyContentType();
+#pragma warning disable SYSLIB0037 // AssemblyName.ProcessorArchitecture is obsolete
             blank.ProcessorArchitecture = this.Flags.ExtractProcessorArchitecture();
+#pragma warning restore SYSLIB0037
 
             if (this.PublicKeyOrToken != null)
             {

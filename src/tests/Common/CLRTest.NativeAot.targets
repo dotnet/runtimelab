@@ -142,7 +142,7 @@ if defined RunNativeAot (
     Outputs="$(OutputPath)\nativebuild.proj"
     BeforeTargets="Build">
     <PropertyGroup>
-      <_RootEntryAssemblyLine Condition="$(CLRTestFullTrimming) != 'true'">&lt;TrimmerRootAssembly Include=&quot;$(MSBuildProjectName)&quot; /&gt;</_RootEntryAssemblyLine>
+      <_RootEntryAssemblyLine Condition="$(CLRTestFullTrimming) != 'true'">&lt;TrimmerDefaultAction&gt;copyused&lt;/TrimmerDefaultAction&gt;</_RootEntryAssemblyLine>
 
       <_NativeAotBuildProjectFile>
         <![CDATA[
@@ -158,6 +158,7 @@ if defined RunNativeAot (
     <Optimize>$(Optimize)</Optimize>
     <DebugSymbols>true</DebugSymbols>
     <NETCoreSdkVersion>$(NETCoreSdkVersion)</NETCoreSdkVersion>
+    $(_RootEntryAssemblyLine)
   </PropertyGroup>
 
   $(NativeAotProjectLines)
@@ -168,8 +169,6 @@ if defined RunNativeAot (
 
     <!-- Copy RuntimeHostConfigurationOptions -->
 @(RuntimeHostConfigurationOption->'    <RuntimeHostConfigurationOption Include="%(Identity)" Value="%(Value)" />', '%0A')
-
-    $(_RootEntryAssemblyLine)
   </ItemGroup>
 
   <!-- We don't do anything in the Compile step since the test is already compiled to IL - the AOT compiler hooks up after this -->

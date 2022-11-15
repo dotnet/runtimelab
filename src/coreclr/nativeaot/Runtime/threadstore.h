@@ -57,7 +57,7 @@ public:
 #else
     static PTR_Thread       GetThreadFromTEB(TADDR pvTEB);
 #endif
-    Boolean                 GetExceptionsForCurrentThread(Array* pOutputArray, int32_t* pWrittenCountOut);
+    bool                    GetExceptionsForCurrentThread(Array* pOutputArray, int32_t* pWrittenCountOut);
 
     void        Destroy();
     void        SuspendAllThreads(bool waitForGCEvent);

@@ -81,6 +81,8 @@ struct ThreadBuffer
 #endif // HOST_64BIT
     PTR_ExInfo              m_pExInfoStackHead;
     Object*                 m_threadAbortException;                 // ThreadAbortException instance -set only during thread abort
+    PTR_PTR_VOID            m_pThreadLocalModuleStatics;
+    uint32_t                m_numThreadLocalModuleStatics;
     PTR_VOID                m_pStackLow;
     PTR_VOID                m_pStackHigh;
     PTR_UInt8               m_pTEB;                                 // Pointer to OS TEB structure for this thread
@@ -96,8 +98,6 @@ struct ThreadBuffer
     uint32_t          m_numDynamicTypesTlsCells;
     PTR_PTR_UInt8   m_pDynamicTypesTlsCells;
 
-    PTR_PTR_VOID    m_pThreadLocalModuleStatics;
-    uint32_t          m_numThreadLocalModuleStatics;
 };
 
 struct ReversePInvokeFrame
@@ -266,7 +266,7 @@ public:
     void SetThreadAbortException(Object *exception);
 
     Object* GetThreadStaticStorageForModule(uint32_t moduleIndex);
-    Boolean SetThreadStaticStorageForModule(Object * pStorage, uint32_t moduleIndex);
+    bool SetThreadStaticStorageForModule(Object* pStorage, uint32_t moduleIndex);
 };
 
 #ifndef __GCENV_BASE_INCLUDED__

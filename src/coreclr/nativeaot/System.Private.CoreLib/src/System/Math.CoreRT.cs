@@ -113,12 +113,6 @@ namespace System
         }
 
         [Intrinsic]
-        public static int ILogB(double x)
-        {
-            return RuntimeImports.ilogb(x);
-        }
-
-        [Intrinsic]
         public static double Log(double d)
         {
             return RuntimeImports.log(d);

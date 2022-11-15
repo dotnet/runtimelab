@@ -50,6 +50,6 @@ where `<Configuration>` is your project configuration (such as Debug or Release)
 > dotnet publish -r win-x64 -c release
 ```
 
-Once completed, you can find the native executable in the root folder of your project under `/bin/<Configuration>/net5.0/<RID>/publish/`. Navigate to `/bin/<Configuration>/net5.0/<RID>/publish/` in your project folder and run the produced native executable.
+Once completed, you can find the native executable in the root folder of your project under `/bin/<Configuration>/net6.0/<RID>/publish/`. Navigate to `/bin/<Configuration>/net6.0/<RID>/publish/` in your project folder and run the produced native executable.
 
 Feel free to modify the sample application and experiment. However, keep in mind some functionality might not yet be supported in NativeAOT. Let us know on the [Issues page](https://github.com/dotnet/runtimelab/issues).

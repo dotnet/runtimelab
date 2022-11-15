@@ -32,7 +32,7 @@ namespace System.Diagnostics.CodeAnalysis
 
         /// <summary>
         /// Gets or sets an optional URL that contains more information about the method,
-        /// why it requries dynamic code, and what options a consumer has to deal with it.
+        /// why it requires dynamic code, and what options a consumer has to deal with it.
         /// </summary>
         public string? Url { get; set; }
     }

@@ -18,7 +18,7 @@ namespace Internal.Runtime.CompilerHelpers
         /// Helper for array allocations via `newobj` IL instruction. Dimensions are passed in as block of integers.
         /// The content of the dimensions block may be modified by the helper.
         /// </summary>
-        [UnconditionalSuppressMessage("AotAnalysis", "IL9700:RequiresDynamicCode",
+        [UnconditionalSuppressMessage("AotAnalysis", "IL3050:RequiresDynamicCode",
             Justification = "The compiler ensures that if we have a TypeHandle of a Rank-1 MdArray, we also generated the SzArray.")]
         public static unsafe Array NewObjArray(IntPtr pEEType, int nDimensions, int* pDimensions)
         {

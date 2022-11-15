@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 
+using Internal.IL;
 using Internal.Text;
 using Internal.TypeSystem;
 
@@ -14,15 +15,27 @@ namespace ILCompiler.DependencyAnalysis
 {
     public abstract partial class ReadyToRunGenericHelperNode : AssemblyStubNode, INodeWithRuntimeDeterminedDependencies
     {
-        private ReadyToRunHelperId _id;
-        private object _target;
-        protected TypeSystemEntity _dictionaryOwner;
-        protected GenericLookupResult _lookupSignature;
+        private readonly ReadyToRunHelperId _id;
+        private readonly object _target;
+        protected readonly TypeSystemEntity _dictionaryOwner;
+        protected readonly GenericLookupResult _lookupSignature;
+
+        // True if any of slots in dictionaries associated with this layout could not be filled
+        // at compile time due to a TypeSystemException. Only query through HandlesInvalidEntries
+        // below so that we can assert this is not queried at an inappropriate time before
+        // the whole program view has been established.
+        private bool _hasInvalidEntries;
 
         public ReadyToRunHelperId Id => _id;
         public Object Target => _target;
         public TypeSystemEntity DictionaryOwner => _dictionaryOwner;
         public GenericLookupResult LookupSignature => _lookupSignature;
+
+        public bool HandlesInvalidEntries(NodeFactory factory)
+        {
+            Debug.Assert(factory.MarkingComplete);
+            return _hasInvalidEntries;
+        }
 
         public ReadyToRunGenericHelperNode(NodeFactory factory, ReadyToRunHelperId helperId, object target, TypeSystemEntity dictionaryOwner)
         {
@@ -143,12 +156,28 @@ namespace ILCompiler.DependencyAnalysis
                     break;
             }
 
-            // All generic lookups depend on the thing they point to
-            result.Add(new DependencyListEntry(
-                        _lookupSignature.GetTarget(factory, lookupContext),
-                        "Dictionary dependency"));
+            try
+            {
+                // All generic lookups depend on the thing they point to
+                result.Add(new DependencyListEntry(
+                            _lookupSignature.GetTarget(factory, lookupContext),
+                            "Dictionary dependency"));
+            }
+            catch (TypeSystemException)
+            {
+                // If there was an exception, we're going to generate a null slot in the associated
+                // dictionary. The helper needs to be able to handle a null slot and tailcall
+                // and exception throwing helper instead of returning a result.
+                _hasInvalidEntries = true;
+                result.Add(GetBadSlotHelper(factory), "Failure to build dictionary slot");
+            }
 
             return result.ToArray();
+        }
+
+        private static IMethodNode GetBadSlotHelper(NodeFactory factory)
+        {
+            return factory.MethodEntrypoint(factory.TypeSystemContext.GetHelperEntryPoint("ThrowHelpers", "ThrowUnavailableType"));
         }
 
         protected void AppendLookupSignatureMangledName(NameMangler nameMangler, Utf8StringBuilder sb)

@@ -16,7 +16,7 @@ jobs:
       buildArgs: -s nativeaot+libs+nativeaot.packages -lc release -rc checked
       extraStepsTemplate: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
       extraStepsParameters:
-        smokeTestsOnly: false
+        testFilter: ''
         runSingleFileTests: false
 
 
@@ -35,5 +35,5 @@ jobs:
       buildArgs: -s nativeaot+libs+nativeaot.packages -c $(_BuildConfig) /p:ArchiveTests=true
       extraStepsTemplate: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
       extraStepsParameters:
-        smokeTestsOnly: false
+        testFilter: ''
         runSingleFileTests: false

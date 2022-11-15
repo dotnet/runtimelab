@@ -13,14 +13,24 @@ namespace ILCompiler.Dataflow
 {
     internal static class DynamicallyAccessedMembersBinder
     {
-        // Returns the members of the type bound by memberTypes.
-        public static IEnumerable<TypeSystemEntity> GetDynamicallyAccessedMembers(this TypeDesc typeDefinition, DynamicallyAccessedMemberTypes memberTypes)
+        // Returns the members of the type bound by memberTypes. For DynamicallyAccessedMemberTypes.All, this returns all members of the type and its
+        // nested types, including interface implementations, plus the same or any base types or implemented interfaces.
+        // DynamicallyAccessedMemberTypes.PublicNestedTypes and NonPublicNestedTypes do the same for members of the selected nested types.
+        public static IEnumerable<TypeSystemEntity> GetDynamicallyAccessedMembers(this TypeDesc typeDefinition, DynamicallyAccessedMemberTypes memberTypes, bool declaredOnly = false)
         {
+            if (memberTypes == DynamicallyAccessedMemberTypes.None)
+                yield break;
+
             if (memberTypes == DynamicallyAccessedMemberTypes.All)
             {
-                yield return null;
+                var members = new List<TypeSystemEntity>();
+                typeDefinition.GetAllOnType(declaredOnly, members);
+                foreach (var m in members)
+                    yield return m;
                 yield break;
             }
+
+            var declaredOnlyFlags = declaredOnly ? BindingFlags.DeclaredOnly : BindingFlags.Default;
 
             if (memberTypes.HasFlag(DynamicallyAccessedMemberTypes.NonPublicConstructors))
             {
@@ -42,61 +52,73 @@ namespace ILCompiler.Dataflow
 
             if (memberTypes.HasFlag(DynamicallyAccessedMemberTypes.NonPublicMethods))
             {
-                foreach (var m in typeDefinition.GetMethodsOnTypeHierarchy(filter: null, bindingFlags: BindingFlags.NonPublic))
+                foreach (var m in typeDefinition.GetMethodsOnTypeHierarchy(filter: null, bindingFlags: BindingFlags.NonPublic | declaredOnlyFlags))
                     yield return m;
             }
 
             if (memberTypes.HasFlag(DynamicallyAccessedMemberTypes.PublicMethods))
             {
-                foreach (var m in typeDefinition.GetMethodsOnTypeHierarchy(filter: null, bindingFlags: BindingFlags.Public))
+                foreach (var m in typeDefinition.GetMethodsOnTypeHierarchy(filter: null, bindingFlags: BindingFlags.Public | declaredOnlyFlags))
                     yield return m;
             }
 
             if (memberTypes.HasFlag(DynamicallyAccessedMemberTypes.NonPublicFields))
             {
-                foreach (var f in typeDefinition.GetFieldsOnTypeHierarchy(filter: null, bindingFlags: BindingFlags.NonPublic))
+                foreach (var f in typeDefinition.GetFieldsOnTypeHierarchy(filter: null, bindingFlags: BindingFlags.NonPublic | declaredOnlyFlags))
                     yield return f;
             }
 
             if (memberTypes.HasFlag(DynamicallyAccessedMemberTypes.PublicFields))
             {
-                foreach (var f in typeDefinition.GetFieldsOnTypeHierarchy(filter: null, bindingFlags: BindingFlags.Public))
+                foreach (var f in typeDefinition.GetFieldsOnTypeHierarchy(filter: null, bindingFlags: BindingFlags.Public | declaredOnlyFlags))
                     yield return f;
             }
 
             if (memberTypes.HasFlag(DynamicallyAccessedMemberTypes.NonPublicNestedTypes))
             {
                 foreach (var t in typeDefinition.GetNestedTypesOnType(filter: null, bindingFlags: BindingFlags.NonPublic))
+                {
                     yield return t;
+                    var members = new List<TypeSystemEntity>();
+                    t.GetAllOnType(declaredOnly: false, members);
+                    foreach (var m in members)
+                        yield return m;
+                }
             }
 
             if (memberTypes.HasFlag(DynamicallyAccessedMemberTypes.PublicNestedTypes))
             {
                 foreach (var t in typeDefinition.GetNestedTypesOnType(filter: null, bindingFlags: BindingFlags.Public))
+                {
                     yield return t;
+                    var members = new List<TypeSystemEntity>();
+                    t.GetAllOnType(declaredOnly: false, members);
+                    foreach (var m in members)
+                        yield return m;
+                }
             }
 
             if (memberTypes.HasFlag(DynamicallyAccessedMemberTypes.NonPublicProperties))
             {
-                foreach (var p in typeDefinition.GetPropertiesOnTypeHierarchy(filter: null, bindingFlags: BindingFlags.NonPublic))
+                foreach (var p in typeDefinition.GetPropertiesOnTypeHierarchy(filter: null, bindingFlags: BindingFlags.NonPublic | declaredOnlyFlags))
                     yield return p;
             }
 
             if (memberTypes.HasFlag(DynamicallyAccessedMemberTypes.PublicProperties))
             {
-                foreach (var p in typeDefinition.GetPropertiesOnTypeHierarchy(filter: null, bindingFlags: BindingFlags.Public))
+                foreach (var p in typeDefinition.GetPropertiesOnTypeHierarchy(filter: null, bindingFlags: BindingFlags.Public | declaredOnlyFlags))
                     yield return p;
             }
 
             if (memberTypes.HasFlag(DynamicallyAccessedMemberTypes.NonPublicEvents))
             {
-                foreach (var e in typeDefinition.GetEventsOnTypeHierarchy(filter: null, bindingFlags: BindingFlags.NonPublic))
+                foreach (var e in typeDefinition.GetEventsOnTypeHierarchy(filter: null, bindingFlags: BindingFlags.NonPublic | declaredOnlyFlags))
                     yield return e;
             }
 
             if (memberTypes.HasFlag(DynamicallyAccessedMemberTypes.PublicEvents))
             {
-                foreach (var e in typeDefinition.GetEventsOnTypeHierarchy(filter: null, bindingFlags: BindingFlags.Public))
+                foreach (var e in typeDefinition.GetEventsOnTypeHierarchy(filter: null, bindingFlags: BindingFlags.Public | declaredOnlyFlags))
                     yield return e;
             }
         }
@@ -178,7 +200,10 @@ namespace ILCompiler.Dataflow
                     yield return method;
                 }
 
-                type = type.BaseType;
+                if ((bindingFlags & BindingFlags.DeclaredOnly) == BindingFlags.DeclaredOnly)
+                    yield break;
+
+                type = type.TryGetBaseType();
                 onBaseType = true;
             }
         }
@@ -216,7 +241,10 @@ namespace ILCompiler.Dataflow
                     yield return field;
                 }
 
-                type = type.BaseType;
+                if ((bindingFlags & BindingFlags.DeclaredOnly) == BindingFlags.DeclaredOnly)
+                    yield break;
+
+                type = type.TryGetBaseType();
                 onBaseType = true;
             }
         }
@@ -307,7 +335,10 @@ namespace ILCompiler.Dataflow
                     yield return property;
                 }
 
-                type = type.BaseType;
+                if ((bindingFlags & BindingFlags.DeclaredOnly) == BindingFlags.DeclaredOnly)
+                    yield break;
+
+                type = type.TryGetBaseType();
                 onBaseType = true;
             }
         }
@@ -372,9 +403,114 @@ namespace ILCompiler.Dataflow
                     yield return @event;
                 }
 
-                type = type.BaseType;
+                if ((bindingFlags & BindingFlags.DeclaredOnly) == BindingFlags.DeclaredOnly)
+                    yield break;
+
+                type = type.TryGetBaseType();
                 onBaseType = true;
             }
+        }
+
+        // declaredOnly will cause this to retrieve interfaces recursively required by the type, but doesn't necessarily
+        // include interfaces required by any base types.
+        public static IEnumerable<DefType> GetAllInterfaceImplementations(this TypeDesc type, bool declaredOnly)
+        {
+            while (type != null)
+            {
+                foreach (DefType i in type.TryGetExplicitlyImplementedInterfaces())
+                {
+                    yield return i;
+
+                    // declaredOnly here doesn't matter since interfaces don't have base types
+                    foreach (DefType innerInterface in i.GetAllInterfaceImplementations(declaredOnly: true))
+                        yield return innerInterface;
+                }
+
+                if (declaredOnly)
+                    yield break;
+
+                type = type.TryGetBaseType();
+            }
+        }
+
+        // declaredOnly will cause this to retrieve only members of the type, not of its base types. This includes interfaces recursively
+        // required by this type (but not members of these interfaces, or interfaces required only by base types).
+        public static void GetAllOnType(this TypeDesc type, bool declaredOnly, List<TypeSystemEntity> members) => GetAllOnType(type, declaredOnly, members, new HashSet<TypeDesc>());
+
+        private static void GetAllOnType(TypeDesc type, bool declaredOnly, List<TypeSystemEntity> members, HashSet<TypeDesc> types)
+        {
+            if (!types.Add(type))
+                return;
+
+            if (type is MetadataType mdType)
+            {
+                foreach (MetadataType nested in mdType.GetNestedTypes())
+                {
+                    members.Add(nested);
+                    // Base types and interfaces of nested types are always included.
+                    GetAllOnType(nested, declaredOnly: false, members, types);
+                }
+            }
+
+            if (!declaredOnly)
+            {
+                DefType baseType = type.TryGetBaseType();
+                if (baseType != null)
+                    GetAllOnType(baseType, declaredOnly: false, members, types);
+            }
+
+            if (declaredOnly)
+            {
+                foreach (DefType iface in type.GetAllInterfaceImplementations(declaredOnly: true))
+                    members.Add(iface);
+            }
+            else
+            {
+                foreach (DefType interfaceType in type.TryGetExplicitlyImplementedInterfaces())
+                {
+                    members.Add(interfaceType);
+                    GetAllOnType(interfaceType, declaredOnly: false, members, types);
+                }
+            }
+
+            foreach (var f in type.GetFields())
+                members.Add(f);
+
+            foreach (var m in type.GetMethods())
+                members.Add(m);
+
+            foreach (var p in type.GetPropertiesOnTypeHierarchy(filter: null, BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.DeclaredOnly))
+                members.Add(p);
+
+            foreach (var e in type.GetEventsOnTypeHierarchy(filter: null, BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.DeclaredOnly))
+                members.Add(e);
+        }
+
+        private static DefType TryGetBaseType(this TypeDesc type)
+        {
+            try
+            {
+                return type.BaseType;
+            }
+            catch (TypeSystemException)
+            {
+                return null;
+            }
+        }
+
+        private static DefType[] TryGetExplicitlyImplementedInterfaces(this TypeDesc type)
+        {
+            if (type is MetadataType mdType)
+            {
+                try
+                {
+                    return mdType.ExplicitlyImplementedInterfaces;
+                }
+                catch (TypeSystemException)
+                {
+                }
+            }
+            return Array.Empty<DefType>();
         }
     }
 

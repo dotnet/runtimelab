@@ -55,72 +55,60 @@ namespace Internal.Runtime.CompilerHelpers
 
         internal static unsafe void StringToByValAnsiString(string str, byte* pNative, int charCount, bool bestFit, bool throwOnUnmappableChar)
         {
-            // In CoreRT charCount = Min(SizeConst, str.Length). So we don't need to truncate again.
-            PInvokeMarshal.StringToByValAnsiString(str, pNative, charCount, bestFit, throwOnUnmappableChar, truncate: false);
+            if (str != null)
+            {
+                // Truncate the string if it is larger than specified by SizeConst
+                int lenUnicode = str.Length;
+                if (lenUnicode >= charCount)
+                    lenUnicode = charCount - 1;
+
+                fixed (char* pManaged = str)
+                {
+                    PInvokeMarshal.StringToAnsiString(pManaged, lenUnicode, pNative, /*terminateWithNull=*/true, bestFit, throwOnUnmappableChar);
+                }
+            }
+            else
+            {
+                (*pNative) = (byte)'\0';
+            }
         }
 
         public static unsafe string ByValAnsiStringToString(byte* buffer, int length)
         {
-            return PInvokeMarshal.ByValAnsiStringToString(buffer, length);
+            int end = SpanHelpers.IndexOf(ref *(byte*)buffer, 0, length);
+            if (end != -1)
+            {
+                length = end;
+            }
+
+            return new string((sbyte*)buffer, 0, length);
         }
 
         internal static unsafe void StringToUnicodeFixedArray(string str, ushort* buffer, int length)
         {
-            if (buffer == null)
-                return;
+            ReadOnlySpan<char> managed = str;
+            Span<char> native = new Span<char>((char*)buffer, length);
 
-            if (str == null)
-            {
-                buffer[0] = '\0';
-                return;
-            }
+            int numChars = Math.Min(managed.Length, length - 1);
 
-            Debug.Assert(str.Length >= length);
-
-            fixed (char* pStr = str)
-            {
-                int size = length * sizeof(char);
-                Buffer.MemoryCopy(pStr, buffer, size, size);
-                *(buffer + length) = 0;
-            }
+            managed.Slice(0, numChars).CopyTo(native);
+            native[numChars] = '\0';
         }
 
         internal static unsafe string UnicodeToStringFixedArray(ushort* buffer, int length)
         {
-            if (buffer == null)
-                return string.Empty;
-
-            string result = string.Empty;
-
-            if (length > 0)
+            int end = SpanHelpers.IndexOf(ref *(char*)buffer, '\0', length);
+            if (end != -1)
             {
-                result = new string(' ', length);
-
-                fixed (char* pTemp = result)
-                {
-                    int size = length * sizeof(char);
-                    Buffer.MemoryCopy(buffer, pTemp, size, size);
-                }
+                length = end;
             }
-            return result;
+
+            return new string((char*)buffer, 0, length);
         }
 
         internal static unsafe char* StringToUnicodeBuffer(string str)
         {
-            if (str == null)
-                return null;
-
-            int stringLength = str.Length;
-
-            char* buffer = (char*)Marshal.AllocCoTaskMem(sizeof(char) * (stringLength + 1));
-
-            fixed (char* pStr = str)
-            {
-                int size = stringLength * sizeof(char);
-                Buffer.MemoryCopy(pStr, buffer, size, size);
-                *(buffer + stringLength) = '\0';
-            }
-            return buffer;
+            return (char*)Marshal.StringToCoTaskMemUni(str);
         }
 
         public static unsafe byte* AllocMemoryForAnsiStringBuilder(StringBuilder sb)
@@ -287,6 +275,8 @@ namespace Internal.Runtime.CompilerHelpers
         [MethodImpl(MethodImplOptions.NoInlining)]
         internal static unsafe IntPtr ResolvePInvokeSlow(MethodFixupCell* pCell)
         {
+            int lastSystemError = Marshal.GetLastSystemError();
+
             ModuleFixupCell* pModuleCell = pCell->Module;
             IntPtr hModule = pModuleCell->Handle;
             if (hModule == IntPtr.Zero)
@@ -296,6 +286,9 @@ namespace Internal.Runtime.CompilerHelpers
             }
 
             FixupMethodCell(hModule, pCell);
+
+            Marshal.SetLastSystemError(lastSystemError);
+
             return pCell->Target;
         }
 

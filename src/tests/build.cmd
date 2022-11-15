@@ -46,16 +46,17 @@ set __BuildTestProject=%%3B
 set __BuildTestDir=%%3B
 set __BuildTestTree=%%3B
 
-set __SkipRestorePackages=
+set __BuildLogRootName=TestBuild
+
+set __SkipRestorePackages=0
 set __SkipManaged=
 set __SkipTestWrappers=
 set __BuildTestWrappersOnly=
 set __SkipNative=
-set __TargetsWindows=1
-set __DoCrossgen2=
 set __CompositeBuildMode=
 set __TestBuildMode=
 set __CreatePdb=
+set __CreatePerfmap=
 set __CopyNativeTestBinaries=0
 set __CopyNativeProjectsAfterCombinedTestBuild=true
 set __SkipGenerateLayout=0
@@ -68,7 +69,6 @@ set __CMakeArgs=
 @REM appears to CMD parsing as "-priority 1". Handle -priority specially to avoid problems,
 @REM and allow the "-priority=1" syntax.
 set __Priority=0
-set __PriorityArg=
 
 set __BuildNeedTargetArg=
 
@@ -107,17 +107,19 @@ if /i "%1" == "test"                  (set __BuildTestProject=!__BuildTestProjec
 if /i "%1" == "dir"                   (set __BuildTestDir=!__BuildTestDir!%2%%3B&set processedArgs=!processedArgs! %1 %2&shift&shift&goto Arg_Loop)
 if /i "%1" == "tree"                  (set __BuildTestTree=!__BuildTestTree!%2%%3B&set processedArgs=!processedArgs! %1 %2&shift&shift&goto Arg_Loop)
 
+if /i "%1" == "log"                   (set __BuildLogRootName=%2&set processedArgs=!processedArgs! %1 %2&shift&shift&goto Arg_Loop)
+
 if /i "%1" == "copynativeonly"        (set __CopyNativeTestBinaries=1&set __SkipNative=1&set __CopyNativeProjectsAfterCombinedTestBuild=false&set __SkipGenerateLayout=1&set __SkipTestWrappers=1&set __SkipCrossgenFramework=1&set processedArgs=!processedArgs! %1&shift&goto Arg_Loop)
 if /i "%1" == "generatelayoutonly"    (set __SkipManaged=1&set __SkipNative=1&set __CopyNativeProjectsAfterCombinedTestBuild=false&set processedArgs=!processedArgs! %1&shift&goto Arg_Loop)
 if /i "%1" == "buildtestwrappersonly" (set __SkipNative=1&set __SkipManaged=1&set __BuildTestWrappersOnly=1&set __SkipGenerateLayout=1&set processedArgs=!processedArgs! %1&shift&goto Arg_Loop)
 if /i "%1" == "-cmakeargs"            (set __CMakeArgs="%2=%3" %__CMakeArgs%&set "processedArgs=!processedArgs! %1 %2=%3"&shift&shift&goto Arg_Loop)
 if /i "%1" == "-msbuild"              (set __Ninja=0&set processedArgs=!processedArgs! %1&shift&goto Arg_Loop)
 if /i "%1" == "buildagainstpackages"  (echo error: Remove /BuildAgainstPackages switch&&exit /b1)
-if /i "%1" == "crossgen2"             (set __DoCrossgen2=1&set __TestBuildMode=crossgen2&set processedArgs=!processedArgs! %1&shift&goto Arg_Loop)
-if /i "%1" == "composite"             (set __CompositeBuildMode=1&set __DoCrossgen2=1&set __TestBuildMode=crossgen2&set processedArgs=!processedArgs! %1&shift&goto Arg_Loop)
-if /i "%1" == "pdb"                   (set __CreatePdb=1&shift&goto Arg_Loop)
+if /i "%1" == "crossgen2"             (set __TestBuildMode=crossgen2&set processedArgs=!processedArgs! %1&shift&goto Arg_Loop)
+if /i "%1" == "composite"             (set __CompositeBuildMode=1&set __TestBuildMode=crossgen2&set processedArgs=!processedArgs! %1&shift&goto Arg_Loop)
+if /i "%1" == "pdb"                   (set __CreatePdb=1&set processedArgs=!processedArgs! %1&shift&goto Arg_Loop)
 if /i "%1" == "nativeaot"             (set __TestBuildMode=nativeaot&set processedArgs=!processedArgs! %1&shift&goto Arg_Loop)
-if /i "%1" == "targetsNonWindows"     (set __TargetsWindows=0&set processedArgs=!processedArgs! %1&shift&goto Arg_Loop)
+if /i "%1" == "perfmap"               (set __CreatePerfmap=1&set processedArgs=!processedArgs! %1&shift&goto Arg_Loop)
 if /i "%1" == "Exclude"               (set __Exclude=%2&set processedArgs=!processedArgs! %1 %2&shift&shift&goto Arg_Loop)
 if /i "%1" == "-priority"             (set __Priority=%2&shift&set processedArgs=!processedArgs! %1=%2&shift&goto Arg_Loop)
 if /i "%1" == "allTargets"            (set "__BuildNeedTargetArg=/p:CLRTestBuildAllTargets=%1"&set processedArgs=!processedArgs! %1&shift&goto Arg_Loop)
@@ -135,31 +137,7 @@ if [!processedArgs!]==[] (
 
 :ArgsDone
 
-@REM Special handling for -priority=N argument.
-if %__Priority% GTR 0 (
-    set "__PriorityArg=/p:CLRTestPriorityToBuild=%__Priority%"
-)
-
-set TargetsWindowsArg=
-set TargetsWindowsMsbuildArg=
-if "%__TargetsWindows%"=="1" (
-    set TargetsWindowsArg=-TargetsWindows=true
-    set TargetsWindowsMsbuildArg=/p:TargetsWindows=true
-) else if "%__TargetsWindows%"=="0" (
-    set TargetsWindowsArg=-TargetsWindows=false
-    set TargetsWindowsMsbuildArg=/p:TargetsWindows=false
-)
-
-if "%__Mono%"=="1" (
-  set __RuntimeFlavor=mono
-) else (
-  set __RuntimeFlavor=coreclr
-)
-
 @if defined _echo @echo on
-
-set __CommonMSBuildArgs=/p:TargetOS=%__TargetOS% /p:Configuration=%__BuildType% /p:TargetArchitecture=%__BuildArch%
-set __msbuildArgs=/p:TargetOS=%__TargetOS% /p:Configuration=%__BuildType% /p:TargetArchitecture=%__BuildArch% /nologo /verbosity:minimal /clp:Summary /maxcpucount /p:TestBuildMode=%__TestBuildMode%
 
 echo %__MsgPrefix%Commencing CoreCLR test build
 
@@ -170,12 +148,11 @@ set "__TestBinDir=%__TestRootDir%\%__OSPlatformConfig%"
 set "__TestIntermediatesDir=%__TestRootDir%\obj\%__OSPlatformConfig%"
 
 if "%__RebuildTests%" == "1" (
-    echo Removing tests build dir^: !__TestBinDir!
+    echo Removing test build dir^: !__TestBinDir!
     rmdir /s /q !__TestBinDir!
+    echo Removing test intermediate dir^: !__TestIntermediatesDir!
+    rmdir /s /q !__TestIntermediatesDir!
 )
-
-if not defined XunitTestBinBase set XunitTestBinBase=%__TestBinDir%\
-set "CORE_ROOT=%XunitTestBinBase%\Tests\Core_Root"
 
 REM We have different managed and native intermediate dirs because the managed bits will include
 REM the configuration information deeper in the intermediates path.
@@ -201,13 +178,34 @@ if not exist "%__MsbuildDebugLogsDir%"          md "%__MsbuildDebugLogsDir%"
 REM Set up the directory for MSBuild debug logs.
 set MSBUILDDEBUGPATH=%__MsbuildDebugLogsDir%
 
+set __CommonMSBuildArgs="/p:TargetOS=%__TargetOS%"
+set __CommonMSBuildArgs=%__CommonMSBuildArgs% "/p:Configuration=%__BuildType%"
+set __CommonMSBuildArgs=%__CommonMSBuildArgs% "/p:TargetArchitecture=%__BuildArch%"
+
+if "%__Mono%"=="1" (
+  set __CommonMSBuildArgs=!__CommonMSBuildArgs! "/p:RuntimeFlavor=mono"
+) else (
+  set __CommonMSBuildArgs=!__CommonMSBuildArgs! "/p:RuntimeFlavor=coreclr"
+)
+
+if %__Ninja% == 0 (
+    set __CommonMSBuildArgs=%__CommonMSBuildArgs% /p:UseVisualStudioNativeBinariesLayout=true
+)
+
+set __msbuildArgs=%__CommonMSBuildArgs% /nologo /verbosity:minimal /clp:Summary /maxcpucount %__UnprocessedBuildArgs%
+
+echo Common MSBuild args: %__msbuildArgs%
+
 REM =========================================================================================
 REM ===
 REM === Native test build section
 REM ===
 REM =========================================================================================
 
-if defined __SkipNative goto skipnative
+if "%__SkipNative%" == "1" goto skipnative
+if "%__BuildTestWrappersOnly%" == "1" goto skipnative
+if "%__GenerateLayoutOnly%" == "1" goto skipnative
+if "%__CopyNativeTestBinaries%" == "1" goto skipnative
 
 echo %__MsgPrefix%Commencing build of native test components for %__BuildArch%/%__BuildType%
 
@@ -262,15 +260,6 @@ if not exist "%__NativeTestIntermediatesDir%\CMakeCache.txt" (
 
 echo Environment setup
 
-set __BuildLogRootName=Tests_Native
-set __BuildLog="%__LogsDir%\!__BuildLogRootName!_%__TargetOS%__%__BuildArch%__%__BuildType%.log"
-set __BuildWrn="%__LogsDir%\!__BuildLogRootName!_%__TargetOS%__%__BuildArch%__%__BuildType%.wrn"
-set __BuildErr="%__LogsDir%\!__BuildLogRootName!_%__TargetOS%__%__BuildArch%__%__BuildType%.err"
-set __MsbuildLog=/flp:Verbosity=normal;LogFile=!__BuildLog!
-set __MsbuildWrn=/flp1:WarningsOnly;LogFile=!__BuildWrn!
-set __MsbuildErr=/flp2:ErrorsOnly;LogFile=!__BuildErr!
-set __Logging=!__MsbuildLog! !__MsbuildWrn! !__MsbuildErr!
-
 set __CmakeBuildToolArgs=
 
 if /i "%__BuildArch%" == "wasm" (
@@ -278,6 +267,7 @@ if /i "%__BuildArch%" == "wasm" (
     echo __Ninja is %__Ninja%
     "%CMakePath%" --build %__NativeTestIntermediatesDir% --target install --config %__BuildType% -- /nologo
 ) else (
+<<<<<<< HEAD
     if %__Ninja% EQU 1 (
         set __CmakeBuildToolArgs=
     ) else (
@@ -285,6 +275,10 @@ if /i "%__BuildArch%" == "wasm" (
         set __CmakeBuildToolArgs=/nologo /m !__Logging!
     )
     "%CMakePath%" --build %__NativeTestIntermediatesDir% --target install --config %__BuildType% -- !__CmakeBuildToolArgs!
+=======
+    REM We pass the /m flag directly to MSBuild so that we can get both MSBuild and CL parallelism, which is fastest for our builds.
+    set __CmakeBuildToolArgs=/nologo /m
+>>>>>>> feature/NativeAOT-final
 )
 
 
@@ -297,30 +291,31 @@ if errorlevel 1 (
 
 REM =========================================================================================
 REM ===
-REM === Restore product binaries from packages
+REM === Restore packages, build managed tests, generate layout and test wrappers, Crossgen framework
 REM ===
 REM =========================================================================================
 
-if "%__SkipRestorePackages%" == "1" goto SkipRestoreProduct
+set __BuildLog="%__LogsDir%\!__BuildLogRootName!_%__TargetOS%__%__BuildArch%__%__BuildType%.log"
+set __BuildWrn="%__LogsDir%\!__BuildLogRootName!_%__TargetOS%__%__BuildArch%__%__BuildType%.wrn"
+set __BuildErr="%__LogsDir%\!__BuildLogRootName!_%__TargetOS%__%__BuildArch%__%__BuildType%.err"
+set __BuildBinLog="%__LogsDir%\!__BuildLogRootName!_%__TargetOS%__%__BuildArch%__%__BuildType%.binlog"
+set __MsbuildLog=/flp:Verbosity=normal;LogFile=!__BuildLog!
+set __MsbuildWrn=/flp1:WarningsOnly;LogFile=!__BuildWrn!
+set __MsbuildErr=/flp2:ErrorsOnly;LogFile=!__BuildErr!
+set __MsbuildBinLog=/bl:!__BuildBinLog!
+set __Logging='!__MsbuildLog!' '!__MsbuildWrn!' '!__MsbuildErr!' '!__MsbuildBinLog!'
 
-echo %__MsgPrefix%Restoring CoreCLR product from packages
-
-set __BuildLogRootName=Restore_Product
-set __BuildLog=%__LogsDir%\%__BuildLogRootName%_%__TargetOS%__%__BuildArch%__%__BuildType%.log
-set __BuildWrn=%__LogsDir%\%__BuildLogRootName%_%__TargetOS%__%__BuildArch%__%__BuildType%.wrn
-set __BuildErr=%__LogsDir%\%__BuildLogRootName%_%__TargetOS%__%__BuildArch%__%__BuildType%.err
-set __MsbuildLog=/flp:Verbosity=normal;LogFile="%__BuildLog%"
-set __MsbuildWrn=/flp1:WarningsOnly;LogFile="%__BuildWrn%"
-set __MsbuildErr=/flp2:ErrorsOnly;LogFile="%__BuildErr%"
-set __Logging='!__MsbuildLog!' '!__MsbuildWrn!' '!__MsbuildErr!'
-
-powershell -NoProfile -ExecutionPolicy ByPass -NoLogo -Command "%__RepoRootDir%\eng\common\msbuild.ps1" %__ArcadeScriptArgs%^
-  %__RepoRootDir%\src\tests\build.proj -warnAsError:0 /t:BatchRestorePackages /nodeReuse:false^
+set BuildCommand=powershell -NoProfile -ExecutionPolicy ByPass -NoLogo -Command "%__RepoRootDir%\eng\common\msbuild.ps1" %__ArcadeScriptArgs%^
+  %__RepoRootDir%\src\tests\build.proj -warnAsError:0 /t:TestBuild /nodeReuse:false^
   /p:RestoreDefaultOptimizationDataPackage=false /p:PortableBuild=true^
-  /p:UsePartialNGENOptimization=false /maxcpucount^
-  !__Logging! %__CommonMSBuildArgs% %__PriorityArg% %__BuildNeedTargetArg% %__UnprocessedBuildArgs%
+  /p:UsePartialNGENOptimization=false /maxcpucount %__Logging%^
+  %__msbuildArgs%
+
+echo %BuildCommand%
+%BuildCommand%
 
 if errorlevel 1 (
+<<<<<<< HEAD
     echo %__ErrMsgPrefix%%__MsgPrefix%Error: Package restoration failed. Refer to the build log files for details:
     echo     %__BuildLog%
     echo     %__BuildWrn%
@@ -517,6 +512,9 @@ REM Build wrappers using the local SDK's msbuild. As we move to arcade, the othe
 call "%__RepoRootDir%\dotnet.cmd" msbuild %__RepoRootDir%\src\tests\run.proj /nodereuse:false /p:BuildWrappers=true /p:TestBuildMode=%__TestBuildMode% !__Logging! %__msbuildArgs% %TargetsWindowsMsbuildArg% %__UnprocessedBuildArgs% /p:RuntimeFlavor=%__RuntimeFlavor%
 if errorlevel 1 (
     echo %__ErrMsgPrefix%%__MsgPrefix%Error: XUnit wrapper build failed. Refer to the build log files for details:
+=======
+    echo %__ErrMsgPrefix%%__MsgPrefix%Error: Test build failed. Refer to the build log files for details:
+>>>>>>> feature/NativeAOT-final
     echo     %__BuildLog%
     echo     %__BuildWrn%
     echo     %__BuildErr%
@@ -524,28 +522,6 @@ if errorlevel 1 (
 )
 
 echo { "build_os": "%__TargetOS%", "build_arch": "%__BuildArch%", "build_type": "%__BuildType%" } > "%__TestBinDir%/build_info.json"
-
-:SkipBuildingWrappers
-
-REM =========================================================================================
-REM ===
-REM === Crossgen assemblies if needed.
-REM ===
-REM =========================================================================================
-
-if defined __SkipCrossgenFramework goto SkipCrossgen
-if defined __BuildTestWrappersOnly goto SkipCrossgen
-
-if defined __DoCrossgen2 (
-    echo %__MsgPrefix%Running crossgen2 on framework assemblies in CORE_ROOT: %CORE_ROOT%
-    call :PrecompileFX
-    if ERRORLEVEL 1 (
-        echo %__ErrMsgPrefix%%__MsgPrefix%Error: crossgen2 precompilation of framework assemblies failed
-        exit /b 1
-    )
-)
-
-:SkipCrossgen
 
 REM =========================================================================================
 REM ===
@@ -591,53 +567,10 @@ echo test ^<xxx^>: Only build test project ^<xxx^> ^(relative or absolute projec
 echo dir ^<xxx^>: Build all test projects in the folder ^<xxx^> ^(relative or absolute folder under src\tests^)
 echo tree ^<xxx^>: Build all test projects in the subtree ^<xxx^> ^(relative or absolute folder under src\tests^)
 echo rebuild: Clean up all test artifacts prior to building tests
-echo allTargets: Build managed tests for all target platforms.
+echo allTargets: Build managed tests for all target platforms (including test projects in which CLRTestTargetUnsupported resolves to true)
 echo -verbose: enables detailed file logging for the msbuild tasks into the msbuild log file.
+echo log: base file name to use for log files (used in lab pipelines that build tests in multiple steps to retain logs for each step)
 exit /b 1
-
-:PrecompileFX
-
-set "__CrossgenOutputDir=%__TestIntermediatesDir%\crossgen.out"
-
-set __CrossgenCmd="%__RepoRootDir%\dotnet.cmd" "%CORE_ROOT%\R2RTest\R2RTest.dll" compile-framework -cr "%CORE_ROOT%" --output-directory "%__CrossgenOutputDir%" --release --nocleanup --target-arch %__BuildArch% -dop %NUMBER_OF_PROCESSORS% -m "%CORE_ROOT%\StandardOptimizationData.mibc"
-
-if defined __CreatePdb (
-    set __CrossgenCmd=!__CrossgenCmd! --pdb
-)
-
-if defined __CompositeBuildMode (
-    set __CrossgenCmd=%__CrossgenCmd% --composite
-) else (
-    set __CrossgenCmd=%__CrossgenCmd% --crossgen2-parallelism 1
-)
-
-set __CrossgenDir=%__BinDir%
-if /i "%__BuildArch%" == "arm" (
-    set __CrossgenDir=!__CrossgenDir!\x64
-)
-if /i "%__BuildArch%" == "arm64" (
-    set __CrossgenDir=!__CrossgenDir!\x64
-)
-if /i "%__BuildArch%" == "x86" (
-    set __CrossgenDir=!__CrossgenDir!\x64
-)
-set __CrossgenCmd=%__CrossgenCmd% --verify-type-and-field-layout --crossgen2-path "!__CrossgenDir!\crossgen2\crossgen2.dll"
-
-echo Running %__CrossgenCmd%
-call %__CrossgenCmd%
-if %errorlevel% neq 0 (
-    echo Failed to crossgen the framework
-    exit /b 1
-)
-
-move /Y "%__CrossgenOutputDir%\*.dll" %CORE_ROOT% > nul
-
-if defined __CreatePdb (
-    move /Y "!__CrossgenOutputDir!\*.ni.pdb" !CORE_ROOT! > nul
-    copy /Y "!__BinDir!\PDB\System.Private.CoreLib.ni.pdb" !CORE_ROOT! > nul
-)
-
-exit /b 0
 
 REM Exit_Failure:
 REM This is necessary because of a(n apparent) bug in the FOR /L command.  Under certain circumstances,

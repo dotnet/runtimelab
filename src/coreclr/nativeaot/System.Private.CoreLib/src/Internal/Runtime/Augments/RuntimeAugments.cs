@@ -123,7 +123,7 @@ namespace Internal.Runtime.Augments
         // As a concession to the fact that we don't actually support non-zero lower bounds, "lowerBounds" accepts "null"
         // to avoid unnecessary array allocations by the caller.
         //
-        [UnconditionalSuppressMessage("AotAnalysis", "IL9700:RequiresDynamicCode",
+        [UnconditionalSuppressMessage("AotAnalysis", "IL3050:RequiresDynamicCode",
             Justification = "The compiler ensures that if we have a TypeHandle of a Rank-1 MdArray, we also generated the SzArray.")]
         public static unsafe Array NewMultiDimArray(RuntimeTypeHandle typeHandleForArrayType, int[] lengths, int[]? lowerBounds)
         {

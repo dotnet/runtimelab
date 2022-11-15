@@ -49,13 +49,6 @@ namespace Internal.JitInterface
             WASM32 = 0xffff, // matches llvm.h - TODO better to just #if out this check in compiler.cpp?
             WASM64 = 0xfffe,
         }
-        private enum CFI_OPCODE
-        {
-            CFI_ADJUST_CFA_OFFSET,    // Offset is adjusted relative to the current one.
-            CFI_DEF_CFA_REGISTER,     // New register is used to compute CFA
-            CFI_REL_OFFSET,           // Register is saved at offset from the current CFA
-            CFI_DEF_CFA               // Take address from register and add offset to it.
-        };
 
         internal const string JitLibrary = "clrjitilc";
 
@@ -110,8 +103,20 @@ namespace Internal.JitInterface
             private static readonly IntPtr s_jit;
         }
 
+        private struct LikelyClassRecord
+        {
+            public IntPtr clsHandle;
+            public uint likelihood;
+
+            public LikelyClassRecord(IntPtr clsHandle, uint likelihood)
+            {
+                this.clsHandle = clsHandle;
+                this.likelihood = likelihood;
+            }
+        }
+
         [DllImport(JitLibrary)]
-        private extern static IntPtr getLikelyClass(PgoInstrumentationSchema* schema, uint countSchemaItems, byte*pInstrumentationData, int ilOffset, out uint pLikelihood, out uint pNumberOfClasses);
+        private extern static uint getLikelyClasses(LikelyClassRecord* pLikelyClasses, uint maxLikelyClasses, PgoInstrumentationSchema* schema, uint countSchemaItems, byte*pInstrumentationData, int ilOffset);
 
         [DllImport(JitSupportLibrary)]
         private extern static IntPtr GetJitHost(IntPtr configProvider);
@@ -137,6 +142,9 @@ namespace Internal.JitInterface
         [DllImport(JitSupportLibrary)]
         private extern static IntPtr AllocException([MarshalAs(UnmanagedType.LPWStr)]string message, int messageLength);
 
+        [DllImport(JitSupportLibrary)]
+        private extern static void JitSetOs(IntPtr jit, CORINFO_OS os);
+
         private IntPtr AllocException(Exception ex)
         {
             _lastException = ExceptionDispatchInfo.Capture(ex);
@@ -157,9 +165,10 @@ namespace Internal.JitInterface
         [DllImport(JitSupportLibrary)]
         private extern static char* GetExceptionMessage(IntPtr obj);
 
-        public static void Startup()
+        public static void Startup(CORINFO_OS os)
         {
             jitStartup(GetJitHost(JitConfigProvider.Instance.UnmanagedInstance));
+            JitSetOs(JitPointerAccessor.Get(), os);
         }
 
         public static void Shutdown()
@@ -248,7 +257,7 @@ namespace Internal.JitInterface
 
         private static PgoSchemaElem? ComputeLikelyClass(int index, Dictionary<IntPtr, object> handleToObject, PgoInstrumentationSchema[] nativeSchema, byte[] instrumentationData, CompilationModuleGroup compilationModuleGroup)
         {
-            // getLikelyClass will use two entries from the native schema table. There must be at least two present to avoid ovberruning the buffer
+            // getLikelyClasses will use two entries from the native schema table. There must be at least two present to avoid overruning the buffer
             if (index > (nativeSchema.Length - 2))
                 return null;
 
@@ -256,11 +265,13 @@ namespace Internal.JitInterface
             {
                 fixed(byte* pInstrumentationData = &instrumentationData[0])
                 {
-                    IntPtr classType = getLikelyClass(pSchema, 2, pInstrumentationData, nativeSchema[index].ILOffset, out uint likelihood, out uint numberOfClasses);
+                    // We're going to store only the most popular type to reduce size of the profile
+                    LikelyClassRecord* likelyClasses = stackalloc LikelyClassRecord[1];
+                    uint numberOfClasses = getLikelyClasses(likelyClasses, 1, pSchema, 2, pInstrumentationData, nativeSchema[index].ILOffset);
 
-                    if (classType != IntPtr.Zero)
+                    if (numberOfClasses > 0)
                     {
-                        TypeDesc type = (TypeDesc)handleToObject[classType];
+                        TypeDesc type = (TypeDesc)handleToObject[likelyClasses->clsHandle];
 #if READYTORUN
                         if (compilationModuleGroup.VersionsWithType(type))
 #endif
@@ -269,7 +280,7 @@ namespace Internal.JitInterface
                             likelyClassElem.InstrumentationKind = PgoInstrumentationKind.GetLikelyClass;
                             likelyClassElem.ILOffset = nativeSchema[index].ILOffset;
                             likelyClassElem.Count = 1;
-                            likelyClassElem.Other = (int)(likelihood | (numberOfClasses << 8));
+                            likelyClassElem.Other = (int)(likelyClasses->likelihood | (numberOfClasses << 8));
                             likelyClassElem.DataObject = new TypeSystemEntityOrUnknown[] { new TypeSystemEntityOrUnknown(type) };
                             return likelyClassElem;
                         }
@@ -362,6 +373,24 @@ namespace Internal.JitInterface
 #endif
             }
 
+            if (codeSize < _code.Length)
+            {
+                if (_compilation.TypeSystemContext.Target.Architecture != TargetArchitecture.ARM64)
+                {
+                    // For xarch/arm32, the generated code is sometimes smaller than the memory allocated.
+                    // In that case, trim the codeBlock to the actual value.
+                    //
+                    // For arm64, the allocation request of `hotCodeSize` also includes the roData size
+                    // while the `codeSize` returned just contains the size of the native code. As such,
+                    // there is guarantee that for armarch, (codeSize == _code.Length) is always true.
+                    //
+                    // Currently, hot/cold splitting is not done and hence `codeSize` just includes the size of
+                    // hotCode. Once hot/cold splitting is done, need to trim respective `_code` or `_coldCode`
+                    // accordingly.
+                    Debug.Assert(codeSize != 0);
+                    Array.Resize(ref _code, (int)codeSize);
+                }
+            }
             PublishCode();
             PublishROData();
         }
@@ -554,6 +583,8 @@ namespace Internal.JitInterface
             _actualInstructionSetUnsupported = default(InstructionSetFlags);
 #endif
 
+            _instantiationToJitVisibleInstantiation = null;
+
             _pgoResults.Clear();
         }
 
@@ -640,6 +671,25 @@ namespace Internal.JitInterface
             return true;
         }
 
+        private Dictionary<Instantiation, IntPtr[]> _instantiationToJitVisibleInstantiation = null;
+        private CORINFO_CLASS_STRUCT_** GetJitInstantiation(Instantiation inst)
+        {
+            IntPtr [] jitVisibleInstantiation;
+            if (_instantiationToJitVisibleInstantiation == null)
+            {
+                _instantiationToJitVisibleInstantiation = new Dictionary<Instantiation, IntPtr[]>();
+            }
+
+            if (!_instantiationToJitVisibleInstantiation.TryGetValue(inst, out jitVisibleInstantiation))
+            {
+                jitVisibleInstantiation =  new IntPtr[inst.Length];
+                for (int i = 0; i < inst.Length; i++)
+                    jitVisibleInstantiation[i] = (IntPtr)ObjectToHandle(inst[i]);
+                _instantiationToJitVisibleInstantiation.Add(inst, jitVisibleInstantiation);
+            }
+            return (CORINFO_CLASS_STRUCT_**)GetPin(jitVisibleInstantiation);
+        }
+
         private void Get_CORINFO_SIG_INFO(MethodDesc method, CORINFO_SIG_INFO* sig, bool suppressHiddenArgument = false)
         {
             Get_CORINFO_SIG_INFO(method.Signature, sig);
@@ -662,12 +712,15 @@ namespace Internal.JitInterface
                 // JIT doesn't care what the instantiation is and this is expensive.
                 Instantiation owningTypeInst = method.OwningType.Instantiation;
                 sig->sigInst.classInstCount = (uint)owningTypeInst.Length;
-                if (owningTypeInst.Length > 0)
+                if (owningTypeInst.Length != 0)
                 {
-                    var classInst = new IntPtr[owningTypeInst.Length];
-                    for (int i = 0; i < owningTypeInst.Length; i++)
-                        classInst[i] = (IntPtr)ObjectToHandle(owningTypeInst[i]);
-                    sig->sigInst.classInst = (CORINFO_CLASS_STRUCT_**)GetPin(classInst);
+                    sig->sigInst.classInst = GetJitInstantiation(owningTypeInst);
+                }
+
+                sig->sigInst.methInstCount = (uint)method.Instantiation.Length;
+                if (method.Instantiation.Length != 0)
+                {
+                    sig->sigInst.methInst = GetJitInstantiation(method.Instantiation);
                 }
             }
 
@@ -1909,7 +1962,7 @@ namespace Internal.JitInterface
                 result |= CorInfoFlag.CORINFO_FLG_VALUECLASS;
 
                 if (metadataType.IsByRefLike)
-                    result |= CorInfoFlag.CORINFO_FLG_CONTAINS_STACK_PTR;
+                    result |= CorInfoFlag.CORINFO_FLG_BYREF_LIKE;
 
                 // The CLR has more complicated rules around CUSTOMLAYOUT, but this will do.
                 if (metadataType.IsExplicitLayout || (metadataType.IsSequentialLayout && metadataType.GetClassLayout().Size != 0) || metadataType.IsWellKnownType(WellKnownType.TypedReference))
@@ -1960,13 +2013,6 @@ namespace Internal.JitInterface
 #endif
 
             return (uint)result;
-        }
-
-        private bool isStructRequiringStackAllocRetBuf(CORINFO_CLASS_STRUCT_* cls)
-        {
-            // Disable this optimization. It has limited value (only kicks in on x86, and only for less common structs),
-            // causes bugs and introduces odd ABI differences not compatible with ReadyToRun.
-            return false;
         }
 
         private CORINFO_MODULE_STRUCT_* getClassModule(CORINFO_CLASS_STRUCT_* cls)
@@ -2698,9 +2744,13 @@ namespace Internal.JitInterface
 
         private uint getArrayRank(CORINFO_CLASS_STRUCT_* cls)
         {
+            uint rank = 0;
             var td = HandleToObject(cls) as ArrayType;
-            Debug.Assert(td != null);
-            return (uint)td.Rank;
+            if (td != null)
+            {
+                rank = (uint)td.Rank;
+            }
+            return rank;
         }
 
         private void* getArrayInitializationData(CORINFO_FIELD_STRUCT_* field, uint size)
@@ -2936,6 +2986,12 @@ namespace Internal.JitInterface
         private void ThrowExceptionForHelper(ref CORINFO_HELPER_DESC throwHelper)
         { throw new NotImplementedException("ThrowExceptionForHelper"); }
 
+        public static CORINFO_OS TargetToOs(TargetDetails target)
+        {
+            return target.IsWindows ? CORINFO_OS.CORINFO_WINNT :
+                   target.IsOSX ? CORINFO_OS.CORINFO_MACOS : CORINFO_OS.CORINFO_UNIX;
+        }
+
         private void getEEInfo(ref CORINFO_EE_INFO pEEInfoOut)
         {
             pEEInfoOut = new CORINFO_EE_INFO();
@@ -2962,7 +3018,7 @@ namespace Internal.JitInterface
                 new UIntPtr(32 * 1024 - 1) : new UIntPtr((uint)pEEInfoOut.osPageSize / 2 - 1);
 
             pEEInfoOut.targetAbi = TargetABI;
-            pEEInfoOut.osType = _compilation.NodeFactory.Target.IsWindows ? CORINFO_OS.CORINFO_WINNT : CORINFO_OS.CORINFO_UNIX;
+            pEEInfoOut.osType = TargetToOs(_compilation.NodeFactory.Target);
         }
 
         private char* getJitTimeLogFilename()
@@ -3107,7 +3163,7 @@ namespace Internal.JitInterface
             }
         }
 
-        private void getFunctionFixedEntryPoint(CORINFO_METHOD_STRUCT_* ftn, ref CORINFO_CONST_LOOKUP pResult)
+        private void getFunctionFixedEntryPoint(CORINFO_METHOD_STRUCT_* ftn, bool isUnsafeFunctionPointer, ref CORINFO_CONST_LOOKUP pResult)
         { throw new NotImplementedException("getFunctionFixedEntryPoint"); }
 
         private CorInfoHelpFunc getLazyStringLiteralHelper(CORINFO_MODULE_STRUCT_* handle)
@@ -3232,7 +3288,7 @@ namespace Internal.JitInterface
             // Slow tailcalls are not supported yet
             // https://github.com/dotnet/runtime/issues/35423
 #if READYTORUN
-            throw new NotImplementedException(nameof(getTailCallHelpers));
+            throw new RequiresRuntimeJitException(nameof(getTailCallHelpers));
 #else
             return false;
 #endif
@@ -3331,147 +3387,16 @@ namespace Internal.JitInterface
                 blobData[i] = pUnwindBlock[i];
             }
 
+#if !READYTORUN
             var target = _compilation.TypeSystemContext.Target;
 
             if (target.Architecture == TargetArchitecture.ARM64 && target.OperatingSystem == TargetOS.Linux)
             {
                 blobData = CompressARM64CFI(blobData);
             }
+#endif
 
             _frameInfos[_usedFrameInfos++] = new FrameInfo(flags, (int)startOffset, (int)endOffset, blobData);
-        }
-
-        // Get the CFI data in the same shape as clang/LLVM generated one. This improves the compatibility with libunwind and other unwind solutions
-        // - Combine in one single block for the whole prolog instead of one CFI block per assembler instruction
-        // - Store CFA definition first
-        // - Store all used registers in ascending order
-        private byte[] CompressARM64CFI(byte[] blobData)
-        {
-            if (blobData == null || blobData.Length == 0)
-            {
-                return blobData;
-            }
-
-            Debug.Assert(blobData.Length % 8 == 0);
-
-            short spReg = -1;
-
-            int codeOffset = 0;
-            short cfaRegister = spReg;
-            int cfaOffset = 0;
-            int spOffset = 0;
-
-            int[] registerOffset = new int[96]; 
-
-            for (int i = 0; i < registerOffset.Length; i++)
-            {
-                registerOffset[i] = int.MinValue;
-            }
-
-            int offset = 0;
-            while (offset < blobData.Length)
-            {
-                codeOffset = Math.Max(codeOffset, blobData[offset++]);
-                CFI_OPCODE opcode = (CFI_OPCODE)blobData[offset++];
-                short dwarfReg = BitConverter.ToInt16(blobData, offset);
-                offset += sizeof(short);
-                int cfiOffset = BitConverter.ToInt32(blobData, offset);
-                offset += sizeof(int);
-
-                switch (opcode)
-                {
-                    case CFI_OPCODE.CFI_DEF_CFA_REGISTER:
-                        cfaRegister = dwarfReg;
-
-                        if (spOffset != 0)
-                        {
-                            for (int i = 0; i < registerOffset.Length; i++)
-                            {
-                                if (registerOffset[i] != int.MinValue)
-                                {
-                                    registerOffset[i] -= spOffset;
-                                }
-                            }
-
-                            cfaOffset += spOffset;
-                            spOffset = 0;
-                        }
-
-                        break;
-
-                    case CFI_OPCODE.CFI_REL_OFFSET:
-                        Debug.Assert(cfaRegister == spReg);
-                        registerOffset[dwarfReg] = cfiOffset;
-                        break;
-
-                    case CFI_OPCODE.CFI_ADJUST_CFA_OFFSET:
-                        if (cfaRegister != spReg)
-                        {
-                            cfaOffset += cfiOffset;
-                        }
-                        else
-                        {
-                            spOffset += cfiOffset;
-
-                            for (int i = 0; i < registerOffset.Length; i++)
-                            {
-                                if (registerOffset[i] != int.MinValue)
-                                {
-                                    registerOffset[i] += cfiOffset;
-                                }
-                            }
-                        }
-                        break;
-                }
-            }
-
-            using (MemoryStream cfiStream = new MemoryStream())
-            {
-                int storeOffset = 0;
-
-                using (BinaryWriter cfiWriter = new BinaryWriter(cfiStream))
-                {
-                    if (cfaRegister != -1)
-                    {
-                        cfiWriter.Write((byte)codeOffset);
-                        cfiWriter.Write(cfaOffset != 0 ? (byte)CFI_OPCODE.CFI_DEF_CFA : (byte)CFI_OPCODE.CFI_DEF_CFA_REGISTER);
-                        cfiWriter.Write(cfaRegister);
-                        cfiWriter.Write(cfaOffset);
-                        storeOffset = cfaOffset;
-                    }
-                    else
-                    {
-                        if (cfaOffset != 0)
-                        {
-                            cfiWriter.Write((byte)codeOffset);
-                            cfiWriter.Write((byte)CFI_OPCODE.CFI_ADJUST_CFA_OFFSET);
-                            cfiWriter.Write((short)-1);
-                            cfiWriter.Write(cfaOffset);
-                        }
-
-                        if (spOffset != 0)
-                        {
-                            cfiWriter.Write((byte)codeOffset);
-                            cfiWriter.Write((byte)CFI_OPCODE.CFI_DEF_CFA);
-                            cfiWriter.Write((short)31); 
-                            cfiWriter.Write(spOffset);
-                        }
-                    }
-
-                    for (int i = registerOffset.Length - 1; i >= 0; i--)
-                    {
-                        if (registerOffset[i] != int.MinValue)
-                        {
-                            cfiWriter.Write((byte)codeOffset);
-                            cfiWriter.Write((byte)CFI_OPCODE.CFI_REL_OFFSET);
-                            cfiWriter.Write((short)i);
-                            cfiWriter.Write(registerOffset[i] + storeOffset);
-                        }
-                    }
-                }
-
-                return cfiStream.ToArray();
-            }
         }
 
         private void* allocGCInfo(UIntPtr size)
@@ -3915,7 +3840,7 @@ namespace Internal.JitInterface
             instrumentationData = msInstrumentationData.ToArray();
         }
 
-        private HRESULT getPgoInstrumentationResults(CORINFO_METHOD_STRUCT_* ftnHnd, ref PgoInstrumentationSchema* pSchema, ref uint countSchemaItems, byte** pInstrumentationData, 
+        private HRESULT getPgoInstrumentationResults(CORINFO_METHOD_STRUCT_* ftnHnd, ref PgoInstrumentationSchema* pSchema, ref uint countSchemaItems, byte** pInstrumentationData,
             ref PgoSource pPgoSource)
         {
             MethodDesc methodDesc = HandleToObject(ftnHnd);

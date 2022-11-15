@@ -432,13 +432,22 @@ PALAPI
 PAL_SetShutdownCallback(
     IN PSHUTDOWN_CALLBACK callback);
 
+// Must be the same as the copy in excep.h and the WriteDumpFlags enum in the diagnostics repo
+enum
+{
+    GenerateDumpFlagsNone = 0x00,
+    GenerateDumpFlagsLoggingEnabled = 0x01,
+    GenerateDumpFlagsVerboseLoggingEnabled = 0x02,
+    GenerateDumpFlagsCrashReportEnabled = 0x04
+};
+
 PALIMPORT
 BOOL
 PALAPI
 PAL_GenerateCoreDump(
     IN LPCSTR dumpName,
     IN INT dumpType,
-    IN BOOL diag);
+    IN ULONG32 flags);
 
 typedef VOID (*PPAL_STARTUP_CALLBACK)(
     char *modulePath,
@@ -2731,6 +2740,11 @@ PALAPI
 PAL_GetSymbolModuleBase(PVOID symbol);
 
 PALIMPORT
+int
+PALAPI
+PAL_CopyModuleData(PVOID moduleBase, PVOID destinationBufferStart, PVOID destinationBufferEnd);;
+
+PALIMPORT
 LPCSTR
 PALAPI
 PAL_GetLoadLibraryError();
@@ -2742,6 +2756,13 @@ PAL_VirtualReserveFromExecutableMemoryAllocatorWithinRange(
     IN LPCVOID lpBeginAddress,
     IN LPCVOID lpEndAddress,
     IN SIZE_T dwSize);
+
+PALIMPORT
+void
+PALAPI
+PAL_GetExecutableMemoryAllocatorPreferredRange(
+    OUT PVOID *start,
+    OUT PVOID *end);
 
 PALIMPORT
 LPVOID
@@ -3234,6 +3255,54 @@ FORCEINLINE void PAL_ArmInterlockedOperationBarrier()
     // prevent that reordering. Code generated for arm32 includes a 'dmb' after 'cbnz', so no issue there at the moment.
     __sync_synchronize();
 #endif // HOST_ARM64
+}
+
+/*++
+Function:
+InterlockedAdd
+
+The InterlockedAdd function adds the value of the specified variable 
+with another specified value. The function prevents more than one thread 
+from using the same variable simultaneously.
+
+Parameters
+
+lpAddend
+[in/out] Pointer to the variable to add.
+
+lpAddend
+[in] The value to add.
+
+Return Values
+
+The return value is the resulting added value.
+--*/
+EXTERN_C
+PALIMPORT
+inline
+LONG
+PALAPI
+InterlockedAdd(
+    IN OUT LONG volatile *lpAddend,
+    IN LONG value)
+{
+    LONG result = __sync_add_and_fetch(lpAddend, value);
+    PAL_ArmInterlockedOperationBarrier();
+    return result;
+}
+
+EXTERN_C
+PALIMPORT
+inline
+LONGLONG
+PALAPI
+InterlockedAdd64(
+    IN OUT LONGLONG volatile *lpAddend,
+    IN LONGLONG value)
+{
+    LONGLONG result = __sync_add_and_fetch(lpAddend, value);
+    PAL_ArmInterlockedOperationBarrier();
+    return result;
 }
 
 /*++

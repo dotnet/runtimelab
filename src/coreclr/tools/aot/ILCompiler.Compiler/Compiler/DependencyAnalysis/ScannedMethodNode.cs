@@ -23,6 +23,10 @@ namespace ILCompiler.DependencyAnalysis
         private readonly MethodDesc _method;
         private DependencyList _dependencies;
 
+        // If we failed to scan the method, the dependencies reported by the node will
+        // be for a throwing method body. This field will store the underlying cause of the failure.
+        private TypeSystemException _exception;
+
         public ScannedMethodNode(MethodDesc method)
         {
             Debug.Assert(!method.IsAbstract);
@@ -32,13 +36,15 @@ namespace ILCompiler.DependencyAnalysis
 
         public MethodDesc Method => _method;
 
+        public TypeSystemException Exception => _exception;
+
         public int Offset => 0;
 
         public bool RepresentsIndirectionCell => false;
 
         public override bool StaticDependenciesAreComputed => _dependencies != null;
 
-        public void InitializeDependencies(NodeFactory factory, IEnumerable<DependencyListEntry> dependencies)
+        public void InitializeDependencies(NodeFactory factory, IEnumerable<DependencyListEntry> dependencies, TypeSystemException scanningException = null)
         {
             _dependencies = new DependencyList(dependencies);
 
@@ -51,6 +57,8 @@ namespace ILCompiler.DependencyAnalysis
                 MethodDesc nonUnboxingMethod = factory.TypeSystemContext.GetTargetOfSpecialUnboxingThunk(_method);
                 _dependencies.Add(new DependencyListEntry(factory.MethodEntrypoint(nonUnboxingMethod, false), "Non-unboxing method"));
             }
+
+            _exception = scanningException;
         }
 
         public void AppendMangledName(NameMangler nameMangler, Utf8StringBuilder sb)

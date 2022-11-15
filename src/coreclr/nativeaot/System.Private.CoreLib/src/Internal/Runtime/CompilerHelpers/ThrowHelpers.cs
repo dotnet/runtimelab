@@ -28,6 +28,11 @@ namespace Internal.Runtime.CompilerHelpers
             throw new NotSupportedException(SR.NotSupported_InstanceBodyRemoved);
         }
 
+        internal static void ThrowUnavailableType()
+        {
+            throw new TypeLoadException(SR.Arg_UnavailableTypeLoadException);
+        }
+
         public static void ThrowOverflowException()
         {
             throw new OverflowException();
