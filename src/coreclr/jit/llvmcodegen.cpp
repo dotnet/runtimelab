@@ -305,12 +305,24 @@ Value* Llvm::getGenTreeValue(GenTree* op)
 //    targetLlvmType - the LLVM type through which the user uses "node"
 //
 // Return Value:
-//    The normalized value, of "targetLlvmType" type.
+//    The normalized value, of "targetLlvmType" type. If the latter wasn't
+//    provided, the raw value is returned, except for small types, which
+//    are still extended to INT.
 //
 Value* Llvm::consumeValue(GenTree* node, Type* targetLlvmType)
 {
     Value* nodeValue = getGenTreeValue(node);
     Value* finalValue = nodeValue;
+
+    if (targetLlvmType == nullptr)
+    {
+        if (!nodeValue->getType()->isIntegerTy())
+        {
+            return finalValue;
+        }
+
+        targetLlvmType = getLlvmTypeForVarType(genActualType(node));
+    }
 
     if (nodeValue->getType() != targetLlvmType)
     {
@@ -407,7 +419,7 @@ void Llvm::visitNode(GenTree* node)
     switch (node->OperGet())
     {
         case GT_ADD:
-            buildAdd(node, getGenTreeValue(node->AsOp()->gtOp1), getGenTreeValue(node->AsOp()->gtOp2));
+            buildAdd(node->AsOp());
             break;
         case GT_DIV:
             buildDiv(node);
@@ -461,7 +473,7 @@ void Llvm::visitNode(GenTree* node)
         case GT_LT:
         case GT_GE:
         case GT_GT:
-            buildCmp(node, getGenTreeValue(node->AsOp()->gtOp1), getGenTreeValue(node->AsOp()->gtOp2));
+            buildCmp(node->AsOp());
             break;
         case GT_NEG:
         case GT_NOT:
@@ -609,23 +621,30 @@ void Llvm::buildLocalVarAddr(GenTreeLclVarCommon* lclAddr)
     }
 }
 
-void Llvm::buildAdd(GenTree* node, Value* op1, Value* op2)
+void Llvm::buildAdd(GenTreeOp* node)
 {
-    Type* op1Type = op1->getType();
-    if (op1Type->isPointerTy() && op2->getType()->isIntegerTy())
+    Value* op1Value = consumeValue(node->gtGetOp1());
+    Value* op2Value = consumeValue(node->gtGetOp2());
+    Type* op1Type = op1Value->getType();
+    Type* op2Type = op2Value->getType();
+
+    Value* addValue;
+    if (op1Type->isPointerTy() && op2Type->isIntegerTy())
     {
         // GEPs scale indices, bitcasting to i8* makes them equivalent to the raw offsets we have in IR
-        mapGenTreeToValue(node, _builder.CreateGEP(castIfNecessary(op1, Type::getInt8PtrTy(_llvmContext)), op2));
+        addValue = _builder.CreateGEP(castIfNecessary(op1Value, Type::getInt8PtrTy(_llvmContext)), op2Value);
     }
-    else if (op1Type->isIntegerTy() && op2->getType() == op1Type)
+    else if (op1Type->isIntegerTy() && (op1Type == op2Type))
     {
-        mapGenTreeToValue(node, _builder.CreateAdd(op1, op2));
+        addValue = _builder.CreateAdd(op1Value, op2Value);
     }
     else
     {
         // unsupported add type combination
         failFunctionCompilation();
     }
+
+    mapGenTreeToValue(node, addValue);
 }
 
 void Llvm::buildDiv(GenTree* node)
@@ -730,57 +749,62 @@ void Llvm::buildCast(GenTreeCast* cast)
     mapGenTreeToValue(cast, castValue);
 }
 
-void Llvm::buildCmp(GenTree* node, Value* op1, Value* op2)
+void Llvm::buildCmp(GenTreeOp* node)
 {
-    llvm::CmpInst::Predicate llvmPredicate;
+    using Predicate = llvm::CmpInst::Predicate;
 
-    bool isIntOrPtr = op1->getType()->isIntOrPtrTy();
+    bool isIntOrPtr = varTypeIsIntegralOrI(node->gtGetOp1());
+    bool isUnsigned = node->IsUnsigned();
+    bool isUnordered = (node->gtFlags & GTF_RELOP_NAN_UN) != 0;
+    Predicate predicate;
     switch (node->OperGet())
     {
         case GT_EQ:
-            llvmPredicate = isIntOrPtr ? llvm::CmpInst::Predicate::ICMP_EQ : llvm::CmpInst::Predicate::FCMP_OEQ;
+            predicate = isIntOrPtr ? Predicate::ICMP_EQ : (isUnordered ? Predicate::FCMP_UEQ : Predicate::FCMP_OEQ);
             break;
         case GT_NE:
-            llvmPredicate = isIntOrPtr ? llvm::CmpInst::Predicate::ICMP_NE : llvm::CmpInst::Predicate::FCMP_ONE;
+            predicate = isIntOrPtr ? Predicate::ICMP_NE : (isUnordered ? Predicate::FCMP_UNE : Predicate::FCMP_ONE);
             break;
         case GT_LE:
-            llvmPredicate = isIntOrPtr ? (node->IsUnsigned() ? llvm::CmpInst::Predicate::ICMP_ULE : llvm::CmpInst::Predicate::ICMP_SLE)
-                : llvm::CmpInst::Predicate::FCMP_OLE;
+            predicate = isIntOrPtr ? (isUnsigned ? Predicate::ICMP_ULE : Predicate::ICMP_SLE)
+                                   : (isUnordered ? Predicate::FCMP_ULE : Predicate::FCMP_OLE);
             break;
         case GT_LT:
-            llvmPredicate = isIntOrPtr ? (node->IsUnsigned() ? llvm::CmpInst::Predicate::ICMP_ULT : llvm::CmpInst::Predicate::ICMP_SLT)
-                : llvm::CmpInst::Predicate::FCMP_OLT;
+            predicate = isIntOrPtr ? (isUnsigned ? Predicate::ICMP_ULT : Predicate::ICMP_SLT)
+                                   : (isUnordered ? Predicate::FCMP_ULT : Predicate::FCMP_OLT);
             break;
         case GT_GE:
-            llvmPredicate = isIntOrPtr ? (node->IsUnsigned() ? llvm::CmpInst::Predicate::ICMP_UGE : llvm::CmpInst::Predicate::ICMP_SGE)
-                : llvm::CmpInst::Predicate::FCMP_OGE;
+            predicate = isIntOrPtr ? (isUnsigned ? Predicate::ICMP_UGE : Predicate::ICMP_SGE)
+                                   : (isUnordered ? Predicate::FCMP_UGE : Predicate::FCMP_OGE);
             break;
         case GT_GT:
-            llvmPredicate = isIntOrPtr ? (node->IsUnsigned() ? llvm::CmpInst::Predicate::ICMP_UGT : llvm::CmpInst::Predicate::ICMP_SGT)
-                : llvm::CmpInst::Predicate::FCMP_OGT;
+            predicate = isIntOrPtr ? (isUnordered ? Predicate::ICMP_UGT : Predicate::ICMP_SGT)
+                                   : (isUnordered ? Predicate::FCMP_UGT : Predicate::FCMP_OGT);
             break;
         default:
-            failFunctionCompilation(); // TODO all genTreeOps values
-
+            unreached();
     }
-    // comparing refs and ints is valid LIR, but not LLVM so handle that case by converting the int to a ref
-    if (op1->getType() != op2->getType())
+
+    // Comparing refs and ints is valid LIR, but not LLVM so handle that case by converting the int to a ref.
+    Value* op1Value = consumeValue(node->gtGetOp1());
+    Value* op2Value = consumeValue(node->gtGetOp2());
+    Type* op1Type = op1Value->getType();
+    Type* op2Type = op2Value->getType();
+    if (op1Type != op2Type)
     {
-        if (op1->getType()->isPointerTy() && op2->getType()->isIntegerTy())
+        assert((op1Type->isPointerTy() && op2Type->isIntegerTy()) ||
+               (op1Type->isIntegerTy() && op2Type->isPointerTy()));
+        if (op1Type->isPointerTy())
         {
-            op2 = _builder.CreateIntToPtr(op2, op1->getType());
-        }
-        else if (op2->getType()->isPointerTy() && op1->getType()->isIntegerTy())
-        {
-            op1 = _builder.CreateIntToPtr(op1, op2->getType());
+            op2Value = _builder.CreateIntToPtr(op2Value, op1Type);
         }
         else
         {
-            // TODO-LLVM: other valid LIR comparisons
-            failFunctionCompilation();
+            op1Value = _builder.CreateIntToPtr(op1Value, op2Type);
         }
     }
-    mapGenTreeToValue(node, _builder.CreateCmp(llvmPredicate, op1, op2));
+
+    mapGenTreeToValue(node, _builder.CreateCmp(predicate, op1Value, op2Value));
 }
 
 void Llvm::buildCnsDouble(GenTreeDblCon* node)

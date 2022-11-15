@@ -214,7 +214,7 @@ private:
     void fillPhis();
 
     Value* getGenTreeValue(GenTree* node);
-    Value* consumeValue(GenTree* node, Type* targetLlvmType);
+    Value* consumeValue(GenTree* node, Type* targetLlvmType = nullptr);
     void mapGenTreeToValue(GenTree* node, Value* nodeValue);
 
     void startImportingNode();
@@ -225,10 +225,10 @@ private:
     void buildEmptyPhi(GenTreePhi* phi);
     void buildLocalField(GenTreeLclFld* lclFld);
     void buildLocalVarAddr(GenTreeLclVarCommon* lclVar);
-    void buildAdd(GenTree* node, Value* op1, Value* op2);
+    void buildAdd(GenTreeOp* node);
     void buildDiv(GenTree* node);
     void buildCast(GenTreeCast* cast);
-    void buildCmp(GenTree* node, Value* op1, Value* op2);
+    void buildCmp(GenTreeOp* node);
     void buildCnsDouble(GenTreeDblCon* node);
     void buildCnsInt(GenTree* node);
     void buildCnsLng(GenTree* node);
