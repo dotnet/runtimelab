@@ -982,7 +982,8 @@ insGroup* emitter::emitSavIG(bool emitAdd)
         if (last != nullptr)
         {
             // Append the jump(s) from this IG to the global list
-            bool prologJump = (ig == emitPrologIG);
+            bool prologJump = (ig == emitPrologIG)
+                || ((emitPrePrologIG != nullptr) && (ig == emitPrePrologIG));
             if ((emitJumpList == nullptr) || prologJump)
             {
                 last->idjNext = emitJumpList;
@@ -1163,11 +1164,26 @@ void emitter::emitBegFN(bool hasFramePtr
     emitInInstrumentation = false;
 #endif // PSEUDORANDOM_NOP_INSERTION
 
-    /* Create the first IG, it will be used for the prolog */
+    // Create the first IG, it will be used for the preprolog if it exists.
+    // Otherwise it will be the prolog.
 
     emitNxtIGnum = 1;
 
-    emitPrologIG = emitIGlist = emitIGlast = emitCurIG = ig = emitAllocIG();
+    emitIGlist = emitIGlast = emitCurIG = ig = emitAllocIG();
+
+#if defined(WINDOWS_AMD64_ABI)
+    bool greenThreads = !emitComp->IsTargetAbi(CORINFO_NATIVEAOT_ABI);
+    if (greenThreads)
+    {
+        emitPrePrologIG = ig;
+        emitPrologIG = ig = emitAllocAndLinkIG();
+    }
+    else
+#endif // !defined(WINDOWS_AMD64_ABI) || !greenThreads
+    {
+        emitPrePrologIG = nullptr;
+        emitPrologIG = ig;
+    }
 
     emitLastIns = nullptr;
 
@@ -1425,7 +1441,7 @@ void* emitter::emitAllocAnyInstr(size_t sz, emitAttr opsz)
 
 #ifdef DEBUG
     // Under STRESS_EMITTER, put every instruction in its own instruction group.
-    // We can't do this for a prolog, epilog, funclet prolog, or funclet epilog,
+    // We can't do this for a preprolog, prolog, epilog, funclet prolog, or funclet epilog,
     // because those are generated out of order. We currently have a limitation
     // where the jump shortening pass uses the instruction group number to determine
     // if something is earlier or later in the code stream. This implies that
@@ -1433,7 +1449,7 @@ void* emitter::emitAllocAnyInstr(size_t sz, emitAttr opsz)
     // the prolog/epilog placeholder groups ARE generated in order, and are
     // re-used. But generating additional groups would not work.
     if (emitComp->compStressCompile(Compiler::STRESS_EMITTER, 1) && emitCurIGinsCnt && !emitIGisInProlog(emitCurIG) &&
-        !emitIGisInEpilog(emitCurIG) && !emitCurIG->endsWithAlignInstr()
+        !emitIGisInPreProlog(emitCurIG) && !emitIGisInEpilog(emitCurIG) && !emitCurIG->endsWithAlignInstr()
 #if defined(FEATURE_EH_FUNCLETS)
         && !emitIGisInFuncletProlog(emitCurIG) && !emitIGisInFuncletEpilog(emitCurIG)
 #endif // FEATURE_EH_FUNCLETS
@@ -1449,7 +1465,8 @@ void* emitter::emitAllocAnyInstr(size_t sz, emitAttr opsz)
     //     When nopSize is odd we misalign emitCurIGsize
     //
     if (!emitComp->opts.jitFlags->IsSet(JitFlags::JIT_FLAG_PREJIT) && !emitInInstrumentation &&
-        !emitIGisInProlog(emitCurIG) && // don't do this in prolog or epilog
+        !emitIGisInPreProlog(emitCurIG) && // don't do this in prolog or epilog
+        !emitIGisInProlog(emitCurIG) &&
         !emitIGisInEpilog(emitCurIG) &&
         emitRandomNops // sometimes we turn off where exact codegen is needed (pinvoke inline)
         )
@@ -1623,6 +1640,82 @@ void emitter::emitCheckIGoffsets()
 }
 
 #endif // DEBUG
+
+#if defined(TARGET_AMD64)
+
+void emitter::emitBegPreProlog()
+{
+    emitNoGCRequestCount = 1;
+    emitNoGCIG           = true;
+    emitForceNewIG       = false;
+
+    /* Switch to the pre-allocated preprolog IG */
+
+    emitGenIG(emitPrePrologIG);
+
+    /* Nothing is live on entry to the prolog */
+
+    // These were initialized to Empty at the start of compilation.
+    VarSetOps::ClearD(emitComp, emitInitGCrefVars);
+    VarSetOps::ClearD(emitComp, emitPrevGCrefVars);
+    emitInitGCrefRegs = RBM_NONE;
+    emitPrevGCrefRegs = RBM_NONE;
+    emitInitByrefRegs = RBM_NONE;
+    emitPrevByrefRegs = RBM_NONE;
+}
+
+int UnwindCodeNodeSize(UNWIND_CODE code)
+{
+    int unwindCodeNodeSize = 1;
+    switch (code.UnwindOp)
+    {
+        case UWOP_ALLOC_LARGE:
+            if (code.OpInfo == 0)
+                unwindCodeNodeSize = 2;
+            else
+                unwindCodeNodeSize = 3;
+            break;
+
+        case UWOP_SAVE_XMM128:
+        case UWOP_SAVE_NONVOL:
+            unwindCodeNodeSize = 2;
+            break;
+
+        case UWOP_SAVE_NONVOL_FAR:
+        case UWOP_SAVE_XMM128_FAR:
+            unwindCodeNodeSize = 3;
+            break;
+    }
+    return unwindCodeNodeSize;
+}
+
+void emitter::emitEndPreProlog()
+{
+    auto prePrologSize = emitCurIGsize;
+    // Since the prolog was already created, we now need to update the unwind codes to account for the size of the preprolog
+
+    FuncInfoDsc* func = emitComp->funCurrentFunc();
+    assert(func->unwindHeader.CountOfUnwindCodes == 0); // Can't call this after unwindReserve
+
+    auto unwindCodeStart = (UNWIND_CODE*)&func->unwindCodes[func->unwindCodeSlot];
+    auto unwindCodeEnd = (UNWIND_CODE*)&func->unwindCodes[sizeof(func->unwindCodes)];
+
+    int unwindCodeNodeSize = 1;
+    for (auto unwindCodeCurrent = unwindCodeStart; unwindCodeCurrent != unwindCodeEnd; unwindCodeCurrent += UnwindCodeNodeSize(*unwindCodeCurrent))
+    {
+        uint8_t oldCodeOffset = unwindCodeCurrent->CodeOffset;
+        uint8_t newCodeOffset = (uint8_t)(oldCodeOffset + prePrologSize);
+        assert(newCodeOffset > oldCodeOffset); // I'm not sure if we can overflow here, but an assert should help
+        unwindCodeCurrent->CodeOffset = newCodeOffset;
+    }
+
+    // Ensure the pre-prolog is actually emitted into the instruction group
+    emitSavIG();
+    assert(!emitCurIGnonEmpty());
+}
+
+#endif // defined(TARGET_AMD64)
+
 
 /*****************************************************************************
  *
@@ -3799,6 +3892,10 @@ void emitter::emitDispIG(insGroup* ig, insGroup* igPrev, bool verbose)
         {
             printf(" <-- Prolog IG");
         }
+        if (ig == emitPrePrologIG)
+        {
+            printf(" <-- PreProlog IG");
+        }
         printf("\n");
 
         if (verbose)
@@ -4445,6 +4542,7 @@ void emitter::emitJumpDistBind()
     insGroup*      lstIG;
 #ifdef DEBUG
     insGroup* prologIG = emitPrologIG;
+    insGroup* prePrologIG = emitPrePrologIG;
 #endif // DEBUG
 
     int jmp_iteration = 1;
@@ -4609,6 +4707,7 @@ AGAIN:
         lastLJ = (lastIG == jmp->idjIG) ? jmp : nullptr;
 
         assert(lastIG == nullptr || lastIG->igNum <= jmp->idjIG->igNum || jmp->idjIG == prologIG ||
+               ((prePrologIG != nullptr) && (jmp->idjIG == prePrologIG)) ||
                emitNxtIGnum > unsigned(0xFFFF)); // igNum might overflow
         lastIG = jmp->idjIG;
 #endif // DEBUG
@@ -7035,17 +7134,36 @@ unsigned emitter::emitEndCodeGen(Compiler* comp,
 #ifdef TARGET_XARCH
             assert(jmp->idInsFmt() == IF_LABEL || jmp->idInsFmt() == IF_RWR_LABEL || jmp->idInsFmt() == IF_SWR_LABEL);
 #endif
-            insGroup* tgt = jmp->idAddr()->iiaIGlabel;
+            UNATIVE_OFFSET tgtOffs;
 
-            if (jmp->idjTemp.idjAddr == nullptr)
+            if (jmp->idAddr()->iiaHasInstrCount())
             {
-                continue;
+                int instrCount = jmp->idAddr()->iiaGetInstrCount();
+                if (instrCount < 0)
+                {
+                    continue;
+                }
+
+                insGroup* jmpIG = jmp->idjIG;
+                unsigned jmpNum = emitFindInsNum(jmpIG, jmp);
+                tgtOffs = jmpIG->igOffs + emitFindOffset(jmpIG, (jmpNum + 1 + instrCount));
+            }
+            else
+            {
+                insGroup* tgt = jmp->idAddr()->iiaIGlabel;
+
+                if (jmp->idjTemp.idjAddr == nullptr)
+                {
+                    continue;
+                }
+
+                tgtOffs = tgt->igOffs;
             }
 
-            if (jmp->idjOffs != tgt->igOffs)
+            if (jmp->idjOffs != tgtOffs)
             {
                 BYTE* adr = jmp->idjTemp.idjAddr;
-                int   adj = jmp->idjOffs - tgt->igOffs;
+                int   adj = jmp->idjOffs - tgtOffs;
 #ifdef TARGET_ARM
                 // On Arm, the offset is encoded in unit of 2 bytes.
                 adj >>= 1;

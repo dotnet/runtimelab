@@ -8975,6 +8975,7 @@ public:
 
     bool compUsesThrowHelper; // There is a call to a THROW_HELPER for the compiled method.
 
+    bool compGeneratingPreProlog;
     bool compGeneratingProlog;
     bool compGeneratingEpilog;
     bool compNeedsGSSecurityCookie; // There is an unsafe buffer (or localloc) on the stack.

@@ -5469,6 +5469,86 @@ void CodeGen::genFinalizeFrame()
 
 /*****************************************************************************
  *
+ *  Generates code for a function pre-prolog. This is code that explicitly
+ *  checks the size of available stack space and potentially calls a helper
+ *  to grow it. This is intended to be otherwise transparent to the function,
+ *  so the prolog may execute normally after it.
+ *
+ *  There are lots of details remaining such as unwinding and debugging.
+ *  Scanning through genFnProlog (and other prolog) code will help enumerate
+ *  them.
+ *
+ *  The current implementation is hacky. Currently genFnPreProlog is called
+ *  *after* genFnProlog because genFnProlog does a lot of setup and
+ *  genFnPreProlog is optional (currently only on for x64 but eventually
+ *  some frames will likely skip it).
+ *
+ *  Although currently only being used for TARGET_AMD64, this is eventually
+ *  intended for all architectures, so it is not in codegenxarch.cpp.
+ */
+
+#if defined(TARGET_AMD64)
+void CodeGen::genFnPreProlog()
+{
+    ScopedSetVariable<bool> _setGeneratingPreProlog(&compiler->compGeneratingPreProlog, true);
+
+    compiler->funSetCurrentFunc(0);
+
+#ifdef DEBUG
+    if (verbose)
+    {
+        printf("*************** In genFnPreProlog()\n");
+    }
+#endif
+
+    emitter* emit = GetEmitter();
+
+    emit->emitBegPreProlog();
+
+#ifdef DEBUG
+    if (compiler->opts.dspCode)
+    {
+        printf("\n__preprolog:\n");
+    }
+#endif
+
+    // See src/coreclr/vm/amd64/AsmHelpers.asm
+
+    // TODO: Verify this
+    int frameSize = compiler->compLclFrameSize;
+    const int redZoneSize = 0x1000;
+    const int slopSize = 0x100;
+    int checkSize = frameSize + redZoneSize + slopSize;
+    int checkSizePower2 = 0;
+    for (int checkSizeBits = checkSize; checkSizeBits > 0; checkSizeBits >>= 1)
+    {
+        checkSizePower2++;
+    }
+
+    // "including register args" - verify that this is correct (x64 shadow space)
+    // add return address
+    int argSize = compiler->compArgSize + REGSIZE_BYTES;
+
+    const unsigned bitsForCheckSize = 5;
+    assert(checkSizePower2 < (1 << bitsForCheckSize));
+    const unsigned bitsForArgSize = 26;
+    assert(argSize < (1 << bitsForArgSize));
+
+    int encodedSizes = (checkSizePower2 << bitsForArgSize) | argSize;
+
+    emit->emitIns_R_AR(INS_lea, EA_PTRSIZE, REG_SCRATCH, REG_SPBASE, -checkSize);
+    const int gsOffsetForStackLimit = 0x10;
+    emit->emitIns_R_C(INS_cmp, EA_PTRSIZE, REG_SCRATCH, FLD_GLOBAL_GS, gsOffsetForStackLimit);
+    emit->emitIns_J(INS_ja, nullptr, 2);
+    emit->emitIns_R_I(INS_mov, EA_4BYTE, REG_SCRATCH, encodedSizes);
+    genEmitHelperCall(CORINFO_HELP_GREEN_THREAD_MORE_STACK, 0, EA_UNKNOWN);
+
+    emit->emitEndPreProlog();
+}
+#endif // defined(TARGET_AMD64)
+
+/*****************************************************************************
+ *
  *  Generates code for a function prolog.
  *
  *  NOTE REGARDING CHANGES THAT IMPACT THE DEBUGGER:
@@ -6490,6 +6570,15 @@ void CodeGen::genGeneratePrologsAndEpilogs()
 
     gcInfo.gcResetForBB();
     genFnProlog();
+#if defined(WINDOWS_AMD64_ABI)
+    bool greenThreads = !compiler->IsTargetAbi(CORINFO_NATIVEAOT_ABI);
+    if (greenThreads)
+    {
+        // See comment on genFnPreProlog for why this is after genFnProlog.
+        // (Perhaps genFnProlog could call GenFnPreProlog to clean this up a bit?)
+        genFnPreProlog();
+    }
+#endif // defined(WINDOWS_AMD64_ABI)
 
     // Generate all the prologs and epilogs.
     CLANG_FORMAT_COMMENT_ANCHOR;
