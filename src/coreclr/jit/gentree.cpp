@@ -3350,19 +3350,11 @@ bool Compiler::gtMarkAddrMode(GenTree* addr, int* pCostEx, int* pCostSz, var_typ
     GenTree* base; // This is the base of the address.
     GenTree* idx;  // This is the index.
 
-<<<<<<< HEAD
 #ifdef TARGET_WASM
-    if (genCreateAddrMode(this, addr, false /*fold*/, &rev, &base, &idx,
+    if (genCreateAddrMode(this, addr, false /*fold*/, &rev, &base, &idx, &mul, &cns))
 #else
-    if (codeGen->genCreateAddrMode(addr, false /*fold*/, &rev, &base, &idx,
-#endif
-#if SCALED_ADDR_MODES
-                                   &mul,
-#endif // SCALED_ADDR_MODES
-                                   &cns))
-=======
     if (codeGen->genCreateAddrMode(addr, false /*fold*/, &rev, &base, &idx, &mul, &cns))
->>>>>>> feature/NativeAOT-final
+#endif
     {
 
 #ifdef TARGET_ARMARCH
@@ -3567,7 +3559,7 @@ bool Compiler::gtMarkAddrMode(GenTree* addr, int* pCostEx, int* pCostSz, var_typ
         assert(op1 != op1Save);
         assert(op2 != nullptr);
 
-#if defined(TARGET_XARCH)
+#if defined(TARGET_XARCH) || defined(TARGET_WASM)
         // Walk the operands again (the third operand is unused in this case).
         // This time we will only consider adds with constant op2's, since
         // we have already found either a non-ADD op1 or a non-constant op2.
@@ -3575,10 +3567,6 @@ bool Compiler::gtMarkAddrMode(GenTree* addr, int* pCostEx, int* pCostSz, var_typ
         // this walk makes no sense there.
         gtWalkOp(&op1, &op2, nullptr, true);
 
-<<<<<<< HEAD
-#if defined(TARGET_XARCH) || defined(TARGET_WASM)
-=======
->>>>>>> feature/NativeAOT-final
         // For XARCH we will fold GT_ADDs in the op2 position into the addressing mode, so we call
         // gtWalkOp on both operands of the original GT_ADD.
         // This is not done for ARMARCH. Though the stated reason is that we don't try to create a
@@ -11772,14 +11760,7 @@ void Compiler::gtGetLateArgMsg(GenTreeCall* call, GenTree* argx, int lateArgInde
     assert(curArgTabEntry);
     regNumber argReg = curArgTabEntry->GetRegNum();
 
-<<<<<<< HEAD
-#if !defined(FEATURE_FIXED_OUT_ARGS) && !defined(TARGET_WASM)
-    assert(lateArgIndex < call->regArgListCount);
-    assert(argReg == call->regArgList[lateArgIndex]);
-#else
-=======
-#if FEATURE_FIXED_OUT_ARGS
->>>>>>> feature/NativeAOT-final
+#if defined(FEATURE_FIXED_OUT_ARGS) && !defined(TARGET_WASM)
     if (argReg == REG_STK)
     {
         sprintf_s(bufp, bufLength, "arg%d in out+%02x%c", curArgTabEntry->argNum, curArgTabEntry->GetByteOffset(), 0);
@@ -12048,16 +12029,9 @@ void Compiler::gtDispLIRNode(GenTree* node, const char* prefixMsg /* = nullptr *
             }
             else
             {
-<<<<<<< HEAD
 #ifdef TARGET_WASM
                 // LLVM rewrites the call args, but does not reinitialise the arg infos
-                if(operand->OperIs(GT_PUTARG_TYPE))
-=======
-                fgArgTabEntry* curArgTabEntry = gtArgEntryByNode(call, operand);
-                assert(curArgTabEntry);
-
-                if (!curArgTabEntry->isLateArg())
->>>>>>> feature/NativeAOT-final
+                if (operand->OperIs(GT_PUTARG_TYPE))
                 {
                     GenTreePutArgType* putAarg = operand->AsPutArgType();
                     gtGetArgMsg(call, operand, putAarg->GetArgNum(), buf, sizeof(buf));
@@ -12067,7 +12041,6 @@ void Compiler::gtDispLIRNode(GenTree* node, const char* prefixMsg /* = nullptr *
 #endif // TARGET_WASM
                     fgArgTabEntry* curArgTabEntry = gtArgEntryByNode(call, operand);
                     assert(curArgTabEntry);
-                    assert(operand->OperGet() != GT_LIST);
 
                     if (!curArgTabEntry->isLateArg())
                     {
@@ -12080,6 +12053,7 @@ void Compiler::gtDispLIRNode(GenTree* node, const char* prefixMsg /* = nullptr *
 #ifdef TARGET_WASM
                 }
 #endif // TARGET_WASM
+
                 displayOperand(operand, buf, operandArc, indentStack, prefixIndent);
             }
         }

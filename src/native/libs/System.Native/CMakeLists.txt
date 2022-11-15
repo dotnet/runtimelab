@@ -14,16 +14,6 @@ if (CLR_CMAKE_TARGET_OSX)
     add_definitions(-D_DARWIN_C_SOURCE)
 endif ()
 
-<<<<<<< HEAD:src/libraries/Native/Unix/System.Native/CMakeLists.txt
-# TODO-LLVM: remove when https://github.com/dotnet/runtime/commit/2265a61565e20fc26ca8ec0632eb14268b99158e is merged
-if (CLR_CMAKE_TARGET_UNIX_WASM)
-    add_compile_options(-Wno-unused-but-set-variable)
-endif ()
-
-include_directories("${CLR_SRC_NATIVE_DIR}/common")
-
-=======
->>>>>>> feature/NativeAOT-final:src/native/libs/System.Native/CMakeLists.txt
 set(NATIVE_SOURCES
     pal_dynamicload.c
     pal_errno.c

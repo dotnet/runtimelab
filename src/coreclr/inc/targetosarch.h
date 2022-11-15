@@ -21,6 +21,11 @@ public:
 #else
     static const bool IsMacOS = false;
 #endif
+#elsif defined(TARGET_WASM)
+    static const bool IsWindows = false;
+    static const bool IsUnix = false;
+    static const bool IsMacOS = false;
+    static const bool IsWasm = true;
 #else
 #define TARGET_WINDOWS_POSSIBLY_SUPPORTED
 #define TARGET_UNIX_POSSIBLY_SUPPORTED
@@ -35,25 +40,49 @@ public:
 class TargetArchitecture
 {
 public:
-#ifdef TARGET_ARM
+#ifdef TARGET_WASM32
+    static const bool IsWasm32 = true;
+    static const bool IsWasm64 = false;
+    static const bool IsX86 = false;
+    static const bool IsX64 = false;
+    static const bool IsArm64 = false;
+    static const bool IsArm32 = false;
+    static const bool IsArmArch = false;
+#elif TARGET_WASM64
+    static const bool IsWasm32 = false;
+    static const bool IsWasm64 = true;
+    static const bool IsX86 = false;
+    static const bool IsX64 = false;
+    static const bool IsArm64 = false;
+    static const bool IsArm32 = false;
+    static const bool IsArmArch = false;
+#elif TARGET_ARM
+    static const bool IsWasm32 = false;
+    static const bool IsWasm64 = false;
     static const bool IsX86 = false;
     static const bool IsX64 = false;
     static const bool IsArm64 = false;
     static const bool IsArm32 = true;
     static const bool IsArmArch = true;
 #elif defined(TARGET_ARM64)
+    static const bool IsWasm32 = false;
+    static const bool IsWasm64 = false;
     static const bool IsX86 = false;
     static const bool IsX64 = false;
     static const bool IsArm64 = true;
     static const bool IsArm32 = false;
     static const bool IsArmArch = true;
 #elif defined(TARGET_AMD64)
+    static const bool IsWasm32 = false;
+    static const bool IsWasm64 = false;
     static const bool IsX86 = false;
     static const bool IsX64 = true;
     static const bool IsArm64 = false;
     static const bool IsArm32 = false;
     static const bool IsArmArch = false;
 #elif defined(TARGET_X86)
+    static const bool IsWasm32 = false;
+    static const bool IsWasm64 = false;
     static const bool IsX86 = true;
     static const bool IsX64 = false;
     static const bool IsArm64 = false;

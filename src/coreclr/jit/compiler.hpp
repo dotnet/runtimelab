@@ -4161,15 +4161,11 @@ unsigned Compiler::GetSsaNumForLocalVarDef(GenTree* lcl)
 
 inline bool Compiler::PreciseRefCountsRequired()
 {
-<<<<<<< HEAD
 #if defined(TARGET_WASM)
     return opts.OptimizationEnabled() || compRationalIRForm;
 #else
     return opts.OptimizationEnabled();
 #endif
-=======
-    return opts.OptimizationEnabled();
->>>>>>> feature/NativeAOT-final
 }
 
 template <typename TVisitor>

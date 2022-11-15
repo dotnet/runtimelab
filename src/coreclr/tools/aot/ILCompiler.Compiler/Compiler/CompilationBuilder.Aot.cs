@@ -105,15 +105,15 @@ namespace ILCompiler
             return this;
         }
 
-<<<<<<< HEAD
         public CompilationBuilder UseWasmImportPolicy(ConfigurableWasmImportPolicy wasmImportPolicy)
         {
             _wasmImportPolicy = wasmImportPolicy;
-=======
+            return this;
+        }
+
         public CompilationBuilder UseMethodImportationErrorProvider(MethodImportationErrorProvider errorProvider)
         {
             _methodImportationErrorProvider = errorProvider;
->>>>>>> feature/NativeAOT-final
             return this;
         }
 

@@ -4336,11 +4336,7 @@ void Compiler::lvaMarkLocalVars()
     const bool isRecompute = false;
     lvaComputeRefCounts(isRecompute, setSlotNumbers);
 
-<<<<<<< HEAD
-    // If we're not optimizing, we're done.
-=======
     // If we don't need precise reference counts, e.g. we're not optimizing, we're done.
->>>>>>> feature/NativeAOT-final
     if (!PreciseRefCountsRequired())
     {
         return;

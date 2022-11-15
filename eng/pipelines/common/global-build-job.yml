@@ -140,8 +140,7 @@ jobs:
           df -h
         displayName: Disk Usage before Build
 
-<<<<<<< HEAD
-    - ${{ if and(eq(parameters.runtimeFlavor, 'coreclr'), eq(parameters.platform, 'Browser_wasm_win')) }}:
+    - ${{ if and(eq(parameters.runtimeFlavor, 'coreclr'), contains(parameters.nameSuffix, 'Windows_wasm') }}:
       # Install Wasm dependencies: emscripten, LLVM
       - script: call $(Build.SourcesDirectory)/eng/pipelines/runtimelab/install-emscripten.cmd $(Build.SourcesDirectory)\wasm-tools
         displayName: Install/activate emscripten
@@ -154,10 +153,7 @@ jobs:
       - script: call $(Build.SourcesDirectory)/eng/pipelines/runtimelab/install-llvm.cmd $(Build.SourcesDirectory)\wasm-tools $(Build.SourcesDirectory) ${{ parameters.buildConfig }}
         displayName: Install/build LLVM
 
-    - ${{ if eq(parameters.nameSuffix, 'Browser_wasm_Windows') }}:
-=======
     - ${{ if contains(parameters.nameSuffix, 'Windows_wasm') }}:
->>>>>>> feature/NativeAOT-final
       # Update machine certs
       - task: PowerShell@2
         displayName: Update machine certs

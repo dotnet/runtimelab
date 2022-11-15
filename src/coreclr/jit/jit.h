@@ -212,15 +212,8 @@
 #define UNIX_AMD64_ABI_ONLY(x)
 #endif // defined(UNIX_AMD64_ABI)
 
-<<<<<<< HEAD
-#if defined(DEBUG) && !defined(OSX_ARM64_ABI)  && !defined(TARGET_WASM32)
-// On all platforms except Arm64 OSX arguments on the stack are taking
-// register size slots. On these platforms we could check that stack slots count
-// matches our new byte size calculations.
+#if defined(DEBUG) && !defined(TARGET_WASM32)
 // For Wasm32 doubles are 8 bytes so can't be asserted against the size of a "register"
-=======
-#if defined(DEBUG)
->>>>>>> feature/NativeAOT-final
 #define DEBUG_ARG_SLOTS
 #endif
 

@@ -4187,16 +4187,7 @@ struct GenTreeCall final : public GenTree
         return UseList(gtCallLateArgs);
     }
 
-<<<<<<< HEAD
-#if !FEATURE_FIXED_OUT_ARGS
-    int     regArgListCount;
-    regList regArgList;
-#endif
-
 #if defined(DEBUG) || defined(TARGET_WASM)
-=======
-#ifdef DEBUG
->>>>>>> feature/NativeAOT-final
     // Used to register callsites with the EE
     CORINFO_SIG_INFO* callSig;
 #endif // defined(DEBUG) || defined(TARGET_WASM)
@@ -4776,23 +4767,13 @@ struct GenTreeCall final : public GenTree
 
     void ResetArgInfo();
 
-<<<<<<< HEAD
-    GenTreeCallFlags gtCallMoreFlags; // in addition to gtFlags
-
-    unsigned char gtCallType : 3;   // value from the gtCallTypes enumeration
-    unsigned char gtReturnType : 5; // exact return type
-
-#if defined(TARGET_WASM)
-    CorInfoType gtCorInfoType; // the precise return type used to construct the signature
-#endif // defined(TARGET_WASM)
-
-    CORINFO_CLASS_HANDLE gtRetClsHnd; // The return type handle of the call if it is a struct; always available
-=======
     GenTreeCallFlags     gtCallMoreFlags;  // in addition to gtFlags
     gtCallTypes          gtCallType : 3;   // value from the gtCallTypes enumeration
     var_types            gtReturnType : 5; // exact return type
     CORINFO_CLASS_HANDLE gtRetClsHnd;      // The return type handle of the call if it is a struct; always available
->>>>>>> feature/NativeAOT-final
+#if defined(TARGET_WASM)
+    CorInfoType gtCorInfoType; // the precise return type used to construct the signature
+#endif // defined(TARGET_WASM)
 
     union {
         // only used for CALLI unmanaged calls (CT_INDIRECT)

@@ -30,11 +30,7 @@ jobs:
   variables:
     DUMPS_SHARE_MOUNT_ROOT: "/dumps-share"
   pool:
-<<<<<<< HEAD
-    name: NetCore-Public
-=======
     name: NetCore1ESPool-Public
->>>>>>> feature/NativeAOT-final
     demands: ImageOverride -equals Build.Ubuntu.1804.Amd64.Open
 
   steps:
@@ -95,11 +91,7 @@ jobs:
   variables:
     DUMPS_SHARE_MOUNT_ROOT: "C:/dumps-share"
   pool:
-<<<<<<< HEAD
-    name: NetCore-Public
-=======
     name: NetCore1ESPool-Public
->>>>>>> feature/NativeAOT-final
     demands: ImageOverride -equals Build.Server.Amd64.VS2019.Open
 
   steps:

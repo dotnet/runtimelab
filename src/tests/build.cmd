@@ -260,26 +260,8 @@ if not exist "%__NativeTestIntermediatesDir%\CMakeCache.txt" (
 
 echo Environment setup
 
-set __CmakeBuildToolArgs=
-
-if /i "%__BuildArch%" == "wasm" (
-    REM maybe we don't need this if anymore
-    echo __Ninja is %__Ninja%
-    "%CMakePath%" --build %__NativeTestIntermediatesDir% --target install --config %__BuildType% -- /nologo
-) else (
-<<<<<<< HEAD
-    if %__Ninja% EQU 1 (
-        set __CmakeBuildToolArgs=
-    ) else (
-        REM We pass the /m flag directly to MSBuild so that we can get both MSBuild and CL parallelism, which is fastest for our builds.
-        set __CmakeBuildToolArgs=/nologo /m !__Logging!
-    )
-    "%CMakePath%" --build %__NativeTestIntermediatesDir% --target install --config %__BuildType% -- !__CmakeBuildToolArgs!
-=======
-    REM We pass the /m flag directly to MSBuild so that we can get both MSBuild and CL parallelism, which is fastest for our builds.
-    set __CmakeBuildToolArgs=/nologo /m
->>>>>>> feature/NativeAOT-final
-)
+REM We pass the /m flag directly to MSBuild so that we can get both MSBuild and CL parallelism, which is fastest for our builds.
+set __CmakeBuildToolArgs=/nologo /m
 
 
 if errorlevel 1 (

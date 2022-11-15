@@ -257,7 +257,6 @@ namespace Internal.IL
             }
         }
 
-<<<<<<< HEAD
         private bool InTryRegion()
         {
             for (int i = 0; i < _exceptionRegions.Length ; i++)
@@ -275,7 +274,8 @@ namespace Internal.IL
         private static bool IsOffsetContained(int offset, int start, int length)
         {
             return start <= offset && offset < start + length;
-=======
+        }
+
         private IMethodNode GetMethodEntrypoint(MethodDesc method)
         {
             if (method.HasInstantiation || method.OwningType.HasInstantiation)
@@ -284,7 +284,6 @@ namespace Internal.IL
             }
 
             return _factory.MethodEntrypoint(method);
->>>>>>> feature/NativeAOT-final
         }
 
         private void ImportCall(ILOpcode opcode, int token)

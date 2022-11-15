@@ -172,11 +172,7 @@ void Compiler::fgLocalVarLivenessInit()
 {
     JITDUMP("In fgLocalVarLivenessInit\n");
 
-<<<<<<< HEAD
-    // Sort locals first, if we're optimizing
-=======
     // Sort locals first, if precise reference counts are required, e.g. we're optimizing
->>>>>>> feature/NativeAOT-final
     if (PreciseRefCountsRequired())
     {
         lvaSortByRefCount();

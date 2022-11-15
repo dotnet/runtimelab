@@ -10,11 +10,7 @@ jobs:
   dependsOn: ${{ parameters.dependsOn }}
   pool:
     name: NetCore1ESPool-Internal
-<<<<<<< HEAD
     demands: ImageOverride -equals 1es-windows-2022
-=======
-    demands: ImageOverride -equals build.windows.10.amd64.vs2019
->>>>>>> feature/NativeAOT-final
   # Double the default timeout.
   timeoutInMinutes: 180
   workspace:

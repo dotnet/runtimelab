@@ -2537,7 +2537,6 @@ inline LoopFlags& operator&=(LoopFlags& a, LoopFlags b)
 }
 
 //  The following holds information about instr offsets in terms of generated code.
-
 enum class IPmappingDscKind
 {
     Prolog,    // The mapping represents the start of a prolog.
@@ -2546,6 +2545,7 @@ enum class IPmappingDscKind
     Normal,    // The mapping maps to an IL offset.
 };
 
+#ifndef TARGET_WASM
 struct IPmappingDsc
 {
     emitLocation     ipmdNativeLoc; // the emitter location of the native code corresponding to the IL offset
@@ -2559,6 +2559,7 @@ struct PreciseIPMapping
     emitLocation nativeLoc;
     DebugInfo    debugInfo;
 };
+#endif
 
 /*
 XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
@@ -5433,10 +5434,6 @@ public:
     // rather than the "use" SSA number recorded in the tree "lcl".
     inline unsigned GetSsaNumForLocalVarDef(GenTree* lcl);
 
-<<<<<<< HEAD
-    // 
-=======
->>>>>>> feature/NativeAOT-final
     inline bool PreciseRefCountsRequired();
 
     // Performs SSA conversion.
@@ -8353,29 +8350,16 @@ public:
 public:
     CodeGenInterface* codeGen;
 
-<<<<<<< HEAD
     //  The following holds information about instr offsets in terms of generated code.
 #ifndef TARGET_WASM
-    struct IPmappingDsc
-    {
-        IPmappingDsc* ipmdNext;      // next line# record
-        emitLocation  ipmdNativeLoc; // the emitter location of the native code corresponding to the IL offset
-        IL_OFFSETX    ipmdILoffsx;   // the instr offset
-        bool          ipmdIsLabel;   // Can this code be a branch label?
-    };
-    // Record the instr offset mapping to the generated code
-
-    IPmappingDsc* genIPmappingList;
-    IPmappingDsc* genIPmappingLast;
-=======
     // Record the instr offset mapping to the generated code
 
     jitstd::list<IPmappingDsc> genIPmappings;
 
 #ifdef DEBUG
     jitstd::list<PreciseIPMapping> genPreciseIPmappings;
->>>>>>> feature/NativeAOT-final
 #endif
+#endif // TARGET_WASM
 
     // Managed RetVal - A side hash table meant to record the mapping from a
     // GT_CALL node to its debug info.  This info is used to emit sequence points

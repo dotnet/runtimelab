@@ -19,15 +19,6 @@
       <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\HelloWasm\HelloWasm.csproj" Condition="!('$(TestBuildMode)' == 'nativeaot' and '$(TargetArchitecture)' == 'wasm')"/>
     </ItemGroup>
 
-<<<<<<< HEAD
-    <!-- These rely on implementation details of CoreCLR CoreLib -->
-    <ItemGroup Condition="'$(TestBuildMode)' == 'nativeaot'">
-      <DisabledProjects Include="$(TestRoot)Interop\COM\Activator\Activator.csproj" />
-      <DisabledProjects Include="$(TestRoot)Interop\COM\Activator\ActivatorBuiltInComDisabled.csproj" />
-      <DisabledProjects Include="$(TestRoot)Interop\ICastable\Castable.csproj" />
-      <DisabledProjects Include="$(TestRoot)Interop\IJW\LoadIjwFromModuleHandle\LoadIjwFromModuleHandle.csproj" />
-    </ItemGroup>
-
     <ItemGroup Condition="'$(TestBuildMode)' == 'nativeaot' and '$(TargetArchitecture)' == 'wasm'">
       <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\BasicThreading\BasicThreading.csproj" />
       <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\HardwareIntrinsics\*.csproj" />
@@ -43,9 +34,6 @@
       <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\ComWrappers\ComWrappers.csproj" />
     </ItemGroup>
 
-    <!-- Temporarily don't build because we don't restore Microsoft.CodeAnalysis in external.csproj - DO NOT BRING THIS HACK OVER to dotnet/runtime -->
-=======
->>>>>>> feature/NativeAOT-final
     <ItemGroup>
       <BuildTestProjects Include="$(__BuildTestProject.Split(';'))" />
       <BuildTestDirs Include="$(__BuildTestDir.Split(';'))" />

@@ -49,6 +49,8 @@ if (CLR_CMAKE_TARGET_UNIX OR CLR_CMAKE_TARGET_BROWSER)
     add_compile_options(-I${CMAKE_CURRENT_BINARY_DIR}/Common)
 
     if (CLR_CMAKE_TARGET_BROWSER)
+        # NativeAOT-LLVM enables -Weverything but these will cause failures so disable individually
+        add_compile_options(-Wno-unused-parameter -Wno-declaration-after-statement)
         set(GEN_SHARED_LIB 0)
         set(STATIC_LIB_DESTINATION .)
     endif ()
@@ -144,6 +146,7 @@ if (CLR_CMAKE_TARGET_UNIX OR CLR_CMAKE_TARGET_BROWSER)
         add_compile_options(-Wno-typedef-redefinition)
         add_compile_options(-Wno-c11-extensions)
         add_compile_options(-Wno-thread-safety-analysis)
+        add_compile_options(-Wno-strict-prototypes)
     endif ()
 
     add_subdirectory(System.Native)

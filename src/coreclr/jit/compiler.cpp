@@ -185,132 +185,6 @@ void Compiler::JitLogEE(unsigned level, const char* fmt, ...)
     va_end(args);
 }
 
-<<<<<<< HEAD
-void Compiler::compDspSrcLinesByLineNum(unsigned line, bool seek)
-{
-    if (!jitSrcFilePtr)
-    {
-        return;
-    }
-
-    if (jitCurSrcLine == line)
-    {
-        return;
-    }
-
-    if (jitCurSrcLine > line)
-    {
-        if (!seek)
-        {
-            return;
-        }
-
-        if (fseek(jitSrcFilePtr, 0, SEEK_SET) != 0)
-        {
-            printf("Compiler::compDspSrcLinesByLineNum:  fseek returned an error.\n");
-        }
-        jitCurSrcLine = 0;
-    }
-
-    if (!seek)
-    {
-        printf(";\n");
-    }
-
-    do
-    {
-        char   temp[128];
-        size_t llen;
-
-        if (!fgets(temp, sizeof(temp), jitSrcFilePtr))
-        {
-            return;
-        }
-
-        if (seek)
-        {
-            continue;
-        }
-
-        llen = strlen(temp);
-        if (llen && temp[llen - 1] == '\n')
-        {
-            temp[llen - 1] = 0;
-        }
-
-        printf(";   %s\n", temp);
-    } while (++jitCurSrcLine < line);
-
-    if (!seek)
-    {
-        printf(";\n");
-    }
-}
-
-/*****************************************************************************/
-#ifndef TARGET_WASM
-void Compiler::compDspSrcLinesByNativeIP(UNATIVE_OFFSET curIP)
-{
-    static IPmappingDsc* nextMappingDsc;
-    static unsigned      lastLine;
-
-    if (!opts.dspLines)
-    {
-        return;
-    }
-
-    if (curIP == 0)
-    {
-        if (genIPmappingList)
-        {
-            nextMappingDsc = genIPmappingList;
-            lastLine       = jitGetILoffs(nextMappingDsc->ipmdILoffsx);
-
-            unsigned firstLine = jitGetILoffs(nextMappingDsc->ipmdILoffsx);
-
-            unsigned earlierLine = (firstLine < 5) ? 0 : firstLine - 5;
-
-            compDspSrcLinesByLineNum(earlierLine, true); // display previous 5 lines
-            compDspSrcLinesByLineNum(firstLine, false);
-        }
-        else
-        {
-            nextMappingDsc = nullptr;
-        }
-
-        return;
-    }
-
-    if (nextMappingDsc)
-    {
-        UNATIVE_OFFSET offset = nextMappingDsc->ipmdNativeLoc.CodeOffset(GetEmitter());
-
-        if (offset <= curIP)
-        {
-            IL_OFFSET nextOffs = jitGetILoffs(nextMappingDsc->ipmdILoffsx);
-
-            if (lastLine < nextOffs)
-            {
-                compDspSrcLinesByLineNum(nextOffs);
-            }
-            else
-            {
-                // This offset corresponds to a previous line. Rewind to that line
-
-                compDspSrcLinesByLineNum(nextOffs - 2, true);
-                compDspSrcLinesByLineNum(nextOffs);
-            }
-
-            lastLine       = nextOffs;
-            nextMappingDsc = nextMappingDsc->ipmdNext;
-        }
-    }
-}
-#endif // TARGET_WASM
-
-/*****************************************************************************/
-=======
->>>>>>> feature/NativeAOT-final
 #endif // DEBUG
 
 /*****************************************************************************/
@@ -988,21 +862,6 @@ unsigned Compiler::GetHfaCount(GenTree* tree)
     return GetHfaCount(gtGetStructHandle(tree));
 }
 
-IL_OFFSET jitGetILoffs(IL_OFFSETX offsx)
-{
-    assert(offsx != BAD_IL_OFFSET);
-
-    switch ((int)offsx) // Need the cast since offs is unsigned and the case statements are comparing to signed.
-    {
-    case ICorDebugInfo::NO_MAPPING:
-    case ICorDebugInfo::PROLOG:
-    case ICorDebugInfo::EPILOG:
-        unreached();
-
-    default:
-        return IL_OFFSET(offsx & ~IL_OFFSETX_BITS);
-    }
-}
 #endif //TARGET_WASM
 
 //-----------------------------------------------------------------------------
@@ -5483,9 +5342,6 @@ void Compiler::compCompile(void** methodCodePtr, uint32_t* methodCodeSize, JitFl
 
 }
 
-<<<<<<< HEAD
-#ifndef TARGET_WASM
-=======
 #if FEATURE_LOOP_ALIGN
 
 //------------------------------------------------------------------------
@@ -5580,7 +5436,7 @@ void Compiler::placeLoopAlignInstructions()
 }
 #endif
 
->>>>>>> feature/NativeAOT-final
+#ifndef TARGET_WASM
 //------------------------------------------------------------------------
 // generatePatchpointInfo: allocate and fill in patchpoint info data,
 //    and report it to the VM
@@ -5865,18 +5721,9 @@ int Compiler::compCompile(CORINFO_MODULE_HANDLE classPtr,
 
     // Match OS for compMatchedVM
     CORINFO_EE_INFO* eeInfo = eeGetEEInfo();
-<<<<<<< HEAD
-#ifdef TARGET_UNIX
-    info.compMatchedVM = info.compMatchedVM && (eeInfo->osType == CORINFO_UNIX);
-#elif TARGET_WASM
-    // TODO: do we need a CORINFO_WASM (or CORINFO_LLVM/CORINFO_BROWSER even though wasm can run outside the browser)
-#else
-    info.compMatchedVM        = info.compMatchedVM && (eeInfo->osType == CORINFO_WINNT);
-=======
 
 #ifdef TARGET_OS_RUNTIMEDETERMINED
     noway_assert(TargetOS::OSSettingConfigured);
->>>>>>> feature/NativeAOT-final
 #endif
 
     if (TargetOS::IsMacOS)

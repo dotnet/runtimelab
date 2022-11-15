@@ -117,21 +117,12 @@ jobs:
     ${{ if eq(parameters.jobParameters.pool, '') }}:
       pool:
         # Public Linux Build Pool
-<<<<<<< HEAD
-        ${{ if and(or(in(parameters.osGroup, 'Linux', 'FreeBSD', 'Android'), eq(parameters.hostedOs, 'Linux')), eq(variables['System.TeamProject'], 'public')) }}:
-          name:  NetCore-Public
-          demands: ImageOverride -equals Build.Ubuntu.1804.Amd64.Open
-
-        # Official Build Linux Pool
-        ${{ if and(or(in(parameters.osGroup, 'Linux', 'FreeBSD', 'Android'), eq(parameters.hostedOs, 'Linux')), ne(variables['System.TeamProject'], 'public')) }}:
-=======
         ${{ if and(or(in(parameters.osGroup, 'Linux', 'FreeBSD', 'Android', 'Tizen'), eq(parameters.hostedOs, 'Linux')), eq(variables['System.TeamProject'], 'public')) }}:
           name:  NetCore1ESPool-Public
           demands: ImageOverride -equals Build.Ubuntu.1804.Amd64.Open
 
         # Official Build Linux Pool
         ${{ if and(or(in(parameters.osGroup, 'Linux', 'FreeBSD', 'Browser', 'Android', 'Tizen'), eq(parameters.hostedOs, 'Linux')), ne(variables['System.TeamProject'], 'public')) }}:
->>>>>>> feature/NativeAOT-final
           name: NetCore1ESPool-Internal
           demands: ImageOverride -equals Build.Ubuntu.1804.Amd64
 
@@ -140,25 +131,14 @@ jobs:
           vmImage: 'macOS-11'
 
         # Official Build Windows Pool
-<<<<<<< HEAD
-        ${{ if and(or(eq(parameters.osGroup, 'windows'), eq(parameters.hostedOs, 'windows')), ne(variables['System.TeamProject'], 'public')) }}:
+        ${{ if and(eq(parameters.osGroup, 'windows'), ne(variables['System.TeamProject'], 'public')) }}:
           name: NetCore1ESPool-Internal
           demands: ImageOverride -equals windows.vs2022.amd64
 
         # Public Windows Build Pool
         ${{ if and(or(eq(parameters.osGroup, 'windows'), eq(parameters.hostedOs, 'windows')), eq(variables['System.TeamProject'], 'public')) }}:
-          name: NetCore-Public
-          demands: ImageOverride -equals windows.vs2022.amd64.open
-=======
-        ${{ if and(eq(parameters.osGroup, 'windows'), ne(variables['System.TeamProject'], 'public')) }}:
-          name: NetCore1ESPool-Internal
-          demands: ImageOverride -equals Build.Windows.10.Amd64.VS2019
-
-        # Public Windows Build Pool
-        ${{ if and(or(eq(parameters.osGroup, 'windows'), eq(parameters.hostedOs, 'windows')), eq(variables['System.TeamProject'], 'public')) }}:
           name: NetCore1ESPool-Public
-          demands: ImageOverride -equals Build.Windows.10.Amd64.VS2019.Open
->>>>>>> feature/NativeAOT-final
+          demands: ImageOverride -equals windows.vs2022.amd64.open
 
 
     ${{ if eq(parameters.helixQueuesTemplate, '') }}:

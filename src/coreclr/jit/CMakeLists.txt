@@ -44,14 +44,11 @@ function(create_standalone_jit)
     set(JIT_ARCH_HEADERS ${JIT_ARM64_HEADERS})
   elseif(TARGETDETAILS_ARCH STREQUAL "s390x")
     set(JIT_ARCH_SOURCES ${JIT_S390X_SOURCES})
-<<<<<<< HEAD
+    set(JIT_ARCH_HEADERS ${JIT_S390X_HEADERS})
   elseif(TARGETDETAILS_ARCH STREQUAL "wasm64")
     set(JIT_ARCH_SOURCES ${JIT_WASM64_SOURCES})
   elseif(TARGETDETAILS_ARCH STREQUAL "wasm32")
     set(JIT_ARCH_SOURCES ${JIT_WASM32_SOURCES})
-=======
-    set(JIT_ARCH_HEADERS ${JIT_S390X_HEADERS})
->>>>>>> feature/NativeAOT-final
   else()
     clr_unknown_arch()
   endif()
@@ -180,121 +177,6 @@ set( JIT_SOURCES
 )
 
 if (CLR_CMAKE_TARGET_WIN32)
-<<<<<<< HEAD
-  set( JIT_HEADERS
-    ../inc/corinfo.h
-    ../inc/corjit.h
-    ../inc/corjitflags.h
-    ../inc/corjithost.h
-    _typeinfo.h
-    alloc.h
-    arraystack.h
-    bitset.h
-    layout.h
-    bitsetasshortlong.h
-    bitsetasuint64.h
-    bitsetasuint64inclass.h
-    bitsetops.h
-    bitvec.h
-    block.h
-    blockset.h
-    codegen.h
-    codegeninterface.h
-    compiler.h
-    compiler.hpp
-    compilerbitsettraits.h
-    compilerbitsettraits.hpp
-    compmemkind.h
-    compphases.h
-    dataflow.h
-    decomposelongs.h
-    disasm.h
-    emit.h
-    emitdef.h
-    emitfmts.h
-    emitinl.h
-    emitjmps.h
-    emitpub.h
-    error.h
-    gentree.h
-    gtlist.h
-    gtstructs.h
-    hashbv.h
-    host.h
-    hostallocator.h
-    hwintrinsic.h
-    ICorJitInfo_API_names.h
-    ICorJitInfo_API_wrapper.hpp
-    inline.h
-    inlinepolicy.h
-    instr.h
-    instrs.h
-    jit.h
-    jitconfig.h
-    jitconfigvalues.h
-    jitee.h
-    jiteh.h
-    jitexpandarray.h
-    jitgcinfo.h
-    jithashtable.h
-    jitpch.h
-    jitstd.h
-    jittelemetry.h
-    lir.h
-    llvmtypes.h
-    llvm.h
-    loopcloning.h
-    loopcloningopts.h
-    lower.h
-    lsra_reftypes.h
-    lsra_stats.h
-    lsra_score.h
-    lsra.h
-    namedintrinsiclist.h
-    objectalloc.h
-    opcode.h
-    phase.h
-    rangecheck.h
-    rationalize.h
-    regalloc.h
-    register_arg_convention.h
-    register.h
-    reglist.h
-    regset.h
-    sideeffects.h
-    simd.h
-    simdashwintrinsic.h
-    simdintrinsiclist.h
-    sm.h
-    smallhash.h
-    smcommon.h
-    smopenum.h
-    ssabuilder.h
-    ssaconfig.h
-    ssarenamestate.h
-    stacklevelsetter.h
-    target.h
-    targetx86.h
-    targetamd64.h
-    targetarm.h
-    targetarm64.h
-    targetwasm.h
-    tinyarray.h
-    titypes.h
-    treelifeupdater.h
-    typelist.h
-    unwind.h
-    utils.h
-    valuenum.h
-    valuenumfuncs.h
-    valuenumtype.h
-    varset.h
-    vartype.h
-    vartypesdef.h
-  )
-
-=======
->>>>>>> feature/NativeAOT-final
   # Append clrjit.natvis file
   list (APPEND JIT_SOURCES
     clrjit.natvis)
@@ -378,11 +260,6 @@ set( JIT_S390X_SOURCES
   # Not supported as JIT target
 )
 
-<<<<<<< HEAD
-set(JIT_CORE_SOURCES
-  ${JIT_SOURCES}
-  ${JIT_HEADERS}
-=======
 # We include the headers here for better experience in IDEs.
 set( JIT_HEADERS
   ../inc/corinfo.h
@@ -445,6 +322,8 @@ set( JIT_HEADERS
   jitstd.h
   jittelemetry.h
   lir.h
+  llvmtypes.h
+  llvm.h
   loopcloning.h
   loopcloningopts.h
   lower.h
@@ -491,7 +370,6 @@ set( JIT_HEADERS
   varset.h
   vartype.h
   vartypesdef.h
->>>>>>> feature/NativeAOT-final
 )
 
 # Arch specific headers
@@ -539,10 +417,8 @@ convert_to_absolute_path(JIT_ARM_HEADERS ${JIT_ARM_HEADERS})
 convert_to_absolute_path(JIT_I386_SOURCES ${JIT_I386_SOURCES})
 convert_to_absolute_path(JIT_I386_HEADERS ${JIT_I386_HEADERS})
 convert_to_absolute_path(JIT_ARM64_SOURCES ${JIT_ARM64_SOURCES})
-<<<<<<< HEAD
 convert_to_absolute_path(JIT_WASM64_SOURCES ${JIT_WASM64_SOURCES})
 convert_to_absolute_path(JIT_WASM32_SOURCES ${JIT_WASM32_SOURCES})
-=======
 convert_to_absolute_path(JIT_ARM64_HEADERS ${JIT_ARM64_HEADERS})
 convert_to_absolute_path(JIT_S390X_SOURCES ${JIT_S390X_SOURCES})
 convert_to_absolute_path(JIT_S390X_HEADERS ${JIT_S390X_HEADERS})
@@ -566,7 +442,6 @@ else()
   clr_unknown_arch()
 endif()
 
->>>>>>> feature/NativeAOT-final
 
 set(JIT_DLL_MAIN_FILE ${CMAKE_CURRENT_LIST_DIR}/dllmain.cpp)
 
