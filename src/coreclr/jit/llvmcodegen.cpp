@@ -444,7 +444,7 @@ void Llvm::visitNode(GenTree* node)
             buildLocalField(node->AsLclFld());
             break;
         case GT_LCL_VAR:
-            localVar(node->AsLclVar());
+            buildLocalVar(node->AsLclVar());
             break;
         case GT_LCL_VAR_ADDR:
         case GT_LCL_FLD_ADDR:
@@ -486,7 +486,7 @@ void Llvm::visitNode(GenTree* node)
             buildReturn(node);
             break;
         case GT_STORE_LCL_VAR:
-            storeLocalVar(node->AsLclVar());
+            buildStoreLocalVar(node->AsLclVar());
             break;
         case GT_STOREIND:
             buildStoreInd(node->AsStoreInd());
@@ -517,7 +517,7 @@ void Llvm::visitNode(GenTree* node)
 #endif // DEBUG
 }
 
-Value* Llvm::localVar(GenTreeLclVar* lclVar)
+void Llvm::buildLocalVar(GenTreeLclVar* lclVar)
 {
     Value*       llvmRef;
     unsigned int lclNum = lclVar->GetLclNum();
@@ -540,10 +540,9 @@ Value* Llvm::localVar(GenTreeLclVar* lclVar)
     }
 
     mapGenTreeToValue(lclVar, llvmRef);
-    return llvmRef;
 }
 
-void Llvm::storeLocalVar(GenTreeLclVar* lclVar)
+void Llvm::buildStoreLocalVar(GenTreeLclVar* lclVar)
 {
     Type*  destLlvmType = getLlvmTypeForLclVar(lclVar);
     Value* localValue   = nullptr;

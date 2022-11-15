@@ -221,8 +221,8 @@ private:
     void startImportingNode();
     void visitNode(GenTree* node);
 
-    Value* localVar(GenTreeLclVar* lclVar);
-    void storeLocalVar(GenTreeLclVar* lclVar);
+    void buildLocalVar(GenTreeLclVar* lclVar);
+    void buildStoreLocalVar(GenTreeLclVar* lclVar);
     void buildEmptyPhi(GenTreePhi* phi);
     void buildLocalField(GenTreeLclFld* lclFld);
     void buildLocalVarAddr(GenTreeLclVarCommon* lclVar);
