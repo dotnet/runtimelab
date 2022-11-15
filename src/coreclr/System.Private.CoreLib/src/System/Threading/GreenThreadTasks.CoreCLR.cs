@@ -47,6 +47,7 @@ namespace System.Threading.Tasks
 
         internal static unsafe void GreenThreadExecutorFunc(Action action)
         {
+            Debug.Assert(!Thread.IsGreenThread);
             Debug.Assert(Thread.CurrentThread._executionContext == null);
 
             GreenThreadExecutorObject executorObj = new GreenThreadExecutorObject();
@@ -63,7 +64,7 @@ namespace System.Threading.Tasks
             }
         }
 
-        private sealed unsafe class ResumeSuspendedThread
+        private sealed unsafe class ResumeSuspendedThread : IThreadPoolWorkItem
         {
             private SuspendedThread* _suspendedThread;
             public ResumeSuspendedThread(SuspendedThread* suspendedThread)
@@ -73,6 +74,21 @@ namespace System.Threading.Tasks
 
             public void Resume()
             {
+                if (Thread.IsGreenThread)
+                {
+                    // Currently cannot resume a green thread from another green thread
+                    ThreadPool.UnsafeQueueUserWorkItem(this, preferLocal: true);
+                }
+                else
+                {
+                    ResumeFromNonGreenThread();
+                }
+            }
+
+            private void ResumeFromNonGreenThread()
+            {
+                Debug.Assert(!Thread.IsGreenThread);
+
                 Task? taskToWaitFor = null;
 
                 ExecutionContext.SendValueChangeNotificationsForResetToDefaultUnsafe();
@@ -85,6 +101,8 @@ namespace System.Threading.Tasks
                     taskToWaitFor.GetAwaiter().OnCompleted(Resume);
                 }
             }
+
+            void IThreadPoolWorkItem.Execute() => ResumeFromNonGreenThread();
         }
 
         static partial void RunOnActualGreenThread(Action action, bool preferLocal, ref bool ranAsActualGreenThread)
