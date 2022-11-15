@@ -226,6 +226,20 @@ Type* Llvm::getLlvmTypeForVarType(var_types type)
     }
 }
 
+Type* Llvm::getLlvmTypeForLclVar(LclVarDsc* varDsc)
+{
+    if (varDsc->TypeGet() == TYP_STRUCT)
+    {
+        return getLlvmTypeForStruct(varDsc->GetLayout());
+    }
+    if (varDsc->lvCorInfoType != CORINFO_TYPE_UNDEF)
+    {
+        return getLlvmTypeForCorInfoType(varDsc->lvCorInfoType, varDsc->lvClassHnd);
+    }
+
+    return getLlvmTypeForVarType(varDsc->TypeGet());
+}
+
 Type* Llvm::getLlvmTypeForLclVar(GenTreeLclVar* lclVar)
 {
     var_types nodeType = lclVar->TypeGet();
@@ -234,6 +248,7 @@ Type* Llvm::getLlvmTypeForLclVar(GenTreeLclVar* lclVar)
     {
         return getLlvmTypeForStruct(_compiler->lvaGetDesc(lclVar)->GetLayout());
     }
+
     return getLlvmTypeForVarType(nodeType);
 }
 

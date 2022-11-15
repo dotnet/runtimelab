@@ -99,18 +99,19 @@ void Llvm::Compile()
 
 void Llvm::generateProlog()
 {
-    // create a prolog block to store arguments passed on shadow stack, TODO: other things from ILToLLVMImporter to come
+    JITDUMP("\n=============== Generating prolog:\n");
+
     llvm::BasicBlock* prologBlock = llvm::BasicBlock::Create(_llvmContext, "Prolog", _function);
     _prologBuilder.SetInsertPoint(prologBlock);
 
-    createAllocasForLocalsWithAddrOp();
+    initializeLocals();
 
     llvm::BasicBlock* block0 = getLLVMBasicBlockForBlock(_compiler->fgFirstBB);
-    _prologBuilder.SetInsertPoint(_prologBuilder.CreateBr(block0)); // position _prologBuilder to add locals and arguments
+    _prologBuilder.SetInsertPoint(_prologBuilder.CreateBr(block0));
     _builder.SetInsertPoint(block0);
 }
 
-void Llvm::createAllocasForLocalsWithAddrOp()
+void Llvm::initializeLocals()
 {
     m_allocas = std::vector<Value*>(_compiler->lvaCount, nullptr);
 
@@ -118,21 +119,99 @@ void Llvm::createAllocasForLocalsWithAddrOp()
     {
         LclVarDsc* varDsc = _compiler->lvaGetDesc(lclNum);
 
-        if (canStoreLocalOnLlvmStack(varDsc) && isLlvmFrameLocal(varDsc))
+        if (varDsc->lvRefCnt() == 0)
         {
-            CORINFO_CLASS_HANDLE classHandle = tryGetStructClassHandle(varDsc);
-            Type* llvmType = getLlvmTypeForCorInfoType(toCorInfoType(varDsc->TypeGet()), classHandle);
-            Value* allocaValue = _prologBuilder.CreateAlloca(llvmType);
-            m_allocas[lclNum] = allocaValue;
+            continue;
+        }
 
-            if (varDsc->lvIsParam)
+        // Needed because of "implicitly referenced" locals.
+        if (!canStoreLocalOnLlvmStack(varDsc))
+        {
+            continue;
+        }
+
+        // See "genCheckUseBlockInit", "fgInterBlockLocalVarLiveness" and "SsaBuilder::RenameVariables" as references
+        // for the zero-init logic.
+        //
+        Type* lclLlvmType = getLlvmTypeForLclVar(varDsc);
+        Value* initValue = nullptr;
+        Value* zeroValue = llvm::Constant::getNullValue(lclLlvmType);
+        if (varDsc->lvIsParam)
+        {
+            assert(varDsc->lvLlvmArgNum != BAD_LLVM_ARG_NUM);
+            initValue = _function->getArg(varDsc->lvLlvmArgNum);
+        }
+        else
+        {
+            // If the local is in SSA, things are somewhat simple: we must provide an initial value if there is an
+            // "implicit" def, and must not if there is not.
+            if (_compiler->lvaInSsa(lclNum))
             {
-                LlvmArgInfo argInfo = getLlvmArgInfoForArgIx(lclNum);
-                assert(argInfo.IsLlvmArg());
-                Value* dataValue = _function->getArg(argInfo.m_argIx);
-                _prologBuilder.CreateStore(dataValue, castIfNecessary(allocaValue, dataValue->getType()->getPointerTo(),
-                                                                      &_prologBuilder));
+                // Needed because of "implicitly referenced" locals.
+                if (varDsc->lvPerSsaData.GetCount() == 0)
+                {
+                    continue;
+                }
+
+                bool hasImplicitDef = varDsc->GetPerSsaData(SsaConfig::FIRST_SSA_NUM)->GetAssignment() == nullptr;
+                if (!hasImplicitDef)
+                {
+                    // Nothing else needs to be done for this local.
+                    assert(!varDsc->lvMustInit);
+                    continue;
+                }
+
+                // SSA locals are always tracked; use liveness' determination on whether we need to zero-init.
+                if (varDsc->lvMustInit)
+                {
+                    initValue = zeroValue;
+                }
             }
+            else if (!varDsc->lvHasExplicitInit) // We do not need to zero-init locals with explicit inits.
+            {
+                // This reduces to, essentially, "!isTemp && compInitMem", the general test for whether
+                // we need to zero-initialize, under the assumption there are use-before-def references.
+                if (!_compiler->fgVarNeedsExplicitZeroInit(lclNum, /* bbInALoop */ false, /* bbIsReturn */ false))
+                {
+                    // For untracked locals, we have to be conservative. For tracked ones, we can query the
+                    // "lvMustInit" bit liveness has set.
+                    if (!varDsc->lvTracked || varDsc->lvMustInit)
+                    {
+                        initValue = zeroValue;
+                    }
+                }
+            }
+
+            JITDUMP("Setting V%02u's initial value to %s\n", lclNum, (initValue == zeroValue) ? "zero" : "uninit");
+        }
+
+        // Reset the bit so that subsequent dumping reflects our decision here.
+        varDsc->lvMustInit = initValue == zeroValue;
+
+        // If we're not zero-initializing, use a frozen undef value. This will ensure we don't run
+        // into UB issues with undefined values (which uninitialized allocas produce, see LangRef)
+        if (initValue == nullptr)
+        {
+            initValue = llvm::UndefValue::get(lclLlvmType);
+            initValue = _prologBuilder.CreateFreeze(initValue);
+            JITDUMPEXEC(initValue->dump());
+        }
+
+        assert(initValue->getType() == lclLlvmType);
+
+        if (isLlvmFrameLocal(varDsc))
+        {
+            Instruction* allocaInst = _prologBuilder.CreateAlloca(lclLlvmType);
+            m_allocas[lclNum] = allocaInst;
+            JITDUMPEXEC(allocaInst->dump());
+
+            Instruction* storeInst = _prologBuilder.CreateStore(initValue, allocaInst);
+            JITDUMPEXEC(storeInst->dump());
+        }
+        else
+        {
+            assert(_compiler->lvaInSsa(lclNum));
+            _localsMap.Set({lclNum, SsaConfig::FIRST_SSA_NUM}, initValue);
         }
     }
 }
@@ -177,21 +256,7 @@ void Llvm::fillPhis()
             unsigned       lclNum = phiArg->GetLclNum();
             unsigned       ssaNum = phiArg->GetSsaNum();
 
-            Value* localPhiArg = nullptr;
-            if (!_localsMap.Lookup({lclNum, ssaNum}, &localPhiArg))
-            {
-                //TODO-LLVM: Uninitialised locals are caught here as they would fail on the equivalent assert below.
-                // See https://github.com/dotnet/runtimelab/pull/1744#discussion_r757791229
-                if (!(_compiler->lvaIsParameter(lclNum) && ssaNum == SsaConfig::FIRST_SSA_NUM))
-                {
-                    failFunctionCompilation();
-                }
-                // Arguments are implicitly defined on entry to the method.
-                assert(_compiler->lvaIsParameter(lclNum) && ssaNum == SsaConfig::FIRST_SSA_NUM);
-                LlvmArgInfo llvmArgInfo = getLlvmArgInfoForArgIx(lclNum);
-                localPhiArg = _function->getArg(llvmArgInfo.m_argIx);
-            }
-
+            Value* localPhiArg = _localsMap[{lclNum, ssaNum}];
             Value* phiRealArgValue;
             Instruction* castRequired = getCast(localPhiArg, llvmPhiNode->getType());
             if (castRequired != nullptr)
@@ -463,18 +528,9 @@ Value* Llvm::localVar(GenTreeLclVar* lclVar)
     {
         llvmRef = _builder.CreateLoad(m_allocas[lclNum]);
     }
-    else if (!_localsMap.Lookup({lclNum, ssaNum}, &llvmRef))
+    else
     {
-        if (varDsc->lvLlvmArgNum != BAD_LLVM_ARG_NUM)
-        {
-            llvmRef = _function->getArg(varDsc->lvLlvmArgNum);
-            _localsMap.Set({lclNum, ssaNum}, llvmRef);
-        }
-        else
-        {
-            // Unhandled scenario, local is not defined already, and is not a parameter.
-            failFunctionCompilation();
-        }
+        llvmRef = _localsMap[{lclNum, ssaNum}];
     }
 
     // Implicit truncating from long to int.
@@ -507,16 +563,10 @@ void Llvm::storeLocalVar(GenTreeLclVar* lclVar)
 
     if (isLlvmFrameLocal(varDsc))
     {
-        Value* lclAddressValue = m_allocas[lclNum];
-        _builder.CreateStore(localValue, castIfNecessary(lclAddressValue, destLlvmType->getPointerTo()));
+        _builder.CreateStore(localValue, castIfNecessary(m_allocas[lclNum], localValue->getType()->getPointerTo()));
     }
     else
     {
-        if (varDsc->lvIsParam) // TODO-LLVM: not doing params yet
-        {
-            failFunctionCompilation();
-        }
-
         _localsMap.Set({lclNum, lclVar->GetSsaNum()}, localValue);
     }
 }
@@ -1633,64 +1683,4 @@ unsigned int Llvm::getTotalLocalOffset()
 {
     unsigned int offset = getTotalRealLocalOffset();
     return AlignUp(offset, TARGET_POINTER_SIZE);
-}
-
-// Returns the llvm arg number or shadow stack offset for the corresponding local which must be loaded from an argument
-LlvmArgInfo Llvm::getLlvmArgInfoForArgIx(unsigned lclNum)
-{
-    if (_sigInfo.hasExplicitThis() || _sigInfo.hasTypeArg())
-        failFunctionCompilation();
-
-    unsigned int llvmArgNum = 1; // skip shadow stack arg
-    LlvmArgInfo llvmArgInfo = {
-        -1, // Default to not an LLVM arg.
-        _sigInfo.hasThis() ? TARGET_POINTER_SIZE : 0U // "this" is the first pointer on the shadow stack.
-    };
-
-    if (lclNum == _shadowStackLclNum)
-    {
-        llvmArgInfo.m_argIx             = 0;
-        llvmArgInfo.m_shadowStackOffset = 0;
-        return llvmArgInfo;
-    }
-
-    if (needsReturnStackSlot(_sigInfo.retType, _sigInfo.retTypeClass))
-    {
-        llvmArgNum++;
-    }
-
-    // adjust lclNum for this which is not in _sigInfo.args
-    unsigned thisAdjustedLclNum = _sigInfo.hasThis() ? lclNum - 1 : lclNum;
-
-    CORINFO_ARG_LIST_HANDLE sigArgs = _sigInfo.args;
-
-    unsigned int shadowStackOffset = llvmArgInfo.m_shadowStackOffset;
-
-    unsigned int i = 0;
-    for (; i < _sigInfo.numArgs; i++, sigArgs = _info.compCompHnd->getArgNext(sigArgs))
-    {
-        CORINFO_CLASS_HANDLE clsHnd;
-        CorInfoType corInfoType = getCorInfoTypeForArg(&_sigInfo, sigArgs, &clsHnd);
-        if (canStoreArgOnLlvmStack(_compiler, corInfoType, clsHnd))
-        {
-            if (thisAdjustedLclNum == i)
-            {
-                llvmArgInfo.m_argIx = llvmArgNum;
-                break;
-            }
-
-            llvmArgNum++;
-        }
-        else
-        {
-            if (thisAdjustedLclNum == i)
-            {
-                llvmArgInfo.m_shadowStackOffset = shadowStackOffset;
-                break;
-            }
-
-            shadowStackOffset += TARGET_POINTER_SIZE; // TODO size of arg, for now only handles byrefs and class types
-        }
-    }
-    return llvmArgInfo;
 }

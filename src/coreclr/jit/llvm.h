@@ -47,17 +47,6 @@ struct OperandArgNum
     GenTree* operand;
 };
 
-struct LlvmArgInfo
-{
-    int          m_argIx; // -1 indicates not in the LLVM arg list, but on the shadow stack
-    unsigned int m_shadowStackOffset;
-
-    bool IsLlvmArg()
-    {
-        return m_argIx >= 0;
-    }
-};
-
 struct JitStdStringKeyFuncs : JitKeyFuncsDefEquals<std::string>
 {
     static unsigned GetHashCode(const std::string& val)
@@ -181,6 +170,7 @@ private:
     Type* getLlvmTypeForStruct(ClassLayout* classLayout);
     Type* getLlvmTypeForStruct(CORINFO_CLASS_HANDLE structHandle);
     Type* getLlvmTypeForVarType(var_types type);
+    Type* getLlvmTypeForLclVar(LclVarDsc* varDsc);
     Type* getLlvmTypeForLclVar(GenTreeLclVar* lclVar);
     Type* getLlvmTypeForCorInfoType(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd);
     Type* getLlvmTypeForParameterType(CORINFO_CLASS_HANDLE classHnd);
@@ -219,7 +209,7 @@ public:
 
 private:
     void generateProlog();
-    void createAllocasForLocalsWithAddrOp();
+    void initializeLocals();
     void startImportingBasicBlock(BasicBlock* block);
     void endImportingBasicBlock(BasicBlock* block);
     void fillPhis();
@@ -287,7 +277,6 @@ private:
     bool isLlvmFrameLocal(LclVarDsc* varDsc);
     unsigned int getTotalRealLocalOffset();
     unsigned int getTotalLocalOffset();
-    LlvmArgInfo getLlvmArgInfoForArgIx(unsigned lclNum);
 };
 
 
