@@ -14,6 +14,8 @@ public class Test_greenthread_delay {
             Console.WriteLine($"In GreenThread {Thread.IsGreenThread}");
             Task.Delay(2000).Wait();
             Console.WriteLine($"In GreenThread {Thread.IsGreenThread}");
+            Task.Delay(2000).Wait();
+            Console.WriteLine($"In GreenThread {Thread.IsGreenThread}");
         });
 
         t.Wait();

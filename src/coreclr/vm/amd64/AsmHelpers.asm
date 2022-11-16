@@ -871,7 +871,7 @@ NESTED_END TransitionToOSThreadHelper, _TEXT
 ; onwards in execution with the green thread suspended. When the thread is resumed, it will jump to resume_point.
 NESTED_ENTRY YieldOutOfGreenThreadHelper, _TEXT
     PROLOG_WITH_TRANSITION_BLOCK
-    sub rdx, 0e8h         ; This should be the RSP before we did the transition to the OS thread
+    add rdx, 0e0h         ; This should be the RSP before we did the transition to the OS thread
     mov rbp, rdx          ; Set RBP to what it was before we transitioned to the green thread
 
     mov rdx, [rcx]        ; Get the latest OS thread stack limit from t_greenThread.osStackRange
