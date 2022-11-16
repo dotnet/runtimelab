@@ -233,11 +233,14 @@ Type* Llvm::getLlvmTypeForLclVar(LclVarDsc* varDsc)
     {
         return getLlvmTypeForStruct(varDsc->GetLayout());
     }
-    if (varDsc->TypeGet() == TYP_BLK)
-    {
-        assert(varDsc->lvExactSize != 0);
-        return llvm::ArrayType::get(Type::getInt8Ty(_llvmContext), varDsc->lvExactSize);
-    }
+    // TODO-LLVM: enable. Currently broken because RyuJit inserts RPI helpers for RPI methods,
+    // with a TYP_BLK frame variable, and then we also create an RPI wrapper stub, resulting
+    // in a double transition.
+    // if (varDsc->TypeGet() == TYP_BLK)
+    // {
+    //     assert(varDsc->lvExactSize != 0);
+    //     return llvm::ArrayType::get(Type::getInt8Ty(_llvmContext), varDsc->lvExactSize);
+    // }
     if (varDsc->lvCorInfoType != CORINFO_TYPE_UNDEF)
     {
         return getLlvmTypeForCorInfoType(varDsc->lvCorInfoType, varDsc->lvClassHnd);
