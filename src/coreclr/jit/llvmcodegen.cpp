@@ -42,25 +42,40 @@ void Llvm::Compile()
 
     generateProlog();
 
-    for (BasicBlock* block = _compiler->fgFirstBB; block; block = block->bbNext)
+    class LlvmCompileDomTreeVisitor : public DomTreeVisitor<LlvmCompileDomTreeVisitor>
     {
-        // TODO-LLVM: finret basic blocks
-        if (block->bbJumpKind == BBJ_EHFINALLYRET)
+        Llvm* m_llvm;
+
+    public:
+        LlvmCompileDomTreeVisitor(Compiler* compiler, Llvm* llvm)
+            : DomTreeVisitor(compiler, compiler->fgSsaDomTree)
+            , m_llvm(llvm)
         {
-            failFunctionCompilation();
         }
 
-        startImportingBasicBlock(block);
-
-        llvm::BasicBlock* entry = getLLVMBasicBlockForBlock(block);
-        _builder.SetInsertPoint(entry);
-        for (GenTree* node : LIR::AsRange(block))
+        void PreOrderVisit(BasicBlock * block) const
         {
-            startImportingNode();
-            visitNode(node);
+            // TODO-LLVM: finret basic blocks
+            if (block->bbJumpKind == BBJ_EHFINALLYRET)
+            {
+                m_llvm->failFunctionCompilation();
+            }
+
+            m_llvm->startImportingBasicBlock(block);
+
+            llvm::BasicBlock* entry = m_llvm->getLLVMBasicBlockForBlock(block);
+            m_llvm->_builder.SetInsertPoint(entry);
+            for (GenTree* node : LIR::AsRange(block))
+            {
+                m_llvm->startImportingNode();
+                m_llvm->visitNode(node);
+            }
+            m_llvm->endImportingBasicBlock(block);
         }
-        endImportingBasicBlock(block);
-    }
+    };
+
+    LlvmCompileDomTreeVisitor visitor(_compiler, this);
+    visitor.WalkTree();
 
     fillPhis();
 
