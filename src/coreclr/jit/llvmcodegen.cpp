@@ -1785,13 +1785,8 @@ bool Llvm::isLlvmFrameLocal(LclVarDsc* varDsc)
     return !varDsc->lvInSsa && varDsc->lvRefCnt() > 0;
 }
 
-unsigned int Llvm::getTotalRealLocalOffset()
-{
-    return _shadowStackLocalsSize;
-}
-
 unsigned int Llvm::getTotalLocalOffset()
 {
-    unsigned int offset = getTotalRealLocalOffset();
-    return AlignUp(offset, TARGET_POINTER_SIZE);
+    assert((_shadowStackLocalsSize % TARGET_POINTER_SIZE) == 0);
+    return _shadowStackLocalsSize;
 }

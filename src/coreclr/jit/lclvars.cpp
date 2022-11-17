@@ -7618,13 +7618,13 @@ void Compiler::lvaTableDump(FrameLayoutState curState)
         printf(" [%2s%1s0x%02X]\n", isFramePointerUsed() ? STR_FPBASE : STR_SPBASE, (offset < 0 ? "-" : "+"),
                (offset < 0 ? -offset : offset));
     }
+#endif // !TARGET_WASM
 
     if (curState >= TENTATIVE_FRAME_LAYOUT)
     {
         printf(";\n");
         printf("; Lcl frame size = %d\n", compLclFrameSize);
     }
-#endif // !TARGET_WASM
 }
 #endif // DEBUG
 

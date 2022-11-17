@@ -285,7 +285,6 @@ private:
     llvm::BasicBlock* getLLVMBasicBlockForBlock(BasicBlock* block);
 
     bool isLlvmFrameLocal(LclVarDsc* varDsc);
-    unsigned int getTotalRealLocalOffset();
     unsigned int getTotalLocalOffset();
 };
 

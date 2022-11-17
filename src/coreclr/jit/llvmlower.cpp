@@ -108,13 +108,13 @@ void Llvm::lowerLocals()
                 varDsc->lvIsParam = false;
             }
         }
+        else
+        {
+            INDEBUG(varDsc->lvOnFrame = false); // For more accurate frame layout dumping.
+        }
     }
 
     assignShadowStackOffsets(shadowStackLocals, shadowStackParamCount);
-
-    JITDUMP("\nLocals after shadow stack layout:\n");
-    JITDUMPEXEC(_compiler->lvaDoneFrameLayout = Compiler::TENTATIVE_FRAME_LAYOUT);
-    JITDUMPEXEC(_compiler->lvaTableDump());
 }
 
 void Llvm::populateLlvmArgNums()
@@ -185,7 +185,17 @@ void Llvm::assignShadowStackOffsets(std::vector<LclVarDsc*>& shadowStackLocals, 
         varDsc->SetStackOffset(offset);
         offset = padNextOffset(corInfoType, classHandle, offset);
     }
-    _shadowStackLocalsSize = offset;
+
+    _shadowStackLocalsSize = AlignUp(offset, TARGET_POINTER_SIZE);
+
+    _compiler->compLclFrameSize = _shadowStackLocalsSize;
+    _compiler->lvaDoneFrameLayout = Compiler::TENTATIVE_FRAME_LAYOUT;
+
+    JITDUMP("\nLocals after shadow stack layout:\n");
+    JITDUMPEXEC(_compiler->lvaTableDump());
+    JITDUMP("\n");
+
+    _compiler->lvaDoneFrameLayout = Compiler::INITIAL_FRAME_LAYOUT;
 }
 
 void Llvm::initializeLocalInProlog(unsigned lclNum, GenTree* value)
