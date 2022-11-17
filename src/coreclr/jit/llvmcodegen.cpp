@@ -778,7 +778,7 @@ void Llvm::buildCmp(GenTreeOp* node)
                                    : (isUnordered ? Predicate::FCMP_UGE : Predicate::FCMP_OGE);
             break;
         case GT_GT:
-            predicate = isIntOrPtr ? (isUnordered ? Predicate::ICMP_UGT : Predicate::ICMP_SGT)
+            predicate = isIntOrPtr ? (isUnsigned ? Predicate::ICMP_UGT : Predicate::ICMP_SGT)
                                    : (isUnordered ? Predicate::FCMP_UGT : Predicate::FCMP_OGT);
             break;
         default:
