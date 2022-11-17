@@ -5184,10 +5184,6 @@ namespace Internal.IL
 
                 for (int i = 0; i < entryStack.Length; i++)
                 {
-                    // TODO: Do we need to allow conversions?
-                    if (entryStack[i].Kind != _stack[i].Kind)
-                        throw new InvalidProgramException();
-
                     if (entryStack[i].Kind == StackValueKind.ValueType)
                     {
                         if (entryStack[i].Type != _stack[i].Type)
