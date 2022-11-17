@@ -373,7 +373,8 @@ namespace Internal.JitInterface
 #endif
             }
 
-            if (codeSize < _code.Length)
+            // Llvm never allocMems, so _code is always null
+            if (_code != null && codeSize < _code.Length)
             {
                 if (_compilation.TypeSystemContext.Target.Architecture != TargetArchitecture.ARM64)
                 {

@@ -174,6 +174,7 @@ else()
   if(CLR_CMAKE_TARGET_ARCH_WASM)
     list(APPEND COMMON_RUNTIME_SOURCES
       ${GC_DIR}/wasm/gcenv.wasm.cpp
+      unix/cgroup.cpp
     )
   endif()
 

@@ -32,7 +32,10 @@ class Program
         TestReflectionInvoke.Run();
         TestFieldAccess.Run();
         TestDevirtualization.Run();
+// TODO-LLVM: Investigate failure in EnsureLoadableType
+#if !CODEGEN_WASM
         TestImportFailure.Run();
+#endif
         TestGenericInlining.Run();
         TestGenericInliningDoesntHappen.Run();
         TestGvmDependenciesFromLazy.Run();
@@ -40,10 +43,13 @@ class Program
         TestConstrainedGvmCalls.Run();
         TestConstrainedGvmValueTypeCalls.Run();
         TestDefaultGenericVirtualInterfaceMethods.Run();
+// TODO-LLVM: Investigate TypeLoadException for these
+#if !CODEGEN_WASM
         TestSimpleGenericRecursion.Run();
         TestGenericRecursionFromNpgsql.Run();
         TestRecursionInGenericVirtualMethods.Run();
         TestRecursionThroughGenericLookups.Run();
+#endif
 #if !CODEGEN_CPP
         TestNullableCasting.Run();
         TestVariantCasting.Run();

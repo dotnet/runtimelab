@@ -1921,10 +1921,12 @@ void Compiler::compInit(ArenaAllocator*       pAlloc,
         impSpillCliquePredMembers = JitExpandArray<BYTE>(getAllocator());
         impSpillCliqueSuccMembers = JitExpandArray<BYTE>(getAllocator());
 
+#ifndef TARGET_WASM
         new (&genIPmappings, jitstd::placement_t()) jitstd::list<IPmappingDsc>(getAllocator(CMK_DebugInfo));
 #ifdef DEBUG
         new (&genPreciseIPmappings, jitstd::placement_t()) jitstd::list<PreciseIPMapping>(getAllocator(CMK_DebugOnly));
 #endif
+#endif // !TARGET_WASM
 
         lvMemoryPerSsaData = SsaDefArray<SsaMemDef>();
 
@@ -5896,7 +5898,7 @@ int Compiler::compCompile(CORINFO_MODULE_HANDLE classPtr,
 
 #ifdef TARGET_WASM
     // normally done in codegencommon.cpp, but that file is not included
-    genCallSite2ILOffsetMap = nullptr;
+    genCallSite2DebugInfoMap = nullptr;
 #endif // TARGET_WASM
 
     setErrorTrap(info.compCompHnd, Param*, pParam, &param) // ERROR TRAP: Start normal block

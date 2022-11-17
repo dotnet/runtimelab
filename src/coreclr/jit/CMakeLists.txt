@@ -598,16 +598,16 @@ if (CLR_CMAKE_BUILD_LLVM_JIT)
 
     # Exclude cpp files that are not required when not processing beyond rationalized LIR.
     # Use REGEX as this list contains the absolute paths.
-    list(FILTER JIT_CORE_SOURCES EXCLUDE REGEX stacklevelsetter\.cpp)
-    list(FILTER JIT_CORE_SOURCES EXCLUDE REGEX codegencommon\.cpp)
-    list(FILTER JIT_CORE_SOURCES EXCLUDE REGEX codegenlinear\.cpp)
-    list(FILTER JIT_CORE_SOURCES EXCLUDE REGEX emit\.cpp)
-    list(FILTER JIT_CORE_SOURCES EXCLUDE REGEX gcencode\.cpp)
-    list(FILTER JIT_CORE_SOURCES EXCLUDE REGEX instr\.cpp)
-    list(FILTER JIT_CORE_SOURCES EXCLUDE REGEX lower\.cpp)
-    list(FILTER JIT_CORE_SOURCES EXCLUDE REGEX lsra\.cpp)
-    list(FILTER JIT_CORE_SOURCES EXCLUDE REGEX lsrabuild\.cpp)
-    list(FILTER JIT_CORE_SOURCES EXCLUDE REGEX regalloc\.cpp)
+    list(FILTER JIT_SOURCES EXCLUDE REGEX stacklevelsetter\.cpp)
+    list(FILTER JIT_SOURCES EXCLUDE REGEX codegencommon\.cpp)
+    list(FILTER JIT_SOURCES EXCLUDE REGEX codegenlinear\.cpp)
+    list(FILTER JIT_SOURCES EXCLUDE REGEX emit\.cpp)
+    list(FILTER JIT_SOURCES EXCLUDE REGEX gcencode\.cpp)
+    list(FILTER JIT_SOURCES EXCLUDE REGEX instr\.cpp)
+    list(FILTER JIT_SOURCES EXCLUDE REGEX lower\.cpp)
+    list(FILTER JIT_SOURCES EXCLUDE REGEX lsra\.cpp)
+    list(FILTER JIT_SOURCES EXCLUDE REGEX lsrabuild\.cpp)
+    list(FILTER JIT_SOURCES EXCLUDE REGEX regalloc\.cpp)
 
     # We'll be linking against LLVM built without /guard:ehcont, so disable it.
     string(REPLACE "/guard:ehcont" "" CMAKE_SHARED_LINKER_FLAGS ${CMAKE_SHARED_LINKER_FLAGS})

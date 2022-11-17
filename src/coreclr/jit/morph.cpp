@@ -2536,7 +2536,7 @@ void Compiler::fgInitArgInfo(GenTreeCall* call)
         call->gtCallType    = CT_HELPER;
         call->gtCallMethHnd = eeFindHelper(CORINFO_HELP_PINVOKE_CALLI);
     }
-#if defined(FEATURE_READYTORUN)
+#if defined(FEATURE_READYTORUN) && !defined(TARGET_WASM)
     // For arm/arm64, we dispatch code same as VSD using virtualStubParamInfo->GetReg()
     // for indirection cell address, which ZapIndirectHelperThunk expects.
     // For x64/x86 we use return address to get the indirection cell by disassembling the call site.

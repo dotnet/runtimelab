@@ -639,7 +639,7 @@ GenTreeCall::Use* Llvm::lowerCallReturn(GenTreeCall*      callNode,
         LIR::Use callUse;
         if (CurrentRange().TryGetUse(callNode, &callUse))
         {
-            callUse.ReplaceWith(_compiler, indirNode);
+            callUse.ReplaceWith(indirNode);
         }
         else
         {
