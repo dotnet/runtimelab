@@ -335,12 +335,7 @@ void Llvm::ConvertShadowStackLocalNode(GenTreeLclVarCommon* node)
 
     if (!canStoreLocalOnLlvmStack(varDsc))
     {
-        // TODO-LLVM: if the offset == 0, just GT_STOREIND at the shadowStack
-        unsigned offsetVal = varDsc->GetStackOffset() + node->GetLclOffs();
-        GenTreeIntCon* offset = _compiler->gtNewIconNode(offsetVal, TYP_I_IMPL);
-
-        GenTreeLclVar* shadowStackLocal = _compiler->gtNewLclvNode(_shadowStackLclNum, TYP_I_IMPL);
-        GenTree* lclAddress = _compiler->gtNewOperNode(GT_ADD, TYP_I_IMPL, shadowStackLocal, offset);
+        GenTree* lclAddress = insertShadowStackAddr(node, varDsc->GetStackOffset() + node->GetLclOffs());
 
         genTreeOps indirOper;
         GenTree* storedValue = nullptr;
@@ -389,15 +384,11 @@ void Llvm::ConvertShadowStackLocalNode(GenTreeLclVarCommon* node)
             node->AsBlk()->gtBlkOpKind = GenTreeBlk::BlkOpKindInvalid;
         }
 
-        CurrentRange().InsertBefore(node, shadowStackLocal, offset);
         if (indirOper == GT_NONE)
         {
             // Local address nodes are directly replaced with the ADD.
+            CurrentRange().Remove(lclAddress);
             node->ReplaceWith(lclAddress, _compiler);
-        }
-        else
-        {
-            CurrentRange().InsertBefore(node, lclAddress);
         }
     }
 }
@@ -503,24 +494,20 @@ void Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
     callNode->ResetArgInfo();
     callNode->gtCallThisArg = nullptr;
 
-    // set up the callee shadowstack, creating a temp and the PUTARG
-    GenTreeLclVar* shadowStackVar = _compiler->gtNewLclvNode(_shadowStackLclNum, TYP_I_IMPL);
-    GenTreeIntCon* offset         = _compiler->gtNewIconNode(_shadowStackLocalsSize, TYP_I_IMPL);
-    // TODO-LLVM: possible performance benefit: when _shadowStackLocalsSize == 0, then omit the GT_ADD.
-    GenTree* calleeShadowStack = _compiler->gtNewOperNode(GT_ADD, TYP_I_IMPL, shadowStackVar, offset);
+    // Set up the callee shadowstack, creating a temp and the PUTARG.
+    GenTree* calleeShadowStack = insertShadowStackAddr(callNode, _shadowStackLocalsSize);
 
     GenTreePutArgType* calleeShadowStackPutArg =
         _compiler->gtNewPutArgType(calleeShadowStack, CORINFO_TYPE_PTR, NO_CLASS_HANDLE);
 #ifdef DEBUG
     calleeShadowStackPutArg->SetArgNum(-1); // -1 will represent the shadowstack  arg for LLVM
 #endif
+    CurrentRange().InsertBefore(callNode, calleeShadowStackPutArg);
 
     callNode->gtCallArgs     = _compiler->gtNewCallArgs(calleeShadowStackPutArg);
     lastArg                  = callNode->gtCallArgs;
     insertReturnAfter        = lastArg; // add the return slot after the shadow stack arg
     callNode->gtCallLateArgs = nullptr;
-
-    CurrentRange().InsertBefore(callNode, shadowStackVar, offset, calleeShadowStack, calleeShadowStackPutArg);
 
     lastArg = lowerCallReturn(callNode, insertReturnAfter);
 
@@ -570,29 +557,22 @@ void Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
                 {
                     assert(use.GetType() != TYP_STRUCT);
 
-                    GenTree*       lclShadowStack = _compiler->gtNewLclvNode(_shadowStackLclNum, TYP_I_IMPL);
-                    GenTreeIntCon* fieldOffset =
-                        _compiler->gtNewIconNode(_shadowStackLocalsSize + shadowStackUseOffest + use.GetOffset(),
-                                                 TYP_I_IMPL);
-                    GenTree* fieldSlotAddr =
-                        _compiler->gtNewOperNode(GT_ADD, TYP_I_IMPL, lclShadowStack, fieldOffset);
+                    unsigned fieldOffsetValue = _shadowStackLocalsSize + shadowStackUseOffest + use.GetOffset();
+                    GenTree* fieldSlotAddr = insertShadowStackAddr(callNode, fieldOffsetValue);
                     GenTree* fieldStoreNode = createShadowStackStoreNode(use.GetType(), fieldSlotAddr, use.GetNode());
 
-                    CurrentRange().InsertBefore(callNode, lclShadowStack, fieldOffset, fieldSlotAddr,
-                                                fieldStoreNode);
+                    CurrentRange().InsertBefore(callNode, fieldStoreNode);
                 }
 
                 CurrentRange().Remove(opAndArg.operand);
             }
             else
             {
-                GenTree*       lclShadowStack = _compiler->gtNewLclvNode(_shadowStackLclNum, TYP_I_IMPL);
-                GenTreeIntCon* offset =
-                    _compiler->gtNewIconNode(_shadowStackLocalsSize + shadowStackUseOffest, TYP_I_IMPL);
-                GenTree* slotAddr  = _compiler->gtNewOperNode(GT_ADD, TYP_I_IMPL, lclShadowStack, offset);
-
+                unsigned offsetValue = _shadowStackLocalsSize + shadowStackUseOffest;
+                GenTree* slotAddr  = insertShadowStackAddr(callNode, offsetValue);
                 GenTree* storeNode = createShadowStackStoreNode(opAndArg.operand->TypeGet(), slotAddr, opAndArg.operand);
-                CurrentRange().InsertBefore(callNode, lclShadowStack, offset, slotAddr, storeNode);
+
+                CurrentRange().InsertBefore(callNode, storeNode);
             }
 
             if (corInfoType == CORINFO_TYPE_VALUECLASS)
@@ -843,4 +823,22 @@ GenTree* Llvm::createShadowStackStoreNode(var_types storeType, GenTree* addr, Ge
     storeNode->gtFlags |= (GTF_IND_TGT_NOT_HEAP | GTF_IND_NONFAULTING);
 
     return storeNode;
+}
+
+GenTree* Llvm::insertShadowStackAddr(GenTree* insertBefore, ssize_t offset)
+{
+    GenTree* shadowStackLcl = _compiler->gtNewLclvNode(_shadowStackLclNum, TYP_I_IMPL);
+    CurrentRange().InsertBefore(insertBefore, shadowStackLcl);
+
+    if (offset == 0)
+    {
+        return shadowStackLcl;
+    }
+
+    GenTree* offsetNode = _compiler->gtNewIconNode(offset, TYP_I_IMPL);
+    CurrentRange().InsertBefore(insertBefore, offsetNode);
+    GenTree* addNode = _compiler->gtNewOperNode(GT_ADD, TYP_I_IMPL, shadowStackLcl, offsetNode);
+    CurrentRange().InsertBefore(insertBefore, addNode);
+
+    return addNode;
 }
