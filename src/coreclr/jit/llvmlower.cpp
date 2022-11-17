@@ -11,6 +11,13 @@
 //
 void Llvm::Lower()
 {
+    // TODO-LLVM: enable. Currently broken because RyuJit inserts RPI helpers for RPI methods, then we
+    // also create an RPI wrapper stub, resulting in a double transition.
+    if (_compiler->opts.IsReversePInvoke())
+    {
+        failFunctionCompilation();
+    }
+
     populateLlvmArgNums();
 
     _shadowStackLocalsSize = 0;
