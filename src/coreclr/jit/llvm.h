@@ -184,8 +184,12 @@ public:
     void Lower();
 
 private:
-    void populateLlvmArgNums();
+    void lowerLocals();
     void lowerBlocks();
+
+    void populateLlvmArgNums();
+    void assignShadowStackOffsets(std::vector<LclVarDsc*>& shadowStackLocals, unsigned shadowStackParamCount);
+    void initializeLocalInProlog(unsigned lclNum, GenTree* value);
 
     void lowerStoreLcl(GenTreeLclVarCommon* storeLclNode);
     void lowerFieldOfDependentlyPromotedStruct(GenTree* node);

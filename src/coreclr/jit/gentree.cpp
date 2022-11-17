@@ -6450,9 +6450,11 @@ GenTree* Compiler::gtNewOneConNode(var_types type)
 
 GenTreeLclVar* Compiler::gtNewStoreLclVar(unsigned dstLclNum, GenTree* src)
 {
-    GenTreeLclVar* store = new (this, GT_STORE_LCL_VAR) GenTreeLclVar(GT_STORE_LCL_VAR, src->TypeGet(), dstLclNum);
-    store->gtOp1         = src;
-    store->gtFlags       = (src->gtFlags & GTF_COMMON_MASK);
+    LclVarDsc*     varDsc = lvaGetDesc(dstLclNum);
+    var_types      type   = varDsc->lvNormalizeOnStore() ? genActualType(varDsc) : varDsc->TypeGet();
+    GenTreeLclVar* store  = new (this, GT_STORE_LCL_VAR) GenTreeLclVar(GT_STORE_LCL_VAR, type, dstLclNum);
+    store->gtOp1          = src;
+    store->gtFlags        = (src->gtFlags & GTF_COMMON_MASK);
     store->gtFlags |= GTF_VAR_DEF | GTF_ASG;
     return store;
 }

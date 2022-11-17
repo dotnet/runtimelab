@@ -11,12 +11,29 @@
 //
 void Llvm::Lower()
 {
+    lowerLocals();
+    lowerBlocks();
+}
+
+//------------------------------------------------------------------------
+// lowerLocals: "Lower" locals: strip annotations and insert initializations.
+//
+// We decouple promoted structs from their field locals: for independently
+// promoted ones, we treat the fields as regular temporaries; parameters are
+// initialized explicitly via "STORE_LCL_VAR<field>(LCL_FLD<parent>)". For
+// dependently promoted cases, we will later rewrite all fields to reference
+// the parent instead, and so here strip some annotations ("lvIsParam"). We
+// also determine the set of locals which will need to go on the shadow stack,
+// zero-initialize them if required, and assign stack offsets.
+//
+void Llvm::lowerLocals()
+{
     populateLlvmArgNums();
 
-    _shadowStackLocalsSize = 0;
+    std::vector<LclVarDsc*> shadowStackLocals;
+    unsigned shadowStackParamCount = 0;
 
-    std::vector<LclVarDsc*> locals;
-    unsigned localsParamCount = 0;
+    _shadowStackLocalsSize = 0;
 
     for (unsigned lclNum = 0; lclNum < _compiler->lvaCount; lclNum++)
     {
@@ -32,24 +49,15 @@ void Llvm::Lower()
                     LclVarDsc* fieldVarDsc = _compiler->lvaGetDesc(fieldLclNum);
                     if (fieldVarDsc->lvRefCnt(RCS_NORMAL) != 0)
                     {
-                        JITDUMP("Adding initialization for %s:\n", fieldVarDsc->lvReason)
-
-                        _compiler->fgEnsureFirstBBisScratch();
-                        LIR::Range& firstBlockRange = LIR::AsRange(_compiler->fgFirstBB);
-
                         GenTree* fieldValue =
                             _compiler->gtNewLclFldNode(lclNum, fieldVarDsc->TypeGet(), fieldVarDsc->lvFldOffset);
-
-                        GenTree* fieldStore = _compiler->gtNewStoreLclVar(fieldLclNum, fieldValue);
-                        firstBlockRange.InsertAtBeginning(fieldStore);
-                        firstBlockRange.InsertAtBeginning(fieldValue);
-
-                        DISPTREERANGE(firstBlockRange, fieldStore);
+                        initializeLocalInProlog(fieldLclNum, fieldValue);
                     }
 
-                    fieldVarDsc->lvIsStructField = false;
-                    fieldVarDsc->lvParentLcl     = BAD_VAR_NUM;
-                    fieldVarDsc->lvIsParam       = false;
+                    fieldVarDsc->lvIsStructField   = false;
+                    fieldVarDsc->lvParentLcl       = BAD_VAR_NUM;
+                    fieldVarDsc->lvIsParam         = false;
+                    fieldVarDsc->lvHasExplicitInit = true;
                 }
 
                 varDsc->lvPromoted      = false;
@@ -58,7 +66,7 @@ void Llvm::Lower()
             }
             else if (_compiler->lvaGetPromotionType(varDsc) == Compiler::PROMOTION_TYPE_DEPENDENT)
             {
-                /* dependent promotion, just mark fields as not lvIsParam */
+                // Dependent promotion, just mark fields as not lvIsParam.
                 for (unsigned index = 0; index < varDsc->lvFieldCnt; index++)
                 {
                     unsigned   fieldLclNum = varDsc->lvFieldLclStart + index;
@@ -80,39 +88,33 @@ void Llvm::Lower()
                 // The fields will be referenced through the parent.
                 continue;
             }
+            if (!varDsc->lvIsParam && (varDsc->lvRefCnt() == 0))
+            {
+                // No need to place unreferenced temps on the shadow stack.
+                continue;
+            }
 
-            locals.push_back(varDsc);
+            // Insert zero-initialization for this local if required (which it almost always will be).
+            if (!varDsc->lvIsParam && !varDsc->lvHasExplicitInit)
+            {
+                var_types zeroType = (varDsc->TypeGet() == TYP_STRUCT) ? TYP_INT : genActualType(varDsc);
+                initializeLocalInProlog(lclNum, _compiler->gtNewZeroConNode(zeroType));
+            }
+
+            shadowStackLocals.push_back(varDsc);
             if (varDsc->lvIsParam)
             {
-                localsParamCount++;
+                shadowStackParamCount++;
                 varDsc->lvIsParam = false;
             }
         }
     }
 
-    if (_compiler->opts.OptimizationEnabled())
-    {
-        std::sort(locals.begin() + localsParamCount, locals.end(), [](const LclVarDsc* lhs, const LclVarDsc* rhs) { return lhs->lvRefCntWtd() > rhs->lvRefCntWtd(); });
-    }
-
-    unsigned int offset = 0;
-    for (unsigned i = 0; i < locals.size(); i++)
-    {
-        LclVarDsc* varDsc = locals.at(i);
-        CorInfoType corInfoType = toCorInfoType(varDsc->TypeGet());
-        CORINFO_CLASS_HANDLE classHandle = tryGetStructClassHandle(varDsc);
-
-        offset = padOffset(corInfoType, classHandle, offset);
-        varDsc->SetStackOffset(offset);
-        offset = padNextOffset(corInfoType, classHandle, offset);
-    }
-    _shadowStackLocalsSize = offset;
+    assignShadowStackOffsets(shadowStackLocals, shadowStackParamCount);
 
     JITDUMP("\nLocals after shadow stack layout:\n");
     JITDUMPEXEC(_compiler->lvaDoneFrameLayout = Compiler::TENTATIVE_FRAME_LAYOUT);
     JITDUMPEXEC(_compiler->lvaTableDump());
-
-    lowerBlocks();
 }
 
 void Llvm::populateLlvmArgNums()
@@ -162,6 +164,42 @@ void Llvm::populateLlvmArgNums()
     }
 
     _llvmArgCount = nextLlvmArgNum;
+}
+
+void Llvm::assignShadowStackOffsets(std::vector<LclVarDsc*>& shadowStackLocals, unsigned shadowStackParamCount)
+{
+    if (_compiler->opts.OptimizationEnabled())
+    {
+        std::sort(shadowStackLocals.begin() + shadowStackParamCount, shadowStackLocals.end(),
+                  [](const LclVarDsc* lhs, const LclVarDsc* rhs) { return lhs->lvRefCntWtd() > rhs->lvRefCntWtd(); });
+    }
+
+    unsigned int offset = 0;
+    for (unsigned i = 0; i < shadowStackLocals.size(); i++)
+    {
+        LclVarDsc* varDsc = shadowStackLocals.at(i);
+        CorInfoType corInfoType = toCorInfoType(varDsc->TypeGet());
+        CORINFO_CLASS_HANDLE classHandle = tryGetStructClassHandle(varDsc);
+
+        offset = padOffset(corInfoType, classHandle, offset);
+        varDsc->SetStackOffset(offset);
+        offset = padNextOffset(corInfoType, classHandle, offset);
+    }
+    _shadowStackLocalsSize = offset;
+}
+
+void Llvm::initializeLocalInProlog(unsigned lclNum, GenTree* value)
+{
+    JITDUMP("Adding initialization for V%02u, %s:\n", lclNum, _compiler->lvaGetDesc(lclNum)->lvReason);
+
+    _compiler->fgEnsureFirstBBisScratch();
+    LIR::Range& firstBlockRange = LIR::AsRange(_compiler->fgFirstBB);
+
+    GenTree* store = _compiler->gtNewStoreLclVar(lclNum, value);
+    firstBlockRange.InsertAtEnd(value);
+    firstBlockRange.InsertAtEnd(store);
+
+    DISPTREERANGE(firstBlockRange, store);
 }
 
 void Llvm::lowerBlocks()
