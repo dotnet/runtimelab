@@ -260,9 +260,16 @@ if not exist "%__NativeTestIntermediatesDir%\CMakeCache.txt" (
 
 echo Environment setup
 
-REM We pass the /m flag directly to MSBuild so that we can get both MSBuild and CL parallelism, which is fastest for our builds.
-set __CmakeBuildToolArgs=/nologo /m
+set __CmakeBuildToolArgs=
 
+if %__Ninja% EQU 1 (
+    set __CmakeBuildToolArgs=
+) else (
+    REM We pass the /m flag directly to MSBuild so that we can get both MSBuild and CL parallelism, which is fastest for our builds.
+    set __CmakeBuildToolArgs=/nologo /m
+)
+
+"%CMakePath%" --build %__NativeTestIntermediatesDir% --target install --config %__BuildType% -- !__CmakeBuildToolArgs!
 
 if errorlevel 1 (
     echo %__ErrMsgPrefix%%__MsgPrefix%Error: native test build failed.
