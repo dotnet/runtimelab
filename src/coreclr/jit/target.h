@@ -239,9 +239,6 @@ typedef unsigned __int64 regMaskSmall;
 typedef _regNumber_enum regNumber;
 typedef unsigned char   regNumberSmall;
 
-//TODO-LLVM: delete this when we are merged forward enough that it is no longer present
-#define SCALED_ADDR_MODES 1
-
 /*****************************************************************************/
 
 #ifdef DEBUG
