@@ -99,18 +99,19 @@ void Llvm::Compile()
 
 void Llvm::generateProlog()
 {
-    // create a prolog block to store arguments passed on shadow stack, TODO: other things from ILToLLVMImporter to come
+    JITDUMP("\n=============== Generating prolog:\n");
+
     llvm::BasicBlock* prologBlock = llvm::BasicBlock::Create(_llvmContext, "Prolog", _function);
     _prologBuilder.SetInsertPoint(prologBlock);
 
-    createAllocasForLocalsWithAddrOp();
+    initializeLocals();
 
     llvm::BasicBlock* block0 = getLLVMBasicBlockForBlock(_compiler->fgFirstBB);
-    _prologBuilder.SetInsertPoint(_prologBuilder.CreateBr(block0)); // position _prologBuilder to add locals and arguments
+    _prologBuilder.SetInsertPoint(_prologBuilder.CreateBr(block0));
     _builder.SetInsertPoint(block0);
 }
 
-void Llvm::createAllocasForLocalsWithAddrOp()
+void Llvm::initializeLocals()
 {
     m_allocas = std::vector<Value*>(_compiler->lvaCount, nullptr);
 
@@ -118,21 +119,99 @@ void Llvm::createAllocasForLocalsWithAddrOp()
     {
         LclVarDsc* varDsc = _compiler->lvaGetDesc(lclNum);
 
-        if (canStoreLocalOnLlvmStack(varDsc) && isLlvmFrameLocal(varDsc))
+        if (varDsc->lvRefCnt() == 0)
         {
-            CORINFO_CLASS_HANDLE classHandle = tryGetStructClassHandle(varDsc);
-            Type* llvmType = getLlvmTypeForCorInfoType(toCorInfoType(varDsc->TypeGet()), classHandle);
-            Value* allocaValue = _prologBuilder.CreateAlloca(llvmType);
-            m_allocas[lclNum] = allocaValue;
+            continue;
+        }
 
-            if (varDsc->lvIsParam)
+        // Needed because of "implicitly referenced" locals.
+        if (!canStoreLocalOnLlvmStack(varDsc))
+        {
+            continue;
+        }
+
+        // See "genCheckUseBlockInit", "fgInterBlockLocalVarLiveness" and "SsaBuilder::RenameVariables" as references
+        // for the zero-init logic.
+        //
+        Type* lclLlvmType = getLlvmTypeForLclVar(varDsc);
+        Value* initValue = nullptr;
+        Value* zeroValue = llvm::Constant::getNullValue(lclLlvmType);
+        if (varDsc->lvIsParam)
+        {
+            assert(varDsc->lvLlvmArgNum != BAD_LLVM_ARG_NUM);
+            initValue = _function->getArg(varDsc->lvLlvmArgNum);
+        }
+        else
+        {
+            // If the local is in SSA, things are somewhat simple: we must provide an initial value if there is an
+            // "implicit" def, and must not if there is not.
+            if (_compiler->lvaInSsa(lclNum))
             {
-                LlvmArgInfo argInfo = getLlvmArgInfoForArgIx(lclNum);
-                assert(argInfo.IsLlvmArg());
-                Value* dataValue = _function->getArg(argInfo.m_argIx);
-                _prologBuilder.CreateStore(dataValue, castIfNecessary(allocaValue, dataValue->getType()->getPointerTo(),
-                                                                      &_prologBuilder));
+                // Needed because of "implicitly referenced" locals.
+                if (varDsc->lvPerSsaData.GetCount() == 0)
+                {
+                    continue;
+                }
+
+                bool hasImplicitDef = varDsc->GetPerSsaData(SsaConfig::FIRST_SSA_NUM)->GetAssignment() == nullptr;
+                if (!hasImplicitDef)
+                {
+                    // Nothing else needs to be done for this local.
+                    assert(!varDsc->lvMustInit);
+                    continue;
+                }
+
+                // SSA locals are always tracked; use liveness' determination on whether we need to zero-init.
+                if (varDsc->lvMustInit)
+                {
+                    initValue = zeroValue;
+                }
             }
+            else if (!varDsc->lvHasExplicitInit) // We do not need to zero-init locals with explicit inits.
+            {
+                // This reduces to, essentially, "!isTemp && compInitMem", the general test for whether
+                // we need to zero-initialize, under the assumption there are use-before-def references.
+                if (!_compiler->fgVarNeedsExplicitZeroInit(lclNum, /* bbInALoop */ false, /* bbIsReturn */ false))
+                {
+                    // For untracked locals, we have to be conservative. For tracked ones, we can query the
+                    // "lvMustInit" bit liveness has set.
+                    if (!varDsc->lvTracked || varDsc->lvMustInit)
+                    {
+                        initValue = zeroValue;
+                    }
+                }
+            }
+
+            JITDUMP("Setting V%02u's initial value to %s\n", lclNum, (initValue == zeroValue) ? "zero" : "uninit");
+        }
+
+        // Reset the bit so that subsequent dumping reflects our decision here.
+        varDsc->lvMustInit = initValue == zeroValue;
+
+        // If we're not zero-initializing, use a frozen undef value. This will ensure we don't run
+        // into UB issues with undefined values (which uninitialized allocas produce, see LangRef)
+        if (initValue == nullptr)
+        {
+            initValue = llvm::UndefValue::get(lclLlvmType);
+            initValue = _prologBuilder.CreateFreeze(initValue);
+            JITDUMPEXEC(initValue->dump());
+        }
+
+        assert(initValue->getType() == lclLlvmType);
+
+        if (isLlvmFrameLocal(varDsc))
+        {
+            Instruction* allocaInst = _prologBuilder.CreateAlloca(lclLlvmType);
+            m_allocas[lclNum] = allocaInst;
+            JITDUMPEXEC(allocaInst->dump());
+
+            Instruction* storeInst = _prologBuilder.CreateStore(initValue, allocaInst);
+            JITDUMPEXEC(storeInst->dump());
+        }
+        else
+        {
+            assert(_compiler->lvaInSsa(lclNum));
+            _localsMap.Set({lclNum, SsaConfig::FIRST_SSA_NUM}, initValue);
         }
     }
 }
@@ -177,21 +256,7 @@ void Llvm::fillPhis()
             unsigned       lclNum = phiArg->GetLclNum();
             unsigned       ssaNum = phiArg->GetSsaNum();
 
-            Value* localPhiArg = nullptr;
-            if (!_localsMap.Lookup({lclNum, ssaNum}, &localPhiArg))
-            {
-                //TODO-LLVM: Uninitialised locals are caught here as they would fail on the equivalent assert below.
-                // See https://github.com/dotnet/runtimelab/pull/1744#discussion_r757791229
-                if (!(_compiler->lvaIsParameter(lclNum) && ssaNum == SsaConfig::FIRST_SSA_NUM))
-                {
-                    failFunctionCompilation();
-                }
-                // Arguments are implicitly defined on entry to the method.
-                assert(_compiler->lvaIsParameter(lclNum) && ssaNum == SsaConfig::FIRST_SSA_NUM);
-                LlvmArgInfo llvmArgInfo = getLlvmArgInfoForArgIx(lclNum);
-                localPhiArg = _function->getArg(llvmArgInfo.m_argIx);
-            }
-
+            Value* localPhiArg = _localsMap[{lclNum, ssaNum}];
             Value* phiRealArgValue;
             Instruction* castRequired = getCast(localPhiArg, llvmPhiNode->getType());
             if (castRequired != nullptr)
@@ -240,12 +305,24 @@ Value* Llvm::getGenTreeValue(GenTree* op)
 //    targetLlvmType - the LLVM type through which the user uses "node"
 //
 // Return Value:
-//    The normalized value, of "targetLlvmType" type.
+//    The normalized value, of "targetLlvmType" type. If the latter wasn't
+//    provided, the raw value is returned, except for small types, which
+//    are still extended to INT.
 //
 Value* Llvm::consumeValue(GenTree* node, Type* targetLlvmType)
 {
     Value* nodeValue = getGenTreeValue(node);
     Value* finalValue = nodeValue;
+
+    if (targetLlvmType == nullptr)
+    {
+        if (!nodeValue->getType()->isIntegerTy())
+        {
+            return finalValue;
+        }
+
+        targetLlvmType = getLlvmTypeForVarType(genActualType(node));
+    }
 
     if (nodeValue->getType() != targetLlvmType)
     {
@@ -342,7 +419,7 @@ void Llvm::visitNode(GenTree* node)
     switch (node->OperGet())
     {
         case GT_ADD:
-            buildAdd(node, getGenTreeValue(node->AsOp()->gtOp1), getGenTreeValue(node->AsOp()->gtOp2));
+            buildAdd(node->AsOp());
             break;
         case GT_DIV:
             buildDiv(node);
@@ -379,7 +456,7 @@ void Llvm::visitNode(GenTree* node)
             buildLocalField(node->AsLclFld());
             break;
         case GT_LCL_VAR:
-            localVar(node->AsLclVar());
+            buildLocalVar(node->AsLclVar());
             break;
         case GT_LCL_VAR_ADDR:
         case GT_LCL_FLD_ADDR:
@@ -396,7 +473,7 @@ void Llvm::visitNode(GenTree* node)
         case GT_LT:
         case GT_GE:
         case GT_GT:
-            buildCmp(node, getGenTreeValue(node->AsOp()->gtOp1), getGenTreeValue(node->AsOp()->gtOp2));
+            buildCmp(node->AsOp());
             break;
         case GT_NEG:
         case GT_NOT:
@@ -421,7 +498,7 @@ void Llvm::visitNode(GenTree* node)
             buildReturn(node);
             break;
         case GT_STORE_LCL_VAR:
-            storeLocalVar(node->AsLclVar());
+            buildStoreLocalVar(node->AsLclVar());
             break;
         case GT_STOREIND:
             buildStoreInd(node->AsStoreInd());
@@ -452,7 +529,7 @@ void Llvm::visitNode(GenTree* node)
 #endif // DEBUG
 }
 
-Value* Llvm::localVar(GenTreeLclVar* lclVar)
+void Llvm::buildLocalVar(GenTreeLclVar* lclVar)
 {
     Value*       llvmRef;
     unsigned int lclNum = lclVar->GetLclNum();
@@ -463,18 +540,9 @@ Value* Llvm::localVar(GenTreeLclVar* lclVar)
     {
         llvmRef = _builder.CreateLoad(m_allocas[lclNum]);
     }
-    else if (!_localsMap.Lookup({lclNum, ssaNum}, &llvmRef))
+    else
     {
-        if (varDsc->lvLlvmArgNum != BAD_LLVM_ARG_NUM)
-        {
-            llvmRef = _function->getArg(varDsc->lvLlvmArgNum);
-            _localsMap.Set({lclNum, ssaNum}, llvmRef);
-        }
-        else
-        {
-            // Unhandled scenario, local is not defined already, and is not a parameter.
-            failFunctionCompilation();
-        }
+        llvmRef = _localsMap[{lclNum, ssaNum}];
     }
 
     // Implicit truncating from long to int.
@@ -484,13 +552,14 @@ Value* Llvm::localVar(GenTreeLclVar* lclVar)
     }
 
     mapGenTreeToValue(lclVar, llvmRef);
-    return llvmRef;
 }
 
-void Llvm::storeLocalVar(GenTreeLclVar* lclVar)
+void Llvm::buildStoreLocalVar(GenTreeLclVar* lclVar)
 {
-    Type*  destLlvmType = getLlvmTypeForLclVar(lclVar);
-    Value* localValue   = nullptr;
+    unsigned lclNum = lclVar->GetLclNum();
+    LclVarDsc* varDsc = _compiler->lvaGetDesc(lclVar);
+    Type* destLlvmType = getLlvmTypeForLclVar(varDsc);
+    Value* localValue = nullptr;
 
     // zero initialization check
     if (lclVar->TypeIs(TYP_STRUCT) && lclVar->gtGetOp1()->IsIntegralConst(0))
@@ -502,21 +571,12 @@ void Llvm::storeLocalVar(GenTreeLclVar* lclVar)
         localValue = consumeValue(lclVar->gtGetOp1(), destLlvmType);
     }
 
-    unsigned lclNum = lclVar->GetLclNum();
-    LclVarDsc* varDsc = _compiler->lvaGetDesc(lclVar);
-
     if (isLlvmFrameLocal(varDsc))
     {
-        Value* lclAddressValue = m_allocas[lclNum];
-        _builder.CreateStore(localValue, castIfNecessary(lclAddressValue, destLlvmType->getPointerTo()));
+        _builder.CreateStore(localValue, m_allocas[lclNum]);
     }
     else
     {
-        if (varDsc->lvIsParam) // TODO-LLVM: not doing params yet
-        {
-            failFunctionCompilation();
-        }
-
         _localsMap.Set({lclNum, lclVar->GetSsaNum()}, localValue);
     }
 }
@@ -561,23 +621,30 @@ void Llvm::buildLocalVarAddr(GenTreeLclVarCommon* lclAddr)
     }
 }
 
-void Llvm::buildAdd(GenTree* node, Value* op1, Value* op2)
+void Llvm::buildAdd(GenTreeOp* node)
 {
-    Type* op1Type = op1->getType();
-    if (op1Type->isPointerTy() && op2->getType()->isIntegerTy())
+    Value* op1Value = consumeValue(node->gtGetOp1());
+    Value* op2Value = consumeValue(node->gtGetOp2());
+    Type* op1Type = op1Value->getType();
+    Type* op2Type = op2Value->getType();
+
+    Value* addValue;
+    if (op1Type->isPointerTy() && op2Type->isIntegerTy())
     {
         // GEPs scale indices, bitcasting to i8* makes them equivalent to the raw offsets we have in IR
-        mapGenTreeToValue(node, _builder.CreateGEP(castIfNecessary(op1, Type::getInt8PtrTy(_llvmContext)), op2));
+        addValue = _builder.CreateGEP(castIfNecessary(op1Value, Type::getInt8PtrTy(_llvmContext)), op2Value);
     }
-    else if (op1Type->isIntegerTy() && op2->getType() == op1Type)
+    else if (op1Type->isIntegerTy() && (op1Type == op2Type))
     {
-        mapGenTreeToValue(node, _builder.CreateAdd(op1, op2));
+        addValue = _builder.CreateAdd(op1Value, op2Value);
     }
     else
     {
         // unsupported add type combination
         failFunctionCompilation();
     }
+
+    mapGenTreeToValue(node, addValue);
 }
 
 void Llvm::buildDiv(GenTree* node)
@@ -682,57 +749,62 @@ void Llvm::buildCast(GenTreeCast* cast)
     mapGenTreeToValue(cast, castValue);
 }
 
-void Llvm::buildCmp(GenTree* node, Value* op1, Value* op2)
+void Llvm::buildCmp(GenTreeOp* node)
 {
-    llvm::CmpInst::Predicate llvmPredicate;
+    using Predicate = llvm::CmpInst::Predicate;
 
-    bool isIntOrPtr = op1->getType()->isIntOrPtrTy();
+    bool isIntOrPtr = varTypeIsIntegralOrI(node->gtGetOp1());
+    bool isUnsigned = node->IsUnsigned();
+    bool isUnordered = (node->gtFlags & GTF_RELOP_NAN_UN) != 0;
+    Predicate predicate;
     switch (node->OperGet())
     {
         case GT_EQ:
-            llvmPredicate = isIntOrPtr ? llvm::CmpInst::Predicate::ICMP_EQ : llvm::CmpInst::Predicate::FCMP_OEQ;
+            predicate = isIntOrPtr ? Predicate::ICMP_EQ : (isUnordered ? Predicate::FCMP_UEQ : Predicate::FCMP_OEQ);
             break;
         case GT_NE:
-            llvmPredicate = isIntOrPtr ? llvm::CmpInst::Predicate::ICMP_NE : llvm::CmpInst::Predicate::FCMP_ONE;
+            predicate = isIntOrPtr ? Predicate::ICMP_NE : (isUnordered ? Predicate::FCMP_UNE : Predicate::FCMP_ONE);
             break;
         case GT_LE:
-            llvmPredicate = isIntOrPtr ? (node->IsUnsigned() ? llvm::CmpInst::Predicate::ICMP_ULE : llvm::CmpInst::Predicate::ICMP_SLE)
-                : llvm::CmpInst::Predicate::FCMP_OLE;
+            predicate = isIntOrPtr ? (isUnsigned ? Predicate::ICMP_ULE : Predicate::ICMP_SLE)
+                                   : (isUnordered ? Predicate::FCMP_ULE : Predicate::FCMP_OLE);
             break;
         case GT_LT:
-            llvmPredicate = isIntOrPtr ? (node->IsUnsigned() ? llvm::CmpInst::Predicate::ICMP_ULT : llvm::CmpInst::Predicate::ICMP_SLT)
-                : llvm::CmpInst::Predicate::FCMP_OLT;
+            predicate = isIntOrPtr ? (isUnsigned ? Predicate::ICMP_ULT : Predicate::ICMP_SLT)
+                                   : (isUnordered ? Predicate::FCMP_ULT : Predicate::FCMP_OLT);
             break;
         case GT_GE:
-            llvmPredicate = isIntOrPtr ? (node->IsUnsigned() ? llvm::CmpInst::Predicate::ICMP_UGE : llvm::CmpInst::Predicate::ICMP_SGE)
-                : llvm::CmpInst::Predicate::FCMP_OGE;
+            predicate = isIntOrPtr ? (isUnsigned ? Predicate::ICMP_UGE : Predicate::ICMP_SGE)
+                                   : (isUnordered ? Predicate::FCMP_UGE : Predicate::FCMP_OGE);
             break;
         case GT_GT:
-            llvmPredicate = isIntOrPtr ? (node->IsUnsigned() ? llvm::CmpInst::Predicate::ICMP_UGT : llvm::CmpInst::Predicate::ICMP_SGT)
-                : llvm::CmpInst::Predicate::FCMP_OGT;
+            predicate = isIntOrPtr ? (isUnordered ? Predicate::ICMP_UGT : Predicate::ICMP_SGT)
+                                   : (isUnordered ? Predicate::FCMP_UGT : Predicate::FCMP_OGT);
             break;
         default:
-            failFunctionCompilation(); // TODO all genTreeOps values
-
+            unreached();
     }
-    // comparing refs and ints is valid LIR, but not LLVM so handle that case by converting the int to a ref
-    if (op1->getType() != op2->getType())
+
+    // Comparing refs and ints is valid LIR, but not LLVM so handle that case by converting the int to a ref.
+    Value* op1Value = consumeValue(node->gtGetOp1());
+    Value* op2Value = consumeValue(node->gtGetOp2());
+    Type* op1Type = op1Value->getType();
+    Type* op2Type = op2Value->getType();
+    if (op1Type != op2Type)
     {
-        if (op1->getType()->isPointerTy() && op2->getType()->isIntegerTy())
+        assert((op1Type->isPointerTy() && op2Type->isIntegerTy()) ||
+               (op1Type->isIntegerTy() && op2Type->isPointerTy()));
+        if (op1Type->isPointerTy())
         {
-            op2 = _builder.CreateIntToPtr(op2, op1->getType());
-        }
-        else if (op2->getType()->isPointerTy() && op1->getType()->isIntegerTy())
-        {
-            op1 = _builder.CreateIntToPtr(op1, op2->getType());
+            op2Value = _builder.CreateIntToPtr(op2Value, op1Type);
         }
         else
         {
-            // TODO-LLVM: other valid LIR comparisons
-            failFunctionCompilation();
+            op1Value = _builder.CreateIntToPtr(op1Value, op2Type);
         }
     }
-    mapGenTreeToValue(node, _builder.CreateCmp(llvmPredicate, op1, op2));
+
+    mapGenTreeToValue(node, _builder.CreateCmp(predicate, op1Value, op2Value));
 }
 
 void Llvm::buildCnsDouble(GenTreeDblCon* node)
@@ -1347,8 +1419,7 @@ FunctionType* Llvm::getFunctionType()
         if (varDsc->lvIsParam)
         {
             assert(varDsc->lvLlvmArgNum != BAD_LLVM_ARG_NUM);
-
-            argVec[varDsc->lvLlvmArgNum] = getLlvmTypeForCorInfoType(varDsc->lvCorInfoType, varDsc->lvClassHnd);
+            argVec[varDsc->lvLlvmArgNum] = getLlvmTypeForLclVar(varDsc);
         }
     }
 
@@ -1633,64 +1704,4 @@ unsigned int Llvm::getTotalLocalOffset()
 {
     unsigned int offset = getTotalRealLocalOffset();
     return AlignUp(offset, TARGET_POINTER_SIZE);
-}
-
-// Returns the llvm arg number or shadow stack offset for the corresponding local which must be loaded from an argument
-LlvmArgInfo Llvm::getLlvmArgInfoForArgIx(unsigned lclNum)
-{
-    if (_sigInfo.hasExplicitThis() || _sigInfo.hasTypeArg())
-        failFunctionCompilation();
-
-    unsigned int llvmArgNum = 1; // skip shadow stack arg
-    LlvmArgInfo llvmArgInfo = {
-        -1, // Default to not an LLVM arg.
-        _sigInfo.hasThis() ? TARGET_POINTER_SIZE : 0U // "this" is the first pointer on the shadow stack.
-    };
-
-    if (lclNum == _shadowStackLclNum)
-    {
-        llvmArgInfo.m_argIx             = 0;
-        llvmArgInfo.m_shadowStackOffset = 0;
-        return llvmArgInfo;
-    }
-
-    if (needsReturnStackSlot(_sigInfo.retType, _sigInfo.retTypeClass))
-    {
-        llvmArgNum++;
-    }
-
-    // adjust lclNum for this which is not in _sigInfo.args
-    unsigned thisAdjustedLclNum = _sigInfo.hasThis() ? lclNum - 1 : lclNum;
-
-    CORINFO_ARG_LIST_HANDLE sigArgs = _sigInfo.args;
-
-    unsigned int shadowStackOffset = llvmArgInfo.m_shadowStackOffset;
-
-    unsigned int i = 0;
-    for (; i < _sigInfo.numArgs; i++, sigArgs = _info.compCompHnd->getArgNext(sigArgs))
-    {
-        CORINFO_CLASS_HANDLE clsHnd;
-        CorInfoType corInfoType = getCorInfoTypeForArg(&_sigInfo, sigArgs, &clsHnd);
-        if (canStoreArgOnLlvmStack(_compiler, corInfoType, clsHnd))
-        {
-            if (thisAdjustedLclNum == i)
-            {
-                llvmArgInfo.m_argIx = llvmArgNum;
-                break;
-            }
-
-            llvmArgNum++;
-        }
-        else
-        {
-            if (thisAdjustedLclNum == i)
-            {
-                llvmArgInfo.m_shadowStackOffset = shadowStackOffset;
-                break;
-            }
-
-            shadowStackOffset += TARGET_POINTER_SIZE; // TODO size of arg, for now only handles byrefs and class types
-        }
-    }
-    return llvmArgInfo;
 }

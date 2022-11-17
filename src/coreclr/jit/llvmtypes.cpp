@@ -92,8 +92,8 @@ Type* Llvm::getLlvmTypeForStruct(CORINFO_CLASS_HANDLE structHandle)
 {
     if (_llvmStructs->find(structHandle) == _llvmStructs->end())
     {
-        llvm::Type* llvmType;
-        unsigned    fieldAlignment;
+        Type* llvmType;
+        unsigned fieldAlignment;
 
         // LLVM thinks certain sizes of struct have a different calling convention than Clang does.
         // Treating them as ints fixes that and is more efficient in general
@@ -195,10 +195,10 @@ Type* Llvm::getLlvmTypeForStruct(CORINFO_CLASS_HANDLE structHandle)
 
 Type* Llvm::getLlvmTypeForVarType(var_types type)
 {
-    // TODO: Fill out with missing type mappings and when all code done via clrjit, default should fail with useful
-    // message
     switch (type)
     {
+        case TYP_VOID:
+            return Type::getVoidTy(_llvmContext);
         case TYP_BOOL:
         case TYP_BYTE:
         case TYP_UBYTE:
@@ -212,81 +212,59 @@ Type* Llvm::getLlvmTypeForVarType(var_types type)
         case TYP_LONG:
         case TYP_ULONG:
             return Type::getInt64Ty(_llvmContext);
-        case var_types::TYP_FLOAT:
+        case TYP_FLOAT:
             return Type::getFloatTy(_llvmContext);
-        case var_types::TYP_DOUBLE:
+        case TYP_DOUBLE:
             return Type::getDoubleTy(_llvmContext);
-        case TYP_BYREF:
         case TYP_REF:
+        case TYP_BYREF:
             return Type::getInt8PtrTy(_llvmContext);
-        case TYP_VOID:
-            return Type::getVoidTy(_llvmContext);
-        default:
+        case TYP_BLK:
+        case TYP_STRUCT:
             failFunctionCompilation();
+        default:
+            unreached();
     }
 }
 
-Type* Llvm::getLlvmTypeForLclVar(GenTreeLclVar* lclVar)
+Type* Llvm::getLlvmTypeForLclVar(LclVarDsc* varDsc)
 {
-    var_types nodeType = lclVar->TypeGet();
-
-    if (nodeType == TYP_STRUCT)
+    if (varDsc->TypeGet() == TYP_STRUCT)
     {
-        return getLlvmTypeForStruct(_compiler->lvaGetDesc(lclVar)->GetLayout());
+        return getLlvmTypeForStruct(varDsc->GetLayout());
     }
-    return getLlvmTypeForVarType(nodeType);
+    // TODO-LLVM: enable. Currently broken because RyuJit inserts RPI helpers for RPI methods,
+    // with a TYP_BLK frame variable, and then we also create an RPI wrapper stub, resulting
+    // in a double transition.
+    // if (varDsc->TypeGet() == TYP_BLK)
+    // {
+    //     assert(varDsc->lvExactSize != 0);
+    //     return llvm::ArrayType::get(Type::getInt8Ty(_llvmContext), varDsc->lvExactSize);
+    // }
+    if (varDsc->lvCorInfoType != CORINFO_TYPE_UNDEF)
+    {
+        return getLlvmTypeForCorInfoType(varDsc->lvCorInfoType, varDsc->lvClassHnd);
+    }
+
+    return getLlvmTypeForVarType(varDsc->TypeGet());
 }
 
 Type* Llvm::getLlvmTypeForCorInfoType(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd)
 {
     switch (corInfoType)
     {
-        case CorInfoType::CORINFO_TYPE_VOID:
-            return Type::getVoidTy(_llvmContext);
-
-        case CorInfoType::CORINFO_TYPE_BOOL:
-        case CorInfoType::CORINFO_TYPE_UBYTE:
-        case CorInfoType::CORINFO_TYPE_BYTE:
-            return Type::getInt8Ty(_llvmContext);
-
-        case CorInfoType::CORINFO_TYPE_SHORT:
-        case CorInfoType::CORINFO_TYPE_USHORT:
-            return Type::getInt16Ty(_llvmContext);
-
-        case CorInfoType::CORINFO_TYPE_INT:
-        case CorInfoType::CORINFO_TYPE_UINT:
-        case CorInfoType::CORINFO_TYPE_NATIVEINT:  // TODO: Wasm64 - what does NativeInt mean for Wasm64
-            return Type::getInt32Ty(_llvmContext);
-
-        case CorInfoType::CORINFO_TYPE_LONG:
-        case CorInfoType::CORINFO_TYPE_ULONG:
-            return Type::getInt64Ty(_llvmContext);
-
-        case CorInfoType::CORINFO_TYPE_FLOAT:
-            return Type::getFloatTy(_llvmContext);
-
-        case CorInfoType::CORINFO_TYPE_DOUBLE:
-            return Type::getDoubleTy(_llvmContext);
-
-        case CorInfoType::CORINFO_TYPE_PTR:
-        {
+        case CORINFO_TYPE_PTR:
             if (classHnd == NO_CLASS_HANDLE)
             {
                 return Type::getInt8Ty(_llvmContext)->getPointerTo();
             }
-
             return getLlvmTypeForParameterType(classHnd)->getPointerTo();
-        }
 
-        case CorInfoType::CORINFO_TYPE_BYREF:
-        case CorInfoType::CORINFO_TYPE_CLASS:
-            return Type::getInt8PtrTy(_llvmContext);
-
-        case CorInfoType::CORINFO_TYPE_VALUECLASS:
+        case CORINFO_TYPE_VALUECLASS:
             return getLlvmTypeForStruct(classHnd);
 
         default:
-            failFunctionCompilation();
+            return getLlvmTypeForVarType(JITtype2varType(corInfoType));
     }
 }
 

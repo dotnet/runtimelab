@@ -47,17 +47,6 @@ struct OperandArgNum
     GenTree* operand;
 };
 
-struct LlvmArgInfo
-{
-    int          m_argIx; // -1 indicates not in the LLVM arg list, but on the shadow stack
-    unsigned int m_shadowStackOffset;
-
-    bool IsLlvmArg()
-    {
-        return m_argIx >= 0;
-    }
-};
-
 struct JitStdStringKeyFuncs : JitKeyFuncsDefEquals<std::string>
 {
     static unsigned GetHashCode(const std::string& val)
@@ -181,7 +170,7 @@ private:
     Type* getLlvmTypeForStruct(ClassLayout* classLayout);
     Type* getLlvmTypeForStruct(CORINFO_CLASS_HANDLE structHandle);
     Type* getLlvmTypeForVarType(var_types type);
-    Type* getLlvmTypeForLclVar(GenTreeLclVar* lclVar);
+    Type* getLlvmTypeForLclVar(LclVarDsc* varDsc);
     Type* getLlvmTypeForCorInfoType(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd);
     Type* getLlvmTypeForParameterType(CORINFO_CLASS_HANDLE classHnd);
 
@@ -219,27 +208,27 @@ public:
 
 private:
     void generateProlog();
-    void createAllocasForLocalsWithAddrOp();
+    void initializeLocals();
     void startImportingBasicBlock(BasicBlock* block);
     void endImportingBasicBlock(BasicBlock* block);
     void fillPhis();
 
     Value* getGenTreeValue(GenTree* node);
-    Value* consumeValue(GenTree* node, Type* targetLlvmType);
+    Value* consumeValue(GenTree* node, Type* targetLlvmType = nullptr);
     void mapGenTreeToValue(GenTree* node, Value* nodeValue);
 
     void startImportingNode();
     void visitNode(GenTree* node);
 
-    Value* localVar(GenTreeLclVar* lclVar);
-    void storeLocalVar(GenTreeLclVar* lclVar);
+    void buildLocalVar(GenTreeLclVar* lclVar);
+    void buildStoreLocalVar(GenTreeLclVar* lclVar);
     void buildEmptyPhi(GenTreePhi* phi);
     void buildLocalField(GenTreeLclFld* lclFld);
     void buildLocalVarAddr(GenTreeLclVarCommon* lclVar);
-    void buildAdd(GenTree* node, Value* op1, Value* op2);
+    void buildAdd(GenTreeOp* node);
     void buildDiv(GenTree* node);
     void buildCast(GenTreeCast* cast);
-    void buildCmp(GenTree* node, Value* op1, Value* op2);
+    void buildCmp(GenTreeOp* node);
     void buildCnsDouble(GenTreeDblCon* node);
     void buildCnsInt(GenTree* node);
     void buildCnsLng(GenTree* node);
@@ -287,7 +276,6 @@ private:
     bool isLlvmFrameLocal(LclVarDsc* varDsc);
     unsigned int getTotalRealLocalOffset();
     unsigned int getTotalLocalOffset();
-    LlvmArgInfo getLlvmArgInfoForArgIx(unsigned lclNum);
 };
 
 
