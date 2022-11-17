@@ -430,6 +430,9 @@ void Llvm::visitNode(GenTree* node)
         case GT_CAST:
             buildCast(node->AsCast());
             break;
+        case GT_LCLHEAP:
+            buildLclHeap(node->AsUnOp());
+            break;
         case GT_CNS_DBL:
             buildCnsDouble(node->AsDblCon());
             break;
@@ -747,6 +750,51 @@ void Llvm::buildCast(GenTreeCast* cast)
     }
 
     mapGenTreeToValue(cast, castValue);
+}
+
+void Llvm::buildLclHeap(GenTreeUnOp* lclHeap)
+{
+    GenTree* sizeNode = lclHeap->gtGetOp1();
+    assert(genActualTypeIsIntOrI(sizeNode));
+
+    Value* sizeValue = consumeValue(sizeNode, getLlvmTypeForVarType(genActualType(sizeNode)));
+    Value* lclHeapValue;
+
+    // A zero-sized LCLHEAP yields a null pointer.
+    if (sizeNode->IsIntegralConst(0))
+    {
+        lclHeapValue = llvm::Constant::getNullValue(Type::getInt8PtrTy(_llvmContext));
+    }
+    else
+    {
+        llvm::AllocaInst* allocaInst = _builder.CreateAlloca(Type::getInt8Ty(_llvmContext), sizeValue);
+
+        // LCLHEAP (aka IL's "localloc") is specified to return a pointer "...aligned so that any built-in data type
+        // can be stored there using the stind instructions", so we'll be a bit conservative and align it maximally.
+        llvm::Align allocaAlignment = llvm::Align(genTypeSize(TYP_DOUBLE));
+        allocaInst->setAlignment(allocaAlignment);
+
+        // "If the localsinit flag on the method is true, the block of memory returned is initialized to 0".
+        if (_compiler->info.compInitMem)
+        {
+            _builder.CreateMemSet(allocaInst, _builder.getInt8(0), sizeValue, allocaAlignment);
+        }
+
+        if (!sizeNode->IsIntegralConst()) // Build: %lclHeapValue = (%sizeValue != 0) ? "alloca" : "null".
+        {
+            Value* zeroSizeValue = llvm::Constant::getNullValue(sizeValue->getType());
+            Value* isSizeNotZeroValue = _builder.CreateCmp(llvm::CmpInst::ICMP_NE, sizeValue, zeroSizeValue);
+            Value* nullValue = llvm::Constant::getNullValue(Type::getInt8PtrTy(_llvmContext));
+
+            lclHeapValue = _builder.CreateSelect(isSizeNotZeroValue, allocaInst, nullValue);
+        }
+        else
+        {
+            lclHeapValue = allocaInst;
+        }
+    }
+
+    mapGenTreeToValue(lclHeap, lclHeapValue);
 }
 
 void Llvm::buildCmp(GenTreeOp* node)
