@@ -509,7 +509,7 @@ void Llvm::storeLocalVar(GenTreeLclVar* lclVar)
 // in case we haven't seen the phi args yet, create just the phi nodes and fill in the args at the end
 void Llvm::buildEmptyPhi(GenTreePhi* phi)
 {
-    llvm::PHINode* llvmPhiNode = _builder.CreatePHI(getLlvmTypeForVarType(phi->TypeGet()), 1 /* we have at least 1 (or 2?) value presumably */);
+    llvm::PHINode* llvmPhiNode = _builder.CreatePHI(getLlvmTypeForVarType(phi->TypeGet()), 2);
     _phiPairs.push_back({ phi, llvmPhiNode });
     mapGenTreeToValue(phi, llvmPhiNode);
 }
