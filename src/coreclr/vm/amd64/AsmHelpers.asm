@@ -1021,7 +1021,7 @@ JumpToMoreStack:
     add rsp, 28h
     ret
     jmp r11
-ALTERNATE_ENTRY JIT_GreenThreadMoreStack_end ; When yielding, we will jmp back to this location with the registers back in their original config
+ALTERNATE_ENTRY JIT_GreenThreadMoreStack_end
     nop
 NESTED_END JIT_GreenThreadMoreStack, _TEXT
 
