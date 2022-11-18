@@ -228,6 +228,7 @@ private:
     void buildAdd(GenTreeOp* node);
     void buildDiv(GenTree* node);
     void buildCast(GenTreeCast* cast);
+    void buildLclHeap(GenTreeUnOp* lclHeap);
     void buildCmp(GenTreeOp* node);
     void buildCnsDouble(GenTreeDblCon* node);
     void buildCnsInt(GenTree* node);
