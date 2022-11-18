@@ -129,6 +129,7 @@ set(VM_SOURCES_DAC_AND_WKS_COMMON
     versionresilienthashcode.cpp
     virtualcallstub.cpp
     zapsig.cpp
+    greenthreads.cpp
 )
 
 set(VM_HEADERS_DAC_AND_WKS_COMMON
@@ -371,7 +372,6 @@ set(VM_SOURCES_WKS
     typeparse.cpp
     weakreferencenative.cpp
     yieldprocessornormalized.cpp
-    greenthreads.cpp
     ${VM_SOURCES_GDBJIT}
 )
 

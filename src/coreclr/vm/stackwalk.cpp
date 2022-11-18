@@ -611,6 +611,12 @@ PCODE Thread::VirtualUnwindCallFrame(T_CONTEXT* pContext,
     }
 #endif // !DACCESS_COMPILE
 
+    // ALWAYS skip past the morestack and JIT_GreenThreadMoreStack functions
+    if (GreenThreadHelpersToSkip(uControlPc))
+    {
+        uControlPc = VirtualUnwindCallFrame(pContext, pContextPointers, NULL);
+    }
+
     return uControlPc;
 }
 
@@ -1348,7 +1354,7 @@ BOOL StackFrameIterator::ResetRegDisp(PREGDISPLAY pRegDisp,
         while (m_crawl.pFrame != FRAME_TOP)
         {
             // this check is sufficient on WIN64
-            if (dac_cast<TADDR>(m_crawl.pFrame) >= curSP)
+            if (stackPointerLessThan(m_pThread, curSP, dac_cast<TADDR>(m_crawl.pFrame)))
             {
 #if defined(TARGET_X86)
                 // check the IP
@@ -2415,7 +2421,7 @@ StackWalkAction StackFrameIterator::NextRaw(void)
         // FaultingExceptionFrame is special case where it gets
         // pushed on the stack after the frame is running
         _ASSERTE((m_crawl.pFrame == FRAME_TOP) ||
-                 ((TADDR)GetRegdisplaySP(m_crawl.pRD) < dac_cast<TADDR>(m_crawl.pFrame)) ||
+                 (stackPointerLessThan(m_pThread, (TADDR)GetRegdisplaySP(m_crawl.pRD), dac_cast<TADDR>(m_crawl.pFrame))) ||
                  (m_crawl.pFrame->GetVTablePtr() == FaultingExceptionFrame::GetMethodFrameVPtr()));
 #endif // !defined(ELIMINATE_FEF)
 
@@ -2826,7 +2832,7 @@ void StackFrameIterator::ProcessCurrentFrame(void)
             //  the pContext.
             // There are still a few cases in which a FaultingExceptionFrame is linked in.  If
             //  the next frame is one of them, we don't want to override it.  THIS IS PROBABLY BAD!!!
-            if ( (pContextSP < dac_cast<TADDR>(m_crawl.pFrame)) &&
+            if ( (stackPointerLessThan(m_pThread, pContextSP, dac_cast<TADDR>(m_crawl.pFrame))) &&
                  ((m_crawl.GetFrame() == FRAME_TOP) ||
                   (m_crawl.GetFrame()->GetVTablePtr() != FaultingExceptionFrame::GetMethodFrameVPtr() ) ) )
             {
@@ -2977,7 +2983,7 @@ BOOL StackFrameIterator::CheckForSkippedFrames(void)
 #endif // PROCESS_EXPLICIT_FRAME_BEFORE_MANAGED_FRAME
 
     if ( !( (m_crawl.pFrame != FRAME_TOP) &&
-            (dac_cast<TADDR>(m_crawl.pFrame) < pvReferenceSP) )
+            (stackPointerLessThan(m_pThread, dac_cast<TADDR>(m_crawl.pFrame), pvReferenceSP)) )
        )
     {
         return FALSE;
@@ -2988,7 +2994,7 @@ BOOL StackFrameIterator::CheckForSkippedFrames(void)
     // We might have skipped past some Frames.
     // This happens with InlinedCallFrames.
     while ( (m_crawl.pFrame != FRAME_TOP) &&
-            (dac_cast<TADDR>(m_crawl.pFrame) < pvReferenceSP)
+            (stackPointerLessThan(m_pThread, dac_cast<TADDR>(m_crawl.pFrame), pvReferenceSP))
           )
     {
         BOOL fReportInteropMD =

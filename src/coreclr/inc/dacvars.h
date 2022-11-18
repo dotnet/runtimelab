@@ -229,5 +229,13 @@ DEFINE_DACVAR(SIZE_T, dac__g_clrNotificationArguments, ::g_clrNotificationArgume
 DEFINE_DACVAR(bool, dac__g_metadataUpdatesApplied, ::g_metadataUpdatesApplied)
 #endif
 
+#ifdef FEATURE_GREENTHREADS
+DEFINE_DACVAR(TADDR, dac__g_lowForceStackUnwind1, ::g_lowForceStackUnwind1)
+DEFINE_DACVAR(TADDR, dac__g_highForceStackUnwind1, ::g_highForceStackUnwind1)
+DEFINE_DACVAR(TADDR, dac__g_lowForceStackUnwind2, ::g_lowForceStackUnwind2)
+DEFINE_DACVAR(TADDR, dac__g_highForceStackUnwind2, ::g_highForceStackUnwind2)
+#endif
+
+
 #undef DEFINE_DACVAR
 #undef DEFINE_DACVAR_NO_DUMP

@@ -35,7 +35,7 @@
 #define USE_GC_INFO_DECODER
 #endif
 
-#if (defined(TARGET_X86) && !defined(TARGET_UNIX)) || defined(TARGET_AMD64)
+#if (defined(TARGET_X86) && !defined(TARGET_UNIX)) // DISABLE FOR GREEN THREADS FOR NOW|| defined(TARGET_AMD64)
 #define HAS_QUICKUNWIND
 #endif
 

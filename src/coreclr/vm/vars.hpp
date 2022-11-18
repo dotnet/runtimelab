@@ -467,6 +467,12 @@ EXTERN Volatile<BOOL> g_fEEStarted;
 EXTERN BOOL g_fComStarted;
 #endif
 
+#ifdef FEATURE_GREENTHREADS
+GVAL_DECL(TADDR, g_lowForceStackUnwind1);
+GVAL_DECL(TADDR, g_lowForceStackUnwind2);
+GVAL_DECL(TADDR, g_highForceStackUnwind1);
+GVAL_DECL(TADDR, g_highForceStackUnwind2);
+#endif
 
 //
 // Global state variables indicating which stage of shutdown we are in
