@@ -8350,7 +8350,6 @@ public:
 public:
     CodeGenInterface* codeGen;
 
-    //  The following holds information about instr offsets in terms of generated code.
 #ifndef TARGET_WASM
     // Record the instr offset mapping to the generated code
 
