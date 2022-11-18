@@ -16,18 +16,114 @@ FCIMPL0(void, JIT_GreenThreadMoreStack)
 {
 }
 FCIMPLEND
-#else // FEATURE_GREENTHREADS
-struct GreenThreadData
+
+bool GreenThreadHelpersToSkip(TADDR code) { return false; }
+
+void InitGreenThreads() {}
+
+bool stackPointerLessThan(Thread* greenThread, TADDR sp1, TADDR sp2)
 {
-    StackRange osStackRange;
-    uint8_t* osStackCurrent;
-    uint8_t* greenThreadStackCurrent;
-    Frame* pFrameInGreenThread;
-    Frame* pFrameInOSThread;
-    GreenThreadStackList *pStackListCurrent;
-    bool greenThreadOnStack;
-    SuspendedGreenThread* suspendedGreenThread;
-};
+    return sp1 < sp2;
+}
+
+#else // FEATURE_GREENTHREADS
+
+GVAL_IMPL(TADDR, g_lowForceStackUnwind1);
+GVAL_IMPL(TADDR, g_lowForceStackUnwind2);
+GVAL_IMPL(TADDR, g_highForceStackUnwind1);
+GVAL_IMPL(TADDR, g_highForceStackUnwind2);
+
+bool GreenThreadHelpersToSkip(TADDR code)
+{
+    if (code >= g_lowForceStackUnwind1 && code < g_highForceStackUnwind1)
+        return true;
+    if (code >= g_lowForceStackUnwind2 && code < g_highForceStackUnwind2)
+        return true;
+    return false;
+}
+
+bool stackPointerLessThan(Thread* thread, TADDR sp1, TADDR sp2)
+{
+    PTR_GreenThreadData greenThread = NULL;
+    if (thread != nullptr)
+        greenThread = thread->m_greenThreadData;
+
+    if ((greenThread == nullptr) || greenThread->pStackListCurrent == nullptr)
+    {
+        return sp1 < sp2;
+    }
+
+    PTR_GreenThreadStackList cursor = greenThread->pStackListCurrent;
+    while (true)
+    {
+        if (cursor->prev == nullptr)
+        {
+            break;
+        }
+        cursor = cursor->prev;
+    }
+    /*
+     * We divide the stack into blocks as follow:
+     *
+     * OS Stack            # n    <- Should have sp < osStackCurrent
+     * GreenThreadSegment  # n-1  <- right most (i.e. next most) element in the pStackList
+     * GreenThreadSegment  # ...
+     * GreenThreadSegment  # 1    <- left most (i.e. prev most) element in the pStackList
+     * OS Stack            # 0    <- osStackCurrent
+     *
+     */
+    int blockNumber = 1;
+    int b1 = 0;
+    int b2 = 0;
+    while (cursor != nullptr)
+    {
+        TADDR stackLimit = (TADDR)cursor->stackRange.stackLimit;
+        TADDR stackBase = (TADDR)cursor->stackRange.stackBase;
+        if (stackLimit < sp1 && sp1 <= stackBase)
+        {
+            b1 = blockNumber;
+        }
+        if (stackLimit < sp2 && sp2 <= stackBase)
+        {
+            b2 = blockNumber;
+        }
+        cursor = cursor->next;
+        blockNumber++;
+    }
+    TADDR osStackCurrent = (TADDR)greenThread->osStackCurrent;
+    if (b1 == 0 && sp1 < osStackCurrent)
+    {
+        b1 = blockNumber;
+    }
+    if (b2 == 0 && sp2 < osStackCurrent)
+    {
+        b2 = blockNumber;
+    }
+    if (b1 == b2)
+    {
+        return sp1 < sp2;
+    }
+    else
+    {
+        // The smaller the block number, the earlier it was created, the larger it is "logically"
+        return b2 < b1;
+    }
+}
+
+#ifndef DACCESS_COMPILE
+extern "C" void JIT_GreenThreadMoreStack();
+extern "C" void JIT_GreenThreadMoreStack_end();
+extern "C" void _more_stack();
+extern "C" void _more_stack_end();
+
+void InitGreenThreads()
+{
+    g_lowForceStackUnwind1 = dac_cast<TADDR>(_more_stack);
+    g_highForceStackUnwind1 = dac_cast<TADDR>(_more_stack_end);
+    g_lowForceStackUnwind2 = dac_cast<TADDR>(JIT_GreenThreadMoreStack);
+    g_highForceStackUnwind2 = dac_cast<TADDR>(JIT_GreenThreadMoreStack_end);
+}
+
 
 extern SuspendedGreenThread green_head = {};
 extern SuspendedGreenThread green_tail = {};
@@ -67,7 +163,7 @@ extern "C" uintptr_t AllocateMoreStackHelper(int argumentStackSize, void* stackP
         t_inGreenThread = false;
 
         argumentStackSize = -(argumentStackSize + 1);
-        newArgsLocation = AlignDown(t_greenThread.osStackCurrent - (stackSizeOfMoreStackFunction + frameOffsetMoreStackFunction + sizeOfShadowStore + sizeof(void*) + argumentStackSize), 16);
+        newArgsLocation = (uint8_t*)AlignDown(t_greenThread.osStackCurrent - (stackSizeOfMoreStackFunction + frameOffsetMoreStackFunction + sizeOfShadowStore + sizeof(void*) + argumentStackSize), 16);
         *pNewStackRange = t_greenThread.osStackRange;
     }
     else
@@ -113,15 +209,15 @@ extern "C" uintptr_t AllocateMoreStackHelper(int argumentStackSize, void* stackP
             memset(stackSegment, 0, stackSizeNeeded+sizeOfRedZone);
             pNewStackSegment = (GreenThreadStackList*)stackSegment;
             pNewStackSegment->prev = t_greenThread.pStackListCurrent;
-            pNewStackSegment->stackRange.stackLimit = stackSegment + sizeOfRedZone;
-            pNewStackSegment->stackRange.stackBase = stackSegment + sizeOfRedZone + stackSizeNeeded;
+            pNewStackSegment->stackRange.stackLimit = dac_cast<TADDR>(stackSegment + sizeOfRedZone);
+            pNewStackSegment->stackRange.stackBase = dac_cast<TADDR>(stackSegment + sizeOfRedZone + stackSizeNeeded);
             pNewStackSegment->size = stackSizeNeeded;
 
             if (pCurrentStackSegment == NULL)
             {
                 // This is a new green thread
                 t_greenThread.pStackListCurrent = pNewStackSegment;
-                t_greenThread.osStackCurrent = ((uint8_t*)stackPointer) - (stackSizeOfMoreStackFunction - sizeof(void*));;
+                t_greenThread.osStackCurrent = dac_cast<TADDR>(((uint8_t*)stackPointer) - (stackSizeOfMoreStackFunction - sizeof(void*)));
                 t_greenThread.osStackRange = *pOldStackRange;
             }
             else
@@ -131,7 +227,7 @@ extern "C" uintptr_t AllocateMoreStackHelper(int argumentStackSize, void* stackP
         }
         t_greenThread.pStackListCurrent = pNewStackSegment;
 
-        newArgsLocation = AlignDown(pNewStackSegment->stackRange.stackBase - (argumentStackSize + sizeOfShadowStore), 16);
+        newArgsLocation = (uint8_t*)AlignDown(pNewStackSegment->stackRange.stackBase - (argumentStackSize + sizeOfShadowStore), 16);
         *pNewStackRange = pNewStackSegment->stackRange;
     }
     memcpy(newArgsLocation + sizeOfShadowStore, baseAddressOfStackArgs, argumentStackSize);
@@ -227,6 +323,9 @@ SuspendedGreenThread* GreenThread_StartThread(TakesOneParam functionToExecute, u
 {
     OBJECTHANDLE threadObjectHandle;
 
+    // Register our TLS variable with the Thread object
+    GetThread()->m_greenThreadData = &t_greenThread;
+
     if (t_greenThread.greenThreadOnStack)
         __debugbreak();
 
@@ -312,7 +411,7 @@ void *TransitionToOSThreadAndCallMalloc(size_t memoryToAllocate)
     return (void*)TransitionToOSThread((TakesOneParam)malloc, memoryToAllocate);
 }
 
-extern "C" void YieldOutOfGreenThreadHelper(StackRange *pOSStackRange, uint8_t* osStackCurrent, uint8_t** greenThreadStackCurrent);
+extern "C" void YieldOutOfGreenThreadHelper(StackRange *pOSStackRange, TADDR osStackCurrent, TADDR* greenThreadStackCurrent);
 
 thread_local uintptr_t green_thread_yield_return_value;
 
@@ -354,8 +453,8 @@ uintptr_t GreenThread_Yield() // Attempt to yield out of green thread. If the yi
     // Verify that the stack base stored in the stack frame hasn't changed (we're yielding back to the OS thread's stack), and
     // that the latest stack limit from t_greenThread.osStackRange may only have caused the stack size to grow compared to the
     // stack limit stored in the stack frame
-    _ASSERTE(t_greenThread.osStackRange.stackBase == *(void **)(t_greenThread.osStackCurrent + 0xe0 - 0x18));
-    _ASSERTE(t_greenThread.osStackRange.stackLimit <= *(void **)(t_greenThread.osStackCurrent + 0xe0 - 0x20));
+    _ASSERTE(t_greenThread.osStackRange.stackBase == dac_cast<TADDR>(*(void **)(t_greenThread.osStackCurrent + 0xe0 - 0x18)));
+    _ASSERTE(t_greenThread.osStackRange.stackLimit <= dac_cast<TADDR>(*(void **)(t_greenThread.osStackCurrent + 0xe0 - 0x20)));
 
     YieldOutOfGreenThreadHelper(&t_greenThread.osStackRange, t_greenThread.osStackCurrent, &t_greenThread.greenThreadStackCurrent);
 
@@ -384,7 +483,7 @@ bool GreenThread_IsGreenThread()
     return t_inGreenThread;
 }
 
-extern "C" uint8_t* GetResumptionStackPointerAndSaveOSStackPointer(StackRange* pOSStackRange, uint8_t* rbpFromOSThreadBeforeResume)
+extern "C" TADDR GetResumptionStackPointerAndSaveOSStackPointer(StackRange* pOSStackRange, uint8_t* rbpFromOSThreadBeforeResume)
 {
     uint8_t* savedRBPValue = rbpFromOSThreadBeforeResume;
     uint8_t* savedRBXValue = rbpFromOSThreadBeforeResume - (stackSizeOfMoreStackFunction - sizeof(void*)) /*return address */;
@@ -406,10 +505,10 @@ extern "C" uint8_t* GetResumptionStackPointerAndSaveOSStackPointer(StackRange* p
 
     GetThread()->SetExecutingOnAltStack();
     t_greenThread.osStackRange = *pOSStackRange;
-    t_greenThread.osStackCurrent = savedRBXValue;
+    t_greenThread.osStackCurrent = dac_cast<TADDR>(savedRBXValue);
 
-    *(void **)(t_greenThread.osStackCurrent + 0xe0 - 0x18) = t_greenThread.osStackRange.stackBase;
-    *(void **)(t_greenThread.osStackCurrent + 0xe0 - 0x20) = t_greenThread.osStackRange.stackLimit;
+    *(TADDR*)(t_greenThread.osStackCurrent + 0xe0 - 0x18) = t_greenThread.osStackRange.stackBase;
+    *(TADDR*)(t_greenThread.osStackCurrent + 0xe0 - 0x20) = t_greenThread.osStackRange.stackLimit;
 
     *(StackRange*)(rbpFromOSThreadBeforeResume - 0x30) = t_greenThread.pStackListCurrent->stackRange;
 
@@ -420,6 +519,9 @@ extern "C" void ResumeSuspendedThreadHelper();
 
 SuspendedGreenThread* GreenThread_ResumeThread(SuspendedGreenThread* pSuspendedThread, uintptr_t yieldReturnValue)
 {
+    // Register our TLS variable with the Thread object
+    GetThread()->m_greenThreadData = &t_greenThread;
+
     green_thread_yield_return_value = yieldReturnValue;
 
     if (t_inGreenThread)
@@ -452,7 +554,7 @@ SuspendedGreenThread* GreenThread_ResumeThread(SuspendedGreenThread* pSuspendedT
     return ProduceSuspendedGreenThreadStruct(pGreenThread);
 }
 
-extern "C" void End_More_Thread_Bookeeping(uint8_t* pStackLimitTransitioningFrom)
+extern "C" void End_More_Thread_Bookeeping(TADDR pStackLimitTransitioningFrom)
 {
     if (t_inGreenThread)
     {
@@ -464,7 +566,7 @@ extern "C" void End_More_Thread_Bookeeping(uint8_t* pStackLimitTransitioningFrom
             // The OS stack range may be inaccurate when handled as a normally restored value, as the OS can change it during chkstk or normal execution. Restore it to the last value found on return from an OS thread.
             // This is a bit of a hack, as a few assembly instructions before this code is executed, we restore it to something that was set up on entrance to the morestack function.
             _ASSERTE(pStackLimitTransitioningFrom >= t_greenThread.osStackRange.stackLimit);
-            ((uint8_t**)NtCurrentTeb())[2] = t_greenThread.osStackRange.stackLimit;
+            ((TADDR*)NtCurrentTeb())[2] = t_greenThread.osStackRange.stackLimit;
         }
         else
         {
@@ -495,8 +597,11 @@ extern "C"
 
 extern "C" void TransitionToOSThreadHelper2();
 
+#endif // DACCESS_COMPILE
+
 #endif // FEATURE_GREENTHREADS
 
+#ifndef DACCESS_COMPILE
 // This helper uses a _RAW helper as it is called after the GC transition part of a P/Invoke
 HCIMPL2_RAW(void*, JIT_GreenThreadTransition, void* fptr, uintptr_t stackSize)
 {
@@ -517,3 +622,5 @@ HCIMPL2_RAW(void*, JIT_GreenThreadTransition, void* fptr, uintptr_t stackSize)
 #endif
 }
 HCIMPLEND_RAW
+
+#endif // DACCESS_COMPILE

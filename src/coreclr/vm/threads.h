@@ -2622,6 +2622,8 @@ public:
         m_ThrewControlForThread = 0;
     }
 
+    PTR_GreenThreadData m_greenThreadData;
+
     PTR_CONTEXT m_OSContext;    // ptr to a Context structure used to record the OS specific ThreadContext for a thread
                                 // this is used for thread stop/abort and is initialized on demand
 

@@ -958,6 +958,9 @@ void SystemDomain::Attach()
 #ifdef FEATURE_TIERED_COMPILATION
     CallCountingStubManager::Init();
 #endif
+#ifdef FEATURE_GREENTHREADS
+    InitGreenThreads();
+#endif
 
     m_SystemDomainCrst.Init(CrstSystemDomain, (CrstFlags)(CRST_REENTRANCY | CRST_TAKEN_DURING_SHUTDOWN));
     m_DelayedUnloadCrst.Init(CrstSystemDomainDelayedUnloadList, CRST_UNSAFE_COOPGC);

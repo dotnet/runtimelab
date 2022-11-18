@@ -815,6 +815,8 @@ NESTED_ENTRY _more_stack, _TEXT
         mov             rbp, [rbp - 50h]
         add rsp, 0e8h
         ret
+ALTERNATE_ENTRY _more_stack_end
+        nop
 NESTED_END _more_stack, _TEXT
 
 
@@ -1019,6 +1021,8 @@ JumpToMoreStack:
     add rsp, 28h
     ret
     jmp r11
+ALTERNATE_ENTRY JIT_GreenThreadMoreStack_end ; When yielding, we will jmp back to this location with the registers back in their original config
+    nop
 NESTED_END JIT_GreenThreadMoreStack, _TEXT
 
 

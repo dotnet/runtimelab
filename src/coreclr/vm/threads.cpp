@@ -1429,6 +1429,7 @@ Thread::Thread()
     }
     CONTRACTL_END;
 
+    m_greenThreadData = NULL;
     m_curThreadBase = &m_coreThreadData;
     m_coreThreadData.m_currentThreadObj = this;
 

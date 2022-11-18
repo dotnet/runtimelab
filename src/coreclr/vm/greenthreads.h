@@ -7,29 +7,50 @@
 
 struct StackRange
 {
-    uint8_t* stackLimit;
-    uint8_t* stackBase;
+    TADDR stackLimit;
+    TADDR stackBase;
 };
+
+struct GreenThreadStackList;
+typedef DPTR(GreenThreadStackList) PTR_GreenThreadStackList;
 
 struct GreenThreadStackList
 {
-    GreenThreadStackList *prev;
-    GreenThreadStackList *next;
+    PTR_GreenThreadStackList prev;
+    PTR_GreenThreadStackList next;
     StackRange stackRange;
-    int size;
+    int32_t size;
 };
 
 class GreenThread;
+typedef DPTR(GreenThread) PTR_GreenThread;
+
+struct SuspendedGreenThread;
+typedef DPTR(SuspendedGreenThread) PTR_SuspendedGreenThread;
 
 struct SuspendedGreenThread
 {
-    uint8_t* currentStackPointer;
-    GreenThreadStackList* currentThreadStackSegment;
-    Frame* greenThreadFrame;
-    GreenThread* pGreenThread;
-    SuspendedGreenThread* prev;
-    SuspendedGreenThread* next;
+    TADDR currentStackPointer;
+    PTR_GreenThreadStackList currentThreadStackSegment;
+    PTR_Frame greenThreadFrame;
+    PTR_GreenThread pGreenThread;
+    PTR_SuspendedGreenThread prev;
+    PTR_SuspendedGreenThread next;
 };
+
+struct GreenThreadData
+{
+    StackRange osStackRange;
+    TADDR osStackCurrent;
+    TADDR greenThreadStackCurrent;
+    PTR_Frame pFrameInGreenThread;
+    PTR_Frame pFrameInOSThread;
+    PTR_GreenThreadStackList pStackListCurrent;
+    bool greenThreadOnStack;
+    PTR_SuspendedGreenThread suspendedGreenThread;
+};
+
+typedef DPTR(GreenThreadData) PTR_GreenThreadData;
 
 typedef uintptr_t (*TakesOneParam)(uintptr_t param);
 typedef void (*TakesOneParamNoReturn)(uintptr_t param);
@@ -53,5 +74,9 @@ void CallOnOSThread(TakesOneParamNoReturn functionToExecute, uintptr_t param);
 // TODO: AndrewAu: Better naming
 extern SuspendedGreenThread green_head;
 extern SuspendedGreenThread green_tail;
+
+void InitGreenThreads();
+bool GreenThreadHelpersToSkip(TADDR code);
+bool stackPointerLessThan(Thread* thread, TADDR sp1, TADDR sp2);
 
 #endif // GREENTHREADS_H
