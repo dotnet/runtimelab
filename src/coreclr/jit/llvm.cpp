@@ -11,7 +11,6 @@
 LLVMContext      _llvmContext;
 Module*          _module            = nullptr;
 llvm::DIBuilder* _diBuilder         = nullptr;
-Function*        _nullCheckFunction = nullptr;
 char*            _outputFileName;
 Function*        _doNothingFunction;
 

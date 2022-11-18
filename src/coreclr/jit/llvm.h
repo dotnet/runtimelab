@@ -74,7 +74,6 @@ struct PhiPair
 extern Module*                                                _module;
 extern llvm::DIBuilder*                                       _diBuilder;
 extern LLVMContext                                            _llvmContext;
-extern Function*                                              _nullCheckFunction;
 extern Function*                                              _doNothingFunction;
 extern std::unordered_map<CORINFO_CLASS_HANDLE, Type*>*       _llvmStructs;
 extern std::unordered_map<CORINFO_CLASS_HANDLE, StructDesc*>* _structDescMap;
@@ -237,8 +236,8 @@ private:
     void buildHelperFuncCall(GenTreeCall* call);
     void buildUserFuncCall(GenTreeCall* call);
     Value* buildFieldList(GenTreeFieldList* fieldList, Type* llvmType);
-    void buildInd(GenTree* node, Value* ptr);
-    void buildObj(GenTreeObj* node);
+    void buildInd(GenTreeIndir* indNode);
+    void buildBlk(GenTreeBlk* blkNode);
     void buildStoreInd(GenTreeStoreInd* storeIndOp);
     void buildStoreBlk(GenTreeBlk* blockOp);
     void buildUnaryOperation(GenTree* node);
@@ -246,11 +245,12 @@ private:
     void buildShift(GenTreeOp* node);
     void buildReturn(GenTree* node);
     void buildJTrue(GenTree* node, Value* opValue);    
-    void buildNullCheck(GenTreeUnOp* nullCheckNode);
+    void buildNullCheck(GenTreeIndir* nullCheckNode);
 
     void storeObjAtAddress(Value* baseAddress, Value* data, StructDesc* structDesc);
     unsigned buildMemCpy(Value* baseAddress, unsigned startOffset, unsigned endOffset, Value* srcAddress);
     void emitDoNothingCall();
+    void emitNullCheckForIndir(GenTreeIndir* indir, Value* addrValue);
     void buildThrowException(llvm::IRBuilder<>& builder, const char* helperClass, const char* helperMethodName, Value* shadowStack);
     void buildLlvmCallOrInvoke(llvm::Function* callee, llvm::ArrayRef<Value*> args);
 
@@ -263,6 +263,7 @@ private:
     Value* getOrCreateExternalSymbol(const char* symbolName, Type* symbolType = nullptr);
     Function* getOrCreateRhpAssignRef();
     Function* getOrCreateRhpCheckedAssignRef();
+    Function* getOrCreateThrowIfNullFunction();
 
     llvm::Instruction* getCast(llvm::Value* source, Type* targetType);
     Value* castIfNecessary(Value* source, Type* targetType, llvm::IRBuilder<>* builder = nullptr);

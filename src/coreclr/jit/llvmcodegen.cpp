@@ -449,15 +449,12 @@ void Llvm::visitNode(GenTree* node)
         case GT_CNS_LNG:
             buildCnsLng(node);
             break;
-        case GT_FIELD_LIST:
-            // does not build in linear order, but when the GT_FIELD_LIST is consumed
-            break;
         case GT_IL_OFFSET:
             _currentOffset = node->AsILOffset()->gtStmtDI;
             _currentOffsetDiLocation = nullptr;
             break;
         case GT_IND:
-            buildInd(node, getGenTreeValue(node->AsOp()->gtOp1));
+            buildInd(node->AsIndir());
             break;
         case GT_JTRUE:
             buildJTrue(node, getGenTreeValue(node->AsOp()->gtOp1));
@@ -493,10 +490,11 @@ void Llvm::visitNode(GenTree* node)
             emitDoNothingCall();
             break;
         case GT_NULLCHECK:
-            buildNullCheck(node->AsUnOp());
+            buildNullCheck(node->AsIndir());
             break;
         case GT_OBJ:
-            buildObj(node->AsObj());
+        case GT_BLK:
+            buildBlk(node->AsBlk());
             break;
         case GT_PHI:
             buildEmptyPhi(node->AsPhi());
@@ -521,6 +519,10 @@ void Llvm::visitNode(GenTree* node)
         case GT_OR:
         case GT_XOR:
             buildBinaryOperation(node);
+            break;
+        case GT_FIELD_LIST:
+        case GT_INIT_VAL:
+            // These ('contained') nodes aways generate code as part of their parent.
             break;
         default:
             failFunctionCompilation();
@@ -1094,8 +1096,7 @@ void Llvm::buildUserFuncCall(GenTreeCall* call)
     mapGenTreeToValue(call, llvmCall);
 }
 
-Value* Llvm::buildFieldList(GenTreeFieldList* fieldList,
-                                  Type*             llvmType)
+Value* Llvm::buildFieldList(GenTreeFieldList* fieldList, Type* llvmType)
 {
     assert(fieldList->TypeIs(TYP_STRUCT));
 
@@ -1121,47 +1122,53 @@ Value* Llvm::buildFieldList(GenTreeFieldList* fieldList,
     return consumeValue(fieldList->Uses().begin()->GetNode(), llvmType);
 }
 
-void Llvm::buildInd(GenTree* node, Value* ptr)
+void Llvm::buildInd(GenTreeIndir* indNode)
 {
-    // cast the pointer to create the correct load instructions
-    mapGenTreeToValue(node, _builder.CreateLoad(
-        castIfNecessary(ptr,
-                        getLlvmTypeForVarType(node->TypeGet())->getPointerTo())));
+    Type* loadLlvmType = getLlvmTypeForVarType(indNode->TypeGet());
+    Value* addrValue = consumeValue(indNode->Addr(), loadLlvmType->getPointerTo());
+
+    emitNullCheckForIndir(indNode, addrValue);
+    Value* loadValue = _builder.CreateLoad(loadLlvmType, addrValue);
+
+    mapGenTreeToValue(indNode, loadValue);
 }
 
-void Llvm::buildObj(GenTreeObj* node)
+void Llvm::buildBlk(GenTreeBlk* blkNode)
 {
-    // cast the pointer to create the correct load instructions
-    mapGenTreeToValue(node, _builder.CreateLoad(
-        castIfNecessary(getGenTreeValue(node->AsOp()->gtOp1),
-                        getLlvmTypeForStruct(node->GetLayout())->getPointerTo())));
+    // TODO-LLVM: lower away zero-sized BLKs.
+    Type* blkLlvmType = getLlvmTypeForStruct(blkNode->GetLayout());
+    Value* addrValue = consumeValue(blkNode->Addr(), blkLlvmType->getPointerTo());
+
+    emitNullCheckForIndir(blkNode, addrValue);
+    Value* blkValue = _builder.CreateLoad(blkLlvmType, addrValue);
+
+    mapGenTreeToValue(blkNode, blkValue);
 }
 
 void Llvm::buildStoreInd(GenTreeStoreInd* storeIndOp)
 {
-    GenTree* data = storeIndOp->Data();
-    Type* toStoreLlvmType = getLlvmTypeForVarType(storeIndOp->TypeGet());
-    Value* toStore = consumeValue(data, toStoreLlvmType);
-    Value* address = consumeValue(storeIndOp->Addr(), toStoreLlvmType->getPointerTo());
+    GCInfo::WriteBarrierForm wbf = getGCInfo()->gcIsWriteBarrierCandidate(storeIndOp, storeIndOp->Data());
 
-    GCInfo::WriteBarrierForm writeBarrierForm = getGCInfo()->gcIsWriteBarrierCandidate(storeIndOp, data);
-    switch (writeBarrierForm)
+    Type* storeLlvmType = getLlvmTypeForVarType(storeIndOp->TypeGet());
+    Type* addrLlvmType = (wbf == GCInfo::WBF_NoBarrier) ? storeLlvmType->getPointerTo() : Type::getInt8PtrTy(_llvmContext);
+    Value* addrValue = consumeValue(storeIndOp->Addr(), addrLlvmType);;
+    Value* dataValue = consumeValue(storeIndOp->Data(), storeLlvmType);
+
+    emitNullCheckForIndir(storeIndOp, addrValue);
+
+    switch (wbf)
     {
-        case GCInfo::WriteBarrierForm::WBF_BarrierUnchecked:
-            _builder.CreateCall(getOrCreateRhpAssignRef(),
-                                ArrayRef<Value*>{castIfNecessary(address, Type::getInt8PtrTy(_llvmContext)),
-                                castIfNecessary(toStore, Type::getInt8PtrTy(_llvmContext))});
-            break;
-        case GCInfo::WriteBarrierForm::WBF_BarrierChecked:
-        case GCInfo::WriteBarrierForm::WBF_BarrierUnknown:
-            _builder.CreateCall(getOrCreateRhpCheckedAssignRef(),
-                                ArrayRef<Value*>{castIfNecessary(address, Type::getInt8PtrTy(_llvmContext)),
-                                castIfNecessary(toStore, Type::getInt8PtrTy(_llvmContext))});
+        case GCInfo::WBF_BarrierUnchecked:
+            _builder.CreateCall(getOrCreateRhpAssignRef(), {addrValue, dataValue});
             break;
 
-        case GCInfo::WriteBarrierForm::WBF_NoBarrier:
-        case GCInfo::WriteBarrierForm::WBF_NoBarrier_CheckNotHeapInDebug:
-            _builder.CreateStore(toStore, address);
+        case GCInfo::WBF_BarrierChecked:
+        case GCInfo::WBF_BarrierUnknown:
+            _builder.CreateCall(getOrCreateRhpCheckedAssignRef(), {addrValue, dataValue});
+            break;
+
+        case GCInfo::WBF_NoBarrier:
+            _builder.CreateStore(dataValue, addrValue);
             break;
 
         default:
@@ -1171,30 +1178,31 @@ void Llvm::buildStoreInd(GenTreeStoreInd* storeIndOp)
 
 void Llvm::buildStoreBlk(GenTreeBlk* blockOp)
 {
-    ClassLayout* structLayout = blockOp->GetLayout();
+    ClassLayout* layout = blockOp->GetLayout();
+    GenTree* addrNode = blockOp->Addr();
+    GenTree* dataNode = blockOp->Data();
+    Value* addrValue = consumeValue(addrNode, Type::getInt8PtrTy(_llvmContext));
 
-    Value* baseAddressValue = consumeValue(blockOp->Addr(), Type::getInt8Ty(_llvmContext)->getPointerTo());
+    // TODO-LLVM: lower away zero-sized STORE_BLKs.
+    emitNullCheckForIndir(blockOp, addrValue);
 
-    // zero initialization  check
-    GenTree* dataOp = blockOp->Data();
-    if (dataOp->IsIntegralConst(0))
+    // Check for the "initblk" operation ("dataNode" is either INIT_VAL or constant zero).
+    if (blockOp->OperIsInitBlkOp())
     {
-        _builder.CreateMemSet(baseAddressValue, _builder.getInt8(0), _builder.getInt32(structLayout->GetSize()), {});
+        Value* fillValue = dataNode->OperIsInitVal() ? consumeValue(dataNode->gtGetOp1(), Type::getInt8Ty(_llvmContext))
+                                                     : _builder.getInt8(0);
+        _builder.CreateMemSet(addrValue, fillValue, _builder.getInt32(layout->GetSize()), llvm::Align());
         return;
     }
 
-    CORINFO_CLASS_HANDLE structClsHnd  = structLayout->GetClassHandle();
-    StructDesc*          structDesc    = getStructDesc(structClsHnd);
-
-    Value* dataValue = getGenTreeValue(blockOp->Data());
-    if (structLayout->HasGCPtr() && ((blockOp->gtFlags & GTF_IND_TGT_NOT_HEAP) == 0) &&
-        !blockOp->Addr()->OperIsLocalAddr())
+    Value* dataValue = consumeValue(dataNode, getLlvmTypeForStruct(layout));
+    if (layout->HasGCPtr() && ((blockOp->gtFlags & GTF_IND_TGT_NOT_HEAP) == 0) && !addrNode->OperIsLocalAddr())
     {
-        storeObjAtAddress(baseAddressValue, dataValue, structDesc);
+        storeObjAtAddress(addrValue, dataValue, getStructDesc(layout->GetClassHandle()));
     }
     else
     {
-        _builder.CreateStore(dataValue, castIfNecessary(baseAddressValue, dataValue->getType()->getPointerTo()));
+        _builder.CreateStore(dataValue, castIfNecessary(addrValue, dataValue->getType()->getPointerTo()));
     }
 }
 
@@ -1314,35 +1322,10 @@ void Llvm::buildJTrue(GenTree* node, Value* opValue)
     _builder.CreateCondBr(opValue, getLLVMBasicBlockForBlock(_currentBlock->bbJumpDest), getLLVMBasicBlockForBlock(_currentBlock->bbNext));
 }
 
-void Llvm::buildNullCheck(GenTreeUnOp* nullCheckNode)
+void Llvm::buildNullCheck(GenTreeIndir* nullCheckNode)
 {
-    if (_nullCheckFunction == nullptr)
-    {
-        _nullCheckFunction =
-            Function::Create(FunctionType::get(Type::getVoidTy(_llvmContext),
-                                               {Type::getInt8PtrTy(_llvmContext), Type::getInt8PtrTy(_llvmContext)},
-                                               false),
-                             Function::InternalLinkage, 0U, "nativeaot.throwifnull", _module);
-
-        llvm::IRBuilder<> builder(_llvmContext);
-        llvm::BasicBlock* block = llvm::BasicBlock::Create(_llvmContext, "Block", _nullCheckFunction);
-        llvm::BasicBlock* throwBlock = llvm::BasicBlock::Create(_llvmContext, "ThrowBlock", _nullCheckFunction);
-        llvm::BasicBlock* retBlock = llvm::BasicBlock::Create(_llvmContext, "RetBlock", _nullCheckFunction);
-
-        builder.SetInsertPoint(block);
-
-        builder.CreateCondBr(builder.CreateICmp(llvm::CmpInst::Predicate::ICMP_EQ, _nullCheckFunction->getArg(1),
-                                                llvm::ConstantPointerNull::get(Type::getInt8PtrTy(_llvmContext)),
-                                                "nullCheck"), throwBlock, retBlock);
-        builder.SetInsertPoint(throwBlock);
-
-        buildThrowException(builder, u8"ThrowHelpers", u8"ThrowNullReferenceException", _nullCheckFunction->getArg(0));
-
-        builder.SetInsertPoint(retBlock);
-        builder.CreateRetVoid();
-    }
-
-    buildLlvmCallOrInvoke(_nullCheckFunction, {getShadowStackForCallee(), consumeValue(nullCheckNode->gtGetOp1(),  Type::getInt8PtrTy(_llvmContext))});
+    Value* addrValue = consumeValue(nullCheckNode->Addr(), Type::getInt8PtrTy(_llvmContext));
+    emitNullCheckForIndir(nullCheckNode, addrValue);
 }
 
 void Llvm::storeObjAtAddress(Value* baseAddress, Value* data, StructDesc* structDesc)
@@ -1432,7 +1415,19 @@ void Llvm::emitDoNothingCall()
     _builder.CreateCall(_doNothingFunction);
 }
 
-void Llvm::buildThrowException(llvm::IRBuilder<>& builder, const char* helperClass, const char * helperMethodName, Value* shadowStack)
+void Llvm::emitNullCheckForIndir(GenTreeIndir* indir, Value* addrValue)
+{
+    if ((indir->gtFlags & GTF_IND_NONFAULTING) == 0)
+    {
+        Function* throwIfNullFunc = getOrCreateThrowIfNullFunction();
+        addrValue = castIfNecessary(addrValue, Type::getInt8PtrTy(_llvmContext));
+
+        // TODO-LLVM: this shadow stack passing is not efficient.
+        buildLlvmCallOrInvoke(throwIfNullFunc, {getShadowStackForCallee(), addrValue});
+    }
+}
+
+void Llvm::buildThrowException(llvm::IRBuilder<>& builder, const char* helperClass, const char* helperMethodName, Value* shadowStack)
 {
     CORINFO_METHOD_HANDLE methodHandle = GetCompilerHelpersMethodHandle(helperClass, helperMethodName);
     const char* mangledName = GetMangledMethodName(methodHandle);
@@ -1576,9 +1571,8 @@ Function* Llvm::getOrCreateRhpAssignRef()
     if (llvmFunc == nullptr)
     {
         llvmFunc = Function::Create(FunctionType::get(Type::getVoidTy(_llvmContext),
-                                                      ArrayRef<Type*>{Type::getInt8PtrTy(_llvmContext),
-                                                      Type::getInt8PtrTy(_llvmContext)},
-                                                      false),
+                                                      {Type::getInt8PtrTy(_llvmContext), Type::getInt8PtrTy(_llvmContext)},
+                                                      /* isVarArg */ false),
                                     Function::ExternalLinkage, 0U, "RhpAssignRef",
                                     _module); // TODO: ExternalLinkage forced as linked from old module
     }
@@ -1591,12 +1585,44 @@ Function* Llvm::getOrCreateRhpCheckedAssignRef()
     if (llvmFunc == nullptr)
     {
         llvmFunc = Function::Create(FunctionType::get(Type::getVoidTy(_llvmContext),
-                                                      ArrayRef<Type*>{Type::getInt8PtrTy(_llvmContext),
-                                                      Type::getInt8PtrTy(_llvmContext)},
-                                                      false),
+                                                      {Type::getInt8PtrTy(_llvmContext), Type::getInt8PtrTy(_llvmContext)},
+                                                      /* isVarArg */ false),
                                     Function::ExternalLinkage, 0U, "RhpCheckedAssignRef",
                                     _module); // TODO: ExternalLinkage forced as linked from old module
     }
+    return llvmFunc;
+}
+
+Function* Llvm::getOrCreateThrowIfNullFunction()
+{
+    const char* funcName = "nativeaot.throwifnull";
+    Function* llvmFunc = _module->getFunction(funcName);
+    if (llvmFunc == nullptr)
+    {
+        llvmFunc =
+            Function::Create(FunctionType::get(Type::getVoidTy(_llvmContext),
+                                               {Type::getInt8PtrTy(_llvmContext), Type::getInt8PtrTy(_llvmContext)},
+                                               /* isVarArg */ false),
+                             Function::InternalLinkage, 0U, funcName, _module);
+
+        llvm::IRBuilder<> builder(_llvmContext);
+        llvm::BasicBlock* block = llvm::BasicBlock::Create(_llvmContext, "Block", llvmFunc);
+        llvm::BasicBlock* throwBlock = llvm::BasicBlock::Create(_llvmContext, "ThrowBlock", llvmFunc);
+        llvm::BasicBlock* retBlock = llvm::BasicBlock::Create(_llvmContext, "RetBlock", llvmFunc);
+
+        builder.SetInsertPoint(block);
+
+        builder.CreateCondBr(builder.CreateICmp(llvm::CmpInst::Predicate::ICMP_EQ, llvmFunc->getArg(1),
+                                                llvm::ConstantPointerNull::get(Type::getInt8PtrTy(_llvmContext)),
+                                                "nullCheck"), throwBlock, retBlock);
+        builder.SetInsertPoint(throwBlock);
+
+        buildThrowException(builder, u8"ThrowHelpers", u8"ThrowNullReferenceException", llvmFunc->getArg(0));
+
+        builder.SetInsertPoint(retBlock);
+        builder.CreateRetVoid();
+    }
+
     return llvmFunc;
 }
 
