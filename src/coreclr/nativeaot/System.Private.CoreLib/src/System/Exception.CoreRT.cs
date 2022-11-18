@@ -3,6 +3,7 @@
 
 using System.Collections;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime;
 using System.Runtime.Serialization;
 using System.Runtime.InteropServices;
@@ -15,6 +16,7 @@ namespace System
     {
         public MethodBase? TargetSite
         {
+            [RequiresUnreferencedCode("Metadata for the method might be incomplete or removed")]
             get
             {
                 if (!HasBeenThrown)

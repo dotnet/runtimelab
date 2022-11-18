@@ -4,6 +4,7 @@
 using System.Reflection;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Runtime.InteropServices;
 using CultureInfo = System.Globalization.CultureInfo;
 
 namespace System
@@ -28,7 +29,7 @@ namespace System
         //
         // The most specific match will be selected.
         //
-        [UnconditionalSuppressMessage("AotAnalysis", "IL9700:RequiresDynamicCode",
+        [UnconditionalSuppressMessage("AotAnalysis", "IL3050:RequiresDynamicCode",
             Justification = "Known corner case bug https://github.com/dotnet/runtimelab/issues/1079.")]
         public sealed override MethodBase BindToMethod(
             BindingFlags bindingAttr, MethodBase[] match, ref object?[] args,
@@ -230,7 +231,7 @@ namespace System
 
                         if (!pCls.IsAssignableFrom(argTypes[paramOrder[i][j]]))
                         {
-                            if (argTypes[paramOrder[i][j]].IsCOMObject)
+                            if (Marshal.IsBuiltInComSupported && argTypes[paramOrder[i][j]].IsCOMObject)
                             {
                                 if (pCls.IsInstanceOfType(args[paramOrder[i][j]]))
                                     continue;
@@ -258,7 +259,7 @@ namespace System
 
                             if (!paramArrayType.IsAssignableFrom(argTypes[j]))
                             {
-                                if (argTypes[j].IsCOMObject)
+                                if (Marshal.IsBuiltInComSupported && argTypes[j].IsCOMObject)
                                 {
                                     if (paramArrayType.IsInstanceOfType(args[j]))
                                         continue;

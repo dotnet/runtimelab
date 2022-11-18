@@ -26,7 +26,7 @@ namespace ILCompiler
         protected readonly NodeFactory _nodeFactory;
         protected readonly Logger _logger;
         protected readonly DebugInformationProvider _debugInformationProvider;
-        private readonly DevirtualizationManager _devirtualizationManager;
+        protected readonly DevirtualizationManager _devirtualizationManager;
         private readonly IInliningPolicy _inliningPolicy;
 
         public NameMangler NameMangler => _nodeFactory.NameMangler;
@@ -92,6 +92,16 @@ namespace ILCompiler
 
         protected abstract void CompileInternal(string outputFile, ObjectDumper dumper);
 
+        public void DetectGenericCycles(MethodDesc caller, MethodDesc callee)
+        {
+            _nodeFactory.TypeSystemContext.DetectGenericCycles(caller, callee);
+        }
+
+        public virtual IEETypeNode NecessaryTypeSymbolIfPossible(TypeDesc type)
+        {
+            return _nodeFactory.NecessaryTypeSymbol(type);
+        }
+
         public bool CanInline(MethodDesc caller, MethodDesc callee)
         {
             return _inliningPolicy.CanInline(caller, callee);
@@ -109,6 +119,9 @@ namespace ILCompiler
             // vtable slots.
             if (followVirtualDispatch && (target.IsFinal || target.OwningType.IsSealed()))
                 followVirtualDispatch = false;
+
+            if (followVirtualDispatch)
+                target = MetadataVirtualMethodAlgorithm.FindSlotDefiningMethodForVirtualMethod(target);
 
             return DelegateCreationInfo.Create(delegateType, target, NodeFactory, followVirtualDispatch);
         }
@@ -277,13 +290,13 @@ namespace ILCompiler
                 case ReadyToRunHelperId.TypeHandle:
                     return NodeFactory.ConstructedTypeSymbol((TypeDesc)targetOfLookup);
                 case ReadyToRunHelperId.NecessaryTypeHandle:
-                    return NodeFactory.NecessaryTypeSymbol((TypeDesc)targetOfLookup);
+                    return NecessaryTypeSymbolIfPossible((TypeDesc)targetOfLookup);
                 case ReadyToRunHelperId.TypeHandleForCasting:
                     {
                         var type = (TypeDesc)targetOfLookup;
                         if (type.IsNullable)
                             targetOfLookup = type.Instantiation[0];
-                        return NodeFactory.NecessaryTypeSymbol((TypeDesc)targetOfLookup);
+                        return NecessaryTypeSymbolIfPossible((TypeDesc)targetOfLookup);
                     }
                 case ReadyToRunHelperId.MethodDictionary:
                     return NodeFactory.MethodGenericDictionary((MethodDesc)targetOfLookup);
@@ -312,6 +325,11 @@ namespace ILCompiler
 
         public GenericDictionaryLookup ComputeGenericLookup(MethodDesc contextMethod, ReadyToRunHelperId lookupKind, object targetOfLookup)
         {
+            if (targetOfLookup is TypeSystemEntity typeSystemEntity)
+            {
+                _nodeFactory.TypeSystemContext.DetectGenericCycles(contextMethod, typeSystemEntity);
+            }
+
             GenericContextSource contextSource;
 
             if (contextMethod.RequiresInstMethodDescArg())
@@ -403,9 +421,18 @@ namespace ILCompiler
             if ((signature.Flags & MethodSignatureFlags.UnmanagedCallingConventionMask) != 0)
                 return false;
 
-            // Everything else except RawCalliHelpers could be a fat pointer
-            var owningType = containingMethod.OwningType as MetadataType;
-            return owningType?.Name != "RawCalliHelper";
+            if (containingMethod.OwningType is MetadataType owningType)
+            {
+                // RawCalliHelper is a way for the class library to opt out of fat calls
+                if (owningType.Name == "RawCalliHelper")
+                    return false;
+
+                // Delegate invocation never needs fat calls
+                if (owningType.IsDelegate && containingMethod.Name == "Invoke")
+                    return false;
+            }
+
+            return true;
         }
 
         /// <summary>

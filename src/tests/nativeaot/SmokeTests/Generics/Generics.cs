@@ -32,6 +32,10 @@ class Program
         TestReflectionInvoke.Run();
         TestFieldAccess.Run();
         TestDevirtualization.Run();
+// TODO-LLVM: Investigate failure in EnsureLoadableType
+#if !CODEGEN_WASM
+        TestImportFailure.Run();
+#endif
         TestGenericInlining.Run();
         TestGenericInliningDoesntHappen.Run();
         TestGvmDependenciesFromLazy.Run();
@@ -39,6 +43,13 @@ class Program
         TestConstrainedGvmCalls.Run();
         TestConstrainedGvmValueTypeCalls.Run();
         TestDefaultGenericVirtualInterfaceMethods.Run();
+// TODO-LLVM: Investigate TypeLoadException for these
+#if !CODEGEN_WASM
+        TestSimpleGenericRecursion.Run();
+        TestGenericRecursionFromNpgsql.Run();
+        TestRecursionInGenericVirtualMethods.Run();
+        TestRecursionThroughGenericLookups.Run();
+#endif
 #if !CODEGEN_CPP
         TestNullableCasting.Run();
         TestVariantCasting.Run();
@@ -2500,6 +2511,41 @@ class Program
         }
     }
 
+    class TestImportFailure
+    {
+        class Generic<T> { }
+
+        [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Explicit)]
+        class Unloadable<T> { }
+        class Unloadable : Unloadable<object> { }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        static void DoGenericLookup<T>()
+        {
+            // The method body for this will be converted to a throw, but when compiling this,
+            // the code generator might attempt to do generic lookups before realizing this won't work.
+            typeof(Generic<T>).ToString();
+            new Unloadable().ToString();
+        }
+
+        public static void Run()
+        {
+            bool failed = false;
+
+            try
+            {
+                DoGenericLookup<object>();
+            }
+            catch (TypeLoadException)
+            {
+                failed = true;
+            }
+
+            if (!failed)
+                throw new Exception();
+        }
+    }
+
     class TestGenericInlining
     {
         class NeverSeenInstantiated<T> { }
@@ -2957,6 +3003,154 @@ class Program
                 if (f.Foo<SAtom1>() != "Hello from IBar<SAtom1>.IFoo<T[]>.Foo<SAtom1>")
                     throw new Exception();
             }
+        }
+    }
+
+    class TestSimpleGenericRecursion
+    {
+        struct GenStruct<T> { }
+
+        class GenClass<T> { }
+
+        private static object RecurseOverStruct<T>(int count) where T : new()
+        {
+            if (count > 0)
+                RecurseOverStruct<GenStruct<T>>(count - 1);
+
+            return new T();
+        }
+
+        private static object RecurseOverClass<T>(int count) where T : new()
+        {
+            if (count > 0)
+                RecurseOverClass<GenClass<T>>(count - 1);
+
+            return new T();
+        }
+
+        public static void Run()
+        {
+            RecurseOverStruct<int>(2);
+            RecurseOverClass<int>(2);
+
+            bool caughtException = false;
+            try
+            {
+                RecurseOverStruct<int>(100);
+            }
+            catch (TypeLoadException) { caughtException = true; }
+
+            if (!caughtException)
+                throw new Exception();
+
+            caughtException = false;
+            try
+            {
+                RecurseOverClass<int>(100);
+            }
+            catch (TypeLoadException) { caughtException = true; }
+
+            if (!caughtException)
+                throw new Exception();
+        }
+    }
+
+    class TestGenericRecursionFromNpgsql
+    {
+        [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
+        struct SqlRange<T>
+        {
+            private T Value1;
+            private T Value2;
+        }
+
+        class ChunkingTypeHandler<T> : TypeHandler<T>
+        {
+        }
+
+        class RangeHandler<T> : ChunkingTypeHandler<SqlRange<T>>
+        {
+            public RangeHandler()
+            {
+                new TypeHandler<T>().ToString();
+            }
+        }
+
+        class TypeHandler
+        {
+            public virtual void CreateRangeHandler() { }
+        }
+
+        class TypeHandler<T> : TypeHandler
+        {
+            public override void CreateRangeHandler()
+            {
+                new RangeHandler<T>().ToString();
+            }
+        }
+
+        public static void Run()
+        {
+            // https://github.com/dotnet/corert/issues/6052
+            // There is a generic recursion in the above hierarchy. This just tests that we can compile.
+            new TypeHandler<bool>().CreateRangeHandler();
+        }
+    }
+
+    class TestRecursionInGenericVirtualMethods
+    {
+        struct Buffer<T> { }
+
+        class Getter<T> { }
+
+        class Base
+        {
+            public virtual Getter<T> Get<T>() => new Getter<T>();
+        }
+
+        class Derived : Base
+        {
+            private Base _b = new Base();
+            public override Getter<T> Get<T>() => Make<T>();
+            private Getter<T> Make<T>() => _b.Get<Buffer<T>>() as Getter<T>;
+        }
+
+        static Base s_derived = new Derived();
+
+        public static void Run()
+        {
+            // There is a generic recursion in the above hierarchy. This just tests that we can compile.
+            // Inspired by https://github.com/dotnet/machinelearning/blob/cc5e6395e0d15e4d3db702b9cb1129e12838b840/src/Microsoft.ML.Transforms/UngroupTransform.cs#L610-L629
+            s_derived.Get<object>();
+        }
+    }
+
+    class TestRecursionThroughGenericLookups
+    {
+        abstract class Handler<T>
+        {
+            public abstract void Write(object val);
+        }
+
+        class RangeHandler<T> : Handler<Gen<T>>
+        {
+            public override void Write(object val) { if (val is ArrayHandler<Gen<T>> h) h.Write(default); }
+        }
+
+        class ArrayHandler<T>
+        {
+            public virtual void Write(object val) { if (val is RangeHandler<T> h) h.Write(default); }
+        }
+
+        struct Gen<T>
+        {
+        }
+
+        public static void Run()
+        {
+            // There is a generic recursion in the above hierarchy. This just tests that we can compile.
+            new ArrayHandler<object>().Write(null);
+            new RangeHandler<object>().Write(default);
         }
     }
 }

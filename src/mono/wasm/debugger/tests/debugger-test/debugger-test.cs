@@ -807,3 +807,57 @@ public class MyIncrementer
         return count + 1;
     }
 }
+
+public class DebuggerAttribute
+{
+    static int currentCount = 0;
+
+    [System.Diagnostics.DebuggerHidden]
+    public static void HiddenMethod()
+    {
+        currentCount++;
+    }
+
+    [System.Diagnostics.DebuggerHidden]
+    public static void HiddenMethodDebuggerBreak()
+    {
+        var local_var = 12;
+        System.Diagnostics.Debugger.Break();
+        currentCount++;
+    }
+
+    public static void VisibleMethod()
+    {
+        currentCount++;
+    }
+
+    public static void VisibleMethodDebuggerBreak()
+    {
+        System.Diagnostics.Debugger.Break();
+        currentCount++;
+    }
+
+    public static void Run()
+    {
+        HiddenMethod();
+        VisibleMethod();
+    }
+
+    public static void RunDebuggerBreak()
+    {
+        HiddenMethodDebuggerBreak();
+        VisibleMethodDebuggerBreak();
+    }
+}
+
+public class DebugTypeFull
+{
+    public static void CallToEvaluateLocal(string asm_base64, string pdb_base64)
+    {
+        var asm = System.Reflection.Assembly.LoadFrom("debugger-test-with-full-debug-type.dll");
+        var myType = asm.GetType("DebuggerTests.ClassToInspectWithDebugTypeFull");
+        var myMethod = myType.GetConstructor(new Type[] { });
+        var a = myMethod.Invoke(new object[]{});
+        System.Diagnostics.Debugger.Break();
+    }
+}

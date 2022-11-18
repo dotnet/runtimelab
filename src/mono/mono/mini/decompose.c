@@ -1499,6 +1499,9 @@ mono_decompose_array_access_opts (MonoCompile *cfg)
 	cfg->cbb = (MonoBasicBlock *)mono_mempool_alloc0 ((cfg)->mempool, sizeof (MonoBasicBlock));
 	first_bb = cfg->cbb;
 
+	// This code can't handle the creation of new basic blocks
+	cfg->disable_inline_rgctx_fetch = TRUE;
+
 	for (bb = cfg->bb_entry; bb; bb = bb->next_bb) {
 		MonoInst *ins;
 		MonoInst *prev = NULL;
@@ -1560,6 +1563,17 @@ mono_decompose_array_access_opts (MonoCompile *cfg)
 					MONO_EMIT_NEW_LOAD_MEMBASE_OP_FLAGS (cfg, OP_LOADI4_MEMBASE, ins->dreg,
 														 ins->sreg1, MONO_STRUCT_OFFSET (MonoString, length), ins->flags | MONO_INST_INVARIANT_LOAD);
 					break;
+				case OP_RTTYPE: {
+					MonoClass *tclass = (MonoClass*)ins->inst_p0;
+					int dreg = ins->dreg;
+					int context_used = mini_class_check_context_used (cfg, tclass);
+
+					g_assert (context_used);
+					MonoInst *fetch = mini_emit_get_rgctx_klass (cfg, context_used,
+																 tclass, MONO_RGCTX_INFO_REFLECTION_TYPE);
+					EMIT_NEW_UNALU (cfg, dest, OP_MOVE, dreg, fetch->dreg);
+					break;
+				}
 				default:
 					break;
 				}
@@ -1581,6 +1595,8 @@ mono_decompose_array_access_opts (MonoCompile *cfg)
 
 		if (cfg->verbose_level > 3) mono_print_bb (bb, "AFTER DECOMPOSE-ARRAY-ACCESS-OPTS ");
 	}
+
+	cfg->disable_inline_rgctx_fetch = FALSE;
 }
 
 typedef union {

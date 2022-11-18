@@ -7,7 +7,7 @@ parameters:
   pgoType: ''
   runtimeVariant: ''
   uploadTests: false
-  smokeTestsOnly: true
+  testFilter: tree nativeaot
   runSingleFileTests: true
   uploadIntermediateArtifacts: false
 
@@ -22,22 +22,20 @@ steps:
       displayName: Build the ILC and RyuJit cross-compilers
 
   - ${{ if and(eq(parameters.buildConfig, 'Release'),ne(parameters.archType, 'wasm')) }}:
-    - script: $(Build.SourcesDirectory)/build$(scriptExt) libs.tests -c Release
-      displayName: Build libraries tests
     - script: $(Build.SourcesDirectory)/build$(scriptExt) libs.tests -c Release -test
-      displayName: Run libraries tests
+      displayName: Build and run libraries tests
 
   # Build coreclr native test output
   - ${{ if eq(parameters.platform, 'Browser_wasm_win') }}:
     - script: |
         call $(Build.SourcesDirectory)\wasm-tools\emsdk\emsdk_env
-        $(Build.SourcesDirectory)/src/tests/build$(scriptExt) nativeaot $(buildConfigUpper) ${{ parameters.archType }} targetsNonWindows skipnative /p:SmokeTestsOnly=${{ parameters.smokeTestsOnly }}
+        $(Build.SourcesDirectory)/src/tests/build$(scriptExt) nativeaot $(buildConfigUpper) ${{ parameters.archType }} skipnative tree nativeaot
       displayName: Build WebAssembly tests
   - ${{ elseif eq(parameters.osGroup, 'windows') }}:
-    - script: $(Build.SourcesDirectory)/src/tests/build$(scriptExt) nativeaot $(buildConfigUpper) ${{ parameters.archType }} /p:NativeAotMultimodule=true /p:SmokeTestsOnly=${{ parameters.smokeTestsOnly }}
+    - script: $(Build.SourcesDirectory)/src/tests/build$(scriptExt) nativeaot $(buildConfigUpper) ${{ parameters.archType }} ${{ parameters.testFilter }} /p:NativeAotMultimodule=true
       displayName: Build tests
-  - ${{ else }}:
-    - script: $(Build.SourcesDirectory)/src/tests/build$(scriptExt) nativeaot $(buildConfigUpper) ${{ parameters.archType }} /p:SmokeTestsOnly=true
+  - ${{ elseif ne(parameters.osGroup, 'windows') }}:
+    - script: $(Build.SourcesDirectory)/src/tests/build$(scriptExt) nativeaot $(buildConfigUpper) ${{ parameters.archType }} 'tree nativeaot'
       displayName: Build tests
 
   - ${{ if eq(parameters.runSingleFileTests, true) }}:

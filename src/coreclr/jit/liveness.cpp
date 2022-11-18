@@ -24,10 +24,8 @@ void Compiler::fgMarkUseDef(GenTreeLclVarCommon* tree)
 {
     assert((tree->OperIsLocal() && (tree->OperGet() != GT_PHI_ARG)) || tree->OperIsLocalAddr());
 
-    const unsigned lclNum = tree->GetLclNum();
-    assert(lclNum < lvaCount);
-
-    LclVarDsc* const varDsc = &lvaTable[lclNum];
+    const unsigned   lclNum = tree->GetLclNum();
+    LclVarDsc* const varDsc = lvaGetDesc(lclNum);
 
     // We should never encounter a reference to a lclVar that has a zero refCnt.
     if (varDsc->lvRefCnt() == 0 && (!varTypeIsPromotable(varDsc) || !varDsc->lvPromoted))
@@ -174,7 +172,7 @@ void Compiler::fgLocalVarLivenessInit()
 {
     JITDUMP("In fgLocalVarLivenessInit\n");
 
-    // Sort locals first, if we're optimizing
+    // Sort locals first, if precise reference counts are required, e.g. we're optimizing
     if (PreciseRefCountsRequired())
     {
         lvaSortByRefCount();
@@ -375,9 +373,7 @@ void Compiler::fgPerNodeLocalVarLiveness(GenTree* tree)
                 {
                     // Get the FrameRoot local and mark it as used.
 
-                    noway_assert(info.compLvFrameListRoot < lvaCount);
-
-                    LclVarDsc* varDsc = &lvaTable[info.compLvFrameListRoot];
+                    LclVarDsc* varDsc = lvaGetDesc(info.compLvFrameListRoot);
 
                     if (varDsc->lvTracked)
                     {
@@ -529,8 +525,6 @@ void Compiler::fgPerBlockLocalVarLiveness()
             assert((!opts.ShouldUsePInvokeHelpers()) || (info.compLvFrameListRoot == BAD_VAR_NUM));
             if (!opts.ShouldUsePInvokeHelpers())
             {
-                noway_assert(info.compLvFrameListRoot < lvaCount);
-
                 // 32-bit targets always pop the frame in the epilog.
                 // For 64-bit targets, we only do this in the epilog for IL stubs;
                 // for non-IL stubs the frame is popped after every PInvoke call.
@@ -539,7 +533,7 @@ void Compiler::fgPerBlockLocalVarLiveness()
                 if (opts.jitFlags->IsSet(JitFlags::JIT_FLAG_IL_STUB))
 #endif
                 {
-                    LclVarDsc* varDsc = &lvaTable[info.compLvFrameListRoot];
+                    LclVarDsc* varDsc = lvaGetDesc(info.compLvFrameListRoot);
 
                     if (varDsc->lvTracked)
                     {
@@ -611,7 +605,7 @@ void Compiler::fgBeginScopeLife(VARSET_TP* inScope, VarScopeDsc* var)
 {
     assert(var);
 
-    LclVarDsc* lclVarDsc1 = &lvaTable[var->vsdVarNum];
+    LclVarDsc* lclVarDsc1 = lvaGetDesc(var->vsdVarNum);
 
     if (lclVarDsc1->lvTracked)
     {
@@ -623,7 +617,7 @@ void Compiler::fgEndScopeLife(VARSET_TP* inScope, VarScopeDsc* var)
 {
     assert(var);
 
-    LclVarDsc* lclVarDsc1 = &lvaTable[var->vsdVarNum];
+    LclVarDsc* lclVarDsc1 = lvaGetDesc(var->vsdVarNum);
 
     if (lclVarDsc1->lvTracked)
     {
@@ -873,7 +867,7 @@ void Compiler::fgExtendDbgLifetimes()
 
     for (unsigned argNum = 0; argNum < info.compArgsCount; argNum++)
     {
-        LclVarDsc* argDsc = lvaTable + argNum;
+        LclVarDsc* argDsc = lvaGetDesc(argNum);
         if (argDsc->lvPromoted)
         {
             lvaPromotionType promotionType = lvaGetPromotionType(argDsc);
@@ -883,7 +877,7 @@ void Compiler::fgExtendDbgLifetimes()
                 noway_assert(argDsc->lvFieldCnt == 1); // We only handle one field here
 
                 unsigned fieldVarNum = argDsc->lvFieldLclStart;
-                argDsc               = lvaTable + fieldVarNum;
+                argDsc               = lvaGetDesc(fieldVarNum);
             }
         }
         noway_assert(argDsc->lvIsParam);
@@ -900,7 +894,7 @@ void Compiler::fgExtendDbgLifetimes()
 
     for (unsigned i = 0; i < lvaCount; i++)
     {
-        LclVarDsc* varDsc = &lvaTable[i];
+        LclVarDsc* varDsc = lvaGetDesc(i);
         if (varTypeIsStruct(varDsc) && varDsc->lvTracked)
         {
             VarSetOps::AddElemD(this, noUnmarkVars, varDsc->lvVarIndex);
@@ -1466,9 +1460,7 @@ void Compiler::fgComputeLifeCall(VARSET_TP& life, GenTreeCall* call)
         {
             // Get the FrameListRoot local and make it live.
 
-            noway_assert(info.compLvFrameListRoot < lvaCount);
-
-            LclVarDsc* frameVarDsc = &lvaTable[info.compLvFrameListRoot];
+            LclVarDsc* frameVarDsc = lvaGetDesc(info.compLvFrameListRoot);
 
             if (frameVarDsc->lvTracked)
             {
@@ -1487,9 +1479,7 @@ void Compiler::fgComputeLifeCall(VARSET_TP& life, GenTreeCall* call)
         assert((!opts.ShouldUsePInvokeHelpers()) || (info.compLvFrameListRoot == BAD_VAR_NUM));
         if (!opts.ShouldUsePInvokeHelpers() && !call->IsSuppressGCTransition())
         {
-            noway_assert(info.compLvFrameListRoot < lvaCount);
-
-            LclVarDsc* frameVarDsc = &lvaTable[info.compLvFrameListRoot];
+            LclVarDsc* frameVarDsc = lvaGetDesc(info.compLvFrameListRoot);
 
             if (frameVarDsc->lvTracked)
             {
@@ -1845,7 +1835,7 @@ void Compiler::fgComputeLife(VARSET_TP&       life,
             bool isDeadStore = fgComputeLifeLocal(life, keepAliveVars, tree);
             if (isDeadStore)
             {
-                LclVarDsc* varDsc = &lvaTable[tree->AsLclVarCommon()->GetLclNum()];
+                LclVarDsc* varDsc = lvaGetDesc(tree->AsLclVarCommon());
 
                 bool doAgain = false;
                 if (fgRemoveDeadStore(&tree, varDsc, life, &doAgain, pStmtInfoDirty DEBUGARG(treeModf)))

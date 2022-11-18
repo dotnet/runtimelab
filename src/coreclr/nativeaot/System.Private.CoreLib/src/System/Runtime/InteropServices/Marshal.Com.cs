@@ -12,6 +12,8 @@ namespace System.Runtime.InteropServices
 {
     public static partial class Marshal
     {
+        internal static bool IsBuiltInComSupported => false;
+
         private const int DISP_E_PARAMNOTFOUND = unchecked((int)0x80020004);
 
         public static int GetHRForException(Exception? e)

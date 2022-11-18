@@ -168,6 +168,18 @@ namespace ILCompiler
         {
             return new DelegateInfo(delegateType, _delegateFeatures);
         }
+
+        private readonly LazyGenericsSupport.GenericCycleDetector _genericCycleDetector = new LazyGenericsSupport.GenericCycleDetector();
+
+        public void DetectGenericCycles(TypeSystemEntity owner, TypeSystemEntity referent)
+        {
+            _genericCycleDetector.DetectCycle(owner, referent);
+        }
+
+        public void LogWarnings(Logger logger)
+        {
+            _genericCycleDetector.LogWarnings(logger);
+        }
     }
 
     public class SharedGenericsConfiguration

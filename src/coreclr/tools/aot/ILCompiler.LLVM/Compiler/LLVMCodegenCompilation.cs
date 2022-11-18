@@ -45,8 +45,10 @@ namespace ILCompiler
             DevirtualizationManager devirtualizationManager,
             InstructionSetSupport instructionSetSupport,
             bool nativeLib,
-            ConfigurableWasmImportPolicy configurableWasmImportPolicy)
-            : base(dependencyGraph, nodeFactory, GetCompilationRoots(roots, nodeFactory), ilProvider, debugInformationProvider, logger, devirtualizationManager, inliningPolicy ?? new LLVMNoInLiningPolicy(), instructionSetSupport, null /* ProfileDataManager */, RyuJitCompilationOptions.SingleThreadedCompilation)
+            ConfigurableWasmImportPolicy configurableWasmImportPolicy,
+            MethodImportationErrorProvider errorProvider)
+            : base(dependencyGraph, nodeFactory, GetCompilationRoots(roots, nodeFactory), ilProvider, debugInformationProvider, logger, devirtualizationManager, inliningPolicy ?? new LLVMNoInLiningPolicy(), instructionSetSupport,
+                null /* ProfileDataManager */, errorProvider, RyuJitCompilationOptions.SingleThreadedCompilation)
         {
             NodeFactory = nodeFactory;
             LLVMModuleRef m = LLVMModuleRef.CreateWithName(options.ModuleName);

@@ -191,7 +191,7 @@ void TreeLifeUpdater<ForCodeGen>::UpdateLifeVar(GenTree* tree)
         lclVarTree = tree;
     }
     unsigned int lclNum = lclVarTree->AsLclVarCommon()->GetLclNum();
-    LclVarDsc*   varDsc = compiler->lvaTable + lclNum;
+    LclVarDsc*   varDsc = compiler->lvaGetDesc(lclNum);
 
 #ifdef DEBUG
 #if !defined(TARGET_AMD64)
@@ -289,7 +289,7 @@ void TreeLifeUpdater<ForCodeGen>::UpdateLifeVar(GenTree* tree)
             for (unsigned i = 0; i < varDsc->lvFieldCnt; ++i)
             {
                 bool       fieldIsSpilled = spill && ((lclVarTree->GetRegSpillFlagByIdx(i) & GTF_SPILL) != 0);
-                LclVarDsc* fldVarDsc      = &(compiler->lvaTable[firstFieldVarNum + i]);
+                LclVarDsc* fldVarDsc      = compiler->lvaGetDesc(firstFieldVarNum + i);
                 noway_assert(fldVarDsc->lvIsStructField);
                 assert(fldVarDsc->lvTracked);
                 unsigned  fldVarIndex  = fldVarDsc->lvVarIndex;
@@ -467,7 +467,7 @@ void TreeLifeUpdater<ForCodeGen>::UpdateLifeVar(GenTree* tree)
 #ifdef DEBUG
                 if (compiler->verbose)
                 {
-                    printf("\t\t\t\t\t\t\tVar V%02u becoming live\n", varDsc - compiler->lvaTable);
+                    printf("\t\t\t\t\t\t\tVar V%02u becoming live\n", compiler->lvaGetLclNum(varDsc));
                 }
 #endif // DEBUG
             }

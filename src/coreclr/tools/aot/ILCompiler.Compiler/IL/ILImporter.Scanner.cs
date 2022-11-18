@@ -215,7 +215,7 @@ namespace Internal.IL
                     {
                         TypeDesc catchType = (TypeDesc)_methodIL.GetObject(region.ClassToken);
                         if (catchType.IsRuntimeDeterminedSubtype)
-                            _dependencies.Add(_factory.MethodEntrypoint(_factory.TypeSystemContext.GetHelperEntryPoint("ThrowHelpers", "ThrowInvalidProgramException")), "Unsupported EH");
+                            ThrowHelper.ThrowInvalidProgramException();
                     }
                 }
             }
@@ -274,6 +274,16 @@ namespace Internal.IL
         private static bool IsOffsetContained(int offset, int start, int length)
         {
             return start <= offset && offset < start + length;
+        }
+
+        private IMethodNode GetMethodEntrypoint(MethodDesc method)
+        {
+            if (method.HasInstantiation || method.OwningType.HasInstantiation)
+            {
+                _compilation.DetectGenericCycles(_canonMethod, method);
+            }
+
+            return _factory.MethodEntrypoint(method);
         }
 
         private void ImportCall(ILOpcode opcode, int token)
@@ -456,7 +466,7 @@ namespace Internal.IL
 
             if (method.IsIntrinsic)
             {
-                if (IsRuntimeHelpersInitializeArray(method))
+                if (IsRuntimeHelpersInitializeArrayOrCreateSpan(method))
                 {
                     if (_previousInstructionOffset >= 0 && _ilBytes[_previousInstructionOffset] == (byte)ILOpcode.ldtoken)
                         return;
@@ -748,7 +758,7 @@ namespace Internal.IL
                     else
                     {
                         Debug.Assert(!forceUseRuntimeLookup);
-                        _dependencies.Add(_factory.MethodEntrypoint(targetMethod), reason);
+                        _dependencies.Add(GetMethodEntrypoint(targetMethod), reason);
 
                         if (targetMethod.RequiresInstMethodTableArg() && resolvedConstraint)
                         {
@@ -810,7 +820,7 @@ namespace Internal.IL
                         _dependencies.Add(_compilation.NodeFactory.MaximallyConstructableType(concreteMethod.OwningType), reason + " - inlining protection");
                     }
 
-                    _dependencies.Add(_compilation.NodeFactory.MethodEntrypoint(targetMethod), reason);
+                    _dependencies.Add(GetMethodEntrypoint(targetMethod), reason);
                 }
             }
             else if (method.HasInstantiation)
@@ -818,6 +828,10 @@ namespace Internal.IL
                 // Generic virtual method call
 
                 MethodDesc methodToLookup = _compilation.GetTargetOfGenericVirtualMethodCall(runtimeDeterminedMethod);
+
+                _compilation.DetectGenericCycles(
+                        _canonMethod,
+                        methodToLookup.GetCanonMethodTarget(CanonicalFormKind.Specific));
 
                 if (exactContextNeedsRuntimeLookup)
                 {
@@ -1013,7 +1027,7 @@ namespace Internal.IL
             {
                 Debug.Assert(obj is FieldDesc);
 
-                // First check if this is a ldtoken Field / InitializeArray sequence.
+                // First check if this is a ldtoken Field followed by InitializeArray or CreateSpan.
                 BasicBlock nextBasicBlock = _basicBlocks[_currentOffset];
                 if (nextBasicBlock == null)
                 {
@@ -1021,7 +1035,7 @@ namespace Internal.IL
                     {
                         int methodToken = ReadILTokenAt(_currentOffset + 1);
                         var method = (MethodDesc)_methodIL.GetObject(methodToken);
-                        if (IsRuntimeHelpersInitializeArray(method))
+                        if (IsRuntimeHelpersInitializeArrayOrCreateSpan(method))
                         {
                             // Codegen expands this and doesn't do the normal ldtoken.
                             return;
@@ -1082,7 +1096,10 @@ namespace Internal.IL
 
                 if (field.HasRva)
                 {
-                    // We could add a dependency to the data node, but we don't really need it.
+                    // We don't care about field RVA data for the usual cases, but if this is one of the
+                    // magic fields the compiler synthetized, the data blob might bring more dependencies
+                    // and we need to scan those.
+                    _dependencies.Add(_compilation.GetFieldRvaData(field), reason);
                     // TODO: lazy cctor dependency
                     return;
                 }
@@ -1307,14 +1324,18 @@ namespace Internal.IL
             ThrowHelper.ThrowInvalidProgramException();
         }
 
-        private bool IsRuntimeHelpersInitializeArray(MethodDesc method)
+        private bool IsRuntimeHelpersInitializeArrayOrCreateSpan(MethodDesc method)
         {
-            if (method.IsIntrinsic && method.Name == "InitializeArray")
+            if (method.IsIntrinsic)
             {
-                MetadataType owningType = method.OwningType as MetadataType;
-                if (owningType != null)
+                string name = method.Name;
+                if (name == "InitializeArray" || name == "CreateSpan")
                 {
-                    return owningType.Name == "RuntimeHelpers" && owningType.Namespace == "System.Runtime.CompilerServices";
+                    MetadataType owningType = method.OwningType as MetadataType;
+                    if (owningType != null)
+                    {
+                        return owningType.Name == "RuntimeHelpers" && owningType.Namespace == "System.Runtime.CompilerServices";
+                    }
                 }
             }
 

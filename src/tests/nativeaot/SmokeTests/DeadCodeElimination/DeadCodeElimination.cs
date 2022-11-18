@@ -3,6 +3,7 @@
 
 using System;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 class Program
@@ -12,6 +13,7 @@ class Program
         SanityTest.Run();
         TestInstanceMethodOptimization.Run();
         TestAbstractTypeVirtualsOptimization.Run();
+        TestAbstractTypeNeverDerivedVirtualsOptimization.Run();
 
         return 100;
     }
@@ -42,14 +44,24 @@ class Program
             public Type DoSomething() => typeof(UnreferencedType);
         }
 
+#if DEBUG
+        static NeverAllocatedType s_instance = null;
+#else
         static object s_instance = new object[10];
+#endif
 
         public static void Run()
         {
             Console.WriteLine("Testing instance methods on unallocated types");
 
+#if DEBUG
+            if (s_instance != null)
+                s_instance.DoSomething();
+#else
+            // In release builds additionally test that the "is" check didn't introduce the constructed type
             if (s_instance is NeverAllocatedType never)
                 never.DoSomething();
+#endif
 
             ThrowIfPresent(typeof(TestInstanceMethodOptimization), nameof(UnreferencedType));
         }
@@ -88,6 +100,53 @@ class Program
 
             ThrowIfPresent(typeof(TestAbstractTypeVirtualsOptimization), nameof(UnreferencedType1));
             ThrowIfPresent(typeof(TestAbstractTypeVirtualsOptimization), nameof(UnreferencedType2));
+        }
+    }
+
+    class TestAbstractTypeNeverDerivedVirtualsOptimization
+    {
+        class UnreferencedType1
+        {
+        }
+
+        class TheBase
+        {
+            public virtual object Something() => new object();
+        }
+
+        abstract class AbstractDerived : TheBase
+        {
+            // We expect "Something" to be generated as a throwing helper.
+            [MethodImpl(MethodImplOptions.NoInlining)]
+            public sealed override object Something() => new UnreferencedType1();
+            // We expect "callvirt Something" to get devirtualized here.
+            [MethodImpl(MethodImplOptions.NoInlining)]
+            public object TrySomething() => Something();
+        }
+
+        abstract class AbstractDerivedAgain : AbstractDerived
+        {
+        }
+
+        static TheBase s_b = new TheBase();
+        static AbstractDerived s_d = null;
+
+        public static void Run()
+        {
+            Console.WriteLine("Testing virtual methods on never derived abstract types");
+
+            // Make sure Something is seen virtually used.
+            s_b.Something();
+
+            // Force a constructed MethodTable for AbstractDerived and AbstractDerivedAgain into closure
+            typeof(AbstractDerivedAgain).ToString();
+
+            if (s_d != null)
+            {
+                s_d.TrySomething();
+            }
+
+            ThrowIfPresent(typeof(TestAbstractTypeNeverDerivedVirtualsOptimization), nameof(UnreferencedType1));
         }
     }
 

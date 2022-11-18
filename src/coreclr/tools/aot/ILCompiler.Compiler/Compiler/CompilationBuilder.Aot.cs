@@ -19,6 +19,7 @@ namespace ILCompiler
         protected DictionaryLayoutProvider _dictionaryLayoutProvider = new LazyDictionaryLayoutProvider();
         protected DebugInformationProvider _debugInformationProvider = new DebugInformationProvider();
         protected DevirtualizationManager _devirtualizationManager = new DevirtualizationManager();
+        protected MethodImportationErrorProvider _methodImportationErrorProvider = new MethodImportationErrorProvider();
         protected IInliningPolicy _inliningPolicy;
         protected bool _methodBodyFolding;
         protected bool _singleThreaded;
@@ -107,6 +108,12 @@ namespace ILCompiler
         public CompilationBuilder UseWasmImportPolicy(ConfigurableWasmImportPolicy wasmImportPolicy)
         {
             _wasmImportPolicy = wasmImportPolicy;
+            return this;
+        }
+
+        public CompilationBuilder UseMethodImportationErrorProvider(MethodImportationErrorProvider errorProvider)
+        {
+            _methodImportationErrorProvider = errorProvider;
             return this;
         }
 

@@ -99,6 +99,8 @@ namespace ILCompiler
         private IReadOnlyList<string> _singleWarnDisabledAssemblies = Array.Empty<string>();
         private bool _singleWarn;
 
+        private string _makeReproPath;
+
         private bool _help;
 
         private Program()
@@ -236,6 +238,8 @@ namespace ILCompiler
                 syntax.DefineOption("singlemethodname", ref _singleMethodName, "Single method compilation: name of the method");
                 syntax.DefineOptionList("singlemethodgenericarg", ref _singleMethodGenericArgs, "Single method compilation: generic arguments to the method");
 
+                syntax.DefineOption("make-repro-path", ref _makeReproPath, "Path where to place a repro package");
+
                 syntax.DefineParameterList("in", ref inputFiles, "Input file(s) to compile");
             });
             if (waitForDebugger)
@@ -261,6 +265,16 @@ namespace ILCompiler
 
             foreach (var reference in referenceFiles)
                 Helpers.AppendExpandedPaths(_referenceFilePaths, reference, false);
+
+            if (_makeReproPath != null)
+            {
+                // Create a repro package in the specified path
+                // This package will have the set of input files needed for compilation
+                // + the original command line arguments
+                // + a rsp file that should work to directly run out of the zip file
+
+                Helpers.MakeReproPackage(_makeReproPath, _outputFilePath, args, argSyntax, new[] { "-r", "-m", "--rdxml", "--directpinvokelist" });
+            }
 
             return argSyntax;
         }
@@ -805,6 +819,12 @@ namespace ILCompiler
                 // This prevents e.g. devirtualizing and inlining methods on types that were
                 // never actually allocated.
                 builder.UseInliningPolicy(scanResults.GetInliningPolicy());
+
+                // Use an error provider that prevents us from re-importing methods that failed
+                // to import with an exception during scanning phase. We would see the same failure during
+                // compilation, but before RyuJIT gets there, it might ask questions that we don't
+                // have answers for because we didn't scan the entire method.
+                builder.UseMethodImportationErrorProvider(scanResults.GetMethodImportationErrorProvider());
             }
 
             ICompilation compilation = builder.ToCompilation();
@@ -823,6 +843,8 @@ namespace ILCompiler
 
                 defFileWriter.EmitExportedMethods();
             }
+
+            typeSystemContext.LogWarnings(logger);
 
             if (_dgmlLogFileName != null)
                 compilationResults.WriteDependencyLog(_dgmlLogFileName);

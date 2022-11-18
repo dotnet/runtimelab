@@ -10,11 +10,8 @@ namespace System
 {
     public abstract partial class Enum
     {
-        [DllImport(RuntimeHelpers.QCall, CharSet = CharSet.Unicode)]
-        private static extern void GetEnumValuesAndNames(QCallTypeHandle enumType, ObjectHandleOnStack values, ObjectHandleOnStack names, Interop.BOOL getNames);
-
-        [MethodImpl(MethodImplOptions.InternalCall)]
-        public extern override bool Equals([NotNullWhen(true)] object? obj);
+        [GeneratedDllImport(RuntimeHelpers.QCall, EntryPoint = "Enum_GetValuesAndNames")]
+        private static partial void GetEnumValuesAndNames(QCallTypeHandle enumType, ObjectHandleOnStack values, ObjectHandleOnStack names, Interop.BOOL getNames);
 
         [MethodImpl(MethodImplOptions.InternalCall)]
         private static extern object InternalBoxEnum(RuntimeType enumType, long value);
@@ -24,9 +21,6 @@ namespace System
 
         [MethodImpl(MethodImplOptions.InternalCall)]
         internal static extern RuntimeType InternalGetUnderlyingType(RuntimeType enumType);
-
-        [MethodImpl(MethodImplOptions.InternalCall)]
-        private extern bool InternalHasFlag(Enum flags);
 
         private static EnumInfo GetEnumInfo(RuntimeType enumType, bool getNames = true)
         {

@@ -90,7 +90,7 @@ private:
     CORINFO_SIG_INFO _sigInfo; // sigInfo of function being compiled
     LIR::Range* _currentRange;
     BasicBlock* _currentBlock;
-    IL_OFFSETX _currentOffset;
+    DebugInfo _currentOffset;
     llvm::IRBuilder<> _builder;
     llvm::IRBuilder<> _prologBuilder;
     JitHashTable<BasicBlock*, JitPtrKeyFuncs<BasicBlock>, llvm::BasicBlock*> _blkToLlvmBlkVectorMap;

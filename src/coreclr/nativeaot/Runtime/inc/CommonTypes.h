@@ -17,10 +17,6 @@ using std::intptr_t;
 typedef wchar_t             WCHAR;
 typedef void *              HANDLE;
 
-typedef unsigned char       Boolean;
-#define Boolean_false 0
-#define Boolean_true 1
-
 typedef uint32_t            UInt32_BOOL;    // windows 4-byte BOOL, 0 -> false, everything else -> true
 #define UInt32_FALSE        0
 #define UInt32_TRUE         1

@@ -1,8 +1,0 @@
-<linker>
-  <type fullname="System.Xml.Serialization.XmlSerializer" featurevalue="true" feature="System.Xml.Serialization.XmlSerializer.IsReflectionOnly">
-    <method signature="System.Xml.Serialization.SerializationMode get_Mode()" body="stub" value="1" />
-  </type>
-  <type fullname="System.Xml.XmlDownloadManager" featurevalue="false" feature="System.Xml.XmlDownloadManager.IsNonFileStreamSupported">
-    <method signature="System.Threading.Tasks.Task`1&lt;System.IO.Stream&gt; GetNonFileStreamAsync(System.Uri,System.Net.ICredentials,System.Net.IWebProxy)" body="remove" />
-  </type>
-</linker>
