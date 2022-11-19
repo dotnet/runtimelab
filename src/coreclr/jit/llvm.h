@@ -191,13 +191,16 @@ private:
     void lowerFieldOfDependentlyPromotedStruct(GenTree* node);
     void ConvertShadowStackLocalNode(GenTreeLclVarCommon* node);
     void lowerStoreBlk(GenTreeBlk* storeBlkNode);
+    void lowerReturn(GenTreeUnOp* retNode);
 
     void lowerCallToShadowStack(GenTreeCall* callNode);
     void failUnsupportedCalls(GenTreeCall* callNode);
     GenTreeCall::Use* lowerCallReturn(GenTreeCall* callNode, GenTreeCall::Use* lastArg);
 
-    GenTree* createStoreNode(var_types nodeType, GenTree* addr, GenTree* data, ClassLayout* structClassLayout = nullptr);
-    GenTree* createShadowStackStoreNode(var_types nodeType, GenTree* addr, GenTree* data, ClassLayout* structClassLayout);
+    void normalizeStructUse(GenTree* node, ClassLayout* layout);
+
+    GenTree* createStoreNode(var_types nodeType, GenTree* addr, GenTree* data);
+    GenTree* createShadowStackStoreNode(var_types storeType, GenTree* addr, GenTree* data);
 
     // ================================================================================================================
     // |                                                   Codegen                                                    |
