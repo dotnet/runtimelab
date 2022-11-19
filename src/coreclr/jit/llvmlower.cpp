@@ -205,6 +205,10 @@ void Llvm::lowerBlocks()
                     }
                 }
             }
+            else if (node->OperIs(GT_STORE_BLK, GT_STORE_OBJ))
+            {
+                lowerStoreBlk(node->AsBlk());
+            }
             else if (node->OperIs(GT_RETURN) && (_retAddressLclNum != BAD_VAR_NUM))
             {
                 var_types originalReturnType = node->TypeGet();
@@ -400,6 +404,44 @@ void Llvm::ConvertShadowStackLocalNode(GenTreeLclVarCommon* node)
         else
         {
             CurrentRange().InsertBefore(node, lclAddress);
+        }
+    }
+}
+
+void Llvm::lowerStoreBlk(GenTreeBlk* storeBlkNode)
+{
+    assert(storeBlkNode->OperIs(GT_STORE_BLK, GT_STORE_OBJ));
+
+    // Fix up type mismatches on copies for codegen.
+    if (storeBlkNode->OperIsCopyBlkOp())
+    {
+        GenTree* src = storeBlkNode->Data();
+        ClassLayout* dstLayout = storeBlkNode->GetLayout();
+        if (src->OperIs(GT_IND))
+        {
+            src->SetOper(GT_BLK);
+            src->AsBlk()->SetLayout(dstLayout);
+            src->AsBlk()->gtBlkOpKind = GenTreeBlk::BlkOpKindInvalid;
+        }
+        else
+        {
+            CORINFO_CLASS_HANDLE srcHandle = _compiler->gtGetStructHandleIfPresent(src);
+
+            if (dstLayout->GetClassHandle() != srcHandle)
+            {
+                ClassLayout* dataLayout;
+                if (srcHandle != NO_CLASS_HANDLE)
+                {
+                    dataLayout = _compiler->typGetObjLayout(srcHandle);
+                }
+                else
+                {
+                    assert(src->OperIs(GT_BLK));
+                    dataLayout = src->AsBlk()->GetLayout();
+                }
+
+                storeBlkNode->SetLayout(dataLayout);
+            }
         }
     }
 }
