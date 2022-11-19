@@ -85,6 +85,11 @@ StructDesc* Llvm::getStructDesc(CORINFO_CLASS_HANDLE structHandle)
 
 Type* Llvm::getLlvmTypeForStruct(ClassLayout* classLayout)
 {
+    if (classLayout->IsBlockLayout())
+    {
+        return llvm::ArrayType::get(Type::getInt8Ty(_llvmContext), classLayout->GetSize());
+    }
+
     return getLlvmTypeForStruct(classLayout->GetClassHandle());
 }
 
