@@ -378,6 +378,7 @@ void Llvm::ConvertShadowStackLocalNode(GenTreeLclVarCommon* node)
         {
             node->ChangeOper(indirOper);
             node->AsIndir()->SetAddr(lclAddress);
+            node->gtFlags |= GTF_IND_NONFAULTING;
         }
         if (GenTree::OperIsStore(indirOper))
         {
@@ -680,13 +681,15 @@ GenTree* Llvm::createStoreNode(var_types nodeType, GenTree* addr, GenTree* data,
     {
         storeNode = new (_compiler, GT_STOREIND) GenTreeStoreInd(nodeType, addr, data);
     }
+    storeNode->gtFlags |= GTF_ASG;
+
     return storeNode;
 }
 
 GenTree* Llvm::createShadowStackStoreNode(var_types nodeType, GenTree* addr, GenTree* data, ClassLayout* structClassLayout)
 {
     GenTree* storeNode = createStoreNode(nodeType, addr, data, structClassLayout);
-    storeNode->gtFlags |= GTF_IND_TGT_NOT_HEAP;
+    storeNode->gtFlags |= (GTF_IND_TGT_NOT_HEAP | GTF_IND_NONFAULTING);
 
     return storeNode;
 }
