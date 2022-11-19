@@ -636,7 +636,9 @@ GenTreeCall::Use* Llvm::lowerCallReturn(GenTreeCall*      callNode,
         {
             indirNode = _compiler->gtNewIndir(callReturnType, returnAddrLclAfterCall);
         }
-        indirNode->gtFlags |= GTF_IND_TGT_NOT_HEAP; // No RhpAssignRef required
+        indirNode->gtFlags |= GTF_IND_NONFAULTING;
+        indirNode->SetAllEffectsFlags(GTF_EMPTY);
+
         LIR::Use callUse;
         if (CurrentRange().TryGetUse(callNode, &callUse))
         {
