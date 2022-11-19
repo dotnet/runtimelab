@@ -1135,7 +1135,6 @@ void Llvm::buildInd(GenTreeIndir* indNode)
 
 void Llvm::buildBlk(GenTreeBlk* blkNode)
 {
-    // TODO-LLVM: lower away zero-sized BLKs.
     Type* blkLlvmType = getLlvmTypeForStruct(blkNode->GetLayout());
     Value* addrValue = consumeValue(blkNode->Addr(), blkLlvmType->getPointerTo());
 
@@ -1183,7 +1182,6 @@ void Llvm::buildStoreBlk(GenTreeBlk* blockOp)
     GenTree* dataNode = blockOp->Data();
     Value* addrValue = consumeValue(addrNode, Type::getInt8PtrTy(_llvmContext));
 
-    // TODO-LLVM: lower away zero-sized STORE_BLKs.
     emitNullCheckForIndir(blockOp, addrValue);
 
     // Check for the "initblk" operation ("dataNode" is either INIT_VAL or constant zero).

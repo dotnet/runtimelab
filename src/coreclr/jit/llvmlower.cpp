@@ -400,6 +400,16 @@ void Llvm::lowerStoreBlk(GenTreeBlk* storeBlkNode)
             }
         }
     }
+
+    // A zero-sized block store is a no-op. Lower it away.
+    if (storeBlkNode->Size() == 0)
+    {
+        assert(storeBlkNode->OperIsInitBlkOp() || storeBlkNode->Data()->OperIs(GT_BLK));
+
+        storeBlkNode->Addr()->SetUnusedValue();
+        CurrentRange().Remove(storeBlkNode->Data(), /* markOperandsUnused */ true);
+        CurrentRange().Remove(storeBlkNode);
+    }
 }
 
 void Llvm::lowerReturn(GenTreeUnOp* retNode)
