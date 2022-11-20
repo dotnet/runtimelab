@@ -2,6 +2,7 @@
 add_component(jit)
 add_component(wasmjit)
 add_component(alljits)
+add_component(hosts)
 add_component(runtime)
 add_component(paltests paltests_install)
 add_component(iltools)
@@ -18,6 +19,8 @@ add_dependencies(runtime coreclr_misc)
 
 # The runtime build requires the clrjit and iltools builds
 add_dependencies(runtime jit iltools)
+
+add_dependencies(runtime hosts)
 
 # The cross-components build is separate, so we don't need to add a dependency on coreclr_misc
 add_component(crosscomponents)
