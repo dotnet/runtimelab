@@ -1480,7 +1480,7 @@ AGAIN:
             switch (oper)
             {
                 case GT_INTRINSIC:
-                    if (op1->AsIntrinsic()->gtIntrinsicId != op2->AsIntrinsic()->gtIntrinsicId)
+                    if (op1->AsIntrinsic()->gtIntrinsicName != op2->AsIntrinsic()->gtIntrinsicName)
                     {
                         return false;
                     }
@@ -1654,11 +1654,11 @@ AGAIN:
 //    lclNum  - the local's number, *or* the handle for the field
 //
 // Return Value:
-//    Whether "tree" has any LCL_VAR nodes that refer to the local,
-//    LHS or RHS, or FIELD nodes with the specified handle.
+//    Whether "tree" has any LCL_VAR/LCL_FLD nodes that refer to the
+//    local, LHS or RHS, or FIELD nodes with the specified handle.
 //
 // Notes:
-//    Does not pay attention to local address nodes or LCL_FLD nodes.
+//    Does not pay attention to local address nodes.
 //
 /* static */ bool Compiler::gtHasRef(GenTree* tree, ssize_t lclNum)
 {
@@ -1669,7 +1669,7 @@ AGAIN:
 
     if (tree->OperIsLeaf())
     {
-        if (tree->OperIs(GT_LCL_VAR) && (tree->AsLclVarCommon()->GetLclNum() == (unsigned)lclNum))
+        if (tree->OperIs(GT_LCL_VAR, GT_LCL_FLD) && (tree->AsLclVarCommon()->GetLclNum() == (unsigned)lclNum))
         {
             return true;
         }
@@ -1936,7 +1936,7 @@ AGAIN:
             switch (oper)
             {
                 case GT_INTRINSIC:
-                    hash += tree->AsIntrinsic()->gtIntrinsicId;
+                    hash += tree->AsIntrinsic()->gtIntrinsicName;
                     break;
                 case GT_LEA:
                     hash += static_cast<unsigned>(tree->AsAddrMode()->Offset() << 3) + tree->AsAddrMode()->gtScale;
@@ -4183,85 +4183,77 @@ unsigned Compiler::gtSetEvalOrder(GenTree* tree)
 
                 case GT_INTRINSIC:
                     intrinsic = tree->AsIntrinsic();
-                    if (intrinsic->gtIntrinsicId == CORINFO_INTRINSIC_Illegal)
-                    {
-                        // named intrinsic
-                        assert(intrinsic->gtIntrinsicName != NI_Illegal);
+                    // named intrinsic
+                    assert(intrinsic->gtIntrinsicName != NI_Illegal);
 
-                        // GT_INTRINSIC intrinsics Sin, Cos, Sqrt, Abs ... have higher costs.
-                        // TODO: tune these costs target specific as some of these are
-                        // target intrinsics and would cost less to generate code.
-                        switch (intrinsic->gtIntrinsicName)
+                    // GT_INTRINSIC intrinsics Sin, Cos, Sqrt, Abs ... have higher costs.
+                    // TODO: tune these costs target specific as some of these are
+                    // target intrinsics and would cost less to generate code.
+                    switch (intrinsic->gtIntrinsicName)
+                    {
+                        default:
+                            assert(!"missing case for gtIntrinsicName");
+                            costEx = 12;
+                            costSz = 12;
+                            break;
+
+                        case NI_System_Math_Abs:
+                            costEx = 5;
+                            costSz = 15;
+                            break;
+
+                        case NI_System_Math_Acos:
+                        case NI_System_Math_Acosh:
+                        case NI_System_Math_Asin:
+                        case NI_System_Math_Asinh:
+                        case NI_System_Math_Atan:
+                        case NI_System_Math_Atanh:
+                        case NI_System_Math_Atan2:
+                        case NI_System_Math_Cbrt:
+                        case NI_System_Math_Ceiling:
+                        case NI_System_Math_Cos:
+                        case NI_System_Math_Cosh:
+                        case NI_System_Math_Exp:
+                        case NI_System_Math_Floor:
+                        case NI_System_Math_FMod:
+                        case NI_System_Math_FusedMultiplyAdd:
+                        case NI_System_Math_ILogB:
+                        case NI_System_Math_Log:
+                        case NI_System_Math_Log2:
+                        case NI_System_Math_Log10:
+                        case NI_System_Math_Pow:
+                        case NI_System_Math_Round:
+                        case NI_System_Math_Sin:
+                        case NI_System_Math_Sinh:
+                        case NI_System_Math_Sqrt:
+                        case NI_System_Math_Tan:
+                        case NI_System_Math_Tanh:
                         {
-                            default:
-                                assert(!"missing case for gtIntrinsicName");
-                                costEx = 12;
-                                costSz = 12;
-                                break;
+                            // Giving intrinsics a large fixed execution cost is because we'd like to CSE
+                            // them, even if they are implemented by calls. This is different from modeling
+                            // user calls since we never CSE user calls. We don't do this for target intrinsics
+                            // however as they typically represent single instruction calls
 
-                            case NI_System_Math_Abs:
-                                costEx = 5;
-                                costSz = 15;
-                                break;
-
-                            case NI_System_Math_Acos:
-                            case NI_System_Math_Acosh:
-                            case NI_System_Math_Asin:
-                            case NI_System_Math_Asinh:
-                            case NI_System_Math_Atan:
-                            case NI_System_Math_Atanh:
-                            case NI_System_Math_Atan2:
-                            case NI_System_Math_Cbrt:
-                            case NI_System_Math_Ceiling:
-                            case NI_System_Math_Cos:
-                            case NI_System_Math_Cosh:
-                            case NI_System_Math_Exp:
-                            case NI_System_Math_Floor:
-                            case NI_System_Math_FMod:
-                            case NI_System_Math_FusedMultiplyAdd:
-                            case NI_System_Math_ILogB:
-                            case NI_System_Math_Log:
-                            case NI_System_Math_Log2:
-                            case NI_System_Math_Log10:
-                            case NI_System_Math_Pow:
-                            case NI_System_Math_Round:
-                            case NI_System_Math_Sin:
-                            case NI_System_Math_Sinh:
-                            case NI_System_Math_Sqrt:
-                            case NI_System_Math_Tan:
-                            case NI_System_Math_Tanh:
+                            if (IsIntrinsicImplementedByUserCall(intrinsic->gtIntrinsicName))
                             {
-                                // Giving intrinsics a large fixed execution cost is because we'd like to CSE
-                                // them, even if they are implemented by calls. This is different from modeling
-                                // user calls since we never CSE user calls. We don't do this for target intrinsics
-                                // however as they typically represent single instruction calls
-
-                                if (IsIntrinsicImplementedByUserCall(intrinsic->gtIntrinsicName))
-                                {
-                                    costEx = 36;
-                                    costSz = 4;
-                                }
-                                else
-                                {
-                                    costEx = 3;
-                                    costSz = 4;
-                                }
-                                break;
+                                costEx = 36;
+                                costSz = 4;
                             }
+                            else
+                            {
+                                costEx = 3;
+                                costSz = 4;
+                            }
+                            break;
                         }
-                    }
-                    else
-                    {
-                        // old style intrinsic (only Object_GetType is expected)
-                        assert(intrinsic->gtIntrinsicName == NI_Illegal);
-                        assert(intrinsic->gtIntrinsicId == CORINFO_INTRINSIC_Object_GetType);
 
-                        // Giving intrinsics a large fixed execution cost is because we'd like to CSE
-                        // them, even if they are implemented by calls. This is different from modeling
-                        // user calls since we never CSE user calls.
-                        costEx = 36;
-                        costSz = 4;
-                        break;
+                        case NI_System_Object_GetType:
+                            // Giving intrinsics a large fixed execution cost is because we'd like to CSE
+                            // them, even if they are implemented by calls. This is different from modeling
+                            // user calls since we never CSE user calls.
+                            costEx = 36;
+                            costSz = 4;
+                            break;
                     }
                     level++;
                     break;
@@ -7976,8 +7968,7 @@ GenTree* Compiler::gtCloneExpr(
             case GT_INTRINSIC:
                 copy = new (this, GT_INTRINSIC)
                     GenTreeIntrinsic(tree->TypeGet(), tree->AsOp()->gtOp1, tree->AsOp()->gtOp2,
-                                     tree->AsIntrinsic()->gtIntrinsicId, tree->AsIntrinsic()->gtIntrinsicName,
-                                     tree->AsIntrinsic()->gtMethodHandle);
+                                     tree->AsIntrinsic()->gtIntrinsicName, tree->AsIntrinsic()->gtMethodHandle);
 #ifdef FEATURE_READYTORUN
                 copy->AsIntrinsic()->gtEntryPoint = tree->AsIntrinsic()->gtEntryPoint;
 #endif
@@ -11270,101 +11261,95 @@ void Compiler::gtDispTree(GenTree*     tree,
         {
             GenTreeIntrinsic* intrinsic = tree->AsIntrinsic();
 
-            if (intrinsic->gtIntrinsicId == CORINFO_INTRINSIC_Object_GetType)
+            switch (intrinsic->gtIntrinsicName)
             {
-                assert(intrinsic->gtIntrinsicName == NI_Illegal);
-                printf(" objGetType");
-            }
-            else
-            {
-                assert(intrinsic->gtIntrinsicId == CORINFO_INTRINSIC_Illegal);
-                switch (intrinsic->gtIntrinsicName)
-                {
-                    case NI_System_Math_Abs:
-                        printf(" abs");
-                        break;
-                    case NI_System_Math_Acos:
-                        printf(" acos");
-                        break;
-                    case NI_System_Math_Acosh:
-                        printf(" acosh");
-                        break;
-                    case NI_System_Math_Asin:
-                        printf(" asin");
-                        break;
-                    case NI_System_Math_Asinh:
-                        printf(" asinh");
-                        break;
-                    case NI_System_Math_Atan:
-                        printf(" atan");
-                        break;
-                    case NI_System_Math_Atanh:
-                        printf(" atanh");
-                        break;
-                    case NI_System_Math_Atan2:
-                        printf(" atan2");
-                        break;
-                    case NI_System_Math_Cbrt:
-                        printf(" cbrt");
-                        break;
-                    case NI_System_Math_Ceiling:
-                        printf(" ceiling");
-                        break;
-                    case NI_System_Math_Cos:
-                        printf(" cos");
-                        break;
-                    case NI_System_Math_Cosh:
-                        printf(" cosh");
-                        break;
-                    case NI_System_Math_Exp:
-                        printf(" exp");
-                        break;
-                    case NI_System_Math_Floor:
-                        printf(" floor");
-                        break;
-                    case NI_System_Math_FMod:
-                        printf(" fmod");
-                        break;
-                    case NI_System_Math_FusedMultiplyAdd:
-                        printf(" fma");
-                        break;
-                    case NI_System_Math_ILogB:
-                        printf(" ilogb");
-                        break;
-                    case NI_System_Math_Log:
-                        printf(" log");
-                        break;
-                    case NI_System_Math_Log2:
-                        printf(" log2");
-                        break;
-                    case NI_System_Math_Log10:
-                        printf(" log10");
-                        break;
-                    case NI_System_Math_Pow:
-                        printf(" pow");
-                        break;
-                    case NI_System_Math_Round:
-                        printf(" round");
-                        break;
-                    case NI_System_Math_Sin:
-                        printf(" sin");
-                        break;
-                    case NI_System_Math_Sinh:
-                        printf(" sinh");
-                        break;
-                    case NI_System_Math_Sqrt:
-                        printf(" sqrt");
-                        break;
-                    case NI_System_Math_Tan:
-                        printf(" tan");
-                        break;
-                    case NI_System_Math_Tanh:
-                        printf(" tanh");
-                        break;
+                case NI_System_Math_Abs:
+                    printf(" abs");
+                    break;
+                case NI_System_Math_Acos:
+                    printf(" acos");
+                    break;
+                case NI_System_Math_Acosh:
+                    printf(" acosh");
+                    break;
+                case NI_System_Math_Asin:
+                    printf(" asin");
+                    break;
+                case NI_System_Math_Asinh:
+                    printf(" asinh");
+                    break;
+                case NI_System_Math_Atan:
+                    printf(" atan");
+                    break;
+                case NI_System_Math_Atanh:
+                    printf(" atanh");
+                    break;
+                case NI_System_Math_Atan2:
+                    printf(" atan2");
+                    break;
+                case NI_System_Math_Cbrt:
+                    printf(" cbrt");
+                    break;
+                case NI_System_Math_Ceiling:
+                    printf(" ceiling");
+                    break;
+                case NI_System_Math_Cos:
+                    printf(" cos");
+                    break;
+                case NI_System_Math_Cosh:
+                    printf(" cosh");
+                    break;
+                case NI_System_Math_Exp:
+                    printf(" exp");
+                    break;
+                case NI_System_Math_Floor:
+                    printf(" floor");
+                    break;
+                case NI_System_Math_FMod:
+                    printf(" fmod");
+                    break;
+                case NI_System_Math_FusedMultiplyAdd:
+                    printf(" fma");
+                    break;
+                case NI_System_Math_ILogB:
+                    printf(" ilogb");
+                    break;
+                case NI_System_Math_Log:
+                    printf(" log");
+                    break;
+                case NI_System_Math_Log2:
+                    printf(" log2");
+                    break;
+                case NI_System_Math_Log10:
+                    printf(" log10");
+                    break;
+                case NI_System_Math_Pow:
+                    printf(" pow");
+                    break;
+                case NI_System_Math_Round:
+                    printf(" round");
+                    break;
+                case NI_System_Math_Sin:
+                    printf(" sin");
+                    break;
+                case NI_System_Math_Sinh:
+                    printf(" sinh");
+                    break;
+                case NI_System_Math_Sqrt:
+                    printf(" sqrt");
+                    break;
+                case NI_System_Math_Tan:
+                    printf(" tan");
+                    break;
+                case NI_System_Math_Tanh:
+                    printf(" tanh");
+                    break;
+                case NI_System_Object_GetType:
+                    printf(" objGetType");
+                    break;
 
-                    default:
-                        unreached();
-                }
+                default:
+                    unreached();
             }
         }
 
@@ -15638,13 +15623,13 @@ Compiler::TypeProducerKind Compiler::gtGetTypeProducerKind(GenTree* tree)
         }
         else if (tree->AsCall()->gtCallMoreFlags & GTF_CALL_M_SPECIAL_INTRINSIC)
         {
-            if (info.compCompHnd->getIntrinsicID(tree->AsCall()->gtCallMethHnd) == CORINFO_INTRINSIC_Object_GetType)
+            if (lookupNamedIntrinsic(tree->AsCall()->gtCallMethHnd) == NI_System_Object_GetType)
             {
                 return TPK_GetType;
             }
         }
     }
-    else if ((tree->gtOper == GT_INTRINSIC) && (tree->AsIntrinsic()->gtIntrinsicId == CORINFO_INTRINSIC_Object_GetType))
+    else if ((tree->gtOper == GT_INTRINSIC) && (tree->AsIntrinsic()->gtIntrinsicName == NI_System_Object_GetType))
     {
         return TPK_GetType;
     }
@@ -17229,7 +17214,7 @@ CORINFO_CLASS_HANDLE Compiler::gtGetClassHandle(GenTree* tree, bool* pIsExact, b
         {
             GenTreeIntrinsic* intrinsic = obj->AsIntrinsic();
 
-            if (intrinsic->gtIntrinsicId == CORINFO_INTRINSIC_Object_GetType)
+            if (intrinsic->gtIntrinsicName == NI_System_Object_GetType)
             {
                 CORINFO_CLASS_HANDLE runtimeType = info.compCompHnd->getBuiltinClass(CLASSID_RUNTIME_TYPE);
                 assert(runtimeType != NO_CLASS_HANDLE);
