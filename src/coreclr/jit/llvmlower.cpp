@@ -205,22 +205,13 @@ void Llvm::lowerBlocks()
                     }
                 }
             }
-            else if (node->OperIs(GT_RETURN) && (_retAddressLclNum != BAD_VAR_NUM))
+            else if (node->OperIs(GT_STORE_BLK, GT_STORE_OBJ))
             {
-                var_types originalReturnType = node->TypeGet();
-                LclVarDsc* retAddressVarDsc = _compiler->lvaGetDesc(_retAddressLclNum);
-                retAddressVarDsc->lvIsParam = 1;
-                retAddressVarDsc->lvType = TYP_I_IMPL;
-
-                GenTreeLclVar* retAddressLocal = _compiler->gtNewLclvNode(_retAddressLclNum, TYP_I_IMPL);
-                GenTree* storeNode = createShadowStackStoreNode(originalReturnType, retAddressLocal, node->AsOp()->gtGetOp1(),
-                                                                originalReturnType == TYP_STRUCT ? _compiler->typGetObjLayout(_sigInfo.retTypeClass) : nullptr);
-
-                GenTreeOp* retNode = node->AsOp();
-                retNode->gtOp1 = nullptr;
-                node->ChangeType(TYP_VOID);
-
-                CurrentRange().InsertBefore(node, retAddressLocal, storeNode);
+                lowerStoreBlk(node->AsBlk());
+            }
+            else if (node->OperIs(GT_RETURN))
+            {
+                lowerReturn(node->AsUnOp());
             }
 
             if (node->OperIsLocalAddr() || node->OperIsLocalField())
@@ -237,11 +228,11 @@ void Llvm::lowerBlocks()
 void Llvm::lowerStoreLcl(GenTreeLclVarCommon* storeLclNode)
 {
     LclVarDsc* addrVarDsc = _compiler->lvaGetDesc(storeLclNode->GetLclNum());
+    GenTree* data = storeLclNode->gtGetOp1();
 
     if (addrVarDsc->CanBeReplacedWithItsField(_compiler))
     {
         ClassLayout* layout      = addrVarDsc->GetLayout();
-        GenTree*     data        = storeLclNode->gtGetOp1();
         var_types    addrVarType = addrVarDsc->TypeGet();
 
         storeLclNode->SetOper(GT_LCL_VAR_ADDR);
@@ -254,40 +245,9 @@ void Llvm::lowerStoreLcl(GenTreeLclVarCommon* storeLclNode)
         CurrentRange().InsertAfter(storeLclNode, storeObjNode);
     }
 
-    if (storeLclNode->TypeIs(TYP_STRUCT))
+    if (storeLclNode->TypeIs(TYP_STRUCT) && data->TypeIs(TYP_STRUCT))
     {
-        GenTree* dataOp = storeLclNode->gtGetOp1();
-        CORINFO_CLASS_HANDLE dataHandle = _compiler->gtGetStructHandleIfPresent(dataOp);
-        if (dataOp->OperIs(GT_IND))
-        {
-            // Special case: "gtGetStructHandleIfPresent" sometimes guesses the handle from
-            // field sequences, but we will always need to transform TYP_STRUCT INDs into OBJs.
-            dataHandle = NO_CLASS_HANDLE;
-        }
-
-        if (addrVarDsc->GetStructHnd() != dataHandle)
-        {
-            if (dataOp->OperIsIndir())
-            {
-                dataOp->SetOper(GT_OBJ);
-                dataOp->AsObj()->SetLayout(addrVarDsc->GetLayout());
-            }
-            else if (dataOp->OperIs(GT_LCL_VAR)) // can get icon 0 here
-            {
-                GenTreeLclVarCommon* dataLcl = dataOp->AsLclVarCommon();
-                LclVarDsc* dataVarDsc = _compiler->lvaGetDesc(dataLcl->GetLclNum());
-
-                dataVarDsc->lvHasLocalAddr = 1;
-
-                GenTree* dataAddrNode = _compiler->gtNewLclVarAddrNode(dataLcl->GetLclNum());
-
-                dataLcl->ChangeOper(GT_OBJ);
-                dataLcl->AsObj()->SetAddr(dataAddrNode);
-                dataLcl->AsObj()->SetLayout(addrVarDsc->GetLayout());
-
-                CurrentRange().InsertBefore(dataLcl, dataAddrNode);
-            }
-        }
+        normalizeStructUse(data, addrVarDsc->GetLayout());
     }
 }
 
@@ -378,6 +338,7 @@ void Llvm::ConvertShadowStackLocalNode(GenTreeLclVarCommon* node)
         {
             node->ChangeOper(indirOper);
             node->AsIndir()->SetAddr(lclAddress);
+            node->gtFlags |= GTF_IND_NONFAULTING;
         }
         if (GenTree::OperIsStore(indirOper))
         {
@@ -400,6 +361,75 @@ void Llvm::ConvertShadowStackLocalNode(GenTreeLclVarCommon* node)
         {
             CurrentRange().InsertBefore(node, lclAddress);
         }
+    }
+}
+
+void Llvm::lowerStoreBlk(GenTreeBlk* storeBlkNode)
+{
+    assert(storeBlkNode->OperIs(GT_STORE_BLK, GT_STORE_OBJ));
+
+    // Fix up type mismatches on copies for codegen.
+    if (storeBlkNode->OperIsCopyBlkOp())
+    {
+        GenTree* src = storeBlkNode->Data();
+        ClassLayout* dstLayout = storeBlkNode->GetLayout();
+        if (src->OperIs(GT_IND))
+        {
+            src->SetOper(GT_BLK);
+            src->AsBlk()->SetLayout(dstLayout);
+            src->AsBlk()->gtBlkOpKind = GenTreeBlk::BlkOpKindInvalid;
+        }
+        else
+        {
+            CORINFO_CLASS_HANDLE srcHandle = _compiler->gtGetStructHandleIfPresent(src);
+
+            if (dstLayout->GetClassHandle() != srcHandle)
+            {
+                ClassLayout* dataLayout;
+                if (srcHandle != NO_CLASS_HANDLE)
+                {
+                    dataLayout = _compiler->typGetObjLayout(srcHandle);
+                }
+                else
+                {
+                    assert(src->OperIs(GT_BLK));
+                    dataLayout = src->AsBlk()->GetLayout();
+                }
+
+                storeBlkNode->SetLayout(dataLayout);
+            }
+        }
+    }
+
+    // A zero-sized block store is a no-op. Lower it away.
+    if (storeBlkNode->Size() == 0)
+    {
+        assert(storeBlkNode->OperIsInitBlkOp() || storeBlkNode->Data()->OperIs(GT_BLK));
+
+        storeBlkNode->Addr()->SetUnusedValue();
+        CurrentRange().Remove(storeBlkNode->Data(), /* markOperandsUnused */ true);
+        CurrentRange().Remove(storeBlkNode);
+    }
+}
+
+void Llvm::lowerReturn(GenTreeUnOp* retNode)
+{
+    GenTree* retVal = retNode->gtGetOp1();
+    if (retNode->TypeIs(TYP_STRUCT) && retVal->TypeIs(TYP_STRUCT))
+    {
+        normalizeStructUse(retVal, _compiler->typGetObjLayout(_sigInfo.retTypeClass));
+    }
+
+    if (_retAddressLclNum != BAD_VAR_NUM)
+    {
+        LclVarDsc* retAddressVarDsc = _compiler->lvaGetDesc(_retAddressLclNum);
+        GenTreeLclVar* retAddressLocal = _compiler->gtNewLclvNode(_retAddressLclNum, TYP_I_IMPL);
+        GenTree* storeNode = createShadowStackStoreNode(retNode->TypeGet(), retAddressLocal, retVal);
+
+        retNode->gtOp1 = nullptr;
+        retNode->ChangeType(TYP_VOID);
+
+        CurrentRange().InsertBefore(retNode, retAddressLocal, storeNode);
     }
 }
 
@@ -508,7 +538,7 @@ void Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
                                                  TYP_I_IMPL);
                     GenTree* fieldSlotAddr =
                         _compiler->gtNewOperNode(GT_ADD, TYP_I_IMPL, lclShadowStack, fieldOffset);
-                    GenTree* fieldStoreNode = createShadowStackStoreNode(use.GetType(), fieldSlotAddr, use.GetNode(), nullptr);
+                    GenTree* fieldStoreNode = createShadowStackStoreNode(use.GetType(), fieldSlotAddr, use.GetNode());
 
                     CurrentRange().InsertBefore(callNode, lclShadowStack, fieldOffset, fieldSlotAddr,
                                                 fieldStoreNode);
@@ -523,10 +553,7 @@ void Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
                     _compiler->gtNewIconNode(_shadowStackLocalsSize + shadowStackUseOffest, TYP_I_IMPL);
                 GenTree* slotAddr  = _compiler->gtNewOperNode(GT_ADD, TYP_I_IMPL, lclShadowStack, offset);
 
-                GenTree* storeNode = createShadowStackStoreNode(opAndArg.operand->TypeGet(), slotAddr, opAndArg.operand,
-                                                                corInfoType == CORINFO_TYPE_VALUECLASS
-                                                                ? _compiler->typGetObjLayout(clsHnd)
-                                                                : nullptr);
+                GenTree* storeNode = createShadowStackStoreNode(opAndArg.operand->TypeGet(), slotAddr, opAndArg.operand);
                 CurrentRange().InsertBefore(callNode, lclShadowStack, offset, slotAddr, storeNode);
             }
 
@@ -635,7 +662,9 @@ GenTreeCall::Use* Llvm::lowerCallReturn(GenTreeCall*      callNode,
         {
             indirNode = _compiler->gtNewIndir(callReturnType, returnAddrLclAfterCall);
         }
-        indirNode->gtFlags |= GTF_IND_TGT_NOT_HEAP; // No RhpAssignRef required
+        indirNode->gtFlags |= GTF_IND_NONFAULTING;
+        indirNode->SetAllEffectsFlags(GTF_EMPTY);
+
         LIR::Use callUse;
         if (CurrentRange().TryGetUse(callNode, &callUse))
         {
@@ -669,24 +698,111 @@ GenTreeCall::Use* Llvm::lowerCallReturn(GenTreeCall*      callNode,
     return lastArg;
 }
 
-GenTree* Llvm::createStoreNode(var_types nodeType, GenTree* addr, GenTree* data, ClassLayout* structClassLayout)
+//------------------------------------------------------------------------
+// normalizeStructUse: Retype "node" to have the exact type of "layout".
+//
+// LLVM has a strict constraint on uses and users of structs: they must
+// have the exact same type, while IR only requires "layout compatibility".
+// So in lowering we retype uses (and users) to match LLVM's expectations.
+//
+// Arguments:
+//    node   - The struct node to retype
+//    layout - The target layout
+//
+void Llvm::normalizeStructUse(GenTree* node, ClassLayout* layout)
 {
-    GenTree* storeNode;
-    if (nodeType == TYP_STRUCT)
+    // Note on SIMD: we will support it in codegen via bitcasts.
+    assert(node->TypeIs(TYP_STRUCT));
+
+    // "IND<struct>" nodes always need to be normalized.
+    if (node->OperIs(GT_IND))
     {
-        storeNode = new (_compiler, GT_STORE_OBJ) GenTreeObj(nodeType, addr, data, structClassLayout);
+        node->SetOper(GT_BLK);
+        node->AsBlk()->SetLayout(layout);
+        node->AsBlk()->gtBlkOpKind = GenTreeBlk::BlkOpKindInvalid;
     }
     else
     {
-        storeNode = new (_compiler, GT_STOREIND) GenTreeStoreInd(nodeType, addr, data);
+        CORINFO_CLASS_HANDLE useHandle = _compiler->gtGetStructHandleIfPresent(node);
+
+        // Note both can be blocks ("NO_CLASS_HANDLE"), in which case we don't need to do anything.
+        if (useHandle != layout->GetClassHandle())
+        {
+            switch (node->OperGet())
+            {
+                case GT_BLK:
+                case GT_OBJ:
+                    node->AsBlk()->SetLayout(layout);
+                    if (layout->IsBlockLayout() && node->OperIs(GT_OBJ))
+                    {
+                        // OBJ nodes cannot have block layouts.
+                        node->SetOper(GT_BLK);
+                    }
+                    break;
+
+                case GT_LCL_VAR:
+                {
+                    unsigned lclNum = node->AsLclVarCommon()->GetLclNum();
+                    GenTree* lclAddrNode = _compiler->gtNewLclVarAddrNode(lclNum);
+                    _compiler->lvaGetDesc(lclNum)->lvHasLocalAddr = true;
+
+                    node->ChangeOper(GT_OBJ);
+                    node->AsObj()->SetAddr(lclAddrNode);
+                    node->AsObj()->SetLayout(layout);
+                    node->AsObj()->gtBlkOpKind = GenTreeBlk::BlkOpKindInvalid;
+
+                    CurrentRange().InsertBefore(node, lclAddrNode);
+                }
+                break;
+
+                case GT_CALL:
+                    // TODO-LLVM: implement by spilling to a local.
+                    failFunctionCompilation();
+
+                case GT_LCL_FLD:
+                    // TODO-LLVM: handle by altering the layout once enough of upstream is merged.
+                    failFunctionCompilation();
+
+                default:
+                    unreached();
+            }
+        }
     }
+}
+
+GenTree* Llvm::createStoreNode(var_types storeType, GenTree* addr, GenTree* data)
+{
+    assert(data->TypeIs(TYP_STRUCT) == (storeType == TYP_STRUCT));
+
+    GenTree* storeNode;
+    if (storeType == TYP_STRUCT)
+    {
+        ClassLayout* layout;
+        // TODO-LLVM: use "GenTree::GetLayout" once enough of upstream is merged.
+        if (data->OperIsBlk())
+        {
+            layout = data->AsBlk()->GetLayout();
+        }
+        else
+        {
+            layout = _compiler->typGetObjLayout(_compiler->gtGetStructHandle(data));
+        }
+
+        storeNode = new (_compiler, GT_STORE_BLK) GenTreeBlk(GT_STORE_BLK, storeType, addr, data, layout);
+    }
+    else
+    {
+        storeNode = new (_compiler, GT_STOREIND) GenTreeStoreInd(storeType, addr, data);
+    }
+    storeNode->gtFlags |= GTF_ASG;
+
     return storeNode;
 }
 
-GenTree* Llvm::createShadowStackStoreNode(var_types nodeType, GenTree* addr, GenTree* data, ClassLayout* structClassLayout)
+GenTree* Llvm::createShadowStackStoreNode(var_types storeType, GenTree* addr, GenTree* data)
 {
-    GenTree* storeNode = createStoreNode(nodeType, addr, data, structClassLayout);
-    storeNode->gtFlags |= GTF_IND_TGT_NOT_HEAP;
+    GenTree* storeNode = createStoreNode(storeType, addr, data);
+    storeNode->gtFlags |= (GTF_IND_TGT_NOT_HEAP | GTF_IND_NONFAULTING);
 
     return storeNode;
 }
