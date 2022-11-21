@@ -165,15 +165,10 @@
 
   <!-- Set Test Wrapper running host OS -->
   <PropertyGroup>
-<<<<<<< HEAD
-    <TestWrapperTargetsWindows>true</TestWrapperTargetsWindows>
-    <TestWrapperTargetsWindows Condition="'$(TargetOS)' != 'windows' and '$(OS)' != 'Windows_NT'">false</TestWrapperTargetsWindows>
-=======
-    <TestWrapperTargetsWindows>false</TestWrapperTargetsWindows>
-    <TestWrapperTargetsWindows Condition=" ('$(TargetsWindows)' != '' And '$(TargetsWindows)' ) OR ('$(TargetOS)' == 'Android' And '$(TargetArchitecture)' == 'arm64' )">true</TestWrapperTargetsWindows>
+    <!-- TODO-LLVM: we only support building on windows for LLVM, so if the TargetArchitecture == 'wasm', assume windows.  Change when we support Linux/MacOS -->
+    <TestWrapperTargetsWindows Condition=" ('$(TargetsWindows)' != '' And '$(TargetsWindows)' ) OR ('$(TargetOS)' == 'Android' And '$(TargetArchitecture)' == 'arm64' ) OR ('$(TargetArchitecture)' == 'wasm')">true</TestWrapperTargetsWindows>
     <TestScriptExtension Condition="'$(TestWrapperTargetsWindows)' != 'true' ">sh</TestScriptExtension>
     <TestScriptExtension Condition="'$(TestWrapperTargetsWindows)' == 'true' ">cmd</TestScriptExtension>
->>>>>>> 87826e852e39a814fc64f332db6874330438dbdf
   </PropertyGroup>
 
   <PropertyGroup>
