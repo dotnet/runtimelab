@@ -429,8 +429,11 @@ void Llvm::startImportingNode()
 
 void Llvm::visitNode(GenTree* node)
 {
+#ifdef DEBUG
     JITDUMPEXEC(_compiler->gtDispLIRNode(node, "Generating: "));
-    INDEBUG(auto lastInstrIter = --_builder.GetInsertPoint());
+    auto lastInstrIter = --_builder.GetInsertPoint();
+    llvm::BasicBlock* lastLlvmBlock = _builder.GetInsertBlock(); // For instructions spanning multiple blocks.
+#endif // DEBUG
 
     switch (node->OperGet())
     {
@@ -545,9 +548,14 @@ void Llvm::visitNode(GenTree* node)
     //
     if (_compiler->verbose)
     {
-        for (auto instrIter = ++lastInstrIter; instrIter != _builder.GetInsertPoint(); ++instrIter)
+        for (llvm::BasicBlock* llvmBlock = lastLlvmBlock; llvmBlock != _builder.GetInsertBlock()->getNextNode();
+             llvmBlock = llvmBlock->getNextNode())
         {
-            instrIter->dump();
+            for (auto instrIter = (llvmBlock == lastLlvmBlock) ? ++lastInstrIter : llvmBlock->begin();
+                 instrIter != llvmBlock->end(); ++instrIter)
+            {
+                instrIter->dump();
+            }
         }
     }
 #endif // DEBUG
