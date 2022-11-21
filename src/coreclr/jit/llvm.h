@@ -257,6 +257,7 @@ private:
     void buildReturn(GenTree* node);
     void buildJTrue(GenTree* node, Value* opValue);    
     void buildNullCheck(GenTreeIndir* nullCheckNode);
+    void buildBoundsCheck(GenTreeBoundsChk* boundsCheck);
 
     void storeObjAtAddress(Value* baseAddress, Value* data, StructDesc* structDesc);
     unsigned buildMemCpy(Value* baseAddress, unsigned startOffset, unsigned endOffset, Value* srcAddress);

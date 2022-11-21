@@ -501,6 +501,9 @@ void Llvm::visitNode(GenTree* node)
         case GT_NULLCHECK:
             buildNullCheck(node->AsIndir());
             break;
+        case GT_ARR_BOUNDS_CHECK:
+            buildBoundsCheck(node->AsBoundsChk());
+            break;
         case GT_OBJ:
         case GT_BLK:
             buildBlk(node->AsBlk());
@@ -1338,6 +1341,16 @@ void Llvm::buildNullCheck(GenTreeIndir* nullCheckNode)
 {
     Value* addrValue = consumeValue(nullCheckNode->Addr(), Type::getInt8PtrTy(_llvmContext));
     emitNullCheckForIndir(nullCheckNode, addrValue);
+}
+
+void Llvm::buildBoundsCheck(GenTreeBoundsChk* boundsCheckNode)
+{
+    Type* checkLlvmType = getLlvmTypeForVarType(genActualType(boundsCheckNode->GetIndex()));
+    Value* indexValue = consumeValue(boundsCheckNode->GetIndex(), checkLlvmType);
+    Value* lengthValue = consumeValue(boundsCheckNode->GetArrayLength(), checkLlvmType);
+
+    Value* indexOutOfRangeValue = _builder.CreateCmp(llvm::CmpInst::ICMP_UGE, indexValue, lengthValue);
+    emitJumpToThrowHelper(indexOutOfRangeValue, boundsCheckNode->gtThrowKind);
 }
 
 void Llvm::storeObjAtAddress(Value* baseAddress, Value* data, StructDesc* structDesc)
