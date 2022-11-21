@@ -709,11 +709,104 @@ void Llvm::buildCast(GenTreeCast* cast)
 {
     var_types castFromType = genActualType(cast->CastOp());
     var_types castToType = cast->CastToType();
-    Value* castFromValue = consumeValue(cast->CastOp(), getLlvmTypeForVarType(castFromType));
-    Value* castValue = nullptr;
     Type* castToLlvmType = getLlvmTypeForVarType(castToType);
+    Type* castFromLlvmType = getLlvmTypeForVarType(castFromType);
+    Value* castFromValue = consumeValue(cast->CastOp(), castFromLlvmType);
+    Value* castValue = nullptr;
 
-    // TODO-LLVM: handle checked ("gtOverflow") casts.
+    if (cast->gtOverflow())
+    {
+        Value* isOverflowValue;
+        if (varTypeIsFloating(castFromType))
+        {
+            // Algorithm and values taken verbatim from "utils.cpp", 'Casting from floating point to integer types',
+            // with the modification to produce "!isNotOverflow" value directly (via condition reversal).
+            double lowerBound;
+            double upperBound;
+            llvm::CmpInst::Predicate lowerCond = llvm::CmpInst::FCMP_ULE;
+            llvm::CmpInst::Predicate upperCond = llvm::CmpInst::FCMP_UGE;
+            switch (castToType)
+            {
+                case TYP_BYTE:
+                    lowerBound = -129.0;
+                    upperBound = 128.0;
+                    break;
+                case TYP_BOOL:
+                case TYP_UBYTE:
+                    lowerBound = -1.0;
+                    upperBound = 256.0;
+                    break;
+                case TYP_SHORT:
+                    lowerBound = -32769.0;
+                    upperBound = 32768.0;
+                    break;
+                case TYP_USHORT:
+                    lowerBound = -1.0;
+                    upperBound = 65536.0;
+                    break;
+                case TYP_INT:
+                    if (castFromType == TYP_FLOAT)
+                    {
+                        lowerCond = llvm::CmpInst::FCMP_ULT;
+                        lowerBound = -2147483648.0;
+                    }
+                    else
+                    {
+                        lowerBound = -2147483649.0;
+                    }
+                    upperBound = 2147483648.0;
+                    break;
+                case TYP_UINT:
+                    lowerBound = -1.0;
+                    upperBound = 4294967296.0;
+                    break;
+                case TYP_LONG:
+                    lowerCond = llvm::CmpInst::FCMP_ULT;
+                    lowerBound = -9223372036854775808.0;
+                    upperBound = 9223372036854775808.0;
+                    break;
+                case TYP_ULONG:
+                    lowerBound = -1.0;
+                    upperBound = 18446744073709551616.0;
+                    break;
+                default:
+                    unreached();
+            }
+
+            Value* lowerBoundValue = llvm::ConstantFP::get(castFromLlvmType, lowerBound);
+            Value* upperBoundValue = llvm::ConstantFP::get(castFromLlvmType, upperBound);
+            Value* lowerTestValue = _builder.CreateCmp(lowerCond, castFromValue, lowerBoundValue);
+            Value* upperTestValue = _builder.CreateCmp(upperCond, castFromValue, upperBoundValue);
+            isOverflowValue = _builder.CreateOr(lowerTestValue, upperTestValue);
+        }
+        else
+        {
+            // There are no checked casts to FP types.
+            assert(varTypeIsIntegral(castFromType) && varTypeIsIntegral(castToType));
+
+            IntegralRange checkedRange = IntegralRange::ForCastInput(cast);
+            int64_t lowerBound = IntegralRange::SymbolicToRealValue(checkedRange.GetLowerBound());
+            int64_t upperBound = IntegralRange::SymbolicToRealValue(checkedRange.GetUpperBound());
+
+            Value* checkedValue = castFromValue;
+            if (lowerBound != 0)
+            {
+                // This "add" checking technique was taken from the IR clang generates for "(l <= x) && (x <= u)".
+                int64_t addDelta = -lowerBound;
+                Value* deltaValue = llvm::ConstantInt::get(castFromLlvmType, addDelta);
+                checkedValue = _builder.CreateAdd(checkedValue, deltaValue);
+
+                upperBound += addDelta;
+            }
+
+            llvm::APInt upperBoundLlvmInt = llvm::APInt(castFromLlvmType->getPrimitiveSizeInBits(), upperBound);
+            Value* upperBoundValue = llvm::Constant::getIntegerValue(castFromLlvmType, upperBoundLlvmInt);
+            isOverflowValue = _builder.CreateCmp(llvm::CmpInst::ICMP_UGT, checkedValue, upperBoundValue);
+        }
+
+        emitJumpToThrowHelper(isOverflowValue, SCK_OVERFLOW);
+    }
+
     switch (castFromType)
     {
         case TYP_INT:

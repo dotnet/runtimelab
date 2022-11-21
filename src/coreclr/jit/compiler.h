@@ -1230,6 +1230,16 @@ public:
         assert(lowerBound <= upperBound);
     }
 
+    SymbolicIntegerValue GetLowerBound()
+    {
+        return m_lowerBound;
+    }
+
+    SymbolicIntegerValue GetUpperBound()
+    {
+        return m_upperBound;
+    }
+
     bool Contains(int64_t value) const;
 
     bool Contains(IntegralRange other) const
