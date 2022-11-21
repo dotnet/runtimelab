@@ -184,8 +184,12 @@ public:
     void Lower();
 
 private:
-    void populateLlvmArgNums();
+    void lowerLocals();
     void lowerBlocks();
+
+    void populateLlvmArgNums();
+    void assignShadowStackOffsets(std::vector<LclVarDsc*>& shadowStackLocals, unsigned shadowStackParamCount);
+    void initializeLocalInProlog(unsigned lclNum, GenTree* value);
 
     void lowerStoreLcl(GenTreeLclVarCommon* storeLclNode);
     void lowerFieldOfDependentlyPromotedStruct(GenTree* node);
@@ -201,6 +205,7 @@ private:
 
     GenTree* createStoreNode(var_types nodeType, GenTree* addr, GenTree* data);
     GenTree* createShadowStackStoreNode(var_types storeType, GenTree* addr, GenTree* data);
+    GenTree* insertShadowStackAddr(GenTree* insertBefore, ssize_t offset);
 
     // ================================================================================================================
     // |                                                   Codegen                                                    |
@@ -280,7 +285,6 @@ private:
     llvm::BasicBlock* getLLVMBasicBlockForBlock(BasicBlock* block);
 
     bool isLlvmFrameLocal(LclVarDsc* varDsc);
-    unsigned int getTotalRealLocalOffset();
     unsigned int getTotalLocalOffset();
 };
 

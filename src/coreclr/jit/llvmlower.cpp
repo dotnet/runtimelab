@@ -11,12 +11,29 @@
 //
 void Llvm::Lower()
 {
+    lowerLocals();
+    lowerBlocks();
+}
+
+//------------------------------------------------------------------------
+// lowerLocals: "Lower" locals: strip annotations and insert initializations.
+//
+// We decouple promoted structs from their field locals: for independently
+// promoted ones, we treat the fields as regular temporaries; parameters are
+// initialized explicitly via "STORE_LCL_VAR<field>(LCL_FLD<parent>)". For
+// dependently promoted cases, we will later rewrite all fields to reference
+// the parent instead, and so here strip some annotations ("lvIsParam"). We
+// also determine the set of locals which will need to go on the shadow stack,
+// zero-initialize them if required, and assign stack offsets.
+//
+void Llvm::lowerLocals()
+{
     populateLlvmArgNums();
 
-    _shadowStackLocalsSize = 0;
+    std::vector<LclVarDsc*> shadowStackLocals;
+    unsigned shadowStackParamCount = 0;
 
-    std::vector<LclVarDsc*> locals;
-    unsigned localsParamCount = 0;
+    _shadowStackLocalsSize = 0;
 
     for (unsigned lclNum = 0; lclNum < _compiler->lvaCount; lclNum++)
     {
@@ -32,24 +49,15 @@ void Llvm::Lower()
                     LclVarDsc* fieldVarDsc = _compiler->lvaGetDesc(fieldLclNum);
                     if (fieldVarDsc->lvRefCnt(RCS_NORMAL) != 0)
                     {
-                        JITDUMP("Adding initialization for %s:\n", fieldVarDsc->lvReason)
-
-                        _compiler->fgEnsureFirstBBisScratch();
-                        LIR::Range& firstBlockRange = LIR::AsRange(_compiler->fgFirstBB);
-
                         GenTree* fieldValue =
                             _compiler->gtNewLclFldNode(lclNum, fieldVarDsc->TypeGet(), fieldVarDsc->lvFldOffset);
-
-                        GenTree* fieldStore = _compiler->gtNewStoreLclVar(fieldLclNum, fieldValue);
-                        firstBlockRange.InsertAtBeginning(fieldStore);
-                        firstBlockRange.InsertAtBeginning(fieldValue);
-
-                        DISPTREERANGE(firstBlockRange, fieldStore);
+                        initializeLocalInProlog(fieldLclNum, fieldValue);
                     }
 
-                    fieldVarDsc->lvIsStructField = false;
-                    fieldVarDsc->lvParentLcl     = BAD_VAR_NUM;
-                    fieldVarDsc->lvIsParam       = false;
+                    fieldVarDsc->lvIsStructField   = false;
+                    fieldVarDsc->lvParentLcl       = BAD_VAR_NUM;
+                    fieldVarDsc->lvIsParam         = false;
+                    fieldVarDsc->lvHasExplicitInit = true;
                 }
 
                 varDsc->lvPromoted      = false;
@@ -58,7 +66,7 @@ void Llvm::Lower()
             }
             else if (_compiler->lvaGetPromotionType(varDsc) == Compiler::PROMOTION_TYPE_DEPENDENT)
             {
-                /* dependent promotion, just mark fields as not lvIsParam */
+                // Dependent promotion, just mark fields as not lvIsParam.
                 for (unsigned index = 0; index < varDsc->lvFieldCnt; index++)
                 {
                     unsigned   fieldLclNum = varDsc->lvFieldLclStart + index;
@@ -80,39 +88,33 @@ void Llvm::Lower()
                 // The fields will be referenced through the parent.
                 continue;
             }
+            if (!varDsc->lvIsParam && (varDsc->lvRefCnt() == 0))
+            {
+                // No need to place unreferenced temps on the shadow stack.
+                continue;
+            }
 
-            locals.push_back(varDsc);
+            // Insert zero-initialization for this local if required (which it almost always will be).
+            if (!varDsc->lvIsParam && !varDsc->lvHasExplicitInit)
+            {
+                var_types zeroType = (varDsc->TypeGet() == TYP_STRUCT) ? TYP_INT : genActualType(varDsc);
+                initializeLocalInProlog(lclNum, _compiler->gtNewZeroConNode(zeroType));
+            }
+
+            shadowStackLocals.push_back(varDsc);
             if (varDsc->lvIsParam)
             {
-                localsParamCount++;
+                shadowStackParamCount++;
                 varDsc->lvIsParam = false;
             }
         }
+        else
+        {
+            INDEBUG(varDsc->lvOnFrame = false); // For more accurate frame layout dumping.
+        }
     }
 
-    if (_compiler->opts.OptimizationEnabled())
-    {
-        std::sort(locals.begin() + localsParamCount, locals.end(), [](const LclVarDsc* lhs, const LclVarDsc* rhs) { return lhs->lvRefCntWtd() > rhs->lvRefCntWtd(); });
-    }
-
-    unsigned int offset = 0;
-    for (unsigned i = 0; i < locals.size(); i++)
-    {
-        LclVarDsc* varDsc = locals.at(i);
-        CorInfoType corInfoType = toCorInfoType(varDsc->TypeGet());
-        CORINFO_CLASS_HANDLE classHandle = tryGetStructClassHandle(varDsc);
-
-        offset = padOffset(corInfoType, classHandle, offset);
-        varDsc->SetStackOffset(offset);
-        offset = padNextOffset(corInfoType, classHandle, offset);
-    }
-    _shadowStackLocalsSize = offset;
-
-    JITDUMP("\nLocals after shadow stack layout:\n");
-    JITDUMPEXEC(_compiler->lvaDoneFrameLayout = Compiler::TENTATIVE_FRAME_LAYOUT);
-    JITDUMPEXEC(_compiler->lvaTableDump());
-
-    lowerBlocks();
+    assignShadowStackOffsets(shadowStackLocals, shadowStackParamCount);
 }
 
 void Llvm::populateLlvmArgNums()
@@ -162,6 +164,52 @@ void Llvm::populateLlvmArgNums()
     }
 
     _llvmArgCount = nextLlvmArgNum;
+}
+
+void Llvm::assignShadowStackOffsets(std::vector<LclVarDsc*>& shadowStackLocals, unsigned shadowStackParamCount)
+{
+    if (_compiler->opts.OptimizationEnabled())
+    {
+        std::sort(shadowStackLocals.begin() + shadowStackParamCount, shadowStackLocals.end(),
+                  [](const LclVarDsc* lhs, const LclVarDsc* rhs) { return lhs->lvRefCntWtd() > rhs->lvRefCntWtd(); });
+    }
+
+    unsigned int offset = 0;
+    for (unsigned i = 0; i < shadowStackLocals.size(); i++)
+    {
+        LclVarDsc* varDsc = shadowStackLocals.at(i);
+        CorInfoType corInfoType = toCorInfoType(varDsc->TypeGet());
+        CORINFO_CLASS_HANDLE classHandle = tryGetStructClassHandle(varDsc);
+
+        offset = padOffset(corInfoType, classHandle, offset);
+        varDsc->SetStackOffset(offset);
+        offset = padNextOffset(corInfoType, classHandle, offset);
+    }
+
+    _shadowStackLocalsSize = AlignUp(offset, TARGET_POINTER_SIZE);
+
+    _compiler->compLclFrameSize = _shadowStackLocalsSize;
+    _compiler->lvaDoneFrameLayout = Compiler::TENTATIVE_FRAME_LAYOUT;
+
+    JITDUMP("\nLocals after shadow stack layout:\n");
+    JITDUMPEXEC(_compiler->lvaTableDump());
+    JITDUMP("\n");
+
+    _compiler->lvaDoneFrameLayout = Compiler::INITIAL_FRAME_LAYOUT;
+}
+
+void Llvm::initializeLocalInProlog(unsigned lclNum, GenTree* value)
+{
+    JITDUMP("Adding initialization for V%02u, %s:\n", lclNum, _compiler->lvaGetDesc(lclNum)->lvReason);
+
+    _compiler->fgEnsureFirstBBisScratch();
+    LIR::Range& firstBlockRange = LIR::AsRange(_compiler->fgFirstBB);
+
+    GenTree* store = _compiler->gtNewStoreLclVar(lclNum, value);
+    firstBlockRange.InsertAtEnd(value);
+    firstBlockRange.InsertAtEnd(store);
+
+    DISPTREERANGE(firstBlockRange, store);
 }
 
 void Llvm::lowerBlocks()
@@ -297,12 +345,7 @@ void Llvm::ConvertShadowStackLocalNode(GenTreeLclVarCommon* node)
 
     if (!canStoreLocalOnLlvmStack(varDsc))
     {
-        // TODO-LLVM: if the offset == 0, just GT_STOREIND at the shadowStack
-        unsigned offsetVal = varDsc->GetStackOffset() + node->GetLclOffs();
-        GenTreeIntCon* offset = _compiler->gtNewIconNode(offsetVal, TYP_I_IMPL);
-
-        GenTreeLclVar* shadowStackLocal = _compiler->gtNewLclvNode(_shadowStackLclNum, TYP_I_IMPL);
-        GenTree* lclAddress = _compiler->gtNewOperNode(GT_ADD, TYP_I_IMPL, shadowStackLocal, offset);
+        GenTree* lclAddress = insertShadowStackAddr(node, varDsc->GetStackOffset() + node->GetLclOffs());
 
         genTreeOps indirOper;
         GenTree* storedValue = nullptr;
@@ -351,15 +394,11 @@ void Llvm::ConvertShadowStackLocalNode(GenTreeLclVarCommon* node)
             node->AsBlk()->gtBlkOpKind = GenTreeBlk::BlkOpKindInvalid;
         }
 
-        CurrentRange().InsertBefore(node, shadowStackLocal, offset);
         if (indirOper == GT_NONE)
         {
             // Local address nodes are directly replaced with the ADD.
+            CurrentRange().Remove(lclAddress);
             node->ReplaceWith(lclAddress, _compiler);
-        }
-        else
-        {
-            CurrentRange().InsertBefore(node, lclAddress);
         }
     }
 }
@@ -465,24 +504,20 @@ void Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
     callNode->ResetArgInfo();
     callNode->gtCallThisArg = nullptr;
 
-    // set up the callee shadowstack, creating a temp and the PUTARG
-    GenTreeLclVar* shadowStackVar = _compiler->gtNewLclvNode(_shadowStackLclNum, TYP_I_IMPL);
-    GenTreeIntCon* offset         = _compiler->gtNewIconNode(_shadowStackLocalsSize, TYP_I_IMPL);
-    // TODO-LLVM: possible performance benefit: when _shadowStackLocalsSize == 0, then omit the GT_ADD.
-    GenTree* calleeShadowStack = _compiler->gtNewOperNode(GT_ADD, TYP_I_IMPL, shadowStackVar, offset);
+    // Set up the callee shadowstack, creating a temp and the PUTARG.
+    GenTree* calleeShadowStack = insertShadowStackAddr(callNode, _shadowStackLocalsSize);
 
     GenTreePutArgType* calleeShadowStackPutArg =
         _compiler->gtNewPutArgType(calleeShadowStack, CORINFO_TYPE_PTR, NO_CLASS_HANDLE);
 #ifdef DEBUG
     calleeShadowStackPutArg->SetArgNum(-1); // -1 will represent the shadowstack  arg for LLVM
 #endif
+    CurrentRange().InsertBefore(callNode, calleeShadowStackPutArg);
 
     callNode->gtCallArgs     = _compiler->gtNewCallArgs(calleeShadowStackPutArg);
     lastArg                  = callNode->gtCallArgs;
     insertReturnAfter        = lastArg; // add the return slot after the shadow stack arg
     callNode->gtCallLateArgs = nullptr;
-
-    CurrentRange().InsertBefore(callNode, shadowStackVar, offset, calleeShadowStack, calleeShadowStackPutArg);
 
     lastArg = lowerCallReturn(callNode, insertReturnAfter);
 
@@ -532,29 +567,22 @@ void Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
                 {
                     assert(use.GetType() != TYP_STRUCT);
 
-                    GenTree*       lclShadowStack = _compiler->gtNewLclvNode(_shadowStackLclNum, TYP_I_IMPL);
-                    GenTreeIntCon* fieldOffset =
-                        _compiler->gtNewIconNode(_shadowStackLocalsSize + shadowStackUseOffest + use.GetOffset(),
-                                                 TYP_I_IMPL);
-                    GenTree* fieldSlotAddr =
-                        _compiler->gtNewOperNode(GT_ADD, TYP_I_IMPL, lclShadowStack, fieldOffset);
+                    unsigned fieldOffsetValue = _shadowStackLocalsSize + shadowStackUseOffest + use.GetOffset();
+                    GenTree* fieldSlotAddr = insertShadowStackAddr(callNode, fieldOffsetValue);
                     GenTree* fieldStoreNode = createShadowStackStoreNode(use.GetType(), fieldSlotAddr, use.GetNode());
 
-                    CurrentRange().InsertBefore(callNode, lclShadowStack, fieldOffset, fieldSlotAddr,
-                                                fieldStoreNode);
+                    CurrentRange().InsertBefore(callNode, fieldStoreNode);
                 }
 
                 CurrentRange().Remove(opAndArg.operand);
             }
             else
             {
-                GenTree*       lclShadowStack = _compiler->gtNewLclvNode(_shadowStackLclNum, TYP_I_IMPL);
-                GenTreeIntCon* offset =
-                    _compiler->gtNewIconNode(_shadowStackLocalsSize + shadowStackUseOffest, TYP_I_IMPL);
-                GenTree* slotAddr  = _compiler->gtNewOperNode(GT_ADD, TYP_I_IMPL, lclShadowStack, offset);
-
+                unsigned offsetValue = _shadowStackLocalsSize + shadowStackUseOffest;
+                GenTree* slotAddr  = insertShadowStackAddr(callNode, offsetValue);
                 GenTree* storeNode = createShadowStackStoreNode(opAndArg.operand->TypeGet(), slotAddr, opAndArg.operand);
-                CurrentRange().InsertBefore(callNode, lclShadowStack, offset, slotAddr, storeNode);
+
+                CurrentRange().InsertBefore(callNode, storeNode);
             }
 
             if (corInfoType == CORINFO_TYPE_VALUECLASS)
@@ -805,4 +833,22 @@ GenTree* Llvm::createShadowStackStoreNode(var_types storeType, GenTree* addr, Ge
     storeNode->gtFlags |= (GTF_IND_TGT_NOT_HEAP | GTF_IND_NONFAULTING);
 
     return storeNode;
+}
+
+GenTree* Llvm::insertShadowStackAddr(GenTree* insertBefore, ssize_t offset)
+{
+    GenTree* shadowStackLcl = _compiler->gtNewLclvNode(_shadowStackLclNum, TYP_I_IMPL);
+    CurrentRange().InsertBefore(insertBefore, shadowStackLcl);
+
+    if (offset == 0)
+    {
+        return shadowStackLcl;
+    }
+
+    GenTree* offsetNode = _compiler->gtNewIconNode(offset, TYP_I_IMPL);
+    CurrentRange().InsertBefore(insertBefore, offsetNode);
+    GenTree* addNode = _compiler->gtNewOperNode(GT_ADD, TYP_I_IMPL, shadowStackLcl, offsetNode);
+    CurrentRange().InsertBefore(insertBefore, addNode);
+
+    return addNode;
 }

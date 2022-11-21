@@ -596,8 +596,12 @@ void Llvm::buildStoreLocalVar(GenTreeLclVar* lclVar)
 // in case we haven't seen the phi args yet, create just the phi nodes and fill in the args at the end
 void Llvm::buildEmptyPhi(GenTreePhi* phi)
 {
-    llvm::PHINode* llvmPhiNode = _builder.CreatePHI(getLlvmTypeForVarType(phi->TypeGet()), 2);
+    LclVarDsc* varDsc = _compiler->lvaGetDesc(phi->Uses().begin()->GetNode()->AsPhiArg());
+    Type* lclLlvmType = getLlvmTypeForLclVar(varDsc);
+
+    llvm::PHINode* llvmPhiNode = _builder.CreatePHI(lclLlvmType, 2);
     _phiPairs.push_back({ phi, llvmPhiNode });
+
     mapGenTreeToValue(phi, llvmPhiNode);
 }
 
@@ -1774,13 +1778,8 @@ bool Llvm::isLlvmFrameLocal(LclVarDsc* varDsc)
     return !varDsc->lvInSsa && varDsc->lvRefCnt() > 0;
 }
 
-unsigned int Llvm::getTotalRealLocalOffset()
-{
-    return _shadowStackLocalsSize;
-}
-
 unsigned int Llvm::getTotalLocalOffset()
 {
-    unsigned int offset = getTotalRealLocalOffset();
-    return AlignUp(offset, TARGET_POINTER_SIZE);
+    assert((_shadowStackLocalsSize % TARGET_POINTER_SIZE) == 0);
+    return _shadowStackLocalsSize;
 }
