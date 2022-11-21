@@ -97,6 +97,9 @@ private:
     JitHashTable<SSAName, SSAName, Value*> _localsMap;
     std::vector<PhiPair> _phiPairs;
     std::vector<Value*> m_allocas;
+#ifdef DEBUG
+    unsigned m_currentInlineLlvmBlockIndex;
+#endif // DEBUG
 
     // DWARF
     llvm::DILocation* _currentOffsetDiLocation;
@@ -217,8 +220,7 @@ public:
 private:
     void generateProlog();
     void initializeLocals();
-    void startImportingBasicBlock(BasicBlock* block);
-    void endImportingBasicBlock(BasicBlock* block);
+    void generateBlock(BasicBlock* block);
     void fillPhis();
 
     Value* getGenTreeValue(GenTree* node);
@@ -258,7 +260,9 @@ private:
 
     void storeObjAtAddress(Value* baseAddress, Value* data, StructDesc* structDesc);
     unsigned buildMemCpy(Value* baseAddress, unsigned startOffset, unsigned endOffset, Value* srcAddress);
+
     void emitDoNothingCall();
+    void emitJumpToThrowHelper(Value* jumpCondValue, SpecialCodeKind throwKind);
     void emitNullCheckForIndir(GenTreeIndir* indir, Value* addrValue);
     void buildThrowException(llvm::IRBuilder<>& builder, const char* helperClass, const char* helperMethodName, Value* shadowStack);
     void buildLlvmCallOrInvoke(llvm::Function* callee, llvm::ArrayRef<Value*> args);
@@ -282,6 +286,7 @@ private:
     DebugMetadata getOrCreateDebugMetadata(const char* documentFileName);
     llvm::DILocation* createDebugFunctionAndDiLocation(struct DebugMetadata debugMetadata, unsigned int lineNo);
 
+    llvm::BasicBlock* createInlineLlvmBlock();
     llvm::BasicBlock* getLLVMBasicBlockForBlock(BasicBlock* block);
 
     bool isLlvmFrameLocal(LclVarDsc* varDsc);

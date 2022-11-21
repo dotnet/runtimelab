@@ -60,7 +60,7 @@ void Llvm::Compile()
         {
         }
 
-        void PreOrderVisit(BasicBlock * block) const
+        void PreOrderVisit(BasicBlock* block) const
         {
             // TODO-LLVM: finret basic blocks
             if (block->bbJumpKind == BBJ_EHFINALLYRET)
@@ -68,21 +68,18 @@ void Llvm::Compile()
                 m_llvm->failFunctionCompilation();
             }
 
-            m_llvm->startImportingBasicBlock(block);
-
-            llvm::BasicBlock* entry = m_llvm->getLLVMBasicBlockForBlock(block);
-            m_llvm->_builder.SetInsertPoint(entry);
-            for (GenTree* node : LIR::AsRange(block))
-            {
-                m_llvm->startImportingNode();
-                m_llvm->visitNode(node);
-            }
-            m_llvm->endImportingBasicBlock(block);
+            m_llvm->generateBlock(block);
         }
     };
 
     LlvmCompileDomTreeVisitor visitor(_compiler, this);
     visitor.WalkTree();
+
+    // Walk all the exceptional code blocks and generate them, since they don't appear in the normal flow graph.
+    for (Compiler::AddCodeDsc* add = _compiler->fgGetAdditionalCodeDescriptors(); add != nullptr; add = add->acdNext)
+    {
+        generateBlock(add->acdDstBlk);
+    }
 
     fillPhis();
 
@@ -223,32 +220,44 @@ void Llvm::initializeLocals()
     }
 }
 
-void Llvm::startImportingBasicBlock(BasicBlock* block)
+void Llvm::generateBlock(BasicBlock* block)
 {
     JITDUMP("\n=============== Generating ");
     JITDUMPEXEC(block->dspBlockHeader(_compiler, /* showKind */ true, /* showFlags */ true));
 
-    _currentBlock = block;
-}
+    llvm::BasicBlock* llvmBlock = getLLVMBasicBlockForBlock(block);
+    INDEBUG(m_currentInlineLlvmBlockIndex = 0);
 
-void Llvm::endImportingBasicBlock(BasicBlock* block)
-{
-    if ((block->bbJumpKind == BBJ_NONE) && block->bbNext != nullptr)
+    _currentBlock = block;
+    _builder.SetInsertPoint(llvmBlock);
+
+    for (GenTree* node : LIR::AsRange(block))
     {
-        _builder.CreateBr(getLLVMBasicBlockForBlock(block->bbNext));
-        return;
+        startImportingNode();
+        visitNode(node);
     }
-    if ((block->bbJumpKind == BBJ_ALWAYS) && block->bbJumpDest != nullptr)
+
+    switch (block->bbJumpKind)
     {
-        _builder.CreateBr(getLLVMBasicBlockForBlock(block->bbJumpDest));
-        return;
+        case BBJ_NONE:
+            _builder.CreateBr(getLLVMBasicBlockForBlock(block->bbNext));
+            break;
+        case BBJ_ALWAYS:
+            _builder.CreateBr(getLLVMBasicBlockForBlock(block->bbJumpDest));
+            break;
+        case BBJ_THROW:
+            _builder.CreateUnreachable();
+        default:
+            // TODO-LLVM: other jump kinds.
+            break;
     }
-    if ((block->bbJumpKind == BBJ_THROW))
+
+#ifdef DEBUG
+    if (m_currentInlineLlvmBlockIndex != 0)
     {
-        _builder.CreateUnreachable();
-        return;
+        llvmBlock->setName(llvmBlock->getName() + ".1");
     }
-    //TODO: other jump kinds
+#endif // DEBUG
 }
 
 void Llvm::fillPhis()
@@ -1004,6 +1013,7 @@ void Llvm::buildHelperFuncCall(GenTreeCall* call)
         void* addr = _compiler->compGetHelperFtn(helperNum, &pAddr);
         const char* symbolName = GetMangledSymbolName(addr);
         Function* llvmFunc = _module->getFunction(symbolName);
+
         if (llvmFunc == nullptr)
         {
             llvmFunc = Function::Create(buildHelperLlvmFunctionType(call, requiresShadowStack), Function::ExternalLinkage, 0U, symbolName, _module);
@@ -1417,6 +1427,37 @@ void Llvm::emitDoNothingCall()
     _builder.CreateCall(_doNothingFunction);
 }
 
+void Llvm::emitJumpToThrowHelper(Value* jumpCondValue, SpecialCodeKind throwKind)
+{
+    if (_compiler->fgUseThrowHelperBlocks())
+    {
+        // For code with throw helper blocks, find and use the shared helper block for raising the exception.
+        unsigned throwIndex = _compiler->bbThrowIndex(_currentBlock);
+        BasicBlock* throwBlock = _compiler->fgFindExcptnTarget(throwKind, throwIndex)->acdDstBlk;
+
+        // Jump to the exception-throwing block on error.
+        llvm::BasicBlock* nextLlvmBlock = createInlineLlvmBlock();
+        llvm::BasicBlock* throwLlvmBlock = getLLVMBasicBlockForBlock(throwBlock);
+        _builder.CreateCondBr(jumpCondValue, throwLlvmBlock, nextLlvmBlock);
+        _builder.SetInsertPoint(nextLlvmBlock);
+    }
+    else
+    {
+        // The code to throw the exception will be generated inline; we will jump around it in the non-exception case.
+        llvm::BasicBlock* throwLlvmBlock = createInlineLlvmBlock();
+        llvm::BasicBlock* nextLlvmBlock = createInlineLlvmBlock();
+        _builder.CreateCondBr(jumpCondValue, throwLlvmBlock, nextLlvmBlock);
+
+        _builder.SetInsertPoint(throwLlvmBlock);
+        // TODO-LLVM: actually emit the throw helper.
+        _builder.CreateUnreachable();
+
+        _builder.SetInsertPoint(nextLlvmBlock);
+
+        failFunctionCompilation();
+    }
+}
+
 void Llvm::emitNullCheckForIndir(GenTreeIndir* indir, Value* addrValue)
 {
     if ((indir->gtFlags & GTF_IND_NONFAULTING) == 0)
@@ -1758,8 +1799,23 @@ llvm::DILocation* Llvm::createDebugFunctionAndDiLocation(DebugMetadata debugMeta
     return llvm::DILocation::get(_llvmContext, lineNo, 0, _debugFunction);
 }
 
+llvm::BasicBlock* Llvm::createInlineLlvmBlock()
+{
+    llvm::BasicBlock* inlineLlvmBlock =
+        llvm::BasicBlock::Create(_llvmContext, "", _function, _builder.GetInsertBlock()->getNextNode());
+
+#ifdef DEBUG
+    llvm::StringRef currentBlockName = getLLVMBasicBlockForBlock(_currentBlock)->getName();
+    inlineLlvmBlock->setName(currentBlockName + "." + llvm::Twine(++m_currentInlineLlvmBlockIndex + 1));
+#endif // DEBUG
+
+    return inlineLlvmBlock;
+}
+
 llvm::BasicBlock* Llvm::getLLVMBasicBlockForBlock(BasicBlock* block)
 {
+    assert(block != nullptr);
+
     llvm::BasicBlock* llvmBlock;
     if (!_blkToLlvmBlkVectorMap.Lookup(block, &llvmBlock))
     {
