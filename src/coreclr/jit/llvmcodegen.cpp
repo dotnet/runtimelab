@@ -1313,13 +1313,6 @@ void Llvm::buildReturn(GenTree* node)
     }
     else
     {
-        retValValue = getGenTreeValue(retValNode);
-        // TODO-LLVM: lower these cases away.
-        if (retValValue->getType()->isStructTy() && (retValValue->getType() != retLlvmType))
-        {
-            failFunctionCompilation();
-        }
-
         retValValue = consumeValue(retValNode, retLlvmType);
     }
 
