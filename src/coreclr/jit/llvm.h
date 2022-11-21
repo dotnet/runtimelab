@@ -127,6 +127,10 @@ private:
     {
         return *_currentRange;
     }
+    BasicBlock* CurrentBlock() const
+    {
+        return _currentBlock;
+    }
 
     GCInfo* getGCInfo();
 
@@ -198,6 +202,7 @@ private:
     void lowerFieldOfDependentlyPromotedStruct(GenTree* node);
     void ConvertShadowStackLocalNode(GenTreeLclVarCommon* node);
     void lowerStoreBlk(GenTreeBlk* storeBlkNode);
+    void lowerDivMod(GenTreeOp* divModNode);
     void lowerReturn(GenTreeUnOp* retNode);
 
     void lowerCallToShadowStack(GenTreeCall* callNode);
@@ -236,7 +241,7 @@ private:
     void buildLocalField(GenTreeLclFld* lclFld);
     void buildLocalVarAddr(GenTreeLclVarCommon* lclVar);
     void buildAdd(GenTreeOp* node);
-    void buildDiv(GenTree* node);
+    void buildDivMod(GenTree* node);
     void buildCast(GenTreeCast* cast);
     void buildLclHeap(GenTreeUnOp* lclHeap);
     void buildCmp(GenTreeOp* node);

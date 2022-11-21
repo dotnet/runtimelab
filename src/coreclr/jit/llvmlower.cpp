@@ -214,63 +214,91 @@ void Llvm::initializeLocalInProlog(unsigned lclNum, GenTree* value)
 
 void Llvm::lowerBlocks()
 {
-    for (BasicBlock* _currentBlock : _compiler->Blocks())
+    for (BasicBlock* block : _compiler->Blocks())
     {
-        _currentRange = &LIR::AsRange(_currentBlock);
+        _currentBlock = block;
+        _currentRange = &LIR::AsRange(block);
+
         for (GenTree* node : CurrentRange())
         {
-            lowerFieldOfDependentlyPromotedStruct(node);
-
-            if (node->OperIs(GT_STORE_LCL_VAR))
+            switch (node->OperGet())
             {
-                lowerStoreLcl(node->AsLclVarCommon());
-            }
+                case GT_LCL_VAR:
+                case GT_LCL_FLD:
+                case GT_LCL_VAR_ADDR:
+                case GT_LCL_FLD_ADDR:
+                case GT_STORE_LCL_VAR:
+                case GT_STORE_LCL_FLD:
+                    lowerFieldOfDependentlyPromotedStruct(node);
 
-            if (node->OperIsLocal() || node->OperIsLocalAddr())
-            {
-                ConvertShadowStackLocalNode(node->AsLclVarCommon());
-            }
-            else if (node->IsCall())
-            {
-                GenTreeCall* callNode = node->AsCall();
-
-                if (callNode->IsHelperCall())
-                {
-                    // helper calls are built differently
-                    continue;
-                }
-
-                failUnsupportedCalls(callNode);
-
-                lowerCallToShadowStack(callNode);
-
-                // If there is a no return, or always throw call, delete the dead code so we can add unreachable statment immediately, and not after any dead RET.
-                if (_compiler->fgIsThrow(callNode) || callNode->IsNoReturn())
-                {
-                    while (CurrentRange().LastNode() != callNode)
+                    if (node->OperIs(GT_STORE_LCL_VAR))
                     {
-                        CurrentRange().Remove(CurrentRange().LastNode(), /* markOperandsUnused */ true);
+                        lowerStoreLcl(node->AsLclVarCommon());
+                    }
+
+                    if (node->OperIsLocal() || node->OperIsLocalAddr())
+                    {
+                        ConvertShadowStackLocalNode(node->AsLclVarCommon());
+                    }
+
+                    if (node->OperIsLocalAddr() || node->OperIsLocalField())
+                    {
+                        // Indicates that this local is to live on the LLVM frame, and will not participate in SSA.
+                        _compiler->lvaGetDesc(node->AsLclVarCommon())->lvHasLocalAddr = 1;
+                    }
+                    break;
+
+                case GT_CALL:
+                {
+                    GenTreeCall* callNode = node->AsCall();
+
+                    if (callNode->IsHelperCall())
+                    {
+                        // helper calls are built differently
+                        continue;
+                    }
+
+                    failUnsupportedCalls(callNode);
+
+                    lowerCallToShadowStack(callNode);
+
+                    // If there is a no return, or always throw call, delete the dead code so we can add unreachable
+                    // statment immediately, and not after any dead RET.
+                    if (_compiler->fgIsThrow(callNode) || callNode->IsNoReturn())
+                    {
+                        while (CurrentRange().LastNode() != callNode)
+                        {
+                            CurrentRange().Remove(CurrentRange().LastNode(), /* markOperandsUnused */ true);
+                        }
                     }
                 }
-            }
-            else if (node->OperIs(GT_STORE_BLK, GT_STORE_OBJ))
-            {
-                lowerStoreBlk(node->AsBlk());
-            }
-            else if (node->OperIs(GT_RETURN))
-            {
-                lowerReturn(node->AsUnOp());
-            }
+                break;
 
-            if (node->OperIsLocalAddr() || node->OperIsLocalField())
-            {
-                // Indicates that this local is to live on the LLVM frame, and will not participate in SSA.
-                _compiler->lvaGetDesc(node->AsLclVarCommon())->lvHasLocalAddr = 1;
+                case GT_STORE_BLK:
+                case GT_STORE_OBJ:
+                    lowerStoreBlk(node->AsBlk());
+                    break;
+
+                case GT_DIV:
+                case GT_MOD:
+                case GT_UDIV:
+                case GT_UMOD:
+                    lowerDivMod(node->AsOp());
+                    break;
+
+                case GT_RETURN:
+                    lowerReturn(node->AsUnOp());
+                    break;
+
+                default:
+                    break;
             }
         }
 
         INDEBUG(CurrentRange().CheckLIR(_compiler, /* checkUnusedValues */ true));
     }
+
+    _currentBlock = nullptr;
 }
 
 void Llvm::lowerStoreLcl(GenTreeLclVarCommon* storeLclNode)
@@ -448,6 +476,22 @@ void Llvm::lowerStoreBlk(GenTreeBlk* storeBlkNode)
         storeBlkNode->Addr()->SetUnusedValue();
         CurrentRange().Remove(storeBlkNode->Data(), /* markOperandsUnused */ true);
         CurrentRange().Remove(storeBlkNode);
+    }
+}
+
+void Llvm::lowerDivMod(GenTreeOp* divModNode)
+{
+    assert(divModNode->OperIs(GT_DIV, GT_MOD, GT_UDIV, GT_UMOD));
+
+    // TODO-LLVM: use OperExceptions here when enough of upstream is merged.
+    if (divModNode->OperMayThrow(_compiler))
+    {
+        _compiler->fgAddCodeRef(CurrentBlock(), _compiler->bbThrowIndex(CurrentBlock()), SCK_DIV_BY_ZERO);
+
+        if (divModNode->OperIs(GT_DIV, GT_MOD))
+        {
+            _compiler->fgAddCodeRef(CurrentBlock(), _compiler->bbThrowIndex(CurrentBlock()), SCK_OVERFLOW);
+        }
     }
 }
 

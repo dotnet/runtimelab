@@ -6536,9 +6536,9 @@ private:
 
     BasicBlock* fgRngChkTarget(BasicBlock* block, SpecialCodeKind kind);
 
+public:
     BasicBlock* fgAddCodeRef(BasicBlock* srcBlk, unsigned refData, SpecialCodeKind kind);
 
-public:
     AddCodeDsc* fgFindExcptnTarget(SpecialCodeKind kind, unsigned refData);
 
     bool fgUseThrowHelperBlocks();

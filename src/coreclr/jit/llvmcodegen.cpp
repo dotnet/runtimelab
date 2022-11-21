@@ -441,7 +441,10 @@ void Llvm::visitNode(GenTree* node)
             buildAdd(node->AsOp());
             break;
         case GT_DIV:
-            buildDiv(node);
+        case GT_MOD:
+        case GT_UDIV:
+        case GT_UMOD:
+            buildDivMod(node);
             break;
         case GT_CALL:
             buildCall(node);
@@ -683,26 +686,63 @@ void Llvm::buildAdd(GenTreeOp* node)
     mapGenTreeToValue(node, addValue);
 }
 
-void Llvm::buildDiv(GenTree* node)
+void Llvm::buildDivMod(GenTree* node)
 {
-    Type* targetType = getLlvmTypeForVarType(node->TypeGet());
-    Value* dividendValue = consumeValue(node->gtGetOp1(), targetType);
-    Value* divisorValue  = consumeValue(node->gtGetOp2(), targetType);
-    Value* resultValue   = nullptr;
-    // TODO-LLVM: exception handling.  Div by 0 and INT32/64_MIN / -1
-    switch (node->TypeGet())
-    {
-        case TYP_FLOAT:
-        case TYP_DOUBLE:
-            resultValue = _builder.CreateFDiv(dividendValue, divisorValue);
-            break;
+    GenTree* dividendNode = node->gtGetOp1();
+    GenTree* divisorNode = node->gtGetOp2();
+    Type* llvmType = getLlvmTypeForVarType(node->TypeGet());
+    Value* dividendValue = consumeValue(dividendNode, llvmType);
+    Value* divisorValue  = consumeValue(divisorNode, llvmType);
+    Value* divModValue   = nullptr;
 
-        default:
-            resultValue = _builder.CreateSDiv(dividendValue, divisorValue);
-            break;
+    // TODO-LLVM: use OperExceptions here when enough of upstream is merged.
+    if (varTypeIsIntegral(node))
+    {
+        // First, check for divide by zero.
+        if (!divisorNode->IsIntegralConst() || divisorNode->IsIntegralConst(0))
+        {
+            Value* isDivisorZeroValue =
+                _builder.CreateCmp(llvm::CmpInst::ICMP_EQ, divisorValue, llvm::ConstantInt::get(llvmType, 0));
+            emitJumpToThrowHelper(isDivisorZeroValue, SCK_DIV_BY_ZERO);
+        }
+
+        // Second, check for "INT_MIN / -1" (which throws ArithmeticException).
+        if (node->OperIs(GT_DIV, GT_MOD) && (!divisorNode->IsIntegralConst() || divisorNode->IsIntegralConst(-1)))
+        {
+            int64_t minDividend = node->TypeIs(TYP_LONG) ? INT64_MIN : INT32_MIN;
+            if (!dividendNode->IsIntegralConst() || (dividendNode->AsIntConCommon()->IntegralValue() == minDividend))
+            {
+                Value* isDivisorMinusOneValue =
+                    _builder.CreateCmp(llvm::CmpInst::ICMP_EQ, divisorValue, llvm::ConstantInt::get(llvmType, -1));
+                Value* isDividendMinValue = _builder.CreateCmp(llvm::CmpInst::ICMP_EQ, dividendValue,
+                                                               llvm::ConstantInt::get(llvmType, minDividend));
+                Value* isOverflowValue = _builder.CreateAnd(isDivisorMinusOneValue, isDividendMinValue);
+                emitJumpToThrowHelper(isOverflowValue, SCK_ARITH_EXCPN);
+            }
+        }
     }
 
-    mapGenTreeToValue(node, resultValue);
+    switch (node->OperGet())
+    {
+        case GT_DIV:
+            divModValue = varTypeIsFloating(node) ? _builder.CreateFDiv(dividendValue, divisorValue)
+                                                  : _builder.CreateSDiv(dividendValue, divisorValue);
+            break;
+        case GT_MOD:
+            divModValue = varTypeIsFloating(node) ? _builder.CreateFRem(dividendValue, divisorValue)
+                                                  : _builder.CreateSRem(dividendValue, divisorValue);
+            break;
+        case GT_UDIV:
+            divModValue = _builder.CreateUDiv(dividendValue, divisorValue);
+            break;
+        case GT_UMOD:
+            divModValue = _builder.CreateURem(dividendValue, divisorValue);
+            break;
+        default:
+            unreached();
+    }
+
+    mapGenTreeToValue(node, divModValue);
 }
 
 void Llvm::buildCast(GenTreeCast* cast)
@@ -799,8 +839,7 @@ void Llvm::buildCast(GenTreeCast* cast)
                 upperBound += addDelta;
             }
 
-            llvm::APInt upperBoundLlvmInt = llvm::APInt(castFromLlvmType->getPrimitiveSizeInBits(), upperBound);
-            Value* upperBoundValue = llvm::Constant::getIntegerValue(castFromLlvmType, upperBoundLlvmInt);
+            Value* upperBoundValue = llvm::ConstantInt::get(castFromLlvmType, upperBound);
             isOverflowValue = _builder.CreateCmp(llvm::CmpInst::ICMP_UGT, checkedValue, upperBoundValue);
         }
 
