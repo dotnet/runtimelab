@@ -4426,10 +4426,6 @@ protected:
     void impResetLeaveBlock(BasicBlock* block, unsigned jmpAddr);
     GenTree* impTypeIsAssignable(GenTree* typeTo, GenTree* typeFrom);
 
-#ifdef DEBUG
-    const char* impGetIntrinsicName(CorInfoIntrinsics intrinsicID);
-#endif // DEBUG
-
     GenTree* impIntrinsic(GenTree*                newobjThis,
                           CORINFO_CLASS_HANDLE    clsHnd,
                           CORINFO_METHOD_HANDLE   method,
@@ -4440,7 +4436,7 @@ protected:
                           bool                    tailCall,
                           CORINFO_RESOLVED_TOKEN* pContstrainedResolvedToken,
                           CORINFO_THIS_TRANSFORM  constraintCallThisTransform,
-                          CorInfoIntrinsics*      pIntrinsicID,
+                          NamedIntrinsic*         pIntrinsicName,
                           bool*                   isSpecialIntrinsic = nullptr);
     GenTree* impMathIntrinsic(CORINFO_METHOD_HANDLE method,
                               CORINFO_SIG_INFO*     sig,
@@ -4511,7 +4507,7 @@ protected:
                                      CORINFO_SIG_INFO*    sig,
                                      int                  memberRef,
                                      bool                 readonlyCall,
-                                     CorInfoIntrinsics    intrinsicID);
+                                     NamedIntrinsic       intrinsicName);
     GenTree* impInitializeArrayIntrinsic(CORINFO_SIG_INFO* sig);
     GenTree* impCreateSpanIntrinsic(CORINFO_SIG_INFO* sig);
 
@@ -8077,7 +8073,7 @@ public:
     // Get the flags
 
     bool eeIsValueClass(CORINFO_CLASS_HANDLE clsHnd);
-    bool eeIsJitIntrinsic(CORINFO_METHOD_HANDLE ftn);
+    bool eeIsIntrinsic(CORINFO_METHOD_HANDLE ftn);
     bool eeIsFieldStatic(CORINFO_FIELD_HANDLE fldHnd);
 
     var_types eeGetFieldType(CORINFO_FIELD_HANDLE fldHnd, CORINFO_CLASS_HANDLE* pStructHnd = nullptr);
