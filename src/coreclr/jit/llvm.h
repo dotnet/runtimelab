@@ -277,7 +277,7 @@ private:
     Function* getOrCreateLlvmFunction(const char* symbolName, GenTreeCall* call);
     FunctionType* createFunctionTypeForCall(GenTreeCall* call);
     FunctionType* buildHelperLlvmFunctionType(GenTreeCall* call, bool withShadowStack);
-    bool helperRequiresShadowStack(CORINFO_METHOD_HANDLE corinfoMethodHnd);
+    bool helperRequiresShadowStack(CorInfoHelpFunc helperFunc);
 
     Value* getOrCreateExternalSymbol(const char* symbolName, Type* symbolType = nullptr);
     Function* getOrCreateRhpAssignRef();
