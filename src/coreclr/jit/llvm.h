@@ -67,6 +67,12 @@ struct PhiPair
     llvm::PHINode* llvmPhiNode;
 };
 
+struct LlvmBlockRange
+{
+    llvm::BasicBlock* FirstBlock;
+    llvm::BasicBlock* LastBlock;
+};
+
 // TODO: We should create a Static... class to manage the globals and their lifetimes.
 // Note we declare all statics here, and define them in llvm.cpp, for documentation and
 // visibility purposes even as some are only needed in other compilation units.
@@ -92,14 +98,11 @@ private:
     DebugInfo _currentOffset;
     llvm::IRBuilder<> _builder;
     llvm::IRBuilder<> _prologBuilder;
-    JitHashTable<BasicBlock*, JitPtrKeyFuncs<BasicBlock>, llvm::BasicBlock*> _blkToLlvmBlkVectorMap;
+    JitHashTable<BasicBlock*, JitPtrKeyFuncs<BasicBlock>, LlvmBlockRange> _blkToLlvmBlksMap;
     JitHashTable<GenTree*, JitPtrKeyFuncs<GenTree>, Value*> _sdsuMap;
     JitHashTable<SSAName, SSAName, Value*> _localsMap;
     std::vector<PhiPair> _phiPairs;
     std::vector<Value*> m_allocas;
-#ifdef DEBUG
-    unsigned m_currentInlineLlvmBlockIndex;
-#endif // DEBUG
 
     // DWARF
     llvm::DILocation* _currentOffsetDiLocation;
@@ -293,7 +296,9 @@ private:
     llvm::DILocation* createDebugFunctionAndDiLocation(struct DebugMetadata debugMetadata, unsigned int lineNo);
 
     llvm::BasicBlock* createInlineLlvmBlock();
-    llvm::BasicBlock* getLLVMBasicBlockForBlock(BasicBlock* block);
+    llvm::BasicBlock* getFirstLlvmBlockForBlock(BasicBlock* block);
+    llvm::BasicBlock* getLastLlvmBlockForBlock(BasicBlock* block);
+    void setLastLlvmBlockForBlock(BasicBlock* block, llvm::BasicBlock* llvmBlock);
 
     bool isLlvmFrameLocal(LclVarDsc* varDsc);
     unsigned int getTotalLocalOffset();

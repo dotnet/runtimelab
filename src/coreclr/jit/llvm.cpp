@@ -94,7 +94,7 @@ Llvm::Llvm(Compiler* compiler)
     _sigInfo(compiler->info.compMethodInfo->args),
     _builder(_llvmContext),
     _prologBuilder(_llvmContext),
-    _blkToLlvmBlkVectorMap(compiler->getAllocator(CMK_Codegen)),
+    _blkToLlvmBlksMap(compiler->getAllocator(CMK_Codegen)),
     _sdsuMap(compiler->getAllocator(CMK_Codegen)),
     _localsMap(compiler->getAllocator(CMK_Codegen)),
     _debugMetadataMap(compiler->getAllocator(CMK_Codegen)),

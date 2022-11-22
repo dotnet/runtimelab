@@ -110,7 +110,7 @@ void Llvm::generateProlog()
 
     initializeLocals();
 
-    llvm::BasicBlock* block0 = getLLVMBasicBlockForBlock(_compiler->fgFirstBB);
+    llvm::BasicBlock* block0 = getFirstLlvmBlockForBlock(_compiler->fgFirstBB);
     _prologBuilder.SetInsertPoint(_prologBuilder.CreateBr(block0));
     _builder.SetInsertPoint(block0);
 }
@@ -225,8 +225,7 @@ void Llvm::generateBlock(BasicBlock* block)
     JITDUMP("\n=============== Generating ");
     JITDUMPEXEC(block->dspBlockHeader(_compiler, /* showKind */ true, /* showFlags */ true));
 
-    llvm::BasicBlock* llvmBlock = getLLVMBasicBlockForBlock(block);
-    INDEBUG(m_currentInlineLlvmBlockIndex = 0);
+    llvm::BasicBlock* llvmBlock = getFirstLlvmBlockForBlock(block);
 
     _currentBlock = block;
     _builder.SetInsertPoint(llvmBlock);
@@ -240,10 +239,10 @@ void Llvm::generateBlock(BasicBlock* block)
     switch (block->bbJumpKind)
     {
         case BBJ_NONE:
-            _builder.CreateBr(getLLVMBasicBlockForBlock(block->bbNext));
+            _builder.CreateBr(getFirstLlvmBlockForBlock(block->bbNext));
             break;
         case BBJ_ALWAYS:
-            _builder.CreateBr(getLLVMBasicBlockForBlock(block->bbJumpDest));
+            _builder.CreateBr(getFirstLlvmBlockForBlock(block->bbJumpDest));
             break;
         case BBJ_THROW:
             _builder.CreateUnreachable();
@@ -252,12 +251,19 @@ void Llvm::generateBlock(BasicBlock* block)
             break;
     }
 
-#ifdef DEBUG
-    if (m_currentInlineLlvmBlockIndex != 0)
+    llvm::BasicBlock* lastLlvmBlock = _builder.GetInsertBlock();
+    if (lastLlvmBlock != llvmBlock)
     {
-        llvmBlock->setName(llvmBlock->getName() + ".1");
-    }
+        setLastLlvmBlockForBlock(block, lastLlvmBlock);
+
+#ifdef DEBUG
+        llvm::StringRef blockName = llvmBlock->getName();
+        for (unsigned idx = 1; llvmBlock != lastLlvmBlock->getNextNode(); llvmBlock = llvmBlock->getNextNode(), idx++)
+        {
+            llvmBlock->setName(blockName + "." + llvm::Twine(idx));
+        }
 #endif // DEBUG
+    }
 }
 
 void Llvm::fillPhis()
@@ -269,8 +275,9 @@ void Llvm::fillPhis()
         for (GenTreePhi::Use& use : phiPair.irPhiNode->Uses())
         {
             GenTreePhiArg* phiArg = use.GetNode()->AsPhiArg();
-            unsigned       lclNum = phiArg->GetLclNum();
-            unsigned       ssaNum = phiArg->GetSsaNum();
+            unsigned lclNum = phiArg->GetLclNum();
+            unsigned ssaNum = phiArg->GetSsaNum();
+            llvm::BasicBlock* llvmPredBlock = getLastLlvmBlockForBlock(phiArg->gtPredBB);
 
             Value* localPhiArg = _localsMap[{lclNum, ssaNum}];
             Value* phiRealArgValue;
@@ -280,19 +287,16 @@ void Llvm::fillPhis()
                 // This cast is needed when
                 // 1) The phi arg real type is short and the definition is the actual longer type, e.g. for bool/int
                 // 2) There is a pointer difference, e.g. i8* v i32* and perhaps different levels of indirection: i8** and i8*
-                llvm::BasicBlock::iterator phiInsertPoint = _builder.GetInsertPoint();
-                llvm::BasicBlock* phiBlock = _builder.GetInsertBlock();
-                Instruction* predBlockTerminator = getLLVMBasicBlockForBlock(phiArg->gtPredBB)->getTerminator();
-
-                _builder.SetInsertPoint(predBlockTerminator);
+                //
+                _builder.SetInsertPoint(llvmPredBlock->getTerminator());
                 phiRealArgValue = _builder.Insert(castRequired);
-                _builder.SetInsertPoint(phiBlock, phiInsertPoint);
             }
             else
             {
                 phiRealArgValue = localPhiArg;
             }
-            llvmPhiNode->addIncoming(phiRealArgValue, getLLVMBasicBlockForBlock(phiArg->gtPredBB));
+
+            llvmPhiNode->addIncoming(phiRealArgValue, llvmPredBlock);
         }
     }
 }
@@ -1473,7 +1477,7 @@ void Llvm::buildReturn(GenTree* node)
 
 void Llvm::buildJTrue(GenTree* node, Value* opValue)
 {
-    _builder.CreateCondBr(opValue, getLLVMBasicBlockForBlock(_currentBlock->bbJumpDest), getLLVMBasicBlockForBlock(_currentBlock->bbNext));
+    _builder.CreateCondBr(opValue, getFirstLlvmBlockForBlock(_currentBlock->bbJumpDest), getFirstLlvmBlockForBlock(_currentBlock->bbNext));
 }
 
 void Llvm::buildNullCheck(GenTreeIndir* nullCheckNode)
@@ -1589,7 +1593,7 @@ void Llvm::emitJumpToThrowHelper(Value* jumpCondValue, SpecialCodeKind throwKind
 
         // Jump to the exception-throwing block on error.
         llvm::BasicBlock* nextLlvmBlock = createInlineLlvmBlock();
-        llvm::BasicBlock* throwLlvmBlock = getLLVMBasicBlockForBlock(throwBlock);
+        llvm::BasicBlock* throwLlvmBlock = getFirstLlvmBlockForBlock(throwBlock);
         _builder.CreateCondBr(jumpCondValue, throwLlvmBlock, nextLlvmBlock);
         _builder.SetInsertPoint(nextLlvmBlock);
     }
@@ -2265,28 +2269,53 @@ llvm::BasicBlock* Llvm::createInlineLlvmBlock()
     llvm::BasicBlock* inlineLlvmBlock =
         llvm::BasicBlock::Create(_llvmContext, "", _function, _builder.GetInsertBlock()->getNextNode());
 
-#ifdef DEBUG
-    llvm::StringRef currentBlockName = getLLVMBasicBlockForBlock(_currentBlock)->getName();
-    inlineLlvmBlock->setName(currentBlockName + "." + llvm::Twine(++m_currentInlineLlvmBlockIndex + 1));
-#endif // DEBUG
-
     return inlineLlvmBlock;
 }
 
-llvm::BasicBlock* Llvm::getLLVMBasicBlockForBlock(BasicBlock* block)
+llvm::BasicBlock* Llvm::getFirstLlvmBlockForBlock(BasicBlock* block)
 {
     assert(block != nullptr);
 
     llvm::BasicBlock* llvmBlock;
-    if (!_blkToLlvmBlkVectorMap.Lookup(block, &llvmBlock))
+    LlvmBlockRange llvmBlockRange;
+    if (!_blkToLlvmBlksMap.Lookup(block, &llvmBlockRange))
     {
         unsigned bbNum = block->bbNum;
-        llvmBlock = llvm::BasicBlock::Create(_llvmContext, (bbNum >= 10) ? ("BB" + llvm::Twine(bbNum))
-                                                                         : ("BB0" + llvm::Twine(bbNum)), _function);
-        _blkToLlvmBlkVectorMap.Set(block, llvmBlock);
+        llvmBlock = llvm::BasicBlock::Create(
+            _llvmContext, (bbNum >= 10) ? ("BB" + llvm::Twine(bbNum)) : ("BB0" + llvm::Twine(bbNum)), _function);
+
+        _blkToLlvmBlksMap.Set(block, {llvmBlock, llvmBlock});
+    }
+    else
+    {
+        llvmBlock = llvmBlockRange.FirstBlock;
     }
 
     return llvmBlock;
+}
+
+//------------------------------------------------------------------------
+// getLastLlvmBlockForBlock: Get the last LLVM basic block for "block".
+//
+// During code generation, a given IR block can be split into multiple
+// LLVM blocks, due to, e. g., inline branches. This function returns
+// the last of these generated blocks. Note it is only available after
+// "block" has been fully generated.
+//
+// Arguments:
+//    block - The IR block
+//
+// Return Value:
+//    LLVM block containing "block"'s terminator instruction.
+//
+llvm::BasicBlock* Llvm::getLastLlvmBlockForBlock(BasicBlock* block)
+{
+    return _blkToLlvmBlksMap[block].LastBlock;
+}
+
+void Llvm::setLastLlvmBlockForBlock(BasicBlock* block, llvm::BasicBlock* llvmBlock)
+{
+    _blkToLlvmBlksMap[block].LastBlock = llvmBlock;
 }
 
 bool Llvm::isLlvmFrameLocal(LclVarDsc* varDsc)
