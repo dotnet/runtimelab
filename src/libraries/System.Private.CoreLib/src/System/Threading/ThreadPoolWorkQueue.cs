@@ -1010,6 +1010,68 @@ namespace System.Threading
                 Unsafe.As<IThreadPoolWorkItem>(workItem).Execute();
             }
         }
+
+        public static void RunAsGreenThread(Action action)
+        {
+            ThreadPoolWorkQueueThreadLocals? tl = ThreadPoolWorkQueueThreadLocals.Current;
+            Debug.Assert(tl != null);
+
+            TaskCompletionSource? resumeGreenThreadTcs = tl.resumeGreenThreadTcs;
+            if (resumeGreenThreadTcs != null)
+            {
+                tl.resumeGreenThreadTcs = null;
+                Debug.Assert(tl.resumeGreenThreadAction == null);
+                tl.resumeGreenThreadAction = action;
+                resumeGreenThreadTcs.SetResult();
+                return;
+            }
+
+            tl.resumeGreenThreadTcsesLock.Acquire();
+            {
+                int count = tl.resumeGreenThreadTcses.Count;
+                if (count != 0)
+                {
+                    resumeGreenThreadTcs = tl.resumeGreenThreadTcses[count - 1];
+                    tl.resumeGreenThreadTcses.RemoveAt(count - 1);
+                    tl.resumeGreenThreadTcsesLock.Release();
+
+                    Debug.Assert(tl.resumeGreenThreadAction == null);
+                    tl.resumeGreenThreadAction = action;
+                    resumeGreenThreadTcs.SetResult();
+                    return;
+                }
+            }
+            tl.resumeGreenThreadTcsesLock.Release();
+
+            Task.GreenThreadExecutorFunc(action);
+        }
+    }
+
+    internal struct SimpleSpinLock
+    {
+        private int _isLocked;
+
+        public bool TryAcquire() => Interlocked.CompareExchange(ref _isLocked, 1, 0) == 0;
+
+        public void Acquire()
+        {
+            if (!TryAcquire())
+            {
+                WaitAndAcquire();
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private void WaitAndAcquire()
+        {
+            SpinWait spinner = default;
+            do
+            {
+                spinner.SpinOnce(sleep1Threshold: -1);
+            } while (!TryAcquire());
+        }
+
+        public void Release() => Volatile.Write(ref _isLocked, 0);
     }
 
     // Holds a WorkStealingQueue, and removes it from the list when this object is no longer referenced.
@@ -1023,6 +1085,10 @@ namespace System.Threading
         public readonly Thread currentThread;
         public readonly object? threadLocalCompletionCountObject;
         public readonly Random.XoshiroImpl random = new Random.XoshiroImpl();
+        public TaskCompletionSource? resumeGreenThreadTcs;
+        public readonly List<TaskCompletionSource> resumeGreenThreadTcses = new List<TaskCompletionSource>();
+        public SimpleSpinLock resumeGreenThreadTcsesLock;
+        public Action? resumeGreenThreadAction;
 
         private ThreadPoolWorkQueueThreadLocals(ThreadPoolWorkQueue tpq)
         {
@@ -1059,6 +1125,34 @@ namespace System.Threading
             {
                 TransferLocalWork();
                 ThreadPoolWorkQueue.WorkStealingQueueList.Remove(workStealingQueue);
+            }
+        }
+
+        public void RegisterGreenThreadForResume(TaskCompletionSource resumeTcs)
+        {
+            Debug.Assert(Thread.IsGreenThread);
+
+            if (resumeGreenThreadTcs == null && Current == this)
+            {
+                Debug.Assert(resumeGreenThreadAction == null);
+                resumeGreenThreadTcs = resumeTcs;
+                return;
+            }
+
+            resumeGreenThreadTcsesLock.Acquire();
+            resumeGreenThreadTcses.Add(resumeTcs);
+            resumeGreenThreadTcsesLock.Release();
+        }
+
+        public Action ResumeGreenThreadAction
+        {
+            get
+            {
+                Debug.Assert(Current == this);
+                Action? action = resumeGreenThreadAction;
+                Debug.Assert(action != null);
+                resumeGreenThreadAction = null;
+                return action;
             }
         }
     }
