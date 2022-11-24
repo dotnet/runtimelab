@@ -254,9 +254,7 @@ private:
     void buildCnsDouble(GenTreeDblCon* node);
     void buildCnsInt(GenTree* node);
     void buildCnsLng(GenTree* node);
-    void buildCall(GenTree* node);
-    void buildHelperFuncCall(GenTreeCall* call);
-    void buildUserFuncCall(GenTreeCall* call);
+    void buildCall(GenTreeCall* node);
     Value* buildFieldList(GenTreeFieldList* fieldList, Type* llvmType);
     void buildInd(GenTreeIndir* indNode);
     void buildBlk(GenTreeBlk* blkNode);
@@ -282,7 +280,6 @@ private:
     FunctionType* getFunctionType();
     Function* getOrCreateLlvmFunction(const char* symbolName, GenTreeCall* call);
     FunctionType* createFunctionTypeForCall(GenTreeCall* call);
-    FunctionType* buildHelperLlvmFunctionType(GenTreeCall* call, bool withShadowStack);
 
     Value* getOrCreateExternalSymbol(const char* symbolName, Type* symbolType = nullptr);
     Function* getOrCreateRhpAssignRef();

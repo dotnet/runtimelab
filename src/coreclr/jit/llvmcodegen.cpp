@@ -454,7 +454,7 @@ void Llvm::visitNode(GenTree* node)
             buildDivMod(node);
             break;
         case GT_CALL:
-            buildCall(node);
+            buildCall(node->AsCall());
             break;
         case GT_CAST:
             buildCast(node->AsCast());
@@ -1093,116 +1093,30 @@ void Llvm::buildCnsLng(GenTree* node)
     mapGenTreeToValue(node, _builder.getInt64(node->AsLngCon()->LngValue()));
 }
 
-void Llvm::buildCall(GenTree* node)
+void Llvm::buildCall(GenTreeCall* call)
 {
-    GenTreeCall* call = node->AsCall();
     if (call->IsHelperCall())
     {
-        buildHelperFuncCall(call);
-    }
-    else
-    {
-        if (call->IsVirtualStub())
+        switch (_compiler->eeGetHelperNum(call->gtCallMethHnd))
         {
-            // TODO-LLVM: VSD.
-            failFunctionCompilation();
+            case CORINFO_HELP_READYTORUN_GENERIC_HANDLE:
+            case CORINFO_HELP_READYTORUN_GENERIC_STATIC_BASE:
+            case CORINFO_HELP_GVMLOOKUP_FOR_SLOT: /* generates an extra parameter in the signature */
+            case CORINFO_HELP_TYPEHANDLE_TO_RUNTIMETYPE: /* misses an arg in the signature somewhere, not the shadow stack */
+            case CORINFO_HELP_READYTORUN_DELEGATE_CTOR:
+                failFunctionCompilation();
+
+            default:
+                break;
         }
-
-        buildUserFuncCall(call);
     }
-}
-
-void Llvm::buildHelperFuncCall(GenTreeCall* call)
-{
-    if (call->gtCallMethHnd == _compiler->eeFindHelper(CORINFO_HELP_READYTORUN_GENERIC_HANDLE) ||
-        call->gtCallMethHnd == _compiler->eeFindHelper(CORINFO_HELP_READYTORUN_GENERIC_STATIC_BASE) ||
-        call->gtCallMethHnd == _compiler->eeFindHelper(CORINFO_HELP_GVMLOOKUP_FOR_SLOT) || /* generates an extra parameter in the signature */
-        call->gtCallMethHnd == _compiler->eeFindHelper(CORINFO_HELP_TYPEHANDLE_TO_RUNTIMETYPE) || /* misses an arg in the signature somewhere, not the shadow stack */
-        call->gtCallMethHnd == _compiler->eeFindHelper(CORINFO_HELP_READYTORUN_DELEGATE_CTOR))
+    else if (call->IsVirtualStub())
     {
-        // TODO-LLVM: implement.
+        // TODO-LLVM: VSD.
         failFunctionCompilation();
     }
 
-    Value* callValue;
-    if (call->gtCallMethHnd == _compiler->eeFindHelper(CORINFO_HELP_READYTORUN_STATIC_BASE))
-    {
-        const char* symbolName = GetMangledSymbolName(CORINFO_METHOD_HANDLE(call->gtEntryPoint.handle));
-        Function* llvmFunc = _module->getFunction(symbolName);
-        if (llvmFunc == nullptr)
-        {
-            llvmFunc = Function::Create(buildHelperLlvmFunctionType(call, true), Function::ExternalLinkage, 0U, symbolName, _module); // TODO: ExternalLinkage forced as defined in ILC module
-        }
-
-        // Replacement for _info.compCompHnd->recordRelocation(nullptr, gtCall->gtEntryPoint.handle, IMAGE_REL_BASED_REL32);
-        AddCodeReloc(call->gtEntryPoint.handle);
-
-        callValue = _builder.CreateCall(llvmFunc, getShadowStackForCallee());
-    }
-    else
-    {
-        fgArgInfo* argInfo = call->fgArgInfo;
-        unsigned int argCount = argInfo->ArgCount();
-        fgArgTabEntry** argTable = argInfo->ArgTable();
-        std::vector<OperandArgNum> sortedArgs = std::vector<OperandArgNum>(argCount);
-        OperandArgNum* sortedData = sortedArgs.data();
-
-        //TODO-LLVM: refactor calling code with user calls.
-        for (unsigned i = 0; i < argCount; i++)
-        {
-            fgArgTabEntry* curArgTabEntry = argTable[i];
-            unsigned int   argNum = curArgTabEntry->argNum;
-            OperandArgNum  opAndArg = { argNum, curArgTabEntry->GetNode() };
-            sortedData[argNum] = opAndArg;
-        }
-
-        CorInfoHelpFunc helperNum = _compiler->eeGetHelperNum(call->gtCallMethHnd);
-        void* pAddr = nullptr;
-        void* addr = _compiler->compGetHelperFtn(helperNum, &pAddr);
-        const char* symbolName = GetMangledSymbolName(addr);
-        Function* llvmFunc = _module->getFunction(symbolName);
-
-        bool requiresShadowStack = helperCallHasShadowStackArg(helperNum);
-        if (llvmFunc == nullptr)
-        {
-            llvmFunc = Function::Create(buildHelperLlvmFunctionType(call, requiresShadowStack), Function::ExternalLinkage, 0U, symbolName, _module);
-        }
-
-        AddCodeReloc(addr);
-
-        std::vector<llvm::Value*> argVec;
-        unsigned argIx = 0;
-
-        Value* shadowStackForCallee = getShadowStackForCallee();
-        if (requiresShadowStack)
-        {
-            argVec.push_back(shadowStackForCallee);
-            argIx++;
-        }
-        else
-        {
-            // we may come back into managed from the unmanaged call so store the shadowstack
-            _builder.CreateStore(shadowStackForCallee, getOrCreateExternalSymbol("t_pShadowStackTop", Type::getInt8PtrTy(_llvmContext)));
-        }
-
-        for (OperandArgNum opAndArg : sortedArgs)
-        {
-            argVec.push_back(consumeValue(opAndArg.operand, llvmFunc->getArg(argIx)->getType()));
-            argIx++;
-        }
-
-        callValue = emitCallOrInvoke(llvmFunc, argVec);
-    }
-
-    mapGenTreeToValue(call, callValue);
-}
-
-void Llvm::buildUserFuncCall(GenTreeCall* call)
-{
-    assert(!call->IsHelperCall()); // Either "USER_FUNC" or "INDIRECT".
-
     llvm::FunctionCallee llvmFuncCallee;
-
     if (call->IsVirtualVtable() || (call->gtCallType == CT_INDIRECT))
     {
         FunctionType* functionType = createFunctionTypeForCall(call);
@@ -1213,10 +1127,34 @@ void Llvm::buildUserFuncCall(GenTreeCall* call)
     }
     else
     {
-        const char* symbolName = GetMangledSymbolName(call->gtEntryPoint.handle);
-        AddCodeReloc(call->gtEntryPoint.handle);
+        void* handle;
+        if (call->gtEntryPoint.handle != nullptr)
+        {
+            // Note some helpers (e. g. CORINFO_HELP_READYTORUN_STATIC_BASE) do not represent singular methods and so
+            // will go through this path.
+            assert(call->gtEntryPoint.accessType == IAT_VALUE);
+            handle = call->gtEntryPoint.handle;
+        }
+        else
+        {
+            assert(call->IsHelperCall());
+            CorInfoHelpFunc helperFunc = _compiler->eeGetHelperNum(call->gtCallMethHnd);
+            void* pAddr = nullptr;
+            handle = _compiler->compGetHelperFtn(helperFunc, &pAddr);
+            assert(pAddr == nullptr);
+        }
+
+        const char* symbolName = GetMangledSymbolName(handle);
+        AddCodeReloc(handle); // Replacement for _info.compCompHnd->recordRelocation.
 
         llvmFuncCallee = getOrCreateLlvmFunction(symbolName, call);
+    }
+
+    // We may come back into managed from the unmanaged call so store the shadowstack.
+    if (!callHasShadowStackArg(call))
+    {
+        _builder.CreateStore(getShadowStackForCallee(),
+                             getOrCreateExternalSymbol("t_pShadowStackTop", Type::getInt8PtrTy(_llvmContext)));
     }
 
     std::vector<Value*> argVec = std::vector<Value*>();
@@ -1691,26 +1629,7 @@ FunctionType* Llvm::createFunctionTypeForCall(GenTreeCall* call)
         argVec.push_back(getLlvmTypeForCorInfoType(putArg->GetCorInfoType(), putArg->GetClsHnd()));
     }
 
-    return FunctionType::get(retLlvmType, ArrayRef<Type*>(argVec), false);
-}
-
-FunctionType* Llvm::buildHelperLlvmFunctionType(GenTreeCall* call, bool withShadowStack)
-{
-    Type* retLlvmType = getLlvmTypeForVarType(call->TypeGet());
-    std::vector<llvm::Type*> argVec;
-
-    if (withShadowStack)
-    {
-        argVec.push_back(Type::getInt8PtrTy(_llvmContext));
-    }
-
-    for (GenTreeCall::Use& use : call->Args())
-    {
-        Type* argLlvmType = getLlvmTypeForVarType(use.GetNode()->TypeGet());
-        argVec.push_back(argLlvmType);
-    }
-
-    return FunctionType::get(retLlvmType, ArrayRef<llvm::Type*>(argVec), false);
+    return FunctionType::get(retLlvmType, argVec, /* isVarArg */ false);
 }
 
 Value* Llvm::getOrCreateExternalSymbol(const char* symbolName, Type* symbolType)
