@@ -274,7 +274,7 @@ private:
     void emitJumpToThrowHelper(Value* jumpCondValue, SpecialCodeKind throwKind);
     void emitNullCheckForIndir(GenTreeIndir* indir, Value* addrValue);
     void buildThrowException(llvm::IRBuilder<>& builder, const char* helperClass, const char* helperMethodName, Value* shadowStack);
-    void buildLlvmCallOrInvoke(llvm::Function* callee, llvm::ArrayRef<Value*> args);
+    Value* emitCallOrInvoke(Function* callee, llvm::ArrayRef<Value*> args);
 
     FunctionType* getFunctionType();
     Function* getOrCreateLlvmFunction(const char* symbolName, GenTreeCall* call);

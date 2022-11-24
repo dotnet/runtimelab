@@ -417,7 +417,10 @@ Value* Llvm::consumeValue(GenTree* node, Type* targetLlvmType)
 
 void Llvm::mapGenTreeToValue(GenTree* node, Value* nodeValue)
 {
-    _sdsuMap.Set(node, nodeValue);
+    if (node->IsValue())
+    {
+        _sdsuMap.Set(node, nodeValue);
+    }
 }
 
 void Llvm::startImportingNode()
@@ -1117,10 +1120,11 @@ void Llvm::buildHelperFuncCall(GenTreeCall* call)
         call->gtCallMethHnd == _compiler->eeFindHelper(CORINFO_HELP_TYPEHANDLE_TO_RUNTIMETYPE) || /* misses an arg in the signature somewhere, not the shadow stack */
         call->gtCallMethHnd == _compiler->eeFindHelper(CORINFO_HELP_READYTORUN_DELEGATE_CTOR))
     {
-        // TODO-LLVM
+        // TODO-LLVM: implement.
         failFunctionCompilation();
     }
 
+    Value* callValue;
     if (call->gtCallMethHnd == _compiler->eeFindHelper(CORINFO_HELP_READYTORUN_STATIC_BASE))
     {
         const char* symbolName = GetMangledSymbolName(CORINFO_METHOD_HANDLE(call->gtEntryPoint.handle));
@@ -1133,8 +1137,7 @@ void Llvm::buildHelperFuncCall(GenTreeCall* call)
         // Replacement for _info.compCompHnd->recordRelocation(nullptr, gtCall->gtEntryPoint.handle, IMAGE_REL_BASED_REL32);
         AddCodeReloc(call->gtEntryPoint.handle);
 
-        mapGenTreeToValue(call, _builder.CreateCall(llvmFunc, getShadowStackForCallee()));
-        return;
+        callValue = _builder.CreateCall(llvmFunc, getShadowStackForCallee());
     }
     else
     {
@@ -1184,22 +1187,14 @@ void Llvm::buildHelperFuncCall(GenTreeCall* call)
 
         for (OperandArgNum opAndArg : sortedArgs)
         {
-            if ((opAndArg.operand->gtOper == GT_CNS_INT) && opAndArg.operand->IsIconHandle())
-            {
-                void* iconValue = (void*)(opAndArg.operand->AsIntCon()->IconValue());
-                const char* methodTableName = GetMangledSymbolName(iconValue);
-                AddCodeReloc(iconValue);
-                argVec.push_back(castIfNecessary(_builder.CreateLoad(castIfNecessary(getOrCreateExternalSymbol(methodTableName), Type::getInt32PtrTy(_llvmContext)->getPointerTo())), llvmFunc->getArg(argIx)->getType()));
-            }
-            else
-            {
-                argVec.push_back(consumeValue(opAndArg.operand, llvmFunc->getArg(argIx)->getType()));
-            }
+            argVec.push_back(consumeValue(opAndArg.operand, llvmFunc->getArg(argIx)->getType()));
             argIx++;
         }
-        // TODO-LLVM: If the block has a handler, this will need to be an invoke.  E.g. create a CallOrInvoke as per ILToLLVMImporter
-        mapGenTreeToValue(call, _builder.CreateCall(llvmFunc, llvm::ArrayRef<Value*>(argVec)));
+
+        callValue = emitCallOrInvoke(llvmFunc, argVec);
     }
+
+    mapGenTreeToValue(call, callValue);
 }
 
 void Llvm::buildUserFuncCall(GenTreeCall* call)
@@ -1617,7 +1612,7 @@ void Llvm::emitNullCheckForIndir(GenTreeIndir* indir, Value* addrValue)
         addrValue = castIfNecessary(addrValue, Type::getInt8PtrTy(_llvmContext));
 
         // TODO-LLVM: this shadow stack passing is not efficient.
-        buildLlvmCallOrInvoke(throwIfNullFunc, {getShadowStackForCallee(), addrValue});
+        emitCallOrInvoke(throwIfNullFunc, {getShadowStackForCallee(), addrValue});
     }
 }
 
@@ -1642,10 +1637,10 @@ void Llvm::buildThrowException(llvm::IRBuilder<>& builder, const char* helperCla
     builder.CreateUnreachable();
 }
 
-void Llvm::buildLlvmCallOrInvoke(Function* callee, ArrayRef<Value*> args)
+Value* Llvm::emitCallOrInvoke(Function* callee, ArrayRef<Value*> args)
 {
     // TODO-LLVM: invoke if callsite has exception handler
-    _builder.CreateCall(callee, args);
+    return _builder.CreateCall(callee, args);
 }
 
 FunctionType* Llvm::getFunctionType()
