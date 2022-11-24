@@ -1093,18 +1093,19 @@ void Llvm::buildCnsLng(GenTree* node)
 void Llvm::buildCall(GenTree* node)
 {
     GenTreeCall* call = node->AsCall();
-    if (call->gtCallType == CT_HELPER)
+    if (call->IsHelperCall())
     {
         buildHelperFuncCall(call);
     }
-    else if ((call->gtCallType == CT_USER_FUNC || call->gtCallType == CT_INDIRECT) &&
-             !call->IsVirtualStub() /* TODO: Virtual stub not implemented */)
-    {
-        buildUserFuncCall(call);
-    }
     else
     {
-        failFunctionCompilation();
+        if (call->IsVirtualStub())
+        {
+            // TODO-LLVM: VSD.
+            failFunctionCompilation();
+        }
+
+        buildUserFuncCall(call);
     }
 }
 
@@ -1114,8 +1115,7 @@ void Llvm::buildHelperFuncCall(GenTreeCall* call)
         call->gtCallMethHnd == _compiler->eeFindHelper(CORINFO_HELP_READYTORUN_GENERIC_STATIC_BASE) ||
         call->gtCallMethHnd == _compiler->eeFindHelper(CORINFO_HELP_GVMLOOKUP_FOR_SLOT) || /* generates an extra parameter in the signature */
         call->gtCallMethHnd == _compiler->eeFindHelper(CORINFO_HELP_TYPEHANDLE_TO_RUNTIMETYPE) || /* misses an arg in the signature somewhere, not the shadow stack */
-        call->gtCallMethHnd == _compiler->eeFindHelper(CORINFO_HELP_READYTORUN_DELEGATE_CTOR) ||
-        call->gtCallMethHnd == _compiler->eeFindHelper(CORINFO_HELP_THROW_PLATFORM_NOT_SUPPORTED)) // TODO-LLVM: we are not generating an unreachable after this call
+        call->gtCallMethHnd == _compiler->eeFindHelper(CORINFO_HELP_READYTORUN_DELEGATE_CTOR))
     {
         // TODO-LLVM
         failFunctionCompilation();
