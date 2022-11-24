@@ -1199,31 +1199,27 @@ void Llvm::buildHelperFuncCall(GenTreeCall* call)
 
 void Llvm::buildUserFuncCall(GenTreeCall* call)
 {
+    assert(!call->IsHelperCall()); // Either "USER_FUNC" or "INDIRECT".
+
     llvm::FunctionCallee llvmFuncCallee;
 
-    if (call->gtCallType == CT_USER_FUNC || call->gtCallType == CT_INDIRECT)
+    if (call->IsVirtualVtable() || (call->gtCallType == CT_INDIRECT))
     {
-        if (call->IsVirtualVtable() || call->gtCallType == CT_INDIRECT)
-        {
-            FunctionType* functionType = createFunctionTypeForCall(call);
-            GenTree* calleeNode = call->IsVirtualVtable() ? call->gtControlExpr : call->gtCallAddr;
+        FunctionType* functionType = createFunctionTypeForCall(call);
+        GenTree* targetNode = call->IsVirtualVtable() ? call->gtControlExpr : call->gtCallAddr;
+        Value* targetValue = consumeValue(targetNode, functionType->getPointerTo());
 
-            Value* funcPtr = castIfNecessary(getGenTreeValue(calleeNode), functionType->getPointerTo());
+        llvmFuncCallee = {functionType, targetValue};
+    }
+    else
+    {
+        const char* symbolName = GetMangledSymbolName(call->gtEntryPoint.handle);
+        AddCodeReloc(call->gtEntryPoint.handle);
 
-            llvmFuncCallee = {functionType, funcPtr};
-        }
-        else
-        {
-            const char* symbolName = GetMangledSymbolName(call->gtEntryPoint.handle);
-
-            AddCodeReloc(call->gtEntryPoint.handle);
-            Function* llvmFunc = getOrCreateLlvmFunction(symbolName, call);
-
-            llvmFuncCallee = llvmFunc;
-        }
+        llvmFuncCallee = getOrCreateLlvmFunction(symbolName, call);
     }
 
-    std::vector<llvm::Value*> argVec = std::vector<llvm::Value*>();
+    std::vector<Value*> argVec = std::vector<Value*>();
 
     GenTreePutArgType* lastArg = nullptr;
     for (GenTreeCall::Use& use : call->Args())
@@ -1247,8 +1243,8 @@ void Llvm::buildUserFuncCall(GenTreeCall* call)
         argVec.push_back(argValue);
     }
 
-    Value* llvmCall = _builder.CreateCall(llvmFuncCallee, ArrayRef<Value*>(argVec));
-    mapGenTreeToValue(call, llvmCall);
+    Value* callValue = emitCallOrInvoke(llvmFuncCallee, argVec);
+    mapGenTreeToValue(call, callValue);
 }
 
 Value* Llvm::buildFieldList(GenTreeFieldList* fieldList, Type* llvmType)
@@ -1637,7 +1633,7 @@ void Llvm::buildThrowException(llvm::IRBuilder<>& builder, const char* helperCla
     builder.CreateUnreachable();
 }
 
-Value* Llvm::emitCallOrInvoke(Function* callee, ArrayRef<Value*> args)
+Value* Llvm::emitCallOrInvoke(llvm::FunctionCallee callee, ArrayRef<Value*> args)
 {
     // TODO-LLVM: invoke if callsite has exception handler
     return _builder.CreateCall(callee, args);
