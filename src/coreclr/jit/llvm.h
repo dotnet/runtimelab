@@ -139,10 +139,12 @@ private:
 
     CORINFO_CLASS_HANDLE tryGetStructClassHandle(LclVarDsc* varDsc);
     CorInfoType getCorInfoTypeForArg(CORINFO_SIG_INFO* sigInfo, CORINFO_ARG_LIST_HANDLE& arg, CORINFO_CLASS_HANDLE* clsHnd);
-    CorInfoType toCorInfoType(var_types varType);
+    static CorInfoType toCorInfoType(var_types varType);
 
     static bool needsReturnStackSlot(Compiler* compiler, CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd);
-    bool needsReturnStackSlot(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd);
+
+    bool callHasShadowStackArg(GenTreeCall* call);
+    bool helperCallHasShadowStackArg(CorInfoHelpFunc helperFunc);
 
     bool canStoreLocalOnLlvmStack(LclVarDsc* varDsc);
     static bool canStoreArgOnLlvmStack(Compiler* compiler, CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd);
@@ -204,6 +206,7 @@ private:
     void lowerStoreLcl(GenTreeLclVarCommon* storeLclNode);
     void lowerFieldOfDependentlyPromotedStruct(GenTree* node);
     void ConvertShadowStackLocalNode(GenTreeLclVarCommon* node);
+    void lowerCall(GenTreeCall* callNode);
     void lowerStoreBlk(GenTreeBlk* storeBlkNode);
     void lowerDivMod(GenTreeOp* divModNode);
     void lowerReturn(GenTreeUnOp* retNode);
@@ -280,7 +283,6 @@ private:
     Function* getOrCreateLlvmFunction(const char* symbolName, GenTreeCall* call);
     FunctionType* createFunctionTypeForCall(GenTreeCall* call);
     FunctionType* buildHelperLlvmFunctionType(GenTreeCall* call, bool withShadowStack);
-    bool helperRequiresShadowStack(CorInfoHelpFunc helperFunc);
 
     Value* getOrCreateExternalSymbol(const char* symbolName, Type* symbolType = nullptr);
     Function* getOrCreateRhpAssignRef();
