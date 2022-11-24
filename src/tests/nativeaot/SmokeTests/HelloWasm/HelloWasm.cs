@@ -1159,7 +1159,7 @@ internal static class Program
     private static void CastByteForIndex()
     {
         StartTest("Implicit casting of byte for an index");
-        int[] someInts = new int[0xff];
+        int[] someInts = new int[0xff + 1];
         byte byteIndex = 0xFF;
         someInts[byteIndex] = 123;
         EndTest(someInts[0xff] == 123, "Expected 123 at index 0xff but didn't get it");

@@ -60,7 +60,7 @@ void Llvm::Compile()
         {
         }
 
-        void PreOrderVisit(BasicBlock * block) const
+        void PreOrderVisit(BasicBlock* block) const
         {
             // TODO-LLVM: finret basic blocks
             if (block->bbJumpKind == BBJ_EHFINALLYRET)
@@ -68,21 +68,18 @@ void Llvm::Compile()
                 m_llvm->failFunctionCompilation();
             }
 
-            m_llvm->startImportingBasicBlock(block);
-
-            llvm::BasicBlock* entry = m_llvm->getLLVMBasicBlockForBlock(block);
-            m_llvm->_builder.SetInsertPoint(entry);
-            for (GenTree* node : LIR::AsRange(block))
-            {
-                m_llvm->startImportingNode();
-                m_llvm->visitNode(node);
-            }
-            m_llvm->endImportingBasicBlock(block);
+            m_llvm->generateBlock(block);
         }
     };
 
     LlvmCompileDomTreeVisitor visitor(_compiler, this);
     visitor.WalkTree();
+
+    // Walk all the exceptional code blocks and generate them, since they don't appear in the normal flow graph.
+    for (Compiler::AddCodeDsc* add = _compiler->fgGetAdditionalCodeDescriptors(); add != nullptr; add = add->acdNext)
+    {
+        generateBlock(add->acdDstBlk);
+    }
 
     fillPhis();
 
@@ -113,7 +110,7 @@ void Llvm::generateProlog()
 
     initializeLocals();
 
-    llvm::BasicBlock* block0 = getLLVMBasicBlockForBlock(_compiler->fgFirstBB);
+    llvm::BasicBlock* block0 = getFirstLlvmBlockForBlock(_compiler->fgFirstBB);
     _prologBuilder.SetInsertPoint(_prologBuilder.CreateBr(block0));
     _builder.SetInsertPoint(block0);
 }
@@ -223,32 +220,50 @@ void Llvm::initializeLocals()
     }
 }
 
-void Llvm::startImportingBasicBlock(BasicBlock* block)
+void Llvm::generateBlock(BasicBlock* block)
 {
     JITDUMP("\n=============== Generating ");
     JITDUMPEXEC(block->dspBlockHeader(_compiler, /* showKind */ true, /* showFlags */ true));
 
-    _currentBlock = block;
-}
+    llvm::BasicBlock* llvmBlock = getFirstLlvmBlockForBlock(block);
 
-void Llvm::endImportingBasicBlock(BasicBlock* block)
-{
-    if ((block->bbJumpKind == BBJ_NONE) && block->bbNext != nullptr)
+    _currentBlock = block;
+    _builder.SetInsertPoint(llvmBlock);
+
+    for (GenTree* node : LIR::AsRange(block))
     {
-        _builder.CreateBr(getLLVMBasicBlockForBlock(block->bbNext));
-        return;
+        startImportingNode();
+        visitNode(node);
     }
-    if ((block->bbJumpKind == BBJ_ALWAYS) && block->bbJumpDest != nullptr)
+
+    switch (block->bbJumpKind)
     {
-        _builder.CreateBr(getLLVMBasicBlockForBlock(block->bbJumpDest));
-        return;
+        case BBJ_NONE:
+            _builder.CreateBr(getFirstLlvmBlockForBlock(block->bbNext));
+            break;
+        case BBJ_ALWAYS:
+            _builder.CreateBr(getFirstLlvmBlockForBlock(block->bbJumpDest));
+            break;
+        case BBJ_THROW:
+            _builder.CreateUnreachable();
+        default:
+            // TODO-LLVM: other jump kinds.
+            break;
     }
-    if ((block->bbJumpKind == BBJ_THROW))
+
+    llvm::BasicBlock* lastLlvmBlock = _builder.GetInsertBlock();
+    if (lastLlvmBlock != llvmBlock)
     {
-        _builder.CreateUnreachable();
-        return;
+        setLastLlvmBlockForBlock(block, lastLlvmBlock);
+
+#ifdef DEBUG
+        llvm::StringRef blockName = llvmBlock->getName();
+        for (unsigned idx = 1; llvmBlock != lastLlvmBlock->getNextNode(); llvmBlock = llvmBlock->getNextNode(), idx++)
+        {
+            llvmBlock->setName(blockName + "." + llvm::Twine(idx));
+        }
+#endif // DEBUG
     }
-    //TODO: other jump kinds
 }
 
 void Llvm::fillPhis()
@@ -260,8 +275,9 @@ void Llvm::fillPhis()
         for (GenTreePhi::Use& use : phiPair.irPhiNode->Uses())
         {
             GenTreePhiArg* phiArg = use.GetNode()->AsPhiArg();
-            unsigned       lclNum = phiArg->GetLclNum();
-            unsigned       ssaNum = phiArg->GetSsaNum();
+            unsigned lclNum = phiArg->GetLclNum();
+            unsigned ssaNum = phiArg->GetSsaNum();
+            llvm::BasicBlock* llvmPredBlock = getLastLlvmBlockForBlock(phiArg->gtPredBB);
 
             Value* localPhiArg = _localsMap[{lclNum, ssaNum}];
             Value* phiRealArgValue;
@@ -271,19 +287,16 @@ void Llvm::fillPhis()
                 // This cast is needed when
                 // 1) The phi arg real type is short and the definition is the actual longer type, e.g. for bool/int
                 // 2) There is a pointer difference, e.g. i8* v i32* and perhaps different levels of indirection: i8** and i8*
-                llvm::BasicBlock::iterator phiInsertPoint = _builder.GetInsertPoint();
-                llvm::BasicBlock* phiBlock = _builder.GetInsertBlock();
-                Instruction* predBlockTerminator = getLLVMBasicBlockForBlock(phiArg->gtPredBB)->getTerminator();
-
-                _builder.SetInsertPoint(predBlockTerminator);
+                //
+                _builder.SetInsertPoint(llvmPredBlock->getTerminator());
                 phiRealArgValue = _builder.Insert(castRequired);
-                _builder.SetInsertPoint(phiBlock, phiInsertPoint);
             }
             else
             {
                 phiRealArgValue = localPhiArg;
             }
-            llvmPhiNode->addIncoming(phiRealArgValue, getLLVMBasicBlockForBlock(phiArg->gtPredBB));
+
+            llvmPhiNode->addIncoming(phiRealArgValue, llvmPredBlock);
         }
     }
 }
@@ -420,8 +433,11 @@ void Llvm::startImportingNode()
 
 void Llvm::visitNode(GenTree* node)
 {
+#ifdef DEBUG
     JITDUMPEXEC(_compiler->gtDispLIRNode(node, "Generating: "));
-    INDEBUG(auto lastInstrIter = --_builder.GetInsertPoint());
+    auto lastInstrIter = --_builder.GetInsertPoint();
+    llvm::BasicBlock* lastLlvmBlock = _builder.GetInsertBlock(); // For instructions spanning multiple blocks.
+#endif // DEBUG
 
     switch (node->OperGet())
     {
@@ -429,7 +445,10 @@ void Llvm::visitNode(GenTree* node)
             buildAdd(node->AsOp());
             break;
         case GT_DIV:
-            buildDiv(node);
+        case GT_MOD:
+        case GT_UDIV:
+        case GT_UMOD:
+            buildDivMod(node);
             break;
         case GT_CALL:
             buildCall(node);
@@ -492,6 +511,9 @@ void Llvm::visitNode(GenTree* node)
         case GT_NULLCHECK:
             buildNullCheck(node->AsIndir());
             break;
+        case GT_ARR_BOUNDS_CHECK:
+            buildBoundsCheck(node->AsBoundsChk());
+            break;
         case GT_OBJ:
         case GT_BLK:
             buildBlk(node->AsBlk());
@@ -533,9 +555,14 @@ void Llvm::visitNode(GenTree* node)
     //
     if (_compiler->verbose)
     {
-        for (auto instrIter = ++lastInstrIter; instrIter != _builder.GetInsertPoint(); ++instrIter)
+        for (llvm::BasicBlock* llvmBlock = lastLlvmBlock; llvmBlock != _builder.GetInsertBlock()->getNextNode();
+             llvmBlock = llvmBlock->getNextNode())
         {
-            instrIter->dump();
+            for (auto instrIter = (llvmBlock == lastLlvmBlock) ? ++lastInstrIter : llvmBlock->begin();
+                 instrIter != llvmBlock->end(); ++instrIter)
+            {
+                instrIter->dump();
+            }
         }
     }
 #endif // DEBUG
@@ -663,37 +690,166 @@ void Llvm::buildAdd(GenTreeOp* node)
     mapGenTreeToValue(node, addValue);
 }
 
-void Llvm::buildDiv(GenTree* node)
+void Llvm::buildDivMod(GenTree* node)
 {
-    Type* targetType = getLlvmTypeForVarType(node->TypeGet());
-    Value* dividendValue = consumeValue(node->gtGetOp1(), targetType);
-    Value* divisorValue  = consumeValue(node->gtGetOp2(), targetType);
-    Value* resultValue   = nullptr;
-    // TODO-LLVM: exception handling.  Div by 0 and INT32/64_MIN / -1
-    switch (node->TypeGet())
-    {
-        case TYP_FLOAT:
-        case TYP_DOUBLE:
-            resultValue = _builder.CreateFDiv(dividendValue, divisorValue);
-            break;
+    GenTree* dividendNode = node->gtGetOp1();
+    GenTree* divisorNode = node->gtGetOp2();
+    Type* llvmType = getLlvmTypeForVarType(node->TypeGet());
+    Value* dividendValue = consumeValue(dividendNode, llvmType);
+    Value* divisorValue  = consumeValue(divisorNode, llvmType);
+    Value* divModValue   = nullptr;
 
-        default:
-            resultValue = _builder.CreateSDiv(dividendValue, divisorValue);
-            break;
+    // TODO-LLVM: use OperExceptions here when enough of upstream is merged.
+    if (varTypeIsIntegral(node))
+    {
+        // First, check for divide by zero.
+        if (!divisorNode->IsIntegralConst() || divisorNode->IsIntegralConst(0))
+        {
+            Value* isDivisorZeroValue =
+                _builder.CreateCmp(llvm::CmpInst::ICMP_EQ, divisorValue, llvm::ConstantInt::get(llvmType, 0));
+            emitJumpToThrowHelper(isDivisorZeroValue, SCK_DIV_BY_ZERO);
+        }
+
+        // Second, check for "INT_MIN / -1" (which throws ArithmeticException).
+        if (node->OperIs(GT_DIV, GT_MOD) && (!divisorNode->IsIntegralConst() || divisorNode->IsIntegralConst(-1)))
+        {
+            int64_t minDividend = node->TypeIs(TYP_LONG) ? INT64_MIN : INT32_MIN;
+            if (!dividendNode->IsIntegralConst() || (dividendNode->AsIntConCommon()->IntegralValue() == minDividend))
+            {
+                Value* isDivisorMinusOneValue =
+                    _builder.CreateCmp(llvm::CmpInst::ICMP_EQ, divisorValue, llvm::ConstantInt::get(llvmType, -1));
+                Value* isDividendMinValue = _builder.CreateCmp(llvm::CmpInst::ICMP_EQ, dividendValue,
+                                                               llvm::ConstantInt::get(llvmType, minDividend));
+                Value* isOverflowValue = _builder.CreateAnd(isDivisorMinusOneValue, isDividendMinValue);
+                emitJumpToThrowHelper(isOverflowValue, SCK_ARITH_EXCPN);
+            }
+        }
     }
 
-    mapGenTreeToValue(node, resultValue);
+    switch (node->OperGet())
+    {
+        case GT_DIV:
+            divModValue = varTypeIsFloating(node) ? _builder.CreateFDiv(dividendValue, divisorValue)
+                                                  : _builder.CreateSDiv(dividendValue, divisorValue);
+            break;
+        case GT_MOD:
+            divModValue = varTypeIsFloating(node) ? _builder.CreateFRem(dividendValue, divisorValue)
+                                                  : _builder.CreateSRem(dividendValue, divisorValue);
+            break;
+        case GT_UDIV:
+            divModValue = _builder.CreateUDiv(dividendValue, divisorValue);
+            break;
+        case GT_UMOD:
+            divModValue = _builder.CreateURem(dividendValue, divisorValue);
+            break;
+        default:
+            unreached();
+    }
+
+    mapGenTreeToValue(node, divModValue);
 }
 
 void Llvm::buildCast(GenTreeCast* cast)
 {
     var_types castFromType = genActualType(cast->CastOp());
     var_types castToType = cast->CastToType();
-    Value* castFromValue = consumeValue(cast->CastOp(), getLlvmTypeForVarType(castFromType));
-    Value* castValue = nullptr;
     Type* castToLlvmType = getLlvmTypeForVarType(castToType);
+    Type* castFromLlvmType = getLlvmTypeForVarType(castFromType);
+    Value* castFromValue = consumeValue(cast->CastOp(), castFromLlvmType);
+    Value* castValue = nullptr;
 
-    // TODO-LLVM: handle checked ("gtOverflow") casts.
+    if (cast->gtOverflow())
+    {
+        Value* isOverflowValue;
+        if (varTypeIsFloating(castFromType))
+        {
+            // Algorithm and values taken verbatim from "utils.cpp", 'Casting from floating point to integer types',
+            // with the modification to produce "!isNotOverflow" value directly (via condition reversal).
+            double lowerBound;
+            double upperBound;
+            llvm::CmpInst::Predicate lowerCond = llvm::CmpInst::FCMP_ULE;
+            llvm::CmpInst::Predicate upperCond = llvm::CmpInst::FCMP_UGE;
+            switch (castToType)
+            {
+                case TYP_BYTE:
+                    lowerBound = -129.0;
+                    upperBound = 128.0;
+                    break;
+                case TYP_BOOL:
+                case TYP_UBYTE:
+                    lowerBound = -1.0;
+                    upperBound = 256.0;
+                    break;
+                case TYP_SHORT:
+                    lowerBound = -32769.0;
+                    upperBound = 32768.0;
+                    break;
+                case TYP_USHORT:
+                    lowerBound = -1.0;
+                    upperBound = 65536.0;
+                    break;
+                case TYP_INT:
+                    if (castFromType == TYP_FLOAT)
+                    {
+                        lowerCond = llvm::CmpInst::FCMP_ULT;
+                        lowerBound = -2147483648.0;
+                    }
+                    else
+                    {
+                        lowerBound = -2147483649.0;
+                    }
+                    upperBound = 2147483648.0;
+                    break;
+                case TYP_UINT:
+                    lowerBound = -1.0;
+                    upperBound = 4294967296.0;
+                    break;
+                case TYP_LONG:
+                    lowerCond = llvm::CmpInst::FCMP_ULT;
+                    lowerBound = -9223372036854775808.0;
+                    upperBound = 9223372036854775808.0;
+                    break;
+                case TYP_ULONG:
+                    lowerBound = -1.0;
+                    upperBound = 18446744073709551616.0;
+                    break;
+                default:
+                    unreached();
+            }
+
+            Value* lowerBoundValue = llvm::ConstantFP::get(castFromLlvmType, lowerBound);
+            Value* upperBoundValue = llvm::ConstantFP::get(castFromLlvmType, upperBound);
+            Value* lowerTestValue = _builder.CreateCmp(lowerCond, castFromValue, lowerBoundValue);
+            Value* upperTestValue = _builder.CreateCmp(upperCond, castFromValue, upperBoundValue);
+            isOverflowValue = _builder.CreateOr(lowerTestValue, upperTestValue);
+        }
+        else
+        {
+            // There are no checked casts to FP types.
+            assert(varTypeIsIntegral(castFromType) && varTypeIsIntegral(castToType));
+
+            IntegralRange checkedRange = IntegralRange::ForCastInput(cast);
+            int64_t lowerBound = IntegralRange::SymbolicToRealValue(checkedRange.GetLowerBound());
+            int64_t upperBound = IntegralRange::SymbolicToRealValue(checkedRange.GetUpperBound());
+
+            Value* checkedValue = castFromValue;
+            if (lowerBound != 0)
+            {
+                // This "add" checking technique was taken from the IR clang generates for "(l <= x) && (x <= u)".
+                int64_t addDelta = -lowerBound;
+                Value* deltaValue = llvm::ConstantInt::get(castFromLlvmType, addDelta);
+                checkedValue = _builder.CreateAdd(checkedValue, deltaValue);
+
+                upperBound += addDelta;
+            }
+
+            Value* upperBoundValue = llvm::ConstantInt::get(castFromLlvmType, upperBound);
+            isOverflowValue = _builder.CreateCmp(llvm::CmpInst::ICMP_UGT, checkedValue, upperBoundValue);
+        }
+
+        emitJumpToThrowHelper(isOverflowValue, SCK_OVERFLOW);
+    }
+
     switch (castFromType)
     {
         case TYP_INT:
@@ -987,7 +1143,6 @@ void Llvm::buildHelperFuncCall(GenTreeCall* call)
         fgArgTabEntry** argTable = argInfo->ArgTable();
         std::vector<OperandArgNum> sortedArgs = std::vector<OperandArgNum>(argCount);
         OperandArgNum* sortedData = sortedArgs.data();
-        bool requiresShadowStack = helperRequiresShadowStack(call->gtCallMethHnd);
 
         //TODO-LLVM: refactor calling code with user calls.
         for (unsigned i = 0; i < argCount; i++)
@@ -998,12 +1153,13 @@ void Llvm::buildHelperFuncCall(GenTreeCall* call)
             sortedData[argNum] = opAndArg;
         }
 
-        void* pAddr = nullptr;
-
         CorInfoHelpFunc helperNum = _compiler->eeGetHelperNum(call->gtCallMethHnd);
+        void* pAddr = nullptr;
         void* addr = _compiler->compGetHelperFtn(helperNum, &pAddr);
         const char* symbolName = GetMangledSymbolName(addr);
         Function* llvmFunc = _module->getFunction(symbolName);
+
+        bool requiresShadowStack = helperRequiresShadowStack(helperNum);
         if (llvmFunc == nullptr)
         {
             llvmFunc = Function::Create(buildHelperLlvmFunctionType(call, requiresShadowStack), Function::ExternalLinkage, 0U, symbolName, _module);
@@ -1321,13 +1477,23 @@ void Llvm::buildReturn(GenTree* node)
 
 void Llvm::buildJTrue(GenTree* node, Value* opValue)
 {
-    _builder.CreateCondBr(opValue, getLLVMBasicBlockForBlock(_currentBlock->bbJumpDest), getLLVMBasicBlockForBlock(_currentBlock->bbNext));
+    _builder.CreateCondBr(opValue, getFirstLlvmBlockForBlock(_currentBlock->bbJumpDest), getFirstLlvmBlockForBlock(_currentBlock->bbNext));
 }
 
 void Llvm::buildNullCheck(GenTreeIndir* nullCheckNode)
 {
     Value* addrValue = consumeValue(nullCheckNode->Addr(), Type::getInt8PtrTy(_llvmContext));
     emitNullCheckForIndir(nullCheckNode, addrValue);
+}
+
+void Llvm::buildBoundsCheck(GenTreeBoundsChk* boundsCheckNode)
+{
+    Type* checkLlvmType = getLlvmTypeForVarType(genActualType(boundsCheckNode->GetIndex()));
+    Value* indexValue = consumeValue(boundsCheckNode->GetIndex(), checkLlvmType);
+    Value* lengthValue = consumeValue(boundsCheckNode->GetArrayLength(), checkLlvmType);
+
+    Value* indexOutOfRangeValue = _builder.CreateCmp(llvm::CmpInst::ICMP_UGE, indexValue, lengthValue);
+    emitJumpToThrowHelper(indexOutOfRangeValue, boundsCheckNode->gtThrowKind);
 }
 
 void Llvm::storeObjAtAddress(Value* baseAddress, Value* data, StructDesc* structDesc)
@@ -1415,6 +1581,37 @@ void Llvm::emitDoNothingCall()
         _doNothingFunction = Function::Create(FunctionType::get(Type::getVoidTy(_llvmContext), ArrayRef<Type*>(), false), Function::ExternalLinkage, 0U, "llvm.donothing", _module);
     }
     _builder.CreateCall(_doNothingFunction);
+}
+
+void Llvm::emitJumpToThrowHelper(Value* jumpCondValue, SpecialCodeKind throwKind)
+{
+    if (_compiler->fgUseThrowHelperBlocks())
+    {
+        // For code with throw helper blocks, find and use the shared helper block for raising the exception.
+        unsigned throwIndex = _compiler->bbThrowIndex(_currentBlock);
+        BasicBlock* throwBlock = _compiler->fgFindExcptnTarget(throwKind, throwIndex)->acdDstBlk;
+
+        // Jump to the exception-throwing block on error.
+        llvm::BasicBlock* nextLlvmBlock = createInlineLlvmBlock();
+        llvm::BasicBlock* throwLlvmBlock = getFirstLlvmBlockForBlock(throwBlock);
+        _builder.CreateCondBr(jumpCondValue, throwLlvmBlock, nextLlvmBlock);
+        _builder.SetInsertPoint(nextLlvmBlock);
+    }
+    else
+    {
+        // The code to throw the exception will be generated inline; we will jump around it in the non-exception case.
+        llvm::BasicBlock* throwLlvmBlock = createInlineLlvmBlock();
+        llvm::BasicBlock* nextLlvmBlock = createInlineLlvmBlock();
+        _builder.CreateCondBr(jumpCondValue, throwLlvmBlock, nextLlvmBlock);
+
+        _builder.SetInsertPoint(throwLlvmBlock);
+        // TODO-LLVM: actually emit the throw helper.
+        _builder.CreateUnreachable();
+
+        _builder.SetInsertPoint(nextLlvmBlock);
+
+        failFunctionCompilation();
+    }
 }
 
 void Llvm::emitNullCheckForIndir(GenTreeIndir* indir, Value* addrValue)
@@ -1530,26 +1727,335 @@ FunctionType* Llvm::buildHelperLlvmFunctionType(GenTreeCall* call, bool withShad
     return FunctionType::get(retLlvmType, ArrayRef<llvm::Type*>(argVec), false);
 }
 
-bool Llvm::helperRequiresShadowStack(CORINFO_METHOD_HANDLE corinfoMethodHnd)
+bool Llvm::helperRequiresShadowStack(CorInfoHelpFunc helperFunc)
 {
-    //TODO-LLVM: is there a better way to identify managed helpers?
-    //Probably want to lower the math helpers to ordinary GT_CASTs and
-    //handle in the LLVM (as does ILToLLVMImporter) to avoid this overhead
-    return corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_TYPEHANDLE_TO_RUNTIMETYPEHANDLE) ||
-        corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_GVMLOOKUP_FOR_SLOT) ||
-        corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_DBL2INT_OVF) ||
-        corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_DBL2LNG_OVF) ||
-        corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_DBL2UINT_OVF) ||
-        corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_DBL2ULNG_OVF) ||
-        corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_LMOD) ||
-        corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_LDIV) ||
-        corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_LMUL_OVF) ||
-        corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_ULMUL_OVF) ||
-        corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_ULDIV) ||
-        corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_ULMOD) ||
-        corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_OVERFLOW) ||
-        corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_TYPEHANDLE_TO_RUNTIMETYPE) ||
-        corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_THROW_PLATFORM_NOT_SUPPORTED);
+    // TODO-LLVM: communicate this through a Jit-EE API.
+    // Current version of the mappings taken primarily from "tools\aot\ILCompiler.Compiler\Compiler\JitHelper.cs" and
+    // "tools\aot\ILCompiler.RyuJit\JitInterface\CorInfoImpl.RyuJit.cs".
+    switch (helperFunc)
+    {
+        case CORINFO_HELP_DIV:
+        case CORINFO_HELP_MOD:
+        case CORINFO_HELP_UDIV:
+        case CORINFO_HELP_UMOD:
+        case CORINFO_HELP_LMUL_OVF:
+        case CORINFO_HELP_ULMUL_OVF:
+        case CORINFO_HELP_LDIV:
+        case CORINFO_HELP_LMOD:
+        case CORINFO_HELP_ULDIV:
+        case CORINFO_HELP_ULMOD:
+        case CORINFO_HELP_DBL2INT_OVF:
+        case CORINFO_HELP_DBL2LNG_OVF:
+        case CORINFO_HELP_DBL2UINT_OVF:
+        case CORINFO_HELP_DBL2ULNG_OVF:
+            // Implemented in "CoreLib\src\Internal\Runtime\CompilerHelpers\MathHelpers.cs".
+            return true;
+
+        case CORINFO_HELP_LLSH:
+        case CORINFO_HELP_LRSH:
+        case CORINFO_HELP_LRSZ:
+        case CORINFO_HELP_LMUL:
+        case CORINFO_HELP_LNG2DBL:
+        case CORINFO_HELP_ULNG2DBL:
+        case CORINFO_HELP_DBL2INT:
+        case CORINFO_HELP_DBL2LNG:
+        case CORINFO_HELP_DBL2UINT:
+        case CORINFO_HELP_DBL2ULNG:
+        case CORINFO_HELP_FLTREM:
+        case CORINFO_HELP_DBLREM:
+        case CORINFO_HELP_FLTROUND:
+        case CORINFO_HELP_DBLROUND:
+            // Implemented in "Runtime\MathHelpers.cpp".
+            return false;
+
+        case CORINFO_HELP_NEWFAST:
+        case CORINFO_HELP_NEWSFAST:
+        case CORINFO_HELP_NEWSFAST_FINALIZE:
+        case CORINFO_HELP_NEWSFAST_ALIGN8:
+        case CORINFO_HELP_NEWSFAST_ALIGN8_VC:
+        case CORINFO_HELP_NEWSFAST_ALIGN8_FINALIZE:
+        case CORINFO_HELP_NEW_MDARR:
+        case CORINFO_HELP_NEW_MDARR_NONVARARG:
+        case CORINFO_HELP_NEWARR_1_DIRECT:
+        case CORINFO_HELP_NEWARR_1_OBJ:
+        case CORINFO_HELP_NEWARR_1_VC:
+        case CORINFO_HELP_NEWARR_1_ALIGN8:
+            // Allocators, implemented in "Runtime\portable.cpp".
+            return false;
+
+        case CORINFO_HELP_STRCNS:
+        case CORINFO_HELP_STRCNS_CURRENT_MODULE:
+        case CORINFO_HELP_INITCLASS:
+        case CORINFO_HELP_INITINSTCLASS:
+            // NYI in NativeAOT.
+            unreached();
+
+        case CORINFO_HELP_ISINSTANCEOFINTERFACE:
+        case CORINFO_HELP_ISINSTANCEOFARRAY:
+        case CORINFO_HELP_ISINSTANCEOFCLASS:
+        case CORINFO_HELP_ISINSTANCEOFANY:
+        case CORINFO_HELP_CHKCASTINTERFACE:
+        case CORINFO_HELP_CHKCASTARRAY:
+        case CORINFO_HELP_CHKCASTCLASS:
+        case CORINFO_HELP_CHKCASTANY:
+        case CORINFO_HELP_CHKCASTCLASS_SPECIAL:
+        case CORINFO_HELP_BOX:
+        case CORINFO_HELP_BOX_NULLABLE:
+        case CORINFO_HELP_UNBOX:
+        case CORINFO_HELP_UNBOX_NULLABLE:
+        case CORINFO_HELP_ARRADDR_ST:
+        case CORINFO_HELP_LDELEMA_REF:
+            // Runtime exports, i. e. implemented in managed code with an unmanaged signature.
+            // See "Runtime.Base\src\System\Runtime\RuntimeExports.cs", "Runtime.Base\src\System\Runtime\TypeCast.cs",
+            return false;
+
+        case CORINFO_HELP_GETREFANY:
+            // Implemented in "CoreLib\src\Internal\Runtime\CompilerHelpers\TypedReferenceHelpers.cs".
+            return true;
+
+        case CORINFO_HELP_THROW:
+        case CORINFO_HELP_RETHROW:
+            // For WASM, currently implemented in the bootstrapper...
+            return false;
+
+        case CORINFO_HELP_USER_BREAKPOINT:
+            // Implemented in "Runtime\MiscHelpers.cpp".
+            return false;
+
+        case CORINFO_HELP_RNGCHKFAIL:
+        case CORINFO_HELP_OVERFLOW:
+        case CORINFO_HELP_THROWDIVZERO:
+        case CORINFO_HELP_THROWNULLREF:
+            // Implemented in "Runtime.Base\src\System\ThrowHelpers.cs".
+            // Note on "CORINFO_HELP_THROWNULLREF": ***this helpers has been deleted upstream***.
+            // We need it. When merging upstream, revert its deletion!
+            return true;
+
+        case CORINFO_HELP_VERIFICATION:
+            // Verification is in the process of being deleted from RyuJit.
+            unreached();
+
+        case CORINFO_HELP_FAIL_FAST:
+            // Implemented in "Runtime\EHHelpers.cpp".
+            return false;
+
+        case CORINFO_HELP_METHOD_ACCESS_EXCEPTION:
+        case CORINFO_HELP_FIELD_ACCESS_EXCEPTION:
+        case CORINFO_HELP_CLASS_ACCESS_EXCEPTION:
+            // NYI in NativeAOT.
+            unreached();
+
+        case CORINFO_HELP_ENDCATCH:
+            // Not used with funclet-based EH.
+            unreached();
+
+        case CORINFO_HELP_MON_ENTER:
+        case CORINFO_HELP_MON_EXIT:
+        case CORINFO_HELP_MON_ENTER_STATIC:
+        case CORINFO_HELP_MON_EXIT_STATIC:
+            // Implemented in "CoreLib\src\Internal\Runtime\CompilerHelpers\SynchronizedMethodHelpers.cs".
+            return true;
+
+        case CORINFO_HELP_GETCLASSFROMMETHODPARAM:
+        case CORINFO_HELP_GETSYNCFROMCLASSHANDLE:
+        case CORINFO_HELP_STOP_FOR_GC:
+            // Apparently NYI in NativeAOT.
+            unreached();
+
+        case CORINFO_HELP_POLL_GC:
+            // Implemented in "Runtime\portable.cpp".
+            return false;
+
+        case CORINFO_HELP_STRESS_GC:
+        case CORINFO_HELP_CHECK_OBJ:
+            // Debug-only helpers NYI in NativeAOT.
+            unreached();
+
+        case CORINFO_HELP_ASSIGN_REF:
+        case CORINFO_HELP_CHECKED_ASSIGN_REF:
+        case CORINFO_HELP_ASSIGN_REF_ENSURE_NONHEAP:
+        case CORINFO_HELP_ASSIGN_BYREF:
+            // Write barriers, implemented in "Runtime\portable.cpp".
+            return false;
+
+        case CORINFO_HELP_ASSIGN_STRUCT:
+        case CORINFO_HELP_GETFIELD8:
+        case CORINFO_HELP_SETFIELD8:
+        case CORINFO_HELP_GETFIELD16:
+        case CORINFO_HELP_SETFIELD16:
+        case CORINFO_HELP_GETFIELD32:
+        case CORINFO_HELP_SETFIELD32:
+        case CORINFO_HELP_GETFIELD64:
+        case CORINFO_HELP_SETFIELD64:
+        case CORINFO_HELP_GETFIELDOBJ:
+        case CORINFO_HELP_SETFIELDOBJ:
+        case CORINFO_HELP_GETFIELDSTRUCT:
+        case CORINFO_HELP_SETFIELDSTRUCT:
+        case CORINFO_HELP_GETFIELDFLOAT:
+        case CORINFO_HELP_SETFIELDFLOAT:
+        case CORINFO_HELP_GETFIELDDOUBLE:
+        case CORINFO_HELP_SETFIELDDOUBLE:
+        case CORINFO_HELP_GETFIELDADDR:
+        case CORINFO_HELP_GETSTATICFIELDADDR_TLS:
+        case CORINFO_HELP_GETGENERICS_GCSTATIC_BASE:
+        case CORINFO_HELP_GETGENERICS_NONGCSTATIC_BASE:
+        case CORINFO_HELP_GETSHARED_GCSTATIC_BASE:
+        case CORINFO_HELP_GETSHARED_NONGCSTATIC_BASE:
+        case CORINFO_HELP_GETSHARED_GCSTATIC_BASE_NOCTOR:
+        case CORINFO_HELP_GETSHARED_NONGCSTATIC_BASE_NOCTOR:
+        case CORINFO_HELP_GETSHARED_GCSTATIC_BASE_DYNAMICCLASS:
+        case CORINFO_HELP_GETSHARED_NONGCSTATIC_BASE_DYNAMICCLASS:
+        case CORINFO_HELP_CLASSINIT_SHARED_DYNAMICCLASS:
+        case CORINFO_HELP_GETGENERICS_GCTHREADSTATIC_BASE:
+        case CORINFO_HELP_GETGENERICS_NONGCTHREADSTATIC_BASE:
+        case CORINFO_HELP_GETSHARED_GCTHREADSTATIC_BASE:
+        case CORINFO_HELP_GETSHARED_NONGCTHREADSTATIC_BASE:
+        case CORINFO_HELP_GETSHARED_GCTHREADSTATIC_BASE_NOCTOR:
+        case CORINFO_HELP_GETSHARED_NONGCTHREADSTATIC_BASE_NOCTOR:
+        case CORINFO_HELP_GETSHARED_GCTHREADSTATIC_BASE_DYNAMICCLASS:
+        case CORINFO_HELP_GETSHARED_NONGCTHREADSTATIC_BASE_DYNAMICCLASS:
+            // Not used in NativeAOT (or at all in some cases).
+            unreached();
+
+        case CORINFO_HELP_DBG_IS_JUST_MY_CODE:
+        case CORINFO_HELP_PROF_FCN_ENTER:
+        case CORINFO_HELP_PROF_FCN_LEAVE:
+        case CORINFO_HELP_PROF_FCN_TAILCALL:
+        case CORINFO_HELP_BBT_FCN_ENTER:
+            // NYI in NativeAOT.
+            unreached();
+
+        case CORINFO_HELP_PINVOKE_CALLI:
+            // TODO-LLVM: this is not a real "helper"; investigate what needs to be done to enable it.
+            failFunctionCompilation();
+
+        case CORINFO_HELP_TAILCALL:
+            // NYI in NativeAOT.
+            unreached();
+
+        case CORINFO_HELP_GETCURRENTMANAGEDTHREADID:
+            // Implemented as "Environment.CurrentManagedThreadId".
+            return true;
+
+        case CORINFO_HELP_INIT_PINVOKE_FRAME:
+            // Part of the inlined PInvoke frame construction feature which is NYI in NativeAOT.
+            unreached();
+
+        case CORINFO_HELP_MEMSET:
+        case CORINFO_HELP_MEMCPY:
+            // Implemented as plain "memset"/"memcpy".
+            return false;
+
+        case CORINFO_HELP_RUNTIMEHANDLE_METHOD:
+        case CORINFO_HELP_RUNTIMEHANDLE_METHOD_LOG:
+        case CORINFO_HELP_RUNTIMEHANDLE_CLASS:
+        case CORINFO_HELP_RUNTIMEHANDLE_CLASS_LOG:
+            // Not used in NativeAOT.
+            unreached();
+
+        case CORINFO_HELP_TYPEHANDLE_TO_RUNTIMETYPE:
+        case CORINFO_HELP_TYPEHANDLE_TO_RUNTIMETYPE_MAYBENULL:
+            // Implemented in "CoreLib\src\Internal\Runtime\CompilerHelpers\TypedReferenceHelpers.cs".
+            return true;
+
+        case CORINFO_HELP_METHODDESC_TO_STUBRUNTIMEMETHOD:
+        case CORINFO_HELP_FIELDDESC_TO_STUBRUNTIMEFIELD:
+        case CORINFO_HELP_TYPEHANDLE_TO_RUNTIMETYPEHANDLE:
+            // Implemented in "CoreLib\src\Internal\Runtime\CompilerHelpers\LdTokenHelpers.cs".
+            return true;
+
+        case CORINFO_HELP_TYPEHANDLE_TO_RUNTIMETYPEHANDLE_MAYBENULL:
+            // Implemented in "CoreLib\src\Internal\Runtime\CompilerHelpers\TypedReferenceHelpers.cs".
+            return true;
+
+        case CORINFO_HELP_ARE_TYPES_EQUIVALENT:
+            // Another runtime export from "TypeCast.cs".
+            return false;
+
+        case CORINFO_HELP_VIRTUAL_FUNC_PTR:
+        case CORINFO_HELP_READYTORUN_NEW:
+        case CORINFO_HELP_READYTORUN_NEWARR_1:
+            // Not used in NativeAOT.
+            unreached();
+
+        case CORINFO_HELP_READYTORUN_ISINSTANCEOF:
+        case CORINFO_HELP_READYTORUN_CHKCAST:
+        case CORINFO_HELP_READYTORUN_STATIC_BASE:
+        case CORINFO_HELP_READYTORUN_VIRTUAL_FUNC_PTR:
+        case CORINFO_HELP_READYTORUN_GENERIC_HANDLE:
+        case CORINFO_HELP_READYTORUN_DELEGATE_CTOR:
+        case CORINFO_HELP_READYTORUN_GENERIC_STATIC_BASE:
+            // Not static methods; currently we "inline" them for LLVM.
+            // Should be "unreached" once all are handled.
+            failFunctionCompilation();
+
+        case CORINFO_HELP_EE_PRESTUB:
+        case CORINFO_HELP_EE_PRECODE_FIXUP:
+        case CORINFO_HELP_EE_PINVOKE_FIXUP:
+        case CORINFO_HELP_EE_VSD_FIXUP:
+        case CORINFO_HELP_EE_EXTERNAL_FIXUP:
+        case CORINFO_HELP_EE_VTABLE_FIXUP:
+        case CORINFO_HELP_EE_REMOTING_THUNK:
+        case CORINFO_HELP_EE_PERSONALITY_ROUTINE:
+        case CORINFO_HELP_EE_PERSONALITY_ROUTINE_FILTER_FUNCLET:
+            // NGEN/R2R-specific marker helpers.
+            unreached();
+
+        case CORINFO_HELP_ASSIGN_REF_EAX:
+        case CORINFO_HELP_ASSIGN_REF_EBX:
+        case CORINFO_HELP_ASSIGN_REF_ECX:
+        case CORINFO_HELP_ASSIGN_REF_ESI:
+        case CORINFO_HELP_ASSIGN_REF_EDI:
+        case CORINFO_HELP_ASSIGN_REF_EBP:
+        case CORINFO_HELP_CHECKED_ASSIGN_REF_EAX:
+        case CORINFO_HELP_CHECKED_ASSIGN_REF_EBX:
+        case CORINFO_HELP_CHECKED_ASSIGN_REF_ECX:
+        case CORINFO_HELP_CHECKED_ASSIGN_REF_ESI:
+        case CORINFO_HELP_CHECKED_ASSIGN_REF_EDI:
+        case CORINFO_HELP_CHECKED_ASSIGN_REF_EBP:
+            // x86-specific write barriers.
+            unreached();
+
+        case CORINFO_HELP_LOOP_CLONE_CHOICE_ADDR:
+        case CORINFO_HELP_DEBUG_LOG_LOOP_CLONING:
+            // Debug-only functionality NYI in NativeAOT.
+            unreached();
+
+        case CORINFO_HELP_THROW_ARGUMENTEXCEPTION:
+        case CORINFO_HELP_THROW_ARGUMENTOUTOFRANGEEXCEPTION:
+        case CORINFO_HELP_THROW_NOT_IMPLEMENTED:
+        case CORINFO_HELP_THROW_PLATFORM_NOT_SUPPORTED:
+            // Implemented in "Runtime.Base\src\System\ThrowHelpers.cs".
+            return true;
+
+        case CORINFO_HELP_THROW_TYPE_NOT_SUPPORTED:
+            // Dead code.
+            unreached();
+
+        case CORINFO_HELP_JIT_PINVOKE_BEGIN:
+        case CORINFO_HELP_JIT_PINVOKE_END:
+        case CORINFO_HELP_JIT_REVERSE_PINVOKE_ENTER:
+        case CORINFO_HELP_JIT_REVERSE_PINVOKE_ENTER_TRACK_TRANSITIONS:
+        case CORINFO_HELP_JIT_REVERSE_PINVOKE_EXIT:
+        case CORINFO_HELP_JIT_REVERSE_PINVOKE_EXIT_TRACK_TRANSITIONS:
+            // [R]PI helpers, implemented in "Runtime\thread.cpp".
+            return false;
+
+        case CORINFO_HELP_GVMLOOKUP_FOR_SLOT:
+            // TODO-LLVM: fix.
+            failFunctionCompilation();
+
+        case CORINFO_HELP_STACK_PROBE:
+        case CORINFO_HELP_PATCHPOINT:
+        case CORINFO_HELP_CLASSPROFILE32:
+        case CORINFO_HELP_CLASSPROFILE64:
+        case CORINFO_HELP_PARTIAL_COMPILATION_PATCHPOINT:
+            unreached();
+
+        default:
+            // Add new helpers to the above as necessary.
+            unreached();
+    }
 }
 
 Value* Llvm::getOrCreateExternalSymbol(const char* symbolName, Type* symbolType)
@@ -1758,18 +2264,58 @@ llvm::DILocation* Llvm::createDebugFunctionAndDiLocation(DebugMetadata debugMeta
     return llvm::DILocation::get(_llvmContext, lineNo, 0, _debugFunction);
 }
 
-llvm::BasicBlock* Llvm::getLLVMBasicBlockForBlock(BasicBlock* block)
+llvm::BasicBlock* Llvm::createInlineLlvmBlock()
 {
+    llvm::BasicBlock* inlineLlvmBlock =
+        llvm::BasicBlock::Create(_llvmContext, "", _function, _builder.GetInsertBlock()->getNextNode());
+
+    return inlineLlvmBlock;
+}
+
+llvm::BasicBlock* Llvm::getFirstLlvmBlockForBlock(BasicBlock* block)
+{
+    assert(block != nullptr);
+
     llvm::BasicBlock* llvmBlock;
-    if (!_blkToLlvmBlkVectorMap.Lookup(block, &llvmBlock))
+    LlvmBlockRange llvmBlockRange;
+    if (!_blkToLlvmBlksMap.Lookup(block, &llvmBlockRange))
     {
         unsigned bbNum = block->bbNum;
-        llvmBlock = llvm::BasicBlock::Create(_llvmContext, (bbNum >= 10) ? ("BB" + llvm::Twine(bbNum))
-                                                                         : ("BB0" + llvm::Twine(bbNum)), _function);
-        _blkToLlvmBlkVectorMap.Set(block, llvmBlock);
+        llvmBlock = llvm::BasicBlock::Create(
+            _llvmContext, (bbNum >= 10) ? ("BB" + llvm::Twine(bbNum)) : ("BB0" + llvm::Twine(bbNum)), _function);
+
+        _blkToLlvmBlksMap.Set(block, {llvmBlock, llvmBlock});
+    }
+    else
+    {
+        llvmBlock = llvmBlockRange.FirstBlock;
     }
 
     return llvmBlock;
+}
+
+//------------------------------------------------------------------------
+// getLastLlvmBlockForBlock: Get the last LLVM basic block for "block".
+//
+// During code generation, a given IR block can be split into multiple
+// LLVM blocks, due to, e. g., inline branches. This function returns
+// the last of these generated blocks. Note it is only available after
+// "block" has been fully generated.
+//
+// Arguments:
+//    block - The IR block
+//
+// Return Value:
+//    LLVM block containing "block"'s terminator instruction.
+//
+llvm::BasicBlock* Llvm::getLastLlvmBlockForBlock(BasicBlock* block)
+{
+    return _blkToLlvmBlksMap[block].LastBlock;
+}
+
+void Llvm::setLastLlvmBlockForBlock(BasicBlock* block, llvm::BasicBlock* llvmBlock)
+{
+    _blkToLlvmBlksMap[block].LastBlock = llvmBlock;
 }
 
 bool Llvm::isLlvmFrameLocal(LclVarDsc* varDsc)
