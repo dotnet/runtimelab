@@ -17,11 +17,7 @@
     <_hostOS Condition="$([MSBuild]::IsOSPlatform('ILLUMOS'))">illumos</_hostOS>
     <_hostOS Condition="$([MSBuild]::IsOSPlatform('SOLARIS'))">Solaris</_hostOS>
     <_hostOS Condition="$([MSBuild]::IsOSPlatform('WINDOWS'))">windows</_hostOS>
-<<<<<<< HEAD
-    <BuildOS>$(_hostOS)</BuildOS>
-=======
     <HostOS>$(_hostOS)</HostOS>
->>>>>>> 562aea2cb7d449d6e2e697df8cac56b599ec564d
     <_hostOS Condition="'$(TargetOS)' == 'Browser'">Browser</_hostOS>
     <TargetOS Condition="'$(TargetOS)' == ''">$(_hostOS)</TargetOS>
     <TargetsMobile Condition="'$(TargetOS)' == 'iOS' or '$(TargetOS)' == 'iOSSimulator' or '$(TargetOS)' == 'MacCatalyst' or '$(TargetOS)' == 'tvOS' or '$(TargetOS)' == 'tvOSSimulator' or '$(TargetOS)' == 'Android' or ('$(TargetOS)' == 'Browser' and '$(RuntimeFlavor)' == 'mono')">true</TargetsMobile>

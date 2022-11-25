@@ -68,6 +68,7 @@ namespace ILCompiler.DependencyAnalysis
                     arm64Emitter.Builder.AddSymbol(this);
                     return arm64Emitter.Builder.ToObjectData();
 
+#if !READYTORUN
                 case TargetArchitecture.Wasm32:
                 case TargetArchitecture.Wasm64:
                     Wasm.WasmEmitter wasmEmitter = new Wasm.WasmEmitter(factory, relocsOnly);
@@ -75,6 +76,7 @@ namespace ILCompiler.DependencyAnalysis
                     EmitCode(factory, ref wasmEmitter, relocsOnly);
 
                     return wasmEmitter.Builder.ToObjectData();
+#endif
 
                 default:
                     throw new NotImplementedException();
@@ -85,6 +87,8 @@ namespace ILCompiler.DependencyAnalysis
         protected abstract void EmitCode(NodeFactory factory, ref X86.X86Emitter instructionEncoder, bool relocsOnly);
         protected abstract void EmitCode(NodeFactory factory, ref ARM.ARMEmitter instructionEncoder, bool relocsOnly);
         protected abstract void EmitCode(NodeFactory factory, ref ARM64.ARM64Emitter instructionEncoder, bool relocsOnly);
+#if !READYTORUN
         protected abstract void EmitCode(NodeFactory factory, ref Wasm.WasmEmitter instructionEncoder, bool relocsOnly);
+#endif
     }
 }

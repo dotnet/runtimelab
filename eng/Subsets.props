@@ -54,7 +54,7 @@
     <!-- We always build the NativeAOT variant out of the NativeAOT branch -->
     <!-- In the future, this can be exposed as a runtimeVariant, same as Mono's LLVMJIT or LLVMAOT-->
     <ClrNativeAot Condition="'$(BuildAllConfigurations)' != 'true'">true</ClrNativeAot>
-    <NativeAotSupported Condition="('$(TargetOS)' == 'windows' or '$(TargetOS)' == 'linux' or '$(TargetOS)' == 'OSX') and ('$(TargetArchitecture)' == 'x64' or '$(TargetArchitecture)' == 'arm64') and ('$(TargetOS)' != 'OSX' or '$(TargetArchitecture)' != 'arm64') and ('$(__DistroRid)' != 'linux-musl-arm64')">true</NativeAotSupported>
+    <NativeAotSupported Condition="(('$(TargetOS)' == 'windows' or '$(TargetOS)' == 'linux' or '$(TargetOS)' == 'OSX') and ('$(TargetArchitecture)' == 'x64' or '$(TargetArchitecture)' == 'arm64') and ('$(TargetOS)' != 'OSX' or '$(TargetArchitecture)' != 'arm64') and ('$(__DistroRid)' != 'linux-musl-arm64')) or ('$(TargetOS)' == 'Browser' and '$(TargetArchitecture)' == 'wasm')">true</NativeAotSupported>
   </PropertyGroup>
 
   <PropertyGroup>
@@ -261,8 +261,8 @@
                              $(CoreClrProjectRoot)tools\r2rdump\R2RDump.csproj;
                              $(CoreClrProjectRoot)tools\dotnet-pgo\dotnet-pgo.csproj;
                              $(CoreClrProjectRoot)tools\aot\ILCompiler\repro\repro.csproj;
-                             $(CoreClrProjectRoot)tools\r2rtest\R2RTest.csproj" Category="clr" Condition="'$(DotNetBuildFromSource)' != 'true'"/>
-    <ProjectToBuild Include="$(CoreClrProjectRoot)tools\aot\crossgen2\crossgen2.csproj" Category="clr" />
+                             $(CoreClrProjectRoot)tools\r2rtest\R2RTest.csproj" Category="clr" Condition="'$(DotNetBuildFromSource)' != 'true' and '$(TargetArchitecture)' != 'wasm'" />
+    <ProjectToBuild Include="$(CoreClrProjectRoot)tools\aot\crossgen2\crossgen2.csproj" Category="clr" Condition="'$(TargetArchitecture)' != 'wasm'" />
     <ProjectToBuild Include="$(CoreClrProjectRoot)tools\aot\ILCompiler.Build.Tasks\ILCompiler.Build.Tasks.csproj" Category="clr" Condition="'$(NativeAotSupported)' == 'true'" />
     <ProjectToBuild Include="$(CoreClrProjectRoot)tools\aot\ILCompiler\ILCompiler.csproj" Category="clr" Condition="'$(NativeAotSupported)' == 'true'" />
     <ProjectToBuild Include="$(CoreClrProjectRoot)nativeaot\BuildIntegration\BuildIntegration.proj" Category="clr" Condition="'$(NativeAotSupported)' == 'true'" />
@@ -292,19 +292,6 @@
     <ProjectToBuild Include="$(CoreClrProjectRoot)tools\aot\ObjWriter\objwriter.proj" Category="clr" />
   </ItemGroup>
 
-<<<<<<< HEAD
-  <ItemGroup Condition="$(_subset.Contains('+nativeaot.ilc+'))">
-    <ProjectToBuild Include="$(CoreClrProjectRoot)tools\aot\ILCompiler\ILCompiler.csproj" Category="clr" />
-    <ProjectToBuild Include="$(CoreClrProjectRoot)tools\aot\ILCompiler\repro\repro.csproj" Category="clr" />
-  </ItemGroup>
-
-  <ItemGroup Condition="$(_subset.Contains('+nativeaot.build+'))">
-    <ProjectToBuild Include="$(CoreClrProjectRoot)tools\aot\ILCompiler.Build.Tasks\ILCompiler.Build.Tasks.csproj" Category="clr" />
-    <ProjectToBuild Include="$(CoreClrProjectRoot)nativeaot\BuildIntegration\BuildIntegration.proj" Category="clr" />
-  </ItemGroup>
-
-=======
->>>>>>> 562aea2cb7d449d6e2e697df8cac56b599ec564d
   <!-- Mono sets -->
   <ItemGroup Condition="$(_subset.Contains('+mono.llvm+')) or $(_subset.Contains('+mono.aotcross+')) or '$(TargetOS)' == 'iOS' or '$(TargetOS)' == 'iOSSimulator' or '$(TargetOS)' == 'tvOS' or '$(TargetOS)' == 'tvOSSimulator' or '$(TargetOS)' == 'MacCatalyst' or '$(TargetOS)' == 'Android' or ('$(TargetOS)' == 'Browser' and '$(RuntimeFlavor)' != 'CoreCLR')">
     <ProjectToBuild Include="$(MonoProjectRoot)llvm\llvm-init.proj" Category="mono" />

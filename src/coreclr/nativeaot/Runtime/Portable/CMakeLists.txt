@@ -21,6 +21,8 @@ else()
     set(ASM_OFFSETS_CPP ${RUNTIME_DIR}/unix/AsmOffsets.cpp)
 endif()
 
+message("bin dir")
+message("${CMAKE_CURRENT_BINARY_DIR}")
 add_custom_command(
    # The AsmOffsetsPortable.cs is consumed later by the managed build
    TARGET PortableRuntime

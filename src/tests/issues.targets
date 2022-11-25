@@ -54,12 +54,9 @@
         <ExcludeList Include="$(XunitTestBinBase)/JIT/Directed/rvastatics/RVAOrderingTest/*">
             <Issue>https://github.com/dotnet/runtime/issues/55966</Issue>
         </ExcludeList>
-<<<<<<< HEAD
-=======
         <ExcludeList Include="$(XUnitTestBinBase)/JIT/HardwareIntrinsics/X86/X86Base/Pause*/**">
             <Issue>https://github.com/dotnet/runtime/issues/62423</Issue>
         </ExcludeList>
->>>>>>> 562aea2cb7d449d6e2e697df8cac56b599ec564d
         <ExcludeList Include = "$(XunitTestBinBase)/JIT/Intrinsics/CreateSpan_il/*">
             <Issue>https://github.com/dotnet/runtime/issues/62285</Issue>
         </ExcludeList>
@@ -2544,16 +2541,6 @@
     </ItemGroup>
 
     <ItemGroup Condition="'$(RuntimeFlavor)' == 'mono' and '$(RuntimeVariant)' == 'llvmfullaot' ">
-<<<<<<< HEAD
-        <ExcludeList Include = "$(XunitTestBinBase)/Loader/classloader/explicitlayout/NestedStructs/case03/**">
-            <Issue>https://github.com/dotnet/runtime/issues/62567</Issue>
-        </ExcludeList>
-        <ExcludeList Include = "$(XunitTestBinBase)/Loader/classloader/explicitlayout/NestedStructs/case04/**">
-            <Issue>https://github.com/dotnet/runtime/issues/62567</Issue>
-        </ExcludeList>
-        <ExcludeList Include = "$(XunitTestBinBase)/Loader/classloader/explicitlayout/NestedStructs/case05/**">
-            <Issue>https://github.com/dotnet/runtime/issues/62567</Issue>
-=======
         <ExcludeList Include="$(XunitTestBinBase)/Loader/classloader/explicitlayout/objrefandnonobjrefoverlap/case1/**">
             <Issue>expected failure: overlapped structs fail at AOT compile time, not runtime</Issue>
         </ExcludeList>
@@ -2598,7 +2585,6 @@
         </ExcludeList>
         <ExcludeList Include = "$(XunitTestBinBase)/Loader/classloader/explicitlayout/NestedStructs/case05/**">
             <Issue>expected failure: overlapped structs fail at AOT compile time, not runtime</Issue>
->>>>>>> 562aea2cb7d449d6e2e697df8cac56b599ec564d
         </ExcludeList>
         <ExcludeList Include = "$(XunitTestBinBase)/Interop/SuppressGCTransition/SuppressGCTransitionTest/**">
             <Issue>https://github.com/dotnet/runtime/issues/57361</Issue>

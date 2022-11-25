@@ -261,11 +261,7 @@ export function mono_bind_static_method(fqn: string, signature?: string/*ArgsMar
     return mono_bind_method(method, null, signature!, fqn);
 }
 
-<<<<<<< HEAD
-export function mono_bind_assembly_entry_point(assembly: string, signature?: ArgsMarshalString): Function {
-=======
 export function mono_bind_assembly_entry_point(assembly: string, signature?: string/*ArgsMarshalString*/): Function {
->>>>>>> 562aea2cb7d449d6e2e697df8cac56b599ec564d
     bindings_lazy_init();// TODO remove this once Blazor does better startup
 
     const asm = cwraps.mono_wasm_assembly_load(assembly);
@@ -286,11 +282,7 @@ export function mono_bind_assembly_entry_point(assembly: string, signature?: str
     };
 }
 
-<<<<<<< HEAD
-export function mono_call_assembly_entry_point(assembly: string, args?: any[], signature?: ArgsMarshalString): number {
-=======
 export function mono_call_assembly_entry_point(assembly: string, args?: any[], signature?: string/*ArgsMarshalString*/): number {
->>>>>>> 562aea2cb7d449d6e2e697df8cac56b599ec564d
     if (!args) {
         args = [[]];
     }

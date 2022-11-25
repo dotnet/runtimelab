@@ -55,5 +55,6 @@ if(CLR_CMAKE_TARGET_ANDROID)
     add_definitions(-DFEATURE_EMULATED_TLS)
 endif()
 
+message("adding runtime")
 add_subdirectory(Bootstrap)
 add_subdirectory(Runtime)

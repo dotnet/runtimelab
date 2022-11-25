@@ -171,10 +171,12 @@ namespace Internal.JitInterface
             JitSetOs(JitPointerAccessor.Get(), os);
         }
 
+#if !READYTORUN
         public static void Shutdown()
         {
             jitShutdown(true);
         }
+#endif
 
         public CorInfoImpl()
         {

@@ -171,34 +171,15 @@
       <RunTimeDependencyCopyLocal Include="$(CoreDisToolsLibrary)" Condition="$(CopyCoreDisToolsToCoreRoot)" />
     </ItemGroup>
 
-<<<<<<< HEAD
-    <PropertyGroup>
-      <IlcDir>$(CoreCLRArtifactsPath)ilc</IlcDir>
-    </PropertyGroup>
-
-    <!-- When cross-compiling tests (such as is the case for Wasm), we depends on the host's ILC being built. -->
-    <!-- This is a workaround for ILC's project not supporting cross-targeting. Remove once that's implemented. -->
-    <PropertyGroup Condition="'$(TargetArchitecture)' != '$(BuildArchitecture)'">
-      <IlcDir>$([MSBuild]::NormalizeDirectory('$(RepoRoot)', 'artifacts', 'bin', 'coreclr', '$(BuildOS).$(BuildArchitecture).$(CoreCLRConfiguration)'))ilc</IlcDir>
-    </PropertyGroup>
-
-    <Error Condition="!Exists('$(IlcDir)')"
-           Text="'$(IlcDir)' does not exist. Subsets clr.jit, clr.wasmjit and nativeaot.ilc for $(BuildOS) $(BuildArchitecture) in $(CoreCLRConfiguration) configuration must be built before building this project." />
-
-    <ItemGroup>
-      <RunTimeDependencyCopyLocal Include="$(IlcDir)/**/*" TargetDir="nativeaot/tools/" />
-      <RunTimeDependencyCopyLocal Include="$(CoreCLRArtifactsPath)aotsdk/**/*" TargetDir="nativeaot/sdk/" />
-      <RunTimeDependencyCopyLocal Include="$(CoreCLRArtifactsPath)build/**/*" TargetDir="nativeaot/build/" />
-      <RunTimeDependencyCopyLocal Include="$(TargetingPackPath)/*" TargetDir="nativeaot/framework/" />
-=======
     <ItemGroup Condition="'$(TestBuildMode)' == 'nativeaot'">
-      <AotCompilerCopyLocal Include="$(CoreCLRArtifactsPath)ilc/**/*" TargetDir="nativeaot/tools/" />
+      <AotCompilerCopyLocal Include="$(CoreCLRArtifactsPath)ilc/**/*" TargetDir="nativeaot/tools/" Condition="'$(TargetArchitecture)' != 'wasm'"/>
+      <AotCompilerCopyLocal Include="$(HostCoreCLRArtifactsPath)ilc/**/*" TargetDir="nativeaot/tools/" Condition="'$(TargetArchitecture)' == 'wasm'"/>
       <AotCompilerCopyLocal Include="$(CoreCLRArtifactsPath)aotsdk/**/*" TargetDir="nativeaot/sdk/" />
-      <AotCompilerCopyLocal Include="$(CoreCLRArtifactsPath)build/**/*" TargetDir="nativeaot/build/" />
+      <AotCompilerCopyLocal Include="$(CoreCLRArtifactsPath)build/**/*" TargetDir="nativeaot/build/" Condition="'$(TargetArchitecture)' != 'wasm'"/>
+      <AotCompilerCopyLocal Include="$(HostCoreCLRArtifactsPath)build/**/*" TargetDir="nativeaot/build/" Condition="'$(TargetArchitecture)' == 'wasm'"/>
       <AotCompilerCopyLocal Include="$(TargetingPackPath)/*" TargetDir="nativeaot/framework/" />
       <AotCompilerCopyLocal Include="@(RuntimeCopyLocalItems)" TargetDir="nativeaot/framework/" />
     </ItemGroup>
->>>>>>> 562aea2cb7d449d6e2e697df8cac56b599ec564d
 
     <ItemGroup Condition="'$(RuntimeFlavor)' == 'mono' and '$(IsDesktopOS)' == 'true' " >
       <RuntimeDependencyCopyLocal Include="$(MonoArtifactsPath)/libcoreclr$(LibSuffix)" TargetDir=""  />

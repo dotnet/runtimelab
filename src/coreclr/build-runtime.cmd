@@ -1,3 +1,4 @@
+echo building runtime
 @if not defined _echo @echo off
 setlocal EnableDelayedExpansion EnableExtensions
 
@@ -544,7 +545,10 @@ REM === Build the CLR VM
 REM ===
 REM =========================================================================================
 
+echo testing to buildnative %__BuildNative%
+
 if %__BuildNative% EQU 1 (
+echo building native
     REM Scope environment changes start {
     setlocal
 
@@ -624,7 +628,8 @@ if %__BuildNative% EQU 1 (
             set __CmakeBuildToolArgs=/nologo /m !__Logging!
         )
     )
-
+echo cmake:
+echo "%CMakePath%" --build %__IntermediatesDir% --target %__CMakeTarget% --config %__BuildType% -- !__CmakeBuildToolArgs!
     "%CMakePath%" --build %__IntermediatesDir% --target %__CMakeTarget% --config %__BuildType% -- !__CmakeBuildToolArgs!
 
     if not !errorlevel! == 0 (

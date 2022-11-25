@@ -96,12 +96,9 @@
 
     <Compile Include="..\ILCompiler.ReadyToRun\Compiler\ProfileData.cs" Link="Pgo\ProfileData.cs" />
 
-<<<<<<< HEAD
   </ItemGroup>
 
   <ItemGroup>
     <Compile Include="JitInterface\CorInfoImpl.Llvm.cs" />
-=======
->>>>>>> 562aea2cb7d449d6e2e697df8cac56b599ec564d
   </ItemGroup>
 </Project>

@@ -20,6 +20,10 @@
 
   <PropertyGroup>
     <RuntimeIdentifier>$(__DistroRid)</RuntimeIdentifier>
+
+    <!-- TODO-LLVM: how should this work, building subset clr.tools to get a `build` folder, DistroRid is browser-wasm, but we want the host Rid -->
+    <RuntimeIdentifier Condition="'$(TargetArchitecture)' == 'wasm'">$(AppHostRuntimeIdentifier)</RuntimeIdentifier>
+
     <SelfContained>true</SelfContained>
     <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
 
@@ -45,7 +49,7 @@
 
   <Import Project="$(RepositoryEngineeringDir)coredistools.targets" Condition="'$(DotNetBuildFromSource)' != 'true' and '$(IncludeCoreDisTools)' == 'true'" />
 
-  <ItemGroup Condition="Exists('$(ObjWriterArtifactPath)')">
+  <ItemGroup Condition="Exists('$(ObjWriterArtifactPath)') and '$(TargetArchitecture)' != 'wasm'">
     <Content Include="$(ObjWriterArtifactPath)">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Visible>false</Visible>
@@ -53,7 +57,7 @@
     </Content>
   </ItemGroup>
 
-  <ItemGroup Condition="!Exists('$(ObjWriterArtifactPath)')">
+  <ItemGroup Condition="!Exists('$(ObjWriterArtifactPath)') and '$(TargetArchitecture)' != 'wasm'">
     <PackageReference Include="Microsoft.DotNet.ILCompiler">
       <Version>$(ILCompilerVersion)</Version>
     </PackageReference>

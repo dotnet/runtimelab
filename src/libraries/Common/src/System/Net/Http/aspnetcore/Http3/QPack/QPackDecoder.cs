@@ -163,11 +163,7 @@ namespace System.Net.Http.QPack
             _state = State.RequiredInsertCount;
         }
 
-<<<<<<< HEAD
-        public void Decode(in ReadOnlySequence<byte> data, bool endHeaders, IHttpHeadersHandler handler)
-=======
         public void Decode(in ReadOnlySequence<byte> data, bool endHeaders, IHttpStreamHeadersHandler handler)
->>>>>>> 562aea2cb7d449d6e2e697df8cac56b599ec564d
         {
             foreach (ReadOnlyMemory<byte> segment in data)
             {
@@ -176,21 +172,13 @@ namespace System.Net.Http.QPack
             CheckIncompleteHeaderBlock(endHeaders);
         }
 
-<<<<<<< HEAD
-        public void Decode(ReadOnlySpan<byte> data, bool endHeaders, IHttpHeadersHandler handler)
-=======
         public void Decode(ReadOnlySpan<byte> data, bool endHeaders, IHttpStreamHeadersHandler handler)
->>>>>>> 562aea2cb7d449d6e2e697df8cac56b599ec564d
         {
             DecodeInternal(data, handler);
             CheckIncompleteHeaderBlock(endHeaders);
         }
 
-<<<<<<< HEAD
-        private void DecodeInternal(ReadOnlySpan<byte> data, IHttpHeadersHandler handler)
-=======
         private void DecodeInternal(ReadOnlySpan<byte> data, IHttpStreamHeadersHandler handler)
->>>>>>> 562aea2cb7d449d6e2e697df8cac56b599ec564d
         {
             int currentIndex = 0;
 
@@ -265,11 +253,7 @@ namespace System.Net.Http.QPack
             }
         }
 
-<<<<<<< HEAD
-        private void ParseHeaderNameIndexPostBase(ReadOnlySpan<byte> data, ref int currentIndex, IHttpHeadersHandler handler)
-=======
         private void ParseHeaderNameIndexPostBase(ReadOnlySpan<byte> data, ref int currentIndex, IHttpStreamHeadersHandler handler)
->>>>>>> 562aea2cb7d449d6e2e697df8cac56b599ec564d
         {
             if (TryDecodeInteger(data, ref currentIndex, out int intResult))
             {
@@ -277,11 +261,7 @@ namespace System.Net.Http.QPack
             }
         }
 
-<<<<<<< HEAD
-        private void ParsePostBaseIndex(ReadOnlySpan<byte> data, ref int currentIndex, IHttpHeadersHandler handler)
-=======
         private void ParsePostBaseIndex(ReadOnlySpan<byte> data, ref int currentIndex, IHttpStreamHeadersHandler handler)
->>>>>>> 562aea2cb7d449d6e2e697df8cac56b599ec564d
         {
             if (TryDecodeInteger(data, ref currentIndex, out int intResult))
             {
@@ -289,11 +269,7 @@ namespace System.Net.Http.QPack
             }
         }
 
-<<<<<<< HEAD
-        private void ParseHeaderNameLength(ReadOnlySpan<byte> data, ref int currentIndex, IHttpHeadersHandler handler)
-=======
         private void ParseHeaderNameLength(ReadOnlySpan<byte> data, ref int currentIndex, IHttpStreamHeadersHandler handler)
->>>>>>> 562aea2cb7d449d6e2e697df8cac56b599ec564d
         {
             if (TryDecodeInteger(data, ref currentIndex, out int intResult))
             {
@@ -306,11 +282,7 @@ namespace System.Net.Http.QPack
             }
         }
 
-<<<<<<< HEAD
-        private void ParseHeaderName(ReadOnlySpan<byte> data, ref int currentIndex, IHttpHeadersHandler handler)
-=======
         private void ParseHeaderName(ReadOnlySpan<byte> data, ref int currentIndex, IHttpStreamHeadersHandler handler)
->>>>>>> 562aea2cb7d449d6e2e697df8cac56b599ec564d
         {
             // Read remaining chars, up to the length of the current data
             int count = Math.Min(_stringLength - _stringIndex, data.Length - currentIndex);
@@ -348,11 +320,7 @@ namespace System.Net.Http.QPack
             }
         }
 
-<<<<<<< HEAD
-        private void ParseHeaderFieldIndex(ReadOnlySpan<byte> data, ref int currentIndex, IHttpHeadersHandler handler)
-=======
         private void ParseHeaderFieldIndex(ReadOnlySpan<byte> data, ref int currentIndex, IHttpStreamHeadersHandler handler)
->>>>>>> 562aea2cb7d449d6e2e697df8cac56b599ec564d
         {
             if (TryDecodeInteger(data, ref currentIndex, out int intResult))
             {
@@ -360,11 +328,7 @@ namespace System.Net.Http.QPack
             }
         }
 
-<<<<<<< HEAD
-        private void ParseHeaderNameIndex(ReadOnlySpan<byte> data, ref int currentIndex, IHttpHeadersHandler handler)
-=======
         private void ParseHeaderNameIndex(ReadOnlySpan<byte> data, ref int currentIndex, IHttpStreamHeadersHandler handler)
->>>>>>> 562aea2cb7d449d6e2e697df8cac56b599ec564d
         {
             if (TryDecodeInteger(data, ref currentIndex, out int intResult))
             {
@@ -373,11 +337,7 @@ namespace System.Net.Http.QPack
             }
         }
 
-<<<<<<< HEAD
-        private void ParseHeaderValueLength(ReadOnlySpan<byte> data, ref int currentIndex, IHttpHeadersHandler handler)
-=======
         private void ParseHeaderValueLength(ReadOnlySpan<byte> data, ref int currentIndex, IHttpStreamHeadersHandler handler)
->>>>>>> 562aea2cb7d449d6e2e697df8cac56b599ec564d
         {
             if (currentIndex < data.Length)
             {
@@ -407,11 +367,7 @@ namespace System.Net.Http.QPack
             }
         }
 
-<<<<<<< HEAD
-        private void ParseHeaderValue(ReadOnlySpan<byte> data, ref int currentIndex, IHttpHeadersHandler handler)
-=======
         private void ParseHeaderValue(ReadOnlySpan<byte> data, ref int currentIndex, IHttpStreamHeadersHandler handler)
->>>>>>> 562aea2cb7d449d6e2e697df8cac56b599ec564d
         {
             // Read remaining chars, up to the length of the current data
             int count = Math.Min(_stringLength - _stringIndex, data.Length - currentIndex);
@@ -448,11 +404,7 @@ namespace System.Net.Http.QPack
             }
         }
 
-<<<<<<< HEAD
-        private void ParseHeaderValueLengthContinue(ReadOnlySpan<byte> data, ref int currentIndex, IHttpHeadersHandler handler)
-=======
         private void ParseHeaderValueLengthContinue(ReadOnlySpan<byte> data, ref int currentIndex, IHttpStreamHeadersHandler handler)
->>>>>>> 562aea2cb7d449d6e2e697df8cac56b599ec564d
         {
             if (TryDecodeInteger(data, ref currentIndex, out int intResult))
             {
@@ -469,11 +421,7 @@ namespace System.Net.Http.QPack
             }
         }
 
-<<<<<<< HEAD
-        private void ParseCompressedHeaders(ReadOnlySpan<byte> data, ref int currentIndex, IHttpHeadersHandler handler)
-=======
         private void ParseCompressedHeaders(ReadOnlySpan<byte> data, ref int currentIndex, IHttpStreamHeadersHandler handler)
->>>>>>> 562aea2cb7d449d6e2e697df8cac56b599ec564d
         {
             if (currentIndex < data.Length)
             {
@@ -572,11 +520,7 @@ namespace System.Net.Http.QPack
             }
         }
 
-<<<<<<< HEAD
-        private void ParseRequiredInsertCountContinue(ReadOnlySpan<byte> data, ref int currentIndex, IHttpHeadersHandler handler)
-=======
         private void ParseRequiredInsertCountContinue(ReadOnlySpan<byte> data, ref int currentIndex, IHttpStreamHeadersHandler handler)
->>>>>>> 562aea2cb7d449d6e2e697df8cac56b599ec564d
         {
             if (TryDecodeInteger(data, ref currentIndex, out int intResult))
             {
@@ -585,11 +529,7 @@ namespace System.Net.Http.QPack
             }
         }
 
-<<<<<<< HEAD
-        private void ParseBase(ReadOnlySpan<byte> data, ref int currentIndex, IHttpHeadersHandler handler)
-=======
         private void ParseBase(ReadOnlySpan<byte> data, ref int currentIndex, IHttpStreamHeadersHandler handler)
->>>>>>> 562aea2cb7d449d6e2e697df8cac56b599ec564d
         {
             if (currentIndex < data.Length)
             {
@@ -609,11 +549,7 @@ namespace System.Net.Http.QPack
             }
         }
 
-<<<<<<< HEAD
-        private void ParseBaseContinue(ReadOnlySpan<byte> data, ref int currentIndex, IHttpHeadersHandler handler)
-=======
         private void ParseBaseContinue(ReadOnlySpan<byte> data, ref int currentIndex, IHttpStreamHeadersHandler handler)
->>>>>>> 562aea2cb7d449d6e2e697df8cac56b599ec564d
         {
             if (TryDecodeInteger(data, ref currentIndex, out int intResult))
             {
@@ -622,11 +558,7 @@ namespace System.Net.Http.QPack
             }
         }
 
-<<<<<<< HEAD
-        private void ParseRequiredInsertCount(ReadOnlySpan<byte> data, ref int currentIndex, IHttpHeadersHandler handler)
-=======
         private void ParseRequiredInsertCount(ReadOnlySpan<byte> data, ref int currentIndex, IHttpStreamHeadersHandler handler)
->>>>>>> 562aea2cb7d449d6e2e697df8cac56b599ec564d
         {
             if (currentIndex < data.Length)
             {
@@ -656,11 +588,7 @@ namespace System.Net.Http.QPack
             }
         }
 
-<<<<<<< HEAD
-        private void ProcessHeaderValue(ReadOnlySpan<byte> data, IHttpHeadersHandler handler)
-=======
         private void ProcessHeaderValue(ReadOnlySpan<byte> data, IHttpStreamHeadersHandler handler)
->>>>>>> 562aea2cb7d449d6e2e697df8cac56b599ec564d
         {
             ReadOnlySpan<byte> headerValueSpan = _headerValueRange == null
                 ? _headerValueOctets.AsSpan(0, _headerValueLength)

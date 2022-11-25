@@ -140,15 +140,20 @@ if(NOT CLR_CMAKE_TARGET_ARCH_WASM)
 endif(NOT CLR_CMAKE_TARGET_ARCH_WASM)
 
 
+message("testing for nativeaot")
 if(NOT CLR_CROSS_COMPONENTS_BUILD)
-<<<<<<< HEAD
-    add_subdirectory(nativeaot)
-=======
+message("testing for nativeaot in if1")
   # NativeAOT only buildable for a subset of CoreCLR-supported configurations
-  if((CLR_CMAKE_HOST_LINUX OR CLR_CMAKE_HOST_OSX OR CLR_CMAKE_HOST_WIN32) AND (CLR_CMAKE_HOST_ARCH_ARM64 OR CLR_CMAKE_HOST_ARCH_AMD64) AND NOT (CLR_CMAKE_HOST_OSX AND CLR_CMAKE_HOST_ARCH_ARM64))
+  if(CLR_CMAKE_HOST_WIN32 AND CLR_CMAKE_TARGET_ARCH_WASM)
+	 message("CLR_CMAKE_HOST_WIN32 and CLR_CMAKE_TARGET_ARCH_WASM")
+  endif()
+  if(CLR_CMAKE_TARGET_ARCH_WASM)
+	 message("CLR_CMAKE_TARGET_ARCH_WASM")
+  endif()
+  if(((CLR_CMAKE_HOST_LINUX OR CLR_CMAKE_HOST_OSX OR CLR_CMAKE_HOST_WIN32) AND (CLR_CMAKE_HOST_ARCH_ARM64 OR CLR_CMAKE_HOST_ARCH_AMD64 OR CLR_CMAKE_TARGET_ARCH_WASM) AND NOT (CLR_CMAKE_HOST_OSX AND CLR_CMAKE_HOST_ARCH_ARM64)) OR (EMSCRIPTEN AND CLR_CMAKE_TARGET_ARCH_WASM))
+message("testing for nativeaot in if2")
     add_subdirectory(nativeaot)
   endif()
->>>>>>> 562aea2cb7d449d6e2e697df8cac56b599ec564d
 endif(NOT CLR_CROSS_COMPONENTS_BUILD)
 
 # Above projects do not build with these compile options
