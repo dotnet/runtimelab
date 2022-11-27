@@ -99,13 +99,9 @@ stages:
       platforms:
       - Linux_x64
       - Linux_musl_x64
-<<<<<<< HEAD
-#      - Linux_arm64      # ILCompiler for LLVM depends on libLLVM.runtime.linux-arm64 with version (>= 11.0.0) which is missing https://github.com/microsoft/LLVMSharp/issues/177. TODO: reinstate when we remove LLVMSharp dependency
-#      - Linux_arm        # ILCompiler for LLVM depends on libLLVM.runtime.linux-arm64 with version (>= 11.0.0) which is missing https://github.com/microsoft/LLVMSharp/issues/177. TODO: reinstate when we remove LLVMSharp dependency
-#      - Linux_musl_arm64 # ILCompiler for LLVM depends on libLLVM.runtime.linux-arm64 with version (>= 11.0.0) which is missing https://github.com/microsoft/LLVMSharp/issues/177. TODO: reinstate when we remove LLVMSharp dependency
-=======
-      - Linux_arm64
->>>>>>> 562aea2cb7d449d6e2e697df8cac56b599ec564d
+#     - Linux_arm64      # ILCompiler for LLVM depends on libLLVM.runtime.linux-arm64 with version (>= 11.0.0) which is missing https://github.com/microsoft/LLVMSharp/issues/177. TODO: reinstate when we remove LLVMSharp dependency
+#     - Linux_arm        # ILCompiler for LLVM depends on libLLVM.runtime.linux-arm64 with version (>= 11.0.0) which is missing https://github.com/microsoft/LLVMSharp/issues/177. TODO: reinstate when we remove LLVMSharp dependency
+#     - Linux_musl_arm64 # ILCompiler for LLVM depends on libLLVM.runtime.linux-arm64 with version (>= 11.0.0) which is missing https://github.com/microsoft/LLVMSharp/issues/177. TODO: reinstate when we remove LLVMSharp dependency
       - windows_x64
       - windows_arm64
       - OSX_x64
