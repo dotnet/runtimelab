@@ -18,7 +18,7 @@ steps:
   # Now we need to build the cross-targeting compilers, RyuJit and ILC.
 
   - ${{ if eq(parameters.archType, 'wasm') }}:
-    - script: $(Build.SourcesDirectory)/build$(scriptExt) clr.alljits+clr.wasmjit+nativeaot.ilc+nativeaot.build -c $(buildConfigUpper)
+    - script: $(Build.SourcesDirectory)/build$(scriptExt) clr.alljits+clr.wasmjit+nativeaot.ilc+nativeaot.build+clr.tools+clr.nativeaotlibs -c $(buildConfigUpper)
       displayName: Build the ILC and RyuJit cross-compilers
 
   - ${{ if and(eq(parameters.buildConfig, 'Release'),ne(parameters.archType, 'wasm')) }}:
@@ -29,7 +29,7 @@ steps:
   - ${{ if eq(parameters.platform, 'Browser_wasm_win') }}:
     - script: |
         call $(Build.SourcesDirectory)\wasm-tools\emsdk\emsdk_env
-        $(Build.SourcesDirectory)/src/tests/build$(scriptExt) nativeaot $(buildConfigUpper) ${{ parameters.archType }} skipnative tree nativeaot
+        $(Build.SourcesDirectory)/src/tests/build$(scriptExt) nativeaot $(buildConfigUpper) ${{ parameters.archType }} skipnative tree nativeaot /p:LibrariesConfiguration=$(buildConfigUpper)
       displayName: Build WebAssembly tests
   - ${{ elseif eq(parameters.osGroup, 'windows') }}:
     - script: $(Build.SourcesDirectory)/src/tests/build$(scriptExt) nativeaot $(buildConfigUpper) ${{ parameters.archType }} ${{ parameters.testFilter }} /p:NativeAotMultimodule=true
