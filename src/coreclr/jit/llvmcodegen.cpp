@@ -1247,12 +1247,12 @@ void Llvm::buildStoreInd(GenTreeStoreInd* storeIndOp)
     switch (wbf)
     {
         case GCInfo::WBF_BarrierUnchecked:
-            _builder.CreateCall(getOrCreateRhpAssignRef(), {addrValue, dataValue});
+            emitHelperCall(CORINFO_HELP_ASSIGN_REF, {addrValue, dataValue});
             break;
 
         case GCInfo::WBF_BarrierChecked:
         case GCInfo::WBF_BarrierUnknown:
-            _builder.CreateCall(getOrCreateRhpCheckedAssignRef(), {addrValue, dataValue});
+            emitHelperCall(CORINFO_HELP_CHECKED_ASSIGN_REF, {addrValue, dataValue});
             break;
 
         case GCInfo::WBF_NoBarrier:
@@ -1461,12 +1461,12 @@ void Llvm::storeObjAtAddress(Value* baseAddress, Value* data, StructDesc* struct
         }
         else
         {
-            if (fieldDesc->isGcPointer())
+            if (fieldDesc->getCorType() == CORINFO_TYPE_CLASS)
             {
-                // we can't be sure the address is on the heap, it could be the result of pointer arithmetic on a local var
-                _builder.CreateCall(getOrCreateRhpCheckedAssignRef(),
-                                    ArrayRef<Value*>{address,
-                                    castIfNecessary(fieldData, Type::getInt8PtrTy(_llvmContext))});
+                // We can't be sure the address is on the heap, it could be the result of pointer arithmetic on a local var.
+                emitHelperCall(CORINFO_HELP_CHECKED_ASSIGN_REF,
+                               {address, castIfNecessary(fieldData, Type::getInt8PtrTy(_llvmContext))});
+
                 bytesStored += TARGET_POINTER_SIZE;
             }
             else
@@ -1571,6 +1571,38 @@ void Llvm::buildThrowException(llvm::IRBuilder<>& builder, const char* helperCla
     builder.CreateUnreachable();
 }
 
+Value* Llvm::emitHelperCall(CorInfoHelpFunc helperFunc, ArrayRef<Value*> sigArgs)
+{
+    void* pAddr = nullptr;
+    void* handle = _compiler->compGetHelperFtn(helperFunc, &pAddr);
+    assert(pAddr == nullptr);
+
+    const char* symbolName = GetMangledSymbolName(handle);
+    AddCodeReloc(handle);
+
+    Function* helperLlvmFunc = _module->getFunction(symbolName);
+    if (helperLlvmFunc == nullptr)
+    {
+        FunctionType* llvmFuncType = createFunctionTypeForHelper(helperFunc);
+        helperLlvmFunc = Function::Create(llvmFuncType, Function::ExternalLinkage, symbolName, _module);
+    }
+
+    Value* callValue;
+    if (getHelperFuncInfo(helperFunc).HasFlags(HFIF_SS_ARG))
+    {
+        std::vector<Value*> args = sigArgs.vec();
+        args.insert(args.begin(), getShadowStackForCallee());
+
+        callValue = emitCallOrInvoke(helperLlvmFunc, args);
+    }
+    else
+    {
+        callValue = emitCallOrInvoke(helperLlvmFunc, sigArgs);
+    }
+
+    return callValue;
+}
+
 Value* Llvm::emitCallOrInvoke(llvm::FunctionCallee callee, ArrayRef<Value*> args)
 {
     // TODO-LLVM: invoke if callsite has exception handler
@@ -1632,6 +1664,32 @@ FunctionType* Llvm::createFunctionTypeForCall(GenTreeCall* call)
     return FunctionType::get(retLlvmType, argVec, /* isVarArg */ false);
 }
 
+FunctionType* Llvm::createFunctionTypeForHelper(CorInfoHelpFunc helperFunc)
+{
+    const HelperFuncInfo& helperInfo = getHelperFuncInfo(helperFunc);
+
+    std::vector<Type*> argVec = std::vector<Type*>();
+
+    if (helperInfo.HasFlags(HFIF_SS_ARG))
+    {
+        argVec.push_back(Type::getInt8PtrTy(_llvmContext));
+    }
+
+    size_t sigArgCount = helperInfo.GetSigArgCount();
+    for (size_t i = 0; i < sigArgCount; i++)
+    {
+        CorInfoType argType = helperInfo.GetSigArgType(i);
+        assert(argType != TYP_STRUCT);
+
+        argVec.push_back(getLlvmTypeForCorInfoType(argType, NO_CLASS_HANDLE));
+    }
+
+    Type* retLlvmType = getLlvmTypeForCorInfoType(helperInfo.GetSigReturnType(), NO_CLASS_HANDLE);
+    FunctionType* llvmFuncType = FunctionType::get(retLlvmType, argVec, /* isVarArg */ false);
+
+    return llvmFuncType;
+}
+
 Value* Llvm::getOrCreateExternalSymbol(const char* symbolName, Type* symbolType)
 {
     if (symbolType == nullptr)
@@ -1645,34 +1703,6 @@ Value* Llvm::getOrCreateExternalSymbol(const char* symbolName, Type* symbolType)
         symbol = new llvm::GlobalVariable(*_module, symbolType, false, llvm::GlobalValue::LinkageTypes::ExternalLinkage, (llvm::Constant*)nullptr, symbolName);
     }
     return symbol;
-}
-
-Function* Llvm::getOrCreateRhpAssignRef()
-{
-    Function* llvmFunc = _module->getFunction("RhpAssignRef");
-    if (llvmFunc == nullptr)
-    {
-        llvmFunc = Function::Create(FunctionType::get(Type::getVoidTy(_llvmContext),
-                                                      {Type::getInt8PtrTy(_llvmContext), Type::getInt8PtrTy(_llvmContext)},
-                                                      /* isVarArg */ false),
-                                    Function::ExternalLinkage, 0U, "RhpAssignRef",
-                                    _module); // TODO: ExternalLinkage forced as linked from old module
-    }
-    return llvmFunc;
-}
-
-Function* Llvm::getOrCreateRhpCheckedAssignRef()
-{
-    Function* llvmFunc = _module->getFunction("RhpCheckedAssignRef");
-    if (llvmFunc == nullptr)
-    {
-        llvmFunc = Function::Create(FunctionType::get(Type::getVoidTy(_llvmContext),
-                                                      {Type::getInt8PtrTy(_llvmContext), Type::getInt8PtrTy(_llvmContext)},
-                                                      /* isVarArg */ false),
-                                    Function::ExternalLinkage, 0U, "RhpCheckedAssignRef",
-                                    _module); // TODO: ExternalLinkage forced as linked from old module
-    }
-    return llvmFunc;
 }
 
 Function* Llvm::getOrCreateThrowIfNullFunction()

@@ -175,7 +175,6 @@ private:
     static bool needsReturnStackSlot(Compiler* compiler, CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd);
 
     bool callHasShadowStackArg(GenTreeCall* call);
-    bool helperFuncHasShadowStackArg(CorInfoHelpFunc helperFunc);
     const HelperFuncInfo& getHelperFuncInfo(CorInfoHelpFunc helperFunc);
 
     bool canStoreLocalOnLlvmStack(LclVarDsc* varDsc);
@@ -307,15 +306,15 @@ private:
     void emitJumpToThrowHelper(Value* jumpCondValue, SpecialCodeKind throwKind);
     void emitNullCheckForIndir(GenTreeIndir* indir, Value* addrValue);
     void buildThrowException(llvm::IRBuilder<>& builder, const char* helperClass, const char* helperMethodName, Value* shadowStack);
-    Value* emitCallOrInvoke(llvm::FunctionCallee callee, llvm::ArrayRef<Value*> args);
+    Value* emitHelperCall(CorInfoHelpFunc helperFunc, ArrayRef<Value*> sigArgs = { });
+    Value* emitCallOrInvoke(llvm::FunctionCallee callee, ArrayRef<Value*> args);
 
     FunctionType* getFunctionType();
     Function* getOrCreateLlvmFunction(const char* symbolName, GenTreeCall* call);
     FunctionType* createFunctionTypeForCall(GenTreeCall* call);
+    FunctionType* createFunctionTypeForHelper(CorInfoHelpFunc helperFunc);
 
     Value* getOrCreateExternalSymbol(const char* symbolName, Type* symbolType = nullptr);
-    Function* getOrCreateRhpAssignRef();
-    Function* getOrCreateRhpCheckedAssignRef();
     Function* getOrCreateThrowIfNullFunction();
 
     llvm::Instruction* getCast(llvm::Value* source, Type* targetType);

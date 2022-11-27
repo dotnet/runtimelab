@@ -262,16 +262,11 @@ bool Llvm::callHasShadowStackArg(GenTreeCall* call)
 {
     if (call->IsHelperCall())
     {
-        return helperFuncHasShadowStackArg(_compiler->eeGetHelperNum(call->gtCallMethHnd));
+        return getHelperFuncInfo(_compiler->eeGetHelperNum(call->gtCallMethHnd)).HasFlags(HFIF_SS_ARG);
     }
 
     // TODO-LLVM: this is not right for native calls.
     return true;
-}
-
-bool Llvm::helperFuncHasShadowStackArg(CorInfoHelpFunc helperFunc)
-{
-    return getHelperFuncInfo(helperFunc).HasFlags(HFIF_SS_ARG);
 }
 
 //------------------------------------------------------------------------
