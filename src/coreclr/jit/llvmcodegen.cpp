@@ -251,19 +251,17 @@ void Llvm::generateBlock(BasicBlock* block)
             break;
     }
 
+#ifdef DEBUG
     llvm::BasicBlock* lastLlvmBlock = _builder.GetInsertBlock();
     if (lastLlvmBlock != llvmBlock)
     {
-        setLastLlvmBlockForBlock(block, lastLlvmBlock);
-
-#ifdef DEBUG
         llvm::StringRef blockName = llvmBlock->getName();
         for (unsigned idx = 1; llvmBlock != lastLlvmBlock->getNextNode(); llvmBlock = llvmBlock->getNextNode(), idx++)
         {
             llvmBlock->setName(blockName + "." + llvm::Twine(idx));
         }
-#endif // DEBUG
     }
+#endif // DEBUG
 }
 
 void Llvm::fillPhis()
@@ -1529,12 +1527,10 @@ void Llvm::emitJumpToThrowHelper(Value* jumpCondValue, SpecialCodeKind throwKind
         _builder.CreateCondBr(jumpCondValue, throwLlvmBlock, nextLlvmBlock);
 
         _builder.SetInsertPoint(throwLlvmBlock);
-        // TODO-LLVM: actually emit the throw helper.
+        emitHelperCall(static_cast<CorInfoHelpFunc>(_compiler->acdHelper(throwKind)));
         _builder.CreateUnreachable();
 
         _builder.SetInsertPoint(nextLlvmBlock);
-
-        failFunctionCompilation();
     }
 }
 
@@ -1870,9 +1866,11 @@ llvm::DILocation* Llvm::createDebugFunctionAndDiLocation(DebugMetadata debugMeta
 
 llvm::BasicBlock* Llvm::createInlineLlvmBlock()
 {
+    BasicBlock* currentBlock = CurrentBlock();
     llvm::BasicBlock* inlineLlvmBlock =
-        llvm::BasicBlock::Create(_llvmContext, "", _function, _builder.GetInsertBlock()->getNextNode());
+        llvm::BasicBlock::Create(_llvmContext, "", _function, getLastLlvmBlockForBlock(currentBlock)->getNextNode());
 
+    setLastLlvmBlockForBlock(currentBlock, inlineLlvmBlock);
     return inlineLlvmBlock;
 }
 
@@ -1903,8 +1901,7 @@ llvm::BasicBlock* Llvm::getFirstLlvmBlockForBlock(BasicBlock* block)
 //
 // During code generation, a given IR block can be split into multiple
 // LLVM blocks, due to, e. g., inline branches. This function returns
-// the last of these generated blocks. Note it is only available after
-// "block" has been fully generated.
+// the last of these generated blocks.
 //
 // Arguments:
 //    block - The IR block
