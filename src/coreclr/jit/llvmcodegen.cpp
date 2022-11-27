@@ -511,7 +511,7 @@ void Llvm::visitNode(GenTree* node)
         case GT_NULLCHECK:
             buildNullCheck(node->AsIndir());
             break;
-        case GT_ARR_BOUNDS_CHECK:
+        case GT_BOUNDS_CHECK:
             buildBoundsCheck(node->AsBoundsChk());
             break;
         case GT_OBJ:
@@ -1775,7 +1775,6 @@ bool Llvm::helperRequiresShadowStack(CorInfoHelpFunc helperFunc)
         case CORINFO_HELP_NEWSFAST_ALIGN8_VC:
         case CORINFO_HELP_NEWSFAST_ALIGN8_FINALIZE:
         case CORINFO_HELP_NEW_MDARR:
-        case CORINFO_HELP_NEW_MDARR_NONVARARG:
         case CORINFO_HELP_NEWARR_1_DIRECT:
         case CORINFO_HELP_NEWARR_1_OBJ:
         case CORINFO_HELP_NEWARR_1_VC:
