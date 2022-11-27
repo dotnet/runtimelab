@@ -49,7 +49,7 @@
 
   <Import Project="$(RepositoryEngineeringDir)coredistools.targets" Condition="'$(DotNetBuildFromSource)' != 'true' and '$(IncludeCoreDisTools)' == 'true'" />
 
-  <ItemGroup Condition="Exists('$(ObjWriterArtifactPath)') and '$(TargetArchitecture)' != 'wasm'">
+  <ItemGroup Condition="Exists('$(ObjWriterArtifactPath)')">
     <Content Include="$(ObjWriterArtifactPath)">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Visible>false</Visible>
@@ -57,7 +57,7 @@
     </Content>
   </ItemGroup>
 
-  <ItemGroup Condition="!Exists('$(ObjWriterArtifactPath)') and '$(TargetArchitecture)' != 'wasm'">
+  <ItemGroup Condition="!Exists('$(ObjWriterArtifactPath)')">
     <PackageReference Include="Microsoft.DotNet.ILCompiler">
       <Version>$(ILCompilerVersion)</Version>
     </PackageReference>
