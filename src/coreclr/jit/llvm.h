@@ -47,6 +47,37 @@ struct OperandArgNum
     GenTree* operand;
 };
 
+enum HelperFuncInfoFlags
+{
+    HFIF_NONE = 0,
+    HFIF_SS_ARG = 1, // The helper has shadow stack arg.
+};
+
+struct HelperFuncInfo
+{
+    static const int MAX_SIG_ARG_COUNT = 3;
+
+    INDEBUG(unsigned char Func);
+    unsigned char SigReturnType;
+    unsigned char SigArgTypes[MAX_SIG_ARG_COUNT];
+    unsigned char Flags;
+
+    bool IsInitialized() const
+    {
+        return SigReturnType != CORINFO_TYPE_UNDEF;
+    }
+
+    bool HasFlags(HelperFuncInfoFlags flags) const
+    {
+        return (Flags & flags) == flags;
+    }
+
+    CorInfoType GetSigReturnType() const;
+    CorInfoType GetSigArgType(size_t index) const;
+    CORINFO_CLASS_HANDLE GetSigArgClass(Compiler* compiler, size_t index) const;
+    size_t GetSigArgCount() const;
+};
+
 struct JitStdStringKeyFuncs : JitKeyFuncsDefEquals<std::string>
 {
     static unsigned GetHashCode(const std::string& val)
@@ -144,7 +175,8 @@ private:
     static bool needsReturnStackSlot(Compiler* compiler, CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd);
 
     bool callHasShadowStackArg(GenTreeCall* call);
-    bool helperCallHasShadowStackArg(CorInfoHelpFunc helperFunc);
+    bool helperFuncHasShadowStackArg(CorInfoHelpFunc helperFunc);
+    const HelperFuncInfo& getHelperFuncInfo(CorInfoHelpFunc helperFunc);
 
     bool canStoreLocalOnLlvmStack(LclVarDsc* varDsc);
     static bool canStoreArgOnLlvmStack(Compiler* compiler, CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd);
