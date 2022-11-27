@@ -238,6 +238,7 @@ private:
     void lowerFieldOfDependentlyPromotedStruct(GenTree* node);
     void ConvertShadowStackLocalNode(GenTreeLclVarCommon* node);
     void lowerCall(GenTreeCall* callNode);
+    void lowerIndir(GenTreeIndir* indirNode);
     void lowerStoreBlk(GenTreeBlk* storeBlkNode);
     void lowerDivMod(GenTreeOp* divModNode);
     void lowerReturn(GenTreeUnOp* retNode);
@@ -263,6 +264,7 @@ private:
     void generateProlog();
     void initializeLocals();
     void generateBlock(BasicBlock* block);
+    void generateThrowHelperBlock(BasicBlock* block);
     void fillPhis();
 
     Value* getGenTreeValue(GenTree* node);
@@ -305,7 +307,6 @@ private:
     void emitDoNothingCall();
     void emitJumpToThrowHelper(Value* jumpCondValue, SpecialCodeKind throwKind);
     void emitNullCheckForIndir(GenTreeIndir* indir, Value* addrValue);
-    void buildThrowException(llvm::IRBuilder<>& builder, const char* helperClass, const char* helperMethodName, Value* shadowStack);
     Value* emitHelperCall(CorInfoHelpFunc helperFunc, ArrayRef<Value*> sigArgs = { });
     Value* emitCallOrInvoke(llvm::FunctionCallee callee, ArrayRef<Value*> args);
 
@@ -315,7 +316,6 @@ private:
     FunctionType* createFunctionTypeForHelper(CorInfoHelpFunc helperFunc);
 
     Value* getOrCreateExternalSymbol(const char* symbolName, Type* symbolType = nullptr);
-    Function* getOrCreateThrowIfNullFunction();
 
     llvm::Instruction* getCast(llvm::Value* source, Type* targetType);
     Value* castIfNecessary(Value* source, Type* targetType, llvm::IRBuilder<>* builder = nullptr);

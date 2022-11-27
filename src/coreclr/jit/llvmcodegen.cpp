@@ -78,7 +78,7 @@ void Llvm::Compile()
     // Walk all the exceptional code blocks and generate them, since they don't appear in the normal flow graph.
     for (Compiler::AddCodeDsc* add = _compiler->fgGetAdditionalCodeDescriptors(); add != nullptr; add = add->acdNext)
     {
-        generateBlock(add->acdDstBlk);
+        generateThrowHelperBlock(add->acdDstBlk);
     }
 
     fillPhis();
@@ -262,6 +262,24 @@ void Llvm::generateBlock(BasicBlock* block)
         }
     }
 #endif // DEBUG
+}
+
+void Llvm::generateThrowHelperBlock(BasicBlock* block)
+{
+    // Throw helper blocks are not visited by the SSA renaming, so here we have to manually
+    // assign SSA numbers for the one variable which can be live in them - shadow stack.
+    if (_compiler->lvaInSsa(_shadowStackLclNum))
+    {
+        for (GenTree* node : LIR::AsRange(block))
+        {
+            if (node->OperIsLocal() && (node->AsLclVarCommon()->GetLclNum() == _shadowStackLclNum))
+            {
+                node->AsLclVarCommon()->SetSsaNum(SsaConfig::FIRST_SSA_NUM); // Shadow stack is never modified.
+            }
+        }
+    }
+
+    generateBlock(block);
 }
 
 void Llvm::fillPhis()
@@ -582,6 +600,7 @@ void Llvm::buildLocalVar(GenTreeLclVar* lclVar)
     }
     else
     {
+        assert(lclVar->HasSsaName());
         llvmRef = _localsMap[{lclNum, ssaNum}];
     }
 
@@ -1538,33 +1557,12 @@ void Llvm::emitNullCheckForIndir(GenTreeIndir* indir, Value* addrValue)
 {
     if ((indir->gtFlags & GTF_IND_NONFAULTING) == 0)
     {
-        Function* throwIfNullFunc = getOrCreateThrowIfNullFunction();
-        addrValue = castIfNecessary(addrValue, Type::getInt8PtrTy(_llvmContext));
+        assert(addrValue->getType()->isPointerTy());
 
-        // TODO-LLVM: this shadow stack passing is not efficient.
-        emitCallOrInvoke(throwIfNullFunc, {getShadowStackForCallee(), addrValue});
+        Value* nullValue = llvm::Constant::getNullValue(addrValue->getType());
+        Value* isNullValue = _builder.CreateCmp(llvm::CmpInst::ICMP_EQ, addrValue, nullValue);
+        emitJumpToThrowHelper(isNullValue, SCK_NULL_REF_EXCPN);
     }
-}
-
-void Llvm::buildThrowException(llvm::IRBuilder<>& builder, const char* helperClass, const char* helperMethodName, Value* shadowStack)
-{
-    CORINFO_METHOD_HANDLE methodHandle = GetCompilerHelpersMethodHandle(helperClass, helperMethodName);
-    const char* mangledName = GetMangledMethodName(methodHandle);
-
-    Function* llvmFunc = _module->getFunction(mangledName);
-
-    if (llvmFunc == nullptr)
-    {
-        // assume ExternalLinkage, if the function is defined in the clrjit module, then it is replaced and an
-        // extern added to the Ilc module
-        llvmFunc = Function::Create(FunctionType::get(Type::getVoidTy(_llvmContext), {Type::getInt8PtrTy(_llvmContext)},
-                                                      false),
-                                    Function::ExternalLinkage, 0U, mangledName, _module);
-       AddCodeReloc(methodHandle);
-    }
-
-    builder.CreateCall(llvmFunc, {shadowStack});
-    builder.CreateUnreachable();
 }
 
 Value* Llvm::emitHelperCall(CorInfoHelpFunc helperFunc, ArrayRef<Value*> sigArgs)
@@ -1699,39 +1697,6 @@ Value* Llvm::getOrCreateExternalSymbol(const char* symbolName, Type* symbolType)
         symbol = new llvm::GlobalVariable(*_module, symbolType, false, llvm::GlobalValue::LinkageTypes::ExternalLinkage, (llvm::Constant*)nullptr, symbolName);
     }
     return symbol;
-}
-
-Function* Llvm::getOrCreateThrowIfNullFunction()
-{
-    const char* funcName = "nativeaot.throwifnull";
-    Function* llvmFunc = _module->getFunction(funcName);
-    if (llvmFunc == nullptr)
-    {
-        llvmFunc =
-            Function::Create(FunctionType::get(Type::getVoidTy(_llvmContext),
-                                               {Type::getInt8PtrTy(_llvmContext), Type::getInt8PtrTy(_llvmContext)},
-                                               /* isVarArg */ false),
-                             Function::InternalLinkage, 0U, funcName, _module);
-
-        llvm::IRBuilder<> builder(_llvmContext);
-        llvm::BasicBlock* block = llvm::BasicBlock::Create(_llvmContext, "Block", llvmFunc);
-        llvm::BasicBlock* throwBlock = llvm::BasicBlock::Create(_llvmContext, "ThrowBlock", llvmFunc);
-        llvm::BasicBlock* retBlock = llvm::BasicBlock::Create(_llvmContext, "RetBlock", llvmFunc);
-
-        builder.SetInsertPoint(block);
-
-        builder.CreateCondBr(builder.CreateICmp(llvm::CmpInst::Predicate::ICMP_EQ, llvmFunc->getArg(1),
-                                                llvm::ConstantPointerNull::get(Type::getInt8PtrTy(_llvmContext)),
-                                                "nullCheck"), throwBlock, retBlock);
-        builder.SetInsertPoint(throwBlock);
-
-        buildThrowException(builder, u8"ThrowHelpers", u8"ThrowNullReferenceException", llvmFunc->getArg(0));
-
-        builder.SetInsertPoint(retBlock);
-        builder.CreateRetVoid();
-    }
-
-    return llvmFunc;
 }
 
 llvm::Instruction* Llvm::getCast(llvm::Value* source, Type* targetType)

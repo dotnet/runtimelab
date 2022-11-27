@@ -32,7 +32,7 @@ uint32_t (*_padOffset)(void*, CORINFO_CLASS_STRUCT_*, unsigned);
 CorInfoTypeWithMod (*_getArgTypeIncludingParameterized)(void*, CORINFO_SIG_INFO*, CORINFO_ARG_LIST_HANDLE, CORINFO_CLASS_HANDLE*);
 CorInfoTypeWithMod (*_getParameterType)(void*, CORINFO_CLASS_HANDLE, CORINFO_CLASS_HANDLE*);
 TypeDescriptor (*_getTypeDescriptor)(void*, CORINFO_CLASS_HANDLE);
-CORINFO_METHOD_HANDLE (*_getCompilerHelpersMethodHandle)(void*, const char*, const char*);
+CORINFO_METHOD_HANDLE (*_getCompilerHelpersMethodHandle)(void*, const char*, const char*); // TODO-LLVM: unused, delete.
 uint32_t (*_getInstanceFieldAlignment)(void*, CORINFO_CLASS_HANDLE);
 
 extern "C" DLLEXPORT void registerLlvmCallbacks(void*       thisPtr,

@@ -3624,6 +3624,8 @@ unsigned Compiler::acdHelper(SpecialCodeKind codeKind)
             return CORINFO_HELP_THROWDIVZERO;
         case SCK_ARITH_EXCPN:
             return CORINFO_HELP_OVERFLOW;
+        case SCK_NULL_REF_EXCPN:
+            return CORINFO_HELP_THROWNULLREF;
         default:
             assert(!"Bad codeKind");
             return 0;
@@ -3660,6 +3662,7 @@ BasicBlock* Compiler::fgAddCodeRef(BasicBlock* srcBlk, unsigned refData, Special
         BBJ_THROW, // SCK_ARITH_EXCP, SCK_OVERFLOW
         BBJ_THROW, // SCK_ARG_EXCPN
         BBJ_THROW, // SCK_ARG_RNG_EXCPN
+        BBJ_THROW, // SCK_NULL_REF_EXCPN
     };
 
     noway_assert(sizeof(jumpKinds) == SCK_COUNT); // sanity check
@@ -3735,6 +3738,9 @@ BasicBlock* Compiler::fgAddCodeRef(BasicBlock* srcBlk, unsigned refData, Special
             case SCK_ARG_RNG_EXCPN:
                 msg = " for ARG_RNG_EXCPN";
                 break;
+            case SCK_NULL_REF_EXCPN:
+                msg = " for NULL_REF_EXCPN";
+                break;
             default:
                 msg = " for ??";
                 break;
@@ -3758,36 +3764,7 @@ BasicBlock* Compiler::fgAddCodeRef(BasicBlock* srcBlk, unsigned refData, Special
     /* Now figure out what code to insert */
 
     GenTreeCall* tree;
-    int          helper = CORINFO_HELP_UNDEF;
-
-    switch (kind)
-    {
-        case SCK_RNGCHK_FAIL:
-            helper = CORINFO_HELP_RNGCHKFAIL;
-            break;
-
-        case SCK_DIV_BY_ZERO:
-            helper = CORINFO_HELP_THROWDIVZERO;
-            break;
-
-        case SCK_ARITH_EXCPN:
-            helper = CORINFO_HELP_OVERFLOW;
-            noway_assert(SCK_OVERFLOW == SCK_ARITH_EXCPN);
-            break;
-
-        case SCK_ARG_EXCPN:
-            helper = CORINFO_HELP_THROW_ARGUMENTEXCEPTION;
-            break;
-
-        case SCK_ARG_RNG_EXCPN:
-            helper = CORINFO_HELP_THROW_ARGUMENTOUTOFRANGEEXCEPTION;
-            break;
-
-        default:
-            noway_assert(!"unexpected code addition kind");
-            return nullptr;
-    }
-
+    int          helper = acdHelper(kind);
     noway_assert(helper != CORINFO_HELP_UNDEF);
 
     // Add the appropriate helper call.
