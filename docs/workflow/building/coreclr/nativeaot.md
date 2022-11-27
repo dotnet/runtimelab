@@ -47,7 +47,7 @@ For the runtime libraries:
   ./emsdk install 2.0.33
   ./emsdk activate 2.0.33
   ```
-- Run `build nativeaot+libs -c [Debug|Release] -a wasm -os Browser`. This will create the architecture-dependent libraries needed for linking and runtime execution, as well as the managed binaries to be used as input to ILC.
+- Run `build build clr.nativeaotlibs+libs -c [Debug|Release] -a wasm -os Browser`. This will create the architecture-dependent libraries needed for linking and runtime execution, as well as the managed binaries to be used as input to ILC.
 
 For the compilers:
 - Download the LLVM 11.0.0 source from https://github.com/llvm/llvm-project/releases/download/llvmorg-11.0.0/llvm-11.0.0.src.tar.xz
@@ -55,10 +55,10 @@ For the compilers:
 - Configure the LLVM source to use the same runtime as the Jit: `cmake -G "Visual Studio 17 2022" -DCMAKE_BUILD_TYPE=Debug -D LLVM_USE_CRT_DEBUG=MTd path-to-the-build-directory` or if building for the Release configuration `cmake -G "Visual Studio 17 2022" -DCMAKE_BUILD_TYPE=Release -D LLVM_USE_CRT_RELEASE=MT path-to-the-build-directory`
 - Build LLVM either from the command line (`cmake --build . --target LLVMCore LLVMBitWriter`) or from VS 2022. Currently the Jit depends only on the output of LLVMCore and LLVMBitWriter projects.  For the Release configuration, `cmake --build . --config Release  --target LLVMCore LLVMBitWriter`
 - Set the enviroment variable `LLVM_CMAKE_CONFIG` to locate the LLVM config: `set LLVM_CMAKE_CONFIG=path-to-the-build-directory/lib/cmake/llvm`. This location should contain the file `LLVMConfig.cmake`.
-- Build the Jits and the ILC: `build clr.jit+clr.wasmjit+nativeaot.ilc -c [Debug|Release]`. Note that `clr.jit` only needs to be built once.
+- Build the Jits and the ILC: `build clr.jit+clr.wasmjit+clr.tools+clr.nativeaotlibs -c [Debug|Release]`. Note that `clr.jit` only needs to be built once.
 - You can use the `-msbuild` option, `build clr.wasmjit -msbuild`, to generate a Visual Studio solution for the Jit, to be found in `artifacts/obj/coreclr/windows.x64.Debug/ide/jit`.
 
-With the above binaries built, the ILC can be run and debugged as normal. The runtime tests can also be built, in bulk: `src/tests/build nativeaot debug wasm skipnative tree nativeaot`, or individually: `cd <test-directory> && dotnet build TestProjectName.csproj /p:TargetArchitecture=wasm /p:TargetOS=Browser`, and run as described in the sections below. A response file for debugging ILC can also be obtained from the test build, e. g. for `SmokeTests\HelloWasm` it'd be located in `artifacts\tests\coreclr\Browser.wasm.Debug\nativeaot\SmokeTests\HelloWasm\HelloWasm\native\HelloWasm.ilc.rsp`.
+With the above binaries built, the ILC can be run and debugged as normal. The runtime tests can also be built, in bulk: `src/tests/build nativeaot debug wasm skipnative tree nativeaot /p:LibrariesConfiguration=debug`, or individually: `cd <test-directory> && dotnet build TestProjectName.csproj /p:TargetArchitecture=wasm /p:TargetOS=Browser`, and run as described in the sections below. A response file for debugging ILC can also be obtained from the test build, e. g. for `SmokeTests\HelloWasm` it'd be located in `artifacts\tests\coreclr\Browser.wasm.Debug\nativeaot\SmokeTests\HelloWasm\HelloWasm\native\HelloWasm.ilc.rsp`.
 
 Working on the Jit itself, one possible workflow is taking advantage of the generated VS project:
 - Open the Ilc solution and add the aforementioned Jit project, `clrjit_browser_wasm32_x64.vcxproj`. Then in the project properties, General section, change the output folder to the full path for `artifacts\bin\coreclr\windows.x64.Debug\ilc` e.g. `E:\GitHub\runtimelab\artifacts\bin\coreclr\windows.x64.Debug\ilc`. Build `clrjit_browser_wasm32_x64` project and you should now be able to change and put breakpoints in the C++ code.
