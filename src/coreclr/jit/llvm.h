@@ -67,6 +67,12 @@ struct PhiPair
     llvm::PHINode* llvmPhiNode;
 };
 
+struct LlvmBlockRange
+{
+    llvm::BasicBlock* FirstBlock;
+    llvm::BasicBlock* LastBlock;
+};
+
 // TODO: We should create a Static... class to manage the globals and their lifetimes.
 // Note we declare all statics here, and define them in llvm.cpp, for documentation and
 // visibility purposes even as some are only needed in other compilation units.
@@ -92,7 +98,7 @@ private:
     DebugInfo _currentOffset;
     llvm::IRBuilder<> _builder;
     llvm::IRBuilder<> _prologBuilder;
-    JitHashTable<BasicBlock*, JitPtrKeyFuncs<BasicBlock>, llvm::BasicBlock*> _blkToLlvmBlkVectorMap;
+    JitHashTable<BasicBlock*, JitPtrKeyFuncs<BasicBlock>, LlvmBlockRange> _blkToLlvmBlksMap;
     JitHashTable<GenTree*, JitPtrKeyFuncs<GenTree>, Value*> _sdsuMap;
     JitHashTable<SSAName, SSAName, Value*> _localsMap;
     std::vector<PhiPair> _phiPairs;
@@ -123,6 +129,10 @@ private:
     LIR::Range& CurrentRange()
     {
         return *_currentRange;
+    }
+    BasicBlock* CurrentBlock() const
+    {
+        return _currentBlock;
     }
 
     GCInfo* getGCInfo();
@@ -195,6 +205,7 @@ private:
     void lowerFieldOfDependentlyPromotedStruct(GenTree* node);
     void ConvertShadowStackLocalNode(GenTreeLclVarCommon* node);
     void lowerStoreBlk(GenTreeBlk* storeBlkNode);
+    void lowerDivMod(GenTreeOp* divModNode);
     void lowerReturn(GenTreeUnOp* retNode);
 
     void lowerCallToShadowStack(GenTreeCall* callNode);
@@ -217,8 +228,7 @@ public:
 private:
     void generateProlog();
     void initializeLocals();
-    void startImportingBasicBlock(BasicBlock* block);
-    void endImportingBasicBlock(BasicBlock* block);
+    void generateBlock(BasicBlock* block);
     void fillPhis();
 
     Value* getGenTreeValue(GenTree* node);
@@ -234,7 +244,7 @@ private:
     void buildLocalField(GenTreeLclFld* lclFld);
     void buildLocalVarAddr(GenTreeLclVarCommon* lclVar);
     void buildAdd(GenTreeOp* node);
-    void buildDiv(GenTree* node);
+    void buildDivMod(GenTree* node);
     void buildCast(GenTreeCast* cast);
     void buildLclHeap(GenTreeUnOp* lclHeap);
     void buildCmp(GenTreeOp* node);
@@ -255,10 +265,13 @@ private:
     void buildReturn(GenTree* node);
     void buildJTrue(GenTree* node, Value* opValue);    
     void buildNullCheck(GenTreeIndir* nullCheckNode);
+    void buildBoundsCheck(GenTreeBoundsChk* boundsCheck);
 
     void storeObjAtAddress(Value* baseAddress, Value* data, StructDesc* structDesc);
     unsigned buildMemCpy(Value* baseAddress, unsigned startOffset, unsigned endOffset, Value* srcAddress);
+
     void emitDoNothingCall();
+    void emitJumpToThrowHelper(Value* jumpCondValue, SpecialCodeKind throwKind);
     void emitNullCheckForIndir(GenTreeIndir* indir, Value* addrValue);
     void buildThrowException(llvm::IRBuilder<>& builder, const char* helperClass, const char* helperMethodName, Value* shadowStack);
     void buildLlvmCallOrInvoke(llvm::Function* callee, llvm::ArrayRef<Value*> args);
@@ -267,7 +280,7 @@ private:
     Function* getOrCreateLlvmFunction(const char* symbolName, GenTreeCall* call);
     FunctionType* createFunctionTypeForCall(GenTreeCall* call);
     FunctionType* buildHelperLlvmFunctionType(GenTreeCall* call, bool withShadowStack);
-    bool helperRequiresShadowStack(CORINFO_METHOD_HANDLE corinfoMethodHnd);
+    bool helperRequiresShadowStack(CorInfoHelpFunc helperFunc);
 
     Value* getOrCreateExternalSymbol(const char* symbolName, Type* symbolType = nullptr);
     Function* getOrCreateRhpAssignRef();
@@ -282,7 +295,10 @@ private:
     DebugMetadata getOrCreateDebugMetadata(const char* documentFileName);
     llvm::DILocation* createDebugFunctionAndDiLocation(struct DebugMetadata debugMetadata, unsigned int lineNo);
 
-    llvm::BasicBlock* getLLVMBasicBlockForBlock(BasicBlock* block);
+    llvm::BasicBlock* createInlineLlvmBlock();
+    llvm::BasicBlock* getFirstLlvmBlockForBlock(BasicBlock* block);
+    llvm::BasicBlock* getLastLlvmBlockForBlock(BasicBlock* block);
+    void setLastLlvmBlockForBlock(BasicBlock* block, llvm::BasicBlock* llvmBlock);
 
     bool isLlvmFrameLocal(LclVarDsc* varDsc);
     unsigned int getTotalLocalOffset();

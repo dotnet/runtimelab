@@ -5194,6 +5194,22 @@ void Compiler::compCompile(void** methodCodePtr, uint32_t* methodCodeSize, JitFl
     Rationalizer rat(this); // PHASE_RATIONALIZE
     rat.Run();
 
+    // Here we do "simple lowering".  When the RyuJIT backend works for all
+    // platforms, this will be part of the more general lowering phase.  For now, though, we do a separate
+    // pass of "final lowering."  We must do this before (final) liveness analysis, because this creates
+    // range check throw blocks, in which the liveness must be correct.
+    //
+    DoPhase(this, PHASE_SIMPLE_LOWERING, &Compiler::fgSimpleLowering);
+
+#ifdef DEBUG
+    fgDebugCheckBBlist();
+    fgDebugCheckLinks();
+#endif
+
+    // Enable this to gather statistical data such as
+    // call and register argument info, flowgraph and loop info, etc.
+    compJitStats();
+
 #if defined(TARGET_WASM)
     if (opts.OptimizationEnabled())
     {
@@ -5218,22 +5234,6 @@ void Compiler::compCompile(void** methodCodePtr, uint32_t* methodCodeSize, JitFl
     DoPhase(this, PHASE_BUILD_LLVM, buildLlvmPhase);
     delete llvm;
 #else
-
-    // Here we do "simple lowering".  When the RyuJIT backend works for all
-    // platforms, this will be part of the more general lowering phase.  For now, though, we do a separate
-    // pass of "final lowering."  We must do this before (final) liveness analysis, because this creates
-    // range check throw blocks, in which the liveness must be correct.
-    //
-    DoPhase(this, PHASE_SIMPLE_LOWERING, &Compiler::fgSimpleLowering);
-
-#ifdef DEBUG
-    fgDebugCheckBBlist();
-    fgDebugCheckLinks();
-#endif
-
-    // Enable this to gather statistical data such as
-    // call and register argument info, flowgraph and loop info, etc.
-    compJitStats();
 
 #ifdef TARGET_ARM
     if (compLocallocUsed)

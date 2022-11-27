@@ -186,6 +186,8 @@ GenTree* Compiler::fgMorphExpandCast(GenTreeCast* tree)
     var_types dstType = tree->CastToType();
     unsigned  dstSize = genTypeSize(dstType);
 
+#if !defined(TARGET_WASM) // LLVM codegen supports all casts directly.
+
     // See if the cast has to be done in two steps.  R -> I
     if (varTypeIsFloating(srcType) && varTypeIsIntegral(dstType))
     {
@@ -412,7 +414,9 @@ GenTree* Compiler::fgMorphExpandCast(GenTreeCast* tree)
         }
     }
 #endif // TARGET_X86
-    else if (varTypeIsGC(srcType) != varTypeIsGC(dstType))
+    else
+#endif // !defined(TARGET_WASM)
+        if (varTypeIsGC(srcType) != varTypeIsGC(dstType))
     {
         // We are casting away GC information.  we would like to just
         // change the type to int, however this gives the emitter fits because

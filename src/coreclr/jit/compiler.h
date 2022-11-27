@@ -1230,6 +1230,16 @@ public:
         assert(lowerBound <= upperBound);
     }
 
+    SymbolicIntegerValue GetLowerBound()
+    {
+        return m_lowerBound;
+    }
+
+    SymbolicIntegerValue GetUpperBound()
+    {
+        return m_upperBound;
+    }
+
     bool Contains(int64_t value) const;
 
     bool Contains(IntegralRange other) const
@@ -6538,9 +6548,9 @@ private:
 
     BasicBlock* fgRngChkTarget(BasicBlock* block, SpecialCodeKind kind);
 
+public:
     BasicBlock* fgAddCodeRef(BasicBlock* srcBlk, unsigned refData, SpecialCodeKind kind);
 
-public:
     AddCodeDsc* fgFindExcptnTarget(SpecialCodeKind kind, unsigned refData);
 
     bool fgUseThrowHelperBlocks();
