@@ -164,8 +164,15 @@ jobs:
         displayName: Install native dependencies
 
     # Build
-    - ${{ if eq(parameters.buildingOnSourceBuildImage, false) }}:
+    # For Wasm we don't want to build all the buildArgs that are passed from runtimelab.yml
+    - ${{ if and(eq(parameters.buildingOnSourceBuildImage, false), ne(parameters.nameSuffix, 'Browser_wasm_Windows')) }}:
       - script: $(_sclEnableCommand) $(Build.SourcesDirectory)$(dir)build$(scriptExt) -ci -arch ${{ parameters.archType }} $(_osParameter) ${{ parameters.buildArgs }} $(_officialBuildParameter) $(_crossBuildPropertyArg) $(_cxx11Parameter) $(_richCodeNavigationParam) $(_buildDarwinFrameworksParameter)
+        displayName: Build product
+        ${{ if eq(parameters.useContinueOnErrorDuringBuild, true) }}:
+          continueOnError: ${{ parameters.shouldContinueOnError }}
+
+    - ${{ if and(eq(parameters.buildingOnSourceBuildImage, false), eq(parameters.nameSuffix, 'Browser_wasm_Windows')) }}:
+      - script: $(_sclEnableCommand) $(Build.SourcesDirectory)$(dir)build$(scriptExt) -ci -arch ${{ parameters.archType }} $(_osParameter) clr.nativeaotlibs+libs $(_officialBuildParameter) $(_crossBuildPropertyArg) $(_cxx11Parameter) $(_richCodeNavigationParam) $(_buildDarwinFrameworksParameter)
         displayName: Build product
         ${{ if eq(parameters.useContinueOnErrorDuringBuild, true) }}:
           continueOnError: ${{ parameters.shouldContinueOnError }}

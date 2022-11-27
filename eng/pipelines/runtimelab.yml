@@ -98,7 +98,7 @@ stages:
       buildConfig: Release
       platforms:
       - Linux_x64
-      - Linux_musl_x64
+#     - Linux_musl_x64
 #     - Linux_arm64      # ILCompiler for LLVM depends on libLLVM.runtime.linux-arm64 with version (>= 11.0.0) which is missing https://github.com/microsoft/LLVMSharp/issues/177. TODO: reinstate when we remove LLVMSharp dependency
 #     - Linux_arm        # ILCompiler for LLVM depends on libLLVM.runtime.linux-arm64 with version (>= 11.0.0) which is missing https://github.com/microsoft/LLVMSharp/issues/177. TODO: reinstate when we remove LLVMSharp dependency
 #     - Linux_musl_arm64 # ILCompiler for LLVM depends on libLLVM.runtime.linux-arm64 with version (>= 11.0.0) which is missing https://github.com/microsoft/LLVMSharp/issues/177. TODO: reinstate when we remove LLVMSharp dependency
