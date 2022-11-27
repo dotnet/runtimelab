@@ -69,7 +69,7 @@ stages:
         jobParameters:
           timeoutInMinutes: 300
           testGroup: innerloop
-          buildArgs: -s clr.alljits+clr.tools+clr.nativeaotlibs+libs+nativeaot.packages -lc Release -rc Debug
+          buildArgs: -s clr.nativeaotlibs+libs -lc Release -rc Debug
           extraStepsTemplate: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
 
   #
