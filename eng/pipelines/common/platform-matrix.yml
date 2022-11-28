@@ -309,6 +309,8 @@ jobs:
         ${{ if eq(parameters.passPlatforms, true) }}:
           platforms: ${{ parameters.platforms }}
         ${{ insert }}: ${{ parameters.jobParameters }}
+        # overwrite buildArgs for just the subsets that can be built for Wasm
+        buildArgs: -s clr.nativeaotlibs+libs -rc ${{ parameters.buildConfig }} -lc Release
 
 # FreeBSD
 - ${{ if containsValue(parameters.platforms, 'FreeBSD_x64') }}:

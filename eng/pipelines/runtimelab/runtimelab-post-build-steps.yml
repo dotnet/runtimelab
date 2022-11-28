@@ -29,7 +29,7 @@ steps:
   - ${{ if eq(parameters.platform, 'Browser_wasm_win') }}:
     - script: |
         call $(Build.SourcesDirectory)\wasm-tools\emsdk\emsdk_env
-        $(Build.SourcesDirectory)/src/tests/build$(scriptExt) nativeaot $(buildConfigUpper) ${{ parameters.archType }} skipnative tree nativeaot /p:LibrariesConfiguration=$(buildConfigUpper)
+        $(Build.SourcesDirectory)/src/tests/build$(scriptExt) nativeaot $(buildConfigUpper) ${{ parameters.archType }} skipnative tree nativeaot /p:LibrariesConfiguration=Release
       displayName: Build WebAssembly tests
   - ${{ elseif eq(parameters.osGroup, 'windows') }}:
     - script: $(Build.SourcesDirectory)/src/tests/build$(scriptExt) nativeaot $(buildConfigUpper) ${{ parameters.archType }} ${{ parameters.testFilter }} /p:NativeAotMultimodule=true
