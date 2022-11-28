@@ -603,7 +603,6 @@ void Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
     fgArgTabEntry**            argTable    = argInfo->ArgTable();
     std::vector<OperandArgNum> sortedArgs  = std::vector<OperandArgNum>(argCount);
     OperandArgNum*             sortedData  = sortedArgs.data();
-    GenTreeCall::Use*          callThisArg = callNode->gtCallThisArg;
 
     callNode->ResetArgInfo();
     callNode->gtCallThisArg = nullptr;
@@ -618,7 +617,7 @@ void Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
         GenTreePutArgType* calleeShadowStackPutArg =
             _compiler->gtNewPutArgType(calleeShadowStack, CORINFO_TYPE_PTR, NO_CLASS_HANDLE);
 #ifdef DEBUG
-        calleeShadowStackPutArg->SetArgNum(-1); // -1 will represent the shadowstack  arg for LLVM
+        calleeShadowStackPutArg->SetArgNum(-1); // -1 will represent the shadowstack arg for LLVM
 #endif
         CurrentRange().InsertBefore(callNode, calleeShadowStackPutArg);
 
@@ -637,12 +636,16 @@ void Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
         sortedData[argNum]            = opAndArg;
     }
 
-    // Helper calls will for now be treated as though all of their argument are "custom"
-    // (thus, none of them will be placed on the shadow stack).
     CORINFO_SIG_INFO* sigInfo = nullptr;
     CORINFO_ARG_LIST_HANDLE sigArgs = nullptr;
+    const HelperFuncInfo* helperInfo = nullptr;
     unsigned sigArgCount = 0;
-    if (!callNode->IsHelperCall())
+    if (callNode->IsHelperCall())
+    {
+        helperInfo = &getHelperFuncInfo(_compiler->eeGetHelperNum(callNode->gtCallMethHnd));
+        sigArgCount = helperInfo->GetSigArgCount();
+    }
+    else
     {
         sigInfo = callNode->callSig;
         sigArgs = sigInfo->args;
@@ -655,22 +658,52 @@ void Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
 
     for (OperandArgNum opAndArg : sortedArgs)
     {
+        GenTree*             argNode     = opAndArg.operand;
         CORINFO_CLASS_HANDLE clsHnd      = NO_CLASS_HANDLE;
         CorInfoType          corInfoType = CORINFO_TYPE_UNDEF;
+        bool                 isSigArg    = argIx >= firstSigArgIx;
 
-        // "this" not in sigInfo arg list
-        bool isThis = callThisArg != nullptr && opAndArg.argNum == 0 && sigInfo->hasThis();
-        bool isSigArg = argIx >= firstSigArgIx;
-        if (isSigArg)
+        // We currently do not place any args for helpers on the shadow stack. This is a potential GC
+        // hole and not correct ABI-wise for managed helpers. TODO-LLVM: investigate and fix issues.
+        bool argOnShadowStack = false;
+        if (sigInfo != nullptr)
         {
-            corInfoType = getCorInfoTypeForArg(sigInfo, sigArgs, &clsHnd);
+            // Is this an in-signature argument?
+            if (isSigArg)
+            {
+                corInfoType = getCorInfoTypeForArg(sigInfo, sigArgs, &clsHnd);
+            }
+            else // Not-in-sig arguments. We need to handle these specially.
+            {
+                if (sigInfo->hasThis() && (opAndArg.argNum == 0))
+                {
+                    assert(sigInfo->hasThis());
+                    corInfoType = argNode->TypeIs(TYP_REF) ? CORINFO_TYPE_CLASS : CORINFO_TYPE_BYREF;
+                }
+                else
+                {
+                    // TODO-LLVM: this is not fully correct (e. g. we may think pointer an integer),
+                    // but sufficient for now. Handle precisely once we merge the call args refactor.
+                    corInfoType = toCorInfoType(genActualType(argNode));
+                }
+            }
+
+            argOnShadowStack = !canStoreArgOnLlvmStack(_compiler, corInfoType, clsHnd);
         }
-        else if (!isThis)
+        else
         {
-            corInfoType = toCorInfoType(opAndArg.operand->TypeGet());
+            assert(helperInfo != nullptr);
+            if (!isSigArg)
+            {
+                // There are helpers that do not have a specified signature (have a variable number of args).
+                // We'll have to wait for upstream call args changes to get merged to handle those properly.
+                failFunctionCompilation();
+            }
+
+            corInfoType = helperInfo->GetSigArgType(argIx);
+            clsHnd = helperInfo->GetSigArgClass(_compiler, argIx);
         }
 
-        bool argOnShadowStack = isThis || (isSigArg && !canStoreArgOnLlvmStack(_compiler, corInfoType, clsHnd));
         if (argOnShadowStack)
         {
             if (corInfoType == CORINFO_TYPE_VALUECLASS)
@@ -678,9 +711,9 @@ void Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
                 shadowStackUseOffest = padOffset(corInfoType, clsHnd, shadowStackUseOffest);
             }
 
-            if (opAndArg.operand->OperIs(GT_FIELD_LIST))
+            if (argNode->OperIs(GT_FIELD_LIST))
             {
-                for (GenTreeFieldList::Use& use : opAndArg.operand->AsFieldList()->Uses())
+                for (GenTreeFieldList::Use& use : argNode->AsFieldList()->Uses())
                 {
                     assert(use.GetType() != TYP_STRUCT);
 
@@ -691,13 +724,13 @@ void Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
                     CurrentRange().InsertBefore(callNode, fieldStoreNode);
                 }
 
-                CurrentRange().Remove(opAndArg.operand);
+                CurrentRange().Remove(argNode);
             }
             else
             {
                 unsigned offsetValue = _shadowStackLocalsSize + shadowStackUseOffest;
                 GenTree* slotAddr  = insertShadowStackAddr(callNode, offsetValue);
-                GenTree* storeNode = createShadowStackStoreNode(opAndArg.operand->TypeGet(), slotAddr, opAndArg.operand);
+                GenTree* storeNode = createShadowStackStoreNode(argNode->TypeGet(), slotAddr, argNode);
 
                 CurrentRange().InsertBefore(callNode, storeNode);
             }
@@ -714,7 +747,7 @@ void Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
         else
         {
             // Arg on LLVM stack.
-            GenTreePutArgType* putArg = _compiler->gtNewPutArgType(opAndArg.operand, corInfoType, clsHnd);
+            GenTreePutArgType* putArg = _compiler->gtNewPutArgType(argNode, corInfoType, clsHnd);
 #if DEBUG
             putArg->SetArgNum(opAndArg.argNum);
 #endif
@@ -730,7 +763,8 @@ void Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
 
             CurrentRange().InsertBefore(callNode, putArg);
         }
-        if (isSigArg)
+
+        if (isSigArg && (sigInfo != nullptr))
         {
             sigArgs = _info.compCompHnd->getArgNext(sigArgs);
         }
