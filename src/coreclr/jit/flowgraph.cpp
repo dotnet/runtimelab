@@ -2743,8 +2743,6 @@ void Compiler::fgAddInternal()
         }
     }
 
-    // TODO-LLVM: WASM cannot merge returns as we are not converting applicable structs to native types so just never do it.
-#ifndef TARGET_WASM
     // Visit the BBJ_RETURN blocks and merge as necessary.
 
     for (BasicBlock* block = fgFirstBB; block != lastBlockBeforeGenReturns->bbNext; block = block->bbNext)
@@ -2756,8 +2754,6 @@ void Compiler::fgAddInternal()
     }
 
     merger.PlaceReturns();
-
-#endif
 
     if (compMethodRequiresPInvokeFrame())
     {
