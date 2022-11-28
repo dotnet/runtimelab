@@ -310,7 +310,7 @@ jobs:
           platforms: ${{ parameters.platforms }}
         # overwrite buildArgs for just the subsets that can be built for Wasm
         buildArgs: -s clr.nativeaotlibs+libs -rc ${{ parameters.buildConfig }} -lc Release
-        - ${{ each jobParameter in parameters.jobParameters }}:
+        ${{ each jobParameter in parameters.jobParameters }}:
           ${{ if ne(jobParameter.key, 'buildArgs') }}:
             ${{ jobParameter.key }}: ${{ jobParameter.value }}       
 
