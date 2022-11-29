@@ -1011,7 +1011,7 @@ namespace System.Threading
             }
         }
 
-#if CORECLR
+#if CORECLR && TARGET_WINDOWS && TARGET_AMD64
         public static void RunAsGreenThread(Action action)
         {
             ThreadPoolWorkQueueThreadLocals? tl = ThreadPoolWorkQueueThreadLocals.Current;
