@@ -1011,6 +1011,7 @@ namespace System.Threading
             }
         }
 
+#if CORECLR
         public static void RunAsGreenThread(Action action)
         {
             ThreadPoolWorkQueueThreadLocals? tl = ThreadPoolWorkQueueThreadLocals.Current;
@@ -1045,6 +1046,7 @@ namespace System.Threading
 
             Task.GreenThreadExecutorFunc(action);
         }
+#endif
     }
 
     internal struct SimpleSpinLock
