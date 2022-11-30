@@ -1462,11 +1462,6 @@ void Llvm::buildReturn(GenTree* node)
     {
         retValValue = llvm::Constant::getNullValue(retLlvmType);
     }
-    else if (genActualType(node) != genActualType(retValNode))
-    {
-        // TODO-LLVM: remove these cases in lowering.
-        failFunctionCompilation();
-    }
     else
     {
         retValValue = consumeValue(retValNode, retLlvmType);

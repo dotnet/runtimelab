@@ -497,22 +497,70 @@ void Llvm::lowerDivMod(GenTreeOp* divModNode)
 
 void Llvm::lowerReturn(GenTreeUnOp* retNode)
 {
+    if (retNode->TypeIs(TYP_VOID))
+    {
+        // Nothing to do.
+        return;
+    }
+
     GenTree* retVal = retNode->gtGetOp1();
+    ClassLayout* retLayout = retNode->TypeIs(TYP_STRUCT) ? _compiler->typGetObjLayout(_sigInfo.retTypeClass) : nullptr;
     if (retNode->TypeIs(TYP_STRUCT) && retVal->TypeIs(TYP_STRUCT))
     {
-        normalizeStructUse(retVal, _compiler->typGetObjLayout(_sigInfo.retTypeClass));
+        normalizeStructUse(retVal, retLayout);
     }
+
+    bool isStructZero = retNode->TypeIs(TYP_STRUCT) && retVal->IsIntegralConst(0);
 
     if (_retAddressLclNum != BAD_VAR_NUM)
     {
-        LclVarDsc* retAddressVarDsc = _compiler->lvaGetDesc(_retAddressLclNum);
-        GenTreeLclVar* retAddressLocal = _compiler->gtNewLclvNode(_retAddressLclNum, TYP_I_IMPL);
-        GenTree* storeNode = createShadowStackStoreNode(retNode->TypeGet(), retAddressLocal, retVal);
+        GenTreeLclVar* retAddrNode = _compiler->gtNewLclvNode(_retAddressLclNum, TYP_I_IMPL);
+        GenTree* storeNode;
+        if (isStructZero)
+        {
+            storeNode = new (_compiler, GT_STORE_BLK) GenTreeBlk(GT_STORE_BLK, TYP_STRUCT, retAddrNode, retVal,
+                                                                 retLayout);
+            storeNode->gtFlags |= (GTF_ASG | GTF_IND_NONFAULTING);
+        }
+        else
+        {
+            // Morph will not create size mismatches beyond the "zero" case handled above,
+            // so here we can store the value (of whichever "actual" type) directly.
+            storeNode = createShadowStackStoreNode(genActualType(retVal), retAddrNode, retVal);
+        }
 
         retNode->gtOp1 = nullptr;
         retNode->ChangeType(TYP_VOID);
 
-        CurrentRange().InsertBefore(retNode, retAddressLocal, storeNode);
+        CurrentRange().InsertBefore(retNode, retAddrNode, storeNode);
+    }
+    // Morph can create pretty much any type mismatch here (struct <-> primitive, primitive <-> struct, etc).
+    // Fix these by spilling to a temporary (we could do better but it is not worth it, upstream will get rid
+    // of the important cases). Exclude zero-init-ed structs (codegen supports them directly).
+    else if ((retNode->TypeGet() != genActualType(retVal)) && !isStructZero)
+    {
+        LIR::Use retValUse(CurrentRange(), &retNode->gtOp1, retNode);
+        retValUse.ReplaceWithLclVar(_compiler);
+
+        GenTreeLclVar* lclVarNode = retValUse.Def()->AsLclVar();
+        _compiler->lvaGetDesc(lclVarNode)->lvHasLocalAddr = true;
+
+        if (retNode->TypeIs(TYP_STRUCT))
+        {
+            // TODO-LLVM: replace this with TYP_STRUCT LCL_FLD once it is available.
+            lclVarNode->SetOper(GT_LCL_VAR_ADDR);
+            GenTree* objNode = _compiler->gtNewObjNode(_sigInfo.retTypeClass, lclVarNode);
+            objNode->gtFlags |= GTF_IND_NONFAULTING;
+
+            retValUse.ReplaceWith(objNode);
+            CurrentRange().InsertBefore(retNode, objNode);
+        }
+        else
+        {
+            // TODO-LLVM: change to "SetOper" once enough of upstream is merged.
+            lclVarNode->ChangeOper(GT_LCL_FLD);
+            lclVarNode->ChangeType(_info.compRetType);
+        }
     }
 }
 
