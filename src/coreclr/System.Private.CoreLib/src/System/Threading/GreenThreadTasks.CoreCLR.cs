@@ -33,19 +33,20 @@ namespace System.Threading.Tasks
 
             ThreadPoolWorkQueueThreadLocals? tl = DontReuseGreenThreads ? null : ThreadPoolWorkQueueThreadLocals.Current;
             executorObj.action!();
-            ExecutionContext.SendValueChangeNotificationsForResetToDefaultUnsafe();
             if (tl == null)
             {
+                ExecutionContext.SendValueChangeNotificationsForResetToDefaultUnsafe();
                 return;
             }
 
+            Thread currentThread = Thread.CurrentThread;
             while (true)
             {
+                ExecutionContext.ResetThreadPoolThread(currentThread);
                 var resumeTcs = new TaskCompletionSource();
                 tl.RegisterGreenThreadForResume(resumeTcs);
                 resumeTcs.Task.Wait();
                 tl.ResumeGreenThreadAction();
-                ExecutionContext.SendValueChangeNotificationsForResetToDefaultUnsafe();
             }
         }
 
