@@ -9,6 +9,9 @@ namespace System.Threading.Tasks
 {
     public partial class Task
     {
+        private static readonly bool DontReuseGreenThreads =
+            Environment.GetEnvironmentVariable("DOTNET_GreenThreads_DontReuse") == "1";
+
         private struct SuspendedThread
         {}
 
@@ -27,8 +30,24 @@ namespace System.Threading.Tasks
             Thread.t_IsGreenThread = true;
             GreenThreadExecutorObject executorObj = Unsafe.AsRef<GreenThreadExecutorObject>(argument);
             GreenThreadStatics.t_RefToTaskToWaitFor = executorObj.refToTaskToWaitFor;
-            executorObj!.action!();
-            ExecutionContext.SendValueChangeNotificationsForResetToDefaultUnsafe();
+
+            ThreadPoolWorkQueueThreadLocals? tl = DontReuseGreenThreads ? null : ThreadPoolWorkQueueThreadLocals.Current;
+            executorObj.action!();
+            if (tl == null)
+            {
+                ExecutionContext.SendValueChangeNotificationsForResetToDefaultUnsafe();
+                return;
+            }
+
+            Thread currentThread = Thread.CurrentThread;
+            while (true)
+            {
+                ExecutionContext.ResetThreadPoolThread(currentThread);
+                var resumeTcs = new TaskCompletionSource();
+                tl.RegisterGreenThreadForResume(resumeTcs);
+                resumeTcs.Task.Wait();
+                tl.ResumeGreenThreadAction();
+            }
         }
 
         private static class GreenThreadStatics
@@ -42,8 +61,6 @@ namespace System.Threading.Tasks
             public Action? action;
             public unsafe void* refToTaskToWaitFor;
         }
-
-        private static readonly Action<Action> s_greenThreadExecutorFuncDelegate = GreenThreadExecutorFunc;
 
         internal static unsafe void GreenThreadExecutorFunc(Action action)
         {
@@ -105,17 +122,20 @@ namespace System.Threading.Tasks
             void IThreadPoolWorkItem.Execute() => ResumeFromNonGreenThread();
         }
 
+        private static readonly Action<Action> s_runAsGreenThreadInlineDelegate =
+            DontReuseGreenThreads ? GreenThreadExecutorFunc : ThreadPoolWorkQueue.RunAsGreenThread;
+
         static partial void RunOnActualGreenThread(Action action, bool preferLocal, ref bool ranAsActualGreenThread)
         {
             ranAsActualGreenThread = true;
-            ThreadPool.UnsafeQueueUserWorkItem(s_greenThreadExecutorFuncDelegate, action, preferLocal);
+            ThreadPool.UnsafeQueueUserWorkItem(s_runAsGreenThreadInlineDelegate, action, preferLocal);
         }
 
         static partial void TryRunOnActualGreenThreadInline(Action action, ref bool success)
         {
             success = true;
             ExecutionContext.SendValueChangeNotificationsForResetToDefaultUnsafe();
-            GreenThreadExecutorFunc(action);
+            s_runAsGreenThreadInlineDelegate(action);
             ExecutionContext.SendValueChangeNotificationsForRestoreFromDefaultUnsafe();
         }
 

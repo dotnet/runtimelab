@@ -3032,7 +3032,7 @@ namespace System.Threading.Tasks
         {
             bool infiniteWait = millisecondsTimeout == Timeout.Infinite;
             uint startTimeTicks = infiniteWait ? 0 : (uint)Environment.TickCount;
-            bool returnValue = SpinWait(millisecondsTimeout);
+            bool returnValue = !(infiniteWait && Thread.IsGreenThread) && SpinWait(millisecondsTimeout);
             if (!returnValue)
             {
                 var mres = new SetOnInvokeMres();
