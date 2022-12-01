@@ -1015,34 +1015,35 @@ namespace System.Threading
         public static void RunAsGreenThread(Action action)
         {
             ThreadPoolWorkQueueThreadLocals? tl = ThreadPoolWorkQueueThreadLocals.Current;
-            Debug.Assert(tl != null);
-
-            TaskCompletionSource? resumeGreenThreadTcs = tl.resumeGreenThreadTcs;
-            if (resumeGreenThreadTcs != null)
+            if (tl != null)
             {
-                tl.resumeGreenThreadTcs = null;
-                Debug.Assert(tl.resumeGreenThreadAction == null);
-                tl.resumeGreenThreadAction = action;
-                resumeGreenThreadTcs.SetResult();
-                return;
-            }
-
-            tl.resumeGreenThreadTcsesLock.Acquire();
-            {
-                int count = tl.resumeGreenThreadTcses.Count;
-                if (count != 0)
+                TaskCompletionSource? resumeGreenThreadTcs = tl.resumeGreenThreadTcs;
+                if (resumeGreenThreadTcs != null)
                 {
-                    resumeGreenThreadTcs = tl.resumeGreenThreadTcses[count - 1];
-                    tl.resumeGreenThreadTcses.RemoveAt(count - 1);
-                    tl.resumeGreenThreadTcsesLock.Release();
-
+                    tl.resumeGreenThreadTcs = null;
                     Debug.Assert(tl.resumeGreenThreadAction == null);
                     tl.resumeGreenThreadAction = action;
                     resumeGreenThreadTcs.SetResult();
                     return;
                 }
+
+                tl.resumeGreenThreadTcsesLock.Acquire();
+                {
+                    int count = tl.resumeGreenThreadTcses.Count;
+                    if (count != 0)
+                    {
+                        resumeGreenThreadTcs = tl.resumeGreenThreadTcses[count - 1];
+                        tl.resumeGreenThreadTcses.RemoveAt(count - 1);
+                        tl.resumeGreenThreadTcsesLock.Release();
+
+                        Debug.Assert(tl.resumeGreenThreadAction == null);
+                        tl.resumeGreenThreadAction = action;
+                        resumeGreenThreadTcs.SetResult();
+                        return;
+                    }
+                }
+                tl.resumeGreenThreadTcsesLock.Release();
             }
-            tl.resumeGreenThreadTcsesLock.Release();
 
             Task.GreenThreadExecutorFunc(action);
         }
