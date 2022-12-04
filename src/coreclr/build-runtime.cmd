@@ -601,8 +601,7 @@ if %__BuildNative% EQU 1 (
         goto ExitWithError
     )
 
-    if defined __ConfigureOnly/ goto SkipNativeBuild:1
-
+    if defined __ConfigureOnly/ goto SkipNativeBuild
 
     set __BuildLogRootName=CoreCLR
     set "__BuildLog="%__LogsDir%\!__BuildLogRootName!_%__TargetOS%__%__BuildArch%__%__BuildType%.log""
