@@ -627,15 +627,6 @@ const HelperFuncInfo& Llvm::getHelperFuncInfo(CorInfoHelpFunc helperFunc)
     return info;
 }
 
-// Returns true if the type can be stored on the LLVM stack
-// instead of the shadow stack in this method. This is the case
-// if it is a non-ref primitive or a struct without GC fields.
-//
-bool Llvm::canStoreLocalOnLlvmStack(LclVarDsc* varDsc)
-{
-    return !varDsc->HasGCPtr();
-}
-
 bool Llvm::canStoreArgOnLlvmStack(Compiler* compiler, CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd)
 {
     // structs with no GC pointers can go on LLVM stack.

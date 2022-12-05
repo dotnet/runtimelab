@@ -4545,20 +4545,36 @@ inline void DEBUG_DESTROY_NODE(GenTree* tree)
 //
 // Return Value:
 //    Ref count for the local.
-
+//
 inline unsigned short LclVarDsc::lvRefCnt(RefCountState state) const
 {
+    unsigned short refCount = lvRawRefCnt(state);
 
+    if (lvImplicitlyReferenced && (refCount == 0))
+    {
+        return 1;
+    }
+
+    return refCount;
+}
+
+//------------------------------------------------------------------------------
+// lvRawRefCnt: access the "raw" reference count for this local var
+//
+// Arguments:
+//    state: the requestor's expected ref count state; defaults to RCS_NORMAL
+//
+// Return Value:
+//    "Raw" ref count for the local - will return zero for implicitly referenced
+//    locals that did not appear in IR.
+//
+inline unsigned short LclVarDsc::lvRawRefCnt(RefCountState state) const
+{
 #if defined(DEBUG)
     assert(state != RCS_INVALID);
     Compiler* compiler = JitTls::GetCompiler();
     assert(compiler->lvaRefCountState == state);
 #endif
-
-    if (lvImplicitlyReferenced && (m_lvRefCnt == 0))
-    {
-        return 1;
-    }
 
     return m_lvRefCnt;
 }

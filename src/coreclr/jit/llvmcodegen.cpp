@@ -123,13 +123,9 @@ void Llvm::initializeLocals()
     {
         LclVarDsc* varDsc = _compiler->lvaGetDesc(lclNum);
 
-        if (varDsc->lvRefCnt() == 0)
-        {
-            continue;
-        }
-
-        // Needed because of "implicitly referenced" locals.
-        if (!canStoreLocalOnLlvmStack(varDsc))
+        // Using the "raw" ref count here helps us to not create useless allocas for implicitly references locals
+        // that live on the shadow stack (especially in debug codegen).
+        if (varDsc->lvRawRefCnt() == 0)
         {
             continue;
         }
@@ -151,7 +147,7 @@ void Llvm::initializeLocals()
             // "implicit" def, and must not if there is not.
             if (_compiler->lvaInSsa(lclNum))
             {
-                // Needed because of "implicitly referenced" locals.
+                // Filter out "implicitly" referenced local that the ref count check above didn't catch.
                 if (varDsc->lvPerSsaData.GetCount() == 0)
                 {
                     continue;
@@ -203,7 +199,11 @@ void Llvm::initializeLocals()
 
         assert(initValue->getType() == lclLlvmType);
 
-        if (isLlvmFrameLocal(varDsc))
+        if (_compiler->lvaInSsa(lclNum))
+        {
+            _localsMap.Set({lclNum, SsaConfig::FIRST_SSA_NUM}, initValue);
+        }
+        else
         {
             Instruction* allocaInst = _prologBuilder.CreateAlloca(lclLlvmType);
             m_allocas[lclNum] = allocaInst;
@@ -211,11 +211,6 @@ void Llvm::initializeLocals()
 
             Instruction* storeInst = _prologBuilder.CreateStore(initValue, allocaInst);
             JITDUMPEXEC(storeInst->dump());
-        }
-        else
-        {
-            assert(_compiler->lvaInSsa(lclNum));
-            _localsMap.Set({lclNum, SsaConfig::FIRST_SSA_NUM}, initValue);
         }
     }
 }
@@ -594,14 +589,13 @@ void Llvm::buildLocalVar(GenTreeLclVar* lclVar)
     unsigned int ssaNum = lclVar->GetSsaNum();
     LclVarDsc*   varDsc = _compiler->lvaGetDesc(lclVar);
 
-    if (isLlvmFrameLocal(varDsc))
+    if (lclVar->HasSsaName())
     {
-        llvmRef = _builder.CreateLoad(m_allocas[lclNum]);
+        llvmRef = _localsMap[{lclNum, ssaNum}];
     }
     else
     {
-        assert(lclVar->HasSsaName());
-        llvmRef = _localsMap[{lclNum, ssaNum}];
+        llvmRef = _builder.CreateLoad(getLocalAddr(lclNum));
     }
 
     // Implicit truncating from long to int.
@@ -630,13 +624,13 @@ void Llvm::buildStoreLocalVar(GenTreeLclVar* lclVar)
         localValue = consumeValue(lclVar->gtGetOp1(), destLlvmType);
     }
 
-    if (isLlvmFrameLocal(varDsc))
+    if (lclVar->HasSsaName())
     {
-        _builder.CreateStore(localValue, m_allocas[lclNum]);
+        _localsMap.Set({lclNum, lclVar->GetSsaNum()}, localValue);
     }
     else
     {
-        _localsMap.Set({lclNum, lclVar->GetSsaNum()}, localValue);
+        _builder.CreateStore(localValue, getLocalAddr(lclNum));
     }
 }
 
@@ -656,12 +650,10 @@ void Llvm::buildLocalField(GenTreeLclFld* lclFld)
 {
     assert(!lclFld->TypeIs(TYP_STRUCT));
 
-    unsigned   lclNum = lclFld->GetLclNum();
-    LclVarDsc* varDsc = _compiler->lvaGetDesc(lclNum);
-    assert(isLlvmFrameLocal(varDsc));
+    unsigned lclNum = lclFld->GetLclNum();
 
     // TODO-LLVM: if this is an only value type field, or at offset 0, we can optimize.
-    Value* structAddrValue = m_allocas[lclNum];
+    Value* structAddrValue = getLocalAddr(lclNum);
     Value* structAddrInt8Ptr = castIfNecessary(structAddrValue, Type::getInt8PtrTy(_llvmContext));
     Value* fieldAddressValue = gepOrAddr(structAddrInt8Ptr, lclFld->GetLclOffs());
     Value* fieldAddressTypedValue =
@@ -673,14 +665,14 @@ void Llvm::buildLocalField(GenTreeLclFld* lclFld)
 void Llvm::buildLocalVarAddr(GenTreeLclVarCommon* lclAddr)
 {
     unsigned int lclNum = lclAddr->GetLclNum();
-    if (lclAddr->isLclField())
+    if (lclAddr->OperIs(GT_LCL_FLD_ADDR))
     {
-        Value* bytePtr = castIfNecessary(m_allocas[lclNum], Type::getInt8PtrTy(_llvmContext));
+        Value* bytePtr = castIfNecessary(getLocalAddr(lclNum), Type::getInt8PtrTy(_llvmContext));
         mapGenTreeToValue(lclAddr, gepOrAddr(bytePtr, lclAddr->GetLclOffs()));
     }
     else
     {
-        mapGenTreeToValue(lclAddr, m_allocas[lclNum]);
+        mapGenTreeToValue(lclAddr, getLocalAddr(lclNum));
     }
 }
 
@@ -1763,12 +1755,11 @@ llvm::Value* Llvm::gepOrAddr(Value* addr, unsigned offset)
     return _builder.CreateGEP(addr, _builder.getInt32(offset));
 }
 
-// shadow stack moved up to avoid overwriting anything on the stack in the compiling method
+// Shadow stack moved up to avoid overwriting anything on the stack in the compiling method
 llvm::Value* Llvm::getShadowStackForCallee()
 {
-    unsigned int offset = getTotalLocalOffset();
-
-    return gepOrAddr(_function->getArg(0), offset);
+    // Note that funclets have the shadow stack arg in the same position (0) as the main function.
+    return gepOrAddr(getCurrentLlvmFunction()->getArg(0), getTotalLocalOffset());
 }
 
 DebugMetadata Llvm::getOrCreateDebugMetadata(const char* documentFileName)
@@ -1884,10 +1875,12 @@ void Llvm::setLastLlvmBlockForBlock(BasicBlock* block, llvm::BasicBlock* llvmBlo
     _blkToLlvmBlksMap[block].LastBlock = llvmBlock;
 }
 
-bool Llvm::isLlvmFrameLocal(LclVarDsc* varDsc)
+Value* Llvm::getLocalAddr(unsigned lclNum)
 {
-    assert(canStoreLocalOnLlvmStack(varDsc) && (_compiler->fgSsaPassesCompleted >= 1));
-    return !varDsc->lvInSsa && varDsc->lvRefCnt() > 0;
+    Value* addrValue = m_allocas[lclNum];
+    assert(addrValue != nullptr);
+
+    return addrValue;
 }
 
 unsigned int Llvm::getTotalLocalOffset()

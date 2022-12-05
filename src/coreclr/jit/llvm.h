@@ -177,7 +177,6 @@ private:
     bool callHasShadowStackArg(GenTreeCall* call);
     const HelperFuncInfo& getHelperFuncInfo(CorInfoHelpFunc helperFunc);
 
-    bool canStoreLocalOnLlvmStack(LclVarDsc* varDsc);
     static bool canStoreArgOnLlvmStack(Compiler* compiler, CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd);
 
     unsigned int padOffset(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHandle, unsigned int atOffset);
@@ -253,6 +252,8 @@ private:
     GenTree* createShadowStackStoreNode(var_types storeType, GenTree* addr, GenTree* data);
     GenTree* insertShadowStackAddr(GenTree* insertBefore, ssize_t offset);
 
+    bool isShadowFrameLocal(LclVarDsc* varDsc) const;
+
     // ================================================================================================================
     // |                                                   Codegen                                                    |
     // ================================================================================================================
@@ -325,12 +326,15 @@ private:
     DebugMetadata getOrCreateDebugMetadata(const char* documentFileName);
     llvm::DILocation* createDebugFunctionAndDiLocation(struct DebugMetadata debugMetadata, unsigned int lineNo);
 
+    Function* getRootLlvmFunction();
+    Function* getCurrentLlvmFunction();
+
     llvm::BasicBlock* createInlineLlvmBlock();
     llvm::BasicBlock* getFirstLlvmBlockForBlock(BasicBlock* block);
     llvm::BasicBlock* getLastLlvmBlockForBlock(BasicBlock* block);
     void setLastLlvmBlockForBlock(BasicBlock* block, llvm::BasicBlock* llvmBlock);
 
-    bool isLlvmFrameLocal(LclVarDsc* varDsc);
+    Value* getLocalAddr(unsigned lclNum);
     unsigned int getTotalLocalOffset();
 };
 

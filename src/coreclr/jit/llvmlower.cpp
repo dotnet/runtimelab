@@ -76,7 +76,11 @@ void Llvm::lowerLocals()
             }
         }
 
-        if (!canStoreLocalOnLlvmStack(varDsc))
+        // GC locals needs to go on the shadow stack for the scan to find them. Locals live-in/out of handlers
+        // need to be preserved after the native unwind for the funclets to be callable, thus, they too need to
+        // go on the shadow stack.
+        //
+        if (varDsc->HasGCPtr() || varDsc->lvLiveInOutOfHndlr)
         {
             if (_compiler->lvaGetPromotionType(varDsc) == Compiler::PROMOTION_TYPE_INDEPENDENT)
             {
@@ -88,25 +92,52 @@ void Llvm::lowerLocals()
                 // The fields will be referenced through the parent.
                 continue;
             }
-            if (!varDsc->lvIsParam && (varDsc->lvRefCnt() == 0))
+
+            // We will always need to assign offsets to shadow stack parameters.
+            const bool isLlvmParam = varDsc->lvLlvmArgNum != BAD_LLVM_ARG_NUM;
+            if (varDsc->lvIsParam && !isLlvmParam)
+            {
+                shadowStackParamCount++;
+                varDsc->lvIsParam = false;
+
+                shadowStackLocals.push_back(varDsc);
+                continue;
+            }
+
+            if (varDsc->lvRefCnt() == 0)
             {
                 // No need to place unreferenced temps on the shadow stack.
                 continue;
             }
 
-            // Insert zero-initialization for this local if required (which it almost always will be).
-            if (!varDsc->lvIsParam && !varDsc->lvHasExplicitInit)
+            // We may need to insert initialization:
+            //
+            //  1) Zero-init if this is a non-parameter GC local, to fullfill frontend's expectations.
+            //  2) Copy the initial value if this a parameter not passed on the shadow stack, but
+            //     still assigned a home on it.
+            //
+            // TODO-LLVM: in both cases we should avoid redundant initializations using liveness
+            // info (for tracked locals), sharing code with "initializeLocals" in codegen. However,
+            // that is currently not possible because late liveness runs after lowering.
+            //
+            if (!varDsc->lvHasExplicitInit)
             {
-                var_types zeroType = (varDsc->TypeGet() == TYP_STRUCT) ? TYP_INT : genActualType(varDsc);
-                initializeLocalInProlog(lclNum, _compiler->gtNewZeroConNode(zeroType));
+                if (isLlvmParam)
+                {
+                    GenTree* initVal = _compiler->gtNewLclvNode(lclNum, varDsc->TypeGet());
+                    initVal->SetRegNum(REG_LLVM);
+
+                    initializeLocalInProlog(lclNum, initVal);
+                }
+                else if (!_compiler->fgVarNeedsExplicitZeroInit(lclNum, /* bbInALoop */ false, /* bbIsReturn*/ false) ||
+                         varDsc->HasGCPtr())
+                {
+                    var_types zeroType = (varDsc->TypeGet() == TYP_STRUCT) ? TYP_INT : genActualType(varDsc);
+                    initializeLocalInProlog(lclNum, _compiler->gtNewZeroConNode(zeroType));
+                }
             }
 
             shadowStackLocals.push_back(varDsc);
-            if (varDsc->lvIsParam)
-            {
-                shadowStackParamCount++;
-                varDsc->lvIsParam = false;
-            }
         }
         else
         {
@@ -129,7 +160,7 @@ void Llvm::populateLlvmArgNums()
     unsigned   nextLlvmArgNum    = 0;
 
     shadowStackVarDsc->lvLlvmArgNum = nextLlvmArgNum++;
-    shadowStackVarDsc->lvType    = TYP_I_IMPL;
+    shadowStackVarDsc->lvType = TYP_I_IMPL;
     shadowStackVarDsc->lvCorInfoType = CORINFO_TYPE_PTR;
     shadowStackVarDsc->lvIsParam = true;
 
@@ -154,10 +185,11 @@ void Llvm::populateLlvmArgNums()
     {
         CORINFO_CLASS_HANDLE classHnd;
         CorInfoType          corInfoType = getCorInfoTypeForArg(&_sigInfo, sigArgs, &classHnd);
-        LclVarDsc*           varDsc      = _compiler->lvaGetDesc(i + firstCorInfoArgLocalNum);
-        if (canStoreLocalOnLlvmStack(varDsc))
+        if (canStoreArgOnLlvmStack(_compiler, corInfoType, classHnd))
         {
-            varDsc->lvLlvmArgNum  = nextLlvmArgNum++;
+            LclVarDsc* varDsc = _compiler->lvaGetDesc(i + firstCorInfoArgLocalNum);
+
+            varDsc->lvLlvmArgNum = nextLlvmArgNum++;
             varDsc->lvCorInfoType = corInfoType;
             varDsc->lvClassHnd = classHnd;
         }
@@ -178,6 +210,10 @@ void Llvm::assignShadowStackOffsets(std::vector<LclVarDsc*>& shadowStackLocals, 
     for (unsigned i = 0; i < shadowStackLocals.size(); i++)
     {
         LclVarDsc* varDsc = shadowStackLocals.at(i);
+
+        // We will use this as the indication that the local has a home on the shadow stack.
+        varDsc->SetRegNum(REG_STK);
+
         CorInfoType corInfoType = toCorInfoType(varDsc->TypeGet());
         CORINFO_CLASS_HANDLE classHandle = tryGetStructClassHandle(varDsc);
 
@@ -355,9 +391,8 @@ void Llvm::ConvertShadowStackLocalNode(GenTreeLclVarCommon* node)
 {
     GenTreeLclVarCommon* lclVar = node->AsLclVarCommon();
     LclVarDsc* varDsc = _compiler->lvaGetDesc(lclVar->GetLclNum());
-    genTreeOps oper = node->OperGet();
 
-    if (!canStoreLocalOnLlvmStack(varDsc))
+    if (isShadowFrameLocal(varDsc) && (lclVar->GetRegNum() == REG_NA))
     {
         GenTree* lclAddress = insertShadowStackAddr(node, varDsc->GetStackOffset() + node->GetLclOffs());
 
@@ -1017,4 +1052,23 @@ GenTree* Llvm::insertShadowStackAddr(GenTree* insertBefore, ssize_t offset)
     CurrentRange().InsertBefore(insertBefore, addNode);
 
     return addNode;
+}
+
+//------------------------------------------------------------------------
+// isShadowFrameLocal: Does the given local have a home on the shadow frame?
+//
+// Arguments:
+//    varDsc - Local's descriptor
+//
+// Return Value:
+//    Whether the given local has a location assigned to it on the shadow
+//    frame. Note the fact it does is not an implication that it is live
+//    on it at all times: the local can be live on the LLVM frame, or the
+//    shadow one, or both.
+//
+bool Llvm::isShadowFrameLocal(LclVarDsc* varDsc) const
+{
+    // Other backends use "lvOnFrame" for this value, but for us it is not
+    // a great fit because we add new locals after shadow frame layout.
+    return varDsc->GetRegNum() == REG_STK;
 }

@@ -112,9 +112,10 @@ REGDEF(STK,    16+XMMBASE,  0x0000,       "STK"  )
 // (in particular, fixing the assumption that "this" is always enregistered), we will
 // pretend we have one register (both integer and FP, for simplicity).
 //
-REGDEF(R0,  0, 0x01, "R0")
-REGDEF(F0,  1, 0x02, "F0")
-REGDEF(STK, 2, 0x00, "SS")
+REGDEF(R0,   0, 0x01, "R0")
+REGDEF(F0,   1, 0x02, "F0")
+REGDEF(LLVM, 2, 0x04, "LLVM")
+REGDEF(STK,  3, 0x00, "SS")
 
 #else
   #error Unsupported or unset target architecture
