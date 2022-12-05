@@ -3,16 +3,19 @@
 
 using System;
 using System.Diagnostics;
+using System.Net;
+using System.Net.Sockets;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 
-public class Test_greenthread_perf_RunAsGreenThread
+public class Test_greenthread_perf_AwaitDeep
 {
     public static int Main(string[] args)
     {
-        if (args.Length < 1 || args[0] != "run")
+        if (args.Length < 2 || args[0] != "run" || !int.TryParse(args[1], out int depth))
         {
-            Console.WriteLine("Pass argument 'run' to run benchmark.");
+            Console.WriteLine("Pass arguments 'run <depth>' to run benchmark (e.g. 'run 4').");
             return 100;
         }
 
@@ -22,13 +25,14 @@ public class Test_greenthread_perf_RunAsGreenThread
         var sw = new Stopwatch();
         int count = 0;
 
-        Action greenThreadAction = null;
-        greenThreadAction = () =>
+        Task.Run(async () =>
         {
-            count++;
-            Task.RunAsGreenThread(greenThreadAction);
-        };
-        Task.RunAsGreenThread(greenThreadAction);
+            while (true)
+            {
+                await RecurseAsync(depth);
+                count++;
+            }
+        });
 
         for (int i = 0; i < 8; i++)
         {
@@ -42,4 +46,10 @@ public class Test_greenthread_perf_RunAsGreenThread
 
         return 100;
     }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static async Task RecurseAsync(int depth) =>
+        await (depth > 0 ? RecurseAsync(depth - 1) : Task.Factory.StartNew(s_emptyAction, TaskCreationOptions.PreferFairness));
+
+    private static readonly Action s_emptyAction = () => { };
 }

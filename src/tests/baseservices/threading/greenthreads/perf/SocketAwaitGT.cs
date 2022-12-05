@@ -8,7 +8,7 @@ using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 
-public class Test_greenthread_perf_YieldResume
+public class Test_greenthread_perf_SocketAwaitGT
 {
     public static int Main(string[] args)
     {

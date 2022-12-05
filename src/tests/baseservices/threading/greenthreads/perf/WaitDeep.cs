@@ -3,17 +3,19 @@
 
 using System;
 using System.Diagnostics;
+using System.Net;
+using System.Net.Sockets;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 
-public class Test_greenthread_perf_RunAsGreenThreadDeep
+public class Test_greenthread_perf_WaitDeep
 {
     public static int Main(string[] args)
     {
-        if (args.Length < 1 || args[0] != "run")
+        if (args.Length < 2 || args[0] != "run" || !int.TryParse(args[1], out int depth))
         {
-            Console.WriteLine("Pass argument 'run' to run benchmark.");
+            Console.WriteLine("Pass arguments 'run <depth>' to run benchmark (e.g. 'run 4').");
             return 100;
         }
 
@@ -23,14 +25,16 @@ public class Test_greenthread_perf_RunAsGreenThreadDeep
         var sw = new Stopwatch();
         int count = 0;
 
-        Action greenThreadAction = null;
-        greenThreadAction = () =>
+        var thread = new Thread(() =>
         {
-            Recurse(10000);
-            count++;
-            Task.RunAsGreenThread(greenThreadAction);
-        };
-        Task.RunAsGreenThread(greenThreadAction);
+            while (true)
+            {
+                Recurse(depth);
+                count++;
+            }
+        });
+        thread.IsBackground = true;
+        thread.Start();
 
         for (int i = 0; i < 8; i++)
         {
@@ -52,5 +56,11 @@ public class Test_greenthread_perf_RunAsGreenThreadDeep
         {
             Recurse(depth - 1);
         }
+        else
+        {
+            Task.Factory.StartNew(s_emptyAction, TaskCreationOptions.PreferFairness).Wait();
+        }
     }
+
+    private static readonly Action s_emptyAction = () => { };
 }
