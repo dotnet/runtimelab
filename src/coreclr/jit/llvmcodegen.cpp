@@ -9,34 +9,20 @@
 //
 void Llvm::Compile()
 {
-    const char* mangledName = GetMangledMethodName(_info.compMethodHnd);
-    _function = _module->getFunction(mangledName);
-    _debugFunction = nullptr;
-    _debugMetadata.diCompileUnit = nullptr;
-
-    if (_function == nullptr)
-    {
-        _function = Function::Create(getFunctionType(), Function::ExternalLinkage, 0U, mangledName,
-                                     _module); // TODO: ExternalLinkage forced as linked from old module
-    }
-
-    // mono does this via Javascript (pal_random.js), but prefer not to introduce that dependency as it limits the ability to run out of the browser.
-    // Copy the temporary workaround from the IL->LLVM generator for now.
-    if (!strcmp(mangledName, "S_P_CoreLib_Interop__GetRandomBytes"))
-    {
-        // this would normally fill the buffer parameter, but we'll just leave the buffer as is and that will be our "random" data for now
-        llvm::BasicBlock* llvmBlock = llvm::BasicBlock::Create(_llvmContext, "", _function);
-        _builder.SetInsertPoint(llvmBlock);
-        _builder.CreateRetVoid();
-        return;
-    }
-
     // TODO-LLVM: enable. Currently broken because RyuJit inserts RPI helpers for RPI methods, then we
     // also create an RPI wrapper stub, resulting in a double transition.
     if (_compiler->opts.IsReversePInvoke())
     {
         failFunctionCompilation();
     }
+
+    if (initializeFunctions())
+    {
+        return;
+    }
+
+    _debugFunction = nullptr;
+    _debugMetadata.diCompileUnit = nullptr;
 
     if (_compiler->opts.compDbgInfo)
     {
@@ -46,6 +32,9 @@ void Llvm::Compile()
             _debugMetadata = getOrCreateDebugMetadata(documentFileName);
         }
     }
+
+    JITDUMPEXEC(_compiler->fgDispBasicBlocks());
+    JITDUMPEXEC(_compiler->fgDispHandlerTab());
 
     generateProlog();
 
@@ -62,12 +51,6 @@ void Llvm::Compile()
 
         void PreOrderVisit(BasicBlock* block) const
         {
-            // TODO-LLVM: finret basic blocks
-            if (block->bbJumpKind == BBJ_EHFINALLYRET)
-            {
-                m_llvm->failFunctionCompilation();
-            }
-
             m_llvm->generateBlock(block);
         }
     };
@@ -78,8 +61,10 @@ void Llvm::Compile()
     // Walk all the exceptional code blocks and generate them, since they don't appear in the normal flow graph.
     for (Compiler::AddCodeDsc* add = _compiler->fgGetAdditionalCodeDescriptors(); add != nullptr; add = add->acdNext)
     {
-        generateThrowHelperBlock(add->acdDstBlk);
+        generateBlock(add->acdDstBlk);
     }
+
+    generateEHDispatch();
 
     fillPhis();
 
@@ -92,27 +77,148 @@ void Llvm::Compile()
     JITDUMP("\n===================================================================================================================\n");
     JITDUMP("LLVM IR for %s after codegen:\n", _compiler->info.compFullName);
     JITDUMP("-------------------------------------------------------------------------------------------------------------------\n\n");
-    JITDUMPEXEC(_function->dump());
 
-    if (llvm::verifyFunction(*_function, &llvm::errs()))
+    for (Function* llvmFunc : m_functions)
     {
-        printf("function failed %s\n", mangledName);
+        JITDUMPEXEC(llvmFunc->dump());
+
+        if (llvm::verifyFunction(*llvmFunc, &llvm::errs()))
+        {
+            printf("Function failed: '%s'\n", llvmFunc->getName().data());
+        }
     }
 #endif
+}
+
+bool Llvm::initializeFunctions()
+{
+    const char* mangledName = GetMangledMethodName(_info.compMethodHnd);
+    Function* rootLlvmFunction = _module->getFunction(mangledName);
+
+    if (rootLlvmFunction == nullptr)
+    {
+        // TODO: ExternalLinkage forced as linked from old module
+        rootLlvmFunction = Function::Create(getFunctionType(), Function::ExternalLinkage, 0U, mangledName, _module);
+    }
+
+    // mono does this via Javascript (pal_random.js), but prefer not to introduce that dependency as it limits the
+    // ability to run out of the browser. Copy the temporary workaround from the IL->LLVM generator for now.
+    if (!strcmp(mangledName, "S_P_CoreLib_Interop__GetRandomBytes"))
+    {
+        // This would normally fill the buffer parameter, but we'll just leave the buffer as is and that will be our
+        // "random" data for now.
+        llvm::BasicBlock* llvmBlock = llvm::BasicBlock::Create(_llvmContext, "", rootLlvmFunction);
+        _builder.SetInsertPoint(llvmBlock);
+        _builder.CreateRetVoid();
+        return true;
+    }
+
+    // First functions is always the root.
+    m_functions = std::vector<Function*>(_compiler->compFuncCount());
+    m_functions[ROOT_FUNC_IDX] = rootLlvmFunction;
+
+    m_EHDispatchLlvmBlocks = std::vector<llvm::BasicBlock*>(_compiler->compHndBBtabCount);
+
+    // Note the iteration order: outer -> inner.
+    for (unsigned funcIdx = _compiler->compFuncCount() - 1; funcIdx >= 1; funcIdx--)
+    {
+        FuncInfoDsc* funcInfo = _compiler->funGetFunc(funcIdx);
+        unsigned ehIndex = funcInfo->funEHIndex;
+        EHblkDsc* ehDsc = _compiler->ehGetDsc(ehIndex);
+
+        // Filter and catch handler funclets return int32. "HasCatchHandler" handles both cases.
+        Type* retLlvmType;
+        if (ehDsc->HasCatchHandler())
+        {
+            retLlvmType = Type::getInt32Ty(_llvmContext);
+        }
+        else
+        {
+            retLlvmType = Type::getVoidTy(_llvmContext);
+        }
+
+        // All funclets have only one argument: the shadow stack.
+        FunctionType* llvmFuncType = FunctionType::get(retLlvmType, {Type::getInt8PtrTy(_llvmContext)},
+                                                       /* isVarArg */ false);
+        const char* kindName;
+        switch (ehDsc->ebdHandlerType)
+        {
+            case EH_HANDLER_CATCH:
+                kindName = "Catch";
+                break;
+            case EH_HANDLER_FILTER:
+                kindName = (funcInfo->funKind == FUNC_FILTER) ? "Filter" : "FilteredCatch";
+                break;
+            case EH_HANDLER_FAULT:
+            case EH_HANDLER_FAULT_WAS_FINALLY:
+                kindName = "Fault";
+                break;
+            case EH_HANDLER_FINALLY:
+                kindName = "Finally";
+                break;
+            default:
+                unreached();
+        }
+
+        Function* llvmFunc =
+            Function::Create(llvmFuncType, Function::InternalLinkage,
+                             mangledName + llvm::Twine("$F") + llvm::Twine(funcIdx) + "_" + kindName, _module);
+
+        // Note that "mutually-protect" handlers will share the same dispatch block. We only need to associate
+        // one dispatch block with one protected region, and so simply skip the logic for filter funclets.
+        if (funcInfo->funKind != FUNC_FILTER)
+        {
+            llvm::BasicBlock* dispatchLlvmBlock = nullptr;
+
+            // See if we have already created the dispatch block for a mutually-protect catch. This works because these
+            // handlers form a contiguous "run" in the table.
+            unsigned nextEhIndex = ehIndex + 1;
+            if ((nextEhIndex < _compiler->compHndBBtabCount) && ehDsc->ebdIsSameTry(_compiler, nextEhIndex))
+            {
+                assert(_compiler->ehGetDsc(nextEhIndex)->HasCatchHandler());
+                dispatchLlvmBlock = m_EHDispatchLlvmBlocks[nextEhIndex];
+                assert(dispatchLlvmBlock != nullptr);
+            }
+            else
+            {
+                // The dispatch block is part of the function with the protected region.
+                unsigned enclosingFuncIdx = ROOT_FUNC_IDX;
+                unsigned enclosingHndIndex = ehDsc->ebdEnclosingHndIndex;
+                if (enclosingHndIndex != EHblkDsc::NO_ENCLOSING_INDEX)
+                {
+                    // Note here we will correctly get the "filter handler" part of filter.
+                    // There can be no protected regions in the "filter" parts of filters.
+                    enclosingFuncIdx = _compiler->ehGetDsc(enclosingHndIndex)->ebdFuncIndex;
+                }
+
+                Function* dispatchLlvmFunc = getLlvmFunctionForIndex(enclosingFuncIdx);
+                dispatchLlvmBlock =
+                    llvm::BasicBlock::Create(_llvmContext, "BBT" + llvm::Twine(ehDsc->ebdTryBeg->getTryIndex()),
+                                             dispatchLlvmFunc);
+            }
+
+            m_EHDispatchLlvmBlocks[ehIndex] = dispatchLlvmBlock;
+        }
+
+        m_functions[funcIdx] = llvmFunc;
+    }
+
+    return false;
 }
 
 void Llvm::generateProlog()
 {
     JITDUMP("\n=============== Generating prolog:\n");
 
-    llvm::BasicBlock* prologBlock = llvm::BasicBlock::Create(_llvmContext, "Prolog", _function);
-    _prologBuilder.SetInsertPoint(prologBlock);
+    llvm::BasicBlock* prologLlvmBlock = llvm::BasicBlock::Create(_llvmContext, "Prolog", getRootLlvmFunction());
+    _prologBuilder.SetInsertPoint(prologLlvmBlock);
 
     initializeLocals();
 
-    llvm::BasicBlock* block0 = getFirstLlvmBlockForBlock(_compiler->fgFirstBB);
-    _prologBuilder.SetInsertPoint(_prologBuilder.CreateBr(block0));
-    _builder.SetInsertPoint(block0);
+    llvm::BasicBlock* firstLlvmBlock = getFirstLlvmBlockForBlock(_compiler->fgFirstBB);
+    _prologBuilder.CreateBr(firstLlvmBlock);
+
+    _builder.SetInsertPoint(firstLlvmBlock);
 }
 
 void Llvm::initializeLocals()
@@ -139,7 +245,7 @@ void Llvm::initializeLocals()
         if (varDsc->lvIsParam)
         {
             assert(varDsc->lvLlvmArgNum != BAD_LLVM_ARG_NUM);
-            initValue = _function->getArg(varDsc->lvLlvmArgNum);
+            initValue = getRootLlvmFunction()->getArg(varDsc->lvLlvmArgNum);
         }
         else
         {
@@ -220,8 +326,9 @@ void Llvm::generateBlock(BasicBlock* block)
     JITDUMP("\n=============== Generating ");
     JITDUMPEXEC(block->dspBlockHeader(_compiler, /* showKind */ true, /* showFlags */ true));
 
-    llvm::BasicBlock* llvmBlock = getFirstLlvmBlockForBlock(block);
+    setCurrentLlvmFunctionForBlock(block);
 
+    llvm::BasicBlock* llvmBlock = getFirstLlvmBlockForBlock(block);
     _currentBlock = block;
     _builder.SetInsertPoint(llvmBlock);
 
@@ -241,6 +348,21 @@ void Llvm::generateBlock(BasicBlock* block)
             break;
         case BBJ_THROW:
             _builder.CreateUnreachable();
+            break;
+        case BBJ_CALLFINALLY:
+            buildCallFinally(block);
+            break;
+        case BBJ_EHFINALLYRET:
+            // "fgCreateMonitorTree" forgets to insert RETFILT nodes for some faults. Compensate.
+            if (!block->lastNode()->OperIs(GT_RETFILT))
+            {
+                assert(block->bbCatchTyp == BBCT_FAULT);
+                _builder.CreateRetVoid();
+            }
+            break;
+        case BBJ_EHCATCHRET:
+            buildCatchReturn(block);
+            break;
         default:
             // TODO-LLVM: other jump kinds.
             break;
@@ -259,22 +381,77 @@ void Llvm::generateBlock(BasicBlock* block)
 #endif // DEBUG
 }
 
-void Llvm::generateThrowHelperBlock(BasicBlock* block)
+void Llvm::generateEHDispatch()
 {
-    // Throw helper blocks are not visited by the SSA renaming, so here we have to manually
-    // assign SSA numbers for the one variable which can be live in them - shadow stack.
-    if (_compiler->lvaInSsa(_shadowStackLclNum))
+    if (!_compiler->ehAnyFunclets())
     {
-        for (GenTree* node : LIR::AsRange(block))
-        {
-            if (node->OperIsLocal() && (node->AsLclVarCommon()->GetLclNum() == _shadowStackLclNum))
-            {
-                node->AsLclVarCommon()->SetSsaNum(SsaConfig::FIRST_SSA_NUM); // Shadow stack is never modified.
-            }
-        }
+        // Nothing to do if no EH.
+        return;
     }
 
-    generateBlock(block);
+    // Recover the C++ personality function.
+    Type* ptrLlvmType = Type::getInt8PtrTy(_llvmContext);
+    Type* int32LlvmType = Type::getInt32Ty(_llvmContext);
+    Type* cppExcTupleLlvmType = llvm::StructType::get(_llvmContext, {ptrLlvmType, int32LlvmType});
+
+    static const char* const GXX_PERSONALITY_NAME = "__gxx_personality_v0";
+    Function* gxxPersonalityLlvmFunc = _module->getFunction(GXX_PERSONALITY_NAME);
+    if (gxxPersonalityLlvmFunc == nullptr)
+    {
+        FunctionType* gxxPersonalityLlvmFuncType =
+            FunctionType::get(cppExcTupleLlvmType, {int32LlvmType, ptrLlvmType, ptrLlvmType}, /* isVarArg */ true);
+        gxxPersonalityLlvmFunc =
+            Function::Create(gxxPersonalityLlvmFuncType, Function::ExternalLinkage, GXX_PERSONALITY_NAME, _module);
+    }
+
+    JITDUMP("\n");
+
+    for (unsigned ehIndex = 0; ehIndex < _compiler->compHndBBtabCount; ehIndex++)
+    {
+        EHblkDsc* ehDsc = _compiler->ehGetDsc(ehIndex);
+        llvm::BasicBlock* llvmBlock = m_EHDispatchLlvmBlocks[ehIndex];
+
+        if (!llvmBlock->empty())
+        {
+            // We've already generated code for this dispatch shared between "mutual protect" handlers.
+            continue;
+        }
+
+        JITDUMP("=============== Generating EH dispatch block %s:\n", llvmBlock->getName().data());
+
+        if (llvmBlock->hasNPredecessors(0))
+        {
+            // During codegen we have discovered there are no (EH) edges to this dispatch. Remove it.
+            JITDUMP("\nUnreachable; skipped\n");
+            llvmBlock->eraseFromParent();
+            continue;
+        }
+
+        Function* llvmFunc = llvmBlock->getParent();
+        if (!llvmFunc->hasPersonalityFn())
+        {
+            llvmFunc->setPersonalityFn(gxxPersonalityLlvmFunc);
+        }
+
+        // Move it after the last block in the corresponding protected region.
+        llvmBlock->moveAfter(getLastLlvmBlockForBlock(ehDsc->ebdTryLast));
+
+        _builder.SetInsertPoint(llvmBlock);
+
+        llvm::LandingPadInst* landingPadInst = _builder.CreateLandingPad(cppExcTupleLlvmType, 1);
+        landingPadInst->addClause(llvm::Constant::getNullValue(ptrLlvmType)); // Catch all C++ exceptions.
+
+        // TODO-LLVM-EH: implement.
+        _builder.CreateResume(landingPadInst);
+
+#ifdef DEBUG
+        llvm::BasicBlock* lastLlvmBlock = llvmBlock;
+        for (; llvmBlock != lastLlvmBlock->getNextNode(); llvmBlock = llvmBlock->getNextNode())
+        {
+            JITDUMPEXEC(llvmBlock->dump());
+        }
+#endif // DEBUG
+    }
 }
 
 void Llvm::fillPhis()
@@ -539,7 +716,11 @@ void Llvm::visitNode(GenTree* node)
         case GT_PUTARG_TYPE:
             break;
         case GT_RETURN:
+        case GT_RETFILT:
             buildReturn(node);
+            break;
+        case GT_CATCH_ARG:
+            buildCatchArg(node);
             break;
         case GT_STORE_LCL_VAR:
             buildStoreLocalVar(node->AsLclVar());
@@ -589,7 +770,13 @@ void Llvm::buildLocalVar(GenTreeLclVar* lclVar)
     unsigned int ssaNum = lclVar->GetSsaNum();
     LclVarDsc*   varDsc = _compiler->lvaGetDesc(lclVar);
 
-    if (lclVar->HasSsaName())
+    if (lclNum == _shadowStackLclNum)
+    {
+        // The shadow stack must be handled specially as the only local used directly by funclets.
+        assert((ssaNum == SsaConfig::FIRST_SSA_NUM) || (ssaNum == SsaConfig::RESERVED_SSA_NUM));
+        llvmRef = getShadowStack();
+    }
+    else if (lclVar->HasSsaName())
     {
         llvmRef = _localsMap[{lclNum, ssaNum}];
     }
@@ -1386,6 +1573,8 @@ void Llvm::buildShift(GenTreeOp* node)
 
 void Llvm::buildReturn(GenTree* node)
 {
+    assert(node->OperIs(GT_RETURN, GT_RETFILT));
+
     if (node->TypeIs(TYP_VOID))
     {
         _builder.CreateRetVoid();
@@ -1393,7 +1582,8 @@ void Llvm::buildReturn(GenTree* node)
     }
 
     GenTree* retValNode = node->gtGetOp1();
-    Type* retLlvmType = getLlvmTypeForCorInfoType(_sigInfo.retType, _sigInfo.retTypeClass);
+    Type* retLlvmType = node->OperIs(GT_RETURN) ? getLlvmTypeForCorInfoType(_sigInfo.retType, _sigInfo.retTypeClass)
+                                                : Type::getInt32Ty(_llvmContext);
     Value* retValValue;
     // Special-case returning zero-initialized structs.
     if (node->TypeIs(TYP_STRUCT) && retValNode->IsIntegralConst(0))
@@ -1406,6 +1596,14 @@ void Llvm::buildReturn(GenTree* node)
     }
 
     _builder.CreateRet(retValValue);
+}
+
+void Llvm::buildCatchArg(GenTree* node)
+{
+    // TODO-LLVM-EH: actually produce the exception.
+    Value* excObjValue = llvm::Constant::getNullValue(Type::getInt8PtrTy(_llvmContext));
+
+    mapGenTreeToValue(node, excObjValue);
 }
 
 void Llvm::buildJTrue(GenTree* node, Value* opValue)
@@ -1427,6 +1625,37 @@ void Llvm::buildBoundsCheck(GenTreeBoundsChk* boundsCheckNode)
 
     Value* indexOutOfRangeValue = _builder.CreateCmp(llvm::CmpInst::ICMP_UGE, indexValue, lengthValue);
     emitJumpToThrowHelper(indexOutOfRangeValue, boundsCheckNode->gtThrowKind);
+}
+
+void Llvm::buildCallFinally(BasicBlock* block)
+{
+    assert(block->bbJumpKind == BBJ_CALLFINALLY);
+
+    // Callfinally blocks always come in pairs, where the first block (BBJ_CALLFINALLY itself)
+    // calls the finally (its "bbJumpDest") while the second block (BBJ_ALWAYS) provides in its
+    // "bbJumpDest" the target to which the finally call (if not "retless") should return.
+    // Other backends will simply skip generating the second block, while we will branch to it.
+    //
+    Function* finallyLlvmFunc = getLlvmFunctionForIndex(getLlvmFunctionIndexForBlock(block->bbJumpDest));
+    emitCallOrInvoke(finallyLlvmFunc, {getShadowStack()});
+
+    if ((block->bbFlags & BBF_RETLESS_CALL) != 0)
+    {
+        _builder.CreateUnreachable();
+    }
+    else
+    {
+        assert(block->isBBCallAlwaysPair());
+        _builder.CreateBr(getFirstLlvmBlockForBlock(block->bbNext));
+    }
+}
+
+void Llvm::buildCatchReturn(BasicBlock* block)
+{
+    assert(block->bbJumpKind == BBJ_EHCATCHRET);
+
+    // TODO-LLVM-EH: return the appropriate value.
+    _builder.CreateRet(_builder.getInt32(0));
 }
 
 void Llvm::storeObjAtAddress(Value* baseAddress, Value* data, StructDesc* structDesc)
@@ -1591,8 +1820,23 @@ Value* Llvm::emitHelperCall(CorInfoHelpFunc helperFunc, ArrayRef<Value*> sigArgs
 
 Value* Llvm::emitCallOrInvoke(llvm::FunctionCallee callee, ArrayRef<Value*> args)
 {
-    // TODO-LLVM: invoke if callsite has exception handler
-    return _builder.CreateCall(callee, args);
+    llvm::BasicBlock* catchLlvmBlock = getEHDispatchLlvmBlockForBlock(CurrentBlock());
+
+    Value* callValue;
+    if (catchLlvmBlock != nullptr)
+    {
+        llvm::BasicBlock* nextLlvmBlock = createInlineLlvmBlock();
+
+        callValue = _builder.CreateInvoke(callee, nextLlvmBlock, catchLlvmBlock, args);
+
+        _builder.SetInsertPoint(nextLlvmBlock);
+    }
+    else
+    {
+        callValue = _builder.CreateCall(callee, args);
+    }
+
+    return callValue;
 }
 
 FunctionType* Llvm::getFunctionType()
@@ -1755,11 +1999,17 @@ llvm::Value* Llvm::gepOrAddr(Value* addr, unsigned offset)
     return _builder.CreateGEP(addr, _builder.getInt32(offset));
 }
 
-// Shadow stack moved up to avoid overwriting anything on the stack in the compiling method
-llvm::Value* Llvm::getShadowStackForCallee()
+Value* Llvm::getShadowStack()
 {
     // Note that funclets have the shadow stack arg in the same position (0) as the main function.
-    return gepOrAddr(getCurrentLlvmFunction()->getArg(0), getTotalLocalOffset());
+    return getCurrentLlvmFunction()->getArg(0);
+}
+
+// Shadow stack moved up to avoid overwriting anything on the stack in the compiling method
+Value* Llvm::getShadowStackForCallee()
+{
+    // Note that funclets have the shadow stack arg in the same position (0) as the main function.
+    return gepOrAddr(getShadowStack(), getTotalLocalOffset());
 }
 
 DebugMetadata Llvm::getOrCreateDebugMetadata(const char* documentFileName)
@@ -1815,19 +2065,91 @@ llvm::DILocation* Llvm::createDebugFunctionAndDiLocation(DebugMetadata debugMeta
                                                     functionMetaType, lineNumber, llvm::DINode::DIFlags::FlagZero,
                                                     llvm::DISubprogram::DISPFlags::SPFlagDefinition |
                                                     llvm::DISubprogram::DISPFlags::SPFlagLocalToUnit);
-        _function->setSubprogram(_debugFunction);
+        // TODO-LLVM-EH: broken for funclets.
+        getRootLlvmFunction()->setSubprogram(_debugFunction);
     }
     return llvm::DILocation::get(_llvmContext, lineNo, 0, _debugFunction);
+}
+
+Function* Llvm::getRootLlvmFunction()
+{
+    return getLlvmFunctionForIndex(ROOT_FUNC_IDX);
+}
+
+Function* Llvm::getCurrentLlvmFunction()
+{
+    return getLlvmFunctionForIndex(_compiler->compCurrFuncIdx);
+}
+
+Function* Llvm::getLlvmFunctionForIndex(unsigned funcIdx)
+{
+    Function* llvmFunc = m_functions[funcIdx];
+    assert(llvmFunc != nullptr);
+
+    return llvmFunc;
+}
+
+unsigned Llvm::getLlvmFunctionIndexForBlock(BasicBlock* block)
+{
+    unsigned funcIdx = ROOT_FUNC_IDX;
+
+    // We cannot just use "funGetFuncIdx" here because we generate throw helper blocks out-of-order.
+    if (block->hasHndIndex())
+    {
+        EHblkDsc* ehDsc = _compiler->ehGetDsc(block->getHndIndex());
+        funcIdx = ehDsc->ebdFuncIndex;
+
+        if (ehDsc->HasFilter())
+        {
+            // See if "block" is in the filter part.
+            for (BasicBlock* filterBlock : _compiler->Blocks(ehDsc->ebdFilter, ehDsc->BBFilterLast()))
+            {
+                if (filterBlock == block)
+                {
+                    funcIdx--;
+                    assert(_compiler->funGetFunc(funcIdx)->funKind == FUNC_FILTER);
+                    break;
+                }
+            }
+        }
+    }
+
+    return funcIdx;
+}
+
+void Llvm::setCurrentLlvmFunctionForBlock(BasicBlock* block)
+{
+    _compiler->funSetCurrentFunc(getLlvmFunctionIndexForBlock(block));
 }
 
 llvm::BasicBlock* Llvm::createInlineLlvmBlock()
 {
     BasicBlock* currentBlock = CurrentBlock();
-    llvm::BasicBlock* inlineLlvmBlock =
-        llvm::BasicBlock::Create(_llvmContext, "", _function, getLastLlvmBlockForBlock(currentBlock)->getNextNode());
+    llvm::BasicBlock* insertBefore = getLastLlvmBlockForBlock(currentBlock)->getNextNode();
+    llvm::BasicBlock* inlineLlvmBlock = llvm::BasicBlock::Create(_llvmContext, "", getCurrentLlvmFunction(), insertBefore);
 
     setLastLlvmBlockForBlock(currentBlock, inlineLlvmBlock);
     return inlineLlvmBlock;
+}
+
+llvm::BasicBlock* Llvm::getEHDispatchLlvmBlockForBlock(BasicBlock* block)
+{
+    if (!block->hasTryIndex())
+    {
+        return nullptr;
+    }
+
+    llvm::BasicBlock* ehDispatchLlvmBlock = m_EHDispatchLlvmBlocks[block->getTryIndex()];
+    assert(ehDispatchLlvmBlock != nullptr);
+
+    // Blocks inside funclets retain their original protected region indices, however, we won't have a dispatch
+    // block for the top-level ones (thus any exceptions out of funclets will propagate to the EH dispatch routine).
+    if (ehDispatchLlvmBlock->getParent() != getCurrentLlvmFunction())
+    {
+        return nullptr;
+    }
+
+    return ehDispatchLlvmBlock;
 }
 
 llvm::BasicBlock* Llvm::getFirstLlvmBlockForBlock(BasicBlock* block)
@@ -1839,8 +2161,9 @@ llvm::BasicBlock* Llvm::getFirstLlvmBlockForBlock(BasicBlock* block)
     if (!_blkToLlvmBlksMap.Lookup(block, &llvmBlockRange))
     {
         unsigned bbNum = block->bbNum;
+        Function* llvmFunc = getCurrentLlvmFunction();
         llvmBlock = llvm::BasicBlock::Create(
-            _llvmContext, (bbNum >= 10) ? ("BB" + llvm::Twine(bbNum)) : ("BB0" + llvm::Twine(bbNum)), _function);
+            _llvmContext, (bbNum >= 10) ? ("BB" + llvm::Twine(bbNum)) : ("BB0" + llvm::Twine(bbNum)), llvmFunc);
 
         _blkToLlvmBlksMap.Set(block, {llvmBlock, llvmBlock});
     }

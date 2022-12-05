@@ -79,6 +79,8 @@ void Compiler::fgSsaBuild()
 
 void Compiler::fgResetForSsa()
 {
+    m_blockToEHPreds = nullptr;
+
     for (unsigned i = 0; i < lvaCount; ++i)
     {
         lvaTable[i].lvPerSsaData.Reset();
@@ -924,6 +926,14 @@ void SsaBuilder::RenameDef(GenTreeOp* asgNode, BasicBlock* block)
         lclNode->SetSsaNum(SsaConfig::RESERVED_SSA_NUM);
     }
 
+#ifdef TARGET_WASM
+    // TODO-LLVM: LIR memory liveness is NYI upstream. Delete when that is fixed.
+    if (block->IsLIR())
+    {
+        return;
+    }
+#endif // TARGET_WASM
+
     // Figure out if "asgNode" may make a new GC heap state (if we care for this block).
     if (((block->bbMemoryHavoc & memoryKindSet(GcHeap)) == 0) && m_pCompiler->ehBlockHasExnFlowDsc(block))
     {
@@ -1026,7 +1036,7 @@ void SsaBuilder::AddDefToHandlerPhis(BasicBlock* block, unsigned lclNum, unsigne
 #ifdef DEBUG
                 bool phiFound = false;
 #endif
-                // TODO-LLVM: llvm.cpp cant handle fin blocks, but this at least does not assert.
+
 #if defined(TARGET_WASM)
                 if (handler->IsLIR())
                 {
@@ -1047,7 +1057,6 @@ void SsaBuilder::AddDefToHandlerPhis(BasicBlock* block, unsigned lclNum, unsigne
                         if (tree->AsLclVarCommon()->GetLclNum() == lclNum)
                         {
                             AddPhiArg(handler, nullptr, tree->gtGetOp1()->AsPhi(), lclNum, ssaNum, block);
-
 #ifdef DEBUG
                             phiFound = true;
 #endif
@@ -1182,14 +1191,18 @@ void SsaBuilder::BlockRenameVariables(BasicBlock* block)
     // First handle the incoming memory states.
     for (MemoryKind memoryKind : allMemoryKinds())
     {
+#ifdef TARGET_WASM
+        // TODO-LLVM: LIR memory liveness is NYI upstream. Delete when that is fixed.
+        if (block->IsLIR())
+        {
+            break;
+        }
+#endif // TARGET_WASM
+
         if ((memoryKind == GcHeap) && m_pCompiler->byrefStatesMatchGcHeapStates)
         {
-            // memory liveness for LIR has upstream problems, causing TARGET_WASM to trigger this assert.
-            // TODO-LLVM: reinstate when fixed.
-#if !defined(TARGET_WASM)
             // ByrefExposed and GcHeap share any phi this block may have,
             assert(block->bbMemorySsaPhiFunc[memoryKind] == block->bbMemorySsaPhiFunc[ByrefExposed]);
-#endif // !defined(TARGET_WASM)
             // so we will have already allocated a defnum for it if needed.
             assert(memoryKind > ByrefExposed);
 
@@ -1255,6 +1268,14 @@ void SsaBuilder::BlockRenameVariables(BasicBlock* block)
 #if defined(TARGET_WASM)
     }
 #endif
+
+#ifdef TARGET_WASM
+    // TODO-LLVM: LIR memory liveness is NYI upstream. Delete when that is fixed.
+    if (block->IsLIR())
+    {
+        return;
+    }
+#endif // TARGET_WASM
 
     // Now handle the final memory states.
     for (MemoryKind memoryKind : allMemoryKinds())

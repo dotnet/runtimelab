@@ -122,7 +122,6 @@ private:
     Compiler::Info _info;
     GCInfo* _gcInfo = nullptr;
 
-    Function* _function;
     CORINFO_SIG_INFO _sigInfo; // sigInfo of function being compiled
     LIR::Range* _currentRange;
     BasicBlock* _currentBlock;
@@ -134,6 +133,8 @@ private:
     JitHashTable<SSAName, SSAName, Value*> _localsMap;
     std::vector<PhiPair> _phiPairs;
     std::vector<Value*> m_allocas;
+    std::vector<Function*> m_functions;
+    std::vector<llvm::BasicBlock*> m_EHDispatchLlvmBlocks;
 
     // DWARF
     llvm::DILocation* _currentOffsetDiLocation;
@@ -262,10 +263,13 @@ public:
     void Compile();
 
 private:
+    const int ROOT_FUNC_IDX = 0;
+
+    bool initializeFunctions();
     void generateProlog();
     void initializeLocals();
     void generateBlock(BasicBlock* block);
-    void generateThrowHelperBlock(BasicBlock* block);
+    void generateEHDispatch();
     void fillPhis();
 
     Value* getGenTreeValue(GenTree* node);
@@ -298,9 +302,13 @@ private:
     void buildBinaryOperation(GenTree* node);
     void buildShift(GenTreeOp* node);
     void buildReturn(GenTree* node);
-    void buildJTrue(GenTree* node, Value* opValue);    
+    void buildCatchArg(GenTree* node);
+    void buildJTrue(GenTree* node, Value* opValue);
     void buildNullCheck(GenTreeIndir* nullCheckNode);
     void buildBoundsCheck(GenTreeBoundsChk* boundsCheck);
+
+    void buildCallFinally(BasicBlock* block);
+    void buildCatchReturn(BasicBlock* block);
 
     void storeObjAtAddress(Value* baseAddress, Value* data, StructDesc* structDesc);
     unsigned buildMemCpy(Value* baseAddress, unsigned startOffset, unsigned endOffset, Value* srcAddress);
@@ -321,6 +329,7 @@ private:
     llvm::Instruction* getCast(llvm::Value* source, Type* targetType);
     Value* castIfNecessary(Value* source, Type* targetType, llvm::IRBuilder<>* builder = nullptr);
     Value* gepOrAddr(Value* addr, unsigned offset);
+    Value* getShadowStack();
     Value* getShadowStackForCallee();
 
     DebugMetadata getOrCreateDebugMetadata(const char* documentFileName);
@@ -328,8 +337,12 @@ private:
 
     Function* getRootLlvmFunction();
     Function* getCurrentLlvmFunction();
+    Function* getLlvmFunctionForIndex(unsigned funcIdx);
+    unsigned getLlvmFunctionIndexForBlock(BasicBlock* block);
+    void setCurrentLlvmFunctionForBlock(BasicBlock* block);
 
     llvm::BasicBlock* createInlineLlvmBlock();
+    llvm::BasicBlock* getEHDispatchLlvmBlockForBlock(BasicBlock* block);
     llvm::BasicBlock* getFirstLlvmBlockForBlock(BasicBlock* block);
     llvm::BasicBlock* getLastLlvmBlockForBlock(BasicBlock* block);
     void setLastLlvmBlockForBlock(BasicBlock* block, llvm::BasicBlock* llvmBlock);

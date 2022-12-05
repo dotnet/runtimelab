@@ -124,7 +124,6 @@ size_t HelperFuncInfo::GetSigArgCount() const
 Llvm::Llvm(Compiler* compiler)
     : _compiler(compiler),
     _info(compiler->info),
-    _function(nullptr),
     _sigInfo(compiler->info.compMethodInfo->args),
     _builder(_llvmContext),
     _prologBuilder(_llvmContext),
@@ -686,10 +685,14 @@ unsigned int Llvm::padNextOffset(CorInfoType corInfoType, CORINFO_CLASS_HANDLE s
 
 [[noreturn]] void Llvm::failFunctionCompilation()
 {
-    if (_function != nullptr)
+    for (Function* llvmFunc : m_functions)
     {
-        _function->deleteBody();
+        if (llvmFunc != nullptr)
+        {
+            llvmFunc->deleteBody();
+        }
     }
+
     fatal(CORJIT_SKIPPED);
 }
 

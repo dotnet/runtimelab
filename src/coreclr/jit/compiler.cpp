@@ -5547,7 +5547,6 @@ void Compiler::ResetOptAnnotations()
     fgResetForSsa();
     vnStore               = nullptr;
     m_opAsgnVarDefSsaNums = nullptr;
-    m_blockToEHPreds      = nullptr;
     fgSsaPassesCompleted  = 0;
     fgVNPassesCompleted   = 0;
 

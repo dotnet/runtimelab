@@ -76,11 +76,19 @@ void Llvm::lowerLocals()
             }
         }
 
+        // With optimizations off, we haven't run liveness (yet), so don't know which locals (if any) are live-in/out
+        // of handlers and have to assume the worst. TODO-LLVM: move shadow stack lowering after liveness / SSA and
+        // fix this.
+        if (!_compiler->fgLocalVarLivenessDone && _compiler->ehAnyFunclets())
+        {
+            varDsc->lvLiveInOutOfHndlr = 1;
+        }
+
         // GC locals needs to go on the shadow stack for the scan to find them. Locals live-in/out of handlers
         // need to be preserved after the native unwind for the funclets to be callable, thus, they too need to
-        // go on the shadow stack.
+        // go on the shadow stack (except for the shadow stack itself as it will be passed to funclets directly).
         //
-        if (varDsc->HasGCPtr() || varDsc->lvLiveInOutOfHndlr)
+        if (varDsc->HasGCPtr() || (varDsc->lvLiveInOutOfHndlr && (lclNum != _shadowStackLclNum)))
         {
             if (_compiler->lvaGetPromotionType(varDsc) == Compiler::PROMOTION_TYPE_INDEPENDENT)
             {
