@@ -3,12 +3,10 @@
 
 using System;
 using System.Diagnostics;
-using System.Net;
-using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 
-public class Test_greenthread_perf_SocketAwaitGT
+public class Test_greenthread_perf_AwaitContinue
 {
     public static int Main(string[] args)
     {
@@ -18,41 +16,28 @@ public class Test_greenthread_perf_SocketAwaitGT
             return 100;
         }
 
-        ThreadPool.SetMinThreads(2, 1);
-        ThreadPool.SetMaxThreads(2, 1);
+        ThreadPool.SetMinThreads(1, 1);
+        ThreadPool.SetMaxThreads(1, 1);
 
         var sw = new Stopwatch();
+        TaskCompletionSource tcs = null;
         int count = 0;
 
-        Task.RunAsGreenThread(async () =>
+        var awaitTask = Task.Run(async () =>
         {
-            var buffer = new byte[1];
-            var listener = new TcpListener(IPAddress.Loopback, 55555);
-            listener.Start();
-            var socket = await listener.AcceptSocketAsync();
-            listener.Stop();
-
             while (true)
             {
-                await socket.ReceiveAsync(buffer);
-                await socket.SendAsync(buffer);
+                tcs = new TaskCompletionSource();
+                await tcs.Task;
+                count++;
             }
         });
 
-        Thread.Sleep(100);
-
-        Task.RunAsGreenThread(async () =>
+        var continuerTask = Task.Run(() =>
         {
-            var buffer = new byte[1];
-            var client = new TcpClient();
-            await client.ConnectAsync(IPAddress.Loopback, 55555);
-            var socket = client.Client;
-
             while (true)
             {
-                await socket.SendAsync(buffer);
-                await socket.ReceiveAsync(buffer);
-                ++count;
+                tcs.SetResult();
             }
         });
 
