@@ -20,10 +20,6 @@
 
   <PropertyGroup>
     <RuntimeIdentifier>$(__DistroRid)</RuntimeIdentifier>
-
-    <!-- TODO-LLVM: how should this work, building subset clr.tools to get a `build` folder, DistroRid is browser-wasm, but we want the host Rid -->
-    <RuntimeIdentifier Condition="'$(TargetArchitecture)' == 'wasm'">$(AppHostRuntimeIdentifier)</RuntimeIdentifier>
-
     <SelfContained>true</SelfContained>
     <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
 
