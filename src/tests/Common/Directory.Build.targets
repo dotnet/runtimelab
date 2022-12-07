@@ -171,6 +171,22 @@
       <RunTimeDependencyCopyLocal Include="$(CoreDisToolsLibrary)" Condition="$(CopyCoreDisToolsToCoreRoot)" />
     </ItemGroup>
 
+
+    <PropertyGroup>
+      <!-- TODO-LLVM: used to get the windows.x64.configuration build folder for tests, obviously there's a right way to do this -->
+      <HostCoreCLRArtifactsPath>$([MSBuild]::NormalizeDirectory('$(RepoRoot)', 'artifacts', 'bin', 'coreclr', '$(HostOS).$(BuildArchitecture).$(CoreCLRConfiguration)'))</HostCoreCLRArtifactsPath>
+      <IlcDir>$(HostCoreCLRArtifactsPath)ilc</IlcDir>
+    </PropertyGroup>
+
+    <!-- When cross-compiling tests (such as is the case for Wasm), we depends on the host's ILC being built. -->
+    <!-- This is a workaround for ILC's project not supporting cross-targeting. Remove once that's implemented. -->
+    <PropertyGroup Condition="'$(TargetArchitecture)' != '$(BuildArchitecture)'">
+      <IlcDir>$([MSBuild]::NormalizeDirectory('$(RepoRoot)', 'artifacts', 'bin', 'coreclr', '$(HostOS).$(BuildArchitecture).$(CoreCLRConfiguration)'))ilc</IlcDir>
+    </PropertyGroup>
+
+    <Error Condition="!Exists('$(IlcDir)')"
+           Text="'$(IlcDir)' does not exist. Subsets clr.jit, clr.wasmjit and nativeaot.ilc for $(HostOS) $(BuildArchitecture) in $(CoreCLRConfiguration) configuration must be built before building this project." />
+
     <ItemGroup Condition="'$(TestBuildMode)' == 'nativeaot'">
       <AotCompilerCopyLocal Include="$(CoreCLRArtifactsPath)ilc/**/*" TargetDir="nativeaot/tools/" Condition="'$(TargetArchitecture)' != 'wasm'"/>
       <AotCompilerCopyLocal Include="$(HostCoreCLRArtifactsPath)ilc/**/*" TargetDir="nativeaot/tools/" Condition="'$(TargetArchitecture)' == 'wasm'"/>
