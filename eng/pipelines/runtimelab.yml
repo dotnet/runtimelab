@@ -54,7 +54,7 @@ stages:
   jobs:
 
   #
-  # Build with Release config and Debug runtimeConfiguration
+  # Build with Release config and Debug runtimeConfiguration - the default subsets - not for Wasm
   #
   - ${{ if ne(variables.isOfficialBuild, true) }}:
     - template: /eng/pipelines/common/platform-matrix.yml
@@ -65,11 +65,26 @@ stages:
         - Linux_x64
         - windows_x64
         - OSX_x64
-        - Browser_wasm_win
         jobParameters:
           timeoutInMinutes: 300
           testGroup: innerloop
           buildArgs: -s clr.alljits+clr.tools+clr.nativeaotlibs+libs+nativeaot.packages -lc Release -rc Debug
+          extraStepsTemplate: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
+
+  #
+  # Build with Release config and Debug runtimeConfiguration - Wasm
+  #
+  - ${{ if ne(variables.isOfficialBuild, true) }}:
+    - template: /eng/pipelines/common/platform-matrix.yml
+      parameters:
+        jobTemplate: /eng/pipelines/common/global-build-job.yml
+        buildConfig: Debug
+        platforms:
+        - Browser_wasm_win
+        jobParameters:
+          timeoutInMinutes: 300
+          testGroup: innerloop
+          buildArgs: -s clr.nativeaotlibs+libs -lc Release -rc Debug
           extraStepsTemplate: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
 
   #
@@ -90,7 +105,7 @@ stages:
           extraStepsTemplate: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
 
   #
-  # Build with Release config and Release runtimeConfiguration (used for official builds)
+  # Build with Release config and Release runtimeConfiguration (used for official builds) - the default subsets - not for Wasm
   #
   - template: /eng/pipelines/common/platform-matrix.yml
     parameters:
@@ -105,7 +120,6 @@ stages:
       - windows_x64
       - windows_arm64
       - OSX_x64
-      - Browser_wasm_win
       jobParameters:
         timeoutInMinutes: 300
         isOfficialBuild: ${{ variables.isOfficialBuild }}
@@ -114,6 +128,25 @@ stages:
         extraStepsTemplate: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
         extraStepsParameters:
           uploadIntermediateArtifacts: ${{ variables.isOfficialBuild }}
+
+  #
+  # Build with Release config and Release runtimeConfiguration (used for official builds) - Wasm
+  #
+  - template: /eng/pipelines/common/platform-matrix.yml
+    parameters:
+      jobTemplate: /eng/pipelines/common/global-build-job.yml
+      buildConfig: Release
+      platforms:
+      - Browser_wasm_win
+      jobParameters:
+        timeoutInMinutes: 300
+        isOfficialBuild: ${{ variables.isOfficialBuild }}
+        testGroup: innerloop
+        buildArgs: -s clr.nativeaotlibs+lib -c Release
+        extraStepsTemplate: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
+        extraStepsParameters:
+          uploadIntermediateArtifacts: ${{ variables.isOfficialBuild }}
+
 
 - ${{ if eq(variables.isOfficialBuild, true) }}:
   - template: /eng/pipelines/official/stages/publish.yml
