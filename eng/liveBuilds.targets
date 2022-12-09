@@ -15,8 +15,6 @@
   <!-- Set up default live asset paths if no overrides provided. -->
   <PropertyGroup>
     <CoreCLRArtifactsPath Condition="'$(CoreCLRArtifactsPath)' == ''">$([MSBuild]::NormalizeDirectory('$(RepoRoot)', 'artifacts', 'bin', 'coreclr', '$(TargetOS).$(TargetArchitecture).$(CoreCLRConfiguration)'))</CoreCLRArtifactsPath>
-    <!-- TODO-LLVM: used to get the windows.x64.configuration build folder for tests, obviously there's a right way to do this -->
-    <HostCoreCLRArtifactsPath>$([MSBuild]::NormalizeDirectory('$(RepoRoot)', 'artifacts', 'bin', 'coreclr', '$(HostOS).x64.$(CoreCLRConfiguration)'))</HostCoreCLRArtifactsPath>
     <MonoArtifactsPath Condition="'$(MonoArtifactsPath)' == ''">$([MSBuild]::NormalizeDirectory('$(RepoRoot)', 'artifacts', 'bin', 'mono', '$(TargetOS).$(TargetArchitecture).$(MonoConfiguration)'))</MonoArtifactsPath>
     <LibrariesArtifactsPath Condition="'$(LibrariesArtifactsPath)' == ''">$([MSBuild]::NormalizeDirectory('$(RepoRoot)', 'artifacts'))</LibrariesArtifactsPath>
     <LibrariesAllConfigurationsArtifactsPath Condition="'$(LibrariesAllConfigurationsArtifactsPath)' == ''">$([MSBuild]::NormalizeDirectory('$(RepoRoot)', 'artifacts'))</LibrariesAllConfigurationsArtifactsPath>

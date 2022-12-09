@@ -308,7 +308,7 @@ jobs:
         buildConfig: ${{ parameters.buildConfig }}
         ${{ if eq(parameters.passPlatforms, true) }}:
           platforms: ${{ parameters.platforms }}
-        ${{ insert }}: ${{ parameters.jobParameters }}       
+        ${{ insert }}: ${{ parameters.jobParameters }}
 
 # FreeBSD
 - ${{ if containsValue(parameters.platforms, 'FreeBSD_x64') }}:
