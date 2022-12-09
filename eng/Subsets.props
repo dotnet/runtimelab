@@ -67,7 +67,7 @@
     <!-- The wasmjit can only be built for x64 on Windows -->
     <DefaultNativeAotSubsets Condition="$([MSBuild]::IsOsPlatform(Windows)) and '$(TargetArchitecture)' == 'x64'">$(DefaultNativeAotSubsets)+clr.wasmjit</DefaultNativeAotSubsets>
 
-    <!-- The only NativeAOT components meaningfully buildable for Wasm are the native runtime and build integration. -->
+    <!-- The only NativeAOT component meaningfully buildable for Wasm is the native runtime -->
     <DefaultNativeAotSubsets Condition="'$(TargetArchitecture)' == 'wasm'">clr.nativeaotlibs</DefaultNativeAotSubsets>
 
     <DefaultMonoSubsets Condition="'$(MonoEnableLLVM)' == 'true' and '$(MonoLLVMDir)' == ''">mono.llvm+</DefaultMonoSubsets>
