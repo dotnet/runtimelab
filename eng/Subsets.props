@@ -126,6 +126,7 @@
     <SubsetName Include="Clr.Runtime" Description="The CoreCLR .NET runtime." />
     <SubsetName Include="Clr.Native" Description="All CoreCLR native non-test components, including the runtime, jits, and other native tools." />
     <SubsetName Include="Clr.NativeAotLibs" Description="The CoreCLR native AOT CoreLib, runtime, and other low level class libraries." />
+    <SubsetName Include="Clr.NativeAotBuild" Description="The CoreCLR native AOT MSBuild toolchain." />
     <SubsetName Include="Clr.ObjWriter" Description="Object writer for the CoreCLR Native AOT compiler." />
     <SubsetName Include="Clr.PalTests" OnDemand="true" Description="The CoreCLR PAL tests." />
     <SubsetName Include="Clr.PalTestList" OnDemand="true" Description="Generate the list of the CoreCLR PAL tests. When using the command line, use Clr.PalTests instead." />
@@ -290,6 +291,11 @@
 
   <ItemGroup Condition="$(_subset.Contains('+clr.objwriter+'))">
     <ProjectToBuild Include="$(CoreClrProjectRoot)tools\aot\ObjWriter\objwriter.proj" Category="clr" />
+  </ItemGroup>
+
+  <ItemGroup Condition="$(_subset.Contains('+clr.nativeaotbuild+'))">
+    <ProjectToBuild Include="$(CoreClrProjectRoot)tools\aot\ILCompiler.Build.Tasks\ILCompiler.Build.Tasks.csproj" Category="clr" />
+    <ProjectToBuild Include="$(CoreClrProjectRoot)nativeaot\BuildIntegration\BuildIntegration.proj" Category="clr" />
   </ItemGroup>
 
   <!-- Mono sets -->
