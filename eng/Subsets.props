@@ -284,7 +284,7 @@
     <ProjectToBuild Include="$(CoreClrProjectRoot)tools\dotnet-pgo\dotnet-pgo-pack.proj" Pack="true" BuildInParallel="false" Category="clr" Condition="'$(DotNetBuildFromSource)' != 'true' and '$(RuntimeFlavor)' != 'Mono'"/>
   </ItemGroup>
 
-  <ItemGroup Condition="$(_subset.Contains('+clr.nativeaotlibs+')) and '$(NativeAotSupported)' == 'true'">
+  <ItemGroup Condition="$(_subset.Contains('+clr.nativeaotlibs+')) and ('$(NativeAotSupported)' == 'true' or ('$(TargetOS)' == 'Browser' and '$(TargetArchitecture)' == 'wasm'))">
     <ProjectToBuild Include="$(CoreClrProjectRoot)nativeaot\**\src\*.csproj" Category="clr" />
   </ItemGroup>
 
