@@ -24,13 +24,8 @@ CannotMakeMemberAbstract : Member 'public System.Boolean System.IO.FileSystemInf
 CannotMakeMemberAbstract : Member 'public System.String System.IO.FileSystemInfo.Name.get()' is abstract in the reference but is not abstract in the implementation.
 # C# generates backing fields for fixed buffers as public.
 TypesMustExist : Type 'System.IO.Enumeration.FileSystemEntry.<_fileNameBuffer>e__FixedBuffer' does not exist in the reference but it does exist in the implementation.
-
-CannotRemoveAttribute : Attribute 'System.Diagnostics.DebuggerGuidedStepThroughAttribute' exists on 'System.Activator.CreateInstance<T>()' in the implementation but not the reference.
-CannotRemoveAttribute : Attribute 'System.Diagnostics.DebuggerGuidedStepThroughAttribute' exists on 'System.Delegate.DynamicInvoke(System.Object[])' in the implementation but not the reference.
-CannotRemoveAttribute : Attribute 'System.Diagnostics.DebuggerGuidedStepThroughAttribute' exists on 'System.Delegate.DynamicInvokeImpl(System.Object[])' in the implementation but not the reference.
 MembersMustExist : Member 'public void System.ModuleHandle..ctor(System.Reflection.Module)' does not exist in the reference but it does exist in the implementation.
 CannotRemoveBaseTypeOrInterface : Type 'System.RuntimeTypeHandle' does not implement interface 'System.IEquatable<System.RuntimeTypeHandle>' in the reference but it does in the implementation.
-CannotRemoveAttribute : Attribute 'System.Runtime.CompilerServices.EagerStaticClassConstructionAttribute' exists on 'System.String' in the implementation but not the reference.
 MembersMustExist : Member 'public System.String System.String System.Type.DefaultTypeNameWhenMissingMetadata' does not exist in the reference but it does exist in the implementation.
 MembersMustExist : Member 'public System.String System.Type.FormatTypeNameForReflection()' does not exist in the reference but it does exist in the implementation.
 MembersMustExist : Member 'public System.String System.Type.InternalGetNameIfAvailable(System.Type)' does not exist in the reference but it does exist in the implementation.

@@ -766,7 +766,6 @@ struct GenTree
 
     unsigned char gtLIRFlags; // Used for nodes that are in LIR. See LIR::Flags in lir.h for the various flags.
 
-#if ASSERTION_PROP
     AssertionInfo gtAssertionInfo;
 
     bool GeneratesAssertion() const
@@ -788,7 +787,6 @@ struct GenTree
     {
         gtAssertionInfo = info;
     }
-#endif
 
     //
     // Cost metrics on the node. Don't allow direct access to the variable for setting.
@@ -2263,6 +2261,8 @@ public:
     bool Precedes(GenTree* other);
 
     bool IsInvariant() const;
+
+    bool IsNeverNegative(Compiler* comp) const;
 
     bool IsReuseRegVal() const
     {

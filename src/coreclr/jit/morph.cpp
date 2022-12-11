@@ -5777,7 +5777,6 @@ GenTree* Compiler::fgMorphLocalVar(GenTree* tree, bool forceRemorph)
 
     if (!varAddr && varDsc->lvNormalizeOnLoad())
     {
-#if LOCAL_ASSERTION_PROP
         // TYP_BOOL quirk: previously, the code in optAssertionIsSubrange did not handle TYP_BOOL.
         // Now it does, but this leads to some regressions because we lose the uniform VNs for trees
         // that represent the "reduced" normalize-on-load locals, i. e. LCL_VAR(small type V00), created
@@ -5803,7 +5802,7 @@ GenTree* Compiler::fgMorphLocalVar(GenTree* tree, bool forceRemorph)
             assert(tree->TypeGet() == varDsc->TypeGet());
             return tree;
         }
-#endif
+
         // Small-typed arguments and aliased locals are normalized on load.
         // Other small-typed locals are normalized on store.
         // Also, under the debugger as the debugger could write to the variable.
@@ -9903,7 +9902,6 @@ GenTree* Compiler::fgMorphOneAsgBlockOp(GenTree* tree)
 
         if (destVarDsc != nullptr)
         {
-#if LOCAL_ASSERTION_PROP
             // Kill everything about dest
             if (optLocalAssertionProp)
             {
@@ -9912,7 +9910,6 @@ GenTree* Compiler::fgMorphOneAsgBlockOp(GenTree* tree)
                     fgKillDependentAssertions(destVarNum DEBUGARG(tree));
                 }
             }
-#endif // LOCAL_ASSERTION_PROP
 
             // A previous incarnation of this code also required the local not to be
             // address-exposed(=taken).  That seems orthogonal to the decision of whether
@@ -10276,12 +10273,10 @@ GenTree* Compiler::fgMorphPromoteLocalInitBlock(GenTreeLclVar* destLclNode, GenT
 
         GenTree* asg = gtNewAssignNode(dest, src);
 
-#if LOCAL_ASSERTION_PROP
         if (optLocalAssertionProp)
         {
             optAssertionGen(asg);
         }
-#endif // LOCAL_ASSERTION_PROP
 
         if (tree != nullptr)
         {
@@ -10989,13 +10984,11 @@ GenTree* Compiler::fgMorphSmpOp(GenTree* tree, MorphAddrContext* mac)
 
     bool isQmarkColon = false;
 
-#if LOCAL_ASSERTION_PROP
     AssertionIndex origAssertionCount = DUMMY_INIT(0);
     AssertionDsc*  origAssertionTab   = DUMMY_INIT(NULL);
 
     AssertionIndex thenAssertionCount = DUMMY_INIT(0);
     AssertionDsc*  thenAssertionTab   = DUMMY_INIT(NULL);
-#endif
 
     if (fgGlobalMorph)
     {
@@ -11088,9 +11081,7 @@ GenTree* Compiler::fgMorphSmpOp(GenTree* tree, MorphAddrContext* mac)
             break;
 
         case GT_COLON:
-#if LOCAL_ASSERTION_PROP
             if (optLocalAssertionProp)
-#endif
             {
                 isQmarkColon = true;
             }
@@ -11201,13 +11192,12 @@ GenTree* Compiler::fgMorphSmpOp(GenTree* tree, MorphAddrContext* mac)
                 }
             }
 
-            // array.Length is always positive so GT_DIV can be changed to GT_UDIV
-            // if op2 is a positive cns
-            if (!optValnumCSE_phase && op1->OperIs(GT_ARR_LENGTH) && op2->IsIntegralConst() &&
-                op2->AsIntCon()->IconValue() >= 2) // for 0 and 1 it doesn't matter if it's UDIV or DIV
+            // Convert DIV to UDIV if boths op1 and op2 are known to be never negative
+            if (!gtIsActiveCSE_Candidate(tree) && varTypeIsIntegral(tree) && op1->IsNeverNegative(this) &&
+                op2->IsNeverNegative(this))
             {
                 assert(tree->OperIs(GT_DIV));
-                tree->ChangeOper(GT_UDIV);
+                tree->ChangeOper(GT_UDIV, GenTree::PRESERVE_VN);
                 return fgMorphSmpOp(tree, mac);
             }
 
@@ -11270,13 +11260,12 @@ GenTree* Compiler::fgMorphSmpOp(GenTree* tree, MorphAddrContext* mac)
                 goto USE_HELPER_FOR_ARITH;
             }
 
-            // array.Length is always positive so GT_DIV can be changed to GT_UDIV
-            // if op2 is a positive cns
-            if (!optValnumCSE_phase && op1->OperIs(GT_ARR_LENGTH) && op2->IsIntegralConst() &&
-                op2->AsIntCon()->IconValue() >= 2) // for 0 and 1 it doesn't matter if it's UMOD or MOD
+            // Convert MOD to UMOD if boths op1 and op2 are known to be never negative
+            if (!gtIsActiveCSE_Candidate(tree) && varTypeIsIntegral(tree) && op1->IsNeverNegative(this) &&
+                op2->IsNeverNegative(this))
             {
                 assert(tree->OperIs(GT_MOD));
-                tree->ChangeOper(GT_UMOD);
+                tree->ChangeOper(GT_UMOD, GenTree::PRESERVE_VN);
                 return fgMorphSmpOp(tree, mac);
             }
 
@@ -11613,8 +11602,6 @@ GenTree* Compiler::fgMorphSmpOp(GenTree* tree, MorphAddrContext* mac)
 
     if (op1)
     {
-
-#if LOCAL_ASSERTION_PROP
         // If we are entering the "then" part of a Qmark-Colon we must
         // save the state of the current copy assignment table
         // so that we can restore this state when entering the "else" part
@@ -11635,7 +11622,6 @@ GenTree* Compiler::fgMorphSmpOp(GenTree* tree, MorphAddrContext* mac)
                 origAssertionTab   = nullptr;
             }
         }
-#endif // LOCAL_ASSERTION_PROP
 
         // We might need a new MorphAddressContext context.  (These are used to convey
         // parent context about how addresses being calculated will be used; see the
@@ -11726,7 +11712,6 @@ GenTree* Compiler::fgMorphSmpOp(GenTree* tree, MorphAddrContext* mac)
 
         tree->AsOp()->gtOp1 = op1 = fgMorphTree(op1, subMac1);
 
-#if LOCAL_ASSERTION_PROP
         // If we are exiting the "then" part of a Qmark-Colon we must
         // save the state of the current copy assignment table
         // so that we can merge this state with the "else" part exit
@@ -11747,7 +11732,6 @@ GenTree* Compiler::fgMorphSmpOp(GenTree* tree, MorphAddrContext* mac)
                 thenAssertionTab   = nullptr;
             }
         }
-#endif // LOCAL_ASSERTION_PROP
 
         /* Morphing along with folding and inlining may have changed the
          * side effect flags, so we have to reset them
@@ -11778,8 +11762,6 @@ GenTree* Compiler::fgMorphSmpOp(GenTree* tree, MorphAddrContext* mac)
 
     if (op2)
     {
-
-#if LOCAL_ASSERTION_PROP
         // If we are entering the "else" part of a Qmark-Colon we must
         // reset the state of the current copy assignment table
         if (isQmarkColon)
@@ -11793,7 +11775,6 @@ GenTree* Compiler::fgMorphSmpOp(GenTree* tree, MorphAddrContext* mac)
                 optAssertionReset(origAssertionCount);
             }
         }
-#endif // LOCAL_ASSERTION_PROP
 
         // We might need a new MorphAddressContext context to use in evaluating op2.
         // (These are used to convey parent context about how addresses being calculated
@@ -11836,7 +11817,6 @@ GenTree* Compiler::fgMorphSmpOp(GenTree* tree, MorphAddrContext* mac)
 
         tree->gtFlags |= (op2->gtFlags & GTF_ALL_EFFECT);
 
-#if LOCAL_ASSERTION_PROP
         // If we are exiting the "else" part of a Qmark-Colon we must
         // merge the state of the current copy assignment table with
         // that of the exit of the "then" part.
@@ -11908,8 +11888,7 @@ GenTree* Compiler::fgMorphSmpOp(GenTree* tree, MorphAddrContext* mac)
                 }
             }
         }
-#endif // LOCAL_ASSERTION_PROP
-    }  // if (op2)
+    } // if (op2)
 
 DONE_MORPHING_CHILDREN:
 
@@ -12073,7 +12052,7 @@ DONE_MORPHING_CHILDREN:
             effectiveOp1 = op1->gtEffectiveVal();
 
             // If we are storing a small type, we might be able to omit a cast.
-            if (effectiveOp1->OperIs(GT_IND) && varTypeIsSmall(effectiveOp1))
+            if (effectiveOp1->OperIs(GT_IND, GT_CLS_VAR) && varTypeIsSmall(effectiveOp1))
             {
                 if (!gtIsActiveCSE_Candidate(op2) && op2->OperIs(GT_CAST) &&
                     varTypeIsIntegral(op2->AsCast()->CastOp()) && !op2->gtOverflow())
@@ -14758,7 +14737,6 @@ GenTree* Compiler::fgMorphTree(GenTree* tree, MorphAddrContext* mac)
         /* Ensure that we haven't morphed this node already */
         assert(((tree->gtDebugFlags & GTF_DEBUG_NODE_MORPHED) == 0) && "ERROR: Already morphed this node!");
 
-#if LOCAL_ASSERTION_PROP
         /* Before morphing the tree, we try to propagate any active assertions */
         if (optLocalAssertionProp)
         {
@@ -14777,7 +14755,6 @@ GenTree* Compiler::fgMorphTree(GenTree* tree, MorphAddrContext* mac)
             }
         }
         PREFAST_ASSUME(tree != nullptr);
-#endif
     }
 
     /* Save the original un-morphed tree for fgMorphTreeDone */
@@ -14941,7 +14918,6 @@ DONE:
     return tree;
 }
 
-#if LOCAL_ASSERTION_PROP
 //------------------------------------------------------------------------
 // fgKillDependentAssertionsSingle: Kill all assertions specific to lclNum
 //
@@ -15029,7 +15005,6 @@ void Compiler::fgKillDependentAssertions(unsigned lclNum DEBUGARG(GenTree* tree)
         fgKillDependentAssertionsSingle(lclNum DEBUGARG(tree));
     }
 }
-#endif // LOCAL_ASSERTION_PROP
 
 /*****************************************************************************
  *
@@ -15037,7 +15012,7 @@ void Compiler::fgKillDependentAssertions(unsigned lclNum DEBUGARG(GenTree* tree)
  *  It should only be called once for each node.
  *  If DEBUG is defined the flag GTF_DEBUG_NODE_MORPHED is checked and updated,
  *  to enforce the invariant that each node is only morphed once.
- *  If LOCAL_ASSERTION_PROP is enabled the result tree may be replaced
+ *  If local assertion prop is enabled the result tree may be replaced
  *  by an equivalent tree.
  *
  */
@@ -15080,8 +15055,6 @@ void Compiler::fgMorphTreeDone(GenTree* tree,
         goto DONE;
     }
 
-#if LOCAL_ASSERTION_PROP
-
     if (!optLocalAssertionProp)
     {
         goto DONE;
@@ -15112,8 +15085,6 @@ void Compiler::fgMorphTreeDone(GenTree* tree,
 
     /* If this tree makes a new assertion - make it available */
     optAssertionGen(tree);
-
-#endif // LOCAL_ASSERTION_PROP
 
 DONE:;
 
@@ -15841,7 +15812,6 @@ void Compiler::fgMorphBlocks()
 
     fgGlobalMorph = true;
 
-#if LOCAL_ASSERTION_PROP
     //
     // Local assertion prop is enabled if we are optimized
     //
@@ -15854,15 +15824,6 @@ void Compiler::fgMorphBlocks()
         //
         optAssertionInit(true);
     }
-#elif ASSERTION_PROP
-    //
-    // If LOCAL_ASSERTION_PROP is not set
-    // and we have global assertion prop
-    // then local assertion prop is always off
-    //
-    optLocalAssertionProp = false;
-
-#endif
 
     if (!compEnregLocals())
     {
@@ -15890,7 +15851,6 @@ void Compiler::fgMorphBlocks()
         }
 #endif
 
-#if LOCAL_ASSERTION_PROP
         if (optLocalAssertionProp)
         {
             //
@@ -15900,7 +15860,7 @@ void Compiler::fgMorphBlocks()
             //
             optAssertionReset(0);
         }
-#endif
+
         // Make the current basic block address available globally.
         compCurBB = block;
 

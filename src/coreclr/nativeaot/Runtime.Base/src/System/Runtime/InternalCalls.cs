@@ -305,7 +305,7 @@ namespace System.Runtime
         internal static extern void RhpReleaseCastCacheLock();
 
         [DllImport(Redhawk.BaseName, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern ulong PalGetTickCount64();
+        internal static extern ulong RhpGetTickCount64();
 
         [DllImport(Redhawk.BaseName, CallingConvention = CallingConvention.Cdecl)]
         internal static extern void RhpAcquireThunkPoolLock();

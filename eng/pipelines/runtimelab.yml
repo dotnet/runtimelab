@@ -124,7 +124,7 @@ stages:
         timeoutInMinutes: 300
         isOfficialBuild: ${{ variables.isOfficialBuild }}
         testGroup: innerloop
-        buildArgs: -s clr.objwriter+clr.alljits+clr.tools+clr.nativeaotlibs+libs+nativeaot.packages -c Release
+        buildArgs: -s clr.alljits+clr.tools+clr.nativeaotlibs+libs+nativeaot.packages -c Release
         extraStepsTemplate: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
         extraStepsParameters:
           uploadIntermediateArtifacts: ${{ variables.isOfficialBuild }}
