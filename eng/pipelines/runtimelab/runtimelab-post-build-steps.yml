@@ -18,7 +18,7 @@ steps:
   # Now we need to build the cross-targeting compilers, RyuJit and ILC.
 
   - ${{ if eq(parameters.archType, 'wasm') }}:
-    - script: $(Build.SourcesDirectory)/build$(scriptExt) clr.alljits+clr.wasmjit+nativeaot.ilc+nativeaot.build -c $(buildConfigUpper)
+    - script: $(Build.SourcesDirectory)/build$(scriptExt) clr.alljits+clr.wasmjit+clr.tools -c $(buildConfigUpper)
       displayName: Build the ILC and RyuJit cross-compilers
 
   - ${{ if and(eq(parameters.buildConfig, 'Release'),ne(parameters.archType, 'wasm')) }}:

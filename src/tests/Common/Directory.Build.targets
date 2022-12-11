@@ -31,7 +31,7 @@
           DependsOnTargets="ResolveAssemblyReferences;ResolveRuntimeFilesFromLocalBuild">
 
     <ItemGroup>
-      <RunTimeDependencyExclude Include="$(CORE_ROOT)\**\*.*"  />
+      <RunTimeDependencyExclude Include="$(CORE_ROOT)\**\*.*" Exclude="$(CORE_ROOT)\nativeaot\**\*.*" />
       <RunTimeDependencyExcludeFiles Include="@(RunTimeDependencyExclude -> '%(FileName)%(Extension)')" />
       <RunTimeDependencyExcludeFiles Include="@(RunTimeDependencyExclude -> '%(FileName).ni%(Extension)')" />
       <RunTimeDependencyExcludeFiles Include="@(RunTimeDependencyExclude -> '%(FileName).pdb')" />
@@ -171,30 +171,29 @@
       <RunTimeDependencyCopyLocal Include="$(CoreDisToolsLibrary)" Condition="$(CopyCoreDisToolsToCoreRoot)" />
     </ItemGroup>
 
-    <PropertyGroup>
-      <IlcDir>$(CoreCLRArtifactsPath)ilc</IlcDir>
-    </PropertyGroup>
-
     <!-- When cross-compiling tests (such as is the case for Wasm), we depends on the host's ILC being built. -->
     <!-- This is a workaround for ILC's project not supporting cross-targeting. Remove once that's implemented. -->
-    <PropertyGroup Condition="'$(TargetArchitecture)' != '$(BuildArchitecture)'">
-      <IlcDir>$([MSBuild]::NormalizeDirectory('$(RepoRoot)', 'artifacts', 'bin', 'coreclr', '$(BuildOS).$(BuildArchitecture).$(CoreCLRConfiguration)'))ilc</IlcDir>
+    <PropertyGroup>
+      <HostCoreCLRArtifactsPath>$([MSBuild]::NormalizeDirectory('$(RepoRoot)', 'artifacts', 'bin', 'coreclr', '$(HostOS).$(BuildArchitecture).$(CoreCLRConfiguration)'))</HostCoreCLRArtifactsPath>
     </PropertyGroup>
 
-    <Error Condition="!Exists('$(IlcDir)')"
-           Text="'$(IlcDir)' does not exist. Subsets clr.jit, clr.wasmjit and nativeaot.ilc for $(BuildOS) $(BuildArchitecture) in $(CoreCLRConfiguration) configuration must be built before building this project." />
+    <Error Condition="!Exists('$(HostCoreCLRArtifactsPath)')"
+           Text="'$(HostCoreCLRArtifactsPath)' does not exist. Subsets clr.jit, clr.wasmjit and clr.tools for $(HostOS) $(BuildArchitecture) in $(CoreCLRConfiguration) configuration must be built before building this project." />
 
-    <ItemGroup>
-      <RunTimeDependencyCopyLocal Include="$(IlcDir)/**/*" TargetDir="nativeaot/tools/" />
-      <RunTimeDependencyCopyLocal Include="$(CoreCLRArtifactsPath)aotsdk/**/*" TargetDir="nativeaot/sdk/" />
-      <RunTimeDependencyCopyLocal Include="$(CoreCLRArtifactsPath)build/**/*" TargetDir="nativeaot/build/" />
-      <RunTimeDependencyCopyLocal Include="$(TargetingPackPath)/*" TargetDir="nativeaot/framework/" />
+    <ItemGroup Condition="'$(TestBuildMode)' == 'nativeaot'">
+      <AotCompilerCopyLocal Include="$(CoreCLRArtifactsPath)ilc/**/*" TargetDir="nativeaot/tools/" Condition="'$(TargetArchitecture)' != 'wasm'"/>
+      <AotCompilerCopyLocal Include="$(HostCoreCLRArtifactsPath)ilc/**/*" TargetDir="nativeaot/tools/" Condition="'$(TargetArchitecture)' == 'wasm'"/>
+      <AotCompilerCopyLocal Include="$(CoreCLRArtifactsPath)aotsdk/**/*" TargetDir="nativeaot/sdk/" />
+      <AotCompilerCopyLocal Include="$(CoreCLRArtifactsPath)build/**/*" TargetDir="nativeaot/build/" Condition="'$(TargetArchitecture)' != 'wasm'"/>
+      <AotCompilerCopyLocal Include="$(HostCoreCLRArtifactsPath)build/**/*" TargetDir="nativeaot/build/" Condition="'$(TargetArchitecture)' == 'wasm'"/>
+      <AotCompilerCopyLocal Include="$(TargetingPackPath)/*" TargetDir="nativeaot/framework/" />
+      <AotCompilerCopyLocal Include="@(RuntimeCopyLocalItems)" TargetDir="nativeaot/framework/" />
+    </ItemGroup>
 
-      <!-- Works around https://github.com/dotnet/runtime/issues/62372 -->
-      <_FixedRuntimeCopyLocalItems Include="@(RuntimeCopyLocalItems)" />
-      <_FixedRuntimeCopyLocalItems Remove="@(_FixedRuntimeCopyLocalItems)" Condition="'%(Filename)' == 'Microsoft.Interop.DllImportGenerator'" />
-
-      <RunTimeDependencyCopyLocal Include="@(_FixedRuntimeCopyLocalItems)" TargetDir="nativeaot/framework/" />
+    <ItemGroup Condition="'$(RuntimeFlavor)' == 'mono' and '$(IsDesktopOS)' == 'true' " >
+      <RuntimeDependencyCopyLocal Include="$(MonoArtifactsPath)/libcoreclr$(LibSuffix)" TargetDir=""  />
+      <RuntimeDependencyCopyLocal Include="$(MonoArtifactsPath)/libmono-component-*" TargetDir=""  />
+       <RuntimeDependencyCopyLocal Include="$(MonoArtifactsPath)/*.dll" TargetDir="/"  />
     </ItemGroup>
 
     <ItemGroup Condition="'$(RuntimeFlavor)' == 'mono' and '$(IsDesktopOS)' == 'true' " >
@@ -206,6 +205,17 @@
     <Copy
       SourceFiles="@(RunTimeDependencyCopyLocal)"
       DestinationFiles="@(RunTimeDependencyCopyLocal -> '$(CORE_ROOT)/%(TargetDir)%(RecursiveDir)%(Filename)%(Extension)')"
+      SkipUnchangedFiles="$(SkipCopyUnchangedFiles)"
+      OverwriteReadOnlyFiles="$(OverwriteReadOnlyFiles)"
+      Retries="$(CopyRetryCount)"
+      RetryDelayMilliseconds="$(CopyRetryDelayMilliseconds)"
+      UseHardlinksIfPossible="$(CreateHardLinksForCopyFilesToOutputDirectoryIfPossible)">
+      <Output TaskParameter="DestinationFiles" ItemName="FileWrites" />
+    </Copy>
+
+    <Copy
+      SourceFiles="@(AotCompilerCopyLocal)"
+      DestinationFiles="@(AotCompilerCopyLocal -> '$(CORE_ROOT)/%(TargetDir)%(RecursiveDir)%(Filename)%(Extension)')"
       SkipUnchangedFiles="$(SkipCopyUnchangedFiles)"
       OverwriteReadOnlyFiles="$(OverwriteReadOnlyFiles)"
       Retries="$(CopyRetryCount)"

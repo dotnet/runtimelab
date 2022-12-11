@@ -17,6 +17,7 @@
       <DisabledProjects Include="$(TestRoot)Performance\Scenario\JitBench\unofficial_dotnet\JitBench.csproj" /> <!-- no official build support for SDK-style netcoreapp2.0 projects -->
       <DisabledProjects Include="$(TestRoot)TestWrappers*\**\*.csproj" />
       <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\HelloWasm\HelloWasm.csproj" Condition="!('$(TestBuildMode)' == 'nativeaot' and '$(TargetArchitecture)' == 'wasm')"/>
+      <DisabledProjects Include="$(TestRoot)nativeaot\**\*.csproj" Condition="'$(TestBuildMode)' != 'nativeaot'" />
     </ItemGroup>
 
     <ItemGroup Condition="'$(TestBuildMode)' == 'nativeaot' and '$(TargetArchitecture)' == 'wasm'">

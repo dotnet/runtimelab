@@ -244,43 +244,36 @@ void GenTree::InitNodeSize()
         GenTree::s_gtNodeSizes[GT_RETURN]           = TREE_NODE_SZ_LARGE;
     }
 
-    GenTree::s_gtNodeSizes[GT_CALL]             = TREE_NODE_SZ_LARGE;
-    GenTree::s_gtNodeSizes[GT_CAST]             = TREE_NODE_SZ_LARGE;
-    GenTree::s_gtNodeSizes[GT_FTN_ADDR]         = TREE_NODE_SZ_LARGE;
-    GenTree::s_gtNodeSizes[GT_BOX]              = TREE_NODE_SZ_LARGE;
-    GenTree::s_gtNodeSizes[GT_INDEX]            = TREE_NODE_SZ_LARGE;
-    GenTree::s_gtNodeSizes[GT_INDEX_ADDR]       = TREE_NODE_SZ_LARGE;
-    GenTree::s_gtNodeSizes[GT_ARR_BOUNDS_CHECK] = TREE_NODE_SZ_SMALL;
-#ifdef FEATURE_SIMD
-    GenTree::s_gtNodeSizes[GT_SIMD_CHK] = TREE_NODE_SZ_SMALL;
-#endif // FEATURE_SIMD
-#ifdef FEATURE_HW_INTRINSICS
-    GenTree::s_gtNodeSizes[GT_HW_INTRINSIC_CHK] = TREE_NODE_SZ_SMALL;
-#endif // FEATURE_HW_INTRINSICS
-
-    GenTree::s_gtNodeSizes[GT_ARR_ELEM]         = TREE_NODE_SZ_LARGE;
-    GenTree::s_gtNodeSizes[GT_ARR_INDEX]        = TREE_NODE_SZ_LARGE;
-    GenTree::s_gtNodeSizes[GT_ARR_OFFSET]       = TREE_NODE_SZ_LARGE;
-    GenTree::s_gtNodeSizes[GT_RET_EXPR]         = TREE_NODE_SZ_LARGE;
-    GenTree::s_gtNodeSizes[GT_FIELD]            = TREE_NODE_SZ_LARGE;
-    GenTree::s_gtNodeSizes[GT_CMPXCHG]          = TREE_NODE_SZ_LARGE;
-    GenTree::s_gtNodeSizes[GT_QMARK]            = TREE_NODE_SZ_LARGE;
-    GenTree::s_gtNodeSizes[GT_DYN_BLK]          = TREE_NODE_SZ_LARGE;
-    GenTree::s_gtNodeSizes[GT_STORE_DYN_BLK]    = TREE_NODE_SZ_LARGE;
-    GenTree::s_gtNodeSizes[GT_INTRINSIC]        = TREE_NODE_SZ_LARGE;
-    GenTree::s_gtNodeSizes[GT_ALLOCOBJ]         = TREE_NODE_SZ_LARGE;
+    GenTree::s_gtNodeSizes[GT_CALL]          = TREE_NODE_SZ_LARGE;
+    GenTree::s_gtNodeSizes[GT_CAST]          = TREE_NODE_SZ_LARGE;
+    GenTree::s_gtNodeSizes[GT_FTN_ADDR]      = TREE_NODE_SZ_LARGE;
+    GenTree::s_gtNodeSizes[GT_BOX]           = TREE_NODE_SZ_LARGE;
+    GenTree::s_gtNodeSizes[GT_INDEX]         = TREE_NODE_SZ_LARGE;
+    GenTree::s_gtNodeSizes[GT_INDEX_ADDR]    = TREE_NODE_SZ_LARGE;
+    GenTree::s_gtNodeSizes[GT_BOUNDS_CHECK]  = TREE_NODE_SZ_SMALL;
+    GenTree::s_gtNodeSizes[GT_ARR_ELEM]      = TREE_NODE_SZ_LARGE;
+    GenTree::s_gtNodeSizes[GT_ARR_INDEX]     = TREE_NODE_SZ_LARGE;
+    GenTree::s_gtNodeSizes[GT_ARR_OFFSET]    = TREE_NODE_SZ_LARGE;
+    GenTree::s_gtNodeSizes[GT_RET_EXPR]      = TREE_NODE_SZ_LARGE;
+    GenTree::s_gtNodeSizes[GT_FIELD]         = TREE_NODE_SZ_LARGE;
+    GenTree::s_gtNodeSizes[GT_CMPXCHG]       = TREE_NODE_SZ_LARGE;
+    GenTree::s_gtNodeSizes[GT_QMARK]         = TREE_NODE_SZ_LARGE;
+    GenTree::s_gtNodeSizes[GT_DYN_BLK]       = TREE_NODE_SZ_LARGE;
+    GenTree::s_gtNodeSizes[GT_STORE_DYN_BLK] = TREE_NODE_SZ_LARGE;
+    GenTree::s_gtNodeSizes[GT_INTRINSIC]     = TREE_NODE_SZ_LARGE;
+    GenTree::s_gtNodeSizes[GT_ALLOCOBJ]      = TREE_NODE_SZ_LARGE;
 #if USE_HELPERS_FOR_INT_DIV
-    GenTree::s_gtNodeSizes[GT_DIV]              = TREE_NODE_SZ_LARGE;
-    GenTree::s_gtNodeSizes[GT_UDIV]             = TREE_NODE_SZ_LARGE;
-    GenTree::s_gtNodeSizes[GT_MOD]              = TREE_NODE_SZ_LARGE;
-    GenTree::s_gtNodeSizes[GT_UMOD]             = TREE_NODE_SZ_LARGE;
+    GenTree::s_gtNodeSizes[GT_DIV]           = TREE_NODE_SZ_LARGE;
+    GenTree::s_gtNodeSizes[GT_UDIV]          = TREE_NODE_SZ_LARGE;
+    GenTree::s_gtNodeSizes[GT_MOD]           = TREE_NODE_SZ_LARGE;
+    GenTree::s_gtNodeSizes[GT_UMOD]          = TREE_NODE_SZ_LARGE;
 #endif
 #ifdef FEATURE_PUT_STRUCT_ARG_STK
     // TODO-Throughput: This should not need to be a large node. The object info should be
     // obtained from the child node.
-    GenTree::s_gtNodeSizes[GT_PUTARG_STK]       = TREE_NODE_SZ_LARGE;
+    GenTree::s_gtNodeSizes[GT_PUTARG_STK]    = TREE_NODE_SZ_LARGE;
 #if FEATURE_ARG_SPLIT
-    GenTree::s_gtNodeSizes[GT_PUTARG_SPLIT]     = TREE_NODE_SZ_LARGE;
+    GenTree::s_gtNodeSizes[GT_PUTARG_SPLIT]  = TREE_NODE_SZ_LARGE;
 #endif // FEATURE_ARG_SPLIT
 #endif // FEATURE_PUT_STRUCT_ARG_STK
 
@@ -1495,13 +1488,7 @@ AGAIN:
                         return false;
                     }
                     break;
-                case GT_ARR_BOUNDS_CHECK:
-#ifdef FEATURE_SIMD
-                case GT_SIMD_CHK:
-#endif // FEATURE_SIMD
-#ifdef FEATURE_HW_INTRINSICS
-                case GT_HW_INTRINSIC_CHK:
-#endif // FEATURE_HW_INTRINSICS
+                case GT_BOUNDS_CHECK:
                     if (op1->AsBoundsChk()->gtThrowKind != op2->AsBoundsChk()->gtThrowKind)
                     {
                         return false;
@@ -1942,13 +1929,7 @@ AGAIN:
                     hash += static_cast<unsigned>(tree->AsAddrMode()->Offset() << 3) + tree->AsAddrMode()->gtScale;
                     break;
 
-                case GT_ARR_BOUNDS_CHECK:
-#ifdef FEATURE_SIMD
-                case GT_SIMD_CHK:
-#endif // FEATURE_SIMD
-#ifdef FEATURE_HW_INTRINSICS
-                case GT_HW_INTRINSIC_CHK:
-#endif // FEATURE_HW_INTRINSICS
+                case GT_BOUNDS_CHECK:
                     hash = genTreeHashAdd(hash, tree->AsBoundsChk()->gtThrowKind);
                     break;
 
@@ -2530,13 +2511,6 @@ unsigned Compiler::gtSetMultiOpOrder(GenTreeMultiOp* multiOp)
             {
                 bool canSwap = multiOp->IsReverseOp() ? gtCanSwapOrder(multiOp->Op(2), multiOp->Op(1))
                                                       : gtCanSwapOrder(multiOp->Op(1), multiOp->Op(2));
-
-                // The InitN intrinsic for two operands used to be not reversible, so preserve this.
-                // TODO-List-Cleanup: delete this only-needed-for-zero-diffs quirk.
-                if (multiOp->OperIs(GT_SIMD) && (multiOp->AsSIMD()->GetSIMDIntrinsicId() == SIMDIntrinsicInitN))
-                {
-                    canSwap = false;
-                }
 
                 if (canSwap)
                 {
@@ -4521,13 +4495,7 @@ unsigned Compiler::gtSetEvalOrder(GenTree* tree)
                 }
                 break;
 
-            case GT_ARR_BOUNDS_CHECK:
-#ifdef FEATURE_SIMD
-            case GT_SIMD_CHK:
-#endif
-#ifdef FEATURE_HW_INTRINSICS
-            case GT_HW_INTRINSIC_CHK:
-#endif
+            case GT_BOUNDS_CHECK:
                 costEx = 4; // cmp reg,reg and jae throw (not taken)
                 costSz = 7; // jump to cold section
                 break;
@@ -4792,7 +4760,7 @@ unsigned Compiler::gtSetEvalOrder(GenTree* tree)
             // because of trickiness around ensuring the execution order does not change during rationalization.
             tryToSwap = false;
         }
-        else if (GenTree::OperIsBoundsCheck(oper))
+        else if (oper == GT_BOUNDS_CHECK)
         {
             // Bounds check nodes used to not be binary, thus GTF_REVERSE_OPS was
             // not enabled for them. This condition preserves that behavior.
@@ -5865,17 +5833,11 @@ bool GenTree::OperMayThrow(Compiler* comp)
             return false;
         }
 
-        case GT_ARR_BOUNDS_CHECK:
+        case GT_BOUNDS_CHECK:
         case GT_ARR_INDEX:
         case GT_ARR_OFFSET:
         case GT_LCLHEAP:
         case GT_CKFINITE:
-#ifdef FEATURE_SIMD
-        case GT_SIMD_CHK:
-#endif // FEATURE_SIMD
-#ifdef FEATURE_HW_INTRINSICS
-        case GT_HW_INTRINSIC_CHK:
-#endif // FEATURE_HW_INTRINSICS
         case GT_INDEX_ADDR:
             return true;
 
@@ -7975,16 +7937,10 @@ GenTree* Compiler::gtCloneExpr(
 #endif
                 break;
 
-            case GT_ARR_BOUNDS_CHECK:
-#ifdef FEATURE_SIMD
-            case GT_SIMD_CHK:
-#endif // FEATURE_SIMD
-#ifdef FEATURE_HW_INTRINSICS
-            case GT_HW_INTRINSIC_CHK:
-#endif // FEATURE_HW_INTRINSICS
-                copy = new (this, oper)
-                    GenTreeBoundsChk(oper, tree->TypeGet(), tree->AsBoundsChk()->GetIndex(),
-                                     tree->AsBoundsChk()->GetArrayLength(), tree->AsBoundsChk()->gtThrowKind);
+            case GT_BOUNDS_CHECK:
+                copy = new (this, GT_BOUNDS_CHECK)
+                    GenTreeBoundsChk(tree->AsBoundsChk()->GetIndex(), tree->AsBoundsChk()->GetArrayLength(),
+                                     tree->AsBoundsChk()->gtThrowKind);
                 copy->AsBoundsChk()->gtIndRngFailBB = tree->AsBoundsChk()->gtIndRngFailBB;
                 break;
 
@@ -9572,7 +9528,7 @@ void Compiler::gtDispNodeName(GenTree* tree)
         }
         bufp += SimpleSprintf_s(bufp, buf, sizeof(buf), "%d)", lea->Offset());
     }
-    else if (tree->gtOper == GT_ARR_BOUNDS_CHECK)
+    else if (tree->gtOper == GT_BOUNDS_CHECK)
     {
         switch (tree->AsBoundsChk()->gtThrowKind)
         {
@@ -10083,7 +10039,7 @@ void Compiler::gtDispNode(GenTree* tree, IndentStack* indentStack, __in __in_z _
         if (tree->IsValue())
         {
             const size_t bufLength = msgLength - 1;
-            msg                    = reinterpret_cast<char*>(alloca(bufLength * sizeof(char)));
+            msg                    = reinterpret_cast<char*>(_alloca(bufLength * sizeof(char)));
             sprintf_s(const_cast<char*>(msg), bufLength, "t%d = %s", tree->gtTreeID, hasOperands ? "" : " ");
         }
     }
@@ -13622,7 +13578,7 @@ GenTree* Compiler::gtFoldExprConst(GenTree* tree)
 
     // This condition exists to preserve previous behavior.
     // TODO-CQ: enable folding for bounds checks nodes.
-    if (tree->OperIsBoundsCheck())
+    if (tree->OperIs(GT_BOUNDS_CHECK))
     {
         return tree;
     }
@@ -17843,7 +17799,7 @@ void GenTree::ParseArrayAddressWork(Compiler*       comp,
 
             case GT_COMMA:
                 // We don't care about exceptions for this purpose.
-                if ((AsOp()->gtOp1->OperGet() == GT_ARR_BOUNDS_CHECK) || AsOp()->gtOp1->IsNothingNode())
+                if (AsOp()->gtOp1->OperIs(GT_BOUNDS_CHECK) || AsOp()->gtOp1->IsNothingNode())
                 {
                     AsOp()->gtOp2->ParseArrayAddressWork(comp, inputMul, pArr, pInxVN, pOffset, pFldSeq);
                     return;
