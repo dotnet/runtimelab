@@ -677,7 +677,6 @@ void Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
             {
                 if (sigInfo->hasThis() && (opAndArg.argNum == 0))
                 {
-                    assert(sigInfo->hasThis());
                     corInfoType = argNode->TypeIs(TYP_REF) ? CORINFO_TYPE_CLASS : CORINFO_TYPE_BYREF;
                 }
                 else
