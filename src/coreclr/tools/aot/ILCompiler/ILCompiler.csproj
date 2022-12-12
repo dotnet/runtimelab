@@ -22,12 +22,16 @@
     <RuntimeIdentifier>$(__DistroRid)</RuntimeIdentifier>
     <SelfContained>true</SelfContained>
     <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+<<<<<<< HEAD
 
     <!-- DistroRid is injected through environment variables in build scripts. Provide reasonable default
          when the build is invoked directly, e.g. building inside Visual Studio -->
     <RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == '' and '$(TargetsWindows)' == 'true'">win-$(TargetArchitecture)</RuntimeIdentifier>
     <RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == '' and '$(TargetsLinux)' == 'true'">linux-$(TargetArchitecture)</RuntimeIdentifier>
     <RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == '' and '$(TargetsOSX)' == 'true'">osx-$(TargetArchitecture)</RuntimeIdentifier>
+=======
+    <RuntimeIdentifier>$(ToolsRID)</RuntimeIdentifier>
+>>>>>>> origin/feature/NativeAOT
   </PropertyGroup>
 
   <PropertyGroup>
@@ -128,10 +132,6 @@
        On Linux renaming the library makes it difficult to debug it. -->
   <ItemGroup Condition="'$(TargetsWindows)' == 'true'">
     <Content Remove="$(RuntimeBinDir)$(LibPrefix)clrjit_$(TargetSpec)$(LibSuffix)" />
-    <Content Include="$(RuntimeBinDir)$(LibPrefix)clrjit$(LibSuffix)"
-      CopyToOutputDirectory="PreserveNewest"
-      CopyToPublishDirectory="PreserveNewest"
-      Link="$(LibPrefix)clrjit_$(TargetSpec)$(LibSuffix)"
-      />
+    <Content Include="$(RuntimeBinDir)$(LibPrefix)clrjit$(LibSuffix)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" Link="$(LibPrefix)clrjit_$(TargetSpec)$(LibSuffix)" />
   </ItemGroup>
 </Project>
