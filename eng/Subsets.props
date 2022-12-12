@@ -130,11 +130,7 @@
     <SubsetName Include="Clr.Runtime" Description="The CoreCLR .NET runtime." />
     <SubsetName Include="Clr.Native" Description="All CoreCLR native non-test components, including the runtime, jits, and other native tools." />
     <SubsetName Include="Clr.NativeAotLibs" Description="The CoreCLR native AOT CoreLib, runtime, and other low level class libraries." />
-<<<<<<< HEAD
     <SubsetName Include="Clr.NativeAotBuild" Description="The CoreCLR native AOT MSBuild toolchain." />
-    <SubsetName Include="Clr.ObjWriter" Description="Object writer for the CoreCLR Native AOT compiler." />
-=======
->>>>>>> 4953cba2973ff35622266ec8c715b8062779d0e4
     <SubsetName Include="Clr.PalTests" OnDemand="true" Description="The CoreCLR PAL tests." />
     <SubsetName Include="Clr.PalTestList" OnDemand="true" Description="Generate the list of the CoreCLR PAL tests. When using the command line, use Clr.PalTests instead." />
     <SubsetName Include="Clr.Hosts" Description="The CoreCLR corerun test host." />
@@ -296,18 +292,11 @@
     <ProjectToBuild Include="$(CoreClrProjectRoot)nativeaot\**\src\*.csproj" Category="clr" />
   </ItemGroup>
 
-<<<<<<< HEAD
-  <ItemGroup Condition="$(_subset.Contains('+clr.objwriter+'))">
-    <ProjectToBuild Include="$(CoreClrProjectRoot)tools\aot\ObjWriter\objwriter.proj" Category="clr" />
-  </ItemGroup>
-
   <ItemGroup Condition="$(_subset.Contains('+clr.nativeaotbuild+'))">
     <ProjectToBuild Include="$(CoreClrProjectRoot)tools\aot\ILCompiler.Build.Tasks\ILCompiler.Build.Tasks.csproj" Category="clr" />
     <ProjectToBuild Include="$(CoreClrProjectRoot)nativeaot\BuildIntegration\BuildIntegration.proj" Category="clr" />
   </ItemGroup>
 
-=======
->>>>>>> 4953cba2973ff35622266ec8c715b8062779d0e4
   <!-- Mono sets -->
   <ItemGroup Condition="$(_subset.Contains('+mono.llvm+')) or $(_subset.Contains('+mono.aotcross+')) or '$(TargetOS)' == 'iOS' or '$(TargetOS)' == 'iOSSimulator' or '$(TargetOS)' == 'tvOS' or '$(TargetOS)' == 'tvOSSimulator' or '$(TargetOS)' == 'MacCatalyst' or '$(TargetOS)' == 'Android' or ('$(TargetOS)' == 'Browser' and '$(RuntimeFlavor)' != 'CoreCLR')">
     <ProjectToBuild Include="$(MonoProjectRoot)llvm\llvm-init.proj" Category="mono" />

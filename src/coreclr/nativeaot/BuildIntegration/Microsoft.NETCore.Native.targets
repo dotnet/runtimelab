@@ -28,14 +28,9 @@ The .NET Foundation licenses this file to you under the MIT license.
     <IlcSdkPath Condition="'$(IlcPath)' != '' and '$(IlcSdkPath)' == ''">$(IlcPath)\sdk\</IlcSdkPath>
     <IlcFrameworkPath Condition="'$(IlcPath)' != '' and '$(IlcFrameworkPath)' == ''">$(IlcPath)\framework\</IlcFrameworkPath>
     <IlcMibcPath Condition="'$(IlcPath)' != '' and '$(IlcMibcPath)' == ''">$(IlcPath)\mibc\</IlcMibcPath>
-<<<<<<< HEAD
     <TargetOS Condition="'$(TargetOS)' == '' and '$(TargetArchitecture)' == 'wasm'">Browser</TargetOS>
     <TargetOS Condition="'$(TargetOS)' == '' and '$([MSBuild]::IsOSPlatform(Windows))' == 'true'">windows</TargetOS>
     <TargetOS Condition="'$(TargetOS)' == '' and '$([MSBuild]::IsOSPlatform(OSX))' == 'true'">OSX</TargetOS>
-=======
-    <TargetOS Condition="'$([MSBuild]::IsOSPlatform(Windows))' == 'true'">windows</TargetOS>
-    <TargetOS Condition="'$([MSBuild]::IsOSPlatform(OSX))' == 'true'">OSX</TargetOS>
->>>>>>> 4953cba2973ff35622266ec8c715b8062779d0e4
     <TargetOS Condition="'$(TargetOS)' == ''">$(OS)</TargetOS>
     <NativeDebugSymbols Condition="$(DebugSymbols) == 'true' or ($(DebugType) != 'none' and $(DebugType) != '')">true</NativeDebugSymbols>
     <!-- Workaround for https://github.com/dotnet/runtimelab/issues/771 -->

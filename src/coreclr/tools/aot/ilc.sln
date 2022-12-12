@@ -18,13 +18,10 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ILCompiler.LLVM", "ILCompil
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "repro", "ILCompiler\repro\repro.csproj", "{CBDE0470-E0C9-4693-9A11-ACC117522F3F}"
 EndProject
-<<<<<<< HEAD
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "clrjit_browser_wasm32_x64", "..\..\..\..\artifacts\obj\coreclr\windows.x64.Debug\ide\jit\clrjit_browser_wasm32_x64.vcxproj", "{A88F0FA2-0F52-3EC8-BBFA-7FC6F4E93B56}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "clrjit_win_x64_x64", "..\..\..\..\artifacts\obj\coreclr\windows.x64.Debug\ide\jit\clrjit_win_x64_x64.vcxproj", "{A75E7596-C53A-3C6F-8FD7-AC56E41F3783}"
-=======
 Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "ILLink.Shared", "ILLink.Shared\ILLink.Shared.shproj", "{FF598E93-8E9E-4091-9F50-61A7572663AE}"
->>>>>>> 4953cba2973ff35622266ec8c715b8062779d0e4
 EndProject
 Global
 	GlobalSection(SharedMSBuildProjectFiles) = preSolution
