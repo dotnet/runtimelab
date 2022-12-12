@@ -120,13 +120,8 @@ jobs:
     ${{ if eq(parameters.jobParameters.pool, '') }}:
       pool:
         # Public Linux Build Pool
-<<<<<<< HEAD
-        ${{ if and(or(in(parameters.osGroup, 'Linux', 'FreeBSD', 'Android', 'Tizen'), eq(parameters.hostedOs, 'Linux')), eq(variables['System.TeamProject'], 'public')) }}:
-          name:  NetCore-Public
-=======
         ${{ if and(or(in(parameters.osGroup, 'Linux', 'FreeBSD', 'Android', 'Tizen'), eq(parameters.jobParameters.hostedOs, 'Linux')), eq(variables['System.TeamProject'], 'public')) }}:
-          name:  NetCore1ESPool-Public
->>>>>>> origin/feature/NativeAOT
+          name:  NetCore-Public
           demands: ImageOverride -equals Build.Ubuntu.1804.Amd64.Open
 
         # Official Build Linux Pool
@@ -144,16 +139,9 @@ jobs:
           demands: ImageOverride -equals windows.vs2022.amd64
 
         # Public Windows Build Pool
-<<<<<<< HEAD
-        ${{ if and(or(eq(parameters.osGroup, 'windows'), eq(parameters.hostedOs, 'windows')), eq(variables['System.TeamProject'], 'public')) }}:
+        ${{ if and(or(eq(parameters.osGroup, 'windows'), eq(parameters.jobParameters.hostedOs, 'windows')), eq(variables['System.TeamProject'], 'public')) }}:
           name: NetCore-Public
           demands: ImageOverride -equals windows.vs2022.amd64.open
-=======
-        ${{ if and(or(eq(parameters.osGroup, 'windows'), eq(parameters.jobParameters.hostedOs, 'windows')), eq(variables['System.TeamProject'], 'public')) }}:
-          name: NetCore1ESPool-Public
-          demands: ImageOverride -equals Build.Windows.10.Amd64.VS2019.Open
->>>>>>> origin/feature/NativeAOT
-
 
     ${{ if eq(parameters.helixQueuesTemplate, '') }}:
       # macOS hosted pool machines are slower so we need to give a greater timeout than the 60 mins default.

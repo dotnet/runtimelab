@@ -184,12 +184,9 @@ namespace ILCompiler
                 syntax.DefineOption("Ot", ref optimizeTime, "Enable optimizations, favor code speed");
                 syntax.DefineOptionList("m|mibc", ref _mibcFilePaths, "Mibc file(s) for profile guided optimization"); ;
                 syntax.DefineOption("g", ref _enableDebugInfo, "Emit debugging information");
-<<<<<<< HEAD
                 syntax.DefineOption("wasm", ref _isLlvmCodegen, "Compile for Web Assembly code-generation");
                 syntax.DefineOption("llvm", ref _isLlvmCodegen, "Compile for LLVM code-generation");
-=======
                 syntax.DefineOption("gdwarf-5", ref _useDwarf5, "Generate source-level debug information with dwarf version 5");
->>>>>>> origin/feature/NativeAOT
                 syntax.DefineOption("nativelib", ref _nativeLib, "Compile as static or shared library");
                 syntax.DefineOption("exportsfile", ref _exportsFile, "File to write exported method definitions");
                 syntax.DefineOption("dgmllog", ref _dgmlLogFileName, "Save result of dependency analysis as DGML");
@@ -229,13 +226,9 @@ namespace ILCompiler
                 syntax.DefineOptionList("nosinglewarnassembly", ref _singleWarnDisabledAssemblies, "Expand AOT/trimming warnings for given assembly");
                 syntax.DefineOptionList("directpinvoke", ref _directPInvokes, "PInvoke to call directly");
                 syntax.DefineOptionList("directpinvokelist", ref _directPInvokeLists, "File with list of PInvokes to call directly");
-<<<<<<< HEAD
                 syntax.DefineOptionList("wasmimport", ref _wasmImports, "WebAssembly import module names for PInvoke functions");
                 syntax.DefineOptionList("wasmimportlist", ref _wasmImportsLists, "File with list of WebAssembly import module names for PInvoke functions");
-
-=======
                 syntax.DefineOption("maxgenericcycle", ref _maxGenericCycle, "Max depth of generic cycle");
->>>>>>> origin/feature/NativeAOT
                 syntax.DefineOptionList("root", ref _rootedAssemblies, "Fully generate given assembly");
                 syntax.DefineOptionList("conditionalroot", ref _conditionallyRootedAssemblies, "Fully generate given assembly if it's used");
                 syntax.DefineOptionList("trim", ref _trimmedAssemblies, "Trim the specified assembly");
@@ -809,11 +802,8 @@ namespace ILCompiler
                 .UseOptimizationMode(_optimizationMode)
                 .UseSecurityMitigationOptions(securityMitigationOptions)
                 .UseDebugInfoProvider(debugInfoProvider)
-<<<<<<< HEAD
-                .UseWasmImportPolicy(wasmImportPolicy);
-=======
+                .UseWasmImportPolicy(wasmImportPolicy)
                 .UseDwarf5(_useDwarf5);
->>>>>>> origin/feature/NativeAOT
 
             if (scanResults != null)
             {

@@ -4695,21 +4695,14 @@ struct GenTreeCall final : public GenTree
 
     void ResetArgInfo();
 
-<<<<<<< HEAD
-    GenTreeCallFlags     gtCallMoreFlags;  // in addition to gtFlags
-    gtCallTypes          gtCallType : 3;   // value from the gtCallTypes enumeration
-    var_types            gtReturnType : 5; // exact return type
-    CORINFO_CLASS_HANDLE gtRetClsHnd;      // The return type handle of the call if it is a struct; always available
-#if defined(TARGET_WASM)
-    CorInfoType gtCorInfoType; // the precise return type used to construct the signature
-#endif // defined(TARGET_WASM)
-=======
     GenTreeCallFlags     gtCallMoreFlags;    // in addition to gtFlags
     gtCallTypes          gtCallType : 3;     // value from the gtCallTypes enumeration
     var_types            gtReturnType : 5;   // exact return type
     CORINFO_CLASS_HANDLE gtRetClsHnd;        // The return type handle of the call if it is a struct; always available
+#if defined(TARGET_WASM)
+    CorInfoType gtCorInfoType;               // the precise return type used to construct the signature
+#endif // defined(TARGET_WASM)
     void*                gtStubCallStubAddr; // GTF_CALL_VIRT_STUB - these are never inlined
->>>>>>> origin/feature/NativeAOT
 
     union {
         // only used for CALLI unmanaged calls (CT_INDIRECT)
@@ -7549,24 +7542,7 @@ struct GenTreeCC final : public GenTree
 
 inline bool GenTree::OperIsBlkOp()
 {
-<<<<<<< HEAD
-    return ((gtOper == GT_ASG) && varTypeIsStruct(AsOp()->gtOp1)) || OperIs(GT_STORE_DYN_BLK, GT_STORE_BLK, GT_STORE_OBJ);
-}
-
-inline bool GenTree::OperIsDynBlkOp()
-{
-    if (gtOper == GT_ASG)
-    {
-        return gtGetOp1()->OperGet() == GT_DYN_BLK;
-    }
-    else if (gtOper == GT_STORE_DYN_BLK)
-    {
-        return true;
-    }
-    return false;
-=======
     return ((gtOper == GT_ASG) && varTypeIsStruct(AsOp()->gtOp1)) || OperIsStoreBlk();
->>>>>>> origin/feature/NativeAOT
 }
 
 inline bool GenTree::OperIsInitBlkOp()

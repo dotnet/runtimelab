@@ -324,5 +324,14 @@ namespace Internal.TypeSystem
                 return 4;
             }
         }
+
+
+        // TODO-LLVM: adding this back as used by the IL->LLVM compiler, delete when the IL->LLVM module is gone
+        /// <summary>
+        /// Offset by which fat function pointers are shifted to distinguish them
+        /// from real function pointers.
+        /// WebAssembly uses index tables, not addresses for function pointers, so the lower bits are not free to use.
+        /// </summary>
+        public int FatFunctionPointerOffset => Architecture == TargetArchitecture.Wasm32 ? 1 << 31 : 2;
     }
 }

@@ -48,7 +48,7 @@ namespace ILCompiler
             ConfigurableWasmImportPolicy configurableWasmImportPolicy,
             MethodImportationErrorProvider errorProvider)
             : base(dependencyGraph, nodeFactory, GetCompilationRoots(roots, nodeFactory), ilProvider, debugInformationProvider, logger, devirtualizationManager, inliningPolicy ?? new LLVMNoInLiningPolicy(), instructionSetSupport,
-                null /* ProfileDataManager */, errorProvider, RyuJitCompilationOptions.SingleThreadedCompilation)
+                null /* ProfileDataManager */, errorProvider, 0, 1)
         {
             NodeFactory = nodeFactory;
             LLVMModuleRef m = LLVMModuleRef.CreateWithName(options.ModuleName);

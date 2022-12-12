@@ -24,11 +24,8 @@ namespace ILCompiler
         protected bool _methodBodyFolding;
         protected InstructionSetSupport _instructionSetSupport;
         protected SecurityMitigationOptions _mitigationOptions;
-<<<<<<< HEAD
         protected ConfigurableWasmImportPolicy _wasmImportPolicy;
-=======
         protected bool _useDwarf5;
->>>>>>> origin/feature/NativeAOT
 
         partial void InitializePartial()
         {
