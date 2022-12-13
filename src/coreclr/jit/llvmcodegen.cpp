@@ -16,6 +16,12 @@ void Llvm::Compile()
         failFunctionCompilation();
     }
 
+    if ((_info.compFlags & CORINFO_FLG_SYNCH) != 0)
+    {
+        // TODO-LLVM-EH: enable.
+        failFunctionCompilation();
+    }
+
     if (initializeFunctions())
     {
         return;
