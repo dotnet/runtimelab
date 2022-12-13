@@ -47,6 +47,37 @@ struct OperandArgNum
     GenTree* operand;
 };
 
+enum HelperFuncInfoFlags
+{
+    HFIF_NONE = 0,
+    HFIF_SS_ARG = 1, // The helper has shadow stack arg.
+};
+
+struct HelperFuncInfo
+{
+    static const int MAX_SIG_ARG_COUNT = 3;
+
+    INDEBUG(unsigned char Func);
+    unsigned char SigReturnType;
+    unsigned char SigArgTypes[MAX_SIG_ARG_COUNT];
+    unsigned char Flags;
+
+    bool IsInitialized() const
+    {
+        return SigReturnType != CORINFO_TYPE_UNDEF;
+    }
+
+    bool HasFlags(HelperFuncInfoFlags flags) const
+    {
+        return (Flags & flags) == flags;
+    }
+
+    CorInfoType GetSigReturnType() const;
+    CorInfoType GetSigArgType(size_t index) const;
+    CORINFO_CLASS_HANDLE GetSigArgClass(Compiler* compiler, size_t index) const;
+    size_t GetSigArgCount() const;
+};
+
 struct JitStdStringKeyFuncs : JitKeyFuncsDefEquals<std::string>
 {
     static unsigned GetHashCode(const std::string& val)
@@ -139,10 +170,12 @@ private:
 
     CORINFO_CLASS_HANDLE tryGetStructClassHandle(LclVarDsc* varDsc);
     CorInfoType getCorInfoTypeForArg(CORINFO_SIG_INFO* sigInfo, CORINFO_ARG_LIST_HANDLE& arg, CORINFO_CLASS_HANDLE* clsHnd);
-    CorInfoType toCorInfoType(var_types varType);
+    static CorInfoType toCorInfoType(var_types varType);
 
     static bool needsReturnStackSlot(Compiler* compiler, CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd);
-    bool needsReturnStackSlot(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd);
+
+    bool callHasShadowStackArg(GenTreeCall* call);
+    const HelperFuncInfo& getHelperFuncInfo(CorInfoHelpFunc helperFunc);
 
     bool canStoreLocalOnLlvmStack(LclVarDsc* varDsc);
     static bool canStoreArgOnLlvmStack(Compiler* compiler, CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd);
@@ -204,6 +237,8 @@ private:
     void lowerStoreLcl(GenTreeLclVarCommon* storeLclNode);
     void lowerFieldOfDependentlyPromotedStruct(GenTree* node);
     void ConvertShadowStackLocalNode(GenTreeLclVarCommon* node);
+    void lowerCall(GenTreeCall* callNode);
+    void lowerIndir(GenTreeIndir* indirNode);
     void lowerStoreBlk(GenTreeBlk* storeBlkNode);
     void lowerDivMod(GenTreeOp* divModNode);
     void lowerReturn(GenTreeUnOp* retNode);
@@ -229,6 +264,7 @@ private:
     void generateProlog();
     void initializeLocals();
     void generateBlock(BasicBlock* block);
+    void generateThrowHelperBlock(BasicBlock* block);
     void fillPhis();
 
     Value* getGenTreeValue(GenTree* node);
@@ -251,9 +287,7 @@ private:
     void buildCnsDouble(GenTreeDblCon* node);
     void buildCnsInt(GenTree* node);
     void buildCnsLng(GenTree* node);
-    void buildCall(GenTree* node);
-    void buildHelperFuncCall(GenTreeCall* call);
-    void buildUserFuncCall(GenTreeCall* call);
+    void buildCall(GenTreeCall* node);
     Value* buildFieldList(GenTreeFieldList* fieldList, Type* llvmType);
     void buildInd(GenTreeIndir* indNode);
     void buildBlk(GenTreeBlk* blkNode);
@@ -273,19 +307,15 @@ private:
     void emitDoNothingCall();
     void emitJumpToThrowHelper(Value* jumpCondValue, SpecialCodeKind throwKind);
     void emitNullCheckForIndir(GenTreeIndir* indir, Value* addrValue);
-    void buildThrowException(llvm::IRBuilder<>& builder, const char* helperClass, const char* helperMethodName, Value* shadowStack);
-    void buildLlvmCallOrInvoke(llvm::Function* callee, llvm::ArrayRef<Value*> args);
+    Value* emitHelperCall(CorInfoHelpFunc helperFunc, ArrayRef<Value*> sigArgs = { });
+    Value* emitCallOrInvoke(llvm::FunctionCallee callee, ArrayRef<Value*> args);
 
     FunctionType* getFunctionType();
     Function* getOrCreateLlvmFunction(const char* symbolName, GenTreeCall* call);
     FunctionType* createFunctionTypeForCall(GenTreeCall* call);
-    FunctionType* buildHelperLlvmFunctionType(GenTreeCall* call, bool withShadowStack);
-    bool helperRequiresShadowStack(CorInfoHelpFunc helperFunc);
+    FunctionType* createFunctionTypeForHelper(CorInfoHelpFunc helperFunc);
 
     Value* getOrCreateExternalSymbol(const char* symbolName, Type* symbolType = nullptr);
-    Function* getOrCreateRhpAssignRef();
-    Function* getOrCreateRhpCheckedAssignRef();
-    Function* getOrCreateThrowIfNullFunction();
 
     llvm::Instruction* getCast(llvm::Value* source, Type* targetType);
     Value* castIfNecessary(Value* source, Type* targetType, llvm::IRBuilder<>* builder = nullptr);

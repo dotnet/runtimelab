@@ -1252,6 +1252,7 @@ namespace Internal.IL
                     if (_compilation.TypeSystemContext.Target.Architecture == TargetArchitecture.ARM
                         || _compilation.TargetArchIsWasm())
                     {
+                        // TODO-LLVM: fix up RyuJit to not use these helpers and delete "TargetArchIsWasm".
                         _dependencies.Add(GetHelperEntrypoint(ReadyToRunHelper.LMulOfv), "_lmulovf");
                         _dependencies.Add(GetHelperEntrypoint(ReadyToRunHelper.ULMulOvf), "_ulmulovf");
                     }
@@ -1263,13 +1264,19 @@ namespace Internal.IL
                     if (_compilation.TypeSystemContext.Target.Architecture == TargetArchitecture.ARM
                         || _compilation.TargetArchIsWasm())
                     {
+                        // TODO-LLVM: fix up RyuJit to not use these helpers and delete "TargetArchIsWasm".
                         _dependencies.Add(GetHelperEntrypoint(ReadyToRunHelper.ULDiv), "_uldiv");
                         _dependencies.Add(GetHelperEntrypoint(ReadyToRunHelper.LDiv), "_ldiv");
                         _dependencies.Add(GetHelperEntrypoint(ReadyToRunHelper.UDiv), "_udiv");
                         _dependencies.Add(GetHelperEntrypoint(ReadyToRunHelper.Div), "_div");
                     }
-                    else if (_compilation.TypeSystemContext.Target.Architecture == TargetArchitecture.ARM64)
+                    if (_compilation.TypeSystemContext.Target.Architecture == TargetArchitecture.ARM64
+                        || _compilation.TargetArchIsWasm())
                     {
+                        if (opcode == ILOpcode.div)
+                        {
+                            _dependencies.Add(GetHelperEntrypoint(ReadyToRunHelper.Overflow), "_divovf");
+                        }
                         _dependencies.Add(GetHelperEntrypoint(ReadyToRunHelper.ThrowDivZero), "_divbyzero");
                     }
                     break;                    
@@ -1278,13 +1285,19 @@ namespace Internal.IL
                     if (_compilation.TypeSystemContext.Target.Architecture == TargetArchitecture.ARM
                         || _compilation.TargetArchIsWasm())
                     {
+                        // TODO-LLVM: fix up RyuJit to not use these helpers and delete "TargetArchIsWasm".
                         _dependencies.Add(GetHelperEntrypoint(ReadyToRunHelper.ULMod), "_ulmod");
                         _dependencies.Add(GetHelperEntrypoint(ReadyToRunHelper.LMod), "_lmod");
                         _dependencies.Add(GetHelperEntrypoint(ReadyToRunHelper.UMod), "_umod");
                         _dependencies.Add(GetHelperEntrypoint(ReadyToRunHelper.Mod), "_mod");
                     }
-                    else if (_compilation.TypeSystemContext.Target.Architecture == TargetArchitecture.ARM64)
+                    if (_compilation.TypeSystemContext.Target.Architecture == TargetArchitecture.ARM64
+                        || _compilation.TargetArchIsWasm())
                     {
+                        if (opcode == ILOpcode.rem)
+                        {
+                            _dependencies.Add(GetHelperEntrypoint(ReadyToRunHelper.Overflow), "_removf");
+                        }
                         _dependencies.Add(GetHelperEntrypoint(ReadyToRunHelper.ThrowDivZero), "_divbyzero");
                     }
                     break;
@@ -1439,7 +1452,12 @@ namespace Internal.IL
         private void ImportConvert(WellKnownType wellKnownType, bool checkOverflow, bool unsigned) { }
         private void ImportUnaryOperation(ILOpcode opCode) { }
         private void ImportCpOpj(int token) { }
-        private void ImportCkFinite() { }
+
+        private void ImportCkFinite()
+        {
+            _dependencies.Add(GetHelperEntrypoint(ReadyToRunHelper.Overflow), "_ckfinite");
+        }
+
         private void ImportLocalAlloc() { }
         private void ImportEndFilter() { }
         private void ImportCpBlk() { }

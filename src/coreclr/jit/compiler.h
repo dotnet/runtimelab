@@ -6539,8 +6539,6 @@ public:
     };
 
 private:
-    static unsigned acdHelper(SpecialCodeKind codeKind);
-
     AddCodeDsc* fgAddCodeList;
     bool        fgAddCodeModf;
     bool        fgRngChkThrowAdded;
@@ -6549,6 +6547,8 @@ private:
     BasicBlock* fgRngChkTarget(BasicBlock* block, SpecialCodeKind kind);
 
 public:
+    static unsigned acdHelper(SpecialCodeKind codeKind);
+
     BasicBlock* fgAddCodeRef(BasicBlock* srcBlk, unsigned refData, SpecialCodeKind kind);
 
     AddCodeDsc* fgFindExcptnTarget(SpecialCodeKind kind, unsigned refData);

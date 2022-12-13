@@ -78,7 +78,7 @@ void Llvm::Compile()
     // Walk all the exceptional code blocks and generate them, since they don't appear in the normal flow graph.
     for (Compiler::AddCodeDsc* add = _compiler->fgGetAdditionalCodeDescriptors(); add != nullptr; add = add->acdNext)
     {
-        generateBlock(add->acdDstBlk);
+        generateThrowHelperBlock(add->acdDstBlk);
     }
 
     fillPhis();
@@ -251,19 +251,35 @@ void Llvm::generateBlock(BasicBlock* block)
             break;
     }
 
+#ifdef DEBUG
     llvm::BasicBlock* lastLlvmBlock = _builder.GetInsertBlock();
     if (lastLlvmBlock != llvmBlock)
     {
-        setLastLlvmBlockForBlock(block, lastLlvmBlock);
-
-#ifdef DEBUG
         llvm::StringRef blockName = llvmBlock->getName();
         for (unsigned idx = 1; llvmBlock != lastLlvmBlock->getNextNode(); llvmBlock = llvmBlock->getNextNode(), idx++)
         {
             llvmBlock->setName(blockName + "." + llvm::Twine(idx));
         }
-#endif // DEBUG
     }
+#endif // DEBUG
+}
+
+void Llvm::generateThrowHelperBlock(BasicBlock* block)
+{
+    // Throw helper blocks are not visited by the SSA renaming, so here we have to manually
+    // assign SSA numbers for the one variable which can be live in them - shadow stack.
+    if (_compiler->lvaInSsa(_shadowStackLclNum))
+    {
+        for (GenTree* node : LIR::AsRange(block))
+        {
+            if (node->OperIsLocal() && (node->AsLclVarCommon()->GetLclNum() == _shadowStackLclNum))
+            {
+                node->AsLclVarCommon()->SetSsaNum(SsaConfig::FIRST_SSA_NUM); // Shadow stack is never modified.
+            }
+        }
+    }
+
+    generateBlock(block);
 }
 
 void Llvm::fillPhis()
@@ -417,7 +433,10 @@ Value* Llvm::consumeValue(GenTree* node, Type* targetLlvmType)
 
 void Llvm::mapGenTreeToValue(GenTree* node, Value* nodeValue)
 {
-    _sdsuMap.Set(node, nodeValue);
+    if (node->IsValue())
+    {
+        _sdsuMap.Set(node, nodeValue);
+    }
 }
 
 void Llvm::startImportingNode()
@@ -451,7 +470,7 @@ void Llvm::visitNode(GenTree* node)
             buildDivMod(node);
             break;
         case GT_CALL:
-            buildCall(node);
+            buildCall(node->AsCall());
             break;
         case GT_CAST:
             buildCast(node->AsCast());
@@ -581,6 +600,7 @@ void Llvm::buildLocalVar(GenTreeLclVar* lclVar)
     }
     else
     {
+        assert(lclVar->HasSsaName());
         llvmRef = _localsMap[{lclNum, ssaNum}];
     }
 
@@ -1090,145 +1110,71 @@ void Llvm::buildCnsLng(GenTree* node)
     mapGenTreeToValue(node, _builder.getInt64(node->AsLngCon()->LngValue()));
 }
 
-void Llvm::buildCall(GenTree* node)
+void Llvm::buildCall(GenTreeCall* call)
 {
-    GenTreeCall* call = node->AsCall();
-    if (call->gtCallType == CT_HELPER)
+    if (call->IsHelperCall())
     {
-        buildHelperFuncCall(call);
-    }
-    else if ((call->gtCallType == CT_USER_FUNC || call->gtCallType == CT_INDIRECT) &&
-             !call->IsVirtualStub() /* TODO: Virtual stub not implemented */)
-    {
-        buildUserFuncCall(call);
-    }
-    else
-    {
-        failFunctionCompilation();
-    }
-}
+        switch (_compiler->eeGetHelperNum(call->gtCallMethHnd))
+        {
+            case CORINFO_HELP_READYTORUN_GENERIC_HANDLE:
+            case CORINFO_HELP_READYTORUN_GENERIC_STATIC_BASE:
+            case CORINFO_HELP_GVMLOOKUP_FOR_SLOT: /* generates an extra parameter in the signature */
+            case CORINFO_HELP_TYPEHANDLE_TO_RUNTIMETYPE: /* misses an arg in the signature somewhere, not the shadow stack */
+            case CORINFO_HELP_READYTORUN_DELEGATE_CTOR:
+                failFunctionCompilation();
 
-void Llvm::buildHelperFuncCall(GenTreeCall* call)
-{
-    if (call->gtCallMethHnd == _compiler->eeFindHelper(CORINFO_HELP_READYTORUN_GENERIC_HANDLE) ||
-        call->gtCallMethHnd == _compiler->eeFindHelper(CORINFO_HELP_READYTORUN_GENERIC_STATIC_BASE) ||
-        call->gtCallMethHnd == _compiler->eeFindHelper(CORINFO_HELP_GVMLOOKUP_FOR_SLOT) || /* generates an extra parameter in the signature */
-        call->gtCallMethHnd == _compiler->eeFindHelper(CORINFO_HELP_TYPEHANDLE_TO_RUNTIMETYPE) || /* misses an arg in the signature somewhere, not the shadow stack */
-        call->gtCallMethHnd == _compiler->eeFindHelper(CORINFO_HELP_READYTORUN_DELEGATE_CTOR) ||
-        call->gtCallMethHnd == _compiler->eeFindHelper(CORINFO_HELP_THROW_PLATFORM_NOT_SUPPORTED)) // TODO-LLVM: we are not generating an unreachable after this call
+            default:
+                break;
+        }
+    }
+    else if (call->IsVirtualStub())
     {
-        // TODO-LLVM
+        // TODO-LLVM: VSD.
         failFunctionCompilation();
     }
 
-    if (call->gtCallMethHnd == _compiler->eeFindHelper(CORINFO_HELP_READYTORUN_STATIC_BASE))
-    {
-        const char* symbolName = GetMangledSymbolName(CORINFO_METHOD_HANDLE(call->gtEntryPoint.handle));
-        Function* llvmFunc = _module->getFunction(symbolName);
-        if (llvmFunc == nullptr)
-        {
-            llvmFunc = Function::Create(buildHelperLlvmFunctionType(call, true), Function::ExternalLinkage, 0U, symbolName, _module); // TODO: ExternalLinkage forced as defined in ILC module
-        }
-
-        // Replacement for _info.compCompHnd->recordRelocation(nullptr, gtCall->gtEntryPoint.handle, IMAGE_REL_BASED_REL32);
-        AddCodeReloc(call->gtEntryPoint.handle);
-
-        mapGenTreeToValue(call, _builder.CreateCall(llvmFunc, getShadowStackForCallee()));
-        return;
-    }
-    else
-    {
-        fgArgInfo* argInfo = call->fgArgInfo;
-        unsigned int argCount = argInfo->ArgCount();
-        fgArgTabEntry** argTable = argInfo->ArgTable();
-        std::vector<OperandArgNum> sortedArgs = std::vector<OperandArgNum>(argCount);
-        OperandArgNum* sortedData = sortedArgs.data();
-
-        //TODO-LLVM: refactor calling code with user calls.
-        for (unsigned i = 0; i < argCount; i++)
-        {
-            fgArgTabEntry* curArgTabEntry = argTable[i];
-            unsigned int   argNum = curArgTabEntry->argNum;
-            OperandArgNum  opAndArg = { argNum, curArgTabEntry->GetNode() };
-            sortedData[argNum] = opAndArg;
-        }
-
-        CorInfoHelpFunc helperNum = _compiler->eeGetHelperNum(call->gtCallMethHnd);
-        void* pAddr = nullptr;
-        void* addr = _compiler->compGetHelperFtn(helperNum, &pAddr);
-        const char* symbolName = GetMangledSymbolName(addr);
-        Function* llvmFunc = _module->getFunction(symbolName);
-
-        bool requiresShadowStack = helperRequiresShadowStack(helperNum);
-        if (llvmFunc == nullptr)
-        {
-            llvmFunc = Function::Create(buildHelperLlvmFunctionType(call, requiresShadowStack), Function::ExternalLinkage, 0U, symbolName, _module);
-        }
-
-        AddCodeReloc(addr);
-
-        std::vector<llvm::Value*> argVec;
-        unsigned argIx = 0;
-
-        Value* shadowStackForCallee = getShadowStackForCallee();
-        if (requiresShadowStack)
-        {
-            argVec.push_back(shadowStackForCallee);
-            argIx++;
-        }
-        else
-        {
-            // we may come back into managed from the unmanaged call so store the shadowstack
-            _builder.CreateStore(shadowStackForCallee, getOrCreateExternalSymbol("t_pShadowStackTop", Type::getInt8PtrTy(_llvmContext)));
-        }
-
-        for (OperandArgNum opAndArg : sortedArgs)
-        {
-            if ((opAndArg.operand->gtOper == GT_CNS_INT) && opAndArg.operand->IsIconHandle())
-            {
-                void* iconValue = (void*)(opAndArg.operand->AsIntCon()->IconValue());
-                const char* methodTableName = GetMangledSymbolName(iconValue);
-                AddCodeReloc(iconValue);
-                argVec.push_back(castIfNecessary(_builder.CreateLoad(castIfNecessary(getOrCreateExternalSymbol(methodTableName), Type::getInt32PtrTy(_llvmContext)->getPointerTo())), llvmFunc->getArg(argIx)->getType()));
-            }
-            else
-            {
-                argVec.push_back(consumeValue(opAndArg.operand, llvmFunc->getArg(argIx)->getType()));
-            }
-            argIx++;
-        }
-        // TODO-LLVM: If the block has a handler, this will need to be an invoke.  E.g. create a CallOrInvoke as per ILToLLVMImporter
-        mapGenTreeToValue(call, _builder.CreateCall(llvmFunc, llvm::ArrayRef<Value*>(argVec)));
-    }
-}
-
-void Llvm::buildUserFuncCall(GenTreeCall* call)
-{
     llvm::FunctionCallee llvmFuncCallee;
-
-    if (call->gtCallType == CT_USER_FUNC || call->gtCallType == CT_INDIRECT)
+    if (call->IsVirtualVtable() || (call->gtCallType == CT_INDIRECT))
     {
-        if (call->IsVirtualVtable() || call->gtCallType == CT_INDIRECT)
+        FunctionType* functionType = createFunctionTypeForCall(call);
+        GenTree* targetNode = call->IsVirtualVtable() ? call->gtControlExpr : call->gtCallAddr;
+        Value* targetValue = consumeValue(targetNode, functionType->getPointerTo());
+
+        llvmFuncCallee = {functionType, targetValue};
+    }
+    else
+    {
+        void* handle;
+        if (call->gtEntryPoint.handle != nullptr)
         {
-            FunctionType* functionType = createFunctionTypeForCall(call);
-            GenTree* calleeNode = call->IsVirtualVtable() ? call->gtControlExpr : call->gtCallAddr;
-
-            Value* funcPtr = castIfNecessary(getGenTreeValue(calleeNode), functionType->getPointerTo());
-
-            llvmFuncCallee = {functionType, funcPtr};
+            // Note some helpers (e. g. CORINFO_HELP_READYTORUN_STATIC_BASE) do not represent singular methods and so
+            // will go through this path.
+            assert(call->gtEntryPoint.accessType == IAT_VALUE);
+            handle = call->gtEntryPoint.handle;
         }
         else
         {
-            const char* symbolName = GetMangledSymbolName(call->gtEntryPoint.handle);
-
-            AddCodeReloc(call->gtEntryPoint.handle);
-            Function* llvmFunc = getOrCreateLlvmFunction(symbolName, call);
-
-            llvmFuncCallee = llvmFunc;
+            assert(call->IsHelperCall());
+            CorInfoHelpFunc helperFunc = _compiler->eeGetHelperNum(call->gtCallMethHnd);
+            void* pAddr = nullptr;
+            handle = _compiler->compGetHelperFtn(helperFunc, &pAddr);
+            assert(pAddr == nullptr);
         }
+
+        const char* symbolName = GetMangledSymbolName(handle);
+        AddCodeReloc(handle); // Replacement for _info.compCompHnd->recordRelocation.
+
+        llvmFuncCallee = getOrCreateLlvmFunction(symbolName, call);
     }
 
-    std::vector<llvm::Value*> argVec = std::vector<llvm::Value*>();
+    // We may come back into managed from the unmanaged call so store the shadowstack.
+    if (!callHasShadowStackArg(call))
+    {
+        _builder.CreateStore(getShadowStackForCallee(),
+                             getOrCreateExternalSymbol("t_pShadowStackTop", Type::getInt8PtrTy(_llvmContext)));
+    }
+
+    std::vector<Value*> argVec = std::vector<Value*>();
 
     GenTreePutArgType* lastArg = nullptr;
     for (GenTreeCall::Use& use : call->Args())
@@ -1252,8 +1198,8 @@ void Llvm::buildUserFuncCall(GenTreeCall* call)
         argVec.push_back(argValue);
     }
 
-    Value* llvmCall = _builder.CreateCall(llvmFuncCallee, ArrayRef<Value*>(argVec));
-    mapGenTreeToValue(call, llvmCall);
+    Value* callValue = emitCallOrInvoke(llvmFuncCallee, argVec);
+    mapGenTreeToValue(call, callValue);
 }
 
 Value* Llvm::buildFieldList(GenTreeFieldList* fieldList, Type* llvmType)
@@ -1318,12 +1264,12 @@ void Llvm::buildStoreInd(GenTreeStoreInd* storeIndOp)
     switch (wbf)
     {
         case GCInfo::WBF_BarrierUnchecked:
-            _builder.CreateCall(getOrCreateRhpAssignRef(), {addrValue, dataValue});
+            emitHelperCall(CORINFO_HELP_ASSIGN_REF, {addrValue, dataValue});
             break;
 
         case GCInfo::WBF_BarrierChecked:
         case GCInfo::WBF_BarrierUnknown:
-            _builder.CreateCall(getOrCreateRhpCheckedAssignRef(), {addrValue, dataValue});
+            emitHelperCall(CORINFO_HELP_CHECKED_ASSIGN_REF, {addrValue, dataValue});
             break;
 
         case GCInfo::WBF_NoBarrier:
@@ -1532,12 +1478,12 @@ void Llvm::storeObjAtAddress(Value* baseAddress, Value* data, StructDesc* struct
         }
         else
         {
-            if (fieldDesc->isGcPointer())
+            if (fieldDesc->getCorType() == CORINFO_TYPE_CLASS)
             {
-                // we can't be sure the address is on the heap, it could be the result of pointer arithmetic on a local var
-                _builder.CreateCall(getOrCreateRhpCheckedAssignRef(),
-                                    ArrayRef<Value*>{address,
-                                    castIfNecessary(fieldData, Type::getInt8PtrTy(_llvmContext))});
+                // We can't be sure the address is on the heap, it could be the result of pointer arithmetic on a local var.
+                emitHelperCall(CORINFO_HELP_CHECKED_ASSIGN_REF,
+                               {address, castIfNecessary(fieldData, Type::getInt8PtrTy(_llvmContext))});
+
                 bytesStored += TARGET_POINTER_SIZE;
             }
             else
@@ -1600,12 +1546,10 @@ void Llvm::emitJumpToThrowHelper(Value* jumpCondValue, SpecialCodeKind throwKind
         _builder.CreateCondBr(jumpCondValue, throwLlvmBlock, nextLlvmBlock);
 
         _builder.SetInsertPoint(throwLlvmBlock);
-        // TODO-LLVM: actually emit the throw helper.
+        emitHelperCall(static_cast<CorInfoHelpFunc>(_compiler->acdHelper(throwKind)));
         _builder.CreateUnreachable();
 
         _builder.SetInsertPoint(nextLlvmBlock);
-
-        failFunctionCompilation();
     }
 }
 
@@ -1613,39 +1557,50 @@ void Llvm::emitNullCheckForIndir(GenTreeIndir* indir, Value* addrValue)
 {
     if ((indir->gtFlags & GTF_IND_NONFAULTING) == 0)
     {
-        Function* throwIfNullFunc = getOrCreateThrowIfNullFunction();
-        addrValue = castIfNecessary(addrValue, Type::getInt8PtrTy(_llvmContext));
+        assert(addrValue->getType()->isPointerTy());
 
-        // TODO-LLVM: this shadow stack passing is not efficient.
-        buildLlvmCallOrInvoke(throwIfNullFunc, {getShadowStackForCallee(), addrValue});
+        Value* nullValue = llvm::Constant::getNullValue(addrValue->getType());
+        Value* isNullValue = _builder.CreateCmp(llvm::CmpInst::ICMP_EQ, addrValue, nullValue);
+        emitJumpToThrowHelper(isNullValue, SCK_NULL_REF_EXCPN);
     }
 }
 
-void Llvm::buildThrowException(llvm::IRBuilder<>& builder, const char* helperClass, const char* helperMethodName, Value* shadowStack)
+Value* Llvm::emitHelperCall(CorInfoHelpFunc helperFunc, ArrayRef<Value*> sigArgs)
 {
-    CORINFO_METHOD_HANDLE methodHandle = GetCompilerHelpersMethodHandle(helperClass, helperMethodName);
-    const char* mangledName = GetMangledMethodName(methodHandle);
+    void* pAddr = nullptr;
+    void* handle = _compiler->compGetHelperFtn(helperFunc, &pAddr);
+    assert(pAddr == nullptr);
 
-    Function* llvmFunc = _module->getFunction(mangledName);
+    const char* symbolName = GetMangledSymbolName(handle);
+    AddCodeReloc(handle);
 
-    if (llvmFunc == nullptr)
+    Function* helperLlvmFunc = _module->getFunction(symbolName);
+    if (helperLlvmFunc == nullptr)
     {
-        // assume ExternalLinkage, if the function is defined in the clrjit module, then it is replaced and an
-        // extern added to the Ilc module
-        llvmFunc = Function::Create(FunctionType::get(Type::getVoidTy(_llvmContext), {Type::getInt8PtrTy(_llvmContext)},
-                                                      false),
-                                    Function::ExternalLinkage, 0U, mangledName, _module);
-       AddCodeReloc(methodHandle);
+        FunctionType* llvmFuncType = createFunctionTypeForHelper(helperFunc);
+        helperLlvmFunc = Function::Create(llvmFuncType, Function::ExternalLinkage, symbolName, _module);
     }
 
-    builder.CreateCall(llvmFunc, {shadowStack});
-    builder.CreateUnreachable();
+    Value* callValue;
+    if (getHelperFuncInfo(helperFunc).HasFlags(HFIF_SS_ARG))
+    {
+        std::vector<Value*> args = sigArgs.vec();
+        args.insert(args.begin(), getShadowStackForCallee());
+
+        callValue = emitCallOrInvoke(helperLlvmFunc, args);
+    }
+    else
+    {
+        callValue = emitCallOrInvoke(helperLlvmFunc, sigArgs);
+    }
+
+    return callValue;
 }
 
-void Llvm::buildLlvmCallOrInvoke(Function* callee, ArrayRef<Value*> args)
+Value* Llvm::emitCallOrInvoke(llvm::FunctionCallee callee, ArrayRef<Value*> args)
 {
     // TODO-LLVM: invoke if callsite has exception handler
-    _builder.CreateCall(callee, args);
+    return _builder.CreateCall(callee, args);
 }
 
 FunctionType* Llvm::getFunctionType()
@@ -1700,356 +1655,33 @@ FunctionType* Llvm::createFunctionTypeForCall(GenTreeCall* call)
         argVec.push_back(getLlvmTypeForCorInfoType(putArg->GetCorInfoType(), putArg->GetClsHnd()));
     }
 
-    return FunctionType::get(retLlvmType, ArrayRef<Type*>(argVec), false);
+    return FunctionType::get(retLlvmType, argVec, /* isVarArg */ false);
 }
 
-FunctionType* Llvm::buildHelperLlvmFunctionType(GenTreeCall* call, bool withShadowStack)
+FunctionType* Llvm::createFunctionTypeForHelper(CorInfoHelpFunc helperFunc)
 {
-    Type* retLlvmType = getLlvmTypeForVarType(call->TypeGet());
-    std::vector<llvm::Type*> argVec;
+    const HelperFuncInfo& helperInfo = getHelperFuncInfo(helperFunc);
 
-    if (withShadowStack)
+    std::vector<Type*> argVec = std::vector<Type*>();
+
+    if (helperInfo.HasFlags(HFIF_SS_ARG))
     {
         argVec.push_back(Type::getInt8PtrTy(_llvmContext));
     }
 
-    for (GenTreeCall::Use& use : call->Args())
+    size_t sigArgCount = helperInfo.GetSigArgCount();
+    for (size_t i = 0; i < sigArgCount; i++)
     {
-        Type* argLlvmType = getLlvmTypeForVarType(use.GetNode()->TypeGet());
-        argVec.push_back(argLlvmType);
+        CorInfoType argType = helperInfo.GetSigArgType(i);
+        assert(argType != TYP_STRUCT);
+
+        argVec.push_back(getLlvmTypeForCorInfoType(argType, NO_CLASS_HANDLE));
     }
 
-    return FunctionType::get(retLlvmType, ArrayRef<llvm::Type*>(argVec), false);
-}
+    Type* retLlvmType = getLlvmTypeForCorInfoType(helperInfo.GetSigReturnType(), NO_CLASS_HANDLE);
+    FunctionType* llvmFuncType = FunctionType::get(retLlvmType, argVec, /* isVarArg */ false);
 
-bool Llvm::helperRequiresShadowStack(CorInfoHelpFunc helperFunc)
-{
-    // TODO-LLVM: communicate this through a Jit-EE API.
-    // Current version of the mappings taken primarily from "tools\aot\ILCompiler.Compiler\Compiler\JitHelper.cs" and
-    // "tools\aot\ILCompiler.RyuJit\JitInterface\CorInfoImpl.RyuJit.cs".
-    switch (helperFunc)
-    {
-        case CORINFO_HELP_DIV:
-        case CORINFO_HELP_MOD:
-        case CORINFO_HELP_UDIV:
-        case CORINFO_HELP_UMOD:
-        case CORINFO_HELP_LMUL_OVF:
-        case CORINFO_HELP_ULMUL_OVF:
-        case CORINFO_HELP_LDIV:
-        case CORINFO_HELP_LMOD:
-        case CORINFO_HELP_ULDIV:
-        case CORINFO_HELP_ULMOD:
-        case CORINFO_HELP_DBL2INT_OVF:
-        case CORINFO_HELP_DBL2LNG_OVF:
-        case CORINFO_HELP_DBL2UINT_OVF:
-        case CORINFO_HELP_DBL2ULNG_OVF:
-            // Implemented in "CoreLib\src\Internal\Runtime\CompilerHelpers\MathHelpers.cs".
-            return true;
-
-        case CORINFO_HELP_LLSH:
-        case CORINFO_HELP_LRSH:
-        case CORINFO_HELP_LRSZ:
-        case CORINFO_HELP_LMUL:
-        case CORINFO_HELP_LNG2DBL:
-        case CORINFO_HELP_ULNG2DBL:
-        case CORINFO_HELP_DBL2INT:
-        case CORINFO_HELP_DBL2LNG:
-        case CORINFO_HELP_DBL2UINT:
-        case CORINFO_HELP_DBL2ULNG:
-        case CORINFO_HELP_FLTREM:
-        case CORINFO_HELP_DBLREM:
-        case CORINFO_HELP_FLTROUND:
-        case CORINFO_HELP_DBLROUND:
-            // Implemented in "Runtime\MathHelpers.cpp".
-            return false;
-
-        case CORINFO_HELP_NEWFAST:
-        case CORINFO_HELP_NEWSFAST:
-        case CORINFO_HELP_NEWSFAST_FINALIZE:
-        case CORINFO_HELP_NEWSFAST_ALIGN8:
-        case CORINFO_HELP_NEWSFAST_ALIGN8_VC:
-        case CORINFO_HELP_NEWSFAST_ALIGN8_FINALIZE:
-        case CORINFO_HELP_NEW_MDARR:
-        case CORINFO_HELP_NEWARR_1_DIRECT:
-        case CORINFO_HELP_NEWARR_1_OBJ:
-        case CORINFO_HELP_NEWARR_1_VC:
-        case CORINFO_HELP_NEWARR_1_ALIGN8:
-            // Allocators, implemented in "Runtime\portable.cpp".
-            return false;
-
-        case CORINFO_HELP_STRCNS:
-        case CORINFO_HELP_STRCNS_CURRENT_MODULE:
-        case CORINFO_HELP_INITCLASS:
-        case CORINFO_HELP_INITINSTCLASS:
-            // NYI in NativeAOT.
-            unreached();
-
-        case CORINFO_HELP_ISINSTANCEOFINTERFACE:
-        case CORINFO_HELP_ISINSTANCEOFARRAY:
-        case CORINFO_HELP_ISINSTANCEOFCLASS:
-        case CORINFO_HELP_ISINSTANCEOFANY:
-        case CORINFO_HELP_CHKCASTINTERFACE:
-        case CORINFO_HELP_CHKCASTARRAY:
-        case CORINFO_HELP_CHKCASTCLASS:
-        case CORINFO_HELP_CHKCASTANY:
-        case CORINFO_HELP_CHKCASTCLASS_SPECIAL:
-        case CORINFO_HELP_BOX:
-        case CORINFO_HELP_BOX_NULLABLE:
-        case CORINFO_HELP_UNBOX:
-        case CORINFO_HELP_UNBOX_NULLABLE:
-        case CORINFO_HELP_ARRADDR_ST:
-        case CORINFO_HELP_LDELEMA_REF:
-            // Runtime exports, i. e. implemented in managed code with an unmanaged signature.
-            // See "Runtime.Base\src\System\Runtime\RuntimeExports.cs", "Runtime.Base\src\System\Runtime\TypeCast.cs",
-            return false;
-
-        case CORINFO_HELP_GETREFANY:
-            // Implemented in "CoreLib\src\Internal\Runtime\CompilerHelpers\TypedReferenceHelpers.cs".
-            return true;
-
-        case CORINFO_HELP_THROW:
-        case CORINFO_HELP_RETHROW:
-            // For WASM, currently implemented in the bootstrapper...
-            return false;
-
-        case CORINFO_HELP_USER_BREAKPOINT:
-            // Implemented in "Runtime\MiscHelpers.cpp".
-            return false;
-
-        case CORINFO_HELP_RNGCHKFAIL:
-        case CORINFO_HELP_OVERFLOW:
-        case CORINFO_HELP_THROWDIVZERO:
-        case CORINFO_HELP_THROWNULLREF:
-            // Implemented in "Runtime.Base\src\System\ThrowHelpers.cs".
-            // Note on "CORINFO_HELP_THROWNULLREF": ***this helpers has been deleted upstream***.
-            // We need it. When merging upstream, revert its deletion!
-            return true;
-
-        case CORINFO_HELP_VERIFICATION:
-            // Verification is in the process of being deleted from RyuJit.
-            unreached();
-
-        case CORINFO_HELP_FAIL_FAST:
-            // Implemented in "Runtime\EHHelpers.cpp".
-            return false;
-
-        case CORINFO_HELP_METHOD_ACCESS_EXCEPTION:
-        case CORINFO_HELP_FIELD_ACCESS_EXCEPTION:
-        case CORINFO_HELP_CLASS_ACCESS_EXCEPTION:
-            // NYI in NativeAOT.
-            unreached();
-
-        case CORINFO_HELP_ENDCATCH:
-            // Not used with funclet-based EH.
-            unreached();
-
-        case CORINFO_HELP_MON_ENTER:
-        case CORINFO_HELP_MON_EXIT:
-        case CORINFO_HELP_MON_ENTER_STATIC:
-        case CORINFO_HELP_MON_EXIT_STATIC:
-            // Implemented in "CoreLib\src\Internal\Runtime\CompilerHelpers\SynchronizedMethodHelpers.cs".
-            return true;
-
-        case CORINFO_HELP_GETCLASSFROMMETHODPARAM:
-        case CORINFO_HELP_GETSYNCFROMCLASSHANDLE:
-        case CORINFO_HELP_STOP_FOR_GC:
-            // Apparently NYI in NativeAOT.
-            unreached();
-
-        case CORINFO_HELP_POLL_GC:
-            // Implemented in "Runtime\portable.cpp".
-            return false;
-
-        case CORINFO_HELP_STRESS_GC:
-        case CORINFO_HELP_CHECK_OBJ:
-            // Debug-only helpers NYI in NativeAOT.
-            unreached();
-
-        case CORINFO_HELP_ASSIGN_REF:
-        case CORINFO_HELP_CHECKED_ASSIGN_REF:
-        case CORINFO_HELP_ASSIGN_REF_ENSURE_NONHEAP:
-        case CORINFO_HELP_ASSIGN_BYREF:
-            // Write barriers, implemented in "Runtime\portable.cpp".
-            return false;
-
-        case CORINFO_HELP_ASSIGN_STRUCT:
-        case CORINFO_HELP_GETFIELD8:
-        case CORINFO_HELP_SETFIELD8:
-        case CORINFO_HELP_GETFIELD16:
-        case CORINFO_HELP_SETFIELD16:
-        case CORINFO_HELP_GETFIELD32:
-        case CORINFO_HELP_SETFIELD32:
-        case CORINFO_HELP_GETFIELD64:
-        case CORINFO_HELP_SETFIELD64:
-        case CORINFO_HELP_GETFIELDOBJ:
-        case CORINFO_HELP_SETFIELDOBJ:
-        case CORINFO_HELP_GETFIELDSTRUCT:
-        case CORINFO_HELP_SETFIELDSTRUCT:
-        case CORINFO_HELP_GETFIELDFLOAT:
-        case CORINFO_HELP_SETFIELDFLOAT:
-        case CORINFO_HELP_GETFIELDDOUBLE:
-        case CORINFO_HELP_SETFIELDDOUBLE:
-        case CORINFO_HELP_GETFIELDADDR:
-        case CORINFO_HELP_GETSTATICFIELDADDR_TLS:
-        case CORINFO_HELP_GETGENERICS_GCSTATIC_BASE:
-        case CORINFO_HELP_GETGENERICS_NONGCSTATIC_BASE:
-        case CORINFO_HELP_GETSHARED_GCSTATIC_BASE:
-        case CORINFO_HELP_GETSHARED_NONGCSTATIC_BASE:
-        case CORINFO_HELP_GETSHARED_GCSTATIC_BASE_NOCTOR:
-        case CORINFO_HELP_GETSHARED_NONGCSTATIC_BASE_NOCTOR:
-        case CORINFO_HELP_GETSHARED_GCSTATIC_BASE_DYNAMICCLASS:
-        case CORINFO_HELP_GETSHARED_NONGCSTATIC_BASE_DYNAMICCLASS:
-        case CORINFO_HELP_CLASSINIT_SHARED_DYNAMICCLASS:
-        case CORINFO_HELP_GETGENERICS_GCTHREADSTATIC_BASE:
-        case CORINFO_HELP_GETGENERICS_NONGCTHREADSTATIC_BASE:
-        case CORINFO_HELP_GETSHARED_GCTHREADSTATIC_BASE:
-        case CORINFO_HELP_GETSHARED_NONGCTHREADSTATIC_BASE:
-        case CORINFO_HELP_GETSHARED_GCTHREADSTATIC_BASE_NOCTOR:
-        case CORINFO_HELP_GETSHARED_NONGCTHREADSTATIC_BASE_NOCTOR:
-        case CORINFO_HELP_GETSHARED_GCTHREADSTATIC_BASE_DYNAMICCLASS:
-        case CORINFO_HELP_GETSHARED_NONGCTHREADSTATIC_BASE_DYNAMICCLASS:
-            // Not used in NativeAOT (or at all in some cases).
-            unreached();
-
-        case CORINFO_HELP_DBG_IS_JUST_MY_CODE:
-        case CORINFO_HELP_PROF_FCN_ENTER:
-        case CORINFO_HELP_PROF_FCN_LEAVE:
-        case CORINFO_HELP_PROF_FCN_TAILCALL:
-        case CORINFO_HELP_BBT_FCN_ENTER:
-            // NYI in NativeAOT.
-            unreached();
-
-        case CORINFO_HELP_PINVOKE_CALLI:
-            // TODO-LLVM: this is not a real "helper"; investigate what needs to be done to enable it.
-            failFunctionCompilation();
-
-        case CORINFO_HELP_TAILCALL:
-            // NYI in NativeAOT.
-            unreached();
-
-        case CORINFO_HELP_GETCURRENTMANAGEDTHREADID:
-            // Implemented as "Environment.CurrentManagedThreadId".
-            return true;
-
-        case CORINFO_HELP_INIT_PINVOKE_FRAME:
-            // Part of the inlined PInvoke frame construction feature which is NYI in NativeAOT.
-            unreached();
-
-        case CORINFO_HELP_MEMSET:
-        case CORINFO_HELP_MEMCPY:
-            // Implemented as plain "memset"/"memcpy".
-            return false;
-
-        case CORINFO_HELP_RUNTIMEHANDLE_METHOD:
-        case CORINFO_HELP_RUNTIMEHANDLE_METHOD_LOG:
-        case CORINFO_HELP_RUNTIMEHANDLE_CLASS:
-        case CORINFO_HELP_RUNTIMEHANDLE_CLASS_LOG:
-            // Not used in NativeAOT.
-            unreached();
-
-        case CORINFO_HELP_TYPEHANDLE_TO_RUNTIMETYPE:
-        case CORINFO_HELP_TYPEHANDLE_TO_RUNTIMETYPE_MAYBENULL:
-            // Implemented in "CoreLib\src\Internal\Runtime\CompilerHelpers\TypedReferenceHelpers.cs".
-            return true;
-
-        case CORINFO_HELP_METHODDESC_TO_STUBRUNTIMEMETHOD:
-        case CORINFO_HELP_FIELDDESC_TO_STUBRUNTIMEFIELD:
-        case CORINFO_HELP_TYPEHANDLE_TO_RUNTIMETYPEHANDLE:
-            // Implemented in "CoreLib\src\Internal\Runtime\CompilerHelpers\LdTokenHelpers.cs".
-            return true;
-
-        case CORINFO_HELP_TYPEHANDLE_TO_RUNTIMETYPEHANDLE_MAYBENULL:
-            // Implemented in "CoreLib\src\Internal\Runtime\CompilerHelpers\TypedReferenceHelpers.cs".
-            return true;
-
-        case CORINFO_HELP_ARE_TYPES_EQUIVALENT:
-            // Another runtime export from "TypeCast.cs".
-            return false;
-
-        case CORINFO_HELP_VIRTUAL_FUNC_PTR:
-        case CORINFO_HELP_READYTORUN_NEW:
-        case CORINFO_HELP_READYTORUN_NEWARR_1:
-            // Not used in NativeAOT.
-            unreached();
-
-        case CORINFO_HELP_READYTORUN_ISINSTANCEOF:
-        case CORINFO_HELP_READYTORUN_CHKCAST:
-        case CORINFO_HELP_READYTORUN_STATIC_BASE:
-        case CORINFO_HELP_READYTORUN_VIRTUAL_FUNC_PTR:
-        case CORINFO_HELP_READYTORUN_GENERIC_HANDLE:
-        case CORINFO_HELP_READYTORUN_DELEGATE_CTOR:
-        case CORINFO_HELP_READYTORUN_GENERIC_STATIC_BASE:
-            // Not static methods; currently we "inline" them for LLVM.
-            // Should be "unreached" once all are handled.
-            failFunctionCompilation();
-
-        case CORINFO_HELP_EE_PRESTUB:
-        case CORINFO_HELP_EE_PRECODE_FIXUP:
-        case CORINFO_HELP_EE_PINVOKE_FIXUP:
-        case CORINFO_HELP_EE_VSD_FIXUP:
-        case CORINFO_HELP_EE_EXTERNAL_FIXUP:
-        case CORINFO_HELP_EE_VTABLE_FIXUP:
-        case CORINFO_HELP_EE_REMOTING_THUNK:
-        case CORINFO_HELP_EE_PERSONALITY_ROUTINE:
-        case CORINFO_HELP_EE_PERSONALITY_ROUTINE_FILTER_FUNCLET:
-            // NGEN/R2R-specific marker helpers.
-            unreached();
-
-        case CORINFO_HELP_ASSIGN_REF_EAX:
-        case CORINFO_HELP_ASSIGN_REF_EBX:
-        case CORINFO_HELP_ASSIGN_REF_ECX:
-        case CORINFO_HELP_ASSIGN_REF_ESI:
-        case CORINFO_HELP_ASSIGN_REF_EDI:
-        case CORINFO_HELP_ASSIGN_REF_EBP:
-        case CORINFO_HELP_CHECKED_ASSIGN_REF_EAX:
-        case CORINFO_HELP_CHECKED_ASSIGN_REF_EBX:
-        case CORINFO_HELP_CHECKED_ASSIGN_REF_ECX:
-        case CORINFO_HELP_CHECKED_ASSIGN_REF_ESI:
-        case CORINFO_HELP_CHECKED_ASSIGN_REF_EDI:
-        case CORINFO_HELP_CHECKED_ASSIGN_REF_EBP:
-            // x86-specific write barriers.
-            unreached();
-
-        case CORINFO_HELP_LOOP_CLONE_CHOICE_ADDR:
-        case CORINFO_HELP_DEBUG_LOG_LOOP_CLONING:
-            // Debug-only functionality NYI in NativeAOT.
-            unreached();
-
-        case CORINFO_HELP_THROW_ARGUMENTEXCEPTION:
-        case CORINFO_HELP_THROW_ARGUMENTOUTOFRANGEEXCEPTION:
-        case CORINFO_HELP_THROW_NOT_IMPLEMENTED:
-        case CORINFO_HELP_THROW_PLATFORM_NOT_SUPPORTED:
-            // Implemented in "Runtime.Base\src\System\ThrowHelpers.cs".
-            return true;
-
-        case CORINFO_HELP_THROW_TYPE_NOT_SUPPORTED:
-            // Dead code.
-            unreached();
-
-        case CORINFO_HELP_JIT_PINVOKE_BEGIN:
-        case CORINFO_HELP_JIT_PINVOKE_END:
-        case CORINFO_HELP_JIT_REVERSE_PINVOKE_ENTER:
-        case CORINFO_HELP_JIT_REVERSE_PINVOKE_ENTER_TRACK_TRANSITIONS:
-        case CORINFO_HELP_JIT_REVERSE_PINVOKE_EXIT:
-        case CORINFO_HELP_JIT_REVERSE_PINVOKE_EXIT_TRACK_TRANSITIONS:
-            // [R]PI helpers, implemented in "Runtime\thread.cpp".
-            return false;
-
-        case CORINFO_HELP_GVMLOOKUP_FOR_SLOT:
-            // TODO-LLVM: fix.
-            failFunctionCompilation();
-
-        case CORINFO_HELP_STACK_PROBE:
-        case CORINFO_HELP_PATCHPOINT:
-        case CORINFO_HELP_CLASSPROFILE32:
-        case CORINFO_HELP_CLASSPROFILE64:
-        case CORINFO_HELP_PARTIAL_COMPILATION_PATCHPOINT:
-            unreached();
-
-        default:
-            // Add new helpers to the above as necessary.
-            unreached();
-    }
+    return llvmFuncType;
 }
 
 Value* Llvm::getOrCreateExternalSymbol(const char* symbolName, Type* symbolType)
@@ -2065,67 +1697,6 @@ Value* Llvm::getOrCreateExternalSymbol(const char* symbolName, Type* symbolType)
         symbol = new llvm::GlobalVariable(*_module, symbolType, false, llvm::GlobalValue::LinkageTypes::ExternalLinkage, (llvm::Constant*)nullptr, symbolName);
     }
     return symbol;
-}
-
-Function* Llvm::getOrCreateRhpAssignRef()
-{
-    Function* llvmFunc = _module->getFunction("RhpAssignRef");
-    if (llvmFunc == nullptr)
-    {
-        llvmFunc = Function::Create(FunctionType::get(Type::getVoidTy(_llvmContext),
-                                                      {Type::getInt8PtrTy(_llvmContext), Type::getInt8PtrTy(_llvmContext)},
-                                                      /* isVarArg */ false),
-                                    Function::ExternalLinkage, 0U, "RhpAssignRef",
-                                    _module); // TODO: ExternalLinkage forced as linked from old module
-    }
-    return llvmFunc;
-}
-
-Function* Llvm::getOrCreateRhpCheckedAssignRef()
-{
-    Function* llvmFunc = _module->getFunction("RhpCheckedAssignRef");
-    if (llvmFunc == nullptr)
-    {
-        llvmFunc = Function::Create(FunctionType::get(Type::getVoidTy(_llvmContext),
-                                                      {Type::getInt8PtrTy(_llvmContext), Type::getInt8PtrTy(_llvmContext)},
-                                                      /* isVarArg */ false),
-                                    Function::ExternalLinkage, 0U, "RhpCheckedAssignRef",
-                                    _module); // TODO: ExternalLinkage forced as linked from old module
-    }
-    return llvmFunc;
-}
-
-Function* Llvm::getOrCreateThrowIfNullFunction()
-{
-    const char* funcName = "nativeaot.throwifnull";
-    Function* llvmFunc = _module->getFunction(funcName);
-    if (llvmFunc == nullptr)
-    {
-        llvmFunc =
-            Function::Create(FunctionType::get(Type::getVoidTy(_llvmContext),
-                                               {Type::getInt8PtrTy(_llvmContext), Type::getInt8PtrTy(_llvmContext)},
-                                               /* isVarArg */ false),
-                             Function::InternalLinkage, 0U, funcName, _module);
-
-        llvm::IRBuilder<> builder(_llvmContext);
-        llvm::BasicBlock* block = llvm::BasicBlock::Create(_llvmContext, "Block", llvmFunc);
-        llvm::BasicBlock* throwBlock = llvm::BasicBlock::Create(_llvmContext, "ThrowBlock", llvmFunc);
-        llvm::BasicBlock* retBlock = llvm::BasicBlock::Create(_llvmContext, "RetBlock", llvmFunc);
-
-        builder.SetInsertPoint(block);
-
-        builder.CreateCondBr(builder.CreateICmp(llvm::CmpInst::Predicate::ICMP_EQ, llvmFunc->getArg(1),
-                                                llvm::ConstantPointerNull::get(Type::getInt8PtrTy(_llvmContext)),
-                                                "nullCheck"), throwBlock, retBlock);
-        builder.SetInsertPoint(throwBlock);
-
-        buildThrowException(builder, u8"ThrowHelpers", u8"ThrowNullReferenceException", llvmFunc->getArg(0));
-
-        builder.SetInsertPoint(retBlock);
-        builder.CreateRetVoid();
-    }
-
-    return llvmFunc;
 }
 
 llvm::Instruction* Llvm::getCast(llvm::Value* source, Type* targetType)
@@ -2260,9 +1831,11 @@ llvm::DILocation* Llvm::createDebugFunctionAndDiLocation(DebugMetadata debugMeta
 
 llvm::BasicBlock* Llvm::createInlineLlvmBlock()
 {
+    BasicBlock* currentBlock = CurrentBlock();
     llvm::BasicBlock* inlineLlvmBlock =
-        llvm::BasicBlock::Create(_llvmContext, "", _function, _builder.GetInsertBlock()->getNextNode());
+        llvm::BasicBlock::Create(_llvmContext, "", _function, getLastLlvmBlockForBlock(currentBlock)->getNextNode());
 
+    setLastLlvmBlockForBlock(currentBlock, inlineLlvmBlock);
     return inlineLlvmBlock;
 }
 
@@ -2293,8 +1866,7 @@ llvm::BasicBlock* Llvm::getFirstLlvmBlockForBlock(BasicBlock* block)
 //
 // During code generation, a given IR block can be split into multiple
 // LLVM blocks, due to, e. g., inline branches. This function returns
-// the last of these generated blocks. Note it is only available after
-// "block" has been fully generated.
+// the last of these generated blocks.
 //
 // Arguments:
 //    block - The IR block

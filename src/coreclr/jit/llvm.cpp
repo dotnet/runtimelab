@@ -32,7 +32,7 @@ uint32_t (*_padOffset)(void*, CORINFO_CLASS_STRUCT_*, unsigned);
 CorInfoTypeWithMod (*_getArgTypeIncludingParameterized)(void*, CORINFO_SIG_INFO*, CORINFO_ARG_LIST_HANDLE, CORINFO_CLASS_HANDLE*);
 CorInfoTypeWithMod (*_getParameterType)(void*, CORINFO_CLASS_HANDLE, CORINFO_CLASS_HANDLE*);
 TypeDescriptor (*_getTypeDescriptor)(void*, CORINFO_CLASS_HANDLE);
-CORINFO_METHOD_HANDLE (*_getCompilerHelpersMethodHandle)(void*, const char*, const char*);
+CORINFO_METHOD_HANDLE (*_getCompilerHelpersMethodHandle)(void*, const char*, const char*); // TODO-LLVM: unused, delete.
 uint32_t (*_getInstanceFieldAlignment)(void*, CORINFO_CLASS_HANDLE);
 
 extern "C" DLLEXPORT void registerLlvmCallbacks(void*       thisPtr,
@@ -85,6 +85,40 @@ extern "C" DLLEXPORT void registerLlvmCallbacks(void*       thisPtr,
         strcpy(_outputFileName + strlen(_outputFileName) - 3, "clrjit"); // use different module output name for now, TODO: delete if old LLVM gen does not create a module
         strcat(_outputFileName, ".bc");
     }
+}
+
+CorInfoType HelperFuncInfo::GetSigReturnType() const
+{
+    return static_cast<CorInfoType>(SigReturnType);
+}
+
+CorInfoType HelperFuncInfo::GetSigArgType(size_t index) const
+{
+    CorInfoType argType = static_cast<CorInfoType>(SigArgTypes[index]);
+    assert(argType != CORINFO_TYPE_UNDEF);
+    return argType;
+}
+
+CORINFO_CLASS_HANDLE HelperFuncInfo::GetSigArgClass(Compiler* compiler, size_t index) const
+{
+    if (GetSigArgType(index) != CORINFO_TYPE_VALUECLASS)
+    {
+        return NO_CLASS_HANDLE;
+    }
+
+    assert(Func == CORINFO_HELP_GETREFANY);
+    return compiler->impGetRefAnyClass();
+}
+
+size_t HelperFuncInfo::GetSigArgCount() const
+{
+    size_t count = 0;
+    while (SigArgTypes[count] != CORINFO_TYPE_UNDEF)
+    {
+        count++;
+    }
+
+    return count;
 }
 
 Llvm::Llvm(Compiler* compiler)
@@ -144,12 +178,14 @@ void Llvm::llvmShutdown()
 
 bool Llvm::needsReturnStackSlot(Compiler* compiler, GenTreeCall* callee)
 {
-    CORINFO_SIG_INFO sigInfo;
+    // Currently, we do not place the return value on the shadow stack for helpers
+    // (e. g. allocators). This is a potential GC hole. TODO-LLVM: investigate.
+    if (callee->IsHelperCall())
+    {
+        return false;
+    }
 
-    // TODO-LLVM: this is expensive. Why not just check call->TypeGet() / call->gtRetClsHnd?
-    compiler->eeGetMethodSig(compiler->info.compMethodHnd, &sigInfo);
-
-    return Llvm::needsReturnStackSlot(compiler, sigInfo.retType, sigInfo.retTypeClass);
+    return Llvm::needsReturnStackSlot(compiler, toCorInfoType(callee->TypeGet()), callee->gtRetClsHnd);
 }
 
 GCInfo* Llvm::getGCInfo()
@@ -174,7 +210,7 @@ CorInfoType Llvm::getCorInfoTypeForArg(CORINFO_SIG_INFO* sigInfo, CORINFO_ARG_LI
 
 // When looking at a sigInfo from eeGetMethodSig we have CorInfoType(s) but when looking at lclVars we have LclVarDsc or var_type(s),
 // This method exists to allow both to map to LLVM types.
-CorInfoType Llvm::toCorInfoType(var_types varType)
+/* static */ CorInfoType Llvm::toCorInfoType(var_types varType)
 {
     switch (varType)
     {
@@ -186,8 +222,6 @@ CorInfoType Llvm::toCorInfoType(var_types varType)
             return CORINFO_TYPE_BYTE;
         case TYP_UBYTE:
             return CORINFO_TYPE_UBYTE;
-        case TYP_LCLBLK:
-            return CORINFO_TYPE_VALUECLASS;
         case TYP_DOUBLE:
             return CORINFO_TYPE_DOUBLE;
         case TYP_FLOAT:
@@ -201,7 +235,7 @@ CorInfoType Llvm::toCorInfoType(var_types varType)
         case TYP_ULONG:
             return CORINFO_TYPE_ULONG;
         case TYP_REF:
-            return CORINFO_TYPE_REFANY;
+            return CORINFO_TYPE_CLASS;
         case TYP_SHORT:
             return CORINFO_TYPE_SHORT;
         case TYP_USHORT:
@@ -213,7 +247,7 @@ CorInfoType Llvm::toCorInfoType(var_types varType)
         case TYP_VOID:
             return CORINFO_TYPE_VOID;
         default:
-            failFunctionCompilation();
+            unreached();
     }
 }
 
@@ -224,9 +258,373 @@ bool Llvm::needsReturnStackSlot(Compiler* compiler, CorInfoType corInfoType, COR
     return corInfoType != CorInfoType::CORINFO_TYPE_VOID && !canStoreArgOnLlvmStack(compiler, corInfoType, classHnd);
 }
 
-bool Llvm::needsReturnStackSlot(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd)
+bool Llvm::callHasShadowStackArg(GenTreeCall* call)
 {
-    return Llvm::needsReturnStackSlot(_compiler, corInfoType, classHnd);
+    if (call->IsHelperCall())
+    {
+        return getHelperFuncInfo(_compiler->eeGetHelperNum(call->gtCallMethHnd)).HasFlags(HFIF_SS_ARG);
+    }
+
+    // TODO-LLVM: this is not right for native calls.
+    return true;
+}
+
+//------------------------------------------------------------------------
+// getHelperFuncInfo: Get additional information about a Jit helper.
+//
+// This is very similar to the "HelperCallProperties" class, but contains
+// information relevant to the LLVM target. In particular, we need to know
+// whether a given helper is implemented in managed code, and the signature,
+// to avoid multiple compilations disagreeing due to the implicit byref<->
+// nint conversions.
+//
+// TODO-LLVM: communicate (at least) the signature through a Jit-EE API.
+//
+// Arguments:
+//    helperFunc - The helper func
+//
+// Return Value:
+//    Reference to the info structure for "helperFunc".
+//
+const HelperFuncInfo& Llvm::getHelperFuncInfo(CorInfoHelpFunc helperFunc)
+{
+    // Note on Runtime[Type|Method|Field]Handle: it should faithfully be represented as CORINFO_TYPE_VALUECLASS.
+    // However, that is currently both not necessary due to the unwrapping performed for LLVM types and not what
+    // the Jit expects. When deleting the unwrapping, fix the runtime signatures to take the underlying pointer instead.
+    const int CORINFO_TYPE_RT_HANDLE = CORINFO_TYPE_PTR;
+#define FUNC(helper) INDEBUG_COMMA(helper)
+
+    // clang-format off
+    static const HelperFuncInfo s_infos[] =
+    {
+        { FUNC(CORINFO_HELP_UNDEF) },
+
+        // Implemented in "CoreLib\src\Internal\Runtime\CompilerHelpers\MathHelpers.cs".
+        { FUNC(CORINFO_HELP_DIV) CORINFO_TYPE_INT, { CORINFO_TYPE_INT, CORINFO_TYPE_INT }, HFIF_SS_ARG },
+        { FUNC(CORINFO_HELP_MOD) CORINFO_TYPE_INT, { CORINFO_TYPE_INT, CORINFO_TYPE_INT }, HFIF_SS_ARG },
+        { FUNC(CORINFO_HELP_UDIV) CORINFO_TYPE_UINT, { CORINFO_TYPE_UINT, CORINFO_TYPE_UINT }, HFIF_SS_ARG },
+        { FUNC(CORINFO_HELP_UMOD) CORINFO_TYPE_UINT, { CORINFO_TYPE_UINT, CORINFO_TYPE_UINT }, HFIF_SS_ARG },
+
+        // Implemented in "Runtime\MathHelpers.cpp".
+        { FUNC(CORINFO_HELP_LLSH) CORINFO_TYPE_LONG, { CORINFO_TYPE_LONG, CORINFO_TYPE_INT } },
+        { FUNC(CORINFO_HELP_LRSH) CORINFO_TYPE_LONG, { CORINFO_TYPE_LONG, CORINFO_TYPE_INT } },
+        { FUNC(CORINFO_HELP_LRSZ) CORINFO_TYPE_LONG, { CORINFO_TYPE_LONG, CORINFO_TYPE_INT } },
+        { FUNC(CORINFO_HELP_LMUL) CORINFO_TYPE_LONG, { CORINFO_TYPE_LONG, CORINFO_TYPE_LONG } },
+
+        // Implemented in "CoreLib\src\Internal\Runtime\CompilerHelpers\MathHelpers.cs".
+        { FUNC(CORINFO_HELP_LMUL_OVF) CORINFO_TYPE_LONG, { CORINFO_TYPE_LONG, CORINFO_TYPE_LONG }, HFIF_SS_ARG },
+        { FUNC(CORINFO_HELP_ULMUL_OVF) CORINFO_TYPE_ULONG, { CORINFO_TYPE_ULONG, CORINFO_TYPE_ULONG }, HFIF_SS_ARG },
+        { FUNC(CORINFO_HELP_LDIV) CORINFO_TYPE_LONG, { CORINFO_TYPE_LONG, CORINFO_TYPE_LONG }, HFIF_SS_ARG },
+        { FUNC(CORINFO_HELP_LMOD) CORINFO_TYPE_LONG, { CORINFO_TYPE_LONG, CORINFO_TYPE_LONG }, HFIF_SS_ARG },
+        { FUNC(CORINFO_HELP_ULDIV) CORINFO_TYPE_ULONG, { CORINFO_TYPE_ULONG, CORINFO_TYPE_ULONG }, HFIF_SS_ARG },
+        { FUNC(CORINFO_HELP_ULMOD) CORINFO_TYPE_ULONG, { CORINFO_TYPE_ULONG, CORINFO_TYPE_ULONG }, HFIF_SS_ARG },
+
+        // Implemented in "Runtime\MathHelpers.cpp".
+        { FUNC(CORINFO_HELP_LNG2DBL) CORINFO_TYPE_DOUBLE, { CORINFO_TYPE_LONG } },
+        { FUNC(CORINFO_HELP_ULNG2DBL) CORINFO_TYPE_DOUBLE, { CORINFO_TYPE_ULONG } },
+        { FUNC(CORINFO_HELP_DBL2INT) CORINFO_TYPE_INT, { CORINFO_TYPE_DOUBLE } },
+
+        // Implemented in "CoreLib\src\Internal\Runtime\CompilerHelpers\MathHelpers.cs".
+        { FUNC(CORINFO_HELP_DBL2INT_OVF) CORINFO_TYPE_INT, { CORINFO_TYPE_DOUBLE }, HFIF_SS_ARG },
+
+        // Implemented in "Runtime\MathHelpers.cpp".
+        { FUNC(CORINFO_HELP_DBL2LNG) CORINFO_TYPE_LONG, { CORINFO_TYPE_DOUBLE } },
+
+        // Implemented in "CoreLib\src\Internal\Runtime\CompilerHelpers\MathHelpers.cs".
+        { FUNC(CORINFO_HELP_DBL2LNG_OVF) CORINFO_TYPE_LONG, { CORINFO_TYPE_DOUBLE }, HFIF_SS_ARG },
+
+        // Implemented in "Runtime\MathHelpers.cpp".
+        { FUNC(CORINFO_HELP_DBL2UINT) CORINFO_TYPE_UINT, { CORINFO_TYPE_DOUBLE } },
+
+        // Implemented in "CoreLib\src\Internal\Runtime\CompilerHelpers\MathHelpers.cs".
+        { FUNC(CORINFO_HELP_DBL2UINT_OVF) CORINFO_TYPE_UINT, { CORINFO_TYPE_DOUBLE }, HFIF_SS_ARG },
+
+        // Implemented in "Runtime\MathHelpers.cpp".
+        { FUNC(CORINFO_HELP_DBL2ULNG) CORINFO_TYPE_ULONG, { CORINFO_TYPE_DOUBLE } },
+
+        // Implemented in "CoreLib\src\Internal\Runtime\CompilerHelpers\MathHelpers.cs".
+        { FUNC(CORINFO_HELP_DBL2ULNG_OVF) CORINFO_TYPE_ULONG, { CORINFO_TYPE_DOUBLE }, HFIF_SS_ARG },
+
+        // Implemented in "Runtime\MathHelpers.cpp".
+        { FUNC(CORINFO_HELP_FLTREM) CORINFO_TYPE_FLOAT, { CORINFO_TYPE_FLOAT } },
+        { FUNC(CORINFO_HELP_DBLREM) CORINFO_TYPE_DOUBLE, { CORINFO_TYPE_DOUBLE } },
+        { FUNC(CORINFO_HELP_FLTROUND) CORINFO_TYPE_FLOAT, { CORINFO_TYPE_FLOAT } },
+        { FUNC(CORINFO_HELP_DBLROUND) CORINFO_TYPE_DOUBLE, { CORINFO_TYPE_DOUBLE } },
+
+        // Runtime export, implemented in "Runtime.Base\src\System\Runtime\RuntimeExports.cs".
+        { FUNC(CORINFO_HELP_NEWFAST) CORINFO_TYPE_CLASS, { CORINFO_TYPE_PTR } },
+
+        // Implemented in "Runtime\portable.cpp".
+        { FUNC(CORINFO_HELP_NEWSFAST) CORINFO_TYPE_CLASS, { CORINFO_TYPE_PTR } },
+        { FUNC(CORINFO_HELP_NEWSFAST_FINALIZE) CORINFO_TYPE_CLASS, { CORINFO_TYPE_PTR } },
+        { FUNC(CORINFO_HELP_NEWSFAST_ALIGN8) CORINFO_TYPE_CLASS, { CORINFO_TYPE_PTR } },
+        { FUNC(CORINFO_HELP_NEWSFAST_ALIGN8_VC) CORINFO_TYPE_CLASS, { CORINFO_TYPE_PTR } },
+        { FUNC(CORINFO_HELP_NEWSFAST_ALIGN8_FINALIZE) CORINFO_TYPE_CLASS, { CORINFO_TYPE_PTR } },
+
+        // Implemented in "CoreLib\src\Internal\Runtime\CompilerHelpers\ArrayHelpers.cs".
+        { FUNC(CORINFO_HELP_NEW_MDARR) CORINFO_TYPE_CLASS, { CORINFO_TYPE_NATIVEINT, CORINFO_TYPE_INT, CORINFO_TYPE_PTR } }, // Oddity: IntPtr used for MethodTable*.
+
+        // Runtime export, implemented in "Runtime.Base\src\System\Runtime\RuntimeExports.cs".
+        { FUNC(CORINFO_HELP_NEWARR_1_DIRECT) CORINFO_TYPE_CLASS, { CORINFO_TYPE_PTR, CORINFO_TYPE_INT } },
+
+        // Not used in NativeAOT.
+        { FUNC(CORINFO_HELP_NEWARR_1_OBJ) },
+
+        // Implemented in "Runtime\portable.cpp".
+        { FUNC(CORINFO_HELP_NEWARR_1_VC) CORINFO_TYPE_CLASS, { CORINFO_TYPE_PTR, CORINFO_TYPE_INT } },
+        { FUNC(CORINFO_HELP_NEWARR_1_ALIGN8) CORINFO_TYPE_CLASS, { CORINFO_TYPE_PTR, CORINFO_TYPE_INT } },
+
+        // NYI in NativeAOT.
+        { FUNC(CORINFO_HELP_STRCNS) },
+        { FUNC(CORINFO_HELP_STRCNS_CURRENT_MODULE) },
+        { FUNC(CORINFO_HELP_INITCLASS) },
+        { FUNC(CORINFO_HELP_INITINSTCLASS) },
+
+        // Runtime exports (i. e. implemented in managed code with an unmanaged signature) from
+        // "Runtime.Base\src\System\Runtime\TypeCast.cs" and "Runtime.Base\src\System\Runtime\RuntimeExports.cs".
+        { FUNC(CORINFO_HELP_ISINSTANCEOFINTERFACE) CORINFO_TYPE_CLASS, { CORINFO_TYPE_PTR, CORINFO_TYPE_CLASS } },
+        { FUNC(CORINFO_HELP_ISINSTANCEOFARRAY) CORINFO_TYPE_CLASS, { CORINFO_TYPE_PTR, CORINFO_TYPE_CLASS } },
+        { FUNC(CORINFO_HELP_ISINSTANCEOFCLASS) CORINFO_TYPE_CLASS, { CORINFO_TYPE_PTR, CORINFO_TYPE_CLASS } },
+        { FUNC(CORINFO_HELP_ISINSTANCEOFANY) CORINFO_TYPE_CLASS, { CORINFO_TYPE_PTR, CORINFO_TYPE_CLASS } },
+        { FUNC(CORINFO_HELP_CHKCASTINTERFACE) CORINFO_TYPE_CLASS, { CORINFO_TYPE_PTR, CORINFO_TYPE_CLASS } },
+        { FUNC(CORINFO_HELP_CHKCASTARRAY) CORINFO_TYPE_CLASS, { CORINFO_TYPE_PTR, CORINFO_TYPE_CLASS } },
+        { FUNC(CORINFO_HELP_CHKCASTCLASS) CORINFO_TYPE_CLASS, { CORINFO_TYPE_PTR, CORINFO_TYPE_CLASS } },
+        { FUNC(CORINFO_HELP_CHKCASTANY) CORINFO_TYPE_CLASS, { CORINFO_TYPE_PTR, CORINFO_TYPE_CLASS } },
+        { FUNC(CORINFO_HELP_CHKCASTCLASS_SPECIAL) CORINFO_TYPE_CLASS, { CORINFO_TYPE_PTR, CORINFO_TYPE_CLASS } },
+        { FUNC(CORINFO_HELP_BOX) CORINFO_TYPE_CLASS, { CORINFO_TYPE_PTR, CORINFO_TYPE_BYREF } },
+        { FUNC(CORINFO_HELP_BOX_NULLABLE) CORINFO_TYPE_CLASS, { CORINFO_TYPE_PTR, CORINFO_TYPE_BYREF } },
+        { FUNC(CORINFO_HELP_UNBOX) CORINFO_TYPE_BYREF, { CORINFO_TYPE_PTR, CORINFO_TYPE_CLASS } },
+        { FUNC(CORINFO_HELP_UNBOX_NULLABLE) CORINFO_TYPE_VOID, { CORINFO_TYPE_BYREF, CORINFO_TYPE_PTR, CORINFO_TYPE_CLASS } },
+
+        // Implemented in "CoreLib\src\Internal\Runtime\CompilerHelpers\TypedReferenceHelpers.cs".
+        { FUNC(CORINFO_HELP_GETREFANY) CORINFO_TYPE_BYREF, { CORINFO_TYPE_RT_HANDLE, CORINFO_TYPE_VALUECLASS}, HFIF_SS_ARG },
+
+        // Implemented in "Runtime.Base\src\System\Runtime\TypeCast.cs".
+        // Note for upstream merging: these helpers will start taking NATIVEINT for the second arg instead of plain INT.
+        { FUNC(CORINFO_HELP_ARRADDR_ST) CORINFO_TYPE_VOID, { CORINFO_TYPE_CLASS, CORINFO_TYPE_INT, CORINFO_TYPE_CLASS } },
+        { FUNC(CORINFO_HELP_LDELEMA_REF) CORINFO_TYPE_BYREF, { CORINFO_TYPE_CLASS, CORINFO_TYPE_INT, CORINFO_TYPE_NATIVEINT } }, // Oddity: IntPtr used for MethodTable*.
+
+        // For WASM, currently implemented in the bootstrapper...
+        { FUNC(CORINFO_HELP_THROW) CORINFO_TYPE_VOID, { CORINFO_TYPE_PTR } },
+
+        // (Not) implemented in "Runtime\EHHelpers.cpp"
+        { FUNC(CORINFO_HELP_RETHROW) CORINFO_TYPE_VOID, { } },
+
+        // Implemented in "Runtime\MiscHelpers.cpp".
+        { FUNC(CORINFO_HELP_USER_BREAKPOINT) CORINFO_TYPE_VOID, { } },
+
+        // Implemented in "Runtime.Base\src\System\ThrowHelpers.cs".
+        // Note on "CORINFO_HELP_THROWNULLREF": ***this helpers has been deleted upstream***.
+        // We need it. When merging upstream, revert its deletion!
+        { FUNC(CORINFO_HELP_RNGCHKFAIL) CORINFO_TYPE_VOID, { }, HFIF_SS_ARG },
+        { FUNC(CORINFO_HELP_OVERFLOW) CORINFO_TYPE_VOID, { }, HFIF_SS_ARG },
+        { FUNC(CORINFO_HELP_THROWDIVZERO) CORINFO_TYPE_VOID, { }, HFIF_SS_ARG },
+        { FUNC(CORINFO_HELP_THROWNULLREF) CORINFO_TYPE_VOID, { }, HFIF_SS_ARG },
+
+        // Verification is in the process of being deleted from RyuJit.
+        { FUNC(CORINFO_HELP_VERIFICATION) },
+
+        // Implemented in "Runtime\EHHelpers.cpp".
+        { FUNC(CORINFO_HELP_FAIL_FAST) CORINFO_TYPE_VOID, { } },
+
+        // NYI in NativeAOT.
+        { FUNC(CORINFO_HELP_METHOD_ACCESS_EXCEPTION) },
+        { FUNC(CORINFO_HELP_FIELD_ACCESS_EXCEPTION) },
+        { FUNC(CORINFO_HELP_CLASS_ACCESS_EXCEPTION) },
+
+        // Not used with funclet-based EH.
+        { FUNC(CORINFO_HELP_ENDCATCH) },
+
+        // Implemented in "CoreLib\src\Internal\Runtime\CompilerHelpers\SynchronizedMethodHelpers.cs".
+        { FUNC(CORINFO_HELP_MON_ENTER) CORINFO_TYPE_VOID, { CORINFO_TYPE_CLASS, CORINFO_TYPE_BYREF }, HFIF_SS_ARG },
+        { FUNC(CORINFO_HELP_MON_EXIT) CORINFO_TYPE_VOID, { CORINFO_TYPE_CLASS, CORINFO_TYPE_BYREF }, HFIF_SS_ARG },
+        { FUNC(CORINFO_HELP_MON_ENTER_STATIC) CORINFO_TYPE_VOID, { CORINFO_TYPE_NATIVEINT, CORINFO_TYPE_BYREF }, HFIF_SS_ARG }, // Oddity: IntPtr used for MethodTable*.
+        { FUNC(CORINFO_HELP_MON_EXIT_STATIC) CORINFO_TYPE_VOID, { CORINFO_TYPE_NATIVEINT, CORINFO_TYPE_BYREF }, HFIF_SS_ARG }, // Oddity: IntPtr used for MethodTable*.
+
+        // Apparently NYI in NativeAOT.
+        { FUNC(CORINFO_HELP_GETCLASSFROMMETHODPARAM) },
+        { FUNC(CORINFO_HELP_GETSYNCFROMCLASSHANDLE) },
+        { FUNC(CORINFO_HELP_STOP_FOR_GC) },
+
+        // (Not) implemented in "Runtime\portable.cpp".
+        { FUNC(CORINFO_HELP_POLL_GC) CORINFO_TYPE_VOID, { } },
+
+        // Debug-only helpers NYI in NativeAOT.
+        { FUNC(CORINFO_HELP_STRESS_GC) },
+        { FUNC(CORINFO_HELP_CHECK_OBJ) },
+
+        // Write barriers, implemented in "Runtime\portable.cpp".
+        { FUNC(CORINFO_HELP_ASSIGN_REF) CORINFO_TYPE_VOID, { CORINFO_TYPE_PTR, CORINFO_TYPE_PTR } },
+        { FUNC(CORINFO_HELP_CHECKED_ASSIGN_REF) CORINFO_TYPE_VOID, { CORINFO_TYPE_PTR, CORINFO_TYPE_PTR } },
+        { FUNC(CORINFO_HELP_ASSIGN_REF_ENSURE_NONHEAP) }, // NYI in NativeAOT.
+        { FUNC(CORINFO_HELP_ASSIGN_BYREF) }, // Not used on WASM.
+
+        // Not used in NativeAOT (or at all in some cases).
+        { FUNC(CORINFO_HELP_ASSIGN_STRUCT) },
+        { FUNC(CORINFO_HELP_GETFIELD8) },
+        { FUNC(CORINFO_HELP_SETFIELD8) },
+        { FUNC(CORINFO_HELP_GETFIELD16) },
+        { FUNC(CORINFO_HELP_SETFIELD16) },
+        { FUNC(CORINFO_HELP_GETFIELD32) },
+        { FUNC(CORINFO_HELP_SETFIELD32) },
+        { FUNC(CORINFO_HELP_GETFIELD64) },
+        { FUNC(CORINFO_HELP_SETFIELD64) },
+        { FUNC(CORINFO_HELP_GETFIELDOBJ) },
+        { FUNC(CORINFO_HELP_SETFIELDOBJ) },
+        { FUNC(CORINFO_HELP_GETFIELDSTRUCT) },
+        { FUNC(CORINFO_HELP_SETFIELDSTRUCT) },
+        { FUNC(CORINFO_HELP_GETFIELDFLOAT) },
+        { FUNC(CORINFO_HELP_SETFIELDFLOAT) },
+        { FUNC(CORINFO_HELP_GETFIELDDOUBLE) },
+        { FUNC(CORINFO_HELP_SETFIELDDOUBLE) },
+        { FUNC(CORINFO_HELP_GETFIELDADDR) },
+        { FUNC(CORINFO_HELP_GETSTATICFIELDADDR_TLS) },
+        { FUNC(CORINFO_HELP_GETGENERICS_GCSTATIC_BASE) },
+        { FUNC(CORINFO_HELP_GETGENERICS_NONGCSTATIC_BASE) },
+        { FUNC(CORINFO_HELP_GETSHARED_GCSTATIC_BASE) },
+        { FUNC(CORINFO_HELP_GETSHARED_NONGCSTATIC_BASE) },
+        { FUNC(CORINFO_HELP_GETSHARED_GCSTATIC_BASE_NOCTOR) },
+        { FUNC(CORINFO_HELP_GETSHARED_NONGCSTATIC_BASE_NOCTOR) },
+        { FUNC(CORINFO_HELP_GETSHARED_GCSTATIC_BASE_DYNAMICCLASS) },
+        { FUNC(CORINFO_HELP_GETSHARED_NONGCSTATIC_BASE_DYNAMICCLASS) },
+        { FUNC(CORINFO_HELP_CLASSINIT_SHARED_DYNAMICCLASS) },
+        { FUNC(CORINFO_HELP_GETGENERICS_GCTHREADSTATIC_BASE) },
+        { FUNC(CORINFO_HELP_GETGENERICS_NONGCTHREADSTATIC_BASE) },
+        { FUNC(CORINFO_HELP_GETSHARED_GCTHREADSTATIC_BASE) },
+        { FUNC(CORINFO_HELP_GETSHARED_NONGCTHREADSTATIC_BASE) },
+        { FUNC(CORINFO_HELP_GETSHARED_GCTHREADSTATIC_BASE_NOCTOR) },
+        { FUNC(CORINFO_HELP_GETSHARED_NONGCTHREADSTATIC_BASE_NOCTOR) },
+        { FUNC(CORINFO_HELP_GETSHARED_GCTHREADSTATIC_BASE_DYNAMICCLASS) },
+        { FUNC(CORINFO_HELP_GETSHARED_NONGCTHREADSTATIC_BASE_DYNAMICCLASS) },
+
+        // NYI in NativeAOT.
+        { FUNC(CORINFO_HELP_DBG_IS_JUST_MY_CODE) },
+        { FUNC(CORINFO_HELP_PROF_FCN_ENTER) },
+        { FUNC(CORINFO_HELP_PROF_FCN_LEAVE) },
+        { FUNC(CORINFO_HELP_PROF_FCN_TAILCALL) },
+        { FUNC(CORINFO_HELP_BBT_FCN_ENTER) },
+
+        // TODO-LLVM: this is not a real "helper"; investigate what needs to be done to enable it.
+        { FUNC(CORINFO_HELP_PINVOKE_CALLI) },
+
+        // NYI in NativeAOT.
+        { FUNC(CORINFO_HELP_TAILCALL) },
+
+        // Implemented as "Environment.CurrentManagedThreadId".
+        { FUNC(CORINFO_HELP_GETCURRENTMANAGEDTHREADID) CORINFO_TYPE_INT, { }, HFIF_SS_ARG },
+
+        // Part of the inlined PInvoke frame construction feature which is NYI in NativeAOT.
+        { FUNC(CORINFO_HELP_INIT_PINVOKE_FRAME) },
+
+        // Implemented as plain "memset"/"memcpy".
+        { FUNC(CORINFO_HELP_MEMSET) CORINFO_TYPE_VOID, { CORINFO_TYPE_PTR, CORINFO_TYPE_INT, CORINFO_TYPE_NATIVEUINT } },
+        { FUNC(CORINFO_HELP_MEMCPY) CORINFO_TYPE_VOID, { CORINFO_TYPE_PTR, CORINFO_TYPE_PTR, CORINFO_TYPE_NATIVEUINT } },
+
+        // Not used in NativeAOT.
+        { FUNC(CORINFO_HELP_RUNTIMEHANDLE_METHOD) },
+        { FUNC(CORINFO_HELP_RUNTIMEHANDLE_METHOD_LOG) },
+        { FUNC(CORINFO_HELP_RUNTIMEHANDLE_CLASS) },
+        { FUNC(CORINFO_HELP_RUNTIMEHANDLE_CLASS_LOG) },
+
+        // Implemented in "CoreLib\src\Internal\Runtime\CompilerHelpers\TypedReferenceHelpers.cs".
+        { FUNC(CORINFO_HELP_TYPEHANDLE_TO_RUNTIMETYPE) CORINFO_TYPE_CLASS, { CORINFO_TYPE_RT_HANDLE }, HFIF_SS_ARG },
+        { FUNC(CORINFO_HELP_TYPEHANDLE_TO_RUNTIMETYPE_MAYBENULL) CORINFO_TYPE_CLASS, { CORINFO_TYPE_RT_HANDLE }, HFIF_SS_ARG },
+
+        // Implemented in "CoreLib\src\Internal\Runtime\CompilerHelpers\LdTokenHelpers.cs".
+        { FUNC(CORINFO_HELP_METHODDESC_TO_STUBRUNTIMEMETHOD) CORINFO_TYPE_VALUECLASS, { CORINFO_TYPE_NATIVEINT }, HFIF_SS_ARG },
+        { FUNC(CORINFO_HELP_FIELDDESC_TO_STUBRUNTIMEFIELD) CORINFO_TYPE_VALUECLASS, { CORINFO_TYPE_NATIVEINT }, HFIF_SS_ARG },
+        { FUNC(CORINFO_HELP_TYPEHANDLE_TO_RUNTIMETYPEHANDLE) CORINFO_TYPE_VALUECLASS, { CORINFO_TYPE_NATIVEINT }, HFIF_SS_ARG }, // Oddity: IntPtr used for MethodTable*.
+
+        // Implemented in "CoreLib\src\Internal\Runtime\CompilerHelpers\TypedReferenceHelpers.cs".
+        { FUNC(CORINFO_HELP_TYPEHANDLE_TO_RUNTIMETYPEHANDLE_MAYBENULL) CORINFO_TYPE_VALUECLASS, { CORINFO_TYPE_RT_HANDLE }, HFIF_SS_ARG },
+
+        // Another runtime export from "TypeCast.cs".
+        { FUNC(CORINFO_HELP_ARE_TYPES_EQUIVALENT) CORINFO_TYPE_BOOL, { CORINFO_TYPE_PTR, CORINFO_TYPE_PTR } },
+
+        // Not used in NativeAOT.
+        { FUNC(CORINFO_HELP_VIRTUAL_FUNC_PTR) },
+        { FUNC(CORINFO_HELP_READYTORUN_NEW) },
+        { FUNC(CORINFO_HELP_READYTORUN_NEWARR_1) },
+
+        // NYI in NativeAOT.
+        { FUNC(CORINFO_HELP_READYTORUN_ISINSTANCEOF) },
+        { FUNC(CORINFO_HELP_READYTORUN_CHKCAST) },
+
+        // Emitted by the compiler as intrinsics. (see "ILCompiler.LLVM\CodeGen\LLVMObjectWriter.cs", "GetCodeForReadyToRunGenericHelper").
+        { FUNC(CORINFO_HELP_READYTORUN_STATIC_BASE) CORINFO_TYPE_PTR, { }, HFIF_SS_ARG },
+        { FUNC(CORINFO_HELP_READYTORUN_VIRTUAL_FUNC_PTR) }, // Not used in NativeAOT.
+        { FUNC(CORINFO_HELP_READYTORUN_GENERIC_HANDLE) CORINFO_TYPE_PTR, { CORINFO_TYPE_PTR }, HFIF_SS_ARG },
+        { FUNC(CORINFO_HELP_READYTORUN_DELEGATE_CTOR) CORINFO_TYPE_VOID, { }, HFIF_SS_ARG },
+        { FUNC(CORINFO_HELP_READYTORUN_GENERIC_STATIC_BASE) CORINFO_TYPE_PTR, { CORINFO_TYPE_PTR }, HFIF_SS_ARG },
+
+        // NGEN/R2R-specific marker helpers.
+        { FUNC(CORINFO_HELP_EE_PRESTUB) },
+        { FUNC(CORINFO_HELP_EE_PRECODE_FIXUP) },
+        { FUNC(CORINFO_HELP_EE_PINVOKE_FIXUP) },
+        { FUNC(CORINFO_HELP_EE_VSD_FIXUP) },
+        { FUNC(CORINFO_HELP_EE_EXTERNAL_FIXUP) },
+        { FUNC(CORINFO_HELP_EE_VTABLE_FIXUP) },
+        { FUNC(CORINFO_HELP_EE_REMOTING_THUNK) },
+        { FUNC(CORINFO_HELP_EE_PERSONALITY_ROUTINE) },
+        { FUNC(CORINFO_HELP_EE_PERSONALITY_ROUTINE_FILTER_FUNCLET) },
+
+        // x86-specific write barriers.
+        { FUNC(CORINFO_HELP_ASSIGN_REF_EAX) },
+        { FUNC(CORINFO_HELP_ASSIGN_REF_EBX) },
+        { FUNC(CORINFO_HELP_ASSIGN_REF_ECX) },
+        { FUNC(CORINFO_HELP_ASSIGN_REF_ESI) },
+        { FUNC(CORINFO_HELP_ASSIGN_REF_EDI) },
+        { FUNC(CORINFO_HELP_ASSIGN_REF_EBP) },
+        { FUNC(CORINFO_HELP_CHECKED_ASSIGN_REF_EAX) },
+        { FUNC(CORINFO_HELP_CHECKED_ASSIGN_REF_EBX) },
+        { FUNC(CORINFO_HELP_CHECKED_ASSIGN_REF_ECX) },
+        { FUNC(CORINFO_HELP_CHECKED_ASSIGN_REF_ESI) },
+        { FUNC(CORINFO_HELP_CHECKED_ASSIGN_REF_EDI) },
+        { FUNC(CORINFO_HELP_CHECKED_ASSIGN_REF_EBP) },
+
+        // Debug-only functionality NYI in NativeAOT.
+        { FUNC(CORINFO_HELP_LOOP_CLONE_CHOICE_ADDR) },
+        { FUNC(CORINFO_HELP_DEBUG_LOG_LOOP_CLONING) },
+
+        // Implemented in "Runtime.Base\src\System\ThrowHelpers.cs".
+        { FUNC(CORINFO_HELP_THROW_ARGUMENTEXCEPTION) CORINFO_TYPE_VOID, { }, HFIF_SS_ARG },
+        { FUNC(CORINFO_HELP_THROW_ARGUMENTOUTOFRANGEEXCEPTION) CORINFO_TYPE_VOID, { }, HFIF_SS_ARG },
+        { FUNC(CORINFO_HELP_THROW_NOT_IMPLEMENTED) CORINFO_TYPE_VOID, { }, HFIF_SS_ARG },
+        { FUNC(CORINFO_HELP_THROW_PLATFORM_NOT_SUPPORTED) CORINFO_TYPE_VOID, { }, HFIF_SS_ARG },
+
+        // Dead code.
+        { FUNC(CORINFO_HELP_THROW_TYPE_NOT_SUPPORTED) },
+
+        // [R]PI helpers, implemented in "Runtime\thread.cpp".
+        { FUNC(CORINFO_HELP_JIT_PINVOKE_BEGIN) CORINFO_TYPE_VOID, { CORINFO_TYPE_PTR } },
+        { FUNC(CORINFO_HELP_JIT_PINVOKE_END) CORINFO_TYPE_VOID, { CORINFO_TYPE_PTR } },
+        { FUNC(CORINFO_HELP_JIT_REVERSE_PINVOKE_ENTER) CORINFO_TYPE_VOID, { CORINFO_TYPE_PTR } },
+        { FUNC(CORINFO_HELP_JIT_REVERSE_PINVOKE_ENTER_TRACK_TRANSITIONS) CORINFO_TYPE_VOID, { CORINFO_TYPE_PTR } },
+        { FUNC(CORINFO_HELP_JIT_REVERSE_PINVOKE_EXIT) CORINFO_TYPE_VOID, { CORINFO_TYPE_PTR } },
+        { FUNC(CORINFO_HELP_JIT_REVERSE_PINVOKE_EXIT_TRACK_TRANSITIONS) CORINFO_TYPE_VOID, { CORINFO_TYPE_PTR } },
+
+        // Implemented in "CoreLib\src\System\Runtime\TypeLoaderExports.cs".
+        { FUNC(CORINFO_HELP_GVMLOOKUP_FOR_SLOT) CORINFO_TYPE_NATIVEINT, { CORINFO_TYPE_CLASS, CORINFO_TYPE_RT_HANDLE }, HFIF_SS_ARG }, // Oddity: IntPtr used for a pointer.
+
+        // Not used in NativeAOT (stack probing - not used for LLVM).
+        { FUNC(CORINFO_HELP_STACK_PROBE) },
+        { FUNC(CORINFO_HELP_PATCHPOINT) },
+        { FUNC(CORINFO_HELP_CLASSPROFILE32) },
+        { FUNC(CORINFO_HELP_CLASSPROFILE64) },
+        { FUNC(CORINFO_HELP_PARTIAL_COMPILATION_PATCHPOINT) }
+    };
+    // clang-format on
+
+    // Make sure our array is up-to-date.
+    static_assert_no_msg(ArrLen(s_infos) == CORINFO_HELP_COUNT);
+
+    assert(helperFunc < CORINFO_HELP_COUNT);
+    const HelperFuncInfo& info = s_infos[helperFunc];
+
+    // We don't fill out the info for some helpers because we don't expect to encounter them.
+    assert(info.IsInitialized() && (info.Func == helperFunc));
+
+    return info;
 }
 
 // Returns true if the type can be stored on the LLVM stack
@@ -241,17 +639,17 @@ bool Llvm::canStoreLocalOnLlvmStack(LclVarDsc* varDsc)
 bool Llvm::canStoreArgOnLlvmStack(Compiler* compiler, CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd)
 {
     // structs with no GC pointers can go on LLVM stack.
-    if (corInfoType == CorInfoType::CORINFO_TYPE_VALUECLASS)
+    if (corInfoType == CORINFO_TYPE_VALUECLASS)
     {
         ClassLayout* classLayout = compiler->typGetObjLayout(classHnd);
         return !classLayout->HasGCPtr();
     }
 
-    if (corInfoType == CorInfoType::CORINFO_TYPE_BYREF || corInfoType == CorInfoType::CORINFO_TYPE_CLASS ||
-        corInfoType == CorInfoType::CORINFO_TYPE_REFANY)
+    if (corInfoType == CORINFO_TYPE_BYREF || corInfoType == CORINFO_TYPE_CLASS || corInfoType == CORINFO_TYPE_REFANY)
     {
         return false;
     }
+
     return true;
 }
 
