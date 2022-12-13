@@ -563,7 +563,7 @@ void Llvm::visitNode(GenTree* node)
             break;
         case GT_FIELD_LIST:
         case GT_INIT_VAL:
-            // These ('contained') nodes aways generate code as part of their parent.
+            // These ('contained') nodes always generate code as part of their parent.
             break;
         default:
             failFunctionCompilation();
@@ -1206,7 +1206,7 @@ Value* Llvm::buildFieldList(GenTreeFieldList* fieldList, Type* llvmType)
 {
     assert(fieldList->TypeIs(TYP_STRUCT));
 
-    if (llvmType->isStructTy())
+    if (llvmType->isStructTy() || fieldList->Uses().begin()->GetNext() != nullptr)
     {
         Value* alloca = _builder.CreateAlloca(llvmType);
         Value* allocaAsBytePtr = _builder.CreatePointerCast(alloca, Type::getInt8PtrTy(_llvmContext));
@@ -1221,9 +1221,6 @@ Value* Llvm::buildFieldList(GenTreeFieldList* fieldList, Type* llvmType)
 
         return _builder.CreateLoad(alloca);
     }
-
-    // single primitive type wrapped in struct
-    assert(fieldList->Uses().begin()->GetNext() == nullptr);
 
     return consumeValue(fieldList->Uses().begin()->GetNode(), llvmType);
 }
