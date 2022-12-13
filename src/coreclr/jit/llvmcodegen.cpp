@@ -1206,7 +1206,7 @@ Value* Llvm::buildFieldList(GenTreeFieldList* fieldList, Type* llvmType)
 {
     assert(fieldList->TypeIs(TYP_STRUCT));
 
-    if (llvmType->isStructTy() || fieldList->Uses().begin() != fieldList->Uses().end())
+    if (llvmType->isStructTy() || fieldList->Uses().begin()->GetNext() != nullptr)
     {
         Value* alloca = _builder.CreateAlloca(llvmType);
         Value* allocaAsBytePtr = _builder.CreatePointerCast(alloca, Type::getInt8PtrTy(_llvmContext));
@@ -1221,9 +1221,6 @@ Value* Llvm::buildFieldList(GenTreeFieldList* fieldList, Type* llvmType)
 
         return _builder.CreateLoad(alloca);
     }
-
-    // single primitive type wrapped in struct
-    assert(fieldList->Uses().begin()->GetNext() == nullptr);
 
     return consumeValue(fieldList->Uses().begin()->GetNode(), llvmType);
 }
