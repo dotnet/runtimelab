@@ -1247,14 +1247,31 @@ void Llvm::buildBlk(GenTreeBlk* blkNode)
     mapGenTreeToValue(blkNode, blkValue);
 }
 
+// TODO-LLVM: delete when enough merged to not see these IR sequences any more (Nov 2022?).
+// TODO-LLVM: Other combinations of a small int and larger int types are presumably possible, these are just the ones hit
+bool storeIndRequiresTrunc(var_types storeType, var_types dataType)
+{
+    return (storeType == TYP_BYTE || storeType == TYP_SHORT) && dataType == TYP_LONG;
+}
+
 void Llvm::buildStoreInd(GenTreeStoreInd* storeIndOp)
 {
     GCInfo::WriteBarrierForm wbf = getGCInfo()->gcIsWriteBarrierCandidate(storeIndOp, storeIndOp->Data());
 
     Type* storeLlvmType = getLlvmTypeForVarType(storeIndOp->TypeGet());
     Type* addrLlvmType = (wbf == GCInfo::WBF_NoBarrier) ? storeLlvmType->getPointerTo() : Type::getInt8PtrTy(_llvmContext);
-    Value* addrValue = consumeValue(storeIndOp->Addr(), addrLlvmType);;
-    Value* dataValue = consumeValue(storeIndOp->Data(), storeLlvmType);
+    Value* addrValue = consumeValue(storeIndOp->Addr(), addrLlvmType);
+
+    Value* dataValue;
+    if (storeIndRequiresTrunc(storeIndOp->TypeGet(), storeIndOp->Data()->TypeGet()))
+    {
+        dataValue = consumeValue(storeIndOp->Data(), getLlvmTypeForVarType(storeIndOp->Data()->TypeGet()));
+        dataValue = _builder.CreateTrunc(dataValue, storeLlvmType);
+    }
+    else
+    {
+        dataValue = consumeValue(storeIndOp->Data(), storeLlvmType);
+    }
 
     emitNullCheckForIndir(storeIndOp, addrValue);
 
