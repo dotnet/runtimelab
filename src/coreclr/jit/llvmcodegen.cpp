@@ -2112,24 +2112,16 @@ unsigned Llvm::getLlvmFunctionIndexForBlock(BasicBlock* block)
 {
     unsigned funcIdx = ROOT_FUNC_IDX;
 
-    // We cannot just use "funGetFuncIdx" here because we generate throw helper blocks out-of-order.
+    // We cannot just use "funGetFuncIdx" here because it only handles the first blocks for funclets.
     if (block->hasHndIndex())
     {
         EHblkDsc* ehDsc = _compiler->ehGetDsc(block->getHndIndex());
         funcIdx = ehDsc->ebdFuncIndex;
 
-        if (ehDsc->HasFilter())
+        if (ehDsc->InFilterRegionBBRange(block))
         {
-            // See if "block" is in the filter part.
-            for (BasicBlock* filterBlock : _compiler->Blocks(ehDsc->ebdFilter, ehDsc->BBFilterLast()))
-            {
-                if (filterBlock == block)
-                {
-                    funcIdx--;
-                    assert(_compiler->funGetFunc(funcIdx)->funKind == FUNC_FILTER);
-                    break;
-                }
-            }
+            funcIdx--;
+            assert(_compiler->funGetFunc(funcIdx)->funKind == FUNC_FILTER);
         }
     }
 
