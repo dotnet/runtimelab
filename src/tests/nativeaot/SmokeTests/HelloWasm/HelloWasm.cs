@@ -391,6 +391,8 @@ internal static class Program
 
         TestDoublePrint();
 
+        TestGenStructContains();
+
         // This test should remain last to get other results before stopping the debugger
         PrintLine("Debugger.Break() test: Ok if debugger is open and breaks.");
         System.Diagnostics.Debugger.Break();
@@ -3796,6 +3798,17 @@ internal static class Program
         StartTest("Test Double ToString");
 
         EndTest(1d.ToString() == "1");
+    }
+
+    static void TestGenStructContains()
+    {
+        StartTest("Test Double ToString");
+
+        var col = new List<ValueTuple<char, char>>() { new ValueTuple<char, char>('a', 'b') };
+
+        var contains = col.Contains(new ValueTuple<char,char>('a', 'b'));
+
+        EndTest(contains);
     }
 
     static ushort ReadUInt16()
