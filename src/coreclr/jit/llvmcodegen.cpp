@@ -1247,7 +1247,7 @@ void Llvm::buildBlk(GenTreeBlk* blkNode)
     mapGenTreeToValue(blkNode, blkValue);
 }
 
-// TODO-LLVM: delete when enough merged to not see these IR sequences any more (Nov 2022?).
+// TODO-LLVM: delete when https://github.com/dotnet/runtime/pull/70518 from upstream is merged.
 // TODO-LLVM: Other combinations of a small int and larger int types are presumably possible, these are just the ones hit
 bool storeIndRequiresTrunc(var_types storeType, var_types dataType)
 {
