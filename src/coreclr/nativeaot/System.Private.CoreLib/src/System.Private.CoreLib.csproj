@@ -44,10 +44,6 @@
     <FeatureGenericMath>true</FeatureGenericMath>
     <DefineConstants Condition="'$(FeatureGenericMath)' == 'true'">$(DefineConstants);FEATURE_GENERIC_MATH</DefineConstants>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(TargetsBrowser)' == 'true'">
-    <DefineConstants >TARGET_UNIX;TARGET_WASM;TARGET_32BIT;FEATURE_64BIT_ALIGNMENT;$(DefineConstants)</DefineConstants>
-    <Platform>llvm</Platform>
-  </PropertyGroup>
 
   <!-- Sources -->
   <ItemGroup>
@@ -182,7 +178,7 @@
     <Compile Include="System\Diagnostics\StackFrame.CoreRT.cs" />
     <Compile Include="System\Diagnostics\StackFrameExtensions.cs" />
     <Compile Include="System\Diagnostics\StackTrace.CoreRT.cs" />
-    <Compile Include="System\Diagnostics\StackTrace.CoreRT.Wasm.cs" Condition="'$(TargetsBrowser)'=='true'"/>
+    <Compile Include="System\Diagnostics\StackTrace.CoreRT.Wasm.cs" Condition="'$(WasmAbi)' == 'true'"/>
     <Compile Include="System\Enum.CoreRT.cs" />
     <Compile Include="System\Environment.CoreRT.cs" />
     <Compile Include="System\GC.cs" />
@@ -228,7 +224,7 @@
     <Compile Include="System\Delegate.cs" />
     <Compile Include="System\RuntimeTypeHandle.cs" />
     <Compile Include="System\Exception.CoreRT.cs" />
-    <Compile Include="System\Exception.CoreRT.LLVM.cs" Condition="'$(Platform)'=='llvm'"/>
+    <Compile Include="System\Exception.CoreRT.LLVM.cs" Condition="'$(WasmAbi)' == 'true'"/>
     <Compile Include="System\RuntimeExceptionHelpers.cs" />
     <Compile Include="System\EETypePtr.cs" />
     <Compile Include="System\Runtime\RuntimeImports.cs" />
@@ -450,16 +446,16 @@
     <Compile Include="$(AotCommonPath)\Internal\Runtime\TransitionBlock.cs">
       <Link>Common\TransitionBlock.cs</Link>
     </Compile>
-    <Compile Include="$(RuntimeBasePath)System\Runtime\ExceptionHandling.wasm.cs" Condition="'$(Platform)'=='llvm'">
+    <Compile Include="$(RuntimeBasePath)System\Runtime\ExceptionHandling.wasm.cs" Condition="'$(WasmAbi)' == 'true'">
       <Link>Runtime.Base\src\System\Runtime\ExceptionHandling.wasm.cs</Link>
     </Compile>
-    <Compile Include="$(RuntimeBasePath)System\Runtime\StackFrameIterator.wasm.cs" Condition="'$(Platform)'=='llvm'">
+    <Compile Include="$(RuntimeBasePath)System\Runtime\StackFrameIterator.wasm.cs" Condition="'$(WasmAbi)' == 'true'">
       <Link>Runtime.Base\src\System\Runtime\StackFrameIterator.wasm.cs</Link>
     </Compile>
   </ItemGroup>
   <ItemGroup Condition="'$(InPlaceRuntime)' == 'true'">
-    <Compile Include="$(IntermediatesDir)\nativeaot\Runtime\Full\AsmOffsets.cs" Condition="'$(Platform)'!='llvm'"/>
-    <Compile Include="$(IntermediatesDir.Replace('\ide', ''))\nativeaot\Runtime\Portable\AsmOffsetsPortable.cs" Condition="'$(Platform)'=='llvm'"/> <!-- its never in \ide\ -->
+    <Compile Include="$(IntermediatesDir)\nativeaot\Runtime\Full\AsmOffsets.cs" Condition="'$(WasmAbi)' != 'true'"/>
+    <Compile Include="$(IntermediatesDir.Replace('\ide', ''))\nativeaot\Runtime\Portable\AsmOffsetsPortable.cs" Condition="'$(WasmAbi)' == 'true'"/> <!-- its never in \ide\ -->
   </ItemGroup>
 
   <Import Project="$(LibrariesProjectRoot)\System.Private.CoreLib\src\System.Private.CoreLib.Shared.projitems" Label="Shared" />
