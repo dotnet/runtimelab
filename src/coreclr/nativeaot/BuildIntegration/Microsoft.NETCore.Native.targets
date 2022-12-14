@@ -213,9 +213,11 @@ The .NET Foundation licenses this file to you under the MIT license.
     <MSBuild Projects="@(ProjectToBuild)" BuildInParallel="true" />
   </Target>
 
+  <!-- NativeAOT-LLVM note: 'BeforeTargets="_RunILLink"' should be deleted once upstream uses .NET 7 SDK -->
   <Target Name="WriteIlcRspFileForCompilation"
       Inputs="@(IlcCompileInput);@(RdXmlFile)"
       Outputs="%(ManagedBinary.IlcRspFile)"
+      BeforeTargets="_RunILLink"
       DependsOnTargets="$(IlcCompileDependsOn)">
 
     <!-- Set up default properties that have their defaults in the 6.0 SDK (Can be dropped once we drop 5.0 support) -->
