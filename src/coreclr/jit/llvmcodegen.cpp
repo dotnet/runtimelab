@@ -1248,10 +1248,9 @@ void Llvm::buildBlk(GenTreeBlk* blkNode)
 }
 
 // TODO-LLVM: delete when https://github.com/dotnet/runtime/pull/70518 from upstream is merged.
-// TODO-LLVM: Other combinations of a small int and larger int types are presumably possible, these are just the ones hit
 bool storeIndRequiresTrunc(var_types storeType, var_types dataType)
 {
-    return (storeType == TYP_BYTE || storeType == TYP_SHORT) && dataType == TYP_LONG;
+    return varTypeIsSmall(storeType) && dataType == TYP_LONG;
 }
 
 void Llvm::buildStoreInd(GenTreeStoreInd* storeIndOp)
