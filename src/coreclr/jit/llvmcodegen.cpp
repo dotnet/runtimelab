@@ -1247,14 +1247,30 @@ void Llvm::buildBlk(GenTreeBlk* blkNode)
     mapGenTreeToValue(blkNode, blkValue);
 }
 
+// TODO-LLVM: delete when https://github.com/dotnet/runtime/pull/70518 from upstream is merged.
+bool storeIndRequiresTrunc(var_types storeType, var_types dataType)
+{
+    return varTypeIsSmall(storeType) && dataType == TYP_LONG;
+}
+
 void Llvm::buildStoreInd(GenTreeStoreInd* storeIndOp)
 {
     GCInfo::WriteBarrierForm wbf = getGCInfo()->gcIsWriteBarrierCandidate(storeIndOp, storeIndOp->Data());
 
     Type* storeLlvmType = getLlvmTypeForVarType(storeIndOp->TypeGet());
     Type* addrLlvmType = (wbf == GCInfo::WBF_NoBarrier) ? storeLlvmType->getPointerTo() : Type::getInt8PtrTy(_llvmContext);
-    Value* addrValue = consumeValue(storeIndOp->Addr(), addrLlvmType);;
-    Value* dataValue = consumeValue(storeIndOp->Data(), storeLlvmType);
+    Value* addrValue = consumeValue(storeIndOp->Addr(), addrLlvmType);
+
+    Value* dataValue;
+    if (storeIndRequiresTrunc(storeIndOp->TypeGet(), storeIndOp->Data()->TypeGet()))
+    {
+        dataValue = consumeValue(storeIndOp->Data(), getLlvmTypeForVarType(storeIndOp->Data()->TypeGet()));
+        dataValue = _builder.CreateTrunc(dataValue, storeLlvmType);
+    }
+    else
+    {
+        dataValue = consumeValue(storeIndOp->Data(), storeLlvmType);
+    }
 
     emitNullCheckForIndir(storeIndOp, addrValue);
 
