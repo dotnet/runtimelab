@@ -22,10 +22,10 @@ namespace ILCompiler
         protected MethodImportationErrorProvider _methodImportationErrorProvider = new MethodImportationErrorProvider();
         protected IInliningPolicy _inliningPolicy;
         protected bool _methodBodyFolding;
-        protected bool _singleThreaded;
         protected InstructionSetSupport _instructionSetSupport;
         protected SecurityMitigationOptions _mitigationOptions;
         protected ConfigurableWasmImportPolicy _wasmImportPolicy;
+        protected bool _useDwarf5;
 
         partial void InitializePartial()
         {
@@ -93,12 +93,6 @@ namespace ILCompiler
             return this;
         }
 
-        public CompilationBuilder UseSingleThread(bool enable)
-        {
-            _singleThreaded = enable;
-            return this;
-        }
-
         public CompilationBuilder UsePreinitializationManager(PreinitializationManager manager)
         {
             _preinitializationManager = manager;
@@ -114,6 +108,12 @@ namespace ILCompiler
         public CompilationBuilder UseMethodImportationErrorProvider(MethodImportationErrorProvider errorProvider)
         {
             _methodImportationErrorProvider = errorProvider;
+            return this;
+        }
+
+        public CompilationBuilder UseDwarf5(bool value)
+        {
+            _useDwarf5 = value;
             return this;
         }
 

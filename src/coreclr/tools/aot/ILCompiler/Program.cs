@@ -58,9 +58,11 @@ namespace ILCompiler
         private bool _reflectedOnly;
         private bool _scanReflection;
         private bool _methodBodyFolding;
-        private bool _singleThreaded;
+        private int _parallelism = Environment.ProcessorCount;
         private string _instructionSet;
         private string _guard;
+        private int _maxGenericCycle = CompilerTypeSystemContext.DefaultGenericCycleCutoffPoint;
+        private bool _useDwarf5;
 
         private string _singleMethodTypeName;
         private string _singleMethodName;
@@ -184,6 +186,7 @@ namespace ILCompiler
                 syntax.DefineOption("g", ref _enableDebugInfo, "Emit debugging information");
                 syntax.DefineOption("wasm", ref _isLlvmCodegen, "Compile for Web Assembly code-generation");
                 syntax.DefineOption("llvm", ref _isLlvmCodegen, "Compile for LLVM code-generation");
+                syntax.DefineOption("gdwarf-5", ref _useDwarf5, "Generate source-level debug information with dwarf version 5");
                 syntax.DefineOption("nativelib", ref _nativeLib, "Compile as static or shared library");
                 syntax.DefineOption("exportsfile", ref _exportsFile, "File to write exported method definitions");
                 syntax.DefineOption("dgmllog", ref _dgmlLogFileName, "Save result of dependency analysis as DGML");
@@ -212,7 +215,7 @@ namespace ILCompiler
                 syntax.DefineOptionList("appcontextswitch", ref _appContextSwitches, "System.AppContext switches to set (format: 'Key=Value')");
                 syntax.DefineOptionList("feature", ref _featureSwitches, "Feature switches to apply (format: 'Namespace.Name=[true|false]'");
                 syntax.DefineOptionList("runtimeopt", ref _runtimeOptions, "Runtime options to set");
-                syntax.DefineOption("singlethreaded", ref _singleThreaded, "Run compilation on a single thread");
+                syntax.DefineOption("parallelism", ref _parallelism, "Maximum number of threads to use during compilation");
                 syntax.DefineOption("instructionset", ref _instructionSet, "Instruction set to allow or disallow");
                 syntax.DefineOption("guard", ref _guard, "Enable mitigations. Options: 'cf': CFG (Control Flow Guard, Windows only)");
                 syntax.DefineOption("preinitstatics", ref _preinitStatics, "Interpret static constructors at compile time if possible (implied by -O)");
@@ -225,7 +228,7 @@ namespace ILCompiler
                 syntax.DefineOptionList("directpinvokelist", ref _directPInvokeLists, "File with list of PInvokes to call directly");
                 syntax.DefineOptionList("wasmimport", ref _wasmImports, "WebAssembly import module names for PInvoke functions");
                 syntax.DefineOptionList("wasmimportlist", ref _wasmImportsLists, "File with list of WebAssembly import module names for PInvoke functions");
-
+                syntax.DefineOption("maxgenericcycle", ref _maxGenericCycle, "Max depth of generic cycle");
                 syntax.DefineOptionList("root", ref _rootedAssemblies, "Fully generate given assembly");
                 syntax.DefineOptionList("conditionalroot", ref _conditionallyRootedAssemblies, "Fully generate given assembly if it's used");
                 syntax.DefineOptionList("trim", ref _trimmedAssemblies, "Trim the specified assembly");
@@ -279,7 +282,7 @@ namespace ILCompiler
             return argSyntax;
         }
 
-        private IReadOnlyCollection<MethodDesc> CreateInitializerList(TypeSystemContext context)
+        private IReadOnlyCollection<MethodDesc> CreateInitializerList(CompilerTypeSystemContext context)
         {
             List<ModuleDesc> assembliesWithInitalizers = new List<ModuleDesc>();
 
@@ -287,7 +290,7 @@ namespace ILCompiler
             // any user code runs.
             foreach (string initAssemblyName in _initAssemblies)
             {
-                ModuleDesc assembly = context.ResolveAssembly(new AssemblyName(initAssemblyName));
+                ModuleDesc assembly = context.ResolveAssembly(new AssemblyName(initAssemblyName), throwIfNotFound: true);
                 assembliesWithInitalizers.Add(assembly);
             }
 
@@ -435,13 +438,14 @@ namespace ILCompiler
                 optimisticInstructionSetSupportBuilder.AddSupportedInstructionSet("popcnt");
                 optimisticInstructionSetSupportBuilder.AddSupportedInstructionSet("lzcnt");
 
-                // If AVX was enabled, we can opportunistically enable FMA/BMI
+                // If AVX was enabled, we can opportunistically enable FMA/BMI/VNNI
                 Debug.Assert(InstructionSet.X64_AVX == InstructionSet.X86_AVX);
                 if (supportedInstructionSet.HasInstructionSet(InstructionSet.X64_AVX))
                 {
                     optimisticInstructionSetSupportBuilder.AddSupportedInstructionSet("fma");
                     optimisticInstructionSetSupportBuilder.AddSupportedInstructionSet("bmi");
                     optimisticInstructionSetSupportBuilder.AddSupportedInstructionSet("bmi2");
+                    optimisticInstructionSetSupportBuilder.AddSupportedInstructionSet("avxvnni");
                 }
             }
             else if (_targetArchitecture == TargetArchitecture.ARM64)
@@ -476,7 +480,7 @@ namespace ILCompiler
             var targetAbi = TargetAbi.CoreRT;
             var targetDetails = new TargetDetails(_targetArchitecture, _targetOS, targetAbi, simdVectorLength);
             CompilerTypeSystemContext typeSystemContext = 
-                new CompilerTypeSystemContext(targetDetails, genericsMode, supportsReflection ? DelegateFeature.All : 0);
+                new CompilerTypeSystemContext(targetDetails, genericsMode, supportsReflection ? DelegateFeature.All : 0, _maxGenericCycle);
 
             //
             // TODO: To support our pre-compiled test tree, allow input files that aren't managed assemblies since
@@ -732,7 +736,7 @@ namespace ILCompiler
                     _trimmedAssemblies);
 
             InteropStateManager interopStateManager = new InteropStateManager(typeSystemContext.GeneratedAssembly);
-            InteropStubManager interopStubManager = new UsageBasedInteropStubManager(interopStateManager, pinvokePolicy);
+            InteropStubManager interopStubManager = new UsageBasedInteropStubManager(interopStateManager, pinvokePolicy, logger);
 
             // Unless explicitly opted in at the command line, we enable scanner for retail builds by default.
             // We also don't do this for multifile because scanner doesn't simulate inlining (this would be
@@ -760,7 +764,7 @@ namespace ILCompiler
                 ILScannerBuilder scannerBuilder = builder.GetILScannerBuilder()
                     .UseCompilationRoots(compilationRoots)
                     .UseMetadataManager(metadataManager)
-                    .UseSingleThread(enable: _singleThreaded)
+                    .UseParallelism(_parallelism)
                     .UseInteropStubManager(interopStubManager);
 
                 if (_scanDgmlLogFileName != null)
@@ -789,7 +793,7 @@ namespace ILCompiler
                 .UseInstructionSetSupport(instructionSetSupport)
                 .UseBackendOptions(_codegenOptions)
                 .UseMethodBodyFolding(enable: _methodBodyFolding)
-                .UseSingleThread(enable: _singleThreaded)
+                .UseParallelism(_parallelism)
                 .UseMetadataManager(metadataManager)
                 .UseInteropStubManager(interopStubManager)
                 .UseLogger(logger)
@@ -798,7 +802,8 @@ namespace ILCompiler
                 .UseOptimizationMode(_optimizationMode)
                 .UseSecurityMitigationOptions(securityMitigationOptions)
                 .UseDebugInfoProvider(debugInfoProvider)
-                .UseWasmImportPolicy(wasmImportPolicy);
+                .UseWasmImportPolicy(wasmImportPolicy)
+                .UseDwarf5(_useDwarf5);
 
             if (scanResults != null)
             {

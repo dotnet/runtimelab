@@ -5,7 +5,7 @@
     <RootNamespace>ILCompiler</RootNamespace>
     <AssemblyName>ILCompiler.LLVM</AssemblyName>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <TargetFramework>net5.0</TargetFramework>
+    <TargetFramework>net6.0</TargetFramework>
     <NoWarn>8002</NoWarn>
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
     <Platforms>x64;x86</Platforms>

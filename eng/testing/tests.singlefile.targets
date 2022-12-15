@@ -12,7 +12,7 @@
     <RunScriptCommand Condition="'$(TargetOS)' != 'windows'">chmod +rwx $(AssemblyName) &amp;&amp; ./$(AssemblyName)</RunScriptCommand>
   </PropertyGroup>
   
-  <PropertyGroup Condition="'$(ClrNativeAot)' != 'true'">
+  <PropertyGroup Condition="'$(TestNativeAot)' != 'true'">
     <PublishSingleFile>true</PublishSingleFile>
     <UseAppHost>true</UseAppHost>
     <SelfContained>true</SelfContained>
@@ -20,15 +20,22 @@
     <SingleFileHostSourcePath Condition="'$(TargetOS)' == 'windows'">$(SingleFileHostSourcePath).exe</SingleFileHostSourcePath>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(ClrNativeAot)' == 'true'">
-    <IlcPath>$(TestNativeAotCompilerRootPath)</IlcPath>
+  <PropertyGroup Condition="'$(TestNativeAot)' == 'true'">
+    <IlcToolsPath>$(CoreCLRILCompilerDir)</IlcToolsPath>
+    <IlcBuildTasksPath>$(CoreCLRILCompilerDir)netstandard/ILCompiler.Build.Tasks.dll</IlcBuildTasksPath>
+    <IlcSdkPath>$(CoreCLRAotSdkDir)</IlcSdkPath>
+    <IlcFrameworkPath>$(NetCoreAppCurrentTestHostSharedFrameworkPath)</IlcFrameworkPath>
+    <NoWarn>$(NoWarn);IL3050;IL3052;IL3055;IL1005</NoWarn>
+    <TrimmerSingleWarn>false</TrimmerSingleWarn>
+    <SuppressTrimAnalysisWarnings>true</SuppressTrimAnalysisWarnings>
+
+    <!-- Forced by ILLink targets; we should fix the SDK -->
     <SelfContained>true</SelfContained>
-    <NoWarn>$(NoWarn);IL3050;IL3052;IL1005</NoWarn>
   </PropertyGroup>
 
-  <Import Project="$(IlcPath)\build\Microsoft.DotNet.ILCompiler.targets" Condition="'$(ClrNativeAot)' == 'true'" />
+  <Import Project="$(CoreCLRBuildIntegrationDir)Microsoft.DotNet.ILCompiler.targets" Condition="'$(TestNativeAot)' == 'true'" />
 
-  <ItemGroup Condition="'$(ClrNativeAot)' == 'true'">
+  <ItemGroup Condition="'$(TestNativeAot)' == 'true'">
     <RdXmlFile Include="$(MSBuildThisFileDirectory)default.rd.xml" />
 
     <!-- Tests are doing private reflection. -->

@@ -15,6 +15,7 @@ using Internal.TypeSystem.Ecma;
 using ILCompiler.Metadata;
 using ILCompiler.DependencyAnalysis;
 using ILCompiler.DependencyAnalysisFramework;
+using ILLink.Shared;
 
 using FlowAnnotations = ILCompiler.Dataflow.FlowAnnotations;
 using DependencyList = ILCompiler.DependencyAnalysisFramework.DependencyNodeCore<ILCompiler.DependencyAnalysis.NodeFactory>.DependencyList;
@@ -794,10 +795,28 @@ namespace ILCompiler
                 }
             }
 
+            var rootedCctorContexts = new List<MetadataType>();
+            foreach (NonGCStaticsNode cctorContext in GetCctorContextMapping())
+            {
+                // If we generated a static constructor and the owning type, this might be something
+                // that gets fed to RuntimeHelpers.RunClassConstructor. RunClassConstructor
+                // also works on reflection blocked types and there is a possibility that we
+                // wouldn't have generated the cctor otherwise.
+                //
+                // This is a heuristic and we'll possibly root more cctor contexts than
+                // strictly necessary, but it's not worth introducing a new node type
+                // in the compiler just so we can propagate this knowledge from dataflow analysis
+                // (that detects RunClassConstructor usage) and this spot.
+                if (!TypeGeneratesEEType(cctorContext.Type))
+                    continue;
+
+                rootedCctorContexts.Add(cctorContext.Type);
+            }
+
             return new AnalysisBasedMetadataManager(
                 _typeSystemContext, _blockingPolicy, _resourceBlockingPolicy, _metadataLogFile, _stackTraceEmissionPolicy, _dynamicInvokeThunkGenerationPolicy,
                 _modulesWithMetadata, reflectableTypes.ToEnumerable(), reflectableMethods.ToEnumerable(),
-                reflectableFields.ToEnumerable(), _customAttributesWithMetadata);
+                reflectableFields.ToEnumerable(), _customAttributesWithMetadata, rootedCctorContexts);
         }
 
         private struct ReflectableEntityBuilder<T>
@@ -955,7 +974,7 @@ namespace ILCompiler
             }
         }
 
-        private class LinkAttributesReader : ProcessLinkerXmlBase
+        private class LinkAttributesReader : ProcessXmlBase
         {
             private readonly HashSet<TypeDesc> _removedAttributes;
 

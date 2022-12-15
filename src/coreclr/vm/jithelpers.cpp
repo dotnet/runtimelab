@@ -5116,7 +5116,10 @@ void JIT_Patchpoint(int* counter, int ilOffset)
 #endif
 
     SetSP(&frameContext, currentSP);
+
+#if defined(TARGET_AMD64)
     frameContext.Rbp = currentFP;
+#endif
 
     // Note we can get here w/o triggering, if there is an existing OSR method and
     // we hit the patchpoint.
@@ -5279,7 +5282,10 @@ void JIT_PartialCompilationPatchpoint(int ilOffset)
 #endif
 
     SetSP(&frameContext, currentSP);
+
+#if defined(TARGET_AMD64)
     frameContext.Rbp = currentFP;
+#endif
 
     // Note we can get here w/o triggering, if there is an existing OSR method and
     // we hit the patchpoint.
@@ -5944,7 +5950,7 @@ void InitJitHelperLogging()
                 else
                 {
                     _ASSERTE(((size_t)hlpFunc->pfnHelper - 1) >= 0 &&
-                             ((size_t)hlpFunc->pfnHelper - 1) < COUNTOF(hlpDynamicFuncTable));
+                             ((size_t)hlpFunc->pfnHelper - 1) < ARRAY_SIZE(hlpDynamicFuncTable));
                     VMHELPDEF* dynamicHlpFunc = &hlpDynamicFuncTable[((size_t)hlpFunc->pfnHelper - 1)];
 
                     // While we're here initialize the table of VMHELPCOUNTDEF

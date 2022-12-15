@@ -27,7 +27,7 @@
   <!-- Setup the testing shared framework host -->
   <Target Name="SetupTestingHost"
           AfterTargets="AfterResolveReferences"
-          Condition="'$(ClrNativeAot)' != 'true'">
+          Condition="'$(TestNativeAot)' != 'true'">
     <PropertyGroup>
       <UseHardlink>true</UseHardlink>
       <!-- workaround core-setup problem for hardlinking dotnet executable to testhost: core-setup #4742 -->
@@ -76,7 +76,7 @@
   <Target Name="OverrideRuntimeCoreCLR"
           DependsOnTargets="ResolveRuntimeFilesFromLocalBuild"
           AfterTargets="AfterResolveReferences"
-          Condition="'$(RuntimeFlavor)' != 'Mono' and '$(ClrNativeAot)' != 'true'">
+          Condition="'$(RuntimeFlavor)' != 'Mono' and '$(TestNativeAot)' != 'true' and '$(ClrNativeAot)' != 'true'">
     <ItemGroup>
       <!-- CoreRun is not used for testing anymore, but we still use it for benchmarking and profiling -->
       <RuntimeFiles Include="$(CoreCLRArtifactsPath)\corerun*" />
@@ -91,35 +91,6 @@
     </ItemGroup>
     <Error Condition="'$(SwapNativeForIL)' == 'true' and '@(CoreCLRILFiles)' == ''" Text="Could not locate CoreCLR IL files." />
   </Target>
-
-  <Target Name="OverrideRuntimeNativeAot"
-          DependsOnTargets="ResolveRuntimeFilesFromLocalBuild"
-          AfterTargets="AfterResolveReferences"
-          Condition="'$(ClrNativeAot)' == 'true'">
-    <ItemGroup>
-      <_CompilerFiles Include="$(CoreCLRILCompilerDir)*" />
-      <_AotSdkFiles Include="$(CoreCLRAotSdkDir)*" />
-      <_BuildIntegrationFiles Include="$(CoreCLRBuildIntegrationDir)*" />
-      <_TaskFiles Include="$(CoreCLRILCompilerDir)netstandard\*" />
-    </ItemGroup>
-    <Copy SourceFiles="@(_CompilerFiles)"
-          DestinationFolder="$(TestNativeAotCompilerRootPath)tools"
-          SkipUnchangedFiles="true"
-          UseHardlinksIfPossible="true" />
-    <Copy SourceFiles="@(_AotSdkFiles)"
-          DestinationFolder="$(TestNativeAotCompilerRootPath)sdk"
-          SkipUnchangedFiles="true"
-          UseHardlinksIfPossible="true" />
-    <Copy SourceFiles="@(_BuildIntegrationFiles)"
-          DestinationFolder="$(TestNativeAotCompilerRootPath)build"
-          SkipUnchangedFiles="true"
-          UseHardlinksIfPossible="true" />
-    <Copy SourceFiles="@(_TaskFiles)"
-          DestinationFolder="$(TestNativeAotCompilerRootPath)tools\netstandard"
-          SkipUnchangedFiles="true"
-          UseHardlinksIfPossible="true" />
-  </Target>
-
 
   <Target Name="OverrideRuntimeMono"
           DependsOnTargets="ResolveRuntimeFilesFromLocalBuild"
