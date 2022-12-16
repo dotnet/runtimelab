@@ -1390,65 +1390,66 @@ void SsaBuilder::AddPhiArgsToSuccessors(BasicBlock* block)
 #endif
 
 
-#if defined(TARGET_WASM)
-        if (!block->IsLIR())
+        // Now handle memory.
+        for (MemoryKind memoryKind : allMemoryKinds())
         {
-#endif
-            // Now handle memory.
-            for (MemoryKind memoryKind : allMemoryKinds())
+#ifdef TARGET_WASM
+            // TODO-LLVM: LIR memory liveness is NYI upstream. Delete when that is fixed.
+            if (block->IsLIR())
             {
-                BasicBlock::MemoryPhiArg*& succMemoryPhi = succ->bbMemorySsaPhiFunc[memoryKind];
-                if (succMemoryPhi != nullptr)
-                {
-                    if ((memoryKind == GcHeap) && m_pCompiler->byrefStatesMatchGcHeapStates)
-                    {
-                        // We've already propagated the "out" number to the phi shared with ByrefExposed,
-                        // but still need to update bbMemorySsaPhiFunc to be in sync between GcHeap and ByrefExposed.
-                        assert(memoryKind > ByrefExposed);
-                        assert(block->bbMemorySsaNumOut[memoryKind] == block->bbMemorySsaNumOut[ByrefExposed]);
-    #if !defined(TARGET_WASM)
-                        assert((succ->bbMemorySsaPhiFunc[ByrefExposed] == succMemoryPhi) ||
-                               (succ->bbMemorySsaPhiFunc[ByrefExposed]->m_nextArg ==
-                                (succMemoryPhi == BasicBlock::EmptyMemoryPhiDef ? nullptr : succMemoryPhi)));
-    #endif // TARGET_WASM
-                        succMemoryPhi = succ->bbMemorySsaPhiFunc[ByrefExposed];
-
-                        continue;
-                    }
-
-                    if (succMemoryPhi == BasicBlock::EmptyMemoryPhiDef)
-                    {
-                        succMemoryPhi = new (m_pCompiler) BasicBlock::MemoryPhiArg(block->bbMemorySsaNumOut[memoryKind]);
-                    }
-                    else
-                    {
-                        BasicBlock::MemoryPhiArg* curArg = succMemoryPhi;
-                        unsigned                  ssaNum = block->bbMemorySsaNumOut[memoryKind];
-                        bool                      found  = false;
-                        // This is a quadratic algorithm.  We might need to consider some switch over to a hash table
-                        // representation for the arguments of a phi node, to make this linear.
-                        while (curArg != nullptr)
-                        {
-                            if (curArg->m_ssaNum == ssaNum)
-                            {
-                                found = true;
-                                break;
-                            }
-                            curArg = curArg->m_nextArg;
-                        }
-                        if (!found)
-                        {
-                            succMemoryPhi = new (m_pCompiler) BasicBlock::MemoryPhiArg(ssaNum, succMemoryPhi);
-                        }
-                    }
-                    DBG_SSA_JITDUMP("  Added phi arg for %s u:%d from " FMT_BB " in " FMT_BB ".\n",
-                                    memoryKindNames[memoryKind], block->bbMemorySsaNumOut[memoryKind], block->bbNum,
-                                    succ->bbNum);
-                }
+                return;
             }
-#if defined(TARGET_WASM)
+#endif // TARGET_WASM
+
+            BasicBlock::MemoryPhiArg*& succMemoryPhi = succ->bbMemorySsaPhiFunc[memoryKind];
+            if (succMemoryPhi != nullptr)
+            {
+                if ((memoryKind == GcHeap) && m_pCompiler->byrefStatesMatchGcHeapStates)
+                {
+                    // We've already propagated the "out" number to the phi shared with ByrefExposed,
+                    // but still need to update bbMemorySsaPhiFunc to be in sync between GcHeap and ByrefExposed.
+                    assert(memoryKind > ByrefExposed);
+                    assert(block->bbMemorySsaNumOut[memoryKind] == block->bbMemorySsaNumOut[ByrefExposed]);
+#if !defined(TARGET_WASM)
+                    assert((succ->bbMemorySsaPhiFunc[ByrefExposed] == succMemoryPhi) ||
+                           (succ->bbMemorySsaPhiFunc[ByrefExposed]->m_nextArg ==
+                            (succMemoryPhi == BasicBlock::EmptyMemoryPhiDef ? nullptr : succMemoryPhi)));
+#endif // TARGET_WASM
+                    succMemoryPhi = succ->bbMemorySsaPhiFunc[ByrefExposed];
+
+                    continue;
+                }
+
+                if (succMemoryPhi == BasicBlock::EmptyMemoryPhiDef)
+                {
+                    succMemoryPhi = new (m_pCompiler) BasicBlock::MemoryPhiArg(block->bbMemorySsaNumOut[memoryKind]);
+                }
+                else
+                {
+                    BasicBlock::MemoryPhiArg* curArg = succMemoryPhi;
+                    unsigned                  ssaNum = block->bbMemorySsaNumOut[memoryKind];
+                    bool                      found  = false;
+                    // This is a quadratic algorithm.  We might need to consider some switch over to a hash table
+                    // representation for the arguments of a phi node, to make this linear.
+                    while (curArg != nullptr)
+                    {
+                        if (curArg->m_ssaNum == ssaNum)
+                        {
+                            found = true;
+                            break;
+                        }
+                        curArg = curArg->m_nextArg;
+                    }
+                    if (!found)
+                    {
+                        succMemoryPhi = new (m_pCompiler) BasicBlock::MemoryPhiArg(ssaNum, succMemoryPhi);
+                    }
+                }
+                DBG_SSA_JITDUMP("  Added phi arg for %s u:%d from " FMT_BB " in " FMT_BB ".\n",
+                                memoryKindNames[memoryKind], block->bbMemorySsaNumOut[memoryKind], block->bbNum,
+                                succ->bbNum);
+            }
         }
-#endif
 
         // If "succ" is the first block of a try block (and "block" is not also in that try block)
         // then we must look at the vars that have phi defs in the corresponding handler;
@@ -1544,6 +1545,14 @@ void SsaBuilder::AddPhiArgsToSuccessors(BasicBlock* block)
                 // Now handle memory.
                 for (MemoryKind memoryKind : allMemoryKinds())
                 {
+#ifdef TARGET_WASM
+                    // TODO-LLVM: LIR memory liveness is NYI upstream. Delete when that is fixed.
+                    if (block->IsLIR())
+                    {
+                        return;
+                    }
+#endif // TARGET_WASM
+
                     BasicBlock::MemoryPhiArg*& handlerMemoryPhi = handlerStart->bbMemorySsaPhiFunc[memoryKind];
                     if (handlerMemoryPhi != nullptr)
                     {
