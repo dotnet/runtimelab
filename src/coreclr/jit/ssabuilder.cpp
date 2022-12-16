@@ -1395,7 +1395,7 @@ void SsaBuilder::AddPhiArgsToSuccessors(BasicBlock* block)
             // TODO-LLVM: LIR memory liveness is NYI upstream. Delete when that is fixed.
             if (block->IsLIR())
             {
-                return;
+                break;
             }
 #endif // TARGET_WASM
 
