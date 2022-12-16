@@ -1391,6 +1391,14 @@ void SsaBuilder::AddPhiArgsToSuccessors(BasicBlock* block)
         // Now handle memory.
         for (MemoryKind memoryKind : allMemoryKinds())
         {
+#ifdef TARGET_WASM
+            // TODO-LLVM: LIR memory liveness is NYI upstream. Delete when that is fixed.
+            if (block->IsLIR())
+            {
+                break;
+            }
+#endif // TARGET_WASM
+
             BasicBlock::MemoryPhiArg*& succMemoryPhi = succ->bbMemorySsaPhiFunc[memoryKind];
             if (succMemoryPhi != nullptr)
             {
@@ -1535,6 +1543,14 @@ void SsaBuilder::AddPhiArgsToSuccessors(BasicBlock* block)
                 // Now handle memory.
                 for (MemoryKind memoryKind : allMemoryKinds())
                 {
+#ifdef TARGET_WASM
+                    // TODO-LLVM: LIR memory liveness is NYI upstream. Delete when that is fixed.
+                    if (block->IsLIR())
+                    {
+                        break;
+                    }
+#endif // TARGET_WASM
+
                     BasicBlock::MemoryPhiArg*& handlerMemoryPhi = handlerStart->bbMemorySsaPhiFunc[memoryKind];
                     if (handlerMemoryPhi != nullptr)
                     {

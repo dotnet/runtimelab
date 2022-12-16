@@ -16385,10 +16385,11 @@ bool GenTree::IsFieldAddr(Compiler* comp, GenTree** pBaseAddr, FieldSeqNode** pF
             baseAddr = AsOp()->gtOp1;
         }
 
-        if (baseAddr != nullptr)
-        {
-            assert(!baseAddr->TypeIs(TYP_REF) || !comp->GetZeroOffsetFieldMap()->Lookup(baseAddr));
-        }
+        // TODO-LLVM: delete when https://github.com/dotnet/runtime/pull/71455 is merged.
+        // if (baseAddr != nullptr)
+        // {
+        //     assert(!baseAddr->TypeIs(TYP_REF) || !comp->GetZeroOffsetFieldMap()->Lookup(baseAddr));
+        // }
     }
     else if (comp->GetZeroOffsetFieldMap()->Lookup(this, &fldSeq))
     {
