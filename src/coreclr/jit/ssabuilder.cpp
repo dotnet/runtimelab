@@ -1388,8 +1388,6 @@ void SsaBuilder::AddPhiArgsToSuccessors(BasicBlock* block)
 #if defined(TARGET_WASM)
         }
 #endif
-
-
         // Now handle memory.
         for (MemoryKind memoryKind : allMemoryKinds())
         {
