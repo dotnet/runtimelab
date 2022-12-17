@@ -125,7 +125,7 @@ if defined RunNativeAot (
     if errorlevel 1 (
         ECHO END COMPILATION - FAILED
         ECHO FAILED
-        exit /b 1
+        exit 1
     )
 
     set ExePath=$(ExeRunner)native\$(MSBuildProjectName)$(ExeExtension)
@@ -163,6 +163,7 @@ if defined RunNativeAot (
     <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
     <ProduceReferenceAssembly>false</ProduceReferenceAssembly>
     <RuntimeIdentifier>$(OutputRid)</RuntimeIdentifier>
+    <MSBuildEnableWorkloadResolver>false</MSBuildEnableWorkloadResolver>
     $(_RootEntryAssemblyLine)
   </PropertyGroup>
 
