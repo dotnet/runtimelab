@@ -19788,20 +19788,22 @@ GenTree* Compiler::gtNewSimdCmpOpAllNode(genTreeOps  op,
 
     NamedIntrinsic intrinsic = NI_Illegal;
 
-#if defined(TARGET_XARCH)
-    if (simdSize == 32)
-    {
-        assert(compIsaSupportedDebugOnly(InstructionSet_AVX));
-        assert(varTypeIsFloating(simdBaseType) || compIsaSupportedDebugOnly(InstructionSet_AVX2));
-    }
-#endif // TARGET_XARCH
-
     switch (op)
     {
 #if defined(TARGET_XARCH)
         case GT_EQ:
         {
-            intrinsic = (simdSize == 32) ? NI_Vector256_op_Equality : NI_Vector128_op_Equality;
+            if (simdSize == 32)
+            {
+                assert(compIsaSupportedDebugOnly(InstructionSet_AVX));
+                assert(varTypeIsFloating(simdBaseType) || compIsaSupportedDebugOnly(InstructionSet_AVX2));
+
+                intrinsic = NI_Vector256_op_Equality;
+            }
+            else
+            {
+                intrinsic = NI_Vector128_op_Equality;
+            }
             break;
         }
 
@@ -19817,6 +19819,12 @@ GenTree* Compiler::gtNewSimdCmpOpAllNode(genTreeOps  op,
 
             if (simdSize == 32)
             {
+                // TODO-XArch-CQ: It's a non-trivial amount of work to support these
+                // for floating-point while only utilizing AVX. It would require, among
+                // other things, inverting the comparison and potentially support for a
+                // new Avx.TestNotZ intrinsic to ensure the codegen remains efficient.
+                assert(compIsaSupportedDebugOnly(InstructionSet_AVX2));
+
                 intrinsic     = NI_Vector256_op_Equality;
                 getAllBitsSet = NI_Vector256_get_AllBitsSet;
             }
@@ -19927,14 +19935,6 @@ GenTree* Compiler::gtNewSimdCmpOpAnyNode(genTreeOps  op,
 
     NamedIntrinsic intrinsic = NI_Illegal;
 
-#if defined(TARGET_XARCH)
-    if (simdSize == 32)
-    {
-        assert(compIsaSupportedDebugOnly(InstructionSet_AVX));
-        assert(varTypeIsFloating(simdBaseType) || compIsaSupportedDebugOnly(InstructionSet_AVX2));
-    }
-#endif // TARGET_XARCH
-
     switch (op)
     {
 #if defined(TARGET_XARCH)
@@ -19947,7 +19947,20 @@ GenTree* Compiler::gtNewSimdCmpOpAnyNode(genTreeOps  op,
             // We want to generate a comparison along the lines of
             // GT_XX(op1, op2).As<T, TInteger>() != Vector128<TInteger>.Zero
 
-            intrinsic = (simdSize == 32) ? NI_Vector256_op_Inequality : NI_Vector128_op_Inequality;
+            if (simdSize == 32)
+            {
+                // TODO-XArch-CQ: It's a non-trivial amount of work to support these
+                // for floating-point while only utilizing AVX. It would require, among
+                // other things, inverting the comparison and potentially support for a
+                // new Avx.TestNotZ intrinsic to ensure the codegen remains efficient.
+                assert(compIsaSupportedDebugOnly(InstructionSet_AVX2));
+
+                intrinsic = NI_Vector256_op_Inequality;
+            }
+            else
+            {
+                intrinsic = NI_Vector128_op_Inequality;
+            }
 
             op1 = gtNewSimdCmpOpNode(op, simdType, op1, op2, simdBaseJitType, simdSize,
                                      /* isSimdAsHWIntrinsic */ false);
@@ -19969,7 +19982,17 @@ GenTree* Compiler::gtNewSimdCmpOpAnyNode(genTreeOps  op,
 
         case GT_NE:
         {
-            intrinsic = (simdSize == 32) ? NI_Vector256_op_Inequality : NI_Vector128_op_Inequality;
+            if (simdSize == 32)
+            {
+                assert(compIsaSupportedDebugOnly(InstructionSet_AVX));
+                assert(varTypeIsFloating(simdBaseType) || compIsaSupportedDebugOnly(InstructionSet_AVX2));
+
+                intrinsic = NI_Vector256_op_Inequality;
+            }
+            else
+            {
+                intrinsic = NI_Vector128_op_Inequality;
+            }
             break;
         }
 #elif defined(TARGET_ARM64)
