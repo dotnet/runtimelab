@@ -163,6 +163,7 @@ if defined RunNativeAot (
     <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
     <ProduceReferenceAssembly>false</ProduceReferenceAssembly>
     <RuntimeIdentifier>$(OutputRid)</RuntimeIdentifier>
+    <MSBuildEnableWorkloadResolver>false</MSBuildEnableWorkloadResolver>
     $(_RootEntryAssemblyLine)
   </PropertyGroup>
 

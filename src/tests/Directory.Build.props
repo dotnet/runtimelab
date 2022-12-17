@@ -186,7 +186,7 @@
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(TargetOS)' == 'Browser'">
-    <MSBuildEnableWorkloadResolver>false</MSBuildEnableWorkloadResolver>
+    <CLRTestMSBuildArgs>/p:MSBuildEnableWorkloadResolver=false</CLRTestMSBuildArgs>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(IsTestsCommonProject)' != 'true'">
