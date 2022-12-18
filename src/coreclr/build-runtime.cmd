@@ -348,6 +348,16 @@ for /f "delims=" %%a in ("-%__RequestedBuildComponents%-") do (
         set __CMakeTarget=!__CMakeTarget! wasmjit
         set __ExtraCmakeArgs=!__ExtraCmakeArgs! "-DCLR_CMAKE_BUILD_LLVM_JIT=1"
 
+        if "%__BuildType%"=="Release" (
+            if defined LLVM_CMAKE_CONFIG_RELEASE (
+                set LLVM_CMAKE_CONFIG=%LLVM_CMAKE_CONFIG_RELEASE%
+            )
+        ) else (
+            if defined LLVM_CMAKE_CONFIG_DEBUG (
+                set LLVM_CMAKE_CONFIG=%LLVM_CMAKE_CONFIG_DEBUG%
+            )
+        )
+
         if not defined LLVM_CMAKE_CONFIG (
             echo %__ErrMsgPrefix%%__MsgPrefix%Error: The LLVM_CMAKE_CONFIG environment variable pointing to llvm-build-dir/lib/cmake/llvm must be set.
             goto ExitWithError
