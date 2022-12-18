@@ -15,12 +15,17 @@ steps:
 - ${{ if and(ne(parameters.archType, 'arm'), ne(parameters.archType, 'arm64')) }}:
 
   # For NativeAOT-LLVM, we have just built the Wasm-targeting native artifacts (the runtime and libraries).
-  # Now we need to build the cross-targeting compilers, RyuJit and ILC.
+  # Now we need to build the cross-targeting compilers, RyuJit and ILC. Likewise with packages.
 
   - ${{ if eq(parameters.archType, 'wasm') }}:
     - script: $(Build.SourcesDirectory)/build$(scriptExt) clr.alljits+clr.wasmjit+clr.nativeaotlibs+clr.tools -c $(buildConfigUpper)
       displayName: Build the ILC and RyuJit cross-compilers
 
+    - ${{ if eq(parameters.isOfficialBuild, true) }}:
+      - script: $(Build.SourcesDirectory)/build$(scriptExt) libs+nativeaot.packages -c $(buildConfigUpper)
+        displayName: Build host packages
+
+  # Run libraries tests
   - ${{ if and(ne(parameters.isOfficialBuild, true),and(eq(parameters.buildConfig, 'Release'),ne(parameters.archType, 'wasm'))) }}:
     - script: $(Build.SourcesDirectory)/build$(scriptExt) libs.tests -c Release -test /p:TestNativeAot=true
       displayName: Build and run libraries tests
@@ -34,8 +39,8 @@ steps:
   - ${{ elseif eq(parameters.osGroup, 'windows') }}:
     - script: $(Build.SourcesDirectory)/src/tests/build$(scriptExt) nativeaot $(buildConfigUpper) ${{ parameters.archType }} ${{ parameters.testFilter }} /p:NativeAotMultimodule=true
       displayName: Build tests
-  - ${{ elseif ne(parameters.osGroup, 'windows') }}:
-    - script: $(Build.SourcesDirectory)/src/tests/build$(scriptExt) nativeaot $(buildConfigUpper) ${{ parameters.archType }} 'tree nativeaot'
+  - ${{ else }}:
+    - script: $(Build.SourcesDirectory)/src/tests/build$(scriptExt) nativeaot $(buildConfigUpper) ${{ parameters.archType }} ${{ parameters.testFilter }}
       displayName: Build tests
 
   - ${{ if eq(parameters.runSingleFileTests, true) }}:
