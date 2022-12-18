@@ -21,9 +21,8 @@ steps:
     - script: $(Build.SourcesDirectory)/build$(scriptExt) clr.alljits+clr.wasmjit+clr.nativeaotlibs+clr.tools -c $(buildConfigUpper)
       displayName: Build the ILC and RyuJit cross-compilers
 
-    - ${{ if eq(parameters.isOfficialBuild, true) }}:
-      - script: $(Build.SourcesDirectory)/build$(scriptExt) libs+nativeaot.packages -c $(buildConfigUpper)
-        displayName: Build host packages
+    - script: $(Build.SourcesDirectory)/build$(scriptExt) libs+nativeaot.packages -c $(buildConfigUpper)
+      displayName: Build host packages
 
   # Run libraries tests
   - ${{ if and(ne(parameters.isOfficialBuild, true),and(eq(parameters.buildConfig, 'Release'),ne(parameters.archType, 'wasm'))) }}:
@@ -61,7 +60,7 @@ steps:
       displayName: Run tests in multifile mode
 
 # Upload unsigned artifacts
-- ${{ if eq(parameters.uploadIntermediateArtifacts, true) }}:
+- ${{ if eq(true, true) }}:
   - template: /eng/pipelines/common/upload-intermediate-artifacts-step.yml
     parameters:
       name: ${{ parameters.platform }}
