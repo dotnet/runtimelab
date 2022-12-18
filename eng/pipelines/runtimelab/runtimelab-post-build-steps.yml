@@ -40,7 +40,7 @@ steps:
     - script: $(Build.SourcesDirectory)/src/tests/build$(scriptExt) nativeaot $(buildConfigUpper) ${{ parameters.archType }} ${{ parameters.testFilter }} /p:NativeAotMultimodule=true
       displayName: Build tests
   - ${{ else }}:
-    - script: $(Build.SourcesDirectory)/src/tests/build$(scriptExt) nativeaot $(buildConfigUpper) ${{ parameters.archType }} ${{ parameters.testFilter }}
+    - script: $(Build.SourcesDirectory)/src/tests/build$(scriptExt) nativeaot $(buildConfigUpper) ${{ parameters.archType }} 'tree nativeaot'
       displayName: Build tests
 
   - ${{ if eq(parameters.runSingleFileTests, true) }}:
