@@ -9,6 +9,12 @@
     <BuildingAnOfficialBuildLeg Condition="'$(BuildingAnOfficialBuildLeg)' == '' and '$(OfficialBuildId)' != '' and '$(DotNetBuildFromSource)' != 'true'">true</BuildingAnOfficialBuildLeg>
   </PropertyGroup>
 
+  <!-- Seeding these two properties from Platform allows one to use VS's configuration manager to switch targets -->
+  <PropertyGroup Condition="'$(Platform)' != ''">
+    <TargetOS Condition="'$(Platform)' == 'wasm'">Browser</TargetOS>
+    <TargetArchitecture Condition="'$(Platform)' != 'AnyCPU'">$(Platform)</TargetArchitecture>
+  </PropertyGroup>
+
   <PropertyGroup Label="CalculateTargetOS">
     <_hostOS>Linux</_hostOS>
     <_hostOS Condition="$([MSBuild]::IsOSPlatform('OSX'))">OSX</_hostOS>

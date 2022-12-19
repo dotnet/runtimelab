@@ -14,9 +14,6 @@
   <PropertyGroup>
     <NativeFormatCommonPath>$(CompilerCommonPath)\Internal\NativeFormat</NativeFormatCommonPath>
   </PropertyGroup>
-  <PropertyGroup>
-    <DefineConstants Condition="'$(TargetsBrowser)' == 'true'">TARGET_UNIX;TARGET_WASM;TARGET_32BIT;$(DefineConstants)</DefineConstants>
-  </PropertyGroup>
   <ItemGroup>
     <Compile Include="$(NativeFormatCommonPath)\NativeFormat.cs" />
     <Compile Include="$(NativeFormatCommonPath)\NativeFormatReader.cs" />
