@@ -76,19 +76,17 @@ void Llvm::lowerLocals()
             }
         }
 
-        // With optimizations off, we haven't run liveness (yet), so don't know which locals (if any) are live-in/out
-        // of handlers and have to assume the worst. TODO-LLVM: move shadow stack lowering after liveness / SSA and
-        // fix this.
-        if (!_compiler->fgLocalVarLivenessDone && _compiler->ehAnyFunclets())
+        // We don't know if untracked locals are live-in/out of handlers and have to assume the worst.
+        if (!varDsc->lvTracked && _compiler->ehAnyFunclets())
         {
             varDsc->lvLiveInOutOfHndlr = 1;
         }
 
         // GC locals needs to go on the shadow stack for the scan to find them. Locals live-in/out of handlers
         // need to be preserved after the native unwind for the funclets to be callable, thus, they too need to
-        // go on the shadow stack (except for the shadow stack itself as it will be passed to funclets directly).
+        // go on the shadow stack (except for parameters to funclets, naturally).
         //
-        if (varDsc->HasGCPtr() || (varDsc->lvLiveInOutOfHndlr && (lclNum != _shadowStackLclNum)))
+        if (!isFuncletParameter(lclNum) && (varDsc->HasGCPtr() || varDsc->lvLiveInOutOfHndlr))
         {
             if (_compiler->lvaGetPromotionType(varDsc) == Compiler::PROMOTION_TYPE_INDEPENDENT)
             {
@@ -161,6 +159,14 @@ void Llvm::populateLlvmArgNums()
     if (_sigInfo.hasTypeArg())
     {
         failFunctionCompilation();
+    }
+
+    if (_compiler->ehAnyFunclets())
+    {
+        _originalShadowStackLclNum = _compiler->lvaGrabTemp(true DEBUGARG("original shadowstack"));
+        LclVarDsc* originalShadowStackVarDsc = _compiler->lvaGetDesc(_originalShadowStackLclNum);
+        originalShadowStackVarDsc->lvType = TYP_I_IMPL;
+        originalShadowStackVarDsc->lvCorInfoType = CORINFO_TYPE_PTR;
     }
 
     _shadowStackLclNum = _compiler->lvaGrabTemp(true DEBUGARG("shadowstack"));
@@ -481,7 +487,13 @@ void Llvm::ConvertShadowStackLocalNode(GenTreeLclVarCommon* node)
 
     if (isShadowFrameLocal(varDsc) && (lclVar->GetRegNum() == REG_NA))
     {
-        GenTree* lclAddress = insertShadowStackAddr(node, varDsc->GetStackOffset() + node->GetLclOffs());
+        // Funclets (especially filters) will be called by the dispatcher while live state still exists
+        // on shadow frames below (in the tradional sense, where stacks grow down) them. For this reason,
+        // funclets will access state from the original frame via a dedicated shadow stack pointer, and
+        // use the actual shadow stack for calls.
+        unsigned shadowStackLclNum = CurrentBlock()->hasHndIndex() ? _originalShadowStackLclNum : _shadowStackLclNum;
+        GenTree* lclAddress =
+            insertShadowStackAddr(node, varDsc->GetStackOffset() + node->GetLclOffs(), shadowStackLclNum);
 
         genTreeOps indirOper;
         GenTree* storedValue = nullptr;
@@ -734,7 +746,7 @@ void Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
     GenTreeCall::Use* lastArg = nullptr;
     if (callHasShadowStackArg(callNode))
     {
-        GenTree* calleeShadowStack = insertShadowStackAddr(callNode, _shadowStackLocalsSize);
+        GenTree* calleeShadowStack = insertShadowStackAddr(callNode, _shadowStackLocalsSize, _shadowStackLclNum);
 
         GenTreePutArgType* calleeShadowStackPutArg =
             _compiler->gtNewPutArgType(calleeShadowStack, CORINFO_TYPE_PTR, NO_CLASS_HANDLE);
@@ -839,7 +851,7 @@ void Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
                     assert(use.GetType() != TYP_STRUCT);
 
                     unsigned fieldOffsetValue = _shadowStackLocalsSize + shadowStackUseOffest + use.GetOffset();
-                    GenTree* fieldSlotAddr = insertShadowStackAddr(callNode, fieldOffsetValue);
+                    GenTree* fieldSlotAddr = insertShadowStackAddr(callNode, fieldOffsetValue, _shadowStackLclNum);
                     GenTree* fieldStoreNode = createShadowStackStoreNode(use.GetType(), fieldSlotAddr, use.GetNode());
 
                     CurrentRange().InsertBefore(callNode, fieldStoreNode);
@@ -850,7 +862,7 @@ void Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
             else
             {
                 unsigned offsetValue = _shadowStackLocalsSize + shadowStackUseOffest;
-                GenTree* slotAddr  = insertShadowStackAddr(callNode, offsetValue);
+                GenTree* slotAddr  = insertShadowStackAddr(callNode, offsetValue, _shadowStackLclNum);
                 GenTree* storeNode = createShadowStackStoreNode(argNode->TypeGet(), slotAddr, argNode);
 
                 CurrentRange().InsertBefore(callNode, storeNode);
@@ -1135,9 +1147,11 @@ GenTree* Llvm::createShadowStackStoreNode(var_types storeType, GenTree* addr, Ge
     return storeNode;
 }
 
-GenTree* Llvm::insertShadowStackAddr(GenTree* insertBefore, ssize_t offset)
+GenTree* Llvm::insertShadowStackAddr(GenTree* insertBefore, ssize_t offset, unsigned shadowStackLclNum)
 {
-    GenTree* shadowStackLcl = _compiler->gtNewLclvNode(_shadowStackLclNum, TYP_I_IMPL);
+    assert((shadowStackLclNum == _shadowStackLclNum) || (shadowStackLclNum == _originalShadowStackLclNum));
+
+    GenTree* shadowStackLcl = _compiler->gtNewLclvNode(shadowStackLclNum, TYP_I_IMPL);
     CurrentRange().InsertBefore(insertBefore, shadowStackLcl);
 
     if (offset == 0)
@@ -1170,4 +1184,9 @@ bool Llvm::isShadowFrameLocal(LclVarDsc* varDsc) const
     // Other backends use "lvOnFrame" for this value, but for us it is not
     // a great fit because we add new locals after shadow frame layout.
     return varDsc->GetRegNum() == REG_STK;
+}
+
+bool Llvm::isFuncletParameter(unsigned lclNum) const
+{
+    return (lclNum == _shadowStackLclNum) || (lclNum == _originalShadowStackLclNum);
 }

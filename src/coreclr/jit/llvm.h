@@ -144,6 +144,7 @@ private:
     JitHashTable<std::string, JitStdStringKeyFuncs, DebugMetadata> _debugMetadataMap;
 
     unsigned _shadowStackLocalsSize;
+    unsigned _originalShadowStackLclNum = BAD_VAR_NUM;
     unsigned _shadowStackLclNum = BAD_VAR_NUM;
     unsigned _retAddressLclNum = BAD_VAR_NUM;
     unsigned _llvmArgCount;
@@ -250,9 +251,10 @@ private:
 
     GenTree* createStoreNode(var_types nodeType, GenTree* addr, GenTree* data);
     GenTree* createShadowStackStoreNode(var_types storeType, GenTree* addr, GenTree* data);
-    GenTree* insertShadowStackAddr(GenTree* insertBefore, ssize_t offset);
+    GenTree* insertShadowStackAddr(GenTree* insertBefore, ssize_t offset, unsigned shadowStackLclNum);
 
     bool isShadowFrameLocal(LclVarDsc* varDsc) const;
+    bool isFuncletParameter(unsigned lclNum) const;
 
     // ================================================================================================================
     // |                                                   Codegen                                                    |
@@ -267,6 +269,7 @@ private:
     bool initializeFunctions();
     void generateProlog();
     void initializeLocals();
+    void generateFuncletProlog(unsigned funcIdx);
     void generateBlock(BasicBlock* block);
     void generateEHDispatch();
     void fillPhis();
@@ -334,6 +337,7 @@ private:
     Value* gepOrAddr(Value* addr, unsigned offset);
     Value* getShadowStack();
     Value* getShadowStackForCallee();
+    Value* getOriginalShadowStack();
 
     DebugMetadata getOrCreateDebugMetadata(const char* documentFileName);
     llvm::DILocation* createDebugFunctionAndDiLocation(struct DebugMetadata debugMetadata, unsigned int lineNo);
@@ -350,8 +354,8 @@ private:
     llvm::BasicBlock* getLastLlvmBlockForBlock(BasicBlock* block);
     void setLastLlvmBlockForBlock(BasicBlock* block, llvm::BasicBlock* llvmBlock);
 
-    AllocaInst*  getLocalAddr(unsigned lclNum);
-    unsigned int getTotalLocalOffset();
+    Value* getLocalAddr(unsigned lclNum);
+    unsigned getTotalLocalOffset();
 };
 
 
