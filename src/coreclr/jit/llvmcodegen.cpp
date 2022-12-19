@@ -143,9 +143,10 @@ bool Llvm::initializeFunctions()
             retLlvmType = Type::getVoidTy(_llvmContext);
         }
 
-        // All funclets have only one argument: the shadow stack.
-        FunctionType* llvmFuncType = FunctionType::get(retLlvmType, {Type::getInt8PtrTy(_llvmContext)},
-                                                       /* isVarArg */ false);
+        // All funclets two arguments: original and actual shadow stacks.
+        Type* ptrLlvmType = Type::getInt8PtrTy(_llvmContext);
+        FunctionType* llvmFuncType = FunctionType::get(retLlvmType, {ptrLlvmType, ptrLlvmType}, /* isVarArg */ false);
+
         const char* kindName;
         switch (ehDsc->ebdHandlerType)
         {
@@ -242,6 +243,12 @@ void Llvm::initializeLocals()
             continue;
         }
 
+        if (lclNum == _originalShadowStackLclNum)
+        {
+            // We model funclet parameters specially because it is not trivial to represent them in IR faithfully.
+            continue;
+        }
+
         // See "genCheckUseBlockInit", "fgInterBlockLocalVarLiveness" and "SsaBuilder::RenameVariables" as references
         // for the zero-init logic.
         //
@@ -325,6 +332,11 @@ void Llvm::initializeLocals()
             JITDUMPEXEC(storeInst->dump());
         }
     }
+}
+
+void Llvm::generateFuncletProlog(unsigned funcIdx)
+{
+    // TODO-LLVM-EH: create allocas for all tracked locals that are not in SSA or the shadow stack.
 }
 
 void Llvm::generateBlock(BasicBlock* block)
@@ -776,11 +788,16 @@ void Llvm::buildLocalVar(GenTreeLclVar* lclVar)
     unsigned int ssaNum = lclVar->GetSsaNum();
     LclVarDsc*   varDsc = _compiler->lvaGetDesc(lclVar);
 
+    // We model funclet parameters specially - it is simpler then representing them faithfully in IR.
     if (lclNum == _shadowStackLclNum)
     {
-        // The shadow stack must be handled specially as the only local used directly by funclets.
         assert((ssaNum == SsaConfig::FIRST_SSA_NUM) || (ssaNum == SsaConfig::RESERVED_SSA_NUM));
         llvmRef = getShadowStack();
+    }
+    else if (lclNum == _originalShadowStackLclNum)
+    {
+        assert((ssaNum == SsaConfig::FIRST_SSA_NUM) || (ssaNum == SsaConfig::RESERVED_SSA_NUM));
+        llvmRef = getOriginalShadowStack();
     }
     else if (lclVar->HasSsaName())
     {
@@ -1625,8 +1642,10 @@ void Llvm::buildReturn(GenTree* node)
 
 void Llvm::buildCatchArg(GenTree* node)
 {
-    // TODO-LLVM-EH: actually produce the exception.
-    Value* excObjValue = llvm::Constant::getNullValue(Type::getInt8PtrTy(_llvmContext));
+    // The exception object is passed as the first shadow parameter to funclets.
+    Type* excLlvmType = getLlvmTypeForVarType(node->TypeGet());
+    Value* shadowStackValue = _builder.CreateBitCast(getShadowStack(), excLlvmType->getPointerTo());
+    Value* excObjValue = _builder.CreateLoad(excLlvmType, shadowStackValue);
 
     mapGenTreeToValue(node, excObjValue);
 }
@@ -1662,7 +1681,10 @@ void Llvm::buildCallFinally(BasicBlock* block)
     // Other backends will simply skip generating the second block, while we will branch to it.
     //
     Function* finallyLlvmFunc = getLlvmFunctionForIndex(getLlvmFunctionIndexForBlock(block->bbJumpDest));
-    emitCallOrInvoke(finallyLlvmFunc, {getShadowStack()});
+    Value* shadowStackValue = getShadowStack();
+
+    // For a locally invoked finally, both the original and actual shadow stacks have the same value.
+    emitCallOrInvoke(finallyLlvmFunc, {shadowStackValue, shadowStackValue});
 
     if ((block->bbFlags & BBF_RETLESS_CALL) != 0)
     {
@@ -2035,6 +2057,13 @@ Value* Llvm::getShadowStackForCallee()
 {
     // Note that funclets have the shadow stack arg in the same position (0) as the main function.
     return gepOrAddr(getShadowStack(), getTotalLocalOffset());
+}
+
+Value* Llvm::getOriginalShadowStack()
+{
+    // The original shadow stack pointer is the second funclet parameter.
+    assert(getCurrentLlvmFunction() != getRootLlvmFunction());
+    return getCurrentLlvmFunction()->getArg(1);
 }
 
 DebugMetadata Llvm::getOrCreateDebugMetadata(const char* documentFileName)
