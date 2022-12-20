@@ -95,7 +95,7 @@ stages:
       condition: eq( ${{ parameters.enableNugetValidation }}, 'true')
       pool:
         name: NetCore1ESPool-Internal
-        demands: ImageOverride -equals Build.Server.Amd64.VS2019
+        demands: ImageOverride -equals windows.vs2019.amd64
 
       steps:
         - template: setup-maestro-vars.yml
@@ -126,7 +126,7 @@ stages:
       condition: and( eq( ${{ parameters.enableSigningValidation }}, 'true'), ne( variables['PostBuildSign'], 'true'))
       pool:
         name: NetCore1ESPool-Internal
-        demands: ImageOverride -equals Build.Server.Amd64.VS2019
+        demands: ImageOverride -equals windows.vs2019.amd64
       steps:
         - template: setup-maestro-vars.yml
           parameters:
@@ -180,7 +180,7 @@ stages:
       condition: eq( ${{ parameters.enableSourceLinkValidation }}, 'true')
       pool:
         name: NetCore1ESPool-Internal
-        demands: ImageOverride -equals Build.Server.Amd64.VS2019
+        demands: ImageOverride -equals windows.vs2019.amd64
       steps:
         - template: setup-maestro-vars.yml
           parameters:
@@ -231,7 +231,7 @@ stages:
     timeoutInMinutes: 120
     pool:
       name: NetCore1ESPool-Internal
-      demands: ImageOverride -equals Build.Server.Amd64.VS2019
+      demands: ImageOverride -equals windows.vs2019.amd64
     steps:
       - template: setup-maestro-vars.yml
         parameters:
