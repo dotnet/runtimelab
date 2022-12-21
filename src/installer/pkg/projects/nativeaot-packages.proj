@@ -2,9 +2,15 @@
   <Import Sdk="Microsoft.Build.Traversal" Project="Sdk.props" />
 
   <ItemGroup>
+<<<<<<< HEAD
     <Project Include="Microsoft.DotNet.ILCompiler.LLVM\Microsoft.DotNet.ILCompiler.LLVM.pkgproj" />
     <ProjectReference Include="@(Project)" />
     <ProjectReference Include="@(Project)" AdditionalProperties="PackageTargetRuntime=$(PackageRID)" />
+=======
+    <Project Include="Microsoft.DotNet.ILCompiler\Microsoft.DotNet.ILCompiler.pkgproj" />
+    <ProjectReference Include="@(Project)" />
+    <ProjectReference Include="@(Project)" AdditionalProperties="PackageTargetRuntime=$(OutputRid)" />
+>>>>>>> 207f2b66678138d18a44339fa5326ad627efec22
   </ItemGroup>
 
   <Import Sdk="Microsoft.Build.Traversal" Project="Sdk.targets" />

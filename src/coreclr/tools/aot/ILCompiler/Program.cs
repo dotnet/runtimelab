@@ -63,6 +63,7 @@ namespace ILCompiler
         private string _guard;
         private int _maxGenericCycle = CompilerTypeSystemContext.DefaultGenericCycleCutoffPoint;
         private bool _useDwarf5;
+        private string _jitPath;
 
         private string _singleMethodTypeName;
         private string _singleMethodName;
@@ -86,9 +87,13 @@ namespace ILCompiler
 
         private IReadOnlyList<string> _directPInvokeLists = Array.Empty<string>();
 
+<<<<<<< HEAD
         private IReadOnlyList<string> _wasmImports = Array.Empty<string>();
 
         private IReadOnlyList<string> _wasmImportsLists = Array.Empty<string>();
+=======
+        private bool _resilient;
+>>>>>>> 207f2b66678138d18a44339fa5326ad627efec22
 
         private IReadOnlyList<string> _rootedAssemblies = Array.Empty<string>();
         private IReadOnlyList<string> _conditionallyRootedAssemblies = Array.Empty<string>();
@@ -197,6 +202,7 @@ namespace ILCompiler
                 syntax.DefineOption("systemmodule", ref _systemModuleName, "System module name (default: System.Private.CoreLib)");
                 syntax.DefineOption("multifile", ref _multiFile, "Compile only input files (do not compile referenced assemblies)");
                 syntax.DefineOption("waitfordebugger", ref waitForDebugger, "Pause to give opportunity to attach debugger");
+                syntax.DefineOption("resilient", ref _resilient, "Ignore unresolved types, methods, and assemblies. Defaults to false");
                 syntax.DefineOptionList("codegenopt", ref _codegenOptions, "Define a codegen option");
                 syntax.DefineOptionList("rdxml", ref _rdXmlFilePaths, "RD.XML file(s) for compilation");
                 syntax.DefineOption("map", ref _mapFileName, "Generate a map file");
@@ -236,6 +242,7 @@ namespace ILCompiler
 
                 syntax.DefineOption("targetarch", ref _targetArchitectureStr, "Target architecture for cross compilation");
                 syntax.DefineOption("targetos", ref _targetOSStr, "Target OS for cross compilation");
+                syntax.DefineOption("jitpath", ref _jitPath, "Path to JIT compiler library");
 
                 syntax.DefineOption("singlemethodtypename", ref _singleMethodTypeName, "Single method compilation: assembly-qualified name of the owning type");
                 syntax.DefineOption("singlemethodname", ref _singleMethodName, "Single method compilation: name of the method");
@@ -661,7 +668,12 @@ namespace ILCompiler
             {
                 // TODO : LLVM, this cast will fail if profile data is ever passed
                 ((RyuJitCompilationBuilder)builder).UseProfileData(_mibcFilePaths);
+<<<<<<< HEAD
             }
+=======
+            if (!String.IsNullOrEmpty(_jitPath))
+                ((RyuJitCompilationBuilder)builder).UseJitPath(_jitPath);
+>>>>>>> 207f2b66678138d18a44339fa5326ad627efec22
 
             PInvokeILEmitterConfiguration pinvokePolicy;
             if (_isLlvmCodegen)
@@ -831,6 +843,8 @@ namespace ILCompiler
                 // have answers for because we didn't scan the entire method.
                 builder.UseMethodImportationErrorProvider(scanResults.GetMethodImportationErrorProvider());
             }
+
+            builder.UseResilience(_resilient);
 
             ICompilation compilation = builder.ToCompilation();
 
