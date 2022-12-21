@@ -9,7 +9,7 @@ parameters:
   uploadTests: false
   testFilter: tree nativeaot
   runSingleFileTests: true
-  uploadIntermediateArtifacts: false
+  isOfficialBuild: false
 
 steps:
 - ${{ if and(ne(parameters.archType, 'arm'), ne(parameters.archType, 'arm64')) }}:
@@ -61,7 +61,7 @@ steps:
       displayName: Run tests in multifile mode
 
 # Upload unsigned artifacts
-- ${{ if eq(parameters.uploadIntermediateArtifacts, true) }}:
+- ${{ if eq(parameters.isOfficialBuild, true) }}:
   - template: /eng/pipelines/common/upload-intermediate-artifacts-step.yml
     parameters:
       name: ${{ parameters.platform }}
