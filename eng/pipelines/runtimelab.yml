@@ -127,7 +127,7 @@ stages:
         buildArgs: -s clr.alljits+clr.tools+clr.nativeaotlibs+libs+nativeaot.packages -c Release
         extraStepsTemplate: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
         extraStepsParameters:
-          uploadIntermediateArtifacts: ${{ variables.isOfficialBuild }}
+          isOfficialBuild: ${{ variables.isOfficialBuild }}
 
   #
   # Build with Release config and Release runtimeConfiguration (used for official builds) - Wasm
@@ -145,7 +145,7 @@ stages:
         buildArgs: -s clr.nativeaotlibs+clr.nativeaotbuild+libs+nativeaot.packages -c Release
         extraStepsTemplate: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
         extraStepsParameters:
-          uploadIntermediateArtifacts: ${{ variables.isOfficialBuild }}
+          isOfficialBuild: ${{ variables.isOfficialBuild }}
 
 
 - ${{ if eq(variables.isOfficialBuild, true) }}:

@@ -1,5 +1,5 @@
 parameters:
-  PublishRidAgnosticPackagesFromPlatform: windows_x64
+  PublishRidAgnosticPackagesFromPlatform: Browser_wasm_win
   publishingInfraVersion: 3
 
 stages:
