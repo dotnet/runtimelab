@@ -87,13 +87,11 @@ namespace ILCompiler
 
         private IReadOnlyList<string> _directPInvokeLists = Array.Empty<string>();
 
-<<<<<<< HEAD
         private IReadOnlyList<string> _wasmImports = Array.Empty<string>();
 
         private IReadOnlyList<string> _wasmImportsLists = Array.Empty<string>();
-=======
+
         private bool _resilient;
->>>>>>> 207f2b66678138d18a44339fa5326ad627efec22
 
         private IReadOnlyList<string> _rootedAssemblies = Array.Empty<string>();
         private IReadOnlyList<string> _conditionallyRootedAssemblies = Array.Empty<string>();
@@ -668,12 +666,10 @@ namespace ILCompiler
             {
                 // TODO : LLVM, this cast will fail if profile data is ever passed
                 ((RyuJitCompilationBuilder)builder).UseProfileData(_mibcFilePaths);
-<<<<<<< HEAD
             }
-=======
+
             if (!String.IsNullOrEmpty(_jitPath))
                 ((RyuJitCompilationBuilder)builder).UseJitPath(_jitPath);
->>>>>>> 207f2b66678138d18a44339fa5326ad627efec22
 
             PInvokeILEmitterConfiguration pinvokePolicy;
             if (_isLlvmCodegen)

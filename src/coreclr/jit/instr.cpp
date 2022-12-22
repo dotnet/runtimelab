@@ -2175,13 +2175,10 @@ void CodeGen::instGen_Set_Reg_To_Zero(emitAttr size, regNumber reg, insFlags fla
     GetEmitter()->emitIns_R_R(INS_xor, size, reg, reg);
 #elif defined(TARGET_ARM)
     GetEmitter()->emitIns_R_I(INS_mov, size, reg, 0 ARM_ARG(flags));
-<<<<<<< HEAD
 #elif defined(TARGET_WASM)
     GetEmitter()->emitIns_R_R(INS_xor, size, reg, reg);
-=======
 #elif defined(TARGET_ARM64)
     GetEmitter()->emitIns_Mov(INS_mov, size, reg, REG_ZR, /* canSkip */ true);
->>>>>>> 207f2b66678138d18a44339fa5326ad627efec22
 #else
 #error "Unknown TARGET"
 #endif
