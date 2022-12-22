@@ -22,7 +22,7 @@ steps:
       displayName: Build the ILC and RyuJit cross-compilers
 
     - ${{ if eq(parameters.isOfficialBuild, true) }}:
-      - script: $(Build.SourcesDirectory)/build$(scriptExt) libs+nativeaot.packages -c $(buildConfigUpper)
+      - script: $(Build.SourcesDirectory)/build$(scriptExt) libs+nativeaot.packages -c $(buildConfigUpper) /p:OfficialBuildId=$(Build.BuildNumber)
         displayName: Build host packages
 
   # Run libraries tests
