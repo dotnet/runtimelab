@@ -233,6 +233,7 @@ private:
     void assignShadowStackOffsets(std::vector<LclVarDsc*>& shadowStackLocals, unsigned shadowStackParamCount);
     void initializeLocalInProlog(unsigned lclNum, GenTree* value);
 
+    void lowerBlock(BasicBlock* block);
     void lowerStoreLcl(GenTreeLclVarCommon* storeLclNode);
     void lowerFieldOfDependentlyPromotedStruct(GenTree* node);
     void ConvertShadowStackLocalNode(GenTreeLclVarCommon* node);

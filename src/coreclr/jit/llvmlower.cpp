@@ -297,75 +297,96 @@ void Llvm::lowerBlocks()
 {
     for (BasicBlock* block : _compiler->Blocks())
     {
-        _currentBlock = block;
-        _currentRange = &LIR::AsRange(block);
+        lowerBlock(block);
+        block->bbFlags |= BBF_MARKED;
+    }
 
-        for (GenTree* node : CurrentRange())
+    // Lowering may insert out-of-line throw helper blocks that must themselves be lowered. We do not
+    // need a more complex "to a fixed point" loop here because lowering these throw helpers will not
+    // create new blocks.
+    //
+    for (BasicBlock* block : _compiler->Blocks())
+    {
+        if ((block->bbFlags & BBF_MARKED) == 0)
         {
-            switch (node->OperGet())
-            {
-                case GT_LCL_VAR:
-                case GT_LCL_FLD:
-                case GT_LCL_VAR_ADDR:
-                case GT_LCL_FLD_ADDR:
-                case GT_STORE_LCL_VAR:
-                case GT_STORE_LCL_FLD:
-                    lowerFieldOfDependentlyPromotedStruct(node);
-
-                    if (node->OperIs(GT_STORE_LCL_VAR))
-                    {
-                        lowerStoreLcl(node->AsLclVarCommon());
-                    }
-
-                    if (node->OperIsLocal() || node->OperIsLocalAddr())
-                    {
-                        ConvertShadowStackLocalNode(node->AsLclVarCommon());
-                    }
-
-                    if (node->OperIsLocalAddr() || node->OperIsLocalField())
-                    {
-                        // Indicates that this local is to live on the LLVM frame, and will not participate in SSA.
-                        _compiler->lvaGetDesc(node->AsLclVarCommon())->lvHasLocalAddr = 1;
-                    }
-                    break;
-
-                case GT_CALL:
-                    lowerCall(node->AsCall());
-                    break;
-
-                case GT_IND:
-                case GT_STOREIND:
-                case GT_OBJ:
-                case GT_BLK:
-                case GT_NULLCHECK:
-                    lowerIndir(node->AsIndir());
-                    break;
-
-                case GT_STORE_BLK:
-                case GT_STORE_OBJ:
-                    lowerStoreBlk(node->AsBlk());
-                    break;
-
-                case GT_DIV:
-                case GT_MOD:
-                case GT_UDIV:
-                case GT_UMOD:
-                    lowerDivMod(node->AsOp());
-                    break;
-
-                case GT_RETURN:
-                    lowerReturn(node->AsUnOp());
-                    break;
-
-                default:
-                    break;
-            }
+            lowerBlock(block);
         }
 
-        INDEBUG(CurrentRange().CheckLIR(_compiler, /* checkUnusedValues */ true));
+        block->bbFlags &= ~BBF_MARKED;
     }
 
     _currentBlock = nullptr;
+}
+
+void Llvm::lowerBlock(BasicBlock* block)
+{
+    _currentBlock = block;
+    _currentRange = &LIR::AsRange(block);
+
+    for (GenTree* node : CurrentRange())
+    {
+        switch (node->OperGet())
+        {
+            case GT_LCL_VAR:
+            case GT_LCL_FLD:
+            case GT_LCL_VAR_ADDR:
+            case GT_LCL_FLD_ADDR:
+            case GT_STORE_LCL_VAR:
+            case GT_STORE_LCL_FLD:
+                lowerFieldOfDependentlyPromotedStruct(node);
+
+                if (node->OperIs(GT_STORE_LCL_VAR))
+                {
+                    lowerStoreLcl(node->AsLclVarCommon());
+                }
+
+                if (node->OperIsLocal() || node->OperIsLocalAddr())
+                {
+                    ConvertShadowStackLocalNode(node->AsLclVarCommon());
+                }
+
+                if (node->OperIsLocalAddr() || node->OperIsLocalField())
+                {
+                    // Indicates that this local is to live on the LLVM frame, and will not participate in SSA.
+                    _compiler->lvaGetDesc(node->AsLclVarCommon())->lvHasLocalAddr = 1;
+                }
+                break;
+
+            case GT_CALL:
+                lowerCall(node->AsCall());
+                break;
+
+            case GT_IND:
+            case GT_STOREIND:
+            case GT_OBJ:
+            case GT_BLK:
+            case GT_NULLCHECK:
+                lowerIndir(node->AsIndir());
+                break;
+
+            case GT_STORE_BLK:
+            case GT_STORE_OBJ:
+                lowerStoreBlk(node->AsBlk());
+                break;
+
+            case GT_DIV:
+            case GT_MOD:
+            case GT_UDIV:
+            case GT_UMOD:
+                lowerDivMod(node->AsOp());
+                break;
+
+            case GT_RETURN:
+                lowerReturn(node->AsUnOp());
+                break;
+
+            default:
+                break;
+        }
+    }
+
+    INDEBUG(CurrentRange().CheckLIR(_compiler, /* checkUnusedValues */ true));
+
 }
 
 void Llvm::lowerStoreLcl(GenTreeLclVarCommon* storeLclNode)
