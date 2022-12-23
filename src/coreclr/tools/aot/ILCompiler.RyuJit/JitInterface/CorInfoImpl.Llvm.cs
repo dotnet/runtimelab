@@ -132,21 +132,6 @@ namespace Internal.JitInterface
             return (byte*)_this.GetPin(sb.UnderlyingArray);
         }
 
-        [UnmanagedCallersOnly]
-        public static byte* getSymbolMangledNameFromHelperTarget(IntPtr thisHandle, void* handle)
-        {
-            var _this = GetThis(thisHandle);
-
-            var node = (ReadyToRunHelperNode)_this.HandleToObject((IntPtr)handle);
-            var method = node.Target as MethodDesc;
-
-            // Abstract methods must require a lookup so no point passing the abstract name back
-            if (method.IsAbstract || method.IsVirtual) return null;
-
-            Utf8StringBuilder sb = new Utf8StringBuilder();
-            return (byte*)_this.GetPin(AppendNullByte(_this._compilation.NameMangler.GetMangledMethodName(method).UnderlyingArray));
-        }
-
         // IL backend does not use the mangled name.  The unmangled name is easier to read.
         [UnmanagedCallersOnly]
         public static byte* getTypeName(IntPtr thisHandle, CORINFO_CLASS_STRUCT_* structHnd)
@@ -387,7 +372,6 @@ namespace Internal.JitInterface
         {
             GetMangledMethodName,
             GetSymbolMangledName,
-            GetSymbolMangledNameFromHelperTarget,
             GetTypeName,
             AddCodeReloc,
             IsRuntimeImport,
@@ -412,7 +396,6 @@ namespace Internal.JitInterface
             void** callbacks = stackalloc void*[(int)EEApiId.Count + 1];
             callbacks[(int)EEApiId.GetMangledMethodName] = (delegate* unmanaged<IntPtr, CORINFO_METHOD_STRUCT_*, byte*>)&getMangledMethodName;
             callbacks[(int)EEApiId.GetSymbolMangledName] = (delegate* unmanaged<IntPtr, CORINFO_METHOD_STRUCT_*, byte*>)&getSymbolMangledName;
-            callbacks[(int)EEApiId.GetSymbolMangledNameFromHelperTarget] = (delegate* unmanaged<IntPtr, void*, byte*>)&getSymbolMangledNameFromHelperTarget;
             callbacks[(int)EEApiId.GetTypeName] = (delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, byte*>)&getTypeName;
             callbacks[(int)EEApiId.AddCodeReloc] = (delegate* unmanaged<IntPtr, void*, void>)&addCodeReloc;
             callbacks[(int)EEApiId.IsRuntimeImport] = (delegate* unmanaged<IntPtr, CORINFO_METHOD_STRUCT_*, uint>)&isRuntimeImport;

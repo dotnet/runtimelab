@@ -23,7 +23,6 @@ enum class EEApiId
 {
     GetMangledMethodName,
     GetSymbolMangledName,
-    GetSymbolMangledNameFromHelperTarget, // TODO-LLVM: unused, delete.
     GetTypeName,
     AddCodeReloc,
     IsRuntimeImport,
