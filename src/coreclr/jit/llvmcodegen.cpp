@@ -851,14 +851,7 @@ void Llvm::buildLocalVarAddr(GenTreeLclVarCommon* lclAddr)
 {
     unsigned int lclNum = lclAddr->GetLclNum();
     Value* localAddr = getLocalAddr(lclNum);
-    if (lclAddr->OperIs(GT_LCL_FLD_ADDR))
-    {
-        mapGenTreeToValue(lclAddr, gepOrAddr(localAddr, lclAddr->GetLclOffs()));
-    }
-    else
-    {
-        mapGenTreeToValue(lclAddr, localAddr);
-    }
+    mapGenTreeToValue(lclAddr, gepOrAddr(localAddr, lclAddr->GetLclOffs()));
 }
 
 void Llvm::buildAdd(GenTreeOp* node)
