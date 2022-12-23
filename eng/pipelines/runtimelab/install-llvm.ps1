@@ -15,10 +15,8 @@ tar -xf llvm-15.0.6.src.tar
 Invoke-WebRequest -Uri https://github.com/llvm/llvm-project/releases/download/llvmorg-15.0.6/cmake-15.0.6.src.tar.xz -OutFile cmake-15.0.6.src.tar.xz
 
 ./xz -d --force cmake-15.0.6.src.tar.xz
-mkdir cmake
-cd cmake
-tar -xf ../llvm-15.0.6.src.tar
-cd ..
+tar -xf cmake-15.0.6.src.tar
+mv cmake-15.0.6.src cmake
 
 cd llvm-15.0.6.src
 mkdir build
