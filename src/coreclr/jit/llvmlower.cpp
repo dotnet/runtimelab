@@ -383,7 +383,7 @@ void Llvm::lowerStoreLcl(GenTreeLclVarCommon* storeLclNode)
         storeLclNode->SetLclNum(addrVarDsc->lvFieldLclStart);
 
         GenTree* storeObjNode = new (_compiler, GT_STORE_OBJ) GenTreeObj(addrVarType, storeLclNode, data, layout);
-        storeObjNode->gtFlags |= GTF_ASG;
+        storeObjNode->gtFlags |= (GTF_ASG | GTF_IND_NONFAULTING);
 
         CurrentRange().InsertAfter(storeLclNode, storeObjNode);
     }
@@ -1024,6 +1024,7 @@ void Llvm::normalizeStructUse(GenTree* node, ClassLayout* layout)
                     node->AsObj()->SetAddr(lclAddrNode);
                     node->AsObj()->SetLayout(layout);
                     node->AsObj()->gtBlkOpKind = GenTreeBlk::BlkOpKindInvalid;
+                    node->gtFlags |= GTF_IND_NONFAULTING;
 
                     CurrentRange().InsertBefore(node, lclAddrNode);
                 }
