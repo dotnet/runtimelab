@@ -196,11 +196,6 @@ GCInfo* Llvm::getGCInfo()
     return _gcInfo;
 }
 
-CORINFO_CLASS_HANDLE Llvm::tryGetStructClassHandle(LclVarDsc* varDsc)
-{
-    return varTypeIsStruct(varDsc) ? varDsc->GetStructHnd() : NO_CLASS_HANDLE;
-}
-
 CorInfoType Llvm::getCorInfoTypeForArg(CORINFO_SIG_INFO* sigInfo, CORINFO_ARG_LIST_HANDLE& arg, CORINFO_CLASS_HANDLE* clsHnd)
 {
     CorInfoTypeWithMod corTypeWithMod = GetArgTypeIncludingParameterized(sigInfo, arg, clsHnd);
@@ -656,19 +651,17 @@ static unsigned corInfoTypeAligment(CorInfoType corInfoType)
     return size;
 }
 
-unsigned int Llvm::padOffset(CorInfoType corInfoType, CORINFO_CLASS_HANDLE structClassHandle, unsigned int atOffset)
+unsigned Llvm::padOffset(CorInfoType corInfoType, CORINFO_CLASS_HANDLE structClassHandle, unsigned atOffset)
 {
-    unsigned int alignment;
     if (corInfoType == CORINFO_TYPE_VALUECLASS)
     {
         return PadOffset(structClassHandle, atOffset);
     }
 
-    alignment = corInfoTypeAligment(corInfoType);
-    return roundUp(atOffset, alignment);
+    return roundUp(atOffset, corInfoTypeAligment(corInfoType));
 }
 
-unsigned int Llvm::padNextOffset(CorInfoType corInfoType, CORINFO_CLASS_HANDLE structClassHandle, unsigned int atOffset)
+unsigned Llvm::padNextOffset(CorInfoType corInfoType, CORINFO_CLASS_HANDLE structClassHandle, unsigned atOffset)
 {
     unsigned int size;
     if (corInfoType == CORINFO_TYPE_VALUECLASS)

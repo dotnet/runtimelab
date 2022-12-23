@@ -106,8 +106,6 @@ void Llvm::lowerLocals()
             if (varDsc->lvIsParam && !isLlvmParam)
             {
                 shadowStackParamCount++;
-                varDsc->lvIsParam = false;
-
                 shadowStackLocals.push_back(varDsc);
                 continue;
             }
@@ -214,20 +212,59 @@ void Llvm::assignShadowStackOffsets(std::vector<LclVarDsc*>& shadowStackLocals, 
                   [](const LclVarDsc* lhs, const LclVarDsc* rhs) { return lhs->lvRefCntWtd() > rhs->lvRefCntWtd(); });
     }
 
-    unsigned int offset = 0;
+    unsigned offset = 0;
+    auto assignOffset = [this, &offset](LclVarDsc* varDsc) {
+        if (varDsc->TypeGet() == TYP_BLK)
+        {
+            assert((varDsc->lvSize() % TARGET_POINTER_SIZE) == 0);
+
+            offset = roundUp(offset, TARGET_POINTER_SIZE);
+            varDsc->SetStackOffset(offset);
+            offset += varDsc->lvSize();
+        }
+        else
+        {
+            CorInfoType corInfoType = toCorInfoType(varDsc->TypeGet());
+            CORINFO_CLASS_HANDLE classHandle = varTypeIsStruct(varDsc) ? varDsc->GetStructHnd() : NO_CLASS_HANDLE;
+
+            offset = padOffset(corInfoType, classHandle, offset);
+            varDsc->SetStackOffset(offset);
+            offset = padNextOffset(corInfoType, classHandle, offset);
+        }
+
+        // We will use this as the indication that the local has a home on the shadow stack.
+        varDsc->SetRegNum(REG_STK);
+    };
+
+    // First, we process the parameters, since their offsets are fixed by the ABI. Then, we process the rest.
+    // Doing this ensures we don't count LLVM parameters live on the shadow stack as shadow parameters.
+    //
+    unsigned assignedShadowStackParamCount = 0;
     for (unsigned i = 0; i < shadowStackLocals.size(); i++)
     {
         LclVarDsc* varDsc = shadowStackLocals.at(i);
 
-        // We will use this as the indication that the local has a home on the shadow stack.
-        varDsc->SetRegNum(REG_STK);
+        if (varDsc->lvIsParam && (varDsc->lvLlvmArgNum == BAD_LLVM_ARG_NUM))
+        {
+            assignOffset(varDsc);
+            assignedShadowStackParamCount++;
+            varDsc->lvIsParam = false; // After lowering, "lvIsParam" <=> "is LLVM parameter".
 
-        CorInfoType corInfoType = toCorInfoType(varDsc->TypeGet());
-        CORINFO_CLASS_HANDLE classHandle = tryGetStructClassHandle(varDsc);
+            if (assignedShadowStackParamCount == shadowStackParamCount)
+            {
+                break;
+            }
+        }
+    }
 
-        offset = padOffset(corInfoType, classHandle, offset);
-        varDsc->SetStackOffset(offset);
-        offset = padNextOffset(corInfoType, classHandle, offset);
+    for (unsigned i = 0; i < shadowStackLocals.size(); i++)
+    {
+        LclVarDsc* varDsc = shadowStackLocals.at(i);
+
+        if (!isShadowFrameLocal(varDsc))
+        {
+            assignOffset(varDsc);
+        }
     }
 
     _shadowStackLocalsSize = AlignUp(offset, TARGET_POINTER_SIZE);

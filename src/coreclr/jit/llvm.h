@@ -169,7 +169,6 @@ private:
 
     GCInfo* getGCInfo();
 
-    CORINFO_CLASS_HANDLE tryGetStructClassHandle(LclVarDsc* varDsc);
     CorInfoType getCorInfoTypeForArg(CORINFO_SIG_INFO* sigInfo, CORINFO_ARG_LIST_HANDLE& arg, CORINFO_CLASS_HANDLE* clsHnd);
     static CorInfoType toCorInfoType(var_types varType);
 
@@ -180,8 +179,8 @@ private:
 
     static bool canStoreArgOnLlvmStack(Compiler* compiler, CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd);
 
-    unsigned int padOffset(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHandle, unsigned int atOffset);
-    unsigned int padNextOffset(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHandle, unsigned int atOffset);
+    unsigned padOffset(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHandle, unsigned atOffset);
+    unsigned padNextOffset(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHandle, unsigned atOffset);
 
     [[noreturn]] void failFunctionCompilation();
 
