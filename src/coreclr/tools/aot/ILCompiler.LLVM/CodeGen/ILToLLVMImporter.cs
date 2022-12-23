@@ -990,7 +990,7 @@ namespace Internal.IL
             LLVMValueRef addr;
             if (addressCacheContext != null)
             {
-                addr = addressCacheContext.PrologBuilder.BuildGEP2(LLVMTypeRef.Int8, _currentFunclet.GetParam(0),
+                addr = addressCacheContext.PrologBuilder.BuildGEP(_currentFunclet.GetParam(0),
                     new LLVMValueRef[] { LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, (uint)(varOffset), false) },
                     $"{kind}{index}_");
                 if (kind == LocalVarKind.Argument)
@@ -1013,7 +1013,7 @@ namespace Internal.IL
             }
             else
             {
-                addr = builder.BuildGEP2(LLVMTypeRef.Int8, _currentFunclet.GetParam(0),
+                addr = builder.BuildGEP(_currentFunclet.GetParam(0),
                     new LLVMValueRef[] { LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, (uint)(varOffset), false) },
                     $"{kind}{index}_");
             }
@@ -1077,7 +1077,7 @@ namespace Internal.IL
 
             LLVMValueRef typedToStore = CastIfNecessary(builder, toStore, valueType, name);
 
-            var storeLocation = builder.BuildGEP2(LLVMTypeRef.Int8, basePtr,
+            var storeLocation = builder.BuildGEP(basePtr,
                 new LLVMValueRef[] { LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, offset, false) },
                 String.Empty);
             var typedStoreLocation = CastIfNecessary(builder, storeLocation, LLVMTypeRef.CreatePointer(valueType, 0), "TypedStore" + (name ?? ""));
@@ -1136,7 +1136,7 @@ namespace Internal.IL
                 if (f.IsStatic) continue;
                 if (IsStruct(f.FieldType) && llvmValue.TypeOf.IsPackedStruct)
                 {
-                    LLVMValueRef targetAddress = _builder.BuildGEP2(LLVMTypeRef.Int8, address, new[] { BuildConstInt32(f.Offset.AsInt) });
+                    LLVMValueRef targetAddress = _builder.BuildGEP(address, new[] { BuildConstInt32(f.Offset.AsInt) });
                     uint index = (uint)_compilation.TargetData.ElementAtOffset(llvmValue.TypeOf, (ulong)f.Offset.AsInt);
                     LLVMValueRef fieldValue = _builder.BuildExtractValue(llvmValue, index);
                     //recurse into struct
@@ -1144,7 +1144,7 @@ namespace Internal.IL
                 }
                 else if (f.FieldType.IsGCPointer)
                 {
-                    LLVMValueRef targetAddress = _builder.BuildGEP2(LLVMTypeRef.Int8, address, new[] {BuildConstInt32(f.Offset.AsInt)});
+                    LLVMValueRef targetAddress = _builder.BuildGEP(address, new[] {BuildConstInt32(f.Offset.AsInt)});
                     LLVMValueRef fieldValue;
                     if (llvmValue.TypeOf.IsPackedStruct)
                     {
@@ -1763,7 +1763,7 @@ namespace Internal.IL
             Debug.Assert(helperArg is TypeDesc);
             Debug.Assert(!lookup.UseHelper);
 
-            return _builder.BuildGEP2(LLVMTypeRef.Int8, genericContext, new[] { BuildConstInt32(lookup[0]) });
+            return _builder.BuildGEP(genericContext, new[] { BuildConstInt32(lookup[0]) });
         }
 
         private void ImportLoadNull()
@@ -1844,7 +1844,7 @@ namespace Internal.IL
                     for (int i = paramCnt - 1; i >= 0; --i)
                     {
                         _builder.BuildStore(_stack.Pop().ValueAsInt32(_builder, true),
-                            _builder.BuildGEP2(LLVMTypeRef.Int32, dimensions, new LLVMValueRef[] { BuildConstInt32(i) }, "pdims_ptr"));
+                            _builder.BuildGEP(dimensions, new LLVMValueRef[] { BuildConstInt32(i) }, "pdims_ptr"));
                     }
                     var arguments = new StackEntry[]
                     {
@@ -1957,7 +1957,7 @@ namespace Internal.IL
                     // pass this (delegate obj) as first param
                     LLVMTypeRef llvmTypeRefForThis = GetLLVMTypeForTypeDesc(thisEntry.Type);
                     curOffset = PadOffset(thisEntry.Type, curOffset);
-                    LLVMValueRef thisAddr = _builder.BuildGEP2(LLVMTypeRef.Int8, shadowStack, new LLVMValueRef[] { LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, (ulong)curOffset, false) }, "thisLoc");
+                    LLVMValueRef thisAddr = _builder.BuildGEP(shadowStack, new LLVMValueRef[] { LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, (ulong)curOffset, false) }, "thisLoc");
                     LLVMValueRef llvmValueRefForThis = thisEntry.ValueAsType(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), _builder);
                     _builder.BuildStore(llvmValueRefForThis, CastIfNecessary(_builder, thisAddr, LLVMTypeRef.CreatePointer(llvmTypeRefForThis, 0), "thisCast"));
                     curOffset = PadNextOffset(GetWellKnownType(WellKnownType.Object), curOffset);
@@ -1983,7 +1983,7 @@ namespace Internal.IL
                         {
                             LLVMValueRef llvmValueRefForArg = argStackEntry.ValueAsType(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), _builder);
                             curOffset = PadOffset(argTypeDesc, curOffset);
-                            LLVMValueRef argAddr = _builder.BuildGEP2(LLVMTypeRef.Int8, shadowStack, new LLVMValueRef[] { LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, (ulong)curOffset, false) }, "arg" + i);
+                            LLVMValueRef argAddr = _builder.BuildGEP(shadowStack, new LLVMValueRef[] { LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, (ulong)curOffset, false) }, "arg" + i);
                             _builder.BuildStore(llvmValueRefForArg, CastIfNecessary(_builder, argAddr, LLVMTypeRef.CreatePointer(llvmTypeRefForArg, 0), $"parameter{i}_"));
                             curOffset = PadNextOffset(argTypeDesc, curOffset);
                         }
@@ -2171,7 +2171,7 @@ namespace Internal.IL
             {
                 var rawObjectPtr = CastIfNecessary(thisPointer, LLVMTypeRef.CreatePointer(LLVMTypeRef.CreatePointer(LLVMTypeRef.CreatePointer(llvmSignature, 0), 0), 0), "this");
                 var eeType = _builder.BuildLoad(rawObjectPtr, "ldEEType");
-                var slotPtr = _builder.BuildGEP2(LLVMTypeRef.Int32, eeType, new LLVMValueRef[] { slot }, "__getslot__");
+                var slotPtr = _builder.BuildGEP(eeType, new LLVMValueRef[] { slot }, "__getslot__");
                 functionPtr = _builder.BuildLoad(slotPtr, "ld__getslot__");
             }
 
@@ -2235,7 +2235,7 @@ namespace Internal.IL
             var gep = RemoveFatOffset(_builder, slotRef);
             var loadFuncPtr = _builder.BuildLoad(CastIfNecessary(_builder, gep, LLVMTypeRef.CreatePointer(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), 0)),
                 "loadFuncPtr");
-            var dictPtr = _builder.BuildGEP2(LLVMTypeRef.Int8, CastIfNecessary(_builder, gep,
+            var dictPtr = _builder.BuildGEP(CastIfNecessary(_builder, gep,
                     LLVMTypeRef.CreatePointer(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), 0), "castDictPtr"),
                 new [] {BuildConstInt32(1)}, "dictPtr");
             _builder.BuildStore(dictPtr, dictPtrStore);
@@ -2381,7 +2381,7 @@ namespace Internal.IL
                             }
                             var args = new LLVMValueRef[]
                             {
-                                _builder.BuildGEP2(LLVMTypeRef.Int8, arrayObjPtr, new LLVMValueRef[] { offset }, string.Empty),
+                                _builder.BuildGEP(arrayObjPtr, new LLVMValueRef[] { offset }, string.Empty),
                                 _builder.BuildBitCast(src, LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), string.Empty),
                                 BuildConstInt32(srcLength), // TODO: Handle destination array length to avoid runtime overflow.
                                 BuildConstInt1(0)
@@ -2615,7 +2615,7 @@ namespace Internal.IL
             }
 
             int offset = GetTotalParameterOffset() + GetTotalLocalOffset();
-            LLVMValueRef shadowStack = builder.BuildGEP2(LLVMTypeRef.Int8, _currentFunclet.GetParam(0),
+            LLVMValueRef shadowStack = builder.BuildGEP(_currentFunclet.GetParam(0),
                 new LLVMValueRef[] { LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, (uint)offset, false) },
                 String.Empty);
             var castShadowStack = builder.BuildPointerCast(shadowStack, LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), "castshadowstack");
@@ -2938,7 +2938,7 @@ namespace Internal.IL
 
             // unwrap managed, cast to 32bit pointer from 8bit personality signature pointer
             var ex32Ptr = landingPadBuilder.BuildPointerCast(exPtr, LLVMTypeRef.CreatePointer(LLVMTypeRef.Int32, 0));
-            var plus4 = landingPadBuilder.BuildGEP2(LLVMTypeRef.Int32, ex32Ptr, new LLVMValueRef[] {BuildConstInt32(1)}, "offset");
+            var plus4 = landingPadBuilder.BuildGEP(ex32Ptr, new LLVMValueRef[] {BuildConstInt32(1)}, "offset");
 
             var managedPtr = landingPadBuilder.BuildLoad(plus4, "managedEx");
 
@@ -3115,7 +3115,7 @@ namespace Internal.IL
             // Save the top of the shadow stack in case the callee reverse P/Invokes.  Restore ShadowStackTop after invoke
             LLVMValueRef stackFrameSize = BuildConstInt32(GetTotalParameterOffset() + GetTotalLocalOffset());
             LLVMValueRef shadowStackToRestore = _builder.BuildLoad(ShadowStackTop);
-            _builder.BuildStore(_builder.BuildGEP2(LLVMTypeRef.Int8, _currentFunclet.GetParam(0), new LLVMValueRef[] {stackFrameSize}, "shadowStackTop"), ShadowStackTop);
+            _builder.BuildStore(_builder.BuildGEP(_currentFunclet.GetParam(0), new LLVMValueRef[] {stackFrameSize}, "shadowStackTop"), ShadowStackTop);
 
             LLVMValueRef pInvokeTransitionFrame = default;
             LLVMTypeRef pInvokeFunctionType = default;
@@ -3230,7 +3230,7 @@ namespace Internal.IL
             var minusOffset = RemoveFatOffset(_builder, target);
             var minusOffsetPtr = _builder.BuildIntToPtr(minusOffset,
                 LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), "ptr");
-            var hiddenRefAddr = _builder.BuildGEP2(LLVMTypeRef.Int8, minusOffsetPtr, new[] { BuildConstInt32(_pointerSize) }, "fatArgPtr");
+            var hiddenRefAddr = _builder.BuildGEP(minusOffsetPtr, new[] { BuildConstInt32(_pointerSize) }, "fatArgPtr");
             var hiddenRefPtr = _builder.BuildPointerCast(hiddenRefAddr, LLVMTypeRef.CreatePointer(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), 0), "hiddenRefPtr");
             var hiddenRef = _builder.BuildLoad(hiddenRefPtr, "hiddenRef");
 
@@ -4275,7 +4275,7 @@ namespace Internal.IL
         LLVMValueRef GetShadowStack()
         {
             int offset = GetTotalParameterOffset() + GetTotalLocalOffset();
-            return _builder.BuildGEP2(LLVMTypeRef.Int8, _currentFunclet.GetParam(0),
+            return _builder.BuildGEP(_currentFunclet.GetParam(0),
                 new LLVMValueRef[] { LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, (uint)offset, false) },
                 String.Empty);
         }
@@ -4437,7 +4437,7 @@ namespace Internal.IL
         void ThrowOrRethrow(StackEntry exceptionObject)
         {
             int offset = GetTotalParameterOffset() + GetTotalLocalOffset();
-            LLVMValueRef shadowStack = _builder.BuildGEP2(LLVMTypeRef.Int8, _currentFunclet.GetParam(0),
+            LLVMValueRef shadowStack = _builder.BuildGEP(_currentFunclet.GetParam(0),
                 new LLVMValueRef[] { LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, (uint)offset, false) },
                 String.Empty);
             LLVMValueRef exSlot = _builder.BuildBitCast(shadowStack, LLVMTypeRef.CreatePointer(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), 0));
@@ -4632,7 +4632,7 @@ namespace Internal.IL
             }
             else
             {
-                var loadLocation = _builder.BuildGEP2(LLVMTypeRef.Int8, untypedObjectValue,
+                var loadLocation = _builder.BuildGEP(untypedObjectValue,
                     new LLVMValueRef[] { LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, (ulong)field.Offset.AsInt, false) }, String.Empty);
                 return loadLocation;
             }
@@ -4723,7 +4723,7 @@ namespace Internal.IL
                 if (node != null) _dependencies.Add(node, "LLVM field symbol");
 
                 LLVMValueRef castStaticBase = _builder.BuildPointerCast(staticBase, LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), owningType.Name + "_statics");
-                LLVMValueRef fieldAddr = _builder.BuildGEP2(LLVMTypeRef.Int8, castStaticBase, new LLVMValueRef[] { BuildConstInt32(fieldOffset) }, field.Name + "_addr");
+                LLVMValueRef fieldAddr = _builder.BuildGEP(castStaticBase, new LLVMValueRef[] { BuildConstInt32(fieldOffset) }, field.Name + "_addr");
 
 
                 return fieldAddr;
@@ -4789,7 +4789,7 @@ namespace Internal.IL
 
             // TODO: Codegen could check whether it has already run rather than calling into EnsureClassConstructorRun
             // but we'd have to figure out how to manage the additional basic blocks
-            LLVMValueRef classConstructionContextPtr = builder.BuildGEP2(LLVMTypeRef.Int32, firstNonGcStatic, new LLVMValueRef[] { BuildConstInt32(-2) }, "classConstructionContext");
+            LLVMValueRef classConstructionContextPtr = builder.BuildGEP(firstNonGcStatic, new LLVMValueRef[] { BuildConstInt32(-2) }, "classConstructionContext");
             StackEntry classConstructionContext = new AddressExpressionEntry(StackValueKind.NativeInt, "classConstructionContext", classConstructionContextPtr, GetWellKnownType(WellKnownType.IntPtr));
             CallRuntime("System.Runtime.CompilerServices", _compilation.TypeSystemContext, ClassConstructorRunner, "EnsureClassConstructorRun", new StackEntry[] { classConstructionContext }, builder: builder);
         }
@@ -4804,7 +4804,7 @@ namespace Internal.IL
 
             StackEntry typeManagerSlotEntry = new LoadExpressionEntry(StackValueKind.ValueType, "typeManagerSlot", threadStaticIndex, GetWellKnownType(WellKnownType.Int32));
             LLVMValueRef typeTlsIndexPtr =
-                _builder.BuildGEP2(LLVMTypeRef.Int32, threadStaticIndex, new LLVMValueRef[] { BuildConstInt32(1) }, "typeTlsIndexPtr"); // index is the second field after the ptr.
+                _builder.BuildGEP(threadStaticIndex, new LLVMValueRef[] { BuildConstInt32(1) }, "typeTlsIndexPtr"); // index is the second field after the ptr.
             StackEntry tlsIndexExpressionEntry = new LoadExpressionEntry(StackValueKind.ValueType, "typeTlsIndex", typeTlsIndexPtr, GetWellKnownType(WellKnownType.Int32));
 
             if (needsCctorCheck)
@@ -4815,7 +4815,7 @@ namespace Internal.IL
 
                 // TODO: Codegen could check whether it has already run rather than calling into EnsureClassConstructorRun
                 // but we'd have to figure out how to manage the additional basic blocks
-                LLVMValueRef classConstructionContextPtr = _builder.BuildGEP2(LLVMTypeRef.Int32, firstNonGcStatic, new LLVMValueRef[] { BuildConstInt32(-2) }, "classConstructionContext");
+                LLVMValueRef classConstructionContextPtr = _builder.BuildGEP(firstNonGcStatic, new LLVMValueRef[] { BuildConstInt32(-2) }, "classConstructionContext");
                 StackEntry classConstructionContext = new AddressExpressionEntry(StackValueKind.NativeInt, "classConstructionContext", classConstructionContextPtr,
                     GetWellKnownType(WellKnownType.IntPtr));
 
@@ -4840,8 +4840,9 @@ namespace Internal.IL
 
         private void TriggerCctor(MetadataType type, LLVMValueRef staticBaseValueRef, string runnerMethodName)
         {
-            var classConstCtx = _builder.BuildGEP2(LLVMTypeRef.Int8,
-                staticBaseValueRef, new LLVMValueRef[] { BuildConstInt32(-8) }, "backToClassCtx");
+            var classConstCtx = _builder.BuildGEP(
+                _builder.BuildBitCast(staticBaseValueRef, LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0),
+                    "ptr8"), new LLVMValueRef[] { BuildConstInt32(-8) }, "backToClassCtx");
             StackEntry classConstructionContext = new AddressExpressionEntry(StackValueKind.NativeInt, "classConstructionContext", classConstCtx,
                 GetWellKnownType(WellKnownType.IntPtr));
             StackEntry staticBaseEntry = new AddressExpressionEntry(StackValueKind.NativeInt, "staticBase", staticBaseValueRef,
@@ -5136,7 +5137,7 @@ namespace Internal.IL
             StackEntry arrayReference = _stack.Pop();
             var arrayReferenceValue = arrayReference.ValueAsType(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), _builder);
             ThrowIfNull(arrayReferenceValue);
-            LLVMValueRef lengthPtr = _builder.BuildGEP2(LLVMTypeRef.Int8, arrayReferenceValue, new LLVMValueRef[] { BuildConstInt32(_compilation.NodeFactory.Target.PointerSize) }, "arrayLength");
+            LLVMValueRef lengthPtr = _builder.BuildGEP(arrayReferenceValue, new LLVMValueRef[] { BuildConstInt32(_compilation.NodeFactory.Target.PointerSize) }, "arrayLength");
             LLVMValueRef castLengthPtr = _builder.BuildPointerCast(lengthPtr, LLVMTypeRef.CreatePointer(LLVMTypeRef.Int32, 0), "castArrayLength");
             PushLoadExpression(StackValueKind.Int32, "arrayLength", castLengthPtr, GetWellKnownType(WellKnownType.Int32));
         }
@@ -5157,7 +5158,7 @@ namespace Internal.IL
             var elementSize = arrayElementType.GetElementSize();
             LLVMValueRef elementOffset = _builder.BuildMul(elementPosition, BuildConstInt32(elementSize.AsInt), "elementOffset");
             LLVMValueRef arrayOffset = _builder.BuildAdd(elementOffset, ArrayBaseSizeRef(), "arrayOffset");
-            return _builder.BuildGEP2(LLVMTypeRef.Int8, arrayReference, new LLVMValueRef[] { arrayOffset }, "elementPointer");
+            return _builder.BuildGEP(arrayReference, new LLVMValueRef[] { arrayOffset }, "elementPointer");
         }
 
         LLVMValueRef EmitRuntimeHelperCall(string name, TypeDesc returnType, LLVMValueRef[] parameters)
@@ -5353,10 +5354,12 @@ namespace Internal.IL
         //TOOD refactor with cctor
         public ExpressionEntry OutputCodeForGetThreadStaticBaseForType(LLVMValueRef threadStaticIndex)
         {
+            var threadStaticIndexPtr = _builder.BuildPointerCast(threadStaticIndex,
+                LLVMTypeRef.CreatePointer(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int32, 0), 0), "tsiPtr");
             LLVMValueRef typeTlsIndexPtr =
-                _builder.BuildGEP2(LLVMTypeRef.Int32, threadStaticIndex, new LLVMValueRef[] { BuildConstInt32(1) }, "typeTlsIndexPtr"); // index is the second field after the ptr.
+                _builder.BuildGEP(threadStaticIndexPtr, new LLVMValueRef[] { BuildConstInt32(1) }, "typeTlsIndexPtr"); // index is the second field after the ptr.
 
-            StackEntry typeManagerSlotEntry = new LoadExpressionEntry(StackValueKind.ValueType, "typeManagerSlot", typeTlsIndexPtr, GetWellKnownType(WellKnownType.Int32));
+            StackEntry typeManagerSlotEntry = new LoadExpressionEntry(StackValueKind.ValueType, "typeManagerSlot", threadStaticIndexPtr, GetWellKnownType(WellKnownType.Int32));
             StackEntry tlsIndexExpressionEntry = new LoadExpressionEntry(StackValueKind.ValueType, "typeTlsIndex", typeTlsIndexPtr, GetWellKnownType(WellKnownType.Int32));
 
             var expressionEntry = CallRuntime("Internal.Runtime", _compilation.TypeSystemContext, ThreadStatics,

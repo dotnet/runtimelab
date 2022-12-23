@@ -7,12 +7,12 @@ Invoke-WebRequest -Uri https://tukaani.org/xz/xz-5.2.5-windows.zip -OutFile xz.z
 Expand-Archive -LiteralPath xz.zip -DestinationPath .
 copy bin_i686\xz.exe . # get it in the path for tar
 
-Invoke-WebRequest -Uri https://github.com/llvm/llvm-project/releases/download/llvmorg-11.0.0/llvm-11.0.0.src.tar.xz -OutFile llvm-11.0.0.src.tar.xz
+Invoke-WebRequest -Uri https://github.com/llvm/llvm-project/releases/download/llvmorg-15.0.6/llvm-15.0.6.src.tar.xz -OutFile llvm-15.0.6.src.tar.xz
 
-./xz -d --force llvm-11.0.0.src.tar.xz
-tar -xf llvm-11.0.0.src.tar
+./xz -d --force llvm-15.0.6.src.tar.xz
+tar -xf llvm-15.0.6.src.tar
 
-cd llvm-11.0.0.src
+cd llvm-15.0.6.src
 mkdir build
 cd build
 

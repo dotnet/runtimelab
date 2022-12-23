@@ -15,11 +15,16 @@ using LLVMSharp.Interop;
 using ILCompiler.LLVM;
 using Internal.JitInterface;
 using Internal.IL.Stubs;
+using System.Runtime.InteropServices;
+using LLVMSharp;
 
 namespace ILCompiler
 {
     public sealed class LLVMCodegenCompilation : RyuJitCompilation
     {
+        [DllImport("libLLVM", EntryPoint = "LLVMContextSetOpaquePointers", CallingConvention = CallingConvention.Cdecl)]
+        public static extern LLVMContextRef LLVMContextSetOpaquePointers(LLVMContextRef C, bool OpaquePointers);
+
         private readonly ConditionalWeakTable<Thread, CorInfoImpl> _corinfos = new ConditionalWeakTable<Thread, CorInfoImpl>();
         private string _outputFile;
         private readonly bool _disableRyuJit;
@@ -60,6 +65,8 @@ namespace ILCompiler
             DIBuilder = Module.CreateDIBuilder();
             DebugMetadataMap = new Dictionary<string, DebugMetadata>();
             ILImporter.Context = Module.Context;
+            LLVMContextSetOpaquePointers(Module.Context, false);
+
             NativeLib = nativeLib;
             ConfigurableWasmImportPolicy = configurableWasmImportPolicy;
             _disableRyuJit = Options.DisableRyuJit == "1"; // TODO-LLVM: delete when all code is compiled via RyuJIT
@@ -156,7 +163,10 @@ namespace ILCompiler
                 
                 if (methodIL.GetExceptionRegions().Length == 0 && !_disableRyuJit)
                 {
+                    // S_P_CoreLib_System_Globalization_UmAlQuraCalendar___cctor
                     var mangledName = NodeFactory.NameMangler.GetMangledMethodName(method).ToString();
+                    // if (mangledName == "S_P_CoreLib_System_Globalization_UmAlQuraCalendar___cctor")
+                    // {
                     var sig = method.Signature;
                     corInfo.RegisterLlvmCallbacks((IntPtr)Unsafe.AsPointer(ref corInfo), _outputFile,
                         Module.Target,
@@ -165,13 +175,14 @@ namespace ILCompiler
                     corInfo.CompileMethod(methodCodeNodeNeedingCode);
                     methodCodeNodeNeedingCode.CompilationCompleted = true;
                     // TODO: delete this external function when old module is gone
-                    LLVMValueRef externFunc = ILImporter.GetOrCreateLLVMFunction(Module, mangledName,
-                        GetLLVMSignatureForMethod(sig, method.RequiresInstArg()));
+                    LLVMValueRef externFunc = ILImporter.GetOrCreateLLVMFunction(Module, mangledName, GetLLVMSignatureForMethod(sig, method.RequiresInstArg()));
                     externFunc.Linkage = LLVMLinkage.LLVMExternalLinkage;
 
                     ILImporter.GenerateRuntimeExportThunk(this, method, externFunc);
 
                     ryuJitMethodCount++;
+                    // }
+                    // else ILImporter.CompileMethod(this, methodCodeNodeNeedingCode);
                 }
                 else ILImporter.CompileMethod(this, methodCodeNodeNeedingCode);
             }
