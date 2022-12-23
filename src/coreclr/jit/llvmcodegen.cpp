@@ -552,12 +552,6 @@ Value* Llvm::consumeValue(GenTree* node, Type* targetLlvmType)
             return _builder.CreatePtrToInt(nodeValue, Type::getInt32Ty(_llvmContext));
         }
 
-        // all pointers are opaque
-        if (nodeValue->getType()->isPointerTy() && targetLlvmType->isPointerTy())
-        {
-            return nodeValue;
-        }
-
         // int and smaller int conversions
         assert(targetLlvmType->isIntegerTy() && nodeValue->getType()->isIntegerTy() &&
                nodeValue->getType()->getPrimitiveSizeInBits() <= 32 && targetLlvmType->getPrimitiveSizeInBits() <= 32);
