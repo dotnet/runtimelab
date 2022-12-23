@@ -190,7 +190,7 @@ private:
     const char* GetMangledMethodName(CORINFO_METHOD_HANDLE methodHandle);
     const char* GetMangledSymbolName(void* symbol);
     const char* GetTypeName(CORINFO_CLASS_HANDLE typeHandle);
-    const char* AddCodeReloc(void* handle);
+    void AddCodeReloc(void* handle);
     bool IsRuntimeImport(CORINFO_METHOD_HANDLE methodHandle);
     const char* GetDocumentFileName();
     uint32_t FirstSequencePointLineNumber();

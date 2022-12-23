@@ -17,62 +17,42 @@ Function*        _doNothingFunction;
 std::unordered_map<CORINFO_CLASS_HANDLE, Type*>* _llvmStructs = new std::unordered_map<CORINFO_CLASS_HANDLE, Type*>();
 std::unordered_map<CORINFO_CLASS_HANDLE, StructDesc*>* _structDescMap = new std::unordered_map<CORINFO_CLASS_HANDLE, StructDesc*>();
 
+// Must be kept in sync with the managed version in "CorInfoImpl.Llvm.cs".
+//
+enum class EEApiId
+{
+    GetMangledMethodName,
+    GetSymbolMangledName,
+    GetSymbolMangledNameFromHelperTarget, // TODO-LLVM: unused, delete.
+    GetTypeName,
+    AddCodeReloc,
+    IsRuntimeImport,
+    GetDocumentFileName,
+    FirstSequencePointLineNumber,
+    GetOffsetLineNumber,
+    StructIsWrappedPrimitive,
+    PadOffset,
+    GetArgTypeIncludingParameterized,
+    GetParameterType,
+    GetTypeDescriptor,
+    GetCompilerHelpersMethodHandle,
+    GetInstanceFieldAlignment,
+    Count
+};
+
 void* _thisPtr; // TODO: workaround for not changing the JIT/EE interface.  As this is static, it will probably fail if multithreaded compilation is attempted
-const char* (*_getMangledMethodName)(void*, CORINFO_METHOD_STRUCT_*);
-const char* (*_getMangledSymbolName)(void*, void*);
-const char* (*_getMangledSymbolNameFromHelperTarget)(void*, void*); // TODO-LLVM: unused, delete.
-const char* (*_getTypeName)(void*, CORINFO_CLASS_HANDLE);
-const char* (*_addCodeReloc)(void*, void*); // TODO-LLVM: does this really return a string?
-uint32_t (*_isRuntimeImport)(void*, CORINFO_METHOD_STRUCT_*);
-const char* (*_getDocumentFileName)(void*);
-uint32_t (*_firstSequencePointLineNumber)(void*);
-uint32_t (*_getOffsetLineNumber)(void*, unsigned ilOffset);
-uint32_t (*_structIsWrappedPrimitive)(void*, CORINFO_CLASS_STRUCT_*, CorInfoType);
-uint32_t (*_padOffset)(void*, CORINFO_CLASS_STRUCT_*, unsigned);
-CorInfoTypeWithMod (*_getArgTypeIncludingParameterized)(void*, CORINFO_SIG_INFO*, CORINFO_ARG_LIST_HANDLE, CORINFO_CLASS_HANDLE*);
-CorInfoTypeWithMod (*_getParameterType)(void*, CORINFO_CLASS_HANDLE, CORINFO_CLASS_HANDLE*);
-TypeDescriptor (*_getTypeDescriptor)(void*, CORINFO_CLASS_HANDLE);
-CORINFO_METHOD_HANDLE (*_getCompilerHelpersMethodHandle)(void*, const char*, const char*); // TODO-LLVM: unused, delete.
-uint32_t (*_getInstanceFieldAlignment)(void*, CORINFO_CLASS_HANDLE);
+void* g_callbacks[static_cast<int>(EEApiId::Count)];
 
 extern "C" DLLEXPORT void registerLlvmCallbacks(void*       thisPtr,
                                                 const char* outputFileName,
                                                 const char* triple,
                                                 const char* dataLayout,
-                                                const char* (*getMangledMethodNamePtr)(void*, CORINFO_METHOD_HANDLE),
-                                                const char* (*getMangledSymbolNamePtr)(void*, void*),
-                                                const char* (*getMangledSymbolNameFromHelperTargetPtr)(void*, void*),
-                                                const char* (*getTypeName)(void*, CORINFO_CLASS_HANDLE),
-                                                const char* (*addCodeRelocPtr)(void*, void*),
-                                                uint32_t (*isRuntimeImport)(void*, CORINFO_METHOD_HANDLE),
-                                                const char* (*getDocumentFileName)(void*),
-                                                uint32_t (*firstSequencePointLineNumber)(void*),
-                                                uint32_t (*getOffsetLineNumber)(void*, unsigned),
-                                                uint32_t(*structIsWrappedPrimitive)(void*, CORINFO_CLASS_HANDLE, CorInfoType),
-                                                uint32_t(*padOffset)(void*, CORINFO_CLASS_HANDLE, unsigned),
-                                                CorInfoTypeWithMod(*getArgTypeIncludingParameterized)(void*, CORINFO_SIG_INFO*, CORINFO_ARG_LIST_HANDLE, CORINFO_CLASS_HANDLE*),
-                                                CorInfoTypeWithMod(*getParameterType)(void*, CORINFO_CLASS_HANDLE, CORINFO_CLASS_HANDLE*),
-                                                TypeDescriptor(*getTypeDescriptor)(void*, CORINFO_CLASS_HANDLE),
-                                                CORINFO_METHOD_HANDLE (*getCompilerHelpersMethodHandle)(void*, const char*, const char*),
-                                                uint32_t (*getInstanceFieldAlignment)(void*, CORINFO_CLASS_HANDLE))
+                                                void**      callbacks)
 {
+    assert((callbacks != nullptr) && (callbacks[static_cast<int>(EEApiId::Count)] == (void*)0x1234));
+
     _thisPtr = thisPtr;
-    _getMangledMethodName         = getMangledMethodNamePtr;
-    _getMangledSymbolName         = getMangledSymbolNamePtr;
-    _getMangledSymbolNameFromHelperTarget = getMangledSymbolNameFromHelperTargetPtr;
-    _getTypeName                  = getTypeName;
-    _addCodeReloc                 = addCodeRelocPtr;
-    _isRuntimeImport              = isRuntimeImport;
-    _getDocumentFileName          = getDocumentFileName;
-    _firstSequencePointLineNumber = firstSequencePointLineNumber;
-    _getOffsetLineNumber          = getOffsetLineNumber;
-    _structIsWrappedPrimitive     = structIsWrappedPrimitive;
-    _padOffset = padOffset;
-    _getArgTypeIncludingParameterized = getArgTypeIncludingParameterized;
-    _getParameterType             = getParameterType;
-    _getTypeDescriptor            = getTypeDescriptor;
-    _getCompilerHelpersMethodHandle       = getCompilerHelpersMethodHandle;
-    _getInstanceFieldAlignment     = getInstanceFieldAlignment;
+    memcpy(g_callbacks, callbacks, static_cast<int>(EEApiId::Count) * sizeof(void*));
 
     if (_module == nullptr) // registerLlvmCallbacks is called for each method to compile, but must only created the module once.  Better perhaps to split this into 2 calls.
     {
@@ -696,79 +676,85 @@ unsigned int Llvm::padNextOffset(CorInfoType corInfoType, CORINFO_CLASS_HANDLE s
     fatal(CORJIT_SKIPPED);
 }
 
+template <EEApiId Func, typename TReturn, typename... TArgs>
+TReturn CallEEApi(TArgs... args)
+{
+    return static_cast<TReturn (*)(void*, TArgs...)>(g_callbacks[static_cast<int>(Func)])(_thisPtr, args...);
+}
+
 const char* Llvm::GetMangledMethodName(CORINFO_METHOD_HANDLE methodHandle)
 {
-    return _getMangledMethodName(_thisPtr, methodHandle);
+    return CallEEApi<EEApiId::GetMangledMethodName, const char*>(methodHandle);
 }
 
 const char* Llvm::GetMangledSymbolName(void* symbol)
 {
-    return _getMangledSymbolName(_thisPtr, symbol);
+    return CallEEApi<EEApiId::GetSymbolMangledName, const char*>(symbol);
 }
 
 const char* Llvm::GetTypeName(CORINFO_CLASS_HANDLE typeHandle)
 {
-    return _getTypeName(_thisPtr, typeHandle);
+    return CallEEApi<EEApiId::GetTypeName, const char*>(typeHandle);
 }
 
-const char* Llvm::AddCodeReloc(void* handle)
+void Llvm::AddCodeReloc(void* handle)
 {
-    return _addCodeReloc(_thisPtr, handle);
+    CallEEApi<EEApiId::AddCodeReloc, void>(handle);
 }
 
 bool Llvm::IsRuntimeImport(CORINFO_METHOD_HANDLE methodHandle)
 {
-    return _isRuntimeImport(_thisPtr, methodHandle) != 0;
+    return CallEEApi<EEApiId::IsRuntimeImport, uint32_t>(methodHandle) != 0;
 }
 
 const char* Llvm::GetDocumentFileName()
 {
-    return _getDocumentFileName(_thisPtr);
+    return CallEEApi<EEApiId::GetDocumentFileName, const char*>();
 }
 
 uint32_t Llvm::FirstSequencePointLineNumber()
 {
-    return _firstSequencePointLineNumber(_thisPtr);
+    return CallEEApi<EEApiId::FirstSequencePointLineNumber, uint32_t>();
 }
 
 uint32_t Llvm::GetOffsetLineNumber(unsigned ilOffset)
 {
-    return _getOffsetLineNumber(_thisPtr, ilOffset);
+    return CallEEApi<EEApiId::GetOffsetLineNumber, uint32_t>(ilOffset);
 }
 
 bool Llvm::StructIsWrappedPrimitive(CORINFO_CLASS_HANDLE typeHandle, CorInfoType corInfoType)
 {
     // Maintains compatiblity with the IL->LLVM generation.
     // TODO-LLVM, when IL generation is no more, see if we can remove this unwrapping.
-    return _structIsWrappedPrimitive(_thisPtr, typeHandle, corInfoType) != 0;
+    return CallEEApi<EEApiId::StructIsWrappedPrimitive, uint32_t>(typeHandle, corInfoType) != 0;
 }
 
 uint32_t Llvm::PadOffset(CORINFO_CLASS_HANDLE typeHandle, unsigned atOffset)
 {
-    return _padOffset(_thisPtr, typeHandle, atOffset);
+    return CallEEApi<EEApiId::PadOffset, uint32_t>(typeHandle, atOffset);
 }
 
 CorInfoTypeWithMod Llvm::GetArgTypeIncludingParameterized(CORINFO_SIG_INFO* sigInfo, CORINFO_ARG_LIST_HANDLE arg, CORINFO_CLASS_HANDLE* pTypeHandle)
 {
-    return _getArgTypeIncludingParameterized(_thisPtr, sigInfo, arg, pTypeHandle);
+    return CallEEApi<EEApiId::GetArgTypeIncludingParameterized, CorInfoTypeWithMod>(sigInfo, arg, pTypeHandle);
 }
 
 CorInfoTypeWithMod Llvm::GetParameterType(CORINFO_CLASS_HANDLE typeHandle, CORINFO_CLASS_HANDLE* pInnerParameterTypeHandle)
 {
-    return _getParameterType(_thisPtr, typeHandle, pInnerParameterTypeHandle);
+    return CallEEApi<EEApiId::GetParameterType, CorInfoTypeWithMod>(typeHandle, pInnerParameterTypeHandle);
 }
 
 TypeDescriptor Llvm::GetTypeDescriptor(CORINFO_CLASS_HANDLE typeHandle)
 {
-    return _getTypeDescriptor(_thisPtr, typeHandle);
+    return CallEEApi<EEApiId::GetTypeDescriptor, TypeDescriptor>(typeHandle);
 }
 
 CORINFO_METHOD_HANDLE Llvm::GetCompilerHelpersMethodHandle(const char* helperClassTypeName, const char* helperMethodName)
 {
-    return _getCompilerHelpersMethodHandle(_thisPtr, helperClassTypeName, helperMethodName);
+    return CallEEApi<EEApiId::GetCompilerHelpersMethodHandle, CORINFO_METHOD_HANDLE>(helperClassTypeName, helperMethodName);
 }
 
 uint32_t Llvm::GetInstanceFieldAlignment(CORINFO_CLASS_HANDLE fieldTypeHandle)
 {
-    return _getInstanceFieldAlignment(_thisPtr, fieldTypeHandle);
+    return CallEEApi<EEApiId::GetInstanceFieldAlignment, uint32_t>(fieldTypeHandle);
 }
