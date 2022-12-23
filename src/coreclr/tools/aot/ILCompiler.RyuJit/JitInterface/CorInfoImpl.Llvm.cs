@@ -358,14 +358,6 @@ namespace Internal.JitInterface
             return typeDescriptor;
         }
 
-        [UnmanagedCallersOnly]
-        public static CORINFO_METHOD_STRUCT_* getCompilerHelpersMethodHandle(IntPtr thisHandle, byte* className, byte* methodName)
-        {
-            var _this = GetThis(thisHandle);
-
-            return _this.ObjectToHandle(_this._compilation.GetCompilerHelpersMethodDesc(Marshal.PtrToStringUTF8((IntPtr)className), Marshal.PtrToStringUTF8((IntPtr)methodName)));
-        }
-
         // Must be kept in sync with the unmanaged version in "jit/llvm.cpp".
         //
         enum EEApiId
@@ -383,7 +375,6 @@ namespace Internal.JitInterface
             GetArgTypeIncludingParameterized,
             GetParameterType,
             GetTypeDescriptor,
-            GetCompilerHelpersMethodHandle,
             GetInstanceFieldAlignment,
             Count
         }
@@ -407,7 +398,6 @@ namespace Internal.JitInterface
             callbacks[(int)EEApiId.GetArgTypeIncludingParameterized] = (delegate* unmanaged<IntPtr, CORINFO_SIG_INFO*, CORINFO_ARG_LIST_STRUCT_*, CORINFO_CLASS_STRUCT_**, CorInfoTypeWithMod>)&getArgTypeIncludingParameterized;
             callbacks[(int)EEApiId.GetParameterType] = (delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, CORINFO_CLASS_STRUCT_**, CorInfoTypeWithMod>)&getParameterType;
             callbacks[(int)EEApiId.GetTypeDescriptor] = (delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, TypeDescriptor>)&getTypeDescriptor;
-            callbacks[(int)EEApiId.GetCompilerHelpersMethodHandle] = (delegate* unmanaged<IntPtr, byte*, byte*, CORINFO_METHOD_STRUCT_*>)&getCompilerHelpersMethodHandle;
             callbacks[(int)EEApiId.GetInstanceFieldAlignment] = (delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, uint>)&getInstanceFieldAlignment;
             callbacks[(int)EEApiId.Count] = (void*)0x1234;
 

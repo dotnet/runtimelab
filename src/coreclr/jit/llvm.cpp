@@ -34,7 +34,6 @@ enum class EEApiId
     GetArgTypeIncludingParameterized,
     GetParameterType,
     GetTypeDescriptor,
-    GetCompilerHelpersMethodHandle,
     GetInstanceFieldAlignment,
     Count
 };
@@ -746,11 +745,6 @@ CorInfoTypeWithMod Llvm::GetParameterType(CORINFO_CLASS_HANDLE typeHandle, CORIN
 TypeDescriptor Llvm::GetTypeDescriptor(CORINFO_CLASS_HANDLE typeHandle)
 {
     return CallEEApi<EEApiId::GetTypeDescriptor, TypeDescriptor>(typeHandle);
-}
-
-CORINFO_METHOD_HANDLE Llvm::GetCompilerHelpersMethodHandle(const char* helperClassTypeName, const char* helperMethodName)
-{
-    return CallEEApi<EEApiId::GetCompilerHelpersMethodHandle, CORINFO_METHOD_HANDLE>(helperClassTypeName, helperMethodName);
 }
 
 uint32_t Llvm::GetInstanceFieldAlignment(CORINFO_CLASS_HANDLE fieldTypeHandle)

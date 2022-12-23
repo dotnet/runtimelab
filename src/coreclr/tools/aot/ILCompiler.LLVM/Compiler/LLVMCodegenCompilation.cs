@@ -291,11 +291,5 @@ namespace ILCompiler
         {
             return ILImporter.PadOffset(type, (int)atOffset);
         }
-
-        public override MethodDesc GetCompilerHelpersMethodDesc(string className, string helperMethodName)
-        {
-            MetadataType helperType = TypeSystemContext.SystemModule.GetKnownType("Internal.Runtime.CompilerHelpers", className);
-            return helperType.GetKnownMethod(helperMethodName, null);
-        }
     }
 }
