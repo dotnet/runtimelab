@@ -130,9 +130,7 @@ Llvm::Llvm(Compiler* compiler)
     _blkToLlvmBlksMap(compiler->getAllocator(CMK_Codegen)),
     _sdsuMap(compiler->getAllocator(CMK_Codegen)),
     _localsMap(compiler->getAllocator(CMK_Codegen)),
-    _debugMetadataMap(compiler->getAllocator(CMK_Codegen)),
-    _shadowStackLclNum(BAD_VAR_NUM),
-    _retAddressLclNum(BAD_VAR_NUM)
+    _debugMetadataMap(compiler->getAllocator(CMK_Codegen))
 {
 }
 

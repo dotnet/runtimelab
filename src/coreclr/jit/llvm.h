@@ -143,8 +143,8 @@ private:
     JitHashTable<std::string, JitStdStringKeyFuncs, DebugMetadata> _debugMetadataMap;
 
     unsigned _shadowStackLocalsSize;
-    unsigned _shadowStackLclNum;
-    unsigned _retAddressLclNum;
+    unsigned _shadowStackLclNum = BAD_VAR_NUM;
+    unsigned _retAddressLclNum = BAD_VAR_NUM;
     unsigned _llvmArgCount;
 
     // ================================================================================================================
@@ -326,7 +326,7 @@ private:
 
     Value* getOrCreateExternalSymbol(const char* symbolName, Type* symbolType = nullptr);
 
-    llvm::Instruction* getCast(llvm::Value* source, Type* targetType);
+    Instruction* getCast(Value* source, Type* targetType);
     Value* castIfNecessary(Value* source, Type* targetType, llvm::IRBuilder<>* builder = nullptr);
     Value* gepOrAddr(Value* addr, unsigned offset);
     Value* getShadowStack();

@@ -1954,7 +1954,7 @@ Value* Llvm::getOrCreateExternalSymbol(const char* symbolName, Type* symbolType)
     return symbol;
 }
 
-llvm::Instruction* Llvm::getCast(llvm::Value* source, Type* targetType)
+Instruction* Llvm::getCast(Value* source, Type* targetType)
 {
     Type* sourceType = source->getType();
     if (sourceType == targetType)
@@ -2008,7 +2008,7 @@ Value* Llvm::castIfNecessary(Value* source, Type* targetType, llvm::IRBuilder<>*
     return builder->Insert(castInst);
 }
 
-llvm::Value* Llvm::gepOrAddr(Value* addr, unsigned offset)
+Value* Llvm::gepOrAddr(Value* addr, unsigned offset)
 {
     if (offset == 0)
     {
