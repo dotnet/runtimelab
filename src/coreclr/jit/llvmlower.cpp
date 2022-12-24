@@ -880,6 +880,11 @@ void Llvm::failUnsupportedCalls(GenTreeCall* callNode)
         return;
     }
 
+    if (callNode->IsUnmanaged())
+    {
+        failFunctionCompilation();
+    }
+
     // we can't do these yet
     if ((callNode->gtCallType != CT_INDIRECT && IsRuntimeImport(callNode->gtCallMethHnd)) || callNode->IsTailCall())
     {
