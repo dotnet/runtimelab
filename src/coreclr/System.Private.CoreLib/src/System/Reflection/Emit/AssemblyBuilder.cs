@@ -150,8 +150,12 @@ namespace System.Reflection.Emit
 
         #region DefineDynamicAssembly
 
-        [RequiresDynamicCode("Defining a dynamic assembly requires dynamic code.")]
-        [DynamicSecurityMethod] // Required to make Assembly.GetCallingAssembly reliable.
+        /// <summary>
+        /// If an AssemblyName has a public key specified, the assembly is assumed
+        /// to have a strong name and a hash will be computed when the assembly
+        /// is saved.
+        /// </summary>
+        [DynamicSecurityMethod] // Methods containing StackCrawlMark local var has to be marked DynamicSecurityMethod.
         public static AssemblyBuilder DefineDynamicAssembly(AssemblyName name, AssemblyBuilderAccess access)
         {
             StackCrawlMark stackMark = StackCrawlMark.LookForMyCaller;
@@ -162,8 +166,7 @@ namespace System.Reflection.Emit
                                                  null);
         }
 
-        [RequiresDynamicCode("Defining a dynamic assembly requires dynamic code.")]
-        [DynamicSecurityMethod] // Required to make Assembly.GetCallingAssembly reliable.
+        [DynamicSecurityMethod] // Methods containing StackCrawlMark local var has to be marked DynamicSecurityMethod.
         public static AssemblyBuilder DefineDynamicAssembly(
             AssemblyName name,
             AssemblyBuilderAccess access,
