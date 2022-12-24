@@ -189,9 +189,9 @@ void Phase::PostPhase(PhaseStatus status)
         PHASE_INSERT_GC_POLLS,
         PHASE_RATIONALIZE,
         PHASE_LOWERING,
-        PHASE_STACK_LEVEL_SETTER
+        PHASE_STACK_LEVEL_SETTER,
 #if TARGET_WASM
-        ,PHASE_LOWER_LLVM
+        PHASE_LOWER_LLVM
 #endif
     };
 
