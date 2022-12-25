@@ -15,7 +15,6 @@ namespace Internal.JitInterface
     {
         static List<IntPtr> _allocedMemory = new List<IntPtr>();
 
-        private MethodDebugInformation _debugInformation;
         private Dictionary<IntPtr, TypeDescriptor> typeDescriptorDict = new Dictionary<IntPtr, TypeDescriptor>();
 
         [DllImport(JitLibrary)]
@@ -172,7 +171,7 @@ namespace Internal.JitInterface
 
         ILSequencePoint GetSequencePoint(uint offset)
         {
-            var sequencePointsEnumerable = _debugInformation.GetSequencePoints();
+            var sequencePointsEnumerable = _debugInfo.GetSequencePoints();
             if (sequencePointsEnumerable == null) return default;
 
             ILSequencePoint curSequencePoint = default;
@@ -421,11 +420,6 @@ namespace Internal.JitInterface
                 &getCompilerHelpersMethodHandle,
                 &getInstanceFieldAlignment
             );
-        }
-
-        public void InitialiseDebugInfo(MethodDesc method, MethodIL methodIL)
-        {
-            _debugInformation = _compilation.GetDebugInfo(methodIL);
         }
 
         void AddOrReturnGlobalSymbol(ISymbolNode symbolNode, NameMangler nameMangler)
