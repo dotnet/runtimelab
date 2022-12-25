@@ -347,7 +347,7 @@
     <ProjectExclusions Include="$(RepoRoot)\src\tests\BuildWasmApps\Wasm.Build.Tests\Wasm.Build.Tests.csproj" />
   </ItemGroup>
 
-  <ItemGroup Condition="'$(TestNativeAot)' == 'true'>
+  <ItemGroup Condition="'$(TestNativeAot)' == 'true'">
     <!-- Fails because some types do not have RequiresDynamicCodeAttribute -->
     <ProjectExclusions Include="$(MSBuildThisFileDirectory)System.Runtime\tests\System.Runtime.Tests.csproj" />
   </ItemGroup>
