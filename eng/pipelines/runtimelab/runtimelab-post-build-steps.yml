@@ -27,7 +27,7 @@ steps:
 
   # Run libraries tests
   - ${{ if and(ne(parameters.isOfficialBuild, true),and(eq(parameters.buildConfig, 'Release'),ne(parameters.archType, 'wasm'))) }}:
-    - script: $(Build.SourcesDirectory)/build$(scriptExt) libs.tests -c Release -test /p:TestNativeAot=true /p:RunSmokeTestsOnly=true
+    - script: $(Build.SourcesDirectory)/build$(scriptExt) libs.tests -c Release -test /p:TestNativeAot=true
       displayName: Build and run libraries tests
 
   # Build coreclr native test output
