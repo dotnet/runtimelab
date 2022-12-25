@@ -2,6 +2,7 @@
   <PropertyGroup>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <FeatureGenericMath>false</FeatureGenericMath>
+    <!-- TODO-LLVM: investigate the need for IL3051, maybe it can just be removed when more of upstream is merged -->
     <NoWarn>$(NoWarn),1718,SYSLIB0013,IL3051</NoWarn>
     <TestRuntime>true</TestRuntime>
     <IncludeRemoteExecutor>true</IncludeRemoteExecutor>
