@@ -25,6 +25,11 @@ steps:
       - script: $(Build.SourcesDirectory)/build$(scriptExt) libs+nativeaot.packages -c $(buildConfigUpper) $(_officialBuildParameter) -ci
         displayName: Build host packages
 
+  # Run libraries tests
+  - ${{ if and(ne(parameters.isOfficialBuild, true),and(eq(parameters.buildConfig, 'Release'),ne(parameters.archType, 'wasm'))) }}:
+    - script: $(Build.SourcesDirectory)/build$(scriptExt) libs.tests -c Release -test /p:TestNativeAot=true /p:RunSmokeTestsOnly=true
+      displayName: Build and run libraries tests
+
   # Build coreclr native test output
   - ${{ if eq(parameters.platform, 'Browser_wasm_win') }}:
     - script: |
