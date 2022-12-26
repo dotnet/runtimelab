@@ -6284,20 +6284,32 @@ GenTree* Compiler::fgMorphField(GenTree* tree, MorphAddrContext* mac)
             FieldSeqNode* fldSeq =
                 !isBoxedStatic ? GetFieldSeqStore()->CreateSingleton(symHnd) : FieldSeqStore::NotAField();
 
-#ifdef TARGET_64BIT
+            // TODO-CQ: enable this optimization for 32 bit targets.
             bool isStaticReadOnlyInited = false;
-            bool plsSpeculative         = true;
-            if (info.compCompHnd->getStaticFieldCurrentClass(symHnd, &plsSpeculative) != NO_CLASS_HANDLE)
+#ifdef TARGET_64BIT
+            if (tree->TypeIs(TYP_REF) && !isBoxedStatic)
             {
-                isStaticReadOnlyInited = !plsSpeculative;
+                bool pIsSpeculative = true;
+                if (info.compCompHnd->getStaticFieldCurrentClass(symHnd, &pIsSpeculative) != NO_CLASS_HANDLE)
+                {
+                    isStaticReadOnlyInited = !pIsSpeculative;
+                }
             }
+#endif // TARGET_64BIT
 
-            // even if RelocTypeHint is REL32 let's still prefer IND over GT_CLS_VAR
-            // for static readonly fields of statically initialized classes - thus we can
-            // apply GTF_IND_INVARIANT flag and make it hoistable/CSE-friendly
-            if (isStaticReadOnlyInited || (IMAGE_REL_BASED_REL32 != eeGetRelocTypeHint(fldAddr)))
+            // TODO: choices made below have mostly historical reasons and
+            // should be unified to always use the IND(<address>) form.
+            CLANG_FORMAT_COMMENT_ANCHOR;
+
+#ifdef TARGET_64BIT
+            bool preferIndir =
+                isBoxedStatic || isStaticReadOnlyInited || (IMAGE_REL_BASED_REL32 != eeGetRelocTypeHint(fldAddr));
+#else  // !TARGET_64BIT
+            bool preferIndir = isBoxedStatic;
+#endif // !TARGET_64BIT
+
+            if (preferIndir)
             {
-                // The address is not directly addressible, so force it into a constant, so we handle it properly.
                 GenTreeFlags handleKind = GTF_EMPTY;
                 if (isBoxedStatic)
                 {
@@ -6340,7 +6352,6 @@ GenTree* Compiler::fgMorphField(GenTree* tree, MorphAddrContext* mac)
                 return fgMorphSmpOp(tree);
             }
             else
-#endif // TARGET_64BIT
             {
                 // Only volatile or classinit could be set, and they map over
                 noway_assert((tree->gtFlags & ~(GTF_FLD_VOLATILE | GTF_FLD_INITCLASS | GTF_COMMON_MASK)) == 0);
@@ -9524,6 +9535,7 @@ GenTree* Compiler::fgMorphConst(GenTree* tree)
 //
 // Arguments:
 //    obj - the obj node.
+//    destroyNodes -- destroy nodes that are optimized away
 //
 // Return value:
 //    GenTreeLclVar if the obj can be replaced by it, null otherwise.
@@ -9534,7 +9546,7 @@ GenTree* Compiler::fgMorphConst(GenTree* tree)
 //    for some platforms does not expect struct `LCL_VAR` as a source, so
 //    it needs more work.
 //
-GenTreeLclVar* Compiler::fgMorphTryFoldObjAsLclVar(GenTreeObj* obj)
+GenTreeLclVar* Compiler::fgMorphTryFoldObjAsLclVar(GenTreeObj* obj, bool destroyNodes)
 {
     if (opts.OptimizationEnabled())
     {
@@ -9567,8 +9579,12 @@ GenTreeLclVar* Compiler::fgMorphTryFoldObjAsLclVar(GenTreeObj* obj)
                     lclVar->gtFlags &= ~GTF_DONT_CSE;
                     lclVar->gtFlags |= (obj->gtFlags & GTF_DONT_CSE);
 
-                    DEBUG_DESTROY_NODE(obj);
-                    DEBUG_DESTROY_NODE(addr);
+                    if (destroyNodes)
+                    {
+                        DEBUG_DESTROY_NODE(obj);
+                        DEBUG_DESTROY_NODE(addr);
+                    }
+
                     return lclVar;
                 }
             }
@@ -11577,6 +11593,24 @@ GenTree* Compiler::fgMorphSmpOp(GenTree* tree, MorphAddrContext* mac)
         case GT_PUTARG_TYPE:
             return fgMorphTree(tree->AsUnOp()->gtGetOp1());
 
+        case GT_NULLCHECK:
+        {
+            op1 = tree->AsUnOp()->gtGetOp1();
+            if (op1->IsCall())
+            {
+                GenTreeCall* const call = op1->AsCall();
+                if (call->IsHelperCall() && s_helperCallProperties.NonNullReturn(eeGetHelperNum(call->gtCallMethHnd)))
+                {
+                    JITDUMP("\nNULLCHECK on [%06u] will always succeed\n", dspTreeID(call));
+
+                    // TODO: Can we also remove the call?
+                    //
+                    return fgMorphTree(call);
+                }
+            }
+        }
+        break;
+
         default:
             break;
     }
@@ -12590,28 +12624,20 @@ DONE_MORPHING_CHILDREN:
                         lclFld->SetLclOffs(lclFld->GetLclOffs() + static_cast<unsigned>(ival1));
                         lclFld->SetFieldSeq(GetFieldSeqStore()->Append(lclFld->GetFieldSeq(), fieldSeq));
                     }
-                    else // we have a GT_LCL_VAR
+                    else // We have a GT_LCL_VAR.
                     {
                         assert(temp->OperGet() == GT_LCL_VAR);
-                        temp->ChangeOper(GT_LCL_FLD); // Note that this typically makes the gtFieldSeq "NotAField",
-                        // unless there is a zero filed offset associated with 'temp'.
+                        temp->ChangeOper(GT_LCL_FLD); // Note that this makes the gtFieldSeq "NotAField".
                         lclFld = temp->AsLclFld();
                         lclFld->SetLclOffs(static_cast<unsigned>(ival1));
 
-                        if (lclFld->GetFieldSeq() == FieldSeqStore::NotAField())
+                        if (fieldSeq != nullptr)
                         {
-                            if (fieldSeq != nullptr)
-                            {
-                                // If it does represent a field, note that.
-                                lclFld->SetFieldSeq(fieldSeq);
-                            }
-                        }
-                        else
-                        {
-                            // Append 'fieldSeq' to the existing one
-                            lclFld->SetFieldSeq(GetFieldSeqStore()->Append(lclFld->GetFieldSeq(), fieldSeq));
+                            // If it does represent a field, note that.
+                            lclFld->SetFieldSeq(fieldSeq);
                         }
                     }
+
                     temp->gtType      = tree->gtType;
                     foldAndReturnTemp = true;
                 }
@@ -13477,28 +13503,6 @@ GenTree* Compiler::fgOptimizeCommutativeArithmetic(GenTreeOp* tree)
         std::swap(tree->gtOp1, tree->gtOp2);
     }
 
-    if (!optValnumCSE_phase)
-    {
-        GenTree* optimizedTree = nullptr;
-        if (tree->OperIs(GT_ADD))
-        {
-            optimizedTree = fgOptimizeAddition(tree);
-        }
-        else if (tree->OperIs(GT_MUL))
-        {
-            optimizedTree = fgOptimizeMultiply(tree);
-        }
-        else if (tree->OperIs(GT_AND))
-        {
-            optimizedTree = fgOptimizeBitwiseAnd(tree);
-        }
-
-        if (optimizedTree != nullptr)
-        {
-            return optimizedTree;
-        }
-    }
-
     if (fgOperIsBitwiseRotationRoot(tree->OperGet()))
     {
         GenTree* rotationTree = fgRecognizeAndMorphBitwiseRotation(tree);
@@ -13519,7 +13523,36 @@ GenTree* Compiler::fgOptimizeCommutativeArithmetic(GenTreeOp* tree)
 
     if (varTypeIsIntegralOrI(tree))
     {
+        genTreeOps oldTreeOper   = tree->OperGet();
         GenTreeOp* optimizedTree = fgMorphCommutative(tree->AsOp());
+        if (optimizedTree != nullptr)
+        {
+            if (!optimizedTree->OperIs(oldTreeOper))
+            {
+                // "optimizedTree" could end up being a COMMA.
+                return optimizedTree;
+            }
+
+            tree = optimizedTree;
+        }
+    }
+
+    if (!optValnumCSE_phase)
+    {
+        GenTree* optimizedTree = nullptr;
+        if (tree->OperIs(GT_ADD))
+        {
+            optimizedTree = fgOptimizeAddition(tree);
+        }
+        else if (tree->OperIs(GT_MUL))
+        {
+            optimizedTree = fgOptimizeMultiply(tree);
+        }
+        else if (tree->OperIs(GT_AND))
+        {
+            optimizedTree = fgOptimizeBitwiseAnd(tree);
+        }
+
         if (optimizedTree != nullptr)
         {
             return optimizedTree;
@@ -13571,8 +13604,7 @@ GenTree* Compiler::fgOptimizeAddition(GenTreeOp* add)
 
     // Fold (x + 0) - given it won't change the tree type to TYP_REF.
     // TODO-Bug: this code will lose the GC-ness of a tree like "native int + byref(0)".
-    if (op2->IsCnsIntOrI() && (op2->AsIntCon()->IconValue() == 0) &&
-        ((add->TypeGet() == op1->TypeGet()) || !op1->TypeIs(TYP_REF)))
+    if (op2->IsIntegralConst(0) && ((add->TypeGet() == op1->TypeGet()) || !op1->TypeIs(TYP_REF)))
     {
         if (op2->IsCnsIntOrI() && (op2->AsIntCon()->gtFieldSeq != nullptr) &&
             (op2->AsIntCon()->gtFieldSeq != FieldSeqStore::NotAField()))
@@ -13586,9 +13618,8 @@ GenTree* Compiler::fgOptimizeAddition(GenTreeOp* add)
         return op1;
     }
 
-    // TODO-CQ: this transform preserves VNs and can be enabled outside global morph.
     // Note that these transformations are legal for floating-point ADDs as well.
-    if (opts.OptimizationEnabled() && fgGlobalMorph)
+    if (opts.OptimizationEnabled())
     {
         // - a + b = > b - a
         // ADD((NEG(a), b) => SUB(b, a)
@@ -13697,6 +13728,13 @@ GenTree* Compiler::fgOptimizeMultiply(GenTreeOp* mul)
             return mul;
         }
 
+#ifdef TARGET_XARCH
+        // Should we try to replace integer multiplication with lea/add/shift sequences?
+        bool mulShiftOpt = compCodeOpt() != SMALL_CODE;
+#else  // !TARGET_XARCH
+        bool mulShiftOpt = false;
+#endif // !TARGET_XARCH
+
         size_t abs_mult      = (mult >= 0) ? mult : -mult;
         size_t lowestBit     = genFindLowestBit(abs_mult);
         bool   changeToShift = false;
@@ -13739,7 +13777,7 @@ GenTree* Compiler::fgOptimizeMultiply(GenTreeOp* mul)
             op2->AsIntConCommon()->SetIconValue(genLog2(abs_mult));
             changeToShift = true;
         }
-        else if ((lowestBit > 1) && jitIsScaleIndexMul(lowestBit) && optAvoidIntMult())
+        else if (mulShiftOpt && (lowestBit > 1) && jitIsScaleIndexMul(lowestBit))
         {
             int     shift  = genLog2(lowestBit);
             ssize_t factor = abs_mult >> shift;
@@ -14282,11 +14320,26 @@ GenTree* Compiler::fgMorphMultiOp(GenTreeMultiOp* multiOp)
     for (GenTree** use : multiOp->UseEdges())
     {
         *use = fgMorphTree(*use);
-        multiOp->gtFlags |= ((*use)->gtFlags & GTF_ALL_EFFECT);
 
-        if (dontCseConstArguments && (*use)->OperIsConst())
+        GenTree* operand = *use;
+        multiOp->gtFlags |= (operand->gtFlags & GTF_ALL_EFFECT);
+
+        if (dontCseConstArguments && operand->OperIsConst())
         {
-            (*use)->SetDoNotCSE();
+            operand->SetDoNotCSE();
+        }
+
+        // Promoted structs after morph must be in one of two states:
+        //  a) Fully eliminated from the IR (independent promotion) OR only be
+        //     used by "special" nodes (e. g. LHS of ASGs for multi-reg structs).
+        //  b) Marked as do-not-enregister (dependent promotion).
+        //
+        // So here we preserve this invariant and mark any promoted structs as do-not-enreg.
+        //
+        if (operand->OperIs(GT_LCL_VAR) && lvaGetDesc(operand->AsLclVar())->lvPromoted)
+        {
+            lvaSetVarDoNotEnregister(operand->AsLclVar()->GetLclNum()
+                                         DEBUGARG(DoNotEnregisterReason::SimdUserForcesDep));
         }
     }
 
@@ -17794,15 +17847,6 @@ void Compiler::fgAddFieldSeqForZeroOffset(GenTree* addr, FieldSeqNode* fieldSeqZ
             addr->AsIntCon()->gtFieldSeq = fieldSeqUpdate;
             fieldSeqRecorded             = true;
             break;
-
-        case GT_LCL_FLD:
-        {
-            GenTreeLclFld* lclFld = addr->AsLclFld();
-            fieldSeqUpdate        = GetFieldSeqStore()->Append(lclFld->GetFieldSeq(), fieldSeqZero);
-            lclFld->SetFieldSeq(fieldSeqUpdate);
-            fieldSeqRecorded = true;
-            break;
-        }
 
         case GT_ADDR:
             if (addr->AsOp()->gtOp1->OperGet() == GT_LCL_FLD)

@@ -68,7 +68,7 @@ stages:
         jobParameters:
           timeoutInMinutes: 300
           testGroup: innerloop
-          buildArgs: -s clr.alljits+clr.tools+clr.nativeaotlibs+libs+nativeaot.packages -lc Release -rc Debug
+          buildArgs: -s clr.alljits+clr.tools+clr.nativeaotruntime+clr.nativeaotlibs+libs+nativeaot.packages -lc Release -rc Debug
           extraStepsTemplate: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
 
   #
@@ -84,7 +84,7 @@ stages:
         jobParameters:
           timeoutInMinutes: 300
           testGroup: innerloop
-          buildArgs: -s clr.nativeaotlibs+clr.nativeaotbuild+libs -lc Release -rc Debug
+          buildArgs: -s clr.nativeaotruntime+clr.nativeaotlibs+libs -lc Release -rc Debug
           extraStepsTemplate: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
 
   #
@@ -101,7 +101,7 @@ stages:
         jobParameters:
           timeoutInMinutes: 300
           testGroup: innerloop
-          buildArgs: -s clr.alljits+clr.tools+clr.nativeaotlibs+libs+nativeaot.packages -lc Release -rc Checked
+          buildArgs: -s clr.alljits+clr.tools+clr.nativeaotruntime+clr.nativeaotlibs+libs+nativeaot.packages -lc Release -rc Checked
           extraStepsTemplate: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
 
   #
@@ -124,7 +124,7 @@ stages:
         timeoutInMinutes: 300
         isOfficialBuild: ${{ variables.isOfficialBuild }}
         testGroup: innerloop
-        buildArgs: -s clr.alljits+clr.tools+clr.nativeaotlibs+libs+nativeaot.packages -c Release
+        buildArgs: -s clr.alljits+clr.tools+clr.nativeaotruntime+clr.nativeaotlibs+libs+nativeaot.packages -c Release
         extraStepsTemplate: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
         extraStepsParameters:
           isOfficialBuild: ${{ variables.isOfficialBuild }}
@@ -142,7 +142,7 @@ stages:
         timeoutInMinutes: 300
         isOfficialBuild: ${{ variables.isOfficialBuild }}
         testGroup: innerloop
-        buildArgs: -s clr.nativeaotlibs+clr.nativeaotbuild+libs+nativeaot.packages -c Release
+        buildArgs: -s clr.nativeaotruntime+clr.nativeaotlibs+libs+nativeaot.packages -c Release
         extraStepsTemplate: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
         extraStepsParameters:
           isOfficialBuild: ${{ variables.isOfficialBuild }}
