@@ -527,6 +527,10 @@ CONFIG_INTEGER(JitSaveFpLrWithCalleeSavedRegisters, W("JitSaveFpLrWithCalleeSave
 
 CONFIG_INTEGER(JitEnregStructLocals, W("JitEnregStructLocals"), 1) // Allow to enregister locals with struct type.
 
+#if defined(DEBUG) && defined(TARGET_WASM)
+CONFIG_STRING(EnableLlvmRange, W("EnableLlvmRange"))
+#endif // defined(DEBUG) && defined(TARGET_WASM)
+
 #undef CONFIG_INTEGER
 #undef CONFIG_STRING
 #undef CONFIG_METHODSET

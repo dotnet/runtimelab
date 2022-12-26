@@ -5071,6 +5071,16 @@ void Compiler::compCompile(void** methodCodePtr, uint32_t* methodCodeSize, JitFl
     compJitStats();
 
 #if defined(TARGET_WASM)
+#ifdef DEBUG
+    static ConfigMethodRange EnableLlvmRange;
+    EnableLlvmRange.EnsureInit(JitConfig.EnableLlvmRange());
+
+    if (!EnableLlvmRange.Contains(info.compMethodHash()))
+    {
+        fatal(CORJIT_SKIPPED);
+    }
+#endif // DEBUG
+
     if (opts.OptimizationEnabled())
     {
         // When optimizing, we'll sort the locals on the shadow stack by ref count.
