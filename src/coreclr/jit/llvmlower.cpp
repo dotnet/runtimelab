@@ -342,12 +342,12 @@ void Llvm::lowerBlocks()
         block->bbFlags &= ~BBF_MARKED;
     }
 
-    _currentBlock = nullptr;
+    m_currentBlock = nullptr;
 }
 
 void Llvm::lowerBlock(BasicBlock* block)
 {
-    _currentBlock = block;
+    m_currentBlock = block;
     _currentRange = &LIR::AsRange(block);
 
     for (GenTree* node : CurrentRange())
