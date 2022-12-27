@@ -103,6 +103,11 @@ struct LlvmBlockRange
 {
     llvm::BasicBlock* FirstBlock;
     llvm::BasicBlock* LastBlock;
+    INDEBUG(unsigned Count = 1);
+
+    LlvmBlockRange(llvm::BasicBlock* llvmBlock) : FirstBlock(llvmBlock), LastBlock(llvmBlock)
+    {
+    }
 };
 
 // TODO: We should create a Static... class to manage the globals and their lifetimes.
@@ -125,7 +130,7 @@ private:
 
     CORINFO_SIG_INFO _sigInfo; // sigInfo of function being compiled
     LIR::Range* _currentRange;
-    BasicBlock* _currentBlock;
+    BasicBlock* m_currentBlock;
     DebugInfo _currentOffset;
     llvm::IRBuilder<> _builder;
     llvm::IRBuilder<> _prologBuilder;
@@ -136,6 +141,10 @@ private:
     std::vector<AllocaInst*> m_allocas;
     std::vector<Function*> m_functions;
     std::vector<llvm::BasicBlock*> m_EHDispatchLlvmBlocks;
+
+    // Codegen emit context.
+    unsigned m_currentProtectedRegionIndex = EHblkDsc::NO_ENCLOSING_INDEX;
+    LlvmBlockRange* m_currentLlvmBlocks = nullptr;
 
     // DWARF
     llvm::DILocation* _currentOffsetDiLocation;
@@ -166,7 +175,7 @@ private:
     }
     BasicBlock* CurrentBlock() const
     {
-        return _currentBlock;
+        return m_currentBlock;
     }
 
     GCInfo* getGCInfo();
@@ -342,17 +351,22 @@ private:
     DebugMetadata getOrCreateDebugMetadata(const char* documentFileName);
     llvm::DILocation* createDebugFunctionAndDiLocation(struct DebugMetadata debugMetadata, unsigned int lineNo);
 
+    void setCurrentEmitContextForBlock(BasicBlock* block);
+    void setCurrentEmitContext(LlvmBlockRange* llvmBlock, unsigned tryIndex);
+    LlvmBlockRange* getCurrentLlvmBlocks() const;
+    unsigned getCurrentProtectedRegionIndex() const;
+
     Function* getRootLlvmFunction();
     Function* getCurrentLlvmFunction();
     Function* getLlvmFunctionForIndex(unsigned funcIdx);
     unsigned getLlvmFunctionIndexForBlock(BasicBlock* block);
-    void setCurrentLlvmFunctionForBlock(BasicBlock* block);
+    unsigned getLlvmFunctionIndexForProtectedRegion(unsigned tryIndex);
 
     llvm::BasicBlock* createInlineLlvmBlock();
-    llvm::BasicBlock* getEHDispatchLlvmBlockForBlock(BasicBlock* block);
+    llvm::BasicBlock* getCurrentLlvmBlock() const;
+    LlvmBlockRange* getLlvmBlocksForBlock(BasicBlock* block);
     llvm::BasicBlock* getFirstLlvmBlockForBlock(BasicBlock* block);
     llvm::BasicBlock* getLastLlvmBlockForBlock(BasicBlock* block);
-    void setLastLlvmBlockForBlock(BasicBlock* block, llvm::BasicBlock* llvmBlock);
 
     Value* getLocalAddr(unsigned lclNum);
     unsigned getTotalLocalOffset();

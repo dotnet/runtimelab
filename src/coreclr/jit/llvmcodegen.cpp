@@ -4,6 +4,8 @@
 
 #include "llvm.h"
 
+#define BBNAME(prefix, index) llvm::Twine(prefix) + ((index < 10) ? "0" : "") + llvm::Twine(index)
+
 //------------------------------------------------------------------------
 // Compile: Compile IR to LLVM, adding to the LLVM Module
 //
@@ -189,18 +191,10 @@ bool Llvm::initializeFunctions()
             else
             {
                 // The dispatch block is part of the function with the protected region.
-                unsigned enclosingFuncIdx = ROOT_FUNC_IDX;
-                unsigned enclosingHndIndex = ehDsc->ebdEnclosingHndIndex;
-                if (enclosingHndIndex != EHblkDsc::NO_ENCLOSING_INDEX)
-                {
-                    // Note here we will correctly get the "filter handler" part of filter.
-                    // There can be no protected regions in the "filter" parts of filters.
-                    enclosingFuncIdx = _compiler->ehGetDsc(enclosingHndIndex)->ebdFuncIndex;
-                }
-
+                unsigned enclosingFuncIdx = getLlvmFunctionIndexForProtectedRegion(ehIndex);
                 Function* dispatchLlvmFunc = getLlvmFunctionForIndex(enclosingFuncIdx);
                 dispatchLlvmBlock =
-                    llvm::BasicBlock::Create(_llvmContext, "BBT" + llvm::Twine(ehDsc->ebdTryBeg->getTryIndex()),
+                    llvm::BasicBlock::Create(_llvmContext, BBNAME("BT", ehDsc->ebdTryBeg->getTryIndex()),
                                              dispatchLlvmFunc);
             }
 
@@ -344,11 +338,7 @@ void Llvm::generateBlock(BasicBlock* block)
     JITDUMP("\n=============== Generating ");
     JITDUMPEXEC(block->dspBlockHeader(_compiler, /* showKind */ true, /* showFlags */ true));
 
-    setCurrentLlvmFunctionForBlock(block);
-
-    llvm::BasicBlock* llvmBlock = getFirstLlvmBlockForBlock(block);
-    _currentBlock = block;
-    _builder.SetInsertPoint(llvmBlock);
+    setCurrentEmitContextForBlock(block);
 
     for (GenTree* node : LIR::AsRange(block))
     {
@@ -385,18 +375,6 @@ void Llvm::generateBlock(BasicBlock* block)
             // TODO-LLVM: other jump kinds.
             break;
     }
-
-#ifdef DEBUG
-    llvm::BasicBlock* lastLlvmBlock = _builder.GetInsertBlock();
-    if (lastLlvmBlock != llvmBlock)
-    {
-        llvm::StringRef blockName = llvmBlock->getName();
-        for (unsigned idx = 1; llvmBlock != lastLlvmBlock->getNextNode(); llvmBlock = llvmBlock->getNextNode(), idx++)
-        {
-            llvmBlock->setName(blockName + "." + llvm::Twine(idx));
-        }
-    }
-#endif // DEBUG
 }
 
 void Llvm::generateEHDispatch()
@@ -1783,6 +1761,7 @@ void Llvm::buildCatchArg(GenTree* node)
 {
     // The exception object is passed as the first shadow parameter to funclets.
     Type* excLlvmType = getLlvmTypeForVarType(node->TypeGet());
+    // TODO-LLVM: delete once we move to opaque pointers.
     Value* shadowStackValue = _builder.CreateBitCast(getShadowStack(), excLlvmType->getPointerTo());
     Value* excObjValue = _builder.CreateLoad(excLlvmType, shadowStackValue);
 
@@ -1978,8 +1957,10 @@ void Llvm::emitJumpToThrowHelper(Value* jumpCondValue, SpecialCodeKind throwKind
 {
     if (_compiler->fgUseThrowHelperBlocks())
     {
+        assert(CurrentBlock() != nullptr);
+
         // For code with throw helper blocks, find and use the shared helper block for raising the exception.
-        unsigned throwIndex = _compiler->bbThrowIndex(_currentBlock);
+        unsigned throwIndex = _compiler->bbThrowIndex(CurrentBlock());
         BasicBlock* throwBlock = _compiler->fgFindExcptnTarget(throwKind, throwIndex)->acdDstBlk;
 
         // Jump to the exception-throwing block on error.
@@ -2058,25 +2039,37 @@ Value* Llvm::emitHelperCall(CorInfoHelpFunc helperFunc, ArrayRef<Value*> sigArgs
     return callValue;
 }
 
-Value* Llvm::emitCallOrInvoke(llvm::FunctionCallee callee, ArrayRef<Value*> args)
+llvm::CallBase* Llvm::emitCallOrInvoke(llvm::FunctionCallee callee, ArrayRef<Value*> args)
 {
-    llvm::BasicBlock* catchLlvmBlock = getEHDispatchLlvmBlockForBlock(CurrentBlock());
+    llvm::BasicBlock* catchLlvmBlock = nullptr;
+    if (getCurrentProtectedRegionIndex() != EHblkDsc::NO_ENCLOSING_INDEX)
+    {
+        catchLlvmBlock = m_EHDispatchLlvmBlocks[getCurrentProtectedRegionIndex()];
 
-    Value* callValue;
+        // Protected region index that is set in the emit context refers to the "logical" enclosing
+        // protected region, i. e. the one before funclet creation. But we do not need to (in fact,
+        // cannot) emit an invoke targeting block inside a different LLVM function.
+        if (catchLlvmBlock->getParent() != getCurrentLlvmFunction())
+        {
+            catchLlvmBlock = nullptr;
+        }
+    }
+
+    llvm::CallBase* callInst;
     if (catchLlvmBlock != nullptr)
     {
         llvm::BasicBlock* nextLlvmBlock = createInlineLlvmBlock();
 
-        callValue = _builder.CreateInvoke(callee, nextLlvmBlock, catchLlvmBlock, args);
+        callInst = _builder.CreateInvoke(callee, nextLlvmBlock, catchLlvmBlock, args);
 
         _builder.SetInsertPoint(nextLlvmBlock);
     }
     else
     {
-        callValue = _builder.CreateCall(callee, args);
+        callInst = _builder.CreateCall(callee, args);
     }
 
-    return callValue;
+    return callInst;
 }
 
 FunctionType* Llvm::getFunctionType()
@@ -2319,6 +2312,48 @@ llvm::DILocation* Llvm::createDebugFunctionAndDiLocation(DebugMetadata debugMeta
     return llvm::DILocation::get(_llvmContext, lineNo, 0, _debugFunction);
 }
 
+llvm::BasicBlock* Llvm::getCurrentLlvmBlock() const
+{
+    return getCurrentLlvmBlocks()->LastBlock;
+}
+
+void Llvm::setCurrentEmitContextForBlock(BasicBlock* block)
+{
+    LlvmBlockRange* llvmBlocks = getLlvmBlocksForBlock(block);
+    unsigned tryIndex = block->hasTryIndex() ? block->getTryIndex() : EHblkDsc::NO_ENCLOSING_INDEX;
+
+    setCurrentEmitContext(llvmBlocks, tryIndex);
+    m_currentBlock = block;
+}
+
+void Llvm::setCurrentEmitContext(LlvmBlockRange* llvmBlocks, unsigned tryIndex)
+{
+    _builder.SetInsertPoint(llvmBlocks->LastBlock);
+    m_currentLlvmBlocks = llvmBlocks;
+    m_currentProtectedRegionIndex = tryIndex;
+
+    // "Raw" emission contexts do not have a current IR block.
+    m_currentBlock = nullptr;
+}
+
+LlvmBlockRange* Llvm::getCurrentLlvmBlocks() const
+{
+    assert(m_currentLlvmBlocks != nullptr);
+    return m_currentLlvmBlocks;
+}
+
+//------------------------------------------------------------------------
+// getCurrentProtectedRegionIndex: Get the current protected region's index.
+//
+// Return Value:
+//    Index of the EH descriptor for the (innermost) protected region ("try")
+//    enclosing code in the current emit context.
+//
+unsigned Llvm::getCurrentProtectedRegionIndex() const
+{
+    return m_currentProtectedRegionIndex;
+}
+
 Function* Llvm::getRootLlvmFunction()
 {
     return getLlvmFunctionForIndex(ROOT_FUNC_IDX);
@@ -2326,7 +2361,7 @@ Function* Llvm::getRootLlvmFunction()
 
 Function* Llvm::getCurrentLlvmFunction()
 {
-    return getLlvmFunctionForIndex(_compiler->compCurrFuncIdx);
+    return getCurrentLlvmBlock()->getParent();
 }
 
 Function* Llvm::getLlvmFunctionForIndex(unsigned funcIdx)
@@ -2357,62 +2392,67 @@ unsigned Llvm::getLlvmFunctionIndexForBlock(BasicBlock* block)
     return funcIdx;
 }
 
-void Llvm::setCurrentLlvmFunctionForBlock(BasicBlock* block)
+unsigned Llvm::getLlvmFunctionIndexForProtectedRegion(unsigned tryIndex)
 {
-    _compiler->funSetCurrentFunc(getLlvmFunctionIndexForBlock(block));
+    unsigned funcIdx = ROOT_FUNC_IDX;
+    if (tryIndex != EHblkDsc::NO_ENCLOSING_INDEX)
+    {
+        EHblkDsc* ehDsc = _compiler->ehGetDsc(tryIndex);
+        if (ehDsc->ebdEnclosingHndIndex != EHblkDsc::NO_ENCLOSING_INDEX)
+        {
+            // Note here we will correctly get the "filter handler" part of filter.
+            // There can be no protected regions in the "filter" parts of filters.
+            funcIdx = _compiler->ehGetDsc(ehDsc->ebdEnclosingHndIndex)->ebdFuncIndex;
+        }
+    }
+
+    return funcIdx;
 }
 
 llvm::BasicBlock* Llvm::createInlineLlvmBlock()
 {
-    BasicBlock* currentBlock = CurrentBlock();
-    llvm::BasicBlock* insertBefore = getLastLlvmBlockForBlock(currentBlock)->getNextNode();
-    llvm::BasicBlock* inlineLlvmBlock = llvm::BasicBlock::Create(_llvmContext, "", getCurrentLlvmFunction(), insertBefore);
+    Function* llvmFunc = getCurrentLlvmFunction();
+    LlvmBlockRange* llvmBlocks = getCurrentLlvmBlocks();
+    llvm::BasicBlock* insertBefore = llvmBlocks->LastBlock->getNextNode();
+    llvm::BasicBlock* inlineLlvmBlock = llvm::BasicBlock::Create(_llvmContext, "", llvmFunc, insertBefore);
 
-    setLastLlvmBlockForBlock(currentBlock, inlineLlvmBlock);
+#ifdef DEBUG
+    llvm::StringRef blocksName = llvmBlocks->FirstBlock->getName();
+    if (llvmBlocks->Count == 1)
+    {
+        llvmBlocks->FirstBlock->setName(blocksName + ".1");
+    }
+    else
+    {
+        blocksName = blocksName.take_front(blocksName.find_last_of('.'));
+    }
+
+    inlineLlvmBlock->setName(blocksName + "." + llvm::Twine(++llvmBlocks->Count));
+#endif // DEBUG
+
+    llvmBlocks->LastBlock = inlineLlvmBlock;
     return inlineLlvmBlock;
 }
 
-llvm::BasicBlock* Llvm::getEHDispatchLlvmBlockForBlock(BasicBlock* block)
+LlvmBlockRange* Llvm::getLlvmBlocksForBlock(BasicBlock* block)
 {
-    if (!block->hasTryIndex())
+    assert(block != nullptr);
+
+    LlvmBlockRange* llvmBlockRange = _blkToLlvmBlksMap.LookupPointer(block);
+    if (llvmBlockRange == nullptr)
     {
-        return nullptr;
+        Function* llvmFunc = getLlvmFunctionForIndex(getLlvmFunctionIndexForBlock(block));
+        llvm::BasicBlock* llvmBlock = llvm::BasicBlock::Create(_llvmContext, BBNAME("BB", block->bbNum), llvmFunc);
+
+        llvmBlockRange = _blkToLlvmBlksMap.Emplace(block, llvmBlock);
     }
 
-    llvm::BasicBlock* ehDispatchLlvmBlock = m_EHDispatchLlvmBlocks[block->getTryIndex()];
-    assert(ehDispatchLlvmBlock != nullptr);
-
-    // Blocks inside funclets retain their original protected region indices, however, we won't have a dispatch
-    // block for the top-level ones (thus any exceptions out of funclets will propagate to the EH dispatch routine).
-    if (ehDispatchLlvmBlock->getParent() != getCurrentLlvmFunction())
-    {
-        return nullptr;
-    }
-
-    return ehDispatchLlvmBlock;
+    return llvmBlockRange;
 }
 
 llvm::BasicBlock* Llvm::getFirstLlvmBlockForBlock(BasicBlock* block)
 {
-    assert(block != nullptr);
-
-    llvm::BasicBlock* llvmBlock;
-    LlvmBlockRange llvmBlockRange;
-    if (!_blkToLlvmBlksMap.Lookup(block, &llvmBlockRange))
-    {
-        unsigned bbNum = block->bbNum;
-        Function* llvmFunc = getCurrentLlvmFunction();
-        llvmBlock = llvm::BasicBlock::Create(
-            _llvmContext, (bbNum >= 10) ? ("BB" + llvm::Twine(bbNum)) : ("BB0" + llvm::Twine(bbNum)), llvmFunc);
-
-        _blkToLlvmBlksMap.Set(block, {llvmBlock, llvmBlock});
-    }
-    else
-    {
-        llvmBlock = llvmBlockRange.FirstBlock;
-    }
-
-    return llvmBlock;
+    return getLlvmBlocksForBlock(block)->FirstBlock;
 }
 
 //------------------------------------------------------------------------
@@ -2430,12 +2470,7 @@ llvm::BasicBlock* Llvm::getFirstLlvmBlockForBlock(BasicBlock* block)
 //
 llvm::BasicBlock* Llvm::getLastLlvmBlockForBlock(BasicBlock* block)
 {
-    return _blkToLlvmBlksMap[block].LastBlock;
-}
-
-void Llvm::setLastLlvmBlockForBlock(BasicBlock* block, llvm::BasicBlock* llvmBlock)
-{
-    _blkToLlvmBlksMap[block].LastBlock = llvmBlock;
+    return getLlvmBlocksForBlock(block)->LastBlock;
 }
 
 Value* Llvm::getLocalAddr(unsigned lclNum)
