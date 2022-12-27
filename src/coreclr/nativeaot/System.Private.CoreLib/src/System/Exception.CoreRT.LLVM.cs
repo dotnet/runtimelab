@@ -11,7 +11,7 @@ namespace System
         [DllImport("*")]
         internal static extern void RhpThrowEx(object exception);
 
-        private static void DispatchExLLVM(object exception)
+        internal static void DispatchExLLVM(object exception)
         {
             AppendExceptionStackFrameLLVM(exception, new StackTrace(1).ToString());
             //RhpThrowEx(exception); can't as not handling the transition unmanaged->managed in the landing pads.
