@@ -5,6 +5,7 @@
 
 #if defined HOST_WASM
 #include <exception>
+#include <cstdio>
 #endif // HOST_WASM
 
 //
@@ -167,6 +168,7 @@ public:
 
 extern "C" void RhpThrowEx(void * pEx)
 {
+    printf("WASM EH: exception thrown\n");
     throw ManagedExceptionWrapper(pEx);
 }
 
