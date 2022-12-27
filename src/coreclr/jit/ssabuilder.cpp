@@ -113,7 +113,7 @@ void Compiler::fgResetForSsa()
         {
             for (GenTree* tree : LIR::AsRange(blk))
             {
-                if (tree->IsLocal())
+                if (tree->IsLocal() || tree->OperIsLocalAddr())
                 {
                     tree->AsLclVarCommon()->SetSsaNum(SsaConfig::RESERVED_SSA_NUM);
                 }
