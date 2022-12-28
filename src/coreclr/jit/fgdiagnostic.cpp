@@ -1660,6 +1660,8 @@ bool Compiler::fgDumpFlowGraph(Phases phase, PhasePosition pos)
                         case EH_HANDLER_FAULT_WAS_FINALLY:
                             handlerType = "fault-was-finally";
                             break;
+                        default:
+                            unreached();
                     }
                     sprintf_s(name, sizeof(name), "EH#%u %s", XTnum, handlerType);
                     rgnGraph.Insert(name, RegionGraph::RegionType::EH, ehDsc->ebdHndBeg, ehDsc->ebdHndLast);

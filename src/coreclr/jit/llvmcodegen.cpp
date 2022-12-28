@@ -20,7 +20,7 @@ void Llvm::Compile()
 
     if ((_info.compFlags & CORINFO_FLG_SYNCH) != 0)
     {
-        // TODO-LLVM-EH: enable.
+        // TODO-LLVM: enable.
         failFunctionCompilation();
     }
 
@@ -86,13 +86,13 @@ void Llvm::Compile()
     JITDUMP("LLVM IR for %s after codegen:\n", _compiler->info.compFullName);
     JITDUMP("-------------------------------------------------------------------------------------------------------------------\n\n");
 
-    for (Function* llvmFunc : m_functions)
+    for (FunctionInfo& funcInfo : m_functions)
     {
-        JITDUMPEXEC(llvmFunc->dump());
-
-        if (llvm::verifyFunction(*llvmFunc, &llvm::errs()))
+        Function* llvmFunc = funcInfo.LlvmFunction;
+        if (llvmFunc != nullptr)
         {
-            printf("Function failed: '%s'\n", llvmFunc->getName().data());
+            JITDUMPEXEC(llvmFunc->dump());
+            assert(!llvm::verifyFunction(*llvmFunc, &llvm::errs()));
         }
     }
 #endif
@@ -122,8 +122,8 @@ bool Llvm::initializeFunctions()
     }
 
     // First functions is always the root.
-    m_functions = std::vector<Function*>(_compiler->compFuncCount());
-    m_functions[ROOT_FUNC_IDX] = rootLlvmFunction;
+    m_functions = std::vector<FunctionInfo>(_compiler->compFuncCount());
+    m_functions[ROOT_FUNC_IDX] = {rootLlvmFunction};
 
     m_EHDispatchLlvmBlocks = std::vector<llvm::BasicBlock*>(_compiler->compHndBBtabCount);
 
@@ -134,48 +134,50 @@ bool Llvm::initializeFunctions()
         unsigned ehIndex = funcInfo->funEHIndex;
         EHblkDsc* ehDsc = _compiler->ehGetDsc(ehIndex);
 
-        // Filter and catch handler funclets return int32. "HasCatchHandler" handles both cases.
-        Type* retLlvmType;
-        if (ehDsc->HasCatchHandler())
+        // We won't generate code for unreachable handlers so we will not create functions for them.
+        //
+        if (isReachable(getFirstBlockForFunction(funcIdx)))
         {
-            retLlvmType = Type::getInt32Ty(_llvmContext);
-        }
-        else
-        {
-            retLlvmType = Type::getVoidTy(_llvmContext);
-        }
+            // Filter and catch handler funclets return int32. "HasCatchHandler" handles both cases.
+            Type* retLlvmType =
+                ehDsc->HasCatchHandler() ? Type::getInt32Ty(_llvmContext) : Type::getVoidTy(_llvmContext);
 
-        // All funclets two arguments: original and actual shadow stacks.
-        Type* ptrLlvmType = Type::getInt8PtrTy(_llvmContext);
-        FunctionType* llvmFuncType = FunctionType::get(retLlvmType, {ptrLlvmType, ptrLlvmType}, /* isVarArg */ false);
+            // All funclets have two arguments: original and actual shadow stacks.
+            Type* ptrLlvmType = Type::getInt8PtrTy(_llvmContext);
+            FunctionType* llvmFuncType =
+                FunctionType::get(retLlvmType, {ptrLlvmType, ptrLlvmType}, /* isVarArg */ false);
 
-        const char* kindName;
-        switch (ehDsc->ebdHandlerType)
-        {
-            case EH_HANDLER_CATCH:
-                kindName = "Catch";
-                break;
-            case EH_HANDLER_FILTER:
-                kindName = (funcInfo->funKind == FUNC_FILTER) ? "Filter" : "FilteredCatch";
-                break;
-            case EH_HANDLER_FAULT:
-            case EH_HANDLER_FAULT_WAS_FINALLY:
-                kindName = "Fault";
-                break;
-            case EH_HANDLER_FINALLY:
-                kindName = "Finally";
-                break;
-            default:
-                unreached();
+            const char* kindName;
+            switch (ehDsc->ebdHandlerType)
+            {
+                case EH_HANDLER_CATCH:
+                    kindName = "Catch";
+                    break;
+                case EH_HANDLER_FILTER:
+                    kindName = (funcInfo->funKind == FUNC_FILTER) ? "Filter" : "FilteredCatch";
+                    break;
+                case EH_HANDLER_FAULT:
+                case EH_HANDLER_FAULT_WAS_FINALLY:
+                    kindName = "Fault";
+                    break;
+                case EH_HANDLER_FINALLY:
+                    kindName = "Finally";
+                    break;
+                default:
+                    unreached();
+            }
+
+            Function* llvmFunc =
+                Function::Create(llvmFuncType, Function::InternalLinkage,
+                                 mangledName + llvm::Twine("$F") + llvm::Twine(funcIdx) + "_" + kindName, _module);
+
+            m_functions[funcIdx] = {llvmFunc};
         }
-
-        Function* llvmFunc =
-            Function::Create(llvmFuncType, Function::InternalLinkage,
-                             mangledName + llvm::Twine("$F") + llvm::Twine(funcIdx) + "_" + kindName, _module);
 
         // Note that "mutually-protect" handlers will share the same dispatch block. We only need to associate
-        // one dispatch block with one protected region, and so simply skip the logic for filter funclets.
-        if (funcInfo->funKind != FUNC_FILTER)
+        // one dispatch block with one protected region, and so simply skip the logic for filter funclets. We
+        // also leave blocks for unreachable dispatches null.
+        if ((funcInfo->funKind == FUNC_HANDLER) && isReachable(ehDsc->ExFlowBlock()))
         {
             llvm::BasicBlock* dispatchLlvmBlock = nullptr;
 
@@ -200,8 +202,6 @@ bool Llvm::initializeFunctions()
 
             m_EHDispatchLlvmBlocks[ehIndex] = dispatchLlvmBlock;
         }
-
-        m_functions[funcIdx] = llvmFunc;
     }
 
     return false;
@@ -211,20 +211,15 @@ void Llvm::generateProlog()
 {
     JITDUMP("\n=============== Generating prolog:\n");
 
-    llvm::BasicBlock* prologLlvmBlock = llvm::BasicBlock::Create(_llvmContext, "Prolog", getRootLlvmFunction());
-    _prologBuilder.SetInsertPoint(prologLlvmBlock);
+    llvm::BasicBlock* prologLlvmBlock = getOrCreatePrologLlvmBlockForFunction(ROOT_FUNC_IDX);
+    _builder.SetInsertPoint(prologLlvmBlock->getTerminator());
 
     initializeLocals();
-
-    llvm::BasicBlock* firstLlvmBlock = getFirstLlvmBlockForBlock(_compiler->fgFirstBB);
-    _prologBuilder.CreateBr(firstLlvmBlock);
-
-    _builder.SetInsertPoint(firstLlvmBlock);
 }
 
 void Llvm::initializeLocals()
 {
-    m_allocas = std::vector<AllocaInst*>(_compiler->lvaCount, nullptr);
+    llvm::AllocaInst** allocas = new (_compiler->getAllocator(CMK_Codegen)) llvm::AllocaInst*[_compiler->lvaCount];
 
     for (unsigned lclNum = 0; lclNum < _compiler->lvaCount; lclNum++)
     {
@@ -306,7 +301,7 @@ void Llvm::initializeLocals()
         if (initValue == nullptr)
         {
             initValue = llvm::UndefValue::get(lclLlvmType);
-            initValue = _prologBuilder.CreateFreeze(initValue);
+            initValue = _builder.CreateFreeze(initValue);
             JITDUMPEXEC(initValue->dump());
         }
 
@@ -318,19 +313,16 @@ void Llvm::initializeLocals()
         }
         else
         {
-            AllocaInst* allocaInst = _prologBuilder.CreateAlloca(lclLlvmType);
-            m_allocas[lclNum] = allocaInst;
+            llvm::AllocaInst* allocaInst = _builder.CreateAlloca(lclLlvmType);
+            allocas[lclNum] = allocaInst;
             JITDUMPEXEC(allocaInst->dump());
 
-            Instruction* storeInst = _prologBuilder.CreateStore(initValue, allocaInst);
+            Instruction* storeInst = _builder.CreateStore(initValue, allocaInst);
             JITDUMPEXEC(storeInst->dump());
         }
     }
-}
 
-void Llvm::generateFuncletProlog(unsigned funcIdx)
-{
-    // TODO-LLVM-EH: create allocas for all tracked locals that are not in SSA or the shadow stack.
+    getLlvmFunctionInfoForIndex(ROOT_FUNC_IDX).Allocas = allocas;
 }
 
 void Llvm::generateBlock(BasicBlock* block)
@@ -368,9 +360,6 @@ void Llvm::generateBlock(BasicBlock* block)
                 _builder.CreateRetVoid();
             }
             break;
-        case BBJ_EHCATCHRET:
-            buildCatchReturn(block);
-            break;
         default:
             // TODO-LLVM: other jump kinds.
             break;
@@ -388,7 +377,8 @@ void Llvm::generateEHDispatch()
     // Recover the C++ personality function.
     Type* ptrLlvmType = Type::getInt8PtrTy(_llvmContext);
     Type* int32LlvmType = Type::getInt32Ty(_llvmContext);
-    Type* cppExcTupleLlvmType = llvm::StructType::get(_llvmContext, {ptrLlvmType, int32LlvmType});
+    Type* cppExcTupleLlvmType = llvm::StructType::get(ptrLlvmType, int32LlvmType);
+    llvm::StructType* dispatchDataLlvmType = llvm::StructType::get(cppExcTupleLlvmType, ptrLlvmType);
 
     static const char* const GXX_PERSONALITY_NAME = "__gxx_personality_v0";
     Function* gxxPersonalityLlvmFunc = _module->getFunction(GXX_PERSONALITY_NAME);
@@ -400,54 +390,501 @@ void Llvm::generateEHDispatch()
             Function::Create(gxxPersonalityLlvmFuncType, Function::ExternalLinkage, GXX_PERSONALITY_NAME, _module);
     }
 
-    JITDUMP("\n");
+    // Recover the runtime helper routines. TODO-LLVM: use proper "CorInfoHelpFunc"s for these.
+    Function* dispatchLlvmFuncs[EH_HANDLER_COUNT]{};
+    auto getDispatchLlvmFunc = [&](EHblkDsc* hndDsc) {
+        Function** pDispatchLlvmFunc;
+        if (hndDsc == nullptr)
+        {
+            static_assert_no_msg(EH_HANDLER_CATCH == 1); // We rely on zero being invalid.
+            pDispatchLlvmFunc = &dispatchLlvmFuncs[0];
+        }
+        else
+        {
+            pDispatchLlvmFunc = &dispatchLlvmFuncs[hndDsc->ebdHandlerType];
+        }
 
-    for (unsigned ehIndex = 0; ehIndex < _compiler->compHndBBtabCount; ehIndex++)
+        Function* dispatchLlvmFunc = *pDispatchLlvmFunc;
+        if (dispatchLlvmFunc == nullptr)
+        {
+            CORINFO_EH_CLAUSE_FLAGS eeHndType = (hndDsc == nullptr) ? CORINFO_EH_CLAUSE_SAMETRY
+                                                                    : ToCORINFO_EH_CLAUSE_FLAGS(hndDsc->ebdHandlerType);
+            const char* dispatchFuncName = GetEHDispatchFunctionName(eeHndType);
+            dispatchLlvmFunc = _module->getFunction(dispatchFuncName);
+            if (dispatchLlvmFunc == nullptr)
+            {
+                FunctionType* dispatchLlvmFuncType;
+                switch (eeHndType)
+                {
+                    case CORINFO_EH_CLAUSE_NONE:
+                    case CORINFO_EH_CLAUSE_FILTER:
+                        dispatchLlvmFuncType = FunctionType::get(
+                            int32LlvmType, {ptrLlvmType, ptrLlvmType, ptrLlvmType, ptrLlvmType, ptrLlvmType},
+                            /* isVarArg */ false);
+                        break;
+                    case CORINFO_EH_CLAUSE_SAMETRY:
+                        dispatchLlvmFuncType = FunctionType::get(
+                            int32LlvmType, {ptrLlvmType, ptrLlvmType, ptrLlvmType, ptrLlvmType}, /* isVarArg */ false);
+                        break;
+                    case CORINFO_EH_CLAUSE_FAULT:
+                    case CORINFO_EH_CLAUSE_FINALLY:
+                        dispatchLlvmFuncType = FunctionType::get(
+                            Type::getVoidTy(_llvmContext), {ptrLlvmType, ptrLlvmType, ptrLlvmType, ptrLlvmType},
+                            /* isVarArg */ false);
+                        break;
+                    default:
+                        unreached();
+                }
+
+                dispatchLlvmFunc =
+                    Function::Create(dispatchLlvmFuncType, Function::ExternalLinkage, dispatchFuncName, _module);
+                *pDispatchLlvmFunc = dispatchLlvmFunc;
+            }
+        }
+
+        return dispatchLlvmFunc;
+    };
+
+    BitVecTraits blockVecTraits(_compiler->fgBBNumMax + 1, _compiler);
+
+    struct DispatchData
+    {
+        llvm::SwitchInst* DispatchSwitchInst;
+        BitVec DispatchSwitchTargets;
+        unsigned LastDispatchSwitchTargetIndex;
+        llvm::BasicBlock* ResumeLlvmBlock;
+        Value* DispatchDataRefValue;
+
+        llvm::BasicBlock* GetDispatchSwitchLlvmBlock() const
+        {
+            return (DispatchSwitchInst != nullptr) ? DispatchSwitchInst->getParent() : nullptr;
+        }
+    };
+
+    // There is no meaningful source location we can attach to the dispatch blocks. None of them are "user" code.
+    llvm::DebugLoc dispatchDebugLoc = getArtificialDebugLocation();
+    std::vector<DispatchData> functionData(_compiler->compFuncCount());
+
+    // Note the iteration order: outer -> inner.
+    for (unsigned ehIndex = _compiler->compHndBBtabCount - 1; ehIndex != -1; ehIndex--)
     {
         EHblkDsc* ehDsc = _compiler->ehGetDsc(ehIndex);
-        llvm::BasicBlock* llvmBlock = m_EHDispatchLlvmBlocks[ehIndex];
+        llvm::BasicBlock* dispatchPadLlvmBlock = m_EHDispatchLlvmBlocks[ehIndex];
 
-        if (!llvmBlock->empty())
+        if (dispatchPadLlvmBlock == nullptr)
+        {
+            // Would have been unreachable.
+            continue;
+        }
+
+        if (!dispatchPadLlvmBlock->empty())
         {
             // We've already generated code for this dispatch shared between "mutual protect" handlers.
             continue;
         }
 
-        JITDUMP("=============== Generating EH dispatch block %s:\n", llvmBlock->getName().data());
-
-        if (llvmBlock->hasNPredecessors(0))
-        {
-            // During codegen we have discovered there are no (EH) edges to this dispatch. Remove it.
-            JITDUMP("\nUnreachable; skipped\n");
-            llvmBlock->eraseFromParent();
-            continue;
-        }
-
-        Function* llvmFunc = llvmBlock->getParent();
+        unsigned funcIdx = getLlvmFunctionIndexForProtectedRegion(ehIndex);
+        Function* llvmFunc = getLlvmFunctionForIndex(funcIdx);
         if (!llvmFunc->hasPersonalityFn())
         {
             llvmFunc->setPersonalityFn(gxxPersonalityLlvmFunc);
         }
 
-        // Move it after the last block in the corresponding protected region.
-        llvmBlock->moveAfter(getLastLlvmBlockForBlock(ehDsc->ebdTryLast));
+        // The code we will generate effectively inlines the usual runtime dispatch logic. The main reason this
+        // scheme was chosen is the fact (re)throwing funclets are handled by it semlessly and efficiently. The
+        // downside to it is the code size overhead of the calls made for each protected region.
+        //
+        // DISPATCH_PAD_INNER:
+        //   dispatchData.CppExceptionTuple = landingPadInst
+        //   dispatchData.DispatcherData = null
+        //   goto DISPATCH_INNER;
+        //
+        // DISPATCH_INNER:
+        //   dispatchDest = DispatchFunction(FuncletShadowStack(), &dispatchData, &HandlerFunclet, ...)
+        //                  unwind to DISPATCH_PAD_OUTER
+        //   if (dispatchDest == 0)
+        //      goto DISPATCH_OUTER; // For nested regions; top-level ones will use the "switch".
+        //   goto UNIFIED_DISPATCH;
+        //
+        // UNIFIED_DISPATCH:
+        //   switch (dispatchDest) {
+        //       case 0: goto RESUME;
+        //       case 1: goto BB01;
+        //       case 2: goto BB02;
+        //       ...
+        //       default: goto FAIL_FAST;
+        //   }
+        //
+        // RESUME:
+        //   resume(dispatchData.CppExceptionTuple); // Rethrow the exception and unwind to caller.
+        //
+        // FAIL_FAST:
+        //   FailFast();
+        //
+        // What is the possibe set of dispatch destinations (aka why have "UNIFIED_DISPATCH")?
+        //
+        // We consider the tree of active protected regions above this one, that are also contained in the same funclet.
+        // For each region with a (possibly filtered) catch handler, we consider successors of all "catchret" blocks.
+        // The union of these will form the set of all possible dispatch destinations for the current protected region.
+        // However, we do not actually emit the "switch" code for each individual region, as it would mean quadratic
+        // code size growth (number of dispatch destinations X number of protected regions) for deeply nested EH trees.
+        // Instead, we create one "universal" dispatch block for each funclet, and jump to it from each dispatch. Note
+        // that thanks to the step blocks inserted by "impImportLeave", we do not need to consider cases where a jump
+        // from a funclet to its caller would be required.
 
-        _builder.SetInsertPoint(llvmBlock);
+        // Create the dispatch data alloca. Its structure is a contract between codegen and runtime. The runtime may
+        // not modify the part where codegen stores the landing pad value, while the other part will be solely under
+        // runtime's control (currently, this is just one pointer-sized field).
+        DispatchData& funcDispatchData = functionData[funcIdx];
+        Value* dispatchDataRefValue = funcDispatchData.DispatchDataRefValue;
+        if (dispatchDataRefValue == nullptr)
+        {
+            llvm::BasicBlock* prologLlvmBlock = getOrCreatePrologLlvmBlockForFunction(funcIdx);
+
+            _builder.SetInsertPoint(prologLlvmBlock->getTerminator());
+            dispatchDataRefValue = _builder.CreateAlloca(dispatchDataLlvmType);
+
+            funcDispatchData.DispatchDataRefValue = dispatchDataRefValue;
+        }
+
+        // Dispatch blocks, when initially created, are placed at the start of the function.
+        // Here we move them to a more appropriate place so that the entry block is correct.
+        if (funcDispatchData.GetDispatchSwitchLlvmBlock() != nullptr)
+        {
+            dispatchPadLlvmBlock->moveBefore(funcDispatchData.GetDispatchSwitchLlvmBlock());
+        }
+        else if (funcDispatchData.ResumeLlvmBlock != nullptr)
+        {
+            dispatchPadLlvmBlock->moveBefore(funcDispatchData.ResumeLlvmBlock);
+        }
+        else
+        {
+            dispatchPadLlvmBlock->moveAfter(&llvmFunc->back());
+        }
+        _builder.SetCurrentDebugLocation(dispatchDebugLoc);
+
+        LlvmBlockRange dispatchLlvmBlocks(dispatchPadLlvmBlock);
+        setCurrentEmitContext(funcIdx, ehDsc->ebdEnclosingTryIndex, &dispatchLlvmBlocks);
 
         llvm::LandingPadInst* landingPadInst = _builder.CreateLandingPad(cppExcTupleLlvmType, 1);
         landingPadInst->addClause(llvm::Constant::getNullValue(ptrLlvmType)); // Catch all C++ exceptions.
 
-        // TODO-LLVM-EH: implement.
-        _builder.CreateResume(landingPadInst);
+        _builder.CreateStore(landingPadInst, dispatchDataRefValue);
 
-#ifdef DEBUG
-        llvm::BasicBlock* lastLlvmBlock = llvmBlock;
-        for (; llvmBlock != lastLlvmBlock->getNextNode(); llvmBlock = llvmBlock->getNextNode())
+        // The dispatchers rely on this being set to null to detect whether the ongoing dispatch is already "active".
+        unsigned dispatcherDataFieldOffset =
+            _module->getDataLayout().getStructLayout(dispatchDataLlvmType)->getElementOffset(1);
+        Value* dispatchDataFieldRefValue = gepOrAddr(dispatchDataRefValue, dispatcherDataFieldOffset);
+        _builder.CreateStore(llvm::Constant::getNullValue(ptrLlvmType), dispatchDataFieldRefValue);
+
+        // The "actual" dispatch block. Nested dispatches (if any) will branch to it.
+        llvm::BasicBlock* dispatchLlvmBlock = createInlineLlvmBlock();
+        _builder.CreateBr(dispatchLlvmBlock);
+        _builder.SetInsertPoint(dispatchLlvmBlock);
+
+        // The dispatcher uses the passed-in shadow stack pointer to call funclets. All funclets (no matter how
+        // nested) share the same original shadow frame, thus we need to pass the original shadow stack in case
+        // the exception is being dispatched out of a funclet.
+        Value* dispatcherShadowStackValue = getShadowStackForCallee();
+        Value* funcletShadowStackValue = getOriginalShadowStack();
+
+        // Do we only have one (catch) handler? We will use specialized dispatchers for this case as an optimization:
+        // about 2/3 of all EH handlers in optimized code are finallys/faults, ~28% - single catches, with the rest
+        // (single filters / 2+ mutually protecting handlers) comprising less than 5% of cases. We could drop the
+        // specialized filter dispatcher here, but it doesn't cost us much to have one, and it is considerably more
+        // efficient than the general table-based one (and more than 4/5 of all filters are "single").
+        //
+        unsigned innerEHIndex = ehIndex;
+        while ((innerEHIndex > 0) && ehDsc->ebdIsSameTry(_compiler, innerEHIndex - 1))
         {
-            JITDUMPEXEC(llvmBlock->dump());
+            innerEHIndex--;
         }
-#endif // DEBUG
+
+        llvm::CallBase* dispatchDestValue = nullptr;
+        if (innerEHIndex == ehIndex)
+        {
+            Function* dispatchLlvmFunc = getDispatchLlvmFunc(ehDsc);
+            Value* handlerValue = getLlvmFunctionForIndex(ehDsc->ebdFuncIndex);
+
+            if (ehDsc->ebdHandlerType == EH_HANDLER_CATCH)
+            {
+                Value* typeSymbolRefValue = emitSymbolRef(getSymbolHandleForClassToken(ehDsc->ebdTyp));
+                dispatchDestValue =
+                    emitCallOrInvoke(dispatchLlvmFunc, {dispatcherShadowStackValue, funcletShadowStackValue,
+                                     dispatchDataRefValue, handlerValue, typeSymbolRefValue});
+            }
+            else if (ehDsc->ebdHandlerType == EH_HANDLER_FILTER)
+            {
+                Value* filterValue = getLlvmFunctionForIndex(ehDsc->ebdFuncIndex - 1);
+                dispatchDestValue =
+                    emitCallOrInvoke(dispatchLlvmFunc, {dispatcherShadowStackValue, funcletShadowStackValue,
+                                     dispatchDataRefValue, handlerValue, filterValue});
+            }
+            else
+            {
+                dispatchDestValue = emitCallOrInvoke(dispatchLlvmFunc, {dispatcherShadowStackValue,
+                                                     funcletShadowStackValue, dispatchDataRefValue, handlerValue});
+            }
+        }
+        else
+        {
+            Function* dispatchLlvmFunc = getDispatchLlvmFunc(nullptr);
+            Value* dispatchTableRefValue = generateEHDispatchTable(llvmFunc, innerEHIndex, ehIndex);
+            dispatchDestValue =
+                emitCallOrInvoke(dispatchLlvmFunc, {dispatcherShadowStackValue, funcletShadowStackValue,
+                                 dispatchDataRefValue, dispatchTableRefValue});
+        }
+
+        // Generate code for per-funclet dispatch blocks. The dispatch switch block is only needed if we have
+        // catch handlers. The resume block is always needed.
+        //
+        llvm::BasicBlock* resumeLlvmBlock = funcDispatchData.ResumeLlvmBlock;
+        if (resumeLlvmBlock == nullptr)
+        {
+            resumeLlvmBlock = llvm::BasicBlock::Create(_llvmContext, "BBDR", llvmFunc);
+
+            _builder.SetInsertPoint(resumeLlvmBlock); // No need for a full emit context.
+            Value* resumeOperandValue = _builder.CreateLoad(landingPadInst->getType(), dispatchDataRefValue);
+            _builder.CreateResume(resumeOperandValue);
+
+            funcDispatchData.ResumeLlvmBlock = resumeLlvmBlock;
+        }
+
+        const int EH_CONTINUE_SEARCH = 0;
+
+        llvm::BasicBlock* dispatchSwitchLlvmBlock = funcDispatchData.GetDispatchSwitchLlvmBlock();
+        if (ehDsc->HasCatchHandler() && (dispatchSwitchLlvmBlock == nullptr))
+        {
+            dispatchSwitchLlvmBlock = llvm::BasicBlock::Create(_llvmContext, "BBDS", llvmFunc, resumeLlvmBlock);
+            llvm::BasicBlock* failFastLlvmBlock = llvm::BasicBlock::Create(_llvmContext, "BBFF", llvmFunc);
+
+            LlvmBlockRange dispatchSwitchLlvmBlocks(dispatchSwitchLlvmBlock);
+            setCurrentEmitContext(funcIdx, EHblkDsc::NO_ENCLOSING_INDEX, &dispatchSwitchLlvmBlocks);
+
+            llvm::SwitchInst* switchInst = _builder.CreateSwitch(dispatchDestValue, failFastLlvmBlock);
+            switchInst->addCase(_builder.getInt32(EH_CONTINUE_SEARCH), resumeLlvmBlock);
+
+            LlvmBlockRange failFastLlvmBlocks(failFastLlvmBlock);
+            setCurrentEmitContext(funcIdx, EHblkDsc::NO_ENCLOSING_INDEX, &failFastLlvmBlocks);
+
+            emitHelperCall(CORINFO_HELP_FAIL_FAST);
+            _builder.CreateUnreachable();
+
+            funcDispatchData.DispatchSwitchInst = switchInst;
+            funcDispatchData.DispatchSwitchTargets = BitVecOps::MakeEmpty(&blockVecTraits);
+        }
+
+        llvm::BasicBlock* outerDispatchLlvmBlock = nullptr;
+        if (llvm::isa<llvm::InvokeInst>(dispatchDestValue))
+        {
+            // This will be the "dispatch pad" block. Since we're generating dispatches from outer to inner, we already
+            // have the "actual" dispatch block; it will be the next one.
+            outerDispatchLlvmBlock = llvm::cast<llvm::InvokeInst>(dispatchDestValue)->getUnwindDest();
+            outerDispatchLlvmBlock = outerDispatchLlvmBlock->getNextNode();
+            assert(outerDispatchLlvmBlock != nullptr);
+        }
+
+        // Reset context back to the dispatch block.
+        setCurrentEmitContext(funcIdx, ehDsc->ebdEnclosingTryIndex, &dispatchLlvmBlocks);
+
+        // For inner dispatch, jump to the outer one if the handler returned "continue search". Faults / finallys cannot
+        // satisfy the first-pass search and so for them this jump is unconditional.
+        llvm::BasicBlock* lastDispatchLlvmBlock = dispatchLlvmBlocks.LastBlock;
+        if (ehDsc->HasCatchHandler())
+        {
+            Value* unifiedDispatchDestValue = funcDispatchData.DispatchSwitchInst->getOperand(0);
+            if (unifiedDispatchDestValue != dispatchDestValue)
+            {
+                llvm::PHINode* phiNode = llvm::dyn_cast<llvm::PHINode>(unifiedDispatchDestValue);
+                if (phiNode == nullptr)
+                {
+                    phiNode =
+                        llvm::PHINode::Create(dispatchDestValue->getType(), 2, "", funcDispatchData.DispatchSwitchInst);
+                    phiNode->addIncoming(unifiedDispatchDestValue, dispatchSwitchLlvmBlock->getUniquePredecessor());
+
+                    funcDispatchData.DispatchSwitchInst->setOperand(0, phiNode);
+                }
+
+                phiNode->addIncoming(dispatchDestValue, lastDispatchLlvmBlock);
+            }
+
+            if (outerDispatchLlvmBlock != nullptr)
+            {
+                Value* doContinueSearchValue =
+                    _builder.CreateICmpEQ(dispatchDestValue, _builder.getInt32(EH_CONTINUE_SEARCH));
+                _builder.CreateCondBr(doContinueSearchValue, outerDispatchLlvmBlock, dispatchSwitchLlvmBlock);
+            }
+            else
+            {
+                _builder.CreateBr(dispatchSwitchLlvmBlock);
+            }
+        }
+        else
+        {
+            if (outerDispatchLlvmBlock != nullptr)
+            {
+                _builder.CreateBr(outerDispatchLlvmBlock);
+            }
+            else
+            {
+                _builder.CreateBr(resumeLlvmBlock);
+            }
+        }
+
+        // Finally, add in the possible "catchret" destinations. Do not forget to consider all of the mutally protecting
+        // handlers, since there is only one dispatch block for all of them. Note how we are only doing linear work here
+        // because the funclet creating process will hoist nested handlers, "flattening" the basic block list. Also, we
+        // check for the reachability of the handler here, even as we've already checked for whether the dispatch itself
+        // is reachable. The reason for this is a possibility of a dispatch with a reachable filter but an unreachable
+        // handler (where the filter always returns false). This is currently, technically, redundant, because RyuJit
+        // doesn't perform flow optimizations which would expose the handler as unreachable. We choose to be resilient
+        // against this anyway.
+        //
+        if (ehDsc->HasCatchHandler() && isReachable(ehDsc->ebdHndBeg))
+        {
+            llvm::SwitchInst* switchInst = funcDispatchData.DispatchSwitchInst;
+            BitVec& dispatchSwitchTargets = funcDispatchData.DispatchSwitchTargets;
+            for (unsigned hndIndex = innerEHIndex; hndIndex <= ehIndex; hndIndex++)
+            {
+                EHblkDsc* hndDsc = _compiler->ehGetDsc(hndIndex);
+                for (BasicBlock* hndBlock : _compiler->Blocks(hndDsc->ebdHndBeg, hndDsc->ebdHndLast))
+                {
+                    assert((hndDsc->HasCatchHandler()) && (hndBlock->getHndIndex() == hndIndex));
+                    if (hndBlock->bbJumpKind == BBJ_EHCATCHRET)
+                    {
+                        BasicBlock* destBlock = hndBlock->bbJumpDest;
+                        llvm::BasicBlock* destLlvmBlock = getFirstLlvmBlockForBlock(destBlock);
+                        assert(destLlvmBlock->getParent() == llvmFunc); // No jumping out of a funclet.
+
+                        // We use a bitset to avoid quadratic behavior associated with checking if we have already added
+                        // this dispatch destination - multiple sets of "catchret"s may target the same set of blocks.
+                        unsigned destBlockNum = destBlock->bbNum;
+                        if (!BitVecOps::IsMember(&blockVecTraits, dispatchSwitchTargets, destBlockNum))
+                        {
+                            unsigned destIndex = ++funcDispatchData.LastDispatchSwitchTargetIndex;
+                            llvm::ConstantInt* destIndexValue = _builder.getInt32(destIndex);
+
+                            switchInst->addCase(destIndexValue, destLlvmBlock);
+
+                            // Complete the catch return blocks (this one and all the others with the same target).
+                            for (BasicBlock* predBlock : destBlock->PredBlocks())
+                            {
+                                if (predBlock->bbJumpKind == BBJ_EHCATCHRET)
+                                {
+                                    llvm::BasicBlock* catchRetLlvmBlock = getLastLlvmBlockForBlock(predBlock);
+                                    llvm::ReturnInst::Create(_llvmContext, destIndexValue, catchRetLlvmBlock);
+                                }
+                            }
+
+                            BitVecOps::AddElemD(&blockVecTraits, dispatchSwitchTargets, destBlockNum);
+                        }
+                    }
+                }
+            }
+        }
     }
+}
+
+Value* Llvm::generateEHDispatchTable(Function* llvmFunc, unsigned innerEHIndex, unsigned outerEHIndex)
+{
+    // We only generate this table for a run of mutually protecting handlers.
+    assert(outerEHIndex > innerEHIndex);
+
+    // The table will have the following format:
+    //
+    // [2 (4) bytes: size of table in pointer units] (Means we don't support > ~2^15 clauses)
+    // [2 (4) bytes: bitmap of clause kinds, 0 - typed, 1 - filter]
+    // [up to 16 (32) clauses: { void* "Data", void* "Handler" }]
+    //
+    //  - "Data": exception type symbol pointer / filter handler.
+    //  - "Handler": pointer to the handler
+    //
+    // [4 (8) bytes: bitmap of clause kinds] [32 (64) clauses], ...
+    //
+    // This is "optimal" for the purposes of targeting WASM, where we cannot encode funclet pointers
+    // more efficiently using native code offsets.
+    //
+    const int LARGE_SECTION_CLAUSE_COUNT = TARGET_POINTER_SIZE * BITS_PER_BYTE;
+    const int FIRST_SECTION_CLAUSE_COUNT = LARGE_SECTION_CLAUSE_COUNT / 2;
+
+    Type* firstClauseMaskType = Type::getIntNTy(_llvmContext, FIRST_SECTION_CLAUSE_COUNT);
+    Type* largeClauseMaskType = getIntPtrLlvmType();
+
+    unsigned clauseCount = outerEHIndex - innerEHIndex + 1;
+    ArrayStack<llvm::Constant*> data(_compiler->getAllocator(CMK_Codegen));
+
+    data.Push(nullptr); // Placeholder for size.
+    data.Push(nullptr); // Placeholder for the first mask.
+
+    target_size_t clauseKindMask = 0;
+    unsigned baseSectionIndex = 0;
+    unsigned nextSectionIndex = FIRST_SECTION_CLAUSE_COUNT;
+    for (unsigned index = 0; index < clauseCount; index++)
+    {
+        EHblkDsc* ehDsc = _compiler->ehGetDsc(innerEHIndex + index);
+        unsigned clauseIndex = index - baseSectionIndex;
+
+        llvm::Constant* dataValue;
+        if (ehDsc->HasFilter())
+        {
+            clauseKindMask |= (target_size_t(1) << clauseIndex);
+            dataValue = getLlvmFunctionForIndex(ehDsc->ebdFuncIndex - 1);
+        }
+        else
+        {
+            // Otherwise we need a type symbol reference.
+            CORINFO_GENERIC_HANDLE typeSymbolHandle = getSymbolHandleForClassToken(ehDsc->ebdTyp);
+            dataValue = getOrCreateSymbol(typeSymbolHandle);
+        }
+
+        data.Push(dataValue);
+        data.Push(getLlvmFunctionForIndex(ehDsc->ebdFuncIndex));
+
+        // Is this the last entry in the current section? Initialize the mask if so.
+        bool isEndOfTable = (index + 1) == clauseCount;
+        bool isEndOfSection = (index + 1) == nextSectionIndex;
+        if (isEndOfTable || isEndOfSection)
+        {
+            Type* clauseMaskType = (baseSectionIndex == 0) ? firstClauseMaskType : largeClauseMaskType;
+            data.TopRef(2 * (clauseIndex + 1)) = llvm::ConstantInt::get(clauseMaskType, clauseKindMask);
+
+            // Start the next section if needed.
+            if (!isEndOfTable)
+            {
+                clauseKindMask = 0;
+                data.Push(nullptr);
+
+                baseSectionIndex = nextSectionIndex;
+                nextSectionIndex += LARGE_SECTION_CLAUSE_COUNT;
+            }
+        }
+    }
+
+    data.BottomRef(0) = llvm::ConstantInt::get(firstClauseMaskType, data.Height() - 1);
+
+    ArrayStack<Type*> llvmTypeBuilder(_compiler->getAllocator(CMK_Codegen), data.Height());
+    for (size_t i = 0; i < data.Height(); i++)
+    {
+        llvmTypeBuilder.Push(data.Bottom(i)->getType());
+    }
+    llvm::StructType* tableLlvmType = llvm::StructType::get(_llvmContext, {&llvmTypeBuilder.BottomRef(0),
+                                                            static_cast<size_t>(llvmTypeBuilder.Height())});
+    llvm::Constant* tableValue = llvm::ConstantStruct::get(tableLlvmType, {&data.BottomRef(0),
+                                                           static_cast<size_t>(data.Height())});
+
+    llvm::GlobalVariable* tableRef = new llvm::GlobalVariable(*_module, tableLlvmType, /* isConstant */ true,
+                                                             llvm::GlobalVariable::InternalLinkage, tableValue,
+                                                             llvmFunc->getName() + "__EHTable");
+    tableRef->setAlignment(llvm::MaybeAlign(TARGET_POINTER_SIZE));
+
+    JITDUMP("\nGenerated EH dispatch table for mutually protecting handlers:\n", innerEHIndex, outerEHIndex);
+    for (unsigned ehIndex = innerEHIndex; ehIndex <= outerEHIndex; ehIndex++)
+    {
+        JITDUMPEXEC(_compiler->ehGetDsc(ehIndex)->DispEntry(ehIndex));
+    }
+    JITDUMPEXEC(tableRef->dump());
+
+    return tableRef;
 }
 
 void Llvm::fillPhis()
@@ -773,9 +1210,6 @@ void Llvm::visitNode(GenTree* node)
         case GT_RETURN:
         case GT_RETFILT:
             buildReturn(node);
-            break;
-        case GT_CATCH_ARG:
-            buildCatchArg(node);
             break;
         case GT_STORE_LCL_VAR:
             buildStoreLocalVar(node->AsLclVar());
@@ -1376,10 +1810,8 @@ void Llvm::buildCnsInt(GenTree* node)
             if (node->IsIconHandle(GTF_ICON_TOKEN_HDL) || node->IsIconHandle(GTF_ICON_CLASS_HDL) ||
                 node->IsIconHandle(GTF_ICON_METHOD_HDL) || node->IsIconHandle(GTF_ICON_FIELD_HDL))
             {
-                const char* symbolName = GetMangledSymbolName((void*)(node->AsIntCon()->IconValue()));
-                AddCodeReloc((void*)node->AsIntCon()->IconValue());
-                mapGenTreeToValue(node, _builder.CreateLoad(llvm::PointerType::getUnqual(_llvmContext),
-                                                            getOrCreateExternalSymbol(symbolName)));
+                CORINFO_GENERIC_HANDLE symbolHandle = CORINFO_GENERIC_HANDLE(node->AsIntCon()->IconValue());
+                mapGenTreeToValue(node, emitSymbolRef(symbolHandle));
             }
             else
             {
@@ -1398,10 +1830,8 @@ void Llvm::buildCnsInt(GenTree* node)
         ssize_t intCon = node->AsIntCon()->gtIconVal;
         if (node->IsIconHandle(GTF_ICON_STR_HDL))
         {
-            const char* symbolName = GetMangledSymbolName((void *)(node->AsIntCon()->IconValue()));
-            AddCodeReloc((void*)node->AsIntCon()->IconValue());
-            mapGenTreeToValue(node, _builder.CreateLoad(Type::getInt8PtrTy(_llvmContext),
-                                                        getOrCreateExternalSymbol(symbolName)));
+            CORINFO_GENERIC_HANDLE symbolHandle = CORINFO_GENERIC_HANDLE(node->AsIntCon()->IconValue());
+            mapGenTreeToValue(node, emitSymbolRef(symbolHandle));
             return;
         }
         // TODO: delete this check, just handling string constants and null ptr stores for now, other TYP_REFs not implemented yet
@@ -1757,17 +2187,6 @@ void Llvm::buildReturn(GenTree* node)
     _builder.CreateRet(retValValue);
 }
 
-void Llvm::buildCatchArg(GenTree* node)
-{
-    // The exception object is passed as the first shadow parameter to funclets.
-    Type* excLlvmType = getLlvmTypeForVarType(node->TypeGet());
-    // TODO-LLVM: delete once we move to opaque pointers.
-    Value* shadowStackValue = _builder.CreateBitCast(getShadowStack(), excLlvmType->getPointerTo());
-    Value* excObjValue = _builder.CreateLoad(excLlvmType, shadowStackValue);
-
-    mapGenTreeToValue(node, excObjValue);
-}
-
 void Llvm::buildJTrue(GenTree* node)
 {
     Value* condValue = getGenTreeValue(node->gtGetOp1());
@@ -1842,12 +2261,12 @@ void Llvm::buildCallFinally(BasicBlock* block)
     // Other backends will simply skip generating the second block, while we will branch to it.
     //
     Function* finallyLlvmFunc = getLlvmFunctionForIndex(getLlvmFunctionIndexForBlock(block->bbJumpDest));
-    Value* shadowStackValue = getShadowStack();
+    emitCallOrInvoke(finallyLlvmFunc, {getShadowStackForCallee(), getOriginalShadowStack()});
 
-    // For a locally invoked finally, both the original and actual shadow stacks have the same value.
-    emitCallOrInvoke(finallyLlvmFunc, {shadowStackValue, shadowStackValue});
-
-    if ((block->bbFlags & BBF_RETLESS_CALL) != 0)
+    // Some tricky EH flow configurations can make the ALWAYS part of the pair unreachable without
+    // marking "block" "BBF_RETLESS_CALL". Detect this case by checking if the next block is reachable
+    // at all.
+    if (((block->bbFlags & BBF_RETLESS_CALL) != 0) || !isReachable(block->bbNext))
     {
         _builder.CreateUnreachable();
     }
@@ -1856,14 +2275,6 @@ void Llvm::buildCallFinally(BasicBlock* block)
         assert(block->isBBCallAlwaysPair());
         _builder.CreateBr(getFirstLlvmBlockForBlock(block->bbNext));
     }
-}
-
-void Llvm::buildCatchReturn(BasicBlock* block)
-{
-    assert(block->bbJumpKind == BBJ_EHCATCHRET);
-
-    // TODO-LLVM-EH: return the appropriate value.
-    _builder.CreateRet(_builder.getInt32(0));
 }
 
 void Llvm::storeObjAtAddress(Value* baseAddress, Value* data, StructDesc* structDesc)
@@ -2153,19 +2564,52 @@ FunctionType* Llvm::createFunctionTypeForHelper(CorInfoHelpFunc helperFunc)
     return llvmFuncType;
 }
 
-Value* Llvm::getOrCreateExternalSymbol(const char* symbolName, Type* symbolType)
+llvm::GlobalVariable* Llvm::getOrCreateExternalSymbol(const char* symbolName, Type* symbolType)
 {
     if (symbolType == nullptr)
     {
         symbolType = Type::getInt32PtrTy(_llvmContext);
     }
 
-    Value* symbol = _module->getGlobalVariable(symbolName);
+    llvm::GlobalVariable* symbol = _module->getGlobalVariable(symbolName);
     if (symbol == nullptr)
     {
-        symbol = new llvm::GlobalVariable(*_module, symbolType, false, llvm::GlobalValue::LinkageTypes::ExternalLinkage, (llvm::Constant*)nullptr, symbolName);
+        symbol = new llvm::GlobalVariable(*_module, symbolType, false, llvm::GlobalValue::LinkageTypes::ExternalLinkage,
+                                          nullptr, symbolName);
     }
     return symbol;
+}
+
+llvm::GlobalVariable* Llvm::getOrCreateSymbol(CORINFO_GENERIC_HANDLE symbolHandle, Type* symbolType)
+{
+    const char* symbolName = GetMangledSymbolName(symbolHandle);
+    AddCodeReloc(symbolHandle);
+    llvm::GlobalVariable* symbol = getOrCreateExternalSymbol(symbolName, symbolType);
+
+    return symbol;
+}
+
+Value* Llvm::emitSymbolRef(CORINFO_GENERIC_HANDLE symbolHandle)
+{
+    // The symbols handled here represent addresses of the relevant entities.
+    // So e. g. "symbolRefAddrValue" for a type handle would represent TypeHandle*.
+    Value* symbolRefAddrValue = getOrCreateSymbol(symbolHandle);
+    Value* symbolRefValue = _builder.CreateLoad(llvm::PointerType::getUnqual(_llvmContext), symbolRefAddrValue);
+
+    return symbolRefValue;
+}
+
+CORINFO_GENERIC_HANDLE Llvm::getSymbolHandleForClassToken(mdToken token)
+{
+    // The importer call here relies on RyuJit not inlining EH (which it currently does not).
+    CORINFO_RESOLVED_TOKEN resolvedToken;
+    _compiler->impResolveToken((BYTE*)&token, &resolvedToken, CORINFO_TOKENKIND_Class);
+
+    void* pIndirection = nullptr;
+    CORINFO_CLASS_HANDLE typeSymbolHandle = _info.compCompHnd->embedClassHandle(resolvedToken.hClass, &pIndirection);
+    assert(pIndirection == nullptr);
+
+    return CORINFO_GENERIC_HANDLE(typeSymbolHandle);
 }
 
 Instruction* Llvm::getCast(Value* source, Type* targetType)
@@ -2242,14 +2686,21 @@ Value* Llvm::getShadowStack()
 // Shadow stack moved up to avoid overwriting anything on the stack in the compiling method
 Value* Llvm::getShadowStackForCallee()
 {
-    // Note that funclets have the shadow stack arg in the same position (0) as the main function.
-    return gepOrAddr(getShadowStack(), getTotalLocalOffset());
+    unsigned funcIdx = getCurrentLlvmFunctionIndex();
+    unsigned hndIndex =
+        (funcIdx == ROOT_FUNC_IDX) ? EHblkDsc::NO_ENCLOSING_INDEX : _compiler->funGetFunc(funcIdx)->funEHIndex;
+
+    return gepOrAddr(getShadowStack(), getShadowFrameSize(hndIndex));
 }
 
 Value* Llvm::getOriginalShadowStack()
 {
+    if (getCurrentLlvmFunctionIndex() == ROOT_FUNC_IDX)
+    {
+        return getShadowStack();
+    }
+
     // The original shadow stack pointer is the second funclet parameter.
-    assert(getCurrentLlvmFunction() != getRootLlvmFunction());
     return getCurrentLlvmFunction()->getArg(1);
 }
 
@@ -2306,10 +2757,21 @@ llvm::DILocation* Llvm::createDebugFunctionAndDiLocation(DebugMetadata debugMeta
                                                     functionMetaType, lineNumber, llvm::DINode::DIFlags::FlagZero,
                                                     llvm::DISubprogram::DISPFlags::SPFlagDefinition |
                                                     llvm::DISubprogram::DISPFlags::SPFlagLocalToUnit);
-        // TODO-LLVM-EH: broken for funclets.
+        // TODO-LLVM-EH: debugging in funclets.
         getRootLlvmFunction()->setSubprogram(_debugFunction);
     }
     return llvm::DILocation::get(_llvmContext, lineNo, 0, _debugFunction);
+}
+
+llvm::DILocation* Llvm::getArtificialDebugLocation()
+{
+    if (_debugFunction == nullptr)
+    {
+        return nullptr;
+    }
+
+    // Line number "0" is used to represent non-user code in DWARF.
+    return llvm::DILocation::get(_llvmContext, 0, 0, _debugFunction);
 }
 
 llvm::BasicBlock* Llvm::getCurrentLlvmBlock() const
@@ -2319,27 +2781,30 @@ llvm::BasicBlock* Llvm::getCurrentLlvmBlock() const
 
 void Llvm::setCurrentEmitContextForBlock(BasicBlock* block)
 {
-    LlvmBlockRange* llvmBlocks = getLlvmBlocksForBlock(block);
+    unsigned funcIdx = getLlvmFunctionIndexForBlock(block);
     unsigned tryIndex = block->hasTryIndex() ? block->getTryIndex() : EHblkDsc::NO_ENCLOSING_INDEX;
+    LlvmBlockRange* llvmBlocks = getLlvmBlocksForBlock(block);
 
-    setCurrentEmitContext(llvmBlocks, tryIndex);
+    setCurrentEmitContext(funcIdx, tryIndex, llvmBlocks);
     m_currentBlock = block;
 }
 
-void Llvm::setCurrentEmitContext(LlvmBlockRange* llvmBlocks, unsigned tryIndex)
+void Llvm::setCurrentEmitContext(unsigned funcIdx, unsigned tryIndex, LlvmBlockRange* llvmBlocks)
 {
+    assert(getLlvmFunctionForIndex(funcIdx) == llvmBlocks->LastBlock->getParent());
+
     _builder.SetInsertPoint(llvmBlocks->LastBlock);
-    m_currentLlvmBlocks = llvmBlocks;
+    m_currentLlvmFunctionIndex = funcIdx;
     m_currentProtectedRegionIndex = tryIndex;
+    m_currentLlvmBlocks = llvmBlocks;
 
     // "Raw" emission contexts do not have a current IR block.
     m_currentBlock = nullptr;
 }
 
-LlvmBlockRange* Llvm::getCurrentLlvmBlocks() const
+unsigned Llvm::getCurrentLlvmFunctionIndex() const
 {
-    assert(m_currentLlvmBlocks != nullptr);
-    return m_currentLlvmBlocks;
+    return m_currentLlvmFunctionIndex;
 }
 
 //------------------------------------------------------------------------
@@ -2354,6 +2819,12 @@ unsigned Llvm::getCurrentProtectedRegionIndex() const
     return m_currentProtectedRegionIndex;
 }
 
+LlvmBlockRange* Llvm::getCurrentLlvmBlocks() const
+{
+    assert(m_currentLlvmBlocks != nullptr);
+    return m_currentLlvmBlocks;
+}
+
 Function* Llvm::getRootLlvmFunction()
 {
     return getLlvmFunctionForIndex(ROOT_FUNC_IDX);
@@ -2361,18 +2832,23 @@ Function* Llvm::getRootLlvmFunction()
 
 Function* Llvm::getCurrentLlvmFunction()
 {
-    return getCurrentLlvmBlock()->getParent();
+    return getLlvmFunctionForIndex(getCurrentLlvmFunctionIndex());
 }
 
 Function* Llvm::getLlvmFunctionForIndex(unsigned funcIdx)
 {
-    Function* llvmFunc = m_functions[funcIdx];
-    assert(llvmFunc != nullptr);
-
-    return llvmFunc;
+    return getLlvmFunctionInfoForIndex(funcIdx).LlvmFunction;
 }
 
-unsigned Llvm::getLlvmFunctionIndexForBlock(BasicBlock* block)
+FunctionInfo& Llvm::getLlvmFunctionInfoForIndex(unsigned funcIdx)
+{
+    FunctionInfo& funcInfo = m_functions[funcIdx];
+    assert(funcInfo.LlvmFunction != nullptr);
+
+    return funcInfo;
+}
+
+unsigned Llvm::getLlvmFunctionIndexForBlock(BasicBlock* block) const
 {
     unsigned funcIdx = ROOT_FUNC_IDX;
 
@@ -2392,7 +2868,7 @@ unsigned Llvm::getLlvmFunctionIndexForBlock(BasicBlock* block)
     return funcIdx;
 }
 
-unsigned Llvm::getLlvmFunctionIndexForProtectedRegion(unsigned tryIndex)
+unsigned Llvm::getLlvmFunctionIndexForProtectedRegion(unsigned tryIndex) const
 {
     unsigned funcIdx = ROOT_FUNC_IDX;
     if (tryIndex != EHblkDsc::NO_ENCLOSING_INDEX)
@@ -2436,7 +2912,8 @@ llvm::BasicBlock* Llvm::createInlineLlvmBlock()
 
 LlvmBlockRange* Llvm::getLlvmBlocksForBlock(BasicBlock* block)
 {
-    assert(block != nullptr);
+    // We should never be asking for unreachable blocks here since we won't generate code for them.
+    assert(isReachable(block) || (block == _compiler->fgFirstBB) || _compiler->fgIsThrowHlpBlk(block));
 
     LlvmBlockRange* llvmBlockRange = _blkToLlvmBlksMap.LookupPointer(block);
     if (llvmBlockRange == nullptr)
@@ -2473,16 +2950,108 @@ llvm::BasicBlock* Llvm::getLastLlvmBlockForBlock(BasicBlock* block)
     return getLlvmBlocksForBlock(block)->LastBlock;
 }
 
+llvm::BasicBlock* Llvm::getOrCreatePrologLlvmBlockForFunction(unsigned funcIdx)
+{
+    const char* const PROLOG_BLOCK_NAME = "BB00";
+
+    BasicBlock* firstUserBlock = getFirstBlockForFunction(funcIdx);
+    llvm::BasicBlock* firstLlvmUserBlock = getFirstLlvmBlockForBlock(firstUserBlock);
+    llvm::BasicBlock* prologLlvmBlock = firstLlvmUserBlock->getPrevNode();
+    if ((prologLlvmBlock == nullptr) || !prologLlvmBlock->getName().startswith(PROLOG_BLOCK_NAME))
+    {
+        Function* llvmFunc = firstLlvmUserBlock->getParent();
+        prologLlvmBlock = llvm::BasicBlock::Create(_llvmContext, PROLOG_BLOCK_NAME, llvmFunc, firstLlvmUserBlock);
+
+        // Eagerly insert jump to the user block to simplify calling code.
+        llvm::BranchInst::Create(firstLlvmUserBlock, prologLlvmBlock);
+    }
+
+    return prologLlvmBlock;
+}
+
+//------------------------------------------------------------------------
+// isReachable: Does this block have an immediate dominator?
+//
+// Arguments:
+//    block - The block to check
+//
+// Return Value:
+//    Whether "block" has an immediate dominator, i. e. is statically
+//    reachable, not the first block, and not a throw helper block.
+//
+bool Llvm::isReachable(BasicBlock* block) const
+{
+    return block->bbIDom != nullptr;
+}
+
+BasicBlock* Llvm::getFirstBlockForFunction(unsigned funcIdx) const
+{
+    if (funcIdx == ROOT_FUNC_IDX)
+    {
+        return _compiler->fgFirstBB;
+    }
+
+    FuncInfoDsc* funcInfo = _compiler->funGetFunc(funcIdx);
+    EHblkDsc* ehDsc = _compiler->ehGetDsc(funcInfo->funEHIndex);
+    return (funcInfo->funKind == FUNC_FILTER) ? ehDsc->ebdFilter : ehDsc->ebdHndBeg;
+}
+
 Value* Llvm::getLocalAddr(unsigned lclNum)
 {
-    AllocaInst* addrValue = m_allocas[lclNum];
-    assert(addrValue != nullptr);
+    Value* addrValue;
+    if (getCurrentLlvmFunctionIndex() == ROOT_FUNC_IDX)
+    {
+        addrValue = getLlvmFunctionInfoForIndex(ROOT_FUNC_IDX).Allocas[lclNum];
+    }
+    else
+    {
+        addrValue = getOrCreateAllocaForLocalInFunclet(lclNum);
+    }
 
+    assert(addrValue != nullptr);
     return addrValue;
 }
 
-unsigned int Llvm::getTotalLocalOffset()
+//------------------------------------------------------------------------
+// getOrCreateAllocaForLocalInFunclet: Get an address for a funclet local.
+//
+// For a local to be (locally) live on the LLVM frame in a funclet, it has
+// to be tracked and have its address taken (but not exposed!). Such locals
+// are rare, and it is not cheap to indentify their set precisely before
+// the code has been generated. We therefore use a lazy strategy for their
+// materialization in the funclet prologs.
+//
+// Arguments:
+//    lclNum - The local for which to get the allocated home
+//
+// Return Value:
+//    Address on the LLVM frame "lclNum" has in the current funclet.
+//
+Value* Llvm::getOrCreateAllocaForLocalInFunclet(unsigned lclNum)
 {
-    assert((_shadowStackLocalsSize % TARGET_POINTER_SIZE) == 0);
-    return _shadowStackLocalsSize;
+    LclVarDsc* varDsc = _compiler->lvaGetDesc(lclNum);
+    assert(varDsc->lvTracked); // Untracked locals in functions with funclets live on the shadow frame.
+
+    unsigned funcIdx = getCurrentLlvmFunctionIndex();
+    assert(funcIdx != ROOT_FUNC_IDX); // The root's prolog is generated eagerly.
+    assert(!VarSetOps::IsMember(_compiler, getFirstBlockForFunction(funcIdx)->bbLiveIn, varDsc->lvVarIndex));
+
+    FunctionInfo& funcInfo = getLlvmFunctionInfoForIndex(funcIdx);
+    AllocaMap* allocaMap = funcInfo.AllocaMap;
+    if (allocaMap == nullptr)
+    {
+        allocaMap = new (_compiler->getAllocator(CMK_Codegen)) AllocaMap(_compiler->getAllocator(CMK_Codegen));
+        funcInfo.AllocaMap = allocaMap;
+    }
+
+    llvm::AllocaInst* allocaInst;
+    if (!allocaMap->Lookup(lclNum, &allocaInst))
+    {
+        llvm::BasicBlock* prologLlvmBlock = getOrCreatePrologLlvmBlockForFunction(funcIdx);
+        allocaInst = new llvm::AllocaInst(getLlvmTypeForLclVar(varDsc), 0, "", prologLlvmBlock->getTerminator());
+
+        allocaMap->Set(lclNum, allocaInst);
+    }
+
+    return allocaInst;
 }

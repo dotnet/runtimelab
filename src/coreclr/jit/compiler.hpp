@@ -2705,7 +2705,8 @@ inline bool Compiler::fgIsThrowHlpBlk(BasicBlock* block)
           (call->AsCall()->gtCallMethHnd == eeFindHelper(CORINFO_HELP_THROWDIVZERO)) ||
           (call->AsCall()->gtCallMethHnd == eeFindHelper(CORINFO_HELP_THROW_ARGUMENTEXCEPTION)) ||
           (call->AsCall()->gtCallMethHnd == eeFindHelper(CORINFO_HELP_THROW_ARGUMENTOUTOFRANGEEXCEPTION)) ||
-          (call->AsCall()->gtCallMethHnd == eeFindHelper(CORINFO_HELP_OVERFLOW))))
+          (call->AsCall()->gtCallMethHnd == eeFindHelper(CORINFO_HELP_OVERFLOW)) ||
+          (call->AsCall()->gtCallMethHnd == eeFindHelper(CORINFO_HELP_THROWNULLREF))))
     {
         return false;
     }
@@ -2719,7 +2720,8 @@ inline bool Compiler::fgIsThrowHlpBlk(BasicBlock* block)
         if (block == add->acdDstBlk)
         {
             return add->acdKind == SCK_RNGCHK_FAIL || add->acdKind == SCK_DIV_BY_ZERO || add->acdKind == SCK_OVERFLOW ||
-                   add->acdKind == SCK_ARG_EXCPN || add->acdKind == SCK_ARG_RNG_EXCPN;
+                   add->acdKind == SCK_ARG_EXCPN || add->acdKind == SCK_ARG_RNG_EXCPN ||
+                   add->acdKind == SCK_NULL_REF_EXCPN;
         }
     }
 

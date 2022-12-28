@@ -23,6 +23,7 @@ enum class EEApiId
 {
     GetMangledMethodName,
     GetSymbolMangledName,
+    GetEHDispatchFunctionName,
     GetTypeName,
     AddCodeReloc,
     IsRuntimeImport,
@@ -102,7 +103,6 @@ Llvm::Llvm(Compiler* compiler)
     _info(compiler->info),
     _sigInfo(compiler->info.compMethodInfo->args),
     _builder(_llvmContext),
-    _prologBuilder(_llvmContext),
     _blkToLlvmBlksMap(compiler->getAllocator(CMK_Codegen)),
     _sdsuMap(compiler->getAllocator(CMK_Codegen)),
     _localsMap(compiler->getAllocator(CMK_Codegen)),
@@ -167,6 +167,7 @@ GCInfo* Llvm::getGCInfo()
     {
         _gcInfo = new (_compiler->getAllocator(CMK_GC)) GCInfo(_compiler);
     }
+
     return _gcInfo;
 }
 
@@ -369,8 +370,8 @@ const HelperFuncInfo& Llvm::getHelperFuncInfo(CorInfoHelpFunc helperFunc)
         // For WASM, currently implemented in the bootstrapper...
         { FUNC(CORINFO_HELP_THROW) CORINFO_TYPE_VOID, { CORINFO_TYPE_PTR } },
 
-        // (Not) implemented in "Runtime\EHHelpers.cpp"
-        { FUNC(CORINFO_HELP_RETHROW) CORINFO_TYPE_VOID, { } },
+        // Implemented in "Runtime.Base\src\System\Runtime\ExceptionHandling.wasm.cs".
+        { FUNC(CORINFO_HELP_RETHROW) CORINFO_TYPE_VOID, { CORINFO_TYPE_PTR } },
 
         // Implemented in "Runtime\MiscHelpers.cpp".
         { FUNC(CORINFO_HELP_USER_BREAKPOINT) CORINFO_TYPE_VOID, { } },
@@ -641,11 +642,11 @@ unsigned Llvm::padNextOffset(CorInfoType corInfoType, CORINFO_CLASS_HANDLE struc
 
 [[noreturn]] void Llvm::failFunctionCompilation()
 {
-    for (Function* llvmFunc : m_functions)
+    for (FunctionInfo& funcInfo : m_functions)
     {
-        if (llvmFunc != nullptr)
+        if (funcInfo.LlvmFunction != nullptr)
         {
-            llvmFunc->deleteBody();
+            funcInfo.LlvmFunction->deleteBody();
         }
     }
 
@@ -666,6 +667,11 @@ const char* Llvm::GetMangledMethodName(CORINFO_METHOD_HANDLE methodHandle)
 const char* Llvm::GetMangledSymbolName(void* symbol)
 {
     return CallEEApi<EEApiId::GetSymbolMangledName, const char*>(symbol);
+}
+
+const char* Llvm::GetEHDispatchFunctionName(CORINFO_EH_CLAUSE_FLAGS handlerType)
+{
+    return CallEEApi<EEApiId::GetEHDispatchFunctionName, const char*>(handlerType);
 }
 
 const char* Llvm::GetTypeName(CORINFO_CLASS_HANDLE typeHandle)

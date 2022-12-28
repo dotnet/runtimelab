@@ -110,6 +110,17 @@ struct LlvmBlockRange
     }
 };
 
+typedef JitHashTable<unsigned, JitSmallPrimitiveKeyFuncs<unsigned>, llvm::AllocaInst*> AllocaMap;
+
+struct FunctionInfo
+{
+    Function* LlvmFunction;
+    union {
+        llvm::AllocaInst** Allocas; // Dense "lclNum -> Alloca*" mapping used for the main function.
+        AllocaMap* AllocaMap; // Sparse "lclNum -> Alloca*" mapping used for funclets.
+    };
+};
+
 // TODO: We should create a Static... class to manage the globals and their lifetimes.
 // Note we declare all statics here, and define them in llvm.cpp, for documentation and
 // visibility purposes even as some are only needed in other compilation units.
@@ -133,16 +144,15 @@ private:
     BasicBlock* m_currentBlock;
     DebugInfo _currentOffset;
     llvm::IRBuilder<> _builder;
-    llvm::IRBuilder<> _prologBuilder;
     JitHashTable<BasicBlock*, JitPtrKeyFuncs<BasicBlock>, LlvmBlockRange> _blkToLlvmBlksMap;
     JitHashTable<GenTree*, JitPtrKeyFuncs<GenTree>, Value*> _sdsuMap;
     JitHashTable<SSAName, SSAName, Value*> _localsMap;
     std::vector<PhiPair> _phiPairs;
-    std::vector<AllocaInst*> m_allocas;
-    std::vector<Function*> m_functions;
+    std::vector<FunctionInfo> m_functions;
     std::vector<llvm::BasicBlock*> m_EHDispatchLlvmBlocks;
 
     // Codegen emit context.
+    unsigned m_currentLlvmFunctionIndex = ROOT_FUNC_IDX;
     unsigned m_currentProtectedRegionIndex = EHblkDsc::NO_ENCLOSING_INDEX;
     LlvmBlockRange* m_currentLlvmBlocks = nullptr;
 
@@ -198,6 +208,7 @@ private:
     //
     const char* GetMangledMethodName(CORINFO_METHOD_HANDLE methodHandle);
     const char* GetMangledSymbolName(void* symbol);
+    const char* GetEHDispatchFunctionName(CORINFO_EH_CLAUSE_FLAGS handlerType);
     const char* GetTypeName(CORINFO_CLASS_HANDLE typeHandle);
     void AddCodeReloc(void* handle);
     bool IsRuntimeImport(CORINFO_METHOD_HANDLE methodHandle);
@@ -247,6 +258,8 @@ private:
     void lowerFieldOfDependentlyPromotedStruct(GenTree* node);
     void ConvertShadowStackLocalNode(GenTreeLclVarCommon* node);
     void lowerCall(GenTreeCall* callNode);
+    void lowerRethrow(GenTreeCall* callNode);
+    void lowerCatchArg(GenTree* catchArgNode);
     void lowerIndir(GenTreeIndir* indirNode);
     void lowerStoreBlk(GenTreeBlk* storeBlkNode);
     void lowerDivMod(GenTreeOp* divModNode);
@@ -265,6 +278,11 @@ private:
     bool isShadowFrameLocal(LclVarDsc* varDsc) const;
     bool isFuncletParameter(unsigned lclNum) const;
 
+    unsigned getCurrentShadowFrameSize() const;
+    unsigned getShadowFrameSize(unsigned hndIndex) const;
+    unsigned getOriginalShadowFrameSize() const;
+    unsigned getCatchArgOffset() const;
+
     // ================================================================================================================
     // |                                                   Codegen                                                    |
     // ================================================================================================================
@@ -273,14 +291,14 @@ public:
     void Compile();
 
 private:
-    const int ROOT_FUNC_IDX = 0;
+    const unsigned ROOT_FUNC_IDX = 0;
 
     bool initializeFunctions();
     void generateProlog();
     void initializeLocals();
-    void generateFuncletProlog(unsigned funcIdx);
     void generateBlock(BasicBlock* block);
     void generateEHDispatch();
+    Value* generateEHDispatchTable(Function* llvmFunc, unsigned innerEHIndex, unsigned outerEHIndex);
     void fillPhis();
 
     Value* getGenTreeValue(GenTree* node);
@@ -315,14 +333,12 @@ private:
     void buildBinaryOperation(GenTree* node);
     void buildShift(GenTreeOp* node);
     void buildReturn(GenTree* node);
-    void buildCatchArg(GenTree* node);
     void buildJTrue(GenTree* node);
     void buildSwitch(GenTreeUnOp* switchNode);
     void buildNullCheck(GenTreeIndir* nullCheckNode);
     void buildBoundsCheck(GenTreeBoundsChk* boundsCheck);
 
     void buildCallFinally(BasicBlock* block);
-    void buildCatchReturn(BasicBlock* block);
 
     void storeObjAtAddress(Value* baseAddress, Value* data, StructDesc* structDesc);
     unsigned buildMemCpy(Value* baseAddress, unsigned startOffset, unsigned endOffset, Value* srcAddress);
@@ -332,14 +348,17 @@ private:
     void emitNullCheckForIndir(GenTreeIndir* indir, Value* addrValue);
     Value* emitCheckedArithmeticOperation(llvm::Intrinsic::ID intrinsicId, Value* op1Value, Value* op2Value);
     Value* emitHelperCall(CorInfoHelpFunc helperFunc, ArrayRef<Value*> sigArgs = { });
-    Value* emitCallOrInvoke(llvm::FunctionCallee callee, ArrayRef<Value*> args);
+    llvm::CallBase* emitCallOrInvoke(llvm::FunctionCallee callee, ArrayRef<Value*> args);
 
     FunctionType* getFunctionType();
     Function* getOrCreateLlvmFunction(const char* symbolName, GenTreeCall* call);
     FunctionType* createFunctionTypeForCall(GenTreeCall* call);
     FunctionType* createFunctionTypeForHelper(CorInfoHelpFunc helperFunc);
 
-    Value* getOrCreateExternalSymbol(const char* symbolName, Type* symbolType = nullptr);
+    llvm::GlobalVariable* getOrCreateExternalSymbol(const char* symbolName, Type* symbolType = nullptr);
+    llvm::GlobalVariable* getOrCreateSymbol(CORINFO_GENERIC_HANDLE symbolHandle, Type* symbolType = nullptr);
+    Value* emitSymbolRef(CORINFO_GENERIC_HANDLE symbolHandle);
+    CORINFO_GENERIC_HANDLE getSymbolHandleForClassToken(mdToken token);
 
     Instruction* getCast(Value* source, Type* targetType);
     Value* castIfNecessary(Value* source, Type* targetType, llvm::IRBuilder<>* builder = nullptr);
@@ -350,27 +369,32 @@ private:
 
     DebugMetadata getOrCreateDebugMetadata(const char* documentFileName);
     llvm::DILocation* createDebugFunctionAndDiLocation(struct DebugMetadata debugMetadata, unsigned int lineNo);
+    llvm::DILocation* getArtificialDebugLocation();
 
     void setCurrentEmitContextForBlock(BasicBlock* block);
-    void setCurrentEmitContext(LlvmBlockRange* llvmBlock, unsigned tryIndex);
-    LlvmBlockRange* getCurrentLlvmBlocks() const;
+    void setCurrentEmitContext(unsigned funcIdx, unsigned tryIndex, LlvmBlockRange* llvmBlock);
+    unsigned getCurrentLlvmFunctionIndex() const;
     unsigned getCurrentProtectedRegionIndex() const;
+    LlvmBlockRange* getCurrentLlvmBlocks() const;
 
     Function* getRootLlvmFunction();
     Function* getCurrentLlvmFunction();
     Function* getLlvmFunctionForIndex(unsigned funcIdx);
-    unsigned getLlvmFunctionIndexForBlock(BasicBlock* block);
-    unsigned getLlvmFunctionIndexForProtectedRegion(unsigned tryIndex);
+    FunctionInfo& getLlvmFunctionInfoForIndex(unsigned funcIdx);
+    unsigned getLlvmFunctionIndexForBlock(BasicBlock* block) const;
+    unsigned getLlvmFunctionIndexForProtectedRegion(unsigned tryIndex) const;
 
     llvm::BasicBlock* createInlineLlvmBlock();
     llvm::BasicBlock* getCurrentLlvmBlock() const;
     LlvmBlockRange* getLlvmBlocksForBlock(BasicBlock* block);
     llvm::BasicBlock* getFirstLlvmBlockForBlock(BasicBlock* block);
     llvm::BasicBlock* getLastLlvmBlockForBlock(BasicBlock* block);
+    llvm::BasicBlock* getOrCreatePrologLlvmBlockForFunction(unsigned funcIdx);
+
+    bool isReachable(BasicBlock* block) const;
+    BasicBlock* getFirstBlockForFunction(unsigned funcIdx) const;
 
     Value* getLocalAddr(unsigned lclNum);
-    unsigned getTotalLocalOffset();
+    Value* getOrCreateAllocaForLocalInFunclet(unsigned lclNum);
 };
-
-
 #endif /* End of _LLVM_H_ */

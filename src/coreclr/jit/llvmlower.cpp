@@ -383,6 +383,10 @@ void Llvm::lowerBlock(BasicBlock* block)
                 lowerCall(node->AsCall());
                 break;
 
+            case GT_CATCH_ARG:
+                lowerCatchArg(node);
+                break;
+
             case GT_IND:
             case GT_STOREIND:
             case GT_OBJ:
@@ -555,6 +559,11 @@ void Llvm::lowerCall(GenTreeCall* callNode)
 {
     failUnsupportedCalls(callNode);
 
+    if (callNode->IsHelperCall(_compiler, CORINFO_HELP_RETHROW))
+    {
+        lowerRethrow(callNode);
+    }
+
     lowerCallToShadowStack(callNode);
 
     // If there is a no return, or always throw call, delete the dead code so we can add unreachable
@@ -566,6 +575,40 @@ void Llvm::lowerCall(GenTreeCall* callNode)
             CurrentRange().Remove(CurrentRange().LastNode(), /* markOperandsUnused */ true);
         }
     }
+}
+
+void Llvm::lowerRethrow(GenTreeCall* callNode)
+{
+    assert(callNode->IsHelperCall(_compiler, CORINFO_HELP_RETHROW));
+
+    // Language in ECMA 335 I.12.4.2.8.2.2 clearly states that rethrows nested inside finallys are
+    // legal, however, neither C# nor the old verification system allow this. CoreCLR behavior was
+    // not tested. Implementing this would imply saving the exception object to the "original" shadow
+    // frame shared between funclets. For now we punt.
+    if (!_compiler->ehGetDsc(CurrentBlock()->getHndIndex())->HasCatchHandler())
+    {
+        IMPL_LIMITATION("Nested rethrow");
+    }
+
+    // A rethrow is a special throw that preserves the stack trace. Our helper we use for rethrow has
+    // the equivalent of a managed signature "void (object*)", i. e. takes the exception object address
+    // explicitly. Add it here, before the general call lowering.
+    assert(callNode->gtCallArgs == nullptr);
+    callNode->ResetArgInfo();
+
+    GenTree* excObjAddr = insertShadowStackAddr(callNode, getCatchArgOffset(), _shadowStackLclNum);
+    callNode->gtCallArgs = _compiler->gtNewCallArgs(excObjAddr);
+
+    _compiler->fgInitArgInfo(callNode);
+}
+
+void Llvm::lowerCatchArg(GenTree* catchArgNode)
+{
+    GenTree* excObjAddr = insertShadowStackAddr(catchArgNode, getCatchArgOffset(), _shadowStackLclNum);
+
+    catchArgNode->ChangeOper(GT_IND);
+    catchArgNode->gtFlags |= GTF_IND_NONFAULTING;
+    catchArgNode->AsIndir()->SetAddr(excObjAddr);
 }
 
 void Llvm::lowerIndir(GenTreeIndir* indirNode)
@@ -746,7 +789,7 @@ void Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
     GenTreeCall::Use* lastArg = nullptr;
     if (callHasShadowStackArg(callNode))
     {
-        GenTree* calleeShadowStack = insertShadowStackAddr(callNode, _shadowStackLocalsSize, _shadowStackLclNum);
+        GenTree* calleeShadowStack = insertShadowStackAddr(callNode, getCurrentShadowFrameSize(), _shadowStackLclNum);
 
         GenTreePutArgType* calleeShadowStackPutArg =
             _compiler->gtNewPutArgType(calleeShadowStack, CORINFO_TYPE_PTR, NO_CLASS_HANDLE);
@@ -844,13 +887,14 @@ void Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
                 shadowStackUseOffest = padOffset(corInfoType, clsHnd, shadowStackUseOffest);
             }
 
+            unsigned shadowFrameSize = getCurrentShadowFrameSize();
             if (argNode->OperIs(GT_FIELD_LIST))
             {
                 for (GenTreeFieldList::Use& use : argNode->AsFieldList()->Uses())
                 {
                     assert(use.GetType() != TYP_STRUCT);
 
-                    unsigned fieldOffsetValue = _shadowStackLocalsSize + shadowStackUseOffest + use.GetOffset();
+                    unsigned fieldOffsetValue = shadowFrameSize + shadowStackUseOffest + use.GetOffset();
                     GenTree* fieldSlotAddr = insertShadowStackAddr(callNode, fieldOffsetValue, _shadowStackLclNum);
                     GenTree* fieldStoreNode = createShadowStackStoreNode(use.GetType(), fieldSlotAddr, use.GetNode());
 
@@ -861,7 +905,7 @@ void Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
             }
             else
             {
-                unsigned offsetValue = _shadowStackLocalsSize + shadowStackUseOffest;
+                unsigned offsetValue = shadowFrameSize + shadowStackUseOffest;
                 GenTree* slotAddr  = insertShadowStackAddr(callNode, offsetValue, _shadowStackLclNum);
                 GenTree* storeNode = createShadowStackStoreNode(argNode->TypeGet(), slotAddr, argNode);
 
@@ -971,9 +1015,7 @@ GenTreeCall::Use* Llvm::lowerCallReturn(GenTreeCall* callNode, GenTreeCall::Use*
     if (needsReturnStackSlot(_compiler, callNode))
     {
         // replace the "CALL ref" with a "CALL void" that takes a return address as the first argument
-        GenTreeLclVar* shadowStackVar     = _compiler->gtNewLclvNode(_shadowStackLclNum, TYP_I_IMPL);
-        GenTreeIntCon* offset             = _compiler->gtNewIconNode(_shadowStackLocalsSize, TYP_I_IMPL);
-        GenTree*       returnValueAddress = _compiler->gtNewOperNode(GT_ADD, TYP_I_IMPL, shadowStackVar, offset);
+        GenTree* returnValueAddress = insertShadowStackAddr(callNode, getCurrentShadowFrameSize(), _shadowStackLclNum);
 
         // create temp for the return address
         unsigned   returnTempNum    = _compiler->lvaGrabTemp(false DEBUGARG("return value address"));
@@ -1017,8 +1059,7 @@ GenTreeCall::Use* Llvm::lowerCallReturn(GenTreeCall* callNode, GenTreeCall::Use*
         callNode->gtCorInfoType = CORINFO_TYPE_VOID;
         callNode->ChangeType(TYP_VOID);
 
-        CurrentRange().InsertBefore(callNode, shadowStackVar, offset, returnValueAddress, addrStore);
-        CurrentRange().InsertAfter(addrStore, returnAddrLcl, putArg);
+        CurrentRange().InsertBefore(callNode, addrStore, returnAddrLcl, putArg);
         CurrentRange().InsertAfter(callNode, returnAddrLclAfterCall, indirNode);
     }
     else
@@ -1189,4 +1230,53 @@ bool Llvm::isShadowFrameLocal(LclVarDsc* varDsc) const
 bool Llvm::isFuncletParameter(unsigned lclNum) const
 {
     return (lclNum == _shadowStackLclNum) || (lclNum == _originalShadowStackLclNum);
+}
+
+unsigned Llvm::getCurrentShadowFrameSize() const
+{
+    assert(CurrentBlock() != nullptr);
+    unsigned hndIndex = CurrentBlock()->hasHndIndex() ? CurrentBlock()->getHndIndex() : EHblkDsc::NO_ENCLOSING_INDEX;
+    return getShadowFrameSize(hndIndex);
+}
+
+//------------------------------------------------------------------------
+// getShadowFrameSize: What is the size of a function's shadow frame?
+//
+// Arguments:
+//    hndIndex - Handler index representing the function, NO_ENCLOSING_INDEX
+//               is used for the root
+//
+// Return Value:
+//    The size of the shadow frame for the given function. We term this
+//    the value by which the shadow stack pointer must be offset before
+//    calling managed code such that the caller will not clobber anything
+//    live on the frame. Note that funclets do not have any shadow state
+//    of their own and use the "original" frame from the parent function,
+//    with one exception: catch handlers and filters have one readonly
+//    pointer-sized argument representing the exception.
+//
+unsigned Llvm::getShadowFrameSize(unsigned hndIndex) const
+{
+    if (hndIndex == EHblkDsc::NO_ENCLOSING_INDEX)
+    {
+        return getOriginalShadowFrameSize();
+    }
+    if (_compiler->ehGetDsc(hndIndex)->HasCatchHandler())
+    {
+        // For the implicit (readonly) exception object argument.
+        return TARGET_POINTER_SIZE;
+    }
+
+    return 0;
+}
+
+unsigned Llvm::getOriginalShadowFrameSize() const
+{
+    assert((_shadowStackLocalsSize % TARGET_POINTER_SIZE) == 0);
+    return _shadowStackLocalsSize;
+}
+
+unsigned Llvm::getCatchArgOffset() const
+{
+    return 0;
 }

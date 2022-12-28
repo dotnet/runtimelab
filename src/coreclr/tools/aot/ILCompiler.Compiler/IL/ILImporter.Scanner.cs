@@ -177,6 +177,9 @@ namespace Internal.IL
                 _dependencies.Add(_compilation.NodeFactory.MethodEntrypoint(helperMethod), "Wasm EH");
 
                 // TODO-LLVM: make these into normal "ReadyToRunHelper" instead of hardcoding things here.
+                helperMethod = helperType.GetKnownMethod("HandleExceptionWasmMutuallyProtectingCatches", null);
+                _dependencies.Add(_compilation.NodeFactory.MethodEntrypoint(helperMethod), "Wasm EH");
+
                 helperMethod = helperType.GetKnownMethod("HandleExceptionWasmFilteredCatch", null);
                 _dependencies.Add(_compilation.NodeFactory.MethodEntrypoint(helperMethod), "Wasm EH");
 
