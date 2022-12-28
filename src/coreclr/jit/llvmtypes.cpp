@@ -286,6 +286,15 @@ Type* Llvm::getLlvmTypeForParameterType(CORINFO_CLASS_HANDLE classHnd)
     return getLlvmTypeForCorInfoType(parameterCorInfoType, innerParameterHandle);
 }
 
+Type* Llvm::getIntPtrLlvmType()
+{
+#ifdef TARGET_64BIT
+    return Type::getInt64Ty(_llvmContext);
+#else
+    return Type::getInt32Ty(_llvmContext);
+#endif
+}
+
 unsigned Llvm::getElementSize(CORINFO_CLASS_HANDLE classHandle, CorInfoType corInfoType)
 {
     if (classHandle != NO_CLASS_HANDLE)
