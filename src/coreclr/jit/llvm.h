@@ -191,7 +191,7 @@ private:
     const char* GetMangledMethodName(CORINFO_METHOD_HANDLE methodHandle);
     const char* GetMangledSymbolName(void* symbol);
     const char* GetTypeName(CORINFO_CLASS_HANDLE typeHandle);
-    const char* AddCodeReloc(void* handle);
+    void AddCodeReloc(void* handle);
     bool IsRuntimeImport(CORINFO_METHOD_HANDLE methodHandle);
     const char* GetDocumentFileName();
     uint32_t FirstSequencePointLineNumber();
@@ -201,7 +201,6 @@ private:
     CorInfoTypeWithMod GetArgTypeIncludingParameterized(CORINFO_SIG_INFO* sigInfo, CORINFO_ARG_LIST_HANDLE arg, CORINFO_CLASS_HANDLE* pTypeHandle);
     CorInfoTypeWithMod GetParameterType(CORINFO_CLASS_HANDLE typeHandle, CORINFO_CLASS_HANDLE* pInnerParameterTypeHandle);
     TypeDescriptor GetTypeDescriptor(CORINFO_CLASS_HANDLE typeHandle);
-    CORINFO_METHOD_HANDLE GetCompilerHelpersMethodHandle(const char* helperClassTypeName, const char* helperMethodName);
     uint32_t GetInstanceFieldAlignment(CORINFO_CLASS_HANDLE fieldTypeHandle);
 
     // ================================================================================================================

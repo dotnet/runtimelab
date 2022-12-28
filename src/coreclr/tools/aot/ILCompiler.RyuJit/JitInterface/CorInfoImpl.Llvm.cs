@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
 using ILCompiler;
@@ -128,21 +130,6 @@ namespace Internal.JitInterface
 
             sb.Append("\0");
             return (byte*)_this.GetPin(sb.UnderlyingArray);
-        }
-
-        [UnmanagedCallersOnly]
-        public static byte* getSymbolMangledNameFromHelperTarget(IntPtr thisHandle, void* handle)
-        {
-            var _this = GetThis(thisHandle);
-
-            var node = (ReadyToRunHelperNode)_this.HandleToObject((IntPtr)handle);
-            var method = node.Target as MethodDesc;
-
-            // Abstract methods must require a lookup so no point passing the abstract name back
-            if (method.IsAbstract || method.IsVirtual) return null;
-
-            Utf8StringBuilder sb = new Utf8StringBuilder();
-            return (byte*)_this.GetPin(AppendNullByte(_this._compilation.NameMangler.GetMangledMethodName(method).UnderlyingArray));
         }
 
         // IL backend does not use the mangled name.  The unmangled name is easier to read.
@@ -371,55 +358,60 @@ namespace Internal.JitInterface
             return typeDescriptor;
         }
 
-        [UnmanagedCallersOnly]
-        public static CORINFO_METHOD_STRUCT_* getCompilerHelpersMethodHandle(IntPtr thisHandle, byte* className, byte* methodName)
+        // Must be kept in sync with the unmanaged version in "jit/llvm.cpp".
+        //
+        enum EEApiId
         {
-            var _this = GetThis(thisHandle);
-
-            return _this.ObjectToHandle(_this._compilation.GetCompilerHelpersMethodDesc(Marshal.PtrToStringUTF8((IntPtr)className), Marshal.PtrToStringUTF8((IntPtr)methodName)));
+            GetMangledMethodName,
+            GetSymbolMangledName,
+            GetTypeName,
+            AddCodeReloc,
+            IsRuntimeImport,
+            GetDocumentFileName,
+            FirstSequencePointLineNumber,
+            GetOffsetLineNumber,
+            StructIsWrappedPrimitive,
+            PadOffset,
+            GetArgTypeIncludingParameterized,
+            GetParameterType,
+            GetTypeDescriptor,
+            GetInstanceFieldAlignment,
+            Count
         }
 
         [DllImport(JitLibrary)]
-        private extern static void registerLlvmCallbacks(IntPtr thisHandle, byte* outputFileName, byte* triple, byte* dataLayout,
-            delegate* unmanaged<IntPtr, CORINFO_METHOD_STRUCT_*, byte*> getMangedMethodNamePtr,
-            delegate* unmanaged<IntPtr, void*, byte*> getSymbolMangledName,
-            delegate* unmanaged<IntPtr, void*, byte*> getSymbolMangledNameFromHelperTarget,
-            delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, byte*> getTypeName,
-            delegate* unmanaged<IntPtr, void*, void> addCodeReloc,
-            delegate* unmanaged<IntPtr, CORINFO_METHOD_STRUCT_*, uint> isRuntimeImport,
-            delegate* unmanaged<IntPtr, byte*> getDocumentFileName,
-            delegate* unmanaged<IntPtr, uint> firstSequencePointLineNumber,
-            delegate* unmanaged<IntPtr, uint, uint> getOffsetLineNumber,
-            delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, CorInfoType, uint> structIsWrappedPrimitive,
-            delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, uint, uint> padOffset,
-            delegate* unmanaged<IntPtr, CORINFO_SIG_INFO*, CORINFO_ARG_LIST_STRUCT_*, CORINFO_CLASS_STRUCT_**, CorInfoTypeWithMod> getArgTypeIncludingParameterized,
-            delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, CORINFO_CLASS_STRUCT_**, CorInfoTypeWithMod> getParameterType,
-            delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, TypeDescriptor> getTypeDescriptor,
-            delegate* unmanaged<IntPtr, byte*, byte*, CORINFO_METHOD_STRUCT_*> getCompilerHelpersMethodHandle,
-            delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, uint> getInstanceFieldAlignment
-            );
+        private extern static void registerLlvmCallbacks(IntPtr thisHandle, byte* outputFileName, byte* triple, byte* dataLayout, void** callbacks);
 
         public void RegisterLlvmCallbacks(IntPtr corInfoPtr, string outputFileName, string triple, string dataLayout)
         {
+            void** callbacks = stackalloc void*[(int)EEApiId.Count + 1];
+            callbacks[(int)EEApiId.GetMangledMethodName] = (delegate* unmanaged<IntPtr, CORINFO_METHOD_STRUCT_*, byte*>)&getMangledMethodName;
+            callbacks[(int)EEApiId.GetSymbolMangledName] = (delegate* unmanaged<IntPtr, CORINFO_METHOD_STRUCT_*, byte*>)&getSymbolMangledName;
+            callbacks[(int)EEApiId.GetTypeName] = (delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, byte*>)&getTypeName;
+            callbacks[(int)EEApiId.AddCodeReloc] = (delegate* unmanaged<IntPtr, void*, void>)&addCodeReloc;
+            callbacks[(int)EEApiId.IsRuntimeImport] = (delegate* unmanaged<IntPtr, CORINFO_METHOD_STRUCT_*, uint>)&isRuntimeImport;
+            callbacks[(int)EEApiId.GetDocumentFileName] = (delegate* unmanaged<IntPtr, byte*>)&getDocumentFileName;
+            callbacks[(int)EEApiId.FirstSequencePointLineNumber] = (delegate* unmanaged<IntPtr, uint>)&firstSequencePointLineNumber;
+            callbacks[(int)EEApiId.GetOffsetLineNumber] = (delegate* unmanaged<IntPtr, uint, uint>)&getOffsetLineNumber;
+            callbacks[(int)EEApiId.StructIsWrappedPrimitive] = (delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, CorInfoType, uint>)&structIsWrappedPrimitive;
+            callbacks[(int)EEApiId.PadOffset] = (delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, uint, uint>)&padOffset;
+            callbacks[(int)EEApiId.GetArgTypeIncludingParameterized] = (delegate* unmanaged<IntPtr, CORINFO_SIG_INFO*, CORINFO_ARG_LIST_STRUCT_*, CORINFO_CLASS_STRUCT_**, CorInfoTypeWithMod>)&getArgTypeIncludingParameterized;
+            callbacks[(int)EEApiId.GetParameterType] = (delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, CORINFO_CLASS_STRUCT_**, CorInfoTypeWithMod>)&getParameterType;
+            callbacks[(int)EEApiId.GetTypeDescriptor] = (delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, TypeDescriptor>)&getTypeDescriptor;
+            callbacks[(int)EEApiId.GetInstanceFieldAlignment] = (delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, uint>)&getInstanceFieldAlignment;
+            callbacks[(int)EEApiId.Count] = (void*)0x1234;
+
+#if DEBUG
+            for (int i = 0; i < (int)EEApiId.Count; i++)
+            {
+                Debug.Assert(callbacks[i] != null);
+            }
+#endif
+
             registerLlvmCallbacks(corInfoPtr, (byte*)GetPin(StringToUTF8(outputFileName)),
                 (byte*)GetPin(StringToUTF8(triple)),
                 (byte*)GetPin(StringToUTF8(dataLayout)),
-                &getMangledMethodName,
-                &getSymbolMangledName,
-                &getSymbolMangledNameFromHelperTarget,
-                &getTypeName,
-                &addCodeReloc,
-                &isRuntimeImport,
-                &getDocumentFileName,
-                &firstSequencePointLineNumber,
-                &getOffsetLineNumber,
-                &structIsWrappedPrimitive,
-                &padOffset,
-                &getArgTypeIncludingParameterized,
-                &getParameterType,
-                &getTypeDescriptor,
-                &getCompilerHelpersMethodHandle,
-                &getInstanceFieldAlignment
+                callbacks
             );
         }
 
