@@ -31,7 +31,7 @@
           DependsOnTargets="ResolveAssemblyReferences;ResolveRuntimeFilesFromLocalBuild">
 
     <ItemGroup>
-      <RunTimeDependencyExclude Include="$(CORE_ROOT)\**\*.*" Exclude="$(CORE_ROOT)\nativeaot\**\*.*" />
+      <RunTimeDependencyExclude Include="$(CORE_ROOT)\**\*.*" />
       <RunTimeDependencyExcludeFiles Include="@(RunTimeDependencyExclude -> '%(FileName)%(Extension)')" />
       <RunTimeDependencyExcludeFiles Include="@(RunTimeDependencyExclude -> '%(FileName).ni%(Extension)')" />
       <RunTimeDependencyExcludeFiles Include="@(RunTimeDependencyExclude -> '%(FileName).pdb')" />
@@ -171,6 +171,7 @@
       <RunTimeDependencyCopyLocal Include="$(CoreDisToolsLibrary)" Condition="$(CopyCoreDisToolsToCoreRoot)" />
     </ItemGroup>
 
+<<<<<<< HEAD
     <!-- When cross-compiling tests (such as is the case for Wasm), we depends on the host's ILC being built. -->
     <!-- This is a workaround for ILC's project not supporting cross-targeting. Remove once that's implemented. -->
     <PropertyGroup>
@@ -190,6 +191,8 @@
       <AotCompilerCopyLocal Include="@(RuntimeCopyLocalItems)" TargetDir="nativeaot/framework/" />
     </ItemGroup>
 
+=======
+>>>>>>> 87777b624b0b8ea295b0fe9cd8505ce262ed75c0
     <ItemGroup Condition="'$(RuntimeFlavor)' == 'mono' and '$(IsDesktopOS)' == 'true' " >
       <RuntimeDependencyCopyLocal Include="$(MonoArtifactsPath)/libcoreclr$(LibSuffix)" TargetDir=""  />
       <RuntimeDependencyCopyLocal Include="$(MonoArtifactsPath)/libmono-component-*" TargetDir=""  />
@@ -205,17 +208,6 @@
     <Copy
       SourceFiles="@(RunTimeDependencyCopyLocal)"
       DestinationFiles="@(RunTimeDependencyCopyLocal -> '$(CORE_ROOT)/%(TargetDir)%(RecursiveDir)%(Filename)%(Extension)')"
-      SkipUnchangedFiles="$(SkipCopyUnchangedFiles)"
-      OverwriteReadOnlyFiles="$(OverwriteReadOnlyFiles)"
-      Retries="$(CopyRetryCount)"
-      RetryDelayMilliseconds="$(CopyRetryDelayMilliseconds)"
-      UseHardlinksIfPossible="$(CreateHardLinksForCopyFilesToOutputDirectoryIfPossible)">
-      <Output TaskParameter="DestinationFiles" ItemName="FileWrites" />
-    </Copy>
-
-    <Copy
-      SourceFiles="@(AotCompilerCopyLocal)"
-      DestinationFiles="@(AotCompilerCopyLocal -> '$(CORE_ROOT)/%(TargetDir)%(RecursiveDir)%(Filename)%(Extension)')"
       SkipUnchangedFiles="$(SkipCopyUnchangedFiles)"
       OverwriteReadOnlyFiles="$(OverwriteReadOnlyFiles)"
       Retries="$(CopyRetryCount)"

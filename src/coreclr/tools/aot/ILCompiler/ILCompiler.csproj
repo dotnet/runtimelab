@@ -1,22 +1,9 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <AssemblyName>ilc</AssemblyName>
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <OutputType>Exe</OutputType>
-    <TargetFramework>$(NetCoreAppToolCurrent)</TargetFramework>
-    <NoWarn>8002,NU1701</NoWarn>
-    <Platforms>x64;x86</Platforms>
-    <PlatformTarget>AnyCPU</PlatformTarget>
-    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
-    <AppendTargetFrameworkToOutputPath Condition="'$(BuildingInsideVisualStudio)' == 'true'">true</AppendTargetFrameworkToOutputPath>
-    <OutputPath>$(RuntimeBinDir)ilc</OutputPath>
-    <GenerateRuntimeConfigurationFiles>true</GenerateRuntimeConfigurationFiles>
-    <EnableDefaultEmbeddedResourceItems>false</EnableDefaultEmbeddedResourceItems>
-    <Configurations>Debug;Release;Checked</Configurations>
-    <UseAppHost>true</UseAppHost>
-    <ServerGarbageCollection>true</ServerGarbageCollection>
-    <TieredCompilation>false</TieredCompilation>
+    <OutputPath>$(RuntimeBinDir)ilc/</OutputPath>
+    <RuntimeIdentifier>$(OutputRid)</RuntimeIdentifier>
   </PropertyGroup>
+<<<<<<< HEAD
 
   <PropertyGroup>
     <RuntimeIdentifier>$(__DistroRid)</RuntimeIdentifier>
@@ -125,4 +112,7 @@
     <Content Remove="$(RuntimeBinDir)$(LibPrefix)clrjit_$(TargetSpec)$(LibSuffix)" />
     <Content Include="$(RuntimeBinDir)$(LibPrefix)clrjit$(LibSuffix)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" Link="$(LibPrefix)clrjit_$(TargetSpec)$(LibSuffix)" />
   </ItemGroup>
+=======
+  <Import Project="ILCompiler.props" />
+>>>>>>> 87777b624b0b8ea295b0fe9cd8505ce262ed75c0
 </Project>
