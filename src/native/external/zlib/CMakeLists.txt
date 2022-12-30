@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 2.4.4)
 set(CMAKE_ALLOW_LOOSE_LOOP_CONSTRUCTS ON)
 
+add_compile_options(-Wno-deprecated-non-prototype)
+
 project(zlib C)
 
 set(VERSION "1.2.11")
@@ -247,6 +249,3 @@ if(HAVE_OFF64_T)
     target_link_libraries(minigzip64 zlib)
     set_target_properties(minigzip64 PROPERTIES COMPILE_FLAGS "-D_FILE_OFFSET_BITS=64")
 endif()
-
-set_property(TARGET tgt PROPERTY CXX_STANDARD 17)
-add_compile_options(-Wno-deprecated-non-prototype)
