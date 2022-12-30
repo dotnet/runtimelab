@@ -138,7 +138,9 @@ void Llvm::lowerLocals()
                 else if (!_compiler->fgVarNeedsExplicitZeroInit(lclNum, /* bbInALoop */ false, /* bbIsReturn*/ false) ||
                          varDsc->HasGCPtr())
                 {
-                    var_types zeroType = (varDsc->TypeGet() == TYP_STRUCT) ? TYP_INT : genActualType(varDsc);
+                    var_types zeroType =
+                        ((varDsc->TypeGet() == TYP_STRUCT) || (varDsc->TypeGet() == TYP_BLK)) ? TYP_INT
+                                                                                              : genActualType(varDsc);
                     initializeLocalInProlog(lclNum, _compiler->gtNewZeroConNode(zeroType));
                 }
             }
@@ -286,8 +288,27 @@ void Llvm::initializeLocalInProlog(unsigned lclNum, GenTree* value)
     _compiler->fgEnsureFirstBBisScratch();
     LIR::Range& firstBlockRange = LIR::AsRange(_compiler->fgFirstBB);
 
-    GenTree* store = _compiler->gtNewStoreLclVar(lclNum, value);
     firstBlockRange.InsertAtEnd(value);
+
+    // TYP_BLK locals have to be handled specially as they can only be referenced indirectly.
+    // TODO-LLVM: use STORE_LCL_FLD<struct> here once enough of upstream is merged.
+    GenTree* store;
+    LclVarDsc* varDsc = _compiler->lvaGetDesc(lclNum);
+    if (varDsc->TypeGet() == TYP_BLK)
+    {
+        GenTree* lclAddr = _compiler->gtNewLclVarAddrNode(lclNum);
+        lclAddr->gtFlags |= GTF_VAR_DEF;
+        firstBlockRange.InsertAtEnd(lclAddr);
+
+        ClassLayout* layout = _compiler->typGetBlkLayout(varDsc->lvExactSize);
+        store = new (_compiler, GT_STORE_BLK) GenTreeBlk(GT_STORE_BLK, TYP_STRUCT, lclAddr, value, layout);
+        store->gtFlags |= (GTF_ASG | GTF_IND_NONFAULTING);
+    }
+    else
+    {
+        store = _compiler->gtNewStoreLclVar(lclNum, value);
+    }
+
     firstBlockRange.InsertAtEnd(store);
 
     DISPTREERANGE(firstBlockRange, store);
