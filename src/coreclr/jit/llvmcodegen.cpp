@@ -876,6 +876,12 @@ void Llvm::buildAdd(GenTreeOp* node)
     Type* op1Type = op1Value->getType();
     Type* op2Type = op2Value->getType();
 
+    if (node->gtOverflow())
+    {
+        // TODO-LLVM: checked addition;
+        failFunctionCompilation();
+    }
+
     Value* addValue;
     if (op1Type->isPointerTy() && op2Type->isIntegerTy())
     {
