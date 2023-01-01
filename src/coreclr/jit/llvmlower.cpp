@@ -901,6 +901,12 @@ void Llvm::failUnsupportedCalls(GenTreeCall* callNode)
         return;
     }
 
+    if (callNode->NeedsNullCheck())
+    {
+        // We need to insert the null check when lowering args.
+        failFunctionCompilation();
+    }
+
     if (callNode->IsUnmanaged())
     {
         failFunctionCompilation();
