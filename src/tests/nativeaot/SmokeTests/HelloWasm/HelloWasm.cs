@@ -3137,7 +3137,7 @@ internal static class Program
         }
         try
         {
-            byte[] bytes = new byte[1];
+            byte[] bytes = new byte[2];
             var b = bytes[i];
         }
         catch (OverflowException)
