@@ -47,7 +47,7 @@ For the runtime libraries:
   ./emsdk install 2.0.33
   ./emsdk activate 2.0.33
   ```
-- Run `build clr.nativeaotlibs+libs -c [Debug|Release] -a wasm -os Browser`. This will create the architecture-dependent libraries needed for linking and runtime execution, as well as the managed binaries to be used as input to ILC. Add the `clr.nativeaotbuild` subset if you want the packages for publishing, e.g. `build clr.nativeaotlibs+clr.nativeaotbuild+libs -c Debug -a wasm -os Browser`
+- Run `build clr.nativeaotruntime+clr.nativeaotlibs+libs -c [Debug|Release] -a wasm -os Browser`. This will create the architecture-dependent libraries needed for linking and runtime execution, as well as the managed binaries to be used as input to ILC.
 
 For the compilers:
 - Download the LLVM 11.0.0 source from https://github.com/llvm/llvm-project/releases/download/llvmorg-11.0.0/llvm-11.0.0.src.tar.xz
