@@ -133,6 +133,7 @@ namespace ILCompiler
         private unsafe void CompileSingleMethod(CorInfoImpl corInfo, LLVMMethodCodeNode methodCodeNodeNeedingCode)
         {
             MethodDesc method = methodCodeNodeNeedingCode.Method;
+            string mangledName = NodeFactory.NameMangler.GetMangledMethodName(method).ToString();
 
             try
             {
@@ -143,7 +144,6 @@ namespace ILCompiler
                     if (method.IsInternalCall)
                     {
                         // this might have been the subject of a call in the clrjit module.  We need the function here so we can populate the symbol
-                        var mangledName = NodeFactory.NameMangler.GetMangledMethodName(method).ToString();
                         var sig = method.Signature;
                         ILImporter.GetOrCreateLLVMFunction(Module, mangledName, GetLLVMSignatureForMethod(sig, method.RequiresInstArg()));
                     }
@@ -151,7 +151,7 @@ namespace ILCompiler
                     methodCodeNodeNeedingCode.CompilationCompleted = true;
                     return;
                 }
-                
+
                 if (!_disableRyuJit)
                 {
                     corInfo.RegisterLlvmCallbacks((IntPtr)Unsafe.AsPointer(ref corInfo), _outputFile, Module.Target, Module.DataLayout);
@@ -160,7 +160,6 @@ namespace ILCompiler
                     methodCodeNodeNeedingCode.CompilationCompleted = true;
 
                     // TODO: delete this external function when old module is gone
-                    var mangledName = NodeFactory.NameMangler.GetMangledMethodName(method).ToString();
                     LLVMValueRef externFunc = ILImporter.GetOrCreateLLVMFunction(Module, mangledName,
                         GetLLVMSignatureForMethod(method.Signature, method.RequiresInstArg()));
                     externFunc.Linkage = LLVMLinkage.LLVMExternalLinkage;
@@ -168,6 +167,7 @@ namespace ILCompiler
                     ILImporter.GenerateRuntimeExportThunk(this, method, externFunc);
 
                     ryuJitMethodCount++;
+                    Console.WriteLine($"RyuJit: {mangledName}");
                 }
                 else
                 {
@@ -177,6 +177,7 @@ namespace ILCompiler
             catch (CodeGenerationFailedException)
             {
                 ILImporter.CompileMethod(this, methodCodeNodeNeedingCode);
+                Console.WriteLine($"IL: {mangledName}");
             }
             catch (TypeSystemException ex)
             {
