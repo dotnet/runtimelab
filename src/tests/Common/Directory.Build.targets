@@ -171,7 +171,6 @@
       <RunTimeDependencyCopyLocal Include="$(CoreDisToolsLibrary)" Condition="$(CopyCoreDisToolsToCoreRoot)" />
     </ItemGroup>
 
-<<<<<<< HEAD
     <!-- When cross-compiling tests (such as is the case for Wasm), we depends on the host's ILC being built. -->
     <!-- This is a workaround for ILC's project not supporting cross-targeting. Remove once that's implemented. -->
     <PropertyGroup>
@@ -191,8 +190,6 @@
       <AotCompilerCopyLocal Include="@(RuntimeCopyLocalItems)" TargetDir="nativeaot/framework/" />
     </ItemGroup>
 
-=======
->>>>>>> 87777b624b0b8ea295b0fe9cd8505ce262ed75c0
     <ItemGroup Condition="'$(RuntimeFlavor)' == 'mono' and '$(IsDesktopOS)' == 'true' " >
       <RuntimeDependencyCopyLocal Include="$(MonoArtifactsPath)/libcoreclr$(LibSuffix)" TargetDir=""  />
       <RuntimeDependencyCopyLocal Include="$(MonoArtifactsPath)/libmono-component-*" TargetDir=""  />

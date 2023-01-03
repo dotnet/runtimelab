@@ -153,13 +153,8 @@ if defined TieringTest (
     set __RuntestPyArgs=%__RuntestPyArgs% --tiering_test
 )
 
-<<<<<<< HEAD
-if /i "%__BuildArch%" == "wasm" (
-    set __RuntestPyArgs=%__RuntestPyArgs% -target_os Browser
-=======
 if defined RunNativeAot (
     set __RuntestPyArgs=%__RuntestPyArgs% --run_nativeaot_tests
->>>>>>> 87777b624b0b8ea295b0fe9cd8505ce262ed75c0
 )
 
 REM Find python and set it to the variable PYTHON
