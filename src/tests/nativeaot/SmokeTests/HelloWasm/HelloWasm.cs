@@ -22,8 +22,16 @@ internal static class Program
     private static int threadStaticInt;
 
     internal static bool Success;
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static void JitUse(object a) { }
+
     private static unsafe int Main(string[] args)
     {
+        PrintLine("SBCG test start");
+        JitUse(new ArgumentException());
+        PrintLine("SBCG test end");
+
         var x = new StructWithObjRefs
         {
             C1 = null,
