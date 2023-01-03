@@ -408,7 +408,7 @@ The .NET Foundation licenses this file to you under the MIT license.
     <PropertyGroup>
       <BootstrapperSuffix Condition="'$(NativeLib)' == 'Static'">dll</BootstrapperSuffix>
       <EmccArgs>&quot;$(NativeObject)&quot; &quot;$(NativeClrjitObject)&quot; -o &quot;$(NativeBinary)&quot; -s ALLOW_MEMORY_GROWTH=1 -s ERROR_ON_UNDEFINED_SYMBOLS=0 -s DISABLE_EXCEPTION_CATCHING=0</EmccArgs>
-      <EmccArgs Condition="'$(TargetArchitecture)' == 'wasm'">$(EmccArgs) &quot;$(IlcSdkPath)/libPortableRuntime.a&quot; &quot;$(IlcSdkPath)libbootstrapper$(BootstrapperSuffix).a&quot; &quot;$(IlcFrameworkPath)libSystem.Native.a&quot; &quot;$(IlcFrameworkPath)libSystem.Globalization.Native.a&quot; $(EmccExtraArgs)</EmccArgs>
+      <EmccArgs Condition="'$(TargetArchitecture)' == 'wasm'">$(EmccArgs) &quot;$(IlcSdkPath)/libPortableRuntime.a&quot; &quot;$(IlcSdkPath)libbootstrapper$(BootstrapperSuffix).a&quot; &quot;$(IlcFrameworkNativePath)libSystem.Native.a&quot; &quot;$(IlcFrameworkNativePath)libSystem.Globalization.Native.a&quot; $(EmccExtraArgs)</EmccArgs>
       <EmccArgs Condition="'$(NativeDebugSymbols)' != 'true'">$(EmccArgs) -O2 -flto</EmccArgs>
       <EmccArgs Condition="'$(NativeDebugSymbols)' == 'true'">$(EmccArgs) -g3</EmccArgs>
     </PropertyGroup>

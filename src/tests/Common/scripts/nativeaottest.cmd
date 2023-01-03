@@ -12,4 +12,12 @@
 set __ExeFileName=%2
 set __ExeFileName=%__ExeFileName:~0,-4%.exe
 
-%_DebuggerFullPath% %1\native\%__ExeFileName% %3 %4 %5 %6 %7 %8 %9
+set __JsFileName=%2
+set __JsFileName=%__JsFileName:~0,-4%.js
+
+if %__BuildArch% == wasm (
+  %_DebuggerFullPath% %EMSDK_NODE% --stack-trace-limit=100 %1\native\%__JsFileName% %3 %4 %5 %6 %7 %8 %9
+) else (
+  %_DebuggerFullPath% %1\native\%__ExeFileName% %3 %4 %5 %6 %7 %8 %9
+)
+

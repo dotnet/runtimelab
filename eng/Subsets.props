@@ -310,6 +310,11 @@
     <ProjectToBuild Include="$(CoreClrProjectRoot)nativeaot\BuildIntegration\BuildIntegration.proj" Category="clr" />
   </ItemGroup>
 
+  <!-- Running the tests for browser wasm requires BuildIntegration -->
+  <ItemGroup Condition="$(_subset.Contains('+clr.nativeaotlibs+')) and ('$(TargetOS)' == 'Browser' and '$(TargetArchitecture)' == 'wasm')">
+    <ProjectToBuild Include="$(CoreClrProjectRoot)nativeaot\BuildIntegration\BuildIntegration.proj" Category="clr" />
+  </ItemGroup>
+
   <!-- Mono sets -->
   <ItemGroup Condition="$(_subset.Contains('+mono.llvm+')) or $(_subset.Contains('+mono.aotcross+')) or '$(TargetOS)' == 'iOS' or '$(TargetOS)' == 'iOSSimulator' or '$(TargetOS)' == 'tvOS' or '$(TargetOS)' == 'tvOSSimulator' or '$(TargetOS)' == 'MacCatalyst' or '$(TargetOS)' == 'Android' or ('$(TargetOS)' == 'Browser' and '$(RuntimeFlavor)' != 'CoreCLR')">
     <ProjectToBuild Include="$(MonoProjectRoot)llvm\llvm-init.proj" Category="mono" />
