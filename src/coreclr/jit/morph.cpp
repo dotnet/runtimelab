@@ -2612,7 +2612,6 @@ void Compiler::fgInitArgInfo(GenTreeCall* call)
         nonStandardArgs.Add(indirectCellAddress, indirectCellAddress->GetRegNum(),
                             NonStandardArgKind::R2RIndirectionCell);
     }
-#endif
 
     if ((REG_VALIDATE_INDIRECT_CALL_ADDR != REG_ARG_0) && call->IsHelperCall(this, CORINFO_HELP_VALIDATE_INDIRECT_CALL))
     {
@@ -2621,6 +2620,7 @@ void Compiler::fgInitArgInfo(GenTreeCall* call)
         GenTree*          tar  = args->GetNode();
         nonStandardArgs.Add(tar, REG_VALIDATE_INDIRECT_CALL_ADDR, NonStandardArgKind::ValidateIndirectCallTarget);
     }
+#endif
 
     // Allocate the fgArgInfo for the call node;
     //
