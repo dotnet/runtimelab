@@ -34,8 +34,59 @@ internal static class Program
         (*(&tempInt)) = 9;
         EndTest(tempInt == 9);
 
-        TestClass tempObj = new TestDerivedClass(1337);
+        int* targetAddr = (tempInt > 0) ? (&tempInt2) : (&tempInt);
 
+        StartTest("basic block stack entry Test");
+        (*targetAddr) = 1;
+        EndTest(tempInt2 == 1 && tempInt == 9);
+
+#if TARGET_WINDOWS
+        StartTest("Inline assign byte Test");
+        EndTest(ILHelpers.ILHelpersTest.InlineAssignByte() == 100);
+
+        StartTest("dup test");
+        int dupTestInt = 9;
+        EndTest(ILHelpers.ILHelpersTest.DupTest(ref dupTestInt) == 209 && dupTestInt == 209);
+#endif
+
+        TestClass tempObj = new TestDerivedClass(1337);
+        tempObj.TestMethod("Hello");
+        tempObj.TestVirtualMethod("Hello");
+        tempObj.TestVirtualMethod2("Hello");
+
+        TwoByteStr str = new TwoByteStr() { first = 1, second = 2 };
+        TwoByteStr str2 = new TwoByteStr() { first = 3, second = 4 };
+        *(&str) = str2;
+        str2 = *(&str);
+
+        StartTest("value type int field test");
+        EndTest(str2.second == 4);
+
+        StartTest("static int field test");
+        staticInt = 5;
+        EndTest(staticInt == 5);
+
+        StartTest("thread static int initial value field test");
+        EndTest(threadStaticInt == 0);
+
+        StartTest("thread static int field test");
+        threadStaticInt = 9;
+        EndTest(threadStaticInt == 9);
+
+        StaticCtorTest();
+
+        StartTest("box test");
+        var boxedInt = (object)tempInt;
+        if (((int)boxedInt) == 9)
+        {
+            PassTest();
+        }
+        else
+        {
+            FailTest();
+            PrintLine("Value:");
+            PrintLine(boxedInt.ToString());
+        }
 
         TestBoxUnboxDifferentSizes();
 
