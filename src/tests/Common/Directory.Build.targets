@@ -172,7 +172,7 @@
     </ItemGroup>
 
     <!-- When cross-compiling tests (such as is the case for Wasm), we depends on the host's ILC being built. -->
-    <!-- This is a workaround for ILC's project not supporting cross-targeting. Remove once that's implemented. -->
+    <!-- TODO-LLVM: investigate refactoring in light of ILC project supporting cross-targeting. -->
     <PropertyGroup>
       <HostCoreCLRArtifactsPath>$([MSBuild]::NormalizeDirectory('$(RepoRoot)', 'artifacts', 'bin', 'coreclr', '$(HostOS).$(BuildArchitecture).$(CoreCLRConfiguration)'))</HostCoreCLRArtifactsPath>
     </PropertyGroup>
