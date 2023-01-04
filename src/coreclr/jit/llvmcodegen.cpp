@@ -723,6 +723,7 @@ void Llvm::visitNode(GenTree* node)
         case GT_STORE_OBJ:
             buildStoreBlk(node->AsBlk());
             break;
+        case GT_MUL:
         case GT_AND:
         case GT_OR:
         case GT_XOR:
@@ -1572,23 +1573,40 @@ void Llvm::buildBinaryOperation(GenTree* node)
 {
     Value* result;
     Type*  targetType = getLlvmTypeForVarType(node->TypeGet());
-    Value* op1 = consumeValue(node->gtGetOp1(), targetType);
-    Value* op2 = consumeValue(node->gtGetOp2(), targetType);
+    Value* op1Value = consumeValue(node->gtGetOp1(), targetType);
+    Value* op2Value = consumeValue(node->gtGetOp2(), targetType);
 
     switch (node->OperGet())
     {
+        case GT_MUL:
+            if (varTypeIsFloating(node))
+            {
+                result = _builder.CreateFMul(op1Value, op2Value);
+            }
+            else if (node->gtOverflow())
+            {
+                llvm::Intrinsic::ID intrinsicId =
+                    node->IsUnsigned() ? llvm::Intrinsic::umul_with_overflow : llvm::Intrinsic::smul_with_overflow;
+                result = emitOverflowLlvmIntrinsic(intrinsicId, op1Value, op2Value);
+            }
+            else
+            {
+                result = _builder.CreateMul(op1Value, op2Value);
+            }
+            break;
         case GT_AND:
-            result = _builder.CreateAnd(op1, op2, "and");
+            result = _builder.CreateAnd(op1Value, op2Value);
             break;
         case GT_OR:
-            result = _builder.CreateOr(op1, op2, "or");
+            result = _builder.CreateOr(op1Value, op2Value);
             break;
         case GT_XOR:
-            result = _builder.CreateXor(op1, op2, "xor");
+            result = _builder.CreateXor(op1Value, op2Value);
             break;
         default:
-            failFunctionCompilation();  // TODO-LLVM: other binary operaions
+            unreached();
     }
+
     mapGenTreeToValue(node, result);
 }
 
