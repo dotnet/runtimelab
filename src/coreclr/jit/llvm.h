@@ -308,7 +308,8 @@ private:
     void buildShift(GenTreeOp* node);
     void buildReturn(GenTree* node);
     void buildCatchArg(GenTree* node);
-    void buildJTrue(GenTree* node, Value* opValue);
+    void buildJTrue(GenTree* node);
+    void buildSwitch(GenTreeUnOp* switchNode);
     void buildNullCheck(GenTreeIndir* nullCheckNode);
     void buildBoundsCheck(GenTreeBoundsChk* boundsCheck);
 

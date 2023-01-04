@@ -462,16 +462,79 @@ void Llvm::generateEHDispatch()
 
 void Llvm::fillPhis()
 {
+    // LLVM requires PHI inputs to match the list of predecessors exactly, which is different from IR in two ways:
+    //
+    // 1. IR doesn't insert inputs for the same definition coming from multiple blocks (it picks the first block
+    //    renamer encounters as the "gtPredBB" one). We deal with this by disabling this behavior in SSA builder
+    //    directly.
+    // 2. IR doesn't insert inputs for different outgoing edges from the same block. For conditional branches,
+    //    we simply don't generate the degenerate case. For switches, we compensate for this here, by inserting
+    //    "duplicate" entries into PHIs in case the count of incodimg LLVM edges did not match the count of IR
+    //    entries. This is simpler to do here than in SSA builder because SSA builder uses successor iterators
+    //    which explicitly filter out duplicates; creating those that do not would be an intrusive change. This
+    //    can (should) be reconsidered this once/if we are integrated directly into upstream.
+    //
+    struct PredEdge
+    {
+        BasicBlock* PredBlock;
+        BasicBlock* SuccBlock;
+
+        static bool Equals(const PredEdge& left, const PredEdge& right)
+        {
+            return (left.PredBlock == right.PredBlock) && (left.SuccBlock == right.SuccBlock);
+        }
+
+        static unsigned GetHashCode(const PredEdge& edge)
+        {
+            return edge.PredBlock->bbNum ^ edge.SuccBlock->bbNum;
+        }
+    };
+
+    SmallHashTable<PredEdge, unsigned, 8, PredEdge> predCountMap(_compiler->getAllocator(CMK_Codegen));
+    auto getPhiPredCount = [&](BasicBlock* predBlock, BasicBlock* phiBlock) -> unsigned {
+        if (predBlock->bbJumpKind != BBJ_SWITCH)
+        {
+            return 1;
+        }
+
+        unsigned predCount = 0;
+        if (!predCountMap.TryGetValue({predBlock, phiBlock}, &predCount))
+        {
+            // Eagerly memoize all of the switch edge counts to avoid quadratic behavior.
+            for (flowList* edge : phiBlock->PredEdges())
+            {
+                BasicBlock* edgePredBlock = edge->getBlock();
+                if (edgePredBlock->bbJumpKind == BBJ_SWITCH)
+                {
+                    predCountMap.AddOrUpdate({predBlock, phiBlock}, edge->flDupCount);
+
+                    if (edgePredBlock == predBlock)
+                    {
+                        predCount = edge->flDupCount;
+                    }
+                }
+            }
+        }
+
+        assert(predCount != 0);
+        return predCount;
+    };
+
     for (PhiPair phiPair : _phiPairs)
     {
         llvm::PHINode* llvmPhiNode = phiPair.llvmPhiNode;
+        GenTreePhi* phiNode = phiPair.irPhiNode;
 
-        for (GenTreePhi::Use& use : phiPair.irPhiNode->Uses())
+        GenTreeLclVar* phiStore = phiNode->gtNext->AsLclVar();
+        unsigned lclNum = phiStore->GetLclNum();
+        BasicBlock* phiBlock = _compiler->lvaGetDesc(lclNum)->GetPerSsaData(phiStore->GetSsaNum())->GetBlock();
+
+        for (GenTreePhi::Use& use : phiNode->Uses())
         {
             GenTreePhiArg* phiArg = use.GetNode()->AsPhiArg();
-            unsigned lclNum = phiArg->GetLclNum();
             unsigned ssaNum = phiArg->GetSsaNum();
-            llvm::BasicBlock* llvmPredBlock = getLastLlvmBlockForBlock(phiArg->gtPredBB);
+            BasicBlock* predBlock = phiArg->gtPredBB;
+            llvm::BasicBlock* llvmPredBlock = getLastLlvmBlockForBlock(predBlock);
 
             Value* localPhiArg = _localsMap[{lclNum, ssaNum}];
             Value* phiRealArgValue;
@@ -490,7 +553,11 @@ void Llvm::fillPhis()
                 phiRealArgValue = localPhiArg;
             }
 
-            llvmPhiNode->addIncoming(phiRealArgValue, llvmPredBlock);
+            unsigned llvmPredCount = getPhiPredCount(predBlock, phiBlock);
+            for (unsigned i = 0; i < llvmPredCount; i++)
+            {
+                llvmPhiNode->addIncoming(phiRealArgValue, llvmPredBlock);
+            }
         }
     }
 }
@@ -662,7 +729,10 @@ void Llvm::visitNode(GenTree* node)
             buildInd(node->AsIndir());
             break;
         case GT_JTRUE:
-            buildJTrue(node, getGenTreeValue(node->AsOp()->gtOp1));
+            buildJTrue(node);
+            break;
+        case GT_SWITCH:
+            buildSwitch(node->AsUnOp());
             break;
         case GT_LCL_FLD:
             buildLocalField(node->AsLclFld());
@@ -1701,9 +1771,52 @@ void Llvm::buildCatchArg(GenTree* node)
     mapGenTreeToValue(node, excObjValue);
 }
 
-void Llvm::buildJTrue(GenTree* node, Value* opValue)
+void Llvm::buildJTrue(GenTree* node)
 {
-    _builder.CreateCondBr(opValue, getFirstLlvmBlockForBlock(_currentBlock->bbJumpDest), getFirstLlvmBlockForBlock(_currentBlock->bbNext));
+    Value* condValue = getGenTreeValue(node->gtGetOp1());
+    assert(condValue->getType() == Type::getInt1Ty(_llvmContext)); // We only expect relops to appear as JTRUE operands.
+
+    BasicBlock* srcBlock = CurrentBlock();
+    llvm::BasicBlock* jmpLlvmBlock = getFirstLlvmBlockForBlock(srcBlock->bbJumpDest);
+    llvm::BasicBlock* nextLlvmBlock = getFirstLlvmBlockForBlock(srcBlock->bbNext);
+
+    // Handle the degenerate case specially. PHI code depends on us not generating duplicate outgoing edges here.
+    if (jmpLlvmBlock == nextLlvmBlock)
+    {
+        _builder.CreateBr(nextLlvmBlock);
+    }
+    else
+    {
+        _builder.CreateCondBr(condValue, jmpLlvmBlock, nextLlvmBlock);
+    }
+}
+
+void Llvm::buildSwitch(GenTreeUnOp* switchNode)
+{
+    // While in IL "switch" can only take INTs, RyuJit has historically allowed native ints as well.
+    // We follow suit and allow any value LLVM would.
+    GenTree* destOp = switchNode->gtGetOp1();
+    llvm::IntegerType* switchLlvmType = llvm::cast<llvm::IntegerType>(getLlvmTypeForVarType(genActualType(destOp)));
+    Value* destValue = consumeValue(destOp, switchLlvmType);
+
+    BasicBlock* srcBlock = CurrentBlock();
+    assert(srcBlock->bbJumpKind == BBJ_SWITCH);
+
+    BBswtDesc* switchDesc = srcBlock->bbJumpSwt;
+    unsigned casesCount = switchDesc->bbsCount - 1;
+    noway_assert(switchDesc->bbsHasDefault);
+
+    BasicBlock* defaultDestBlock = switchDesc->getDefault();
+    llvm::BasicBlock* defaultDestLlvmBlock = getFirstLlvmBlockForBlock(defaultDestBlock);
+    llvm::SwitchInst* switchInst = _builder.CreateSwitch(destValue, defaultDestLlvmBlock, casesCount);
+
+    for (unsigned destIndex = 0; destIndex < casesCount; destIndex++)
+    {
+        llvm::ConstantInt* destIndexValue = llvm::ConstantInt::get(switchLlvmType, destIndex);
+        llvm::BasicBlock* destLlvmBlock = getFirstLlvmBlockForBlock(switchDesc->bbsDstTab[destIndex]);
+
+        switchInst->addCase(destIndexValue, destLlvmBlock);
+    }
 }
 
 void Llvm::buildNullCheck(GenTreeIndir* nullCheckNode)
