@@ -288,6 +288,7 @@ private:
     void buildLocalField(GenTreeLclFld* lclFld);
     void buildLocalVarAddr(GenTreeLclVarCommon* lclVar);
     void buildAdd(GenTreeOp* node);
+    void buildSub(GenTreeOp* node);
     void buildDivMod(GenTree* node);
     void buildCast(GenTreeCast* cast);
     void buildLclHeap(GenTreeUnOp* lclHeap);
@@ -319,6 +320,7 @@ private:
     void emitDoNothingCall();
     void emitJumpToThrowHelper(Value* jumpCondValue, SpecialCodeKind throwKind);
     void emitNullCheckForIndir(GenTreeIndir* indir, Value* addrValue);
+    Value* emitOverflowLlvmIntrinsic(llvm::Intrinsic::ID intrinsicId, Value* op1Value, Value* op2Value);
     Value* emitHelperCall(CorInfoHelpFunc helperFunc, ArrayRef<Value*> sigArgs = { });
     Value* emitCallOrInvoke(llvm::FunctionCallee callee, ArrayRef<Value*> args);
 

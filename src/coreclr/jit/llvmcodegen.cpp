@@ -623,6 +623,9 @@ void Llvm::visitNode(GenTree* node)
         case GT_ADD:
             buildAdd(node->AsOp());
             break;
+        case GT_SUB:
+            buildSub(node->AsOp());
+            break;
         case GT_DIV:
         case GT_MOD:
         case GT_UDIV:
@@ -877,12 +880,7 @@ void Llvm::buildAdd(GenTreeOp* node)
         {
             llvm::Intrinsic::ID intrinsicId =
                 node->IsUnsigned() ? llvm::Intrinsic::uadd_with_overflow : llvm::Intrinsic::sadd_with_overflow;
-            Value* checkedAddValue = _builder.CreateIntrinsic(intrinsicId, addLlvmType, {op1Value, op2Value});
-
-            Value* isOverflowValue = _builder.CreateExtractValue(checkedAddValue, 1);
-            emitJumpToThrowHelper(isOverflowValue, SCK_OVERFLOW);
-
-            addValue = _builder.CreateExtractValue(checkedAddValue, 0);
+            addValue = emitOverflowLlvmIntrinsic(intrinsicId, op1Value, op2Value);
         }
         else
         {
@@ -891,6 +889,51 @@ void Llvm::buildAdd(GenTreeOp* node)
     }
 
     mapGenTreeToValue(node, addValue);
+}
+
+void Llvm::buildSub(GenTreeOp* node)
+{
+    GenTree* op1 = node->gtGetOp1();
+    GenTree* op2 = node->gtGetOp2();
+
+    Value* subValue;
+    if (!node->gtOverflow() && getGenTreeValue(op1)->getType()->isPointerTy())
+    {
+        Value* baseValue = consumeValue(op1, getPtrLlvmType());
+        Value* subOffsetValue = consumeValue(op2, getIntPtrLlvmType());
+        Value* addOffsetValue = _builder.CreateNeg(subOffsetValue);
+
+        // GEPs scale indices, use type i8 makes them equivalent to the raw offsets we have in IR
+        subValue = _builder.CreateGEP(Type::getInt8Ty(_llvmContext), baseValue, addOffsetValue);
+    }
+    else
+    {
+        Type* subLlvmType = getLlvmTypeForVarType(node->TypeGet());
+        if (subLlvmType->isPointerTy())
+        {
+            // SUB<byref>(native int, ...) is valid (if rare) IR.
+            subLlvmType = getIntPtrLlvmType();
+        }
+        Value* op1Value = consumeValue(op1, subLlvmType);
+        Value* op2Value = consumeValue(op2, subLlvmType);
+
+        if (varTypeIsFloating(node))
+        {
+            subValue = _builder.CreateFSub(op1Value, op2Value);
+        }
+        else if (node->gtOverflow())
+        {
+            llvm::Intrinsic::ID intrinsicId =
+                node->IsUnsigned() ? llvm::Intrinsic::usub_with_overflow: llvm::Intrinsic::ssub_with_overflow;
+            subValue = emitOverflowLlvmIntrinsic(intrinsicId, op1Value, op2Value);
+        }
+        else
+        {
+            subValue = _builder.CreateSub(op1Value, op2Value);
+        }
+    }
+
+    mapGenTreeToValue(node, subValue);
 }
 
 void Llvm::buildDivMod(GenTree* node)
@@ -1794,6 +1837,17 @@ void Llvm::emitNullCheckForIndir(GenTreeIndir* indir, Value* addrValue)
         Value* isNullValue = _builder.CreateCmp(llvm::CmpInst::ICMP_EQ, addrValue, nullValue);
         emitJumpToThrowHelper(isNullValue, SCK_NULL_REF_EXCPN);
     }
+}
+
+Value* Llvm::emitOverflowLlvmIntrinsic(llvm::Intrinsic::ID intrinsicId, Value* op1Value, Value* op2Value)
+{
+    assert(op1Value->getType()->isIntegerTy() && op2Value->getType()->isIntegerTy());
+
+    Value* checkedValue = _builder.CreateIntrinsic(intrinsicId, op1Value->getType(), {op1Value, op2Value});
+    Value* isOverflowValue = _builder.CreateExtractValue(checkedValue, 1);
+    emitJumpToThrowHelper(isOverflowValue, SCK_OVERFLOW);
+
+    return _builder.CreateExtractValue(checkedValue, 0);
 }
 
 Value* Llvm::emitHelperCall(CorInfoHelpFunc helperFunc, ArrayRef<Value*> sigArgs)
