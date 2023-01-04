@@ -433,6 +433,11 @@ namespace Internal.IL
                                 _dependencies.Add(_factory.ReadyToRunHelper(ReadyToRunHelperId.DelegateCtor, info), reason);
                             }
 
+                            // TODO-LLVM: delete when IL->LLVM module is gone.
+                            if (_compilation.TargetArchIsWasm())
+                            {
+                                _dependencies.Add(info.Constructor, "LLVM delegate ctor");
+                            }
                             return;
                         }
                     }

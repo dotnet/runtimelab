@@ -66,14 +66,6 @@
     <!-- Even on platforms that do not support the CoreCLR runtime, we still want to build ilasm/ildasm. -->
     <DefaultCoreClrSubsets Condition="'$(PrimaryRuntimeFlavor)' != 'CoreCLR'">clr.iltools+clr.packages</DefaultCoreClrSubsets>
 
-    <DefaultNativeAotSubsets>clr.alljits+nativeaot.ilc+nativeaot.build+nativeaot.libs</DefaultNativeAotSubsets>
-
-    <!-- The wasmjit can only be built for x64 on Windows -->
-    <DefaultNativeAotSubsets Condition="$([MSBuild]::IsOsPlatform(Windows)) and '$(TargetArchitecture)' == 'x64'">$(DefaultNativeAotSubsets)+clr.wasmjit</DefaultNativeAotSubsets>
-
-    <!-- The only NativeAOT component meaningfully buildable for Wasm is the native runtime -->
-    <DefaultNativeAotSubsets Condition="'$(TargetArchitecture)' == 'wasm'">clr.nativeaotlibs</DefaultNativeAotSubsets>
-
     <DefaultMonoSubsets Condition="'$(MonoEnableLLVM)' == 'true' and '$(MonoLLVMDir)' == ''">mono.llvm+</DefaultMonoSubsets>
     <DefaultMonoSubsets Condition="'$(MonoAOTEnableLLVM)' == 'true' and '$(MonoAOTLLVMDir)' == ''">mono.llvm+</DefaultMonoSubsets>
     <DefaultMonoSubsets Condition="'$(TargetOS)' == 'Browser'">$(DefaultMonoSubsets)mono.wasmruntime+</DefaultMonoSubsets>
@@ -100,8 +92,7 @@
 
   <PropertyGroup>
     <_subset>$(_subset.Replace('+clr.paltests+', '+clr.paltests+clr.paltestlist+'))</_subset>
-    <_subset>$(_subset.Replace('+clr+', '+$(DefaultCoreClrSubsets)+$(DefaultNativeAotSubsets)+'))</_subset>
-    <_subset>$(_subset.Replace('+nativeaot+', '+$(DefaultNativeAotSubsets)+'))</_subset>
+    <_subset>$(_subset.Replace('+clr+', '+$(DefaultCoreClrSubsets)+'))</_subset>
     <_subset>$(_subset.Replace('+mono+', '+$(DefaultMonoSubsets)+'))</_subset>
     <_subset>$(_subset.Replace('+libs+', '+$(DefaultLibrariesSubsets)+'))</_subset>
     <_subset>$(_subset.Replace('+host+', '+$(DefaultHostSubsets)+'))</_subset>
@@ -116,11 +107,6 @@
 
   <ItemGroup>
     <!-- CoreClr Native AOT -->
-    <SubsetName Include="NativeAot" Description="The CoreCLR native AOT runtime, libraries, and tools." />
-    <SubsetName Include="NativeAot.Libs" Description="The CoreCLR native AOT CoreLib and other low level class libraries." />
-    <SubsetName Include="NativeAot.Build" Description="The CoreCLR native AOT MSBuild toolchain." />
-    <SubsetName Include="NativeAot.Ilc" Description="The CoreCLR native AOT compiler." />
-    <SubsetName Include="NativeAot.ObjWriter" Description="Object writer for the CoreCLR native AOT compiler." />
     <SubsetName Include="NativeAot.Packages" Description="The CoreCLR native AOT compiler." />
 
     <!-- CoreClr -->
