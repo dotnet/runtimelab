@@ -26,6 +26,100 @@ internal static class Program
     {
         Success = true;
 
+        TestClass tempObj = new TestDerivedClass(1337);
+
+        StartTest("Static delegate test");
+        Func<int> staticDelegate = StaticDelegateTarget;
+        EndTest(staticDelegate() == 7);
+
+        StartTest("Instance delegate test");
+        tempObj.TestInt = 8;
+        Func<int> instanceDelegate = tempObj.InstanceDelegateTarget;
+        EndTest(instanceDelegate() == 8);
+
+        StartTest("Virtual Delegate Test");
+        Action virtualDelegate = tempObj.VirtualDelegateTarget;
+        virtualDelegate();
+
+        var arrayTest = new BoxStubTest[] { new BoxStubTest { Value = "Hello" }, new BoxStubTest { Value = "Array" }, new BoxStubTest { Value = "Test" } };
+        foreach (var element in arrayTest)
+            PrintLine(element.Value);
+
+        arrayTest[1].Value = "Array load/store test: Ok.";
+        PrintLine(arrayTest[1].Value);
+
+        int ii = 0;
+        arrayTest[ii++].Value = "dup ref test: Ok.";
+        PrintLine(arrayTest[0].Value);
+
+        StartTest("Large array load/store test");
+        var largeArrayTest = new long[] { Int64.MaxValue, 0, Int64.MinValue, 0 };
+        EndTest(largeArrayTest[0] == Int64.MaxValue &&
+                largeArrayTest[1] == 0 &&
+                largeArrayTest[2] == Int64.MinValue &&
+                largeArrayTest[3] == 0);
+
+        StartTest("Small array load/store test");
+        var smallArrayTest = new long[] { Int16.MaxValue, 0, Int16.MinValue, 0 };
+        EndTest(smallArrayTest[0] == Int16.MaxValue &&
+                smallArrayTest[1] == 0 &&
+                smallArrayTest[2] == Int16.MinValue &&
+                smallArrayTest[3] == 0);
+
+        StartTest("Newobj value type test");
+        IntPtr returnedIntPtr = NewobjValueType();
+        EndTest(returnedIntPtr.ToInt32() == 3);
+
+        StackallocTest();
+
+        IntToStringTest();
+
+        CastingTestClass castingTest = new DerivedCastingTestClass1();
+
+        PrintLine("interface call test: Ok " + (castingTest as ICastingTest1).GetValue().ToString());
+
+        StartTest("Type casting with isinst & castclass to class test");
+        EndTest(((DerivedCastingTestClass1)castingTest).GetValue() == 1 && !(castingTest is DerivedCastingTestClass2));
+
+        StartTest("Type casting with isinst & castclass to interface test");
+        // Instead of checking the result of `GetValue`, we use null check by now until interface dispatch is implemented.
+        EndTest((ICastingTest1)castingTest != null && !(castingTest is ICastingTest2));
+
+        StartTest("Type casting with isinst & castclass to array test");
+        object arrayCastingTest = new BoxStubTest[] { new BoxStubTest { Value = "Array" }, new BoxStubTest { Value = "Cast" }, new BoxStubTest { Value = "Test" } };
+        PrintLine(((BoxStubTest[])arrayCastingTest)[0].Value);
+        PrintLine(((BoxStubTest[])arrayCastingTest)[1].Value);
+        PrintLine(((BoxStubTest[])arrayCastingTest)[2].Value);
+        EndTest(!(arrayCastingTest is CastingTestClass[]));
+
+        ConvUTest();
+
+        CastByteForIndex();
+
+        ldindTest();
+
+        InterfaceDispatchTest();
+
+        StartTest("Runtime.Helpers array initialization test");
+        var testRuntimeHelpersInitArray = new long[] { 1, 2, 3 };
+        EndTest(testRuntimeHelpersInitArray[0] == 1 &&
+                testRuntimeHelpersInitArray[1] == 2 &&
+                testRuntimeHelpersInitArray[2] == 3);
+
+        StartTest("Multi-dimension array instantiation test");
+        var testMdArrayInstantiation = new int[2, 2];
+        EndTest(testMdArrayInstantiation != null && testMdArrayInstantiation.GetLength(0) == 2 && testMdArrayInstantiation.GetLength(1) == 2);
+
+        StartTest("Multi-dimension array get/set test");
+        testMdArrayInstantiation[0, 0] = 1;
+        testMdArrayInstantiation[0, 1] = 2;
+        testMdArrayInstantiation[1, 0] = 3;
+        testMdArrayInstantiation[1, 1] = 4;
+        EndTest(testMdArrayInstantiation[0, 0] == 1
+                && testMdArrayInstantiation[0, 1] == 2
+                && testMdArrayInstantiation[1, 0] == 3
+                && testMdArrayInstantiation[1, 1] == 4);
+
         // Create a ByReference<char> through the ReadOnlySpan ctor and call the ByReference.Value via the indexer.
         StartTest("ByReference intrinsics exercise via ReadOnlySpan");
         var span = "123".AsSpan();
