@@ -484,8 +484,7 @@
       <GroupBuildCmd Condition="'$(IlcMultiModule)' == 'true'">$(GroupBuildCmd) "/p:IlcMultiModule=true"</GroupBuildCmd>
       <GroupBuildCmd Condition="'$(BuildNativeAotFrameworkObjects)' == 'true'">$(GroupBuildCmd) "/p:BuildNativeAotFrameworkObjects=true"</GroupBuildCmd>
 
-      <!-- Set Ilc and the SDK patch for cross compilation -->
-      <GroupBuildCmd Condition="'$(TestBuildMode)' == 'nativeaot' and '$(TargetArchitecture)' == 'wasm'">$(GroupBuildCmd) "/p:IlcSdkPath=$(CoreCLRAotSdkDir)/"</GroupBuildCmd>
+      <!-- Set Ilc and the SDK path for cross compilation -->
       <GroupBuildCmd Condition="'$(TestBuildMode)' == 'nativeaot' and '$(TargetArchitecture)' == 'wasm'">$(GroupBuildCmd) "/p:IlcToolsPath=$(ArtifactsBinDir)coreclr\$(HostOS).$(_hostArch).$(Configuration)\ilc"</GroupBuildCmd>
     </PropertyGroup>
 

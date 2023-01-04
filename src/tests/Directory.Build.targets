@@ -458,9 +458,9 @@
       Microsoft.NETCore.Native.targets expect IlcHostArch to be set but it doesn't have to -->
     <DisableUnsupportedError>true</DisableUnsupportedError>
 
-    <IlcToolsPath Condition="'$(TargetArchitecture)' != 'wasm'">$(CoreCLRILCompilerDir)</IlcToolsPath>
+    <IlcToolsPath>$(CoreCLRILCompilerDir)</IlcToolsPath>
     <IlcBuildTasksPath>$(CoreCLRILCompilerDir)netstandard/ILCompiler.Build.Tasks.dll</IlcBuildTasksPath>
-    <IlcSdkPath Condition="'$(TargetArchitecture)' != 'wasm'">$(CoreCLRAotSdkDir)</IlcSdkPath>
+    <IlcSdkPath>$(CoreCLRAotSdkDir)</IlcSdkPath>
     <IlcFrameworkPath>$(MicrosoftNetCoreAppRuntimePackRidLibTfmDir)</IlcFrameworkPath>
     <IlcFrameworkNativePath>$(MicrosoftNetCoreAppRuntimePackNativeDir)</IlcFrameworkNativePath>
     <RuntimeIdentifier>$(OutputRid)</RuntimeIdentifier>
