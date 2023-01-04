@@ -290,6 +290,7 @@ private:
     void buildAdd(GenTreeOp* node);
     void buildSub(GenTreeOp* node);
     void buildDivMod(GenTree* node);
+    void buildRotate(GenTreeOp* node);
     void buildCast(GenTreeCast* cast);
     void buildLclHeap(GenTreeUnOp* lclHeap);
     void buildCmp(GenTreeOp* node);

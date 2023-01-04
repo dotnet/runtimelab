@@ -632,6 +632,10 @@ void Llvm::visitNode(GenTree* node)
         case GT_UMOD:
             buildDivMod(node);
             break;
+        case GT_ROL:
+        case GT_ROR:
+            buildRotate(node->AsOp());
+            break;
         case GT_CALL:
             buildCall(node->AsCall());
             break;
@@ -994,6 +998,26 @@ void Llvm::buildDivMod(GenTree* node)
     }
 
     mapGenTreeToValue(node, divModValue);
+}
+
+void Llvm::buildRotate(GenTreeOp* node)
+{
+    assert(node->OperIs(GT_ROL, GT_ROR));
+
+    Type* rotateLlvmType = getLlvmTypeForVarType(node->TypeGet());
+    Value* srcValue = consumeValue(node->gtGetOp1(), rotateLlvmType);
+    Value* indexValue = consumeValue(node->gtGetOp2(), Type::getInt32Ty(_llvmContext));
+    if (indexValue->getType() != rotateLlvmType)
+    {
+        // The intrinsics require all operands have the same type.
+        indexValue = _builder.CreateZExt(indexValue, rotateLlvmType);
+    }
+
+    // "Funnel shifts" are the recommended way to implement rotates in LLVM.
+    llvm::Intrinsic::ID intrinsicId = node->OperIs(GT_ROL) ? llvm::Intrinsic::fshl : llvm::Intrinsic::fshr;
+    Value* rotateValue = _builder.CreateIntrinsic(intrinsicId, rotateLlvmType, {srcValue, srcValue, indexValue});
+
+    mapGenTreeToValue(node, rotateValue);
 }
 
 void Llvm::buildCast(GenTreeCast* cast)
