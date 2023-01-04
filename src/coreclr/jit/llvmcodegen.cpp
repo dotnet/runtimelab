@@ -1193,25 +1193,19 @@ void Llvm::buildCmp(GenTreeOp* node)
     }
 
     // Comparing refs and ints is valid LIR, but not LLVM so handle that case by converting the int to a ref.
-    Value* op1Value = consumeValue(node->gtGetOp1());
-    Value* op2Value = consumeValue(node->gtGetOp2());
-    Type* op1Type = op1Value->getType();
-    Type* op2Type = op2Value->getType();
-    if (op1Type != op2Type)
-    {
-        assert((op1Type->isPointerTy() && op2Type->isIntegerTy()) ||
-               (op1Type->isIntegerTy() && op2Type->isPointerTy()));
-        if (op1Type->isPointerTy())
-        {
-            op2Value = _builder.CreateIntToPtr(op2Value, op1Type);
-        }
-        else
-        {
-            op1Value = _builder.CreateIntToPtr(op1Value, op2Type);
-        }
-    }
+    GenTree* op1 = node->gtGetOp1();
+    GenTree* op2 = node->gtGetOp2();
+    Type* op1RawType = getGenTreeValue(op1)->getType();
+    Type* op2RawType = getGenTreeValue(op2)->getType();
+    Type* cmpLlvmType =
+        (op1RawType->isPointerTy() && (op1RawType == op2RawType)) ? op1RawType
+                                                                  : getLlvmTypeForVarType(genActualType(op1));
 
-    mapGenTreeToValue(node, _builder.CreateCmp(predicate, op1Value, op2Value));
+    Value* op1Value = consumeValue(op1, cmpLlvmType);
+    Value* op2Value = consumeValue(op2, cmpLlvmType);
+    Value* cmpValue = _builder.CreateCmp(predicate, op1Value, op2Value);
+
+    mapGenTreeToValue(node, cmpValue);
 }
 
 void Llvm::buildCnsDouble(GenTreeDblCon* node)
