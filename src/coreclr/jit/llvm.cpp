@@ -589,8 +589,6 @@ const HelperFuncInfo& Llvm::getHelperFuncInfo(CorInfoHelpFunc helperFunc)
         { FUNC(CORINFO_HELP_CLASSPROFILE32) },
         { FUNC(CORINFO_HELP_CLASSPROFILE64) },
         { FUNC(CORINFO_HELP_PARTIAL_COMPILATION_PATCHPOINT) },
-
-        // TODO-LLVM: validating indirect calls, does LLVM need or want this?
         { FUNC(CORINFO_HELP_VALIDATE_INDIRECT_CALL) },
         { FUNC(CORINFO_HELP_DISPATCH_INDIRECT_CALL) }
     };
