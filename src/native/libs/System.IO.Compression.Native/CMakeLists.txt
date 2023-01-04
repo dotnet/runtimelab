@@ -23,9 +23,7 @@ if (CLR_CMAKE_TARGET_UNIX OR CLR_CMAKE_TARGET_BROWSER)
     append_extra_compression_libs(NATIVE_LIBS_EXTRA)
 
     if (CLR_CMAKE_TARGET_BROWSER)
-        set(FLAGS -Wno-implicit-fallthrough)
-
-        # LLVM/clang v15 is has K&R functions deprecated
+        # LLVM/clang v15 is has K&R function signatures deprecated https://github.com/madler/zlib/issues/633
         add_compile_options(-Wno-deprecated-non-prototype -Wno-strict-prototypes)
 
         include(${CLR_SRC_NATIVE_DIR}/external/zlib.cmake)
