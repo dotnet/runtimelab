@@ -164,10 +164,6 @@ static void fizzle_matches(deflate_state *s, struct match *current, struct match
         match--;
         orig--;
         changed ++;
-
-        /* Make sure to avoid an out-of-bounds read on the next iteration */
-        if (match < s->window || orig < s->window)
-                break;
     }
 
     if (!changed)
@@ -253,7 +249,7 @@ block_state deflate_medium(deflate_state *s, int flush)
         insert_match(s, current_match);
 
         /* now, look ahead one */
-        if (s->lookahead - current_match.match_length > MIN_LOOKAHEAD) {
+        if (s->lookahead > MIN_LOOKAHEAD) {
             s->strstart = current_match.strstart + current_match.match_length;
             INSERT_STRING(s, s->strstart, hash_head);
 
@@ -309,7 +305,7 @@ block_state deflate_medium(deflate_state *s, int flush)
         FLUSH_BLOCK(s, 1);
         return finish_done;
     }
-    if (s->sym_next)
+    if (s->last_lit)
         FLUSH_BLOCK(s, 0);
     return block_done;
 }
