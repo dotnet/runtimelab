@@ -1954,7 +1954,7 @@ Value* Llvm::getOrCreateExternalSymbol(const char* symbolName, Type* symbolType)
     return symbol;
 }
 
-llvm::Instruction* Llvm::getCast(llvm::Value* source, Type* targetType)
+Instruction* Llvm::getCast(Value* source, Type* targetType)
 {
     Type* sourceType = source->getType();
     if (sourceType == targetType)
@@ -2008,7 +2008,7 @@ Value* Llvm::castIfNecessary(Value* source, Type* targetType, llvm::IRBuilder<>*
     return builder->Insert(castInst);
 }
 
-llvm::Value* Llvm::gepOrAddr(Value* addr, unsigned offset)
+Value* Llvm::gepOrAddr(Value* addr, unsigned offset)
 {
     if (offset == 0)
     {
@@ -2112,24 +2112,16 @@ unsigned Llvm::getLlvmFunctionIndexForBlock(BasicBlock* block)
 {
     unsigned funcIdx = ROOT_FUNC_IDX;
 
-    // We cannot just use "funGetFuncIdx" here because we generate throw helper blocks out-of-order.
+    // We cannot just use "funGetFuncIdx" here because it only handles the first blocks for funclets.
     if (block->hasHndIndex())
     {
         EHblkDsc* ehDsc = _compiler->ehGetDsc(block->getHndIndex());
         funcIdx = ehDsc->ebdFuncIndex;
 
-        if (ehDsc->HasFilter())
+        if (ehDsc->InFilterRegionBBRange(block))
         {
-            // See if "block" is in the filter part.
-            for (BasicBlock* filterBlock : _compiler->Blocks(ehDsc->ebdFilter, ehDsc->BBFilterLast()))
-            {
-                if (filterBlock == block)
-                {
-                    funcIdx--;
-                    assert(_compiler->funGetFunc(funcIdx)->funKind == FUNC_FILTER);
-                    break;
-                }
-            }
+            funcIdx--;
+            assert(_compiler->funGetFunc(funcIdx)->funKind == FUNC_FILTER);
         }
     }
 
