@@ -26,7 +26,80 @@ internal static class Program
     {
         Success = true;
 
+        Add(1, 2);
+        PrintLine("Hello from C#!");
+        int tempInt = 0;
+        int tempInt2 = 0;
+        StartTest("Address/derefernce test");
+        (*(&tempInt)) = 9;
+        EndTest(tempInt == 9);
+
         TestClass tempObj = new TestDerivedClass(1337);
+
+
+        TestBoxUnboxDifferentSizes();
+
+        var boxedStruct = (object)new BoxStubTest { Value = "Boxed Stub Test: Ok." };
+        PrintLine(boxedStruct.ToString());
+
+        StartTest("Subtraction Test");
+        int subResult = tempInt - 1;
+        EndTest(subResult == 8);
+
+        StartTest("Division Test");
+        int divResult = tempInt / 3;
+        EndTest(divResult == 3);
+
+        StartTest("Addition of byte and short test");
+        byte aByte = 2;
+        short aShort = 0x100;
+        short byteAndShortResult = (short)(aByte + aShort);
+        EndTest(byteAndShortResult == 0x102);
+
+        StartTest("not test");
+        var not = Not(0xFFFFFFFF) == 0x00000000;
+        EndTest(not);
+
+        StartTest("negInt test");
+        var negInt = Neg(42) == -42;
+        EndTest(negInt);
+
+        StartTest("shiftLeft test");
+        var shiftLeft = ShiftLeft(1, 2) == 4;
+        EndTest(shiftLeft);
+
+        StartTest("shiftRight test");
+        var shiftRight = ShiftRight(4, 2) == 1;
+        EndTest(shiftRight);
+
+        StartTest("unsignedShift test");
+        var unsignedShift = UnsignedShift(0xFFFFFFFFu, 4) == 0x0FFFFFFFu;
+        EndTest(unsignedShift);
+
+        StartTest("shiftLeft byte to short test");
+        byte byteConstant = (byte)0x80;
+        ushort shiftedToShort = (ushort)(byteConstant << 1);
+        EndTest((int)shiftedToShort == 0x0100);
+
+        StartTest("SwitchOp0 test");
+        var switchTest0 = SwitchOp(5, 5, 0);
+        EndTest(switchTest0 == 10);
+
+        StartTest("SwitchOp1 test");
+        var switchTest1 = SwitchOp(5, 5, 1);
+        EndTest(switchTest1 == 25);
+
+        StartTest("SwitchOpDefault test");
+        var switchTestDefault = SwitchOp(5, 5, 20);
+        EndTest(switchTestDefault == 0);
+
+#if TARGET_WINDOWS
+        StartTest("CpObj test");
+        var cpObjTestA = new TestValue { Field = 1234 };
+        var cpObjTestB = new TestValue { Field = 5678 };
+        CpObjTest.CpObj(ref cpObjTestB, ref cpObjTestA);
+        EndTest (cpObjTestB.Field == 1234);
+#endif
 
         StartTest("Static delegate test");
         Func<int> staticDelegate = StaticDelegateTarget;
@@ -119,6 +192,13 @@ internal static class Program
                 && testMdArrayInstantiation[0, 1] == 2
                 && testMdArrayInstantiation[1, 0] == 3
                 && testMdArrayInstantiation[1, 1] == 4);
+
+
+        FloatDoubleTest();
+
+        StartTest("long comparison");
+        long l = 0x1;
+        EndTest(l < 0x7FF0000000000000);
 
         // Create a ByReference<char> through the ReadOnlySpan ctor and call the ByReference.Value via the indexer.
         StartTest("ByReference intrinsics exercise via ReadOnlySpan");
