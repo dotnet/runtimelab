@@ -218,6 +218,9 @@ private:
     unsigned getElementSize(CORINFO_CLASS_HANDLE fieldClassHandle, CorInfoType corInfoType);
     void addPaddingFields(unsigned paddingSize, std::vector<Type*>& llvmFields);
 
+    Type* getPtrLlvmType();
+    Type* getIntPtrLlvmType();
+
     // ================================================================================================================
     // |                                                   Lowering                                                   |
     // ================================================================================================================

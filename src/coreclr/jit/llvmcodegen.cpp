@@ -519,24 +519,12 @@ Value* Llvm::getGenTreeValue(GenTree* op)
 //    targetLlvmType - the LLVM type through which the user uses "node"
 //
 // Return Value:
-//    The normalized value, of "targetLlvmType" type. If the latter wasn't
-//    provided, the raw value is returned, except for small types, which
-//    are still extended to INT.
+//    The normalized value, of "targetLlvmType" type.
 //
 Value* Llvm::consumeValue(GenTree* node, Type* targetLlvmType)
 {
     Value* nodeValue = getGenTreeValue(node);
     Value* finalValue = nodeValue;
-
-    if (targetLlvmType == nullptr)
-    {
-        if (!nodeValue->getType()->isIntegerTy())
-        {
-            return finalValue;
-        }
-
-        targetLlvmType = getLlvmTypeForVarType(genActualType(node));
-    }
 
     if (nodeValue->getType() != targetLlvmType)
     {
@@ -856,25 +844,50 @@ void Llvm::buildLocalVarAddr(GenTreeLclVarCommon* lclAddr)
 
 void Llvm::buildAdd(GenTreeOp* node)
 {
-    Value* op1Value = consumeValue(node->gtGetOp1());
-    Value* op2Value = consumeValue(node->gtGetOp2());
-    Type* op1Type = op1Value->getType();
-    Type* op2Type = op2Value->getType();
+    GenTree* op1 = node->gtGetOp1();
+    GenTree* op2 = node->gtGetOp2();
+    Type* op1RawType = getGenTreeValue(op1)->getType();
+    Type* op2RawType = getGenTreeValue(op2)->getType();
 
     Value* addValue;
-    if (op1Type->isPointerTy() && op2Type->isIntegerTy())
+    if (!node->gtOverflow() && (op1RawType->isPointerTy() || op2RawType->isPointerTy()))
     {
+        Value* baseValue = consumeValue(op1RawType->isPointerTy() ? op1 : op2, getPtrLlvmType());
+        Value* offsetValue = consumeValue(op1RawType->isPointerTy() ? op2 : op1, getIntPtrLlvmType());
+
         // GEPs scale indices, use type i8 makes them equivalent to the raw offsets we have in IR
-        addValue = _builder.CreateGEP(Type::getInt8Ty(_llvmContext), op1Value, op2Value);
-    }
-    else if (op1Type->isIntegerTy() && (op1Type == op2Type))
-    {
-        addValue = _builder.CreateAdd(op1Value, op2Value);
+        addValue = _builder.CreateGEP(Type::getInt8Ty(_llvmContext), baseValue, offsetValue);
     }
     else
     {
-        // unsupported add type combination
-        failFunctionCompilation();
+        Type* addLlvmType = getLlvmTypeForVarType(node->TypeGet());
+        if (addLlvmType->isPointerTy())
+        {
+            // ADD<byref>(native int, native int) is valid IR.
+            addLlvmType = getIntPtrLlvmType();
+        }
+        Value* op1Value = consumeValue(op1, addLlvmType);
+        Value* op2Value = consumeValue(op2, addLlvmType);
+
+        if (varTypeIsFloating(node))
+        {
+            addValue = _builder.CreateFAdd(op1Value, op2Value);
+        }
+        else if (node->gtOverflow())
+        {
+            llvm::Intrinsic::ID intrinsicId =
+                node->IsUnsigned() ? llvm::Intrinsic::uadd_with_overflow : llvm::Intrinsic::sadd_with_overflow;
+            Value* checkedAddValue = _builder.CreateIntrinsic(intrinsicId, addLlvmType, {op1Value, op2Value});
+
+            Value* isOverflowValue = _builder.CreateExtractValue(checkedAddValue, 1);
+            emitJumpToThrowHelper(isOverflowValue, SCK_OVERFLOW);
+
+            addValue = _builder.CreateExtractValue(checkedAddValue, 0);
+        }
+        else
+        {
+            addValue = _builder.CreateAdd(op1Value, op2Value);
+        }
     }
 
     mapGenTreeToValue(node, addValue);
