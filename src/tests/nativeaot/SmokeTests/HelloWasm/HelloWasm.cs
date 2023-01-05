@@ -215,6 +215,35 @@ internal static class Program
 
         PrintLine("interface call test: Ok " + (castingTest as ICastingTest1).GetValue().ToString());
 
+        InterfaceDispatchTest();
+
+        StartTest("Runtime.Helpers array initialization test");
+        var testRuntimeHelpersInitArray = new long[] { 1, 2, 3 };
+        EndTest(testRuntimeHelpersInitArray[0] == 1 &&
+                testRuntimeHelpersInitArray[1] == 2 &&
+                testRuntimeHelpersInitArray[2] == 3);
+
+        StartTest("Multi-dimension array instantiation test");
+        var testMdArrayInstantiation = new int[2, 2];
+        EndTest(testMdArrayInstantiation != null && testMdArrayInstantiation.GetLength(0) == 2 && testMdArrayInstantiation.GetLength(1) == 2);
+
+        StartTest("Multi-dimension array get/set test");
+        testMdArrayInstantiation[0, 0] = 1;
+        testMdArrayInstantiation[0, 1] = 2;
+        testMdArrayInstantiation[1, 0] = 3;
+        testMdArrayInstantiation[1, 1] = 4;
+        EndTest(testMdArrayInstantiation[0, 0] == 1
+                && testMdArrayInstantiation[0, 1] == 2
+                && testMdArrayInstantiation[1, 0] == 3
+                && testMdArrayInstantiation[1, 1] == 4);
+
+
+        FloatDoubleTest();
+
+        StartTest("long comparison");
+        long l = 0x1;
+        EndTest(l < 0x7FF0000000000000);
+
         TestTryCatch();
 
         PrintLine("Done");
