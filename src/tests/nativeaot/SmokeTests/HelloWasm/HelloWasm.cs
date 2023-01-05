@@ -264,7 +264,138 @@ internal static class Program
         long l = 0x1;
         EndTest(l < 0x7FF0000000000000);
 
+        // Create a ByReference<char> through the ReadOnlySpan ctor and call the ByReference.Value via the indexer.
+        StartTest("ByReference intrinsics exercise via ReadOnlySpan");
+        var span = "123".AsSpan();
+        if (span[0] != '1'
+            || span[1] != '2'
+            || span[2] != '3')
+        {
+            FailTest();
+            PrintLine(span[0].ToString());
+            PrintLine(span[1].ToString());
+            PrintLine(span[2].ToString());
+        }
+        else
+        {
+            PassTest();
+        }
+
+        TestConstrainedClassCalls();
+
+        TestConstrainedStructCalls();
+
+        TestValueTypeElementIndexing();
+
+        TestArrayItfDispatch();
+
+        TestTryFinally();
+
+
+#if TARGET_WINDOWS
+        StartTest("RVA static field test");
+        int rvaFieldValue = ILHelpers.ILHelpersTest.StaticInitedInt;
+        if (rvaFieldValue == 0x78563412)
+        {
+            PassTest();
+        }
+        else
+        {
+            FailTest(rvaFieldValue.ToString());
+        }
+#endif
+
+        TestNativeCallback();
+
+        TestArgsWithMixedTypesAndExceptionRegions();
+
+        TestThreadStaticsForSingleThread();
+
+        TestDispose();
+
+        TestCallToGenericInterfaceMethod();
+
+        TestInitObjDouble();
+
         TestTryCatch();
+
+        StartTest("Non/GCStatics field access test");
+        if (new FieldStatics().TestGetSet())
+        {
+            PassTest();
+        }
+        else
+        {
+            FailTest();
+        }
+
+        TestSByteExtend();
+
+        TestSharedDelegate();
+
+        TestUlongUintMultiply();
+
+        TestBoxSingle();
+
+        TestGvmCallInIf(new GenDerived<string>(), "hello");
+
+        TestStoreFromGenericMethod();
+
+        TestConstrainedValueTypeCallVirt();
+
+        TestBoxToGenericTypeFromDirectMethod();
+
+        TestGenericStructHandling();
+
+        TestGenericCallInFinally();
+
+        TestInitializeArray();
+
+        TestImplicitUShortToUInt();
+
+        TestReverseDelegateInvoke();
+
+        TestInterlockedExchange();
+
+        TestThrowIfNull();
+
+#if TARGET_WINDOWS
+        TestCkFinite();
+#endif
+
+        TestIntOverflows();
+
+        TestStackTrace();
+
+        TestJavascriptCall();
+
+        TestDefaultConstructorOf();
+
+        TestStructUnboxOverload();
+
+        TestGetSystemArrayEEType();
+
+        TestBoolCompare();
+
+        TestDifferentSizeIntOperator();
+
+        TestStructStoreWithSignificantPadding();
+
+        TestLclVarAddr(new LlvmStruct { i1 = 1, i2 = 2 });
+
+        TestJitUseStruct();
+
+        TestUnsafe();
+
+        TestReadByteArray();
+
+        TestDoublePrint();
+
+        TestGenStructContains();
+
+        // This test should remain last to get other results before stopping the debugger
+        PrintLine("Debugger.Break() test: Ok if debugger is open and breaks.");
+        System.Diagnostics.Debugger.Break();
 
         PrintLine("Done");
         return Success ? 100 : -1;
