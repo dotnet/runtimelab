@@ -24,7 +24,20 @@ internal static class Program
     internal static bool Success;
     private static unsafe int Main(string[] args)
     {
+        var x = new StructWithObjRefs
+        {
+            C1 = null,
+            C2 = null,
+        };
         Success = true;
+        PrintLine("Starting " + 1);
+
+        TestBox();
+
+        TestSByteExtend();
+        TestMetaData();
+
+        TestGC();
 
         Add(1, 2);
         PrintLine("Hello from C#!");
