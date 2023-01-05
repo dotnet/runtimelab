@@ -185,7 +185,7 @@ namespace ILCompiler.DependencyAnalysis
                 nodeData.Fill(Module, _nodeFactory);
             }
 
-            EmitReversePInvokesAndShadowStackBottom();
+            EmitReversePInvokes();
 
             if (_nativeLib)
             {
@@ -241,7 +241,7 @@ namespace ILCompiler.DependencyAnalysis
             builder.BuildRet(castRtrHeaderPtr);
         }
 
-        private void EmitReversePInvokesAndShadowStackBottom()
+        private void EmitReversePInvokes()
         {
             LLVMTypeRef reversePInvokeFrameType = LLVMTypeRef.CreateStruct(new LLVMTypeRef[] { LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0) }, false);
             LLVMValueRef rhpReversePInvoke = Module.GetNamedFunction("RhpReversePInvoke");
@@ -250,11 +250,6 @@ namespace ILCompiler.DependencyAnalysis
             {
                 Module.AddFunction("RhpReversePInvoke", LLVMTypeRef.CreateFunction(LLVMTypeRef.Void, new LLVMTypeRef[] { LLVMTypeRef.CreatePointer(reversePInvokeFrameType, 0) }, false));
             }
-
-            var shadowStackBottom = Module.AddGlobal(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), "t_pShadowStackBottom");
-            shadowStackBottom.Linkage = LLVMLinkage.LLVMExternalLinkage;
-            shadowStackBottom.Initializer = LLVMValueRef.CreateConstPointerNull(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0));
-            shadowStackBottom.ThreadLocalMode = LLVMThreadLocalMode.LLVMLocalDynamicTLSModel;
 
             LLVMValueRef rhpReversePInvokeReturn = Module.GetNamedFunction("RhpReversePInvokeReturn");
             if (rhpReversePInvokeReturn.Handle == IntPtr.Zero)
@@ -266,8 +261,6 @@ namespace ILCompiler.DependencyAnalysis
 
         private void EmitNativeMain(LLVMContextRef context)
         {
-            LLVMValueRef shadowStackTop = Module.GetNamedGlobal("t_pShadowStackTop");
-
             LLVMBuilderRef builder = context.CreateBuilder();
             var mainSignature = LLVMTypeRef.CreateFunction(LLVMTypeRef.Int32, new LLVMTypeRef[] { LLVMTypeRef.Int32, LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0) }, false);
             var mainFunc = Module.AddFunction("__managed__Main", mainSignature);
@@ -285,12 +278,7 @@ namespace ILCompiler.DependencyAnalysis
 
             builder.BuildCall(rhpReversePInvoke, new LLVMValueRef[] { reversePinvokeFrame }, "");
 
-            var shadowStack = builder.BuildMalloc(LLVMTypeRef.CreateArray(LLVMTypeRef.Int8, 1000000), String.Empty);
-            var castShadowStack = builder.BuildPointerCast(shadowStack, LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), String.Empty);
-            builder.BuildStore(castShadowStack, shadowStackTop);
-
-            var shadowStackBottom = Module.GetNamedGlobal("t_pShadowStackBottom");
-            builder.BuildStore(castShadowStack, shadowStackBottom);
+            LLVMValueRef shadowStackTop = builder.BuildLoad(ILImporter.ShadowStackTop); // allocated and set in InitializeModules
 
             // Pass on main arguments
             LLVMValueRef argc = mainFunc.GetParam(0);
@@ -298,14 +286,13 @@ namespace ILCompiler.DependencyAnalysis
 
             LLVMValueRef mainReturn = builder.BuildCall(managedMain, new LLVMValueRef[]
             {
-                castShadowStack,
+                shadowStackTop,
                 argc,
                 argv,
             },
             "returnValue");
 
             LLVMValueRef rhpReversePInvokeReturn = Module.GetNamedFunction("RhpReversePInvokeReturn");
-            LLVMTypeRef reversePInvokeFunctionType = LLVMTypeRef.CreateFunction(LLVMTypeRef.Void, new LLVMTypeRef[] { LLVMTypeRef.CreatePointer(reversePInvokeFrameType, 0) }, false);
             builder.BuildCall(rhpReversePInvokeReturn, new LLVMValueRef[] { reversePinvokeFrame }, "");
 
             builder.BuildRet(mainReturn);
@@ -314,13 +301,14 @@ namespace ILCompiler.DependencyAnalysis
 
         private void EmitNativeStartup(LLVMContextRef context)
         {
-            LLVMValueRef shadowStackTop = Module.GetNamedGlobal("t_pShadowStackTop");
-
             LLVMBuilderRef builder = context.CreateBuilder();
             var startupSignature = LLVMTypeRef.CreateFunction(LLVMTypeRef.Void, new LLVMTypeRef[] { }, false);
             var startupFunc = Module.AddFunction("__managed__Startup", startupSignature);
             var mainEntryBlock = startupFunc.AppendBasicBlock("entry");
             builder.PositionAtEnd(mainEntryBlock);
+            LLVMBasicBlockRef endAllocateBlock = ILImporter.AllocateShadowStackBlock(builder, startupFunc);
+            builder.PositionAtEnd(endAllocateBlock);
+
             LLVMValueRef nativeLibStartup = Module.GetNamedFunction("Internal_CompilerGenerated__Module___NativeLibraryStartup");
             if (nativeLibStartup.Handle == IntPtr.Zero)
             {
@@ -333,17 +321,9 @@ namespace ILCompiler.DependencyAnalysis
 
             builder.BuildCall(rhpReversePInvoke, new LLVMValueRef[] { reversePinvokeFrame }, "");
 
-            var shadowStack = builder.BuildMalloc(LLVMTypeRef.CreateArray(LLVMTypeRef.Int8, 1000000), String.Empty);
-            var castShadowStack = builder.BuildPointerCast(shadowStack, LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), String.Empty);
-            builder.BuildStore(castShadowStack, shadowStackTop);
-
-            var shadowStackBottom = Module.GetNamedGlobal("t_pShadowStackBottom");
-            builder.BuildStore(castShadowStack, shadowStackBottom);
-
-
             builder.BuildCall(nativeLibStartup, new LLVMValueRef[]
             {
-                castShadowStack,
+                ILImporter.ShadowStackTop,
             });
 
             LLVMValueRef rhpReversePInvokeReturn = Module.GetNamedFunction("RhpReversePInvokeReturn");

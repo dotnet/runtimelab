@@ -2,10 +2,15 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Diagnostics;
+using System.Runtime;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 using Internal.Runtime;
 using Internal.Runtime.CompilerServices;
+
+// Disable: Filter expression is a constant. We know. We just can't do an unfiltered catch.
+#pragma warning disable 7095
 
 namespace System.Runtime
 {
@@ -114,7 +119,7 @@ namespace System.Runtime
             // should also fail fast instead of invoking the second pass handlers if the exception goes unhandled.
             //
             object exception = BeginSingleDispatch(RhEHClauseKind.RH_EH_CLAUSE_FAULT, null, pShadowFrame, (DispatchData*)pDispatchData);
-            CallFinallyFunclet(pHandler, pShadowFrame, ryuJitAbi: true);
+            CallFinallyFunclet(pHandler, pShadowFrame, 200 /* TODO-LLVM: what goes here, 200 just for testing */, ryuJitAbi: true);
             DispatchContinueSearch(exception, pDispatchData);
         }
 
@@ -182,6 +187,11 @@ namespace System.Runtime
             internal uint _typeSymbol;
             internal byte* _handlerAddress;
             internal byte* _filterAddress;
+
+            public bool TryStartsAt(uint idxTryLandingStart)
+            {
+                return idxTryLandingStart == _tryStartOffset;
+            }
 
             public bool ContainsCodeOffset(uint idxTryLandingStart)
             {
@@ -266,8 +276,7 @@ namespace System.Runtime
             return false;
         }
 
-        private static void InvokeSecondPassWasm(uint idxStart, uint idxTryLandingStart /* we do dont have the PC, so use the start of the block */,
-            ref EHClauseIterator clauseIter, uint idxLimit, void* shadowStack)
+        private static void InvokeSecondPassWasm(uint idxStart, uint idxTryLandingStart /* we do dont have the PC, so use the start of the block */, ref EHClauseIterator clauseIter, uint idxLimit, void* shadowStack, uint usedSSBytes)
         {
             // Search the clauses for one that contains the current offset.
             RhEHClauseWasm ehClause = new RhEHClauseWasm();
@@ -288,7 +297,7 @@ namespace System.Runtime
 
                 // Found a containing clause. Because of the order of the clauses, we know this is the
                 // most containing.
-                CallFinallyFunclet(ehClause._handlerAddress, shadowStack, ryuJitAbi: false);
+                CallFinallyFunclet(ehClause._handlerAddress, shadowStack, usedSSBytes, ryuJitAbi: false);
             }
         }
 
@@ -319,7 +328,7 @@ namespace System.Runtime
             return result;
         }
 
-        private static void CallFinallyFunclet(void* pFunclet, void* pShadowFrame, bool ryuJitAbi)
+        private static void CallFinallyFunclet(void* pFunclet, void* pShadowFrame, uint usedSSBytes, bool ryuJitAbi)
         {
             WasmEHLogFunletEnter(pFunclet, RhEHClauseKind.RH_EH_CLAUSE_FAULT, pShadowFrame, ryuJitAbi);
             if (ryuJitAbi)
@@ -328,7 +337,7 @@ namespace System.Runtime
             }
             else
             {
-                InternalCalls.RhpCallFinallyFunclet((byte*)pFunclet, pShadowFrame);
+                InternalCalls.RhpCallFinallyFuncletWasm((byte*)pFunclet, pShadowFrame, usedSSBytes);
             }
             WasmEHLogFunletExit(RhEHClauseKind.RH_EH_CLAUSE_FAULT, 0, pShadowFrame, ryuJitAbi);
         }

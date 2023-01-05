@@ -186,8 +186,9 @@ namespace Internal.IL
             LlvmFinallyFunclet = module.AddFunction("LlvmFinallyFunclet", LLVMTypeRef.CreateFunction(LLVMTypeRef.Void,
                 new LLVMTypeRef[]
                 {
-                    LLVMTypeRef.CreatePointer(LLVMTypeRef.CreateFunction(LLVMTypeRef.Void, new LLVMTypeRef[] { LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0)}, false), 0), // finallyHandler
+                    LLVMTypeRef.CreatePointer(LLVMTypeRef.CreateFunction(LLVMTypeRef.Void, new LLVMTypeRef[] { LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), LLVMTypeRef.Int32 }, false), 0), // finallyHandler
                     LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), // shadow stack
+                    LLVMTypeRef.Int32, // usedSSBytes
                 }, false));
             var block = LlvmFinallyFunclet.AppendBasicBlock("Finally");
             LLVMBuilderRef funcletBuilder = Context.CreateBuilder();
@@ -198,6 +199,7 @@ namespace Internal.IL
 
             List<LLVMValueRef> llvmArgs = new List<LLVMValueRef>();
             llvmArgs.Add(castShadowStack);
+            llvmArgs.Add(LlvmFinallyFunclet.GetParam(2));
 
             funcletBuilder.BuildCall(finallyFunclet, llvmArgs.ToArray(), string.Empty);
             funcletBuilder.BuildRetVoid();
@@ -252,27 +254,19 @@ namespace Internal.IL
             LLVMValueRef thunkFunc = GetOrCreateLLVMFunction(LLVMCodegenCompilation.Module, nativeName, thunkSig);
 
             LLVMBasicBlockRef shadowStackSetupBlock = thunkFunc.AppendBasicBlock("ShadowStackSetupBlock");
-            LLVMBasicBlockRef allocateShadowStackBlock = thunkFunc.AppendBasicBlock("allocateShadowStackBlock");
-            LLVMBasicBlockRef managedCallBlock = thunkFunc.AppendBasicBlock("ManagedCallBlock");
 
             LLVMBuilderRef builder = Context.CreateBuilder();
             builder.PositionAtEnd(shadowStackSetupBlock);
 
             // Allocate shadow stack if it's null
+            LLVMBasicBlockRef managedCallBlock = AllocateShadowStackBlock(builder, thunkFunc);
+            builder.PositionAtEnd(managedCallBlock);
+
             LLVMValueRef shadowStackPtr = builder.BuildAlloca(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), "ShadowStackPtr");
             LLVMValueRef savedShadowStack = builder.BuildLoad(ShadowStackTop, "SavedShadowStack");
             builder.BuildStore(savedShadowStack, shadowStackPtr);
-            LLVMValueRef shadowStackNull = builder.BuildICmp(LLVMIntPredicate.LLVMIntEQ, savedShadowStack, LLVMValueRef.CreateConstPointerNull(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0)), "ShadowStackNull");
-            builder.BuildCondBr(shadowStackNull, allocateShadowStackBlock, managedCallBlock);
 
-            builder.PositionAtEnd(allocateShadowStackBlock);
 
-            LLVMValueRef newShadowStack = builder.BuildArrayMalloc(LLVMTypeRef.Int8, BuildConstInt32(1000000), "NewShadowStack");
-            builder.BuildStore(newShadowStack, shadowStackPtr);
-            builder.BuildStore(newShadowStack, ShadowStackTop);
-            builder.BuildBr(managedCallBlock);
-
-            builder.PositionAtEnd(managedCallBlock);
             LLVMTypeRef reversePInvokeFrameType = LLVMTypeRef.CreateStruct(new LLVMTypeRef[] { LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0) }, false);
             LLVMValueRef reversePInvokeFrame = default(LLVMValueRef);
             LLVMTypeRef reversePInvokeFunctionType = LLVMTypeRef.CreateFunction(LLVMTypeRef.Void, new LLVMTypeRef[] { LLVMTypeRef.CreatePointer(reversePInvokeFrameType, 0) }, false);
@@ -325,6 +319,9 @@ namespace Internal.IL
                 builder.BuildCall(RhpReversePInvokeReturn, new LLVMValueRef[] { reversePInvokeFrame }, "");
             }
 
+            // restore the shadow stack top for the next native->managed transistion
+            builder.BuildStore(savedShadowStack, ShadowStackTop);
+
             if (!method.Signature.ReturnType.IsVoid)
             {
                 if (needsReturnSlot)
@@ -340,6 +337,27 @@ namespace Internal.IL
             {
                 builder.BuildRetVoid();
             }
+        }
+
+        internal static LLVMBasicBlockRef AllocateShadowStackBlock(LLVMBuilderRef builder, LLVMValueRef funcRef)
+        {
+            LLVMBasicBlockRef allocateShadowStackBlock = funcRef.AppendBasicBlock("allocateShadowStackBlock");
+            LLVMBasicBlockRef allocateEndBlock = funcRef.AppendBasicBlock("ManagedCallBlock");
+
+            LLVMValueRef savedShadowStack = builder.BuildLoad(ShadowStackTop, "SavedShadowStack");
+            LLVMValueRef shadowStackNull = builder.BuildICmp(LLVMIntPredicate.LLVMIntEQ, savedShadowStack, LLVMValueRef.CreateConstPointerNull(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0)), "ShadowStackNull");
+            builder.BuildCondBr(shadowStackNull, allocateShadowStackBlock, allocateEndBlock);
+
+            builder.PositionAtEnd(allocateShadowStackBlock);
+
+
+            LLVMValueRef newShadowStack = builder.BuildArrayMalloc(LLVMTypeRef.Int8, BuildConstInt32(1000000), "NewShadowStack");
+            builder.BuildStore(newShadowStack, ShadowStackTop);
+            builder.BuildStore(newShadowStack, ShadowStackBottom);
+
+            builder.BuildBr(allocateEndBlock);
+
+            return allocateEndBlock;
         }
 
         internal static LLVMValueRef GetOrCreateLLVMFunction(LLVMModuleRef module, string mangledName, LLVMTypeRef functionType)
@@ -381,7 +399,7 @@ namespace Internal.IL
 
         static LLVMValueRef s_shadowStackTop = default(LLVMValueRef);
 
-        static LLVMValueRef ShadowStackTop
+        internal static LLVMValueRef ShadowStackTop
         {
             get
             {
@@ -393,6 +411,23 @@ namespace Internal.IL
                     s_shadowStackTop.ThreadLocalMode = LLVMThreadLocalMode.LLVMLocalDynamicTLSModel;
                 }
                 return s_shadowStackTop;
+            }
+        }
+
+        static LLVMValueRef s_shadowStackBottom = default(LLVMValueRef);
+
+        internal static LLVMValueRef ShadowStackBottom
+        {
+            get
+            {
+                if (s_shadowStackBottom.Handle.Equals(IntPtr.Zero))
+                {
+                    s_shadowStackBottom = LLVMCodegenCompilation.Module.AddGlobal(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), "t_pShadowStackBottom");
+                    s_shadowStackBottom.Linkage = LLVMLinkage.LLVMExternalLinkage;
+                    s_shadowStackBottom.Initializer = LLVMValueRef.CreateConstPointerNull(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0));
+                    s_shadowStackBottom.ThreadLocalMode = LLVMThreadLocalMode.LLVMLocalDynamicTLSModel;
+                }
+                return s_shadowStackBottom;
             }
         }
 

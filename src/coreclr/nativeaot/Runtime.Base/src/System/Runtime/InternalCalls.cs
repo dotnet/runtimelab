@@ -231,6 +231,12 @@ namespace System.Runtime
         [MethodImpl(MethodImplOptions.InternalCall)]
         internal static extern unsafe void RhpCallFinallyFunclet(byte* pHandlerIP, void* pvRegDisplay);
 
+#if TARGET_WASM
+        [RuntimeImport(Redhawk.BaseName, "RhpCallFinallyFuncletWasm")]
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        internal static extern unsafe void RhpCallFinallyFuncletWasm(byte* pHandlerIP, void* pvRegDisplay, uint usedSSBytes);
+#endif //TARGET_WASM
+
         [RuntimeImport(Redhawk.BaseName, "RhpCallFilterFunclet")]
         [MethodImpl(MethodImplOptions.InternalCall)]
         internal static extern unsafe bool RhpCallFilterFunclet(
