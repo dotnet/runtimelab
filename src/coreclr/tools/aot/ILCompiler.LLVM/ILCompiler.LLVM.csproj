@@ -6,17 +6,13 @@
     <AssemblyName>ILCompiler.LLVM</AssemblyName>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <TargetFramework>net6.0</TargetFramework>
-    <NoWarn>8002</NoWarn>
+    <!-- not ready for LLVM opaque pointers yet, so disable deprecated function: 0618 -->
+    <NoWarn>8002;0618</NoWarn>
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
     <Platforms>x64;x86</Platforms>
     <PlatformTarget>AnyCPU</PlatformTarget>
   </PropertyGroup>
 
-  <ItemGroup>
-    <PackageReference Include="LLVMSharp">
-      <Version>11.0.0-beta</Version>
-    </PackageReference>
-  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\ILCompiler.DependencyAnalysisFramework\ILCompiler.DependencyAnalysisFramework.csproj" />
@@ -67,6 +63,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="libLLVM" Version="11.0.0" />
+    <PackageReference Include="LLVMSharp" Version="15.0.0-beta1" />
   </ItemGroup>
 </Project>

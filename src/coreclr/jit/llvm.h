@@ -34,6 +34,7 @@ using llvm::FunctionType;
 using llvm::Value;
 using llvm::Type;
 using llvm::Instruction;
+using llvm::AllocaInst;
 using llvm::ArrayRef;
 
 using SSAName = Compiler::SSAName;
@@ -132,7 +133,7 @@ private:
     JitHashTable<GenTree*, JitPtrKeyFuncs<GenTree>, Value*> _sdsuMap;
     JitHashTable<SSAName, SSAName, Value*> _localsMap;
     std::vector<PhiPair> _phiPairs;
-    std::vector<Value*> m_allocas;
+    std::vector<AllocaInst*> m_allocas;
     std::vector<Function*> m_functions;
     std::vector<llvm::BasicBlock*> m_EHDispatchLlvmBlocks;
 
@@ -346,7 +347,7 @@ private:
     llvm::BasicBlock* getLastLlvmBlockForBlock(BasicBlock* block);
     void setLastLlvmBlockForBlock(BasicBlock* block, llvm::BasicBlock* llvmBlock);
 
-    Value* getLocalAddr(unsigned lclNum);
+    AllocaInst*  getLocalAddr(unsigned lclNum);
     unsigned int getTotalLocalOffset();
 };
 

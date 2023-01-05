@@ -229,7 +229,7 @@ void Llvm::generateProlog()
 
 void Llvm::initializeLocals()
 {
-    m_allocas = std::vector<Value*>(_compiler->lvaCount, nullptr);
+    m_allocas = std::vector<AllocaInst*>(_compiler->lvaCount, nullptr);
 
     for (unsigned lclNum = 0; lclNum < _compiler->lvaCount; lclNum++)
     {
@@ -317,7 +317,7 @@ void Llvm::initializeLocals()
         }
         else
         {
-            Instruction* allocaInst = _prologBuilder.CreateAlloca(lclLlvmType);
+            AllocaInst* allocaInst = _prologBuilder.CreateAlloca(lclLlvmType);
             m_allocas[lclNum] = allocaInst;
             JITDUMPEXEC(allocaInst->dump());
 
@@ -552,12 +552,6 @@ Value* Llvm::consumeValue(GenTree* node, Type* targetLlvmType)
             return _builder.CreatePtrToInt(nodeValue, Type::getInt32Ty(_llvmContext));
         }
 
-        // i32* e.g symbols, to i8*
-        if (nodeValue->getType()->isPointerTy() && targetLlvmType->isPointerTy())
-        {
-            return _builder.CreateBitCast(nodeValue, targetLlvmType);
-        }
-
         // int and smaller int conversions
         assert(targetLlvmType->isIntegerTy() && nodeValue->getType()->isIntegerTy() &&
                nodeValue->getType()->getPrimitiveSizeInBits() <= 32 && targetLlvmType->getPrimitiveSizeInBits() <= 32);
@@ -788,7 +782,8 @@ void Llvm::buildLocalVar(GenTreeLclVar* lclVar)
     }
     else
     {
-        llvmRef = _builder.CreateLoad(getLocalAddr(lclNum));
+        AllocaInst* allocInstr = getLocalAddr(lclNum);
+        llvmRef = _builder.CreateLoad(allocInstr->getAllocatedType(), allocInstr);
     }
 
     // Implicit truncating from long to int.
@@ -847,26 +842,16 @@ void Llvm::buildLocalField(GenTreeLclFld* lclFld)
 
     // TODO-LLVM: if this is an only value type field, or at offset 0, we can optimize.
     Value* structAddrValue = getLocalAddr(lclNum);
-    Value* structAddrInt8Ptr = castIfNecessary(structAddrValue, Type::getInt8PtrTy(_llvmContext));
-    Value* fieldAddressValue = gepOrAddr(structAddrInt8Ptr, lclFld->GetLclOffs());
-    Value* fieldAddressTypedValue =
-        castIfNecessary(fieldAddressValue, getLlvmTypeForVarType(lclFld->TypeGet())->getPointerTo());
+    Value* fieldAddressValue = gepOrAddr(structAddrValue, lclFld->GetLclOffs());
 
-    mapGenTreeToValue(lclFld, _builder.CreateLoad(fieldAddressTypedValue));
+    mapGenTreeToValue(lclFld, _builder.CreateLoad(getLlvmTypeForVarType(lclFld->TypeGet()), fieldAddressValue));
 }
 
 void Llvm::buildLocalVarAddr(GenTreeLclVarCommon* lclAddr)
 {
     unsigned int lclNum = lclAddr->GetLclNum();
-    if (lclAddr->OperIs(GT_LCL_FLD_ADDR))
-    {
-        Value* bytePtr = castIfNecessary(getLocalAddr(lclNum), Type::getInt8PtrTy(_llvmContext));
-        mapGenTreeToValue(lclAddr, gepOrAddr(bytePtr, lclAddr->GetLclOffs()));
-    }
-    else
-    {
-        mapGenTreeToValue(lclAddr, getLocalAddr(lclNum));
-    }
+    Value* localAddr = getLocalAddr(lclNum);
+    mapGenTreeToValue(lclAddr, gepOrAddr(localAddr, lclAddr->GetLclOffs()));
 }
 
 void Llvm::buildAdd(GenTreeOp* node)
@@ -879,8 +864,8 @@ void Llvm::buildAdd(GenTreeOp* node)
     Value* addValue;
     if (op1Type->isPointerTy() && op2Type->isIntegerTy())
     {
-        // GEPs scale indices, bitcasting to i8* makes them equivalent to the raw offsets we have in IR
-        addValue = _builder.CreateGEP(castIfNecessary(op1Value, Type::getInt8PtrTy(_llvmContext)), op2Value);
+        // GEPs scale indices, use type i8 makes them equivalent to the raw offsets we have in IR
+        addValue = _builder.CreateGEP(Type::getInt8Ty(_llvmContext), op1Value, op2Value);
     }
     else if (op1Type->isIntegerTy() && (op1Type == op2Type))
     {
@@ -1254,7 +1239,8 @@ void Llvm::buildCnsInt(GenTree* node)
             {
                 const char* symbolName = GetMangledSymbolName((void*)(node->AsIntCon()->IconValue()));
                 AddCodeReloc((void*)node->AsIntCon()->IconValue());
-                mapGenTreeToValue(node, _builder.CreateLoad(getOrCreateExternalSymbol(symbolName)));
+                mapGenTreeToValue(node, _builder.CreateLoad(llvm::PointerType::getUnqual(_llvmContext),
+                                                            getOrCreateExternalSymbol(symbolName)));
             }
             else
             {
@@ -1275,7 +1261,8 @@ void Llvm::buildCnsInt(GenTree* node)
         {
             const char* symbolName = GetMangledSymbolName((void *)(node->AsIntCon()->IconValue()));
             AddCodeReloc((void*)node->AsIntCon()->IconValue());
-            mapGenTreeToValue(node, _builder.CreateLoad(getOrCreateExternalSymbol(symbolName)));
+            mapGenTreeToValue(node, _builder.CreateLoad(Type::getInt8PtrTy(_llvmContext),
+                                                        getOrCreateExternalSymbol(symbolName)));
             return;
         }
         // TODO: delete this check, just handling string constants and null ptr stores for now, other TYP_REFs not implemented yet
@@ -1394,17 +1381,15 @@ Value* Llvm::buildFieldList(GenTreeFieldList* fieldList, Type* llvmType)
     if (llvmType->isStructTy() || fieldList->Uses().begin()->GetNext() != nullptr)
     {
         Value* alloca = _builder.CreateAlloca(llvmType);
-        Value* allocaAsBytePtr = _builder.CreatePointerCast(alloca, Type::getInt8PtrTy(_llvmContext));
 
         for (GenTreeFieldList::Use& use : fieldList->Uses())
         {
-            Value* fieldAddr = gepOrAddr(allocaAsBytePtr, use.GetOffset());
+            Value* fieldAddr = gepOrAddr(alloca, use.GetOffset());
             Type*  fieldType = getLlvmTypeForVarType(use.GetType());
-            fieldAddr        = castIfNecessary(fieldAddr, fieldType->getPointerTo());
             _builder.CreateStore(consumeValue(use.GetNode(), fieldType), fieldAddr);
         }
 
-        return _builder.CreateLoad(alloca);
+        return _builder.CreateLoad(llvmType, alloca);
     }
 
     return consumeValue(fieldList->Uses().begin()->GetNode(), llvmType);
@@ -1413,7 +1398,7 @@ Value* Llvm::buildFieldList(GenTreeFieldList* fieldList, Type* llvmType)
 void Llvm::buildInd(GenTreeIndir* indNode)
 {
     Type* loadLlvmType = getLlvmTypeForVarType(indNode->TypeGet());
-    Value* addrValue = consumeValue(indNode->Addr(), loadLlvmType->getPointerTo());
+    Value* addrValue = consumeValue(indNode->Addr(), llvm::PointerType::getUnqual(_llvmContext));
 
     emitNullCheckForIndir(indNode, addrValue);
     Value* loadValue = _builder.CreateLoad(loadLlvmType, addrValue);
@@ -1424,7 +1409,7 @@ void Llvm::buildInd(GenTreeIndir* indNode)
 void Llvm::buildBlk(GenTreeBlk* blkNode)
 {
     Type* blkLlvmType = getLlvmTypeForStruct(blkNode->GetLayout());
-    Value* addrValue = consumeValue(blkNode->Addr(), blkLlvmType->getPointerTo());
+    Value* addrValue = consumeValue(blkNode->Addr(), llvm::PointerType::getUnqual(_llvmContext));
 
     emitNullCheckForIndir(blkNode, addrValue);
     Value* blkValue = _builder.CreateLoad(blkLlvmType, addrValue);
@@ -1443,8 +1428,7 @@ void Llvm::buildStoreInd(GenTreeStoreInd* storeIndOp)
     GCInfo::WriteBarrierForm wbf = getGCInfo()->gcIsWriteBarrierCandidate(storeIndOp, storeIndOp->Data());
 
     Type* storeLlvmType = getLlvmTypeForVarType(storeIndOp->TypeGet());
-    Type* addrLlvmType = (wbf == GCInfo::WBF_NoBarrier) ? storeLlvmType->getPointerTo() : Type::getInt8PtrTy(_llvmContext);
-    Value* addrValue = consumeValue(storeIndOp->Addr(), addrLlvmType);
+    Value* addrValue = consumeValue(storeIndOp->Addr(), llvm::PointerType::getUnqual(_llvmContext));
 
     Value* dataValue;
     if (storeIndRequiresTrunc(storeIndOp->TypeGet(), storeIndOp->Data()->TypeGet()))
@@ -1504,7 +1488,7 @@ void Llvm::buildStoreBlk(GenTreeBlk* blockOp)
     }
     else
     {
-        _builder.CreateStore(dataValue, castIfNecessary(addrValue, dataValue->getType()->getPointerTo()));
+        _builder.CreateStore(dataValue, addrValue);
     }
 }
 
@@ -1722,13 +1706,13 @@ void Llvm::storeObjAtAddress(Value* baseAddress, Value* data, StructDesc* struct
             {
                 // We can't be sure the address is on the heap, it could be the result of pointer arithmetic on a local var.
                 emitHelperCall(CORINFO_HELP_CHECKED_ASSIGN_REF,
-                               {address, castIfNecessary(fieldData, Type::getInt8PtrTy(_llvmContext))});
+                               {address, castIfNecessary(fieldData, llvm::PointerType::getUnqual(_llvmContext))});
 
                 bytesStored += TARGET_POINTER_SIZE;
             }
             else
             {
-                _builder.CreateStore(fieldData, castIfNecessary(address, fieldData->getType()->getPointerTo()));
+                _builder.CreateStore(fieldData, address);
 
                 bytesStored += fieldData->getType()->getPrimitiveSizeInBits() / BITS_PER_BYTE;
             }
@@ -1738,7 +1722,7 @@ void Llvm::storeObjAtAddress(Value* baseAddress, Value* data, StructDesc* struct
     unsigned llvmStructSize = data->getType()->getPrimitiveSizeInBits() / BITS_PER_BYTE;
     if (structDesc->hasSignificantPadding() && llvmStructSize > bytesStored)
     {
-        Value* srcAddress = _builder.CreateGEP(baseAddress, _builder.getInt32(bytesStored));
+        Value* srcAddress = gepOrAddr(baseAddress, bytesStored);
 
         buildMemCpy(baseAddress, bytesStored, llvmStructSize, srcAddress);
     }
@@ -1968,7 +1952,7 @@ Instruction* Llvm::getCast(Value* source, Type* targetType)
         switch (sourceTypeID)
         {
             case Type::TypeID::PointerTyID:
-                return new llvm::BitCastInst(source, targetType, "CastPtrToPtr");
+                return nullptr;
             case Type::TypeID::IntegerTyID:
                 return new llvm::IntToPtrInst(source, targetType, "CastPtrToInt");
             default:
@@ -2008,6 +1992,7 @@ Value* Llvm::castIfNecessary(Value* source, Type* targetType, llvm::IRBuilder<>*
     return builder->Insert(castInst);
 }
 
+// We assume that all the GEPs are for elements of size Int8 (byte)
 Value* Llvm::gepOrAddr(Value* addr, unsigned offset)
 {
     if (offset == 0)
@@ -2015,7 +2000,7 @@ Value* Llvm::gepOrAddr(Value* addr, unsigned offset)
         return addr;
     }
 
-    return _builder.CreateGEP(addr, _builder.getInt32(offset));
+    return _builder.CreateGEP(Type::getInt8Ty(_llvmContext), addr, _builder.getInt32(offset));
 }
 
 Value* Llvm::getShadowStack()
@@ -2209,9 +2194,9 @@ void Llvm::setLastLlvmBlockForBlock(BasicBlock* block, llvm::BasicBlock* llvmBlo
     _blkToLlvmBlksMap[block].LastBlock = llvmBlock;
 }
 
-Value* Llvm::getLocalAddr(unsigned lclNum)
+AllocaInst* Llvm::getLocalAddr(unsigned lclNum)
 {
-    Value* addrValue = m_allocas[lclNum];
+    AllocaInst* addrValue = m_allocas[lclNum];
     assert(addrValue != nullptr);
 
     return addrValue;

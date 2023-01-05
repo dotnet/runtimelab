@@ -3174,8 +3174,8 @@ namespace Internal.IL
                 {
                     unsafe
                     {
-                        LLVM.AddAttributeAtIndex(nativeFunc, ~0u, CreateImportAttr(Context, "wasm-import-module", wasmModuleName));
-                        LLVM.AddAttributeAtIndex(nativeFunc, ~0u, CreateImportAttr(Context, "wasm-import-name", realMethodName));
+                        LLVM.AddAttributeAtIndex(nativeFunc, LLVMAttributeIndex.LLVMAttributeFunctionIndex, CreateImportAttr(Context, "wasm-import-module", wasmModuleName));
+                        LLVM.AddAttributeAtIndex(nativeFunc, LLVMAttributeIndex.LLVMAttributeFunctionIndex, CreateImportAttr(Context, "wasm-import-name", realMethodName));
                     }
                 }
             }
