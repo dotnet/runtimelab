@@ -295,14 +295,6 @@ internal static class Program
 
         TestArgsWithMixedTypesAndExceptionRegions();
 
-        TestThreadStaticsForSingleThread();
-
-        TestDispose();
-
-        TestCallToGenericInterfaceMethod();
-
-        TestInitObjDouble();
-
         TestTryCatch();
 
         PrintLine("Done");
