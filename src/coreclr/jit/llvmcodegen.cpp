@@ -1239,7 +1239,7 @@ void Llvm::buildCnsInt(GenTree* node)
             {
                 const char* symbolName = GetMangledSymbolName((void*)(node->AsIntCon()->IconValue()));
                 AddCodeReloc((void*)node->AsIntCon()->IconValue());
-                mapGenTreeToValue(node, _builder.CreateLoad(Type::getInt8PtrTy(_llvmContext),
+                mapGenTreeToValue(node, _builder.CreateLoad(llvm::PointerType::getUnqual(_llvmContext),
                                                             getOrCreateExternalSymbol(symbolName)));
             }
             else
