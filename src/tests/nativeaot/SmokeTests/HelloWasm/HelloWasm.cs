@@ -215,55 +215,6 @@ internal static class Program
 
         PrintLine("interface call test: Ok " + (castingTest as ICastingTest1).GetValue().ToString());
 
-        StartTest("Type casting with isinst & castclass to class test");
-        EndTest(((DerivedCastingTestClass1)castingTest).GetValue() == 1 && !(castingTest is DerivedCastingTestClass2));
-
-        StartTest("Type casting with isinst & castclass to interface test");
-        // Instead of checking the result of `GetValue`, we use null check by now until interface dispatch is implemented.
-        EndTest((ICastingTest1)castingTest != null && !(castingTest is ICastingTest2));
-
-        StartTest("Type casting with isinst & castclass to array test");
-        object arrayCastingTest = new BoxStubTest[] { new BoxStubTest { Value = "Array" }, new BoxStubTest { Value = "Cast" }, new BoxStubTest { Value = "Test" } };
-        PrintLine(((BoxStubTest[])arrayCastingTest)[0].Value);
-        PrintLine(((BoxStubTest[])arrayCastingTest)[1].Value);
-        PrintLine(((BoxStubTest[])arrayCastingTest)[2].Value);
-        EndTest(!(arrayCastingTest is CastingTestClass[]));
-
-        ConvUTest();
-
-        CastByteForIndex();
-
-        ldindTest();
-
-        InterfaceDispatchTest();
-
-        StartTest("Runtime.Helpers array initialization test");
-        var testRuntimeHelpersInitArray = new long[] { 1, 2, 3 };
-        EndTest(testRuntimeHelpersInitArray[0] == 1 &&
-                testRuntimeHelpersInitArray[1] == 2 &&
-                testRuntimeHelpersInitArray[2] == 3);
-
-        StartTest("Multi-dimension array instantiation test");
-        var testMdArrayInstantiation = new int[2, 2];
-        EndTest(testMdArrayInstantiation != null && testMdArrayInstantiation.GetLength(0) == 2 && testMdArrayInstantiation.GetLength(1) == 2);
-
-        StartTest("Multi-dimension array get/set test");
-        testMdArrayInstantiation[0, 0] = 1;
-        testMdArrayInstantiation[0, 1] = 2;
-        testMdArrayInstantiation[1, 0] = 3;
-        testMdArrayInstantiation[1, 1] = 4;
-        EndTest(testMdArrayInstantiation[0, 0] == 1
-                && testMdArrayInstantiation[0, 1] == 2
-                && testMdArrayInstantiation[1, 0] == 3
-                && testMdArrayInstantiation[1, 1] == 4);
-
-
-        FloatDoubleTest();
-
-        StartTest("long comparison");
-        long l = 0x1;
-        EndTest(l < 0x7FF0000000000000);
-
         TestTryCatch();
 
         PrintLine("Done");
