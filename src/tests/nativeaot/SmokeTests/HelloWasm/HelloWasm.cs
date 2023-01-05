@@ -215,6 +215,26 @@ internal static class Program
 
         PrintLine("interface call test: Ok " + (castingTest as ICastingTest1).GetValue().ToString());
 
+        StartTest("Type casting with isinst & castclass to class test");
+        EndTest(((DerivedCastingTestClass1)castingTest).GetValue() == 1 && !(castingTest is DerivedCastingTestClass2));
+
+        StartTest("Type casting with isinst & castclass to interface test");
+        // Instead of checking the result of `GetValue`, we use null check by now until interface dispatch is implemented.
+        EndTest((ICastingTest1)castingTest != null && !(castingTest is ICastingTest2));
+
+        StartTest("Type casting with isinst & castclass to array test");
+        object arrayCastingTest = new BoxStubTest[] { new BoxStubTest { Value = "Array" }, new BoxStubTest { Value = "Cast" }, new BoxStubTest { Value = "Test" } };
+        PrintLine(((BoxStubTest[])arrayCastingTest)[0].Value);
+        PrintLine(((BoxStubTest[])arrayCastingTest)[1].Value);
+        PrintLine(((BoxStubTest[])arrayCastingTest)[2].Value);
+        EndTest(!(arrayCastingTest is CastingTestClass[]));
+
+        ConvUTest();
+
+        CastByteForIndex();
+
+        ldindTest();
+
         InterfaceDispatchTest();
 
         StartTest("Runtime.Helpers array initialization test");
