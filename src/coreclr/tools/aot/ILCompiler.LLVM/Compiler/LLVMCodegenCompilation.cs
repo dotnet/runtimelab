@@ -163,10 +163,7 @@ namespace ILCompiler
                 
                 if (methodIL.GetExceptionRegions().Length == 0 && !_disableRyuJit)
                 {
-                    // S_P_CoreLib_System_Globalization_UmAlQuraCalendar___cctor
                     var mangledName = NodeFactory.NameMangler.GetMangledMethodName(method).ToString();
-                    // if (mangledName == "S_P_CoreLib_System_Globalization_UmAlQuraCalendar___cctor")
-                    // {
                     var sig = method.Signature;
                     corInfo.RegisterLlvmCallbacks((IntPtr)Unsafe.AsPointer(ref corInfo), _outputFile,
                         Module.Target,
@@ -181,8 +178,6 @@ namespace ILCompiler
                     ILImporter.GenerateRuntimeExportThunk(this, method, externFunc);
 
                     ryuJitMethodCount++;
-                    // }
-                    // else ILImporter.CompileMethod(this, methodCodeNodeNeedingCode);
                 }
                 else ILImporter.CompileMethod(this, methodCodeNodeNeedingCode);
             }

@@ -1722,8 +1722,7 @@ void Llvm::storeObjAtAddress(Value* baseAddress, Value* data, StructDesc* struct
     unsigned llvmStructSize = data->getType()->getPrimitiveSizeInBits() / BITS_PER_BYTE;
     if (structDesc->hasSignificantPadding() && llvmStructSize > bytesStored)
     {
-        Value* srcAddress =
-            _builder.CreateGEP(Type::getInt8Ty(_llvmContext), baseAddress, _builder.getInt32(bytesStored));
+        Value* srcAddress = gepOrAddr(baseAddress, bytesStored);
 
         buildMemCpy(baseAddress, bytesStored, llvmStructSize, srcAddress);
     }
