@@ -322,7 +322,7 @@ private:
     void emitDoNothingCall();
     void emitJumpToThrowHelper(Value* jumpCondValue, SpecialCodeKind throwKind);
     void emitNullCheckForIndir(GenTreeIndir* indir, Value* addrValue);
-    Value* emitOverflowLlvmIntrinsic(llvm::Intrinsic::ID intrinsicId, Value* op1Value, Value* op2Value);
+    Value* emitCheckedArithmeticOperation(llvm::Intrinsic::ID intrinsicId, Value* op1Value, Value* op2Value);
     Value* emitHelperCall(CorInfoHelpFunc helperFunc, ArrayRef<Value*> sigArgs = { });
     Value* emitCallOrInvoke(llvm::FunctionCallee callee, ArrayRef<Value*> args);
 

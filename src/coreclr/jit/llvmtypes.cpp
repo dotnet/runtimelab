@@ -312,7 +312,7 @@ void Llvm::addPaddingFields(unsigned paddingSize, std::vector<Type*>& llvmFields
 
 Type* Llvm::getPtrLlvmType()
 {
-    return Type::getInt8PtrTy(_llvmContext);
+    return llvm::PointerType::getUnqual(_llvmContext);
 }
 
 Type* Llvm::getIntPtrLlvmType()

@@ -469,7 +469,7 @@ void Llvm::fillPhis()
     //    directly.
     // 2. IR doesn't insert inputs for different outgoing edges from the same block. For conditional branches,
     //    we simply don't generate the degenerate case. For switches, we compensate for this here, by inserting
-    //    "duplicate" entries into PHIs in case the count of incodimg LLVM edges did not match the count of IR
+    //    "duplicate" entries into PHIs in case the count of incoming LLVM edges did not match the count of IR
     //    entries. This is simpler to do here than in SSA builder because SSA builder uses successor iterators
     //    which explicitly filter out duplicates; creating those that do not would be an intrusive change. This
     //    can (should) be reconsidered this once/if we are integrated directly into upstream.
@@ -955,7 +955,7 @@ void Llvm::buildAdd(GenTreeOp* node)
         {
             llvm::Intrinsic::ID intrinsicId =
                 node->IsUnsigned() ? llvm::Intrinsic::uadd_with_overflow : llvm::Intrinsic::sadd_with_overflow;
-            addValue = emitOverflowLlvmIntrinsic(intrinsicId, op1Value, op2Value);
+            addValue = emitCheckedArithmeticOperation(intrinsicId, op1Value, op2Value);
         }
         else
         {
@@ -1000,7 +1000,7 @@ void Llvm::buildSub(GenTreeOp* node)
         {
             llvm::Intrinsic::ID intrinsicId =
                 node->IsUnsigned() ? llvm::Intrinsic::usub_with_overflow: llvm::Intrinsic::ssub_with_overflow;
-            subValue = emitOverflowLlvmIntrinsic(intrinsicId, op1Value, op2Value);
+            subValue = emitCheckedArithmeticOperation(intrinsicId, op1Value, op2Value);
         }
         else
         {
@@ -1681,7 +1681,7 @@ void Llvm::buildBinaryOperation(GenTree* node)
             {
                 llvm::Intrinsic::ID intrinsicId =
                     node->IsUnsigned() ? llvm::Intrinsic::umul_with_overflow : llvm::Intrinsic::smul_with_overflow;
-                result = emitOverflowLlvmIntrinsic(intrinsicId, op1Value, op2Value);
+                result = emitCheckedArithmeticOperation(intrinsicId, op1Value, op2Value);
             }
             else
             {
@@ -1994,7 +1994,7 @@ void Llvm::emitNullCheckForIndir(GenTreeIndir* indir, Value* addrValue)
     }
 }
 
-Value* Llvm::emitOverflowLlvmIntrinsic(llvm::Intrinsic::ID intrinsicId, Value* op1Value, Value* op2Value)
+Value* Llvm::emitCheckedArithmeticOperation(llvm::Intrinsic::ID intrinsicId, Value* op1Value, Value* op2Value)
 {
     assert(op1Value->getType()->isIntegerTy() && op2Value->getType()->isIntegerTy());
 
