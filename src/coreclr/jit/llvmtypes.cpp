@@ -256,11 +256,7 @@ Type* Llvm::getLlvmTypeForCorInfoType(CorInfoType corInfoType, CORINFO_CLASS_HAN
     switch (corInfoType)
     {
         case CORINFO_TYPE_PTR:
-            if (classHnd == NO_CLASS_HANDLE)
-            {
-                return Type::getInt8Ty(_llvmContext)->getPointerTo();
-            }
-            return getLlvmTypeForParameterType(classHnd)->getPointerTo();
+            return Type::getInt8Ty(_llvmContext)->getPointerTo();
 
         case CORINFO_TYPE_VALUECLASS:
             return getLlvmTypeForStruct(classHnd);
@@ -268,22 +264,6 @@ Type* Llvm::getLlvmTypeForCorInfoType(CorInfoType corInfoType, CORINFO_CLASS_HAN
         default:
             return getLlvmTypeForVarType(JITtype2varType(corInfoType));
     }
-}
-
-//------------------------------------------------------------------------
-// Returns the VM defined TypeDesc.GetParameterType() for the given type
-// Intended for pointers to generate the appropriate LLVM pointer type
-// E.g. "[S.P.CoreLib]Internal.Runtime.MethodTable"*
-//
-Type* Llvm::getLlvmTypeForParameterType(CORINFO_CLASS_HANDLE classHnd)
-{
-    CORINFO_CLASS_HANDLE innerParameterHandle;
-    CorInfoType parameterCorInfoType = strip(GetParameterType(classHnd, &innerParameterHandle));
-    if (parameterCorInfoType == CorInfoType::CORINFO_TYPE_VOID)
-    {
-        return Type::getInt8Ty(_llvmContext); // LLVM doesn't allow void*
-    }
-    return getLlvmTypeForCorInfoType(parameterCorInfoType, innerParameterHandle);
 }
 
 unsigned Llvm::getElementSize(CORINFO_CLASS_HANDLE classHandle, CorInfoType corInfoType)

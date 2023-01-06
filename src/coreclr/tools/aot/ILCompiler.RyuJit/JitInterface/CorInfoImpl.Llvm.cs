@@ -238,57 +238,6 @@ namespace Internal.JitInterface
         }
 
         [UnmanagedCallersOnly]
-        public static CorInfoTypeWithMod getArgTypeIncludingParameterized(IntPtr thisHandle, CORINFO_SIG_INFO* sig, CORINFO_ARG_LIST_STRUCT_* args, CORINFO_CLASS_STRUCT_** vcTypeRet)
-        {
-            var _this = GetThis(thisHandle);
-
-            int index = (int)args;
-            Object sigObj = _this.HandleToObject((IntPtr)sig->methodSignature);
-
-            MethodSignature methodSig = sigObj as MethodSignature;
-            if (methodSig != null)
-            {
-                TypeDesc type = methodSig[index];
-
-                CorInfoType corInfoType = _this.asCorInfoType(type, vcTypeRet);
-                if (type.IsParameterizedType)
-                {
-                    *vcTypeRet = _this.ObjectToHandle(type);
-                }
-
-                return (CorInfoTypeWithMod)corInfoType;
-            }
-            else
-            {
-                LocalVariableDefinition[] locals = (LocalVariableDefinition[])sigObj;
-                TypeDesc type = locals[index].Type;
-
-                CorInfoType corInfoType = _this.asCorInfoType(type, vcTypeRet);
-
-                return (CorInfoTypeWithMod)corInfoType | (locals[index].IsPinned ? CorInfoTypeWithMod.CORINFO_TYPE_MOD_PINNED : 0);
-            }
-        }
-
-        [UnmanagedCallersOnly]
-        public static CorInfoTypeWithMod getParameterType(IntPtr thisHandle, CORINFO_CLASS_STRUCT_* inputType, CORINFO_CLASS_STRUCT_** vcTypeParameter)
-        {
-            var _this = GetThis(thisHandle);
-
-            TypeDesc type = _this.HandleToObject(inputType);
-
-            *vcTypeParameter = null;
-            CorInfoType corInfoType = CorInfoType.CORINFO_TYPE_VOID;
-            if (type.IsParameterizedType)
-            {
-                TypeDesc parameterType = type.GetParameterType();
-                *vcTypeParameter = _this.ObjectToHandle(parameterType);
-                corInfoType = _this.asCorInfoType(parameterType, vcTypeParameter);
-            }
-
-            return (CorInfoTypeWithMod)corInfoType;
-        }
-
-        [UnmanagedCallersOnly]
         public static uint getInstanceFieldAlignment(IntPtr thisHandle, CORINFO_CLASS_STRUCT_* cls)
         {
             var _this = GetThis(thisHandle);
@@ -371,8 +320,6 @@ namespace Internal.JitInterface
             GetOffsetLineNumber,
             StructIsWrappedPrimitive,
             PadOffset,
-            GetArgTypeIncludingParameterized,
-            GetParameterType,
             GetTypeDescriptor,
             GetInstanceFieldAlignment,
             Count
@@ -394,8 +341,6 @@ namespace Internal.JitInterface
             callbacks[(int)EEApiId.GetOffsetLineNumber] = (delegate* unmanaged<IntPtr, uint, uint>)&getOffsetLineNumber;
             callbacks[(int)EEApiId.StructIsWrappedPrimitive] = (delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, CorInfoType, uint>)&structIsWrappedPrimitive;
             callbacks[(int)EEApiId.PadOffset] = (delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, uint, uint>)&padOffset;
-            callbacks[(int)EEApiId.GetArgTypeIncludingParameterized] = (delegate* unmanaged<IntPtr, CORINFO_SIG_INFO*, CORINFO_ARG_LIST_STRUCT_*, CORINFO_CLASS_STRUCT_**, CorInfoTypeWithMod>)&getArgTypeIncludingParameterized;
-            callbacks[(int)EEApiId.GetParameterType] = (delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, CORINFO_CLASS_STRUCT_**, CorInfoTypeWithMod>)&getParameterType;
             callbacks[(int)EEApiId.GetTypeDescriptor] = (delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, TypeDescriptor>)&getTypeDescriptor;
             callbacks[(int)EEApiId.GetInstanceFieldAlignment] = (delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, uint>)&getInstanceFieldAlignment;
             callbacks[(int)EEApiId.Count] = (void*)0x1234;

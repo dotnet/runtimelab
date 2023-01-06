@@ -190,7 +190,7 @@ void Llvm::populateLlvmArgNums()
     for (unsigned int i = 0; i < _sigInfo.numArgs; i++, sigArgs = _info.compCompHnd->getArgNext(sigArgs))
     {
         CORINFO_CLASS_HANDLE classHnd;
-        CorInfoType          corInfoType = getCorInfoTypeForArg(&_sigInfo, sigArgs, &classHnd);
+        CorInfoType          corInfoType = strip(_info.compCompHnd->getArgType(&_sigInfo, sigArgs, &classHnd));
         if (canStoreArgOnLlvmStack(_compiler, corInfoType, classHnd))
         {
             LclVarDsc* varDsc = _compiler->lvaGetDesc(i + firstCorInfoArgLocalNum);
@@ -772,7 +772,7 @@ void Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
             // Is this an in-signature argument?
             if (isSigArg)
             {
-                corInfoType = getCorInfoTypeForArg(sigInfo, sigArgs, &clsHnd);
+                corInfoType = strip(_info.compCompHnd->getArgType(sigInfo, sigArgs, &clsHnd));
             }
             else // Not-in-sig arguments. We need to handle these specially.
             {

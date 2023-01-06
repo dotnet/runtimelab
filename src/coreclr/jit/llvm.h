@@ -170,7 +170,6 @@ private:
 
     GCInfo* getGCInfo();
 
-    CorInfoType getCorInfoTypeForArg(CORINFO_SIG_INFO* sigInfo, CORINFO_ARG_LIST_HANDLE& arg, CORINFO_CLASS_HANDLE* clsHnd);
     static CorInfoType toCorInfoType(var_types varType);
 
     static bool needsReturnStackSlot(Compiler* compiler, CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd);
@@ -197,8 +196,6 @@ private:
     uint32_t GetOffsetLineNumber(unsigned ilOffset);
     bool StructIsWrappedPrimitive(CORINFO_CLASS_HANDLE typeHandle, CorInfoType corInfoType);
     uint32_t PadOffset(CORINFO_CLASS_HANDLE typeHandle, unsigned atOffset);
-    CorInfoTypeWithMod GetArgTypeIncludingParameterized(CORINFO_SIG_INFO* sigInfo, CORINFO_ARG_LIST_HANDLE arg, CORINFO_CLASS_HANDLE* pTypeHandle);
-    CorInfoTypeWithMod GetParameterType(CORINFO_CLASS_HANDLE typeHandle, CORINFO_CLASS_HANDLE* pInnerParameterTypeHandle);
     TypeDescriptor GetTypeDescriptor(CORINFO_CLASS_HANDLE typeHandle);
     uint32_t GetInstanceFieldAlignment(CORINFO_CLASS_HANDLE fieldTypeHandle);
 
@@ -213,7 +210,6 @@ private:
     Type* getLlvmTypeForVarType(var_types type);
     Type* getLlvmTypeForLclVar(LclVarDsc* varDsc);
     Type* getLlvmTypeForCorInfoType(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd);
-    Type* getLlvmTypeForParameterType(CORINFO_CLASS_HANDLE classHnd);
 
     unsigned getElementSize(CORINFO_CLASS_HANDLE fieldClassHandle, CorInfoType corInfoType);
     void addPaddingFields(unsigned paddingSize, std::vector<Type*>& llvmFields);
