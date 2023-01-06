@@ -485,7 +485,7 @@
           DependsOnTargets="ComputeResolvedFilesToPublishList;LinkNative" />
 
   <!-- TODO-LLVM: investigate refactoring in light of ILC project supporting cross-targeting. -->
-  <Target Name="NativeAotWasmCopyDependencyToCoreRoot" BeforeTargets="IlcCompile" Condition="'$(TestBuildMode)' == 'nativeaot' and '$(TargetArchitecture)' == 'wasm'">
+  <Target Name="SetIlcToolsPathForCrossTargeting" BeforeTargets="IlcCompile" Condition="'$(TestBuildMode)' == 'nativeaot' and '$(TargetArchitecture)' == 'wasm'">
 
     <!-- Set IlcToolsPath for cross compilation -->
     <PropertyGroup>
