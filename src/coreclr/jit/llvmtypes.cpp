@@ -309,3 +309,17 @@ void Llvm::addPaddingFields(unsigned paddingSize, std::vector<Type*>& llvmFields
         llvmFields.push_back(Type::getInt8Ty(_llvmContext));
     }
 }
+
+Type* Llvm::getPtrLlvmType()
+{
+    return llvm::PointerType::getUnqual(_llvmContext);
+}
+
+Type* Llvm::getIntPtrLlvmType()
+{
+#ifdef TARGET_64BIT
+    return Type::getInt64Ty(_llvmContext);
+#else
+    return Type::getInt32Ty(_llvmContext);
+#endif
+}

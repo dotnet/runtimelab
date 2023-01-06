@@ -462,16 +462,79 @@ void Llvm::generateEHDispatch()
 
 void Llvm::fillPhis()
 {
+    // LLVM requires PHI inputs to match the list of predecessors exactly, which is different from IR in two ways:
+    //
+    // 1. IR doesn't insert inputs for the same definition coming from multiple blocks (it picks the first block
+    //    renamer encounters as the "gtPredBB" one). We deal with this by disabling this behavior in SSA builder
+    //    directly.
+    // 2. IR doesn't insert inputs for different outgoing edges from the same block. For conditional branches,
+    //    we simply don't generate the degenerate case. For switches, we compensate for this here, by inserting
+    //    "duplicate" entries into PHIs in case the count of incoming LLVM edges did not match the count of IR
+    //    entries. This is simpler to do here than in SSA builder because SSA builder uses successor iterators
+    //    which explicitly filter out duplicates; creating those that do not would be an intrusive change. This
+    //    can (should) be reconsidered this once/if we are integrated directly into upstream.
+    //
+    struct PredEdge
+    {
+        BasicBlock* PredBlock;
+        BasicBlock* SuccBlock;
+
+        static bool Equals(const PredEdge& left, const PredEdge& right)
+        {
+            return (left.PredBlock == right.PredBlock) && (left.SuccBlock == right.SuccBlock);
+        }
+
+        static unsigned GetHashCode(const PredEdge& edge)
+        {
+            return edge.PredBlock->bbNum ^ edge.SuccBlock->bbNum;
+        }
+    };
+
+    SmallHashTable<PredEdge, unsigned, 8, PredEdge> predCountMap(_compiler->getAllocator(CMK_Codegen));
+    auto getPhiPredCount = [&](BasicBlock* predBlock, BasicBlock* phiBlock) -> unsigned {
+        if (predBlock->bbJumpKind != BBJ_SWITCH)
+        {
+            return 1;
+        }
+
+        unsigned predCount = 0;
+        if (!predCountMap.TryGetValue({predBlock, phiBlock}, &predCount))
+        {
+            // Eagerly memoize all of the switch edge counts to avoid quadratic behavior.
+            for (flowList* edge : phiBlock->PredEdges())
+            {
+                BasicBlock* edgePredBlock = edge->getBlock();
+                if (edgePredBlock->bbJumpKind == BBJ_SWITCH)
+                {
+                    predCountMap.AddOrUpdate({predBlock, phiBlock}, edge->flDupCount);
+
+                    if (edgePredBlock == predBlock)
+                    {
+                        predCount = edge->flDupCount;
+                    }
+                }
+            }
+        }
+
+        assert(predCount != 0);
+        return predCount;
+    };
+
     for (PhiPair phiPair : _phiPairs)
     {
         llvm::PHINode* llvmPhiNode = phiPair.llvmPhiNode;
+        GenTreePhi* phiNode = phiPair.irPhiNode;
 
-        for (GenTreePhi::Use& use : phiPair.irPhiNode->Uses())
+        GenTreeLclVar* phiStore = phiNode->gtNext->AsLclVar();
+        unsigned lclNum = phiStore->GetLclNum();
+        BasicBlock* phiBlock = _compiler->lvaGetDesc(lclNum)->GetPerSsaData(phiStore->GetSsaNum())->GetBlock();
+
+        for (GenTreePhi::Use& use : phiNode->Uses())
         {
             GenTreePhiArg* phiArg = use.GetNode()->AsPhiArg();
-            unsigned lclNum = phiArg->GetLclNum();
             unsigned ssaNum = phiArg->GetSsaNum();
-            llvm::BasicBlock* llvmPredBlock = getLastLlvmBlockForBlock(phiArg->gtPredBB);
+            BasicBlock* predBlock = phiArg->gtPredBB;
+            llvm::BasicBlock* llvmPredBlock = getLastLlvmBlockForBlock(predBlock);
 
             Value* localPhiArg = _localsMap[{lclNum, ssaNum}];
             Value* phiRealArgValue;
@@ -490,7 +553,11 @@ void Llvm::fillPhis()
                 phiRealArgValue = localPhiArg;
             }
 
-            llvmPhiNode->addIncoming(phiRealArgValue, llvmPredBlock);
+            unsigned llvmPredCount = getPhiPredCount(predBlock, phiBlock);
+            for (unsigned i = 0; i < llvmPredCount; i++)
+            {
+                llvmPhiNode->addIncoming(phiRealArgValue, llvmPredBlock);
+            }
         }
     }
 }
@@ -519,24 +586,12 @@ Value* Llvm::getGenTreeValue(GenTree* op)
 //    targetLlvmType - the LLVM type through which the user uses "node"
 //
 // Return Value:
-//    The normalized value, of "targetLlvmType" type. If the latter wasn't
-//    provided, the raw value is returned, except for small types, which
-//    are still extended to INT.
+//    The normalized value, of "targetLlvmType" type.
 //
 Value* Llvm::consumeValue(GenTree* node, Type* targetLlvmType)
 {
     Value* nodeValue = getGenTreeValue(node);
     Value* finalValue = nodeValue;
-
-    if (targetLlvmType == nullptr)
-    {
-        if (!nodeValue->getType()->isIntegerTy())
-        {
-            return finalValue;
-        }
-
-        targetLlvmType = getLlvmTypeForVarType(genActualType(node));
-    }
 
     if (nodeValue->getType() != targetLlvmType)
     {
@@ -635,11 +690,18 @@ void Llvm::visitNode(GenTree* node)
         case GT_ADD:
             buildAdd(node->AsOp());
             break;
+        case GT_SUB:
+            buildSub(node->AsOp());
+            break;
         case GT_DIV:
         case GT_MOD:
         case GT_UDIV:
         case GT_UMOD:
             buildDivMod(node);
+            break;
+        case GT_ROL:
+        case GT_ROR:
+            buildRotate(node->AsOp());
             break;
         case GT_CALL:
             buildCall(node->AsCall());
@@ -667,7 +729,10 @@ void Llvm::visitNode(GenTree* node)
             buildInd(node->AsIndir());
             break;
         case GT_JTRUE:
-            buildJTrue(node, getGenTreeValue(node->AsOp()->gtOp1));
+            buildJTrue(node);
+            break;
+        case GT_SWITCH:
+            buildSwitch(node->AsUnOp());
             break;
         case GT_LCL_FLD:
             buildLocalField(node->AsLclFld());
@@ -732,6 +797,7 @@ void Llvm::visitNode(GenTree* node)
         case GT_STORE_OBJ:
             buildStoreBlk(node->AsBlk());
             break;
+        case GT_MUL:
         case GT_AND:
         case GT_OR:
         case GT_XOR:
@@ -856,28 +922,93 @@ void Llvm::buildLocalVarAddr(GenTreeLclVarCommon* lclAddr)
 
 void Llvm::buildAdd(GenTreeOp* node)
 {
-    Value* op1Value = consumeValue(node->gtGetOp1());
-    Value* op2Value = consumeValue(node->gtGetOp2());
-    Type* op1Type = op1Value->getType();
-    Type* op2Type = op2Value->getType();
+    GenTree* op1 = node->gtGetOp1();
+    GenTree* op2 = node->gtGetOp2();
+    Type* op1RawType = getGenTreeValue(op1)->getType();
+    Type* op2RawType = getGenTreeValue(op2)->getType();
 
     Value* addValue;
-    if (op1Type->isPointerTy() && op2Type->isIntegerTy())
+    if (!node->gtOverflow() && (op1RawType->isPointerTy() || op2RawType->isPointerTy()))
     {
+        Value* baseValue = consumeValue(op1RawType->isPointerTy() ? op1 : op2, getPtrLlvmType());
+        Value* offsetValue = consumeValue(op1RawType->isPointerTy() ? op2 : op1, getIntPtrLlvmType());
+
         // GEPs scale indices, use type i8 makes them equivalent to the raw offsets we have in IR
-        addValue = _builder.CreateGEP(Type::getInt8Ty(_llvmContext), op1Value, op2Value);
-    }
-    else if (op1Type->isIntegerTy() && (op1Type == op2Type))
-    {
-        addValue = _builder.CreateAdd(op1Value, op2Value);
+        addValue = _builder.CreateGEP(Type::getInt8Ty(_llvmContext), baseValue, offsetValue);
     }
     else
     {
-        // unsupported add type combination
-        failFunctionCompilation();
+        Type* addLlvmType = getLlvmTypeForVarType(node->TypeGet());
+        if (addLlvmType->isPointerTy())
+        {
+            // ADD<byref>(native int, native int) is valid IR.
+            addLlvmType = getIntPtrLlvmType();
+        }
+        Value* op1Value = consumeValue(op1, addLlvmType);
+        Value* op2Value = consumeValue(op2, addLlvmType);
+
+        if (varTypeIsFloating(node))
+        {
+            addValue = _builder.CreateFAdd(op1Value, op2Value);
+        }
+        else if (node->gtOverflow())
+        {
+            llvm::Intrinsic::ID intrinsicId =
+                node->IsUnsigned() ? llvm::Intrinsic::uadd_with_overflow : llvm::Intrinsic::sadd_with_overflow;
+            addValue = emitCheckedArithmeticOperation(intrinsicId, op1Value, op2Value);
+        }
+        else
+        {
+            addValue = _builder.CreateAdd(op1Value, op2Value);
+        }
     }
 
     mapGenTreeToValue(node, addValue);
+}
+
+void Llvm::buildSub(GenTreeOp* node)
+{
+    GenTree* op1 = node->gtGetOp1();
+    GenTree* op2 = node->gtGetOp2();
+
+    Value* subValue;
+    if (!node->gtOverflow() && getGenTreeValue(op1)->getType()->isPointerTy())
+    {
+        Value* baseValue = consumeValue(op1, getPtrLlvmType());
+        Value* subOffsetValue = consumeValue(op2, getIntPtrLlvmType());
+        Value* addOffsetValue = _builder.CreateNeg(subOffsetValue);
+
+        // GEPs scale indices, use type i8 makes them equivalent to the raw offsets we have in IR
+        subValue = _builder.CreateGEP(Type::getInt8Ty(_llvmContext), baseValue, addOffsetValue);
+    }
+    else
+    {
+        Type* subLlvmType = getLlvmTypeForVarType(node->TypeGet());
+        if (subLlvmType->isPointerTy())
+        {
+            // SUB<byref>(native int, ...) is valid (if rare) IR.
+            subLlvmType = getIntPtrLlvmType();
+        }
+        Value* op1Value = consumeValue(op1, subLlvmType);
+        Value* op2Value = consumeValue(op2, subLlvmType);
+
+        if (varTypeIsFloating(node))
+        {
+            subValue = _builder.CreateFSub(op1Value, op2Value);
+        }
+        else if (node->gtOverflow())
+        {
+            llvm::Intrinsic::ID intrinsicId =
+                node->IsUnsigned() ? llvm::Intrinsic::usub_with_overflow: llvm::Intrinsic::ssub_with_overflow;
+            subValue = emitCheckedArithmeticOperation(intrinsicId, op1Value, op2Value);
+        }
+        else
+        {
+            subValue = _builder.CreateSub(op1Value, op2Value);
+        }
+    }
+
+    mapGenTreeToValue(node, subValue);
 }
 
 void Llvm::buildDivMod(GenTree* node)
@@ -937,6 +1068,26 @@ void Llvm::buildDivMod(GenTree* node)
     }
 
     mapGenTreeToValue(node, divModValue);
+}
+
+void Llvm::buildRotate(GenTreeOp* node)
+{
+    assert(node->OperIs(GT_ROL, GT_ROR));
+
+    Type* rotateLlvmType = getLlvmTypeForVarType(node->TypeGet());
+    Value* srcValue = consumeValue(node->gtGetOp1(), rotateLlvmType);
+    Value* indexValue = consumeValue(node->gtGetOp2(), Type::getInt32Ty(_llvmContext));
+    if (indexValue->getType() != rotateLlvmType)
+    {
+        // The intrinsics require all operands have the same type.
+        indexValue = _builder.CreateZExt(indexValue, rotateLlvmType);
+    }
+
+    // "Funnel shifts" are the recommended way to implement rotates in LLVM.
+    llvm::Intrinsic::ID intrinsicId = node->OperIs(GT_ROL) ? llvm::Intrinsic::fshl : llvm::Intrinsic::fshr;
+    Value* rotateValue = _builder.CreateIntrinsic(intrinsicId, rotateLlvmType, {srcValue, srcValue, indexValue});
+
+    mapGenTreeToValue(node, rotateValue);
 }
 
 void Llvm::buildCast(GenTreeCast* cast)
@@ -1193,25 +1344,19 @@ void Llvm::buildCmp(GenTreeOp* node)
     }
 
     // Comparing refs and ints is valid LIR, but not LLVM so handle that case by converting the int to a ref.
-    Value* op1Value = consumeValue(node->gtGetOp1());
-    Value* op2Value = consumeValue(node->gtGetOp2());
-    Type* op1Type = op1Value->getType();
-    Type* op2Type = op2Value->getType();
-    if (op1Type != op2Type)
-    {
-        assert((op1Type->isPointerTy() && op2Type->isIntegerTy()) ||
-               (op1Type->isIntegerTy() && op2Type->isPointerTy()));
-        if (op1Type->isPointerTy())
-        {
-            op2Value = _builder.CreateIntToPtr(op2Value, op1Type);
-        }
-        else
-        {
-            op1Value = _builder.CreateIntToPtr(op1Value, op2Type);
-        }
-    }
+    GenTree* op1 = node->gtGetOp1();
+    GenTree* op2 = node->gtGetOp2();
+    Type* op1RawType = getGenTreeValue(op1)->getType();
+    Type* op2RawType = getGenTreeValue(op2)->getType();
+    Type* cmpLlvmType =
+        (op1RawType->isPointerTy() && (op1RawType == op2RawType)) ? op1RawType
+                                                                  : getLlvmTypeForVarType(genActualType(op1));
 
-    mapGenTreeToValue(node, _builder.CreateCmp(predicate, op1Value, op2Value));
+    Value* op1Value = consumeValue(op1, cmpLlvmType);
+    Value* op2Value = consumeValue(op2, cmpLlvmType);
+    Value* cmpValue = _builder.CreateCmp(predicate, op1Value, op2Value);
+
+    mapGenTreeToValue(node, cmpValue);
 }
 
 void Llvm::buildCnsDouble(GenTreeDblCon* node)
@@ -1522,23 +1667,40 @@ void Llvm::buildBinaryOperation(GenTree* node)
 {
     Value* result;
     Type*  targetType = getLlvmTypeForVarType(node->TypeGet());
-    Value* op1 = consumeValue(node->gtGetOp1(), targetType);
-    Value* op2 = consumeValue(node->gtGetOp2(), targetType);
+    Value* op1Value = consumeValue(node->gtGetOp1(), targetType);
+    Value* op2Value = consumeValue(node->gtGetOp2(), targetType);
 
     switch (node->OperGet())
     {
+        case GT_MUL:
+            if (varTypeIsFloating(node))
+            {
+                result = _builder.CreateFMul(op1Value, op2Value);
+            }
+            else if (node->gtOverflow())
+            {
+                llvm::Intrinsic::ID intrinsicId =
+                    node->IsUnsigned() ? llvm::Intrinsic::umul_with_overflow : llvm::Intrinsic::smul_with_overflow;
+                result = emitCheckedArithmeticOperation(intrinsicId, op1Value, op2Value);
+            }
+            else
+            {
+                result = _builder.CreateMul(op1Value, op2Value);
+            }
+            break;
         case GT_AND:
-            result = _builder.CreateAnd(op1, op2, "and");
+            result = _builder.CreateAnd(op1Value, op2Value);
             break;
         case GT_OR:
-            result = _builder.CreateOr(op1, op2, "or");
+            result = _builder.CreateOr(op1Value, op2Value);
             break;
         case GT_XOR:
-            result = _builder.CreateXor(op1, op2, "xor");
+            result = _builder.CreateXor(op1Value, op2Value);
             break;
         default:
-            failFunctionCompilation();  // TODO-LLVM: other binary operaions
+            unreached();
     }
+
     mapGenTreeToValue(node, result);
 }
 
@@ -1609,9 +1771,52 @@ void Llvm::buildCatchArg(GenTree* node)
     mapGenTreeToValue(node, excObjValue);
 }
 
-void Llvm::buildJTrue(GenTree* node, Value* opValue)
+void Llvm::buildJTrue(GenTree* node)
 {
-    _builder.CreateCondBr(opValue, getFirstLlvmBlockForBlock(_currentBlock->bbJumpDest), getFirstLlvmBlockForBlock(_currentBlock->bbNext));
+    Value* condValue = getGenTreeValue(node->gtGetOp1());
+    assert(condValue->getType() == Type::getInt1Ty(_llvmContext)); // We only expect relops to appear as JTRUE operands.
+
+    BasicBlock* srcBlock = CurrentBlock();
+    llvm::BasicBlock* jmpLlvmBlock = getFirstLlvmBlockForBlock(srcBlock->bbJumpDest);
+    llvm::BasicBlock* nextLlvmBlock = getFirstLlvmBlockForBlock(srcBlock->bbNext);
+
+    // Handle the degenerate case specially. PHI code depends on us not generating duplicate outgoing edges here.
+    if (jmpLlvmBlock == nextLlvmBlock)
+    {
+        _builder.CreateBr(nextLlvmBlock);
+    }
+    else
+    {
+        _builder.CreateCondBr(condValue, jmpLlvmBlock, nextLlvmBlock);
+    }
+}
+
+void Llvm::buildSwitch(GenTreeUnOp* switchNode)
+{
+    // While in IL "switch" can only take INTs, RyuJit has historically allowed native ints as well.
+    // We follow suit and allow any value LLVM would.
+    GenTree* destOp = switchNode->gtGetOp1();
+    llvm::IntegerType* switchLlvmType = llvm::cast<llvm::IntegerType>(getLlvmTypeForVarType(genActualType(destOp)));
+    Value* destValue = consumeValue(destOp, switchLlvmType);
+
+    BasicBlock* srcBlock = CurrentBlock();
+    assert(srcBlock->bbJumpKind == BBJ_SWITCH);
+
+    BBswtDesc* switchDesc = srcBlock->bbJumpSwt;
+    unsigned casesCount = switchDesc->bbsCount - 1;
+    noway_assert(switchDesc->bbsHasDefault);
+
+    BasicBlock* defaultDestBlock = switchDesc->getDefault();
+    llvm::BasicBlock* defaultDestLlvmBlock = getFirstLlvmBlockForBlock(defaultDestBlock);
+    llvm::SwitchInst* switchInst = _builder.CreateSwitch(destValue, defaultDestLlvmBlock, casesCount);
+
+    for (unsigned destIndex = 0; destIndex < casesCount; destIndex++)
+    {
+        llvm::ConstantInt* destIndexValue = llvm::ConstantInt::get(switchLlvmType, destIndex);
+        llvm::BasicBlock* destLlvmBlock = getFirstLlvmBlockForBlock(switchDesc->bbsDstTab[destIndex]);
+
+        switchInst->addCase(destIndexValue, destLlvmBlock);
+    }
 }
 
 void Llvm::buildNullCheck(GenTreeIndir* nullCheckNode)
@@ -1787,6 +1992,17 @@ void Llvm::emitNullCheckForIndir(GenTreeIndir* indir, Value* addrValue)
         Value* isNullValue = _builder.CreateCmp(llvm::CmpInst::ICMP_EQ, addrValue, nullValue);
         emitJumpToThrowHelper(isNullValue, SCK_NULL_REF_EXCPN);
     }
+}
+
+Value* Llvm::emitCheckedArithmeticOperation(llvm::Intrinsic::ID intrinsicId, Value* op1Value, Value* op2Value)
+{
+    assert(op1Value->getType()->isIntegerTy() && op2Value->getType()->isIntegerTy());
+
+    Value* checkedValue = _builder.CreateIntrinsic(intrinsicId, op1Value->getType(), {op1Value, op2Value});
+    Value* isOverflowValue = _builder.CreateExtractValue(checkedValue, 1);
+    emitJumpToThrowHelper(isOverflowValue, SCK_OVERFLOW);
+
+    return _builder.CreateExtractValue(checkedValue, 0);
 }
 
 Value* Llvm::emitHelperCall(CorInfoHelpFunc helperFunc, ArrayRef<Value*> sigArgs)

@@ -218,6 +218,9 @@ private:
     unsigned getElementSize(CORINFO_CLASS_HANDLE fieldClassHandle, CorInfoType corInfoType);
     void addPaddingFields(unsigned paddingSize, std::vector<Type*>& llvmFields);
 
+    Type* getPtrLlvmType();
+    Type* getIntPtrLlvmType();
+
     // ================================================================================================================
     // |                                                   Lowering                                                   |
     // ================================================================================================================
@@ -285,7 +288,9 @@ private:
     void buildLocalField(GenTreeLclFld* lclFld);
     void buildLocalVarAddr(GenTreeLclVarCommon* lclVar);
     void buildAdd(GenTreeOp* node);
+    void buildSub(GenTreeOp* node);
     void buildDivMod(GenTree* node);
+    void buildRotate(GenTreeOp* node);
     void buildCast(GenTreeCast* cast);
     void buildLclHeap(GenTreeUnOp* lclHeap);
     void buildCmp(GenTreeOp* node);
@@ -303,7 +308,8 @@ private:
     void buildShift(GenTreeOp* node);
     void buildReturn(GenTree* node);
     void buildCatchArg(GenTree* node);
-    void buildJTrue(GenTree* node, Value* opValue);
+    void buildJTrue(GenTree* node);
+    void buildSwitch(GenTreeUnOp* switchNode);
     void buildNullCheck(GenTreeIndir* nullCheckNode);
     void buildBoundsCheck(GenTreeBoundsChk* boundsCheck);
 
@@ -316,6 +322,7 @@ private:
     void emitDoNothingCall();
     void emitJumpToThrowHelper(Value* jumpCondValue, SpecialCodeKind throwKind);
     void emitNullCheckForIndir(GenTreeIndir* indir, Value* addrValue);
+    Value* emitCheckedArithmeticOperation(llvm::Intrinsic::ID intrinsicId, Value* op1Value, Value* op2Value);
     Value* emitHelperCall(CorInfoHelpFunc helperFunc, ArrayRef<Value*> sigArgs = { });
     Value* emitCallOrInvoke(llvm::FunctionCallee callee, ArrayRef<Value*> args);
 
