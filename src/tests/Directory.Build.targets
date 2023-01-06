@@ -484,4 +484,32 @@
           Condition="'$(CLRTestTargetUnsupported)' != 'true' and '$(CLRTestKind)' == 'BuildAndRun'"
           DependsOnTargets="ComputeResolvedFilesToPublishList;LinkNative" />
 
+  <!-- When cross-compiling tests (such as is the case for Wasm), we depends on the host's ILC being built, and need to copy it to CORE_ROOT. -->
+  <!-- TODO-LLVM: investigate refactoring in light of ILC project supporting cross-targeting. -->
+  <Target Name="NativeAotWasmCopyDependencyToCoreRoot" BeforeTargets="BuildManagedTestGroup" Condition="'$(TestBuildMode)' == 'nativeaot' and '$(TargetArchitecture)' == 'wasm'">
+    <Message Text="Copy dependencies for Wasm Cross Compilation" />
+
+    <PropertyGroup>
+      <HostCoreCLRArtifactsPath>$([MSBuild]::NormalizeDirectory('$(RepoRoot)', 'artifacts', 'bin', 'coreclr', '$(HostOS).$(BuildArchitecture).$(CoreCLRConfiguration)'))</HostCoreCLRArtifactsPath>
+    </PropertyGroup>
+
+    <Error Condition="!Exists('$(HostCoreCLRArtifactsPath)')"
+           Text="'$(HostCoreCLRArtifactsPath)' does not exist. Subsets clr.jit, clr.wasmjit and clr.tools for $(HostOS) $(BuildArchitecture) in $(CoreCLRConfiguration) configuration must be built before building this project." />
+
+   <ItemGroup>
+      <AotCompilerCopyLocal Include="$(HostCoreCLRArtifactsPath)ilc/**/*" TargetDir="ilc/" />
+      <AotCompilerCopyLocal Include="$(HostCoreCLRArtifactsPath)build/**/*" TargetDir="build/" />
+    </ItemGroup>
+
+   <Copy
+      SourceFiles="@(AotCompilerCopyLocal)"
+      DestinationFiles="@(AotCompilerCopyLocal -> '$(CoreCLRArtifactsPath)/%(TargetDir)%(RecursiveDir)%(Filename)%(Extension)')"
+      SkipUnchangedFiles="$(SkipCopyUnchangedFiles)"
+      OverwriteReadOnlyFiles="$(OverwriteReadOnlyFiles)"
+      Retries="$(CopyRetryCount)"
+      RetryDelayMilliseconds="$(CopyRetryDelayMilliseconds)"
+      UseHardlinksIfPossible="$(CreateHardLinksForCopyFilesToOutputDirectoryIfPossible)">
+      <Output TaskParameter="DestinationFiles" ItemName="FileWrites" />
+    </Copy>
+  </Target>
 </Project>

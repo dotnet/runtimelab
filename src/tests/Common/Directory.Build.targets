@@ -171,25 +171,6 @@
       <RunTimeDependencyCopyLocal Include="$(CoreDisToolsLibrary)" Condition="$(CopyCoreDisToolsToCoreRoot)" />
     </ItemGroup>
 
-    <!-- When cross-compiling tests (such as is the case for Wasm), we depends on the host's ILC being built. -->
-    <!-- TODO-LLVM: investigate refactoring in light of ILC project supporting cross-targeting. -->
-    <PropertyGroup>
-      <HostCoreCLRArtifactsPath>$([MSBuild]::NormalizeDirectory('$(RepoRoot)', 'artifacts', 'bin', 'coreclr', '$(HostOS).$(BuildArchitecture).$(CoreCLRConfiguration)'))</HostCoreCLRArtifactsPath>
-    </PropertyGroup>
-
-    <Error Condition="!Exists('$(HostCoreCLRArtifactsPath)')"
-           Text="'$(HostCoreCLRArtifactsPath)' does not exist. Subsets clr.jit, clr.wasmjit and clr.tools for $(HostOS) $(BuildArchitecture) in $(CoreCLRConfiguration) configuration must be built before building this project." />
-
-    <ItemGroup Condition="'$(TestBuildMode)' == 'nativeaot'">
-      <AotCompilerCopyLocal Include="$(CoreCLRArtifactsPath)ilc/**/*" TargetDir="nativeaot/tools/" Condition="'$(TargetArchitecture)' != 'wasm'"/>
-      <AotCompilerCopyLocal Include="$(HostCoreCLRArtifactsPath)ilc/**/*" TargetDir="nativeaot/tools/" Condition="'$(TargetArchitecture)' == 'wasm'"/>
-      <AotCompilerCopyLocal Include="$(CoreCLRArtifactsPath)aotsdk/**/*" TargetDir="nativeaot/sdk/" />
-      <AotCompilerCopyLocal Include="$(CoreCLRArtifactsPath)build/**/*" TargetDir="nativeaot/build/" Condition="'$(TargetArchitecture)' != 'wasm'"/>
-      <AotCompilerCopyLocal Include="$(HostCoreCLRArtifactsPath)build/**/*" TargetDir="nativeaot/build/" Condition="'$(TargetArchitecture)' == 'wasm'"/>
-      <AotCompilerCopyLocal Include="$(TargetingPackPath)/*" TargetDir="nativeaot/framework/" />
-      <AotCompilerCopyLocal Include="@(RuntimeCopyLocalItems)" TargetDir="nativeaot/framework/" />
-    </ItemGroup>
-
     <ItemGroup Condition="'$(RuntimeFlavor)' == 'mono' and '$(IsDesktopOS)' == 'true' " >
       <RuntimeDependencyCopyLocal Include="$(MonoArtifactsPath)/libcoreclr$(LibSuffix)" TargetDir=""  />
       <RuntimeDependencyCopyLocal Include="$(MonoArtifactsPath)/libmono-component-*" TargetDir=""  />
