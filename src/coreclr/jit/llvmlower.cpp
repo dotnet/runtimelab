@@ -106,8 +106,6 @@ void Llvm::lowerLocals()
             if (varDsc->lvIsParam && !isLlvmParam)
             {
                 shadowStackParamCount++;
-                varDsc->lvIsParam = false;
-
                 shadowStackLocals.push_back(varDsc);
                 continue;
             }
@@ -214,20 +212,59 @@ void Llvm::assignShadowStackOffsets(std::vector<LclVarDsc*>& shadowStackLocals, 
                   [](const LclVarDsc* lhs, const LclVarDsc* rhs) { return lhs->lvRefCntWtd() > rhs->lvRefCntWtd(); });
     }
 
-    unsigned int offset = 0;
+    unsigned offset = 0;
+    auto assignOffset = [this, &offset](LclVarDsc* varDsc) {
+        if (varDsc->TypeGet() == TYP_BLK)
+        {
+            assert((varDsc->lvSize() % TARGET_POINTER_SIZE) == 0);
+
+            offset = roundUp(offset, TARGET_POINTER_SIZE);
+            varDsc->SetStackOffset(offset);
+            offset += varDsc->lvSize();
+        }
+        else
+        {
+            CorInfoType corInfoType = toCorInfoType(varDsc->TypeGet());
+            CORINFO_CLASS_HANDLE classHandle = varTypeIsStruct(varDsc) ? varDsc->GetStructHnd() : NO_CLASS_HANDLE;
+
+            offset = padOffset(corInfoType, classHandle, offset);
+            varDsc->SetStackOffset(offset);
+            offset = padNextOffset(corInfoType, classHandle, offset);
+        }
+
+        // We will use this as the indication that the local has a home on the shadow stack.
+        varDsc->SetRegNum(REG_STK);
+    };
+
+    // First, we process the parameters, since their offsets are fixed by the ABI. Then, we process the rest.
+    // Doing this ensures we don't count LLVM parameters live on the shadow stack as shadow parameters.
+    //
+    unsigned assignedShadowStackParamCount = 0;
     for (unsigned i = 0; i < shadowStackLocals.size(); i++)
     {
         LclVarDsc* varDsc = shadowStackLocals.at(i);
 
-        // We will use this as the indication that the local has a home on the shadow stack.
-        varDsc->SetRegNum(REG_STK);
+        if (varDsc->lvIsParam && (varDsc->lvLlvmArgNum == BAD_LLVM_ARG_NUM))
+        {
+            assignOffset(varDsc);
+            assignedShadowStackParamCount++;
+            varDsc->lvIsParam = false; // After lowering, "lvIsParam" <=> "is LLVM parameter".
 
-        CorInfoType corInfoType = toCorInfoType(varDsc->TypeGet());
-        CORINFO_CLASS_HANDLE classHandle = tryGetStructClassHandle(varDsc);
+            if (assignedShadowStackParamCount == shadowStackParamCount)
+            {
+                break;
+            }
+        }
+    }
 
-        offset = padOffset(corInfoType, classHandle, offset);
-        varDsc->SetStackOffset(offset);
-        offset = padNextOffset(corInfoType, classHandle, offset);
+    for (unsigned i = 0; i < shadowStackLocals.size(); i++)
+    {
+        LclVarDsc* varDsc = shadowStackLocals.at(i);
+
+        if (!isShadowFrameLocal(varDsc))
+        {
+            assignOffset(varDsc);
+        }
     }
 
     _shadowStackLocalsSize = AlignUp(offset, TARGET_POINTER_SIZE);
@@ -260,75 +297,96 @@ void Llvm::lowerBlocks()
 {
     for (BasicBlock* block : _compiler->Blocks())
     {
-        _currentBlock = block;
-        _currentRange = &LIR::AsRange(block);
+        lowerBlock(block);
+        block->bbFlags |= BBF_MARKED;
+    }
 
-        for (GenTree* node : CurrentRange())
+    // Lowering may insert out-of-line throw helper blocks that must themselves be lowered. We do not
+    // need a more complex "to a fixed point" loop here because lowering these throw helpers will not
+    // create new blocks.
+    //
+    for (BasicBlock* block : _compiler->Blocks())
+    {
+        if ((block->bbFlags & BBF_MARKED) == 0)
         {
-            switch (node->OperGet())
-            {
-                case GT_LCL_VAR:
-                case GT_LCL_FLD:
-                case GT_LCL_VAR_ADDR:
-                case GT_LCL_FLD_ADDR:
-                case GT_STORE_LCL_VAR:
-                case GT_STORE_LCL_FLD:
-                    lowerFieldOfDependentlyPromotedStruct(node);
-
-                    if (node->OperIs(GT_STORE_LCL_VAR))
-                    {
-                        lowerStoreLcl(node->AsLclVarCommon());
-                    }
-
-                    if (node->OperIsLocal() || node->OperIsLocalAddr())
-                    {
-                        ConvertShadowStackLocalNode(node->AsLclVarCommon());
-                    }
-
-                    if (node->OperIsLocalAddr() || node->OperIsLocalField())
-                    {
-                        // Indicates that this local is to live on the LLVM frame, and will not participate in SSA.
-                        _compiler->lvaGetDesc(node->AsLclVarCommon())->lvHasLocalAddr = 1;
-                    }
-                    break;
-
-                case GT_CALL:
-                    lowerCall(node->AsCall());
-                    break;
-
-                case GT_IND:
-                case GT_STOREIND:
-                case GT_OBJ:
-                case GT_BLK:
-                case GT_NULLCHECK:
-                    lowerIndir(node->AsIndir());
-                    break;
-
-                case GT_STORE_BLK:
-                case GT_STORE_OBJ:
-                    lowerStoreBlk(node->AsBlk());
-                    break;
-
-                case GT_DIV:
-                case GT_MOD:
-                case GT_UDIV:
-                case GT_UMOD:
-                    lowerDivMod(node->AsOp());
-                    break;
-
-                case GT_RETURN:
-                    lowerReturn(node->AsUnOp());
-                    break;
-
-                default:
-                    break;
-            }
+            lowerBlock(block);
         }
 
-        INDEBUG(CurrentRange().CheckLIR(_compiler, /* checkUnusedValues */ true));
+        block->bbFlags &= ~BBF_MARKED;
     }
 
     _currentBlock = nullptr;
+}
+
+void Llvm::lowerBlock(BasicBlock* block)
+{
+    _currentBlock = block;
+    _currentRange = &LIR::AsRange(block);
+
+    for (GenTree* node : CurrentRange())
+    {
+        switch (node->OperGet())
+        {
+            case GT_LCL_VAR:
+            case GT_LCL_FLD:
+            case GT_LCL_VAR_ADDR:
+            case GT_LCL_FLD_ADDR:
+            case GT_STORE_LCL_VAR:
+            case GT_STORE_LCL_FLD:
+                lowerFieldOfDependentlyPromotedStruct(node);
+
+                if (node->OperIs(GT_STORE_LCL_VAR))
+                {
+                    lowerStoreLcl(node->AsLclVarCommon());
+                }
+
+                if (node->OperIsLocal() || node->OperIsLocalAddr())
+                {
+                    ConvertShadowStackLocalNode(node->AsLclVarCommon());
+                }
+
+                if (node->OperIsLocalAddr() || node->OperIsLocalField())
+                {
+                    // Indicates that this local is to live on the LLVM frame, and will not participate in SSA.
+                    _compiler->lvaGetDesc(node->AsLclVarCommon())->lvHasLocalAddr = 1;
+                }
+                break;
+
+            case GT_CALL:
+                lowerCall(node->AsCall());
+                break;
+
+            case GT_IND:
+            case GT_STOREIND:
+            case GT_OBJ:
+            case GT_BLK:
+            case GT_NULLCHECK:
+                lowerIndir(node->AsIndir());
+                break;
+
+            case GT_STORE_BLK:
+            case GT_STORE_OBJ:
+                lowerStoreBlk(node->AsBlk());
+                break;
+
+            case GT_DIV:
+            case GT_MOD:
+            case GT_UDIV:
+            case GT_UMOD:
+                lowerDivMod(node->AsOp());
+                break;
+
+            case GT_RETURN:
+                lowerReturn(node->AsUnOp());
+                break;
+
+            default:
+                break;
+        }
+    }
+
+    INDEBUG(CurrentRange().CheckLIR(_compiler, /* checkUnusedValues */ true));
+
 }
 
 void Llvm::lowerStoreLcl(GenTreeLclVarCommon* storeLclNode)
@@ -346,7 +404,7 @@ void Llvm::lowerStoreLcl(GenTreeLclVarCommon* storeLclNode)
         storeLclNode->SetLclNum(addrVarDsc->lvFieldLclStart);
 
         GenTree* storeObjNode = new (_compiler, GT_STORE_OBJ) GenTreeObj(addrVarType, storeLclNode, data, layout);
-        storeObjNode->gtFlags |= GTF_ASG;
+        storeObjNode->gtFlags |= (GTF_ASG | GTF_IND_NONFAULTING);
 
         CurrentRange().InsertAfter(storeLclNode, storeObjNode);
     }
@@ -822,6 +880,11 @@ void Llvm::failUnsupportedCalls(GenTreeCall* callNode)
         return;
     }
 
+    if (callNode->IsUnmanaged())
+    {
+        failFunctionCompilation();
+    }
+
     // we can't do these yet
     if ((callNode->gtCallType != CT_INDIRECT && IsRuntimeImport(callNode->gtCallMethHnd)) || callNode->IsTailCall())
     {
@@ -987,6 +1050,7 @@ void Llvm::normalizeStructUse(GenTree* node, ClassLayout* layout)
                     node->AsObj()->SetAddr(lclAddrNode);
                     node->AsObj()->SetLayout(layout);
                     node->AsObj()->gtBlkOpKind = GenTreeBlk::BlkOpKindInvalid;
+                    node->gtFlags |= GTF_IND_NONFAULTING;
 
                     CurrentRange().InsertBefore(node, lclAddrNode);
                 }

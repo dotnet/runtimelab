@@ -49,12 +49,19 @@ For the runtime libraries:
   ./emsdk install 2.0.33
   ./emsdk activate 2.0.33
   ```
-- Run `build clr.nativeaotlibs+libs -c [Debug|Release] -a wasm -os Browser`. This will create the architecture-dependent libraries needed for linking and runtime execution, as well as the managed binaries to be used as input to ILC. Add the `clr.nativeaotbuild` subset if you want the packages for publishing, e.g. `build clr.nativeaotlibs+clr.nativeaotbuild+libs -c Debug -a wasm -os Browser`
+- Run `build clr.nativeaotruntime+clr.nativeaotlibs+libs -c [Debug|Release] -a wasm -os Browser`. This will create the architecture-dependent libraries needed for linking and runtime execution, as well as the managed binaries to be used as input to ILC.
 
 For the compilers:
-- Download the LLVM 11.0.0 source from https://github.com/llvm/llvm-project/releases/download/llvmorg-11.0.0/llvm-11.0.0.src.tar.xz
-- Extract it and create a subdirectory in the `llvm-11.0.0.src` folder (`path-to-the-build-directory`).
-- Configure the LLVM source to use the same runtime as the Jit: `cmake -G "Visual Studio 17 2022" -DCMAKE_BUILD_TYPE=Debug -D LLVM_USE_CRT_DEBUG=MTd path-to-the-build-directory` or if building for the Release configuration `cmake -G "Visual Studio 17 2022" -DCMAKE_BUILD_TYPE=Release -D LLVM_USE_CRT_RELEASE=MT path-to-the-build-directory`
+- Download the LLVM 15.0.6 source from https://github.com/llvm/llvm-project/releases/download/llvmorg-15.0.6/lldb-15.0.6.src.tar.xz
+- Extract it and create a subdirectory in the `llvm-15.0.6.src` folder (`path-to-the-build-directory`).  Do not create at the root of a drive.
+- Download the CMake 15.0.6 source from https://github.com/llvm/llvm-project/releases/download/llvmorg-15.0.6/cmake-15.0.6.src.tar.xz
+- Extract it to a folder called cmake at the same level as the llvm-15.0.0.src.
+  - Sample layout:
+    - f:\llvm-project
+    - f:\llvm-project\llvm-15.0.6.src
+    - f:\llvm-project\llvm-15.0.6.src\build # The subdirectory you created
+    - f:\llvm-project\cmake
+- Configure the LLVM source to use the same runtime as the Jit (from the subdirectory you created, e.g. f:\llvm-project\llvm-15.0.6\src\build: `cmake -G "Visual Studio 17 2022" -DCMAKE_BUILD_TYPE=Debug -D LLVM_USE_CRT_DEBUG=MTd -DLLVM_INCLUDE_BENCHMARKS=OFF path-to-the-build-directory` or if building for the Release configuration `cmake -G "Visual Studio 17 2022" -DCMAKE_BUILD_TYPE=Release -D LLVM_USE_CRT_RELEASE=MT -DLLVM_INCLUDE_BENCHMARKS=OFF path-to-the-build-directory`
 - Build LLVM either from the command line (`cmake --build . --target LLVMCore LLVMBitWriter`) or from VS 2022. Currently the Jit depends only on the output of LLVMCore and LLVMBitWriter projects.  For the Release configuration, `cmake --build . --config Release  --target LLVMCore LLVMBitWriter`
 - Set the enviroment variable `LLVM_CMAKE_CONFIG` to locate the LLVM config: `set LLVM_CMAKE_CONFIG=path-to-the-build-directory/lib/cmake/llvm`. This location should contain the file `LLVMConfig.cmake`. `LLVM_CMAKE_CONFIG_DEBUG` and `LLVM_CMAKE_CONFIG_RELEASE` can be used instead of `LLVM_CMAKE_CONFIG` to allow the build to select the config file based on the configuration. If set, these variables take precedence over `LLVM_CMAKE_CONFIG`.
 - Build the Jits and the ILC: `build clr.jit+clr.wasmjit+clr.nativeaotruntime+clr.nativeaotlibs+clr.tools -c [Debug|Release]`. Note that `clr.jit` only needs to be built once.  Add the `libs` subsets if you want the packages for publishing, e.g. `build clr.jit+clr.wasmjit+clr.nativeaotruntime+clr.nativeaotlibs+clr.tools+libs -c Debug`.

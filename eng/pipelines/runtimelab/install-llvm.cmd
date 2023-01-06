@@ -19,8 +19,8 @@ if /I %buildConfig% EQU checked set buildConfig=Debug
 powershell -NoProfile -NoLogo -ExecutionPolicy ByPass -File "%~dp0install-llvm.ps1" -buildConfig %buildConfig%
 if %errorlevel% NEQ 0 goto fail
 
-echo Setting LLVM_CMAKE_CONFIG to %1\llvm-11.0.0.src\build
-echo ##vso[task.setvariable variable=LLVM_CMAKE_CONFIG]%1\llvm-11.0.0.src\build
+echo Setting LLVM_CMAKE_CONFIG to %1\llvm-15.0.6.src\build
+echo ##vso[task.setvariable variable=LLVM_CMAKE_CONFIG]%1\llvm-15.0.6.src\build
 
 exit /b 0
 

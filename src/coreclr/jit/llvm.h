@@ -34,6 +34,7 @@ using llvm::FunctionType;
 using llvm::Value;
 using llvm::Type;
 using llvm::Instruction;
+using llvm::AllocaInst;
 using llvm::ArrayRef;
 
 using SSAName = Compiler::SSAName;
@@ -132,7 +133,7 @@ private:
     JitHashTable<GenTree*, JitPtrKeyFuncs<GenTree>, Value*> _sdsuMap;
     JitHashTable<SSAName, SSAName, Value*> _localsMap;
     std::vector<PhiPair> _phiPairs;
-    std::vector<Value*> m_allocas;
+    std::vector<AllocaInst*> m_allocas;
     std::vector<Function*> m_functions;
     std::vector<llvm::BasicBlock*> m_EHDispatchLlvmBlocks;
 
@@ -143,8 +144,8 @@ private:
     JitHashTable<std::string, JitStdStringKeyFuncs, DebugMetadata> _debugMetadataMap;
 
     unsigned _shadowStackLocalsSize;
-    unsigned _shadowStackLclNum;
-    unsigned _retAddressLclNum;
+    unsigned _shadowStackLclNum = BAD_VAR_NUM;
+    unsigned _retAddressLclNum = BAD_VAR_NUM;
     unsigned _llvmArgCount;
 
     // ================================================================================================================
@@ -169,7 +170,6 @@ private:
 
     GCInfo* getGCInfo();
 
-    CORINFO_CLASS_HANDLE tryGetStructClassHandle(LclVarDsc* varDsc);
     CorInfoType getCorInfoTypeForArg(CORINFO_SIG_INFO* sigInfo, CORINFO_ARG_LIST_HANDLE& arg, CORINFO_CLASS_HANDLE* clsHnd);
     static CorInfoType toCorInfoType(var_types varType);
 
@@ -180,8 +180,8 @@ private:
 
     static bool canStoreArgOnLlvmStack(Compiler* compiler, CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd);
 
-    unsigned int padOffset(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHandle, unsigned int atOffset);
-    unsigned int padNextOffset(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHandle, unsigned int atOffset);
+    unsigned padOffset(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHandle, unsigned atOffset);
+    unsigned padNextOffset(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHandle, unsigned atOffset);
 
     [[noreturn]] void failFunctionCompilation();
 
@@ -233,6 +233,7 @@ private:
     void assignShadowStackOffsets(std::vector<LclVarDsc*>& shadowStackLocals, unsigned shadowStackParamCount);
     void initializeLocalInProlog(unsigned lclNum, GenTree* value);
 
+    void lowerBlock(BasicBlock* block);
     void lowerStoreLcl(GenTreeLclVarCommon* storeLclNode);
     void lowerFieldOfDependentlyPromotedStruct(GenTree* node);
     void ConvertShadowStackLocalNode(GenTreeLclVarCommon* node);
@@ -325,7 +326,7 @@ private:
 
     Value* getOrCreateExternalSymbol(const char* symbolName, Type* symbolType = nullptr);
 
-    llvm::Instruction* getCast(llvm::Value* source, Type* targetType);
+    Instruction* getCast(Value* source, Type* targetType);
     Value* castIfNecessary(Value* source, Type* targetType, llvm::IRBuilder<>* builder = nullptr);
     Value* gepOrAddr(Value* addr, unsigned offset);
     Value* getShadowStack();
@@ -346,7 +347,7 @@ private:
     llvm::BasicBlock* getLastLlvmBlockForBlock(BasicBlock* block);
     void setLastLlvmBlockForBlock(BasicBlock* block, llvm::BasicBlock* llvmBlock);
 
-    Value* getLocalAddr(unsigned lclNum);
+    AllocaInst*  getLocalAddr(unsigned lclNum);
     unsigned int getTotalLocalOffset();
 };
 

@@ -4300,8 +4300,12 @@ void Compiler::lvaMarkLocalVars()
 
     assert(PreciseRefCountsRequired());
 
-    // Note: optAddCopies() depends on lvaRefBlks, which is set in lvaMarkLocalVars(BasicBlock*), called above.
-    optAddCopies();
+    // NativeAOT-LLVM: take upstream when merging.
+    if (!compRationalIRForm)
+    {
+        // Note: optAddCopies() depends on lvaRefBlks, which is set in lvaMarkLocalVars(BasicBlock*), called above.
+        optAddCopies();
+    }
 }
 
 //------------------------------------------------------------------------
