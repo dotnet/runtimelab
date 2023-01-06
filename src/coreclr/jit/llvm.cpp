@@ -31,8 +31,6 @@ enum class EEApiId
     GetOffsetLineNumber,
     StructIsWrappedPrimitive,
     PadOffset,
-    GetArgTypeIncludingParameterized,
-    GetParameterType,
     GetTypeDescriptor,
     GetInstanceFieldAlignment,
     Count
@@ -170,12 +168,6 @@ GCInfo* Llvm::getGCInfo()
         _gcInfo = new (_compiler->getAllocator(CMK_GC)) GCInfo(_compiler);
     }
     return _gcInfo;
-}
-
-CorInfoType Llvm::getCorInfoTypeForArg(CORINFO_SIG_INFO* sigInfo, CORINFO_ARG_LIST_HANDLE& arg, CORINFO_CLASS_HANDLE* clsHnd)
-{
-    CorInfoTypeWithMod corTypeWithMod = GetArgTypeIncludingParameterized(sigInfo, arg, clsHnd);
-    return strip(corTypeWithMod);
 }
 
 // When looking at a sigInfo from eeGetMethodSig we have CorInfoType(s) but when looking at lclVars we have LclVarDsc or var_type(s),
@@ -721,16 +713,6 @@ bool Llvm::StructIsWrappedPrimitive(CORINFO_CLASS_HANDLE typeHandle, CorInfoType
 uint32_t Llvm::PadOffset(CORINFO_CLASS_HANDLE typeHandle, unsigned atOffset)
 {
     return CallEEApi<EEApiId::PadOffset, uint32_t>(typeHandle, atOffset);
-}
-
-CorInfoTypeWithMod Llvm::GetArgTypeIncludingParameterized(CORINFO_SIG_INFO* sigInfo, CORINFO_ARG_LIST_HANDLE arg, CORINFO_CLASS_HANDLE* pTypeHandle)
-{
-    return CallEEApi<EEApiId::GetArgTypeIncludingParameterized, CorInfoTypeWithMod>(sigInfo, arg, pTypeHandle);
-}
-
-CorInfoTypeWithMod Llvm::GetParameterType(CORINFO_CLASS_HANDLE typeHandle, CORINFO_CLASS_HANDLE* pInnerParameterTypeHandle)
-{
-    return CallEEApi<EEApiId::GetParameterType, CorInfoTypeWithMod>(typeHandle, pInnerParameterTypeHandle);
 }
 
 TypeDescriptor Llvm::GetTypeDescriptor(CORINFO_CLASS_HANDLE typeHandle)
