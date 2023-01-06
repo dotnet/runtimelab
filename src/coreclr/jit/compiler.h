@@ -1775,6 +1775,7 @@ public:
             case NonStandardArgKind::ShiftLow:
             case NonStandardArgKind::ShiftHigh:
             case NonStandardArgKind::FixedRetBuffer:
+            case NonStandardArgKind::ValidateIndirectCallTarget:
                 return false;
             case NonStandardArgKind::WrapperDelegateCell:
             case NonStandardArgKind::VirtualStubCell:
@@ -5259,7 +5260,15 @@ public:
 
     void fgAddInternal();
 
-    bool fgFoldConditional(BasicBlock* block);
+    enum class FoldResult
+    {
+        FOLD_DID_NOTHING,
+        FOLD_CHANGED_CONTROL_FLOW,
+        FOLD_REMOVED_LAST_STMT,
+        FOLD_ALTERED_LAST_STMT,
+    };
+
+    FoldResult fgFoldConditional(BasicBlock* block);
 
     void fgMorphStmts(BasicBlock* block);
     void fgMorphBlocks();
@@ -7680,7 +7689,6 @@ public:
         O2K_CONST_INT,
         O2K_CONST_LONG,
         O2K_CONST_DOUBLE,
-        O2K_ARR_LEN,
         O2K_SUBRANGE,
         O2K_COUNT
     };
@@ -7720,7 +7728,11 @@ public:
                 GenTreeFlags iconFlags; // gtFlags
             };
             union {
-                SsaVar        lcl;
+                struct
+                {
+                    SsaVar        lcl;
+                    FieldSeqNode* zeroOffsetFieldSeq;
+                };
                 IntVal        u1;
                 __int64       lconVal;
                 double        dconVal;
@@ -7799,6 +7811,7 @@ public:
             {
                 return false;
             }
+
             switch (op2.kind)
             {
                 case O2K_IND_CNS_INT:
@@ -7813,9 +7826,9 @@ public:
                     return (memcmp(&op2.dconVal, &that->op2.dconVal, sizeof(double)) == 0);
 
                 case O2K_LCLVAR_COPY:
-                case O2K_ARR_LEN:
                     return (op2.lcl.lclNum == that->op2.lcl.lclNum) &&
-                           (!vnBased || op2.lcl.ssaNum == that->op2.lcl.ssaNum);
+                           (!vnBased || op2.lcl.ssaNum == that->op2.lcl.ssaNum) &&
+                           (op2.zeroOffsetFieldSeq == that->op2.zeroOffsetFieldSeq);
 
                 case O2K_SUBRANGE:
                     return op2.u2.Equals(that->op2.u2);
@@ -7828,6 +7841,7 @@ public:
                     assert(!"Unexpected value for op2.kind in AssertionDsc.");
                     break;
             }
+
             return false;
         }
 
@@ -9670,7 +9684,7 @@ public:
             compMinOptsIsUsed = true;
             return compMinOpts;
         }
-        bool IsMinOptsSet()
+        bool IsMinOptsSet() const
         {
             return compMinOptsIsSet;
         }
@@ -9679,7 +9693,7 @@ public:
         {
             return compMinOpts;
         }
-        bool IsMinOptsSet()
+        bool IsMinOptsSet() const
         {
             return compMinOptsIsSet;
         }
@@ -9703,22 +9717,54 @@ public:
         }
 
         // true if the CLFLG_* for an optimization is set.
-        bool OptEnabled(unsigned optFlag)
+        bool OptEnabled(unsigned optFlag) const
         {
             return !!(compFlags & optFlag);
         }
 
 #ifdef FEATURE_READYTORUN
-        bool IsReadyToRun()
+        bool IsReadyToRun() const
         {
             return jitFlags->IsSet(JitFlags::JIT_FLAG_READYTORUN);
         }
 #else
-        bool IsReadyToRun()
+        bool IsReadyToRun() const
         {
             return false;
         }
 #endif
+
+        // Check if the compilation is control-flow guard enabled.
+        bool IsCFGEnabled() const
+        {
+#if defined(TARGET_ARM64) || defined(TARGET_AMD64)
+            // On these platforms we assume the register that the target is
+            // passed in is preserved by the validator and take care to get the
+            // target from the register for the call (even in debug mode).
+            static_assert_no_msg((RBM_VALIDATE_INDIRECT_CALL_TRASH & (1 << REG_VALIDATE_INDIRECT_CALL_ADDR)) == 0);
+            if (JitConfig.JitForceControlFlowGuard())
+                return true;
+
+            return jitFlags->IsSet(JitFlags::JIT_FLAG_ENABLE_CFG);
+#else
+            // The remaining platforms are not supported and would require some
+            // work to support.
+            //
+            // ARM32:
+            //   The ARM32 validator does not preserve any volatile registers
+            //   which means we have to take special care to allocate and use a
+            //   callee-saved register (reloading the target from memory is a
+            //   security issue).
+            //
+            // x86:
+            //   On x86 some VSD calls disassemble the call site and expect an
+            //   indirect call which is fundamentally incompatible with CFG.
+            //   This would require a different way to pass this information
+            //   through.
+            //
+            return false;
+#endif
+        }
 
 #ifdef FEATURE_ON_STACK_REPLACEMENT
         bool IsOSR() const

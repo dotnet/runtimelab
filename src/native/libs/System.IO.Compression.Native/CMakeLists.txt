@@ -24,7 +24,7 @@ if (CLR_CMAKE_TARGET_UNIX OR CLR_CMAKE_TARGET_BROWSER)
 
     if (CLR_CMAKE_TARGET_BROWSER)
         # LLVM/clang v15 is has K&R function signatures deprecated https://github.com/madler/zlib/issues/633
-        add_compile_options(-Wno-deprecated-non-prototype -Wno-strict-prototypes)
+          add_compile_options(-Wno-deprecated-non-prototype -Wno-strict-prototypes)
 
         include(${CLR_SRC_NATIVE_DIR}/external/zlib.cmake)
         add_definitions(-DINTERNAL_ZLIB)

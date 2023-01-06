@@ -56,10 +56,6 @@ steps:
       - script: $(Build.SourcesDirectory)/src/tests/run$(scriptExt) --runnativeaottests $(buildConfigUpper) ${{ parameters.archType }}
         displayName: Run tests in single file mode
 
-  - ${{ if eq(parameters.osGroup, 'windows') }}:
-    - script: $(Build.SourcesDirectory)/src/tests/run$(scriptExt) runnativeaottests nativeaotmultimodule $(buildConfigUpper) ${{ parameters.archType }}
-      displayName: Run tests in multifile mode
-
 # Upload unsigned artifacts
 - ${{ if eq(parameters.isOfficialBuild, true) }}:
   - template: /eng/pipelines/common/upload-intermediate-artifacts-step.yml
