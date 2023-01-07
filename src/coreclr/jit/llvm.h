@@ -291,8 +291,7 @@ private:
     void buildLclHeap(GenTreeUnOp* lclHeap);
     void buildCmp(GenTreeOp* node);
     void buildCnsDouble(GenTreeDblCon* node);
-    void buildCnsInt(GenTree* node);
-    void buildCnsLng(GenTree* node);
+    void buildIntegralConst(GenTreeIntConCommon* node);
     void buildCall(GenTreeCall* node);
     Value* buildFieldList(GenTreeFieldList* fieldList, Type* llvmType);
     void buildInd(GenTreeIndir* indNode);

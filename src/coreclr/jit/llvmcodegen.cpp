@@ -716,10 +716,8 @@ void Llvm::visitNode(GenTree* node)
             buildCnsDouble(node->AsDblCon());
             break;
         case GT_CNS_INT:
-            buildCnsInt(node);
-            break;
         case GT_CNS_LNG:
-            buildCnsLng(node);
+            buildIntegralConst(node->AsIntConCommon());
             break;
         case GT_IL_OFFSET:
             _currentOffset = node->AsILOffset()->gtStmtDI;
@@ -1374,59 +1372,39 @@ void Llvm::buildCnsDouble(GenTreeDblCon* node)
     }
 }
 
-void Llvm::buildCnsInt(GenTree* node)
+void Llvm::buildIntegralConst(GenTreeIntConCommon* node)
 {
-    if (node->gtType == TYP_INT)
+    var_types constType = node->TypeGet();
+    Type* constLlvmType = getLlvmTypeForVarType(constType);
+
+    Value* constValue;
+    if (node->IsCnsIntOrI() && node->IsIconHandle()) // TODO-LLVM: change to simply "IsIconHandle" once upstream does.
     {
-        if (node->IsIconHandle())
+        switch (node->GetIconHandleFlag())
         {
-            // TODO-LLVM : consider lowering these to "IND(CLS_VAR_ADDR)"
-            if (node->IsIconHandle(GTF_ICON_TOKEN_HDL) || node->IsIconHandle(GTF_ICON_CLASS_HDL) ||
-                node->IsIconHandle(GTF_ICON_METHOD_HDL) || node->IsIconHandle(GTF_ICON_FIELD_HDL))
+            case GTF_ICON_TOKEN_HDL:
+            case GTF_ICON_CLASS_HDL:
+            case GTF_ICON_METHOD_HDL:
+            case GTF_ICON_FIELD_HDL:
+            case GTF_ICON_STR_HDL:
             {
                 const char* symbolName = GetMangledSymbolName((void*)(node->AsIntCon()->IconValue()));
                 AddCodeReloc((void*)node->AsIntCon()->IconValue());
-                mapGenTreeToValue(node, _builder.CreateLoad(llvm::PointerType::getUnqual(_llvmContext),
-                                                            getOrCreateExternalSymbol(symbolName)));
+                constValue = _builder.CreateLoad(constLlvmType, getOrCreateExternalSymbol(symbolName));
             }
-            else
-            {
-                //TODO-LLVML: other ICON handle types
+            break;
+
+            default:
                 failFunctionCompilation();
-            }
         }
-        else
-        {
-            mapGenTreeToValue(node, _builder.getInt32(node->AsIntCon()->IconValue()));
-        }
-        return;
     }
-    if (node->gtType == TYP_REF)
+    else
     {
-        ssize_t intCon = node->AsIntCon()->gtIconVal;
-        if (node->IsIconHandle(GTF_ICON_STR_HDL))
-        {
-            const char* symbolName = GetMangledSymbolName((void *)(node->AsIntCon()->IconValue()));
-            AddCodeReloc((void*)node->AsIntCon()->IconValue());
-            mapGenTreeToValue(node, _builder.CreateLoad(Type::getInt8PtrTy(_llvmContext),
-                                                        getOrCreateExternalSymbol(symbolName)));
-            return;
-        }
-        // TODO: delete this check, just handling string constants and null ptr stores for now, other TYP_REFs not implemented yet
-        if (intCon != 0)
-        {
-            failFunctionCompilation();
-        }
-
-        mapGenTreeToValue(node, _builder.CreateIntToPtr(_builder.getInt32(intCon), Type::getInt8PtrTy(_llvmContext))); // TODO: wasm64
-        return;
+        llvm::APInt llvmConst(genTypeSize(constType) * BITS_PER_BYTE, node->IntegralValue());
+        constValue = llvm::Constant::getIntegerValue(constLlvmType, llvmConst);
     }
-    failFunctionCompilation();
-}
 
-void Llvm::buildCnsLng(GenTree* node)
-{
-    mapGenTreeToValue(node, _builder.getInt64(node->AsLngCon()->LngValue()));
+    mapGenTreeToValue(node, constValue);
 }
 
 void Llvm::buildCall(GenTreeCall* call)
