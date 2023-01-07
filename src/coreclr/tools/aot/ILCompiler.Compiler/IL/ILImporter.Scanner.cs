@@ -366,9 +366,9 @@ namespace Internal.IL
                         _dependencies.Add(GetHelperEntrypoint(ReadyToRunHelper.NewObject), reason);
                     }
                 }
-<<<<<<< HEAD
 
-                if (owningType.IsDelegate)
+                // TOOO-LLVM: this if block exists solely for LLVM, it is deleted upstream.  Can we delete it for LLVM or do we have to wait for the removal of the IL module?
+                if (owningType.IsDelegate && _compilation.TargetArchIsWasm())
                 {
                     // If this is a verifiable delegate construction sequence, the previous instruction is a ldftn/ldvirtftn
                     if (_previousInstructionOffset >= 0 && _ilBytes[_previousInstructionOffset] == (byte)ILOpcode.prefix1)
@@ -385,68 +385,52 @@ namespace Internal.IL
 
                             if (info.NeedsRuntimeLookup)
                             {
-                                // TODO-LLVM: delete when IL->LLVM module is gone
-                                if (_compilation.TargetArchIsWasm())
+                                if (_canonMethod.RequiresInstMethodDescArg())
                                 {
-                                    if (_canonMethod.RequiresInstMethodDescArg())
+                                    if (delTargetMethod.OwningType.IsRuntimeDeterminedSubtype &&
+                                        delTargetMethod.OwningType.IsInterface)
                                     {
-                                        if (delTargetMethod.OwningType.IsRuntimeDeterminedSubtype &&
-                                            delTargetMethod.OwningType.IsInterface)
-                                        {
-                                            _dependencies.Add(GetGenericLookupHelper(ReadyToRunHelperId.TypeHandle, delTargetMethod.OwningType), reason);
-                                        }
-                                        else
-                                        {
-                                            MethodDesc canonDelTargetMethod = delTargetMethod.GetCanonMethodTarget(CanonicalFormKind.Specific);
+                                        _dependencies.Add(GetGenericLookupHelper(ReadyToRunHelperId.TypeHandle, delTargetMethod.OwningType), reason);
+                                    }
+                                    else
+                                    {
+                                        MethodDesc canonDelTargetMethod = delTargetMethod.GetCanonMethodTarget(CanonicalFormKind.Specific);
 
-                                            if (canonDelTargetMethod.IsSharedByGenericInstantiations &&
-                                                (canonDelTargetMethod.HasInstantiation || canonDelTargetMethod.Signature.IsStatic))
+                                        if (canonDelTargetMethod.IsSharedByGenericInstantiations &&
+                                            (canonDelTargetMethod.HasInstantiation || canonDelTargetMethod.Signature.IsStatic))
+                                        {
+                                            var delegateNeedsRuntimeLookup = canonDelTargetMethod.HasInstantiation
+                                                ? canonDelTargetMethod.IsSharedByGenericInstantiations
+                                                : canonDelTargetMethod.OwningType.IsCanonicalSubtype(CanonicalFormKind.Any);
+                                            if (delegateNeedsRuntimeLookup)
                                             {
-                                                var delegateNeedsRuntimeLookup = canonDelTargetMethod.HasInstantiation
-                                                    ? canonDelTargetMethod.IsSharedByGenericInstantiations
-                                                    : canonDelTargetMethod.OwningType.IsCanonicalSubtype(CanonicalFormKind.Any);
-                                                if (delegateNeedsRuntimeLookup)
+                                                if (previousOpcode == ILOpcode.ldvirtftn)
                                                 {
-                                                    if (previousOpcode == ILOpcode.ldvirtftn)
-                                                    {
-                                                        _dependencies.Add(
-                                                            GetGenericLookupHelper(ReadyToRunHelperId.MethodHandle,
-                                                                delTargetMethod), reason);
-                                                    }
-                                                    else
-                                                    {
-                                                        _dependencies.Add(
-                                                            GetGenericLookupHelper(ReadyToRunHelperId.MethodEntry,
-                                                                delTargetMethod), reason);
-                                                    }
+                                                    _dependencies.Add(
+                                                        GetGenericLookupHelper(ReadyToRunHelperId.MethodHandle,
+                                                            delTargetMethod), reason);
+                                                }
+                                                else
+                                                {
+                                                    _dependencies.Add(
+                                                        GetGenericLookupHelper(ReadyToRunHelperId.MethodEntry,
+                                                            delTargetMethod), reason);
                                                 }
                                             }
                                         }
                                     }
-                                    else
-                                    {
-                                        _dependencies.Add(GetGenericLookupHelper(ReadyToRunHelperId.TypeHandle, delTargetMethod.OwningType), reason);
-                                    }
                                 }
-                            
-                                _dependencies.Add(GetGenericLookupHelper(ReadyToRunHelperId.DelegateCtor, info), reason);
-                            }
-                            else
-                            {
-                                _dependencies.Add(_factory.ReadyToRunHelper(ReadyToRunHelperId.DelegateCtor, info), reason);
+                                else
+                                {
+                                    _dependencies.Add(GetGenericLookupHelper(ReadyToRunHelperId.TypeHandle, delTargetMethod.OwningType), reason);
+                                }
                             }
 
-                            // TODO-LLVM: delete when IL->LLVM module is gone.
-                            if (_compilation.TargetArchIsWasm())
-                            {
-                                _dependencies.Add(info.Constructor, "LLVM delegate ctor");
-                            }
+                            _dependencies.Add(info.Constructor, "LLVM delegate ctor");
                             return;
                         }
                     }
                 }
-=======
->>>>>>> 1a31bf638c6c220d20ef65f43a07a9ac562d92d9
             }
 
             // TODO-LLVM: delete when IL->LLVM module is gone
@@ -677,8 +661,8 @@ namespace Internal.IL
                     _dependencies.Add(_factory.FatFunctionPointer(runtimeDeterminedMethod), reason);
                 }
             }
-<<<<<<< HEAD
-            else if (directCall && resolvedConstraint && exactContextNeedsRuntimeLookup)
+            //TODO-LLVM: Can we delete this now? or delete when IL->LLVM module gone
+            else if (directCall && resolvedConstraint && exactContextNeedsRuntimeLookup && _compilation.TargetArchIsWasm())
             {
                 // We want to do a direct call to a shared method on a valuetype. We need to provide
                 // a generic context, but the JitInterface doesn't provide a way for us to do it from here.
@@ -697,27 +681,21 @@ namespace Internal.IL
                     targetOfLookup = targetOfLookup.MakeInstantiatedMethod(runtimeDeterminedMethod.Instantiation);
                 }
 
-                //TODO-LLVM: delete when IL->LLVM module gone
-                if (_compilation.TargetArchIsWasm())
+                if (_constrained.IsRuntimeDeterminedSubtype)
                 {
-                    if (_constrained.IsRuntimeDeterminedSubtype)
+                    if (targetMethod.RequiresInstMethodTableArg())
                     {
-                        if (targetMethod.RequiresInstMethodTableArg())
-                        {
-                            _dependencies.Add(GetGenericLookupHelper(ReadyToRunHelperId.TypeHandle, _constrained), reason);
-                        }
-                        else
-                        {
-                            _dependencies.Add(GetGenericLookupHelper(ReadyToRunHelperId.MethodDictionary, targetOfLookup), reason);
-                        }
+                        _dependencies.Add(GetGenericLookupHelper(ReadyToRunHelperId.TypeHandle, _constrained), reason);
+                    }
+                    else
+                    {
+                        _dependencies.Add(GetGenericLookupHelper(ReadyToRunHelperId.MethodDictionary, targetOfLookup), reason);
                     }
                 }
 
                 Debug.Assert(targetOfLookup.GetCanonMethodTarget(CanonicalFormKind.Specific) == targetMethod.GetCanonMethodTarget(CanonicalFormKind.Specific));
                 _dependencies.Add(GetGenericLookupHelper(ReadyToRunHelperId.MethodEntry, targetOfLookup), reason);
             }
-=======
->>>>>>> 1a31bf638c6c220d20ef65f43a07a9ac562d92d9
             else if (directCall)
             {
                 bool referencingArrayAddressMethod = false;

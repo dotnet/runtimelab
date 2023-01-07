@@ -826,7 +826,6 @@ void SsaBuilder::RenameDef(GenTree* defNode, BasicBlock* block)
     }
 
     GenTreeLclVarCommon* lclNode;
-<<<<<<< HEAD
     bool                 isFullDef;
 #if defined(TARGET_WASM)
     bool isLocal;
@@ -844,10 +843,6 @@ void SsaBuilder::RenameDef(GenTree* defNode, BasicBlock* block)
 #else
     bool isLocal = asgNode->DefinesLocal(m_pCompiler, &lclNode, &isFullDef);
 #endif
-=======
-    bool                 isFullDef = false;
-    bool                 isLocal   = defNode->DefinesLocal(m_pCompiler, &lclNode, &isFullDef);
->>>>>>> 1a31bf638c6c220d20ef65f43a07a9ac562d92d9
 
     if (isLocal)
     {
@@ -892,21 +887,17 @@ void SsaBuilder::RenameDef(GenTree* defNode, BasicBlock* block)
             // If necessary, add "lclNum/ssaNum" to the arg list of a phi def in any
             // handlers for try blocks that "block" is within.  (But only do this for "real" definitions,
             // not phi definitions.)
-<<<<<<< HEAD
             GenTree* asgPhiOp;
 #if defined(TARGET_WASM)
             if (block->IsLIR())
             {
-                asgPhiOp = asgNode->gtGetOp1();
+                asgPhiOp = defNode->gtGetOp1();
             }
             else
 #endif
-                asgPhiOp = asgNode->gtGetOp2();
+                asgPhiOp = defNode->gtGetOp2();
 
             if (!asgPhiOp->OperIs(GT_PHI))
-=======
-            if (!defNode->IsPhiDefn())
->>>>>>> 1a31bf638c6c220d20ef65f43a07a9ac562d92d9
             {
                 AddDefToHandlerPhis(block, lclNum, ssaNum);
             }
@@ -925,7 +916,9 @@ void SsaBuilder::RenameDef(GenTree* defNode, BasicBlock* block)
         // handling here. If we ever change liveness to more carefully model call effects (from interprecedural
         // information) we might need to revisit this.
 
-<<<<<<< HEAD
+        return;
+    }
+
 #ifdef TARGET_WASM
     // TODO-LLVM: LIR memory liveness is NYI upstream. Delete when that is fixed.
     if (block->IsLIR())
@@ -934,13 +927,7 @@ void SsaBuilder::RenameDef(GenTree* defNode, BasicBlock* block)
     }
 #endif // TARGET_WASM
 
-    // Figure out if "asgNode" may make a new GC heap state (if we care for this block).
-=======
-        return;
-    }
-
     // Figure out if "defNode" may make a new GC heap state (if we care for this block).
->>>>>>> 1a31bf638c6c220d20ef65f43a07a9ac562d92d9
     if (((block->bbMemoryHavoc & memoryKindSet(GcHeap)) == 0) && m_pCompiler->ehBlockHasExnFlowDsc(block))
     {
         bool isAddrExposedLocal = isLocal && m_pCompiler->lvaVarAddrExposed(lclNode->GetLclNum());
@@ -1241,11 +1228,7 @@ void SsaBuilder::BlockRenameVariables(BasicBlock* block)
             
         for (GenTree* tree : LIR::AsRange(block))
         {
-<<<<<<< HEAD
             if (tree->OperIsLocalStore())
-=======
-            if (tree->OperIsSsaDef())
->>>>>>> 1a31bf638c6c220d20ef65f43a07a9ac562d92d9
             {
                 RenameDef(tree, block);
             }
@@ -1264,9 +1247,9 @@ void SsaBuilder::BlockRenameVariables(BasicBlock* block)
         {
             for (GenTree* const tree : stmt->TreeList())
             {
-                if (tree->OperIs(GT_ASG))
+                if (tree->OperIsSsaDef())
                 {
-                    RenameDef(tree->AsOp(), block);
+                    RenameDef(tree, block);
                 }
                 // PHI_ARG nodes already have SSA numbers so we only need to check LCL_VAR and LCL_FLD nodes.
                 else if (tree->OperIs(GT_LCL_VAR, GT_LCL_FLD) && ((tree->gtFlags & GTF_VAR_DEF) == 0))

@@ -20,13 +20,6 @@ pr:
       - src/libraries/System.Net.Http/*
       - src/libraries/System.Net.Security/*
 
-<<<<<<< HEAD
-pool:
-  name: NetCore-Public
-  demands: ImageOverride -equals Build.Ubuntu.1804.Amd64.Open
-
-=======
->>>>>>> 1a31bf638c6c220d20ef65f43a07a9ac562d92d9
 variables:
   - template: ../variables.yml
   - name: enterpriseTestsSetup

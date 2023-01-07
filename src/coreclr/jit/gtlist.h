@@ -295,16 +295,12 @@ GTNODE(PUTARG_REG       , GenTreeMultiRegOp  ,0,GTK_UNOP|DBK_NOTHIR)            
 #else
 GTNODE(PUTARG_REG       , GenTreeOp          ,0,GTK_UNOP|DBK_NOTHIR)              // operator that places outgoing arg in register
 #endif
-<<<<<<< HEAD
 #if defined(TARGET_WASM)
 GTNODE(PUTARG_TYPE      , GenTreeOp          ,0,GTK_UNOP)                        // operator that places saves argument type between importation and morph and represents args lowered to LLVM stack
 #else
 GTNODE(PUTARG_TYPE      , GenTreePutArgType  ,0,GTK_UNOP|GTK_NOTLIR)             // operator that places saves argument type between importation and morph
 #endif // TARGET_WASM
-GTNODE(PUTARG_STK       , GenTreePutArgStk   ,0,GTK_UNOP|GTK_NOVALUE)            // operator that places outgoing arg in stack
-=======
 GTNODE(PUTARG_STK       , GenTreePutArgStk   ,0,GTK_UNOP|GTK_NOVALUE|DBK_NOTHIR)  // operator that places outgoing arg in stack
->>>>>>> 1a31bf638c6c220d20ef65f43a07a9ac562d92d9
 #if FEATURE_ARG_SPLIT
 GTNODE(PUTARG_SPLIT     , GenTreePutArgSplit ,0,GTK_UNOP|DBK_NOTHIR)              // operator that places outgoing arg in registers with stack (split struct in ARM32)
 #endif // FEATURE_ARG_SPLIT

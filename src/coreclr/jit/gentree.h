@@ -8180,123 +8180,7 @@ inline bool GenTree::IsMultiRegLclVar() const
 }
 
 //-----------------------------------------------------------------------------------
-<<<<<<< HEAD
-// IsMultiRegNode: whether a node returning its value in more than one register
-//
-// Arguments:
-//     None
-//
-// Return Value:
-//     Returns true if this GenTree is a multi-reg node.
-//
-// Notes:
-//     All targets that support multi-reg ops of any kind also support multi-reg return
-//     values for calls. Should that change with a future target, this method will need
-//     to change accordingly.
-//
-inline bool GenTree::IsMultiRegNode() const
-{
-#if FEATURE_MULTIREG_RET
-    if (IsMultiRegCall())
-    {
-        return true;
-    }
-
-#if FEATURE_ARG_SPLIT
-    if (OperIsPutArgSplit())
-    {
-        return true;
-    }
-#endif
-
-#if !defined(TARGET_64BIT)
-    if (OperIsMultiRegOp())
-    {
-        return true;
-    }
-#endif
-
-    if (OperIs(GT_COPY, GT_RELOAD))
-    {
-        return true;
-    }
-#endif // FEATURE_MULTIREG_RET
-#if defined(TARGET_XARCH) && defined(FEATURE_HW_INTRINSICS)
-    if (OperIs(GT_HWINTRINSIC))
-    {
-        return (TypeGet() == TYP_STRUCT);
-    }
-#endif
-    if (IsMultiRegLclVar())
-    {
-        return true;
-    }
-    return false;
-}
-//-----------------------------------------------------------------------------------
-// GetMultiRegCount: Return the register count for a multi-reg node.
-//
-// Arguments:
-//     None
-//
-// Return Value:
-//     Returns the number of registers defined by this node.
-//
-inline unsigned GenTree::GetMultiRegCount()
-{
-#if FEATURE_MULTIREG_RET
-    if (IsMultiRegCall())
-    {
-        return AsCall()->GetReturnTypeDesc()->GetReturnRegCount();
-    }
-
-#if FEATURE_ARG_SPLIT
-    if (OperIsPutArgSplit())
-    {
-        return AsPutArgSplit()->gtNumRegs;
-    }
-#endif
-
-#if !defined(TARGET_64BIT) && !defined(TARGET_WASM32) && !defined(TARGET_WASM64)
-    if (OperIsMultiRegOp())
-    {
-        return AsMultiRegOp()->GetRegCount();
-    }
-#endif
-
-    if (OperIs(GT_COPY, GT_RELOAD))
-    {
-        return AsCopyOrReload()->GetRegCount();
-    }
-#endif // FEATURE_MULTIREG_RET
-#if defined(TARGET_XARCH) && defined(FEATURE_HW_INTRINSICS)
-    if (OperIs(GT_HWINTRINSIC))
-    {
-        assert(TypeGet() == TYP_STRUCT);
-        return 2;
-    }
-#endif
-    if (OperIs(GT_LCL_VAR, GT_STORE_LCL_VAR))
-    {
-        assert((gtFlags & GTF_VAR_MULTIREG) != 0);
-        // The register count for a multireg lclVar requires looking at the LclVarDsc,
-        // which requires a Compiler instance. The caller must handle this separately.
-        // The register count for a multireg lclVar requires looking at the LclVarDsc,
-        // which requires a Compiler instance. The caller must use the GetFieldCount
-        // method on GenTreeLclVar.
-
-        assert(!"MultiRegCount for LclVar");
-    }
-    assert(!"GetMultiRegCount called with non-multireg node");
-    return 1;
-}
-
-//-----------------------------------------------------------------------------------
-// GetRegByIndex: Get a specific register, based on regIndex, that is produced
-//                by this node.
-=======
 // GetRegByIndex: Get a specific register, based on regIndex, that is produced by this node.
->>>>>>> 1a31bf638c6c220d20ef65f43a07a9ac562d92d9
 //
 // Arguments:
 //     regIndex - which register to return (must be 0 for non-multireg nodes)
@@ -8329,12 +8213,8 @@ inline regNumber GenTree::GetRegByIndex(int regIndex) const
         return AsPutArgSplit()->GetRegNumByIdx(regIndex);
     }
 #endif
-<<<<<<< HEAD
-#if !defined(TARGET_64BIT) && !defined(TARGET_WASM32) && !defined(TARGET_WASM64)
-=======
 
-#if !defined(TARGET_64BIT)
->>>>>>> 1a31bf638c6c220d20ef65f43a07a9ac562d92d9
+#if !defined(TARGET_64BIT) && !defined(TARGET_WASM32) && !defined(TARGET_WASM64)
     if (OperIsMultiRegOp())
     {
         return AsMultiRegOp()->GetRegNumByIdx(regIndex);
@@ -8396,14 +8276,9 @@ inline var_types GenTree::GetRegTypeByIndex(int regIndex) const
     {
         return AsPutArgSplit()->GetRegType(regIndex);
     }
-<<<<<<< HEAD
-#endif
-#if !defined(TARGET_64BIT) && !defined(TARGET_WASM32) && !defined(TARGET_WASM64)
-=======
 #endif // FEATURE_ARG_SPLIT
 
-#if !defined(TARGET_64BIT)
->>>>>>> 1a31bf638c6c220d20ef65f43a07a9ac562d92d9
+#if !defined(TARGET_64BIT) && !defined(TARGET_WASM32) && !defined(TARGET_WASM64)
     if (OperIsMultiRegOp())
     {
         return AsMultiRegOp()->GetRegType(regIndex);

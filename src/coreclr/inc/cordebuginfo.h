@@ -145,10 +145,8 @@ public:
         REGNUM_R13,
         REGNUM_R14,
         REGNUM_R15,
-<<<<<<< HEAD
 #elif TARGET_WASM
 // TODO????
-=======
 #elif TARGET_LOONGARCH64
         REGNUM_R0,
         REGNUM_RA,
@@ -183,7 +181,6 @@ public:
         REGNUM_S7,
         REGNUM_S8,
         REGNUM_PC,
->>>>>>> 1a31bf638c6c220d20ef65f43a07a9ac562d92d9
 #else
         PORTABILITY_WARNING("Register numbers not defined on this platform")
 #endif

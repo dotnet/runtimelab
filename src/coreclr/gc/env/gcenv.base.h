@@ -230,17 +230,15 @@ typedef DWORD (WINAPI *PTHREAD_START_ROUTINE)(void* lpThreadParameter);
  #define MemoryBarrier __sync_synchronize
 #endif // __arm__ || __aarch64__
 
-<<<<<<< HEAD
 #if TARGET_WASM
  #define YieldProcessor()
  #define MemoryBarrier __sync_synchronize
 #endif // TARGET_WASM
-=======
+
 #ifdef __loongarch64
  #define YieldProcessor() __asm__ volatile( "dbar 0; \n")
  #define MemoryBarrier __sync_synchronize
 #endif // __loongarch64
->>>>>>> 1a31bf638c6c220d20ef65f43a07a9ac562d92d9
 
 #endif // _MSC_VER
 

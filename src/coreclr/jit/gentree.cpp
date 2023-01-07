@@ -16746,27 +16746,19 @@ bool GenTree::IsFieldAddr(Compiler* comp, GenTree** pBaseAddr, FieldSeqNode** pF
             fldSeq   = AsOp()->gtOp2->AsIntCon()->gtFieldSeq;
             baseAddr = AsOp()->gtOp1;
         }
-<<<<<<< HEAD
-
-        // TODO-LLVM: delete when https://github.com/dotnet/runtime/pull/71455 is merged.
-        // if (baseAddr != nullptr)
-        // {
-        //     assert(!baseAddr->TypeIs(TYP_REF) || !comp->GetZeroOffsetFieldMap()->Lookup(baseAddr));
-        // }
-=======
         else
         {
             return false;
         }
 
-        assert(!baseAddr->TypeIs(TYP_REF) || !comp->GetZeroOffsetFieldMap()->Lookup(baseAddr));
+        // TODO-LLVM: delete when https://github.com/dotnet/runtime/pull/71455 is merged.
+        // assert(!baseAddr->TypeIs(TYP_REF) || !comp->GetZeroOffsetFieldMap()->Lookup(baseAddr));
     }
     else if (IsCnsIntOrI() && IsIconHandle(GTF_ICON_STATIC_HDL))
     {
         assert(!comp->GetZeroOffsetFieldMap()->Lookup(this) && (AsIntCon()->gtFieldSeq != nullptr));
         fldSeq   = AsIntCon()->gtFieldSeq;
         baseAddr = this;
->>>>>>> 1a31bf638c6c220d20ef65f43a07a9ac562d92d9
     }
     else if (comp->GetZeroOffsetFieldMap()->Lookup(this, &fldSeq))
     {

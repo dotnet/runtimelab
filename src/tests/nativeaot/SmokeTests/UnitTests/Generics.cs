@@ -49,13 +49,10 @@ class Generics
         TestGenericRecursionFromNpgsql.Run();
         TestRecursionInGenericVirtualMethods.Run();
         TestRecursionThroughGenericLookups.Run();
-<<<<<<< HEAD:src/tests/nativeaot/SmokeTests/Generics/Generics.cs
 #endif
-=======
         TestGvmLookupDependency.Run();
         TestInvokeMemberCornerCaseInGenerics.Run();
         TestRefAny.Run();
->>>>>>> 1a31bf638c6c220d20ef65f43a07a9ac562d92d9:src/tests/nativeaot/SmokeTests/UnitTests/Generics.cs
 #if !CODEGEN_CPP
         TestNullableCasting.Run();
         TestVariantCasting.Run();
