@@ -184,7 +184,6 @@ if %__TargetArchWasm%==1 (
 echo setting wasm
     set __TargetOS=browser
     set __TargetArch=wasm
-    set __Ninja=0
 )
 if "%__HostArch%" == "" set __HostArch=%__TargetArch%
 
@@ -221,9 +220,8 @@ set "__IntermediatesDir=%__RootBinDir%\obj\coreclr\%__TargetOS%.%__TargetArch%.%
 set "__LogsDir=%__RootBinDir%\log\!__BuildType!"
 set "__MsbuildDebugLogsDir=%__LogsDir%\MsbuildDebugLogs"
 set "__ArtifactsIntermediatesDir=%__RepoRootDir%\artifacts\obj\coreclr\"
-REM wasm is using Nmake: dont append ide - TODO-LLVM: change wasm to Ninja
 if "%__Ninja%"=="0" (
-  if NOT "%__TargetArch%"=="wasm" (set "__IntermediatesDir=%__IntermediatesDir%\ide")
+  set "__IntermediatesDir=%__IntermediatesDir%\ide"
 )
 set "__PackagesBinDir=%__BinDir%\.nuget"
 
@@ -439,10 +437,7 @@ if %__BuildNative% EQU 1 (
         set __CmakeBuildToolArgs=
     ) else (
         REM We pass the /m flag directly to MSBuild so that we can get both MSBuild and CL parallelism, which is fastest for our builds.
-        REM wasm uses nmake which does not support /m
-        if not "%__TargetArch%" == "wasm" (
-            set __CmakeBuildToolArgs=/nologo /m !__Logging!
-        )
+        set __CmakeBuildToolArgs=/nologo /m !__Logging!
     )
 
     "%CMakePath%" --build %__IntermediatesDir% --target %__CMakeTarget% --config %__BuildType% -- !__CmakeBuildToolArgs!
