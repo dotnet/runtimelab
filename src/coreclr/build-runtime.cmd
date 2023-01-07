@@ -223,7 +223,7 @@ set "__MsbuildDebugLogsDir=%__LogsDir%\MsbuildDebugLogs"
 set "__ArtifactsIntermediatesDir=%__RepoRootDir%\artifacts\obj\coreclr\"
 REM wasm is using Nmake: dont append ide - TODO-LLVM: change wasm to Ninja
 if "%__Ninja%"=="0" (
-  if NOT "%__BuildArch%"=="wasm" (set "__IntermediatesDir=%__IntermediatesDir%\ide")
+  if NOT "%__TargetArch%"=="wasm" (set "__IntermediatesDir=%__IntermediatesDir%\ide")
 )
 set "__PackagesBinDir=%__BinDir%\.nuget"
 
@@ -345,7 +345,7 @@ for /f "delims=" %%a in ("-%__RequestedBuildComponents%-") do (
     if not "!string:-nativeaot-=!"=="!string!" (
         set __CMakeTarget=!__CMakeTarget! nativeaot
 
-        if "%__BuildArch%"=="wasm" (
+        if "%__TargetArch%"=="wasm" (
             if not defined EMSDK (
                 echo %__ErrMsgPrefix%%__MsgPrefix%Error: The EMSDK environment variable pointing to emsdk root must be set.
                 goto ExitWithError
@@ -396,7 +396,7 @@ if %__BuildNative% EQU 1 (
     if %__Ninja% EQU 1 (
         set __ExtraCmakeArgs=!__ExtraCmakeArgs! "-DCMAKE_BUILD_TYPE=!__BuildType!"
     )
-    if "%__BuildArch%" == "wasm" (
+    if "%__TargetArch%" == "wasm" (
         set __ExtraCmakeArgs=!__ExtraCmakeArgs! "-DCMAKE_BUILD_TYPE=!__BuildType!"
 
         REM For the Wasm build, we use the Emscripten toolchain, which is Unix-like in its handling of debug info.
@@ -440,7 +440,7 @@ if %__BuildNative% EQU 1 (
     ) else (
         REM We pass the /m flag directly to MSBuild so that we can get both MSBuild and CL parallelism, which is fastest for our builds.
         REM wasm uses nmake which does not support /m
-        if not "%__BuildArch%" == "wasm" (
+        if not "%__TargetArch%" == "wasm" (
             set __CmakeBuildToolArgs=/nologo /m !__Logging!
         )
     )
