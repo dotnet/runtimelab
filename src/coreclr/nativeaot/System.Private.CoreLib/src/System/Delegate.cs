@@ -125,7 +125,7 @@ namespace System
             else
             {
                 if (m_firstParameter != null)
-                    typeOfFirstParameterIfInstanceDelegate = new RuntimeTypeHandle(m_firstParameter.EETypePtr);
+                    typeOfFirstParameterIfInstanceDelegate = new RuntimeTypeHandle(m_firstParameter.GetEETypePtr());
 
                 // TODO! Implementation issue for generic invokes here ... we need another IntPtr for uniqueness.
 
@@ -278,12 +278,12 @@ namespace System
         }
 
         [DebuggerGuidedStepThroughAttribute]
-        protected virtual object DynamicInvokeImpl(object[]? args)
+        protected virtual object DynamicInvokeImpl(object?[]? args)
         {
             if (IsDynamicDelegate())
             {
                 // DynamicDelegate case
-                object result = ((Func<object[]?, object>)m_helperObject)(args);
+                object result = ((Func<object?[]?, object>)m_helperObject)(args);
                 DebugAnnotations.PreviousCallContainsDebuggerStepInCode();
                 return result;
             }
@@ -373,12 +373,12 @@ namespace System
 
         internal static bool InternalEqualTypes(object a, object b)
         {
-            return a.EETypePtr == b.EETypePtr;
+            return a.GetEETypePtr() == b.GetEETypePtr();
         }
 
         // Returns a new delegate of the specified type whose implementation is provied by the
         // provided delegate.
-        internal static Delegate CreateObjectArrayDelegate(Type t, Func<object[], object> handler)
+        internal static Delegate CreateObjectArrayDelegate(Type t, Func<object?[], object?> handler)
         {
             EETypePtr delegateEEType;
             if (!t.TryGetEEType(out delegateEEType))
