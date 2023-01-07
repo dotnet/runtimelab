@@ -1210,6 +1210,7 @@ void Llvm::buildCast(GenTreeCast* cast)
                     break;
 
                 case TYP_LONG:
+                case TYP_ULONG:
                     castValue = cast->IsUnsigned()
                         ? _builder.CreateZExt(castFromValue, castToLlvmType)
                         : _builder.CreateSExt(castFromValue, castToLlvmType);
@@ -1223,7 +1224,7 @@ void Llvm::buildCast(GenTreeCast* cast)
                     break;
 
                 default:
-                    failFunctionCompilation(); // NYI
+                    unreached();
             }
             break;
 
@@ -1235,6 +1236,7 @@ void Llvm::buildCast(GenTreeCast* cast)
                 case TYP_DOUBLE:
                     castValue = _builder.CreateFPCast(castFromValue, castToLlvmType);
                     break;
+
                 case TYP_BYTE:
                 case TYP_SHORT:
                 case TYP_INT:
@@ -1256,7 +1258,7 @@ void Llvm::buildCast(GenTreeCast* cast)
             break;
 
         default:
-            failFunctionCompilation(); // NYI
+            unreached();
     }
 
     mapGenTreeToValue(cast, castValue);
