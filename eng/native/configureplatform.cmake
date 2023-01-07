@@ -317,6 +317,7 @@ endif()
 # Target os will be a cmake param (optional) for both windows as well as non-windows build
 # if target os is not specified then host & target os are same
 if (NOT DEFINED CLR_CMAKE_TARGET_OS OR CLR_CMAKE_TARGET_OS STREQUAL "" )
+message("setting CLR_CMAKE_TARGET_OS to host ${CLR_CMAKE_HOST_OS}")
   set(CLR_CMAKE_TARGET_OS ${CLR_CMAKE_HOST_OS})
 endif()
 
@@ -392,12 +393,15 @@ if(CLR_CMAKE_TARGET_OS STREQUAL SunOS)
     set(CLR_CMAKE_TARGET_SUNOS 1)
 endif(CLR_CMAKE_TARGET_OS STREQUAL SunOS)
 
+message("configureplatform testing os emscripten ${CLR_CMAKE_TARGET_OS}")
 if(CLR_CMAKE_TARGET_OS STREQUAL browser)
+message("target emscripten")
     set(CLR_CMAKE_TARGET_UNIX 1)
     set(CLR_CMAKE_TARGET_BROWSER 1)
 endif(CLR_CMAKE_TARGET_OS STREQUAL browser)
 
 if(CLR_CMAKE_TARGET_UNIX)
+message("target unix")
     if(CLR_CMAKE_TARGET_ARCH STREQUAL x64)
         set(CLR_CMAKE_TARGET_UNIX_AMD64 1)
     elseif(CLR_CMAKE_TARGET_ARCH STREQUAL armel)
