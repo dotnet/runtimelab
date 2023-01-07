@@ -604,7 +604,7 @@ inline bool isRegParamType(var_types type)
 #endif // !TARGET_X86
 }
 
-#if defined(TARGET_AMD64) || defined(TARGET_ARM64)
+#if defined(TARGET_AMD64) || defined(TARGET_ARMARCH)
 /*****************************************************************************/
 // Returns true if 'type' is a struct that can be enregistered for call args
 //                         or can be returned by value in multiple registers.
@@ -662,7 +662,7 @@ inline bool Compiler::VarTypeIsMultiByteAndCanEnreg(var_types                typ
 
     return result;
 }
-#endif // TARGET_AMD64 || TARGET_ARM64
+#endif // TARGET_AMD64 || TARGET_ARMARCH
 
 /*****************************************************************************/
 
@@ -846,19 +846,14 @@ inline GenTree* Compiler::gtNewOperNode(genTreeOps oper, var_types type, GenTree
 
     if (doSimplifications)
     {
-        // We do some simplifications here.
-        // If this gets to be too many, try a switch...
-        // TODO-Cleanup: With the factoring out of array bounds checks, it should not be the
-        // case that we need to check for the array index case here, but without this check
-        // we get failures (see for example jit\Directed\Languages\Python\test_methods_d.exe)
+        // We do some simplifications here. If this gets to be too many, try a switch...
         if (oper == GT_IND)
         {
             // IND(ADDR(IND(x)) == IND(x)
-            if (op1->gtOper == GT_ADDR)
+            if (op1->OperIs(GT_ADDR))
             {
-                GenTreeUnOp* addr  = op1->AsUnOp();
-                GenTree*     indir = addr->gtGetOp1();
-                if (indir->OperIs(GT_IND) && ((indir->gtFlags & GTF_IND_ARR_INDEX) == 0))
+                GenTree* indir = op1->AsUnOp()->gtGetOp1();
+                if (indir->OperIs(GT_IND))
                 {
                     op1 = indir->AsIndir()->Addr();
                 }
@@ -866,8 +861,7 @@ inline GenTree* Compiler::gtNewOperNode(genTreeOps oper, var_types type, GenTree
         }
         else if (oper == GT_ADDR)
         {
-            // if "x" is not an array index, ADDR(IND(x)) == x
-            if (op1->gtOper == GT_IND && (op1->gtFlags & GTF_IND_ARR_INDEX) == 0)
+            if (op1->OperIs(GT_IND))
             {
                 return op1->AsOp()->gtOp1;
             }
@@ -1095,7 +1089,7 @@ inline GenTree* Compiler::gtNewRuntimeLookup(CORINFO_GENERIC_HANDLE hnd, CorInfo
 // Return Value:
 //    The created node.
 //
-inline GenTree* Compiler::gtNewFieldRef(var_types type, CORINFO_FIELD_HANDLE fldHnd, GenTree* obj, DWORD offset)
+inline GenTreeField* Compiler::gtNewFieldRef(var_types type, CORINFO_FIELD_HANDLE fldHnd, GenTree* obj, DWORD offset)
 {
     // GT_FIELD nodes are transformed into GT_IND nodes.
     assert(GenTree::s_gtNodeSizes[GT_IND] <= GenTree::s_gtNodeSizes[GT_FIELD]);
@@ -1107,7 +1101,7 @@ inline GenTree* Compiler::gtNewFieldRef(var_types type, CORINFO_FIELD_HANDLE fld
         type = impNormStructType(structHnd);
     }
 
-    GenTree* fieldNode = new (this, GT_FIELD) GenTreeField(type, obj, fldHnd, offset);
+    GenTreeField* fieldNode = new (this, GT_FIELD) GenTreeField(type, obj, fldHnd, offset);
 
     // If "obj" is the address of a local, note that a field of that struct local has been accessed.
     if ((obj != nullptr) && obj->OperIs(GT_ADDR) && varTypeIsStruct(obj->AsUnOp()->gtOp1) &&
@@ -1117,8 +1111,13 @@ inline GenTree* Compiler::gtNewFieldRef(var_types type, CORINFO_FIELD_HANDLE fld
 
         varDsc->lvFieldAccessed = 1;
 #if defined(TARGET_AMD64) || defined(TARGET_ARM64)
-        // These structs are passed by reference; we should probably be able to treat these
-        // as non-global refs, but downstream logic expects these to be marked this way.
+        // These structs are passed by reference and can easily become global
+        // references if those references are exposed. We clear out
+        // address-exposure information for these parameters when they are
+        // converted into references in fgRetypeImplicitByRefArgs() so we do
+        // not have the necessary information in morph to know if these
+        // indirections are actually global references, so we have to be
+        // conservative here.
         if (varDsc->lvIsParam)
         {
             fieldNode->gtFlags |= GTF_GLOB_REF;
@@ -1483,6 +1482,8 @@ void GenTree::BashToConst(T value, var_types type /* = TYP_UNDEF */)
         type = typeOfValue;
     }
 
+    assert(type == genActualType(type));
+
     genTreeOps oper = GT_NONE;
     if (varTypeIsFloating(type))
     {
@@ -1494,7 +1495,6 @@ void GenTree::BashToConst(T value, var_types type /* = TYP_UNDEF */)
     }
 
     SetOperResetFlags(oper);
-
     gtType = type;
 
     switch (oper)
@@ -3560,7 +3560,7 @@ inline bool Compiler::LoopDsc::lpArrLenLimit(Compiler* comp, ArrIndex* index) co
     // We have a[i].length, extract a[i] pattern.
     else if (limit->AsArrLen()->ArrRef()->gtOper == GT_COMMA)
     {
-        return comp->optReconstructArrIndex(limit->AsArrLen()->ArrRef(), index, BAD_VAR_NUM);
+        return comp->optReconstructArrIndex(limit->AsArrLen()->ArrRef(), index);
     }
     return false;
 }
@@ -4233,6 +4233,7 @@ void GenTree::VisitOperands(TVisitor visitor)
         case GT_ALLOCOBJ:
         case GT_INIT_VAL:
         case GT_RUNTIMELOOKUP:
+        case GT_ARR_ADDR:
         case GT_JTRUE:
         case GT_SWITCH:
         case GT_NULLCHECK:
@@ -4426,19 +4427,14 @@ void GenTree::VisitBinOpOperands(TVisitor visitor)
  *  not zero-initialized and can contain data from a prior allocation lifetime.
  */
 
-inline void* __cdecl operator new(size_t sz, Compiler* compiler, CompMemKind cmk)
+inline void* operator new(size_t sz, Compiler* compiler, CompMemKind cmk)
 {
     return compiler->getAllocator(cmk).allocate<char>(sz);
 }
 
-inline void* __cdecl operator new[](size_t sz, Compiler* compiler, CompMemKind cmk)
+inline void* operator new[](size_t sz, Compiler* compiler, CompMemKind cmk)
 {
     return compiler->getAllocator(cmk).allocate<char>(sz);
-}
-
-inline void* __cdecl operator new(size_t sz, void* p, const jitstd::placement_t& /* syntax_difference */)
-{
-    return p;
 }
 
 /*****************************************************************************/
@@ -4487,9 +4483,9 @@ inline static bool StructHasCustomLayout(DWORD attribs)
     return ((attribs & CORINFO_FLG_CUSTOMLAYOUT) != 0);
 }
 
-inline static bool StructHasNoPromotionFlagSet(DWORD attribs)
+inline static bool StructHasDontDigFieldsFlagSet(DWORD attribs)
 {
-    return ((attribs & CORINFO_FLG_DONT_PROMOTE) != 0);
+    return ((attribs & CORINFO_FLG_DONT_DIG_FIELDS) != 0);
 }
 
 //------------------------------------------------------------------------------

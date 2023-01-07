@@ -1454,9 +1454,10 @@ void* emitter::emitAllocAnyInstr(size_t sz, emitAttr opsz)
 
     assert(IsCodeAligned(emitCurIGsize));
 
-    /* Make sure we have enough space for the new instruction */
+    // Make sure we have enough space for the new instruction.
+    // `igInsCnt` is currently a byte, so we can't have more than 255 instructions in a single insGroup.
 
-    if ((emitCurIGfreeNext + sz >= emitCurIGfreeEndp) || emitForceNewIG)
+    if ((emitCurIGfreeNext + sz >= emitCurIGfreeEndp) || emitForceNewIG || (emitCurIGinsCnt >= 255))
     {
         emitNxtIG(true);
     }
@@ -6555,7 +6556,8 @@ unsigned emitter::emitEndCodeGen(Compiler* comp,
 #ifdef DEBUG
         if (emitComp->opts.disAsm || emitComp->verbose)
         {
-            printf("\t\t\t\t\t\t;; bbWeight=%s PerfScore %.2f", refCntWtd2str(ig->igWeight), ig->igPerfScore);
+            printf("\t\t\t\t\t\t;; size=%d bbWeight=%s PerfScore %.2f", ig->igSize, refCntWtd2str(ig->igWeight),
+                   ig->igPerfScore);
         }
         *instrCount += ig->igInsCnt;
 #endif // DEBUG

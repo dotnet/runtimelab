@@ -11,6 +11,10 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_
   add_compile_options(-Wno-error)
 endif()
 
+if (MSVC)
+  add_compile_options($<$<COMPILE_LANGUAGE:C,CXX>:/permissive->)
+endif()
+
 function(create_standalone_jit)
 
   set(oneValueArgs TARGET OS ARCH)
@@ -136,6 +140,7 @@ set( JIT_SOURCES
   hostallocator.cpp
   indirectcalltransformer.cpp
   importer.cpp
+  importer_vectorization.cpp
   inline.cpp
   inlinepolicy.cpp
   instr.cpp
@@ -558,7 +563,6 @@ function(add_jit jitName)
 
     set_property(TARGET ${jitName} APPEND_STRING PROPERTY LINK_FLAGS ${JIT_EXPORTS_LINKER_OPTION})
     set_property(TARGET ${jitName} APPEND_STRING PROPERTY LINK_DEPENDS ${JIT_EXPORTS_FILE})
-    set_target_properties(${jitName} PROPERTIES MSVC_WARNING_LEVEL 4)
 
     target_link_libraries(${jitName}
         ${JIT_LINK_LIBRARIES}
