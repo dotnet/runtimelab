@@ -31,18 +31,14 @@ set __UseEmcmake=0
 if /i "%__Ninja%" == "1" (
     set __CmakeGenerator=Ninja
 ) else (
-    if /i NOT "%__Arch%" == "wasm" (
-        if /i "%__VSVersion%" == "vs2022" (set __CmakeGenerator=%__CmakeGenerator% 17 2022)
-        if /i "%__VSVersion%" == "vs2019" (set __CmakeGenerator=%__CmakeGenerator% 16 2019)
-        if /i "%__VSVersion%" == "vs2017" (set __CmakeGenerator=%__CmakeGenerator% 15 2017)
+    if /i "%__VSVersion%" == "vs2022" (set __CmakeGenerator=%__CmakeGenerator% 17 2022)
+    if /i "%__VSVersion%" == "vs2019" (set __CmakeGenerator=%__CmakeGenerator% 16 2019)
+    if /i "%__VSVersion%" == "vs2017" (set __CmakeGenerator=%__CmakeGenerator% 15 2017)
 
-        if /i "%__Arch%" == "x64" (set __ExtraCmakeParams=%__ExtraCmakeParams% -A x64)
-        if /i "%__Arch%" == "arm" (set __ExtraCmakeParams=%__ExtraCmakeParams% -A ARM)
-        if /i "%__Arch%" == "arm64" (set __ExtraCmakeParams=%__ExtraCmakeParams% -A ARM64)
-        if /i "%__Arch%" == "x86" (set __ExtraCmakeParams=%__ExtraCmakeParams% -A Win32)
-    ) else (
-        set __CmakeGenerator=NMake Makefiles
-    )
+    if /i "%__Arch%" == "x64" (set __ExtraCmakeParams=%__ExtraCmakeParams% -A x64)
+    if /i "%__Arch%" == "arm" (set __ExtraCmakeParams=%__ExtraCmakeParams% -A ARM)
+    if /i "%__Arch%" == "arm64" (set __ExtraCmakeParams=%__ExtraCmakeParams% -A ARM64)
+    if /i "%__Arch%" == "x86" (set __ExtraCmakeParams=%__ExtraCmakeParams% -A Win32)
 )
 
 if /i "%__Arch%" == "wasm" (
