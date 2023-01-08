@@ -317,6 +317,7 @@
     <Compile Include="System\Threading\LowLevelLifoSemaphore.Unix.cs" />
     <Compile Include="System\Threading\Thread.CoreRT.Unix.cs" />
     <Compile Include="System\Threading\Thread.CoreRT.Wasm.cs" Condition="'$(TargetsBrowser)'=='true'"/>
+    <Compile Include="System\Threading\ThreadPool.Wasm.cs" Condition="'$(TargetsBrowser)'=='true'"/>
     <Compile Include="$(CommonPath)\Interop\Unix\System.Native\Interop.Abort.cs">
       <Link>Interop\Unix\System.Native\Interop.Abort.cs</Link>
     </Compile>
