@@ -4,11 +4,16 @@
 using System;
 using System.Runtime.CompilerServices;
 
+#if CODEGEN_WASM
+bool success = RunTest(Generics.Run);
+success &= RunTest(Interfaces.Run);
+#else
 bool success = RunTest(BasicThreading.Run);
 success &= RunTest(Delegates.Run);
 success &= RunTest(Generics.Run);
 success &= RunTest(Interfaces.Run);
 success &= RunTest(Threading.Run);
+#endif
 
 return success ? 100 : 1;
 

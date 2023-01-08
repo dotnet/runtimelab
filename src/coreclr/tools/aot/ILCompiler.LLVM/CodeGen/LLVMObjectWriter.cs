@@ -1278,7 +1278,7 @@ namespace ILCompiler.DependencyAnalysis
             builder.PositionAtEnd(block);
             MethodDesc helperMethod = factory.TypeSystemContext.GetOptionalHelperEntryPoint("ThrowHelpers", "ThrowBodyRemoved");
             string helperMangledName = compilation.NodeFactory.MethodEntrypoint(helperMethod).GetMangledName(compilation.NameMangler);
-            LLVMValueRef fn = Module.GetNamedFunction(helperMangledName);
+            LLVMValueRef fn = ILImporter.GetOrCreateLLVMFunction(Module, helperMangledName, helperMethod.Signature, false);
             builder.BuildCall(fn, new LLVMValueRef[] { tentativeStub.GetParam(0) }, string.Empty);
             builder.BuildUnreachable();
         }

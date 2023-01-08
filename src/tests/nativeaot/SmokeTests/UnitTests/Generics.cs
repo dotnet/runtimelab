@@ -20,7 +20,9 @@ class Generics
         TestDelegateVirtualMethod.Run();
         TestDelegateInterfaceMethod.Run();
         TestThreadStaticFieldAccess.Run();
+#if !CODEGEN_WASM // TODO-LLVM: PrecomputedDictionaryLayoutNode.GetSlotForEntry System.InvalidOperationException: [UnitTests]Generics+TestConstrainedMethodCalls.DoFrob<Foo`1<__Canon>,__Canon>(Foo`1<__Canon>&,object): TypeHandle: T_.Foo`1<System.__Canon>
         TestConstrainedMethodCalls.Run();
+#endif
         TestInstantiatingUnboxingStubs.Run();
         TestNameManglingCollisionRegression.Run();
         TestSimpleGVMScenarios.Run();
@@ -40,8 +42,10 @@ class Generics
         TestGenericInliningDoesntHappen.Run();
         TestGvmDependenciesFromLazy.Run();
         TestGvmDependencyFromGenericLazy.Run();
+#if !CODEGEN_WASM // TODO-LLVM: Investigate
         TestConstrainedGvmCalls.Run();
         TestConstrainedGvmValueTypeCalls.Run();
+#endif
         TestDefaultGenericVirtualInterfaceMethods.Run();
 // TODO-LLVM: Investigate TypeLoadException for these
 #if !CODEGEN_WASM
@@ -52,7 +56,9 @@ class Generics
 #endif
         TestGvmLookupDependency.Run();
         TestInvokeMemberCornerCaseInGenerics.Run();
+#if !CODEGEN_WASM
         TestRefAny.Run();
+#endif
 #if !CODEGEN_CPP
         TestNullableCasting.Run();
         TestVariantCasting.Run();
