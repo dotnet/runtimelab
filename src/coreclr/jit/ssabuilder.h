@@ -62,7 +62,7 @@ private:
     void ComputeIteratedDominanceFrontier(BasicBlock* b, const BlkToBlkVectorMap* mapDF, BlkVector* bIDF);
 
 #if defined(TARGET_WASM)
-    void SsaBuilder::InsertPhiToRationalIRForm(BasicBlock* block, unsigned lclNum);
+    void InsertPhiToRationalIRForm(BasicBlock* block, unsigned lclNum);
 #endif
 
     // Insert a new GT_PHI statement.

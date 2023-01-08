@@ -368,69 +368,69 @@ namespace Internal.IL
                 }
 
                 // TOOO-LLVM: this if block exists solely for LLVM, it is deleted upstream.  Can we delete it for LLVM or do we have to wait for the removal of the IL module?
-                if (owningType.IsDelegate && _compilation.TargetArchIsWasm())
-                {
-                    // If this is a verifiable delegate construction sequence, the previous instruction is a ldftn/ldvirtftn
-                    if (_previousInstructionOffset >= 0 && _ilBytes[_previousInstructionOffset] == (byte)ILOpcode.prefix1)
-                    {
-                        // TODO: for ldvirtftn we need to also check for the `dup` instruction, otherwise this is a normal newobj.
+                //if (owningType.IsDelegate && _compilation.TargetArchIsWasm())
+                //{
+                //    // If this is a verifiable delegate construction sequence, the previous instruction is a ldftn/ldvirtftn
+                //    if (_previousInstructionOffset >= 0 && _ilBytes[_previousInstructionOffset] == (byte)ILOpcode.prefix1)
+                //    {
+                //        // TODO: for ldvirtftn we need to also check for the `dup` instruction, otherwise this is a normal newobj.
 
-                        ILOpcode previousOpcode = (ILOpcode)(0x100 + _ilBytes[_previousInstructionOffset + 1]);
-                        if (previousOpcode == ILOpcode.ldvirtftn || previousOpcode == ILOpcode.ldftn)
-                        {
-                            int delTargetToken = ReadILTokenAt(_previousInstructionOffset + 2);
-                            var delTargetMethod = (MethodDesc)_methodIL.GetObject(delTargetToken);
-                            TypeDesc canonDelegateType = method.OwningType.ConvertToCanonForm(CanonicalFormKind.Specific);
-                            DelegateCreationInfo info = _compilation.GetDelegateCtor(canonDelegateType, delTargetMethod, previousOpcode == ILOpcode.ldvirtftn);
+                //        ILOpcode previousOpcode = (ILOpcode)(0x100 + _ilBytes[_previousInstructionOffset + 1]);
+                //        if (previousOpcode == ILOpcode.ldvirtftn || previousOpcode == ILOpcode.ldftn)
+                //        {
+                //            int delTargetToken = ReadILTokenAt(_previousInstructionOffset + 2);
+                //            var delTargetMethod = (MethodDesc)_methodIL.GetObject(delTargetToken);
+                //            TypeDesc canonDelegateType = method.OwningType.ConvertToCanonForm(CanonicalFormKind.Specific);
+                //            DelegateCreationInfo info = _compilation.GetDelegateCtor(canonDelegateType, delTargetMethod, previousOpcode == ILOpcode.ldvirtftn);
 
-                            if (info.NeedsRuntimeLookup)
-                            {
-                                if (_canonMethod.RequiresInstMethodDescArg())
-                                {
-                                    if (delTargetMethod.OwningType.IsRuntimeDeterminedSubtype &&
-                                        delTargetMethod.OwningType.IsInterface)
-                                    {
-                                        _dependencies.Add(GetGenericLookupHelper(ReadyToRunHelperId.TypeHandle, delTargetMethod.OwningType), reason);
-                                    }
-                                    else
-                                    {
-                                        MethodDesc canonDelTargetMethod = delTargetMethod.GetCanonMethodTarget(CanonicalFormKind.Specific);
+                //            if (info.NeedsRuntimeLookup)
+                //            {
+                //                if (_canonMethod.RequiresInstMethodDescArg())
+                //                {
+                //                    if (delTargetMethod.OwningType.IsRuntimeDeterminedSubtype &&
+                //                        delTargetMethod.OwningType.IsInterface)
+                //                    {
+                //                        _dependencies.Add(GetGenericLookupHelper(ReadyToRunHelperId.TypeHandle, delTargetMethod.OwningType), reason);
+                //                    }
+                //                    else
+                //                    {
+                //                        MethodDesc canonDelTargetMethod = delTargetMethod.GetCanonMethodTarget(CanonicalFormKind.Specific);
 
-                                        if (canonDelTargetMethod.IsSharedByGenericInstantiations &&
-                                            (canonDelTargetMethod.HasInstantiation || canonDelTargetMethod.Signature.IsStatic))
-                                        {
-                                            var delegateNeedsRuntimeLookup = canonDelTargetMethod.HasInstantiation
-                                                ? canonDelTargetMethod.IsSharedByGenericInstantiations
-                                                : canonDelTargetMethod.OwningType.IsCanonicalSubtype(CanonicalFormKind.Any);
-                                            if (delegateNeedsRuntimeLookup)
-                                            {
-                                                if (previousOpcode == ILOpcode.ldvirtftn)
-                                                {
-                                                    _dependencies.Add(
-                                                        GetGenericLookupHelper(ReadyToRunHelperId.MethodHandle,
-                                                            delTargetMethod), reason);
-                                                }
-                                                else
-                                                {
-                                                    _dependencies.Add(
-                                                        GetGenericLookupHelper(ReadyToRunHelperId.MethodEntry,
-                                                            delTargetMethod), reason);
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                                else
-                                {
-                                    _dependencies.Add(GetGenericLookupHelper(ReadyToRunHelperId.TypeHandle, delTargetMethod.OwningType), reason);
-                                }
-                            }
+                //                        if (canonDelTargetMethod.IsSharedByGenericInstantiations &&
+                //                            (canonDelTargetMethod.HasInstantiation || canonDelTargetMethod.Signature.IsStatic))
+                //                        {
+                //                            var delegateNeedsRuntimeLookup = canonDelTargetMethod.HasInstantiation
+                //                                ? canonDelTargetMethod.IsSharedByGenericInstantiations
+                //                                : canonDelTargetMethod.OwningType.IsCanonicalSubtype(CanonicalFormKind.Any);
+                //                            if (delegateNeedsRuntimeLookup)
+                //                            {
+                //                                if (previousOpcode == ILOpcode.ldvirtftn)
+                //                                {
+                //                                    _dependencies.Add(
+                //                                        GetGenericLookupHelper(ReadyToRunHelperId.MethodHandle,
+                //                                            delTargetMethod), reason);
+                //                                }
+                //                                else
+                //                                {
+                //                                    _dependencies.Add(
+                //                                        GetGenericLookupHelper(ReadyToRunHelperId.MethodEntry,
+                //                                            delTargetMethod), reason);
+                //                                }
+                //                            }
+                //                        }
+                //                    }
+                //                }
+                //                else
+                //                {
+                //                    _dependencies.Add(GetGenericLookupHelper(ReadyToRunHelperId.TypeHandle, delTargetMethod.OwningType), reason);
+                //                }
+                //            }
 
-                            _dependencies.Add(info.Constructor, "LLVM delegate ctor");
-                            return;
-                        }
-                    }
-                }
+                //            _dependencies.Add(info.Constructor, "LLVM delegate ctor");
+                //            return;
+                //        }
+                //    }
+                //}
             }
 
             // TODO-LLVM: delete when IL->LLVM module is gone

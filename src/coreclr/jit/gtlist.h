@@ -99,7 +99,7 @@ GTNODE(ALLOCOBJ         , GenTreeAllocObj    ,0,GTK_UNOP|GTK_EXOP|DBK_NOTLIR) //
 GTNODE(INIT_VAL         , GenTreeOp          ,0,GTK_UNOP) // Initialization value for an initBlk
 
 GTNODE(BOX              , GenTreeBox         ,0,GTK_UNOP|GTK_EXOP|DBK_NOTLIR)   // Marks its first operands (a local) as being a box
-GTNODE(PUTARG_TYPE      , GenTreeOp          ,0,GTK_UNOP|DBK_NOTLIR)            // Saves argument type between importation and morph
+GTNODE(PUTARG_TYPE      , GenTreePutArgType  ,0,GTK_UNOP)            // Saves argument type between importation and morph
 GTNODE(RUNTIMELOOKUP    , GenTreeRuntimeLookup, 0,GTK_UNOP|GTK_EXOP|DBK_NOTLIR) // Runtime handle lookup
 GTNODE(ARR_ADDR         , GenTreeArrAddr     ,0,GTK_UNOP|GTK_EXOP|DBK_NOTLIR)   // Wraps an array address expression
 
@@ -295,11 +295,6 @@ GTNODE(PUTARG_REG       , GenTreeMultiRegOp  ,0,GTK_UNOP|DBK_NOTHIR)            
 #else
 GTNODE(PUTARG_REG       , GenTreeOp          ,0,GTK_UNOP|DBK_NOTHIR)              // operator that places outgoing arg in register
 #endif
-#if defined(TARGET_WASM)
-GTNODE(PUTARG_TYPE      , GenTreeOp          ,0,GTK_UNOP)                        // operator that places saves argument type between importation and morph and represents args lowered to LLVM stack
-#else
-GTNODE(PUTARG_TYPE      , GenTreePutArgType  ,0,GTK_UNOP|GTK_NOTLIR)             // operator that places saves argument type between importation and morph
-#endif // TARGET_WASM
 GTNODE(PUTARG_STK       , GenTreePutArgStk   ,0,GTK_UNOP|GTK_NOVALUE|DBK_NOTHIR)  // operator that places outgoing arg in stack
 #if FEATURE_ARG_SPLIT
 GTNODE(PUTARG_SPLIT     , GenTreePutArgSplit ,0,GTK_UNOP|DBK_NOTHIR)              // operator that places outgoing arg in registers with stack (split struct in ARM32)

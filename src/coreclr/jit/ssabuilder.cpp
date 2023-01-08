@@ -808,7 +808,11 @@ void SsaBuilder::InsertPhiFunctions(BasicBlock** postOrder, int count)
 //
 void SsaBuilder::RenameDef(GenTree* defNode, BasicBlock* block)
 {
+#if defined(TARGET_WASM)
+    assert(defNode->OperIsSsaDef() || defNode->OperIsLocalStore());
+#else
     assert(defNode->OperIsSsaDef());
+#endif // TARGET_WASM
 
     if (defNode->OperIs(GT_ASG))
     {
@@ -831,17 +835,17 @@ void SsaBuilder::RenameDef(GenTree* defNode, BasicBlock* block)
     bool isLocal;
     if (block->IsLIR())
     {
-        isLocal   = asgNode->OperIsLocalStore();
-        lclNode   = isLocal ? asgNode->AsLclVarCommon() : nullptr;
-        isFullDef = isLocal && (lclNode->OperIs(GT_STORE_LCL_VAR)
-            || (m_pCompiler->lvaTable[lclNode->GetLclNum()].lvExactSize == genTypeSize(asgNode->gtType)));
+        isLocal   = defNode->OperIsLocalStore();
+        lclNode = isLocal ? defNode->AsLclVarCommon() : nullptr;
+        isFullDef = isLocal && (lclNode->OperIs(GT_STORE_LCL_VAR) ||
+                        (m_pCompiler->lvaTable[lclNode->GetLclNum()].lvExactSize == genTypeSize(defNode->gtType)));
     }
     else
     {
-        isLocal = asgNode->DefinesLocal(m_pCompiler, &lclNode, &isFullDef);
+        isLocal = defNode->DefinesLocal(m_pCompiler, &lclNode, &isFullDef);
     }
 #else
-    bool isLocal = asgNode->DefinesLocal(m_pCompiler, &lclNode, &isFullDef);
+    bool isLocal = defNode->DefinesLocal(m_pCompiler, &lclNode, &isFullDef);
 #endif
 
     if (isLocal)
