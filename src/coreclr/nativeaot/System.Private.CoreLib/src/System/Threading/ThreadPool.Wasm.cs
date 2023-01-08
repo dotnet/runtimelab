@@ -13,7 +13,7 @@ namespace System.Threading
         [SupportedOSPlatform("windows")]
         public static unsafe bool UnsafeQueueNativeOverlapped(NativeOverlapped* overlapped)
         {
-	    throw new PlatformNotSupportedException(SR.Arg_PlatformNotSupported); // NativeOverlappedCallback does not exist for Wasm
+            throw new PlatformNotSupportedException(SR.Arg_PlatformNotSupported); // NativeOverlappedCallback does not exist for Wasm
         }
 
         [Obsolete("ThreadPool.BindHandle(IntPtr) has been deprecated. Use ThreadPool.BindHandle(SafeHandle) instead.")]
