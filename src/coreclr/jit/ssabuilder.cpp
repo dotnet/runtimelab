@@ -830,13 +830,13 @@ void SsaBuilder::RenameDef(GenTree* defNode, BasicBlock* block)
     }
 
     GenTreeLclVarCommon* lclNode;
-    bool                 isFullDef;
+    bool                 isFullDef = false;
 #if defined(TARGET_WASM)
     bool isLocal;
     if (block->IsLIR())
     {
         isLocal   = defNode->OperIsLocalStore();
-        lclNode = isLocal ? defNode->AsLclVarCommon() : nullptr;
+        lclNode   = isLocal ? defNode->AsLclVarCommon() : nullptr;
         isFullDef = isLocal && (lclNode->OperIs(GT_STORE_LCL_VAR) ||
                         (m_pCompiler->lvaTable[lclNode->GetLclNum()].lvExactSize == genTypeSize(defNode->gtType)));
     }
@@ -899,9 +899,9 @@ void SsaBuilder::RenameDef(GenTree* defNode, BasicBlock* block)
             }
             else
 #endif
-                asgPhiOp = defNode->gtGetOp2();
+                asgPhiOp = defNode;
 
-            if (!asgPhiOp->OperIs(GT_PHI))
+            if (!asgPhiOp->IsPhiDefn())
             {
                 AddDefToHandlerPhis(block, lclNum, ssaNum);
             }
