@@ -8214,7 +8214,7 @@ inline regNumber GenTree::GetRegByIndex(int regIndex) const
     }
 #endif
 
-#if !defined(TARGET_64BIT) && !defined(TARGET_WASM32) && !defined(TARGET_WASM64)
+#if !defined(TARGET_64BIT)
     if (OperIsMultiRegOp())
     {
         return AsMultiRegOp()->GetRegNumByIdx(regIndex);
@@ -8278,7 +8278,7 @@ inline var_types GenTree::GetRegTypeByIndex(int regIndex) const
     }
 #endif // FEATURE_ARG_SPLIT
 
-#if !defined(TARGET_64BIT) && !defined(TARGET_WASM32) && !defined(TARGET_WASM64)
+#if !defined(TARGET_64BIT)
     if (OperIsMultiRegOp())
     {
         return AsMultiRegOp()->GetRegType(regIndex);
