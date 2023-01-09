@@ -868,7 +868,7 @@ void SsaBuilder::RenameDef(GenTree* defNode, BasicBlock* block)
             assert((lclNode->gtFlags & GTF_VAR_DEF) != 0);
 
             unsigned ssaNum = varDsc->lvPerSsaData.AllocSsaNum(m_allocator, block,
-                                                               defNode->OperIs(GT_ASG) ? defNode->AsOp() : nullptr);
+                                                               !defNode->OperIs(GT_CALL) ? defNode->AsOp() : nullptr);
 
             if (!isFullDef)
             {
