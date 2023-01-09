@@ -181,7 +181,6 @@ if %__TargetArchX86%==1   set __TargetArch=x86
 if %__TargetArchArm%==1   set __TargetArch=arm
 if %__TargetArchArm64%==1 set __TargetArch=arm64
 if %__TargetArchWasm%==1 (
-echo setting wasm
     set __TargetOS=browser
     set __TargetArch=wasm
 )
