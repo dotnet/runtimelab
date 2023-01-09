@@ -880,7 +880,7 @@ void Llvm::buildStoreLocalVar(GenTreeLclVar* lclVar)
 
     if (lclVar->HasSsaName())
     {
-        _localsMap.Set({lclNum, lclVar->GetSsaNum()}, localValue, JitHashTable<Compiler::SSAName, Compiler::SSAName, Value*>::Overwrite);
+        _localsMap.Set({lclNum, lclVar->GetSsaNum()}, localValue);
     }
     else
     {
