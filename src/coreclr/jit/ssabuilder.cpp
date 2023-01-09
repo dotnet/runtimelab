@@ -891,17 +891,7 @@ void SsaBuilder::RenameDef(GenTree* defNode, BasicBlock* block)
             // If necessary, add "lclNum/ssaNum" to the arg list of a phi def in any
             // handlers for try blocks that "block" is within.  (But only do this for "real" definitions,
             // not phi definitions.)
-            GenTree* asgPhiOp;
-#if defined(TARGET_WASM)
-            if (block->IsLIR())
-            {
-                asgPhiOp = defNode->gtGetOp1();
-            }
-            else
-#endif
-                asgPhiOp = defNode;
-
-            if (!asgPhiOp->IsPhiDefn())
+            if (!defNode->IsPhiDefn())
             {
                 AddDefToHandlerPhis(block, lclNum, ssaNum);
             }
