@@ -97,11 +97,11 @@
     <Delete Files="$(PublishDir)\$(TargetName)$(NativeBinaryExt)" />
     <Copy SourceFiles="$(NativeOutputPath)$(TargetName)$(NativeBinaryExt)" DestinationFolder="$(PublishDir)" />
 
-    <Delete Files="$(PublishDir)\$(TargetName).js" Condition="'$(Platform)'=='wasm'"/>
-    <Copy SourceFiles="$(NativeOutputPath)$(TargetName).js" DestinationFolder="$(PublishDir)" Condition="'$(Platform)'=='wasm'"/>
+    <Delete Files="$(PublishDir)\$(TargetName).js" Condition="'$(TargetArchitecture)'=='wasm'"/>
+    <Copy SourceFiles="$(NativeOutputPath)$(TargetName).js" DestinationFolder="$(PublishDir)" Condition="'$(TargetArchitecture)'=='wasm'"/>
 
-    <Delete Files="$(PublishDir)\$(TargetName).wasm" Condition="'$(Platform)'=='wasm'"/>
-    <Copy SourceFiles="$(NativeOutputPath)$(TargetName).wasm" DestinationFolder="$(PublishDir)" Condition="'$(Platform)'=='wasm'"/>
+    <Delete Files="$(PublishDir)\$(TargetName).wasm" Condition="'$(TargetArchitecture)'=='wasm'"/>
+    <Copy SourceFiles="$(NativeOutputPath)$(TargetName).wasm" DestinationFolder="$(PublishDir)" Condition="'$(TargetArchitecture)'=='wasm'"/>
 
   </Target>
 
