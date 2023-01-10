@@ -160,7 +160,31 @@ namespace Internal.IL
                     _dependencies.Add(GetHelperEntrypoint(ReadyToRunHelper.MonitorEnter), reason);
                     _dependencies.Add(GetHelperEntrypoint(ReadyToRunHelper.MonitorExit), reason);
                 }
-                
+            }
+
+            if (_compilation.TargetArchIsWasm() && (_canonMethod.IsSynchronized || _exceptionRegions.Length != 0))
+            {
+                // TODO-LLVM: delete these once IL backend is no more.
+                MetadataType helperType = _compilation.TypeSystemContext.SystemModule.GetKnownType("System.Runtime", "EHClauseIterator");
+                MethodDesc helperMethod = helperType.GetKnownMethod("InitFromEhInfo", null);
+                _dependencies.Add(_compilation.NodeFactory.MethodEntrypoint(helperMethod), "Wasm EH");
+
+                helperType = _compilation.TypeSystemContext.SystemModule.GetKnownType("System.Runtime", "EH");
+                helperMethod = helperType.GetKnownMethod("FindFirstPassHandlerWasm", null);
+                _dependencies.Add(_compilation.NodeFactory.MethodEntrypoint(helperMethod), "Wasm EH");
+
+                helperMethod = helperType.GetKnownMethod("InvokeSecondPassWasm", null);
+                _dependencies.Add(_compilation.NodeFactory.MethodEntrypoint(helperMethod), "Wasm EH");
+
+                // TODO-LLVM: make these into normal "ReadyToRunHelper" instead of hardcoding things here.
+                helperMethod = helperType.GetKnownMethod("HandleExceptionWasmFilteredCatch", null);
+                _dependencies.Add(_compilation.NodeFactory.MethodEntrypoint(helperMethod), "Wasm EH");
+
+                helperMethod = helperType.GetKnownMethod("HandleExceptionWasmCatch", null);
+                _dependencies.Add(_compilation.NodeFactory.MethodEntrypoint(helperMethod), "Wasm EH");
+
+                helperMethod = helperType.GetKnownMethod("HandleExceptionWasmFault", null);
+                _dependencies.Add(_compilation.NodeFactory.MethodEntrypoint(helperMethod), "Wasm EH");
             }
 
             FindBasicBlocks();
@@ -318,22 +342,6 @@ namespace Internal.IL
                     reason = "ldvirtftn"; break;
                 default:
                     Debug.Assert(false); break;
-            }
-
-            // Add Wasm exception handling dependencies if making any kind of call and in a try region
-            if (opcode != ILOpcode.ldftn && opcode != ILOpcode.ldvirtftn && _compilation.TargetArchIsWasm() && InTryRegion())
-            {
-                MetadataType helperType = _compilation.TypeSystemContext.SystemModule.GetKnownType("System.Runtime", "EHClauseIterator");
-                MethodDesc helperMethod = helperType.GetKnownMethod("InitFromEhInfo", null);
-                _dependencies.Add(_compilation.NodeFactory.MethodEntrypoint(helperMethod), "Wasm EH");
-
-                helperType = _compilation.TypeSystemContext.SystemModule.GetKnownType("System.Runtime", "EH");
-                helperMethod = helperType.GetKnownMethod("FindFirstPassHandlerWasm", null);
-                _dependencies.Add(_compilation.NodeFactory.MethodEntrypoint(helperMethod), "Wasm EH");
-
-                helperType = _compilation.TypeSystemContext.SystemModule.GetKnownType("System.Runtime", "EH");
-                helperMethod = helperType.GetKnownMethod("InvokeSecondPassWasm", null);
-                _dependencies.Add(_compilation.NodeFactory.MethodEntrypoint(helperMethod), "Wasm EH");
             }
 
             if (opcode == ILOpcode.newobj)
