@@ -1925,7 +1925,7 @@ namespace Internal.IL
             {
                 FunctionPointerEntry functionPointer = ((FunctionPointerEntry)_stack.Peek());
                 TypeDesc canonDelegateType = callee.OwningType.ConvertToCanonForm(CanonicalFormKind.Specific);
-                DelegateCreationInfo delegateInfo = _compilation.GetDelegateCtor(canonDelegateType, functionPointer.Method, followVirtualDispatch: false);
+                DelegateCreationInfo delegateInfo = _compilation.GetDelegateCtor(canonDelegateType, functionPointer.Method, _constrainedType, followVirtualDispatch: false);
                 MethodDesc delegateTargetMethod = delegateInfo.TargetMethod;
                 callee = delegateInfo.Constructor.Method;
                 if (delegateInfo.NeedsRuntimeLookup && !functionPointer.IsVirtual)
@@ -2153,8 +2153,8 @@ namespace Internal.IL
                 if (runtimeDeterminedMethod.OwningType.IsRuntimeDeterminedSubtype)
                 {
                     //TODO interfaceEEType can be refactored out
-                    eeTypeExpression = CallRuntime("System", _compilation.TypeSystemContext, "Object", "get_MethodTable",
-                        new[] { new ExpressionEntry(StackValueKind.ObjRef, "thisPointer", thisPointer) });
+                    TypeDesc objectType = GetWellKnownType(WellKnownType.Object);
+                    eeTypeExpression = LoadInstanceField(thisPointer, objectType.GetKnownField("m_pEEType"), GetWellKnownType(WellKnownType.IntPtr), StackValueKind.NativeInt);
                     interfaceEEType = new ExpressionEntry(StackValueKind.ValueType, "interfaceEEType", CallGenericHelper(ReadyToRunHelperId.TypeHandle, runtimeDeterminedMethod.OwningType), GetWellKnownType(WellKnownType.IntPtr));
                 }
                 else
@@ -2488,20 +2488,15 @@ namespace Internal.IL
                 case "MethodTableOf":
                     if (metadataType.Namespace == "System" && (metadataType.Name == "EETypePtr" || metadataType.Name == "Object") && method.Instantiation.Length == 1)
                     {
-                        LLVMValueRef eeTypePtrRef;
-                        if (runtimeDeterminedMethod.IsRuntimeDeterminedExactMethod)
-                        {
-                            eeTypePtrRef = CallGenericHelper(ReadyToRunHelperId.TypeHandle, runtimeDeterminedMethod.Instantiation[0]);
-                        }
-                        else
-                        {
-                            var helperId = _compilation.GetLdTokenHelperForType(method.Instantiation[0]);
+                        PushMethodTableForInstantiationParameter(method, runtimeDeterminedMethod);
 
-                            ISymbolNode node = _compilation.ComputeConstantLookup(helperId, method.Instantiation[0]);
-                            _dependencies.Add(node, "LLVM Type ptr");
-                            eeTypePtrRef = LoadAddressOfSymbolNode(node);
-                        }
-                        PushExpression(StackValueKind.Int32, "eeTypePtr", eeTypePtrRef, GetWellKnownType(WellKnownType.IntPtr));
+                        return true;
+                    }
+                    break;
+                case "Of":
+                    if (metadataType.Namespace == "Internal.Runtime" && metadataType.Name == "MethodTable")
+                    {
+                        PushMethodTableForInstantiationParameter(method, runtimeDeterminedMethod);
 
                         return true;
                     }
@@ -2509,6 +2504,25 @@ namespace Internal.IL
             }
 
             return false;
+        }
+
+        private void PushMethodTableForInstantiationParameter(MethodDesc method, MethodDesc runtimeDeterminedMethod)
+        {
+            LLVMValueRef eeTypePtrRef;
+            if (runtimeDeterminedMethod.IsRuntimeDeterminedExactMethod)
+            {
+                eeTypePtrRef = CallGenericHelper(ReadyToRunHelperId.TypeHandle, runtimeDeterminedMethod.Instantiation[0]);
+            }
+            else
+            {
+                var helperId = _compilation.GetLdTokenHelperForType(method.Instantiation[0]);
+
+                ISymbolNode node = _compilation.ComputeConstantLookup(helperId, method.Instantiation[0]);
+                _dependencies.Add(node, "LLVM Type ptr");
+                eeTypePtrRef = LoadAddressOfSymbolNode(node);
+            }
+
+            PushExpression(StackValueKind.Int32, "eeTypePtr", eeTypePtrRef, GetWellKnownType(WellKnownType.IntPtr));
         }
 
         // if the call is done via `invoke` then we need the try/then block passed back in case the calling code takes the result from a phi.
@@ -5227,6 +5241,18 @@ namespace Internal.IL
         private const string DispatchResolve = "DispatchResolve";
         private const string ThreadStatics = "ThreadStatics";
         private const string ClassConstructorRunner = "ClassConstructorRunner";
+
+        private ExpressionEntry LoadInstanceField(LLVMValueRef thisValueRef, FieldDesc fieldDesc, TypeDesc fieldTypeDesc, StackValueKind stackValueKind, LLVMBuilderRef builder = default(LLVMBuilderRef))
+        {
+            if (builder.Handle == IntPtr.Zero)
+                builder = _builder;
+
+            LLVMValueRef fieldAddress = _builder.BuildGEP(thisValueRef, new LLVMValueRef[] { LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, (ulong)fieldDesc.Offset.AsInt) });
+            LLVMValueRef fieldValue = LoadValue(builder, fieldAddress, fieldTypeDesc,
+                GetLLVMTypeForTypeDesc(fieldTypeDesc), SignExtendTypeDesc(fieldTypeDesc), $"loadField_{fieldDesc.Name}");
+
+            return new ExpressionEntry(stackValueKind, fieldDesc.Name, fieldValue);
+        }
 
         private ExpressionEntry CallRuntime(TypeSystemContext context, string className, string methodName, StackEntry[] arguments, TypeDesc forcedReturnType = null, bool fromLandingPad = false, LLVMBuilderRef builder = default(LLVMBuilderRef))
         {

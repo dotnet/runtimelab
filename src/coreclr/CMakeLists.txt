@@ -109,16 +109,19 @@ if(CLR_CMAKE_HOST_UNIX)
 
     add_subdirectory(pal)
     add_subdirectory(hosts)
-else(CLR_CMAKE_HOST_UNIX)
+else()
     if(CLR_CMAKE_TARGET_UNIX AND NOT CLR_CMAKE_TARGET_ARCH_WASM)
-        add_subdirectory(pal/src/libunwind)
-    endif(CLR_CMAKE_TARGET_UNIX AND NOT CLR_CMAKE_TARGET_ARCH_WASM)
-endif(CLR_CMAKE_HOST_UNIX)
+        add_subdirectory(${CLR_SRC_NATIVE_DIR}/external/libunwind_extras ${CLR_ARTIFACTS_OBJ_DIR}/external/libunwind)
+    endif()
+endif()
 
 # Add this subdir. We install the headers for the jit.
 add_subdirectory(pal/prebuilt/inc)
 
 if(NOT CLR_CMAKE_TARGET_ARCH_WASM)
+    # These need to happen before the VM and debug-pal includes.
+    set(EP_GENERATED_HEADER_PATH "${GENERATED_INCLUDE_DIR}")
+    include (${CLR_SRC_NATIVE_DIR}/eventpipe/configure.cmake)
     add_subdirectory(debug/debug-pal)
 endif(NOT CLR_CMAKE_TARGET_ARCH_WASM)
 

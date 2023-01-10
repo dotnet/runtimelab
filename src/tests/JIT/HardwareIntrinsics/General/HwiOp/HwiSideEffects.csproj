@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <DebugType>None</DebugType>
+    <Optimize>True</Optimize>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <DefineConstants Condition="$(TargetArchitecture) == 'wasm'">$(DefineConstants);CODEGEN_WASM</DefineConstants>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="$(MSBuildProjectName).cs" />
+  </ItemGroup>
+</Project>

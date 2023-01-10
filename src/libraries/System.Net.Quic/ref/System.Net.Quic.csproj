@@ -1,9 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFrameworks>$(NetCoreAppCurrent)</TargetFrameworks>
+    <TargetFramework>$(NetCoreAppCurrent)</TargetFramework>
     <Nullable>enable</Nullable>
-    <IsNETCoreAppRef>false</IsNETCoreAppRef>
-    <!-- NativeAOT-LLVM: retain when merging https://github.com/dotnet/runtime/pull/64000 (Feb 24) -->
     <!-- NativeAOT-LLVM: take upstream when merging https://github.com/dotnet/runtime/pull/68488 (Apr 25) -->
     <DisableImplicitFrameworkReferences>true</DisableImplicitFrameworkReferences>
   </PropertyGroup>

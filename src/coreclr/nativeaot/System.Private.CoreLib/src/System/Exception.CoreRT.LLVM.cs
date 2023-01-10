@@ -8,9 +8,6 @@ namespace System
 {
     public partial class Exception
     {
-        [DllImport("*")]
-        internal static extern void RhpThrowEx(object exception);
-
         private static void DispatchExLLVM(object exception)
         {
             AppendExceptionStackFrameLLVM(exception, new StackTrace(1).ToString());

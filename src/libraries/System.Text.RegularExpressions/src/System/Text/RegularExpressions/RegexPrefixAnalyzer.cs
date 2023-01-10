@@ -40,7 +40,7 @@ namespace System.Text.RegularExpressions
         }
 
         /// <summary>Computes the leading substring in <paramref name="node"/>; may be empty.</summary>
-        public static string FindCaseSensitivePrefix(RegexNode node)
+        public static string FindPrefix(RegexNode node)
         {
             var vsb = new ValueStringBuilder(stackalloc char[64]);
             Process(node, ref vsb);
@@ -130,17 +130,17 @@ namespace System.Text.RegularExpressions
                         }
 
                     // One character
-                    case RegexNodeKind.One when (node.Options & RegexOptions.IgnoreCase) == 0:
+                    case RegexNodeKind.One:
                         vsb.Append(node.Ch);
                         return !rtl;
 
                     // Multiple characters
-                    case RegexNodeKind.Multi when (node.Options & RegexOptions.IgnoreCase) == 0:
+                    case RegexNodeKind.Multi:
                         vsb.Append(node.Str);
                         return !rtl;
 
                     // Loop of one character
-                    case RegexNodeKind.Oneloop or RegexNodeKind.Oneloopatomic or RegexNodeKind.Onelazy when node.M > 0 && (node.Options & RegexOptions.IgnoreCase) == 0:
+                    case RegexNodeKind.Oneloop or RegexNodeKind.Oneloopatomic or RegexNodeKind.Onelazy when node.M > 0:
                         const int SingleCharIterationLimit = 32; // arbitrary cut-off to avoid creating super long strings unnecessarily
                         int count = Math.Min(node.M, SingleCharIterationLimit);
                         vsb.Append(node.Ch, count);
@@ -191,26 +191,18 @@ namespace System.Text.RegularExpressions
         }
 
         /// <summary>Finds sets at fixed-offsets from the beginning of the pattern/</summary>
-        /// <param name="tree">The RegexNode tree.</param>
-        /// <param name="culture">The culture to use for any case conversions.</param>
+        /// <param name="root">The RegexNode tree root.</param>
         /// <param name="thorough">true to spend more time finding sets (e.g. through alternations); false to do a faster analysis that's potentially more incomplete.</param>
         /// <returns>The array of found sets, or null if there aren't any.</returns>
-        public static List<(char[]? Chars, string Set, int Distance, bool CaseInsensitive)>? FindFixedDistanceSets(
-            RegexTree tree, CultureInfo culture, bool thorough)
+        public static List<(char[]? Chars, string Set, int Distance)>? FindFixedDistanceSets(RegexNode root, bool thorough)
         {
             const int MaxLoopExpansion = 20; // arbitrary cut-off to avoid loops adding significant overhead to processing
             const int MaxFixedResults = 50; // arbitrary cut-off to avoid generating lots of sets unnecessarily
 
             // Find all fixed-distance sets.
-            var results = new List<(char[]? Chars, string Set, int Distance, bool CaseInsensitive)>();
+            var results = new List<(char[]? Chars, string Set, int Distance)>();
             int distance = 0;
-            TryFindFixedSets(tree.Root, results, ref distance, culture, thorough);
-#if DEBUG
-            foreach ((char[]? Chars, string Set, int Distance, bool CaseInsensitive) result in results)
-            {
-                Debug.Assert(result.Distance <= tree.MinRequiredLength, $"Min: {tree.MinRequiredLength}, Distance: {result.Distance}, Tree: {tree}");
-            }
-#endif
+            TryFindFixedSets(root, results, ref distance, thorough);
 
             // Remove any sets that match everything; they're not helpful.  (This check exists primarily to weed
             // out use of . in Singleline mode.)
@@ -233,10 +225,10 @@ namespace System.Text.RegularExpressions
             // doesn't.
             if (results.Count == 0)
             {
-                (string CharClass, bool CaseInsensitive)? first = FindFirstCharClass(tree, culture);
-                if (first is not null)
+                string? charClass = FindFirstCharClass(root);
+                if (charClass is not null)
                 {
-                    results.Add((null, first.Value.CharClass, 0, first.Value.CaseInsensitive));
+                    results.Add((null, charClass, 0));
                 }
 
                 if (results.Count == 0)
@@ -245,28 +237,17 @@ namespace System.Text.RegularExpressions
                 }
             }
 
-            // For every entry, see if we can mark any that are case-insensitive as actually being case-sensitive
-            // based on not participating in case conversion.  And then for ones that are case-sensitive, try to
-            // get the chars that make up the set, if there are few enough.
+            // For every entry, try to get the chars that make up the set, if there are few enough.
             Span<char> scratch = stackalloc char[5]; // max optimized by IndexOfAny today
             for (int i = 0; i < results.Count; i++)
             {
-                (char[]? Chars, string Set, int Distance, bool CaseInsensitive) result = results[i];
+                (char[]? Chars, string Set, int Distance) result = results[i];
                 if (!RegexCharClass.IsNegated(result.Set))
                 {
                     int count = RegexCharClass.GetSetChars(result.Set, scratch);
                     if (count != 0)
                     {
-                        if (result.CaseInsensitive && !RegexCharClass.ParticipatesInCaseConversion(scratch.Slice(0, count)))
-                        {
-                            result.CaseInsensitive = false;
-                        }
-
-                        if (!result.CaseInsensitive)
-                        {
-                            result.Chars = scratch.Slice(0, count).ToArray();
-                        }
-
+                        result.Chars = scratch.Slice(0, count).ToArray();
                         results[i] = result;
                     }
                 }
@@ -276,12 +257,6 @@ namespace System.Text.RegularExpressions
             // for the fastest and that have the best chance of matching as few false positives as possible.
             results.Sort((s1, s2) =>
             {
-                if (s1.CaseInsensitive != s2.CaseInsensitive)
-                {
-                    // If their case-sensitivities don't match, whichever is case-sensitive comes first / is considered lower.
-                    return s1.CaseInsensitive ? 1 : -1;
-                }
-
                 if (s1.Chars is not null && s2.Chars is not null)
                 {
                     // Then of the ones that are the same length, prefer those with less frequent values.  The frequency is
@@ -329,7 +304,7 @@ namespace System.Text.RegularExpressions
             // of the node.  If it returns false, the node isn't entirely fixed, in which case subsequent nodes
             // shouldn't be examined and distance should no longer be trusted.  However, regardless of whether it
             // returns true or false, it may have populated results, and all populated results are valid.
-            static bool TryFindFixedSets(RegexNode node, List<(char[]? Chars, string Set, int Distance, bool CaseInsensitive)> results, ref int distance, CultureInfo culture, bool thorough)
+            static bool TryFindFixedSets(RegexNode node, List<(char[]? Chars, string Set, int Distance)> results, ref int distance, bool thorough)
             {
                 if (!StackHelper.TryEnsureSufficientExecutionStack())
                 {
@@ -341,27 +316,25 @@ namespace System.Text.RegularExpressions
                     return false;
                 }
 
-                bool caseInsensitive = (node.Options & RegexOptions.IgnoreCase) != 0;
-
                 switch (node.Kind)
                 {
                     case RegexNodeKind.One:
                         if (results.Count < MaxFixedResults)
                         {
-                            string setString = RegexCharClass.OneToStringClass(node.Ch, caseInsensitive ? culture : null, out bool resultIsCaseInsensitive);
-                            results.Add((null, setString, distance++, resultIsCaseInsensitive));
+                            string setString = RegexCharClass.OneToStringClass(node.Ch);
+                            results.Add((null, setString, distance++));
                             return true;
                         }
                         return false;
 
                     case RegexNodeKind.Onelazy or RegexNodeKind.Oneloop or RegexNodeKind.Oneloopatomic when node.M > 0:
                         {
-                            string setString = RegexCharClass.OneToStringClass(node.Ch, caseInsensitive ? culture : null, out bool resultIsCaseInsensitive);
+                            string setString = RegexCharClass.OneToStringClass(node.Ch);
                             int minIterations = Math.Min(node.M, MaxLoopExpansion);
                             int i = 0;
                             for (; i < minIterations && results.Count < MaxFixedResults; i++)
                             {
-                                results.Add((null, setString, distance++, resultIsCaseInsensitive));
+                                results.Add((null, setString, distance++));
                             }
                             return i == node.M && i == node.N;
                         }
@@ -372,8 +345,8 @@ namespace System.Text.RegularExpressions
                             int i = 0;
                             for (; i < s.Length && results.Count < MaxFixedResults; i++)
                             {
-                                string setString = RegexCharClass.OneToStringClass(s[i], caseInsensitive ? culture : null, out bool resultIsCaseInsensitive);
-                                results.Add((null, setString, distance++, resultIsCaseInsensitive));
+                                string setString = RegexCharClass.OneToStringClass(s[i]);
+                                results.Add((null, setString, distance++));
                             }
                             return i == s.Length;
                         }
@@ -381,7 +354,7 @@ namespace System.Text.RegularExpressions
                     case RegexNodeKind.Set:
                         if (results.Count < MaxFixedResults)
                         {
-                            results.Add((null, node.Str!, distance++, caseInsensitive));
+                            results.Add((null, node.Str!, distance++));
                             return true;
                         }
                         return false;
@@ -392,7 +365,7 @@ namespace System.Text.RegularExpressions
                             int i = 0;
                             for (; i < minIterations && results.Count < MaxFixedResults; i++)
                             {
-                                results.Add((null, node.Str!, distance++, caseInsensitive));
+                                results.Add((null, node.Str!, distance++));
                             }
                             return i == node.M && i == node.N;
                         }
@@ -429,7 +402,7 @@ namespace System.Text.RegularExpressions
                     case RegexNodeKind.Atomic:
                     case RegexNodeKind.Group:
                     case RegexNodeKind.Capture:
-                        return TryFindFixedSets(node.Child(0), results, ref distance, culture, thorough);
+                        return TryFindFixedSets(node.Child(0), results, ref distance, thorough);
 
                     case RegexNodeKind.Lazyloop or RegexNodeKind.Loop when node.M > 0:
                         // This effectively only iterates the loop once.  If deemed valuable,
@@ -438,7 +411,7 @@ namespace System.Text.RegularExpressions
                         // summed distance for all node.M iterations.  If node.M == node.N,
                         // this would then also allow continued evaluation of the rest of the
                         // expression after the loop.
-                        TryFindFixedSets(node.Child(0), results, ref distance, culture, thorough);
+                        TryFindFixedSets(node.Child(0), results, ref distance, thorough);
                         return false;
 
                     case RegexNodeKind.Concatenate:
@@ -446,7 +419,7 @@ namespace System.Text.RegularExpressions
                             int childCount = node.ChildCount();
                             for (int i = 0; i < childCount; i++)
                             {
-                                if (!TryFindFixedSets(node.Child(i), results, ref distance, culture, thorough))
+                                if (!TryFindFixedSets(node.Child(i), results, ref distance, thorough))
                                 {
                                     return false;
                                 }
@@ -459,14 +432,14 @@ namespace System.Text.RegularExpressions
                             int childCount = node.ChildCount();
                             bool allSameSize = true;
                             int? sameDistance = null;
-                            var combined = new Dictionary<int, (RegexCharClass Set, bool CaseInsensitive, int Count)>();
+                            var combined = new Dictionary<int, (RegexCharClass Set, int Count)>();
 
-                            var localResults = new List<(char[]? Chars, string Set, int Distance, bool CaseInsensitive)>();
+                            var localResults = new List<(char[]? Chars, string Set, int Distance)>();
                             for (int i = 0; i < childCount; i++)
                             {
                                 localResults.Clear();
                                 int localDistance = 0;
-                                allSameSize &= TryFindFixedSets(node.Child(i), localResults, ref localDistance, culture, thorough);
+                                allSameSize &= TryFindFixedSets(node.Child(i), localResults, ref localDistance, thorough);
 
                                 if (localResults.Count == 0)
                                 {
@@ -485,12 +458,11 @@ namespace System.Text.RegularExpressions
                                     }
                                 }
 
-                                foreach ((char[]? Chars, string Set, int Distance, bool CaseInsensitive) fixedSet in localResults)
+                                foreach ((char[]? Chars, string Set, int Distance) fixedSet in localResults)
                                 {
-                                    if (combined.TryGetValue(fixedSet.Distance, out (RegexCharClass Set, bool CaseInsensitive, int Count) value))
+                                    if (combined.TryGetValue(fixedSet.Distance, out (RegexCharClass Set, int Count) value))
                                     {
-                                        if (fixedSet.CaseInsensitive == value.CaseInsensitive &&
-                                            value.Set.TryAddCharClass(RegexCharClass.Parse(fixedSet.Set)))
+                                        if (value.Set.TryAddCharClass(RegexCharClass.Parse(fixedSet.Set)))
                                         {
                                             value.Count++;
                                             combined[fixedSet.Distance] = value;
@@ -498,12 +470,12 @@ namespace System.Text.RegularExpressions
                                     }
                                     else
                                     {
-                                        combined[fixedSet.Distance] = (RegexCharClass.Parse(fixedSet.Set), fixedSet.CaseInsensitive, 1);
+                                        combined[fixedSet.Distance] = (RegexCharClass.Parse(fixedSet.Set), 1);
                                     }
                                 }
                             }
 
-                            foreach (KeyValuePair<int, (RegexCharClass Set, bool CaseInsensitive, int Count)> pair in combined)
+                            foreach (KeyValuePair<int, (RegexCharClass Set, int Count)> pair in combined)
                             {
                                 if (results.Count >= MaxFixedResults)
                                 {
@@ -513,7 +485,7 @@ namespace System.Text.RegularExpressions
 
                                 if (pair.Value.Count == childCount)
                                 {
-                                    results.Add((null, pair.Value.Set.ToStringClass(), pair.Key + distance, pair.Value.CaseInsensitive));
+                                    results.Add((null, pair.Value.Set.ToStringClass(), pair.Key + distance));
                                 }
                             }
 
@@ -540,10 +512,10 @@ namespace System.Text.RegularExpressions
         /// variable position, but this will find [ab] as it's instead looking for anything that under any
         /// circumstance could possibly start a match.
         /// </summary>
-        public static (string CharClass, bool CaseInsensitive)? FindFirstCharClass(RegexTree tree, CultureInfo culture)
+        public static string? FindFirstCharClass(RegexNode root)
         {
             var s = new RegexPrefixAnalyzer(stackalloc int[StackBufferSize]);
-            RegexFC? fc = s.RegexFCFromRegexTree(tree);
+            RegexFC? fc = s.RegexFCFromRegexTree(root);
             s.Dispose();
 
             if (fc == null || fc._nullable)
@@ -551,29 +523,25 @@ namespace System.Text.RegularExpressions
                 return null;
             }
 
-            if (fc.CaseInsensitive)
-            {
-                fc.AddLowercase(culture);
-            }
-
-            return (fc.GetFirstChars(), fc.CaseInsensitive);
+            return fc.GetFirstChars();
         }
 
         /// <summary>
         /// Analyzes the pattern for a leading set loop followed by a non-overlapping literal. If such a pattern is found, an implementation
         /// can search for the literal and then walk backward through all matches for the loop until the beginning is found.
         /// </summary>
-        public static (RegexNode LoopNode, (char Char, string? String, char[]? Chars) Literal)? FindLiteralFollowingLeadingLoop(RegexTree tree)
+        public static (RegexNode LoopNode, (char Char, string? String, char[]? Chars) Literal)? FindLiteralFollowingLeadingLoop(RegexNode node)
         {
-            RegexNode node = tree.Root;
             if ((node.Options & RegexOptions.RightToLeft) != 0)
             {
                 // As a simplification, ignore RightToLeft.
                 return null;
             }
 
-            // Find the first concatenation.
-            while ((node.Kind is RegexNodeKind.Atomic or RegexNodeKind.Capture) || (node.Kind is RegexNodeKind.Loop or RegexNodeKind.Lazyloop && node.M > 0))
+            // Find the first concatenation.  We traverse through atomic and capture nodes as they don't effect flow control.  (We don't
+            // want to explore loops, even if they have a guaranteed iteration, because we may use information about the node to then
+            // skip the node's execution in the matching algorithm, and we would need to special-case only skipping the first iteration.)
+            while (node.Kind is RegexNodeKind.Atomic or RegexNodeKind.Capture)
             {
                 node = node.Child(0);
             }
@@ -608,35 +576,31 @@ namespace System.Text.RegularExpressions
             }
 
             // If the subsequent node is a literal, we need to ensure it doesn't overlap with the prior set.
-            // For simplicity, we also want to ensure they're both case-sensitive.  If there's no overlap
-            // and they're both case-sensitive, we have a winner.
-            if (((firstChild.Options | nextChild.Options) & RegexOptions.IgnoreCase) == 0)
+            // If there's no overlap, we have a winner.
+            switch (nextChild.Kind)
             {
-                switch (nextChild.Kind)
-                {
-                    case RegexNodeKind.One when !RegexCharClass.CharInClass(nextChild.Ch, firstChild.Str!):
-                        return (firstChild, (nextChild.Ch, null, null));
+                case RegexNodeKind.One when !RegexCharClass.CharInClass(nextChild.Ch, firstChild.Str!):
+                    return (firstChild, (nextChild.Ch, null, null));
 
-                    case RegexNodeKind.Multi when !RegexCharClass.CharInClass(nextChild.Str![0], firstChild.Str!):
-                        return (firstChild, ('\0', nextChild.Str, null));
+                case RegexNodeKind.Multi when !RegexCharClass.CharInClass(nextChild.Str![0], firstChild.Str!):
+                    return (firstChild, ('\0', nextChild.Str, null));
 
-                    case RegexNodeKind.Set when !RegexCharClass.IsNegated(nextChild.Str!):
-                        Span<char> chars = stackalloc char[5]; // maximum number of chars optimized by IndexOfAny
-                        chars = chars.Slice(0, RegexCharClass.GetSetChars(nextChild.Str!, chars));
-                        if (!chars.IsEmpty)
+                case RegexNodeKind.Set when !RegexCharClass.IsNegated(nextChild.Str!):
+                    Span<char> chars = stackalloc char[5]; // maximum number of chars optimized by IndexOfAny
+                    chars = chars.Slice(0, RegexCharClass.GetSetChars(nextChild.Str!, chars));
+                    if (!chars.IsEmpty)
+                    {
+                        foreach (char c in chars)
                         {
-                            foreach (char c in chars)
+                            if (RegexCharClass.CharInClass(c, firstChild.Str!))
                             {
-                                if (RegexCharClass.CharInClass(c, firstChild.Str!))
-                                {
-                                    return null;
-                                }
+                                return null;
                             }
-
-                            return (firstChild, ('\0', null, chars.ToArray()));
                         }
-                        break;
-                }
+
+                        return (firstChild, ('\0', null, chars.ToArray()));
+                    }
+                    break;
             }
 
             // Otherwise, we couldn't find the pattern of an atomic set loop followed by a literal.
@@ -788,9 +752,9 @@ namespace System.Text.RegularExpressions
         /// through the tree and calls CalculateFC to emits code before
         /// and after each child of an interior node, and at each leaf.
         /// </summary>
-        private RegexFC? RegexFCFromRegexTree(RegexTree tree)
+        private RegexFC? RegexFCFromRegexTree(RegexNode root)
         {
-            RegexNode? curNode = tree.Root;
+            RegexNode? curNode = root;
             int curChild = 0;
 
             while (true)
@@ -854,7 +818,6 @@ namespace System.Text.RegularExpressions
         /// </summary>
         private void CalculateFC(RegexNodeKind nodeType, RegexNode node, int CurIndex)
         {
-            bool ci = (node.Options & RegexOptions.IgnoreCase) != 0;
             bool rtl = (node.Options & RegexOptions.RightToLeft) != 0;
 
             switch (nodeType)
@@ -935,42 +898,42 @@ namespace System.Text.RegularExpressions
 
                 case RegexNodeKind.One:
                 case RegexNodeKind.Notone:
-                    PushFC(new RegexFC(node.Ch, nodeType == RegexNodeKind.Notone, false, ci));
+                    PushFC(new RegexFC(node.Ch, nodeType == RegexNodeKind.Notone, false));
                     break;
 
                 case RegexNodeKind.Oneloop:
                 case RegexNodeKind.Oneloopatomic:
                 case RegexNodeKind.Onelazy:
-                    PushFC(new RegexFC(node.Ch, false, node.M == 0, ci));
+                    PushFC(new RegexFC(node.Ch, false, node.M == 0));
                     break;
 
                 case RegexNodeKind.Notoneloop:
                 case RegexNodeKind.Notoneloopatomic:
                 case RegexNodeKind.Notonelazy:
-                    PushFC(new RegexFC(node.Ch, true, node.M == 0, ci));
+                    PushFC(new RegexFC(node.Ch, true, node.M == 0));
                     break;
 
                 case RegexNodeKind.Multi:
                     if (node.Str!.Length == 0)
                         PushFC(new RegexFC(true));
                     else if (!rtl)
-                        PushFC(new RegexFC(node.Str[0], false, false, ci));
+                        PushFC(new RegexFC(node.Str[0], false, false));
                     else
-                        PushFC(new RegexFC(node.Str[node.Str.Length - 1], false, false, ci));
+                        PushFC(new RegexFC(node.Str[node.Str.Length - 1], false, false));
                     break;
 
                 case RegexNodeKind.Set:
-                    PushFC(new RegexFC(node.Str!, false, ci));
+                    PushFC(new RegexFC(node.Str!, false));
                     break;
 
                 case RegexNodeKind.Setloop:
                 case RegexNodeKind.Setloopatomic:
                 case RegexNodeKind.Setlazy:
-                    PushFC(new RegexFC(node.Str!, node.M == 0, ci));
+                    PushFC(new RegexFC(node.Str!, node.M == 0));
                     break;
 
                 case RegexNodeKind.Backreference:
-                    PushFC(new RegexFC(RegexCharClass.AnyClass, true, false));
+                    PushFC(new RegexFC(RegexCharClass.AnyClass, true));
                     break;
 
                 case RegexNodeKind.Nothing:
@@ -1084,7 +1047,7 @@ namespace System.Text.RegularExpressions
             _nullable = nullable;
         }
 
-        public RegexFC(char ch, bool not, bool nullable, bool caseInsensitive)
+        public RegexFC(char ch, bool not, bool nullable)
         {
             _cc = new RegexCharClass();
 
@@ -1105,16 +1068,14 @@ namespace System.Text.RegularExpressions
                 _cc.AddRange(ch, ch);
             }
 
-            CaseInsensitive = caseInsensitive;
             _nullable = nullable;
         }
 
-        public RegexFC(string charClass, bool nullable, bool caseInsensitive)
+        public RegexFC(string charClass, bool nullable)
         {
             _cc = RegexCharClass.Parse(charClass);
 
             _nullable = nullable;
-            CaseInsensitive = caseInsensitive;
         }
 
         public bool AddFC(RegexFC fc, bool concatenate)
@@ -1138,17 +1099,8 @@ namespace System.Text.RegularExpressions
                     _nullable = true;
             }
 
-            CaseInsensitive |= fc.CaseInsensitive;
             _cc.AddCharClass(fc._cc);
             return true;
-        }
-
-        public bool CaseInsensitive { get; private set; }
-
-        public void AddLowercase(CultureInfo culture)
-        {
-            Debug.Assert(CaseInsensitive);
-            _cc.AddLowercase(culture);
         }
 
         public string GetFirstChars() => _cc.ToStringClass();
