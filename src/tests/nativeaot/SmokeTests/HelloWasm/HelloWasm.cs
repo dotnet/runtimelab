@@ -605,6 +605,12 @@ internal static class Program
             return;
         }
 
+        if (!StackEntriesLiveAcrossSafePointsGetScanned())
+        {
+            FailTest("Stack entry live across a safe point was not reported");
+            return;
+        }
+
         EndTest(TestGeneration2Rooting());
     }
 
@@ -905,6 +911,63 @@ internal static class Program
         Child c1, c2, c3;  // 3 more locals to cover give a bit more resiliency to the test, in case of slots being added or removed in the RhCollect calls
         c1 = c2 = c3 = child;
         childRef = new WeakReference(child);
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static bool StackEntriesLiveAcrossSafePointsGetScanned()
+    {
+        ClassWithFields obj = GetClass();
+        ClearShadowStack(null, null, null, null, null, null);
+
+        return StackEntriesLiveAcrossSafePointsGetScannedInner<object>(obj);
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static void CreateLotsOfGarbage()
+    {
+        for (int i = 0; i < 10000; i++)
+        {
+            new object();
+        }
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static int TriggerObjRelocation()
+    {
+        CreateLotsOfGarbage();
+        GC.Collect();
+        return 0;
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static bool ObjRefsAreEqual(object a, int b, object c)
+    {
+        return a == c;
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static void ClearShadowStack(object a, object b, object c, object d, object e, object f)
+    {
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static ClassWithFields GetClass()
+    {
+        var outerObj = new ClassWithFields();
+        CreateLotsOfGarbage();
+        outerObj.Obj = new object();
+        return outerObj;
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static bool StackEntriesLiveAcrossSafePointsGetScannedInner<T>(ClassWithFields obj)
+    {
+        return ObjRefsAreEqual(obj.Obj, TriggerObjRelocation(), obj.Obj);
+    }
+
+    private class ClassWithFields
+    {
+        public object Obj;
     }
 
     private static unsafe void TestBoxUnboxDifferentSizes()
