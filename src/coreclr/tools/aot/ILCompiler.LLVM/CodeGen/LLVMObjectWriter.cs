@@ -1269,6 +1269,9 @@ namespace ILCompiler.DependencyAnalysis
 
         private void GetCodeForTentativeMethod(LLVMCodegenCompilation compilation, TentativeMethodNode node, NodeFactory factory)
         {
+            IMethodNode helperMethodNode = node.GetTarget(factory);
+            string helperMangledName = helperMethodNode.GetMangledName(compilation.NameMangler);
+
             LLVMBuilderRef builder = LLVMCodegenCompilation.Module.Context.CreateBuilder();
             MethodDesc method = node.Method;
             string mangledName = node.GetMangledName(factory.NameMangler);
@@ -1276,9 +1279,7 @@ namespace ILCompiler.DependencyAnalysis
 
             LLVMBasicBlockRef block = tentativeStub.AppendBasicBlock("tentativeStub");
             builder.PositionAtEnd(block);
-            MethodDesc helperMethod = factory.TypeSystemContext.GetOptionalHelperEntryPoint("ThrowHelpers", "ThrowBodyRemoved");
-            string helperMangledName = compilation.NodeFactory.MethodEntrypoint(helperMethod).GetMangledName(compilation.NameMangler);
-            LLVMValueRef fn = ILImporter.GetOrCreateLLVMFunction(Module, helperMangledName, helperMethod.Signature, false);
+            LLVMValueRef fn = ILImporter.GetOrCreateLLVMFunction(Module, helperMangledName, helperMethodNode.Method.Signature, false);
             builder.BuildCall(fn, new LLVMValueRef[] { tentativeStub.GetParam(0) }, string.Empty);
             builder.BuildUnreachable();
         }

@@ -29,20 +29,11 @@ namespace ILCompiler.DependencyAnalysis
             _methodNode = methodNode;
         }
 
-        protected virtual ISymbolNode GetTarget(NodeFactory factory)
+        public virtual IMethodNode GetTarget(NodeFactory factory)
         {
             // If the class library doesn't provide this helper, the optimization is disabled.
             MethodDesc helper = factory.TypeSystemContext.GetOptionalHelperEntryPoint("ThrowHelpers", "ThrowBodyRemoved");
             return helper == null ? RealBody : factory.MethodEntrypoint(helper);
-        }
-
-        public override ObjectData GetData(NodeFactory factory, bool relocsOnly)
-        {
-            if (factory.Target.Architecture == TargetArchitecture.Wasm32)
-            {
-                return new ObjectData(null, new Relocation[] { new Relocation(RelocType.IMAGE_REL_BASED_HIGHLOW, 0, GetTarget(factory)) }, 0, null);
-            }
-            return base.GetData(factory, relocsOnly);
         }
 
         public MethodDesc Method => _methodNode.Method;
