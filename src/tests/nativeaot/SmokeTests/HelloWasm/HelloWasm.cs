@@ -927,7 +927,7 @@ internal static class Program
     {
         for (int i = 0; i < 10000; i++)
         {
-            new object();
+            GC.KeepAlive(new object());
         }
     }
 
