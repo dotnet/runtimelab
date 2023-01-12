@@ -523,6 +523,31 @@ namespace Internal.IL
             _stack.Push(new ExpressionEntry(kind, name, llvmValue, type));
         }
 
+        private void PushGCVisibleExpression(StackValueKind kind, string name, LLVMValueRef llvmValue, TypeDesc type)
+        {
+            StackEntry entry;
+            if (kind == StackValueKind.ObjRef || kind == StackValueKind.ByRef)
+            {
+                // Spill the value so that even SDSUs will be seen by the GC scan.
+                //
+                int spillIndex = _spilledExpressions.Count;
+                SpilledExpressionEntry spillEntry = new SpilledExpressionEntry(kind, name, type, spillIndex, this);
+                _spilledExpressions.Add(spillEntry);
+
+                LLVMValueRef addrOfSpilledEntry = LoadVarAddress(spillIndex, LocalVarKind.Temp, out _);
+                addrOfSpilledEntry = CastIfNecessary(_builder, addrOfSpilledEntry, LLVMTypeRef.CreatePointer(llvmValue.TypeOf, 0));
+                _builder.BuildStore(llvmValue, addrOfSpilledEntry);
+
+                entry = spillEntry;
+            }
+            else
+            {
+                entry = new ExpressionEntry(kind, name, llvmValue, type);
+            }
+
+            _stack.Push(entry);
+        }
+
         private void MarkInstructionBoundary()
         {
         }
@@ -1885,6 +1910,7 @@ namespace Internal.IL
                         int spillIndex = _spilledExpressions.Count;
                         SpilledExpressionEntry spillEntry = new SpilledExpressionEntry(GetStackValueKind(newType), "newobj" + _currentOffset, newType, spillIndex, this);
                         _spilledExpressions.Add(spillEntry);
+
                         LLVMValueRef addrOfValueType = LoadVarAddress(spillIndex, LocalVarKind.Temp, out TypeDesc unused);
                         AddressExpressionEntry valueTypeByRef = new AddressExpressionEntry(StackValueKind.ByRef, "newobj_slot" + _currentOffset, addrOfValueType, newType.MakeByRefType());
 
@@ -3624,13 +3650,13 @@ namespace Internal.IL
                 type = GetWellKnownType(WellKnownType.Object);
             }
 
-            StackValueKind pointerStackValueKind = type != null ? GetStackValueKind(type) : StackValueKind.ByRef;
+            StackValueKind loadStackValueKind = GetStackValueKind(type);
             LLVMValueRef pointerElementType = pointer.ValueAsType(type.MakePointerType(), _builder);
 
             LLVMValueRef loadValue = LoadValue(_builder, pointerElementType, type,
                 GetLLVMTypeForTypeDesc(type), SignExtendTypeDesc(type), $"loadIndirect{pointer.Name()}");
 
-            _stack.Push(new ExpressionEntry(pointerStackValueKind, $"Indirect{pointer.Name()}", loadValue, type));
+            PushGCVisibleExpression(loadStackValueKind, $"Indirect{pointer.Name()}", loadValue, type);
         }
 
         private void ImportStoreIndirect(int token)
@@ -3968,6 +3994,7 @@ namespace Internal.IL
             }
             return false;
         }
+
         private void ImportCompareOperation(ILOpcode opcode)
         {
             var op1 = _stack.Pop();
@@ -4878,7 +4905,7 @@ namespace Internal.IL
             LLVMValueRef fieldValue = LoadValue(_builder, fieldAddress, fieldTypeDesc,
                 GetLLVMTypeForTypeDesc(fieldTypeDesc), SignExtendTypeDesc(fieldTypeDesc), $"loadField_{field.Name}");
 
-            _stack.Push(new ExpressionEntry(GetStackValueKind(fieldTypeDesc), $"Field_{field.Name}", fieldValue, fieldTypeDesc));
+            PushGCVisibleExpression(GetStackValueKind(fieldTypeDesc), $"Field_{field.Name}", fieldValue, fieldTypeDesc);
         }
 
         private void ImportAddressOfField(int token, bool isStatic)
@@ -5128,7 +5155,7 @@ namespace Internal.IL
                 nullSafeElementType,
                 GetLLVMTypeForTypeDesc(WidenBytesAndShorts(nullSafeElementType)), SignExtendTypeDesc(nullSafeElementType), $"load{arrayReference.Name()}Element");
 
-            _stack.Push(new ExpressionEntry(GetStackValueKind(nullSafeElementType), $"{arrayReference.Name()}Element", elementValue, nullSafeElementType));
+            PushGCVisibleExpression(GetStackValueKind(nullSafeElementType), $"{arrayReference.Name()}Element", elementValue, nullSafeElementType);
         }
 
         private void ImportStoreElement(int token)
