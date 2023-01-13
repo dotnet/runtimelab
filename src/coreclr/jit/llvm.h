@@ -239,6 +239,7 @@ private:
     void lowerCall(GenTreeCall* callNode);
     void lowerIndir(GenTreeIndir* indirNode);
     void lowerStoreBlk(GenTreeBlk* storeBlkNode);
+    void lowerStoreDynBlk(GenTreeStoreDynBlk* storeDynBlkNode);
     void lowerDivMod(GenTreeOp* divModNode);
     void lowerReturn(GenTreeUnOp* retNode);
 
@@ -298,6 +299,7 @@ private:
     void buildBlk(GenTreeBlk* blkNode);
     void buildStoreInd(GenTreeStoreInd* storeIndOp);
     void buildStoreBlk(GenTreeBlk* blockOp);
+    void buildStoreDynBlk(GenTreeStoreDynBlk* blockOp);
     void buildUnaryOperation(GenTree* node);
     void buildBinaryOperation(GenTree* node);
     void buildShift(GenTreeOp* node);

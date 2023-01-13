@@ -357,16 +357,20 @@ void Llvm::lowerBlock(BasicBlock* block)
                 break;
 
             case GT_IND:
-            case GT_STOREIND:
             case GT_OBJ:
             case GT_BLK:
             case GT_NULLCHECK:
+            case GT_STOREIND:
                 lowerIndir(node->AsIndir());
                 break;
 
             case GT_STORE_BLK:
             case GT_STORE_OBJ:
                 lowerStoreBlk(node->AsBlk());
+                break;
+
+            case GT_STORE_DYN_BLK:
+                lowerStoreDynBlk(node->AsStoreDynBlk());
                 break;
 
             case GT_DIV:
@@ -547,10 +551,11 @@ void Llvm::lowerStoreBlk(GenTreeBlk* storeBlkNode)
 {
     assert(storeBlkNode->OperIs(GT_STORE_BLK, GT_STORE_OBJ));
 
+    GenTree* src = storeBlkNode->Data();
+
     // Fix up type mismatches on copies for codegen.
     if (storeBlkNode->OperIsCopyBlkOp())
     {
-        GenTree* src = storeBlkNode->Data();
         ClassLayout* dstLayout = storeBlkNode->GetLayout();
         if (src->OperIs(GT_IND))
         {
@@ -579,6 +584,10 @@ void Llvm::lowerStoreBlk(GenTreeBlk* storeBlkNode)
             }
         }
     }
+    else
+    {
+        src->SetContained();
+    }
 
     // A zero-sized block store is a no-op. Lower it away.
     if (storeBlkNode->Size() == 0)
@@ -593,6 +602,12 @@ void Llvm::lowerStoreBlk(GenTreeBlk* storeBlkNode)
     {
         lowerIndir(storeBlkNode);
     }
+}
+
+void Llvm::lowerStoreDynBlk(GenTreeStoreDynBlk* storeDynBlkNode)
+{
+    storeDynBlkNode->Data()->SetContained();
+    lowerIndir(storeDynBlkNode);
 }
 
 void Llvm::lowerDivMod(GenTreeOp* divModNode)
