@@ -28,7 +28,7 @@ namespace System.Runtime
         private struct DispatchData
         {
             public readonly CppExceptionTuple CppExceptionTuple; // Owned by codegen.
-            public void* DispatcherData; // Owned by runtime.
+            public ManagedExceptionWrapper* DispatcherData; // Owned by runtime.
 
             // We consider a dispatch to be "active" if it has already visited nested handlers in the same LLVM frame.
             // Codegen will initialize "DispatcherData" to null on entry to the native handler.
@@ -44,11 +44,11 @@ namespace System.Runtime
         // These per-clause handlers are invoked by RyuJit-generated LLVM code. TODO-LLVM: once we move to opaque
         // pointers, we can change the signatures of these functions to use precise pointer types instead of "void*"s.
         //
-        private static int HandleExceptionWasmMutuallyProtectingCatches(void* pShadowFrame, void* pDispatchData, void* pEHTable)
+        private static int HandleExceptionWasmMutuallyProtectingCatches(void* pShadowFrame, DispatchData* pDispatchData, void** pEHTable)
         {
-            object exception = BeginSingleDispatch(RhEHClauseKind.RH_EH_CLAUSE_UNUSED, pEHTable, pShadowFrame, (DispatchData*)pDispatchData);
+            object exception = BeginSingleDispatch(RhEHClauseKind.RH_EH_CLAUSE_UNUSED, pEHTable, pShadowFrame, pDispatchData);
 
-            EHRyuJitClauseIteratorWasm clauseIter = new EHRyuJitClauseIteratorWasm((void**)pEHTable);
+            EHRyuJitClauseIteratorWasm clauseIter = new EHRyuJitClauseIteratorWasm(pEHTable);
             EHRyuJitClauseWasm clause;
             while (clauseIter.Next(&clause))
             {
@@ -80,9 +80,9 @@ namespace System.Runtime
             return DispatchContinueSearch(exception, pDispatchData);
         }
 
-        private static int HandleExceptionWasmFilteredCatch(void* pShadowFrame, void* pDispatchData, void* pHandler, void* pFilter)
+        private static int HandleExceptionWasmFilteredCatch(void* pShadowFrame, DispatchData* pDispatchData, void* pHandler, void* pFilter)
         {
-            object exception = BeginSingleDispatch(RhEHClauseKind.RH_EH_CLAUSE_FILTER, null, pShadowFrame, (DispatchData*)pDispatchData);
+            object exception = BeginSingleDispatch(RhEHClauseKind.RH_EH_CLAUSE_FILTER, null, pShadowFrame, pDispatchData);
 
             if (CallFilterFunclet(pFilter, exception, pShadowFrame, ryuJitAbi: true))
             {
@@ -93,11 +93,11 @@ namespace System.Runtime
             return DispatchContinueSearch(exception, pDispatchData);
         }
 
-        private static int HandleExceptionWasmCatch(void* pShadowFrame, void* pDispatchData, void* pHandler, void* pClauseType)
+        private static int HandleExceptionWasmCatch(void* pShadowFrame, DispatchData* pDispatchData, void* pHandler, MethodTable* pClauseType)
         {
-            object exception = BeginSingleDispatch(RhEHClauseKind.RH_EH_CLAUSE_TYPED, pClauseType, pShadowFrame, (DispatchData*)pDispatchData);
+            object exception = BeginSingleDispatch(RhEHClauseKind.RH_EH_CLAUSE_TYPED, pClauseType, pShadowFrame, pDispatchData);
 
-            if (ShouldTypedClauseCatchThisException(exception, (MethodTable*)pClauseType))
+            if (ShouldTypedClauseCatchThisException(exception, pClauseType))
             {
                 __cxa_end_catch();
                 return CallCatchFunclet(pHandler, exception, pShadowFrame);
@@ -106,14 +106,14 @@ namespace System.Runtime
             return DispatchContinueSearch(exception, pDispatchData);
         }
 
-        private static void HandleExceptionWasmFault(void* pShadowFrame, void* pDispatchData, void* pHandler)
+        private static void HandleExceptionWasmFault(void* pShadowFrame, DispatchData* pDispatchData, void* pHandler)
         {
             // TODO-LLVM-EH: for compatiblity with the IL backend we will invoke faults/finallys even if we do not find
             // a suitable catch in a frame. A correct implementation of this will require us to keep a stack of pending
             // faults/finallys (inside the native exception), to be invoked at the point we find the handling frame. We
             // should also fail fast instead of invoking the second pass handlers if the exception goes unhandled.
             //
-            object exception = BeginSingleDispatch(RhEHClauseKind.RH_EH_CLAUSE_FAULT, null, pShadowFrame, (DispatchData*)pDispatchData);
+            object exception = BeginSingleDispatch(RhEHClauseKind.RH_EH_CLAUSE_FAULT, null, pShadowFrame, pDispatchData);
             CallFinallyFunclet(pHandler, pShadowFrame, ryuJitAbi: true);
             DispatchContinueSearch(exception, pDispatchData);
         }
@@ -133,7 +133,7 @@ namespace System.Runtime
             }
             else
             {
-                pCppException = (ManagedExceptionWrapper*)pDispatchData->DispatcherData;
+                pCppException = pDispatchData->DispatcherData;
             }
 
             object exception = Unsafe.Read<object>(&pCppException->ManagedException);
@@ -144,13 +144,13 @@ namespace System.Runtime
             return exception;
         }
 
-        private static int DispatchContinueSearch(object exception, void* pDispatchData)
+        private static int DispatchContinueSearch(object exception, DispatchData* pDispatchData)
         {
             // GC may have invalidated the exception object in the native exception; make sure it is up-to-date before
             // rethrowing or jumping to an upstream dispatcher.
             fixed (void* pKeepAlive = &exception.GetRawData())
             {
-                Unsafe.Write(&((ManagedExceptionWrapper*)((DispatchData*)pDispatchData)->DispatcherData)->ManagedException, exception);
+                Unsafe.Write(&pDispatchData->DispatcherData->ManagedException, exception);
             }
 
             return 0;
