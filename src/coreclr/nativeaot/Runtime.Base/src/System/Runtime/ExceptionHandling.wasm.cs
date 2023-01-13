@@ -41,8 +41,7 @@ namespace System.Runtime
             public int Selector;
         }
 
-        // These per-clause handlers are invoked by RyuJit-generated LLVM code. TODO-LLVM: once we move to opaque
-        // pointers, we can change the signatures of these functions to use precise pointer types instead of "void*"s.
+        // These per-clause handlers are invoked by RyuJit-generated LLVM code.
         //
         private static int HandleExceptionWasmMutuallyProtectingCatches(void* pShadowFrame, DispatchData* pDispatchData, void** pEHTable)
         {
