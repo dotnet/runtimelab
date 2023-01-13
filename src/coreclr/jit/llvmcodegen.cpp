@@ -143,7 +143,7 @@ bool Llvm::initializeFunctions()
                 ehDsc->HasCatchHandler() ? Type::getInt32Ty(_llvmContext) : Type::getVoidTy(_llvmContext);
 
             // All funclets have two arguments: original and actual shadow stacks.
-            Type* ptrLlvmType = Type::getInt8PtrTy(_llvmContext);
+            Type* ptrLlvmType = getPtrLlvmType();
             FunctionType* llvmFuncType =
                 FunctionType::get(retLlvmType, {ptrLlvmType, ptrLlvmType}, /* isVarArg */ false);
 
@@ -375,7 +375,7 @@ void Llvm::generateEHDispatch()
     }
 
     // Recover the C++ personality function.
-    Type* ptrLlvmType = Type::getInt8PtrTy(_llvmContext);
+    Type* ptrLlvmType = getPtrLlvmType();
     Type* int32LlvmType = Type::getInt32Ty(_llvmContext);
     Type* cppExcTupleLlvmType = llvm::StructType::get(ptrLlvmType, int32LlvmType);
     llvm::StructType* dispatchDataLlvmType = llvm::StructType::get(cppExcTupleLlvmType, ptrLlvmType);
@@ -491,7 +491,7 @@ void Llvm::generateEHDispatch()
         }
 
         // The code we will generate effectively inlines the usual runtime dispatch logic. The main reason this
-        // scheme was chosen is the fact (re)throwing funclets are handled by it semlessly and efficiently. The
+        // scheme was chosen is the fact (re)throwing funclets are handled by it seamlessly and efficiently. The
         // downside to it is the code size overhead of the calls made for each protected region.
         //
         // DISPATCH_PAD_INNER:
