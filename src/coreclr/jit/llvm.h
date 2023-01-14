@@ -309,6 +309,7 @@ private:
     void buildSwitch(GenTreeUnOp* switchNode);
     void buildNullCheck(GenTreeIndir* nullCheckNode);
     void buildBoundsCheck(GenTreeBoundsChk* boundsCheck);
+    void buildCkFinite(GenTreeUnOp* ckNode);
 
     void buildCallFinally(BasicBlock* block);
     void buildCatchReturn(BasicBlock* block);

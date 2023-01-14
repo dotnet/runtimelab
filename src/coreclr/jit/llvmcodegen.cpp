@@ -775,6 +775,9 @@ void Llvm::visitNode(GenTree* node)
         case GT_BOUNDS_CHECK:
             buildBoundsCheck(node->AsBoundsChk());
             break;
+        case GT_CKFINITE:
+            buildCkFinite(node->AsUnOp());
+            break;
         case GT_OBJ:
         case GT_BLK:
             buildBlk(node->AsBlk());
@@ -1902,6 +1905,20 @@ void Llvm::buildBoundsCheck(GenTreeBoundsChk* boundsCheckNode)
 
     Value* indexOutOfRangeValue = _builder.CreateCmp(llvm::CmpInst::ICMP_UGE, indexValue, lengthValue);
     emitJumpToThrowHelper(indexOutOfRangeValue, boundsCheckNode->gtThrowKind);
+}
+
+void Llvm::buildCkFinite(GenTreeUnOp* ckNode)
+{
+    assert(varTypeIsFloating(ckNode));
+    Type* fpLlvmType = getLlvmTypeForVarType(ckNode->TypeGet());
+    Value* opValue = consumeValue(ckNode->gtGetOp1(), fpLlvmType);
+
+    // Taken from IR Clang generates for "isfinite".
+    Value* absOpValue = _builder.CreateIntrinsic(llvm::Intrinsic::fabs, fpLlvmType, opValue);
+    Value* isNotFiniteValue = _builder.CreateFCmpUEQ(absOpValue, llvm::ConstantFP::get(fpLlvmType, INFINITY));
+    emitJumpToThrowHelper(isNotFiniteValue, SCK_ARITH_EXCPN);;
+
+    mapGenTreeToValue(ckNode, opValue);
 }
 
 void Llvm::buildCallFinally(BasicBlock* block)
