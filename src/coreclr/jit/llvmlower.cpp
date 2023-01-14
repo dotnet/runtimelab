@@ -287,8 +287,8 @@ void Llvm::initializeLocalInProlog(unsigned lclNum, GenTree* value)
     LIR::Range& firstBlockRange = LIR::AsRange(_compiler->fgFirstBB);
 
     GenTree* store = _compiler->gtNewStoreLclVar(lclNum, value);
-    firstBlockRange.InsertAtEnd(value);
-    firstBlockRange.InsertAtEnd(store);
+    firstBlockRange.InsertAtBeginning(store);
+    firstBlockRange.InsertAtBeginning(value);
 
     DISPTREERANGE(firstBlockRange, store);
 }
