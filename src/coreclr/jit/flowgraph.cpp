@@ -3034,6 +3034,22 @@ void Compiler::fgSimpleLowering()
                 }
 #endif // FEATURE_FIXED_OUT_ARGS
 
+#ifdef TARGET_WASM
+                case GT_RETURN:
+                    // LLVM lowering needs to know whether the struct is dependently promoted or not in all cases.
+                    // Morph will sometimes miss this one. TODO-LLVM: delete once upstream improves morph's logic
+                    // for returns to not miss things.
+                    if (!tree->TypeIs(TYP_VOID) && tree->gtGetOp1()->OperIs(GT_LCL_VAR))
+                    {
+                        unsigned lclNum = tree->gtGetOp1()->AsLclVar()->GetLclNum();
+                        if (lvaGetPromotionType(lclNum) == PROMOTION_TYPE_INDEPENDENT)
+                        {
+                            lvaSetVarDoNotEnregister(lclNum DEBUGARG(DoNotEnregisterReason::BlockOpRet));
+                        }
+                    }
+                    break;
+#endif // TARGET_WASM
+
                 default:
                 {
                     // No other operators need processing.
