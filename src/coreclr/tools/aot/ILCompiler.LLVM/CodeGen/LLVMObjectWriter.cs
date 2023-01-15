@@ -157,25 +157,15 @@ namespace ILCompiler.DependencyAnalysis
         // Whether we are emitting a library (as opposed to executable).
         private readonly bool _nativeLib;
 
-        // This is used to build mangled names
-        private readonly Utf8StringBuilder _sb = new Utf8StringBuilder();
-
         // Track offsets in node data that prevent writing all bytes in one single blob. This includes
         // relocs, symbol definitions, debug data that must be streamed out using the existing LLVM API
         private readonly SortedSet<int> _byteInterruptionOffsets = new SortedSet<int>();
-
-        // Code offset to defined names
-        private readonly Dictionary<int, List<ISymbolDefinitionNode>> _offsetToDefName = new Dictionary<int, List<ISymbolDefinitionNode>>();
 
         // Object node being processed.
         private ObjectNode _currentObjectNode;
 
         // Raw data emitted for the current object node.
         private ArrayBuilder<byte> _currentObjectData = new ArrayBuilder<byte>();
-
-        // Symbols defined by the current object node. The definitions represent named pointers into the symbol represented
-        // by the current node so this is a list of ("defined symbol name", "offset relative to the current symbol") tuples.
-        private readonly List<KeyValuePair<string, int>> _symbolDefs = new List<KeyValuePair<string, int>>();
 
         // References (pointers) to symbols the current object node contains (and thus depends on).
         private Dictionary<int, SymbolRefData> _currentObjectSymbolRefs = new Dictionary<int, SymbolRefData>();
@@ -440,7 +430,7 @@ namespace ILCompiler.DependencyAnalysis
             Debug.Assert(_currentObjectData.Count == 0);
         }
 
-        public void DoneObjectNode()
+        public void DoneObjectNode(ISymbolDefinitionNode[] definedSymbols)
         {
             EmitAlignment(_nodeFactory.Target.PointerSize);
             Debug.Assert(_nodeFactory.Target.PointerSize == 4);
@@ -470,15 +460,17 @@ namespace ILCompiler.DependencyAnalysis
                 _dataToFill.Add(new ObjectNodeDataEmission(arrayglobal, _currentObjectData.ToArray(), _currentObjectSymbolRefs));
             }
 
-            foreach (var symbolIdInfo in _symbolDefs)
+            foreach (ISymbolDefinitionNode definedSymbol in definedSymbols)
             {
-                EmitSymbolDef(arrayglobal, symbolIdInfo.Key, symbolIdInfo.Value);
+                string symbolId = definedSymbol.GetMangledName(_nodeFactory.NameMangler);
+                int offset = GetNumericOffsetFromBaseSymbolValue(definedSymbol);
+
+                EmitSymbolDef(arrayglobal, symbolId, offset);
             }
 
             _currentObjectNode = null;
             _currentObjectSymbolRefs = new Dictionary<int, SymbolRefData>();
             _currentObjectData = new ArrayBuilder<byte>();
-            _symbolDefs.Clear();
         }
 
         Dictionary<int, SymbolRefData> ReplaceMethodDictionaryUnmanagedSymbolsWithThunks(Dictionary<int, SymbolRefData> unmanagedSymbolRefs)
@@ -554,7 +546,7 @@ namespace ILCompiler.DependencyAnalysis
             }
         }
         
-        public void EmitSymbolDef(LLVMValueRef realSymbol, string symbolIdentifier, int offsetFromSymbolName)
+        public void EmitSymbolDef(LLVMValueRef baseSymbol, string symbolIdentifier, int offsetFromBaseSymbol)
         {
             string symbolAddressGlobalName = symbolIdentifier + GlobalSymbolSuffix;
             LLVMValueRef symbolAddress;
@@ -563,9 +555,9 @@ namespace ILCompiler.DependencyAnalysis
             {
                 var int8PtrType = LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0);
                 var intPtrType = LLVMTypeRef.CreatePointer(LLVMTypeRef.Int32, 0);
-                var pointerToRealSymbol = LLVMValueRef.CreateConstBitCast(realSymbol, int8PtrType);
-                var offsetValue = LLVMValueRef.CreateConstInt(intType, (uint)offsetFromSymbolName, false);
-                var symbolPointerData = LLVMValueRef.CreateConstGEP(pointerToRealSymbol, new LLVMValueRef[] { offsetValue });
+                var pointerToBaseSymbol = LLVMValueRef.CreateConstBitCast(baseSymbol, int8PtrType);
+                var offsetValue = LLVMValueRef.CreateConstInt(intType, (uint)offsetFromBaseSymbol, false);
+                var symbolPointerData = LLVMValueRef.CreateConstGEP(pointerToBaseSymbol, new LLVMValueRef[] { offsetValue });
                 var symbolPointerDataAsInt32Ptr = LLVMValueRef.CreateConstBitCast(symbolPointerData, intPtrType);
                 symbolAddress.Initializer = symbolPointerDataAsInt32Ptr;
             }
@@ -581,21 +573,6 @@ namespace ILCompiler.DependencyAnalysis
             _currentObjectSymbolRefs.Add(symbolStartOffset, new SymbolRefData(realSymbolName, totalOffset));
 
             return pointerSize;
-        }
-
-        public void BuildSymbolDefinitionMap(ObjectNode node, ISymbolDefinitionNode[] definedSymbols)
-        {
-            _offsetToDefName.Clear();
-            foreach (ISymbolDefinitionNode n in definedSymbols)
-            {
-                if (!_offsetToDefName.ContainsKey(n.Offset))
-                {
-                    _offsetToDefName[n.Offset] = new List<ISymbolDefinitionNode>();
-                }
-
-                _offsetToDefName[n.Offset].Add(n);
-                _byteInterruptionOffsets.Add(n.Offset);
-            }
         }
 
         // Returns size of the emitted symbol reference
@@ -628,35 +605,6 @@ namespace ILCompiler.DependencyAnalysis
             if (dummyFunc.Handle != IntPtr.Zero) return;
 
             Module.AddFunction("RhpInitialDynamicInterfaceDispatch", LLVMTypeRef.CreateFunction(LLVMTypeRef.Void, new LLVMTypeRef[] {}));
-        }
-
-        public void EmitSymbolDefinition(int currentOffset)
-        {
-            List<ISymbolDefinitionNode> nodes;
-            if (_offsetToDefName.TryGetValue(currentOffset, out nodes))
-            {
-                foreach (var name in nodes)
-                {
-                    _sb.Clear();
-                    name.AppendMangledName(_nodeFactory.NameMangler, _sb);
-
-                    string symbolId = name.GetMangledName(_nodeFactory.NameMangler);
-                    int offsetFromBase = GetNumericOffsetFromBaseSymbolValue(name);
-                    Debug.Assert(offsetFromBase == currentOffset);
-
-                    _symbolDefs.Add(new KeyValuePair<string, int>(symbolId, offsetFromBase));
-                    /*
-                    string alternateName = _nodeFactory.GetSymbolAlternateName(name);
-                    if (alternateName != null)
-                    {
-                        _sb.Clear();
-                        //AppendExternCPrefix(_sb);
-                        _sb.Append(alternateName);
-
-                        EmitSymbolDef(_sb);
-                    }*/
-                }
-            }
         }
 
         public LLVMObjectWriter(string objectFilePath, NodeFactory factory, LLVMCodegenCompilation compilation)
@@ -769,9 +717,6 @@ namespace ILCompiler.DependencyAnalysis
                     objectWriter.EmitAlignment(nodeContents.Alignment);
                     objectWriter.ResetByteRunInterruptionOffsets(nodeContents.Relocs);
 
-                    // Build symbol definition map.
-                    objectWriter.BuildSymbolDefinitionMap(node, nodeContents.DefinedSymbols);
-
                     Relocation[] relocs = nodeContents.Relocs;
                     int nextRelocOffset = -1;
                     int nextRelocIndex = -1;
@@ -788,8 +733,6 @@ namespace ILCompiler.DependencyAnalysis
                     int offsetIndex = 0;
                     while (offset < nodeContents.Data.Length)
                     {
-                        // Emit symbol definitions if necessary
-                        objectWriter.EmitSymbolDefinition(offset);
                         if (offset == nextRelocOffset)
                         {
                             Relocation reloc = relocs[nextRelocIndex];
@@ -842,9 +785,7 @@ namespace ILCompiler.DependencyAnalysis
                     }
                     Debug.Assert(offset == nodeContents.Data.Length);
 
-                    // It is possible to have a symbol just after all of the data.
-                    objectWriter.EmitSymbolDefinition(nodeContents.Data.Length);
-                    objectWriter.DoneObjectNode();
+                    objectWriter.DoneObjectNode(nodeContents.DefinedSymbols);
                 }
 
                 succeeded = true;
