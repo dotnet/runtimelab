@@ -1036,7 +1036,6 @@ namespace ILCompiler.DependencyAnalysis
                     }
 #endif
 
-
                     ObjectNodeSection section = node.Section;
                     if (objectWriter.ShouldShareSymbol(node))
                     {

@@ -19,7 +19,7 @@ using Internal.TypeSystem.Ecma;
 namespace ILCompiler.DependencyAnalysis
 {
     /// <summary>
-    /// Object writer using https://github.com/dotnet/llilc
+    /// Object writer that emits LLVM (bitcode).
     /// </summary>
     internal class LLVMObjectWriter : IDisposable
     {
@@ -72,7 +72,6 @@ namespace ILCompiler.DependencyAnalysis
         }
 
         public static Dictionary<string, LLVMValueRef> s_symbolValues = new Dictionary<string, LLVMValueRef>();
-        private static Dictionary<FieldDesc, LLVMValueRef> s_staticFieldMapping = new Dictionary<FieldDesc, LLVMValueRef>();
 
         public static LLVMValueRef GetSymbolValuePointer(LLVMModuleRef module, ISymbolNode symbol, NameMangler nameMangler, bool objectWriterUse = false)
         {
@@ -149,33 +148,44 @@ namespace ILCompiler.DependencyAnalysis
 
         public LLVMDIBuilderRef DIBuilder { get; }
 
+        // Nodefactory for which ObjectWriter is instantiated for.
+        private readonly NodeFactory _nodeFactory;
+
+        // Path to the bitcode file we're emitting.
+        private readonly string _objectFilePath;
+
+        // Whether we are emitting a library (as opposed to executable).
+        private readonly bool _nativeLib;
+
         // This is used to build mangled names
-        private Utf8StringBuilder _sb = new Utf8StringBuilder();
+        private readonly Utf8StringBuilder _sb = new Utf8StringBuilder();
 
         // Track offsets in node data that prevent writing all bytes in one single blob. This includes
         // relocs, symbol definitions, debug data that must be streamed out using the existing LLVM API
-        private SortedSet<int> _byteInterruptionOffsets = new SortedSet<int>();
+        private readonly SortedSet<int> _byteInterruptionOffsets = new SortedSet<int>();
 
         // Code offset to defined names
-        private Dictionary<int, List<ISymbolDefinitionNode>> _offsetToDefName = new Dictionary<int, List<ISymbolDefinitionNode>>();
+        private readonly Dictionary<int, List<ISymbolDefinitionNode>> _offsetToDefName = new Dictionary<int, List<ISymbolDefinitionNode>>();
 
-        // The section for the current node being processed.
-        private ObjectNodeSection _currentSection;
+        // Object node being processed.
+        private ObjectNode _currentObjectNode;
 
-        // The first defined symbol name of the current node being processed.
-        private Utf8String _currentNodeZeroTerminatedName;
+        // Raw data emitted for the current object node.
+        private ArrayBuilder<byte> _currentObjectData = new ArrayBuilder<byte>();
 
-        // Nodefactory for which ObjectWriter is instantiated for.
-        private NodeFactory _nodeFactory;
+        // Symbols defined by the current object node. The definitions represent named pointers into the symbol represented
+        // by the current node so this is a list of ("defined symbol name", "offset relative to the current symbol") tuples.
+        private readonly List<KeyValuePair<string, int>> _symbolDefs = new List<KeyValuePair<string, int>>();
+
+        // References (pointers) to symbols the current object node contains (and thus depends on).
+        private Dictionary<int, SymbolRefData> _currentObjectSymbolRefs = new Dictionary<int, SymbolRefData>();
+
+        // Data to be emitted as LLVM bitcode after all of the object nodes have been processed.
+        private readonly List<ObjectNodeDataEmission> _dataToFill = new List<ObjectNodeDataEmission>();
 
 #if DEBUG
-        static Dictionary<string, ISymbolNode> _previouslyWrittenNodeNames = new Dictionary<string, ISymbolNode>();
+        private static readonly Dictionary<string, ISymbolNode> _previouslyWrittenNodeNames = new Dictionary<string, ISymbolNode>();
 #endif
-
-        public void SetSection(ObjectNodeSection section)
-        {
-            _currentSection = section;
-        }
 
         public void FinishObjWriter(LLVMContextRef context)
         {
@@ -197,15 +207,12 @@ namespace ILCompiler.DependencyAnalysis
             }
 
             EmitDebugMetadata(context);
-
 #if DEBUG
             Module.PrintToFile(Path.ChangeExtension(_objectFilePath, ".txt"));
-#endif //DEBUG
+#endif
             Module.Verify(LLVMVerifierFailureAction.LLVMAbortProcessAction);
 
             Module.WriteBitcodeToFile(_objectFilePath);
-
-            //throw new NotImplementedException(); // This function isn't complete
         }
 
         private void EmitDebugMetadata(LLVMContextRef context)
@@ -353,8 +360,6 @@ namespace ILCompiler.DependencyAnalysis
             startupFunc.Linkage = LLVMLinkage.LLVMExternalLinkage;
         }
 
-
-        ArrayBuilder<byte> _currentObjectData = new ArrayBuilder<byte>();
         struct SymbolRefData
         {
             public SymbolRefData(string symbolName, uint offset)
@@ -383,13 +388,6 @@ namespace ILCompiler.DependencyAnalysis
                 return valRef;
             }
         }
-
-        Dictionary<int, SymbolRefData> _currentObjectSymbolRefs = new Dictionary<int, SymbolRefData>();
-        ObjectNode _currentObjectNode;
-
-        List<ObjectNodeDataEmission> _dataToFill = new List<ObjectNodeDataEmission>();
-
-        List<KeyValuePair<string, int>> _symbolDefs = new List<KeyValuePair<string, int>>();
 
         struct ObjectNodeDataEmission
         {
@@ -457,7 +455,6 @@ namespace ILCompiler.DependencyAnalysis
             var arrayglobal = Module.AddGlobalInAddressSpace(LLVMTypeRef.CreateArray(intPtrType, (uint)countOfPointerSizedElements), realName, 0);
             arrayglobal.Linkage = LLVMLinkage.LLVMExternalLinkage;
 
-
             // Indirections to RhpNew* unmanaged functions are made using delegate*s so get a shadow stack first argument which is not present in the function.
             // This IsRhpUnmanagedIndirection condition identifies those indirections and replaces the destination with a thunk which removes the shadow stack argument.
             if (IsRhpUnmanagedIndirection(realName))
@@ -468,7 +465,10 @@ namespace ILCompiler.DependencyAnalysis
             {
                 _dataToFill.Add(new ObjectNodeDataEmission(arrayglobal, _currentObjectData.ToArray(), ReplaceMethodDictionaryUnmanagedSymbolsWithThunks(_currentObjectSymbolRefs)));
             }
-            else _dataToFill.Add(new ObjectNodeDataEmission(arrayglobal, _currentObjectData.ToArray(), _currentObjectSymbolRefs));
+            else
+            {
+                _dataToFill.Add(new ObjectNodeDataEmission(arrayglobal, _currentObjectData.ToArray(), _currentObjectSymbolRefs));
+            }
 
             foreach (var symbolIdInfo in _symbolDefs)
             {
@@ -546,40 +546,11 @@ namespace ILCompiler.DependencyAnalysis
                 _currentObjectData.Add(0);
         }
 
-        public void EmitBlob(byte[] blob)
+        public void EmitBytes(ReadOnlySpan<byte> bytes)
         {
-            _currentObjectData.Append(blob);
-        }
-        
-        public void EmitIntValue(ulong value, int size)
-        {
-            switch (size)
+            for (int i = 0; i < bytes.Length; i++)
             {
-                case 1:
-                    _currentObjectData.Append(BitConverter.GetBytes((byte)value));
-                    break;
-                case 2:
-                    _currentObjectData.Append(BitConverter.GetBytes((ushort)value));
-                    break;
-                case 4:
-                    _currentObjectData.Append(BitConverter.GetBytes((uint)value));
-                    break;
-                case 8:
-                    _currentObjectData.Append(BitConverter.GetBytes(value));
-                    break;
-                default:
-                    ThrowHelper.ThrowInvalidProgramException();
-                    break;
-            }
-        }
-
-        public void EmitBytes(IntPtr pArray, int length)
-        {
-            unsafe
-            {
-                byte* pBytes = (byte*)pArray;
-                for (int i = 0; i < length; i++)
-                    _currentObjectData.Add(pBytes[i]);
+                _currentObjectData.Add(bytes[i]);
             }
         }
         
@@ -603,28 +574,13 @@ namespace ILCompiler.DependencyAnalysis
         public int EmitSymbolRef(string realSymbolName, int offsetFromSymbolName, RelocType relocType, int delta = 0)
         {
             int symbolStartOffset = _currentObjectData.Count;
-
-            // Workaround for ObjectWriter's lack of support for IMAGE_REL_BASED_RELPTR32
-            // https://github.com/dotnet/corert/issues/3278
-            if (relocType == RelocType.IMAGE_REL_BASED_RELPTR32)
-            {
-                relocType = RelocType.IMAGE_REL_BASED_REL32;
-                delta = checked(delta + sizeof(int));
-            }
             uint totalOffset = checked((uint)delta + unchecked((uint)offsetFromSymbolName));
+            int pointerSize = _nodeFactory.Target.PointerSize;
 
-            EmitBlob(new byte[this._nodeFactory.Target.PointerSize]);
-            if (relocType == RelocType.IMAGE_REL_BASED_REL32)
-            {
-                return this._nodeFactory.Target.PointerSize;
-            }
+            EmitBytes(new byte[pointerSize]);
             _currentObjectSymbolRefs.Add(symbolStartOffset, new SymbolRefData(realSymbolName, totalOffset));
-            return _nodeFactory.Target.PointerSize;
-        }
 
-        public string GetMangledName(TypeDesc type)
-        {
-            return _nodeFactory.NameMangler.GetMangledTypeName(type);
+            return pointerSize;
         }
 
         public void BuildSymbolDefinitionMap(ObjectNode node, ISymbolDefinitionNode[] definedSymbols)
@@ -640,23 +596,6 @@ namespace ILCompiler.DependencyAnalysis
                 _offsetToDefName[n.Offset].Add(n);
                 _byteInterruptionOffsets.Add(n.Offset);
             }
-
-            var symbolNode = node as ISymbolDefinitionNode;
-            if (symbolNode != null)
-            {
-                _sb.Clear();
-                AppendExternCPrefix(_sb);
-                symbolNode.AppendMangledName(_nodeFactory.NameMangler, _sb);
-                _currentNodeZeroTerminatedName = _sb.Append('\0').ToUtf8String();
-            }
-            else
-            {
-                _currentNodeZeroTerminatedName = default(Utf8String);
-            }
-        }
-
-        private void AppendExternCPrefix(Utf8StringBuilder sb)
-        {
         }
 
         // Returns size of the emitted symbol reference
@@ -669,7 +608,7 @@ namespace ILCompiler.DependencyAnalysis
                 Console.WriteLine("Unable to generate symbolRef to " + target.GetMangledName(_nodeFactory.NameMangler));
 
                 int pointerSize = _nodeFactory.Target.PointerSize;
-                EmitBlob(new byte[pointerSize]);
+                EmitBytes(new byte[pointerSize]);
                 return pointerSize;
             }
 
@@ -691,52 +630,6 @@ namespace ILCompiler.DependencyAnalysis
             Module.AddFunction("RhpInitialDynamicInterfaceDispatch", LLVMTypeRef.CreateFunction(LLVMTypeRef.Void, new LLVMTypeRef[] {}));
         }
 
-        public void EmitBlobWithRelocs(byte[] blob, Relocation[] relocs)
-        {
-            int nextRelocOffset = -1;
-            int nextRelocIndex = -1;
-            if (relocs.Length > 0)
-            {
-                nextRelocOffset = relocs[0].Offset;
-                nextRelocIndex = 0;
-            }
-
-            int i = 0;
-            while (i < blob.Length)
-            {
-                if (i == nextRelocOffset)
-                {
-                    Relocation reloc = relocs[nextRelocIndex];
-
-                    // Make sure we've gotten the correct size for the reloc
-                    Debug.Assert(reloc.RelocType == RelocType.IMAGE_REL_BASED_DIR64 ||
-                        reloc.RelocType == RelocType.IMAGE_REL_BASED_HIGHLOW);
-
-                    long delta;
-                    unsafe
-                    {
-                        fixed (void* location = &blob[i])
-                        {
-                            delta = Relocation.ReadValue(reloc.RelocType, location);
-                        }
-                    }
-                    int size = EmitSymbolReference(reloc.Target, (int)delta, reloc.RelocType);
-
-                    // Update nextRelocIndex/Offset
-                    if (++nextRelocIndex < relocs.Length)
-                    {
-                        nextRelocOffset = relocs[nextRelocIndex].Offset;
-                    }
-                    i += size;
-                }
-                else
-                {
-                    EmitIntValue(blob[i], 1);
-                    i++;
-                }
-            }
-        }
-
         public void EmitSymbolDefinition(int currentOffset)
         {
             List<ISymbolDefinitionNode> nodes;
@@ -745,7 +638,6 @@ namespace ILCompiler.DependencyAnalysis
                 foreach (var name in nodes)
                 {
                     _sb.Clear();
-                    AppendExternCPrefix(_sb);
                     name.AppendMangledName(_nodeFactory.NameMangler, _sb);
 
                     string symbolId = name.GetMangledName(_nodeFactory.NameMangler);
@@ -767,9 +659,6 @@ namespace ILCompiler.DependencyAnalysis
             }
         }
 
-        //System.IO.FileStream _file;
-        string _objectFilePath;
-        bool _nativeLib;
         public LLVMObjectWriter(string objectFilePath, NodeFactory factory, LLVMCodegenCompilation compilation)
         {
             _nodeFactory = factory;
@@ -787,16 +676,6 @@ namespace ILCompiler.DependencyAnalysis
         public virtual void Dispose(bool bDisposing)
         {
             FinishObjWriter(Module.Context);
-            //if (_file != null)
-            //{
-            //    // Finalize object emission.
-            //    FinishObjWriter();
-            //    _file.Flush();
-            //    _file.Dispose();
-            //    _file = null;
-            //}
-
-            _nodeFactory = null;
 
             if (bDisposing)
             {
@@ -807,30 +686,6 @@ namespace ILCompiler.DependencyAnalysis
         ~LLVMObjectWriter()
         {
             Dispose(false);
-        }
-
-        private bool ShouldShareSymbol(ObjectNode node)
-        {
-            if (_nodeFactory.CompilationModuleGroup.IsSingleFileCompilation)
-                return false;
-
-            if (!(node is ISymbolNode))
-                return false;
-
-            // These intentionally clash with one another, but are merged with linker directives so should not be Comdat folded
-            if (node is ModulesSectionNode)
-                return false;
-
-            return true;
-        }
-
-        private ObjectNodeSection GetSharedSection(ObjectNodeSection section, string key)
-        {
-            string standardSectionPrefix = "";
-            if (section.IsStandardSection)
-                standardSectionPrefix = ".";
-
-            return new ObjectNodeSection(standardSectionPrefix + section.Name, section.Type, key);
         }
 
         public void ResetByteRunInterruptionOffsets(Relocation[] relocs)
@@ -859,7 +714,6 @@ namespace ILCompiler.DependencyAnalysis
             try
             {
                 objectWriter.EmitReadyToRunHeaderCallback(LLVMCodegenCompilation.Module.Context);
-                //ObjectNodeSection managedCodeSection = null;
 
                 var listOfOffsets = new List<int>();
                 foreach (DependencyNode depNode in nodes)
@@ -893,8 +747,9 @@ namespace ILCompiler.DependencyAnalysis
                     ObjectData nodeContents = node.GetData(factory);
 
                     if (dumper != null)
+                    {
                         dumper.DumpObjectNode(factory.NameMangler, node, nodeContents);
-
+                    }
 #if DEBUG
                     foreach (ISymbolNode definedSymbol in nodeContents.DefinedSymbols)
                     {
@@ -910,17 +765,8 @@ namespace ILCompiler.DependencyAnalysis
                         }
                     }
 #endif
-   
-                    ObjectNodeSection section = node.Section;
-                    if (objectWriter.ShouldShareSymbol(node))
-                    {
-                        section = objectWriter.GetSharedSection(section, ((ISymbolNode)node).GetMangledName(factory.NameMangler));
-                    }
-
-                    // Ensure section and alignment for the node.
-                    objectWriter.SetSection(section);
+                    // Ensure alignment for the node.
                     objectWriter.EmitAlignment(nodeContents.Alignment);
-
                     objectWriter.ResetByteRunInterruptionOffsets(nodeContents.Relocs);
 
                     // Build symbol definition map.
@@ -935,53 +781,35 @@ namespace ILCompiler.DependencyAnalysis
                         nextRelocIndex = 0;
                     }
 
-                    int i = 0;
-
                     listOfOffsets.Clear();
                     listOfOffsets.AddRange(objectWriter._byteInterruptionOffsets);
 
+                    int offset = 0;
                     int offsetIndex = 0;
-                    while (i < nodeContents.Data.Length)
+                    while (offset < nodeContents.Data.Length)
                     {
                         // Emit symbol definitions if necessary
-                        objectWriter.EmitSymbolDefinition(i);
-                        if (i == nextRelocOffset)
+                        objectWriter.EmitSymbolDefinition(offset);
+                        if (offset == nextRelocOffset)
                         {
                             Relocation reloc = relocs[nextRelocIndex];
 
                             long delta;
                             unsafe
                             {
-                                fixed (void* location = &nodeContents.Data[i])
+                                fixed (void* location = &nodeContents.Data[offset])
                                 {
                                     delta = Relocation.ReadValue(reloc.RelocType, location);
                                 }
                             }
-                            ISymbolNode symbolToWrite = reloc.Target;
-                            var eeTypeNode = reloc.Target as EETypeNode;
-                            if (eeTypeNode != null)
-                            {
-                                if (eeTypeNode.ShouldSkipEmittingObjectNode(factory))
-                                {
-                                    symbolToWrite = factory.ConstructedTypeSymbol(eeTypeNode.Type);
-                                }
-                            }
-                            int size = objectWriter.EmitSymbolReference(symbolToWrite, (int)delta, reloc.RelocType);
 
-                            /*
-                             WebAssembly has no thumb 
-                            // Emit a copy of original Thumb2 instruction that came from RyuJIT
-                            if (reloc.RelocType == RelocType.IMAGE_REL_BASED_THUMB_MOV32 ||
-                                reloc.RelocType == RelocType.IMAGE_REL_BASED_THUMB_BRANCH24)
+                            ISymbolNode symbolToWrite = reloc.Target;
+                            if (reloc.Target is EETypeNode eeTypeNode && eeTypeNode.ShouldSkipEmittingObjectNode(factory))
                             {
-                                unsafe
-                                {
-                                    fixed (void* location = &nodeContents.Data[i])
-                                    {
-                                        objectWriter.EmitBytes((IntPtr)location, size);
-                                    }
-                                }
-                            }*/
+                                symbolToWrite = factory.ConstructedTypeSymbol(eeTypeNode.Type);
+                            }
+
+                            int size = objectWriter.EmitSymbolReference(symbolToWrite, (int)delta, reloc.RelocType);
 
                             // Update nextRelocIndex/Offset
                             if (++nextRelocIndex < relocs.Length)
@@ -996,30 +824,23 @@ namespace ILCompiler.DependencyAnalysis
                                 // references it. We do not vacate extra bytes in the data buffer for this kind of reloc.
                                 nextRelocOffset = -1;
                             }
-                            i += size;
+                            offset += size;
                         }
                         else
                         {
-                            while (offsetIndex < listOfOffsets.Count && listOfOffsets[offsetIndex] <= i)
+                            while (offsetIndex < listOfOffsets.Count && listOfOffsets[offsetIndex] <= offset)
                             {
                                 offsetIndex++;
                             }
 
                             int nextOffset = offsetIndex == listOfOffsets.Count ? nodeContents.Data.Length : listOfOffsets[offsetIndex];
 
-                            unsafe
-                            {
-                                // Todo: Use Span<T> instead once it's available to us in this repo
-                                fixed (byte* pContents = &nodeContents.Data[i])
-                                {
-                                    objectWriter.EmitBytes((IntPtr)(pContents), nextOffset - i);
-                                    i += nextOffset - i;
-                                }
-                            }
+                            objectWriter.EmitBytes(nodeContents.Data.AsSpan()[offset..nextOffset]);
 
+                            offset = nextOffset;
                         }
                     }
-                    Debug.Assert(i == nodeContents.Data.Length);
+                    Debug.Assert(offset == nodeContents.Data.Length);
 
                     // It is possible to have a symbol just after all of the data.
                     objectWriter.EmitSymbolDefinition(nodeContents.Data.Length);
