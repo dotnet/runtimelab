@@ -9,12 +9,11 @@ using System.Collections.Generic;
 using System.Collections;
 using System.Reflection;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Collections.Specialized;
-
-#if TARGET_WINDOWS
 using CpObj;
 using CkFinite;
-#endif
+
 internal static class Program
 {
     private static int staticInt;
@@ -53,14 +52,12 @@ internal static class Program
         (*targetAddr) = 1;
         EndTest(tempInt2 == 1 && tempInt == 9);
 
-#if TARGET_WINDOWS
         StartTest("Inline assign byte Test");
         EndTest(ILHelpers.ILHelpersTest.InlineAssignByte() == 100);
 
         StartTest("dup test");
         int dupTestInt = 9;
         EndTest(ILHelpers.ILHelpersTest.DupTest(ref dupTestInt) == 209 && dupTestInt == 209);
-#endif
 
         TestClass tempObj = new TestDerivedClass(1337);
         tempObj.TestMethod("Hello");
@@ -157,13 +154,11 @@ internal static class Program
         var switchTestDefault = SwitchOp(5, 5, 20);
         EndTest(switchTestDefault == 0);
 
-#if TARGET_WINDOWS
         StartTest("CpObj test");
         var cpObjTestA = new TestValue { Field = 1234 };
         var cpObjTestB = new TestValue { Field = 5678 };
         CpObjTest.CpObj(ref cpObjTestB, ref cpObjTestA);
-        EndTest (cpObjTestB.Field == 1234);
-#endif
+        EndTest(cpObjTestB.Field == 1234);
 
         StartTest("Static delegate test");
         Func<int> staticDelegate = StaticDelegateTarget;
@@ -291,8 +286,6 @@ internal static class Program
 
         TestTryFinally();
 
-
-#if TARGET_WINDOWS
         StartTest("RVA static field test");
         int rvaFieldValue = ILHelpers.ILHelpersTest.StaticInitedInt;
         if (rvaFieldValue == 0x78563412)
@@ -303,7 +296,6 @@ internal static class Program
         {
             FailTest(rvaFieldValue.ToString());
         }
-#endif
 
         TestNativeCallback();
 
@@ -359,9 +351,7 @@ internal static class Program
 
         TestThrowIfNull();
 
-#if TARGET_WINDOWS
         TestCkFinite();
-#endif
 
         TestIntOverflows();
 
@@ -602,6 +592,12 @@ internal static class Program
         if (!TestRhpAssignRefWithClassInStructGC())
         {
             FailTest();
+            return;
+        }
+
+        if (!StackEntriesLiveAcrossSafePointsGetScanned())
+        {
+            FailTest("Stack entry live across a safe point was not reported");
             return;
         }
 
@@ -905,6 +901,63 @@ internal static class Program
         Child c1, c2, c3;  // 3 more locals to cover give a bit more resiliency to the test, in case of slots being added or removed in the RhCollect calls
         c1 = c2 = c3 = child;
         childRef = new WeakReference(child);
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static bool StackEntriesLiveAcrossSafePointsGetScanned()
+    {
+        ClassWithFields obj = GetClass();
+        ClearShadowStack(null, null, null, null, null, null);
+
+        return StackEntriesLiveAcrossSafePointsGetScannedInner<object>(obj);
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static void CreateLotsOfGarbage()
+    {
+        for (int i = 0; i < 10000; i++)
+        {
+            GC.KeepAlive(new object());
+        }
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static int TriggerObjRelocation()
+    {
+        CreateLotsOfGarbage();
+        GC.Collect();
+        return 0;
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static bool ObjRefsAreEqual(object a, int b, object c)
+    {
+        return a == c;
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static void ClearShadowStack(object a, object b, object c, object d, object e, object f)
+    {
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static ClassWithFields GetClass()
+    {
+        var outerObj = new ClassWithFields();
+        CreateLotsOfGarbage();
+        outerObj.Obj = new object();
+        return outerObj;
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static bool StackEntriesLiveAcrossSafePointsGetScannedInner<T>(ClassWithFields obj)
+    {
+        return ObjRefsAreEqual(obj.Obj, TriggerObjRelocation(), obj.Obj);
+    }
+
+    private class ClassWithFields
+    {
+        public object Obj;
     }
 
     private static unsafe void TestBoxUnboxDifferentSizes()
@@ -1513,7 +1566,7 @@ internal static class Program
         EndTest(Object.ReferenceEquals(retVal, instance));
     }
 
-    private static void NewMethod(Type classForMetaTestsType, ClassForMetaTests instance)
+    private static void NewMethod([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicMethods)] Type classForMetaTestsType, ClassForMetaTests instance)
     {
         StartTest("Class get+invoke simple method via reflection");
         var mtd = classForMetaTestsType.GetMethod("ReturnTrueIf1");
@@ -2652,7 +2705,6 @@ internal static class Program
         EndTest(success);
     }
 
-#if TARGET_WINDOWS
     private static void TestCkFinite()
     {
         // includes tests from https://github.com/dotnet/coreclr/blob/9b0a9fd623/tests/src/JIT/IL_Conformance/Old/Base/ckfinite.il4
@@ -2687,7 +2739,6 @@ internal static class Program
     {
         return CkFiniteTest.CkFinite64(*(double*)(&value));
     }
-#endif
 
     static void TestIntOverflows()
     {

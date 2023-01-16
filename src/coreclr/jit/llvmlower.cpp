@@ -294,7 +294,7 @@ void Llvm::initializeLocalInProlog(unsigned lclNum, GenTree* value)
     _compiler->fgEnsureFirstBBisScratch();
     LIR::Range& firstBlockRange = LIR::AsRange(_compiler->fgFirstBB);
 
-    firstBlockRange.InsertAtEnd(value);
+    firstBlockRange.InsertAtBeginning(value);
 
     // TYP_BLK locals have to be handled specially as they can only be referenced indirectly.
     // TODO-LLVM: use STORE_LCL_FLD<struct> here once enough of upstream is merged.
@@ -304,18 +304,18 @@ void Llvm::initializeLocalInProlog(unsigned lclNum, GenTree* value)
     {
         GenTree* lclAddr = _compiler->gtNewLclVarAddrNode(lclNum);
         lclAddr->gtFlags |= GTF_VAR_DEF;
-        firstBlockRange.InsertAtEnd(lclAddr);
+        firstBlockRange.InsertAfter(value, lclAddr);
 
         ClassLayout* layout = _compiler->typGetBlkLayout(varDsc->lvExactSize);
         store = new (_compiler, GT_STORE_BLK) GenTreeBlk(GT_STORE_BLK, TYP_STRUCT, lclAddr, value, layout);
         store->gtFlags |= (GTF_ASG | GTF_IND_NONFAULTING);
+        firstBlockRange.InsertAfter(lclAddr, store);
     }
     else
     {
         store = _compiler->gtNewStoreLclVar(lclNum, value);
+        firstBlockRange.InsertAfter(value, store);
     }
-
-    firstBlockRange.InsertAtEnd(store);
 
     DISPTREERANGE(firstBlockRange, store);
 }
@@ -388,16 +388,20 @@ void Llvm::lowerBlock(BasicBlock* block)
                 break;
 
             case GT_IND:
-            case GT_STOREIND:
             case GT_OBJ:
             case GT_BLK:
             case GT_NULLCHECK:
+            case GT_STOREIND:
                 lowerIndir(node->AsIndir());
                 break;
 
             case GT_STORE_BLK:
             case GT_STORE_OBJ:
                 lowerStoreBlk(node->AsBlk());
+                break;
+
+            case GT_STORE_DYN_BLK:
+                lowerStoreDynBlk(node->AsStoreDynBlk());
                 break;
 
             case GT_DIV:
@@ -623,10 +627,11 @@ void Llvm::lowerStoreBlk(GenTreeBlk* storeBlkNode)
 {
     assert(storeBlkNode->OperIs(GT_STORE_BLK, GT_STORE_OBJ));
 
+    GenTree* src = storeBlkNode->Data();
+
     // Fix up type mismatches on copies for codegen.
     if (storeBlkNode->OperIsCopyBlkOp())
     {
-        GenTree* src = storeBlkNode->Data();
         ClassLayout* dstLayout = storeBlkNode->GetLayout();
         if (src->OperIs(GT_IND))
         {
@@ -655,6 +660,10 @@ void Llvm::lowerStoreBlk(GenTreeBlk* storeBlkNode)
             }
         }
     }
+    else
+    {
+        src->SetContained();
+    }
 
     // A zero-sized block store is a no-op. Lower it away.
     if (storeBlkNode->Size() == 0)
@@ -669,6 +678,12 @@ void Llvm::lowerStoreBlk(GenTreeBlk* storeBlkNode)
     {
         lowerIndir(storeBlkNode);
     }
+}
+
+void Llvm::lowerStoreDynBlk(GenTreeStoreDynBlk* storeDynBlkNode)
+{
+    storeDynBlkNode->Data()->SetContained();
+    lowerIndir(storeDynBlkNode);
 }
 
 void Llvm::lowerDivMod(GenTreeOp* divModNode)

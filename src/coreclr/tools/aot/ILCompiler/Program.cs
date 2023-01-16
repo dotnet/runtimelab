@@ -657,19 +657,21 @@ namespace ILCompiler
             //
             // Compile
             //
-
             CompilationBuilder builder;
             if (_isLlvmCodegen)
+            {
                 builder = new LLVMCodegenCompilationBuilder(typeSystemContext, compilationGroup, _nativeLib);
+            }
             else
+            {
                 builder = new RyuJitCompilationBuilder(typeSystemContext, compilationGroup);
+            }
 
             string compilationUnitPrefix = _multiFile ? System.IO.Path.GetFileNameWithoutExtension(_outputFilePath) : "";
             builder.UseCompilationUnitPrefix(compilationUnitPrefix);
 
             if (_mibcFilePaths.Count > 0)
             {
-                // TODO : LLVM, this cast will fail if profile data is ever passed
                 ((RyuJitCompilationBuilder)builder).UseProfileData(_mibcFilePaths);
             }
 
@@ -678,9 +680,13 @@ namespace ILCompiler
 
             PInvokeILEmitterConfiguration pinvokePolicy;
             if (_isLlvmCodegen)
+            {
                 pinvokePolicy = new DirectPInvokePolicy();
+            }
             else
+            {
                 pinvokePolicy = new ConfigurablePInvokePolicy(typeSystemContext.Target, _directPInvokes, _directPInvokeLists);
+            }
 
             ConfigurableWasmImportPolicy wasmImportPolicy = new ConfigurableWasmImportPolicy(_wasmImports, _wasmImportsLists);
 

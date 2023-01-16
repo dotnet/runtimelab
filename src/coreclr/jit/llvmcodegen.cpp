@@ -1017,6 +1017,7 @@ Value* Llvm::getGenTreeValue(GenTree* op)
 //
 Value* Llvm::consumeValue(GenTree* node, Type* targetLlvmType)
 {
+    assert(!node->isContained());
     Value* nodeValue = getGenTreeValue(node);
     Value* finalValue = nodeValue;
 
@@ -1112,6 +1113,12 @@ void Llvm::visitNode(GenTree* node)
     llvm::BasicBlock* lastLlvmBlock = _builder.GetInsertBlock(); // For instructions spanning multiple blocks.
 #endif // DEBUG
 
+    if (node->isContained())
+    {
+        // Contained nodes generate code as part of the parent.
+        return;
+    }
+
     switch (node->OperGet())
     {
         case GT_ADD:
@@ -1143,10 +1150,8 @@ void Llvm::visitNode(GenTree* node)
             buildCnsDouble(node->AsDblCon());
             break;
         case GT_CNS_INT:
-            buildCnsInt(node);
-            break;
         case GT_CNS_LNG:
-            buildCnsLng(node);
+            buildIntegralConst(node->AsIntConCommon());
             break;
         case GT_IL_OFFSET:
             _currentOffset = node->AsILOffset()->gtStmtDI;
@@ -1197,6 +1202,9 @@ void Llvm::visitNode(GenTree* node)
         case GT_BOUNDS_CHECK:
             buildBoundsCheck(node->AsBoundsChk());
             break;
+        case GT_CKFINITE:
+            buildCkFinite(node->AsUnOp());
+            break;
         case GT_OBJ:
         case GT_BLK:
             buildBlk(node->AsBlk());
@@ -1221,15 +1229,14 @@ void Llvm::visitNode(GenTree* node)
         case GT_STORE_OBJ:
             buildStoreBlk(node->AsBlk());
             break;
+        case GT_STORE_DYN_BLK:
+            buildStoreDynBlk(node->AsStoreDynBlk());
+            break;
         case GT_MUL:
         case GT_AND:
         case GT_OR:
         case GT_XOR:
             buildBinaryOperation(node);
-            break;
-        case GT_FIELD_LIST:
-        case GT_INIT_VAL:
-            // These ('contained') nodes always generate code as part of their parent.
             break;
         default:
             failFunctionCompilation();
@@ -1638,6 +1645,7 @@ void Llvm::buildCast(GenTreeCast* cast)
                     break;
 
                 case TYP_LONG:
+                case TYP_ULONG:
                     castValue = cast->IsUnsigned()
                         ? _builder.CreateZExt(castFromValue, castToLlvmType)
                         : _builder.CreateSExt(castFromValue, castToLlvmType);
@@ -1651,7 +1659,7 @@ void Llvm::buildCast(GenTreeCast* cast)
                     break;
 
                 default:
-                    failFunctionCompilation(); // NYI
+                    unreached();
             }
             break;
 
@@ -1663,6 +1671,7 @@ void Llvm::buildCast(GenTreeCast* cast)
                 case TYP_DOUBLE:
                     castValue = _builder.CreateFPCast(castFromValue, castToLlvmType);
                     break;
+
                 case TYP_BYTE:
                 case TYP_SHORT:
                 case TYP_INT:
@@ -1684,7 +1693,7 @@ void Llvm::buildCast(GenTreeCast* cast)
             break;
 
         default:
-            failFunctionCompilation(); // NYI
+            unreached();
     }
 
     mapGenTreeToValue(cast, castValue);
@@ -1800,55 +1809,38 @@ void Llvm::buildCnsDouble(GenTreeDblCon* node)
     }
 }
 
-void Llvm::buildCnsInt(GenTree* node)
+void Llvm::buildIntegralConst(GenTreeIntConCommon* node)
 {
-    if (node->gtType == TYP_INT)
+    var_types constType = node->TypeGet();
+    Type* constLlvmType = getLlvmTypeForVarType(constType);
+
+    Value* constValue;
+    if (node->IsCnsIntOrI() && node->IsIconHandle()) // TODO-LLVM: change to simply "IsIconHandle" once upstream does.
     {
-        if (node->IsIconHandle())
+        switch (node->GetIconHandleFlag())
         {
-            // TODO-LLVM : consider lowering these to "IND(CLS_VAR_ADDR)"
-            if (node->IsIconHandle(GTF_ICON_TOKEN_HDL) || node->IsIconHandle(GTF_ICON_CLASS_HDL) ||
-                node->IsIconHandle(GTF_ICON_METHOD_HDL) || node->IsIconHandle(GTF_ICON_FIELD_HDL))
+            case GTF_ICON_TOKEN_HDL:
+            case GTF_ICON_CLASS_HDL:
+            case GTF_ICON_METHOD_HDL:
+            case GTF_ICON_FIELD_HDL:
+            case GTF_ICON_STR_HDL:
             {
                 CORINFO_GENERIC_HANDLE symbolHandle = CORINFO_GENERIC_HANDLE(node->AsIntCon()->IconValue());
-                mapGenTreeToValue(node, emitSymbolRef(symbolHandle));
+                constValue = emitSymbolRef(symbolHandle);
             }
-            else
-            {
-                //TODO-LLVML: other ICON handle types
+            break;
+
+            default:
                 failFunctionCompilation();
-            }
         }
-        else
-        {
-            mapGenTreeToValue(node, _builder.getInt32(node->AsIntCon()->IconValue()));
-        }
-        return;
     }
-    if (node->gtType == TYP_REF)
+    else
     {
-        ssize_t intCon = node->AsIntCon()->gtIconVal;
-        if (node->IsIconHandle(GTF_ICON_STR_HDL))
-        {
-            CORINFO_GENERIC_HANDLE symbolHandle = CORINFO_GENERIC_HANDLE(node->AsIntCon()->IconValue());
-            mapGenTreeToValue(node, emitSymbolRef(symbolHandle));
-            return;
-        }
-        // TODO: delete this check, just handling string constants and null ptr stores for now, other TYP_REFs not implemented yet
-        if (intCon != 0)
-        {
-            failFunctionCompilation();
-        }
-
-        mapGenTreeToValue(node, _builder.CreateIntToPtr(_builder.getInt32(intCon), Type::getInt8PtrTy(_llvmContext))); // TODO: wasm64
-        return;
+        llvm::APInt llvmConst(genTypeSize(constType) * BITS_PER_BYTE, node->IntegralValue());
+        constValue = llvm::Constant::getIntegerValue(constLlvmType, llvmConst);
     }
-    failFunctionCompilation();
-}
 
-void Llvm::buildCnsLng(GenTree* node)
-{
-    mapGenTreeToValue(node, _builder.getInt64(node->AsLngCon()->LngValue()));
+    mapGenTreeToValue(node, constValue);
 }
 
 void Llvm::buildCall(GenTreeCall* call)
@@ -2061,6 +2053,89 @@ void Llvm::buildStoreBlk(GenTreeBlk* blockOp)
     }
 }
 
+void Llvm::buildStoreDynBlk(GenTreeStoreDynBlk* blockOp)
+{
+    bool isCopyBlock = blockOp->OperIsCopyBlkOp();
+    GenTree* srcNode = blockOp->Data();
+    GenTree* sizeNode = blockOp->gtDynamicSize;
+
+    Value* dstAddrValue = consumeValue(blockOp->Addr(), getPtrLlvmType());
+    Value* srcValue;
+    if (isCopyBlock)
+    {
+        srcValue = consumeValue(srcNode->AsIndir()->Addr(), getPtrLlvmType());
+    }
+    else
+    {
+        srcValue = srcNode->OperIsInitVal() ? consumeValue(srcNode->AsUnOp()->gtGetOp1(), Type::getInt8Ty(_llvmContext))
+                                            : _builder.getInt8(0);
+    }
+    // Per ECMA 335, cpblk/initblk only allow int32-sized operands. We'll be a bit more permissive and allow native ints
+    // as well (as do other backends).
+    Type* sizeLlvmType = genActualTypeIsInt(sizeNode) ? Type::getInt32Ty(_llvmContext) : getIntPtrLlvmType();
+    Value* sizeValue = consumeValue(sizeNode, sizeLlvmType);
+
+    // STORE_DYN_BLK's contract is that it must not throw any exceptions in case the dynamic size is zero and must throw
+    // NRE otherwise.
+    bool dstAddrMayBeNull = (blockOp->gtFlags & GTF_IND_NONFAULTING) == 0;
+    bool srcAddrMayBeNull = isCopyBlock && ((srcNode->gtFlags & GTF_IND_NONFAULTING) == 0);
+    llvm::BasicBlock* checkSizeLlvmBlock = nullptr;
+    llvm::BasicBlock* nullChecksLlvmBlock = nullptr;
+
+    // TODO-LLVM-CQ: we should use CORINFO_HELP_MEMCPY/CORINFO_HELP_MEMSET here if we need to do the size check (it will
+    // result in smaller code). But currently we cannot because ILC maps these to native "memcpy/memset", which do not
+    // have the right semantics (don't throw NREs).
+    if (dstAddrMayBeNull || srcAddrMayBeNull)
+    {
+        checkSizeLlvmBlock = _builder.GetInsertBlock();
+        nullChecksLlvmBlock = createInlineLlvmBlock();
+        _builder.SetInsertPoint(nullChecksLlvmBlock);
+        //
+        // if (sizeIsZeroValue) goto PASSED; else goto CHECK_DST; (we'll add this below)
+        // CHECK_DST:
+        //   if (dst is null) Throw();
+        // CHECK_SRC:
+        //   if (src is null) Throw();
+        // COPY:
+        //   memcpy/memset
+        // PASSED:
+        //
+        if (dstAddrMayBeNull)
+        {
+            emitNullCheckForIndir(blockOp, dstAddrValue);
+        }
+        if (srcAddrMayBeNull)
+        {
+            emitNullCheckForIndir(srcNode->AsIndir(), srcValue);
+        }
+    }
+
+    // Technically cpblk/initblk specify that they expect their sources/destinations to be aligned, but in
+    // practice these instructions are used like memcpy/memset, which do not require this. So we do not try
+    // to be more precise with the alignment specification here as well.
+    // TODO-LLVM: volatile STORE_DYN_BLK.
+    if (isCopyBlock)
+    {
+        _builder.CreateMemCpy(dstAddrValue, llvm::MaybeAlign(), srcValue, llvm::MaybeAlign(), sizeValue);
+    }
+    else
+    {
+        _builder.CreateMemSet(dstAddrValue, srcValue, sizeValue, llvm::MaybeAlign());
+    }
+
+    if (checkSizeLlvmBlock != nullptr)
+    {
+        llvm::BasicBlock* skipOperationLlvmBlock = createInlineLlvmBlock();
+        _builder.CreateBr(skipOperationLlvmBlock);
+
+        _builder.SetInsertPoint(checkSizeLlvmBlock);
+        Value* sizeIsZeroValue = _builder.CreateICmpEQ(sizeValue, llvm::ConstantInt::getNullValue(sizeLlvmType));
+        _builder.CreateCondBr(sizeIsZeroValue, skipOperationLlvmBlock, nullChecksLlvmBlock);
+
+        _builder.SetInsertPoint(skipOperationLlvmBlock);
+    }
+}
+
 void Llvm::buildUnaryOperation(GenTree* node)
 {
     Value* result;
@@ -2249,6 +2324,20 @@ void Llvm::buildBoundsCheck(GenTreeBoundsChk* boundsCheckNode)
 
     Value* indexOutOfRangeValue = _builder.CreateCmp(llvm::CmpInst::ICMP_UGE, indexValue, lengthValue);
     emitJumpToThrowHelper(indexOutOfRangeValue, boundsCheckNode->gtThrowKind);
+}
+
+void Llvm::buildCkFinite(GenTreeUnOp* ckNode)
+{
+    assert(varTypeIsFloating(ckNode));
+    Type* fpLlvmType = getLlvmTypeForVarType(ckNode->TypeGet());
+    Value* opValue = consumeValue(ckNode->gtGetOp1(), fpLlvmType);
+
+    // Taken from IR Clang generates for "isfinite".
+    Value* absOpValue = _builder.CreateIntrinsic(llvm::Intrinsic::fabs, fpLlvmType, opValue);
+    Value* isNotFiniteValue = _builder.CreateFCmpUEQ(absOpValue, llvm::ConstantFP::get(fpLlvmType, INFINITY));
+    emitJumpToThrowHelper(isNotFiniteValue, SCK_ARITH_EXCPN);;
+
+    mapGenTreeToValue(ckNode, opValue);
 }
 
 void Llvm::buildCallFinally(BasicBlock* block)

@@ -1,17 +1,7 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-.assembly extern mscorlib
-{
-  .publickeytoken = (B7 7A 5C 56 19 34 E0 89 )
-  .ver 4:0:0:0
-}
-
-.assembly extern System.Private.CoreLib
-{
-  .publickeytoken = (B0 3F 5F 7F 11 D5 0A 3A )
-  .ver 4:0:0:0
-}
+.assembly extern mscorlib { }
 
 .assembly ILHelpers { }
 
@@ -112,7 +102,7 @@
     ret
   }
 
-  .method public static bool BneSbyteExtend () cil managed 
+  .method public static bool BneSbyteExtend()
   {
     // Method begins at RVA 0x2050
     // Code size 8 (0x8)
@@ -136,17 +126,16 @@
     ret
   }
 
-
   .method public static int32 TestLdTokenMethod(int32)
   {
     ldarg.0
     ret
   }
 
-  .method public static object LdMethodToken () cil managed
+  .method public static object LdMethodToken()
   {
     ldtoken method int32 ILHelpers.ILHelpersTest::TestLdTokenMethod(int32)
-    call class [System.Private.CoreLib]System.Reflection.MethodBase [System.Private.CoreLib]System.Reflection.MethodBase::GetMethodFromHandle(valuetype [System.Private.CoreLib]System.RuntimeMethodHandle)
+    call class [mscorlib]System.Reflection.MethodBase [System.Private.CoreLib]System.Reflection.MethodBase::GetMethodFromHandle(valuetype [mscorlib]System.RuntimeMethodHandle)
     ret
   }
 }
