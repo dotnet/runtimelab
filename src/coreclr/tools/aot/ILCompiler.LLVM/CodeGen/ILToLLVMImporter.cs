@@ -2343,7 +2343,7 @@ namespace Internal.IL
             {
                 node = _compilation.NodeFactory.NecessaryTypeSymbol(target);
             }
-            LLVMValueRef eeTypePointer = LLVMObjectWriter.GetSymbolValuePointer(Module, node, _compilation.NameMangler, false);
+            LLVMValueRef eeTypePointer = LLVMObjectWriter.GetSymbolValuePointer(Module, node, _compilation.NameMangler);
             _dependencies.Add(node, "LLVM Type ptr");
 
             return eeTypePointer;
@@ -4372,7 +4372,7 @@ namespace Internal.IL
 
                     ISymbolNode node = _compilation.ComputeConstantLookup(helperId, typeDesc);
                     _dependencies.Add(node, "LLVM Type ptr");
-                    LLVMValueRef eeTypePointer = LLVMObjectWriter.GetSymbolValuePointer(Module, node, _compilation.NameMangler, false);
+                    LLVMValueRef eeTypePointer = LLVMObjectWriter.GetSymbolValuePointer(Module, node, _compilation.NameMangler);
 
                     PushLoadExpression(StackValueKind.ByRef, "ldtoken", eeTypePointer, GetWellKnownType(WellKnownType.IntPtr));
                 }
@@ -4931,7 +4931,7 @@ namespace Internal.IL
             if (builder.Handle == IntPtr.Zero)
                 builder = _builder;
 
-            LLVMValueRef addressOfAddress = LLVMObjectWriter.GetSymbolValuePointer(Module, node, _compilation.NameMangler, false);
+            LLVMValueRef addressOfAddress = LLVMObjectWriter.GetSymbolValuePointer(Module, node, _compilation.NameMangler);
             //return addressOfAddress;
             return builder.BuildLoad(addressOfAddress, "LoadAddressOfSymbolNode");
         }
@@ -4990,7 +4990,7 @@ namespace Internal.IL
 
                 ISymbolNode node = _compilation.ComputeConstantLookup(helperId, type);
                 _dependencies.Add(node, "LLVM Type ptr");
-                eeType = LLVMObjectWriter.GetSymbolValuePointer(Module, node, _compilation.NameMangler, false);
+                eeType = LLVMObjectWriter.GetSymbolValuePointer(Module, node, _compilation.NameMangler);
                 eeTypeEntry = new LoadExpressionEntry(StackValueKind.ValueType, "eeType", eeType, GetWellKnownType(WellKnownType.IntPtr).MakePointerType());
             }
             var toBoxValue = _stack.Pop();
