@@ -29,7 +29,6 @@ namespace ILCompiler
         private string _outputFile;
         private readonly bool _disableRyuJit;
 
-        internal LLVMCodegenConfigProvider Options { get; }
         // the LLVM Module generated from IL, can only be one.
         internal static LLVMModuleRef Module { get; private set; }
         internal LLVMTargetDataRef TargetData { get; }
@@ -61,7 +60,6 @@ namespace ILCompiler
             m.DataLayout = options.DataLayout;
             Module = m;
             TargetData = m.CreateExecutionEngine().TargetData;
-            Options = options;
             DIBuilder = Module.CreateDIBuilder();
             DebugMetadataMap = new Dictionary<string, DebugMetadata>();
             ILImporter.Context = Module.Context;
@@ -69,7 +67,7 @@ namespace ILCompiler
 
             NativeLib = nativeLib;
             ConfigurableWasmImportPolicy = configurableWasmImportPolicy;
-            _disableRyuJit = Options.DisableRyuJit == "1"; // TODO-LLVM: delete when all code is compiled via RyuJIT
+            _disableRyuJit = options.DisableRyuJit == "1"; // TODO-LLVM: delete when all code is compiled via RyuJIT
         }
 
         private static IEnumerable<ICompilationRootProvider> GetCompilationRoots(IEnumerable<ICompilationRootProvider> existingRoots, NodeFactory factory)

@@ -12,119 +12,60 @@ using Internal.JitInterface;
 
 namespace ILCompiler
 {
-    public sealed class LLVMCodegenCompilationBuilder : CompilationBuilder
+    public sealed class LLVMCodegenCompilationBuilder : RyuJitCompilationBuilder
     {
-        // These need to provide reasonable defaults so that the user can optionally skip
-        // calling the Use/Configure methods and still get something reasonable back.
-        LLVMCodegenConfigProvider _config = new LLVMCodegenConfigProvider(Array.Empty<string>());
-        private ILProvider _ilProvider = new CoreRTILProvider();
-        private KeyValuePair<string, string>[] _ryujitOptions = Array.Empty<KeyValuePair<string, string>>();
+        LLVMCodegenConfigProvider _config = new LLVMCodegenConfigProvider();
         private bool _nativeLib;
 
         public LLVMCodegenCompilationBuilder(CompilerTypeSystemContext context, CompilationModuleGroup group, bool nativeLib)
-            : base(context, group, new CoreRTNameMangler(new LLVMNodeMangler(), false))
+            : base(context, group, new LLVMNodeMangler())
         {
             _nativeLib = nativeLib;
         }
 
         public override CompilationBuilder UseBackendOptions(IEnumerable<string> options)
         {
-            _config = new LLVMCodegenConfigProvider(options);
-            var builder = new ArrayBuilder<KeyValuePair<string, string>>();
+            base.UseBackendOptions(options);
 
-            foreach (string param in options)
-            {
-                int indexOfEquals = param.IndexOf('=');
-
-                // We're skipping bad parameters without reporting.
-                // This is not a mainstream feature that would need to be friendly.
-                // Besides, to really validate this, we would also need to check that the config name is known.
-                if (indexOfEquals < 1)
-                    continue;
-
-                string name = param.Substring(0, indexOfEquals);
-                string value = param.Substring(indexOfEquals + 1);
-
-                builder.Add(new KeyValuePair<string, string>(name, value));
-            }
-
-            _ryujitOptions = builder.ToArray();
+            _config.SetOptions(GetBackendOptions());
 
             return this;
         }
 
-        public override CompilationBuilder UseILProvider(ILProvider ilProvider)
+        protected override RyuJitCompilation CreateCompilation(RyuJitCompilationOptions options)
         {
-            _ilProvider = ilProvider;
-            return this;
-        }
-
-        protected override ILProvider GetILProvider()
-        {
-            return _ilProvider;
-        }
-
-        public override ICompilation ToCompilation()
-        {
-            ArrayBuilder<CorJitFlag> jitFlagBuilder = new ArrayBuilder<CorJitFlag>();
-
-            switch (_optimizationMode)
-            {
-                case OptimizationMode.None:
-                    jitFlagBuilder.Add(CorJitFlag.CORJIT_FLAG_DEBUG_CODE);
-                    jitFlagBuilder.Add(CorJitFlag.CORJIT_FLAG_DEBUG_INFO);
-                    break;
-
-                case OptimizationMode.PreferSize:
-                    jitFlagBuilder.Add(CorJitFlag.CORJIT_FLAG_SIZE_OPT);
-                    break;
-
-                case OptimizationMode.PreferSpeed:
-                    jitFlagBuilder.Add(CorJitFlag.CORJIT_FLAG_SPEED_OPT);
-                    break;
-
-                default:
-                    // Not setting a flag results in BLENDED_CODE.
-                    break;
-            }
-
             LLVMCodegenNodeFactory factory = new LLVMCodegenNodeFactory(_context, _compilationGroup, _metadataManager, _interopStubManager, _nameMangler, _vtableSliceProvider, _dictionaryLayoutProvider, GetPreinitializationManager());
-            JitConfigProvider.Initialize(_context.Target, jitFlagBuilder.ToArray(), _ryujitOptions);
             DependencyAnalyzerBase<NodeFactory> graph = CreateDependencyGraph(factory, new ObjectNode.ObjectNodeComparer(new CompilerComparer()));
-            return new LLVMCodegenCompilation(graph, factory, _compilationRoots, _ilProvider, _debugInformationProvider, _logger, _config, _inliningPolicy, _devirtualizationManager, _instructionSetSupport, _nativeLib, _wasmImportPolicy, _methodImportationErrorProvider);
+
+            return new LLVMCodegenCompilation(graph, factory, _compilationRoots, GetILProvider(), _debugInformationProvider, _logger, _config, _inliningPolicy, _devirtualizationManager, _instructionSetSupport, _nativeLib, _wasmImportPolicy, _methodImportationErrorProvider);
         }
     }
 
     internal class LLVMCodegenConfigProvider
     {
-        private readonly Dictionary<string, string> _options;
-        
-        public const string NoLineNumbersString = "NoLineNumbers";
-
-        public LLVMCodegenConfigProvider(IEnumerable<string> options)
+        internal void SetOptions(IEnumerable<KeyValuePair<string, string>> options)
         {
-            _options = new Dictionary<string, string>();
-
-            foreach (string param in options)
+            foreach (var (name, value) in options)
             {
-                int indexOfEquals = param.IndexOf('=');
-
-                // We're skipping bad parameters without reporting.
-                // This is not a mainstream feature that would need to be friendly.
-                // Besides, to really validate this, we would also need to check that the config name is known.
-                if (indexOfEquals < 1)
-                    continue;
-
-                string name = param.Substring(0, indexOfEquals);
-                string value = param.Substring(indexOfEquals + 1);
-
-                _options[name] = value;
+                switch (name)
+                {
+                    case "Target":
+                        Target = value;
+                        break;
+                    case "ModuleName":
+                        ModuleName = value;
+                        break;
+                    case "DisableRyuJit":
+                        DisableRyuJit = value;
+                        break;
+                    case "DataLayout":
+                        DataLayout = value;
+                        break;
+                    default:
+                        break;
+                }
             }
         }
-
-        public string Target => ValueOrDefault("Target", "wasm32-unknown-emscripten");
-        public string ModuleName => ValueOrDefault("ModuleName", "netscripten");
-        public string DisableRyuJit => ValueOrDefault("DisableRyuJit", "0");
 
         // https://llvm.org/docs/LangRef.html#langref-datalayout
         // e litte endian, mangled names
@@ -133,16 +74,9 @@ namespace ILCompiler
         // i64:64 64 ints aligned 64
         // n:32:64 native widths
         // S128 natural alignment of stack
-        public string DataLayout => ValueOrDefault("DataLayout", "e-m:e-p:32:32-i64:64-n32:64-S128");
-
-        private string ValueOrDefault(string optionName, string defaultValue)
-        {
-            if (_options.TryGetValue(optionName, out string value))
-            {
-                return value;
-            }
-
-            return defaultValue;
-        }
+        public string DataLayout { get; private set; } = "e-m:e-p:32:32-i64:64-n32:64-S128";
+        public string Target { get; private set; } = "wasm32-unknown-emscripten";
+        public string ModuleName { get; private set; } = "netscripten";
+        public string DisableRyuJit { get; private set; } = "0";
     }
 }
