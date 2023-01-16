@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Collections;
 using System.Reflection;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Collections.Specialized;
 
 #if TARGET_WINDOWS
@@ -1576,7 +1577,7 @@ internal static class Program
         EndTest(Object.ReferenceEquals(retVal, instance));
     }
 
-    private static void NewMethod(Type classForMetaTestsType, ClassForMetaTests instance)
+    private static void NewMethod([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicMethods)] Type classForMetaTestsType, ClassForMetaTests instance)
     {
         StartTest("Class get+invoke simple method via reflection");
         var mtd = classForMetaTestsType.GetMethod("ReturnTrueIf1");

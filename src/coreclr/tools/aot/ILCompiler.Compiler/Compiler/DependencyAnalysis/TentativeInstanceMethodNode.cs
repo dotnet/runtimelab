@@ -35,11 +35,11 @@ namespace ILCompiler.DependencyAnalysis
 
         public override bool HasConditionalStaticDependencies => true;
 
-        protected override ISymbolNode GetTarget(NodeFactory factory)
+        public override IMethodNode GetTarget(NodeFactory factory)
         {
             // If the class library doesn't provide this helper, the optimization is disabled.
             MethodDesc helper = factory.InstanceMethodRemovedHelper;
-            return helper == null ? RealBody: factory.MethodEntrypoint(helper);
+            return helper == null ? RealBody : factory.MethodEntrypoint(helper);
         }
 
         public override IEnumerable<CombinedDependencyListEntry> GetConditionalStaticDependencies(NodeFactory factory)
