@@ -157,9 +157,6 @@ namespace ILCompiler.DependencyAnalysis
         // Whether we are emitting a library (as opposed to executable).
         private readonly bool _nativeLib;
 
-        // Object node being processed.
-        private ObjectNode _currentObjectNode;
-
         // Raw data emitted for the current object node.
         private ArrayBuilder<byte> _currentObjectData = new ArrayBuilder<byte>();
 
@@ -419,22 +416,15 @@ namespace ILCompiler.DependencyAnalysis
             }
         }
 
-        public void StartObjectNode(ObjectNode node)
-        {
-            Debug.Assert(_currentObjectNode == null);
-            _currentObjectNode = node;
-            Debug.Assert(_currentObjectData.Count == 0);
-        }
-
-        public void DoneObjectNode(ISymbolDefinitionNode[] definedSymbols)
+        public void DoneObjectNode(ObjectNode node, ISymbolDefinitionNode[] definedSymbols)
         {
             EmitAlignment(_nodeFactory.Target.PointerSize);
             Debug.Assert(_nodeFactory.Target.PointerSize == 4);
             int countOfPointerSizedElements = _currentObjectData.Count / _nodeFactory.Target.PointerSize;
 
-            ISymbolNode symNode = _currentObjectNode as ISymbolNode;
+            ISymbolNode symNode = node as ISymbolNode;
             if (symNode == null)
-                symNode = ((IHasStartSymbol)_currentObjectNode).StartSymbol;
+                symNode = ((IHasStartSymbol)node).StartSymbol;
             string realName = GetBaseSymbolName(symNode, _nodeFactory.NameMangler);
 
             var intPtrType = LLVMTypeRef.CreatePointer(LLVMTypeRef.Int32, 0);
@@ -447,7 +437,7 @@ namespace ILCompiler.DependencyAnalysis
             {
                 _dataToFill.Add(new ObjectNodeDataEmission(arrayglobal, _currentObjectData.ToArray(), ReplaceIndirectionSymbolsWithThunks(_currentObjectSymbolRefs)));
             }
-            else if (_currentObjectNode is MethodGenericDictionaryNode)
+            else if (node is MethodGenericDictionaryNode)
             {
                 _dataToFill.Add(new ObjectNodeDataEmission(arrayglobal, _currentObjectData.ToArray(), ReplaceMethodDictionaryUnmanagedSymbolsWithThunks(_currentObjectSymbolRefs)));
             }
@@ -464,7 +454,6 @@ namespace ILCompiler.DependencyAnalysis
                 EmitSymbolDef(arrayglobal, symbolId, offset);
             }
 
-            _currentObjectNode = null;
             _currentObjectSymbolRefs = new Dictionary<int, SymbolRefData>();
             _currentObjectData = new ArrayBuilder<byte>();
         }
@@ -662,7 +651,6 @@ namespace ILCompiler.DependencyAnalysis
                         continue;
                     }
 
-                    objectWriter.StartObjectNode(node);
                     ObjectData nodeContents = node.GetData(factory);
 
                     if (dumper != null)
@@ -710,7 +698,7 @@ namespace ILCompiler.DependencyAnalysis
                         objectWriter.EmitSymbolReference(symbolToWrite, reloc.Offset, (int)delta);
                     }
 
-                    objectWriter.DoneObjectNode(nodeContents.DefinedSymbols);
+                    objectWriter.DoneObjectNode(node, nodeContents.DefinedSymbols);
                 }
 
                 succeeded = true;
