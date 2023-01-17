@@ -88,7 +88,6 @@ namespace ILCompiler
 
             LLVMObjectWriter.EmitObject(outputFile, nodes, NodeFactory, this, dumper);
 
-
             Console.WriteLine($"RyuJIT compilation results, total methods {totalMethodCount} RyuJit Methods {ryuJitMethodCount} {((decimal)ryuJitMethodCount * 100 / totalMethodCount):n4}%");
         }
 

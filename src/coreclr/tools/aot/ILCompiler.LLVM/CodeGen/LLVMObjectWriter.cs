@@ -19,13 +19,437 @@ using Internal.TypeSystem.Ecma;
 namespace ILCompiler.DependencyAnalysis
 {
     /// <summary>
-    /// Object writer using https://github.com/dotnet/llilc
+    /// Object writer that emits LLVM (bitcode).
     /// </summary>
     internal class LLVMObjectWriter : IDisposable
     {
         public static string GlobalSymbolSuffix = "___SYMBOL";
 
-        private string GetBaseSymbolName(ISymbolNode symbol, NameMangler nameMangler, bool objectWriterUse = false)
+        private static Dictionary<string, LLVMValueRef> s_symbolValues = new Dictionary<string, LLVMValueRef>();
+
+        public static LLVMValueRef GetSymbolValuePointer(LLVMModuleRef module, ISymbolNode symbol, NameMangler nameMangler)
+        {
+            if (symbol is LLVMMethodCodeNode)
+            {
+                ThrowHelper.ThrowInvalidProgramException();
+            }
+
+            return AddOrReturnGlobalSymbol(module, symbol, nameMangler);
+        }
+
+        public static LLVMValueRef AddOrReturnGlobalSymbol(LLVMModuleRef module, ISymbolNode symbol, NameMangler nameMangler)
+        {
+            string symbolAddressGlobalName = symbol.GetMangledName(nameMangler) + GlobalSymbolSuffix;
+            LLVMValueRef symbolAddress;
+            if (s_symbolValues.TryGetValue(symbolAddressGlobalName, out symbolAddress))
+            {
+                return symbolAddress;
+            }
+
+            var intPtrType = LLVMTypeRef.CreatePointer(LLVMTypeRef.Int32, 0);
+            symbolAddress = module.AddGlobalInAddressSpace(intPtrType, symbolAddressGlobalName, 0);
+            symbolAddress.IsGlobalConstant = true;
+            symbolAddress.Linkage = LLVMLinkage.LLVMExternalLinkage;
+            s_symbolValues.Add(symbolAddressGlobalName, symbolAddress);
+            return symbolAddress;
+        }
+
+        // this is the llvm instance.
+        public LLVMModuleRef Module { get; }
+
+        public LLVMDIBuilderRef DIBuilder { get; }
+
+        // Nodefactory for which ObjectWriter is instantiated for.
+        private readonly NodeFactory _nodeFactory;
+
+        // Path to the bitcode file we're emitting.
+        private readonly string _objectFilePath;
+
+        // Whether we are emitting a library (as opposed to executable).
+        private readonly bool _nativeLib;
+
+        // Raw data emitted for the current object node.
+        private ArrayBuilder<byte> _currentObjectData = new ArrayBuilder<byte>();
+
+        // References (pointers) to symbols the current object node contains (and thus depends on).
+        private Dictionary<int, SymbolRefData> _currentObjectSymbolRefs = new Dictionary<int, SymbolRefData>();
+
+        // Data to be emitted as LLVM bitcode after all of the object nodes have been processed.
+        private readonly List<ObjectNodeDataEmission> _dataToFill = new List<ObjectNodeDataEmission>();
+
+#if DEBUG
+        private static readonly Dictionary<string, ISymbolNode> _previouslyWrittenNodeNames = new Dictionary<string, ISymbolNode>();
+#endif
+
+        public LLVMObjectWriter(string objectFilePath, NodeFactory factory, LLVMCodegenCompilation compilation)
+        {
+            _nodeFactory = factory;
+            _objectFilePath = objectFilePath;
+            Module = LLVMCodegenCompilation.Module;
+            DIBuilder = compilation.DIBuilder;
+            _nativeLib = compilation.NativeLib;
+        }
+
+        public void Dispose() => Dispose(true);
+
+        public virtual void Dispose(bool bDisposing)
+        {
+            FinishObjWriter(Module.Context);
+
+            if (bDisposing)
+            {
+                GC.SuppressFinalize(this);
+            }
+        }
+
+        ~LLVMObjectWriter()
+        {
+            Dispose(false);
+        }
+
+        public static void EmitObject(string objectFilePath, IEnumerable<DependencyNode> nodes, NodeFactory factory, LLVMCodegenCompilation compilation, IObjectDumper dumper)
+        {
+            LLVMObjectWriter objectWriter = new LLVMObjectWriter(objectFilePath, factory, compilation);
+            bool succeeded = false;
+
+            try
+            {
+                objectWriter.EmitReadyToRunHeaderCallback(LLVMCodegenCompilation.Module.Context);
+
+                foreach (DependencyNode depNode in nodes)
+                {
+                    ObjectNode node = depNode as ObjectNode;
+                    if (node == null)
+                        continue;
+
+                    if (node.ShouldSkipEmittingObjectNode(factory))
+                        continue;
+
+                    if (node is ReadyToRunGenericHelperNode readyToRunGenericHelperNode)
+                    {
+                        objectWriter.GetCodeForReadyToRunGenericHelper(compilation, readyToRunGenericHelperNode, factory);
+                        continue;
+                    }
+
+                    if (node is ReadyToRunHelperNode readyToRunHelperNode)
+                    {
+                        objectWriter.GetCodeForReadyToRunHelper(compilation, readyToRunHelperNode, factory);
+                        continue;
+                    }
+
+                    if (node is TentativeMethodNode tentativeMethodNode)
+                    {
+                        objectWriter.GetCodeForTentativeMethod(compilation, tentativeMethodNode, factory);
+                        continue;
+                    }
+
+                    ObjectData nodeContents = node.GetData(factory);
+
+                    if (dumper != null)
+                    {
+                        dumper.DumpObjectNode(factory.NameMangler, node, nodeContents);
+                    }
+#if DEBUG
+                    foreach (ISymbolNode definedSymbol in nodeContents.DefinedSymbols)
+                    {
+                        try
+                        {
+                            _previouslyWrittenNodeNames.Add(definedSymbol.GetMangledName(factory.NameMangler), definedSymbol);
+                        }
+                        catch (ArgumentException)
+                        {
+                            ISymbolNode alreadyWrittenSymbol = _previouslyWrittenNodeNames[definedSymbol.GetMangledName(factory.NameMangler)];
+                            Debug.Fail("Duplicate node name emitted to file",
+                            $"Symbol {definedSymbol.GetMangledName(factory.NameMangler)} has already been written to the output object file {objectFilePath} with symbol {alreadyWrittenSymbol}");
+                        }
+                    }
+#endif
+                    // Ensure alignment for the node.
+                    objectWriter.EmitAlignment(nodeContents.Alignment);
+
+                    objectWriter.EmitBytes(nodeContents.Data);
+
+                    Relocation[] relocs = nodeContents.Relocs;
+                    foreach (var reloc in relocs)
+                    {
+                        long delta;
+                        unsafe
+                        {
+                            fixed (void* location = &nodeContents.Data[reloc.Offset])
+                            {
+                                delta = Relocation.ReadValue(reloc.RelocType, location);
+                            }
+                        }
+
+                        ISymbolNode symbolToWrite = reloc.Target;
+                        if (reloc.Target is EETypeNode eeTypeNode && eeTypeNode.ShouldSkipEmittingObjectNode(factory))
+                        {
+                            symbolToWrite = factory.ConstructedTypeSymbol(eeTypeNode.Type);
+                        }
+
+                        objectWriter.EmitSymbolReference(symbolToWrite, reloc.Offset, (int)delta);
+                    }
+
+                    objectWriter.DoneObjectNode(node, nodeContents.DefinedSymbols);
+                }
+
+                succeeded = true;
+            }
+            finally
+            {
+                objectWriter.Dispose();
+
+                if (!succeeded)
+                {
+                    // If there was an exception while generating the OBJ file, make sure we don't leave the unfinished
+                    // object file around.
+                    try
+                    {
+                        File.Delete(objectFilePath);
+                    }
+                    catch
+                    {
+                    }
+                }
+            }
+        }
+
+        private void DoneObjectNode(ObjectNode node, ISymbolDefinitionNode[] definedSymbols)
+        {
+            EmitAlignment(_nodeFactory.Target.PointerSize);
+            Debug.Assert(_nodeFactory.Target.PointerSize == 4);
+            int countOfPointerSizedElements = _currentObjectData.Count / _nodeFactory.Target.PointerSize;
+
+            ISymbolNode symNode = node as ISymbolNode;
+            if (symNode == null)
+                symNode = ((IHasStartSymbol)node).StartSymbol;
+            string realName = GetBaseSymbolName(symNode, _nodeFactory.NameMangler);
+
+            var intPtrType = LLVMTypeRef.CreatePointer(LLVMTypeRef.Int32, 0);
+            var arrayglobal = Module.AddGlobalInAddressSpace(LLVMTypeRef.CreateArray(intPtrType, (uint)countOfPointerSizedElements), realName, 0);
+            arrayglobal.Linkage = LLVMLinkage.LLVMExternalLinkage;
+
+            // Indirections to RhpNew* unmanaged functions are made using delegate*s so get a shadow stack first argument which is not present in the function.
+            // This IsRhpUnmanagedIndirection condition identifies those indirections and replaces the destination with a thunk which removes the shadow stack argument.
+            if (IsRhpUnmanagedIndirection(realName))
+            {
+                _dataToFill.Add(new ObjectNodeDataEmission(arrayglobal, _currentObjectData.ToArray(), ReplaceIndirectionSymbolsWithThunks(_currentObjectSymbolRefs)));
+            }
+            else if (node is MethodGenericDictionaryNode)
+            {
+                _dataToFill.Add(new ObjectNodeDataEmission(arrayglobal, _currentObjectData.ToArray(), ReplaceMethodDictionaryUnmanagedSymbolsWithThunks(_currentObjectSymbolRefs)));
+            }
+            else
+            {
+                _dataToFill.Add(new ObjectNodeDataEmission(arrayglobal, _currentObjectData.ToArray(), _currentObjectSymbolRefs));
+            }
+
+            foreach (ISymbolDefinitionNode definedSymbol in definedSymbols)
+            {
+                string symbolId = definedSymbol.GetMangledName(_nodeFactory.NameMangler);
+                int offset = GetNumericOffsetFromBaseSymbolValue(definedSymbol);
+
+                EmitSymbolDef(arrayglobal, symbolId, offset);
+            }
+
+            _currentObjectSymbolRefs = new Dictionary<int, SymbolRefData>();
+            _currentObjectData = new ArrayBuilder<byte>();
+        }
+
+        private void EmitAlignment(int byteAlignment)
+        {
+            while ((_currentObjectData.Count % byteAlignment) != 0)
+                _currentObjectData.Add(0);
+        }
+
+        private void EmitBytes(ReadOnlySpan<byte> bytes)
+        {
+            for (int i = 0; i < bytes.Length; i++)
+            {
+                _currentObjectData.Add(bytes[i]);
+            }
+        }
+
+        private void EmitSymbolDef(LLVMValueRef baseSymbol, string symbolIdentifier, int offsetFromBaseSymbol)
+        {
+            string symbolAddressGlobalName = symbolIdentifier + GlobalSymbolSuffix;
+            LLVMValueRef symbolAddress;
+            var intType = LLVMTypeRef.Int32;
+            if (s_symbolValues.TryGetValue(symbolAddressGlobalName, out symbolAddress))
+            {
+                var int8PtrType = LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0);
+                var intPtrType = LLVMTypeRef.CreatePointer(LLVMTypeRef.Int32, 0);
+                var pointerToBaseSymbol = LLVMValueRef.CreateConstBitCast(baseSymbol, int8PtrType);
+                var offsetValue = LLVMValueRef.CreateConstInt(intType, (uint)offsetFromBaseSymbol, false);
+                var symbolPointerData = LLVMValueRef.CreateConstGEP(pointerToBaseSymbol, new LLVMValueRef[] { offsetValue });
+                var symbolPointerDataAsInt32Ptr = LLVMValueRef.CreateConstBitCast(symbolPointerData, intPtrType);
+                symbolAddress.Initializer = symbolPointerDataAsInt32Ptr;
+            }
+        }
+
+        private void EmitSymbolReference(ISymbolNode target, int offset, int delta)
+        {
+            string realSymbolName = GetBaseSymbolName(target, _nodeFactory.NameMangler);
+
+            if (realSymbolName == null)
+            {
+                Console.WriteLine("Unable to generate symbolRef to " + target.GetMangledName(_nodeFactory.NameMangler));
+                return;
+            }
+
+            if (realSymbolName == "RhpInitialDynamicInterfaceDispatch")
+            {
+                CreateDummyRhpInitialDynamicInterfaceDispatch();
+            }
+
+            int symbolOffsetFromBase = GetNumericOffsetFromBaseSymbolValue(target) + target.Offset;
+            uint symbolTotalOffset = checked((uint)delta + unchecked((uint)symbolOffsetFromBase));
+
+            _currentObjectSymbolRefs.Add(offset, new SymbolRefData(realSymbolName, symbolTotalOffset));
+        }
+
+        private struct SymbolRefData
+        {
+            public SymbolRefData(string symbolName, uint offset)
+            {
+                SymbolName = symbolName;
+                Offset = offset;
+            }
+
+            internal readonly string SymbolName;
+            internal readonly uint Offset;
+
+            public LLVMValueRef ToLLVMValueRef(LLVMModuleRef module)
+            {
+                // Dont know if symbol is for an extern function or a variable, so check both
+                LLVMValueRef valRef = module.GetNamedGlobal(SymbolName);
+                if (valRef.Handle == IntPtr.Zero) valRef = module.GetNamedFunction(SymbolName);
+
+                if (Offset != 0 && valRef.Handle != IntPtr.Zero)
+                {
+                    var CreatePointer = LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0);
+                    var bitCast = LLVMValueRef.CreateConstBitCast(valRef, CreatePointer);
+                    LLVMValueRef[] index = new LLVMValueRef[] { LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, Offset, false) };
+                    valRef = LLVMValueRef.CreateConstGEP(bitCast, index);
+                }
+
+                return valRef;
+            }
+        }
+
+        private struct ObjectNodeDataEmission
+        {
+            public ObjectNodeDataEmission(LLVMValueRef node, byte[] data, Dictionary<int, SymbolRefData> objectSymbolRefs)
+            {
+                Node = node;
+                Data = data;
+                ObjectSymbolRefs = objectSymbolRefs;
+            }
+            LLVMValueRef Node;
+            readonly byte[] Data;
+            readonly Dictionary<int, SymbolRefData> ObjectSymbolRefs;
+
+            public void Fill(LLVMModuleRef module, NodeFactory nodeFactory)
+            {
+                List<LLVMValueRef> entries = new List<LLVMValueRef>();
+                int pointerSize = nodeFactory.Target.PointerSize;
+
+                int countOfPointerSizedElements = Data.Length / pointerSize;
+
+                byte[] currentObjectData = Data;
+                var intPtrType = LLVMTypeRef.CreatePointer(LLVMTypeRef.Int32, 0);
+
+                for (int i = 0; i < countOfPointerSizedElements; i++)
+                {
+                    int curOffset = (i * pointerSize);
+                    SymbolRefData symbolRef;
+                    if (ObjectSymbolRefs.TryGetValue(curOffset, out symbolRef))
+                    {
+                        LLVMValueRef pointedAtValue = symbolRef.ToLLVMValueRef(module);
+                        var ptrValue = LLVMValueRef.CreateConstBitCast(pointedAtValue, intPtrType);
+                        entries.Add(ptrValue);
+                    }
+                    else
+                    {
+                        int value = BitConverter.ToInt32(currentObjectData, curOffset);
+                        entries.Add(LLVMValueRef.CreateConstIntToPtr(LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, (uint)value, false), LLVMTypeRef.CreatePointer(LLVMTypeRef.Int32, 0)));
+                    }
+                }
+
+                var funcptrarray = LLVMValueRef.CreateConstArray(intPtrType, entries.ToArray());
+                Node.Initializer = funcptrarray;
+            }
+        }
+
+        private Dictionary<int, SymbolRefData> ReplaceMethodDictionaryUnmanagedSymbolsWithThunks(Dictionary<int, SymbolRefData> unmanagedSymbolRefs)
+        {
+            foreach (KeyValuePair<int, SymbolRefData> keyValuePair in unmanagedSymbolRefs)
+            {
+                if (IsRhpUnmanagedIndirection(keyValuePair.Value.SymbolName))
+                {
+                    unmanagedSymbolRefs[keyValuePair.Key] = new SymbolRefData(EnsureIndirectionThunk(keyValuePair.Value.SymbolName), keyValuePair.Value.Offset);
+                }
+            }
+
+            return unmanagedSymbolRefs;
+        }
+
+        private Dictionary<int, SymbolRefData> ReplaceIndirectionSymbolsWithThunks(Dictionary<int, SymbolRefData> unmanagedSymbolRefs)
+        {
+            Dictionary<int, SymbolRefData> thunks = new Dictionary<int, SymbolRefData>();
+            foreach (KeyValuePair<int, SymbolRefData> keyValuePair in unmanagedSymbolRefs)
+            {
+                thunks[keyValuePair.Key] = new SymbolRefData(EnsureIndirectionThunk(keyValuePair.Value.SymbolName), keyValuePair.Value.Offset);
+            }
+
+            return thunks;
+        }
+
+        private string EnsureIndirectionThunk(string unmanagedSymbolName)
+        {
+            string thunkSymbolName = unmanagedSymbolName + "_Thunk";
+            var func = Module.GetNamedFunction(thunkSymbolName);
+            if (func.Handle == IntPtr.Zero)
+            {
+                LLVMValueRef callee = Module.GetNamedFunction(unmanagedSymbolName);
+                func = Module.AddFunction(thunkSymbolName,
+                    LLVMTypeRef.CreateFunction(LLVMTypeRef.Void,
+                        new LLVMTypeRef[] {
+                            LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0) /* shadow stack not used */,
+                            LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0) /* return spill slot */,
+                            callee.TypeOf.ElementType.ParamTypes[0] /* MethodTable* */ }));
+                LLVMBuilderRef builder = LLVMBuilderRef.Create(Module.Context);
+                LLVMBasicBlockRef block = func.AppendBasicBlock("thunk");
+                builder.PositionAtEnd(block);
+                var ret = builder.BuildCall(Module.GetNamedFunction(unmanagedSymbolName), new LLVMValueRef[] { func.Params[2] });
+                builder.BuildStore(ret, ILImporter.CastIfNecessary(builder, func.Params[1], LLVMTypeRef.CreatePointer(ret.TypeOf, 0)));
+                builder.BuildRetVoid();
+                builder.Dispose();
+            }
+
+            return thunkSymbolName;
+        }
+
+        // hack to identify unmanaged symbols which dont accept a shadowstack arg.  Copy of names from JitHelper.GetNewObjectHelperForType
+        private static bool IsRhpUnmanagedIndirection(string realName)
+        {
+            return realName.EndsWith("RhpNewFast")
+                   || realName.EndsWith("RhpNewFinalizableAlign8")
+                   || realName.EndsWith("RhpNewFastMisalign")
+                   || realName.EndsWith("RhpNewFastAlign8")
+                   || realName.EndsWith("RhpNewFinalizable");
+        }
+
+        private void CreateDummyRhpInitialDynamicInterfaceDispatch()
+        {
+            LLVMValueRef dummyFunc = Module.GetNamedFunction("RhpInitialDynamicInterfaceDispatch");
+
+            if (dummyFunc.Handle != IntPtr.Zero) return;
+
+            Module.AddFunction("RhpInitialDynamicInterfaceDispatch", LLVMTypeRef.CreateFunction(LLVMTypeRef.Void, new LLVMTypeRef[] { }));
+        }
+
+        private string GetBaseSymbolName(ISymbolNode symbol, NameMangler nameMangler)
         {
             if (symbol is LLVMMethodCodeNode || symbol is LLVMBlockRefNode || symbol is ExternSymbolNode)
             {
@@ -56,49 +480,19 @@ namespace ILCompiler.DependencyAnalysis
                         Debug.Assert(startSymbol.Offset == 0);
                         return symbol.GetMangledName(nameMangler);
                     }
-                    return GetBaseSymbolName(startSymbol, nameMangler, objectWriterUse);
+                    return GetBaseSymbolName(startSymbol, nameMangler);
                 }
-                return GetBaseSymbolName((ISymbolNode)objAndOffset.Target, nameMangler, objectWriterUse);
+                return GetBaseSymbolName((ISymbolNode)objAndOffset.Target, nameMangler);
             }
             else if (symbol is EmbeddedObjectNode)
             {
                 EmbeddedObjectNode embeddedNode = (EmbeddedObjectNode)symbol;
-                return GetBaseSymbolName(embeddedNode.ContainingNode.StartSymbol, nameMangler, objectWriterUse);
+                return GetBaseSymbolName(embeddedNode.ContainingNode.StartSymbol, nameMangler);
             }
             else
             {
                 return null;
             }
-        }
-
-        public static Dictionary<string, LLVMValueRef> s_symbolValues = new Dictionary<string, LLVMValueRef>();
-        private static Dictionary<FieldDesc, LLVMValueRef> s_staticFieldMapping = new Dictionary<FieldDesc, LLVMValueRef>();
-
-        public static LLVMValueRef GetSymbolValuePointer(LLVMModuleRef module, ISymbolNode symbol, NameMangler nameMangler, bool objectWriterUse = false)
-        {
-            if (symbol is LLVMMethodCodeNode)
-            {
-                ThrowHelper.ThrowInvalidProgramException();
-            }
-
-            return AddOrReturnGlobalSymbol(module, symbol, nameMangler);
-        }
-
-        public static LLVMValueRef AddOrReturnGlobalSymbol(LLVMModuleRef module, ISymbolNode symbol, NameMangler nameMangler)
-        {
-            string symbolAddressGlobalName = symbol.GetMangledName(nameMangler) + GlobalSymbolSuffix;
-            LLVMValueRef symbolAddress;
-            if (s_symbolValues.TryGetValue(symbolAddressGlobalName, out symbolAddress))
-            {
-                return symbolAddress;
-            }
-
-            var intPtrType = LLVMTypeRef.CreatePointer(LLVMTypeRef.Int32, 0);
-            symbolAddress = module.AddGlobalInAddressSpace(intPtrType, symbolAddressGlobalName, 0);
-            symbolAddress.IsGlobalConstant = true;
-            symbolAddress.Linkage = LLVMLinkage.LLVMExternalLinkage;
-            s_symbolValues.Add(symbolAddressGlobalName, symbolAddress);
-            return symbolAddress;
         }
 
         private static int GetNumericOffsetFromBaseSymbolValue(ISymbolNode symbol)
@@ -120,7 +514,7 @@ namespace ILCompiler.DependencyAnalysis
                 if (objAndOffset.Target is IHasStartSymbol)
                 {
                     ISymbolNode startSymbol = ((IHasStartSymbol)objAndOffset.Target).StartSymbol;
-                    
+
                     if (startSymbol == symbol)
                     {
                         Debug.Assert(symbolDefNode.Offset == 0);
@@ -144,40 +538,7 @@ namespace ILCompiler.DependencyAnalysis
             }
         }
 
-        // this is the llvm instance.
-        public LLVMModuleRef Module { get; }
-
-        public LLVMDIBuilderRef DIBuilder { get; }
-
-        // This is used to build mangled names
-        private Utf8StringBuilder _sb = new Utf8StringBuilder();
-
-        // Track offsets in node data that prevent writing all bytes in one single blob. This includes
-        // relocs, symbol definitions, debug data that must be streamed out using the existing LLVM API
-        private SortedSet<int> _byteInterruptionOffsets = new SortedSet<int>();
-
-        // Code offset to defined names
-        private Dictionary<int, List<ISymbolDefinitionNode>> _offsetToDefName = new Dictionary<int, List<ISymbolDefinitionNode>>();
-
-        // The section for the current node being processed.
-        private ObjectNodeSection _currentSection;
-
-        // The first defined symbol name of the current node being processed.
-        private Utf8String _currentNodeZeroTerminatedName;
-
-        // Nodefactory for which ObjectWriter is instantiated for.
-        private NodeFactory _nodeFactory;
-
-#if DEBUG
-        static Dictionary<string, ISymbolNode> _previouslyWrittenNodeNames = new Dictionary<string, ISymbolNode>();
-#endif
-
-        public void SetSection(ObjectNodeSection section)
-        {
-            _currentSection = section;
-        }
-
-        public void FinishObjWriter(LLVMContextRef context)
+        private void FinishObjWriter(LLVMContextRef context)
         {
             // Since emission to llvm is delayed until after all nodes are emitted... emit now.
             foreach (var nodeData in _dataToFill)
@@ -197,15 +558,12 @@ namespace ILCompiler.DependencyAnalysis
             }
 
             EmitDebugMetadata(context);
-
 #if DEBUG
             Module.PrintToFile(Path.ChangeExtension(_objectFilePath, ".txt"));
-#endif //DEBUG
+#endif
             Module.Verify(LLVMVerifierFailureAction.LLVMAbortProcessAction);
 
             Module.WriteBitcodeToFile(_objectFilePath);
-
-            //throw new NotImplementedException(); // This function isn't complete
         }
 
         private void EmitDebugMetadata(LLVMContextRef context)
@@ -236,7 +594,7 @@ namespace ILCompiler.DependencyAnalysis
             var block = callback.AppendBasicBlock("Block");
             builder.PositionAtEnd(block);
 
-            LLVMValueRef rtrHeaderPtr = GetSymbolValuePointer(Module, _nodeFactory.ReadyToRunHeader, _nodeFactory.NameMangler, false);
+            LLVMValueRef rtrHeaderPtr = GetSymbolValuePointer(Module, _nodeFactory.ReadyToRunHeader, _nodeFactory.NameMangler);
             LLVMValueRef castRtrHeaderPtr = builder.BuildPointerCast(rtrHeaderPtr, intPtrPtr, "castRtrHeaderPtr");
             builder.BuildRet(castRtrHeaderPtr);
         }
@@ -353,698 +711,12 @@ namespace ILCompiler.DependencyAnalysis
             startupFunc.Linkage = LLVMLinkage.LLVMExternalLinkage;
         }
 
-
-        ArrayBuilder<byte> _currentObjectData = new ArrayBuilder<byte>();
-        struct SymbolRefData
-        {
-            public SymbolRefData(string symbolName, uint offset)
-            {
-                SymbolName = symbolName;
-                Offset = offset;
-            }
-
-            internal readonly string SymbolName;
-            internal readonly uint Offset;
-
-            public LLVMValueRef ToLLVMValueRef(LLVMModuleRef module)
-            {
-                // Dont know if symbol is for an extern function or a variable, so check both
-                LLVMValueRef valRef = module.GetNamedGlobal(SymbolName);
-                if (valRef.Handle == IntPtr.Zero) valRef = module.GetNamedFunction(SymbolName);
-
-                if (Offset != 0 && valRef.Handle != IntPtr.Zero)
-                {
-                    var CreatePointer = LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0);
-                    var bitCast = LLVMValueRef.CreateConstBitCast(valRef, CreatePointer);
-                    LLVMValueRef[] index = new LLVMValueRef[] {LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, Offset, false)};
-                    valRef = LLVMValueRef.CreateConstGEP(bitCast, index);
-                }
-
-                return valRef;
-            }
-        }
-
-        Dictionary<int, SymbolRefData> _currentObjectSymbolRefs = new Dictionary<int, SymbolRefData>();
-        ObjectNode _currentObjectNode;
-
-        List<ObjectNodeDataEmission> _dataToFill = new List<ObjectNodeDataEmission>();
-
-        List<KeyValuePair<string, int>> _symbolDefs = new List<KeyValuePair<string, int>>();
-
-        struct ObjectNodeDataEmission
-        {
-            public ObjectNodeDataEmission(LLVMValueRef node, byte[] data, Dictionary<int, SymbolRefData> objectSymbolRefs)
-            {
-                Node = node;
-                Data = data;
-                ObjectSymbolRefs = objectSymbolRefs;
-            }
-            LLVMValueRef Node;
-            readonly byte[] Data;
-            readonly Dictionary<int, SymbolRefData> ObjectSymbolRefs;
-
-            public void Fill(LLVMModuleRef module, NodeFactory nodeFactory)
-            {
-                List<LLVMValueRef> entries = new List<LLVMValueRef>();
-                int pointerSize = nodeFactory.Target.PointerSize;
-
-                int countOfPointerSizedElements = Data.Length / pointerSize;
-
-                byte[] currentObjectData = Data;
-                var intPtrType = LLVMTypeRef.CreatePointer(LLVMTypeRef.Int32, 0);
-
-                for (int i = 0; i < countOfPointerSizedElements; i++)
-                {
-                    int curOffset = (i * pointerSize);
-                    SymbolRefData symbolRef;
-                    if (ObjectSymbolRefs.TryGetValue(curOffset, out symbolRef))
-                    {
-                        LLVMValueRef pointedAtValue = symbolRef.ToLLVMValueRef(module);
-                        var ptrValue = LLVMValueRef.CreateConstBitCast(pointedAtValue, intPtrType);
-                        entries.Add(ptrValue);
-                    }
-                    else
-                    {
-                        int value = BitConverter.ToInt32(currentObjectData, curOffset);
-                        entries.Add(LLVMValueRef.CreateConstIntToPtr(LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, (uint)value, false), LLVMTypeRef.CreatePointer(LLVMTypeRef.Int32, 0)));
-                    }
-                }
-
-                var funcptrarray = LLVMValueRef.CreateConstArray(intPtrType, entries.ToArray());
-                Node.Initializer = funcptrarray;
-            }
-        }
-
-        public void StartObjectNode(ObjectNode node)
-        {
-            Debug.Assert(_currentObjectNode == null);
-            _currentObjectNode = node;
-            Debug.Assert(_currentObjectData.Count == 0);
-        }
-
-        public void DoneObjectNode()
-        {
-            EmitAlignment(_nodeFactory.Target.PointerSize);
-            Debug.Assert(_nodeFactory.Target.PointerSize == 4);
-            int countOfPointerSizedElements = _currentObjectData.Count / _nodeFactory.Target.PointerSize;
-
-            ISymbolNode symNode = _currentObjectNode as ISymbolNode;
-            if (symNode == null)
-                symNode = ((IHasStartSymbol)_currentObjectNode).StartSymbol;
-            string realName = GetBaseSymbolName(symNode, _nodeFactory.NameMangler, true);
-
-            var intPtrType = LLVMTypeRef.CreatePointer(LLVMTypeRef.Int32, 0);
-            var arrayglobal = Module.AddGlobalInAddressSpace(LLVMTypeRef.CreateArray(intPtrType, (uint)countOfPointerSizedElements), realName, 0);
-            arrayglobal.Linkage = LLVMLinkage.LLVMExternalLinkage;
-
-
-            // Indirections to RhpNew* unmanaged functions are made using delegate*s so get a shadow stack first argument which is not present in the function.
-            // This IsRhpUnmanagedIndirection condition identifies those indirections and replaces the destination with a thunk which removes the shadow stack argument.
-            if (IsRhpUnmanagedIndirection(realName))
-            {
-                _dataToFill.Add(new ObjectNodeDataEmission(arrayglobal, _currentObjectData.ToArray(), ReplaceIndirectionSymbolsWithThunks(_currentObjectSymbolRefs)));
-            }
-            else if (_currentObjectNode is MethodGenericDictionaryNode)
-            {
-                _dataToFill.Add(new ObjectNodeDataEmission(arrayglobal, _currentObjectData.ToArray(), ReplaceMethodDictionaryUnmanagedSymbolsWithThunks(_currentObjectSymbolRefs)));
-            }
-            else _dataToFill.Add(new ObjectNodeDataEmission(arrayglobal, _currentObjectData.ToArray(), _currentObjectSymbolRefs));
-
-            foreach (var symbolIdInfo in _symbolDefs)
-            {
-                EmitSymbolDef(arrayglobal, symbolIdInfo.Key, symbolIdInfo.Value);
-            }
-
-            _currentObjectNode = null;
-            _currentObjectSymbolRefs = new Dictionary<int, SymbolRefData>();
-            _currentObjectData = new ArrayBuilder<byte>();
-            _symbolDefs.Clear();
-        }
-
-        Dictionary<int, SymbolRefData> ReplaceMethodDictionaryUnmanagedSymbolsWithThunks(Dictionary<int, SymbolRefData> unmanagedSymbolRefs)
-        {
-            foreach (KeyValuePair<int, SymbolRefData> keyValuePair in unmanagedSymbolRefs)
-            {
-                if (IsRhpUnmanagedIndirection(keyValuePair.Value.SymbolName))
-                {
-                    unmanagedSymbolRefs[keyValuePair.Key] = new SymbolRefData(EnsureIndirectionThunk(keyValuePair.Value.SymbolName), keyValuePair.Value.Offset);
-                }
-            }
-
-            return unmanagedSymbolRefs;
-        }
-
-        Dictionary<int, SymbolRefData> ReplaceIndirectionSymbolsWithThunks(Dictionary<int, SymbolRefData> unmanagedSymbolRefs)
-        {
-            Dictionary<int, SymbolRefData> thunks = new Dictionary<int, SymbolRefData>();
-            foreach (KeyValuePair<int, SymbolRefData> keyValuePair in unmanagedSymbolRefs)
-            {
-                thunks[keyValuePair.Key] = new SymbolRefData(EnsureIndirectionThunk(keyValuePair.Value.SymbolName), keyValuePair.Value.Offset);
-            }
-
-            return thunks;
-        }
-
-        private string EnsureIndirectionThunk(string unmanagedSymbolName)
-        {
-            string thunkSymbolName = unmanagedSymbolName + "_Thunk";
-            var func = Module.GetNamedFunction(thunkSymbolName);
-            if (func.Handle == IntPtr.Zero)
-            {
-                LLVMValueRef callee = Module.GetNamedFunction(unmanagedSymbolName);
-                func = Module.AddFunction(thunkSymbolName,
-                    LLVMTypeRef.CreateFunction(LLVMTypeRef.Void,
-                        new LLVMTypeRef[] {
-                            LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0) /* shadow stack not used */,
-                            LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0) /* return spill slot */,
-                            callee.TypeOf.ElementType.ParamTypes[0] /* MethodTable* */ }));
-                LLVMBuilderRef builder = LLVMBuilderRef.Create(Module.Context);
-                LLVMBasicBlockRef block = func.AppendBasicBlock("thunk");
-                builder.PositionAtEnd(block);
-                var ret = builder.BuildCall(Module.GetNamedFunction(unmanagedSymbolName), new LLVMValueRef[] { func.Params[2]});
-                builder.BuildStore(ret, ILImporter.CastIfNecessary(builder, func.Params[1], LLVMTypeRef.CreatePointer(ret.TypeOf, 0)));
-                builder.BuildRetVoid();
-                builder.Dispose();
-            }
-
-            return thunkSymbolName;
-        }
-
-        // hack to identify unmanaged symbols which dont accept a shadowstack arg.  Copy of names from JitHelper.GetNewObjectHelperForType
-        private static bool IsRhpUnmanagedIndirection(string realName)
-        {
-            return realName.EndsWith("RhpNewFast")
-                   || realName.EndsWith("RhpNewFinalizableAlign8")
-                   || realName.EndsWith("RhpNewFastMisalign")
-                   || realName.EndsWith("RhpNewFastAlign8")
-                   || realName.EndsWith("RhpNewFinalizable");
-        }
-
-        public void EmitAlignment(int byteAlignment)
-        {
-            while ((_currentObjectData.Count % byteAlignment) != 0)
-                _currentObjectData.Add(0);
-        }
-
-        public void EmitBlob(byte[] blob)
-        {
-            _currentObjectData.Append(blob);
-        }
-        
-        public void EmitIntValue(ulong value, int size)
-        {
-            switch (size)
-            {
-                case 1:
-                    _currentObjectData.Append(BitConverter.GetBytes((byte)value));
-                    break;
-                case 2:
-                    _currentObjectData.Append(BitConverter.GetBytes((ushort)value));
-                    break;
-                case 4:
-                    _currentObjectData.Append(BitConverter.GetBytes((uint)value));
-                    break;
-                case 8:
-                    _currentObjectData.Append(BitConverter.GetBytes(value));
-                    break;
-                default:
-                    ThrowHelper.ThrowInvalidProgramException();
-                    break;
-            }
-        }
-
-        public void EmitBytes(IntPtr pArray, int length)
-        {
-            unsafe
-            {
-                byte* pBytes = (byte*)pArray;
-                for (int i = 0; i < length; i++)
-                    _currentObjectData.Add(pBytes[i]);
-            }
-        }
-        
-        public void EmitSymbolDef(LLVMValueRef realSymbol, string symbolIdentifier, int offsetFromSymbolName)
-        {
-            string symbolAddressGlobalName = symbolIdentifier + GlobalSymbolSuffix;
-            LLVMValueRef symbolAddress;
-            var intType = LLVMTypeRef.Int32;
-            if (s_symbolValues.TryGetValue(symbolAddressGlobalName, out symbolAddress))
-            {
-                var int8PtrType = LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0);
-                var intPtrType = LLVMTypeRef.CreatePointer(LLVMTypeRef.Int32, 0);
-                var pointerToRealSymbol = LLVMValueRef.CreateConstBitCast(realSymbol, int8PtrType);
-                var offsetValue = LLVMValueRef.CreateConstInt(intType, (uint)offsetFromSymbolName, false);
-                var symbolPointerData = LLVMValueRef.CreateConstGEP(pointerToRealSymbol, new LLVMValueRef[] { offsetValue });
-                var symbolPointerDataAsInt32Ptr = LLVMValueRef.CreateConstBitCast(symbolPointerData, intPtrType);
-                symbolAddress.Initializer = symbolPointerDataAsInt32Ptr;
-            }
-        }
-
-        public int EmitSymbolRef(string realSymbolName, int offsetFromSymbolName, RelocType relocType, int delta = 0)
-        {
-            int symbolStartOffset = _currentObjectData.Count;
-
-            // Workaround for ObjectWriter's lack of support for IMAGE_REL_BASED_RELPTR32
-            // https://github.com/dotnet/corert/issues/3278
-            if (relocType == RelocType.IMAGE_REL_BASED_RELPTR32)
-            {
-                relocType = RelocType.IMAGE_REL_BASED_REL32;
-                delta = checked(delta + sizeof(int));
-            }
-            uint totalOffset = checked((uint)delta + unchecked((uint)offsetFromSymbolName));
-
-            EmitBlob(new byte[this._nodeFactory.Target.PointerSize]);
-            if (relocType == RelocType.IMAGE_REL_BASED_REL32)
-            {
-                return this._nodeFactory.Target.PointerSize;
-            }
-            _currentObjectSymbolRefs.Add(symbolStartOffset, new SymbolRefData(realSymbolName, totalOffset));
-            return _nodeFactory.Target.PointerSize;
-        }
-
-        public string GetMangledName(TypeDesc type)
-        {
-            return _nodeFactory.NameMangler.GetMangledTypeName(type);
-        }
-
-        public void BuildSymbolDefinitionMap(ObjectNode node, ISymbolDefinitionNode[] definedSymbols)
-        {
-            _offsetToDefName.Clear();
-            foreach (ISymbolDefinitionNode n in definedSymbols)
-            {
-                if (!_offsetToDefName.ContainsKey(n.Offset))
-                {
-                    _offsetToDefName[n.Offset] = new List<ISymbolDefinitionNode>();
-                }
-
-                _offsetToDefName[n.Offset].Add(n);
-                _byteInterruptionOffsets.Add(n.Offset);
-            }
-
-            var symbolNode = node as ISymbolDefinitionNode;
-            if (symbolNode != null)
-            {
-                _sb.Clear();
-                AppendExternCPrefix(_sb);
-                symbolNode.AppendMangledName(_nodeFactory.NameMangler, _sb);
-                _currentNodeZeroTerminatedName = _sb.Append('\0').ToUtf8String();
-            }
-            else
-            {
-                _currentNodeZeroTerminatedName = default(Utf8String);
-            }
-        }
-
-        private void AppendExternCPrefix(Utf8StringBuilder sb)
-        {
-        }
-
-        // Returns size of the emitted symbol reference
-        public int EmitSymbolReference(ISymbolNode target, int delta, RelocType relocType)
-        {
-            string realSymbolName = GetBaseSymbolName(target, _nodeFactory.NameMangler, true);
-
-            if (realSymbolName == null)
-            {
-                Console.WriteLine("Unable to generate symbolRef to " + target.GetMangledName(_nodeFactory.NameMangler));
-
-                int pointerSize = _nodeFactory.Target.PointerSize;
-                EmitBlob(new byte[pointerSize]);
-                return pointerSize;
-            }
-
-            if (realSymbolName == "RhpInitialDynamicInterfaceDispatch")
-            {
-                CreateDummyRhpInitialDynamicInterfaceDispatch();
-            }
-
-            int offsetFromBase = GetNumericOffsetFromBaseSymbolValue(target) + target.Offset;
-            return EmitSymbolRef(realSymbolName, offsetFromBase, relocType, delta);
-        }
-
-        private void CreateDummyRhpInitialDynamicInterfaceDispatch()
-        {
-            LLVMValueRef dummyFunc = Module.GetNamedFunction("RhpInitialDynamicInterfaceDispatch");
-
-            if (dummyFunc.Handle != IntPtr.Zero) return;
-
-            Module.AddFunction("RhpInitialDynamicInterfaceDispatch", LLVMTypeRef.CreateFunction(LLVMTypeRef.Void, new LLVMTypeRef[] {}));
-        }
-
-        public void EmitBlobWithRelocs(byte[] blob, Relocation[] relocs)
-        {
-            int nextRelocOffset = -1;
-            int nextRelocIndex = -1;
-            if (relocs.Length > 0)
-            {
-                nextRelocOffset = relocs[0].Offset;
-                nextRelocIndex = 0;
-            }
-
-            int i = 0;
-            while (i < blob.Length)
-            {
-                if (i == nextRelocOffset)
-                {
-                    Relocation reloc = relocs[nextRelocIndex];
-
-                    // Make sure we've gotten the correct size for the reloc
-                    Debug.Assert(reloc.RelocType == RelocType.IMAGE_REL_BASED_DIR64 ||
-                        reloc.RelocType == RelocType.IMAGE_REL_BASED_HIGHLOW);
-
-                    long delta;
-                    unsafe
-                    {
-                        fixed (void* location = &blob[i])
-                        {
-                            delta = Relocation.ReadValue(reloc.RelocType, location);
-                        }
-                    }
-                    int size = EmitSymbolReference(reloc.Target, (int)delta, reloc.RelocType);
-
-                    // Update nextRelocIndex/Offset
-                    if (++nextRelocIndex < relocs.Length)
-                    {
-                        nextRelocOffset = relocs[nextRelocIndex].Offset;
-                    }
-                    i += size;
-                }
-                else
-                {
-                    EmitIntValue(blob[i], 1);
-                    i++;
-                }
-            }
-        }
-
-        public void EmitSymbolDefinition(int currentOffset)
-        {
-            List<ISymbolDefinitionNode> nodes;
-            if (_offsetToDefName.TryGetValue(currentOffset, out nodes))
-            {
-                foreach (var name in nodes)
-                {
-                    _sb.Clear();
-                    AppendExternCPrefix(_sb);
-                    name.AppendMangledName(_nodeFactory.NameMangler, _sb);
-
-                    string symbolId = name.GetMangledName(_nodeFactory.NameMangler);
-                    int offsetFromBase = GetNumericOffsetFromBaseSymbolValue(name);
-                    Debug.Assert(offsetFromBase == currentOffset);
-
-                    _symbolDefs.Add(new KeyValuePair<string, int>(symbolId, offsetFromBase));
-                    /*
-                    string alternateName = _nodeFactory.GetSymbolAlternateName(name);
-                    if (alternateName != null)
-                    {
-                        _sb.Clear();
-                        //AppendExternCPrefix(_sb);
-                        _sb.Append(alternateName);
-
-                        EmitSymbolDef(_sb);
-                    }*/
-                }
-            }
-        }
-
-        //System.IO.FileStream _file;
-        string _objectFilePath;
-        bool _nativeLib;
-        public LLVMObjectWriter(string objectFilePath, NodeFactory factory, LLVMCodegenCompilation compilation)
-        {
-            _nodeFactory = factory;
-            _objectFilePath = objectFilePath;
-            Module = LLVMCodegenCompilation.Module;
-            DIBuilder = compilation.DIBuilder;
-            _nativeLib = compilation.NativeLib;
-        }
-
-        public void Dispose()
-        {
-            Dispose(true);
-        }
-
-        public virtual void Dispose(bool bDisposing)
-        {
-            FinishObjWriter(Module.Context);
-            //if (_file != null)
-            //{
-            //    // Finalize object emission.
-            //    FinishObjWriter();
-            //    _file.Flush();
-            //    _file.Dispose();
-            //    _file = null;
-            //}
-
-            _nodeFactory = null;
-
-            if (bDisposing)
-            {
-                GC.SuppressFinalize(this);
-            }
-        }
-
-        ~LLVMObjectWriter()
-        {
-            Dispose(false);
-        }
-
-        private bool ShouldShareSymbol(ObjectNode node)
-        {
-            if (_nodeFactory.CompilationModuleGroup.IsSingleFileCompilation)
-                return false;
-
-            if (!(node is ISymbolNode))
-                return false;
-
-            // These intentionally clash with one another, but are merged with linker directives so should not be Comdat folded
-            if (node is ModulesSectionNode)
-                return false;
-
-            return true;
-        }
-
-        private ObjectNodeSection GetSharedSection(ObjectNodeSection section, string key)
-        {
-            string standardSectionPrefix = "";
-            if (section.IsStandardSection)
-                standardSectionPrefix = ".";
-
-            return new ObjectNodeSection(standardSectionPrefix + section.Name, section.Type, key);
-        }
-
-        public void ResetByteRunInterruptionOffsets(Relocation[] relocs)
-        {
-            _byteInterruptionOffsets.Clear();
-
-            for (int i = 0; i < relocs.Length; ++i)
-            {
-                _byteInterruptionOffsets.Add(relocs[i].Offset);
-            }
-        }
-
         private static int GetVTableSlotsCount(NodeFactory factory, TypeDesc type)
         {
             if (type == null)
                 return 0;
             int slotsOnCurrentType = factory.VTable(type).Slots.Count;
             return slotsOnCurrentType + GetVTableSlotsCount(factory, type.BaseType);
-        }
-
-        public static void EmitObject(string objectFilePath, IEnumerable<DependencyNode> nodes, NodeFactory factory, LLVMCodegenCompilation compilation, IObjectDumper dumper)
-        {
-            LLVMObjectWriter objectWriter = new LLVMObjectWriter(objectFilePath, factory, compilation);
-            bool succeeded = false;
-
-            try
-            {
-                objectWriter.EmitReadyToRunHeaderCallback(LLVMCodegenCompilation.Module.Context);
-                //ObjectNodeSection managedCodeSection = null;
-
-                var listOfOffsets = new List<int>();
-                foreach (DependencyNode depNode in nodes)
-                {
-                    ObjectNode node = depNode as ObjectNode;
-                    if (node == null)
-                        continue;
-                    
-                    if (node.ShouldSkipEmittingObjectNode(factory))
-                        continue;
-
-                    if (node is ReadyToRunGenericHelperNode readyToRunGenericHelperNode)
-                    {
-                        objectWriter.GetCodeForReadyToRunGenericHelper(compilation, readyToRunGenericHelperNode, factory);
-                        continue;
-                    }
-
-                    if (node is ReadyToRunHelperNode readyToRunHelperNode)
-                    {
-                        objectWriter.GetCodeForReadyToRunHelper(compilation, readyToRunHelperNode, factory);
-                        continue;
-                    }
-
-                    if (node is TentativeMethodNode tentativeMethodNode)
-                    {
-                        objectWriter.GetCodeForTentativeMethod(compilation, tentativeMethodNode, factory);
-                        continue;
-                    }
-
-                    objectWriter.StartObjectNode(node);
-                    ObjectData nodeContents = node.GetData(factory);
-
-                    if (dumper != null)
-                        dumper.DumpObjectNode(factory.NameMangler, node, nodeContents);
-
-#if DEBUG
-                    foreach (ISymbolNode definedSymbol in nodeContents.DefinedSymbols)
-                    {
-                        try
-                        {
-                            _previouslyWrittenNodeNames.Add(definedSymbol.GetMangledName(factory.NameMangler), definedSymbol);
-                        }
-                        catch (ArgumentException)
-                        {
-                            ISymbolNode alreadyWrittenSymbol = _previouslyWrittenNodeNames[definedSymbol.GetMangledName(factory.NameMangler)];
-                            Debug.Fail("Duplicate node name emitted to file",
-                            $"Symbol {definedSymbol.GetMangledName(factory.NameMangler)} has already been written to the output object file {objectFilePath} with symbol {alreadyWrittenSymbol}");
-                        }
-                    }
-#endif
-   
-                    ObjectNodeSection section = node.Section;
-                    if (objectWriter.ShouldShareSymbol(node))
-                    {
-                        section = objectWriter.GetSharedSection(section, ((ISymbolNode)node).GetMangledName(factory.NameMangler));
-                    }
-
-                    // Ensure section and alignment for the node.
-                    objectWriter.SetSection(section);
-                    objectWriter.EmitAlignment(nodeContents.Alignment);
-
-                    objectWriter.ResetByteRunInterruptionOffsets(nodeContents.Relocs);
-
-                    // Build symbol definition map.
-                    objectWriter.BuildSymbolDefinitionMap(node, nodeContents.DefinedSymbols);
-
-                    Relocation[] relocs = nodeContents.Relocs;
-                    int nextRelocOffset = -1;
-                    int nextRelocIndex = -1;
-                    if (relocs.Length > 0)
-                    {
-                        nextRelocOffset = relocs[0].Offset;
-                        nextRelocIndex = 0;
-                    }
-
-                    int i = 0;
-
-                    listOfOffsets.Clear();
-                    listOfOffsets.AddRange(objectWriter._byteInterruptionOffsets);
-
-                    int offsetIndex = 0;
-                    while (i < nodeContents.Data.Length)
-                    {
-                        // Emit symbol definitions if necessary
-                        objectWriter.EmitSymbolDefinition(i);
-                        if (i == nextRelocOffset)
-                        {
-                            Relocation reloc = relocs[nextRelocIndex];
-
-                            long delta;
-                            unsafe
-                            {
-                                fixed (void* location = &nodeContents.Data[i])
-                                {
-                                    delta = Relocation.ReadValue(reloc.RelocType, location);
-                                }
-                            }
-                            ISymbolNode symbolToWrite = reloc.Target;
-                            var eeTypeNode = reloc.Target as EETypeNode;
-                            if (eeTypeNode != null)
-                            {
-                                if (eeTypeNode.ShouldSkipEmittingObjectNode(factory))
-                                {
-                                    symbolToWrite = factory.ConstructedTypeSymbol(eeTypeNode.Type);
-                                }
-                            }
-                            int size = objectWriter.EmitSymbolReference(symbolToWrite, (int)delta, reloc.RelocType);
-
-                            /*
-                             WebAssembly has no thumb 
-                            // Emit a copy of original Thumb2 instruction that came from RyuJIT
-                            if (reloc.RelocType == RelocType.IMAGE_REL_BASED_THUMB_MOV32 ||
-                                reloc.RelocType == RelocType.IMAGE_REL_BASED_THUMB_BRANCH24)
-                            {
-                                unsafe
-                                {
-                                    fixed (void* location = &nodeContents.Data[i])
-                                    {
-                                        objectWriter.EmitBytes((IntPtr)location, size);
-                                    }
-                                }
-                            }*/
-
-                            // Update nextRelocIndex/Offset
-                            if (++nextRelocIndex < relocs.Length)
-                            {
-                                nextRelocOffset = relocs[nextRelocIndex].Offset;
-                            }
-                            else
-                            {
-                                // This is the last reloc. Set the next reloc offset to -1 in case the last reloc has a zero size, 
-                                // which means the reloc does not have vacant bytes corresponding to in the data buffer. E.g, 
-                                // IMAGE_REL_THUMB_BRANCH24 is a kind of 24-bit reloc whose bits scatte over the instruction that 
-                                // references it. We do not vacate extra bytes in the data buffer for this kind of reloc.
-                                nextRelocOffset = -1;
-                            }
-                            i += size;
-                        }
-                        else
-                        {
-                            while (offsetIndex < listOfOffsets.Count && listOfOffsets[offsetIndex] <= i)
-                            {
-                                offsetIndex++;
-                            }
-
-                            int nextOffset = offsetIndex == listOfOffsets.Count ? nodeContents.Data.Length : listOfOffsets[offsetIndex];
-
-                            unsafe
-                            {
-                                // Todo: Use Span<T> instead once it's available to us in this repo
-                                fixed (byte* pContents = &nodeContents.Data[i])
-                                {
-                                    objectWriter.EmitBytes((IntPtr)(pContents), nextOffset - i);
-                                    i += nextOffset - i;
-                                }
-                            }
-
-                        }
-                    }
-                    Debug.Assert(i == nodeContents.Data.Length);
-
-                    // It is possible to have a symbol just after all of the data.
-                    objectWriter.EmitSymbolDefinition(nodeContents.Data.Length);
-                    objectWriter.DoneObjectNode();
-                }
-
-                succeeded = true;
-            }
-            finally
-            {
-                objectWriter.Dispose();
-
-                if (!succeeded)
-                {
-                    // If there was an exception while generating the OBJ file, make sure we don't leave the unfinished
-                    // object file around.
-                    try
-                    {
-                        File.Delete(objectFilePath);
-                    }
-                    catch
-                    {
-                    }
-                }
-            }
         }
 
         private void GetCodeForReadyToRunGenericHelper(LLVMCodegenCompilation compilation, ReadyToRunGenericHelperNode node, NodeFactory factory)
@@ -1203,7 +875,7 @@ namespace ILCompiler.DependencyAnalysis
                         MetadataType target = (MetadataType)node.Target;
                         
                         var symbolNode = factory.TypeNonGCStaticsSymbol(target);
-                        LLVMValueRef addressOfAddress = GetSymbolValuePointer(Module, symbolNode, factory.NameMangler, false);
+                        LLVMValueRef addressOfAddress = GetSymbolValuePointer(Module, symbolNode, factory.NameMangler);
                         LLVMValueRef ptr = builder.BuildLoad(addressOfAddress, "LoadAddressOfSymbolNode");
 
                         if (compilation.HasLazyStaticConstructor(target))
@@ -1221,14 +893,14 @@ namespace ILCompiler.DependencyAnalysis
                         if (compilation.HasLazyStaticConstructor(target))
                         {
                             var nonGcSymbolNode = factory.TypeNonGCStaticsSymbol(target);
-                            LLVMValueRef nonGcAddressOfAddress = GetSymbolValuePointer(Module, nonGcSymbolNode, factory.NameMangler, false);
+                            LLVMValueRef nonGcAddressOfAddress = GetSymbolValuePointer(Module, nonGcSymbolNode, factory.NameMangler);
                             LLVMValueRef nonGcBase = builder.BuildLoad(nonGcAddressOfAddress, "LoadAddressOfSymbolNode");
 
                             importer.OutputCodeForTriggerCctor(target, nonGcBase);
                         }
 
                         var symbolNode = factory.TypeGCStaticsSymbol(target);
-                        LLVMValueRef addressOfAddress = GetSymbolValuePointer(Module, symbolNode, factory.NameMangler, false);
+                        LLVMValueRef addressOfAddress = GetSymbolValuePointer(Module, symbolNode, factory.NameMangler);
                         LLVMValueRef basePtrPtr = builder.BuildLoad(addressOfAddress, "LoadAddressOfSymbolNode");
                         LLVMValueRef ptr = builder.BuildLoad(builder.BuildPointerCast(basePtrPtr, LLVMTypeRef.CreatePointer(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), 0), "basePtr"), "base");
                         
