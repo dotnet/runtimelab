@@ -28,66 +28,15 @@ namespace Internal.JitInterface
             var _this = GetThis(thisHandle);
             var obj = _this.HandleToObject((IntPtr)handle);
 
-            AddCodeRelocImpl(_this, obj);
+            AddCodeRelocImpl(_this, (ISymbolNode)obj);
         }
 
-        private static void AddCodeRelocImpl(CorInfoImpl _this, object obj)
+        private static void AddCodeRelocImpl(CorInfoImpl _this, ISymbolNode node)
         {
-            ISymbolNode node;
-            if (obj is ISymbolNode symbolNode)
-            {
-                node = symbolNode;
-            }
-            else
-            {
-                node = _this._compilation.NodeFactory.MethodEntrypoint((MethodDesc)obj);
-            }
-
             _this._codeRelocs.Add(new Relocation(RelocType.IMAGE_REL_BASED_REL32, 0, node));
-            var helperNode = node as ReadyToRunHelperNode;
-            if (helperNode != null)
-            {
-                if (helperNode.Id == ReadyToRunHelperId.VirtualCall)
-                {
-                    MethodDesc virtualCallTarget = (MethodDesc)helperNode.Target;
-                    _this._codeRelocs.Add(new Relocation(RelocType.IMAGE_REL_BASED_REL32, 0,
-                        _this._compilation.NodeFactory.MethodEntrypoint(virtualCallTarget)));
-                    return;
-                }
-
-                MetadataType target = (MetadataType)helperNode.Target;
-                switch (helperNode.Id)
-                {
-                    case ReadyToRunHelperId.GetGCStaticBase:
-                        _this._codeRelocs.Add(new Relocation(RelocType.IMAGE_REL_BASED_REL32, 0,
-                            _this._compilation.NodeFactory.TypeGCStaticsSymbol(target)));
-                        if (_this._compilation.HasLazyStaticConstructor(target))
-                        {
-                            var nonGcStaticSymbolForGCStaticBase = _this._compilation.NodeFactory.TypeNonGCStaticsSymbol(target);
-                            _this._codeRelocs.Add(new Relocation(RelocType.IMAGE_REL_BASED_REL32, 0, nonGcStaticSymbolForGCStaticBase));
-                        }
-
-                        break;
-                    case ReadyToRunHelperId.GetNonGCStaticBase:
-                        var nonGcStaticSymbol = _this._compilation.NodeFactory.TypeNonGCStaticsSymbol(target);
-                        _this._codeRelocs.Add(new Relocation(RelocType.IMAGE_REL_BASED_REL32, 0, nonGcStaticSymbol));
-                        break;
-                    case ReadyToRunHelperId.GetThreadStaticBase:
-                        _this._codeRelocs.Add(new Relocation(RelocType.IMAGE_REL_BASED_REL32, 0,
-                            _this._compilation.NodeFactory.TypeThreadStaticIndex(target)));
-                        _this._codeRelocs.Add(new Relocation(RelocType.IMAGE_REL_BASED_REL32, 0,
-                            _this._compilation.NodeFactory.TypeNonGCStaticsSymbol(target)));
-                        var nonGcStaticSymbolForGCStaticBase2 = _this._compilation.NodeFactory.TypeNonGCStaticsSymbol(target);
-                        break;
-                    default:
-                        throw new NotImplementedException();
-                }
-
-                return;
-            }
         }
 
-        // so the char* in cpp is terminated
+        // So the char* in cpp is terminated.
         private static byte[] AppendNullByte(byte[] inputArray)
         {
             byte[] nullTerminated = new byte[inputArray.Length + 1];
@@ -144,7 +93,7 @@ namespace Internal.JitInterface
             MethodDesc dispatchMethod = ehType.GetKnownMethod(dispatchMethodName, null);
 
             // Codegen is asking for the dispatcher; assume it'll use it.
-            AddCodeRelocImpl(_this, dispatchMethod);
+            AddCodeRelocImpl(_this, _this._compilation.NodeFactory.MethodEntrypoint(dispatchMethod));
 
             return GetMangledMethodNameImpl(_this, dispatchMethod);
         }
