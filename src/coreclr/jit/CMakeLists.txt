@@ -52,10 +52,16 @@ function(create_standalone_jit)
   elseif(TARGETDETAILS_ARCH STREQUAL "s390x")
     set(JIT_ARCH_SOURCES ${JIT_S390X_SOURCES})
     set(JIT_ARCH_HEADERS ${JIT_S390X_HEADERS})
+<<<<<<< HEAD
   elseif(TARGETDETAILS_ARCH STREQUAL "wasm64")
     set(JIT_ARCH_SOURCES ${JIT_WASM64_SOURCES})
   elseif(TARGETDETAILS_ARCH STREQUAL "wasm32")
     set(JIT_ARCH_SOURCES ${JIT_WASM32_SOURCES})
+=======
+  elseif(TARGETDETAILS_ARCH STREQUAL "loongarch64")
+    set(JIT_ARCH_SOURCES ${JIT_LOONGARCH64_SOURCES})
+    set(JIT_ARCH_HEADERS ${JIT_LOONGARCH64_HEADERS})
+>>>>>>> d88a613e8bd6e00e3f149709c8bcabfcb0a05b92
   else()
     clr_unknown_arch()
   endif()
@@ -108,6 +114,7 @@ set( JIT_SOURCES
   assertionprop.cpp
   bitset.cpp
   block.cpp
+  buildstring.cpp
   layout.cpp
   codegencommon.cpp
   codegenlinear.cpp
@@ -273,6 +280,15 @@ set( JIT_S390X_SOURCES
   # Not supported as JIT target
 )
 
+set( JIT_LOONGARCH64_SOURCES
+  codegenloongarch64.cpp
+  emitloongarch64.cpp
+  lowerloongarch64.cpp
+  lsraloongarch64.cpp
+  targetloongarch64.cpp
+  unwindloongarch64.cpp
+)
+
 # We include the headers here for better experience in IDEs.
 set( JIT_HEADERS
   ../inc/corinfo.h
@@ -421,6 +437,13 @@ set ( JIT_S390X_HEADERS
   # Not supported as JIT target
 )
 
+set( JIT_LOONGARCH64_HEADERS
+    emitloongarch64.h
+    emitfmtsloongarch64.h
+    instrsloongarch64.h
+    registerloongarch64.h
+)
+
 convert_to_absolute_path(JIT_SOURCES ${JIT_SOURCES})
 convert_to_absolute_path(JIT_HEADERS ${JIT_HEADERS})
 convert_to_absolute_path(JIT_RESOURCES ${JIT_RESOURCES})
@@ -441,6 +464,8 @@ convert_to_absolute_path(JIT_ARMV6_SOURCES ${JIT_ARMV6_SOURCES})
 convert_to_absolute_path(JIT_ARMV6_HEADERS ${JIT_ARMV6_HEADERS})
 convert_to_absolute_path(JIT_S390X_SOURCES ${JIT_S390X_SOURCES})
 convert_to_absolute_path(JIT_S390X_HEADERS ${JIT_S390X_HEADERS})
+convert_to_absolute_path(JIT_LOONGARCH64_SOURCES ${JIT_LOONGARCH64_SOURCES})
+convert_to_absolute_path(JIT_LOONGARCH64_HEADERS ${JIT_LOONGARCH64_HEADERS})
 
 if(CLR_CMAKE_TARGET_ARCH_AMD64)
   set(JIT_ARCH_SOURCES ${JIT_AMD64_SOURCES})
@@ -460,6 +485,9 @@ elseif(CLR_CMAKE_TARGET_ARCH_ARM64)
 elseif(CLR_CMAKE_TARGET_ARCH_S390X)
   set(JIT_ARCH_SOURCES ${JIT_S390X_SOURCES})
   set(JIT_ARCH_HEADERS ${JIT_S390X_HEADERS})
+elseif(CLR_CMAKE_TARGET_ARCH_LOONGARCH64)
+  set(JIT_ARCH_SOURCES ${JIT_LOONGARCH64_SOURCES})
+  set(JIT_ARCH_HEADERS ${JIT_LOONGARCH64_HEADERS})
 else()
   clr_unknown_arch()
 endif()
@@ -601,6 +629,10 @@ if (CLR_CMAKE_TARGET_ARCH_ARM64 OR CLR_CMAKE_TARGET_ARCH_AMD64)
   create_standalone_jit(TARGET clrjit_unix_x64_${ARCH_HOST_NAME} OS unix ARCH x64 DESTINATIONS .)
   create_standalone_jit(TARGET clrjit_win_x64_${ARCH_HOST_NAME} OS win ARCH x64 DESTINATIONS .)
 endif (CLR_CMAKE_TARGET_ARCH_ARM64 OR CLR_CMAKE_TARGET_ARCH_AMD64)
+
+if (CLR_CMAKE_TARGET_ARCH_LOONGARCH64)
+  create_standalone_jit(TARGET clrjit_unix_loongarch64_${ARCH_HOST_NAME} OS unix ARCH loongarch64 DESTINATIONS .)
+endif (CLR_CMAKE_TARGET_ARCH_LOONGARCH64)
 
 create_standalone_jit(TARGET clrjit_universal_arm_${ARCH_HOST_NAME} OS universal ARCH arm DESTINATIONS .)
 target_compile_definitions(clrjit_universal_arm_${ARCH_HOST_NAME} PRIVATE ARM_SOFTFP CONFIGURABLE_ARM_ABI)

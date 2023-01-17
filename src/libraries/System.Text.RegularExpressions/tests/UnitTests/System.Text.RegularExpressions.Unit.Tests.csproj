@@ -13,8 +13,9 @@
   <ItemGroup>
     <DefaultReferenceExclusion Include="System.Text.RegularExpressions" />
 
+    <Compile Include="RegexCharClassTests.cs" />
     <Compile Include="RegexFindOptimizationsTests.cs" />
-
+    <Compile Include="RegexPrefixAnalyzerTests.cs" />
     <Compile Include="RegexReductionTests.cs" />
     <Compile Include="RegexTreeAnalyzerTests.cs" />
 

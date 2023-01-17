@@ -106,6 +106,7 @@ REGDEF(STK,    16+XMMBASE,  0x0000,       "STK"  )
 #elif defined(TARGET_ARM64)
  #include "registerarm64.h"
 
+<<<<<<< HEAD
 #elif defined(TARGET_WASM)
 
 // WASM doesn't actually have any registers. But to avoid having to modify the frontend
@@ -116,6 +117,10 @@ REGDEF(R0,   0, 0x01, "R0")
 REGDEF(F0,   1, 0x02, "F0")
 REGDEF(LLVM, 2, 0x04, "LLVM")
 REGDEF(STK,  3, 0x00, "SS")
+=======
+#elif defined(TARGET_LOONGARCH64)
+ #include "registerloongarch64.h"
+>>>>>>> d88a613e8bd6e00e3f149709c8bcabfcb0a05b92
 
 #else
   #error Unsupported or unset target architecture

@@ -53,11 +53,6 @@
 #include "pal_compiler.h"
 
 #if !defined(STATIC_ICU)
-// ucol_setVariableTop is a deprecated function on the newer ICU versions and ucol_setMaxVariable should be used instead.
-// As can run against ICU versions which not supported ucol_setMaxVariable, we'll dynamically try to get the pointer to ucol_setVariableTop
-// when we couldn't get a pointer to ucol_setMaxVariable.
-typedef uint32_t (*ucol_setVariableTop_func)(UCollator* coll, const UChar* varTop, int32_t len, UErrorCode* status);
-extern ucol_setVariableTop_func ucol_setVariableTop_ptr;
 
 #if !defined(TARGET_ANDROID)
 // (U_ICU_VERSION_MAJOR_NUM < 52)
