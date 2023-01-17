@@ -135,7 +135,7 @@
   .method public static object LdMethodToken()
   {
     ldtoken method int32 ILHelpers.ILHelpersTest::TestLdTokenMethod(int32)
-    call class [mscorlib]System.Reflection.MethodBase [System.Private.CoreLib]System.Reflection.MethodBase::GetMethodFromHandle(valuetype [mscorlib]System.RuntimeMethodHandle)
+    call class [mscorlib]System.Reflection.MethodBase [mscorlib]System.Reflection.MethodBase::GetMethodFromHandle(valuetype [mscorlib]System.RuntimeMethodHandle)
     ret
   }
 }
