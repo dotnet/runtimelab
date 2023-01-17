@@ -1,14 +1,14 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-using System.Runtime.InteropServices;
+using Internal.Runtime;
 
 namespace System.Runtime
 {
     internal unsafe struct EHClauseIterator
     {
         private uint _totalClauses;
-        private byte *_currentPtr;
+        private byte* _currentPtr;
         private int _currentClause;
 
         private static uint DecodeUnsigned(ref byte* stream)
@@ -84,7 +84,10 @@ namespace System.Runtime
 
         internal bool Next(ref EH.RhEHClauseWasm pEHClause)
         {
-            if (_currentClause >= _totalClauses) return false;
+            if (_currentClause >= _totalClauses)
+            {
+                return false;
+            }
 
             _currentClause++;
             pEHClause._tryStartOffset = GetUnsigned();
@@ -94,27 +97,107 @@ namespace System.Runtime
             switch (pEHClause._clauseKind)
             {
                 case RhEHClauseKindWasm.RH_EH_CLAUSE_TYPED:
-
                     AlignToSymbol();
                     pEHClause._typeSymbol = ReadUInt32(ref _currentPtr);
-                    pEHClause._handlerAddress = (byte *)ReadUInt32(ref _currentPtr);
+                    pEHClause._handlerAddress = (byte*)ReadUInt32(ref _currentPtr);
                     break;
+
                 case RhEHClauseKindWasm.RH_EH_CLAUSE_FAULT:
                     AlignToSymbol();
                     pEHClause._handlerAddress = (byte*)ReadUInt32(ref _currentPtr);
                     break;
+
                 case RhEHClauseKindWasm.RH_EH_CLAUSE_FILTER:
                     AlignToSymbol();
                     pEHClause._handlerAddress = (byte*)ReadUInt32(ref _currentPtr);
                     pEHClause._filterAddress = (byte*)ReadUInt32(ref _currentPtr);
                     break;
             }
+
             return true;
         }
 
         private void AlignToSymbol()
         {
-            _currentPtr = (byte *)(((uint)_currentPtr + 3) & ~(3));
+            _currentPtr = (byte*)(((uint)_currentPtr + 3) & ~3);
+        }
+    }
+
+    // This iterator is used for EH tables produces by codegen for runs of mutually protecting catch handlers.
+    //
+    internal unsafe struct EHRyuJitClauseWasm
+    {
+        public void* Handler;
+        public void* Filter;
+        public MethodTable* ClauseType;
+    }
+
+    // See codegen code ("jit/llvmcodegen.cpp, generateEHDispatchTable") for details on the format of the table.
+    //
+    internal unsafe struct EHRyuJitClauseIteratorWasm
+    {
+        private const nuint HeaderRecordSize = 1;
+        private const nuint ClauseRecordSize = 2;
+        private static nuint FirstSectionSize => HeaderRecordSize + (nuint)sizeof(nuint) / 2 * 8 * ClauseRecordSize;
+        private static nuint LargeSectionSize => HeaderRecordSize + (nuint)sizeof(nuint) * 8 * ClauseRecordSize;
+
+        private readonly void** _pTableEnd;
+        private void** _pCurrentSectionClauses;
+        private void** _pNextSection;
+        private nuint _currentIndex;
+        private nuint _clauseKindMask;
+
+        public EHRyuJitClauseIteratorWasm(void** pEHTable)
+        {
+            _pCurrentSectionClauses = pEHTable + HeaderRecordSize;
+            _pNextSection = pEHTable + FirstSectionSize;
+            _currentIndex = 0;
+#if TARGET_32BIT
+            _clauseKindMask = ((ushort*)pEHTable)[1];
+            nuint tableSize = ((ushort*)pEHTable)[0];
+#else
+            _clauseKindMask = ((uint*)pEHTable)[1];
+            nuint tableSize = ((uint*)pEHTable)[0];
+#endif
+            _pTableEnd = pEHTable + tableSize;
+        }
+
+        public bool Next(EHRyuJitClauseWasm* pClause)
+        {
+            void** pCurrent = _pCurrentSectionClauses + _currentIndex * ClauseRecordSize;
+            if (pCurrent >= _pTableEnd)
+            {
+                return false;
+            }
+
+            if ((_clauseKindMask & ((nuint)1 << (int)_currentIndex)) != 0)
+            {
+                pClause->Filter = pCurrent[0];
+                pClause->ClauseType = null;
+            }
+            else
+            {
+                pClause->Filter = null;
+                pClause->ClauseType = *(MethodTable**)pCurrent[0];
+            }
+
+            pClause->Handler = pCurrent[1];
+
+            // Initialize the state for the next iteration.
+            void** pCurrentNext = pCurrent + ClauseRecordSize;
+            if ((pCurrentNext != _pTableEnd) && (pCurrentNext == _pNextSection))
+            {
+                _pCurrentSectionClauses = pCurrentNext + HeaderRecordSize;
+                _pNextSection += LargeSectionSize;
+                _currentIndex = 0;
+                _clauseKindMask = (nuint)pCurrentNext[0];
+            }
+            else
+            {
+                _currentIndex++;
+            }
+
+            return true;
         }
     }
 }

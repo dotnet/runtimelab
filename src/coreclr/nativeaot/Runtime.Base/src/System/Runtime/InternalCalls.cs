@@ -242,6 +242,10 @@ namespace System.Runtime
         [MethodImpl(MethodImplOptions.InternalCall)]
         internal static extern unsafe void RhpFallbackFailFast();
 
+        [RuntimeImport(Redhawk.BaseName, "RhpClearThreadDoNotTriggerGC")]
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        internal static extern void RhpClearThreadDoNotTriggerGC();
+
         [RuntimeImport(Redhawk.BaseName, "RhpSetThreadDoNotTriggerGC")]
         [MethodImpl(MethodImplOptions.InternalCall)]
         internal static extern void RhpSetThreadDoNotTriggerGC();

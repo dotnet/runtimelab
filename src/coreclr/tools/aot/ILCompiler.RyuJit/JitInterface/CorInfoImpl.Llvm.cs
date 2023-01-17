@@ -26,8 +26,13 @@ namespace Internal.JitInterface
         public static void addCodeReloc(IntPtr thisHandle, void* handle)
         {
             var _this = GetThis(thisHandle);
-
             var obj = _this.HandleToObject((IntPtr)handle);
+
+            AddCodeRelocImpl(_this, obj);
+        }
+
+        private static void AddCodeRelocImpl(CorInfoImpl _this, object obj)
+        {
             ISymbolNode node;
             if (obj is ISymbolNode symbolNode)
             {
@@ -47,7 +52,6 @@ namespace Internal.JitInterface
                     MethodDesc virtualCallTarget = (MethodDesc)helperNode.Target;
                     _this._codeRelocs.Add(new Relocation(RelocType.IMAGE_REL_BASED_REL32, 0,
                         _this._compilation.NodeFactory.MethodEntrypoint(virtualCallTarget)));
-
                     return;
                 }
 
@@ -108,10 +112,15 @@ namespace Internal.JitInterface
         public static byte* getMangledMethodName(IntPtr thisHandle, CORINFO_METHOD_STRUCT_* ftn)
         {
             var _this = GetThis(thisHandle);
-
             MethodDesc method = _this.HandleToObject(ftn);
 
-            return (byte*)_this.GetPin(AppendNullByte(_this._compilation.NameMangler.GetMangledMethodName(method).UnderlyingArray));
+            return GetMangledMethodNameImpl(_this, method);
+        }
+
+        private static byte* GetMangledMethodNameImpl(CorInfoImpl _this, MethodDesc method)
+        {
+            Utf8String mangledName = _this._compilation.NameMangler.GetMangledMethodName(method);
+            return (byte*)_this.GetPin(AppendNullByte(mangledName.UnderlyingArray));
         }
 
         [UnmanagedCallersOnly]
@@ -129,6 +138,31 @@ namespace Internal.JitInterface
 
             sb.Append("\0");
             return (byte*)_this.GetPin(sb.UnderlyingArray);
+        }
+
+        [UnmanagedCallersOnly]
+        public static byte* getEHDispatchFunctionName(IntPtr thisHandle, CORINFO_EH_CLAUSE_FLAGS handlerType)
+        {
+            var _this = GetThis(thisHandle);
+            string dispatchMethodName = handlerType switch
+            {
+                CORINFO_EH_CLAUSE_FLAGS.CORINFO_EH_CLAUSE_SAMETRY => "HandleExceptionWasmMutuallyProtectingCatches",
+                CORINFO_EH_CLAUSE_FLAGS.CORINFO_EH_CLAUSE_NONE => "HandleExceptionWasmCatch",
+                CORINFO_EH_CLAUSE_FLAGS.CORINFO_EH_CLAUSE_FILTER => "HandleExceptionWasmFilteredCatch",
+                CORINFO_EH_CLAUSE_FLAGS.CORINFO_EH_CLAUSE_FINALLY or CORINFO_EH_CLAUSE_FLAGS.CORINFO_EH_CLAUSE_FAULT => "HandleExceptionWasmFault",
+                _ => throw new NotSupportedException()
+            };
+
+            // TODO-LLVM: we are breaking the abstraction here. Compiler is not allowed to access methods from the
+            // managed runtime directly and assume they are compiled into CoreLib. The dispatch routine should be
+            // made into a RuntimeExport once we solve the issues around calling convention mismatch for them.
+            MetadataType ehType = _this._compilation.TypeSystemContext.SystemModule.GetKnownType("System.Runtime", "EH");
+            MethodDesc dispatchMethod = ehType.GetKnownMethod(dispatchMethodName, null);
+
+            // Codegen is asking for the dispatcher; assume it'll use it.
+            AddCodeRelocImpl(_this, dispatchMethod);
+
+            return GetMangledMethodNameImpl(_this, dispatchMethod);
         }
 
         // IL backend does not use the mangled name.  The unmangled name is easier to read.
@@ -312,6 +346,7 @@ namespace Internal.JitInterface
         {
             GetMangledMethodName,
             GetSymbolMangledName,
+            GetEHDispatchFunctionName,
             GetTypeName,
             AddCodeReloc,
             IsRuntimeImport,
@@ -333,6 +368,7 @@ namespace Internal.JitInterface
             void** callbacks = stackalloc void*[(int)EEApiId.Count + 1];
             callbacks[(int)EEApiId.GetMangledMethodName] = (delegate* unmanaged<IntPtr, CORINFO_METHOD_STRUCT_*, byte*>)&getMangledMethodName;
             callbacks[(int)EEApiId.GetSymbolMangledName] = (delegate* unmanaged<IntPtr, CORINFO_METHOD_STRUCT_*, byte*>)&getSymbolMangledName;
+            callbacks[(int)EEApiId.GetEHDispatchFunctionName] = (delegate* unmanaged<IntPtr, CORINFO_EH_CLAUSE_FLAGS, byte*>)&getEHDispatchFunctionName;
             callbacks[(int)EEApiId.GetTypeName] = (delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, byte*>)&getTypeName;
             callbacks[(int)EEApiId.AddCodeReloc] = (delegate* unmanaged<IntPtr, void*, void>)&addCodeReloc;
             callbacks[(int)EEApiId.IsRuntimeImport] = (delegate* unmanaged<IntPtr, CORINFO_METHOD_STRUCT_*, uint>)&isRuntimeImport;

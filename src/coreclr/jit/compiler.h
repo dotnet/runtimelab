@@ -4362,6 +4362,8 @@ public:
                              bool                    isExplicitTailCall,
                              IL_OFFSET               ilOffset = BAD_IL_OFFSET);
 
+    void impResolveToken(const BYTE* addr, CORINFO_RESOLVED_TOKEN* pResolvedToken, CorInfoTokenKind kind);
+
     //=========================================================================
     //                          PROTECTED
     //=========================================================================
@@ -4381,8 +4383,6 @@ protected:
 
     bool impIsPrimitive(CorInfoType type);
     bool impILConsumesAddr(const BYTE* codeAddr);
-
-    void impResolveToken(const BYTE* addr, CORINFO_RESOLVED_TOKEN* pResolvedToken, CorInfoTokenKind kind);
 
     void impPushOnStack(GenTree* tree, typeInfo ti);
     void        impPushNullObjRefOnStack();
@@ -6635,6 +6635,8 @@ public:
 
     AddCodeDsc* fgFindExcptnTarget(SpecialCodeKind kind, unsigned refData);
 
+    bool fgIsThrowHlpBlk(BasicBlock* block);
+
     bool fgUseThrowHelperBlocks();
 
     AddCodeDsc* fgGetAdditionalCodeDescriptors()
@@ -6644,8 +6646,6 @@ public:
 
 private:
     bool fgIsCodeAdded();
-
-    bool fgIsThrowHlpBlk(BasicBlock* block);
 
 #if !FEATURE_FIXED_OUT_ARGS
     unsigned fgThrowHlpBlkStkLevel(BasicBlock* block);
