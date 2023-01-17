@@ -374,7 +374,6 @@ private:
     unsigned getLlvmFunctionIndexForProtectedRegion(unsigned tryIndex) const;
 
     llvm::BasicBlock* createInlineLlvmBlock();
-    llvm::BasicBlock* getCurrentLlvmBlock() const;
     LlvmBlockRange* getLlvmBlocksForBlock(BasicBlock* block);
     llvm::BasicBlock* getFirstLlvmBlockForBlock(BasicBlock* block);
     llvm::BasicBlock* getLastLlvmBlockForBlock(BasicBlock* block);

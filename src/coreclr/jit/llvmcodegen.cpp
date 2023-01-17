@@ -2840,11 +2840,6 @@ llvm::DILocation* Llvm::getArtificialDebugLocation()
     return createDebugLocation(0);
 }
 
-llvm::BasicBlock* Llvm::getCurrentLlvmBlock() const
-{
-    return getCurrentLlvmBlocks()->LastBlock;
-}
-
 void Llvm::setCurrentEmitContextForBlock(BasicBlock* block)
 {
     unsigned funcIdx = getLlvmFunctionIndexForBlock(block);
