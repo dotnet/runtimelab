@@ -2005,7 +2005,6 @@ void Compiler::fgComputeLifeLIR(VARSET_TP& life, BasicBlock* block, VARSET_VALAR
                             const bool       isZeroInit          = store->OperIsInitBlkOp();
                             const bool       isGCInit            = varDsc.HasGCPtr();
 
-<<<<<<< HEAD
                             assert(store->Addr() == node);
                             blockRange.Delete(this, block, node);
 
@@ -2013,27 +2012,19 @@ void Compiler::fgComputeLifeLIR(VARSET_TP& life, BasicBlock* block, VARSET_VALAR
                                 store->OperIs(GT_STOREIND) ? store->AsStoreInd()->Data() : store->AsBlk()->Data();
                             data->SetUnusedValue();
 
-#ifndef TARGET_WASM
-                            if (data->isIndir())
-=======
                             if (isExplicitInitLocal && isReferencedLocal && isZeroInit && isGCInit)
->>>>>>> 6543a048d7242ddf204f2e1ba0723d27c02bdfc7
                             {
                                 // Yes, we'd better keep it around.
                                 //
                                 JITDUMP("Keeping dead indirect store -- explicit zero init of gc type\n");
                                 DISPNODE(store);
                             }
-<<<<<<< HEAD
-#endif // !TARGET_WASM
-=======
                             else
                             {
                                 // Remove the store. DCE will iteratively clean up any ununsed operands.
                                 //
                                 JITDUMP("Removing dead indirect store:\n");
                                 DISPNODE(store);
->>>>>>> 6543a048d7242ddf204f2e1ba0723d27c02bdfc7
 
                                 assert(store->Addr() == node);
                                 blockRange.Delete(this, block, node);
@@ -2042,11 +2033,12 @@ void Compiler::fgComputeLifeLIR(VARSET_TP& life, BasicBlock* block, VARSET_VALAR
                                     store->OperIs(GT_STOREIND) ? store->AsStoreInd()->Data() : store->AsBlk()->Data();
                                 data->SetUnusedValue();
 
+#ifndef TARGET_WASM
                                 if (data->isIndir())
                                 {
                                     Lowering::TransformUnusedIndirection(data->AsIndir(), this, block);
                                 }
-
+#endif // TARGET_WASM
                                 fgRemoveDeadStoreLIR(store, block);
                             }
                         }

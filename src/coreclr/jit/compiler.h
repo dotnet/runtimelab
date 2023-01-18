@@ -8403,15 +8403,12 @@ public:
 #elif defined(TARGET_ARM64)
             reg     = REG_R11;
             regMask = RBM_R11;
-<<<<<<< HEAD
 #elif defined(TARGET_WASM)
             reg     = REG_R0;
             regMask = RBM_R0;
-=======
 #elif defined(TARGET_LOONGARCH64)
             reg     = REG_T8;
             regMask = RBM_T8;
->>>>>>> 6543a048d7242ddf204f2e1ba0723d27c02bdfc7
 #else
 #error Unsupported or unset target architecture
 #endif

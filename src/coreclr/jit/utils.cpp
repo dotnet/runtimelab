@@ -325,10 +325,7 @@ void dspRegMask(regMaskTP regMask, size_t minSiz)
                     inRegRange = true;
                     sep        = "-";
                 }
-<<<<<<< HEAD
-#elif defined(TARGET_X86) || defined(TARGET_WASM) // No register ranges
-=======
-#elif defined(TARGET_X86)
+#elif defined(TARGET_X86) || defined(TARGET_WASM)
 // No register ranges
 
 #elif defined(TARGET_LOONGARCH64)
@@ -338,7 +335,6 @@ void dspRegMask(regMaskTP regMask, size_t minSiz)
                     inRegRange = true;
                     sep        = "-";
                 }
->>>>>>> 6543a048d7242ddf204f2e1ba0723d27c02bdfc7
 #else // TARGET*
 #error Unsupported or unset target architecture
 #endif // TARGET*

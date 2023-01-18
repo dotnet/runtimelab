@@ -179,15 +179,13 @@ ValueNumFuncDef(HWI_##isa##_##name, argCount, false, false, false)   // All of t
 
 #elif defined (TARGET_ARM)
 // No Hardware Intrinsics on ARM32
-<<<<<<< HEAD
+
 #elif defined(TARGET_WASM)
 // No Hardware Intrinsics on WebAssembly
-=======
 
 #elif defined (TARGET_LOONGARCH64)
     //TODO-LOONGARCH64-CQ: add LoongArch64's Hardware Intrinsics Instructions if supported.
 
->>>>>>> 6543a048d7242ddf204f2e1ba0723d27c02bdfc7
 #else
 #error Unsupported platform
 #endif

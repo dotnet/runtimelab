@@ -52,15 +52,12 @@ inline bool compUnixX86Abi()
 #define TARGET_READABLE_NAME "ARM"
 #elif defined(TARGET_ARM64)
 #define TARGET_READABLE_NAME "ARM64"
-<<<<<<< HEAD
 #elif defined(TARGET_WASM64)
 #define TARGET_READABLE_NAME "WASM64"
 #elif defined(TARGET_WASM32)
 #define TARGET_READABLE_NAME "WASM32"
-=======
 #elif defined(TARGET_LOONGARCH64)
 #define TARGET_READABLE_NAME "LOONGARCH64"
->>>>>>> 6543a048d7242ddf204f2e1ba0723d27c02bdfc7
 #else
 #error Unsupported or unset target architecture
 #endif
@@ -80,16 +77,14 @@ inline bool compUnixX86Abi()
 #define REGMASK_BITS 64
 #define CSE_CONST_SHARED_LOW_BITS 12
 
-<<<<<<< HEAD
 #elif defined(TARGET_WASM)
 #define REGMASK_BITS 32
 #define CSE_CONST_SHARED_LOW_BITS 16
-=======
+
 #elif defined(TARGET_LOONGARCH64)
 #define REGMASK_BITS 64
 #define CSE_CONST_SHARED_LOW_BITS 12
 
->>>>>>> 6543a048d7242ddf204f2e1ba0723d27c02bdfc7
 #else
 #error Unsupported or unset target architecture
 #endif
@@ -277,15 +272,12 @@ typedef unsigned char   regNumberSmall;
 #include "targetarm.h"
 #elif defined(TARGET_ARM64)
 #include "targetarm64.h"
-<<<<<<< HEAD
 #elif defined(TARGET_WASM)
 #include "targetwasm.h"
-=======
 #elif defined(TARGET_LOONGARCH64)
 #include "targetloongarch64.h"
 #else
   #error Unsupported or unset target architecture
->>>>>>> 6543a048d7242ddf204f2e1ba0723d27c02bdfc7
 #endif
 
 #ifdef TARGET_XARCH
@@ -593,11 +585,7 @@ inline regMaskTP genRegMask(regNumber reg)
 
 inline regMaskTP genRegMaskFloat(regNumber reg, var_types type /* = TYP_DOUBLE */)
 {
-<<<<<<< HEAD
-#if defined(TARGET_AMD64) || defined(TARGET_ARM64) || defined(TARGET_X86) || defined(TARGET_WASM)
-=======
-#if defined(TARGET_AMD64) || defined(TARGET_ARM64) || defined(TARGET_X86) || defined(TARGET_LOONGARCH64)
->>>>>>> 6543a048d7242ddf204f2e1ba0723d27c02bdfc7
+#if defined(TARGET_AMD64) || defined(TARGET_ARM64) || defined(TARGET_X86) || defined(TARGET_WASM) || defined(TARGET_LOONGARCH64)
     assert(genIsValidFloatReg(reg));
     assert((unsigned)reg < ArrLen(regMasks));
     return regMasks[reg];

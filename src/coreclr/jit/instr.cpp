@@ -1589,7 +1589,6 @@ instruction CodeGen::ins_Copy(var_types dstType)
     {
         return INS_mov;
     }
-<<<<<<< HEAD
 #elif defined(TARGET_WASM)
     if (varTypeIsSIMD(dstType))
     {
@@ -1599,12 +1598,15 @@ instruction CodeGen::ins_Copy(var_types dstType)
     {
         // Both float and double copy can use movaps
         return INS_movaps;
-=======
+    }
+    else
+    {
+        return INS_mov;
+    }
 #elif defined(TARGET_LOONGARCH64)
     if (varTypeIsFloating(dstType))
     {
         return dstType == TYP_FLOAT ? INS_fmov_s : INS_fmov_d;
->>>>>>> 6543a048d7242ddf204f2e1ba0723d27c02bdfc7
     }
     else
     {

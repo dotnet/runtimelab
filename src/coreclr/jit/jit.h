@@ -150,12 +150,12 @@
 #if defined(TARGET_ARM)
 #error Cannot define both TARGET_ARM64 and TARGET_ARM
 #endif
-<<<<<<< HEAD
-#elif defined(TARGET_WASM)
-=======
 #if defined(TARGET_LOONGARCH64)
 #error Cannot define both TARGET_ARM64 and TARGET_LOONGARCH64
 #endif
+
+#elif defined(TARGET_WASM)
+
 #elif defined(TARGET_LOONGARCH64)
 #if defined(TARGET_X86)
 #error Cannot define both TARGET_LOONGARCH64 and TARGET_X86
@@ -169,7 +169,6 @@
 #if defined(TARGET_ARM64)
 #error Cannot define both TARGET_LOONGARCH64 and TARGET_ARM64
 #endif
->>>>>>> 6543a048d7242ddf204f2e1ba0723d27c02bdfc7
 #else
 #error Unsupported or unset target architecture
 #endif
@@ -217,15 +216,12 @@
 #define IMAGE_FILE_MACHINE_TARGET IMAGE_FILE_MACHINE_ARMNT
 #elif defined(TARGET_ARM64)
 #define IMAGE_FILE_MACHINE_TARGET IMAGE_FILE_MACHINE_ARM64 // 0xAA64
-<<<<<<< HEAD
 #elif defined(TARGET_WASM32)
 #define IMAGE_FILE_MACHINE_TARGET IMAGE_FILE_MACHINE_WASM32
 #elif defined(TARGET_WASM64)
 #define IMAGE_FILE_MACHINE_TARGET IMAGE_FILE_MACHINE_WASM64
-=======
 #elif defined(TARGET_LOONGARCH64)
 #define IMAGE_FILE_MACHINE_TARGET IMAGE_FILE_MACHINE_LOONGARCH64 // 0x6264
->>>>>>> 6543a048d7242ddf204f2e1ba0723d27c02bdfc7
 #else
 #error Unsupported or unset target architecture
 #endif
@@ -270,10 +266,11 @@
 #define UNIX_AMD64_ABI_ONLY(x)
 #endif // defined(UNIX_AMD64_ABI)
 
-<<<<<<< HEAD
-#if defined(DEBUG) && !defined(TARGET_WASM32)
 // For Wasm32 doubles are 8 bytes so can't be asserted against the size of a "register"
-=======
+#if defined(DEBUG) && !defined(TARGET_WASM32)
+#define DEBUG_ARG_SLOTS
+#endif
+
 #if defined(TARGET_LOONGARCH64)
 #define UNIX_LOONGARCH64_ONLY_ARG(x) , x
 #define UNIX_LOONGARCH64_ONLY(x) x
@@ -283,7 +280,6 @@
 #endif // TARGET_LOONGARCH64
 
 #if defined(DEBUG)
->>>>>>> 6543a048d7242ddf204f2e1ba0723d27c02bdfc7
 #define DEBUG_ARG_SLOTS
 #endif
 

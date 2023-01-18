@@ -888,11 +888,7 @@ unsigned Compiler::ehGetCallFinallyRegionIndex(unsigned finallyIndex, bool* inTr
     assert(finallyIndex != EHblkDsc::NO_ENCLOSING_INDEX);
     assert(ehGetDsc(finallyIndex)->HasFinallyHandler());
 
-<<<<<<< HEAD
-#if defined(TARGET_AMD64) || defined(TARGET_ARM64) || defined(TARGET_WASM)
-=======
-#if defined(TARGET_AMD64) || defined(TARGET_ARM64) || defined(TARGET_LOONGARCH64)
->>>>>>> 6543a048d7242ddf204f2e1ba0723d27c02bdfc7
+#if defined(TARGET_AMD64) || defined(TARGET_ARM64) || defined(TARGET_WASM) || defined(TARGET_LOONGARCH64)
     return ehGetDsc(finallyIndex)->ebdGetEnclosingRegionIndex(inTryRegion);
 #else
     *inTryRegion = true;

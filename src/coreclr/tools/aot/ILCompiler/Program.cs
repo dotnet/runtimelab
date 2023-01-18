@@ -292,7 +292,7 @@ namespace ILCompiler
                     archString.Append(arch);
                     archString.Append(": ");
 
-                    TargetArchitecture targetArch = Program.GetTargetArchitectureFromArg(arch);
+                    TargetArchitecture targetArch = GetTargetArchitectureFromArg(arch);
                     bool first = true;
                     foreach (var instructionSet in Internal.JitInterface.InstructionSetFlags.ArchitectureToValidInstructionSets(targetArch))
                     {
@@ -381,7 +381,7 @@ namespace ILCompiler
             return initializerList;
         }
 
-        private static TargetArchitecture GetTargetArchitectureFromArg(string archArg)
+        private TargetArchitecture GetTargetArchitectureFromArg(string archArg)
         {
             if (archArg.Equals("x86", StringComparison.OrdinalIgnoreCase))
                 return TargetArchitecture.X86;
@@ -391,6 +391,11 @@ namespace ILCompiler
                 return TargetArchitecture.ARM;
             else if (archArg.Equals("arm64", StringComparison.OrdinalIgnoreCase))
                 return TargetArchitecture.ARM64;
+            else if (archArg.Equals("wasm", StringComparison.OrdinalIgnoreCase) || archArg.Equals("llvm", StringComparison.OrdinalIgnoreCase)) // handle both so old projects still work
+            {
+                _isLlvmCodegen = true;
+                return TargetArchitecture.Wasm32; // TODO: handle generic LLVM and Wasm64 
+            }
             else
                 throw new CommandLineException("Target architecture is not supported");
         }
@@ -403,6 +408,8 @@ namespace ILCompiler
                 return TargetOS.Linux;
             else if (osArg.Equals("osx", StringComparison.OrdinalIgnoreCase))
                 return TargetOS.OSX;
+            else if (osArg.Equals("wasm", StringComparison.OrdinalIgnoreCase))
+                return TargetOS.WebAssembly;
             else
                 throw new CommandLineException("Target OS is not supported");
         }
@@ -426,44 +433,11 @@ namespace ILCompiler
             //
             if (_targetArchitectureStr != null)
             {
-<<<<<<< HEAD
-                if (_targetArchitectureStr.Equals("x86", StringComparison.OrdinalIgnoreCase))
-                    _targetArchitecture = TargetArchitecture.X86;
-                else if (_targetArchitectureStr.Equals("x64", StringComparison.OrdinalIgnoreCase))
-                    _targetArchitecture = TargetArchitecture.X64;
-                else if (_targetArchitectureStr.Equals("arm", StringComparison.OrdinalIgnoreCase))
-                    _targetArchitecture = TargetArchitecture.ARM;
-                else if (_targetArchitectureStr.Equals("armel", StringComparison.OrdinalIgnoreCase))
-                    _targetArchitecture = TargetArchitecture.ARM;
-                else if (_targetArchitectureStr.Equals("arm64", StringComparison.OrdinalIgnoreCase))
-                    _targetArchitecture = TargetArchitecture.ARM64;
-                else if (_targetArchitectureStr.Equals("wasm", StringComparison.OrdinalIgnoreCase) || _targetArchitectureStr.Equals("llvm", StringComparison.OrdinalIgnoreCase)) // handle both so old projects still work
-                {
-                    _targetArchitecture = TargetArchitecture.Wasm32; // TODO: handle generic LLVM and Wasm64 
-                    _isLlvmCodegen = true;
-                }
-                else
-                    throw new CommandLineException("Target architecture is not supported");
-            }
-            if (_targetOSStr != null)
-            {
-                if (_targetOSStr.Equals("windows", StringComparison.OrdinalIgnoreCase))
-                    _targetOS = TargetOS.Windows;
-                else if (_targetOSStr.Equals("linux", StringComparison.OrdinalIgnoreCase))
-                    _targetOS = TargetOS.Linux;
-                else if (_targetOSStr.Equals("osx", StringComparison.OrdinalIgnoreCase))
-                    _targetOS = TargetOS.OSX;
-                else if (_targetOSStr.Equals("wasm", StringComparison.OrdinalIgnoreCase))
-                    _targetOS = TargetOS.WebAssembly;
-                else
-                    throw new CommandLineException("Target OS is not supported");
-=======
                 _targetArchitecture = GetTargetArchitectureFromArg(_targetArchitectureStr);
             }
             if (_targetOSStr != null)
             {
                 _targetOS = GetTargetOSFromArg(_targetOSStr);
->>>>>>> 6543a048d7242ddf204f2e1ba0723d27c02bdfc7
             }
 
             InstructionSetSupportBuilder instructionSetSupportBuilder = new InstructionSetSupportBuilder(_targetArchitecture);

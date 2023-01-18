@@ -5922,11 +5922,7 @@ GenTree* Lowering::LowerConstIntDivOrMod(GenTree* node)
             return nullptr;
         }
 
-<<<<<<< HEAD
-#if defined(TARGET_XARCH) || defined(TARGET_ARM64) || defined(TARGET_WASM) // TODO Wasm
-=======
-#if defined(TARGET_XARCH) || defined(TARGET_ARM64) || defined(TARGET_LOONGARCH64)
->>>>>>> 6543a048d7242ddf204f2e1ba0723d27c02bdfc7
+#if defined(TARGET_XARCH) || defined(TARGET_ARM64) || defined(TARGET_WASM) || defined(TARGET_LOONGARCH64) // TODO Wasm
         ssize_t magic;
         int     shift;
 

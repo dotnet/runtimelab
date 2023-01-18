@@ -4416,7 +4416,6 @@ unsigned Compiler::gtSetEvalOrder(GenTree* tree)
                         costEx = IND_COST_EX * 2;
                         costSz = 6;
                     }
-<<<<<<< HEAD
 #elif defined(TARGET_WASM)
                     costEx = 1;
                     costSz = 2;
@@ -4427,12 +4426,10 @@ unsigned Compiler::gtSetEvalOrder(GenTree* tree)
                         costEx = IND_COST_EX * 2;
                         costSz = 6;
                     }
-=======
 #elif defined(TARGET_LOONGARCH64)
                     // TODO-LoongArch64-CQ: tune the costs.
                     costEx = 1;
                     costSz = 4;
->>>>>>> 6543a048d7242ddf204f2e1ba0723d27c02bdfc7
 #else
 #error "Unknown TARGET"
 #endif
