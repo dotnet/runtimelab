@@ -239,11 +239,6 @@ namespace ILCompiler
             return base.GetMethodIL(method);
         }
 
-        public virtual void AddOrReturnGlobalSymbol(ISymbolNode symbolNode, NameMangler nameMangler)
-        {
-            throw new NotImplementedException("only called from clrjit for LLVM, what is a better way to do this?");
-        }
-
         public virtual bool StructIsWrappedPrimitive(TypeDesc method, TypeDesc primitiveTypeDesc)
         {
             throw new NotImplementedException();

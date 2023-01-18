@@ -357,9 +357,8 @@ private:
     FunctionType* createFunctionTypeForCall(GenTreeCall* call);
     FunctionType* createFunctionTypeForHelper(CorInfoHelpFunc helperFunc);
 
-    llvm::GlobalVariable* getOrCreateExternalSymbol(const char* symbolName, Type* symbolType = nullptr);
-    llvm::GlobalVariable* getOrCreateSymbol(CORINFO_GENERIC_HANDLE symbolHandle, Type* symbolType = nullptr);
-    Value* emitSymbolRef(CORINFO_GENERIC_HANDLE symbolHandle);
+    llvm::GlobalVariable* getOrCreateExternalSymbol(const char* symbolName);
+    llvm::GlobalVariable* getOrCreateSymbol(CORINFO_GENERIC_HANDLE symbolHandle);
     CORINFO_GENERIC_HANDLE getSymbolHandleForClassToken(mdToken token);
 
     Instruction* getCast(Value* source, Type* targetType);

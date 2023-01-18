@@ -608,7 +608,7 @@ void Llvm::generateEHDispatch()
 
             if (ehDsc->ebdHandlerType == EH_HANDLER_CATCH)
             {
-                Value* typeSymbolRefValue = emitSymbolRef(getSymbolHandleForClassToken(ehDsc->ebdTyp));
+                Value* typeSymbolRefValue = getOrCreateSymbol(getSymbolHandleForClassToken(ehDsc->ebdTyp));
                 dispatchDestValue =
                     emitCallOrInvoke(dispatchLlvmFunc, {dispatcherShadowStackValue, funcletShadowStackValue,
                                      dispatchDataRefValue, handlerValue, typeSymbolRefValue});
@@ -1826,7 +1826,7 @@ void Llvm::buildIntegralConst(GenTreeIntConCommon* node)
             case GTF_ICON_STR_HDL:
             {
                 CORINFO_GENERIC_HANDLE symbolHandle = CORINFO_GENERIC_HANDLE(node->AsIntCon()->IconValue());
-                constValue = emitSymbolRef(symbolHandle);
+                constValue = getOrCreateSymbol(symbolHandle);
             }
             break;
 
@@ -1903,8 +1903,7 @@ void Llvm::buildCall(GenTreeCall* call)
     // We may come back into managed from the unmanaged call so store the shadowstack.
     if (!callHasShadowStackArg(call))
     {
-        _builder.CreateStore(getShadowStackForCallee(),
-                             getOrCreateExternalSymbol("t_pShadowStackTop", Type::getInt8PtrTy(_llvmContext)));
+        _builder.CreateStore(getShadowStackForCallee(), getOrCreateExternalSymbol("t_pShadowStackTop"));
     }
 
     std::vector<Value*> argVec = std::vector<Value*>();
@@ -2653,39 +2652,25 @@ FunctionType* Llvm::createFunctionTypeForHelper(CorInfoHelpFunc helperFunc)
     return llvmFuncType;
 }
 
-llvm::GlobalVariable* Llvm::getOrCreateExternalSymbol(const char* symbolName, Type* symbolType)
+llvm::GlobalVariable* Llvm::getOrCreateExternalSymbol(const char* symbolName)
 {
-    if (symbolType == nullptr)
-    {
-        symbolType = Type::getInt32PtrTy(_llvmContext);
-    }
-
     llvm::GlobalVariable* symbol = _module->getGlobalVariable(symbolName);
     if (symbol == nullptr)
     {
-        symbol = new llvm::GlobalVariable(*_module, symbolType, false, llvm::GlobalValue::LinkageTypes::ExternalLinkage,
+        Type* symbolLlvmType = getPtrLlvmType();
+        symbol = new llvm::GlobalVariable(*_module, symbolLlvmType, false, llvm::GlobalValue::ExternalLinkage,
                                           nullptr, symbolName);
     }
     return symbol;
 }
 
-llvm::GlobalVariable* Llvm::getOrCreateSymbol(CORINFO_GENERIC_HANDLE symbolHandle, Type* symbolType)
+llvm::GlobalVariable* Llvm::getOrCreateSymbol(CORINFO_GENERIC_HANDLE symbolHandle)
 {
     const char* symbolName = GetMangledSymbolName(symbolHandle);
     AddCodeReloc(symbolHandle);
-    llvm::GlobalVariable* symbol = getOrCreateExternalSymbol(symbolName, symbolType);
+    llvm::GlobalVariable* symbol = getOrCreateExternalSymbol(symbolName);
 
     return symbol;
-}
-
-Value* Llvm::emitSymbolRef(CORINFO_GENERIC_HANDLE symbolHandle)
-{
-    // The symbols handled here represent addresses of the relevant entities.
-    // So e. g. "symbolRefAddrValue" for a type handle would represent TypeHandle*.
-    Value* symbolRefAddrValue = getOrCreateSymbol(symbolHandle);
-    Value* symbolRefValue = _builder.CreateLoad(llvm::PointerType::getUnqual(_llvmContext), symbolRefAddrValue);
-
-    return symbolRefValue;
 }
 
 CORINFO_GENERIC_HANDLE Llvm::getSymbolHandleForClassToken(mdToken token)

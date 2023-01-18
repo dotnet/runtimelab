@@ -1879,7 +1879,7 @@ namespace Internal.IL
                     };
                     if (!runtimeDeterminedMethod.OwningType.IsRuntimeDeterminedSubtype)
                     {
-                        arguments[0] = new LoadExpressionEntry(StackValueKind.ValueType, "eeType", GetEETypePointerForTypeDesc(newType, true), eeTypeDesc);
+                        arguments[0] = new ExpressionEntry(StackValueKind.ValueType, "eeType", GetEETypePointerForTypeDesc(newType, true), eeTypeDesc);
                     }
                     else
                     {
@@ -1937,7 +1937,7 @@ namespace Internal.IL
 
                             LLVMValueRef constructedEETypeValueRef = GetEETypePointerForTypeDesc(runtimeDeterminedRetType, true);
 
-                            newObjResult = AllocateObject(new LoadExpressionEntry(StackValueKind.ValueType, "eeType", constructedEETypeValueRef, GetWellKnownType(WellKnownType.IntPtr)), typeToAlloc);
+                            newObjResult = AllocateObject(new ExpressionEntry(StackValueKind.ValueType, "eeType", constructedEETypeValueRef, GetWellKnownType(WellKnownType.IntPtr)), typeToAlloc);
                         }
 
                         //one for the real result and one to be consumed by ctor
@@ -2185,7 +2185,7 @@ namespace Internal.IL
                 }
                 else
                 {
-                    interfaceEEType = new LoadExpressionEntry(StackValueKind.ValueType, "interfaceEEType", GetEETypePointerForTypeDesc(runtimeDeterminedMethod.OwningType, false), GetWellKnownType(WellKnownType.IntPtr));
+                    interfaceEEType = new ExpressionEntry(StackValueKind.ValueType, "interfaceEEType", GetEETypePointerForTypeDesc(runtimeDeterminedMethod.OwningType, false), GetWellKnownType(WellKnownType.IntPtr));
                     eeTypeExpression = new LoadExpressionEntry(StackValueKind.ValueType, "eeType", thisPointer, GetWellKnownType(WellKnownType.IntPtr));
                 }
 
@@ -2326,12 +2326,6 @@ namespace Internal.IL
             return LLVMValueRef.CreateConstInt(LLVMTypeRef.Int64, number, false);
         }
 
-        private LLVMValueRef GetEETypeForTypeDesc(TypeDesc target, bool constructed)
-        {
-            var eeTypePointer = GetEETypePointerForTypeDesc(target, constructed);
-            return _builder.BuildLoad(eeTypePointer, "eeTypePtrLoad");
-        }
-
         private LLVMValueRef GetEETypePointerForTypeDesc(TypeDesc target, bool constructed)
         {
             ISymbolNode node;
@@ -2465,7 +2459,7 @@ namespace Internal.IL
                         }
                         else
                         {
-                            PushLoadExpression(StackValueKind.Int32, "eeType", GetEETypePointerForTypeDesc(typeOfEEType, true), GetWellKnownType(WellKnownType.IntPtr));
+                            PushExpression(StackValueKind.Int32, "eeType", GetEETypePointerForTypeDesc(typeOfEEType, true), GetWellKnownType(WellKnownType.IntPtr));
                         }
                         return true;
                     }
@@ -2608,7 +2602,7 @@ namespace Internal.IL
                             ISymbolNode node = _compilation.ComputeConstantLookup(helperId, constrainedType);
                             _dependencies.Add(node, "LLVM Type ptr");
 
-                            eeTypeEntry = new LoadExpressionEntry(StackValueKind.ValueType, "eeType", LLVMObjectWriter.GetSymbolValuePointer(Module, node, _compilation.NameMangler), GetWellKnownType(WellKnownType.IntPtr));
+                            eeTypeEntry = new ExpressionEntry(StackValueKind.ValueType, "eeType", LLVMObjectWriter.GetSymbolValuePointer(Module, node, _compilation.NameMangler), GetWellKnownType(WellKnownType.IntPtr));
                         }
 
                         argumentValues[0] = CallRuntime(_compilation.TypeSystemContext, RuntimeExport, "RhBox",
@@ -4287,7 +4281,7 @@ namespace Internal.IL
             else
             {
                 eeType = GetEETypePointerForTypeDesc(methodType, false);
-                eeTypeExp = new LoadExpressionEntry(StackValueKind.ByRef, "eeType", eeType, GetWellKnownType(WellKnownType.IntPtr));
+                eeTypeExp = new ExpressionEntry(StackValueKind.ByRef, "eeType", eeType, GetWellKnownType(WellKnownType.IntPtr));
             }
             StackEntry boxedObject = _stack.Pop();
             if (opCode == ILOpcode.unbox)
@@ -4374,7 +4368,7 @@ namespace Internal.IL
                     _dependencies.Add(node, "LLVM Type ptr");
                     LLVMValueRef eeTypePointer = LLVMObjectWriter.GetSymbolValuePointer(Module, node, _compilation.NameMangler);
 
-                    PushLoadExpression(StackValueKind.ByRef, "ldtoken", eeTypePointer, GetWellKnownType(WellKnownType.IntPtr));
+                    PushExpression(StackValueKind.ByRef, "ldtoken", eeTypePointer, GetWellKnownType(WellKnownType.IntPtr));
                 }
             }
             else if (ldtokenValue is FieldDesc)
@@ -4931,9 +4925,7 @@ namespace Internal.IL
             if (builder.Handle == IntPtr.Zero)
                 builder = _builder;
 
-            LLVMValueRef addressOfAddress = LLVMObjectWriter.GetSymbolValuePointer(Module, node, _compilation.NameMangler);
-            //return addressOfAddress;
-            return builder.BuildLoad(addressOfAddress, "LoadAddressOfSymbolNode");
+            return LLVMObjectWriter.GetSymbolValuePointer(Module, node, _compilation.NameMangler);
         }
 
         private void ImportLoadString(int token)
@@ -4991,7 +4983,7 @@ namespace Internal.IL
                 ISymbolNode node = _compilation.ComputeConstantLookup(helperId, type);
                 _dependencies.Add(node, "LLVM Type ptr");
                 eeType = LLVMObjectWriter.GetSymbolValuePointer(Module, node, _compilation.NameMangler);
-                eeTypeEntry = new LoadExpressionEntry(StackValueKind.ValueType, "eeType", eeType, GetWellKnownType(WellKnownType.IntPtr).MakePointerType());
+                eeTypeEntry = new ExpressionEntry(StackValueKind.ValueType, "eeType", eeType, GetWellKnownType(WellKnownType.IntPtr).MakePointerType());
             }
             var toBoxValue = _stack.Pop();
             StackEntry valueAddress;
@@ -5069,7 +5061,7 @@ namespace Internal.IL
             }
             else
             {
-                arguments = new StackEntry[] { new LoadExpressionEntry(StackValueKind.ValueType, "eeType", GetEETypePointerForTypeDesc(runtimeDeterminedArrayType, true), eeTypeDesc), sizeOfArray };
+                arguments = new StackEntry[] { new ExpressionEntry(StackValueKind.ValueType, "eeType", GetEETypePointerForTypeDesc(runtimeDeterminedArrayType, true), eeTypeDesc), sizeOfArray };
             }
             var helper = GetNewArrayHelperForType(runtimeDeterminedArrayType);
             var res = CallRuntime(_compilation.TypeSystemContext, InternalCalls, helper, arguments, runtimeDeterminedArrayType);

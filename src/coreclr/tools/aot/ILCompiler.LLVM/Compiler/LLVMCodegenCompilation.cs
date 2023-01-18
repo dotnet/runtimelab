@@ -86,7 +86,7 @@ namespace ILCompiler
             CorInfoImpl.Shutdown(); // writes the LLVM bitcode
             CorInfoImpl.FreeUnmanagedResources();
 
-            LLVMObjectWriter.EmitObject(outputFile, nodes, NodeFactory, this, dumper);
+            LLVMObjectWriter.EmitObject(outputFile, nodes, this, dumper);
 
             Console.WriteLine($"RyuJIT compilation results, total methods {totalMethodCount} RyuJit Methods {ryuJitMethodCount} {((decimal)ryuJitMethodCount * 100 / totalMethodCount):n4}%");
         }
@@ -278,11 +278,6 @@ namespace ILCompiler
         public TypeDesc GetWellKnownType(WellKnownType wellKnownType)
         {
             return TypeSystemContext.GetWellKnownType(wellKnownType);
-        }
-
-        public override void AddOrReturnGlobalSymbol(ISymbolNode symbolNode, NameMangler nameMangler)
-        {
-            LLVMObjectWriter.AddOrReturnGlobalSymbol(Module, symbolNode, nameMangler);
         }
 
         public override bool StructIsWrappedPrimitive(TypeDesc method, TypeDesc primitiveTypeDesc)

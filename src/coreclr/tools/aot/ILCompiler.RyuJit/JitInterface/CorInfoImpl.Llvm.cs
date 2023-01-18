@@ -65,14 +65,12 @@ namespace Internal.JitInterface
                         {
                             var nonGcStaticSymbolForGCStaticBase = _this._compilation.NodeFactory.TypeNonGCStaticsSymbol(target);
                             _this._codeRelocs.Add(new Relocation(RelocType.IMAGE_REL_BASED_REL32, 0, nonGcStaticSymbolForGCStaticBase));
-                            _this.AddOrReturnGlobalSymbol(nonGcStaticSymbolForGCStaticBase, _this._compilation.NameMangler);
                         }
 
                         break;
                     case ReadyToRunHelperId.GetNonGCStaticBase:
                         var nonGcStaticSymbol = _this._compilation.NodeFactory.TypeNonGCStaticsSymbol(target);
                         _this._codeRelocs.Add(new Relocation(RelocType.IMAGE_REL_BASED_REL32, 0, nonGcStaticSymbol));
-                        _this.AddOrReturnGlobalSymbol(nonGcStaticSymbol, _this._compilation.NameMangler);
                         break;
                     case ReadyToRunHelperId.GetThreadStaticBase:
                         _this._codeRelocs.Add(new Relocation(RelocType.IMAGE_REL_BASED_REL32, 0,
@@ -80,22 +78,12 @@ namespace Internal.JitInterface
                         _this._codeRelocs.Add(new Relocation(RelocType.IMAGE_REL_BASED_REL32, 0,
                             _this._compilation.NodeFactory.TypeNonGCStaticsSymbol(target)));
                         var nonGcStaticSymbolForGCStaticBase2 = _this._compilation.NodeFactory.TypeNonGCStaticsSymbol(target);
-                        _this.AddOrReturnGlobalSymbol(nonGcStaticSymbolForGCStaticBase2, _this._compilation.NameMangler);
                         break;
                     default:
                         throw new NotImplementedException();
                 }
 
                 return;
-            }
-
-            if (node is FrozenStringNode frozenStringNode)
-            {
-                _this.AddOrReturnGlobalSymbol(frozenStringNode, _this._compilation.NameMangler);
-            }
-            else if (node is EETypeNode eeTypeNode)
-            {
-                _this.AddOrReturnGlobalSymbol(eeTypeNode, _this._compilation.NameMangler);
             }
         }
 
@@ -131,10 +119,6 @@ namespace Internal.JitInterface
             var node = (ISymbolNode)_this.HandleToObject((IntPtr)handle);
             Utf8StringBuilder sb = new Utf8StringBuilder();
             node.AppendMangledName(_this._compilation.NameMangler, sb);
-            if (node is FrozenStringNode || node is EETypeNode)
-            {
-                sb.Append("___SYMBOL");
-            }
 
             sb.Append("\0");
             return (byte*)_this.GetPin(sb.UnderlyingArray);
@@ -393,11 +377,6 @@ namespace Internal.JitInterface
                 (byte*)GetPin(StringToUTF8(dataLayout)),
                 callbacks
             );
-        }
-
-        void AddOrReturnGlobalSymbol(ISymbolNode symbolNode, NameMangler nameMangler)
-        {
-            _compilation.AddOrReturnGlobalSymbol(symbolNode, nameMangler);
         }
 
         public static void FreeUnmanagedResources()

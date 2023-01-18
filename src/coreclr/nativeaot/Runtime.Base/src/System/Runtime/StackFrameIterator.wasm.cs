@@ -178,7 +178,7 @@ namespace System.Runtime
             else
             {
                 pClause->Filter = null;
-                pClause->ClauseType = *(MethodTable**)pCurrent[0];
+                pClause->ClauseType = (MethodTable*)pCurrent[0];
             }
 
             pClause->Handler = pCurrent[1];
