@@ -1009,7 +1009,27 @@ void Llvm::failUnsupportedCalls(GenTreeCall* callNode)
 {
     if (callNode->IsHelperCall())
     {
-        return;
+        switch (_compiler->eeGetHelperNum(callNode->gtCallMethHnd))
+        {
+            // Needs VM work to generate the right helper.
+            case CORINFO_HELP_READYTORUN_DELEGATE_CTOR:
+            // These helpers are implemented purely in managed code, and have "object"
+            // parameters/return values which need to be passed on the shadow stack.
+            // Our lowering code currently does not handle such helpers.
+            case CORINFO_HELP_GVMLOOKUP_FOR_SLOT:
+            case CORINFO_HELP_TYPEHANDLE_TO_RUNTIMETYPE:
+            case CORINFO_HELP_NEW_MDARR:
+                failFunctionCompilation();
+
+            default:
+                return;
+        }
+    }
+
+    if (callNode->IsVirtualStub())
+    {
+        // TODO-LLVM: VSD.
+        failFunctionCompilation();
     }
 
     if (callNode->NeedsNullCheck())

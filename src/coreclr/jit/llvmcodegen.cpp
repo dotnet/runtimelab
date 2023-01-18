@@ -1868,26 +1868,6 @@ void Llvm::buildIntegralConst(GenTreeIntConCommon* node)
 
 void Llvm::buildCall(GenTreeCall* call)
 {
-    if (call->IsHelperCall())
-    {
-        switch (_compiler->eeGetHelperNum(call->gtCallMethHnd))
-        {
-            case CORINFO_HELP_READYTORUN_GENERIC_STATIC_BASE:
-            case CORINFO_HELP_GVMLOOKUP_FOR_SLOT: /* generates an extra parameter in the signature */
-            case CORINFO_HELP_TYPEHANDLE_TO_RUNTIMETYPE: /* misses an arg in the signature somewhere, not the shadow stack */
-            case CORINFO_HELP_READYTORUN_DELEGATE_CTOR:
-                failFunctionCompilation();
-
-            default:
-                break;
-        }
-    }
-    else if (call->IsVirtualStub())
-    {
-        // TODO-LLVM: VSD.
-        failFunctionCompilation();
-    }
-
     llvm::FunctionCallee llvmFuncCallee;
     if (call->IsVirtualVtable() || (call->gtCallType == CT_INDIRECT))
     {
