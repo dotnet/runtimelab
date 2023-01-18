@@ -2005,13 +2005,6 @@ void Compiler::fgComputeLifeLIR(VARSET_TP& life, BasicBlock* block, VARSET_VALAR
                             const bool       isZeroInit          = store->OperIsInitBlkOp();
                             const bool       isGCInit            = varDsc.HasGCPtr();
 
-                            assert(store->Addr() == node);
-                            blockRange.Delete(this, block, node);
-
-                            GenTree* data =
-                                store->OperIs(GT_STOREIND) ? store->AsStoreInd()->Data() : store->AsBlk()->Data();
-                            data->SetUnusedValue();
-
                             if (isExplicitInitLocal && isReferencedLocal && isZeroInit && isGCInit)
                             {
                                 // Yes, we'd better keep it around.
