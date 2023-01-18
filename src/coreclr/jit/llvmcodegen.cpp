@@ -1872,7 +1872,6 @@ void Llvm::buildCall(GenTreeCall* call)
     {
         switch (_compiler->eeGetHelperNum(call->gtCallMethHnd))
         {
-            case CORINFO_HELP_READYTORUN_GENERIC_HANDLE:
             case CORINFO_HELP_READYTORUN_GENERIC_STATIC_BASE:
             case CORINFO_HELP_GVMLOOKUP_FOR_SLOT: /* generates an extra parameter in the signature */
             case CORINFO_HELP_TYPEHANDLE_TO_RUNTIMETYPE: /* misses an arg in the signature somewhere, not the shadow stack */
@@ -2619,7 +2618,7 @@ llvm::CallBase* Llvm::emitCallOrInvoke(llvm::FunctionCallee callee, ArrayRef<Val
 FunctionType* Llvm::getFunctionType()
 {
     // TODO-LLVM: delete this when these signatures implemented
-    if (_sigInfo.hasExplicitThis() || _sigInfo.hasTypeArg())
+    if (_sigInfo.hasExplicitThis())
         failFunctionCompilation();
 
     std::vector<llvm::Type*> argVec(_llvmArgCount);

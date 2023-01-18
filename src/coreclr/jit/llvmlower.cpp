@@ -155,11 +155,6 @@ void Llvm::lowerLocals()
 
 void Llvm::populateLlvmArgNums()
 {
-    if (_sigInfo.hasTypeArg())
-    {
-        failFunctionCompilation();
-    }
-
     if (_compiler->ehAnyFunclets())
     {
         _originalShadowStackLclNum = _compiler->lvaGrabTemp(true DEBUGARG("original shadowstack"));
@@ -187,20 +182,35 @@ void Llvm::populateLlvmArgNums()
         retAddressVarDsc->lvIsParam    = true;
     }
 
-    CORINFO_ARG_LIST_HANDLE sigArgs = _sigInfo.args;
-    unsigned firstCorInfoArgLocalNum = 0;
+    unsigned firstSigArgLclNum = 0;
+    assert(_sigInfo.hasThis() == (_info.compThisArg != BAD_VAR_NUM));
     if (_sigInfo.hasThis())
     {
-        firstCorInfoArgLocalNum++;
+        // "this" is never an LLVM parameter as it is always a GC reference.
+        assert(varTypeIsGC(_compiler->lvaGetDesc(_info.compThisArg)));
+        firstSigArgLclNum++;
     }
 
+    assert(_sigInfo.hasTypeArg() == (_info.compTypeCtxtArg != BAD_VAR_NUM));
+    if (_sigInfo.hasTypeArg())
+    {
+        // Type context is an unmanaged pointer and thus LLVM parameter.
+        LclVarDsc* typeCtxtVarDsc = _compiler->lvaGetDesc(_info.compTypeCtxtArg);
+        assert(typeCtxtVarDsc->lvIsParam);
+
+        typeCtxtVarDsc->lvLlvmArgNum = nextLlvmArgNum++;
+        typeCtxtVarDsc->lvCorInfoType = CORINFO_TYPE_PTR;
+        firstSigArgLclNum++;
+    }
+
+    CORINFO_ARG_LIST_HANDLE sigArgs = _sigInfo.args;
     for (unsigned int i = 0; i < _sigInfo.numArgs; i++, sigArgs = _info.compCompHnd->getArgNext(sigArgs))
     {
         CORINFO_CLASS_HANDLE classHnd;
         CorInfoType          corInfoType = strip(_info.compCompHnd->getArgType(&_sigInfo, sigArgs, &classHnd));
         if (canStoreArgOnLlvmStack(_compiler, corInfoType, classHnd))
         {
-            LclVarDsc* varDsc = _compiler->lvaGetDesc(i + firstCorInfoArgLocalNum);
+            LclVarDsc* varDsc = _compiler->lvaGetDesc(firstSigArgLclNum + i);
 
             varDsc->lvLlvmArgNum = nextLlvmArgNum++;
             varDsc->lvCorInfoType = corInfoType;
@@ -887,9 +897,14 @@ void Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
             }
             else // Not-in-sig arguments. We need to handle these specially.
             {
-                if (sigInfo->hasThis() && (opAndArg.argNum == 0))
+                if (sigInfo->hasThis() && (argIx == 0))
                 {
                     corInfoType = argNode->TypeIs(TYP_REF) ? CORINFO_TYPE_CLASS : CORINFO_TYPE_BYREF;
+                }
+                else if (sigInfo->hasTypeArg())
+                {
+                    assert((argIx == 0) || (sigInfo->hasThis() && (argIx == 1)));
+                    corInfoType = CORINFO_TYPE_PTR;
                 }
                 else
                 {
@@ -956,13 +971,18 @@ void Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
                 shadowStackUseOffest += TARGET_POINTER_SIZE;
             }
         }
-        else
+        else // Arg on LLVM stack.
         {
-            // Arg on LLVM stack.
+            if (!argNode->OperIs(GT_FIELD_LIST) && argNode->TypeIs(TYP_STRUCT))
+            {
+                normalizeStructUse(argNode, _compiler->typGetObjLayout(clsHnd));
+            }
+
             GenTreePutArgType* putArg = _compiler->gtNewPutArgType(argNode, corInfoType, clsHnd);
 #if DEBUG
             putArg->SetArgNum(opAndArg.argNum);
 #endif
+
             if (lastArg == nullptr)
             {
                 lastArg = _compiler->gtNewCallArgs(putArg);
@@ -1010,9 +1030,8 @@ void Llvm::failUnsupportedCalls(GenTreeCall* callNode)
     }
 
     CORINFO_SIG_INFO* calleeSigInfo = callNode->callSig;
-    // TODO-LLVM: not attempting to compile generic signatures with context arg via clrjit yet
     // Investigate which methods do not get callSig set - happens currently with the Generics test
-    if (calleeSigInfo == nullptr || calleeSigInfo->hasTypeArg())
+    if (calleeSigInfo == nullptr)
     {
         failFunctionCompilation();
     }
@@ -1141,6 +1160,9 @@ void Llvm::normalizeStructUse(GenTree* node, ClassLayout* layout)
         CORINFO_CLASS_HANDLE useHandle = _compiler->gtGetStructHandleIfPresent(node);
 
         // Note both can be blocks ("NO_CLASS_HANDLE"), in which case we don't need to do anything.
+        // TODO-LLVM-CQ: base this check on the actual LLVM types not being equivalent, as layout ->
+        // LLVM type correspondence is reductive. Additionally (but orthogonally), we should map
+        // canonically equivalent types to the same LLVM type.
         if (useHandle != layout->GetClassHandle())
         {
             switch (node->OperGet())
