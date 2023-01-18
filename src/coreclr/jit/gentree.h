@@ -2080,6 +2080,8 @@ public:
 
     inline bool IsIntegralConst() const;
 
+    inline bool IsIntegralConstPow2() const;
+
     inline bool IsIntegralConstUnsignedPow2() const;
 
     inline bool IsIntegralConstAbsPow2() const;
@@ -4444,6 +4446,10 @@ struct GenTreeCall final : public GenTree
     bool HasMultiRegRetVal() const
     {
 #ifdef FEATURE_MULTIREG_RET
+#if defined(TARGET_LOONGARCH64)
+        return (gtType == TYP_STRUCT) && (gtReturnTypeDesc.GetReturnRegCount() > 1);
+#else
+
 #if defined(TARGET_X86) || defined(TARGET_ARM)
         if (varTypeIsLong(gtType))
         {
@@ -4457,6 +4463,8 @@ struct GenTreeCall final : public GenTree
         }
         // Now it is a struct that is returned in registers.
         return GetReturnTypeDesc()->IsMultiRegRetType();
+#endif
+
 #else  // !FEATURE_MULTIREG_RET
         return false;
 #endif // !FEATURE_MULTIREG_RET
@@ -8496,6 +8504,24 @@ inline bool GenTree::IsIntegralConst() const
 #else  // !TARGET_64BIT
     return ((gtOper == GT_CNS_INT) || (gtOper == GT_CNS_LNG));
 #endif // !TARGET_64BIT
+}
+
+//-------------------------------------------------------------------------
+// IsIntegralConstPow2: Determines whether an integral constant is
+//                      the power of 2.
+//
+// Return Value:
+//     Returns true if the GenTree's integral constant
+//     is the power of 2.
+//
+inline bool GenTree::IsIntegralConstPow2() const
+{
+    if (IsIntegralConst())
+    {
+        return isPow2(AsIntConCommon()->IntegralValue());
+    }
+
+    return false;
 }
 
 //-------------------------------------------------------------------------
