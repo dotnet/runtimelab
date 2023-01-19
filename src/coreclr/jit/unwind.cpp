@@ -447,7 +447,10 @@ UNATIVE_OFFSET Compiler::unwindGetCurrentOffset(FuncInfoDsc* func)
 
 // See unwindX86.cpp
 
-#elif defined(TARGET_WASM) // TODO
+#elif defined(TARGET_WASM)
+
+// No unwind info on WASM.
+
 #elif defined(TARGET_LOONGARCH64)
 
 // See unwindLoongarch64.cpp
