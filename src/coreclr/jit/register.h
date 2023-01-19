@@ -116,6 +116,8 @@ REGDEF(R0,   0, 0x01, "R0")
 REGDEF(F0,   1, 0x02, "F0")
 REGDEF(LLVM, 2, 0x04, "LLVM")
 REGDEF(STK,  3, 0x00, "SS")
+#elif defined(TARGET_LOONGARCH64)
+ #include "registerloongarch64.h"
 
 #else
   #error Unsupported or unset target architecture

@@ -403,7 +403,7 @@ enum
 
 #define CONTEXT_UNWOUND_TO_CALL 0x20000000
 
-typedef struct DECLSPEC_ALIGN(16) _T_CONTEXT {
+typedef struct DECLSPEC_ALIGN(8) _T_CONTEXT {
 
     //
     // Control flags.
@@ -418,8 +418,8 @@ typedef struct DECLSPEC_ALIGN(16) _T_CONTEXT {
     DWORD64 Ra;
     DWORD64 Tp;
     DWORD64 Sp;
-    DWORD64 A0;//DWORD64 V0;
-    DWORD64 A1;//DWORD64 V1;
+    DWORD64 A0;
+    DWORD64 A1;
     DWORD64 A2;
     DWORD64 A3;
     DWORD64 A4;
@@ -451,7 +451,7 @@ typedef struct DECLSPEC_ALIGN(16) _T_CONTEXT {
     //
     // Floating Point Registers
     //
-    //TODO: support the SIMD.
+    //TODO-LoongArch64: support the SIMD.
     DWORD64 F[32];
     DWORD   Fcsr;
 } T_CONTEXT, *PT_CONTEXT;
@@ -473,7 +473,6 @@ typedef struct _T_RUNTIME_FUNCTION {
     };
 } T_RUNTIME_FUNCTION, *PT_RUNTIME_FUNCTION;
 
-
 //
 // Define exception dispatch context structure.
 //
@@ -492,8 +491,6 @@ typedef struct _T_DISPATCHER_CONTEXT {
     BOOLEAN ControlPcIsUnwound;
     PBYTE  NonVolatileRegisters;
 } T_DISPATCHER_CONTEXT, *PT_DISPATCHER_CONTEXT;
-
-
 
 //
 // Nonvolatile context pointer record.

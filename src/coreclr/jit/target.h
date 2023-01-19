@@ -34,7 +34,8 @@ inline bool compMacOsArm64Abi()
 }
 inline bool compFeatureArgSplit()
 {
-    return TargetArchitecture::IsArm32 || (TargetOS::IsWindows && TargetArchitecture::IsArm64);
+    return TargetArchitecture::IsLoongArch64 || TargetArchitecture::IsArm32 ||
+           (TargetOS::IsWindows && TargetArchitecture::IsArm64);
 }
 inline bool compUnixX86Abi()
 {
@@ -55,6 +56,8 @@ inline bool compUnixX86Abi()
 #define TARGET_READABLE_NAME "WASM64"
 #elif defined(TARGET_WASM32)
 #define TARGET_READABLE_NAME "WASM32"
+#elif defined(TARGET_LOONGARCH64)
+#define TARGET_READABLE_NAME "LOONGARCH64"
 #else
 #error Unsupported or unset target architecture
 #endif
@@ -77,6 +80,11 @@ inline bool compUnixX86Abi()
 #elif defined(TARGET_WASM)
 #define REGMASK_BITS 32
 #define CSE_CONST_SHARED_LOW_BITS 16
+
+#elif defined(TARGET_LOONGARCH64)
+#define REGMASK_BITS 64
+#define CSE_CONST_SHARED_LOW_BITS 12
+
 #else
 #error Unsupported or unset target architecture
 #endif
@@ -92,7 +100,7 @@ inline bool compUnixX86Abi()
 //                       be assigned during register allocation.
 //    REG_NA           - Used to indicate that a register is either not yet assigned or not required.
 //
-#if defined(TARGET_ARM)
+#if defined(TARGET_ARM) || defined(TARGET_LOONGARCH64)
 enum _regNumber_enum : unsigned
 {
 #define REGDEF(name, rnum, mask, sname) REG_##name = rnum,
@@ -212,7 +220,7 @@ enum _regMask_enum : unsigned
 // In any case, we believe that is OK to freely cast between these types; no information will
 // be lost.
 
-#ifdef TARGET_ARMARCH
+#if defined(TARGET_ARMARCH) || defined(TARGET_LOONGARCH64)
 typedef unsigned __int64 regMaskTP;
 #else
 typedef unsigned       regMaskTP;
@@ -266,6 +274,10 @@ typedef unsigned char   regNumberSmall;
 #include "targetarm64.h"
 #elif defined(TARGET_WASM)
 #include "targetwasm.h"
+#elif defined(TARGET_LOONGARCH64)
+#include "targetloongarch64.h"
+#else
+  #error Unsupported or unset target architecture
 #endif
 
 #ifdef TARGET_XARCH
@@ -573,7 +585,7 @@ inline regMaskTP genRegMask(regNumber reg)
 
 inline regMaskTP genRegMaskFloat(regNumber reg, var_types type /* = TYP_DOUBLE */)
 {
-#if defined(TARGET_AMD64) || defined(TARGET_ARM64) || defined(TARGET_X86) || defined(TARGET_WASM)
+#if defined(TARGET_AMD64) || defined(TARGET_ARM64) || defined(TARGET_X86) || defined(TARGET_WASM) || defined(TARGET_LOONGARCH64)
     assert(genIsValidFloatReg(reg));
     assert((unsigned)reg < ArrLen(regMasks));
     return regMasks[reg];

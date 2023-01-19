@@ -113,7 +113,7 @@ protected:
 private:
 #if defined(TARGET_XARCH)
     static const insFlags instInfo[INS_count];
-#elif defined(TARGET_ARM) || defined(TARGET_ARM64)
+#elif defined(TARGET_ARM) || defined(TARGET_ARM64) || defined(TARGET_LOONGARCH64)
     static const BYTE instInfo[INS_count];
 #else
 #error Unsupported target architecture
@@ -361,7 +361,7 @@ public:
         m_cgInterruptible = value;
     }
 
-#ifdef TARGET_ARMARCH
+#if defined(TARGET_ARMARCH) || defined(TARGET_LOONGARCH64)
 
     bool GetHasTailCalls()
     {
@@ -375,9 +375,9 @@ public:
 
 private:
     bool m_cgInterruptible;
-#ifdef TARGET_ARMARCH
+#if defined(TARGET_ARMARCH) || defined(TARGET_LOONGARCH64)
     bool m_cgHasTailCalls;
-#endif // TARGET_ARMARCH
+#endif // TARGET_ARMARCH || TARGET_LOONGARCH64
 
     //  The following will be set to true if we've determined that we need to
     //  generate a full-blown pointer register map for the current method.
