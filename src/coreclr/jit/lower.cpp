@@ -5922,7 +5922,7 @@ GenTree* Lowering::LowerConstIntDivOrMod(GenTree* node)
             return nullptr;
         }
 
-#if defined(TARGET_XARCH) || defined(TARGET_ARM64) || defined(TARGET_WASM) || defined(TARGET_LOONGARCH64) // TODO Wasm
+#if defined(TARGET_XARCH) || defined(TARGET_ARM64) || defined(TARGET_LOONGARCH64) // TODO Wasm
         ssize_t magic;
         int     shift;
 
@@ -6413,7 +6413,7 @@ PhaseStatus Lowering::DoPhase()
         InsertPInvokeMethodProlog();
     }
 
-#if !defined(TARGET_64BIT) && !defined(TARGET_WASM32)
+#if !defined(TARGET_64BIT)
     DecomposeLongs decomp(comp); // Initialize the long decomposition class.
     if (comp->compLongUsed)
     {
@@ -6436,7 +6436,7 @@ PhaseStatus Lowering::DoPhase()
         /* Make the block publicly available */
         comp->compCurBB = block;
 
-#if !defined(TARGET_64BIT) && !defined(TARGET_WASM32)
+#if !defined(TARGET_64BIT)
         if (comp->compLongUsed)
         {
             decomp.DecomposeBlock(block);

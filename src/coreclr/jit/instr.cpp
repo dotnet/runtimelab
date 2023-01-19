@@ -1589,20 +1589,6 @@ instruction CodeGen::ins_Copy(var_types dstType)
     {
         return INS_mov;
     }
-#elif defined(TARGET_WASM)
-    if (varTypeIsSIMD(dstType))
-    {
-        return INS_movaps;
-    }
-    else if (varTypeIsFloating(dstType))
-    {
-        // Both float and double copy can use movaps
-        return INS_movaps;
-    }
-    else
-    {
-        return INS_mov;
-    }
 #elif defined(TARGET_LOONGARCH64)
     if (varTypeIsFloating(dstType))
     {
@@ -1832,7 +1818,7 @@ instruction CodeGenInterface::ins_StoreFromSrc(regNumber srcReg, var_types dstTy
     }
 }
 
-#if defined(TARGET_XARCH) || defined(TARGET_WASM)
+#if defined(TARGET_XARCH)
 
 instruction CodeGen::ins_MathOp(genTreeOps oper, var_types type)
 {
@@ -2054,8 +2040,6 @@ void CodeGen::instGen_Set_Reg_To_Zero(emitAttr size, regNumber reg, insFlags fla
     GetEmitter()->emitIns_R_R(INS_xor, size, reg, reg);
 #elif defined(TARGET_ARM)
     GetEmitter()->emitIns_R_I(INS_mov, size, reg, 0 ARM_ARG(flags));
-#elif defined(TARGET_WASM)
-    GetEmitter()->emitIns_R_R(INS_xor, size, reg, reg);
 #elif defined(TARGET_ARM64)
     GetEmitter()->emitIns_Mov(INS_mov, size, reg, REG_ZR, /* canSkip */ true);
 #elif defined(TARGET_LOONGARCH64)
