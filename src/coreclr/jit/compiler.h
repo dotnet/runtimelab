@@ -129,7 +129,7 @@ const int BAD_STK_OFFS = 0xBAADF00D; // for LclVarDsc::lvStkOffs
 #endif
 
 //------------------------------------------------------------------------
-// HFA info shared by LclVarDsc and fgArgTabEntry
+// HFA info shared by LclVarDsc and CallArgABIInformation
 //------------------------------------------------------------------------
 inline bool IsHfa(CorInfoHFAElemType kind)
 {
@@ -1683,6 +1683,7 @@ struct FuncInfoDsc
     // that isn't shared between the main function body and funclets.
 };
 
+<<<<<<< HEAD
 struct fgArgTabEntry
 {
     GenTreeCall::Use* use;     // Points to the argument's GenTreeCall::Use in gtCallArgs or gtCallThisArg.
@@ -2495,6 +2496,8 @@ public:
     void Dump(Compiler* compiler) const;
 };
 
+=======
+>>>>>>> dbf5c58a2e90a5dbe52248c5a4cad5e9aa6a4741
 #ifdef DEBUG
 // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 // We have the ability to mark source expressions with "Test Labels."
@@ -2643,7 +2646,6 @@ class Compiler
     friend class UnwindEpilogInfo;
     friend class JitTimer;
     friend class LinearScan;
-    friend class fgArgInfo;
     friend class Rationalizer;
     friend class Phase;
     friend class Lowering;
@@ -2659,6 +2661,7 @@ class Compiler
     friend struct GenTree;
     friend class MorphInitBlockHelper;
     friend class MorphCopyBlockHelper;
+    friend class CallArgs;
 
 #ifdef FEATURE_HW_INTRINSICS
     friend struct HWIntrinsicInfo;
@@ -3163,25 +3166,15 @@ public:
 
     GenTree* gtNewCpObjNode(GenTree* dst, GenTree* src, CORINFO_CLASS_HANDLE structHnd, bool isVolatile);
 
-    GenTreeCall::Use* gtNewCallArgs(GenTree* node);
-    GenTreeCall::Use* gtNewCallArgs(GenTree* node1, GenTree* node2);
-    GenTreeCall::Use* gtNewCallArgs(GenTree* node1, GenTree* node2, GenTree* node3);
-    GenTreeCall::Use* gtNewCallArgs(GenTree* node1, GenTree* node2, GenTree* node3, GenTree* node4);
-    GenTreeCall::Use* gtPrependNewCallArg(GenTree* node, GenTreeCall::Use* args);
-    GenTreeCall::Use* gtInsertNewCallArgAfter(GenTree* node, GenTreeCall::Use* after);
-
     GenTreeCall* gtNewCallNode(gtCallTypes           callType,
                                CORINFO_METHOD_HANDLE handle,
                                var_types             type,
-                               GenTreeCall::Use*     args,
                                const DebugInfo&      di = DebugInfo());
 
-    GenTreeCall* gtNewIndCallNode(GenTree*          addr,
-                                  var_types         type,
-                                  GenTreeCall::Use* args,
-                                  const DebugInfo&  di = DebugInfo());
+    GenTreeCall* gtNewIndCallNode(GenTree* addr, var_types type, const DebugInfo& di = DebugInfo());
 
-    GenTreeCall* gtNewHelperCallNode(unsigned helper, var_types type, GenTreeCall::Use* args = nullptr);
+    GenTreeCall* gtNewHelperCallNode(
+        unsigned helper, var_types type, GenTree* arg1 = nullptr, GenTree* arg2 = nullptr, GenTree* arg3 = nullptr);
 
     GenTreeCall* gtNewRuntimeLookupHelperCallNode(CORINFO_RUNTIME_LOOKUP* pRuntimeLookup,
                                                   GenTree*                ctxTree,
@@ -3450,11 +3443,6 @@ public:
     var_types gtTypeForNullCheck(GenTree* tree);
     void gtChangeOperToNullCheck(GenTree* tree, BasicBlock* block);
 
-    static fgArgTabEntry* gtArgEntryByArgNum(GenTreeCall* call, unsigned argNum);
-    static fgArgTabEntry* gtArgEntryByNode(GenTreeCall* call, GenTree* node);
-    fgArgTabEntry* gtArgEntryByLateArgIndex(GenTreeCall* call, unsigned lateArgInx);
-    static GenTree* gtArgNodeByLateArgInx(GenTreeCall* call, unsigned lateArgInx);
-
     GenTreeOp* gtNewAssignNode(GenTree* dst, GenTree* src);
 
     GenTree* gtNewTempAssign(unsigned         tmp,
@@ -3552,7 +3540,7 @@ public:
 
     bool gtHasLocalsWithAddrOp(GenTree* tree);
 
-    unsigned gtSetCallArgsOrder(const GenTreeCall::UseList& args, bool lateArgs, int* callCostEx, int* callCostSz);
+    unsigned gtSetCallArgsOrder(CallArgs* args, bool lateArgs, int* callCostEx, int* callCostSz);
     unsigned gtSetMultiOpOrder(GenTreeMultiOp* multiOp);
 
     void gtWalkOp(GenTree** op1, GenTree** op2, GenTree* base, bool constOnly);
@@ -3594,8 +3582,6 @@ public:
                               GenTree**    pList,
                               GenTreeFlags GenTreeFlags = GTF_SIDE_EFFECT,
                               bool         ignoreRoot   = false);
-
-    GenTree* gtGetThisArg(GenTreeCall* call);
 
     // Static fields of struct types (and sometimes the types that those are reduced to) are represented by having the
     // static field contain an object pointer to the boxed struct.  This simplifies the GC implementation...but
@@ -3708,8 +3694,10 @@ public:
     void gtDispILLocation(const ILLocation& loc);
     void gtDispStmt(Statement* stmt, const char* msg = nullptr);
     void gtDispBlockStmts(BasicBlock* block);
-    void gtGetArgMsg(GenTreeCall* call, GenTree* arg, unsigned argNum, char* bufp, unsigned bufLength);
-    void gtGetLateArgMsg(GenTreeCall* call, GenTree* arg, int argNum, char* bufp, unsigned bufLength);
+    void gtPrintArgPrefix(GenTreeCall* call, CallArg* arg, char** bufp, unsigned* bufLength);
+    const char* gtGetWellKnownArgNameForArgMsg(WellKnownArg arg);
+    void gtGetArgMsg(GenTreeCall* call, CallArg* arg, char* bufp, unsigned bufLength);
+    void gtGetLateArgMsg(GenTreeCall* call, CallArg* arg, char* bufp, unsigned bufLength);
     void gtDispArgList(GenTreeCall* call, GenTree* lastCallOperand, IndentStack* indentStack);
     void gtDispAnyFieldSeq(FieldSeqNode* fieldSeq);
     void gtDispFieldSeq(FieldSeqNode* pfsn);
@@ -4434,7 +4422,7 @@ protected:
     void impCheckForPInvokeCall(
         GenTreeCall* call, CORINFO_METHOD_HANDLE methHnd, CORINFO_SIG_INFO* sig, unsigned mflags, BasicBlock* block);
     GenTreeCall* impImportIndirectCall(CORINFO_SIG_INFO* sig, const DebugInfo& di = DebugInfo());
-    void impPopArgsForUnmanagedCall(GenTree* call, CORINFO_SIG_INFO* sig);
+    void impPopArgsForUnmanagedCall(GenTreeCall* call, CORINFO_SIG_INFO* sig);
 
     void impInsertHelperCall(CORINFO_HELPER_DESC* helperCall);
     void impHandleAccessAllowed(CorInfoIsAccessAllowedResult result, CORINFO_HELPER_DESC* helperCall);
@@ -4701,8 +4689,8 @@ public:
     GenTreeCall* impReadyToRunHelperToTree(CORINFO_RESOLVED_TOKEN* pResolvedToken,
                                            CorInfoHelpFunc         helper,
                                            var_types               type,
-                                           GenTreeCall::Use*       args               = nullptr,
-                                           CORINFO_LOOKUP_KIND*    pGenericLookupKind = nullptr);
+                                           CORINFO_LOOKUP_KIND*    pGenericLookupKind = nullptr,
+                                           GenTree*                arg1               = nullptr);
 
     bool impIsCastHelperEligibleForClassProbe(GenTree* tree);
     bool impIsCastHelperMayHaveProfileData(CorInfoHelpFunc helper);
@@ -4762,11 +4750,11 @@ private:
                 ((opcode >= CEE_STLOC_0) && (opcode <= CEE_STLOC_3)));
     }
 
-    GenTreeCall::Use* impPopCallArgs(unsigned count, CORINFO_SIG_INFO* sig, GenTreeCall::Use* prefixArgs = nullptr);
+    void impPopCallArgs(unsigned count, CORINFO_SIG_INFO* sig, GenTreeCall* call);
 
     bool impCheckImplicitArgumentCoercion(var_types sigType, var_types nodeType) const;
 
-    GenTreeCall::Use* impPopReverseCallArgs(unsigned count, CORINFO_SIG_INFO* sig, unsigned skipReverseCount = 0);
+    void impPopReverseCallArgs(unsigned count, CORINFO_SIG_INFO* sig, GenTreeCall* call, unsigned skipReverseCount = 0);
 
     //---------------- Spilling the importer stack ----------------------------
 
@@ -5001,10 +4989,10 @@ private:
 
     bool impInlineIsThis(GenTree* tree, InlArgInfo* inlArgInfo);
 
-    bool impInlineIsGuaranteedThisDerefBeforeAnySideEffects(GenTree*          additionalTree,
-                                                            GenTreeCall::Use* additionalCallArgs,
-                                                            GenTree*          dereferencedAddress,
-                                                            InlArgInfo*       inlArgInfo);
+    bool impInlineIsGuaranteedThisDerefBeforeAnySideEffects(GenTree*    additionalTree,
+                                                            CallArgs*   additionalCallArgs,
+                                                            GenTree*    dereferencedAddress,
+                                                            InlArgInfo* inlArgInfo);
 
     void impMarkInlineCandidate(GenTree*               call,
                                 CORINFO_CONTEXT_HANDLE exactContextHnd,
@@ -6113,7 +6101,6 @@ public:
 
     bool fgCastNeeded(GenTree* tree, var_types toType);
     GenTree* fgDoNormalizeOnStore(GenTree* tree);
-    GenTree* fgMakeTmpArgNode(fgArgTabEntry* curArgTabEntry);
 
     // The following check for loops that don't execute calls
     bool fgLoopCallMarked;
@@ -6434,7 +6421,8 @@ private:
 
     GenTree* fgMorphCastIntoHelper(GenTree* tree, int helper, GenTree* oper);
 
-    GenTree* fgMorphIntoHelperCall(GenTree* tree, int helper, GenTreeCall::Use* args, bool morphArgs = true);
+    GenTree* fgMorphIntoHelperCall(
+        GenTree* tree, int helper, bool morphArgs, GenTree* arg1 = nullptr, GenTree* arg2 = nullptr);
 
     GenTree* fgMorphStackArgForVarArgs(unsigned lclNum, var_types varType, unsigned lclOffs);
 
@@ -6485,6 +6473,7 @@ private:
     GenTree* fgMorphArrayIndex(GenTree* tree);
     GenTree* fgMorphExpandCast(GenTreeCast* tree);
     GenTreeFieldList* fgMorphLclArgToFieldlist(GenTreeLclVarCommon* lcl);
+<<<<<<< HEAD
 #ifdef TARGET_WASM
 public:
 #endif
@@ -6492,9 +6481,11 @@ public:
 #ifdef TARGET_WASM
 private:
 #endif
+=======
+>>>>>>> dbf5c58a2e90a5dbe52248c5a4cad5e9aa6a4741
     GenTreeCall* fgMorphArgs(GenTreeCall* call);
 
-    void fgMakeOutgoingStructArgCopy(GenTreeCall* call, GenTreeCall::Use* args, CORINFO_CLASS_HANDLE copyBlkClass);
+    void fgMakeOutgoingStructArgCopy(GenTreeCall* call, CallArg* arg, CORINFO_CLASS_HANDLE copyBlkClass);
 
     GenTree* fgMorphLocalVar(GenTree* tree, bool forceRemorph);
 
@@ -6530,10 +6521,10 @@ private:
 
     GenTree* fgMorphPotentialTailCall(GenTreeCall* call);
     GenTree* fgGetStubAddrArg(GenTreeCall* call);
-    unsigned fgGetArgTabEntryParameterLclNum(GenTreeCall* call, fgArgTabEntry* argTabEntry);
+    unsigned fgGetArgParameterLclNum(GenTreeCall* call, CallArg* arg);
     void fgMorphRecursiveFastTailCallIntoLoop(BasicBlock* block, GenTreeCall* recursiveTailCall);
     Statement* fgAssignRecursiveCallArgToCallerParam(GenTree*         arg,
-                                                     fgArgTabEntry*   argTabEntry,
+                                                     CallArg*         callArg,
                                                      unsigned         lclParamNum,
                                                      BasicBlock*      block,
                                                      const DebugInfo& callDI,
@@ -11400,7 +11391,7 @@ public:
 #endif // defined(UNIX_AMD64_ABI)
 
     void fgMorphMultiregStructArgs(GenTreeCall* call);
-    GenTree* fgMorphMultiregStructArg(GenTree* arg, fgArgTabEntry* fgEntryPtr);
+    GenTree* fgMorphMultiregStructArg(CallArg* arg);
 
     bool killGCRefs(GenTree* tree);
 }; // end of class Compiler
@@ -11749,27 +11740,18 @@ public:
             {
                 GenTreeCall* const call = node->AsCall();
 
-                if (call->gtCallThisArg != nullptr)
+                for (CallArg& arg : call->gtArgs.Args())
                 {
-                    result = WalkTree(&call->gtCallThisArg->NodeRef(), call);
+                    result = WalkTree(&arg.EarlyNodeRef(), call);
                     if (result == fgWalkResult::WALK_ABORT)
                     {
                         return result;
                     }
                 }
 
-                for (GenTreeCall::Use& use : call->Args())
+                for (CallArg& arg : call->gtArgs.LateArgs())
                 {
-                    result = WalkTree(&use.NodeRef(), call);
-                    if (result == fgWalkResult::WALK_ABORT)
-                    {
-                        return result;
-                    }
-                }
-
-                for (GenTreeCall::Use& use : call->LateArgs())
-                {
-                    result = WalkTree(&use.NodeRef(), call);
+                    result = WalkTree(&arg.LateNodeRef(), call);
                     if (result == fgWalkResult::WALK_ABORT)
                     {
                         return result;
