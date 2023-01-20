@@ -1619,6 +1619,7 @@ regNumber CallArgs::GetCustomRegister(Compiler* comp, CorInfoCallConvExtension c
         case WellKnownArg::PInvokeTarget:
             return REG_PINVOKE_TARGET_PARAM;
 
+#if !defined(TARGET_WASM)
         case WellKnownArg::R2RIndirectionCell:
             return REG_R2R_INDIRECT_PARAM;
 
@@ -1627,6 +1628,7 @@ regNumber CallArgs::GetCustomRegister(Compiler* comp, CorInfoCallConvExtension c
             {
                 return REG_VALIDATE_INDIRECT_CALL_ADDR;
             }
+#endif // !TARGET_WASM
 
             break;
 
@@ -12832,6 +12834,14 @@ void Compiler::gtDispTreeRange(LIR::Range& containingRange, GenTree* tree)
     gtDispRange(containingRange.GetTreeRange(tree, &unused));
 }
 
+// TODO-LLVM: delete when https://github.com/dotnet/runtime/pull/68748 merged
+#if TARGET_WASM
+void gtGetPutArgMsg(GenTreePutArgType* arg, char* bufp, unsigned bufLength)
+{
+    sprintf_s(bufp, bufLength, "arg%d%c", arg->GetArgNum(), 0);
+}
+#endif
+
 //------------------------------------------------------------------------
 // Compiler::gtDispLIRNode: dumps a single LIR node.
 //
@@ -12910,8 +12920,8 @@ void Compiler::gtDispLIRNode(GenTree* node, const char* prefixMsg /* = nullptr *
                 // LLVM rewrites the call args, but does not reinitialise the arg infos
                 if (operand->OperIs(GT_PUTARG_TYPE))
                 {
-                    GenTreePutArgType* putAarg = operand->AsPutArgType();
-                    gtGetArgMsg(call, operand, putAarg->GetArgNum(), buf, sizeof(buf));
+                    GenTreePutArgType* putArg = operand->AsPutArgType();
+                    gtGetPutArgMsg(putArg, buf, sizeof(buf));
                 }
                 else
                 {
