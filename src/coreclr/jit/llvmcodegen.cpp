@@ -1909,9 +1909,9 @@ void Llvm::buildCall(GenTreeCall* call)
     std::vector<Value*> argVec = std::vector<Value*>();
 
     GenTreePutArgType* lastArg = nullptr;
-    for (GenTreeCall::Use& use : call->Args())
+    for (CallArg& callArg: call->gtArgs.Args())
     {
-        lastArg = use.GetNode()->AsPutArgType();
+        lastArg = callArg.GetNode()->AsPutArgType();
 
         GenTree* argNode     = lastArg->gtGetOp1();
         Type*    argLlvmType = getLlvmTypeForCorInfoType(lastArg->GetCorInfoType(), lastArg->GetClsHnd());
@@ -2617,9 +2617,9 @@ FunctionType* Llvm::createFunctionTypeForCall(GenTreeCall* call)
 
     std::vector<llvm::Type*> argVec = std::vector<llvm::Type*>();
 
-    for (GenTreeCall::Use& use : call->Args())
+    for (CallArg& callArg: call->gtArgs.Args())
     {
-        GenTreePutArgType* putArg = use.GetNode()->AsPutArgType();
+        GenTreePutArgType* putArg = callArg.GetNode()->AsPutArgType();
         argVec.push_back(getLlvmTypeForCorInfoType(putArg->GetCorInfoType(), putArg->GetClsHnd()));
     }
 
