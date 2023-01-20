@@ -2097,7 +2097,7 @@ void CallArgs::AddFinalArgsAndDetermineABIInfo(Compiler* comp, GenTreeCall* call
         // Push the stub address onto the list of arguments.
         InsertAfterThisOrFirst(comp, indirectCellAddress, WellKnownArg::R2RIndirectionCell);
     }
-
+#endif
     unsigned numArgs = CountArgs();
 
 #ifdef TARGET_X86
