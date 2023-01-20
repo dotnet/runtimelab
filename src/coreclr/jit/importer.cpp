@@ -17447,7 +17447,7 @@ bool Compiler::impReturnInstruction(int prefixFlags, OPCODE& opcode)
                 }
                 else
 #elif defined(TARGET_WASM)
-                assert(!iciCall->HasRetBufArg());
+                assert(!iciCall->gtArgs.HasRetBuffer());
 
                 if (fgNeedReturnSpillTemp())
                 {

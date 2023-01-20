@@ -1969,7 +1969,9 @@ void Compiler::compInit(ArenaAllocator*       pAlloc,
     }
     else
     {
+#ifndef TARGET_WASM
         codeGen = nullptr;
+#endif // !TARGET_WASM
     }
 
     compJmpOpUsed         = false;
