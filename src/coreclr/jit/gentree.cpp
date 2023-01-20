@@ -12906,7 +12906,6 @@ void Compiler::gtDispLIRNode(GenTree* node, const char* prefixMsg /* = nullptr *
             }
             else
             {
-<<<<<<< HEAD
 #ifdef TARGET_WASM
                 // LLVM rewrites the call args, but does not reinitialise the arg infos
                 if (operand->OperIs(GT_PUTARG_TYPE))
@@ -12917,30 +12916,18 @@ void Compiler::gtDispLIRNode(GenTree* node, const char* prefixMsg /* = nullptr *
                 else
                 {
 #endif // TARGET_WASM
-                    fgArgTabEntry* curArgTabEntry = gtArgEntryByNode(call, operand);
-                    assert(curArgTabEntry);
+                    CallArg* curArg = call->gtArgs.FindByNode(operand);
+                    assert(curArg);
 
-                    if (!curArgTabEntry->isLateArg())
+                    if (operand == curArg->GetEarlyNode())
                     {
-                        gtGetArgMsg(call, operand, curArgTabEntry->argNum, buf, sizeof(buf));
+                        gtGetArgMsg(call, curArg, buf, sizeof(buf));
                     }
                     else
                     {
-                        gtGetLateArgMsg(call, operand, curArgTabEntry->GetLateArgInx(), buf, sizeof(buf));
+                        gtGetLateArgMsg(call, curArg, buf, sizeof(buf));
                     }
 #ifdef TARGET_WASM
-=======
-                CallArg* curArg = call->gtArgs.FindByNode(operand);
-                assert(curArg);
-
-                if (operand == curArg->GetEarlyNode())
-                {
-                    gtGetArgMsg(call, curArg, buf, sizeof(buf));
-                }
-                else
-                {
-                    gtGetLateArgMsg(call, curArg, buf, sizeof(buf));
->>>>>>> dbf5c58a2e90a5dbe52248c5a4cad5e9aa6a4741
                 }
 #endif // TARGET_WASM
 

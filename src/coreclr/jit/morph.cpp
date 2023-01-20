@@ -2098,53 +2098,7 @@ void CallArgs::AddFinalArgsAndDetermineABIInfo(Compiler* comp, GenTreeCall* call
         InsertAfterThisOrFirst(comp, indirectCellAddress, WellKnownArg::R2RIndirectionCell);
     }
 
-<<<<<<< HEAD
-    if ((REG_VALIDATE_INDIRECT_CALL_ADDR != REG_ARG_0) && call->IsHelperCall(this, CORINFO_HELP_VALIDATE_INDIRECT_CALL))
-    {
-        assert(call->gtCallArgs != nullptr);
-        GenTreeCall::Use* args = call->gtCallArgs;
-        GenTree*          tar  = args->GetNode();
-        nonStandardArgs.Add(tar, REG_VALIDATE_INDIRECT_CALL_ADDR, NonStandardArgKind::ValidateIndirectCallTarget);
-    }
-#endif
-
-    // Allocate the fgArgInfo for the call node;
-    //
-    call->fgArgInfo = new (this, CMK_Unknown) fgArgInfo(this, call, numArgs);
-
-    // Add the 'this' argument value, if present.
-    if (call->gtCallThisArg != nullptr)
-    {
-        argx = call->gtCallThisArg->GetNode();
-        assert(argIndex == 0);
-        assert(call->gtCallType == CT_USER_FUNC || call->gtCallType == CT_INDIRECT);
-        assert(varTypeIsGC(argx) || (argx->gtType == TYP_I_IMPL));
-
-        const regNumber regNum        = genMapIntRegArgNumToRegNum(intArgRegNum);
-        const unsigned  numRegs       = 1;
-        const unsigned  byteSize      = TARGET_POINTER_SIZE;
-        const unsigned  byteAlignment = TARGET_POINTER_SIZE;
-        const bool      isStruct      = false;
-        const bool      isFloatHfa    = false;
-
-        // This is a register argument - put it in the table.
-        call->fgArgInfo->AddRegArg(argIndex, argx, call->gtCallThisArg, regNum, numRegs, byteSize, byteAlignment,
-                                   isStruct, isFloatHfa,
-                                   callIsVararg UNIX_AMD64_ABI_ONLY_ARG(REG_STK) UNIX_AMD64_ABI_ONLY_ARG(0)
-                                       UNIX_AMD64_ABI_ONLY_ARG(0) UNIX_AMD64_ABI_ONLY_ARG(nullptr));
-
-        intArgRegNum++;
-#ifdef WINDOWS_AMD64_ABI
-        // Whenever we pass an integer register argument
-        // we skip the corresponding floating point register argument
-        fltArgRegNum++;
-#endif // WINDOWS_AMD64_ABI
-        argIndex++;
-        DEBUG_ARG_SLOTS_ONLY(argSlots++;)
-    }
-=======
     unsigned numArgs = CountArgs();
->>>>>>> dbf5c58a2e90a5dbe52248c5a4cad5e9aa6a4741
 
 #ifdef TARGET_X86
 // Compute the maximum number of arguments that can be passed in registers.

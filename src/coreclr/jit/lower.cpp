@@ -1447,13 +1447,7 @@ void Lowering::LowerArg(GenTreeCall* call, CallArg* callArg, bool late)
             // For longs, we will replace the GT_LONG with a GT_FIELD_LIST, and put that under a PUTARG_STK.
             // Although the hi argument needs to be pushed first, that will be handled by the general case,
             // in which the fields will be reversed.
-<<<<<<< HEAD
-#ifdef DEBUG_ARG_SLOTS
-            assert(info->numSlots == 2);
-#endif
-=======
             assert(callArg->AbiInfo.NumSlots == 2);
->>>>>>> dbf5c58a2e90a5dbe52248c5a4cad5e9aa6a4741
             newArg->SetRegNum(REG_STK);
             BlockRange().InsertBefore(arg, fieldList, newArg);
         }

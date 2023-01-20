@@ -16290,15 +16290,11 @@ void Compiler::impImportBlockCode(BasicBlock* block)
                     { // compDonotInline()
                         return;
                     }
-<<<<<<< HEAD
 #if defined(TARGET_WASM) // TODO-LLVM: delete when IL module gone
-                    op1 = gtNewHelperCallNode(helper, TYP_REF, gtNewCallArgs(op2, op1));
+                    op1 = gtNewHelperCallNode(helper, TYP_REF, op2, op1);
 #else
-                    op1 = gtNewHelperCallNode(helper, TYP_VOID, gtNewCallArgs(op2, op1));
-#endif // TARGET_WASM
-=======
                     op1 = gtNewHelperCallNode(helper, TYP_VOID, op2, op1);
->>>>>>> dbf5c58a2e90a5dbe52248c5a4cad5e9aa6a4741
+#endif // TARGET_WASM
 
                     op1 = new (this, GT_COLON) GenTreeColon(TYP_VOID, gtNewNothingNode(), op1);
                     op1 = gtNewQmarkNode(TYP_VOID, condBox, op1->AsColon());
