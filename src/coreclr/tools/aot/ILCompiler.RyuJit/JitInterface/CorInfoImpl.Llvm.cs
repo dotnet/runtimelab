@@ -203,17 +203,12 @@ namespace Internal.JitInterface
             var curSequencePoint = _this.GetSequencePoint(0);
             string fullPath = curSequencePoint.Document;
 
-            if (fullPath == null) return null;
+            if (string.IsNullOrEmpty(fullPath))
+            {
+                return null;
+            }
 
             return (byte*)_this.GetPin(StringToUTF8(fullPath));
-        }
-
-        [UnmanagedCallersOnly]
-        public static uint firstSequencePointLineNumber(IntPtr thisHandle)
-        {
-            var _this = GetThis(thisHandle);
-
-            return (uint)_this.GetSequencePoint(0).LineNumber;
         }
 
         [UnmanagedCallersOnly]
@@ -335,7 +330,6 @@ namespace Internal.JitInterface
             AddCodeReloc,
             IsRuntimeImport,
             GetDocumentFileName,
-            FirstSequencePointLineNumber,
             GetOffsetLineNumber,
             StructIsWrappedPrimitive,
             PadOffset,
@@ -357,7 +351,6 @@ namespace Internal.JitInterface
             callbacks[(int)EEApiId.AddCodeReloc] = (delegate* unmanaged<IntPtr, void*, void>)&addCodeReloc;
             callbacks[(int)EEApiId.IsRuntimeImport] = (delegate* unmanaged<IntPtr, CORINFO_METHOD_STRUCT_*, uint>)&isRuntimeImport;
             callbacks[(int)EEApiId.GetDocumentFileName] = (delegate* unmanaged<IntPtr, byte*>)&getDocumentFileName;
-            callbacks[(int)EEApiId.FirstSequencePointLineNumber] = (delegate* unmanaged<IntPtr, uint>)&firstSequencePointLineNumber;
             callbacks[(int)EEApiId.GetOffsetLineNumber] = (delegate* unmanaged<IntPtr, uint, uint>)&getOffsetLineNumber;
             callbacks[(int)EEApiId.StructIsWrappedPrimitive] = (delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, CorInfoType, uint>)&structIsWrappedPrimitive;
             callbacks[(int)EEApiId.PadOffset] = (delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, uint, uint>)&padOffset;

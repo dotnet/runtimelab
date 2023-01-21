@@ -27,7 +27,6 @@ enum class EEApiId
     AddCodeReloc,
     IsRuntimeImport,
     GetDocumentFileName,
-    FirstSequencePointLineNumber,
     GetOffsetLineNumber,
     StructIsWrappedPrimitive,
     PadOffset,
@@ -689,12 +688,6 @@ bool Llvm::IsRuntimeImport(CORINFO_METHOD_HANDLE methodHandle)
 const char* Llvm::GetDocumentFileName()
 {
     return CallEEApi<EEApiId::GetDocumentFileName, const char*>();
-}
-
-uint32_t Llvm::FirstSequencePointLineNumber()
-{
-    // TODO-LLVM: unused, delete.
-    return CallEEApi<EEApiId::FirstSequencePointLineNumber, uint32_t>();
 }
 
 uint32_t Llvm::GetOffsetLineNumber(unsigned ilOffset)

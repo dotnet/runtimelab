@@ -201,7 +201,6 @@ private:
     void AddCodeReloc(void* handle);
     bool IsRuntimeImport(CORINFO_METHOD_HANDLE methodHandle);
     const char* GetDocumentFileName();
-    uint32_t FirstSequencePointLineNumber();
     uint32_t GetOffsetLineNumber(unsigned ilOffset);
     bool StructIsWrappedPrimitive(CORINFO_CLASS_HANDLE typeHandle, CorInfoType corInfoType);
     uint32_t PadOffset(CORINFO_CLASS_HANDLE typeHandle, unsigned atOffset);
