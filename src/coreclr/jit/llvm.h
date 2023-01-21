@@ -79,20 +79,6 @@ struct HelperFuncInfo
     size_t GetSigArgCount() const;
 };
 
-struct JitStdStringKeyFuncs : JitKeyFuncsDefEquals<std::string>
-{
-    static unsigned GetHashCode(const std::string& val)
-    {
-        return static_cast<unsigned>(std::hash<std::string>()(val));
-    }
-};
-
-struct DebugMetadata
-{
-    llvm::DIFile* fileMetadata;
-    llvm::DICompileUnit* diCompileUnit;
-};
-
 struct PhiPair
 {
     GenTreePhi* irPhiNode;
@@ -126,7 +112,6 @@ struct FunctionInfo
 // visibility purposes even as some are only needed in other compilation units.
 //
 extern Module*                                                _module;
-extern llvm::DIBuilder*                                       _diBuilder;
 extern LLVMContext                                            _llvmContext;
 extern Function*                                              _doNothingFunction;
 extern std::unordered_map<CORINFO_CLASS_HANDLE, Type*>*       _llvmStructs;
@@ -137,12 +122,17 @@ class Llvm
 private:
     Compiler* _compiler;
     Compiler::Info _info;
+    CORINFO_SIG_INFO _sigInfo; // sigInfo of function being compiled
     GCInfo* _gcInfo = nullptr;
 
-    CORINFO_SIG_INFO _sigInfo; // sigInfo of function being compiled
-    LIR::Range* _currentRange;
-    BasicBlock* m_currentBlock;
-    DebugInfo _currentOffset;
+    // Used by both lowering and codegen.
+    BasicBlock* m_currentBlock = nullptr;
+
+    // Lowering members.
+    LIR::Range m_prologRange = LIR::Range();
+    LIR::Range* m_currentRange = nullptr;
+
+    // Codegen members.
     llvm::IRBuilder<> _builder;
     JitHashTable<BasicBlock*, JitPtrKeyFuncs<BasicBlock>, LlvmBlockRange> _blkToLlvmBlksMap;
     JitHashTable<GenTree*, JitPtrKeyFuncs<GenTree>, Value*> _sdsuMap;
@@ -156,17 +146,15 @@ private:
     unsigned m_currentProtectedRegionIndex = EHblkDsc::NO_ENCLOSING_INDEX;
     LlvmBlockRange* m_currentLlvmBlocks = nullptr;
 
-    // DWARF
-    llvm::DILocation* _currentOffsetDiLocation;
-    llvm::DISubprogram* _debugFunction;
-    DebugMetadata  _debugMetadata;
-    JitHashTable<std::string, JitStdStringKeyFuncs, DebugMetadata> _debugMetadataMap;
+    // DWARF debug info.
+    llvm::DIBuilder* m_diBuilder = nullptr;
+    llvm::DISubprogram* m_diFunction = nullptr;
 
-    unsigned _shadowStackLocalsSize;
+    unsigned _shadowStackLocalsSize = 0;
     unsigned _originalShadowStackLclNum = BAD_VAR_NUM;
     unsigned _shadowStackLclNum = BAD_VAR_NUM;
     unsigned _retAddressLclNum = BAD_VAR_NUM;
-    unsigned _llvmArgCount;
+    unsigned _llvmArgCount = 0;
 
     // ================================================================================================================
     // |                                                   General                                                    |
@@ -181,7 +169,7 @@ public:
 private:
     LIR::Range& CurrentRange()
     {
-        return *_currentRange;
+        return *m_currentRange;
     }
     BasicBlock* CurrentBlock() const
     {
@@ -247,12 +235,13 @@ public:
 
 private:
     void lowerLocals();
-    void lowerBlocks();
-
     void populateLlvmArgNums();
     void assignShadowStackOffsets(std::vector<LclVarDsc*>& shadowStackLocals, unsigned shadowStackParamCount);
     void initializeLocalInProlog(unsigned lclNum, GenTree* value);
 
+    void insertProlog();
+
+    void lowerBlocks();
     void lowerBlock(BasicBlock* block);
     void lowerStoreLcl(GenTreeLclVarCommon* storeLclNode);
     void lowerFieldOfDependentlyPromotedStruct(GenTree* node);
@@ -295,6 +284,7 @@ private:
     const unsigned ROOT_FUNC_IDX = 0;
 
     bool initializeFunctions();
+    void initializeDebugInfo();
     void generateProlog();
     void initializeLocals();
     void generateBlock(BasicBlock* block);
@@ -306,7 +296,6 @@ private:
     Value* consumeValue(GenTree* node, Type* targetLlvmType = nullptr);
     void mapGenTreeToValue(GenTree* node, Value* nodeValue);
 
-    void startImportingNode();
     void visitNode(GenTree* node);
 
     void buildLocalVar(GenTreeLclVar* lclVar);
@@ -339,6 +328,7 @@ private:
     void buildNullCheck(GenTreeIndir* nullCheckNode);
     void buildBoundsCheck(GenTreeBoundsChk* boundsCheck);
     void buildCkFinite(GenTreeUnOp* ckNode);
+    void buildILOffset(GenTreeILOffset* ilOffsetNode);
 
     void buildCallFinally(BasicBlock* block);
 
@@ -368,8 +358,7 @@ private:
     Value* getShadowStackForCallee();
     Value* getOriginalShadowStack();
 
-    DebugMetadata getOrCreateDebugMetadata(const char* documentFileName);
-    llvm::DILocation* createDebugFunctionAndDiLocation(struct DebugMetadata debugMetadata, unsigned int lineNo);
+    llvm::DILocation* createDebugLocation(unsigned lineNo);
     llvm::DILocation* getArtificialDebugLocation();
 
     void setCurrentEmitContextForBlock(BasicBlock* block);

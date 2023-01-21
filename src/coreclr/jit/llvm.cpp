@@ -8,11 +8,10 @@
 #include "llvm/Bitcode/BitcodeWriter.h"
 #pragma warning (error: 4459)
 
-LLVMContext      _llvmContext;
-Module*          _module            = nullptr;
-llvm::DIBuilder* _diBuilder         = nullptr;
-char*            _outputFileName;
-Function*        _doNothingFunction;
+LLVMContext _llvmContext;
+Module*     _module = nullptr;
+char*       _outputFileName;
+Function*   _doNothingFunction;
 
 std::unordered_map<CORINFO_CLASS_HANDLE, Type*>* _llvmStructs = new std::unordered_map<CORINFO_CLASS_HANDLE, Type*>();
 std::unordered_map<CORINFO_CLASS_HANDLE, StructDesc*>* _structDescMap = new std::unordered_map<CORINFO_CLASS_HANDLE, StructDesc*>();
@@ -105,18 +104,16 @@ Llvm::Llvm(Compiler* compiler)
     _builder(_llvmContext),
     _blkToLlvmBlksMap(compiler->getAllocator(CMK_Codegen)),
     _sdsuMap(compiler->getAllocator(CMK_Codegen)),
-    _localsMap(compiler->getAllocator(CMK_Codegen)),
-    _debugMetadataMap(compiler->getAllocator(CMK_Codegen))
+    _localsMap(compiler->getAllocator(CMK_Codegen))
 {
 }
 
 void Llvm::llvmShutdown()
 {
-    if (_diBuilder != nullptr)
+    if (_module->getNamedMetadata("llvm.dbg.cu") != nullptr)
     {
         _module->addModuleFlag(llvm::Module::Warning, "Dwarf Version", 4);
         _module->addModuleFlag(llvm::Module::Warning, "Debug Info Version", 3);
-        _diBuilder->finalize();
     }
 
     std::error_code ec;
@@ -696,6 +693,7 @@ const char* Llvm::GetDocumentFileName()
 
 uint32_t Llvm::FirstSequencePointLineNumber()
 {
+    // TODO-LLVM: unused, delete.
     return CallEEApi<EEApiId::FirstSequencePointLineNumber, uint32_t>();
 }
 

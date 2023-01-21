@@ -29,17 +29,7 @@ void Llvm::Compile()
         return;
     }
 
-    _debugFunction = nullptr;
-    _debugMetadata.diCompileUnit = nullptr;
-
-    if (_compiler->opts.compDbgInfo)
-    {
-        const char* documentFileName = GetDocumentFileName();
-        if (documentFileName && *documentFileName != '\0')
-        {
-            _debugMetadata = getOrCreateDebugMetadata(documentFileName);
-        }
-    }
+    initializeDebugInfo();
 
     JITDUMPEXEC(_compiler->fgDispBasicBlocks());
     JITDUMPEXEC(_compiler->fgDispHandlerTab());
@@ -76,9 +66,9 @@ void Llvm::Compile()
 
     fillPhis();
 
-    if (_debugFunction != nullptr)
+    if (m_diFunction != nullptr)
     {
-        _diBuilder->finalizeSubprogram(_debugFunction);
+        m_diBuilder->finalize();
     }
 
 #if DEBUG
@@ -207,12 +197,70 @@ bool Llvm::initializeFunctions()
     return false;
 }
 
+void Llvm::initializeDebugInfo()
+{
+    if (!_compiler->opts.compDbgInfo)
+    {
+        return;
+    }
+
+    const char* documentFileName = GetDocumentFileName();
+    if (documentFileName == nullptr)
+    {
+        return;
+    }
+
+    // Check Unix and Windows path styles
+    std::string fullPath = documentFileName;
+    std::size_t botDirPos = fullPath.find_last_of("/");
+    if (botDirPos == std::string::npos)
+    {
+        botDirPos = fullPath.find_last_of("\\");
+    }
+    std::string directory = "";
+    std::string fileName;
+    if (botDirPos != std::string::npos)
+    {
+        directory = fullPath.substr(0, botDirPos);
+        fileName = fullPath.substr(botDirPos + 1, fullPath.length());
+    }
+    else
+    {
+        fileName = fullPath;
+    }
+
+
+    m_diBuilder = new (_compiler->getAllocator(CMK_DebugInfo)) llvm::DIBuilder(*_module);
+
+    // TODO-LLVM: we are allocating a new CU for each compiled function, which is rather inefficient. We should instead
+    // allocate one CU per file.
+    llvm::DIFile* fileMetadata = m_diBuilder->createFile(fileName, directory);
+    m_diBuilder->createCompileUnit(llvm::dwarf::DW_LANG_C /* no dotnet choices in the enum */, fileMetadata, "ILC",
+                                   _compiler->opts.OptimizationEnabled(), "", 1, "", llvm::DICompileUnit::FullDebug,
+                                   0, false);
+
+    // TODO-LLVM: function parameter types.
+    llvm::DISubroutineType* functionType = m_diBuilder->createSubroutineType({});
+    uint32_t lineNumber = GetOffsetLineNumber(0);
+
+    // TODO-LLVM: "getMethodName" is meant for (Jit) debugging. Find/add a more suitable API.
+    const char* methodName = _info.compCompHnd->getMethodName(_info.compMethodHnd, nullptr);
+    m_diFunction =
+        m_diBuilder->createFunction(fileMetadata, methodName, methodName, fileMetadata, lineNumber, functionType,
+                                    lineNumber, llvm::DINode::FlagZero,
+                                    llvm::DISubprogram::SPFlagDefinition | llvm::DISubprogram::SPFlagLocalToUnit);
+
+    // TODO-LLVM-EH: debugging in funclets.
+    getRootLlvmFunction()->setSubprogram(m_diFunction);
+}
+
 void Llvm::generateProlog()
 {
     JITDUMP("\n=============== Generating prolog:\n");
 
     llvm::BasicBlock* prologLlvmBlock = getOrCreatePrologLlvmBlockForFunction(ROOT_FUNC_IDX);
     _builder.SetInsertPoint(prologLlvmBlock->getTerminator());
+    _builder.SetCurrentDebugLocation(llvm::DebugLoc()); // By convention, prologs have no debug info.
 
     initializeLocals();
 }
@@ -334,7 +382,6 @@ void Llvm::generateBlock(BasicBlock* block)
 
     for (GenTree* node : LIR::AsRange(block))
     {
-        startImportingNode();
         visitNode(node);
     }
 
@@ -1094,17 +1141,6 @@ void Llvm::mapGenTreeToValue(GenTree* node, Value* nodeValue)
     }
 }
 
-void Llvm::startImportingNode()
-{
-    if (_debugMetadata.diCompileUnit != nullptr && _currentOffsetDiLocation == nullptr)
-    {
-        unsigned int lineNo = GetOffsetLineNumber(_currentOffset.GetLocation().GetOffset());
-
-        _currentOffsetDiLocation = createDebugFunctionAndDiLocation(_debugMetadata, lineNo);
-        _builder.SetCurrentDebugLocation(_currentOffsetDiLocation);
-    }
-}
-
 void Llvm::visitNode(GenTree* node)
 {
 #ifdef DEBUG
@@ -1152,10 +1188,6 @@ void Llvm::visitNode(GenTree* node)
         case GT_CNS_INT:
         case GT_CNS_LNG:
             buildIntegralConst(node->AsIntConCommon());
-            break;
-        case GT_IL_OFFSET:
-            _currentOffset = node->AsILOffset()->gtStmtDI;
-            _currentOffsetDiLocation = nullptr;
             break;
         case GT_IND:
             buildInd(node->AsIndir());
@@ -1237,6 +1269,9 @@ void Llvm::visitNode(GenTree* node)
         case GT_OR:
         case GT_XOR:
             buildBinaryOperation(node);
+            break;
+        case GT_IL_OFFSET:
+            buildILOffset(node->AsILOffset());
             break;
         default:
             failFunctionCompilation();
@@ -2339,6 +2374,28 @@ void Llvm::buildCkFinite(GenTreeUnOp* ckNode)
     mapGenTreeToValue(ckNode, opValue);
 }
 
+void Llvm::buildILOffset(GenTreeILOffset* ilOffsetNode)
+{
+    if (m_diFunction == nullptr)
+    {
+        return;
+    }
+
+    // TODO-LLVM: support accurate debug info for inlinees.
+    DebugInfo debugInfo = ilOffsetNode->gtStmtDI.GetRoot();
+    if (!debugInfo.IsValid())
+    {
+        // Leave the current DI location unchanged.
+        return;
+    }
+
+    unsigned ilOffset = debugInfo.GetLocation().GetOffset();
+    unsigned lineNo = GetOffsetLineNumber(ilOffset);
+    llvm::DILocation* diLocation = createDebugLocation(lineNo);
+
+    _builder.SetCurrentDebugLocation(diLocation);
+}
+
 void Llvm::buildCallFinally(BasicBlock* block)
 {
     assert(block->bbJumpKind == BBJ_CALLFINALLY);
@@ -2778,74 +2835,21 @@ Value* Llvm::getOriginalShadowStack()
     return getCurrentLlvmFunction()->getArg(1);
 }
 
-DebugMetadata Llvm::getOrCreateDebugMetadata(const char* documentFileName)
+llvm::DILocation* Llvm::createDebugLocation(unsigned lineNo)
 {
-    std::string fullPath = documentFileName;
-    DebugMetadata debugMetadata;
-    if (!_debugMetadataMap.Lookup(fullPath, &debugMetadata))
-    {
-        // check Unix and Windows path styles
-        std::size_t botDirPos = fullPath.find_last_of("/");
-        if (botDirPos == std::string::npos)
-        {
-            botDirPos = fullPath.find_last_of("\\");
-        }
-        std::string directory = ""; // is it possible there is never a directory?
-        std::string fileName;
-        if (botDirPos != std::string::npos)
-        {
-            directory = fullPath.substr(0, botDirPos);
-            fileName = fullPath.substr(botDirPos + 1, fullPath.length());
-        }
-        else
-        {
-            fileName = fullPath;
-        }
-
-        _diBuilder                 = new llvm::DIBuilder(*_module);
-        llvm::DIFile* fileMetadata = _diBuilder->createFile(fileName, directory);
-
-        llvm::DICompileUnit* compileUnit =
-            _diBuilder->createCompileUnit(llvm::dwarf::DW_LANG_C /* no dotnet choices in the enum */, fileMetadata,
-                                          "ILC", _compiler->opts.OptimizationEnabled(), "", 1, "",
-                                          llvm::DICompileUnit::DebugEmissionKind::FullDebug, 0, 0, 0,
-                                          llvm::DICompileUnit::DebugNameTableKind::Default, false, "");
-
-        debugMetadata = {fileMetadata, compileUnit};
-        _debugMetadataMap.Set(fullPath, debugMetadata);
-    }
-
-    return debugMetadata;
-}
-
-llvm::DILocation* Llvm::createDebugFunctionAndDiLocation(DebugMetadata debugMetadata, unsigned int lineNo)
-{
-    if (_debugFunction == nullptr)
-    {
-        llvm::DISubroutineType* functionMetaType = _diBuilder->createSubroutineType({} /* TODO - function parameter types*/, llvm::DINode::DIFlags::FlagZero);
-        uint32_t lineNumber = FirstSequencePointLineNumber();
-
-        const char* methodName = _info.compCompHnd->getMethodName(_info.compMethodHnd, nullptr);
-        _debugFunction = _diBuilder->createFunction(debugMetadata.fileMetadata, methodName,
-                                                    methodName, debugMetadata.fileMetadata, lineNumber,
-                                                    functionMetaType, lineNumber, llvm::DINode::DIFlags::FlagZero,
-                                                    llvm::DISubprogram::DISPFlags::SPFlagDefinition |
-                                                    llvm::DISubprogram::DISPFlags::SPFlagLocalToUnit);
-        // TODO-LLVM-EH: debugging in funclets.
-        getRootLlvmFunction()->setSubprogram(_debugFunction);
-    }
-    return llvm::DILocation::get(_llvmContext, lineNo, 0, _debugFunction);
+    assert(m_diFunction != nullptr);
+    return llvm::DILocation::get(_llvmContext, lineNo, 0, m_diFunction);
 }
 
 llvm::DILocation* Llvm::getArtificialDebugLocation()
 {
-    if (_debugFunction == nullptr)
+    if (m_diFunction == nullptr)
     {
         return nullptr;
     }
 
     // Line number "0" is used to represent non-user code in DWARF.
-    return llvm::DILocation::get(_llvmContext, 0, 0, _debugFunction);
+    return createDebugLocation(0);
 }
 
 llvm::BasicBlock* Llvm::getCurrentLlvmBlock() const

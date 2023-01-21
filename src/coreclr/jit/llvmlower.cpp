@@ -12,6 +12,7 @@
 void Llvm::Lower()
 {
     lowerLocals();
+    insertProlog();
     lowerBlocks();
 }
 
@@ -32,8 +33,6 @@ void Llvm::lowerLocals()
 
     std::vector<LclVarDsc*> shadowStackLocals;
     unsigned shadowStackParamCount = 0;
-
-    _shadowStackLocalsSize = 0;
 
     for (unsigned lclNum = 0; lclNum < _compiler->lvaCount; lclNum++)
     {
@@ -291,10 +290,7 @@ void Llvm::initializeLocalInProlog(unsigned lclNum, GenTree* value)
 {
     JITDUMP("Adding initialization for V%02u, %s:\n", lclNum, _compiler->lvaGetDesc(lclNum)->lvReason);
 
-    _compiler->fgEnsureFirstBBisScratch();
-    LIR::Range& firstBlockRange = LIR::AsRange(_compiler->fgFirstBB);
-
-    firstBlockRange.InsertAtBeginning(value);
+    m_prologRange.InsertAtEnd(value);
 
     // TYP_BLK locals have to be handled specially as they can only be referenced indirectly.
     // TODO-LLVM: use STORE_LCL_FLD<struct> here once enough of upstream is merged.
@@ -304,20 +300,44 @@ void Llvm::initializeLocalInProlog(unsigned lclNum, GenTree* value)
     {
         GenTree* lclAddr = _compiler->gtNewLclVarAddrNode(lclNum);
         lclAddr->gtFlags |= GTF_VAR_DEF;
-        firstBlockRange.InsertAfter(value, lclAddr);
+        m_prologRange.InsertAtEnd(lclAddr);
 
         ClassLayout* layout = _compiler->typGetBlkLayout(varDsc->lvExactSize);
         store = new (_compiler, GT_STORE_BLK) GenTreeBlk(GT_STORE_BLK, TYP_STRUCT, lclAddr, value, layout);
         store->gtFlags |= (GTF_ASG | GTF_IND_NONFAULTING);
-        firstBlockRange.InsertAfter(lclAddr, store);
     }
     else
     {
         store = _compiler->gtNewStoreLclVar(lclNum, value);
-        firstBlockRange.InsertAfter(value, store);
     }
 
-    DISPTREERANGE(firstBlockRange, store);
+    m_prologRange.InsertAtEnd(store);
+
+    DISPTREERANGE(m_prologRange, store);
+}
+
+void Llvm::insertProlog()
+{
+    if (!m_prologRange.IsEmpty())
+    {
+        _compiler->fgEnsureFirstBBisScratch();
+    }
+
+    LIR::Range& firstBlockRange = LIR::AsRange(_compiler->fgFirstBB);
+    if (firstBlockRange.IsEmpty() || !firstBlockRange.FirstNode()->OperIs(GT_IL_OFFSET) ||
+        !firstBlockRange.FirstNode()->AsILOffset()->gtStmtDI.GetRoot().IsValid())
+    {
+        // Insert a zero-offset ILOffset to notify codegen this is the start of user code.
+        DebugInfo zeroILOffsetDi =
+            DebugInfo(_compiler->compInlineContext, ILLocation(0, /* isStackEmpty */ true, /* isCall */ false));
+        GenTree* zeroILOffsetNode = new (_compiler, GT_IL_OFFSET) GenTreeILOffset(zeroILOffsetDi);
+        firstBlockRange.InsertAtBeginning(zeroILOffsetNode);
+    }
+
+    if (!m_prologRange.IsEmpty())
+    {
+        firstBlockRange.InsertAtBeginning(std::move(m_prologRange));
+    }
 }
 
 void Llvm::lowerBlocks()
@@ -348,7 +368,7 @@ void Llvm::lowerBlocks()
 void Llvm::lowerBlock(BasicBlock* block)
 {
     m_currentBlock = block;
-    _currentRange = &LIR::AsRange(block);
+    m_currentRange = &LIR::AsRange(block);
 
     for (GenTree* node : CurrentRange())
     {
