@@ -3095,6 +3095,12 @@ void CallArgs::AddFinalArgsAndDetermineABIInfo(Compiler* comp, GenTreeCall* call
     m_abiInformationDetermined = true;
 }
 
+
+// normally in target<arch>.h but llvm/wasm does not have that file and seems overkill for this one constant
+#if TARGET_WASM
+#define MIN_ARG_AREA_FOR_CALL 0
+#endif
+
 //------------------------------------------------------------------------
 // OutgoingArgsStackSize:
 //   Compute the number of bytes allocated on the stack for arguments to this call.
