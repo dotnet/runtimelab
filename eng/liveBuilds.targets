@@ -176,6 +176,10 @@
         $(LibrariesNativeArtifactsPath)*.pdb"
         IsNative="true"
         Exclude="@(ExcludeNativeLibrariesRuntimeFiles)" />
+      <LibrariesRuntimeFiles Condition="'$(TargetOS)' == 'Browser' and '$(RuntimeFlavor)' == 'CoreCLR'"
+                             Include="
+        $(LibrariesNativeArtifactsPath)pal_random.lib.js;"
+        IsNative="true" />
       <LibrariesRuntimeFiles Condition="'$(TargetOS)' == 'Browser' and '$(RuntimeFlavor)' == 'Mono'"
                              Include="
         $(LibrariesNativeArtifactsPath)dotnet.js;
