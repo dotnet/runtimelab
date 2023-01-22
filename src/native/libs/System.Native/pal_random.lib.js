@@ -18,7 +18,41 @@ const DotNetEntropyLib = {
     },
     dotnet_browser_entropy: function (buffer, bufferLength) {
         // check that we have crypto available
-        if (typeof crypto === 'object' && typeof crypto['getRandomValues'] === 'function') {
+        let cryptoAvailable = typeof crypto === 'object' && typeof crypto['getRandomValues'] === 'function';
+
+        // TODO-LLVM: Can we upstream this? Mono has this code in "polyfills.ts", part of the runtime startup.
+        if (ENVIRONMENT_IS_NODE && !cryptoAvailable)
+        {
+            if (!globalThis.crypto) {
+                globalThis.crypto = {};
+            }
+            if (!globalThis.crypto.getRandomValues) {
+                let nodeCrypto = undefined;
+                try {
+                    nodeCrypto = require("node:crypto");
+                } catch {
+                    // Noop, error throwing polyfill provided bellow
+                }
+
+                if (!nodeCrypto) {
+                    globalThis.crypto.getRandomValues = function () {
+                        throw new Error("Using node without crypto support. To enable current operation, either provide polyfill for 'globalThis.crypto.getRandomValues' or enable 'node:crypto' module.");
+                    };
+                } else if (nodeCrypto.webcrypto) {
+                    globalThis.crypto = nodeCrypto.webcrypto;
+                } else if (nodeCrypto.randomBytes) {
+                    globalThis.crypto.getRandomValues = function (buffer) {
+                        if (buffer) {
+                            buffer.set(nodeCrypto.randomBytes(buffer.length));
+                        }
+                    };
+                }
+
+                cryptoAvailable = true;
+            }
+        }
+
+        if (cryptoAvailable) {
             DOTNETENTROPY.getBatchedRandomValues(buffer, bufferLength)
             return 0;
         } else {
