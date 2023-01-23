@@ -547,10 +547,11 @@
 
     <!-- Set IlcToolsPath for cross compilation -->
     <PropertyGroup>
-      <IlcToolsPath>$([MSBuild]::NormalizeDirectory('$(RepoRoot)', 'artifacts', 'bin', 'coreclr', '$(HostOS).$(BuildArchitecture).$(CoreCLRConfiguration)\ilc'))</IlcToolsPath>
+      <IlcConfig Condition="'$(IlcConfig)' == ''">$(CoreCLRConfiguration)</IlcConfig>
+      <IlcToolsPath>$([MSBuild]::NormalizeDirectory('$(RepoRoot)', 'artifacts', 'bin', 'coreclr', '$(HostOS).$(BuildArchitecture).$(IlcConfig)\ilc'))</IlcToolsPath>
     </PropertyGroup>
 
     <Error Condition="!Exists('$(IlcToolsPath)')"
-           Text="'$(IlcToolsPath)' does not exist. Subsets clr.jit, clr.wasmjit and clr.tools for $(HostOS) $(BuildArchitecture) in $(CoreCLRConfiguration) configuration must be built before building this project." />
+           Text="'$(IlcToolsPath)' does not exist. Subsets clr.jit, clr.wasmjit and clr.tools for $(HostOS) $(BuildArchitecture) in $(IlcConfig) configuration must be built before building this project." />
   </Target>
 </Project>
