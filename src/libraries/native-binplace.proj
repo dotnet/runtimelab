@@ -16,6 +16,7 @@
       <BinPlaceItem Include="$(NativeBinDir)*.dll" />
       <BinPlaceItem Include="$(NativeBinDir)*.pdb" />
       <BinPlaceItem Include="$(NativeBinDir)*.lib" />
+      <BinPlaceItem Include="$(NativeBinDir)*.lib.js" />
       <BinPlaceItem Include="$(NativeBinDir)*.a" />
       <BinPlaceItem Include="$(NativeBinDir)*.bc" />
       <BinPlaceItem Include="$(NativeBinDir)*.so" />

@@ -950,15 +950,9 @@ namespace Internal.IL
             ImportStoreElement(GetWellKnownType(wellKnownType));
         }
 
-        // TODO-LLVM: look for a WASI random function; investigate ICU and EnumCalendarInfo
+        // TODO-LLVM: investigate ICU and EnumCalendarInfo
         public static MethodIL ReplaceStubbedWasmMethods(MethodDesc method, MethodIL methodIL)
         {
-            // stubs for Unix calls which are not available to this target yet
-            if ((method.OwningType as EcmaType)?.Name == "Interop" && method.Name == "GetRandomBytes")
-            {
-                // this would normally fill the buffer parameter, but we'll just leave the buffer as is and that will be our "random" data for now
-                return new ILStubMethodIL(method, new byte[] { (byte)ILOpcode.ret }, Array.Empty<LocalVariableDefinition>(), null);
-            }
             if ((method.OwningType as EcmaType)?.Name == "CalendarData" && method.Name == "EnumCalendarInfo")
             {
                 // just return false 

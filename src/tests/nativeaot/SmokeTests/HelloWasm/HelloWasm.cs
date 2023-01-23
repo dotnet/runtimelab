@@ -359,6 +359,8 @@ internal static class Program
 
         TestJavascriptCall();
 
+        TestPalRandom();
+
         TestDefaultConstructorOf();
 
         TestStructUnboxOverload();
@@ -3782,6 +3784,13 @@ internal static class Program
         IntPtr resultPtr = JSInterop.InternalCalls.InvokeJSUnmarshalled(out string exception, "Answer", IntPtr.Zero, IntPtr.Zero, IntPtr.Zero);
 
         EndTest(resultPtr.ToInt32() == 42);
+    }
+
+    static void TestPalRandom()
+    {
+        StartTest("Test pal_random.lib.js integration");
+
+        EndTest(Guid.NewGuid() != default);
     }
 
     static void TestDefaultConstructorOf()

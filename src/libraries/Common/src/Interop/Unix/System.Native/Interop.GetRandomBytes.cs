@@ -16,7 +16,6 @@ internal static partial class Interop
         internal static unsafe partial int GetCryptographicallySecureRandomBytes(byte* buffer, int length);
     }
 
-    [MethodImpl(MethodImplOptions.NoInlining)] // TODO-LLVM: workaround for https://github.com/dotnet/runtimelab/issues/2095.
     internal static unsafe void GetRandomBytes(byte* buffer, int length)
     {
         Sys.GetNonCryptographicallySecureRandomBytes(buffer, length);

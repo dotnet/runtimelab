@@ -99,18 +99,6 @@ bool Llvm::initializeFunctions()
         rootLlvmFunction = Function::Create(getFunctionType(), Function::ExternalLinkage, 0U, mangledName, _module);
     }
 
-    // mono does this via Javascript (pal_random.js), but prefer not to introduce that dependency as it limits the
-    // ability to run out of the browser. Copy the temporary workaround from the IL->LLVM generator for now.
-    if (!strcmp(mangledName, "S_P_CoreLib_Interop__GetRandomBytes"))
-    {
-        // This would normally fill the buffer parameter, but we'll just leave the buffer as is and that will be our
-        // "random" data for now.
-        llvm::BasicBlock* llvmBlock = llvm::BasicBlock::Create(_llvmContext, "", rootLlvmFunction);
-        _builder.SetInsertPoint(llvmBlock);
-        _builder.CreateRetVoid();
-        return true;
-    }
-
     // First functions is always the root.
     m_functions = std::vector<FunctionInfo>(_compiler->compFuncCount());
     m_functions[ROOT_FUNC_IDX] = {rootLlvmFunction};
