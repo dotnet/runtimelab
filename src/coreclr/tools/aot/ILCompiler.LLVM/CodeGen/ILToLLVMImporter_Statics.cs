@@ -59,7 +59,7 @@ namespace Internal.IL
                     mangledName = compilation.NameMangler.GetMangledMethodName(methodCodeNodeNeedingCode.Method).ToString();
                 }
 
-                ilImporter = new ILImporter(compilation, method, methodIL, mangledName, methodCodeNodeNeedingCode is LlvmUnboxingThunkNode);
+                ilImporter = new ILImporter(compilation, method, methodIL, mangledName);
 
                 CompilerTypeSystemContext typeSystemContext = compilation.TypeSystemContext;
 

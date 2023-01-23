@@ -50,7 +50,6 @@
     <Compile Include="Compiler\DependencyAnalysis\LLVMMethodCodeNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\LLVMBlockRefNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\LLVMReadyToRunGenericLookupFromDictionaryNode.cs" />
-    <Compile Include="Compiler\DependencyAnalysis\LlvmUnboxingThunkNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\LLVMReadyToRunGenericLookupFromTypeNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\LLVMVTableSlotNode.cs" />
     <Compile Include="Compiler\LLVMNodeMangler.cs" />

@@ -45,9 +45,9 @@ namespace ILCompiler.DependencyAnalysis
             _targetDetails = targetDetails;
         }
 
-        private ISymbolNode GetUnderlyingMethodEntrypoint(NodeFactory factory)
+        public IMethodNode GetUnderlyingMethodEntrypoint(NodeFactory factory)
         {
-            ISymbolNode node = factory.MethodEntrypoint(Method);
+            IMethodNode node = factory.MethodEntrypoint(Method);
             return node;
         }
 

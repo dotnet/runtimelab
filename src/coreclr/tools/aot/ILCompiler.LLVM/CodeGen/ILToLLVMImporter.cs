@@ -53,7 +53,6 @@ namespace Internal.IL
         private readonly string _mangledName;
         private LLVMValueRef _llvmFunction;
         private LLVMValueRef _currentFunclet;
-        private bool _isUnboxingThunk;
         private LLVMBasicBlockRef _curBasicBlock;
         private LLVMBuilderRef _builder;
         private readonly LocalVariableDefinition[] _locals;
@@ -106,12 +105,11 @@ namespace Internal.IL
 
         private ExceptionRegion[] _exceptionRegions;
         private ExceptionRegion[] _handlerRegionsForOffsetLookup;
-        public ILImporter(LLVMCodegenCompilation compilation, MethodDesc method, MethodIL methodIL, string mangledName, bool isUnboxingThunk)
+        public ILImporter(LLVMCodegenCompilation compilation, MethodDesc method, MethodIL methodIL, string mangledName)
         {
             Module = LLVMCodegenCompilation.Module;
             _compilation = compilation;
             _method = method;
-            _isUnboxingThunk = isUnboxingThunk;
 
             methodIL = ReplaceStubbedWasmMethods(method, methodIL);
 
@@ -2679,7 +2677,7 @@ namespace Internal.IL
                 bool exactContextNeedsRuntimeLookup;
                 if (callee.HasInstantiation)
                 {
-                    exactContextNeedsRuntimeLookup = callee.IsSharedByGenericInstantiations && !_isUnboxingThunk;
+                    exactContextNeedsRuntimeLookup = callee.IsSharedByGenericInstantiations;
                 }
                 else
                 {
@@ -2738,11 +2736,7 @@ namespace Internal.IL
                     }
                     else
                     {
-                        if (_isUnboxingThunk && _method.RequiresInstArg())
-                        {
-                            hiddenParam = _currentFunclet.GetParam((uint)(1 + (LLVMCodegenCompilation.NeedsReturnStackSlot(_signature) ? 1 : 0)));
-                        }
-                        else if (canonMethod.RequiresInstMethodDescArg())
+                        if (canonMethod.RequiresInstMethodDescArg())
                         {
                             hiddenParam = LoadAddressOfSymbolNode(GetMethodGenericDictionaryNode(callee));
                         }

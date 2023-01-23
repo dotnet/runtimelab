@@ -78,7 +78,7 @@ namespace ILCompiler.DependencyAnalysis
             else
             {
                 // Otherwise we just unbox 'this' and don't touch anything else.
-                return new LlvmUnboxingThunkNode(TypeSystemContext.GetUnboxingThunk(method, TypeSystemContext.GeneratedAssembly));
+                return new UnboxingStubNode(method, Target);
             }
         }
 
