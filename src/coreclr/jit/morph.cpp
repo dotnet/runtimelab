@@ -1578,7 +1578,7 @@ void CallArgs::EvalArgsToTemps(Compiler* comp, GenTreeCall* call)
         GenTree* setupArg = nullptr;
         GenTree* defArg;
 
-#if !FEATURE_FIXED_OUT_ARGS
+#if !FEATURE_FIXED_OUT_ARGS && !defined(TARGET_WASM)
         // Only ever set for FEATURE_FIXED_OUT_ARGS
         assert(!arg.m_needPlace);
 

@@ -783,22 +783,14 @@ void Llvm::lowerReturn(GenTreeUnOp* retNode)
 //     that must be on the shadow stack, see "lowerCallReturn".
 //
 // LVVM Arg layout:
-//    - ShadowStack (if required)
-//    - 
+//    - Shadow stack (if required)
+//    - Return slot (if required)
+//    - Generic context (if required)
+//    - args passed as LLVM parameters (not on the shadow stack)
 void Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
 {
     // rewrite the args, adding shadow stack, and moving gc tracked args to the shadow stack
     unsigned shadowStackUseOffset = 0;
-
-    callNode->gtArgs.ResetFinalArgsAndABIInfo();
-
-    //for (unsigned i = 0; i < argCount; i++)
-    //{
-    //    CallArg* callArg = callNode->gtArgs.GetArgByIndex(i);
-    //    unsigned int  argNum          = callArg->GetNode()->;
-    //    OperandArgNum  opAndArg       = {argNum, curArgTabEntry->GetNode()};
-    //    sortedData[argNum]            = opAndArg;
-    //}
 
     CORINFO_SIG_INFO* sigInfo = nullptr;
     CORINFO_ARG_LIST_HANDLE sigArgs = nullptr;
@@ -817,57 +809,57 @@ void Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
     }
 
     // Relies on the fact all arguments not in the signature come before those that are.
-    //unsigned firstSigArgIx = argCount - sigArgCount;
+    unsigned firstSigArgIx = callNode->gtArgs.CountArgs() - sigArgCount;
     unsigned argIx = 0;
+    CallArg* lastLlvmStackArg = nullptr;
 
     for (CallArg& callArg : callNode->gtArgs.Args())
     {
         GenTree*             argNode     = callArg.GetNode();
         CORINFO_CLASS_HANDLE clsHnd      = NO_CLASS_HANDLE;
-        CorInfoType          corInfoType = CORINFO_TYPE_UNDEF;
-        //bool                 isSigArg    = argIx >= firstSigArgIx;
+        CorInfoType          corInfoType;
+        bool                 isSigArg    = argIx >= firstSigArgIx;
 
         // We currently do not place any args for helpers on the shadow stack. This is a potential GC
         // hole and not correct ABI-wise for managed helpers. TODO-LLVM: investigate and fix issues.
-        corInfoType           = toCorInfoType(genActualType(argNode));
-        bool argOnShadowStack = !canStoreArgOnLlvmStack(_compiler, corInfoType, clsHnd);
-
-        //if (sigInfo != nullptr)
-        //{
-        //    // Is this an in-signature argument?
-        //    if (isSigArg)
-        //    {
-        //        corInfoType = strip(_info.compCompHnd->getArgType(sigInfo, sigArgs, &clsHnd));
-        //    }
-        //    else // Not-in-sig arguments. We need to handle these specially.
-        //    {
-        //        if (sigInfo->hasThis() && (opAndArg.argNum == 0))
-        //        {
-        //            corInfoType = argNode->TypeIs(TYP_REF) ? CORINFO_TYPE_CLASS : CORINFO_TYPE_BYREF;
-        //        }
-        //        else
-        //        {
-        //            // TODO-LLVM: this is not fully correct (e. g. we may think pointer an integer),
-        //            // but sufficient for now. Handle precisely once we merge the call args refactor.
-        //            corInfoType = toCorInfoType(genActualType(argNode));
-        //        }
-        //    }
-
-        //    argOnShadowStack = !canStoreArgOnLlvmStack(_compiler, corInfoType, clsHnd);
-        //}
-        //else
-        //{
-        //    assert(helperInfo != nullptr);
-        //    if (!isSigArg)
-        //    {
-        //        // There are helpers that do not have a specified signature (have a variable number of args).
-        //        // We'll have to wait for upstream call args changes to get merged to handle those properly.
-        //        failFunctionCompilation();
-        //    }
-
-        //    corInfoType = helperInfo->GetSigArgType(argIx);
-        //    clsHnd = helperInfo->GetSigArgClass(_compiler, argIx);
-        //}
+        bool argOnShadowStack = false;
+        if (sigInfo != nullptr)
+        {
+            // Is this an in-signature argument?
+            if (isSigArg)
+            {
+                corInfoType = strip(_info.compCompHnd->getArgType(sigInfo, sigArgs, &clsHnd));
+                sigArgs     = _compiler->info.compCompHnd->getArgNext(sigArgs);
+            }
+            else // Not-in-sig arguments. We need to handle these specially.
+            {
+                if (callArg.GetWellKnownArg() == WellKnownArg::ThisPointer)
+                {
+                    corInfoType = argNode->TypeIs(TYP_REF) ? CORINFO_TYPE_CLASS : CORINFO_TYPE_BYREF;
+                }
+                else
+                {
+                    // TODO-LLVM: this is not fully correct (e. g. we may think pointer an integer),
+                    // but sufficient for now. Handle precisely once we merge the call args refactor.
+                    corInfoType = toCorInfoType(genActualType(argNode));
+                }
+            }
+        
+            argOnShadowStack = !canStoreArgOnLlvmStack(_compiler, corInfoType, clsHnd);
+        }
+        else
+        {
+            assert(helperInfo != nullptr);
+            if (!isSigArg)
+            {
+                // There are helpers that do not have a specified signature (have a variable number of args).
+                // We'll have to wait for upstream call args changes to get merged to handle those properly.
+                failFunctionCompilation();
+            }
+        
+            corInfoType = helperInfo->GetSigArgType(argIx);
+            clsHnd = helperInfo->GetSigArgClass(_compiler, argIx);
+        }
 
         if (argOnShadowStack)
         {
@@ -910,35 +902,26 @@ void Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
                 shadowStackUseOffset += TARGET_POINTER_SIZE;
             }
 
-            callNode->gtArgs.Remove(&callArg);
+            callNode->gtArgs.RemoveAfter(lastLlvmStackArg);
         }
         else
         {
             // Arg on LLVM stack.
             GenTreePutArgType* putArg = _compiler->gtNewPutArgType(argNode, corInfoType, clsHnd);
+            callArg.SetEarlyNode(putArg);
 #if DEBUG
-            // putArg->SetArgNum(opAndArg.argNum);
+            putArg->SetArgNum(argIx);
 #endif
-            //if (lastArg == nullptr)
-            //{
-            //    lastArg = _compiler->gtNewCallArgs(putArg);
-            //    callNode->gtCallArgs = lastArg;
-            //}
-            //else
-            //{
-            //    lastArg = _compiler->gtInsertNewCallArgAfter(putArg, lastArg);
-            //}
-
             CurrentRange().InsertBefore(callNode, putArg);
+            lastLlvmStackArg = &callArg;
         }
 
-        //if (isSigArg && (sigInfo != nullptr))
-        //{
-        //    sigArgs = _info.compCompHnd->getArgNext(sigArgs);
-        //}
-
-        //argIx++;
+        argIx++;
     }
+
+    callNode->gtArgs.MoveLateToEarly();
+
+    // Insert special args after finished iterating >gtArgs.Args
 
     // Insert the return slot at the front.
     lowerCallReturn(callNode);

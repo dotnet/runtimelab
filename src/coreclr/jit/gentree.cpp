@@ -1842,6 +1842,39 @@ void CallArgs::Remove(CallArg* arg)
     assert(!"Did not find arg to remove in CallArgs::Remove");
 }
 
+#if TARGET_WASM
+void CallArgs::RemoveAfter(CallArg* arg)
+{
+    // if arg == nullptr, we are removing the first arg
+    if(arg == nullptr)
+    {
+        assert(m_head != nullptr);
+
+        m_head = m_head->GetNext();
+        return;
+    }
+
+    assert(arg->GetNext() != nullptr);
+    
+    arg->SetNext(arg->GetNext()->GetNext());
+}
+
+void CallArgs::MoveLateToEarly()
+{
+    CallArg* lateArg = m_lateHead;
+    
+    while (lateArg != nullptr)
+    {
+        lateArg->SetEarlyNode(lateArg->GetLateNode());
+        lateArg->SetLateNode(nullptr);
+        lateArg = lateArg->GetLateNext();
+    }
+    
+    m_lateHead = nullptr;
+}
+
+#endif
+
 //---------------------------------------------------------------
 // GetOtherRegMask: Get the reg mask of gtOtherRegs of call node
 //

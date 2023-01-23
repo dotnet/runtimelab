@@ -4374,6 +4374,10 @@ public:
     CallArg* InsertAfterThisOrFirst(Compiler* comp, GenTree* node, WellKnownArg wellKnownArg = WellKnownArg::None);
     void PushLateBack(CallArg* arg);
     void Remove(CallArg* arg);
+#if TARGET_WASM
+    void RemoveAfter(CallArg* arg);
+    void MoveLateToEarly();
+#endif
 
     template <typename CopyNodeFunc>
     void InternalCopyFrom(Compiler* comp, CallArgs* other, CopyNodeFunc copyFunc);
