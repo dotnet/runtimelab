@@ -86,15 +86,5 @@ namespace ILCompiler.DependencyAnalysis
         {
             return new ReadyToRunHelperNode(helperCall.HelperId, helperCall.Target);
         }
-
-        protected override ISymbolNode CreateGenericLookupFromDictionaryNode(ReadyToRunGenericHelperKey helperKey)
-        {
-            return new LLVMReadyToRunGenericLookupFromDictionaryNode(this, helperKey.HelperId, helperKey.Target, helperKey.DictionaryOwner);
-        }
-
-        protected override ISymbolNode CreateGenericLookupFromTypeNode(ReadyToRunGenericHelperKey helperKey)
-        {
-            return new LLVMReadyToRunGenericLookupFromTypeNode(this, helperKey.HelperId, helperKey.Target, helperKey.DictionaryOwner);
-        }
     }
 }
