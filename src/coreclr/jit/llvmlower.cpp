@@ -844,7 +844,7 @@ void Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
                     corInfoType = toCorInfoType(genActualType(argNode));
                 }
             }
-        
+
             argOnShadowStack = !canStoreArgOnLlvmStack(_compiler, corInfoType, clsHnd);
         }
         else
@@ -856,7 +856,7 @@ void Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
                 // We'll have to wait for upstream call args changes to get merged to handle those properly.
                 failFunctionCompilation();
             }
-        
+
             corInfoType = helperInfo->GetSigArgType(argIx);
             clsHnd = helperInfo->GetSigArgClass(_compiler, argIx);
         }
