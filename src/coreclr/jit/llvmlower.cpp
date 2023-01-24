@@ -989,19 +989,7 @@ void Llvm::failUnsupportedCalls(GenTreeCall* callNode)
 {
     if (callNode->IsHelperCall())
     {
-        switch (_compiler->eeGetHelperNum(callNode->gtCallMethHnd))
-        {
-            // Needs VM work to generate the right helper.
-            case CORINFO_HELP_READYTORUN_DELEGATE_CTOR:
-                if (callNode->gtArgs.CountArgs() != 3)
-                {
-                    return;
-                }
-                failFunctionCompilation();
-
-            default:
-                return;
-        }
+        return;
     }
 
     if (callNode->IsVirtualStub())

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text;
 using LLVMSharp.Interop;
@@ -32,6 +33,12 @@ namespace Internal.IL
         {
             using var marshaledName = new MarshaledString(name);
             return LLVM.GetNamedGlobalAlias(module, marshaledName, (nuint)marshaledName.Length);
+        }
+
+        public static LLVMTypeRef GetValueType(this LLVMValueRef value)
+        {
+            Debug.Assert(value.IsAGlobalValue.Handle != IntPtr.Zero);
+            return LLVM.GlobalGetValueType(value);
         }
 
         internal struct MarshaledString : IDisposable
