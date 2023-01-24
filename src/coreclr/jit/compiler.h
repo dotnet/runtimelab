@@ -7743,9 +7743,9 @@ public:
 
 public:
 #ifndef TARGET_WASM
-    // Record the instr offset mapping to the generated code
     CodeGenInterface* codeGen;
 
+    // Record the instr offset mapping to the generated code
     jitstd::list<IPmappingDsc> genIPmappings;
 
 #ifdef DEBUG
