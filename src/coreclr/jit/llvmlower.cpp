@@ -773,9 +773,8 @@ void Llvm::lowerReturn(GenTreeUnOp* retNode)
 //
 // This method has two primary objectives:
 //  1) Transfer the information about the arguments from gtArgs to explicit
-//     PutArgType nodes, to make it easy for codegen to consume it. Also, get
-//     rid of the late/non-late argument distinction, by sorting the inserted nodes
-//     in the original evaluation order, matching that of them in the signature.
+//     PutArgType nodes, to make it easy for codegen to consume it. Also, all
+//     of the late argument nodes are moved (back) to the early list.
 //  2) Rewrite arguments and the return to be stored on the shadow stack. We take
 //     the arguments which need to be on the shadow stack, remove them from the call
 //     arguments list, store their values on the shadow stack, at offsets calculated
