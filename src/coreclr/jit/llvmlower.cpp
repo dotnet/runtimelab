@@ -600,7 +600,7 @@ void Llvm::lowerRethrow(GenTreeCall* callNode)
     assert(callNode->gtArgs.IsEmpty());
 
     GenTree* excObjAddr = insertShadowStackAddr(callNode, getCatchArgOffset(), _shadowStackLclNum);
-    callNode->gtArgs.InsertAfterThisOrFirst(_compiler, excObjAddr);
+    callNode->gtArgs.PushFront(_compiler, excObjAddr);
 }
 
 void Llvm::lowerCatchArg(GenTree* catchArgNode)
@@ -808,6 +808,8 @@ void Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
         sigArgCount = sigInfo->numArgs;
     }
 
+    callNode->gtArgs.MoveLateToEarly();
+
     // Relies on the fact all arguments not in the signature come before those that are.
     unsigned firstSigArgIx = callNode->gtArgs.CountArgs() - sigArgCount;
     unsigned argIx = 0;
@@ -919,8 +921,6 @@ void Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
         argIx++;
     }
 
-    callNode->gtArgs.MoveLateToEarly();
-
     // Insert special args after finished iterating >gtArgs.Args
 
     // Insert the return slot at the front.
@@ -976,18 +976,6 @@ void Llvm::failUnsupportedCalls(GenTreeCall* callNode)
 
     for (CallArg& callArg : callNode->gtArgs.Args())
     {
-        GenTree* operand = callArg.GetNode();
-        if (operand->IsArgPlaceHolderNode() || !operand->IsValue())
-        {
-            // Either of these situations may happen with calls.
-            continue;
-        }
-        if (operand == callNode->gtControlExpr || operand == callNode->gtCallAddr)
-        {
-            // vtable target or indirect target
-            continue;
-        }
-
         if (callArg.GetWellKnownArg() == WellKnownArg::VirtualStubCell)
         {
             failFunctionCompilation();

@@ -1843,6 +1843,17 @@ void CallArgs::Remove(CallArg* arg)
 }
 
 #if TARGET_WASM
+//------------------------------------------------------------------------
+// RemoveAfter: Remove the argument after the one passed 
+//
+// Removes the argument after the passed argument from argument list.
+// "nullptr" can be passed to indicate that the first argument should be
+// removed.
+//
+// Arguments:
+//    arg - The argument before the one that is to be removed, or null
+//          if the first argument should be removed.
+//
 void CallArgs::RemoveAfter(CallArg* arg)
 {
     // if arg == nullptr, we are removing the first arg
@@ -1854,11 +1865,19 @@ void CallArgs::RemoveAfter(CallArg* arg)
         return;
     }
 
-    assert(arg->GetNext() != nullptr);
-    
-    arg->SetNext(arg->GetNext()->GetNext());
+    CallArg* nextArg = arg->GetNext();
+    assert(nextArg != nullptr);
+
+    RemovedWellKnownArg(nextArg->GetWellKnownArg());
+    arg->SetNext(nextArg->GetNext());
 }
 
+//------------------------------------------------------------------------
+// MoveLateToEarly: Sets all late nodes as the early nodes
+//
+// Moves and clears all the late nodes, leaving the "CallArgs" as just
+// containing early nodes.
+//
 void CallArgs::MoveLateToEarly()
 {
     CallArg* lateArg = m_lateHead;
