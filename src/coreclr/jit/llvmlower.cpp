@@ -785,7 +785,8 @@ void Llvm::lowerReturn(GenTreeUnOp* retNode)
 //    - Shadow stack (if required)
 //    - Return slot (if required)
 //    - Generic context (if required)
-//    - args passed as LLVM parameters (not on the shadow stack)
+//    - Args passed as LLVM parameters (not on the shadow stack)
+//
 void Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
 {
     // rewrite the args, adding shadow stack, and moving gc tracked args to the shadow stack
