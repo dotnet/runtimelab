@@ -9,7 +9,7 @@ StructDesc* Llvm::getStructDesc(CORINFO_CLASS_HANDLE structHandle)
     if (_structDescMap->find(structHandle) == _structDescMap->end())
     {
         TypeDescriptor structTypeDescriptor = GetTypeDescriptor(structHandle);
-        unsigned structSize                 = _info.compCompHnd->getClassSize(structHandle); // TODO-LLVM: add to TypeDescriptor?
+        unsigned structSize                 = m_info->compCompHnd->getClassSize(structHandle); // TODO-LLVM: add to TypeDescriptor?
 
         std::vector<CORINFO_FIELD_HANDLE> sparseFields = std::vector<CORINFO_FIELD_HANDLE>(structSize);
         std::vector<unsigned> sparseFieldSizes = std::vector<unsigned>(structSize);
@@ -21,12 +21,12 @@ StructDesc* Llvm::getStructDesc(CORINFO_CLASS_HANDLE structHandle)
         for (unsigned i = 0; i < structTypeDescriptor.getFieldCount(); i++)
         {
             CORINFO_FIELD_HANDLE fieldHandle = structTypeDescriptor.getField(i);
-            unsigned             fldOffset   = _info.compCompHnd->getFieldOffset(fieldHandle);
+            unsigned             fldOffset   = m_info->compCompHnd->getFieldOffset(fieldHandle);
 
             assert(fldOffset < structSize);
 
             CORINFO_CLASS_HANDLE fieldClass;
-            CorInfoType corInfoType = _info.compCompHnd->getFieldType(fieldHandle, &fieldClass);
+            CorInfoType corInfoType = m_info->compCompHnd->getFieldType(fieldHandle, &fieldClass);
 
             unsigned fieldSize = getElementSize(fieldClass, corInfoType);
 
@@ -73,7 +73,7 @@ StructDesc* Llvm::getStructDesc(CORINFO_CLASS_HANDLE structHandle)
             CORINFO_FIELD_HANDLE fieldHandle = sparseFields[fldOffset];
             CORINFO_CLASS_HANDLE fieldClassHandle = NO_CLASS_HANDLE;
 
-            const CorInfoType corInfoType = _info.compCompHnd->getFieldType(fieldHandle, &fieldClassHandle);
+            const CorInfoType corInfoType = m_info->compCompHnd->getFieldType(fieldHandle, &fieldClassHandle);
             fields[fieldIx] = FieldDesc(fldOffset, corInfoType, fieldClassHandle);
             fieldIx++;
         }
@@ -103,7 +103,7 @@ Type* Llvm::getLlvmTypeForStruct(CORINFO_CLASS_HANDLE structHandle)
         // LLVM thinks certain sizes of struct have a different calling convention than Clang does.
         // Treating them as ints fixes that and is more efficient in general
 
-        unsigned structSize = _info.compCompHnd->getClassSize(structHandle);
+        unsigned structSize = m_info->compCompHnd->getClassSize(structHandle);
         switch (structSize)
         {
             case 1:
@@ -270,7 +270,7 @@ unsigned Llvm::getElementSize(CORINFO_CLASS_HANDLE classHandle, CorInfoType corI
 {
     if (classHandle != NO_CLASS_HANDLE)
     {
-        return _info.compCompHnd->getClassSize(classHandle);
+        return m_info->compCompHnd->getClassSize(classHandle);
     }
 
     return genTypeSize(JITtype2varType(corInfoType));

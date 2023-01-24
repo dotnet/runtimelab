@@ -18,14 +18,9 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 #include "allocacheck.h" // for alloca
 
 #if TARGET_WASM
-#undef min
-#undef max
-
 #include "llvm.h"
-
 #define max(a, b) (((a) > (b)) ? (a) : (b))
 #define min(a, b) (((a) < (b)) ? (a) : (b))
-
 #endif // TARGET_WASM
 
 // Convert the given node into a call to the specified helper passing
@@ -6478,7 +6473,7 @@ bool Compiler::fgCanFastTailCall(GenTreeCall* callee, const char** failReason)
     }
 
 #if TARGET_WASM
-    if (Llvm::needsReturnStackSlot(this, callee))
+    if (m_llvm->needsReturnStackSlot(callee))
     {
         reportFastTailCallDecision("Callee has a return type that must be passed on the LLVM shadow stack");
         return false;
