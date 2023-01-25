@@ -1893,7 +1893,6 @@ void CallArgs::MoveLateToEarly()
     
     m_lateHead = nullptr;
 }
-
 #endif
 
 //---------------------------------------------------------------
