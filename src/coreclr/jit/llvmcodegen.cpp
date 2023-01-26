@@ -1207,9 +1207,6 @@ void Llvm::visitNode(GenTree* node)
         case GT_NOT:
             buildUnaryOperation(node);
             break;
-        case GT_NO_OP:
-            emitDoNothingCall();
-            break;
         case GT_NULLCHECK:
             buildNullCheck(node->AsIndir());
             break;
@@ -1254,6 +1251,11 @@ void Llvm::visitNode(GenTree* node)
             break;
         case GT_IL_OFFSET:
             buildILOffset(node->AsILOffset());
+            break;
+        case GT_NO_OP:
+        case GT_NOP:
+            // NOP is a true no-op, while NO_OP is usually used to help generate correct debug info.
+            // The latter use case is not representable in LLVM, so we don't need to do anything.
             break;
         default:
             failFunctionCompilation();
@@ -2463,15 +2465,6 @@ unsigned Llvm::buildMemCpy(Value* baseAddress, unsigned startOffset, unsigned en
     _builder.CreateMemCpy(destAddress, llvm::Align(), srcAddress, llvm::Align(), size);
 
     return size;
-}
-
-void Llvm::emitDoNothingCall()
-{
-    if (_doNothingFunction == nullptr)
-    {
-        _doNothingFunction = Function::Create(FunctionType::get(Type::getVoidTy(_llvmContext), ArrayRef<Type*>(), false), Function::ExternalLinkage, 0U, "llvm.donothing", _module);
-    }
-    _builder.CreateCall(_doNothingFunction);
 }
 
 void Llvm::emitJumpToThrowHelper(Value* jumpCondValue, SpecialCodeKind throwKind)

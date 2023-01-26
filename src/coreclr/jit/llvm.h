@@ -343,7 +343,6 @@ private:
     void storeObjAtAddress(Value* baseAddress, Value* data, StructDesc* structDesc);
     unsigned buildMemCpy(Value* baseAddress, unsigned startOffset, unsigned endOffset, Value* srcAddress);
 
-    void emitDoNothingCall();
     void emitJumpToThrowHelper(Value* jumpCondValue, SpecialCodeKind throwKind);
     void emitNullCheckForIndir(GenTreeIndir* indir, Value* addrValue);
     Value* emitCheckedArithmeticOperation(llvm::Intrinsic::ID intrinsicId, Value* op1Value, Value* op2Value);
