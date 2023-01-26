@@ -1003,31 +1003,14 @@ void Llvm::fillPhis()
         for (GenTreePhi::Use& use : phiNode->Uses())
         {
             GenTreePhiArg* phiArg = use.GetNode()->AsPhiArg();
-            unsigned ssaNum = phiArg->GetSsaNum();
+            Value* phiArgValue = _localsMap[{lclNum, phiArg->GetSsaNum()}];
             BasicBlock* predBlock = phiArg->gtPredBB;
             llvm::BasicBlock* llvmPredBlock = getLastLlvmBlockForBlock(predBlock);
-
-            Value* localPhiArg = _localsMap[{lclNum, ssaNum}];
-            Value* phiRealArgValue;
-            Instruction* castRequired = getCast(localPhiArg, llvmPhiNode->getType());
-            if (castRequired != nullptr)
-            {
-                // This cast is needed when
-                // 1) The phi arg real type is short and the definition is the actual longer type, e.g. for bool/int
-                // 2) There is a pointer difference, e.g. i8* v i32* and perhaps different levels of indirection: i8** and i8*
-                //
-                _builder.SetInsertPoint(llvmPredBlock->getTerminator());
-                phiRealArgValue = _builder.Insert(castRequired);
-            }
-            else
-            {
-                phiRealArgValue = localPhiArg;
-            }
 
             unsigned llvmPredCount = getPhiPredCount(predBlock, phiBlock);
             for (unsigned i = 0; i < llvmPredCount; i++)
             {
-                llvmPhiNode->addIncoming(phiRealArgValue, llvmPredBlock);
+                llvmPhiNode->addIncoming(phiArgValue, llvmPredBlock);
             }
         }
     }
@@ -2156,7 +2139,7 @@ void Llvm::buildUnaryOperation(GenTree* node)
     switch (node->OperGet())
     {
         case GT_NEG:
-            if (op1Value->getType()->isFloatingPointTy())
+            if (varTypeIsFloating(node))
             {
                 result = _builder.CreateFNeg(op1Value, "fneg");
             }
@@ -2169,8 +2152,9 @@ void Llvm::buildUnaryOperation(GenTree* node)
             result = _builder.CreateNot(op1Value, "not");
             break;
         default:
-            failFunctionCompilation();  // TODO-LLVM: other binary operators
+            unreached();
     }
+
     mapGenTreeToValue(node, result);
 }
 
@@ -2242,8 +2226,9 @@ void Llvm::buildShift(GenTreeOp* node)
             result = _builder.CreateLShr(op1Value, numBitsToShift, "rsz");
             break;
         default:
-            failFunctionCompilation();  // TODO-LLVM: other shift types
+            unreached();
     }
+
     mapGenTreeToValue(node, result);
 }
 
@@ -2738,35 +2723,14 @@ Instruction* Llvm::getCast(Value* source, Type* targetType)
     Type::TypeID sourceTypeID = sourceType->getTypeID();
     Type::TypeID targetTypeId = targetType->getTypeID();
 
-    if (targetTypeId == Type::TypeID::PointerTyID)
+    if (targetTypeId == Type::PointerTyID)
     {
-        switch (sourceTypeID)
-        {
-            case Type::TypeID::PointerTyID:
-                return nullptr;
-            case Type::TypeID::IntegerTyID:
-                return new llvm::IntToPtrInst(source, targetType, "CastPtrToInt");
-            default:
-                failFunctionCompilation();
-        }
-    }
-    if (targetTypeId == Type::TypeID::IntegerTyID)
-    {
-        switch (sourceTypeID)
-        {
-            case Type::TypeID::PointerTyID:
-                return new llvm::PtrToIntInst(source, targetType, "CastPtrToInt");
-            case Type::TypeID::IntegerTyID:
-                if (sourceType->getPrimitiveSizeInBits() > targetType->getPrimitiveSizeInBits())
-                {
-                    return new llvm::TruncInst(source, targetType, "TruncInt");
-                }
-            default:
-                failFunctionCompilation();
-        }
+        assert(sourceTypeID == Type::IntegerTyID);
+        return new llvm::IntToPtrInst(source, targetType);
     }
 
-    failFunctionCompilation();
+    assert((targetTypeId == Type::IntegerTyID) && (sourceTypeID == Type::PointerTyID));
+    return new llvm::PtrToIntInst(source, targetType);
 }
 
 Value* Llvm::castIfNecessary(Value* source, Type* targetType, llvm::IRBuilder<>* builder)
