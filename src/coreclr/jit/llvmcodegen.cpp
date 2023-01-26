@@ -1050,16 +1050,18 @@ Value* Llvm::consumeValue(GenTree* node, Type* targetLlvmType)
 
     if (nodeValue->getType() != targetLlvmType)
     {
-        // int to pointer type (TODO-LLVM: WASM64: use POINTER_BITs when set correctly, also below for getInt32Ty)
-        if (nodeValue->getType() == Type::getInt32Ty(_llvmContext) && targetLlvmType->isPointerTy())
+        Type* intPtrLlvmType = getIntPtrLlvmType();
+
+        // Integer -> pointer.
+        if ((nodeValue->getType() == intPtrLlvmType) && targetLlvmType->isPointerTy())
         {
             return _builder.CreateIntToPtr(nodeValue, targetLlvmType);
         }
 
-        // pointer to ints
-        if (nodeValue->getType()->isPointerTy() && targetLlvmType == Type::getInt32Ty(_llvmContext))
+        // Pointer -> integer.
+        if (nodeValue->getType()->isPointerTy() && (targetLlvmType == intPtrLlvmType))
         {
-            return _builder.CreatePtrToInt(nodeValue, Type::getInt32Ty(_llvmContext));
+            return _builder.CreatePtrToInt(nodeValue, intPtrLlvmType);
         }
 
         // int and smaller int conversions
@@ -1101,7 +1103,7 @@ Value* Llvm::consumeValue(GenTree* node, Type* targetLlvmType)
             assert(varTypeIsSmall(trueNodeType));
 
             finalValue = varTypeIsSigned(trueNodeType) ? _builder.CreateSExt(nodeValue, targetLlvmType)
-                : _builder.CreateZExt(nodeValue, targetLlvmType);
+                                                       : _builder.CreateZExt(nodeValue, targetLlvmType);
         }
         else
         {
@@ -1725,7 +1727,7 @@ void Llvm::buildLclHeap(GenTreeUnOp* lclHeap)
     // A zero-sized LCLHEAP yields a null pointer.
     if (sizeNode->IsIntegralConst(0))
     {
-        lclHeapValue = llvm::Constant::getNullValue(Type::getInt8PtrTy(_llvmContext));
+        lclHeapValue = llvm::Constant::getNullValue(getPtrLlvmType());
     }
     else
     {
@@ -1746,7 +1748,7 @@ void Llvm::buildLclHeap(GenTreeUnOp* lclHeap)
         {
             Value* zeroSizeValue = llvm::Constant::getNullValue(sizeValue->getType());
             Value* isSizeNotZeroValue = _builder.CreateCmp(llvm::CmpInst::ICMP_NE, sizeValue, zeroSizeValue);
-            Value* nullValue = llvm::Constant::getNullValue(Type::getInt8PtrTy(_llvmContext));
+            Value* nullValue = llvm::Constant::getNullValue(getPtrLlvmType());
 
             lclHeapValue = _builder.CreateSelect(isSizeNotZeroValue, allocaInst, nullValue);
         }
@@ -1954,7 +1956,7 @@ Value* Llvm::buildFieldList(GenTreeFieldList* fieldList, Type* llvmType)
 void Llvm::buildInd(GenTreeIndir* indNode)
 {
     Type* loadLlvmType = getLlvmTypeForVarType(indNode->TypeGet());
-    Value* addrValue = consumeValue(indNode->Addr(), llvm::PointerType::getUnqual(_llvmContext));
+    Value* addrValue = consumeValue(indNode->Addr(), getPtrLlvmType());
 
     emitNullCheckForIndir(indNode, addrValue);
     Value* loadValue = _builder.CreateLoad(loadLlvmType, addrValue);
@@ -1965,7 +1967,7 @@ void Llvm::buildInd(GenTreeIndir* indNode)
 void Llvm::buildBlk(GenTreeBlk* blkNode)
 {
     Type* blkLlvmType = getLlvmTypeForStruct(blkNode->GetLayout());
-    Value* addrValue = consumeValue(blkNode->Addr(), llvm::PointerType::getUnqual(_llvmContext));
+    Value* addrValue = consumeValue(blkNode->Addr(), getPtrLlvmType());
 
     emitNullCheckForIndir(blkNode, addrValue);
     Value* blkValue = _builder.CreateLoad(blkLlvmType, addrValue);
@@ -1984,7 +1986,7 @@ void Llvm::buildStoreInd(GenTreeStoreInd* storeIndOp)
     GCInfo::WriteBarrierForm wbf = getGCInfo()->gcIsWriteBarrierCandidate(storeIndOp, storeIndOp->Data());
 
     Type* storeLlvmType = getLlvmTypeForVarType(storeIndOp->TypeGet());
-    Value* addrValue = consumeValue(storeIndOp->Addr(), llvm::PointerType::getUnqual(_llvmContext));
+    Value* addrValue = consumeValue(storeIndOp->Addr(), getPtrLlvmType());
 
     Value* dataValue;
     if (storeIndRequiresTrunc(storeIndOp->TypeGet(), storeIndOp->Data()->TypeGet()))
@@ -2024,7 +2026,7 @@ void Llvm::buildStoreBlk(GenTreeBlk* blockOp)
     ClassLayout* layout = blockOp->GetLayout();
     GenTree* addrNode = blockOp->Addr();
     GenTree* dataNode = blockOp->Data();
-    Value* addrValue = consumeValue(addrNode, Type::getInt8PtrTy(_llvmContext));
+    Value* addrValue = consumeValue(addrNode, getPtrLlvmType());
 
     emitNullCheckForIndir(blockOp, addrValue);
 
@@ -2309,7 +2311,7 @@ void Llvm::buildSwitch(GenTreeUnOp* switchNode)
 
 void Llvm::buildNullCheck(GenTreeIndir* nullCheckNode)
 {
-    Value* addrValue = consumeValue(nullCheckNode->Addr(), Type::getInt8PtrTy(_llvmContext));
+    Value* addrValue = consumeValue(nullCheckNode->Addr(), getPtrLlvmType());
     emitNullCheckForIndir(nullCheckNode, addrValue);
 }
 
@@ -2430,7 +2432,7 @@ void Llvm::storeObjAtAddress(Value* baseAddress, Value* data, StructDesc* struct
             {
                 // We can't be sure the address is on the heap, it could be the result of pointer arithmetic on a local var.
                 emitHelperCall(CORINFO_HELP_CHECKED_ASSIGN_REF,
-                               {address, castIfNecessary(fieldData, llvm::PointerType::getUnqual(_llvmContext))});
+                               {address, castIfNecessary(fieldData, getPtrLlvmType())});
 
                 bytesStored += TARGET_POINTER_SIZE;
             }
@@ -2657,7 +2659,7 @@ FunctionType* Llvm::createFunctionTypeForHelper(CorInfoHelpFunc helperFunc)
 
     if (helperCallHasShadowStackArg(helperFunc))
     {
-        argVec.push_back(Type::getInt8PtrTy(_llvmContext));
+        argVec.push_back(getPtrLlvmType());
     }
 
     size_t sigArgCount = helperInfo.GetSigArgCount();
