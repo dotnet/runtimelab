@@ -18,12 +18,6 @@ void Llvm::Compile()
         failFunctionCompilation();
     }
 
-    if ((m_info->compFlags & CORINFO_FLG_SYNCH) != 0)
-    {
-        // TODO-LLVM: enable.
-        failFunctionCompilation();
-    }
-
     if (initializeFunctions())
     {
         return;
