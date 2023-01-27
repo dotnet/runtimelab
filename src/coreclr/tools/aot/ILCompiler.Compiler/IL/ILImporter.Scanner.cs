@@ -31,7 +31,7 @@ namespace Internal.IL
         private DependencyList _dependencies = new DependencyList();
 
         private readonly byte[] _ilBytes;
-        
+
         private class BasicBlock
         {
             // Common fields
@@ -83,6 +83,7 @@ namespace Internal.IL
             _compilation = compilation;
             _factory = (ILScanNodeFactory)compilation.NodeFactory;
 
+<<<<<<< HEAD
             if (_compilation.TargetArchIsWasm())
             {
                 methodIL = ReplaceStubbedWasmMethods(method, methodIL);
@@ -94,6 +95,8 @@ namespace Internal.IL
                 _dependencies.Add(_factory.MethodEntrypoint(helperMethod), "Wasm EH");
             }
 
+=======
+>>>>>>> b39c723a9b6c07f85304bf41a97bcc18225b1206
             _ilBytes = methodIL.GetILBytes();
 
             _canonMethodIL = methodIL;
@@ -160,6 +163,7 @@ namespace Internal.IL
                     _dependencies.Add(GetHelperEntrypoint(ReadyToRunHelper.MonitorEnter), reason);
                     _dependencies.Add(GetHelperEntrypoint(ReadyToRunHelper.MonitorExit), reason);
                 }
+<<<<<<< HEAD
             }
 
             if (_compilation.TargetArchIsWasm() && (_canonMethod.IsSynchronized || _exceptionRegions.Length != 0))
@@ -188,6 +192,9 @@ namespace Internal.IL
 
                 helperMethod = helperType.GetKnownMethod("HandleExceptionWasmFault", null);
                 _dependencies.Add(_compilation.NodeFactory.MethodEntrypoint(helperMethod), "Wasm EH");
+=======
+
+>>>>>>> b39c723a9b6c07f85304bf41a97bcc18225b1206
             }
 
             FindBasicBlocks();
@@ -550,7 +557,7 @@ namespace Internal.IL
                     // type though, so we would fail to resolve and box. We have a special path for those to avoid boxing.
                     directMethod = _compilation.TypeSystemContext.TryResolveConstrainedEnumMethod(constrained, method);
                 }
-                
+
                 if (directMethod != null)
                 {
                     // Either
@@ -806,7 +813,7 @@ namespace Internal.IL
                             else
                                 _dependencies.Add(_factory.ConstructedTypeSymbol(_constrained), reason);
                         }
-                        
+
                         if (referencingArrayAddressMethod && !_isReadOnly)
                         {
                             // Address method is special - it expects an instantiation argument, unless a readonly prefix was applied.
@@ -954,7 +961,7 @@ namespace Internal.IL
         {
             ImportCall(opCode, token);
         }
-        
+
         private void ImportBranch(ILOpcode opcode, BasicBlock target, BasicBlock fallthrough)
         {
             ImportFallthrough(target);
@@ -1257,11 +1264,11 @@ namespace Internal.IL
 
             if (type.IsNullable)
             {
-                _dependencies.Add(GetHelperEntrypoint(ReadyToRunHelper.Box), reason);
+                _dependencies.Add(GetHelperEntrypoint(ReadyToRunHelper.Box_Nullable), reason);
             }
             else
             {
-                _dependencies.Add(GetHelperEntrypoint(ReadyToRunHelper.Box_Nullable), reason);
+                _dependencies.Add(GetHelperEntrypoint(ReadyToRunHelper.Box), reason);
             }
         }
 
@@ -1360,7 +1367,7 @@ namespace Internal.IL
                         }
                         _dependencies.Add(GetHelperEntrypoint(ReadyToRunHelper.ThrowDivZero), "_divbyzero");
                     }
-                    break;                    
+                    break;
                 case ILOpcode.rem:
                 case ILOpcode.rem_un:
                     if (_compilation.TypeSystemContext.Target.Architecture == TargetArchitecture.ARM
@@ -1392,7 +1399,7 @@ namespace Internal.IL
 
         private int ReadILTokenAt(int ilOffset)
         {
-            return (int)(_ilBytes[ilOffset] 
+            return (int)(_ilBytes[ilOffset]
                 + (_ilBytes[ilOffset + 1] << 8)
                 + (_ilBytes[ilOffset + 2] << 16)
                 + (_ilBytes[ilOffset + 3] << 24));
