@@ -1861,8 +1861,8 @@ void CallArgs::RemoveAfter(CallArg* arg)
     {
         assert(m_head != nullptr);
 
-        RemovedWellKnownArg(m_head->GetWellKnownArg());
         m_head = m_head->GetNext();
+        RemovedWellKnownArg(m_head->GetWellKnownArg());
 
         return;
     }
@@ -1870,8 +1870,8 @@ void CallArgs::RemoveAfter(CallArg* arg)
     CallArg* nextArg = arg->GetNext();
     assert(nextArg != nullptr);
 
-    RemovedWellKnownArg(nextArg->GetWellKnownArg());
     arg->SetNext(nextArg->GetNext());
+    RemovedWellKnownArg(nextArg->GetWellKnownArg());
 }
 
 //------------------------------------------------------------------------

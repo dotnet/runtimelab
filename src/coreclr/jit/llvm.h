@@ -268,7 +268,7 @@ private:
 
     void lowerCallToShadowStack(GenTreeCall* callNode);
     void failUnsupportedCalls(GenTreeCall* callNode);
-    void lowerCallReturn(GenTreeCall* callNode);
+    CallArg* lowerCallReturn(GenTreeCall* callNode);
 
     void normalizeStructUse(GenTree* node, ClassLayout* layout);
 
