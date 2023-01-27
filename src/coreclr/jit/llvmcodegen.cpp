@@ -1089,6 +1089,7 @@ Value* Llvm::consumeValue(GenTree* node, Type* targetLlvmType)
                 case GT_CAST:
                     trueNodeType = node->AsCast()->CastToType();
                     break;
+
                 default:
                     trueNodeType = node->TypeGet();
                     break;
@@ -1202,6 +1203,7 @@ void Llvm::visitNode(GenTree* node)
             break;
         case GT_NEG:
         case GT_NOT:
+        case GT_BITCAST:
             buildUnaryOperation(node);
             break;
         case GT_NULLCHECK:
@@ -1254,8 +1256,12 @@ void Llvm::visitNode(GenTree* node)
             // NOP is a true no-op, while NO_OP is usually used to help generate correct debug info.
             // The latter use case is not representable in LLVM, so we don't need to do anything.
             break;
+        case GT_ARR_ELEM:
+            failFunctionCompilation(); // Delete once we merge https://github.com/dotnet/runtime/pull/70271 (Jun 2).
+        case GT_JMP:
+            NYI("LLVM/GT_JMP"); // Requires support for explicit tailcalls.
         default:
-            failFunctionCompilation();
+            unreached();
     }
 
 #ifdef DEBUG
@@ -2134,29 +2140,34 @@ void Llvm::buildStoreDynBlk(GenTreeStoreDynBlk* blockOp)
 
 void Llvm::buildUnaryOperation(GenTree* node)
 {
-    Value* result;
-    Value* op1Value = consumeValue(node->gtGetOp1(), getLlvmTypeForVarType(node->TypeGet()));
+    GenTree* op1 = node->gtGetOp1();
+    Type* op1Type = getLlvmTypeForVarType(genActualType(op1));
+    Value* op1Value = consumeValue(op1, op1Type);
 
+    Value* nodeValue;
     switch (node->OperGet())
     {
         case GT_NEG:
             if (varTypeIsFloating(node))
             {
-                result = _builder.CreateFNeg(op1Value, "fneg");
+                nodeValue = _builder.CreateFNeg(op1Value);
             }
             else
             {
-                result = _builder.CreateNeg(op1Value, "neg");
+                nodeValue = _builder.CreateNeg(op1Value);
             }
             break;
         case GT_NOT:
-            result = _builder.CreateNot(op1Value, "not");
+            nodeValue = _builder.CreateNot(op1Value);
+            break;
+        case GT_BITCAST:
+            nodeValue = _builder.CreateBitCast(op1Value, getLlvmTypeForVarType(node->TypeGet()));
             break;
         default:
             unreached();
     }
 
-    mapGenTreeToValue(node, result);
+    mapGenTreeToValue(node, nodeValue);
 }
 
 void Llvm::buildBinaryOperation(GenTree* node)
