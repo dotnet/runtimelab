@@ -330,6 +330,7 @@ private:
     void buildUnaryOperation(GenTree* node);
     void buildBinaryOperation(GenTree* node);
     void buildShift(GenTreeOp* node);
+    void buildIntrinsic(GenTreeIntrinsic* intrinsicNode);
     void buildReturn(GenTree* node);
     void buildJTrue(GenTree* node);
     void buildSwitch(GenTreeUnOp* switchNode);
@@ -392,5 +393,11 @@ private:
 
     Value* getLocalAddr(unsigned lclNum);
     Value* getOrCreateAllocaForLocalInFunclet(unsigned lclNum);
+
+public:
+    bool IsLlvmIntrinsic(NamedIntrinsic intrinsicName) const;
+
+private:
+    llvm::Intrinsic::ID getLlvmIntrinsic(NamedIntrinsic intrinsicName) const;
 };
 #endif /* End of _LLVM_H_ */

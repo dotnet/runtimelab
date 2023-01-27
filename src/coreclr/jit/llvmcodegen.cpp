@@ -1189,6 +1189,9 @@ void Llvm::visitNode(GenTree* node)
         case GT_RSZ:
             buildShift(node->AsOp());
             break;
+        case GT_INTRINSIC:
+            buildIntrinsic(node->AsIntrinsic());
+            break;
         case GT_EQ:
         case GT_NE:
         case GT_LE:
@@ -2230,6 +2233,31 @@ void Llvm::buildShift(GenTreeOp* node)
     mapGenTreeToValue(node, result);
 }
 
+void Llvm::buildIntrinsic(GenTreeIntrinsic* intrinsicNode)
+{
+    llvm::Intrinsic::ID intrinsicId = getLlvmIntrinsic(intrinsicNode->gtIntrinsicName);
+    noway_assert(intrinsicId != llvm::Intrinsic::not_intrinsic);
+    assert(varTypeIsFloating(intrinsicNode));
+
+    Type* opLlvmType = getLlvmTypeForVarType(intrinsicNode->TypeGet());
+    GenTree* op1 = intrinsicNode->gtGetOp1();
+    GenTree* op2 = intrinsicNode->gtGetOp2();
+    Value* op1Value = consumeValue(op1, opLlvmType);
+    Value* op2Value = (op2 != nullptr) ? consumeValue(op2, opLlvmType) : nullptr;
+
+    Value* intrinsicValue;
+    if (op2 == nullptr)
+    {
+        intrinsicValue = _builder.CreateIntrinsic(intrinsicId, opLlvmType, op1Value);
+    }
+    else
+    {
+        intrinsicValue = _builder.CreateIntrinsic(intrinsicId, opLlvmType, {op1Value, op2Value});
+    }
+
+    mapGenTreeToValue(intrinsicNode, intrinsicValue);
+}
+
 void Llvm::buildReturn(GenTree* node)
 {
     assert(node->OperIs(GT_RETURN, GT_RETFILT));
@@ -3066,4 +3094,48 @@ Value* Llvm::getOrCreateAllocaForLocalInFunclet(unsigned lclNum)
     }
 
     return allocaInst;
+}
+
+bool Llvm::IsLlvmIntrinsic(NamedIntrinsic intrinsicName) const
+{
+    return getLlvmIntrinsic(intrinsicName) != llvm::Intrinsic::not_intrinsic;
+}
+
+llvm::Intrinsic::ID Llvm::getLlvmIntrinsic(NamedIntrinsic intrinsicName) const
+{
+    switch (intrinsicName)
+    {
+        case NI_System_Math_Abs:
+            return llvm::Intrinsic::fabs;
+        case NI_System_Math_Ceiling:
+            return llvm::Intrinsic::ceil;
+        case NI_System_Math_Cos:
+            return llvm::Intrinsic::cos;
+        case NI_System_Math_Exp:
+            return llvm::Intrinsic::exp;
+        case NI_System_Math_Floor:
+            return llvm::Intrinsic::floor;
+        case NI_System_Math_Log:
+            return llvm::Intrinsic::log;
+        case NI_System_Math_Log2:
+            return llvm::Intrinsic::log2;
+        case NI_System_Math_Log10:
+            return llvm::Intrinsic::log10;
+        case NI_System_Math_Max:
+            return llvm::Intrinsic::maximum;
+        case NI_System_Math_Min:
+            return llvm::Intrinsic::minimum;
+        case NI_System_Math_Pow:
+            return llvm::Intrinsic::pow;
+        case NI_System_Math_Round:
+            return llvm::Intrinsic::round;
+        case NI_System_Math_Sin:
+            return llvm::Intrinsic::sin;
+        case NI_System_Math_Sqrt:
+            return llvm::Intrinsic::sqrt;
+        case NI_System_Math_Truncate:
+            return llvm::Intrinsic::trunc;
+        default:
+            return llvm::Intrinsic::not_intrinsic;
+    }
 }

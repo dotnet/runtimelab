@@ -13,6 +13,13 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 */
 
 #include "jitpch.h"
+
+#ifdef TARGET_WASM
+#include "llvm.h"
+#define max(a, b) (((a) > (b)) ? (a) : (b))
+#define min(a, b) (((a) < (b)) ? (a) : (b))
+#endif // TARGET_WASM
+
 #ifdef _MSC_VER
 #pragma hdrstop
 #endif
@@ -20765,6 +20772,8 @@ bool Compiler::IsTargetIntrinsic(NamedIntrinsic intrinsicName)
         default:
             return false;
     }
+#elif TARGET_WASM
+    return m_llvm->IsLlvmIntrinsic(intrinsicName);
 #elif defined(TARGET_LOONGARCH64)
     // TODO-LoongArch64: add some instrinsics.
     return false;
