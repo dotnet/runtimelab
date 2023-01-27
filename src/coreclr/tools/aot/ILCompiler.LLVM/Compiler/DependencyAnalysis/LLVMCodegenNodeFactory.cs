@@ -78,23 +78,13 @@ namespace ILCompiler.DependencyAnalysis
             else
             {
                 // Otherwise we just unbox 'this' and don't touch anything else.
-                return new LlvmUnboxingThunkNode(TypeSystemContext.GetUnboxingThunk(method, TypeSystemContext.GeneratedAssembly));
+                return new UnboxingStubNode(method, Target);
             }
         }
 
         protected override ISymbolNode CreateReadyToRunHelperNode(ReadyToRunHelperKey helperCall)
         {
             return new ReadyToRunHelperNode(helperCall.HelperId, helperCall.Target);
-        }
-
-        protected override ISymbolNode CreateGenericLookupFromDictionaryNode(ReadyToRunGenericHelperKey helperKey)
-        {
-            return new LLVMReadyToRunGenericLookupFromDictionaryNode(this, helperKey.HelperId, helperKey.Target, helperKey.DictionaryOwner);
-        }
-
-        protected override ISymbolNode CreateGenericLookupFromTypeNode(ReadyToRunGenericHelperKey helperKey)
-        {
-            return new LLVMReadyToRunGenericLookupFromTypeNode(this, helperKey.HelperId, helperKey.Target, helperKey.DictionaryOwner);
         }
     }
 }

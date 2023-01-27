@@ -99,6 +99,15 @@ bool Llvm::initializeFunctions()
         rootLlvmFunction = Function::Create(getFunctionType(), Function::ExternalLinkage, 0U, mangledName, _module);
     }
 
+    // TODO-LLVM: investigate.
+    if (!strcmp(mangledName, "S_P_CoreLib_System_Globalization_CalendarData__EnumCalendarInfo"))
+    {
+        llvm::BasicBlock* llvmBlock = llvm::BasicBlock::Create(_llvmContext, "", rootLlvmFunction);
+        _builder.SetInsertPoint(llvmBlock);
+        _builder.CreateRet(_builder.getInt8(0));
+        return true;
+    }
+
     // First functions is always the root.
     m_functions = std::vector<FunctionInfo>(_compiler->compFuncCount());
     m_functions[ROOT_FUNC_IDX] = {rootLlvmFunction};
@@ -1840,22 +1849,13 @@ void Llvm::buildIntegralConst(GenTreeIntConCommon* node)
     Value* constValue;
     if (node->IsCnsIntOrI() && node->IsIconHandle()) // TODO-LLVM: change to simply "IsIconHandle" once upstream does.
     {
-        switch (node->GetIconHandleFlag())
+        if (node->IsIconHandle(GTF_ICON_FTN_ADDR))
         {
-            case GTF_ICON_TOKEN_HDL:
-            case GTF_ICON_CLASS_HDL:
-            case GTF_ICON_METHOD_HDL:
-            case GTF_ICON_FIELD_HDL:
-            case GTF_ICON_STR_HDL:
-            {
-                CORINFO_GENERIC_HANDLE symbolHandle = CORINFO_GENERIC_HANDLE(node->AsIntCon()->IconValue());
-                constValue = getOrCreateSymbol(symbolHandle);
-            }
-            break;
-
-            default:
-                failFunctionCompilation();
+            // TODO-LLVM: we need to reference the proper function symbol here.
+            failFunctionCompilation();
         }
+
+        constValue = getOrCreateSymbol(CORINFO_GENERIC_HANDLE(node->AsIntCon()->IconValue()));
     }
     else
     {
@@ -1868,27 +1868,6 @@ void Llvm::buildIntegralConst(GenTreeIntConCommon* node)
 
 void Llvm::buildCall(GenTreeCall* call)
 {
-    if (call->IsHelperCall())
-    {
-        switch (_compiler->eeGetHelperNum(call->gtCallMethHnd))
-        {
-            case CORINFO_HELP_READYTORUN_GENERIC_HANDLE:
-            case CORINFO_HELP_READYTORUN_GENERIC_STATIC_BASE:
-            case CORINFO_HELP_GVMLOOKUP_FOR_SLOT: /* generates an extra parameter in the signature */
-            case CORINFO_HELP_TYPEHANDLE_TO_RUNTIMETYPE: /* misses an arg in the signature somewhere, not the shadow stack */
-            case CORINFO_HELP_READYTORUN_DELEGATE_CTOR:
-                failFunctionCompilation();
-
-            default:
-                break;
-        }
-    }
-    else if (call->IsVirtualStub())
-    {
-        // TODO-LLVM: VSD.
-        failFunctionCompilation();
-    }
-
     llvm::FunctionCallee llvmFuncCallee;
     if (call->IsVirtualVtable() || (call->gtCallType == CT_INDIRECT))
     {
@@ -2619,7 +2598,7 @@ llvm::CallBase* Llvm::emitCallOrInvoke(llvm::FunctionCallee callee, ArrayRef<Val
 FunctionType* Llvm::getFunctionType()
 {
     // TODO-LLVM: delete this when these signatures implemented
-    if (_sigInfo.hasExplicitThis() || _sigInfo.hasTypeArg())
+    if (_sigInfo.hasExplicitThis())
         failFunctionCompilation();
 
     std::vector<llvm::Type*> argVec(_llvmArgCount);
@@ -2838,11 +2817,6 @@ llvm::DILocation* Llvm::getArtificialDebugLocation()
 
     // Line number "0" is used to represent non-user code in DWARF.
     return createDebugLocation(0);
-}
-
-llvm::BasicBlock* Llvm::getCurrentLlvmBlock() const
-{
-    return getCurrentLlvmBlocks()->LastBlock;
 }
 
 void Llvm::setCurrentEmitContextForBlock(BasicBlock* block)

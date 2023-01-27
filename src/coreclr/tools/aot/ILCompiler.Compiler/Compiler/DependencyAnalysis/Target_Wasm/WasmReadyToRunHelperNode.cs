@@ -34,6 +34,8 @@ namespace ILCompiler.DependencyAnalysis
                     {
                         MetadataType target = (MetadataType)Target;
 
+                        encoder.Builder.EmitReloc(factory.TypeThreadStaticIndex(target), RelocType.IMAGE_REL_BASED_REL32);
+
                         if (!factory.PreinitializationManager.HasLazyStaticConstructor(target))
                         {
                             encoder.Builder.EmitReloc(factory.HelperEntrypoint(HelperEntrypoint.GetThreadStaticBaseForType), RelocType.IMAGE_REL_BASED_REL32);
