@@ -1040,7 +1040,7 @@ CallArg* Llvm::lowerCallReturn(GenTreeCall* callNode)
         putArg->SetArgNum(-2);  // -2 will represent the return arg for LLVM
 #endif
         // if we are lowering a return, then we will at least have a shadow stack CallArg
-        returnSlot = callNode->gtArgs.InsertAfter(_compiler, callNode->gtArgs.Args().begin().GetArg(), putArg);
+        returnSlot = callNode->gtArgs.InsertAfter(_compiler, callNode->gtArgs.GetArgByIndex(0), putArg);
 
         callNode->gtReturnType = TYP_VOID;
         callNode->gtCorInfoType = CORINFO_TYPE_VOID;
