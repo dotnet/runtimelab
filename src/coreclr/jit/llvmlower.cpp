@@ -617,13 +617,10 @@ void Llvm::lowerRethrow(GenTreeCall* callNode)
     // A rethrow is a special throw that preserves the stack trace. Our helper we use for rethrow has
     // the equivalent of a managed signature "void (object*)", i. e. takes the exception object address
     // explicitly. Add it here, before the general call lowering.
-    assert(callNode->gtCallArgs == nullptr);
-    callNode->ResetArgInfo();
+    assert(callNode->gtArgs.IsEmpty());
 
     GenTree* excObjAddr = insertShadowStackAddr(callNode, getCatchArgOffset(), _shadowStackLclNum);
-    callNode->gtCallArgs = _compiler->gtNewCallArgs(excObjAddr);
-
-    _compiler->fgInitArgInfo(callNode);
+    callNode->gtArgs.PushFront(_compiler, excObjAddr);
 }
 
 void Llvm::lowerCatchArg(GenTree* catchArgNode)
@@ -795,58 +792,25 @@ void Llvm::lowerReturn(GenTreeUnOp* retNode)
 // lowerCallToShadowStack: Lower the call, rewriting its arguments.
 //
 // This method has two primary objectives:
-//  1) Transfer the information about the arguments from arg info to explicit
-//     PutArgType nodes, to make it easy for codegen to consume it. Also, get
-//     rid of the late/non-late argument distinction, by sorting the inserted nodes
-//     in the original evaluation order, matching that of them in the signature.
+//  1) Transfer the information about the arguments from gtArgs to explicit
+//     PutArgType nodes, to make it easy for codegen to consume it. Also, all
+//     of the late argument nodes are moved (back) to the early list.
 //  2) Rewrite arguments and the return to be stored on the shadow stack. We take
 //     the arguments which need to be on the shadow stack, remove them from the call
 //     arguments list, store their values on the shadow stack, at offsets calculated
 //     in a simple increasing order, matching the signature. We also rewrite returns
 //     that must be on the shadow stack, see "lowerCallReturn".
 //
+// LVVM Arg layout:
+//    - Shadow stack (if required)
+//    - Return slot (if required)
+//    - Generic context (if required)
+//    - Args passed as LLVM parameters (not on the shadow stack)
+//
 void Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
 {
     // rewrite the args, adding shadow stack, and moving gc tracked args to the shadow stack
-    unsigned shadowStackUseOffest = 0;
-
-    fgArgInfo*                 argInfo     = callNode->fgArgInfo;
-    unsigned int               argCount    = argInfo->ArgCount();
-    fgArgTabEntry**            argTable    = argInfo->ArgTable();
-    std::vector<OperandArgNum> sortedArgs  = std::vector<OperandArgNum>(argCount);
-    OperandArgNum*             sortedData  = sortedArgs.data();
-
-    callNode->ResetArgInfo();
-    callNode->gtCallThisArg = nullptr;
-    callNode->gtCallArgs = nullptr;
-    callNode->gtCallLateArgs = nullptr;
-
-    GenTreeCall::Use* lastArg = nullptr;
-    if (callHasShadowStackArg(callNode))
-    {
-        GenTree* calleeShadowStack = insertShadowStackAddr(callNode, getCurrentShadowFrameSize(), _shadowStackLclNum);
-
-        GenTreePutArgType* calleeShadowStackPutArg =
-            _compiler->gtNewPutArgType(calleeShadowStack, CORINFO_TYPE_PTR, NO_CLASS_HANDLE);
-#ifdef DEBUG
-        calleeShadowStackPutArg->SetArgNum(-1); // -1 will represent the shadowstack arg for LLVM
-#endif
-        CurrentRange().InsertBefore(callNode, calleeShadowStackPutArg);
-
-        lastArg = _compiler->gtNewCallArgs(calleeShadowStackPutArg);
-        callNode->gtCallArgs = lastArg;
-    }
-
-    // Add the return slot after the shadow stack arg.
-    lastArg = lowerCallReturn(callNode, lastArg);
-
-    for (unsigned i = 0; i < argCount; i++)
-    {
-        fgArgTabEntry* curArgTabEntry = argTable[i];
-        unsigned int   argNum         = curArgTabEntry->argNum;
-        OperandArgNum  opAndArg       = {argNum, curArgTabEntry->GetNode()};
-        sortedData[argNum]            = opAndArg;
-    }
+    unsigned shadowStackUseOffset = 0;
 
     CORINFO_SIG_INFO* sigInfo = nullptr;
     CORINFO_ARG_LIST_HANDLE sigArgs = nullptr;
@@ -864,15 +828,43 @@ void Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
         sigArgCount = sigInfo->numArgs;
     }
 
-    // Relies on the fact all arguments not in the signature come before those that are.
-    unsigned firstSigArgIx = argCount - sigArgCount;
-    unsigned argIx = 0;
+    callNode->gtArgs.MoveLateToEarly();
 
-    for (OperandArgNum opAndArg : sortedArgs)
+    // Relies on the fact all arguments not in the signature come before those that are.
+    unsigned firstSigArgIx    = callNode->gtArgs.CountArgs() - sigArgCount;
+    unsigned argIx            = 0;
+    CallArg* lastLlvmStackArg = nullptr;
+
+    // gets the first arg before we start pushing non IR args to the list.
+    CallArg* callArg = callNode->gtArgs.Args().begin().GetArg();
+
+    // Insert the shadow stack at the front
+    if (callHasShadowStackArg(callNode))
     {
-        GenTree*             argNode     = opAndArg.operand;
+        GenTree* calleeShadowStack = insertShadowStackAddr(callNode, getCurrentShadowFrameSize(), _shadowStackLclNum);
+
+        GenTreePutArgType* calleeShadowStackPutArg =
+            _compiler->gtNewPutArgType(calleeShadowStack, CORINFO_TYPE_PTR, NO_CLASS_HANDLE);
+#ifdef DEBUG
+        calleeShadowStackPutArg->SetArgNum(-1); // -1 will represent the shadowstack arg for LLVM
+#endif
+        CurrentRange().InsertBefore(callNode, calleeShadowStackPutArg);
+
+        lastLlvmStackArg = callNode->gtArgs.PushFront(_compiler, calleeShadowStackPutArg);
+    }
+
+    CallArg* returnSlot = lowerCallReturn(callNode);
+
+    if (returnSlot != nullptr)
+    {
+        lastLlvmStackArg = returnSlot;
+    }
+
+    while (callArg != nullptr)
+    {
+        GenTree*             argNode     = callArg->GetNode();
         CORINFO_CLASS_HANDLE clsHnd      = NO_CLASS_HANDLE;
-        CorInfoType          corInfoType = CORINFO_TYPE_UNDEF;
+        CorInfoType          corInfoType;
         bool                 isSigArg    = argIx >= firstSigArgIx;
 
         // We currently do not place any args for helpers on the shadow stack. This is a potential GC
@@ -884,10 +876,11 @@ void Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
             if (isSigArg)
             {
                 corInfoType = strip(_info.compCompHnd->getArgType(sigInfo, sigArgs, &clsHnd));
+                sigArgs     = _compiler->info.compCompHnd->getArgNext(sigArgs);
             }
             else // Not-in-sig arguments. We need to handle these specially.
             {
-                if (sigInfo->hasThis() && (opAndArg.argNum == 0))
+                if (callArg->GetWellKnownArg() == WellKnownArg::ThisPointer)
                 {
                     corInfoType = argNode->TypeIs(TYP_REF) ? CORINFO_TYPE_CLASS : CORINFO_TYPE_BYREF;
                 }
@@ -919,7 +912,7 @@ void Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
         {
             if (corInfoType == CORINFO_TYPE_VALUECLASS)
             {
-                shadowStackUseOffest = padOffset(corInfoType, clsHnd, shadowStackUseOffest);
+                shadowStackUseOffset = padOffset(corInfoType, clsHnd, shadowStackUseOffset);
             }
 
             unsigned shadowFrameSize = getCurrentShadowFrameSize();
@@ -929,7 +922,7 @@ void Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
                 {
                     assert(use.GetType() != TYP_STRUCT);
 
-                    unsigned fieldOffsetValue = shadowFrameSize + shadowStackUseOffest + use.GetOffset();
+                    unsigned fieldOffsetValue = shadowFrameSize + shadowStackUseOffset + use.GetOffset();
                     GenTree* fieldSlotAddr = insertShadowStackAddr(callNode, fieldOffsetValue, _shadowStackLclNum);
                     GenTree* fieldStoreNode = createShadowStackStoreNode(use.GetType(), fieldSlotAddr, use.GetNode());
 
@@ -940,7 +933,7 @@ void Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
             }
             else
             {
-                unsigned offsetValue = shadowFrameSize + shadowStackUseOffest;
+                unsigned offsetValue = shadowFrameSize + shadowStackUseOffset;
                 GenTree* slotAddr  = insertShadowStackAddr(callNode, offsetValue, _shadowStackLclNum);
                 GenTree* storeNode = createShadowStackStoreNode(argNode->TypeGet(), slotAddr, argNode);
 
@@ -949,39 +942,29 @@ void Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
 
             if (corInfoType == CORINFO_TYPE_VALUECLASS)
             {
-                shadowStackUseOffest = padNextOffset(corInfoType, clsHnd, shadowStackUseOffest);
+                shadowStackUseOffset = padNextOffset(corInfoType, clsHnd, shadowStackUseOffset);
             }
             else
             {
-                shadowStackUseOffest += TARGET_POINTER_SIZE;
+                shadowStackUseOffset += TARGET_POINTER_SIZE;
             }
+
+            callNode->gtArgs.RemoveAfter(lastLlvmStackArg);
         }
         else
         {
             // Arg on LLVM stack.
             GenTreePutArgType* putArg = _compiler->gtNewPutArgType(argNode, corInfoType, clsHnd);
+            callArg->SetEarlyNode(putArg);
 #if DEBUG
-            putArg->SetArgNum(opAndArg.argNum);
+            putArg->SetArgNum(argIx);
 #endif
-            if (lastArg == nullptr)
-            {
-                lastArg = _compiler->gtNewCallArgs(putArg);
-                callNode->gtCallArgs = lastArg;
-            }
-            else
-            {
-                lastArg = _compiler->gtInsertNewCallArgAfter(putArg, lastArg);
-            }
-
             CurrentRange().InsertBefore(callNode, putArg);
-        }
-
-        if (isSigArg && (sigInfo != nullptr))
-        {
-            sigArgs = _info.compCompHnd->getArgNext(sigArgs);
+            lastLlvmStackArg = callArg;
         }
 
         argIx++;
+        callArg = callArg->GetNext();
     }
 }
 
@@ -1017,35 +1000,23 @@ void Llvm::failUnsupportedCalls(GenTreeCall* callNode)
         failFunctionCompilation();
     }
 
-    if (callNode->gtCallArgs != nullptr)
+    for (CallArg& callArg : callNode->gtArgs.Args())
     {
-        for (GenTree* operand : callNode->Operands())
+        if (callArg.GetWellKnownArg() == WellKnownArg::VirtualStubCell)
         {
-            if (operand->IsArgPlaceHolderNode() || !operand->IsValue())
-            {
-                // Either of these situations may happen with calls.
-                continue;
-            }
-            if (operand == callNode->gtControlExpr || operand == callNode->gtCallAddr)
-            {
-                // vtable target or indirect target
-                continue;
-            }
-
-            fgArgTabEntry* curArgTabEntry = _compiler->gtArgEntryByNode(callNode, operand);
-            if (curArgTabEntry->nonStandardArgKind == NonStandardArgKind::VirtualStubCell)
-            {
-                failFunctionCompilation();
-            }
+            failFunctionCompilation();
         }
     }
 }
 
 // If the return type must be GC tracked, removes the return type
 // and converts to a return slot arg, modifying the call args, and building the necessary IR
-GenTreeCall::Use* Llvm::lowerCallReturn(GenTreeCall* callNode, GenTreeCall::Use* insertAfterArg)
+//
+// Returns:
+//   The "CallArg*" for the created call return slot, if created, otherwise "nullptr"
+CallArg* Llvm::lowerCallReturn(GenTreeCall* callNode)
 {
-    GenTreeCall::Use* lastArg = insertAfterArg;
+    CallArg* returnSlot = nullptr;
 
     if (needsReturnStackSlot(_compiler, callNode))
     {
@@ -1088,7 +1059,8 @@ GenTreeCall::Use* Llvm::lowerCallReturn(GenTreeCall* callNode, GenTreeCall::Use*
 #if DEBUG
         putArg->SetArgNum(-2);  // -2 will represent the return arg for LLVM
 #endif
-        lastArg = _compiler->gtInsertNewCallArgAfter(putArg, insertAfterArg);
+        // if we are lowering a return, then we will at least have a shadow stack CallArg
+        returnSlot = callNode->gtArgs.InsertAfter(_compiler, callNode->gtArgs.GetArgByIndex(0), putArg);
 
         callNode->gtReturnType = TYP_VOID;
         callNode->gtCorInfoType = CORINFO_TYPE_VOID;
@@ -1110,7 +1082,7 @@ GenTreeCall::Use* Llvm::lowerCallReturn(GenTreeCall* callNode, GenTreeCall::Use*
         }
     }
 
-    return lastArg;
+    return returnSlot;
 }
 
 //------------------------------------------------------------------------
