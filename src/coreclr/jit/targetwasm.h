@@ -56,6 +56,7 @@
 #else
   #define REGSIZE_BYTES            8       // number of bytes in one register
 #endif
+  #define MIN_ARG_AREA_FOR_CALL    0       // Minimum required outgoing argument space for a call.
 
   #define CODE_ALIGN               1       // code alignment requirement
   #define STACK_ALIGN              16      // stack alignment requirement
