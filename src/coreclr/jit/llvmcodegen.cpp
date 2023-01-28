@@ -1198,6 +1198,8 @@ void Llvm::visitNode(GenTree* node)
         case GT_XADD:
         case GT_XCHG:
         case GT_CMPXCHG:
+            // TODO-LLVM-CQ: enable these as intrinsics.
+            unreached();
         case GT_MEMORYBARRIER:
             // TODO-LLVM: atomics.
             failFunctionCompilation();
