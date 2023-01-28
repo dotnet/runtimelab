@@ -2414,10 +2414,7 @@ void Lowering::LowerCFGCall(GenTreeCall* call)
             call->gtArgs.PushLateBack(targetArg);
 
             // Set up ABI information for this arg.
-<<<<<<< HEAD
             targetArg->AbiInfo.ArgNum  = call->gtArgs.CountArgs() - 1;
-=======
->>>>>>> b39c723a9b6c07f85304bf41a97bcc18225b1206
             targetArg->AbiInfo.ArgType = callTarget->TypeGet();
             targetArg->AbiInfo.SetRegNum(0, REG_DISPATCH_INDIRECT_CALL_ADDR);
             targetArg->AbiInfo.NumRegs = 1;

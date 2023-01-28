@@ -4022,12 +4022,8 @@ const char* getWellKnownArgName(WellKnownArg arg);
 struct CallArgABIInformation
 {
     CallArgABIInformation()
-<<<<<<< HEAD
         : ArgNum((unsigned)-1)
         , NumRegs(0)
-=======
-        : NumRegs(0)
->>>>>>> b39c723a9b6c07f85304bf41a97bcc18225b1206
         , ByteOffset(0)
         , ByteSize(0)
         , ByteAlignment(0)
@@ -4059,13 +4055,10 @@ struct CallArgABIInformation
         }
     }
 
-<<<<<<< HEAD
     // The original argument number, also specifies the required argument
     // evaluation order from the IL
     unsigned ArgNum;
 
-=======
->>>>>>> b39c723a9b6c07f85304bf41a97bcc18225b1206
 private:
     // The registers to use when passing this argument, set to REG_STK for
     // arguments passed on the stack
@@ -4381,13 +4374,10 @@ public:
     CallArg* InsertAfterThisOrFirst(Compiler* comp, GenTree* node, WellKnownArg wellKnownArg = WellKnownArg::None);
     void PushLateBack(CallArg* arg);
     void Remove(CallArg* arg);
-<<<<<<< HEAD
 #if TARGET_WASM
     void RemoveAfter(CallArg* arg);
     void MoveLateToEarly();
 #endif
-=======
->>>>>>> b39c723a9b6c07f85304bf41a97bcc18225b1206
 
     template <typename CopyNodeFunc>
     void InternalCopyFrom(Compiler* comp, CallArgs* other, CopyNodeFunc copyFunc);
@@ -4495,13 +4485,6 @@ public:
         return IteratorPair<LateArgIterator>(LateArgIterator(m_lateHead), LateArgIterator(nullptr));
     }
 };
-<<<<<<< HEAD
-=======
-
-struct GenTreeCall final : public GenTree
-{
-    CallArgs gtArgs;
->>>>>>> b39c723a9b6c07f85304bf41a97bcc18225b1206
 
 struct GenTreeCall final : public GenTree
 {

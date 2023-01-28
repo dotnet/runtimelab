@@ -16301,15 +16301,11 @@ void Compiler::impImportBlockCode(BasicBlock* block)
                     { // compDonotInline()
                         return;
                     }
-<<<<<<< HEAD
 #if defined(TARGET_WASM) // TODO-LLVM: delete when IL module gone
                     op1 = gtNewHelperCallNode(helper, TYP_REF, op2, op1);
 #else
                     op1 = gtNewHelperCallNode(helper, TYP_VOID, op2, op1);
 #endif // TARGET_WASM
-=======
-                    op1 = gtNewHelperCallNode(helper, TYP_VOID, op2, op1);
->>>>>>> b39c723a9b6c07f85304bf41a97bcc18225b1206
 
                     op1 = new (this, GT_COLON) GenTreeColon(TYP_VOID, gtNewNothingNode(), op1);
                     op1 = gtNewQmarkNode(TYP_VOID, condBox, op1->AsColon());
@@ -17487,7 +17483,6 @@ bool Compiler::impReturnInstruction(int prefixFlags, OPCODE& opcode)
 
                 if (fgNeedReturnSpillTemp())
                 {
-<<<<<<< HEAD
                     if (!impInlineInfo->retExpr)
                     {
                         // The inlinee compiler has figured out the type of the temp already. Use it here.
@@ -17502,8 +17497,6 @@ bool Compiler::impReturnInstruction(int prefixFlags, OPCODE& opcode)
 #endif // defined(TARGET_ARM64)
 #if !defined (TARGET_WASM)
                 {
-=======
->>>>>>> b39c723a9b6c07f85304bf41a97bcc18225b1206
                     assert(iciCall->gtArgs.HasRetBuffer());
                     GenTree* dest = gtCloneExpr(iciCall->gtArgs.GetRetBufferArg()->GetEarlyNode());
                     // spill temp only exists if there are multiple return points

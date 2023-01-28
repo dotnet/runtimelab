@@ -650,12 +650,8 @@ const char* getWellKnownArgName(WellKnownArg arg)
 //
 void CallArg::Dump(Compiler* comp)
 {
-<<<<<<< HEAD
     printf("CallArg[arg %u", AbiInfo.ArgNum);
     printf(" [%06u].%s", comp->dspTreeID(GetNode()), GenTree::OpName(GetEarlyNode()->OperGet()));
-=======
-    printf("CallArg[[%06u].%s", comp->dspTreeID(GetNode()), GenTree::OpName(GetEarlyNode()->OperGet()));
->>>>>>> b39c723a9b6c07f85304bf41a97bcc18225b1206
     printf(" %s", varTypeName(AbiInfo.ArgType));
     printf(" (%s)", AbiInfo.PassedByRef ? "By ref" : "By value");
     if (AbiInfo.GetRegNum() != REG_STK)
@@ -1928,14 +1924,6 @@ GenTree* Compiler::fgInsertCommaFormTemp(GenTree** ppTree, CORINFO_CLASS_HANDLE 
 // AddFinalArgsAndDetermineABIInfo:
 //   Add final arguments and determine the argument ABI information.
 //
-<<<<<<< HEAD
-// Remarks:
-//   This adds the final "non-standard" arguments to the call and categorizes
-//   all the ABI information required for downstream JIT phases. This function
-//   modifies IR by adding certain non-standard arguments. For more information
-//   see CallArg::IsArgAddedLate and CallArgs::ResetFinalArgsAndABIInfo.
-//
-=======
 // Parameters:
 //   comp - The compiler object.
 //   call - The call to which the CallArgs belongs.
@@ -1946,7 +1934,6 @@ GenTree* Compiler::fgInsertCommaFormTemp(GenTree** ppTree, CORINFO_CLASS_HANDLE 
 //   modifies IR by adding certain non-standard arguments. For more information
 //   see CallArg::IsArgAddedLate and CallArgs::ResetFinalArgsAndABIInfo.
 //
->>>>>>> b39c723a9b6c07f85304bf41a97bcc18225b1206
 void CallArgs::AddFinalArgsAndDetermineABIInfo(Compiler* comp, GenTreeCall* call)
 {
     assert(&call->gtArgs == this);
@@ -2115,10 +2102,7 @@ void CallArgs::AddFinalArgsAndDetermineABIInfo(Compiler* comp, GenTreeCall* call
         InsertAfterThisOrFirst(comp, indirectCellAddress, WellKnownArg::R2RIndirectionCell);
     }
 #endif
-<<<<<<< HEAD
-=======
 
->>>>>>> b39c723a9b6c07f85304bf41a97bcc18225b1206
     unsigned numArgs = CountArgs();
 
 #ifdef TARGET_X86
@@ -2845,10 +2829,7 @@ void CallArgs::AddFinalArgsAndDetermineABIInfo(Compiler* comp, GenTreeCall* call
 #endif // TARGET_ARM
 
         arg.AbiInfo          = {};
-<<<<<<< HEAD
         arg.AbiInfo.ArgNum   = argIndex;
-=======
->>>>>>> b39c723a9b6c07f85304bf41a97bcc18225b1206
         arg.AbiInfo.ArgType  = argx->TypeGet();
         arg.AbiInfo.IsStruct = isStructArg;
 
@@ -3262,15 +3243,9 @@ GenTreeCall* Compiler::fgMorphArgs(GenTreeCall* call)
         DEBUG_ARG_SLOTS_ASSERT(size != 0);
         DEBUG_ARG_SLOTS_ONLY(argSlots += arg.AbiInfo.GetSlotCount();)
 
-<<<<<<< HEAD
-        // TODO-ARGS: Quirk this to match previous behavior where it was
-        // skipped for 'this' pointer. We should turn it off.
-        if ((arg.GetWellKnownArg() != WellKnownArg::ThisPointer) && (argx->IsLocalAddrExpr() != nullptr))
-=======
         // For pointers to locals we can skip reporting GC info and also skip
         // zero initialization.
         if (argx->IsLocalAddrExpr() != nullptr)
->>>>>>> b39c723a9b6c07f85304bf41a97bcc18225b1206
         {
             argx->gtType = TYP_I_IMPL;
         }
@@ -8330,11 +8305,7 @@ GenTree* Compiler::fgGetStubAddrArg(GenTreeCall* call)
 //
 unsigned Compiler::fgGetArgParameterLclNum(GenTreeCall* call, CallArg* arg)
 {
-<<<<<<< HEAD
-    unsigned num = arg->AbiInfo.ArgNum;
-=======
     unsigned num = 0;
->>>>>>> b39c723a9b6c07f85304bf41a97bcc18225b1206
 
     for (CallArg& otherArg : call->gtArgs.Args())
     {
@@ -8342,20 +8313,12 @@ unsigned Compiler::fgGetArgParameterLclNum(GenTreeCall* call, CallArg* arg)
         {
             break;
         }
-<<<<<<< HEAD
-        // Late added args add extra args that do not map to IL parameters and that we should not reassign.
-        if (!otherArg.IsArgAddedLate())
-            continue;
-
-        num--;
-=======
 
         // Late added args add extra args that do not map to IL parameters and that we should not reassign.
         if (!otherArg.IsArgAddedLate())
         {
             num++;
         }
->>>>>>> b39c723a9b6c07f85304bf41a97bcc18225b1206
     }
 
     return num;

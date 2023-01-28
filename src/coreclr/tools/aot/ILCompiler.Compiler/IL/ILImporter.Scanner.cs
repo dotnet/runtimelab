@@ -83,7 +83,6 @@ namespace Internal.IL
             _compilation = compilation;
             _factory = (ILScanNodeFactory)compilation.NodeFactory;
 
-<<<<<<< HEAD
             if (_compilation.TargetArchIsWasm())
             {
                 methodIL = ReplaceStubbedWasmMethods(method, methodIL);
@@ -95,8 +94,6 @@ namespace Internal.IL
                 _dependencies.Add(_factory.MethodEntrypoint(helperMethod), "Wasm EH");
             }
 
-=======
->>>>>>> b39c723a9b6c07f85304bf41a97bcc18225b1206
             _ilBytes = methodIL.GetILBytes();
 
             _canonMethodIL = methodIL;
@@ -163,7 +160,6 @@ namespace Internal.IL
                     _dependencies.Add(GetHelperEntrypoint(ReadyToRunHelper.MonitorEnter), reason);
                     _dependencies.Add(GetHelperEntrypoint(ReadyToRunHelper.MonitorExit), reason);
                 }
-<<<<<<< HEAD
             }
 
             if (_compilation.TargetArchIsWasm() && (_canonMethod.IsSynchronized || _exceptionRegions.Length != 0))
@@ -192,9 +188,6 @@ namespace Internal.IL
 
                 helperMethod = helperType.GetKnownMethod("HandleExceptionWasmFault", null);
                 _dependencies.Add(_compilation.NodeFactory.MethodEntrypoint(helperMethod), "Wasm EH");
-=======
-
->>>>>>> b39c723a9b6c07f85304bf41a97bcc18225b1206
             }
 
             FindBasicBlocks();

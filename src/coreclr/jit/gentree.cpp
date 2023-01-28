@@ -1355,15 +1355,12 @@ CallArgs::CallArgs()
 //---------------------------------------------------------------
 // FindByNode: Find the argument containing the specified early or late node.
 //
-<<<<<<< HEAD
-=======
 // Parameters:
 //   node - The node to find.
 //
 // Returns:
 //   A pointer to the found CallArg, or otherwise nullptr.
 //
->>>>>>> b39c723a9b6c07f85304bf41a97bcc18225b1206
 CallArg* CallArgs::FindByNode(GenTree* node)
 {
     assert(node != nullptr);
@@ -1381,15 +1378,12 @@ CallArg* CallArgs::FindByNode(GenTree* node)
 //---------------------------------------------------------------
 // FindWellKnownArg: Find a specific well-known argument.
 //
-<<<<<<< HEAD
-=======
 // Parameters:
 //   arg - The type of well-known argument.
 //
 // Returns:
 //   A pointer to the found CallArg, or null if it was not found.
 //
->>>>>>> b39c723a9b6c07f85304bf41a97bcc18225b1206
 // Remarks:
 //   For the 'this' arg or the return buffer arg there are more efficient
 //   alternatives available in `GetThisArg` and `GetRetBufferArg`.
@@ -1411,12 +1405,9 @@ CallArg* CallArgs::FindWellKnownArg(WellKnownArg arg)
 //---------------------------------------------------------------
 // GetThisArg: Get the this-pointer argument.
 //
-<<<<<<< HEAD
-=======
 // Returns:
 //   A pointer to the 'this' arg, or nullptr if there is no such arg.
 //
->>>>>>> b39c723a9b6c07f85304bf41a97bcc18225b1206
 // Remarks:
 //   This is only the managed 'this' arg. We consider the 'this' pointer for
 //   unmanaged instance calling conventions as normal (non-this) arguments.
@@ -1438,12 +1429,9 @@ CallArg* CallArgs::GetThisArg()
 //---------------------------------------------------------------
 // GetRetBufferArg: Get the return buffer arg.
 //
-<<<<<<< HEAD
-=======
 // Returns:
 //   A pointer to the ret-buffer arg, or nullptr if there is no such arg.
 //
->>>>>>> b39c723a9b6c07f85304bf41a97bcc18225b1206
 // Remarks:
 //   This is the actual (per-ABI) return buffer argument. On some ABIs this
 //   argument has special treatment. Notably on standard ARM64 calling
@@ -1470,8 +1458,6 @@ CallArg* CallArgs::GetRetBufferArg()
 //---------------------------------------------------------------
 // GetArgByIndex: Get an argument with the specified index.
 //
-<<<<<<< HEAD
-=======
 // Parameters:
 //   index - The index of the argument to find.
 //
@@ -1481,17 +1467,12 @@ CallArg* CallArgs::GetRetBufferArg()
 // Remarks:
 //   This function assumes enough arguments exist.
 //
->>>>>>> b39c723a9b6c07f85304bf41a97bcc18225b1206
 CallArg* CallArgs::GetArgByIndex(unsigned index)
 {
     CallArg* cur = m_head;
     for (unsigned i = 0; i < index; i++)
     {
-<<<<<<< HEAD
-        assert(cur != nullptr);
-=======
         assert((cur != nullptr) && "Not enough arguments in GetArgByIndex");
->>>>>>> b39c723a9b6c07f85304bf41a97bcc18225b1206
         cur = cur->GetNext();
     }
 
@@ -1501,15 +1482,12 @@ CallArg* CallArgs::GetArgByIndex(unsigned index)
 //---------------------------------------------------------------
 // GetIndex: Get the index for the specified argument.
 //
-<<<<<<< HEAD
-=======
 // Parameters:
 //   arg - The argument to obtain the index of.
 //
 // Returns:
 //   The index.
 //
->>>>>>> b39c723a9b6c07f85304bf41a97bcc18225b1206
 unsigned CallArgs::GetIndex(CallArg* arg)
 {
     unsigned i = 0;
@@ -1566,12 +1544,9 @@ void CallArgs::Reverse(unsigned index, unsigned count)
 //---------------------------------------------------------------
 // AddedWellKnownArg: Record details when a well known arg was added.
 //
-<<<<<<< HEAD
-=======
 // Parameters:
 //   arg - The type of well-known arg that was just added.
 //
->>>>>>> b39c723a9b6c07f85304bf41a97bcc18225b1206
 // Remarks:
 //   This is used to improve performance of some common argument lookups.
 //
@@ -1593,12 +1568,9 @@ void CallArgs::AddedWellKnownArg(WellKnownArg arg)
 //---------------------------------------------------------------
 // RemovedWellKnownArg: Record details when a well known arg was removed.
 //
-<<<<<<< HEAD
-=======
 // Parameters:
 //   arg - The type of well-known arg that was just removed.
 //
->>>>>>> b39c723a9b6c07f85304bf41a97bcc18225b1206
 void CallArgs::RemovedWellKnownArg(WellKnownArg arg)
 {
     switch (arg)
@@ -1686,10 +1658,7 @@ regNumber CallArgs::GetCustomRegister(Compiler* comp, CorInfoCallConvExtension c
         case WellKnownArg::PInvokeTarget:
             return REG_PINVOKE_TARGET_PARAM;
 
-<<<<<<< HEAD
 #if !defined(TARGET_WASM)
-=======
->>>>>>> b39c723a9b6c07f85304bf41a97bcc18225b1206
         case WellKnownArg::R2RIndirectionCell:
             return REG_R2R_INDIRECT_PARAM;
 
@@ -1698,10 +1667,7 @@ regNumber CallArgs::GetCustomRegister(Compiler* comp, CorInfoCallConvExtension c
             {
                 return REG_VALIDATE_INDIRECT_CALL_ADDR;
             }
-<<<<<<< HEAD
 #endif // !TARGET_WASM
-=======
->>>>>>> b39c723a9b6c07f85304bf41a97bcc18225b1206
 
             break;
 
@@ -1720,8 +1686,6 @@ regNumber CallArgs::GetCustomRegister(Compiler* comp, CorInfoCallConvExtension c
 // IsNonStandard: Check if an argument is passed with a non-standard calling
 // convention.
 //
-<<<<<<< HEAD
-=======
 // Parameters:
 //   comp - The compiler object.
 //   call - The call node containing these args.
@@ -1730,7 +1694,6 @@ regNumber CallArgs::GetCustomRegister(Compiler* comp, CorInfoCallConvExtension c
 // Returns:
 //   True if the argument is non-standard.
 //
->>>>>>> b39c723a9b6c07f85304bf41a97bcc18225b1206
 bool CallArgs::IsNonStandard(Compiler* comp, GenTreeCall* call, CallArg* arg)
 {
     return GetCustomRegister(comp, call->GetUnmanagedCallConv(), arg->GetWellKnownArg()) != REG_NA;
@@ -1882,12 +1845,9 @@ CallArg* CallArgs::InsertAfterThisOrFirst(Compiler* comp, GenTree* node, WellKno
 //---------------------------------------------------------------
 // PushLateBack: Insert an argument at the end of the 'late' argument list.
 //
-<<<<<<< HEAD
-=======
 // Parameters:
 //   arg - The arg to add to the late argument list.
 //
->>>>>>> b39c723a9b6c07f85304bf41a97bcc18225b1206
 // Remarks:
 //   This function should only be used if adding arguments after the call has
 //   already been morphed.
@@ -1906,12 +1866,9 @@ void CallArgs::PushLateBack(CallArg* arg)
 //---------------------------------------------------------------
 // Remove: Remove an argument from the argument list.
 //
-<<<<<<< HEAD
-=======
 // Parameters:
 //   arg - The arg to remove.
 //
->>>>>>> b39c723a9b6c07f85304bf41a97bcc18225b1206
 // Remarks:
 //   This function cannot be used after morph. It will also invalidate ABI
 //   information, so it is expected that `CallArgs::AddFinalArgsAndDetermineABIInfo`
@@ -1938,7 +1895,6 @@ void CallArgs::Remove(CallArg* arg)
     assert(!"Did not find arg to remove in CallArgs::Remove");
 }
 
-<<<<<<< HEAD
 #if TARGET_WASM
 //------------------------------------------------------------------------
 // RemoveAfter: Remove the argument after the one passed 
@@ -1992,8 +1948,6 @@ void CallArgs::MoveLateToEarly()
 }
 #endif
 
-=======
->>>>>>> b39c723a9b6c07f85304bf41a97bcc18225b1206
 //---------------------------------------------------------------
 // GetOtherRegMask: Get the reg mask of gtOtherRegs of call node
 //
@@ -12865,11 +12819,6 @@ void Compiler::gtGetLateArgMsg(GenTreeCall* call, CallArg* arg, char* bufp, unsi
 //
 void Compiler::gtDispArgList(GenTreeCall* call, GenTree* lastCallOperand, IndentStack* indentStack)
 {
-<<<<<<< HEAD
-    unsigned argNum = 0;
-
-=======
->>>>>>> b39c723a9b6c07f85304bf41a97bcc18225b1206
     for (CallArg& arg : call->gtArgs.Args())
     {
         if (!arg.GetEarlyNode()->IsNothingNode() && !arg.GetEarlyNode()->IsArgPlaceHolderNode())
@@ -13061,7 +13010,6 @@ void Compiler::gtDispLIRNode(GenTree* node, const char* prefixMsg /* = nullptr *
             }
             else
             {
-<<<<<<< HEAD
 #ifdef TARGET_WASM
                 // LLVM rewrites the call args, but does not reinitialise the arg infos
                 if (operand->OperIs(GT_PUTARG_TYPE))
@@ -13084,18 +13032,6 @@ void Compiler::gtDispLIRNode(GenTree* node, const char* prefixMsg /* = nullptr *
                         gtGetLateArgMsg(call, curArg, buf, sizeof(buf));
                     }
 #ifdef TARGET_WASM
-=======
-                CallArg* curArg = call->gtArgs.FindByNode(operand);
-                assert(curArg);
-
-                if (operand == curArg->GetEarlyNode())
-                {
-                    gtGetArgMsg(call, curArg, buf, sizeof(buf));
-                }
-                else
-                {
-                    gtGetLateArgMsg(call, curArg, buf, sizeof(buf));
->>>>>>> b39c723a9b6c07f85304bf41a97bcc18225b1206
                 }
 #endif // TARGET_WASM
 
