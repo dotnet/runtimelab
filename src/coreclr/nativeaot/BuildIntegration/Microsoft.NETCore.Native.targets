@@ -337,6 +337,7 @@ The .NET Foundation licenses this file to you under the MIT license.
       <EmccArgs>&quot;$(LlvmObject)&quot; -c -o &quot;$(NativeObject)&quot; -s DISABLE_EXCEPTION_CATCHING=0</EmccArgs>
       <EmccArgs Condition="'$(NativeDebugSymbols)' != 'true'">$(EmccArgs) -O2</EmccArgs>
       <EmccArgs Condition="'$(NativeDebugSymbols)' == 'true'">$(EmccArgs) -g3</EmccArgs>
+      <EmccArgs Condition="'$(EmccShellFile)' != ''">$(EmccArgs) --shell-file $(EmccShellFile)</EmccArgs>    
       <!-- TODO-LLVM: remove when we update to Emscripten with https://github.com/emscripten-core/emscripten/pull/18443 -->
       <EmccArgs>$(EmccArgs) -s USE_SDL=0</EmccArgs>
     </PropertyGroup>
