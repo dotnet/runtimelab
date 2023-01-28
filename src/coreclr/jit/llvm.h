@@ -337,6 +337,7 @@ private:
     void buildNullCheck(GenTreeIndir* nullCheckNode);
     void buildBoundsCheck(GenTreeBoundsChk* boundsCheck);
     void buildCkFinite(GenTreeUnOp* ckNode);
+    void buildKeepAlive(GenTreeUnOp* keepAliveNode);
     void buildILOffset(GenTreeILOffset* ilOffsetNode);
 
     void buildCallFinally(BasicBlock* block);

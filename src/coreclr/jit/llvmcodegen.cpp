@@ -1193,6 +1193,14 @@ void Llvm::visitNode(GenTree* node)
         case GT_INTRINSIC:
             buildIntrinsic(node->AsIntrinsic());
             break;
+        case GT_XAND:
+        case GT_XORR:
+        case GT_XADD:
+        case GT_XCHG:
+        case GT_CMPXCHG:
+        case GT_MEMORYBARRIER:
+            // TODO-LLVM: atomics.
+            failFunctionCompilation();
         case GT_EQ:
         case GT_NE:
         case GT_LE:
@@ -1248,6 +1256,9 @@ void Llvm::visitNode(GenTree* node)
         case GT_XOR:
             buildBinaryOperation(node);
             break;
+        case GT_KEEPALIVE:
+            buildKeepAlive(node->AsUnOp());
+            break;
         case GT_IL_OFFSET:
             buildILOffset(node->AsILOffset());
             break;
@@ -1257,7 +1268,7 @@ void Llvm::visitNode(GenTree* node)
             // The latter use case is not representable in LLVM, so we don't need to do anything.
             break;
         case GT_ARR_ELEM:
-            failFunctionCompilation(); // Delete once we merge https://github.com/dotnet/runtime/pull/70271 (Jun 2).
+            failFunctionCompilation(); // TODO-LLVM: delete once we merge https://github.com/dotnet/runtime/pull/70271 (Jun 2).
         case GT_JMP:
             NYI("LLVM/GT_JMP"); // Requires support for explicit tailcalls.
         default:
@@ -2372,6 +2383,21 @@ void Llvm::buildCkFinite(GenTreeUnOp* ckNode)
     emitJumpToThrowHelper(isNotFiniteValue, SCK_ARITH_EXCPN);;
 
     mapGenTreeToValue(ckNode, opValue);
+}
+
+void Llvm::buildKeepAlive(GenTreeUnOp* keepAliveNode)
+{
+    // KEEPALIVE is used to represent implicit uses of GC-visible values, e. g.:
+    //
+    //  ObjWithFinalizer obj = new ObjWithFinalizer();
+    //  NativeResource handle = obj.NativeResource;
+    //  <-- Here the compiler could think liveness of "obj" ends and permit its finalization. -->
+    //  NativeCall(handle);
+    //  <-- We insert KeepAlive s.t. we don't finalize away "handle" while it is still in use by the native call. -->
+    //  GC.KeepAlive(obj)
+    //
+    // In the shadow stack model, this would have to be done before codegen, by spilling "obj", so we don't need to do
+    // anything here.
 }
 
 void Llvm::buildILOffset(GenTreeILOffset* ilOffsetNode)
