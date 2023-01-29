@@ -20,6 +20,7 @@ namespace System.Runtime
             return dispatchResolveTarget;
         }
 
+        [RuntimeExport("RhpCidResolveWasm")]
         private static IntPtr RhpCidResolve_Worker(object pObject, IntPtr pCell)
         {
             DispatchCellInfo cellInfo;

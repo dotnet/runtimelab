@@ -1830,7 +1830,9 @@ void CallArgs::PushLateBack(CallArg* arg)
 //
 void CallArgs::Remove(CallArg* arg)
 {
+#ifndef TARGET_WASM
     assert(!m_abiInformationDetermined && !m_argsComplete);
+#endif // !TARGET_WASM
 
     CallArg** slot = &m_head;
     while (*slot != nullptr)
@@ -1863,13 +1865,12 @@ void CallArgs::Remove(CallArg* arg)
 void CallArgs::RemoveAfter(CallArg* arg)
 {
     // if arg == nullptr, we are removing the first arg
-    if(arg == nullptr)
+    if (arg == nullptr)
     {
         assert(m_head != nullptr);
 
-        m_head = m_head->GetNext();
         RemovedWellKnownArg(m_head->GetWellKnownArg());
-
+        m_head = m_head->GetNext();
         return;
     }
 

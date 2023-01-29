@@ -71,6 +71,8 @@ void Llvm::Compile()
         m_diBuilder->finalize();
     }
 
+    generateAuxiliaryArtifacts();
+
 #if DEBUG
     JITDUMP("\n===================================================================================================================\n");
     JITDUMP("LLVM IR for %s after codegen:\n", _compiler->info.compFullName);
@@ -1030,6 +1032,16 @@ void Llvm::fillPhis()
                 llvmPhiNode->addIncoming(phiRealArgValue, llvmPredBlock);
             }
         }
+    }
+}
+
+void Llvm::generateAuxiliaryArtifacts()
+{
+    // Currently, the only auxiliary artifact we may need is an alternative exported name for the compiled function.
+    const char* alternativeName = GetAlternativeFunctionName();
+    if (alternativeName != nullptr)
+    {
+        llvm::GlobalAlias::create(alternativeName, getRootLlvmFunction());
     }
 }
 

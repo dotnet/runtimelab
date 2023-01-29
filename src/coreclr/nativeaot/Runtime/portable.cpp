@@ -341,6 +341,7 @@ COOP_PINVOKE_HELPER(Array *, RhpNewArrayAlign8, (MethodTable * pArrayEEType, int
 #endif // !HOST_64BIT
 #endif // defined(HOST_ARM) || defined(HOST_WASM)
 
+#ifndef HOST_WASM
 COOP_PINVOKE_HELPER(void, RhpInitialDynamicInterfaceDispatch, ())
 {
     ASSERT_UNCONDITIONALLY("NYI");
@@ -385,6 +386,7 @@ COOP_PINVOKE_HELPER(void, RhpVTableOffsetDispatch, ())
 {
     ASSERT_UNCONDITIONALLY("NYI");
 }
+#endif // !HOST_WASM
 
 // @TODO Implement UniversalTransition
 EXTERN_C void * ReturnFromUniversalTransition;

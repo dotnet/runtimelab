@@ -32,6 +32,7 @@ enum class EEApiId
     PadOffset,
     GetTypeDescriptor,
     GetInstanceFieldAlignment,
+    GetAlternativeFunctionName,
     Count
 };
 
@@ -787,4 +788,9 @@ TypeDescriptor Llvm::GetTypeDescriptor(CORINFO_CLASS_HANDLE typeHandle)
 uint32_t Llvm::GetInstanceFieldAlignment(CORINFO_CLASS_HANDLE fieldTypeHandle)
 {
     return CallEEApi<EEApiId::GetInstanceFieldAlignment, uint32_t>(fieldTypeHandle);
+}
+
+const char* Llvm::GetAlternativeFunctionName()
+{
+    return CallEEApi<EEApiId::GetAlternativeFunctionName, const char*>();
 }

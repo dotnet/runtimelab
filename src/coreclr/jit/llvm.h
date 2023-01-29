@@ -215,6 +215,7 @@ private:
     uint32_t PadOffset(CORINFO_CLASS_HANDLE typeHandle, unsigned atOffset);
     TypeDescriptor GetTypeDescriptor(CORINFO_CLASS_HANDLE typeHandle);
     uint32_t GetInstanceFieldAlignment(CORINFO_CLASS_HANDLE fieldTypeHandle);
+    const char* GetAlternativeFunctionName();
 
     // ================================================================================================================
     // |                                                 Type system                                                  |
@@ -263,12 +264,17 @@ private:
     void lowerDivMod(GenTreeOp* divModNode);
     void lowerReturn(GenTreeUnOp* retNode);
 
-    void lowerCallToShadowStack(GenTreeCall* callNode);
+    void lowerVirtualStubCallBeforeArgs(GenTreeCall* callNode, unsigned* pThisLclNum, GenTree** pCellArgNode);
+    void lowerVirtualStubCallAfterArgs(
+        GenTreeCall* callNode, unsigned thisArgLclNum, GenTree* cellArgNode, unsigned shadowArgsSize);
+    void insertNullCheckForCall(GenTreeCall* callNode);
+    unsigned lowerCallToShadowStack(GenTreeCall* callNode);
     void failUnsupportedCalls(GenTreeCall* callNode);
     CallArg* lowerCallReturn(GenTreeCall* callNode);
 
     void normalizeStructUse(GenTree* node, ClassLayout* layout);
 
+    unsigned representAsLclVar(LIR::Use& use);
     GenTree* createStoreNode(var_types nodeType, GenTree* addr, GenTree* data);
     GenTree* createShadowStackStoreNode(var_types storeType, GenTree* addr, GenTree* data);
     GenTree* insertShadowStackAddr(GenTree* insertBefore, ssize_t offset, unsigned shadowStackLclNum);
@@ -299,6 +305,7 @@ private:
     void generateEHDispatch();
     Value* generateEHDispatchTable(Function* llvmFunc, unsigned innerEHIndex, unsigned outerEHIndex);
     void fillPhis();
+    void generateAuxiliaryArtifacts();
 
     Value* getGenTreeValue(GenTree* node);
     Value* consumeValue(GenTree* node, Type* targetLlvmType = nullptr);

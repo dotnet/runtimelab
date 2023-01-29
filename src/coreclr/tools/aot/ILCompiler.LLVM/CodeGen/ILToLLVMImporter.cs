@@ -182,6 +182,12 @@ namespace Internal.IL
                 ImportBasicBlocks();
                 
                 CodeBasedDependencyAlgorithm.AddDependenciesDueToMethodCodePresence(ref _dependencies, _compilation.NodeFactory, _method, _canonMethodIL);
+
+                string alternateName = _compilation.GetRuntimeExportManagedEntrypointName(_method);
+                if (alternateName != null)
+                {
+                    Module.AddAlias(_llvmFunction.TypeOf, _llvmFunction, alternateName);
+                }
             }
             catch
             {

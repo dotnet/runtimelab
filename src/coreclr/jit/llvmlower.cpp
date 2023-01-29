@@ -523,7 +523,7 @@ void Llvm::ConvertShadowStackLocalNode(GenTreeLclVarCommon* node)
     GenTreeLclVarCommon* lclVar = node->AsLclVarCommon();
     LclVarDsc* varDsc = _compiler->lvaGetDesc(lclVar->GetLclNum());
 
-    if (isShadowFrameLocal(varDsc) && (lclVar->GetRegNum() == REG_NA))
+    if (isShadowFrameLocal(varDsc) && (lclVar->GetRegNum() != REG_LLVM))
     {
         // Funclets (especially filters) will be called by the dispatcher while live state still exists
         // on shadow frames below (in the tradional sense, where stacks grow down) them. For this reason,
@@ -598,7 +598,27 @@ void Llvm::lowerCall(GenTreeCall* callNode)
         lowerRethrow(callNode);
     }
 
-    lowerCallToShadowStack(callNode);
+    // Doing this early simplifies code below.
+    callNode->gtArgs.MoveLateToEarly();
+
+    unsigned thisArgLclNum = BAD_VAR_NUM;
+    GenTree* cellArgNode = nullptr;
+    if (callNode->IsVirtualStub())
+    {
+        lowerVirtualStubCallBeforeArgs(callNode, &thisArgLclNum, &cellArgNode);
+    }
+
+    if (callNode->NeedsNullCheck())
+    {
+        insertNullCheckForCall(callNode);
+    }
+
+    unsigned shadowArgsSize = lowerCallToShadowStack(callNode);
+
+    if (callNode->IsVirtualStub())
+    {
+        lowerVirtualStubCallAfterArgs(callNode, thisArgLclNum, cellArgNode, shadowArgsSize);
+    }
 
     // If there is a no return, or always throw call, delete the dead code so we can add unreachable
     // statement immediately, and not after any dead RET.
@@ -798,6 +818,111 @@ void Llvm::lowerReturn(GenTreeUnOp* retNode)
     }
 }
 
+void Llvm::lowerVirtualStubCallBeforeArgs(GenTreeCall* callNode, unsigned* pThisLclNum, GenTree** pCellArgNode)
+{
+    assert(callNode->IsVirtualStub());
+
+    // Make "this" available for reuse. Note we pass the raw pointer value to the stub, this is ok as the stub runs in
+    // cooperative mode and makes sure to spill the value to the shadow stack in case it needs to call managed code.
+    LIR::Use thisArgUse(CurrentRange(), &callNode->gtArgs.GetThisArg()->EarlyNodeRef(), callNode);
+    unsigned thisArgLclNum = representAsLclVar(thisArgUse);
+
+    // Flag the call as needing a null check. Our stubs don't handle null "this", as we presume doing the check here is
+    // better as it will likely be eliminated as redundant (by LLVM).
+    callNode->gtFlags |= GTF_CALL_NULLCHECK;
+
+    // Remove the cell arg from the arg list before lowering args (it will be reused for the stub later).
+    CallArg* cellArg = callNode->gtArgs.FindWellKnownArg(WellKnownArg::VirtualStubCell);
+    callNode->gtArgs.Remove(cellArg);
+
+    *pThisLclNum = thisArgLclNum;
+    *pCellArgNode = cellArg->GetNode();
+}
+
+void Llvm::lowerVirtualStubCallAfterArgs(
+    GenTreeCall* callNode, unsigned thisArgLclNum, GenTree* cellArgNode, unsigned shadowArgsSize)
+{
+    assert(callNode->IsVirtualStub() && (callNode->gtControlExpr == nullptr));
+    assert((shadowArgsSize % TARGET_POINTER_SIZE) == 0);
+    //
+    // We transform:
+    //  Call(pCell, [@this], args...)
+    // Into:
+    //  delegate* pStub = *pCell;
+    //  delegate* pTarget = pStub(SS, @this, pCell)
+    //  pTarget([@this], args...)
+    //
+    // We "lower" this call manually as it is rather special, inserted **after** the arguments for the main call have
+    // been set up and thus needs a larger shadow stack offset. This is done to not create a new safe point across
+    // which GC arguments to the main call would be live; the stub itself may call into managed code and trigger a GC.
+    unsigned shadowStackOffsetForStub = getCurrentShadowFrameSize() + shadowArgsSize;
+    GenTree* shadowStackForStub = insertShadowStackAddr(callNode, shadowStackOffsetForStub, _shadowStackLclNum);
+    GenTreePutArgType* shadowStackForStubPutArg =
+        _compiler->gtNewPutArgType(shadowStackForStub, CORINFO_TYPE_PTR, NO_CLASS_HANDLE);
+    INDEBUG(shadowStackForStubPutArg->SetArgNum(-1));
+    CurrentRange().InsertBefore(callNode, shadowStackForStubPutArg);
+
+    GenTree* thisForStub = _compiler->gtNewLclvNode(thisArgLclNum, TYP_REF);
+    GenTreePutArgType* thisForStubPutArg = _compiler->gtNewPutArgType(thisForStub, CORINFO_TYPE_CLASS, NO_CLASS_HANDLE);
+    INDEBUG(thisForStubPutArg->SetArgNum(0));
+    CurrentRange().InsertBefore(callNode, thisForStub, thisForStubPutArg);
+
+    GenTreePutArgType* cellForStubPutArg = _compiler->gtNewPutArgType(cellArgNode, CORINFO_TYPE_PTR, NO_CLASS_HANDLE);
+    INDEBUG(cellForStubPutArg->SetArgNum(1));
+    CurrentRange().InsertBefore(callNode, cellForStubPutArg);
+
+    // This call could be indirect (in case this is shared code and the cell address needed
+    // to be resolved dynamically). Use the available address node directly in that case.
+    GenTree* stubAddr;
+    if (callNode->gtCallType == CT_INDIRECT)
+    {
+        stubAddr = callNode->gtCallAddr;
+    }
+    else
+    {
+        // Frontend makes this into an FTN_ADDR, but it is actually a data address in our case.
+        assert(cellArgNode->IsIconHandle(GTF_ICON_FTN_ADDR));
+        cellArgNode->gtFlags = GTF_ICON_GLOBAL_PTR;
+
+        stubAddr = _compiler->gtNewIconHandleNode(cellArgNode->AsIntCon()->IconValue(), GTF_ICON_GLOBAL_PTR);
+        CurrentRange().InsertBefore(callNode, stubAddr);
+    }
+    // This is the cell's address, stub itself is its first field - get it.
+    stubAddr = _compiler->gtNewIndir(TYP_I_IMPL, stubAddr);
+    stubAddr->SetAllEffectsFlags(GTF_EMPTY);
+    stubAddr->gtFlags |= GTF_IND_NONFAULTING;
+    CurrentRange().InsertBefore(callNode, stubAddr);
+
+    GenTreeCall* stubCall = _compiler->gtNewIndCallNode(stubAddr, TYP_I_IMPL);
+    stubCall->gtArgs.PushFront(_compiler, shadowStackForStubPutArg, thisForStubPutArg, cellForStubPutArg);
+    stubCall->gtCorInfoType = CORINFO_TYPE_PTR;
+    stubCall->gtFlags |= GTF_CALL_UNMANAGED;
+    stubCall->gtCallMoreFlags |= GTF_CALL_M_SUPPRESS_GC_TRANSITION;
+    CurrentRange().InsertBefore(callNode, stubCall);
+
+    // Finally, retarget our call. It is no longer VSD.
+    callNode->gtCallType = CT_INDIRECT;
+    callNode->gtCallAddr = stubCall;
+    callNode->gtStubCallStubAddr = nullptr;
+    callNode->gtCallCookie = nullptr;
+    callNode->gtFlags &= ~GTF_CALL_VIRT_STUB;
+    callNode->gtCallMoreFlags &= ~GTF_CALL_M_VIRTSTUB_REL_INDIRECT;
+}
+
+void Llvm::insertNullCheckForCall(GenTreeCall* callNode)
+{
+    assert(callNode->NeedsNullCheck() && callNode->gtArgs.HasThisPointer());
+
+    LIR::Use thisArgUse(CurrentRange(), &callNode->gtArgs.GetThisArg()->EarlyNodeRef(), callNode);
+    unsigned thisArgLclNum = representAsLclVar(thisArgUse);
+
+    GenTree* thisArgNode = _compiler->gtNewLclvNode(thisArgLclNum, _compiler->lvaGetDesc(thisArgLclNum)->TypeGet());
+    GenTree* thisArgNullCheck = _compiler->gtNewNullCheck(thisArgNode, CurrentBlock());
+    CurrentRange().InsertBefore(callNode, thisArgNode, thisArgNullCheck);
+
+    lowerIndir(thisArgNullCheck->AsIndir());
+}
+
 //------------------------------------------------------------------------
 // lowerCallToShadowStack: Lower the call, rewriting its arguments.
 //
@@ -817,12 +942,13 @@ void Llvm::lowerReturn(GenTreeUnOp* retNode)
 //    - Generic context (if required)
 //    - Args passed as LLVM parameters (not on the shadow stack)
 //
-void Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
+unsigned Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
 {
     // Rewrite the args, adding shadow stack, and moving gc tracked args to the shadow stack.
     // This transformation only applies to calls that have a managed calling convention (e. g.
     // it doesn't apply to runtime imports, or helpers implemented as FCalls, etc).
     const bool isManagedCall = callHasManagedCallingConvention(callNode);
+    unsigned shadowFrameSize = getCurrentShadowFrameSize();
     unsigned shadowStackUseOffset = 0;
 
     CORINFO_SIG_INFO* sigInfo = nullptr;
@@ -842,8 +968,6 @@ void Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
         sigArgCount = sigInfo->numArgs;
     }
 
-    callNode->gtArgs.MoveLateToEarly();
-
     // Relies on the fact all arguments not in the signature come before those that are.
     unsigned firstSigArgIx    = callArgCount - sigArgCount;
     unsigned argIx            = 0;
@@ -855,7 +979,7 @@ void Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
     // Insert the shadow stack at the front
     if (callHasShadowStackArg(callNode))
     {
-        GenTree* calleeShadowStack = insertShadowStackAddr(callNode, getCurrentShadowFrameSize(), _shadowStackLclNum);
+        GenTree* calleeShadowStack = insertShadowStackAddr(callNode, shadowFrameSize, _shadowStackLclNum);
 
         GenTreePutArgType* calleeShadowStackPutArg =
             _compiler->gtNewPutArgType(calleeShadowStack, CORINFO_TYPE_PTR, NO_CLASS_HANDLE);
@@ -928,7 +1052,6 @@ void Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
                 shadowStackUseOffset = padOffset(corInfoType, clsHnd, shadowStackUseOffset);
             }
 
-            unsigned shadowFrameSize = getCurrentShadowFrameSize();
             if (argNode->OperIs(GT_FIELD_LIST))
             {
                 for (GenTreeFieldList::Use& use : argNode->AsFieldList()->Uses())
@@ -983,6 +1106,8 @@ void Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
         argIx++;
         callArg = callArg->GetNext();
     }
+
+    return roundUp(shadowStackUseOffset, TARGET_POINTER_SIZE);
 }
 
 void Llvm::failUnsupportedCalls(GenTreeCall* callNode)
@@ -990,18 +1115,6 @@ void Llvm::failUnsupportedCalls(GenTreeCall* callNode)
     if (callNode->IsHelperCall())
     {
         return;
-    }
-
-    if (callNode->IsVirtualStub())
-    {
-        // TODO-LLVM: VSD.
-        failFunctionCompilation();
-    }
-
-    if (callNode->NeedsNullCheck())
-    {
-        // We need to insert the null check when lowering args.
-        failFunctionCompilation();
     }
 
     if (callNode->IsUnmanaged())
@@ -1173,6 +1286,17 @@ void Llvm::normalizeStructUse(GenTree* node, ClassLayout* layout)
             }
         }
     }
+}
+
+unsigned Llvm::representAsLclVar(LIR::Use& use)
+{
+    GenTree* node = use.Def();
+    if (!node->OperIs(GT_LCL_VAR))
+    {
+        return use.ReplaceWithLclVar(_compiler);
+    }
+
+    return node->AsLclVar()->GetLclNum();
 }
 
 GenTree* Llvm::createStoreNode(var_types storeType, GenTree* addr, GenTree* data)
