@@ -650,7 +650,6 @@ const char* getWellKnownArgName(WellKnownArg arg)
 //
 void CallArg::Dump(Compiler* comp)
 {
-    printf("CallArg[arg %u", AbiInfo.ArgNum);
     printf(" [%06u].%s", comp->dspTreeID(GetNode()), GenTree::OpName(GetEarlyNode()->OperGet()));
     printf(" %s", varTypeName(AbiInfo.ArgType));
     printf(" (%s)", AbiInfo.PassedByRef ? "By ref" : "By value");
@@ -2829,7 +2828,6 @@ void CallArgs::AddFinalArgsAndDetermineABIInfo(Compiler* comp, GenTreeCall* call
 #endif // TARGET_ARM
 
         arg.AbiInfo          = {};
-        arg.AbiInfo.ArgNum   = argIndex;
         arg.AbiInfo.ArgType  = argx->TypeGet();
         arg.AbiInfo.IsStruct = isStructArg;
 
