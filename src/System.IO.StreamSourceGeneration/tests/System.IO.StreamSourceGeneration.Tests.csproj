@@ -4,6 +4,6 @@
   </PropertyGroup>
   
   <ItemGroup>
-    <ProjectReference Include="..\src\Experiment.csproj" />
+    <ProjectReference Include="..\src\System.IO.StreamSourceGeneration.csproj" />
   </ItemGroup>
 </Project>
