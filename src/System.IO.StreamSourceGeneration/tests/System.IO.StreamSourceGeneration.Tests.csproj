@@ -1,9 +1,0 @@
-<Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup>
-    <TargetFramework>net7.0</TargetFramework>
-  </PropertyGroup>
-  
-  <ItemGroup>
-    <ProjectReference Include="..\src\System.IO.StreamSourceGeneration.csproj" />
-  </ItemGroup>
-</Project>
