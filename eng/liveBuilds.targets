@@ -51,7 +51,7 @@
     <CoreCLRCrossTargetComponentDirName Condition="'$(TargetArchitecture)' == 'armel' and '$(BuildArchitecture)' != 'armel' and '$(TargetsLinux)' == 'true'">x64</CoreCLRCrossTargetComponentDirName>
   </PropertyGroup>
 
-  <Target Name="ResolveRuntimeFilesFromLocalBuild">
+  <Target Name="ResolveRuntimeFilesFromLocalBuild" Condition="$(TestBuildMode) != 'nativeoat'">
     <Error Condition="!Exists('$(CoreCLRArtifactsPath)') and '$(RuntimeFlavor)' == 'CoreCLR'"
            Text="The CoreCLR artifacts path does not exist '$(CoreCLRArtifactsPath)'. The 'clr' subset must be built before building this project. Configuration: '$(CoreCLRConfiguration)'. To use a different configuration, specify the 'RuntimeConfiguration' property." />
     <Error Condition="!Exists('$(MonoArtifactsPath)') and '$(RuntimeFlavor)' == 'Mono'"
@@ -118,7 +118,7 @@
         Include="$(MonoArtifactsPath)\include\**\*.*" />
     </ItemGroup>
 
-    <Error Condition="'@(RuntimeFiles)' == '' and !('$(TargetOS)' == 'Browser' and '$(RuntimeFlavor)' == 'CoreCLR')" Text="The '$(RuntimeFlavor)' subset must be built before building this project." />
+    <Error Condition="'@(RuntimeFiles)' == ''" Text="The '$(RuntimeFlavor)' subset must be built before building this project." />
   </Target>
 
   <Target Name="EnsureLocalArtifactsExist">
