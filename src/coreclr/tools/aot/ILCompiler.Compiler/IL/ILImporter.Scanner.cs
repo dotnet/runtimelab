@@ -435,9 +435,13 @@ namespace Internal.IL
                                 {
                                     _dependencies.Add(GetGenericLookupHelper(ReadyToRunHelperId.TypeHandle, delTargetMethod.OwningType), reason);
                                 }
-                            }
 
-                            _dependencies.Add(info.Constructor, "LLVM delegate ctor");
+                                _dependencies.Add(GetGenericLookupHelper(ReadyToRunHelperId.DelegateCtor, info), "LLVM delegate ctor");
+                            }
+                            else
+                            {
+                                _dependencies.Add(_factory.ReadyToRunHelper(ReadyToRunHelperId.DelegateCtor, info), "LLVM delegate ctor");
+                            }
                             return;
                         }
                     }

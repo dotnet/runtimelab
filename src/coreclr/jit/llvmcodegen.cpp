@@ -18,7 +18,7 @@ void Llvm::Compile()
         failFunctionCompilation();
     }
 
-    if ((_info.compFlags & CORINFO_FLG_SYNCH) != 0)
+    if ((m_info->compFlags & CORINFO_FLG_SYNCH) != 0)
     {
         // TODO-LLVM: enable.
         failFunctionCompilation();
@@ -90,7 +90,7 @@ void Llvm::Compile()
 
 bool Llvm::initializeFunctions()
 {
-    const char* mangledName = GetMangledMethodName(_info.compMethodHnd);
+    const char* mangledName = GetMangledMethodName(m_info->compMethodHnd);
     Function* rootLlvmFunction = _module->getFunction(mangledName);
 
     if (rootLlvmFunction == nullptr)
@@ -241,7 +241,7 @@ void Llvm::initializeDebugInfo()
     uint32_t lineNumber = GetOffsetLineNumber(0);
 
     // TODO-LLVM: "getMethodName" is meant for (Jit) debugging. Find/add a more suitable API.
-    const char* methodName = _info.compCompHnd->getMethodName(_info.compMethodHnd, nullptr);
+    const char* methodName = m_info->compCompHnd->getMethodName(m_info->compMethodHnd, nullptr);
     m_diFunction =
         m_diBuilder->createFunction(fileMetadata, methodName, methodName, fileMetadata, lineNumber, functionType,
                                     lineNumber, llvm::DINode::FlagZero,
@@ -1902,10 +1902,14 @@ void Llvm::buildCall(GenTreeCall* call)
         llvmFuncCallee = getOrCreateLlvmFunction(symbolName, call);
     }
 
-    // We may come back into managed from the unmanaged call so store the shadowstack.
-    if (!callHasShadowStackArg(call))
+    // We may come back into managed from the unmanaged call so store the shadow stack.
+    Value* shadowStackToRestoreValue = nullptr;
+    Value* shadowStackTopAddrValue = nullptr;
+    if (callRequiresShadowStackSaveRestore(call))
     {
-        _builder.CreateStore(getShadowStackForCallee(), getOrCreateExternalSymbol("t_pShadowStackTop"));
+        shadowStackTopAddrValue = getOrCreateExternalSymbol("t_pShadowStackTop");
+        shadowStackToRestoreValue = _builder.CreateLoad(getPtrLlvmType(), shadowStackTopAddrValue);
+        _builder.CreateStore(getShadowStackForCallee(), shadowStackTopAddrValue);
     }
 
     std::vector<Value*> argVec = std::vector<Value*>();
@@ -1933,6 +1937,13 @@ void Llvm::buildCall(GenTreeCall* call)
     }
 
     Value* callValue = emitCallOrInvoke(llvmFuncCallee, argVec);
+
+    // Restore the saved shadow stack.
+    if (shadowStackToRestoreValue != nullptr)
+    {
+        _builder.CreateStore(shadowStackToRestoreValue, shadowStackTopAddrValue);
+    }
+
     mapGenTreeToValue(call, callValue);
 }
 
@@ -2532,6 +2543,8 @@ Value* Llvm::emitCheckedArithmeticOperation(llvm::Intrinsic::ID intrinsicId, Val
 
 Value* Llvm::emitHelperCall(CorInfoHelpFunc helperFunc, ArrayRef<Value*> sigArgs)
 {
+    assert(!helperCallRequiresShadowStackSaveRestore(helperFunc));
+
     void* pAddr = nullptr;
     void* handle = _compiler->compGetHelperFtn(helperFunc, &pAddr);
     assert(pAddr == nullptr);
@@ -2547,7 +2560,7 @@ Value* Llvm::emitHelperCall(CorInfoHelpFunc helperFunc, ArrayRef<Value*> sigArgs
     }
 
     Value* callValue;
-    if (getHelperFuncInfo(helperFunc).HasFlags(HFIF_SS_ARG))
+    if (helperCallHasShadowStackArg(helperFunc))
     {
         std::vector<Value*> args = sigArgs.vec();
         args.insert(args.begin(), getShadowStackForCallee());
@@ -2652,11 +2665,12 @@ FunctionType* Llvm::createFunctionTypeForCall(GenTreeCall* call)
 
 FunctionType* Llvm::createFunctionTypeForHelper(CorInfoHelpFunc helperFunc)
 {
-    const HelperFuncInfo& helperInfo = getHelperFuncInfo(helperFunc);
+    INDEBUG(bool isManagedHelper = helperCallHasManagedCallingConvention(helperFunc));
 
+    const HelperFuncInfo& helperInfo = getHelperFuncInfo(helperFunc);
     std::vector<Type*> argVec = std::vector<Type*>();
 
-    if (helperInfo.HasFlags(HFIF_SS_ARG))
+    if (helperCallHasShadowStackArg(helperFunc))
     {
         argVec.push_back(Type::getInt8PtrTy(_llvmContext));
     }
@@ -2665,12 +2679,17 @@ FunctionType* Llvm::createFunctionTypeForHelper(CorInfoHelpFunc helperFunc)
     for (size_t i = 0; i < sigArgCount; i++)
     {
         CorInfoType argType = helperInfo.GetSigArgType(i);
-        assert(argType != TYP_STRUCT);
+        CORINFO_CLASS_HANDLE argClass = helperInfo.GetSigArgClass(_compiler, i);
+        assert(!isManagedHelper || canStoreArgOnLlvmStack(argType, argClass));
 
-        argVec.push_back(getLlvmTypeForCorInfoType(argType, NO_CLASS_HANDLE));
+        argVec.push_back(getLlvmTypeForCorInfoType(argType, argClass));
     }
 
-    Type* retLlvmType = getLlvmTypeForCorInfoType(helperInfo.GetSigReturnType(), NO_CLASS_HANDLE);
+    CorInfoType sigRetType = helperInfo.GetSigReturnType();
+    CORINFO_CLASS_HANDLE sigRetClass = helperInfo.GetSigReturnClass(_compiler);
+    assert(!isManagedHelper || !needsReturnStackSlot(sigRetType, sigRetClass));
+
+    Type* retLlvmType = getLlvmTypeForCorInfoType(sigRetType, sigRetClass);
     FunctionType* llvmFuncType = FunctionType::get(retLlvmType, argVec, /* isVarArg */ false);
 
     return llvmFuncType;
@@ -2704,7 +2723,7 @@ CORINFO_GENERIC_HANDLE Llvm::getSymbolHandleForClassToken(mdToken token)
     _compiler->impResolveToken((BYTE*)&token, &resolvedToken, CORINFO_TOKENKIND_Class);
 
     void* pIndirection = nullptr;
-    CORINFO_CLASS_HANDLE typeSymbolHandle = _info.compCompHnd->embedClassHandle(resolvedToken.hClass, &pIndirection);
+    CORINFO_CLASS_HANDLE typeSymbolHandle = m_info->compCompHnd->embedClassHandle(resolvedToken.hClass, &pIndirection);
     assert(pIndirection == nullptr);
 
     return CORINFO_GENERIC_HANDLE(typeSymbolHandle);

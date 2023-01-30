@@ -67,6 +67,12 @@ CorInfoType HelperFuncInfo::GetSigReturnType() const
     return static_cast<CorInfoType>(SigReturnType);
 }
 
+CORINFO_CLASS_HANDLE HelperFuncInfo::GetSigReturnClass(Compiler* compiler) const
+{
+    assert(GetSigReturnType() != CORINFO_TYPE_VALUECLASS);
+    return NO_CLASS_HANDLE;
+}
+
 CorInfoType HelperFuncInfo::GetSigArgType(size_t index) const
 {
     CorInfoType argType = static_cast<CorInfoType>(SigArgTypes[index]);
@@ -85,8 +91,16 @@ CORINFO_CLASS_HANDLE HelperFuncInfo::GetSigArgClass(Compiler* compiler, size_t i
     return compiler->impGetRefAnyClass();
 }
 
-size_t HelperFuncInfo::GetSigArgCount() const
+size_t HelperFuncInfo::GetSigArgCount(unsigned* callArgCount) const
 {
+    if (HasFlags(HFIF_VAR_ARG))
+    {
+        // TODO-LLVM: it would be nice to get rid of this case once/if we integrate into
+        // upstream by using distinct helpers for the two flavors of READYTORUN_DELEGATE_CTOR.
+        assert(callArgCount != nullptr);
+        return *callArgCount;
+    }
+
     size_t count = 0;
     while (SigArgTypes[count] != CORINFO_TYPE_UNDEF)
     {
@@ -98,7 +112,7 @@ size_t HelperFuncInfo::GetSigArgCount() const
 
 Llvm::Llvm(Compiler* compiler)
     : _compiler(compiler),
-    _info(compiler->info),
+    m_info(&compiler->info),
     _sigInfo(compiler->info.compMethodInfo->args),
     _builder(_llvmContext),
     _blkToLlvmBlksMap(compiler->getAllocator(CMK_Codegen)),
@@ -145,16 +159,53 @@ void Llvm::llvmShutdown()
     delete _module;
 }
 
-bool Llvm::needsReturnStackSlot(Compiler* compiler, GenTreeCall* callee)
+bool Llvm::callRequiresShadowStackSaveRestore(const GenTreeCall* call) const
 {
-    // Currently, we do not place the return value on the shadow stack for helpers
-    // (e. g. allocators). This is a potential GC hole. TODO-LLVM: investigate.
-    if (callee->IsHelperCall())
+    // In general, if the call is itself not managed (does not have a shadow stack argument) **and** may call
+    // back into managed code, we need to save/restore the shadow stack pointer, so that the RPI frame can pick
+    // it up. Another case where the save/restore is required is when calling into native runtime code that can
+    // trigger a GC (canonical example: allocators), to communicate shadow stack bounds to the roots scan.
+    // TODO-LLVM-CQ: optimize the GC case by using specialized helpers which would sink the save/restore to the
+    // unlikely path of a GC actually happening.
+    // TODO-LLVM-CQ: we should skip the managed -> native -> managed transition for runtime imports implemented
+    // in managed code as runtime exports.
+    //
+    if (call->IsHelperCall())
+    {
+        return helperCallRequiresShadowStackSaveRestore(_compiler->eeGetHelperNum(call->gtCallMethHnd));
+    }
+
+    // SPGCT calls are assumed to never RPI by contract.
+    return !callHasShadowStackArg(call) && !call->IsSuppressGCTransition();
+}
+
+bool Llvm::helperCallRequiresShadowStackSaveRestore(CorInfoHelpFunc helperFunc) const
+{
+    // Save/restore is needed if the helper doesn't have a shadow stack argument, unless we know it won't call
+    // back into managed code. TODO-LLVM-CQ: mark (make, if required) more helpers "HFIF_NO_RPI_OR_GC".
+    const HelperFuncInfo& helperInfo = getHelperFuncInfo(helperFunc);
+    return !helperInfo.HasFlags(HFIF_SS_ARG) && !helperInfo.HasFlags(HFIF_NO_RPI_OR_GC);
+}
+
+bool Llvm::needsReturnStackSlot(const GenTreeCall* callee)
+{
+    if (!callHasManagedCallingConvention(callee))
     {
         return false;
     }
 
-    return Llvm::needsReturnStackSlot(compiler, toCorInfoType(callee->TypeGet()), callee->gtRetClsHnd);
+    CorInfoType sigRetType;
+    if (callee->IsHelperCall())
+    {
+        sigRetType = getHelperFuncInfo(_compiler->eeGetHelperNum(callee->gtCallMethHnd)).GetSigReturnType();
+    }
+    else
+    {
+        noway_assert(!callee->IsUnmanaged());
+        sigRetType = toCorInfoType(callee->TypeGet());
+    }
+
+    return Llvm::needsReturnStackSlot(sigRetType, callee->gtRetClsHnd);
 }
 
 GCInfo* Llvm::getGCInfo()
@@ -212,20 +263,40 @@ GCInfo* Llvm::getGCInfo()
 
 // Returns true if the method returns a type that must be kept on the shadow stack
 //
-bool Llvm::needsReturnStackSlot(Compiler* compiler, CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd)
+bool Llvm::needsReturnStackSlot(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd)
 {
-    return corInfoType != CorInfoType::CORINFO_TYPE_VOID && !canStoreArgOnLlvmStack(compiler, corInfoType, classHnd);
+    return (corInfoType != CORINFO_TYPE_VOID) && !canStoreArgOnLlvmStack(corInfoType, classHnd);
 }
 
-bool Llvm::callHasShadowStackArg(GenTreeCall* call)
+bool Llvm::callHasShadowStackArg(const GenTreeCall* call) const
+{
+    return callHasManagedCallingConvention(call);
+}
+
+bool Llvm::helperCallHasShadowStackArg(CorInfoHelpFunc helperFunc) const
+{
+    return helperCallHasManagedCallingConvention(helperFunc);
+}
+
+bool Llvm::callHasManagedCallingConvention(const GenTreeCall* call) const
 {
     if (call->IsHelperCall())
     {
-        return getHelperFuncInfo(_compiler->eeGetHelperNum(call->gtCallMethHnd)).HasFlags(HFIF_SS_ARG);
+        return helperCallHasManagedCallingConvention(_compiler->eeGetHelperNum(call->gtCallMethHnd));
     }
 
-    // TODO-LLVM: this is not right for native calls.
-    return true;
+    // Runtime imports are effectively unmanaged but are not tracked as such.
+    if ((call->gtCallType == CT_USER_FUNC) && IsRuntimeImport(call->gtCallMethHnd))
+    {
+        return false;
+    }
+
+    return !call->IsUnmanaged();
+}
+
+bool Llvm::helperCallHasManagedCallingConvention(CorInfoHelpFunc helperFunc) const
+{
+    return getHelperFuncInfo(helperFunc).HasFlags(HFIF_SS_ARG);
 }
 
 //------------------------------------------------------------------------
@@ -245,12 +316,13 @@ bool Llvm::callHasShadowStackArg(GenTreeCall* call)
 // Return Value:
 //    Reference to the info structure for "helperFunc".
 //
-const HelperFuncInfo& Llvm::getHelperFuncInfo(CorInfoHelpFunc helperFunc)
+/* static */ const HelperFuncInfo& Llvm::getHelperFuncInfo(CorInfoHelpFunc helperFunc)
 {
     // Note on Runtime[Type|Method|Field]Handle: it should faithfully be represented as CORINFO_TYPE_VALUECLASS.
     // However, that is currently both not necessary due to the unwrapping performed for LLVM types and not what
     // the Jit expects. When deleting the unwrapping, fix the runtime signatures to take the underlying pointer instead.
-    const int CORINFO_TYPE_RT_HANDLE = CORINFO_TYPE_PTR;
+    const int CORINFO_TYPE_RT_HANDLE = CORINFO_TYPE_NATIVEINT;
+
 #define FUNC(helper) INDEBUG_COMMA(helper)
 
     // clang-format off
@@ -384,7 +456,7 @@ const HelperFuncInfo& Llvm::getHelperFuncInfo(CorInfoHelpFunc helperFunc)
         { FUNC(CORINFO_HELP_VERIFICATION) },
 
         // Implemented in "Runtime\EHHelpers.cpp".
-        { FUNC(CORINFO_HELP_FAIL_FAST) CORINFO_TYPE_VOID, { } },
+        { FUNC(CORINFO_HELP_FAIL_FAST) CORINFO_TYPE_VOID, { }, HFIF_NO_RPI_OR_GC },
 
         // NYI in NativeAOT.
         { FUNC(CORINFO_HELP_METHOD_ACCESS_EXCEPTION) },
@@ -413,8 +485,8 @@ const HelperFuncInfo& Llvm::getHelperFuncInfo(CorInfoHelpFunc helperFunc)
         { FUNC(CORINFO_HELP_CHECK_OBJ) },
 
         // Write barriers, implemented in "Runtime\portable.cpp".
-        { FUNC(CORINFO_HELP_ASSIGN_REF) CORINFO_TYPE_VOID, { CORINFO_TYPE_PTR, CORINFO_TYPE_PTR } },
-        { FUNC(CORINFO_HELP_CHECKED_ASSIGN_REF) CORINFO_TYPE_VOID, { CORINFO_TYPE_PTR, CORINFO_TYPE_PTR } },
+        { FUNC(CORINFO_HELP_ASSIGN_REF) CORINFO_TYPE_VOID, { CORINFO_TYPE_PTR, CORINFO_TYPE_CLASS }, HFIF_NO_RPI_OR_GC },
+        { FUNC(CORINFO_HELP_CHECKED_ASSIGN_REF) CORINFO_TYPE_VOID, { CORINFO_TYPE_PTR, CORINFO_TYPE_CLASS }, HFIF_NO_RPI_OR_GC },
         { FUNC(CORINFO_HELP_ASSIGN_REF_ENSURE_NONHEAP) }, // NYI in NativeAOT.
         { FUNC(CORINFO_HELP_ASSIGN_BYREF) }, // Not used on WASM.
 
@@ -513,7 +585,7 @@ const HelperFuncInfo& Llvm::getHelperFuncInfo(CorInfoHelpFunc helperFunc)
         { FUNC(CORINFO_HELP_READYTORUN_STATIC_BASE) CORINFO_TYPE_PTR, { }, HFIF_SS_ARG },
         { FUNC(CORINFO_HELP_READYTORUN_VIRTUAL_FUNC_PTR) }, // Not used in NativeAOT.
         { FUNC(CORINFO_HELP_READYTORUN_GENERIC_HANDLE) CORINFO_TYPE_PTR, { CORINFO_TYPE_PTR }, HFIF_SS_ARG },
-        { FUNC(CORINFO_HELP_READYTORUN_DELEGATE_CTOR) CORINFO_TYPE_VOID, { }, HFIF_SS_ARG },
+        { FUNC(CORINFO_HELP_READYTORUN_DELEGATE_CTOR) CORINFO_TYPE_VOID, { CORINFO_TYPE_CLASS, CORINFO_TYPE_CLASS, CORINFO_TYPE_PTR }, HFIF_SS_ARG | HFIF_VAR_ARG },
         { FUNC(CORINFO_HELP_READYTORUN_GENERIC_STATIC_BASE) CORINFO_TYPE_PTR, { CORINFO_TYPE_PTR }, HFIF_SS_ARG },
 
         // NGEN/R2R-specific marker helpers.
@@ -548,11 +620,11 @@ const HelperFuncInfo& Llvm::getHelperFuncInfo(CorInfoHelpFunc helperFunc)
         { FUNC(CORINFO_HELP_THROW_TYPE_NOT_SUPPORTED) },
 
         // [R]PI helpers, implemented in "Runtime\thread.cpp".
-        { FUNC(CORINFO_HELP_JIT_PINVOKE_BEGIN) CORINFO_TYPE_VOID, { CORINFO_TYPE_PTR } },
-        { FUNC(CORINFO_HELP_JIT_PINVOKE_END) CORINFO_TYPE_VOID, { CORINFO_TYPE_PTR } },
-        { FUNC(CORINFO_HELP_JIT_REVERSE_PINVOKE_ENTER) CORINFO_TYPE_VOID, { CORINFO_TYPE_PTR } },
+        { FUNC(CORINFO_HELP_JIT_PINVOKE_BEGIN) CORINFO_TYPE_VOID, { CORINFO_TYPE_PTR }, HFIF_NO_RPI_OR_GC },
+        { FUNC(CORINFO_HELP_JIT_PINVOKE_END) CORINFO_TYPE_VOID, { CORINFO_TYPE_PTR }, HFIF_NO_RPI_OR_GC },
+        { FUNC(CORINFO_HELP_JIT_REVERSE_PINVOKE_ENTER) CORINFO_TYPE_VOID, { CORINFO_TYPE_PTR }, HFIF_NO_RPI_OR_GC },
         { FUNC(CORINFO_HELP_JIT_REVERSE_PINVOKE_ENTER_TRACK_TRANSITIONS) CORINFO_TYPE_VOID, { CORINFO_TYPE_PTR } },
-        { FUNC(CORINFO_HELP_JIT_REVERSE_PINVOKE_EXIT) CORINFO_TYPE_VOID, { CORINFO_TYPE_PTR } },
+        { FUNC(CORINFO_HELP_JIT_REVERSE_PINVOKE_EXIT) CORINFO_TYPE_VOID, { CORINFO_TYPE_PTR }, HFIF_NO_RPI_OR_GC },
         { FUNC(CORINFO_HELP_JIT_REVERSE_PINVOKE_EXIT_TRACK_TRANSITIONS) CORINFO_TYPE_VOID, { CORINFO_TYPE_PTR } },
 
         // Implemented in "CoreLib\src\System\Runtime\TypeLoaderExports.cs".
@@ -581,12 +653,12 @@ const HelperFuncInfo& Llvm::getHelperFuncInfo(CorInfoHelpFunc helperFunc)
     return info;
 }
 
-bool Llvm::canStoreArgOnLlvmStack(Compiler* compiler, CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd)
+bool Llvm::canStoreArgOnLlvmStack(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd)
 {
     // structs with no GC pointers can go on LLVM stack.
     if (corInfoType == CORINFO_TYPE_VALUECLASS)
     {
-        ClassLayout* classLayout = compiler->typGetObjLayout(classHnd);
+        ClassLayout* classLayout = _compiler->typGetObjLayout(classHnd);
         return !classLayout->HasGCPtr();
     }
 
@@ -680,7 +752,7 @@ void Llvm::AddCodeReloc(void* handle)
     CallEEApi<EEApiId::AddCodeReloc, void>(handle);
 }
 
-bool Llvm::IsRuntimeImport(CORINFO_METHOD_HANDLE methodHandle)
+bool Llvm::IsRuntimeImport(CORINFO_METHOD_HANDLE methodHandle) const
 {
     return CallEEApi<EEApiId::IsRuntimeImport, uint32_t>(methodHandle) != 0;
 }

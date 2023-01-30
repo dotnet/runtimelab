@@ -78,9 +78,10 @@ namespace ILCompiler.DependencyAnalysis
                         }
                         else
                         {
-                            //closed delegate, Wasm needs the constructor
-                            encoder.Builder.EmitReloc(target.Constructor, RelocType.IMAGE_REL_BASED_REL32);
+                            Debug.Assert(target.Constructor.Method.Signature.Length == 2);
                         }
+
+                        encoder.Builder.EmitReloc(target.Constructor, RelocType.IMAGE_REL_BASED_REL32);
                     }
                     break;
 

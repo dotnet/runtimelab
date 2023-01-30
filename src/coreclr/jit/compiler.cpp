@@ -27,9 +27,6 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 extern ICorJitHost* g_jitHost;
 
 #ifdef TARGET_WASM
-#undef min
-#undef max
-
 #include "llvm.h"
 
 #define max(a, b) (((a) > (b)) ? (a) : (b))
@@ -1930,7 +1927,9 @@ void Compiler::compInit(ArenaAllocator*       pAlloc,
     {
 #ifndef TARGET_WASM
         codeGen = getCodeGenerator(this);
-#endif // !TARGET_WASM
+#else
+        m_llvm = new (getAllocator(CMK_Codegen)) Llvm(this);
+#endif
         optInit();
         hashBv::Init(this);
 
@@ -4384,13 +4383,6 @@ void Compiler::EndPhase(Phases phase)
     mostRecentlyActivePhase = phase;
 }
 
-#if defined(TARGET_WASM)
-inline void DoLlvmPhase(Llvm* llvm)
-{
-    llvm->Compile();
-}
-#endif
-
 //------------------------------------------------------------------------
 // compCompile: run phases needed for compilation
 //
@@ -5130,9 +5122,9 @@ void Compiler::compCompile(void** methodCodePtr, uint32_t* methodCodeSize, JitFl
         lvaMarkLocalVars();
     }
 
-    Llvm* llvm = new Llvm(this);
-    auto  lowerPhase = [llvm]() {
-        llvm->Lower();
+    assert(m_llvm != nullptr);
+    auto lowerPhase = [this]() {
+        m_llvm->Lower();
     };
     DoPhase(this, PHASE_LOWER_LLVM, lowerPhase);
 
@@ -5141,11 +5133,10 @@ void Compiler::compCompile(void** methodCodePtr, uint32_t* methodCodeSize, JitFl
     fgResetForSsa();
     DoPhase(this, PHASE_BUILD_SSA, &Compiler::fgSsaBuild);
 
-    auto buildLlvmPhase = [llvm]() {
-        llvm->Compile();
+    auto buildLlvmPhase = [this]() {
+        m_llvm->Compile();
     };
     DoPhase(this, PHASE_BUILD_LLVM, buildLlvmPhase);
-    delete llvm;
 #else
 
 #ifdef TARGET_ARM

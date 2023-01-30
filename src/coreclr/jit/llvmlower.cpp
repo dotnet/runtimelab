@@ -172,7 +172,7 @@ void Llvm::populateLlvmArgNums()
     shadowStackVarDsc->lvCorInfoType = CORINFO_TYPE_PTR;
     shadowStackVarDsc->lvIsParam = true;
 
-    if (needsReturnStackSlot(_compiler, _sigInfo.retType, _sigInfo.retTypeClass))
+    if (needsReturnStackSlot(_sigInfo.retType, _sigInfo.retTypeClass))
     {
         _retAddressLclNum = _compiler->lvaGrabTemp(true DEBUGARG("returnslot"));
         LclVarDsc* retAddressVarDsc  = _compiler->lvaGetDesc(_retAddressLclNum);
@@ -183,19 +183,19 @@ void Llvm::populateLlvmArgNums()
     }
 
     unsigned firstSigArgLclNum = 0;
-    assert(_sigInfo.hasThis() == (_info.compThisArg != BAD_VAR_NUM));
+    assert(_sigInfo.hasThis() == (m_info->compThisArg != BAD_VAR_NUM));
     if (_sigInfo.hasThis())
     {
         // "this" is never an LLVM parameter as it is always a GC reference.
-        assert(varTypeIsGC(_compiler->lvaGetDesc(_info.compThisArg)));
+        assert(varTypeIsGC(_compiler->lvaGetDesc(m_info->compThisArg)));
         firstSigArgLclNum++;
     }
 
-    assert(_sigInfo.hasTypeArg() == (_info.compTypeCtxtArg != BAD_VAR_NUM));
+    assert(_sigInfo.hasTypeArg() == (m_info->compTypeCtxtArg != BAD_VAR_NUM));
     if (_sigInfo.hasTypeArg())
     {
         // Type context is an unmanaged pointer and thus LLVM parameter.
-        LclVarDsc* typeCtxtVarDsc = _compiler->lvaGetDesc(_info.compTypeCtxtArg);
+        LclVarDsc* typeCtxtVarDsc = _compiler->lvaGetDesc(m_info->compTypeCtxtArg);
         assert(typeCtxtVarDsc->lvIsParam);
 
         typeCtxtVarDsc->lvLlvmArgNum = nextLlvmArgNum++;
@@ -204,11 +204,11 @@ void Llvm::populateLlvmArgNums()
     }
 
     CORINFO_ARG_LIST_HANDLE sigArgs = _sigInfo.args;
-    for (unsigned int i = 0; i < _sigInfo.numArgs; i++, sigArgs = _info.compCompHnd->getArgNext(sigArgs))
+    for (unsigned int i = 0; i < _sigInfo.numArgs; i++, sigArgs = m_info->compCompHnd->getArgNext(sigArgs))
     {
         CORINFO_CLASS_HANDLE classHnd;
-        CorInfoType          corInfoType = strip(_info.compCompHnd->getArgType(&_sigInfo, sigArgs, &classHnd));
-        if (canStoreArgOnLlvmStack(_compiler, corInfoType, classHnd))
+        CorInfoType          corInfoType = strip(m_info->compCompHnd->getArgType(&_sigInfo, sigArgs, &classHnd));
+        if (canStoreArgOnLlvmStack(corInfoType, classHnd))
         {
             LclVarDsc* varDsc = _compiler->lvaGetDesc(firstSigArgLclNum + i);
 
@@ -793,7 +793,7 @@ void Llvm::lowerReturn(GenTreeUnOp* retNode)
         {
             // TODO-LLVM: change to "SetOper" once enough of upstream is merged.
             lclVarNode->ChangeOper(GT_LCL_FLD);
-            lclVarNode->ChangeType(_info.compRetType);
+            lclVarNode->ChangeType(m_info->compRetType);
         }
     }
 }
@@ -819,17 +819,21 @@ void Llvm::lowerReturn(GenTreeUnOp* retNode)
 //
 void Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
 {
-    // rewrite the args, adding shadow stack, and moving gc tracked args to the shadow stack
+    // Rewrite the args, adding shadow stack, and moving gc tracked args to the shadow stack.
+    // This transformation only applies to calls that have a managed calling convention (e. g.
+    // it doesn't apply to runtime imports, or helpers implemented as FCalls, etc).
+    const bool isManagedCall = callHasManagedCallingConvention(callNode);
     unsigned shadowStackUseOffset = 0;
 
     CORINFO_SIG_INFO* sigInfo = nullptr;
     CORINFO_ARG_LIST_HANDLE sigArgs = nullptr;
     const HelperFuncInfo* helperInfo = nullptr;
     unsigned sigArgCount = 0;
+    unsigned callArgCount = callNode->gtArgs.CountArgs();
     if (callNode->IsHelperCall())
     {
         helperInfo = &getHelperFuncInfo(_compiler->eeGetHelperNum(callNode->gtCallMethHnd));
-        sigArgCount = helperInfo->GetSigArgCount();
+        sigArgCount = helperInfo->GetSigArgCount(&callArgCount);
     }
     else
     {
@@ -841,7 +845,7 @@ void Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
     callNode->gtArgs.MoveLateToEarly();
 
     // Relies on the fact all arguments not in the signature come before those that are.
-    unsigned firstSigArgIx    = callNode->gtArgs.CountArgs() - sigArgCount;
+    unsigned firstSigArgIx    = callArgCount - sigArgCount;
     unsigned argIx            = 0;
     CallArg* lastLlvmStackArg = nullptr;
 
@@ -877,15 +881,12 @@ void Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
         CorInfoType          corInfoType;
         bool                 isSigArg    = argIx >= firstSigArgIx;
 
-        // We currently do not place any args for helpers on the shadow stack. This is a potential GC
-        // hole and not correct ABI-wise for managed helpers. TODO-LLVM: investigate and fix issues.
-        bool argOnShadowStack = false;
         if (sigInfo != nullptr)
         {
             // Is this an in-signature argument?
             if (isSigArg)
             {
-                corInfoType = strip(_info.compCompHnd->getArgType(sigInfo, sigArgs, &clsHnd));
+                corInfoType = strip(m_info->compCompHnd->getArgType(sigInfo, sigArgs, &clsHnd));
                 sigArgs     = _compiler->info.compCompHnd->getArgNext(sigArgs);
             }
             else // Not-in-sig arguments. We need to handle these specially.
@@ -905,8 +906,6 @@ void Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
                     corInfoType = toCorInfoType(genActualType(argNode));
                 }
             }
-
-            argOnShadowStack = !canStoreArgOnLlvmStack(_compiler, corInfoType, clsHnd);
         }
         else
         {
@@ -922,7 +921,7 @@ void Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
             clsHnd = helperInfo->GetSigArgClass(_compiler, argIx);
         }
 
-        if (argOnShadowStack)
+        if (isManagedCall && !canStoreArgOnLlvmStack(corInfoType, clsHnd))
         {
             if (corInfoType == CORINFO_TYPE_VALUECLASS)
             {
@@ -990,21 +989,7 @@ void Llvm::failUnsupportedCalls(GenTreeCall* callNode)
 {
     if (callNode->IsHelperCall())
     {
-        switch (_compiler->eeGetHelperNum(callNode->gtCallMethHnd))
-        {
-            // Needs VM work to generate the right helper.
-            case CORINFO_HELP_READYTORUN_DELEGATE_CTOR:
-            // These helpers are implemented purely in managed code, and have "object"
-            // parameters/return values which need to be passed on the shadow stack.
-            // Our lowering code currently does not handle such helpers.
-            case CORINFO_HELP_GVMLOOKUP_FOR_SLOT:
-            case CORINFO_HELP_TYPEHANDLE_TO_RUNTIMETYPE:
-            case CORINFO_HELP_NEW_MDARR:
-                failFunctionCompilation();
-
-            default:
-                return;
-        }
+        return;
     }
 
     if (callNode->IsVirtualStub())
@@ -1036,14 +1021,6 @@ void Llvm::failUnsupportedCalls(GenTreeCall* callNode)
     {
         failFunctionCompilation();
     }
-
-    for (CallArg& callArg : callNode->gtArgs.Args())
-    {
-        if (callArg.GetWellKnownArg() == WellKnownArg::VirtualStubCell)
-        {
-            failFunctionCompilation();
-        }
-    }
 }
 
 // If the return type must be GC tracked, removes the return type
@@ -1055,7 +1032,7 @@ CallArg* Llvm::lowerCallReturn(GenTreeCall* callNode)
 {
     CallArg* returnSlot = nullptr;
 
-    if (needsReturnStackSlot(_compiler, callNode))
+    if (needsReturnStackSlot(callNode))
     {
         // replace the "CALL ref" with a "CALL void" that takes a return address as the first argument
         GenTree* returnValueAddress = insertShadowStackAddr(callNode, getCurrentShadowFrameSize(), _shadowStackLclNum);

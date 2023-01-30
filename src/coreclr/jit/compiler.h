@@ -86,6 +86,10 @@ struct IndentStack;
 
 class Lowering; // defined in lower.h
 
+#ifdef TARGET_WASM
+class Llvm; // defined in llvm.h
+#endif // TARGET_WASM
+
 // The following are defined in this file, Compiler.h
 
 class Compiler;
@@ -7742,6 +7746,10 @@ public:
     */
 
 public:
+#ifdef TARGET_WASM
+    Llvm* m_llvm;
+#endif // TARGET_WASM
+
 #ifndef TARGET_WASM
     CodeGenInterface* codeGen;
 
@@ -7751,7 +7759,7 @@ public:
 #ifdef DEBUG
     jitstd::list<PreciseIPMapping> genPreciseIPmappings;
 #endif
-#endif // TARGET_WASM
+#endif // !TARGET_WASM
 
     // Managed RetVal - A side hash table meant to record the mapping from a
     // GT_CALL node to its debug info.  This info is used to emit sequence points

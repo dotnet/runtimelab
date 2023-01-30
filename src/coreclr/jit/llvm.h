@@ -52,6 +52,8 @@ enum HelperFuncInfoFlags
 {
     HFIF_NONE = 0,
     HFIF_SS_ARG = 1, // The helper has shadow stack arg.
+    HFIF_VAR_ARG = 1 << 1, // The helper has a variable number of args and must be treated specially.
+    HFIF_NO_RPI_OR_GC = 1 << 2, // The helper will not call (back) into managed code or trigger GC.
 };
 
 struct HelperFuncInfo
@@ -74,9 +76,10 @@ struct HelperFuncInfo
     }
 
     CorInfoType GetSigReturnType() const;
+    CORINFO_CLASS_HANDLE GetSigReturnClass(Compiler* compiler) const;
     CorInfoType GetSigArgType(size_t index) const;
     CORINFO_CLASS_HANDLE GetSigArgClass(Compiler* compiler, size_t index) const;
-    size_t GetSigArgCount() const;
+    size_t GetSigArgCount(unsigned* callArgCount = nullptr) const;
 };
 
 struct PhiPair
@@ -120,8 +123,8 @@ extern std::unordered_map<CORINFO_CLASS_HANDLE, StructDesc*>* _structDescMap;
 class Llvm
 {
 private:
-    Compiler* _compiler;
-    Compiler::Info _info;
+    Compiler* const _compiler;
+    Compiler::Info* const m_info;
     CORINFO_SIG_INFO _sigInfo; // sigInfo of function being compiled
     GCInfo* _gcInfo = nullptr;
 
@@ -164,7 +167,7 @@ public:
     Llvm(Compiler* compiler);
 
     static void llvmShutdown();
-    static bool needsReturnStackSlot(Compiler* compiler, GenTreeCall* callee);
+    bool needsReturnStackSlot(const GenTreeCall* callee);
 
 private:
     LIR::Range& CurrentRange()
@@ -180,12 +183,18 @@ private:
 
     static CorInfoType toCorInfoType(var_types varType);
 
-    static bool needsReturnStackSlot(Compiler* compiler, CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd);
+    bool callRequiresShadowStackSaveRestore(const GenTreeCall* call) const;
+    bool helperCallRequiresShadowStackSaveRestore(CorInfoHelpFunc helperFunc) const;
 
-    bool callHasShadowStackArg(GenTreeCall* call);
-    const HelperFuncInfo& getHelperFuncInfo(CorInfoHelpFunc helperFunc);
+    bool needsReturnStackSlot(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd);
+    bool callHasShadowStackArg(const GenTreeCall* call) const;
+    bool helperCallHasShadowStackArg(CorInfoHelpFunc helperFunc) const;
+    bool callHasManagedCallingConvention(const GenTreeCall* call) const;
+    bool helperCallHasManagedCallingConvention(CorInfoHelpFunc helperFunc) const;
 
-    static bool canStoreArgOnLlvmStack(Compiler* compiler, CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd);
+    static const HelperFuncInfo& getHelperFuncInfo(CorInfoHelpFunc helperFunc);
+
+    bool canStoreArgOnLlvmStack(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd);
 
     unsigned padOffset(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHandle, unsigned atOffset);
     unsigned padNextOffset(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHandle, unsigned atOffset);
@@ -199,7 +208,7 @@ private:
     const char* GetEHDispatchFunctionName(CORINFO_EH_CLAUSE_FLAGS handlerType);
     const char* GetTypeName(CORINFO_CLASS_HANDLE typeHandle);
     void AddCodeReloc(void* handle);
-    bool IsRuntimeImport(CORINFO_METHOD_HANDLE methodHandle);
+    bool IsRuntimeImport(CORINFO_METHOD_HANDLE methodHandle) const;
     const char* GetDocumentFileName();
     uint32_t GetOffsetLineNumber(unsigned ilOffset);
     bool StructIsWrappedPrimitive(CORINFO_CLASS_HANDLE typeHandle, CorInfoType corInfoType);
