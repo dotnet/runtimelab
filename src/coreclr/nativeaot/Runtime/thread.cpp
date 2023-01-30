@@ -1408,13 +1408,13 @@ COOP_PINVOKE_HELPER(void, RhpReversePInvokeReturn, (ReversePInvokeFrame * pFrame
 
 #ifdef USE_PORTABLE_HELPERS
 
-COOP_PINVOKE_HELPER(void, RhpPInvoke2, (PInvokeTransitionFrame* pFrame))
+COOP_PINVOKE_HELPER(void, RhpPInvoke, (PInvokeTransitionFrame* pFrame))
 {
     Thread * pCurThread = ThreadStore::RawGetCurrentThread();
     pCurThread->InlinePInvoke(pFrame);
 }
 
-COOP_PINVOKE_HELPER(void, RhpPInvokeReturn2, (PInvokeTransitionFrame* pFrame))
+COOP_PINVOKE_HELPER(void, RhpPInvokeReturn, (PInvokeTransitionFrame* pFrame))
 {
     //reenter cooperative mode
     pFrame->m_pThread->InlinePInvokeReturn(pFrame);

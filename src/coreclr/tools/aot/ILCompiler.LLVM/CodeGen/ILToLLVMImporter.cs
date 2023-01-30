@@ -3088,8 +3088,8 @@ namespace Internal.IL
                     LLVMTypeRef.CreateStruct(new LLVMTypeRef[] { LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0) }, false);
                 pInvokeFunctionType = LLVMTypeRef.CreateFunction(LLVMTypeRef.Void, new LLVMTypeRef[] { LLVMTypeRef.CreatePointer(pInvokeTransitionFrameType, 0) }, false);
                 pInvokeTransitionFrame = _builder.BuildAlloca(pInvokeTransitionFrameType, "PInvokeTransitionFrame");
-                LLVMValueRef RhpPInvoke2 = GetOrCreateLLVMFunction("RhpPInvoke2", pInvokeFunctionType);
-                _builder.BuildCall(RhpPInvoke2, new LLVMValueRef[] { pInvokeTransitionFrame }, "");
+                LLVMValueRef RhpPInvoke = GetOrCreateLLVMFunction("RhpPInvoke", pInvokeFunctionType);
+                _builder.BuildCall(RhpPInvoke, new LLVMValueRef[] { pInvokeTransitionFrame }, "");
             }
             // Don't name the return value if the function returns void, it's invalid
             var returnValue = _builder.BuildCall(nativeFunc, llvmArguments, !method.Signature.ReturnType.IsVoid ? "call" : string.Empty);
@@ -3097,8 +3097,8 @@ namespace Internal.IL
             if (method.IsPInvoke)
             {
                 // add call to go to cooperative mode
-                LLVMValueRef RhpPInvokeReturn2 = GetOrCreateLLVMFunction("RhpPInvokeReturn2", pInvokeFunctionType);
-                _builder.BuildCall(RhpPInvokeReturn2, new LLVMValueRef[] { pInvokeTransitionFrame }, "");
+                LLVMValueRef RhpPInvokeReturn = GetOrCreateLLVMFunction("RhpPInvokeReturn", pInvokeFunctionType);
+                _builder.BuildCall(RhpPInvokeReturn, new LLVMValueRef[] { pInvokeTransitionFrame }, "");
             }
 
             // If the callee originates from an UnmanagedCallersOnly function then we need to restore the thread local for the shadow stack
