@@ -259,6 +259,12 @@ namespace System.Runtime
         [MethodImpl(MethodImplOptions.InternalCall)]
         internal static extern unsafe void RhpCopyContextFromExInfo(void* pOSContext, int cbOSContext, EH.PAL_LIMITED_CONTEXT* pPalContext);
 
+#if TARGET_WASM
+        [RuntimeImport(Redhawk.BaseName, "RhpThrowNativeException")]
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        internal static extern void RhpThrowNativeException(object exception);
+#endif
+
         [RuntimeImport(Redhawk.BaseName, "RhpGetNumThunkBlocksPerMapping")]
         [MethodImpl(MethodImplOptions.InternalCall)]
         internal static extern int RhpGetNumThunkBlocksPerMapping();

@@ -161,14 +161,17 @@ namespace System.Runtime
         [DllImport("*"), SuppressGCTransition]
         private static extern void __cxa_end_catch();
 
-        [DllImport("*")]
-        private static extern void RhpThrowEx(void* exception);
+        [RuntimeExport("RhpThrowEx")]
+        private static void RhpThrowEx(object exception)
+        {
+            Exception.DispatchExLLVM(exception);
+            InternalCalls.RhpThrowNativeException(exception);
+        }
 
         [RuntimeExport("RhpRethrow")]
         private static void RhpRethrow(void** pException) // TODO-LLVM: use object* once C#11 is available.
         {
-            Exception.DispatchExLLVM(Unsafe.Read<object>(pException));
-            RhpThrowEx(*pException); // GC hole...
+            RhpThrowEx(Unsafe.Read<object>(pException));
         }
 
         // The below two handlers are invoked by LLVM code generated via the IL backend.
