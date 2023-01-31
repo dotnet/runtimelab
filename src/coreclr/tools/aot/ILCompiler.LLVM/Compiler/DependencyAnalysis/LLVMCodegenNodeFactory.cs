@@ -2,25 +2,30 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System;
+using System.Collections.Generic;
+using System.Runtime.InteropServices;
 using ILCompiler.DependencyAnalysisFramework;
+
+using Internal.JitInterface;
 using Internal.TypeSystem;
 
 namespace ILCompiler.DependencyAnalysis
 {
     public sealed class LLVMCodegenNodeFactory : NodeFactory
     {
-        private NodeCache<MethodDesc, LLVMVTableSlotNode> _vTableSlotNodes;
+        private readonly Dictionary<string, ExternMethodAccessorNode> _externSymbolsWithAccessors = new();
+        private readonly NodeCache<MethodDesc, LLVMVTableSlotNode> _vTableSlotNodes;
 
         public LLVMCodegenNodeFactory(CompilerTypeSystemContext context, CompilationModuleGroup compilationModuleGroup, MetadataManager metadataManager,
             InteropStubManager interopStubManager, NameMangler nameMangler, VTableSliceProvider vtableSliceProvider, DictionaryLayoutProvider dictionaryLayoutProvider, PreinitializationManager preinitializationManager)
-            : base(context, 
-                  compilationModuleGroup, 
-                  metadataManager, 
-                  interopStubManager, 
-                  nameMangler, 
-                  new LazyGenericsDisabledPolicy(), 
-                  vtableSliceProvider, 
-                  dictionaryLayoutProvider, 
+            : base(context,
+                  compilationModuleGroup,
+                  metadataManager,
+                  interopStubManager,
+                  nameMangler,
+                  new LazyGenericsDisabledPolicy(),
+                  vtableSliceProvider,
+                  dictionaryLayoutProvider,
                   new ImportedNodeProviderThrowing(),
                   preinitializationManager)
         {
@@ -44,6 +49,10 @@ namespace ILCompiler.DependencyAnalysis
                 {
                     return new LlvmMethodBodyNode(((ArrayType)method.OwningType).GetArrayMethod(ArrayMethodKind.AddressWithHiddenArg));
                 }
+                else if (method.HasCustomAttribute("System.Runtime", "RuntimeImportAttribute"))
+                {
+                    return new RuntimeImportMethodNode(method);
+                }
             }
             if (CompilationModuleGroup.ContainsMethodBody(method, false))
             {
@@ -60,7 +69,33 @@ namespace ILCompiler.DependencyAnalysis
             }
         }
 
-        public LLVMVTableSlotNode VTableSlot(MethodDesc method)
+        internal ExternMethodAccessorNode ExternSymbolWithAccessor(string name, MethodDesc method, ReadOnlySpan<TargetAbiType> sig)
+        {
+            Dictionary<string, ExternMethodAccessorNode> map = _externSymbolsWithAccessors;
+
+            // Not lockless since we mutate the node. Contention on this path is not expected.
+            //
+            lock (map)
+            {
+                ref ExternMethodAccessorNode node = ref CollectionsMarshal.GetValueRefOrAddDefault(map, name, out bool exists);
+
+                if (!exists)
+                {
+                    node = new ExternMethodAccessorNode(name);
+                    node.Signature = sig.ToArray();
+                }
+                else if (!node.Signature.AsSpan().SequenceEqual(sig))
+                {
+                    // We have already seen this name with a different signature. Currently, we don't try to disambiguate.
+                    node.Signature = null;
+                }
+
+                node.AddMethod(method);
+                return node;
+            }
+        }
+
+        internal LLVMVTableSlotNode VTableSlot(MethodDesc method)
         {
             return _vTableSlotNodes.GetOrAdd(method);
         }

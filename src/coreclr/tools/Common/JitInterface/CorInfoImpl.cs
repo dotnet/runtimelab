@@ -171,14 +171,6 @@ namespace Internal.JitInterface
             JitSetOs(JitPointerAccessor.Get(), os);
         }
 
-        //TODO-LLVM: delete this and use ShutdownJit when we get it. See https://github.com/dotnet/runtime/pull/56187 and https://github.com/dotnet/runtime/pull/56687
-#if !READYTORUN
-        public static void Shutdown()
-        {
-            jitShutdown(true);
-        }
-#endif
-
         public CorInfoImpl()
         {
             _jit = JitPointerAccessor.Get();

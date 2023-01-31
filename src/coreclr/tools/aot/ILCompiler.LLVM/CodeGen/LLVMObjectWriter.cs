@@ -15,6 +15,7 @@ using LLVMSharp.Interop;
 using ILCompiler.DependencyAnalysis;
 using Internal.IL;
 using Internal.TypeSystem.Ecma;
+using Internal.JitInterface;
 
 namespace ILCompiler.DependencyAnalysis
 {
@@ -48,6 +49,10 @@ namespace ILCompiler.DependencyAnalysis
 
         public LLVMDIBuilderRef DIBuilder { get; }
 
+        // Module with the external functions and getters for them. Must be separate from the main module so as to avoid
+        // direct calls with mismatched signatures at the LLVM level.
+        private readonly LLVMModuleRef _moduleWithExternalFunctions;
+
         // Nodefactory for which ObjectWriter is instantiated for.
         private readonly NodeFactory _nodeFactory;
 
@@ -72,10 +77,14 @@ namespace ILCompiler.DependencyAnalysis
 
         public LLVMObjectWriter(string objectFilePath, LLVMCodegenCompilation compilation)
         {
-            _nodeFactory = compilation.NodeFactory;
-            _objectFilePath = objectFilePath;
             Module = LLVMCodegenCompilation.Module;
             DIBuilder = compilation.DIBuilder;
+
+            _moduleWithExternalFunctions = LLVMModuleRef.CreateWithName("external");
+            _moduleWithExternalFunctions.Target = Module.Target;
+            _moduleWithExternalFunctions.DataLayout = Module.DataLayout;
+            _nodeFactory = compilation.NodeFactory;
+            _objectFilePath = objectFilePath;
             _nativeLib = compilation.NativeLib;
         }
 
@@ -83,7 +92,7 @@ namespace ILCompiler.DependencyAnalysis
 
         public virtual void Dispose(bool bDisposing)
         {
-            FinishObjWriter(Module.Context);
+            FinishObjWriter();
 
             if (bDisposing)
             {
@@ -140,6 +149,12 @@ namespace ILCompiler.DependencyAnalysis
                     if (node is UnboxingStubNode unboxStubNode)
                     {
                         objectWriter.GetCodeForUnboxThunkMethod(compilation, unboxStubNode);
+                        continue;
+                    }
+
+                    if (node is ExternMethodAccessorNode accessorNode)
+                    {
+                        objectWriter.GetCodeForExternMethodAccessor(compilation, accessorNode);
                         continue;
                     }
 
@@ -223,6 +238,7 @@ namespace ILCompiler.DependencyAnalysis
         {
             // Most external symbols (functions) have already been referenced by codegen. However, some are only
             // referenced by the compiler itself, in its data structures. Emit the declarations for them now.
+            //
             string name = node.GetMangledName(_nodeFactory.NameMangler);
             if (Module.GetNamedFunction(name).Handle == IntPtr.Zero)
             {
@@ -446,13 +462,12 @@ namespace ILCompiler.DependencyAnalysis
                             LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0) /* shadow stack not used */,
                             LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0) /* return spill slot */,
                             callee.TypeOf.ElementType.ParamTypes[0] /* MethodTable* */ }));
-                LLVMBuilderRef builder = LLVMBuilderRef.Create(Module.Context);
+                using LLVMBuilderRef builder = LLVMBuilderRef.Create(Module.Context);
                 LLVMBasicBlockRef block = func.AppendBasicBlock("thunk");
                 builder.PositionAtEnd(block);
                 var ret = builder.BuildCall(Module.GetNamedFunction(unmanagedSymbolName), new LLVMValueRef[] { func.Params[2] });
                 builder.BuildStore(ret, ILImporter.CastIfNecessary(builder, func.Params[1], LLVMTypeRef.CreatePointer(ret.TypeOf, 0)));
                 builder.BuildRetVoid();
-                builder.Dispose();
             }
 
             return thunkSymbolName;
@@ -468,7 +483,7 @@ namespace ILCompiler.DependencyAnalysis
                    || realName.EndsWith("RhpNewFinalizable");
         }
 
-        private void FinishObjWriter(LLVMContextRef context)
+        private void FinishObjWriter()
         {
             // Since emission to llvm is delayed until after all nodes are emitted... emit now.
             foreach (var nodeData in _dataToFill)
@@ -478,6 +493,7 @@ namespace ILCompiler.DependencyAnalysis
 
             EmitReversePInvokesAndShadowStackBottom();
 
+            LLVMContextRef context = Module.Context;
             if (_nativeLib)
             {
                 EmitNativeStartup(context);
@@ -492,8 +508,10 @@ namespace ILCompiler.DependencyAnalysis
             Module.PrintToFile(Path.ChangeExtension(_objectFilePath, ".txt"));
 #endif
             Module.Verify(LLVMVerifierFailureAction.LLVMAbortProcessAction);
+            _moduleWithExternalFunctions.Verify(LLVMVerifierFailureAction.LLVMAbortProcessAction);
 
             Module.WriteBitcodeToFile(_objectFilePath);
+            _moduleWithExternalFunctions.WriteBitcodeToFile(Path.ChangeExtension(_objectFilePath, "external.bc"));
         }
 
         private void EmitDebugMetadata(LLVMContextRef context)
@@ -939,6 +957,70 @@ namespace ILCompiler.DependencyAnalysis
             {
                 builder.BuildRetVoid();
             }
+        }
+
+        private void GetCodeForExternMethodAccessor(LLVMCodegenCompilation compilation, ExternMethodAccessorNode node)
+        {
+            string externFuncName = node.ExternMethodName.ToString();
+            LLVMTypeRef externFuncType = default;
+
+            if (node.Signature != null)
+            {
+                static LLVMTypeRef GetLlvmType(TargetAbiType abiType) => abiType switch
+                {
+                    TargetAbiType.Void => LLVMTypeRef.Void,
+                    TargetAbiType.Int32 => LLVMTypeRef.Int32,
+                    TargetAbiType.Int64 => LLVMTypeRef.Int64,
+                    TargetAbiType.Float => LLVMTypeRef.Float,
+                    TargetAbiType.Double => LLVMTypeRef.Double,
+                    _ => throw new UnreachableException()
+                };
+
+                TargetAbiType[] sig = node.Signature;
+                LLVMTypeRef returnType = GetLlvmType(sig[0]);
+                LLVMTypeRef[] paramTypes = new LLVMTypeRef[sig.Length - 1];
+                for (int i = 0; i < paramTypes.Length; i++)
+                {
+                    paramTypes[i] = GetLlvmType(sig[i + 1]);
+                }
+
+                externFuncType = LLVMTypeRef.CreateFunction(returnType, paramTypes);
+            }
+            else // Report the signature mismatch warning, use a placeholder signature.
+            {
+                string text = $"Signature mismatch detected: '{externFuncName}' will not be imported from the host environment";
+
+                foreach (MethodDesc method in node.EnumerateMethods())
+                {
+                    text += $"\n Defined as: {method.Signature.ReturnType} {method}";
+                }
+
+                // Error code is just below the "AOT analysis" namespace.
+                compilation.Logger.LogWarning(text, 3049, Path.GetFileNameWithoutExtension(_objectFilePath));
+
+                externFuncType = LLVMTypeRef.CreateFunction(LLVMTypeRef.Void, Array.Empty<LLVMTypeRef>());
+            }
+
+            LLVMModuleRef externFuncModule = _moduleWithExternalFunctions;
+            Debug.Assert(externFuncModule.GetNamedFunction(externFuncName).Handle == IntPtr.Zero);
+            LLVMValueRef externFunc = externFuncModule.AddFunction(externFuncName, externFuncType);
+
+            // Add import attributes if specified.
+            if (compilation.ConfigurableWasmImportPolicy.TryGetWasmModule(externFuncName, out string wasmModuleName))
+            {
+                externFunc.AddFunctionAttribute("wasm-import-name", externFuncName);
+                externFunc.AddFunctionAttribute("wasm-import-module", wasmModuleName);
+            }
+
+            // Define the accessor function.
+            string accessorFuncName = node.GetMangledName(_nodeFactory.NameMangler);
+            LLVMTypeRef accessorFuncType = LLVMTypeRef.CreateFunction(externFunc.TypeOf, Array.Empty<LLVMTypeRef>());
+            LLVMValueRef accessorFunc = externFuncModule.AddFunction(accessorFuncName, accessorFuncType);
+
+            using LLVMBuilderRef builder = LLVMBuilderRef.Create(externFuncModule.Context);
+            LLVMBasicBlockRef block = accessorFunc.AppendBasicBlock("GetExternFunc");
+            builder.PositionAtEnd(block);
+            builder.BuildRet(externFunc);
         }
 
         private LLVMValueRef OutputCodeForDictionaryLookup(LLVMBuilderRef builder, NodeFactory factory,

@@ -29,13 +29,19 @@ namespace Internal.IL
                 marshaledValue.Value, (uint)marshaledValue.Length);
         }
 
-        public static LLVMValueRef GetNamedAlias(this LLVMModuleRef module, ReadOnlySpan<char> name)
+        internal static void AddFunctionAttribute(this LLVMValueRef function, string name, string value)
+        {
+            LLVMAttributeRef attribute = CreateAttribute(function.TypeOf.Context, name, value);
+            LLVM.AddAttributeAtIndex(function, LLVMAttributeIndex.LLVMAttributeFunctionIndex, attribute);
+        }
+
+        internal static LLVMValueRef GetNamedAlias(this LLVMModuleRef module, ReadOnlySpan<char> name)
         {
             using var marshaledName = new MarshaledString(name);
             return LLVM.GetNamedGlobalAlias(module, marshaledName, (nuint)marshaledName.Length);
         }
 
-        public static LLVMTypeRef GetValueType(this LLVMValueRef value)
+        internal static LLVMTypeRef GetValueType(this LLVMValueRef value)
         {
             Debug.Assert(value.IsAGlobalValue.Handle != IntPtr.Zero);
             return LLVM.GlobalGetValueType(value);
