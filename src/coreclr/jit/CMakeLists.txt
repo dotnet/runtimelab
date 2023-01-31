@@ -111,6 +111,7 @@ set( JIT_SOURCES
   assertionprop.cpp
   bitset.cpp
   block.cpp
+  buildstring.cpp
   layout.cpp
   codegencommon.cpp
   codegenlinear.cpp

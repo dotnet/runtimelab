@@ -31,9 +31,14 @@ set __UseEmcmake=0
 if /i "%__Ninja%" == "1" (
     set __CmakeGenerator=Ninja
 ) else (
+<<<<<<< HEAD
     if /i "%__VSVersion%" == "vs2022" (set __CmakeGenerator=%__CmakeGenerator% 17 2022)
     if /i "%__VSVersion%" == "vs2019" (set __CmakeGenerator=%__CmakeGenerator% 16 2019)
     if /i "%__VSVersion%" == "vs2017" (set __CmakeGenerator=%__CmakeGenerator% 15 2017)
+=======
+    if /i NOT "%__Arch%" == "wasm" (
+        if /i "%__VSVersion%" == "vs2022" (set __CmakeGenerator=%__CmakeGenerator% 17 2022)
+>>>>>>> f8fa9f6d1554e8db291187dd7b2847162703381e
 
     if /i "%__Arch%" == "x64" (set __ExtraCmakeParams=%__ExtraCmakeParams% -A x64)
     if /i "%__Arch%" == "arm" (set __ExtraCmakeParams=%__ExtraCmakeParams% -A ARM)
