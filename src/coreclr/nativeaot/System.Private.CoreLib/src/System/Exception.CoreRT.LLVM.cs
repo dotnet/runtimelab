@@ -20,7 +20,7 @@ namespace System
             // back into the dispatcher.
             try
             {
-                Exception ex = exceptionObj as Exception;
+                Exception? ex = exceptionObj as Exception;
                 if (ex == null)
                     Environment.FailFast("Exceptions must derive from the System.Exception class");
 
