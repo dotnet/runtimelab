@@ -1178,8 +1178,14 @@ void Llvm::visitNode(GenTree* node)
         case GT_LCL_FLD:
             buildLocalField(node->AsLclFld());
             break;
+        case GT_STORE_LCL_FLD:
+            buildStoreLocalField(node->AsLclFld());
+            break;
         case GT_LCL_VAR:
             buildLocalVar(node->AsLclVar());
+            break;
+        case GT_STORE_LCL_VAR:
+            buildStoreLocalVar(node->AsLclVar());
             break;
         case GT_LCL_VAR_ADDR:
         case GT_LCL_FLD_ADDR:
@@ -1238,9 +1244,6 @@ void Llvm::visitNode(GenTree* node)
         case GT_RETURN:
         case GT_RETFILT:
             buildReturn(node);
-            break;
-        case GT_STORE_LCL_VAR:
-            buildStoreLocalVar(node->AsLclVar());
             break;
         case GT_STOREIND:
             buildStoreInd(node->AsStoreInd());
@@ -1381,6 +1384,40 @@ void Llvm::buildLocalField(GenTreeLclFld* lclFld)
     Value* fieldAddressValue = gepOrAddr(structAddrValue, lclFld->GetLclOffs());
 
     mapGenTreeToValue(lclFld, _builder.CreateLoad(getLlvmTypeForVarType(lclFld->TypeGet()), fieldAddressValue));
+}
+
+void Llvm::buildStoreLocalField(GenTreeLclFld* lclFld)
+{
+    GenTree* data = lclFld->gtGetOp1();
+    Type* llvmStoreType = getLlvmTypeForVarType(lclFld->TypeGet());
+    // TODO-LLVM: uncomment once we merge https://github.com/dotnet/runtime/pull/68986 (May 27).
+    // ClassLayout* layout = lclFld->TypeIs(TYP_STRUCT) ? lclFld->GetLayout() : nullptr;
+    // Type* llvmStoreType = (layout != nullptr) ? getLlvmTypeForStruct(lclFld->GetLayout())
+    //                                           : getLlvmTypeForVarType(lclFld->TypeGet());
+    Value* addrValue = gepOrAddr(getLocalAddr(lclFld->GetLclNum()), lclFld->GetLclOffs());
+
+    Value* dataValue;
+    if (lclFld->TypeIs(TYP_STRUCT) && genActualTypeIsInt(data))
+    {
+        failFunctionCompilation();
+        // ClassLayout* layout = lclFld->GetLayout();
+        // if (!data->IsIntegralConst(0))
+        // {
+        //     assert(data->OperIsInitVal());
+        //     Value* fillValue = consumeValue(data->gtGetOp1(), Type::getInt8Ty(_llvmContext));
+        //     Value* sizeValue = _builder.getInt32(layout->GetSize());
+        //     _builder.CreateMemSet(addrValue, fillValue, sizeValue, llvm::MaybeAlign());
+        //     return;
+        // }
+        //
+        // dataValue = llvm::Constant::getNullValue(llvmStoreType);
+    }
+    else
+    {
+        dataValue = consumeValue(data, llvmStoreType);
+    }
+
+    _builder.CreateStore(dataValue, addrValue);
 }
 
 void Llvm::buildLocalVarAddr(GenTreeLclVarCommon* lclAddr)

@@ -251,9 +251,11 @@ private:
 
     void lowerBlocks();
     void lowerBlock(BasicBlock* block);
+    void lowerNode(GenTree* node);
+    void lowerLocal(GenTreeLclVarCommon* node);
     void lowerStoreLcl(GenTreeLclVarCommon* storeLclNode);
     void lowerFieldOfDependentlyPromotedStruct(GenTree* node);
-    void ConvertShadowStackLocalNode(GenTreeLclVarCommon* node);
+    bool ConvertShadowStackLocalNode(GenTreeLclVarCommon* node);
     void lowerCall(GenTreeCall* callNode);
     void lowerRethrow(GenTreeCall* callNode);
     void lowerCatchArg(GenTree* catchArgNode);
@@ -310,6 +312,7 @@ private:
     void buildStoreLocalVar(GenTreeLclVar* lclVar);
     void buildEmptyPhi(GenTreePhi* phi);
     void buildLocalField(GenTreeLclFld* lclFld);
+    void buildStoreLocalField(GenTreeLclFld* lclFld);
     void buildLocalVarAddr(GenTreeLclVarCommon* lclVar);
     void buildAdd(GenTreeOp* node);
     void buildSub(GenTreeOp* node);
