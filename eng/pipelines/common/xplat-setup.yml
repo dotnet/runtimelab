@@ -135,12 +135,22 @@ jobs:
         # Official Build Windows Pool
         ${{ if and(or(eq(parameters.osGroup, 'windows'), eq(parameters.jobParameters.hostedOs, 'windows')), ne(variables['System.TeamProject'], 'public')) }}:
           name: NetCore1ESPool-Internal
+<<<<<<< HEAD
           demands: ImageOverride -equals windows.vs2022.amd64
 
         # Public Windows Build Pool
         ${{ if and(or(eq(parameters.osGroup, 'windows'), eq(parameters.jobParameters.hostedOs, 'windows')), eq(variables['System.TeamProject'], 'public')) }}:
           name: NetCore-Public
           demands: ImageOverride -equals windows.vs2022.amd64.open
+=======
+          demands: ImageOverride -equals Build.Windows.Amd64.VS2022.Pre
+
+        # Public Windows Build Pool
+        ${{ if and(or(eq(parameters.osGroup, 'windows'), eq(parameters.jobParameters.hostedOs, 'windows')), eq(variables['System.TeamProject'], 'public')) }}:
+          name: NetCore1ESPool-Public
+          demands: ImageOverride -equals Build.Windows.Amd64.VS2022.Pre.Open
+
+>>>>>>> 27f6e08178346b61ec49fc64f176022079530661
 
     ${{ if eq(parameters.helixQueuesTemplate, '') }}:
       # macOS hosted pool machines are slower so we need to give a greater timeout than the 60 mins default.

@@ -20,7 +20,7 @@ namespace ILCompiler
         // These need to provide reasonable defaults so that the user can optionally skip
         // calling the Use/Configure methods and still get something reasonable back.
         private KeyValuePair<string, string>[] _ryujitOptions = Array.Empty<KeyValuePair<string, string>>();
-        private ILProvider _ilProvider = new CoreRTILProvider();
+        private ILProvider _ilProvider = new NativeAotILProvider();
         private ProfileDataManager _profileDataManager;
         private string _jitPath;
 
@@ -30,7 +30,12 @@ namespace ILCompiler
         }
 
         public RyuJitCompilationBuilder(CompilerTypeSystemContext context, CompilationModuleGroup group)
+<<<<<<< HEAD
             : this(context, group, context.Target.IsWindows ? new WindowsNodeMangler() : new UnixNodeMangler())
+=======
+            : base(context, group,
+                  new NativeAotNameMangler(context.Target.IsWindows ? (NodeMangler)new WindowsNodeMangler() : (NodeMangler)new UnixNodeMangler(), false))
+>>>>>>> 27f6e08178346b61ec49fc64f176022079530661
         {
         }
 
