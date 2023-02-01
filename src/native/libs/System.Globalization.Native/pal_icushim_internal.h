@@ -53,11 +53,6 @@
 #include "pal_compiler.h"
 
 #if !defined(STATIC_ICU)
-// ucol_setVariableTop is a deprecated function on the newer ICU versions and ucol_setMaxVariable should be used instead.
-// As can run against ICU versions which not supported ucol_setMaxVariable, we'll dynamically try to get the pointer to ucol_setVariableTop
-// when we couldn't get a pointer to ucol_setMaxVariable.
-typedef uint32_t (*ucol_setVariableTop_func)(UCollator* coll, const UChar* varTop, int32_t len, UErrorCode* status);
-extern ucol_setVariableTop_func ucol_setVariableTop_ptr;
 
 #if !defined(TARGET_ANDROID)
 // (U_ICU_VERSION_MAJOR_NUM < 52)
@@ -73,8 +68,13 @@ U_CAPI int32_t U_EXPORT2 ucal_getWindowsTimeZoneID(const UChar* id, int32_t len,
 U_CAPI UCollator* U_EXPORT2 ucol_clone(const UCollator* coll, UErrorCode* status);
 
 // ucol_setVariableTop is a deprecated function on the newer ICU versions and ucol_setMaxVariable should be used instead.
+<<<<<<< HEAD
 // As can run against ICU versions which not supported ucol_setMaxVariable, we'll dynamically try to get the pointer to ucol_setVariableTop
 // when we couldn't get a pointer to ucol_setMaxVariable.
+=======
+// As we can run against ICU versions which do not support ucol_setMaxVariable, we will dynamically try to get the pointer
+// to ucol_setVariableTop when we could not get a pointer to ucol_setMaxVariable.
+>>>>>>> 27f6e08178346b61ec49fc64f176022079530661
 typedef uint32_t (U_EXPORT2 *ucol_setVariableTop_func)(UCollator* coll, const UChar* varTop, int32_t len, UErrorCode* status);
 
 // ucol_safeClone is deprecated in ICU version 71. We have to handle it manually to avoid getting a build break when referencing it in the code.
