@@ -1,13 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>$(NetCoreAppCurrent)</TargetFramework>
-<<<<<<< HEAD
-    <Nullable>enable</Nullable>
-    <!-- NativeAOT-LLVM: take upstream when merging https://github.com/dotnet/runtime/pull/68488 (Apr 25) -->
-=======
     <!-- Even though this library's contract isn't exposed in the shared framework, it is built as part of the shared framework build
        (because the System.Net.Quic\src references this project) and hence need to define its dependencies. -->
->>>>>>> 27f6e08178346b61ec49fc64f176022079530661
     <DisableImplicitFrameworkReferences>true</DisableImplicitFrameworkReferences>
   </PropertyGroup>
 

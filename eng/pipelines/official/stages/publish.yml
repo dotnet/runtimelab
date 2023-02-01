@@ -20,11 +20,7 @@ stages:
       dependsOn: PrepareSignedArtifacts
       pool:
         name: NetCore1ESPool-Internal
-<<<<<<< HEAD
         demands: ImageOverride -equals 1es-windows-2022
-=======
-        demands: ImageOverride -equals Build.Windows.Amd64.VS2022
->>>>>>> 27f6e08178346b61ec49fc64f176022079530661
 
 # Stages-based publishing entry point
 - template: /eng/common/templates/post-build/post-build.yml

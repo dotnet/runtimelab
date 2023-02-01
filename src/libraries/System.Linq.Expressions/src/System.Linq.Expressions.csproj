@@ -216,16 +216,6 @@
     <Compile Include="System\Linq\Expressions\Interpreter\Utilities.cs" />
   </ItemGroup>
   <ItemGroup>
-<<<<<<< HEAD
-    <ProjectReference Include="$(CoreLibProject)" />
-    <ProjectReference Include="$(LibrariesProjectRoot)System.Collections\src\System.Collections.csproj" />
-    <ProjectReference Include="$(LibrariesProjectRoot)System.Linq\src\System.Linq.csproj" />
-    <ProjectReference Include="$(LibrariesProjectRoot)System.ObjectModel\src\System.ObjectModel.csproj" />
-    <ProjectReference Include="$(LibrariesProjectRoot)System.Reflection.Primitives\src\System.Reflection.Primitives.csproj" />
-    <ProjectReference Include="$(LibrariesProjectRoot)System.Runtime\src\System.Runtime.csproj" />
-    <ProjectReference Include="$(LibrariesProjectRoot)System.Runtime.Extensions\src\System.Runtime.Extensions.csproj" />
-    <ProjectReference Include="$(LibrariesProjectRoot)System.Threading\src\System.Threading.csproj" />
-=======
     <Reference Include="System.Collections" />
     <Reference Include="System.Linq" />
     <Reference Include="System.ObjectModel" />
@@ -235,6 +225,5 @@
     <Reference Include="System.Reflection.Primitives" />
     <Reference Include="System.Runtime" />
     <Reference Include="System.Threading" />
->>>>>>> 27f6e08178346b61ec49fc64f176022079530661
   </ItemGroup>
 </Project>

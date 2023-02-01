@@ -168,18 +168,11 @@
     <Compile Include="System\Diagnostics\DebugAnnotations.cs" />
     <Compile Include="System\Diagnostics\StackFrame.NativeAot.cs" />
     <Compile Include="System\Diagnostics\StackFrameExtensions.cs" />
-<<<<<<< HEAD
-    <Compile Include="System\Diagnostics\StackTrace.CoreRT.cs" />
-    <Compile Include="System\Diagnostics\StackTrace.CoreRT.Wasm.cs" Condition="'$(WasmAbi)' == 'true'"/>
-    <Compile Include="System\Enum.CoreRT.cs" />
-    <Compile Include="System\Environment.CoreRT.cs" />
-    <Compile Include="System\GC.CoreRT.cs" />
-=======
     <Compile Include="System\Diagnostics\StackTrace.NativeAot.cs" />
+    <Compile Include="System\Diagnostics\StackTrace.NativeAot.Wasm.cs" Condition="'$(WasmAbi)' == 'true'"/>
     <Compile Include="System\Enum.NativeAot.cs" />
     <Compile Include="System\Environment.NativeAot.cs" />
     <Compile Include="System\GC.NativeAot.cs" />
->>>>>>> 27f6e08178346b61ec49fc64f176022079530661
     <Compile Include="System\Helpers.cs" />
     <Compile Include="System\Math.NativeAot.cs" />
     <Compile Include="System\MathF.NativeAot.cs" />
@@ -221,12 +214,8 @@
     <Compile Include="System\Array.NativeAot.cs" />
     <Compile Include="System\Delegate.cs" />
     <Compile Include="System\RuntimeTypeHandle.cs" />
-<<<<<<< HEAD
-    <Compile Include="System\Exception.CoreRT.cs" />
-    <Compile Include="System\Exception.CoreRT.LLVM.cs" Condition="'$(WasmAbi)' == 'true'"/>
-=======
     <Compile Include="System\Exception.NativeAot.cs" />
->>>>>>> 27f6e08178346b61ec49fc64f176022079530661
+    <Compile Include="System\Exception.NativeAot.LLVM.cs" Condition="'$(WasmAbi)' == 'true'"/>
     <Compile Include="System\RuntimeExceptionHelpers.cs" />
     <Compile Include="System\EETypePtr.cs" />
     <Compile Include="System\Runtime\RuntimeImports.cs" />
@@ -321,21 +310,11 @@
     <Compile Include="System\Threading\Win32ThreadPoolNativeOverlapped.OverlappedData.cs" />
     <Compile Include="System\Threading\Win32ThreadPoolPreAllocatedOverlapped.cs" />
   </ItemGroup>
-<<<<<<< HEAD
   <ItemGroup Condition="'$(TargetsUnix)'=='true' or '$(TargetsBrowser)'=='true'">
-    <Compile Include="System\Environment.CoreRT.Unix.cs" />
-    <Compile Include="System\Runtime\InteropServices\PInvokeMarshal.Unix.cs" />
-    <Compile Include="System\Threading\LowLevelLifoSemaphore.Unix.cs" />
-    <Compile Include="System\Threading\Thread.CoreRT.Unix.cs" />
-    <Compile Include="System\Threading\Thread.CoreRT.Wasm.cs" Condition="'$(TargetsBrowser)'=='true'"/>
-    <Compile Include="System\Threading\ThreadPool.Wasm.cs" Condition="'$(TargetsBrowser)'=='true'"/>
-=======
-  <ItemGroup Condition="'$(TargetsUnix)'=='true'">
     <Compile Include="System\Environment.NativeAot.Unix.cs" />
     <Compile Include="System\Runtime\InteropServices\PInvokeMarshal.Unix.cs" />
     <Compile Include="System\Threading\LowLevelLifoSemaphore.Unix.cs" />
     <Compile Include="System\Threading\Thread.NativeAot.Unix.cs" />
->>>>>>> 27f6e08178346b61ec49fc64f176022079530661
     <Compile Include="$(CommonPath)\Interop\Unix\System.Native\Interop.Abort.cs">
       <Link>Interop\Unix\System.Native\Interop.Abort.cs</Link>
     </Compile>
@@ -354,6 +333,9 @@
     <Compile Include="$(CommonPath)\Interop\Unix\System.Native\Interop.GetEnviron.cs">
       <Link>Interop\Unix\System.Native\Interop.GetEnviron.cs</Link>
     </Compile>
+  </ItemGroup>
+  <ItemGroup Condition="'$(TargetsBrowser)'=='true' and '$(FeatureWasmThreads)' != 'true'">
+    <Compile Include="System\Threading\PreAllocatedOverlapped.NativeAot.Wasm.cs" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="$(CompilerCommonPath)\TypeSystem\Common\Utilities\LockFreeReaderHashtable.cs">
