@@ -1291,12 +1291,12 @@ void Llvm::normalizeStructUse(GenTree* node, ClassLayout* layout)
 unsigned Llvm::representAsLclVar(LIR::Use& use)
 {
     GenTree* node = use.Def();
-    if (!node->OperIs(GT_LCL_VAR))
+    if (node->OperIs(GT_LCL_VAR))
     {
-        return use.ReplaceWithLclVar(_compiler);
+        return node->AsLclVar()->GetLclNum();
     }
 
-    return node->AsLclVar()->GetLclNum();
+    return use.ReplaceWithLclVar(_compiler);
 }
 
 GenTree* Llvm::createStoreNode(var_types storeType, GenTree* addr, GenTree* data)
