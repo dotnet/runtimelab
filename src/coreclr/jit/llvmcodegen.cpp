@@ -1998,7 +1998,7 @@ bool storeIndRequiresTrunc(var_types storeType, var_types dataType)
 
 void Llvm::buildStoreInd(GenTreeStoreInd* storeIndOp)
 {
-    GCInfo::WriteBarrierForm wbf = getGCInfo()->gcIsWriteBarrierCandidate(storeIndOp, storeIndOp->Data());
+    GCInfo::WriteBarrierForm wbf = getGCInfo()->gcIsWriteBarrierCandidate(storeIndOp);
 
     Type* storeLlvmType = getLlvmTypeForVarType(storeIndOp->TypeGet());
     Value* addrValue = consumeValue(storeIndOp->Addr(), llvm::PointerType::getUnqual(_llvmContext));

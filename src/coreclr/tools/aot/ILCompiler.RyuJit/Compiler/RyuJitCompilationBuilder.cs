@@ -25,7 +25,7 @@ namespace ILCompiler
         private string _jitPath;
 
         protected RyuJitCompilationBuilder(CompilerTypeSystemContext context, CompilationModuleGroup group, NodeMangler mangler)
-            : base(context, group, new CoreRTNameMangler(mangler, false))
+            : base(context, group, new NativeAotNameMangler(mangler, false))
         {
         }
 

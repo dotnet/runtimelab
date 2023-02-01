@@ -13,7 +13,7 @@ using Internal.TypeSystem.Ecma;
 
 namespace Internal.JitInterface
 {
-    public unsafe sealed partial class CorInfoImpl
+    public unsafe sealed  partial class CorInfoImpl
     {
         static List<IntPtr> _allocedMemory = new List<IntPtr>();
 

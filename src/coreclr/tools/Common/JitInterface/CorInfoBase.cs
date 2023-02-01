@@ -10,7 +10,7 @@ using System.Runtime.InteropServices;
 
 namespace Internal.JitInterface
 {
-    unsafe partial class CorInfoImpl
+    unsafe public partial class CorInfoImpl
     {
         [UnmanagedCallersOnly]
         static byte _isIntrinsic(IntPtr thisHandle, IntPtr* ppException, CORINFO_METHOD_STRUCT_* ftn)
