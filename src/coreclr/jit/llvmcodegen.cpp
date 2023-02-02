@@ -2435,8 +2435,7 @@ void Llvm::buildKeepAlive(GenTreeUnOp* keepAliveNode)
     //  <-- We insert KeepAlive s.t. we don't finalize away "handle" while it is still in use by the native call. -->
     //  GC.KeepAlive(obj)
     //
-    // In the shadow stack model, this would have to be done before codegen, by spilling "obj", so we don't need to do
-    // anything here.
+    // In the shadow stack model this is handled in lowering so we don't need to do anything here.
 }
 
 void Llvm::buildILOffset(GenTreeILOffset* ilOffsetNode)
