@@ -34,7 +34,7 @@ using ILCompiler.DependencyAnalysis.ReadyToRun;
 
 namespace Internal.JitInterface
 {
-    public sealed unsafe partial class CorInfoImpl
+    internal sealed unsafe partial class CorInfoImpl
     {
         //
         // Global initialization and state

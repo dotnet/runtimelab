@@ -28,17 +28,8 @@
     <Compile Include="..\..\Common\TypeSystem\IL\StackValueKind.cs">
       <Link>IL\StackValueKind.cs</Link>
     </Compile>
-    <Compile Include="..\..\Common\System\Collections\Generic\ArrayBuilder.cs">
-      <Link>Common\ArrayBuilder.cs</Link>
-    </Compile>
     <Compile Include="..\..\Common\System\FormattingHelpers.cs">
       <Link>Common\FormattingHelpers.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Common\TypeSystem\IL\HelperExtensions.cs">
-      <Link>IL\HelperExtensions.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Common\TypeSystem\IL\Stubs\TypeSystemThrowingILEmitter.cs">
-      <Link>IL\Stubs\TypeSystemThrowingILEmitter.cs</Link>
     </Compile>
     <Compile Include="CodeGen\DebugMetadata.cs" />
     <Compile Include="CodeGen\ILToLLVMImporter_Statics.cs" />

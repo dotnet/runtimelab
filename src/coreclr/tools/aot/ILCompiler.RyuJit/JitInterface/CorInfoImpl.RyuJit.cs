@@ -23,7 +23,7 @@ using RyuJitCompilation = ILCompiler.Compilation;
 
 namespace Internal.JitInterface
 {
-    unsafe public partial class CorInfoImpl
+    unsafe partial class CorInfoImpl
     {
         private const CORINFO_RUNTIME_ABI TargetABI = CORINFO_RUNTIME_ABI.CORINFO_NATIVEAOT_ABI;
 
