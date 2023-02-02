@@ -8,6 +8,9 @@
     </ItemGroup>
   </Target>
 
+  <PropertyGroup Condition="$(RuntimeIdentifier.EndsWith('wasm')">
+    <DisableUnsupportedError>true</DisableUnsupportedError>
+  </PropertyGroup>
   <!--
     This target hooks into the dotnet CLI publish pipeline. That pipeline has
     a target called ComputeFilesToPublish which produces the ItemGroup
@@ -51,14 +54,14 @@
     <Error Condition="'$(PublishTrimmed)' == 'false'" Text="PublishTrimmed is implied by native compilation and cannot be disabled." />
 
     <!-- Fail with descriptive error message for common unsupported cases. -->
-    <Error Condition="'$(DisableUnsupportedError)' != 'true' and '$(OS)' == 'Windows_NT' and !$(RuntimeIdentifier.StartsWith('win')) and !$(RuntimeIdentifier.EndsWith('wasm'))"
+    <Error Condition="'$(DisableUnsupportedError)' != 'true' and '$(OS)' == 'Windows_NT' and !$(RuntimeIdentifier.StartsWith('win')))"
       Text="Cross-OS native compilation is not supported." />
 
-    <Error Condition="'$(DisableUnsupportedError)' != 'true' and '$(OS)' != 'Windows_NT' and $(RuntimeIdentifier.StartsWith('win')) and !$(RuntimeIdentifier.EndsWith('wasm'))"
+    <Error Condition="'$(DisableUnsupportedError)' != 'true' and '$(OS)' != 'Windows_NT' and $(RuntimeIdentifier.StartsWith('win')))"
       Text="Cross-OS native compilation is not supported." />
 
     <Error Condition="'$(DisableUnsupportedError)' != 'true' and !($(RuntimeIdentifier.EndsWith('x64')) or
-      ($(RuntimeIdentifier.EndsWith('arm64')) and !$(RuntimeIdentifier.StartsWith('osx')))) and !$(RuntimeIdentifier.EndsWith('wasm'))"
+      ($(RuntimeIdentifier.EndsWith('arm64')) and !$(RuntimeIdentifier.StartsWith('osx')))))"
       Text="Native compilation does not support targeting $(RuntimeIdentifier) yet." />
 
     <Error Condition="'$(DisableUnsupportedError)' != 'true' and !('$(IlcHostArch)' == 'x64' or '$(IlcHostArch)' == 'arm64')"
