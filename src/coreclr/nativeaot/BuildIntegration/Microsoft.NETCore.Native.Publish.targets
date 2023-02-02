@@ -8,7 +8,7 @@
     </ItemGroup>
   </Target>
 
-  <PropertyGroup Condition="$(RuntimeIdentifier.EndsWith('wasm')">
+  <PropertyGroup Condition="$(RuntimeIdentifier.EndsWith('wasm'))">
     <DisableUnsupportedError>true</DisableUnsupportedError>
   </PropertyGroup>
   <!--
