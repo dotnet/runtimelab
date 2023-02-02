@@ -403,7 +403,7 @@ The .NET Foundation licenses this file to you under the MIT license.
     <Exec Command="$(CppLibCreator)  @&quot;$(NativeIntermediateOutputPath)lib.rsp&quot;" Condition="'$(TargetOS)' == 'windows' and '$(NativeLib)' == 'Static'" />
   </Target>
 
-  <!-- LLVM needs 2 inputs.  I can't see how to do that conditionally (on '$(TargetOS)' == 'browser' so just creating another target -->
+  <!-- LLVM needs 2 inputs. I can't see how to do that conditionally (on '$(TargetOS)' == 'browser') so just creating another target -->
   <Target Name="LinkNativeLlvm"
       Inputs="$(NativeObject);$(NativeClrjitObject);@(NativeLibrary)"
       Outputs="$(NativeBinary)"
@@ -411,15 +411,28 @@ The .NET Foundation licenses this file to you under the MIT license.
 
     <MakeDir Directories="$([System.IO.Path]::GetDirectoryName($(NativeBinary)))" />
 
+    <ItemGroup>
+      <NativeLibrary Include="$(IlcFrameworkNativePath)libSystem.Native.a" />
+      <NativeLibrary Include="$(IlcFrameworkNativePath)libSystem.Globalization.Native.a" />
+      <NativeLibrary Condition="$(NativeLib) == ''" Include="$(IlcSdkPath)libbootstrapper.a" />
+      <NativeLibrary Condition="$(NativeLib) != ''" Include="$(IlcSdkPath)libbootstrapperdll.a" />
+      <NativeLibrary Include="$(IlcSdkPath)libPortableRuntime.a" />
+
+      <CustomLinkerArg Include="@(NativeLibrary->'&quot;%(Identity)&quot;')" />
+      <CustomLinkerArg Include="--js-library &quot;$(IlcFrameworkNativePath)pal_random.lib.js&quot;" />
+      <CustomLinkerArg Include="&quot;$(NativeObject)&quot;" />
+      <CustomLinkerArg Include="&quot;$(NativeClrjitObject)&quot;" />
+      <CustomLinkerArg Include="-o &quot;$(NativeBinary)&quot;" />
+      <CustomLinkerArg Condition="'$(WasmHtmlTemplate)' != ''" Include="--shell-file &quot;$(WasmHtmlTemplate)&quot;" />
+      <CustomLinkerArg Include="-s ALLOW_MEMORY_GROWTH=1" />
+      <CustomLinkerArg Include="-s DISABLE_EXCEPTION_CATCHING=0" />
+      <CustomLinkerArg Include="-s ERROR_ON_UNDEFINED_SYMBOLS=0" />
+      <CustomLinkerArg Condition="'$(NativeDebugSymbols)' != 'true'" Include="-O2 -flto" />
+      <CustomLinkerArg Condition="'$(NativeDebugSymbols)' == 'true'" Include="-g3" />
+    </ItemGroup>
+
     <PropertyGroup>
-      <BootstrapperSuffix Condition="'$(NativeLib)' == 'Static'">dll</BootstrapperSuffix>
-      <EmccArgs>&quot;$(NativeObject)&quot; &quot;$(NativeClrjitObject)&quot; -o &quot;$(NativeBinary)&quot; -s ALLOW_MEMORY_GROWTH=1 -s ERROR_ON_UNDEFINED_SYMBOLS=0 -s DISABLE_EXCEPTION_CATCHING=0</EmccArgs>
-      <EmccArgs>$(EmccArgs) &quot;$(IlcSdkPath)/libPortableRuntime.a&quot; &quot;$(IlcSdkPath)libbootstrapper$(BootstrapperSuffix).a&quot; &quot;$(IlcFrameworkNativePath)libSystem.Native.a&quot; &quot;$(IlcFrameworkNativePath)libSystem.Globalization.Native.a&quot;</EmccArgs>
-      <EmccArgs Condition="'$(TargetOS)' == 'browser'">$(EmccArgs) --js-library &quot;$(IlcFrameworkNativePath)pal_random.lib.js&quot;</EmccArgs>
-      <EmccArgs Condition="'$(NativeDebugSymbols)' != 'true'">$(EmccArgs) -O2 -flto</EmccArgs>
-      <EmccArgs Condition="'$(NativeDebugSymbols)' == 'true'">$(EmccArgs) -g3</EmccArgs>
-      <EmccArgs Condition="'$(WasmHtmlTemplate)' != ''">$(EmccArgs) --shell-file &quot;$(WasmHtmlTemplate)&quot;</EmccArgs>    
-      <EmccArgs>$(EmccArgs) $(EmccExtraArgs)</EmccArgs>
+      <EmccArgs>@(CustomLinkerArg, ' ') $(EmccExtraArgs)</EmccArgs>
     </PropertyGroup>
 
     <Exec Command="&quot;$(EMSDK)/upstream/emscripten/emcc.bat&quot; $(EmccArgs)" Condition="'$(TargetOS)' == 'browser' and '$(EMSDK)' != '' and '$(OS)' == 'Windows_NT'" />

@@ -321,19 +321,32 @@ namespace PInvokeTests
             TestString();
             TestStringBuilder();
             TestLastError();
+#if !CODEGEN_WASM
+            // TODO-LLVM: https://github.com/dotnet/runtimelab/issues/2190
             TestHandleRef();
             TestSafeHandle();
+#endif
             TestStringArray();
             TestSizeParamIndex();
+#if !CODEGEN_WASM
+            // GetFunctionPointerForDelegate NYI on WASM
             TestDelegate();
+#endif
             TestStruct();
+#if !CODEGEN_WASM
+            // TODO-LLVM: https://github.com/dotnet/runtimelab/issues/2190
             TestLayoutClassPtr();
             TestLayoutClass();
             TestAsAny();
+#endif
             TestMarshalStructAPIs();
             TestWithoutPreserveSig();
+#if !CODEGEN_WASM
+            // GetFunctionPointerForDelegate NYI on WASM
             TestForwardDelegateWithUnmanagedCallersOnly();
+            // TODO-LLVM: https://github.com/dotnet/runtimelab/issues/2190
             TestDecimal();
+#endif
 
             return 100;
         }
@@ -811,15 +824,20 @@ namespace PInvokeTests
             ss.f2 = 10.0f;
             ss.f3 = "Hello";
 
+#if !CODEGEN_WASM
+            // TODO-LLVM: https://github.com/dotnet/runtimelab/issues/2190
             ThrowIfNotEquals(true, StructTest(ss), "Struct marshalling scenario1 failed.");
 
             StructTest_ByRef(ref ss);
             ThrowIfNotEquals(true,  ss.f1 == 2 && ss.f2 == 11.0 && ss.f3.Equals("Ifmmp"), "Struct marshalling scenario2 failed.");
+#endif
 
             SequentialStruct ss2 = new SequentialStruct();
             StructTest_ByOut(out ss2);
             ThrowIfNotEquals(true, ss2.f0 == 1 && ss2.f1 == 1.0 &&  ss2.f2 == 1.0 && ss2.f3.Equals("0123456"), "Struct marshalling scenario3 failed.");
 
+#if !CODEGEN_WASM
+            // TODO-LLVM: https://github.com/dotnet/runtimelab/issues/2190
             NesterOfSequentialStruct.SequentialStruct ss3 = new NesterOfSequentialStruct.SequentialStruct();
             ss3.f1 = 10.0f;
             ss3.f2 = 123;
@@ -832,10 +850,12 @@ namespace PInvokeTests
             es.f3 = "Hello";
             ThrowIfNotEquals(true, StructTest_Explicit(es), "Struct marshalling scenario4 failed.");
 
+            // TODO-LLVM: https://github.com/dotnet/runtimelab/issues/2190
             NestedStruct ns = new NestedStruct();
             ns.f1 = 100;
             ns.f2 = es;
             ThrowIfNotEquals(true, StructTest_Nested(ns), "Struct marshalling scenario5 failed.");
+#endif
 
             SequentialStruct[] ssa = null;
             ThrowIfNotEquals(true, IsNULL(ssa), "Non-blittable array null check failed");
@@ -895,11 +915,14 @@ namespace PInvokeTests
             }
             ThrowIfNotEquals(true, pass, "Struct marshalling scenario6 failed.");
 
+#if !CODEGEN_WASM
+            // GetFunctionPointerForDelegate NYI on WASM
             Callbacks callbacks = new Callbacks();
             callbacks.callback0 = new Callback0(callbackFunc0);
             callbacks.callback1 = new Callback1(callbackFunc1);
             callbacks.callback2 = new Callback2(callbackFunc2);
             ThrowIfNotEquals(true,  RegisterCallbacks(ref callbacks), "Scenario 7: Struct with delegate marshalling failed");
+#endif
         }
 
         private static void TestLayoutClassPtr()
