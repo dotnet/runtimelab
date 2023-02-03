@@ -10108,9 +10108,9 @@ public:
     void compFunctionTraceStart();
     void compFunctionTraceEnd(void* methodCodePtr, ULONG methodCodeSize, bool isNYI);
 
-protected:
     size_t compMaxUncheckedOffsetForNullObject;
 
+protected:
     void compInitOptions(JitFlags* compileFlags);
 
     void compSetProcessor();

@@ -6,6 +6,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using ILCompiler;
 using ILCompiler.DependencyAnalysis;
+
 using Internal.IL;
 using Internal.Text;
 using Internal.TypeSystem;
@@ -210,6 +211,19 @@ namespace Internal.JitInterface
             return (uint)type.InstanceFieldAlignment.AsInt;
         }
 
+        [UnmanagedCallersOnly]
+        public static byte* getAlternativeFunctionName(IntPtr thisHandle)
+        {
+            var _this = GetThis(thisHandle);
+            MethodDesc method = _this.MethodBeingCompiled;
+            if (_this._compilation.GetRuntimeExportManagedEntrypointName(method) is string alternativeName)
+            {
+                return (byte*)_this.GetPin(StringToUTF8(alternativeName));
+            }
+
+            return null;
+        }
+
         public struct TypeDescriptor
         {
             public uint FieldCount;
@@ -286,6 +300,7 @@ namespace Internal.JitInterface
             PadOffset,
             GetTypeDescriptor,
             GetInstanceFieldAlignment,
+            GetAlternativeFunctionName,
             Count
         }
 
@@ -307,6 +322,7 @@ namespace Internal.JitInterface
             callbacks[(int)EEApiId.PadOffset] = (delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, uint, uint>)&padOffset;
             callbacks[(int)EEApiId.GetTypeDescriptor] = (delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, TypeDescriptor>)&getTypeDescriptor;
             callbacks[(int)EEApiId.GetInstanceFieldAlignment] = (delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, uint>)&getInstanceFieldAlignment;
+            callbacks[(int)EEApiId.GetAlternativeFunctionName] = (delegate* unmanaged<IntPtr, byte*>)&getAlternativeFunctionName;
             callbacks[(int)EEApiId.Count] = (void*)0x1234;
 
 #if DEBUG

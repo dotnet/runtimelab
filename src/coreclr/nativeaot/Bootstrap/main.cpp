@@ -3,10 +3,6 @@
 
 #include <stdint.h>
 
-#if defined HOST_WASM
-#include <exception>
-#endif // HOST_WASM
-
 //
 // This is the mechanism whereby multiple linked modules contribute their global data for initialization at
 // startup of the application.
@@ -97,6 +93,10 @@ static char& __unbox_z = __stop___unbox;
 
 #endif // _MSC_VER
 
+#ifdef HOST_WASM
+extern "C" void* RtRHeaderWrapper();
+#endif // HOST_WASM
+
 extern "C" bool RhInitialize();
 extern "C" void RhpEnableConservativeStackReporting();
 extern "C" void RhpShutdown();
@@ -150,50 +150,6 @@ extern "C" int __managed__Main(int argc, char* argv[]);
 #define NATIVEAOT_ENTRYPOINT __managed__Startup
 extern "C" void __managed__Startup();
 #endif // !NATIVEAOT_DLL
-
-#if defined HOST_WASM
-// Exception wrapper type that allows us to differentiate managed and native exceptions
-class ManagedExceptionWrapper : std::exception
-{
-public:
-    ManagedExceptionWrapper(void* pManagedException)
-    {
-        m_pManagedException = pManagedException;
-    }
-
-public:
-    void* m_pManagedException;
-};
-
-extern "C" void RhpThrowEx(void * pEx)
-{
-    throw ManagedExceptionWrapper(pEx);
-}
-
-extern "C" void RhpThrowHwEx()
-{
-    throw "RhpThrowHwEx";
-}
-
-// returns the Leave target
-extern "C" uint32_t LlvmCatchFunclet(void* pHandlerIP, void* pvRegDisplay); 
-extern "C" uint32_t RhpCallCatchFunclet(void * exceptionObj, void* pHandlerIP, void* pvRegDisplay, void *exInfo)
-{
-    return LlvmCatchFunclet(pHandlerIP, pvRegDisplay);
-}
-
-extern "C" uint32_t LlvmFilterFunclet(void* pHandlerIP, void* pvRegDisplay);
-extern "C" uint32_t RhpCallFilterFunclet(void* exceptionObj, void * pHandlerIP, void* shadowStack)
-{
-    return LlvmFilterFunclet(pHandlerIP, shadowStack);
-}
-extern "C" void LlvmFinallyFunclet(void *finallyHandler, void *shadowStack);
-extern "C" void RhpCallFinallyFunclet(void *finallyHandler, void *shadowStack)
-{
-    LlvmFinallyFunclet(finallyHandler, shadowStack);
-}
-extern "C" void* RtRHeaderWrapper();
-#endif // HOST_WASM
 
 static int InitializeRuntime()
 {

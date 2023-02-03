@@ -3085,8 +3085,18 @@ namespace Internal.JitInterface
 
             pEEInfoOut.osPageSize = new UIntPtr(0x1000);
 
-            pEEInfoOut.maxUncheckedOffsetForNullObject = (_compilation.NodeFactory.Target.IsWindows) ?
-                new UIntPtr(32 * 1024 - 1) : new UIntPtr((uint)pEEInfoOut.osPageSize / 2 - 1);
+#if !READYTORUN
+            if (_compilation.TargetArchIsWasm())
+            {
+                // The low 1024 bytes are reserved by Emscripten; no valid address will point there.
+                pEEInfoOut.maxUncheckedOffsetForNullObject = new UIntPtr(1024 - 1);
+            }
+            else
+#endif
+            {
+                pEEInfoOut.maxUncheckedOffsetForNullObject = (_compilation.NodeFactory.Target.IsWindows) ?
+                    new UIntPtr(32 * 1024 - 1) : new UIntPtr((uint)pEEInfoOut.osPageSize / 2 - 1);
+            }
 
             pEEInfoOut.targetAbi = TargetABI;
             pEEInfoOut.osType = TargetToOs(_compilation.NodeFactory.Target);

@@ -106,6 +106,12 @@ namespace ILCompiler.DependencyAnalysis
             {
                 foreach (DependencyNode depNode in nodes)
                 {
+                    if (depNode is ExternSymbolNode externSymbolNode)
+                    {
+                        objectWriter.EmitExternalSymbol(externSymbolNode);
+                        continue;
+                    }
+
                     ObjectNode node = depNode as ObjectNode;
                     if (node == null)
                         continue;
@@ -213,6 +219,18 @@ namespace ILCompiler.DependencyAnalysis
             }
         }
 
+        private void EmitExternalSymbol(ExternSymbolNode node)
+        {
+            // Most external symbols (functions) have already been referenced by codegen. However, some are only
+            // referenced by the compiler itself, in its data structures. Emit the declarations for them now.
+            string name = node.GetMangledName(_nodeFactory.NameMangler);
+            if (Module.GetNamedFunction(name).Handle == IntPtr.Zero)
+            {
+                Debug.Assert(Module.GetNamedGlobal(name).Handle == IntPtr.Zero);
+                Module.AddFunction(name, LLVMTypeRef.CreateFunction(LLVMTypeRef.Void, Array.Empty<LLVMTypeRef>()));
+            }
+        }
+
         private void DoneObjectNode(ObjectNode node, ISymbolDefinitionNode[] definedSymbols)
         {
             EmitAlignment(_nodeFactory.Target.PointerSize);
@@ -309,12 +327,8 @@ namespace ILCompiler.DependencyAnalysis
         private void EmitSymbolReference(ISymbolNode target, int offset, int delta)
         {
             string symbolName = target.GetMangledName(_nodeFactory.NameMangler);
-            if (symbolName == "RhpInitialDynamicInterfaceDispatch")
-            {
-                CreateDummyRhpInitialDynamicInterfaceDispatch();
-            }
-
             uint symbolRefOffset = checked(unchecked((uint)target.Offset) + (uint)delta);
+
             _currentObjectSymbolRefs.Add(offset, new SymbolRefData(symbolName, symbolRefOffset));
         }
 
@@ -452,15 +466,6 @@ namespace ILCompiler.DependencyAnalysis
                    || realName.EndsWith("RhpNewFastMisalign")
                    || realName.EndsWith("RhpNewFastAlign8")
                    || realName.EndsWith("RhpNewFinalizable");
-        }
-
-        private void CreateDummyRhpInitialDynamicInterfaceDispatch()
-        {
-            LLVMValueRef dummyFunc = Module.GetNamedFunction("RhpInitialDynamicInterfaceDispatch");
-
-            if (dummyFunc.Handle != IntPtr.Zero) return;
-
-            Module.AddFunction("RhpInitialDynamicInterfaceDispatch", LLVMTypeRef.CreateFunction(LLVMTypeRef.Void, new LLVMTypeRef[] { }));
         }
 
         private void FinishObjWriter(LLVMContextRef context)

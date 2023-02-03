@@ -7,6 +7,7 @@ using System.Runtime.CompilerServices;
 using System.Threading;
 using ILCompiler.Compiler;
 using Internal.TypeSystem;
+using Internal.TypeSystem.Ecma;
 using Internal.IL;
 
 using ILCompiler.DependencyAnalysis;
@@ -167,7 +168,6 @@ namespace ILCompiler
                     // TODO: delete this external function when old module is gone
                     var mangledName = NodeFactory.NameMangler.GetMangledMethodName(method).ToString();
                     LLVMValueRef externFunc = ILImporter.GetOrCreateLLVMFunction(Module, mangledName, GetLLVMSignatureForMethod(method.Signature, method.RequiresInstArg()));
-                    externFunc.Linkage = LLVMLinkage.LLVMExternalLinkage;
 
                     ILImporter.GenerateRuntimeExportThunk(this, method, externFunc);
 
@@ -288,6 +288,20 @@ namespace ILCompiler
         public override int PadOffset(TypeDesc type, uint atOffset)
         {
             return ILImporter.PadOffset(type, (int)atOffset);
+        }
+
+        // We define an alternative entrypoint for the runtime exports, one that has the (original) managed calling convention.
+        // This allows managed code as well as low-level runtime helpers to avoid the overhead of shadow stack save/restore
+        // when calling the export. Thus, the "mangling" we use here is effectively an ABI contract between the compiler and
+        // runtime.
+        public override string GetRuntimeExportManagedEntrypointName(MethodDesc method)
+        {
+            if (!method.IsRuntimeExport)
+            {
+                return null;
+            }
+
+            return ((EcmaMethod)method).GetRuntimeExportName() + "_Managed";
         }
     }
 }

@@ -65,6 +65,8 @@ void Llvm::Compile()
         m_diBuilder->finalize();
     }
 
+    generateAuxiliaryArtifacts();
+
 #if DEBUG
     JITDUMP("\n===================================================================================================================\n");
     JITDUMP("LLVM IR for %s after codegen:\n", _compiler->info.compFullName);
@@ -1007,6 +1009,16 @@ void Llvm::fillPhis()
                 llvmPhiNode->addIncoming(phiArgValue, llvmPredBlock);
             }
         }
+    }
+}
+
+void Llvm::generateAuxiliaryArtifacts()
+{
+    // Currently, the only auxiliary artifact we may need is an alternative exported name for the compiled function.
+    const char* alternativeName = GetAlternativeFunctionName();
+    if (alternativeName != nullptr)
+    {
+        llvm::GlobalAlias::create(alternativeName, getRootLlvmFunction());
     }
 }
 
@@ -2601,8 +2613,13 @@ void Llvm::emitNullCheckForIndir(GenTreeIndir* indir, Value* addrValue)
     {
         assert(addrValue->getType()->isPointerTy());
 
-        Value* nullValue = llvm::Constant::getNullValue(addrValue->getType());
-        Value* isNullValue = _builder.CreateCmp(llvm::CmpInst::ICMP_EQ, addrValue, nullValue);
+        // The frontend's contract with the backend is that it will not insert null checks for accesses which
+        // are inside the "[0..compMaxUncheckedOffsetForNullObject]" range. Thus, we need to check not just
+        // for "null", but "null + small offset".
+        Value* checkValue = llvm::Constant::getIntegerValue(
+            addrValue->getType(),
+            llvm::APInt(TARGET_POINTER_SIZE * BITS_PER_BYTE, _compiler->compMaxUncheckedOffsetForNullObject + 1));
+        Value* isNullValue = _builder.CreateICmpULT(addrValue, checkValue);
         emitJumpToThrowHelper(isNullValue, SCK_NULL_REF_EXCPN);
     }
 }
