@@ -11,9 +11,11 @@ using Internal.Text;
 using Internal.TypeSystem;
 using Internal.TypeSystem.Ecma;
 
+[assembly: InternalsVisibleTo("ILCompiler.LLVM")]
+
 namespace Internal.JitInterface
 {
-    public unsafe sealed partial class CorInfoImpl
+    sealed unsafe partial class CorInfoImpl
     {
         static List<IntPtr> _allocedMemory = new List<IntPtr>();
 

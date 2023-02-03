@@ -5,7 +5,7 @@
     <RootNamespace>ILCompiler</RootNamespace>
     <AssemblyName>ILCompiler.LLVM</AssemblyName>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>$(NetCoreAppToolCurrent)</TargetFramework>
     <!-- not ready for LLVM opaque pointers yet, so disable deprecated function: 0618 -->
     <NoWarn>8002;0618</NoWarn>
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
@@ -28,17 +28,8 @@
     <Compile Include="..\..\Common\TypeSystem\IL\StackValueKind.cs">
       <Link>IL\StackValueKind.cs</Link>
     </Compile>
-    <Compile Include="..\..\Common\System\Collections\Generic\ArrayBuilder.cs">
-      <Link>Common\ArrayBuilder.cs</Link>
-    </Compile>
     <Compile Include="..\..\Common\System\FormattingHelpers.cs">
       <Link>Common\FormattingHelpers.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Common\TypeSystem\IL\HelperExtensions.cs">
-      <Link>IL\HelperExtensions.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Common\TypeSystem\IL\Stubs\TypeSystemThrowingILEmitter.cs">
-      <Link>IL\Stubs\TypeSystemThrowingILEmitter.cs</Link>
     </Compile>
     <Compile Include="CodeGen\DebugMetadata.cs" />
     <Compile Include="CodeGen\ILToLLVMImporter_Statics.cs" />

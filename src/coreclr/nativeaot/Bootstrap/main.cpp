@@ -139,17 +139,17 @@ static const pfn c_classlibFunctions[] = {
 
 extern "C" void InitializeModules(void* osModule, void ** modules, int count, void ** pClasslibFunctions, int nClasslibFunctions);
 
-#ifndef CORERT_DLL
-#define CORERT_ENTRYPOINT __managed__Main
+#ifndef NATIVEAOT_DLL
+#define NATIVEAOT_ENTRYPOINT __managed__Main
 #if defined(_WIN32)
 extern "C" int __managed__Main(int argc, wchar_t* argv[]);
 #else
 extern "C" int __managed__Main(int argc, char* argv[]);
 #endif
 #else
-#define CORERT_ENTRYPOINT __managed__Startup
+#define NATIVEAOT_ENTRYPOINT __managed__Startup
 extern "C" void __managed__Startup();
-#endif // !CORERT_DLL
+#endif // !NATIVEAOT_DLL
 
 #if defined HOST_WASM
 // Exception wrapper type that allows us to differentiate managed and native exceptions
@@ -203,7 +203,7 @@ static int InitializeRuntime()
 #if defined HOST_WASM
     RhpEnableConservativeStackReporting();
 #else
-    void * osModule = PalGetModuleHandleFromPointer((void*)&CORERT_ENTRYPOINT);
+    void * osModule = PalGetModuleHandleFromPointer((void*)&NATIVEAOT_ENTRYPOINT);
 
     // TODO: pass struct with parameters instead of the large signature of RhRegisterOSModule
     if (!RhRegisterOSModule(
@@ -222,15 +222,15 @@ static int InitializeRuntime()
     InitializeModules(osModule, __modules_a, (int)((__modules_z - __modules_a)), (void **)&c_classlibFunctions, _countof(c_classlibFunctions));
 #endif
 
-#ifdef CORERT_DLL
+#ifdef NATIVEAOT_DLL
     // Run startup method immediately for a native library
     __managed__Startup();
-#endif // CORERT_DLL
+#endif // NATIVEAOT_DLL
 
     return 0;
 }
 
-#ifndef CORERT_DLL
+#ifndef NATIVEAOT_DLL
 
 #ifdef ENSURE_PRIMARY_STACK_SIZE
 __attribute__((noinline, optnone))
@@ -262,9 +262,9 @@ int main(int argc, char* argv[])
 
     return retval;
 }
-#endif // !CORERT_DLL
+#endif // !NATIVEAOT_DLL
 
-#ifdef CORERT_DLL
+#ifdef NATIVEAOT_DLL
 static struct InitializeRuntimePointerHelper
 {
     InitializeRuntimePointerHelper()
@@ -273,10 +273,10 @@ static struct InitializeRuntimePointerHelper
     }
 } initializeRuntimePointerHelper;
 
-extern "C" void* CoreRT_StaticInitialization();
+extern "C" void* NativeAOT_StaticInitialization();
 
-void* CoreRT_StaticInitialization()
+void* NativeAOT_StaticInitialization()
 {
     return &initializeRuntimePointerHelper;
 }
-#endif // CORERT_DLL
+#endif // NATIVEAOT_DLL
