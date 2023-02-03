@@ -18,12 +18,6 @@ void Llvm::Compile()
         failFunctionCompilation();
     }
 
-    if ((m_info->compFlags & CORINFO_FLG_SYNCH) != 0)
-    {
-        // TODO-LLVM: enable.
-        failFunctionCompilation();
-    }
-
     if (initializeFunctions())
     {
         return;
@@ -1003,31 +997,14 @@ void Llvm::fillPhis()
         for (GenTreePhi::Use& use : phiNode->Uses())
         {
             GenTreePhiArg* phiArg = use.GetNode()->AsPhiArg();
-            unsigned ssaNum = phiArg->GetSsaNum();
+            Value* phiArgValue = _localsMap[{lclNum, phiArg->GetSsaNum()}];
             BasicBlock* predBlock = phiArg->gtPredBB;
             llvm::BasicBlock* llvmPredBlock = getLastLlvmBlockForBlock(predBlock);
-
-            Value* localPhiArg = _localsMap[{lclNum, ssaNum}];
-            Value* phiRealArgValue;
-            Instruction* castRequired = getCast(localPhiArg, llvmPhiNode->getType());
-            if (castRequired != nullptr)
-            {
-                // This cast is needed when
-                // 1) The phi arg real type is short and the definition is the actual longer type, e.g. for bool/int
-                // 2) There is a pointer difference, e.g. i8* v i32* and perhaps different levels of indirection: i8** and i8*
-                //
-                _builder.SetInsertPoint(llvmPredBlock->getTerminator());
-                phiRealArgValue = _builder.Insert(castRequired);
-            }
-            else
-            {
-                phiRealArgValue = localPhiArg;
-            }
 
             unsigned llvmPredCount = getPhiPredCount(predBlock, phiBlock);
             for (unsigned i = 0; i < llvmPredCount; i++)
             {
-                llvmPhiNode->addIncoming(phiRealArgValue, llvmPredBlock);
+                llvmPhiNode->addIncoming(phiArgValue, llvmPredBlock);
             }
         }
     }
@@ -1067,16 +1044,18 @@ Value* Llvm::consumeValue(GenTree* node, Type* targetLlvmType)
 
     if (nodeValue->getType() != targetLlvmType)
     {
-        // int to pointer type (TODO-LLVM: WASM64: use POINTER_BITs when set correctly, also below for getInt32Ty)
-        if (nodeValue->getType() == Type::getInt32Ty(_llvmContext) && targetLlvmType->isPointerTy())
+        Type* intPtrLlvmType = getIntPtrLlvmType();
+
+        // Integer -> pointer.
+        if ((nodeValue->getType() == intPtrLlvmType) && targetLlvmType->isPointerTy())
         {
             return _builder.CreateIntToPtr(nodeValue, targetLlvmType);
         }
 
-        // pointer to ints
-        if (nodeValue->getType()->isPointerTy() && targetLlvmType == Type::getInt32Ty(_llvmContext))
+        // Pointer -> integer.
+        if (nodeValue->getType()->isPointerTy() && (targetLlvmType == intPtrLlvmType))
         {
-            return _builder.CreatePtrToInt(nodeValue, Type::getInt32Ty(_llvmContext));
+            return _builder.CreatePtrToInt(nodeValue, intPtrLlvmType);
         }
 
         // int and smaller int conversions
@@ -1110,6 +1089,7 @@ Value* Llvm::consumeValue(GenTree* node, Type* targetLlvmType)
                 case GT_CAST:
                     trueNodeType = node->AsCast()->CastToType();
                     break;
+
                 default:
                     trueNodeType = node->TypeGet();
                     break;
@@ -1118,7 +1098,7 @@ Value* Llvm::consumeValue(GenTree* node, Type* targetLlvmType)
             assert(varTypeIsSmall(trueNodeType));
 
             finalValue = varTypeIsSigned(trueNodeType) ? _builder.CreateSExt(nodeValue, targetLlvmType)
-                : _builder.CreateZExt(nodeValue, targetLlvmType);
+                                                       : _builder.CreateZExt(nodeValue, targetLlvmType);
         }
         else
         {
@@ -1198,8 +1178,14 @@ void Llvm::visitNode(GenTree* node)
         case GT_LCL_FLD:
             buildLocalField(node->AsLclFld());
             break;
+        case GT_STORE_LCL_FLD:
+            buildStoreLocalField(node->AsLclFld());
+            break;
         case GT_LCL_VAR:
             buildLocalVar(node->AsLclVar());
+            break;
+        case GT_STORE_LCL_VAR:
+            buildStoreLocalVar(node->AsLclVar());
             break;
         case GT_LCL_VAR_ADDR:
         case GT_LCL_FLD_ADDR:
@@ -1210,6 +1196,19 @@ void Llvm::visitNode(GenTree* node)
         case GT_RSZ:
             buildShift(node->AsOp());
             break;
+        case GT_INTRINSIC:
+            buildIntrinsic(node->AsIntrinsic());
+            break;
+        case GT_XAND:
+        case GT_XORR:
+        case GT_XADD:
+        case GT_XCHG:
+        case GT_CMPXCHG:
+            // TODO-LLVM-CQ: enable these as intrinsics.
+            unreached();
+        case GT_MEMORYBARRIER:
+            // TODO-LLVM: atomics.
+            failFunctionCompilation();
         case GT_EQ:
         case GT_NE:
         case GT_LE:
@@ -1220,10 +1219,8 @@ void Llvm::visitNode(GenTree* node)
             break;
         case GT_NEG:
         case GT_NOT:
+        case GT_BITCAST:
             buildUnaryOperation(node);
-            break;
-        case GT_NO_OP:
-            emitDoNothingCall();
             break;
         case GT_NULLCHECK:
             buildNullCheck(node->AsIndir());
@@ -1248,9 +1245,6 @@ void Llvm::visitNode(GenTree* node)
         case GT_RETFILT:
             buildReturn(node);
             break;
-        case GT_STORE_LCL_VAR:
-            buildStoreLocalVar(node->AsLclVar());
-            break;
         case GT_STOREIND:
             buildStoreInd(node->AsStoreInd());
             break;
@@ -1267,11 +1261,23 @@ void Llvm::visitNode(GenTree* node)
         case GT_XOR:
             buildBinaryOperation(node);
             break;
+        case GT_KEEPALIVE:
+            buildKeepAlive(node->AsUnOp());
+            break;
         case GT_IL_OFFSET:
             buildILOffset(node->AsILOffset());
             break;
+        case GT_NO_OP:
+        case GT_NOP:
+            // NOP is a true no-op, while NO_OP is usually used to help generate correct debug info.
+            // The latter use case is not representable in LLVM, so we don't need to do anything.
+            break;
+        case GT_ARR_ELEM:
+            failFunctionCompilation(); // TODO-LLVM: delete once we merge https://github.com/dotnet/runtime/pull/70271 (Jun 2).
+        case GT_JMP:
+            NYI("LLVM/GT_JMP"); // Requires support for explicit tailcalls.
         default:
-            failFunctionCompilation();
+            unreached();
     }
 
 #ifdef DEBUG
@@ -1378,6 +1384,40 @@ void Llvm::buildLocalField(GenTreeLclFld* lclFld)
     Value* fieldAddressValue = gepOrAddr(structAddrValue, lclFld->GetLclOffs());
 
     mapGenTreeToValue(lclFld, _builder.CreateLoad(getLlvmTypeForVarType(lclFld->TypeGet()), fieldAddressValue));
+}
+
+void Llvm::buildStoreLocalField(GenTreeLclFld* lclFld)
+{
+    GenTree* data = lclFld->gtGetOp1();
+    Type* llvmStoreType = getLlvmTypeForVarType(lclFld->TypeGet());
+    // TODO-LLVM: uncomment once we merge https://github.com/dotnet/runtime/pull/68986 (May 27).
+    // ClassLayout* layout = lclFld->TypeIs(TYP_STRUCT) ? lclFld->GetLayout() : nullptr;
+    // Type* llvmStoreType = (layout != nullptr) ? getLlvmTypeForStruct(lclFld->GetLayout())
+    //                                           : getLlvmTypeForVarType(lclFld->TypeGet());
+    Value* addrValue = gepOrAddr(getLocalAddr(lclFld->GetLclNum()), lclFld->GetLclOffs());
+
+    Value* dataValue;
+    if (lclFld->TypeIs(TYP_STRUCT) && genActualTypeIsInt(data))
+    {
+        failFunctionCompilation();
+        // ClassLayout* layout = lclFld->GetLayout();
+        // if (!data->IsIntegralConst(0))
+        // {
+        //     assert(data->OperIsInitVal());
+        //     Value* fillValue = consumeValue(data->gtGetOp1(), Type::getInt8Ty(_llvmContext));
+        //     Value* sizeValue = _builder.getInt32(layout->GetSize());
+        //     _builder.CreateMemSet(addrValue, fillValue, sizeValue, llvm::MaybeAlign());
+        //     return;
+        // }
+        //
+        // dataValue = llvm::Constant::getNullValue(llvmStoreType);
+    }
+    else
+    {
+        dataValue = consumeValue(data, llvmStoreType);
+    }
+
+    _builder.CreateStore(dataValue, addrValue);
 }
 
 void Llvm::buildLocalVarAddr(GenTreeLclVarCommon* lclAddr)
@@ -1742,7 +1782,7 @@ void Llvm::buildLclHeap(GenTreeUnOp* lclHeap)
     // A zero-sized LCLHEAP yields a null pointer.
     if (sizeNode->IsIntegralConst(0))
     {
-        lclHeapValue = llvm::Constant::getNullValue(Type::getInt8PtrTy(_llvmContext));
+        lclHeapValue = llvm::Constant::getNullValue(getPtrLlvmType());
     }
     else
     {
@@ -1763,7 +1803,7 @@ void Llvm::buildLclHeap(GenTreeUnOp* lclHeap)
         {
             Value* zeroSizeValue = llvm::Constant::getNullValue(sizeValue->getType());
             Value* isSizeNotZeroValue = _builder.CreateCmp(llvm::CmpInst::ICMP_NE, sizeValue, zeroSizeValue);
-            Value* nullValue = llvm::Constant::getNullValue(Type::getInt8PtrTy(_llvmContext));
+            Value* nullValue = llvm::Constant::getNullValue(getPtrLlvmType());
 
             lclHeapValue = _builder.CreateSelect(isSizeNotZeroValue, allocaInst, nullValue);
         }
@@ -1971,7 +2011,7 @@ Value* Llvm::buildFieldList(GenTreeFieldList* fieldList, Type* llvmType)
 void Llvm::buildInd(GenTreeIndir* indNode)
 {
     Type* loadLlvmType = getLlvmTypeForVarType(indNode->TypeGet());
-    Value* addrValue = consumeValue(indNode->Addr(), llvm::PointerType::getUnqual(_llvmContext));
+    Value* addrValue = consumeValue(indNode->Addr(), getPtrLlvmType());
 
     emitNullCheckForIndir(indNode, addrValue);
     Value* loadValue = _builder.CreateLoad(loadLlvmType, addrValue);
@@ -1982,7 +2022,7 @@ void Llvm::buildInd(GenTreeIndir* indNode)
 void Llvm::buildBlk(GenTreeBlk* blkNode)
 {
     Type* blkLlvmType = getLlvmTypeForStruct(blkNode->GetLayout());
-    Value* addrValue = consumeValue(blkNode->Addr(), llvm::PointerType::getUnqual(_llvmContext));
+    Value* addrValue = consumeValue(blkNode->Addr(), getPtrLlvmType());
 
     emitNullCheckForIndir(blkNode, addrValue);
     Value* blkValue = _builder.CreateLoad(blkLlvmType, addrValue);
@@ -2001,7 +2041,7 @@ void Llvm::buildStoreInd(GenTreeStoreInd* storeIndOp)
     GCInfo::WriteBarrierForm wbf = getGCInfo()->gcIsWriteBarrierCandidate(storeIndOp);
 
     Type* storeLlvmType = getLlvmTypeForVarType(storeIndOp->TypeGet());
-    Value* addrValue = consumeValue(storeIndOp->Addr(), llvm::PointerType::getUnqual(_llvmContext));
+    Value* addrValue = consumeValue(storeIndOp->Addr(), getPtrLlvmType());
 
     Value* dataValue;
     if (storeIndRequiresTrunc(storeIndOp->TypeGet(), storeIndOp->Data()->TypeGet()))
@@ -2041,7 +2081,7 @@ void Llvm::buildStoreBlk(GenTreeBlk* blockOp)
     ClassLayout* layout = blockOp->GetLayout();
     GenTree* addrNode = blockOp->Addr();
     GenTree* dataNode = blockOp->Data();
-    Value* addrValue = consumeValue(addrNode, Type::getInt8PtrTy(_llvmContext));
+    Value* addrValue = consumeValue(addrNode, getPtrLlvmType());
 
     emitNullCheckForIndir(blockOp, addrValue);
 
@@ -2150,28 +2190,34 @@ void Llvm::buildStoreDynBlk(GenTreeStoreDynBlk* blockOp)
 
 void Llvm::buildUnaryOperation(GenTree* node)
 {
-    Value* result;
-    Value* op1Value = consumeValue(node->gtGetOp1(), getLlvmTypeForVarType(node->TypeGet()));
+    GenTree* op1 = node->gtGetOp1();
+    Type* op1Type = getLlvmTypeForVarType(genActualType(op1));
+    Value* op1Value = consumeValue(op1, op1Type);
 
+    Value* nodeValue;
     switch (node->OperGet())
     {
         case GT_NEG:
-            if (op1Value->getType()->isFloatingPointTy())
+            if (varTypeIsFloating(node))
             {
-                result = _builder.CreateFNeg(op1Value, "fneg");
+                nodeValue = _builder.CreateFNeg(op1Value);
             }
             else
             {
-                result = _builder.CreateNeg(op1Value, "neg");
+                nodeValue = _builder.CreateNeg(op1Value);
             }
             break;
         case GT_NOT:
-            result = _builder.CreateNot(op1Value, "not");
+            nodeValue = _builder.CreateNot(op1Value);
+            break;
+        case GT_BITCAST:
+            nodeValue = _builder.CreateBitCast(op1Value, getLlvmTypeForVarType(node->TypeGet()));
             break;
         default:
-            failFunctionCompilation();  // TODO-LLVM: other binary operators
+            unreached();
     }
-    mapGenTreeToValue(node, result);
+
+    mapGenTreeToValue(node, nodeValue);
 }
 
 void Llvm::buildBinaryOperation(GenTree* node)
@@ -2242,9 +2288,35 @@ void Llvm::buildShift(GenTreeOp* node)
             result = _builder.CreateLShr(op1Value, numBitsToShift, "rsz");
             break;
         default:
-            failFunctionCompilation();  // TODO-LLVM: other shift types
+            unreached();
     }
+
     mapGenTreeToValue(node, result);
+}
+
+void Llvm::buildIntrinsic(GenTreeIntrinsic* intrinsicNode)
+{
+    llvm::Intrinsic::ID intrinsicId = getLlvmIntrinsic(intrinsicNode->gtIntrinsicName);
+    noway_assert(intrinsicId != llvm::Intrinsic::not_intrinsic);
+    assert(varTypeIsFloating(intrinsicNode));
+
+    Type* opLlvmType = getLlvmTypeForVarType(intrinsicNode->TypeGet());
+    GenTree* op1 = intrinsicNode->gtGetOp1();
+    GenTree* op2 = intrinsicNode->gtGetOp2();
+    Value* op1Value = consumeValue(op1, opLlvmType);
+    Value* op2Value = (op2 != nullptr) ? consumeValue(op2, opLlvmType) : nullptr;
+
+    Value* intrinsicValue;
+    if (op2 == nullptr)
+    {
+        intrinsicValue = _builder.CreateIntrinsic(intrinsicId, opLlvmType, op1Value);
+    }
+    else
+    {
+        intrinsicValue = _builder.CreateIntrinsic(intrinsicId, opLlvmType, {op1Value, op2Value});
+    }
+
+    mapGenTreeToValue(intrinsicNode, intrinsicValue);
 }
 
 void Llvm::buildReturn(GenTree* node)
@@ -2324,7 +2396,7 @@ void Llvm::buildSwitch(GenTreeUnOp* switchNode)
 
 void Llvm::buildNullCheck(GenTreeIndir* nullCheckNode)
 {
-    Value* addrValue = consumeValue(nullCheckNode->Addr(), Type::getInt8PtrTy(_llvmContext));
+    Value* addrValue = consumeValue(nullCheckNode->Addr(), getPtrLlvmType());
     emitNullCheckForIndir(nullCheckNode, addrValue);
 }
 
@@ -2350,6 +2422,20 @@ void Llvm::buildCkFinite(GenTreeUnOp* ckNode)
     emitJumpToThrowHelper(isNotFiniteValue, SCK_ARITH_EXCPN);;
 
     mapGenTreeToValue(ckNode, opValue);
+}
+
+void Llvm::buildKeepAlive(GenTreeUnOp* keepAliveNode)
+{
+    // KEEPALIVE is used to represent implicit uses of GC-visible values, e. g.:
+    //
+    //  ObjWithFinalizer obj = new ObjWithFinalizer();
+    //  NativeResource handle = obj.NativeResource;
+    //  <-- Here the compiler could think liveness of "obj" ends and permit its finalization. -->
+    //  NativeCall(handle);
+    //  <-- We insert KeepAlive s.t. we don't finalize away "handle" while it is still in use by the native call. -->
+    //  GC.KeepAlive(obj)
+    //
+    // In the shadow stack model this is handled in lowering so we don't need to do anything here.
 }
 
 void Llvm::buildILOffset(GenTreeILOffset* ilOffsetNode)
@@ -2445,7 +2531,7 @@ void Llvm::storeObjAtAddress(Value* baseAddress, Value* data, StructDesc* struct
             {
                 // We can't be sure the address is on the heap, it could be the result of pointer arithmetic on a local var.
                 emitHelperCall(CORINFO_HELP_CHECKED_ASSIGN_REF,
-                               {address, castIfNecessary(fieldData, llvm::PointerType::getUnqual(_llvmContext))});
+                               {address, castIfNecessary(fieldData, getPtrLlvmType())});
 
                 bytesStored += TARGET_POINTER_SIZE;
             }
@@ -2476,15 +2562,6 @@ unsigned Llvm::buildMemCpy(Value* baseAddress, unsigned startOffset, unsigned en
     _builder.CreateMemCpy(destAddress, llvm::Align(), srcAddress, llvm::Align(), size);
 
     return size;
-}
-
-void Llvm::emitDoNothingCall()
-{
-    if (_doNothingFunction == nullptr)
-    {
-        _doNothingFunction = Function::Create(FunctionType::get(Type::getVoidTy(_llvmContext), ArrayRef<Type*>(), false), Function::ExternalLinkage, 0U, "llvm.donothing", _module);
-    }
-    _builder.CreateCall(_doNothingFunction);
 }
 
 void Llvm::emitJumpToThrowHelper(Value* jumpCondValue, SpecialCodeKind throwKind)
@@ -2672,7 +2749,7 @@ FunctionType* Llvm::createFunctionTypeForHelper(CorInfoHelpFunc helperFunc)
 
     if (helperCallHasShadowStackArg(helperFunc))
     {
-        argVec.push_back(Type::getInt8PtrTy(_llvmContext));
+        argVec.push_back(getPtrLlvmType());
     }
 
     size_t sigArgCount = helperInfo.GetSigArgCount();
@@ -2738,35 +2815,14 @@ Instruction* Llvm::getCast(Value* source, Type* targetType)
     Type::TypeID sourceTypeID = sourceType->getTypeID();
     Type::TypeID targetTypeId = targetType->getTypeID();
 
-    if (targetTypeId == Type::TypeID::PointerTyID)
+    if (targetTypeId == Type::PointerTyID)
     {
-        switch (sourceTypeID)
-        {
-            case Type::TypeID::PointerTyID:
-                return nullptr;
-            case Type::TypeID::IntegerTyID:
-                return new llvm::IntToPtrInst(source, targetType, "CastPtrToInt");
-            default:
-                failFunctionCompilation();
-        }
-    }
-    if (targetTypeId == Type::TypeID::IntegerTyID)
-    {
-        switch (sourceTypeID)
-        {
-            case Type::TypeID::PointerTyID:
-                return new llvm::PtrToIntInst(source, targetType, "CastPtrToInt");
-            case Type::TypeID::IntegerTyID:
-                if (sourceType->getPrimitiveSizeInBits() > targetType->getPrimitiveSizeInBits())
-                {
-                    return new llvm::TruncInst(source, targetType, "TruncInt");
-                }
-            default:
-                failFunctionCompilation();
-        }
+        assert(sourceTypeID == Type::IntegerTyID);
+        return new llvm::IntToPtrInst(source, targetType);
     }
 
-    failFunctionCompilation();
+    assert((targetTypeId == Type::IntegerTyID) && (sourceTypeID == Type::PointerTyID));
+    return new llvm::PtrToIntInst(source, targetType);
 }
 
 Value* Llvm::castIfNecessary(Value* source, Type* targetType, llvm::IRBuilder<>* builder)
@@ -3113,4 +3169,48 @@ Value* Llvm::getOrCreateAllocaForLocalInFunclet(unsigned lclNum)
     }
 
     return allocaInst;
+}
+
+bool Llvm::IsLlvmIntrinsic(NamedIntrinsic intrinsicName) const
+{
+    return getLlvmIntrinsic(intrinsicName) != llvm::Intrinsic::not_intrinsic;
+}
+
+llvm::Intrinsic::ID Llvm::getLlvmIntrinsic(NamedIntrinsic intrinsicName) const
+{
+    switch (intrinsicName)
+    {
+        case NI_System_Math_Abs:
+            return llvm::Intrinsic::fabs;
+        case NI_System_Math_Ceiling:
+            return llvm::Intrinsic::ceil;
+        case NI_System_Math_Cos:
+            return llvm::Intrinsic::cos;
+        case NI_System_Math_Exp:
+            return llvm::Intrinsic::exp;
+        case NI_System_Math_Floor:
+            return llvm::Intrinsic::floor;
+        case NI_System_Math_Log:
+            return llvm::Intrinsic::log;
+        case NI_System_Math_Log2:
+            return llvm::Intrinsic::log2;
+        case NI_System_Math_Log10:
+            return llvm::Intrinsic::log10;
+        case NI_System_Math_Max:
+            return llvm::Intrinsic::maximum;
+        case NI_System_Math_Min:
+            return llvm::Intrinsic::minimum;
+        case NI_System_Math_Pow:
+            return llvm::Intrinsic::pow;
+        case NI_System_Math_Round:
+            return llvm::Intrinsic::round;
+        case NI_System_Math_Sin:
+            return llvm::Intrinsic::sin;
+        case NI_System_Math_Sqrt:
+            return llvm::Intrinsic::sqrt;
+        case NI_System_Math_Truncate:
+            return llvm::Intrinsic::trunc;
+        default:
+            return llvm::Intrinsic::not_intrinsic;
+    }
 }

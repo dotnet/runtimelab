@@ -11,7 +11,6 @@
 LLVMContext _llvmContext;
 Module*     _module = nullptr;
 char*       _outputFileName;
-Function*   _doNothingFunction;
 
 std::unordered_map<CORINFO_CLASS_HANDLE, Type*>* _llvmStructs = new std::unordered_map<CORINFO_CLASS_HANDLE, Type*>();
 std::unordered_map<CORINFO_CLASS_HANDLE, StructDesc*>* _structDescMap = new std::unordered_map<CORINFO_CLASS_HANDLE, StructDesc*>();

@@ -223,7 +223,7 @@ Type* Llvm::getLlvmTypeForVarType(var_types type)
             return Type::getDoubleTy(_llvmContext);
         case TYP_REF:
         case TYP_BYREF:
-            return Type::getInt8PtrTy(_llvmContext);
+            return getPtrLlvmType();
         case TYP_BLK:
         case TYP_STRUCT:
             failFunctionCompilation();

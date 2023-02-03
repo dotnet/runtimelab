@@ -251,9 +251,11 @@ private:
 
     void lowerBlocks();
     void lowerBlock(BasicBlock* block);
+    void lowerNode(GenTree* node);
+    void lowerLocal(GenTreeLclVarCommon* node);
     void lowerStoreLcl(GenTreeLclVarCommon* storeLclNode);
     void lowerFieldOfDependentlyPromotedStruct(GenTree* node);
-    void ConvertShadowStackLocalNode(GenTreeLclVarCommon* node);
+    bool ConvertShadowStackLocalNode(GenTreeLclVarCommon* node);
     void lowerCall(GenTreeCall* callNode);
     void lowerRethrow(GenTreeCall* callNode);
     void lowerCatchArg(GenTree* catchArgNode);
@@ -310,6 +312,7 @@ private:
     void buildStoreLocalVar(GenTreeLclVar* lclVar);
     void buildEmptyPhi(GenTreePhi* phi);
     void buildLocalField(GenTreeLclFld* lclFld);
+    void buildStoreLocalField(GenTreeLclFld* lclFld);
     void buildLocalVarAddr(GenTreeLclVarCommon* lclVar);
     void buildAdd(GenTreeOp* node);
     void buildSub(GenTreeOp* node);
@@ -330,12 +333,14 @@ private:
     void buildUnaryOperation(GenTree* node);
     void buildBinaryOperation(GenTree* node);
     void buildShift(GenTreeOp* node);
+    void buildIntrinsic(GenTreeIntrinsic* intrinsicNode);
     void buildReturn(GenTree* node);
     void buildJTrue(GenTree* node);
     void buildSwitch(GenTreeUnOp* switchNode);
     void buildNullCheck(GenTreeIndir* nullCheckNode);
     void buildBoundsCheck(GenTreeBoundsChk* boundsCheck);
     void buildCkFinite(GenTreeUnOp* ckNode);
+    void buildKeepAlive(GenTreeUnOp* keepAliveNode);
     void buildILOffset(GenTreeILOffset* ilOffsetNode);
 
     void buildCallFinally(BasicBlock* block);
@@ -343,7 +348,6 @@ private:
     void storeObjAtAddress(Value* baseAddress, Value* data, StructDesc* structDesc);
     unsigned buildMemCpy(Value* baseAddress, unsigned startOffset, unsigned endOffset, Value* srcAddress);
 
-    void emitDoNothingCall();
     void emitJumpToThrowHelper(Value* jumpCondValue, SpecialCodeKind throwKind);
     void emitNullCheckForIndir(GenTreeIndir* indir, Value* addrValue);
     Value* emitCheckedArithmeticOperation(llvm::Intrinsic::ID intrinsicId, Value* op1Value, Value* op2Value);
@@ -393,5 +397,11 @@ private:
 
     Value* getLocalAddr(unsigned lclNum);
     Value* getOrCreateAllocaForLocalInFunclet(unsigned lclNum);
+
+public:
+    bool IsLlvmIntrinsic(NamedIntrinsic intrinsicName) const;
+
+private:
+    llvm::Intrinsic::ID getLlvmIntrinsic(NamedIntrinsic intrinsicName) const;
 };
 #endif /* End of _LLVM_H_ */
