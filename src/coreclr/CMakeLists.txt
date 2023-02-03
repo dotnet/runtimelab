@@ -94,7 +94,7 @@ endif(NOT CLR_CROSS_COMPONENTS_BUILD)
 #     - project which require platform header not clr's
 #     - do not depend on clr's compile definitions
 #-----------------------------------------
-if(CLR_CMAKE_HOST_UNIX)
+if(CLR_CMAKE_HOST_UNIX AND NOT CLR_CMAKE_TARGET_ARCH_WASM)
     if(CLR_CMAKE_TARGET_ANDROID)
         find_library(LZMA NAMES lzma)
         if(LZMA STREQUAL LZMA-NOTFOUND)

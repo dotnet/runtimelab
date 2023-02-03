@@ -29,7 +29,9 @@ if(CLR_CMAKE_HOST_UNIX)
   endif()
 
   add_compile_options(-fno-rtti)          # Native AOT runtime doesn't use RTTI
-  add_compile_options(-fno-exceptions)    # Native AOT runtime doesn't use C++ exception handling
+  if (NOT CLR_CMAKE_TARGET_ARCH_WASM)     # Native AOT runtime targeting WASM uses C++ exception handling to implement managed exceptions
+    add_compile_options(-fno-exceptions)  # Regular Native AOT runtime doesn't use C++ exception handling
+  endif()
 
   if(CLR_CMAKE_TARGET_OSX)
     add_definitions(-D_XOPEN_SOURCE)
