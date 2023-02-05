@@ -3,6 +3,7 @@
 - [Limitations](limitations.md)
 - [Compiling applications](compiling.md)
 - [Debugging applications](debugging.md)
+- [WASM applications configuration](wasm.md)
 - [Optimizing applications](optimizing.md)
 - [Reflection In AOT](reflection-in-aot-mode.md)
 - [Managed/Native Interop in AOT](interop.md)
