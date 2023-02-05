@@ -110,7 +110,7 @@ This can be used to import WASI functions that are in other modules, either as t
 # WASM applications configuration
 
 Currently NativeAOT-LLVM supports following additional properties
-- `WasmHtmlTemplate` which specified path to the HTML template within which WASM application would be embeded.
+- `WasmHtmlTemplate`: specifies path to the HTML template within which the WASM application will be embedded. Example of minimal template from Emscipten repo: https://github.com/emscripten-core/emscripten/blob/main/src/shell_minimal.html
 
 ### Cross-compiling on Linux
 Similarly, to target linux-arm64 on a Linux x64 host, in addition to the `Microsoft.DotNet.ILCompiler` package reference, also add the `runtime.linux-x64.Microsoft.DotNet.ILCompiler` package reference to get the x64-hosted compiler:
