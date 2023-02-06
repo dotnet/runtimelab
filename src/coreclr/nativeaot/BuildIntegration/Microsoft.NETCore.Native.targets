@@ -349,7 +349,6 @@ The .NET Foundation licenses this file to you under the MIT license.
       <EmccArgs>&quot;$(LlvmClrjitObject)&quot; -c -o &quot;$(NativeClrjitObject)&quot;  -s DISABLE_EXCEPTION_CATCHING=0</EmccArgs>
       <EmccArgs Condition="'$(NativeDebugSymbols)' != 'true'">$(EmccArgs) -O2</EmccArgs>
       <EmccArgs Condition="'$(NativeDebugSymbols)' == 'true'">$(EmccArgs) -g3</EmccArgs>
-      <EmccArgs Condition="'$(WasmHtmlTemplate)' != ''">$(EmccArgs) --shell-file $(WasmHtmlTemplate)</EmccArgs>    
       <!-- TODO-LLVM: remove when we update to Emscripten with https://github.com/emscripten-core/emscripten/pull/18443 -->
       <EmccArgs>$(EmccArgs) -s USE_SDL=0</EmccArgs>
     </PropertyGroup>
@@ -419,6 +418,7 @@ The .NET Foundation licenses this file to you under the MIT license.
       <EmccArgs Condition="'$(TargetOS)' == 'browser'">$(EmccArgs) --js-library &quot;$(IlcFrameworkNativePath)pal_random.lib.js&quot;</EmccArgs>
       <EmccArgs Condition="'$(NativeDebugSymbols)' != 'true'">$(EmccArgs) -O2 -flto</EmccArgs>
       <EmccArgs Condition="'$(NativeDebugSymbols)' == 'true'">$(EmccArgs) -g3</EmccArgs>
+      <EmccArgs Condition="'$(WasmHtmlTemplate)' != ''">$(EmccArgs) --shell-file $(WasmHtmlTemplate)</EmccArgs>    
       <EmccArgs>$(EmccArgs) $(EmccExtraArgs)</EmccArgs>
     </PropertyGroup>
 
