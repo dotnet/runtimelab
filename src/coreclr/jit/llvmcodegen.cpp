@@ -1685,13 +1685,19 @@ void Llvm::buildCast(GenTreeCast* cast)
         else
         {
             // There are no checked casts to FP types.
-            assert(varTypeIsIntegral(castFromType) && varTypeIsIntegral(castToType));
+            assert(varTypeIsIntegralOrI(castFromType) && varTypeIsIntegral(castToType));
 
             IntegralRange checkedRange = IntegralRange::ForCastInput(cast);
             int64_t lowerBound = IntegralRange::SymbolicToRealValue(checkedRange.GetLowerBound());
             int64_t upperBound = IntegralRange::SymbolicToRealValue(checkedRange.GetUpperBound());
 
             Value* checkedValue = castFromValue;
+            if (checkedValue->getType()->isPointerTy())
+            {
+                // Checked casts with byref sources are legal.
+                checkedValue = _builder.CreatePtrToInt(checkedValue, getIntPtrLlvmType());
+            }
+
             if (lowerBound != 0)
             {
                 // This "add" checking technique was taken from the IR clang generates for "(l <= x) && (x <= u)".
@@ -1711,6 +1717,17 @@ void Llvm::buildCast(GenTreeCast* cast)
 
     switch (castFromType)
     {
+        case TYP_BYREF:
+            assert(castFromValue->getType()->isPointerTy());
+            if (castToType == TYP_I_IMPL)
+            {
+                // The user is likely to consume this as a pointer; leave the value unchanged.
+                castValue = castFromValue;
+                break;
+            }
+            castFromValue = _builder.CreatePtrToInt(castFromValue, getIntPtrLlvmType());
+            FALLTHROUGH;
+
         case TYP_INT:
         case TYP_LONG:
             switch (castToType)
