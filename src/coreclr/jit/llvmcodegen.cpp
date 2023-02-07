@@ -1251,7 +1251,6 @@ void Llvm::visitNode(GenTree* node)
             buildEmptyPhi(node->AsPhi());
             break;
         case GT_PHI_ARG:
-        case GT_PUTARG_TYPE:
             break;
         case GT_RETURN:
         case GT_RETFILT:
@@ -1966,23 +1965,22 @@ void Llvm::buildCall(GenTreeCall* call)
 
     std::vector<Value*> argVec = std::vector<Value*>();
 
-    GenTreePutArgType* lastArg = nullptr;
+    GenTree* lastArg = nullptr;
     for (CallArg& callArg: call->gtArgs.Args())
     {
-        lastArg = callArg.GetNode()->AsPutArgType();
+        lastArg = callArg.GetNode();
 
-        GenTree* argNode     = lastArg->gtGetOp1();
-        Type*    argLlvmType = getLlvmTypeForCorInfoType(lastArg->GetCorInfoType(), lastArg->GetClsHnd());
+        Type*    argLlvmType = getLlvmTypeForCorInfoType(callArg.GetSignatureCorInfoType(), callArg.GetSignatureClassHandle());
         Value*   argValue;
 
-        if (argNode->OperIs(GT_FIELD_LIST))
+        if (lastArg->OperIs(GT_FIELD_LIST))
         {
-            assert(lastArg->GetCorInfoType() == CORINFO_TYPE_VALUECLASS);
-            argValue = buildFieldList(argNode->AsFieldList(), argLlvmType);
+            assert(callArg.GetSignatureType() == var_types::TYP_STRUCT);
+            argValue = buildFieldList(lastArg->AsFieldList(), argLlvmType);
         }
         else
         {
-            argValue = consumeValue(argNode, argLlvmType);
+            argValue = consumeValue(lastArg, argLlvmType);
         }
 
         argVec.push_back(argValue);
@@ -2750,8 +2748,8 @@ FunctionType* Llvm::createFunctionTypeForCall(GenTreeCall* call)
 
     for (CallArg& callArg: call->gtArgs.Args())
     {
-        GenTreePutArgType* putArg = callArg.GetNode()->AsPutArgType();
-        argVec.push_back(getLlvmTypeForCorInfoType(putArg->GetCorInfoType(), putArg->GetClsHnd()));
+        GenTree* putArg = callArg.GetNode();
+        argVec.push_back(getLlvmTypeForCorInfoType(callArg.GetSignatureCorInfoType(), callArg.GetSignatureClassHandle()));
     }
 
     return FunctionType::get(retLlvmType, argVec, /* isVarArg */ false);
