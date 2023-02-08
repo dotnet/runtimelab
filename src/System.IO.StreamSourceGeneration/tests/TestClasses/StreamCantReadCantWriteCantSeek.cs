@@ -4,7 +4,7 @@
 namespace System.IO.StreamSourceGeneration.Tests.TestClasses;
 
 [GenerateStreamBoilerplate]
-internal class StreamCantReadCantWriteCantSeek : Stream
+internal partial class StreamThatCantReadCantWriteCantSeek : Stream
 {
-
+    public override void Flush() { }
 }

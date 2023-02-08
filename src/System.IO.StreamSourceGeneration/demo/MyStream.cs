@@ -9,9 +9,4 @@ public partial class MyStream : Stream
     {
         throw new NotImplementedException();
     }
-
-    public override int Read(byte[] buffer, int offset, int count)
-    {
-        return 0;
-    }
 }
