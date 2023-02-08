@@ -4235,6 +4235,10 @@ struct NewCallArg
     // The type of well known arg
     WellKnownArg WellKnownArg = WellKnownArg::None;
 
+#ifdef TARGET_WASM
+    CorInfoType SignatureCorInfoType = CORINFO_TYPE_UNDEF;
+#endif
+
     NewCallArg WellKnown(::WellKnownArg type) const
     {
         NewCallArg copy   = *this;
@@ -4253,12 +4257,19 @@ struct NewCallArg
         return arg;
     }
 
+#ifdef TARGET_WASM
+    static NewCallArg Primitive(GenTree* node, var_types type = TYP_UNDEF, CorInfoType corInfoType = CORINFO_TYPE_UNDEF)
+#else
     static NewCallArg Primitive(GenTree* node, var_types type = TYP_UNDEF)
+#endif
     {
         assert(!varTypeIsStruct(node) && !varTypeIsStruct(type));
         NewCallArg arg;
         arg.Node          = node;
         arg.SignatureType = type == TYP_UNDEF ? node->TypeGet() : type;
+#ifdef TARGET_WASM
+        arg.SignatureCorInfoType = corInfoType;
+#endif
         arg.ValidateTypes();
         return arg;
     }
@@ -4287,6 +4298,10 @@ class CallArg
     unsigned m_tmpNum;
     // The type of the argument in the signature.
     var_types m_signatureType : 5;
+#ifdef TARGET_WASM
+    // The CorInfoType of argument in the signature.
+    CorInfoType m_signatureCorInfoType : 8;
+#endif
     // The type of well-known argument this is.
     WellKnownArg m_wellKnownArg : 5;
     // True when we force this argument's evaluation into a temp LclVar.
@@ -4307,6 +4322,9 @@ private:
         , m_signatureClsHnd(NO_CLASS_HANDLE)
         , m_tmpNum(BAD_VAR_NUM)
         , m_signatureType(TYP_UNDEF)
+#ifdef TARGET_WASM
+        , m_signatureCorInfoType(CORINFO_TYPE_UNDEF)
+#endif
         , m_wellKnownArg(WellKnownArg::None)
         , m_needTmp(false)
         , m_needPlace(false)
@@ -4323,6 +4341,9 @@ public:
         m_earlyNode       = arg.Node;
         m_wellKnownArg    = arg.WellKnownArg;
         m_signatureType   = arg.SignatureType;
+#ifdef TARGET_WASM
+        m_signatureCorInfoType = arg.SignatureCorInfoType;
+#endif
         m_signatureClsHnd = arg.SignatureClsHnd;
     }
 
@@ -4332,7 +4353,11 @@ public:
     // clang-format off
     GenTree*& EarlyNodeRef() { return m_earlyNode; }
     GenTree* GetEarlyNode() { return m_earlyNode; }
+#ifdef TARGET_WASM
+    void SetEarlyNode(GenTree* node, CorInfoType signatureCorInfoType = CORINFO_TYPE_UNDEF) { m_earlyNode = node; m_signatureCorInfoType = signatureCorInfoType; }
+#else
     void SetEarlyNode(GenTree* node) { m_earlyNode = node; }
+#endif
     GenTree*& LateNodeRef() { return m_lateNode; }
     GenTree* GetLateNode() { return m_lateNode; }
     void SetLateNode(GenTree* lateNode) { m_lateNode = lateNode; }
@@ -4344,6 +4369,10 @@ public:
     void SetLateNext(CallArg* lateNext) { m_lateNext = lateNext; }
     CORINFO_CLASS_HANDLE GetSignatureClassHandle() { return m_signatureClsHnd; }
     var_types GetSignatureType() { return m_signatureType; }
+#ifdef TARGET_WASM
+    CorInfoType GetSignatureCorInfoType() { return m_signatureCorInfoType; }
+    void SetSignatureClassHandle(CORINFO_CLASS_HANDLE signatureClsHnd) { m_signatureClsHnd = signatureClsHnd; }
+#endif
     WellKnownArg GetWellKnownArg() { return m_wellKnownArg; }
     bool IsTemp() { return m_isTmp; }
     // clang-format on
@@ -7553,48 +7582,6 @@ struct GenTreePutArgSplit : public GenTreePutArgStk
 #endif
 };
 #endif // FEATURE_ARG_SPLIT
-
-#if defined(TARGET_WASM)
-struct GenTreePutArgType : public GenTreeUnOp
-{
-private:
-    CorInfoType          m_CorInfoType;
-    CORINFO_CLASS_HANDLE m_ClsHnd; // The struct handle if this is a struct, the pointee type if this is a pointer.
-#if DEBUG
-    unsigned m_argNum;
-#endif 
-
-public:
-    GenTreePutArgType(GenTree* op, CorInfoType corInfoType, CORINFO_CLASS_HANDLE clsHnd)
-        : GenTreeUnOp(GT_PUTARG_TYPE, JITtype2varType(corInfoType), op)
-        , m_CorInfoType(corInfoType)
-        , m_ClsHnd(clsHnd)
-    {
-    }
-
-    CorInfoType GetCorInfoType() const
-    {
-        return m_CorInfoType;
-    }
-
-    CORINFO_CLASS_HANDLE GetClsHnd() const
-    {
-        return m_ClsHnd;
-    }
-
-#if DEBUG
-    unsigned GetArgNum()
-    {
-        return m_argNum;
-    }
-
-    void SetArgNum(unsigned argNum)
-    {
-        m_argNum = argNum;
-    }
-#endif // DEBUG
-};
-#endif // TARGET_WASM
 
 // Represents GT_COPY or GT_RELOAD node
 //

@@ -289,10 +289,6 @@ void GenTree::InitNodeSize()
 #endif // FEATURE_ARG_SPLIT
 #endif // FEATURE_PUT_STRUCT_ARG_STK
 
-#if defined(TARGET_WASM) && defined(DEBUG)
-    GenTree::s_gtNodeSizes[GT_PUTARG_TYPE]      = TREE_NODE_SZ_LARGE;
-#endif
-
     assert(GenTree::s_gtNodeSizes[GT_RETURN] == GenTree::s_gtNodeSizes[GT_ASG]);
 
     // This list of assertions should come to contain all GenTree subtypes that are declared
@@ -352,14 +348,6 @@ void GenTree::InitNodeSize()
     static_assert_no_msg(sizeof(GenTreePutArgSplit)  <= TREE_NODE_SZ_LARGE);
 #endif // FEATURE_ARG_SPLIT
 #endif // FEATURE_PUT_STRUCT_ARG_STK
-
-#if defined TARGET_WASM
-#ifdef DEBUG
-    static_assert_no_msg(sizeof(GenTreePutArgType)   <= TREE_NODE_SZ_LARGE);
-#else
-    static_assert_no_msg(sizeof(GenTreePutArgType)   <= TREE_NODE_SZ_SMALL);
-#endif // DEBUG
-#endif // TARGET_WASM
 
 #ifdef FEATURE_SIMD
     static_assert_no_msg(sizeof(GenTreeSIMD)         <= TREE_NODE_SZ_SMALL);
@@ -7513,13 +7501,6 @@ GenTreeLclVar* Compiler::gtNewStoreLclVar(unsigned dstLclNum, GenTree* src)
     return store;
 }
 
-#ifdef TARGET_WASM
-GenTreePutArgType* Compiler::gtNewPutArgType(GenTree* op, CorInfoType corInfoType, CORINFO_CLASS_HANDLE clsHnd)
-{
-    return new (this, GT_PUTARG_TYPE) GenTreePutArgType(op, corInfoType, clsHnd);
-}
-#endif
-
 #ifdef FEATURE_SIMD
 //---------------------------------------------------------------------
 // gtNewSIMDVectorZero: create a GT_SIMD node for Vector<T>.Zero
@@ -12741,14 +12722,6 @@ void Compiler::gtDispTreeRange(LIR::Range& containingRange, GenTree* tree)
     gtDispRange(containingRange.GetTreeRange(tree, &unused));
 }
 
-// TODO-LLVM: delete when https://github.com/dotnet/runtime/pull/68748 merged
-#if TARGET_WASM
-void gtGetPutArgMsg(GenTreePutArgType* arg, char* bufp, unsigned bufLength)
-{
-    sprintf_s(bufp, bufLength, "arg%d%c", arg->GetArgNum(), 0);
-}
-#endif
-
 //------------------------------------------------------------------------
 // Compiler::gtDispLIRNode: dumps a single LIR node.
 //
@@ -12823,30 +12796,17 @@ void Compiler::gtDispLIRNode(GenTree* node, const char* prefixMsg /* = nullptr *
             }
             else
             {
-#ifdef TARGET_WASM
-                // LLVM rewrites the call args, but does not reinitialise the arg infos
-                if (operand->OperIs(GT_PUTARG_TYPE))
+                CallArg* curArg = call->gtArgs.FindByNode(operand);
+                assert(curArg);
+
+                if (operand == curArg->GetEarlyNode())
                 {
-                    GenTreePutArgType* putArg = operand->AsPutArgType();
-                    gtGetPutArgMsg(putArg, buf, sizeof(buf));
+                    gtGetArgMsg(call, curArg, buf, sizeof(buf));
                 }
                 else
                 {
-#endif // TARGET_WASM
-                    CallArg* curArg = call->gtArgs.FindByNode(operand);
-                    assert(curArg);
-
-                    if (operand == curArg->GetEarlyNode())
-                    {
-                        gtGetArgMsg(call, curArg, buf, sizeof(buf));
-                    }
-                    else
-                    {
-                        gtGetLateArgMsg(call, curArg, buf, sizeof(buf));
-                    }
-#ifdef TARGET_WASM
+                    gtGetLateArgMsg(call, curArg, buf, sizeof(buf));
                 }
-#endif // TARGET_WASM
 
                 displayOperand(operand, buf, operandArc, indentStack, prefixIndent);
             }

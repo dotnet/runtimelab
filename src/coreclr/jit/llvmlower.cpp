@@ -686,7 +686,7 @@ void Llvm::lowerRethrow(GenTreeCall* callNode)
     assert(callNode->gtArgs.IsEmpty());
 
     GenTree* excObjAddr = insertShadowStackAddr(callNode, getCatchArgOffset(), _shadowStackLclNum);
-    callNode->gtArgs.PushFront(_compiler, excObjAddr);
+    callNode->gtArgs.PushFront(_compiler, NewCallArg::Primitive(excObjAddr, TYP_UNDEF, CORINFO_TYPE_PTR));
 }
 
 void Llvm::lowerCatchArg(GenTree* catchArgNode)
@@ -892,20 +892,7 @@ void Llvm::lowerVirtualStubCallAfterArgs(
     // been set up and thus needs a larger shadow stack offset. This is done to not create a new safe point across
     // which GC arguments to the main call would be live; the stub itself may call into managed code and trigger a GC.
     unsigned shadowStackOffsetForStub = getCurrentShadowFrameSize() + shadowArgsSize;
-    GenTree* shadowStackForStub = insertShadowStackAddr(callNode, shadowStackOffsetForStub, _shadowStackLclNum);
-    GenTreePutArgType* shadowStackForStubPutArg =
-        _compiler->gtNewPutArgType(shadowStackForStub, CORINFO_TYPE_PTR, NO_CLASS_HANDLE);
-    INDEBUG(shadowStackForStubPutArg->SetArgNum(-1));
-    CurrentRange().InsertBefore(callNode, shadowStackForStubPutArg);
-
-    GenTree* thisForStub = _compiler->gtNewLclvNode(thisArgLclNum, TYP_REF);
-    GenTreePutArgType* thisForStubPutArg = _compiler->gtNewPutArgType(thisForStub, CORINFO_TYPE_CLASS, NO_CLASS_HANDLE);
-    INDEBUG(thisForStubPutArg->SetArgNum(0));
-    CurrentRange().InsertBefore(callNode, thisForStub, thisForStubPutArg);
-
-    GenTreePutArgType* cellForStubPutArg = _compiler->gtNewPutArgType(cellArgNode, CORINFO_TYPE_PTR, NO_CLASS_HANDLE);
-    INDEBUG(cellForStubPutArg->SetArgNum(1));
-    CurrentRange().InsertBefore(callNode, cellForStubPutArg);
+    GenTree* shadowStack = insertShadowStackAddr(callNode, shadowStackOffsetForStub, _shadowStackLclNum);
 
     // This call could be indirect (in case this is shared code and the cell address needed
     // to be resolved dynamically). Use the available address node directly in that case.
@@ -929,12 +916,15 @@ void Llvm::lowerVirtualStubCallAfterArgs(
     stubAddr->gtFlags |= GTF_IND_NONFAULTING;
     CurrentRange().InsertBefore(callNode, stubAddr);
 
+    GenTree* thisForStub  = _compiler->gtNewLclvNode(thisArgLclNum, TYP_REF);
     GenTreeCall* stubCall = _compiler->gtNewIndCallNode(stubAddr, TYP_I_IMPL);
-    stubCall->gtArgs.PushFront(_compiler, shadowStackForStubPutArg, thisForStubPutArg, cellForStubPutArg);
+    stubCall->gtArgs.PushFront(_compiler, NewCallArg::Primitive(shadowStack, TYP_I_IMPL, CORINFO_TYPE_PTR),
+                               NewCallArg::Primitive(thisForStub, TYP_REF, CORINFO_TYPE_PTR),
+                               NewCallArg::Primitive(cellArgNode, TYP_I_IMPL, CORINFO_TYPE_PTR));
     stubCall->gtCorInfoType = CORINFO_TYPE_PTR;
     stubCall->gtFlags |= GTF_CALL_UNMANAGED;
     stubCall->gtCallMoreFlags |= GTF_CALL_M_SUPPRESS_GC_TRANSITION;
-    CurrentRange().InsertBefore(callNode, stubCall);
+    CurrentRange().InsertBefore(callNode, thisForStub, stubCall);
 
     // Finally, retarget our call. It is no longer VSD.
     callNode->gtCallType = CT_INDIRECT;
@@ -1017,14 +1007,7 @@ unsigned Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
     {
         GenTree* calleeShadowStack = insertShadowStackAddr(callNode, shadowFrameSize, _shadowStackLclNum);
 
-        GenTreePutArgType* calleeShadowStackPutArg =
-            _compiler->gtNewPutArgType(calleeShadowStack, CORINFO_TYPE_PTR, NO_CLASS_HANDLE);
-#ifdef DEBUG
-        calleeShadowStackPutArg->SetArgNum(-1); // -1 will represent the shadowstack arg for LLVM
-#endif
-        CurrentRange().InsertBefore(callNode, calleeShadowStackPutArg);
-
-        lastLlvmStackArg = callNode->gtArgs.PushFront(_compiler, calleeShadowStackPutArg);
+        lastLlvmStackArg = callNode->gtArgs.PushFront(_compiler, NewCallArg::Primitive(calleeShadowStack, TYP_I_IMPL, CORINFO_TYPE_PTR));
     }
 
     CallArg* returnSlot = lowerCallReturn(callNode);
@@ -1128,14 +1111,10 @@ unsigned Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
             if (!argNode->OperIs(GT_FIELD_LIST) && argNode->TypeIs(TYP_STRUCT))
             {
                 normalizeStructUse(argNode, _compiler->typGetObjLayout(clsHnd));
+                callArg->SetSignatureClassHandle(clsHnd);
             }
 
-            GenTreePutArgType* putArg = _compiler->gtNewPutArgType(argNode, corInfoType, clsHnd);
-            callArg->SetEarlyNode(putArg);
-#if DEBUG
-            putArg->SetArgNum(argIx);
-#endif
-            CurrentRange().InsertBefore(callNode, putArg);
+            callArg->SetEarlyNode(argNode, corInfoType);
             lastLlvmStackArg = callArg;
         }
 
@@ -1218,18 +1197,15 @@ CallArg* Llvm::lowerCallReturn(GenTreeCall* callNode)
             callNode->ClearUnusedValue();
         }
 
-        GenTreePutArgType* putArg = _compiler->gtNewPutArgType(returnAddrLcl, CORINFO_TYPE_PTR, NO_CLASS_HANDLE);
-#if DEBUG
-        putArg->SetArgNum(-2);  // -2 will represent the return arg for LLVM
-#endif
         // if we are lowering a return, then we will at least have a shadow stack CallArg
-        returnSlot = callNode->gtArgs.InsertAfter(_compiler, callNode->gtArgs.GetArgByIndex(0), putArg);
+        returnSlot = callNode->gtArgs.InsertAfter(_compiler, callNode->gtArgs.GetArgByIndex(0),
+                                                  NewCallArg::Primitive(returnAddrLcl, TYP_I_IMPL, CORINFO_TYPE_PTR));
 
         callNode->gtReturnType = TYP_VOID;
         callNode->gtCorInfoType = CORINFO_TYPE_VOID;
         callNode->ChangeType(TYP_VOID);
 
-        CurrentRange().InsertBefore(callNode, addrStore, returnAddrLcl, putArg);
+        CurrentRange().InsertBefore(callNode, addrStore, returnAddrLcl);
         CurrentRange().InsertAfter(callNode, returnAddrLclAfterCall, indirNode);
     }
     else
