@@ -4236,6 +4236,7 @@ struct NewCallArg
     WellKnownArg WellKnownArg = WellKnownArg::None;
 
 #ifdef TARGET_WASM
+    // Only used to differentiate pointer types (CORINFO_TYPE_PTR) from ints
     CorInfoType SignatureCorInfoType = CORINFO_TYPE_UNDEF;
 #endif
 
