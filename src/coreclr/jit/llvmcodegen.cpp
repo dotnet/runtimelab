@@ -1992,7 +1992,7 @@ void Llvm::buildCall(GenTreeCall* call)
 
         if (lastArg->OperIs(GT_FIELD_LIST))
         {
-            assert(callArg.GetSignatureType() == var_types::TYP_STRUCT);
+            assert(callArg.GetSignatureType() == TYP_STRUCT);
             argValue = buildFieldList(lastArg->AsFieldList(), argLlvmType);
         }
         else
@@ -2765,7 +2765,6 @@ FunctionType* Llvm::createFunctionTypeForCall(GenTreeCall* call)
 
     for (CallArg& callArg: call->gtArgs.Args())
     {
-        GenTree* putArg = callArg.GetNode();
         argVec.push_back(getLlvmTypeForCorInfoType(callArg.GetSignatureCorInfoType(), callArg.GetSignatureClassHandle()));
     }
 
