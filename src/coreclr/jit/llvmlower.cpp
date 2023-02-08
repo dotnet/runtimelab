@@ -1114,7 +1114,8 @@ unsigned Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
                 callArg->SetSignatureClassHandle(clsHnd);
             }
 
-            callArg->SetEarlyNode(argNode, corInfoType);
+            callArg->SetEarlyNode(argNode);
+            callArg->SetSignatureCorInfoType(corInfoType);
             lastLlvmStackArg = callArg;
         }
 

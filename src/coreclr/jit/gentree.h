@@ -4354,11 +4354,7 @@ public:
     // clang-format off
     GenTree*& EarlyNodeRef() { return m_earlyNode; }
     GenTree* GetEarlyNode() { return m_earlyNode; }
-#ifdef TARGET_WASM
-    void SetEarlyNode(GenTree* node, CorInfoType signatureCorInfoType = CORINFO_TYPE_UNDEF) { m_earlyNode = node; m_signatureCorInfoType = signatureCorInfoType; }
-#else
     void SetEarlyNode(GenTree* node) { m_earlyNode = node; }
-#endif
     GenTree*& LateNodeRef() { return m_lateNode; }
     GenTree* GetLateNode() { return m_lateNode; }
     void SetLateNode(GenTree* lateNode) { m_lateNode = lateNode; }
@@ -4372,6 +4368,7 @@ public:
     var_types GetSignatureType() { return m_signatureType; }
 #ifdef TARGET_WASM
     CorInfoType GetSignatureCorInfoType() { return m_signatureCorInfoType; }
+    void SetSignatureCorInfoType(CorInfoType signatureCorInfoType) { m_signatureCorInfoType = signatureCorInfoType; }
     void SetSignatureClassHandle(CORINFO_CLASS_HANDLE signatureClsHnd) { m_signatureClsHnd = signatureClsHnd; }
 #endif
     WellKnownArg GetWellKnownArg() { return m_wellKnownArg; }
