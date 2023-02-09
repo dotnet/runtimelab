@@ -686,7 +686,7 @@ void Llvm::lowerRethrow(GenTreeCall* callNode)
     assert(callNode->gtArgs.IsEmpty());
 
     GenTree* excObjAddr = insertShadowStackAddr(callNode, getCatchArgOffset(), _shadowStackLclNum);
-    callNode->gtArgs.PushFront(_compiler, NewCallArg::Primitive(excObjAddr, TYP_UNDEF, CORINFO_TYPE_PTR));
+    callNode->gtArgs.PushFront(_compiler, NewCallArg::Primitive(excObjAddr, CORINFO_TYPE_PTR));
 }
 
 void Llvm::lowerCatchArg(GenTree* catchArgNode)
@@ -918,9 +918,9 @@ void Llvm::lowerVirtualStubCallAfterArgs(
 
     GenTree* thisForStub  = _compiler->gtNewLclvNode(thisArgLclNum, TYP_REF);
     GenTreeCall* stubCall = _compiler->gtNewIndCallNode(stubAddr, TYP_I_IMPL);
-    stubCall->gtArgs.PushFront(_compiler, NewCallArg::Primitive(shadowStackForStub, TYP_I_IMPL, CORINFO_TYPE_PTR),
-                               NewCallArg::Primitive(thisForStub, TYP_REF, CORINFO_TYPE_PTR),
-                               NewCallArg::Primitive(cellArgNode, TYP_I_IMPL, CORINFO_TYPE_PTR));
+    stubCall->gtArgs.PushFront(_compiler, NewCallArg::Primitive(shadowStackForStub, CORINFO_TYPE_PTR),
+                               NewCallArg::Primitive(thisForStub, CORINFO_TYPE_CLASS),
+                               NewCallArg::Primitive(cellArgNode, CORINFO_TYPE_PTR));
     stubCall->gtCorInfoType = CORINFO_TYPE_PTR;
     stubCall->gtFlags |= GTF_CALL_UNMANAGED;
     stubCall->gtCallMoreFlags |= GTF_CALL_M_SUPPRESS_GC_TRANSITION;
@@ -1007,7 +1007,7 @@ unsigned Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
     {
         GenTree* calleeShadowStack = insertShadowStackAddr(callNode, shadowFrameSize, _shadowStackLclNum);
 
-        lastLlvmStackArg = callNode->gtArgs.PushFront(_compiler, NewCallArg::Primitive(calleeShadowStack, TYP_I_IMPL, CORINFO_TYPE_PTR));
+        lastLlvmStackArg = callNode->gtArgs.PushFront(_compiler, NewCallArg::Primitive(calleeShadowStack, CORINFO_TYPE_PTR));
     }
 
     CallArg* returnSlot = lowerCallReturn(callNode);
@@ -1200,7 +1200,7 @@ CallArg* Llvm::lowerCallReturn(GenTreeCall* callNode)
 
         // if we are lowering a return, then we will at least have a shadow stack CallArg
         returnSlot = callNode->gtArgs.InsertAfter(_compiler, callNode->gtArgs.GetArgByIndex(0),
-                                                  NewCallArg::Primitive(returnAddrLcl, TYP_I_IMPL, CORINFO_TYPE_PTR));
+                                                  NewCallArg::Primitive(returnAddrLcl, CORINFO_TYPE_PTR));
 
         callNode->gtReturnType = TYP_VOID;
         callNode->gtCorInfoType = CORINFO_TYPE_VOID;

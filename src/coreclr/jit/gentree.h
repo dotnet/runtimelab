@@ -4258,20 +4258,23 @@ struct NewCallArg
         return arg;
     }
 
-#ifdef TARGET_WASM
-    static NewCallArg Primitive(GenTree* node, var_types type = TYP_UNDEF, CorInfoType corInfoType = CORINFO_TYPE_UNDEF)
-#else
     static NewCallArg Primitive(GenTree* node, var_types type = TYP_UNDEF)
-#endif
     {
         assert(!varTypeIsStruct(node) && !varTypeIsStruct(type));
         NewCallArg arg;
         arg.Node          = node;
         arg.SignatureType = type == TYP_UNDEF ? node->TypeGet() : type;
+        arg.ValidateTypes();
+        return arg;
+    }
+
+    static NewCallArg Primitive(GenTree* node, CorInfoType corInfoType)
+    {
+        assert(corInfoType != CORINFO_TYPE_UNDEF);
+        NewCallArg arg = Primitive(node, JITtype2varType(corInfoType));
 #ifdef TARGET_WASM
         arg.SignatureCorInfoType = corInfoType;
 #endif
-        arg.ValidateTypes();
         return arg;
     }
 
