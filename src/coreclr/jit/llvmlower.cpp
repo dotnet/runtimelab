@@ -924,7 +924,7 @@ void Llvm::lowerVirtualStubCallAfterArgs(
     stubCall->gtCorInfoType = CORINFO_TYPE_PTR;
     stubCall->gtFlags |= GTF_CALL_UNMANAGED;
     stubCall->gtCallMoreFlags |= GTF_CALL_M_SUPPRESS_GC_TRANSITION;
-    CurrentRange().InsertBefore(callNode, thisForStub, stubCall);
+    CurrentRange().InsertBefore(callNode, stubCall);
 
     // Finally, retarget our call. It is no longer VSD.
     callNode->gtCallType = CT_INDIRECT;
