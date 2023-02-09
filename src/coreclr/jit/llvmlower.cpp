@@ -892,8 +892,8 @@ void Llvm::lowerVirtualStubCallAfterArgs(
     // been set up and thus needs a larger shadow stack offset. This is done to not create a new safe point across
     // which GC arguments to the main call would be live; the stub itself may call into managed code and trigger a GC.
     unsigned shadowStackOffsetForStub = getCurrentShadowFrameSize() + shadowArgsSize;
-    GenTree* thisForStub              = _compiler->gtNewLclvNode(thisArgLclNum, TYP_REF);
     GenTree* shadowStackForStub       = insertShadowStackAddr(callNode, shadowStackOffsetForStub, _shadowStackLclNum);
+    GenTree* thisForStub              = _compiler->gtNewLclvNode(thisArgLclNum, TYP_REF);
 
     // This call could be indirect (in case this is shared code and the cell address needed
     // to be resolved dynamically). Use the available address node directly in that case.
