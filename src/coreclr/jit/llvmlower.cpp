@@ -1108,9 +1108,15 @@ unsigned Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
         }
         else // Arg on LLVM stack.
         {
-            if (!argNode->OperIs(GT_FIELD_LIST) && argNode->TypeIs(TYP_STRUCT))
+            if (argNode->TypeIs(TYP_STRUCT))
             {
-                normalizeStructUse(argNode, _compiler->typGetObjLayout(clsHnd));
+                if (!argNode->OperIs(GT_FIELD_LIST) && argNode->TypeIs(TYP_STRUCT))
+                {
+                    normalizeStructUse(argNode, _compiler->typGetObjLayout(clsHnd));
+                }
+
+                // TODO-LLVM: delete (together with 'SetSignatureClassHandle') when merging
+                // https://github.com/dotnet/runtime/pull/69969 (May 31).
                 callArg->SetSignatureClassHandle(clsHnd);
             }
 
