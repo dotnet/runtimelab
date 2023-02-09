@@ -3606,7 +3606,8 @@ namespace Internal.IL
                 typedValue = value.ValueAsType(type, _builder);
                 if (IsStruct(type))
                 {
-                    StoreStruct(typedPointer, typedValue, type, typedPointer);
+                    LLVMValueRef addressPointer = destinationPointer.ValueAsType(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), _builder);
+                    StoreStruct(addressPointer, typedValue, type, typedPointer);
                     return;
                 }
                 requireWriteBarrier = type.IsGCPointer;

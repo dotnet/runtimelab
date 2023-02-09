@@ -148,7 +148,6 @@ if /i "%1" == "skipconfigure"       (set __SkipConfigure=1&shift&goto Arg_Loop)
 if /i "%1" == "skipnative"          (set __BuildNative=0&shift&goto Arg_Loop)
 if /i "%1" == "pgoinstrument"       (set __PgoInstrument=1&shift&goto Arg_Loop)
 if /i "%1" == "enforcepgo"          (set __EnforcePgo=1&shift&goto Arg_Loop)
-if /i "%1" == "-skipruntime"        (set __BuildRuntime=0&set processedArgs=!processedArgs! %1&shift&goto Arg_Loop)
 
 set "__UnprocessedBuildArgs=!__UnprocessedBuildArgs! %1"&shift&goto Arg_Loop
 
@@ -180,10 +179,7 @@ if %__TargetArchX64%==1   set __TargetArch=x64
 if %__TargetArchX86%==1   set __TargetArch=x86
 if %__TargetArchArm%==1   set __TargetArch=arm
 if %__TargetArchArm64%==1 set __TargetArch=arm64
-if %__TargetArchWasm%==1 (
-    set __TargetOS=Browser
-    set __TargetArch=wasm
-)
+if %__TargetArchWasm%==1  set __TargetArch=wasm
 if "%__HostArch%" == "" set __HostArch=%__TargetArch%
 
 set /A __TotalSpecifiedBuildType=__BuildTypeDebug + __BuildTypeChecked + __BuildTypeRelease
@@ -219,9 +215,7 @@ set "__IntermediatesDir=%__RootBinDir%\obj\coreclr\%__TargetOS%.%__TargetArch%.%
 set "__LogsDir=%__RootBinDir%\log\!__BuildType!"
 set "__MsbuildDebugLogsDir=%__LogsDir%\MsbuildDebugLogs"
 set "__ArtifactsIntermediatesDir=%__RepoRootDir%\artifacts\obj\coreclr\"
-if "%__Ninja%"=="0" (
-  set "__IntermediatesDir=%__IntermediatesDir%\ide"
-)
+if "%__Ninja%"=="0" (set "__IntermediatesDir=%__IntermediatesDir%\ide")
 set "__PackagesBinDir=%__BinDir%\.nuget"
 
 
@@ -394,15 +388,20 @@ if %__BuildNative% EQU 1 (
         set __ExtraCmakeArgs=!__ExtraCmakeArgs! "-DCMAKE_BUILD_TYPE=!__BuildType!"
     )
     if "%__TargetArch%" == "wasm" (
-        set __ExtraCmakeArgs=!__ExtraCmakeArgs! "-DCMAKE_BUILD_TYPE=!__BuildType!"
-
         REM For the Wasm build, we use the Emscripten toolchain, which is Unix-like in its handling of debug info.
         if "!__BuildType!" NEQ "release" (
             set __ExtraCmakeArgs=!__ExtraCmakeArgs! "-DCLR_CMAKE_KEEP_NATIVE_SYMBOLS=1"
         )
     )
+    if "%__TargetOS%" == "Browser" (
+        REM NativeAOT-LLVM: cmake scripts expect this. It would be more logical to normalize to Browser in CMake,
+        REM but upstream doesn't and so we prefer not to as well.
+        set __CMakeTargetOS=Emscripten
+    ) else (
+        set __CMakeTargetOS="%__TargetOS%"
+    )
 
-    set __ExtraCmakeArgs=!__ExtraCmakeArgs! "-DCLR_CMAKE_TARGET_ARCH=%__TargetArch%" "-DCLR_CMAKE_TARGET_OS=%__TargetOS%" "-DCLR_CMAKE_PGO_INSTRUMENT=%__PgoInstrument%" "-DCLR_CMAKE_OPTDATA_PATH=%__PgoOptDataPath%" "-DCLR_CMAKE_PGO_OPTIMIZE=%__PgoOptimize%" %__CMakeArgs%
+    set __ExtraCmakeArgs=!__ExtraCmakeArgs! "-DCLR_CMAKE_TARGET_ARCH=%__TargetArch%" "-DCLR_CMAKE_TARGET_OS=%__CMakeTargetOS%" "-DCLR_CMAKE_PGO_INSTRUMENT=%__PgoInstrument%" "-DCLR_CMAKE_OPTDATA_PATH=%__PgoOptDataPath%" "-DCLR_CMAKE_PGO_OPTIMIZE=%__PgoOptimize%" %__CMakeArgs%
     echo Calling "%__RepoRootDir%\eng\native\gen-buildsys.cmd" "%__ProjectDir%" "%__IntermediatesDir%" %__VSVersion% %__HostArch% !__ExtraCmakeArgs!
     call "%__RepoRootDir%\eng\native\gen-buildsys.cmd" "%__ProjectDir%" "%__IntermediatesDir%" %__VSVersion% %__HostArch% !__ExtraCmakeArgs!
     if not !errorlevel! == 0 (
@@ -418,7 +417,7 @@ if %__BuildNative% EQU 1 (
         goto ExitWithError
     )
 
-    if defined __ConfigureOnly/ goto SkipNativeBuild
+    if defined __ConfigureOnly goto SkipNativeBuild
 
     set __BuildLogRootName=CoreCLR
     set "__BuildLog="%__LogsDir%\!__BuildLogRootName!_%__TargetOS%__%__TargetArch%__%__BuildType%__%__HostArch%.log""
@@ -439,6 +438,7 @@ if %__BuildNative% EQU 1 (
         set __CmakeBuildToolArgs=/nologo /m !__Logging!
     )
 
+    echo running "%CMakePath%" --build %__IntermediatesDir% --target %__CMakeTarget% --config %__BuildType% -- !__CmakeBuildToolArgs!
     "%CMakePath%" --build %__IntermediatesDir% --target %__CMakeTarget% --config %__BuildType% -- !__CmakeBuildToolArgs!
 
     if not !errorlevel! == 0 (

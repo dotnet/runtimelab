@@ -56,10 +56,6 @@ set __cmakeRepoRoot=%__repoRoot:\=/%
 set __ExtraCmakeParams="-DCMAKE_REPO_ROOT=%__cmakeRepoRoot%"
 set __ExtraCmakeParams=%__ExtraCmakeParams% "-DCMAKE_BUILD_TYPE=%CMAKE_BUILD_TYPE%"
 
-if "%__BuildArch%" == "wasm" (
-    set __ExtraCmakeParams=%__ExtraCmakeParams% "-DCLR_CMAKE_TARGET_OS=%__TargetOS%"
-)
-
 if [%__outConfig%] == [] set __outConfig=%__TargetOS%-%__BuildArch%-%CMAKE_BUILD_TYPE%
 
 if %__CMakeBinDir% == "" (
