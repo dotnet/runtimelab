@@ -892,6 +892,7 @@ void Llvm::lowerVirtualStubCallAfterArgs(
     // been set up and thus needs a larger shadow stack offset. This is done to not create a new safe point across
     // which GC arguments to the main call would be live; the stub itself may call into managed code and trigger a GC.
     unsigned shadowStackOffsetForStub = getCurrentShadowFrameSize() + shadowArgsSize;
+    GenTree* thisForStub              = _compiler->gtNewLclvNode(thisArgLclNum, TYP_REF);
     GenTree* shadowStackForStub       = insertShadowStackAddr(callNode, shadowStackOffsetForStub, _shadowStackLclNum);
 
     // This call could be indirect (in case this is shared code and the cell address needed
@@ -916,7 +917,6 @@ void Llvm::lowerVirtualStubCallAfterArgs(
     stubAddr->gtFlags |= GTF_IND_NONFAULTING;
     CurrentRange().InsertBefore(callNode, stubAddr);
 
-    GenTree* thisForStub  = _compiler->gtNewLclvNode(thisArgLclNum, TYP_REF);
     GenTreeCall* stubCall = _compiler->gtNewIndCallNode(stubAddr, TYP_I_IMPL);
     stubCall->gtArgs.PushFront(_compiler, NewCallArg::Primitive(shadowStackForStub, CORINFO_TYPE_PTR),
                                NewCallArg::Primitive(thisForStub, CORINFO_TYPE_CLASS),
