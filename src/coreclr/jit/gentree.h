@@ -29,9 +29,7 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 #include "layout.h"
 #include "debuginfo.h"
 
-#ifdef TARGET_WASM
 extern var_types JITtype2varType(CorInfoType type);
-#endif // TARGET_WASM
 
 // Debugging GenTree is much easier if we add a magic virtual function to make the debugger able to figure out what type
 // it's got. This is enabled by default in DEBUG. To enable it in RET builds (temporarily!), you need to change the
