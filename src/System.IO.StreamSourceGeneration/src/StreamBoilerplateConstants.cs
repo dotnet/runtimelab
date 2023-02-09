@@ -27,7 +27,7 @@ using System.Threading.Tasks;
             ValidateBufferArguments(buffer, offset, count);
             EnsureCanRead();
         
-            return TaskToApm.Begin(ReadAsync(buffer, offset, count), CancellationToken.None), callback, state);
+            return TaskToApm.Begin(ReadAsync(buffer, offset, count, CancellationToken.None), callback, state);
         }
 ";
 
@@ -37,7 +37,7 @@ using System.Threading.Tasks;
             ValidateBufferArguments(buffer, offset, count);
             EnsureCanWrite();
         
-            return TaskToApm.Begin(WriteAsync(buffer, offset, count), CancellationToken.None), callback, state);
+            return TaskToApm.Begin(WriteAsync(buffer, offset, count, CancellationToken.None), callback, state);
         }
 ";
 

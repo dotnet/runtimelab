@@ -14,8 +14,8 @@ namespace System.IO.StreamSourceGeneration;
 [Generator]
 public partial class StreamSourceGen : IIncrementalGenerator
 {
-    private const string StreamBoilerplateAttributeFullName = "System.IO.StreamSourceGeneration.GenerateStreamBoilerplateAttribute";
-    private const string StreamFullName = "System.IO.Stream";
+    internal const string StreamBoilerplateAttributeFullName = "System.IO.StreamSourceGeneration.GenerateStreamBoilerplateAttribute";
+    internal const string StreamFullName = "System.IO.Stream";
 
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
@@ -44,9 +44,9 @@ public partial class StreamSourceGen : IIncrementalGenerator
             return;
         }
 
-        //Debugger.Launch();
+        Debugger.Launch();
 
-        List<StreamTypeInfo>? classesWithGenerationOptions = GetClassesWithGenerationOptions(compilation, classes, context.CancellationToken);
+        List<StreamTypeInfo>? classesWithGenerationOptions = Helpers.GetClassesWithGenerationOptions(compilation, classes, context.CancellationToken);
 
         if (classesWithGenerationOptions == null)
         {
@@ -104,7 +104,7 @@ namespace {streamTypeInfo.TypeSymbol.ContainingNamespace}
             if (candidateOperationKind >= StreamOperationKind.Read &&
                 candidateOperationKind <= StreamOperationKind.WriteAsync)
             {
-                StreamCapabilityInfo? capabilityInfo;
+                StreamCapabilityInfo? capabilityInfo; //todo= candidateOperationKind is StreamOperationKind.Read or StreamOperationKind.ReadAsync ? streamTypeInfo.ReadInfo;
                 bool isAsync;
 
                 if (candidateOperationKind == StreamOperationKind.Read) 
@@ -137,7 +137,7 @@ namespace {streamTypeInfo.TypeSymbol.ContainingNamespace}
                 {
                     // Determine preferred method to call for this generated method.
                     string memberToCall = capabilityInfo.GetPreferredMemberName(isAsync);
-                    string memberToCallTemplate = StreamBoilerplateConstants.GetReadMemberToCallForTemplate(candidateName, memberToCall);
+                    string memberToCallTemplate = Helpers.GetMemberToCallForTemplate(candidateName, memberToCall);
 
                     sb.Append(string.Format(candidateInfo.Boilerplate, memberToCallTemplate));
                 }
@@ -193,100 +193,5 @@ namespace {streamTypeInfo.TypeSymbol.ContainingNamespace}
     }
 }
 ");
-    }
-
-    internal static IEnumerable<string> GetOverriddenMembers(ITypeSymbol symbol)
-    {
-        return symbol.GetMembers().Select(m => GetOverriddenMember(m)?.ToDisplayString()).Where(s => s != null)!;
-
-        static ISymbol? GetOverriddenMember(ISymbol member)
-            => member switch
-            {
-                IMethodSymbol method => method.OverriddenMethod,
-                IPropertySymbol property => property.OverriddenProperty,
-                _ => null
-            };
-    }
-
-    private static List<StreamTypeInfo>? GetClassesWithGenerationOptions(Compilation compilation, ImmutableArray<ClassDeclarationSyntax> classes, CancellationToken cancellationToken)
-    {
-        INamedTypeSymbol? streamBoilerplateAttributeSymbol = compilation.GetBestTypeByMetadataName(StreamBoilerplateAttributeFullName);
-        INamedTypeSymbol? streamSymbol = compilation.GetBestTypeByMetadataName(StreamFullName);
-
-        if (streamBoilerplateAttributeSymbol == null ||
-            streamSymbol == null)
-        {
-            return null;
-        }
-
-        List<StreamTypeInfo>? retVal = null;
-
-        foreach (IGrouping<SyntaxTree, ClassDeclarationSyntax> group in classes.GroupBy(c => c.SyntaxTree))
-        {
-            SyntaxTree syntaxTree = group.Key;
-            SemanticModel compilationSemanticModel = compilation.GetSemanticModel(syntaxTree);
-
-            foreach (ClassDeclarationSyntax classNode in group)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-
-                if (!DerivesFromStream(classNode, streamSymbol, compilationSemanticModel, cancellationToken))
-                {
-                    continue;
-                }
-
-                INamedTypeSymbol typeSymbol = compilationSemanticModel.GetDeclaredSymbol(classNode, cancellationToken)!;
-
-                //AttributeSyntax firstAttribute = classNode.AttributeLists.First().Attributes.First();
-                foreach (AttributeListSyntax attributeListSyntax in classNode.AttributeLists)
-                {
-                    // TODO: test if this fails when type contains multiple attributes.
-                    AttributeSyntax attributeSyntax = attributeListSyntax.Attributes.First();
-                    IMethodSymbol? attributeSymbol = compilationSemanticModel.GetSymbolInfo(attributeSyntax, cancellationToken).Symbol as IMethodSymbol;
-
-                    if (attributeSymbol == null || 
-                        !streamBoilerplateAttributeSymbol.Equals(attributeSymbol.ContainingType, SymbolEqualityComparer.Default))
-                    {
-                        // badly formed attribute definition, or not the right attribute
-                        continue;
-                    }
-
-                    //var generationOptions = GetGenerationOptions(attributeSyntax, classSymbol);
-                    StreamTypeInfo streamTypeInfo = new(typeSymbol);
-                    retVal ??= new List<StreamTypeInfo>();
-                    retVal.Add(streamTypeInfo);
-                }
-            }
-        }
-
-        return retVal;
-    }
-
-    // TODO: merge this method with DerivesFromJsonSerializerContext.
-    private static bool DerivesFromStream(
-        ClassDeclarationSyntax classDeclarationSyntax,
-        INamedTypeSymbol streamSymbol,
-        SemanticModel compilationSemanticModel,
-        CancellationToken cancellationToken)
-    {
-        SeparatedSyntaxList<BaseTypeSyntax>? baseTypeSyntaxList = classDeclarationSyntax.BaseList?.Types;
-        if (baseTypeSyntaxList == null)
-        {
-            return false;
-        }
-
-        INamedTypeSymbol? match = null;
-
-        foreach (BaseTypeSyntax baseTypeSyntax in baseTypeSyntaxList)
-        {
-            INamedTypeSymbol? candidate = compilationSemanticModel.GetSymbolInfo(baseTypeSyntax.Type, cancellationToken).Symbol as INamedTypeSymbol;
-            if (candidate != null && streamSymbol.Equals(candidate, SymbolEqualityComparer.Default))
-            {
-                match = candidate;
-                break;
-            }
-        }
-
-        return match != null;
     }
 }

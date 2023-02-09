@@ -15,9 +15,9 @@ internal class StreamTypeInfo
         TypeSymbol = typeSymbol;
         OverriddenMembers = new HashSet<string>();
             
-        foreach (string memberName in StreamSourceGen.GetOverriddenMembers(typeSymbol))
+        foreach (string memberName in Helpers.GetOverriddenMembers(typeSymbol))
         {
-            if (memberName.Contains("Read") && memberName != StreamMembersConstants.CanRead)
+            if (memberName.Contains("Read") && memberName != StreamMembersConstants.CanRead) // bug: Contains(Read) makes false positive with Write(ReaDonlySpan), need to do an exact match method instead.
             {
                 BoilerplateCandidateInfo candidateInfo = BoilerplateCandidateInfo.CandidatesDictionary[memberName];
                 bool isAsync = candidateInfo.OperationKind == StreamOperationKind.ReadAsync;
