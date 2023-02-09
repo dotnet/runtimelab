@@ -9091,6 +9091,9 @@ var_types Compiler::impImportCall(OPCODE                  opcode,
                 assert((sig->callConv & CORINFO_CALLCONV_MASK) != CORINFO_CALLCONV_VARARG &&
                        (sig->callConv & CORINFO_CALLCONV_MASK) != CORINFO_CALLCONV_NATIVEVARARG);
 
+#if TARGET_WASM
+                call->AsCall()->callSig = new (this, CMK_Generic) CORINFO_SIG_INFO(*sig);
+#endif
                 goto DONE;
             }
 
@@ -9183,6 +9186,11 @@ var_types Compiler::impImportCall(OPCODE                  opcode,
     // static bit and hasThis are negations of one another
     assert(((mflags & CORINFO_FLG_STATIC) != 0) == ((sig->callConv & CORINFO_CALLCONV_HASTHIS) == 0));
     assert(call != nullptr);
+
+#if TARGET_WASM
+    assert(call->AsCall()->callSig == nullptr);
+    call->AsCall()->callSig = new (this, CMK_Generic) CORINFO_SIG_INFO(*sig);
+#endif
 
     /*-------------------------------------------------------------------------
      * Check special-cases etc
@@ -9681,12 +9689,13 @@ var_types Compiler::impImportCall(OPCODE                  opcode,
 
 DONE:
 
-#if defined(DEBUG)
+// The LLVM codegen always wants callSig and sets it higher up
+#if defined(DEBUG) && !defined(TARGET_WASM)
     // In debug we want to be able to register callsites with the EE.
     assert(call->AsCall()->callSig == nullptr);
     call->AsCall()->callSig  = new (this, CMK_Generic) CORINFO_SIG_INFO;
     *call->AsCall()->callSig = *sig;
-#endif // defined(DEBUG)
+#endif // defined(DEBUG) && !defined(TARGET_WASM)
 
     // Final importer checks for calls flagged as tail calls.
     //
