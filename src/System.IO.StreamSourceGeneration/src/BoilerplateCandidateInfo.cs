@@ -1,97 +1,60 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 using Constants = System.IO.StreamSourceGeneration.StreamBoilerplateConstants;
 
 namespace System.IO.StreamSourceGeneration;
 
 internal readonly struct BoilerplateCandidateInfo
 {
-    internal BoilerplateCandidateInfo(string name, StreamOperation operation, string boilerplate, string boilerplateForUnsupported)
-    {
-        Name = name;
-        Operation = operation;
-        Boilerplate = boilerplate;
-        BoilerplateForUnsupported = boilerplateForUnsupported;
-    }
+    private static readonly Dictionary<string, BoilerplateCandidateInfo> s_lookupBoilerplateGenerationCandidates;
+    private static readonly List<BoilerplateCandidateInfo> s_boilerplateGenerationCandidates;
 
     internal readonly string Name;
-    internal readonly StreamOperation Operation;
-    internal readonly string Boilerplate;
+    internal readonly StreamOperationKind OperationKind;
+    internal readonly string? Boilerplate;
     internal readonly string BoilerplateForUnsupported;
+    internal readonly bool HasPriority;
 
-    internal static readonly List<BoilerplateCandidateInfo> s_boilerplateGenerationCandidates = new List<BoilerplateCandidateInfo>
+    static BoilerplateCandidateInfo()
     {
-            //new("System.IO.Stream.Length", StreamOperation.Seek, string.Empty),
-            //new("System.IO.Stream.Position", StreamOperation.Seek, string.Empty),
-            new("System.IO.Stream.CanRead", StreamOperation.None, Constants.CanRead, Constants.CanReadUnsupported),
-            new("System.IO.Stream.CanSeek", StreamOperation.None, Constants.CanSeek, Constants.CanSeekUnsupported),
-            new("System.IO.Stream.CanWrite", StreamOperation.None, Constants.CanWrite, Constants.CanWriteUnsupported),
-            new("System.IO.Stream.BeginRead(byte[], int, int, System.AsyncCallback?, object?)", 
-                StreamOperation.ReadAsync, 
-                Constants.BeginRead, 
-                Constants.BeginReadUnsupported),
-            new("System.IO.Stream.BeginWrite(byte[], int, int, System.AsyncCallback?, object?)", 
-                StreamOperation.WriteAsync, 
-                Constants.BeginWrite, 
-                Constants.BeginWriteUnsupported),
-            new("System.IO.Stream.EndRead(System.IAsyncResult)", 
-                StreamOperation.None, 
-                Constants.EndRead, 
-                Constants.EndReadUnsupported),
-            new("System.IO.Stream.EndWrite(System.IAsyncResult)", 
-                StreamOperation.None, 
-                Constants.EndWrite, 
-                Constants.EndWriteUnsupported),
-            new("System.IO.Stream.Read(byte[], int, int)", 
-                StreamOperation.Read, 
-                Constants.ReadByteArray, 
-                Constants.ReadByteArrayUnsupported),
-            new("System.IO.Stream.Read(System.Span<byte>)", 
-                StreamOperation.Read, 
-                Constants.ReadSpan, 
-                Constants.ReadSpanUnsupported),
-            new("System.IO.Stream.ReadAsync(byte[], int, int, System.Threading.CancellationToken)", 
-                StreamOperation.ReadAsync, 
-                Constants.ReadAsyncByteArray, 
-                Constants.ReadAsyncByteArrayUnsupported),
-            new("System.IO.Stream.ReadAsync(System.Memory<byte>, System.Threading.CancellationToken)", 
-                StreamOperation.ReadAsync, 
-                Constants.ReadAsyncMemory, 
-                Constants.ReadAsyncMemoryUnsupported),
-            new("System.IO.Stream.Seek(long, System.IO.SeekOrigin)", 
-                StreamOperation.Seek, 
-                Constants.Seek, 
-                Constants.SeekUnsupported),
-            new("System.IO.Stream.SetLength(long)", 
-                StreamOperation.SetLength, 
-                Constants.SetLength, 
-                Constants.SetLengthUnsupported),
-            new("System.IO.Stream.Write(byte[], int, int)", 
-                StreamOperation.Write, 
-                Constants.WriteByteArray,
-                Constants.WriteByteArrayUnsupported),
-            new("System.IO.Stream.Write(System.ReadOnlySpan<byte>)", 
-                StreamOperation.Write, 
-                Constants.WriteSpan, 
-                Constants.WriteSpanUnsupported),
-            new("System.IO.Stream.WriteAsync(byte[], int, int, System.Threading.CancellationToken)", 
-                StreamOperation.WriteAsync, 
-                Constants.WriteAsyncByteArray, 
-                Constants.WriteAsyncByteArrayUnsupported),
-            new("System.IO.Stream.WriteAsync(System.ReadOnlyMemory<byte>, System.Threading.CancellationToken)", 
-                StreamOperation.WriteAsync, 
-                Constants.WriteAsyncMemory, 
-                Constants.WriteAsyncMemoryUnsupported)
-    };
-}
+        s_boilerplateGenerationCandidates = new List<BoilerplateCandidateInfo>
+        {
+            // Read
+            new(StreamMembersConstants.ReadByte, StreamOperationKind.Read, Constants.ReadByteTemplate, Constants.ReadByteArrayUnsupported),
+            new(StreamMembersConstants.ReadSpan, StreamOperationKind.Read, Constants.ReadSpanTemplate, Constants.ReadSpanUnsupported, true),
+            new(StreamMembersConstants.ReadAsyncByte, StreamOperationKind.ReadAsync, Constants.ReadAsyncByteTemplate, Constants.ReadAsyncByteArrayUnsupported),
+            new(StreamMembersConstants.ReadAsyncMemory, StreamOperationKind.ReadAsync, Constants.ReadAsyncMemoryTemplate, Constants.ReadAsyncMemoryUnsupported, true),
+            // Write
+            new(StreamMembersConstants.WriteByte, StreamOperationKind.Write, Constants.WriteByteTemplate, Constants.WriteByteArrayUnsupported),
+            new(StreamMembersConstants.WriteSpan, StreamOperationKind.Write, Constants.WriteSpanTemplate, Constants.WriteSpanUnsupported, true),
+            new(StreamMembersConstants.WriteAsyncByte, StreamOperationKind.WriteAsync, Constants.WriteAsyncByteTemplate, Constants.WriteAsyncByteArrayUnsupported),
+            new(StreamMembersConstants.WriteAsyncMemory, StreamOperationKind.WriteAsync, Constants.WriteAsyncMemoryTemplate, Constants.WriteAsyncMemoryUnsupported, true),
+            // Others
+            new(StreamMembersConstants.CanRead, StreamOperationKind.None, Constants.CanRead, Constants.CanReadUnsupported),
+            new(StreamMembersConstants.CanSeek, StreamOperationKind.None, Constants.CanSeek, Constants.CanSeekUnsupported),
+            new(StreamMembersConstants.CanWrite, StreamOperationKind.None, Constants.CanWrite, Constants.CanWriteUnsupported),
+            new(StreamMembersConstants.BeginRead, StreamOperationKind.None, Constants.BeginRead, Constants.BeginReadUnsupported),
+            new(StreamMembersConstants.BeginWrite, StreamOperationKind.None, Constants.BeginWrite, Constants.BeginWriteUnsupported),
+            new(StreamMembersConstants.EndRead, StreamOperationKind.None, Constants.EndRead, Constants.EndReadUnsupported),
+            new(StreamMembersConstants.EndWrite, StreamOperationKind.None, Constants.EndWrite, Constants.EndWriteUnsupported),
+            new(StreamMembersConstants.Seek, StreamOperationKind.Seek, null, Constants.SeekUnsupported),
+            new(StreamMembersConstants.SetLength, StreamOperationKind.None, null, Constants.SetLengthUnsupported),
+            new(StreamMembersConstants.Length, StreamOperationKind.None, null, Constants.LengthUnsupported),
+            new(StreamMembersConstants.Position, StreamOperationKind.None, null, Constants.PositionUnsupported),
+        };
 
-[Flags]
-internal enum StreamOperation
-{
-    None = 0,
-    Read = 1,
-    Write = 2,
-    Seek = 4,
-    ReadAsync = 8,
-    WriteAsync = 16,
-    SetLength = 32,
+        s_lookupBoilerplateGenerationCandidates = CandidatesList.ToDictionary(x => x.Name);
+    }
+
+    internal BoilerplateCandidateInfo(string name, StreamOperationKind operation, string? boilerplate, string boilerplateForUnsupported, bool hasPriority = false)
+    {
+        Name = name;
+        OperationKind = operation;
+        Boilerplate = boilerplate;
+        BoilerplateForUnsupported = boilerplateForUnsupported;
+        HasPriority = hasPriority;
+    }
+
+    internal static Dictionary<string, BoilerplateCandidateInfo> CandidatesDictionary => s_lookupBoilerplateGenerationCandidates;
+    internal static List<BoilerplateCandidateInfo> CandidatesList => s_boilerplateGenerationCandidates;
 }
