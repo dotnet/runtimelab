@@ -21,7 +21,7 @@ public partial class StreamSourceGen : IIncrementalGenerator
     {
         context.RegisterPostInitializationOutput(ctx =>
         {
-            //Debugger.Launch();
+            //Diagnostics.Debugger.Launch();
             ctx.AddSource("TaskToApm.g.cs", System.IO.StreamSourceGeneration.Properties.Resources.TaskToApm);
         });
 
@@ -44,7 +44,12 @@ public partial class StreamSourceGen : IIncrementalGenerator
             return;
         }
 
-        Debugger.Launch();
+#if LAUNCH_DEBUGGER
+        if (!Diagnostics.Debugger.IsAttached)
+        {
+            Diagnostics.Debugger.Launch();
+        }
+#endif
 
         List<StreamTypeInfo>? classesWithGenerationOptions = Helpers.GetClassesWithGenerationOptions(compilation, classes, context.CancellationToken);
 
@@ -72,10 +77,7 @@ public partial class StreamSourceGen : IIncrementalGenerator
 
 #nullable enable
 
-using System;
-using System.IO;
-using System.Threading;
-using System.Threading.Tasks;
+{StreamBoilerplateConstants.UsingDirectives}
 
 namespace {streamTypeInfo.TypeSymbol.ContainingNamespace}
 {{");
@@ -104,30 +106,8 @@ namespace {streamTypeInfo.TypeSymbol.ContainingNamespace}
             if (candidateOperationKind >= StreamOperationKind.Read &&
                 candidateOperationKind <= StreamOperationKind.WriteAsync)
             {
-                StreamCapabilityInfo? capabilityInfo; //todo= candidateOperationKind is StreamOperationKind.Read or StreamOperationKind.ReadAsync ? streamTypeInfo.ReadInfo;
-                bool isAsync;
-
-                if (candidateOperationKind == StreamOperationKind.Read) 
-                {
-                    capabilityInfo = streamTypeInfo.ReadInfo;
-                    isAsync = false;
-                }
-                else if (candidateOperationKind == StreamOperationKind.Write)
-                {
-                    capabilityInfo = streamTypeInfo.WriteInfo;
-                    isAsync = false;
-                }
-                else if (candidateOperationKind == StreamOperationKind.ReadAsync)
-                {
-                    capabilityInfo = streamTypeInfo.ReadInfo;
-                    isAsync = true;
-                }
-                else
-                {
-                    Debug.Assert(candidateOperationKind == StreamOperationKind.WriteAsync);
-                    capabilityInfo = streamTypeInfo.WriteInfo;
-                    isAsync = true;
-                }
+                StreamCapabilityInfo? capabilityInfo = candidateOperationKind is StreamOperationKind.Read or StreamOperationKind.ReadAsync ? streamTypeInfo.ReadInfo : streamTypeInfo.WriteInfo;
+                bool isAsync = candidateOperationKind is StreamOperationKind.ReadAsync or StreamOperationKind.WriteAsync;
 
                 if (capabilityInfo == null)
                 {
@@ -162,7 +142,7 @@ namespace {streamTypeInfo.TypeSymbol.ContainingNamespace}
                         {
                             continue;
                         }
-                        // We can easily generate SetLength if not supported but not otherwise, unless we emit a partial.
+                        // We can easily generate SetLength if not supported but not otherwise.
                         boilerplate = candidateInfo.BoilerplateForUnsupported;
                         break;
                     case StreamMembersConstants.Position:

@@ -53,7 +53,7 @@ internal class Helpers
             {
                 StreamMembersConstants.ReadByte => StreamBoilerplateConstants.ReadAsyncMemoryCallsToReadByte,
                 StreamMembersConstants.ReadSpan => StreamBoilerplateConstants.ReadAsyncMemoryCallsToReadSpan,
-                StreamMembersConstants.ReadAsyncMemory => StreamBoilerplateConstants.ReadAsyncMemoryCallsToReadAsyncByte,
+                StreamMembersConstants.ReadAsyncByte => StreamBoilerplateConstants.ReadAsyncMemoryCallsToReadAsyncByte,
                 _ => throw new InvalidOperationException()
             },
             StreamMembersConstants.WriteByte => memberToCall switch
@@ -81,7 +81,7 @@ internal class Helpers
             {
                 StreamMembersConstants.WriteByte => StreamBoilerplateConstants.WriteAsyncMemoryCallsToWriteByte,
                 StreamMembersConstants.WriteSpan => StreamBoilerplateConstants.WriteAsyncMemoryCallsToWriteSpan,
-                StreamMembersConstants.WriteAsyncMemory => StreamBoilerplateConstants.WriteAsyncMemoryCallsToWriteAsyncByte,
+                StreamMembersConstants.WriteAsyncByte => StreamBoilerplateConstants.WriteAsyncMemoryCallsToWriteAsyncByte,
                 _ => throw new InvalidOperationException()
             },
             _ => throw new InvalidOperationException()
@@ -117,10 +117,8 @@ internal class Helpers
 
                 INamedTypeSymbol typeSymbol = compilationSemanticModel.GetDeclaredSymbol(classNode, cancellationToken)!;
 
-                //AttributeSyntax firstAttribute = classNode.AttributeLists.First().Attributes.First();
                 foreach (AttributeListSyntax attributeListSyntax in classNode.AttributeLists)
                 {
-                    // TODO: test if this fails when type contains multiple attributes.
                     AttributeSyntax attributeSyntax = attributeListSyntax.Attributes.First();
                     IMethodSymbol? attributeSymbol = compilationSemanticModel.GetSymbolInfo(attributeSyntax, cancellationToken).Symbol as IMethodSymbol;
 
@@ -131,7 +129,6 @@ internal class Helpers
                         continue;
                     }
 
-                    //var generationOptions = GetGenerationOptions(attributeSyntax, classSymbol);
                     StreamTypeInfo streamTypeInfo = new(typeSymbol);
                     retVal ??= new List<StreamTypeInfo>();
                     retVal.Add(streamTypeInfo);

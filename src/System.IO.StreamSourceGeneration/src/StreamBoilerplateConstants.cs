@@ -2,12 +2,13 @@
 
 internal static partial class StreamBoilerplateConstants
 {
-    internal const string UsingDirectives = @"
-using System;
+    internal const string UsingDirectives = 
+@"using System;
+using System.Buffers;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Threading;
-using System.Threading.Tasks;
-";
+using System.Threading.Tasks;";
 
     internal const string CanRead = @"
         public override bool CanRead => true;
@@ -55,45 +56,6 @@ using System.Threading.Tasks;
         }
 ";
 
-    // Require Core methdos.
-
-//    internal const string Seek = @"
-//        public override long Seek(long offset, SeekOrigin origin)
-//        {
-//            EnsureCanSeek();
-
-//            long pos = origin switch
-//            {
-//                SeekOrigin.Begin => offset,
-//                SeekOrigin.Current => Position + offset,
-//                SeekOrigin.End => Length + offset,
-//                _ => throw new ArgumentException(""Invalid seek origin"", nameof(origin))
-//            };
-
-//            if (pos < 0)
-//            {
-//                throw new ArgumentOutOfRangeException();
-//            }
-        
-//            return SeekCore(offset, origin);
-//        }
-//";
-
-//    internal const string SetLength = @"
-//        public override void SetLength(long value)
-//        {
-//            EnsureCanSeek();
-//            EnsureCanWrite();
-
-//            if (value < 0)
-//            {
-//                throw new ArgumentOutOfRangeException(nameof(value));
-//            }
-
-//            SetLengthCore(value);
-//        }
-//";
-
     // Helpers
     internal const string Helpers = @"
         private void EnsureCanRead()
@@ -118,6 +80,5 @@ using System.Threading.Tasks;
             {
                 throw new NotSupportedException(""Stream does not support seeking."");
             }
-        }
-";
+        }";
 }

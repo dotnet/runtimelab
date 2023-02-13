@@ -58,14 +58,3 @@ internal readonly struct BoilerplateCandidateInfo
     internal static Dictionary<string, BoilerplateCandidateInfo> CandidatesDictionary => s_lookupBoilerplateGenerationCandidates;
     internal static List<BoilerplateCandidateInfo> CandidatesList => s_boilerplateGenerationCandidates;
 }
-
-[Flags]
-internal enum StreamOperationKind
-{
-    None = 0,
-    Read = 1,
-    Write = 2,
-    ReadAsync = 4,
-    WriteAsync = 8,
-    Seek = 16,
-}

@@ -17,9 +17,15 @@ internal class StreamTypeInfo
             
         foreach (string memberName in Helpers.GetOverriddenMembers(typeSymbol))
         {
-            if (memberName.Contains("Read") && memberName != StreamMembersConstants.CanRead) // bug: Contains(Read) makes false positive with Write(ReaDonlySpan), need to do an exact match method instead.
+            OverriddenMembers.Add(memberName);
+
+            if (!BoilerplateCandidateInfo.CandidatesDictionary.TryGetValue(memberName, out BoilerplateCandidateInfo candidateInfo))
             {
-                BoilerplateCandidateInfo candidateInfo = BoilerplateCandidateInfo.CandidatesDictionary[memberName];
+                continue;
+            }
+
+            if (candidateInfo.OperationKind is StreamOperationKind.Read or StreamOperationKind.ReadAsync)
+            {
                 bool isAsync = candidateInfo.OperationKind == StreamOperationKind.ReadAsync;
 
                 if (ReadInfo == null)
@@ -31,9 +37,8 @@ internal class StreamTypeInfo
                     ReadInfo.SetPreferredMemberName(memberName, isAsync, candidateInfo);
                 }
             }
-            else if (memberName.Contains("Write") && memberName != StreamMembersConstants.CanWrite)
+            else if (candidateInfo.OperationKind is StreamOperationKind.Write or StreamOperationKind.WriteAsync)
             {
-                BoilerplateCandidateInfo candidateInfo = BoilerplateCandidateInfo.CandidatesDictionary[memberName];
                 bool isAsync = candidateInfo.OperationKind == StreamOperationKind.WriteAsync;
 
                 if (WriteInfo == null)
@@ -45,8 +50,6 @@ internal class StreamTypeInfo
                     WriteInfo.SetPreferredMemberName(memberName, isAsync, candidateInfo);
                 }
             }
-
-            OverriddenMembers.Add(memberName);
         }
     }
 }

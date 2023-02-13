@@ -4,9 +4,13 @@
 namespace System.IO.StreamSourceGeneration.Tests.TestClasses;
 
 [GenerateStreamBoilerplate]
-internal partial class StreamThatImplementsWrite : Stream
+internal partial class StreamThatImplementsReadSpan : Stream
 {
-    public override void Flush() { }
+    public override int Read(Span<byte> buffer)
+    {
+        Random.Shared.NextBytes(buffer);
+        return buffer.Length;
+    }
 
-    public override void Write(ReadOnlySpan<byte> buffer) { }
+    public override void Flush() { }
 }
