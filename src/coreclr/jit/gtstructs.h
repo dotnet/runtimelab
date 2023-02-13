@@ -122,7 +122,6 @@ GTSTRUCT_1(MultiRegOp  , GT_MUL_LONG)
 GTSTRUCT_3(MultiRegOp  , GT_MUL_LONG, GT_PUTARG_REG, GT_BITCAST)
 #elif defined (TARGET_WASM)
 GTSTRUCT_3(MultiRegOp, GT_MUL_LONG, GT_PUTARG_REG, GT_BITCAST)
-GTSTRUCT_N(PutArgType, GT_PUTARG_TYPE)
 #endif
 /*****************************************************************************/
 #undef  GTSTRUCT_0
