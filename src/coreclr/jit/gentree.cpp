@@ -9142,6 +9142,9 @@ void CallArgs::InternalCopyFrom(Compiler* comp, CallArgs* other, CopyNodeFunc co
         carg->m_isTmp           = arg.m_isTmp;
         carg->m_processed       = arg.m_processed;
         carg->AbiInfo           = arg.AbiInfo;
+#ifdef TARGET_WASM
+        carg->m_signatureCorInfoType = arg.m_signatureCorInfoType;
+#endif // TARGET_WASM
         *tail                   = carg;
         tail                    = &carg->m_next;
     }

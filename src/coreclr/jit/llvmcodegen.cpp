@@ -1982,22 +1982,22 @@ void Llvm::buildCall(GenTreeCall* call)
 
     std::vector<Value*> argVec = std::vector<Value*>();
 
-    GenTree* lastArg = nullptr;
+    GenTree* argNode = nullptr;
     for (CallArg& callArg: call->gtArgs.Args())
     {
-        lastArg = callArg.GetNode();
+        argNode = callArg.GetNode();
 
         Type*    argLlvmType = getLlvmTypeForCorInfoType(callArg.GetSignatureCorInfoType(), callArg.GetSignatureClassHandle());
         Value*   argValue;
 
-        if (lastArg->OperIs(GT_FIELD_LIST))
+        if (argNode->OperIs(GT_FIELD_LIST))
         {
             assert(callArg.GetSignatureType() == TYP_STRUCT);
-            argValue = buildFieldList(lastArg->AsFieldList(), argLlvmType);
+            argValue = buildFieldList(argNode->AsFieldList(), argLlvmType);
         }
         else
         {
-            argValue = consumeValue(lastArg, argLlvmType);
+            argValue = consumeValue(argNode, argLlvmType);
         }
 
         argVec.push_back(argValue);
