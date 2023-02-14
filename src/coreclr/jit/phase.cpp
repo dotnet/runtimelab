@@ -71,40 +71,8 @@ void Phase::PrePhase()
     comp->BeginPhase(m_phase);
 
 #ifdef DEBUG
-
-    // To help in the incremental conversion of jit activity to phases
-    // without greatly increasing dump size or checked jit time, we
-    // currently allow the phases that do pre-phase checks and
-    // dumps via the phase object, and not via explicit calls from
-    // the various methods in the phase.
-    //
-    // In the long run the aim is to get rid of all pre-phase checks
-    // and dumps, relying instead on post-phase checks and dumps from
-    // the preceeding phase.
-    //
-    // Currently the list is just the set of phases that have custom
-    // derivations from the Phase class.
-    static Phases s_allowlist[] = {PHASE_BUILD_SSA, PHASE_OPTIMIZE_VALNUM_CSES, PHASE_RATIONALIZE, PHASE_LOWERING,
-                                   PHASE_STACK_LEVEL_SETTER};
-    bool doPrePhase = false;
-
-    for (size_t i = 0; i < sizeof(s_allowlist) / sizeof(Phases); i++)
-    {
-        if (m_phase == s_allowlist[i])
-        {
-            doPrePhase = true;
-            break;
-        }
-    }
-
     if (VERBOSE)
     {
-        if (doPrePhase)
-        {
-            printf("Trees before %s\n", m_name);
-            comp->fgDispBasicBlocks(true);
-        }
-
         if (comp->compIsForInlining())
         {
             printf("\n*************** Inline @[%06u] Starting PHASE %s\n",
@@ -113,17 +81,6 @@ void Phase::PrePhase()
         else
         {
             printf("\n*************** Starting PHASE %s\n", m_name);
-        }
-    }
-
-    if (doPrePhase)
-    {
-        if ((comp->activePhaseChecks == PhaseChecks::CHECK_ALL) && (comp->expensiveDebugCheckLevel >= 2))
-        {
-            // If everyone used the Phase class, this would duplicate the PostPhase() from the previous phase.
-            // But, not everyone does, so go ahead and do the check here, too.
-            comp->fgDebugCheckBBlist();
-            comp->fgDebugCheckLinks();
         }
     }
 #endif // DEBUG
@@ -146,8 +103,14 @@ void Phase::PostPhase(PhaseStatus status)
 #ifdef DEBUG
 
     // Don't dump or check post phase unless the phase made changes.
-    const bool        madeChanges   = (status != PhaseStatus::MODIFIED_NOTHING);
+    //
+    const bool madeChanges       = (status != PhaseStatus::MODIFIED_NOTHING);
+    const bool doPostPhase       = madeChanges;
+    const bool doPostPhaseChecks = (comp->activePhaseChecks == PhaseChecks::CHECK_ALL);
+    const bool doPostPhaseDumps  = (comp->activePhaseDumps == PhaseDumps::DUMP_ALL);
+
     const char* const statusMessage = madeChanges ? "" : " [no changes]";
+<<<<<<< HEAD
     bool              doPostPhase   = false;
 
     // To help in the incremental conversion of jit activity to phases
@@ -208,6 +171,8 @@ void Phase::PostPhase(PhaseStatus status)
             }
         }
     }
+=======
+>>>>>>> 442c137891821a567e9a05411f821dbf2aec5aa5
 
     if (VERBOSE)
     {
@@ -221,22 +186,20 @@ void Phase::PostPhase(PhaseStatus status)
             printf("\n*************** Finishing PHASE %s%s\n", m_name, statusMessage);
         }
 
-        if (doPostPhase)
+        if (doPostPhase && doPostPhaseDumps)
         {
             printf("Trees after %s\n", m_name);
             comp->fgDispBasicBlocks(true);
         }
     }
 
-    if (doPostPhase)
+    if (doPostPhase && doPostPhaseChecks)
     {
-        if (comp->activePhaseChecks == PhaseChecks::CHECK_ALL)
-        {
-            comp->fgDebugCheckBBlist();
-            comp->fgDebugCheckLinks();
-            comp->fgDebugCheckNodesUniqueness();
-            comp->fgVerifyHandlerTab();
-        }
+        comp->fgDebugCheckBBlist();
+        comp->fgDebugCheckLinks();
+        comp->fgDebugCheckNodesUniqueness();
+        comp->fgVerifyHandlerTab();
+        comp->fgDebugCheckLoopTable();
     }
 
     // Optionally check profile data, if we have any.

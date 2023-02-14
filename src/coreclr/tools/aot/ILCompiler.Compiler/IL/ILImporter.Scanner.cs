@@ -234,15 +234,15 @@ namespace Internal.IL
                     if (region.Kind == ILExceptionRegionKind.Filter)
                         MarkBasicBlock(_basicBlocks[region.FilterOffset]);
 
-                    // Once https://github.com/dotnet/corert/issues/3460 is done, this should be deleted.
-                    // Throwing InvalidProgram is not great, but we want to do *something* if this happens
-                    // because doing nothing means problems at runtime. This is not worth piping a
-                    // a new exception with a fancy message for.
                     if (region.Kind == ILExceptionRegionKind.Catch)
                     {
                         TypeDesc catchType = (TypeDesc)_methodIL.GetObject(region.ClassToken);
                         if (catchType.IsRuntimeDeterminedSubtype)
-                            ThrowHelper.ThrowInvalidProgramException();
+                        {
+                            // For runtime determined Exception types we're going to emit a fake EH filter with isinst for this
+                            // type with a runtime lookup
+                            _dependencies.Add(GetGenericLookupHelper(ReadyToRunHelperId.TypeHandleForCasting, catchType), "EH filter");
+                        }
                     }
                 }
             }
@@ -262,12 +262,6 @@ namespace Internal.IL
             // The instruction should have consumed any prefixes.
             _constrained = null;
             _isReadOnly = false;
-        }
-
-        private void ImportJmp(int token)
-        {
-            // JMP is kind of like a tail call (with no arguments pushed on the stack).
-            ImportCall(ILOpcode.call, token);
         }
 
         private void ImportCasting(ILOpcode opcode, int token)
@@ -321,6 +315,8 @@ namespace Internal.IL
             var method = (MethodDesc)_canonMethodIL.GetObject(token);
 
             _compilation.TypeSystemContext.EnsureLoadableMethod(method);
+            if ((method.Signature.Flags & MethodSignatureFlags.UnmanagedCallingConventionMask) == MethodSignatureFlags.CallingConventionVarargs)
+                ThrowHelper.ThrowBadImageFormatException();
 
             _compilation.NodeFactory.MetadataManager.GetDependenciesDueToAccess(ref _dependencies, _compilation.NodeFactory, _canonMethodIL, method);
 
@@ -510,11 +506,6 @@ namespace Internal.IL
                     return;
                 }
 
-                if (method.OwningType.IsByReferenceOfT && (method.IsConstructor || method.Name == "get_Value"))
-                {
-                    return;
-                }
-
                 if (IsEETypePtrOf(method))
                 {
                     if (runtimeDeterminedMethod.IsRuntimeDeterminedExactMethod)
@@ -533,6 +524,7 @@ namespace Internal.IL
 
             bool resolvedConstraint = false;
             bool forceUseRuntimeLookup = false;
+            DefaultInterfaceMethodResolution staticResolution = default;
 
             MethodDesc methodAfterConstraintResolution = method;
             if (_constrained != null)
@@ -547,7 +539,7 @@ namespace Internal.IL
                 if (constrained.IsRuntimeDeterminedSubtype)
                     constrained = constrained.ConvertToCanonForm(CanonicalFormKind.Specific);
 
-                MethodDesc directMethod = constrained.GetClosestDefType().TryResolveConstraintMethodApprox(method.OwningType, method, out forceUseRuntimeLookup);
+                MethodDesc directMethod = constrained.GetClosestDefType().TryResolveConstraintMethodApprox(method.OwningType, method, out forceUseRuntimeLookup, ref staticResolution);
                 if (directMethod == null && constrained.IsEnum)
                 {
                     // Constrained calls to methods on enum methods resolve to System.Enum's methods. System.Enum is a reference
@@ -560,14 +552,15 @@ namespace Internal.IL
                     // Either
                     //    1. no constraint resolution at compile time (!directMethod)
                     // OR 2. no code sharing lookup in call
-                    // OR 3. we have have resolved to an instantiating stub
+                    // OR 3. we have resolved to an instantiating stub
 
                     methodAfterConstraintResolution = directMethod;
 
-                    Debug.Assert(!methodAfterConstraintResolution.OwningType.IsInterface);
+                    Debug.Assert(!methodAfterConstraintResolution.OwningType.IsInterface
+                        || methodAfterConstraintResolution.Signature.IsStatic);
                     resolvedConstraint = true;
 
-                    exactType = constrained;
+                    exactType = directMethod.OwningType;
                 }
                 else if (method.Signature.IsStatic)
                 {
@@ -673,7 +666,7 @@ namespace Internal.IL
                 }
                 else
                 {
-                    _dependencies.Add(_factory.FatFunctionPointer(runtimeDeterminedMethod), reason);
+                    _dependencies.Add(_factory.FatFunctionPointer(targetMethod), reason);
                 }
             }
             //TODO-LLVM: Can we delete this now? or delete when IL->LLVM module gone
@@ -866,6 +859,12 @@ namespace Internal.IL
                     _dependencies.Add(GetMethodEntrypoint(targetMethod), reason);
                 }
             }
+            else if (staticResolution is DefaultInterfaceMethodResolution.Diamond or DefaultInterfaceMethodResolution.Reabstraction)
+            {
+                Debug.Assert(targetMethod.OwningType.IsInterface && targetMethod.IsVirtual && _constrained != null);
+
+                ThrowHelper.ThrowBadImageFormatException();
+            }
             else if (method.Signature.IsStatic)
             {
                 // This should be an unresolved static virtual interface method call. Other static methods should
@@ -873,7 +872,14 @@ namespace Internal.IL
                 Debug.Assert(targetMethod.OwningType.IsInterface && targetMethod.IsVirtual && _constrained != null);
 
                 var constrainedCallInfo = new ConstrainedCallInfo(_constrained, runtimeDeterminedMethod);
-                _dependencies.Add(GetGenericLookupHelper(ReadyToRunHelperId.ConstrainedDirectCall, constrainedCallInfo), reason);
+                var constrainedHelperId = ReadyToRunHelperId.ConstrainedDirectCall;
+
+                // Constant lookup doesn't make sense and we don't implement it. If we need constant lookup,
+                // the method wasn't implemented. Don't crash on it.
+                if (!_compilation.NeedsRuntimeLookup(constrainedHelperId, constrainedCallInfo))
+                    ThrowHelper.ThrowTypeLoadException(_constrained);
+
+                _dependencies.Add(GetGenericLookupHelper(constrainedHelperId, constrainedCallInfo), reason);
             }
             else if (method.HasInstantiation)
             {
@@ -957,6 +963,31 @@ namespace Internal.IL
             ImportCall(opCode, token);
         }
 
+        private void ImportJmp(int token)
+        {
+            // JMP is kind of like a tail call (with no arguments pushed on the stack).
+            ImportCall(ILOpcode.call, token);
+        }
+
+        private void ImportCalli(int token)
+        {
+            MethodSignature signature = (MethodSignature)_methodIL.GetObject(token);
+
+            // Managed calli
+            if ((signature.Flags & MethodSignatureFlags.UnmanagedCallingConventionMask) == 0)
+                return;
+
+            // Calli in marshaling stubs
+            if (_methodIL is Internal.IL.Stubs.PInvokeILStubMethodIL)
+                return;
+
+            MethodDesc stub = _compilation.PInvokeILProvider.GetCalliStub(
+                signature,
+                ((MetadataType)_methodIL.OwningMethod.OwningType).Module);
+
+            _dependencies.Add(_factory.CanonicalEntrypoint(stub), "calli");
+        }
+
         private void ImportBranch(ILOpcode opcode, BasicBlock target, BasicBlock fallthrough)
         {
             ImportFallthrough(target);
@@ -1036,7 +1067,7 @@ namespace Internal.IL
             }
             else
             {
-                _dependencies.Add(_factory.ConstructedTypeSymbol(type), reason);
+                _dependencies.Add(_factory.MaximallyConstructableType(type), reason);
             }
         }
 
@@ -1162,8 +1193,9 @@ namespace Internal.IL
         private void ImportFieldAccess(int token, bool isStatic, string reason)
         {
             var field = (FieldDesc)_methodIL.GetObject(token);
+            var canonField = (FieldDesc)_canonMethodIL.GetObject(token);
 
-            _compilation.NodeFactory.MetadataManager.GetDependenciesDueToAccess(ref _dependencies, _compilation.NodeFactory, _canonMethodIL, field);
+            _compilation.NodeFactory.MetadataManager.GetDependenciesDueToAccess(ref _dependencies, _compilation.NodeFactory, _canonMethodIL, canonField);
 
             // Covers both ldsfld/ldsflda and ldfld/ldflda with a static field
             if (isStatic || field.IsStatic)
@@ -1521,7 +1553,6 @@ namespace Internal.IL
         private void ImportAddressOfVar(int index, bool argument) { }
         private void ImportDup() { }
         private void ImportPop() { }
-        private void ImportCalli(int token) { }
         private void ImportLoadNull() { }
         private void ImportReturn() { }
         private void ImportLoadInt(long value, StackValueKind kind) { }

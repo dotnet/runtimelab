@@ -107,7 +107,13 @@ if (CLR_CMAKE_TARGET_UNIX OR CLR_CMAKE_TARGET_BROWSER)
         if (CLR_CMAKE_TARGET_ARCH_ARMV7L AND DEFINED ENV{CROSSCOMPILE} AND CMAKE_C_COMPILER_VERSION VERSION_LESS 3.9)
             add_compile_options (-O1)
         else ()
-            add_compile_options (-O3)
+            if(CLR_CMAKE_TARGET_ANDROID)
+                # -O2 optimization generates faster/smaller code on Android
+                # TODO: This duplicates the settings in eng/native/configureoptimization.cmake, we should unify it
+                add_compile_options (-O2)
+            else()
+                add_compile_options (-O3)
+            endif ()
         endif ()
     else ()
         message(FATAL_ERROR "Unknown build type. Set CMAKE_BUILD_TYPE to DEBUG or RELEASE.")
@@ -148,9 +154,13 @@ if (CLR_CMAKE_TARGET_UNIX OR CLR_CMAKE_TARGET_BROWSER)
         add_compile_options(-Wno-typedef-redefinition)
         add_compile_options(-Wno-c11-extensions)
         add_compile_options(-Wno-thread-safety-analysis)
+<<<<<<< HEAD
         # TODO-LLVM: fix the reasons for these 2 warning failures
         add_compile_options(-Wno-strict-prototypes)
         add_compile_options(-Wno-unused-but-set-variable)
+=======
+        add_compile_options(-Wno-strict-prototypes)
+>>>>>>> 442c137891821a567e9a05411f821dbf2aec5aa5
     endif ()
 
     add_subdirectory(System.Native)
@@ -169,8 +179,10 @@ if (CLR_CMAKE_TARGET_UNIX OR CLR_CMAKE_TARGET_BROWSER)
         #add_subdirectory(System.Net.Security.Native) # no gssapi on tvOS, see https://developer.apple.com/documentation/gss
         # System.Security.Cryptography.Native is intentionally disabled on tvOS
         # it is only used for interacting with OpenSSL which isn't useful there
-    elseif (CLR_CMAKE_TARGET_ANDROID)
+    elseif (CLR_CMAKE_TARGET_ANDROID AND NOT FORCE_ANDROID_OPENSSL)
         add_subdirectory(System.Security.Cryptography.Native.Android)
+    elseif (FORCE_ANDROID_OPENSSL)
+        add_subdirectory(System.Security.Cryptography.Native)
     else ()
         add_subdirectory(System.Globalization.Native)
         add_subdirectory(System.Net.Security.Native)

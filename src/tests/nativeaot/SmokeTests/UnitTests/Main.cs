@@ -13,7 +13,11 @@ success &= RunTest(Delegates.Run);
 success &= RunTest(Generics.Run);
 success &= RunTest(Interfaces.Run);
 success &= RunTest(Threading.Run);
+<<<<<<< HEAD
 #endif
+=======
+success &= RunTest(Devirtualization.Run);
+>>>>>>> 442c137891821a567e9a05411f821dbf2aec5aa5
 
 return success ? 100 : 1;
 

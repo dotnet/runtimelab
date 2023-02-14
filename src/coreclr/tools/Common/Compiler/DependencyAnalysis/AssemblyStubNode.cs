@@ -68,6 +68,7 @@ namespace ILCompiler.DependencyAnalysis
                     arm64Emitter.Builder.AddSymbol(this);
                     return arm64Emitter.Builder.ToObjectData();
 
+<<<<<<< HEAD
 #if !READYTORUN
                 case TargetArchitecture.Wasm32:
                 case TargetArchitecture.Wasm64:
@@ -77,6 +78,14 @@ namespace ILCompiler.DependencyAnalysis
 
                     return wasmEmitter.Builder.ToObjectData();
 #endif
+=======
+                case TargetArchitecture.LoongArch64:
+                    LoongArch64.LoongArch64Emitter loongarch64Emitter = new LoongArch64.LoongArch64Emitter(factory, relocsOnly);
+                    EmitCode(factory, ref loongarch64Emitter, relocsOnly);
+                    loongarch64Emitter.Builder.RequireInitialAlignment(alignment);
+                    loongarch64Emitter.Builder.AddSymbol(this);
+                    return loongarch64Emitter.Builder.ToObjectData();
+>>>>>>> 442c137891821a567e9a05411f821dbf2aec5aa5
 
                 default:
                     throw new NotImplementedException();
@@ -87,8 +96,12 @@ namespace ILCompiler.DependencyAnalysis
         protected abstract void EmitCode(NodeFactory factory, ref X86.X86Emitter instructionEncoder, bool relocsOnly);
         protected abstract void EmitCode(NodeFactory factory, ref ARM.ARMEmitter instructionEncoder, bool relocsOnly);
         protected abstract void EmitCode(NodeFactory factory, ref ARM64.ARM64Emitter instructionEncoder, bool relocsOnly);
+<<<<<<< HEAD
 #if !READYTORUN
         protected abstract void EmitCode(NodeFactory factory, ref Wasm.WasmEmitter instructionEncoder, bool relocsOnly);
 #endif
+=======
+        protected abstract void EmitCode(NodeFactory factory, ref LoongArch64.LoongArch64Emitter instructionEncoder, bool relocsOnly);
+>>>>>>> 442c137891821a567e9a05411f821dbf2aec5aa5
     }
 }

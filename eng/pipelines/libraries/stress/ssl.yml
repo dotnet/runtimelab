@@ -12,6 +12,7 @@ schedules:
     include:
     - main
     - release/6.0
+    - release/7.0
 
 variables:
   - template: ../variables.yml
@@ -54,7 +55,11 @@ jobs:
   displayName: Docker NanoServer
   timeoutInMinutes: 120
   pool:
+<<<<<<< HEAD
     name: NetCore-Public
+=======
+    name: NetCore1ESPool-Public
+>>>>>>> 442c137891821a567e9a05411f821dbf2aec5aa5
     demands: ImageOverride -equals 1es-windows-2022-open
 
   steps:

@@ -8,7 +8,11 @@ using ILCompiler.DependencyAnalysis.ARM;
 using ILCompiler.DependencyAnalysis.X64;
 using ILCompiler.DependencyAnalysis.X86;
 using ILCompiler.DependencyAnalysis.ARM64;
+<<<<<<< HEAD
 using ILCompiler.DependencyAnalysis.Wasm;
+=======
+using ILCompiler.DependencyAnalysis.LoongArch64;
+>>>>>>> 442c137891821a567e9a05411f821dbf2aec5aa5
 
 namespace ILCompiler.DependencyAnalysis
 {
@@ -52,7 +56,11 @@ namespace ILCompiler.DependencyAnalysis
             throw new NotImplementedException();
         }
 
+<<<<<<< HEAD
         protected override void EmitCode(NodeFactory factory, ref WasmEmitter instructionEncoder, bool relocsOnly)
+=======
+        protected override void EmitCode(NodeFactory factory, ref LoongArch64Emitter instructionEncoder, bool relocsOnly)
+>>>>>>> 442c137891821a567e9a05411f821dbf2aec5aa5
         {
             throw new NotImplementedException();
         }

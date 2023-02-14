@@ -67,10 +67,24 @@ void Compiler::unwindGetFuncLocations(FuncInfoDsc*             func,
 
             if (fgFirstColdBlock != nullptr)
             {
-                // The hot section only goes up to the cold section
-                assert(fgFirstFuncletBB == nullptr);
-
-                *ppEndLoc = new (this, CMK_UnwindInfo) emitLocation(ehEmitCookie(fgFirstColdBlock));
+#ifdef DEBUG
+                // If fake-splitting, "trick" VM by pretending entire function is hot.
+                if (JitConfig.JitFakeProcedureSplitting())
+                {
+                    if (fgFirstFuncletBB != nullptr)
+                    {
+                        *ppEndLoc = new (this, CMK_UnwindInfo) emitLocation(ehEmitCookie(fgFirstFuncletBB));
+                    }
+                    else
+                    {
+                        *ppEndLoc = nullptr;
+                    }
+                }
+                else
+#endif // DEBUG
+                {
+                    *ppEndLoc = new (this, CMK_UnwindInfo) emitLocation(ehEmitCookie(fgFirstColdBlock));
+                }
             }
             else
             {
@@ -86,7 +100,6 @@ void Compiler::unwindGetFuncLocations(FuncInfoDsc*             func,
         }
         else
         {
-            assert(fgFirstFuncletBB == nullptr); // TODO-CQ: support hot/cold splitting in functions with EH
             assert(fgFirstColdBlock != nullptr); // There better be a cold section!
 
             *ppStartLoc = new (this, CMK_UnwindInfo) emitLocation(ehEmitCookie(fgFirstColdBlock));
@@ -95,8 +108,6 @@ void Compiler::unwindGetFuncLocations(FuncInfoDsc*             func,
     }
     else
     {
-        assert(getHotSectionData); // TODO-CQ: support funclets in cold section
-
         EHblkDsc* HBtab = ehGetDsc(func->funEHIndex);
 
         if (func->funKind == FUNC_FILTER)
@@ -301,7 +312,6 @@ void Compiler::unwindEmitFuncCFI(FuncInfoDsc* func, void* pHotCode, void* pColdC
     if (pColdCode != nullptr)
     {
         assert(fgFirstColdBlock != nullptr);
-        assert(func->funKind == FUNC_ROOT); // No splitting of funclets.
 
         unwindCodeBytes = 0;
         pUnwindBlock    = nullptr;
