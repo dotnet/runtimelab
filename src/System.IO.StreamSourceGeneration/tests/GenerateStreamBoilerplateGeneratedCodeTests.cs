@@ -2,7 +2,6 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.IO.StreamSourceGeneration.Tests.TestClasses;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
