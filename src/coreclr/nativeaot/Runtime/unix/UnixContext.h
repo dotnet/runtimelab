@@ -88,6 +88,8 @@ struct UNIX_CONTEXT
 
     uintptr_t GetIp() { return (uintptr_t)Rip(); }
     uintptr_t GetSp() { return (uintptr_t)Rsp(); }
+#elif defined(HOST_WASM)
+    // no registers/IP/SP for WASM
 #else
     PORTABILITY_ASSERT("UNIX_CONTEXT");
 #endif // TARGET_ARM

@@ -509,6 +509,7 @@ void StackFrameIterator::InternalInit(Thread * pThreadToWalk, PTR_PAL_LIMITED_CO
 #endif // TARGET_ARM
 }
 
+#if !defined(HOST_WASM)
 // Prepare to start a stack walk from the context listed in the supplied NATIVE_CONTEXT.
 // The supplied context can describe a location in managed code.
 void StackFrameIterator::InternalInit(Thread * pThreadToWalk, NATIVE_CONTEXT* pCtx, uint32_t dwFlags)
@@ -619,6 +620,7 @@ void StackFrameIterator::InternalInit(Thread * pThreadToWalk, NATIVE_CONTEXT* pC
 
 #undef PTR_TO_REG
 }
+#endif // !HOST_WASM
 
 PTR_VOID StackFrameIterator::HandleExCollide(PTR_ExInfo pExInfo)
 {

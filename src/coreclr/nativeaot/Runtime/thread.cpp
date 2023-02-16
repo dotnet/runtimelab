@@ -604,6 +604,7 @@ void Thread::Hijack()
     PalHijack(m_hPalThread, this);
 }
 
+#if !defined(HOST_WASM) // Wasm cannot get the instruction pointer
 void Thread::HijackCallback(NATIVE_CONTEXT* pThreadContext, void* pThreadToHijack)
 {
     // If we are no longer trying to suspend, no need to do anything.
@@ -674,6 +675,7 @@ void Thread::HijackCallback(NATIVE_CONTEXT* pThreadContext, void* pThreadToHijac
 
     pThread->HijackReturnAddress(pThreadContext, &RhpGcProbeHijack);
 }
+#endif // !HOST_WASM
 
 #ifdef FEATURE_GC_STRESS
 // This is a helper called from RhpHijackForGcStress which will place a GC Stress
@@ -750,6 +752,7 @@ void Thread::HijackReturnAddress(NATIVE_CONTEXT* pSuspendCtx, HijackFunc* pfnHij
     HijackReturnAddressWorker(&frameIterator, pfnHijackFunction);
 }
 
+#if !defined(HOST_WASM) // Wasm has no implementation for ReturnKindToTransitionFrameFlags
 void Thread::HijackReturnAddressWorker(StackFrameIterator* frameIterator, HijackFunc* pfnHijackFunction)
 {
     void** ppvRetAddrLocation;
@@ -783,6 +786,7 @@ void Thread::HijackReturnAddressWorker(StackFrameIterator* frameIterator, Hijack
             GetPalThreadIdForLogging(), frameIterator->GetRegisterSet()->GetIP());
     }
 }
+#endif // !HOST_WASM
 
 NATIVE_CONTEXT* Thread::GetInterruptedContext()
 {
