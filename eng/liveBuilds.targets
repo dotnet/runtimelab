@@ -201,15 +201,7 @@
         $(LibrariesNativeArtifactsPath)src\emcc-props.json;"
         NativeSubDirectory="src"
         IsNative="true" />
-<<<<<<< HEAD
       <LibrariesRuntimeFiles Condition="'$(TargetOS)' == 'Browser' and '$(RuntimeFlavor)' == 'Mono'"
-                             Include="$(LibrariesNativeArtifactsPath)src\cjs\*.js"
-                             NativeSubDirectory="src\cjs"
-                             IsNative="true" />
-      <LibrariesRuntimeFiles Condition="'$(TargetOS)' == 'Browser' and '$(RuntimeFlavor)' == 'Mono'"
-=======
-      <LibrariesRuntimeFiles Condition="'$(TargetOS)' == 'Browser'"
->>>>>>> 442c137891821a567e9a05411f821dbf2aec5aa5
                              Include="$(LibrariesNativeArtifactsPath)src\es6\*.js"
                              NativeSubDirectory="src\es6"
                              IsNative="true" />

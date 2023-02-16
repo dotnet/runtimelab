@@ -17,13 +17,12 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
 #include "allocacheck.h" // for alloca
 
-<<<<<<< HEAD
 #if TARGET_WASM
 #include "llvm.h"
 #define max(a, b) (((a) > (b)) ? (a) : (b))
 #define min(a, b) (((a) < (b)) ? (a) : (b))
 #endif // TARGET_WASM
-=======
+
 //-------------------------------------------------------------
 // fgMorphInit: prepare for running the morph phases
 //
@@ -41,6 +40,7 @@ PhaseStatus Compiler::fgMorphInit()
     madeChanges = true;
 #endif // !FEATURE_EH
 
+#ifndef TARGET_WASM
     // We could allow ESP frames. Just need to reserve space for
     // pushing EBP if the method becomes an EBP-frame after an edit.
     // Note that requiring a EBP Frame disallows double alignment.  Thus if we change this
@@ -56,6 +56,7 @@ PhaseStatus Compiler::fgMorphInit()
         //
         // compLocallocUsed            = true;
     }
+#endif // TARGET_WASM
 
     // Initialize the BlockSet epoch
     NewBasicBlockEpoch();
@@ -119,7 +120,6 @@ PhaseStatus Compiler::fgMorphInit()
 
     return madeChanges ? PhaseStatus::MODIFIED_EVERYTHING : PhaseStatus::MODIFIED_NOTHING;
 }
->>>>>>> 442c137891821a567e9a05411f821dbf2aec5aa5
 
 // Convert the given node into a call to the specified helper passing
 // the given argument list.
@@ -4481,48 +4481,8 @@ GenTree* Compiler::fgMorphIndexAddr(GenTreeIndexAddr* indexAddr)
 
     noway_assert(!varTypeIsStruct(elemTyp) || (elemStructType != NO_CLASS_HANDLE));
 
-<<<<<<< HEAD
-#ifdef FEATURE_SIMD
-    if (varTypeIsStruct(elemTyp) && structSizeMightRepresentSIMDType(elemSize))
-    {
-        // If this is a SIMD type, this is the point at which we lose the type information,
-        // so we need to set the correct type on the GT_IND.
-        // (We don't care about the base type here, so we only check, but don't retain, the return value).
-        unsigned simdElemSize = 0;
-        if (getBaseJitTypeAndSizeOfSIMDType(elemStructType, &simdElemSize) != CORINFO_TYPE_UNDEF)
-        {
-            assert(simdElemSize == elemSize);
-            elemTyp = getSIMDTypeForSize(elemSize);
-            // This is the new type of the node.
-            tree->gtType = elemTyp;
-            // Now set elemStructType to null so that we don't confuse value numbering.
-            elemStructType = NO_CLASS_HANDLE;
-        }
-    }
-#endif // FEATURE_SIMD
-
-    // Set up the array length's offset into lenOffs
-    // And    the first element's offset into elemOffs
-    ssize_t lenOffs;
-    uint8_t elemOffs;
-    if (tree->gtFlags & GTF_INX_STRING_LAYOUT)
-    {
-        lenOffs  = OFFSETOF__CORINFO_String__stringLen;
-        elemOffs = OFFSETOF__CORINFO_String__chars;
-        tree->gtFlags &= ~GTF_INX_STRING_LAYOUT; // Clear this flag as it is used for GTF_IND_VOLATILE
-    }
-    else
-    {
-        // We have a standard array
-        lenOffs  = OFFSETOF__CORINFO_Array__length;
-        elemOffs = OFFSETOF__CORINFO_Array__data;
-    }
-
 #if !defined(TARGET_WASM)
-    // In minopts, we expand GT_INDEX to GT_IND(GT_INDEX_ADDR) in order to minimize the size of the IR. As minopts
-=======
     // In minopts, we will not be expanding GT_INDEX_ADDR in order to minimize the size of the IR. As minopts
->>>>>>> 442c137891821a567e9a05411f821dbf2aec5aa5
     // compilation time is roughly proportional to the size of the IR, this helps keep compilation times down.
     // Furthermore, this representation typically saves on code size in minopts w.r.t. the complete expansion
     // performed when optimizing, as it does not require LclVar nodes (which are always stack loads/stores in
@@ -5879,12 +5839,8 @@ void Compiler::fgMorphCallInlineHelper(GenTreeCall* call, InlineResult* result, 
 //    caller({ double, double, double, double, double, double }) // 48 byte stack
 //    callee(int, int) -- 2 int registers
 //
-<<<<<<< HEAD
 // LLVM Wasm:
 //    Fast tail calls cannot be made if the return type is going to be lowered into the shadow stack
-
-=======
->>>>>>> 442c137891821a567e9a05411f821dbf2aec5aa5
 bool Compiler::fgCanFastTailCall(GenTreeCall* callee, const char** failReason)
 {
 #if FEATURE_FASTTAILCALL
@@ -6596,16 +6552,11 @@ GenTree* Compiler::fgMorphPotentialTailCall(GenTreeCall* call)
 
         // On x86 we have a faster mechanism than the general one which we use
         // in almost all cases. See fgCanTailCallViaJitHelper for more information.
-<<<<<<< HEAD
-#ifdef TARGET_X86
-        if (fgCanTailCallViaJitHelper())
-=======
         if (fgCanTailCallViaJitHelper(call))
->>>>>>> 442c137891821a567e9a05411f821dbf2aec5aa5
         {
             tailCallViaJitHelper = true;
         }
-#endif
+
         if (!tailCallViaJitHelper)
         {
             // Make sure we can get the helpers. We do this last as the runtime
@@ -17218,6 +17169,7 @@ GenTree* Compiler::fgMorphReduceAddOps(GenTree* tree)
     return morphed;
 }
 
+#ifndef TARGET_WASM
 //------------------------------------------------------------------------
 // Compiler::MorphMDArrayTempCache::TempList::GetTemp: return a local variable number to use as a temporary variable
 // in multi-dimensional array operation expansion.
@@ -17637,3 +17589,4 @@ PhaseStatus Compiler::fgMorphArrayOps()
 
     return changed ? PhaseStatus::MODIFIED_EVERYTHING : PhaseStatus::MODIFIED_NOTHING;
 }
+#endif // TARGET_WASM

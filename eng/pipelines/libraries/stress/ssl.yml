@@ -55,11 +55,7 @@ jobs:
   displayName: Docker NanoServer
   timeoutInMinutes: 120
   pool:
-<<<<<<< HEAD
     name: NetCore-Public
-=======
-    name: NetCore1ESPool-Public
->>>>>>> 442c137891821a567e9a05411f821dbf2aec5aa5
     demands: ImageOverride -equals 1es-windows-2022-open
 
   steps:

@@ -388,11 +388,7 @@ EXTERN_C NATIVEAOT_API void __cdecl RhpReleaseThunkPoolLock()
     g_ThunkPoolLock.Leave();
 }
 
-<<<<<<< HEAD
-EXTERN_C REDHAWK_API uint64_t __cdecl RhpGetTickCount64()
-=======
-EXTERN_C NATIVEAOT_API void __cdecl RhpGetTickCount64()
->>>>>>> 442c137891821a567e9a05411f821dbf2aec5aa5
+EXTERN_C NATIVEAOT_API uint64_t __cdecl RhpGetTickCount64()
 {
     return PalGetTickCount64();
 }

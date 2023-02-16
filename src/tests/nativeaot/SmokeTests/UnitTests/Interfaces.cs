@@ -40,13 +40,9 @@ public class Interfaces
         TestDefaultInterfaceVariance.Run();
 #endif
         TestVariantInterfaceOptimizations.Run();
-<<<<<<< HEAD
 #if !CODEGEN_WASM // TODO-LLVM: IL backend fails because it creates 2 instances of GrabValue<imt,__Canon> and the compare doesn't like that
-        TestSharedIntefaceMethods.Run();
-#endif
-=======
         TestSharedInterfaceMethods.Run();
->>>>>>> 442c137891821a567e9a05411f821dbf2aec5aa5
+#endif
         TestCovariantReturns.Run();
 #if !CODEGEN_WASM // TODO-LLVM: Fails at run time
         TestDynamicInterfaceCastable.Run();
@@ -54,9 +50,7 @@ public class Interfaces
 #if !CODEGEN_WASM // TODO-LLVM: fails because the scanner for LLVM adds a VirtualMethodUse node on the static method (which asserts)
         TestStaticInterfaceMethodsAnalysis.Run();
         TestStaticInterfaceMethods.Run();
-<<<<<<< HEAD
 #endif
-=======
         TestSimpleStaticDefaultInterfaceMethods.Run();
         TestSimpleDynamicStaticVirtualMethods.Run();
         TestGenericDynamicStaticVirtualMethods.Run();
@@ -66,7 +60,6 @@ public class Interfaces
         TestSimpleNonGeneric.Run();
         TestSimpleGeneric.Run();
 
->>>>>>> 442c137891821a567e9a05411f821dbf2aec5aa5
         return Pass;
     }
 

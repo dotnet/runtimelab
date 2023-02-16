@@ -62,9 +62,6 @@ public class SingleFileTestRunner : XunitTestFramework
 
         string xmlResultFileName = null;
         XunitFilters filters = new XunitFilters();
-<<<<<<< HEAD
-        filters.ExcludedTraits.Add("category", new List<string> { "failing", "OuterLoop" });
-=======
         // Quick hack wo much validation to get args that are passed (notrait, xml)
         Dictionary<string, List<string>> noTraits = new Dictionary<string, List<string>>();
         for (int i = 0; i < args.Length; i++)
@@ -89,7 +86,6 @@ public class SingleFileTestRunner : XunitTestFramework
             filters.ExcludedTraits.Add(kvp.Key, kvp.Value);
         }
 
->>>>>>> 442c137891821a567e9a05411f821dbf2aec5aa5
         var filteredTestCases = discoverySink.TestCases.Where(filters.Filter).ToList();
         var executor = xunitTestFx.CreateExecutor(asmName);
         executor.RunTests(filteredTestCases, resultsSink, TestFrameworkOptions.ForExecution(assemblyConfig));

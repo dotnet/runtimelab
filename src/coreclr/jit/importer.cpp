@@ -946,7 +946,7 @@ void Compiler::impPopCallArgs(CORINFO_SIG_INFO* sig, GenTreeCall* call)
         }
         else
         {
-            arg = NewCallArg::Primitive(argNode, corType);
+            arg = NewCallArg::Primitive(argNode, params[i - 1].CorType);
         }
 
         call->gtArgs.PushFront(this, arg);

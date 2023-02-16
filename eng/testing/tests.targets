@@ -9,18 +9,12 @@
     <RunScriptInputName Condition="'$(BuildTestsOnHelix)' == 'true' and '$(TargetsAppleMobile)' == 'true'">AppleHelixRunnerTemplate.sh</RunScriptInputName>
     <RunScriptInputName Condition="'$(BuildTestsOnHelix)' != 'true' and '$(TargetsAppleMobile)' == 'true'">AppleRunnerTemplate.sh</RunScriptInputName>
     <RunScriptInputName Condition="'$(TargetOS)' == 'Android'">AndroidRunnerTemplate.sh</RunScriptInputName>
-<<<<<<< HEAD
     <RunScriptInputName Condition="'$(TargetOS)' == 'Browser' and '$(OS)' != 'Windows_NT' and '$(BuildAOTTestsOnHelix)' == 'true' and '$(__TestBuildMode)' != 'nativeaot'">WasmRunnerAOTTemplate.sh</RunScriptInputName>
     <RunScriptInputName Condition="'$(TargetOS)' == 'Browser' and '$(OS)' != 'Windows_NT' and '$(BuildAOTTestsOnHelix)' != 'true' and '$(__TestBuildMode)' != 'nativeaot'">WasmRunnerTemplate.sh</RunScriptInputName>
     <RunScriptInputName Condition="'$(TargetOS)' == 'Browser' and '$(OS)' == 'Windows_NT' and '$(__TestBuildMode)' != 'nativeaot'">WasmRunnerTemplate.cmd</RunScriptInputName>
-=======
-    <RunScriptInputName Condition="'$(TargetOS)' == 'Browser' and '$(OS)' != 'Windows_NT' and '$(BuildAOTTestsOnHelix)' == 'true'">WasmRunnerAOTTemplate.sh</RunScriptInputName>
-    <RunScriptInputName Condition="'$(TargetOS)' == 'Browser' and '$(OS)' != 'Windows_NT' and '$(BuildAOTTestsOnHelix)' != 'true'">WasmRunnerTemplate.sh</RunScriptInputName>
-    <RunScriptInputName Condition="'$(TargetOS)' == 'Browser' and '$(OS)' == 'Windows_NT'">WasmRunnerTemplate.cmd</RunScriptInputName>
     <RunScriptInputName Condition="'$(TargetsLinuxBionic)' == 'true' and '$(RunScriptWindowsCmd)' != 'true'">BionicRunnerTemplate.sh</RunScriptInputName>
     <RunScriptInputName Condition="'$(TargetsLinuxBionic)' == 'true' and '$(RunScriptWindowsCmd)' == 'true'">BionicRunnerTemplate.cmd</RunScriptInputName>
     <InnerRunScriptInputName>BionicRunOnDevice.sh</InnerRunScriptInputName>
->>>>>>> 442c137891821a567e9a05411f821dbf2aec5aa5
   </PropertyGroup>
 
   <PropertyGroup>

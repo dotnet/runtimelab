@@ -37,7 +37,6 @@ The executable looks like a native executable, in the sense that it can be debug
 
 The compiler also has a mode where each managed assembly can be compiled into a separate object file. The object files are later linked into a single executable using the platform linker. This mode is mostly used in testing (it's faster to compile this way because we don't need to recompiling the same code from e.g. CoreLib). It's not a shipping configuration and has many problems (requires exactly matching compilation settings, forfeits many optimizations, and has trouble around cross-module generic virtual method implementations).
 
-<<<<<<< HEAD
 ## Building
 
 - [Install pre-requisites](../../README.md#build-requirements)
@@ -100,8 +99,6 @@ It is also possible to publish an ordinary console project for Wasm using packag
 ```
 You should now be able to publish the project for Wasm: `dotnet publish --self-contained -r browser-wasm /p:MSBuildEnableWorkloadResolver=false`. This produces `YourApp.html` and `YourApp.js` files under `bin\<Config>\<TFM>\browser-wasm\native`. The former can be opened in the browser, the latter - run via NodeJS.
 
-=======
->>>>>>> 442c137891821a567e9a05411f821dbf2aec5aa5
 ## Visual Studio Solutions
 
 The repository has a number of Visual Studio Solutions files (`*.sln`) that are useful for editing parts of the repository. Build the repo from command line first before building using the solution files. Remember to select the appropriate configuration that you built. By default, `build.cmd` builds Debug x64 and so `Debug` and `x64` must be selected in the solution build configuration drop downs.

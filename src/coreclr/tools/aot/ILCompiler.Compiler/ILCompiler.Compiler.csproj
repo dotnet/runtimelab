@@ -334,9 +334,7 @@
     <Compile Include="Compiler\CompilerTypeSystemContext.EnumMethods.cs" />
     <Compile Include="Compiler\CompilerTypeSystemContext.ValueTypeMethods.cs" />
     <Compile Include="Compiler\CompilerGeneratedInteropStubManager.cs" />
-<<<<<<< HEAD
     <Compile Include="Compiler\ConfigurableWasmImportPolicy.cs" />
-=======
     <Compile Include="Compiler\Dataflow\ArrayValue.cs" />
     <Compile Include="Compiler\Dataflow\AttributeDataFlow.cs" />
     <Compile Include="Compiler\Dataflow\CompilerGeneratedCallGraph.cs" />
@@ -344,7 +342,6 @@
     <Compile Include="Compiler\Dataflow\CompilerGeneratedState.cs" />
     <Compile Include="Compiler\Dataflow\DiagnosticContext.cs" />
     <Compile Include="Compiler\Dataflow\DiagnosticUtilities.cs" />
->>>>>>> 442c137891821a567e9a05411f821dbf2aec5aa5
     <Compile Include="Compiler\Dataflow\DynamicallyAccessedMembersBinder.cs" />
     <Compile Include="Compiler\Dataflow\EcmaExtensions.cs" />
     <Compile Include="Compiler\Dataflow\FieldReferenceValue.cs" />
@@ -396,15 +393,12 @@
     <Compile Include="Compiler\DependencyAnalysis\StructMarshallingDataNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\Target_ARM64\ARM64TentativeMethodNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\Target_ARM\ARMTentativeMethodNode.cs" />
-<<<<<<< HEAD
     <Compile Include="Compiler\DependencyAnalysis\Target_Wasm\WasmEmitter.cs" />
     <Compile Include="Compiler\DependencyAnalysis\Target_Wasm\WasmReadyToRunGenericHelperNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\Target_Wasm\WasmReadyToRunHelperNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\Target_Wasm\WasmTentativeMethodNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\Target_Wasm\WasmUnboxingStubNode.cs" />
-=======
     <Compile Include="Compiler\DependencyAnalysis\Target_LoongArch64\LoongArch64TentativeMethodNode.cs" />
->>>>>>> 442c137891821a567e9a05411f821dbf2aec5aa5
     <Compile Include="Compiler\DependencyAnalysis\Target_X64\X64TentativeMethodNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\Target_X86\X86TentativeMethodNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\TentativeInstanceMethodNode.cs" />

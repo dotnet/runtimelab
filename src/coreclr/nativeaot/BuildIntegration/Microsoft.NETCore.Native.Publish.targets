@@ -96,7 +96,6 @@
     <!-- replace apphost with binary we generated during native compilation -->
     <Delete Files="$(PublishDir)\$(TargetName)$(NativeBinaryExt)" />
     <Copy SourceFiles="$(NativeOutputPath)$(TargetName)$(NativeBinaryExt)" DestinationFolder="$(PublishDir)" />
-<<<<<<< HEAD
 
     <Delete Files="$(PublishDir)\$(TargetName).js" Condition="'$(TargetArchitecture)'=='wasm'"/>
     <Copy SourceFiles="$(NativeOutputPath)$(TargetName).js" DestinationFolder="$(PublishDir)" Condition="'$(TargetArchitecture)'=='wasm'"/>
@@ -105,8 +104,6 @@
     <Copy SourceFiles="$(NativeOutputPath)$(TargetName).wasm" DestinationFolder="$(PublishDir)" Condition="'$(TargetArchitecture)'=='wasm'"/>
 
   </Target>
-=======
->>>>>>> 442c137891821a567e9a05411f821dbf2aec5aa5
 
     <!-- dotnet CLI produces managed debug symbols, which we will delete and copy native symbols instead -->
     <Delete Files="$(PublishDir)\$(TargetName).pdb" />

@@ -819,10 +819,6 @@ bool Compiler::IsHfa(CORINFO_CLASS_HANDLE hClass)
 {
     return false; // TODO WASM
 }
-var_types Compiler::GetHfaType(GenTree* tree)
-{
-    return TYP_UNDEF; // TODO WASM
-}
 var_types Compiler::GetHfaType(CORINFO_CLASS_HANDLE hClass)
 {
     return TYP_UNDEF;
@@ -850,11 +846,6 @@ unsigned Compiler::GetHfaCount(CORINFO_CLASS_HANDLE hClass)
     //unsigned elemSize = Max((unsigned)1, (unsigned)EA_SIZE_IN_BYTES(emitActualTypeSize(hfaType)));
     //return classSize / elemSize;
     return 1;
-}
-
-unsigned Compiler::GetHfaCount(GenTree* tree)
-{
-    return GetHfaCount(gtGetStructHandle(tree));
 }
 
 #endif //TARGET_WASM
@@ -1945,14 +1936,8 @@ void Compiler::compInit(ArenaAllocator*       pAlloc,
 
 #ifndef TARGET_WASM
         new (&genIPmappings, jitstd::placement_t()) jitstd::list<IPmappingDsc>(getAllocator(CMK_DebugInfo));
-<<<<<<< HEAD
-#ifdef DEBUG
-        new (&genPreciseIPmappings, jitstd::placement_t()) jitstd::list<PreciseIPMapping>(getAllocator(CMK_DebugOnly));
-#endif
-#endif // !TARGET_WASM
-=======
         new (&genRichIPmappings, jitstd::placement_t()) jitstd::list<RichIPMapping>(getAllocator(CMK_DebugOnly));
->>>>>>> 442c137891821a567e9a05411f821dbf2aec5aa5
+#endif // !TARGET_WASM
 
         lvMemoryPerSsaData = SsaDefArray<SsaMemDef>();
 
@@ -4510,37 +4495,7 @@ void Compiler::compCompile(void** methodCodePtr, uint32_t* methodCodeSize, JitFl
         return;
     }
 
-<<<<<<< HEAD
-#if !FEATURE_EH
-    // If we aren't yet supporting EH in a compiler bring-up, remove as many EH handlers as possible, so
-    // we can pass tests that contain try/catch EH, but don't actually throw any exceptions.
-    fgRemoveEH();
-#endif // !FEATURE_EH
-
-    // We could allow ESP frames. Just need to reserve space for
-    // pushing EBP if the method becomes an EBP-frame after an edit.
-    // Note that requiring a EBP Frame disallows double alignment.  Thus if we change this
-    // we either have to disallow double alignment for E&C some other way or handle it in EETwain.
-
-#ifndef TARGET_WASM
-    if (opts.compDbgEnC)
-    {
-        codeGen->setFramePointerRequired(true);
-
-        // We don't care about localloc right now. If we do support it,
-        // EECodeManager::FixContextForEnC() needs to handle it smartly
-        // in case the localloc was actually executed.
-        //
-        // compLocallocUsed            = true;
-    }
-#endif // !TARGET_WASM
-
-    // Start phases that are broadly called morphing, and includes
-    // global morph, as well as other phases that massage the trees so
-    // that we can generate code out of them.
-=======
     // Prepare for the morph phases
->>>>>>> 442c137891821a567e9a05411f821dbf2aec5aa5
     //
     DoPhase(this, PHASE_MORPH_INIT, &Compiler::fgMorphInit);
 
@@ -4803,11 +4758,13 @@ void Compiler::compCompile(void** methodCodePtr, uint32_t* methodCodeSize, JitFl
     fgDebugCheckLinks();
 #endif
 
+#ifndef TARGET_WASM
     // Morph multi-dimensional array operations.
     // (Consider deferring all array operation morphing, including single-dimensional array ops,
     // from global morph to here, so cloning doesn't have to deal with morphed forms.)
     //
     DoPhase(this, PHASE_MORPH_MDARR, &Compiler::fgMorphArrayOps);
+#endif // TARGET_WASM
 
     // Create the variable table (and compute variable ref counts)
     //

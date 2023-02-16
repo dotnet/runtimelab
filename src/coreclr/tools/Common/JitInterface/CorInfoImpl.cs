@@ -52,12 +52,9 @@ namespace Internal.JitInterface
             AMD64 = 0x8664,
             ARM = 0x01c4,
             ARM64 = 0xaa64,
-<<<<<<< HEAD
             WASM32 = 0xffff, // matches llvm.h - TODO better to just #if out this check in compiler.cpp?
             WASM64 = 0xfffe,
-=======
             LoongArch64 = 0x6264,
->>>>>>> 442c137891821a567e9a05411f821dbf2aec5aa5
         }
 
         internal const string JitLibrary = "clrjitilc";
@@ -3559,12 +3556,7 @@ namespace Internal.JitInterface
                     }
                 }
                 default:
-<<<<<<< HEAD
-                    Debug.Fail("Invalid RelocType: " + fRelocType);
-                    return 0;
-=======
                     return (RelocType)fRelocType;
->>>>>>> 442c137891821a567e9a05411f821dbf2aec5aa5
             }
         }
 
@@ -3660,15 +3652,12 @@ namespace Internal.JitInterface
                     return (uint)ImageFileMachine.ARM;
                 case TargetArchitecture.ARM64:
                     return (uint)ImageFileMachine.ARM64;
-<<<<<<< HEAD
                 case TargetArchitecture.Wasm32:
                     return (uint)ImageFileMachine.WASM32;
                 case TargetArchitecture.Wasm64:
                     return (uint)ImageFileMachine.WASM64;
-=======
                 case TargetArchitecture.LoongArch64:
                     return (uint)ImageFileMachine.LoongArch64;
->>>>>>> 442c137891821a567e9a05411f821dbf2aec5aa5
                 default:
                     throw new NotImplementedException("Expected target architecture is not supported");
             }

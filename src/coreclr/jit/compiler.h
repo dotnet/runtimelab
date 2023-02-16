@@ -3586,9 +3586,7 @@ public:
                              bool                    isExplicitTailCall,
                              IL_OFFSET               ilOffset = BAD_IL_OFFSET);
 
-<<<<<<< HEAD
     void impResolveToken(const BYTE* addr, CORINFO_RESOLVED_TOKEN* pResolvedToken, CorInfoTokenKind kind);
-=======
     bool impConsiderCallProbe(GenTreeCall* call, IL_OFFSET ilOffset);
 
     enum class GDVProbeType
@@ -3600,7 +3598,6 @@ public:
     };
 
     GDVProbeType compClassifyGDVProbeType(GenTreeCall* call);
->>>>>>> 442c137891821a567e9a05411f821dbf2aec5aa5
 
     //=========================================================================
     //                          PROTECTED
@@ -4579,9 +4576,7 @@ public:
 
     bool fgMorphBlockStmt(BasicBlock* block, Statement* stmt DEBUGARG(const char* msg));
 
-<<<<<<< HEAD
 #ifndef TARGET_WASM
-=======
     //------------------------------------------------------------------------------------------------------------
     // MorphMDArrayTempCache: a simple cache of compiler temporaries in the local variable table, used to minimize
     // the number of locals allocated when doing early multi-dimensional array operation expansion. Two types of
@@ -4644,7 +4639,6 @@ public:
     bool fgMorphArrayOpsStmt(MorphMDArrayTempCache* pTempCache, BasicBlock* block, Statement* stmt);
     PhaseStatus fgMorphArrayOps();
 
->>>>>>> 442c137891821a567e9a05411f821dbf2aec5aa5
     void fgSetOptions();
 #endif // !TARGET_WASM
 
@@ -5756,14 +5750,8 @@ private:
 #endif
     bool     fgCheckStmtAfterTailCall();
     GenTree* fgMorphTailCallViaHelpers(GenTreeCall* call, CORINFO_TAILCALL_HELPERS& help);
-<<<<<<< HEAD
-    bool fgCanTailCallViaJitHelper();
-#ifdef TARGET_X86
-=======
     bool fgCanTailCallViaJitHelper(GenTreeCall* call);
->>>>>>> 442c137891821a567e9a05411f821dbf2aec5aa5
     void fgMorphTailCallViaJitHelper(GenTreeCall* call);
-#endif
     GenTree* fgCreateCallDispatcherAndGetResult(GenTreeCall*          origCall,
                                                 CORINFO_METHOD_HANDLE callTargetStubHnd,
                                                 CORINFO_METHOD_HANDLE dispatcherHnd);
@@ -7888,18 +7876,10 @@ public:
     CodeGenInterface* codeGen;
 
     // Record the instr offset mapping to the generated code
-<<<<<<< HEAD
-    jitstd::list<IPmappingDsc> genIPmappings;
-
-#ifdef DEBUG
-    jitstd::list<PreciseIPMapping> genPreciseIPmappings;
-#endif
-#endif // !TARGET_WASM
-=======
 
     jitstd::list<IPmappingDsc>  genIPmappings;
     jitstd::list<RichIPMapping> genRichIPmappings;
->>>>>>> 442c137891821a567e9a05411f821dbf2aec5aa5
+#endif // !TARGET_WASM
 
     // Managed RetVal - A side hash table meant to record the mapping from a
     // GT_CALL node to its debug info.  This info is used to emit sequence points

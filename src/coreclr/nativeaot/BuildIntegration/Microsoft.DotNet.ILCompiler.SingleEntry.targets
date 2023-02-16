@@ -31,13 +31,9 @@
         $([System.Environment]::GetEnvironmentVariable('PROCESSOR_ARCHITECTURE', EnvironmentVariableTarget.Machine)) == 'ARM64'">arm64</OSHostArch>
 
     <IlcHostArch Condition="'$(IlcHostArch)' == ''">$(OSHostArch)</IlcHostArch>
-<<<<<<< HEAD:src/coreclr/nativeaot/BuildIntegration/Microsoft.DotNet.ILCompiler.targets
-    <IlcHostPackageName>runtime.$(HostOSIdentifier)-$(IlcHostArch).Microsoft.DotNet.ILCompiler</IlcHostPackageName>
-    <IlcHostPackageName Condition="'$(TargetArchitecture)' == 'wasm'">$(IlcHostPackageName).LLVM</IlcHostPackageName>
-=======
     <IlcHostPackageName>runtime.$(OSIdentifier)-$(IlcHostArch).Microsoft.DotNet.ILCompiler</IlcHostPackageName>
+    <IlcHostPackageName Condition="'$(TargetArchitecture)' == 'wasm'">$(IlcHostPackageName).LLVM</IlcHostPackageName>
     
->>>>>>> 442c137891821a567e9a05411f821dbf2aec5aa5:src/coreclr/nativeaot/BuildIntegration/Microsoft.DotNet.ILCompiler.SingleEntry.targets
     <IlcCalledViaPackage>true</IlcCalledViaPackage>
   </PropertyGroup>
 

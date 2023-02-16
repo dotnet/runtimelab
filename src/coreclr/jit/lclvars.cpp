@@ -4699,18 +4699,9 @@ PhaseStatus Compiler::lvaMarkLocalVars()
 
     assert(PreciseRefCountsRequired());
 
-<<<<<<< HEAD
-    // NativeAOT-LLVM: take upstream when merging.
-    if (!compRationalIRForm)
-    {
-        // Note: optAddCopies() depends on lvaRefBlks, which is set in lvaMarkLocalVars(BasicBlock*), called above.
-        optAddCopies();
-    }
-=======
     // This phase may add new locals.
     //
     return (lvaCount != lvaCountOrig) ? PhaseStatus::MODIFIED_EVERYTHING : PhaseStatus::MODIFIED_NOTHING;
->>>>>>> 442c137891821a567e9a05411f821dbf2aec5aa5
 }
 
 //------------------------------------------------------------------------

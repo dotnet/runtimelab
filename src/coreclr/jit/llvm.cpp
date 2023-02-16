@@ -576,6 +576,7 @@ bool Llvm::helperCallHasManagedCallingConvention(CorInfoHelpFunc helperFunc) con
         { FUNC(CORINFO_HELP_VIRTUAL_FUNC_PTR) },
         { FUNC(CORINFO_HELP_READYTORUN_NEW) },
         { FUNC(CORINFO_HELP_READYTORUN_NEWARR_1) },
+        { FUNC(CORINFO_HELP_THROW_AMBIGUOUS_RESOLUTION_EXCEPTION) },
 
         // NYI in NativeAOT.
         { FUNC(CORINFO_HELP_READYTORUN_ISINSTANCEOF) },
@@ -616,6 +617,9 @@ bool Llvm::helperCallHasManagedCallingConvention(CorInfoHelpFunc helperFunc) con
         { FUNC(CORINFO_HELP_THROW_NOT_IMPLEMENTED) CORINFO_TYPE_VOID, { }, HFIF_SS_ARG },
         { FUNC(CORINFO_HELP_THROW_PLATFORM_NOT_SUPPORTED) CORINFO_TYPE_VOID, { }, HFIF_SS_ARG },
 
+        // TODO-LLVM: jithelpers.cpp, this is a bit of a guess...
+        { FUNC(CORINFO_HELP_ISINSTANCEOF_EXCEPTION) CORINFO_TYPE_BOOL, { CORINFO_TYPE_RT_HANDLE, CORINFO_TYPE_CLASS} },
+
         // Dead code.
         { FUNC(CORINFO_HELP_THROW_TYPE_NOT_SUPPORTED) },
 
@@ -637,7 +641,11 @@ bool Llvm::helperCallHasManagedCallingConvention(CorInfoHelpFunc helperFunc) con
         { FUNC(CORINFO_HELP_CLASSPROFILE64) },
         { FUNC(CORINFO_HELP_PARTIAL_COMPILATION_PATCHPOINT) },
         { FUNC(CORINFO_HELP_VALIDATE_INDIRECT_CALL) },
-        { FUNC(CORINFO_HELP_DISPATCH_INDIRECT_CALL) }
+        { FUNC(CORINFO_HELP_DISPATCH_INDIRECT_CALL) },
+        { FUNC(CORINFO_HELP_DELEGATEPROFILE32) },
+        { FUNC(CORINFO_HELP_DELEGATEPROFILE64) },
+        { FUNC(CORINFO_HELP_VTABLEPROFILE32) },
+        { FUNC(CORINFO_HELP_VTABLEPROFILE64) }
     };
     // clang-format on
 

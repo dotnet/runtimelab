@@ -114,11 +114,11 @@ namespace ILCompiler
             {
                 return SimdVectorLength.None;
             }
-<<<<<<< HEAD
-            else if (_targetArchitecture == TargetArchitecture.Wasm32)
-=======
+            else if (_targetArchitecture == TargetArchitecture.Wasm32 || _targetArchitecture == TargetArchitecture.Wasm64)
+            {
+                return SimdVectorLength.None;
+            }
             else if (_targetArchitecture == TargetArchitecture.LoongArch64)
->>>>>>> 442c137891821a567e9a05411f821dbf2aec5aa5
             {
                 return SimdVectorLength.None;
             }

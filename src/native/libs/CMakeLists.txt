@@ -154,13 +154,9 @@ if (CLR_CMAKE_TARGET_UNIX OR CLR_CMAKE_TARGET_BROWSER)
         add_compile_options(-Wno-typedef-redefinition)
         add_compile_options(-Wno-c11-extensions)
         add_compile_options(-Wno-thread-safety-analysis)
-<<<<<<< HEAD
-        # TODO-LLVM: fix the reasons for these 2 warning failures
         add_compile_options(-Wno-strict-prototypes)
+        # TODO-LLVM: fix the reasons for this warning failure
         add_compile_options(-Wno-unused-but-set-variable)
-=======
-        add_compile_options(-Wno-strict-prototypes)
->>>>>>> 442c137891821a567e9a05411f821dbf2aec5aa5
     endif ()
 
     add_subdirectory(System.Native)

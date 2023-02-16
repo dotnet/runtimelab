@@ -2964,8 +2964,6 @@ AGAIN:
                         unreached();
                     }
                 }
-
-                add = genTreeHashAdd(ulo32(add), vecCon->GetSimdBaseType());
                 break;
             }
 
@@ -4446,17 +4444,13 @@ bool Compiler::gtMarkAddrMode(GenTree* addr, int* pCostEx, int* pCostSz, var_typ
         // We can form a complex addressing mode, so mark each of the interior
         // nodes with GTF_ADDRMODE_NO_CSE and calculate a more accurate cost.
         addr->gtFlags |= GTF_ADDRMODE_NO_CSE;
-<<<<<<< HEAD
-#if defined(TARGET_XARCH) || defined(TARGET_WASM) // TODO Wasm
-=======
 
         int originalAddrCostEx = addr->GetCostEx();
         int originalAddrCostSz = addr->GetCostSz();
         int addrModeCostEx     = 0;
         int addrModeCostSz     = 0;
 
-#ifdef TARGET_XARCH
->>>>>>> 442c137891821a567e9a05411f821dbf2aec5aa5
+#if defined(TARGET_XARCH) || defined(TARGET_WASM) // TODO Wasm
         // addrmodeCount is the count of items that we used to form
         // an addressing mode.  The maximum value is 4 when we have
         // all of these:   { base, idx, cns, mul }
@@ -5100,16 +5094,8 @@ unsigned Compiler::gtSetEvalOrder(GenTree* tree)
             case GT_CNS_DBL:
             {
                 level = 0;
-<<<<<<< HEAD
 #if defined(TARGET_XARCH) || defined(TARGET_WASM)
-                /* We use fldz and fld1 to load 0.0 and 1.0, but all other  */
-                /* floating point constants are loaded using an indirection */
-                if ((*((__int64*)&(tree->AsDblCon()->gtDconVal)) == 0) ||
-                    (*((__int64*)&(tree->AsDblCon()->gtDconVal)) == I64(0x3ff0000000000000)))
-=======
-#if defined(TARGET_XARCH)
                 if (tree->IsFloatPositiveZero() || tree->IsFloatAllBitsSet())
->>>>>>> 442c137891821a567e9a05411f821dbf2aec5aa5
                 {
                     // We generate `xorp* tgtReg, tgtReg` for PositiveZero and
                     // `pcmpeqd tgtReg, tgtReg` for AllBitsSet which is 3-5 bytes
@@ -17830,12 +17816,6 @@ bool GenTree::IsFieldAddr(Compiler* comp, GenTree** pBaseAddr, FieldSeq** pFldSe
         {
             return false;
         }
-<<<<<<< HEAD
-
-        // TODO-LLVM: delete when https://github.com/dotnet/runtime/pull/71455 is merged.
-        // assert(!baseAddr->TypeIs(TYP_REF) || !comp->GetZeroOffsetFieldMap()->Lookup(baseAddr));
-=======
->>>>>>> 442c137891821a567e9a05411f821dbf2aec5aa5
     }
     else if (IsIconHandle(GTF_ICON_STATIC_HDL))
     {

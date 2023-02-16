@@ -1988,11 +1988,7 @@ void Compiler::fgComputeLifeLIR(VARSET_TP& life, BasicBlock* block, VARSET_VALAR
                                 {
                                     Lowering::TransformUnusedIndirection(data->AsIndir(), this, block);
                                 }
-<<<<<<< HEAD
 #endif // TARGET_WASM
-                                fgRemoveDeadStoreLIR(store, block);
-=======
->>>>>>> 442c137891821a567e9a05411f821dbf2aec5aa5
                             }
                         }
                     }
@@ -2019,10 +2015,12 @@ void Compiler::fgComputeLifeLIR(VARSET_TP& life, BasicBlock* block, VARSET_VALAR
                     GenTree* data = lclVarNode->Data();
                     data->SetUnusedValue();
 
+#ifndef TARGET_WASM
                     if (data->isIndir())
                     {
                         Lowering::TransformUnusedIndirection(data->AsIndir(), this, block);
                     }
+#endif // TARGET_WASM
                 }
                 break;
             }
@@ -2186,15 +2184,10 @@ bool Compiler::fgTryRemoveNonLocal(GenTree* node, LIR::Range* blockRange)
 //
 bool Compiler::fgTryRemoveDeadStoreLIR(GenTree* store, GenTreeLclVarCommon* lclNode, BasicBlock* block)
 {
-<<<<<<< HEAD
     // TODO-LLVM: we should not need this for correctness, investigate removing.
     if (!PreciseRefCountsRequired())
-        return;
+        return false;
 
-    LIR::Range& blockRange = LIR::AsRange(block);
-    blockRange.Remove(store);
-=======
->>>>>>> 442c137891821a567e9a05411f821dbf2aec5aa5
     assert(!opts.MinOpts());
 
     // We cannot remove stores to (tracked) TYP_STRUCT locals with GC pointers marked as "explicit init",

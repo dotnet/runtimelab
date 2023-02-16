@@ -110,69 +110,6 @@ void Phase::PostPhase(PhaseStatus status)
     const bool doPostPhaseDumps  = (comp->activePhaseDumps == PhaseDumps::DUMP_ALL);
 
     const char* const statusMessage = madeChanges ? "" : " [no changes]";
-<<<<<<< HEAD
-    bool              doPostPhase   = false;
-
-    // To help in the incremental conversion of jit activity to phases
-    // without greatly increasing dump size or checked jit time, we
-    // currently allow the phases that do post-phase checks and
-    // dumps via the phase object, and not via explicit calls from
-    // the various methods in the phase.
-    //
-    // As we remove the explicit checks and dumps from each phase, we
-    // will add to this list; once all phases are updated, we can
-    // remove the list entirely.
-    //
-    // This list includes custom derivations from the Phase class as
-    // well as the new-style phases that have been updated to return
-    // PhaseStatus from their DoPhase methods.
-    //
-    // clang-format off
-
-    static Phases s_allowlist[] = {
-        PHASE_INCPROFILE,
-        PHASE_IBCPREP,
-        PHASE_IMPORTATION,
-        PHASE_PATCHPOINTS,
-        PHASE_IBCINSTR,
-        PHASE_INDXCALL,
-        PHASE_MORPH_INLINE,
-        PHASE_ALLOCATE_OBJECTS,
-        PHASE_EMPTY_TRY,
-        PHASE_EMPTY_FINALLY,
-        PHASE_MERGE_FINALLY_CHAINS,
-        PHASE_CLONE_FINALLY,
-        PHASE_MERGE_THROWS,
-        PHASE_FWD_SUB,
-        PHASE_MORPH_GLOBAL,
-        PHASE_INVERT_LOOPS,
-        PHASE_OPTIMIZE_LAYOUT,
-        PHASE_FIND_LOOPS,
-        PHASE_BUILD_SSA,
-        PHASE_INSERT_GC_POLLS,
-        PHASE_RATIONALIZE,
-        PHASE_LOWERING,
-        PHASE_STACK_LEVEL_SETTER,
-#if TARGET_WASM
-        PHASE_LOWER_LLVM
-#endif
-    };
-
-    // clang-format on
-
-    if (madeChanges)
-    {
-        for (size_t i = 0; i < sizeof(s_allowlist) / sizeof(Phases); i++)
-        {
-            if (m_phase == s_allowlist[i])
-            {
-                doPostPhase = true;
-                break;
-            }
-        }
-    }
-=======
->>>>>>> 442c137891821a567e9a05411f821dbf2aec5aa5
 
     if (VERBOSE)
     {

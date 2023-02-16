@@ -79,15 +79,13 @@ jobs:
         - name: _osParameter
           value: /p:RuntimeOS=linux-musl /p:OutputRid=linux-musl-${{ parameters.archType }}
 
-<<<<<<< HEAD
       - ${{ if and(eq(parameters.archType, 'wasm'), eq(parameters.runtimeFlavor, 'coreclr')) }}:
         - name: _osParameter
           value: -os Browser
-=======
+
       - ${{ if and(eq(parameters.osGroup, 'Linux'), eq(parameters.osSubGroup, '_bionic')) }}:
         - name: _osParameter
           value: /p:RuntimeOS=linux-bionic /p:OutputRid=linux-bionic-${{ parameters.archType }}
->>>>>>> 442c137891821a567e9a05411f821dbf2aec5aa5
 
       # Do not rename as it clashes with MSBuild property in libraries/build-native.proj
       - name: _crossBuildPropertyArg

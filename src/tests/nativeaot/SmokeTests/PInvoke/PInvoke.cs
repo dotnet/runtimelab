@@ -355,11 +355,8 @@ namespace PInvokeTests
             TestForwardDelegateWithUnmanagedCallersOnly();
             // TODO-LLVM: https://github.com/dotnet/runtimelab/issues/2190
             TestDecimal();
-<<<<<<< HEAD
 #endif
-=======
             TestDifferentModopts();
->>>>>>> 442c137891821a567e9a05411f821dbf2aec5aa5
 
             return 100;
         }
@@ -851,12 +848,8 @@ namespace PInvokeTests
             ThrowIfNotEquals(true, StructTest(ss), "Struct marshalling scenario1 failed.");
 
             StructTest_ByRef(ref ss);
-<<<<<<< HEAD
-            ThrowIfNotEquals(true,  ss.f1 == 2 && ss.f2 == 11.0 && ss.f3.Equals("Ifmmp"), "Struct marshalling scenario2 failed.");
-#endif
-=======
             ThrowIfNotEquals(true,  ss.f1 == 2 && ss.f2 == 11.0 && ss.f3.Equals("Ifmmp") && ss.f4.Equals("Ipmb"), "Struct marshalling scenario2 failed.");
->>>>>>> 442c137891821a567e9a05411f821dbf2aec5aa5
+#endif
 
             SequentialStruct ss2 = new SequentialStruct();
             StructTest_ByOut(out ss2);
