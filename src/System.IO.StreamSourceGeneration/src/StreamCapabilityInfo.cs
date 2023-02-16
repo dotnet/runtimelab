@@ -1,49 +1,50 @@
 ﻿using System.Diagnostics;
 
-namespace System.IO.StreamSourceGeneration;
-
-internal class StreamCapabilityInfo
+namespace System.IO.StreamSourceGeneration
 {
-    internal string? SyncPreferredMemberName { get; set; }
-    internal string? AsyncPreferredMemberName { get; set; }
-
-    public StreamCapabilityInfo(string preferredMemberName, bool isAsync)
+    internal class StreamCapabilityInfo
     {
-        if (isAsync)
-        {
-            AsyncPreferredMemberName = preferredMemberName;
-        }
-        else
-        {
-            SyncPreferredMemberName = preferredMemberName;
-        }
-    }
+        internal string? SyncPreferredMemberName { get; set; }
+        internal string? AsyncPreferredMemberName { get; set; }
 
-    internal void SetPreferredMemberName(string memberName, bool isAsync, BoilerplateCandidateInfo candidateInfo)
-    {
-        if (isAsync)
+        public StreamCapabilityInfo(string preferredMemberName, bool isAsync)
         {
-            if (AsyncPreferredMemberName == null || candidateInfo.HasPriority)
+            if (isAsync)
             {
-                AsyncPreferredMemberName = memberName;
+                AsyncPreferredMemberName = preferredMemberName;
+            }
+            else
+            {
+                SyncPreferredMemberName = preferredMemberName;
             }
         }
-        else
+
+        internal void SetPreferredMemberName(string memberName, bool isAsync, BoilerplateCandidateInfo candidateInfo)
         {
-            if (SyncPreferredMemberName == null || candidateInfo.HasPriority)
+            if (isAsync)
             {
-                SyncPreferredMemberName = memberName;
+                if (AsyncPreferredMemberName == null || candidateInfo.HasPriority)
+                {
+                    AsyncPreferredMemberName = memberName;
+                }
+            }
+            else
+            {
+                if (SyncPreferredMemberName == null || candidateInfo.HasPriority)
+                {
+                    SyncPreferredMemberName = memberName;
+                }
             }
         }
-    }
 
-    internal string GetPreferredMemberName(bool isAsync)
-    {
-        string? retVal = isAsync ?
-            AsyncPreferredMemberName ?? SyncPreferredMemberName :
-            SyncPreferredMemberName ?? AsyncPreferredMemberName;
+        internal string GetPreferredMemberName(bool isAsync)
+        {
+            string? retVal = isAsync ?
+                AsyncPreferredMemberName ?? SyncPreferredMemberName :
+                SyncPreferredMemberName ?? AsyncPreferredMemberName;
 
-        Debug.Assert(retVal != null, "Both properties can't be null.");
-        return retVal!;
+            Debug.Assert(retVal != null, "Both properties can't be null.");
+            return retVal!;
+        }
     }
 }

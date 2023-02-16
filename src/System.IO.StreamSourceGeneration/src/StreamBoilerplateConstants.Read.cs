@@ -1,8 +1,8 @@
-﻿namespace System.IO.StreamSourceGeneration;
-
-internal static partial class StreamBoilerplateConstants
+﻿namespace System.IO.StreamSourceGeneration
 {
-    internal const string ReadByteTemplate = @"
+    internal static partial class StreamBoilerplateConstants
+    {
+        internal const string ReadByteTemplate = @"
         public override int Read(byte[] buffer, int offset, int count)
         {{
             ValidateBufferArguments(buffer, offset, count);
@@ -10,23 +10,23 @@ internal static partial class StreamBoilerplateConstants
             {0}
         }}
 ";
-    internal const string ReadByteCallsToReadSpan = @"
+        internal const string ReadByteCallsToReadSpan = @"
             return Read(buffer.AsSpan(offset, count));";
-    internal const string ReadByteCallsToReadAsyncByte = @"
+        internal const string ReadByteCallsToReadAsyncByte = @"
             return ReadAsync(buffer, offset, count).GetAwaiter().GetResult();";
-    internal const string ReadByteCallsToReadAsyncMemory = @"
+        internal const string ReadByteCallsToReadAsyncMemory = @"
             return ReadAsync(buffer.AsMemory(offset, count), CancellationToken.None).GetAwaiter().GetResult();";
 
-    internal const string ReadSpanTemplate = @"
+        internal const string ReadSpanTemplate = @"
         public override int Read(Span<byte> buffer)
         {{
             EnsureCanRead();
             {0}
         }}
 ";
-    internal const string ReadSpanCallsToReadByte = @"
+        internal const string ReadSpanCallsToReadByte = @"
             return base.Read(buffer);";
-    internal const string ReadSpanCallsToReadAsyncByte = @"
+        internal const string ReadSpanCallsToReadAsyncByte = @"
             byte[] sharedBuffer = ArrayPool<byte>.Shared.Rent(buffer.Length);
             try
             {
@@ -39,7 +39,7 @@ internal static partial class StreamBoilerplateConstants
                 ArrayPool<byte>.Shared.Return(sharedBuffer);
             }";
 
-    internal const string ReadSpanCallsToReadAsyncMemory = @"
+        internal const string ReadSpanCallsToReadAsyncMemory = @"
             byte[] sharedBuffer = ArrayPool<byte>.Shared.Rent(buffer.Length);
             try
             {
@@ -52,7 +52,7 @@ internal static partial class StreamBoilerplateConstants
                 ArrayPool<byte>.Shared.Return(sharedBuffer);
             }";
 
-    internal const string ReadAsyncByteTemplate = @"
+        internal const string ReadAsyncByteTemplate = @"
         public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
         {{
             ValidateBufferArguments(buffer, offset, count);
@@ -60,23 +60,23 @@ internal static partial class StreamBoilerplateConstants
             {0}
         }}
 ";
-    // TODO: find out the best implementations for each case.
-    internal const string ReadAsyncByteCallsToReadByte = @"
+        // TODO: find out the best implementations for each case.
+        internal const string ReadAsyncByteCallsToReadByte = @"
             return Task.Run(() => Read(buffer, offset, count), cancellationToken);";
-    internal const string ReadAsyncByteCallsToReadSpan = @"
+        internal const string ReadAsyncByteCallsToReadSpan = @"
             return Task.Run(() => Read(buffer.AsSpan(offset, count)), cancellationToken);";
-    internal const string ReadAsyncByteCallsToReadAsyncMemory = @"
+        internal const string ReadAsyncByteCallsToReadAsyncMemory = @"
             return ReadAsync(buffer.AsMemory(offset, count), cancellationToken).AsTask();";
 
-    internal const string ReadAsyncMemoryTemplate = @"
+        internal const string ReadAsyncMemoryTemplate = @"
         public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
         {{
             EnsureCanRead();
             {0}
         }}
 ";
-    // TODO: find out the best implementations for each case.
-    internal const string ReadAsyncMemoryCallsToReadByte = @"
+        // TODO: find out the best implementations for each case.
+        internal const string ReadAsyncMemoryCallsToReadByte = @"
             if (MemoryMarshal.TryGetArray(buffer, out ArraySegment<byte> array))
             {
                 return new ValueTask<int>(Task.Run(() => Read(array.Array!, array.Offset, array.Count), cancellationToken));
@@ -90,8 +90,9 @@ internal static partial class StreamBoilerplateConstants
                 return bytesRead;
             }, cancellationToken));";
 
-    internal const string ReadAsyncMemoryCallsToReadSpan = @"
+        internal const string ReadAsyncMemoryCallsToReadSpan = @"
             return base.ReadAsync(buffer, cancellationToken);";
-    internal const string ReadAsyncMemoryCallsToReadAsyncByte = @"
+        internal const string ReadAsyncMemoryCallsToReadAsyncByte = @"
             return base.ReadAsync(buffer, cancellationToken);";
+    }
 }

@@ -1,48 +1,46 @@
 ﻿using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.CodeAnalysis.DotnetRuntime.Extensions;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
-using System.Threading;
 
-namespace System.IO.StreamSourceGeneration;
-
-[Generator]
-public partial class StreamSourceGen : IIncrementalGenerator
+namespace System.IO.StreamSourceGeneration
 {
-    internal const string StreamBoilerplateAttributeFullName = "System.IO.StreamSourceGeneration.GenerateStreamBoilerplateAttribute";
-    internal const string StreamFullName = "System.IO.Stream";
-
-    public void Initialize(IncrementalGeneratorInitializationContext context)
+    [Generator]
+    public partial class StreamSourceGen : IIncrementalGenerator
     {
-        context.RegisterPostInitializationOutput(ctx =>
+        internal const string StreamBoilerplateAttributeFullName = "System.IO.StreamSourceGeneration.GenerateStreamBoilerplateAttribute";
+        internal const string StreamFullName = "System.IO.Stream";
+
+        public void Initialize(IncrementalGeneratorInitializationContext context)
         {
-            //Diagnostics.Debugger.Launch();
-            ctx.AddSource("TaskToApm.g.cs", System.IO.StreamSourceGeneration.Properties.Resources.TaskToApm);
-        });
+            context.RegisterPostInitializationOutput(ctx =>
+            {
+                //Diagnostics.Debugger.Launch();
+                ctx.AddSource("TaskToApm.g.cs", System.IO.StreamSourceGeneration.Properties.Resources.TaskToApm);
+            });
 
-        IncrementalValuesProvider<ClassDeclarationSyntax> classDeclarations = context.SyntaxProvider
-            .ForAttributeWithMetadataName(
-                StreamBoilerplateAttributeFullName,
-                predicate: (node, _) => node is ClassDeclarationSyntax c && c.Modifiers.Any(SyntaxKind.PartialKeyword),
-                transform: (context, _) => (ClassDeclarationSyntax)context.TargetNode);
+            IncrementalValuesProvider<ClassDeclarationSyntax> classDeclarations = context.SyntaxProvider
+                .ForAttributeWithMetadataName(
+                    StreamBoilerplateAttributeFullName,
+                    predicate: (node, _) => node is ClassDeclarationSyntax c && c.Modifiers.Any(SyntaxKind.PartialKeyword),
+                    transform: (context, _) => (ClassDeclarationSyntax)context.TargetNode);
 
-        IncrementalValueProvider<(Compilation, ImmutableArray<ClassDeclarationSyntax>)> compilationAndClasses =
-            context.CompilationProvider.Combine(classDeclarations.Collect());
+            IncrementalValueProvider<(Compilation, ImmutableArray<ClassDeclarationSyntax>)> compilationAndClasses =
+                context.CompilationProvider.Combine(classDeclarations.Collect());
 
-        context.RegisterSourceOutput(compilationAndClasses, (spc, source) => Execute(source.Item1, source.Item2, spc));
-    }
-
-    private static void Execute(Compilation compilation, ImmutableArray<ClassDeclarationSyntax> classes, SourceProductionContext context)
-    {
-        if (classes.IsDefaultOrEmpty)
-        {
-            return;
+            context.RegisterSourceOutput(compilationAndClasses, (spc, source) => Execute(source.Item1, source.Item2, spc));
         }
+
+        private static void Execute(Compilation compilation, ImmutableArray<ClassDeclarationSyntax> classes, SourceProductionContext context)
+        {
+            if (classes.IsDefaultOrEmpty)
+            {
+                return;
+            }
 
 #if LAUNCH_DEBUGGER
         if (!Diagnostics.Debugger.IsAttached)
@@ -51,29 +49,29 @@ public partial class StreamSourceGen : IIncrementalGenerator
         }
 #endif
 
-        List<StreamTypeInfo>? classesWithGenerationOptions = Helpers.GetClassesWithGenerationOptions(compilation, classes, context.CancellationToken);
+            List<StreamTypeInfo>? classesWithGenerationOptions = Helpers.GetClassesWithGenerationOptions(compilation, classes, context.CancellationToken);
 
-        if (classesWithGenerationOptions == null)
-        {
-            return;
+            if (classesWithGenerationOptions == null)
+            {
+                return;
+            }
+
+            StringBuilder sb = new();
+
+            foreach (StreamTypeInfo streamTypeInfo in classesWithGenerationOptions)
+            {
+                sb.Clear();
+                Emit(sb, streamTypeInfo);
+
+                INamedTypeSymbol typeSymbol = streamTypeInfo.TypeSymbol;
+                string hintName = $"{typeSymbol.ContainingNamespace}.{typeSymbol.Name}.Boilerplate.g.cs";
+                context.AddSource(hintName, sb.ToString());
+            }
         }
 
-        StringBuilder sb = new();
-
-        foreach (StreamTypeInfo streamTypeInfo in classesWithGenerationOptions)
+        private static void Emit(StringBuilder sb, StreamTypeInfo streamTypeInfo)
         {
-            sb.Clear();
-            Emit(sb, streamTypeInfo);
-
-            INamedTypeSymbol typeSymbol = streamTypeInfo.TypeSymbol;
-            string hintName = $"{typeSymbol.ContainingNamespace}.{typeSymbol.Name}.Boilerplate.g.cs";
-            context.AddSource(hintName, sb.ToString());
-        }
-    }
-
-    private static void Emit(StringBuilder sb, StreamTypeInfo streamTypeInfo)
-    {
-        sb.Append($@"// <auto-generated/>
+            sb.Append($@"// <auto-generated/>
 
 #nullable enable
 
@@ -81,97 +79,98 @@ public partial class StreamSourceGen : IIncrementalGenerator
 
 namespace {streamTypeInfo.TypeSymbol.ContainingNamespace}
 {{");
-        sb.Append($@"
+            sb.Append($@"
     partial class {streamTypeInfo.TypeSymbol.Name}
     {{");
 
-        HashSet<string> overriddenMembers = streamTypeInfo.OverriddenMembers;
+            HashSet<string> overriddenMembers = streamTypeInfo.OverriddenMembers;
 
-        // Read*/Write*/Seek can hint that a stream CanRead/Write/Seek => true but not vice versa.
-        bool canRead = streamTypeInfo.ReadInfo != null;
-        bool canWrite = streamTypeInfo.WriteInfo != null;
-        bool canSeek = overriddenMembers.Contains(StreamMembersConstants.Seek);
+            // Read*/Write*/Seek can hint that a stream CanRead/Write/Seek => true but not vice versa.
+            bool canRead = streamTypeInfo.ReadInfo != null;
+            bool canWrite = streamTypeInfo.WriteInfo != null;
+            bool canSeek = overriddenMembers.Contains(StreamMembersConstants.Seek);
 
-        foreach (BoilerplateCandidateInfo candidateInfo in BoilerplateCandidateInfo.CandidatesList)
-        {
-            string candidateName = candidateInfo.Name;
-
-            if (overriddenMembers.Contains(candidateName))
+            foreach (BoilerplateCandidateInfo candidateInfo in BoilerplateCandidateInfo.CandidatesList)
             {
-                continue;
-            }
+                string candidateName = candidateInfo.Name;
 
-            StreamOperationKind candidateOperationKind = candidateInfo.OperationKind;
-
-            if (candidateOperationKind >= StreamOperationKind.Read &&
-                candidateOperationKind <= StreamOperationKind.WriteAsync)
-            {
-                StreamCapabilityInfo? capabilityInfo = candidateOperationKind is StreamOperationKind.Read or StreamOperationKind.ReadAsync ? streamTypeInfo.ReadInfo : streamTypeInfo.WriteInfo;
-                bool isAsync = candidateOperationKind is StreamOperationKind.ReadAsync or StreamOperationKind.WriteAsync;
-
-                if (capabilityInfo == null)
+                if (overriddenMembers.Contains(candidateName))
                 {
-                    sb.Append(candidateInfo.BoilerplateForUnsupported);
+                    continue;
+                }
+
+                StreamOperationKind candidateOperationKind = candidateInfo.OperationKind;
+
+                if (candidateOperationKind >= StreamOperationKind.Read &&
+                    candidateOperationKind <= StreamOperationKind.WriteAsync)
+                {
+                    StreamCapabilityInfo? capabilityInfo = candidateOperationKind is StreamOperationKind.Read or StreamOperationKind.ReadAsync ? streamTypeInfo.ReadInfo : streamTypeInfo.WriteInfo;
+                    bool isAsync = candidateOperationKind is StreamOperationKind.ReadAsync or StreamOperationKind.WriteAsync;
+
+                    if (capabilityInfo == null)
+                    {
+                        sb.Append(candidateInfo.BoilerplateForUnsupported);
+                    }
+                    else
+                    {
+                        // Determine preferred method to call for this generated method.
+                        string memberToCall = capabilityInfo.GetPreferredMemberName(isAsync);
+                        string memberToCallTemplate = Helpers.GetMemberToCallForTemplate(candidateName, memberToCall);
+
+                        sb.Append(string.Format(candidateInfo.Boilerplate, memberToCallTemplate));
+                    }
                 }
                 else
                 {
-                    // Determine preferred method to call for this generated method.
-                    string memberToCall = capabilityInfo.GetPreferredMemberName(isAsync);
-                    string memberToCallTemplate = Helpers.GetMemberToCallForTemplate(candidateName, memberToCall);
+                    string boilerplate;
+                    switch (candidateName)
+                    {
+                        case StreamMembersConstants.CanRead:
+                        case StreamMembersConstants.BeginRead:
+                        case StreamMembersConstants.EndRead:
+                            boilerplate = canRead ? candidateInfo.Boilerplate! : candidateInfo.BoilerplateForUnsupported;
+                            break;
+                        case StreamMembersConstants.CanWrite:
+                        case StreamMembersConstants.BeginWrite:
+                        case StreamMembersConstants.EndWrite:
+                            boilerplate = canWrite ? candidateInfo.Boilerplate! : candidateInfo.BoilerplateForUnsupported;
+                            break;
+                        case StreamMembersConstants.SetLength:
+                            if (canSeek && canWrite)
+                            {
+                                continue;
+                            }
+                            // We can easily generate SetLength if not supported but not otherwise.
+                            boilerplate = candidateInfo.BoilerplateForUnsupported;
+                            break;
+                        case StreamMembersConstants.Position:
+                        case StreamMembersConstants.Length:
+                            if (canSeek)
+                            {
+                                continue;
+                            }
+                            boilerplate = candidateInfo.BoilerplateForUnsupported;
+                            break;
+                        case StreamMembersConstants.CanSeek:
+                            boilerplate = canSeek ? candidateInfo.Boilerplate! : candidateInfo.BoilerplateForUnsupported;
+                            break;
+                        default:
+                            // If Seek wasn't contained in overriddenMembers, it means that it wasn't implemented and seeking is not supported.
+                            Debug.Assert(candidateName is StreamMembersConstants.Seek);
+                            Debug.Assert(!canSeek);
+                            boilerplate = candidateInfo.BoilerplateForUnsupported;
+                            break;
+                    }
 
-                    sb.Append(string.Format(candidateInfo.Boilerplate, memberToCallTemplate));
+                    sb.Append(boilerplate);
                 }
             }
-            else
-            {
-                string boilerplate;
-                switch (candidateName)
-                {
-                    case StreamMembersConstants.CanRead:
-                    case StreamMembersConstants.BeginRead:
-                    case StreamMembersConstants.EndRead:
-                        boilerplate = canRead ? candidateInfo.Boilerplate! : candidateInfo.BoilerplateForUnsupported;
-                        break;
-                    case StreamMembersConstants.CanWrite:
-                    case StreamMembersConstants.BeginWrite:
-                    case StreamMembersConstants.EndWrite:
-                        boilerplate = canWrite ? candidateInfo.Boilerplate! : candidateInfo.BoilerplateForUnsupported;
-                        break;
-                    case StreamMembersConstants.SetLength:
-                        if (canSeek && canWrite)
-                        {
-                            continue;
-                        }
-                        // We can easily generate SetLength if not supported but not otherwise.
-                        boilerplate = candidateInfo.BoilerplateForUnsupported;
-                        break;
-                    case StreamMembersConstants.Position:
-                    case StreamMembersConstants.Length:
-                        if (canSeek)
-                        {
-                            continue;
-                        }
-                        boilerplate = candidateInfo.BoilerplateForUnsupported;
-                        break;
-                    case StreamMembersConstants.CanSeek:
-                        boilerplate = canSeek ? candidateInfo.Boilerplate! : candidateInfo.BoilerplateForUnsupported;
-                        break;
-                    default:
-                        // If Seek wasn't contained in overriddenMembers, it means that it wasn't implemented and seeking is not supported.
-                        Debug.Assert(candidateName is StreamMembersConstants.Seek);
-                        Debug.Assert(!canSeek);
-                        boilerplate = candidateInfo.BoilerplateForUnsupported;
-                        break;
-                }
 
-                sb.Append(boilerplate);
-            }
-        }
-
-        sb.Append(StreamBoilerplateConstants.Helpers);
-        sb.Append(@"
+            sb.Append(StreamBoilerplateConstants.Helpers);
+            sb.Append(@"
     }
 }
 ");
+        }
     }
 }

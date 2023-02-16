@@ -4,16 +4,17 @@
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace System.IO.StreamSourceGeneration.Tests.TestClasses;
-
-[GenerateStreamBoilerplate]
-internal partial class StreamThatImplementsReadAsyncMemory : Stream
+namespace System.IO.StreamSourceGeneration.Tests.TestClasses
 {
-    public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
+    [GenerateStreamBoilerplate]
+    internal partial class StreamThatImplementsReadAsyncMemory : Stream
     {
-        Random.Shared.NextBytes(buffer.Span);
-        return ValueTask.FromResult(buffer.Length);
-    }
+        public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
+        {
+            Random.Shared.NextBytes(buffer.Span);
+            return ValueTask.FromResult(buffer.Length);
+        }
 
-    public override void Flush() { }
+        public override void Flush() { }
+    }
 }

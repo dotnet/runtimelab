@@ -4,26 +4,27 @@
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace System.IO.StreamSourceGeneration.Tests.TestClasses;
-
-[GenerateStreamBoilerplate]
-internal partial class StreamThatImplementsWriteAsyncByte : Stream
+namespace System.IO.StreamSourceGeneration.Tests.TestClasses
 {
-    private byte[] _internalBuffer;
-    public override long Position { get; set; }
-
-    internal StreamThatImplementsWriteAsyncByte(byte[] internalBuffer)
+    [GenerateStreamBoilerplate]
+    internal partial class StreamThatImplementsWriteAsyncByte : Stream
     {
-        _internalBuffer = internalBuffer;
-    }
+        private byte[] _internalBuffer;
+        public override long Position { get; set; }
 
-    public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken = default)
-    {
-        Array.Copy(buffer, offset, _internalBuffer, Position, count);
-        Position += count;
-        
-        return Task.CompletedTask;
-    }
+        internal StreamThatImplementsWriteAsyncByte(byte[] internalBuffer)
+        {
+            _internalBuffer = internalBuffer;
+        }
 
-    public override void Flush() { }
+        public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken = default)
+        {
+            Array.Copy(buffer, offset, _internalBuffer, Position, count);
+            Position += count;
+
+            return Task.CompletedTask;
+        }
+
+        public override void Flush() { }
+    }
 }

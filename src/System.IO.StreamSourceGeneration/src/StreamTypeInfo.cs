@@ -1,53 +1,54 @@
 ﻿using Microsoft.CodeAnalysis;
 using System.Collections.Generic;
 
-namespace System.IO.StreamSourceGeneration;
-
-internal class StreamTypeInfo
+namespace System.IO.StreamSourceGeneration
 {
-    internal INamedTypeSymbol TypeSymbol { get; }
-    internal HashSet<string> OverriddenMembers { get; }
-    internal StreamCapabilityInfo? ReadInfo { get; }
-    internal StreamCapabilityInfo? WriteInfo { get; }
-
-    public StreamTypeInfo(INamedTypeSymbol typeSymbol)
+    internal class StreamTypeInfo
     {
-        TypeSymbol = typeSymbol;
-        OverriddenMembers = new HashSet<string>();
-            
-        foreach (string memberName in Helpers.GetOverriddenMembers(typeSymbol))
+        internal INamedTypeSymbol TypeSymbol { get; }
+        internal HashSet<string> OverriddenMembers { get; }
+        internal StreamCapabilityInfo? ReadInfo { get; }
+        internal StreamCapabilityInfo? WriteInfo { get; }
+
+        public StreamTypeInfo(INamedTypeSymbol typeSymbol)
         {
-            OverriddenMembers.Add(memberName);
+            TypeSymbol = typeSymbol;
+            OverriddenMembers = new HashSet<string>();
 
-            if (!BoilerplateCandidateInfo.CandidatesDictionary.TryGetValue(memberName, out BoilerplateCandidateInfo candidateInfo))
+            foreach (string memberName in Helpers.GetOverriddenMembers(typeSymbol))
             {
-                continue;
-            }
+                OverriddenMembers.Add(memberName);
 
-            if (candidateInfo.OperationKind is StreamOperationKind.Read or StreamOperationKind.ReadAsync)
-            {
-                bool isAsync = candidateInfo.OperationKind == StreamOperationKind.ReadAsync;
+                if (!BoilerplateCandidateInfo.CandidatesDictionary.TryGetValue(memberName, out BoilerplateCandidateInfo candidateInfo))
+                {
+                    continue;
+                }
 
-                if (ReadInfo == null)
+                if (candidateInfo.OperationKind is StreamOperationKind.Read or StreamOperationKind.ReadAsync)
                 {
-                    ReadInfo = new StreamCapabilityInfo(memberName, isAsync);
-                }
-                else
-                {
-                    ReadInfo.SetPreferredMemberName(memberName, isAsync, candidateInfo);
-                }
-            }
-            else if (candidateInfo.OperationKind is StreamOperationKind.Write or StreamOperationKind.WriteAsync)
-            {
-                bool isAsync = candidateInfo.OperationKind == StreamOperationKind.WriteAsync;
+                    bool isAsync = candidateInfo.OperationKind == StreamOperationKind.ReadAsync;
 
-                if (WriteInfo == null)
-                {
-                    WriteInfo = new StreamCapabilityInfo(memberName, isAsync);
+                    if (ReadInfo == null)
+                    {
+                        ReadInfo = new StreamCapabilityInfo(memberName, isAsync);
+                    }
+                    else
+                    {
+                        ReadInfo.SetPreferredMemberName(memberName, isAsync, candidateInfo);
+                    }
                 }
-                else
+                else if (candidateInfo.OperationKind is StreamOperationKind.Write or StreamOperationKind.WriteAsync)
                 {
-                    WriteInfo.SetPreferredMemberName(memberName, isAsync, candidateInfo);
+                    bool isAsync = candidateInfo.OperationKind == StreamOperationKind.WriteAsync;
+
+                    if (WriteInfo == null)
+                    {
+                        WriteInfo = new StreamCapabilityInfo(memberName, isAsync);
+                    }
+                    else
+                    {
+                        WriteInfo.SetPreferredMemberName(memberName, isAsync, candidateInfo);
+                    }
                 }
             }
         }

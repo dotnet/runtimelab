@@ -1,24 +1,25 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-namespace System.IO.StreamSourceGeneration.Tests.TestClasses;
-
-[GenerateStreamBoilerplate]
-internal partial class StreamThatImplementsWriteByte : Stream
+namespace System.IO.StreamSourceGeneration.Tests.TestClasses
 {
-    private byte[] _internalBuffer;
-    public override long Position { get; set; }
-
-    internal StreamThatImplementsWriteByte(byte[] internalBuffer)
+    [GenerateStreamBoilerplate]
+    internal partial class StreamThatImplementsWriteByte : Stream
     {
-        _internalBuffer = internalBuffer;
-    }
+        private byte[] _internalBuffer;
+        public override long Position { get; set; }
 
-    public override void Write(byte[] buffer, int offset, int count)
-    {
-        Array.Copy(buffer, offset, _internalBuffer, Position, count);
-        Position += count;
-    }
+        internal StreamThatImplementsWriteByte(byte[] internalBuffer)
+        {
+            _internalBuffer = internalBuffer;
+        }
 
-    public override void Flush() { }
+        public override void Write(byte[] buffer, int offset, int count)
+        {
+            Array.Copy(buffer, offset, _internalBuffer, Position, count);
+            Position += count;
+        }
+
+        public override void Flush() { }
+    }
 }
