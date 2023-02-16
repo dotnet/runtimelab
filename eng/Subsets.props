@@ -51,6 +51,11 @@
   </PropertyGroup>
 
   <PropertyGroup>
+    <!-- NativeAOT-LLMV is still using this property in externals.csproj -->
+    <ClrNativeAot Condition="'$(BuildAllConfigurations)' != 'true'">true</ClrNativeAot>
+  </PropertyGroup>
+  
+  <PropertyGroup>
     <DefaultCoreClrSubsets>clr.native+linuxdac+clr.corelib+clr.tools+clr.nativecorelib+clr.packages+clr.nativeaotlibs+clr.crossarchtools+host.native</DefaultCoreClrSubsets>
     <DefaultCoreClrSubsets Condition="'$(PackageRID)' == 'linux-armel'">clr.native+linuxdac+clr.corelib+clr.tools+clr.nativecorelib+clr.packages+clr.nativeaotlibs+clr.crossarchtools</DefaultCoreClrSubsets>
     <!-- Even on platforms that do not support the CoreCLR runtime, we still want to build ilasm/ildasm. -->

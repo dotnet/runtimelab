@@ -103,8 +103,6 @@
     <Delete Files="$(PublishDir)\$(TargetName).wasm" Condition="'$(TargetArchitecture)'=='wasm'"/>
     <Copy SourceFiles="$(NativeOutputPath)$(TargetName).wasm" DestinationFolder="$(PublishDir)" Condition="'$(TargetArchitecture)'=='wasm'"/>
 
-  </Target>
-
     <!-- dotnet CLI produces managed debug symbols, which we will delete and copy native symbols instead -->
     <Delete Files="$(PublishDir)\$(TargetName).pdb" />
 
