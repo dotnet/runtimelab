@@ -33,58 +33,58 @@ namespace System.IO.StreamSourceGeneration
             {
                 StreamMember.ReadBytes => memberToCall switch
                 {
-                    StreamMember.ReadSpan => StreamBoilerplateConstants.ReadByteCallsToReadSpan,
-                    StreamMember.ReadAsyncBytes => StreamBoilerplateConstants.ReadByteCallsToReadAsyncByte,
-                    StreamMember.ReadAsyncMemory => StreamBoilerplateConstants.ReadByteCallsToReadAsyncMemory,
+                    StreamMember.ReadSpan => StreamBoilerplateConstants.ReadBytesCallsToReadSpan,
+                    StreamMember.ReadAsyncBytes => StreamBoilerplateConstants.ReadBytesCallsToReadAsyncBytes,
+                    StreamMember.ReadAsyncMemory => StreamBoilerplateConstants.ReadBytesCallsToReadAsyncMemory,
                     _ => throw new InvalidOperationException()
                 },
                 StreamMember.ReadSpan => memberToCall switch
                 {
-                    StreamMember.ReadBytes => StreamBoilerplateConstants.ReadSpanCallsToReadByte,
-                    StreamMember.ReadAsyncBytes => StreamBoilerplateConstants.ReadSpanCallsToReadAsyncByte,
+                    StreamMember.ReadBytes => StreamBoilerplateConstants.ReadSpanCallsToReadBytes,
+                    StreamMember.ReadAsyncBytes => StreamBoilerplateConstants.ReadSpanCallsToReadAsyncBytes,
                     StreamMember.ReadAsyncMemory => StreamBoilerplateConstants.ReadSpanCallsToReadAsyncMemory,
                     _ => throw new InvalidOperationException()
                 },
                 StreamMember.ReadAsyncBytes => memberToCall switch
                 {
-                    StreamMember.ReadBytes => StreamBoilerplateConstants.ReadAsyncByteCallsToReadByte,
-                    StreamMember.ReadSpan => StreamBoilerplateConstants.ReadAsyncByteCallsToReadSpan,
-                    StreamMember.ReadAsyncMemory => StreamBoilerplateConstants.ReadAsyncByteCallsToReadAsyncMemory,
+                    StreamMember.ReadBytes => StreamBoilerplateConstants.ReadAsyncBytesCallsToReadBytes,
+                    StreamMember.ReadSpan => StreamBoilerplateConstants.ReadAsyncBytesCallsToReadSpan,
+                    StreamMember.ReadAsyncMemory => StreamBoilerplateConstants.ReadAsyncBytesCallsToReadAsyncMemory,
                     _ => throw new InvalidOperationException()
                 },
                 StreamMember.ReadAsyncMemory => memberToCall switch
                 {
-                    StreamMember.ReadBytes => StreamBoilerplateConstants.ReadAsyncMemoryCallsToReadByte,
+                    StreamMember.ReadBytes => StreamBoilerplateConstants.ReadAsyncMemoryCallsToReadBytes,
                     StreamMember.ReadSpan => StreamBoilerplateConstants.ReadAsyncMemoryCallsToReadSpan,
-                    StreamMember.ReadAsyncBytes => StreamBoilerplateConstants.ReadAsyncMemoryCallsToReadAsyncByte,
+                    StreamMember.ReadAsyncBytes => StreamBoilerplateConstants.ReadAsyncMemoryCallsToReadAsyncBytes,
                     _ => throw new InvalidOperationException()
                 },
                 StreamMember.WriteBytes => memberToCall switch
                 {
-                    StreamMember.WriteSpan => StreamBoilerplateConstants.WriteByteCallsToWriteSpan,
-                    StreamMember.WriteAsyncBytes => StreamBoilerplateConstants.WriteByteCallsToWriteAsyncByte,
-                    StreamMember.WriteAsyncMemory => StreamBoilerplateConstants.WriteByteCallsToWriteAsyncMemory,
+                    StreamMember.WriteSpan => StreamBoilerplateConstants.WriteBytesCallsToWriteSpan,
+                    StreamMember.WriteAsyncBytes => StreamBoilerplateConstants.WriteBytesCallsToWriteAsyncBytes,
+                    StreamMember.WriteAsyncMemory => StreamBoilerplateConstants.WriteBytesCallsToWriteAsyncMemory,
                     _ => throw new InvalidOperationException()
                 },
                 StreamMember.WriteSpan => memberToCall switch
                 {
-                    StreamMember.WriteBytes => StreamBoilerplateConstants.WriteSpanCallsToWriteByte,
-                    StreamMember.WriteAsyncBytes => StreamBoilerplateConstants.WriteSpanCallsToWriteAsyncByte,
+                    StreamMember.WriteBytes => StreamBoilerplateConstants.WriteSpanCallsToWriteBytes,
+                    StreamMember.WriteAsyncBytes => StreamBoilerplateConstants.WriteSpanCallsToWriteAsyncBytes,
                     StreamMember.WriteAsyncMemory => StreamBoilerplateConstants.WriteSpanCallsToWriteAsyncMemory,
                     _ => throw new InvalidOperationException()
                 },
                 StreamMember.WriteAsyncBytes => memberToCall switch
                 {
-                    StreamMember.WriteBytes => StreamBoilerplateConstants.WriteAsyncByteCallsToWriteByte,
-                    StreamMember.WriteSpan => StreamBoilerplateConstants.WriteAsyncByteCallsToWriteSpan,
-                    StreamMember.WriteAsyncMemory => StreamBoilerplateConstants.WriteAsyncByteCallsToWriteAsyncMemory,
+                    StreamMember.WriteBytes => StreamBoilerplateConstants.WriteAsyncBytesCallsToWriteBytes,
+                    StreamMember.WriteSpan => StreamBoilerplateConstants.WriteAsyncBytesCallsToWriteSpan,
+                    StreamMember.WriteAsyncMemory => StreamBoilerplateConstants.WriteAsyncBytesCallsToWriteAsyncMemory,
                     _ => throw new InvalidOperationException()
                 },
                 StreamMember.WriteAsyncMemory => memberToCall switch
                 {
-                    StreamMember.WriteBytes => StreamBoilerplateConstants.WriteAsyncMemoryCallsToWriteByte,
+                    StreamMember.WriteBytes => StreamBoilerplateConstants.WriteAsyncMemoryCallsToWriteBytes,
                     StreamMember.WriteSpan => StreamBoilerplateConstants.WriteAsyncMemoryCallsToWriteSpan,
-                    StreamMember.WriteAsyncBytes => StreamBoilerplateConstants.WriteAsyncMemoryCallsToWriteAsyncByte,
+                    StreamMember.WriteAsyncBytes => StreamBoilerplateConstants.WriteAsyncMemoryCallsToWriteAsyncBytes,
                     _ => throw new InvalidOperationException()
                 },
                 _ => throw new InvalidOperationException()

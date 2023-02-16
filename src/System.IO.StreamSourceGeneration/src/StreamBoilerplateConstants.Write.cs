@@ -14,11 +14,11 @@ namespace System.IO.StreamSourceGeneration
             {0}
         }}
 ";
-        internal const string WriteByteCallsToWriteSpan = @"
+        internal const string WriteBytesCallsToWriteSpan = @"
             Write(buffer.AsSpan(offset, count));";
-        internal const string WriteByteCallsToWriteAsyncByte = @"
+        internal const string WriteBytesCallsToWriteAsyncBytes = @"
             WriteAsync(buffer, offset, count).GetAwaiter().GetResult();";
-        internal const string WriteByteCallsToWriteAsyncMemory = @"
+        internal const string WriteBytesCallsToWriteAsyncMemory = @"
             WriteAsync(buffer.AsMemory(offset, count)).GetAwaiter().GetResult();";
 
         internal const string WriteSpanTemplate = @"
@@ -28,9 +28,9 @@ namespace System.IO.StreamSourceGeneration
             {0}
         }}
 ";
-        internal const string WriteSpanCallsToWriteByte = @"
+        internal const string WriteSpanCallsToWriteBytes = @"
             base.Write(buffer);";
-        internal const string WriteSpanCallsToWriteAsyncByte = @"
+        internal const string WriteSpanCallsToWriteAsyncBytes = @"
             byte[] sharedBuffer = ArrayPool<byte>.Shared.Rent(buffer.Length);
             try
             {
@@ -53,11 +53,11 @@ namespace System.IO.StreamSourceGeneration
         }}
 ";
         // TODO: find out the best implementations for each case.
-        internal const string WriteAsyncByteCallsToWriteByte = @"
+        internal const string WriteAsyncBytesCallsToWriteBytes = @"
             Task.Run(() => Write(buffer, offset, count), cancellationToken);";
-        internal const string WriteAsyncByteCallsToWriteSpan = @"
+        internal const string WriteAsyncBytesCallsToWriteSpan = @"
             Task.Run(() => Write(buffer.AsSpan(offset, count)), cancellationToken);";
-        internal const string WriteAsyncByteCallsToWriteAsyncMemory = @"
+        internal const string WriteAsyncBytesCallsToWriteAsyncMemory = @"
             WriteAsync(buffer.AsMemory(offset, count), cancellationToken).AsTask();";
 
         internal const string WriteAsyncMemoryTemplate = @"
@@ -68,7 +68,7 @@ namespace System.IO.StreamSourceGeneration
         }}
 ";
         // TODO: find out the best implementations for each case.
-        internal const string WriteAsyncMemoryCallsToWriteByte = @"
+        internal const string WriteAsyncMemoryCallsToWriteBytes = @"
             if (MemoryMarshal.TryGetArray(buffer, out ArraySegment<byte> array))
             {
                 return new ValueTask(Task.Run(() => Write(array.Array!, array.Offset, array.Count), cancellationToken));
@@ -86,7 +86,7 @@ namespace System.IO.StreamSourceGeneration
 
         internal const string WriteAsyncMemoryCallsToWriteSpan = @"
             return new ValueTask(Task.Run(() => Write(buffer.Span), cancellationToken));";
-        internal const string WriteAsyncMemoryCallsToWriteAsyncByte = @"
+        internal const string WriteAsyncMemoryCallsToWriteAsyncBytes = @"
             return base.WriteAsync(buffer, cancellationToken);";
     }
 }

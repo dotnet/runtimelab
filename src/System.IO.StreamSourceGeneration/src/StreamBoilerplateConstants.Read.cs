@@ -13,11 +13,11 @@ namespace System.IO.StreamSourceGeneration
             {0}
         }}
 ";
-        internal const string ReadByteCallsToReadSpan = @"
+        internal const string ReadBytesCallsToReadSpan = @"
             return Read(buffer.AsSpan(offset, count));";
-        internal const string ReadByteCallsToReadAsyncByte = @"
+        internal const string ReadBytesCallsToReadAsyncBytes = @"
             return ReadAsync(buffer, offset, count).GetAwaiter().GetResult();";
-        internal const string ReadByteCallsToReadAsyncMemory = @"
+        internal const string ReadBytesCallsToReadAsyncMemory = @"
             return ReadAsync(buffer.AsMemory(offset, count), CancellationToken.None).GetAwaiter().GetResult();";
 
         internal const string ReadSpanTemplate = @"
@@ -27,9 +27,9 @@ namespace System.IO.StreamSourceGeneration
             {0}
         }}
 ";
-        internal const string ReadSpanCallsToReadByte = @"
+        internal const string ReadSpanCallsToReadBytes = @"
             return base.Read(buffer);";
-        internal const string ReadSpanCallsToReadAsyncByte = @"
+        internal const string ReadSpanCallsToReadAsyncBytes = @"
             byte[] sharedBuffer = ArrayPool<byte>.Shared.Rent(buffer.Length);
             try
             {
@@ -64,11 +64,11 @@ namespace System.IO.StreamSourceGeneration
         }}
 ";
         // TODO: find out the best implementations for each case.
-        internal const string ReadAsyncByteCallsToReadByte = @"
+        internal const string ReadAsyncBytesCallsToReadBytes = @"
             return Task.Run(() => Read(buffer, offset, count), cancellationToken);";
-        internal const string ReadAsyncByteCallsToReadSpan = @"
+        internal const string ReadAsyncBytesCallsToReadSpan = @"
             return Task.Run(() => Read(buffer.AsSpan(offset, count)), cancellationToken);";
-        internal const string ReadAsyncByteCallsToReadAsyncMemory = @"
+        internal const string ReadAsyncBytesCallsToReadAsyncMemory = @"
             return ReadAsync(buffer.AsMemory(offset, count), cancellationToken).AsTask();";
 
         internal const string ReadAsyncMemoryTemplate = @"
@@ -79,7 +79,7 @@ namespace System.IO.StreamSourceGeneration
         }}
 ";
         // TODO: find out the best implementations for each case.
-        internal const string ReadAsyncMemoryCallsToReadByte = @"
+        internal const string ReadAsyncMemoryCallsToReadBytes = @"
             if (MemoryMarshal.TryGetArray(buffer, out ArraySegment<byte> array))
             {
                 return new ValueTask<int>(Task.Run(() => Read(array.Array!, array.Offset, array.Count), cancellationToken));
@@ -95,7 +95,7 @@ namespace System.IO.StreamSourceGeneration
 
         internal const string ReadAsyncMemoryCallsToReadSpan = @"
             return base.ReadAsync(buffer, cancellationToken);";
-        internal const string ReadAsyncMemoryCallsToReadAsyncByte = @"
+        internal const string ReadAsyncMemoryCallsToReadAsyncBytes = @"
             return base.ReadAsync(buffer, cancellationToken);";
     }
 }
