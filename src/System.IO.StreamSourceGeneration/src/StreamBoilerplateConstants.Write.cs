@@ -6,7 +6,7 @@ namespace System.IO.StreamSourceGeneration
     internal static partial class StreamBoilerplateConstants
     {
         // Templates are used with string.Format so we need to escape curly braces by doubling them.
-        internal const string WriteByteTemplate = @"
+        internal const string WriteBytesTemplate = @"
         public override void Write(byte[] buffer, int offset, int count)
         {{
             ValidateBufferArguments(buffer, offset, count);
@@ -44,7 +44,7 @@ namespace System.IO.StreamSourceGeneration
         internal const string WriteSpanCallsToWriteAsyncMemory = @"
             base.WriteAsync(buffer.ToArray()).GetAwaiter().GetResult();";
 
-        internal const string WriteAsyncByteTemplate = @"
+        internal const string WriteAsyncBytesTemplate = @"
         public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
         {{
             ValidateBufferArguments(buffer, offset, count);

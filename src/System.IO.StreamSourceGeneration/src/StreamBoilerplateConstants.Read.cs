@@ -5,7 +5,7 @@ namespace System.IO.StreamSourceGeneration
 {
     internal static partial class StreamBoilerplateConstants
     {
-        internal const string ReadByteTemplate = @"
+        internal const string ReadBytesTemplate = @"
         public override int Read(byte[] buffer, int offset, int count)
         {{
             ValidateBufferArguments(buffer, offset, count);
@@ -55,7 +55,7 @@ namespace System.IO.StreamSourceGeneration
                 ArrayPool<byte>.Shared.Return(sharedBuffer);
             }";
 
-        internal const string ReadAsyncByteTemplate = @"
+        internal const string ReadAsyncBytesTemplate = @"
         public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
         {{
             ValidateBufferArguments(buffer, offset, count);

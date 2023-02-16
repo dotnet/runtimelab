@@ -45,7 +45,7 @@ namespace System.IO.StreamSourceGeneration
         }
 ";
 
-        internal const string ReadByteArrayUnsupported = @"
+        internal const string ReadBytesUnsupported = @"
         public override int Read(byte[] buffer, int offset, int count)
         {
             throw new NotSupportedException(""Stream does not support reading."");
@@ -59,7 +59,7 @@ namespace System.IO.StreamSourceGeneration
         }
 ";
 
-        internal const string ReadAsyncByteArrayUnsupported = @"
+        internal const string ReadAsyncBytesUnsupported = @"
         public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
         {
             throw new NotSupportedException(""Stream does not support reading."");
@@ -87,7 +87,7 @@ namespace System.IO.StreamSourceGeneration
         }
 ";
 
-        internal const string WriteByteArrayUnsupported = @"
+        internal const string WriteBytesUnsupported = @"
         public override void Write(byte[] buffer, int offset, int count)
         {
             throw new NotSupportedException(""Stream does not support writing."");
@@ -101,7 +101,7 @@ namespace System.IO.StreamSourceGeneration
         }
 ";
 
-        internal const string WriteAsyncByteArrayUnsupported = @"
+        internal const string WriteAsyncBytesUnsupported = @"
         public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
         {
             throw new NotSupportedException(""Stream does not support writing."");

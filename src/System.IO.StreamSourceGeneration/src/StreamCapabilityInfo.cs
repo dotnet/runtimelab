@@ -7,47 +7,47 @@ namespace System.IO.StreamSourceGeneration
 {
     internal class StreamCapabilityInfo
     {
-        internal string? SyncPreferredMemberName { get; set; }
-        internal string? AsyncPreferredMemberName { get; set; }
+        internal StreamMember? SyncPreferredMember { get; set; }
+        internal StreamMember? AsyncPreferredMember { get; set; }
 
-        public StreamCapabilityInfo(string preferredMemberName, bool isAsync)
+        public StreamCapabilityInfo(StreamMember preferredMember, bool isAsync)
         {
             if (isAsync)
             {
-                AsyncPreferredMemberName = preferredMemberName;
+                AsyncPreferredMember = preferredMember;
             }
             else
             {
-                SyncPreferredMemberName = preferredMemberName;
+                SyncPreferredMember = preferredMember;
             }
         }
 
-        internal void SetPreferredMemberName(string memberName, bool isAsync, BoilerplateCandidateInfo candidateInfo)
+        internal void EvaluatePreferredMember(StreamMember member, bool isAsync, BoilerplateCandidateInfo candidateInfo)
         {
             if (isAsync)
             {
-                if (AsyncPreferredMemberName == null || candidateInfo.HasPriority)
+                if (AsyncPreferredMember == null || candidateInfo.HasPriority)
                 {
-                    AsyncPreferredMemberName = memberName;
+                    AsyncPreferredMember = member;
                 }
             }
             else
             {
-                if (SyncPreferredMemberName == null || candidateInfo.HasPriority)
+                if (SyncPreferredMember == null || candidateInfo.HasPriority)
                 {
-                    SyncPreferredMemberName = memberName;
+                    SyncPreferredMember = member;
                 }
             }
         }
 
-        internal string GetPreferredMemberName(bool isAsync)
+        internal StreamMember GetPreferredMember(bool isAsync)
         {
-            string? retVal = isAsync ?
-                AsyncPreferredMemberName ?? SyncPreferredMemberName :
-                SyncPreferredMemberName ?? AsyncPreferredMemberName;
+            StreamMember? retVal = isAsync ?
+                AsyncPreferredMember ?? SyncPreferredMember :
+                SyncPreferredMember ?? AsyncPreferredMember;
 
             Debug.Assert(retVal != null, "Both properties can't be null.");
-            return retVal!;
+            return retVal!.Value;
         }
     }
 }

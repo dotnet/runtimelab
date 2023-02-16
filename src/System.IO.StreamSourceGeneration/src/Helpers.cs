@@ -8,6 +8,7 @@ using Microsoft.CodeAnalysis.DotnetRuntime.Extensions;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using System.Threading;
 
 namespace System.IO.StreamSourceGeneration
 {
@@ -26,77 +27,79 @@ namespace System.IO.StreamSourceGeneration
                 };
         }
 
-        internal static string GetMemberToCallForTemplate(string candidateName, string memberToCall)
+        internal static string GetMemberToCallForTemplate(StreamMember member, StreamMember memberToCall)
         {
-            return candidateName switch
+            return member switch
             {
-                StreamMembersConstants.ReadByte => memberToCall switch
+                StreamMember.ReadBytes => memberToCall switch
                 {
-                    StreamMembersConstants.ReadSpan => StreamBoilerplateConstants.ReadByteCallsToReadSpan,
-                    StreamMembersConstants.ReadAsyncByte => StreamBoilerplateConstants.ReadByteCallsToReadAsyncByte,
-                    StreamMembersConstants.ReadAsyncMemory => StreamBoilerplateConstants.ReadByteCallsToReadAsyncMemory,
+                    StreamMember.ReadSpan => StreamBoilerplateConstants.ReadByteCallsToReadSpan,
+                    StreamMember.ReadAsyncBytes => StreamBoilerplateConstants.ReadByteCallsToReadAsyncByte,
+                    StreamMember.ReadAsyncMemory => StreamBoilerplateConstants.ReadByteCallsToReadAsyncMemory,
                     _ => throw new InvalidOperationException()
                 },
-                StreamMembersConstants.ReadSpan => memberToCall switch
+                StreamMember.ReadSpan => memberToCall switch
                 {
-                    StreamMembersConstants.ReadByte => StreamBoilerplateConstants.ReadSpanCallsToReadByte,
-                    StreamMembersConstants.ReadAsyncByte => StreamBoilerplateConstants.ReadSpanCallsToReadAsyncByte,
-                    StreamMembersConstants.ReadAsyncMemory => StreamBoilerplateConstants.ReadSpanCallsToReadAsyncMemory,
+                    StreamMember.ReadBytes => StreamBoilerplateConstants.ReadSpanCallsToReadByte,
+                    StreamMember.ReadAsyncBytes => StreamBoilerplateConstants.ReadSpanCallsToReadAsyncByte,
+                    StreamMember.ReadAsyncMemory => StreamBoilerplateConstants.ReadSpanCallsToReadAsyncMemory,
                     _ => throw new InvalidOperationException()
                 },
-                StreamMembersConstants.ReadAsyncByte => memberToCall switch
+                StreamMember.ReadAsyncBytes => memberToCall switch
                 {
-                    StreamMembersConstants.ReadByte => StreamBoilerplateConstants.ReadAsyncByteCallsToReadByte,
-                    StreamMembersConstants.ReadSpan => StreamBoilerplateConstants.ReadAsyncByteCallsToReadSpan,
-                    StreamMembersConstants.ReadAsyncMemory => StreamBoilerplateConstants.ReadAsyncByteCallsToReadAsyncMemory,
+                    StreamMember.ReadBytes => StreamBoilerplateConstants.ReadAsyncByteCallsToReadByte,
+                    StreamMember.ReadSpan => StreamBoilerplateConstants.ReadAsyncByteCallsToReadSpan,
+                    StreamMember.ReadAsyncMemory => StreamBoilerplateConstants.ReadAsyncByteCallsToReadAsyncMemory,
                     _ => throw new InvalidOperationException()
                 },
-                StreamMembersConstants.ReadAsyncMemory => memberToCall switch
+                StreamMember.ReadAsyncMemory => memberToCall switch
                 {
-                    StreamMembersConstants.ReadByte => StreamBoilerplateConstants.ReadAsyncMemoryCallsToReadByte,
-                    StreamMembersConstants.ReadSpan => StreamBoilerplateConstants.ReadAsyncMemoryCallsToReadSpan,
-                    StreamMembersConstants.ReadAsyncByte => StreamBoilerplateConstants.ReadAsyncMemoryCallsToReadAsyncByte,
+                    StreamMember.ReadBytes => StreamBoilerplateConstants.ReadAsyncMemoryCallsToReadByte,
+                    StreamMember.ReadSpan => StreamBoilerplateConstants.ReadAsyncMemoryCallsToReadSpan,
+                    StreamMember.ReadAsyncBytes => StreamBoilerplateConstants.ReadAsyncMemoryCallsToReadAsyncByte,
                     _ => throw new InvalidOperationException()
                 },
-                StreamMembersConstants.WriteByte => memberToCall switch
+                StreamMember.WriteBytes => memberToCall switch
                 {
-                    StreamMembersConstants.WriteSpan => StreamBoilerplateConstants.WriteByteCallsToWriteSpan,
-                    StreamMembersConstants.WriteAsyncByte => StreamBoilerplateConstants.WriteByteCallsToWriteAsyncByte,
-                    StreamMembersConstants.WriteAsyncMemory => StreamBoilerplateConstants.WriteByteCallsToWriteAsyncMemory,
+                    StreamMember.WriteSpan => StreamBoilerplateConstants.WriteByteCallsToWriteSpan,
+                    StreamMember.WriteAsyncBytes => StreamBoilerplateConstants.WriteByteCallsToWriteAsyncByte,
+                    StreamMember.WriteAsyncMemory => StreamBoilerplateConstants.WriteByteCallsToWriteAsyncMemory,
                     _ => throw new InvalidOperationException()
                 },
-                StreamMembersConstants.WriteSpan => memberToCall switch
+                StreamMember.WriteSpan => memberToCall switch
                 {
-                    StreamMembersConstants.WriteByte => StreamBoilerplateConstants.WriteSpanCallsToWriteByte,
-                    StreamMembersConstants.WriteAsyncByte => StreamBoilerplateConstants.WriteSpanCallsToWriteAsyncByte,
-                    StreamMembersConstants.WriteAsyncMemory => StreamBoilerplateConstants.WriteSpanCallsToWriteAsyncMemory,
+                    StreamMember.WriteBytes => StreamBoilerplateConstants.WriteSpanCallsToWriteByte,
+                    StreamMember.WriteAsyncBytes => StreamBoilerplateConstants.WriteSpanCallsToWriteAsyncByte,
+                    StreamMember.WriteAsyncMemory => StreamBoilerplateConstants.WriteSpanCallsToWriteAsyncMemory,
                     _ => throw new InvalidOperationException()
                 },
-                StreamMembersConstants.WriteAsyncByte => memberToCall switch
+                StreamMember.WriteAsyncBytes => memberToCall switch
                 {
-                    StreamMembersConstants.WriteByte => StreamBoilerplateConstants.WriteAsyncByteCallsToWriteByte,
-                    StreamMembersConstants.WriteSpan => StreamBoilerplateConstants.WriteAsyncByteCallsToWriteSpan,
-                    StreamMembersConstants.WriteAsyncMemory => StreamBoilerplateConstants.WriteAsyncByteCallsToWriteAsyncMemory,
+                    StreamMember.WriteBytes => StreamBoilerplateConstants.WriteAsyncByteCallsToWriteByte,
+                    StreamMember.WriteSpan => StreamBoilerplateConstants.WriteAsyncByteCallsToWriteSpan,
+                    StreamMember.WriteAsyncMemory => StreamBoilerplateConstants.WriteAsyncByteCallsToWriteAsyncMemory,
                     _ => throw new InvalidOperationException()
                 },
-                StreamMembersConstants.WriteAsyncMemory => memberToCall switch
+                StreamMember.WriteAsyncMemory => memberToCall switch
                 {
-                    StreamMembersConstants.WriteByte => StreamBoilerplateConstants.WriteAsyncMemoryCallsToWriteByte,
-                    StreamMembersConstants.WriteSpan => StreamBoilerplateConstants.WriteAsyncMemoryCallsToWriteSpan,
-                    StreamMembersConstants.WriteAsyncByte => StreamBoilerplateConstants.WriteAsyncMemoryCallsToWriteAsyncByte,
+                    StreamMember.WriteBytes => StreamBoilerplateConstants.WriteAsyncMemoryCallsToWriteByte,
+                    StreamMember.WriteSpan => StreamBoilerplateConstants.WriteAsyncMemoryCallsToWriteSpan,
+                    StreamMember.WriteAsyncBytes => StreamBoilerplateConstants.WriteAsyncMemoryCallsToWriteAsyncByte,
                     _ => throw new InvalidOperationException()
                 },
                 _ => throw new InvalidOperationException()
             };
         }
 
-        internal static List<StreamTypeInfo>? GetClassesWithGenerationOptions(Compilation compilation, ImmutableArray<ClassDeclarationSyntax> classes, Threading.CancellationToken cancellationToken)
+        internal static List<StreamTypeInfo>? GetClassesWithGenerationOptions(
+            Compilation compilation, 
+            ImmutableArray<ClassDeclarationSyntax> classes, 
+            CancellationToken cancellationToken)
         {
             INamedTypeSymbol? streamBoilerplateAttributeSymbol = compilation.GetBestTypeByMetadataName(StreamSourceGen.StreamBoilerplateAttributeFullName);
             INamedTypeSymbol? streamSymbol = compilation.GetBestTypeByMetadataName(StreamSourceGen.StreamFullName);
 
-            if (streamBoilerplateAttributeSymbol == null ||
-                streamSymbol == null)
+            if (streamBoilerplateAttributeSymbol == null || streamSymbol == null)
             {
                 return null;
             }
@@ -142,6 +145,7 @@ namespace System.IO.StreamSourceGeneration
         }
 
         // TODO: merge this method with DerivesFromJsonSerializerContext.
+        // https://github.com/dotnet/runtime/blob/30cc26fae6439707097ebd07145e8600e99a416c/src/libraries/System.Text.Json/gen/JsonSourceGenerator.Parser.cs#L400
         internal static bool DerivesFromStream(
             ClassDeclarationSyntax classDeclarationSyntax,
             INamedTypeSymbol streamSymbol,
@@ -168,6 +172,5 @@ namespace System.IO.StreamSourceGeneration
 
             return match != null;
         }
-
     }
 }
