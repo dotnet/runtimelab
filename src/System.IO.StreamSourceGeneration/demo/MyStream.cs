@@ -1,6 +1,4 @@
-﻿using System.IO.StreamSourceGeneration;
-
-namespace Demo;
+﻿namespace Demo;
 
 [GenerateStreamBoilerplate]
 public partial class MyStream : Stream
