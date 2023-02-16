@@ -15,7 +15,7 @@ namespace System.IO.StreamSourceGeneration
     [Generator]
     public partial class StreamSourceGen : IIncrementalGenerator
     {
-        internal const string StreamBoilerplateAttributeFullName = "System.IO.StreamSourceGeneration.GenerateStreamBoilerplateAttribute";
+        internal const string StreamBoilerplateAttributeFullName = "System.IO.GenerateStreamBoilerplateAttribute";
         internal const string StreamFullName = "System.IO.Stream";
 
         public void Initialize(IncrementalGeneratorInitializationContext context)
