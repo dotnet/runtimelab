@@ -61,7 +61,6 @@ namespace System.IO.StreamSourceGeneration
             {0}
         }}
 ";
-        // TODO: find out the best implementations for each case.
         internal const string ReadAsyncBytesCallsToReadBytes = @"
             return Task.Run(() => Read(buffer, offset, count), cancellationToken);";
         internal const string ReadAsyncBytesCallsToReadSpan = @"
@@ -76,7 +75,6 @@ namespace System.IO.StreamSourceGeneration
             {0}
         }}
 ";
-        // TODO: find out the best implementations for each case.
         internal const string ReadAsyncMemoryCallsToReadBytes = @"
             if (MemoryMarshal.TryGetArray(buffer, out ArraySegment<byte> array))
             {

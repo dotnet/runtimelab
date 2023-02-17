@@ -40,7 +40,16 @@ namespace System.IO.StreamSourceGeneration
                 ArrayPool<byte>.Shared.Return(sharedBuffer);
             }";
         internal const string WriteSpanCallsToWriteAsyncMemory = @"
-            base.WriteAsync(buffer.ToArray()).GetAwaiter().GetResult();";
+            byte[] sharedBuffer = ArrayPool<byte>.Shared.Rent(buffer.Length);
+            try
+            {
+                buffer.CopyTo(sharedBuffer);
+                WriteAsync(sharedBuffer.AsMemory(0, buffer.Length)).GetAwaiter().GetResult();
+            }
+            finally 
+            {
+                ArrayPool<byte>.Shared.Return(sharedBuffer);
+            }";
 
         internal const string WriteAsyncBytesTemplate = @"
         public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
@@ -50,7 +59,6 @@ namespace System.IO.StreamSourceGeneration
             {0}
         }}
 ";
-        // TODO: find out the best implementations for each case.
         internal const string WriteAsyncBytesCallsToWriteBytes = @"
             return Task.Run(() => Write(buffer, offset, count), cancellationToken);";
         internal const string WriteAsyncBytesCallsToWriteSpan = @"
@@ -65,7 +73,6 @@ namespace System.IO.StreamSourceGeneration
             {0}
         }}
 ";
-        // TODO: find out the best implementations for each case.
         internal const string WriteAsyncMemoryCallsToWriteBytes = @"
             if (MemoryMarshal.TryGetArray(buffer, out ArraySegment<byte> array))
             {
