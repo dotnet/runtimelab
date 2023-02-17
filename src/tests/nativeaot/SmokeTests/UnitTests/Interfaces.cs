@@ -1037,9 +1037,7 @@ public class Interfaces
             TestVariantInterface<GenericVariantWithHiddenDerived<Derived>, Mid>("GenericVariantWithHiddenBase.WhichMethod(Mid)");
         }
     }
-<<<<<<< HEAD
 #endif //CODEGEN_WASM
-=======
 
     class TestSimpleStaticDefaultInterfaceMethods
     {
@@ -1471,5 +1469,4 @@ public class Interfaces
                 throw new Exception();
         }
     }
->>>>>>> 442c137891821a567e9a05411f821dbf2aec5aa5
 }
