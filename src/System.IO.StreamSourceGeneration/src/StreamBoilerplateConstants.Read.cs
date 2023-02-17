@@ -27,8 +27,6 @@ namespace System.IO.StreamSourceGeneration
             {0}
         }}
 ";
-        internal const string ReadSpanCallsToReadBytes = @"
-            return base.Read(buffer);";
         internal const string ReadSpanCallsToReadAsyncBytes = @"
             byte[] sharedBuffer = ArrayPool<byte>.Shared.Rent(buffer.Length);
             try
@@ -92,10 +90,5 @@ namespace System.IO.StreamSourceGeneration
                 ArrayPool<byte>.Shared.Return(sharedBuffer);
                 return bytesRead;
             }, cancellationToken));";
-
-        internal const string ReadAsyncMemoryCallsToReadSpan = @"
-            return base.ReadAsync(buffer, cancellationToken);";
-        internal const string ReadAsyncMemoryCallsToReadAsyncBytes = @"
-            return base.ReadAsync(buffer, cancellationToken);";
     }
 }

@@ -28,8 +28,6 @@ namespace System.IO.StreamSourceGeneration
             {0}
         }}
 ";
-        internal const string WriteSpanCallsToWriteBytes = @"
-            base.Write(buffer);";
         internal const string WriteSpanCallsToWriteAsyncBytes = @"
             byte[] sharedBuffer = ArrayPool<byte>.Shared.Rent(buffer.Length);
             try
@@ -83,10 +81,5 @@ namespace System.IO.StreamSourceGeneration
             }, cancellationToken));
 
             return vt;";
-
-        internal const string WriteAsyncMemoryCallsToWriteSpan = @"
-            return new ValueTask(Task.Run(() => Write(buffer.Span), cancellationToken));";
-        internal const string WriteAsyncMemoryCallsToWriteAsyncBytes = @"
-            return base.WriteAsync(buffer, cancellationToken);";
     }
 }

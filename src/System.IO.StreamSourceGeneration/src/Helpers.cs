@@ -27,7 +27,13 @@ namespace System.IO.StreamSourceGeneration
                 };
         }
 
-        internal static string GetMemberToCallForTemplate(StreamMember member, StreamMember memberToCall)
+        /// <summary>
+        /// Gets the boilerplate/template for the specific combination of the specified <paramref name="member"/>
+        /// and <paramref name="memberToCall"/>
+        /// </summary>
+        /// <returns>The template to use for the specified combination or <see langword="null" />
+        /// if its best to call the base implementation.</returns>
+        internal static string? GetMemberToCallForTemplate(StreamMember member, StreamMember memberToCall)
         {
             return member switch
             {
@@ -40,7 +46,7 @@ namespace System.IO.StreamSourceGeneration
                 },
                 StreamMember.ReadSpan => memberToCall switch
                 {
-                    StreamMember.ReadBytes => StreamBoilerplateConstants.ReadSpanCallsToReadBytes,
+                    StreamMember.ReadBytes => null,
                     StreamMember.ReadAsyncBytes => StreamBoilerplateConstants.ReadSpanCallsToReadAsyncBytes,
                     StreamMember.ReadAsyncMemory => StreamBoilerplateConstants.ReadSpanCallsToReadAsyncMemory,
                     _ => throw new InvalidOperationException()
@@ -55,8 +61,8 @@ namespace System.IO.StreamSourceGeneration
                 StreamMember.ReadAsyncMemory => memberToCall switch
                 {
                     StreamMember.ReadBytes => StreamBoilerplateConstants.ReadAsyncMemoryCallsToReadBytes,
-                    StreamMember.ReadSpan => StreamBoilerplateConstants.ReadAsyncMemoryCallsToReadSpan,
-                    StreamMember.ReadAsyncBytes => StreamBoilerplateConstants.ReadAsyncMemoryCallsToReadAsyncBytes,
+                    StreamMember.ReadSpan => null,
+                    StreamMember.ReadAsyncBytes => null,
                     _ => throw new InvalidOperationException()
                 },
                 StreamMember.WriteBytes => memberToCall switch
@@ -68,7 +74,7 @@ namespace System.IO.StreamSourceGeneration
                 },
                 StreamMember.WriteSpan => memberToCall switch
                 {
-                    StreamMember.WriteBytes => StreamBoilerplateConstants.WriteSpanCallsToWriteBytes,
+                    StreamMember.WriteBytes => null,
                     StreamMember.WriteAsyncBytes => StreamBoilerplateConstants.WriteSpanCallsToWriteAsyncBytes,
                     StreamMember.WriteAsyncMemory => StreamBoilerplateConstants.WriteSpanCallsToWriteAsyncMemory,
                     _ => throw new InvalidOperationException()
@@ -83,8 +89,8 @@ namespace System.IO.StreamSourceGeneration
                 StreamMember.WriteAsyncMemory => memberToCall switch
                 {
                     StreamMember.WriteBytes => StreamBoilerplateConstants.WriteAsyncMemoryCallsToWriteBytes,
-                    StreamMember.WriteSpan => StreamBoilerplateConstants.WriteAsyncMemoryCallsToWriteSpan,
-                    StreamMember.WriteAsyncBytes => StreamBoilerplateConstants.WriteAsyncMemoryCallsToWriteAsyncBytes,
+                    StreamMember.WriteSpan => null,
+                    StreamMember.WriteAsyncBytes => null,
                     _ => throw new InvalidOperationException()
                 },
                 _ => throw new InvalidOperationException()

@@ -94,7 +94,6 @@ namespace {streamTypeInfo.TypeSymbol.ContainingNamespace}
 
             foreach (BoilerplateCandidateInfo candidateInfo in BoilerplateCandidateInfo.CandidatesList)
             {
-                string candidateName = candidateInfo.Name;
                 StreamMember member = candidateInfo.StreamMember;
                 if (overriddenMembers.Contains(member))
                 {
@@ -124,7 +123,12 @@ namespace {streamTypeInfo.TypeSymbol.ContainingNamespace}
                         {
                             // Determine preferred method to call for the to-be-generated method.
                             StreamMember memberToCall = capabilityInfo.GetPreferredMember(member.IsAsync());
-                            string memberToCallTemplate = Helpers.GetMemberToCallForTemplate(member, memberToCall);
+                            string? memberToCallTemplate = Helpers.GetMemberToCallForTemplate(member, memberToCall);
+
+                            if (memberToCallTemplate == null)
+                            {
+                                continue;
+                            }
                             boilerplate = string.Format(candidateInfo.Boilerplate, memberToCallTemplate);
                         }
                         break;
@@ -160,7 +164,7 @@ namespace {streamTypeInfo.TypeSymbol.ContainingNamespace}
                     default:
                         // If Seek wasn't contained in overriddenMembers, it means
                         // that it wasn't implemented and seeking is not supported.
-                        Debug.Assert(candidateName is StreamMembersConstants.Seek);
+                        Debug.Assert(member is StreamMember.Seek);
                         Debug.Assert(!canSeek);
                         boilerplate = candidateInfo.BoilerplateForUnsupported;
                         break;
