@@ -13,16 +13,18 @@ namespace System.IO.StreamSourceGeneration
         private static readonly List<BoilerplateCandidateInfo> s_boilerplateGenerationCandidates = new List<BoilerplateCandidateInfo>
         {
             // Read
-            new(MConsts.ReadByte, StreamMember.ReadBytes, BpConsts.ReadBytesTemplate, BpConsts.ReadBytesUnsupported),
+            new(MConsts.ReadBytes, StreamMember.ReadBytes, BpConsts.ReadBytesTemplate, BpConsts.ReadBytesUnsupported),
             new(MConsts.ReadSpan, StreamMember.ReadSpan, BpConsts.ReadSpanTemplate, BpConsts.ReadSpanUnsupported, hasPriority: true),
-            new(MConsts.ReadAsyncByte, StreamMember.ReadAsyncBytes, BpConsts.ReadAsyncBytesTemplate, BpConsts.ReadAsyncBytesUnsupported),
+            new(MConsts.ReadAsyncBytes, StreamMember.ReadAsyncBytes, BpConsts.ReadAsyncBytesTemplate, BpConsts.ReadAsyncBytesUnsupported),
             new(MConsts.ReadAsyncMemory, StreamMember.ReadAsyncMemory, BpConsts.ReadAsyncMemoryTemplate, BpConsts.ReadAsyncMemoryUnsupported, true),
             // Write
-            new(MConsts.WriteByte, StreamMember.WriteBytes, BpConsts.WriteBytesTemplate, BpConsts.WriteBytesUnsupported),
+            new(MConsts.WriteBytes, StreamMember.WriteBytes, BpConsts.WriteBytesTemplate, BpConsts.WriteBytesUnsupported),
             new(MConsts.WriteSpan, StreamMember.WriteSpan, BpConsts.WriteSpanTemplate, BpConsts.WriteSpanUnsupported, true),
-            new(MConsts.WriteAsyncByte, StreamMember.WriteAsyncBytes, BpConsts.WriteAsyncBytesTemplate, BpConsts.WriteAsyncBytesUnsupported),
+            new(MConsts.WriteAsyncBytes, StreamMember.WriteAsyncBytes, BpConsts.WriteAsyncBytesTemplate, BpConsts.WriteAsyncBytesUnsupported),
             new(MConsts.WriteAsyncMemory, StreamMember.WriteAsyncMemory, BpConsts.WriteAsyncMemoryTemplate, BpConsts.WriteAsyncMemoryUnsupported, true),
             // Others
+            new(MConsts.ReadByte, StreamMember.ReadByte, BpConsts.ReadByteCallsToReadSpan, null),
+            new(MConsts.WriteByte, StreamMember.WriteByte, BpConsts.WriteByteCallsToWriteSpan, null),
             new(MConsts.CanRead, StreamMember.CanRead, BpConsts.CanRead, BpConsts.CanReadUnsupported),
             new(MConsts.CanSeek, StreamMember.CanSeek, BpConsts.CanSeek, BpConsts.CanSeekUnsupported),
             new(MConsts.CanWrite, StreamMember.CanWrite, BpConsts.CanWrite, BpConsts.CanWriteUnsupported),
@@ -41,10 +43,10 @@ namespace System.IO.StreamSourceGeneration
         internal readonly string Name;
         internal readonly StreamMember StreamMember;
         internal readonly string? Boilerplate;
-        internal readonly string BoilerplateForUnsupported;
+        internal readonly string? BoilerplateForUnsupported;
         internal readonly bool HasPriority;
 
-        internal BoilerplateCandidateInfo(string name, StreamMember operation, string? boilerplate, string boilerplateForUnsupported, bool hasPriority = false)
+        internal BoilerplateCandidateInfo(string name, StreamMember operation, string? boilerplate, string? boilerplateForUnsupported, bool hasPriority = false)
         {
             Name = name;
             StreamMember = operation;

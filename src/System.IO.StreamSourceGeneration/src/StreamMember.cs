@@ -16,6 +16,8 @@ namespace System.IO.StreamSourceGeneration
         WriteAsyncMemory,
         BeginRead,
         BeginWrite,
+        ReadByte,
+        WriteByte,
         CanRead,
         CanSeek,
         CanWrite,

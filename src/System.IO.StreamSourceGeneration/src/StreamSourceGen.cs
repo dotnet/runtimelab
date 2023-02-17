@@ -51,7 +51,8 @@ namespace System.IO.StreamSourceGeneration
         }
 #endif
 
-            List<StreamTypeInfo>? classesWithGenerationOptions = Helpers.GetClassesWithGenerationOptions(compilation, classes, context.CancellationToken);
+            List<StreamTypeInfo>? classesWithGenerationOptions = 
+                Helpers.GetClassesWithGenerationOptions(compilation, classes, context.CancellationToken);
 
             if (classesWithGenerationOptions == null)
             {
@@ -117,7 +118,7 @@ namespace {streamTypeInfo.TypeSymbol.ContainingNamespace}
 
                         if (capabilityInfo == null)
                         {
-                            boilerplate = candidateInfo.BoilerplateForUnsupported;
+                            boilerplate = candidateInfo.BoilerplateForUnsupported!;
                         }
                         else
                         {
@@ -132,15 +133,29 @@ namespace {streamTypeInfo.TypeSymbol.ContainingNamespace}
                             boilerplate = string.Format(candidateInfo.Boilerplate, memberToCallTemplate);
                         }
                         break;
+                    case StreamMember.ReadByte:
+                        if (streamTypeInfo.ReadInfo?.SyncPreferredMember is not StreamMember.ReadSpan)
+                        {
+                            continue;
+                        }
+                        boilerplate = candidateInfo.Boilerplate!;
+                        break;
+                    case StreamMember.WriteByte:
+                        if (streamTypeInfo.WriteInfo?.SyncPreferredMember is not StreamMember.WriteSpan)
+                        {
+                            continue;
+                        }
+                        boilerplate = candidateInfo.Boilerplate!;
+                        break;
                     case StreamMember.BeginRead:
                     case StreamMember.CanRead:
                     case StreamMember.EndRead:
-                        boilerplate = canRead ? candidateInfo.Boilerplate! : candidateInfo.BoilerplateForUnsupported;
+                        boilerplate = canRead ? candidateInfo.Boilerplate! : candidateInfo.BoilerplateForUnsupported!;
                         break;
                     case StreamMember.BeginWrite:
                     case StreamMember.CanWrite:
                     case StreamMember.EndWrite:
-                        boilerplate = canWrite ? candidateInfo.Boilerplate! : candidateInfo.BoilerplateForUnsupported;
+                        boilerplate = canWrite ? candidateInfo.Boilerplate! : candidateInfo.BoilerplateForUnsupported!;
                         break;
                     case StreamMember.SetLength:
                         if (canSeek && canWrite)
@@ -148,7 +163,7 @@ namespace {streamTypeInfo.TypeSymbol.ContainingNamespace}
                             continue;
                         }
                         // We can easily generate SetLength if not supported but not otherwise.
-                        boilerplate = candidateInfo.BoilerplateForUnsupported;
+                        boilerplate = candidateInfo.BoilerplateForUnsupported!;
                         break;
                     case StreamMember.Position:
                     case StreamMember.Length:
@@ -156,17 +171,17 @@ namespace {streamTypeInfo.TypeSymbol.ContainingNamespace}
                         {
                             continue;
                         }
-                        boilerplate = candidateInfo.BoilerplateForUnsupported;
+                        boilerplate = candidateInfo.BoilerplateForUnsupported!;
                         break;
                     case StreamMember.CanSeek:
-                        boilerplate = canSeek ? candidateInfo.Boilerplate! : candidateInfo.BoilerplateForUnsupported;
+                        boilerplate = canSeek ? candidateInfo.Boilerplate! : candidateInfo.BoilerplateForUnsupported!;
                         break;
                     default:
                         // If Seek wasn't contained in overriddenMembers, it means
                         // that it wasn't implemented and seeking is not supported.
                         Debug.Assert(member is StreamMember.Seek);
                         Debug.Assert(!canSeek);
-                        boilerplate = candidateInfo.BoilerplateForUnsupported;
+                        boilerplate = candidateInfo.BoilerplateForUnsupported!;
                         break;
                 }
 

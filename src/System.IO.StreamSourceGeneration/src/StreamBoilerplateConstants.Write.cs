@@ -47,16 +47,16 @@ namespace System.IO.StreamSourceGeneration
         {{
             ValidateBufferArguments(buffer, offset, count);
             EnsureCanWrite();
-            return {0}
+            {0}
         }}
 ";
         // TODO: find out the best implementations for each case.
         internal const string WriteAsyncBytesCallsToWriteBytes = @"
-            Task.Run(() => Write(buffer, offset, count), cancellationToken);";
+            return Task.Run(() => Write(buffer, offset, count), cancellationToken);";
         internal const string WriteAsyncBytesCallsToWriteSpan = @"
-            Task.Run(() => Write(buffer.AsSpan(offset, count)), cancellationToken);";
+            return Task.Run(() => Write(buffer.AsSpan(offset, count)), cancellationToken);";
         internal const string WriteAsyncBytesCallsToWriteAsyncMemory = @"
-            WriteAsync(buffer.AsMemory(offset, count), cancellationToken).AsTask();";
+            return WriteAsync(buffer.AsMemory(offset, count), cancellationToken).AsTask();";
 
         internal const string WriteAsyncMemoryTemplate = @"
         public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default)
@@ -81,5 +81,14 @@ namespace System.IO.StreamSourceGeneration
             }, cancellationToken));
 
             return vt;";
+
+        internal const string WriteByteCallsToWriteSpan = @"
+        public override void WriteByte(byte value)
+        {
+            Span<byte> oneByteArray = stackalloc byte[1];
+            oneByteArray[0] = value;
+            Write(oneByteArray);
+        }
+";
     }
 }

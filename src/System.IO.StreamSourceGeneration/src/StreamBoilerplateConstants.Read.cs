@@ -90,5 +90,14 @@ namespace System.IO.StreamSourceGeneration
                 ArrayPool<byte>.Shared.Return(sharedBuffer);
                 return bytesRead;
             }, cancellationToken));";
+
+        internal const string ReadByteCallsToReadSpan = @"
+        public override int ReadByte()
+        {
+            Span<byte> oneByteArray = stackalloc byte[1];
+            int r = Read(oneByteArray);
+            return r == 0 ? -1 : oneByteArray[0];
+        }
+";
     }
 }

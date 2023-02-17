@@ -6,15 +6,18 @@ namespace System.IO.StreamSourceGeneration
     internal class StreamMembersConstants
     {
 
-        internal const string ReadByte = "System.IO.Stream.Read(byte[], int, int)";
+        internal const string ReadBytes = "System.IO.Stream.Read(byte[], int, int)";
         internal const string ReadSpan = "System.IO.Stream.Read(System.Span<byte>)";
-        internal const string ReadAsyncByte = "System.IO.Stream.ReadAsync(byte[], int, int, System.Threading.CancellationToken)";
+        internal const string ReadAsyncBytes = "System.IO.Stream.ReadAsync(byte[], int, int, System.Threading.CancellationToken)";
         internal const string ReadAsyncMemory = "System.IO.Stream.ReadAsync(System.Memory<byte>, System.Threading.CancellationToken)";
 
-        internal const string WriteByte = "System.IO.Stream.Write(byte[], int, int)";
+        internal const string WriteBytes = "System.IO.Stream.Write(byte[], int, int)";
         internal const string WriteSpan = "System.IO.Stream.Write(System.ReadOnlySpan<byte>)";
-        internal const string WriteAsyncByte = "System.IO.Stream.WriteAsync(byte[], int, int, System.Threading.CancellationToken)";
+        internal const string WriteAsyncBytes = "System.IO.Stream.WriteAsync(byte[], int, int, System.Threading.CancellationToken)";
         internal const string WriteAsyncMemory = "System.IO.Stream.WriteAsync(System.ReadOnlyMemory<byte>, System.Threading.CancellationToken)";
+
+        internal const string ReadByte = "System.IO.Stream.ReadByte()";
+        internal const string WriteByte = "System.IO.Stream.WriteByte(byte)";
 
         internal const string CanRead = "System.IO.Stream.CanRead";
         internal const string CanSeek = "System.IO.Stream.CanSeek";
