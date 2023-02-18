@@ -2097,8 +2097,14 @@ namespace Internal.IL
                     eeTypeExpression = new LoadExpressionEntry(StackValueKind.ValueType, "eeType", thisPointer, GetWellKnownType(WellKnownType.IntPtr));
                 }
 
+                // alloca for GetGenericContextSource - not used but must point to a valid address for FindInterfaceMethodImplementationTarget
+                LLVMValueRef genericContextAlloc = _builder.BuildAlloca(LLVMTypeRef.CreatePointer(
+                    GetLLVMTypeForTypeDesc(_compilation.TypeSystemContext.SystemModule.GetKnownType("Internal.Runtime", "MethodTable")), 0), "genericContext");
+                ExpressionEntry genericContextExpression = new ExpressionEntry(StackValueKind.NativeInt,
+                    "genericContextAlloc", genericContextAlloc);
+
                 var targetEntry = CallRuntime(_compilation.TypeSystemContext, DispatchResolve, "FindInterfaceMethodImplementationTarget",
-                    new StackEntry[] { eeTypeExpression, interfaceEEType, new ExpressionEntry(StackValueKind.Int32, "slot", slot, GetWellKnownType(WellKnownType.UInt16)) });
+                    new StackEntry[] { eeTypeExpression, interfaceEEType, new ExpressionEntry(StackValueKind.Int32, "slot", slot, GetWellKnownType(WellKnownType.UInt16)), genericContextExpression });
                 functionPtr = targetEntry.ValueAsType(LLVMTypeRef.CreatePointer(llvmSignature, 0), _builder);
             }
             else
