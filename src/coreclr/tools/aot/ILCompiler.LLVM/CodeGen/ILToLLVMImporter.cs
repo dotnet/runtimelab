@@ -2274,7 +2274,7 @@ namespace Internal.IL
 
                         // TODO: Does fldHandle always come from ldtoken? If not, what to do with other cases?
                         if (!(fieldSlot is LdTokenEntry<FieldDesc> checkedFieldSlot) ||
-                            !(_compilation.GetFieldRvaData(checkedFieldSlot.LdToken) is BlobNode fieldNode))
+                            !(_compilation.GetFieldRvaData(checkedFieldSlot.LdToken) is FieldRvaDataNode fieldNode))
                             throw new InvalidProgramException("Provided field handle is invalid.");
 
                         LLVMValueRef src = LoadAddressOfSymbolNode(fieldNode);
