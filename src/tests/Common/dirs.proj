@@ -25,7 +25,7 @@
       <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\SharedLibrary\SharedLibrary.csproj" />
       <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\Preinitialization\Preinitialization.csproj" />
       <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\Reflection\Reflection.csproj" />
-      <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\Reflection\Reflection_ReflectedOnly.csproj" />
+      <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\Reflection\Reflection_FromUsage.csproj" />
       <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\ComWrappers\ComWrappers.csproj" />
     </ItemGroup>
 

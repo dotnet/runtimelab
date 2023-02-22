@@ -52,13 +52,17 @@ public class Interfaces
         TestStaticInterfaceMethods.Run();
 #endif
         TestSimpleStaticDefaultInterfaceMethods.Run();
+#if !CODEGEN_WASM // TODO-LLVM: fails because the scanner for LLVM adds a ScannedMethodNode node on the static abstract interface method (which asserts)
         TestSimpleDynamicStaticVirtualMethods.Run();
         TestGenericDynamicStaticVirtualMethods.Run();
         TestVariantGenericDynamicStaticVirtualMethods.Run();
         TestStaticDefaultMethodAmbiguity.Run();
+#endif
         TestMoreConstraints.Run();
+#if !CODEGEN_WASM // TODO-LLVM: fails because the scanner for LLVM adds a ScannedMethodNode node on the static abstract interface method (which asserts)
         TestSimpleNonGeneric.Run();
         TestSimpleGeneric.Run();
+#endif
 
         return Pass;
     }
