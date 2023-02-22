@@ -82,8 +82,11 @@ ThreadStore * ThreadStore::Create(RuntimeInstance * pRuntimeInstance)
     if (NULL == pNewThreadStore)
         return NULL;
 
+    // TODO-LLVM: will wasm threads help with this?
+#ifndef HOST_WASM
     if (!PalRegisterHijackCallback(Thread::HijackCallback))
         return NULL;
+#endif
 
     pNewThreadStore->m_pRuntimeInstance = pRuntimeInstance;
 

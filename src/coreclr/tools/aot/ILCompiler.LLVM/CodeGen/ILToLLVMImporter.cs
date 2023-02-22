@@ -1523,6 +1523,35 @@ namespace Internal.IL
             return false;
         }
 
+        // determining if a struct should be passed on the shadow stack.  Span<char/T> is an example.
+        private static bool ContainsIsByRef(TypeDesc type)
+        {
+            if (type.IsByRef || type.IsByRefLike)
+            {
+                return true;
+            }
+
+            foreach (var field in type.GetFields())
+            {
+                if (field.IsStatic)
+                    continue;
+
+                var fieldType = field.FieldType;
+                if (fieldType.IsValueType)
+                {
+                    var fieldDefType = (DefType)fieldType;
+                    if (!fieldDefType.ContainsGCPointers && !fieldDefType.IsByRefLike)
+                        continue;
+
+                    if (ContainsIsByRef(fieldType))
+                    {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
         /// <summary>
         /// Returns true if the type can be stored on the local stack
         /// instead of the shadow stack in this method.
@@ -1531,7 +1560,7 @@ namespace Internal.IL
         {
             if (type is DefType defType)
             {
-                if (!defType.IsGCPointer && !defType.ContainsGCPointers)
+                if (!defType.IsGCPointer && !defType.ContainsGCPointers && !ContainsIsByRef(type))
                 {
                     return true;
                 }
@@ -2097,11 +2126,12 @@ namespace Internal.IL
                     eeTypeExpression = new LoadExpressionEntry(StackValueKind.ValueType, "eeType", thisPointer, GetWellKnownType(WellKnownType.IntPtr));
                 }
 
-                // alloca for GetGenericContextSource - not used but must point to a valid address for FindInterfaceMethodImplementationTarget
-                LLVMValueRef genericContextAlloc = _builder.BuildAlloca(LLVMTypeRef.CreatePointer(
-                    GetLLVMTypeForTypeDesc(_compilation.TypeSystemContext.SystemModule.GetKnownType("Internal.Runtime", "MethodTable")), 0), "genericContext");
-                ExpressionEntry genericContextExpression = new ExpressionEntry(StackValueKind.NativeInt,
-                    "genericContextAlloc", genericContextAlloc);
+                // No generic context - static lookup not supported
+                var ptrPtrMethodTableLlvmType = LLVMTypeRef.CreatePointer(LLVMTypeRef.CreatePointer(
+                    GetLLVMTypeForTypeDesc(_compilation.TypeSystemContext.SystemModule.GetKnownType("Internal.Runtime", "MethodTable")),
+                    0), 0);
+                var nullPtrPtr = LLVMValueRef.CreateConstPointerNull(ptrPtrMethodTableLlvmType);
+                ExpressionEntry genericContextExpression = new ExpressionEntry(StackValueKind.NativeInt, "genericContextPtrPtr", nullPtrPtr);
 
                 var targetEntry = CallRuntime(_compilation.TypeSystemContext, DispatchResolve, "FindInterfaceMethodImplementationTarget",
                     new StackEntry[] { eeTypeExpression, interfaceEEType, new ExpressionEntry(StackValueKind.Int32, "slot", slot, GetWellKnownType(WellKnownType.UInt16)), genericContextExpression });
@@ -4357,7 +4387,13 @@ namespace Internal.IL
         {
             if (RhpThrowEx.Handle.Equals(IntPtr.Zero))
             {
-                RhpThrowEx = Module.AddFunction("RhpThrowEx", LLVMTypeRef.CreateFunction(LLVMTypeRef.Void, new LLVMTypeRef[] { LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0) }, false));
+                RhpThrowEx = Module.GetNamedFunction("RhpThrowEx");
+                if (RhpThrowEx == null)
+                {
+                    RhpThrowEx = Module.AddFunction("RhpThrowEx",
+                        LLVMTypeRef.CreateFunction(LLVMTypeRef.Void,
+                            new LLVMTypeRef[] { LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0) }, false));
+                }
             }
 
             _builder.BuildStore(GetShadowStack(), ShadowStackTop);

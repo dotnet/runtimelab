@@ -500,8 +500,8 @@ void Llvm::lowerStoreLcl(GenTreeLclVarCommon* storeLclNode)
         storeLclNode->ChangeType(TYP_I_IMPL);
         storeLclNode->SetLclNum(convertToStoreObjLclNum);
 
-        GenTree* storeObjNode = new (_compiler, GT_STORE_OBJ)
-            GenTreeObj(varDsc->TypeGet(), storeLclNode, data, varDsc->GetLayout());
+        GenTree* storeObjNode = new (_compiler, GT_STORE_LCL_FLD)
+            GenTreeLclFld(GT_STORE_LCL_FLD, varDsc->TypeGet(), convertToStoreObjLclNum, varDsc->lvFldOffset, varDsc->GetLayout());
         storeObjNode->gtFlags |= (GTF_ASG | GTF_IND_NONFAULTING);
 
         CurrentRange().InsertAfter(storeLclNode, storeObjNode);
