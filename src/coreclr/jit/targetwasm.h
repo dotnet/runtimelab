@@ -23,6 +23,7 @@
   #define FEATURE_MULTIREG_ARGS         0  // Support for passing a single argument in more than one register
   #define FEATURE_MULTIREG_RET          0  // Support for returning a single value in more than one register
   #define FEATURE_MULTIREG_STRUCT_PROMOTE  0  // True when we want to promote fields of a multireg struct into registers
+  #define MAX_PASS_SINGLEREG_BYTES      8  // Maximum size of a struct passed in a single register (double).
   #define MAX_PASS_MULTIREG_BYTES       0  // No multireg arguments
   #define MAX_RET_MULTIREG_BYTES        0  // No multireg return values
   #define MAX_ARG_REG_COUNT             1  // Maximum registers used to pass a single argument.

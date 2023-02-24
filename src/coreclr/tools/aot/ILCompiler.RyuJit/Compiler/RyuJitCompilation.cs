@@ -240,6 +240,7 @@ namespace ILCompiler
         public virtual bool StructIsWrappedPrimitive(TypeDesc method, TypeDesc primitiveTypeDesc) => throw new NotImplementedException();
         public virtual int PadOffset(TypeDesc type, uint atOffset) => throw new NotImplementedException();
         public virtual string GetRuntimeExportManagedEntrypointName(MethodDesc method) => throw new NotImplementedException();
+        public virtual ISymbolNode GetExternalMethodAccessor(MethodDesc method, ReadOnlySpan<TargetAbiType> signature) => throw new NotImplementedException();
     }
 
     [Flags]

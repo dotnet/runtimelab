@@ -36,16 +36,24 @@ using llvm::Type;
 using llvm::Instruction;
 using llvm::AllocaInst;
 using llvm::ArrayRef;
+using llvm::StringRef;
+using llvm::Twine;
 
 using SSAName = Compiler::SSAName;
+using structPassingKind = Compiler::structPassingKind;
 
 #define IMAGE_FILE_MACHINE_WASM32             0xFFFF
 #define IMAGE_FILE_MACHINE_WASM64             0xFFFE // TODO: appropriate values for this?  Used to check compilation is for intended target
 
-struct OperandArgNum
+// Part of the Jit/EE interface, must be kept in sync with the managed version in "CorInfoImpl.Llvm.cs".
+//
+enum class TargetAbiType : uint8_t
 {
-    unsigned int argNum;
-    GenTree* operand;
+    Void,
+    Int32,
+    Int64,
+    Float,
+    Double
 };
 
 enum HelperFuncInfoFlags
@@ -110,14 +118,13 @@ struct FunctionInfo
     };
 };
 
-// TODO: We should create a Static... class to manage the globals and their lifetimes.
-// Note we declare all statics here, and define them in llvm.cpp, for documentation and
-// visibility purposes even as some are only needed in other compilation units.
+// TODO: The module/context pair must be bound to a thread context. We should investigate removing the type maps.
+// Note we declare all statics here, and define them in llvm.cpp, for documentation and visibility purposes even as
+// some are only needed in other compilation units.
 //
-extern Module*                                                _module;
-extern LLVMContext                                            _llvmContext;
-extern Function*                                              _doNothingFunction;
-extern std::unordered_map<CORINFO_CLASS_HANDLE, Type*>*       _llvmStructs;
+extern Module* _module;
+extern LLVMContext _llvmContext;
+extern std::unordered_map<CORINFO_CLASS_HANDLE, Type*>* _llvmStructs;
 extern std::unordered_map<CORINFO_CLASS_HANDLE, StructDesc*>* _structDescMap;
 
 class Llvm
@@ -125,6 +132,7 @@ class Llvm
 private:
     Compiler* const _compiler;
     Compiler::Info* const m_info;
+    void* const m_pEECorInfo; // TODO-LLVM: workaround for not changing the JIT/EE interface.
     CORINFO_SIG_INFO _sigInfo; // sigInfo of function being compiled
     GCInfo* _gcInfo = nullptr;
 
@@ -166,8 +174,9 @@ private:
 public:
     Llvm(Compiler* compiler);
 
-    static void llvmShutdown();
     bool needsReturnStackSlot(const GenTreeCall* callee);
+    var_types GetArgTypeForStructWasm(CORINFO_CLASS_HANDLE structHnd, structPassingKind* pPassKind, unsigned size);
+    var_types GetReturnTypeForStructWasm(CORINFO_CLASS_HANDLE structHnd, structPassingKind* pPassKind, unsigned size);
 
 private:
     LIR::Range& CurrentRange()
@@ -183,10 +192,10 @@ private:
 
     static CorInfoType toCorInfoType(var_types varType);
 
+    bool needsReturnStackSlot(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd);
+
     bool callRequiresShadowStackSaveRestore(const GenTreeCall* call) const;
     bool helperCallRequiresShadowStackSaveRestore(CorInfoHelpFunc helperFunc) const;
-
-    bool needsReturnStackSlot(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd);
     bool callHasShadowStackArg(const GenTreeCall* call) const;
     bool helperCallHasShadowStackArg(CorInfoHelpFunc helperFunc) const;
     bool callHasManagedCallingConvention(const GenTreeCall* call) const;
@@ -198,6 +207,8 @@ private:
 
     unsigned padOffset(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHandle, unsigned atOffset);
     unsigned padNextOffset(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHandle, unsigned atOffset);
+
+    TargetAbiType getAbiTypeForType(var_types type);
 
     [[noreturn]] void failFunctionCompilation();
 
@@ -216,11 +227,18 @@ private:
     TypeDescriptor GetTypeDescriptor(CORINFO_CLASS_HANDLE typeHandle);
     uint32_t GetInstanceFieldAlignment(CORINFO_CLASS_HANDLE fieldTypeHandle);
     const char* GetAlternativeFunctionName();
+    CORINFO_GENERIC_HANDLE GetExternalMethodAccessor(
+        CORINFO_METHOD_HANDLE methodHandle, const TargetAbiType* callSiteSig, int sigLength);
+
+public:
+    static void StartThreadContextBoundCompilation(const char* path, const char* triple, const char* dataLayout);
+    static void FinishThreadContextBoundCompilation();
 
     // ================================================================================================================
     // |                                                 Type system                                                  |
     // ================================================================================================================
 
+private:
     StructDesc* getStructDesc(CORINFO_CLASS_HANDLE structHandle);
 
     Type* getLlvmTypeForStruct(ClassLayout* classLayout);
@@ -270,6 +288,7 @@ private:
     void lowerVirtualStubCallAfterArgs(
         GenTreeCall* callNode, unsigned thisArgLclNum, GenTree* cellArgNode, unsigned shadowArgsSize);
     void insertNullCheckForCall(GenTreeCall* callNode);
+    void lowerUnmanagedCall(GenTreeCall* callNode);
     unsigned lowerCallToShadowStack(GenTreeCall* callNode);
     void failUnsupportedCalls(GenTreeCall* callNode);
     CallArg* lowerCallReturn(GenTreeCall* callNode);
@@ -362,11 +381,16 @@ private:
     llvm::CallBase* emitCallOrInvoke(llvm::FunctionCallee callee, ArrayRef<Value*> args);
 
     FunctionType* getFunctionType();
-    Function* getOrCreateLlvmFunction(const char* symbolName, GenTreeCall* call);
+    llvm::FunctionCallee consumeCallTarget(GenTreeCall* call);
     FunctionType* createFunctionTypeForCall(GenTreeCall* call);
     FunctionType* createFunctionTypeForHelper(CorInfoHelpFunc helperFunc);
+    void annotateHelperFunction(CorInfoHelpFunc helperFunc, Function* llvmFunc);
+    Function* getOrCreateKnownLlvmFunction(StringRef name,
+                                           std::function<FunctionType*()> createFunctionType,
+                                           std::function<void(Function*)> annotateFunction = [](Function*) { });
+    Function* getOrCreateExternalLlvmFunctionAccessor(StringRef name);
 
-    llvm::GlobalVariable* getOrCreateExternalSymbol(const char* symbolName);
+    llvm::GlobalVariable* getOrCreateExternalSymbol(StringRef symbolName);
     llvm::GlobalVariable* getOrCreateSymbol(CORINFO_GENERIC_HANDLE symbolHandle);
     CORINFO_GENERIC_HANDLE getSymbolHandleForClassToken(mdToken token);
 

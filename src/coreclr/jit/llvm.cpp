@@ -9,8 +9,7 @@
 #pragma warning (error: 4459)
 
 LLVMContext _llvmContext;
-Module*     _module = nullptr;
-char*       _outputFileName;
+Module* _module = nullptr;
 
 std::unordered_map<CORINFO_CLASS_HANDLE, Type*>* _llvmStructs = new std::unordered_map<CORINFO_CLASS_HANDLE, Type*>();
 std::unordered_map<CORINFO_CLASS_HANDLE, StructDesc*>* _structDescMap = new std::unordered_map<CORINFO_CLASS_HANDLE, StructDesc*>();
@@ -32,35 +31,18 @@ enum class EEApiId
     GetTypeDescriptor,
     GetInstanceFieldAlignment,
     GetAlternativeFunctionName,
+    GetExternalMethodAccessor,
     Count
 };
 
-void* _thisPtr; // TODO: workaround for not changing the JIT/EE interface.  As this is static, it will probably fail if multithreaded compilation is attempted
-void* g_callbacks[static_cast<int>(EEApiId::Count)];
-
-extern "C" DLLEXPORT void registerLlvmCallbacks(void*       thisPtr,
-                                                const char* outputFileName,
-                                                const char* triple,
-                                                const char* dataLayout,
-                                                void**      callbacks)
+enum class JitApiId
 {
-    assert((callbacks != nullptr) && (callbacks[static_cast<int>(EEApiId::Count)] == (void*)0x1234));
+    StartThreadContextBoundCompilation,
+    FinishThreadContextBoundCompilation,
+    Count
+};
 
-    _thisPtr = thisPtr;
-    memcpy(g_callbacks, callbacks, static_cast<int>(EEApiId::Count) * sizeof(void*));
-
-    if (_module == nullptr) // registerLlvmCallbacks is called for each method to compile, but must only created the module once.  Better perhaps to split this into 2 calls.
-    {
-        _module = new Module(llvm::StringRef("netscripten-clrjit"), _llvmContext);
-        _module->setTargetTriple(triple);
-        _module->setDataLayout(dataLayout);
-        _outputFileName = (char*)malloc(strlen(outputFileName) + 7);
-        strcpy(_outputFileName, "1.txt"); // ??? without this _outputFileName is corrupted
-        strcpy(_outputFileName, outputFileName);
-        strcpy(_outputFileName + strlen(_outputFileName) - 3, "clrjit"); // use different module output name for now, TODO: delete if old LLVM gen does not create a module
-        strcat(_outputFileName, ".bc");
-    }
-}
+void* g_callbacks[static_cast<int>(EEApiId::Count)];
 
 CorInfoType HelperFuncInfo::GetSigReturnType() const
 {
@@ -110,81 +92,22 @@ size_t HelperFuncInfo::GetSigArgCount(unsigned* callArgCount) const
     return count;
 }
 
+bool Compiler::IsHfa(CORINFO_CLASS_HANDLE hClass) { return false; }
+var_types Compiler::GetHfaType(GenTree* tree) { return TYP_UNDEF; }
+var_types Compiler::GetHfaType(CORINFO_CLASS_HANDLE hClass) { return TYP_UNDEF; }
+unsigned Compiler::GetHfaCount(CORINFO_CLASS_HANDLE hClass) { return 0; }
+unsigned Compiler::GetHfaCount(GenTree* tree) { return 0; }
+
 Llvm::Llvm(Compiler* compiler)
-    : _compiler(compiler),
-    m_info(&compiler->info),
-    _sigInfo(compiler->info.compMethodInfo->args),
-    _builder(_llvmContext),
-    _blkToLlvmBlksMap(compiler->getAllocator(CMK_Codegen)),
-    _sdsuMap(compiler->getAllocator(CMK_Codegen)),
-    _localsMap(compiler->getAllocator(CMK_Codegen))
+    : _compiler(compiler)
+    , m_info(&compiler->info)
+    , m_pEECorInfo(*((void**)compiler->info.compCompHnd + 1)) // TODO-LLVM: hack. CorInfoImpl* is the first field of JitInterfaceWrapper.
+    , _sigInfo(compiler->info.compMethodInfo->args)
+    , _builder(_llvmContext)
+    , _blkToLlvmBlksMap(compiler->getAllocator(CMK_Codegen))
+    , _sdsuMap(compiler->getAllocator(CMK_Codegen))
+    , _localsMap(compiler->getAllocator(CMK_Codegen))
 {
-}
-
-void Llvm::llvmShutdown()
-{
-    if (_module->getNamedMetadata("llvm.dbg.cu") != nullptr)
-    {
-        _module->addModuleFlag(llvm::Module::Warning, "Dwarf Version", 4);
-        _module->addModuleFlag(llvm::Module::Warning, "Debug Info Version", 3);
-    }
-
-    std::error_code ec;
-
-    if (_outputFileName == nullptr)
-    {
-        return; // Nothing generated.
-    }
-
-    // TODO-LLVM: when the release build is more stable, put under #ifdef DEBUG.
-    // For now the text output is useful for debugging
-    char* txtFileName = (char*)malloc(strlen(_outputFileName) + 2); // .txt is longer than .bc
-    strcpy(txtFileName, _outputFileName);
-    strcpy(txtFileName + strlen(_outputFileName) - 2, "txt");
-    llvm::raw_fd_ostream textOutputStream(txtFileName, ec);
-    _module->print(textOutputStream, (llvm::AssemblyAnnotationWriter*)NULL);
-    free(txtFileName);
-
-    // verifyModule returns true when its broken, so invert.
-    assert(!llvm::verifyModule(*_module, &llvm::errs()));
-
-    llvm::raw_fd_ostream OS(_outputFileName, ec);
-    llvm::WriteBitcodeToFile(*_module, OS);
-
-    for (const auto &structDesc : *_structDescMap)
-    {
-        delete structDesc.second;
-    }
-
-    delete _module;
-}
-
-bool Llvm::callRequiresShadowStackSaveRestore(const GenTreeCall* call) const
-{
-    // In general, if the call is itself not managed (does not have a shadow stack argument) **and** may call
-    // back into managed code, we need to save/restore the shadow stack pointer, so that the RPI frame can pick
-    // it up. Another case where the save/restore is required is when calling into native runtime code that can
-    // trigger a GC (canonical example: allocators), to communicate shadow stack bounds to the roots scan.
-    // TODO-LLVM-CQ: optimize the GC case by using specialized helpers which would sink the save/restore to the
-    // unlikely path of a GC actually happening.
-    // TODO-LLVM-CQ: we should skip the managed -> native -> managed transition for runtime imports implemented
-    // in managed code as runtime exports.
-    //
-    if (call->IsHelperCall())
-    {
-        return helperCallRequiresShadowStackSaveRestore(_compiler->eeGetHelperNum(call->gtCallMethHnd));
-    }
-
-    // SPGCT calls are assumed to never RPI by contract.
-    return !callHasShadowStackArg(call) && !call->IsSuppressGCTransition();
-}
-
-bool Llvm::helperCallRequiresShadowStackSaveRestore(CorInfoHelpFunc helperFunc) const
-{
-    // Save/restore is needed if the helper doesn't have a shadow stack argument, unless we know it won't call
-    // back into managed code. TODO-LLVM-CQ: mark (make, if required) more helpers "HFIF_NO_RPI_OR_GC".
-    const HelperFuncInfo& helperInfo = getHelperFuncInfo(helperFunc);
-    return !helperInfo.HasFlags(HFIF_SS_ARG) && !helperInfo.HasFlags(HFIF_NO_RPI_OR_GC);
 }
 
 bool Llvm::needsReturnStackSlot(const GenTreeCall* callee)
@@ -206,6 +129,28 @@ bool Llvm::needsReturnStackSlot(const GenTreeCall* callee)
     }
 
     return Llvm::needsReturnStackSlot(sigRetType, callee->gtRetClsHnd);
+}
+
+var_types Llvm::GetArgTypeForStructWasm(CORINFO_CLASS_HANDLE structHnd, structPassingKind* pPassKind, unsigned size)
+{
+    assert(size != 0);
+    //
+    // WASM C ABI is documented here: https://github.com/WebAssembly/tool-conventions/blob/main/BasicCABI.md.
+    // In essense, structs are passed by reference except if they are trivial wrappers of a primitive (scalar).
+    // Additionally, structs which cannot be passed on the LLVM stack are passed on the shadow one in the managed
+    // calling convention.
+    //
+    // However, we currently do not conform to this ABI and so cannot pass non-trivial structs to PI methods.
+    // TODO-LLVM: fix this once the IL backend is gone, s. t. the managed and unmanaged ABIs are the same (for
+    // values that can be passed as LLVM arguments).
+    //
+    *pPassKind = Compiler::SPK_ByValue;
+    return TYP_STRUCT;
+}
+
+var_types Llvm::GetReturnTypeForStructWasm(CORINFO_CLASS_HANDLE structHnd, structPassingKind* pPassKind, unsigned size)
+{
+    return GetArgTypeForStructWasm(structHnd, pPassKind, size);
 }
 
 GCInfo* Llvm::getGCInfo()
@@ -266,6 +211,34 @@ GCInfo* Llvm::getGCInfo()
 bool Llvm::needsReturnStackSlot(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd)
 {
     return (corInfoType != CORINFO_TYPE_VOID) && !canStoreArgOnLlvmStack(corInfoType, classHnd);
+}
+
+bool Llvm::callRequiresShadowStackSaveRestore(const GenTreeCall* call) const
+{
+    // In general, if the call is itself not managed (does not have a shadow stack argument) **and** may call
+    // back into managed code, we need to save/restore the shadow stack pointer, so that the RPI frame can pick
+    // it up. Another case where the save/restore is required is when calling into native runtime code that can
+    // trigger a GC (canonical example: allocators), to communicate shadow stack bounds to the roots scan.
+    // TODO-LLVM-CQ: optimize the GC case by using specialized helpers which would sink the save/restore to the
+    // unlikely path of a GC actually happening.
+    // TODO-LLVM-CQ: we should skip the managed -> native -> managed transition for runtime imports implemented
+    // in managed code as runtime exports.
+    //
+    if (call->IsHelperCall())
+    {
+        return helperCallRequiresShadowStackSaveRestore(_compiler->eeGetHelperNum(call->gtCallMethHnd));
+    }
+
+    // SPGCT calls are assumed to never RPI by contract.
+    return !callHasShadowStackArg(call) && !call->IsSuppressGCTransition();
+}
+
+bool Llvm::helperCallRequiresShadowStackSaveRestore(CorInfoHelpFunc helperFunc) const
+{
+    // Save/restore is needed if the helper doesn't have a shadow stack argument, unless we know it won't call
+    // back into managed code. TODO-LLVM-CQ: mark (make, if required) more helpers "HFIF_NO_RPI_OR_GC".
+    const HelperFuncInfo& helperInfo = getHelperFuncInfo(helperFunc);
+    return !helperInfo.HasFlags(HFIF_SS_ARG) && !helperInfo.HasFlags(HFIF_NO_RPI_OR_GC);
 }
 
 bool Llvm::callHasShadowStackArg(const GenTreeCall* call) const
@@ -708,6 +681,28 @@ unsigned Llvm::padNextOffset(CorInfoType corInfoType, CORINFO_CLASS_HANDLE struc
     return padOffset(corInfoType, structClassHandle, atOffset) + size;
 }
 
+TargetAbiType Llvm::getAbiTypeForType(var_types type)
+{
+    switch (genActualType(type))
+    {
+        case TYP_VOID:
+            return TargetAbiType::Void;
+        case TYP_INT:
+            return TargetAbiType::Int32;
+        case TYP_LONG:
+            return TargetAbiType::Int64;
+        case TYP_REF:
+        case TYP_BYREF:
+            return (TARGET_POINTER_SIZE == 4) ? TargetAbiType::Int32 : TargetAbiType::Int64;
+        case TYP_FLOAT:
+            return TargetAbiType::Float;
+        case TYP_DOUBLE:
+            return TargetAbiType::Double;
+        default:
+            unreached();
+    }
+}
+
 [[noreturn]] void Llvm::failFunctionCompilation()
 {
     for (FunctionInfo& funcInfo : m_functions)
@@ -724,72 +719,127 @@ unsigned Llvm::padNextOffset(CorInfoType corInfoType, CORINFO_CLASS_HANDLE struc
 template <EEApiId Func, typename TReturn, typename... TArgs>
 TReturn CallEEApi(TArgs... args)
 {
-    return static_cast<TReturn (*)(void*, TArgs...)>(g_callbacks[static_cast<int>(Func)])(_thisPtr, args...);
+    return static_cast<TReturn (*)(TArgs...)>(g_callbacks[static_cast<int>(Func)])(args...);
 }
 
 const char* Llvm::GetMangledMethodName(CORINFO_METHOD_HANDLE methodHandle)
 {
-    return CallEEApi<EEApiId::GetMangledMethodName, const char*>(methodHandle);
+    return CallEEApi<EEApiId::GetMangledMethodName, const char*>(m_pEECorInfo, methodHandle);
 }
 
 const char* Llvm::GetMangledSymbolName(void* symbol)
 {
-    return CallEEApi<EEApiId::GetSymbolMangledName, const char*>(symbol);
+    return CallEEApi<EEApiId::GetSymbolMangledName, const char*>(m_pEECorInfo, symbol);
 }
 
 const char* Llvm::GetEHDispatchFunctionName(CORINFO_EH_CLAUSE_FLAGS handlerType)
 {
-    return CallEEApi<EEApiId::GetEHDispatchFunctionName, const char*>(handlerType);
+    return CallEEApi<EEApiId::GetEHDispatchFunctionName, const char*>(m_pEECorInfo, handlerType);
 }
 
 const char* Llvm::GetTypeName(CORINFO_CLASS_HANDLE typeHandle)
 {
-    return CallEEApi<EEApiId::GetTypeName, const char*>(typeHandle);
+    return CallEEApi<EEApiId::GetTypeName, const char*>(m_pEECorInfo, typeHandle);
 }
 
 void Llvm::AddCodeReloc(void* handle)
 {
-    CallEEApi<EEApiId::AddCodeReloc, void>(handle);
+    CallEEApi<EEApiId::AddCodeReloc, void>(m_pEECorInfo, handle);
 }
 
 bool Llvm::IsRuntimeImport(CORINFO_METHOD_HANDLE methodHandle) const
 {
-    return CallEEApi<EEApiId::IsRuntimeImport, uint32_t>(methodHandle) != 0;
+    return CallEEApi<EEApiId::IsRuntimeImport, uint32_t>(m_pEECorInfo, methodHandle) != 0;
 }
 
 const char* Llvm::GetDocumentFileName()
 {
-    return CallEEApi<EEApiId::GetDocumentFileName, const char*>();
+    return CallEEApi<EEApiId::GetDocumentFileName, const char*>(m_pEECorInfo);
 }
 
 uint32_t Llvm::GetOffsetLineNumber(unsigned ilOffset)
 {
-    return CallEEApi<EEApiId::GetOffsetLineNumber, uint32_t>(ilOffset);
+    return CallEEApi<EEApiId::GetOffsetLineNumber, uint32_t>(m_pEECorInfo, ilOffset);
 }
 
 bool Llvm::StructIsWrappedPrimitive(CORINFO_CLASS_HANDLE typeHandle, CorInfoType corInfoType)
 {
     // Maintains compatiblity with the IL->LLVM generation.
     // TODO-LLVM, when IL generation is no more, see if we can remove this unwrapping.
-    return CallEEApi<EEApiId::StructIsWrappedPrimitive, uint32_t>(typeHandle, corInfoType) != 0;
+    return CallEEApi<EEApiId::StructIsWrappedPrimitive, uint32_t>(m_pEECorInfo, typeHandle, corInfoType) != 0;
 }
 
 uint32_t Llvm::PadOffset(CORINFO_CLASS_HANDLE typeHandle, unsigned atOffset)
 {
-    return CallEEApi<EEApiId::PadOffset, uint32_t>(typeHandle, atOffset);
+    return CallEEApi<EEApiId::PadOffset, uint32_t>(m_pEECorInfo, typeHandle, atOffset);
 }
 
 TypeDescriptor Llvm::GetTypeDescriptor(CORINFO_CLASS_HANDLE typeHandle)
 {
-    return CallEEApi<EEApiId::GetTypeDescriptor, TypeDescriptor>(typeHandle);
+    return CallEEApi<EEApiId::GetTypeDescriptor, TypeDescriptor>(m_pEECorInfo, typeHandle);
 }
 
 uint32_t Llvm::GetInstanceFieldAlignment(CORINFO_CLASS_HANDLE fieldTypeHandle)
 {
-    return CallEEApi<EEApiId::GetInstanceFieldAlignment, uint32_t>(fieldTypeHandle);
+    return CallEEApi<EEApiId::GetInstanceFieldAlignment, uint32_t>(m_pEECorInfo, fieldTypeHandle);
 }
 
 const char* Llvm::GetAlternativeFunctionName()
 {
-    return CallEEApi<EEApiId::GetAlternativeFunctionName, const char*>();
+    return CallEEApi<EEApiId::GetAlternativeFunctionName, const char*>(m_pEECorInfo);
+}
+
+CORINFO_GENERIC_HANDLE Llvm::GetExternalMethodAccessor(
+    CORINFO_METHOD_HANDLE methodHandle, const TargetAbiType* sig, int sigLength)
+{
+    return CallEEApi<EEApiId::GetExternalMethodAccessor, CORINFO_GENERIC_HANDLE>(m_pEECorInfo, methodHandle, sig,
+                                                                               sigLength);
+}
+
+extern "C" DLLEXPORT void registerLlvmCallbacks(void** jitImports, void** jitExports)
+{
+    assert((jitImports != nullptr) && (jitImports[static_cast<int>(EEApiId::Count)] == (void*)0x1234));
+    assert(jitExports != nullptr);
+
+    memcpy(g_callbacks, jitImports, static_cast<int>(EEApiId::Count) * sizeof(void*));
+    jitExports[static_cast<int>(JitApiId::StartThreadContextBoundCompilation)] = &Llvm::StartThreadContextBoundCompilation;
+    jitExports[static_cast<int>(JitApiId::FinishThreadContextBoundCompilation)] = &Llvm::FinishThreadContextBoundCompilation;
+    jitExports[static_cast<int>(JitApiId::Count)] = (void*)0x1234;
+}
+
+/* static */ void Llvm::StartThreadContextBoundCompilation(const char* path, const char* triple, const char* dataLayout)
+{
+    _module = new Module(path, _llvmContext);
+    _module->setTargetTriple(triple);
+    _module->setDataLayout(dataLayout);
+}
+
+/* static */ void Llvm::FinishThreadContextBoundCompilation()
+{
+    assert(_module != nullptr);
+    if (_module->getNamedMetadata("llvm.dbg.cu") != nullptr)
+    {
+        _module->addModuleFlag(llvm::Module::Warning, "Dwarf Version", 4);
+        _module->addModuleFlag(llvm::Module::Warning, "Debug Info Version", 3);
+    }
+
+    std::error_code code;
+
+    // TODO-LLVM: put under #ifdef DEBUG. Useful for debugging for now.
+    StringRef outputFilePath = _module->getName();
+    StringRef outputFilePathWithoutExtension = outputFilePath.take_front(outputFilePath.find_last_of('.'));
+    llvm::raw_fd_ostream textOutputStream(Twine(outputFilePathWithoutExtension + ".txt").str(), code);
+    _module->print(textOutputStream, nullptr);
+
+    assert(!llvm::verifyModule(*_module, &llvm::errs()));
+    llvm::raw_fd_ostream bitCodeFileStream(outputFilePath, code);
+    llvm::WriteBitcodeToFile(*_module, bitCodeFileStream);
+
+    delete _module;
+
+    // The struct descriptor map is notionally a global resource. We should investigate removing it.
+    for (const auto &structDesc : *_structDescMap)
+    {
+        delete structDesc.second;
+    }
 }

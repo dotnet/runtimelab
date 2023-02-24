@@ -627,11 +627,10 @@ var_types Compiler::getArgTypeForStruct(CORINFO_CLASS_HANDLE clsHnd,
                                         bool                 isVarArg,
                                         unsigned             structSize)
 {
-// For LLVM/Wasm, always pass by value and let the lowering decide
-#if defined(TARGET_WASM)
-    *wbPassStruct = SPK_ByValue;
-    return TYP_STRUCT;
+#ifdef TARGET_WASM
+    return m_llvm->GetArgTypeForStructWasm(clsHnd, wbPassStruct, structSize);
 #else // !TARGET_WASM
+
     var_types         useType         = TYP_UNKNOWN;
     structPassingKind howToPassStruct = SPK_Unknown; // We must change this before we return
 
@@ -816,51 +815,6 @@ var_types Compiler::getArgTypeForStruct(CORINFO_CLASS_HANDLE clsHnd,
 #endif // !TARGET_WASM
 }
 
-#ifdef TARGET_WASM
-bool Compiler::IsHfa(CORINFO_CLASS_HANDLE hClass)
-{
-    return false; // TODO WASM
-}
-var_types Compiler::GetHfaType(GenTree* tree)
-{
-    return TYP_UNDEF; // TODO WASM
-}
-var_types Compiler::GetHfaType(CORINFO_CLASS_HANDLE hClass)
-{
-    return TYP_UNDEF;
-}
-//------------------------------------------------------------------------
-// GetHfaCount: Given a  class handle for an HFA struct
-//    return the number of registers needed to hold the HFA
-//
-//    Note that on ARM32 the single precision registers overlap with
-//        the double precision registers and for that reason each
-//        double register is considered to be two single registers.
-//        Thus for ARM32 an HFA of 4 doubles this function will return 8.
-//    On ARM64 given an HFA of 4 singles or 4 doubles this function will
-//         will return 4 for both.
-// Arguments:
-//    hClass: the class handle of a HFA struct
-//
-unsigned Compiler::GetHfaCount(CORINFO_CLASS_HANDLE hClass)
-{
-    assert(false); // TODO
-    //assert(IsHfa(hClass));
-    //var_types hfaType = GetHfaType(hClass);
-    //unsigned  classSize = info.compCompHnd->getClassSize(hClass);
-    //// Note that the retail build issues a warning about a potential divsion by zero without the Max function
-    //unsigned elemSize = Max((unsigned)1, (unsigned)EA_SIZE_IN_BYTES(emitActualTypeSize(hfaType)));
-    //return classSize / elemSize;
-    return 1;
-}
-
-unsigned Compiler::GetHfaCount(GenTree* tree)
-{
-    return GetHfaCount(gtGetStructHandle(tree));
-}
-
-#endif //TARGET_WASM
-
 //-----------------------------------------------------------------------------
 // getReturnTypeForStruct:
 //     Get the type that is used to return values of the given struct type.
@@ -911,10 +865,6 @@ var_types Compiler::getReturnTypeForStruct(CORINFO_CLASS_HANDLE     clsHnd,
                                            structPassingKind*       wbReturnStruct /* = nullptr */,
                                            unsigned                 structSize /* = 0 */)
 {
-#if defined(TARGET_WASM)
-    *wbReturnStruct = SPK_ByValue;
-    return TYP_STRUCT;
-#else // !TARGET_WASM
     var_types         useType             = TYP_UNKNOWN;
     structPassingKind howToReturnStruct   = SPK_Unknown; // We must change this before we return
     bool              canReturnInRegister = true;
@@ -926,6 +876,10 @@ var_types Compiler::getReturnTypeForStruct(CORINFO_CLASS_HANDLE     clsHnd,
         structSize = info.compCompHnd->getClassSize(clsHnd);
     }
     assert(structSize > 0);
+
+#ifdef TARGET_WASM
+    return m_llvm->GetReturnTypeForStructWasm(clsHnd, wbReturnStruct, structSize);
+#else // !TARGET_WASM
 
 #ifdef UNIX_AMD64_ABI
     // An 8-byte struct may need to be returned in a floating point register
@@ -1157,7 +1111,7 @@ var_types Compiler::getReturnTypeForStruct(CORINFO_CLASS_HANDLE     clsHnd,
     }
 
     return useType;
-#endif  // !TARGET_WASM
+#endif // !TARGET_WASM
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1421,9 +1375,7 @@ void Compiler::compShutdown()
     DisplayNowayAssertMap();
 #endif // MEASURE_NOWAY
 
-#ifdef TARGET_WASM
-    Llvm::llvmShutdown();
-#else
+#ifndef TARGET_WASM
     /* Shut down the emitter */
 
     emitter::emitDone();

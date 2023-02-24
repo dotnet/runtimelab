@@ -192,14 +192,14 @@ bool Thread::IsCurrentThreadInCooperativeMode()
 //
 // May only be used from the same thread and while in preemptive mode with an active pinvoke on the stack.
 //
-#ifndef DACCESS_COMPILE
+#if !defined(DACCESS_COMPILE) && !defined(HOST_WASM)
 void * Thread::GetCurrentThreadPInvokeReturnAddress()
 {
     ASSERT(ThreadStore::GetCurrentThread() == this);
     ASSERT(!IsCurrentThreadInCooperativeMode());
     return ((PInvokeTransitionFrame*)m_pTransitionFrame)->m_RIP;
 }
-#endif // !DACCESS_COMPILE
+#endif // !defined(DACCESS_COMPILE) && !defined(HOST_WASM)
 
 #if defined(FEATURE_GC_STRESS) & !defined(DACCESS_COMPILE)
 void Thread::SetRandomSeed(uint32_t seed)

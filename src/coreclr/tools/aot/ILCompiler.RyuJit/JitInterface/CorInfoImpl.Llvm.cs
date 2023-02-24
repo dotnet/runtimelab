@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-using System.Text;
+
 using ILCompiler;
 using ILCompiler.DependencyAnalysis;
 
@@ -18,12 +18,10 @@ namespace Internal.JitInterface
 {
     sealed unsafe partial class CorInfoImpl
     {
-        static List<IntPtr> _allocedMemory = new List<IntPtr>();
+        private static readonly List<IntPtr> s_allocedMemory = new List<IntPtr>();
+        private static readonly void*[] s_jitExports = new void*[(int)JitApiId.Count + 1];
 
         private Dictionary<IntPtr, TypeDescriptor> typeDescriptorDict = new Dictionary<IntPtr, TypeDescriptor>();
-
-        [DllImport(JitLibrary)]
-        private extern static void jitShutdown([MarshalAs(UnmanagedType.I1)] bool processIsTerminating);
 
         [UnmanagedCallersOnly]
         public static void addCodeReloc(IntPtr thisHandle, void* handle)
@@ -178,18 +176,18 @@ namespace Internal.JitInterface
             TypeDesc typeDesc = _this.HandleToObject(structHnd);
 
             TypeDesc primitiveTypeDesc;
-             switch (corInfoPrimitiveType)
-             {
-                 case CorInfoType.CORINFO_TYPE_FLOAT:
-                     primitiveTypeDesc = _this._compilation.TypeSystemContext.GetWellKnownType(WellKnownType.Single);
-                     break;
-                 case CorInfoType.CORINFO_TYPE_DOUBLE:
-                     primitiveTypeDesc = _this._compilation.TypeSystemContext.GetWellKnownType(WellKnownType.Double);
-                     break;
-                 default:
-                     return 0u;
-             }
-            
+            switch (corInfoPrimitiveType)
+            {
+                case CorInfoType.CORINFO_TYPE_FLOAT:
+                    primitiveTypeDesc = _this._compilation.TypeSystemContext.GetWellKnownType(WellKnownType.Single);
+                    break;
+                case CorInfoType.CORINFO_TYPE_DOUBLE:
+                    primitiveTypeDesc = _this._compilation.TypeSystemContext.GetWellKnownType(WellKnownType.Double);
+                    break;
+                default:
+                    return 0u;
+            }
+
             return _this._compilation.StructIsWrappedPrimitive(typeDesc, primitiveTypeDesc) ? 1u : 0u;
         }
 
@@ -222,6 +220,16 @@ namespace Internal.JitInterface
             }
 
             return null;
+        }
+
+        [UnmanagedCallersOnly]
+        public static IntPtr getExternalMethodAccessor(IntPtr thisHandle, CORINFO_METHOD_STRUCT_* methodHandle, TargetAbiType* sig, int sigLength)
+        {
+            CorInfoImpl _this = GetThis(thisHandle);
+            MethodDesc method = _this.HandleToObject(methodHandle);
+            ISymbolNode accessorNode = _this._compilation.GetExternalMethodAccessor(method, new ReadOnlySpan<TargetAbiType>(sig, sigLength));
+
+            return _this.ObjectToHandle(accessorNode);
         }
 
         public struct TypeDescriptor
@@ -260,7 +268,7 @@ namespace Internal.JitInterface
 
             //TODO-LLVM: change to NativeMemory.Alloc when upgraded to .net6
             IntPtr fieldArray = Marshal.AllocHGlobal((int)(sizeof(CORINFO_FIELD_STRUCT_*) * fieldCount));
-            _allocedMemory.Add(fieldArray);
+            s_allocedMemory.Add(fieldArray);
 
             typeDescriptor = new TypeDescriptor
             {
@@ -284,7 +292,7 @@ namespace Internal.JitInterface
             return typeDescriptor;
         }
 
-        // Must be kept in sync with the unmanaged version in "jit/llvm.cpp".
+        // These enums must be kept in sync with their unmanaged versions in "jit/llvm.cpp".
         //
         enum EEApiId
         {
@@ -301,52 +309,84 @@ namespace Internal.JitInterface
             GetTypeDescriptor,
             GetInstanceFieldAlignment,
             GetAlternativeFunctionName,
+            GetExternalMethodAccessor,
             Count
         }
 
-        [DllImport(JitLibrary)]
-        private extern static void registerLlvmCallbacks(IntPtr thisHandle, byte* outputFileName, byte* triple, byte* dataLayout, void** callbacks);
-
-        public void RegisterLlvmCallbacks(IntPtr corInfoPtr, string outputFileName, string triple, string dataLayout)
+        enum JitApiId
         {
-            void** callbacks = stackalloc void*[(int)EEApiId.Count + 1];
-            callbacks[(int)EEApiId.GetMangledMethodName] = (delegate* unmanaged<IntPtr, CORINFO_METHOD_STRUCT_*, byte*>)&getMangledMethodName;
-            callbacks[(int)EEApiId.GetSymbolMangledName] = (delegate* unmanaged<IntPtr, CORINFO_METHOD_STRUCT_*, byte*>)&getSymbolMangledName;
-            callbacks[(int)EEApiId.GetEHDispatchFunctionName] = (delegate* unmanaged<IntPtr, CORINFO_EH_CLAUSE_FLAGS, byte*>)&getEHDispatchFunctionName;
-            callbacks[(int)EEApiId.GetTypeName] = (delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, byte*>)&getTypeName;
-            callbacks[(int)EEApiId.AddCodeReloc] = (delegate* unmanaged<IntPtr, void*, void>)&addCodeReloc;
-            callbacks[(int)EEApiId.IsRuntimeImport] = (delegate* unmanaged<IntPtr, CORINFO_METHOD_STRUCT_*, uint>)&isRuntimeImport;
-            callbacks[(int)EEApiId.GetDocumentFileName] = (delegate* unmanaged<IntPtr, byte*>)&getDocumentFileName;
-            callbacks[(int)EEApiId.GetOffsetLineNumber] = (delegate* unmanaged<IntPtr, uint, uint>)&getOffsetLineNumber;
-            callbacks[(int)EEApiId.StructIsWrappedPrimitive] = (delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, CorInfoType, uint>)&structIsWrappedPrimitive;
-            callbacks[(int)EEApiId.PadOffset] = (delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, uint, uint>)&padOffset;
-            callbacks[(int)EEApiId.GetTypeDescriptor] = (delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, TypeDescriptor>)&getTypeDescriptor;
-            callbacks[(int)EEApiId.GetInstanceFieldAlignment] = (delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, uint>)&getInstanceFieldAlignment;
-            callbacks[(int)EEApiId.GetAlternativeFunctionName] = (delegate* unmanaged<IntPtr, byte*>)&getAlternativeFunctionName;
-            callbacks[(int)EEApiId.Count] = (void*)0x1234;
+            StartThreadContextBoundCompilation,
+            FinishThreadContextBoundCompilation,
+            Count
+        };
+
+        [DllImport(JitLibrary)]
+        private extern static void registerLlvmCallbacks(void** jitImports, void** jitExports);
+
+        public static void JitStartCompilation()
+        {
+            void** jitImports = stackalloc void*[(int)EEApiId.Count + 1];
+            jitImports[(int)EEApiId.GetMangledMethodName] = (delegate* unmanaged<IntPtr, CORINFO_METHOD_STRUCT_*, byte*>)&getMangledMethodName;
+            jitImports[(int)EEApiId.GetSymbolMangledName] = (delegate* unmanaged<IntPtr, CORINFO_METHOD_STRUCT_*, byte*>)&getSymbolMangledName;
+            jitImports[(int)EEApiId.GetEHDispatchFunctionName] = (delegate* unmanaged<IntPtr, CORINFO_EH_CLAUSE_FLAGS, byte*>)&getEHDispatchFunctionName;
+            jitImports[(int)EEApiId.GetTypeName] = (delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, byte*>)&getTypeName;
+            jitImports[(int)EEApiId.AddCodeReloc] = (delegate* unmanaged<IntPtr, void*, void>)&addCodeReloc;
+            jitImports[(int)EEApiId.IsRuntimeImport] = (delegate* unmanaged<IntPtr, CORINFO_METHOD_STRUCT_*, uint>)&isRuntimeImport;
+            jitImports[(int)EEApiId.GetDocumentFileName] = (delegate* unmanaged<IntPtr, byte*>)&getDocumentFileName;
+            jitImports[(int)EEApiId.GetOffsetLineNumber] = (delegate* unmanaged<IntPtr, uint, uint>)&getOffsetLineNumber;
+            jitImports[(int)EEApiId.StructIsWrappedPrimitive] = (delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, CorInfoType, uint>)&structIsWrappedPrimitive;
+            jitImports[(int)EEApiId.PadOffset] = (delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, uint, uint>)&padOffset;
+            jitImports[(int)EEApiId.GetTypeDescriptor] = (delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, TypeDescriptor>)&getTypeDescriptor;
+            jitImports[(int)EEApiId.GetInstanceFieldAlignment] = (delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, uint>)&getInstanceFieldAlignment;
+            jitImports[(int)EEApiId.GetAlternativeFunctionName] = (delegate* unmanaged<IntPtr, byte*>)&getAlternativeFunctionName;
+            jitImports[(int)EEApiId.GetExternalMethodAccessor] = (delegate* unmanaged<IntPtr, CORINFO_METHOD_STRUCT_*, TargetAbiType*, int, IntPtr>)&getExternalMethodAccessor;
+            jitImports[(int)EEApiId.Count] = (void*)0x1234;
 
 #if DEBUG
             for (int i = 0; i < (int)EEApiId.Count; i++)
             {
-                Debug.Assert(callbacks[i] != null);
+                Debug.Assert(jitImports[i] != null);
             }
 #endif
 
-            registerLlvmCallbacks(corInfoPtr, (byte*)GetPin(StringToUTF8(outputFileName)),
-                (byte*)GetPin(StringToUTF8(triple)),
-                (byte*)GetPin(StringToUTF8(dataLayout)),
-                callbacks
-            );
+            fixed (void** jitExports = s_jitExports)
+            {
+                registerLlvmCallbacks(jitImports, jitExports);
+                Debug.Assert(jitExports[(int)JitApiId.Count] == (void*)0x1234);
+            }
         }
 
-        public static void FreeUnmanagedResources()
+        public static void JitFinishCompilation()
         {
-            foreach (var ptr in _allocedMemory)
+            foreach (var ptr in s_allocedMemory)
             {
                 Marshal.FreeHGlobal(ptr);
             }
 
-            _allocedMemory.Clear();
+            s_allocedMemory.Clear();
         }
+
+        public static void JitStartThreadContextBoundCompilation(string outputFileName, string triple, string dataLayout)
+        {
+            fixed (byte* pOutputFileName = StringToUTF8(outputFileName), pTriple = StringToUTF8(triple), pDataLayout = StringToUTF8(dataLayout))
+            {
+                var pExport = (delegate* unmanaged<byte*, byte*, byte*, void>)s_jitExports[(int)JitApiId.StartThreadContextBoundCompilation];
+                pExport(pOutputFileName, pTriple, pDataLayout);
+            }
+        }
+
+        public static void JitFinishThreadContextBoundCompilation()
+        {
+            ((delegate* unmanaged<void>)s_jitExports[(int)JitApiId.FinishThreadContextBoundCompilation])();
+        }
+    }
+
+    public enum TargetAbiType : byte
+    {
+        Void,
+        Int32,
+        Int64,
+        Float,
+        Double
     }
 }

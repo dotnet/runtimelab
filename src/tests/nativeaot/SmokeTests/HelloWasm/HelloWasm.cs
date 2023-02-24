@@ -14,7 +14,7 @@ using System.Collections.Specialized;
 using CpObj;
 using CkFinite;
 
-internal static class Program
+internal unsafe static class Program
 {
     private static int staticInt;
     [ThreadStatic]
@@ -298,6 +298,8 @@ internal static class Program
         }
 
         TestNativeCallback();
+
+        TestNativeCallsWithMismatchedSignatures();
 
         TestArgsWithMixedTypesAndExceptionRegions();
 
@@ -1438,6 +1440,141 @@ internal static class Program
 
     [System.Runtime.InteropServices.DllImport("*")]
     private static extern void CallMe(int x);
+
+    [System.Runtime.InteropServices.DllImport("*")]
+    private static extern int GetNativeFunctionToCall();
+
+    [System.Runtime.InteropServices.DllImport("*", EntryPoint = "NativeIntToDouble")]
+    private static extern double NativeIntToDoubleRight(int a);
+
+    [System.Runtime.InteropServices.DllImport("*", EntryPoint = "NativeIntToDouble")]
+    private static extern int NativeIntToDoubleWrong(double a);
+
+    [System.Runtime.InteropServices.DllImport("*", EntryPoint = "NativeIntToDouble")]
+    private static extern void NativeIntToDoubleWrongAnother();
+
+    [System.Runtime.InteropServices.DllImport("*")]
+    private static extern int GetMemCpyLength();
+
+    [System.Runtime.InteropServices.DllImport("*", EntryPoint = "memcpy")]
+    private static extern void* MemCpyRight(void* dst, void* src, nuint length);
+
+    [System.Runtime.InteropServices.DllImport("*", EntryPoint = "memcpy")]
+    private static extern void MemCpyWrong(void* dst, void* src);
+
+    [System.Runtime.InteropServices.DllImport("*", EntryPoint = "memcpy")]
+    private static extern nuint MemCpyVariant(nuint dst, nuint src, nuint length);
+
+    [System.Runtime.InteropServices.DllImport("*", EntryPoint = "memset")]
+    private static extern void* MemSetRight(void* dst, int value, nuint length);
+
+    [System.Runtime.InteropServices.DllImport("*", EntryPoint = "memset")]
+    private static extern void MemSetWrong(void* dst, int value);
+
+    [System.Runtime.InteropServices.DllImport("*", EntryPoint = "memset")]
+    private static extern void MemSetWrongAnother();
+
+    [System.Runtime.InteropServices.DllImport("*", EntryPoint = "memset")]
+    private static extern nuint MemSetVariant(nuint dst, int value, nuint length);
+
+    private static void TestNativeCallsWithMismatchedSignatures()
+    {
+        StartTest("Native calls with mismatched signatures test");
+
+        int whichFunc = GetNativeFunctionToCall();
+        double intToDoubleResult = 0;
+        switch (whichFunc)
+        {
+            case 0:
+                intToDoubleResult = NativeIntToDoubleWrong(10);
+                break;
+            case 1:
+                intToDoubleResult = NativeIntToDoubleRight(20);
+                break;
+            default:
+                NativeIntToDoubleWrongAnother();
+                break;
+        }
+
+        if (intToDoubleResult != 20)
+        {
+            FailTest("NativeToIntDouble did not return the expected value");
+            return;
+        }
+
+        // "memcpy/memset" are among the so-called "LLVM libcalls". These require special treatment.
+        //
+        const int MemSetValue = 10;
+        int length = GetMemCpyLength();
+        byte* src = stackalloc byte[length];
+        byte* dst = stackalloc byte[length];
+
+        void FillSrc()
+        {
+            for (int i = 0; i < length; i++)
+            {
+                src[i] = (byte)i;
+            }
+        }
+        bool CheckDst(int? value = null)
+        {
+            for (int i = 0; i < length; i++)
+            {
+                if (value != null)
+                {
+                    if (dst[i] != value)
+                    {
+                        return false;
+                    }
+                }
+                else
+                {
+                    if (dst[i] != (byte)i)
+                    {
+                        return false;
+                    }
+                }
+            }
+
+            return true;
+        }
+
+        if (length != 255)
+        {
+            MemCpyWrong(dst, src);
+            MemSetWrong(dst, MemSetValue);
+            MemSetWrongAnother();
+        }
+
+        FillSrc();
+        MemCpyRight(dst, src, (nuint)length);
+        if (!CheckDst())
+        {
+            FailTest("memcpy did not copy the bytes");
+            return;
+        }
+        MemSetRight(dst, MemSetValue, (nuint)length);
+        if (!CheckDst(MemSetValue))
+        {
+            FailTest("memset did not set the bytes");
+            return;
+        }
+
+        MemCpyVariant((nuint)dst, (nuint)src, (nuint)length);
+        if (!CheckDst())
+        {
+            FailTest("memcpy variant did not copy the bytes");
+            return;
+        }
+        MemSetVariant((nuint)dst, MemSetValue, (nuint)length);
+        if (!CheckDst(MemSetValue))
+        {
+            FailTest("memset variant did not set the bytes");
+            return;
+        }
+
+        PassTest();
+    }
 
     private static void TestMetaData()
     {
@@ -3790,7 +3927,7 @@ internal static class Program
     {
         StartTest("Test pal_random.lib.js integration");
 
-        EndTest(Guid.NewGuid() != default);
+        EndTest(Guid.NewGuid() != Guid.NewGuid());
     }
 
     static void TestDefaultConstructorOf()
