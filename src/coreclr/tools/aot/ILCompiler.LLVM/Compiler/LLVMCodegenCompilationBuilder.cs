@@ -15,12 +15,10 @@ namespace ILCompiler
     public sealed class LLVMCodegenCompilationBuilder : RyuJitCompilationBuilder
     {
         LLVMCodegenConfigProvider _config = new LLVMCodegenConfigProvider();
-        private bool _nativeLib;
 
-        public LLVMCodegenCompilationBuilder(CompilerTypeSystemContext context, CompilationModuleGroup group, bool nativeLib)
+        public LLVMCodegenCompilationBuilder(CompilerTypeSystemContext context, CompilationModuleGroup group)
             : base(context, group, new LLVMNodeMangler())
         {
-            _nativeLib = nativeLib;
         }
 
         public override CompilationBuilder UseBackendOptions(IEnumerable<string> options)
@@ -37,7 +35,7 @@ namespace ILCompiler
             LLVMCodegenNodeFactory factory = new LLVMCodegenNodeFactory(_context, _compilationGroup, _metadataManager, _interopStubManager, _nameMangler, _vtableSliceProvider, _dictionaryLayoutProvider, GetPreinitializationManager());
             DependencyAnalyzerBase<NodeFactory> graph = CreateDependencyGraph(factory, new ObjectNode.ObjectNodeComparer(new CompilerComparer()));
 
-            return new LLVMCodegenCompilation(graph, factory, _compilationRoots, GetILProvider(), _debugInformationProvider, _logger, _config, _inliningPolicy, _devirtualizationManager, _instructionSetSupport, _nativeLib, _wasmImportPolicy, _methodImportationErrorProvider);
+            return new LLVMCodegenCompilation(graph, factory, _compilationRoots, GetILProvider(), _debugInformationProvider, _logger, _config, _inliningPolicy, _devirtualizationManager, _instructionSetSupport, _wasmImportPolicy, _methodImportationErrorProvider);
         }
     }
 

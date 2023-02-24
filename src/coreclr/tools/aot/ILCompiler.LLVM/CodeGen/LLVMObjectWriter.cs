@@ -59,9 +59,6 @@ namespace ILCompiler.DependencyAnalysis
         // Path to the bitcode file we're emitting.
         private readonly string _objectFilePath;
 
-        // Whether we are emitting a library (as opposed to executable).
-        private readonly bool _nativeLib;
-
         // Raw data emitted for the current object node.
         private ArrayBuilder<byte> _currentObjectData = new ArrayBuilder<byte>();
 
@@ -85,7 +82,6 @@ namespace ILCompiler.DependencyAnalysis
             _moduleWithExternalFunctions.DataLayout = Module.DataLayout;
             _nodeFactory = compilation.NodeFactory;
             _objectFilePath = objectFilePath;
-            _nativeLib = compilation.NativeLib;
         }
 
         public void Dispose() => Dispose(true);
@@ -491,19 +487,9 @@ namespace ILCompiler.DependencyAnalysis
                 nodeData.Fill(Module, _nodeFactory);
             }
 
-            EmitReversePInvokesAndShadowStackBottom();
+            EmitReversePInvokes();
 
-            LLVMContextRef context = Module.Context;
-            if (_nativeLib)
-            {
-                EmitNativeStartup(context);
-            }
-            else
-            {
-                EmitNativeMain(context);
-            }
-
-            EmitDebugMetadata(context);
+            EmitDebugMetadata(Module.Context);
 #if DEBUG
             Module.PrintToFile(Path.ChangeExtension(_objectFilePath, ".txt"));
 #endif
@@ -547,7 +533,8 @@ namespace ILCompiler.DependencyAnalysis
             builder.BuildRet(castHeaderAddress);
         }
 
-        private void EmitReversePInvokesAndShadowStackBottom()
+        // TODO-LLVM: delete once the IL backend is gone.
+        private void EmitReversePInvokes()
         {
             LLVMTypeRef reversePInvokeFrameType = LLVMTypeRef.CreateStruct(new LLVMTypeRef[] { LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0) }, false);
             LLVMValueRef rhpReversePInvoke = Module.GetNamedFunction("RhpReversePInvoke");
@@ -557,106 +544,12 @@ namespace ILCompiler.DependencyAnalysis
                 Module.AddFunction("RhpReversePInvoke", LLVMTypeRef.CreateFunction(LLVMTypeRef.Void, new LLVMTypeRef[] { LLVMTypeRef.CreatePointer(reversePInvokeFrameType, 0) }, false));
             }
 
-            var shadowStackBottom = Module.AddGlobal(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), "t_pShadowStackBottom");
-            shadowStackBottom.Linkage = LLVMLinkage.LLVMExternalLinkage;
-            shadowStackBottom.Initializer = LLVMValueRef.CreateConstPointerNull(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0));
-            shadowStackBottom.ThreadLocalMode = LLVMThreadLocalMode.LLVMLocalDynamicTLSModel;
-
             LLVMValueRef rhpReversePInvokeReturn = Module.GetNamedFunction("RhpReversePInvokeReturn");
             if (rhpReversePInvokeReturn.Handle == IntPtr.Zero)
             {
                 LLVMTypeRef reversePInvokeFunctionType = LLVMTypeRef.CreateFunction(LLVMTypeRef.Void, new LLVMTypeRef[] { LLVMTypeRef.CreatePointer(reversePInvokeFrameType, 0) }, false);
                 Module.AddFunction("RhpReversePInvokeReturn", reversePInvokeFunctionType);
             }
-        }
-
-        private void EmitNativeMain(LLVMContextRef context)
-        {
-            LLVMValueRef shadowStackTop = Module.GetNamedGlobal("t_pShadowStackTop");
-
-            LLVMBuilderRef builder = context.CreateBuilder();
-            var mainSignature = LLVMTypeRef.CreateFunction(LLVMTypeRef.Int32, new LLVMTypeRef[] { LLVMTypeRef.Int32, LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0) }, false);
-            var mainFunc = Module.AddFunction("__managed__Main", mainSignature);
-            var mainEntryBlock = mainFunc.AppendBasicBlock("entry");
-            builder.PositionAtEnd(mainEntryBlock);
-            LLVMValueRef managedMain = Module.GetNamedFunction("StartupCodeMain");
-            if (managedMain.Handle == IntPtr.Zero)
-            {
-                throw new Exception("Main not found");
-            }
-
-            LLVMTypeRef reversePInvokeFrameType = LLVMTypeRef.CreateStruct(new LLVMTypeRef[] { LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0) }, false);
-            LLVMValueRef reversePinvokeFrame = builder.BuildAlloca(reversePInvokeFrameType, "ReversePInvokeFrame");
-            LLVMValueRef rhpReversePInvoke = Module.GetNamedFunction("RhpReversePInvoke");
-
-            builder.BuildCall(rhpReversePInvoke, new LLVMValueRef[] { reversePinvokeFrame }, "");
-
-            var shadowStack = builder.BuildMalloc(LLVMTypeRef.CreateArray(LLVMTypeRef.Int8, 1000000), String.Empty);
-            var castShadowStack = builder.BuildPointerCast(shadowStack, LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), String.Empty);
-            builder.BuildStore(castShadowStack, shadowStackTop);
-
-            var shadowStackBottom = Module.GetNamedGlobal("t_pShadowStackBottom");
-            builder.BuildStore(castShadowStack, shadowStackBottom);
-
-            // Pass on main arguments
-            LLVMValueRef argc = mainFunc.GetParam(0);
-            LLVMValueRef argv = mainFunc.GetParam(1);
-
-            LLVMValueRef mainReturn = builder.BuildCall(managedMain, new LLVMValueRef[]
-            {
-                castShadowStack,
-                argc,
-                argv,
-            },
-            "returnValue");
-
-            LLVMValueRef rhpReversePInvokeReturn = Module.GetNamedFunction("RhpReversePInvokeReturn");
-            LLVMTypeRef reversePInvokeFunctionType = LLVMTypeRef.CreateFunction(LLVMTypeRef.Void, new LLVMTypeRef[] { LLVMTypeRef.CreatePointer(reversePInvokeFrameType, 0) }, false);
-            builder.BuildCall(rhpReversePInvokeReturn, new LLVMValueRef[] { reversePinvokeFrame }, "");
-
-            builder.BuildRet(mainReturn);
-            mainFunc.Linkage = LLVMLinkage.LLVMExternalLinkage;
-        }
-
-        private void EmitNativeStartup(LLVMContextRef context)
-        {
-            LLVMValueRef shadowStackTop = Module.GetNamedGlobal("t_pShadowStackTop");
-
-            LLVMBuilderRef builder = context.CreateBuilder();
-            var startupSignature = LLVMTypeRef.CreateFunction(LLVMTypeRef.Void, new LLVMTypeRef[] { }, false);
-            var startupFunc = Module.AddFunction("__managed__Startup", startupSignature);
-            var mainEntryBlock = startupFunc.AppendBasicBlock("entry");
-            builder.PositionAtEnd(mainEntryBlock);
-            LLVMValueRef nativeLibStartup = Module.GetNamedFunction("Internal_CompilerGenerated__Module___NativeLibraryStartup");
-            if (nativeLibStartup.Handle == IntPtr.Zero)
-            {
-                throw new Exception("NativeLibraryStartup not found");
-            }
-
-            LLVMTypeRef reversePInvokeFrameType = LLVMTypeRef.CreateStruct(new LLVMTypeRef[] { LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0) }, false);
-            LLVMValueRef reversePinvokeFrame = builder.BuildAlloca(reversePInvokeFrameType, "ReversePInvokeFrame");
-            LLVMValueRef rhpReversePInvoke = Module.GetNamedFunction("RhpReversePInvoke");
-
-            builder.BuildCall(rhpReversePInvoke, new LLVMValueRef[] { reversePinvokeFrame }, "");
-
-            var shadowStack = builder.BuildMalloc(LLVMTypeRef.CreateArray(LLVMTypeRef.Int8, 1000000), String.Empty);
-            var castShadowStack = builder.BuildPointerCast(shadowStack, LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), String.Empty);
-            builder.BuildStore(castShadowStack, shadowStackTop);
-
-            var shadowStackBottom = Module.GetNamedGlobal("t_pShadowStackBottom");
-            builder.BuildStore(castShadowStack, shadowStackBottom);
-
-
-            builder.BuildCall(nativeLibStartup, new LLVMValueRef[]
-            {
-                castShadowStack,
-            });
-
-            LLVMValueRef rhpReversePInvokeReturn = Module.GetNamedFunction("RhpReversePInvokeReturn");
-            builder.BuildCall(rhpReversePInvokeReturn, new LLVMValueRef[] { reversePinvokeFrame }, "");
-
-            builder.BuildRetVoid();
-            startupFunc.Linkage = LLVMLinkage.LLVMExternalLinkage;
         }
 
         private void GetCodeForReadyToRunGenericHelper(LLVMCodegenCompilation compilation, ReadyToRunGenericHelperNode node, NodeFactory factory)

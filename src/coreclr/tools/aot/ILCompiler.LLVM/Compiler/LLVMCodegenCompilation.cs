@@ -39,7 +39,6 @@ namespace ILCompiler
         public new LLVMCodegenNodeFactory NodeFactory { get; }
         internal LLVMDIBuilderRef DIBuilder { get; }
         internal Dictionary<string, DebugMetadata> DebugMetadataMap { get; }
-        internal bool NativeLib { get; }
         internal ConfigurableWasmImportPolicy ConfigurableWasmImportPolicy { get; }
 
         internal LLVMCodegenCompilation(DependencyAnalyzerBase<NodeFactory> dependencyGraph,
@@ -52,7 +51,6 @@ namespace ILCompiler
             IInliningPolicy inliningPolicy,
             DevirtualizationManager devirtualizationManager,
             InstructionSetSupport instructionSetSupport,
-            bool nativeLib,
             ConfigurableWasmImportPolicy configurableWasmImportPolicy,
             MethodImportationErrorProvider errorProvider)
             : base(dependencyGraph, nodeFactory, GetCompilationRoots(roots, nodeFactory), ilProvider, debugInformationProvider, logger, devirtualizationManager, inliningPolicy ?? new LLVMNoInLiningPolicy(), instructionSetSupport,
@@ -69,7 +67,6 @@ namespace ILCompiler
             ILImporter.Context = Module.Context;
             LLVMContextSetOpaquePointers(Module.Context, false);
 
-            NativeLib = nativeLib;
             ConfigurableWasmImportPolicy = configurableWasmImportPolicy;
             _disableRyuJit = options.DisableRyuJit == "1"; // TODO-LLVM: delete when all code is compiled via RyuJIT
         }
@@ -181,7 +178,10 @@ namespace ILCompiler
                     var mangledName = NodeFactory.NameMangler.GetMangledMethodName(method).ToString();
                     LLVMValueRef externFunc = ILImporter.GetOrCreateLLVMFunction(Module, mangledName, GetLLVMSignatureForMethod(method.Signature, method.RequiresInstArg()));
 
-                    ILImporter.GenerateRuntimeExportThunk(this, method, externFunc);
+                    if (method.IsRuntimeExport)
+                    {
+                        ILImporter.GenerateRuntimeExportThunk(this, method, externFunc);
+                    }
 
                     ryuJitMethodCount++;
                 }

@@ -213,13 +213,21 @@ namespace Internal.JitInterface
         public static byte* getAlternativeFunctionName(IntPtr thisHandle)
         {
             var _this = GetThis(thisHandle);
-            MethodDesc method = _this.MethodBeingCompiled;
-            if (_this._compilation.GetRuntimeExportManagedEntrypointName(method) is string alternativeName)
+            IMethodNode methodNode = _this._methodCodeNode;
+            RyuJitCompilation compilation = _this._compilation;
+
+            string alternativeName = compilation.GetRuntimeExportManagedEntrypointName(methodNode.Method);
+            if (alternativeName == null)
             {
-                return (byte*)_this.GetPin(StringToUTF8(alternativeName));
+                alternativeName = compilation.NodeFactory.GetSymbolAlternateName(methodNode);
+            }
+            if ((alternativeName == null) && methodNode.Method.IsUnmanagedCallersOnly)
+            {
+                // TODO-LLVM: delete once the IL backend is gone.
+                alternativeName = methodNode.Method.Name;
             }
 
-            return null;
+            return (alternativeName != null) ? (byte*)_this.GetPin(StringToUTF8(alternativeName)) : null;
         }
 
         [UnmanagedCallersOnly]
@@ -230,6 +238,21 @@ namespace Internal.JitInterface
             ISymbolNode accessorNode = _this._compilation.GetExternalMethodAccessor(method, new ReadOnlySpan<TargetAbiType>(sig, sigLength));
 
             return _this.ObjectToHandle(accessorNode);
+        }
+
+        [UnmanagedCallersOnly]
+        private static IntPtr getLlvmHelperFuncEntrypoint(IntPtr thisHandle, CorInfoHelpLlvmFunc helperFunc)
+        {
+            CorInfoImpl _this = GetThis(thisHandle);
+            NodeFactory factory = _this._compilation.NodeFactory;
+            ISymbolNode helperFuncNode = helperFunc switch
+            {
+                CorInfoHelpLlvmFunc.CORINFO_HELP_LLVM_GET_OR_INIT_SHADOW_STACK_TOP => factory.ExternSymbol("RhpGetOrInitShadowStackTop"),
+                CorInfoHelpLlvmFunc.CORINFO_HELP_LLVM_SET_SHADOW_STACK_TOP => factory.ExternSymbol("RhpSetShadowStackTop"),
+                _ => throw new UnreachableException()
+            };
+
+            return _this.ObjectToHandle(helperFuncNode);
         }
 
         public struct TypeDescriptor
@@ -310,6 +333,7 @@ namespace Internal.JitInterface
             GetInstanceFieldAlignment,
             GetAlternativeFunctionName,
             GetExternalMethodAccessor,
+            GetLlvmHelperFuncEntrypoint,
             Count
         }
 
@@ -319,6 +343,14 @@ namespace Internal.JitInterface
             FinishThreadContextBoundCompilation,
             Count
         };
+
+        enum CorInfoHelpLlvmFunc
+        {
+            CORINFO_HELP_LLVM_UNDEF = CorInfoHelpFunc.CORINFO_HELP_COUNT,
+            CORINFO_HELP_LLVM_GET_OR_INIT_SHADOW_STACK_TOP,
+            CORINFO_HELP_LLVM_SET_SHADOW_STACK_TOP,
+            CORINFO_HELP_ANY_COUNT
+        }
 
         [DllImport(JitLibrary)]
         private extern static void registerLlvmCallbacks(void** jitImports, void** jitExports);
@@ -340,6 +372,7 @@ namespace Internal.JitInterface
             jitImports[(int)EEApiId.GetInstanceFieldAlignment] = (delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, uint>)&getInstanceFieldAlignment;
             jitImports[(int)EEApiId.GetAlternativeFunctionName] = (delegate* unmanaged<IntPtr, byte*>)&getAlternativeFunctionName;
             jitImports[(int)EEApiId.GetExternalMethodAccessor] = (delegate* unmanaged<IntPtr, CORINFO_METHOD_STRUCT_*, TargetAbiType*, int, IntPtr>)&getExternalMethodAccessor;
+            jitImports[(int)EEApiId.GetLlvmHelperFuncEntrypoint] = (delegate* unmanaged<IntPtr, CorInfoHelpLlvmFunc, IntPtr>)&getLlvmHelperFuncEntrypoint;
             jitImports[(int)EEApiId.Count] = (void*)0x1234;
 
 #if DEBUG

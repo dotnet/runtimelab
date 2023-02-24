@@ -220,6 +220,7 @@ if (CLR_CMAKE_TARGET_ARCH_WASM)
   list(APPEND COMMON_RUNTIME_SOURCES
     ${ARCH_SOURCES_DIR}/StubDispatch.cpp
     ${ARCH_SOURCES_DIR}/ExceptionHandling.cpp
+    ${ARCH_SOURCES_DIR}/PInvoke.cpp
 )
 endif (CLR_CMAKE_TARGET_ARCH_WASM)
 
