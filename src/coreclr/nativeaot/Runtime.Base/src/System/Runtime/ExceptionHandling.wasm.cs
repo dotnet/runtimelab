@@ -164,6 +164,10 @@ namespace System.Runtime
         [RuntimeExport("RhpThrowEx")]
         private static void RhpThrowEx(object exception)
         {
+#if INPLACE_RUNTIME
+            // Turn "throw null" into "throw new NullReferenceException()".
+            exception ??= new NullReferenceException();
+#endif
             Exception.DispatchExLLVM(exception);
             InternalCalls.RhpThrowNativeException(exception);
         }
