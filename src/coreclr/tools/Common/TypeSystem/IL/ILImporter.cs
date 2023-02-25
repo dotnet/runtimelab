@@ -949,17 +949,5 @@ namespace Internal.IL
         {
             ImportStoreElement(GetWellKnownType(wellKnownType));
         }
-
-        // TODO-LLVM: investigate ICU and EnumCalendarInfo
-        public static MethodIL ReplaceStubbedWasmMethods(MethodDesc method, MethodIL methodIL)
-        {
-            if ((method.OwningType as EcmaType)?.Name == "CalendarData" && method.Name == "EnumCalendarInfo")
-            {
-                // just return false 
-                return new ILStubMethodIL(method, new byte[] { (byte)ILOpcode.ldc_i4_0, (byte)ILOpcode.ret }, Array.Empty<LocalVariableDefinition>(), null);
-            }
-
-            return methodIL;
-        }
     }
 }

@@ -85,10 +85,7 @@ namespace Internal.IL
 
             if (_compilation.TargetArchIsWasm())
             {
-                methodIL = ReplaceStubbedWasmMethods(method, methodIL);
-
-                // TODO-LLVM: delete when all IL->LLVM module is gone
-                // ThrowNullReferenceException is added at various places in the IL->LLVM compilation, just add it
+                // ThrowNullReferenceException is needed by the explicit null checks we generate with LLVM.
                 MetadataType helperType = _compilation.TypeSystemContext.SystemModule.GetKnownType("Internal.Runtime.CompilerHelpers", "ThrowHelpers");
                 MethodDesc helperMethod = helperType.GetKnownMethod("ThrowNullReferenceException", null);
                 _dependencies.Add(_factory.MethodEntrypoint(helperMethod), "Wasm EH");

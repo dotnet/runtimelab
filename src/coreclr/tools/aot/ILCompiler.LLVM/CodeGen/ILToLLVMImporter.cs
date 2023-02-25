@@ -111,8 +111,6 @@ namespace Internal.IL
             _compilation = compilation;
             _method = method;
 
-            methodIL = ReplaceStubbedWasmMethods(method, methodIL);
-
             _canonMethodIL = methodIL;
             // Get the runtime determined method IL so that this works right in shared code
             // and tokens in shared code resolve to runtime determined types.
