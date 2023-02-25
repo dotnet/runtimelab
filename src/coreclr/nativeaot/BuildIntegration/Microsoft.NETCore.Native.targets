@@ -425,13 +425,12 @@ The .NET Foundation licenses this file to you under the MIT license.
       <CustomLinkerArg Include="-s ERROR_ON_UNDEFINED_SYMBOLS=0" />
       <CustomLinkerArg Condition="'$(NativeDebugSymbols)' != 'true'" Include="-O2 -flto" />
       <CustomLinkerArg Condition="'$(NativeDebugSymbols)' == 'true'" Include="-g3" />
+      <CustomLinkerArg Include="@(LinkerArg)" />
     </ItemGroup>
 
-    <PropertyGroup>
-      <EmccArgs>@(CustomLinkerArg, ' ') $(EmccExtraArgs)</EmccArgs>
-    </PropertyGroup>
+    <WriteLinesToFile File="$(NativeIntermediateOutputPath)link.rsp" Lines="@(CustomLinkerArg)" Overwrite="true" Encoding="utf-8" />
 
-    <Exec Command="$(EmccPath) $(EmccArgs)" Condition="'$(TargetOS)' == 'browser' and '$(EMSDK)' != ''" />
+    <Exec Command="$(EmccPath) @$(NativeIntermediateOutputPath)link.rsp" Condition="'$(TargetOS)' == 'browser' and '$(EMSDK)' != ''" />
     <Message Text="Emscripten not found, not linking WebAssembly. To enable WebAssembly linking, install Emscripten and ensure the EMSDK environment variable points to the directory containing upstream/emscripten/emcc.bat"
              Condition="'$(NativeCodeGen)' == 'llvm' and '$(EMSDK)' == ''" Importance="High" />
   </Target>
