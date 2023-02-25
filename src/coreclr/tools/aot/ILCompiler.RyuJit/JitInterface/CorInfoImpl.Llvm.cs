@@ -62,16 +62,36 @@ namespace Internal.JitInterface
         }
 
         [UnmanagedCallersOnly]
-        public static byte* getSymbolMangledName(IntPtr thisHandle, void* handle)
+        public static byte* getMangledSymbolName(IntPtr thisHandle, IntPtr symbolHandle)
         {
             var _this = GetThis(thisHandle);
+            var node = (ISymbolNode)_this.HandleToObject(symbolHandle);
 
-            var node = (ISymbolNode)_this.HandleToObject((IntPtr)handle);
             Utf8StringBuilder sb = new Utf8StringBuilder();
             node.AppendMangledName(_this._compilation.NameMangler, sb);
 
             sb.Append("\0");
             return (byte*)_this.GetPin(sb.UnderlyingArray);
+        }
+
+        [UnmanagedCallersOnly]
+        public static int getSignatureForMethodSymbol(IntPtr thisHandle, IntPtr symbolHandle, CORINFO_SIG_INFO* pSig)
+        {
+            var _this = GetThis(thisHandle);
+            var node = (ISymbolNode)_this.HandleToObject(symbolHandle);
+
+            if (node is IMethodNode { Offset: 0, Method: MethodDesc method })
+            {
+                _this.Get_CORINFO_SIG_INFO(method, pSig, scope: null);
+                if (method.IsUnmanagedCallersOnly)
+                {
+                    pSig->callConv |= CorInfoCallConv.CORINFO_CALLCONV_UNMANAGED;
+                }
+
+                return 1;
+            }
+
+            return 0;
         }
 
         [UnmanagedCallersOnly]
@@ -320,7 +340,8 @@ namespace Internal.JitInterface
         enum EEApiId
         {
             GetMangledMethodName,
-            GetSymbolMangledName,
+            GetMangledSymbolName,
+            GetSignatureForMethodSymbol,
             GetEHDispatchFunctionName,
             GetTypeName,
             AddCodeReloc,
@@ -359,7 +380,8 @@ namespace Internal.JitInterface
         {
             void** jitImports = stackalloc void*[(int)EEApiId.Count + 1];
             jitImports[(int)EEApiId.GetMangledMethodName] = (delegate* unmanaged<IntPtr, CORINFO_METHOD_STRUCT_*, byte*>)&getMangledMethodName;
-            jitImports[(int)EEApiId.GetSymbolMangledName] = (delegate* unmanaged<IntPtr, CORINFO_METHOD_STRUCT_*, byte*>)&getSymbolMangledName;
+            jitImports[(int)EEApiId.GetMangledSymbolName] = (delegate* unmanaged<IntPtr, IntPtr, byte*>)&getMangledSymbolName;
+            jitImports[(int)EEApiId.GetSignatureForMethodSymbol] = (delegate* unmanaged<IntPtr, IntPtr, CORINFO_SIG_INFO*, int>)&getSignatureForMethodSymbol;
             jitImports[(int)EEApiId.GetEHDispatchFunctionName] = (delegate* unmanaged<IntPtr, CORINFO_EH_CLAUSE_FLAGS, byte*>)&getEHDispatchFunctionName;
             jitImports[(int)EEApiId.GetTypeName] = (delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, byte*>)&getTypeName;
             jitImports[(int)EEApiId.AddCodeReloc] = (delegate* unmanaged<IntPtr, void*, void>)&addCodeReloc;

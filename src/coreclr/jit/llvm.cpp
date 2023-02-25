@@ -20,6 +20,7 @@ enum class EEApiId
 {
     GetMangledMethodName,
     GetSymbolMangledName,
+    GetSignatureForMethodSymbol,
     GetEHDispatchFunctionName, // TODO-LLVM: move these to the LLVM helper mechanism.
     GetTypeName,
     AddCodeReloc,
@@ -763,6 +764,11 @@ const char* Llvm::GetMangledMethodName(CORINFO_METHOD_HANDLE methodHandle)
 const char* Llvm::GetMangledSymbolName(void* symbol)
 {
     return CallEEApi<EEApiId::GetSymbolMangledName, const char*>(m_pEECorInfo, symbol);
+}
+
+bool Llvm::GetSignatureForMethodSymbol(CORINFO_GENERIC_HANDLE symbolHandle, CORINFO_SIG_INFO* pSig)
+{
+    return CallEEApi<EEApiId::GetSignatureForMethodSymbol, int>(m_pEECorInfo, symbolHandle, pSig) != 0;
 }
 
 const char* Llvm::GetEHDispatchFunctionName(CORINFO_EH_CLAUSE_FLAGS handlerType)

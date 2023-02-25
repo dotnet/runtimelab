@@ -4406,9 +4406,10 @@ namespace Internal.IL
 
         void ThrowOrRethrow(StackEntry exceptionObject)
         {
-            if (RhpThrowEx.Handle.Equals(IntPtr.Zero))
+            LLVMValueRef throwFunc = Module.GetNamedFunction("RhpThrowEx");
+            if (throwFunc.Handle.Equals(IntPtr.Zero))
             {
-                RhpThrowEx = Module.AddFunction("RhpThrowEx", LLVMTypeRef.CreateFunction(LLVMTypeRef.Void, new LLVMTypeRef[] { LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0) }, false));
+                throwFunc = Module.AddFunction("RhpThrowEx", LLVMTypeRef.CreateFunction(LLVMTypeRef.Void, new LLVMTypeRef[] { LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0) }, false));
             }
 
             _builder.BuildStore(GetShadowStack(), ShadowStackTop);
@@ -4417,12 +4418,12 @@ namespace Internal.IL
             ExceptionRegion currentExceptionRegion = GetCurrentTryRegion();
             if (currentExceptionRegion == null)
             {
-                _builder.BuildCall(RhpThrowEx, args, "");
+                _builder.BuildCall(throwFunc, args, "");
                 _builder.BuildUnreachable();
             }
             else
             {
-                _builder.BuildInvoke(RhpThrowEx, args, GetOrCreateUnreachableBlock(), GetOrCreateLandingPad(currentExceptionRegion), "");
+                _builder.BuildInvoke(throwFunc, args, GetOrCreateUnreachableBlock(), GetOrCreateLandingPad(currentExceptionRegion), "");
             }
 
             for (int i = 0; i < _handlerRegionsForOffsetLookup.Length; i++)

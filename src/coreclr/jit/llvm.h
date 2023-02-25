@@ -233,6 +233,7 @@ private:
     //
     const char* GetMangledMethodName(CORINFO_METHOD_HANDLE methodHandle);
     const char* GetMangledSymbolName(void* symbol);
+    bool GetSignatureForMethodSymbol(CORINFO_GENERIC_HANDLE symbolHandle, CORINFO_SIG_INFO* pSig);
     const char* GetEHDispatchFunctionName(CORINFO_EH_CLAUSE_FLAGS handlerType);
     const char* GetTypeName(CORINFO_CLASS_HANDLE typeHandle);
     void AddCodeReloc(void* handle);
@@ -400,6 +401,7 @@ private:
 
     FunctionType* getFunctionType();
     llvm::FunctionCallee consumeCallTarget(GenTreeCall* call);
+    FunctionType* createFunctionTypeForSignature(CORINFO_SIG_INFO* pSig);
     FunctionType* createFunctionTypeForCall(GenTreeCall* call);
     FunctionType* createFunctionTypeForHelper(CorInfoHelpAnyFunc helperFunc);
     void annotateHelperFunction(CorInfoHelpAnyFunc helperFunc, Function* llvmFunc);
@@ -408,8 +410,8 @@ private:
                                            std::function<void(Function*)> annotateFunction = [](Function*) { });
     Function* getOrCreateExternalLlvmFunctionAccessor(StringRef name);
 
-    llvm::GlobalVariable* getOrCreateExternalSymbol(StringRef symbolName);
-    llvm::GlobalVariable* getOrCreateSymbol(CORINFO_GENERIC_HANDLE symbolHandle);
+    llvm::GlobalVariable* getOrCreateDataSymbol(StringRef symbolName);
+    llvm::GlobalValue* getOrCreateSymbol(CORINFO_GENERIC_HANDLE symbolHandle);
 
     Instruction* getCast(Value* source, Type* targetType);
     Value* castIfNecessary(Value* source, Type* targetType, llvm::IRBuilder<>* builder = nullptr);

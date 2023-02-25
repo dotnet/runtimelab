@@ -207,7 +207,7 @@ void Llvm::populateLlvmArgNums()
     }
 
     CORINFO_ARG_LIST_HANDLE sigArgs = _sigInfo.args;
-    for (unsigned int i = 0; i < _sigInfo.numArgs; i++, sigArgs = m_info->compCompHnd->getArgNext(sigArgs))
+    for (unsigned i = 0; i < _sigInfo.numArgs; i++, sigArgs = m_info->compCompHnd->getArgNext(sigArgs))
     {
         CORINFO_CLASS_HANDLE classHnd;
         CorInfoType          corInfoType = strip(m_info->compCompHnd->getArgType(&_sigInfo, sigArgs, &classHnd));
@@ -644,6 +644,13 @@ void Llvm::lowerCall(GenTreeCall* callNode)
     {
         lowerRethrow(callNode);
     }
+    // "gtFoldExprConst" can attach a superflous argument to the overflow helper. Remove it.
+    else if (callNode->IsHelperCall(_compiler, CORINFO_HELP_OVERFLOW) && !callNode->gtArgs.IsEmpty())
+    {
+        // TODO-LLVM: fix upstream to not attach this argument.
+        CurrentRange().Remove(callNode->gtArgs.GetArgByIndex(0)->GetNode());
+        callNode->gtArgs.RemoveAfter(nullptr);
+    }
 
     // Doing this early simplifies code below.
     callNode->gtArgs.MoveLateToEarly();
@@ -979,7 +986,7 @@ void Llvm::lowerUnmanagedCall(GenTreeCall* callNode)
         {
             if (arg.GetNode()->TypeIs(TYP_STRUCT))
             {
-                // TODO-LLVM: implement proper ABI for structs.
+                // TODO-LLVM-ABI: implement proper ABI for structs.
                 failFunctionCompilation();
             }
 
@@ -1113,7 +1120,7 @@ unsigned Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
             }
             else
             {
-                unreached();
+                argSigType = toCorInfoType(callArg->GetSignatureType());
             }
         }
         else
@@ -1359,6 +1366,8 @@ GenTree* Llvm::normalizeStructUse(LIR::Use& use, ClassLayout* layout)
             }
         }
     }
+
+    return node;
 }
 
 unsigned Llvm::representAsLclVar(LIR::Use& use)
