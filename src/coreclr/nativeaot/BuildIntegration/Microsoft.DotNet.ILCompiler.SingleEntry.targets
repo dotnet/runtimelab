@@ -33,7 +33,7 @@
     <IlcHostArch Condition="'$(IlcHostArch)' == ''">$(OSHostArch)</IlcHostArch>
     <IlcHostPackageName>runtime.$(OSIdentifier)-$(IlcHostArch).Microsoft.DotNet.ILCompiler</IlcHostPackageName>
     <IlcHostPackageName Condition="'$(TargetArchitecture)' == 'wasm'">$(IlcHostPackageName).LLVM</IlcHostPackageName>
-    
+
     <IlcCalledViaPackage>true</IlcCalledViaPackage>
   </PropertyGroup>
 
@@ -57,10 +57,18 @@
   <Target Name="ImportRuntimeIlcPackageTarget" Condition="'$(BuildingFrameworkLibrary)' != 'true' and '$(PublishAot)' == 'true' and $(IlcCalledViaPackage) == 'true'" DependsOnTargets="$(ImportRuntimeIlcPackageTargetDependsOn)" BeforeTargets="Publish">
     <Error Condition="'@(ResolvedILCompilerPack)' == ''" Text="The ResolvedILCompilerPack ItemGroup is required for target ImportRuntimeIlcPackageTarget" />
 
-    <PropertyGroup>
+
+    <!-- This targets file is imported by the SDK when the PublishAot property is set. Use the SDK runtime package resolve property to set  down stream properties -->
+    <PropertyGroup Condition="'$(PublishAot)' == 'true'">
       <IlcHostPackagePath Condition="'@(ResolvedILCompilerPack)' == '$(IlcHostPackageName)'">@(ResolvedILCompilerPack->'%(PackageDirectory)')</IlcHostPackagePath>
       <RuntimePackagePath Condition="'@(ResolvedTargetILCompilerPack)' == '$(RuntimeIlcPackageName)'">@(ResolvedTargetILCompilerPack->'%(PackageDirectory)')</RuntimePackagePath>
       <RuntimePackagePath Condition="'@(ResolvedTargetILCompilerPack)' == ''">@(ResolvedILCompilerPack->'%(PackageDirectory)')</RuntimePackagePath>
+    </PropertyGroup>
+
+    <!-- Use the non-SDK runtime package resolve property to set down stream properties if SDK is not involved -->
+    <PropertyGroup Condition="'$(PublishAot)' != 'true'">
+      <RuntimePackagePath Condition="'%(PackageDefinitions.Name)' == '$(RuntimeIlcPackageName)'">%(PackageDefinitions.ResolvedPath)</RuntimePackagePath>
+      <IlcHostPackagePath Condition="'%(PackageDefinitions.Name)' == '$(IlcHostPackageName)'">%(PackageDefinitions.ResolvedPath)</IlcHostPackagePath>
     </PropertyGroup>
 
   </Target>
