@@ -426,6 +426,7 @@ The .NET Foundation licenses this file to you under the MIT license.
       <CustomLinkerArg Condition="'$(NativeDebugSymbols)' != 'true'" Include="-O2 -flto" />
       <CustomLinkerArg Condition="'$(NativeDebugSymbols)' == 'true'" Include="-g3" />
       <CustomLinkerArg Include="@(LinkerArg)" />
+      <CustomLinkerArg Include="$(EmccExtraArgs)" />
     </ItemGroup>
 
     <WriteLinesToFile File="$(NativeIntermediateOutputPath)link.rsp" Lines="@(CustomLinkerArg)" Overwrite="true" Encoding="utf-8" />
