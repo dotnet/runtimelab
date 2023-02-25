@@ -813,45 +813,6 @@ var_types Compiler::getArgTypeForStruct(CORINFO_CLASS_HANDLE clsHnd,
 #endif // !TARGET_WASM
 }
 
-<<<<<<< HEAD
-#ifdef TARGET_WASM
-bool Compiler::IsHfa(CORINFO_CLASS_HANDLE hClass)
-{
-    return false; // TODO WASM
-}
-var_types Compiler::GetHfaType(CORINFO_CLASS_HANDLE hClass)
-{
-    return TYP_UNDEF;
-}
-//------------------------------------------------------------------------
-// GetHfaCount: Given a  class handle for an HFA struct
-//    return the number of registers needed to hold the HFA
-//
-//    Note that on ARM32 the single precision registers overlap with
-//        the double precision registers and for that reason each
-//        double register is considered to be two single registers.
-//        Thus for ARM32 an HFA of 4 doubles this function will return 8.
-//    On ARM64 given an HFA of 4 singles or 4 doubles this function will
-//         will return 4 for both.
-// Arguments:
-//    hClass: the class handle of a HFA struct
-//
-unsigned Compiler::GetHfaCount(CORINFO_CLASS_HANDLE hClass)
-{
-    assert(false); // TODO
-    //assert(IsHfa(hClass));
-    //var_types hfaType = GetHfaType(hClass);
-    //unsigned  classSize = info.compCompHnd->getClassSize(hClass);
-    //// Note that the retail build issues a warning about a potential divsion by zero without the Max function
-    //unsigned elemSize = Max((unsigned)1, (unsigned)EA_SIZE_IN_BYTES(emitActualTypeSize(hfaType)));
-    //return classSize / elemSize;
-    return 1;
-}
-
-#endif //TARGET_WASM
-
-=======
->>>>>>> origin/feature/NativeAOT-LLVM
 //-----------------------------------------------------------------------------
 // getReturnTypeForStruct:
 //     Get the type that is used to return values of the given struct type.

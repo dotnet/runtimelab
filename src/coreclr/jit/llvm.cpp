@@ -93,10 +93,8 @@ size_t HelperFuncInfo::GetSigArgCount(unsigned* callArgCount) const
 }
 
 bool Compiler::IsHfa(CORINFO_CLASS_HANDLE hClass) { return false; }
-var_types Compiler::GetHfaType(GenTree* tree) { return TYP_UNDEF; }
 var_types Compiler::GetHfaType(CORINFO_CLASS_HANDLE hClass) { return TYP_UNDEF; }
 unsigned Compiler::GetHfaCount(CORINFO_CLASS_HANDLE hClass) { return 0; }
-unsigned Compiler::GetHfaCount(GenTree* tree) { return 0; }
 
 Llvm::Llvm(Compiler* compiler)
     : _compiler(compiler)
