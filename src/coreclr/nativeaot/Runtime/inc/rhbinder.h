@@ -386,15 +386,10 @@ enum PInvokeTransitionFrameFlags
 #pragma warning(disable:4200) // nonstandard extension used: zero-sized array in struct/union
 class Thread;
 #if defined(USE_PORTABLE_HELPERS)
-//the members of this structure are currently unused except m_pThread and exist only to allow compilation
-//of StackFrameIterator their values are not currently being filled in and will require significant rework
-//in order to satisfy the runtime requirements of StackFrameIterator
 struct PInvokeTransitionFrame
 {
-    void*       m_RIP;
-    Thread*     m_pThread;  // unused by stack crawler, this is so GetThread is only called once per method
-                            // can be an invalid pointer in universal transition cases (which never need to call GetThread)
-    uint32_t    m_Flags;    // PInvokeTransitionFrameFlags
+    Thread*     m_pThread; // Cached so that GetThread is only called once per method
+    uint32_t    m_Flags; // PInvokeTransitionFrameFlags. TODO-LLVM-CQ: Remove. Only needed for Thread.Abort "support".
 };
 #else // USE_PORTABLE_HELPERS
 struct PInvokeTransitionFrame

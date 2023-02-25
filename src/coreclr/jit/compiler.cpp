@@ -625,11 +625,10 @@ var_types Compiler::getArgTypeForStruct(CORINFO_CLASS_HANDLE clsHnd,
                                         bool                 isVarArg,
                                         unsigned             structSize)
 {
-// For LLVM/Wasm, always pass by value and let the lowering decide
-#if defined(TARGET_WASM)
-    *wbPassStruct = SPK_ByValue;
-    return TYP_STRUCT;
+#ifdef TARGET_WASM
+    return m_llvm->GetArgTypeForStructWasm(clsHnd, wbPassStruct, structSize);
 #else // !TARGET_WASM
+
     var_types         useType         = TYP_UNKNOWN;
     structPassingKind howToPassStruct = SPK_Unknown; // We must change this before we return
 
@@ -814,6 +813,7 @@ var_types Compiler::getArgTypeForStruct(CORINFO_CLASS_HANDLE clsHnd,
 #endif // !TARGET_WASM
 }
 
+<<<<<<< HEAD
 #ifdef TARGET_WASM
 bool Compiler::IsHfa(CORINFO_CLASS_HANDLE hClass)
 {
@@ -850,6 +850,8 @@ unsigned Compiler::GetHfaCount(CORINFO_CLASS_HANDLE hClass)
 
 #endif //TARGET_WASM
 
+=======
+>>>>>>> origin/feature/NativeAOT-LLVM
 //-----------------------------------------------------------------------------
 // getReturnTypeForStruct:
 //     Get the type that is used to return values of the given struct type.
@@ -900,10 +902,6 @@ var_types Compiler::getReturnTypeForStruct(CORINFO_CLASS_HANDLE     clsHnd,
                                            structPassingKind*       wbReturnStruct /* = nullptr */,
                                            unsigned                 structSize /* = 0 */)
 {
-#if defined(TARGET_WASM)
-    *wbReturnStruct = SPK_ByValue;
-    return TYP_STRUCT;
-#else // !TARGET_WASM
     var_types         useType             = TYP_UNKNOWN;
     structPassingKind howToReturnStruct   = SPK_Unknown; // We must change this before we return
     bool              canReturnInRegister = true;
@@ -915,6 +913,10 @@ var_types Compiler::getReturnTypeForStruct(CORINFO_CLASS_HANDLE     clsHnd,
         structSize = info.compCompHnd->getClassSize(clsHnd);
     }
     assert(structSize > 0);
+
+#ifdef TARGET_WASM
+    return m_llvm->GetReturnTypeForStructWasm(clsHnd, wbReturnStruct, structSize);
+#else // !TARGET_WASM
 
 #ifdef UNIX_AMD64_ABI
     // An 8-byte struct may need to be returned in a floating point register
@@ -1146,7 +1148,7 @@ var_types Compiler::getReturnTypeForStruct(CORINFO_CLASS_HANDLE     clsHnd,
     }
 
     return useType;
-#endif  // !TARGET_WASM
+#endif // !TARGET_WASM
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1410,9 +1412,7 @@ void Compiler::compShutdown()
     DisplayNowayAssertMap();
 #endif // MEASURE_NOWAY
 
-#ifdef TARGET_WASM
-    Llvm::llvmShutdown();
-#else
+#ifndef TARGET_WASM
     /* Shut down the emitter */
 
     emitter::emitDone();

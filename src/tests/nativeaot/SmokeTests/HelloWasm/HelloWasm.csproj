@@ -4,9 +4,15 @@
     <CLRTestKind>BuildAndRun</CLRTestKind>
     <CLRTestPriority>0</CLRTestPriority>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+
+    <!-- IL3049 warns about mismatched signatures; we are intentionally testing they are handled correctly
+         when the definition is statically linked -->
+    <NoWarn>$(NoWarn);IL3049</NoWarn>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="HelloWasm.cs" />
+
+    <CMakeProjectReference Include="CMakeLists.txt" />
   </ItemGroup>
 
   <ItemGroup>

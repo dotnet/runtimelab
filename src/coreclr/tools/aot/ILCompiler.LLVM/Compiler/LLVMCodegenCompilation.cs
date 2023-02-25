@@ -3,32 +3,35 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Threading;
-using ILCompiler.Compiler;
-using Internal.TypeSystem;
-using Internal.TypeSystem.Ecma;
-using Internal.IL;
 
+using ILCompiler.Compiler;
 using ILCompiler.DependencyAnalysis;
 using ILCompiler.DependencyAnalysisFramework;
-using LLVMSharp.Interop;
 using ILCompiler.LLVM;
-using Internal.JitInterface;
+
+using Internal.IL;
 using Internal.IL.Stubs;
-using System.Runtime.InteropServices;
-using LLVMSharp;
+using Internal.JitInterface;
+using Internal.TypeSystem;
+using Internal.TypeSystem.Ecma;
+
+using LLVMSharp.Interop;
 
 namespace ILCompiler
 {
-    public sealed class LLVMCodegenCompilation : RyuJitCompilation
+    public unsafe sealed class LLVMCodegenCompilation : RyuJitCompilation
     {
         [DllImport("libLLVM", EntryPoint = "LLVMContextSetOpaquePointers", CallingConvention = CallingConvention.Cdecl)]
         public static extern LLVMContextRef LLVMContextSetOpaquePointers(LLVMContextRef C, bool OpaquePointers);
 
-        private readonly ConditionalWeakTable<Thread, CorInfoImpl> _corinfos = new ConditionalWeakTable<Thread, CorInfoImpl>();
-        private string _outputFile;
+        private readonly ConditionalWeakTable<Thread, CorInfoImpl> _corinfos = new();
         private readonly bool _disableRyuJit;
+        private string _outputFile;
 
         // the LLVM Module generated from IL, can only be one.
         internal static LLVMModuleRef Module { get; private set; }
@@ -80,14 +83,19 @@ namespace ILCompiler
         protected override void CompileInternal(string outputFile, ObjectDumper dumper)
         {
             _outputFile = outputFile;
+
+            CorInfoImpl.JitStartCompilation();
+
             _dependencyGraph.ComputeMarkedNodes();
 
-            var nodes = _dependencyGraph.MarkedNodeList;
+            foreach (var (_, corInfo) in _corinfos)
+            {
+                CorInfoImpl.JitFinishThreadContextBoundCompilation();
+            }
 
-            CorInfoImpl.Shutdown(); // writes the LLVM bitcode
-            CorInfoImpl.FreeUnmanagedResources();
+            CorInfoImpl.JitFinishCompilation();
 
-            LLVMObjectWriter.EmitObject(outputFile, nodes, this, dumper);
+            LLVMObjectWriter.EmitObject(outputFile, _dependencyGraph.MarkedNodeList, this, dumper);
 
             Console.WriteLine($"RyuJIT compilation results, total methods {totalMethodCount} RyuJit Methods {ryuJitMethodCount} {((decimal)ryuJitMethodCount * 100 / totalMethodCount):n4}%");
         }
@@ -118,7 +126,13 @@ namespace ILCompiler
 
         private void CompileSingleThreaded(List<LLVMMethodCodeNode> methodsToCompile)
         {
-            CorInfoImpl corInfo = _corinfos.GetValue(Thread.CurrentThread, thread => new CorInfoImpl(this));
+            CorInfoImpl corInfo = _corinfos.GetValue(Thread.CurrentThread, thread =>
+            {
+                string outputFilePath = Path.ChangeExtension(_outputFile, null) + "clrjit.bc";
+                CorInfoImpl.JitStartThreadContextBoundCompilation(outputFilePath, Module.Target, Module.DataLayout);
+
+                return new CorInfoImpl(this);
+            });
 
             foreach (LLVMMethodCodeNode methodCodeNodeNeedingCode in methodsToCompile)
             {
@@ -157,11 +171,9 @@ namespace ILCompiler
                     methodCodeNodeNeedingCode.CompilationCompleted = true;
                     return;
                 }
-                
+
                 if (!_disableRyuJit)
                 {
-                    corInfo.RegisterLlvmCallbacks((IntPtr)Unsafe.AsPointer(ref corInfo), _outputFile, Module.Target, Module.DataLayout);
-
                     corInfo.CompileMethod(methodCodeNodeNeedingCode);
                     methodCodeNodeNeedingCode.CompilationCompleted = true;
 
@@ -302,6 +314,14 @@ namespace ILCompiler
             }
 
             return ((EcmaMethod)method).GetRuntimeExportName() + "_Managed";
+        }
+
+        public override ISymbolNode GetExternalMethodAccessor(MethodDesc method, ReadOnlySpan<TargetAbiType> sig)
+        {
+            Debug.Assert(!sig.IsEmpty);
+            string name = PInvokeILProvider.GetDirectCallExternName(method);
+
+            return NodeFactory.ExternSymbolWithAccessor(name, method, sig);
         }
     }
 }

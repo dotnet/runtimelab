@@ -4,7 +4,7 @@
 
 #include "llvm.h"
 
-#define BBNAME(prefix, index) llvm::Twine(prefix) + ((index < 10) ? "0" : "") + llvm::Twine(index)
+#define BBNAME(prefix, index) Twine(prefix) + ((index < 10) ? "0" : "") + Twine(index)
 
 //------------------------------------------------------------------------
 // Compile: Compile IR to LLVM, adding to the LLVM Module
@@ -87,12 +87,19 @@ void Llvm::Compile()
 bool Llvm::initializeFunctions()
 {
     const char* mangledName = GetMangledMethodName(m_info->compMethodHnd);
-    Function* rootLlvmFunction = _module->getFunction(mangledName);
-
-    if (rootLlvmFunction == nullptr)
+    Function* rootLlvmFunction = getOrCreateKnownLlvmFunction(mangledName, [=]() { return getFunctionType(); });
+    if (!rootLlvmFunction->isDeclaration())
     {
-        // TODO: ExternalLinkage forced as linked from old module
-        rootLlvmFunction = Function::Create(getFunctionType(), Function::ExternalLinkage, 0U, mangledName, _module);
+        BADCODE("Duplicate definition");
+    }
+
+    if (_compiler->opts.jitFlags->IsSet(JitFlags::JIT_FLAG_MIN_OPT))
+    {
+        rootLlvmFunction->addFnAttr(llvm::Attribute::OptimizeNone);
+    }
+    if ((_compiler->info.compFlags & CORINFO_FLG_DONT_INLINE) != 0)
+    {
+        rootLlvmFunction->addFnAttr(llvm::Attribute::NoInline);
     }
 
     // TODO-LLVM: investigate.
@@ -104,7 +111,7 @@ bool Llvm::initializeFunctions()
         return true;
     }
 
-    // First functions is always the root.
+    // First function is always the root.
     m_functions = std::vector<FunctionInfo>(_compiler->compFuncCount());
     m_functions[ROOT_FUNC_IDX] = {rootLlvmFunction};
 
@@ -152,7 +159,7 @@ bool Llvm::initializeFunctions()
 
             Function* llvmFunc =
                 Function::Create(llvmFuncType, Function::InternalLinkage,
-                                 mangledName + llvm::Twine("$F") + llvm::Twine(funcIdx) + "_" + kindName, _module);
+                                 mangledName + Twine("$F") + Twine(funcIdx) + "_" + kindName, _module);
 
             m_functions[funcIdx] = {llvmFunc};
         }
@@ -1936,50 +1943,6 @@ void Llvm::buildIntegralConst(GenTreeIntConCommon* node)
 
 void Llvm::buildCall(GenTreeCall* call)
 {
-    llvm::FunctionCallee llvmFuncCallee;
-    if (call->IsVirtualVtable() || (call->gtCallType == CT_INDIRECT))
-    {
-        FunctionType* functionType = createFunctionTypeForCall(call);
-        GenTree* targetNode = call->IsVirtualVtable() ? call->gtControlExpr : call->gtCallAddr;
-        Value* targetValue = consumeValue(targetNode, functionType->getPointerTo());
-
-        llvmFuncCallee = {functionType, targetValue};
-    }
-    else
-    {
-        void* handle;
-        if (call->gtEntryPoint.handle != nullptr)
-        {
-            // Note some helpers (e. g. CORINFO_HELP_READYTORUN_STATIC_BASE) do not represent singular methods and so
-            // will go through this path.
-            assert(call->gtEntryPoint.accessType == IAT_VALUE);
-            handle = call->gtEntryPoint.handle;
-        }
-        else
-        {
-            assert(call->IsHelperCall());
-            CorInfoHelpFunc helperFunc = _compiler->eeGetHelperNum(call->gtCallMethHnd);
-            void* pAddr = nullptr;
-            handle = _compiler->compGetHelperFtn(helperFunc, &pAddr);
-            assert(pAddr == nullptr);
-        }
-
-        const char* symbolName = GetMangledSymbolName(handle);
-        AddCodeReloc(handle); // Replacement for _info.compCompHnd->recordRelocation.
-
-        llvmFuncCallee = getOrCreateLlvmFunction(symbolName, call);
-    }
-
-    // We may come back into managed from the unmanaged call so store the shadow stack.
-    Value* shadowStackToRestoreValue = nullptr;
-    Value* shadowStackTopAddrValue = nullptr;
-    if (callRequiresShadowStackSaveRestore(call))
-    {
-        shadowStackTopAddrValue = getOrCreateExternalSymbol("t_pShadowStackTop");
-        shadowStackToRestoreValue = _builder.CreateLoad(getPtrLlvmType(), shadowStackTopAddrValue);
-        _builder.CreateStore(getShadowStackForCallee(), shadowStackTopAddrValue);
-    }
-
     std::vector<Value*> argVec = std::vector<Value*>();
 
     GenTree* argNode = nullptr;
@@ -2003,7 +1966,30 @@ void Llvm::buildCall(GenTreeCall* call)
         argVec.push_back(argValue);
     }
 
-    Value* callValue = emitCallOrInvoke(llvmFuncCallee, argVec);
+    // We may come back into managed from the unmanaged call so store the shadow stack.
+    Value* shadowStackToRestoreValue = nullptr;
+    Value* shadowStackTopAddrValue = nullptr;
+    if (callRequiresShadowStackSaveRestore(call))
+    {
+        shadowStackTopAddrValue = getOrCreateExternalSymbol("t_pShadowStackTop");
+        shadowStackToRestoreValue = _builder.CreateLoad(getPtrLlvmType(), shadowStackTopAddrValue);
+        _builder.CreateStore(getShadowStackForCallee(), shadowStackTopAddrValue);
+    }
+
+    llvm::FunctionCallee llvmFuncCallee = consumeCallTarget(call);
+    Value* callValue;
+    if (call->IsUnmanaged())
+    {
+        // We do not support exceptions propagating through native<->managed boundaries.
+        llvm::CallInst* callInst = _builder.CreateCall(llvmFuncCallee, argVec);
+        callInst->addFnAttr(llvm::Attribute::NoUnwind);
+
+        callValue = callInst;
+    }
+    else
+    {
+        callValue = emitCallOrInvoke(llvmFuncCallee, argVec);
+    }
 
     // Restore the saved shadow stack.
     if (shadowStackToRestoreValue != nullptr)
@@ -2661,12 +2647,11 @@ Value* Llvm::emitHelperCall(CorInfoHelpFunc helperFunc, ArrayRef<Value*> sigArgs
     const char* symbolName = GetMangledSymbolName(handle);
     AddCodeReloc(handle);
 
-    Function* helperLlvmFunc = _module->getFunction(symbolName);
-    if (helperLlvmFunc == nullptr)
-    {
-        FunctionType* llvmFuncType = createFunctionTypeForHelper(helperFunc);
-        helperLlvmFunc = Function::Create(llvmFuncType, Function::ExternalLinkage, symbolName, _module);
-    }
+    Function* helperLlvmFunc = getOrCreateKnownLlvmFunction(symbolName, [this, helperFunc]() {
+        return createFunctionTypeForHelper(helperFunc);
+    }, [this, helperFunc](Function* llvmFunc) {
+        annotateHelperFunction(helperFunc, llvmFunc);
+    });
 
     Value* callValue;
     if (helperCallHasShadowStackArg(helperFunc))
@@ -2695,6 +2680,11 @@ llvm::CallBase* Llvm::emitCallOrInvoke(llvm::FunctionCallee callee, ArrayRef<Val
         // protected region, i. e. the one before funclet creation. But we do not need to (in fact,
         // cannot) emit an invoke targeting block inside a different LLVM function.
         if (catchLlvmBlock->getParent() != getCurrentLlvmFunction())
+        {
+            catchLlvmBlock = nullptr;
+        }
+        // No need to invoke no-throw functions.
+        else if (llvm::isa<Function>(callee.getCallee()) && llvm::cast<Function>(callee.getCallee())->doesNotThrow())
         {
             catchLlvmBlock = nullptr;
         }
@@ -2743,18 +2733,58 @@ FunctionType* Llvm::getFunctionType()
     return FunctionType::get(retLlvmType, ArrayRef<Type*>(argVec), false);
 }
 
-Function* Llvm::getOrCreateLlvmFunction(const char* symbolName, GenTreeCall* call)
+llvm::FunctionCallee Llvm::consumeCallTarget(GenTreeCall* call)
 {
-    Function* llvmFunc = _module->getFunction(symbolName);
-
-    if (llvmFunc == nullptr)
+    llvm::FunctionCallee callee;
+    if (call->IsVirtualVtable() || (call->gtCallType == CT_INDIRECT))
     {
-        // assume ExternalLinkage, if the function is defined in the clrjit module, then it is replaced and an
-        // extern added to the Ilc module
-        llvmFunc =
-            Function::Create(createFunctionTypeForCall(call), Function::ExternalLinkage, 0U, symbolName, _module);
+        FunctionType* calleeFuncType = createFunctionTypeForCall(call);
+        GenTree* calleeNode = call->IsVirtualVtable() ? call->gtControlExpr : call->gtCallAddr;
+        Value* calleeValue = consumeValue(calleeNode, getPtrLlvmType());
+
+        callee = {calleeFuncType, calleeValue};
     }
-    return llvmFunc;
+    else
+    {
+        void* handle = call->gtEntryPoint.handle;
+        CorInfoHelpFunc helperFunc = _compiler->eeGetHelperNum(call->gtCallMethHnd);
+        if (handle == nullptr)
+        {
+            assert(helperFunc != CORINFO_HELP_UNDEF);
+            void* pAddr = nullptr;
+            handle = _compiler->compGetHelperFtn(helperFunc, &pAddr);
+            assert(pAddr == nullptr);
+        }
+        else
+        {
+            assert(call->gtEntryPoint.accessType == IAT_VALUE);
+        }
+
+        const char* symbolName = GetMangledSymbolName(handle);
+        AddCodeReloc(handle); // Replacement for _info.compCompHnd->recordRelocation.
+
+        if (call->IsUnmanaged()) // External functions.
+        {
+            FunctionType* callFuncType = createFunctionTypeForCall(call);
+            Function* calleeAccessorFunc = getOrCreateExternalLlvmFunctionAccessor(symbolName);
+            Value* calleeValue = _builder.CreateCall(calleeAccessorFunc);
+
+            callee = {callFuncType, calleeValue};
+        }
+        else // Known functions.
+        {
+            callee = getOrCreateKnownLlvmFunction(symbolName, [this, call]() -> FunctionType* {
+                return createFunctionTypeForCall(call);
+            }, [this, helperFunc](Function* llvmFunc) {
+                if (helperFunc != CORINFO_HELP_UNDEF)
+                {
+                    annotateHelperFunction(helperFunc, llvmFunc);
+                }
+            });
+        }
+    }
+
+    return callee;
 }
 
 FunctionType* Llvm::createFunctionTypeForCall(GenTreeCall* call)
@@ -2803,7 +2833,54 @@ FunctionType* Llvm::createFunctionTypeForHelper(CorInfoHelpFunc helperFunc)
     return llvmFuncType;
 }
 
-llvm::GlobalVariable* Llvm::getOrCreateExternalSymbol(const char* symbolName)
+void Llvm::annotateHelperFunction(CorInfoHelpFunc helperFunc, Function* llvmFunc)
+{
+    if (Compiler::s_helperCallProperties.NoThrow(helperFunc))
+    {
+        llvmFunc->setDoesNotThrow();
+    }
+    if (Compiler::s_helperCallProperties.AlwaysThrow(helperFunc))
+    {
+        llvmFunc->setDoesNotReturn();
+    }
+    if (Compiler::s_helperCallProperties.NonNullReturn(helperFunc))
+    {
+        llvmFunc->addRetAttr(llvm::Attribute::NonNull);
+    }
+
+    if (!llvmFunc->getReturnType()->isVoidTy())
+    {
+        // Assume helpers won't return uninitialized memory or the like.
+        llvmFunc->addRetAttr(llvm::Attribute::NoUndef);
+    }
+}
+
+Function* Llvm::getOrCreateKnownLlvmFunction(
+    StringRef name, std::function<FunctionType*()> createFunctionType, std::function<void(Function*)> annotateFunction)
+{
+    Function* llvmFunc = _module->getFunction(name);
+    if (llvmFunc == nullptr)
+    {
+        llvmFunc = Function::Create(createFunctionType(), Function::ExternalLinkage, name, _module);
+        annotateFunction(llvmFunc);
+    }
+
+    return llvmFunc;
+}
+
+Function* Llvm::getOrCreateExternalLlvmFunctionAccessor(StringRef name)
+{
+    Function* accessorFuncRef = _module->getFunction(name);
+    if (accessorFuncRef == nullptr)
+    {
+        FunctionType* accessorFuncType = FunctionType::get(getPtrLlvmType(), /* isVarArg */ false);
+        accessorFuncRef = Function::Create(accessorFuncType, Function::ExternalLinkage, name, _module);
+    }
+
+    return accessorFuncRef;
+}
+
+llvm::GlobalVariable* Llvm::getOrCreateExternalSymbol(StringRef symbolName)
 {
     llvm::GlobalVariable* symbol = _module->getGlobalVariable(symbolName);
     if (symbol == nullptr)
@@ -3039,7 +3116,7 @@ llvm::BasicBlock* Llvm::createInlineLlvmBlock()
     llvm::BasicBlock* inlineLlvmBlock = llvm::BasicBlock::Create(_llvmContext, "", llvmFunc, insertBefore);
 
 #ifdef DEBUG
-    llvm::StringRef blocksName = llvmBlocks->FirstBlock->getName();
+    StringRef blocksName = llvmBlocks->FirstBlock->getName();
     if (llvmBlocks->Count == 1)
     {
         llvmBlocks->FirstBlock->setName(blocksName + ".1");
@@ -3049,7 +3126,7 @@ llvm::BasicBlock* Llvm::createInlineLlvmBlock()
         blocksName = blocksName.take_front(blocksName.find_last_of('.'));
     }
 
-    inlineLlvmBlock->setName(blocksName + "." + llvm::Twine(++llvmBlocks->Count));
+    inlineLlvmBlock->setName(blocksName + "." + Twine(++llvmBlocks->Count));
 #endif // DEBUG
 
     llvmBlocks->LastBlock = inlineLlvmBlock;

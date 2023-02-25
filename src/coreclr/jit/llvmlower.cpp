@@ -658,6 +658,10 @@ void Llvm::lowerCall(GenTreeCall* callNode)
     {
         lowerVirtualStubCallAfterArgs(callNode, thisArgLclNum, cellArgNode, shadowArgsSize);
     }
+    else if (callNode->IsUnmanaged())
+    {
+        lowerUnmanagedCall(callNode);
+    }
 
     // If there is a no return, or always throw call, delete the dead code so we can add unreachable
     // statement immediately, and not after any dead RET.
@@ -892,8 +896,9 @@ void Llvm::lowerVirtualStubCallAfterArgs(
     //  pTarget([@this], args...)
     //
     // We "lower" this call manually as it is rather special, inserted **after** the arguments for the main call have
-    // been set up and thus needs a larger shadow stack offset. This is done to not create a new safe point across
+    // been set up and thus needing a larger shadow stack offset. This is done to not create a new safe point across
     // which GC arguments to the main call would be live; the stub itself may call into managed code and trigger a GC.
+    //
     unsigned shadowStackOffsetForStub = getCurrentShadowFrameSize() + shadowArgsSize;
     GenTree* shadowStackForStub = insertShadowStackAddr(callNode, shadowStackOffsetForStub, _shadowStackLclNum);
     GenTree* thisForStub = _compiler->gtNewLclvNode(thisArgLclNum, TYP_REF);
@@ -953,6 +958,63 @@ void Llvm::insertNullCheckForCall(GenTreeCall* callNode)
     lowerIndir(thisArgNullCheck->AsIndir());
 }
 
+void Llvm::lowerUnmanagedCall(GenTreeCall* callNode)
+{
+    assert(callNode->IsUnmanaged());
+
+    if (callNode->gtCallType != CT_INDIRECT)
+    {
+        // We cannot easily handle varargs as we do not know which args are the fixed ones.
+        assert((callNode->gtCallType == CT_USER_FUNC) && !callNode->IsVarargs());
+
+        ArrayStack<TargetAbiType> sig(_compiler->getAllocator(CMK_Codegen));
+        sig.Push(getAbiTypeForType(callNode->TypeGet()));
+        for (CallArg& arg : callNode->gtArgs.Args())
+        {
+            if (arg.GetNode()->TypeIs(TYP_STRUCT))
+            {
+                // TODO-LLVM: implement proper ABI for structs.
+                failFunctionCompilation();
+            }
+
+            sig.Push(getAbiTypeForType(arg.GetNode()->TypeGet()));
+        }
+
+        // WASM requires the callee and caller signature to match. At the LLVM level, "callee type" is the function
+        // type attached of the called operand and "caller" - that of its callsite. The problem, then, is that for a
+        // given module, we can only have one function declaration, thus, one callee type. And we cannot know whether
+        // this type will be the right one until, in general, runtime (this is the case for WASM imports provided by
+        // the host environment). Thus, to achieve the experience of runtime erros on signature mismatches, we "hide"
+        // the target behind an external function from another module, turning this call into an indirect one.
+        //
+        // TODO-LLVM: ideally, we would use a helper function here, however, adding new LLVM-specific helpers is not
+        // currently possible and so we make do with special handling in codegen.
+        callNode->gtEntryPoint.handle =
+            GetExternalMethodAccessor(callNode->gtCallMethHnd, &sig.BottomRef(), sig.Height());
+    }
+
+    // Insert the GC transitions if required. TODO-LLVM-CQ: batch these if there are no safe points between
+    // two or more consecutive PI calls.
+    if (!callNode->IsSuppressGCTransition())
+    {
+        assert(_compiler->opts.ShouldUsePInvokeHelpers()); // No inline transition support yet.
+        assert(_compiler->lvaInlinedPInvokeFrameVar != BAD_VAR_NUM);
+
+        // Insert CORINFO_HELP_JIT_PINVOKE_BEGIN.
+        GenTreeLclVar* frameAddr = _compiler->gtNewLclVarAddrNode(_compiler->lvaInlinedPInvokeFrameVar);
+        GenTreeCall* helperCall = _compiler->gtNewHelperCallNode(CORINFO_HELP_JIT_PINVOKE_BEGIN, TYP_VOID, frameAddr);
+        CurrentRange().InsertBefore(callNode, frameAddr, helperCall);
+        lowerLocal(frameAddr);
+        lowerCall(helperCall);
+
+        // Insert CORINFO_HELP_JIT_PINVOKE_END. // No need to explicitly lower the call/local address as the
+        // normal lowering loop will pick them up.
+        frameAddr = _compiler->gtNewLclVarAddrNode(_compiler->lvaInlinedPInvokeFrameVar);
+        helperCall = _compiler->gtNewHelperCallNode(CORINFO_HELP_JIT_PINVOKE_END, TYP_VOID, frameAddr);
+        CurrentRange().InsertAfter(callNode, frameAddr, helperCall);
+    }
+}
+
 //------------------------------------------------------------------------
 // lowerCallToShadowStack: Lower the call, rewriting its arguments.
 //
@@ -966,7 +1028,7 @@ void Llvm::insertNullCheckForCall(GenTreeCall* callNode)
 //     in a simple increasing order, matching the signature. We also rewrite returns
 //     that must be on the shadow stack, see "lowerCallReturn".
 //
-// LVVM Arg layout:
+// LLVM Arg layout:
 //    - Shadow stack (if required)
 //    - Return slot (if required)
 //    - Generic context (if required)
@@ -1143,13 +1205,8 @@ void Llvm::failUnsupportedCalls(GenTreeCall* callNode)
         return;
     }
 
-    if (callNode->IsUnmanaged())
-    {
-        failFunctionCompilation();
-    }
-
     // we can't do these yet
-    if ((callNode->gtCallType != CT_INDIRECT && IsRuntimeImport(callNode->gtCallMethHnd)) || callNode->IsTailCall())
+    if (callNode->IsTailCall())
     {
         failFunctionCompilation();
     }

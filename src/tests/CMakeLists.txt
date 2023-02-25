@@ -51,8 +51,9 @@ else()
 endif()
 
 if (CLR_CMAKE_TARGET_BROWSER)
-    # NativeAOT-LLVM: only compile the PI smoke test. We do not (currently) need more and 'more' doesn't all compile.
+    # NativeAOT-LLVM: only compile the smoke tests. We do not (currently) need more and 'more' doesn't all compile.
     add_subdirectory(nativeaot/SmokeTests/PInvoke)
+    add_subdirectory(nativeaot/SmokeTests/HelloWasm)
     return()
 endif()
 

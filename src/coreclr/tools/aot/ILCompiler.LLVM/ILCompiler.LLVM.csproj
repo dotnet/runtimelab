@@ -36,6 +36,7 @@
     <Compile Include="CodeGen\LLVMSharpInterop.cs" />
     <Compile Include="CodeGen\LLVMObjectWriter.cs" />
     <Compile Include="Compiler\DependencyAnalysis\EHInfoNode.cs" />
+    <Compile Include="Compiler\DependencyAnalysis\ExternMethodAccessorNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\RawMainMethodRootProvider.cs" />
     <Compile Include="Compiler\DependencyAnalysis\LLVMCodegenNodeFactory.cs" />
     <Compile Include="Compiler\DependencyAnalysis\LLVMMethodCodeNode.cs" />

@@ -1957,6 +1957,12 @@ namespace Internal.JitInterface
         {
             get
             {
+                if (_compilation.TargetArchIsWasm())
+                {
+                    // Only m_pThread used.
+                    return this.PointerSize;
+                }
+
                 // struct PInvokeTransitionFrame:
                 // #ifdef _TARGET_ARM_
                 //  m_ChainPointer
