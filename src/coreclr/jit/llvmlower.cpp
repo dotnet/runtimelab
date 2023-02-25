@@ -163,23 +163,26 @@ void Llvm::populateLlvmArgNums()
         originalShadowStackVarDsc->lvCorInfoType = CORINFO_TYPE_PTR;
     }
 
-    _shadowStackLclNum = _compiler->lvaGrabTemp(true DEBUGARG("shadowstack"));
-    LclVarDsc* shadowStackVarDsc = _compiler->lvaGetDesc(_shadowStackLclNum);
-    unsigned   nextLlvmArgNum    = 0;
+    unsigned nextLlvmArgNum = 0;
 
-    shadowStackVarDsc->lvLlvmArgNum = nextLlvmArgNum++;
+    _shadowStackLclNum = _compiler->lvaGrabTempWithImplicitUse(true DEBUGARG("shadowstack"));
+    LclVarDsc* shadowStackVarDsc = _compiler->lvaGetDesc(_shadowStackLclNum);
     shadowStackVarDsc->lvType = TYP_I_IMPL;
     shadowStackVarDsc->lvCorInfoType = CORINFO_TYPE_PTR;
-    shadowStackVarDsc->lvIsParam = true;
+    if (!_compiler->opts.IsReversePInvoke())
+    {
+        shadowStackVarDsc->lvLlvmArgNum = nextLlvmArgNum++;
+        shadowStackVarDsc->lvIsParam = true;
+    }
 
     if (needsReturnStackSlot(_sigInfo.retType, _sigInfo.retTypeClass))
     {
         _retAddressLclNum = _compiler->lvaGrabTemp(true DEBUGARG("returnslot"));
-        LclVarDsc* retAddressVarDsc  = _compiler->lvaGetDesc(_retAddressLclNum);
-        retAddressVarDsc->lvLlvmArgNum = nextLlvmArgNum++;
-        retAddressVarDsc->lvType       = TYP_I_IMPL;
+        LclVarDsc* retAddressVarDsc = _compiler->lvaGetDesc(_retAddressLclNum);
+        retAddressVarDsc->lvType = TYP_I_IMPL;
         retAddressVarDsc->lvCorInfoType = CORINFO_TYPE_PTR;
-        retAddressVarDsc->lvIsParam    = true;
+        retAddressVarDsc->lvLlvmArgNum = nextLlvmArgNum++;
+        retAddressVarDsc->lvIsParam = true;
     }
 
     unsigned firstSigArgLclNum = 0;
@@ -215,6 +218,11 @@ void Llvm::populateLlvmArgNums()
             varDsc->lvLlvmArgNum = nextLlvmArgNum++;
             varDsc->lvCorInfoType = corInfoType;
             varDsc->lvClassHnd = classHnd;
+        }
+        else
+        {
+            // No shadow parameters in RPI methods.
+            assert(!_compiler->opts.IsReversePInvoke());
         }
     }
 
