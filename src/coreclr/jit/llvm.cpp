@@ -509,7 +509,7 @@ bool Llvm::helperCallHasManagedCallingConvention(CorInfoHelpAnyFunc helperFunc) 
         { FUNC(CORINFO_HELP_PROF_FCN_TAILCALL) },
         { FUNC(CORINFO_HELP_BBT_FCN_ENTER) },
 
-        // TODO-LLVM: this is not a real "helper"; investigate what needs to be done to enable it.
+        // Not used in NativeAOT.
         { FUNC(CORINFO_HELP_PINVOKE_CALLI) },
 
         // NYI in NativeAOT.

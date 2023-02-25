@@ -1092,56 +1092,43 @@ unsigned Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
 
     while (callArg != nullptr)
     {
-        GenTree*             argNode     = callArg->GetNode();
-        CORINFO_CLASS_HANDLE clsHnd      = NO_CLASS_HANDLE;
-        CorInfoType          corInfoType;
-        bool                 isSigArg    = argIx >= firstSigArgIx;
+        GenTree* argNode = callArg->GetNode();
+        CorInfoType argSigType;
+        CORINFO_CLASS_HANDLE argSigClass = NO_CLASS_HANDLE;
 
         if (sigInfo != nullptr)
         {
             // Is this an in-signature argument?
-            if (isSigArg)
+            if (argIx >= firstSigArgIx)
             {
-                corInfoType = strip(m_info->compCompHnd->getArgType(sigInfo, sigArgs, &clsHnd));
-                sigArgs     = _compiler->info.compCompHnd->getArgNext(sigArgs);
+                argSigType = strip(m_info->compCompHnd->getArgType(sigInfo, sigArgs, &argSigClass));
+                sigArgs = _compiler->info.compCompHnd->getArgNext(sigArgs);
             }
-            else // Not-in-sig arguments. We need to handle these specially.
+            else if (callArg->GetWellKnownArg() == WellKnownArg::ThisPointer)
             {
-                if (callArg->GetWellKnownArg() == WellKnownArg::ThisPointer)
-                {
-                    corInfoType = argNode->TypeIs(TYP_REF) ? CORINFO_TYPE_CLASS : CORINFO_TYPE_BYREF;
-                }
-                else if (callArg->GetWellKnownArg() == WellKnownArg::InstParam)
-                {
-                    assert((argIx == 0) || (sigInfo->hasThis() && (argIx == 1)));
-                    corInfoType = CORINFO_TYPE_PTR;
-                }
-                else
-                {
-                    // TODO-LLVM: this should not be reachable.
-                    corInfoType = toCorInfoType(genActualType(argNode));
-                }
+                argSigType = argNode->TypeIs(TYP_REF) ? CORINFO_TYPE_CLASS : CORINFO_TYPE_BYREF;
+            }
+            else if (callArg->GetWellKnownArg() == WellKnownArg::InstParam)
+            {
+                argSigType = CORINFO_TYPE_PTR;
+            }
+            else
+            {
+                unreached();
             }
         }
         else
         {
             assert(helperInfo != nullptr);
-            if (!isSigArg)
-            {
-                // There are helpers that do not have a specified signature (have a variable number of args).
-                // We'll have to wait for upstream call args changes to get merged to handle those properly.
-                failFunctionCompilation();
-            }
-
-            corInfoType = helperInfo->GetSigArgType(argIx);
-            clsHnd = helperInfo->GetSigArgClass(_compiler, argIx);
+            argSigType = helperInfo->GetSigArgType(argIx);
+            argSigClass = helperInfo->GetSigArgClass(_compiler, argIx);
         }
 
-        if (isManagedCall && !canStoreArgOnLlvmStack(corInfoType, clsHnd))
+        if (isManagedCall && !canStoreArgOnLlvmStack(argSigType, argSigClass))
         {
-            if (corInfoType == CORINFO_TYPE_VALUECLASS)
+            if (argSigType == CORINFO_TYPE_VALUECLASS)
             {
-                shadowStackUseOffset = padOffset(corInfoType, clsHnd, shadowStackUseOffset);
+                shadowStackUseOffset = padOffset(argSigType, argSigClass, shadowStackUseOffset);
             }
 
             if (argNode->OperIs(GT_FIELD_LIST))
@@ -1168,9 +1155,9 @@ unsigned Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
                 CurrentRange().InsertBefore(callNode, storeNode);
             }
 
-            if (corInfoType == CORINFO_TYPE_VALUECLASS)
+            if (argSigType == CORINFO_TYPE_VALUECLASS)
             {
-                shadowStackUseOffset = padNextOffset(corInfoType, clsHnd, shadowStackUseOffset);
+                shadowStackUseOffset = padNextOffset(argSigType, argSigClass, shadowStackUseOffset);
             }
             else
             {
@@ -1185,16 +1172,16 @@ unsigned Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
             {
                 if (!argNode->OperIs(GT_FIELD_LIST) && argNode->TypeIs(TYP_STRUCT))
                 {
-                    normalizeStructUse(argNode, _compiler->typGetObjLayout(clsHnd));
+                    normalizeStructUse(argNode, _compiler->typGetObjLayout(argSigClass));
                 }
 
                 // TODO-LLVM: delete (together with 'SetSignatureClassHandle') when merging
                 // https://github.com/dotnet/runtime/pull/69969 (May 31).
-                callArg->SetSignatureClassHandle(clsHnd);
+                callArg->SetSignatureClassHandle(argSigClass);
             }
 
             callArg->SetEarlyNode(argNode);
-            callArg->SetSignatureCorInfoType(corInfoType);
+            callArg->SetSignatureCorInfoType(argSigType);
             lastLlvmStackArg = callArg;
         }
 
