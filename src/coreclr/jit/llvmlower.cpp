@@ -475,10 +475,10 @@ void Llvm::lowerStoreLcl(GenTreeLclVarCommon* storeLclNode)
     LclVarDsc* varDsc = _compiler->lvaGetDesc(lclNum);
     GenTree* data = storeLclNode->gtGetOp1();
 
-    unsigned convertToStoreObjLclNum = BAD_VAR_NUM;
+    unsigned convertToStoreLclFldVarNum = BAD_VAR_NUM;
     if (varDsc->CanBeReplacedWithItsField(_compiler))
     {
-        convertToStoreObjLclNum = varDsc->lvFieldLclStart;
+        convertToStoreLclFldVarNum = varDsc->lvFieldLclStart;
     }
     else if (storeLclNode->TypeIs(TYP_STRUCT))
     {
@@ -489,22 +489,25 @@ void Llvm::lowerStoreLcl(GenTreeLclVarCommon* storeLclNode)
         else if (data->OperIsInitVal())
         {
             // We need the local's address to create a memset.
-            convertToStoreObjLclNum = lclNum;
+            convertToStoreLclFldVarNum = lclNum;
         }
     }
 
-    if (convertToStoreObjLclNum != BAD_VAR_NUM)
+    if (convertToStoreLclFldVarNum != BAD_VAR_NUM)
     {
-        // TODO-LLVM: change to STORE_LCL_FLD once we merge https://github.com/dotnet/runtime/pull/68986 (May 27).
-        storeLclNode->SetOper(GT_LCL_VAR_ADDR);
-        storeLclNode->ChangeType(TYP_I_IMPL);
-        storeLclNode->SetLclNum(convertToStoreObjLclNum);
-
-        GenTree* storeObjNode = new (_compiler, GT_STORE_LCL_FLD)
-            GenTreeLclFld(GT_STORE_LCL_FLD, varDsc->TypeGet(), convertToStoreObjLclNum, varDsc->lvFldOffset, varDsc->GetLayout());
-        storeObjNode->gtFlags |= (GTF_ASG | GTF_IND_NONFAULTING);
-
-        CurrentRange().InsertAfter(storeLclNode, storeObjNode);
+        storeLclNode->SetOper(GT_STORE_LCL_FLD);
+        LclVarDsc* lclFldVarDsc = _compiler->lvaGetDesc(convertToStoreLclFldVarNum);
+        var_types lclFldVarType = lclFldVarDsc->TypeGet();
+        storeLclNode->ChangeType(lclFldVarType);
+        storeLclNode->SetLclNum(convertToStoreLclFldVarNum);
+        GenTreeLclFld* storeLclFldNode = storeLclNode->AsLclFld();
+        storeLclFldNode->SetLclOffs(lclFldVarDsc->lvFldOffset);
+        if (varTypeIsStruct(lclFldVarType))
+        {
+            storeLclFldNode->SetLayout(lclFldVarDsc->GetLayout());
+        }
+        storeLclFldNode->gtFlags |= (GTF_ASG | GTF_IND_NONFAULTING);
+        storeLclFldNode->gtOp1 = data;
     }
 }
 

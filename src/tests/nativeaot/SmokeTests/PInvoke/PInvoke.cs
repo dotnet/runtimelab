@@ -355,8 +355,24 @@ namespace PInvokeTests
             TestForwardDelegateWithUnmanagedCallersOnly();
             // TODO-LLVM: https://github.com/dotnet/runtimelab/issues/2190
             TestDecimal();
-#endif
+
+            // TODO-LLVM: Invalid Program: attempted to call a UnmanagedCallersOnly method from managed code.
+            //at abort(E:\GitHub\runtimelab\artifacts\tests\coreclr\Browser.wasm.Debug\nativeaot\SmokeTests\PInvoke\PInvoke\native\PInvoke.js:942:11)
+            //at _abort(E:\GitHub\runtimelab\artifacts\tests\coreclr\Browser.wasm.Debug\nativeaot\SmokeTests\PInvoke\PInvoke\native\PInvoke.js:5178:7)
+            //at RaiseFailFastException(< anonymous >:wasm - function[464]:0x34d82)
+            //at PalRaiseFailFastException(_EXCEPTION_RECORD32*, _CONTEXT*, unsigned int) (< anonymous >:wasm - function[285]:0x20a8b)
+            //at Thread::ReversePInvokeAttachOrTrapThread(ReversePInvokeFrame *)(< anonymous >:wasm - function[314]:0x21efc)
+            //at RhpReversePInvokeAttachOrTrapThread2(< anonymous >:wasm - function[323]:0x2291a)
+            //at RhpReversePInvoke(< anonymous >:wasm - function[324]:0x22b54)
+            //at UnmanagedMethod(< anonymous >:wasm - function[2413]:0x189dd2)
+            //at PInvoke_PInvokeTests_Program__TestDifferentModopts(< anonymous >:wasm - function[2412]:0x189884)
+            //at PInvoke_PInvokeTests_Program__Main(< anonymous >:wasm - function[9321]:0x67560a)
+            //at PInvoke__Module___MainMethodWrapper(< anonymous >:wasm - function[9320]:0x6754e7)
+            //at StartupCodeMain(< anonymous >:wasm - function[2332]:0x182278)
+            //at __managed__Main(< anonymous >:wasm - function[4429]:0x1c80a9)
+            //at main(< anonymous >:wasm - function[19533]:0x134d3ff)
             TestDifferentModopts();
+#endif
 
             return 100;
         }

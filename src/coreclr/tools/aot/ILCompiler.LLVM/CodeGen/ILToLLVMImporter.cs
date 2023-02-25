@@ -2446,9 +2446,11 @@ namespace Internal.IL
         private void PushMethodTableForInstantiationParameter(MethodDesc method, MethodDesc runtimeDeterminedMethod)
         {
             LLVMValueRef eeTypePtrRef;
+            TypeDesc expressionTypeDesc;
             if (runtimeDeterminedMethod.IsRuntimeDeterminedExactMethod)
             {
                 eeTypePtrRef = CallGenericHelper(ReadyToRunHelperId.TypeHandle, runtimeDeterminedMethod.Instantiation[0]);
+                expressionTypeDesc = GetWellKnownType(WellKnownType.IntPtr);
             }
             else
             {
@@ -2457,9 +2459,10 @@ namespace Internal.IL
                 ISymbolNode node = _compilation.ComputeConstantLookup(helperId, method.Instantiation[0]);
                 _dependencies.Add(node, "LLVM Type ptr");
                 eeTypePtrRef = LoadAddressOfSymbolNode(node);
+                expressionTypeDesc = method.Signature.ReturnType;
             }
 
-            PushExpression(StackValueKind.Int32, "eeTypePtr", eeTypePtrRef, GetWellKnownType(WellKnownType.IntPtr));
+            PushExpression(StackValueKind.Int32, "eeTypePtr", eeTypePtrRef, expressionTypeDesc);
         }
 
         // if the call is done via `invoke` then we need the try/then block passed back in case the calling code takes the result from a phi.
