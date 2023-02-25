@@ -224,9 +224,6 @@ Type* Llvm::getLlvmTypeForVarType(var_types type)
         case TYP_REF:
         case TYP_BYREF:
             return getPtrLlvmType();
-        case TYP_BLK:
-        case TYP_STRUCT:
-            failFunctionCompilation();
         default:
             unreached();
     }
