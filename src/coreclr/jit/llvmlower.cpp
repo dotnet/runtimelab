@@ -492,7 +492,8 @@ void Llvm::lowerStoreLcl(GenTreeLclVarCommon* storeLclNode)
     {
         if (data->TypeIs(TYP_STRUCT))
         {
-            normalizeStructUse(data, varDsc->GetLayout());
+            LIR::Use dataUse(CurrentRange(), &storeLclNode->gtOp1, storeLclNode);
+            data = normalizeStructUse(dataUse, varDsc->GetLayout());
         }
         else if (data->OperIsInitVal())
         {
@@ -808,14 +809,13 @@ void Llvm::lowerReturn(GenTreeUnOp* retNode)
     }
 
     GenTree* retVal = retNode->gtGetOp1();
-    ClassLayout* retLayout = retNode->TypeIs(TYP_STRUCT) ? _compiler->typGetObjLayout(_sigInfo.retTypeClass) : nullptr;
+    LIR::Use retValUse(CurrentRange(), &retNode->gtOp1, retNode);
     if (retNode->TypeIs(TYP_STRUCT) && retVal->TypeIs(TYP_STRUCT))
     {
-        normalizeStructUse(retVal, retLayout);
+        normalizeStructUse(retValUse, _compiler->typGetObjLayout(_sigInfo.retTypeClass));
     }
 
     bool isStructZero = retNode->TypeIs(TYP_STRUCT) && retVal->IsIntegralConst(0);
-
     if (_retAddressLclNum != BAD_VAR_NUM)
     {
         GenTreeLclVar* retAddrNode = _compiler->gtNewLclvNode(_retAddressLclNum, TYP_I_IMPL);
@@ -823,7 +823,7 @@ void Llvm::lowerReturn(GenTreeUnOp* retNode)
         if (isStructZero)
         {
             storeNode = new (_compiler, GT_STORE_BLK) GenTreeBlk(GT_STORE_BLK, TYP_STRUCT, retAddrNode, retVal,
-                                                                 retLayout);
+                                                                 _compiler->typGetObjLayout(_sigInfo.retTypeClass));
             storeNode->gtFlags |= (GTF_ASG | GTF_IND_NONFAULTING);
         }
         else
@@ -843,7 +843,6 @@ void Llvm::lowerReturn(GenTreeUnOp* retNode)
     // of the important cases). Exclude zero-init-ed structs (codegen supports them directly).
     else if ((retNode->TypeGet() != genActualType(retVal)) && !isStructZero)
     {
-        LIR::Use retValUse(CurrentRange(), &retNode->gtOp1, retNode);
         retValUse.ReplaceWithLclVar(_compiler);
 
         GenTreeLclVar* lclVarNode = retValUse.Def()->AsLclVar();
@@ -1172,7 +1171,8 @@ unsigned Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
             {
                 if (!argNode->OperIs(GT_FIELD_LIST) && argNode->TypeIs(TYP_STRUCT))
                 {
-                    normalizeStructUse(argNode, _compiler->typGetObjLayout(argSigClass));
+                    LIR::Use argNodeUse(CurrentRange(), &callArg->EarlyNodeRef(), callNode);
+                    argNode = normalizeStructUse(argNodeUse, _compiler->typGetObjLayout(argSigClass));
                 }
 
                 // TODO-LLVM: delete (together with 'SetSignatureClassHandle') when merging
@@ -1288,13 +1288,16 @@ CallArg* Llvm::lowerCallReturn(GenTreeCall* callNode)
 // So in lowering we retype uses (and users) to match LLVM's expectations.
 //
 // Arguments:
-//    node   - The struct node to retype
+//    use    - Use of the struct node to retype
 //    layout - The target layout
 //
-void Llvm::normalizeStructUse(GenTree* node, ClassLayout* layout)
+// Return Value:
+//    The retyped node.
+//
+GenTree* Llvm::normalizeStructUse(LIR::Use& use, ClassLayout* layout)
 {
-    // Note on SIMD: we will support it in codegen via bitcasts.
-    assert(node->TypeIs(TYP_STRUCT));
+    GenTree* node = use.Def();
+    assert(node->TypeIs(TYP_STRUCT)); // Note on SIMD: we will support it in codegen via bitcasts.
 
     // "IND<struct>" nodes always need to be normalized.
     if (node->OperIs(GT_IND))
@@ -1325,8 +1328,14 @@ void Llvm::normalizeStructUse(GenTree* node, ClassLayout* layout)
                     }
                     break;
 
+                case GT_CALL:
+                    use.ReplaceWithLclVar(_compiler);
+                    node = use.Def();
+                    FALLTHROUGH;
+
                 case GT_LCL_VAR:
                 {
+                    // TODO-LLVM: morph into TYP_STRUCT LCL_FLD once we merge it.
                     unsigned lclNum = node->AsLclVarCommon()->GetLclNum();
                     GenTree* lclAddrNode = _compiler->gtNewLclVarAddrNode(lclNum);
                     _compiler->lvaGetDesc(lclNum)->lvHasLocalAddr = true;
@@ -1340,10 +1349,6 @@ void Llvm::normalizeStructUse(GenTree* node, ClassLayout* layout)
                     CurrentRange().InsertBefore(node, lclAddrNode);
                 }
                 break;
-
-                case GT_CALL:
-                    // TODO-LLVM: implement by spilling to a local.
-                    failFunctionCompilation();
 
                 case GT_LCL_FLD:
                     // TODO-LLVM: handle by altering the layout once enough of upstream is merged.

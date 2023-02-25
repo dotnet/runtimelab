@@ -311,7 +311,7 @@ private:
     void failUnsupportedCalls(GenTreeCall* callNode);
     CallArg* lowerCallReturn(GenTreeCall* callNode);
 
-    void normalizeStructUse(GenTree* node, ClassLayout* layout);
+    GenTree* normalizeStructUse(LIR::Use& use, ClassLayout* layout);
 
     unsigned representAsLclVar(LIR::Use& use);
     GenTree* createStoreNode(var_types nodeType, GenTree* addr, GenTree* data);
