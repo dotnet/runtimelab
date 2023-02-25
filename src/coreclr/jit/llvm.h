@@ -379,6 +379,7 @@ private:
     void buildBinaryOperation(GenTree* node);
     void buildShift(GenTreeOp* node);
     void buildIntrinsic(GenTreeIntrinsic* intrinsicNode);
+    void buildMemoryBarrier(GenTree* node);
     void buildReturn(GenTree* node);
     void buildJTrue(GenTree* node);
     void buildSwitch(GenTreeUnOp* switchNode);

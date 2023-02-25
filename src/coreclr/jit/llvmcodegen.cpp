@@ -1230,8 +1230,8 @@ void Llvm::visitNode(GenTree* node)
             // TODO-LLVM-CQ: enable these as intrinsics.
             unreached();
         case GT_MEMORYBARRIER:
-            // TODO-LLVM: atomics.
-            failFunctionCompilation();
+            buildMemoryBarrier(node);
+            break;
         case GT_EQ:
         case GT_NE:
         case GT_LE:
@@ -2311,6 +2311,12 @@ void Llvm::buildIntrinsic(GenTreeIntrinsic* intrinsicNode)
     }
 
     mapGenTreeToValue(intrinsicNode, intrinsicValue);
+}
+
+void Llvm::buildMemoryBarrier(GenTree* node)
+{
+    assert(node->OperIs(GT_MEMORYBARRIER));
+    _builder.CreateFence(llvm::AtomicOrdering::AcquireRelease);
 }
 
 void Llvm::buildReturn(GenTree* node)
