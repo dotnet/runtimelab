@@ -2698,13 +2698,7 @@ llvm::CallBase* Llvm::emitCallOrInvoke(llvm::FunctionCallee callee, ArrayRef<Val
 
 FunctionType* Llvm::getFunctionType()
 {
-    // TODO-LLVM: delete this when these signatures implemented
-    if (_sigInfo.hasExplicitThis())
-        failFunctionCompilation();
-
     std::vector<llvm::Type*> argVec(_llvmArgCount);
-    llvm::Type*              retLlvmType;
-
     for (unsigned i = 0; i < _compiler->lvaCount; i++)
     {
         LclVarDsc* varDsc = _compiler->lvaGetDesc(i);
@@ -2715,11 +2709,11 @@ FunctionType* Llvm::getFunctionType()
         }
     }
 
-    retLlvmType = _retAddressLclNum == BAD_VAR_NUM
+    llvm::Type* retLlvmType = _retAddressLclNum == BAD_VAR_NUM
         ? getLlvmTypeForCorInfoType(_sigInfo.retType, _sigInfo.retTypeClass)
         : Type::getVoidTy(_llvmContext);
 
-    return FunctionType::get(retLlvmType, ArrayRef<Type*>(argVec), false);
+    return FunctionType::get(retLlvmType, argVec, /* isVarArg */ false);
 }
 
 llvm::FunctionCallee Llvm::consumeCallTarget(GenTreeCall* call)

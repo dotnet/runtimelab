@@ -187,7 +187,7 @@ void Llvm::populateLlvmArgNums()
 
     unsigned firstSigArgLclNum = 0;
     assert(_sigInfo.hasThis() == (m_info->compThisArg != BAD_VAR_NUM));
-    if (_sigInfo.hasThis())
+    if (_sigInfo.hasThis() && !_sigInfo.hasExplicitThis())
     {
         // "this" is never an LLVM parameter as it is always a GC reference.
         assert(varTypeIsGC(_compiler->lvaGetDesc(m_info->compThisArg)));
