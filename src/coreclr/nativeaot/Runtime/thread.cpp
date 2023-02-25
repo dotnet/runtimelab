@@ -395,13 +395,13 @@ void Thread::Destroy()
 }
 
 #ifdef HOST_WASM
-extern RtuObjectRef * t_pShadowStackTop;
-extern RtuObjectRef * t_pShadowStackBottom;
+extern RtuObjectRef* GetShadowStackBottom();
+extern RtuObjectRef* GetShadowStackTop();
 
 void GcScanWasmShadowStack(void * pfnEnumCallback, void * pvCallbackData)
 {
     // Wasm does not permit iteration of stack frames so is uses a shadow stack instead
-    RedhawkGCInterface::EnumGcRefsInRegionConservatively(t_pShadowStackBottom, t_pShadowStackTop, pfnEnumCallback, pvCallbackData);
+    RedhawkGCInterface::EnumGcRefsInRegionConservatively(GetShadowStackBottom(), GetShadowStackTop(), pfnEnumCallback, pvCallbackData);
 }
 #endif
 
