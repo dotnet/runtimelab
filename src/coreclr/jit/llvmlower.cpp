@@ -635,6 +635,8 @@ bool Llvm::ConvertShadowStackLocalNode(GenTreeLclVarCommon* node)
 
 void Llvm::lowerCall(GenTreeCall* callNode)
 {
+    // TODO-LLVM-CQ: enable fast shadow tail calls. Requires correct ABI handling.
+    assert(!callNode->IsTailCall());
     failUnsupportedCalls(callNode);
 
     if (callNode->IsHelperCall(_compiler, CORINFO_HELP_RETHROW))
@@ -1208,12 +1210,6 @@ void Llvm::failUnsupportedCalls(GenTreeCall* callNode)
     if (callNode->IsHelperCall())
     {
         return;
-    }
-
-    // we can't do these yet
-    if (callNode->IsTailCall())
-    {
-        failFunctionCompilation();
     }
 
     CORINFO_SIG_INFO* calleeSigInfo = callNode->callSig;

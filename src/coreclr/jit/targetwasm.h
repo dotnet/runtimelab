@@ -15,8 +15,8 @@
 
   #define FEATURE_FIXED_OUT_ARGS   0       // Not relevant to LLVM/WASM
   #define FEATURE_STRUCTPROMOTE    1       // JIT Optimization to promote fields of structs into registers
-  #define FEATURE_FASTTAILCALL     1       // Tail calls made as epilog+jmp
-  #define FEATURE_TAILCALL_OPT     1       // opportunistic Tail calls (i.e. without ".tail" prefix) made as fast tail calls.
+  #define FEATURE_FASTTAILCALL     0       // Tail calls made as epilog+jmp
+  #define FEATURE_TAILCALL_OPT     0       // opportunistic Tail calls (i.e. without ".tail" prefix) made as fast tail calls.
   #define FEATURE_SET_FLAGS        0       // Set to true to force the JIT to mark the trees with GTF_SET_FLAGS when the flags need to be set
 
   #define FEATURE_MULTIREG_ARGS_OR_RET  0  // Support for passing and/or returning single values in more than one register
