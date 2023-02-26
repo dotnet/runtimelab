@@ -505,6 +505,9 @@ void Llvm::lowerStoreLcl(GenTreeLclVarCommon* storeLclNode)
     if (convertToStoreLclFldLclNum != BAD_VAR_NUM)
     {
         storeLclNode->SetOper(GT_STORE_LCL_FLD);
+        LclVarDsc* lclFldVarDsc  = _compiler->lvaGetDesc(convertToStoreLclFldLclNum);
+        var_types  lclFldVarType = lclFldVarDsc->TypeGet();
+        storeLclNode->ChangeType(lclFldVarType);
         storeLclNode->SetLclNum(convertToStoreLclFldLclNum);
         storeLclNode->AsLclFld()->SetLclOffs(0);
         storeLclNode->AsLclFld()->SetLayout(varDsc->GetLayout());
