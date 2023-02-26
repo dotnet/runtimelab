@@ -496,18 +496,9 @@ void Llvm::lowerStoreLcl(GenTreeLclVarCommon* storeLclNode)
     if (convertToStoreLclFldVarNum != BAD_VAR_NUM)
     {
         storeLclNode->SetOper(GT_STORE_LCL_FLD);
-        LclVarDsc* lclFldVarDsc = _compiler->lvaGetDesc(convertToStoreLclFldVarNum);
-        var_types lclFldVarType = lclFldVarDsc->TypeGet();
-        storeLclNode->ChangeType(lclFldVarType);
         storeLclNode->SetLclNum(convertToStoreLclFldVarNum);
-        GenTreeLclFld* storeLclFldNode = storeLclNode->AsLclFld();
-        storeLclFldNode->SetLclOffs(lclFldVarDsc->lvFldOffset);
-        if (varTypeIsStruct(lclFldVarType))
-        {
-            storeLclFldNode->SetLayout(lclFldVarDsc->GetLayout());
-        }
-        storeLclFldNode->gtFlags |= (GTF_ASG | GTF_IND_NONFAULTING);
-        storeLclFldNode->gtOp1 = data;
+        storeLclNode->AsLclFld()->SetLclOffs(0);
+        storeLclNode->AsLclFld()->SetLayout(varDsc->GetLayout());
     }
 }
 
