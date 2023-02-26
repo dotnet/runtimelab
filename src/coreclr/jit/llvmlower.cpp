@@ -552,12 +552,11 @@ void Llvm::lowerFieldOfDependentlyPromotedStruct(GenTree* node)
     }
 }
 
-bool Llvm::ConvertShadowStackLocalNode(GenTreeLclVarCommon* node)
+bool Llvm::ConvertShadowStackLocalNode(GenTreeLclVarCommon* lclNode)
 {
-    GenTreeLclVarCommon* lclVar = node->AsLclVarCommon();
-    LclVarDsc* varDsc = _compiler->lvaGetDesc(lclVar->GetLclNum());
+    LclVarDsc* varDsc = _compiler->lvaGetDesc(lclNode->GetLclNum());
 
-    if (isShadowFrameLocal(varDsc) && (lclVar->GetRegNum() != REG_LLVM))
+    if (isShadowFrameLocal(varDsc) && (lclNode->GetRegNum() != REG_LLVM))
     {
         // Funclets (especially filters) will be called by the dispatcher while live state still exists
         // on shadow frames below (in the tradional sense, where stacks grow down) them. For this reason,
@@ -565,66 +564,53 @@ bool Llvm::ConvertShadowStackLocalNode(GenTreeLclVarCommon* node)
         // use the actual shadow stack for calls.
         unsigned shadowStackLclNum = CurrentBlock()->hasHndIndex() ? _originalShadowStackLclNum : _shadowStackLclNum;
         GenTree* lclAddress =
-            insertShadowStackAddr(node, varDsc->GetStackOffset() + node->GetLclOffs(), shadowStackLclNum);
+            insertShadowStackAddr(lclNode, varDsc->GetStackOffset() + lclNode->GetLclOffs(), shadowStackLclNum);
 
-        genTreeOps indirOper;
+        ClassLayout* layout = lclNode->TypeIs(TYP_STRUCT) ? varDsc->GetLayout() : nullptr;
         GenTree* storedValue = nullptr;
-        switch (node->OperGet())
+        genTreeOps indirOper;
+        switch (lclNode->OperGet())
         {
             case GT_STORE_LCL_VAR:
-                indirOper = lclVar->TypeIs(TYP_STRUCT) ? GT_STORE_OBJ : GT_STOREIND;
-                storedValue = node->AsOp()->gtGetOp1();
-                break;
-            case GT_LCL_VAR:
-                indirOper = lclVar->TypeIs(TYP_STRUCT) ? GT_OBJ : GT_IND;
+            case GT_STORE_LCL_FLD:
+                indirOper = (layout != nullptr) ? GT_STORE_OBJ : GT_STOREIND;
+                storedValue = lclNode->AsOp()->gtGetOp1();
                 break;
             case GT_LCL_FLD:
-                if (lclVar->TypeIs(TYP_STRUCT))
+            case GT_LCL_VAR:
+                if (lclNode->OperIs(GT_LCL_FLD) && lclNode->TypeIs(TYP_STRUCT))
                 {
                     // TODO-LLVM: handle once we merge enough of upstream to have "GenTreeLclFld::GetLayout".
                     failFunctionCompilation();
                 }
-                indirOper = GT_IND;
+                indirOper = (layout != nullptr) ? GT_OBJ : GT_IND;
                 break;
             case GT_LCL_VAR_ADDR:
             case GT_LCL_FLD_ADDR:
-                indirOper = GT_NONE;
-                break;
-            case GT_STORE_LCL_FLD:
-                indirOper   = lclVar->TypeIs(TYP_STRUCT) ? GT_STORE_OBJ : GT_STOREIND;
-                storedValue = node->AsOp()->gtGetOp1();
-                break;
+                // Local address nodes are directly replaced with the ADD.
+                CurrentRange().Remove(lclAddress);
+                lclNode->ReplaceWith(lclAddress, _compiler);
+                return true;
             default:
                 unreached();
         }
-        if (GenTree::OperIsIndir(indirOper))
-        {
-            node->ChangeOper(indirOper);
-            node->AsIndir()->SetAddr(lclAddress);
-            node->gtFlags |= GTF_IND_NONFAULTING;
-        }
+
+        lclNode->ChangeOper(indirOper);
+        lclNode->AsIndir()->SetAddr(lclAddress);
+        lclNode->gtFlags |= GTF_IND_NONFAULTING;
+
         if (GenTree::OperIsStore(indirOper))
         {
-            node->gtFlags |= GTF_IND_TGT_NOT_HEAP;
-            node->AsOp()->gtOp2 = storedValue;
+            lclNode->gtFlags |= GTF_IND_TGT_NOT_HEAP;
+            lclNode->AsOp()->gtOp2 = storedValue;
         }
         if (GenTree::OperIsBlk(indirOper))
         {
-            node->AsBlk()->SetLayout(varDsc->GetLayout());
-            node->AsBlk()->gtBlkOpKind = GenTreeBlk::BlkOpKindInvalid;
+            lclNode->AsBlk()->SetLayout(layout);
+            lclNode->AsBlk()->gtBlkOpKind = GenTreeBlk::BlkOpKindInvalid;
         }
 
-        if (indirOper == GT_NONE)
-        {
-            // Local address nodes are directly replaced with the ADD.
-            CurrentRange().Remove(lclAddress);
-            node->ReplaceWith(lclAddress, _compiler);
-        }
-        else
-        {
-            lowerNode(node);
-        }
-
+        lowerNode(lclNode);
         return true;
     }
 
