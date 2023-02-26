@@ -1411,7 +1411,7 @@ void Llvm::buildStoreLocalField(GenTreeLclFld* lclFld)
     GenTree* data = lclFld->gtGetOp1();
 
     ClassLayout* layout = lclFld->TypeIs(TYP_STRUCT) ? lclFld->GetLayout() : nullptr;
-    Type* llvmStoreType = (layout != nullptr) ? getLlvmTypeForStruct(lclFld->GetLayout())
+    Type* llvmStoreType = (layout != nullptr) ? getLlvmTypeForStruct(layout)
                                               : getLlvmTypeForVarType(lclFld->TypeGet());
     Value* addrValue = gepOrAddr(getLocalAddr(lclFld->GetLclNum()), lclFld->GetLclOffs());
 
