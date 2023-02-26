@@ -1409,16 +1409,14 @@ void Llvm::buildLocalField(GenTreeLclFld* lclFld)
 void Llvm::buildStoreLocalField(GenTreeLclFld* lclFld)
 {
     GenTree* data = lclFld->gtGetOp1();
-
     ClassLayout* layout = lclFld->TypeIs(TYP_STRUCT) ? lclFld->GetLayout() : nullptr;
-    Type* llvmStoreType = (layout != nullptr) ? getLlvmTypeForStruct(lclFld->GetLayout())
+    Type* llvmStoreType = (layout != nullptr) ? getLlvmTypeForStruct(layout)
                                               : getLlvmTypeForVarType(lclFld->TypeGet());
     Value* addrValue = gepOrAddr(getLocalAddr(lclFld->GetLclNum()), lclFld->GetLclOffs());
 
     Value* dataValue;
     if (lclFld->TypeIs(TYP_STRUCT) && genActualTypeIsInt(data))
     {
-        ClassLayout* layout = lclFld->GetLayout();
         if (!data->IsIntegralConst(0))
         {
             assert(data->OperIsInitVal());
@@ -1427,7 +1425,6 @@ void Llvm::buildStoreLocalField(GenTreeLclFld* lclFld)
             _builder.CreateMemSet(addrValue, fillValue, sizeValue, llvm::MaybeAlign());
             return;
         }
-        
         dataValue = llvm::Constant::getNullValue(llvmStoreType);
     }
     else
