@@ -1425,7 +1425,6 @@ void Llvm::buildStoreLocalField(GenTreeLclFld* lclFld)
             _builder.CreateMemSet(addrValue, fillValue, sizeValue, llvm::MaybeAlign());
             return;
         }
-        
         dataValue = llvm::Constant::getNullValue(llvmStoreType);
     }
     else
